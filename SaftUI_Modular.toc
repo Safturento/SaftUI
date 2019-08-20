@@ -1,0 +1,11 @@
+## Interface: 70200
+## Author: Safturento
+## Version: 0.1
+## Title: |cff00adefSaftUI_Modular|r
+## SavedVariables: SaftUI_DB
+## X-oUF: SaftUI
+
+Libs\libs.xml
+Core\core.xml
+Config\config.xml
+Modules\modules.xml
