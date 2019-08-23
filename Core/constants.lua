@@ -21,6 +21,18 @@ st.BACKDROP = {
 	insets = { left = 1, right = 1, top = 1, bottom = 1}
 }
 
+st.FRAME_ANCHORS = {
+	['TOPLEFT'] = 'Top Left',
+	['TOPRIGHT'] = 'Top Right',
+	['TOP'] = 'Top',
+	['BOTTOM'] = 'Bottom',
+	['BOTTOMLEFT'] = 'Bottom Left',
+	['BOTTOMRIGHT'] = 'Bottom Right',
+	['LEFT'] = 'Left',
+	['RIGHT'] = 'Right',
+	['CENTER'] = 'Center',
+}
+
 
 st.HiddenFrame = CreateFrame('frame')
 st.HiddenFrame:Hide()

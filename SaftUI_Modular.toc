@@ -7,5 +7,6 @@
 
 Libs\libs.xml
 Core\core.xml
+Media\media.xml
 Config\config.xml
 Modules\modules.xml
