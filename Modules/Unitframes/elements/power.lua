@@ -1,2 +1,229 @@
 local ADDON_NAME, st = ...
 local UF = st:GetModule('Unitframes')
+
+local function PostUpdatePower(power, unit, current, min, max)
+	if power.text then
+		if current == max and power.config.text.hide_full then
+			power.text:SetText('')
+		elseif UnitPowerType(unit) ~= 0 then
+			power.text:SetText(current)
+		else
+			power.text:SetFormattedText(st.StringFormat:ShortFormat(current, 1))
+		end
+	end
+	power:SetStatusBarTexture(st.BLANK_TEX)
+
+	if power.config.bg.enable then
+		r, g, b = power:GetStatusBarColor()
+		local mu = power.config.bg.multiplier or 1
+		power.bg:SetVertexColor(r * mu, g * mu, b * mu)
+	end
+
+	if max == 0 then
+		power:SetMinMaxValues(0, 1)
+		power:SetValue(1)
+	end
+end
+
+local function Constructor(self)
+	local power = CreateFrame('StatusBar', nil, self)
+	power.config = self.config.power
+
+	power.bg = power:CreateTexture(nil, 'BACKGROUND')
+	power.bg:SetAllPoints(power)
+	power.bg:SetTexture(st.BLANK_TEX)
+
+	power.text = self.TextOverlay:CreateFontString(nil, 'OVERLAY')
+	-- We have to set this here since PostUpdatePower can run before UpdateConfig
+	power.text:SetFontObject(st:GetFont(self.config.power.text.font))
+
+	power.PostUpdate = PostUpdatePower
+	self.Power = power
+	return power
+end
+
+local function UpdateConfig(self)
+	if not self.config.power.enable then
+		self:DisableElement('Power')
+		return
+	else
+		self:EnableElement('Power')
+	end
+
+	if self.config.power.relative_height then
+		self.Power:SetHeight(self.config.height + self.config.power.height)
+	else
+		self.Power:SetHeight(self.config.power.height)
+	end
+
+	if self.config.power.relative_width then
+		self.Power:SetWidth(self.config.width + self.config.power.width)
+	else
+		self.Power:SetWidth(self.config.power.width)
+	end
+
+	st:SetBackdrop(self.Power, self.config.power.template)
+
+	self.Power:ClearAllPoints()
+	local anchor, rel_anchor, x_off, y_off = unpack(self.config.power.position)
+	self.Power:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	self.Power:SetFrameLevel(self.config.power.framelevel)
+	self.Power:SetStatusBarTexture(st.BLANK_TEX)
+
+	if self.config.power.colorCustom then
+		self.Power:SetStatusBarColor(unpack(self.config.power.customColor))
+	end
+
+	if self.config.power.bg.enable then
+		self.Power.bg:Show()
+		self.Power.bg:SetAlpha(self.config.power.bg.alpha)
+		self.Power.bg.multiplier = self.config.power.bg.multiplier
+		self.Power.bg:SetTexture(st.BLANK_TEX)
+	else
+		self.Power.bg:Hide()
+	end
+
+	if self.config.power.text.enable then
+		self.Power.text:Show()
+		self.Power.text:SetFontObject(st:GetFont(self.config.power.text.font))
+		self.Power.text:ClearAllPoints()
+		local anchor, rel_anchor, x_off, y_off = unpack(self.config.power.text.position)
+		self.Power.text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	else
+		self.Power.text:Hide()
+	end
+	
+	self.Power.Smooth = true
+	self.Power.colorTapping			= self.config.power.colorTapping
+	self.Power.colorDisconnected	= self.config.power.colorDisconnected
+	self.Power.colorPower			= self.config.power.colorPower
+	self.Power.colorClass			= self.config.power.colorClass
+	self.Power.colorClassNPC		= self.config.power.colorClassNPC
+	self.Power.colorClassPet		= self.config.power.colorClassPet
+	self.Power.colorReaction		= self.config.power.colorReaction
+	self.Power.colorSmooth			= self.config.power.colorSmooth
+	self.Power.colorCustom			= self.config.power.colorCustom
+	self.Power.customColor 			= self.config.power.customColor
+end
+
+local function GenerateConfig(self)
+	return {
+		type = 'group',
+		name = 'Power',
+		get = function(info)
+			return self.config.power[info[#info]]
+		end,
+		set = function(info, value)
+			self.config.power[info[#info]] = value
+			UF:UpdateConfig(self.unit, 'Power')
+		end,
+		args = {
+			enable = {
+				order = 0,
+				name = 'Enable',
+				type = 'toggle',
+				width = 0.5
+			},
+			framelevel = {
+				order = 1,
+				name = 'Frame Level',
+				type = 'range',
+				min = 0,
+				max = 99,
+				step = 1,
+				width = 1,
+			},
+			height = {
+				order = 2,
+				name = 'Height',
+				type = 'input',
+				pattern = '%d+',
+				width = 0.5,
+			},
+			width = {
+				order = 3,
+				name = 'Width',
+				type = 'input',
+				pattern = '%d+',
+				width = 0.5,
+			},
+			template = {
+				order = 4,
+				name = 'Template',
+				type = 'select',
+				values = st.CF:GetFrameTemplates(),
+			},
+			position = st.CF:GeneratePositionGroup(
+				self.config.power.position, false, 5, nil, 
+				function() UF:UpdateConfig(self.unit, 'Power') end
+			),
+			text = {
+				order = 6,
+				name = 'Text',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return self.config.power.text[info[#info]]
+				end,
+				set = function(info, value)
+					self.config.power.text[info[#info]] = value
+					UF:UpdateConfig(self.unit, 'Power')
+				end,
+				args = {
+					enable = {
+						order = 0,
+						name = 'Enable',
+						type = 'toggle',
+					},
+					position = st.CF:GeneratePositionGroup(
+						self.config.power.text.position, false, 0, nil, 
+						function() UF:UpdateConfig(self.unit, 'Power') end
+					),
+				},
+			},
+			bg = {
+				order = 6,
+				name = 'Status Bar BG',
+				desc = 'A background texture for the status bar. Will be the same color as the bar but can be darker or transparent based on settings',
+				descStyle = 'inline',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return self.config.power.bg[info[#info]]
+				end,
+				set = function(info, value)
+					self.config.power.bg[info[#info]] = value
+					UF:UpdateConfig(self.unit, 'Power')
+				end,
+				args = {
+					enable = {
+						order = 0,
+						name = 'Enable',
+						type = 'toggle',
+						width = 0.5,
+					},
+					multiplier = {
+						order = 2,
+						name = 'Multiplier',
+						type = 'range',
+						min = 0,
+						max = 1,
+						step = 0.05,
+						width = 1,
+					},
+					alpha = {
+						order = 3,
+						name = 'Alpha',
+						type = 'range',
+						min = 0,
+						max = 1,
+						step = 0.05,
+						width = 1,
+					}
+				},
+			}
+		}
+	}
+end
+
+UF:RegisterElement('Power', Constructor, UpdateConfig, GenerateConfig)

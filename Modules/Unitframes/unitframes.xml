@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Script file="unitframes.lua"/>
+	<Script file="tags.lua"/>
 	<Include file="elements\elements.xml"/>
 </Ui>

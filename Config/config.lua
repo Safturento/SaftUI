@@ -1,5 +1,7 @@
 local ADDON_NAME, st = ...
 
+st.CF = st:NewModule('Config')
+
 function st:InitializeConfigGUI()
 	local config = LibStub('AceConfig-3.0')
 	local dialog = LibStub('AceConfigDialog-3.0')
@@ -8,22 +10,104 @@ function st:InitializeConfigGUI()
 	dialog:AddToBlizOptions(ADDON_NAME, ADDON_NAME)
 	
 	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
-	self.options.args.profiles.order = -1
 
 	for name, options in pairs(self.options.args) do
-		config:RegisterOptionsTable(ADDON_NAME..'_'..name, options)
-		dialog:AddToBlizOptions(ADDON_NAME..'_'..name, options.name, ADDON_NAME)
+		config:RegisterOptionsTable(ADDON_NAME..' '..name, options)
+		dialog:AddToBlizOptions(ADDON_NAME..' '..name, options.name, ADDON_NAME)
 	end
+
+	st.config_initialized = true
 end
 
 st.options = {
 	type = 'group', 
 	name = ADDON_NAME,
+	inline = true,
 	args = {
-		unitframes = {
-			order = 1,
-			type = 'group',
-			name = 'Unitframes',
-		},
 	},
 }
+
+function st.CF:GetFrameTemplates()
+	local templates = {}
+	for k,v in pairs(st.config.profile.templates) do
+		templates[k] = v.name
+	end
+	
+	templates.none = 'None'
+
+	return templates
+end
+
+function st.CF:GetFontObjects()
+	local font_objects = {}
+	for k,v in pairs(st.config.profile.fonts) do
+		font_objects[k] = v.name
+	end
+
+	return font_objects
+end
+
+function st.CF:GeneratePositionGroup(config_table, global_frame, order, name, set_func)
+	local table = {
+		order = order or 0,
+		name = name or 'Position',
+		type = 'group',
+		inline = true,
+		get = function(info)
+			return config_table[info.option.order]
+		end,
+		set = function(info, value)
+			config_table[info.option.order] = value
+			if set_func then
+				set_func()
+			end
+		end,
+		args = {
+			point = {
+				order = 1,
+				name = 'Anchor', 
+				type = 'select',
+				values = st.FRAME_ANCHORS,
+				width = 'normal',
+			},
+			rel_point = {
+				order = 2,
+				name = 'Relative', 
+				type = 'select',
+				values = st.FRAME_ANCHORS,
+				width = 'normal',
+			},
+			x_off = {
+				order = 3,
+				name = 'X Offset', 
+				type = 'input',
+				pattern = '%d+',
+				width = 0.4
+			},
+			y_off = {
+				order = 4,
+				name = 'Y Offset', 
+				type = 'input',
+				pattern = '%d+',
+				width = 0.4
+			},
+		}
+	}
+
+	if global_frame then
+		table.args.frame = {
+			order = 2,
+			name = 'Frame',
+			type = 'input',
+			validate = function(info, name) 
+				return _G[name] and true or "Frame doesn't exist"
+			end
+		}
+
+		table.args.rel_point.order = 3
+		table.args.x_off.order = 4
+		table.args.y_off.order = 5
+	end
+
+	return table
+end
