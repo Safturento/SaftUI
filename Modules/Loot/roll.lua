@@ -11,10 +11,10 @@ local roll_buttons = {
 function LT:DebugGroupLootFrame()
 	GetLootRollItemInfo = function(rollID)
 		local texture			= 135575
-		name						= 'Whistle of the Violet Raptor'
-		count						= math.random(1,3)
-		quality					= math.random(0,5)
-		bindOnPickUp			= true
+		name						= 'Ravager'
+		count						= rollID
+		quality					= rollID+1
+		bindOnPickUp			= math.random(0,1) > 0.5
 		canNeed					= true
 		canGreed					= true
 		canDisenchant			= true
@@ -48,7 +48,7 @@ function LT:SkinRollFrame(frame)
 
 	frame.Name:SetParent(frame.Timer)
 
-	frame.IconFrame.Count:Hide()
+	st:Kill(frame.IconFrame.Count)
 
 	frame.Timer.Text = frame.Timer:CreateFontString(nil, 'OVERLAY')
 	frame.Timer.Text:SetFontObject(GameFontNormal)
@@ -129,7 +129,7 @@ function LT:GroupLootFrame_OnShow(frame)
 
 	local text = ''
 
-	if quality >= 3 and not BindOnPickUp then
+	if (quality >= 3) and (not bindOnPickUp) then
 		text = 'BoE '
 	end
 
