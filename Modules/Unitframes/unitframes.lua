@@ -27,7 +27,7 @@ function UF.ConstructUnit(self, unit)
 	else
 		self.base_unit = strmatch(unit, '(%D+)')
 	end
-	self.ID = tonumber(strmatch(unit, '(%d+)'))
+	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
 	
 	self:RegisterForClicks('AnyUp')
 	self:SetScript('OnEnter', UnitFrame_OnEnter)
@@ -110,6 +110,10 @@ function UF:UpdateConfig(unit, element_name)
 		for unit, frame in pairs(self.units) do
 			UF:UpdateConfig(unit, element_name)
 		end
+		
+		for unit,_ in pairs(self.groups) do
+			UF:UpdateConfig(unit)
+		end
 	else
 		if self.units[unit] then
 			self:UpdateUnitFrame(self.units[unit], element_name)
@@ -146,7 +150,7 @@ function UF:CreateGroupHeaders()
 		'showSolo', TEST_PARTY_SOLO,
 		'showPlayer', TEST_PARTY_SOLO,
 		"xOffset", config.spacing,
-		"yOffset", -config.spacing,
+		"yOffset", config.spacing,
 		"point", config.growthDirection,
 		"groupFilter", "1,2,3,4,5,6,7,8",
 		"groupingOrder", "1,2,3,4,5,6,7,8",
@@ -161,8 +165,6 @@ function UF:CreateGroupHeaders()
 	party:SetPoint(unpack(config.position))
 	self.groups.party = party
 
-	-- party:CreateBackdrop('Transparent')
-	-- party.Backdrop:SetPoints(-5)
 
 	-- local config = st.config.profile.unitframes.units.raid
 	-- local raid = self.oUF:SpawnHeader('SaftUI_RaidHeader', nil, 'custom [@raid6,exists] show;hide',"oUF-initialConfigFunction", [[
@@ -176,7 +178,7 @@ function UF:CreateGroupHeaders()
 	-- 	"showRaid", true,
 	-- 	"showPlayer", true,
 	-- 	"xOffset", config.spacing,
-	-- 	"yOffset", -config.spacing,
+	-- 	"yOffset", config.spacing,
 	-- 	"point", config.growthDirection,
 	-- 	"groupFilter", "1,2,3,4,5,6,7,8",
 	-- 	"groupingOrder", "1,2,3,4,5,6,7,8",
@@ -189,10 +191,6 @@ function UF:CreateGroupHeaders()
 	-- )
 
 	-- raid:SetPoint(unpack(config.position))
-
-
-	-- raid:CreateBackdrop('Transparent')
-	-- raid.Backdrop:SetPoints(-5)
 end
 
 function UF:GetConfigTable()
@@ -287,7 +285,7 @@ function UF:OnInitialize()
 	
 	self.RMH = RealMobHealth
 
-	-- UF:CreateGroupHeaders()
+	UF:CreateGroupHeaders()
 
 	st.CF.options.args.unitframes = self:GetConfigTable()
 end

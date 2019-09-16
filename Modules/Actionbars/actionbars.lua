@@ -61,11 +61,6 @@ function AB:KillBlizzard()
 		frame:UnregisterAllEvents()
 		frame:SetParent(st.hidden_frame)
 	end
-
-	ActionBarButtonEventsFrame:UnregisterEvent("ACTIONBAR_HIDEGRID")
-
-	MultiActionBar_HideAllGrids = function() end
-	MultiActionBar_ShowAllGrids = function() end
 end
 
 function AB:CreateBars()
