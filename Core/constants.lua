@@ -12,13 +12,21 @@ st.my_race = select(2, UnitRace('player'))
 st.my_faction = UnitFactionGroup('player')
 st.my_realm = GetRealmName()
 
+st.CLOSE_BUTTON_SIZE = {20, 10}
 st.ICON_COORDS = {.08, .92, .08, .92}
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
+st.TAB_HEIGHT = 20
 st.BACKDROP = {
 	bgFile = st.BLANK_TEX, 
 	edgeFile = st.BLANK_TEX,
 	tile = false, tileSize = 0, edgeSize = 1, 
 	insets = { left = 1, right = 1, top = 1, bottom = 1}
+}
+
+st.MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\Textures\\', ADDON_NAME)
+st.textures = {
+	cornerbr = st.MEDIA_PATH..'cornerarrowbottomright.tga',
+	mail = st.MEDIA_PATH..'mail.tga',
 }
 
 st.FRAME_ANCHORS = {
@@ -33,6 +41,16 @@ st.FRAME_ANCHORS = {
 	['CENTER'] = 'Center',
 }
 
+st.INVERSE_ANCHORS = {
+	['LEFT'] = 'RIGHT',
+	['RIGHT'] = 'LEFT',
+	['TOP'] = 'BOTTOM',
+	['BOTTOM'] = 'TOP',
+	['TOPLEFT'] = 'BOTTOMRIGHT',
+	['BOTTOMRIGHT'] = 'TOPLEFT',
+	['TOPRIGHT'] = 'BOTTOMLEFT',
+	['BOTTOMLEFT'] = 'TOPRIGHT',
+}
 
-st.HiddenFrame = CreateFrame('frame')
-st.HiddenFrame:Hide()
+st.hidden_frame = CreateFrame('frame')
+st.hidden_frame:Hide()

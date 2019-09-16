@@ -21,7 +21,7 @@ local function UpdateConfig(self)
 	local anchor, rel_anchor, x_off, y_off = unpack(self.config.name.position)
 	self.Name:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 
-	self:Tag(self.Name, '[name]')
+	self:Tag(self.Name, '[st:name]')
 end
 
 local function GetConfigTable(self)

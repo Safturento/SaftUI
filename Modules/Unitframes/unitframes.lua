@@ -1,6 +1,8 @@
 local ADDON_NAME, st = ...
 local UF = st:NewModule('Unitframes')
 
+local TEST_PARTY_SOLO = false
+
 UF.oUF = st.oUF
 assert(UF.oUF, 'st was unable to locate oUF.')
 
@@ -17,18 +19,16 @@ UF.unit_strings = {
 }
 
 function UF.ConstructUnit(self, unit)
-	self.unit = unit
-	
 	-- Ensure that we have access to a numberless unit type for config tables
-	local baseunit = self:GetParent():GetAttribute('baseunit')
-	if baseunit then
+	local base_unit = self:GetParent():GetAttribute('base_unit')
+	if base_unit then
 		self.is_group_unit = true
-		self.base_unit = baseunit
+		self.base_unit = base_unit
 	else
 		self.base_unit = strmatch(unit, '(%D+)')
 	end
 	self.ID = tonumber(strmatch(unit, '(%d+)'))
-
+	
 	self:RegisterForClicks('AnyUp')
 	self:SetScript('OnEnter', UnitFrame_OnEnter)
 	self:SetScript('OnLeave', UnitFrame_OnLeave)
@@ -47,8 +47,6 @@ function UF.ConstructUnit(self, unit)
 	for element_name, funcs in pairs(UF.elements) do
 		self.elements[element_name] = funcs.Constructor(self)
 	end
-
-	UF.units[unit] = self
 end
 
 --[[
@@ -68,24 +66,6 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable)
 	}
 end
 
-function UF:OnInitialize()
-	self.oUF:RegisterStyle('SaftUI', UF.ConstructUnit)
-	self.oUF:SetActiveStyle('SaftUI')
-
-	self.units = {}
-
-	for unit, global_name in pairs(self.unit_strings) do
-		self.oUF:Spawn(unit, 'SaftUI_'..global_name)
-	end
-
-	st.options.args.unitframes = self:GetConfigTable()
-end
-
-function UF:OnEnable()
-	UF:UpdateConfig(unit)
-	UF:UpdateColors()
-end
-
 function UF:UpdateColors()
 	UF.oUF.colors.disconnected = st.config.profile.colors.status.disconnected
 	UF.oUF.colors.tapped 		= st.config.profile.colors.status.tapped
@@ -96,38 +76,123 @@ function UF:UpdateColors()
 	UF.oUF.colors.runes 			= st.config.profile.colors.runes
 end
 
+function UF:UpdateUnitFrame(frame, element_name)
+	if element_name then
+		self.elements[element_name].UpdateConfig(frame)
+	else
+		if not frame.is_group_unit then
+			frame:ClearAllPoints()
+			if not frame.config.enable then
+				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+				return
+			else
+				frame:SetPoint(unpack(frame.config.position))
+				frame:SetSize(frame.config.width, frame.config.height)
+			end
+		end
+
+		st:SetBackdrop(frame, frame.config.template)
+		
+		frame.Range = {
+			insideAlpha = frame.config.range_alpha.inside,
+			outsideAlpha = frame.config.range_alpha.outside
+		}
+		
+		
+		for element_name, element in pairs(frame.elements) do
+			self.elements[element_name].UpdateConfig(frame)
+		end
+	end
+end
+
 function UF:UpdateConfig(unit, element_name)
 	if not unit then 
 		for unit, frame in pairs(self.units) do
 			UF:UpdateConfig(unit, element_name)
 		end
 	else
-		local frame = self.units[unit]
-		
-		if element_name then
-			self.elements[element_name].UpdateConfig(frame)
-		else
-			frame:ClearAllPoints()
-			if not frame.config.enable then
-				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
-			else
-				frame:SetPoint(unpack(frame.config.position))
-				frame:SetSize(frame.config.width, frame.config.height)
-
-				st:SetBackdrop(frame, frame.config.template)
-				
-				frame.Range = {
-					insideAlpha = frame.config.range_alpha.inside,
-					outsideAlpha = frame.config.range_alpha.outside
-				}
-				
-				
-				for element_name, element in pairs(frame.elements) do
-					self.elements[element_name].UpdateConfig(frame)
+		if self.units[unit] then
+			self:UpdateUnitFrame(self.units[unit], element_name)
+		elseif self.groups[unit] then
+			for i=1,self.groups[unit]:GetNumChildren() do
+				local frame = select(i, self.groups[unit]:GetChildren())
+				if frame and frame.Health then
+					self:UpdateUnitFrame(frame, element_name)
 				end
 			end
 		end
 	end
+end
+
+
+
+function UF:CreateGroupHeaders()
+	self.groups = {}
+
+	local config = st.config.profile.unitframes.units.party
+	local party = self.oUF:SpawnHeader(
+		'SaftUI_PartyHeader',
+		nil,
+		'custom [@raid6,exists] hide;show',
+		"oUF-initialConfigFunction", [[
+			local header = self:GetParent()
+			self:SetWidth(header:GetAttribute("initial-width"))
+			self:SetHeight(header:GetAttribute("initial-height"))
+		]],
+		"initial-width", config.width,
+		"initial-height", config.height,
+		"showParty", true,
+		"showRaid", true,
+		'showSolo', TEST_PARTY_SOLO,
+		'showPlayer', TEST_PARTY_SOLO,
+		"xOffset", config.spacing,
+		"yOffset", -config.spacing,
+		"point", config.growthDirection,
+		"groupFilter", "1,2,3,4,5,6,7,8",
+		"groupingOrder", "1,2,3,4,5,6,7,8",
+		"groupBy", "GROUP",
+		"maxColumns", config.maxColumns,
+		"unitsPerColumn", config.unitsPerColumn,
+		"columnSpacing", config.columnSpacing,
+		"columnAnchorPoint", config.initialAnchor,
+		"base_unit", "party"
+	)
+
+	party:SetPoint(unpack(config.position))
+	self.groups.party = party
+
+	-- party:CreateBackdrop('Transparent')
+	-- party.Backdrop:SetPoints(-5)
+
+	-- local config = st.config.profile.unitframes.units.raid
+	-- local raid = self.oUF:SpawnHeader('SaftUI_RaidHeader', nil, 'custom [@raid6,exists] show;hide',"oUF-initialConfigFunction", [[
+	-- 		local header = self:GetParent()
+	-- 		self:SetWidth(header:GetAttribute("initial-width"))
+	-- 		self:SetHeight(header:GetAttribute("initial-height"))
+	-- 	]],
+	-- 	"initial-width", config.width,
+	-- 	"initial-height", config.height,
+	-- 	"showParty", false,
+	-- 	"showRaid", true,
+	-- 	"showPlayer", true,
+	-- 	"xOffset", config.spacing,
+	-- 	"yOffset", -config.spacing,
+	-- 	"point", config.growthDirection,
+	-- 	"groupFilter", "1,2,3,4,5,6,7,8",
+	-- 	"groupingOrder", "1,2,3,4,5,6,7,8",
+	-- 	"groupBy", "GROUP",
+	-- 	"maxColumns", config.maxColumns,
+	-- 	"unitsPerColumn", config.unitsPerColumn,
+	-- 	"columnSpacing", config.columnSpacing,
+	-- 	"columnAnchorPoint", config.initialAnchor,
+	-- 	"baseunit", "raid"
+	-- )
+
+	-- raid:SetPoint(unpack(config.position))
+
+
+	-- raid:CreateBackdrop('Transparent')
+	-- raid.Backdrop:SetPoints(-5)
 end
 
 function UF:GetConfigTable()
@@ -193,7 +258,7 @@ function UF:GetConfigTable()
 							type = 'select',
 							values = st.CF:GetFrameTemplates(),
 						},
-						position = st.CF:GeneratePositionGroup(
+						position = st.CF.generators.position(
 							frame.config.position, true, 5, nil, 
 							function() UF:UpdateConfig(frame.unit) end
 						),
@@ -208,4 +273,26 @@ function UF:GetConfigTable()
 	end
 
 	return config
+end
+
+function UF:OnInitialize()
+	self.oUF:RegisterStyle('SaftUI', UF.ConstructUnit)
+	self.oUF:SetActiveStyle('SaftUI')
+
+	self.units = {}
+
+	for unit, global_name in pairs(self.unit_strings) do
+		self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
+	end
+	
+	self.RMH = RealMobHealth
+
+	-- UF:CreateGroupHeaders()
+
+	st.CF.options.args.unitframes = self:GetConfigTable()
+end
+
+function UF:OnEnable()
+	UF:UpdateConfig()
+	UF:UpdateColors()
 end

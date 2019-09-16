@@ -2,7 +2,20 @@ local ADDON_NAME, st = ...
 
 st.CF = st:NewModule('Config')
 
-function st:InitializeConfigGUI()
+function st.CF:OnInitialize()
+	self:UpdateConfig()
+end
+
+function st.CF:UpdateConfig()
+	for class, color in pairs(st.config.profile.colors.class) do
+		r, g, b = unpack(color)
+		RAID_CLASS_COLORS[class].r = r
+		RAID_CLASS_COLORS[class].g = g
+		RAID_CLASS_COLORS[class].b = b
+	end
+end
+
+function st.CF:InitializeConfigGUI()
 	local config = LibStub('AceConfig-3.0')
 	local dialog = LibStub('AceConfigDialog-3.0')
 
@@ -10,6 +23,8 @@ function st:InitializeConfigGUI()
 	dialog:AddToBlizOptions(ADDON_NAME, ADDON_NAME)
 	
 	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
+
+	self.options.args.colors = self:GetColorConfig()
 
 	for name, options in pairs(self.options.args) do
 		config:RegisterOptionsTable(ADDON_NAME..' '..name, options)
@@ -19,7 +34,7 @@ function st:InitializeConfigGUI()
 	st.config_initialized = true
 end
 
-st.options = {
+st.CF.options = {
 	type = 'group', 
 	name = ADDON_NAME,
 	inline = true,
@@ -47,7 +62,9 @@ function st.CF:GetFontObjects()
 	return font_objects
 end
 
-function st.CF:GeneratePositionGroup(config_table, global_frame, order, name, set_func)
+st.CF.generators = {}
+
+function st.CF.generators.position(config_table, global_frame, order, name, set_func)
 	local table = {
 		order = order or 0,
 		name = name or 'Position',
@@ -111,3 +128,85 @@ function st.CF:GeneratePositionGroup(config_table, global_frame, order, name, se
 
 	return table
 end
+
+
+function st.CF.generators.enable(order)
+	return  {
+		order = order,
+		name = 'Enable',
+		type = 'toggle',
+		width = 0.5
+	}
+end
+
+function st.CF.generators.toggle(order, name, width)
+	return {
+		order = order,
+		name = name,
+		type = 'toggle',
+		width = width or 0.5
+	}
+end
+
+function st.CF.generators.framelevel(order)
+	return {
+		order = order,
+		name = 'Frame Level',
+		type = 'range',
+		min = 0,
+		max = 99,
+		step = 1,
+		width = 1,
+	}
+end
+
+function st.CF.generators.height(order)
+	return {
+		order = order,
+		name = 'Height',
+		type = 'input',
+		pattern = '%d+',
+		width = 0.5,
+	}
+end
+
+function st.CF.generators.width(order)
+	return {
+		order = order,
+		name = 'Width',
+		type = 'input',
+		pattern = '%d+',
+		width = 0.5,
+	}
+end
+
+function st.CF.generators.template(order)
+	return {
+		order = order,
+		name = 'Template',
+		type = 'select',
+		values = st.CF:GetFrameTemplates(),
+	}
+end
+
+function st.CF.generators.font(order)
+	return {
+		name = 'Font',
+		type = 'select',
+		order = 1,
+		values = st.CF:GetFontObjects(),
+	}
+end
+
+function st.CF.generators.alpha(order)
+	return {
+		order = order,
+		name = 'Alpha',
+		type = 'range',
+		min = 0,
+		max = 1,
+		step = 0.05,
+		width = 1,
+	}
+end
+

@@ -2,6 +2,10 @@ local ADDON_NAME, st = ...
 local UF = st:GetModule('Unitframes')
 
 local function PostUpdateHealth(health, unit, min, max)
+	if UF.RMH and UF.RMH.UnitHasHealthData(unit) then
+		min, max = UF.RMH.GetUnitHealth(unit)
+	end
+
 	if health.text then
 
 		local absorbs = st.is_retail and UnitGetTotalAbsorbs(unit) or 0
@@ -16,9 +20,9 @@ local function PostUpdateHealth(health, unit, min, max)
 			end
 		else
 			if absorbs > 0 then
-				health.text:SetFormattedText('%s +%s', st.StringFormat:ShortFormat(min, 1), st.StringFormat:ShortFormat(absorbs, 1))
+				health.text:SetFormattedText('%s +%s', st.StringFormat:ShortFormat(min, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
 			else
-				health.text:SetFormattedText('%s', st.StringFormat:ShortFormat(min, 1))
+				health.text:SetFormattedText('%s', st.StringFormat:ShortFormat(min, 1, 1000))
 			end
 		end
 	end
@@ -43,7 +47,7 @@ local function Constructor(self)
 	health.text:SetFontObject(st:GetFont(self.config.health.text.font))
 	
 	health.PostUpdate = PostUpdateHealth
-
+	
 	self.Health = health
 	return health
 end
@@ -126,47 +130,27 @@ local function GetConfigTable(self)
 			UF:UpdateConfig(self.unit, 'Health')
 		end,
 		args = {
-			enable = {
-				order = 0,
-				name = 'Enable',
-				type = 'toggle',
-				width = 0.5
-			},
-			framelevel = {
-				order = 1,
-				name = 'Frame Level',
-				type = 'range',
-				min = 0,
-				max = 99,
-				step = 1,
-				width = 1,
-			},
-			height = {
-				order = 2,
-				name = 'Height',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
-			},
-			width = {
+			enable = st.CF.generators.toggle(0, 'Enable'),
+			framelevel = st.CF.generators.framelevel(1),
+			template = st.CF.generators.template(2),
+			size = {
 				order = 3,
-				name = 'Width',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
+				name = 'Size',
+				type = 'group',
+				inline = true,
+				args = {
+					width = st.CF.generators.width(1),
+					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
+					height = st.CF.generators.height(3),
+					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
+				},
 			},
-			template = {
-				order = 4,
-				name = 'Template',
-				type = 'select',
-				values = st.CF:GetFrameTemplates(),
-			},
-			position = st.CF:GeneratePositionGroup(
-				self.config.health.position, false, 5, nil, 
+			position = st.CF.generators.position(
+				self.config.health.position, false, 7, nil, 
 				function() UF:UpdateConfig(self.unit, 'Health') end
 			),
 			text = {
-				order = 6,
+				order = 8,
 				name = 'Text',
 				type = 'group',
 				inline = true,
@@ -178,28 +162,17 @@ local function GetConfigTable(self)
 					UF:UpdateConfig(self.unit, 'Health')
 				end,
 				args = {
-					enable = {
-						order = 0,
-						name = 'Enable',
-						type = 'toggle',
-					},
-					font = {
-						name = 'Font',
-						type = 'select',
-						order = 1,
-						values = st.CF:GetFontObjects(),
-					},
-					position = st.CF:GeneratePositionGroup(
+					enable = st.CF.generators.toggle(0, 'Enable'),
+					font = st.CF.generators.font(),
+					position = st.CF.generators.position(
 						self.config.health.text.position, false, 3, nil, 
 						function() UF:UpdateConfig(self.unit, 'Health') end
 					),
 				},
 			},
 			bg = {
-				order = 6,
+				order = 9,
 				name = 'Status Bar BG',
-				desc = 'A background texture for the status bar. Will be the same color as the bar but can be darker or transparent based on settings',
-				descStyle = 'inline',
 				type = 'group',
 				inline = true,
 				get = function(info)

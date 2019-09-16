@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">	
+	<Script file='loot.lua'/>
+	<Script file='roll.lua'/>
+	<!-- <Script file='popup.lua'/> -->
+	<!-- <Script file='feed.lua'/> -->
+</Ui>

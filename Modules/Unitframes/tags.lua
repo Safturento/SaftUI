@@ -1,5 +1,4 @@
 local ADDON_NAME, st = ...
-
 local UF = st:GetModule('Unitframes')
 
 UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP'
@@ -11,34 +10,36 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local string = ''
 
 	local baseunit = unit == 'vehicle' and 'player' or strmatch(unit, '%D+')
-	if not st.Saved.profile.UnitFrames.units[baseunit] then return '' end
-	local config = st.Saved.profile.UnitFrames.units[baseunit].name
+	if not st.config.profile.unitframes.units[baseunit] then return '' end
+	local config = st.config.profile.unitframes.units[baseunit].name
 	if not config.enable then return '' end
 
-	-- Set level coloring based on level difference between unit and player
+	-- mob level relative to you
 	local levelDiff = level - playerLevel;
-
+	
 	local color
-	if ( levelDiff >= 3 ) then
-		color = st.Saved.profile.Colors.textred
-	elseif ( levelDiff >= -4 ) then
-		color = st.Saved.profile.Colors.textyellow
-	elseif ( -levelDiff >= GetQuestGreenRange() ) then
-		color = st.Saved.profile.Colors.textgreen
+	if (levelDiff >= 5) then
+		color = st.config.profile.colors.text.red
+	elseif ( levelDiff >= 3 ) then
+		color = st.config.profile.colors.text.orange
+	elseif ( levelDiff >= -3 ) then
+		color = st.config.profile.colors.text.yellow
+	elseif ( levelDiff >= -10 ) then
+		color = st.config.profile.colors.text.green
 	else
-		color = st.Saved.profile.Colors.textgrey
+		color = st.config.profile.colors.text.grey
 	end
 
 	local levelString = ''
-	if config.showlevel then
+	if config.show_level then
 		if level < 0 then
 			levelString = '??'
-		elseif not (not config.showsamelevel and level == playerLevel) then
+		elseif config.show_samelevel or level ~= playerLevel then
 			levelString = level
 		end
 	end
 	
-	if config.showclassification then
+	if config.show_classification then
 		if(classification == 'rare') then
 			levelString = levelString .. 'R'
 		elseif(classification == 'eliterare') then
@@ -50,5 +51,5 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 		end
 	end
 
-	return st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '') .. st.StringFormat:UTF8strsub(name or '', config.maxlength)
+	return st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '') .. st.StringFormat:UTF8strsub(name or '', config.max_length)
 end

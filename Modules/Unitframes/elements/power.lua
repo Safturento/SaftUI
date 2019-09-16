@@ -11,18 +11,16 @@ local function PostUpdatePower(power, unit, current, min, max)
 			power.text:SetFormattedText(st.StringFormat:ShortFormat(current, 1))
 		end
 	end
-	power:SetStatusBarTexture(st.BLANK_TEX)
-
-	if power.config.bg.enable then
-		r, g, b = power:GetStatusBarColor()
-		local mu = power.config.bg.multiplier or 1
-		power.bg:SetVertexColor(r * mu, g * mu, b * mu)
-	end
 
 	if max == 0 then
 		power:SetMinMaxValues(0, 1)
 		power:SetValue(1)
 	end
+end
+
+local function PostUpdateColor(power, r, g, b)
+	power:SetStatusBarTexture(st.BLANK_TEX)
+	power.bg:SetTexture(st.BLANK_TEX)
 end
 
 local function Constructor(self)
@@ -38,6 +36,7 @@ local function Constructor(self)
 	power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 
 	power.PostUpdate = PostUpdatePower
+	power.PostUpdateColor = PostUpdateColor
 	self.Power = power
 	return power
 end
@@ -106,7 +105,7 @@ local function UpdateConfig(self)
 	self.Power.customColor 			= self.config.power.customColor
 end
 
-local function GenerateConfig(self)
+local function GetConfigTable(self)
 	return {
 		type = 'group',
 		name = 'Power',
@@ -118,42 +117,12 @@ local function GenerateConfig(self)
 			UF:UpdateConfig(self.unit, 'Power')
 		end,
 		args = {
-			enable = {
-				order = 0,
-				name = 'Enable',
-				type = 'toggle',
-				width = 0.5
-			},
-			framelevel = {
-				order = 1,
-				name = 'Frame Level',
-				type = 'range',
-				min = 0,
-				max = 99,
-				step = 1,
-				width = 1,
-			},
-			height = {
-				order = 2,
-				name = 'Height',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
-			},
-			width = {
-				order = 3,
-				name = 'Width',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
-			},
-			template = {
-				order = 4,
-				name = 'Template',
-				type = 'select',
-				values = st.CF:GetFrameTemplates(),
-			},
-			position = st.CF:GeneratePositionGroup(
+			enable = st.CF.generators.enable(0),
+			framelevel = st.CF.generators.framelevel(1),
+			height = st.CF.generators.height(2),
+			width = st.CF.generators.width(3),
+			template = st.CF.generators.template(4),
+			position = st.CF.generators.position(
 				self.config.power.position, false, 5, nil, 
 				function() UF:UpdateConfig(self.unit, 'Power') end
 			),
@@ -170,13 +139,10 @@ local function GenerateConfig(self)
 					UF:UpdateConfig(self.unit, 'Power')
 				end,
 				args = {
-					enable = {
-						order = 0,
-						name = 'Enable',
-						type = 'toggle',
-					},
-					position = st.CF:GeneratePositionGroup(
-						self.config.power.text.position, false, 0, nil, 
+					enable = st.CF.generators.enable(0),
+					font = st.CF.generators.font(1),
+					position = st.CF.generators.position(
+						self.config.power.text.position, false, 2, nil, 
 						function() UF:UpdateConfig(self.unit, 'Power') end
 					),
 				},
@@ -184,8 +150,6 @@ local function GenerateConfig(self)
 			bg = {
 				order = 6,
 				name = 'Status Bar BG',
-				desc = 'A background texture for the status bar. Will be the same color as the bar but can be darker or transparent based on settings',
-				descStyle = 'inline',
 				type = 'group',
 				inline = true,
 				get = function(info)
@@ -196,12 +160,7 @@ local function GenerateConfig(self)
 					UF:UpdateConfig(self.unit, 'Power')
 				end,
 				args = {
-					enable = {
-						order = 0,
-						name = 'Enable',
-						type = 'toggle',
-						width = 0.5,
-					},
+					enable = st.CF.generators.enable(0),
 					multiplier = {
 						order = 2,
 						name = 'Multiplier',
@@ -211,19 +170,11 @@ local function GenerateConfig(self)
 						step = 0.05,
 						width = 1,
 					},
-					alpha = {
-						order = 3,
-						name = 'Alpha',
-						type = 'range',
-						min = 0,
-						max = 1,
-						step = 0.05,
-						width = 1,
-					}
+					alpha = st.CF.generators.alpha(3)
 				},
 			}
 		}
 	}
 end
 
-UF:RegisterElement('Power', Constructor, UpdateConfig, GenerateConfig)
+UF:RegisterElement('Power', Constructor, UpdateConfig, GetConfigTable)

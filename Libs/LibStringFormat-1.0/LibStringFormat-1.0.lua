@@ -1,6 +1,6 @@
 --[=[
 
-	Name: LibStringFormat-3.0
+	Name: LibStringFormat-1.0
 	Revision: $Revision: 1 $
 	Author: Safturento
 	Website: www.safturento.com
@@ -112,13 +112,13 @@ function lib:ToTime(sec)
 	return format("%.1f", sec)
 end
 
-function lib:ShortFormat(value, decimals)
+function lib:ShortFormat(value, decimals, decimal_threshold)
 	if type(value) == 'string' then value = tonumber(value) end
 	
 	local suffix = 'KMBTQ' --I doubt you'd need more than quadrillions..
 	local factor = floor((strlen(value)-1) / 3)
 	local converted = value/math.pow(1000,factor)
-	if decimals then
+	if decimals and (not decimal_threshold or value > decimal_threshold) then
 		return format('%.0'..(decimals)..'f%s', converted, strsub(suffix, factor, factor))
 	else
 		return converted..strsub(suffix, factor, factor)

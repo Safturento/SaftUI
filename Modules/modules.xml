@@ -1,3 +1,13 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Include file="Unitframes\unitframes.xml"/>
+	<Include file="Inventory\inventory.xml"/>
+	<Include file="Actionbars\actionbars.xml"/>
+	<Include file="Skinning\skinning.xml"/>
+	<Include file="Maps\maps.xml"/>
+	<Include file="Loot\loot.xml"/>
+
+	<Script file='tooltip.lua'/>
+	<Script file='chatframe.lua'/>
+	<Script file='experience.lua'/>
+	<Script file='auras.lua'/>
 </Ui>

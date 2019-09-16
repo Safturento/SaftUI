@@ -26,10 +26,6 @@ function SaftUI:OnInitialize()
 	self.config.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
-
-	-- self:InitializeConfigGUI()
-	
-	print("SaftUI Loaded.")
 end
 
 function SaftUI:UpdateConfig()
@@ -46,7 +42,7 @@ SLASH_SAFTUI3 = '/stui'
 
 SlashCmdList.SAFTUI = function(msg)
 	if not st.config_initialized then
-		st:InitializeConfigGUI()
+		st.CF:InitializeConfigGUI()
 	end
 
 	InterfaceOptionsFrame_OpenToCategory(ADDON_NAME)
