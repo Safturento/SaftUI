@@ -8,3 +8,5 @@ SaftUI is a highly configurable full UI replacement for classic wow. Screenshots
 ![casting](https://user-images.githubusercontent.com/347621/64988907-158e8f80-d892-11e9-9c26-24e438c236c2.png)
 
 ![bags](https://user-images.githubusercontent.com/347621/64988908-17f0e980-d892-11e9-819b-9b6c659c5a06.png)
+
+![grouploot](https://user-images.githubusercontent.com/347621/64992317-40c8ad00-d899-11e9-962b-30b78f4224a3.png)
