@@ -13,6 +13,13 @@ function st.CF:UpdateConfig()
 		RAID_CLASS_COLORS[class].g = g
 		RAID_CLASS_COLORS[class].b = b
 	end
+
+	for q,item_quality in pairs(st.config.profile.colors.item_quality) do
+		local r, g, b = unpack(item_quality)
+		ITEM_QUALITY_COLORS[q].r = r 
+		ITEM_QUALITY_COLORS[q].g = g
+		ITEM_QUALITY_COLORS[q].b = b
+	end
 end
 
 function st.CF:InitializeConfigGUI()
