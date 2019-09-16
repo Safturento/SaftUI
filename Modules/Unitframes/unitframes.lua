@@ -286,8 +286,6 @@ function UF:OnInitialize()
 	self.RMH = RealMobHealth
 
 	UF:CreateGroupHeaders()
-
-	st.CF.options.args.unitframes = self:GetConfigTable()
 end
 
 function UF:OnEnable()

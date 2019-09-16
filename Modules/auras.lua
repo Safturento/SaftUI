@@ -57,7 +57,7 @@ function AU:AuraButton_Update(button_base, index, filter)
 		self:SkinAuraButton(button, button_base, filter)
 	end
 	
-	if duration > 0 then
+	if duration and duration > 0 then
 		button.bar:Show()
 	else
 		button.bar:Hide()

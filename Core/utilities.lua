@@ -53,3 +53,11 @@ function st.tableprint(table)
 		print(key, '=>', val)
 	end
 end
+
+function st.tableinvert(table)
+	local inverted = {}
+	for k,v in pairs(table) do
+		inverted[v] = k
+	end
+	return inverted
+end

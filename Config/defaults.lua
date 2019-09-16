@@ -7,6 +7,14 @@ st.defaults.misc = {
 }
 
 st.defaults.fonts = {
+	pixel_huge = {
+		name = 'Pixel Huge',
+		font_name = 'Homespun',
+		font_size = 32,
+		font_outline = 'MONOCHROMEOUTLINE',
+		shadow_offset = {0, 0},
+		spacing = 4,
+	},
 	pixel = {
 		name = 'Pixel',
 		font_name = 'Homespun',
@@ -19,7 +27,7 @@ st.defaults.fonts = {
 		name = 'Normal',
 		font_name = 'AgencyFB Bold',
 		font_size = 14,
-		font_outline = '',
+		font_outline = 'NONE',
 		shadow_offset = {0, 0},
 		spacing = 4,
 	}
@@ -249,6 +257,8 @@ st.defaults.colors = {
 		rested = { 0.3, 0.6, 0.8, 1.0 },
 	},
 	item_quality = {
+		[0] = {0.61, 0.61, 0.61},
+		[1] = {1, 1, 1},
 		[2] = {90/255, 161/255, 80/255},
 		[3] = {58/255, 133/255, 207/255},
 		[4] = {160/255, 99/255, 201/255},
@@ -256,27 +266,11 @@ st.defaults.colors = {
 	},
 	power = {
 		MANA              = {0.31, 0.45, 0.63},
-		INSANITY          = {0.40, 0.00, 0.80},
-		MAELSTROM         = {0.00, 0.50, 1.00},
-		LUNAR_POWER       = {0.93, 0.51, 0.93},
-		HOLY_POWER        = {0.95, 0.90, 0.60},
 		RAGE              = {0.69, 0.31, 0.31},
 		FOCUS             = {0.71, 0.43, 0.27},
 		ENERGY            = {0.65, 0.63, 0.35},
-		CHI               = {0.71, 1.00, 0.92},
-		RUNES             = {0.55, 0.57, 0.61},
-		SOUL_SHARDS       = {0.50, 0.32, 0.55},
-		FURY              = {0.78, 0.26, 0.99},
-		PAIN              = {1.00, 0.61, 0.00},
-		RUNIC_POWER       = {0.00, 0.82, 1.00},
-		AMMOSLOT          = {0.80, 0.60, 0.00},
-		FUEL              = {0.00, 0.55, 0.50},
-		POWER_TYPE_STEAM  = {0.55, 0.57, 0.61},
-		POWER_TYPE_PYRITE = {0.60, 0.09, 0.17},
-		ALTPOWER          = {0.00, 1.00, 1.00},
 	},
 	class = {
-		-- DEATHKNIGHT = { 0.77, 0.12, 0.24 },
 		DRUID       = { 1.00, 0.49, 0.03 },
 		HUNTER      = { 0.67, 0.84, 0.45 },
 		MAGE        = { 0.41, 0.80, 1.00 },
@@ -286,8 +280,6 @@ st.defaults.colors = {
 		SHAMAN      = { 0.16, 0.51, 0.91 },
 		WARLOCK     = { 0.58, 0.51, 0.79 },
 		WARRIOR     = { 0.78, 0.61, 0.43 },
-		MONK        = { 0.00, 1.00, 0.59 },
-		-- DEMONHUNTER = { 0.64, 0.19, 0.79 },
 	},
 	reaction = {
 		[1] = { 0.87, 0.37, 0.37 }, -- Hated
@@ -302,16 +294,6 @@ st.defaults.colors = {
 	status = {
 		disconnected = { 0.1, 0.1, 0.1 },
 		tapped = { 0.1, 0.1, 0.1 },
-	},
-	roles = {
-		TANK = { .2, .5, .8 },
-		HEALER = { .5, .8, .2 },
-		DAMAGER = {.8, .2, .4 },
-	},
-	runes = {
-		[1] = {0.69, 0.31, 0.31},
-		[2] = {0.41, 0.80, 1.00},
-		[3] = {0.65, 0.63, 0.35},
 	}
 }
 

@@ -2,26 +2,6 @@ local ADDON_NAME, st = ...
 
 st.CF = st:NewModule('Config')
 
-function st.CF:OnInitialize()
-	self:UpdateConfig()
-end
-
-function st.CF:UpdateConfig()
-	for class, color in pairs(st.config.profile.colors.class) do
-		r, g, b = unpack(color)
-		RAID_CLASS_COLORS[class].r = r
-		RAID_CLASS_COLORS[class].g = g
-		RAID_CLASS_COLORS[class].b = b
-	end
-
-	for q,item_quality in pairs(st.config.profile.colors.item_quality) do
-		local r, g, b = unpack(item_quality)
-		ITEM_QUALITY_COLORS[q].r = r 
-		ITEM_QUALITY_COLORS[q].g = g
-		ITEM_QUALITY_COLORS[q].b = b
-	end
-end
-
 function st.CF:InitializeConfigGUI()
 	local config = LibStub('AceConfig-3.0')
 	local dialog = LibStub('AceConfigDialog-3.0')
@@ -29,14 +9,17 @@ function st.CF:InitializeConfigGUI()
 	config:RegisterOptionsTable(ADDON_NAME, self.options)
 	dialog:AddToBlizOptions(ADDON_NAME, ADDON_NAME)
 	
-	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
-
-	self.options.args.colors = self:GetColorConfig()
-
-	for name, options in pairs(self.options.args) do
-		config:RegisterOptionsTable(ADDON_NAME..' '..name, options)
-		dialog:AddToBlizOptions(ADDON_NAME..' '..name, options.name, ADDON_NAME)
+	
+	
+	for name, module in pairs(st.modules) do
+		if module.GetConfigTable then
+			config:RegisterOptionsTable(ADDON_NAME..' '..name, module:GetConfigTable())
+			dialog:AddToBlizOptions(ADDON_NAME..' '..name, name, ADDON_NAME)
+		end
 	end
+	
+	config:RegisterOptionsTable(ADDON_NAME..' '..'Profiles', LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config))
+	dialog:AddToBlizOptions(ADDON_NAME..' '..'Profiles', 'Profiles', ADDON_NAME)
 
 	st.config_initialized = true
 end
@@ -152,6 +135,18 @@ function st.CF.generators.toggle(order, name, width)
 		name = name,
 		type = 'toggle',
 		width = width or 0.5
+	}
+end
+
+function st.CF.generators.range(order, name, min, max, step, width)
+	return {
+		order = order,
+		name = name,
+		type = 'range',
+		min = 1,
+		max = 99,
+		step = step or 1,
+		width = width or 1,
 	}
 end
 
