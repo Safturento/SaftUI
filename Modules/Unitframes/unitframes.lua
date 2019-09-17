@@ -47,6 +47,10 @@ function UF.ConstructUnit(self, unit)
 	for element_name, funcs in pairs(UF.elements) do
 		self.elements[element_name] = funcs.Constructor(self)
 	end
+
+	if self.is_group_unit then
+		UF:UpdateUnitFrame(self)
+	end
 end
 
 --[[
@@ -98,13 +102,17 @@ function UF:UpdateUnitFrame(frame, element_name)
 			outsideAlpha = frame.config.range_alpha.outside
 		}
 		
-		
 		for element_name, element in pairs(frame.elements) do
 			self.elements[element_name].UpdateConfig(frame)
 		end
 	end
 end
 
+--[[
+	Wrapper function for UpdateUnitFrame that allows you to update
+		using unit string instead of the frame object. Also used 
+		to update all group frames at once
+]]
 function UF:UpdateConfig(unit, element_name)
 	if not unit then 
 		for unit, frame in pairs(self.units) do
@@ -127,8 +135,6 @@ function UF:UpdateConfig(unit, element_name)
 		end
 	end
 end
-
-
 
 function UF:CreateGroupHeaders()
 	self.groups = {}

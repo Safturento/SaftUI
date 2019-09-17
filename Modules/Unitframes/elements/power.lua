@@ -43,10 +43,10 @@ end
 
 local function UpdateConfig(self)
 	if not self.config.power.enable then
-		self:DisableElement('Power')
+		self:Hide()
 		return
 	else
-		self:EnableElement('Power')
+		self:Show()
 	end
 
 	if self.config.power.relative_height then

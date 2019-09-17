@@ -12,10 +12,10 @@ end
 
 local function UpdateConfig(self)
 	if self.config.portrait.enable == false then
-		self:DisableElement('Portrait')
+		self.Portrait:Hide()
 		return
 	else
-		self:EnableElement('Portrait')
+		self.Portrait:Show()
 	end
 
 	if self.config.portrait.relative_height then

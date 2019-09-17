@@ -1,0 +1,3 @@
+local ADDON_NAME, st = ...
+
+local LT = st:GetModule('Loot')

@@ -30,10 +30,10 @@ end
 
 local function UpdateConfig(self)
 	if self.config.castbar.enable == false then
-		self:DisableElement('Castbar')
+		self.Castbar:Hide()
 		return
 	else
-		self:EnableElement('Castbar')
+		self.Castbar:Show()
 	end
 
 	if self.config.castbar.relative_height then

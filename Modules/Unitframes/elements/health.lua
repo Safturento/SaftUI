@@ -57,10 +57,8 @@ local function UpdateConfig(self)
 	-- that the text still updates
 	if self.config.health.enable == false then
 		self.Health:Hide()
-		-- self:DisableElement('Health')
 		return
 	else
-		-- self:EnableElement('Health')
 		self.Health:Show()
 	end
 

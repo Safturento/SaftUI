@@ -10,10 +10,10 @@ end
 
 local function UpdateConfig(self)
 	if self.config.name.enable == false then
-		self:DisableElement('Name')
+		self.Name:Hide()
 		return
 	else
-		self:EnableElement('Name')
+		self.Name:Show()
 	end
 
 	self.Name:SetFontObject(st:GetFont(self.config.name.font))

@@ -300,7 +300,7 @@ st.defaults.colors = {
 st.defaults.unitframes = {
 	config_unit = 'player',
 	config_element = 'general',
-	
+	config_profile = 'SaftUI',
 	units = {
 		['**'] = {
 			enable = true,

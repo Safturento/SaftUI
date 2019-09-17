@@ -286,8 +286,8 @@ function st:CreateHeader(frame, title, closeButton)
 	header:SetScript('OnMouseDown', function() frame:StartMoving() end)
 	header:SetScript('OnMouseUp', function()
 		frame:StopMovingOrSizing()
-		local anchor, frame, relAnchor, x, y = frame:GetPoint()
-		frame:SetPoint(anchor, frame, relAnchor, math.floor(x + 0.5), math.floor(y + 0.5) )
+		local anchor, _, relAnchor, x, y = frame:GetPoint()
+		frame:SetPoint(anchor, UIParent, relAnchor, math.floor(x + 0.5), math.floor(y + 0.5))
 	end)
 
 	if title then
