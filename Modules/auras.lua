@@ -17,14 +17,19 @@ function AU:SkinAuraButton(button, button_base)
 		button.bar = CreateFrame('StatusBar', nil, button)
 		button.bar:SetStatusBarTexture(st.BLANK_TEX)
 	end
-	local anchor, relAnchor, xoff, yoff = unpack(self.config.timer_bar.position)
-	button.bar:ClearAllPoints()
-	button.bar:SetPoint(anchor, button, relAnchor, xoff, yoff)
-	if not self.config.color_time then
-		button.bar:SetStatusBarColor(unpack(self.config.timer_bar.custom_color))
+	if self.config.timer_bar.enable then
+		local anchor, relAnchor, xoff, yoff = unpack(self.config.timer_bar.position)
+		button.bar:ClearAllPoints()
+		button.bar:SetPoint(anchor, button, relAnchor, xoff, yoff)
+		if not self.config.color_time then
+			button.bar:SetStatusBarColor(unpack(self.config.timer_bar.custom_color))
+		end
+		button.bar:SetSize(self.config.timer_bar.width, self.config.timer_bar.height)
+		st:SetBackdrop(button.bar, self.config.timer_bar.template)
+		button.bar:Show()
+	elseif button.bar then
+		button.bar:Hide()
 	end
-	button.bar:SetSize(self.config.timer_bar.width, self.config.timer_bar.height)
-	st:SetBackdrop(button.bar, self.config.timer_bar.template)
 
 	st.SkinActionButton(button, self.config)
 

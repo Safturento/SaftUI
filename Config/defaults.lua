@@ -41,10 +41,10 @@ st.defaults.auras = {
 	spacing = 8,
 	timer_text = {
 		enable = true,
-		position = {'TOP', 'BOTTOM', 0, -14},
+		position = {'TOP', 'BOTTOM', 0, -6},
 	},
 	timer_bar = {
-		enable = true,
+		enable = false,
 		template = 'thick',
 		position = {'TOP', 'BOTTOM', 0, -7},
 		width = 30,
