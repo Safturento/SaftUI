@@ -46,7 +46,7 @@ function UF.ConstructUnit(self, unit)
 	-- we can keep track of them here to easily loop and update through them later
 	self.elements = {}
 	for element_name, funcs in pairs(UF.elements) do
-		self.elements[element_name] = funcs.Constructor(self)
+		self.elements[element_name] = funcs.Constructor(self, element_name)
 	end
 
 	if self.is_group_unit then
@@ -85,7 +85,7 @@ function UF:UpdateUnitFrame(frame, element_name)
 	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
 
 	if element_name then
-		self.elements[element_name].UpdateConfig(frame)
+		self.elements[element_name].UpdateConfig(frame, element_name)
 	else
 		if not frame.is_group_unit then
 			frame:ClearAllPoints()
@@ -106,7 +106,7 @@ function UF:UpdateUnitFrame(frame, element_name)
 		}
 		
 		for element_name, element in pairs(frame.elements) do
-			self.elements[element_name].UpdateConfig(frame)
+			self.elements[element_name].UpdateConfig(frame, element_name)
 		end
 	end
 end

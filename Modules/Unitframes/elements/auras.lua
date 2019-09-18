@@ -5,11 +5,9 @@ local AURAS = {'Buffs', 'Debuffs'}
 
 function UF.PostCreateAura(auras, button)
 
-	-- st:SetBackdrop(button, auras.config.template)
-	-- st:SkinIcon(button.icon, auras.config)
-	-- button.icon:TrimIcon()
-	-- -- button.icon:SetPoints(button)
-	-- button.count:SetFontObject(st:GetFont(auras.config.font)) 
+	st:SetBackdrop(button, auras.config.template)
+	st:SkinIcon(button.icon)
+	button.count:SetFontObject(st:GetFont(auras.config.font)) 
 
 	-- button.cooldown = _G[button:GetName()..'Cooldown']
 	-- button.cooldown:Skin()
@@ -23,45 +21,41 @@ function UF.PostUpdateAura(auras, unit, button, index, position, duration, expir
 	-- end
 end
 
-local function UpdateConfig(self)
-	for i,aura_type in ipairs(AURAS) do
-		local auras = self[aura_type]
-		auras.config = self.config.auras[string.lower(aura_type)]
-		if auras.config.enable then
-			auras:Show()
-		else
-			auras:Hide()
-		end
-
-		local num_rows = ceil(auras.config.max/auras.config.per_row)
-
-		auras:SetHeight(num_rows*auras.config.size + (num_rows-1)*auras.config.spacing)
-		auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
-		local point, relativePoint, xoffset, yoffset = unpack(auras.config.position)
-		auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
-	
-		auras.size = auras.config.size
-		auras.num = auras.config.max
-		auras.numRow = auras.config.per_row
-		auras.spacing = auras.config.spacing
-		auras.initialAnchor = auras.config.initial_anchor
-		auras['growth-y'] = auras.config.vertical_growth
-		auras['growth-x'] = auras.config.horizontal_growth
-		auras.onlyShowPlayer = auras.config.self_only
+local function UpdateConfig(self, aura_type)
+	local auras = self[aura_type]
+	auras.config = self.config.auras[string.lower(aura_type)]
+	if auras.config.enable then
+		auras:Show()
+	else
+		auras:Hide()
 	end
 
+	local num_rows = ceil(auras.config.max/auras.config.per_row)
+
+	auras:SetHeight(num_rows*auras.config.size + (num_rows-1)*auras.config.spacing)
+	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
+	local point, relativePoint, xoffset, yoffset = unpack(auras.config.position)
+	auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
+
+	auras.size = auras.config.size
+	auras.num = auras.config.max
+	auras.numRow = auras.config.per_row
+	auras.spacing = auras.config.spacing
+	auras.initialAnchor = auras.config.initial_anchor
+	auras['growth-y'] = auras.config.vertical_growth
+	auras['growth-x'] = auras.config.horizontal_growth
+	auras.onlyShowPlayer = auras.config.self_only
 end
 
-local function Constructor(self)
-	for i,aura_type in ipairs(AURAS) do
-		local auras = CreateFrame('Frame', self:GetName()..aura_type, self)
-		auras.config = self.config.auras[string.lower(aura_type)]
-		auras.PostCreateIcon = UF.PostCreateAura
-		auras.PostUpdateIcon = UF.PostUpdateAura
+local function Constructor(self, aura_type)
+	local auras = CreateFrame('Frame', self:GetName()..aura_type, self)
+	auras.config = self.config.auras[string.lower(aura_type)]
+	auras.PostCreateIcon = UF.PostCreateAura
+	auras.PostUpdateIcon = UF.PostUpdateAura
 
-		auras.disableCooldown = true
-		self[aura_type] = auras
-	end
+	auras.disableCooldown = true
+	self[aura_type] = auras
+	return self[aura_type]
 end
 
 local function GetConfigTable(self)
@@ -80,4 +74,6 @@ local function GetConfigTable(self)
 	}
 end
 
-UF:RegisterElement('Auras', Constructor, UpdateConfig, GetConfigTable)
+UF:RegisterElement('Buffs', Constructor, UpdateConfig, GetConfigTable)
+UF:RegisterElement('Debuffs', Constructor, UpdateConfig, GetConfigTable)
+-- UF:RegisterElement('Auras', Constructor, UpdateConfig, GetConfigTable)

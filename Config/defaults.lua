@@ -420,7 +420,7 @@ st.defaults.unitframes = {
 					['**'] = {
 						enable = false,
 						size = 19,
-						spacing = 6,
+						spacing = 7,
 						template = 'thick',
 						font = 'pixel',
 						max = 8,
@@ -431,10 +431,10 @@ st.defaults.unitframes = {
 						initial_anchor = 'BOTTOMLEFT',
 					},
 					buffs = {
-						position = {'BOTTOM', 'TOP', 0, 6},
+						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
 					},
 					debuffs = {
-						position = {'BOTTOM', 'TOP', 0, 31},
+						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 31},
 					}
 				},
 				name = {
@@ -466,11 +466,13 @@ st.defaults.unitframes = {
 				castbar = {
 					enable = true,
 				},
-				buffs = {
-					enable = true,
-				},
-				debuffs = {
-					enable = true,
+				auras = {
+					buffs = {
+						enable = true,
+					},
+					debuffs = {
+						enable = true,
+					}
 				}
 			},
 			targettarget = {
