@@ -272,7 +272,7 @@ end
 --Creates a dragable header for a frame
 st.headers = {}
 
-function st:CreateHeader(frame, title, closeButton)
+function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
 
 	local header = CreateFrame('Button', '', frame)
@@ -293,25 +293,27 @@ function st:CreateHeader(frame, title, closeButton)
 	if title then
 		if type(title) == 'string' then
 			frame.title = header:CreateFontString(nil, 'OVERLAY')
-			frame.title:SetFontObject(st:GetFont(st.config.profile.headers.font))
+			frame.title:SetFontObject(GameFontWhiteSmall)
 			frame.title:SetText(title)
 		else
 			frame.title = title
 		end
-
+		
+		frame.title:SetFontObject(st:GetFont(st.config.profile.headers.font))
 		frame.title:SetParent(header)
 		frame.title:ClearAllPoints()
 		frame.title:SetPoint('CENTER', header)
 		frame.title:SetJustifyH('MIDDLE')
 	end
 	
-	if closeButton then frame.close = close_button end
-	if frame.close then
-		st:SetTemplate(frame.close, 'close')
-		frame.close:ClearAllPoints()
-		frame.close:SetFrameLevel(header:GetFrameLevel()+4)
-		frame.close:SetPoint('TOPRIGHT', header, -10, 0)
-		frame.close:SetSize(unpack(st.CLOSE_BUTTON_SIZE))
+	if close_button then frame.close_button = close_button end
+	if frame.close_button then
+		st:StripTextures(frame.close_button)
+		st:SetTemplate(frame.close_button, 'close')
+		frame.close_button:ClearAllPoints()
+		frame.close_button:SetFrameLevel(header:GetFrameLevel()+4)
+		frame.close_button:SetPoint('TOPRIGHT', header, -10, 0)
+		frame.close_button:SetSize(unpack(st.CLOSE_BUTTON_SIZE))
 	end
 	
 	frame.header = header
