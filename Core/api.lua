@@ -40,7 +40,7 @@ local function CreateAltBorder(frame)
 end
 
 function st:SetTemplate(frame, template)
-	if not template or template == 'none' then
+	if template == nil or template == 'none' or template == '' then
 		frame:SetBackdrop(nil)
 		if frame.altborder then
 			for _,border in pairs(frame.altborder) do
@@ -58,10 +58,11 @@ function st:SetTemplate(frame, template)
 	end
 	
 	for _,border in pairs(frame.altborder) do
-		if config.border then 
+		if config.border and config.thick then 
 			border:SetVertexColor(unpack(config.altbordercolor))
+			border:Show()
 		else
-			border:SetVertexColor(0, 0, 0, 0)
+			border:Hide()
 		end
 	end
 

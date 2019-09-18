@@ -77,19 +77,17 @@ local function GetConfigTable(self)
 				step = 0.05,
 				width = 0.5,
 			},
-			height = {
-				order = 2,
-				name = 'Height',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
-			},
-			width = {
+			size = {
 				order = 3,
-				name = 'Width',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.5,
+				name = 'Size',
+				type = 'group',
+				inline = true,
+				args = {
+					width = st.CF.generators.width(1),
+					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
+					height = st.CF.generators.height(3),
+					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
+				},
 			},
 			template = {
 				order = 4,

@@ -92,8 +92,18 @@ local function GetConfigTable(self)
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
-			height = st.CF.generators.height(2),
-			width = st.CF.generators.width(3),
+			size = {
+				order = 3,
+				name = 'Size',
+				type = 'group',
+				inline = true,
+				args = {
+					width = st.CF.generators.width(1),
+					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
+					height = st.CF.generators.height(3),
+					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
+				},
+			},
 			template = st.CF.generators.template(4),
 			position = st.CF.generators.position(
 				self.config.castbar.position, false, 5, nil, 

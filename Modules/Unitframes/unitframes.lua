@@ -202,6 +202,77 @@ function UF:CreateGroupHeaders()
 	-- raid:SetPoint(unpack(config.position))
 end
 
+local function get_profiles()
+	local profiles = {}
+	num_profiles = 0
+	for key,_ in pairs(st.config.profile.unitframes.profiles) do
+		profiles[key] = key
+		num_profiles = num_profiles + 1
+	end
+	return profiles, num_profiles
+end
+
+local function get_profile_exists(profile_name)
+	for key,_ in pairs(st.config.profile.unitframes.profiles) do
+		if key == profile_name then return true end
+	end
+
+	return false
+end
+
+local function get_num_profiles()
+	return select(2, get_profiles())
+end
+
+local ACR = LibStub("AceConfigRegistry-3.0")
+
+StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
+	text = "Enter a name for your new profile",
+	button1 = "Create",
+	button2 = "Cancel",
+	OnAccept = function(self)
+		local profile_name = self.editBox:GetText()
+		if not get_profile_exists(profile_name) then
+			if self.is_copy then
+				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(
+					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
+					true
+				)
+			else
+				-- st.config.profile.unitframes.profiles[profile_name] = {}
+				print(st.config.profile.unitframes.profiles[profile_name])
+			end
+			st.config.profile.unitframes.config_profile = profile_name
+			UF:UpdateConfig()
+			ACR:NotifyChange(ADDON_NAME..' Unitframes')
+		end
+	end,
+	OnCancel = function (_,reason)
+	end,
+	whileDead = true,
+	hideOnEscape = true,
+	hasEditBox = true,
+}
+
+StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
+	text = "Are you sure you wish to delete this profile?",
+	button1 = "Delete",
+	button2 = "Cancel",
+	OnAccept = function(self)
+		if get_num_profiles() > 1 then
+			st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile] = nil
+		end
+		st.config.profile.unitframes.config_profile = next(st.config.profile.unitframes.profiles)
+		UF:UpdateConfig()
+		ACR:NotifyChange(ADDON_NAME..' Unitframes')
+	end,
+	OnCancel = function (_,reason)
+	end,
+	whileDead = true,
+	hideOnEscape = true,
+	hasEditBox = false,
+}
+
 function UF:GetConfigTable()
 	local config = {
 		name = '',
@@ -210,20 +281,64 @@ function UF:GetConfigTable()
 		args = {
 			profile = {
 				order = 1,
-				type = 'select',
-				name = 'Profile',
-				values = {},
-				get = function()
-					return st.config.profile.unitframes.config_profile
-				end,
+				name = '',
+				type = 'group',
+				inline = true,
+				args = {
+					current = {
+						order = 1,
+						type = 'select',
+						name = 'Profile',
+						values = get_profiles,
+						get = function(info)
+							ACR:NotifyChange(ADDON_NAME..' Unitframes')
+							return st.config.profile.unitframes.config_profile
+						end,
+						set = function(info, value)
+							st.config.profile.unitframes.config_profile = value
+							ACR:NotifyChange(ADDON_NAME..' Unitframes')
+							UF:UpdateConfig()
+						end
+					},
+					new = {
+						order = 2,
+						type = 'execute',
+						name = 'New',
+						func = function() 
+							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
+						end,
+						width = 0.5,
+					},
+					copy = {
+						order = 3,
+						type = 'execute',
+						name = 'Copy',
+						func = function()
+							local dialog = StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
+							dialog.is_copy = true
+						end,
+						width = 0.5,
+					},
+					delete = {
+						order = 4,
+						type = 'execute',
+						name = 'Delete',
+						func = function()
+							if get_num_profiles() > 1 then
+								StaticPopup_Show('SAFTUI_UF_PROFILE_DELETE')
+							end
+						end,
+						width = 0.5,
+					}
+				}
 			},
 			unitframes = {
 				order = 2,
-				inline = true,
 				type = 'group',
 				name = '',
 				childGroups = 'select',
-				args = {}
+				args = {
+				}
 			}
 		}
 	}
