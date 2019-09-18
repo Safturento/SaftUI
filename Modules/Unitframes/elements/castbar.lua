@@ -29,6 +29,8 @@ local function Constructor(self)
 end
 
 local function UpdateConfig(self)
+	self.Castbar.config = self.config.castbar
+	
 	if self.config.castbar.enable == false then
 		self.Castbar:Hide()
 		return

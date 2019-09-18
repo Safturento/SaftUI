@@ -39,7 +39,8 @@ function UF.ConstructUnit(self, unit)
 	textoverlay:SetAllPoints(self)
 	self.TextOverlay = textoverlay
 
-	self.config = st.config.profile.unitframes.units[self.base_unit]
+	-- self.config = st.config.profile.unitframes.units[self.base_unit]
+	self.config = st.config.profile.unitframes.profiles[UF:GetProfile()][self.base_unit]
 
 	-- Since oUF doesn't give us access to a table of active elements
 	-- we can keep track of them here to easily loop and update through them later
@@ -81,6 +82,8 @@ function UF:UpdateColors()
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
+	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
+
 	if element_name then
 		self.elements[element_name].UpdateConfig(frame)
 	else
@@ -139,7 +142,7 @@ end
 function UF:CreateGroupHeaders()
 	self.groups = {}
 
-	local config = st.config.profile.unitframes.units.party
+	local config = st.config.profile.unitframes.profiles[self:GetProfile()].party
 	local party = self.oUF:SpawnHeader(
 		'SaftUI_PartyHeader',
 		nil,
@@ -201,16 +204,32 @@ end
 
 function UF:GetConfigTable()
 	local config = {
-		order = 1,
+		name = '',
 		type = 'group',
-		name = 'Unitframes',
-		childGroups = 'select',
+		childGroups = 'inline',
 		args = {
+			profile = {
+				order = 1,
+				type = 'select',
+				name = 'Profile',
+				values = {},
+				get = function()
+					return st.config.profile.unitframes.config_profile
+				end,
+			},
+			unitframes = {
+				order = 2,
+				inline = true,
+				type = 'group',
+				name = '',
+				childGroups = 'select',
+				args = {}
+			}
 		}
 	}
 
 	for unit,frame in pairs(self.units) do
-		config.args[unit] = {
+		config.args.unitframes.args[unit] = {
 			name = self.unit_strings[unit],
 			type = 'group',
 			childGroups = 'select',
@@ -272,11 +291,23 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(frame.elements) do
-			config.args[unit].args[element_name] = self.elements[element_name].GetConfigTable(frame)
+			config.args.unitframes.args[unit].args[element_name] = self.elements[element_name].GetConfigTable(frame)
 		end
 	end
 
 	return config
+end
+
+function UF:GetProfile()
+	return st.config.profile.unitframes.config_profile
+end
+
+function UF:SetProfile(profile_name)
+	if st.config.profile.unitframes.profiles[profile_name] then
+		st.config.profile.unitframes.config_profile = profile_name
+	else
+		-- Create new profile
+	end
 end
 
 function UF:OnInitialize()

@@ -9,6 +9,7 @@ local function Constructor(self)
 end
 
 local function UpdateConfig(self)
+	self.Name.config = self.config.name
 	if self.config.name.enable == false then
 		self.Name:Hide()
 		return

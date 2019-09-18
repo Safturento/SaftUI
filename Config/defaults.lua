@@ -63,6 +63,13 @@ st.defaults.auras = {
 }
 
 st.defaults.loot = {
+	popup = {
+		template = 'thick',
+		font = 'pixel',
+		width = 130,
+		button_height = 25,
+		spacing = 7,
+	},
 	roll = {
 		height = 20,
 		width = 300,
@@ -301,185 +308,188 @@ st.defaults.unitframes = {
 	config_unit = 'player',
 	config_element = 'general',
 	config_profile = 'SaftUI',
-	units = {
+	profiles = {
 		['**'] = {
-			enable = true,
-			width = 201,
-			height = 30,
-			position = {'CENTER', 'UIParent', 'CENTER',  0, 0},
-			template = 'thick',
-			range_alpha = {
-				inside = 1,
-				outside = 0.3,
-			},
 			['**'] = {
 				enable = true,
-				relative_width = true,
-				width = 0,
-				relative_height = true,
-				height = 0,
-				position = {'CENTER', 'CENTER', 0, 0},
-				framelevel = 0,
-				template = 'none',
-			},
-			portrait = {
-				alpha = 0.1,
-				framelevel = 20,
-				height = -10
-			},
-			castbar = {
-				enable = false,
-				position = {'BOTTOM', 'BOTTOM', 0, 0},
-				framelevel = 15,
-				height = 4,
-				relative_width = true,
-				width = 0,
-				relative_height = false,
-				template = 'thin',
-				colors = {
-					normal = { .3, .4, .6 },
-					nointerrupt = { .6, .3, .3 },
+				width = 201,
+				height = 30,
+				position = {'CENTER', 'UIParent', 'CENTER',  0, 0},
+				template = 'thick',
+				range_alpha = {
+					inside = 1,
+					outside = 0.3,
 				},
-				text = {
+				['**'] = {
 					enable = true,
-					position = {'TOPLEFT', 'BOTTOMLEFT', 0, -5},
-					font = 'pixel',
+					relative_width = true,
+					width = 0,
+					relative_height = true,
+					height = 0,
+					position = {'CENTER', 'CENTER', 0, 0},
+					framelevel = 0,
+					template = 'none',
 				},
-				time = {
-					enable = true,
-					position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -5},
-					font = 'pixel',
+				portrait = {
+					alpha = 0.1,
+					framelevel = 20,
+					height = -10
 				},
-			},
-			health = {
-				position = {'CENTER', 'CENTER', 0, 0},
-				framelevel = 15,
-				height = -10,
-				template = 'thin',
-				bg = {
-					enable = true,
-					alpha = 1,
-					multiplier = 0.6,
-				},
-				text = {
-					enable = true,
-					hide_full = false,
-					percent = false,
-					font = 'pixel',
-					position = {'RIGHT', 'RIGHT', -3, 0},
-				},
-				Smooth = true,
-				colorTapping = false,
-				colorDisconnected = false,
-				colorHealth = false,
-				colorClass = false,
-				colorClassNPC = false,
-				colorClassPet = false,
-				colorReaction = false,
-				colorSmooth = false,
-				colorCustom = true,
-				customColor = { 0.25, 0.25, 0.25},
-			},
-			power = {
-				position = {'CENTER', 'CENTER', 0, 0},
-				framelevel = 10,
-				template = 'thin',
-				bg = {
-					enable = true,
-					alpha = 1,
-					multiplier = .6,
-				},
-				text = {
+				castbar = {
 					enable = false,
-					hide_full = false,
-					percent = false,
+					position = {'BOTTOM', 'BOTTOM', 0, 0},
+					framelevel = 15,
+					height = 4,
+					relative_width = true,
+					width = 0,
+					relative_height = false,
+					template = 'thin',
+					colors = {
+						normal = { .3, .4, .6 },
+						nointerrupt = { .6, .3, .3 },
+					},
+					text = {
+						enable = true,
+						position = {'TOPLEFT', 'BOTTOMLEFT', 0, -5},
+						font = 'pixel',
+					},
+					time = {
+						enable = true,
+						position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -5},
+						font = 'pixel',
+					},
+				},
+				health = {
+					position = {'CENTER', 'CENTER', 0, 0},
+					framelevel = 15,
+					height = -10,
+					template = 'thin',
+					bg = {
+						enable = true,
+						alpha = 1,
+						multiplier = 0.6,
+					},
+					text = {
+						enable = true,
+						hide_full = false,
+						percent = false,
+						font = 'pixel',
+						position = {'RIGHT', 'RIGHT', -3, 0},
+					},
+					Smooth = true,
+					colorTapping = false,
+					colorDisconnected = false,
+					colorHealth = false,
+					colorClass = false,
+					colorClassNPC = false,
+					colorClassPet = false,
+					colorReaction = false,
+					colorSmooth = false,
+					colorCustom = true,
+					customColor = { 0.25, 0.25, 0.25},
+				},
+				power = {
+					position = {'CENTER', 'CENTER', 0, 0},
+					framelevel = 10,
+					template = 'thin',
+					bg = {
+						enable = true,
+						alpha = 1,
+						multiplier = .6,
+					},
+					text = {
+						enable = false,
+						hide_full = false,
+						percent = false,
+						font = 'pixel',
+						position = {'LEFT', 'LEFT', 5, 0},
+					},
+					Smooth = true,
+					colorTapping = false,
+					colorDisconnected = false,
+					colorPower = false,
+					colorClass = true,
+					colorClassNPC = false,
+					colorClassPet = false,
+					colorReaction = true,
+					colorSmooth = false,
+					colorCustom = false,
+					customColor = { 0.25, 0.25, 0.25},
+				},
+				auras = {
+					['**'] = {
+						enable = false,
+						size = 19,
+						spacing = 6,
+						template = 'thick',
+						font = 'pixel',
+						max = 8,
+						per_row = 8,
+						self_only = false,
+						vertical_growth = 'TOP',
+						horizontal_growth = 'RIGHT',
+						initial_anchor = 'BOTTOMLEFT',
+					},
+					buffs = {
+						position = {'BOTTOM', 'TOP', 0, 6},
+					},
+					debuffs = {
+						position = {'BOTTOM', 'TOP', 0, 31},
+					}
+				},
+				name = {
+					enable = true,
+					max_length = 30,
+					show_level = true,
+					show_samelevel = true,
+					show_classification = true,
 					font = 'pixel',
 					position = {'LEFT', 'LEFT', 5, 0},
-				},
-				Smooth = true,
-				colorTapping = false,
-				colorDisconnected = false,
-				colorPower = false,
-				colorClass = true,
-				colorClassNPC = false,
-				colorClassPet = false,
-				colorReaction = true,
-				colorSmooth = false,
-				colorCustom = false,
-				customColor = { 0.25, 0.25, 0.25},
-			},
-			auras = {
-				['**'] = {
-					enable = false,
-					size = 19,
-					spacing = 6,
-					template = 'thick',
-					font = 'pixel',
-					max = 8,
-					per_row = 8,
-					self_only = false,
-					vertical_growth = 'TOP',
-					horizontal_growth = 'RIGHT',
-					initial_anchor = 'BOTTOMLEFT',
-				},
-				buffs = {
-					position = {'BOTTOM', 'TOP', 0, 6},
-				},
-				debuffs = {
-					position = {'BOTTOM', 'TOP', 0, 31},
 				}
 			},
-			name = {
-				enable = true,
-				max_length = 30,
-				show_level = true,
-				show_samelevel = true,
-				show_classification = true,
-				font = 'pixel',
-				position = {'LEFT', 'LEFT', 5, 0},
-			}
-		},
-		player = {
-			position = {'RIGHT', 'UIParent', 'CENTER', -150, -150},
-			castbar = {
-				enable = true,
-			},
-			name = {
-				enable = false,
-			},
-			power = { 
-				text = {
+			player = {
+				position = {'RIGHT', 'UIParent', 'CENTER', -150, -150},
+				castbar = {
 					enable = true,
 				},
+				name = {
+					enable = false,
+				},
+				power = { 
+					text = {
+						enable = true,
+					},
+				},
 			},
-		},
-		target = {
-			position = {'LEFT', 'UIParent', 'CENTER', 150, -150},
-			castbar = {
-				enable = true,
+			target = {
+				position = {'LEFT', 'UIParent', 'CENTER', 150, -150},
+				castbar = {
+					enable = true,
+				},
+				buffs = {
+					enable = true,
+				},
+				debuffs = {
+					enable = true,
+				}
 			},
-			buffs = {
-				enable = true,
+			targettarget = {
+				width = 100,
+				position = {'LEFT', 'SaftUI_Target', 'RIGHT', 7, 0},
+				name = {
+					enable = false,
+				},
 			},
-			debuffs = {
-				enable = true,
+			party = {
+				spacing = 7,
+				growthDirection = 'BOTTOM',
+				maxColumns = 1,
+				unitsPerColumn = 5,
+				columnSpacing = 0,
+				initialAnchor = 'TOP',
+				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30}
 			}
 		},
-		targettarget = {
-			width = 100,
-			position = {'LEFT', 'SaftUI_Target', 'RIGHT', 7, 0},
-			name = {
-				enable = false,
-			},
-		},
-		party = {
-			spacing = 7,
-			growthDirection = 'BOTTOM',
-			maxColumns = 1,
-			unitsPerColumn = 5,
-			columnSpacing = 0,
-			initialAnchor = 'TOP',
-			position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30}
-		}
+		SaftUI = {}
 	}
 }

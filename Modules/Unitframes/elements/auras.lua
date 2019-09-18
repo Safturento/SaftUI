@@ -26,6 +26,7 @@ end
 local function UpdateConfig(self)
 	for i,aura_type in ipairs(AURAS) do
 		local auras = self[aura_type]
+		auras.config = self.config.auras[string.lower(aura_type)]
 		if auras.config.enable then
 			auras:Show()
 		else

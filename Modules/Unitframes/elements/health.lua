@@ -53,6 +53,8 @@ local function Constructor(self)
 end
 
 local function UpdateConfig(self)
+	self.Health.config = self.config.health
+	
 	-- We just hide it instead of disabling so
 	-- that the text still updates
 	if self.config.health.enable == false then

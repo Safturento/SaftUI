@@ -42,6 +42,8 @@ local function Constructor(self)
 end
 
 local function UpdateConfig(self)
+	self.Power.config = self.config.power
+	
 	if not self.config.power.enable then
 		self:Hide()
 		return

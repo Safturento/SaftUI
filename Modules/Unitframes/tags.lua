@@ -10,8 +10,8 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local string = ''
 
 	local baseunit = unit == 'vehicle' and 'player' or strmatch(unit, '%D+')
-	if not st.config.profile.unitframes.units[baseunit] then return '' end
-	local config = st.config.profile.unitframes.units[baseunit].name
+	if not st.config.profile.unitframes.profiles[UF:GetProfile()][baseunit] then return '' end
+	local config = st.config.profile.unitframes.profiles[UF:GetProfile()][baseunit].name
 	if not config.enable then return '' end
 
 	-- mob level relative to you

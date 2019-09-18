@@ -11,6 +11,8 @@ local function Constructor(self)
 end
 
 local function UpdateConfig(self)
+	self.Portrait.config = self.config.portrait
+	
 	if self.config.portrait.enable == false then
 		self.Portrait:Hide()
 		return
