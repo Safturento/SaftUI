@@ -80,6 +80,7 @@ st.defaults.loot = {
 		grow_down = false,
 	}
 }
+
 st.defaults.templates = {
 	highlight = {
 		name = 'Highlight',
@@ -431,10 +432,14 @@ st.defaults.unitframes = {
 						initial_anchor = 'BOTTOMLEFT',
 					},
 					buffs = {
+						enable = false,
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
+						desaturate_others = false,
 					},
 					debuffs = {
+						enable = false,
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 31},
+						desaturate_others = true,
 					}
 				},
 				name = {

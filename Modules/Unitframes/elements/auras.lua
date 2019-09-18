@@ -14,6 +14,9 @@ function UF.PostCreateAura(auras, button)
 end
 
 function UF.PostUpdateAura(auras, unit, button, index, position, duration, expiration, debuffType, isStealable)
+	if auras.config.desaturate_others and (not button.isPlayer) then
+		button.icon:SetDesaturated(1)
+	end
 	-- if isStealable then
 	-- 	button:SetBackdropBorderColor(1, 1, 1)
 	-- else
