@@ -7,5 +7,6 @@ LT.DEBUG = false
 function LT:OnInitialize()
 	self.config = st.config.profile.loot
 
-	LT:InitializeRollFrame()
+	self:InitializeRollFrame()
+	self:InitializeLootFrame()
 end
