@@ -44,7 +44,7 @@ function st:SetTemplate(frame, template)
 		frame:SetBackdrop(nil)
 		if frame.altborder then
 			for _,border in pairs(frame.altborder) do
-				border:SetVertexColor(0, 0, 0, 0)
+				border:Hide()
 			end
 		end
 		return
@@ -89,23 +89,29 @@ function st:SetTemplate(frame, template)
 end
 
 function st:SetBackdrop(frame, template)
-	if not template or template == 'none' then
-		if frame.backdrop then frame.backdrop:SetBackdrop(nil) end
+	if template == nil or template == 'none' or template == '' then
+		if frame.backdrop then
+			st:SetTemplate(frame.backdrop, 'none')
+		end
 		return
 	end
 	
 	local config = st.config.profile.templates[template]
 	assert(config, template .. ' template not found')
 
+	local is_texture = frame:GetObjectType() == 'Texture'
+
+	local parent = is_texture and frame:GetParent() or frame
+
 	if not frame.backdrop then
-		frame.backdrop = CreateFrame('frame', nil, frame)
-		frame.backdrop:SetFrameLevel(max(0, frame:GetFrameLevel()-1))
+		frame.backdrop = CreateFrame('frame', nil, parent)
+		frame.backdrop:SetFrameLevel(max(0, parent:GetFrameLevel()-1))
 	end
 
 	local offset = config.thick and 2 or 1
 	frame.backdrop:ClearAllPoints()
-	frame.backdrop:SetPoint('TOPLEFT', -offset, offset)
-	frame.backdrop:SetPoint('BOTTOMRIGHT', offset, -offset)
+	frame.backdrop:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
+	frame.backdrop:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
 	
 	st:SetTemplate(frame.backdrop, template)
 end
