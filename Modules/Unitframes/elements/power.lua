@@ -121,21 +121,11 @@ local function GetConfigTable(self)
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
-			size = {
-				order = 3,
-				name = 'Size',
-				type = 'group',
-				inline = true,
-				args = {
-					width = st.CF.generators.width(1),
-					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
-					height = st.CF.generators.height(3),
-					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
-				},
-			},
+			template = st.CF.generators.template(2),
+			size = UF.GenerateRelativeSizeConfigGroup(3),
 			template = st.CF.generators.template(4),
-			position = st.CF.generators.position(
-				self.config.power.position, false, 5, nil, 
+			position = st.CF.generators.position(5,
+				self.config.power.position, false,
 				function() UF:UpdateConfig(self.unit, 'Power') end
 			),
 			text = {
@@ -153,8 +143,8 @@ local function GetConfigTable(self)
 				args = {
 					enable = st.CF.generators.enable(0),
 					font = st.CF.generators.font(1),
-					position = st.CF.generators.position(
-						self.config.power.text.position, false, 2, nil, 
+					position = st.CF.generators.position(2,
+						self.config.power.text.position, false,
 						function() UF:UpdateConfig(self.unit, 'Power') end
 					),
 				},

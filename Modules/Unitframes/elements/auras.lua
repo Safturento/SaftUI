@@ -61,22 +61,36 @@ local function Constructor(self, aura_type)
 	return self[aura_type]
 end
 
-local function GetConfigTable(self)
+
+
+
+
+local function GetConfigTable(self, aura_type)
 	return {
 		type = 'group',
-		name = 'Auras',
+		name = aura_type,
 		get = function(info)
-			return self.config.auras[info[#info]]
+			return self.config.auras[string.lower(aura_type)][info[#info]]
 		end,
 		set = function(info, value)
-			self.config.auras[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Auras')
+			self.config.auras[string.lower(aura_type)][info[#info]] = value
+			UF:UpdateConfig(self.unit, aura_type)
 		end,
 		args = {
+			enable = st.CF.generators.enable(0),
+			framelevel = st.CF.generators.framelevel(1),
+			template = st.CF.generators.template(2),
+			position = st.CF.generators.position(3,
+				self.config[string.lower(aura_type)].position, false,
+				function() UF:UpdateConfig(self.unit, aura_type) end
+			),
 		}
 	}
 end
 
-UF:RegisterElement('Buffs', Constructor, UpdateConfig, GetConfigTable)
-UF:RegisterElement('Debuffs', Constructor, UpdateConfig, GetConfigTable)
+UF:RegisterElement('Buffs', Constructor, UpdateConfig, 
+	function(self) return GetConfigTable(self, 'Buffs') end)
+UF:RegisterElement('Debuffs', Constructor, UpdateConfig,
+	function(self) return GetConfigTable(self, 'Debuffs') end)
+
 -- UF:RegisterElement('Auras', Constructor, UpdateConfig, GetConfigTable)

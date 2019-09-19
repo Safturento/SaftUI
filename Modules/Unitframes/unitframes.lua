@@ -273,11 +273,25 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
 	hasEditBox = false,
 }
 
+function UF.GenerateRelativeSizeConfigGroup(order)
+	return {
+		order = order,
+		name = 'Size',
+		type = 'group',
+		inline = true,
+		args = {
+			width = st.CF.generators.width(1),
+			relative_width = st.CF.generators.toggle(2, 'Relative', 1),
+			height = st.CF.generators.height(3),
+			relative_height = st.CF.generators.toggle(4, 'Relative', 1),
+		},
+	}
+end
+
 function UF:GetConfigTable()
 	local config = {
 		name = '',
 		type = 'group',
-		childGroups = 'inline',
 		args = {
 			profile = {
 				order = 1,
@@ -296,8 +310,8 @@ function UF:GetConfigTable()
 						end,
 						set = function(info, value)
 							st.config.profile.unitframes.config_profile = value
-							ACR:NotifyChange(ADDON_NAME..' Unitframes')
 							UF:UpdateConfig()
+							ACR:NotifyChange(ADDON_NAME..' Unitframes')
 						end
 					},
 					new = {
@@ -334,8 +348,9 @@ function UF:GetConfigTable()
 			},
 			unitframes = {
 				order = 2,
+				name = ' ',
 				type = 'group',
-				name = '',
+				-- inline = true,
 				childGroups = 'select',
 				args = {
 				}
@@ -361,43 +376,13 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(frame.unit)
 					end,
 					args = {
-						enable = {
-							order = 0,
-							name = 'Enable',
-							type = 'toggle',
-							width = 0.5
-						},
-						framelevel = {
-							order = 1,
-							name = 'Frame Level',
-							type = 'range',
-							min = 0,
-							max = 99,
-							step = 1,
-							width = 1,
-						},
-						height = {
-							order = 2,
-							name = 'Height',
-							type = 'input',
-							pattern = '%d+',
-							width = 0.5,
-						},
-						width = {
-							order = 3,
-							name = 'Width',
-							type = 'input',
-							pattern = '%d+',
-							width = 0.5,
-						},
-						template = {
-							order = 4,
-							name = 'Template',
-							type = 'select',
-							values = st.CF:GetFrameTemplates(),
-						},
-						position = st.CF.generators.position(
-							frame.config.position, true, 5, nil, 
+						enable = st.CF.generators.enable(0),
+						framelevel = st.CF.generators.framelevel(1),
+						height = st.CF.generators.height(2),
+						width = st.CF.generators.width(3),
+						template = st.CF.generators.template(4),
+						position = st.CF.generators.position(5,
+							frame.config.position, true,
 							function() UF:UpdateConfig(frame.unit) end
 						),
 					}
@@ -406,7 +391,8 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(frame.elements) do
-			config.args.unitframes.args[unit].args[element_name] = self.elements[element_name].GetConfigTable(frame)
+			config.args.unitframes.args[unit].args[element_name] =
+				self.elements[element_name].GetConfigTable(frame)
 		end
 	end
 

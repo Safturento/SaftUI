@@ -130,27 +130,16 @@ local function GetConfigTable(self)
 			UF:UpdateConfig(self.unit, 'Health')
 		end,
 		args = {
-			enable = st.CF.generators.toggle(0, 'Enable'),
+			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
-			size = {
-				order = 3,
-				name = 'Size',
-				type = 'group',
-				inline = true,
-				args = {
-					width = st.CF.generators.width(1),
-					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
-					height = st.CF.generators.height(3),
-					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
-				},
-			},
-			position = st.CF.generators.position(
-				self.config.health.position, false, 7, nil, 
+			size = UF.GenerateRelativeSizeConfigGroup(3),
+			position = st.CF.generators.position(4,
+				self.config.health.position, false,
 				function() UF:UpdateConfig(self.unit, 'Health') end
 			),
 			text = {
-				order = 8,
+				order = 5,
 				name = 'Text',
 				type = 'group',
 				inline = true,
@@ -162,16 +151,16 @@ local function GetConfigTable(self)
 					UF:UpdateConfig(self.unit, 'Health')
 				end,
 				args = {
-					enable = st.CF.generators.toggle(0, 'Enable'),
-					font = st.CF.generators.font(),
-					position = st.CF.generators.position(
-						self.config.health.text.position, false, 3, nil, 
+					enable = st.CF.generators.enable(0),
+					font = st.CF.generators.font(1),
+					position = st.CF.generators.position(2,
+						self.config.health.text.position, false,
 						function() UF:UpdateConfig(self.unit, 'Health') end
 					),
 				},
 			},
 			bg = {
-				order = 9,
+				order = 6,
 				name = 'Status Bar BG',
 				type = 'group',
 				inline = true,
@@ -183,30 +172,9 @@ local function GetConfigTable(self)
 					UF:UpdateConfig(self.unit, 'Health')
 				end,
 				args = {
-					enable = {
-						order = 0,
-						name = 'Enable',
-						type = 'toggle',
-						width = 0.5,
-					},
-					multiplier = {
-						order = 2,
-						name = 'Multiplier',
-						type = 'range',
-						min = 0,
-						max = 1,
-						step = 0.05,
-						width = 1,
-					},
-					alpha = {
-						order = 3,
-						name = 'Alpha',
-						type = 'range',
-						min = 0,
-						max = 1,
-						step = 0.05,
-						width = 1,
-					}
+					enable = st.CF.generators.enable(1),
+					multiplier = st.CF.generators.range(2, 'Multiplier', 0, 1, 0.05),
+					alpha = st.CF.generators.alpha(3)
 				},
 			}
 		}

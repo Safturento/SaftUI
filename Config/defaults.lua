@@ -330,11 +330,12 @@ st.defaults.unitframes = {
 					position = {'CENTER', 'CENTER', 0, 0},
 					framelevel = 0,
 					template = 'none',
+					alpha = 1,
 				},
 				portrait = {
 					alpha = 0.1,
 					framelevel = 20,
-					height = -10
+					height = -10,
 				},
 				castbar = {
 					enable = false,
@@ -359,6 +360,16 @@ st.defaults.unitframes = {
 						position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -5},
 						font = 'pixel',
 					},
+					icon = {
+						enable = true,
+						position = {'RIGHT', 'LEFT', -7, 0},
+						framelevel = 15,
+						height = 0,
+						relative_height = true,
+						width = 30,
+						relative_width = false,
+						template = 'thick',
+					}
 				},
 				health = {
 					position = {'CENTER', 'CENTER', 0, 0},

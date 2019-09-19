@@ -54,7 +54,7 @@ end
 
 st.CF.generators = {}
 
-function st.CF.generators.position(config_table, global_frame, order, name, set_func)
+function st.CF.generators.position(order, config_table, global_frame, set_func)
 	local table = {
 		order = order or 0,
 		name = name or 'Position',
@@ -120,14 +120,7 @@ function st.CF.generators.position(config_table, global_frame, order, name, set_
 end
 
 
-function st.CF.generators.enable(order)
-	return  {
-		order = order,
-		name = 'Enable',
-		type = 'toggle',
-		width = 0.5
-	}
-end
+
 
 function st.CF.generators.toggle(order, name, width)
 	return {
@@ -136,6 +129,10 @@ function st.CF.generators.toggle(order, name, width)
 		type = 'toggle',
 		width = width or 0.5
 	}
+end
+
+function st.CF.generators.enable(order)
+	return st.CF.generators.toggle(order, 'Enable')
 end
 
 function st.CF.generators.range(order, name, min, max, step, width)
@@ -151,15 +148,11 @@ function st.CF.generators.range(order, name, min, max, step, width)
 end
 
 function st.CF.generators.framelevel(order)
-	return {
-		order = order,
-		name = 'Frame Level',
-		type = 'range',
-		min = 0,
-		max = 99,
-		step = 1,
-		width = 1,
-	}
+	return st.CF.generators.range(order, 'Frame level', 0, 99, 1)
+end
+
+function st.CF.generators.alpha(order)
+	return st.CF.generators.range(order, 'Alpha', 0, 1, 0.05)
 end
 
 function st.CF.generators.height(order)
@@ -197,18 +190,6 @@ function st.CF.generators.font(order)
 		type = 'select',
 		order = 1,
 		values = st.CF:GetFontObjects(),
-	}
-end
-
-function st.CF.generators.alpha(order)
-	return {
-		order = order,
-		name = 'Alpha',
-		type = 'range',
-		min = 0,
-		max = 1,
-		step = 0.05,
-		width = 1,
 	}
 end
 

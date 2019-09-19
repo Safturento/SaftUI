@@ -20,7 +20,11 @@ local function Constructor(self)
 	castbar.Text:SetFontObject(st:GetFont(self.config.castbar.text.font))
 	castbar.Time = castbar:CreateFontString(nil, 'OVERLAY')
 	castbar.Time:SetFontObject(st:GetFont(self.config.castbar.time.font))
-	
+	castbar.Icon = CreateFrame('frame', nil, castbar)
+	castbar.Icon.texture = castbar.Icon:CreateTexture(nil, 'OVERLAY')
+	castbar.Icon.SetTexture = function(self, tex) self.texture:SetTexture(tex) end
+	castbar.Icon.texture:SetAllPoints(castbar.Icon)
+
 	castbar.PostCastStart = UF.PostCastStart
 	castbar.PostChannelStart = UF.PostCastStart
 
@@ -72,6 +76,30 @@ local function UpdateConfig(self)
 		self.Castbar.Time:Hide()
 	end
 
+	if self.config.castbar.icon.enable then
+		self.Castbar.Icon:Show()
+		st:SetBackdrop(self.Castbar.Icon, self.config.castbar.icon.template)
+		self.Castbar.Icon:ClearAllPoints()
+		
+		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.icon.position)
+		self.Castbar.Icon:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+
+		if self.config.castbar.icon.relative_height then
+			self.Castbar.Icon:SetHeight(self.config.height + self.config.castbar.icon.height)
+		else
+			self.Castbar.Icon:SetHeight(self.config.castbar.icon.height)
+		end
+	
+		if self.config.castbar.icon.relative_width then
+			self.Castbar.Icon:SetWidth(self.config.width + self.config.castbar.icon.width)
+		else
+			self.Castbar.Icon:SetWidth(self.config.castbar.icon.width)
+		end
+
+	else
+		self.Castbar.Icon:Hide()
+	end
+
 	self.Castbar:ClearAllPoints()
 	local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.position)
 	self.Castbar:SetPoint(anchor, self, rel_anchor, x_off, y_off)
@@ -92,23 +120,35 @@ local function GetConfigTable(self)
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
-			size = {
-				order = 3,
-				name = 'Size',
-				type = 'group',
-				inline = true,
-				args = {
-					width = st.CF.generators.width(1),
-					relative_width = st.CF.generators.toggle(2, 'Relative', 1),
-					height = st.CF.generators.height(3),
-					relative_height = st.CF.generators.toggle(4, 'Relative', 1),
-				},
-			},
-			template = st.CF.generators.template(4),
-			position = st.CF.generators.position(
-				self.config.castbar.position, false, 5, nil, 
+			template = st.CF.generators.template(2),
+			size = UF.GenerateRelativeSizeConfigGroup(3),
+			position = st.CF.generators.position(4,
+				self.config.castbar.position, false,
 				function() UF:UpdateConfig(self.unit, 'Castbar') end
 			),
+			icon = {
+				order = 5,
+				name = 'Icon',
+				inline = true,
+				type = 'group',
+				get = function(info)
+					return self.config.castbar.icon[info[#info]]
+				end,
+				set = function(info, value)
+					self.config.castbar.icon[info[#info]] = value
+					UF:UpdateConfig(self.unit, 'Castbar')
+				end,
+				args = {
+					enable = st.CF.generators.enable(0),
+					framelevel = st.CF.generators.framelevel(1),
+					template = st.CF.generators.template(2),
+					size = UF.GenerateRelativeSizeConfigGroup(3),
+					position = st.CF.generators.position(4,
+						self.config.castbar.icon.position, false,
+						function() UF:UpdateConfig(self.unit, 'Castbar') end
+					),
+				}
+			}
 		}
 	}
 end
