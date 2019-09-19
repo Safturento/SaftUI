@@ -80,6 +80,9 @@ function INV:DisplayServerGold()
 	GameTooltip:AddLine(' ')
 	GameTooltip:AddDoubleLine('Total', st.StringFormat:GoldFormat(totalGold))
 
+	GameTooltip:AddLine(' ')
+	GameTooltip:AddDoubleLine('Vendor profit', st.StringFormat:GoldFormat(self:GetAutoVendorProfit()))
+	
 	GameTooltip:Show()
 end
 
