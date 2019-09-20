@@ -1,28 +1,28 @@
 local ADDON_NAME, st = ...
 local UF = st:GetModule('Unitframes')
 
-local function PostUpdateHealth(health, unit, min, max)
+local function PostUpdateHealth(health, unit, current, max)
 	if UF.RMH and UF.RMH.UnitHasHealthData(unit) then
-		min, max = UF.RMH.GetUnitHealth(unit)
+		current, max = UF.RMH.GetUnitHealth(unit)
 	end
 
 	if health.text then
 
 		local absorbs = st.is_retail and UnitGetTotalAbsorbs(unit) or 0
 		
-		if min == max and health.hide_full then
+		if current == max and health.hide_full then
 			health.text:SetText('')
 		elseif health.percent then
 			if absorbs > 0 then
-				health.text:SetFormattedText('%d +%d', floor(min/max*100), floor(absorbs/max*100))
+				health.text:SetFormattedText('%d +%d', floor(current/max*100), floor(absorbs/max*100))
 			else
-				health.text:SetFormattedText('%d', floor(min/max*100)) 
+				health.text:SetFormattedText('%d', floor(current/max*100)) 
 			end
 		else
 			if absorbs > 0 then
-				health.text:SetFormattedText('%s +%s', st.StringFormat:ShortFormat(min, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
+				health.text:SetFormattedText('%s +%s', st.StringFormat:ShortFormat(current, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
 			else
-				health.text:SetFormattedText('%s', st.StringFormat:ShortFormat(min, 1, 1000))
+				health.text:SetText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1, 1000))
 			end
 		end
 	end

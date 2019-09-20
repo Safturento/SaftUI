@@ -8,7 +8,7 @@ local function PostUpdatePower(power, unit, current, min, max)
 		elseif UnitPowerType(unit) ~= 0 then
 			power.text:SetText(current)
 		else
-			power.text:SetFormattedText(st.StringFormat:ShortFormat(current, 1))
+			power.text:SetFormattedText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
 		end
 	end
 
