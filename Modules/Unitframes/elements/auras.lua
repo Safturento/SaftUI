@@ -27,16 +27,19 @@ end
 local function UpdateConfig(self, aura_type)
 	local auras = self[aura_type]
 	auras.config = self.config.auras[string.lower(aura_type)]
+
 	if auras.config.enable then
 		auras:Show()
 	else
 		auras:Hide()
+		return
 	end
 
 	local num_rows = ceil(auras.config.max/auras.config.per_row)
 
 	auras:SetHeight(num_rows*auras.config.size + (num_rows-1)*auras.config.spacing)
 	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
+	auras:ClearAllPoints()
 	local point, relativePoint, xoffset, yoffset = unpack(auras.config.position)
 	auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
 
@@ -58,7 +61,7 @@ local function Constructor(self, aura_type)
 
 	auras.disableCooldown = true
 	self[aura_type] = auras
-	return self[aura_type]
+	return auras
 end
 
 
