@@ -237,6 +237,7 @@ local function updateIcon(element, unit, index, offset, filter, isDebuff, visibl
 		-- end block
 
 		if(show) then
+			
 			-- We might want to consider delaying the creation of an actual cooldown
 			-- object to this point, but I think that will just make things needlessly
 			-- complicated.

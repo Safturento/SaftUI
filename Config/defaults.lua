@@ -441,16 +441,32 @@ st.defaults.unitframes = {
 						vertical_growth = 'TOP',
 						horizontal_growth = 'RIGHT',
 						initial_anchor = 'BOTTOMLEFT',
+						cooldown = {
+							enable = true,
+							timer = false,
+							reverse = true,
+							alpha = 0.7
+						},
+						filter = {
+							['**'] = {
+								show_all = true,
+								show_self = true,
+								show_dispel = true,
+								desaturate = true, -- anything not self or dispel
+								border = 'dispel' -- none, dispel, all
+							},
+							friend = {
+								desaturate = false,
+							}
+						}
 					},
 					buffs = {
 						enable = false,
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
-						desaturate_others = false,
 					},
 					debuffs = {
 						enable = false,
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 31},
-						desaturate_others = true,
 					}
 				},
 				name = {
@@ -461,6 +477,7 @@ st.defaults.unitframes = {
 					show_classification = true,
 					font = 'pixel',
 					position = {'LEFT', 'LEFT', 5, 0},
+					tag = '[st:level] [st:name]',
 				}
 			},
 			player = {
@@ -476,6 +493,20 @@ st.defaults.unitframes = {
 						enable = true,
 					},
 				},
+				auras = {
+					debuffs = {
+						enable = true,
+						position = {'RIGHT', 'LEFT', -7, 0},
+						horizontal_growth = 'LEFT',
+						initial_anchor = 'RIGHT',
+						size = 30,
+						filter = {
+							friend = {
+								show_all = false,
+							}
+						}
+					}
+				}
 			},
 			target = {
 				position = {'LEFT', 'UIParent', 'CENTER', 150, -150},

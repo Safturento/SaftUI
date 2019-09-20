@@ -3,25 +3,76 @@ local UF = st:GetModule('Unitframes')
 
 local AURAS = {'Buffs', 'Debuffs'}
 
-function UF.PostCreateAura(auras, button)
+local friendly_dispels = {
+	SHAMAN = {
+		Disease = true,
+		Poison = true,
+	},
+	DRUID = {
+		Poison = true,
+		Curse = true,
+	},
+	PALADIN = {
+		Disease = true,
+		Poison = true,
+		Magic = true,
+	},
+	PRIEST = {
+		Disease = true,
+		Magic = true,
+	},
+	MAGE = {
+		Curse = true,
 
+	}
+}
+
+function UF.FilterAura(element, unit, button, name, texture,
+count, debuffType, duration, expiration, caster, isStealable, nameplateShowSelf, spellID,
+canApply, isBossDebuff, casterIsPlayer, nameplateShowAll,timeMod, effect1, effect2, effect3)
+
+	local is_friend = UnitIsFriend('player', unit) 
+	local config = element.config.filter[is_friend and 'friend' or 'enemy']
+	local is_dispellable = IsDispellable(unit, debuffType)
+	
+	if not (
+		 config.show_all or 
+		(config.show_self and button.isPlayer) or
+		(config.show_dispel and is_dispellable)
+	) then return end
+
+	if is_dispellable and config.border == 'dispel' or config.border == 'all' then
+		local c = DebuffTypeColor[debuffType]
+		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+	end
+
+	if config.desaturate and not (button.isPlayer or is_dispellable) then
+		button.icon:SetDesaturated(1)
+	else
+		button.icon:SetDesaturated()
+	end
+
+	return true
+end
+
+function IsDispellable(unit, debuffType)
+	return UnitIsFriend('player', unit) and friendly_dispels[st.my_class][debuffType]
+end
+
+function UF.PostCreateAura(auras, button)
 	st:SetBackdrop(button, auras.config.template)
 	st:SkinIcon(button.icon)
 	button.count:SetFontObject(st:GetFont(auras.config.font)) 
 
-	-- button.cooldown = _G[button:GetName()..'Cooldown']
-	-- button.cooldown:Skin()
+	button.cd.noOCC = not auras.config.cooldown.timer
+	button.cd.noCooldownCount = not auras.config.cooldown.timer
+	button.cd:SetReverse(not auras.config.cooldown.reverse)
+	button.cd:SetAlpha(auras.config.cooldown.alpha)
+	-- button.cd:SetFrameLevel(button:GetFrameLevel() + 5)
+	button.cd:SetHideCountdownNumbers(true)
 end
 
 function UF.PostUpdateAura(auras, unit, button, index, position, duration, expiration, debuffType, isStealable)
-	if auras.config.desaturate_others and (not button.isPlayer) then
-		button.icon:SetDesaturated(1)
-	end
-	-- if isStealable then
-	-- 	button:SetBackdropBorderColor(1, 1, 1)
-	-- else
-	-- 	button:SetBackdropBorderColor(unpack(st.config.template.actionbutton.bordercolor))
-	-- end
 end
 
 local function UpdateConfig(self, aura_type)
@@ -51,6 +102,9 @@ local function UpdateConfig(self, aura_type)
 	auras['growth-y'] = auras.config.vertical_growth
 	auras['growth-x'] = auras.config.horizontal_growth
 	auras.onlyShowPlayer = auras.config.self_only
+	auras.disableCooldown = not auras.config.cooldown.enable
+	auras.showDispellable = auras.config.show_dispellable
+	auras.CustomFilter = UF.FilterAura
 end
 
 local function Constructor(self, aura_type)
