@@ -10,6 +10,15 @@ function UF.PostCastStart(castbar, unit, spellName)
 	else
 		castbar:SetStatusBarTexture(unpack(castbar.config.colors.normal))
 	end
+
+	if castbar.Icon.texture:GetTexture() == [[Interface\ICONS\INV_Misc_QuestionMark]] then
+		local name, _, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellID = CastingInfo(unit)
+		local icon = select(10, GetItemInfo(name))
+
+		if icon then
+			castbar.Icon.texture:SetTexture(icon)
+		end
+	end
 end
 
 local function Constructor(self)
@@ -94,6 +103,17 @@ local function UpdateConfig(self)
 			self.Castbar.Icon:SetWidth(self.config.width + self.config.castbar.icon.width)
 		else
 			self.Castbar.Icon:SetWidth(self.config.castbar.icon.width)
+		end
+
+		local w,h = self.Castbar.Icon:GetWidth(), self.Castbar.Icon:GetHeight()
+		local scale
+		local trim = st.config.profile.misc.icon_trim
+		if w > h then
+			scale = (1 - h/w) / 2
+			self.Castbar.Icon.texture:SetTexCoord(trim, 1-trim, scale + trim, 1 - scale - trim)
+		else
+			scale = (1 - w/h) / 2
+			self.Castbar.Icon.texture:SetTexCoord(scale + trim, 1 - scale - trim, trim, 1 - trim)
 		end
 
 	else
