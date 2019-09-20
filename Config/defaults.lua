@@ -536,7 +536,21 @@ st.defaults.unitframes = {
 				unitsPerColumn = 5,
 				columnSpacing = 0,
 				initialAnchor = 'TOP',
-				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30}
+				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30},
+				auras = {
+					debuffs = {
+						enable = true,
+						position = {'RIGHT', 'LEFT', -7, 0},
+						horizontal_growth = 'LEFT',
+						initial_anchor = 'RIGHT',
+						size = 30,
+						filter = {
+							friend = {
+								show_all = false,
+							}
+						}
+					}
+				}
 			},
 			nameplate = {
 				height = 14,
@@ -556,6 +570,10 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = true,
+					height = 2,
+					icon = {
+						width = 20,
+					}
 				},
 				auras = {
 					buffs = {
@@ -565,6 +583,9 @@ st.defaults.unitframes = {
 						enable = true,
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 24},
 						self_only = true,
+						cooldown = {
+							alpha = 1,
+						},
 					}
 				},
 			}
