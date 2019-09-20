@@ -1,3 +1,0 @@
-local ADDON_NAME, st = ...
-
-local NP = st:NewModule('Nameplates', 'AceHook-3.0', 'AceEvent-3.0')

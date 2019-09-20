@@ -398,7 +398,7 @@ st.defaults.unitframes = {
 					colorReaction = false,
 					colorSmooth = false,
 					colorCustom = true,
-					customColor = { 0.25, 0.25, 0.25},
+					customColor = { 0.3, 0.3, 0.3},
 				},
 				power = {
 					position = {'CENTER', 'CENTER', 0, 0},
@@ -506,6 +506,36 @@ st.defaults.unitframes = {
 				columnSpacing = 0,
 				initialAnchor = 'TOP',
 				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30}
+			},
+			nameplate = {
+				height = 14,
+				width = 140,
+				portrait = {
+					enable = false,
+				},
+				health = {
+					height = -6,
+					text = {
+						position = {'BOTTOMRIGHT', 'TOPRIGHT', 0, 7},
+					},
+				},
+				name = {
+					position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
+					max_length = 14,
+				},
+				castbar = {
+					enable = true,
+				},
+				auras = {
+					buffs = {
+						enable = false,
+					},
+					debuffs = {
+						enable = true,
+						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 24},
+						self_only = true,
+					}
+				},
 			}
 		},
 		SaftUI = {}

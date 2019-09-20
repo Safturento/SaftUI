@@ -38,15 +38,21 @@ function UF.ConstructUnit(self, unit)
 	textoverlay:SetFrameLevel(99)
 	textoverlay:SetAllPoints(self)
 	self.TextOverlay = textoverlay
-
+	
 	-- self.config = st.config.profile.unitframes.units[self.base_unit]
 	self.config = st.config.profile.unitframes.profiles[UF:GetProfile()][self.base_unit]
-
+	
 	-- Since oUF doesn't give us access to a table of active elements
 	-- we can keep track of them here to easily loop and update through them later
 	self.elements = {}
 	for element_name, funcs in pairs(UF.elements) do
 		self.elements[element_name] = funcs.Constructor(self, element_name)
+	end
+	
+	if self.base_unit == 'nameplate' then
+		UF.nameplates[self.ID] = self
+		UF:UpdateUnitFrame(self)
+		self:SetScale(UIParent:GetEffectiveScale())
 	end
 
 	if self.is_group_unit then
@@ -87,15 +93,21 @@ function UF:UpdateUnitFrame(frame, element_name)
 	if element_name then
 		self.elements[element_name].UpdateConfig(frame, element_name)
 	else
-		if not frame.is_group_unit then
-			frame:ClearAllPoints()
-			if not frame.config.enable then
-				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
-				return
+		if not (frame.is_group_unit or InCombatLockdown()) then
+			
+			if frame.base_unit == 'nameplate' then
+				frame:SetPoint('CENTER')
 			else
-				frame:SetPoint(unpack(frame.config.position))
-				frame:SetSize(frame.config.width, frame.config.height)
+				frame:ClearAllPoints()
+				if not frame.config.enable then
+					frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+					return
+				else
+					frame:SetPoint(unpack(frame.config.position))
+				end
 			end
+
+			frame:SetSize(frame.config.width, frame.config.height)
 		end
 
 		st:SetBackdrop(frame, frame.config.template)
@@ -125,6 +137,8 @@ function UF:UpdateConfig(unit, element_name)
 		for unit,_ in pairs(self.groups) do
 			UF:UpdateConfig(unit)
 		end
+		
+		UF:UpdateConfig('nameplate')
 	else
 		if self.units[unit] then
 			self:UpdateUnitFrame(self.units[unit], element_name)
@@ -134,6 +148,10 @@ function UF:UpdateConfig(unit, element_name)
 				if frame and frame.Health then
 					self:UpdateUnitFrame(frame, element_name)
 				end
+			end
+		elseif unit == 'nameplate' then
+			for id, nameplate in pairs(self.nameplates) do
+				self:UpdateUnitFrame(nameplate, element_name)
 			end
 		end
 	end
@@ -238,9 +256,6 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
 					true
 				)
-			else
-				-- st.config.profile.unitframes.profiles[profile_name] = {}
-				print(st.config.profile.unitframes.profiles[profile_name])
 			end
 			st.config.profile.unitframes.config_profile = profile_name
 			UF:UpdateConfig()
@@ -420,6 +435,10 @@ function UF:OnInitialize()
 	for unit, global_name in pairs(self.unit_strings) do
 		self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
 	end
+
+	
+	self.nameplates = {}
+	st.oUF:SpawnNamePlates('SaftUI')
 	
 	self.RMH = RealMobHealth
 
