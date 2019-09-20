@@ -373,8 +373,8 @@ function UF:GetConfigTable()
 		}
 	}
 
-	for unit,frame in pairs(self.units) do
-		config.args.unitframes.args[unit] = {
+	local function GetUnitConfig(unit, frame)
+		config_table = {
 			name = self.unit_strings[unit],
 			type = 'group',
 			childGroups = 'select',
@@ -406,9 +406,15 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(frame.elements) do
-			config.args.unitframes.args[unit].args[element_name] =
+			config_table.args[element_name] =
 				self.elements[element_name].GetConfigTable(frame)
 		end
+
+		return config_table
+	end
+
+	for unit,frame in pairs(self.units) do
+		config.args.unitframes.args[unit] = GetUnitConfig(unit, frame)
 	end
 
 	return config
