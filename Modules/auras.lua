@@ -132,7 +132,7 @@ function AU:BuffFrame_UpdateAllBuffAnchors()
 	end
 
 	for i = 1, BUFF_ACTUAL_DISPLAY do
-		buff = _G["BuffButton"..i]
+		local buff = _G["BuffButton"..i]
 		
 		buff:ClearAllPoints()
 		if BuffFrame.numEnchants == 0 and i == 1 then

@@ -127,7 +127,7 @@ end
 
 function lib:FileSizeFormat(bytes, decimals)
     local suffix = 'kMGTPEZY'
-    local factor = floor((strlen(bytes)-1) / 3)
+	 local factor = floor((strlen(bytes)-1) / 3)
     local converted = bytes/math.pow(1024,factor)
     return format('%.0'..(decimals or 0)..'f%sB', converted, strsub(suffix, factor, factor))
 end
@@ -166,7 +166,9 @@ end
 function lib:Trim(string)
 	return string:find('^%s*$') and '' or string:match('^%s*(.*%S)')
 end
+
 function lib:CommaFormat(value)
+	local k
 	while true do  
 		value, k = string.gsub(value, "^(-?%d+)(%d%d%d)", '%1,%2')
 		if (k==0) then break end
