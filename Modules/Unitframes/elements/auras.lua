@@ -41,9 +41,11 @@ canApply, isBossDebuff, casterIsPlayer, nameplateShowAll,timeMod, effect1, effec
 		(config.show_dispel and is_dispellable)
 	) then return end
 
-	if is_dispellable and config.border == 'dispel' or config.border == 'all' then
+	if debuffType and (is_dispellable and config.border == 'dispel' or config.border == 'all') then
 		local c = DebuffTypeColor[debuffType]
 		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+	else
+		st:SetBackdrop(button, element.config.template)
 	end
 
 	if config.desaturate and not (button.isPlayer or is_dispellable) then
