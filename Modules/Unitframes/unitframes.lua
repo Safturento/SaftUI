@@ -52,6 +52,7 @@ function UF.ConstructUnit(self, unit)
 	if self.base_unit == 'nameplate' then
 		UF.nameplates[self.ID] = self
 		UF:UpdateUnitFrame(self)
+		self:SetPoint('CENTER')
 		self:SetScale(UIParent:GetEffectiveScale())
 	end
 
@@ -93,20 +94,18 @@ function UF:UpdateUnitFrame(frame, element_name)
 	if element_name then
 		self.elements[element_name].UpdateConfig(frame, element_name)
 	else
-		if not (frame.is_group_unit or InCombatLockdown()) then
-			
-			if frame.base_unit == 'nameplate' then
-				frame:SetPoint('CENTER')
+		if not (frame.is_group_unit or InCombatLockdown() or frame.base_unit == 'nameplate') then
+			frame:ClearAllPoints()
+			if not frame.config.enable then
+				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+				return
 			else
-				frame:ClearAllPoints()
-				if not frame.config.enable then
-					frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
-					return
-				else
-					frame:SetPoint(unpack(frame.config.position))
-				end
+				frame:SetPoint(unpack(frame.config.position))
 			end
-
+			frame:SetSize(frame.config.width, frame.config.height)
+		end
+		
+		if frame.base_unit == 'nameplate' then
 			frame:SetSize(frame.config.width, frame.config.height)
 		end
 
@@ -285,7 +284,24 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
 	end,
 	whileDead = true,
 	hideOnEscape = true,
-	hasEditBox = false,
+}
+
+StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
+	text = "",
+	button1 = "Copy",
+	button2 = "Cancel",
+	OnAccept = function(self, current_unit, copy_from)
+		local profile = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+
+		local position = profile[current_unit].position
+		profile[current_unit] = st.tablecopy(profile[copy_from], true)
+		profile[current_unit].position = position
+		UF:UpdateConfig()
+		ACR:NotifyChange(ADDON_NAME..' Unitframes')
+	end,
+	OnCancel = function() end,
+	whileDead = true,
+	hideOnEscape = true,
 }
 
 function UF.GenerateRelativeSizeConfigGroup(order)
@@ -379,6 +395,26 @@ function UF:GetConfigTable()
 			type = 'group',
 			childGroups = 'select',
 			args = {
+				copy = {
+					name = 'Copy from',
+					type = 'select',
+					-- inline = true,
+					values = function(info)
+						local units = {}
+						for key,_ in pairs(st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]) do
+							if not (key == unit) then
+								units[key] = key
+							end
+						end
+						return units
+					end,
+					set = function(info, copy_from)
+						local static = StaticPopup_Show('SAFTUI_UF_CONFIRM_UNIT_COPY')
+						static.data = unit
+						static.data2 = copy_from
+						StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"].text = 'Overwrite '..unit..' config with '..copy_from..' config?'
+					end
+				},
 				general = {
 					order = 0,
 					name = 'General',
