@@ -57,7 +57,7 @@ st.CF.generators = {}
 function st.CF.generators.position(order, config_table, global_frame, set_func)
 	local table = {
 		order = order or 0,
-		name = name or 'Position',
+		name = 'Position',
 		type = 'group',
 		inline = true,
 		get = function(info)
@@ -140,8 +140,8 @@ function st.CF.generators.range(order, name, min, max, step, width)
 		order = order,
 		name = name,
 		type = 'range',
-		min = 1,
-		max = 99,
+		min = min or 1,
+		max = max or 99,
 		step = step or 1,
 		width = width or 1,
 	}

@@ -53,11 +53,11 @@ st.defaults.auras = {
 		custom_color = { 0.16, 0.51, 0.91 },
 	},
 	buffs = {
-		growth_direction = 'LEFT',
+		grow_right = false,
 		position = {'TOPRIGHT', Minimap, 'TOPLEFT', -20, 0},
 	},
 	debuffs = {
-		growth_direction = 'LEFT',
+		grow_right = false,
 		position = {'BOTTOMRIGHT', Minimap, 'BOTTOMLEFT', -20, 0},
 	}
 }
@@ -437,9 +437,8 @@ st.defaults.unitframes = {
 						font = 'pixel',
 						max = 8,
 						per_row = 8,
-						self_only = false,
-						vertical_growth = 'TOP',
-						horizontal_growth = 'RIGHT',
+						grow_up = true,
+						grow_right = true,
 						initial_anchor = 'BOTTOMLEFT',
 						cooldown = {
 							enable = true,

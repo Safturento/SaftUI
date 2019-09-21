@@ -58,7 +58,7 @@ canApply, isBossDebuff, casterIsPlayer, nameplateShowAll,timeMod, effect1, effec
 end
 
 function IsDispellable(unit, debuffType)
-	return UnitIsFriend('player', unit) and friendly_dispels[st.my_class][debuffType]
+	return friendly_dispels[st.my_class] and UnitIsFriend('player', unit) and friendly_dispels[st.my_class][debuffType]
 end
 
 function UF.PostCreateAura(auras, button)
@@ -101,8 +101,8 @@ local function UpdateConfig(self, aura_type)
 	auras.numRow = auras.config.per_row
 	auras.spacing = auras.config.spacing
 	auras.initialAnchor = auras.config.initial_anchor
-	auras['growth-y'] = auras.config.vertical_growth
-	auras['growth-x'] = auras.config.horizontal_growth
+	auras['growth-y'] = auras.config.grow_up and 'UP' or 'DOWN'
+	auras['growth-x'] = auras.config.grow_right and 'RIGHT' or 'LEFT'
 	auras.onlyShowPlayer = auras.config.self_only
 	auras.disableCooldown = not auras.config.cooldown.enable
 	auras.showDispellable = auras.config.show_dispellable
@@ -120,10 +120,6 @@ local function Constructor(self, aura_type)
 	return auras
 end
 
-
-
-
-
 local function GetConfigTable(self, aura_type)
 	return {
 		type = 'group',
@@ -140,9 +136,76 @@ local function GetConfigTable(self, aura_type)
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
 			position = st.CF.generators.position(3,
-				self.config[string.lower(aura_type)].position, false,
+				self.config.auras[string.lower(aura_type)].position, false,
 				function() UF:UpdateConfig(self.unit, aura_type) end
 			),
+			size = st.CF.generators.range(4, 'Size', 1, 50, 1),
+			spacing = st.CF.generators.range(5, 'Spacing', 1, 30, 1),
+			max = st.CF.generators.range(6, 'Size', 1, aura_type == 'Debuff' and 16 or 32, 1),
+			per_row = st.CF.generators.range(7, 'Per row', 1, aura_type == 'Debuff' and 16 or 32, 1),
+			grow_up = st.CF.generators.toggle(8, 'Grow up'),
+			grow_right = st.CF.generators.toggle(9, 'Grow right'),
+			initial_anchor = {
+				order = 10,
+				type = 'select',
+				name = 'initial_anchor',
+				values = st.FRAME_ANCHORS
+			},
+			filter = {
+				order = 99,
+				name = 'Filters',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return self.config.auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]]
+				end,
+				set = function(info, value)
+					self.config.auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]] = value
+					UF:UpdateConfig(self.unit, aura_type)
+				end,
+				args = {
+					friend = {
+						name = 'Friendly',
+						type = 'group',
+						inline = true,
+						args = {
+							show_all = st.CF.generators.toggle(1, 'Show all'),
+							show_self = st.CF.generators.toggle(2, 'Show self'),
+							show_dispel = st.CF.generators.toggle(3, 'Show dispel'),
+							desaturate = st.CF.generators.toggle(4, 'Desaturate'),
+							border = {
+								name = 'Borders',
+								type = 'select',
+								values = {
+									['all'] = 'All',
+									['none'] = 'None',
+									['dispel'] = 'Dispellable',
+								},
+							},
+						},
+					},
+					enemy = {
+						name = 'Enemy',
+						type = 'group',
+						inline = true,
+						args = {
+							show_all = st.CF.generators.toggle(1, 'Show all'),
+							show_self = st.CF.generators.toggle(2, 'Show self'),
+							show_dispel = st.CF.generators.toggle(3, 'Show dispel'),
+							desaturate = st.CF.generators.toggle(4, 'Desaturate'),
+							border = {
+								name = 'Borders',
+								type = 'select',
+								values = {
+									['all'] = 'All',
+									['none'] = 'None',
+									['dispel'] = 'Dispellable',
+								},
+							},
+						},
+					},
+				},
+			},
 		}
 	}
 end

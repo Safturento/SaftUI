@@ -56,8 +56,9 @@ local function GetConfigTable(self)
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
-			size = UF.GenerateRelativeSizeConfigGroup(3),
-			position = st.CF.generators.position(4,
+			alpha = st.CF.generators.alpha(3),
+			size = UF.GenerateRelativeSizeConfigGroup(4),
+			position = st.CF.generators.position(5,
 				self.config.portrait.position, false, 
 				function() UF:UpdateConfig(self.unit, 'Portrait') end
 			),
