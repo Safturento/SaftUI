@@ -453,7 +453,7 @@ st.defaults.unitframes = {
 								show_self = true,
 								show_dispel = true,
 								desaturate = true, -- anything not self or dispel
-								border = 'dispel' -- none, dispel, all
+								border = 'all', -- none, dispel, all
 							},
 							friend = {
 								desaturate = false,
@@ -462,6 +462,11 @@ st.defaults.unitframes = {
 					},
 					buffs = {
 						enable = false,
+						filter = {
+							friend = {
+								border = 'none', -- none, dispel, all
+							},
+						},
 						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
 					},
 					debuffs = {
@@ -566,7 +571,7 @@ st.defaults.unitframes = {
 				},
 				name = {
 					position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
-					max_length = 14,
+					max_length = 15,
 				},
 				castbar = {
 					enable = true,
@@ -590,6 +595,68 @@ st.defaults.unitframes = {
 				},
 			}
 		},
-		SaftUI = {}
+		SaftUI = {},
+		AltNameplates = {
+			nameplate = {
+				height = 14,
+				width = 150,
+				portrait = {
+					enable = false,
+				},
+				power = {
+					enable = false,
+				},
+				health = {
+					height = 0,
+					colorTapping = false,
+					colorDisconnected = false,
+					colorPower = false,
+					colorClass = true,
+					colorClassNPC = false,
+					colorClassPet = false,
+					colorReaction = true,
+					colorSmooth = false,
+					colorCustom = false,
+					text = {
+						position = {'RIGHT', 'RIGHT', -3, 1},
+					},
+				},
+				name = {
+					position = {'LEFT', 'LEFT', 5, 1},
+					max_length = 15,
+				},
+				castbar = {
+					enable = true,
+					height = 2,
+					framelevel = 2,
+					position = {'TOP', 'BOTTOM', 0, -3},
+					template = 'thick',
+					icon = {
+						width = 20,
+						height = 5,
+					},
+					text = {
+						position = {'TOPLEFT', 'BOTTOMLEFT', 0, -8},
+					},
+					time = {
+						enable = true,
+						position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -8},
+					},
+				},
+				auras = {
+					buffs = {
+						enable = false,
+					},
+					debuffs = {
+						enable = true,
+						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
+						self_only = true,
+						cooldown = {
+							alpha = 1,
+						},
+					}
+				},
+			}
+		},
 	}
 }
