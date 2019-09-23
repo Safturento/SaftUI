@@ -53,11 +53,11 @@ st.defaults.auras = {
 		custom_color = { 0.16, 0.51, 0.91 },
 	},
 	buffs = {
-		grow_right = false,
+		growth_direction = 'LEFT',
 		position = {'TOPRIGHT', Minimap, 'TOPLEFT', -20, 0},
 	},
 	debuffs = {
-		grow_right = false,
+		growth_direction = 'LEFT',
 		position = {'BOTTOMRIGHT', Minimap, 'BOTTOMLEFT', -20, 0},
 	}
 }
@@ -89,6 +89,8 @@ st.defaults.templates = {
 		backdropcolor = { 0.3, 0.3, 0.3, 0.4 },
 		border = false,
 		thick = true,
+		outer_shadow = {0, 0, 0, 0},
+		inner_shadow = {0, 0, 0, 0},
 	},
 	close = {
 		name = 'Close Button',
@@ -97,6 +99,8 @@ st.defaults.templates = {
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
 		border = false,
 		thick = true,
+		outer_shadow = {0, 0, 0, 0},
+		inner_shadow = {0, 0, 0, 0},
 	},
 	thin = {
 		name = 'Thin',
@@ -105,24 +109,28 @@ st.defaults.templates = {
 		backdropcolor = { 0.2, 0.2, 0.2, 1 },
 		border = true,
 		thick = false,
+		outer_shadow = {0, 0, 0, 0},
+		inner_shadow = {0, 0, 0, 0},
 	},
 	thick = {
 		name = 'Thick',
 		bordercolor = { 0.4, 0.4, 0.4, 1.0 },
 		altbordercolor = { 0, 0, 0, 1.0 },
-		backdropcolor = { 0.15, 0.15, 0.15, 1 },
+		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 		border = true,
 		thick = true,
+		outer_shadow = {0, 0, 0, 0.5},
+		inner_shadow = {0, 0, 0, 0.5},
 	}
 }
 
 st.defaults.templates.thintransparent = st.tablecopy(st.defaults.templates.thin, true)
 st.defaults.templates.thintransparent.name = 'ThinTransparent'
-st.defaults.templates.thintransparent.backdropcolor[4] = 0.75
+st.defaults.templates.thintransparent.backdropcolor[4] = 0.9
 
 st.defaults.templates.thicktransparent = st.tablecopy(st.defaults.templates.thick, true)
 st.defaults.templates.thicktransparent.name = 'ThickTransparent'
-st.defaults.templates.thicktransparent.backdropcolor[4] = 0.75
+st.defaults.templates.thicktransparent.backdropcolor[4] = 0.9
 
 st.defaults.headers = {
 	height = 20,

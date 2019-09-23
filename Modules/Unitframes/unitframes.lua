@@ -52,6 +52,9 @@ function UF.ConstructUnit(self, unit)
 	if self.base_unit == 'nameplate' then
 		UF.nameplates[self.ID] = self
 		UF:UpdateUnitFrame(self)
+		self:EnableMouse(false)
+		self.Health:EnableMouse(false)
+		self.Power:EnableMouse(false)
 		self:SetPoint('CENTER')
 		self:SetScale(UIParent:GetEffectiveScale())
 	end
@@ -142,6 +145,8 @@ function UF:UpdateConfig(unit, element_name)
 		if self.units[unit] then
 			self:UpdateUnitFrame(self.units[unit], element_name)
 		elseif self.groups[unit] then
+			self.groups[unit].config = st.config.profile.unitframes.profiles[self:GetProfile()][unit]
+
 			for i=1,self.groups[unit]:GetNumChildren() do
 				local frame = select(i, self.groups[unit]:GetChildren())
 				if frame and frame.Health then
@@ -188,6 +193,7 @@ function UF:CreateGroupHeaders()
 		"base_unit", "party"
 	)
 
+	party.config = config
 	party:SetPoint(unpack(config.position))
 	self.groups.party = party
 
@@ -391,7 +397,7 @@ function UF:GetConfigTable()
 
 	local function GetUnitConfig(unit, frame)
 		config_table = {
-			name = self.unit_strings[unit],
+			name = self.unit_strings[unit] or unit,
 			type = 'group',
 			childGroups = 'select',
 			args = {
@@ -451,6 +457,10 @@ function UF:GetConfigTable()
 
 	for unit,frame in pairs(self.units) do
 		config.args.unitframes.args[unit] = GetUnitConfig(unit, frame)
+	end
+
+	for unit, header in pairs(self.groups) do
+		config.args.unitframes.args[unit] = GetUnitConfig(unit, select(1, header:GetChildren()))
 	end
 
 	return config

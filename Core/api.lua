@@ -56,7 +56,15 @@ function st:SetTemplate(frame, template)
 	if not frame.altborder then
 		CreateAltBorder(frame)
 	end
-	
+
+	if not frame.outer_shadow then
+		frame.outer_shadow = CreateFrame('frame', nil, frame)
+		frame.outer_shadow:SetPoint('TOPLEFT', -4, 4)
+		frame.outer_shadow:SetPoint('BOTTOMRIGHT', 4, -4)
+		frame.outer_shadow:SetBackdrop({edgeFile = st.textures.glow, edgeSize = 4})
+	end
+	frame.outer_shadow:SetBackdropBorderColor(unpack(config.outer_shadow)) 
+
 	for _,border in pairs(frame.altborder) do
 		if config.border and config.thick then 
 			border:SetVertexColor(unpack(config.altbordercolor))

@@ -27,6 +27,7 @@ st.MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\Textures\\', ADDON_NAME)
 st.textures = {
 	cornerbr = st.MEDIA_PATH..'cornerarrowbottomright.tga',
 	mail = st.MEDIA_PATH..'mail.tga',
+	glow = st.MEDIA_PATH..'glowTex.tga',
 }
 
 st.FRAME_ANCHORS = {

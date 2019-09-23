@@ -18,7 +18,7 @@ end
 function TT:UpdateTooltipDisplay(tooltip)
 	local font,size,outline = st:GetFont(self.config.font):GetFont()
 
-	st:SetTemplate(tooltip)
+	tooltip:SetBackdrop(nil)
 	st:SetBackdrop(tooltip, self.config.template)
 
 	local name = tooltip:GetName()
@@ -36,17 +36,58 @@ function TT:UpdateTooltipDisplay(tooltip)
 	end
 end
 
+function TT:GameTooltip_OnTooltipSetUnit(tooltip)	
+	self:UpdateTooltipDisplay(tooltip)
+
+	local c
+	if (select(1, UnitName('mouseover')) == nil) and UnitPlayerControlled('mouseover') then
+		c = RAID_CLASS_COLORS[st.my_class]
+	elseif UnitPlayerControlled('mouseover') then
+		c = RAID_CLASS_COLORS[select(2, UnitClass('mouseover'))]
+	else
+		c = FACTION_BAR_COLORS[UnitReaction('player', 'mouseover')]
+	end
+
+	if c then
+		_G[tooltip:GetName()..'TextLeft1']:SetTextColor(c.r, c.g, c.b)
+		tooltip.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+		GameTooltipStatusBar.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+	end
+end
+
+
+
+function TT:GameTooltip_OnTooltipSetItem()
+	self:UpdateTooltipDisplay(GameTooltip)
+end
+
+function TT:GameTooltip_ShowCompareItem()
+	for i=1, 2 do 
+		local tt = _G['ShoppingTooltip'..i]
+		if tt:IsShown() then
+			self:UpdateTooltipDisplay(tt)
+			local point, frame, relative, x, y = tt:GetPoint()
+			tt:ClearAllPoints()
+			tt:SetPoint(point, frame, relative, point == 'TOPRIGHT' and -7 or 7, 0)
+		end
+	end
+end
+
 function TT:OnEnable()
 	self.config = st.config.profile.tooltip
-	GameTooltip._SetHeight = GameTooltip.SetHeight
-	GameTooltip.SetHeight = st.dummy
+	
 	GameTooltipStatusBar:SetStatusBarTexture(st.BLANK_TEX)
+	GameTooltipStatusBar:ClearAllPoints()
+	GameTooltipStatusBar:SetPoint('BOTTOMLEFT', GameTooltip, 'TOPLEFT', 0, 7)
+	GameTooltipStatusBar:SetPoint('BOTTOMRIGHT', GameTooltip, 'TOPRIGHT', 0, 7)
+
+
 	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
 	self:SecureHook('GameTooltip_SetDefaultAnchor', 'UpdateGameTooltipPosition')
 	self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
-	-- self:SecureHookScript(GameTooltip, 'OnTooltipCleared', 'UpdateTooltipDisplay')
-	self:SecureHookScript(GameTooltip, 'OnTooltipSetItem', 'UpdateTooltipDisplay')
-	self:SecureHookScript(GameTooltip, 'OnTooltipSetUnit', 'UpdateTooltipDisplay')
+	self:SecureHookScript(GameTooltip, 'OnTooltipSetItem', 'GameTooltip_OnTooltipSetItem')
+	self:SecureHookScript(GameTooltip, 'OnTooltipSetUnit', 'GameTooltip_OnTooltipSetUnit')
+	self:SecureHook('GameTooltip_ShowCompareItem')
 
 	self.AllTooltips = {
 		GameTooltip,
@@ -57,18 +98,11 @@ function TT:OnEnable()
 		ShoppingTooltip1,
 		ShoppingTooltip2,
 		ShoppingTooltip3,
-		-- WorldMapTooltip,
 		WorldMapTooltip,
-		WorldMapCompareTooltip1,
-		WorldMapCompareTooltip2,
-		WorldMapCompareTooltip3,
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
 		st:SetTemplate(tooltip)
 		st:SetBackdrop(tooltip, self.config.template)
-		if not self.hooked then
-			self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
-			self.hooked = true
-		end
+		self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
 	end
 end

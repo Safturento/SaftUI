@@ -135,7 +135,7 @@ function AU:BuffFrame_UpdateAllBuffAnchors()
 		local buff = _G["BuffButton"..i]
 		
 		buff:ClearAllPoints()
-		if BuffFrame.numEnchants == 0 and i == 1 then
+		if not prev then
 			buff:SetPoint(unpack(self.config.buffs.position))
 		else
 			buff:SetPoint(PositionNextBuff(prev, self.config.spacing, self.config.buffs.growth_direction))
