@@ -66,8 +66,9 @@ st.defaults.loot = {
 	popup = {
 		template = 'thick',
 		font = 'pixel',
-		width = 130,
-		button_height = 25,
+		name_wrap = true,
+		width = 200,
+		button_height = 30,
 		spacing = 7,
 	},
 	roll = {

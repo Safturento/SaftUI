@@ -42,22 +42,22 @@ function LT:SkinLootButton(button)
 	local ID = button:GetID()
 	st:Kill(_G['LootButton'..ID..'NameFrame'])
 
-	st.SkinActionButton(button, self.config.popup)
 	button:SetSize(self.config.popup.width, self.config.popup.button_height)
 
-	st:SkinIcon(button.icon)
-	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
 	button.icon:ClearAllPoints()
 	button.icon:SetPoint('LEFT')
+	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
+	st.SkinActionButton(button, self.config.popup)
+
 	st:Kill(button.IconBorder)
 	st:Kill(button.IconOverlay)
 
 	button.nametext = _G['LootButton'..ID..'Text']
 	button.nametext:SetFontObject(st:GetFont(self.config.popup.font))
 	button.nametext:ClearAllPoints()
-	button.nametext:SetPoint('TOPLEFT', button.icon, 'TOPRIGHT', 3, 0)
-	button.nametext:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -3, 0)
-	button.nametext:SetWordWrap(false)
+	button.nametext:SetPoint('LEFT', button.icon, 'RIGHT', 7, 0)
+	button.nametext:SetPoint('RIGHT', button, 'RIGHT', -7, 0)
+	button.nametext:SetWordWrap(self.config.popup.name_wrap)
 
 	button.Count:SetFontObject(st:GetFont(self.config.popup.font))
 	button.Count:ClearAllPoints()
