@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Script file="skinning.lua"/>
 	<Include file="Addons\addons.xml"/>
+	<Include file="Blizzard\blizzard.xml"/>
 </Ui>

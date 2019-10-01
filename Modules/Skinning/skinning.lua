@@ -29,8 +29,62 @@ function SK:SkinFrames()
 	self:UnregisterEvent('PLAYER_ENTERING_WORLD') --Make sure this only runs once
 end
 
+function SK:UpdateTab(tab)
+	tab:SetDisabledFontObject(st:GetFont(st.config.profile.panels.font))
+	if tab.Text then
+		tab.Text:ClearAllPoints()
+		tab.Text:SetPoint('CENTER')
+	end
+	tab:SetHeight(st.config.profile.panels.tab_height)
+end
+
 function SK:OnInitialize()
 	self:RegisterEvent('ADDON_LOADED', 'SkinAddon')
 	-- SK:RegisterEvent('PLAYER_ENTERING_WORLD', 'SkinFrames')
 	self:SkinFrames()
+
+	self:SecureHook('PanelTemplates_DeselectTab', 'UpdateTab')
+	self:SecureHook('PanelTemplates_SelectTab', 'UpdateTab')
+end
+
+function SK:SkinBlizzardPanel(panel, title, close, portrait)
+	local name = panel:GetName()
+	title = title or _G[name..'TitleText']
+	close = close or _G[name..'CloseButton']
+	portrait = portrait or _G[name..'Portrait']
+
+	if portrait then
+		st:Kill(portrait)
+	end
+
+	st:StripTextures(panel)
+
+	st:CreateHeader(panel, title, close)
+	st:SetBackdrop(panel, st.config.profile.panels.template)
+	panel.backdrop:ClearAllPoints()
+
+	panel.backdrop:SetPoint('TOPLEFT', 10, -10)
+	panel.backdrop:SetPoint('BOTTOMRIGHT', -30, 74)
+
+	panel.header:SetPoint('TOPLEFT', 12, -12)
+	panel.header:SetPoint('TOPRIGHT', -32, -12)
+
+	local i = 1
+	local tab = _G[name..'Tab'..i]
+	while tab do
+		st:StripTextures(tab)
+		st.SkinActionButton(tab, st.config.profile.panels)
+
+		if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
+
+		tab:ClearAllPoints()
+		if i == 1 then
+			tab:SetPoint('TOPLEFT', panel.backdrop, 'BOTTOMLEFT', 2, -5)
+		else
+			tab:SetPoint('LEFT', prev, 'RIGHT', 7, 0)
+		end
+		prev = tab
+		i = i + 1
+		tab = _G[name..'Tab'..i]
+	end
 end

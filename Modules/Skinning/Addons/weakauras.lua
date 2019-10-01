@@ -8,9 +8,10 @@ local function SkinIcon(parent, region, data)
 		-- Make sure the backdrop always stay below the icons..
 		region.backdrop:SetFrameStrata('LOW')
 		
-		st:SkinIcon(region.icon)
 		region.skinned = true
 	end
+
+	st:SkinIcon(region.icon, nil, region)
 end
 
 ---------------------------------------------
