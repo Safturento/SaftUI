@@ -43,7 +43,7 @@ function INV:HandleMerchant()
 		if canRepair and repairAllCost > 0 and repairAllCost < GetMoney() then
 			RepairAllItems()
 			print('Repaired all items for ' .. st.StringFormat:GoldFormat(repairAllCost))
-		else
+		elseif repairAllCost > 0 then
 			print('Insufficient funds for gear repair.')
 		end
 
