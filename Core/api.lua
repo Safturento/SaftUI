@@ -47,11 +47,20 @@ function st:SetTemplate(frame, template)
 				border:Hide()
 			end
 		end
+
+		if self.template_cache and self.template_cache[frame] then
+			self.template_cache[frame] = nil
+		end
+
 		return
 	end
 
+	
 	local config = st.config.profile.templates[template]
 	assert(config, template .. ' template not found')
+
+	if not self.template_cache then self.template_cache = {} end
+	if not self.template_cache[frame] then self.template_cache[frame] = template end
 
 	if not frame.altborder then
 		CreateAltBorder(frame)
@@ -107,6 +116,9 @@ function st:SetBackdrop(frame, template)
 	local config = st.config.profile.templates[template]
 	assert(config, template .. ' template not found')
 
+	
+	if not frame.GetObjectType then print(debugstack()) end
+
 	local is_texture = frame:GetObjectType() == 'Texture'
 
 	local parent = is_texture and frame:GetParent() or frame
@@ -121,7 +133,41 @@ function st:SetBackdrop(frame, template)
 	frame.backdrop:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
 	frame.backdrop:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
 	
+	frame.backdrop.template = template
+
 	st:SetTemplate(frame.backdrop, template)
+end
+
+function st:SkinScrollBar(bar)
+	local parent = bar:GetParent()
+	local name = bar:GetName()
+
+	if bar.ScrollUpButton then st:Kill(bar.ScrollUpButton) end
+	if bar.ScrollDownButton then st:Kill(bar.ScrollDownButton) end
+	if _G[name..'Top'] then st:Kill(_G[name..'Top']) end
+	if _G[name..'Bottom'] then st:Kill(_G[name..'Bottom']) end
+
+	st:StripTextures(bar)
+
+	local width = customWidth or 20
+
+	local thumb = bar.ThumbTexture
+	thumb:SetTexture(nil)
+	st:SetBackdrop(thumb, st.config.profile.panels.template)
+
+
+	-- Standardized positioning for all scrollbars
+	bar:ClearAllPoints()
+	if inside then
+		bar:SetPoint('TOPRIGHT', parent, 'TOPRIGHT', 1, 0)
+		bar:SetPoint('BOTTOMRIGHT', parent, 'BOTTOMRIGHT', 1, 0)
+	else
+		bar:SetPoint('TOPLEFT', parent, 'TOPRIGHT', 0, 0)
+		bar:SetPoint('BOTTOMLEFT', parent, 'BOTTOMRIGHT', 0, 0)
+	end
+	bar:SetWidth(width)
+
+	bar.SetPoint = st.dummy
 end
 
 function st:StripTextures(frame, kill)
@@ -156,27 +202,49 @@ end
 function st:SkinIcon(icon, customTrim, anchorFrame)
 	if anchorFrame then
 		icon:SetAllPoints(anchorFrame)
+		icon:SetSize(anchorFrame:GetSize())
 	end
 	
 	if icon.SetTexCoord then
+		local w, h = icon:GetSize()
+		local scale
 		local trim = customTrim or st.config.profile.misc.icon_trim
-		icon:SetTexCoord(trim, 1-trim, trim, 1-trim)
-		icon.SetTexCoord = SaftUI.dummy
+		if (w == 0) and (h == 0) then
+			icon:SetTexCoord(trim, 1 - trim, trim, 1 - trim)
+		elseif w > h then
+			scale = (1 - h / w) / 2
+			icon:SetTexCoord(trim, 1-trim, scale + trim, 1 - scale - trim)
+		else
+			scale = (1 - w / h) / 2
+			icon:SetTexCoord(scale + trim, 1 - scale - trim, trim, 1 - trim)
+		end
 	else
-		S:print('function SetTexCoord does not exist for',icon:GetName() or icon)
+		print('function SetTexCoord does not exist for', icon:GetName() or icon)
 	end
 end
 
 function st.SkinActionButton(button, config)
+	if not config then
+		config = {
+			font = st.config.profile.buttons.font,
+			template = st.config.profile.buttons.template
+		}
+	end
+	
 	local name = button:GetName()
 
-	local icon = _G[name.."Icon"] or button.icon or button.Icon
+	local icon = _G[name.."Icon"] or _G[name..'IconTexture'] or button.icon or button.Icon
 	local count = _G[name.."Count"] or button.count or button.Count
 	local flash = _G[name.."Flash"] or button.flash or button.Flash
 	local hotkey = _G[name.."HotKey"] or button.hotkey or button.HotKey
 	local border = _G[name.."Border"] or button.border or button.Border
 	local normal = _G[name.."NormalTexture"] or button.NormalTexture
+	local item_level = button.item_level
 	local bg = _G[name..'FloatingBG']
+
+	if button.Left then st:Kill(button.Left) end
+	if button.Middle then st:Kill(button.Middle) end
+	if button.Right then st:Kill(button.Right) end
 
 	if bg then
 		bg:SetTexture(nil)
@@ -199,6 +267,27 @@ function st.SkinActionButton(button, config)
 			end
 		end
 
+		if count then
+			count:ClearAllPoints()
+			count:SetPoint('BOTTOMRIGHT', 2, 1)
+			count:SetJustifyH('RIGHT')
+			count:SetJustifyV('BOTTOM')
+		end
+
+		if item_level then
+			item_level:ClearAllPoints()
+			item_level:SetPoint('BOTTOMRIGHT', 2, 1)
+			item_level:SetJustifyH('RIGHT')
+			item_level:SetJustifyV('BOTTOM')
+		end
+
+		if hotkey then
+			hotkey:ClearAllPoints()
+			hotkey:SetPoint('TOPRIGHT')
+			hotkey:SetPoint('TOPLEFT', 0, 2)
+			hotkey:SetJustifyH('LEFT')
+			hotkey:SetJustifyV('TOP')
+		end
 		if button.SetNormalFontObject then
 			button:SetNormalFontObject(font_object)
 			button:SetHighlightFontObject(font_object)

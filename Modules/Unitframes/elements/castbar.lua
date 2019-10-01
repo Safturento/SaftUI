@@ -105,17 +105,7 @@ local function UpdateConfig(self)
 			self.Castbar.Icon:SetWidth(self.config.castbar.icon.width)
 		end
 
-		local w,h = self.Castbar.Icon:GetWidth(), self.Castbar.Icon:GetHeight()
-		local scale
-		local trim = st.config.profile.misc.icon_trim
-		if w > h then
-			scale = (1 - h/w) / 2
-			self.Castbar.Icon.texture:SetTexCoord(trim, 1-trim, scale + trim, 1 - scale - trim)
-		else
-			scale = (1 - w/h) / 2
-			self.Castbar.Icon.texture:SetTexCoord(scale + trim, 1 - scale - trim, trim, 1 - trim)
-		end
-
+		st:SkinIcon(self.Castbar.Icon.texture)
 	else
 		self.Castbar.Icon:Hide()
 	end

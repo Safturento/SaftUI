@@ -23,14 +23,15 @@ function INV:AssignSlot(container, slot, slotInfo)
 	-- self.SlotMap[tostring(slotInfo.bagID) .. tostring(slotInfo.slotID)] = slot
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
-		slot.itemlevel:SetFormattedText('%s',slot.info.ilvl)
+		slot.item_level:SetFormattedText('%s',slot.info.ilvl)
 	else
-		slot.itemlevel:SetText('')
+		slot.item_level:SetText('')
 	end
 
 	if not slot.info.locked and slot.info.quality then
 		if slot.info.quality > -1 then
-			slot.backdrop:SetBackdropBorderColor(GetItemQualityColor(slot.info.quality))
+			local c = ITEM_QUALITY_COLORS[slot.info.quality]
+			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
 		else
 			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
 		end
@@ -70,23 +71,23 @@ function INV:CreateSlot(container, category_name)
 		self:SetSlotPosition(slot, category_frame, container)
 	end
 	
-	slot:SetSize(self.config.buttonsize, self.config.buttonsize)
+	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
 	
 	slot.cooldown = _G[slot_name .. "Cooldown"]
 
 	st:Kill(slot.BattlepayItemTexture)
 
-	st:SkinIcon(slot.icon)
+	st:SkinIcon(slot.icon, nil, slot)
 
 	slot.Count:ClearAllPoints()
 	slot.Count:SetPoint('BOTTOMRIGHT', -2, 4)
 
 	slot.cooldown:SetAllPoints(slot)
 
-	itemlevel = slot:CreateFontString(nil, 'OVERLAY')
-	itemlevel:SetFontObject(st:GetFont('pixel'))
-	itemlevel:SetPoint('BOTTOMRIGHT', slot.Count)
-	slot.itemlevel = itemlevel
+	item_level = slot:CreateFontString(nil, 'OVERLAY')
+	item_level:SetFontObject(st:GetFont('pixel'))
+	item_level:SetPoint('BOTTOMRIGHT', slot.Count)
+	slot.item_level = item_level
 
 	st.SkinActionButton(slot, {
 		template = self.config.template,

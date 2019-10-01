@@ -143,7 +143,7 @@ function INV:UpdateConfig(id)
 	container:ClearAllPoints()
 	container:SetPoint(unpack(self.config[id].position))
 
-	container:SetWidth(self.config.padding * 2 + (self.config.buttonsize + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+	container:SetWidth(self.config.padding * 2 + (self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
 	container:SetHeight(200)
 	
 	st:SetBackdrop(container, self.config.template)

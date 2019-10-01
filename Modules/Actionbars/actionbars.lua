@@ -87,15 +87,6 @@ function AB:CreateBars()
 			slot.count = _G[name..'Count']
 			slot.hotkey = _G[name..'HotKey']
 
-			slot.count:ClearAllPoints()
-			slot.count:SetPoint('BOTTOMRIGHT', -3, 3)
-
-			slot.hotkey:ClearAllPoints()
-			slot.hotkey:SetPoint('TOPRIGHT')
-			slot.hotkey:SetPoint('TOPLEFT')
-			slot.hotkey:SetJustifyH('RIGHT')
-
-
 			bar.slots[j] = slot
 		end
 		
@@ -113,15 +104,20 @@ function AB:UpdateConfig()
 		end
 
 		st:SetBackdrop(bar, self.config.template)
-		local width = bar.config.perrow * (bar.config.size + bar.config.spacing) - bar.config.spacing + bar.config.padding_x * 2
-		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.size + bar.config.spacing) - bar.config.spacing + bar.config.padding_y * 2
+		local width = bar.config.perrow * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.padding_x * 2
+		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.padding_y * 2
+		
 		bar:SetSize(width, height)
 		bar:SetPoint(unpack(bar.config.position))
-		
+
 		local prev
 		for j, slot in ipairs(bar.slots) do
-			slot:SetSize(bar.config.size, bar.config.size)
+			slot:SetSize(bar.config.width, bar.config.height)
 			st.SkinActionButton(slot, { font = self.config.font, template = bar.config.template })
+			if slot.Border then
+				slot.Border:ClearAllPoints()
+			end
+
 			self:UpdateHotkey(slot)
 			slot:ClearAllPoints()
 
@@ -147,12 +143,21 @@ function AB:UpdateHotkey(slot)
 	slot.hotkey:SetText(text)
 end
 
+function AB:UpdateActionButton(self)
+	if IsEquippedAction(self.action) then
+		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
+	else
+		st:SetTemplate(self.backdrop, self.backdrop.template)
+	end
+end
+
 function AB:OnInitialize()
 	self.config = st.config.profile.actionbars
 	self:KillBlizzard()
 	self:CreateBars()
 	self:UpdateConfig()
 
+	self:SecureHook('ActionButton_Update', 'UpdateActionButton')
 	self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
 	self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
 end

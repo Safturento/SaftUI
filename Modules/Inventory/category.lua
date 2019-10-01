@@ -123,7 +123,7 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	end
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
-	categoryHeight = (self.config.buttonsize + self.config.buttonspacing) * numRows + INV.CATEGORY_TITLE_HEIGHT
+	categoryHeight = (self.config.buttonheight + self.config.buttonspacing) * numRows + INV.CATEGORY_TITLE_HEIGHT
 	category_frame:SetHeight(categoryHeight)
 end
 

@@ -24,6 +24,21 @@ function st.CF:InitializeConfigGUI()
 	st.config_initialized = true
 end
 
+function st.CF:UpdateTemplateConfig(template)
+	if not template then
+		for template,_ in pairs(st.config.profile.templates) do
+			self:UpdateTemplateConfig(template)
+		end
+		return
+	end
+
+	for frame, t in self.template_cache do
+		if t == template then
+			st:SetTemplate(frame, t)
+		end
+	end
+end
+
 st.CF.options = {
 	type = 'group', 
 	name = ADDON_NAME,

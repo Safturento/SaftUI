@@ -3,7 +3,7 @@ local ADDON_NAME, st = ...
 st.defaults = {}
 
 st.defaults.misc = {
-	icon_trim = 0.03,
+	icon_trim = 0.065,
 }
 
 st.defaults.fonts = {
@@ -133,10 +133,20 @@ st.defaults.templates.thicktransparent.name = 'ThickTransparent'
 st.defaults.templates.thicktransparent.backdropcolor[4] = 0.9
 
 st.defaults.headers = {
-	height = 20,
+	height = 21,
 	font = 'pixel',
 }
 
+st.defaults.buttons = {
+	font = 'pixel',
+	template = 'thick',
+}
+
+st.defaults.panels = {
+	font = 'pixel',
+	template = 'thicktransparent',
+	tab_height = 21,
+}
 
 st.defaults.maps = {
 	minimap = {
@@ -196,7 +206,8 @@ st.defaults.inventory = {
 	buttontemplate = 'thicktransparent',
 	template = 'thicktransparent',
 	padding = 10,
-	buttonsize = 30,
+	buttonheight = 20,
+	buttonwidth = 30,
 	buttonspacing = 7,
 	categoryspacing = 10,
 	autorepair = true,
@@ -226,7 +237,8 @@ st.defaults.actionbars = {
 		padding_y = 0,
 		padding_x = 0,
 		spacing = 8,
-		size = 30,
+		height = 20,
+		width = 30,
 		alpha = 1,
 		ooc_alpha = 1,
 		total = 12,
@@ -275,7 +287,7 @@ st.defaults.colors = {
 	item_quality = {
 		[0] = {0.61, 0.61, 0.61},
 		[1] = {1, 1, 1},
-		[2] = {90/255, 161/255, 80/255},
+		[2] = {90/255, 200/255, 75/255},
 		[3] = {58/255, 133/255, 207/255},
 		[4] = {160/255, 99/255, 201/255},
 		[5] = {209/255, 142/255, 61/255},
