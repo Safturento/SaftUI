@@ -125,7 +125,7 @@ local function GetConfigTable(self)
 		end,
 		set = function(info, value)
 			self.config.castbar[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Castbar')
+			UF:UpdateConfig(self.base_unit, 'Castbar')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -134,7 +134,7 @@ local function GetConfigTable(self)
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			position = st.CF.generators.position(4,
 				self.config.castbar.position, false,
-				function() UF:UpdateConfig(self.unit, 'Castbar') end
+				function() UF:UpdateConfig(self.base_unit, 'Castbar') end
 			),
 			icon = {
 				order = 5,
@@ -146,7 +146,7 @@ local function GetConfigTable(self)
 				end,
 				set = function(info, value)
 					self.config.castbar.icon[info[#info]] = value
-					UF:UpdateConfig(self.unit, 'Castbar')
+					UF:UpdateConfig(self.base_unit, 'Castbar')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
@@ -155,7 +155,7 @@ local function GetConfigTable(self)
 					size = UF.GenerateRelativeSizeConfigGroup(3),
 					position = st.CF.generators.position(4,
 						self.config.castbar.icon.position, false,
-						function() UF:UpdateConfig(self.unit, 'Castbar') end
+						function() UF:UpdateConfig(self.base_unit, 'Castbar') end
 					),
 				}
 			}

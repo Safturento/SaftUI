@@ -116,7 +116,7 @@ local function GetConfigTable(self)
 		end,
 		set = function(info, value)
 			self.config.power[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Power')
+			UF:UpdateConfig(self.base_unit, 'Power')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -126,7 +126,7 @@ local function GetConfigTable(self)
 			template = st.CF.generators.template(4),
 			position = st.CF.generators.position(5,
 				self.config.power.position, false,
-				function() UF:UpdateConfig(self.unit, 'Power') end
+				function() UF:UpdateConfig(self.base_unit, 'Power') end
 			),
 			text = {
 				order = 6,
@@ -138,14 +138,14 @@ local function GetConfigTable(self)
 				end,
 				set = function(info, value)
 					self.config.power.text[info[#info]] = value
-					UF:UpdateConfig(self.unit, 'Power')
+					UF:UpdateConfig(self.base_unit, 'Power')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
 					font = st.CF.generators.font(1),
 					position = st.CF.generators.position(2,
 						self.config.power.text.position, false,
-						function() UF:UpdateConfig(self.unit, 'Power') end
+						function() UF:UpdateConfig(self.base_unit, 'Power') end
 					),
 				},
 			},
@@ -159,7 +159,7 @@ local function GetConfigTable(self)
 				end,
 				set = function(info, value)
 					self.config.power.bg[info[#info]] = value
-					UF:UpdateConfig(self.unit, 'Power')
+					UF:UpdateConfig(self.base_unit, 'Power')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),

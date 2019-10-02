@@ -34,7 +34,7 @@ local function GetConfigTable(self)
 		end,
 		set = function(info, value)
 			self.config.name[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Name')
+			UF:UpdateConfig(self.base_unit, 'Name')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -43,7 +43,7 @@ local function GetConfigTable(self)
 			alpha = st.CF.generators.alpha(3),
 			position = st.CF.generators.position(4,
 				self.config.name.position, false, 
-				function() UF:UpdateConfig(self.unit, 'Name') end
+				function() UF:UpdateConfig(self.base_unit, 'Name') end
 			),
 			show_level = st.CF.generators.toggle(5, 'Show level', 1),
 			max_length = st.CF.generators.range(6, 'Max length', 1, 100, 1),

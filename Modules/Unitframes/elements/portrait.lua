@@ -50,7 +50,7 @@ local function GetConfigTable(self)
 		end,
 		set = function(info, value)
 			self.config.portrait[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Portrait')
+			UF:UpdateConfig(self.base_unit, 'Portrait')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -60,7 +60,7 @@ local function GetConfigTable(self)
 			size = UF.GenerateRelativeSizeConfigGroup(4),
 			position = st.CF.generators.position(5,
 				self.config.portrait.position, false, 
-				function() UF:UpdateConfig(self.unit, 'Portrait') end
+				function() UF:UpdateConfig(self.base_unit, 'Portrait') end
 			),
 		}
 	}

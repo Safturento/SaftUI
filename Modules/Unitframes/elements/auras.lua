@@ -129,7 +129,7 @@ local function GetConfigTable(self, aura_type)
 		end,
 		set = function(info, value)
 			self.config.auras[string.lower(aura_type)][info[#info]] = value
-			UF:UpdateConfig(self.unit, aura_type)
+			UF:UpdateConfig(self.base_unit, aura_type)
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -137,7 +137,7 @@ local function GetConfigTable(self, aura_type)
 			template = st.CF.generators.template(2),
 			position = st.CF.generators.position(3,
 				self.config.auras[string.lower(aura_type)].position, false,
-				function() UF:UpdateConfig(self.unit, aura_type) end
+				function() UF:UpdateConfig(self.base_unit, aura_type) end
 			),
 			size = st.CF.generators.range(4, 'Size', 1, 50, 1),
 			spacing = st.CF.generators.range(5, 'Spacing', 1, 30, 1),
@@ -161,7 +161,7 @@ local function GetConfigTable(self, aura_type)
 				end,
 				set = function(info, value)
 					self.config.auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]] = value
-					UF:UpdateConfig(self.unit, aura_type)
+					UF:UpdateConfig(self.base_unit, aura_type)
 				end,
 				args = {
 					friend = {

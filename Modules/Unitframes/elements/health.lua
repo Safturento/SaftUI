@@ -127,7 +127,7 @@ local function GetConfigTable(self)
 		end,
 		set = function(info, value)
 			self.config.health[info[#info]] = value
-			UF:UpdateConfig(self.unit, 'Health')
+			UF:UpdateConfig(self.base_unit, 'Health')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -136,7 +136,7 @@ local function GetConfigTable(self)
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			position = st.CF.generators.position(4,
 				self.config.health.position, false,
-				function() UF:UpdateConfig(self.unit, 'Health') end
+				function() UF:UpdateConfig(self.base_unit, 'Health') end
 			),
 			text = {
 				order = 5,
@@ -148,14 +148,14 @@ local function GetConfigTable(self)
 				end,
 				set = function(info, value)
 					self.config.health.text[info[#info]] = value
-					UF:UpdateConfig(self.unit, 'Health')
+					UF:UpdateConfig(self.base_unit, 'Health')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
 					font = st.CF.generators.font(1),
 					position = st.CF.generators.position(2,
 						self.config.health.text.position, false,
-						function() UF:UpdateConfig(self.unit, 'Health') end
+						function() UF:UpdateConfig(self.base_unit, 'Health') end
 					),
 				},
 			},
@@ -169,7 +169,7 @@ local function GetConfigTable(self)
 				end,
 				set = function(info, value)
 					self.config.health.bg[info[#info]] = value
-					UF:UpdateConfig(self.unit, 'Health')
+					UF:UpdateConfig(self.base_unit, 'Health')
 				end,
 				args = {
 					enable = st.CF.generators.enable(1),
