@@ -124,8 +124,21 @@ function AM:OnInitialize()
 		button:SetPoint('BOTTOM')
 	end
 	self.buttons.buttons.enable_all:SetPoint('LEFT', self.buttons)
+	self.buttons.buttons.enable_all:HookScript('OnClick', function()
+		for i=1, #self.addon_cache do
+			self.addon_cache[i].checked = true
+		end
+		self:UpdateAddonDisplay()
+	end)
+	
 	self.buttons.buttons.disable_all:SetPoint('LEFT', self.buttons.buttons.enable_all, 'RIGHT', 7, 0)
-	self.buttons.buttons.cancel:SetPoint('RIGHT')
+	self.buttons.buttons.disable_all:HookScript('OnClick', function()
+		for i=1, #self.addon_cache do
+			self.addon_cache[i].checked = false
+		end
+		self:UpdateAddonDisplay()
+	end)
+
 	self.buttons.buttons.okay:SetPoint('RIGHT', self.buttons.buttons.cancel, 'LEFT', -7, 0)
 	self.buttons.buttons.okay:SetScript('OnClick', function()
 		if self.changed then
@@ -133,6 +146,8 @@ function AM:OnInitialize()
 			ReloadUI()
 		end
 	end)
+
+	self.buttons.buttons.cancel:SetPoint('RIGHT')
 	self.buttons.buttons.cancel:SetScript('OnClick', function()
 		ResetAddOns()
 		self.window:Hide()

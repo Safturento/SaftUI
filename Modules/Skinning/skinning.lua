@@ -82,6 +82,12 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 
 		panel.header:SetPoint('TOPLEFT', 12, -12)
 		panel.header:SetPoint('TOPRIGHT', -32, -12)
+		
+		if panel.footer then
+			panel.footer:ClearAllPoints()
+			panel.footer:SetPoint('BOTTOMLEFT', 12, 74)
+			panel.footer:SetPoint('BOTTOMRIGHT', -32, 74)
+		end
 	end
 
 	local i = 1
