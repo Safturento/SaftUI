@@ -36,6 +36,9 @@ function SK:UpdateTab(tab)
 		tab.Text:SetPoint('CENTER')
 	end
 	tab:SetHeight(st.config.profile.panels.tab_height)
+	local bd = tab:GetParent().backdrop
+	tab:SetWidth(tab:GetTextWidth()+20)
+	
 end
 
 function SK:OnInitialize()
@@ -43,15 +46,24 @@ function SK:OnInitialize()
 	-- SK:RegisterEvent('PLAYER_ENTERING_WORLD', 'SkinFrames')
 	self:SkinFrames()
 
+	SK:SkinBlizzardPanel(FriendsFrame)
+
+	self:SecureHook('PanelTemplates_ResizeTabsToFit', function(frame, maxWidthForAllTabs)
+		for i = 1, frame.numTabs do
+			UpdateDate(GetTabByIndex(frame, i))
+		end
+	end)
 	self:SecureHook('PanelTemplates_DeselectTab', 'UpdateTab')
 	self:SecureHook('PanelTemplates_SelectTab', 'UpdateTab')
 end
 
-function SK:SkinBlizzardPanel(panel, title, close, portrait)
+function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
+	if not options then options = {} end
+	-- if not panel then return end
 	local name = panel:GetName()
-	title = title or _G[name..'TitleText']
-	close = close or _G[name..'CloseButton']
-	portrait = portrait or _G[name..'Portrait']
+	title = options.title or _G[name..'TitleText']
+	close = options.close or _G[name..'CloseButton']
+	portrait = options.portrait or _G[name..'Portrait']
 
 	if portrait then
 		st:Kill(portrait)
@@ -61,13 +73,16 @@ function SK:SkinBlizzardPanel(panel, title, close, portrait)
 
 	st:CreateHeader(panel, title, close)
 	st:SetBackdrop(panel, st.config.profile.panels.template)
-	panel.backdrop:ClearAllPoints()
 
-	panel.backdrop:SetPoint('TOPLEFT', 10, -10)
-	panel.backdrop:SetPoint('BOTTOMRIGHT', -30, 74)
+	if options.fix_padding then
+		panel.backdrop:ClearAllPoints()
 
-	panel.header:SetPoint('TOPLEFT', 12, -12)
-	panel.header:SetPoint('TOPRIGHT', -32, -12)
+		panel.backdrop:SetPoint('TOPLEFT', 10, -10)
+		panel.backdrop:SetPoint('BOTTOMRIGHT', -30, 74)
+
+		panel.header:SetPoint('TOPLEFT', 12, -12)
+		panel.header:SetPoint('TOPRIGHT', -32, -12)
+	end
 
 	local i = 1
 	local tab = _G[name..'Tab'..i]

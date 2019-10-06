@@ -1,4 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<!-- <Script file="dominos.lua"/> -->
+	<Script file="details.lua"/>
 	<Script file="weakauras.lua"/>
+	<Script file="Blizzard_TalentUI.lua"/>
 </Ui>
