@@ -195,7 +195,9 @@ function AM:AddRow()
 	row.enable_button:HookScript('OnClick', function(self)
 		AM.changed = true
 		local index = self:GetParent().index
-		if self:GetChecked() then
+		local checked = self:GetChecked()
+		AM.addon_cache[index].checked = checked
+		if checked then
 			EnableAddOn(index)
 		else
 			DisableAddOn(index)
@@ -249,6 +251,7 @@ function AM:UpdateAddonCache()
 			title = title,
 			notes = notes,
 			enabled = enabled,
+			checked = enabled,
 			loadable = loadable,
 			status = (enabled and 1) or (loadable and 0) or -1,
 			reason = reason,
@@ -287,7 +290,7 @@ function AM:UpdateAddonDisplay()
 		index = i + self.offset
 		addon = self.addon_cache[index]
 		row.index = index
-		row.enable_button:SetChecked(addon.enabled)
+		row.enable_button:SetChecked(addon.checked)
 		row.name:SetText(addon.title)
 		row.memory:SetText(addon.memory > 0 and st.StringFormat:FileSizeFormat(addon.memory*1000, 1) or '')
 
