@@ -82,6 +82,13 @@ st.defaults.loot = {
 	}
 }
 
+st.defaults.addon_manager = {
+	font = 'normal',
+	num_rows = 18,
+	row_height = 20,
+	spacing = 7,
+}
+
 st.defaults.templates = {
 	highlight = {
 		name = 'Highlight',
@@ -135,16 +142,17 @@ st.defaults.templates.thicktransparent.backdropcolor[4] = 0.9
 
 st.defaults.headers = {
 	height = 21,
-	font = 'pixel',
+	font = 'normal',
 }
 
 st.defaults.buttons = {
 	font = 'pixel',
 	template = 'thick',
+	height = 21,
 }
 
 st.defaults.panels = {
-	font = 'pixel',
+	font = 'normal',
 	template = 'thicktransparent',
 	tab_height = 21,
 }
@@ -170,8 +178,8 @@ st.defaults.chat = {
 	template = 'thicktransparent',
 	font = 'normal',
 	padding = 10,
-	fontsize = 15,
-	linespacing = 4,
+	fontsize = 12,
+	linespacing = 5,
 	fadetabs = true,
 	tabs = {
 		height = 25,
@@ -214,7 +222,7 @@ st.defaults.inventory = {
 	autorepair = true,
 	autovendor = true,
 	fonts = {
-		titles = 'pixel',
+		titles = 'normal',
 		icons = 'pixel',
 	},
 	bag = {

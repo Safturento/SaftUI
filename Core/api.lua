@@ -145,8 +145,8 @@ function st:SkinScrollBar(bar)
 	if bar.ScrollUpButton then st:Kill(bar.ScrollUpButton) end
 	if bar.ScrollDownButton then st:Kill(bar.ScrollDownButton) end
 	if name then
-	if _G[name..'Top'] then st:Kill(_G[name..'Top']) end
-	if _G[name..'Bottom'] then st:Kill(_G[name..'Bottom']) end
+		if _G[name..'Top'] then st:Kill(_G[name..'Top']) end
+		if _G[name..'Bottom'] then st:Kill(_G[name..'Bottom']) end
 	end
 
 	st:StripTextures(bar)
@@ -170,6 +170,37 @@ function st:SkinScrollBar(bar)
 	bar:SetWidth(width)
 
 	bar.SetPoint = st.dummy
+end
+
+function st:SkinCheckButton(button)
+	st:StripTextures(button)
+
+	button:SetSize(12, 12)
+	button.display = CreateFrame('Frame', nil, button)
+	button.display:SetAllPoints()
+	st:SetBackdrop(button.display, st.config.profile.panels.template)
+	button.display:SetPoint('CENTER')
+	
+	button.display:SetFrameLevel(button:GetFrameLevel())
+	button:SetFrameLevel(button:GetFrameLevel()+1)
+
+	local checked = button.display:CreateTexture(nil, 'OVERLAY')
+	checked:SetTexture(st.BLANK_TEX)
+	checked:SetVertexColor(unpack(st.config.profile.colors.button.hover))
+	checked:SetAllPoints(button.display)
+	button:SetCheckedTexture(checked)
+
+	local hover = button.display:CreateTexture(nil, 'OVERLAY')
+	hover:SetTexture(st.BLANK_TEX)
+	hover:SetVertexColor(unpack(st.config.profile.colors.button.normal))
+	hover:SetAllPoints(button.display)
+	button:SetHighlightTexture(hover)
+
+	local name = button:GetName()
+	local text = button.Text or name and _G[name..'Text']
+	if text then
+		text:SetFontObject(st:GetFont(st.config.profile.panels.font))
+	end
 end
 
 function st:StripTextures(frame, kill)

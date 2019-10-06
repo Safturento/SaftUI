@@ -10,4 +10,5 @@
 	<Script file='chatframe.lua'/>
 	<Script file='experience.lua'/>
 	<Script file='auras.lua'/>
+	<Script file='addonlist.lua'/>
 </Ui>
