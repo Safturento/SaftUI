@@ -144,8 +144,10 @@ function st:SkinScrollBar(bar)
 
 	if bar.ScrollUpButton then st:Kill(bar.ScrollUpButton) end
 	if bar.ScrollDownButton then st:Kill(bar.ScrollDownButton) end
+	if name then
 	if _G[name..'Top'] then st:Kill(_G[name..'Top']) end
 	if _G[name..'Bottom'] then st:Kill(_G[name..'Bottom']) end
+	end
 
 	st:StripTextures(bar)
 

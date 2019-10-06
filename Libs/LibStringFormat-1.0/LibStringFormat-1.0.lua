@@ -127,10 +127,11 @@ end
 
 function lib:FileSizeFormat(bytes, decimals)
     local suffix = 'kMGTPEZY'
-	 local factor = floor((strlen(bytes)-1) / 3)
-    local converted = bytes/math.pow(1024,factor)
+	 local factor = floor((strlen(floor(bytes))-1) / 3)
+	 local converted = bytes/math.pow(1024,factor)
     return format('%.0'..(decimals or 0)..'f%sB', converted, strsub(suffix, factor, factor))
 end
+
 function lib:GoldFormat(money, round)
 	local negative = money<0 and true or false --if money is negative, add a negative sign when returning the string
 	money = (abs(money)) --remove the negative sign from the actual value
