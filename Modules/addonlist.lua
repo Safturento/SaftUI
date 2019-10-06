@@ -127,6 +127,16 @@ function AM:OnInitialize()
 	self.buttons.buttons.disable_all:SetPoint('LEFT', self.buttons.buttons.enable_all, 'RIGHT', 7, 0)
 	self.buttons.buttons.cancel:SetPoint('RIGHT')
 	self.buttons.buttons.okay:SetPoint('RIGHT', self.buttons.buttons.cancel, 'LEFT', -7, 0)
+	self.buttons.buttons.okay:SetScript('OnClick', function()
+		if self.changed then
+			SaveAddOns()
+			ReloadUI()
+		end
+	end)
+	self.buttons.buttons.cancel:SetScript('OnClick', function()
+		ResetAddOns()
+		self.window:Hide()
+	end)
 
 	self.config = st.config.profile.addon_manager
 	self.offset = 0
@@ -183,11 +193,12 @@ function AM:AddRow()
 	st:SkinCheckButton(enable)
 	row.enable_button = enable
 	row.enable_button:HookScript('OnClick', function(self)
+		AM.changed = true
 		local index = self:GetParent().index
 		if self:GetChecked() then
-			DisableAddOn(index)
-		else
 			EnableAddOn(index)
+		else
+			DisableAddOn(index)
 		end
 	end)
 	
