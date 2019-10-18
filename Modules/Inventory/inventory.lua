@@ -194,7 +194,7 @@ end
 
 function INV:OpenBank()
 	if not self.containers.bank then
-		self:CreateContainer('bank', 'Bank')
+		self:CreateContainer('bank', BANK)
 		self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
@@ -212,7 +212,7 @@ function INV:OnInitialize()
 
 	if not st.config.realm.gold then st.config.realm.gold = {} end
 
-	self:CreateContainer('bag', 'Bag')
+	self:CreateContainer('bag', INVTYPE_BAG)
 	self.containers.bag:Hide()
 end
 
@@ -225,6 +225,11 @@ function INV:OnEnable()
 	CloseAllBags 		= INV.HideBags
 	CloseBackpack 		= INV.HideBags
 	
+	-- Make sure the slots are all created immediately intead of on first open
+	-- We do this to avoid tainting all of the slots when the bag is first opened
+	-- while in combat
+	self:UpdateContainerItems('bag')
+
 	self:RegisterEvent('PLAYER_MONEY', 'UpdateGold')
 	self:RegisterEvent('MERCHANT_SHOW', 'HandleMerchant')
 

@@ -1,6 +1,7 @@
 local ADDON_NAME, st = ...
 local INV = st:GetModule('Inventory')
 INV.CATEGORY_TITLE_HEIGHT = 17
+INV.CATEGORY_SLOT_POOL = 10
 
 INV.CATEGORY_FILTERS = {
 	{ name = 'Grays',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return quality == 0 end},
@@ -109,6 +110,7 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	local container = self.containers[id]
 
 	local category_frame = container.categories[category_name] or self:CreateCategory(id, category_name)
+
 	-- Hide any visible icons that are no longer in use
 	for i = #categoryItems + 1, #category_frame.slots do
 		self:ClearSlot(category_frame.slots[i])
@@ -120,6 +122,14 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 		end
 		local slot = category_frame.slots[i] or self:CreateSlot(container, category_name)
 		self:AssignSlot(container, slot, itemInfo)
+	end
+
+	-- Ensure that there's always a decent slot pool created to avoid
+	-- tainting in combat
+	if not InCombatLockdown() then
+		for i = #category_frame.slots - #categoryItems + 1 , INV.CATEGORY_SLOT_POOL do
+			self:CreateSlot(container, category_name)
+		end
 	end
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)

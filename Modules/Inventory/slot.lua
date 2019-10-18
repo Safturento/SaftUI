@@ -67,6 +67,7 @@ function INV:CreateSlot(container, category_name)
 		slot.container = container
 		slot.id = slotID
 		slot.type = container.id
+		slot.tainted = InCombatLockdown()
 
 		self:SetSlotPosition(slot, category_frame, container)
 	end
@@ -95,11 +96,15 @@ function INV:CreateSlot(container, category_name)
 	})
 	slot:SetNormalTexture("")
 	slot:SetPushedTexture("")
-	slot:Show()
+	slot:Hide()
 
 	-- tinsert(self.AllSlots, slot)
 	-- container.slots[slotID] = slot
 	category_frame.slots[slotID] = slot
+
+	if slot.tainted then
+		print(slot:GetName() .. ' is tainted, will break if used in combat')
+	end
 
 	return slot
 end
