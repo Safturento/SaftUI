@@ -151,17 +151,28 @@ end
 
 local lastUpdate = 0
 local interval = .01
-function INV:UpdateHandler(event)
+
+function INV:UpdateHandler(elapsed)
 	-- Don't let the bags spam update, just wait
 	local time = GetTime()
-	-- if time - lastUpdate < interval then return end
+	if time - lastUpdate < interval then return end
+
 	lastUpdate = time
-	
-	self:UpdateGold()
-	self:UpdateContainerItems('bag')
-	if self.containers.bank then
-		self:UpdateContainerItems('bank')
-	end
+
+	if self.NEED_UPDATE then
+
+		print('updating bags')
+		self.NEED_UPDATE = false
+		self:UpdateGold()
+		self:UpdateContainerItems('bag')
+		if self.containers.bank then
+			self:UpdateContainerItems('bank')
+		end
+	end	
+end
+
+function INV:QueueUpdate()
+	self.NEED_UPDATE = true
 end
 
 function INV:ToggleBags()
@@ -174,7 +185,7 @@ end
 
 function INV:ShowBags()
 	INV.containers.bag:Show()
-	INV:UpdateHandler()
+	INV:QueueUpdate()
 	INV:UpdateCooldowns()
 end
 
@@ -233,10 +244,13 @@ function INV:OnEnable()
 	self:RegisterEvent('PLAYER_MONEY', 'UpdateGold')
 	self:RegisterEvent('MERCHANT_SHOW', 'HandleMerchant')
 
-	self:RegisterEvent('BAG_UPDATE', 'UpdateHandler')
-	self:RegisterEvent('ITEM_LOCK_CHANGED', 'UpdateHandler')
-	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'UpdateHandler')
+	self:RegisterEvent('BAG_UPDATE', 'QueueUpdate')
+	self:RegisterEvent('ITEM_LOCK_CHANGED', 'QueueUpdate')
+	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'QueueUpdate')
 
 	self:RegisterEvent('BANKFRAME_OPENED', 'OpenBank')
 	self:RegisterEvent('BANKFRAME_CLOSED', 'CloseBank')
+
+	self.updater = CreateFrame('frame')
+	self:HookScript(self.updater, 'OnUpdate', 'UpdateHandler')
 end
