@@ -267,7 +267,7 @@ function AM:UpdateAddonCache()
 			notes = notes,
 			enabled = enabled,
 			checked = enabled,
-			loadable = loadable,
+			loadable = loadable or IsAddOnLoadOnDemand(i),
 			status = (enabled and 1) or (loadable and 0) or -1,
 			reason = reason,
 			security = security,
