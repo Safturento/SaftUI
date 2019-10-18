@@ -42,6 +42,9 @@ end
 function st:SetTemplate(frame, template)
 	if template == nil or template == 'none' or template == '' then
 		frame:SetBackdrop(nil)
+		if frame.outer_shadow then
+			frame.outer_shadow:Hide()
+		end
 		if frame.altborder then
 			for _,border in pairs(frame.altborder) do
 				border:Hide()
@@ -72,6 +75,7 @@ function st:SetTemplate(frame, template)
 		frame.outer_shadow:SetPoint('BOTTOMRIGHT', 4, -4)
 		frame.outer_shadow:SetBackdrop({edgeFile = st.textures.glow, edgeSize = 4})
 	end
+	frame.outer_shadow:Show()
 	frame.outer_shadow:SetBackdropBorderColor(unpack(config.outer_shadow)) 
 
 	for _,border in pairs(frame.altborder) do
@@ -138,24 +142,30 @@ function st:SetBackdrop(frame, template)
 	st:SetTemplate(frame.backdrop, template)
 end
 
-function st:SkinScrollBar(bar)
+function st:SkinScrollBar(bar, custom_width)
 	local parent = bar:GetParent()
 	local name = bar:GetName()
 
-	if bar.ScrollUpButton then st:Kill(bar.ScrollUpButton) end
-	if bar.ScrollDownButton then st:Kill(bar.ScrollDownButton) end
+	local down_button = bar.ScrollDownButton or _G[name..'ScrollDownButton']
+	local up_button = bar.ScrollUpButton or _G[name..'ScrollUpButton']
+
+	if down_button then st:Kill(down_button) end
+	if up_button then st:Kill(up_button) end
+
 	if name then
 		if _G[name..'Top'] then st:Kill(_G[name..'Top']) end
 		if _G[name..'Bottom'] then st:Kill(_G[name..'Bottom']) end
 	end
 
 	st:StripTextures(bar)
+	st:StripTextures(parent)
 
-	local width = customWidth or 20
+	local width = custom_width or 20
 
-	local thumb = bar.ThumbTexture
+	local thumb = bar.ThumbTexture or _G[name..'ThumbTexture']
 	thumb:SetTexture(nil)
 	st:SetBackdrop(thumb, st.config.profile.panels.template)
+	thumb:SetWidth(width)
 
 
 	-- Standardized positioning for all scrollbars

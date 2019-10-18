@@ -23,6 +23,7 @@ function FN:OnInitialize()
 		)
 		font:SetShadowOffset(unpack(config.shadow_offset))
 		font:SetSpacing(config.spacing)
+		font:SetTextColor(1, 1, 1)
 
 		FN.font_objects[key] = font
 	end

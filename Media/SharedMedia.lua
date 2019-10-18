@@ -13,6 +13,7 @@ st.LSM:Register('font', 		'AgencyFB',					media_path .. 'Fonts\\AgencyFB.ttf')
 st.LSM:Register('font', 		'AgencyFB Bold',			media_path .. 'Fonts\\AgencyFB_Bold.ttf')
 st.LSM:Register('font', 		'Homespun',					media_path .. 'Fonts\\homespun.ttf')
 st.LSM:Register('font', 		'Visitor',					media_path .. 'Fonts\\visitor1.ttf')
+st.LSM:Register('font', 		'Righteous',				media_path .. 'Fonts\\Righteous-Regular.ttf')
 
 st.LSM:Register('statusbar',	'SaftUI Gloss', 			media_path..'Textures\\normTex.tga')
 st.LSM:Register('statusbar',	'SaftUI Flat', 			[[Interface\BUTTONS\WHITE8X8]])

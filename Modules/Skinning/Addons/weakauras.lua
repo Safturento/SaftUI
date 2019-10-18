@@ -14,10 +14,6 @@ local function SkinIcon(parent, region, data)
 	st:SkinIcon(region.icon, nil, region)
 end
 
----------------------------------------------
--- INITIALIZE -------------------------------
----------------------------------------------
-
 SK.AddonSkins.WeakAuras = function()
 	hooksecurefunc(WeakAuras.regionTypes.icon, 'modify', SkinIcon)	
 end

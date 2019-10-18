@@ -295,7 +295,6 @@ end
 function AM:UpdateAddonDisplay()
 	local addon, index
 	if #self.addon_cache == 0 then
-		print(self)
 		self:UpdateAddonCache()
 	end
 	
