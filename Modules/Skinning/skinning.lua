@@ -38,7 +38,13 @@ function SK:UpdateTab(tab)
 	tab:SetHeight(st.config.profile.panels.tab_height)
 	local bd = tab:GetParent().backdrop
 	tab:SetWidth(tab:GetTextWidth()+20)
-	
+end
+
+function SK:SkinTab(tab)
+	st:StripTextures(tab)
+	st.SkinActionButton(tab, st.config.profile.panels)
+	if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
+	self:UpdateTab(tab)
 end
 
 function SK:OnInitialize()
@@ -46,11 +52,10 @@ function SK:OnInitialize()
 	-- SK:RegisterEvent('PLAYER_ENTERING_WORLD', 'SkinFrames')
 	self:SkinFrames()
 
-	SK:SkinBlizzardPanel(FriendsFrame)
-
 	self:SecureHook('PanelTemplates_ResizeTabsToFit', function(frame, maxWidthForAllTabs)
+		if not GetTabByIndex then return end
 		for i = 1, frame.numTabs do
-			UpdateDate(GetTabByIndex(frame, i))
+			self:UpdateTab(GetTabByIndex(frame, i))
 		end
 	end)
 	self:SecureHook('PanelTemplates_DeselectTab', 'UpdateTab')
@@ -61,9 +66,14 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 	if not options then options = {} end
 	-- if not panel then return end
 	local name = panel:GetName()
-	title = options.title or _G[name..'TitleText']
-	close = options.close or _G[name..'CloseButton']
-	portrait = options.portrait or _G[name..'Portrait']
+	local title = options.title or _G[name..'TitleText']
+	local close = options.close or _G[name..'CloseButton']
+	local portrait = options.portrait or _G[name..'Portrait']
+	local inset = _G[name..'Inset']
+
+	if inset then
+		st:StripTextures(inset)
+	end
 
 	if portrait then
 		st:Kill(portrait)
@@ -92,17 +102,41 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 
 	local i = 1
 	local tab = _G[name..'Tab'..i]
-	while tab do
-		st:StripTextures(tab)
-		st.SkinActionButton(tab, st.config.profile.panels)
+	local prev
 
-		if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
+	while tab do
+		self:SkinTab(tab)
 
 		tab:ClearAllPoints()
 		if i == 1 then
 			tab:SetPoint('TOPLEFT', panel.backdrop, 'BOTTOMLEFT', 2, -5)
 		else
 			tab:SetPoint('LEFT', prev, 'RIGHT', 7, 0)
+		end
+		prev = tab
+		i = i + 1
+		tab = _G[name..'Tab'..i]
+	end
+end
+
+function SK:SkinTabHeader(header)
+
+	local name = header:GetName()
+
+	local i = 1
+	local tab = _G[name..'Tab'..i]
+	local prev
+
+	
+	header:SetHeight(st.config.profile.panels.tab_height)
+	while tab do
+		self:SkinTab(tab)
+
+		tab:ClearAllPoints()
+		if i == 1 then
+			tab:SetPoint('TOPLEFT', header, 'TOPLEFT', 0, 0)
+		else
+			tab:SetPoint('TOPLEFT', prev, 'TOPRIGHT', 7, 0)
 		end
 		prev = tab
 		i = i + 1
