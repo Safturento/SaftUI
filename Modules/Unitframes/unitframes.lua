@@ -166,7 +166,7 @@ function UF:CreateGroupHeaders()
 
 	local config = st.config.profile.unitframes.profiles[self:GetProfile()].party
 	local party = self.oUF:SpawnHeader(
-		'SaftUI_PartyHeader',
+		'SaftUI_Party',
 		nil,
 		'custom [@raid6,exists] hide;show',
 		"oUF-initialConfigFunction", [[
@@ -198,31 +198,39 @@ function UF:CreateGroupHeaders()
 	self.groups.party = party
 
 
-	-- local config = st.config.profile.unitframes.units.raid
-	-- local raid = self.oUF:SpawnHeader('SaftUI_RaidHeader', nil, 'custom [@raid6,exists] show;hide',"oUF-initialConfigFunction", [[
-	-- 		local header = self:GetParent()
-	-- 		self:SetWidth(header:GetAttribute("initial-width"))
-	-- 		self:SetHeight(header:GetAttribute("initial-height"))
-	-- 	]],
-	-- 	"initial-width", config.width,
-	-- 	"initial-height", config.height,
-	-- 	"showParty", false,
-	-- 	"showRaid", true,
-	-- 	"showPlayer", true,
-	-- 	"xOffset", config.spacing,
-	-- 	"yOffset", config.spacing,
-	-- 	"point", config.growthDirection,
-	-- 	"groupFilter", "1,2,3,4,5,6,7,8",
-	-- 	"groupingOrder", "1,2,3,4,5,6,7,8",
-	-- 	"groupBy", "GROUP",
-	-- 	"maxColumns", config.maxColumns,
-	-- 	"unitsPerColumn", config.unitsPerColumn,
-	-- 	"columnSpacing", config.columnSpacing,
-	-- 	"columnAnchorPoint", config.initialAnchor,
-	-- 	"baseunit", "raid"
-	-- )
+	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid
+	local raid40 = self.oUF:SpawnHeader(
+		'SaftUI_Raid40',
+		nil,
+		-- 'custom [@raid6,exists] hide;show',
+		'custom [@raid6,exists] show;hide',
+		"oUF-initialConfigFunction", [[
+			local header = self:GetParent()
+			self:SetWidth(header:GetAttribute("initial-width"))
+			self:SetHeight(header:GetAttribute("initial-height"))
+		]],
+		"initial-width", config.width,
+		"initial-height", config.height,
+		"showParty", true,
+		"showRaid", true,
+		"showPlayer", true,
+		"showSolo", TEST_PARTY_SOLO,
+		"xOffset", config.spacing,
+		"yOffset", config.spacing,
+		"point", config.growthDirection,
+		"groupFilter", "1,2,3,4,5,6,7,8",
+		"groupingOrder", "1,2,3,4,5,6,7,8",
+		"groupBy", "GROUP",
+		"maxColumns", config.maxColumns,
+		"unitsPerColumn", config.unitsPerColumn,
+		"columnSpacing", config.columnSpacing,
+		"columnAnchorPoint", config.initialAnchor,
+		"base_unit", "raid"
+	)
 
-	-- raid:SetPoint(unpack(config.position))
+	raid40.config = config
+	raid40:SetPoint(unpack(config.position))
+	self.groups.raid40 = raid40
 end
 
 local function get_profiles()
@@ -385,9 +393,9 @@ function UF:GetConfigTable()
 			},
 			unitframes = {
 				order = 2,
-				name = ' ',
-				type = 'group',
+				name = 'Unit',
 				-- inline = true,
+				type = 'group',
 				childGroups = 'select',
 				args = {
 				}
@@ -399,6 +407,7 @@ function UF:GetConfigTable()
 		config_table = {
 			name = self.unit_strings[unit] or unit,
 			type = 'group',
+			inline = false,
 			childGroups = 'select',
 			args = {
 				copy = {

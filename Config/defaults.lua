@@ -15,6 +15,14 @@ st.defaults.fonts = {
 		shadow_offset = {0, 0},
 		spacing = 4,
 	},
+	pixel_med = {
+		name = 'Pixel med',
+		font_name = 'Homespun',
+		font_size = 32,
+		font_outline = 'MONOCHROMEOUTLINE',
+		shadow_offset = {0, 0},
+		spacing = 4,
+	},
 	pixel = {
 		name = 'Pixel',
 		font_name = 'Homespun',
@@ -154,6 +162,7 @@ st.defaults.buttons = {
 st.defaults.panels = {
 	font = 'normal',
 	template = 'thicktransparent',
+	padding = 20,
 	tab_height = 21,
 }
 
@@ -178,7 +187,7 @@ st.defaults.chat = {
 	template = 'thicktransparent',
 	font = 'normal',
 	padding = 10,
-	fontsize = 12,
+	fontsize = 14,
 	linespacing = 5,
 	fadetabs = true,
 	tabs = {
@@ -288,6 +297,7 @@ st.defaults.colors = {
 		green			= { 0.1, 0.6, 0.1, 0.8 },
 		blue			= { 0.0, 0.68, 0.94, 0.1 },
 		yellow		= { 0.6, 0.6, 0.1, 0.8 },
+		grey			= { 150/255, 150/255,  150/255 }, 
 	},
 	experience = {
 		normal = { 0.6, 0.3, 0.8, 1.0 },
@@ -329,8 +339,8 @@ st.defaults.colors = {
 		[8] = { 0.29, 0.67, 0.30 }, -- Exalted
 	},
 	status = {
-		disconnected = { 0.1, 0.1, 0.1 },
-		tapped = { 0.1, 0.1, 0.1 },
+		disconnected = { 0.6, 0.6, 0.6 },
+		tapped = { 0.6, 0.6, 0.6 },
 	}
 }
 
@@ -416,10 +426,11 @@ st.defaults.unitframes = {
 						percent = false,
 						font = 'pixel',
 						position = {'RIGHT', 'RIGHT', -3, 0},
+						tags = 'deficit'
 					},
 					Smooth = true,
-					colorTapping = false,
-					colorDisconnected = false,
+					colorTapping = true,
+					colorDisconnected = true,
 					colorHealth = false,
 					colorClass = false,
 					colorClassNPC = false,
@@ -469,6 +480,7 @@ st.defaults.unitframes = {
 						grow_up = true,
 						grow_right = true,
 						initial_anchor = 'BOTTOMLEFT',
+						framelevel = 50,
 						cooldown = {
 							enable = true,
 							timer = false,
@@ -506,6 +518,7 @@ st.defaults.unitframes = {
 					enable = true,
 					max_length = 30,
 					show_level = true,
+					all_caps = false,
 					show_samelevel = true,
 					show_classification = true,
 					font = 'pixel',
@@ -570,6 +583,12 @@ st.defaults.unitframes = {
 				columnSpacing = 0,
 				initialAnchor = 'TOP',
 				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30},
+				health = {
+					text = {
+						hide_full = true,
+						deficit = true,
+					},
+				},
 				auras = {
 					debuffs = {
 						enable = true,
@@ -583,6 +602,54 @@ st.defaults.unitframes = {
 							}
 						}
 					}
+				}
+			},
+			raid = {
+				spacing = 3,
+				growthDirection = 'BOTTOM',
+				maxColumns = 8,
+				unitsPerColumn = 5,
+				columnSpacing = 3,
+				initialAnchor = 'LEFT',
+				position = {'TOP', UIParent, 'CENTER', 0, -250},
+				width = 50,
+				height = 26,
+				-- template = 'thick',
+				portrait = {
+					enable = false,
+				},
+				health = {
+					-- width = -4,
+					height = -6,
+					text = {
+						hide_full = true,
+						deficit = true,
+					},
+				},
+				power = {
+					-- template = 'thin',
+				},
+				name = {
+					enable = false,
+				},
+				auras = {
+					debuffs = {
+						template = 'thin',
+						per_row = 2,
+						max = 2, 
+						spacing = 3,
+						enable = true,
+						position = {'LEFT', 'LEFT', 4, 0},
+						horizontal_growth = 'RIGHT',
+						initial_anchor = 'LEFT',
+						framelevel = 50,
+						size = 8,
+						filter = {
+							friend = {
+								show_all = false,
+							}
+						}
+					},
 				}
 			},
 			nameplate = {

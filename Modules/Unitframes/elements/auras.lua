@@ -95,6 +95,7 @@ local function UpdateConfig(self, aura_type)
 	auras:ClearAllPoints()
 	local point, relativePoint, xoffset, yoffset = unpack(auras.config.position)
 	auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
+	auras:SetFrameLevel(auras.config.framelevel)
 
 	auras.size = auras.config.size
 	auras.num = auras.config.max

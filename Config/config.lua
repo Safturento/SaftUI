@@ -80,9 +80,7 @@ function st.CF.generators.position(order, config_table, global_frame, set_func)
 		end,
 		set = function(info, value)
 			config_table[info.option.order] = value
-			if set_func then
-				set_func()
-			end
+			if set_func then set_func() end
 		end,
 		args = {
 			point = {
@@ -93,21 +91,21 @@ function st.CF.generators.position(order, config_table, global_frame, set_func)
 				width = 'normal',
 			},
 			rel_point = {
-				order = 2,
+				order = 4,
 				name = 'Relative', 
 				type = 'select',
 				values = st.FRAME_ANCHORS,
 				width = 'normal',
 			},
 			x_off = {
-				order = 3,
+				order = 5,
 				name = 'X Offset', 
 				type = 'input',
 				pattern = '%d+',
 				width = 0.4
 			},
 			y_off = {
-				order = 4,
+				order = 6,
 				name = 'Y Offset', 
 				type = 'input',
 				pattern = '%d+',
@@ -118,24 +116,82 @@ function st.CF.generators.position(order, config_table, global_frame, set_func)
 
 	if global_frame then
 		table.args.frame = {
-			order = 2,
+			order = 3,
 			name = 'Frame',
 			type = 'input',
 			validate = function(info, name) 
 				return _G[name] and true or "Frame doesn't exist"
 			end
 		}
-
-		table.args.rel_point.order = 3
-		table.args.x_off.order = 4
-		table.args.y_off.order = 5
 	end
 
 	return table
 end
 
+function st.CF.generators.uf_element_position(order, config_table, set_func)
+	local table = st.CF.generators.position(order, config_table, true)
+	local values = {}
+	for key,_ in pairs(st:GetModule('Unitframes').elements) do
+		values[key] = key
+	end
 
+	table.args.frame_type = {
+		name = 'Anchor type',
+		type = 'toggle',
+		desc = 'unchecked: self \nchecked: element selection \ngrayed: global frame',
+		order = 2,
+		tristate = true,
+		get = function(info)
+			local value = config_table.frame_type
+			if value then
+				table.args.frame.values = values
+				table.args.frame.type = 'select'
+			elseif value == nil then
+				table.args.frame.type = 'input'
+			end
+			return value
+		end,
+		set = function(info, value)
+			config_table.frame_type = value
+			if value then
+				table.args.frame.values = values
+				table.args.frame.type = 'select'
+			elseif value == nil then
+				table.args.frame.type = 'input'
+			end
+			if set_func then set_func() end
+		end
+	}
 
+	table.args.frame.hidden = function(info)
+		return config_table.frame_type == false
+	end
+
+	table.args.frame.get = function(info)
+		if config_table.frame_type then
+			return config_table.anchor_element
+		elseif config_table.frame_type == nil then
+			return config_table.anchor_frame
+		end
+	end
+	table.args.frame.set = function(info, value)
+		if config_table.frame_type then
+			config_table.anchor_element = value
+		elseif config_table.frame_type == nil then
+			config_table.anchor_frame = value
+		end
+		if set_func then set_func() end
+	end
+
+	table.args.frame.validate = function(info, name) 
+		if config_table.frame_type == nil then
+			return _G[name] and true or "Frame doesn't exist"
+		end
+		return true
+	end
+
+	return table
+end
 
 function st.CF.generators.toggle(order, name, width)
 	return {

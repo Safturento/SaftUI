@@ -51,5 +51,9 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 		end
 	end
 
+	if config.all_caps then
+		name = strupper(name)
+	end
+
 	return st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '') .. st.StringFormat:UTF8strsub(name or '', config.max_length)
 end

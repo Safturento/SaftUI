@@ -10,9 +10,11 @@ local function PostUpdateHealth(health, unit, current, max)
 
 		local absorbs = st.is_retail and UnitGetTotalAbsorbs(unit) or 0
 		
-		if current == max and health.hide_full then
+		if current == max and health.config.text.hide_full then
 			health.text:SetText('')
-		elseif health.percent then
+		elseif health.config.text.deficit then
+			health.text:SetText(current-max)
+		elseif health.config.text.percent then
 			if absorbs > 0 then
 				health.text:SetFormattedText('%d +%d', floor(current/max*100), floor(absorbs/max*100))
 			else
@@ -27,11 +29,16 @@ local function PostUpdateHealth(health, unit, current, max)
 		end
 	end
 
+	if health.config.colorCustom then
+		health:SetStatusBarColor(unpack(health.config.customColor))
+	end
+
 	if health.config.bg.enable then
 		r, g, b = health:GetStatusBarColor()
 		local mu = health.config.bg.multiplier or 1
 		health.bg:SetVertexColor(r * mu, g * mu, b * mu)
 	end
+	
 end
 
 local function Constructor(self)

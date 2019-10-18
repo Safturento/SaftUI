@@ -38,7 +38,7 @@ local function GetConfigTable(self)
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
-			framelevel = st.CF.generators.framelevel(1),
+			font = st.CF.generators.font(1),
 			template = st.CF.generators.template(2),
 			alpha = st.CF.generators.alpha(3),
 			position = st.CF.generators.position(4,

@@ -70,7 +70,7 @@ local function UpdateConfig(self)
 		self.Castbar.Text:SetFontObject(st:GetFont(self.config.castbar.text.font))
 		self.Castbar.Text:ClearAllPoints()
 		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.text.position)
-		self.Castbar.Text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+		self.Castbar.Text:SetPoint(anchor, self.Castbar, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Text:Hide()
 	end
@@ -80,7 +80,7 @@ local function UpdateConfig(self)
 		self.Castbar.Time:SetFontObject(st:GetFont(self.config.castbar.time.font))
 		self.Castbar.Time:ClearAllPoints()
 		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.time.position)
-		self.Castbar.Time:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+		self.Castbar.Time:SetPoint(anchor, self.Castbar, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Time:Hide()
 	end
@@ -91,7 +91,14 @@ local function UpdateConfig(self)
 		self.Castbar.Icon:ClearAllPoints()
 		
 		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.icon.position)
-		self.Castbar.Icon:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+		local frame = self
+		if self.config.castbar.icon.position.frame_type then
+			frame = self[self.config.castbar.icon.position.anchor_element]
+		elseif self.config.castbar.icon.position.frame_type == nil then
+			frame = _G[self.config.castbar.icon.position.anchor_frame]
+		end
+
+		self.Castbar.Icon:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 
 		if self.config.castbar.icon.relative_height then
 			self.Castbar.Icon:SetHeight(self.config.height + self.config.castbar.icon.height)
@@ -153,8 +160,8 @@ local function GetConfigTable(self)
 					framelevel = st.CF.generators.framelevel(1),
 					template = st.CF.generators.template(2),
 					size = UF.GenerateRelativeSizeConfigGroup(3),
-					position = st.CF.generators.position(4,
-						self.config.castbar.icon.position, false,
+					position = st.CF.generators.uf_element_position(4,
+						self.config.castbar.icon.position,
 						function() UF:UpdateConfig(self.base_unit, 'Castbar') end
 					),
 				}
