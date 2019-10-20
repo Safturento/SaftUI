@@ -21,12 +21,18 @@ UF.unit_strings = {
 function UF.ConstructUnit(self, unit)
 	-- Ensure that we have access to a numberless unit type for config tables
 	local base_unit = self:GetParent():GetAttribute('base_unit')
+	local config_unit = self:GetParent():GetAttribute('config_unit')
 	if base_unit then
 		self.is_group_unit = true
 		self.base_unit = base_unit
 	else
 		self.base_unit = strmatch(unit, '(%D+)')
 	end
+
+	if config_unit then
+		self.config_unit = config_unit
+	end
+
 	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
 	
 	self:RegisterForClicks('AnyUp')
@@ -92,7 +98,7 @@ function UF:UpdateColors()
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
-	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
+	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.config_unit or frame.base_unit]
 
 	if element_name then
 		self.elements[element_name].UpdateConfig(frame, element_name)
@@ -197,13 +203,12 @@ function UF:CreateGroupHeaders()
 	party:SetPoint(unpack(config.position))
 	self.groups.party = party
 
-
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid
-	local raid40 = self.oUF:SpawnHeader(
-		'SaftUI_Raid40',
+	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid10
+	local raid10 = self.oUF:SpawnHeader(
+		'SaftUI_Raid10',
 		nil,
 		-- 'custom [@raid6,exists] hide;show',
-		'custom [@raid6,exists] show;hide',
+		'custom [@raid11,exists] hide;[@raid6,exists] show;hide',
 		"oUF-initialConfigFunction", [[
 			local header = self:GetParent()
 			self:SetWidth(header:GetAttribute("initial-width"))
@@ -225,7 +230,43 @@ function UF:CreateGroupHeaders()
 		"unitsPerColumn", config.unitsPerColumn,
 		"columnSpacing", config.columnSpacing,
 		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid"
+		"base_unit", "raid",
+		"config_unit", 'raid10'
+	)
+
+	raid10.config = config
+	raid10:SetPoint(unpack(config.position))
+	self.groups.raid10 = raid10
+
+	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid40
+	local raid40 = self.oUF:SpawnHeader(
+		'SaftUI_Raid40',
+		nil,
+		-- 'custom [@raid6,exists] hide;show',
+		'custom [@raid11,exists] show;hide',
+		"oUF-initialConfigFunction", [[
+			local header = self:GetParent()
+			self:SetWidth(header:GetAttribute("initial-width"))
+			self:SetHeight(header:GetAttribute("initial-height"))
+		]],
+		"initial-width", config.width,
+		"initial-height", config.height,
+		"showParty", true,
+		"showRaid", true,
+		"showPlayer", true,
+		"showSolo", TEST_PARTY_SOLO,
+		"xOffset", config.spacing,
+		"yOffset", config.spacing,
+		"point", config.growthDirection,
+		"groupFilter", "1,2,3,4,5,6,7,8",
+		"groupingOrder", "1,2,3,4,5,6,7,8",
+		"groupBy", "GROUP",
+		"maxColumns", config.maxColumns,
+		"unitsPerColumn", config.unitsPerColumn,
+		"columnSpacing", config.columnSpacing,
+		"columnAnchorPoint", config.initialAnchor,
+		"base_unit", "raid",
+		"config_unit", 'raid40'
 	)
 
 	raid40.config = config

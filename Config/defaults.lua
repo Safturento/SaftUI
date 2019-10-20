@@ -604,7 +604,54 @@ st.defaults.unitframes = {
 					}
 				}
 			},
-			raid = {
+			raid10 = {
+				spacing = 3,
+				growthDirection = 'BOTTOM',
+				maxColumns = 8,
+				unitsPerColumn = 5,
+				columnSpacing = 3,
+				initialAnchor = 'LEFT',
+				position = {'TOPLEFT', 'SaftUI_Player', 'BOTTOMLEFT', 0, -30},
+				width = 99,
+				height = 26,
+				-- template = 'thick',
+				portrait = {
+					enable = false,
+				},
+				health = {
+					height = -6,
+					text = {
+						hide_full = true,
+						deficit = true,
+					},
+				},
+				power = {
+					-- template = 'thin',
+				},
+				name = {
+					enable = false,
+				},
+				auras = {
+					debuffs = {
+						template = 'thin',
+						per_row = 2,
+						max = 2, 
+						spacing = 3,
+						enable = true,
+						position = {'LEFT', 'LEFT', 4, 0},
+						horizontal_growth = 'RIGHT',
+						initial_anchor = 'LEFT',
+						framelevel = 50,
+						size = 8,
+						filter = {
+							friend = {
+								show_all = false,
+							}
+						}
+					},
+				}
+			},
+			raid40 = {
 				spacing = 3,
 				growthDirection = 'BOTTOM',
 				maxColumns = 8,
@@ -612,7 +659,7 @@ st.defaults.unitframes = {
 				columnSpacing = 3,
 				initialAnchor = 'LEFT',
 				position = {'TOP', UIParent, 'CENTER', 0, -250},
-				width = 50,
+				width = 98,
 				height = 26,
 				-- template = 'thick',
 				portrait = {
@@ -631,6 +678,8 @@ st.defaults.unitframes = {
 				},
 				name = {
 					enable = false,
+					show_level = false,
+					max_length = 8,
 				},
 				auras = {
 					debuffs = {
