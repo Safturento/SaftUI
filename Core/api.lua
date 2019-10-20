@@ -433,8 +433,9 @@ function st:CreateHeader(frame, title, close_button)
 	header:SetScript('OnMouseDown', function() frame:StartMoving() end)
 	header:SetScript('OnMouseUp', function()
 		frame:StopMovingOrSizing()
-		local anchor, _, relAnchor, x, y = frame:GetPoint()
-		frame:SetPoint(anchor, UIParent, relAnchor, math.floor(x + 0.5), math.floor(y + 0.5))
+		frame:ClearAllPoints()
+		-- We reposition the frame using a corner point to the nearest pixel to ensure pixel perfectness
+		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', math.floor(frame:GetLeft()+0.5), math.floor(frame:GetTop() + 0.5))
 	end)
 
 	if title then

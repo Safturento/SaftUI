@@ -383,6 +383,7 @@ function AM:UpdateConfig()
 	
 	-- We use this weird offset instead of anchoring to center to ensure that
 	-- we retail pixel perfect borders with frames that have an even height
+	self.window:SetClampedToScreen(true)
 	self.window:ClearAllPoints()
 	local w, h = self.window:GetSize()
 	self.window:SetPoint('TOPLEFT', UIParent, 'CENTER', -floor(w/2), floor(h/2))
