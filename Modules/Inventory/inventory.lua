@@ -117,17 +117,19 @@ function INV:UpdateContainerHeight(container)
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
 
 	local prev
-	for i, category in ipairs(self.CATEGORY_FILTERS) do
-		local category_frame = container.categories[category.name]
-		if category_frame and category_frame:IsShown() then
-			height = height + category_frame:GetHeight() + self.config.categoryspacing
-			category_frame:ClearAllPoints()
-			if prev then
-				category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
-			else
-				category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+	for filter_name, filters in pairs(self.filters) do
+		for i, category in ipairs(filters) do
+			local category_frame = container.categories[category.name]
+			if category_frame and category_frame:IsShown() then
+				height = height + category_frame:GetHeight() + self.config.categoryspacing
+				category_frame:ClearAllPoints()
+				if prev then
+					category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
+				else
+					category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+				end
+				prev = category_frame
 			end
-			prev = category_frame
 		end
 	end
 
@@ -161,7 +163,7 @@ function INV:UpdateHandler(elapsed)
 
 	if self.NEED_UPDATE then
 
-		print('updating bags')
+		-- print('updating bags')
 		self.NEED_UPDATE = false
 		self:UpdateGold()
 		self:UpdateContainerItems('bag')
@@ -236,6 +238,8 @@ function INV:OnEnable()
 	CloseAllBags 		= INV.HideBags
 	CloseBackpack 		= INV.HideBags
 	
+	self:UpdateItemRackCategories()
+
 	-- Make sure the slots are all created immediately intead of on first open
 	-- We do this to avoid tainting all of the slots when the bag is first opened
 	-- while in combat

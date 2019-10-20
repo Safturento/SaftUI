@@ -3,23 +3,33 @@ local INV = st:GetModule('Inventory')
 INV.CATEGORY_TITLE_HEIGHT = 17
 INV.CATEGORY_SLOT_POOL = 10
 
-INV.CATEGORY_FILTERS = {
-	{ name = 'Grays',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return quality == 0 end},
-	{ name = 'Consumables',		func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Consumable' end},
-	{ name = 'Armor',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Armor' end},
-	{ name = 'Weapons',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Weapon' end},
-	{ name = 'Trade Goods',		func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Trade Goods' or class == 'Gem' or class == 'Tradeskill' end},
-	{ name = 'Recipes',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Recipe' end},
-	{ name = 'Devices',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Devices' end},
-	{ name = 'Pets & Mounts',	func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Companion Pets' or subclass == 'Mount' end},
-	{ name = 'Quest',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Quest' end},
-	
-	{ name = 'Miscellaneous', func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return true end},
+INV.filters = {
+	itemrack = {},
+	categories = {
+		{ name = 'Grays',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return quality == 0 end},
+		{ name = 'Consumables',		func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Consumable' end},
+		{ name = 'Armor',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Armor' end},
+		{ name = 'Weapons',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Weapon' end},
+		{ name = 'Trade Goods',		func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Trade Goods' or class == 'Gem' or class == 'Tradeskill' end},
+		{ name = 'Recipes',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Recipe' end},
+		{ name = 'Devices',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Devices' end},
+		{ name = 'Pets & Mounts',	func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Companion Pets' or subclass == 'Mount' end},
+		{ name = 'Quest',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Quest' end},
+		{ name = 'Miscellaneous', func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return true end},
+	}
 }
 
 --tests an item against all categories and returns the first one that meets the criteria.
 function INV:GetItemCategory(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
-	for i, category in ipairs(INV.CATEGORY_FILTERS) do
+	if class == 'Armor' or class == 'Weapon' then
+		for i, category in ipairs(self.filters.itemrack) do
+			if category.func(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) then
+				return category.name
+			end
+		end
+	end
+
+	for i, category in ipairs(self.filters.categories) do
 		if category.func(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) then
 			return category.name
 		end
@@ -27,6 +37,33 @@ function INV:GetItemCategory(name,link,quality,ilvl,reqLevel,class,subclass,equi
 
 	-- not all items will fit a category, place those items in Miscellaneous
 	return "Miscellaneous"
+end
+
+function INV:UpdateItemRackCategories()
+	if not ItemRackUser then return end
+	local categories = {}
+
+	for set_name, set_items in pairs(ItemRackUser.Sets) do
+		if not (set_name:sub(1,1) == '~') then
+			local category = {
+				name = 'ItemRack: '..set_name,
+				items = {},
+			}
+
+			for slot_id, item_link in pairs(set_items.equip) do
+				category.items['item:'..item_link] = true
+			end
+
+			category.func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
+				local item_string = string.match(link, "item[%-?%d:]+")
+				return category.items[item_string]
+			end
+
+			tinsert(categories, category)
+		end
+	end
+
+	self.filters.itemrack = categories
 end
 
 local function sortCategory(a,b) return a.sortString > b.sortString end
@@ -47,7 +84,7 @@ function INV:GetSortedInventory(id)
 
 				if name then
 					--Create custom categories here to replace actual category value
-					local category_name = self:GetItemCategory(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,lootable)
+					local category_name = self:GetItemCategory(name,clink,quality,ilvl,reqLevel,class,subclass,equipSlot,lootable)
 
 					if not inventory[category_name] then inventory[category_name] = {} end
 
