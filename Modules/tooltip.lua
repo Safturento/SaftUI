@@ -105,4 +105,14 @@ function TT:OnEnable()
 		st:SetBackdrop(tooltip, self.config.template)
 		self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
 	end
+
+	
+	local font = st:GetFont(self.config.font)
+	for i=1, 2 do
+		local name = 'DropDownList'..i
+		local dropdown = _G[name]
+		_G[name..'MenuBackdrop']:SetBackdrop(nil)
+
+		st:SetTemplate(dropdown, self.config.template)
+	end
 end

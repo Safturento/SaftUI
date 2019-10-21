@@ -534,6 +534,12 @@ st.defaults.unitframes = {
 				name = {
 					enable = false,
 				},
+				health = {
+					text = {
+						hide_full = true,
+						deficit = true,
+					},
+				},
 				power = { 
 					text = {
 						enable = true,
@@ -659,7 +665,7 @@ st.defaults.unitframes = {
 				columnSpacing = 3,
 				initialAnchor = 'LEFT',
 				position = {'TOP', UIParent, 'CENTER', 0, -250},
-				width = 98,
+				width = 50,
 				height = 26,
 				-- template = 'thick',
 				portrait = {

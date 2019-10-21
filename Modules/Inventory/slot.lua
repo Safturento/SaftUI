@@ -68,6 +68,17 @@ function INV:CreateSlot(container, category_name)
 		slot.id = slotID
 		slot.type = container.id
 		slot.tainted = InCombatLockdown()
+		
+		slot.GetInventorySlot = ButtonInventorySlot
+		slot.UpdateTooltip = BankFrameItemButton_OnEnter
+
+		slot:SetScript('OnEnter', function(self)
+			if self.info.bagID == -1 then
+				BankFrameItemButton_OnEnter(self)
+			else
+				ContainerFrameItemButton_OnEnter(self)
+			end
+		end)
 
 		self:SetSlotPosition(slot, category_frame, container)
 	end

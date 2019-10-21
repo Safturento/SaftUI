@@ -52,13 +52,13 @@ local function SkinEquipSlots()
 	end
 
 	CharacterHeadSlot:ClearAllPoints()
-	CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 10, -54)
+	CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 10, -10)
 
 	CharacterHandsSlot:ClearAllPoints()
-	CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -10, -54)
+	CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -10, -10)
 
 	CharacterMainHandSlot:ClearAllPoints()
-	CharacterMainHandSlot:SetPoint('BOTTOMLEFT', CharacterWristSlot, 'BOTTOMRIGHT', 52, 0)
+	CharacterMainHandSlot:SetPoint('TOPLEFT', CharacterWristSlot, 'BOTTOMRIGHT', 54, -7)
 
 	CharacterSecondaryHandSlot:ClearAllPoints()
 	CharacterSecondaryHandSlot:SetPoint('TOPLEFT', CharacterMainHandSlot, 'TOPRIGHT', 7, 0)

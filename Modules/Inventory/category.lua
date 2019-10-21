@@ -15,6 +15,7 @@ INV.filters = {
 		{ name = 'Devices',			func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Devices' end},
 		{ name = 'Pets & Mounts',	func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Companion Pets' or subclass == 'Mount' end},
 		{ name = 'Quest',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Quest' end},
+		{ name = 'Keys',				func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Key' end},
 		{ name = 'Miscellaneous', func = function(name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return true end},
 	}
 }
