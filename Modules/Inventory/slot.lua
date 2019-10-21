@@ -53,6 +53,14 @@ hooksecurefunc('StackSplitFrameOkay_Click', function()
 	end
 end)
 
+local function UpdateTooltip(self)
+	if self.info.bagID == -1 then
+		BankFrameItemButton_OnEnter(self)
+	else
+		ContainerFrameItemButton_OnEnter(self)
+	end
+end
+
 function INV:CreateSlot(container, category_name)
 	local category_frame = container.categories[category_name]
 	local slotID = #category_frame.slots + 1
@@ -70,15 +78,9 @@ function INV:CreateSlot(container, category_name)
 		slot.tainted = InCombatLockdown()
 		
 		slot.GetInventorySlot = ButtonInventorySlot
-		slot.UpdateTooltip = BankFrameItemButton_OnEnter
 
-		slot:SetScript('OnEnter', function(self)
-			if self.info.bagID == -1 then
-				BankFrameItemButton_OnEnter(self)
-			else
-				ContainerFrameItemButton_OnEnter(self)
-			end
-		end)
+		slot.UpdateTooltip = UpdateTooltip
+		slot:SetScript('OnEnter', UpdateTooltip)
 
 		self:SetSlotPosition(slot, category_frame, container)
 	end
