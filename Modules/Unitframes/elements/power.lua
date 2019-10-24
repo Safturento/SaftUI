@@ -66,7 +66,7 @@ local function UpdateConfig(self)
 	st:SetBackdrop(self.Power, self.config.power.template)
 
 	self.Power:ClearAllPoints()
-	local anchor, rel_anchor, x_off, y_off = unpack(self.config.power.position)
+	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.position)
 	self.Power:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	self.Power:SetFrameLevel(self.config.power.framelevel)
 	self.Power:SetStatusBarTexture(st.BLANK_TEX)
@@ -88,7 +88,7 @@ local function UpdateConfig(self)
 		self.Power.text:Show()
 		self.Power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 		self.Power.text:ClearAllPoints()
-		local anchor, rel_anchor, x_off, y_off = unpack(self.config.power.text.position)
+		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.text.position)
 		self.Power.text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	else
 		self.Power.text:Hide()
@@ -107,16 +107,18 @@ local function UpdateConfig(self)
 	self.Power.customColor 			= self.config.power.customColor
 end
 
-local function GetConfigTable(self)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+
 	return {
 		type = 'group',
 		name = 'Power',
 		get = function(info)
-			return self.config.power[info[#info]]
+			return config.profiles[config.config_profile][unit].power[info[#info]]
 		end,
 		set = function(info, value)
-			self.config.power[info[#info]] = value
-			UF:UpdateConfig(self.base_unit, 'Power')
+			config.profiles[config.config_profile][unit].power[info[#info]] = value
+			UF:UpdateConfig(unit, 'Power')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -124,9 +126,14 @@ local function GetConfigTable(self)
 			template = st.CF.generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			template = st.CF.generators.template(4),
-			position = st.CF.generators.position(5,
-				self.config.power.position, false,
-				function() UF:UpdateConfig(self.base_unit, 'Power') end
+			position = st.CF.generators.uf_element_position(5,
+				function(index) return
+					config.profiles[config.config_profile][unit].power.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].power.position[index] = value
+					UF:UpdateConfig(unit, 'Power')
+				end
 			),
 			text = {
 				order = 6,
@@ -134,19 +141,24 @@ local function GetConfigTable(self)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return self.config.power.text[info[#info]]
+					return config.profiles[config.config_profile][unit].power.text[info[#info]]
 				end,
 				set = function(info, value)
-					self.config.power.text[info[#info]] = value
-					UF:UpdateConfig(self.base_unit, 'Power')
+					config.profiles[config.config_profile][unit].power.text[info[#info]] = value
+					UF:UpdateConfig(unit, 'Power')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
 					font = st.CF.generators.font(1),
-					position = st.CF.generators.position(2,
-						self.config.power.text.position, false,
-						function() UF:UpdateConfig(self.base_unit, 'Power') end
-					),
+					position = st.CF.generators.uf_element_position(5,
+				function(index) return
+					config.profiles[config.config_profile][unit].power.text.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].power.text.position[index] = value
+					UF:UpdateConfig(unit, 'Power')
+				end
+			),
 				},
 			},
 			bg = {
@@ -155,11 +167,11 @@ local function GetConfigTable(self)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return self.config.power.bg[info[#info]]
+					return config.profiles[config.config_profile][unit].power.bg[info[#info]]
 				end,
 				set = function(info, value)
-					self.config.power.bg[info[#info]] = value
-					UF:UpdateConfig(self.base_unit, 'Power')
+					config.profiles[config.config_profile][unit].power.bg[info[#info]] = value
+					UF:UpdateConfig(unit, 'Power')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),

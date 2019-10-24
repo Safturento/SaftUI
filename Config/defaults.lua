@@ -135,8 +135,8 @@ st.defaults.templates = {
 		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 		border = true,
 		thick = true,
-		outer_shadow = {0, 0, 0, 0.5},
-		inner_shadow = {0, 0, 0, 0.5},
+		outer_shadow = {0, 0, 0, 0},
+		inner_shadow = {0, 0, 0, 0},
 	}
 }
 
@@ -354,7 +354,7 @@ st.defaults.unitframes = {
 				enable = true,
 				width = 201,
 				height = 30,
-				position = {'CENTER', 'UIParent', 'CENTER',  0, 0},
+				position = {point = 'CENTER', frame = UIParent, rel_point = 'CENTER',  x_off = 0, y_off = 0},
 				template = 'thick',
 				range_alpha = {
 					inside = 1,
@@ -366,7 +366,7 @@ st.defaults.unitframes = {
 					width = 0,
 					relative_height = true,
 					height = 0,
-					position = {'CENTER', 'CENTER', 0, 0},
+					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
 					framelevel = 0,
 					template = 'none',
 					alpha = 1,
@@ -378,7 +378,7 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = false,
-					position = {'BOTTOM', 'BOTTOM', 0, 0},
+					position = {point = 'BOTTOM', rel_point = 'BOTTOM', x_off = 0, y_off = 0},
 					framelevel = 15,
 					height = 4,
 					relative_width = true,
@@ -391,17 +391,17 @@ st.defaults.unitframes = {
 					},
 					text = {
 						enable = true,
-						position = {'TOPLEFT', 'BOTTOMLEFT', 0, -5},
+						position = {point = 'TOPLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -5},
 						font = 'pixel',
 					},
 					time = {
 						enable = true,
-						position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -5},
+						position = {point = 'TOPRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 4, y_off = -5},
 						font = 'pixel',
 					},
 					icon = {
 						enable = true,
-						position = {'RIGHT', 'LEFT', -7, 0},
+						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
 						framelevel = 15,
 						height = 0,
 						relative_height = true,
@@ -411,7 +411,7 @@ st.defaults.unitframes = {
 					}
 				},
 				health = {
-					position = {'CENTER', 'CENTER', 0, 0},
+					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
 					framelevel = 15,
 					height = -10,
 					template = 'thin',
@@ -425,7 +425,7 @@ st.defaults.unitframes = {
 						hide_full = false,
 						percent = false,
 						font = 'pixel',
-						position = {'RIGHT', 'RIGHT', -3, 0},
+						position = {point = 'RIGHT', rel_point = 'RIGHT', x_off = -3, y_off = 0},
 						tags = 'deficit'
 					},
 					Smooth = true,
@@ -441,7 +441,7 @@ st.defaults.unitframes = {
 					customColor = { 0.3, 0.3, 0.3},
 				},
 				power = {
-					position = {'CENTER', 'CENTER', 0, 0},
+					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
 					framelevel = 10,
 					template = 'thin',
 					bg = {
@@ -454,7 +454,7 @@ st.defaults.unitframes = {
 						hide_full = false,
 						percent = false,
 						font = 'pixel',
-						position = {'LEFT', 'LEFT', 5, 0},
+						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 5, y_off = 0},
 					},
 					Smooth = true,
 					colorTapping = false,
@@ -507,11 +507,11 @@ st.defaults.unitframes = {
 								border = 'none', -- none, dispel, all
 							},
 						},
-						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
+						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
 					},
 					debuffs = {
 						enable = false,
-						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 31},
+						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 31},
 					}
 				},
 				name = {
@@ -522,12 +522,12 @@ st.defaults.unitframes = {
 					show_samelevel = true,
 					show_classification = true,
 					font = 'pixel',
-					position = {'LEFT', 'LEFT', 5, 0},
+					position = {point = 'LEFT', rel_point = 'LEFT', x_off = 5, y_off = 0},
 					tag = '[st:level] [st:name]',
 				}
 			},
 			player = {
-				position = {'RIGHT', 'UIParent', 'CENTER', -150, -150},
+				position = {point = 'RIGHT', frame = UIParent, rel_point = 'CENTER', x_off = -150, y_off = -150},
 				castbar = {
 					enable = true,
 				},
@@ -548,7 +548,7 @@ st.defaults.unitframes = {
 				auras = {
 					debuffs = {
 						enable = true,
-						position = {'RIGHT', 'LEFT', -7, 0},
+						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
 						size = 30,
@@ -561,7 +561,7 @@ st.defaults.unitframes = {
 				}
 			},
 			target = {
-				position = {'LEFT', 'UIParent', 'CENTER', 150, -150},
+				position = {point = 'LEFT', frame = UIParent, rel_point = 'CENTER', x_off = 150, y_off = -150},
 				castbar = {
 					enable = true,
 				},
@@ -576,7 +576,7 @@ st.defaults.unitframes = {
 			},
 			targettarget = {
 				width = 100,
-				position = {'LEFT', 'SaftUI_Target', 'RIGHT', 7, 0},
+				position = {point = 'LEFT', frame = 'SaftUI_Target', rel_point = 'RIGHT', x_off = 7, y_off = 0},
 				name = {
 					enable = false,
 				},
@@ -588,7 +588,7 @@ st.defaults.unitframes = {
 				unitsPerColumn = 5,
 				columnSpacing = 0,
 				initialAnchor = 'TOP',
-				position = {'TOP', 'SaftUI_Player', 'BOTTOM', 0, -30},
+				position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
 				health = {
 					text = {
 						hide_full = true,
@@ -598,13 +598,14 @@ st.defaults.unitframes = {
 				auras = {
 					debuffs = {
 						enable = true,
-						position = {'RIGHT', 'LEFT', -7, 0},
+						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
 						size = 30,
 						filter = {
 							friend = {
 								show_all = false,
+								show_magic = true,
 							}
 						}
 					}
@@ -617,7 +618,7 @@ st.defaults.unitframes = {
 				unitsPerColumn = 5,
 				columnSpacing = 3,
 				initialAnchor = 'LEFT',
-				position = {'TOPLEFT', 'SaftUI_Player', 'BOTTOMLEFT', 0, -30},
+				position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
 				width = 99,
 				height = 26,
 				-- template = 'thick',
@@ -644,7 +645,7 @@ st.defaults.unitframes = {
 						max = 2, 
 						spacing = 3,
 						enable = true,
-						position = {'LEFT', 'LEFT', 4, 0},
+						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
 						horizontal_growth = 'RIGHT',
 						initial_anchor = 'LEFT',
 						framelevel = 50,
@@ -664,7 +665,7 @@ st.defaults.unitframes = {
 				unitsPerColumn = 5,
 				columnSpacing = 3,
 				initialAnchor = 'LEFT',
-				position = {'TOP', UIParent, 'CENTER', 0, -250},
+				position = {point = 'TOP', frame = UIParent, rel_point = 'CENTER', x_off = 0, y_off = -250},
 				width = 50,
 				height = 26,
 				-- template = 'thick',
@@ -694,7 +695,7 @@ st.defaults.unitframes = {
 						max = 2, 
 						spacing = 3,
 						enable = true,
-						position = {'LEFT', 'LEFT', 4, 0},
+						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
 						horizontal_growth = 'RIGHT',
 						initial_anchor = 'LEFT',
 						framelevel = 50,
@@ -716,11 +717,11 @@ st.defaults.unitframes = {
 				health = {
 					height = -6,
 					text = {
-						position = {'BOTTOMRIGHT', 'TOPRIGHT', 0, 7},
+						position = {point = 'BOTTOMRIGHT', rel_point = 'TOPRIGHT', x_off = 0, y_off = 7},
 					},
 				},
 				name = {
-					position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
+					position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
 					max_length = 15,
 				},
 				castbar = {
@@ -736,7 +737,7 @@ st.defaults.unitframes = {
 					},
 					debuffs = {
 						enable = true,
-						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 24},
+						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
 						self_only = true,
 						cooldown = {
 							alpha = 1,

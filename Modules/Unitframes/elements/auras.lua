@@ -37,6 +37,7 @@ canApply, isBossDebuff, casterIsPlayer, nameplateShowAll,timeMod, effect1, effec
 	
 	if not (
 		 config.show_all or 
+		(config.show_magic and debuffType == 'Magic') or
 		(config.show_self and button.isPlayer) or
 		(config.show_dispel and is_dispellable)
 	) then return end
@@ -93,7 +94,7 @@ local function UpdateConfig(self, aura_type)
 	auras:SetHeight(num_rows*auras.config.size + (num_rows-1)*auras.config.spacing)
 	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
 	auras:ClearAllPoints()
-	local point, relativePoint, xoffset, yoffset = unpack(auras.config.position)
+	local point, _, relativePoint, xoffset, yoffset = st:UnpackPoint(auras.config.position)
 	auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
 	auras:SetFrameLevel(auras.config.framelevel)
 
@@ -121,24 +122,55 @@ local function Constructor(self, aura_type)
 	return auras
 end
 
-local function GetConfigTable(self, aura_type)
+local function GetConfigTable(unit, aura_type)
+	local config = st.config.profile.unitframes
+	
+	local function FiltersTable(name)
+		return {
+			name = name,
+			type = 'group',
+			inline = true,
+			args = {
+				show_all = st.CF.generators.toggle(1, 'Show all'),
+				show_self = st.CF.generators.toggle(2, 'Show self'),
+				show_dispel = st.CF.generators.toggle(3, 'Show dispel'),
+				show_dispel = st.CF.generators.toggle(3, 'Show magic'),
+				desaturate = st.CF.generators.toggle(4, 'Desaturate'),
+				border = {
+					name = 'Borders',
+					type = 'select',
+					values = {
+						['all'] = 'All',
+						['none'] = 'None',
+						['dispel'] = 'Dispellable',
+					},
+				},
+			},
+		}
+	end
+
 	return {
 		type = 'group',
 		name = aura_type,
 		get = function(info)
-			return self.config.auras[string.lower(aura_type)][info[#info]]
+			return config.profiles[config.config_profile][unit].auras[string.lower(aura_type)][info[#info]]
 		end,
 		set = function(info, value)
-			self.config.auras[string.lower(aura_type)][info[#info]] = value
-			UF:UpdateConfig(self.base_unit, aura_type)
+			config.profiles[config.config_profile][unit].auras[string.lower(aura_type)][info[#info]] = value
+			UF:UpdateConfig(unit, aura_type)
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
-			position = st.CF.generators.position(3,
-				self.config.auras[string.lower(aura_type)].position, false,
-				function() UF:UpdateConfig(self.base_unit, aura_type) end
+			position = st.CF.generators.uf_element_position(3,
+				function(index) return
+					config.profiles[config.config_profile][unit].auras[string.lower(aura_type)].position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].auras[string.lower(aura_type)].position[index] = value
+					UF:UpdateConfig(unit, aura_type)
+				end
 			),
 			size = st.CF.generators.range(4, 'Size', 1, 50, 1),
 			spacing = st.CF.generators.range(5, 'Spacing', 1, 30, 1),
@@ -158,53 +190,15 @@ local function GetConfigTable(self, aura_type)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return self.config.auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]]
+					return config.profiles[config.config_profile][unit].auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]]
 				end,
 				set = function(info, value)
-					self.config.auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]] = value
-					UF:UpdateConfig(self.base_unit, aura_type)
+					config.profiles[config.config_profile][unit].auras[string.lower(aura_type)].filter[info[#info-1]][info[#info]] = value
+					UF:UpdateConfig(unit, aura_type)
 				end,
 				args = {
-					friend = {
-						name = 'Friendly',
-						type = 'group',
-						inline = true,
-						args = {
-							show_all = st.CF.generators.toggle(1, 'Show all'),
-							show_self = st.CF.generators.toggle(2, 'Show self'),
-							show_dispel = st.CF.generators.toggle(3, 'Show dispel'),
-							desaturate = st.CF.generators.toggle(4, 'Desaturate'),
-							border = {
-								name = 'Borders',
-								type = 'select',
-								values = {
-									['all'] = 'All',
-									['none'] = 'None',
-									['dispel'] = 'Dispellable',
-								},
-							},
-						},
-					},
-					enemy = {
-						name = 'Enemy',
-						type = 'group',
-						inline = true,
-						args = {
-							show_all = st.CF.generators.toggle(1, 'Show all'),
-							show_self = st.CF.generators.toggle(2, 'Show self'),
-							show_dispel = st.CF.generators.toggle(3, 'Show dispel'),
-							desaturate = st.CF.generators.toggle(4, 'Desaturate'),
-							border = {
-								name = 'Borders',
-								type = 'select',
-								values = {
-									['all'] = 'All',
-									['none'] = 'None',
-									['dispel'] = 'Dispellable',
-								},
-							},
-						},
-					},
+					friend = FiltersTable('Friendly'),
+					enemy = FiltersTable('Enemy'),
 				},
 			},
 		}

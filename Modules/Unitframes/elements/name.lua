@@ -19,31 +19,36 @@ local function UpdateConfig(self)
 
 	self.Name:SetFontObject(st:GetFont(self.config.name.font))
 	self.Name:ClearAllPoints()
-	local anchor, rel_anchor, x_off, y_off = unpack(self.config.name.position)
+	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.name.position)
 	self.Name:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 
 	self:Tag(self.Name, '[st:name]')
 end
 
-local function GetConfigTable(self)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
 	return {
 		type = 'group',
 		name = 'Name',
 		get = function(info)
-			return self.config.name[info[#info]]
+			return config.profiles[config.config_profile][unit].name[info[#info]]
 		end,
 		set = function(info, value)
-			self.config.name[info[#info]] = value
-			UF:UpdateConfig(self.base_unit, 'Name')
+			config.profiles[config.config_profile][unit].name[info[#info]] = value
+			UF:UpdateConfig(unit, 'Name')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
 			font = st.CF.generators.font(1),
-			template = st.CF.generators.template(2),
 			alpha = st.CF.generators.alpha(3),
-			position = st.CF.generators.position(4,
-				self.config.name.position, false, 
-				function() UF:UpdateConfig(self.base_unit, 'Name') end
+			position = st.CF.generators.uf_element_position(4,
+				function(index) return
+					config.profiles[config.config_profile][unit].name.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].name.position[index] = value
+					UF:UpdateConfig(unit, 'Name')
+				end
 			),
 			show_level = st.CF.generators.toggle(5, 'Show level', 1),
 			max_length = st.CF.generators.range(6, 'Max length', 1, 100, 1),

@@ -86,7 +86,7 @@ local function UpdateConfig(self)
 	st:SetBackdrop(self.Health, self.config.health.template)
 
 	self.Health:ClearAllPoints()
-	local anchor, rel_anchor, x_off, y_off = unpack(self.config.health.position)
+	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.health.position)
 	self.Health:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	self.Health:SetFrameLevel(self.config.health.framelevel)
 	self.Health:SetStatusBarTexture(st.BLANK_TEX)
@@ -106,7 +106,7 @@ local function UpdateConfig(self)
 		self.Health.text:Show()
 		self.Health.text:SetFontObject(st:GetFont(self.config.health.text.font))
 		self.Health.text:ClearAllPoints()
-		local anchor, rel_anchor, x_off, y_off = unpack(self.config.health.text.position)
+		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.health.text.position)
 		self.Health.text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	else
 		self.Health.text:Hide()
@@ -125,25 +125,32 @@ local function UpdateConfig(self)
 	self.Health.customColor 		= self.config.health.customColor
 end
 
-local function GetConfigTable(self)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+
 	return {
 		type = 'group',
 		name = 'Health',
 		get = function(info)
-			return self.config.health[info[#info]]
+			return config.profiles[config.config_profile][unit].health[info[#info]]
 		end,
 		set = function(info, value)
-			self.config.health[info[#info]] = value
-			UF:UpdateConfig(self.base_unit, 'Health')
+			config.profiles[config.config_profile][unit].health[info[#info]] = value
+			UF:UpdateConfig(unit, 'Health')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
-			position = st.CF.generators.position(4,
-				self.config.health.position, false,
-				function() UF:UpdateConfig(self.base_unit, 'Health') end
+			position = st.CF.generators.uf_element_position(5,
+				function(index) return
+					config.profiles[config.config_profile][unit].health.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].health.position[index] = value
+					UF:UpdateConfig(unit, 'Health')
+				end
 			),
 			text = {
 				order = 5,
@@ -151,19 +158,27 @@ local function GetConfigTable(self)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return self.config.health.text[info[#info]]
+					return config.profiles[config.config_profile][unit].health.text[info[#info]]
 				end,
 				set = function(info, value)
-					self.config.health.text[info[#info]] = value
-					UF:UpdateConfig(self.base_unit, 'Health')
+					config.profiles[config.config_profile][unit].health.text[info[#info]] = value
+					UF:UpdateConfig(unit, 'Health')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
 					font = st.CF.generators.font(1),
-					position = st.CF.generators.position(2,
-						self.config.health.text.position, false,
-						function() UF:UpdateConfig(self.base_unit, 'Health') end
+					position = st.CF.generators.uf_element_position(2,
+					function(index) return
+						config.profiles[config.config_profile][unit].health.text.position[index]
+					end,
+					function(index, value)
+						config.profiles[config.config_profile][unit].health.text.position[index] = value
+						UF:UpdateConfig(unit, 'Health')
+					end
 					),
+					deficit =st.CF.generators.toggle(3, 'Deficit'),
+					hide_full = st.CF.generators.toggle(4, 'Hide full'),
+					percent = st.CF.generators.toggle(5, 'Percent'),
 				},
 			},
 			bg = {
@@ -172,11 +187,11 @@ local function GetConfigTable(self)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return self.config.health.bg[info[#info]]
+					return config.profiles[config.config_profile][unit].health.bg[info[#info]]
 				end,
 				set = function(info, value)
-					self.config.health.bg[info[#info]] = value
-					UF:UpdateConfig(self.base_unit, 'Health')
+					config.profiles[config.config_profile][unit].health.bg[info[#info]] = value
+					UF:UpdateConfig(unit, 'Health')
 				end,
 				args = {
 					enable = st.CF.generators.enable(1),

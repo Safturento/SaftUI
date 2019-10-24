@@ -69,18 +69,24 @@ end
 
 st.CF.generators = {}
 
-function st.CF.generators.position(order, config_table, global_frame, set_func)
+function st.CF.generators.position(order, global_frame, get, set)
 	local table = {
 		order = order or 0,
 		name = 'Position',
 		type = 'group',
 		inline = true,
 		get = function(info)
-			return config_table[info.option.order]
+			if type(get) == 'function' then
+				return get(info[#info])
+			end
+			return get[info[#info]]
 		end,
 		set = function(info, value)
-			config_table[info.option.order] = value
-			if set_func then set_func() end
+			if set then
+				set(info[#info], value)
+			else
+				get[info[#info]] = value
+			end
 		end,
 		args = {
 			point = {
@@ -128,8 +134,18 @@ function st.CF.generators.position(order, config_table, global_frame, set_func)
 	return table
 end
 
-function st.CF.generators.uf_element_position(order, config_table, set_func)
-	local table = st.CF.generators.position(order, config_table, true)
+function st.CF.get_frame(self, config)
+	local frame = self
+	if config.frame_type == false then
+		frame = self[config.anchor_element]
+	elseif config.frame_type == true then
+		frame = _G[config.anchor_frame]
+	end
+	return frame
+end
+
+function st.CF.generators.uf_element_position(order, get, set)
+	local table = st.CF.generators.position(order, true, get, set)
 	local values = {}
 	for key,_ in pairs(st:GetModule('Unitframes').elements) do
 		values[key] = key
@@ -138,53 +154,53 @@ function st.CF.generators.uf_element_position(order, config_table, set_func)
 	table.args.frame_type = {
 		name = 'Anchor type',
 		type = 'toggle',
-		desc = 'unchecked: self \nchecked: element selection \ngrayed: global frame',
+		desc = 'unchecked: element selection \nchecked: global frame \ngrayed: self',
 		order = 2,
 		tristate = true,
 		get = function(info)
-			local value = config_table.frame_type
-			if value then
+			local value = get('frame_type')
+			if value == false then
 				table.args.frame.values = values
 				table.args.frame.type = 'select'
-			elseif value == nil then
+			elseif value == true then
 				table.args.frame.type = 'input'
 			end
 			return value
 		end,
 		set = function(info, value)
-			config_table.frame_type = value
-			if value then
+			set('frame_type', value)
+			if value == false then
 				table.args.frame.values = values
 				table.args.frame.type = 'select'
-			elseif value == nil then
+			elseif value == true then
 				table.args.frame.type = 'input'
 			end
-			if set_func then set_func() end
 		end
 	}
 
 	table.args.frame.hidden = function(info)
-		return config_table.frame_type == false
+		return get('frame_type') == nil
 	end
 
 	table.args.frame.get = function(info)
-		if config_table.frame_type then
-			return config_table.anchor_element
-		elseif config_table.frame_type == nil then
-			return config_table.anchor_frame
+		local frame_type = get('frame_type')
+		if frame_type == false then
+			return get('anchor_element')
+		elseif frame_type == true then
+			return get('anchor_frame')
 		end
 	end
 	table.args.frame.set = function(info, value)
-		if config_table.frame_type then
-			config_table.anchor_element = value
-		elseif config_table.frame_type == nil then
-			config_table.anchor_frame = value
+		local frame_type = get('frame_type')
+		if frame_type == false then
+			set('anchor_element', value)
+		elseif frame_type == true then
+			set('anchor_frame', value)
 		end
-		if set_func then set_func() end
 	end
 
 	table.args.frame.validate = function(info, name) 
-		if config_table.frame_type == nil then
+		if get('frame_type') == nil then
 			return _G[name] and true or "Frame doesn't exist"
 		end
 		return true

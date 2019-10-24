@@ -1,5 +1,9 @@
 local ADDON_NAME, st = ...
 
+function st:UnpackPoint(config)
+	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
+end
+
 function st:Kill(frame)
 	if frame.UnregisterAllEvents then
 		frame:UnregisterAllEvents()

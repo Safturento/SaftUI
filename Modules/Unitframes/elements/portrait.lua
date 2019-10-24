@@ -35,22 +35,24 @@ local function UpdateConfig(self)
 	st:SetBackdrop(self.Portrait, self.config.portrait.template)
 
 	self.Portrait:ClearAllPoints()
-	local anchor, rel_anchor, x_off, y_off = unpack(self.config.portrait.position)
+	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.portrait.position)
 	self.Portrait:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	self.Portrait:SetFrameLevel(self.config.portrait.framelevel)
 	self.Portrait:SetAlpha(self.config.portrait.alpha)
 end
 
-local function GetConfigTable(self)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+
 	return {
 		type = 'group',
 		name = 'Portrait',
 		get = function(info)
-			return self.config.portrait[info[#info]]
+			return config.profiles[config.config_profile][unit].portrait[info[#info]]
 		end,
 		set = function(info, value)
-			self.config.portrait[info[#info]] = value
-			UF:UpdateConfig(self.base_unit, 'Portrait')
+			config.profiles[config.config_profile][unit].portrait[info[#info]] = value
+			UF:UpdateConfig(unit, 'Portrait')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
@@ -58,9 +60,14 @@ local function GetConfigTable(self)
 			template = st.CF.generators.template(2),
 			alpha = st.CF.generators.alpha(3),
 			size = UF.GenerateRelativeSizeConfigGroup(4),
-			position = st.CF.generators.position(5,
-				self.config.portrait.position, false, 
-				function() UF:UpdateConfig(self.base_unit, 'Portrait') end
+			position = st.CF.generators.uf_element_position(5,
+				function(index) return
+					config.profiles[config.config_profile][unit].portrait.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].portrait.position[index] = value
+					UF:UpdateConfig(unit, 'Portrait')
+				end
 			),
 		}
 	}

@@ -1,7 +1,7 @@
 local ADDON_NAME, st = ...
 local UF = st:NewModule('Unitframes')
 
-local TEST_PARTY_SOLO = false
+local TEST_PARTY_SOLO = true
 
 UF.oUF = st.oUF
 assert(UF.oUF, 'st was unable to locate oUF.')
@@ -21,16 +21,12 @@ UF.unit_strings = {
 function UF.ConstructUnit(self, unit)
 	-- Ensure that we have access to a numberless unit type for config tables
 	local base_unit = self:GetParent():GetAttribute('base_unit')
-	local config_unit = self:GetParent():GetAttribute('config_unit')
 	if base_unit then
+		print(unit)
 		self.is_group_unit = true
 		self.base_unit = base_unit
 	else
 		self.base_unit = strmatch(unit, '(%D+)')
-	end
-
-	if config_unit then
-		self.config_unit = config_unit
 	end
 
 	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
@@ -98,18 +94,24 @@ function UF:UpdateColors()
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
-	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.config_unit or frame.base_unit]
+	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
 
 	if element_name then
 		self.elements[element_name].UpdateConfig(frame, element_name)
 	else
-		if not (frame.is_group_unit or InCombatLockdown() or frame.base_unit == 'nameplate') then
-			frame:ClearAllPoints()
-			if not frame.config.enable then
-				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
-				return
+		if not (InCombatLockdown() or frame.base_unit == 'nameplate') then
+			if frame.is_group_unit then
+				local header = frame:GetParent()
+				header:ClearAllPoints()
+				header:SetPoint(st:UnpackPoint(frame.config.position))
 			else
-				frame:SetPoint(unpack(frame.config.position))
+				frame:ClearAllPoints()
+				if not frame.config.enable then
+					frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+					return
+				else
+					frame:SetPoint(st:UnpackPoint(frame.config.position))
+				end
 			end
 			frame:SetSize(frame.config.width, frame.config.height)
 		end
@@ -200,7 +202,7 @@ function UF:CreateGroupHeaders()
 	)
 
 	party.config = config
-	party:SetPoint(unpack(config.position))
+	party:SetPoint(st:UnpackPoint(config.position))
 	self.groups.party = party
 
 	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid10
@@ -230,12 +232,11 @@ function UF:CreateGroupHeaders()
 		"unitsPerColumn", config.unitsPerColumn,
 		"columnSpacing", config.columnSpacing,
 		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid",
-		"config_unit", 'raid10'
+		"base_unit", "raid10"
 	)
 
 	raid10.config = config
-	raid10:SetPoint(unpack(config.position))
+	raid10:SetPoint(st:UnpackPoint(config.position))
 	self.groups.raid10 = raid10
 
 	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid40
@@ -265,12 +266,11 @@ function UF:CreateGroupHeaders()
 		"unitsPerColumn", config.unitsPerColumn,
 		"columnSpacing", config.columnSpacing,
 		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid",
-		"config_unit", 'raid40'
+		"base_unit", "raid40"
 	)
 
 	raid40.config = config
-	raid40:SetPoint(unpack(config.position))
+	raid40:SetPoint(st:UnpackPoint(config.position))
 	self.groups.raid40 = raid40
 end
 
@@ -445,6 +445,18 @@ function UF:GetConfigTable()
 	}
 
 	local function GetUnitConfig(unit, frame)
+		local config = st.config.profile.unitframes
+
+		if not frame then return end
+
+		local function frame_position_set(key, value)
+			config.profiles[config.config_profile][unit].position[key] = value
+			UF:UpdateConfig(unit)
+		end
+		local function frame_position_get(key)
+			return config.profiles[config.config_profile][unit].position[key]
+		end
+
 		config_table = {
 			name = self.unit_strings[unit] or unit,
 			type = 'group',
@@ -457,7 +469,7 @@ function UF:GetConfigTable()
 					-- inline = true,
 					values = function(info)
 						local units = {}
-						for key,_ in pairs(st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]) do
+						for key,_ in pairs(config.profiles[config.config_profile]) do
 							if not (key == unit) then
 								units[key] = key
 							end
@@ -476,11 +488,11 @@ function UF:GetConfigTable()
 					name = 'General',
 					type = 'group',
 					get = function(info)
-						return frame.config[info[#info]]
+						return config.profiles[config.config_profile][unit][info[#info]]
 					end,
 					set = function(info, value)
-						frame.config[info[#info]] = value
-						UF:UpdateConfig(frame.unit)
+						config.profiles[config.config_profile][unit][info[#info]] = value
+						UF:UpdateConfig(unit)
 					end,
 					args = {
 						enable = st.CF.generators.enable(0),
@@ -488,18 +500,15 @@ function UF:GetConfigTable()
 						height = st.CF.generators.height(2),
 						width = st.CF.generators.width(3),
 						template = st.CF.generators.template(4),
-						position = st.CF.generators.position(5,
-							frame.config.position, true,
-							function() UF:UpdateConfig(frame.unit) end
-						),
+						position = st.CF.generators.position(5, true, frame_position_get, frame_position_set),
 					}
 				}
 			}
 		}
 
-		for element_name, element in pairs(frame.elements) do
+		for element_name, element in pairs(UF.elements) do
 			config_table.args[element_name] =
-				self.elements[element_name].GetConfigTable(frame)
+				self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
 		end
 
 		return config_table

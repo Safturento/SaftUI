@@ -69,8 +69,9 @@ local function UpdateConfig(self)
 		self.Castbar.Text:Show()
 		self.Castbar.Text:SetFontObject(st:GetFont(self.config.castbar.text.font))
 		self.Castbar.Text:ClearAllPoints()
-		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.text.position)
-		self.Castbar.Text:SetPoint(anchor, self.Castbar, rel_anchor, x_off, y_off)
+		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.text.position)
+		local frame = st.CF.get_frame(self, self.config.castbar.text.position)
+		self.Castbar.Text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Text:Hide()
 	end
@@ -79,8 +80,9 @@ local function UpdateConfig(self)
 		self.Castbar.Time:Show()
 		self.Castbar.Time:SetFontObject(st:GetFont(self.config.castbar.time.font))
 		self.Castbar.Time:ClearAllPoints()
-		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.time.position)
-		self.Castbar.Time:SetPoint(anchor, self.Castbar, rel_anchor, x_off, y_off)
+		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.time.position)
+		local frame = st.CF.get_frame(self, self.config.castbar.time.position)
+		self.Castbar.Time:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Time:Hide()
 	end
@@ -90,13 +92,8 @@ local function UpdateConfig(self)
 		st:SetBackdrop(self.Castbar.Icon, self.config.castbar.icon.template)
 		self.Castbar.Icon:ClearAllPoints()
 		
-		local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.icon.position)
-		local frame = self
-		if self.config.castbar.icon.position.frame_type then
-			frame = self[self.config.castbar.icon.position.anchor_element]
-		elseif self.config.castbar.icon.position.frame_type == nil then
-			frame = _G[self.config.castbar.icon.position.anchor_frame]
-		end
+		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.icon.position)
+		local frame = st.CF.get_frame(self, self.config.castbar.icon.position)
 
 		self.Castbar.Icon:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 
@@ -118,30 +115,37 @@ local function UpdateConfig(self)
 	end
 
 	self.Castbar:ClearAllPoints()
-	local anchor, rel_anchor, x_off, y_off = unpack(self.config.castbar.position)
+	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.position)
 	self.Castbar:SetPoint(anchor, self, rel_anchor, x_off, y_off)
 	self.Castbar:SetFrameLevel(self.config.castbar.framelevel)
 end
 
-local function GetConfigTable(self)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+
 	return {
 		type = 'group',
 		name = 'Castbar',
 		get = function(info)
-			return self.config.castbar[info[#info]]
+			return config.profiles[config.config_profile][unit].castbar[info[#info]]
 		end,
 		set = function(info, value)
-			self.config.castbar[info[#info]] = value
-			UF:UpdateConfig(self.base_unit, 'Castbar')
+			config.profiles[config.config_profile][unit].castbar[info[#info]] = value
+			UF:UpdateConfig(unit, 'Castbar')
 		end,
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
-			position = st.CF.generators.position(4,
-				self.config.castbar.position, false,
-				function() UF:UpdateConfig(self.base_unit, 'Castbar') end
+			position = st.CF.generators.uf_element_position(4,
+				function(index) return
+					config.profiles[config.config_profile][unit].castbar.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].castbar.position[index] = value
+					UF:UpdateConfig(unit, 'Castbar')
+				end
 			),
 			icon = {
 				order = 5,
@@ -149,11 +153,11 @@ local function GetConfigTable(self)
 				inline = true,
 				type = 'group',
 				get = function(info)
-					return self.config.castbar.icon[info[#info]]
+					return config.profiles[config.config_profile][unit].castbar.icon[info[#info]]
 				end,
 				set = function(info, value)
-					self.config.castbar.icon[info[#info]] = value
-					UF:UpdateConfig(self.base_unit, 'Castbar')
+					config.profiles[config.config_profile][unit].castbar.icon[info[#info]] = value
+					UF:UpdateConfig(unit, 'Castbar')
 				end,
 				args = {
 					enable = st.CF.generators.enable(0),
@@ -161,11 +165,68 @@ local function GetConfigTable(self)
 					template = st.CF.generators.template(2),
 					size = UF.GenerateRelativeSizeConfigGroup(3),
 					position = st.CF.generators.uf_element_position(4,
-						self.config.castbar.icon.position,
-						function() UF:UpdateConfig(self.base_unit, 'Castbar') end
+						function(index) return
+							config.profiles[config.config_profile][unit].castbar.icon.position[index]
+						end,
+						function(index, value)
+							config.profiles[config.config_profile][unit].castbar.icon.position[index] = value
+							UF:UpdateConfig(unit, 'Castbar')
+						end
 					),
 				}
-			}
+			},
+			text = {
+				order = 6,
+				name = 'Text',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return config.profiles[config.config_profile][unit].castbar.text[info[#info]]
+				end,
+				set = function(info, value)
+					config.profiles[config.config_profile][unit].castbar.text[info[#info]] = value
+					UF:UpdateConfig(self.base_unit, 'Health')
+				end,
+				args = {
+					enable = st.CF.generators.enable(0),
+					font = st.CF.generators.font(1),
+					position = st.CF.generators.uf_element_position(2,
+						function(index) return
+							config.profiles[config.config_profile][unit].castbar.text.position[index]
+						end,
+						function(index, value)
+							config.profiles[config.config_profile][unit].castbar.text.position[index] = value
+							UF:UpdateConfig(unit, 'Castbar')
+						end
+					),
+				},
+			},
+			time = {
+				order = 7,
+				name = 'Time',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return config.profiles[config.config_profile][unit].castbar.time[info[#info]]
+				end,
+				set = function(info, value)
+					config.profiles[config.config_profile][unit].castbar.time[info[#info]] = value
+					UF:UpdateConfig(self.base_unit, 'Health')
+				end,
+				args = {
+					enable = st.CF.generators.enable(0),
+					font = st.CF.generators.font(1),
+					position = st.CF.generators.uf_element_position(2,
+						function(index) return
+							config.profiles[config.config_profile][unit].castbar.time.position[index]
+						end,
+						function(index, value)
+							config.profiles[config.config_profile][unit].castbar.time.position[index] = value
+							UF:UpdateConfig(unit, 'Castbar')
+						end
+					),
+				},
+			},
 		}
 	}
 end
