@@ -5,7 +5,7 @@ function MP:UpdateMinimap()
 	st:SetBackdrop(Minimap, self.config.minimap.template)
 	Minimap:SetSize(self.config.minimap.size, self.config.minimap.size)
 	Minimap:ClearAllPoints()
-	Minimap:SetPoint(unpack(self.config.minimap.position))
+	Minimap:SetPoint(st:UnpackPoint(self.config.minimap.position))
 end
 
 function MP:ADDON_LOADED(event, addon)

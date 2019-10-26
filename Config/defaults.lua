@@ -168,10 +168,11 @@ st.defaults.panels = {
 
 st.defaults.maps = {
 	minimap = {
+		font = 'pixel',
 		enable = true,
 		template = 'thick',
 		size = 160,
-		position = {'TOPRIGHT', -20, -20},
+		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -20, y_off = -20},
 		mail_position = {'TOPRIGHT', 'TOPRIGHT', -5, -2},
 	}
 }
