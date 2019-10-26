@@ -1,11 +1,15 @@
 local ADDON_NAME, st = ...
 
 local LT = st:GetModule('Loot')
+-- LT.DEBUG = true
 
 local roll_buttons = {
-	{name = 'Pass', icon_text = 'P', color = 'red'},
-	{name = 'Greed', icon_text = 'G', color = 'normal'},
-	{name = 'Need', icon_text = 'N', color = 'yellow'},
+	{name = 'Pass', icon_text = 'P', color = 'red',
+		icon_texture = [[Interface\ICONS\Spell_Shadow_SacrificialShield]]},
+	{name = 'Greed', icon_text = 'G', color = 'yellow',
+		icon_texture = [[Interface\ICONS\INV_Misc_Coin_01]]},
+	{name = 'Need', icon_text = 'N', color = 'white',
+		icon_texture = [[Interface\ICONS\INV_Misc_PunchCards_White]]},
 }
 
 function LT:DebugGroupLootFrame()
@@ -57,16 +61,21 @@ function LT:SkinRollFrame(frame)
 	local prev 
 	for i, info in ipairs(roll_buttons) do
 		local button = frame[info.name..'Button']
-		st:StripTextures(button)
+		-- st:StripTextures(button)
+
+		button:SetNormalTexture(info.icon_texture)
+		st:SkinIcon(button:GetNormalTexture())
+		button:SetPushedTexture(info.icon_texture)
 		
 		button:SetHighlightTexture(st.BLANK_TEX)
 		button:GetHighlightTexture():SetAlpha(0.1)
+		
 
 		button.Text = button:CreateFontString(nil, 'OVERLAY')
 		button.Text:SetFontObject(GameFontNormal)
 		button.Text:SetPoint('CENTER', 1, 0)
 		button.Text:SetVertexColor(unpack(st.config.profile.colors.text[info.color]))
-		button.Text:SetText(info.icon_text)
+		-- button.Text:SetText(info.icon_text)
 
 		prev = button
 	end
