@@ -103,9 +103,21 @@ function AB:UpdateConfig()
 			bar:Show()
 		end
 
-		st:SetBackdrop(bar, self.config.template)
-		local width = bar.config.perrow * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.padding_x * 2
-		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.padding_y * 2
+		if bar.config.backdrop.enable then
+			st:SetBackdrop(bar, bar.config.backdrop.template)
+			local width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+
+			local height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+
+			bar.backdrop:ClearAllPoints()
+			bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
+			bar.backdrop:SetSize(width, height)
+		else
+			st:SetBackdrop(bar, 'none')
+		end
+		
+		local width = bar.config.perrow * (bar.config.width + bar.config.spacing) - bar.config.spacing
+		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
 		
 		bar:SetSize(width, height)
 		bar:SetPoint(st:UnpackPoint(bar.config.position))
@@ -122,7 +134,7 @@ function AB:UpdateConfig()
 			slot:ClearAllPoints()
 
 			if j == 1 then
-				slot:SetPoint('TOPLEFT', bar, 'TOPLEFT', bar.config.padding_x, -bar.config.padding_y)
+				slot:SetPoint('TOPLEFT', bar)
 			elseif j % bar.config.perrow == 0 then
 				slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -bar.config.spacing)
 			else
@@ -152,9 +164,9 @@ function AB:UpdateActionButton(self)
 end
 
 function AB:GetConfigTable()
-	local ab_config = st.config.profile.actionbars
+	local config = st.config.profile.actionbars
 
-	local config = {
+	local config_table = {
 		name = 'Action Bars',
 		type = 'group',
 		args = {
@@ -171,14 +183,14 @@ function AB:GetConfigTable()
 	}
 
 	for i=1, 5 do
-		config.args['bar'..i] = {
+		config_table.args['bar'..i] = {
 			name = 'Bar '..i,
 			type = 'group',
 			get = function(info) 
-				return ab_config[i][info[#info]]
+				return config[i][info[#info]]
 			end,
 			set = function(info, value)
-				ab_config[i][info[#info]] = value
+				config[i][info[#info]] = value
 				self:UpdateConfig()
 			end,
 			args = {
@@ -189,9 +201,9 @@ function AB:GetConfigTable()
 				total = st.CF.generators.range(4, 'Total buttons', 1, 12, 1),
 				perrow = st.CF.generators.range(5, 'Buttons per row', 1, 12, 1),
 				position = st.CF.generators.position(6, true, 
-					function(key) return ab_config[i].position[key] end,
+					function(key) return config[i].position[key] end,
 					function(key, value) 
-						ab_config[i].position[key] = value
+						config[i].position[key] = value
 						self:UpdateConfig()
 					end
 				),
@@ -199,7 +211,7 @@ function AB:GetConfigTable()
 		}
 	end
 
-	return config
+	return config_table
 end
 
 function AB:OnInitialize()

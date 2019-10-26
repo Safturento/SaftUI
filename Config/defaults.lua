@@ -246,15 +246,14 @@ st.defaults.inventory = {
 }
 
 st.defaults.actionbars = {
-	template = 'none',
 	font = 'pixel',
 	hide_empty = true,
 
 	['**'] = {
 		enable = true,
 		template = 'thicktransparent',
-		padding_y = 0,
-		padding_x = 0,
+		padding_y = 7,
+		padding_x = 7,
 		spacing = 8,
 		height = 20,
 		width = 30,
@@ -262,9 +261,21 @@ st.defaults.actionbars = {
 		ooc_alpha = 1,
 		total = 12,
 		perrow = 12,
+		backdrop = {
+			enable = false,
+			template = 'thick',
+			width = 12,
+			height = 1,
+			padding = 6,
+			anchor = 'BOTTOMLEFT',
+		}
 	},
 	[1] = {
 		position = {point = 'BOTTOM', frame = UIParent, rel_point = 'BOTTOM', x_off = 0, y_off = 20},
+		backdrop = {
+			enable = true,
+			height = 3,
+		}
 	},
 	[2] = {
 		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar1', rel_point = 'TOP', x_off = 0, y_off = 8},
@@ -589,7 +600,7 @@ st.defaults.unitframes = {
 				},
 			},
 			party = {
-				spacing = 15,
+				spacing = 24,
 				growthDirection = 'BOTTOM',
 				maxColumns = 1,
 				unitsPerColumn = 5,
