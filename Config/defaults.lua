@@ -80,11 +80,11 @@ st.defaults.loot = {
 		spacing = 7,
 	},
 	roll = {
-		height = 20,
-		width = 300,
+		height = 30,
+		width = 400,
 		spacing = 7,
 		template = 'thick',
-		position = {'BOTTOM', UIParent, 'BOTTOM', 0, 200},
+		position = {'BOTTOMLEFT', UIParent, 'LEFT', 20, -300},
 		font = 'pixel',
 		grow_down = false,
 	}
@@ -289,6 +289,7 @@ st.defaults.colors = {
 		yellow		= { 200/255, 200/255, 100/255 }, 
 		green			= { 60/255, 240/255,  60/255 }, 
 		grey			= { 150/255, 150/255,  150/255 }, 
+		white			= { 1, 1, 1, 1 },
 	},
 	button = {
 		normal		= { 0.1, 0.1, 0.1, 0.6 },
@@ -358,7 +359,7 @@ st.defaults.unitframes = {
 				template = 'thick',
 				range_alpha = {
 					inside = 1,
-					outside = 0.3,
+					outside = 0.6,
 				},
 				['**'] = {
 					enable = true,
@@ -415,6 +416,8 @@ st.defaults.unitframes = {
 					framelevel = 15,
 					height = -10,
 					template = 'thin',
+					reverse_fill = false,
+					vertical_fill = false,
 					bg = {
 						enable = true,
 						alpha = 1,
@@ -444,6 +447,8 @@ st.defaults.unitframes = {
 					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
 					framelevel = 10,
 					template = 'thin',
+					reverse_fill = false,
+					vertical_fill = false,
 					bg = {
 						enable = true,
 						alpha = 1,
@@ -555,6 +560,7 @@ st.defaults.unitframes = {
 						filter = {
 							friend = {
 								show_all = false,
+								grow_right = false,
 							}
 						}
 					}
@@ -582,7 +588,7 @@ st.defaults.unitframes = {
 				},
 			},
 			party = {
-				spacing = 7,
+				spacing = 15,
 				growthDirection = 'BOTTOM',
 				maxColumns = 1,
 				unitsPerColumn = 5,
@@ -606,6 +612,7 @@ st.defaults.unitframes = {
 							friend = {
 								show_all = false,
 								show_magic = true,
+								grow_right = false,
 							}
 						}
 					}
@@ -738,7 +745,9 @@ st.defaults.unitframes = {
 					debuffs = {
 						enable = true,
 						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
-						self_only = true,
+						show_all = false,
+						show_self = true,
+						show_magic = true,
 						cooldown = {
 							alpha = 1,
 						},

@@ -6,20 +6,21 @@ function st.CF:InitializeConfigGUI()
 	local config = LibStub('AceConfig-3.0')
 	local dialog = LibStub('AceConfigDialog-3.0')
 
-	config:RegisterOptionsTable(ADDON_NAME, self.options)
-	dialog:AddToBlizOptions(ADDON_NAME, ADDON_NAME)
+	config:RegisterOptionsTable(ADDON_NAME, self.options, {'/sui', '/saftui'})
 	
 	
 	
 	for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
-			config:RegisterOptionsTable(ADDON_NAME..' '..name, module:GetConfigTable())
-			dialog:AddToBlizOptions(ADDON_NAME..' '..name, name, ADDON_NAME)
+			self.options.args[name] = module:GetConfigTable()
 		end
 	end
 	
-	config:RegisterOptionsTable(ADDON_NAME..' '..'Profiles', LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config))
-	dialog:AddToBlizOptions(ADDON_NAME..' '..'Profiles', 'Profiles', ADDON_NAME)
+	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
+	config:RegisterOptionsTable(ADDON_NAME..' Profiles', self.options.args.profiles)
+	self.options.args.profiles.order = -99
+
+	dialog:SetDefaultSize(ADDON_NAME, 840, 700)
 
 	st.config_initialized = true
 end
@@ -94,14 +95,14 @@ function st.CF.generators.position(order, global_frame, get, set)
 				name = 'Anchor', 
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 'normal',
+				width = 0.65,
 			},
 			rel_point = {
 				order = 4,
 				name = 'Relative', 
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 'normal',
+				width = 0.65,
 			},
 			x_off = {
 				order = 5,
@@ -155,7 +156,8 @@ function st.CF.generators.uf_element_position(order, get, set)
 		name = 'Anchor type',
 		type = 'toggle',
 		desc = 'unchecked: element selection \nchecked: global frame \ngrayed: self',
-		order = 2,
+		order = 0,
+		width = 'full',
 		tristate = true,
 		get = function(info)
 			local value = get('frame_type')

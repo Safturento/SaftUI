@@ -45,6 +45,5 @@ SlashCmdList.SAFTUI = function(msg)
 		st.CF:InitializeConfigGUI()
 	end
 
-	InterfaceOptionsFrame_OpenToCategory(ADDON_NAME)
-	InterfaceOptionsFrame_OpenToCategory(ADDON_NAME)
+	LibStub('AceConfigDialog-3.0'):Open(ADDON_NAME)
 end

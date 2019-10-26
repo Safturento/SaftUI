@@ -1,7 +1,7 @@
 local ADDON_NAME, st = ...
 local UF = st:NewModule('Unitframes')
 
-local TEST_PARTY_SOLO = true
+local TEST_PARTY_SOLO = false
 
 UF.oUF = st.oUF
 assert(UF.oUF, 'st was unable to locate oUF.')
@@ -18,11 +18,16 @@ UF.unit_strings = {
 	-- ['pettarget'] = 'PetTarget',
 }
 
+UF.group_strings = {
+	['party'] = 'Party',
+	['raid10'] = 'Raid 10',
+	['raid40'] = 'Raid 40',
+}
+
 function UF.ConstructUnit(self, unit)
 	-- Ensure that we have access to a numberless unit type for config tables
 	local base_unit = self:GetParent():GetAttribute('base_unit')
 	if base_unit then
-		print(unit)
 		self.is_group_unit = true
 		self.base_unit = base_unit
 	else
@@ -362,7 +367,7 @@ StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
 function UF.GenerateRelativeSizeConfigGroup(order)
 	return {
 		order = order,
-		name = 'Size',
+		name = '',
 		type = 'group',
 		inline = true,
 		args = {
@@ -376,14 +381,14 @@ end
 
 function UF:GetConfigTable()
 	local config = {
-		name = '',
+		name = 'Unitframes',
 		type = 'group',
 		args = {
 			profile = {
-				order = 1,
-				name = '',
+				order = -99,
+				name = 'Profile',
 				type = 'group',
-				inline = true,
+				-- inline = true,
 				args = {
 					current = {
 						order = 1,
@@ -432,15 +437,6 @@ function UF:GetConfigTable()
 					}
 				}
 			},
-			unitframes = {
-				order = 2,
-				name = 'Unit',
-				-- inline = true,
-				type = 'group',
-				childGroups = 'select',
-				args = {
-				}
-			}
 		}
 	}
 
@@ -458,7 +454,7 @@ function UF:GetConfigTable()
 		end
 
 		config_table = {
-			name = self.unit_strings[unit] or unit,
+			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
 			type = 'group',
 			inline = false,
 			childGroups = 'select',
@@ -515,11 +511,11 @@ function UF:GetConfigTable()
 	end
 
 	for unit,frame in pairs(self.units) do
-		config.args.unitframes.args[unit] = GetUnitConfig(unit, frame)
+		config.args[unit] = GetUnitConfig(unit, frame)
 	end
 
 	for unit, header in pairs(self.groups) do
-		config.args.unitframes.args[unit] = GetUnitConfig(unit, select(1, header:GetChildren()))
+		config.args[unit] = GetUnitConfig(unit, select(1, header:GetChildren()))
 	end
 
 	return config
