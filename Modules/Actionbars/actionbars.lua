@@ -108,7 +108,7 @@ function AB:UpdateConfig()
 		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.padding_y * 2
 		
 		bar:SetSize(width, height)
-		bar:SetPoint(unpack(bar.config.position))
+		bar:SetPoint(st:UnpackPoint(bar.config.position))
 
 		local prev
 		for j, slot in ipairs(bar.slots) do
@@ -149,6 +149,57 @@ function AB:UpdateActionButton(self)
 	else
 		st:SetTemplate(self.backdrop, self.backdrop.template)
 	end
+end
+
+function AB:GetConfigTable()
+	local ab_config = st.config.profile.actionbars
+
+	local config = {
+		name = 'Action Bars',
+		type = 'group',
+		args = {
+			general = {
+				name = '',
+				type = 'group',
+				inline = true,
+				args = {
+					font = st.CF.generators.font(0),
+					template = st.CF.generators.template(1),
+				}
+			}
+		}
+	}
+
+	for i=1, 5 do
+		config.args['bar'..i] = {
+			name = 'Bar '..i,
+			type = 'group',
+			get = function(info) 
+				return ab_config[i][info[#info]]
+			end,
+			set = function(info, value)
+				ab_config[i][info[#info]] = value
+				self:UpdateConfig()
+			end,
+			args = {
+				enable = st.CF.generators.enable(0),
+				width = st.CF.generators.range(1, 'Button width'),
+				height = st.CF.generators.range(2, 'Button height'),
+				spacing = st.CF.generators.range(3, 'Button spacing', 1, 20, 1),
+				total = st.CF.generators.range(4, 'Total buttons', 1, 12, 1),
+				perrow = st.CF.generators.range(5, 'Buttons per row', 1, 12, 1),
+				position = st.CF.generators.position(6, true, 
+					function(key) return ab_config[i].position[key] end,
+					function(key, value) 
+						ab_config[i].position[key] = value
+						self:UpdateConfig()
+					end
+				),
+			},
+		}
+	end
+
+	return config
 end
 
 function AB:OnInitialize()

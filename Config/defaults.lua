@@ -263,20 +263,20 @@ st.defaults.actionbars = {
 		perrow = 12,
 	},
 	[1] = {
-		position = {'BOTTOM', UIParent, 'BOTTOM', 0, 20},
+		position = {point = 'BOTTOM', frame = UIParent, rel_point = 'BOTTOM', x_off = 0, y_off = 20},
 	},
 	[2] = {
-		position = {'BOTTOM', ADDON_NAME..'ActionBar1', 'TOP', 0, 8},
+		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar1', rel_point = 'TOP', x_off = 0, y_off = 8},
 	},
 	[3] = {
-		position = {'BOTTOM',  ADDON_NAME..'ActionBar2', 'TOP', 0, 8},
+		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 8},
 	},
 	[4] = {
-		position = {'RIGHT',  UIParent, 'RIGHT', -20, 0},
+		position = {point = 'RIGHT', frame = UIParent, rel_point = 'RIGHT', x_off = -20, y_off = 0},
 		perrow = 1,
 	},
 	[5] = {
-		position = {'RIGHT',  ADDON_NAME..'ActionBar4', 'LEFT', -8, 0},
+		position = {point = 'RIGHT', frame = ADDON_NAME..'ActionBar4', rel_point = 'LEFT', x_off = -8, y_off = 0},
 		perrow = 1,
 	}
 }
