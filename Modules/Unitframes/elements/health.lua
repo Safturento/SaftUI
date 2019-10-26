@@ -87,7 +87,8 @@ local function UpdateConfig(self)
 
 	self.Health:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.health.position)
-	self.Health:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	local frame = st.CF.get_frame(self, self.config.health.position)
+	self.Health:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.Health:SetFrameLevel(self.config.health.framelevel)
 	self.Health:SetStatusBarTexture(st.BLANK_TEX)
 	if self.config.health.colorCustom then
@@ -107,10 +108,14 @@ local function UpdateConfig(self)
 		self.Health.text:SetFontObject(st:GetFont(self.config.health.text.font))
 		self.Health.text:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.health.text.position)
-		self.Health.text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+		local frame = st.CF.get_frame(self, self.config.health.text.position)
+		self.Health.text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Health.text:Hide()
 	end
+
+	self.Health:SetReverseFill(self.config.health.reverse_fill)
+	self.Health:SetOrientation(self.config.health.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
 	self.Health.Smooth = true
 	self.Health.colorTapping		= self.config.health.colorTapping
@@ -143,7 +148,9 @@ local function GetConfigTable(unit)
 			framelevel = st.CF.generators.framelevel(1),
 			template = st.CF.generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
-			position = st.CF.generators.uf_element_position(5,
+			reverse_fill = st.CF.generators.toggle(4, 'Reverse Fill', 1),
+			vertical_fill = st.CF.generators.toggle(5, 'Vertical Fill', 1),
+			position = st.CF.generators.uf_element_position(50,
 				function(index) return
 					config.profiles[config.config_profile][unit].health.position[index]
 				end,
@@ -153,7 +160,7 @@ local function GetConfigTable(unit)
 				end
 			),
 			text = {
-				order = 5,
+				order = 98,
 				name = 'Text',
 				type = 'group',
 				inline = true,
@@ -182,7 +189,7 @@ local function GetConfigTable(unit)
 				},
 			},
 			bg = {
-				order = 6,
+				order = 99,
 				name = 'Status Bar BG',
 				type = 'group',
 				inline = true,

@@ -67,7 +67,10 @@ local function UpdateConfig(self)
 
 	self.Power:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.position)
-	self.Power:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	local frame = st.CF.get_frame(self, self.config.power.position)
+	self.Power:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
+
+
 	self.Power:SetFrameLevel(self.config.power.framelevel)
 	self.Power:SetStatusBarTexture(st.BLANK_TEX)
 
@@ -89,11 +92,15 @@ local function UpdateConfig(self)
 		self.Power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 		self.Power.text:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.text.position)
-		self.Power.text:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+		local frame = st.CF.get_frame(self, self.config.power.text.position)
+		self.Power.text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Power.text:Hide()
 	end
 	
+	self.Power:SetReverseFill(self.config.power.reverse_fill)
+	self.Power:SetOrientation(self.config.power.vertical_fill and "VERTICAL" or "HORIZONTAL")
+
 	self.Power.Smooth = true
 	self.Power.colorTapping			= self.config.power.colorTapping
 	self.Power.colorDisconnected	= self.config.power.colorDisconnected
@@ -123,10 +130,11 @@ local function GetConfigTable(unit)
 		args = {
 			enable = st.CF.generators.enable(0),
 			framelevel = st.CF.generators.framelevel(1),
-			template = st.CF.generators.template(2),
-			size = UF.GenerateRelativeSizeConfigGroup(3),
-			template = st.CF.generators.template(4),
-			position = st.CF.generators.uf_element_position(5,
+			size = UF.GenerateRelativeSizeConfigGroup(2),
+			template = st.CF.generators.template(3),
+			reverse_fill = st.CF.generators.toggle(4, 'Reverse Fill', 1),
+			vertical_fill = st.CF.generators.toggle(5, 'Vertical Fill', 1),
+			position = st.CF.generators.uf_element_position(50,
 				function(index) return
 					config.profiles[config.config_profile][unit].power.position[index]
 				end,
@@ -136,7 +144,7 @@ local function GetConfigTable(unit)
 				end
 			),
 			text = {
-				order = 6,
+				order = 98,
 				name = 'Text',
 				type = 'group',
 				inline = true,
@@ -162,7 +170,7 @@ local function GetConfigTable(unit)
 				},
 			},
 			bg = {
-				order = 6,
+				order = 99,
 				name = 'Status Bar BG',
 				type = 'group',
 				inline = true,

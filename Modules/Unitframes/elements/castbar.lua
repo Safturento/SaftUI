@@ -116,7 +116,8 @@ local function UpdateConfig(self)
 
 	self.Castbar:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.position)
-	self.Castbar:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	local frame = st.CF.get_frame(self, self.config.castbar.position)
+	self.Castbar:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.Castbar:SetFrameLevel(self.config.castbar.framelevel)
 end
 
@@ -126,6 +127,7 @@ local function GetConfigTable(unit)
 	return {
 		type = 'group',
 		name = 'Castbar',
+		childGroups = 'tab',
 		get = function(info)
 			return config.profiles[config.config_profile][unit].castbar[info[#info]]
 		end,
@@ -150,7 +152,7 @@ local function GetConfigTable(unit)
 			icon = {
 				order = 5,
 				name = 'Icon',
-				inline = true,
+				-- inline = true,
 				type = 'group',
 				get = function(info)
 					return config.profiles[config.config_profile][unit].castbar.icon[info[#info]]
@@ -179,7 +181,7 @@ local function GetConfigTable(unit)
 				order = 6,
 				name = 'Text',
 				type = 'group',
-				inline = true,
+				-- inline = true,
 				get = function(info)
 					return config.profiles[config.config_profile][unit].castbar.text[info[#info]]
 				end,
@@ -205,7 +207,7 @@ local function GetConfigTable(unit)
 				order = 7,
 				name = 'Time',
 				type = 'group',
-				inline = true,
+				-- inline = true,
 				get = function(info)
 					return config.profiles[config.config_profile][unit].castbar.time[info[#info]]
 				end,

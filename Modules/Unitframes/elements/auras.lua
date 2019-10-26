@@ -95,7 +95,8 @@ local function UpdateConfig(self, aura_type)
 	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
 	auras:ClearAllPoints()
 	local point, _, relativePoint, xoffset, yoffset = st:UnpackPoint(auras.config.position)
-	auras:SetPoint(point, self, relativePoint, xoffset, yoffset)	
+	local frame = st.CF.get_frame(self, auras.config.position)
+	auras:SetPoint(point, frame, relativePoint, xoffset, yoffset)	
 	auras:SetFrameLevel(auras.config.framelevel)
 
 	auras.size = auras.config.size
