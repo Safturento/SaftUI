@@ -1,14 +1,17 @@
 local ADDON_NAME, st = ...
+local ACR = LibStub("AceConfigRegistry-3.0")
 
 st.CF = st:NewModule('Config')
+
+function st.CF:Refresh()	
+	ACR:NotifyChange(ADDON_NAME)
+end
 
 function st.CF:InitializeConfigGUI()
 	local config = LibStub('AceConfig-3.0')
 	local dialog = LibStub('AceConfigDialog-3.0')
 
 	config:RegisterOptionsTable(ADDON_NAME, self.options, {'/sui', '/saftui'})
-	
-	
 	
 	for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
@@ -17,7 +20,6 @@ function st.CF:InitializeConfigGUI()
 	end
 	
 	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
-	config:RegisterOptionsTable(ADDON_NAME..' Profiles', self.options.args.profiles)
 	self.options.args.profiles.order = -99
 
 	dialog:SetDefaultSize(ADDON_NAME, 840, 700)

@@ -1,5 +1,6 @@
 local ADDON_NAME, st = ...
 local UF = st:NewModule('Unitframes')
+local dialog = LibStub('AceConfigDialog-3.0')
 
 local TEST_PARTY_SOLO = false
 
@@ -136,6 +137,8 @@ function UF:UpdateUnitFrame(frame, element_name)
 			self.elements[element_name].UpdateConfig(frame, element_name)
 		end
 	end
+
+	frame:UpdateAllElements('OnShow')
 end
 
 --[[
@@ -301,8 +304,6 @@ local function get_num_profiles()
 	return select(2, get_profiles())
 end
 
-local ACR = LibStub("AceConfigRegistry-3.0")
-
 StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 	text = "Enter a name for your new profile",
 	button1 = "Create",
@@ -318,7 +319,7 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 			end
 			st.config.profile.unitframes.config_profile = profile_name
 			UF:UpdateConfig()
-			ACR:NotifyChange(ADDON_NAME..' Unitframes')
+			st.CF:Refresh()
 		end
 	end,
 	OnCancel = function (_,reason)
@@ -338,7 +339,7 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
 		end
 		st.config.profile.unitframes.config_profile = next(st.config.profile.unitframes.profiles)
 		UF:UpdateConfig()
-		ACR:NotifyChange(ADDON_NAME..' Unitframes')
+		st.CF:Refresh()
 	end,
 	OnCancel = function (_,reason)
 	end,
@@ -350,14 +351,24 @@ StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
 	text = "",
 	button1 = "Copy",
 	button2 = "Cancel",
-	OnAccept = function(self, current_unit, copy_from)
+	OnAccept = function(self)
 		local profile = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+		if not self.options.from then return end
 
-		local position = profile[current_unit].position
-		profile[current_unit] = st.tablecopy(profile[copy_from], true)
-		profile[current_unit].position = position
+		for element,copy in pairs(self.options.elements) do
+			if copy then
+				if type(profile[self.options.from][element]) == 'table' then
+					profile[self.options.to][element] = st.tablecopy(profile[self.options.from][element], true)
+				else
+					profile[self.options.to][element] = profile[self.options.from][element]
+				end
+			end
+		end
+
 		UF:UpdateConfig()
-		ACR:NotifyChange(ADDON_NAME..' Unitframes')
+		st.CF:Refresh()
+		
+		dialog:Close(ADDON_NAME..'_Copy_Unitframe')
 	end,
 	OnCancel = function() end,
 	whileDead = true,
@@ -379,7 +390,120 @@ function UF.GenerateRelativeSizeConfigGroup(order)
 	}
 end
 
+
+function UF:RegisterCopyTable()
+	local config_table = {
+		name = 'Copy from',
+		type = 'group',
+		args = {
+			copy_from = {
+				order = 0,
+				name = 'Copy from',
+				type = 'select',
+				values = function() return {} end,
+			},
+			toggle_all = {
+				order = 1,
+				name = 'All',
+				type = 'execute',
+				func = function(self, info) end,
+				width = 0.5,
+			},
+			toggle_none = {
+				order = 1,
+				name = 'None',
+				type = 'execute',
+				func = function(self, info) end,
+				width = 0.5,
+			},
+			elements = {
+				order = -99,
+				name = '',
+				type = 'group',
+				inline = true,
+				childGroups = 'inline',
+				args = {}
+			},
+			accept = {
+				order = -95,
+				name = 'Confirm copy',
+				type = 'execute',
+				
+			},
+		},
+	}
+
+	UF.CopyTable = config_table
+	LibStub('AceConfig-3.0'):RegisterOptionsTable(ADDON_NAME..'_Copy_Unitframe', config_table)
+end
+
+function UF:OpenCopyTable(unit)
+	local config = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+	-- We use a local table of configurations and reset all of the setters and getters
+	-- To ensure there's no funny business with accidentally not clearing old values
+
+	local copy_options = {
+		['to'] = unit,
+		['elements'] = {}
+	}
+	
+	for element,_ in pairs(config[unit]) do
+		copy_options.elements[element] = false
+		self.CopyTable.name = 'Clone '..unit..' from..'
+		
+		self.CopyTable.args.copy_from.set = function(info, from)
+			copy_options.from = from
+			self.CopyTable.name = 'Clone '..unit..' from '..from
+		end
+		self.CopyTable.args.copy_from.get = function(info) return copy_options.from end
+		self.CopyTable.args.copy_from.values = function(info)
+			local units = {}
+			for key,_ in pairs(config) do
+				if not (key == unit) then
+					units[key] = key
+				end
+			end
+			return units
+		end
+
+		self.CopyTable.args.toggle_all.func = function()
+			for k,v in pairs(copy_options.elements) do
+				copy_options.elements[k] = true
+			end
+			LibStub("AceConfigRegistry-3.0"):NotifyChange(ADDON_NAME..'_Copy_Unitframe')
+		end
+
+		self.CopyTable.args.toggle_none.func = function()
+			for k,v in pairs(copy_options.elements) do
+				copy_options.elements[k] = false
+			end
+			LibStub("AceConfigRegistry-3.0"):NotifyChange(ADDON_NAME..'_Copy_Unitframe')
+		end
+
+		self.CopyTable.args.elements.get = function(info)
+			return copy_options.elements[info[#info]]
+		end
+		self.CopyTable.args.elements.set = function(info, value) 
+			copy_options.elements[info[#info]] = value
+		end
+		
+		self.CopyTable.args.elements.args[element] = st.CF.generators.toggle(0, element, 0.7)
+
+		self.CopyTable.args.accept.func = function()
+			if not copy_options.from then return end
+			StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"].text = 'Are you sure you want to clone '..unit..' from ' .. copy_options.from .. '?'
+			local popup = StaticPopup_Show('SAFTUI_UF_CONFIRM_UNIT_COPY')
+			popup.options = copy_options
+		end
+	end
+
+	dialog:SetDefaultSize(ADDON_NAME..'_Copy_Unitframe', 400, 300)
+	dialog:Open(ADDON_NAME..'_Copy_Unitframe')
+end
+
 function UF:GetConfigTable()
+	self:RegisterCopyTable()
+
 	local config = {
 		name = 'Unitframes',
 		type = 'group',
@@ -396,13 +520,13 @@ function UF:GetConfigTable()
 						name = 'Profile',
 						values = get_profiles,
 						get = function(info)
-							ACR:NotifyChange(ADDON_NAME..' Unitframes')
+							st.CF:Refresh()
 							return st.config.profile.unitframes.config_profile
 						end,
 						set = function(info, value)
 							st.config.profile.unitframes.config_profile = value
 							UF:UpdateConfig()
-							ACR:NotifyChange(ADDON_NAME..' Unitframes')
+							st.CF:Refresh()
 						end
 					},
 					new = {
@@ -440,10 +564,10 @@ function UF:GetConfigTable()
 		}
 	}
 
-	local function GetUnitConfig(unit, frame)
+	local function GetUnitConfig(unit)
 		local config = st.config.profile.unitframes
 
-		if not frame then return end
+		if not unit then return end
 
 		local function frame_position_set(key, value)
 			config.profiles[config.config_profile][unit].position[key] = value
@@ -461,23 +585,11 @@ function UF:GetConfigTable()
 			args = {
 				copy = {
 					name = 'Copy from',
-					type = 'select',
-					-- inline = true,
-					values = function(info)
-						local units = {}
-						for key,_ in pairs(config.profiles[config.config_profile]) do
-							if not (key == unit) then
-								units[key] = key
-							end
-						end
-						return units
+					type = 'execute',
+					func = function() 
+						UF:OpenCopyTable(unit)
 					end,
-					set = function(info, copy_from)
-						local static = StaticPopup_Show('SAFTUI_UF_CONFIRM_UNIT_COPY')
-						static.data = unit
-						static.data2 = copy_from
-						StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"].text = 'Overwrite '..unit..' config with '..copy_from..' config?'
-					end
+					order = -99,
 				},
 				general = {
 					order = 0,
@@ -511,11 +623,11 @@ function UF:GetConfigTable()
 	end
 
 	for unit,frame in pairs(self.units) do
-		config.args[unit] = GetUnitConfig(unit, frame)
+		config.args[unit] = GetUnitConfig(unit)
 	end
 
 	for unit, header in pairs(self.groups) do
-		config.args[unit] = GetUnitConfig(unit, select(1, header:GetChildren()))
+		config.args[unit] = GetUnitConfig(unit)
 	end
 
 	return config
@@ -528,8 +640,6 @@ end
 function UF:SetProfile(profile_name)
 	if st.config.profile.unitframes.profiles[profile_name] then
 		st.config.profile.unitframes.config_profile = profile_name
-	else
-		-- Create new profile
 	end
 end
 
