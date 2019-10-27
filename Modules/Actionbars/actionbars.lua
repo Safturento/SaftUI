@@ -105,19 +105,29 @@ function AB:UpdateConfig()
 
 		if bar.config.backdrop.enable then
 			st:SetBackdrop(bar, bar.config.backdrop.template)
-			local width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
 
-			local height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
-
+			local height, width
 			bar.backdrop:ClearAllPoints()
-			bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
+			if bar.config.backdrop.conform then
+				width = bar:GetWidth() + bar.config.backdrop.padding * 2
+				height = bar:GetHeight() + bar.config.backdrop.padding * 2
+				
+				bar.backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -bar.config.backdrop.padding, bar.config.backdrop.padding)
+			else
+				width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+
+				height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+			
+				bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
+			end
+			
 			bar.backdrop:SetSize(width, height)
 		else
 			st:SetBackdrop(bar, 'none')
 		end
 		
-		local width = bar.config.perrow * (bar.config.width + bar.config.spacing) - bar.config.spacing
-		local height = floor(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
+		local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
+		local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
 		
 		bar:SetSize(width, height)
 		bar:SetPoint(st:UnpackPoint(bar.config.position))
@@ -133,9 +143,11 @@ function AB:UpdateConfig()
 			self:UpdateHotkey(slot)
 			slot:ClearAllPoints()
 
-			if j == 1 then
+			if j > bar.config.total then
+				slot:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 500, 500)
+			elseif j == 1 then
 				slot:SetPoint('TOPLEFT', bar)
-			elseif j % bar.config.perrow == 0 then
+			elseif j % bar.config.perrow == 1 or bar.config.perrow == 1 then
 				slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -bar.config.spacing)
 			else
 				slot:SetPoint('LEFT', prev, 'RIGHT', bar.config.spacing, 0)
@@ -207,6 +219,46 @@ function AB:GetConfigTable()
 						self:UpdateConfig()
 					end
 				),
+				backdrop = {
+					name = 'Backdrop',
+					type = 'group',
+					inline = true,
+					get = function(info) 
+						return config[i].backdrop[info[#info]]
+					end,
+					set = function(info, value)
+						config[i].backdrop[info[#info]] = value
+						self:UpdateConfig()
+					end,
+					args = {
+						enable = st.CF.generators.enable(0),
+						template = st.CF.generators.template(1),
+						conform = st.CF.generators.toggle(2, 'Conform'),
+						manual = {
+							name = 'Manual',
+							type = 'group',
+							set = function(info, value)
+								config[i].backdrop[info[#info]] = value		
+								self:UpdateConfig()
+							end,
+							get = function(info) return config[i].backdrop[info[#info]] end,
+							hidden = function(info) return config[i].backdrop.conform end,
+							args = {
+								width = st.CF.generators.range(1, 'Width', 1, 36, 1),
+								height = st.CF.generators.range(2, 'Height', 1, 36, 1),
+								padding = st.CF.generators.range(3, 'Padding', 0, 30, 1),
+								anchor = {
+									order = 1,
+									name = 'Anchor', 
+									type = 'select',
+									values = st.FRAME_ANCHORS,
+									width = 0.65,
+								},
+							}
+						}
+
+					}
+				}
 			},
 		}
 	end

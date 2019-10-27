@@ -263,6 +263,7 @@ st.defaults.actionbars = {
 		perrow = 12,
 		backdrop = {
 			enable = false,
+			conform = true,
 			template = 'thick',
 			width = 12,
 			height = 1,
