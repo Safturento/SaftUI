@@ -62,11 +62,11 @@ st.defaults.auras = {
 	},
 	buffs = {
 		growth_direction = 'LEFT',
-		position = {'TOPRIGHT', Minimap, 'TOPLEFT', -20, 0},
+		position = {'TOPRIGHT', 'Minimap', 'TOPLEFT', -20, 0},
 	},
 	debuffs = {
 		growth_direction = 'LEFT',
-		position = {'BOTTOMRIGHT', Minimap, 'BOTTOMLEFT', -20, 0},
+		position = {'BOTTOMRIGHT', 'Minimap', 'BOTTOMLEFT', -20, 0},
 	}
 }
 
@@ -84,10 +84,15 @@ st.defaults.loot = {
 		width = 400,
 		spacing = 7,
 		template = 'thick',
-		position = {'BOTTOMLEFT', UIParent, 'LEFT', 20, -300},
+		position = {'BOTTOMLEFT', 'UIParent', 'LEFT', 20, -300},
 		font = 'pixel',
 		grow_down = false,
 	}
+}
+
+st.defaults.addon_skins = {
+	font = 'pixel',
+	template = 'thicktransparent',
 }
 
 st.defaults.addon_manager = {
@@ -201,14 +206,8 @@ st.defaults.chat = {
 }
 
 st.defaults.skinning = {
-	addons = {
-		weakauras = {
-			template = 'thick',
-		},
-		dominos = {
-			template = 'thin',
-		}
-	}
+	font = 'pixel',
+	template = 'thicktransparent',
 }
 
 st.defaults.experience = {
@@ -272,7 +271,7 @@ st.defaults.actionbars = {
 		}
 	},
 	[1] = {
-		position = {point = 'BOTTOM', frame = UIParent, rel_point = 'BOTTOM', x_off = 0, y_off = 20},
+		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = 20},
 		backdrop = {
 			enable = true,
 			height = 3,
@@ -285,7 +284,7 @@ st.defaults.actionbars = {
 		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 8},
 	},
 	[4] = {
-		position = {point = 'RIGHT', frame = UIParent, rel_point = 'RIGHT', x_off = -20, y_off = 0},
+		position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'RIGHT', x_off = -20, y_off = 0},
 		perrow = 1,
 	},
 	[5] = {
@@ -368,7 +367,7 @@ st.defaults.unitframes = {
 				enable = true,
 				width = 201,
 				height = 30,
-				position = {point = 'CENTER', frame = UIParent, rel_point = 'CENTER',  x_off = 0, y_off = 0},
+				position = {point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER',  x_off = 0, y_off = 0},
 				template = 'thick',
 				range_alpha = {
 					inside = 1,
@@ -507,28 +506,34 @@ st.defaults.unitframes = {
 						},
 						filter = {
 							['**'] = {
-								show_all = true,
-								show_self = true,
-								show_dispel = true,
-								desaturate = true, -- anything not self or dispel
-								border = 'all', -- none, dispel, all
+								whitelist = {
+									enable = true,
+									filters = {
+										yours = true,
+										others = false,
+										dispellable = true,
+										auras = true,
+									}
+								},
+								blacklist = {
+									enable = false,
+									filters = {
+										yours = false,
+										others = false,
+										dispellable = false,
+										auras = true,
+									}
+								},
 							},
-							friend = {
-								desaturate = false,
-							}
 						}
 					},
 					buffs = {
 						enable = false,
-						filter = {
-							friend = {
-								border = 'none', -- none, dispel, all
-							},
-						},
 						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
 					},
 					debuffs = {
 						enable = false,
+						border = 'all',
 						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 31},
 					}
 				},
@@ -545,7 +550,7 @@ st.defaults.unitframes = {
 				}
 			},
 			player = {
-				position = {point = 'RIGHT', frame = UIParent, rel_point = 'CENTER', x_off = -150, y_off = -150},
+				position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150},
 				castbar = {
 					enable = true,
 				},
@@ -572,7 +577,6 @@ st.defaults.unitframes = {
 						size = 30,
 						filter = {
 							friend = {
-								show_all = false,
 								grow_right = false,
 							}
 						}
@@ -580,7 +584,7 @@ st.defaults.unitframes = {
 				}
 			},
 			target = {
-				position = {point = 'LEFT', frame = UIParent, rel_point = 'CENTER', x_off = 150, y_off = -150},
+				position = {point = 'LEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150},
 				castbar = {
 					enable = true,
 				},
@@ -623,7 +627,6 @@ st.defaults.unitframes = {
 						size = 30,
 						filter = {
 							friend = {
-								show_all = false,
 								show_magic = true,
 								grow_right = false,
 							}
@@ -670,11 +673,6 @@ st.defaults.unitframes = {
 						initial_anchor = 'LEFT',
 						framelevel = 50,
 						size = 8,
-						filter = {
-							friend = {
-								show_all = false,
-							}
-						}
 					},
 				}
 			},
@@ -685,7 +683,7 @@ st.defaults.unitframes = {
 				unitsPerColumn = 5,
 				columnSpacing = 3,
 				initialAnchor = 'LEFT',
-				position = {point = 'TOP', frame = UIParent, rel_point = 'CENTER', x_off = 0, y_off = -250},
+				position = {point = 'TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -250},
 				width = 50,
 				height = 26,
 				-- template = 'thick',
@@ -720,11 +718,6 @@ st.defaults.unitframes = {
 						initial_anchor = 'LEFT',
 						framelevel = 50,
 						size = 8,
-						filter = {
-							friend = {
-								show_all = false,
-							}
-						}
 					},
 				}
 			},
@@ -758,8 +751,7 @@ st.defaults.unitframes = {
 					debuffs = {
 						enable = true,
 						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
-						show_all = false,
-						show_self = true,
+						self_only = true,
 						show_magic = true,
 						cooldown = {
 							alpha = 1,
@@ -769,67 +761,577 @@ st.defaults.unitframes = {
 			}
 		},
 		SaftUI = {},
-		AltNameplates = {
-			nameplate = {
-				height = 14,
-				width = 150,
-				portrait = {
-					enable = false,
-				},
-				power = {
-					enable = false,
-				},
-				health = {
-					height = 0,
-					colorTapping = false,
-					colorDisconnected = false,
-					colorPower = false,
-					colorClass = true,
-					colorClassNPC = false,
-					colorClassPet = false,
-					colorReaction = true,
-					colorSmooth = false,
-					colorCustom = false,
-					text = {
-						position = {'RIGHT', 'RIGHT', -3, 1},
+		["Slim"] = {
+			["party"] = {
+				["portrait"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["alpha"] = 1,
+					["width"] = "40",
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["point"] = "TOPRIGHT",
+						["x_off"] = "-7",
+						["anchor_element"] = "Health",
+						["y_off"] = "0",
 					},
+					["height"] = "0",
 				},
-				name = {
-					position = {'LEFT', 'LEFT', 5, 1},
-					max_length = 15,
-				},
-				castbar = {
-					enable = true,
-					height = 2,
-					framelevel = 2,
-					position = {'TOP', 'BOTTOM', 0, -3},
-					template = 'thick',
-					icon = {
-						width = 20,
-						height = 5,
-					},
-					text = {
-						position = {'TOPLEFT', 'BOTTOMLEFT', 0, -8},
-					},
-					time = {
-						enable = true,
-						position = {'TOPRIGHT', 'BOTTOMRIGHT', 4, -8},
-					},
-				},
-				auras = {
-					buffs = {
-						enable = false,
-					},
-					debuffs = {
-						enable = true,
-						position = {'BOTTOMLEFT', 'TOPLEFT', 0, 7},
-						self_only = true,
-						cooldown = {
-							alpha = 1,
+				["auras"] = {
+					["debuffs"] = {
+						["grow_right"] = false,
+						["position"] = {
+							["rel_point"] = "TOPLEFT",
+							["point"] = "TOPRIGHT",
+							["anchor_element"] = "Portrait",
+							["x_off"] = "-7",
+							["frame_type"] = false,
+							["y_off"] = "0",
 						},
-					}
+						["size"] = 28,
+					},
 				},
-			}
+				["template"] = "none",
+				["castbar"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "LEFT",
+							["point"] = "LEFT",
+							["y_off"] = "0",
+							["x_off"] = "5",
+							["frame_type"] = false,
+							["anchor_element"] = "Castbar",
+						},
+					},
+					["framelevel"] = 10,
+					["time"] = {
+						["position"] = {
+							["rel_point"] = "RIGHT",
+							["point"] = "RIGHT",
+							["y_off"] = "0",
+							["x_off"] = "-5",
+							["frame_type"] = false,
+							["anchor_element"] = "Castbar",
+						},
+					},
+					["position"] = {
+						["rel_point"] = "CENTER",
+						["y_off"] = "-200",
+						["frame_type"] = true,
+						["anchor_element"] = "Health",
+						["x_off"] = "-85",
+						["anchor_frame"] = "UIParent",
+						["point"] = "TOPLEFT",
+					},
+					["height"] = "20",
+					["icon"] = {
+						["relative_height"] = false,
+						["template"] = "thicktransparent",
+						["position"] = {
+							["rel_point"] = "TOPLEFT",
+							["point"] = "TOPRIGHT",
+							["anchor_element"] = "Castbar",
+							["frame_type"] = false,
+							["x_off"] = "-7",
+						},
+						["height"] = "20",
+						["width"] = "20",
+					},
+					["width"] = "200",
+				},
+				["width"] = "202",
+				["health"] = {
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["y_off"] = "0",
+							["anchor_element"] = "Health",
+							["x_off"] = "-5",
+							["frame_type"] = false,
+						},
+					},
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["x_off"] = "0",
+						["point"] = "TOPLEFT",
+						["y_off"] = "0",
+					},
+					["height"] = "-8",
+					["framelevel"] = 10,
+				},
+				["position"] = {
+					["y_off"] = "-24",
+				},
+				["height"] = "28",
+				["power"] = {
+					["relative_height"] = false,
+					["framelevel"] = 16,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "RIGHT",
+							["point"] = "RIGHT",
+							["y_off"] = "1",
+							["anchor_element"] = "Power",
+							["frame_type"] = false,
+							["x_off"] = "0",
+						},
+						["enable"] = true,
+					},
+					["width"] = "-70",
+					["position"] = {
+						["rel_point"] = "BOTTOMLEFT",
+						["y_off"] = "0",
+						["anchor_element"] = "Health",
+						["point"] = "BOTTOMLEFT",
+						["x_off"] = "7",
+					},
+					["height"] = "13",
+				},
+				["name"] = {
+					["position"] = {
+						["rel_point"] = "TOPRIGHT",
+						["x_off"] = "-4",
+						["point"] = "BOTTOMRIGHT",
+						["y_off"] = "6",
+					},
+				},
+			},
+			["raid40"] = {
+				["portrait"] = {
+				},
+				["power"] = {
+					["relative_height"] = false,
+					["framelevel"] = 15,
+					["template"] = "thick",
+					["width"] = "-20",
+					["position"] = {
+						["rel_point"] = "BOTTOMRIGHT",
+						["x_off"] = "-5",
+						["point"] = "BOTTOMRIGHT",
+						["y_off"] = "2",
+					},
+					["height"] = "4",
+				},
+				["width"] = "50",
+				["castbar"] = {
+				},
+				["name"] = {
+				},
+				["position"] = {
+					["y_off"] = "-260",
+				},
+				["height"] = "24",
+				["auras"] = {
+					["debuffs"] = {
+						["position"] = {
+							["rel_point"] = "TOPLEFT",
+							["x_off"] = "2",
+							["point"] = "TOPLEFT",
+							["y_off"] = "-2",
+						},
+					},
+				},
+				["health"] = {
+					["framelevel"] = 10,
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "TOPRIGHT",
+							["x_off"] = "-2",
+							["point"] = "TOPRIGHT",
+							["y_off"] = "-3",
+						},
+					},
+					["height"] = "0",
+				},
+			},
+			["target"] = {
+				["portrait"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["alpha"] = 1,
+					["width"] = "40",
+					["position"] = {
+						["rel_point"] = "TOPRIGHT",
+						["point"] = "TOPLEFT",
+						["x_off"] = "7",
+						["anchor_element"] = "Health",
+						["y_off"] = "0",
+					},
+					["height"] = "0",
+				},
+				["castbar"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "LEFT",
+							["point"] = "LEFT",
+							["y_off"] = "0",
+							["x_off"] = "7",
+							["frame_type"] = false,
+							["anchor_element"] = "Castbar",
+						},
+					},
+					["framelevel"] = 10,
+					["time"] = {
+						["position"] = {
+							["rel_point"] = "RIGHT",
+							["point"] = "RIGHT",
+							["y_off"] = "0",
+							["x_off"] = "-5",
+							["frame_type"] = false,
+							["anchor_element"] = "Castbar",
+						},
+					},
+					["position"] = {
+						["rel_point"] = "CENTER",
+						["y_off"] = "-227",
+						["frame_type"] = true,
+						["anchor_element"] = "Health",
+						["x_off"] = "88",
+						["anchor_frame"] = "UIParent",
+						["point"] = "TOPRIGHT",
+					},
+					["height"] = "20",
+					["icon"] = {
+						["relative_height"] = false,
+						["template"] = "thicktransparent",
+						["position"] = {
+							["rel_point"] = "TOPRIGHT",
+							["point"] = "TOPLEFT",
+							["anchor_element"] = "Castbar",
+							["x_off"] = "7",
+							["frame_type"] = false,
+						},
+						["height"] = "20",
+						["width"] = "20",
+					},
+					["width"] = "200",
+				},
+				["auras"] = {
+					["debuffs"] = {
+						["filter"] = {
+							["friend"] = {
+								["grow_right"] = false,
+								["desaturate"] = true,
+							},
+						},
+						["position"] = {
+							["rel_point"] = "BOTTOMLEFT",
+							["y_off"] = "-7",
+							["x_off"] = "0",
+							["anchor_element"] = "Buffs",
+							["frame_type"] = false,
+							["point"] = "TOPLEFT",
+						},
+						["initial_anchor"] = "LEFT",
+						["horizontal_growth"] = "LEFT",
+					},
+					["buffs"] = {
+						["position"] = {
+							["rel_point"] = "BOTTOMLEFT",
+							["y_off"] = "-7",
+							["point"] = "TOPLEFT",
+						},
+						["initial_anchor"] = "TOPLEFT",
+						["grow_up"] = false,
+					},
+				},
+				["health"] = {
+					["framelevel"] = 10,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "LEFT",
+							["y_off"] = "0",
+							["x_off"] = "5",
+							["anchor_element"] = "Health",
+							["frame_type"] = false,
+							["point"] = "LEFT",
+						},
+						["deficit"] = false,
+					},
+					["reverse_fill"] = true,
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["x_off"] = "0",
+						["point"] = "TOPLEFT",
+						["y_off"] = "0",
+					},
+					["height"] = "-8",
+				},
+				["position"] = {
+					["point"] = "BOTTOMLEFT",
+				},
+				["height"] = "28",
+				["power"] = {
+					["relative_height"] = false,
+					["framelevel"] = 16,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["y_off"] = "1",
+							["frame_type"] = false,
+							["x_off"] = "2",
+							["anchor_element"] = "Power",
+						},
+						["enable"] = true,
+					},
+					["reverse_fill"] = true,
+					["position"] = {
+						["rel_point"] = "BOTTOMRIGHT",
+						["y_off"] = "0",
+						["anchor_element"] = "Health",
+						["point"] = "BOTTOMRIGHT",
+						["x_off"] = "-7",
+					},
+					["height"] = "13",
+					["width"] = "-70",
+				},
+				["name"] = {
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["y_off"] = "5",
+						["anchor_element"] = "Health",
+						["x_off"] = "5",
+						["frame_type"] = false,
+						["point"] = "BOTTOMLEFT",
+					},
+				},
+				["template"] = "none",
+			},
+			["targettarget"] = {
+				["template"] = "none",
+				["power"] = {
+					["relative_height"] = false,
+					["framelevel"] = 15,
+					["template"] = "thick",
+					["text"] = {
+						["font"] = "pixel_med",
+						["position"] = {
+							["y_off"] = "2",
+							["x_off"] = "0",
+							["anchor_element"] = "Power",
+							["frame_type"] = true,
+							["point"] = "RIGHT",
+						},
+					},
+					["width"] = "-40",
+					["position"] = {
+						["rel_point"] = "BOTTOMLEFT",
+						["x_off"] = "5",
+						["point"] = "BOTTOMLEFT",
+					},
+					["height"] = "13",
+				},
+				["auras"] = {
+					["debuffs"] = {
+						["horizontal_growth"] = "LEFT",
+						["position"] = {
+							["rel_point"] = "LEFT",
+							["x_off"] = -7,
+							["point"] = "RIGHT",
+							["y_off"] = 0,
+						},
+						["initial_anchor"] = "RIGHT",
+						["filter"] = {
+							["enemy"] = {
+								["desaturate"] = false,
+							},
+						},
+						["size"] = 30,
+					},
+				},
+				["castbar"] = {
+					["position"] = {
+						["frame_type"] = true,
+					},
+					["icon"] = {
+						["position"] = {
+							["anchor_element"] = "Castbar",
+						},
+						["enable"] = false,
+					},
+				},
+				["name"] = {
+					["max_length"] = 10,
+					["enable"] = true,
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["x_off"] = "4",
+						["point"] = "BOTTOMLEFT",
+						["y_off"] = "5",
+					},
+					["show_level"] = false,
+				},
+				["position"] = {
+					["y_off"] = "0",
+					["x_off"] = "58",
+				},
+				["height"] = "28",
+				["width"] = "100",
+				["health"] = {
+					["template"] = "thick",
+					["text"] = {
+						["deficit"] = false,
+						["position"] = {
+							["x_off"] = "5",
+							["point"] = "LEFT",
+							["y_off"] = "2",
+						},
+						["enable"] = false,
+						["font"] = "pixel_med",
+					},
+					["position"] = {
+						["rel_point"] = "TOP",
+						["point"] = "TOP",
+					},
+					["height"] = "-8",
+					["framelevel"] = 10,
+				},
+				["portrait"] = {
+					["enable"] = false,
+				},
+			},
+			["player"] = {
+				["template"] = "none",
+				["castbar"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "LEFT",
+							["point"] = "LEFT",
+							["anchor_element"] = "Castbar",
+							["x_off"] = "7",
+							["frame_type"] = false,
+							["y_off"] = "0",
+						},
+					},
+					["framelevel"] = 10,
+					["time"] = {
+						["position"] = {
+							["rel_point"] = "RIGHT",
+							["point"] = "RIGHT",
+							["anchor_element"] = "Castbar",
+							["x_off"] = "-5",
+							["frame_type"] = false,
+							["y_off"] = "0",
+						},
+					},
+					["position"] = {
+						["rel_point"] = "CENTER",
+						["point"] = "TOPLEFT",
+						["y_off"] = "-200",
+						["x_off"] = "-85",
+						["anchor_frame"] = "UIParent",
+						["anchor_element"] = "Health",
+						["frame_type"] = true,
+					},
+					["height"] = "20",
+					["icon"] = {
+						["relative_height"] = false,
+						["template"] = "thicktransparent",
+						["position"] = {
+							["rel_point"] = "TOPLEFT",
+							["point"] = "TOPRIGHT",
+							["frame_type"] = false,
+							["x_off"] = "-7",
+							["anchor_element"] = "Castbar",
+						},
+						["height"] = "20",
+						["width"] = "20",
+					},
+					["width"] = "200",
+				},
+				["auras"] = {
+					["debuffs"] = {
+						["grow_right"] = false,
+						["position"] = {
+							["rel_point"] = "TOPLEFT",
+							["point"] = "TOPRIGHT",
+							["anchor_element"] = "Portrait",
+							["x_off"] = "-7",
+							["frame_type"] = false,
+							["y_off"] = "0",
+						},
+						["size"] = 28,
+					},
+				},
+				["power"] = {
+					["relative_height"] = false,
+					["framelevel"] = 16,
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["rel_point"] = "RIGHT",
+							["point"] = "RIGHT",
+							["x_off"] = "0",
+							["anchor_element"] = "Power",
+							["frame_type"] = false,
+							["y_off"] = "1",
+						},
+					},
+					["width"] = "-70",
+					["position"] = {
+						["rel_point"] = "BOTTOMLEFT",
+						["y_off"] = "0",
+						["x_off"] = "7",
+						["anchor_element"] = "Health",
+						["point"] = "BOTTOMLEFT",
+					},
+					["height"] = "13",
+				},
+				["name"] = {
+					["position"] = {
+						["rel_point"] = "TOPRIGHT",
+						["x_off"] = "-4",
+						["point"] = "BOTTOMRIGHT",
+						["y_off"] = "6",
+					},
+				},
+				["position"] = {
+					["point"] = "BOTTOMRIGHT",
+				},
+				["height"] = "28",
+				["health"] = {
+					["template"] = "thick",
+					["text"] = {
+						["position"] = {
+							["y_off"] = "0",
+							["x_off"] = "-5",
+							["frame_type"] = false,
+							["anchor_element"] = "Health",
+						},
+					},
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["x_off"] = "0",
+						["point"] = "TOPLEFT",
+						["y_off"] = "0",
+					},
+					["height"] = "-8",
+					["framelevel"] = 10,
+				},
+				["portrait"] = {
+					["relative_width"] = false,
+					["template"] = "thick",
+					["alpha"] = 1,
+					["width"] = "40",
+					["position"] = {
+						["rel_point"] = "TOPLEFT",
+						["y_off"] = "0",
+						["x_off"] = "-7",
+						["point"] = "TOPRIGHT",
+						["anchor_element"] = "Health",
+					},
+					["height"] = "0",
+				},
+				["width"] = "202",
+			},
 		},
 	}
 }

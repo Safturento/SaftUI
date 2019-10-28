@@ -347,6 +347,50 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
 	hideOnEscape = true,
 }
 
+
+StaticPopupDialogs["SAFTUI_UF_PROFILE_RENAME"] = {
+	text = "Enter a new profile name",
+	button1 = "Rename",
+	button2 = "Cancel",
+	OnAccept = function(self)
+		
+	end,
+	OnCancel = function() end,
+	whileDead = true,
+	hideOnEscape = true,
+}
+
+StaticPopupDialogs["SAFTUI_UF_PROFILE_EXPORT"] = {
+	text = "",
+	button1 = "Close",
+	OnShow = function(self)
+		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+		self.editBox:SetText(st.CF:Export(data))
+		
+	end,
+	OnAccept = function(self)
+		
+	end,
+	hasEditBox = true,
+	whileDead = true,
+	hideOnEscape = true,
+}
+
+StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
+	text = "",
+	button1 = "Close",
+	OnShow = function(self)
+		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+		self.wideEditBox:Show()
+	end,
+	OnAccept = function(self)
+		
+	end,
+	hasEditBox = true,
+	whileDead = true,
+	hideOnEscape = true,
+}
+
 StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
 	text = "",
 	button1 = "Copy",
@@ -533,31 +577,58 @@ function UF:GetConfigTable()
 						order = 2,
 						type = 'execute',
 						name = 'New',
+						width = 0.5,
 						func = function() 
 							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
 						end,
-						width = 0.5,
 					},
 					copy = {
 						order = 3,
 						type = 'execute',
 						name = 'Copy',
+						width = 0.5,
 						func = function()
 							local dialog = StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
 							dialog.is_copy = true
 						end,
-						width = 0.5,
 					},
 					delete = {
 						order = 4,
 						type = 'execute',
 						name = 'Delete',
+						width = 0.5,
 						func = function()
 							if get_num_profiles() > 1 then
 								StaticPopup_Show('SAFTUI_UF_PROFILE_DELETE')
 							end
 						end,
+					},
+					rename = {
+						order = 5,
+						type = 'execute',
+						name = 'Rename',
 						width = 0.5,
+						func = function()
+							StaticPopup_Show('SAFTIU_UF_PROFILE_RENAME')
+						end,
+					},
+					export = {
+						order = 6,
+						type = 'execute',
+						name = 'Export',
+						width = 0.5,
+						func = function()
+							local popup = StaticPopup_Show('SAFTUI_UF_PROFILE_EXPORT')
+						end
+					},
+					import = {
+						order = 6,
+						type = 'execute',
+						name = 'Import',
+						width = 0.5,
+						func = function()
+							StaticPopup_Show('SAFTUI_UF_PROFILE_IMPORT')
+						end
 					}
 				}
 			},

@@ -1,10 +1,26 @@
 local ADDON_NAME, st = ...
 local ACR = LibStub("AceConfigRegistry-3.0")
 
+local AceSerializer = LibStub('AceSerializer-3.0')
+local LibCompress = LibStub('LibCompress')
+local LibBase64 = LibStub('LibBase64-1.0')
+
 st.CF = st:NewModule('Config')
 
 function st.CF:Refresh()	
 	ACR:NotifyChange(ADDON_NAME)
+end
+
+function st.CF:Export(data)
+	return LibBase64.Encode(
+		LibCompress:Compress(
+	AceSerializer:Serialize(data)))
+end
+
+function st.CF:Import(string)
+	return AceSerializer:Deserialize(
+				 LibCompress:Decompress(
+						 LibBase64:Decode(data)))
 end
 
 function st.CF:InitializeConfigGUI()
