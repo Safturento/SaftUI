@@ -3,7 +3,7 @@ local UF = st:GetModule('Unitframes')
 
 
 local function Constructor(self)
-	local portrait = CreateFrame('PlayerModel', nil, self)
+	local portrait = CreateFrame('PlayerModel', self:GetName()..'_Portrait', self)
 	portrait.config = self.config.portrait
 	
 	self.Portrait = portrait

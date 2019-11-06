@@ -155,6 +155,7 @@ local function GetConfigTable(unit, aura_type)
 			type = 'group',
 			desc = 'If the aura matches any of these criteria it will be ' .. (list_type == 'blacklist' and 'hidden' or 'shown'),
 			-- inline = true,
+			width = 0.5,
 			get = function(info)
 				local config = config.profiles[config.config_profile][unit].auras[aura_type:lower()]
 				return config.filter[target_type][list_type][info[#info]]
@@ -167,7 +168,7 @@ local function GetConfigTable(unit, aura_type)
 			args = {
 				enable = st.CF.generators.enable(0),
 				filters = {
-					width = 2,
+					-- width = 2,
 					name = '',
 					type = 'multiselect',
 					dialogControl = 'Dropdown',

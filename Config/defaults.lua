@@ -366,9 +366,9 @@ st.defaults.unitframes = {
 			['**'] = {
 				enable = true,
 				width = 201,
-				height = 30,
+				height = 28,
 				position = {point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER',  x_off = 0, y_off = 0},
-				template = 'thick',
+				template = 'none',
 				range_alpha = {
 					inside = 1,
 					outside = 0.6,
@@ -385,63 +385,108 @@ st.defaults.unitframes = {
 					alpha = 1,
 				},
 				portrait = {
-					alpha = 0.1,
+					alpha = 1,
 					framelevel = 20,
-					height = -10,
+					template = "thick",
+					height = 0,
+					relative_width = false,
+					width = 40,
+					position = {
+						rel_point = "TOPLEFT",
+						point = "TOPRIGHT",
+						x_off = "-7",
+						anchor_element = "Health",
+						y_off = "0",
+					},
 				},
 				castbar = {
 					enable = false,
-					position = {point = 'BOTTOM', rel_point = 'BOTTOM', x_off = 0, y_off = 0},
+					position = {
+						rel_point = "CENTER",
+						point = "TOPLEFT",
+						y_off = "-200",
+						x_off = "-85",
+						anchor_frame = "UIParent",
+						anchor_element = "Health",
+						frame_type = true,
+					},
 					framelevel = 15,
-					height = 4,
-					relative_width = true,
-					width = 0,
+					height = 20,
+					relative_width = false,
+					width = 200,
 					relative_height = false,
-					template = 'thin',
+					template = 'thicktransparent',
 					colors = {
 						normal = { .3, .4, .6 },
 						nointerrupt = { .6, .3, .3 },
 					},
 					text = {
 						enable = true,
-						position = {point = 'TOPLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -5},
+						position = {
+							rel_point = "LEFT",
+							point = "LEFT",
+							anchor_element = "Castbar",
+							x_off = "7",
+							frame_type = false,
+							y_off = "0",
+						},
 						font = 'pixel',
 					},
 					time = {
 						enable = true,
-						position = {point = 'TOPRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 4, y_off = -5},
+						position = {
+							rel_point = "RIGHT",
+							point = "RIGHT",
+							anchor_element = "Castbar",
+							x_off = "-5",
+							frame_type = false,
+							y_off = "0",
+						},
 						font = 'pixel',
 					},
 					icon = {
 						enable = true,
-						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
+						position = {
+							rel_point = "TOPLEFT",
+							point = "TOPRIGHT",
+							frame_type = false,
+							x_off = "-7",
+							anchor_element = "Castbar",
+						},
 						framelevel = 15,
-						height = 0,
-						relative_height = true,
-						width = 30,
+						height = 20,
+						relative_height = false,
+						width = 20,
 						relative_width = false,
 						template = 'thick',
 					}
 				},
 				health = {
-					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
-					framelevel = 15,
-					height = -10,
-					template = 'thin',
+					template = "thick",
+					position = { rel_point = "TOPLEFT", x_off = "0", point = "TOPLEFT", y_off = "0" },
+					height = -8,
+					framelevel = 10,
 					reverse_fill = false,
 					vertical_fill = false,
-					bg = {
-						enable = true,
-						alpha = 1,
-						multiplier = 0.6,
-					},
 					text = {
 						enable = true,
 						hide_full = false,
 						percent = false,
 						font = 'pixel',
-						position = {point = 'RIGHT', rel_point = 'RIGHT', x_off = -3, y_off = 0},
+						position = {
+							point = "RIGHT",
+							anchor_element = "Health",
+							rel_point = "RIGHT",
+							x_off = -5,
+							y_off = 0,
+							frame_type = false,
+						},
 						tags = 'deficit'
+					},
+					bg = {
+						enable = true,
+						alpha = 1,
+						multiplier = 0.6,
 					},
 					Smooth = true,
 					colorTapping = true,
@@ -456,9 +501,18 @@ st.defaults.unitframes = {
 					customColor = { 0.3, 0.3, 0.3},
 				},
 				power = {
-					position = {point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0},
-					framelevel = 10,
-					template = 'thin',
+					relative_height = false,
+					framelevel = 16,
+					template = "thick",
+					width = "-70",
+					position = {
+						rel_point = "BOTTOMLEFT",
+						y_off = "0",
+						anchor_element = "Health",
+						point = "BOTTOMLEFT",
+						x_off = "7",
+					},
+					height = "13",
 					reverse_fill = false,
 					vertical_fill = false,
 					bg = {
@@ -467,11 +521,18 @@ st.defaults.unitframes = {
 						multiplier = .6,
 					},
 					text = {
-						enable = false,
+						enable = true,
 						hide_full = false,
 						percent = false,
 						font = 'pixel',
-						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 5, y_off = 0},
+						position = {
+							rel_point = "RIGHT",
+							point = "RIGHT",
+							y_off = 1,
+							anchor_element = "Power",
+							frame_type = false,
+							x_off = 0,
+						},
 					},
 					Smooth = true,
 					colorTapping = false,
@@ -528,8 +589,19 @@ st.defaults.unitframes = {
 						}
 					},
 					buffs = {
-						enable = false,
-						position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
+						enable = true,
+						position = {
+							rel_point = "BOTTOMLEFT",
+							point = "TOPLEFT",
+							anchor_element = "Power",
+							frame_type = false,
+							x_off = "0",
+							y_off = "-3",
+						},
+						size = 13,
+						spacing = 3,
+						per_row = 9,
+						framelevel = 15,
 					},
 					debuffs = {
 						enable = false,
@@ -545,17 +617,23 @@ st.defaults.unitframes = {
 					show_samelevel = true,
 					show_classification = true,
 					font = 'pixel',
-					position = {point = 'LEFT', rel_point = 'LEFT', x_off = 5, y_off = 0},
+					position = {
+						rel_point = "TOPRIGHT",
+						x_off = "-4",
+						point = "BOTTOMRIGHT",
+						y_off = "6",
+					},
 					tag = '[st:level] [st:name]',
 				}
 			},
 			player = {
+				width = 202,
 				position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150},
 				castbar = {
 					enable = true,
 				},
 				name = {
-					enable = false,
+					enable = true,
 				},
 				health = {
 					text = {
@@ -585,8 +663,29 @@ st.defaults.unitframes = {
 			},
 			target = {
 				position = {point = 'LEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150},
+				name = {
+					position = {
+						rel_point = "TOPLEFT",
+						x_off = "5",
+						point = "BOTTOMLEFT",
+					},
+				},
 				castbar = {
 					enable = true,
+					position = {
+						point = 'TOPRIGHT',
+						y_off = -227,
+						x_off = 88,
+					},
+					icon = {
+						position = {
+							rel_point = "TOPRIGHT",
+							point = "TOPLEFT",
+							anchor_element = "Castbar",
+							x_off = "7",
+							frame_type = false,
+						},
+					},
 				},
 				auras = {
 					buffs = {
@@ -595,16 +694,55 @@ st.defaults.unitframes = {
 					debuffs = {
 						enable = true,
 					}
+				},
+				portrait = {
+					position = {
+						point = 'LEFT',
+						rel_point = 'RIGHT',
+						x_off = 7,
+					},
+				},
+				health = {
+					reverse_fill = true,
+					text = {
+						position = {
+							point = 'LEFT',
+							rel_point = 'LEFT',
+							x_off = 5,
+						}
+					}
+				},
+				power = {
+					reverse_fill = true,
+					position = {
+						point = 'BOTTOMRIGHT',
+						rel_point = 'BOTTOMRIGHT',
+						x_off = -7
+					},
+					text = {
+						position = {
+							point = 'LEFT',
+							rel_point = 'LEFT',
+							x_off = 2,
+						},
+					}
 				}
 			},
 			targettarget = {
 				width = 100,
-				position = {point = 'LEFT', frame = 'SaftUI_Target', rel_point = 'RIGHT', x_off = 7, y_off = 0},
+				position = {point = 'LEFT', frame = 'SaftUI_Target_Portrait', rel_point = 'RIGHT', x_off = 7, y_off = 0},
 				name = {
 					enable = false,
 				},
+				power = {
+					width = -50,
+				},
+				portrait = {
+					enable = false
+				}
 			},
 			party = {
+				width = 202,
 				spacing = 24,
 				growthDirection = 'BOTTOM',
 				maxColumns = 1,
@@ -621,16 +759,24 @@ st.defaults.unitframes = {
 				auras = {
 					debuffs = {
 						enable = true,
-						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
 						size = 30,
 						filter = {
 							friend = {
-								show_magic = true,
-								grow_right = false,
-							}
-						}
+								whitelist = {
+									filters = {
+										yours = false,
+										auras = false,
+									},
+								},
+							},
+							enemy = {
+								whitelist = {
+									enable = false,
+								},
+							},
+						},
 					}
 				}
 			},
@@ -722,15 +868,21 @@ st.defaults.unitframes = {
 				}
 			},
 			nameplate = {
-				height = 14,
+				height = 20,
 				width = 140,
 				portrait = {
 					enable = false,
 				},
+				power = {
+					height = 8,
+					text = {
+						enable = false
+					}
+				},
 				health = {
 					height = -6,
 					text = {
-						position = {point = 'BOTTOMRIGHT', rel_point = 'TOPRIGHT', x_off = 0, y_off = 7},
+						position = {x_off = -2},
 					},
 				},
 				name = {
@@ -739,9 +891,10 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = true,
-					height = 2,
+					height = 20,
 					icon = {
 						width = 20,
+						height = 20
 					}
 				},
 				auras = {
@@ -760,8 +913,7 @@ st.defaults.unitframes = {
 				},
 			}
 		},
-		SaftUI = {},
-		["Slim"] = {
+		["SaftUI"] = {
 			["party"] = {
 				["portrait"] = {
 					["relative_width"] = false,
@@ -779,16 +931,65 @@ st.defaults.unitframes = {
 				},
 				["auras"] = {
 					["debuffs"] = {
-						["grow_right"] = false,
-						["position"] = {
-							["rel_point"] = "TOPLEFT",
-							["point"] = "TOPRIGHT",
-							["anchor_element"] = "Portrait",
-							["x_off"] = "-7",
-							["frame_type"] = false,
-							["y_off"] = "0",
+						["filter"] = {
+							["friend"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["yours"] = false,
+										["auras"] = false,
+									},
+								},
+							},
+							["enemy"] = {
+								["whitelist"] = {
+									["enable"] = false,
+								},
+							},
 						},
-						["size"] = 28,
+					},
+					["buffs"] = {
+						["enable"] = true,
+						["per_row"] = 9,
+						["framelevel"] = 15,
+						["position"] = {
+							["rel_point"] = "BOTTOMLEFT",
+							["point"] = "TOPLEFT",
+							["anchor_element"] = "Power",
+							["frame_type"] = false,
+							["x_off"] = "0",
+							["y_off"] = "-3",
+						},
+						["filter"] = {
+							["friend"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["dispellable"] = false,
+										["auras"] = false,
+									},
+								},
+								["blacklist"] = {
+									["enable"] = true,
+									["filters"] = {
+										["others"] = true,
+									},
+								},
+							},
+							["friendly"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["dispellable"] = false,
+										["auras"] = false,
+									},
+								},
+							},
+							["enemy"] = {
+								["whitelist"] = {
+									["enable"] = false,
+								},
+							},
+						},
+						["spacing"] = 3,
+						["size"] = 13,
 					},
 				},
 				["template"] = "none",
@@ -1038,6 +1239,13 @@ st.defaults.unitframes = {
 						},
 						["initial_anchor"] = "TOPLEFT",
 						["grow_up"] = false,
+						["filter"] = {
+							["friend"] = {
+								["whitelist"] = {
+									["enable"] = false,
+								},
+							},
+						},
 					},
 				},
 				["health"] = {
@@ -1249,16 +1457,65 @@ st.defaults.unitframes = {
 				},
 				["auras"] = {
 					["debuffs"] = {
-						["grow_right"] = false,
-						["position"] = {
-							["rel_point"] = "TOPLEFT",
-							["point"] = "TOPRIGHT",
-							["anchor_element"] = "Portrait",
-							["x_off"] = "-7",
-							["frame_type"] = false,
-							["y_off"] = "0",
+						["filter"] = {
+							["friend"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["yours"] = false,
+										["auras"] = false,
+									},
+								},
+							},
+							["enemy"] = {
+								["whitelist"] = {
+									["enable"] = false,
+								},
+							},
 						},
-						["size"] = 28,
+					},
+					["buffs"] = {
+						["enable"] = true,
+						["per_row"] = 9,
+						["framelevel"] = 15,
+						["filter"] = {
+							["friendly"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["dispellable"] = false,
+										["auras"] = false,
+									},
+								},
+							},
+							["friend"] = {
+								["whitelist"] = {
+									["filters"] = {
+										["dispellable"] = false,
+										["auras"] = false,
+									},
+								},
+								["blacklist"] = {
+									["enable"] = true,
+									["filters"] = {
+										["others"] = true,
+									},
+								},
+							},
+							["enemy"] = {
+								["whitelist"] = {
+									["enable"] = false,
+								},
+							},
+						},
+						["spacing"] = 3,
+						["position"] = {
+							["rel_point"] = "BOTTOMLEFT",
+							["point"] = "TOPLEFT",
+							["anchor_element"] = "Power",
+							["frame_type"] = false,
+							["x_off"] = "0",
+							["y_off"] = "-3",
+						},
+						["size"] = 13,
 					},
 				},
 				["power"] = {
