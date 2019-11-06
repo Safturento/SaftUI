@@ -16,12 +16,12 @@ local function PostUpdatePower(power, unit, current, min, max)
 		power:SetMinMaxValues(0, 1)
 		power:SetValue(1)
 	end
-end
 
-local function PostUpdateColor(power, r, g, b)
+	
 	power:SetStatusBarTexture(st.BLANK_TEX)
 	power.bg:SetTexture(st.BLANK_TEX)
 end
+
 
 local function Constructor(self)
 	local power = CreateFrame('StatusBar', nil, self)
@@ -36,7 +36,6 @@ local function Constructor(self)
 	power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 
 	power.PostUpdate = PostUpdatePower
-	power.PostUpdateColor = PostUpdateColor
 	self.Power = power
 	return power
 end

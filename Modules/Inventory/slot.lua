@@ -46,12 +46,14 @@ function INV:AssignSlot(container, slot, slotInfo)
 	slot:Show()
 end
 
-hooksecurefunc('StackSplitFrameOkay_Click', function()
-	local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
-	if bag_id and slot_id then
-		PickupContainerItem(bag_id, slot_id)
-	end
-end)
+if StackSplitFrameOkay_Click then
+	hooksecurefunc('StackSplitFrameOkay_Click', function()
+		local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
+		if bag_id and slot_id then
+			PickupContainerItem(bag_id, slot_id)
+		end
+	end)
+end
 
 local function UpdateTooltip(self)
 	if self.info.bagID == -1 then
@@ -71,7 +73,13 @@ function INV:CreateSlot(container, category_name)
 
 		local bagName = container:GetName()
 		slot_name = bagName..'_'..(gsub(category_name, '(%A)', ''))..'_Slot'..slotID
-		slot = CreateFrame('Button', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
+		slot = CreateFrame('ItemButton', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
+		if not slot.icon then print(slot_name) end
+		slot.Count = _G[slot:GetName() .. "Count"]
+		slot.icon = _G[slot:GetName() .. "IconTexture"]
+		slot.border = _G[slot:GetName() .. "NormalTexture"]
+		slot.cooldown = _G[slot:GetName() .. "Cooldown"]
+		
 		slot.container = container
 		slot.id = slotID
 		slot.type = container.id

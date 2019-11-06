@@ -1,4 +1,4 @@
-## Interface: 70200
+## Interface: 80205
 ## Author: Safturento
 ## Version: 0.1
 ## Title: |cff00adefSaftUI|r
@@ -6,7 +6,6 @@
 ## OptionalDeps: RealMobHealth
 ## X-oUF: SaftUI
 
-version.lua
 Libs\libs.xml
 Core\core.xml
 Media\media.xml

@@ -124,8 +124,7 @@ function st:SetBackdrop(frame, template)
 	local config = st.config.profile.templates[template]
 	assert(config, template .. ' template not found')
 
-	
-	if not frame.GetObjectType then print(debugstack()) end
+	if not frame.GetObjectType then return print(debugstack()) end
 
 	local is_texture = frame:GetObjectType() == 'Texture'
 
@@ -399,7 +398,6 @@ function st:SkinEditBox(editbox, template, font, height, width)
 
 	if font then
 		fontstring:SetFontObject(st:GetFont(font))
-		header:SetFontObject(st:GetFont(font))
 	end
 	editbox.highlight = highlight
 	editbox.pointer = pointer

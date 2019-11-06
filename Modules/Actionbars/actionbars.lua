@@ -168,6 +168,8 @@ function AB:UpdateHotkey(slot)
 end
 
 function AB:UpdateActionButton(self)
+	if not self.backdrop then return end
+	
 	if IsEquippedAction(self.action) then
 		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
 	else

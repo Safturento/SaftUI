@@ -103,7 +103,10 @@ function TT:OnEnable()
 	for _,tooltip in pairs(self.AllTooltips) do
 		st:SetTemplate(tooltip)
 		st:SetBackdrop(tooltip, self.config.template)
-		self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
+		if not self.hooked then
+			self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
+			self.hooked = true
+		end
 	end
 
 	
