@@ -1,0 +1,3 @@
+_G.GAME_VERSION = select(4, GetBuildInfo())
+_G.IS_CLASSIC = _G.GAME_VERSION < 70000
+_G.IS_RETAIL = not _G.IS_CLASSIC

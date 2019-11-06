@@ -1,3 +1,5 @@
+if IS_RETAIL then return end
+
 --[[
 Name: LibClassicHealComm-1.0
 Revision: $Revision: 19 $

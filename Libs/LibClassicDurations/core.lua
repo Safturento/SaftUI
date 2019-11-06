@@ -1,3 +1,5 @@
+if IS_RETAIL then return end
+
 --[================[
 LibClassicDurations
 Author: d87

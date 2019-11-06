@@ -3,6 +3,8 @@ LibClassicCasterino
 Author: d87
 --]================]
 
+if IS_RETAIL then return end
+
 
 local MAJOR, MINOR = "LibClassicCasterino", 14
 local lib = LibStub:NewLibrary(MAJOR, MINOR)
