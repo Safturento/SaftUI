@@ -61,7 +61,7 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self.containers.bag.footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
-	st.config.realm.gold[st.my_name] = money
+	st.config.realm.summary[st.my_name].gold = money
 end
 
 function INV:DisplayServerGold()
@@ -73,9 +73,9 @@ function INV:DisplayServerGold()
 	-- List server wide gold
 	GameTooltip:AddLine('Gold on ' .. st.my_realm)
 	local totalGold = 0
-	for toonName, gold in pairs(st.config.realm.gold) do 
-		GameTooltip:AddDoubleLine(toonName, st.StringFormat:GoldFormat(gold), 1,1,1)
-		totalGold = totalGold + gold
+	for toonName, summary in pairs(st.config.realm.summary) do 
+		GameTooltip:AddDoubleLine(toonName, st.StringFormat:GoldFormat(summary.gold), 1,1,1)
+		totalGold = totalGold + summary.gold
 	end
 	GameTooltip:AddLine(' ')
 	GameTooltip:AddDoubleLine('Total', st.StringFormat:GoldFormat(totalGold))
@@ -162,8 +162,6 @@ function INV:UpdateHandler(elapsed)
 	lastUpdate = time
 
 	if self.NEED_UPDATE then
-
-		-- print('updating bags')
 		self.NEED_UPDATE = false
 		self:UpdateGold()
 		self:UpdateContainerItems('bag')
@@ -222,8 +220,6 @@ end
 function INV:OnInitialize()
 	self.config = st.config.profile.inventory
 	if self.config.enable == false then return end
-
-	if not st.config.realm.gold then st.config.realm.gold = {} end
 
 	self:CreateContainer('bag', INVTYPE_BAG)
 	self.containers.bag:Hide()

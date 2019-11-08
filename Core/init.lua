@@ -23,9 +23,30 @@ function SaftUI:OnInitialize()
 		profile = self.defaults,
 	})
 
+	if not st.config.realm.summary then st.config.realm.summary = {} end
+	if not st.config.realm.summary[st.my_name] then st.config.realm.summary[st.my_name] = {} end
+
 	self.config.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
+
+	self:RegisterEvent('TIME_PLAYED_MSG')
+	RequestTimePlayed()
+
+	total_time = 0
+	for realm, realm_config in pairs(SaftUI_DB.realm) do
+		if realm_config.summary then
+			for character, summary in pairs(realm_config.summary) do
+				total_time = total_time + summary.time_played
+			end
+		end
+	end
+	print('You have played for a total of ' .. SecondsToTime(total_time) .. ' across your characters.')
+end
+
+function SaftUI:TIME_PLAYED_MSG(event, total, level)
+	st.config.realm.summary[st.my_name]['time_played'] = total
+	st.config.realm.summary[st.my_name]['time_played_level'] = level
 end
 
 function SaftUI:UpdateConfig()
