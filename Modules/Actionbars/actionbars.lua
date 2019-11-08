@@ -103,6 +103,12 @@ function AB:UpdateConfig()
 			bar:Show()
 		end
 
+		local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
+		local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
+		
+		bar:SetSize(width, height)
+		bar:SetPoint(st:UnpackPoint(bar.config.position))
+
 		if bar.config.backdrop.enable then
 			st:SetBackdrop(bar, bar.config.backdrop.template)
 
@@ -126,11 +132,7 @@ function AB:UpdateConfig()
 			st:SetBackdrop(bar, 'none')
 		end
 		
-		local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
-		local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
 		
-		bar:SetSize(width, height)
-		bar:SetPoint(st:UnpackPoint(bar.config.position))
 
 		local prev
 		for j, slot in ipairs(bar.slots) do
