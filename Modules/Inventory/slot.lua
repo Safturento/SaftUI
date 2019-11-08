@@ -45,7 +45,6 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	slot:Show()
 end
-
 hooksecurefunc('StackSplitFrameOkay_Click', function()
 	local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
 	if bag_id and slot_id then

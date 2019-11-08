@@ -6,7 +6,6 @@
 ## OptionalDeps: RealMobHealth
 ## X-oUF: SaftUI
 
-version.lua
 Libs\libs.xml
 Core\core.xml
 Media\media.xml
