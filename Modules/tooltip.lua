@@ -21,6 +21,10 @@ function TT:UpdateTooltipDisplay(tooltip)
 	tooltip:SetBackdrop(nil)
 	st:SetBackdrop(tooltip, self.config.template)
 
+	if IsModifierKeyDown() and tooltip:GetItem() then
+		self:AddItemInfo(tooltip)
+	end
+
 	local name = tooltip:GetName()
 	
 	for i=1, tooltip:NumLines() do
@@ -71,6 +75,21 @@ function TT:GameTooltip_ShowCompareItem()
 			tt:SetPoint(point, frame, relative, point == 'TOPRIGHT' and -7 or 7, 0)
 		end
 	end
+end
+
+function TT:AddItemInfo(self)
+	local itemName, item_link = self:GetItem()
+	if not item_link then return end
+
+	local _, _, _, _, _, item_type, item_subtype, _, _, _, _, item_type_id, item_subtype_id, bind_type, expac_id, item_set_id = GetItemInfo(item_link) 
+
+	local item_id = select(2, strsplit(":", string.match(item_link, "item[%-?%d:]+")))
+
+	self:AddDoubleLine('Item ID', item_id)
+	self:AddDoubleLine('Item Type', ('%s (%s)'):format(item_type, item_type_id))
+	self:AddDoubleLine('Item Sub Type', ('%s (%s)'):format(item_subtype, item_subtype_id))
+	self:AddDoubleLine('Expansion ID', expac_id)
+	self:AddDoubleLine('Item Set ID', item_set_id)
 end
 
 function TT:OnEnable()
