@@ -13,8 +13,8 @@ UF.unit_strings = {
 	['player'] = 'Player',
 	['target'] = 'Target',
 	['targettarget'] = 'TargetTarget',
-	-- ['focus'] = 'Focus',
-	-- ['focustarget'] = 'FocusTarget',
+	['focus'] = 'Focus',
+	['focustarget'] = 'FocusTarget',
 	-- ['pet'] = 'Pet',
 	-- ['pettarget'] = 'PetTarget',
 }

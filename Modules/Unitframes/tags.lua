@@ -1,7 +1,7 @@
 local ADDON_NAME, st = ...
 local UF = st:GetModule('Unitframes')
 
-UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP'
+UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP PLAYER_TARGET_CHANGED'
 UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local level = UnitLevel(unit)
 	local playerLevel = UnitLevel('player')
@@ -51,9 +51,17 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 		end
 	end
 
+	levelString = st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '')
+	string = string .. levelString
+	
 	if config.all_caps then
 		name = strupper(name)
 	end
+	string = string .. st.StringFormat:UTF8strsub(name or '', config.max_length)
 
-	return st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '') .. st.StringFormat:UTF8strsub(name or '', config.max_length)
+	if baseunit == 'nameplate' and UnitIsUnit(unit, 'target') then
+		string = string .. ' <'
+	end
+
+	return string
 end
