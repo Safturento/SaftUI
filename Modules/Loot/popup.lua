@@ -1,5 +1,4 @@
 local ADDON_NAME, st = ...
-
 local LT = st:GetModule('Loot')
 
 function LT:LootFrame_Show()
