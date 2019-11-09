@@ -8,5 +8,6 @@ function LT:OnInitialize()
 	self.config = st.config.profile.loot
 
 	self:InitializeRollFrame()
-	self:InitializeLootFrame()
+	-- self:InitializeLootFrame()
+	self:InitializeLootFeed()
 end

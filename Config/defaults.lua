@@ -79,6 +79,31 @@ st.defaults.loot = {
 		button_height = 30,
 		spacing = 7,
 	},
+	feed = {
+		width = 300,
+		-- anchor_height = 20,
+		item_height = 30,
+		position = {
+			point = 'BOTTOMRIGHT',
+			frame = 'UIParent',
+			rel_point = 'BOTTOMRIGHT',
+			x_off = -20,
+			y_off = 20,
+		},
+		spacing = 7,
+		max_items = 5,
+		fade_time = 10,
+		template = 'thick',
+		font = 'pixel',
+		filters = {
+			self_item = true,
+			other_item = true,
+			gold = true,
+			currency = true,
+			reputation = false,
+			experience = false	
+		}
+	},
 	roll = {
 		height = 30,
 		width = 400,
