@@ -154,7 +154,6 @@ end
 
 function AB:UpdateConfig()
 	for i, bar in pairs(self.bars) do
-		print(i, bar)
 		if not bar.config.enable then
 			bar:Hide()
 			return 

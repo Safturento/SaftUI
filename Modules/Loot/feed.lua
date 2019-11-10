@@ -299,13 +299,14 @@ function LT:InitializeLootFeed()
 	feed.offset = 0
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
 	feed.overlay:SetScript('OnMouseWheel', function(_, offset)
+		feed.last_scroll_time = GetTime()
+		
 		if #feed_stack <= self.config.feed.max_items then return end
 
 		if IsModifierKeyDown() then offset = offset * 3 end
 		
 		feed.offset = min(max(0, feed.offset + offset), #feed_stack - self.config.feed.max_items)
 		
-		feed.last_scroll_time = GetTime()
 
 		if feed.offset == 0 then
 			feed.reset_button:Hide()
