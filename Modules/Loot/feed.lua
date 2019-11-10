@@ -1,6 +1,9 @@
 local ADDON_NAME, st = ...
 local LT = st:GetModule('Loot')
 
+local MAX_HISTORY = 100
+local feed_stack = {}
+
 ------------------------------------
 -- Pattern matching
 ------------------------------------
@@ -38,18 +41,18 @@ generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'item', 'count'})
 generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'item', 'count'})
 generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'item', 'count'})
 -- self_gold
-generate_match(YOU_LOOT_MONEY, {'item'})
-generate_match(YOU_LOOT_MONEY_GUILD, {'item', 'bank'})
-generate_match(LOOT_MONEY_SPLIT, {'item'})
-generate_match(LOOT_MONEY_SPLIT_GUILD, {'item', 'bank'})
+generate_match(YOU_LOOT_MONEY, {'link'})
+generate_match(YOU_LOOT_MONEY_GUILD, {'link', 'bank'})
+generate_match(LOOT_MONEY_SPLIT, {'link'})
+generate_match(LOOT_MONEY_SPLIT_GUILD, {'link', 'bank'})
 -- others_loot
-generate_match(LOOT_ITEM, {'player', 'item'})
-generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'item'})
-generate_match(LOOT_ITEM_PUSHED, {'player', 'item'})
-generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'item'})
-generate_match(LOOT_ITEM_MULTIPLE, {'player','item', 'count'})
-generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','item', 'count'})
-generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','item', 'count'})
+generate_match(LOOT_ITEM, {'player', 'link'})
+generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'})
+generate_match(LOOT_ITEM_PUSHED, {'player', 'link'})
+generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'link'})
+generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'})
+generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'})
+generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'})
 
 local function get_match(string)
 	for pattern, keys in pairs(patterns) do
@@ -59,7 +62,6 @@ local function get_match(string)
 			-- print(#match, #keys, string, pattern)
 			local result = {}
 			for i,item in ipairs(match) do
-				-- print(keys[i], item)
 				result[keys[i]] = item
 			end
 			return result
@@ -70,54 +72,63 @@ end
 ------------------------------------
 -- Feed updates
 ------------------------------------
-local feed_stack = {}
+local function generate_random_item()
+	local link
+	while not link do
+		link = select(2, GetItemInfo(random(0, 10000)))
+	end
+	return link, random(1, 20)
+end
 
 local lastUpdate = 0
+local lastPush = 0
 function LT:UpdateHandler(elapsed)
 	local time = GetTime()
 	-- only check once a second
 	if time - lastUpdate < 1 then return end
 	lastUpdate = time
 
-	-- Check all items and pop those who are over time
-	local need_update = false
-		
-	local item
-	for i=#feed_stack, 1, -1 do
-		item = feed_stack[i]
-		if item then
-			if time - item.time > self.config.feed.fade_time then
-				tremove(feed_stack, i)
-				need_update = true
-			else
-				break
-			end
+	if self.DEBUG then
+		if time - lastPush >= 2 then
+			lastPush = time
+			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
 		end
 	end
 
-	if need_update then
-		self:UpdateFeed()
-	end
+	self:UpdateFeed()
 end
 
 function LT:UpdateFeed()
-	for i,item in ipairs(feed_stack) do
-		self.feed.items[i].text:SetText(item.text)
-		self.feed.items[i].count:SetText(item.count)
-		self.feed.items[i].icon:SetTexture(item.icon)
-		self.feed.items[i].link = item.link
-		self.feed.items[i]:Show()
-	end
+	local now = GetTime()
+	local item, info
 
-	for i=#feed_stack + 1, self.config.feed.max_items do
-		if self.feed.items[i]:IsShown() then
-			self.feed.items[i]:Hide()
+	local recently_scrolled = self.feed.last_scroll_time and (now - self.feed.last_scroll_time < self.config.feed.fade_time)
+
+	for i=1, self.config.feed.max_items do
+		item = self.feed.items[i]
+		info = feed_stack[i + self.feed.offset]
+
+		if not info then break end
+		-- fade out old items
+		if (not recently_scrolled) and
+			(self.feed.offset == 0) and
+			(self.config.feed.fade_time > 0) and
+			(now - info.time > self.config.feed.fade_time) then
+			item:Hide()
+		else
+			item.text:SetText(info.text)
+			item.count:SetText(info.count)
+			item.icon:SetTexture(info.icon)
+			item.link = info.link
+			item.info = info
+
+			item:Show()
 		end
 	end
 end
 
 function LT:LootFeedPush(link, name, texture, count)
-	if #feed_stack == self.config.feed.max_items then
+	if #feed_stack == MAX_HISTORY then
 		tremove(feed_stack)
 	end
 
@@ -129,28 +140,39 @@ function LT:LootFeedPush(link, name, texture, count)
 		time = GetTime()
 	})
 
+	-- If scrolling through history, don't push the feed upwards
+	if self.feed.offset > 0 then
+		self.feed.offset = self.feed.offset + 1
+	end
+
 	self:UpdateFeed()
 end
 
 function LT:LootFeedAddItem(match)
 	local filters = self.config.feed.filters
 
-	if not match['item'] then return end
+	if not match['link'] then return end
 
-	local item_id = select(2, strsplit(":", string.match(match['item'], "item[%-?%d:]+")))
+	local item_id = select(2, strsplit(":", string.match(match['link'], "item[%-?%d:]+")))
 	local name, link, quality, ilvl, reqLevel, class, subclass, maxStack,
 	equipSlot, texture, vendor_price, item_type_id, item_subtype_id, bind_type,
 	expac_id, item_set_id, crafting_reagent = GetItemInfo(item_id) 
 
+	if not name then return end
+
+	if quality < self.config.feed.min_quality then return end
+
 	local item_color = st.config.profile.colors.item_quality[quality]
+	if not item_color then return print(name, quality) end
+	
 	name = st.StringFormat:ColorString(name, unpack(item_color))
 
 	if filters.self_item and not match['player'] then
-		return self:LootFeedPush(link, name, texture, match['count'])
+		return self:LootFeedPush(match['link'], name, texture, match['count'])
 	end
 
 	if filters.other_item then
-		return self:LootFeedPush(link, match['player']..': '..name, texture, match['count'])
+		return self:LootFeedPush(match['link'], match['player']..': '..name, texture, match['count'])
 	end
 end
 
@@ -165,8 +187,7 @@ end
 function LT:LootFeedHandler(event, text)
 	match = get_match(text)
 	if not match then return end
-
-	if match['item'] then
+	if match['link'] then
 		self:LootFeedAddItem(match)
 	end
 end
@@ -194,9 +215,12 @@ end
 
 local function ShowTooltip(self)
 	if not self.link then return end
+
+	self.info.time = GetTime()
+
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
-	GameTooltip:SetPoint('BOTTOMRIGHT', self, 'BOTTOMLEFT', -7, 0)
+	GameTooltip:SetPoint('BOTTOMRIGHT', self, 'BOTTOMLEFT', -10, 0)
 	GameTooltip:SetHyperlink(self.link)
 	GameTooltip:Show()
 end
@@ -225,6 +249,9 @@ function LT:UpdateLootFeedConfig()
 		item.text = item:CreateFontString(nil, 'OVERLAY')
 		item.icon = item:CreateTexture(nil, 'OVERLAY')
 		item.count = item:CreateFontString(nil, 'OVERLAY')
+
+		st:SetBackdrop(item.icon, config.template)
+
 		item:SetScript("OnEnter", ShowTooltip)
 		item:SetScript("OnLeave", HideTooltip)
 		item:EnableMouse(true)
@@ -237,7 +264,10 @@ function LT:UpdateLootFeedConfig()
 	for i,item in pairs(self.feed.items) do
 		item:SetSize(config.width, config.item_height)
 		item.text:SetFontObject(font_obj)
-		item.text:SetPoint('LEFT', item.icon, 'RIGHT', 5, 0)
+		item.text:SetPoint('LEFT', item.icon, 'RIGHT', 10, 0)
+		item.text:SetPoint('RIGHT', item, 'RIGHT', -10, 0)
+		item.text:SetJustifyH('LEFT')
+		item.text:SetWordWrap(false)
 		item.text:SetText('Item '..i)
 		
 		item.count:SetFontObject(font_obj)
@@ -248,13 +278,58 @@ function LT:UpdateLootFeedConfig()
 		st:SkinIcon(item.icon)
 		st:SetBackdrop(item, config.template)
 	end
+
+	self.feed.overlay:SetPoint('BOTTOMLEFT', self.feed)
+	self.feed.overlay:SetPoint('TOPRIGHT', self.feed.items[config.max_items], 'TOPRIGHT')
+
+	local x, y = self.feed:GetCenter()
+	if x > GetScreenWidth()/2 then
+		self.feed.reset_button:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
+	else
+		self.feed.reset_button:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
+	end
+	self.feed.reset_button.text:SetFontObject(font_obj)
+	st:SetBackdrop(self.feed.reset_button, config.template)
 end
 
 function LT:InitializeLootFeed()
 	local feed = CreateFrame('frame', ADDON_NAME..'LootFeed', UIParent)
-	feed:SetSize(20, 200)
+	feed:SetSize(200, 20)
 	feed.items = {}
+	feed.offset = 0
+	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
+	feed.overlay:SetScript('OnMouseWheel', function(_, offset)
+		if #feed_stack <= self.config.feed.max_items then return end
+
+		if IsModifierKeyDown() then offset = offset * 3 end
+		
+		feed.offset = min(max(0, feed.offset + offset), #feed_stack - self.config.feed.max_items)
+		
+		feed.last_scroll_time = GetTime()
+
+		if feed.offset == 0 then
+			feed.reset_button:Hide()
+		else
+			feed.reset_button:Show()
+		end
+		
+		self:UpdateFeed()
+	end)
+
 	self.feed = feed
+
+	feed.reset_button = CreateFrame('Button', feed:GetName()..'ScrollReset', feed)
+	feed.reset_button:SetSize(20, 20)
+	feed.reset_button.text = feed.reset_button:CreateFontString(nil, 'OVERLAY')
+	feed.reset_button.text:SetFontObject(GameFontNormal)
+	feed.reset_button.text:SetText('V')
+	feed.reset_button.text:SetPoint('CENTER')
+	feed.reset_button:Hide()
+	feed.reset_button:SetScript('OnClick', function()
+		feed.offset = 0
+		feed.reset_button:Hide()
+		self:UpdateFeed()
+	end)
 
 	LT:UpdateLootFeedConfig()
 
