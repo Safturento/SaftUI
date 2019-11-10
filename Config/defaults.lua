@@ -303,8 +303,9 @@ st.defaults.actionbars = {
 	[1] = {
 		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = 20},
 		backdrop = {
-			enable = true,
+			-- enable = true,
 			height = 3,
+			conform = false,
 		}
 	},
 	[2] = {
@@ -431,20 +432,15 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = false,
+					relative_height = false,
+					height = 4,
 					position = {
-						rel_point = "CENTER",
 						point = "TOPLEFT",
-						y_off = "-200",
-						x_off = "-85",
-						anchor_frame = "UIParent",
-						anchor_element = "Health",
-						frame_type = true,
+						rel_point = "BOTTOMLEFT",
+						y_off = "0",
+						x_off = "0",
 					},
 					framelevel = 15,
-					height = 20,
-					relative_width = false,
-					width = 200,
-					relative_height = false,
 					template = 'thicktransparent',
 					colors = {
 						normal = { .3, .4, .6 },
@@ -587,7 +583,7 @@ st.defaults.unitframes = {
 						per_row = 8,
 						grow_up = true,
 						grow_right = true,
-						initial_anchor = 'BOTTOMLEFT',
+						initial_anchor = 'TOPLEFT',
 						framelevel = 50,
 						cooldown = {
 							enable = true,
@@ -658,9 +654,21 @@ st.defaults.unitframes = {
 			},
 			player = {
 				width = 202,
-				position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150},
+				position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150},
 				castbar = {
 					enable = true,
+					height = 20,
+					relative_width = false,
+					width = 173,
+					relative_height = false,
+					position = {
+						rel_point = "CENTER",
+						point = "TOPLEFT",
+						x_off = "-73",
+						y_off = "-177",
+						anchor_frame = "UIParent",
+						frame_type = true,
+					},
 				},
 				name = {
 					enable = true,
@@ -692,7 +700,7 @@ st.defaults.unitframes = {
 				}
 			},
 			target = {
-				position = {point = 'LEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150},
+				position = {point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150},
 				name = {
 					position = {
 						rel_point = "TOPLEFT",
@@ -702,10 +710,17 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = true,
+					height = 20,
+					relative_width = false,
+					width = 173,
+					relative_height = false,
 					position = {
-						point = 'TOPRIGHT',
-						y_off = -227,
-						x_off = 88,
+						rel_point = "CENTER",
+						point = "TOPRIGHT",
+						x_off = "73",
+						y_off = "-207",
+						anchor_frame = "UIParent",
+						frame_type = true,
 					},
 					icon = {
 						position = {
@@ -720,6 +735,13 @@ st.defaults.unitframes = {
 				auras = {
 					buffs = {
 						enable = true,
+						grow_right = false,
+						initial_anchor = 'TOPRIGHT',
+						horizontal_growth = 'LEFT',
+						position = {
+							point = 'TOPRIGHT',
+							rel_point = 'BOTTOMRIGHT',
+						}
 					},
 					debuffs = {
 						enable = true,
@@ -769,7 +791,10 @@ st.defaults.unitframes = {
 				},
 				portrait = {
 					enable = false
-				}
+				},
+				buffs = {
+					enable = false,
+				},
 			},
 			party = {
 				width = 202,
@@ -945,10 +970,15 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = true,
-					height = 20,
+					height = 14,
+					position = {
+						point = "TOPLEFT",
+						rel_point = "BOTTOMLEFT",
+						y_off = "-7",
+						frame_type = nil,
+					},
 					icon = {
-						width = 20,
-						height = 20
+						enable = false
 					}
 				},
 				auras = {
