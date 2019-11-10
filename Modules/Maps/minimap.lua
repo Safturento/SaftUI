@@ -23,6 +23,8 @@ function MP:SkinTrackingIcon()
 	local track = MiniMapTracking
 	track.button = MiniMapTrackingButton
 	track.icon = MiniMapTrackingIcon
+	
+	st:Kill(MiniMapTrackingBackground)
 
 	local name = track:GetName()
 
@@ -59,6 +61,22 @@ function MP:SkinTrackingIcon()
 			end
 		end
 	end
+end
+
+function MP:SkinQueueIcon()
+	local button  = QueueStatusMinimapButton
+	local icon    = QueueStatusMinimapButtonIcon
+	local texture = QueueStatusMinimapButtonIconTexture
+
+	button:Show()
+	icon:Show()
+	texture:SetTexCoord(.2, .8, .2, .8)
+	st:SetTemplate(button, 'thin')
+
+	button:SetSize(20,20)
+	button:ClearAllPoints()
+	button:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', -7, -7)
+	st:StripTextures(button)
 end
 
 function MP:InitializeMinimap()
@@ -101,8 +119,9 @@ function MP:InitializeMinimap()
 	MiniMapMailIcon:SetTexture(st.textures.mail)
 	MiniMapMailBorder:SetTexture(nil)
 
-	MP:SkinTrackingIcon()
-
+	self:SkinTrackingIcon()
+	self:SkinQueueIcon()
+	
 	self:RegisterEvent('ADDON_LOADED')
 	self:UpdateMinimap()
 end
