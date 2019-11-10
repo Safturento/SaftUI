@@ -76,9 +76,10 @@ function AB:CreateBars()
 			_G[prefix]:SetParent(bar)
 		end
 
+		local slot, name
 		for j = 1, NUM_ACTIONBAR_BUTTONS do
-			local name = prefix..'Button'..j
-			local slot = _G[name]
+			name = prefix..'Button'..j
+			slot = _G[name]
 
 			if i == 1 then
 				slot:SetParent(bar)
@@ -92,6 +93,29 @@ function AB:CreateBars()
 		
 		self.bars[i] = bar
 	end
+
+	self:InitializePetBar()
+end
+
+function AB:InitializePetBar()
+	local bar = CreateFrame('frame', ADDON_NAME..'PetActionBar', UIParent, 'SecureHandlerStateTemplate')
+	bar.slots = {}
+	bar.config = self.config.pet
+	
+	local slot, name
+	for i=1, NUM_PET_ACTION_SLOTS do
+		name = 'PetActionButton'..i
+		slot = _G[name]
+		slot:SetParent(bar)
+		slot.count = _G[name..'Count']
+		slot.hotkey = _G[name..'HotKey']
+		local tex2 = _G[name..'NormalTexture2']
+		st:Kill(tex2)
+
+		bar.slots[i] = slot
+	end
+
+	self.bars.pet = bar
 end
 
 function AB:InitializeBarBages()
@@ -129,7 +153,8 @@ function AB:InitializeBarBages()
 end
 
 function AB:UpdateConfig()
-	for i, bar in ipairs(self.bars) do
+	for i, bar in pairs(self.bars) do
+		print(i, bar)
 		if not bar.config.enable then
 			bar:Hide()
 			return 
@@ -232,9 +257,9 @@ function AB:GetConfigTable()
 		}
 	}
 
-	for i=1, 5 do
+	for i, bar in pairs(self.bars) do
 		config_table.args['bar'..i] = {
-			name = 'Bar '..i,
+			name = i == 'pet' and 'Pet Bar' or 'Bar '..i,
 			type = 'group',
 			get = function(info) 
 				return config[i][info[#info]]
@@ -300,6 +325,8 @@ function AB:GetConfigTable()
 			},
 		}
 	end
+
+	config_table.args.barpet.args.total = nil
 
 	return config_table
 end
