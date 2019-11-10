@@ -40,7 +40,8 @@ local feed_stack = {}
 ------------------------------------
 local match_replacements = {
 	link = "(\124c%x%x%x%x%x%x%x%x\124Hitem[%-?%d:]+)%D*",
-	count =  '(%d+)'
+	count =  '(%d+)',
+	player = "([a-zA-Z]+)[a-zA-Z-']*"
 }
 
 local patterns = {}
@@ -93,6 +94,7 @@ local function get_match(string)
 			-- print(#match, #keys, string, pattern)
 			local result = {}
 			for i,item in ipairs(match) do
+				-- print(keys[i], item)
 				result[keys[i]] = item
 			end
 			return result
@@ -122,7 +124,11 @@ function LT:UpdateHandler(elapsed)
 	if self.DEBUG then
 		if time - lastPush >= 2 then
 			lastPush = time
-			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
+			if random() > 0.5 then
+				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
+			else
+				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+			end
 		end
 	end
 
@@ -228,16 +234,18 @@ function LT:Test()
 	local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
 	local test_money = {420, 69, 35}
 
-	local other_item = LOOT_ITEM:format('Safturento', test_item)
+	local other_item = LOOT_ITEM:format("Safturento-Mal'Ganis", test_item)
 	local self_item = LOOT_ITEM_SELF:format(test_item)
 	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
-
+	
 	assert(get_match(self_item), 'LOOT_ITEM_SELF failed')
 
 	local mult_test = get_match(self_item_mult)
 	assert(mult_test and mult_test['count'] == '5', 'LOOT_ITEM_SELF_MULTIPLE failed')
 	
-	assert(get_match(other_item), 'LOOT_ITEM failed')
+	local other_test = get_match(other_item)
+	
+	assert(other_test and other_test['player']=="Safturento", 'LOOT_ITEM failed')
 
 	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
 	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
