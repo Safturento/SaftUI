@@ -15,8 +15,8 @@ UF.unit_strings = {
 	['targettarget'] = 'TargetTarget',
 	['focus'] = 'Focus',
 	['focustarget'] = 'FocusTarget',
-	-- ['pet'] = 'Pet',
-	-- ['pettarget'] = 'PetTarget',
+	['pet'] = 'Pet',
+	['pettarget'] = 'PetTarget',
 }
 
 UF.group_strings = {
@@ -689,8 +689,10 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(UF.elements) do
-			config_table.args[element_name] =
-				self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
+			if not self.elements[element_name].valid_units or self.elements[element_name].valid_units(unit) then
+				config_table.args[element_name] =
+					self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
+			end
 		end
 
 		return config_table
