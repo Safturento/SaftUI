@@ -94,6 +94,40 @@ function AB:CreateBars()
 	end
 end
 
+function AB:InitializeBarBages()
+	local bar = self.bars[1]
+
+	local page = "[overridebar] 14;[shapeshift] 13;[vehicleui] 12;[possessbar] 12;"
+
+	if st.my_class == 'DRUID' then
+		page = page .. "[bonusbar:1,nostealth] 7; [bonusbar:1,stealth] 8; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10;"
+	elseif st.my_class == 'ROGUE' then
+		page = page .. "[bonusbar:1] 7;"
+	end
+
+	page = page .. '[form] 1; 1'
+		
+	RegisterStateDriver(bar, "page", page)
+	RegisterStateDriver(bar, "visibility", "[petbattle] hide; show")
+
+	for i=1, 12 do
+		bar:SetFrameRef("button"..i, bar.slots[i])
+	end
+
+	bar:Execute([[
+		slots = table.new()
+		for i=1, 12 do
+			slots[i] = self:GetFrameRef("button"..i)
+		end
+	]])
+
+	bar:SetAttribute('_onstate-page', [[
+		for _,button in pairs(slots) do
+			button:SetAttribute('actionpage', newstate)
+		end
+	]])
+end
+
 function AB:UpdateConfig()
 	for i, bar in ipairs(self.bars) do
 		if not bar.config.enable then
@@ -272,6 +306,7 @@ function AB:OnInitialize()
 	self.config = st.config.profile.actionbars
 	self:KillBlizzard()
 	self:CreateBars()
+	self:InitializeBarBages()
 	self:UpdateConfig()
 
 	self:SecureHook('ActionButton_Update', 'UpdateActionButton')
