@@ -3,17 +3,21 @@ local TT = st:NewModule('Tooltip', 'AceHook-3.0', 'AceEvent-3.0')
 
 function TT:UpdateGameTooltipPosition()
 	local INV = st:GetModule('Inventory')
+	local LT = st:GetModule('Loot')
 
-	-- if GameTooltip:GetAnchorType() == 'ANCHOR_NONE' then
-	-- 	GameTooltip:ClearAllPoints()
+	if GameTooltip:GetAnchorType() == 'ANCHOR_NONE' then
+		GameTooltip:ClearAllPoints()
 		
-	-- 	if INV and INV.containers.bag:IsShown() then
-	-- 		GameTooltip:SetPoint('BOTTOMRIGHT', INV.containers.bag, 'BOTTOMLEFT', -10, 0)
-	-- 	else
-	-- 		GameTooltip:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', -10, 10)
-	-- 	end
-	-- end
+		if INV and INV.containers.bag:IsShown() then
+			GameTooltip:SetPoint('BOTTOMRIGHT', INV.containers.bag, 'BOTTOMLEFT', -10, 0)
+		elseif LT and LT.feed.items[1]:IsShown() then
+			GameTooltip:SetPoint('BOTTOMRIGHT', LT.feed, 'BOTTOMLEFT', -10, 0)
+		else
+			GameTooltip:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', -20, 20)
+		end
+	end
 end
+
 
 function TT:UpdateTooltipDisplay(tooltip)
 	local font,size,outline = st:GetFont(self.config.font):GetFont()
@@ -70,9 +74,9 @@ function TT:GameTooltip_ShowCompareItem()
 		local tt = _G['ShoppingTooltip'..i]
 		if tt:IsShown() then
 			self:UpdateTooltipDisplay(tt)
-			local point, frame, relative, x, y = tt:GetPoint()
-			tt:ClearAllPoints()
-			tt:SetPoint(point, frame, relative, point == 'TOPRIGHT' and -7 or 7, 0)
+			-- local point, frame, relative, x, y = tt:GetPoint(2)
+			-- tt:ClearAllPoints()
+			-- tt:SetPoint('TOP'..point, frame, 'TOP'..relative, point == 'RIGHT' and -7 or 7, 0)
 		end
 	end
 end
