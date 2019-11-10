@@ -354,6 +354,22 @@ st.defaults.colors = {
 		RAGE              = {0.69, 0.31, 0.31},
 		FOCUS             = {0.71, 0.43, 0.27},
 		ENERGY            = {0.65, 0.63, 0.35},
+		INSANITY          = {0.40, 0.00, 0.80},
+		MAELSTROM         = {0.00, 0.50, 1.00},
+		LUNAR_POWER       = {0.93, 0.51, 0.93},
+		HOLY_POWER        = {0.95, 0.90, 0.60},
+		CHI               = {0.71, 1.00, 0.92},
+		RUNES             = {0.55, 0.57, 0.61},
+		SOUL_SHARDS       = {0.50, 0.32, 0.55},
+		FURY              = {0.78, 0.26, 0.99},
+		PAIN              = {1.00, 0.61, 0.00},
+		RUNIC_POWER       = {0.00, 0.82, 1.00},
+		AMMOSLOT          = {0.80, 0.60, 0.00},
+		FUEL              = {0.00, 0.55, 0.50},
+		POWER_TYPE_STEAM  = {0.55, 0.57, 0.61},
+		POWER_TYPE_PYRITE = {0.60, 0.09, 0.17},
+		ALTPOWER          = {0.00, 1.00, 1.00},
+		COMBO_POINTS		= {1.00, 0.95, 0.32},
 	},
 	class = {
 		DRUID       = { 1.00, 0.49, 0.03 },
@@ -684,6 +700,24 @@ st.defaults.unitframes = {
 							}
 						}
 					}
+				},
+				classpower = {
+					enable = true,
+					relative_width = false,
+					relative_height = false,
+					width = 200,
+					height = 20,
+					spacing = 7,
+					show_empty = true,
+					framelevel = 20,
+					template = 'thicktransparent',
+					position = {
+						point = 'TOPLEFT',
+						frame = 'UIParent',
+						rel_point = 'CENTER',
+						x_off = -100,
+						y_off = -150,
+					},
 				}
 			},
 			target = {
