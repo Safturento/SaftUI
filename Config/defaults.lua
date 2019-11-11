@@ -1041,7 +1041,8 @@ st.defaults.unitframes = {
 				},
 				name = {
 					position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
-					max_length = 15,
+					max_length = 30,
+					color_hostile = true,
 				},
 				castbar = {
 					enable = true,
