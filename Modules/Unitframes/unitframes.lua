@@ -17,6 +17,7 @@ UF.unit_strings = {
 	['focustarget'] = 'FocusTarget',
 	['pet'] = 'Pet',
 	['pettarget'] = 'PetTarget',
+	['boss'] = 'Boss'
 }
 
 UF.group_strings = {
@@ -162,7 +163,13 @@ function UF:UpdateConfig(unit, element_name)
 		UF:UpdateConfig('nameplate')
 	else
 		if self.units[unit] then
-			self:UpdateUnitFrame(self.units[unit], element_name)
+			if unit == 'boss' or unit == 'arena' then
+				for i,frame in pairs(self.units[unit]) do
+					self:UpdateUnitFrame(frame, element_name)
+				end
+			else
+				self:UpdateUnitFrame(self.units[unit], element_name)
+			end
 		elseif self.groups[unit] then
 			self.groups[unit].config = st.config.profile.unitframes.profiles[self:GetProfile()][unit]
 
@@ -726,7 +733,14 @@ function UF:OnInitialize()
 	self.units = {}
 
 	for unit, global_name in pairs(self.unit_strings) do
-		self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
+		if unit == 'boss' or unit == 'arena' then
+			self.units[unit] = {}
+			for i=1, 5 do
+				self.units[unit][i] = self.oUF:Spawn(unit..i, 'SaftUI_'..global_name..i)
+			end
+		else
+			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
+		end
 	end
 
 	
