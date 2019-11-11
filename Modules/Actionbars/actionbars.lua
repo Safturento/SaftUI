@@ -156,63 +156,62 @@ function AB:UpdateConfig()
 	for i, bar in pairs(self.bars) do
 		if not bar.config.enable then
 			bar:Hide()
-			return 
 		else
 			bar:Show()
-		end
-
-		local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
-		local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
-		
-		bar:SetSize(width, height)
-		bar:SetPoint(st:UnpackPoint(bar.config.position))
-
-		if bar.config.backdrop.enable then
-			st:SetBackdrop(bar, bar.config.backdrop.template)
-
-			local height, width
-			bar.backdrop:ClearAllPoints()
-			if bar.config.backdrop.conform then
-				width = bar:GetWidth() + bar.config.backdrop.padding * 2
-				height = bar:GetHeight() + bar.config.backdrop.padding * 2
+			
+			local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
+			local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
+			
+			bar:SetSize(width, height)
+			bar:SetPoint(st:UnpackPoint(bar.config.position))
+			
+			if bar.config.backdrop.enable then
+				st:SetBackdrop(bar, bar.config.backdrop.template)
 				
-				bar.backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -bar.config.backdrop.padding, bar.config.backdrop.padding)
+				local height, width
+				bar.backdrop:ClearAllPoints()
+				if bar.config.backdrop.conform then
+					width = bar:GetWidth() + bar.config.backdrop.padding * 2
+					height = bar:GetHeight() + bar.config.backdrop.padding * 2
+					
+					bar.backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -bar.config.backdrop.padding, bar.config.backdrop.padding)
+				else
+					width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+					
+					height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
+					
+					bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
+				end
+				
+				bar.backdrop:SetSize(width, height)
 			else
-				width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
-
-				height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
-			
-				bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
+				st:SetBackdrop(bar, 'none')
 			end
 			
-			bar.backdrop:SetSize(width, height)
-		else
-			st:SetBackdrop(bar, 'none')
-		end
-		
-		
-
-		local prev
-		for j, slot in ipairs(bar.slots) do
-			slot:SetSize(bar.config.width, bar.config.height)
-			st.SkinActionButton(slot, { font = self.config.font, template = bar.config.template })
-			if slot.Border then
-				slot.Border:ClearAllPoints()
+			
+			
+			local prev
+			for j, slot in ipairs(bar.slots) do
+				slot:SetSize(bar.config.width, bar.config.height)
+				st.SkinActionButton(slot, { font = self.config.font, template = bar.config.template })
+				if slot.Border then
+					slot.Border:ClearAllPoints()
+				end
+				
+				self:UpdateHotkey(slot)
+				slot:ClearAllPoints()
+				
+				if j > bar.config.total then
+					slot:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 500, 500)
+				elseif j == 1 then
+					slot:SetPoint('TOPLEFT', bar)
+				elseif j % bar.config.perrow == 1 or bar.config.perrow == 1 then
+					slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -bar.config.spacing)
+				else
+					slot:SetPoint('LEFT', prev, 'RIGHT', bar.config.spacing, 0)
+				end
+				prev = slot
 			end
-
-			self:UpdateHotkey(slot)
-			slot:ClearAllPoints()
-
-			if j > bar.config.total then
-				slot:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 500, 500)
-			elseif j == 1 then
-				slot:SetPoint('TOPLEFT', bar)
-			elseif j % bar.config.perrow == 1 or bar.config.perrow == 1 then
-				slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -bar.config.spacing)
-			else
-				slot:SetPoint('LEFT', prev, 'RIGHT', bar.config.spacing, 0)
-			end
-			prev = slot
 		end
 	end
 end
