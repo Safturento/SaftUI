@@ -864,7 +864,7 @@ st.defaults.unitframes = {
 				health = {
 					reverse_fill = true,
 					text = {
-				position = {
+						position = {
 							point = 'LEFT',
 							rel_point = 'LEFT',
 							x_off = 5,
@@ -884,8 +884,8 @@ st.defaults.unitframes = {
 							rel_point = 'LEFT',
 							x_off = 2,
 						},
-				}
-			},
+					}
+				},
 				name = {
 					position = {
 						rel_point = "TOPLEFT",
@@ -1143,7 +1143,8 @@ st.defaults.unitframes = {
 				},
 				name = {
 					position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
-					max_length = 15,
+					max_length = 30,
+					color_hostile = true,
 				},
 				castbar = {
 					enable = true,

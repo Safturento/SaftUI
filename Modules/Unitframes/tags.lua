@@ -6,6 +6,7 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local level = UnitLevel(unit)
 	local playerLevel = UnitLevel('player')
 	local name = UnitName(unit)
+	local reaction = UnitReaction('player', unit)
 	local classification = UnitClassification(unit)
 	local string = ''
 
@@ -56,6 +57,14 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	
 	if config.all_caps then
 		name = strupper(name)
+	end
+
+	if config.color_hostile and reaction then
+		if reaction < 3 then
+			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.red))
+		elseif reaction < 5 then
+			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.yellow))
+		end
 	end
 	string = string .. st.StringFormat:UTF8strsub(name or '', config.max_length)
 
