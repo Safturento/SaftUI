@@ -5,7 +5,7 @@ function PostUpdateClassPower(self, cur, max, hasMaxChanged, powerType)
 	if not max then self:Hide() return end
 	local width = (self:GetWidth() - (self.config.spacing * (max - 1))) / max
 	for i = 1, max do
-		self[i]:SetWidth(width)
+		st:SetWidth(self[i], width)
 		if self.config.show_empty then
 			self[i]:Show()
 		end
@@ -41,15 +41,15 @@ local function UpdateConfig(self)
 	self.ClassPower:SetFrameLevel(self.config.classpower.framelevel)
 
 	if self.config.classpower.relative_height then
-		self.ClassPower:SetHeight(self.config.height + self.config.classpower.height)
+		st:SetHeight(self.ClassPower, self.config.height + self.config.classpower.height)
 	else
-		self.ClassPower:SetHeight(self.config.classpower.height)
+		st:SetHeight(self.ClassPower, self.config.classpower.height)
 	end
 
 	if self.config.classpower.relative_width then
-		self.ClassPower:SetWidth(self.config.width + self.config.classpower.width)
+		st:SetWidth(self.ClassPower, self.config.width + self.config.classpower.width)
 	else
-		self.ClassPower:SetWidth(self.config.classpower.width)
+		st:SetWidth(self.ClassPower, self.config.classpower.width)
 	end
 
 	-- st:SetBackdrop(self.ClassPower, 'thin')
@@ -62,7 +62,7 @@ local function UpdateConfig(self)
 		point:SetStatusBarTexture(st.BLANK_TEX)
 		point:ClearAllPoints()
 		if prev then
-			point:SetPoint('LEFT', prev, 'RIGHT', self.config.classpower.spacing, 0)
+			point:SetPoint('LEFT', prev, 'RIGHT', st:Scale(self.config.classpower.spacing), 0)
 		else
 			point:SetPoint('LEFT')
 		end

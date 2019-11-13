@@ -432,6 +432,15 @@ st.defaults.unitframes = {
 					template = 'none',
 					alpha = 1,
 				},
+				questindicator = {
+					enable = false,
+					size = 16,
+					position = {
+						point = 'RIGHT',
+						rel_point = 'LEFT', 
+						x_off = -7,
+					},
+				},
 				raidroleindicator = {
 					size = 16,
 					position = {
@@ -439,6 +448,19 @@ st.defaults.unitframes = {
 						point = 'CENTER',
 						rel_point = 'TOPRIGHT',
 						anchor_element = 'Health',
+						frame_type = false,
+						x_off = 0,
+						y_off = 0,
+					}
+				},
+				grouproleindicator = {
+					size = 16,
+					show_dps = false,
+					position = {
+						enable = false,
+						point = 'CENTER',
+						rel_point = 'TOPLEFT',
+						anchor_element = 'Portrait',
 						frame_type = false,
 						x_off = 0,
 						y_off = 0,
