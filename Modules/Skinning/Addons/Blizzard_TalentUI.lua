@@ -1,18 +1,29 @@
 local ADDON_NAME, st = ...
 local SK = st:GetModule('Skinning')
 
----------------------------------------------
--- INITIALIZE -------------------------------
----------------------------------------------
+local button_spacing_y = 20
+local button_spacing_x = 20
+local button_size = 30
 
-button_spacing_y = 20
-button_spacing_x = 44
-button_size = 30
+function SkinTalentButton(button)
+	if button.skinned then return end
+		
+	button:SetSize(button_size, button_size)
+	button:SetParent(TalentFrame)
+	st:StripTextures(button)
+	st.SkinActionButton(button)
+	button:SetFrameLevel(20)
+	local rank = _G[button:GetName()..'Rank']
+	rank:ClearAllPoints()
+	rank:SetPoint('BOTTOMRIGHT', 0, 2)
+	
+	button.skinned = true
+end
 
 function SK:SetTalentButtonLocation(button, tier, column)
 	button:ClearAllPoints()
-	local x = column * button_size + (column - 1) * button_spacing_x
-	local y = tier * button_size + (tier - 1) * button_spacing_y
+	local x = st.config.profile.panels.padding + (column - 1) * (button_size + button_spacing_x)
+	local y = st.config.profile.panels.padding + (tier - 1) * (button_size + button_spacing_y)
 	button:SetPoint('TOPLEFT', TalentFrame.header, 'BOTTOMLEFT', x, -y)
 
 	if not button.skinned then
@@ -43,46 +54,54 @@ function SK:SetTalentButtonLocation(button, tier, column)
 	end
 end
 
-function SkinTalentButton(button)
-	if button.skinned then return end
-		
-	button:SetSize(button_size, button_size)
-	button:SetParent(TalentFrame)
-	st:StripTextures(button)
-	st.SkinActionButton(button)
-	button:SetFrameLevel(20)
-	local rank = _G[button:GetName()..'Rank']
-	rank:ClearAllPoints()
-	rank:SetPoint('BOTTOMRIGHT', 0, 2)
-	
-	button.skinned = true
+function SK:TalentFrame_Update()
+
 end
 
 SK.AddonSkins.Blizzard_TalentUI = function()
-	SK:SkinBlizzardPanel(TalentFrame, {fix_padding = true})
+	st:CreateFooter(TalentFrame)
+	SK:SkinBlizzardPanel(TalentFrame, {fix_padding = false})
 	
 	st:Kill(TalentFrameScrollFrame)
 	st:Kill(TalentFramePointsMiddle)
 	st:Kill(TalentFrameSpentPoints)
 	st:Kill(TalentFrameCancelButton)
 
-	TalentFrame.backdrop:SetPoint('BOTTOMRIGHT', -58, 74)
-	TalentFrame.header:SetPoint('TOPRIGHT', -58, -12)
+	for i=21, 60 do
+		local talent = CreateFrame('Button', 'TalentFrameTalent'..i, TalentFrame, 'TalentButtonTemplate')
+		talent:SetID(i)
+		talent:Hide()
+	end
 
+	local tree_width = 2 * st.config.profile.panels.padding + 4 * button_size + 3 * button_spacing_x
+	TalentFrame.small_width = tree_width
+	TalentFrame.large_width = tree_width*3
+	local height = 2 * st.config.profile.panels.padding + 2 * st.config.profile.headers.height +  7 * button_size + 6 * button_spacing_x
+	TalentFrame:SetSize(tree_width*3, height)
+	UIPanelWindows["TalentFrame"].xoffset = 0
+	UIPanelWindows["TalentFrame"].yoffset = 0
+	
 	SK:SecureHook('SetTalentButtonLocation')
-		
-	TalentFrameBackgroundTopLeft:ClearAllPoints()
-	TalentFrameBackgroundTopLeft:SetPoint('TOPLEFT', TalentFrame.header, 'BOTTOMLEFT')
+	SK:SecureHook('TalentFrame_Update')
 
 	TalentFrameTalentPoints:SetFontObject(st:GetFont(st.config.profile.panels.font))
+	TalentFrameTalentPoints:SetParent(TalentFrame.footer)
 	TalentFrameTalentPointsText:SetFontObject(st:GetFont(st.config.profile.panels.font))
 	TalentFrameTalentPointsText:ClearAllPoints()
-	TalentFrameTalentPointsText:SetPoint('BOTTOMRIGHT', TalentFrame.backdrop, 'BOTTOMRIGHT', -10, 10)
-
+	TalentFrameTalentPointsText:SetPoint('RIGHT', TalentFrame.footer, 'RIGHT', -10, -2)
+	
+	
+	
 	local scale = 1.22
-	TalentFrameBackgroundTopLeft:SetScale(scale)
-	TalentFrameBackgroundBottomLeft:SetScale(scale)
+	-- TalentFrameBackgroundTopLeft:ClearAllPoints()
+	-- TalentFrameBackgroundTopLeft:SetPoint('TOPLEFT', TalentFrame.header, 'BOTTOMLEFT')
+	-- TalentFrameBackgroundTopLeft:SetWidth(250)
+	-- TalentFrameBackgroundTopLeft:SetScale(scale)
+	-- -- TalentFrameBackgroundTopLeft:SetTexCoord(0, 0.8, 0, 1)
+	-- TalentFrameBackgroundBottomLeft:SetScale(scale)
 
+	TalentFrameBackgroundTopLeft:Hide()
+	TalentFrameBackgroundBottomLeft:Hide()
 	TalentFrameBackgroundTopRight:Hide()
 	TalentFrameBackgroundBottomRight:Hide()
 end
