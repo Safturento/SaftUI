@@ -40,10 +40,10 @@ function MP:SkinTrackingIcon()
 
 	track:SetSize(ICON_SIZE, ICON_SIZE)
 	track.button:SetSize(ICON_SIZE, ICON_SIZE)
-	st:SetTemplate(track, 'thin')
+	st:SetTemplate(track)
 
 	track:ClearAllPoints()
-	track:SetPoint('TOPLEFT', Minimap, 5, -5)
+	track:SetPoint('TOPLEFT', Minimap, 7, -7)
 
 	for _,region in pairs({track.button:GetRegions()}) do
 		if region:GetObjectType() == 'Texture' then
@@ -75,7 +75,7 @@ function MP:SkinQueueIcon()
 
 	button:SetSize(20,20)
 	button:ClearAllPoints()
-	button:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', -7, -7)
+	button:SetPoint('BOTTOMLEFT', Minimap, 'BOTTOMLEFT', 7, 7)
 	st:StripTextures(button)
 end
 
@@ -113,7 +113,7 @@ function MP:InitializeMinimap()
 	-- Skin Mail Icon
 	local mail = MiniMapMailFrame
 	mail:ClearAllPoints()
-	mail:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', -5, -2)
+	mail:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', -7, -7)
 	mail:SetSize(16, 16)
 	MiniMapMailIcon:SetAllPoints(mail)
 	MiniMapMailIcon:SetTexture(st.textures.mail)
