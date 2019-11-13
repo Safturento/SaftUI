@@ -36,7 +36,8 @@ local function UpdateConfig(self)
 
 	self.Portrait:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.portrait.position)
-	self.Portrait:SetPoint(anchor, self, rel_anchor, x_off, y_off)
+	local frame = st.CF.get_frame(self, self.config.portrait.position)
+	self.Portrait:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.Portrait:SetFrameLevel(self.config.portrait.framelevel)
 	self.Portrait:SetAlpha(self.config.portrait.alpha)
 end

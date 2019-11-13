@@ -432,6 +432,30 @@ st.defaults.unitframes = {
 					template = 'none',
 					alpha = 1,
 				},
+				raidroleindicator = {
+					size = 16,
+					position = {
+						enable = false,
+						point = 'CENTER',
+						rel_point = 'TOPRIGHT',
+						anchor_element = 'Health',
+						frame_type = false,
+						x_off = 0,
+						y_off = 0,
+					}
+				},
+				raidtargetindicator = {
+					size = 16,
+					position = {
+						enable = true,
+						point = 'CENTER',
+						rel_point = 'TOP',
+						anchor_element = 'Portrait',
+						frame_type = false,
+						x_off = 0,
+						y_off = 0,
+					}
+				},
 				portrait = {
 					alpha = 1,
 					framelevel = 20,
@@ -686,6 +710,9 @@ st.defaults.unitframes = {
 						anchor_frame = "UIParent",
 						frame_type = true,
 					},
+				},
+				raidroleindicator = {
+					enable = true,
 				},
 				name = {
 					enable = true,
@@ -994,6 +1021,12 @@ st.defaults.unitframes = {
 						deficit = true,
 					},
 				},
+				raidroleindicator = {
+					enable = true,
+				},
+				raidtargetindicator = {
+					enable = true,
+				},
 				auras = {
 					buffs = {
 						filter = {
@@ -1048,6 +1081,16 @@ st.defaults.unitframes = {
 				-- template = 'thick',
 				portrait = {
 					enable = false,
+				},
+				raidroleindicator = {
+					enable = true,
+					show_dps = false,
+					position = {
+						point = 'CENTER',
+						rel_point = 'TOPLEFT',
+						x_off = 0,
+						y_off = 0,
+					}
 				},
 				health = {
 					height = -6,
