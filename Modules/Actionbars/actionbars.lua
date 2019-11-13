@@ -61,6 +61,7 @@ function AB:KillBlizzard()
 		frame:UnregisterAllEvents()
 		frame:SetParent(st.hidden_frame)
 	end
+
 end
 
 function AB:CreateBars()
@@ -70,7 +71,7 @@ function AB:CreateBars()
 		local bar = CreateFrame('frame', ADDON_NAME..'ActionBar'..i, UIParent, 'SecureHandlerStateTemplate')
 		bar.slots = {}
 		bar:SetID(i)
-		bar.config = self.config[i]
+		bar.config = self.config['bar'..i]
 
 		if i > 1 then
 			_G[prefix]:SetParent(bar)
@@ -162,7 +163,7 @@ function AB:UpdateConfig()
 			local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
 			local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
 			
-			bar:SetSize(width, height)
+			st:SetSize(bar, width, height)
 			bar:SetPoint(st:UnpackPoint(bar.config.position))
 			
 			if bar.config.backdrop.enable then
@@ -183,7 +184,7 @@ function AB:UpdateConfig()
 					bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
 				end
 				
-				bar.backdrop:SetSize(width, height)
+				st:SetSize(bar.backdrop, width, height)
 			else
 				st:SetBackdrop(bar, 'none')
 			end
@@ -192,7 +193,7 @@ function AB:UpdateConfig()
 			
 			local prev
 			for j, slot in ipairs(bar.slots) do
-				slot:SetSize(bar.config.width, bar.config.height)
+				st:SetSize(slot, bar.config.width, bar.config.height)
 				st.SkinActionButton(slot, { font = self.config.font, template = bar.config.template })
 				if slot.Border then
 					slot.Border:ClearAllPoints()
@@ -201,14 +202,16 @@ function AB:UpdateConfig()
 				self:UpdateHotkey(slot)
 				slot:ClearAllPoints()
 				
+				slot:SetAttribute('showgrid', 1)
+				
 				if j > bar.config.total then
 					slot:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 500, 500)
 				elseif j == 1 then
-					slot:SetPoint('TOPLEFT', bar)
+					slot:SetPoint('TOPLEFT', bar, 'TOPLEFT', 0, 0)
 				elseif j % bar.config.perrow == 1 or bar.config.perrow == 1 then
-					slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -bar.config.spacing)
+					slot:SetPoint('TOP', bar.slots[j - bar.config.perrow], 'BOTTOM', 0, -st:Scale(bar.config.spacing))
 				else
-					slot:SetPoint('LEFT', prev, 'RIGHT', bar.config.spacing, 0)
+					slot:SetPoint('LEFT', prev, 'RIGHT', st:Scale(bar.config.spacing), 0)
 				end
 				prev = slot
 			end
@@ -258,10 +261,10 @@ function AB:GetConfigTable()
 			name = i == 'pet' and 'Pet Bar' or 'Bar '..i,
 			type = 'group',
 			get = function(info) 
-				return config[i][info[#info]]
+				return bar.config[info[#info]]
 			end,
 			set = function(info, value)
-				config[i][info[#info]] = value
+				bar.config[info[#info]] = value
 				self:UpdateConfig()
 			end,
 			args = {
@@ -272,9 +275,9 @@ function AB:GetConfigTable()
 				total = st.CF.generators.range(4, 'Total buttons', 1, 12, 1),
 				perrow = st.CF.generators.range(5, 'Buttons per row', 1, 12, 1),
 				position = st.CF.generators.position(6, true, 
-					function(key) return config[i].position[key] end,
+					function(key) return bar.config.position[key] end,
 					function(key, value) 
-						config[i].position[key] = value
+						bar.config.position[key] = value
 						self:UpdateConfig()
 					end
 				),
@@ -283,10 +286,10 @@ function AB:GetConfigTable()
 					type = 'group',
 					inline = true,
 					get = function(info) 
-						return config[i].backdrop[info[#info]]
+						return bar.config.backdrop[info[#info]]
 					end,
 					set = function(info, value)
-						config[i].backdrop[info[#info]] = value
+						bar.config.backdrop[info[#info]] = value
 						self:UpdateConfig()
 					end,
 					args = {
@@ -297,11 +300,11 @@ function AB:GetConfigTable()
 							name = 'Manual',
 							type = 'group',
 							set = function(info, value)
-								config[i].backdrop[info[#info]] = value		
+								bar.config.backdrop[info[#info]] = value		
 								self:UpdateConfig()
 							end,
-							get = function(info) return config[i].backdrop[info[#info]] end,
-							hidden = function(info) return config[i].backdrop.conform end,
+							get = function(info) return bar.config.backdrop[info[#info]] end,
+							hidden = function(info) return bar.config.backdrop.conform end,
 							args = {
 								width = st.CF.generators.range(1, 'Width', 1, 36, 1),
 								height = st.CF.generators.range(2, 'Height', 1, 36, 1),

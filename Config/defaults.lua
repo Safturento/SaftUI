@@ -190,7 +190,7 @@ st.defaults.headers = {
 
 st.defaults.buttons = {
 	font = 'pixel',
-	template = 'thick',
+	template = 'thicktransparent',
 	height = 21,
 }
 
@@ -281,9 +281,7 @@ st.defaults.actionbars = {
 	['**'] = {
 		enable = true,
 		template = 'thicktransparent',
-		padding_y = 7,
-		padding_x = 7,
-		spacing = 8,
+		spacing = 7,
 		height = 20,
 		width = 30,
 		alpha = 1,
@@ -300,7 +298,7 @@ st.defaults.actionbars = {
 			anchor = 'BOTTOMLEFT',
 		}
 	},
-	[1] = {
+	bar1 = {
 		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = 20},
 		backdrop = {
 			-- enable = true,
@@ -308,18 +306,18 @@ st.defaults.actionbars = {
 			conform = false,
 		}
 	},
-	[2] = {
-		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar1', rel_point = 'TOP', x_off = 0, y_off = 8},
+	bar2 = {
+		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar1', rel_point = 'TOP', x_off = 0, y_off = 7},
 	},
-	[3] = {
-		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 8},
+	bar3 = {
+		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 7},
 	},
-	[4] = {
+	bar4 = {
 		position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'RIGHT', x_off = -20, y_off = 0},
 		perrow = 1,
 	},
-	[5] = {
-		position = {point = 'RIGHT', frame = ADDON_NAME..'ActionBar4', rel_point = 'LEFT', x_off = -8, y_off = 0},
+	bar5 = {
+		position = {point = 'RIGHT', frame = ADDON_NAME..'ActionBar4', rel_point = 'LEFT', x_off = -7, y_off = 0},
 		perrow = 1,
 	},
 	pet = {
@@ -1069,6 +1067,9 @@ st.defaults.unitframes = {
 				width = 140,
 				portrait = {
 					enable = false,
+				},
+				questindicator = {
+					enable = true,
 				},
 				power = {
 					height = 8,
