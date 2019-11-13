@@ -11,6 +11,7 @@ st.my_class = select(2, UnitClass('player'))
 st.my_race = select(2, UnitRace('player'))
 st.my_faction = UnitFactionGroup('player')
 st.my_realm = GetRealmName()
+st.ui_scale = 768/GetScreenHeight()
 
 st.CLOSE_BUTTON_SIZE = {20, 10}
 st.ICON_COORDS = {.08, .92, .08, .92}
