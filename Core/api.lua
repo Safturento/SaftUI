@@ -1,7 +1,26 @@
 local ADDON_NAME, st = ...
 
 function st:UnpackPoint(config)
-	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
+	return config.point, config.frame, config.rel_point or config.point, st:Scale(config.x_off or 0), st:Scale(config.y_off or 0)
+end
+
+function st:Scale(num) return st.ui_scale * floor(num/st.ui_scale + 0.5) end
+
+function st:SetHeight(frame, height) frame:SetHeight(st:Scale(height)) end
+function st:SetWidth(frame, width) frame:SetWidth(st:Scale(width)) end
+function st:SetSize(frame, width, height) frame:SetSize(st:Scale(width), st:Scale(height)) end
+
+local title = select(2, GetAddOnInfo(ADDON_NAME))
+
+function st:Print(...)
+	print(('[%s]'):format(title), ...)
+end
+
+function st:Debug(module, ...)
+	if not self.DEBUG then return end
+
+	debug = st.StringFormat:ColorString('DEBUG', unpack(st.config.profile.colors.text.red))
+	st:Print(('<%s:%s>'):format(debug, module),...)
 end
 
 function st:Kill(frame)
@@ -277,7 +296,7 @@ function st.SkinActionButton(button, config)
 		}
 	end
 	
-	local name = button:GetName()
+	local name = button:GetName() or ''
 
 	local icon = _G[name.."Icon"] or _G[name..'IconTexture'] or button.icon or button.Icon
 	local count = _G[name.."Count"] or button.count or button.Count
@@ -313,7 +332,7 @@ function st.SkinActionButton(button, config)
 			end
 		end
 
-		if count then
+		if count and type(count) == 'table' then
 			count:ClearAllPoints()
 			count:SetPoint('BOTTOMRIGHT', 2, 1)
 			count:SetJustifyH('RIGHT')
@@ -437,7 +456,7 @@ function st:CreateHeader(frame, title, close_button)
 		frame:StopMovingOrSizing()
 		frame:ClearAllPoints()
 		-- We reposition the frame using a corner point to the nearest pixel to ensure pixel perfectness
-		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', math.floor(frame:GetLeft()+0.5), math.floor(frame:GetTop() + 0.5))
+		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', st:Scale(frame:GetLeft()), st:Scale(frame:GetTop()))
 	end)
 
 	if title then
