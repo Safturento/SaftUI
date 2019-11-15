@@ -321,6 +321,11 @@ st.defaults.actionbars = {
 	[5] = {
 		position = {point = 'RIGHT', frame = ADDON_NAME..'ActionBar4', rel_point = 'LEFT', x_off = -8, y_off = 0},
 		perrow = 1,
+	},
+	pet = {
+		total = 10,
+		perrow = 10,
+		position = { point = 'BOTTOM', frame = ADDON_NAME..'ActionBar3', rel_point = 'TOP', x_off = 0, y_off = 8}
 	}
 }
 
