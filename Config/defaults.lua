@@ -80,9 +80,9 @@ st.defaults.loot = {
 		spacing = 7,
 	},
 	feed = {
-		width = 300,
+		width = 240,
 		-- anchor_height = 20,
-		item_height = 30,
+		item_height = 20,
 		position = {
 			point = 'BOTTOMRIGHT',
 			frame = 'UIParent',
@@ -90,9 +90,10 @@ st.defaults.loot = {
 			x_off = -20,
 			y_off = 20,
 		},
+		min_quality = 0,
 		spacing = 7,
 		max_items = 5,
-		fade_time = 10,
+		fade_time = 5,
 		template = 'thick',
 		font = 'pixel',
 		filters = {
@@ -118,6 +119,10 @@ st.defaults.loot = {
 st.defaults.addon_skins = {
 	font = 'pixel',
 	template = 'thicktransparent',
+	["**"] = {
+		font = 'pixel',
+		template = 'thicktransparent',
+	},
 }
 
 st.defaults.addon_manager = {
@@ -677,7 +682,7 @@ st.defaults.unitframes = {
 						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
-						size = 30,
+						size = 28,
 						filter = {
 							friend = {
 								grow_right = false,
@@ -820,30 +825,54 @@ st.defaults.unitframes = {
 					enable = false,
 				},
 				health = {
-					height = -6,
+					height = 0,
 					text = {
 						hide_full = true,
 						deficit = true,
 					},
 				},
 				power = {
+					relative_height = false,
+					height = 3,
+					position = {
+						point = 'BOTTOMLEFT',
+						rel_point = 'BOTTOMLEFT',
+						x_off = 5,
+						y_off = 5
+					},
+					text = {
+						enable = false,
+					}
 					-- template = 'thin',
 				},
 				name = {
 					enable = false,
 				},
 				auras = {
+					buffs = {
+						enable = false,
+					},
 					debuffs = {
 						template = 'thin',
 						per_row = 2,
 						max = 2, 
 						spacing = 3,
 						enable = true,
-						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
+						position = {point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 5, y_off = -5},
 						horizontal_growth = 'RIGHT',
 						initial_anchor = 'LEFT',
 						framelevel = 50,
 						size = 8,
+						filters = {
+							friend = {
+								whitelist = {
+
+								},
+								blacklist = {
+									
+								}
+							}
+						}
 					},
 				}
 			},
