@@ -54,7 +54,9 @@ function UF.ConstructUnit(self, unit)
 	-- we can keep track of them here to easily loop and update through them later
 	self.elements = {}
 	for element_name, funcs in pairs(UF.elements) do
-		self.elements[element_name] = funcs.Constructor(self, element_name)
+		if (not funcs.ValidUnits) or funcs.ValidUnits(self.base_unit) then
+			self.elements[element_name] = funcs.Constructor(self, element_name)
+		end
 	end
 	
 	if self.base_unit == 'nameplate' then
@@ -81,11 +83,12 @@ UpdateConfig (function): the function used to update the display of the element 
 All three functions take one argument - the unitframe object created from oUF:Spawn
 
 ]]--
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable)
+function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnits)
 	self.elements[name] = {
 		Constructor = Constructor,
 		UpdateConfig = UpdateConfig,
 		GetConfigTable = GetConfigTable,
+		ValidUnits = ValidUnits
 	}
 end
 
@@ -686,8 +689,11 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(UF.elements) do
-			config_table.args[element_name] =
-				self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
+			local ValidUnits = self.elements[element_name].ValidUnits
+			if (not ValidUnits) or ValidUnits(unit) then
+				config_table.args[element_name] =
+					self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
+			end
 		end
 
 		return config_table
