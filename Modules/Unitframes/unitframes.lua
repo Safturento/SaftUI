@@ -15,8 +15,8 @@ UF.unit_strings = {
 	['targettarget'] = 'TargetTarget',
 	-- ['focus'] = 'Focus',
 	-- ['focustarget'] = 'FocusTarget',
-	-- ['pet'] = 'Pet',
-	-- ['pettarget'] = 'PetTarget',
+	['pet'] = 'Pet',
+	['pettarget'] = 'PetTarget',
 }
 
 UF.group_strings = {
