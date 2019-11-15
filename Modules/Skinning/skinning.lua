@@ -17,49 +17,31 @@ function SK:SkinFrames()
 		if IsAddOnLoaded(addon) then
 			skinFunc()
 		end
-	end
-	-- for i=1, GetNumAddOns() do
-	-- 	addon = GetAddOnInfo(i)
-	-- 	local loaded = IsAddOnLoaded(addon)
-	-- 	if self.AddonSkins[addon] and loaded then
-	-- 		self.AddonSkins[addon]()
-	-- 	end
-	-- end
-	
+	end	
 	self:UnregisterEvent('PLAYER_ENTERING_WORLD') --Make sure this only runs once
 end
 
-function SK:UpdateTab(tab)
-	tab:SetDisabledFontObject(st:GetFont(st.config.profile.panels.font))
-	if tab.Text then
-		tab.Text:ClearAllPoints()
-		tab.Text:SetPoint('CENTER')
-	end
-	tab:SetHeight(st.config.profile.panels.tab_height)
-	local bd = tab:GetParent().backdrop
-	tab:SetWidth(tab:GetTextWidth()+20)
-end
-
-function SK:SkinTab(tab)
-	st:StripTextures(tab)
-	st.SkinActionButton(tab, st.config.profile.panels)
-	if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
-	self:UpdateTab(tab)
-end
-
-function SK:OnInitialize()
+function SK:OnInitialize()	
+	self.config = st.config.profile.skinning
 	self:RegisterEvent('ADDON_LOADED', 'SkinAddon')
-	-- SK:RegisterEvent('PLAYER_ENTERING_WORLD', 'SkinFrames')
+	SK:RegisterEvent('PLAYER_ENTERING_WORLD', 'SkinFrames')
 	self:SkinFrames()
 
-	self:SecureHook('PanelTemplates_ResizeTabsToFit', function(frame, maxWidthForAllTabs)
-		if not GetTabByIndex then return end
-		for i = 1, frame.numTabs do
-			self:UpdateTab(GetTabByIndex(frame, i))
-		end
-	end)
-	self:SecureHook('PanelTemplates_DeselectTab', 'UpdateTab')
-	self:SecureHook('PanelTemplates_SelectTab', 'UpdateTab')
+	-- self:SecureHook('PanelTemplates_ResizeTabsToFit', function(frame, maxWidthForAllTabs)
+	-- 	if not GetTabByIndex then return end
+	-- 	local tab
+	-- 	for i = 1, frame.numTabs do
+	-- 		tab = GetTabByIndex(frame, i)
+	-- 		if i > 1 then
+	-- 			tab:ClearAllPoints()
+	-- 			tab:SetPoint('LEFT', prev, 'RIGHT', 7, 0)
+	-- 		end
+	-- 		prev = tab
+	-- 		self:UpdateTab()
+	-- 	end
+	-- end)
+	-- self:SecureHook('PanelTemplates_DeselectTab', 'UpdateTab')
+	-- self:SecureHook('PanelTemplates_SelectTab', 'UpdateTab')
 end
 
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
@@ -119,8 +101,31 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 	end
 end
 
-function SK:SkinTabHeader(header)
+function SK:SkinTab(tab)
+	st:StripTextures(tab)
+	st.SkinActionButton(tab, st.config.profile.panels)
+	if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
+	tab.skinned = true
 
+	self:UpdateTab(tab)
+end
+
+function SK:UpdateTab(tab)
+	if not tab.skinned then
+		self:SkinTab(tab)
+	end
+	
+	tab:SetDisabledFontObject(st:GetFont(st.config.profile.panels.font))
+	if tab.Text then
+		tab.Text:ClearAllPoints()
+		tab.Text:SetPoint('CENTER')
+	end
+	tab:SetHeight(st.config.profile.panels.tab_height)
+	local bd = tab:GetParent().backdrop
+	tab:SetWidth(tab:GetTextWidth()+20)
+end
+
+function SK:SkinTabHeader(header)
 	local name = header:GetName()
 
 	local i = 1
