@@ -115,7 +115,7 @@ function INV:CreateSlot(container, category_name)
 	category_frame.slots[slotID] = slot
 
 	if slot.tainted then
-		print(slot:GetName() .. ' is tainted, will break if used in combat')
+		st:Print(slot:GetName(), 'is tainted and cannot be used in combat. Type /rl while out of combat to fix this.')
 	end
 
 	return slot
