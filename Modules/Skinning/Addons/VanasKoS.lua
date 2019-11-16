@@ -8,7 +8,6 @@ SK.AddonSkins.VanasKoS = function()
 	local config = st.config.profile.addon_skins.vanaskos
 	
 	warn_frame.db.profile.WarnFrameBorder = true
-	VanasKoS_WarnFrame:SetBackdropBorderColor(0, 0, 0, 0)
+	VanasKoS_WarnFrame:SetBackdrop(nil)
 	st:SetBackdrop(VanasKoS_WarnFrame, config.template)
-	-- VanasKoS_FontKos:SetFont(st:GetFont(config.font))
 end
