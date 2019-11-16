@@ -267,6 +267,13 @@ function INV:OnInitialize()
 	self.containers.bag:Hide()
 end
 
+function INV:ADDON_LOADED(event, addon)
+	if addon == 'ItemRackOptions' then
+		self:SecureHook(ItemRackOpt, 'SaveSet', 'UpdateItemRackCategories')
+		self:SecureHook(ItemRackOpt, 'DeleteSet', 'UpdateItemRackCategories')
+	end
+end
+
 function INV:OnEnable()
 	ToggleBackpack		= INV.ToggleBags
 	ToggleBag 			= INV.ToggleBags
@@ -276,7 +283,11 @@ function INV:OnEnable()
 	CloseAllBags 		= INV.HideBags
 	CloseBackpack 		= INV.HideBags
 	
+	if ItemRack then
 	self:UpdateItemRackCategories()
+	end
+
+	self:RegisterEvent("ADDON_LOADED", "ADDON_LOADED")
 
 	-- Make sure the slots are all created immediately intead of on first open
 	-- We do this to avoid tainting all of the slots when the bag is first opened

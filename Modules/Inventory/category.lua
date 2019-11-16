@@ -65,6 +65,8 @@ function INV:UpdateItemRackCategories()
 	end
 
 	self.filters.itemrack = categories
+
+	self:QueueUpdate()
 end
 
 local function sortCategory(a,b) return a.sortString > b.sortString end
