@@ -398,43 +398,65 @@ function st.SkinActionButton(button, config)
 	end
 end
 
+function st:CreateEditBox(name, parent, template)
+	local editbox = CreateFrame('EditBox', name, parent, template or 'InputBoxInstructionsTemplate')
+	editbox:ClearFocus()
+	editbox:SetAutoFocus(false)
+	editbox:SetScript('OnEscapePressed', function(self) self:ClearFocus() end)
+	editbox:SetScript('OnEnterPressed', function(self) self:ClearFocus() end)
+
+	st:SkinEditBox(editbox)
+
+	return editbox
+end
+
 function st:SkinEditBox(editbox, template, font, height, width)
 	local name = editbox:GetName()
 
-	if name then
-		if _G[name..'Left'] then st:Kill(_G[name..'Left']) end
-		if _G[name..'Middle'] then st:Kill(_G[name..'Middle']) end
-		if _G[name..'Right'] then st:Kill(_G[name..'Right']) end
-		if _G[name..'Mid'] then st:Kill(_G[name..'Mid']) end
+	height = height or 20
+
+	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid'}) do
+		local region = _G[name..region_name] or editbox[region_name]
+		if region then
+			st:Kill(region)
+		end
 	end
 
-	st:SetTemplate(editbox, template)
+	if editbox.searchIcon then
+		editbox.searchIcon:ClearAllPoints()
+		editbox.searchIcon:SetPoint('LEFT', editbox, 5, -1)
+	end
 
-	editbox:SetAutoFocus(false)
-	
-	-- Get the highlight and blinking pointer textures to modify them a bit
-	local fontstring, highlight, _, _, pointer, header = editbox:GetRegions()
+	if editbox.Instructions then
+		editbox.Instructions:ClearAllPoints()
+		editbox.Instructions:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
+		if font then
+			editbox.Instructions:SetFontObject(st:GetFont(font))
+		end
+	end
 
+	st:SetBackdrop(editbox, template or 'thin')
+
+	local text, _, _, _, header = editbox:GetRegions()
 	if font then
-		fontstring:SetFontObject(st:GetFont(font))
+		text:SetFontObject(st:GetFont(font))
+		-- if header then
+		-- 	header:SetFontObject(st:GetFont(font))
+		-- end
 	end
-	editbox.highlight = highlight
-	editbox.pointer = pointer
 
-	editbox.highlight:SetTexture(st.BLANK_TEX)
-	editbox.highlight:SetVertexColor(1,1,1, 0.3)
+	if template then
+		editbox:HookScript('OnEditFocusGained', function(self)
+			self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
+			text:ClearAllPoints()
+			text:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
+		end)
 
-	editbox:HookScript('OnEditFocusGained', function(self)
-		self.pointer:SetWidth(1)
-	end)
+		editbox:HookScript('OnEditFocusLost', function(self)
+			st:SetTemplate(self.backdrop, template)
+		end)
+	end
 
-	editbox:HookScript('OnEnterPressed',  function(self) self:ClearFocus() end)
-	editbox:HookScript('OnEscapePressed', function(self) self:ClearFocus() end)
-	editbox:HookScript('OnEditFocusGained', function(self) self:HighlightText() end)
-	editbox:HookScript('OnEditFocusLost', function(self) self:HighlightText(0,0) end)
-
-	editbox:SetHeight(height or 20)
-	if width then editbox:SetWidth(width) end
 end
 
 --Creates a dragable header for a frame

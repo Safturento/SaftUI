@@ -15,6 +15,7 @@ function INV:CreateContainer(id, name)
 	st:CreateCloseButton(container)
 	st:CreateHeader(container, name)
 	self:InitializeFooter(container)
+	self:InitializeSearch(container)
 
 	container.slots = {}
 	container.categories = {}
@@ -37,6 +38,7 @@ function INV:InitializeFooter(container)
 	slottext:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	slottext:SetPoint('LEFT', 10, 0)
 	slottext:SetText('#/# Slots Used')
+	slottext:SetJustifyH('LEFT')
 	container.footer.slots = slottext
 
 	if container.id == 'bag' then
@@ -44,17 +46,45 @@ function INV:InitializeFooter(container)
 		goldstring:EnableMouse(true)
 		goldstring:SetPoint('TOPRIGHT', container.footer, 'TOPRIGHT', 0, 0)
 		goldstring:SetPoint('BOTTOMRIGHT', container.footer, 'BOTTOMRIGHT', 0, 0)
-		goldstring:SetWidth(110)
+		goldstring:SetWidth(120)
 
 		goldstring.text = goldstring:CreateFontString(nil, 'OVERLAY')
 		goldstring.text:SetFontObject(st:GetFont(st.config.profile.headers.font))
 		goldstring.text:SetPoint('RIGHT', goldstring, 'RIGHT', -10, 0)
+		goldstring.text:SetJustifyH('RIGHT')
 
 		goldstring:SetScript('OnEnter', function() INV:DisplayServerGold() end)
 		goldstring:SetScript('OnLeave', st.HideGameTooltip)
 
 		container.footer.gold = goldstring
 		self:UpdateGold()
+	end
+end
+
+function INV:InitializeSearch(container)
+	local search = st:CreateEditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
+	st:SkinEditBox(search, 'thicktransparent')
+	search:SetHeight(20)
+	self:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
+	container.search = search
+end
+
+function INV:UpdateSearchFilter(editbox, is_user_input)
+	local query = editbox:GetText():lower()
+	for _,container in pairs(self.containers) do
+		if container:IsShown() then
+			for _,category in pairs(container.categories) do
+				for _,slot in pairs(category.slots) do
+					if slot:IsShown() then
+						if slot.info.name:lower():find(query) then
+							slot:SetAlpha(1)
+						else
+							slot:SetAlpha(0.2)
+						end
+					end
+				end
+			end
+		end
 	end
 end
 
@@ -116,7 +146,12 @@ end
 function INV:UpdateContainerHeight(container)
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
 
-	local prev
+	if container.search then
+		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+		height = height + container.search:GetHeight()
+	end
+
+	local prev = container.search
 	for filter_name, filters in pairs(self.filters) do
 		for i, category in ipairs(filters) do
 			local category_frame = container.categories[category.name]
@@ -133,9 +168,6 @@ function INV:UpdateContainerHeight(container)
 		end
 	end
 
-	-- Remove the last spacing
-	height = height - self.config.categoryspacing
-	
 	container:SetHeight(height)
 end
 
@@ -145,9 +177,19 @@ function INV:UpdateConfig(id)
 	container:ClearAllPoints()
 	container:SetPoint(unpack(self.config[id].position))
 
-	container:SetWidth(self.config.padding * 2 + (self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+	local inner_width = (self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing
+
+	container:SetWidth(self.config.padding * 2 + inner_width)
 	container:SetHeight(200)
 	
+	for cat, category_frame in pairs(container.categories) do
+		category_frame:SetWidth(inner_width)
+	end
+	if container.search then
+		container.search:SetWidth(inner_width)
+		st:SkinEditBox(container.search, self.config.template, self.config.fonts.titles)
+	end
+
 	st:SetBackdrop(container, self.config.template)
 end
 
