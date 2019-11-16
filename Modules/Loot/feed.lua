@@ -10,7 +10,9 @@ local feed_stack = {}
 local match_replacements = {
 	link = "(\124c%x%x%x%x%x%x%x%x\124Hitem[%-?%d:]+)%D*",
 	count =  '(%d+)',
-	player = "(.+)[a-zA-Z-']*"
+	player = "(.+)[a-zA-Z-']*",
+	gold = "(.+)",
+	bank_gold = "(.+)",
 }
 
 local patterns = {}
@@ -42,10 +44,10 @@ generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'item', 'count'})
 generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'item', 'count'})
 generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'item', 'count'})
 -- self_gold
-generate_match(YOU_LOOT_MONEY, {'link'})
-generate_match(YOU_LOOT_MONEY_GUILD, {'link', 'bank'})
-generate_match(LOOT_MONEY_SPLIT, {'link'})
-generate_match(LOOT_MONEY_SPLIT_GUILD, {'link', 'bank'})
+generate_match(YOU_LOOT_MONEY, {'gold'})
+generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'})
+generate_match(LOOT_MONEY_SPLIT, {'gold'})
+generate_match(LOOT_MONEY_SPLIT_GUILD, {'gold', 'bank_gold'})
 -- others_loot
 generate_match(LOOT_ITEM, {'player', 'link'})
 generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'})
@@ -115,6 +117,7 @@ function LT:UpdateFeed()
 		info = feed_stack[i + self.feed.offset]
 
 		if not info then break end
+
 		-- fade out old items
 		if (not recently_scrolled) and
 			(self.feed.offset == 0) and
@@ -122,8 +125,12 @@ function LT:UpdateFeed()
 			(now - info.time > self.config.feed.fade_time) then
 			item:Hide()
 		else
-			item.text:SetText(info.text)
-			item.count:SetText(info.count)
+			if info.gold then
+				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
+			else
+				item.text:SetText(info.name)
+			end
+			item.count:SetText(info.count or '')
 			item.icon:SetTexture(info.icon)
 			item.link = info.link
 			item.info = info
@@ -133,18 +140,19 @@ function LT:UpdateFeed()
 	end
 end
 
-function LT:LootFeedPush(link, name, texture, count)
+function LT:LootFeedPush(info)
 	if #feed_stack == MAX_HISTORY then
 		tremove(feed_stack)
 	end
 
-	tinsert(feed_stack, 1, {
-		icon = texture,
-		text = name,
-		count = count == 1 and '' or count,
-		link = link,
-		time = GetTime()
-	})
+	info.time = GetTime()
+
+	if info.gold and feed_stack[1] and feed_stack[1].gold then
+		feed_stack[1].gold = feed_stack[1].gold + info.gold
+		feed_stack[1].time = info.time
+	else
+		tinsert(feed_stack, 1, info)
+	end
 
 	-- If scrolling through history, don't push the feed upwards
 	if self.feed.offset > 0 then
@@ -174,16 +182,56 @@ function LT:LootFeedAddItem(match)
 	name = st.StringFormat:ColorString(name, unpack(item_color))
 
 	if filters.self_item and not match['player'] then
-		return self:LootFeedPush(match['link'], name, texture, match['count'])
-	end
-
-	if filters.other_item then
-		return self:LootFeedPush(match['link'], match['player']..': '..name, texture, match['count'])
+		self:LootFeedPush({
+			name = name,
+			icon = texture,
+			link = match['link'],
+			count = match['count']
+		})
+	elseif filters.other_item then
+		self:LootFeedPush({
+			name = match['player']..': '..name,
+			icon = texture,
+			link = match['link'],
+			count = match['count']
+		})
 	end
 end
 
-function LT:LootFeedAddCurrency(match)
+local function extract_gold(gold_string)
+	local c = gold_string:match(COPPER_AMOUNT:gsub('%%d', '%%s'):format('(%d+)')) or 0
+	local s = gold_string:match(SILVER_AMOUNT:gsub('%%d', '%%s'):format('(%d+)')) or 0
+	local g = gold_string:match(GOLD_AMOUNT:gsub('%%d', '%%s'):format('(%d+)')) or 0
 
+	return c + s*1E2 + g*1E4
+end
+
+function LT:LootFeedAddGold(match)
+	local filters = self.config.feed.filters
+
+	if not filters.gold then return end
+
+	local gold, icon = extract_gold(match['gold']), [[Interface\ICONS\INV_Misc_Coin_06]]
+
+	if gold >= 1E4 then
+		icon = [[Interface\ICONS\INV_Misc_Coin_02]]
+	elseif gold >= 1E2 then
+		icon = [[Interface\ICONS\INV_Misc_Coin_04]]
+	end
+
+	self:LootFeedPush({
+		gold = gold,
+		icon = icon
+	})
+end
+
+function LT:LootFeedAddHonor(match)
+	if not match.honor then return end
+
+	self:LootFeedPush({
+		name = match.player,
+		icon = get_rank_icon(match.rank)
+	})
 end
 
 ------------------------------------
@@ -195,6 +243,10 @@ function LT:LootFeedHandler(event, text)
 	if not match then return end
 	if match['link'] then
 		self:LootFeedAddItem(match)
+	end
+
+	if match['gold'] then
+		self:LootFeedAddGold(match)
 	end
 end
 
@@ -345,6 +397,7 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_MONEY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_CURRENCY', 'LootFeedHandler')
+	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 
 	if self.DEBUG then self:Test() end
 	
