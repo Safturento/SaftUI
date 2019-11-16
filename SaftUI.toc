@@ -3,7 +3,7 @@
 ## Version: 0.1
 ## Title: |cff00adefSaftUI|r
 ## SavedVariables: SaftUI_DB
-## OptionalDeps: RealMobHealth
+## OptionalDeps: RealMobHealth, ItemRack
 ## X-oUF: SaftUI
 
 Libs\libs.xml
