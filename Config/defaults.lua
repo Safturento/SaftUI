@@ -448,8 +448,8 @@ st.defaults.unitframes = {
 				},
 				raidroleindicator = {
 					size = 16,
+					enable = true,
 					position = {
-						enable = false,
 						point = 'CENTER',
 						rel_point = 'TOPRIGHT',
 						anchor_element = 'Health',
