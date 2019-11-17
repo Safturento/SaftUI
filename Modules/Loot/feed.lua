@@ -41,19 +41,17 @@ local feed_stack = {}
 local match_replacements = {
 	link = "(\124c%x%x%x%x%x%x%x%x\124Hitem[%-?%d:]+)%D*",
 	count =  '(%d+)',
-	player = "(.+)[a-zA-Z-']*",
-	gold = "(.+)",
-	bank_gold = "(.+)",
+	honor = '(%d+)'
 }
 
 local patterns = {}
 local function generate_match(match, keys)
 	replacements = {}
-
+	match = match:gsub("%(", "")
+	match = match:gsub("%)", "")
 	match = match:gsub('%%d', '%%s')
-
 	for _,key in pairs(keys) do
-		tinsert(replacements, match_replacements[key] or '(%w+)')
+		tinsert(replacements, match_replacements[key] or '(.+)')
 	end
 	patterns[match:format(unpack(replacements))..'$'] = keys
 end
@@ -88,10 +86,18 @@ generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'})
 generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'})
 generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'})
 
+--honor
+generate_match(COMBATLOG_HONORAWARD, {'honor'})
+generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'})
+generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'})
+
+
 local function get_match(string)
+	string = string:gsub("%(", "")
+	string = string:gsub("%)", "")
 	for pattern, keys in pairs(patterns) do
 		-- print(string, pattern, string:match(pattern))
-		match = {string:match(pattern)}
+		local match = {string:match(pattern)}
 		if #match > 0 and #match == #keys then
 			-- print(#match, #keys, string, pattern)
 			local result = {}
@@ -123,16 +129,16 @@ function LT:UpdateHandler(elapsed)
 	if time - lastUpdate < 1 then return end
 	lastUpdate = time
 
-	if self.DEBUG then
-		if time - lastPush >= 2 then
-			lastPush = time
-			if random() > 0.5 then
-				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
-			else
-				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-			end
-		end
-	end
+	-- if self.DEBUG then
+	-- 	if time - lastPush >= 2 then
+	-- 		lastPush = time
+	-- 		if random() > 0.5 then
+	-- 			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
+	-- 		else
+	-- 			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+	-- 		end
+	-- 	end
+	-- end
 
 	self:UpdateFeed()
 end
@@ -256,12 +262,23 @@ function LT:LootFeedAddGold(match)
 	})
 end
 
+local HONOR_RANKS = {}
+for i=1, 18 do
+	rank_name, rank_number = GetPVPRankInfo(i);
+	HONOR_RANKS[rank_name] = rank_number
+end
+
 function LT:LootFeedAddHonor(match)
 	if not match.honor then return end
 
+	local player = match.player
+	if match.rank then
+		player = match.rank .. ' ' .. player
+	end
+
 	self:LootFeedPush({
-		name = match.player,
-		icon = get_rank_icon(match.rank)
+		name = ('%s Honor (%s)'):format(match.honor, player),
+		icon = ("Interface\\PvPRankBadges\\PvPRank%02d"):format(HONOR_RANKS[match.rank] or 1),
 	})
 end
 
@@ -270,38 +287,39 @@ end
 ------------------------------------
 
 function LT:LootFeedHandler(event, text)
-	match = get_match(text)
+	local match = get_match(text)
 	if not match then return end
-	if match['link'] then
-		self:LootFeedAddItem(match)
-	end
 
-	if match['gold'] then
-		self:LootFeedAddGold(match)
-	end
+	if match['link'] then self:LootFeedAddItem(match) end
+	if match['gold'] then self:LootFeedAddGold(match) end
+	if match['honor'] then self:LootFeedAddHonor(match) end
 end
 
 function LT:Test()
 	local test_item = "\124cff0070dd\124Hitem:47556::::::::120:::::\124h[Crusader Orb]\124h\124r"
 	local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
-	local test_money = {420, 69, 35}
-
-	local other_item = LOOT_ITEM:format("Sáfturento-Mal'Ganis", test_item)
-	local self_item = LOOT_ITEM_SELF:format(test_item)
-	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
 	
+	local self_item = LOOT_ITEM_SELF:format(test_item)
 	assert(get_match(self_item), 'LOOT_ITEM_SELF failed')
-
+	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
+	
+	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
 	local mult_test = get_match(self_item_mult)
 	assert(mult_test and mult_test['count'] == '5', 'LOOT_ITEM_SELF_MULTIPLE failed')
-	
-	local other_test = get_match(other_item)
-	
-	assert(other_test and other_test['player']=="Sáfturento", 'LOOT_ITEM failed')
-
-	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
 	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
+	
+	local other_item = LOOT_ITEM:format("Sáfturento-Mal'Ganis", test_item)
+	local other_test = get_match(other_item)
+	assert(other_test and other_test['player']=="Sáfturento-Mal'Ganis", 'LOOT_ITEM failed')
 	LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
+	
+	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
+	assert(get_match(gold), 'YOU_LOOT_MONEY failed')
+	LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
+
+	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
+	assert(get_match(honor), 'COMBATLOG_HONORGAIN failed')
+	LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
 end
 
 local function ShowTooltip(self)
@@ -362,7 +380,7 @@ function LT:UpdateLootFeedConfig()
 		item.text:SetText('Item '..i)
 		
 		item.count:SetFontObject(font_obj)
-		item.count:SetPoint('BOTTOMRIGHT', item.icon, -2, 2)
+		item.count:SetPoint('BOTTOMRIGHT', item.icon, 0, 2)
 
 		item.icon:SetSize(config.item_height, config.item_height)
 		item.icon:SetPoint('LEFT', item)
