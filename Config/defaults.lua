@@ -80,7 +80,7 @@ st.defaults.loot = {
 		spacing = 7,
 	},
 	feed = {
-		width = 240,
+		width = 300,
 		-- anchor_height = 20,
 		item_height = 20,
 		position = {
