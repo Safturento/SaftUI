@@ -295,33 +295,6 @@ function LT:LootFeedHandler(event, text)
 	if match['honor'] then self:LootFeedAddHonor(match) end
 end
 
-function LT:Test()
-	local test_item = "\124cff0070dd\124Hitem:47556::::::::120:::::\124h[Crusader Orb]\124h\124r"
-	local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
-	
-	local self_item = LOOT_ITEM_SELF:format(test_item)
-	assert(get_match(self_item), 'LOOT_ITEM_SELF failed')
-	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
-	
-	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
-	local mult_test = get_match(self_item_mult)
-	assert(mult_test and mult_test['count'] == '5', 'LOOT_ITEM_SELF_MULTIPLE failed')
-	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
-	
-	local other_item = LOOT_ITEM:format("Sáfturento-Mal'Ganis", test_item)
-	local other_test = get_match(other_item)
-	assert(other_test and other_test['player']=="Sáfturento-Mal'Ganis", 'LOOT_ITEM failed')
-	LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
-	
-	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
-	assert(get_match(gold), 'YOU_LOOT_MONEY failed')
-	LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
-
-	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
-	assert(get_match(honor), 'COMBATLOG_HONORGAIN failed')
-	LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
-end
-
 local function ShowTooltip(self)
 	if not self.link then return end
 
@@ -448,8 +421,50 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_CURRENCY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 
-	if self.DEBUG then self:Test() end
+	-- if WoWUnit then self:Test() end
 	
 	self:HookScript(feed, 'OnUpdate', 'UpdateHandler')
 end
 
+
+if not WoWUnit then return end
+
+local Tests = WoWUnit(ADDON_NAME..'LootFeed')
+local AreEqual, Exists, Replace = WoWUnit.AreEqual, WoWUnit.Exists, WoWUnit.Replace
+
+local test_item = "\124cff0070dd\124Hitem:16309::::::::60:::::\124h[Drakefire Amulet]\124h\124r"
+local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
+
+function Tests:LootSelf()
+	local self_item = LOOT_ITEM_SELF:format(test_item)
+	Exists(get_match(self_item))
+	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
+end
+
+function Tests:LootSelfMultiple()
+	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
+	local mult_test = get_match(self_item_mult)
+	Exists(mult_test)
+	AreEqual(mult_test.count, '5')
+	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
+end
+
+function Tests:LootOther()
+	local other_item = LOOT_ITEM:format("Sáfturento-Mal'Ganis", test_item)
+	local other_test = get_match(other_item)
+	Exists(other_test)
+	AreEqual(other_test['player'], "Sáfturento-Mal'Ganis")
+	LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
+end
+
+function Tests:LootGold()
+	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
+	Exists(get_match(gold))
+	LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
+end
+
+function Tests:GainHonor()
+	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
+	Exists(get_match(honor))
+	LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
+end
