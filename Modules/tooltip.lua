@@ -87,6 +87,7 @@ function TT:AddItemInfo(self)
 
 	local _, _, _, _, _, item_type, item_subtype, _, _, _, _, item_type_id, item_subtype_id, bind_type, expac_id, item_set_id = GetItemInfo(item_link) 
 
+	if not item_type then return end
 	local item_id = select(2, strsplit(":", string.match(item_link, "item[%-?%d:]+")))
 	self:AddDoubleLine('Item ID', item_id)
 	self:AddDoubleLine('Item Type', ('%s (%s)'):format(item_type, item_type_id or '??'))
