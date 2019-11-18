@@ -262,23 +262,21 @@ function LT:LootFeedAddGold(match)
 	})
 end
 
-local HONOR_RANKS = {}
-for i=1, 18 do
-	rank_name, rank_number = GetPVPRankInfo(i);
-	HONOR_RANKS[rank_name] = rank_number
-end
-
 function LT:LootFeedAddHonor(match)
 	if not match.honor then return end
 
-	local player = match.player
-	if match.rank then
-		player = match.rank .. ' ' .. player
+	local player = ''
+	if match.player then
+		player = match.player or ''
+		if match.rank then
+			player = match.rank .. ' ' .. player
+		end
+		player = format(' (%s)', player)
 	end
 
 	self:LootFeedPush({
-		name = ('%s Honor (%s)'):format(match.honor, player),
-		icon = ("Interface\\PvPRankBadges\\PvPRank%02d"):format(HONOR_RANKS[match.rank] or 1),
+		name = ('%s Honor%s'):format(match.honor, player),
+		icon = "Interface\\PvPRankBadges\\PvPRank12"
 	})
 end
 
@@ -467,4 +465,6 @@ function Tests:GainHonor()
 	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
 	Exists(get_match(honor))
 	LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
+	
+	Exists(COMBATLOG_HONORGAIN_NO_RANK:format(198))
 end
