@@ -1127,12 +1127,15 @@ st.defaults.unitframes = {
 					},
 				},
 				power = {
-					-- template = 'thin',
+					enable = false,
 				},
 				name = {
 					enable = false,
 				},
 				auras = {
+					buffs = {
+						enable = false,
+					},
 					debuffs = {
 						template = 'thin',
 						per_row = 2,
