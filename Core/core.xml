@@ -3,5 +3,6 @@
 	<Script file="constants.lua"/>
 	<Script file="api.lua"/>
 	<Script file="movable.lua"/>
+	<Script file="cvars.lua"/>
 	<Script file="utilities.lua"/>
 </Ui>
