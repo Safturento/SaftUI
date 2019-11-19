@@ -386,6 +386,17 @@ function LT:InitializeLootFeed()
 
 	LT:UpdateLootFeedConfig()
 
+	st:RegisterMover(feed, function(self)
+		local pos = LT.config.feed.position
+		local point, frame, rel_point, x_off, y_off = self:GetPoint()
+		pos.point = point
+		pos.frame = frame
+		pos.rel_point = rel_point
+		pos.x_off = x_off
+		pos.y_off = y_off
+	end)
+	feed.mover:SetAllPoints(feed.overlay)
+
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_MONEY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_CURRENCY', 'LootFeedHandler')
@@ -408,7 +419,7 @@ local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]
 function Tests:LootSelf()
 	local self_item = LOOT_ITEM_SELF:format(test_item)
 	Exists(get_match(self_item))
-	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
+	-- LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
 end
 
 function Tests:LootSelfMultiple()
@@ -416,7 +427,7 @@ function Tests:LootSelfMultiple()
 	local mult_test = get_match(self_item_mult)
 	Exists(mult_test)
 	AreEqual(mult_test.count, '5')
-	LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
+	-- LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
 end
 
 function Tests:LootOther()
@@ -424,17 +435,17 @@ function Tests:LootOther()
 	local other_test = get_match(other_item)
 	Exists(other_test)
 	AreEqual(other_test['player'], "Sáfturento-Mal'Ganis")
-	LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
+	-- LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
 end
 
 function Tests:LootGold()
 	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
 	Exists(get_match(gold))
-	LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
+	-- LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
 end
 
 function Tests:GainHonor()
 	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
 	Exists(get_match(honor))
-	LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
+	-- LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
 end

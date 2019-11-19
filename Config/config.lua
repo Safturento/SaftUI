@@ -29,6 +29,22 @@ function st.CF:InitializeConfigGUI()
 
 	config:RegisterOptionsTable(ADDON_NAME, self.options, {'/sui', '/saftui'})
 	
+	self.options.args.topmenu = {
+		name = '',
+		inline = true,
+		type = 'group',
+		order = 0,
+		args = {
+			toggle_movers = {
+				name = 'Toggle Positioning',
+				type = 'execute',
+				func = function()
+					st:ToggleMovers()
+				end
+			}
+		}
+	}
+
 	for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			self.options.args[name] = module:GetConfigTable()

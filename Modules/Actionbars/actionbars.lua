@@ -96,6 +96,18 @@ function AB:CreateBars()
 	end
 
 	self:InitializePetBar()
+
+	for _, bar in pairs(self.bars) do
+		st:RegisterMover(bar, function(self)
+			local pos = self.config.position
+			local point, frame, rel_point, x_off, y_off = self:GetPoint()
+			pos.point = point
+			pos.frame = frame
+			pos.rel_point = rel_point
+			pos.x_off = x_off
+			pos.y_off = y_off
+		end)
+	end
 end
 
 function AB:InitializePetBar()
@@ -233,7 +245,9 @@ function AB:UpdateActionButton(self)
 	if IsEquippedAction(self.action) then
 		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
 	else
-		st:SetTemplate(self.backdrop, self.backdrop.template)
+		if self.backdrop then
+			st:SetTemplate(self.backdrop, self.backdrop.template)
+		end
 	end
 end
 
