@@ -2,4 +2,5 @@
 	<Script file="defaults.lua"/>
 	<Script file="config.lua"/>
 	<Script file="colors.lua"/>
+	<Script file="movers.lua"/>
 </Ui>

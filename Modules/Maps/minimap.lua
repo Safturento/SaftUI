@@ -9,6 +9,15 @@ function MP:UpdateMinimap()
 	Minimap:SetSize(self.config.minimap.size, self.config.minimap.size)
 	Minimap:ClearAllPoints()
 	Minimap:SetPoint(st:UnpackPoint(self.config.minimap.position))
+	st:RegisterMover(Minimap, function(self)
+		local pos = MP.config.minimap.position
+		local point, frame, rel_point, x_off, y_off = self:GetPoint()
+		pos.point = point
+		pos.frame = frame
+		pos.rel_point = rel_point
+		pos.x_off = x_off
+		pos.y_off = y_off
+	end)
 end
 
 function MP:ADDON_LOADED(event, addon)
