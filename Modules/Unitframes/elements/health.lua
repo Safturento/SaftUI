@@ -72,15 +72,15 @@ local function UpdateConfig(self)
 	end
 
 	if self.config.health.relative_height then
-		self.Health:SetHeight(self.config.height + self.config.health.height)
+		st:SetHeight(self.Health, self.config.height + self.config.health.height)
 	else
-		self.Health:SetHeight(self.config.health.height)
+		st:SetHeight(self.Health, self.config.health.height)
 	end
 
 	if self.config.health.relative_width then
-		self.Health:SetWidth(self.config.width + self.config.health.width)
+		st:SetWidth(self.Health, self.config.width + self.config.health.width)
 	else
-		self.Health:SetWidth(self.config.health.width)
+		st:SetWidth(self.Health, self.config.health.width)
 	end
 
 	st:SetBackdrop(self.Health, self.config.health.template)

@@ -10,9 +10,9 @@ local ACD = LibStub('AceConfigDialog-3.0')
 st.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnInitialize()
-	SetCVar("useUiScale", 1)
-	SetCVar("uiScale", st.ui_scale)
-	
+	-- SetCVar("useUiScale", 1)
+	-- SetCVar("uiScale", st.ui_scale)
+
 	self.config = LibStub('AceDB-3.0'):New('SaftUI_DB', {
 		char = {},
 		realm = {},

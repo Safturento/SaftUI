@@ -4,9 +4,10 @@ function st:UnpackPoint(config)
 	return config.point, config.frame, config.rel_point or config.point, st:Scale(config.x_off or 0), st:Scale(config.y_off or 0)
 end
 
-function st:Scale(num) return st.ui_scale * floor(num/st.ui_scale + 0.5) end
+function st:Scale(num) return st.mult * floor(num/st.mult + 0.5) end
 
-function st:SetHeight(frame, height) frame:SetHeight(st:Scale(height)) end
+function st:SetHeight(frame, height) 
+	frame:SetHeight(st:Scale(height)) end
 function st:SetWidth(frame, width) frame:SetWidth(st:Scale(width)) end
 function st:SetSize(frame, width, height) frame:SetSize(st:Scale(width), st:Scale(height)) end
 
@@ -37,28 +38,31 @@ end
 local function CreateAltBorder(frame)
 	frame.altborder = {}
 
+	local offset = st:Scale(1)
+	local width = st:Scale(3)
+
 	frame.altborder.LEFT = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.LEFT:SetWidth(3)
-	frame.altborder.LEFT:SetPoint('TOPLEFT', frame, 'TOPLEFT', -1, 1)
-	frame.altborder.LEFT:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', -1, -1)
+	frame.altborder.LEFT:SetWidth(width)
+	frame.altborder.LEFT:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
+	frame.altborder.LEFT:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', -offset, -offset)
 	frame.altborder.LEFT:SetTexture(st.BLANK_TEX)
 
 	frame.altborder.RIGHT = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.RIGHT:SetWidth(3)
-	frame.altborder.RIGHT:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 1, 1)
-	frame.altborder.RIGHT:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', 1, -1)
+	frame.altborder.RIGHT:SetWidth(width)
+	frame.altborder.RIGHT:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', offset, offset)
+	frame.altborder.RIGHT:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
 	frame.altborder.RIGHT:SetTexture(st.BLANK_TEX)
 	
 	frame.altborder.TOP = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.TOP:SetHeight(3)
-	frame.altborder.TOP:SetPoint('TOPLEFT', frame, 'TOPLEFT', 1, 1)
-	frame.altborder.TOP:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -1, 1)
+	frame.altborder.TOP:SetHeight(width)
+	frame.altborder.TOP:SetPoint('TOPLEFT', frame, 'TOPLEFT', offset, offset)
+	frame.altborder.TOP:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -offset, offset)
 	frame.altborder.TOP:SetTexture(st.BLANK_TEX)
 
 	frame.altborder.BOTTOM = frame:CreateTexture(nil, 'BACKGROUND')
-	frame.altborder.BOTTOM:SetHeight(3)
-	frame.altborder.BOTTOM:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 1, -1)
-	frame.altborder.BOTTOM:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -1, -1)
+	frame.altborder.BOTTOM:SetHeight(width)
+	frame.altborder.BOTTOM:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', offset, -offset)
+	frame.altborder.BOTTOM:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -offset, -offset)
 	frame.altborder.BOTTOM:SetTexture(st.BLANK_TEX)
 end
 
@@ -110,11 +114,11 @@ function st:SetTemplate(frame, template)
 		end
 	end
 
-	local inset = not config.border and 0 or config.thick and 2 or 1
+	local inset = st:Scale(not config.border and 0 or config.thick and 2 or 1)
 	frame:SetBackdrop({
 		bgFile = st.BLANK_TEX,
 		edgeFile = st.BLANK_TEX,
-		edgeSize = 1,
+		edgeSize = st:Scale(1),
 		tile = false, tileSize = 0,
 		insets = {
 			left = inset,
@@ -464,7 +468,9 @@ st.headers = {}
 
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
-
+	frame:SetClampedToScreen(true)
+	local inset = st.config.profile.misc.clamp_inset
+	frame:SetClampRectInsets(-inset, inset, inset, -inset)
 	local header = CreateFrame('Button', '', frame)
 	header:SetFrameLevel(frame:GetFrameLevel()+2)
 	st:SetTemplate(header, 'highlight')

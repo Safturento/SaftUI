@@ -123,11 +123,11 @@ function UF:UpdateUnitFrame(frame, element_name)
 					frame:SetPoint(st:UnpackPoint(frame.config.position))
 				end
 			end
-			frame:SetSize(frame.config.width, frame.config.height)
+			st:SetSize(frame, frame.config.width, frame.config.height)
 		end
 		
 		if frame.base_unit == 'nameplate' then
-			frame:SetSize(frame.config.width, frame.config.height)
+			st:SetSize(frame, frame.config.width, frame.config.height)
 		end
 
 		st:SetBackdrop(frame, frame.config.template)
