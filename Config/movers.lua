@@ -35,6 +35,10 @@ function st:RegisterMover(frame, callback, name)
 	mover:SetAllPoints(frame)
 	mover:EnableMouse(true)
 	frame:SetMovable(true)
+	
+	frame:SetClampedToScreen(true)
+	local inset = st.config.profile.misc.clamp_inset
+	frame:SetClampRectInsets(-inset, inset, inset, -inset)
 
 	mover.name = mover:CreateFontString(nil, 'OVERLAY')
 	mover.name:SetPoint('CENTER')

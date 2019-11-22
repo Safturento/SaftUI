@@ -1,9 +1,12 @@
 local ADDON_NAME, st = ...
 
+local CLAMP_INSET = 20
+
 st.defaults = {}
 
 st.defaults.misc = {
 	icon_trim = 0.065,
+	clamp_inset = CLAMP_INSET
 }
 
 st.defaults.fonts = {
@@ -87,8 +90,8 @@ st.defaults.loot = {
 			point = 'BOTTOMRIGHT',
 			frame = 'UIParent',
 			rel_point = 'BOTTOMRIGHT',
-			x_off = -20,
-			y_off = 20,
+			x_off = -CLAMP_INSET,
+			y_off = CLAMP_INSET,
 		},
 		min_quality = 0,
 		spacing = 7,
@@ -210,7 +213,7 @@ st.defaults.maps = {
 		enable = true,
 		template = 'thick',
 		size = 160,
-		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -20, y_off = -20},
+		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -CLAMP_INSET, y_off = -CLAMP_INSET},
 		mail_position = {'TOPRIGHT', 'TOPRIGHT', -5, -2},
 	}
 }
@@ -302,7 +305,7 @@ st.defaults.actionbars = {
 		}
 	},
 	bar1 = {
-		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = 20},
+		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = CLAMP_INSET},
 		backdrop = {
 			-- enable = true,
 			height = 3,
@@ -316,7 +319,7 @@ st.defaults.actionbars = {
 		position = {point = 'BOTTOM', frame = ADDON_NAME..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 7},
 	},
 	bar4 = {
-		position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'RIGHT', x_off = -20, y_off = 0},
+		position = {point = 'RIGHT', frame = 'UIParent', rel_point = 'RIGHT', x_off = -CLAMP_INSET, y_off = 0},
 		perrow = 1,
 	},
 	bar5 = {
