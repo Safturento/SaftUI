@@ -26,12 +26,14 @@ st.BACKDROP = {
 	tile = false, tileSize = 0, edgeSize = 1, 
 	insets = { left = 1, right = 1, top = 1, bottom = 1}
 }
+st.CLAMP_INSET = 20
 
 st.MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\Textures\\', ADDON_NAME)
 st.textures = {
 	cornerbr = st.MEDIA_PATH..'cornerarrowbottomright.tga',
 	mail = st.MEDIA_PATH..'mail.tga',
 	glow = st.MEDIA_PATH..'glowTex.tga',
+	atlas = st.MEDIA_PATH..'SaftUIAtlas.blp'
 }
 
 st.FRAME_ANCHORS = {

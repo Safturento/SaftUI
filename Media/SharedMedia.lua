@@ -17,3 +17,7 @@ st.LSM:Register('font', 		'Righteous',				media_path .. 'Fonts\\Righteous-Regula
 
 st.LSM:Register('statusbar',	'SaftUI Gloss', 			media_path..'Textures\\normTex.tga')
 st.LSM:Register('statusbar',	'SaftUI Flat', 			[[Interface\BUTTONS\WHITE8X8]])
+
+
+
+--atlas.lua
