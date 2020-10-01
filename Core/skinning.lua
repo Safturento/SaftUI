@@ -146,6 +146,7 @@ function st.SkinActionButton(button, config)
 	if button.Left then st:Kill(button.Left) end
 	if button.Middle then st:Kill(button.Middle) end
 	if button.Right then st:Kill(button.Right) end
+	if button.Center then st:Kill(button.Center) end
 
 	if bg then
 		bg:SetTexture(nil)
@@ -234,22 +235,20 @@ function st.SkinActionButton(button, config)
 	end
 end
 
-function st:CreateEditBox(name, parent, template)
+function st:CreateEditBox(name, parent, template, ...)
 	local editbox = CreateFrame('EditBox', name, parent, template or 'InputBoxInstructionsTemplate')
 	editbox:ClearFocus()
 	editbox:SetAutoFocus(false)
 	editbox:SetScript('OnEscapePressed', function(self) self:ClearFocus() end)
 	editbox:SetScript('OnEnterPressed', function(self) self:ClearFocus() end)
 
-	st:SkinEditBox(editbox)
+	st:SkinEditBox(editbox, ...)
 
 	return editbox
 end
 
-function st:SkinEditBox(editbox, template, font, height, width)
+function st:SkinEditBox(editbox, template, font)
 	local name = editbox:GetName()
-
-	height = height or 20
 
 	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid'}) do
 		local region = _G[name..region_name] or editbox[region_name]

@@ -49,7 +49,7 @@ function MP:SkinTrackingIcon()
 
 	track:SetSize(ICON_SIZE, ICON_SIZE)
 	track.button:SetSize(ICON_SIZE, ICON_SIZE)
-	st:SetTemplate(track)
+	st:SetBackdrop(track.button)
 
 	track:ClearAllPoints()
 	track:SetPoint('TOPLEFT', Minimap, 7, -7)
@@ -80,7 +80,6 @@ function MP:SkinQueueIcon()
 	button:Show()
 	icon:Show()
 	texture:SetTexCoord(.2, .8, .2, .8)
-	st:SetTemplate(button, 'thin')
 
 	button:SetSize(20,20)
 	button:ClearAllPoints()

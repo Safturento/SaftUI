@@ -353,7 +353,7 @@ function AB:OnInitialize()
 	self:InitializeBarBages()
 	self:UpdateConfig()
 
-	self:SecureHook('ActionButton_Update', 'UpdateActionButton')
-	self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
-	self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
+	--self:SecureHook('ActionButton_Update', 'UpdateActionButton')
+	--self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
+	--self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
 end

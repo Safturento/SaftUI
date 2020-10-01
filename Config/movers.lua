@@ -12,6 +12,10 @@ end
 
 local function setActiveMover(mover)
 	clearActiveMover()
+	local pos, anchorFrame, relPos, x, y = mover.frame:GetPoint()
+	if anchorFrame then
+		st.MoversWindow.anchorInput:SetText(anchorFrame:GetName() or '')
+	end
 	mover:SetEnabled(false)
 	st.MoversWindow.title:SetText('Movers: ' .. (mover.name:GetText() or ''))
 	activeMover = mover
@@ -19,32 +23,45 @@ end
 
 local function getOffset() return IsShiftKeyDown() and 10 or 1 end
 
-function st:InitializeMovers()
-	local window = st:CreatePanel('Movers', {250, 200})
-	window:SetPoint('TOPLEFT', 20, 200)
+local function initializeArrowCluster(window)
 	local arrows = st:CreateArrowCluster(window)
 	arrows:SetPoint('TOPLEFT', 5, -25)
 	arrows.left:SetScript('OnClick', function(self)
 		local pos, frame, relPos, x, y = activeMover.frame:GetPoint()
-		activeMover.frame:SetPoint( pos, frame, relPos, x - getOffset(), y)
+		activeMover.frame:SetPoint( pos, frame or 'UIParent', relPos, x - getOffset(), y)
 	end)
 
 	arrows.right:SetScript('OnClick', function(self)
 		local pos, frame, relPos, x, y = activeMover.frame:GetPoint()
-		activeMover.frame:SetPoint( pos, frame, relPos, x + getOffset(), y)
+		activeMover.frame:SetPoint( pos, frame or 'UIParent', relPos, x + getOffset(), y)
 	end)
 
 	arrows.up:SetScript('OnClick', function(self)
 		local pos, frame, relPos, x, y = activeMover.frame:GetPoint()
-		activeMover.frame:SetPoint( pos, frame, relPos, x, y + getOffset())
+		activeMover.frame:SetPoint( pos, frame or 'UIParent', relPos, x, y + getOffset())
 	end)
 
 	arrows.down:SetScript('OnClick', function(self)
 		local pos, frame, relPos, x, y = activeMover.frame:GetPoint()
-		activeMover.frame:SetPoint( pos, frame, relPos, x, y - getOffset())
+		activeMover.frame:SetPoint( pos, frame or 'UIParent', relPos, x, y - getOffset())
 	end)
 
 	window.arrows = arrows
+end
+
+local function initializeAnchorInput(window)
+	local anchorInput = st:CreateEditBox(window:GetName()..'AnchorInput', window)
+	anchorInput:SetSize(200, 20)
+	anchorInput:SetPoint('TOPRIGHT', -5, -25)
+	window.anchorInput = anchorInput
+end
+
+function st:InitializeMovers()
+	local window = st:CreatePanel('Movers', {250, 200})
+	window:SetPoint('TOPLEFT', 20, 200)
+
+	window.arrows = initializeArrowCluster(window)
+	initializeAnchorInput(window)
 	st.MoversWindow = window
 end
 

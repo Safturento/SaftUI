@@ -138,7 +138,6 @@ function TT:OnEnable()
 		local name = 'DropDownList'..i
 		local dropdown = _G[name]
 		_G[name..'MenuBackdrop']:SetBackdrop(nil)
-
-		st:SetTemplate(dropdown, self.config.template)
+		st:SetBackdrop(dropdown, self.config.template)
 	end
 end

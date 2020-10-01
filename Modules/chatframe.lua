@@ -78,7 +78,6 @@ function CHT:SkinChatFrame(frame)
 	
 	frame:SetMinResize(170, 40)
 	frame:SetMaxResize(1000, 1000)
-	frame:SetBackdropBorderColor(0, 0, 0, 0)
 	frame:SetFading(false)
 	frame:SetClampRectInsets(0,0,0,0)
 
