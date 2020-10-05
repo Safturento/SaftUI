@@ -7,7 +7,10 @@ local activeMover = nil
 
 local function clearActiveMover()
 	st.MoversWindow.title:SetText('Movers')
-	if activeMover then activeMover:SetEnabled(true) end
+	if activeMover then
+		activeMover:SetAlpha(1)
+		activeMover:SetEnabled(true)
+	end
 end
 
 local function setActiveMover(mover)
@@ -17,6 +20,7 @@ local function setActiveMover(mover)
 		st.MoversWindow.anchorInput:SetText(anchorFrame:GetName() or '')
 	end
 	mover:SetEnabled(false)
+	mover:SetAlpha(0.4)
 	st.MoversWindow.title:SetText('Movers: ' .. (mover.name:GetText() or ''))
 	activeMover = mover
 end
@@ -50,14 +54,14 @@ local function initializeArrowCluster(window)
 end
 
 local function initializeAnchorInput(window)
-	local anchorInput = st:CreateEditBox(window:GetName()..'AnchorInput', window)
-	anchorInput:SetSize(200, 20)
+	local anchorInput = st.Widgets:EditBox(window:GetName()..'AnchorInput', window)
+	st:SetSize(anchorInput, 200, 20)
 	anchorInput:SetPoint('TOPRIGHT', -5, -25)
 	window.anchorInput = anchorInput
 end
 
 function st:InitializeMovers()
-	local window = st:CreatePanel('Movers', {250, 200})
+	local window = st:CreatePanel('Movers', 250, 200)
 	window:SetPoint('TOPLEFT', 20, 200)
 
 	window.arrows = initializeArrowCluster(window)

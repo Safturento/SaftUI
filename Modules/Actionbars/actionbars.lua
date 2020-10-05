@@ -248,7 +248,7 @@ function AB:UpdateActionButton(self)
 		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
 	else
 		if self.backdrop then
-			st:SetTemplate(self.backdrop, self.backdrop.template)
+			st:SetBackdrop(self, self.backdrop.template)
 		end
 	end
 end

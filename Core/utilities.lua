@@ -48,9 +48,29 @@ function st.tablepurge(t1, t2)
 	return t1
 end
 
-function st.tableprint(table)
+local colors = {
+	'E65050',--red
+	'50E650',--green
+	'50AAE6',--blue
+	'C14FE3',--purple
+}
+
+function st.tableprint(table, indent)
+	if not indent then indent = 0 end
+
 	for key, val in pairs(table) do
-		print(key, '=>', val)
+		local prefix = ''
+		for i=1, indent do
+			prefix = prefix .. '    '
+		end
+		if type(val) == 'table' then
+			local colorIndex = (indent)%(#colors)+1
+			print(prefix .. st.StringFormat:ColorString(key .. ' = {', colors[colorIndex]))
+			st.tableprint(val, indent + 1)
+			print(prefix .. st.StringFormat:ColorString('}', colors[colorIndex]))
+		else
+			print(prefix .. key .. ' = ' .. tostring(val))
+		end
 	end
 end
 

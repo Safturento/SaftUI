@@ -6,7 +6,6 @@ SlashCmdList.RELOADUI = _G.ReloadUI
 SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 	st, ADDON_NAME, 'AceEvent-3.0', 'AceHook-3.0')
 
-local ACD = LibStub('AceConfigDialog-3.0')
 st.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnInitialize()
@@ -61,7 +60,7 @@ function SaftUI:UpdateConfig()
 end
 
 local config_queued = false
-function  SaftUI:PLAYER_REGEN_ENABLED()
+function SaftUI:PLAYER_REGEN_ENABLED()
 	if config_queued then
 		config_queued = false
 		SlashCmdList.SAFTUI()
@@ -73,22 +72,5 @@ function SaftUI:PLAYER_REGEN_DISABLED()
 		st:Print('Config closed for combat, and will reopen after.')
 		config_queued = true
 		ACD:Close(ADDON_NAME)
-	end
-end
-
-SLASH_SAFTUI1 = '/saftui'
-SLASH_SAFTUI2 = '/sui'
-SLASH_SAFTUI3 = '/stui'
-
-SlashCmdList.SAFTUI = function(msg)
-	if not st.config_initialized then
-		st.CF:InitializeConfigGUI()
-	end
-
-	if InCombatLockdown() then
-		st:Print('Config will open after combat')
-		config_queued = true
-	else
-		ACD:Open(ADDON_NAME)
 	end
 end

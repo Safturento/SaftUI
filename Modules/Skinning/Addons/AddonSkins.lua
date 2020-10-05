@@ -14,14 +14,14 @@ SK.AddonSkins.AddonSkins = function()
 	end 
 	
 	function AS:SetTemplate(frame, template, texture)
-		st:SetTemplate(frame, 'thicktransparent')
+		st:SetBackdrop(frame, 'thicktransparent')
 
 		if template == 'NoBackdrop' then
-			AS:SetBackdropColor(frame, 0, 0, 0, 0)
+			AS:SetBackdropColor(frame.backdrop, 0, 0, 0, 0)
 		end
 
 		if template == 'NoBorder' then
-			AS:SetBackdropBorderColor(frame, 0, 0, 0, 0)
+			AS:SetBackdropBorderColor(frame.backdrop, 0, 0, 0, 0)
 		end
 	end
 end

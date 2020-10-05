@@ -8,6 +8,7 @@
 
 Libs\libs.xml
 Core\core.xml
+Widgets\widgets.xml
 Media\media.xml
 Config\config.xml
 Modules\modules.xml

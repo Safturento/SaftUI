@@ -3,7 +3,7 @@ local SK = st:GetModule('Skinning')
 
 local function SkinDetails()
 	local window = DetailsPlayerDetailsWindow
-	st:SetTemplate(window, st.config.profile.panels.template)
+	st:SetBackdrop(window, st.config.profile.panels.template)
 	-- for index, actor in container:ListActors() do
 
 	-- end

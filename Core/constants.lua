@@ -12,9 +12,10 @@ st.my_race = select(2, UnitRace('player'))
 st.my_faction = UnitFactionGroup('player')
 st.my_realm = GetRealmName()
 
-
-local screen_height = tonumber(select(2, ({GetScreenResolutions()})[GetCurrentResolution()]:match('(%d+)x(%d+)')))
-st.mult = 768/(screen_height*UIParent:GetScale())
+st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
+st.scale = 768/st.screenHeight
+UIParent:SetScale(st.scale)
+st.mult = 1
 
 st.CLOSE_BUTTON_SIZE = {20, 10}
 st.ICON_COORDS = {.08, .92, .08, .92}

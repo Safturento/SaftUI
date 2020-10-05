@@ -61,12 +61,6 @@ function MP:SkinTrackingIcon()
 
 			if texture:find('Background') or texture:find('Border') or texture:find('AlphaMask') then
 					region:SetTexture(nil)
-			else
-				-- region:ClearAllPoints()
-				-- region:SetInside(track.button)
-				-- region:SetTexCoord(unpack(S.iconcoords))
-				-- region:SetDrawLayer('OVERLAY')
-				-- track.button:SetTemplate("TS")
 			end
 		end
 	end

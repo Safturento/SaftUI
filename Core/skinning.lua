@@ -73,28 +73,24 @@ function st:SkinCheckButton(button)
 	st:StripTextures(button)
 
 	button:SetSize(12, 12)
-	button.display = CreateFrame('Frame', nil, button)
-	button.display:SetAllPoints()
-	st:SetBackdrop(button.display, st.config.profile.panels.template)
-	button.display:SetPoint('CENTER')
+	st:SetBackdrop(button, st.config.profile.panels.template)
 
-	button.display:SetFrameLevel(button:GetFrameLevel())
 	button:SetFrameLevel(button:GetFrameLevel()+1)
 
-	local checked = button.display:CreateTexture(nil, 'OVERLAY')
+	local checked = button:CreateTexture(nil, 'OVERLAY')
 	checked:SetTexture(st.BLANK_TEX)
 	checked:SetVertexColor(unpack(st.config.profile.colors.button.hover))
-	checked:SetAllPoints(button.display)
+	checked:SetAllPoints(button)
 	button:SetCheckedTexture(checked)
 
-	local hover = button.display:CreateTexture(nil, 'OVERLAY')
+	local hover = button:CreateTexture(nil, 'OVERLAY')
 	hover:SetTexture(st.BLANK_TEX)
 	hover:SetVertexColor(unpack(st.config.profile.colors.button.normal))
-	hover:SetAllPoints(button.display)
+	hover:SetAllPoints(button)
 	button:SetHighlightTexture(hover)
 
 	local name = button:GetName()
-	local text = button.Text or name and _G[name..'Text']
+	local text = button.Text or button.Label or name and _G[name..'Text']
 	if text then
 		text:SetFontObject(st:GetFont(st.config.profile.panels.font))
 	end
@@ -235,27 +231,17 @@ function st.SkinActionButton(button, config)
 	end
 end
 
-function st:CreateEditBox(name, parent, template, ...)
-	local editbox = CreateFrame('EditBox', name, parent, template or 'InputBoxInstructionsTemplate')
-	editbox:ClearFocus()
-	editbox:SetAutoFocus(false)
-	editbox:SetScript('OnEscapePressed', function(self) self:ClearFocus() end)
-	editbox:SetScript('OnEnterPressed', function(self) self:ClearFocus() end)
-
-	st:SkinEditBox(editbox, ...)
-
-	return editbox
-end
-
 function st:SkinEditBox(editbox, template, font)
 	local name = editbox:GetName()
+	template = template or 'thick'
 
-	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid'}) do
+	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid'}) do
 		local region = _G[name..region_name] or editbox[region_name]
 		if region then
 			st:Kill(region)
 		end
 	end
+
 
 	if editbox.searchIcon then
 		editbox.searchIcon:ClearAllPoints()
@@ -270,26 +256,56 @@ function st:SkinEditBox(editbox, template, font)
 		end
 	end
 
-	st:SetBackdrop(editbox, template or 'thin')
+	st:SetBackdrop(editbox, template)
 
 	local text, _, _, _, header = editbox:GetRegions()
 	if font then
-		text:SetFontObject(st:GetFont(font))
+		text:SetFontObject(st:GetFont(font or 'normal'))
 		-- if header then
 		-- 	header:SetFontObject(st:GetFont(font))
 		-- end
 	end
 
-	if template then
-		editbox:HookScript('OnEditFocusGained', function(self)
-			self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
-			text:ClearAllPoints()
-			text:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
-		end)
+	editbox:HookScript('OnEditFocusGained', function(self)
+		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
+		text:ClearAllPoints()
+		text:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
+	end)
 
-		editbox:HookScript('OnEditFocusLost', function(self)
-			st:SetTemplate(self.backdrop, template)
-		end)
+	editbox:HookScript('OnEditFocusLost', function(self)
+		st:SetBackdrop(self, template)
+	end)
+end
+
+function st:EnableHorizontalResizing(frame, ...)
+	st:EnableResizing(frame, ...)
+	frame.ResizeButton:SetScript()
+end
+
+function st:EnableResizing(frame, resizeButton, callback)
+	if resizeButton then
+		frame.ResizeButton = resizeButton
+	else
+		local resize = st:CreateFrame('Button', nil, frame)
+		resize:SetScript('OnMouseDown', function(self) frame:StartSizing() end)
+		resize:SetScript('OnMouseUp', function(self) frame:StopMovingOrSizing() end)
+		resize:SetFrameStrata("HIGH")
+		frame.ResizeButton = resize
 	end
 
+	frame:SetResizable(true)
+	frame.ResizeButton:ClearAllPoints()
+	st:SetSize(frame.ResizeButton, 16, 16)
+	frame.ResizeButton:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', 0, 0)
+
+	frame.ResizeButton:SetNormalTexture(st.textures.cornerbr)
+
+	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
+	frame.ResizeButton:GetPushedTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
+
+	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
+	frame.ResizeButton:GetHighlightTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
+	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
+
+	frame.ResizeButton:SetFrameLevel(4)
 end

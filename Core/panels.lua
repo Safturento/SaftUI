@@ -124,6 +124,8 @@ function st:SetBackdrop(frame, template)
 	end
 
 	local offset = config.thick and 2 or 1
+	-- explicitly define as true or false to ensure thick is only nil when st:SetBackdrop is never called
+	frame.thick = config.thick and true or false
 	frame.backdrop:ClearAllPoints()
 	frame.backdrop:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
 	frame.backdrop:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
@@ -295,11 +297,12 @@ function st:CreateFrame(frameType, frameName, parentFrame, templates, id)
 	return CreateFrame(frameType, frameName, parentFrame, templateString, id)
 end
 
-function st:CreatePanel(name, size)
-	local panel = st:CreateFrame('Frame', 'SaftUI_Panel_'..name, UIParent)
+function st:CreatePanel(name, width, height)
+	local panel = st:CreateFrame('Frame', 'SaftUI_Panel_'..name:gsub(' ', '_'), UIParent)
 	self:SetBackdrop(panel, self.config.profile.panels.template)
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
-	if size then panel:SetSize(unpack(size)) end
+	if width then st:SetWidth(panel, width) end
+	if height then st:SetHeight(panel, height) end
 
 	function panel:CreateArrowButton(...)
 		return st:CreateArrowButton(self, ...)

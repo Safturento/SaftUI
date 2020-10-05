@@ -1,63 +1,428 @@
 local ADDON_NAME, st = ...
-local ACR = LibStub("AceConfigRegistry-3.0")
-
 local AceSerializer = LibStub('AceSerializer-3.0')
 local LibCompress = LibStub('LibCompress')
 local LibBase64 = LibStub('LibBase64-1.0')
 
-st.CF = st:NewModule('Config')
+local MODULE_PANE_MIN_WIDTH = 150
+local MODULE_PANE_DEFAULT_WIDTH = MODULE_PANE_MIN_WIDTH
+local MODULE_PANE_ITEM_HEIGHT = 26
+local MODULE_PANE_ITEM_SPACING = 0
+local ACTIVE_PANE_MIN_WIDTH = 200
+local ACTIVE_PANE_DEFAULT_WIDTH = 500
+local WIDGET_UNIT_WIDTH = 150
+local WIDGET_UNIT_HEIGHT = 30
+local WIDGET_SPACING_VERTICAL = 4
+local WIDGET_SPACING_HORIZONTAL = 4
+local WIDGET_PADDING_HORIZONTAL = 10
+local WIDGET_PADDING_VERTICAL = 10
+local WINDOW_MIN_HEIGHT = 300
+local WINDOW_DEFAULT_HEIGHT = 500
 
-function st.CF:Refresh()	
-	ACR:NotifyChange(ADDON_NAME)
+SLASH_SAFTUI1 = '/saftui'
+SLASH_SAFTUI2 = '/sui'
+SLASH_SAFTUI3 = '/stui'
+
+SlashCmdList.SAFTUI = function(msg)
+	if not st.config_initialized then
+		st.CF:InitializeConfigGUI()
+		st.config_initialized = true
+	end
+
+	if InCombatLockdown() then
+		st:Print('Config will open after combat')
+		config_queued = true
+	else
+		--ACD:Open(ADDON_NAME)
+	end
 end
 
-function st.CF:Export(data)
+local Config = st:NewModule('Config')
+Config.Modules = {
+	name = 'Config',
+	subModules = {}
+}
+
+local function wrapWidget(widget)
+	local wrapper = st:CreateFrame('frame', nil, Config.activePane)
+	wrapper:SetHeight(WIDGET_UNIT_HEIGHT)
+	st:SetBackdrop(wrapper, 'thin')
+	widget:SetPoint('LEFT', wrapper, WIDGET_PADDING_HORIZONTAL, 0)
+	widget:SetParent(wrapper)
+	wrapper.widget = widget
+	return wrapper
+
+
+end
+
+Config.WidgetPools = {
+	['CheckBox'] = CreateWidgetPool(function(self)
+		local checkBox = st.Widgets:CheckBox('SaftUI_Config_CheckBox' .. self.numActiveObjects + 1, Config.activePane)
+		return wrapWidget(checkBox)
+	end),
+	['EditBox'] = CreateWidgetPool(
+		function(self)
+			local editBox = st.Widgets:EditBox('SaftUI_Config_EditBox' .. self.numActiveObjects+1, Config.activePane)
+			editBox:SetHeight(20)
+			return wrapWidget(editBox)
+		end,
+		function(self, wrapper, width)
+			wrapper:SetHeight(54)
+			wrapper.widget:ClearAllPoints()
+			wrapper.widget:SetPoint('BOTTOMLEFT', WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
+			wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
+		end
+	),
+}
+st.CF = Config
+
+
+function Config:Export(data)
 	return LibBase64.Encode(
 		LibCompress:Compress(
 	AceSerializer:Serialize(data)))
 end
 
-function st.CF:Import(string)
+function Config:Import(string)
 	return AceSerializer:Deserialize(
 				 LibCompress:Decompress(
 						 LibBase64:Decode(data)))
 end
 
-function st.CF:InitializeConfigGUI()
-	local config = LibStub('AceConfig-3.0')
-	local dialog = LibStub('AceConfigDialog-3.0')
+function Config:InitializeConfigGUI()
+	local defaultWidth = MODULE_PANE_DEFAULT_WIDTH + ACTIVE_PANE_DEFAULT_WIDTH
+	local configWindow = st:CreatePanel("SaftUI Config", defaultWidth, WINDOW_DEFAULT_HEIGHT)
+	configWindow:SetPoint("CENTER")
+	st:EnableResizing(configWindow)
+	configWindow:SetMinResize(MODULE_PANE_MIN_WIDTH + ACTIVE_PANE_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+	self.window = configWindow
 
-	config:RegisterOptionsTable(ADDON_NAME, self.options, {'/sui', '/saftui'})
-	
-	self.options.args.topmenu = {
-		name = '',
-		inline = true,
-		type = 'group',
-		order = 0,
-		args = {
-			toggle_movers = {
-				name = 'Toggle Positioning',
-				type = 'execute',
-				func = function()
-					st:ToggleMovers()
-				end
-			}
-		}
-	}
+	local modulePane = st:CreateFrame('frame', configWindow:GetName() .. '_ModulePane', configWindow)
+	modulePane:SetPoint('TOPLEFT', configWindow.header, 'BOTTOMLEFT', 0, 0)
+	modulePane:SetPoint('BOTTOMLEFT', configWindow, 'BOTTOMLEFT', 0, 0)
+	modulePane:SetWidth(MODULE_PANE_MIN_WIDTH)
+	st:EnableResizing(modulePane)
+	modulePane:SetMinResize(MODULE_PANE_MIN_WIDTH, WINDOW_MIN_HEIGHT)
+	st:SetTemplate(modulePane, 'thin')
+	modulePane:SetBackdropBorderColor(modulePane:GetBackdropColor())
+	modulePane.rows = {}
+	self.modulePane = modulePane
 
-	for name, module in pairs(st.modules) do
-		if module.GetConfigTable then
-			self.options.args[name] = module:GetConfigTable()
+	local activePane = st:CreateFrame('frame', configWindow:GetName() .. '_ActivePane', configWindow)
+	activePane:SetPoint('TOPLEFT', modulePane, 'TOPRIGHT', 0, 0)
+	activePane:SetPoint('BOTTOMLEFT', modulePane, 'BOTTOMRIGHT', 0, 0)
+	activePane.UpdateSize = function(self)
+		self:SetWidth((configWindow:GetWidth() - modulePane:GetWidth()))
+		self:SetHeight(configWindow:GetHeight() - configWindow.header:GetHeight())
+	end
+	activePane:UpdateSize()
+	self.activePane = activePane
+
+	modulePane.UpdateSize = function(self)
+		self:ClearAllPoints()
+		self:SetPoint('TOPLEFT', configWindow.header, 'BOTTOMLEFT', 0, 0)
+		self:SetPoint('BOTTOMLEFT', configWindow, 'BOTTOMLEFT', 0, 0)
+		self:SetHeight(configWindow:GetHeight() - configWindow.header:GetHeight())
+	end
+
+	modulePane:SetScript('OnSizeChanged', function()
+		activePane:UpdateSize()
+		modulePane:UpdateSize()
+		Config:PositionActiveWidgets()
+	end)
+
+	configWindow:HookScript('OnSizeChanged', function()
+		modulePane:UpdateSize()
+		Config:PositionActiveWidgets()
+	end)
+
+	self:Test()
+
+	self:UpdateModulePane()
+
+	self:SetActiveModule(self.defaultModule)
+end
+
+function Config:UpdateModulePane()
+	local numItems = floor(self.modulePane:GetHeight()/(MODULE_PANE_ITEM_HEIGHT  + MODULE_PANE_ITEM_SPACING))
+
+	local scrollOffset = 0
+	local modules = self:GetModuleTree()
+
+	for i = 1, numItems do
+		local row = self.modulePane.rows[i]
+		if not row then
+			row = st:CreateFrame('Button', self.modulePane:GetName() .. 'Row'..i, self.modulePane)
+			row:SetFrameLevel(self.modulePane:GetFrameLevel() + 2)
+			if i == 1 then
+				st:SnapTopAcross(row, self.modulePane)
+			else
+				st:SnapBelowAcross(row, self.modulePane.rows[i-1], MODULE_PANE_ITEM_SPACING)
+			end
+			row:SetHeight(MODULE_PANE_ITEM_HEIGHT)
+			row.Text = row:CreateFontString(nil, 'OVERLAY')
+			row.Text:SetFontObject(st:GetFont('normal'))
+			row.Text:SetPoint('LEFT', 5, 0)
+			self.modulePane.rows[i] = row
+		end
+
+		local module = modules[i+scrollOffset]
+		if not module then
+			row:Hide()
+		else
+			row:Show()
+			local indent = ''
+			for _=0, module.indent do indent = indent .. '  ' end
+			row.Text:SetText(indent .. module.name)
 		end
 	end
-	
-	self.options.args.profiles = LibStub('AceDBOptions-3.0'):GetOptionsTable(st.config)
-	self.options.args.profiles.order = -99
-
-	dialog:SetDefaultSize(ADDON_NAME, 840, 700)
-
-	st.config_initialized = true
 end
+
+function Config:OpenConfigGui()
+	self.window:Show()
+	st:EnableMovers()
+end
+
+function Config:CloseConfigGui()
+	self.window:Hide()
+	st:DisableMovers()
+end
+
+function Config:ToggleConfigGui()
+	if self.window:IsShown() then
+		self:CloseConfigGui()
+	else
+		self:OpenConfigGui()
+	end
+end
+
+--[[
+	pass config key values as separate meters to get nested module
+	e.g. to get unitframes player health config you'd  pass
+	Config:GetModule('Unitframes', 'Player', 'Health')
+]]
+function Config:GetModule(...)
+	local parent = self.Modules
+	for i = 1, select('#', ...) do
+		module = select(i, ...)
+		if parent.subModules[module] then
+			parent = parent.subModules[module]
+		else
+			st:Error(('No module named %s in %s module'):format(module, parent.name))
+			return
+		end
+	end
+	return parent
+end
+
+--[[
+	Registers a new module into the config table
+	moduleName : the display name and table key of the module
+	configTable : contains all information about that  module's config options
+	... : chain of parent modules
+	example - create empty config table for Health config for player unitframes:
+
+	Config:RegisterModule('Health', { }, 'Unitframes', 'Player')
+]]
+function Config:RegisterModule(moduleName, configTable, ...)
+	local parent = self:GetModule(...)
+	if not parent then return end
+	if self:ValidateModuleConfig(moduleName, configTable) then
+		parent.subModules[moduleName] = {
+			name = moduleName,
+			subModules = {},
+			configTable = configTable or {}
+		}
+	end
+end
+
+-- Same parameters as RegisterModule, will left join your new table into the existing table
+function Config:UpdateModuleConfig(moduleName, configTable, ...)
+	if self:ValidateModuleConfig(moduleName, configTable) then
+		st.tablemerge(self:GetModule(...).subModules[moduleName].configTable, configTable)
+	end
+end
+
+-- Same parameters as RegisterModule, will replace the existing configTable with your new one
+function Config:SetModuleConfig(moduleName, configTable, ...)
+	if self:ValidateModuleConfig(moduleName, configTable) then
+		self:GetModule(...).subModules[moduleName].configTable = configTable
+	end
+end
+
+function Config:ValidateModuleConfig(moduleName, configTable)
+	for _, item in ipairs(configTable) do
+		if not self.WidgetPools[item.widget] then
+			st:Error(('Invalid widget %s in %s module'):format(item.widget, moduleName))
+			return false
+		end
+	end
+
+	return true
+end
+
+function Config:SetDefaultModule(moduleName)
+	if self:GetModule(moduleName) then
+		self.defaultModule = moduleName
+	else
+		st:Error(("Failed to set default module: module %s does not exist"):format(moduleName))
+	end
+end
+
+function Config:GetDefaultModule()
+	return self.defaultModule
+end
+
+
+function Config:PositionActiveWidgets(section)
+	local width = self.activePane:GetWidth()
+	local unitsPerRow = floor((width - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
+	local unitsLeft = unitsPerRow
+	local prevRow
+	local prevWidget
+	for _,widget in pairs(self.activeWidgets) do
+		if not (prevRow or prevWidget) then
+		--First widget
+			st:SnapTopLeft(widget, self.activePane, WIDGET_SPACING_HORIZONTAL)
+			prevRow = widget
+			prevWidget = widget
+		elseif unitsLeft < widget.config.width then
+		-- New row
+			st:SnapBelowLeft(widget, prevRow, WIDGET_SPACING_VERTICAL)
+			prevRow = widget
+			prevWidget = widget
+			unitsLeft = unitsPerRow
+		else
+		--	Keep going on same row
+			st:SnapTopRightOf(widget, prevWidget, WIDGET_SPACING_HORIZONTAL)
+			prevWidget = widget
+		end
+		unitsLeft = unitsLeft - widget.config.width
+	end
+end
+
+function Config:SetActiveModule(moduleName)
+	local activeModule = self:GetModule(moduleName)
+	if activeModule then
+		self.activeModule = moduleName
+
+		for _,pool in pairs(self.WidgetPools) do
+			pool:ReleaseAll()
+		end
+
+		self.activeWidgets = {}
+
+        local widestWidget = 0
+		for _,widgetConfig in ipairs(activeModule.configTable) do
+			local widgetWidth = widgetConfig.width * WIDGET_UNIT_WIDTH + (widgetConfig.width - 1) * WIDGET_SPACING_HORIZONTAL
+			local widgetWrapper = self.WidgetPools[widgetConfig.widget]:Acquire(widgetWidth)
+			widgetWrapper.config = widgetConfig
+
+			widgetWrapper.widget:SetLabel(widgetConfig.label)
+			widgetWrapper:SetWidth(widgetWidth)
+			tinsert(self.activeWidgets, widgetWrapper)
+			widestWidget = max(widestWidget, widgetWidth)
+		end
+
+		self.window:SetMinResize(widestWidget + self.modulePane:GetWidth() + WIDGET_SPACING_HORIZONTAL * 2, WINDOW_MIN_HEIGHT)
+		Config:PositionActiveWidgets()
+	else
+		st:Error(("Failed to set active module: module %s does not exist"):format(moduleName))
+	end
+end
+
+function Config:GetActiveModule()
+	return self.activeModule
+end
+
+function Config:GetModuleTree(tree, parent, indent)
+	if not parent then
+		tree, parent, indent =
+			{}, self.Modules, 0
+	end
+
+	tinsert(tree, { name = parent.name, indent = indent })
+	for subModuleName, subModule in pairs(parent.subModules) do
+		Config:GetModuleTree(tree, subModule, indent + 1)
+	end
+
+	return tree
+end
+
+function Config:CheckBox(label, onClick, width)
+	return {
+		widget = 'CheckBox',
+		label = label,
+		onClick = onClick,
+		width = width or 1
+	}
+end
+
+function Config:EditBox(label, onChange, width)
+	return {
+		widget = 'EditBox',
+		label = label,
+		onChange = onChange,
+		width = width or 1
+	}
+end
+
+function Config:Section(label)
+	return {
+		widget = 'Section',
+		label = label
+	}
+end
+
+
+
+
+
+
+
+
+function Config:Test()
+	self:RegisterModule('general', {
+		self:CheckBox('CheckBox 1'),
+		self:CheckBox('CheckBox 1'),
+		self:CheckBox('CheckBox 2'),
+		self:CheckBox('CheckBox 3'),
+		self:CheckBox('CheckBox 4'),
+		self:CheckBox('CheckBox 5'),
+		self:CheckBox('CheckBox 16'),
+		self:EditBox('EditBox 1', nil, 2),
+	})
+	self:RegisterModule('unitframes', {})
+	self:RegisterModule('player', {}, 'unitframes')
+	self:RegisterModule('actionbars', {})
+
+	self:SetDefaultModule('general')
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function st.CF:UpdateTemplateConfig(template)
 	if not template then
@@ -75,7 +440,7 @@ function st.CF:UpdateTemplateConfig(template)
 end
 
 st.CF.options = {
-	type = 'group', 
+	type = 'group',
 	name = ADDON_NAME,
 	inline = true,
 	args = {
@@ -87,7 +452,7 @@ function st.CF:GetFrameTemplates()
 	for k,v in pairs(st.config.profile.templates) do
 		templates[k] = v.name
 	end
-	
+
 	templates.none = 'None'
 
 	return templates
@@ -126,28 +491,28 @@ function st.CF.generators.position(order, global_frame, get, set)
 		args = {
 			point = {
 				order = 1,
-				name = 'Anchor', 
+				name = 'Anchor',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
 				width = 0.65,
 			},
 			rel_point = {
 				order = 4,
-				name = 'Relative', 
+				name = 'Relative',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
 				width = 0.65,
 			},
 			x_off = {
 				order = 5,
-				name = 'X Offset', 
+				name = 'X Offset',
 				type = 'input',
 				pattern = '%d+',
 				width = 0.4
 			},
 			y_off = {
 				order = 6,
-				name = 'Y Offset', 
+				name = 'Y Offset',
 				type = 'input',
 				pattern = '%d+',
 				width = 0.4
@@ -160,7 +525,7 @@ function st.CF.generators.position(order, global_frame, get, set)
 			order = 3,
 			name = 'Frame',
 			type = 'input',
-			validate = function(info, name) 
+			validate = function(info, name)
 				return _G[name] and true or "Frame doesn't exist"
 			end
 		}
@@ -235,7 +600,7 @@ function st.CF.generators.uf_element_position(order, get, set)
 		end
 	end
 
-	table.args.frame.validate = function(info, name) 
+	table.args.frame.validate = function(info, name)
 		if get('frame_type') == nil then
 			return _G[name] and true or "Frame doesn't exist"
 		end
@@ -303,7 +668,7 @@ function st.CF.generators.template(order)
 		order = order,
 		name = 'Template',
 		type = 'select',
-		values = st.CF:GetFrameTemplates(),
+		values = CF:GetFrameTemplates(),
 	}
 end
 
@@ -312,7 +677,107 @@ function st.CF.generators.font(order)
 		name = 'Font',
 		type = 'select',
 		order = 1,
-		values = st.CF:GetFontObjects(),
+		values = CF:GetFontObjects(),
 	}
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

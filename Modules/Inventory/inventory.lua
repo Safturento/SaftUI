@@ -62,7 +62,7 @@ function INV:InitializeFooter(container)
 end
 
 function INV:InitializeSearch(container)
-	local search = st:CreateEditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
+	local search = st.Widgets:EditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
 	st:SkinEditBox(search, 'thicktransparent')
 	search:SetHeight(20)
 	self:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
