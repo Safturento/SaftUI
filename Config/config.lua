@@ -43,7 +43,7 @@ Config.Modules = {
 }
 
 local function wrapWidget(widget)
-	local wrapper = st:CreateFrame('frame', nil, Config.activePane)
+	local wrapper = st:CreateFrame('frame', widget:GetName().."_Wrapper", Config.activePane)
 	wrapper:SetHeight(WIDGET_UNIT_HEIGHT)
 	st:SetBackdrop(wrapper, 'thin')
 	widget:SetPoint('LEFT', wrapper, WIDGET_PADDING_HORIZONTAL, 0)
@@ -69,9 +69,19 @@ Config.WidgetPools = {
 			wrapper:SetHeight(54)
 			wrapper.widget:ClearAllPoints()
 			wrapper.widget:SetPoint('BOTTOMLEFT', WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
-			wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
+			if width then
+				wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
+			end
 		end
 	),
+	['Section'] = CreateWidgetPool(
+		function(self)
+			local section = st:CreateFrame('frame', 'SaftUI_Config_Section'..self.numActiveObjects + 1, Config.activePane)
+			wrapper = wrapWidget(section)
+			section:SetAllPoints(wrapper)
+			return wrapper
+		end
+	)
 }
 st.CF = Config
 
@@ -279,7 +289,10 @@ function Config:PositionActiveWidgets(section)
 	local unitsLeft = unitsPerRow
 	local prevRow
 	local prevWidget
-	for _,widget in pairs(self.activeWidgets) do
+	for _,widget in pairs(section and section.widgets or self.activeWidgets) do
+		if widget.type == 'Section' then
+			Config:PositionActiveWidgets(widget)
+		end
 		if not (prevRow or prevWidget) then
 		--First widget
 			st:SnapTopLeft(widget, self.activePane, WIDGET_SPACING_HORIZONTAL)
@@ -300,31 +313,31 @@ function Config:PositionActiveWidgets(section)
 	end
 end
 
-function Config:SetActiveModule(moduleName)
-	local activeModule = self:GetModule(moduleName)
-	if activeModule then
-		self.activeModule = moduleName
+function Config:PopulateWidgets(configTable, section)
+	if not (configTable and section) then
+		configTable = self.activeModule.configTable
+		section = self.activePane
 
 		for _,pool in pairs(self.WidgetPools) do
 			pool:ReleaseAll()
 		end
+	end
 
-		self.activeWidgets = {}
-
-        local widestWidget = 0
-		for _,widgetConfig in ipairs(activeModule.configTable) do
-			local widgetWidth = widgetConfig.width * WIDGET_UNIT_WIDTH + (widgetConfig.width - 1) * WIDGET_SPACING_HORIZONTAL
-			local widgetWrapper = self.WidgetPools[widgetConfig.widget]:Acquire(widgetWidth)
-			widgetWrapper.config = widgetConfig
-
-			widgetWrapper.widget:SetLabel(widgetConfig.label)
-			widgetWrapper:SetWidth(widgetWidth)
-			tinsert(self.activeWidgets, widgetWrapper)
-			widestWidget = max(widestWidget, widgetWidth)
+	section.activeWidgets = {}
+	for _, widgetConfig in ipairs(configTable) do
+		local widgetWrapper = self.WidgetPools[widgetConfig.widget]:Acquire(widgetWidth)
+		if widgetConfig.widget == 'Section' then
+			self:PopulateWidgets(widgetConfig.configTable, widgetWrapper)
 		end
+		tinsert(section.activeWidgets, widgetWrapper)
+	end
+end
 
-		self.window:SetMinResize(widestWidget + self.modulePane:GetWidth() + WIDGET_SPACING_HORIZONTAL * 2, WINDOW_MIN_HEIGHT)
-		Config:PositionActiveWidgets()
+function Config:SetActiveModule(moduleName)
+	local activeModule = self:GetModule(moduleName)
+	if activeModule then
+		self.activeModule = activeModule
+		self:PopulateWidgets()
 	else
 		st:Error(("Failed to set active module: module %s does not exist"):format(moduleName))
 	end
@@ -366,10 +379,12 @@ function Config:EditBox(label, onChange, width)
 	}
 end
 
-function Config:Section(label)
+function Config:Section(label, widgets, width)
 	return {
 		widget = 'Section',
-		label = label
+		label = label,
+		configTable = widgets,
+		width = width
 	}
 end
 
@@ -388,14 +403,24 @@ function Config:Test()
 		self:CheckBox('CheckBox 3'),
 		self:CheckBox('CheckBox 4'),
 		self:CheckBox('CheckBox 5'),
-		self:CheckBox('CheckBox 16'),
+		self:CheckBox('CheckBox 6'),
 		self:EditBox('EditBox 1', nil, 2),
+		self:Section('Misc', {
+			self:CheckBox('CheckBox 7'),
+			self:CheckBox('CheckBox 8'),
+			self:EditBox('EditBox 2', nil, 1),
+			self:EditBox('EditBox 3', nil, 2),
+			self:CheckBox('CheckBox 9'),
+			self:CheckBox('CheckBox 10'),
+		})
 	})
 	self:RegisterModule('unitframes', {})
 	self:RegisterModule('player', {}, 'unitframes')
 	self:RegisterModule('actionbars', {})
 
 	self:SetDefaultModule('general')
+
+	--st.tableprint(self.Modules)
 end
 
 
