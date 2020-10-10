@@ -9,7 +9,7 @@ local MODULE_PANE_ITEM_HEIGHT = 26
 local MODULE_PANE_ITEM_SPACING = 0
 local ACTIVE_PANE_MIN_WIDTH = 200
 local ACTIVE_PANE_DEFAULT_WIDTH = 500
-local WIDGET_UNIT_WIDTH = 150
+local WIDGET_MIN_UNIT_WIDTH = 150
 local WIDGET_UNIT_HEIGHT = 30
 local WIDGET_SPACING_VERTICAL = 4
 local WIDGET_SPACING_HORIZONTAL = 4
@@ -54,12 +54,18 @@ local function wrapWidget(widget)
 
 end
 
+Config.WidgetTypes = {
+	SECTION = 'Section',
+	CHECKBOX = 'CheckBox',
+	EDITBOX = 'EditBox'
+}
+
 Config.WidgetPools = {
-	['CheckBox'] = CreateWidgetPool(function(self)
+	[Config.WidgetTypes.CHECKBOX] = CreateWidgetPool(function(self)
 		local checkBox = st.Widgets:CheckBox('SaftUI_Config_CheckBox' .. self.numActiveObjects + 1, Config.activePane)
 		return wrapWidget(checkBox)
 	end),
-	['EditBox'] = CreateWidgetPool(
+	[Config.WidgetTypes.EDITBOX] = CreateWidgetPool(
 		function(self)
 			local editBox = st.Widgets:EditBox('SaftUI_Config_EditBox' .. self.numActiveObjects+1, Config.activePane)
 			editBox:SetHeight(20)
@@ -69,14 +75,19 @@ Config.WidgetPools = {
 			wrapper:SetHeight(54)
 			wrapper.widget:ClearAllPoints()
 			wrapper.widget:SetPoint('BOTTOMLEFT', WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
-			if width then
-				wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
-			end
+			wrapper.widget:SetPoint('BOTTOMRIGHT', -WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
+			--if width then
+			--	wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
+			--end
 		end
 	),
-	['Section'] = CreateWidgetPool(
+	[Config.WidgetTypes.SECTION] = CreateWidgetPool(
 		function(self)
 			local section = st:CreateFrame('frame', 'SaftUI_Config_Section'..self.numActiveObjects + 1, Config.activePane)
+			section.Label = section:CreateFontString(nil, 'OVERLAY')
+			section.Label:SetPoint('BOTTOMLEFT', section, 'TOPLEFT', 3, 5)
+			section.Label:SetFontObject(st:GetFont('normal'))
+			section.SetLabel = function(self, text) self.Label:SetText(text) end
 			wrapper = wrapWidget(section)
 			section:SetAllPoints(wrapper)
 			return wrapper
@@ -137,12 +148,11 @@ function Config:InitializeConfigGUI()
 	modulePane:SetScript('OnSizeChanged', function()
 		activePane:UpdateSize()
 		modulePane:UpdateSize()
-		Config:PositionActiveWidgets()
+		Config:UpdateActiveWidgets()
 	end)
 
 	configWindow:HookScript('OnSizeChanged', function()
 		modulePane:UpdateSize()
-		Config:PositionActiveWidgets()
 	end)
 
 	self:Test()
@@ -260,9 +270,9 @@ function Config:SetModuleConfig(moduleName, configTable, ...)
 end
 
 function Config:ValidateModuleConfig(moduleName, configTable)
-	for _, item in ipairs(configTable) do
-		if not self.WidgetPools[item.widget] then
-			st:Error(('Invalid widget %s in %s module'):format(item.widget, moduleName))
+	for _, widgetConfig in ipairs(configTable) do
+		if not self.WidgetPools[widgetConfig.type] then
+			st:Error(('Invalid widget %s in %s module'):format(widgetConfig.type, moduleName))
 			return false
 		end
 	end
@@ -285,12 +295,12 @@ end
 
 function Config:PositionActiveWidgets(section)
 	local width = self.activePane:GetWidth()
-	local unitsPerRow = floor((width - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
+	local unitsPerRow = floor((width - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_MIN_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
 	local unitsLeft = unitsPerRow
 	local prevRow
 	local prevWidget
 	for _,widget in pairs(section and section.widgets or self.activeWidgets) do
-		if widget.type == 'Section' then
+		if widget.type == Config.WidgetTypes.SECTION then
 			Config:PositionActiveWidgets(widget)
 		end
 		if not (prevRow or prevWidget) then
@@ -313,6 +323,45 @@ function Config:PositionActiveWidgets(section)
 	end
 end
 
+function Config:UpdateActiveWidgets(section)
+	if not section then section = self.activePane end
+
+	local sectionWidth = section:GetWidth()
+	local unitsPerRow = floor((sectionWidth - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_MIN_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
+	local unitWidth = floor((sectionWidth - 2*WIDGET_SPACING_HORIZONTAL) / (unitsPerRow) - WIDGET_SPACING_HORIZONTAL)
+	print(sectionWidth, unitsPerRow, unitWidth)
+	local unitsLeft = unitsPerRow
+	local prevRow, prevWidget
+	for _, widgetWrapper in pairs(section.widgets) do
+		local widgetUnits = widgetWrapper.config.width == 0 and unitsPerRow or widgetWrapper.config.width
+		local widgetWidth = unitWidth * widgetUnits
+		widgetWrapper:SetWidth(widgetWidth + (widgetUnits - 1) * (WIDGET_SPACING_HORIZONTAL + 1))
+
+		if not (prevRow or prevWidget) then
+		--First widget
+			st:SnapTopLeft(widgetWrapper, section, WIDGET_SPACING_HORIZONTAL)
+			prevRow = widgetWrapper
+			prevWidget = widgetWrapper
+		elseif unitsLeft < widgetUnits then
+		-- New row
+			st:SnapBelowLeft(widgetWrapper, prevRow, WIDGET_SPACING_VERTICAL)
+			prevRow = widgetWrapper
+			prevWidget = widgetWrapper
+			unitsLeft = unitsPerRow
+		else
+		--	Keep going on same row
+			st:SnapTopRightOf(widgetWrapper, prevWidget, WIDGET_SPACING_HORIZONTAL)
+			prevWidget = widgetWrapper
+		end
+		unitsLeft = unitsLeft - widgetUnits
+
+		if widgetWrapper.config.type == Config.WidgetTypes.SECTION then
+			Config:UpdateActiveWidgets(widgetWrapper)
+		end
+	end
+
+end
+
 function Config:PopulateWidgets(configTable, section)
 	if not (configTable and section) then
 		configTable = self.activeModule.configTable
@@ -323,13 +372,18 @@ function Config:PopulateWidgets(configTable, section)
 		end
 	end
 
-	section.activeWidgets = {}
+	section.widgets = {}
 	for _, widgetConfig in ipairs(configTable) do
-		local widgetWrapper = self.WidgetPools[widgetConfig.widget]:Acquire(widgetWidth)
-		if widgetConfig.widget == 'Section' then
-			self:PopulateWidgets(widgetConfig.configTable, widgetWrapper)
+		local widgetWrapper = self.WidgetPools[widgetConfig.type]:Acquire(widgetWidth)
+		widgetWrapper.config = widgetConfig
+		if widgetConfig.label and widgetWrapper.widget.SetLabel then
+			widgetWrapper.widget:SetLabel(widgetConfig.label)
 		end
-		tinsert(section.activeWidgets, widgetWrapper)
+		if widgetConfig.type == Config.WidgetTypes.SECTION then
+			self:PopulateWidgets(widgetConfig.configTable, widgetWrapper)
+			self:UpdateActiveWidgets()
+		end
+		tinsert(section.widgets, widgetWrapper)
 	end
 end
 
@@ -363,7 +417,7 @@ end
 
 function Config:CheckBox(label, onClick, width)
 	return {
-		widget = 'CheckBox',
+		type = Config.WidgetTypes.CHECKBOX,
 		label = label,
 		onClick = onClick,
 		width = width or 1
@@ -372,28 +426,21 @@ end
 
 function Config:EditBox(label, onChange, width)
 	return {
-		widget = 'EditBox',
+		type = Config.WidgetTypes.EDITBOX,
 		label = label,
 		onChange = onChange,
 		width = width or 1
 	}
 end
 
-function Config:Section(label, widgets, width)
+function Config:Section(label, configTable, width)
 	return {
-		widget = 'Section',
+		type = Config.WidgetTypes.SECTION,
 		label = label,
-		configTable = widgets,
-		width = width
+		configTable = configTable,
+		width = width or 0
 	}
 end
-
-
-
-
-
-
-
 
 function Config:Test()
 	self:RegisterModule('general', {
@@ -412,397 +459,16 @@ function Config:Test()
 			self:EditBox('EditBox 3', nil, 2),
 			self:CheckBox('CheckBox 9'),
 			self:CheckBox('CheckBox 10'),
+			self:Section('Nested Section', {
+				self:CheckBox('CheckBox 11'),
+				self:CheckBox('CheckBox 12'),
+			})
 		})
 	})
+
 	self:RegisterModule('unitframes', {})
 	self:RegisterModule('player', {}, 'unitframes')
 	self:RegisterModule('actionbars', {})
 
 	self:SetDefaultModule('general')
-
-	--st.tableprint(self.Modules)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function st.CF:UpdateTemplateConfig(template)
-	if not template then
-		for template,_ in pairs(st.config.profile.templates) do
-			self:UpdateTemplateConfig(template)
-		end
-		return
-	end
-
-	for frame, t in self.template_cache do
-		if t == template then
-			st:SetTemplate(frame, t)
-		end
-	end
-end
-
-st.CF.options = {
-	type = 'group',
-	name = ADDON_NAME,
-	inline = true,
-	args = {
-	},
-}
-
-function st.CF:GetFrameTemplates()
-	local templates = {}
-	for k,v in pairs(st.config.profile.templates) do
-		templates[k] = v.name
-	end
-
-	templates.none = 'None'
-
-	return templates
-end
-
-function st.CF:GetFontObjects()
-	local font_objects = {}
-	for k,v in pairs(st.config.profile.fonts) do
-		font_objects[k] = v.name
-	end
-
-	return font_objects
-end
-
-st.CF.generators = {}
-
-function st.CF.generators.position(order, global_frame, get, set)
-	local table = {
-		order = order or 0,
-		name = 'Position',
-		type = 'group',
-		inline = true,
-		get = function(info)
-			if type(get) == 'function' then
-				return get(info[#info])
-			end
-			return get[info[#info]]
-		end,
-		set = function(info, value)
-			if set then
-				set(info[#info], value)
-			else
-				get[info[#info]] = value
-			end
-		end,
-		args = {
-			point = {
-				order = 1,
-				name = 'Anchor',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-				width = 0.65,
-			},
-			rel_point = {
-				order = 4,
-				name = 'Relative',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-				width = 0.65,
-			},
-			x_off = {
-				order = 5,
-				name = 'X Offset',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.4
-			},
-			y_off = {
-				order = 6,
-				name = 'Y Offset',
-				type = 'input',
-				pattern = '%d+',
-				width = 0.4
-			},
-		}
-	}
-
-	if global_frame then
-		table.args.frame = {
-			order = 3,
-			name = 'Frame',
-			type = 'input',
-			validate = function(info, name)
-				return _G[name] and true or "Frame doesn't exist"
-			end
-		}
-	end
-
-	return table
-end
-
-function st.CF.get_frame(self, config)
-	local frame = self
-	if config.frame_type == false then
-		frame = self[config.anchor_element]
-	elseif config.frame_type == true then
-		frame = _G[config.anchor_frame]
-	end
-	return frame
-end
-
-function st.CF.generators.uf_element_position(order, get, set)
-	local table = st.CF.generators.position(order, true, get, set)
-	local values = {}
-	for key,_ in pairs(st:GetModule('Unitframes').elements) do
-		values[key] = key
-	end
-
-	table.args.frame_type = {
-		name = 'Anchor type',
-		type = 'toggle',
-		desc = 'unchecked: element selection \nchecked: global frame \ngrayed: self',
-		order = 0,
-		width = 'full',
-		tristate = true,
-		get = function(info)
-			local value = get('frame_type')
-			if value == false then
-				table.args.frame.values = values
-				table.args.frame.type = 'select'
-			elseif value == true then
-				table.args.frame.type = 'input'
-			end
-			return value
-		end,
-		set = function(info, value)
-			set('frame_type', value)
-			if value == false then
-				table.args.frame.values = values
-				table.args.frame.type = 'select'
-			elseif value == true then
-				table.args.frame.type = 'input'
-			end
-		end
-	}
-
-	table.args.frame.hidden = function(info)
-		return get('frame_type') == nil
-	end
-
-	table.args.frame.get = function(info)
-		local frame_type = get('frame_type')
-		if frame_type == false then
-			return get('anchor_element')
-		elseif frame_type == true then
-			return get('anchor_frame')
-		end
-	end
-	table.args.frame.set = function(info, value)
-		local frame_type = get('frame_type')
-		if frame_type == false then
-			set('anchor_element', value)
-		elseif frame_type == true then
-			set('anchor_frame', value)
-		end
-	end
-
-	table.args.frame.validate = function(info, name)
-		if get('frame_type') == nil then
-			return _G[name] and true or "Frame doesn't exist"
-		end
-		return true
-	end
-
-	return table
-end
-
-function st.CF.generators.toggle(order, name, width)
-	return {
-		order = order,
-		name = name,
-		type = 'toggle',
-		width = width or 0.5
-	}
-end
-
-function st.CF.generators.enable(order)
-	return st.CF.generators.toggle(order, 'Enable')
-end
-
-function st.CF.generators.range(order, name, min, max, step, width)
-	return {
-		order = order,
-		name = name,
-		type = 'range',
-		min = min or 1,
-		max = max or 99,
-		step = step or 1,
-		width = width or 1,
-	}
-end
-
-function st.CF.generators.framelevel(order)
-	return st.CF.generators.range(order, 'Frame level', 0, 99, 1)
-end
-
-function st.CF.generators.alpha(order)
-	return st.CF.generators.range(order, 'Alpha', 0, 1, 0.05)
-end
-
-function st.CF.generators.height(order)
-	return {
-		order = order,
-		name = 'Height',
-		type = 'input',
-		pattern = '%d+',
-		width = 0.5,
-	}
-end
-
-function st.CF.generators.width(order)
-	return {
-		order = order,
-		name = 'Width',
-		type = 'input',
-		pattern = '%d+',
-		width = 0.5,
-	}
-end
-
-function st.CF.generators.template(order)
-	return {
-		order = order,
-		name = 'Template',
-		type = 'select',
-		values = CF:GetFrameTemplates(),
-	}
-end
-
-function st.CF.generators.font(order)
-	return {
-		name = 'Font',
-		type = 'select',
-		order = 1,
-		values = CF:GetFontObjects(),
-	}
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
