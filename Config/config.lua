@@ -3,25 +3,30 @@ local AceSerializer = LibStub('AceSerializer-3.0')
 local LibCompress = LibStub('LibCompress')
 local LibBase64 = LibStub('LibBase64-1.0')
 
+local Config = st:NewModule('Config')
+st.CF = Config
+
+local RowPool
+local debug = true
+
 local MODULE_PANE_MIN_WIDTH = 150
 local MODULE_PANE_DEFAULT_WIDTH = MODULE_PANE_MIN_WIDTH
 local MODULE_PANE_ITEM_HEIGHT = 26
 local MODULE_PANE_ITEM_SPACING = 0
 local ACTIVE_PANE_MIN_WIDTH = 200
 local ACTIVE_PANE_DEFAULT_WIDTH = 500
-local WIDGET_MIN_UNIT_WIDTH = 150
+local WIDGET_MIN_UNIT_WIDTH = 100
 local WIDGET_UNIT_HEIGHT = 30
-local WIDGET_SPACING_VERTICAL = 4
-local WIDGET_SPACING_HORIZONTAL = 4
+local WIDGET_SPACING = 10
 local WIDGET_PADDING_HORIZONTAL = 10
 local WIDGET_PADDING_VERTICAL = 10
 local WINDOW_MIN_HEIGHT = 300
 local WINDOW_DEFAULT_HEIGHT = 500
+local LABEL_HEIGHT = 24
 
 SLASH_SAFTUI1 = '/saftui'
 SLASH_SAFTUI2 = '/sui'
 SLASH_SAFTUI3 = '/stui'
-
 SlashCmdList.SAFTUI = function(msg)
 	if not st.config_initialized then
 		st.CF:InitializeConfigGUI()
@@ -32,11 +37,10 @@ SlashCmdList.SAFTUI = function(msg)
 		st:Print('Config will open after combat')
 		config_queued = true
 	else
-		--ACD:Open(ADDON_NAME)
+		Config:OpenConfigGui()
 	end
 end
 
-local Config = st:NewModule('Config')
 Config.Modules = {
 	name = 'Config',
 	subModules = {}
@@ -45,13 +49,11 @@ Config.Modules = {
 local function wrapWidget(widget)
 	local wrapper = st:CreateFrame('frame', widget:GetName().."_Wrapper", Config.activePane)
 	wrapper:SetHeight(WIDGET_UNIT_HEIGHT)
-	st:SetBackdrop(wrapper, 'thin')
+	if debug then st:SetBackdrop(wrapper, 'thin') end
 	widget:SetPoint('LEFT', wrapper, WIDGET_PADDING_HORIZONTAL, 0)
 	widget:SetParent(wrapper)
 	wrapper.widget = widget
 	return wrapper
-
-
 end
 
 Config.WidgetTypes = {
@@ -76,26 +78,22 @@ Config.WidgetPools = {
 			wrapper.widget:ClearAllPoints()
 			wrapper.widget:SetPoint('BOTTOMLEFT', WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
 			wrapper.widget:SetPoint('BOTTOMRIGHT', -WIDGET_PADDING_HORIZONTAL, WIDGET_PADDING_VERTICAL)
-			--if width then
-			--	wrapper.widget:SetWidth(width - 2 * WIDGET_PADDING_HORIZONTAL)
-			--end
 		end
 	),
 	[Config.WidgetTypes.SECTION] = CreateWidgetPool(
 		function(self)
 			local section = st:CreateFrame('frame', 'SaftUI_Config_Section'..self.numActiveObjects + 1, Config.activePane)
 			section.Label = section:CreateFontString(nil, 'OVERLAY')
-			section.Label:SetPoint('BOTTOMLEFT', section, 'TOPLEFT', 3, 5)
+			st:SnapTopLeft(section.Label, section, 10)
 			section.Label:SetFontObject(st:GetFont('normal'))
 			section.SetLabel = function(self, text) self.Label:SetText(text) end
+			--st:SetBackdrop(section, 'thick')
 			wrapper = wrapWidget(section)
 			section:SetAllPoints(wrapper)
 			return wrapper
 		end
 	)
 }
-st.CF = Config
-
 
 function Config:Export(data)
 	return LibBase64.Encode(
@@ -116,6 +114,7 @@ function Config:InitializeConfigGUI()
 	st:EnableResizing(configWindow)
 	configWindow:SetMinResize(MODULE_PANE_MIN_WIDTH + ACTIVE_PANE_MIN_WIDTH, WINDOW_MIN_HEIGHT)
 	self.window = configWindow
+	self.window:SetFrameStrata("DIALOG")
 
 	local modulePane = st:CreateFrame('frame', configWindow:GetName() .. '_ModulePane', configWindow)
 	modulePane:SetPoint('TOPLEFT', configWindow.header, 'BOTTOMLEFT', 0, 0)
@@ -123,8 +122,9 @@ function Config:InitializeConfigGUI()
 	modulePane:SetWidth(MODULE_PANE_MIN_WIDTH)
 	st:EnableResizing(modulePane)
 	modulePane:SetMinResize(MODULE_PANE_MIN_WIDTH, WINDOW_MIN_HEIGHT)
-	st:SetTemplate(modulePane, 'thin')
-	modulePane:SetBackdropBorderColor(modulePane:GetBackdropColor())
+	st:SetBackdrop(modulePane, 'highlight')
+	modulePane.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
+	modulePane.backdrop:SetAllPoints()
 	modulePane.rows = {}
 	self.modulePane = modulePane
 
@@ -136,6 +136,13 @@ function Config:InitializeConfigGUI()
 		self:SetHeight(configWindow:GetHeight() - configWindow.header:GetHeight())
 	end
 	activePane:UpdateSize()
+	activePane.scrollFrame = st:CreateFrame('frame', activePane:GetName().. "_ScrollFrame", activePane)
+	activePane.scrollFrame:SetPoint('TOPLEFT')
+	activePane.scrollFrame:SetPoint('TOPRIGHT')
+	activePane.scrollFrame:SetHeight(1)
+	if debug then
+		st:SetBackdrop(activePane.scrollFrame, 'thin')
+	end
 	self.activePane = activePane
 
 	modulePane.UpdateSize = function(self)
@@ -157,9 +164,36 @@ function Config:InitializeConfigGUI()
 
 	self:Test()
 
-	self:UpdateModulePane()
+	RowPool = CreateObjectPool(function(self)
+		local row = st:CreateFrame('frame', 'SaftUI_Config_Row'..self.numActiveObjects + 1, activePane)
+		if debug then
+			st:SetBackdrop(row, 'thin')
+			row.backdrop:SetBackdropColor(st.StringFormat:ToRGB('00adef'))
+		end
+		row:SetWidth(1)
+		return row
+	end, function(self, row) row:ClearAllPoints() end)
 
+	self:UpdateModulePane()
 	self:SetActiveModule(self.defaultModule)
+end
+
+function Config:OpenConfigGui()
+	self.window:Show()
+	st:EnableMovers()
+end
+
+function Config:CloseConfigGui()
+	self.window:Hide()
+	st:DisableMovers()
+end
+
+function Config:ToggleConfigGui()
+	if self.window:IsShown() then
+		self:CloseConfigGui()
+	else
+		self:OpenConfigGui()
+	end
 end
 
 function Config:UpdateModulePane()
@@ -194,24 +228,6 @@ function Config:UpdateModulePane()
 			for _=0, module.indent do indent = indent .. '  ' end
 			row.Text:SetText(indent .. module.name)
 		end
-	end
-end
-
-function Config:OpenConfigGui()
-	self.window:Show()
-	st:EnableMovers()
-end
-
-function Config:CloseConfigGui()
-	self.window:Hide()
-	st:DisableMovers()
-end
-
-function Config:ToggleConfigGui()
-	if self.window:IsShown() then
-		self:CloseConfigGui()
-	else
-		self:OpenConfigGui()
 	end
 end
 
@@ -292,65 +308,56 @@ function Config:GetDefaultModule()
 	return self.defaultModule
 end
 
-
-function Config:PositionActiveWidgets(section)
-	local width = self.activePane:GetWidth()
-	local unitsPerRow = floor((width - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_MIN_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
-	local unitsLeft = unitsPerRow
-	local prevRow
-	local prevWidget
-	for _,widget in pairs(section and section.widgets or self.activeWidgets) do
-		if widget.type == Config.WidgetTypes.SECTION then
-			Config:PositionActiveWidgets(widget)
-		end
-		if not (prevRow or prevWidget) then
-		--First widget
-			st:SnapTopLeft(widget, self.activePane, WIDGET_SPACING_HORIZONTAL)
-			prevRow = widget
-			prevWidget = widget
-		elseif unitsLeft < widget.config.width then
-		-- New row
-			st:SnapBelowLeft(widget, prevRow, WIDGET_SPACING_VERTICAL)
-			prevRow = widget
-			prevWidget = widget
-			unitsLeft = unitsPerRow
-		else
-		--	Keep going on same row
-			st:SnapTopRightOf(widget, prevWidget, WIDGET_SPACING_HORIZONTAL)
-			prevWidget = widget
-		end
-		unitsLeft = unitsLeft - widget.config.width
-	end
-end
-
 function Config:UpdateActiveWidgets(section)
-	if not section then section = self.activePane end
-
+	if not section then
+		section = self.activePane.scrollFrame
+	end
 	local sectionWidth = section:GetWidth()
-	local unitsPerRow = floor((sectionWidth - 2*WIDGET_SPACING_HORIZONTAL) / (WIDGET_MIN_UNIT_WIDTH + 2*WIDGET_SPACING_HORIZONTAL))
-	local unitWidth = floor((sectionWidth - 2*WIDGET_SPACING_HORIZONTAL) / (unitsPerRow) - WIDGET_SPACING_HORIZONTAL)
-	print(sectionWidth, unitsPerRow, unitWidth)
+	local unitsPerRow = floor((sectionWidth - 2 * WIDGET_SPACING) / (WIDGET_MIN_UNIT_WIDTH + 2 * WIDGET_SPACING))
+	local unitWidth = floor((sectionWidth - 2 * WIDGET_SPACING) / (unitsPerRow)) - 2 * WIDGET_SPACING
 	local unitsLeft = unitsPerRow
-	local prevRow, prevWidget
+	local prevWidget
+	local rowIndex = 0
+
 	for _, widgetWrapper in pairs(section.widgets) do
 		local widgetUnits = widgetWrapper.config.width == 0 and unitsPerRow or widgetWrapper.config.width
-		local widgetWidth = unitWidth * widgetUnits
-		widgetWrapper:SetWidth(widgetWidth + (widgetUnits - 1) * (WIDGET_SPACING_HORIZONTAL + 1))
+		local widgetWidth = unitWidth * widgetUnits + WIDGET_SPACING + 1
+		widgetWrapper:SetWidth(widgetWidth + (widgetUnits - 1) * ((WIDGET_SPACING + 1) *2))
 
-		if not (prevRow or prevWidget) then
+		local firstWidget = not (prevRow or prevWidget)
+		local newRow = unitsLeft < widgetUnits
+
+		if firstWidget or newRow then
+			rowIndex = rowIndex + 1
+			if not section.rows[rowIndex] then
+				section.rows[rowIndex] = RowPool:Acquire()
+				section.rows[rowIndex]:SetParent(section)
+			end
+			section.rows[rowIndex]:SetHeight(1)
+		end
+
+		local row = section.rows[rowIndex]
+
+		if firstWidget then
 		--First widget
-			st:SnapTopLeft(widgetWrapper, section, WIDGET_SPACING_HORIZONTAL)
-			prevRow = widgetWrapper
+			local yOffset = WIDGET_SPACING
+			if section.config and section.config.label then
+				yOffset = yOffset + LABEL_HEIGHT
+			end
+			row:SetPoint('TOPLEFT', section, 'TOPLEFT', WIDGET_SPACING, -yOffset)
+			widgetWrapper:ClearAllPoints()
+			widgetWrapper:SetPoint('TOPLEFT', row, 0, 0)
 			prevWidget = widgetWrapper
-		elseif unitsLeft < widgetUnits then
+		elseif newRow then
 		-- New row
-			st:SnapBelowLeft(widgetWrapper, prevRow, WIDGET_SPACING_VERTICAL)
-			prevRow = widgetWrapper
+			row:SetPoint('TOPLEFT', section.rows[rowIndex - 1], 'BOTTOMLEFT', 0, -WIDGET_SPACING)
+			widgetWrapper:ClearAllPoints()
+			widgetWrapper:SetPoint('TOPLEFT', row, 0, 0)
 			prevWidget = widgetWrapper
 			unitsLeft = unitsPerRow
 		else
 		--	Keep going on same row
-			st:SnapTopRightOf(widgetWrapper, prevWidget, WIDGET_SPACING_HORIZONTAL)
+			st:SnapTopRightOf(widgetWrapper, prevWidget, WIDGET_SPACING)
 			prevWidget = widgetWrapper
 		end
 		unitsLeft = unitsLeft - widgetUnits
@@ -358,21 +365,35 @@ function Config:UpdateActiveWidgets(section)
 		if widgetWrapper.config.type == Config.WidgetTypes.SECTION then
 			Config:UpdateActiveWidgets(widgetWrapper)
 		end
+
+		row:SetHeight(max(row:GetHeight(), widgetWrapper:GetHeight()))
 	end
+
+	local sectionHeight = 0
+	if section.config and section.config.label then
+		sectionHeight = sectionHeight + LABEL_HEIGHT
+	end
+	for _,row in pairs(section.rows) do
+		sectionHeight = sectionHeight + row:GetHeight() + WIDGET_SPACING
+	end
+	section:SetHeight(sectionHeight + WIDGET_SPACING)
 
 end
 
 function Config:PopulateWidgets(configTable, section)
 	if not (configTable and section) then
 		configTable = self.activeModule.configTable
-		section = self.activePane
+		section = self.activePane.scrollFrame
 
 		for _,pool in pairs(self.WidgetPools) do
 			pool:ReleaseAll()
 		end
+
+		RowPool:ReleaseAll()
 	end
 
 	section.widgets = {}
+	section.rows = {}
 	for _, widgetConfig in ipairs(configTable) do
 		local widgetWrapper = self.WidgetPools[widgetConfig.type]:Acquire(widgetWidth)
 		widgetWrapper.config = widgetConfig
@@ -392,6 +413,7 @@ function Config:SetActiveModule(moduleName)
 	if activeModule then
 		self.activeModule = activeModule
 		self:PopulateWidgets()
+		self:UpdateActiveWidgets()
 	else
 		st:Error(("Failed to set active module: module %s does not exist"):format(moduleName))
 	end
@@ -462,7 +484,11 @@ function Config:Test()
 			self:Section('Nested Section', {
 				self:CheckBox('CheckBox 11'),
 				self:CheckBox('CheckBox 12'),
-			})
+			}, 1),
+			self:Section('Nested Section', {
+				self:CheckBox('CheckBox 13'),
+				self:CheckBox('CheckBox 14'),
+			}, 1)
 		})
 	})
 

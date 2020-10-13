@@ -32,10 +32,23 @@ function st:SnapTop(frame, anchorFrame, spacing)
 	frame:SetPoint('TOP', anchorFrame, 'TOP', 0, -yOffset)
 end
 
-function st:SnapTopLeft(frame, anchorFrame, spacing)
-	local offset = calculateSpacing(frame, anchorFrame, spacing)
+
+function st:SnapTopLeft(frame, anchorFrame, xOffset, yOffset)
+	xOffset = calculateSpacing(frame, anchorFrame, xOffset)
+	if yOffset then
+		yOffset = calculateSpacing(frame, anchorFrame,yOffset)
+	end
 	frame:ClearAllPoints()
-	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPLEFT', offset, -offset)
+	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPLEFT', xOffset, -(yOffset or xOffset))
+end
+
+function st:SnapBottomLeft(frame, anchorFrame, xOffset, yOffset)
+	xOffset = calculateSpacing(frame, anchorFrame, xOffset)
+	if yOffset then
+		yOffset = calculateSpacing(frame, anchorFrame,yOffset)
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMLEFT', xOffset, -(yOffset or xOffset))
 end
 
 function st:SnapTopRight(frame, anchorFrame, spacing)
@@ -81,6 +94,12 @@ function st:SnapTopRightOf(frame, anchorFrame, spacing)
 	local xOffset = calculateSpacing(frame, anchorFrame, spacing)
 	frame:ClearAllPoints()
 	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPRIGHT', xOffset, 0)
+end
+
+function st:SnapBottomRightOf(frame, anchorFrame, spacing)
+	local xOffset = calculateSpacing(frame, anchorFrame, spacing)
+	frame:ClearAllPoints()
+	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMRIGHT', xOffset, 0)
 end
 
 local title = select(2, GetAddOnInfo(ADDON_NAME))
