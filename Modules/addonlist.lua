@@ -301,47 +301,51 @@ function AM:UpdateAddonDisplay()
 	table.sort(self.addon_cache, self.sort)
 
 	for i,row in ipairs(self.rows) do
-		index = i + self.offset
-		addon = self.addon_cache[index]
-		row.index = index
-		row.enable_button:SetChecked(addon.checked)
-		row.name:SetText(addon.title)
-		row.memory:SetText(addon.memory > 0 and st.StringFormat:FileSizeFormat(addon.memory*1000, 1) or '')
-
-		row:EnableMouse(true)
-		row:SetScript('OnEnter', function()
-			GameTooltip:SetOwner(self.window, 'ANCHOR_NONE')
-			GameTooltip:ClearAllPoints()
-			GameTooltip:SetPoint('TOPLEFT', self.window, 'TOPRIGHT', 10, 0)
-			GameTooltip:ClearLines()
-			addon = self.addon_cache[row.index]
-			GameTooltip:AddDoubleLine(addon.title, addon.version or '')
-			
-			if addon.author then
-				GameTooltip:AddLine('By '.. addon.author)
-			end
-			
-			GameTooltip:AddLine(addon.notes, 1, 1, 1, 1)
-			
-			if addon.dependencies then
-				GameTooltip:AddDoubleLine('Dependencies:', addon.dependencies)
-			end
-			
-			GameTooltip:Show()
-		end)
-		row:SetScript('OnLeave', function()
-			GameTooltip:Hide()
-		end)
-
-		if addon.enabled then
-			row.status:SetText('Enabled')
-			row.status:SetVertexColor(unpack(st.config.profile.colors.text.green))
-		elseif addon.loadable then
-			row.status:SetText('Loadable')
-			row.status:SetVertexColor(unpack(st.config.profile.colors.text.yellow))
+		if i > GetNumAddOns() then
+			row:Hide()
 		else
-			row.status:SetText('Disabled')
-			row.status:SetVertexColor(unpack(st.config.profile.colors.text.grey))
+			index = i + self.offset
+			addon = self.addon_cache[index]
+			row.index = index
+			row.enable_button:SetChecked(addon.checked)
+			row.name:SetText(addon.title)
+			row.memory:SetText(addon.memory > 0 and st.StringFormat:FileSizeFormat(addon.memory*1000, 1) or '')
+
+			row:EnableMouse(true)
+			row:SetScript('OnEnter', function()
+				GameTooltip:SetOwner(self.window, 'ANCHOR_NONE')
+				GameTooltip:ClearAllPoints()
+				GameTooltip:SetPoint('TOPLEFT', self.window, 'TOPRIGHT', 10, 0)
+				GameTooltip:ClearLines()
+				addon = self.addon_cache[row.index]
+				GameTooltip:AddDoubleLine(addon.title, addon.version or '')
+
+				if addon.author then
+					GameTooltip:AddLine('By '.. addon.author)
+				end
+
+				GameTooltip:AddLine(addon.notes, 1, 1, 1, 1)
+
+				if addon.dependencies then
+					GameTooltip:AddDoubleLine('Dependencies:', addon.dependencies)
+				end
+
+				GameTooltip:Show()
+			end)
+			row:SetScript('OnLeave', function()
+				GameTooltip:Hide()
+			end)
+
+			if addon.enabled then
+				row.status:SetText('Enabled')
+				row.status:SetVertexColor(unpack(st.config.profile.colors.text.green))
+			elseif addon.loadable then
+				row.status:SetText('Loadable')
+				row.status:SetVertexColor(unpack(st.config.profile.colors.text.yellow))
+			else
+				row.status:SetText('Disabled')
+				row.status:SetVertexColor(unpack(st.config.profile.colors.text.grey))
+			end
 		end
 	end
 end
@@ -353,7 +357,7 @@ function AM:UpdateConfig()
 	self.row_frame:SetHeight(self.config.num_rows * self.config.row_height)
 	self.row_frame.scroll:SetHeight(self.row_frame:GetHeight())
 	st:SetBackdrop(self.row_frame.scroll.ThumbTexture, st.config.profile.panels.template)
-	self.row_frame.scroll:SetMinMaxValues(0, GetNumAddOns() - self.config.num_rows)
+	self.row_frame.scroll:SetMinMaxValues(0, max(GetNumAddOns() - self.config.num_rows, 0))
 	self.row_headers:SetHeight(self.config.row_height)
 
 	local font = st:GetFont(self.config.font)

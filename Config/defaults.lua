@@ -8,6 +8,11 @@ st.defaults.misc = {
 	clamp_inset = st.CLAMP_INSET
 }
 
+st.defaults.grid = {
+	horizontalSpacing = 20,
+	verticalSpacing = 20
+}
+
 st.defaults.fonts = {
 	pixel_huge = {
 		name = 'Pixel Huge',

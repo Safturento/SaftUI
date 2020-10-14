@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
-	<Script file="AddonSkins.lua"/>
-	<Script file="weakauras.lua"/>
+<!--	<Script file="AddonSkins.lua"/>-->
+<!--	<Script file="weakauras.lua"/>-->
 	<Script file="Blizzard_ObjectiveTracker.lua"/>
 </Ui>

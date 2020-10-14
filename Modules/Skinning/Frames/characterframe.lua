@@ -196,7 +196,7 @@ local function SkinStatFrame()
 	local prev
 	for i=1, 12 do
 		local row = CreateFrame('frame', nil, CharacterStatsFrame)
-		st:SetTemplate(row, st.config.profile.panels.template)
+		st:SetBackdrop(row, st.config.profile.panels.template)
 		row.outer_shadow:Hide()
 
 		if prev then

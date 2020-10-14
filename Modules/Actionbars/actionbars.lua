@@ -248,7 +248,7 @@ function AB:UpdateActionButton(self)
 		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
 	else
 		if self.backdrop then
-			st:SetTemplate(self.backdrop, self.backdrop.template)
+			st:SetBackdrop(self, self.backdrop.template)
 		end
 	end
 end
@@ -353,7 +353,7 @@ function AB:OnInitialize()
 	self:InitializeBarBages()
 	self:UpdateConfig()
 
-	self:SecureHook('ActionButton_Update', 'UpdateActionButton')
-	self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
-	self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
+	--self:SecureHook('ActionButton_Update', 'UpdateActionButton')
+	--self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
+	--self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
 end

@@ -124,7 +124,6 @@ function TT:OnEnable()
 		WorldMapTooltip,
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
-		st:SetTemplate(tooltip)
 		st:SetBackdrop(tooltip, self.config.template)
 		if not self.hooked then
 			self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
@@ -132,13 +131,11 @@ function TT:OnEnable()
 		end
 	end
 
-	
-	local font = st:GetFont(self.config.font)
+
 	for i=1, 2 do
 		local name = 'DropDownList'..i
 		local dropdown = _G[name]
 		_G[name..'MenuBackdrop']:SetBackdrop(nil)
-
-		st:SetTemplate(dropdown, self.config.template)
+		st:SetBackdrop(dropdown, self.config.template)
 	end
 end

@@ -62,7 +62,7 @@ function st:SetTemplate(frame, template)
 	end
 
 	if not frame.outer_shadow then
-		frame.outer_shadow = CreateFrame('frame', nil, frame)
+		frame.outer_shadow = st:CreateFrame('frame', nil, frame)
 		frame.outer_shadow:SetPoint('TOPLEFT', -4, 4)
 		frame.outer_shadow:SetPoint('BOTTOMRIGHT', 4, -4)
 		frame.outer_shadow:SetBackdrop({edgeFile = st.textures.glow, edgeSize = 4})
@@ -119,11 +119,13 @@ function st:SetBackdrop(frame, template)
 	local parent = is_texture and frame:GetParent() or frame
 
 	if not frame.backdrop then
-		frame.backdrop = CreateFrame('frame', nil, parent)
+		frame.backdrop = st:CreateFrame('frame', nil, parent)
 		frame.backdrop:SetFrameLevel(max(0, parent:GetFrameLevel()-1))
 	end
 
 	local offset = config.thick and 2 or 1
+	-- explicitly define as true or false to ensure thick is only nil when st:SetBackdrop is never called
+	frame.thick = config.thick and true or false
 	frame.backdrop:ClearAllPoints()
 	frame.backdrop:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
 	frame.backdrop:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
@@ -141,7 +143,8 @@ function st:CreateHeader(frame, title, close_button)
 	frame:SetClampedToScreen(true)
 	local inset = st.config.profile.misc.clamp_inset
 	frame:SetClampRectInsets(-inset, inset, inset, -inset)
-	local header = CreateFrame('Button', '', frame)
+	local frameName = frame:GetName()
+	local header = st:CreateFrame('Button', frameName and frameName ..'_Header' or '', frame)
 	header:SetFrameLevel(frame:GetFrameLevel()+2)
 	st:SetTemplate(header, 'highlight')
 
@@ -176,7 +179,8 @@ function st:CreateHeader(frame, title, close_button)
 	if close_button then frame.close_button = close_button end
 	if frame.close_button then
 		st:StripTextures(frame.close_button)
-		st:SetTemplate(frame.close_button, 'close')
+		st:SetBackdrop(frame.close_button, 'close')
+		frame.close_button.backdrop:SetAllPoints()
 		frame.close_button:ClearAllPoints()
 		frame.close_button:SetFrameLevel(header:GetFrameLevel()+4)
 		frame.close_button:SetPoint('TOPRIGHT', header, -10, 0)
@@ -203,7 +207,7 @@ function st:UpdateHeader(header)
 end
 
 function st:CreateFooter(frame)
-	local footer = CreateFrame('Frame', nil, frame)
+	local footer = st:CreateFrame('Frame', nil, frame)
 	footer:SetPoint('BOTTOMLEFT')
 	footer:SetPoint('BOTTOMRIGHT')
 	footer:SetHeight(st.config.profile.headers.height)
@@ -212,7 +216,7 @@ function st:CreateFooter(frame)
 end
 
 function st:CreateCloseButton(frame)
-	local close = CreateFrame('Button', nil, frame)
+	local close = st:CreateFrame('Button', nil, frame)
 	self:SetTemplate(close, 'close')
 	close:SetPoint('TOPRIGHT', 0, 0)
 	close:SetSize(unpack(self.CLOSE_BUTTON_SIZE))
@@ -287,11 +291,18 @@ function st:CreateArrowCluster(parent)
 
 end
 
-function st:CreatePanel(name, size)
-	local panel = CreateFrame('Frame', 'SaftUI_Panel_'..name, UIParent)
+function st:CreateFrame(frameType, frameName, parentFrame, templates, id)
+	local templateString = "BackdropTemplate"
+	if templates then templateString = templateString .. "," .. templates end
+	return CreateFrame(frameType, frameName, parentFrame, templateString, id)
+end
+
+function st:CreatePanel(name, width, height)
+	local panel = st:CreateFrame('Frame', 'SaftUI_Panel_'..name:gsub(' ', '_'), UIParent)
 	self:SetBackdrop(panel, self.config.profile.panels.template)
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
-	if size then panel:SetSize(unpack(size)) end
+	if width then st:SetWidth(panel, width) end
+	if height then st:SetHeight(panel, height) end
 
 	function panel:CreateArrowButton(...)
 		return st:CreateArrowButton(self, ...)

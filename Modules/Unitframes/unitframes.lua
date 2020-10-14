@@ -1,6 +1,5 @@
 local ADDON_NAME, st = ...
 local UF = st:NewModule('Unitframes')
-local dialog = LibStub('AceConfigDialog-3.0')
 
 local TEST_PARTY_SOLO = false
 
@@ -325,121 +324,121 @@ end
 local function get_num_profiles()
 	return select(2, get_profiles())
 end
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
-	text = "Enter a name for your new profile",
-	button1 = "Create",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		local profile_name = self.editBox:GetText()
-		if not get_profile_exists(profile_name) then
-			if self.is_copy then
-				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(
-					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
-					true
-				)
-			end
-			st.config.profile.unitframes.config_profile = profile_name
-			UF:UpdateConfig()
-			st.CF:Refresh()
-		end
-	end,
-	OnCancel = function (_,reason)
-	end,
-	whileDead = true,
-	hideOnEscape = true,
-	hasEditBox = true,
-}
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
-	text = "Are you sure you wish to delete this profile?",
-	button1 = "Delete",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		if get_num_profiles() > 1 then
-			st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile] = nil
-		end
-		st.config.profile.unitframes.config_profile = next(st.config.profile.unitframes.profiles)
-		UF:UpdateConfig()
-		st.CF:Refresh()
-	end,
-	OnCancel = function (_,reason)
-	end,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_RENAME"] = {
-	text = "Enter a new profile name",
-	button1 = "Rename",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		
-	end,
-	OnCancel = function() end,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_EXPORT"] = {
-	text = "",
-	button1 = "Close",
-	OnShow = function(self)
-		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		self.editBox:SetText(st.CF:Export(data))
-		
-	end,
-	OnAccept = function(self)
-		
-	end,
-	hasEditBox = true,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
-	text = "",
-	button1 = "Close",
-	OnShow = function(self)
-		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		self.wideEditBox:Show()
-	end,
-	OnAccept = function(self)
-		
-	end,
-	hasEditBox = true,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
-StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
-	text = "",
-	button1 = "Copy",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		local profile = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		if not self.options.from then return end
-
-		for element,copy in pairs(self.options.elements) do
-			if copy then
-				if type(profile[self.options.from][element]) == 'table' then
-					profile[self.options.to][element] = st.tablecopy(profile[self.options.from][element], true)
-				else
-					profile[self.options.to][element] = profile[self.options.from][element]
-				end
-			end
-		end
-
-		UF:UpdateConfig()
-		st.CF:Refresh()
-		
-		dialog:Close(ADDON_NAME..'_Copy_Unitframe')
-	end,
-	OnCancel = function() end,
-	whileDead = true,
-	hideOnEscape = true,
-}
+--
+--StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
+--	text = "Enter a name for your new profile",
+--	button1 = "Create",
+--	button2 = "Cancel",
+--	OnAccept = function(self)
+--		local profile_name = self.editBox:GetText()
+--		if not get_profile_exists(profile_name) then
+--			if self.is_copy then
+--				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(
+--					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
+--					true
+--				)
+--			end
+--			st.config.profile.unitframes.config_profile = profile_name
+--			UF:UpdateConfig()
+--			st.CF:Refresh()
+--		end
+--	end,
+--	OnCancel = function (_,reason)
+--	end,
+--	whileDead = true,
+--	hideOnEscape = true,
+--	hasEditBox = true,
+--}
+--
+--StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
+--	text = "Are you sure you wish to delete this profile?",
+--	button1 = "Delete",
+--	button2 = "Cancel",
+--	OnAccept = function(self)
+--		if get_num_profiles() > 1 then
+--			st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile] = nil
+--		end
+--		st.config.profile.unitframes.config_profile = next(st.config.profile.unitframes.profiles)
+--		UF:UpdateConfig()
+--		st.CF:Refresh()
+--	end,
+--	OnCancel = function (_,reason)
+--	end,
+--	whileDead = true,
+--	hideOnEscape = true,
+--}
+--
+--
+--StaticPopupDialogs["SAFTUI_UF_PROFILE_RENAME"] = {
+--	text = "Enter a new profile name",
+--	button1 = "Rename",
+--	button2 = "Cancel",
+--	OnAccept = function(self)
+--
+--	end,
+--	OnCancel = function() end,
+--	whileDead = true,
+--	hideOnEscape = true,
+--}
+--
+--StaticPopupDialogs["SAFTUI_UF_PROFILE_EXPORT"] = {
+--	text = "",
+--	button1 = "Close",
+--	OnShow = function(self)
+--		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+--		self.editBox:SetText(st.CF:Export(data))
+--
+--	end,
+--	OnAccept = function(self)
+--
+--	end,
+--	hasEditBox = true,
+--	whileDead = true,
+--	hideOnEscape = true,
+--}
+--
+--StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
+--	text = "",
+--	button1 = "Close",
+--	OnShow = function(self)
+--		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+--		self.wideEditBox:Show()
+--	end,
+--	OnAccept = function(self)
+--
+--	end,
+--	hasEditBox = true,
+--	whileDead = true,
+--	hideOnEscape = true,
+--}
+--
+--StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
+--	text = "",
+--	button1 = "Copy",
+--	button2 = "Cancel",
+--	OnAccept = function(self)
+--		local profile = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+--		if not self.options.from then return end
+--
+--		for element,copy in pairs(self.options.elements) do
+--			if copy then
+--				if type(profile[self.options.from][element]) == 'table' then
+--					profile[self.options.to][element] = st.tablecopy(profile[self.options.from][element], true)
+--				else
+--					profile[self.options.to][element] = profile[self.options.from][element]
+--				end
+--			end
+--		end
+--
+--		UF:UpdateConfig()
+--		st.CF:Refresh()
+--
+--		dialog:Close(ADDON_NAME..'_Copy_Unitframe')
+--	end,
+--	OnCancel = function() end,
+--	whileDead = true,
+--	hideOnEscape = true,
+--}
 
 function UF.GenerateRelativeSizeConfigGroup(order)
 	return {
