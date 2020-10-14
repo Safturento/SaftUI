@@ -1,6 +1,6 @@
-## Interface: 80205
+## Interface: 90001
 ## Author: Safturento
-## Version: 0.1
+## Version: 1.0
 ## Title: |cff00adefSaftUI|r
 ## SavedVariables: SaftUI_DB
 ## OptionalDeps: RealMobHealth, ItemRack, WoWUnit
