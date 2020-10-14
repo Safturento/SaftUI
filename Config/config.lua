@@ -337,7 +337,6 @@ function Config:UpdateActiveWidgets(section)
 		end
 
 		local row = section.rows[rowIndex]
-
 		if firstWidget then
 		--First widget
 			local yOffset = WIDGET_SPACING
@@ -367,6 +366,13 @@ function Config:UpdateActiveWidgets(section)
 		end
 
 		row:SetHeight(max(row:GetHeight(), widgetWrapper:GetHeight()))
+	end
+
+	while section.rows[rowIndex + 1] do
+		rowIndex = rowIndex + 1
+		section.rows[rowIndex]:Hide()
+		RowPool:Release(section.rows[rowIndex])
+		section.rows[rowIndex] = nil
 	end
 
 	local sectionHeight = 0
