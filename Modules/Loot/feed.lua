@@ -30,11 +30,17 @@
 -- LOOT_ITEM_WHILE_PLAYER_INELIGIBLE = "%s receives loot: |TInterface\\Common\\Icon-NoLoot:13:13:0:0|t%s",
 
 local ADDON_NAME, st = ...
-local LT = st:GetModule('Loot')
+local LT = st.Loot
 
-local MAX_HISTORY = 100
+local MAX_HISTORY = 500
 local feed_stack = {}
 
+local filterMenuList = {
+	{
+		text="gold",
+		checked=true,
+	}
+}
 ------------------------------------
 -- Pattern matching
 ------------------------------------
@@ -288,9 +294,13 @@ function LT:LootFeedHandler(event, text)
 	local match = get_match(text)
 	if not match then return end
 
-	if match['link'] then self:LootFeedAddItem(match) end
-	if match['gold'] then self:LootFeedAddGold(match) end
-	if match['honor'] then self:LootFeedAddHonor(match) end
+	if match['link'] then
+		self:LootFeedAddItem(match)
+	elseif match['gold'] then
+		self:LootFeedAddGold(match)
+	elseif match['honor'] then
+		self:LootFeedAddHonor(match)
+	end
 end
 
 local function ShowTooltip(self)

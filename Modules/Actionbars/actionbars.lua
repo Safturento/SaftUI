@@ -81,6 +81,8 @@ function AB:CreateBars()
 		for j = 1, NUM_ACTIONBAR_BUTTONS do
 			name = prefix..'Button'..j
 			slot = _G[name]
+			self:SecureHook(slot, 'UpdateHotkeys', 'UpdateHotkey')
+			self:SecureHook(slot, 'Update', 'UpdateActionButton')
 
 			if i == 1 then
 				slot:SetParent(bar)

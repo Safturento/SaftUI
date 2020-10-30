@@ -121,6 +121,11 @@ function MP:InitializeMinimap()
 	MiniMapMailIcon:SetTexture(st.textures.mail)
 	MiniMapMailBorder:SetTexture(nil)
 
+	-- Skin instance difficulty
+	MiniMapInstanceDifficulty:SetParent(Minimap)
+	MiniMapInstanceDifficulty:ClearAllPoints()
+	MiniMapInstanceDifficulty:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', 0, 0)
+
 	self:SkinTrackingIcon()
 	self:SkinQueueIcon()
 	

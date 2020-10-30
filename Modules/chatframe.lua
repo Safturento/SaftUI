@@ -163,6 +163,10 @@ function CHT:OnEnable()
 	st:Kill(ChatFrameChannelButton)
 	st:Kill(QuickJoinToastButton)
 
+	for _,group in pairs({"COMBAT_XP_GAIN", "COMBAT_FACTION_CHANGE", "COMBAT_HONOR_GAIN", "LOOT","MONEY", "SKILL", "CURRENCY"}) do
+		ChatFrame_RemoveMessageGroup(DEFAULT_CHAT_FRAME, group)
+	end
+
 	ChatFrame1:ClearAllPoints()
 	ChatFrame1:SetPoint(unpack(self.config.position))
 

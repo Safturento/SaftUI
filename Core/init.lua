@@ -9,6 +9,11 @@ SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 st.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnInitialize()
+	SetCVar('autoLootDefault', 1)
+	SetCVar('chatStyle', 'classic')
+	SetCVar('whisperMode', 'inline')
+
+
 	-- SetCVar("useUiScale", 1)
 	-- SetCVar("uiScale", st.ui_scale)
 
@@ -68,9 +73,9 @@ function SaftUI:PLAYER_REGEN_ENABLED()
 end
 
 function SaftUI:PLAYER_REGEN_DISABLED()
-	if ACD.OpenFrames[ADDON_NAME] then
+	if st.CF:IsOpen() then
 		st:Print('Config closed for combat, and will reopen after.')
+		st.CF:CloseConfigGui()
 		config_queued = true
-		ACD:Close(ADDON_NAME)
 	end
 end
