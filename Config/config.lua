@@ -30,7 +30,6 @@ SLASH_SAFTUI3 = '/stui'
 SlashCmdList.SAFTUI = function(msg)
 	if not st.config_initialized then
 		st.CF:InitializeConfigGUI()
-		st.config_initialized = true
 	end
 
 	if InCombatLockdown() then
@@ -87,13 +86,39 @@ Config.WidgetPools = {
 			st:SnapTopLeft(section.Label, section, 10)
 			section.Label:SetFontObject(st:GetFont('normal'))
 			section.SetLabel = function(self, text) self.Label:SetText(text) end
-			--st:SetBackdrop(section, 'thick')
+			st:SetBackdrop(section, 'thick')
 			wrapper = wrapWidget(section)
 			section:SetAllPoints(wrapper)
 			return wrapper
 		end
 	)
 }
+
+function Config:OpenConfigGui()
+	self.window:Show()
+	st:EnableMovers()
+end
+
+function Config:CloseConfigGui()
+	self.window:Hide()
+	st:DisableMovers()
+end
+
+function Config:ToggleConfigGui()
+	if self:IsOpen() then
+		self:CloseConfigGui()
+	else
+		self:OpenConfigGui()
+	end
+end
+
+function Config:IsOpen()
+	return Config:IsInitialized() and self.window:IsShown()
+end
+
+function Config:IsInitialized()
+	return st.config_initialized
+end
 
 function Config:Export(data)
 	return LibBase64.Encode(
@@ -106,6 +131,7 @@ function Config:Import(string)
 				 LibCompress:Decompress(
 						 LibBase64:Decode(data)))
 end
+
 
 function Config:InitializeConfigGUI()
 	local defaultWidth = MODULE_PANE_DEFAULT_WIDTH + ACTIVE_PANE_DEFAULT_WIDTH
@@ -134,8 +160,8 @@ function Config:InitializeConfigGUI()
 	activePane.UpdateSize = function(self)
 		self:SetWidth((configWindow:GetWidth() - modulePane:GetWidth()))
 		self:SetHeight(configWindow:GetHeight() - configWindow.header:GetHeight())
+		Config:UpdateActiveWidgets()
 	end
-	activePane:UpdateSize()
 	activePane.scrollFrame = st:CreateFrame('frame', activePane:GetName().. "_ScrollFrame", activePane)
 	activePane.scrollFrame:SetPoint('TOPLEFT')
 	activePane.scrollFrame:SetPoint('TOPRIGHT')
@@ -155,10 +181,10 @@ function Config:InitializeConfigGUI()
 	modulePane:SetScript('OnSizeChanged', function()
 		activePane:UpdateSize()
 		modulePane:UpdateSize()
-		Config:UpdateActiveWidgets()
 	end)
 
 	configWindow:HookScript('OnSizeChanged', function()
+		activePane:UpdateSize()
 		modulePane:UpdateSize()
 	end)
 
@@ -170,30 +196,17 @@ function Config:InitializeConfigGUI()
 			st:SetBackdrop(row, 'thin')
 			row.backdrop:SetBackdropColor(st.StringFormat:ToRGB('00adef'))
 		end
-		row:SetWidth(1)
+		row:SetWidth(20)
+		row:SetFrameLevel(99)
 		return row
 	end, function(self, row) row:ClearAllPoints() end)
 
+
 	self:UpdateModulePane()
 	self:SetActiveModule(self.defaultModule)
-end
+	activePane:UpdateSize()
 
-function Config:OpenConfigGui()
-	self.window:Show()
-	st:EnableMovers()
-end
-
-function Config:CloseConfigGui()
-	self.window:Hide()
-	st:DisableMovers()
-end
-
-function Config:ToggleConfigGui()
-	if self.window:IsShown() then
-		self:CloseConfigGui()
-	else
-		self:OpenConfigGui()
-	end
+	st.config_initialized = true
 end
 
 function Config:UpdateModulePane()
@@ -313,16 +326,16 @@ function Config:UpdateActiveWidgets(section)
 		section = self.activePane.scrollFrame
 	end
 	local sectionWidth = section:GetWidth()
-	local unitsPerRow = floor((sectionWidth - 2 * WIDGET_SPACING) / (WIDGET_MIN_UNIT_WIDTH + 2 * WIDGET_SPACING))
-	local unitWidth = floor((sectionWidth - 2 * WIDGET_SPACING) / (unitsPerRow)) - 2 * WIDGET_SPACING
+	local unitsPerRow = max(1, floor((sectionWidth - WIDGET_SPACING) / (WIDGET_MIN_UNIT_WIDTH + WIDGET_SPACING)))
+	local unitWidth = floor((sectionWidth - WIDGET_SPACING) / unitsPerRow) - WIDGET_SPACING
 	local unitsLeft = unitsPerRow
 	local prevWidget
 	local rowIndex = 0
 
 	for _, widgetWrapper in pairs(section.widgets) do
 		local widgetUnits = widgetWrapper.config.width == 0 and unitsPerRow or widgetWrapper.config.width
-		local widgetWidth = unitWidth * widgetUnits + WIDGET_SPACING + 1
-		widgetWrapper:SetWidth(widgetWidth + (widgetUnits - 1) * ((WIDGET_SPACING + 1) *2))
+		local widgetWidth = unitWidth * widgetUnits + (widgetUnits - 1) * (WIDGET_SPACING + 1)
+		widgetWrapper:SetWidth(widgetWidth)
 
 		local firstWidget = not (prevRow or prevWidget)
 		local newRow = unitsLeft < widgetUnits
@@ -331,12 +344,12 @@ function Config:UpdateActiveWidgets(section)
 			rowIndex = rowIndex + 1
 			if not section.rows[rowIndex] then
 				section.rows[rowIndex] = RowPool:Acquire()
-				section.rows[rowIndex]:SetParent(section)
 			end
 			section.rows[rowIndex]:SetHeight(1)
 		end
 
 		local row = section.rows[rowIndex]
+		row:SetParent(section)
 		if firstWidget then
 		--First widget
 			local yOffset = WIDGET_SPACING
@@ -470,33 +483,52 @@ function Config:Section(label, configTable, width)
 	}
 end
 
-function Config:Test()
-	self:RegisterModule('general', {
-		self:CheckBox('CheckBox 1'),
-		self:CheckBox('CheckBox 1'),
-		self:CheckBox('CheckBox 2'),
-		self:CheckBox('CheckBox 3'),
-		self:CheckBox('CheckBox 4'),
-		self:CheckBox('CheckBox 5'),
-		self:CheckBox('CheckBox 6'),
-		self:EditBox('EditBox 1', nil, 2),
-		self:Section('Misc', {
-			self:CheckBox('CheckBox 7'),
-			self:CheckBox('CheckBox 8'),
-			self:EditBox('EditBox 2', nil, 1),
-			self:EditBox('EditBox 3', nil, 2),
-			self:CheckBox('CheckBox 9'),
-			self:CheckBox('CheckBox 10'),
-			self:Section('Nested Section', {
-				self:CheckBox('CheckBox 11'),
-				self:CheckBox('CheckBox 12'),
-			}, 1),
-			self:Section('Nested Section', {
-				self:CheckBox('CheckBox 13'),
-				self:CheckBox('CheckBox 14'),
-			}, 1)
-		})
+local module1 = {
+	Config:CheckBox('CheckBox 1'),
+	Config:CheckBox('CheckBox 2'),
+	Config:CheckBox('CheckBox 3'),
+	Config:CheckBox('CheckBox 4'),
+	Config:CheckBox('CheckBox 5'),
+	Config:CheckBox('CheckBox 6'),
+	Config:EditBox('EditBox 1', nil, 2),
+	Config:Section('Misc', {
+		Config:CheckBox('CheckBox 7'),
+		Config:CheckBox('CheckBox 8'),
+		Config:EditBox('EditBox 2', nil, 1),
+		Config:EditBox('EditBox 3', nil, 2),
+		Config:CheckBox('CheckBox 9'),
+		Config:CheckBox('CheckBox 10'),
+		Config:Section('Nested Section', {
+			Config:CheckBox('CheckBox 11'),
+			Config:CheckBox('CheckBox 12'),
+		}, 1),
+		Config:Section('Nested Section', {
+			Config:CheckBox('CheckBox 13'),
+			Config:CheckBox('CheckBox 14'),
+		}, 1)
 	})
+}
+
+local splitModule = {
+	Config:Section('Left Section', {
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+		}, 2),
+		Config:Section('Right Section', {
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:CheckBox('CheckBox'),
+			Config:EditBox('EditBox', nil, 2),
+		}, 2)
+}
+
+function Config:Test()
+	self:RegisterModule('general', module1)
 
 	self:RegisterModule('unitframes', {})
 	self:RegisterModule('player', {}, 'unitframes')
