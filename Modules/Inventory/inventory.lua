@@ -232,7 +232,10 @@ function INV:ShowBags()
 end
 
 function INV:HideBags() 
-	INV.containers.bag:Hide() 
+	INV.containers.bag:Hide()
+	for _,slot in pairs(INV.containers.bag.slots) do
+		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
+	end
 	if INV.containers.bank and INV.containers.bank:IsShown() then
 		INV.containers.bank:Hide()
 		BankFrame:Hide()

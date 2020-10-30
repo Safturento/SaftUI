@@ -37,6 +37,13 @@ function INV:AssignSlot(container, slot, slotInfo)
 		end
 	end
 
+	if C_NewItems.IsNewItem(slotInfo.bagID, slotInfo.slotID) then
+		slot.backdrop.outer_shadow:SetBackdropBorderColor(1, 1, 1, 1)
+		slot.backdrop.outer_shadow:Show()
+	else
+		slot.backdrop.outer_shadow:Hide()
+	end
+
 	self:SetSlotCooldown(slot)
 
 	SetItemButtonTexture(slot, slot.info.texture)
