@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 st.defaults.colors = {
 	text = {
@@ -51,7 +51,8 @@ st.defaults.colors = {
 		POWER_TYPE_STEAM  = {0.55, 0.57, 0.61},
 		POWER_TYPE_PYRITE = {0.60, 0.09, 0.17},
 		ALTPOWER          = {0.00, 1.00, 1.00},
-		COMBO_POINTS		= {1.00, 0.95, 0.32},
+		ARCANE_CHARGES	  = {0.00, 0.67, 1.94},
+		COMBO_POINTS	  = {1.00, 0.95, 0.32},
 	},
 	class = {
 		DRUID       = { 1.00, 0.49, 0.03 },

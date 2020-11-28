@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 st.Movers = {}
 
@@ -140,7 +140,7 @@ function st:RegisterMover(frame, callback, name)
 	mover:SetScript('OnMouseDown', function(self)
 		setActiveMover(self)
 		st.MoversWindow:Show()
-		frame:StartMoving()
+		--frame:StartMoving()
 	end)
 	mover:SetScript('OnMouseUp', function(self)
 		frame:StopMovingOrSizing()

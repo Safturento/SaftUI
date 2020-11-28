@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 st.defaults.unitframes = {
 	config_unit = 'player',
@@ -317,13 +317,13 @@ st.defaults.unitframes = {
 					enable = true,
 					height = 20,
 					relative_width = false,
-					width = 173,
+					width = 248,
 					relative_height = false,
 					position = {
 						rel_point = "CENTER",
-						point = "TOPLEFT",
-						x_off = "-73",
-						y_off = "-177",
+						point = "TOP",
+						x_off = "13",
+						y_off = "-178",
 						anchor_frame = "UIParent",
 						frame_type = true,
 					},
@@ -348,10 +348,10 @@ st.defaults.unitframes = {
 				auras = {
 					debuffs = {
 						enable = true,
-						position = {point = 'RIGHT', rel_point = 'LEFT', x_off = -7, y_off = 0},
+						position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
-						size = 30,
+						size = 28,
 						filter = {
 							friend = {
 								grow_right = false,
@@ -389,19 +389,21 @@ st.defaults.unitframes = {
 				},
 				castbar = {
 					enable = true,
-					height = 20,
+					height = 30,
 					relative_width = false,
-					width = 173,
+					width = 200,
 					relative_height = false,
 					position = {
-						rel_point = "CENTER",
-						point = "TOPRIGHT",
-						x_off = "73",
-						y_off = "-207",
+						rel_point = "TOP",
+						point = "TOP",
+						x_off = "0",
+						y_off = "-500",
 						anchor_frame = "UIParent",
 						frame_type = true,
 					},
 					icon = {
+						height = 30,
+						width = 30,
 						position = {
 							rel_point = "TOPRIGHT",
 							point = "TOPLEFT",
@@ -664,9 +666,10 @@ st.defaults.unitframes = {
 					},
 					debuffs = {
 						enable = true,
+						position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
-						size = 30,
+						size = 28,
 						filter = {
 							friend = {
 								whitelist = {
@@ -717,10 +720,14 @@ st.defaults.unitframes = {
 					},
 				},
 				power = {
-					enable = false,
+					enable = true,
+					height = 1,
+					position = {point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 7},
+					text = {enable = false}
 				},
 				name = {
-					enable = false,
+					enable = true,
+					position = {point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0},
 				},
 				auras = {
 					buffs = {
@@ -765,6 +772,10 @@ st.defaults.unitframes = {
 					colorClass = true,
 				},
 				power = {
+					enable = false,
+					height = 1,
+					position = { point = "BOTTOMLEFT", rel_point = 'BOTTOMLEFT', 0, 0 },
+					text = { enable = false },
 					-- template = 'thin',
 				},
 				name = {
@@ -773,6 +784,7 @@ st.defaults.unitframes = {
 					max_length = 8,
 				},
 				auras = {
+					buffs ={ enable = false},
 					debuffs = {
 						template = 'thin',
 						per_row = 2,

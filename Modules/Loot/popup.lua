@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local LT = st:GetModule('Loot')
 
 function LT:LootFrame_Show()
@@ -46,7 +46,7 @@ function LT:SkinLootButton(button)
 	button.icon:ClearAllPoints()
 	button.icon:SetPoint('LEFT')
 	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
-	st.SkinActionButton(button, self.config.popup)
+	st:SkinActionButton(button, self.config.popup)
 
 	st:Kill(button.IconBorder)
 	st:Kill(button.IconOverlay)

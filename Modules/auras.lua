@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 local AU = st:NewModule('Auras', 'AceHook-3.0', 'AceEvent-3.0')
 
@@ -31,7 +31,7 @@ function AU:SkinAuraButton(button, button_base)
 		button.bar:Hide()
 	end
 
-	st.SkinActionButton(button, self.config)
+	st:SkinActionButton(button, self.config)
 
 	button.count:SetDrawLayer('OVERLAY', 99)
 
@@ -137,6 +137,20 @@ function AU:BuffFrame_UpdateAllBuffAnchors()
 		buff:ClearAllPoints()
 		if not prev then
 			buff:SetPoint(unpack(self.config.buffs.position))
+		else
+			buff:SetPoint(PositionNextBuff(prev, self.config.spacing, self.config.buffs.growth_direction))
+		end
+
+		prev = buff
+	end
+
+	prev = nil
+	for i = 1, DEBUFF_ACTUAL_DISPLAY do
+		local buff = _G["DebuffButton"..i]
+
+		buff:ClearAllPoints()
+		if not prev then
+			buff:SetPoint(unpack(self.config.debuffs.position))
 		else
 			buff:SetPoint(PositionNextBuff(prev, self.config.spacing, self.config.buffs.growth_direction))
 		end

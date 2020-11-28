@@ -1,12 +1,12 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local AURAS = {'Buffs', 'Debuffs'}
 
 local friendly_dispels = {
 	SHAMAN = {
-		Disease = true,
-		Poison = true,
+		Curse = true,
+		Magic = true
 	},
 	DRUID = {
 		Poison = true,
@@ -112,7 +112,7 @@ local function UpdateConfig(self, aura_type)
 	auras:ClearAllPoints()
 	local point, _, relativePoint, xoffset, yoffset = st:UnpackPoint(auras.config.position)
 	local frame = st.CF.get_frame(self, auras.config.position)
-	auras:SetPoint(point, frame, relativePoint, xoffset, yoffset)	
+	auras:SetPoint(point, frame, relativePoint, xoffset, yoffset)
 	auras:SetFrameLevel(auras.config.framelevel)
 
 	auras.size = auras.config.size

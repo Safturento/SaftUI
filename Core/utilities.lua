@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 st.HideGameTooltip = function() GameTooltip:Hide() end
 st.dummy = function() end

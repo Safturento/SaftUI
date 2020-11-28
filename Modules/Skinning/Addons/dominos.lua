@@ -1,9 +1,9 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 
 local function SkinButton(self)
-	st.SkinActionButton(self, st.config.profile.skinning.addons.dominos)
+	st:SkinActionButton(self, st.config.profile.skinning.addons.dominos)
 end
 
 local function UpdateAllButtons()

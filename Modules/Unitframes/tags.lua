@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP PLAYER_TARGET_CHANGED'

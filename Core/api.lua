@@ -1,4 +1,6 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
+
+local st = SaftUI
 
 function st:GetConfig(configUnit)
 	return st.config.profile[configUnit]
@@ -10,7 +12,7 @@ end
 
 function st:Scale(num) return st.mult * floor(num/st.mult + 0.5) end
 
-function st:SetHeight(frame, height) 
+function st:SetHeight(frame, height)
 	frame:SetHeight(st:Scale(height))
 end
 
@@ -102,7 +104,7 @@ function st:SnapBottomRightOf(frame, anchorFrame, spacing)
 	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMRIGHT', xOffset, 0)
 end
 
-local title = select(2, GetAddOnInfo(ADDON_NAME))
+local title = select(2, GetAddOnInfo(st.name))
 
 function st:Print(...)
 	print(('[%s]'):format(title), ...)

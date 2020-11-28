@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local AceSerializer = LibStub('AceSerializer-3.0')
 local LibCompress = LibStub('LibCompress')
 local LibBase64 = LibStub('LibBase64-1.0')
@@ -7,7 +7,7 @@ local Config = st:NewModule('Config')
 st.CF = Config
 
 local RowPool
-local debug = true
+local debug = false
 
 local MODULE_PANE_MIN_WIDTH = 150
 local MODULE_PANE_DEFAULT_WIDTH = MODULE_PANE_MIN_WIDTH
@@ -86,7 +86,7 @@ Config.WidgetPools = {
 			st:SnapTopLeft(section.Label, section, 10)
 			section.Label:SetFontObject(st:GetFont('normal'))
 			section.SetLabel = function(self, text) self.Label:SetText(text) end
-			st:SetBackdrop(section, 'thick')
+			if not debug then st:SetBackdrop(section, 'thick') end
 			wrapper = wrapWidget(section)
 			section:SetAllPoints(wrapper)
 			return wrapper
@@ -196,7 +196,7 @@ function Config:InitializeConfigGUI()
 			st:SetBackdrop(row, 'thin')
 			row.backdrop:SetBackdropColor(st.StringFormat:ToRGB('00adef'))
 		end
-		row:SetWidth(20)
+		row:SetWidth(1)
 		row:SetFrameLevel(99)
 		return row
 	end, function(self, row) row:ClearAllPoints() end)
@@ -483,7 +483,7 @@ function Config:Section(label, configTable, width)
 	}
 end
 
-local module1 = {
+local messyModule = {
 	Config:CheckBox('CheckBox 1'),
 	Config:CheckBox('CheckBox 2'),
 	Config:CheckBox('CheckBox 3'),
@@ -528,7 +528,7 @@ local splitModule = {
 }
 
 function Config:Test()
-	self:RegisterModule('general', module1)
+	self:RegisterModule('general', splitModule)
 
 	self:RegisterModule('unitframes', {})
 	self:RegisterModule('player', {}, 'unitframes')

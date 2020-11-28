@@ -1,7 +1,30 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local INV = st:GetModule('Inventory')
+
 INV.CATEGORY_TITLE_HEIGHT = 17
 INV.CATEGORY_SLOT_POOL = 10
+
+INV.categoryNames = {
+	['GRAYS'] = 'Grays',
+	['CONSUMABLES'] = 'Consumables',
+	['LEGACY_ARMOR_WEAPONS'] = 'Legacy Armor/Weapons',
+	['ARMOR'] = 'Armor',
+	['WEAPONS'] = 'Weapons',
+	['ARCHAEOLOGY'] = 'Archaeology',
+	['TRADE_GOODS'] = 'Trade Goods',
+	['RECIPES'] = 'Recipes',
+	['DEVICES'] = 'Devices',
+	['PETS'] = 'Pets',
+	['MOUNTS'] = 'Mounts',
+	['QUEST'] = 'Quest',
+	['KEYS'] = 'Keys',
+	['MISCELLANEOUS'] = 'Miscellaneous',
+}
+
+local CONDUIT_TEXT = "Add this Conduit to your collection"
+local ANIMA_TEXT = "stored Anima into your covenant's Reservoir"
+local CONTAINER_TEXT = "Right Click to Open"
+local TOY_TEXT = "Adds this toy to your Toy Box"
 
 local customItemLists = {
 	["Archaeology"] = {
@@ -53,33 +76,40 @@ local customItemLists = {
 INV.filters = {
 	itemrack = {},
 	categories = {
-		{ name = 'Grays',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return quality == 0 end},
-		{ name = 'Consumables',		func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Consumable' end},
-		{ name = 'Armor',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Armor' end},
-		{ name = 'Weapons',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Weapon' end},
-		{ name = 'Archaeology',		func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return customItemLists.Archaeology[itemID] end},
-		{ name = 'Trade Goods',		func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Trade Goods' or class == 'Gem' or class == 'Tradeskill' end},
-		{ name = 'Recipes',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Recipe' end},
-		{ name = 'Devices',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Devices' end},
-		{ name = 'Pets & Mounts',	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return subclass == 'Companion Pets' or subclass == 'Mount' end},
-		{ name = 'Quest',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Quest' end},
-		{ name = 'Keys',			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return class == 'Key' or name:lower():match('%f[%a]key%f[%A]') end},
-		{ name = 'Miscellaneous', 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) return true end},
+		{ name = INV.categoryNames.GRAYS,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return quality == 0 end},
+		{ name = "Toy",									func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return string.match(strlower(tooltipText), strlower(TOY_TEXT)) end},
+		{ name = "Anima",								func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return string.match(strlower(tooltipText), strlower(ANIMA_TEXT)) end},
+		{ name = "Conduits",							func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return string.match(strlower(tooltipText), strlower(CONDUIT_TEXT)) end},
+		{ name = "Container",							func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return string.match(strlower(tooltipText), strlower(CONTAINER_TEXT)) end},
+		{ name = INV.categoryNames.CONSUMABLES,		 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Consumable' end},
+		{ name = INV.categoryNames.LEGACY_ARMOR_WEAPONS,func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText)
+			return (class == 'Armor' or class == 'Weapon') and (quality >= 2 and quality <=4) and expacID < 7 end},
+		{ name = INV.categoryNames.ARMOR,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Armor' end},
+		{ name = INV.categoryNames.WEAPONS,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Weapon' end},
+		{ name = INV.categoryNames.ARCHAEOLOGY,		 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return customItemLists.Archaeology[itemID] end},
+		{ name = INV.categoryNames.TRADE_GOODS,		 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Trade Goods' or class == 'Gem' or class == 'Tradeskill' end},
+		{ name = INV.categoryNames.RECIPES,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Recipe' end},
+		{ name = INV.categoryNames.DEVICES,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return subclass == 'Devices' end},
+		{ name = INV.categoryNames.PETS,	 			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return subclass == 'Companion Pets' or subclass == 'Mount' end},
+		{ name = INV.categoryNames.MOUNTS,	 			func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return subclass == 'Companion Pets' or subclass == 'Mount' end},
+		{ name = INV.categoryNames.QUEST,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Quest' end},
+		{ name = INV.categoryNames.KEYS,			 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return class == 'Key' or name:lower():match('%f[%a]key%f[%A]') end},
+		{ name = INV.categoryNames.MISCELLANEOUS, 	 	func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) return true end},
 	}
 }
 
 --tests an item against all categories and returns the first one that meets the criteria.
-function INV:GetItemCategory(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
+function INV:GetItemCategory(itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText)
 	if class == 'Armor' or class == 'Weapon' then
 		for i, category in ipairs(self.filters.itemrack) do
-			if category.func(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) then
+			if category.func(itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) then
 				return category.name
 			end
 		end
 	end
 
 	for i, category in ipairs(self.filters.categories) do
-		if category.func(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot) then
+		if category.func(itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText) then
 			return category.name
 		end
 	end
@@ -122,7 +152,7 @@ local function sortCategory(a,b) return a.sortString > b.sortString end
 function INV:GetSortedInventory(id)
 	local container = self.containers[id]
 	if not container then 
-		print('container with id ', id, 'not found')
+		st:Error('container with id ', id, 'not found')
 	end
 
 	local inventory = {}
@@ -131,11 +161,13 @@ function INV:GetSortedInventory(id)
 		for slotID=1, GetContainerNumSlots(bagID) do
 			local texture, count, locked, quality, readable, lootable, clink, isFiltered, hasNoValue, itemID = GetContainerItemInfo(bagID,slotID)
 			if clink then
-				local name, clink, quality, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo(clink)
-
+				local tooltipText = self:ScanBagItem(bagID,slotID)
+				local name, clink, quality, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(clink)
 				if name then
+					ilvl = GetDetailedItemLevelInfo(clink)
 					--Create custom categories here to replace actual category value
-					local category_name = self:GetItemCategory(itemID, name,clink,quality,ilvl,reqLevel,class,subclass,equipSlot,lootable)
+					local category_name = self:GetItemCategory(itemID,name,clink,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText)
 
 					if not inventory[category_name] then inventory[category_name] = {} end
 
@@ -151,11 +183,12 @@ function INV:GetSortedInventory(id)
 						vendorPrice = vendorPrice,
 						bagID = bagID,
 						slotID = slotID,
-						sortString = name .. (ilvl or 0) .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (count or 0),
+						sortString = (ilvl or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (count or 0),
 						clink = clink,
 						texture = texture,
 						count = count,
-						locked = locked
+						locked = locked,
+						expacID = expacID
 					})
 				end
 			end
@@ -171,7 +204,7 @@ function INV:GetSortedInventory(id)
 	return inventory
 end
 
-function INV:CreateCategory(id, category_name) 
+function INV:CreateCategory(id, category_name)
 	local container = self.containers[id]
 
 	local category_frame = CreateFrame('frame', nil, container)
@@ -234,5 +267,11 @@ function INV:FlushCategories(container, sorted_inv)
 			for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
 			category:Hide()
 		end
+	end
+end
+
+function INV:InitializeAllCategories(container)
+	for _,category in pairs(self.filters.categories) do
+		self:CreateCategory(container, category.name)
 	end
 end

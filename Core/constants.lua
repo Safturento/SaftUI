@@ -1,8 +1,10 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
+local ADDON_NAME = ...
 
 st.DEBUG = false
 st.GAME_VERSION = select(4, GetBuildInfo())
 
+st.name = ADDON_NAME
 st.is_classic = st.GAME_VERSION < 70000
 st.is_retail = not st.is_classic
 
@@ -14,7 +16,6 @@ st.my_realm = GetRealmName()
 
 st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
 st.scale = 768/st.screenHeight
-UIParent:SetScale(st.scale)
 st.mult = 1
 
 st.CLOSE_BUTTON_SIZE = {20, 10}
@@ -29,7 +30,7 @@ st.BACKDROP = {
 }
 st.CLAMP_INSET = 20
 
-st.MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\Textures\\', ADDON_NAME)
+st.MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\Textures\\', st.name)
 st.textures = {
 	cornerbr = st.MEDIA_PATH..'cornerarrowbottomright.tga',
 	mail = st.MEDIA_PATH..'mail.tga',

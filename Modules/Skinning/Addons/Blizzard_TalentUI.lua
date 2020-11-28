@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 local button_spacing_y = 20
@@ -11,7 +11,7 @@ function SkinTalentButton(button)
 	button:SetSize(button_size, button_size)
 	button:SetParent(TalentFrame)
 	st:StripTextures(button)
-	st.SkinActionButton(button)
+	st:SkinActionButton(button)
 	button:SetFrameLevel(20)
 	local rank = _G[button:GetName()..'Rank']
 	rank:ClearAllPoints()

@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:NewModule('Skinning', 'AceHook-3.0', 'AceEvent-3.0')
 
 SK.AddonSkins = {}
@@ -103,7 +103,7 @@ end
 
 function SK:SkinTab(tab)
 	st:StripTextures(tab)
-	st.SkinActionButton(tab, st.config.profile.panels)
+	st:SkinActionButton(tab, st.config.profile.panels)
 	if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
 	tab.skinned = true
 

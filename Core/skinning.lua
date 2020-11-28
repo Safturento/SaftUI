@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 function st:StripTextures(frame, kill)
 	if frame.SetNormalTexture    then frame:SetNormalTexture('')    end
@@ -120,12 +120,34 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 	end
 end
 
-function st.SkinActionButton(button, config)
+local function OnSetCooldown(self, start, duration, modRate)
+	self.startTime = start
+	self.duration = duration
+	self.endTime = start + duration
+end
+
+local function OnUpdateCooldown(self)
+	local remaining = self.endTime - GetTime()
+	if remaining <= 0 then
+		self.text:SetText('')
+	else
+		self.text:SetText(st.StringFormat:ToTime(remaining))
+	end
+end
+function st:SkinCooldown(button, cooldown)
+	if cooldown.initialized then return end
+	cooldown:SetHideCountdownNumbers(true)
+	local text = cooldown:CreateFontString(nil, 'OVERLAY')
+	text:SetFontObject(st:GetFont('pixel'))
+	text:SetAllPoints(cooldown)
+	cooldown.text = text
+	cooldown:SetScript('OnUpdate', OnUpdateCooldown)
+	hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
+end
+
+function st:SkinActionButton(button, config)
 	if not config then
-		config = {
-			font = st.config.profile.buttons.font,
-			template = st.config.profile.buttons.template
-		}
+		config = st.config.profile.buttons
 	end
 
 	local name = button:GetName() or ''
@@ -138,11 +160,15 @@ function st.SkinActionButton(button, config)
 	local normal = _G[name.."NormalTexture"] or button.NormalTexture
 	local item_level = button.item_level
 	local bg = _G[name..'FloatingBG']
+	local cooldown = _G[name..'Cooldown'] or button.cooldown or button.Cooldown
 
-	if button.Left then st:Kill(button.Left) end
-	if button.Middle then st:Kill(button.Middle) end
-	if button.Right then st:Kill(button.Right) end
-	if button.Center then st:Kill(button.Center) end
+	for _,region in pairs({
+		'Left', 'Middle', 'Right',
+		'TopLeft', 'TopMiddle', 'TopRight',
+		'MiddleLeft', 'MiddleMiddle', 'MiddleRight',
+		'BottomLeft', 'BottomMiddle', 'BottomRight',
+		'LeftSeparator', 'RightSeparator',
+	}) do if button[region] then button[region]:SetAlpha(0) end end
 
 	if bg then
 		bg:SetTexture(nil)
@@ -163,6 +189,10 @@ function st.SkinActionButton(button, config)
 			if region:GetObjectType() == 'FontString' then
 				region:SetFontObject(font_object)
 			end
+		end
+
+		if cooldown then
+			st:SkinCooldown(button, cooldown)
 		end
 
 		if count and type(count) == 'table' then

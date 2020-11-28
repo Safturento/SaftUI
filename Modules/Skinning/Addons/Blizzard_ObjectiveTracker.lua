@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 local function SkinBlock(self, id)
@@ -39,24 +39,24 @@ end
 
 local function SkinRightButton(block, button, initialAnchorOffsets)
 	if block.rightButton and not block.rightButton.skinned then
-		st.SkinActionButton(block.rightButton)
+		st:SkinActionButton(block.rightButton)
 		block.rightButton.skinned = true
 	end
 end
 
 SK.AddonSkins.Blizzard_ObjectiveTracker = function()
-	st:CreateHeader(ObjectiveTrackerFrame)
-	ObjectiveTrackerFrame.header:SetBackdrop(nil)
-
-	for _,key in pairs({
-		'QuestHeader',
-		'AchievementHeader',
-		'ScenarioHeader',
-		'UIWidgetsHeader',
-	}) do	SkinHeader(ObjectiveTrackerFrame.BlocksFrame[key]) end
-
-	hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, 'GetBlock', SkinBlock)
-	hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, 'GetLine', SkinLine)
+	--st:CreateHeader(ObjectiveTrackerFrame)
+	--ObjectiveTrackerFrame.header:SetBackdrop(nil)
+	--
+	--for _,key in pairs({
+	--	'QuestHeader',
+	--	'AchievementHeader',
+	--	'ScenarioHeader',
+	--	'UIWidgetsHeader',
+	--}) do	SkinHeader(ObjectiveTrackerFrame.BlocksFrame[key]) end
+	--
+	--hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, 'GetBlock', SkinBlock)
+	--hooksecurefunc(DEFAULT_OBJECTIVE_TRACKER_MODULE, 'GetLine', SkinLine)
 	-- hooksecurefunc('QuestObjectiveSetupBlockButton_AddRightButton', SkinRightButton)
 
 	-- ScenarioStageBlock

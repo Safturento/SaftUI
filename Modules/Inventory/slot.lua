@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local INV = st:GetModule('Inventory')
 
 function INV:SetSlotPosition(slot, category_frame, container)
@@ -81,7 +81,7 @@ function INV:CreateSlot(container, category_name)
 		local bagName = container:GetName()
 		slot_name = bagName..'_'..(gsub(category_name, '(%A)', ''))..'_Slot'..slotID
 		slot = CreateFrame('ItemButton', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
-		if not slot.icon then print(slot_name) end
+		if not slot.icon then st:Error(slot_name.." is missing an icon") end
 		slot.Count = _G[slot:GetName() .. "Count"]
 		slot.icon = _G[slot:GetName() .. "IconTexture"]
 		slot.border = _G[slot:GetName() .. "NormalTexture"]
@@ -118,7 +118,7 @@ function INV:CreateSlot(container, category_name)
 	item_level:SetPoint('BOTTOMRIGHT', slot.Count)
 	slot.item_level = item_level
 
-	st.SkinActionButton(slot, {
+	st:SkinActionButton(slot, {
 		template = self.config.template,
 		font = self.config.fonts.icons
 	})
@@ -131,7 +131,7 @@ function INV:CreateSlot(container, category_name)
 	category_frame.slots[slotID] = slot
 
 	if slot.tainted then
-		print(slot:GetName() .. ' is tainted, will break if used in combat')
+		st:Error(slot:GetName() .. ' is tainted, will break if used in combat')
 	end
 
 	return slot

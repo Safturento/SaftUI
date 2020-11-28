@@ -1,7 +1,7 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 function UF.PostCastStart(castbar, unit, spellName)

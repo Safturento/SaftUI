@@ -1,7 +1,7 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local AB = st:NewModule('Actionbars', 'AceHook-3.0', 'AceEvent-3.0')
 
-BUTTON_PREFIXES = {
+AB.BUTTON_PREFIXES = {
 	'Action',
 	'MultiBarBottomLeft',
 	'MultiBarBottomRight',
@@ -9,7 +9,7 @@ BUTTON_PREFIXES = {
 	'MultiBarLeft',
 }
 
-st.hotkey_subs = {
+AB.HOTKEY_SUBS = {
 	["(s%-)"] = "S",
 	["(a%-)"] = "A",
 	["(c%-)"] = "C",
@@ -46,63 +46,66 @@ st.hotkey_subs = {
 
 function AB:KillBlizzard()
 	for _,frame in pairs({
-		MainMenuBar,
+		--MainMenuBar,
 		MainMenuBarArtFrame,
 		OverrideActionBar,
 		PossessBarFrame,
 		ShapeshiftBarLeft,
 		ShapeshiftBarMiddle,
 		ShapeshiftBarRight,
-		TalentMicroButtonAlert,
-		CollectionsMicroButtonAlert,
-		EJMicroButtonAlert,
-		CharacterMicroButtonAlert
 	}) do
 		frame:UnregisterAllEvents()
 		frame:SetParent(st.hidden_frame)
 	end
 
+	MainMenuBar:SetParent(st.hidden_frame)
+	ActionBarButtonEventsFrame:UnregisterEvent("ACTIONBAR_SHOWGRID")
+	ActionBarButtonEventsFrame:UnregisterEvent("ACTIONBAR_HIDEGRID")
+
+    MicroButtonAndBagsBar:SetParent(st.hidden_frame)
 end
 
 function AB:CreateBars()
 	self.bars = {}
 
-	for i,prefix in ipairs(BUTTON_PREFIXES) do
-		local bar = CreateFrame('frame', ADDON_NAME..'ActionBar'..i, UIParent, 'SecureHandlerStateTemplate')
+	for barIndex,prefix in ipairs(self.BUTTON_PREFIXES) do
+		local bar = CreateFrame('frame', st.name ..'ActionBar'.. barIndex, UIParent, 'SecureHandlerStateTemplate')
 		bar.slots = {}
-		bar:SetID(i)
-		bar.config = self.config['bar'..i]
+		bar:SetID(barIndex)
+		bar.config = self.config['bar'.. barIndex]
 
-		if i > 1 then
+		if barIndex > 1 then
 			_G[prefix]:SetParent(bar)
 		end
 
 		local slot, name
-		for j = 1, NUM_ACTIONBAR_BUTTONS do
-			name = prefix..'Button'..j
+		for slotIndex = 1, NUM_ACTIONBAR_BUTTONS do
+			name = prefix..'Button'.. slotIndex
 			slot = _G[name]
 			self:SecureHook(slot, 'UpdateHotkeys', 'UpdateHotkey')
 			self:SecureHook(slot, 'Update', 'UpdateActionButton')
+            slot:SetAttribute('showgrid', 1)
+            slot:ShowGrid(ACTION_BUTTON_SHOW_GRID_REASON_EVENT)
 
-			if i == 1 then
+			if barIndex == 1 then
 				slot:SetParent(bar)
 			end
 
 			slot.count = _G[name..'Count']
 			slot.hotkey = _G[name..'HotKey']
 
-			bar.slots[j] = slot
+			bar.slots[slotIndex] = slot
 		end
-		
-		self.bars[i] = bar
+
+		self.bars[barIndex] = bar
 	end
 
 	self:InitializePetBar()
 
 	for _, bar in pairs(self.bars) do
 		st:RegisterMover(bar, function(self)
-			local pos = self.config.position
-			local point, frame, rel_point, x_off, y_off = self:GetPoint()
+			local pos = bar.config.position
+			local point, frame, rel_point, x_off, y_off = bar:GetPoint()
 			pos.point = point
 			pos.frame = frame
 			pos.rel_point = rel_point
@@ -113,10 +116,10 @@ function AB:CreateBars()
 end
 
 function AB:InitializePetBar()
-	local bar = CreateFrame('frame', ADDON_NAME..'PetActionBar', UIParent, 'SecureHandlerStateTemplate')
+	local bar = CreateFrame('frame', st.name ..'PetActionBar', UIParent, 'SecureHandlerStateTemplate')
 	bar.slots = {}
 	bar.config = self.config.pet
-	
+
 	local slot, name
 	for i=1, NUM_PET_ACTION_SLOTS do
 		name = 'PetActionButton'..i
@@ -145,7 +148,7 @@ function AB:InitializeBarBages()
 	end
 
 	page = page .. '[form] 1; 1'
-		
+
 	RegisterStateDriver(bar, "page", page)
 	RegisterStateDriver(bar, "visibility", "[petbattle] hide; show")
 
@@ -173,51 +176,51 @@ function AB:UpdateConfig()
 			bar:Hide()
 		else
 			bar:Show()
-			
+
 			local width = min(bar.config.total, bar.config.perrow) * (bar.config.width + bar.config.spacing) - bar.config.spacing
 			local height = ceil(bar.config.total/bar.config.perrow) * (bar.config.height + bar.config.spacing) - bar.config.spacing
-			
+
 			st:SetSize(bar, width, height)
 			bar:SetPoint(st:UnpackPoint(bar.config.position))
-			
+
 			if bar.config.backdrop.enable then
 				st:SetBackdrop(bar, bar.config.backdrop.template)
-				
+
 				local height, width
 				bar.backdrop:ClearAllPoints()
 				if bar.config.backdrop.conform then
 					width = bar:GetWidth() + bar.config.backdrop.padding * 2
 					height = bar:GetHeight() + bar.config.backdrop.padding * 2
-					
+
 					bar.backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -bar.config.backdrop.padding, bar.config.backdrop.padding)
 				else
 					width = bar.config.backdrop.width * (bar.config.width + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
-					
+
 					height = bar.config.backdrop.height * (bar.config.height + bar.config.spacing) - bar.config.spacing + bar.config.backdrop.padding * 2
-					
+
 					bar.backdrop:SetPoint(bar.config.backdrop.anchor, bar, -bar.config.backdrop.padding, -bar.config.backdrop.padding)
 				end
-				
+
 				st:SetSize(bar.backdrop, width, height)
 			else
 				st:SetBackdrop(bar, 'none')
 			end
-			
-			
-			
+
+
+
 			local prev
 			for j, slot in ipairs(bar.slots) do
 				st:SetSize(slot, bar.config.width, bar.config.height)
-				st.SkinActionButton(slot, { font = self.config.font, template = bar.config.template })
+				st:SkinActionButton(slot)
+				--print(slot.cooldown)
 				if slot.Border then
 					slot.Border:ClearAllPoints()
 				end
-				
+
 				self:UpdateHotkey(slot)
 				slot:ClearAllPoints()
-				
-				slot:SetAttribute('showgrid', 1)
-				
+				slot:SetAttribute('showgrid', ACTION_BUTTON_SHOW_GRID_REASON_EVENT)
+
 				if j > bar.config.total then
 					slot:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 500, 500)
 				elseif j == 1 then
@@ -237,7 +240,7 @@ function AB:UpdateHotkey(slot)
 	if not slot.hotkey then return end
 
 	local text = slot.hotkey:GetText() or ''
-	for long, short in pairs(st.hotkey_subs) do
+	for long, short in pairs(self.HOTKEY_SUBS) do
 		text = string.gsub(text, long, short)
 	end
 	slot.hotkey:SetText(text)
@@ -245,7 +248,7 @@ end
 
 function AB:UpdateActionButton(self)
 	if not self.backdrop then return end
-	
+
 	if IsEquippedAction(self.action) then
 		self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
 	else
@@ -278,7 +281,7 @@ function AB:GetConfigTable()
 		config_table.args['bar'..i] = {
 			name = i == 'pet' and 'Pet Bar' or 'Bar '..i,
 			type = 'group',
-			get = function(info) 
+			get = function(info)
 				return bar.config[info[#info]]
 			end,
 			set = function(info, value)
@@ -292,9 +295,9 @@ function AB:GetConfigTable()
 				spacing = st.CF.generators.range(3, 'Button spacing', 1, 20, 1),
 				total = st.CF.generators.range(4, 'Total buttons', 1, 12, 1),
 				perrow = st.CF.generators.range(5, 'Buttons per row', 1, 12, 1),
-				position = st.CF.generators.position(6, true, 
+				position = st.CF.generators.position(6, true,
 					function(key) return bar.config.position[key] end,
-					function(key, value) 
+					function(key, value)
 						bar.config.position[key] = value
 						self:UpdateConfig()
 					end
@@ -303,7 +306,7 @@ function AB:GetConfigTable()
 					name = 'Backdrop',
 					type = 'group',
 					inline = true,
-					get = function(info) 
+					get = function(info)
 						return bar.config.backdrop[info[#info]]
 					end,
 					set = function(info, value)
@@ -318,7 +321,7 @@ function AB:GetConfigTable()
 							name = 'Manual',
 							type = 'group',
 							set = function(info, value)
-								bar.config.backdrop[info[#info]] = value		
+								bar.config.backdrop[info[#info]] = value
 								self:UpdateConfig()
 							end,
 							get = function(info) return bar.config.backdrop[info[#info]] end,
@@ -329,7 +332,7 @@ function AB:GetConfigTable()
 								padding = st.CF.generators.range(3, 'Padding', 0, 30, 1),
 								anchor = {
 									order = 1,
-									name = 'Anchor', 
+									name = 'Anchor',
 									type = 'select',
 									values = st.FRAME_ANCHORS,
 									width = 0.65,
@@ -355,7 +358,4 @@ function AB:OnInitialize()
 	self:InitializeBarBages()
 	self:UpdateConfig()
 
-	--self:SecureHook('ActionButton_Update', 'UpdateActionButton')
-	--self:SecureHook('ActionButton_UpdateHotkeys', 'UpdateHotkey')
-	--self:SecureHook('PetActionButton_SetHotkeys', 'UpdateHotkey')
 end

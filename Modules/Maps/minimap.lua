@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local MP = st:GetModule('Maps')
 
 local ICON_SIZE = 22

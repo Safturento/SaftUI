@@ -1,4 +1,6 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
+
+local st = SaftUI
 
 local function CreateAltBorder(frame)
 	frame.altborder = {}

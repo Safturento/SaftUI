@@ -29,7 +29,7 @@
 -- LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d.",
 -- LOOT_ITEM_WHILE_PLAYER_INELIGIBLE = "%s receives loot: |TInterface\\Common\\Icon-NoLoot:13:13:0:0|t%s",
 
-local ADDON_NAME, st = ...
+local st = SaftUI
 local LT = st.Loot
 
 local MAX_HISTORY = 500
@@ -327,7 +327,7 @@ function LT:UpdateLootFeedConfig()
 	self.feed:SetPoint(st:UnpackPoint(config.position))
 
 	for i=#self.feed.items+1, config.max_items do
-		local item = CreateFrame('button', ADDON_NAME..'LootFeed'..i, self.feed)
+		local item = CreateFrame('button', st.name ..'LootFeed'..i, self.feed)
 		if i == 1 then
 			item:SetPoint('BOTTOMRIGHT', self.feed , 'BOTTOMRIGHT', 0, 0)
 		else
@@ -383,7 +383,7 @@ function LT:UpdateLootFeedConfig()
 end
 
 function LT:InitializeLootFeed()
-	local feed = CreateFrame('frame', ADDON_NAME..'LootFeed', UIParent)
+	local feed = CreateFrame('frame', st.name ..'LootFeed', UIParent)
 	feed:SetSize(200, 20)
 	feed.items = {}
 	feed.offset = 0
@@ -448,7 +448,7 @@ end
 
 if not WoWUnit then return end
 
-local Tests = WoWUnit(ADDON_NAME..'LootFeed')
+local Tests = WoWUnit(st.name ..'LootFeed')
 local AreEqual, Exists, Replace = WoWUnit.AreEqual, WoWUnit.Exists, WoWUnit.Replace
 
 local test_item = "\124cff0070dd\124Hitem:16309::::::::60:::::\124h[Drakefire Amulet]\124h\124r"

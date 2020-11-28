@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:NewModule('Unitframes')
 
 local TEST_PARTY_SOLO = false
@@ -93,13 +93,13 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, val
 end
 
 function UF:UpdateColors()
-	UF.oUF.colors.disconnected = st.config.profile.colors.status.disconnected
-	UF.oUF.colors.tapped 		= st.config.profile.colors.status.tapped
-	UF.oUF.colors.reaction 		= st.config.profile.colors.reaction
-	UF.oUF.colors.power 			= st.config.profile.colors.power
-	UF.oUF.colors.class 			= st.config.profile.colors.class
-	UF.oUF.colors.roles 			= st.config.profile.colors.roles
-	UF.oUF.colors.runes 			= st.config.profile.colors.runes
+	UF.oUF.colors.disconnected 	= st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected)
+	UF.oUF.colors.tapped 		= st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped)
+	UF.oUF.colors.reaction 		= st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction)
+	UF.oUF.colors.power 		= st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power)
+	UF.oUF.colors.class 		= st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class)
+	UF.oUF.colors.roles 		= st.config.profile.colors.roles
+	UF.oUF.colors.runes 		= st.config.profile.colors.runes
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
@@ -433,7 +433,7 @@ end
 --		UF:UpdateConfig()
 --		st.CF:Refresh()
 --
---		dialog:Close(ADDON_NAME..'_Copy_Unitframe')
+--		dialog:Close(st.addon_name..'_Copy_Unitframe')
 --	end,
 --	OnCancel = function() end,
 --	whileDead = true,
@@ -499,7 +499,7 @@ function UF:RegisterCopyTable()
 	}
 
 	UF.CopyTable = config_table
-	LibStub('AceConfig-3.0'):RegisterOptionsTable(ADDON_NAME..'_Copy_Unitframe', config_table)
+	LibStub('AceConfig-3.0'):RegisterOptionsTable(st.name ..'_Copy_Unitframe', config_table)
 end
 
 function UF:OpenCopyTable(unit)
@@ -535,14 +535,14 @@ function UF:OpenCopyTable(unit)
 			for k,v in pairs(copy_options.elements) do
 				copy_options.elements[k] = true
 			end
-			LibStub("AceConfigRegistry-3.0"):NotifyChange(ADDON_NAME..'_Copy_Unitframe')
+			LibStub("AceConfigRegistry-3.0"):NotifyChange(st.name ..'_Copy_Unitframe')
 		end
 
 		self.CopyTable.args.toggle_none.func = function()
 			for k,v in pairs(copy_options.elements) do
 				copy_options.elements[k] = false
 			end
-			LibStub("AceConfigRegistry-3.0"):NotifyChange(ADDON_NAME..'_Copy_Unitframe')
+			LibStub("AceConfigRegistry-3.0"):NotifyChange(st.name ..'_Copy_Unitframe')
 		end
 
 		self.CopyTable.args.elements.get = function(info)
@@ -562,8 +562,8 @@ function UF:OpenCopyTable(unit)
 		end
 	end
 
-	dialog:SetDefaultSize(ADDON_NAME..'_Copy_Unitframe', 400, 300)
-	dialog:Open(ADDON_NAME..'_Copy_Unitframe')
+	dialog:SetDefaultSize(st.name ..'_Copy_Unitframe', 400, 300)
+	dialog:Open(st.name ..'_Copy_Unitframe')
 end
 
 function UF:GetConfigTable()

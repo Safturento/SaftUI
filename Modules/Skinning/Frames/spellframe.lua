@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 SK.FrameSkins.SpellFrame = function()

@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 local AM = st:NewModule('AddonManager', 'AceHook-3.0', 'AceEvent-3.0')
 
@@ -7,7 +7,7 @@ function AM:OnInitialize()
 	self.rows = {}
 	self.sort_priority = {}
 
-	local manager = CreateFrame('frame', ADDON_NAME..'AddonManager', UIParent)
+	local manager = CreateFrame('frame', st.name ..'AddonManager', UIParent)
 	manager.close_button = CreateFrame('Button', nil, manager)
 	manager.close_button:SetScript('OnClick', function() manager:Hide() end)
 	st:CreateHeader(manager, 'Addons', manager.close_button)
@@ -117,7 +117,7 @@ function AM:OnInitialize()
 	for key, button in pairs(self.buttons.buttons) do
 		button:SetParent(self.buttons)
 		st:StripTextures(button)
-		st.SkinActionButton(button)
+		st:SkinActionButton(button)
 		button:ClearAllPoints()
 		button:SetWidth(button:GetTextWidth()+20)
 		button:SetPoint('TOP')

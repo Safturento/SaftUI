@@ -1,13 +1,14 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local INV = st:NewModule('Inventory', 'AceHook-3.0', 'AceEvent-3.0')
 
 local BACKPACK_IDS = {0, 1, 2, 3, 4}
 local BANK_IDS = {-1, 5, 6, 7, 8, 9, 10, 11}
 
 INV.containers = {}
+INV.OnUseItems = {}
 
 function INV:CreateContainer(id, name)
-	local container = CreateFrame('frame', ADDON_NAME..name, UIParent)
+	local container = CreateFrame('frame', st.name ..name, UIParent)
 	container.id = id
 	container:SetFrameStrata('HIGH')
 	self.containers[id] = container
@@ -58,6 +59,26 @@ function INV:InitializeFooter(container)
 
 		container.footer.gold = goldstring
 		self:UpdateGold()
+	elseif container.id == 'bank' then
+		local reagentButton = st:CreateFrame('button', 'SaftUI_ReagentBankButton', container)
+		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
+		ReagentBankFrame:SetParent(container)
+		ReagentBankFrame:ClearAllPoints()
+		ReagentBankFrame:SetPoint('TOPLEFT', container, 'TOPRIGHT', 5, 0)
+		reagentButton:SetScript('OnClick', function()
+			ReagentBankFrame_OnShow(ReagentBankFrame)
+			ReagentBankFrame:Show()
+		end)
+		reagentButton:SetSize(100, 16)
+		reagentButton:SetText('Reagents')
+		reagentButton:SetFrameLevel(90)
+		st:SetBackdrop(reagentButton, 'highlight')
+
+		--local deposit = ReagentBankFrame.DespositButton
+		--deposit:SetSize(200, 16)
+		--deposit:SetParent(container)
+		--deposit:ClearAllPoints()
+		--st:SkinActionButton(deposit)
 	end
 end
 
@@ -79,7 +100,7 @@ function INV:UpdateSearchFilter(editbox, is_user_input)
 						if slot.info.name:lower():find(query) then
 							slot:SetAlpha(1)
 						else
-							slot:SetAlpha(0.2)
+							slot:SetAlpha(0.1)
 						end
 					end
 				end
@@ -203,7 +224,7 @@ function INV:UpdateHandler(elapsed)
 
 	lastUpdate = time
 
-	if self.NEED_UPDATE then
+	if self.NEED_UPDATE and not self.BLOCK_UPDATE then
 		self.NEED_UPDATE = false
 		self:UpdateGold()
 		self:UpdateContainerItems('bag')
@@ -267,7 +288,39 @@ function INV:OnInitialize()
 	if self.config.enable == false then return end
 
 	self:CreateContainer('bag', INVTYPE_BAG)
+	self:MovePlayerBagSlots()
 	self.containers.bag:Hide()
+	self:InitializeAllCategories('bag')
+end
+
+function INV:MovePlayerBagSlots()
+	local BagSlots = {}
+	for i=0,3 do
+		BagSlots[i] = _G['CharacterBag'..i..'Slot']
+		BagSlots[i].icon = _G['CharacterBag'..i..'SlotIconTexture']
+		BagSlots[i].IconBorder:SetAlpha(0)
+	end
+
+	local bagSlotContainer = st:CreateFrame('frame', 'BagSlotFrame', self.containers.bag)
+	bagSlotContainer:SetSize(
+		self.config.buttonwidth * 4 + self.config.buttonspacing * 3 + self.config.padding * 2,
+		self.config.buttonheight + self.config.padding * 2)
+	st:SetBackdrop(bagSlotContainer, 'thick')
+	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
+	for i,slot in pairs(BagSlots) do
+		slot:SetParent(bagSlotContainer)
+		slot:ClearAllPoints()
+		st:SkinIcon(slot.icon, nil, slot)
+		st:SkinActionButton(slot, st.config.profile.buttons)
+		st:SetBackdrop(slot, 'thick')
+		slot:SetNormalTexture("")
+		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+		if i == 0 then
+			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
+		else
+			slot:SetPoint('BOTTOMLEFT', BagSlots[i-1], 'BOTTOMRIGHT', self.config.buttonspacing, 0)
+		end
+	end
 end
 
 function INV:ADDON_LOADED(event, addon)
@@ -286,6 +339,8 @@ function INV:OnEnable()
 	CloseAllBags 		= INV.HideBags
 	CloseBackpack 		= INV.HideBags
 	
+	self:InitializeTooltipScanner()
+
 	if ItemRack then
 	self:UpdateItemRackCategories()
 	end
@@ -309,4 +364,5 @@ function INV:OnEnable()
 
 	self.updater = CreateFrame('frame')
 	self:HookScript(self.updater, 'OnUpdate', 'UpdateHandler')
+
 end

@@ -6,16 +6,21 @@ SlashCmdList.RELOADUI = _G.ReloadUI
 SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 	st, ADDON_NAME, 'AceEvent-3.0', 'AceHook-3.0')
 
-st.StringFormat = LibStub('LibStringFormat-1.0')
+SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnInitialize()
 	SetCVar('autoLootDefault', 1)
 	SetCVar('chatStyle', 'classic')
 	SetCVar('whisperMode', 'inline')
-
-
-	-- SetCVar("useUiScale", 1)
-	-- SetCVar("uiScale", st.ui_scale)
+	--UIParent:SetScale(st.scale)
+	--self:Print('Goal: 0.6499997615814')
+	--self:Print('GetScreenHeight', GetScreenHeight())
+	--self:Print('GetScreenHeight/Goal', GetScreenHeight()/0.6499997615814)
+	--self:Print('uiScale:', GetCVar('uiScale'))
+	--self:Print('st.scale', st.scale)
+	--self:Print('768/GetScreenHeight', 768/GetScreenHeight())
+	--self:Print('768/floor(GetScreenHeight)', 768/floor(GetScreenHeight()))
+	--self:Print('768/ceil(GetScreenHeight)', 768/ceil(GetScreenHeight()))
 
 	self.config = LibStub('AceDB-3.0'):New('SaftUI_DB', {
 		char = {},
@@ -28,8 +33,8 @@ function SaftUI:OnInitialize()
 		profile = self.defaults,
 	})
 
-	if not st.config.realm.summary then st.config.realm.summary = {} end
-	if not st.config.realm.summary[st.my_name] then st.config.realm.summary[st.my_name] = {} end
+	if not self.config.realm.summary then self.config.realm.summary = {} end
+	if not self.config.realm.summary[self.my_name] then self.config.realm.summary[self.my_name] = {} end
 
 	self.config.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
@@ -41,9 +46,9 @@ function SaftUI:OnInitialize()
 	RequestTimePlayed()
 
 	total_time = 0
-	for realm, realm_config in pairs(SaftUI_DB.realm) do
+	for _, realm_config in pairs(SaftUI_DB.realm) do
 		if realm_config.summary then
-			for character, summary in pairs(realm_config.summary) do
+			for _, summary in pairs(realm_config.summary) do
 				total_time = total_time + (summary.time_played or 0)
 			end
 		end
@@ -52,8 +57,8 @@ function SaftUI:OnInitialize()
 end
 
 function SaftUI:TIME_PLAYED_MSG(event, total, level)
-	st.config.realm.summary[st.my_name]['time_played'] = total
-	st.config.realm.summary[st.my_name]['time_played_level'] = level
+	self.config.realm.summary[self.my_name]['time_played'] = total
+	self.config.realm.summary[self.my_name]['time_played_level'] = level
 end
 
 function SaftUI:UpdateConfig()

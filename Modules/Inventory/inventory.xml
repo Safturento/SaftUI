@@ -1,6 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Include file="inventory.lua"/>
+	<Include file="tooltipscanner.lua"/>
 	<Include file="category.lua"/>
 	<Include file="slot.lua"/>
 	<Include file="utilities.lua"/>
+	<Include file="autovendor.lua"/>
 </Ui>

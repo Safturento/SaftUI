@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 function st.CF:UpdateTemplateConfig(template)
 	if not template then
@@ -17,7 +17,7 @@ end
 
 st.CF.options = {
 	type = 'group',
-	name = ADDON_NAME,
+	name = st.name,
 	inline = true,
 	args = {
 	},

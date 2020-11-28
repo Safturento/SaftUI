@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 st.defaults.loot = {
 	popup = {
@@ -22,7 +22,7 @@ st.defaults.loot = {
 		},
 		min_quality = 0,
 		spacing = 7,
-		max_items = 5,
+		max_items = 10,
 		fade_time = 10,
 		template = 'thick',
 		font = 'pixel',

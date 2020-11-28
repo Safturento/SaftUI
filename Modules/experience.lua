@@ -1,18 +1,18 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 local XP = st:NewModule('Experience', 'AceHook-3.0', 'AceEvent-3.0')
 
 function XP:SetupExperience()
-	local expbar = CreateFrame('StatusBar', ADDON_NAME..'_ExperienceBar', self.container)
+	local expbar = CreateFrame('StatusBar', st.name ..'_ExperienceBar', self.container)
 	self.bars.experience = expbar
 
-	local restbar = CreateFrame('StatusBar', ADDON_NAME..'_RestBar', self.container)
+	local restbar = CreateFrame('StatusBar', st.name ..'_RestBar', self.container)
 	restbar:SetAllPoints(expbar)
 	expbar.rested = restbar
 end
 
 function XP:SetupReputation()
-	local reputation = CreateFrame('StatusBar', ADDON_NAME..'_ReputationBar', self.container)
+	local reputation = CreateFrame('StatusBar', st.name ..'_ReputationBar', self.container)
 	self.bars.reputation = reputation
 end
 
@@ -150,7 +150,7 @@ function XP:OnEnable()
 	self.config = st.config.profile.experience
 	self.colors = st.config.profile.colors
 
-	local container = CreateFrame('frame', ADDON_NAME..'_Experience', UIParent)
+	local container = CreateFrame('frame', st.name ..'_Experience', UIParent)
 	container:SetWidth(self.config.width)
 	container:SetPoint(unpack(self.config.position))
 	self:HookScript(container, 'OnEnter')

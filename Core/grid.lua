@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 
 local GD = st:NewModule('Grid')
 local gridFrame = CreateFrame('frame', nil, UIParent)

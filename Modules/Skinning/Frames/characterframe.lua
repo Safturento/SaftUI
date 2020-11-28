@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 local CHARACTER_SLOTS = {
@@ -48,7 +48,7 @@ local function SkinEquipSlots()
 		equip_slot:ClearAllPoints()
 		equip_slot:SetPoint(anchor, parent, anchorTo, 0, -7)
 		
-		st.SkinActionButton(equip_slot)
+		st:SkinActionButton(equip_slot)
 	end
 
 	CharacterHeadSlot:ClearAllPoints()

@@ -1,4 +1,4 @@
-local ADDON_NAME, st = ...
+local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local function PostUpdateHealth(health, unit, current, max)
