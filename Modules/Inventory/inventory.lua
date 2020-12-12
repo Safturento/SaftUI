@@ -173,23 +173,43 @@ function INV:UpdateContainerHeight(container)
 	end
 
 	local prev = container.search
+	local firstOfColumn
+	local rowCount = 0
+	local tallestColumnHeight = 0
+	local currentColumnHeight = 0
+	local numColumns = 1
 	for filter_name, filters in pairs(self.filters) do
 		for i, category in ipairs(filters) do
 			local category_frame = container.categories[category.name]
 			if category_frame and category_frame:IsShown() then
-				height = height + category_frame:GetHeight() + self.config.categoryspacing
+
 				category_frame:ClearAllPoints()
-				if prev then
+
+				if (rowCount + category_frame.numRows + 1) > self.config[container.id].maxRows then
+					category_frame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
+					firstOfColumn = category_frame
+					numColumns = numColumns + 1
+					currentColumnHeight = 0
+					rowCount = 0
+				elseif prev then
 					category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
 				else
 					category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
 				end
+
+				rowCount = rowCount + category_frame.numRows + 1
+				currentColumnHeight = currentColumnHeight + category_frame:GetHeight() + self.config.categoryspacing
+				tallestColumnHeight = math.max(tallestColumnHeight, currentColumnHeight)
+
+				if not firstOfColumn then firstOfColumn = category_frame end
+
 				prev = category_frame
 			end
 		end
 	end
 
-	container:SetHeight(height)
+	container:SetHeight(height + tallestColumnHeight)
+	container:SetWidth(numColumns * prev:GetWidth() + (numColumns + 1) * self.config.padding)
 end
 
 function INV:UpdateConfig(id)
@@ -272,6 +292,7 @@ end
 function INV:OpenBank()
 	if not self.containers.bank then
 		self:CreateContainer('bank', BANK)
+		self:MoveBankBagSlots()
 		self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
@@ -321,6 +342,38 @@ function INV:MovePlayerBagSlots()
 			slot:SetPoint('BOTTOMLEFT', BagSlots[i-1], 'BOTTOMRIGHT', self.config.buttonspacing, 0)
 		end
 	end
+	self.containers.bag.bagSlotContainer = bagSlotContainer
+end
+
+function INV:MoveBankBagSlots()
+	local BagSlots = {}
+	for i=1,7 do
+		BagSlots[i] = BankSlotsFrame['Bag'..i]
+		BagSlots[i].IconBorder:SetAlpha(0)
+	end
+
+	local bagSlotContainer = st:CreateFrame('frame', 'BankBagSlotFrame', self.containers.bank)
+	bagSlotContainer:SetSize(
+		self.config.buttonwidth * 7 + self.config.buttonspacing * 6 + self.config.padding * 2,
+		self.config.buttonheight + self.config.padding * 2)
+	st:SetBackdrop(bagSlotContainer, 'thick')
+
+	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bank, 'TOPLEFT', 0, self.config.buttonspacing)
+	for i,slot in pairs(BagSlots) do
+		slot:SetParent(bagSlotContainer)
+		slot:ClearAllPoints()
+		st:SkinIcon(slot.icon, nil, slot)
+		st:SkinActionButton(slot, st.config.profile.buttons)
+		st:SetBackdrop(slot, 'thick')
+		slot:SetNormalTexture("")
+		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+		if i == 1 then
+			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
+		else
+			slot:SetPoint('BOTTOMLEFT', BagSlots[i-1], 'BOTTOMRIGHT', self.config.buttonspacing, 0)
+		end
+	end
+	self.containers.bank.bagSlotContainer = bagSlotContainer
 end
 
 function INV:ADDON_LOADED(event, addon)
@@ -336,9 +389,11 @@ function INV:OnEnable()
 	ToggleAllBags 		= INV.ToggleBags
 	OpenAllBags 		= INV.ShowBags
 	OpenBackpack 		= INV.ShowBags
+	OpenBag 			= INV.ShowBags
 	CloseAllBags 		= INV.HideBags
 	CloseBackpack 		= INV.HideBags
-	
+	CloseBag			= INV.HideBags
+
 	self:InitializeTooltipScanner()
 
 	if ItemRack then

@@ -10,6 +10,6 @@ function st.Loot:OnInitialize()
 	AlertFrame.SetAlertsEnabled = st.dummy
 	BossBanner:UnregisterEvent("ENCOUNTER_LOOT_RECEIVED")
 
-	-- self:InitializeLootFrame()
+	self:InitializeLootFrame()
 	self:InitializeLootFeed()
 end

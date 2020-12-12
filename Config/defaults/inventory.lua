@@ -18,9 +18,11 @@ st.defaults.inventory = {
 	bag = {
 		position = {'BOTTOMRIGHT', -20, 20},
 		perrow = 8,
+		maxRows = 30,
 	},
 	bank = {
 		position = {'TOPLEFT', 200, -200},
 		perrow = 10,
+		maxRows = 20,
 	}
 }

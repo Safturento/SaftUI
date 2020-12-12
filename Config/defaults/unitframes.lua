@@ -14,7 +14,7 @@ st.defaults.unitframes = {
 				template = 'none',
 				range_alpha = {
 					inside = 1,
-					outside = 0.6,
+					outside = 0.2,
 				},
 				['**'] = {
 					enable = true,
@@ -323,7 +323,7 @@ st.defaults.unitframes = {
 						rel_point = "CENTER",
 						point = "TOP",
 						x_off = "13",
-						y_off = "-178",
+						y_off = "-208",
 						anchor_frame = "UIParent",
 						frame_type = true,
 					},
@@ -718,16 +718,19 @@ st.defaults.unitframes = {
 						hide_full = true,
 						deficit = true,
 					},
+					colorCustom = false,
+					colorClass = true,
 				},
 				power = {
-					enable = true,
+					enable = false,
 					height = 1,
 					position = {point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 7},
 					text = {enable = false}
 				},
 				name = {
 					enable = true,
-					position = {point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0},
+					position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 3},
+					max_length = 8,
 				},
 				auras = {
 					buffs = {
@@ -775,8 +778,7 @@ st.defaults.unitframes = {
 					enable = false,
 					height = 1,
 					position = { point = "BOTTOMLEFT", rel_point = 'BOTTOMLEFT', 0, 0 },
-					text = { enable = false },
-					-- template = 'thin',
+					text = { enable = false },inve
 				},
 				name = {
 					enable = false,
@@ -807,6 +809,17 @@ st.defaults.unitframes = {
 				},
 				questindicator = {
 					enable = true,
+				},
+				raidtargetindicator = {
+					position = {
+						enable = true,
+						point = 'CENTER',
+						rel_point = 'BOTTOMLEFT',
+						anchor_element = 'Health',
+						frame_type = false,
+						x_off = 0,
+						y_off = 0,
+					}
 				},
 				power = {
 					enable = false,

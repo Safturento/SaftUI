@@ -17,6 +17,8 @@ function st:StripTextures(frame, kill)
 	if frame.Right then frame.Right:SetAlpha(0) end
 	if frame.Middle then frame.Middle:SetAlpha(0) end
 
+	if frame.NineSlice then st:Kill(frame.NineSlice) end
+
 	for i=1, frame:GetNumRegions() do
 		local region = select(i, frame:GetRegions())
 		if region:GetObjectType() == 'Texture' then

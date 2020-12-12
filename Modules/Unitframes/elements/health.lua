@@ -12,6 +12,8 @@ local function PostUpdateHealth(health, unit, current, max)
 		
 		if current == max and health.config.text.hide_full then
 			health.text:SetText('')
+		elseif current == 0 then
+			health.text:SetText('Dead')
 		elseif health.config.text.deficit then
 			health.text:SetText(current-max)
 		elseif health.config.text.percent then

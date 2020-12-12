@@ -2,7 +2,6 @@ local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 local CHARACTER_SLOTS = {
-	[0] = 'Ammo',
 	[1] = 'Head',
 	[2] = 'Neck',
 	[3] = 'Shoulder',
@@ -20,36 +19,39 @@ local CHARACTER_SLOTS = {
 	[15] = 'Back',
 	[16] = 'MainHand',
 	[17] = 'SecondaryHand',
-	[18] = 'Ranged',
 	[19] = 'Tabard',
 }
 
 
 local equip_slots = {}
 
+local function SkinSlot(_, slot_name)
+	local equip_slot = _G[format('Character%sSlot', slot_name)]
+	if not equip_slot then return end
+
+	equip_slot.ID = ID
+	equip_slot.slot_name = slot_name
+	equip_slot.icon = _G[equip_slot:GetName()..'IconTexture']
+	equip_slots[ID] = equip_slot
+
+	equip_slot.item_level = equip_slot:CreateFontString(nil, 'OVERLAY')
+	equip_slot:SetSize(36, 36)
+
+	st:StripTextures(equip_slot)
+
+	equip_slot.durability = equip_slot:CreateFontString(nil, 'OVERLAY')
+	equip_slot.durability:SetPoint('TOPLEFT', 0, 1)
+
+	local anchor, parent, anchorTo, xoff, yoff = equip_slot:GetPoint()
+	equip_slot:ClearAllPoints()
+	equip_slot:SetPoint(anchor, parent, anchorTo, 0, -7)
+
+	st:SkinActionButton(equip_slot)
+end
+
 local function SkinEquipSlots()
 
-	for ID,slot_name in pairs(CHARACTER_SLOTS) do
-		local equip_slot = _G[format('Character%sSlot', slot_name)]
-		equip_slot.ID = ID
-		equip_slot.slot_name = slot_name
-		equip_slot.icon = _G[equip_slot:GetName()..'IconTexture']
-		equip_slots[ID] = equip_slot
-
-		equip_slot.item_level = equip_slot:CreateFontString(nil, 'OVERLAY')
-		equip_slot:SetSize(36, 36)
-
-		st:StripTextures(equip_slot)
-		
-		equip_slot.durability = equip_slot:CreateFontString(nil, 'OVERLAY')
-		equip_slot.durability:SetPoint('TOPLEFT', 0, 1)
-
-		local anchor, parent, anchorTo, xoff, yoff = equip_slot:GetPoint()
-		equip_slot:ClearAllPoints()
-		equip_slot:SetPoint(anchor, parent, anchorTo, 0, -7)
-		
-		st:SkinActionButton(equip_slot)
-	end
+	st.map(CHARACTER_SLOTS, SkinSlot)
 
 	CharacterHeadSlot:ClearAllPoints()
 	CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 10, -10)
@@ -62,13 +64,6 @@ local function SkinEquipSlots()
 
 	CharacterSecondaryHandSlot:ClearAllPoints()
 	CharacterSecondaryHandSlot:SetPoint('TOPLEFT', CharacterMainHandSlot, 'TOPRIGHT', 7, 0)
-
-	CharacterRangedSlot:ClearAllPoints()
-	CharacterRangedSlot:SetPoint('TOPLEFT', CharacterSecondaryHandSlot, 'TOPRIGHT', 7, 0)
-	
-	CharacterAmmoSlot:ClearAllPoints()
-	CharacterAmmoSlot:SetPoint('LEFT', CharacterRangedSlot, 'RIGHT', 7, 0)
-
 end
 
 local function UpdateEquipSlot(equip_slot)
@@ -225,14 +220,14 @@ local function SkinStatFrame()
 end
 
 local function SetCharacterFrameTitle()
-	local c = RAID_CLASS_COLORS[st.my_class]
-	local text = st.StringFormat:ColorString(UnitLevel('player'), c.r, c.g, c.b) .. ' ' .. (UnitPVPName('player') or UnitName('player'))
-	local guild, title, rank = GetGuildInfo("player")
-	if guild then
-		text = text .. ' <'.. guild .. '>'
-	end
-
-	CharacterNameText:SetText(text)
+	--local c = RAID_CLASS_COLORS[st.my_class]
+	--local text = st.StringFormat:ColorString(UnitLevel('player'), c.r, c.g, c.b) .. ' ' .. (UnitPVPName('player') or UnitName('player'))
+	--local guild, title, rank = GetGuildInfo("player")
+	--if guild then
+	--	text = text .. ' <'.. guild .. '>'
+	--end
+	--
+	--CharacterNameText:SetText(text)
 end
 
 
@@ -246,24 +241,25 @@ SK.FrameSkins.CharacterFrame = function()
 		CharacterLevelText,
 		CharacterGuildText,
 	}) do st:Kill(frame) end
-	
+
 	for _,frame in pairs({
 		PaperDollFrame,
 		ReputationFrame,
-		SkillFrame
+		SkillFrame,
+		CharacterFrame.NineSlice
 	}) do st:StripTextures(frame) end
-	
+	--
 	SK:SkinBlizzardPanel(CharacterFrame, {fix_padding = true, title = CharacterNameText})
-
-	CharacterModelFrame:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 7, 0)
-	CharacterModelFrame:SetPoint('BOTTOMRIGHT', CharacterTrinket0Slot, 'BOTTOMLEFT', -7, 0)
-
-	SkinEquipSlots()
-	-- SkinStatFrame()
-
-	PaperDollFrame:HookScript('OnEvent', SetCharacterFrameTitle)
-	CharacterFrame:HookScript('OnEvent', SetCharacterFrameTitle)
-	CharacterFrame:HookScript('OnShow', SetCharacterFrameTitle)
-	hooksecurefunc('PaperDollItemSlotButton_Update', UpdateEquipSlot)
+	--
+	--CharacterModelFrame:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 7, 0)
+	--CharacterModelFrame:SetPoint('BOTTOMRIGHT', CharacterTrinket0Slot, 'BOTTOMLEFT', -7, 0)
+	--
+	--SkinEquipSlots()
+	---- SkinStatFrame()
+	--
+	--PaperDollFrame:HookScript('OnEvent', SetCharacterFrameTitle)
+	--CharacterFrame:HookScript('OnEvent', SetCharacterFrameTitle)
+	--CharacterFrame:HookScript('OnShow', SetCharacterFrameTitle)
+	--hooksecurefunc('PaperDollItemSlotButton_Update', UpdateEquipSlot)
 
 end

@@ -107,21 +107,23 @@ end
 local title = select(2, GetAddOnInfo(st.name))
 
 function st:Print(...)
-	print(('[%s]'):format(title), ...)
+	print(('[%s]: '):format(title), ...)
 end
 
 function st:Error(...)
-	print(('[%s |cFFFF0000Error|r]'):format(title), ...)
+	print(('[%s |cFFFF0000Error|r]: '):format(title), ...)
 end
 
 function st:Debug(module, ...)
 	if not self.DEBUG then return end
 
-	debug = st.StringFormat:ColorString('DEBUG', unpack(st.config.profile.colors.text.red))
+	debug = st.StringFormat:ColorString(
+			'DEBUG', unpack(st.config.profile.colors.text.red))
 	st:Print(('<%s:%s>'):format(debug, module), ...)
 end
 
 function st:Kill(frame)
+	if not frame then return end
 	if frame.UnregisterAllEvents then
 		frame:UnregisterAllEvents()
 		frame:SetParent(st.HiddenFrame)

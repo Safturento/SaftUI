@@ -3,6 +3,29 @@ local st = SaftUI
 st.HideGameTooltip = function() GameTooltip:Hide() end
 st.dummy = function() end
 
+local function escape(str)
+	return string.gsub(str, "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1") -- escape pattern
+end
+
+local function removeMagicChars(x)
+   return (x:gsub('%%', ' ')
+            :gsub('^%^', '')
+            :gsub('%$$', '')
+            :gsub('%(', '')
+            :gsub('%)', '')
+            :gsub('%.', '')
+            :gsub('%[', '')
+            :gsub('%]', '')
+            :gsub('%*', '')
+            :gsub('%+', '')
+            :gsub('%-', '')
+            :gsub('%?', ''))
+end
+
+function string.matchnocase(x, y) return string.match(strlower(removeMagicChars(x)), strlower(removeMagicChars(y))) end
+function string.findnocase(x, y) return string.find(strlower(removeMagicChars(x)), strlower(removeMagicChars(y))) end
+
+
 --Make a copy of a table
 function st.tablecopy(t, deep, seen)
 	seen = seen or {}
@@ -80,4 +103,16 @@ function st.tableinvert(table)
 		inverted[v] = k
 	end
 	return inverted
+end
+
+function st.map(table, func)
+	for key, value in pairs(table) do
+		func(key, value)
+	end
+end
+
+function st.imap(table, func)
+	for index, value in ipairs(table) do
+		func(index, value)
+	end
 end
