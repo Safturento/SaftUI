@@ -22,7 +22,6 @@ end
 function TT:UpdateTooltipDisplay(tooltip)
 	local font,size,outline = st:GetFont(self.config.font):GetFont()
 
-	tooltip:SetBackdrop(nil)
 	st:SetBackdrop(tooltip, self.config.template)
 
 	if IsModifierKeyDown() and tooltip:GetItem() then
@@ -135,7 +134,6 @@ function TT:OnEnable()
 	for i=1, 2 do
 		local name = 'DropDownList'..i
 		local dropdown = _G[name]
-		_G[name..'MenuBackdrop']:SetBackdrop(nil)
 		st:SetBackdrop(dropdown, self.config.template)
 	end
 end

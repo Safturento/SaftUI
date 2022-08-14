@@ -28,11 +28,11 @@ end
 
 function INV:ScanBagItem(bagID, slotID)
     self.tip:ClearLines()
-    --local clink = GetContainerItemLink(bagID, slotID)
-    --if self.cache[clink] then return self.cache[clink] end
+    local clink = GetContainerItemLink(bagID, slotID)
+    if self.cache[clink] then return self.cache[clink] end
 
     hasCooldown, repairCost = self.tip:SetBagItem(bagID, slotID);
     local text = enumerateTextRegions(self.tip:GetRegions())
-    --self.cache[clink] = text
+    self.cache[clink] = text
     return text
 end

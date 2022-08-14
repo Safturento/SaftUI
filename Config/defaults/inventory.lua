@@ -23,6 +23,11 @@ st.defaults.inventory = {
 	bank = {
 		position = {'TOPLEFT', 200, -200},
 		perrow = 10,
-		maxRows = 20,
+		maxRows = 30,
+	},
+	reagent = {
+		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0},
+		perrow = 10,
+		maxRows = 30,
 	}
 }

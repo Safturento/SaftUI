@@ -312,3 +312,22 @@ function st:CreatePanel(name, width, height)
 
 	return panel
 end
+
+function st:CreateButton(name, parent, text, template)
+	local button = self:CreateFrame('Button', 'SaftUI_'..name, parent)
+	button.text = st:CreateFontString(button, 'normal', text)
+	button.text:SetPoint('CENTER')
+	st:SetBackdrop(button, template or 'thick')
+
+	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
+	button.SetText = button.text.SetText
+
+	return button
+end
+
+function st:CreateFontString(parent, font, text)
+	local fontString = parent:CreateFontString(nil, 'OVERLAY')
+	fontString:SetFontObject(st:GetFont(font or 'pixel'))
+	if text then fontString:SetText(text) end
+	return fontString
+end

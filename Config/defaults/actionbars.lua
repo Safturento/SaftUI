@@ -25,7 +25,7 @@ st.defaults.actionbars = {
 		}
 	},
 	bar1 = {
-		total = 9,
+		total = 10,
 		position = {point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = st.CLAMP_INSET },
 		backdrop = {
 			-- enable = true,
@@ -34,11 +34,11 @@ st.defaults.actionbars = {
 		}
 	},
 	bar2 = {
-		total = 9,
+		total = 10,
 		position = { point = 'BOTTOM', frame = st.name ..'ActionBar1', rel_point = 'TOP', x_off = 0, y_off = 7},
 	},
 	bar3 = {
-		total = 9,
+		total = 10,
 		position = { point = 'BOTTOM', frame = st.name ..'ActionBar2', rel_point = 'TOP', x_off = 0, y_off = 7},
 	},
 	bar4 = {

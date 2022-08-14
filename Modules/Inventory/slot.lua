@@ -70,12 +70,46 @@ local function UpdateTooltip(self)
 	end
 end
 
+function INV:ShouldAutoVendor(itemID)
+    return INV.config.autoVendorFilter and INV.config.autoVendorFilter[itemID]
+end
+
+local function CreateSlotDropdown()
+    INV.SlotDropDown = CreateFrame("Frame", "SaftUI_SlotOptionsMenu", UIParent, "UIDropDownMenuTemplate")
+    UIDropDownMenu_SetWidth(INV.SlotDropDown, 200)
+    UIDropDownMenu_SetText(INV.SlotDropDown, "Options")
+    UIDropDownMenu_Initialize(INV.SlotDropDown, function(dropdown, level, menuList)
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Auto Vendor"
+        info.checked = function(self)
+            return INV.config.autoVendorFilter and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+        end
+        info.func = function(dropdown, arg1, arg2, checked)
+            if not INV.SelectedSlot then return end
+
+            if not INV.config.autoVendorFilter then INV.config.autoVendorFilter = {} end
+            INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID] = not checked
+            INV:QueueUpdate()
+        end
+        UIDropDownMenu_AddButton(info)
+    end)
+end
+
+local function OpenSlotOptions(slot, button, down)
+    INV.SelectedSlot = slot
+    if not INV.SlotDropDown then CreateSlotDropdown() end
+
+    if IsControlKeyDown() and button == 'RightButton' then
+        ToggleDropDownMenu(1, nil, INV.SlotDropDown, "cursor",5, -5)
+    end
+end
+
 function INV:CreateSlot(container, category_name)
 	local category_frame = container.categories[category_name]
 	local slotID = #category_frame.slots + 1
 	local slot, slot_name
 
-	if not (container.id == 'reagent') then
+	--if not (container.id == 'reagent') then
 		assert(category_frame, 'Category "'..category_name..'" does not exist')
 
 		local bagName = container:GetName()
@@ -96,9 +130,10 @@ function INV:CreateSlot(container, category_name)
 
 		slot.UpdateTooltip = UpdateTooltip
 		slot:SetScript('OnEnter', UpdateTooltip)
+		slot:HookScript('OnClick', OpenSlotOptions)
 
 		self:SetSlotPosition(slot, category_frame, container)
-	end
+	--end
 	
 	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
 	

@@ -52,18 +52,19 @@ function MP:SkinTrackingIcon()
 	st:SetBackdrop(track.button)
 
 	track:ClearAllPoints()
-	track:SetPoint('TOPLEFT', Minimap, 7, -7)
+	track:SetPoint('BOTTOMRIGHT', Minimap, -7, 7)
 
-	for _,region in pairs({track.button:GetRegions()}) do
-		if region:GetObjectType() == 'Texture' then
-			local texture = region:GetTexture()
-			if not texture then return end
-
-			if texture:find('Background') or texture:find('Border') or texture:find('AlphaMask') then
-					region:SetTexture(nil)
-			end
-		end
-	end
+-- 	for _,region in pairs({track.button:GetRegions()}) do
+-- 		if region:GetObjectType() == 'Texture' then
+-- 			local texture = region:GetTexture()
+-- 			print(texture)
+-- 			if not texture then return end
+--
+-- 			if texture:find('Background') or texture:find('Border') or texture:find('AlphaMask') then
+--                 region:SetTexture(nil)
+-- 			end
+-- 		end
+-- 	end
 end
 
 function MP:SkinQueueIcon()
@@ -124,7 +125,7 @@ function MP:InitializeMinimap()
 	-- Skin instance difficulty
 	MiniMapInstanceDifficulty:SetParent(Minimap)
 	MiniMapInstanceDifficulty:ClearAllPoints()
-	MiniMapInstanceDifficulty:SetPoint('TOPRIGHT', Minimap, 'TOPRIGHT', 0, 0)
+	MiniMapInstanceDifficulty:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', 0, 0)
 
 	self:SkinTrackingIcon()
 	self:SkinQueueIcon()

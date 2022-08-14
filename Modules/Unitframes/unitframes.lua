@@ -16,7 +16,8 @@ UF.unit_strings = {
 	['focustarget'] = 'FocusTarget',
 	['pet'] = 'Pet',
 	['pettarget'] = 'PetTarget',
-	['boss'] = 'Boss'
+	['boss'] = 'Boss',
+	['arena'] = 'Arena'
 }
 
 UF.group_strings = {
@@ -118,6 +119,8 @@ function UF:UpdateUnitFrame(frame, element_name)
 				if not frame.config.enable then
 					frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
 					return
+				elseif frame.ID and frame.ID > 1 then
+					frame:SetPoint('TOPLEFT', self.units[frame.base_unit][frame.ID-1], 'BOTTOMLEFT', 0, -frame.config.spacing)
 				else
 					frame:SetPoint(st:UnpackPoint(frame.config.position))
 				end

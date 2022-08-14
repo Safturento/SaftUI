@@ -4,6 +4,17 @@ local INV = st:GetModule('Inventory')
 INV.CATEGORY_TITLE_HEIGHT = 17
 INV.CATEGORY_SLOT_POOL = 10
 
+local expacAbbreviations = {
+	[0] = "Classic",
+	[1] = "BC",
+	[2] = "WotLK",
+	[3] = "Cata",
+	[4] = "MoP",
+	[5] = "WoD",
+	[6] = "Legion",
+	[7] = "BfA",
+	[8] = "SL",
+}
 
 local customItemLists = {
 	["Archaeology"] = {
@@ -53,7 +64,7 @@ local customItemLists = {
 }
 
 INV.categoryNames = {
-	['GRAYS'] = 'Grays',
+	['GRAYS'] = 'Grays/Auto Vendor',
 	['CONSUMABLES'] = 'Consumables',
 	['LEGACY_ARMOR_WEAPONS'] = 'Legacy Armor/Weapons',
 	['ARMOR'] = 'Armor',
@@ -89,10 +100,12 @@ local BIND_ON_ACCOUNT = "Account Bound"
 local TRAINING_STONE_TEXT = "Battle-Training Stone"
 local BATTLE_STONE_TEXT = "Battle-Stone"
 local RESTORED_ARTIFACT_TEXT = "Carefully crate the restored artifact"
+local TRADEABLE_ITEM = "You may trade this item with players"
 
 local function isLegacyGear(info)
 	if info.expacID > 7 then return false end
 	if info.equipSlot == "INVTYPE_TABARD" or info.equipSlot == "INVTYPE_BODY" then return false end
+	if string.matchnocase(info.tooltipText, TRADEABLE_ITEM) then return false end
 	if string.matchnocase(info.tooltipText, BIND_ON_ACCOUNT) then return false end
 	if string.matchnocase(info.tooltipText, COSMETIC_TEXT) then return false end
 	if string.matchnocase(info.tooltipText, USE_TEXT) or string.matchnocase(info.tooltipText, EQUIP_EFFECT_TEXT) then return false end
@@ -106,7 +119,7 @@ end
 INV.filters = {
 	itemrack = {},
 	categories = {
-		{ name = INV.categoryNames.GRAYS,			 	func = function(info) return info.quality == 0 end},
+		{ name = INV.categoryNames.GRAYS,			 	func = function(info) return info.quality == 0 or INV:ShouldAutoVendor(info.itemID) end},
 		{ name = INV.categoryNames.TOY,					func = function(info) return string.matchnocase(info.tooltipText, TOY_TEXT) end},
 		{ name = INV.categoryNames.ANIMA,				func = function(info) return string.matchnocase(info.tooltipText, ANIMA_TEXT) end},
 		{ name = INV.categoryNames.CONDUITS,			func = function(info) return string.matchnocase(info.tooltipText, CONDUIT_TEXT) end},
@@ -135,11 +148,16 @@ INV.filters = {
 --itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText
 function INV:GetItemCategory(info)
 	if info.class == 'Armor' or info.class == 'Weapon' then
-		for i, category in ipairs(self.filters.itemrack) do
-			if category.func(info) then
-				return category.name
-			end
+		local isItemInSet, itemSetList = GetContainerItemEquipmentSetInfo(info.bagID, info.slotID)
+		if isItemInSet then
+			return 'Set: ' .. select(1, strsplit(',', itemSetList))
 		end
+
+		--for i, category in ipairs(self.filters.itemrack) do
+		--	if category.func(info) then
+		--		return category.name
+		--	end
+		--end
 	end
 
 	for i, category in ipairs(self.filters.categories) do
@@ -152,34 +170,86 @@ function INV:GetItemCategory(info)
 	return "Miscellaneous"
 end
 
-function INV:UpdateItemRackCategories()
-	if not ItemRackUser then return end
-	local categories = {}
+--function INV:UpdateItemRackCategories()
+--	if not ItemRackUser then return end
+--	local categories = {}
+--
+--	for set_name, set_items in pairs(ItemRackUser.Sets) do
+--		if not (set_name:sub(1,1) == '~') then
+--			local category = {
+--				name = 'ItemRack: '..set_name,
+--				items = {},
+--			}
+--
+--			for slot_id, item_link in pairs(set_items.equip) do
+--				category.items['item:'..item_link] = true
+--			end
+--
+--			category.func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
+--				local item_string = string.match(link, "item[%-?%d:]+")
+--				return category.items[item_string]
+--			end
+--
+--			tinsert(categories, category)
+--		end
+--	end
+--
+--	self.filters.itemrack = categories
+--
+--	self:QueueUpdate()
+--end
 
-	for set_name, set_items in pairs(ItemRackUser.Sets) do
-		if not (set_name:sub(1,1) == '~') then
-			local category = {
-				name = 'ItemRack: '..set_name,
-				items = {},
+function INV:GetInventoryItemInfo(bagID, slotID)
+	local texture, count, locked, quality, readable, lootable, itemLink, isFiltered, hasNoValue, itemID = GetContainerItemInfo(bagID,slotID)
+	if itemLink then
+		local tooltipText = self:ScanBagItem(bagID,slotID)
+		local name, _, _, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemLink)
+
+
+		if not name then
+			local itemString = select(3, strfind(itemLink, "|H(.+)|h"))
+			local itemType, itemId = string.split(':', itemString)
+
+			if itemType == "keystone" then
+				name, _, _, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemId)
+				class = 'Key'
+			elseif itemType == 'battlepet' then
+				--print(string.split(':', itemString))
+			end
+		end
+
+		if name then
+			local itemInfo = {
+				name = name,
+				ilvl = GetDetailedItemLevelInfo(itemLink),
+				reqLevel = reqLevel,
+				count = count,
+				itemID = itemID,
+				itemLink = itemLink,
+				quality = quality or 0,
+				class = class,
+				subclass = subclass,
+				maxStack = maxStack,
+				equipSlot = equipSlot,
+				expacID = expacID,
+				vendorPrice = vendorPrice,
+				itemLink = itemLink,
+				texture = texture,
+				locked = locked,
+				expacID = expacID,
+				bagID = bagID,
+				slotID = slotID,
+				tooltipText = tooltipText,
+				sortString = (ilvl or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (count or 0),
 			}
 
-			for slot_id, item_link in pairs(set_items.equip) do
-				category.items['item:'..item_link] = true
-			end
-
-			category.func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
-				local item_string = string.match(link, "item[%-?%d:]+")
-				return category.items[item_string]
-			end
-
-			tinsert(categories, category)
+			return itemInfo
 		end
 	end
-
-	self.filters.itemrack = categories
-
-	self:QueueUpdate()
 end
+
 
 local function sortCategory(a,b) return a.sortString > b.sortString end
 
@@ -190,73 +260,35 @@ function INV:GetSortedInventory(id)
 	end
 
 	local inventory = {}
-	
-	for _,bagID in pairs(container.bag_ids) do
-		for slotID=1, GetContainerNumSlots(bagID) do
-			local texture, count, locked, quality, readable, lootable, itemLink, isFiltered, hasNoValue, itemID = GetContainerItemInfo(bagID,slotID)
-			if itemLink then
-				local tooltipText = self:ScanBagItem(bagID,slotID)
-				local name, _, _, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
-					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemLink)
 
+	if id == 'reagent' then
+		for slotID = 1, 98 do
+			local itemInfo = self:GetInventoryItemInfo(REAGENTBANK_CONTAINER, slotID)
+			if itemInfo then
+				local categoryName = itemInfo.subclass or "Other"
 
-				if not name then
-					local itemString = select(3, strfind(itemLink, "|H(.+)|h"))
-					local itemType, itemId = string.split(':', itemString)
-
-					if itemType == "keystone" then
-						name, _, _, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
-							itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemId)
-						class = 'Key'
-					elseif itemType == 'battlepet' then
-						--print(string.split(':', itemString))
-					end
+				if itemInfo.expacID then
+					itemInfo.sortString = itemInfo.expacID .. itemInfo.sortString
 				end
+				if not inventory[categoryName] then inventory[categoryName] = {} end
+				tinsert(inventory[categoryName], itemInfo)
+			end
+		end
+	else
+		for _,bagID in pairs(container.bag_ids) do
+			for slotID=1, GetContainerNumSlots(bagID) do
+				local itemInfo = self:GetInventoryItemInfo(bagID, slotID)
+				if itemInfo then
+					local categoryName = self:GetItemCategory(itemInfo)
 
-				if name then
-					ilvl = GetDetailedItemLevelInfo(itemLink)
-					--Create custom categories here to replace actual category value
-					local category_name = self:GetItemCategory({
-						itemID = itemID,
-						name = name,
-						clink = itemLink,
-						quality = quality,
-						ilvl = ilvl,
-						reqLevel = reqLevel,
-						class = class,
-						subclass = subclass,
-						equipSlot = equipSlot,
-						expacID = expacID,
-						tooltipText = tooltipText
-					})
-
-					if not inventory[category_name] then inventory[category_name] = {} end
-
-					tinsert(inventory[category_name], {
-						name = name,
-						quality = quality or 0,
-						ilvl = ilvl,
-						reqLevel = reqLevel,
-						class = class,
-						subclass = subclass,
-						maxStack = maxStack,
-						equipSlot = equipSlot,
-						vendorPrice = vendorPrice,
-						bagID = bagID,
-						slotID = slotID,
-						sortString = (ilvl or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (count or 0),
-						clink = itemLink,
-						texture = texture,
-						count = count,
-						locked = locked,
-						expacID = expacID
-					})
+					if not inventory[categoryName] then inventory[categoryName] = {} end
+					tinsert(inventory[categoryName], itemInfo)
 				end
 			end
 		end
 	end
 
-	for category_name,categoryItems in pairs(inventory) do
+	for categoryName,categoryItems in pairs(inventory) do
 		if #categoryItems > 1 then
 			table.sort(categoryItems, sortCategory)
 		end
@@ -335,5 +367,6 @@ end
 function INV:InitializeAllCategories(container)
 	for _,category in pairs(self.filters.categories) do
 		self:CreateCategory(container, category.name)
+		self:UpdateCategory(container, category.name, {})
 	end
 end

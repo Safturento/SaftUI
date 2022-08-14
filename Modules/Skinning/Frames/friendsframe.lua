@@ -16,33 +16,33 @@ local function SkinFriendsButton(button)
 	st:Kill(button.gameIcon)
 end
 
--- function FriendsFrame_UpdateFriends()
--- 	local scrollFrame = FriendsFrameFriendsScrollFrame;
--- 	local offset = HybridScrollFrame_GetOffset(scrollFrame);
--- 	local buttons = scrollFrame.buttons;
--- 	local numButtons = #buttons;
--- 	local numFriendButtons = scrollFrame.numFriendListEntries;
-
--- 	local usedHeight = 0;
-
--- 	scrollFrame.dividerPool:ReleaseAll();
--- 	scrollFrame.invitePool:ReleaseAll();
--- 	scrollFrame.PendingInvitesHeaderButton:Hide();
--- 	for i = 1, numButtons do
--- 		local button = buttons[i];
--- 		local index = offset + i;
--- 		if ( index <= numFriendButtons ) then
--- 			button.index = index;
--- 			local height = FriendsFrame_UpdateFriendButton(button);
--- 			button:SetHeight(height);
--- 			usedHeight = usedHeight + height;
--- 		else
--- 			button.index = nil;
--- 			button:Hide();
--- 		end
--- 	end
--- 	HybridScrollFrame_Update(scrollFrame, scrollFrame.totalFriendListEntriesHeight, usedHeight);
--- end
+ --function FriendsFrame_UpdateFriends()
+ --	local scrollFrame = FriendsFrameFriendsScrollFrame;
+ --	local offset = HybridScrollFrame_GetOffset(scrollFrame);
+ --	local buttons = scrollFrame.buttons;
+ --	local numButtons = #buttons;
+ --	local numFriendButtons = scrollFrame.numFriendListEntries;
+ --
+ --	local usedHeight = 0;
+ --
+ --	scrollFrame.dividerPool:ReleaseAll();
+ --	scrollFrame.invitePool:ReleaseAll();
+ --	scrollFrame.PendingInvitesHeaderButton:Hide();
+ --	for i = 1, numButtons do
+ --		local button = buttons[i];
+ --		local index = offset + i;
+ --		if ( index <= numFriendButtons ) then
+ --			button.index = index;
+ --			local height = FriendsFrame_UpdateFriendButton(button);
+ --			button:SetHeight(height);
+ --			usedHeight = usedHeight + height;
+ --		else
+ --			button.index = nil;
+ --			button:Hide();
+ --		end
+ --	end
+ --	HybridScrollFrame_Update(scrollFrame, scrollFrame.totalFriendListEntriesHeight, usedHeight);
+ --end
 
 function SK:FriendsFrame_UpdateFriendButton(button)
 	if not button.travelPassButton:IsEnabled() then

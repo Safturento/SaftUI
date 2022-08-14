@@ -31,7 +31,7 @@ st.defaults.loot = {
 			other_item = true,
 			gold = true,
 			currency = true,
-			reputation = false,
+			reputation = true,
 			experience = false
 		}
 	},

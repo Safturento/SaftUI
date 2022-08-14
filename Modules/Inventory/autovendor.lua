@@ -1,27 +1,44 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
-local function vendorLegacy(self, elapsed)
-	self.timeLeft = (self.timeLeft or 0) - elapsed
-	if self.timeLeft > 0 then return end
-	self.timeLeft = 2
 
-	ids = {}
-	for _,item in pairs(INV.containers.bag.categories[INV.categoryNames.LEGACY_ARMOR_WEAPONS].slots) do
-		if item.info then
-			tinsert(ids, { bagID = item.info.bagID, slotID = item.info.slotID })
-		end
-	end
-	self.ids = ids
+local vendorHandler = CreateFrame('frame')
 
-	if #self.ids == 0 or not MerchantFrame:IsShown() then
-		self:SetScript('OnUpdate', nil)
-		return
-	end
+function INV:VendorCategory(categoryKey)
+    if  self.containers.bag.categories[categoryKey] then
+        vendorHandler.profit = 0
+        vendorHandler.firstLoop = true
+        vendorHandler:SetScript('OnUpdate', function(self, elapsed)
+            self.timeLeft = (self.timeLeft or 0) - elapsed
+            if self.timeLeft > 0 then return end
+            self.timeLeft = 2
 
-	for _,item in pairs(ids) do
-		UseContainerItem(item.bagID, item.slotID)
-	end
+            ids = {}
+            for _,item in pairs(INV.containers.bag.categories[categoryKey].slots) do
+                if item.info then
+                    tinsert(ids, { bagID = item.info.bagID, slotID = item.info.slotID })
+                end
+            end
+            self.ids = ids
+
+            if #self.ids == 0 or not MerchantFrame:IsShown() then
+                self:SetScript('OnUpdate', nil)
+                return
+            end
+
+            for _,item in pairs(ids) do
+                UseContainerItem(item.bagID, item.slotID)
+            end
+        end)
+
+        for _,item in pairs(INV.containers.bag.categories[categoryKey].slots) do
+            if item.info then
+                self.profit = self.profit + item.info.vendorPrice
+            end
+        end
+
+        return vendorHandler.profit
+    end
 end
 
 function INV:HandleMerchant()
@@ -50,18 +67,8 @@ function INV:HandleMerchant()
 				end
 			end
 			--UnitLevel('player') == MAX_PLAYER_LEVEL and
-			if  self.containers.bag.categories[self.categoryNames.LEGACY_ARMOR_WEAPONS] then
-				local handler = CreateFrame('frame')
-				handler.profit = 0
-				handler.firstLoop = true
-				handler:SetScript('OnUpdate', vendorLegacy)
-
-				for _,item in pairs(INV.containers.bag.categories[INV.categoryNames.LEGACY_ARMOR_WEAPONS].slots) do
-					if item.info then
-						profit = profit + item.info.vendorPrice
-					end
-				end
-			end
+			INV:VendorCategory(self.categoryNames.LEGACY_ARMOR_WEAPONS)
+			INV:VendorCategory(self.categoryNames.GRAYS)
 
 			if profit > 0 then st:Print('Total gold gained from vendoring greys: ' .. st.StringFormat:GoldFormat(profit))
 			end

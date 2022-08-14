@@ -4,6 +4,12 @@ local INV = st:NewModule('Inventory', 'AceHook-3.0', 'AceEvent-3.0')
 local BACKPACK_IDS = {0, 1, 2, 3, 4}
 local BANK_IDS = {-1, 5, 6, 7, 8, 9, 10, 11}
 
+local BAG_IDS = {
+	['bag'] = {0, 1, 2, 3, 4},
+	['bank'] = {-1, 5, 6, 7, 8, 9, 10, 11},
+	['reagent'] = {-3}
+}
+
 INV.containers = {}
 INV.OnUseItems = {}
 
@@ -20,7 +26,7 @@ function INV:CreateContainer(id, name)
 
 	container.slots = {}
 	container.categories = {}
-	container.bag_ids = id == 'bag' and BACKPACK_IDS or BANK_IDS
+	container.bag_ids = BAG_IDS[id]
 
 	container.bags = {}
 	for _, bag_id in pairs(container.bag_ids) do
@@ -30,6 +36,7 @@ function INV:CreateContainer(id, name)
 	end
 
 	self:UpdateConfig(id)
+	return container
 end
 
 function INV:InitializeFooter(container)
@@ -60,19 +67,15 @@ function INV:InitializeFooter(container)
 		container.footer.gold = goldstring
 		self:UpdateGold()
 	elseif container.id == 'bank' then
-		local reagentButton = st:CreateFrame('button', 'SaftUI_ReagentBankButton', container)
+		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents', 'highlight')
+
 		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
-		ReagentBankFrame:SetParent(container)
-		ReagentBankFrame:ClearAllPoints()
-		ReagentBankFrame:SetPoint('TOPLEFT', container, 'TOPRIGHT', 5, 0)
 		reagentButton:SetScript('OnClick', function()
-			ReagentBankFrame_OnShow(ReagentBankFrame)
-			ReagentBankFrame:Show()
+			self:InitializeReagentBank()
 		end)
 		reagentButton:SetSize(100, 16)
-		reagentButton:SetText('Reagents')
 		reagentButton:SetFrameLevel(90)
-		st:SetBackdrop(reagentButton, 'highlight')
+
 
 		--local deposit = ReagentBankFrame.DespositButton
 		--deposit:SetSize(200, 16)
@@ -149,7 +152,7 @@ end
 
 function INV:UpdateContainerItems(id)
 	local container = self.containers[id]
-
+	if not container:IsShown() then return end
 	local sorted_inv = self:GetSortedInventory(id)
 
 	for cat_name, cat_items in pairs(sorted_inv) do
@@ -161,7 +164,7 @@ function INV:UpdateContainerItems(id)
 	self:UpdateContainerHeight(container)
 
 	local empty, total = self:GetNumContainerSlots(container)
-	container.footer.slots:SetFormattedText('%d/%d',total-empty, total)
+	container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
 end
 
 function INV:UpdateContainerHeight(container)
@@ -172,39 +175,48 @@ function INV:UpdateContainerHeight(container)
 		height = height + container.search:GetHeight()
 	end
 
+	local totalRows = 0
+	for _,categoryFrame in pairs(container.categories) do
+		if categoryFrame:IsShown() then
+			totalRows = totalRows + categoryFrame.numRows + 1
+		end
+	end
+	local breakPoint
+	if totalRows > self.config[container.id].maxRows then
+		 breakPoint = math.ceil(totalRows / 2) + 2
+	end
+
 	local prev = container.search
 	local firstOfColumn
 	local rowCount = 0
 	local tallestColumnHeight = 0
 	local currentColumnHeight = 0
 	local numColumns = 1
-	for filter_name, filters in pairs(self.filters) do
-		for i, category in ipairs(filters) do
-			local category_frame = container.categories[category.name]
-			if category_frame and category_frame:IsShown() then
+	for _,category_frame in pairs(container.categories) do
+		if category_frame and category_frame:IsShown() then
 
-				category_frame:ClearAllPoints()
+			category_frame:ClearAllPoints()
 
-				if (rowCount + category_frame.numRows + 1) > self.config[container.id].maxRows then
-					category_frame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
-					firstOfColumn = category_frame
-					numColumns = numColumns + 1
-					currentColumnHeight = 0
-					rowCount = 0
-				elseif prev then
-					category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
-				else
-					category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
-				end
-
-				rowCount = rowCount + category_frame.numRows + 1
-				currentColumnHeight = currentColumnHeight + category_frame:GetHeight() + self.config.categoryspacing
-				tallestColumnHeight = math.max(tallestColumnHeight, currentColumnHeight)
-
-				if not firstOfColumn then firstOfColumn = category_frame end
-
-				prev = category_frame
+			local newCount = (rowCount + category_frame.numRows + 1)
+			if (breakPoint and newCount >= breakPoint) or newCount > self.config[container.id].maxRows then
+				category_frame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
+				firstOfColumn = category_frame
+				numColumns = numColumns + 1
+				currentColumnHeight = 0
+				rowCount = 0
+			elseif prev then
+				category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
+			else
+				category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
 			end
+
+			rowCount = rowCount + category_frame.numRows + 1
+			currentColumnHeight = currentColumnHeight + category_frame:GetHeight() + self.config.categoryspacing
+			tallestColumnHeight = math.max(tallestColumnHeight, currentColumnHeight)
+
+			if not firstOfColumn then firstOfColumn = category_frame end
+
+			prev = category_frame
 		end
 	end
 
@@ -250,6 +262,10 @@ function INV:UpdateHandler(elapsed)
 		self:UpdateContainerItems('bag')
 		if self.containers.bank then
 			self:UpdateContainerItems('bank')
+		end
+
+		if self.containers.reagent then
+			self:UpdateContainerItems('reagent')
 		end
 	end	
 end
@@ -419,5 +435,4 @@ function INV:OnEnable()
 
 	self.updater = CreateFrame('frame')
 	self:HookScript(self.updater, 'OnUpdate', 'UpdateHandler')
-
 end

@@ -59,6 +59,14 @@ function AB:KillBlizzard()
 	end
 
 	MainMenuBar:SetParent(st.hidden_frame)
+	self:UnregisterEvent("ACTIONBAR_PAGE_CHANGED");
+	--self:UnregisterEvent("CURRENCY_DISPLAY_UPDATE");
+	self:UnregisterEvent("UNIT_LEVEL");
+	self:UnregisterEvent("PLAYER_ENTERING_WORLD");
+	self:UnregisterEvent("TRIAL_STATUS_UPDATE");
+	self:UnregisterEvent("DISPLAY_SIZE_CHANGED");
+	self:UnregisterEvent("UI_SCALE_CHANGED");
+
 	ActionBarButtonEventsFrame:UnregisterEvent("ACTIONBAR_SHOWGRID")
 	ActionBarButtonEventsFrame:UnregisterEvent("ACTIONBAR_HIDEGRID")
 

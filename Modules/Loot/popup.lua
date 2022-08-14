@@ -1,34 +1,13 @@
 local st = SaftUI
 local LT = st:GetModule('Loot')
 
-function LT:LootFrame_Show()
-	if not LootFrame.skinned then
-		LT:SkinLootFrame()
-		LootFrame.skinned = true
-	end
-
-	local numItems = LootFrame.numLootItems
-	for ID = numItems, 1, -1 do
-
-		local button = LootFrame.buttons[ID] or self:CreateLootButton(ID)
-		button:ClearAllPoints()
-		if ID == numItems then
-			button:SetPoint('TOP', LootFrame.header, 'BOTTOM', 0, -self.config.popup.spacing)
-		else
-			button:SetPoint('TOP', LootFrame.buttons[ID + 1], 'BOTTOM', 0, -self.config.popup.spacing)
-		end
-	end
-	LOOTFRAME_NUMBUTTONS = max(LOOTFRAME_NUMBUTTONS, numItems)
-end
-
 function LT:CreateLootButton(ID)
-	local button = CreateFrame('Frame', 'LootButton'..ID,  LootFrame, 'LootButtonTemplate')
+	local button = CreateFrame('ItemButton', 'LootButton'..ID,  LootFrame, 'LootButtonTemplate')
 	button:SetID(ID)
 
-	-- button.icon = button:CreateTexture('LootButton'..ID..'IconTexture', 'OVERLAY')
-	-- button.Count = button:CreateFontString(nil, 'OVERLAY')
-	-- button.IconBorder = button:CreateTexture(nil, 'OVERLAY')
-	-- button.IconOverlay = button:CreateTexture(nil, 'OVERLAY')
+	button.Count = button:CreateFontString(nil, 'OVERLAY')
+	button.IconBorder = button:CreateTexture(nil, 'OVERLAY')
+	button.IconOverlay = button:CreateTexture(nil, 'OVERLAY')
 
 	LootFrame.buttons[ID] = button
 
@@ -42,11 +21,14 @@ function LT:SkinLootButton(button)
 	st:Kill(_G['LootButton'..ID..'NameFrame'])
 
 	button:SetSize(self.config.popup.width, self.config.popup.button_height)
-
 	button.icon:ClearAllPoints()
 	button.icon:SetPoint('LEFT')
 	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
 	st:SkinActionButton(button, self.config.popup)
+
+	if _G[button:GetName()..'IconQuestTexture'] then
+		_G[button:GetName()..'IconQuestTexture']:SetAllPoints(button.icon)
+	end
 
 	st:Kill(button.IconBorder)
 	st:Kill(button.IconOverlay)
@@ -73,6 +55,8 @@ function LT:SkinLootFrame()
 	st:Kill(LootFrameBtnCornerLeft)
 	st:Kill(LootFrameButtonBottomBorder)
 	st:Kill(LootFrameInset)
+	st:Kill(LootFrameUpButton)
+	st:Kill(LootFrameDownButton)
 
 	for k,region in pairs({LootFrame:GetRegions()}) do
 		if region:GetObjectType() == 'FontString' then
@@ -97,7 +81,28 @@ function LT:SkinLootFrame()
 	LootFrame:SetWidth(self.config.popup.width)
 end
 
+function LT:LOOT_OPENED()
+	if not LootFrame.skinned then
+		LT:SkinLootFrame()
+		LootFrame.skinned = true
+	end
+
+	local numItems = LootFrame.numLootItems
+	for ID = numItems, 1, -1 do
+
+		local button = LootFrame.buttons[ID] or self:CreateLootButton(ID)
+		button:ClearAllPoints()
+		button:Show()
+		if ID == numItems then
+			button:SetPoint('TOP', LootFrame.header, 'BOTTOM', 0, -self.config.popup.spacing)
+		else
+			button:SetPoint('TOP', LootFrame.buttons[ID + 1], 'BOTTOM', 0, -self.config.popup.spacing)
+		end
+	end
+	LOOTFRAME_NUMBUTTONS = max(LOOTFRAME_NUMBUTTONS, numItems)
+end
 
 function LT:InitializeLootFrame()
-	self:SecureHook('LootFrame_Show')
+
+	self:RegisterEvent("LOOT_OPENED");
 end

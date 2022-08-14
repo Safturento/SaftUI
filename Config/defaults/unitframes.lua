@@ -349,7 +349,7 @@ st.defaults.unitframes = {
 					debuffs = {
 						enable = true,
 						position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
-						horizontal_growth = 'LEFT',
+						grow_right = false,
 						initial_anchor = 'RIGHT',
 						size = 28,
 						filter = {
@@ -422,7 +422,23 @@ st.defaults.unitframes = {
 						position = {
 							point = 'TOPRIGHT',
 							rel_point = 'BOTTOMRIGHT',
-						}
+						},
+						filter = {
+							friend = {
+								whitelist = {
+									enable = true,
+									filters = {
+										auras = false,
+									},
+								},
+								blacklist = {
+									enable = false,
+									filters = {
+										others = true,
+									},
+								},
+							},
+						},
 					},
 					debuffs = {
 						enable = true,
@@ -438,6 +454,7 @@ st.defaults.unitframes = {
 				health = {
 					reverse_fill = true,
 					text = {
+						percent = true,
 						position = {
 							point = 'LEFT',
 							rel_point = 'LEFT',
@@ -483,7 +500,25 @@ st.defaults.unitframes = {
 					rel_point = 'CENTER',
 					x_off = -300,
 					y_off = 120
-				}
+				},
+				auras = {
+					buffs = {
+						enable = false,
+					},
+				},
+				castbar = {
+					enable = true,
+					height = 20,
+					position = {
+						point = "TOPLEFT",
+						rel_point = "BOTTOMLEFT",
+						y_off = "-7",
+						frame_type = nil,
+					},
+					icon = {
+						enable = false
+					}
+				},
 			},
 			focustarget = {
 				width = 100,
@@ -501,7 +536,7 @@ st.defaults.unitframes = {
 			boss = {
 				width = 202,
 				spacing = 24,
-				growthDirection = 'BOTTOM',
+				growthDirection = 'DOWN',
 				maxColumns = 1,
 				unitsPerColumn = 5,
 				columnSpacing = 0,
@@ -553,6 +588,88 @@ st.defaults.unitframes = {
 					debuffs = {
 						enable = false
 					},
+				},
+			},
+			arena = {
+				width = 202,
+				spacing = 24,
+				growthDirection = 'DOWN',
+				maxColumns = 1,
+				unitsPerColumn = 5,
+				columnSpacing = 0,
+				initialAnchor = 'TOP',
+				position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
+				health = {
+					reverse_fill = true,
+					text = {
+						position = {
+							point = 'LEFT',
+							rel_point = 'LEFT',
+							x_off = 5,
+						}
+					}
+				},
+				power = {
+					reverse_fill = true,
+					position = {
+						point = 'BOTTOMRIGHT',
+						rel_point = 'BOTTOMRIGHT',
+						x_off = -7
+					},
+					text = {
+						position = {
+							point = 'LEFT',
+							rel_point = 'LEFT',
+							x_off = 2,
+						},
+					}
+				},
+				name = {
+					position = {
+						rel_point = "TOPLEFT",
+						x_off = "5",
+						point = "BOTTOMLEFT",
+					},
+				},
+				portrait = {
+					position = {
+						point = 'LEFT',
+						rel_point = 'RIGHT',
+						x_off = 7,
+					},
+				},
+				auras = {
+					buffs = {
+						filter = {
+							enemy = {
+								whitelist = {
+									enable = false,
+								}
+							}
+						}
+					},
+					debuffs = {
+						enable = true,
+						position = {point = 'LEFT', rel_point = 'RIGHT', x_off = 4, y_off = 0},
+						horizontal_growth = 'LEFT',
+						initial_anchor = 'LEFT',
+						size = 28,
+						filter = {
+							friend = {
+								whitelist = {
+									filters = {
+										yours = false,
+										auras = false,
+									},
+								},
+							},
+							enemy = {
+								whitelist = {
+									enable = false,
+								},
+							},
+						},
+					}
 				},
 			},
 			pet = {
@@ -666,6 +783,7 @@ st.defaults.unitframes = {
 					},
 					debuffs = {
 						enable = true,
+						grow_right = false,
 						position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
 						horizontal_growth = 'LEFT',
 						initial_anchor = 'RIGHT',
@@ -743,7 +861,7 @@ st.defaults.unitframes = {
 						spacing = 3,
 						enable = true,
 						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
-						horizontal_growth = 'RIGHT',
+						grow_right = true,
 						initial_anchor = 'LEFT',
 						framelevel = 50,
 						size = 8,
@@ -778,7 +896,7 @@ st.defaults.unitframes = {
 					enable = false,
 					height = 1,
 					position = { point = "BOTTOMLEFT", rel_point = 'BOTTOMLEFT', 0, 0 },
-					text = { enable = false },inve
+					text = { enable = false },
 				},
 				name = {
 					enable = false,
@@ -794,7 +912,7 @@ st.defaults.unitframes = {
 						spacing = 3,
 						enable = true,
 						position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
-						horizontal_growth = 'RIGHT',
+						grow_right = true,
 						initial_anchor = 'LEFT',
 						framelevel = 50,
 						size = 8,

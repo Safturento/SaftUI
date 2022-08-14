@@ -46,9 +46,11 @@ local filterMenuList = {
 ------------------------------------
 local match_replacements = {
 	link = "(\124c%x%x%x%x%x%x%x%x\124Hitem[%-?%d:]+)%D*",
+	currency = "(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)",
 	count =  '(%d+)',
 	honor = '(%d+)'
 }
+
 
 local patterns = {}
 local function generate_match(match, keys)
@@ -67,17 +69,17 @@ generate_match(LOOT_ITEM_SELF, {'link'})
 generate_match(LOOT_ITEM_REFUND, {'link'})
 generate_match(LOOT_ITEM_CREATED_SELF, {'link'})
 generate_match(LOOT_MONEY_REFUND, {'link'})
-generate_match(CURRENCY_GAINED, {'link'})
+generate_match(CURRENCY_GAINED, {'currency'})
 generate_match(LOOT_ITEM_PUSHED_SELF, {'link'})
 generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'})
 generate_match(LOOT_CURRENCY_REFUND, {'link', 'count'})
 generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'})
 generate_match(LOOT_ITEM_CREATED_SELF_MULTIPLE, {'link', 'count'})
 generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'})
-generate_match(CURRENCY_GAINED_MULTIPLE, {'link', 'count'})
+generate_match(CURRENCY_GAINED_MULTIPLE, {'currency', 'count'})
 generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'link', 'count'})
 generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'link', 'count'})
-generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'link', 'count'})
+generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'currency', 'count'})
 -- self_gold
 generate_match(YOU_LOOT_MONEY, {'gold'})
 generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'})
@@ -102,13 +104,13 @@ local function get_match(string)
 	string = string:gsub("%(", "")
 	string = string:gsub("%)", "")
 	for pattern, keys in pairs(patterns) do
-		-- print(string, pattern, string:match(pattern))
+		--print(string, string:gsub("|", "||"), pattern, string:match(pattern))
 		local match = {string:match(pattern)}
 		if #match > 0 and #match == #keys then
 			-- print(#match, #keys, string, pattern)
 			local result = {}
 			for i,item in ipairs(match) do
-				-- print(keys[i], item)
+				--print(keys[i], item)
 				result[keys[i]] = item
 			end
 			return result
@@ -205,6 +207,33 @@ function LT:LootFeedPush(info)
 	self:UpdateFeed()
 end
 
+local function colorItemName(name, quality)
+	local item_color = st.config.profile.colors.item_quality[quality]
+	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
+
+	return st.StringFormat:ColorString(name, unpack(item_color))
+end
+
+function LT:LootFeedAddCurrency(match)
+	if not match['currency'] then return end
+
+	local info = C_CurrencyInfo.GetCurrencyInfoFromLink(match['currency'])
+
+	local name
+	if info.maxQuantity > 0 then
+		name = ("%s (%d/%d)"):format(colorItemName(info.name, info.quality), info.quantity, info.maxQuantity)
+	else
+		name = ("%s (%d)"):format(colorItemName(info.name, info.quality), info.quantity)
+	end
+
+	self:LootFeedPush({
+		name = name,
+		icon = info.iconFileID,
+		link = match['link'],
+		count = match['count']
+	})
+end
+
 function LT:LootFeedAddItem(match)
 	local filters = self.config.feed.filters
 
@@ -215,7 +244,9 @@ function LT:LootFeedAddItem(match)
 	equipSlot, texture, vendor_price, item_type_id, item_subtype_id, bind_type,
 	expac_id, item_set_id, crafting_reagent = GetItemInfo(match['link']) 
 
-	if not name then return end
+	if not name then
+		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))
+	end
 
 	if quality < self.config.feed.min_quality then return end
 
@@ -291,11 +322,15 @@ end
 ------------------------------------
 
 function LT:LootFeedHandler(event, text)
+	--st:Print("text", text, text:gsub("|", "||"))
 	local match = get_match(text)
 	if not match then return end
 
+	--st:Print("link", match['link'])
 	if match['link'] then
 		self:LootFeedAddItem(match)
+	elseif match['currency'] then
+		self:LootFeedAddCurrency(match)
 	elseif match['gold'] then
 		self:LootFeedAddGold(match)
 	elseif match['honor'] then
@@ -440,8 +475,6 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_CURRENCY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 
-	-- if WoWUnit then self:Test() end
-	
 	self:HookScript(feed, 'OnUpdate', 'UpdateHandler')
 end
 
@@ -453,6 +486,8 @@ local AreEqual, Exists, Replace = WoWUnit.AreEqual, WoWUnit.Exists, WoWUnit.Repl
 
 local test_item = "\124cff0070dd\124Hitem:16309::::::::60:::::\124h[Drakefire Amulet]\124h\124r"
 local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
+local test_currency = "|cffffffff|Hcurrency:1767:0|h[Stygia]|h|r"
+local test_currency_weekly_max = "|cffff8000|Hcurrency:1828:0|h[Soul Ash]|h|r"
 
 function Tests:LootSelf()
 	local self_item = LOOT_ITEM_SELF:format(test_item)
@@ -465,7 +500,7 @@ function Tests:LootSelfMultiple()
 	local mult_test = get_match(self_item_mult)
 	Exists(mult_test)
 	AreEqual(mult_test.count, '5')
-	-- LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
+	 --LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
 end
 
 function Tests:LootOther()
@@ -473,18 +508,39 @@ function Tests:LootOther()
 	local other_test = get_match(other_item)
 	Exists(other_test)
 	AreEqual(other_test['player'], "Sáfturento-Mal'Ganis")
-	-- LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
+	 --LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
+end
+
+function Tests:LootCurrency()
+	local currency_item = CURRENCY_GAINED:format(test_currency)
+	local result = get_match(currency_item)
+	Exists(result)
+	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item)
+end
+
+function Tests:LootCurrencyMultiple()
+	local currency_item_multiple = CURRENCY_GAINED_MULTIPLE:format(test_currency, 47)
+	local result = get_match(currency_item_multiple)
+	Exists(result)
+	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item_multiple)
+end
+
+function Tests:LootCurrencyWithWeeklyCap()
+	local currency_item = CURRENCY_GAINED_MULTIPLE:format(test_currency_weekly_max, 570)
+	local result = get_match(currency_item)
+	Exists(result)
+	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item)
 end
 
 function Tests:LootGold()
 	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
 	Exists(get_match(gold))
-	-- LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
+	 --LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
 end
 
 function Tests:GainHonor()
 	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
-	Exists(get_match(honor))	
+	Exists(get_match(honor))
 	Exists(COMBATLOG_HONORGAIN_NO_RANK:format(198))
-	-- LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
+	 --LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
 end
