@@ -118,6 +118,27 @@ local function get_match(string)
 	end
 end
 
+local function CreateSlotDropdown()
+    INV.SlotDropDown = CreateFrame("Frame", "SaftUI_LootFeedFilterMenu", UIParent, "UIDropDownMenuTemplate")
+    UIDropDownMenu_SetWidth(INV.SlotDropDown, 200)
+    UIDropDownMenu_SetText(INV.SlotDropDown, "Options")
+    UIDropDownMenu_Initialize(INV.SlotDropDown, function(dropdown, level, menuList)
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Auto Vendor"
+        info.checked = function(self)
+            return INV.config.autoVendorFilter and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+        end
+        info.func = function(dropdown, arg1, arg2, checked)
+            if not INV.SelectedSlot then return end
+
+            if not INV.config.autoVendorFilter then INV.config.autoVendorFilter = {} end
+            INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID] = not checked
+            INV:QueueUpdate()
+        end
+        UIDropDownMenu_AddButton(info)
+    end)
+end
+
 ------------------------------------
 -- Feed updates
 ------------------------------------
@@ -137,16 +158,16 @@ function LT:UpdateHandler(elapsed)
 	if time - lastUpdate < 1 then return end
 	lastUpdate = time
 
-	-- if self.DEBUG then
-	-- 	if time - lastPush >= 2 then
-	-- 		lastPush = time
-	-- 		if random() > 0.5 then
-	-- 			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
-	-- 		else
-	-- 			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-	-- 		end
-	-- 	end
-	-- end
+	if self.DEBUG then
+		if time - lastPush >= 2 then
+			lastPush = time
+			if random() > 0.5 then
+				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
+			else
+				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+			end
+		end
+	end
 
 	self:UpdateFeed()
 end
@@ -409,10 +430,14 @@ function LT:UpdateLootFeedConfig()
 
 	local x, y = self.feed:GetCenter()
 	if x > GetScreenWidth()/2 then
-		self.feed.reset_button:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
+		self.feed.filter_button:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
-		self.feed.reset_button:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
+		self.feed.filter_button:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
 	end
+
+	self.feed.filter_button.text:SetFontObject(font_obj)
+	st:SetBackdrop(self.feed.filter_button, config.template)
+
 	self.feed.reset_button.text:SetFontObject(font_obj)
 	st:SetBackdrop(self.feed.reset_button, config.template)
 end
@@ -444,6 +469,13 @@ function LT:InitializeLootFeed()
 
 	self.feed = feed
 
+	feed.filter_button = CreateFrame('Button', feed:GetName()..'FilterButton', feed)
+	feed.filter_button:SetSize(20, 20)
+	feed.filter_button.text = feed.filter_button:CreateFontString(nil, 'OVERLAY')
+	feed.filter_button.text:SetFontObject(GameFontNormal)
+	feed.filter_button.text:SetText('F')
+	feed.filter_button.text:SetPoint('CENTER')
+
 	feed.reset_button = CreateFrame('Button', feed:GetName()..'ScrollReset', feed)
 	feed.reset_button:SetSize(20, 20)
 	feed.reset_button.text = feed.reset_button:CreateFontString(nil, 'OVERLAY')
@@ -451,6 +483,7 @@ function LT:InitializeLootFeed()
 	feed.reset_button.text:SetText('V')
 	feed.reset_button.text:SetPoint('CENTER')
 	feed.reset_button:Hide()
+	feed.reset_button:SetPoint('BOTTOM', feed.filter_button, 'TOP', 0, self.config.feed.spacing)
 	feed.reset_button:SetScript('OnClick', function()
 		feed.offset = 0
 		feed.reset_button:Hide()

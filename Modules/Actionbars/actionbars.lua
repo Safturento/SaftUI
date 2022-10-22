@@ -46,7 +46,7 @@ AB.HOTKEY_SUBS = {
 
 function AB:KillBlizzard()
 	for _,frame in pairs({
-		--MainMenuBar,
+		MainMenuBar,
 		MainMenuBarArtFrame,
 		OverrideActionBar,
 		PossessBarFrame,

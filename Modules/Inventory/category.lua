@@ -64,7 +64,7 @@ local customItemLists = {
 }
 
 INV.categoryNames = {
-	['GRAYS'] = 'Grays/Auto Vendor',
+	['TRASH'] = 'Grays/Auto Vendor',
 	['CONSUMABLES'] = 'Consumables',
 	['LEGACY_ARMOR_WEAPONS'] = 'Legacy Armor/Weapons',
 	['ARMOR'] = 'Armor',
@@ -119,7 +119,7 @@ end
 INV.filters = {
 	itemrack = {},
 	categories = {
-		{ name = INV.categoryNames.GRAYS,			 	func = function(info) return info.quality == 0 or INV:ShouldAutoVendor(info.itemID) end},
+		{ name = INV.categoryNames.TRASH,			 	func = function(info) return info.quality == 0 or INV:ShouldAutoVendor(info.itemID) end},
 		{ name = INV.categoryNames.TOY,					func = function(info) return string.matchnocase(info.tooltipText, TOY_TEXT) end},
 		{ name = INV.categoryNames.ANIMA,				func = function(info) return string.matchnocase(info.tooltipText, ANIMA_TEXT) end},
 		{ name = INV.categoryNames.CONDUITS,			func = function(info) return string.matchnocase(info.tooltipText, CONDUIT_TEXT) end},

@@ -158,7 +158,6 @@ function CHT:OnEnable()
 	self.config =  st.config.profile.chat
 
 	-- Kill stuff
-	st:Kill(ChatConfigFrameDefaultButton)
 	st:Kill(ChatFrameMenuButton)
 	st:Kill(ChatFrameChannelButton)
 	st:Kill(QuickJoinToastButton)
