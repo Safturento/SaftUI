@@ -6,9 +6,9 @@
 ## OptionalDeps: RealMobHealth, ItemRack, WoWUnit
 ## X-oUF: SaftUI
 
-Libs\libs.xml
-Core\core.xml
-Widgets\widgets.xml
-Media\media.xml
-Config\config.xml
-Modules\modules.xml
+Legacy\Libs\libs.xml
+Legacy\Core\core.xml
+Legacy\Widgets\widgets.xml
+Legacy\Media\media.xml
+Legacy\Config\config.xml
+Legacy\Modules\modules.xml

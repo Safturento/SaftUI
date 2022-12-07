@@ -1,0 +1,3 @@
+[submodule "Libraries/Mainline/oUF"]
+	path = Libraries/Mainline/oUF
+	url = git@github.com:oUF-wow/oUF.git

@@ -1,0 +1,17 @@
+## Interface: 100000
+## Version: 1.0
+## Title: |cff00adefSaftUI|r
+## SavedVariables: SaftUI_DB
+## OptionalDeps: RealMobHealth, ItemRack, WoWUnit
+## X-oUF: SaftUI
+
+Mainline\libraries.xml
+Shared\load.xml
+# Mainline\load.xml
+
+# Legacy\Libs\libs.xml
+# Legacy\Core\load.xml
+# Legacy\Widgets\load.xml
+# Legacy\Media\load.xml
+# Legacy\Config\load.xml
+# Legacy\Modules\modules.xml

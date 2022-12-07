@@ -1,0 +1,11 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="init.lua"/>
+	<Script file="constants.lua"/>
+	<Script file="api.lua"/>
+<!--	<Script file="grid.lua"/>-->
+	<Script file="skinning.lua"/>
+	<Script file="panels.lua"/>
+<!--	<Script file="movable.lua"/>-->
+	<Script file="cvars.lua"/>
+	<Script file="utilities.lua"/>
+</Ui>
