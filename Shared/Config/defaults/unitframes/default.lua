@@ -189,6 +189,7 @@ st.defaults.unitframes = {
                     framelevel = 16,
                     template = "thick",
                     width = "-70",
+                    height = "14",
                     position = {
                         rel_point = "BOTTOMLEFT",
                         y_off = "0",
@@ -196,7 +197,6 @@ st.defaults.unitframes = {
                         point = "BOTTOMLEFT",
                         x_off = "7",
                     },
-                    height = "13",
                     reverse_fill = false,
                     vertical_fill = false,
                     bg = {

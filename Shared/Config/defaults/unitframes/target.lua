@@ -95,7 +95,7 @@ st.defaults.unitframes.profiles["**"].target = {
             position = {
                 point = 'LEFT',
                 rel_point = 'LEFT',
-                x_off = 2,
+                x_off = 3,
             },
         }
     }

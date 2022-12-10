@@ -1,13 +1,13 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].targettarget = {
-    width = 100,
+    width = 120,
     position = {point = 'LEFT', frame = 'SaftUI_Target_Portrait', rel_point = 'RIGHT', x_off = 7, y_off = 0},
     name = {
         enable = false,
     },
     power = {
-        width = -50,
+        width = -70,
     },
     portrait = {
         enable = false
