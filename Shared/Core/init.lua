@@ -34,6 +34,7 @@ function SaftUI:OnInitialize()
 	self:RegisterEvent('TIME_PLAYED_MSG')
 	self:RegisterEvent('PLAYER_REGEN_ENABLED')
 	self:RegisterEvent('PLAYER_REGEN_DISABLED')
+	self:RegisterEvent('PLAYER_ENTERING_WORLD')
 	RequestTimePlayed()
 
 	total_time = 0
@@ -73,5 +74,12 @@ function SaftUI:PLAYER_REGEN_DISABLED()
 		st:Print('Config closed for combat, and will reopen after.')
 		st.CF:CloseConfigGui()
 		config_queued = true
+	end
+end
+
+function SaftUI:PLAYER_ENTERING_WORLD()
+	--  this insanity gives you pixel perfect panels for 1440p
+	if st.screenHeight == 1440 then
+		UIParent:SetScale(0.5)
 	end
 end
