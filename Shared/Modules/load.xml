@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <Include file="Unitframes\load.xml"/>
     <Include file="Loot\load.xml"/>
+    <Include file="Maps\load.xml"/>
     <Script file="chatframe.lua"/>
     <Include file="Skinning\load.xml"/>
 </Ui>
