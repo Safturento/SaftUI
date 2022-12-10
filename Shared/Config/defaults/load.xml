@@ -5,5 +5,5 @@
 	<Script file="inventory.lua"/>
 	<Script file="loot.lua"/>
 	<Script file="templates.lua"/>
-	<Script file="unitframes.lua"/>
+	<Include file="unitframes\load.xml"/>
 </Ui>
