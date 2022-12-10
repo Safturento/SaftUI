@@ -4,5 +4,5 @@
     <Include file="Maps\load.xml"/>
     <Script file="chatframe.lua"/>
     <Script file="micromenu.lua"/>
-    <Include file="Skinning\load.xml"/>
+    <Script file="experience.lua"/>
 </Ui>

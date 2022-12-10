@@ -78,7 +78,7 @@ st.defaults.maps = {
 		font = 'pixel',
 		enable = true,
 		template = 'thick',
-		size = 160,
+		size = 200,
 		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -st.CLAMP_INSET, y_off = -st.CLAMP_INSET},
 		mail_position = {'TOPRIGHT', 'TOPRIGHT', -5, -2},
 	}
@@ -118,7 +118,7 @@ st.defaults.experience = {
 	spacing = 8,
 	rest_alpha = 1,
 	template = 'thicktransparent',
-	position = {'TOP', 'Minimap', 'BOTTOM', 0, -8},
+	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -8},
 }
 
 st.defaults.addon_skins = {

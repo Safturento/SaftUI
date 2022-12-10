@@ -65,6 +65,7 @@ st.defaults.colors = {
 		WARLOCK     = { 0.58, 0.51, 0.79 },
 		WARRIOR     = { 0.78, 0.61, 0.43 },
 	},
+	renown = { 0.00, 0.70, 0.90 }, -- Renown
 	reaction = {
 		[1] = { 0.87, 0.37, 0.37 }, -- Hated
 		[2] = { 0.87, 0.37, 0.37 }, -- Hostile
