@@ -12,15 +12,6 @@ function SaftUI:OnInitialize()
 	SetCVar('autoLootDefault', 1)
 	SetCVar('chatStyle', 'classic')
 	SetCVar('whisperMode', 'inline')
-	--UIParent:SetScale(st.scale)
-	--self:Print('Goal: 0.6499997615814')
-	--self:Print('GetScreenHeight', GetScreenHeight())
-	--self:Print('GetScreenHeight/Goal', GetScreenHeight()/0.6499997615814)
-	--self:Print('uiScale:', GetCVar('uiScale'))
-	--self:Print('st.scale', st.scale)
-	--self:Print('768/GetScreenHeight', 768/GetScreenHeight())
-	--self:Print('768/floor(GetScreenHeight)', 768/floor(GetScreenHeight()))
-	--self:Print('768/ceil(GetScreenHeight)', 768/ceil(GetScreenHeight()))
 
 	self.config = LibStub('AceDB-3.0'):New('SaftUI_DB', {
 		char = {},

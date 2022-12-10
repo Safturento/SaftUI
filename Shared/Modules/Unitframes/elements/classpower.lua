@@ -62,7 +62,7 @@ local function UpdateConfig(self)
 		point:SetStatusBarTexture(st.BLANK_TEX)
 		point:ClearAllPoints()
 		if prev then
-			point:SetPoint('LEFT', prev, 'RIGHT', st:Scale(self.config.classpower.spacing), 0)
+			point:SetPoint('LEFT', prev, 'RIGHT', self.config.classpower.spacing, 0)
 		else
 			point:SetPoint('LEFT')
 		end

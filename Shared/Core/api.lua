@@ -7,21 +7,19 @@ function st:GetConfig(configUnit)
 end
 
 function st:UnpackPoint(config)
-	return config.point, config.frame, config.rel_point or config.point, st:Scale(config.x_off or 0), st:Scale(config.y_off or 0)
+	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
 end
 
-function st:Scale(num) return st.mult * floor(num/st.mult + 0.5) end
-
 function st:SetHeight(frame, height)
-	frame:SetHeight(st:Scale(height))
+	frame:SetHeight(height)
 end
 
 function st:SetWidth(frame, width)
-	frame:SetWidth(st:Scale(width))
+	frame:SetWidth(width)
 end
 
 function st:SetSize(frame, width, height)
-	frame:SetSize(st:Scale(width), st:Scale(height))
+	frame:SetSize(width, height)
 end
 
 local function calculateSpacing(frame, anchorFrame, spacing)

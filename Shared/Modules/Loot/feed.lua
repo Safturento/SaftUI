@@ -534,13 +534,6 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'LootFeedHandler')
 
 	self:HookScript(feed, 'OnUpdate', 'UpdateHandler')
-
-    local test_item_quality = "\124cff0070dd\124Hitem:188658::::::::70:262::::1:38:2:::::\124h[Draconium Ore\124A:Professions-ChatIcon-Quality-Tier2:17:23::1\124a]\124h\124r"
-    local message = LOOT_ITEM_SELF:format(test_item_quality)
-	LT:LootFeedHandler('CHAT_MSG_LOOT', message)
-
-	self:LootFeedHandler('CHAT_MSG_COMBAT_FACTION_CHANGE', FACTION_STANDING_INCREASED:format('Darkmoon Faire', 275))
-	self:LootFeedHandler('CHAT_MSG_COMBAT_FACTION_CHANGE', FACTION_STANDING_DECREASED:format('Darkmoon Faire', 75))
 end
 
 

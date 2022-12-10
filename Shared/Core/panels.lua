@@ -1,12 +1,10 @@
 local st = SaftUI
 
-local st = SaftUI
-
 local function CreateAltBorder(frame)
 	frame.altborder = {}
 
-	local offset = st:Scale(1)
-	local width = st:Scale(3)
+	local offset = 1
+	local width = 3
 
 	frame.altborder.LEFT = frame:CreateTexture(nil, 'BACKGROUND')
 	frame.altborder.LEFT:SetWidth(width)
@@ -81,11 +79,11 @@ function st:SetTemplate(frame, template)
 		end
 	end
 
-	local inset = st:Scale(not config.border and 0 or config.thick and 2 or 1)
+	local inset = not config.border and 0 or config.thick and 2 or 1
 	frame:SetBackdrop({
 		bgFile = st.BLANK_TEX,
 		edgeFile = st.BLANK_TEX,
-		edgeSize = st:Scale(1),
+		edgeSize = 1,
 		tile = false, tileSize = 0,
 		insets = {
 			left = inset,
@@ -159,7 +157,7 @@ function st:CreateHeader(frame, title, close_button)
 		frame:StopMovingOrSizing()
 		frame:ClearAllPoints()
 		-- We reposition the frame using a corner point to the nearest pixel to ensure pixel perfectness
-		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', st:Scale(frame:GetLeft()), st:Scale(frame:GetTop()))
+		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', frame:GetLeft(), frame:GetTop())
 	end)
 
 	if title then
