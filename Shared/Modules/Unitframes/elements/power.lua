@@ -16,7 +16,6 @@ local function PostUpdatePower(power, unit, current, min, max)
 		power:SetMinMaxValues(0, 1)
 		power:SetValue(1)
 	end
-
 	
 	power:SetStatusBarTexture(st.BLANK_TEX)
 	power.bg:SetTexture(st.BLANK_TEX)

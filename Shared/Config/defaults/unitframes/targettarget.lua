@@ -1,18 +1,32 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].targettarget = {
+    enable = true,
     width = 120,
-    position = {point = 'LEFT', frame = 'SaftUI_Target_Portrait', rel_point = 'RIGHT', x_off = 7, y_off = 0},
+    position = {
+        point = 'TOPLEFT',
+        frame = 'SaftUI_Target',
+        rel_point = 'TOPRIGHT',
+        x_off = 6,
+        y_off = 0
+    },
     name = {
         enable = false,
-    },
-    power = {
-        width = -70,
     },
     portrait = {
         enable = false
     },
-    buffs = {
-        enable = false,
+    auras = {
+        buffs = {
+            enable = false,
+        },
+    },
+    power = {
+        text = {
+            enable = false
+        }
+    },
+    health = {
+        position = { rel_point = "TOPLEFT", x_off = "4", point = "TOPLEFT", y_off = "-4" },
     },
 }

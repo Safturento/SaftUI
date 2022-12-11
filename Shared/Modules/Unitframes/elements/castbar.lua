@@ -105,7 +105,7 @@ local function UpdateConfig(self)
 		end
 	
 		if self.config.castbar.icon.relative_width then
-			self.Castbar.Icon:SetWidth(self.config.width + self.config.castbar.icon.width)
+			self.Castbar.Icon:SetWidth(self.config.height + self.config.castbar.icon.width)
 		else
 			self.Castbar.Icon:SetWidth(self.config.castbar.icon.width)
 		end
