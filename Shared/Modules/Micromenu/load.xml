@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="micromenu.lua"/>
+    <Script file="killblizz.lua"/>
+    <Script file="expansionbutton.lua"/>
+    <Script file="queuebutton.lua"/>
+</Ui>

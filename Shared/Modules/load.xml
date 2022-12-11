@@ -2,7 +2,7 @@
     <Include file="Unitframes\load.xml"/>
     <Include file="Loot\load.xml"/>
     <Include file="Maps\load.xml"/>
+    <Include file="Micromenu\load.xml"/>
     <Script file="chatframe.lua"/>
-    <Script file="micromenu.lua"/>
     <Script file="experience.lua"/>
 </Ui>

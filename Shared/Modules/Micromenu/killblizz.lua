@@ -1,5 +1,5 @@
 local st = SaftUI
-local MicroMenu = st:NewModule('MicroMenu', 'AceHook-3.0', 'AceEvent-3.0')
+local MicroMenu = st:GetModule('MicroMenu')
 
 local MICRO_BUTTONS = {
 	"CharacterMicroButton",
@@ -26,13 +26,12 @@ local BAG_BUTTONS = {
     "BagBarExpandToggle",
 }
 
-function MicroMenu:OnInitialize()
+function MicroMenu:KillBlizz()
     hooksecurefunc("MainMenuMicroButton_ShowAlert", function() HelpTip:HideAllSystem("MicroButtons") end)
 
     self:HideBagSlots()
     self:HideMicroMenu()
 end
-
 
 function MicroMenu:HideMicroMenu()
     for _,buttonName in pairs(MICRO_BUTTONS) do

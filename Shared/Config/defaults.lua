@@ -114,11 +114,11 @@ st.defaults.skinning = {
 
 st.defaults.experience = {
 	width = st.defaults.maps.minimap.size,
-	height = 14,
+	height = 13,
 	spacing = 8,
 	rest_alpha = 1,
 	template = 'thicktransparent',
-	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -8},
+	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
 }
 
 st.defaults.addon_skins = {
