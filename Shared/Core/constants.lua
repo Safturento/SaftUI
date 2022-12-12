@@ -43,6 +43,7 @@ end
 st.textures = {
 	cornerbr = st:TexturePath('cornerarrowbottomright.tga'),
 	mail = st:TexturePath('mail.tga'),
+	mailSquare = st:TexturePath('mail-square.tga'),
 	glow = st:TexturePath('glowTex.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp')
 }

@@ -3,4 +3,5 @@
     <Script file="killblizz.lua"/>
     <Script file="expansionbutton.lua"/>
     <Script file="queuebutton.lua"/>
+    <Script file="instancedifficulty.lua"/>
 </Ui>

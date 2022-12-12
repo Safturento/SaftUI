@@ -78,7 +78,7 @@ st.defaults.maps = {
 		font = 'pixel',
 		enable = true,
 		template = 'thick',
-		size = 200,
+		size = 250,
 		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -st.CLAMP_INSET, y_off = -st.CLAMP_INSET},
 		mail_position = {'TOPRIGHT', 'TOPRIGHT', -5, -2},
 	}
