@@ -1,59 +1,59 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].boss = {
-    width = 202,
-    spacing = 24,
+    spacing = 23,
     growthDirection = 'DOWN',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
+    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -25},
     health = {
-        reverse_fill = true,
-        text = {
-            position = {
-                point = 'LEFT',
-                rel_point = 'LEFT',
-                x_off = 5,
-            }
-        }
+        position = { rel_point = "TOPLEFT", x_off = "4", point = "TOPLEFT", y_off = "-4" },
     },
-    power = {
-        reverse_fill = true,
-        position = {
-            point = 'BOTTOMRIGHT',
-            rel_point = 'BOTTOMRIGHT',
-            x_off = -7
-        },
-        text = {
+    castbar = {
+        enable = true,
+        icon = {
+            enable = true,
             position = {
-                point = 'LEFT',
-                rel_point = 'LEFT',
-                x_off = 2,
+                point = "TOPRIGHT",
+                rel_point = "TOPLEFT",
+                x_off = "-6",
+                y_off = -2,
+                anchor_element = "Castbar",
             },
         }
     },
-    name = {
-        position = {
-            rel_point = "TOPLEFT",
-            x_off = "5",
-            point = "BOTTOMLEFT",
-        },
-    },
-    portrait = {
-        position = {
-            point = 'LEFT',
-            rel_point = 'RIGHT',
-            x_off = 7,
-        },
-    },
     auras = {
         buffs = {
-            enable = false
+            enable = true,
+            grow_right = false,
+            initial_anchor = 'TOPRIGHT',
+            position = {
+                point = "BOTTOMRIGHT",
+                rel_point = "TOPRIGHT",
+                x_off = "0",
+                y_off = "3",
+            },
+            filter = {
+                friend = {
+                    whitelist = {
+                        enable = true,
+                        filters = {
+                            auras = false,
+                        },
+                    },
+                    blacklist = {
+                        enable = false,
+                        filters = {
+                            others = true,
+                        },
+                    },
+                },
+            },
         },
         debuffs = {
-            enable = false
-        },
+            enable = true,
+        }
     },
 }

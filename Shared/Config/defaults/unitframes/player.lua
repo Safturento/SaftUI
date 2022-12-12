@@ -8,6 +8,9 @@ st.defaults.unitframes.profiles["**"].player = {
     health = {
         reverse_fill = true
     },
+    power = {
+        reverse_fill = true
+    },
     auras = {
         debuffs = {
             enable = true,
