@@ -2,4 +2,5 @@
 	<Script file='loot.lua'/>
 	<Script file='popup.lua'/>
 	<Script file='feed.lua'/>
+	<Script file='test.lua'/>
 </Ui>

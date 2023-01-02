@@ -35,17 +35,10 @@ local LT = st.Loot
 local MAX_HISTORY = 500
 local feed_stack = {}
 
-local filterMenuList = {
-	{
-		text="gold",
-		checked=true,
-	}
-}
 ------------------------------------
--- Pattern matching
+---- Pattern matching --------------
 ------------------------------------
 local match_replacements = {
--- 	link = "(\124c%x%x%x%x%x%x%x%x\124Hitem[%-?%d:]+)%D*",
 	link = "(\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*",
 	currency = "(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)",
 	count =  '(%d+)',
@@ -54,77 +47,135 @@ local match_replacements = {
 
 
 local patterns = {}
-local function generate_match(match, keys)
+
+local function generate_match(match, keys, categories)
+	--[[
+	We need to do some escaping to convert the global strings into regex.
+	The result of this turns
+		%s receives item: %sx%d.
+	into
+		(.+) receives item (\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*x(%d+).$
+						   |---------------this whole chunk is the item link-------|
+	]]--
 	replacements = {}
+
 	match = match:gsub("%(", "")
 	match = match:gsub("%)", "")
 	match = match:gsub('%%d', '%%s')
+
 	for _,key in pairs(keys) do
 		tinsert(replacements, match_replacements[key] or '(.+)')
 	end
-	patterns[match:format(unpack(replacements))..'$'] = keys
+
+
+	patterns[match:format(unpack(replacements))..'$'] = {
+		categories = categories,
+		keys = keys
+	}
+
 	return match:format(unpack(replacements))..'$'
 end
-
--- self_loot
-generate_match(LOOT_ITEM_SELF, {'link'})
-generate_match(LOOT_ITEM_REFUND, {'link'})
-generate_match(LOOT_ITEM_CREATED_SELF, {'link'})
-generate_match(LOOT_MONEY_REFUND, {'link'})
-generate_match(CURRENCY_GAINED, {'currency'})
-generate_match(LOOT_ITEM_PUSHED_SELF, {'link'})
-generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'})
-generate_match(LOOT_CURRENCY_REFUND, {'link', 'count'})
-generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'})
-generate_match(LOOT_ITEM_CREATED_SELF_MULTIPLE, {'link', 'count'})
-generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'})
-generate_match(CURRENCY_GAINED_MULTIPLE, {'currency', 'count'})
-generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'link', 'count'})
-generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'link', 'count'})
-generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'currency', 'count'})
--- self_gold
-generate_match(YOU_LOOT_MONEY, {'gold'})
-generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'})
-generate_match(LOOT_MONEY_SPLIT, {'gold'})
-generate_match(LOOT_MONEY_SPLIT_GUILD, {'gold', 'bank_gold'})
--- others_loot
-generate_match(LOOT_ITEM, {'player', 'link'})
-generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'})
-generate_match(LOOT_ITEM_PUSHED, {'player', 'link'})
-generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'link'})
-generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'})
-generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'})
-generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'})
-
---honor
-generate_match(COMBATLOG_HONORAWARD, {'honor'})
-generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'})
-generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'})
-
---reputation
-generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'})
-generate_match(FACTION_STANDING_DECREASED, {'faction', 'count'})
 
 
 local function get_match(string)
 	string = string:gsub("%(", ""):gsub("%)", "")
---     print(string)
-	for pattern, keys in pairs(patterns) do
---         print(pattern)
+	for pattern, details in pairs(patterns) do
+		local keys = details['keys']
         local match = {string:match(pattern)}
---         print(#match)
+
         if #match > 0 and #match == #keys then
             local result = {}
             for i,item in ipairs(match) do
-
                 result[keys[i]] = item
             end
 
+			result.categories = details.categories
 			result.pattern = pattern
+
             return result
         end
 	end
 end
+
+categories = {
+	LOOT = "LOOT",
+	OTHERS = "OTHERS",
+	EXPERIENCE = "EXPERIENCE",
+	REPUTATION = "REPUTATION",
+	SKILL_UP = "SKILL_UP",
+	HONOR = "HONOR",
+	GOLD = "GOLD",
+	CURRENCY = "CURRENCY",
+}
+
+SELF_LOOT = {categories.SELF, categories.LOOT}
+SELF_CURRENCY = {categories.SELF, categories.CURRENCY}
+SELF_GOLD = { categories.SELF, categories.GOLD }
+SELF_SKILL_UP = { categories.SELF, categories.SKILL_UP }
+SELF_HONOR = { categories.SELF, categories.HONOR }
+SELF_REPUTATION = { categories.SELF, categories.REPUTATION }
+
+OTHERS_LOOT = {categories.OTHERS, categories.LOOT}
+
+-- self loot
+generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'}, SELF_LOOT)
+generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+generate_match(LOOT_ITEM_CREATED_SELF, {'link'}, SELF_LOOT)
+generate_match(LOOT_ITEM_CREATED_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+generate_match(LOOT_ITEM_PUSHED_SELF, {'link'}, SELF_LOOT)
+generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+generate_match(LOOT_ITEM_REFUND, {'link'}, SELF_LOOT)
+generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+generate_match(LOOT_ITEM_SELF, {'link'}, SELF_LOOT)
+generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+
+
+-- self currency
+generate_match(CURRENCY_GAINED, {'currency'}, SELF_CURRENCY)
+generate_match(CURRENCY_GAINED_MULTIPLE, {'currency', 'count'}, SELF_CURRENCY)
+generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'currency', 'count'}, SELF_CURRENCY)
+generate_match(LOOT_CURRENCY_REFUND, {'link', 'count'}, SELF_CURRENCY)
+
+-- self gold
+generate_match(YOU_LOOT_MONEY, {'gold'}, SELF_GOLD)
+generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'}, SELF_GOLD)
+generate_match(LOOT_MONEY_SPLIT, {'gold'}, SELF_GOLD)
+generate_match(LOOT_MONEY_SPLIT_GUILD, {'gold', 'bank_gold'}, SELF_GOLD)
+-- TODO: LOOT_MONEY_REFUND and LOOT_ITEM_REFUND are exactly the same, need to find
+-- a different way to tell them apart than simple regex, maybe matching gold string vs item link?
+generate_match(LOOT_MONEY_REFUND, {'link'}, SELF_GOLD)
+
+--self skills
+generate_match(SKILL_RANK_UP, {'skill', 'count'}, SELF_SKILL_UP)
+
+-- others loot
+generate_match(LOOT_ITEM, {'player', 'link'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_PUSHED, {'player', 'link'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'link'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
+
+--honor
+generate_match(COMBATLOG_HONORAWARD, {'honor'}, SELF_HONOR)
+generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'}, SELF_HONOR)
+generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'}, SELF_HONOR)
+
+--reputation
+generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'}, SELF_REPUTATION)
+generate_match(FACTION_STANDING_DECREASED, {'faction', 'count'}, SELF_REPUTATION)
+
+------------------------------------
+---- Dropdown ----------------------
+------------------------------------
+
+local filterMenuList = {
+	{
+		text="gold",
+		checked=true,
+	}
+}
 
 local function CreateSlotDropdown()
     INV.SlotDropDown = CreateFrame("Frame", "SaftUI_LootFeedFilterMenu", UIParent, "UIDropDownMenuTemplate")
@@ -148,37 +199,8 @@ local function CreateSlotDropdown()
 end
 
 ------------------------------------
--- Feed updates
+---- Feed updates ------------------
 ------------------------------------
-local function generate_random_item()
-	local link
-	while not link do
-		link = select(2, GetItemInfo(random(0, 10000)))
-	end
-	return link, random(1, 20)
-end
-
-local lastUpdate = 0
-local lastPush = 0
-function LT:UpdateHandler(elapsed)
-	local time = GetTime()
-	-- only check once a second
-	if time - lastUpdate < 1 then return end
-	lastUpdate = time
-
-	if self.DEBUG then
-		if time - lastPush >= 2 then
-			lastPush = time
-			if random() > 0.5 then
-				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
-			else
-				self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-			end
-		end
-	end
-
-	self:UpdateFeed()
-end
 
 function LT:UpdateFeed()
 	local now = GetTime()
@@ -202,8 +224,18 @@ function LT:UpdateFeed()
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
 			else
-				item.text:SetText(info.name)
+				local quality = info.link and info.link:match(":(Professions%-ChatIcon%-Quality%-Tier%d+):")
+				local text = info.name
+
+				if quality then
+					text = text .. CreateAtlasMarkup(quality, 16, 16, 0, -5)
+				end
+
+				item.text:SetText(text)
 			end
+
+			item.rightText:SetText(info.rightText or '')
+
 			item.count:SetText(info.count or '')
 			item.icon:SetTexture(info.icon)
 			item.link = info.link
@@ -221,6 +253,7 @@ function LT:LootFeedPush(info)
 
 	info.time = GetTime()
 
+	-- If you loot gold multiple times together, group it up into one item
 	if info.gold and feed_stack[1] and feed_stack[1].gold then
 		feed_stack[1].gold = feed_stack[1].gold + info.gold
 		feed_stack[1].time = info.time
@@ -268,10 +301,7 @@ function LT:LootFeedAddItem(match)
 
 	if not match['link'] then return end
 
-	local item_id = select(2, strsplit(":", string.match(match['link'], "item[%-?%d:]+")))
-	local name, link, quality, ilvl, reqLevel, class, subclass, maxStack,
-	equipSlot, texture, vendor_price, item_type_id, item_subtype_id, bind_type,
-	expac_id, item_set_id, crafting_reagent = GetItemInfo(match['link']) 
+	local name, _, quality, _, _, _, _, _, _, texture = GetItemInfo(match['link'])
 
 	if not name then
 		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))
@@ -281,7 +311,7 @@ function LT:LootFeedAddItem(match)
 
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
-	
+
 	name = st.StringFormat:ColorString(name, unpack(item_color))
 
 	if filters.self_item and not match['player'] then
@@ -293,7 +323,8 @@ function LT:LootFeedAddItem(match)
 		})
 	elseif filters.other_item then
 		self:LootFeedPush({
-			name = match['player']..': '..name,
+			name = name,
+			rightText = match['player'],
 			icon = texture,
 			link = match['link'],
 			count = match['count']
@@ -412,11 +443,12 @@ function LT:UpdateLootFeedConfig()
 		else
 			item:SetPoint('BOTTOMRIGHT', self.feed.items[i-1], 'TOPRIGHT', 0, config.spacing)
 		end
-		
+
 		item:Hide()
-		
+
 		item.text = item:CreateFontString(nil, 'OVERLAY')
-		item.icon = item:CreateTexture(nil, 'OVERLAY')
+		item.rightText = item:CreateFontString(nil, 'OVERLAY')
+		item.icon = item:CreateTexture(nil, 'OVERLAY', nil, 1)
 		item.count = item:CreateFontString(nil, 'OVERLAY')
 
 		st:SetBackdrop(item.icon, config.template)
@@ -434,11 +466,17 @@ function LT:UpdateLootFeedConfig()
 		item:SetSize(config.width, config.item_height)
 		item.text:SetFontObject(font_obj)
 		item.text:SetPoint('LEFT', item.icon, 'RIGHT', 10, 0)
-		item.text:SetPoint('RIGHT', item, 'RIGHT', -10, 0)
+		item.text:SetPoint('RIGHT', item.rightText, 'LEFT', -10, 0)
 		item.text:SetJustifyH('LEFT')
 		item.text:SetWordWrap(false)
 		item.text:SetText('Item '..i)
-		
+
+
+		item.rightText:SetFontObject(font_obj)
+		item.rightText:SetPoint('RIGHT', item, 'RIGHT', -10, 0)
+		item.rightText:SetJustifyH('RIGHT')
+		item.rightText:SetText('Player '..i)
+
 		item.count:SetFontObject(font_obj)
 		item.count:SetPoint('BOTTOMRIGHT', item.icon, 0, 2)
 
@@ -451,7 +489,7 @@ function LT:UpdateLootFeedConfig()
 	self.feed.overlay:SetPoint('BOTTOMLEFT', self.feed)
 	self.feed.overlay:SetPoint('TOPRIGHT', self.feed.items[config.max_items], 'TOPRIGHT')
 
-	local x, y = self.feed:GetCenter()
+	local x = self.feed:GetCenter()
 	if x > GetScreenWidth()/2 then
 		self.feed.filter_button:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
@@ -473,20 +511,32 @@ function LT:InitializeLootFeed()
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
 	feed.overlay:SetScript('OnMouseWheel', function(_, offset)
 		feed.last_scroll_time = GetTime()
-		
-		if #feed_stack <= self.config.feed.max_items then return end
 
-		if IsModifierKeyDown() then offset = offset * 3 end
-		
+		if #feed_stack <= self.config.feed.max_items then
+
+			for _,item in pairs(feed.items) do
+				item:SetShown(item.info)
+			end
+
+			return
+		end
+
+		if IsControlKeyDown() then -- Scroll to top/bottom
+			offset = offset * #feed_stack
+		elseif IsShiftKeyDown() then -- Page scroll
+			offset = offset * self.config.feed.max_items
+		elseif not IsAltKeyDown() then
+			offset = offset * 3
+		end
+
 		feed.offset = min(max(0, feed.offset + offset), #feed_stack - self.config.feed.max_items)
-		
 
 		if feed.offset == 0 then
 			feed.reset_button:Hide()
 		else
 			feed.reset_button:Show()
 		end
-		
+
 		self:UpdateFeed()
 	end)
 
@@ -515,91 +565,10 @@ function LT:InitializeLootFeed()
 
 	LT:UpdateLootFeedConfig()
 
-	st:RegisterMover(feed, function(self)
-		local pos = LT.config.feed.position
-		local point, frame, rel_point, x_off, y_off = self:GetPoint()
-		pos.point = point
-		pos.frame = frame
-		pos.rel_point = rel_point
-		pos.x_off = x_off
-		pos.y_off = y_off
-	end)
-	feed.mover:SetAllPoints(feed.overlay)
-
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_MONEY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_CURRENCY', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_SKILL', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'LootFeedHandler')
-
-	self:HookScript(feed, 'OnUpdate', 'UpdateHandler')
-end
-
-
-if not WoWUnit then return end
-
-local Tests = WoWUnit(st.name ..'LootFeed')
-local AreEqual, Exists, Replace = WoWUnit.AreEqual, WoWUnit.Exists, WoWUnit.Replace
-
-local test_item = "\124cff0070dd\124Hitem:16309::::::::60:::::\124h[Drakefire Amulet]\124h\124r"
-local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
-local test_item_quality = "\124cffffffff\124Hitem:188658::::::::70:262::::1:38:2:::::\124h[Serevite Ore\124A:Professions-ChatIcon-Quality-Tier2:17:23::1\124a]\124h\124r"
-local test_currency = "|cffffffff|Hcurrency:1767:0|h[Stygia]|h|r"
-local test_currency_weekly_max = "|cffff8000|Hcurrency:1828:0|h[Soul Ash]|h|r"
-
-function Tests:LootSelf()
-	local self_item = LOOT_ITEM_SELF:format(test_item)
-	Exists(get_match(self_item))
-	-- LT:LootFeedHandler('CHAT_MSG_LOOT', self_item)
-end
-
-function Tests:LootSelfMultiple()
-	local self_item_mult = LOOT_ITEM_SELF_MULTIPLE:format(test_item2, 5)
-	local mult_test = get_match(self_item_mult)
-	Exists(mult_test)
-	AreEqual(mult_test.count, '5')
-	 --LT:LootFeedHandler('CHAT_MSG_LOOT', self_item_mult)
-end
-
-function Tests:LootOther()
-	local other_item = LOOT_ITEM:format("Sáfturento-Mal'Ganis", test_item)
-	local other_test = get_match(other_item)
-	Exists(other_test)
-	AreEqual(other_test['player'], "Sáfturento-Mal'Ganis")
-	 --LT:LootFeedHandler('CHAT_MSG_LOOT', other_item)
-end
-
-function Tests:LootCurrency()
-	local currency_item = CURRENCY_GAINED:format(test_currency)
-	local result = get_match(currency_item)
-	Exists(result)
-	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item)
-end
-
-function Tests:LootCurrencyMultiple()
-	local currency_item_multiple = CURRENCY_GAINED_MULTIPLE:format(test_currency, 47)
-	local result = get_match(currency_item_multiple)
-	Exists(result)
-	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item_multiple)
-end
-
-function Tests:LootCurrencyWithWeeklyCap()
-	local currency_item = CURRENCY_GAINED_MULTIPLE:format(test_currency_weekly_max, 570)
-	local result = get_match(currency_item)
-	Exists(result)
-	--LT:LootFeedHandler('CHAT_MSG_LOOT', currency_item)
-end
-
-function Tests:LootGold()
-	local gold = YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper')
-	Exists(get_match(gold))
-	 --LT:LootFeedHandler('CHAT_MSG_MONEY', gold)
-end
-
-function Tests:GainHonor()
-	local honor = COMBATLOG_HONORGAIN:format('Safturento', 'High Warlord', 198)
-	Exists(get_match(honor))
-	Exists(COMBATLOG_HONORGAIN_NO_RANK:format(198))
-	 --LT:LootFeedHandler('CHAT_MSG_COMBAT_HONOR_GAIN', honor)
 end

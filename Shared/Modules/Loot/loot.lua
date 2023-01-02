@@ -1,7 +1,7 @@
 local st = SaftUI
 local LT = st:NewModule('Loot', 'AceHook-3.0', 'AceEvent-3.0')
 st.Loot = LT
-LT.DEBUG = false
+LT.DEBUG = true
 
 function LT:OnInitialize()
 	self.config = st.config.profile.loot
@@ -14,4 +14,8 @@ function LT:OnInitialize()
 
 -- 	self:InitializeLootFrame()
 	self:InitializeLootFeed()
+
+	if self.DEBUG then
+		self:InitializeTestMode()
+	end
 end
