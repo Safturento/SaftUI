@@ -116,3 +116,36 @@ function st.imap(table, func)
 		func(index, value)
 	end
 end
+
+
+StaticPopupDialogs["EXTRACT_LINK_DIALOG"] = {
+	text = "Copy link",
+	button1 = "Close",
+	timeout = 0,
+	whileDead = true,
+	hasEditBox = true,
+	hasWideEditBox = true,
+	hideOnEscape = true,
+	preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
+	OnShow = function(self, link)
+		local escapedLink = gsub(link, "\124", "\\124")
+
+		self.editBox:SetText(escapedLink)
+		self.editBox:HighlightText()
+
+		self.editBox:SetScript('OnTextChanged', function(self, userInput)
+			print(userInput)
+			if userInput then self:SetText(escapedLink) end
+		end)
+
+		self.editBox:SetScript('OnEscapePressed', function(self)
+			StaticPopup_Hide("EXTRACT_LINK_DIALOG")
+		end)
+	end
+}
+
+ --extract chat link to dialog box for easy copying
+SLASH_EXTRACT_LINK1 = '/link'
+SlashCmdList['EXTRACT_LINK'] = function(link, editbox)
+	StaticPopup_Show("EXTRACT_LINK_DIALOG", nil, nil, link)
+end
