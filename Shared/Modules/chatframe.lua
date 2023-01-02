@@ -103,35 +103,11 @@ function CHT:SkinChatFrame(frame)
 	st:Kill(frame.ScrollToBottomButton)
 
 	frame.Tab = _G[name..'Tab']
--- 	frame.Tab.Text = _G[name..'TabText']
-
--- 	st:StripTextures(frame.Tab)
--- 	frame.Tab:SetHeight(self.config.tabs.height)
--- 	frame.Tab.Text:ClearAllPoints()
--- 	frame.Tab.Text:SetPoint('CENTER')
--- 	frame.Tab.Text:SetFont(st:GetFont(self.config.font):GetFont())
--- 	frame.Tab.Text:SetShadowOffset(0, 0)
 
 	if not self.config.tabs.fade then
 		frame.Tab:SetAlpha(1)
 		frame.Tab.SetAlpha = UIFrameFadeRemoveFrame
 	end
-
--- 	frame.ResizeButton = _G[name..'ResizeButton']
--- 	frame.ResizeButton:ClearAllPoints()
--- 	frame.ResizeButton:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', 0, 0)
-
--- 	frame.ResizeButton:SetNormalTexture(st.textures.cornewrbr)
-	
--- 	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
--- 	frame.ResizeButton:GetPushedTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
---
--- 	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
--- 	frame.ResizeButton:GetHighlightTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
--- 	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
---
--- 	frame.ResizeButton:SetFrameStrata('LOW')
--- 	frame.ResizeButton:SetFrameLevel(4)
 
 	self:UpdateChatFrameDisplay(frame)
 end
@@ -161,10 +137,6 @@ function CHT:OnEnable()
 	st:Kill(ChatFrameMenuButton)
 	st:Kill(ChatFrameChannelButton)
 	st:Kill(QuickJoinToastButton)
-
-	for _,group in pairs({"COMBAT_XP_GAIN", "COMBAT_FACTION_CHANGE", "COMBAT_HONOR_GAIN", "LOOT","MONEY", "SKILL", "CURRENCY"}) do
-		ChatFrame_RemoveMessageGroup(DEFAULT_CHAT_FRAME, group)
-	end
 
 	ChatFrame1:ClearAllPoints()
 	ChatFrame1:SetPoint(unpack(self.config.position))

@@ -292,18 +292,6 @@ function UF:CreateGroupHeaders()
 	raid40.config = config
 	raid40:SetPoint(st:UnpackPoint(config.position))
 	self.groups.raid40 = raid40
-
-	for group_name, header in pairs(self.groups) do
-		st:RegisterMover(header, function(self)
-			local pos = st.config.profile.unitframes.profiles[UF:GetProfile()][group_name]
-			local point, frame, rel_point, x_off, y_off = self:GetPoint()
-			pos.point = point
-			pos.frame = frame
-			pos.rel_point = rel_point
-			pos.x_off = x_off
-			pos.y_off = y_off
-		end)
-	end
 end
 
 local function get_profiles()
@@ -754,16 +742,6 @@ function UF:OnInitialize()
 			end
 		else
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
-			
-			st:RegisterMover(self.units[unit], function(self)
-				local pos = st.config.profile.unitframes.profiles[UF:GetProfile()][unit].position
-				local point, frame, rel_point, x_off, y_off = self:GetPoint()
-				pos.point = point
-				pos.frame = frame
-				pos.rel_point = rel_point
-				pos.x_off = x_off
-				pos.y_off = y_off
-			end)
 		end
 	end
 
