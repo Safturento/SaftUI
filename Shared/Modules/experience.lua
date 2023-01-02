@@ -61,28 +61,75 @@ function XP:UpdateConfig()
 end
 
 function XP:GetWatchedFactionInfo()
-	local name, rank, minRep, maxRep, value, factionId = GetWatchedFactionInfo()
 
-	if C_Reputation.IsMajorFaction(factionId) then
+	local name, rank, minRep, maxRep, value, factionId = GetWatchedFactionInfo()
+	local friendshipInfo = C_GossipInfo.GetFriendshipReputation(factionId)
+
+	if C_Reputation.IsFactionParagon(factionId) then
+		local value, max, rewardQuestID, rewardPending, tooLowLevelForParagon = C_Reputation.GetFactionParagonInfo(factionId)
+
+		return {
+			name = name,
+			rank = rank,
+			rankLabel = "Paragon " .. math.floor(value/10000),
+			color = self.colors.reaction[rank],
+			current = rewardPending and max or value % 10000,
+			max = max,
+			rewardPending = rewardPending,
+			rewardMessage = "Reward Pending: " .. C_QuestLog.GetTitleForQuestID(rewardQuestID)
+		}
+	elseif friendshipInfo and friendshipInfo.friendshipFactionID > 0 then
+		return {
+			name = friendshipInfo.name,
+			rank = rank,
+			rankLabel = friendshipInfo.reaction,
+			color = self.colors.reaction[rank],
+			current = friendshipInfo.standing - friendshipInfo.reactionThreshold,
+			-- TODO: nextThreshold is nil when maxed, need to handle that edge case
+			max = friendshipInfo.nextThreshold - friendshipInfo.reactionThreshold
+		}
+	elseif C_Reputation.IsMajorFaction(factionId) then
 		-- https://wowpedia.fandom.com/wiki/API_C_MajorFactions.GetMajorFactionData
 		local factionData = C_MajorFactions.GetMajorFactionData(factionId)
-		return factionData.name, factionData.renownLevel, self.colors.renown, value, factionData.renownLevelThreshold
+		return {
+			name = factionData.name,
+			rank = factionData.renownLevel,
+			rankLabel = 'Rank '..factionData.renownLevel,
+			color = self.colors.renown,
+			current = value,
+			max = factionData.renownLevelThreshold,
+			rewardMessage = factionData.unlockDescription or nil
+		}
 	else
-		return name, rank, self.colors.reaction[rank], value - minRep, maxRep - minRep
+		return {
+			name = name,
+			rank = rank,
+			rankLabel = _G['FACTION_STANDING_LABEL'..rank],
+			color = self.colors.reaction[rank],
+			current = value - minRep,
+			max = maxRep - minRep
+		}
 	end
 
+	return {
+		name = name,
+		rank = rank,
+		rankLabel = _G['FACTION_STANDING_LABEL'..rank],
+		color = self.colors.reaction[rank],
+		current = value - minRep,
+		max = maxRep - minRep
+	}
 end
 
 function XP:UpdateReputation()
-	XP:GetWatchedFactionInfo()
 
 	if GetWatchedFactionInfo() then
-		local _, _, color, current, max = self:GetWatchedFactionInfo()
+		local info = self:GetWatchedFactionInfo()
 
-		self.bars.reputation:SetMinMaxValues(0, max)
-		self.bars.reputation:SetValue(current)
+		self.bars.reputation:SetMinMaxValues(0, info.max)
+		self.bars.reputation:SetValue(info.current)
 			
-		self.bars.reputation:SetStatusBarColor(unpack(color))
+		self.bars.reputation:SetStatusBarColor(unpack(info.color))
 
 		self.bars.reputation:Show()
 	else
@@ -138,17 +185,15 @@ function XP:OnEnter()
 		--Add a space between exp and rep
 		if MAX_PLAYER_LEVEL ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
 
-		local name, rank, minRep, maxRep, value = GetWatchedFactionInfo()
-		local current = value - minRep
-		local max = maxRep - minRep
-		
-		local c = st.config.profile.colors.reaction[rank]
+		local info = self:GetWatchedFactionInfo()
+		local current, max = info.current, info.max
 
-		GameTooltip:AddDoubleLine(name, _G['FACTION_STANDING_LABEL'..rank], nil,nil,nil, c.r, c.g, c.b)
+		GameTooltip:AddDoubleLine(info.name, info.rankLabel, nil,nil,nil, unpack(info.color))
+		GameTooltip:AddDoubleLine('Current:', format('%s/%s (%d%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
+		GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
 
-		if max > 0 then
-			GameTooltip:AddDoubleLine('Current:', format('%s/%s (%d%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
-			GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
+		if info.rewardMessage then
+			GameTooltip:AddLine("\n" .. info.rewardMessage, 1, 1, 1, true)
 		end
 	end
 
@@ -156,7 +201,7 @@ function XP:OnEnter()
 end
 
 function XP:HideBlizz()
-	StatusTrackingBarManager:SetParent(st.hidden_frame)
+	hooksecurefunc(StatusTrackingBarManager, 'UpdateBarsShown', StatusTrackingBarManager.HideStatusBars)
 end
 
 function XP:OnLeave()
@@ -187,6 +232,11 @@ function XP:OnEnable()
 	self:RegisterEvent('PLAYER_LEVEL_UP', 'Update')
 	self:RegisterEvent('PLAYER_XP_UPDATE', 'Update')
 	self:RegisterEvent('UPDATE_EXHAUSTION', 'Update')
+
+	self:RegisterEvent("QUEST_LOG_UPDATE", 'Update')
+	self:RegisterEvent("UPDATE_FACTION", 'Update')
+	self:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED", 'Update')
+	self:RegisterEvent("MAJOR_FACTION_UNLOCKED", 'Update')
 	
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'Update')
 	self:RegisterEvent('UPDATE_FACTION', 'Update')
