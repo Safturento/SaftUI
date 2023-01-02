@@ -13,7 +13,7 @@ function MicroMenu:SkinQueueButton()
     local icon = button:CreateTexture(nil, 'ARTWORK')
     icon:SetAllPoints()
     icon:SetAtlas("groupfinder-eye-single", true)
-    st:SetTexCoord(icon, 0.2)
+    st:InsetTexture(icon, 0.2)
     button:SetNormalTexture(icon)
 
     local hover = button:CreateTexture(nil, 'OVERLAY')

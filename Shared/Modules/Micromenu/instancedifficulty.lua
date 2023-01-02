@@ -36,7 +36,10 @@ function MicroMenu:UpdateDungeonDifficulty()
     local button = SaftUI_DungeonDifficulty
     button:SetShown(difficultyID ~= 0)
 
-    local text = groupType == 'raid' and maxPlayers or ''
+    local text = groupType == 'raid' and instanceGroupSize or ''
+
+    button.Bg:SetAtlas('ui-hud-minimap-guildbanner-background-top', true)
+    st:InsetTexture(button.Bg, .2)
 
     if displayMythic then
         button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[4]))
@@ -46,6 +49,9 @@ function MicroMenu:UpdateDungeonDifficulty()
         button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[3]))
         button.Icon:SetAtlas('ui-hud-minimap-guildbanner-heroic-large', true)
         text = 'H' .. text
+    else
+        button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[1]))
+        button.Icon:SetTexture('')
     end
 
 

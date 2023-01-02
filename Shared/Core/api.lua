@@ -33,7 +33,7 @@ function st:SetInside(frame, inset)
 	frame:SetPoint('BOTTOMRIGHT', -inset, 1-inset)
 end
 
-function st:SetTexCoord(texture, inset)
+function st:InsetTexture(texture, inset)
 	inset = inset or 0
 	texture:SetTexCoord(inset, 1-inset, inset, 1-inset)
 end

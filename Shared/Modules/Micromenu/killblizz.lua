@@ -37,6 +37,9 @@ function MicroMenu:HideMicroMenu()
     for _,buttonName in pairs(MICRO_BUTTONS) do
         _G[buttonName]:SetParent(st.hidden_frame)
     end
+
+    MicroButtonAndBagsBar:SetParent(st.hidden_frame)
+    MicroButtonAndBagsBar:UnregisterAllEvents()
 end
 
 function MicroMenu:HideBagSlots()

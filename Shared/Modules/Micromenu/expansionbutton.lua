@@ -21,10 +21,10 @@ function MicroMenu:UpdateExpansionLandingPageButton()
     button:SetHighlightTexture(hover)
 
     local pushed = button:GetPushedTexture()
-    st:SetTexCoord(pushed, 0.2)
+    st:InsetTexture(pushed, 0.2)
     pushed:SetAllPoints()
 
     local normal = button:GetNormalTexture()
-    st:SetTexCoord(normal, 0.2)
+    st:InsetTexture(normal, 0.2)
     normal:SetAllPoints()
 end
