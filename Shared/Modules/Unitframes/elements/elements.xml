@@ -6,8 +6,5 @@
 	<Script file="castbar.lua"/>
 	<Script file="portrait.lua"/>
 	<Script file="classpower.lua"/>
-	<Script file="questindicator.lua"/>
-	<Script file="raidroleindicator.lua"/>
-	<Script file="grouproleindicator.lua"/>
-	<Script file="raidtargetindicator.lua"/>
+	<Script file="indicators.lua"/>
 </Ui>

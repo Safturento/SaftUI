@@ -91,9 +91,6 @@ function UF.PostCreateAura(auras, button)
 	button.Cooldown:SetHideCountdownNumbers(true)
 end
 
-function UF.PostUpdateAura(auras, unit, button, index, position, duration, expiration, debuffType, isStealable)
-end
-
 local function UpdateConfig(self, aura_type)
 	local auras = self[aura_type]
 	auras.config = self.config.auras[string.lower(aura_type)]
@@ -133,7 +130,6 @@ local function Constructor(self, aura_type)
 	local auras = CreateFrame('Frame', self:GetName()..aura_type, self)
 	auras.config = self.config.auras[string.lower(aura_type)]
 	auras.PostCreateButton = UF.PostCreateAura
-	auras.PostUpdateButton = UF.PostUpdateAura
 
 	auras.disableCooldown = true
 	self[aura_type] = auras
