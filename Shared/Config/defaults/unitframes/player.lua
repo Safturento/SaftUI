@@ -5,18 +5,13 @@ st.defaults.unitframes.profiles["**"].player = {
     castbar = {
         enable = true,
     },
-    health = {
-        reverse_fill = true
-    },
-    power = {
-        reverse_fill = true
-    },
     auras = {
         debuffs = {
             enable = true,
-            position = {point = 'BOTTOMRIGHT', rel_point = 'TOPRIGHT', x_off = 0, y_off = 3},
+            position = {point = 'BOTTOMRIGHT', rel_point = 'TOPRIGHT', x_off = -2, y_off = 3},
             initial_anchor = 'RIGHT',
-        }
+            grow_right = false
+        },
     },
     classpower = {
         enable = true,

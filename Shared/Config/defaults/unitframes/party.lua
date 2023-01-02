@@ -1,20 +1,13 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].party = {
-    width = 202,
-    spacing = 24,
+    spacing = 41,
     growthDirection = 'BOTTOM',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
-    health = {
-        text = {
-            hide_full = true,
-            deficit = true,
-        },
-    },
+    position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -41},
     raidroleindicator = {
         enable = true,
     },

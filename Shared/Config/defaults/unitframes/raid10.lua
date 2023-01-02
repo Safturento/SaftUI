@@ -1,53 +1,46 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].raid10 = {
-    spacing = 3,
-    growthDirection = 'BOTTOM',
+    spacing = 4,
+    growthDirection = 'LEFT',
     maxColumns = 8,
     unitsPerColumn = 5,
-    columnSpacing = 3,
-    initialAnchor = 'LEFT',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
-    width = 99,
-    height = 26,
+    columnSpacing = 4,
+    initialAnchor = 'TOP',
+    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -30 },
+    width = 57,
+    height = 40
+,
     -- template = 'thick',
     portrait = {
         enable = false,
     },
-    raidroleindicator = {
-        enable = true,
-        show_dps = false,
-        position = {
-            point = 'CENTER',
-            rel_point = 'TOPLEFT',
-            x_off = 0,
-            y_off = 0,
-        }
-    },
     health = {
-        height = -6,
+        height = -3,
+        width = 0,
+        position = {
+            x_off = 0,
+            y_off = 0
+        },
         text = {
             hide_full = true,
             deficit = true,
         },
-        colorCustom = false,
-        colorClass = true,
     },
     power = {
-        enable = false,
-        height = 1,
-        position = {point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 7},
-        text = {enable = false}
+        enable = true,
+        height = 3,
+        relative_height = false,
+        position = { point = "BOTTOMRIGHT", rel_point = 'BOTTOMRIGHT', 0, 0 },
+        text = { enable = false },
     },
     name = {
-        enable = true,
-        position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 3},
+        enable = false,
+        show_level = false,
         max_length = 8,
     },
     auras = {
-        buffs = {
-            enable = false,
-        },
+        buffs ={ enable = false},
         debuffs = {
             template = 'thin',
             per_row = 2,

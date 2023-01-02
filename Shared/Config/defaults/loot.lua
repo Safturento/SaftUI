@@ -10,9 +10,9 @@ st.defaults.loot = {
 		spacing = 7,
 	},
 	feed = {
-		width = 300,
+		width = 400,
 		-- anchor_height = 20,
-		item_height = 20,
+		item_height = 30,
 		position = {
 			point = 'BOTTOMRIGHT',
 			frame = 'UIParent',

@@ -54,7 +54,18 @@ st.defaults.unitframes = {
                         enable = false,
                         point = 'CENTER',
                         rel_point = 'TOPLEFT',
-                        anchor_element = 'Portrait',
+                        anchor_element = 'Health',
+                        x_off = 0,
+                        y_off = 0,
+                    }
+                },
+                readycheckindicator = {
+                    size = 16,
+                    enable = true,
+                    position = {
+                        point = 'BOTTOMRIGHT',
+                        rel_point = 'BOTTOMRIGHT',
+                        anchor_element = 'Health',
                         x_off = 0,
                         y_off = 0,
                     }
@@ -230,12 +241,12 @@ st.defaults.unitframes = {
                 auras = {
                     ['**'] = {
                         enable = false,
-                        size = 15,
+                        size = 24,
                         spacing = 3,
                         per_row = 9,
                         max = 8,
                         framelevel = 15,
-                        template = 'thin',
+                        template = 'thick',
                         font = 'pixel',
                         grow_up = true,
                         grow_right = true,
@@ -271,17 +282,18 @@ st.defaults.unitframes = {
                     },
                     buffs = {
                         enable = true,
+                        border = 'all',
                         position = {
                             point = "BOTTOMLEFT",
                             rel_point = "TOPLEFT",
-                            x_off = "0",
+                            x_off = "2",
                             y_off = "3",
                         },
                     },
                     debuffs = {
                         enable = false,
                         border = 'all',
-                        position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 3 },
+                        position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 3 },
                     }
                 },
                 name = {

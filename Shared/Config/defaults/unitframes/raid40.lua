@@ -1,20 +1,26 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].raid40 = {
-    spacing = 5,
-    growthDirection = 'RIGHT',
+    spacing = 4,
+    growthDirection = 'LEFT',
     maxColumns = 8,
     unitsPerColumn = 5,
-    columnSpacing = 5,
+    columnSpacing = 4,
     initialAnchor = 'TOP',
     position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -30 },
-    width = 70,
-    height = 26,
+    width = 57,
+    height = 40,
     -- template = 'thick',
     portrait = {
         enable = false,
     },
     health = {
+        height = -3,
+        width = 0,
+        position = {
+            x_off = 0,
+            y_off = 0
+        },
         text = {
             hide_full = true,
             deficit = true,
@@ -22,9 +28,9 @@ st.defaults.unitframes.profiles["**"].raid40 = {
     },
     power = {
         enable = true,
-        --height = 2,
-        --relative_height = false,
-        --position = { point = "BOTTOMLEFT", rel_point = 'BOTTOMLEFT', 0, 0 },
+        height = 3,
+        relative_height = false,
+        position = { point = "BOTTOMRIGHT", rel_point = 'BOTTOMRIGHT', 0, 0 },
         text = { enable = false },
     },
     name = {

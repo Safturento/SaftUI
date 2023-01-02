@@ -21,6 +21,7 @@ st.defaults.unitframes.profiles["**"].nameplate = {
         },
         debuffs = {
             enable = true,
+            size = 30,
             position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
             self_only = true,
             show_magic = true,
