@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file='inventory.lua'/>
+	<Script file='container.lua'/>
+	<Script file='bag.lua'/>
+<!--	<Script file='slot.lua'/>-->
+<!--	<Script file='category.lua'/>-->
+<!--	<Script file='bank.lua'/>-->
+<!--	<Script file='reagents.lua'/>-->
+<!--	<Script file='guildbank.lua'/>-->
+</Ui>

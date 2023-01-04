@@ -5,4 +5,5 @@
     <Include file="Micromenu\load.xml"/>
     <Script file="chatframe.lua"/>
     <Script file="experience.lua"/>
+    <Include file="Inventory\load.xml"/>
 </Ui>
