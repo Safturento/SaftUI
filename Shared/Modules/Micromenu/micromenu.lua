@@ -2,6 +2,8 @@ local st = SaftUI
 local MicroMenu = st:NewModule('MicroMenu', 'AceHook-3.0', 'AceEvent-3.0')
 MicroMenu.Buttons = {}
 
+local BUTTON_SIZE = 40
+
 function MicroMenu:AddButton(button)
     tinsert(self.Buttons, button)
 end
@@ -11,7 +13,7 @@ function MicroMenu:UpdateButtons()
     for _,button in pairs(self.Buttons) do
         if button:IsShown() then
             button:SetParent(self.Container)
-            button:SetSize(32, 32)
+            button:SetSize(button.width or BUTTON_SIZE, BUTTON_SIZE)
 
             button:ClearAllPoints()
             if prev then
@@ -44,6 +46,7 @@ function MicroMenu:OnInitialize()
     self.Container:SetSize(1,1)
 
     self:KillBlizz()
+    self:AddButton(self:CreateNetStatsButton())
     self:AddButton(self:SkinExpansionButton())
     self:AddButton(self:SkinMailIcon())
     self:AddButton(self:SkinInstanceDifficulty())
