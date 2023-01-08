@@ -1,13 +1,13 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].boss = {
-    spacing = 23,
+    spacing = 41,
     growthDirection = 'DOWN',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -25},
+    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -40},
     health = {
         position = { rel_point = "TOPLEFT", x_off = "4", point = "TOPLEFT", y_off = "-4" },
     },
