@@ -14,5 +14,5 @@ function INV:OnInitialize()
 	self.config = st.config.profile.inventory
 	if self.config.enable == false then return end
 
-    self:CreateContainer('bag', INVTYPE_BAG, INV.InitializeBagFooter)
+    --self:CreateContainer('bag', INVTYPE_BAG, INV.InitializeBagFooter)
 end
