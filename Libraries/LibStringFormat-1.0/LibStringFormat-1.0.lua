@@ -133,8 +133,9 @@ function lib:FileSizeFormat(bytes, decimals)
 end
 
 function lib:GoldFormat(money, round)
-	local negative = money<0 and true or false --if money is negative, add a negative sign when returning the string
-	money = (abs(money)) --remove the negative sign from the actual value
+	if not money then return "" end
+	local negative = money < 0 and true or false --if money is negative, add a negative sign when returning the string
+	money = (abs(money)) --remove the negative sign from the actual value\
 
 	local gold   = floor(money / 10000)
 	local silver = floor(mod(money/100, 100))
