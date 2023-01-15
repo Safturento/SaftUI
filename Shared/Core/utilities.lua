@@ -166,3 +166,8 @@ SLASH_EXTRACT_LINK1 = '/link'
 SlashCmdList['EXTRACT_LINK'] = function(link, editbox)
 	StaticPopup_Show("EXTRACT_LINK_DIALOG", nil, nil, link)
 end
+
+SLASH_PRINT_ITEM1 = '/item'
+SlashCmdList['PRINT_ITEM'] = function(link)
+	print(GetItemInfo(link))
+end
