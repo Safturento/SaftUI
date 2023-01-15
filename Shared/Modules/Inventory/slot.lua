@@ -1,0 +1,207 @@
+local st = SaftUI
+local INV = st:GetModule('Inventory')
+
+function INV:SetSlotPosition(slot, category_frame, container)
+	local slotID = slot.id
+
+	slot:ClearAllPoints()
+	if slot.id == 1 then
+		slot:SetPoint('TOPLEFT', category_frame, 0, -(INV.CATEGORY_TITLE_HEIGHT+self.config.buttonspacing))
+	elseif slot.id % self.config[container.id].perrow == 1 then
+		slot:SetPoint('TOP', category_frame.slots[slot.id-self.config[container.id].perrow], 'BOTTOM', 0, -self.config.buttonspacing)
+	else
+		slot:SetPoint('LEFT', category_frame.slots[slot.id-1], 'RIGHT', self.config.buttonspacing, 0)
+	end
+end
+
+function INV:AssignSlot(container, slot, slotInfo)
+	self:ClearSlot(slot)
+	slot:SetParent(container.bags[slotInfo.bagID])
+	slot:SetID(slotInfo.slotID)
+	slot.info = slotInfo
+
+	-- self.SlotMap[tostring(slotInfo.bagID) .. tostring(slotInfo.slotID)] = slot
+
+	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
+		slot.item_level:SetFormattedText('%s',slot.info.ilvl)
+	else
+		slot.item_level:SetText('')
+	end
+
+	if not slot.info.locked and slot.info.quality then
+		if slot.info.quality > -1 then
+			local c = ITEM_QUALITY_COLORS[slot.info.quality]
+			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+		else
+			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
+		end
+	end
+
+	if C_NewItems.IsNewItem(slotInfo.bagID, slotInfo.slotID) then
+		slot.backdrop.outer_shadow:SetBackdropBorderColor(1, 1, 1, 1)
+		slot.backdrop.outer_shadow:Show()
+	else
+		slot.backdrop.outer_shadow:Hide()
+	end
+
+	self:SetSlotCooldown(slot)
+
+	SetItemButtonTexture(slot, slot.info.texture)
+	SetItemButtonCount(slot, slot.info.count)
+	SetItemButtonDesaturated(slot, slot.info.locked, 0.5, 0.5, 0.5)
+
+	slot:Show()
+end
+
+if StackSplitFrameOkay_Click then
+	hooksecurefunc('StackSplitFrameOkay_Click', function()
+		local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
+		if bag_id and slot_id then
+			PickupContainerItem(bag_id, slot_id)
+		end
+	end)
+end
+
+local function UpdateTooltip(self)
+	if self.info.bagID == -1 then
+		BankFrameItemButton_OnEnter(self)
+	else
+		ContainerFrameItemButton_OnEnter(self)
+	end
+end
+
+function INV:ShouldAutoVendor(itemID)
+    return INV.config.autoVendorFilter and INV.config.autoVendorFilter[itemID]
+end
+
+local function CreateSlotDropdown()
+    INV.SlotDropDown = CreateFrame("Frame", "SaftUI_SlotOptionsMenu", UIParent, "UIDropDownMenuTemplate")
+    UIDropDownMenu_SetWidth(INV.SlotDropDown, 200)
+    UIDropDownMenu_SetText(INV.SlotDropDown, "Options")
+    UIDropDownMenu_Initialize(INV.SlotDropDown, function(dropdown, level, menuList)
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = "Auto Vendor"
+        info.checked = function(self)
+            return INV.config.autoVendorFilter and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+        end
+        info.func = function(dropdown, arg1, arg2, checked)
+            if not INV.SelectedSlot then return end
+
+            if not INV.config.autoVendorFilter then INV.config.autoVendorFilter = {} end
+            INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID] = not checked
+            INV:QueueUpdate()
+        end
+        UIDropDownMenu_AddButton(info)
+    end)
+end
+
+local function OpenSlotOptions(slot, button, down)
+    INV.SelectedSlot = slot
+    if not INV.SlotDropDown then CreateSlotDropdown() end
+
+    if IsControlKeyDown() and button == 'RightButton' then
+        ToggleDropDownMenu(1, nil, INV.SlotDropDown, "cursor",5, -5)
+    end
+end
+
+function INV:CreateSlot(container, category_name)
+	local category_frame = container.categories[category_name]
+	local slotID = #category_frame.slots + 1
+	local slot, slot_name
+
+	--if not (container.id == 'reagent') then
+		assert(category_frame, 'Category "'..category_name..'" does not exist')
+
+		local bagName = container:GetName()
+		slot_name = bagName..'_'..(gsub(category_name, '(%A)', ''))..'_Slot'..slotID
+		slot = CreateFrame('ItemButton', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
+		if not slot.icon then st:Error(slot_name.." is missing an icon") end
+		slot.Count = _G[slot:GetName() .. "Count"]
+		slot.icon = _G[slot:GetName() .. "IconTexture"]
+		slot.border = _G[slot:GetName() .. "NormalTexture"]
+		slot.border:SetTexture('')
+		slot.cooldown = _G[slot:GetName() .. "Cooldown"]
+		
+		slot.container = container
+		slot.id = slotID
+		slot.type = container.id
+		slot.tainted = InCombatLockdown()
+		
+		slot.GetInventorySlot = ButtonInventorySlot
+
+		slot.UpdateTooltip = UpdateTooltip
+		slot:SetScript('OnEnter', UpdateTooltip)
+		slot:HookScript('OnClick', OpenSlotOptions)
+
+		self:SetSlotPosition(slot, category_frame, container)
+	--end
+	
+	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+	
+	slot.cooldown = _G[slot_name .. "Cooldown"]
+
+	st:Kill(slot.BattlepayItemTexture)
+
+	st:SkinIcon(slot.icon, nil, slot)
+
+	slot.Count:ClearAllPoints()
+	slot.Count:SetPoint('BOTTOMRIGHT', -2, 4)
+
+	slot.cooldown:SetAllPoints(slot)
+
+	item_level = slot:CreateFontString(nil, 'OVERLAY')
+	item_level:SetFontObject(st:GetFont('pixel'))
+	item_level:SetPoint('BOTTOMRIGHT', slot.Count)
+	slot.item_level = item_level
+
+	st:SkinActionButton(slot, {
+		template = self.config.template,
+		font = self.config.fonts.icons
+	})
+	slot:SetNormalTexture("")
+	slot:SetPushedTexture("")
+	slot:Hide()
+
+	-- tinsert(self.AllSlots, slot)
+	-- container.slots[slotID] = slot
+	category_frame.slots[slotID] = slot
+
+	if slot.tainted then
+		st:Error(slot:GetName() .. ' is tainted, will break if used in combat')
+	end
+
+	return slot
+end
+
+function INV:SetSlotCooldown(slot)
+	local start, duration, enable = C_Container.GetContainerItemCooldown(slot.info.bagID, slot.info.slotID)
+	 CooldownFrame_Set(slot.cooldown, start, duration, enable)
+	 slot.cooldown:SetScale(1)
+    if ( duration > 0 and enable == 0 ) then
+        SetItemButtonTextureVertexColor(slot, 0.4, 0.4, 0.4)
+    else
+        SetItemButtonTextureVertexColor(slot, 1, 1, 1)
+    end
+end
+
+--Update cooldown spirals on usable items
+function INV:UpdateCooldowns()
+	for _,category in pairs(self.containers.bag.categories) do
+		for _,slot in pairs(category.slots) do
+		    if slot.info and slot.info.bagID and slot.info.slotID and ( C_Container.GetContainerItemInfo(slot.info.bagID, slot.info.slotID) ) then
+			    INV:SetSlotCooldown(slot)
+	        elseif slot.cooldown then
+	            slot.cooldown:Hide()
+	        end
+	    end
+    end
+end
+
+function INV:ClearSlot(slot)
+	slot:Hide()
+	if slot.info then
+		-- self.SlotMap[tostring(slot.info.bagID) .. tostring(slot.info.slotID)] = nil
+		slot.info = nil
+	end
+	slot:SetEnabled(true)
+end
