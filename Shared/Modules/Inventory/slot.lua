@@ -23,9 +23,9 @@ function INV:AssignSlot(container, slot, slotInfo)
 	-- self.SlotMap[tostring(slotInfo.bagID) .. tostring(slotInfo.slotID)] = slot
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
-		slot.item_level:SetFormattedText('%s',slot.info.ilvl)
+		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 	else
-		slot.item_level:SetText('')
+		slot.itemLevel:SetText('')
 	end
 
 	if not slot.info.locked and slot.info.quality then
@@ -117,6 +117,15 @@ function INV:CreateSlot(container, category_name)
 		slot = CreateFrame('ItemButton', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
 		if not slot.icon then st:Error(slot_name.." is missing an icon") end
 		slot.Count = _G[slot:GetName() .. "Count"]
+		slot.Count:SetDrawLayer('OVERLAY', 99)
+
+		slot.CountBG = slot:CreateTexture(nil, 'OVERLAY')
+		slot.CountBG:SetPoint('BOTTOMRIGHT', slot.icon)
+		slot.CountBG:SetPoint('TOPLEFT', slot.Count, -2, 1)
+		slot.CountBG:SetTexture(st.BLANK_TEX)
+		slot.CountBG:SetAlpha(0.6)
+		slot.CountBG:SetVertexColor(0,0,0)
+
 		slot.icon = _G[slot:GetName() .. "IconTexture"]
 		slot.border = _G[slot:GetName() .. "NormalTexture"]
 		slot.border:SetTexture('')
@@ -145,14 +154,23 @@ function INV:CreateSlot(container, category_name)
 	st:SkinIcon(slot.icon, nil, slot)
 
 	slot.Count:ClearAllPoints()
-	slot.Count:SetPoint('BOTTOMRIGHT', -2, 4)
+	slot.Count:SetPoint('BOTTOMRIGHT', -4, 4)
 
 	slot.cooldown:SetAllPoints(slot)
 
-	item_level = slot:CreateFontString(nil, 'OVERLAY')
-	item_level:SetFontObject(st:GetFont('pixel'))
-	item_level:SetPoint('BOTTOMRIGHT', slot.Count)
-	slot.item_level = item_level
+	itemLevel = slot:CreateFontString(nil, 'OVERLAY')
+	itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
+	itemLevel:SetPoint('BOTTOMRIGHT', slot.Count)
+	slot.itemLevel = itemLevel
+
+	itemLevelBG = slot:CreateTexture(nil, 'OVERLAY')
+	itemLevelBG:SetPoint('BOTTOMRIGHT', slot.icon)
+	itemLevelBG:SetPoint('TOPLEFT', itemLevel, -2, 1)
+	itemLevelBG:SetTexture(st.BLANK_TEX)
+	itemLevelBG:SetAlpha(0.8)
+	itemLevelBG:SetVertexColor(0,0,0)
+	slot.itemLevelBG = itemLevelBG
+
 
 	st:SkinActionButton(slot, {
 		template = self.config.template,
