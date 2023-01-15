@@ -1,6 +1,21 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+local function getHealthPercentText(current, max, absorbs, precision)
+	local perc = current/max*100
+	if precision and precision > 0 then
+		perc = ('%0.' .. (precision) .. 'f'):format(perc)
+	else
+		perc = floor(perc)
+	end
+
+	if absorbs > 0 then
+		return ('%s +%d'):format(perc, floor(absorbs/max*100))
+	else
+		return perc
+	end
+end
+
 local function PostUpdateHealth(health, unit, current, max)
 	if UF.RMH and UF.RMH.UnitHasHealthData(unit) then
 		current, max = UF.RMH.GetUnitHealth(unit)
@@ -17,17 +32,20 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif health.config.text.deficit then
 			health.text:SetText(current-max)
 		elseif health.config.text.percent then
-			if absorbs > 0 then
-				health.text:SetFormattedText('%d +%d', floor(current/max*100), floor(absorbs/max*100))
-			else
-				health.text:SetFormattedText('%d', floor(current/max*100)) 
-			end
+			health.text:SetText(getHealthPercentText(current, max, absorbs))
 		else
+			local text
 			if absorbs > 0 then
-				health.text:SetFormattedText('%s +%s', st.StringFormat:ShortFormat(current, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
+				text = ('%s +%s'):format(st.StringFormat:ShortFormat(current, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
 			else
-				health.text:SetText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1, 1000))
+				text = current < 10000 and current or st.StringFormat:ShortFormat(current, 1, 1000)
 			end
+
+			if health.config.text.boss_percent and UnitLevel(unit) == -1 then
+				text = ("%s | %s"):format(text, getHealthPercentText(current, max, absorbs, 1))
+			end
+
+			health.text:SetText(text)
 		end
 	end
 

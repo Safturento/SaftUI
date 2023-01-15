@@ -166,6 +166,7 @@ st.defaults.unitframes = {
                         enable = true,
                         hide_full = false,
                         percent = false,
+                        boss_percent = true,
                         font = 'pixel',
                         position = {
                             point = "RIGHT",

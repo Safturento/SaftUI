@@ -1,7 +1,7 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].party = {
-    spacing = 41,
+    spacing = 48,
     growthDirection = 'BOTTOM',
     maxColumns = 1,
     unitsPerColumn = 5,
