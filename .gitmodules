@@ -4,3 +4,6 @@
 [submodule "Libraries/LibStringFormat-1.0"]
 	path = Libraries/LibStringFormat-1.0
 	url = git@github.com:Safturento/LibStringFormat-1.0.git
+[submodule "Libraries/Mainline/oUF-Widgets"]
+	path = Libraries/Mainline/oUF-Widgets
+	url = git@github.com:Safturento/oUF-Widgets.git

@@ -3,7 +3,7 @@
 	<Script file="..\Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua"/>
 
 	<Include file="..\Libraries\Mainline\oUF\oUF.xml"/>
-	<Script file="..\Libraries\Mainline\oUF-Widgets\oUF-Widgets.lua"/>
+	<Include file="..\Libraries\Mainline\oUF-Widgets\oUF-Widgets.xml"/>
 
 	<Include file="..\Libraries\LibSharedMedia-3.0\lib.xml"/>
 	<Script file="..\Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua"/>
