@@ -3,7 +3,10 @@
     <Include file="Loot\load.xml"/>
     <Include file="Maps\load.xml"/>
     <Include file="Micromenu\load.xml"/>
+    <Include file="Inventory\load.xml"/>
+    <Include file="Dashboard\load.xml"/>
     <Script file="chatframe.lua"/>
     <Script file="experience.lua"/>
-    <Include file="Inventory\load.xml"/>
+    <Script file="tooltip.lua"/>
+    <Script file="fixtaint.lua"/>
 </Ui>
