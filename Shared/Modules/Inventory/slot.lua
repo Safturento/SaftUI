@@ -24,8 +24,10 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
+		slot.itemLevelBG:Show()
 	else
 		slot.itemLevel:SetText('')
+		slot.itemLevelBG:Hide()
 	end
 
 	if not slot.info.locked and slot.info.quality then
@@ -47,8 +49,10 @@ function INV:AssignSlot(container, slot, slotInfo)
 	self:SetSlotCooldown(slot)
 
 	SetItemButtonTexture(slot, slot.info.texture)
-	SetItemButtonCount(slot, slot.info.count)
 	SetItemButtonDesaturated(slot, slot.info.locked, 0.5, 0.5, 0.5)
+
+	SetItemButtonCount(slot, slot.info.count)
+	slot.CountBG:SetShown(slot.info.count > 1)
 
 	slot:Show()
 end
