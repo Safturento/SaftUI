@@ -1,7 +1,8 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
-function INV:InitializeTooltipScanner()
+function INV:
+InitializeTooltipScanner()
     self.cache = {}
 
     self.tip = CreateFrame('GameTooltip', 'SaftUI_ScanningTooltip', UIParent, 'GameTooltipTemplate')
@@ -33,7 +34,7 @@ end
 function INV:ScanBagItem(bagID, slotID)
     self.tip:ClearLines()
     local clink = C_Container.GetContainerItemLink(bagID, slotID)
-    if self.cache[clink] then return self.cache[clink] end
+    if self.cache[clink] and string.len(self.cache[clink]) then return self.cache[clink] end
 
     self.tip:SetBagItem(bagID, slotID)
     local text = enumerateTextRegions(self.tip:GetRegions())
