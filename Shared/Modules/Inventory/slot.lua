@@ -48,6 +48,8 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	self:SetSlotCooldown(slot)
 
+	SetItemCraftingQualityOverlay(slot, slot.info.link)
+
 	SetItemButtonTexture(slot, slot.info.texture)
 	SetItemButtonDesaturated(slot, slot.info.locked, 0.5, 0.5, 0.5)
 
