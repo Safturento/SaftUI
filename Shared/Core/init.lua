@@ -78,8 +78,5 @@ function SaftUI:PLAYER_REGEN_DISABLED()
 end
 
 function SaftUI:PLAYER_ENTERING_WORLD()
-	--  this insanity gives you pixel perfect panels for 1440p
-	if st.screenHeight == 1440 then
-		UIParent:SetScale(0.5)
-	end
+	UIParent:SetScale(st.scale)
 end
