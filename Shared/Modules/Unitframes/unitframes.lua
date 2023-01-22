@@ -106,7 +106,7 @@ end
 function UF:UpdateUnitFrame(frame, element_name)
 	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
 
-	if element_name then
+	if element_name and self.elements[element_name] then
 		self.elements[element_name].UpdateConfig(frame, element_name)
 	else
 		if not (InCombatLockdown() or frame.base_unit == 'nameplate') then
@@ -698,7 +698,7 @@ function UF:GetConfigTable()
 		}
 
 		for element_name, element in pairs(UF.elements) do
-			if not self.elements[element_name].valid_units or self.elements[element_name].valid_units(unit) then
+			if self.elements[element_name].GetConfigTable and not self.elements[element_name].valid_units or self.elements[element_name].valid_units(unit) then
 				config_table.args[element_name] =
 					self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
 			end

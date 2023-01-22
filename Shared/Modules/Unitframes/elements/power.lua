@@ -1,12 +1,25 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+--[[
+	We can override the altPower functionality to force the main power bar
+	to stay as mana for shaman/druid/priest with additionalPower. This will
+	be used in conjunction the additional power overridden to show mana
+	when both config.additionalPower.enable and config.additionalPower.manaAsPrimary
+	are set as true
+]]
+local function GetDisplayPower(element)
+	local unit = element.__owner.unit
+
+	if unit == 'player' and AlternatePowerBar_ShouldDisplayPower(element.__owner) then
+		return Enum.PowerType.Mana, 0
+	end
+end
+
 local function PostUpdatePower(power, unit, current, min, max)
 	if power.text then
 		if current == max and power.config.text.hide_full then
 			power.text:SetText('')
-		elseif UnitPowerType(unit) ~= 0 then
-			power.text:SetText(current)
 		else
 			power.text:SetFormattedText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
 		end
@@ -34,6 +47,7 @@ local function Constructor(self)
 	-- We have to set this here since PostUpdatePower can run before UpdateConfig
 	power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 
+	power.GetDisplayPower = GetDisplayPower
 	power.PostUpdate = PostUpdatePower
 	self.Power = power
 	return power
@@ -41,13 +55,16 @@ end
 
 local function UpdateConfig(self)
 	self.Power.config = self.config.power
-	
+
 	if not self.config.power.enable then
 		self.Power:Hide()
 		return
 	else
 		self.Power:Show()
 	end
+
+	-- Toggle forcing main power as mana for shaman/druid/priest in specs with additionalPower
+	self.Power.displayAltPower = self.config.additionalPower and self.config.additionalPower.enable and self.config.additionalPower.manaAsPrimary
 
 	if self.config.power.relative_height then
 		self.Power:SetHeight(self.config.height + self.config.power.height)

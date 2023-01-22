@@ -134,10 +134,10 @@ local castbar = {
 
 local health = {
     template = "thin",
-    position = { rel_point = "TOPRIGHT", x_off = "-4", point = "TOPRIGHT", y_off = "-4" },
-    height = -7,
+    position = { rel_point = "TOPRIGHT", x_off = "-2", point = "TOPRIGHT", y_off = "-2" },
+    height = -4,
     relative_height = true,
-    width = -7,
+    width = -4,
     relative_width = true,
     framelevel = 20,
     reverse_fill = false,
@@ -221,6 +221,48 @@ local power = {
     customColor = { 0.25, 0.25, 0.25 },
 }
 
+
+local additionalPower = {
+    enable = false,
+    framelevel = 10,
+    template = "thick",
+    height = -4,
+    relative_height = true,
+    width = 0,
+    relative_width = true,
+    position = {
+        rel_point = "TOPRIGHT",
+        y_off = "0",
+        point = "TOPRIGHT",
+        x_off = "0",
+    },
+    reverse_fill = false,
+    vertical_fill = false,
+    bg = {
+        enable = true,
+        alpha = 1,
+        multiplier = .6,
+    },
+    text = {
+        enable = true,
+        hide_full = false,
+        percent = false,
+        font = 'pixel',
+        position = {
+            point = "LEFT",
+            frame_type=false,
+            anchor_element = "AdditionalPower",
+            rel_point = "LEFT",
+            x_off = 10,
+            y_off = 0,
+        },
+    },
+    colorPower = false,
+    colorClass = true,
+    colorCustom = false,
+    customColor = { 0.25, 0.25, 0.25 },
+}
+
 local auras = {
     ['**'] = {
         enable = false,
@@ -270,13 +312,13 @@ local auras = {
             point = "BOTTOMLEFT",
             rel_point = "TOPLEFT",
             x_off = "2",
-            y_off = "3",
+            y_off = "7",
         },
     },
     debuffs = {
         enable = false,
         border = 'all',
-        position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 3 },
+        position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 7 },
     }
 }
 
@@ -329,7 +371,7 @@ st.defaults.unitframes = {
             ["**"] = {
                 enable = true,
                 width = 300,
-                height = 30,
+                height = 29,
                 position = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 0 },
                 template = 'none',
                 range_alpha = {
@@ -350,6 +392,7 @@ st.defaults.unitframes = {
                 name = name,
                 auras = auras,
                 power = power,
+                additionalPower = additionalPower,
                 health = health,
                 castbar = castbar,
                 portrait = portrait,
