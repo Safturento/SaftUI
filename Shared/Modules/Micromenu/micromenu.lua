@@ -2,7 +2,7 @@ local st = SaftUI
 local MicroMenu = st:NewModule('MicroMenu', 'AceHook-3.0', 'AceEvent-3.0')
 MicroMenu.Buttons = {}
 
-local BUTTON_SIZE = 40
+local BUTTON_SIZE = 25
 
 function MicroMenu:AddButton(button)
     tinsert(self.Buttons, button)
@@ -46,7 +46,8 @@ function MicroMenu:OnInitialize()
     self.Container:SetSize(1,1)
 
     self:KillBlizz()
-    self:AddButton(self:CreateNetStatsButton())
+    self:AddButton(self:CreateLatencyButton())
+    self:AddButton(self:CreateFramerateButton())
     self:AddButton(self:SkinExpansionButton())
     self:AddButton(self:SkinMailIcon())
     self:AddButton(self:SkinInstanceDifficulty())

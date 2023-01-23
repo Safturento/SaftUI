@@ -4,7 +4,6 @@
     <Include file="Maps\load.xml"/>
     <Include file="Micromenu\load.xml"/>
     <Include file="Inventory\load.xml"/>
-    <Include file="Dashboard\load.xml"/>
     <Script file="chatframe.lua"/>
     <Script file="experience.lua"/>
     <Script file="tooltip.lua"/>
