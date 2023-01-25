@@ -29,7 +29,7 @@ function MicroMenu:UpdateButtons()
 end
 
 function MicroMenu:SkinMailIcon()
-    local button = MinimapCluster.MailFrame
+    local button = MinimapCluster.IndicatorFrame.MailFrame
     st:SetBackdrop(button, 'thick')
 
     MiniMapMailFrame_UpdatePosition = function()  end
