@@ -100,7 +100,7 @@ st.defaults.chat = {
 	fadetabs = true,
 	tabs = {
 		height = 25,
-		fade = true,
+		fade = false,
 	},
 	editbox = {
 		height = 25,

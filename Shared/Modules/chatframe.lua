@@ -103,6 +103,10 @@ function CHT:SkinChatFrame(frame)
 	st:Kill(frame.ScrollToBottomButton)
 
 	frame.Tab = _G[name..'Tab']
+	st:StripTextures(frame.Tab)
+	frame.Tab:SetNormalFontObject(st:GetFont('pixel'))
+	frame.Tab:SetDisabledFontObject(st:GetFont('pixel'))
+	frame.Tab.Text:SetPoint("CENTER", 0, 2)
 
 	if not self.config.tabs.fade then
 		frame.Tab:SetAlpha(1)

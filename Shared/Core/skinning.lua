@@ -300,8 +300,6 @@ function st:SkinEditBox(editbox, template, font)
 
 	editbox:HookScript('OnEditFocusGained', function(self)
 		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
-		text:ClearAllPoints()
-		text:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
 	end)
 
 	editbox:HookScript('OnEditFocusLost', function(self)
