@@ -64,6 +64,8 @@ local customItemLists = {
 INV.categoryNames = {
 	['TRASH'] = 'Grays/Auto Vendor',
 	['FLASKS_POTIONS'] = 'Flasks/Potions',
+	['FLASKS'] = 'Flasks',
+	['POTIONS'] = 'Potions',
 	['CONSUMABLES'] = 'Consumables',
 	['LEGACY_ARMOR_WEAPONS'] = 'Legacy Armor/Weapons',
 	['ARMOR'] = 'Armor',
@@ -184,44 +186,49 @@ INV.filters = {
 			end
 		},
 		[8] = {
-			name = INV.categoryNames.FLASKS_POTIONS,
+			name = INV.categoryNames.FLASKS,
 			func = function(item)
 				return item.subclass == 'Flask'
-					or item.subclass == 'Potion'
 			end
 		},
 		[9] = {
+			name = INV.categoryNames.POTIONS,
+			func = function(item)
+				return item.subclass == 'Potion'
+			end
+		},
+		[10] = {
 			name = INV.categoryNames.CONSUMABLES,
 			func = function(item)
 				return item.class == 'Consumable'
 			end
 		},
-		[10] = {
+		[11] = {
 			name = INV.categoryNames.LEGACY_ARMOR_WEAPONS,
 			func = function(item)
 				return isLegacyGear(item)
 			end
 		},
-		[11] = {
+		[12] = {
 			name = INV.categoryNames.ARMOR,
 			func = function(item)
 				return item.class == 'Armor'
 			end
 		},
-		[12] = {
+		[13] = {
 			name = INV.categoryNames.WEAPONS,
 			func = function(item)
 				return item.class == 'Weapon'
 			end
 		},
-		[13] = {
+		[14] = {
 			name = INV.categoryNames.ARCHAEOLOGY,
 			func = function(item)
 				return customItemLists.Archaeology[item.itemID]
 						or string.matchnocase(item.tooltipText, RESTORED_ARTIFACT_TEXT)
 			end
 		},
-		[14] = {
+		[15] = {
 			name = INV.categoryNames.RECIPES,
 		  	func = function(item)
 				return item.itemID == 191784 -- Dragon Shard of Knowledge
@@ -229,7 +236,7 @@ INV.filters = {
 					or item.class == 'Recipe'
 			end
 		},
-		[15] = {
+		[16] = {
 			name = INV.categoryNames.TRADE_GOODS,
 			func = function(item)
 				return item.class == 'Trade Goods'
@@ -237,40 +244,40 @@ INV.filters = {
 					or item.class == 'Tradeskill'
 			end
 		},
-		[16] = {
+		[17] = {
 			name = INV.categoryNames.DEVICES,
 			func = function(item)
 				return item.subclass == 'Devices'
 			end
 		},
-		[17] = {
+		[18] = {
 			name = INV.categoryNames.PETS,
 			func = function(item)
 				return item.subclass == 'Companion Pets'
 					or item.subclass == 'Mount'
 			end
 		},
-		[18] = {
+		[19] = {
 			name = INV.categoryNames.MOUNTS,
 			func = function(item)
 				return item.subclass == 'Companion Pets'
 					or item.subclass == 'Mount'
 			end
 		},
-		[19] = {
+		[20] = {
 			name = INV.categoryNames.QUEST,
 			func = function(item)
 				return item.class == 'Quest'
 			end
 		},
-		[20] = {
+		[21] = {
 			name = INV.categoryNames.KEYS,
 			func = function(item)
 				return item.class == 'Key'
 					or item.name:lower():match('%f[%a]key%f[%A]')
 			end
 		},
-		[21] = {
+		[22] = {
 			name = INV.categoryNames.MISCELLANEOUS,
 			func = function(item)
 				return true
