@@ -44,6 +44,8 @@ function MicroMenu:OnInitialize()
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)
     self.Container:SetPoint('TOPLEFT', UIParent, st.CLAMP_INSET, -st.CLAMP_INSET)
     self.Container:SetSize(1,1)
+    -- No-op to ignore Layout calls for buttons like mail icon
+    self.Container.Layout = function() end
 
     self:KillBlizz()
     self:AddButton(self:CreateLatencyButton())
