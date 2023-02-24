@@ -44,6 +44,37 @@ function MicroMenu:UpdateLatency(latency)
     latency.text:SetTextColor(getColorGradient(ms/600, true))
 end
 
+local function getSortedMemoryUsage()
+    UpdateAddOnMemoryUsage()
+
+    local usage = {}
+    for i=1, GetNumAddOns() do
+        local name = GetAddOnInfo(i)
+        local memory = GetAddOnMemoryUsage(i)
+        local cpu = GetAddOnCPUUsage(i)
+        if memory > 1000 then
+            tinsert(usage, {name = name, memory = memory, cpu = cpu})
+        end
+    end
+
+    table.sort(usage, function(a, b) return a.memory > b.memory end)
+    return usage
+end
+
+function MicroMenu:ShowAddonStatsTooltip()
+    GameTooltip:SetOwner(self.Framerate, 'ANCHOR_NONE')
+    GameTooltip:ClearAllPoints()
+    GameTooltip:SetPoint('TOPLEFT', self.Framerate, 'BOTTOMLEFT', 0, -8)
+    GameTooltip:ClearLines()
+    GameTooltip:AddLine('Memory Usage')
+
+    for _,addon in pairs(getSortedMemoryUsage()) do
+        GameTooltip:AddDoubleLine(addon.name, st.StringFormat:FileSizeFormat(addon.memory, 1), 1, 1, 1, getColorGradient(addon.memory/10000, true))
+    end
+
+    GameTooltip:Show()
+end
+
 function MicroMenu:CreateFramerateButton()
     local framerate = st:CreateFrame('Frame', nil, button)
     framerate.width = BUTTON_WIDTH
@@ -57,7 +88,8 @@ function MicroMenu:CreateFramerateButton()
 
     self.Framerate = framerate
     self:HookScript(framerate, 'OnUpdate', 'UpdateFramerate')
-
+    self:HookScript(framerate, 'OnEnter', 'ShowAddonStatsTooltip')
+    self:HookScript(framerate, 'OnLeave', function() GameTooltip:Hide() end)
     return framerate
 end
 
