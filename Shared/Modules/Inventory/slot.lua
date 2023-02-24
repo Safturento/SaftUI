@@ -88,7 +88,7 @@ local function CreateSlotDropdown()
         local info = UIDropDownMenu_CreateInfo()
         info.text = "Auto Vendor"
         info.checked = function(self)
-            return INV.config.autoVendorFilter and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+            return INV.config.autoVendorFilter and INV.SelectedSlot.info and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
         end
         info.func = function(dropdown, arg1, arg2, checked)
             if not INV.SelectedSlot then return end
