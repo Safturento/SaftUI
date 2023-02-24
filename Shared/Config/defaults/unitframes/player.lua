@@ -6,7 +6,7 @@ st.defaults.unitframes.profiles["**"].player = {
         enable = true,
         manaAsPrimary = true,
         relative_width = false,
-        width = 222,
+        width = 286,
         position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -152 },
         text = {
             position = { rel_point = "CENTER", x_off = "0", point = "CENTER", y_off = "0" },
@@ -14,13 +14,48 @@ st.defaults.unitframes.profiles["**"].player = {
     },
     castbar = {
         enable = true,
+        relative_width = false,
+        width = 288,
+        relative_height = false,
+        height = 30,
+        template = 'thicktransparent',
+        position = { frame_type=false, point ='TOP', element = 'AdditionalPower', rel_point = 'BOTTOM', x_off = 0, y_off = -8 },
+        text = {
+         position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
+        },
+        time = {
+         position = { point = 'RIGHT', rel_point = 'RIGHT', x_off = -3, y_off = 0 }
+        },
+        icon = {
+            height = 40,
+            relative_height = false,
+            width = 40,
+            relative_width = false,
+            position = { point = 'TOP', element = 'Castbar', rel_point = 'BOTTOM', x_off = 0, y_off = -20 }
+        }
     },
     auras = {
-        debuffs = {
-            enable = true,
-            position = {point = 'BOTTOMRIGHT', rel_point = 'TOPRIGHT', x_off = -2, y_off = 3},
+        buffs = {
+            showBar = true,
+            friend = {
+                filter = {
+                    time = {
+                        enable = true,
+                        max = 60,
+                    },
+                    blacklist = {
+                        enable = true,
+                        auras = true,
+                    }
+                }
+            },
+        },
+        debuffs = {enable = true,
+            grow_right = false,
+            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
+            horizontal_growth = 'LEFT',
             initial_anchor = 'RIGHT',
-            grow_right = false
+            size = 25,
         },
     },
     classpower = {

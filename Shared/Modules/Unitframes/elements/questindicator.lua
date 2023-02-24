@@ -22,7 +22,7 @@ local function UpdateConfig(self)
 
 	self.QuestIndicator:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.questindicator.position)
-	local frame = st.CF.get_frame(self, self.config.questindicator.position)
+	local frame = UF:GetFrame(self, self.config.questindicator.position)
 	self.QuestIndicator:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.QuestIndicator:SetAlpha(self.config.questindicator.alpha)
 end

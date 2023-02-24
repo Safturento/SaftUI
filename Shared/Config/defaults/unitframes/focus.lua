@@ -19,10 +19,10 @@ st.defaults.unitframes.profiles["**"].focus = {
     auras = {
         debuffs = {
             enable = true,
-            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
-            grow_right = true,
+            position = {point = 'BOTTOMRIGHT',rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 2},
+            grow_right = false,
             initial_anchor = 'RIGHT',
-            size = 28,
+            size = 25,
             filter = {
                 friend = {
                     grow_right = false,

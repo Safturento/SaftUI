@@ -1,19 +1,24 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].nameplate = {
-    height = 26,
-    width = 200,
+    height = 30,
+    width = 250,
     questindicator = {
         enable = true,
     },
     name = {
-        position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7},
+        position = { point = 'LEFT', rel_point = 'LEFT', x_off = 10, y_off = 0 },
         max_length = 30,
         color_hostile = true,
     },
     castbar = {
         enable = true,
         height = 14,
+    },
+    power = {
+        text = {
+            enable = false,
+        },
     },
     auras = {
         buffs = {
@@ -23,11 +28,17 @@ st.defaults.unitframes.profiles["**"].nameplate = {
             enable = true,
             size = 30,
             position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
-            self_only = true,
-            show_magic = true,
             cooldown = {
                 alpha = 1,
             },
+            enemy = {
+                filter = {
+                    blacklist = {
+                        enable = true,
+                        others = true,
+                    }
+                }
+            }
         }
     },
 }

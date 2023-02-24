@@ -71,7 +71,7 @@ local function UpdateConfig(self)
 		self.Castbar.Text:SetFontObject(st:GetFont(self.config.castbar.text.font))
 		self.Castbar.Text:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.text.position)
-		local frame = st.CF.get_frame(self, self.config.castbar.text.position)
+		local frame = UF:GetFrame(self, self.config.castbar.text.position)
 		self.Castbar.Text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Text:Hide()
@@ -82,7 +82,7 @@ local function UpdateConfig(self)
 		self.Castbar.Time:SetFontObject(st:GetFont(self.config.castbar.time.font))
 		self.Castbar.Time:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.time.position)
-		local frame = st.CF.get_frame(self, self.config.castbar.time.position)
+		local frame = UF:GetFrame(self, self.config.castbar.time.position)
 		self.Castbar.Time:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Castbar.Time:Hide()
@@ -94,7 +94,7 @@ local function UpdateConfig(self)
 		self.Castbar.Icon:ClearAllPoints()
 		
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.icon.position)
-		local frame = st.CF.get_frame(self, self.config.castbar.icon.position)
+		local frame = UF:GetFrame(self, self.config.castbar.icon.position)
 
 		self.Castbar.Icon:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 
@@ -117,7 +117,7 @@ local function UpdateConfig(self)
 
 	self.Castbar:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.castbar.position)
-	local frame = st.CF.get_frame(self, self.config.castbar.position)
+	local frame = UF:GetFrame(self, self.config.castbar.position)
 	self.Castbar:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.Castbar:SetFrameLevel(self.config.castbar.framelevel)
 end

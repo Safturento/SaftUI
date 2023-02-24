@@ -20,7 +20,7 @@ st.defaults.unitframes.profiles["**"].boss = {
                 rel_point = "TOPLEFT",
                 x_off = "-6",
                 y_off = -2,
-                anchor_element = "Castbar",
+                element = "Castbar",
             },
         }
     },
@@ -54,6 +54,19 @@ st.defaults.unitframes.profiles["**"].boss = {
         },
         debuffs = {
             enable = true,
+            position = {point = 'BOTTOMLEFT',rel_point = 'BOTTOMRIGHT', x_off = 7, y_off = 2},
+            grow_right = true,
+            initial_anchor = 'LEFT',
+            size = 25,
+            filter = {
+                whitelist = {
+                    enable = true,
+                    filters = {
+                      yours = true,
+                      others = false
+                    }
+                }
+            }
         }
     },
 }

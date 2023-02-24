@@ -79,7 +79,7 @@ for _, config in pairs(indicators) do
 
         indicator:ClearAllPoints()
         local anchor, frame, rel_anchor, x_off, y_off = st:UnpackPoint(indicator.config.position)
-        local frame = st.CF.get_frame(self, indicator.config.position)
+        local frame = UF:GetFrame(self, indicator.config.position)
         indicator:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
         indicator:SetAlpha(indicator.config.alpha)
     end

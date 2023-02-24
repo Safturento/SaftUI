@@ -3,81 +3,69 @@ local UF = st:GetModule('Unitframes')
 
 local AURAS = {'Buffs', 'Debuffs'}
 
-local friendly_dispels = {
-	SHAMAN = {
-		Curse = true,
-		Magic = true
-	},
-	DRUID = {
-		Poison = true,
-		Curse = true,
-	},
-	PALADIN = {
-		Disease = true,
-		Poison = true,
-		Magic = true,
-	},
-	PRIEST = {
-		Disease = true,
-		Magic = true,
-	},
-	MAGE = {
-		Curse = true,
+function isWhitelisted(whitelist, data)
+    if not whitelist.enable then return true end
+    if whitelist.yours and isCastByPlayer(data) then return true end
+    if whitelist.others and not isCastByPlayer(data) then return true end
+    if whitelist.stealable and data.isStealable then return true end
+    if whitelist.auras and data.duration > 0 then return true end
+    if whitelist.boss and data.isBossAura then return true end
 
-	}
-}
+    return false
+end
 
-function UF.FilterAura(element, unit, button, name, texture,
-count, debuffType, duration, expiration, caster, isStealable, nameplateShowSelf, spellID,
-canApply, isBossDebuff, casterIsPlayer, nameplateShowAll,timeMod, effect1, effect2, effect3)
+function isBlacklisted(blacklist, data)
+    if not blacklist.enable then return false end
+    if blacklist.yours and isCastByPlayer(data) then return true end
+    if blacklist.others and not isCastByPlayer(data) then return true end
+    if blacklist.stealable and data.isStealable then return true end
+    if blacklist.auras and data.duration == 0 then return true end
+    if blacklist.boss and data.isBossAura then return true end
 
-	local is_friend = UnitIsFriend('player', unit)
-	local config = element.config.filter[is_friend and 'friend' or 'enemy']
-	local is_dispellable = IsDispellable(unit, debuffType)
+    return false
+end
 
-	local show = not config.whitelist.enable
+function getHostility(unit)
+    return UnitIsFriend('player', unit) and 'friend' or 'enemy'
+end
 
-	if config.whitelist.enable then
-		local whitelist = config.whitelist.filters
-		show = (whitelist.yours and button.isPlayer) or
-				 (whitelist.others and not button.isPlayer) or
-				 (whitelist.dispellable and is_dispellable) or
-				 (whitelist.auras and duration == 0)
-	end
+function isCastByPlayer(data)
+    return data.sourceUnit == 'player'
+end
 
-	if config.blacklist.enable then
-		local blacklist = config.blacklist.filters
-		show = not (
-			(blacklist.yours and button.isPlayer) or
-			(blacklist.others and not button.isPlayer) or
-			(blacklist.dispellable and is_dispellable) or
-			(blacklist.auras and duration == 0)
-		)
-	end
+function isStealableBuff(data)
+    return not data.isHarmful and data.isStealable
+end
 
-	if not show then return end
+-- data = https://wowpedia.fandom.com/wiki/API_C_UnitAuras.GetAuraDataBySlot
+function UF.FilterAura(element, unit, data)
+	local filter = element.config[getHostility(unit)].filter
 
-	if debuffType and (is_dispellable and config.border == 'dispel' or config.border == 'all') then
-		local c = DebuffTypeColor[debuffType]
+    if filter.time.enable then
+        if filter.time.hideAuras and data.duration == 0 then return end
+        if filter.time.max and data.duration > filter.time.max then return end
+        if filter.time.min and data.duration < filter.time.min then return end
+    end
+
+    return isWhitelisted(filter.whitelist, data) and not isBlacklisted(filter.blacklist, data)
+end
+
+function UF.PostUpdateButton(element, button, unit, data, position)
+    local config = element.config[getHostility(unit)]
+    if config.colorStealable and isStealableBuff(data) then
+        local c = DebuffTypeColor['Magic']
 		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-	else
+    elseif config.colorTypes and data.dispelName then
+        local c = DebuffTypeColor[data.dispelName]
+		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+    else
 		st:SetBackdrop(button, element.config.template)
 	end
 
-	if config.desaturate and not (button.isPlayer or is_dispellable) then
-		button.Icon:SetDesaturated(1)
-	else
-		button.Icon:SetDesaturated()
-	end
-
-	return true
+    button.Icon:SetDesaturated(config.desaturateOthers and not isCastByPlayer(data))
 end
 
-function IsDispellable(unit, debuffType)
-	return friendly_dispels[st.my_class] and UnitIsFriend('player', unit) and friendly_dispels[st.my_class][debuffType]
-end
-
-function UF.PostCreateAura(auras, button)
+function UF.PostCreateButton(auras, button)
 
 	st:SetBackdrop(button, auras.config.template)
 	st:SkinIcon(button.Icon)
@@ -87,7 +75,6 @@ function UF.PostCreateAura(auras, button)
 	button.Cooldown.noCooldownCount = not auras.config.cooldown.timer
 	button.Cooldown:SetReverse(not auras.config.cooldown.reverse)
 	button.Cooldown:SetAlpha(auras.config.cooldown.alpha)
-	-- button.Cooldown:SetFrameLevel(button:GetFrameLevel() + 5)
 	button.Cooldown:SetHideCountdownNumbers(true)
 end
 
@@ -97,8 +84,10 @@ local function UpdateConfig(self, aura_type)
 	auras.aura_type = aura_type
 
 	if auras.config.enable then
+        self:EnableElement(aura_type)
 		auras:Show()
 	else
+        self:DisableElement(aura_type)
 		auras:Hide()
 		return
 	end
@@ -109,7 +98,7 @@ local function UpdateConfig(self, aura_type)
 	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
 	auras:ClearAllPoints()
 	local point, _, relativePoint, xoffset, yoffset = st:UnpackPoint(auras.config.position)
-	local frame = st.CF.get_frame(self, auras.config.position)
+	local frame = UF:GetFrame(self, auras.config.position)
 	auras:SetPoint(point, frame, relativePoint, xoffset, yoffset)
 	auras:SetFrameLevel(auras.config.framelevel)
 
@@ -123,121 +112,19 @@ local function UpdateConfig(self, aura_type)
 	auras.onlyShowPlayer = auras.config.self_only
 	auras.disableCooldown = not auras.config.cooldown.enable
 	auras.showDispellable = auras.config.show_dispellable
-	auras.CustomFilter = UF.FilterAura
+	auras.FilterAura = UF.FilterAura
 end
 
 local function Constructor(self, aura_type)
 	local auras = CreateFrame('Frame', self:GetName()..aura_type, self)
 	auras.config = self.config.auras[string.lower(aura_type)]
-	auras.PostCreateButton = UF.PostCreateAura
-
+	auras.PostCreateButton = UF.PostCreateButton
+    auras.PostUpdateButton = UF.PostUpdateButton
 	auras.disableCooldown = true
 	self[aura_type] = auras
 	return auras
 end
 
-local function GetConfigTable(unit, aura_type)
-	local config = st.config.profile.unitframes
-	local filter_values = {
-		yours = 'Yours',
-		others = 'Others',
-		dispellable = 'Dispellable',
-		auras = 'Auras'
-	}
-	
-	local function FiltersTable(order, name, target_type, list_type)
-		return {
-			order = order, 
-			name = name,
-			type = 'group',
-			desc = 'If the aura matches any of these criteria it will be ' .. (list_type == 'blacklist' and 'hidden' or 'shown'),
-			-- inline = true,
-			width = 0.5,
-			get = function(info)
-				local config = config.profiles[config.config_profile][unit].auras[aura_type:lower()]
-				return config.filter[target_type][list_type][info[#info]]
-			end,
-			set = function(info, value)
-				local config = config.profiles[config.config_profile][unit].auras[aura_type:lower()]
-				local filters = config.filter[target_type][list_type]
-				filters[info[#info]] = value
-			end,
-			args = {
-				enable = st.CF.generators.enable(0),
-				filters = {
-					-- width = 2,
-					name = '',
-					type = 'multiselect',
-					dialogControl = 'Dropdown',
-					get = function(info, filter)
-						local config = config.profiles[config.config_profile][unit].auras[aura_type:lower()]
-						return config.filter[target_type][list_type].filters[filter]
-					end,
-					set = function(info, filter)
-						local config = config.profiles[config.config_profile][unit].auras[aura_type:lower()]
-						local filters = config.filter[target_type][list_type].filters
-						filters[filter] = not filters[filter]
-					end,
-					values = filter_values,
-				}
-			}
-		}
-	end
+UF:RegisterElement('Buffs', Constructor, UpdateConfig)
+UF:RegisterElement('Debuffs', Constructor, UpdateConfig)
 
-	return {
-		type = 'group',
-		name = aura_type,
-		get = function(info)
-			return config.profiles[config.config_profile][unit].auras[aura_type:lower()][info[#info]]
-		end,
-		set = function(info, value)
-			config.profiles[config.config_profile][unit].auras[aura_type:lower()][info[#info]] = value
-			UF:UpdateConfig(unit, aura_type)
-		end,
-		args = {
-			enable = st.CF.generators.enable(0),
-			framelevel = st.CF.generators.framelevel(1),
-			template = st.CF.generators.template(2),
-			position = st.CF.generators.uf_element_position(3,
-				function(index) return
-					config.profiles[config.config_profile][unit].auras[aura_type:lower()].position[index]
-				end,
-				function(index, value)
-					config.profiles[config.config_profile][unit].auras[aura_type:lower()].position[index] = value
-					UF:UpdateConfig(unit, aura_type)
-				end
-			),
-			size = st.CF.generators.range(4, 'Size', 1, 50, 1),
-			spacing = st.CF.generators.range(5, 'Spacing', 1, 30, 1),
-			max = st.CF.generators.range(6, 'Max', 1, aura_type == 'Debuff' and 16 or 32, 1),
-			per_row = st.CF.generators.range(7, 'Per row', 1, aura_type == 'Debuff' and 16 or 32, 1),
-			grow_up = st.CF.generators.toggle(8, 'Grow up'),
-			grow_right = st.CF.generators.toggle(9, 'Grow right'),
-			initial_anchor = {
-				order = 10,
-				type = 'select',
-				name = 'initial_anchor',
-				values = st.FRAME_ANCHORS
-			},
-			filter = {
-				order = 11,
-				name = 'Filters',
-				type = 'group',
-				inline = true,
-				args = {
-					friendly_whitelist = FiltersTable(1, 'Friendly Whitelist', 'friend', 'whitelist'),
-					friendly_blacklist = FiltersTable(2, 'Friendly Blacklist', 'friend', 'blacklist'),
-					enemy_whitelist = FiltersTable(3, 'Enemy Whitelist', 'enemy', 'whitelist'),
-					enemy_blacklist = FiltersTable(4, 'Enemy Blacklist', 'enemy', 'blacklist'),
-				}
-			}
-		}
-	}
-end
-
-UF:RegisterElement('Buffs', Constructor, UpdateConfig, 
-	function(self) return GetConfigTable(self, 'Buffs') end)
-UF:RegisterElement('Debuffs', Constructor, UpdateConfig,
-	function(self) return GetConfigTable(self, 'Debuffs') end)
-
--- UF:RegisterElement('Auras', Constructor, UpdateConfig, GetConfigTable)

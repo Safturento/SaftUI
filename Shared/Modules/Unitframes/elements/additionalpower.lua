@@ -82,7 +82,7 @@ local function UpdateConfig(self)
 
 	element:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(element.config.position)
-	local frame = st.CF.get_frame(self, element.config.position)
+	local frame = UF:GetFrame(self, element.config.position)
 	element:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 
 
@@ -107,7 +107,7 @@ local function UpdateConfig(self)
 		element.text:SetFontObject(st:GetFont(element.config.text.font))
 		element.text:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(element.config.text.position)
-		local frame = st.CF.get_frame(self, element.config.text.position)
+		local frame = UF:GetFrame(self, element.config.text.position)
 		element.text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		element.text:Hide()

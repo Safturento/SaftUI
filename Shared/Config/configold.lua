@@ -110,16 +110,6 @@ function st.CF.generators.position(order, global_frame, get, set)
 	return table
 end
 
-function st.CF.get_frame(self, config)
-	local frame = self
-	if config.frame_type == false then
-		frame = self[config.anchor_element]
-	elseif config.frame_type == true then
-		frame = _G[config.anchor_frame]
-	end
-	return frame
-end
-
 function st.CF.generators.uf_element_position(order, get, set)
 	local table = st.CF.generators.position(order, true, get, set)
 	local values = {}

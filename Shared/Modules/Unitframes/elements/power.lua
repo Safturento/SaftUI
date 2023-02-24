@@ -82,7 +82,7 @@ local function UpdateConfig(self)
 
 	self.Power:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.position)
-	local frame = st.CF.get_frame(self, self.config.power.position)
+	local frame = UF:GetFrame(self, self.config.power.position)
 	self.Power:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 
 
@@ -107,7 +107,7 @@ local function UpdateConfig(self)
 		self.Power.text:SetFontObject(st:GetFont(self.config.power.text.font))
 		self.Power.text:ClearAllPoints()
 		local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.power.text.position)
-		local frame = st.CF.get_frame(self, self.config.power.text.position)
+		local frame = UF:GetFrame(self, self.config.power.text.position)
 		self.Power.text:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	else
 		self.Power.text:Hide()

@@ -30,7 +30,7 @@ local function UpdateConfig(self)
 
 	self.GroupRoleIndicator:ClearAllPoints()
 	local anchor, frame, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.grouproleindicator.position)
-	local frame = st.CF.get_frame(self, self.config.raidtargetindicator.position)
+	local frame = UF:GetFrame(self, self.config.raidtargetindicator.position)
 	self.GroupRoleIndicator:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.GroupRoleIndicator:SetAlpha(self.config.grouproleindicator.alpha)
 end

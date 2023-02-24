@@ -1,18 +1,27 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].target = {
-    position = {point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150},
+    position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -150 },
     castbar = {
+        position = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 120 },
         enable = true,
+        relative_width = false,
+        width = 300,
+        relative_height = false,
+        height = 30,
+        template = 'thicktransparent',
+        text = {
+         position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
+        },
+        time = {
+         position = { point = 'RIGHT', rel_point = 'RIGHT', x_off = -3, y_off = 0 }
+        },
         icon = {
-            enable = true,
-            position = {
-                point = "TOPRIGHT",
-                rel_point = "TOPLEFT",
-                x_off = "-6",
-                y_off = -2,
-                anchor_element = "Castbar",
-            },
+            height = 40,
+            relative_height = false,
+            width = 40,
+            relative_width = false,
+            position = { point = 'BOTTOM', element = 'Castbar', rel_point = 'TOP', x_off = 0, y_off = 20 }
         }
     },
     auras = {
@@ -26,27 +35,9 @@ st.defaults.unitframes.profiles["**"].target = {
                 rel_point = "TOPRIGHT",
                 x_off = "-2",
             },
-            filter = {
-                friend = {
-                    whitelist = {
-                        enable = true,
-                        filters = {
-                            auras = false,
-                        },
-                    },
-                    blacklist = {
-                        enable = false,
-                        filters = {
-                            others = true,
-                        },
-                    },
-                },
-            },
         },
         debuffs = {
             enable = true,
-            self_only = true,
-            show_magic = true,
             cooldown = {
                 alpha = 1,
             },

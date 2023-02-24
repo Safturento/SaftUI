@@ -22,7 +22,7 @@ local function UpdateConfig(self)
 
 	self.RaidTargetIndicator:ClearAllPoints()
 	local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(self.config.raidtargetindicator.position)
-	local frame = st.CF.get_frame(self, self.config.raidtargetindicator.position)
+	local frame = UF:GetFrame(self, self.config.raidtargetindicator.position)
 	self.RaidTargetIndicator:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 	self.RaidTargetIndicator:SetAlpha(self.config.raidtargetindicator.alpha)
 end

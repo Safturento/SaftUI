@@ -16,31 +16,26 @@ st.defaults.unitframes.profiles["**"].party = {
     },
     auras = {
         buffs = {
-            filter = {
-                friend = {
-                    whitelist = {
-                        filters = {
-                            auras = false,
-                        },
-                    },
-                    blacklist = {
-                        enable = true,
-                        filters = {
-                            others = true,
-                        },
-                    },
-                },
-            },
+            enable = true,
+--             friend = {
+--                 filter = {
+--                     blacklist = {
+--                         enable = true,
+--                         others = true,
+--                         auras = true,
+--                     },
+--                 },
+--             },
         },
         debuffs = {
             enable = true,
             grow_right = false,
-            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -54, y_off = 0},
+            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
             horizontal_growth = 'LEFT',
             initial_anchor = 'RIGHT',
-            size = 28,
-            filter = {
-                friend = {
+            size = 25,
+            friend = {
+                filter = {
                     whitelist = {
                         filters = {
                             yours = false,
@@ -48,7 +43,9 @@ st.defaults.unitframes.profiles["**"].party = {
                         },
                     },
                 },
-                enemy = {
+            },
+            enemy = {
+                filter = {
                     whitelist = {
                         enable = false,
                     },

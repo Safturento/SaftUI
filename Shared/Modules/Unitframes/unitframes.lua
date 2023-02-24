@@ -26,6 +26,10 @@ UF.group_strings = {
 	['raid40'] = 'Raid 40',
 }
 
+function UF:GetFrame(unitframe, configPosition)
+    return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
+end
+
 function UF.ConstructUnit(self, unit)
 	-- Ensure that we have access to a numberless unit type for config tables
 	local base_unit = self:GetParent():GetAttribute('base_unit')
@@ -86,6 +90,7 @@ All three functions take one argument - the unitframe object created from oUF:Sp
 ]]--
 function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, valid_units)
 	self.elements[name] = {
+	    name = name,
 		Constructor = Constructor,
 		UpdateConfig = UpdateConfig,
 		GetConfigTable = GetConfigTable,

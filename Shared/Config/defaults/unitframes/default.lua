@@ -16,7 +16,7 @@ local raidroleindicator = {
     position = {
         point = 'CENTER',
         rel_point = 'TOPRIGHT',
-        anchor_element = 'Health',
+        element = 'Health',
         x_off = 0,
         y_off = 0,
     }
@@ -29,7 +29,7 @@ local grouproleindicator = {
         enable = false,
         point = 'CENTER',
         rel_point = 'TOPLEFT',
-        anchor_element = 'Health',
+        element = 'Health',
         x_off = 0,
         y_off = 0,
     }
@@ -41,7 +41,7 @@ local readycheckindicator = {
     position = {
         point = 'BOTTOMRIGHT',
         rel_point = 'BOTTOMRIGHT',
-        anchor_element = 'Health',
+        element = 'Health',
         x_off = 0,
         y_off = 0,
     }
@@ -53,7 +53,7 @@ local raidtargetindicator = {
         enable = true,
         point = 'CENTER',
         rel_point = 'TOP',
-        anchor_element = 'Portrait',
+        element = 'Portrait',
         x_off = 0,
         y_off = 0,
     }
@@ -71,7 +71,7 @@ local portrait = {
         rel_point = "TOPLEFT",
         point = "TOPRIGHT",
         x_off = "-7",
-        anchor_element = "Health",
+        element = "Health",
         y_off = "0",
     },
 }
@@ -95,9 +95,10 @@ local castbar = {
     text = {
         enable = true,
         position = {
+            frame_type = false,
             point = "TOPLEFT",
             rel_point = "BOTTOMLEFT",
-            anchor_element = "Castbar",
+            element = "Castbar",
             x_off = "0",
             y_off = "-3",
         },
@@ -106,9 +107,10 @@ local castbar = {
     time = {
         enable = true,
         position = {
+            frame_type=false,
             rel_point = "RIGHT",
             point = "RIGHT",
-            anchor_element = "Castbar",
+            element = "Castbar",
             x_off = "-5",
             y_off = "0",
         },
@@ -117,11 +119,12 @@ local castbar = {
     icon = {
         enable = true,
         position = {
-            point = "TOPLEFT",
-            rel_point = "TOPRIGHT",
-            x_off = "6",
-            y_off = -2,
-            anchor_element = "Castbar",
+            point = "LEFT",
+            rel_point = "RIGHT",
+            x_off = -3,
+            y_off = 0,
+            frame_type = true,
+            element = "Castbar",
         },
         framelevel = 15,
         height = -4,
@@ -150,7 +153,7 @@ local health = {
         font = 'pixel',
         position = {
             point = "RIGHT",
-            anchor_element = "Health",
+            element = "Health",
             rel_point = "RIGHT",
             x_off = -10,
             y_off = 0,
@@ -202,7 +205,7 @@ local power = {
         font = 'pixel',
         position = {
             point = "LEFT",
-            anchor_element = "Health",
+            element = "Health",
             rel_point = "LEFT",
             x_off = 10,
             y_off = 0,
@@ -251,7 +254,7 @@ local additionalPower = {
         position = {
             point = "LEFT",
             frame_type=false,
-            anchor_element = "AdditionalPower",
+            element = "AdditionalPower",
             rel_point = "LEFT",
             x_off = 10,
             y_off = 0,
@@ -282,32 +285,37 @@ local auras = {
             reverse = true,
             alpha = 0.7
         },
-        filter = {
-            ['**'] = {
+        ['**'] = {
+            filter = {
                 whitelist = {
-                    enable = true,
-                    filters = {
-                        yours = true,
-                        others = false,
-                        dispellable = true,
-                        auras = true,
-                    }
+                    enable = false,
+                    yours = true,
+                    others = true,
+                    stealable = true,
+                    auras = true,
+                    boss = true
                 },
                 blacklist = {
                     enable = false,
-                    filters = {
-                        yours = false,
-                        others = false,
-                        dispellable = false,
-                        auras = true,
-                    }
+                    yours = false,
+                    others = false,
+                    stealable = false,
+                    auras = false,
+                    boss = false,
                 },
+                time = {
+                    enable = false,
+                    min = 0,
+                    max = 60,
+                }
             },
         }
     },
     buffs = {
         enable = true,
-        border = 'all',
+        enemy = {
+            colorStealable = true,
+        },
         position = {
             point = "BOTTOMLEFT",
             rel_point = "TOPLEFT",
@@ -317,7 +325,12 @@ local auras = {
     },
     debuffs = {
         enable = false,
-        border = 'all',
+        friend = {
+            colorTypes = true,
+        },
+        enemy = {
+            desaturateOthers = true,
+        },
         position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 7 },
     }
 }
@@ -354,7 +367,7 @@ local widget = {
         position = {
             frame_type = false,
             point = "CENTER",
-            anchor_element = 'Widget',
+            element = 'Widget',
             rel_point = "CENTER",
             x_off = 0,
             y_off = 0,
@@ -376,7 +389,7 @@ st.defaults.unitframes = {
                 template = 'none',
                 range_alpha = {
                     inside = 1,
-                    outside = 0.2,
+                    outside = 0.4,
                 },
                 ['**'] = {
                     enable = true,

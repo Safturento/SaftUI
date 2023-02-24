@@ -21,3 +21,7 @@ st.LSM:Register('font', 		'Righteous',			st:FontPath('Righteous-Regular.ttf'))
 st.LSM:Register('font', 		'FiraCode',			    st:FontPath('FiraCode\\FiraCode-Regular.ttf'))
 st.LSM:Register('font', 		'FiraCode Medium',	    st:FontPath('FiraCode\\FiraCode-Medium.ttf'))
 st.LSM:Register('font', 		'FiraCode Bold',	    st:FontPath('FiraCode\\FiraCode-Bold.ttf'))
+
+function st:GetStatusBarTexture(texture_name)
+	return texture_name and self.LSM:Fetch('statusbar', texture_name) or st.BLANK_TEX
+end
