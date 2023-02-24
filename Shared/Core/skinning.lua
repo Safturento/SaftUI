@@ -213,11 +213,12 @@ function st:SkinActionButton(button, config)
 
 		if hotkey then
 			hotkey:ClearAllPoints()
-			hotkey:SetPoint('TOPRIGHT')
-			hotkey:SetPoint('TOPLEFT', 0, 2)
-			hotkey:SetJustifyH('LEFT')
+			hotkey:SetPoint('TOPRIGHT', 2, 2)
+			hotkey:SetPoint("TOPLEFT", 4, 0)
+			hotkey:SetJustifyH('RIGHT')
 			hotkey:SetJustifyV('TOP')
 		end
+
 		if button.SetNormalFontObject then
 			button:SetNormalFontObject(font_object)
 			button:SetHighlightFontObject(font_object)
