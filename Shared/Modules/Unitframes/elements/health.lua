@@ -30,7 +30,7 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
 		elseif health.config.text.deficit then
-			health.text:SetText(current-max)
+			health.text:SetText(current - max)
 		elseif health.config.text.percent then
 			health.text:SetText(getHealthPercentText(current, max, absorbs))
 		else
@@ -61,35 +61,30 @@ local function PostUpdateHealth(health, unit, current, max)
 	
 end
 
-local function Constructor(self)
-    local health = UF:AddStatusBarElement(self, 'Health')
-	UF:AddText(self, health)
+local function Constructor(unitframe)
+    local health = UF:AddStatusBarElement(unitframe, 'Health')
+	UF:AddText(unitframe, health)
 	health.PostUpdate = PostUpdateHealth
-	
-	self.Health = health
+
 	return health
 end
 
-local function UpdateConfig(self)
-	self.Health.config = self.config.health
-	local healthConfig = self.config.health
-	
-    UF:UpdateElementConfig(self.Health, true)
+local function UpdateConfig(unitframe)
+    local health = unitframe.Health
 
-	if healthConfig.colorCustom then
-		self.Health:SetStatusBarColor(unpack(healthConfig.customColor))
-	end
+    UF:UpdateElement(health)
 
-	self.Health.colorTapping		= healthConfig.colorTapping
-	self.Health.colorDisconnected	= healthConfig.colorDisconnected
-	self.Health.colorHealth			= healthConfig.colorHealth
-	self.Health.colorClass			= healthConfig.colorClass
-	self.Health.colorClassNPC		= healthConfig.colorClassNPC
-	self.Health.colorClassPet		= healthConfig.colorClassPet
-	self.Health.colorReaction		= healthConfig.colorReaction
-	self.Health.colorSmooth			= healthConfig.colorSmooth
-	self.Health.colorCustom			= healthConfig.colorCustom
-	self.Health.customColor 		= healthConfig.customColor
+    local config = health.config
+	health.colorTapping		 = config.colorTapping
+	health.colorDisconnected = config.colorDisconnected
+	health.colorHealth		 = config.colorHealth
+	health.colorClass		 = config.colorClass
+	health.colorClassNPC	 = config.colorClassNPC
+	health.colorClassPet	 = config.colorClassPet
+	health.colorReaction	 = config.colorReaction
+	health.colorSmooth		 = config.colorSmooth
+	health.colorCustom		 = config.colorCustom
+	health.customColor 		 = config.customColor
 end
 
 UF:RegisterElement('Health', Constructor, UpdateConfig)

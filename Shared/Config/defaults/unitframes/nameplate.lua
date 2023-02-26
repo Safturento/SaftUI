@@ -20,25 +20,20 @@ st.defaults.unitframes.profiles["**"].nameplate = {
             enable = false,
         },
     },
-    auras = {
-        buffs = {
-            enable = false,
+    debuffs = {
+        enable = true,
+        size = 30,
+        position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
+        cooldown = {
+            alpha = 1,
         },
-        debuffs = {
-            enable = true,
-            size = 30,
-            position = {point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 24},
-            cooldown = {
-                alpha = 1,
-            },
-            enemy = {
-                filter = {
-                    blacklist = {
-                        enable = true,
-                        others = true,
-                    }
+        enemy = {
+            filter = {
+                blacklist = {
+                    enable = true,
+                    others = true,
                 }
             }
         }
-    },
+    }
 }

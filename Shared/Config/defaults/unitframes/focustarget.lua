@@ -7,12 +7,4 @@ st.defaults.unitframes.profiles["**"].focustarget = {
     name = {
         enable = false,
     },
-    auras = {
-        buffs = {
-            enable = false
-        }
-    },
-    portrait = {
-        enable = false
-    }
 }

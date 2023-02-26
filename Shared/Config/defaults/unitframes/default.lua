@@ -48,9 +48,9 @@ local readycheckindicator = {
 }
 
 local raidtargetindicator = {
+    enable = true,
     size = 16,
     position = {
-        enable = true,
         point = 'CENTER',
         rel_point = 'TOP',
         element = 'Portrait',
@@ -60,17 +60,16 @@ local raidtargetindicator = {
 }
 
 local portrait = {
-    enable = false,
-    alpha = 1,
+    enable = true,
+    alpha = 0.1,
     framelevel = 20,
-    template = "thick",
-    height = 0,
-    relative_width = false,
-    width = 40,
+    template = "none",
+    height = -4,
+    width = -4,
     position = {
-        rel_point = "TOPLEFT",
-        point = "TOPRIGHT",
-        x_off = "-7",
+        rel_point = "CENTER",
+        point = "CENTER",
+        x_off = "0",
         element = "Health",
         y_off = "0",
     },
@@ -81,6 +80,9 @@ local castbar = {
     relative_height = false,
     height = 15,
     template = 'thin',
+    bg = {
+        enable = false,
+    },
     position = {
         point = "BOTTOM",
         rel_point = "BOTTOM",
@@ -94,6 +96,7 @@ local castbar = {
     },
     text = {
         enable = true,
+        font = 'pixel',
         position = {
             frame_type = false,
             point = "TOPLEFT",
@@ -102,10 +105,10 @@ local castbar = {
             x_off = "0",
             y_off = "-3",
         },
-        font = 'pixel',
     },
     time = {
         enable = true,
+        font = 'pixel',
         position = {
             frame_type=false,
             rel_point = "RIGHT",
@@ -114,7 +117,6 @@ local castbar = {
             x_off = "-5",
             y_off = "0",
         },
-        font = 'pixel',
     },
     icon = {
         enable = true,
@@ -225,7 +227,7 @@ local power = {
 }
 
 
-local additionalPower = {
+local additionalpower = {
     enable = false,
     framelevel = 10,
     template = "thick",
@@ -266,74 +268,75 @@ local additionalPower = {
     customColor = { 0.25, 0.25, 0.25 },
 }
 
+
 local auras = {
-    ['**'] = {
-        enable = false,
-        size = 24,
-        spacing = 3,
-        per_row = 9,
-        max = 8,
-        framelevel = 15,
-        template = 'thick',
-        font = 'pixel',
-        grow_up = true,
-        grow_right = true,
-        initial_anchor = 'BOTTOMLEFT',
-        cooldown = {
-            enable = true,
-            timer = false,
-            reverse = true,
-            alpha = 0.7
-        },
-        ['**'] = {
-            filter = {
-                whitelist = {
-                    enable = false,
-                    yours = true,
-                    others = true,
-                    stealable = true,
-                    auras = true,
-                    boss = true
-                },
-                blacklist = {
-                    enable = false,
-                    yours = false,
-                    others = false,
-                    stealable = false,
-                    auras = false,
-                    boss = false,
-                },
-                time = {
-                    enable = false,
-                    min = 0,
-                    max = 60,
-                }
-            },
-        }
-    },
-    buffs = {
+    enable = false,
+    size = 24,
+    spacing = 3,
+    per_row = 9,
+    max = 8,
+    framelevel = 15,
+    template = 'thick',
+    font = 'pixel',
+    grow_up = true,
+    grow_right = true,
+    initial_anchor = 'BOTTOMLEFT',
+    cooldown = {
         enable = true,
-        enemy = {
-            colorStealable = true,
-        },
-        position = {
-            point = "BOTTOMLEFT",
-            rel_point = "TOPLEFT",
-            x_off = "2",
-            y_off = "7",
-        },
+        timer = false,
+        reverse = true,
+        alpha = 0.7
     },
-    debuffs = {
-        enable = false,
-        friend = {
-            colorTypes = true,
+    ['**'] = {
+        filter = {
+            whitelist = {
+                enable = false,
+                yours = true,
+                others = true,
+                stealable = true,
+                auras = true,
+                boss = true
+            },
+            blacklist = {
+                enable = false,
+                yours = false,
+                others = false,
+                stealable = false,
+                auras = false,
+                boss = false,
+            },
+            time = {
+                enable = false,
+                min = 0,
+                max = 60,
+            }
         },
-        enemy = {
-            desaturateOthers = true,
-        },
-        position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 7 },
     }
 }
+
+local buffs = st.tablemerge(auras, {
+    enable = false,
+    enemy = {
+        colorStealable = true,
+    },
+    position = {
+        point = "BOTTOMLEFT",
+        rel_point = "TOPLEFT",
+        x_off = "2",
+        y_off = "7",
+    },
+})
+
+local debuffs = st.tablemerge(auras, {
+    enable = false,
+    friend = {
+        colorTypes = true,
+    },
+    enemy = {
+        desaturateOthers = true,
+    },
+    position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 7 },
+})
 
 local name = {
     enable = true,
@@ -403,9 +406,10 @@ st.defaults.unitframes = {
                     alpha = 1,
                 },
                 name = name,
-                auras = auras,
+                buffs = buffs,
+                debuffs = debuffs,
                 power = power,
-                additionalPower = additionalPower,
+                additionalpower = additionalpower,
                 health = health,
                 castbar = castbar,
                 portrait = portrait,

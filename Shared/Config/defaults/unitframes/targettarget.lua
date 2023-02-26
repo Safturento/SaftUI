@@ -13,14 +13,6 @@ st.defaults.unitframes.profiles["**"].targettarget = {
     name = {
         enable = false,
     },
-    portrait = {
-        enable = false
-    },
-    auras = {
-        buffs = {
-            enable = false,
-        },
-    },
     power = {
         text = {
             enable = false

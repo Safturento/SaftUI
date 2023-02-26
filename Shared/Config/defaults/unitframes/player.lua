@@ -2,7 +2,7 @@ local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].player = {
     position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150 },
-    additionalPower = {
+    additionalpower = {
         enable = true,
         manaAsPrimary = true,
         relative_width = false,
@@ -34,29 +34,29 @@ st.defaults.unitframes.profiles["**"].player = {
             position = { point = 'TOP', element = 'Castbar', rel_point = 'BOTTOM', x_off = 0, y_off = -20 }
         }
     },
-    auras = {
-        buffs = {
-            showBar = true,
-            friend = {
-                filter = {
-                    time = {
-                        enable = true,
-                        max = 60,
-                    },
-                    blacklist = {
-                        enable = true,
-                        auras = true,
-                    }
+    buffs = {
+        enable = true,
+        showBar = true,
+        friend = {
+            filter = {
+                time = {
+                    enable = true,
+                    max = 60,
+                },
+                blacklist = {
+                    enable = true,
+                    auras = true,
                 }
-            },
+            }
         },
-        debuffs = {enable = true,
-            grow_right = false,
-            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
-            horizontal_growth = 'LEFT',
-            initial_anchor = 'RIGHT',
-            size = 25,
-        },
+    },
+    debuffs = {
+        enable = true,
+        grow_right = false,
+        position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
+        horizontal_growth = 'LEFT',
+        initial_anchor = 'RIGHT',
+        size = 25,
     },
     classpower = {
         enable = true,

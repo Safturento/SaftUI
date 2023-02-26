@@ -41,44 +41,35 @@ st.defaults.unitframes.profiles["**"].arena = {
             point = "BOTTOMLEFT",
         },
     },
-    portrait = {
-        position = {
-            point = 'LEFT',
-            rel_point = 'RIGHT',
-            x_off = 7,
-        },
-    },
-    auras = {
-        buffs = {
-            filter = {
-                enemy = {
-                    whitelist = {
-                        enable = false,
-                    }
+    buffs = {
+        filter = {
+            enemy = {
+                whitelist = {
+                    enable = false,
                 }
             }
-        },
-        debuffs = {
-            enable = true,
-            position = {point = 'LEFT', rel_point = 'RIGHT', x_off = 4, y_off = 0},
-            horizontal_growth = 'LEFT',
-            initial_anchor = 'LEFT',
-            size = 28,
-            filter = {
-                friend = {
-                    whitelist = {
-                        filters = {
-                            yours = false,
-                            auras = false,
-                        },
-                    },
-                },
-                enemy = {
-                    whitelist = {
-                        enable = false,
+        }
+    },
+    debuffs = {
+        enable = true,
+        position = {point = 'LEFT', rel_point = 'RIGHT', x_off = 4, y_off = 0},
+        horizontal_growth = 'LEFT',
+        initial_anchor = 'LEFT',
+        size = 28,
+        filter = {
+            friend = {
+                whitelist = {
+                    filters = {
+                        yours = false,
+                        auras = false,
                     },
                 },
             },
-        }
-    },
+            enemy = {
+                whitelist = {
+                    enable = false,
+                },
+            },
+        },
+    }
 }

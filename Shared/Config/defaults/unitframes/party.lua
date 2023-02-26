@@ -14,9 +14,8 @@ st.defaults.unitframes.profiles["**"].party = {
     raidtargetindicator = {
         enable = true,
     },
-    auras = {
-        buffs = {
-            enable = true,
+    buffs = {
+        enable = true,
 --             friend = {
 --                 filter = {
 --                     blacklist = {
@@ -26,31 +25,30 @@ st.defaults.unitframes.profiles["**"].party = {
 --                     },
 --                 },
 --             },
+    },
+    debuffs = {
+        enable = true,
+        grow_right = false,
+        position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
+        horizontal_growth = 'LEFT',
+        initial_anchor = 'RIGHT',
+        size = 25,
+        friend = {
+            filter = {
+                whitelist = {
+                    filters = {
+                        yours = false,
+                        auras = false,
+                    },
+                },
+            },
         },
-        debuffs = {
-            enable = true,
-            grow_right = false,
-            position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
-            horizontal_growth = 'LEFT',
-            initial_anchor = 'RIGHT',
-            size = 25,
-            friend = {
-                filter = {
-                    whitelist = {
-                        filters = {
-                            yours = false,
-                            auras = false,
-                        },
-                    },
+        enemy = {
+            filter = {
+                whitelist = {
+                    enable = false,
                 },
             },
-            enemy = {
-                filter = {
-                    whitelist = {
-                        enable = false,
-                    },
-                },
-            },
-        }
+        },
     }
 }

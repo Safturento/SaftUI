@@ -59,7 +59,7 @@ function UF.ConstructUnit(self, unit)
 	-- we can keep track of them here to easily loop and update through them later
 	self.elements = {}
 	for element_name, funcs in pairs(UF.elements) do
-		if (not funcs.ValidUnits) or funcs.ValidUnits(base_unit) then
+		if (not funcs.ValidUnit) or funcs.ValidUnit(base_unit) then
 			self.elements[element_name] = funcs.Constructor(self, element_name)
 		end
 	end
@@ -88,13 +88,12 @@ UpdateConfig (function): the function used to update the display of the element 
 All three functions take one argument - the unitframe object created from oUF:Spawn
 
 ]]--
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, valid_units)
+function UF:RegisterElement(name, Constructor, UpdateConfig, ValidUnit)
 	self.elements[name] = {
 	    name = name,
 		Constructor = Constructor,
 		UpdateConfig = UpdateConfig,
-		GetConfigTable = GetConfigTable,
-		valid_units = valid_units
+		ValidUnit = ValidUnit
 	}
 end
 
@@ -112,7 +111,11 @@ function UF:UpdateUnitFrame(frame, element_name)
 	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
 
 	if element_name and self.elements[element_name] then
-		self.elements[element_name].UpdateConfig(frame, element_name)
+        if self.elements[element_name].UpdateConfig then
+            self.elements[element_name].UpdateConfig(frame, element_name)
+        else
+            self:UpdateElement(frame[element_name])
+        end
 	else
 		if not (InCombatLockdown() or frame.base_unit == 'nameplate') then
 			if frame.is_group_unit then
@@ -145,7 +148,11 @@ function UF:UpdateUnitFrame(frame, element_name)
 		}
 		
 		for element_name, element in pairs(frame.elements) do
-			self.elements[element_name].UpdateConfig(frame, element_name)
+            if self.elements[element_name].UpdateConfig then
+                self.elements[element_name].UpdateConfig(frame, element_name)
+            else
+                self:UpdateElement(frame[element_name])
+            end
 		end
 	end
 
@@ -560,167 +567,6 @@ function UF:OpenCopyTable(unit)
 
 	dialog:SetDefaultSize(st.name ..'_Copy_Unitframe', 400, 300)
 	dialog:Open(st.name ..'_Copy_Unitframe')
-end
-
-function UF:GetConfigTable()
-	self:RegisterCopyTable()
-
-	local config = {
-		name = 'Unitframes',
-		type = 'group',
-		args = {
-			profile = {
-				order = -99,
-				name = 'Profile',
-				type = 'group',
-				-- inline = true,
-				args = {
-					current = {
-						order = 1,
-						type = 'select',
-						name = 'Profile',
-						values = get_profiles,
-						get = function(info)
-							st.CF:Refresh()
-							return st.config.profile.unitframes.config_profile
-						end,
-						set = function(info, value)
-							st.config.profile.unitframes.config_profile = value
-							UF:UpdateConfig()
-							st.CF:Refresh()
-						end
-					},
-					new = {
-						order = 2,
-						type = 'execute',
-						name = 'New',
-						width = 0.5,
-						func = function() 
-							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
-						end,
-					},
-					copy = {
-						order = 3,
-						type = 'execute',
-						name = 'Copy',
-						width = 0.5,
-						func = function()
-							local dialog = StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
-							dialog.is_copy = true
-						end,
-					},
-					delete = {
-						order = 4,
-						type = 'execute',
-						name = 'Delete',
-						width = 0.5,
-						func = function()
-							if get_num_profiles() > 1 then
-								StaticPopup_Show('SAFTUI_UF_PROFILE_DELETE')
-							end
-						end,
-					},
-					rename = {
-						order = 5,
-						type = 'execute',
-						name = 'Rename',
-						width = 0.5,
-						func = function()
-							StaticPopup_Show('SAFTIU_UF_PROFILE_RENAME')
-						end,
-					},
-					export = {
-						order = 6,
-						type = 'execute',
-						name = 'Export',
-						width = 0.5,
-						func = function()
-							local popup = StaticPopup_Show('SAFTUI_UF_PROFILE_EXPORT')
-						end
-					},
-					import = {
-						order = 6,
-						type = 'execute',
-						name = 'Import',
-						width = 0.5,
-						func = function()
-							StaticPopup_Show('SAFTUI_UF_PROFILE_IMPORT')
-						end
-					}
-				}
-			},
-		}
-	}
-
-	local function GetUnitConfig(unit)
-		local config = st.config.profile.unitframes
-
-		if not unit then return end
-
-		local function frame_position_set(key, value)
-			config.profiles[config.config_profile][unit].position[key] = value
-			UF:UpdateConfig(unit)
-		end
-		local function frame_position_get(key)
-			return config.profiles[config.config_profile][unit].position[key]
-		end
-
-		config_table = {
-			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
-			type = 'group',
-			inline = false,
-			childGroups = 'select',
-			args = {
-				copy = {
-					name = 'Copy from',
-					type = 'execute',
-					func = function() 
-						UF:OpenCopyTable(unit)
-					end,
-					order = -99,
-				},
-				general = {
-					order = 0,
-					name = 'General',
-					type = 'group',
-					get = function(info)
-						return config.profiles[config.config_profile][unit][info[#info]]
-					end,
-					set = function(info, value)
-						config.profiles[config.config_profile][unit][info[#info]] = value
-						UF:UpdateConfig(unit)
-					end,
-					args = {
-						enable = st.CF.generators.enable(0),
-						framelevel = st.CF.generators.framelevel(1),
-						height = st.CF.generators.height(2),
-						width = st.CF.generators.width(3),
-						template = st.CF.generators.template(4),
-						position = st.CF.generators.position(5, true, frame_position_get, frame_position_set),
-					}
-				}
-			}
-		}
-
-		for element_name, element in pairs(UF.elements) do
-			if self.elements[element_name].GetConfigTable and not self.elements[element_name].valid_units or self.elements[element_name].valid_units(unit) then
-				config_table.args[element_name] =
-					self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
-			end
-		end
-
-		return config_table
-	end
-
-	for unit,frame in pairs(self.units) do
-		config.args[unit] = GetUnitConfig(unit)
-	end
-
-	for unit, header in pairs(self.groups) do
-		config.args[unit] = GetUnitConfig(unit)
-	end
-
-	return config
 end
 
 function UF:GetProfile()

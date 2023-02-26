@@ -16,18 +16,16 @@ st.defaults.unitframes.profiles["**"].focus = {
     health = {
         reverse_fill = true,
     },
-    auras = {
-        debuffs = {
-            enable = true,
-            position = {point = 'BOTTOMRIGHT',rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 2},
-            grow_right = false,
-            initial_anchor = 'RIGHT',
-            size = 25,
-            filter = {
-                friend = {
-                    grow_right = false,
-                }
+    debuffs = {
+        enable = true,
+        position = {point = 'BOTTOMRIGHT',rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 2},
+        grow_right = false,
+        initial_anchor = 'RIGHT',
+        size = 25,
+        filter = {
+            friend = {
+                grow_right = false,
             }
         }
-    },
+    }
 }

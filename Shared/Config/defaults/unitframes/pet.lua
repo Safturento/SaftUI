@@ -14,12 +14,7 @@ st.defaults.unitframes.profiles["**"].pet = {
     health = {
         position = { rel_point = "TOPLEFT", x_off = "4", point = "TOPLEFT", y_off = "-4" },
     },
-    auras = {
-        buffs = {
-            enable = false,
-        },
-        debuffs = {
-            enable = false,
-        }
+    debuffs = {
+        enable = false,
     }
 }

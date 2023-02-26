@@ -40,19 +40,16 @@ st.defaults.unitframes.profiles["**"].raid40 = {
         show_level = false,
         max_length = 8,
     },
-    auras = {
-        buffs ={ enable = false },
-        debuffs = {
-            enable = false,
-            template = 'thin',
-            per_row = 2,
-            max = 2,
-            spacing = 3,
-            position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
-            grow_right = true,
-            initial_anchor = 'LEFT',
-            framelevel = 50,
-            size = 8,
-        },
-    }
+    debuffs = {
+        enable = false,
+        template = 'thin',
+        per_row = 2,
+        max = 2,
+        spacing = 3,
+        position = {point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0},
+        grow_right = true,
+        initial_anchor = 'LEFT',
+        framelevel = 50,
+        size = 8,
+    },
 }

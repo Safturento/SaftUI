@@ -38,8 +38,8 @@ function isStealableBuff(data)
 end
 
 -- data = https://wowpedia.fandom.com/wiki/API_C_UnitAuras.GetAuraDataBySlot
-function UF.FilterAura(element, unit, data)
-	local filter = element.config[getHostility(unit)].filter
+function UF.FilterAura(auras, unit, data)
+	local filter = auras.config[getHostility(unit)].filter
 
     if filter.time.enable then
         if filter.time.hideAuras and data.duration == 0 then return end
@@ -50,8 +50,8 @@ function UF.FilterAura(element, unit, data)
     return isWhitelisted(filter.whitelist, data) and not isBlacklisted(filter.blacklist, data)
 end
 
-function UF.PostUpdateButton(element, button, unit, data, position)
-    local config = element.config[getHostility(unit)]
+function UF.PostUpdateButton(auras, button, unit, data, position)
+    local config = auras.config[getHostility(unit)]
     if config.colorStealable and isStealableBuff(data) then
         local c = DebuffTypeColor['Magic']
 		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
@@ -59,7 +59,7 @@ function UF.PostUpdateButton(element, button, unit, data, position)
         local c = DebuffTypeColor[data.dispelName]
 		button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
     else
-		st:SetBackdrop(button, element.config.template)
+		st:SetBackdrop(button, auras.config.template)
 	end
 
     button.Icon:SetDesaturated(config.desaturateOthers and not isCastByPlayer(data))
@@ -78,29 +78,21 @@ function UF.PostCreateButton(auras, button)
 	button.Cooldown:SetHideCountdownNumbers(true)
 end
 
-local function UpdateConfig(self, aura_type)
-	local auras = self[aura_type]
-	auras.config = self.config.auras[string.lower(aura_type)]
-	auras.aura_type = aura_type
+local function UpdateConfig(unitframe, aura_type)
+    local auras = unitframe[aura_type]
+    local enabled = UF:UpdateElement(auras)
 
-	if auras.config.enable then
-        self:EnableElement(aura_type)
-		auras:Show()
+	if enabled then
+        unitframe:EnableElement(aura_type)
 	else
-        self:DisableElement(aura_type)
-		auras:Hide()
-		return
+        unitframe:DisableElement(aura_type)
 	end
 
 	local num_rows = ceil(auras.config.max/auras.config.per_row)
 
-	auras:SetHeight(num_rows*auras.config.size + (num_rows-1)*auras.config.spacing)
-	auras:SetWidth(auras.config.per_row*auras.config.size + (auras.config.per_row-1)*auras.config.spacing)
-	auras:ClearAllPoints()
-	local point, _, relativePoint, xoffset, yoffset = st:UnpackPoint(auras.config.position)
-	local frame = UF:GetFrame(self, auras.config.position)
-	auras:SetPoint(point, frame, relativePoint, xoffset, yoffset)
-	auras:SetFrameLevel(auras.config.framelevel)
+	auras:SetHeight(num_rows * auras.config.size + (num_rows - 1) * auras.config.spacing)
+	auras:SetWidth(auras.config.per_row * auras.config.size + (auras.config.per_row - 1) * auras.config.spacing)
+    st:SetBackdrop(auras, 'none')
 
 	auras.size = auras.config.size
 	auras.num = auras.config.max
@@ -115,13 +107,13 @@ local function UpdateConfig(self, aura_type)
 	auras.FilterAura = UF.FilterAura
 end
 
-local function Constructor(self, aura_type)
-	local auras = CreateFrame('Frame', self:GetName()..aura_type, self)
-	auras.config = self.config.auras[string.lower(aura_type)]
+local function Constructor(unitframe, aura_type)
+    local auras = UF:AddElement('Frame', unitframe, aura_type)
+
 	auras.PostCreateButton = UF.PostCreateButton
     auras.PostUpdateButton = UF.PostUpdateButton
 	auras.disableCooldown = true
-	self[aura_type] = auras
+
 	return auras
 end
 

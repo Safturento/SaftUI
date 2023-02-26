@@ -24,23 +24,21 @@ st.defaults.unitframes.profiles["**"].target = {
             position = { point = 'BOTTOM', element = 'Castbar', rel_point = 'TOP', x_off = 0, y_off = 20 }
         }
     },
-    auras = {
-        buffs = {
-            enable = true,
-            grow_right = false,
-            border = 'all',
-            initial_anchor = 'TOPRIGHT',
-            position = {
-                point = "BOTTOMRIGHT",
-                rel_point = "TOPRIGHT",
-                x_off = "-2",
-            },
+    buffs = {
+        enable = true,
+        grow_right = false,
+        border = 'all',
+        initial_anchor = 'TOPRIGHT',
+        position = {
+            point = "BOTTOMRIGHT",
+            rel_point = "TOPRIGHT",
+            x_off = "-2",
         },
-        debuffs = {
-            enable = true,
-            cooldown = {
-                alpha = 1,
-            },
-        }
+    },
+    debuffs = {
+        enable = true,
+        cooldown = {
+            alpha = 1,
+        },
     }
 }
