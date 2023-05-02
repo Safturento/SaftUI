@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Script file="name.lua"/>
-	<Script file="auras.lua"/>
+<!--	<Script file="auras.lua"/>-->
 	<Script file="power.lua"/>
 	<Script file="additionalpower.lua"/>
 	<Script file="health.lua"/>

@@ -6,7 +6,7 @@
     <Include file="Inventory\load.xml"/>
     <Script file="actionbars.lua"/>
     <Script file="chatframe.lua"/>
-    <Script file="experience.lua"/>
+<!--    <Script file="experience.lua"/>-->
     <Script file="tooltip.lua"/>
     <Script file="fixtaint.lua"/>
 </Ui>

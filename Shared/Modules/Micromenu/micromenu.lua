@@ -76,10 +76,11 @@ function MicroMenu:OnInitialize()
     self:AddButton(self:SkinTimeManagerClockButton())
     self:AddButton(self:CreateLatencyButton())
     self:AddButton(self:CreateFramerateButton())
+    --self:AddButton(self:SkinTrackingButton())
     self:AddButton(self:SkinExpansionButton())
     self:AddButton(self:SkinMailIcon())
-    self:AddButton(self:SkinInstanceDifficulty())
-    self:AddButton(self:SkinQueueButton())
+    --self:AddButton(self:SkinInstanceDifficulty())
+    --self:AddButton(self:SkinQueueButton())
 
     for _,button in pairs(self.Buttons) do
         self:HookScript(button, 'OnShow', 'UpdateButtons')
