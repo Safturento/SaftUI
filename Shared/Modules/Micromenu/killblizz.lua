@@ -31,6 +31,19 @@ function MicroMenu:KillBlizz()
 
     self:HideBagSlots()
     self:HideMicroMenu()
+
+    MinimapCluster.BorderTop:Hide()
+    local disable = CreateFrame('frame')
+    disable:RegisterEvent('ADDON_LOADED')
+    disable:SetScript('OnEvent', function(self, event, addon)
+        if addon == 'Blizzard_TimeManager' then
+            hooksecurefunc('TimeManagerClockButton_OnLoad', function(self)
+                self:Hide()
+            end)
+        end
+        self:UnregisterAllEvents()
+    end)
+    GameTimeFrame:Hide()
 end
 
 function MicroMenu:HideMicroMenu()

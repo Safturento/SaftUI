@@ -19,9 +19,9 @@ local function getColorGradient(percent, inverted)
 end
 
 function MicroMenu:CreateLatencyButton()
-    local latency = st:CreateFrame('Frame', nil, button)
+    local latency = st:CreateFrame('Frame', nil, UIParent)
     latency.width = BUTTON_WIDTH
-    st:SetBackdrop(latency, 'thick')
+    --st:SetBackdrop(latency, 'thick')
     latency.text = latency:CreateFontString(nil, 'OVERLAY')
     latency.text:SetFontObject(st:GetFont('pixel'))
     latency.text:SetPoint('CENTER', 1, 0)
@@ -76,11 +76,11 @@ function MicroMenu:ShowAddonStatsTooltip()
 end
 
 function MicroMenu:CreateFramerateButton()
-    local framerate = st:CreateFrame('Frame', nil, button)
+    local framerate = st:CreateFrame('Frame', nil, UIParent)
     framerate.width = BUTTON_WIDTH
-    st:SetBackdrop(framerate, 'thick')
-    framerate:SetPoint('TOPLEFT')
-    framerate:SetPoint('BOTTOMRIGHT', button, 'RIGHT', 0, 1)
+    --st:SetBackdrop(framerate, 'thick')
+    --framerate:SetPoint('TOPLEFT')
+    --framerate:SetPoint('BOTTOMRIGHT', button, 'RIGHT', 0, 1)
     framerate.text = framerate:CreateFontString(nil, 'OVERLAY')
     framerate.text:SetFontObject(st:GetFont('pixel'))
     framerate.text:SetPoint('CENTER', 1, 0)

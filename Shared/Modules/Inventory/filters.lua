@@ -143,6 +143,7 @@ INV.filters = {
 			name = INV.categoryNames.TRASH,
 			func = function(item)
 				return item.quality == 0
+					or isLegacyGear(item)
 					or item.soulbound and string.matchnocase(item.tooltipText, RED_CLASS)
 					or INV:ShouldAutoVendor(item.itemID)
 			end

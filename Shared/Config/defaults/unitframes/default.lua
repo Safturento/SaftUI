@@ -119,7 +119,7 @@ local castbar = {
         },
     },
     icon = {
-        enable = true,
+        enable = false,
         position = {
             point = "LEFT",
             rel_point = "RIGHT",
