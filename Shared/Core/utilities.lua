@@ -22,8 +22,11 @@ local function removeMagicChars(x)
             :gsub('%?', ''))
 end
 
-function string.matchnocase(x, y) return string.match(strlower(removeMagicChars(x)), strlower(removeMagicChars(y))) end
-function string.findnocase(x, y) return string.find(strlower(removeMagicChars(x)), strlower(removeMagicChars(y))) end
+string.escape = escape
+string.unmagic = removeMagicChars
+
+function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
+function string.findnocase(str, pattern) return strlower(removeMagicChars(str)):find(strlower(pattern)) end
 
 --https://wowpedia.fandom.com/wiki/ColorGradient
 function st:ColorGradient(perc, ...)
@@ -169,5 +172,26 @@ end
 
 SLASH_PRINT_ITEM1 = '/item'
 SlashCmdList['PRINT_ITEM'] = function(link)
-	print(GetItemInfo(link))
+	local itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType,
+	itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
+	expacID, setID, isCraftingReagent = GetItemInfo(link)
+	st.tableprint({
+		itemName = itemName,
+		itemLink = itemLink,
+		itemQuality = itemQuality,
+		itemLevel = itemLevel,
+		itemMinLevel = itemMinLevel,
+		itemType = itemType,
+		itemSubType = itemSubType,
+		itemStackCount = itemStackCount,
+		itemEquipLoc = itemEquipLoc,
+		itemTexture = itemTexture,
+		sellPrice = sellPrice,
+		classID = classID,
+		subclassID = subclassID,
+		bindType = bindType,
+		expacID = expacID,
+		setID = setID,
+		isCraftingReagent = isCraftingReagent,
+	})
 end

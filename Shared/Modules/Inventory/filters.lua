@@ -61,45 +61,19 @@ local customItemLists = {
 	}
 }
 
-INV.categoryNames = {
-	['TRASH'] = 'Grays/Auto Vendor',
-	['FLASKS_POTIONS'] = 'Flasks/Potions',
-	['FLASKS'] = 'Flasks',
-	['POTIONS'] = 'Potions',
-	['CONSUMABLES'] = 'Consumables',
-	['LEGACY_ARMOR_WEAPONS'] = 'Legacy Armor/Weapons',
-	['ARMOR'] = 'Armor',
-	['WEAPONS'] = 'Weapons',
-	['ARCHAEOLOGY'] = 'Archaeology',
-	['TRADE_GOODS'] = 'Trade Goods',
-	['RECIPES'] = 'Professions/Recipes',
-	['DEVICES'] = 'Devices',
-	['PETS'] = 'Pets',
-	['MOUNTS'] = 'Mounts',
-	['QUEST'] = 'Quest',
-	['KEYS'] = 'Keys',
-	['MISCELLANEOUS'] = 'Miscellaneous',
-	['TOY'] = 'Toy',
-	['ANIMA'] = 'Anima',
-	['CONDUITS'] = 'Conduits',
-	['BLUEPRINT'] = 'Blueprint',
-	['BATTLE_STONES'] = 'Battle-Stones',
-	['CONTAINER'] = 'Container'
-}
-
-INV.AUTO_VENDOR_CATEGORIES = {
-	INV.categoryNames.TRASH,
-	INV.categoryNames.LEGACY_ARMOR_WEAPONS
-}
+INV.AUTO_VENDOR_CATEGORIES = {}
 
 local CONDUIT_TEXT = "Add this Conduit to your collection"
 local ANIMA_TEXT = "stored Anima into your covenant's Reservoir"
-local CONTAINER_RIGHT_CLICK = "Right Click to Open"
-local CONTAINER_OPEN = "Open the container"
+local RIGHT_CLICK_TO_OPEN = "Right Click to Open"
+local OPEN_THE_CONTAINER = "Open the container"
+local OPEN_THE_SACK = "Open the sack"
+local USE_COLLECT = "Use: collect"
 local TOY_TEXT = "Adds this toy to your Toy Box"
 local BLUEPRINT_TEXT = "Blueprint: "
 local ARTIFACT_RELIC_TEXT = "Artifact Relic"
 local USE_TEXT = "Use:"
+local USE_GRANTS = "Use: Grants ([,%d]+) reputation"
 local EQUIP_EFFECT_TEXT = "Equip:"
 local COSMETIC_TEXT = "Cosmetic"
 local BIND_ON_ACCOUNT = "Account Bound"
@@ -135,154 +109,129 @@ local function isLegacyGear(item)
 	return true
 end
 
-
 INV.filters = {
 	itemrack = {},
-	categories = {
-		[1] = {
-			name = INV.categoryNames.TRASH,
-			func = function(item)
-				return item.quality == 0
-					or isLegacyGear(item)
-					or item.soulbound and string.matchnocase(item.tooltipText, RED_CLASS)
-					or INV:ShouldAutoVendor(item.itemID)
-			end
-		},
-		[2] = {
-			name = INV.categoryNames.TOY,
-			func = function(item)
-				return string.matchnocase(item.tooltipText, TOY_TEXT)
-			end
-		},
-		[3] = {
-			name = INV.categoryNames.ANIMA,
-			func = function(item)
-				return string.matchnocase(item.tooltipText, ANIMA_TEXT)
-			end
-		},
-		[4] = {
-			name = INV.categoryNames.CONDUITS,
-			func = function(item)
-				return string.matchnocase(item.tooltipText, CONDUIT_TEXT)
-			end
-		},
-		[5] = {
-			name = INV.categoryNames.BLUEPRINT,
-			func = function(item)
-				return string.matchnocase(item.name, BLUEPRINT_TEXT)
-			end
-		},
-		[6] = {
-			name = INV.categoryNames.BATTLE_STONES,
-			func = function(item)
-				return string.matchnocase(item.name, BATTLE_STONE_TEXT)
-					or string.matchnocase(item.name, TRAINING_STONE_TEXT)
-			end
-		},
-		[7] = {
-			name = INV.categoryNames.CONTAINER,
-			func = function(item)
-				return string.matchnocase(item.tooltipText, CONTAINER_RIGHT_CLICK)
-					or string.matchnocase(item.tooltipText, CONTAINER_OPEN)
-			end
-		},
-		[8] = {
-			name = INV.categoryNames.FLASKS,
-			func = function(item)
-				return item.subclass == 'Flask'
-			end
-		},
-		[9] = {
-			name = INV.categoryNames.POTIONS,
-			func = function(item)
-				return item.subclass == 'Potion'
-			end
-		},
-		[10] = {
-			name = INV.categoryNames.CONSUMABLES,
-			func = function(item)
-				return item.class == 'Consumable'
-			end
-		},
-		[11] = {
-			name = INV.categoryNames.LEGACY_ARMOR_WEAPONS,
-			func = function(item)
-				return isLegacyGear(item)
-			end
-		},
-		[12] = {
-			name = INV.categoryNames.ARMOR,
-			func = function(item)
-				return item.class == 'Armor'
-			end
-		},
-		[13] = {
-			name = INV.categoryNames.WEAPONS,
-			func = function(item)
-				return item.class == 'Weapon'
-			end
-		},
-		[14] = {
-			name = INV.categoryNames.ARCHAEOLOGY,
-			func = function(item)
-				return customItemLists.Archaeology[item.itemID]
-						or string.matchnocase(item.tooltipText, RESTORED_ARTIFACT_TEXT)
-			end
-		},
-		[15] = {
-			name = INV.categoryNames.RECIPES,
-		  	func = function(item)
-				return item.itemID == 191784 -- Dragon Shard of Knowledge
-					or string.matchnocase(item.tooltipText, DRAGON_ISLES_PROFESSION)
-					or item.class == 'Recipe'
-			end
-		},
-		[16] = {
-			name = INV.categoryNames.TRADE_GOODS,
-			func = function(item)
-				return item.class == 'Trade Goods'
-					or item.class == 'Gem'
-					or item.class == 'Tradeskill'
-			end
-		},
-		[17] = {
-			name = INV.categoryNames.DEVICES,
-			func = function(item)
-				return item.subclass == 'Devices'
-			end
-		},
-		[18] = {
-			name = INV.categoryNames.PETS,
-			func = function(item)
-				return item.subclass == 'Companion Pets'
-					or item.subclass == 'Mount'
-			end
-		},
-		[19] = {
-			name = INV.categoryNames.MOUNTS,
-			func = function(item)
-				return item.subclass == 'Companion Pets'
-					or item.subclass == 'Mount'
-			end
-		},
-		[20] = {
-			name = INV.categoryNames.QUEST,
-			func = function(item)
-				return item.class == 'Quest'
-			end
-		},
-		[21] = {
-			name = INV.categoryNames.KEYS,
-			func = function(item)
-				return item.class == 'Key'
-					or item.name:lower():match('%f[%a]key%f[%A]')
-			end
-		},
-		[22] = {
-			name = INV.categoryNames.MISCELLANEOUS,
-			func = function(item)
-				return true
-			end
-		},
-	}
+	categories = {},
+	currency = {},
 }
+
+function INV:AddFilter(name, func, options)
+	if not options then options = {} end
+	tinsert(self.filters.categories, options['index'] or #self.filters.categories+1, { name = name, func = func })
+
+	if options['autoVendor'] then
+		tinsert(INV.AUTO_VENDOR_CATEGORIES, name)
+	end
+end
+
+INV:AddFilter("Grays/Auto Vendor", function(item)
+	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
+	if item.subclass == "Cosmetic" or item.subclass == "Miscellaneous" then return false end
+
+	if string.matchnocase(item.tooltipText, "Fishing")
+	or string.matchnocase(item.tooltipText, "Blizzard Account Bound") then
+		return false
+	end
+
+	-- Can't vendor priceless items..
+	if item.vendorPrice == 0 then return false end
+
+	return item.quality == 0
+		or (isLegacyGear(item) and item.quality < 5)
+		or item.soulbound and string.matchnocase(item.tooltipText, RED_CLASS)
+		or INV:ShouldAutoVendor(item.itemID)
+end, { autoVendor = true })
+
+INV:AddFilter("Reputation", function(item)
+	return string.matchnocase(item.tooltipText, USE_GRANTS)
+end)
+
+INV:AddFilter("Container", function(item)
+	return string.matchnocase(item.tooltipText, RIGHT_CLICK_TO_OPEN)
+		or string.matchnocase(item.tooltipText, OPEN_THE_CONTAINER)
+		or string.matchnocase(item.tooltipText, OPEN_THE_SACK)
+		or string.matchnocase(item.tooltipText, USE_COLLECT)
+end)
+
+INV:AddFilter("Toys", function(item)
+	return string.matchnocase(item.tooltipText, TOY_TEXT)
+end)
+
+INV:AddFilter("Anima", function(item)
+	return string.matchnocase(item.tooltipText, ANIMA_TEXT)
+end)
+
+INV:AddFilter("Conduits", function(item)
+	return string.matchnocase(item.tooltipText, CONDUIT_TEXT)
+end)
+
+INV:AddFilter("Blueprints", function(item)
+	return string.matchnocase(item.name, BLUEPRINT_TEXT)
+end)
+
+INV:AddFilter("Pets", function(item)
+	return string.matchnocase(item.name, BATTLE_STONE_TEXT)
+		or string.matchnocase(item.name, TRAINING_STONE_TEXT)
+		or item.subclass == 'Companion Pets'
+end)
+
+INV:AddFilter("Mounts", function(item)
+	return item.subclass == 'Mount'
+end)
+
+INV:AddFilter("Flasks/Potions/Food", function(item)
+	return item.subclass == 'Flasks & Phials'
+		or item.subclass == 'Potions'
+		or item.subclass == 'Food & Drink'
+end)
+
+INV:AddFilter("Consumables", function(item)
+	return item.class == 'Consumable'
+end)
+
+INV:AddFilter("Armor", function(item)
+	return item.class == 'Armor'
+end)
+
+INV:AddFilter("Weapons", function(item)
+	return item.class == 'Weapon'
+end)
+
+INV:AddFilter("Archaeology", function(item)
+	return customItemLists.Archaeology[item.itemID]
+		or string.matchnocase(item.tooltipText, RESTORED_ARTIFACT_TEXT)
+end)
+
+INV:AddFilter("Professions/Recipes", function(item)
+	return item.itemID == 191784 -- Dragon Shard of Knowledge
+		or string.matchnocase(item.tooltipText, DRAGON_ISLES_PROFESSION)
+		or item.class == 'Recipe'
+end)
+
+INV:AddFilter("Emerald Dream", function(item)
+	return string.matchnocase(item.name, "dreamseed")
+		or string.matchnocase(item.name, "dreamsurge")
+end)
+
+INV:AddFilter("Trade Goods", function(item)
+	return item.class == 'Trade Goods'
+		or item.class == 'Gem'
+		or item.class == 'Tradeskill'
+end)
+
+INV:AddFilter("Devices", function(item)
+	return item.subclass == 'Devices'
+end)
+
+INV:AddFilter("Quest", function(item)
+	return item.class == 'Quest'
+end)
+
+INV:AddFilter("Keys", function(item)
+	return item.class == 'Key'
+		or item.name:lower():match('%f[%a]key%f[%A]')
+end)
+
+INV:AddFilter("Miscellaneous", function(item)
+	return true
+end)

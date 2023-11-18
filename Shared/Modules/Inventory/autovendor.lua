@@ -11,7 +11,7 @@ function INV:GetVendorItems()
 		local category = self.containers.bag.categories[categoryName]
 		for _,slot in pairs(category.slots) do
 			local info = slot and slot.info
-			if info then
+			if info and info.vendorPrice > 0 then
 				tinsert(items, info)
 				profit = profit + info.stackPrice
 			end

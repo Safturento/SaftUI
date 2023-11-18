@@ -76,12 +76,13 @@ function INV:InitializeFooter(container)
 		reagentButton:SetSize(100, 16)
 		reagentButton:SetFrameLevel(90)
 
-
-		--local deposit = ReagentBankFrame.DespositButton
-		--deposit:SetSize(200, 16)
-		--deposit:SetParent(container)
-		--deposit:ClearAllPoints()
-		--st:SkinActionButton(deposit)
+	elseif container.id == 'reagent' then
+		local deposit = ReagentBankFrame.DespositButton
+		deposit:SetSize(200, 16)
+		deposit:SetParent(container)
+		deposit:ClearAllPoints()
+		deposit:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
+		st:SkinActionButton(deposit)
 	end
 end
 
@@ -286,6 +287,7 @@ function INV:ShowBags()
 	INV.containers.bag:Show()
 	INV:QueueUpdate()
 	INV:UpdateCooldowns()
+	INV:MovePlayerBagSlots()
 end
 
 function INV:HideBags() 
@@ -325,12 +327,28 @@ function INV:OnInitialize()
 	if self.config.enable == false then return end
 
 	self:CreateContainer('bag', INVTYPE_BAG)
-	self:MovePlayerBagSlots()
+	self:InitializePlayerBagSlots()
 	self.containers.bag:Hide()
 	self:InitializeAllCategories('bag')
 end
 
 function INV:MovePlayerBagSlots()
+	local bagSlotContainer = self.containers.bag.bagSlotContainer
+	local BagSlots = bagSlotContainer.slots
+
+	local prev
+	for _, slot in pairs(BagSlots) do
+		slot:ClearAllPoints()
+		if prev then
+			slot:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', self.config.buttonspacing, 0)
+		else
+			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
+		end
+		prev = slot
+	end
+end
+
+function INV:InitializePlayerBagSlots()
 	local BagSlots = {}
 	for i=0,3 do
 		local slot = _G['CharacterBag'..i..'Slot']
@@ -348,24 +366,24 @@ function INV:MovePlayerBagSlots()
 	st:SetBackdrop(bagSlotContainer, 'thick')
 	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
 
-	local prev
+	bagSlotContainer.slots = BagSlots
+
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
-		slot:ClearAllPoints()
 		st:SkinIcon(slot.icon, nil, slot)
 		st:SkinActionButton(slot, st.config.profile.buttons)
 		st:SetBackdrop(slot, 'thick')
 		slot:SetNormalTexture("")
 		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
-		if prev then
-			slot:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', self.config.buttonspacing, 0)
-		else
-			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
-		end
-		prev = slot
 	end
+
 	self.containers.bag.bagSlotContainer = bagSlotContainer
+
+	self:MovePlayerBagSlots()
+	self:RegisterEvent('BAG_SLOT_FLAGS_UPDATED', 'MovePlayerBagSlots')
+	self:SecureHook(CharacterReagentBag0Slot, 'SetBarExpanded', 'MovePlayerBagSlots')
+	self:SecureHook(MainMenuBarBagManager, 'OnExpandBarChanged', 'MovePlayerBagSlots')
 end
 
 function INV:MoveBankBagSlots()
