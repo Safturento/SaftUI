@@ -10,7 +10,7 @@ local CHT = st:NewModule('Chat', 'AceHook-3.0', 'AceEvent-3.0')
 -- Ctrl 			- scrolls all the way up or down
 
 local numlines = 3
-function FloatingChatFrame_OnMouseScroll(self, delta)
+local function onMouseScroll(self, delta)
 	if delta < 0 then
 		if IsControlKeyDown() then
 			self:ScrollToBottom()
@@ -75,6 +75,9 @@ function CHT:SkinChatFrame(frame)
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 	st:Kill(_G[frame:GetName()..'ThumbTexture'])
+
+
+	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
 -- 	frame:SetMinResize(170, 40)
 -- 	frame:SetMaxResize(1000, 1000)
