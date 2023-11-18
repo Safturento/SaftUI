@@ -1,75 +1,67 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].arena = {
-    width = 202,
-    spacing = 24,
+    spacing = 41,
     growthDirection = 'DOWN',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -30},
-    health = {
-        reverse_fill = true,
-        text = {
+    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -40},
+    castbar = {
+        enable = true,
+        icon = {
+            enable = false,
             position = {
-                point = 'LEFT',
-                rel_point = 'LEFT',
-                x_off = 5,
-            }
-        }
-    },
-    power = {
-        reverse_fill = true,
-        position = {
-            point = 'BOTTOMRIGHT',
-            rel_point = 'BOTTOMRIGHT',
-            x_off = -7
-        },
-        text = {
-            position = {
-                point = 'LEFT',
-                rel_point = 'LEFT',
-                x_off = 2,
+                point = "TOPRIGHT",
+                rel_point = "TOPLEFT",
+                x_off = "-6",
+                y_off = -2,
+                element = "Castbar",
             },
         }
     },
-    name = {
-        position = {
-            rel_point = "TOPLEFT",
-            x_off = "5",
-            point = "BOTTOMLEFT",
-        },
-    },
     buffs = {
-        filter = {
-            enemy = {
-                whitelist = {
-                    enable = false,
-                }
-            }
-        }
-    },
-    debuffs = {
         enable = true,
-        position = {point = 'LEFT', rel_point = 'RIGHT', x_off = 4, y_off = 0},
-        horizontal_growth = 'LEFT',
-        initial_anchor = 'LEFT',
-        size = 28,
+        grow_right = false,
+        initial_anchor = 'TOPRIGHT',
+        position = {
+            point = "BOTTOMRIGHT",
+            rel_point = "TOPRIGHT",
+            x_off = "0",
+            y_off = "3",
+        },
         filter = {
             friend = {
                 whitelist = {
+                    enable = true,
                     filters = {
-                        yours = false,
                         auras = false,
                     },
                 },
-            },
-            enemy = {
-                whitelist = {
+                blacklist = {
                     enable = false,
+                    filters = {
+                        others = true,
+                    },
                 },
             },
         },
+    },
+    debuffs = {
+        enable = true,
+        position = {point = 'BOTTOMLEFT',rel_point = 'BOTTOMRIGHT', x_off = 7, y_off = 2},
+        grow_right = true,
+        initial_anchor = 'LEFT',
+        size = 25,
+        filter = {
+            whitelist = {
+                enable = true,
+                filters = {
+                  yours = true,
+                  others = false
+                }
+            }
+        }
     }
 }

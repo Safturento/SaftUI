@@ -123,7 +123,7 @@ function AB:UpdateActionButton(slot)
 	slot.IconMask:Hide()
 	slot.cooldown:SetAllPoints()
 	slot.Flash:SetAllPoints()
-	slot:SetSize(34, 34)
+	slot:SetSize(39, 39)
 
 	if IsEquippedAction(slot.action) then
 		slot.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))

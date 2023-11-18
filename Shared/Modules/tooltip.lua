@@ -1,7 +1,10 @@
+
 local st = SaftUI
 local TT = st:NewModule('Tooltip', 'AceHook-3.0', 'AceEvent-3.0')
 
 function TT:UpdateGameTooltipPosition()
+	if GameTooltip:IsForbidden() then return end
+
 	local INV = st:GetModule('Inventory')
 	local LT = st:GetModule('Loot')
 
