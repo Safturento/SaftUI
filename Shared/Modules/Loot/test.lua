@@ -12,8 +12,6 @@ local test_currency = "|cffffffff|Hcurrency:1767:0|h[Stygia]|h|r"
 local test_currency_weekly_max = "|cffff8000|Hcurrency:1828:0|h[Soul Ash]|h|r"
 local thunderfury = "\124cffff8000\124Hitem:19019::::::::70:262:::::::::\124h[Thunderfury, Blessed Blade of the Windseeker]\124h\124r"
 
-
-
 local function generate_random_item()
 	local link
 	while not link do
@@ -22,40 +20,30 @@ local function generate_random_item()
 	return link, random(1, 20)
 end
 
-local lastUpdate = 0
-local lastPush = 0
-function LT:UpdateHandler()
-	local time = GetTime()
-	-- only check once a second
-	if time - lastUpdate < 1 then return end
-	lastUpdate = time
 
-    if time - lastPush >= 2 then
-        lastPush = time
+function LT:UpdateHandler(timer, elapsed)
+	if barrier(timer, elapsed, 3) then return end
 
-        local randomValue = random()
+	local randomValue = random()
 
-        if randomValue < 0.1 then
-            self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item(), 12))
-        elseif randomValue < .2 then
-            self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-        elseif randomValue < .3 then
-            self:LootFeedHandler('CHAT_MSG_MONEY', YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper'))
-        elseif randomValue < .4 then
-            self:LootFeedHandler('CHAT_MSG_CURRENCY', CURRENCY_GAINED:format(test_currency))
-        elseif randomValue < .5 then
-            self:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
-		elseif randomValue < .6 then
-            self:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
-		else
-			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-        end
-
-    end
+	if randomValue < 0.1 then
+		self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item(), 12))
+	elseif randomValue < .2 then
+		self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+	elseif randomValue < .3 then
+		self:LootFeedHandler('CHAT_MSG_MONEY', YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper'))
+	elseif randomValue < .4 then
+		self:LootFeedHandler('CHAT_MSG_CURRENCY', CURRENCY_GAINED:format(test_currency))
+	elseif randomValue < .5 then
+		self:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
+	elseif randomValue < .6 then
+		self:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
+	else
+		self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+	end
 
 	self:UpdateFeed()
 end
-
 
 function LT:InitializeTestMode()
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality1, 5))
@@ -71,5 +59,5 @@ function LT:InitializeTestMode()
 	self:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
 	self:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-	self:HookScript(self.feed, 'OnUpdate', 'UpdateHandler')
+	self:HookScript(CreateFrame('frame'), 'OnUpdate', 'UpdateHandler')
 end

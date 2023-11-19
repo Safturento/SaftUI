@@ -28,6 +28,13 @@ string.unmagic = removeMagicChars
 function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
 function string.findnocase(str, pattern) return strlower(removeMagicChars(str)):find(strlower(pattern)) end
 
+function barrier(self, elapsed, threshold)
+	self.barrierTime = (self.barrierTime or 0) + elapsed
+	if self.barrierTime <= threshold then return true end
+	self.barrierTime = 0
+	return false
+end
+
 --https://wowpedia.fandom.com/wiki/ColorGradient
 function st:ColorGradient(perc, ...)
  	if perc >= 1 then

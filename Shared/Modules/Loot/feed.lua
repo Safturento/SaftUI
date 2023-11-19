@@ -202,25 +202,20 @@ end
 ---- Feed updates ------------------
 ------------------------------------
 
-function LT:UpdateFeed()
+function LT:UpdateFeed(recentlyScrolled)
 	local now = GetTime()
 	local item, info
-
-	local recently_scrolled = self.feed.last_scroll_time and (now - self.feed.last_scroll_time < self.config.feed.fade_time)
 
 	for i=1, self.config.feed.max_items do
 		item = self.feed.items[i]
 		info = feed_stack[i + self.feed.offset]
-
 		if not info then break end
 
-		-- fade out old items
-		if (not recently_scrolled) and
-			(self.feed.offset == 0) and
-			(self.config.feed.fade_time > 0) and
-			(now - info.time > self.config.feed.fade_time) then
-			item:Hide()
-		else
+		if recentlyScrolled then
+			info.time = now
+		end
+
+		if (now - info.time <= self.config.feed.fade_time) then
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
 			else
@@ -243,6 +238,17 @@ function LT:UpdateFeed()
 
 			item:Show()
 		end
+	end
+end
+
+function LT:UpdateAllFeedTimers(index)
+	local now = GetTime()
+	for i=1, index or self.config.feed.max_items do
+		local item = self.feed.items[i]
+		local info = feed_stack[i + self.feed.offset]
+		if not info then break end
+
+		info.time = now
 	end
 end
 
@@ -307,7 +313,7 @@ function LT:LootFeedAddItem(match)
 		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))
 	end
 
-	if quality < self.config.feed.min_quality then return end
+	if not quality or quality < self.config.feed.min_quality then return end
 
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
@@ -416,7 +422,7 @@ end
 local function ShowTooltip(self)
 	if not self.link then return end
 
-	self.info.time = GetTime()
+	LT:UpdateAllFeedTimers(self:GetID())
 
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
@@ -445,7 +451,8 @@ function LT:UpdateLootFeedConfig()
 		end
 
 		item:Hide()
-
+		item:SetID(i)
+		item.timer = item:CreateFontString(nil, 'OVERLAY')
 		item.text = item:CreateFontString(nil, 'OVERLAY')
 		item.rightText = item:CreateFontString(nil, 'OVERLAY')
 		item.icon = item:CreateTexture(nil, 'OVERLAY', nil, 1)
@@ -471,6 +478,9 @@ function LT:UpdateLootFeedConfig()
 		item.text:SetWordWrap(false)
 		item.text:SetText('Item '..i)
 
+		item.timer:SetPoint('RIGHT', item, 'LEFT', -20, 0)
+		item.timer:SetFontObject(font_obj)
+		item.timer:SetJustifyH('LEFT')
 
 		item.rightText:SetFontObject(font_obj)
 		item.rightText:SetPoint('RIGHT', item, 'RIGHT', -10, 0)
@@ -501,6 +511,45 @@ function LT:UpdateLootFeedConfig()
 
 	self.feed.reset_button.text:SetFontObject(font_obj)
 	st:SetBackdrop(self.feed.reset_button, config.template)
+end
+
+
+function LT:UpdateFeedVisibility(feed, elapsed)
+	if self.config.feed.fade_time == 0  then return end
+
+	if self.DEBUG then
+		local now = GetTime()
+		for i=1, self.config.feed.max_items do
+			local item = self.feed.items[i]
+			local info = feed_stack[i + self.feed.offset]
+			if info then
+				item.timer:SetText(st.StringFormat:ToTime(now - info.time))
+			else
+				item.timer:SetText('-')
+			end
+		end
+	end
+
+	if barrier(feed, elapsed, 1) then return end
+
+	local now = GetTime()
+	for i=1, self.config.feed.max_items do
+		local item = self.feed.items[i]
+		local info = feed_stack[i + self.feed.offset]
+
+		if info and now - info.time <= self.config.feed.fade_time then
+			item:SetAlpha(1)
+			item:Show()
+		elseif item:IsShown() and item:GetAlpha() == 1 then
+			UIFrameFadeOut(item, 1, 1, 0)
+			item.fadeInfo.finishedFunc = function()
+				item:Hide()
+				item.fadeInfo = nil
+			end
+		end
+
+		--item:SetShown(info and now - info.time <= self.config.feed.fade_time)
+	end
 end
 
 function LT:InitializeLootFeed()
@@ -537,8 +586,10 @@ function LT:InitializeLootFeed()
 			feed.reset_button:Show()
 		end
 
-		self:UpdateFeed()
+		self:UpdateFeed(true)
 	end)
+
+	self:HookScript(feed, 'OnUpdate', 'UpdateFeedVisibility')
 
 	self.feed = feed
 
@@ -560,6 +611,7 @@ function LT:InitializeLootFeed()
 	feed.reset_button:SetScript('OnClick', function()
 		feed.offset = 0
 		feed.reset_button:Hide()
+		feed.last_scroll_time = GetTime()
 		self:UpdateFeed()
 	end)
 
