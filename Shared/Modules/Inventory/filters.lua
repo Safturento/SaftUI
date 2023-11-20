@@ -126,7 +126,7 @@ end
 
 INV:AddFilter("Grays/Auto Vendor", function(item)
 	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
-	if item.subclass == "Cosmetic" or item.subclass == "Miscellaneous" then return false end
+	if item.subclass == "Cosmetic" then return false end
 
 	if string.matchnocase(item.tooltipText, "Fishing")
 	or string.matchnocase(item.tooltipText, "Blizzard Account Bound") then

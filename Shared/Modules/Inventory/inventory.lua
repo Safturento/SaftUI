@@ -360,6 +360,7 @@ function INV:InitializePlayerBagSlots()
 	tinsert(BagSlots, CharacterReagentBag0Slot)
 
 	local bagSlotContainer = st:CreateFrame('frame', 'BagSlotFrame', self.containers.bag)
+	bagSlotContainer:Hide()
 	bagSlotContainer:SetSize(
 		self.config.buttonwidth * #BagSlots + self.config.buttonspacing * (#BagSlots - 1) + self.config.padding * 2,
 		self.config.buttonheight + self.config.padding * 2)
@@ -367,6 +368,14 @@ function INV:InitializePlayerBagSlots()
 	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
 
 	bagSlotContainer.slots = BagSlots
+	local slotToggle = st:CreateButton('BagSlotToggle', self.containers.bag.header, 'Bag Slots', 'none')
+	slotToggle:SetPoint('LEFT')
+	slotToggle.text:SetJustifyH('LEFT')
+	slotToggle.text:ClearAllPoints()
+	slotToggle.text:SetPoint('LEFT', 10, 0)
+	slotToggle:SetSize(60, st.config.profile.headers.height)
+	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown())  end)
+	self.containers.bag.header.slotToggle = slotToggle
 
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)

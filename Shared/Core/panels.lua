@@ -314,7 +314,7 @@ end
 function st:CreateButton(name, parent, text, template)
 	local button = self:CreateFrame('Button', 'SaftUI_'..name, parent)
 	button.text = st:CreateFontString(button, 'normal', text)
-	button.text:SetPoint('CENTER')
+	button.text:SetAllPoints()
 	st:SetBackdrop(button, template or 'thick')
 
 	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end

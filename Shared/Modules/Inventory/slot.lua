@@ -59,11 +59,11 @@ function INV:AssignSlot(container, slot, slotInfo)
 	slot:Show()
 end
 
-if StackSplitFrameOkay_Click then
-	hooksecurefunc('StackSplitFrameOkay_Click', function()
+if StackSplitOkayButton_OnClick then
+	hooksecurefunc('StackSplitOkayButton_OnClick', function()
 		local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
 		if bag_id and slot_id then
-			PickupContainerItem(bag_id, slot_id)
+			C_Container.PickupContainerItem(bag_id, slot_id)
 		end
 	end)
 end
