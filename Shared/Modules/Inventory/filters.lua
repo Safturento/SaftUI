@@ -173,6 +173,7 @@ INV:AddFilter("Pets", function(item)
 	return string.matchnocase(item.name, BATTLE_STONE_TEXT)
 		or string.matchnocase(item.name, TRAINING_STONE_TEXT)
 		or item.subclass == 'Companion Pets'
+		or item.class == 'Battle Pet'
 end)
 
 INV:AddFilter("Mounts", function(item)

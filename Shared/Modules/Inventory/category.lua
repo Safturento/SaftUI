@@ -63,28 +63,42 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
 		local tooltipText = self:ScanBagItem(bagID,slotID)
-		local name, _, quality, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+		local name, _, quality, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(item.hyperlink)
-
+		local ilvl = GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
 			local itemString = select(3, strfind(item.hyperlink, "|H(.+)|h"))
 			local itemType, itemId = string.split(':', itemString)
 
 			if itemType == "keystone" then
-				name, _, _, ilvl, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+				_, _, _, keyLevel =  string.split(':', itemString)
+				name, _, _, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
 					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemId)
+				--\124cffa335ee\124Hkeystone:180653:198:15:10:136:8:0\124h[Keystone: Darkheart Thicket (15)]\124h\124r
 				class = 'Key'
+				item.stackCount = tonumber(keyLevel)
 				quality = 4
 
 			elseif itemType == 'battlepet' then
-				--print(string.split(':', itemString))
+				--petlink = string.format("%s|Hbattlepet:%s:%s:%s:%s:%s:%s|h[%s]|h|r", ITEM_QUALITY_COLORS[quality].hex, speciesID, level, quality, health, power, speed, name)
+				--speciesID, level, quality, health, power, speed, name =  string.split(':', itemString)
+				local petLevel =  select(3, string.split(':', itemString))
+
+				name = item.itemName
+				class='Battle Pet'
+				item.stackCount = tonumber(petLevel)
+				vendorPrice = 0
+				quality = item.quality
+				texture = item.iconFileID
 			end
 		end
 
+
+
 		if name then
-			local item = {
+			return {
 				name = name,
-				ilvl = GetDetailedItemLevelInfo(item.hyperlink),
+				ilvl = ilvl,
 				reqLevel = reqLevel,
 				soulbound = item.isBound,
 				count = item.stackCount,
@@ -99,15 +113,13 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				equipSlot = equipSlot,
 				expacID = expacID,
 				vendorPrice = vendorPrice,
-				texture = texture,
+				texture = texture or item.iconFileId,
 				locked = item.locked,
 				bagID = bagID,
 				slotID = slotID,
 				tooltipText = tooltipText,
 				sortString = (ilvl or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0),
 			}
-
-			return item
 		end
 	end
 end

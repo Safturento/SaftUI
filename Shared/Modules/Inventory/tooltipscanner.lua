@@ -6,7 +6,8 @@ InitializeTooltipScanner()
     self.cache = {}
 
     self.tip = CreateFrame('GameTooltip', 'SaftUI_ScanningTooltip', UIParent, 'GameTooltipTemplate')
-    self.tip:SetOwner( WorldFrame, "ANCHOR_NONE" );
+    self.tip:SetOwner(UIParent, "ANCHOR_RIGHT", 1000, 1000);
+    self.tip:Hide()
     self.tip:AddFontStrings(
         self.tip:CreateFontString("SaftUI_ScanningTooltipTextLeft1", nil, "GameTooltipText"),
         self.tip:CreateFontString("SaftUI_ScanningTooltipTextRight1", nil, "GameTooltipText"),
@@ -33,11 +34,34 @@ end
 
 function INV:ScanBagItem(bagID, slotID)
     self.tip:ClearLines()
+
+
     local clink = C_Container.GetContainerItemLink(bagID, slotID)
     if self.cache[clink] and string.len(self.cache[clink]) then return self.cache[clink] end
 
-    self.tip:SetBagItem(bagID, slotID)
-    local text = enumerateTextRegions(self.tip:GetRegions())
+    local itemID = C_Container.GetContainerItemID(bagID, slotID)
+    if not itemID then return end
+
+    if not C_Item.IsItemDataCachedByID(itemID) then
+        C_Item.RequestLoadItemDataByID(itemID)
+    end
+
+    local text
+    if string.matchnocase(clink, 'battlepet') then
+        GameTooltip:ClearAllPoints()
+        GameTooltip:SetPoint("BOTTOMLEFT", UIParent, 'TOPRIGHT', 100, 100)
+        self.tip:SetBagItem(bagID, slotID)
+        GameTooltip:Hide()
+        BattlePetTooltip:Hide()
+        text = enumerateTextRegions(self.tip:GetRegions())
+    else
+        self.tip:SetBagItem(bagID, slotID)
+        text = enumerateTextRegions(self.tip:GetRegions())
+    end
+
     self.cache[clink] = text
     return text
+
 end
+
+--\124cff0070dd\124Hbattlepet:1040:25:3:1725:260:260:0000000000000000:40521\124h[Imperial Silkworm]\124h\124r
