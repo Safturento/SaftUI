@@ -8,12 +8,12 @@ function CL:OnInitialize()
 end
 
 function CL:UpdateConfig()
-	for class, color in pairs(st.config.profile.colors.class) do
-		r, g, b = unpack(color)
-		RAID_CLASS_COLORS[class].r = r
-		RAID_CLASS_COLORS[class].g = g
-		RAID_CLASS_COLORS[class].b = b
-	end
+	--for class, color in pairs(st.config.profile.colors.class) do
+	--	r, g, b = unpack(color)
+	--	RAID_CLASS_COLORS[class].r = r
+	--	RAID_CLASS_COLORS[class].g = g
+	--	RAID_CLASS_COLORS[class].b = b
+	--end
 
 	for q,item_quality in pairs(st.config.profile.colors.item_quality) do
 		local r, g, b = unpack(item_quality)

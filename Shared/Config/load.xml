@@ -2,6 +2,6 @@
 	<Script file="defaults.lua"/>
 	<Include file="defaults\load.xml"/>
 	<Script file="config.lua"/>
-	<Script file="configold.lua"/>
+<!--	<Script file="configold.lua"/>-->
 	<Script file="colors.lua"/>
 </Ui>
