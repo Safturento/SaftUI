@@ -193,31 +193,31 @@ function INV:UpdateContainerHeight(container)
 	local tallestColumnHeight = 0
 	local currentColumnHeight = 0
 	local numColumns = 1
-	for _,category_frame in pairs(container.categories) do
-		if category_frame and category_frame:IsShown() then
+	for _,categoryFrame in pairs(container.categories) do
+		if categoryFrame and categoryFrame:IsShown() then
 
-			category_frame:ClearAllPoints()
+			categoryFrame:ClearAllPoints()
 
-			local newCount = (rowCount + category_frame.numRows + 1)
+			local newCount = (rowCount + categoryFrame.numRows + 1)
 			if (breakPoint and newCount >= breakPoint) or newCount > self.config[container.id].maxRows then
-				category_frame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
-				firstOfColumn = category_frame
+				categoryFrame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
+				firstOfColumn = categoryFrame
 				numColumns = numColumns + 1
 				currentColumnHeight = 0
 				rowCount = 0
 			elseif prev then
-				category_frame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
+				categoryFrame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
 			else
-				category_frame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+				categoryFrame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
 			end
 
-			rowCount = rowCount + category_frame.numRows + 1
-			currentColumnHeight = currentColumnHeight + category_frame:GetHeight() + self.config.categoryspacing
+			rowCount = rowCount + categoryFrame.numRows + 1
+			currentColumnHeight = currentColumnHeight + categoryFrame:GetHeight() + self.config.categoryspacing
 			tallestColumnHeight = math.max(tallestColumnHeight, currentColumnHeight)
 
-			if not firstOfColumn then firstOfColumn = category_frame end
+			if not firstOfColumn then firstOfColumn = categoryFrame end
 
-			prev = category_frame
+			prev = categoryFrame
 		end
 	end
 
@@ -236,8 +236,8 @@ function INV:UpdateConfig(id)
 	container:SetWidth(self.config.padding * 2 + inner_width)
 	container:SetHeight(200)
 	
-	for cat, category_frame in pairs(container.categories) do
-		category_frame:SetWidth(inner_width)
+	for cat, categoryFrame in pairs(container.categories) do
+		categoryFrame:SetWidth(inner_width)
 	end
 	if container.search then
 		container.search:SetWidth(inner_width)

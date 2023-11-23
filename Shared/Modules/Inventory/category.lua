@@ -174,53 +174,55 @@ end
 function INV:CreateCategory(id, category_name)
 	local container = self.containers[id]
 
-	local category_frame = CreateFrame('frame', nil, container)
-	category_frame.name = category_name
-	category_frame:SetWidth(container:GetWidth() - self.config.padding * 2)
-	category_frame.slots = {}
+	local categoryFrame = CreateFrame('frame', nil, container)
+	categoryFrame.name = category_name
+	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
+	categoryFrame.slots = {}
 
-	local label = CreateFrame('Button', nil, category_frame)
-	label:SetSize(200, INV.CATEGORY_TITLE_HEIGHT)
-	label:SetPoint('TOPLEFT', category_frame)
+	local header = CreateFrame('Button', nil, categoryFrame)
+	header:SetSize(200, INV.CATEGORY_TITLE_HEIGHT)
+	header:SetPoint('TOPLEFT', categoryFrame)
 
-	label.text = label:CreateFontString(nil, 'OVERLAY')
-	label.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
-	label.text:SetPoint('LEFT', 0, 0)
-	label.text:SetText(category_name)
+	header.text = header:CreateFontString(nil, 'OVERLAY')
+	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
+	header.text:SetPoint('LEFT', 0, 0)
+	header.text:SetText(category_name)
 	
-	category_frame.label = label
-	container.categories[category_name] = category_frame
+	categoryFrame.header = header
+	container.categories[category_name] = categoryFrame
 
-	return category_frame
+	return categoryFrame
 end
 
 function INV:UpdateCategory(id, category_name, categoryItems)
 	local container = self.containers[id]
 
-	local category_frame = container.categories[category_name] or self:CreateCategory(id, category_name)
+	local categoryFrame = container.categories[category_name] or self:CreateCategory(id, category_name)
 	-- Hide any visible icons that are no longer in use
-	for i = #categoryItems + 1, #category_frame.slots do
-		self:ClearSlot(category_frame.slots[i])
+	for i = #categoryItems + 1, #categoryFrame.slots do
+		self:ClearSlot(categoryFrame.slots[i])
 	end
 
+	categoryFrame.header.text:SetFormattedText("%s (%d)", category_name, #categoryItems)
+
 	for i, item in pairs(categoryItems) do
-		category_frame:Show()
-		local slot = category_frame.slots[i] or self:CreateSlot(container, category_name)
+		categoryFrame:Show()
+		local slot = categoryFrame.slots[i] or self:CreateSlot(container, category_name)
 		self:AssignSlot(container, slot, item)
 	end
 
 	-- Ensure that there's always a decent slot pool created to avoid
 	-- tainting in combat
 	if not InCombatLockdown() then
-		for i = #category_frame.slots - #categoryItems + 1 , INV.CATEGORY_SLOT_POOL do
+		for i = #categoryFrame.slots - #categoryItems + 1 , INV.CATEGORY_SLOT_POOL do
 			self:CreateSlot(container, category_name)
 		end
 	end
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
 	categoryHeight = (self.config.buttonheight + self.config.buttonspacing) * numRows + INV.CATEGORY_TITLE_HEIGHT
-	category_frame.numRows = numRows
-	category_frame:SetHeight(categoryHeight)
+	categoryFrame.numRows = numRows
+	categoryFrame:SetHeight(categoryHeight)
 end
 
 function INV:FlushCategories(container, sorted_inv)

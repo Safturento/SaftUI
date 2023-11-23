@@ -1,16 +1,16 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
-function INV:SetSlotPosition(slot, category_frame, container)
+function INV:SetSlotPosition(slot, categoryFrame, container)
 	local slotID = slot.id
 
 	slot:ClearAllPoints()
 	if slot.id == 1 then
-		slot:SetPoint('TOPLEFT', category_frame, 0, -(INV.CATEGORY_TITLE_HEIGHT+self.config.buttonspacing))
+		slot:SetPoint('TOPLEFT', categoryFrame, 0, -(INV.CATEGORY_TITLE_HEIGHT+self.config.buttonspacing))
 	elseif slot.id % self.config[container.id].perrow == 1 then
-		slot:SetPoint('TOP', category_frame.slots[slot.id-self.config[container.id].perrow], 'BOTTOM', 0, -self.config.buttonspacing)
+		slot:SetPoint('TOP', categoryFrame.slots[slot.id-self.config[container.id].perrow], 'BOTTOM', 0, -self.config.buttonspacing)
 	else
-		slot:SetPoint('LEFT', category_frame.slots[slot.id-1], 'RIGHT', self.config.buttonspacing, 0)
+		slot:SetPoint('LEFT', categoryFrame.slots[slot.id-1], 'RIGHT', self.config.buttonspacing, 0)
 	end
 end
 
@@ -111,16 +111,16 @@ local function OpenSlotOptions(slot, button, down)
 end
 
 function INV:CreateSlot(container, category_name)
-	local category_frame = container.categories[category_name]
-	local slotID = #category_frame.slots + 1
+	local categoryFrame = container.categories[category_name]
+	local slotID = #categoryFrame.slots + 1
 	local slot, slot_name
 
 	--if not (container.id == 'reagent') then
-		assert(category_frame, 'Category "'..category_name..'" does not exist')
+		assert(categoryFrame, 'Category "'..category_name..'" does not exist')
 
 		local bagName = container:GetName()
 		slot_name = bagName..'_'..(gsub(category_name, '(%A)', ''))..'_Slot'..slotID
-		slot = CreateFrame('ItemButton', slot_name, category_frame, 'ContainerFrameItemButtonTemplate')
+		slot = CreateFrame('ItemButton', slot_name, categoryFrame, 'ContainerFrameItemButtonTemplate')
 		if not slot.icon then st:Error(slot_name.." is missing an icon") end
 		slot.Count = _G[slot:GetName() .. "Count"]
 		slot.Count:SetDrawLayer('OVERLAY', 99)
@@ -148,7 +148,7 @@ function INV:CreateSlot(container, category_name)
 		slot:SetScript('OnEnter', UpdateTooltip)
 		slot:HookScript('OnClick', OpenSlotOptions)
 
-		self:SetSlotPosition(slot, category_frame, container)
+		self:SetSlotPosition(slot, categoryFrame, container)
 	--end
 	
 	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
@@ -188,7 +188,7 @@ function INV:CreateSlot(container, category_name)
 
 	-- tinsert(self.AllSlots, slot)
 	-- container.slots[slotID] = slot
-	category_frame.slots[slotID] = slot
+	categoryFrame.slots[slotID] = slot
 
 	if slot.tainted then
 		st:Error(slot:GetName() .. ' is tainted, will break if used in combat')
