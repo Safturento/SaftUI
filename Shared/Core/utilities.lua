@@ -106,7 +106,7 @@ local colors = {
 }
 
 function st.tableprint(table, indent)
-	if not indent then indent = 0 end
+	if not indent then indent = 2 end
 
 	for key, val in pairs(table) do
 		local prefix = ''

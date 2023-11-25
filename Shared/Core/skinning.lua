@@ -71,32 +71,33 @@ function st:SkinScrollBar(bar, custom_width)
 	bar.SetPoint = st.dummy
 end
 
-function st:SkinCheckButton(button)
-	st:StripTextures(button)
-
-	button:SetSize(12, 12)
-	st:SetBackdrop(button, st.config.profile.panels.template)
-
-	button:SetFrameLevel(button:GetFrameLevel()+1)
-
-	local checked = button:CreateTexture(nil, 'OVERLAY')
-	checked:SetTexture(st.BLANK_TEX)
-	checked:SetVertexColor(unpack(st.config.profile.colors.button.hover))
-	checked:SetAllPoints(button)
-	button:SetCheckedTexture(checked)
-
-	local hover = button:CreateTexture(nil, 'OVERLAY')
-	hover:SetTexture(st.BLANK_TEX)
-	hover:SetVertexColor(unpack(st.config.profile.colors.button.normal))
-	hover:SetAllPoints(button)
-	button:SetHighlightTexture(hover)
-
-	local name = button:GetName()
-	local text = button.Text or button.Label or name and _G[name..'Text']
-	if text then
-		text:SetFontObject(st:GetFont(st.config.profile.panels.font))
-	end
-end
+--function st:SkinCheckButton(button)
+--	print('skinning checkbutton')
+--	st:StripTextures(button)
+--
+--	button:SetSize(12, 12)
+--	st:SetBackdrop(button, st.config.profile.panels.template)
+--
+--	button:SetFrameLevel(button:GetFrameLevel()+1)
+--
+--	local checked = button:CreateTexture(nil, 'OVERLAY')
+--	checked:SetTexture(st.BLANK_TEX)
+--	checked:SetVertexColor(unpack(st.config.profile.colors.button.hover))
+--	checked:SetAllPoints(button)
+--	button:SetCheckedTexture(checked)
+--
+--	local hover = button:CreateTexture(nil, 'OVERLAY')
+--	hover:SetTexture(st.BLANK_TEX)
+--	hover:SetVertexColor(unpack(st.config.profile.colors.button.normal))
+--	hover:SetAllPoints(button)
+--	button:SetHighlightTexture(hover)
+--
+--	local name = button:GetName()
+--	local text = button.Text or button.Label or name and _G[name..'Text']
+--	if text then
+--		text:SetFontObject(st:GetFont(st.config.profile.panels.font))
+--	end
+--end
 
 function st:SkinIcon(icon, customTrim, anchorFrame)
 	if anchorFrame then
@@ -148,9 +149,7 @@ function st:SkinCooldown(button, cooldown)
 end
 
 function st:SkinActionButton(button, config)
-	if not config then
-		config = st.config.profile.buttons
-	end
+	config = config or st.config.profile.buttons
 
 	local name = button:GetName() or ''
 

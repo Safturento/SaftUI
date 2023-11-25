@@ -2,6 +2,7 @@
 	<Script file="init.lua"/>
 	<Script file="constants.lua"/>
 	<Script file="api.lua"/>
+	<Include file="Widgets\load.xml"/>
 	<Script file="skinning.lua"/>
 	<Script file="panels.lua"/>
 	<Script file="cvars.lua"/>

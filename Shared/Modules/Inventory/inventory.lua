@@ -154,13 +154,15 @@ end
 function INV:UpdateContainerItems(id)
 	local container = self.containers[id]
 	if not container:IsShown() then return end
-	local sorted_inv = self:GetSortedInventory(id)
+	local sortedInventory = self:GetSortedInventory(id)
 
-	for cat_name, cat_items in pairs(sorted_inv) do
-		self:UpdateCategory(id, cat_name, cat_items)
+	for name, items in pairs(sortedInventory) do
+		self:UpdateCategory(id, name, items)
 	end
 
-	self:FlushCategories(container, sorted_inv)
+	self:UpdateCurrencyCategory()
+
+	self:FlushCategories(container, sortedInventory)
 
 	self:UpdateContainerHeight(container)
 
@@ -177,9 +179,9 @@ function INV:UpdateContainerHeight(container)
 	end
 
 	local totalRows = 0
-	for _,categoryFrame in pairs(container.categories) do
-		if categoryFrame:IsShown() then
-			totalRows = totalRows + categoryFrame.numRows + 1
+	for _,category in pairs(container.categories) do
+		if category:IsShown() then
+			totalRows = totalRows + category.numRows + 1
 		end
 	end
 	local breakPoint
@@ -193,31 +195,31 @@ function INV:UpdateContainerHeight(container)
 	local tallestColumnHeight = 0
 	local currentColumnHeight = 0
 	local numColumns = 1
-	for _,categoryFrame in pairs(container.categories) do
-		if categoryFrame and categoryFrame:IsShown() then
+	for _,category in pairs(container.categories) do
+		if category and category:IsShown() then
 
-			categoryFrame:ClearAllPoints()
+			category:ClearAllPoints()
 
-			local newCount = (rowCount + categoryFrame.numRows + 1)
+			local newCount = (rowCount + category.numRows + 1)
 			if (breakPoint and newCount >= breakPoint) or newCount > self.config[container.id].maxRows then
-				categoryFrame:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
-				firstOfColumn = categoryFrame
+				category:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
+				firstOfColumn = category
 				numColumns = numColumns + 1
 				currentColumnHeight = 0
 				rowCount = 0
 			elseif prev then
-				categoryFrame:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
+				category:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -self.config.categoryspacing)
 			else
-				categoryFrame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+				category:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
 			end
 
-			rowCount = rowCount + categoryFrame.numRows + 1
-			currentColumnHeight = currentColumnHeight + categoryFrame:GetHeight() + self.config.categoryspacing
+			rowCount = rowCount + category.numRows + 1
+			currentColumnHeight = currentColumnHeight + category:GetHeight() + self.config.categoryspacing
 			tallestColumnHeight = math.max(tallestColumnHeight, currentColumnHeight)
 
-			if not firstOfColumn then firstOfColumn = categoryFrame end
+			if not firstOfColumn then firstOfColumn = category end
 
-			prev = categoryFrame
+			prev = category
 		end
 	end
 
@@ -236,8 +238,8 @@ function INV:UpdateConfig(id)
 	container:SetWidth(self.config.padding * 2 + inner_width)
 	container:SetHeight(200)
 	
-	for cat, categoryFrame in pairs(container.categories) do
-		categoryFrame:SetWidth(inner_width)
+	for _, category in pairs(container.categories) do
+		category:SetWidth(inner_width)
 	end
 	if container.search then
 		container.search:SetWidth(inner_width)
@@ -325,6 +327,10 @@ end
 function INV:OnInitialize()
 	self.config = st.config.profile.inventory
 	if self.config.enable == false then return end
+
+	if not self.config.filters then
+		self.config.filters = {}
+	end
 
 	self:CreateContainer('bag', INVTYPE_BAG)
 	self:InitializePlayerBagSlots()

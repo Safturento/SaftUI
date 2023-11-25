@@ -6,7 +6,7 @@ function INV:SetSlotPosition(slot, categoryFrame, container)
 
 	slot:ClearAllPoints()
 	if slot.id == 1 then
-		slot:SetPoint('TOPLEFT', categoryFrame, 0, -(INV.CATEGORY_TITLE_HEIGHT+self.config.buttonspacing))
+		slot:SetPoint('TOPLEFT', categoryFrame, 0, -(self.config.categoryTitleHeight + self.config.buttonspacing))
 	elseif slot.id % self.config[container.id].perrow == 1 then
 		slot:SetPoint('TOP', categoryFrame.slots[slot.id-self.config[container.id].perrow], 'BOTTOM', 0, -self.config.buttonspacing)
 	else

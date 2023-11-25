@@ -1,7 +1,6 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
-INV.CATEGORY_TITLE_HEIGHT = 17
 INV.CATEGORY_SLOT_POOL = 10
 
 --tests an item against all categories and returns the first one that meets the criteria.
@@ -171,17 +170,21 @@ function INV:GetSortedInventory(id)
 	return inventory
 end
 
-function INV:CreateCategory(id, category_name)
+function INV:CreateCategory(id, category_name, slotPoolFunc)
 	local container = self.containers[id]
 
 	local categoryFrame = CreateFrame('frame', nil, container)
 	categoryFrame.name = category_name
 	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
 	categoryFrame.slots = {}
+	if slotPoolFunc then
+		categoryFrame.slotPool = slotPoolFunc(categoryFrame)
+	end
 
 	local header = CreateFrame('Button', nil, categoryFrame)
-	header:SetSize(200, INV.CATEGORY_TITLE_HEIGHT)
+	header:SetHeight(self.config.categoryTitleHeight)
 	header:SetPoint('TOPLEFT', categoryFrame)
+	header:SetPoint('TOPRIGHT', categoryFrame)
 
 	header.text = header:CreateFontString(nil, 'OVERLAY')
 	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
@@ -198,6 +201,8 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	local container = self.containers[id]
 
 	local categoryFrame = container.categories[category_name] or self:CreateCategory(id, category_name)
+	categoryFrame:Show()
+
 	-- Hide any visible icons that are no longer in use
 	for i = #categoryItems + 1, #categoryFrame.slots do
 		self:ClearSlot(categoryFrame.slots[i])
@@ -206,7 +211,6 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	categoryFrame.header.text:SetFormattedText("%s (%d)", category_name, #categoryItems)
 
 	for i, item in pairs(categoryItems) do
-		categoryFrame:Show()
 		local slot = categoryFrame.slots[i] or self:CreateSlot(container, category_name)
 		self:AssignSlot(container, slot, item)
 	end
@@ -220,7 +224,7 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	end
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
-	categoryHeight = (self.config.buttonheight + self.config.buttonspacing) * numRows + INV.CATEGORY_TITLE_HEIGHT
+	categoryHeight = (self.config.buttonheight + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight
 	categoryFrame.numRows = numRows
 	categoryFrame:SetHeight(categoryHeight)
 end
@@ -230,16 +234,19 @@ function INV:FlushCategories(container, sorted_inv)
 	-- This finds those categories and hides them properly
 
 	for category_name,category in pairs(container.categories) do
-		if not (sorted_inv[category_name] or category_name == 'Bags') then
+		if not (sorted_inv[category_name] or category_name == 'Bags' or category_name == 'Currencies') then
 			for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
 			category:Hide()
 		end
 	end
 end
 
-function INV:InitializeAllCategories(container)
+function INV:InitializeAllCategories(containerName)
 	for _,category in pairs(self.filters.categories) do
-		self:CreateCategory(container, category.name)
-		self:UpdateCategory(container, category.name, {})
+		self:CreateCategory(containerName, category.name)
+		self:UpdateCategory(containerName, category.name, {})
+	end
+	if containerName == 'bag' then
+		self:InitializeCurrencyCategory()
 	end
 end

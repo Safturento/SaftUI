@@ -1,5 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">	
 	<Include file="inventory.lua"/>
+	<Include file="currencies.lua"/>
 	<Include file="filters.lua"/>
 	<Include file="tooltipscanner.lua"/>
 	<Include file="category.lua"/>

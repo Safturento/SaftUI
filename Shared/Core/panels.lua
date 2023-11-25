@@ -312,8 +312,8 @@ function st:CreatePanel(name, width, height)
 end
 
 function st:CreateButton(name, parent, text, template)
-	local button = self:CreateFrame('Button', 'SaftUI_'..name, parent)
-	button.text = st:CreateFontString(button, 'normal', text)
+	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
+	button.text = self:CreateFontString(button, 'normal', text)
 	button.text:SetAllPoints()
 	st:SetBackdrop(button, template or 'thick')
 
