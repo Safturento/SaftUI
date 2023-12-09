@@ -1,5 +1,6 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
+local Util = st:GetModule('Utilities')
 
 function INV:SetSlotPosition(slot, categoryFrame, container)
 	local slotID = slot.id
@@ -14,17 +15,19 @@ function INV:SetSlotPosition(slot, categoryFrame, container)
 	end
 end
 
+
+
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
 	slot:SetParent(container.bags[slotInfo.bagID])
 	slot:SetID(slotInfo.slotID)
 	slot.info = slotInfo
 
-	-- self.SlotMap[tostring(slotInfo.bagID) .. tostring(slotInfo.slotID)] = slot
-
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 		slot.itemLevelBG:Show()
+
+		Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID)
 	else
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
@@ -48,7 +51,7 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	self:SetSlotCooldown(slot)
 
-	SetItemCraftingQualityOverlay(slot, slot.info.link)
+	--SetItemCraftingQualityOverlay(slot, slot.info.link)
 
 	SetItemButtonTexture(slot, slot.info.texture)
 	SetItemButtonDesaturated(slot, slot.info.locked, 0.5, 0.5, 0.5)
@@ -110,18 +113,18 @@ local function OpenSlotOptions(slot, button, down)
     end
 end
 
-function INV:CreateSlot(container, category_name)
-	local categoryFrame = container.categories[category_name]
+function INV:CreateSlot(container, categoryName)
+	local categoryFrame = container.categories[categoryName]
 	local slotID = #categoryFrame.slots + 1
-	local slot, slot_name
+	local slot, slotName
 
 	--if not (container.id == 'reagent') then
-		assert(categoryFrame, 'Category "'..category_name..'" does not exist')
+		assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 
 		local bagName = container:GetName()
-		slot_name = bagName..'_'..(gsub(category_name, '(%A)', ''))..'_Slot'..slotID
-		slot = CreateFrame('ItemButton', slot_name, categoryFrame, 'ContainerFrameItemButtonTemplate')
-		if not slot.icon then st:Error(slot_name.." is missing an icon") end
+		slotName = bagName..'_'..(gsub(categoryName, '(%A)', ''))..'_Slot'..slotID
+		slot = CreateFrame('ItemButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
+		if not slot.icon then st:Error(slotName.." is missing an icon") end
 		slot.Count = _G[slot:GetName() .. "Count"]
 		slot.Count:SetDrawLayer('OVERLAY', 99)
 
@@ -153,7 +156,7 @@ function INV:CreateSlot(container, category_name)
 	
 	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
 	
-	slot.cooldown = _G[slot_name .. "Cooldown"]
+	slot.cooldown = _G[slotName .. "Cooldown"]
 
 	st:Kill(slot.BattlepayItemTexture)
 
@@ -164,12 +167,12 @@ function INV:CreateSlot(container, category_name)
 
 	slot.cooldown:SetAllPoints(slot)
 
-	itemLevel = slot:CreateFontString(nil, 'OVERLAY')
+	local itemLevel = slot:CreateFontString(nil, 'OVERLAY')
 	itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
 	itemLevel:SetPoint('BOTTOMRIGHT', slot.Count)
 	slot.itemLevel = itemLevel
 
-	itemLevelBG = slot:CreateTexture(nil, 'OVERLAY')
+	local itemLevelBG = slot:CreateTexture(nil, 'OVERLAY')
 	itemLevelBG:SetPoint('BOTTOMRIGHT', slot.icon)
 	itemLevelBG:SetPoint('TOPLEFT', itemLevel, -2, 1)
 	itemLevelBG:SetTexture(st.BLANK_TEX)
@@ -223,6 +226,7 @@ end
 
 function INV:ClearSlot(slot)
 	slot:Hide()
+	if slot.Reset then slot:Reset() end
 	if slot.info then
 		-- self.SlotMap[tostring(slot.info.bagID) .. tostring(slot.info.slotID)] = nil
 		slot.info = nil

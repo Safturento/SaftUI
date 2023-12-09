@@ -151,6 +151,7 @@ INV:AddFilter("Container", function(item)
 		or string.matchnocase(item.tooltipText, OPEN_THE_CONTAINER)
 		or string.matchnocase(item.tooltipText, OPEN_THE_SACK)
 		or string.matchnocase(item.tooltipText, USE_COLLECT)
+		or string.matchnocase(item.tooltipText, "Flightstones")
 end)
 
 INV:AddFilter("Toys", function(item)

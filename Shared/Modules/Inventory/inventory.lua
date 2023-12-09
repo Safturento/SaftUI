@@ -1,5 +1,5 @@
 local st = SaftUI
-local INV = st:NewModule('Inventory', 'AceHook-3.0', 'AceEvent-3.0')
+local INV = st:NewModule('Inventory')
 
 local BACKPACK_IDS = {0, 1, 2, 3, 4}
 local BANK_IDS = {-1, 5, 6, 7, 8, 9, 10, 11}
@@ -27,6 +27,27 @@ function INV:CreateContainer(id, name)
 	container.slots = {}
 	container.categories = {}
 	container.bag_ids = BAG_IDS[id]
+
+	if not INV.config.filters.categories[id] then
+		INV.config.filters.categories[id] = {}
+	end
+
+	local filterButton = st:CreateCheckButton(nil, container.header)
+    container.header.filterButton = filterButton
+    filterButton:SetPoint('TOPRIGHT', -30, -5)
+    filterButton:SetSize(40, 20)
+
+    filterButton.text:SetAllPoints(filterButton)
+    filterButton:SetFont('pixel')
+    filterButton:SetText('Edit')
+    filterButton:SetScript('OnClick', function()
+        INV:UpdateContainer('bag')
+        for categoryName, category in pairs(container.categories) do
+            category.filterCheckbox:SetShown(filterButton:GetChecked())
+            category.filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
+        end
+    end)
+    container.filterButton = filterButton
 
 	container.bags = {}
 	for _, bag_id in pairs(container.bag_ids) do
@@ -94,14 +115,20 @@ function INV:InitializeSearch(container)
 	container.search = search
 end
 
+function INV:SearchMatches(query, info)
+	query = query:lower()
+	return info.name:lower():find(query)
+		or (info.equipSlot and info.equipSlot:lower() == query)
+end
+
 function INV:UpdateSearchFilter(editbox, is_user_input)
-	local query = editbox:GetText():lower()
+	local query = editbox:GetText()
 	for _,container in pairs(self.containers) do
 		if container:IsShown() then
 			for _,category in pairs(container.categories) do
 				for _,slot in pairs(category.slots) do
 					if slot:IsShown() then
-						if slot.info.name:lower():find(query) then
+						if self:SearchMatches(query, slot.info) then
 							slot:SetAlpha(1)
 						else
 							slot:SetAlpha(0.1)
@@ -151,7 +178,7 @@ function INV:GetNumContainerSlots(container)
 	return empty, total
 end
 
-function INV:UpdateContainerItems(id)
+function INV:UpdateContainer(id)
 	local container = self.containers[id]
 	if not container:IsShown() then return end
 	local sortedInventory = self:GetSortedInventory(id)
@@ -160,17 +187,18 @@ function INV:UpdateContainerItems(id)
 		self:UpdateCategory(id, name, items)
 	end
 
-	self:UpdateCurrencyCategory()
+	self:UpdateCurrencyCategory(container.filterButton:GetChecked())
 
 	self:FlushCategories(container, sortedInventory)
 
-	self:UpdateContainerHeight(container)
+	self:UpdateContainerHeight(id)
 
 	local empty, total = self:GetNumContainerSlots(container)
 	container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
 end
 
-function INV:UpdateContainerHeight(container)
+function INV:UpdateContainerHeight(id)
+	local container = self.containers[id]
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
 
 	if container.search then
@@ -195,7 +223,11 @@ function INV:UpdateContainerHeight(container)
 	local tallestColumnHeight = 0
 	local currentColumnHeight = 0
 	local numColumns = 1
-	for _,category in pairs(container.categories) do
+	for categoryName, category in pairs(container.categories) do
+		if not container.filterButton:GetChecked() and INV.config.filters.categories[id][categoryName] then
+			INV:FlushCategory(category)
+		end
+
 		if category and category:IsShown() then
 
 			category:ClearAllPoints()
@@ -252,24 +284,25 @@ end
 local lastUpdate = 0
 local interval = .01
 
-function INV:UpdateHandler(elapsed)
-	-- Don't let the bags spam update, just wait
-	local time = GetTime()
-	if time - lastUpdate < interval then return end
 
-	lastUpdate = time
+local barrier = createBarrier(1)
 
-	if self.NEED_UPDATE and not self.BLOCK_UPDATE then
+function INV:UpdateHandler(_, elapsed)
+
+
+	if self.NEED_UPDATE and not self.IS_UPDATING then
+		self.IS_UPDATING = true
 		self.NEED_UPDATE = false
 		self:UpdateGold()
-		self:UpdateContainerItems('bag')
+		self:UpdateContainer('bag')
 		if self.containers.bank then
-			self:UpdateContainerItems('bank')
+			self:UpdateContainer('bank')
 		end
 
 		if self.containers.reagent then
-			self:UpdateContainerItems('reagent')
+			self:UpdateContainer('reagent')
 		end
+		self.IS_UPDATING = false
 	end
 end
 
@@ -316,7 +349,7 @@ function INV:OpenBank()
 		self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
-	self:UpdateContainerItems('bank')
+	self:UpdateContainer('bank')
 	self.containers.bank:Show()
 end
 
@@ -331,6 +364,10 @@ function INV:OnInitialize()
 	if not self.config.filters then
 		self.config.filters = {}
 	end
+
+	if not self.config.filters.categories then
+        self.config.filters.categories = {}
+    end
 
 	self:CreateContainer('bag', INVTYPE_BAG)
 	self:InitializePlayerBagSlots()
@@ -461,7 +498,7 @@ function INV:OnEnable()
 	-- Make sure the slots are all created immediately intead of on first open
 	-- We do this to avoid tainting all of the slots when the bag is first opened
 	-- while in combat
-	self:UpdateContainerItems('bag')
+	self:UpdateContainer('bag')
 
 	self:RegisterEvent('PLAYER_MONEY', 'UpdateGold')
 	self:RegisterEvent('MERCHANT_SHOW', 'HandleMerchant')

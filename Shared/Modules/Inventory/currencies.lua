@@ -13,13 +13,8 @@ end
 
 function INV.GetCurrencySlotPool(parent)
     return CreateObjectPool(
-        function()
-            return INV.CreateCurrencySlot(parent)
-        end,
-        function(_, slot)
-            slot:ClearAllPoints()
-            slot:Hide()
-        end
+        function() return INV.CreateCurrencySlot(parent) end,
+        function(_, slot) slot:Hide() end
     )
 end
 
@@ -99,30 +94,32 @@ function INV:InitializeCurrencyCategory()
         self.config.filters.currencies = {}
     end
 
-    local editButton = st:CreateCheckButton(nil, category.header)
-    category.header.editButton = editButton
-    editButton:SetPoint('TOPRIGHT')
-    editButton:SetSize(40, category.header:GetHeight())
+    local filterButton = st:CreateCheckButton(nil, category.header)
+    category.header.filterButton = filterButton
+    filterButton:SetPoint('TOPRIGHT')
+    filterButton:SetSize(46, category.header:GetHeight())
 
-    editButton.text:SetAllPoints(editButton)
-    editButton:SetFont('pixel')
-    editButton:SetText('Edit')
+    filterButton.text:SetAllPoints(filterButton)
+    filterButton:SetFont('pixel')
+    filterButton:SetText('Filter')
 
-    editButton:SetScript('OnClick', function()
-        INV:UpdateContainerItems('bag')
+    filterButton:SetScript('OnClick', function()
+        INV:UpdateContainer('bag')
         for slot in category.slotPool:EnumerateActive() do
-            slot.filterCheckbox:SetShown(editButton:GetChecked())
+            slot.filterCheckbox:SetShown(filterButton:GetChecked())
             slot.filterCheckbox:SetChecked(INV.config.filters.currencies[slot.info.id])
         end
     end)
-    category.editButton = editButton
+    category.filterButton = filterButton
 end
 
-function INV:UpdateCurrencyCategory()
+function INV:UpdateCurrencyCategory(forceShow)
     local category = self.containers.bag.categories.Currencies
+    category:SetShown(forceShow or not INV.config.filters.categories.bag.Currencies)
+    --TODO: We can definitely be smarter about updating but this is fine for now
     category.slotPool:ReleaseAll()
 
-    local currencyItems = self:GetCurrencies(category.editButton:GetChecked())
+    local currencyItems = self:GetCurrencies(category.filterButton:GetChecked())
     local prev
     local prevRow = category.header
     for i, currency in pairs(currencyItems) do

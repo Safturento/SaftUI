@@ -5,6 +5,7 @@ SlashCmdList.RELOADUI = _G.ReloadUI
 
 SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 	st, ADDON_NAME, 'AceEvent-3.0', 'AceHook-3.0')
+SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
@@ -32,8 +33,6 @@ function SaftUI:OnInitialize()
 	self.config.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
 
 	self:RegisterEvent('TIME_PLAYED_MSG')
-	self:RegisterEvent('PLAYER_REGEN_ENABLED')
-	self:RegisterEvent('PLAYER_REGEN_DISABLED')
 	self:RegisterEvent('PLAYER_ENTERING_WORLD')
 	RequestTimePlayed()
 
@@ -58,22 +57,6 @@ function SaftUI:UpdateConfig()
 		if module.UpdateConfig then
 			module:UpdateConfig()
 		end
-	end
-end
-
-local config_queued = false
-function SaftUI:PLAYER_REGEN_ENABLED()
-	if config_queued then
-		config_queued = false
-		SlashCmdList.SAFTUI()
-	end
-end
-
-function SaftUI:PLAYER_REGEN_DISABLED()
-	if st.CF:IsOpen() then
-		st:Print('Config closed for combat, and will reopen after.')
-		st.CF:CloseConfigGui()
-		config_queued = true
 	end
 end
 

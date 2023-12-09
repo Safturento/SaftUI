@@ -3,6 +3,14 @@ local INV = st:GetModule('Inventory')
 
 INV.CATEGORY_SLOT_POOL = 10
 
+local upgradeQualities = {
+	Adventurer = 1,
+	Veteran = 2,
+	Champion = 3,
+	Hero = 4,
+	Myth = 5,
+}
+
 --tests an item against all categories and returns the first one that meets the criteria.
 --itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText
 function INV:GetItemCategory(info)
@@ -92,7 +100,20 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 			end
 		end
 
-
+		--local upgradeInfo
+		--if class == 'Armor' or class == 'Weapon' then
+		--	local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+		--	local upgradable = C_ItemUpgrade.CanUpgradeItem(itemLocation);
+		--	if upgradable then
+		--		local quality, level, maxLevel = tooltipText:match("Upgrade Level: (%w+) (%d)/(%d)")
+		--		upgradeInfo = {
+		--			quality = quality,
+		--			level = level,
+		--			maxLevel = maxLevel,
+		--			qualityIndex = upgradeQualities[quality]
+		--		}
+		--	end
+		--end
 
 		if name then
 			return {
@@ -101,6 +122,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				reqLevel = reqLevel,
 				soulbound = item.isBound,
 				count = item.stackCount,
+				--upgradeInfo = upgradeInfo,
 				itemID = item.itemID,
 				unitPrice = vendorPrice,
 				stackPrice = vendorPrice * item.stackCount,
@@ -109,7 +131,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				class = class,
 				subclass = subclass,
 				maxStack = maxStack,
-				equipSlot = equipSlot,
+				equipSlot = _G[equipSlot],
 				expacID = expacID,
 				vendorPrice = vendorPrice,
 				texture = texture or item.iconFileId,
@@ -170,15 +192,20 @@ function INV:GetSortedInventory(id)
 	return inventory
 end
 
-function INV:CreateCategory(id, category_name, slotPoolFunc)
+function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
 	local categoryFrame = CreateFrame('frame', nil, container)
-	categoryFrame.name = category_name
+	categoryFrame.name = categoryName
 	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
 	categoryFrame.slots = {}
 	if slotPoolFunc then
 		categoryFrame.slotPool = slotPoolFunc(categoryFrame)
+	else
+		categoryFrame.slotPool = CreateObjectPool(
+			function() return INV:CreateSlot(container, categoryName) end,
+			function(_, slot) INV:ClearSlot(slot) end
+		)
 	end
 
 	local header = CreateFrame('Button', nil, categoryFrame)
@@ -188,19 +215,31 @@ function INV:CreateCategory(id, category_name, slotPoolFunc)
 
 	header.text = header:CreateFontString(nil, 'OVERLAY')
 	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
-	header.text:SetPoint('LEFT', 0, 0)
-	header.text:SetText(category_name)
-	
+	header.text:SetPoint('LEFT', -2, 0)
+	header.text:SetText(categoryName)
 	categoryFrame.header = header
-	container.categories[category_name] = categoryFrame
+
+	local filterCheckbox = st:CreateCheckButton(nil, categoryFrame)
+    filterCheckbox:Hide()
+    filterCheckbox:SetSize(8, 8)
+    filterCheckbox:SetPoint('BOTTOM', header, 'BOTTOM', 0, 4)
+    filterCheckbox:SetPoint('LEFT', header.text, 'RIGHT', 8, 0)
+    filterCheckbox:HookScript('OnClick', function(self)
+        INV.config.filters.categories[id][categoryName] = self:GetChecked() or nil
+		INV:UpdateContainerHeight(id)
+    end)
+	filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
+	categoryFrame.filterCheckbox = filterCheckbox
+
+	container.categories[categoryName] = categoryFrame
 
 	return categoryFrame
 end
 
-function INV:UpdateCategory(id, category_name, categoryItems)
+function INV:UpdateCategory(id, categoryName, categoryItems)
 	local container = self.containers[id]
 
-	local categoryFrame = container.categories[category_name] or self:CreateCategory(id, category_name)
+	local categoryFrame = container.categories[categoryName] or self:CreateCategory(id, categoryName)
 	categoryFrame:Show()
 
 	-- Hide any visible icons that are no longer in use
@@ -208,10 +247,10 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 		self:ClearSlot(categoryFrame.slots[i])
 	end
 
-	categoryFrame.header.text:SetFormattedText("%s (%d)", category_name, #categoryItems)
+	categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, #categoryItems)
 
 	for i, item in pairs(categoryItems) do
-		local slot = categoryFrame.slots[i] or self:CreateSlot(container, category_name)
+		local slot = categoryFrame.slots[i] or self:CreateSlot(container, categoryName)
 		self:AssignSlot(container, slot, item)
 	end
 
@@ -219,7 +258,7 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	-- tainting in combat
 	if not InCombatLockdown() then
 		for i = #categoryFrame.slots - #categoryItems + 1 , INV.CATEGORY_SLOT_POOL do
-			self:CreateSlot(container, category_name)
+			self:CreateSlot(container, categoryName)
 		end
 	end
 
@@ -229,14 +268,20 @@ function INV:UpdateCategory(id, category_name, categoryItems)
 	categoryFrame:SetHeight(categoryHeight)
 end
 
+function INV:FlushCategory(category)
+	for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
+	category:Hide()
+end
+
 function INV:FlushCategories(container, sorted_inv)
 	-- If a category was emptied it wouldn't be in the above loop.
 	-- This finds those categories and hides them properly
 
-	for category_name,category in pairs(container.categories) do
-		if not (sorted_inv[category_name] or category_name == 'Bags' or category_name == 'Currencies') then
-			for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
-			category:Hide()
+	for categoryName,category in pairs(container.categories) do
+		if not (sorted_inv[categoryName] or categoryName == 'Bags' or categoryName == 'Currencies') then
+			INV:FlushCategory(category)
+			--for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
+			--category:Hide()
 		end
 	end
 end
