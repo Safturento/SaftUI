@@ -1,5 +1,5 @@
 local st = SaftUI
-local LT = st:NewModule('Loot', 'AceHook-3.0', 'AceEvent-3.0')
+local LT = st:NewModule('Loot')
 st.Loot = LT
 LT.DEBUG = false
 

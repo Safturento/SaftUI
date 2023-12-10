@@ -530,8 +530,6 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 		end
 	end
 
-	if barrier(feed, elapsed, 1) then return end
-
 	local now = GetTime()
 	for i=1, self.config.feed.max_items do
 		local item = self.feed.items[i]
@@ -559,17 +557,6 @@ function LT:InitializeLootFeed()
 	feed.offset = 0
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
 	feed.overlay:SetScript('OnMouseWheel', function(_, offset)
-		feed.last_scroll_time = GetTime()
-
-		if #feed_stack <= self.config.feed.max_items then
-
-			for _,item in pairs(feed.items) do
-				item:SetShown(item.info)
-			end
-
-			return
-		end
-
 		if IsControlKeyDown() then -- Scroll to top/bottom
 			offset = offset * #feed_stack
 		elseif IsShiftKeyDown() then -- Page scroll
@@ -578,7 +565,10 @@ function LT:InitializeLootFeed()
 			offset = offset * 3
 		end
 
-		feed.offset = min(max(0, feed.offset + offset), #feed_stack - self.config.feed.max_items)
+		feed.offset = min(
+			max(0, feed.offset + offset),
+			max(0, #feed_stack - self.config.feed.max_items)
+		)
 
 		if feed.offset == 0 then
 			feed.reset_button:Hide()
@@ -611,7 +601,6 @@ function LT:InitializeLootFeed()
 	feed.reset_button:SetScript('OnClick', function()
 		feed.offset = 0
 		feed.reset_button:Hide()
-		feed.last_scroll_time = GetTime()
 		self:UpdateFeed()
 	end)
 
