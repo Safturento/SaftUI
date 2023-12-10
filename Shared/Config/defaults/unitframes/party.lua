@@ -1,21 +1,32 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].party = {
-    spacing = 48,
+    spacing = 8,
     growthDirection = 'BOTTOM',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -41},
+    width = 200,
+    position = {point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -8},
     raidroleindicator = {
         enable = true,
     },
     raidtargetindicator = {
         enable = true,
     },
+    power = {
+        text = {
+            enable = false,
+        },
+    },
+    health = {
+        text = {
+            enable = false,
+        },
+    },
     buffs = {
-        enable = true,
+        enable = false,
 --             friend = {
 --                 filter = {
 --                     blacklist = {
@@ -29,10 +40,10 @@ st.defaults.unitframes.profiles["**"].party = {
     debuffs = {
         enable = true,
         grow_right = false,
-        position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -8, y_off = 2 },
         horizontal_growth = 'LEFT',
         initial_anchor = 'RIGHT',
-        size = 25,
+        size = 35,
         friend = {
             filter = {
                 whitelist = {

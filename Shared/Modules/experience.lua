@@ -1,6 +1,6 @@
 local st = SaftUI
 
-local XP = st:NewModule('Experience', 'AceHook-3.0', 'AceEvent-3.0')
+local XP = st:NewModule('Experience')
 
 function XP:SetupExperience()
 	local expbar = CreateFrame('StatusBar', st.name ..'_ExperienceBar', self.container)
@@ -201,7 +201,7 @@ function XP:OnEnter()
 end
 
 function XP:HideBlizz()
-	hooksecurefunc(StatusTrackingBarManager, 'UpdateBarsShown', StatusTrackingBarManager.HideStatusBars)
+	MainStatusTrackingBarContainer:Hide()
 end
 
 function XP:OnLeave()

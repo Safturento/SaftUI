@@ -6,11 +6,18 @@ st.defaults.unitframes.profiles["**"].player = {
         enable = true,
         manaAsPrimary = true,
         relative_width = false,
+        relative_height = false,
         width = 286,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -152 },
+        height = 20,
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -167 },
         text = {
             position = { rel_point = "CENTER", x_off = "0", point = "CENTER", y_off = "0" },
         }
+    },
+    power = {
+        text = {
+            enable = false,
+        },
     },
     castbar = {
         enable = true,
@@ -53,10 +60,10 @@ st.defaults.unitframes.profiles["**"].player = {
     debuffs = {
         enable = true,
         grow_right = false,
-        position = {point = 'RIGHT',rel_point = 'LEFT', x_off = -8, y_off = 0},
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -8, y_off = 2 },
         horizontal_growth = 'LEFT',
         initial_anchor = 'RIGHT',
-        size = 25,
+        size = 35,
     },
     classpower = {
         enable = true,

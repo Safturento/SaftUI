@@ -8,7 +8,8 @@ st.defaults.unitframes.profiles["**"].boss = {
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
-    position = {point = 'TOPLEFT', frame = 'SaftUI_Target', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -40},
+    width = 200,
+    position = {point = 'TOPRIGHT', frame = 'SaftUI_Target', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -40},
     castbar = {
         enable = true,
         icon = {
@@ -21,6 +22,16 @@ st.defaults.unitframes.profiles["**"].boss = {
                 element = "Castbar",
             },
         }
+    },
+    power = {
+        text = {
+            enable = false,
+        },
+    },
+    health = {
+        text = {
+            enable = false,
+        },
     },
     buffs = {
         enable = true,

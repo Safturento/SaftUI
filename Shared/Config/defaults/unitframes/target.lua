@@ -24,6 +24,14 @@ st.defaults.unitframes.profiles["**"].target = {
             position = { point = 'BOTTOM', element = 'Castbar', rel_point = 'TOP', x_off = 0, y_off = 20 }
         }
     },
+    name = {
+        position = { point = 'RIGHT', rel_point = 'RIGHT', x_off = -10, y_off = 0 }
+    },
+    health = {
+        text = {
+            position = { point = 'LEFT', rel_point = 'LEFT', x_off = 10, y_off = 0 }
+        }
+    },
     buffs = {
         enable = true,
         grow_right = false,

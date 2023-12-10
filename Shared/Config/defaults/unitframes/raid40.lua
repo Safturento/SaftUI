@@ -8,7 +8,7 @@ st.defaults.unitframes.profiles["**"].raid40 = {
     unitsPerColumn = 5,
     columnSpacing = 3,
     initialAnchor = 'TOP',
-    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -30 },
+    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = -2, y_off = -8 },
     width = 57,
     height = 30,
     -- template = 'thick',
@@ -23,6 +23,7 @@ st.defaults.unitframes.profiles["**"].raid40 = {
             y_off = 0
         },
         text = {
+            enable = false,
             hide_full = true,
             deficit = true,
         },
@@ -32,13 +33,16 @@ st.defaults.unitframes.profiles["**"].raid40 = {
         enable = false,
         height = 3,
         relative_height = false,
-        position = { point = "BOTTOMRIGHT", rel_point = 'BOTTOMRIGHT', 0, 0 },
+        position = { point = "BOTTOMRIGHT", rel_point = 'BOTTOMRIGHT' },
         text = { enable = false },
     },
     name = {
         enable = false,
         show_level = false,
         max_length = 8,
+    },
+    buffs = {
+      position = { point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 0}
     },
     debuffs = {
         enable = false,

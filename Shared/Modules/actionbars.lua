@@ -1,5 +1,5 @@
 local st = SaftUI
-local AB = st:NewModule('Actionbars', 'AceHook-3.0', 'AceEvent-3.0')
+local AB = st:NewModule('Actionbars')
 
 AB.BUTTON_PREFIXES = {
 	'Action',

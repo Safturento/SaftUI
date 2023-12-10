@@ -1,5 +1,5 @@
 local st = SaftUI
-local CHT = st:NewModule('Chat', 'AceHook-3.0', 'AceEvent-3.0')
+local CHT = st:NewModule('Chat')
 
 -------------------------------------
 -- IMPROVED CHAT SCROLLING ----------
@@ -71,11 +71,14 @@ function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
 	st:SetBackdrop(frame, self.config.template)
-	st:Kill(frame.ScrollBar)
+
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
-	st:Kill(_G[frame:GetName()..'ThumbTexture'])
 
+	st:SkinScrollBar(frame.ScrollBar)
+	frame.ScrollBar:ClearAllPoints()
+	frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
+	frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	

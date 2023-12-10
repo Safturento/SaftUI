@@ -41,8 +41,8 @@ st.defaults.fonts = {
 	normal = {
 		name = 'Normal',
 		font_name = 'AgencyFB Bold',
-		font_size = 14,
-		font_outline = '',
+		font_size = 18,
+		font_outline = 'OUTLINE',
 		shadow_offset = {0, 0},
 		spacing = 4,
 	}
@@ -56,7 +56,7 @@ st.defaults.addon_manager = {
 }
 
 st.defaults.headers = {
-	height = 21,
+	height = 31,
 	font = 'normal',
 }
 
@@ -131,4 +131,8 @@ st.defaults.addon_skins = {
 	['objective_tracker'] = {
 		-- font = 'normal',
 	},
+}
+
+st.defaults.micromenu = {
+
 }

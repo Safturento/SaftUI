@@ -1,31 +1,34 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].raid10 = {
-    spacing = 4,
+    spacing = 3,
     growthDirection = 'LEFT',
     maxColumns = 8,
     unitsPerColumn = 5,
-    columnSpacing = 4,
+    columnSpacing = 3,
     initialAnchor = 'TOP',
-    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -30 },
+    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = -2, y_off = -8 },
     width = 57,
-    height = 40
+    height = 34
 ,
-    -- template = 'thick',
+    template = 'thick',
     health = {
-        height = -3,
+        height = 0,
         width = 0,
         position = {
             x_off = 0,
             y_off = 0
         },
+        colorCustom = false,
+        colorClass = true,
         text = {
+            enable = false,
             hide_full = true,
             deficit = true,
         },
     },
     power = {
-        enable = true,
+        enable = false,
         height = 3,
         relative_height = false,
         position = { point = "BOTTOMRIGHT", rel_point = 'BOTTOMRIGHT', 0, 0 },
