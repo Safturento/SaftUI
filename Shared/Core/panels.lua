@@ -80,18 +80,20 @@ function st:SetTemplate(frame, template)
 	end
 
 	local inset = not config.border and 0 or config.thick and 2 or 1
-	frame:SetBackdrop({
-		bgFile = st.BLANK_TEX,
-		edgeFile = st.BLANK_TEX,
-		edgeSize = 1,
-		tile = false, tileSize = 0,
-		insets = {
-			left = inset,
-			right = inset,
-			top = inset,
-			bottom = inset
-		}
-	})
+	if frame.SetBackdrop then
+		frame:SetBackdrop({
+			bgFile = st.BLANK_TEX,
+			edgeFile = st.BLANK_TEX,
+			edgeSize = 1,
+			tile = false, tileSize = 0,
+			insets = {
+				left = inset,
+				right = inset,
+				top = inset,
+				bottom = inset
+			}
+		})
+	end
 
 	frame:SetBackdropColor(unpack(config.backdropcolor))
 	if config.border then
@@ -311,17 +313,17 @@ function st:CreatePanel(name, width, height)
 	return panel
 end
 
-function st:CreateButton(name, parent, text, template)
-	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
-	button.text = self:CreateFontString(button, 'normal', text)
-	button.text:SetAllPoints()
-	st:SetBackdrop(button, template or 'thick')
-
-	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
-	button.SetText = button.text.SetText
-
-	return button
-end
+--function st:CreateButton(name, parent, text, template)
+--	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
+--	button.text = self:CreateFontString(button, 'pixel', text)
+--	button.text:SetAllPoints()
+--	st:SetBackdrop(button, template or 'thick')
+--
+--	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
+--	button.SetText = button.text.SetText
+--
+--	return button
+--end
 
 function st:CreateFontString(parent, font, text)
 	local fontString = parent:CreateFontString(nil, 'OVERLAY')

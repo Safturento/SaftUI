@@ -28,6 +28,19 @@ string.unmagic = removeMagicChars
 function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
 function string.findnocase(str, pattern) return strlower(removeMagicChars(str)):find(strlower(pattern)) end
 
+function createBarrier(threshold)
+	local frame = CreateFrame('frame')
+	frame.threshold = threshold
+	frame.isBlocking = function(self, elapsed)
+		self.barrierTime = (self.barrierTime or 0) + elapsed
+		if self.barrierTime <= threshold then return true end
+		self.barrierTime = 0
+		return false
+	end
+
+	return frame
+end
+
 function barrier(self, elapsed, threshold)
 	self.barrierTime = (self.barrierTime or 0) + elapsed
 	if self.barrierTime <= threshold then return true end
@@ -161,7 +174,6 @@ StaticPopupDialogs["EXTRACT_LINK_DIALOG"] = {
 		self.editBox:HighlightText()
 
 		self.editBox:SetScript('OnTextChanged', function(self, userInput)
-			print(userInput)
 			if userInput then self:SetText(escapedLink) end
 		end)
 
@@ -191,7 +203,7 @@ SlashCmdList['PRINT_ITEM'] = function(link)
 		itemType = itemType,
 		itemSubType = itemSubType,
 		itemStackCount = itemStackCount,
-		itemEquipLoc = itemEquipLoc,
+		itemEquipLoc = _G[itemEquipLoc],
 		itemTexture = itemTexture,
 		sellPrice = sellPrice,
 		classID = classID,
