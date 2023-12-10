@@ -22,9 +22,9 @@ st.defaults.unitframes.profiles["**"].player = {
     castbar = {
         enable = true,
         relative_width = false,
-        width = 288,
+        width = 286,
         relative_height = false,
-        height = 30,
+        height = 24,
         template = 'thicktransparent',
         position = { frame_type=false, point ='TOP', element = 'AdditionalPower', rel_point = 'BOTTOM', x_off = 0, y_off = -8 },
         text = {
@@ -34,6 +34,7 @@ st.defaults.unitframes.profiles["**"].player = {
          position = { point = 'RIGHT', rel_point = 'RIGHT', x_off = -3, y_off = 0 }
         },
         icon = {
+            enable = true,
             height = 40,
             relative_height = false,
             width = 40,

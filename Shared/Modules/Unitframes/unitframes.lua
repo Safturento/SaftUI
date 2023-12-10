@@ -598,8 +598,8 @@ function UF:OnInitialize()
 
 	
 	self.nameplates = {}
-	st.oUF:SpawnNamePlates('SaftUI')
-	
+	--st.oUF:SpawnNamePlates('SaftUI')
+
 	self.RMH = RealMobHealth
 
 	UF:CreateGroupHeaders()
