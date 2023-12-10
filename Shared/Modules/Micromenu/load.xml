@@ -2,6 +2,7 @@
     <Script file="micromenu.lua"/>
     <Script file="killblizz.lua"/>
     <Script file="expansionbutton.lua"/>
+    <Script file="addoncompartmentframe.lua"/>
     <Script file="queuebutton.lua"/>
     <Script file="instancedifficulty.lua"/>
     <Script file="stats.lua"/>

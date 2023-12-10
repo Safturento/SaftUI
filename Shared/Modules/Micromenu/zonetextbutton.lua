@@ -3,6 +3,7 @@ local MicroMenu = st:GetModule('MicroMenu')
 
 function MicroMenu:SkinZoneTextButton()
     local button = MinimapCluster.ZoneTextButton
+    st:SkinButton(button)
     button.text = MinimapZoneText
     button.width = 200
     return button

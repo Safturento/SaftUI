@@ -1,6 +1,12 @@
 local st = SaftUI
 local MP = st:GetModule('Maps')
 
+function MP:MiniMapIndicatorFrame_UpdatePosition()
+    MinimapCluster:ClearAllPoints()
+    MinimapCluster:SetAllPoints(Minimap)
+    MinimapCluster.IndicatorFrame:SetPoint("TOPRIGHT", MinimapCluster.BorderTop, "TOPLEFT", -1, -1);
+end
+
 function MP:InitializeMinimap()
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
@@ -9,9 +15,8 @@ function MP:InitializeMinimap()
 
     Minimap:SetSize(self.config.minimap.size, self.config.minimap.size)
 
-    -- Stop blizzard from moving minimap around
-    MinimapCluster.SetHeaderUnderneath = function()  end
-
+    self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
+    self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')
 	Minimap:ClearAllPoints()
 	Minimap:SetPoint(st:UnpackPoint(self.config.minimap.position))
 

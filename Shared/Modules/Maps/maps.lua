@@ -1,5 +1,5 @@
 local st = SaftUI
-local MP = st:NewModule('Maps', 'AceHook-3.0', 'AceEvent-3.0')
+local MP = st:NewModule('Maps')
 
 function MP:OnInitialize()
 	self.config = st.config.profile.maps

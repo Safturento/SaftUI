@@ -28,6 +28,7 @@ function MicroMenu:SkinInstanceDifficulty()
 end
 
 function MicroMenu:UpdateDungeonDifficulty()
+    MinimapCluster.InstanceDifficulty:Hide()
     local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty,
         isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
 	local name, groupType, isHeroic, isChallengeMode, displayHeroic,
