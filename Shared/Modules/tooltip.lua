@@ -1,6 +1,6 @@
 
 local st = SaftUI
-local TT = st:NewModule('Tooltip', 'AceHook-3.0', 'AceEvent-3.0')
+local TT = st:NewModule('Tooltip')
 
 function TT:UpdateGameTooltipPosition()
 	if GameTooltip:IsForbidden() then return end
@@ -26,6 +26,7 @@ function TT:UpdateTooltipDisplay(tooltip)
 	local font,size,outline = st:GetFont(self.config.font):GetFont()
 
 	st:SetBackdrop(tooltip, self.config.template)
+	--tooltip.NineSlice:Hide()
 
 	if IsModifierKeyDown() and tooltip.GetItem and tooltip:GetItem() then
 		self:AddItemInfo(tooltip)
@@ -46,8 +47,8 @@ function TT:UpdateTooltipDisplay(tooltip)
 	end
 end
 
-function TT:GameTooltip_OnTooltipSetUnit(tooltip)	
-	self:UpdateTooltipDisplay(tooltip)
+function TT:GameTooltip_OnTooltipSetUnit(tooltip)
+	--self:UpdateTooltipDisplay(tooltip)
 
 	local c
 	if (select(1, UnitName('mouseover')) == nil) and UnitPlayerControlled('mouseover') then
@@ -109,8 +110,8 @@ function TT:OnEnable()
 	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
 	self:SecureHook('GameTooltip_SetDefaultAnchor', 'UpdateGameTooltipPosition')
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
-	--self:SecureHookScript(GameTooltip, 'OnTooltipSetItem', 'GameTooltip_OnTooltipSetItem')
-	--self:SecureHookScript(GameTooltip, 'OnTooltipSetUnit', 'GameTooltip_OnTooltipSetUnit')
+	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
+	self:SecureHook(GameTooltip, 'GetUnit', 'GameTooltip_OnTooltipSetUnit')
 	self:SecureHook('GameTooltip_ShowCompareItem')
 
 	self.AllTooltips = {
@@ -126,6 +127,11 @@ function TT:OnEnable()
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
 		st:SetBackdrop(tooltip, self.config.template)
+		tooltip.NineSlice:SetAlpha(0)
+		if tooltip.CloseButton then
+			tooltip.CloseButton:Hide()
+			st:CreateCloseButton(tooltip)
+		end
 		if not self.hooked then
 			self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
 			self.hooked = true

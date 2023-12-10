@@ -3,7 +3,7 @@ local UF = st:GetModule('Unitframes')
 
 function UF:UpdateElement(element)
 
-    local enabled = self:SetElementEnabled(element, hideOnly)
+    local enabled = self:SetElementEnabled(element)
     if not enabled then return false end
 
     st:SetBackdrop(element, element.config.template)

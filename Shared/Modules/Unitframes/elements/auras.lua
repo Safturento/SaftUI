@@ -1,8 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local AURAS = {'Buffs', 'Debuffs'}
-
 function isWhitelisted(whitelist, data)
     if not whitelist.enable then return true end
     if whitelist.yours and isCastByPlayer(data) then return true end
