@@ -41,7 +41,7 @@ function INV:CreateContainer(id, name)
     filterButton:SetFont('pixel')
     filterButton:SetText('Edit')
     filterButton:SetScript('OnClick', function()
-        INV:UpdateContainer('bag')
+        INV:UpdateContainer(id)
         for categoryName, category in pairs(container.categories) do
             category.filterCheckbox:SetShown(filterButton:GetChecked())
             category.filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
@@ -88,11 +88,14 @@ function INV:InitializeFooter(container)
 		container.footer.gold = goldstring
 		self:UpdateGold()
 	elseif container.id == 'bank' then
-		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents', 'highlight')
-
+		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents')
 		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
 		reagentButton:SetScript('OnClick', function()
-			self:InitializeReagentBank()
+			if not self.containers.reagent then
+				self:InitializeReagentBank()
+			else
+				ToggleFrame(self.containers.reagent)
+			end
 		end)
 		reagentButton:SetSize(100, 16)
 		reagentButton:SetFrameLevel(90)
@@ -412,11 +415,8 @@ function INV:InitializePlayerBagSlots()
 
 	bagSlotContainer.slots = BagSlots
 	local slotToggle = st:CreateButton('BagSlotToggle', self.containers.bag.header, 'Bag Slots', 'none')
-	slotToggle:SetPoint('LEFT')
-	slotToggle.text:SetJustifyH('LEFT')
-	slotToggle.text:ClearAllPoints()
-	slotToggle.text:SetPoint('LEFT', 10, 0)
-	slotToggle:SetSize(60, st.config.profile.headers.height)
+	slotToggle:SetPoint('LEFT', 8, 0)
+	slotToggle:SetSize(64, st.config.profile.headers.height - 8)
 	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown())  end)
 	self.containers.bag.header.slotToggle = slotToggle
 
