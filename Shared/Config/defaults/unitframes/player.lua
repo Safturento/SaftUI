@@ -1,7 +1,7 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].player = {
-    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -150 },
+    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -170 },
     additionalpower = {
         enable = true,
         manaAsPrimary = true,
@@ -9,7 +9,7 @@ st.defaults.unitframes.profiles["**"].player = {
         relative_height = false,
         width = 286,
         height = 20,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -167 },
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -187 },
         text = {
             position = { rel_point = "CENTER", x_off = "0", point = "CENTER", y_off = "0" },
         }

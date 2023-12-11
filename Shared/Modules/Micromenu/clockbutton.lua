@@ -10,7 +10,6 @@ function MicroMenu:KillBlizzard_TimeManager()
     frame:RegisterEvent("ADDON_LOADED")
     frame:SetScript('OnEvent', function(self, event, addon)
         if event == 'ADDON_LOADED' and addon == 'Blizzard_TimeManager' then
-            print(TimeManagerClockButton)
             st:Kill(TimeManagerClockButton)
             self:UnregisterAllEvents()
         end

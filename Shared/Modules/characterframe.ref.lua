@@ -84,7 +84,6 @@ function CharacterFrame:UpdateEquipSlot(equipSlot)
 		local itemLocation = ItemLocation:CreateFromEquipmentSlot(equipSlot.ID)
 		local upgradable = C_ItemUpgrade.CanUpgradeItem(itemLocation);
 		if upgradable then
-			print(itemLink, upgradable)
 			local quality, level, maxLevel = tooltipText:match("Upgrade Level: (%w+) (%d)/(%d)")
 			slot.isProfessionItem = true
 			slot.alwaysShowProfessionsQuality = true

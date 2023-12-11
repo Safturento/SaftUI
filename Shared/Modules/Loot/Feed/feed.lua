@@ -167,48 +167,22 @@ generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'}, SELF_REPUTATION
 generate_match(FACTION_STANDING_DECREASED, {'faction', 'count'}, SELF_REPUTATION)
 
 ------------------------------------
----- Dropdown ----------------------
-------------------------------------
-
-local filterMenuList = {
-	{
-		text="gold",
-		checked=true,
-	}
-}
-
-local function CreateSlotDropdown()
-    INV.SlotDropDown = CreateFrame("Frame", "SaftUI_LootFeedFilterMenu", UIParent, "UIDropDownMenuTemplate")
-    UIDropDownMenu_SetWidth(INV.SlotDropDown, 200)
-    UIDropDownMenu_SetText(INV.SlotDropDown, "Options")
-    UIDropDownMenu_Initialize(INV.SlotDropDown, function(dropdown, level, menuList)
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = "Auto Vendor"
-        info.checked = function(self)
-            return INV.config.autoVendorFilter and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
-        end
-        info.func = function(dropdown, arg1, arg2, checked)
-            if not INV.SelectedSlot then return end
-
-            if not INV.config.autoVendorFilter then INV.config.autoVendorFilter = {} end
-            INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID] = not checked
-            INV:QueueUpdate()
-        end
-        UIDropDownMenu_AddButton(info)
-    end)
-end
-
-------------------------------------
 ---- Feed updates ------------------
 ------------------------------------
 
-function LT:UpdateFeed(recentlyScrolled)
+function LT:GetAllItems()
+	return feed_stack
+end
+
+function LT:UpdateFeed(recentlyScrolled, useCache)
 	local now = GetTime()
 	local item, info
 
+	local filteredItems =  self:GetFilteredItems(useCache)
+
 	for i=1, self.config.feed.max_items do
 		item = self.feed.items[i]
-		info = feed_stack[i + self.feed.offset]
+		info = filteredItems[i + self.feed.offset]
 		if not info then break end
 
 		if recentlyScrolled then
@@ -298,44 +272,35 @@ function LT:LootFeedAddCurrency(match)
 		name = name,
 		icon = info.iconFileID,
 		link = match['link'],
-		count = match['count']
+		count = match['count'],
+		type = 'Currency',
 	})
 end
 
 function LT:LootFeedAddItem(match)
-	local filters = self.config.feed.filters
-
 	if not match['link'] then return end
 
 	local name, _, quality, _, _, _, _, _, _, texture = GetItemInfo(match['link'])
 
-	if not name then
+	if not name or not quality then
 		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))
+		return
 	end
-
-	if not quality or quality < self.config.feed.min_quality then return end
 
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
 
 	name = st.StringFormat:ColorString(name, unpack(item_color))
 
-	if filters.self_item and not match['player'] then
-		self:LootFeedPush({
-			name = name,
-			icon = texture,
-			link = match['link'],
-			count = match['count']
-		})
-	elseif filters.other_item then
-		self:LootFeedPush({
-			name = name,
-			rightText = match['player'],
-			icon = texture,
-			link = match['link'],
-			count = match['count']
-		})
-	end
+	self:LootFeedPush({
+		name = name,
+		rightText = match['player'],
+		icon = texture,
+		link = match['link'],
+		count = match['count'],
+		notSelf = match['player'],
+		type = 'Loot',
+	})
 end
 
 local function extract_gold(gold_string)
@@ -347,10 +312,6 @@ local function extract_gold(gold_string)
 end
 
 function LT:LootFeedAddGold(match)
-	local filters = self.config.feed.filters
-
-	if not filters.gold then return end
-
 	local gold, icon = extract_gold(match['gold']), [[Interface\ICONS\INV_Misc_Coin_06]]
 
 	if gold >= 1E4 then
@@ -360,8 +321,10 @@ function LT:LootFeedAddGold(match)
 	end
 
 	self:LootFeedPush({
+		name = 'Gold',
 		gold = gold,
-		icon = icon
+		icon = icon,
+		type = 'Gold',
 	})
 end
 
@@ -379,7 +342,8 @@ function LT:LootFeedAddHonor(match)
 
 	self:LootFeedPush({
 		name = ('%s Honor%s'):format(match.honor, player),
-		icon = "Interface\\PvPRankBadges\\PvPRank12"
+		icon = "Interface\\PvPRankBadges\\PvPRank12",
+		type = 'Honor',
 	})
 end
 
@@ -390,7 +354,8 @@ function LT:LootFeedAddReputation(match)
 	--TODO: Add font color based on current status with the faction? Add current faction rank?
 	self:LootFeedPush({
 		name = ('%d Reputation (%s)'):format(match.count, match.faction),
-		icon = "Interface\\ICONS\\Achievement_Reputation_0" .. iconId
+		icon = "Interface\\ICONS\\Achievement_Reputation_0" .. iconId,
+		type = 'Reputation',
 	})
 end
 ------------------------------------
@@ -501,13 +466,13 @@ function LT:UpdateLootFeedConfig()
 
 	local x = self.feed:GetCenter()
 	if x > GetScreenWidth()/2 then
-		self.feed.filter_button:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
+		self.feed.filterButton:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
-		self.feed.filter_button:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
+		self.feed.filterButton:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
 	end
 
-	self.feed.filter_button.text:SetFontObject(font_obj)
-	st:SetBackdrop(self.feed.filter_button, config.template)
+	self.feed.filterButton.text:SetFontObject(font_obj)
+	st:SetBackdrop(self.feed.filterButton, config.template)
 
 	self.feed.reset_button.text:SetFontObject(font_obj)
 	st:SetBackdrop(self.feed.reset_button, config.template)
@@ -516,12 +481,13 @@ end
 
 function LT:UpdateFeedVisibility(feed, elapsed)
 	if self.config.feed.fade_time == 0  then return end
+	local filteredItems = self:GetFilteredItems()
 
 	if self.DEBUG then
 		local now = GetTime()
 		for i=1, self.config.feed.max_items do
 			local item = self.feed.items[i]
-			local info = feed_stack[i + self.feed.offset]
+			local info = filteredItems[i + self.feed.offset]
 			if info then
 				item.timer:SetText(st.StringFormat:ToTime(now - info.time))
 			else
@@ -533,12 +499,12 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 	local now = GetTime()
 	for i=1, self.config.feed.max_items do
 		local item = self.feed.items[i]
-		local info = feed_stack[i + self.feed.offset]
+		local info = filteredItems[i + self.feed.offset]
 
 		if info and now - info.time <= self.config.feed.fade_time then
 			item:SetAlpha(1)
 			item:Show()
-		elseif item:IsShown() and item:GetAlpha() == 1 then
+		elseif item:IsShown() and item:GetAlpha() == 1 and self.feed.offset == 0 then
 			UIFrameFadeOut(item, 1, 1, 0)
 			item.fadeInfo.finishedFunc = function()
 				item:Hide()
@@ -576,28 +542,19 @@ function LT:InitializeLootFeed()
 			feed.reset_button:Show()
 		end
 
-		self:UpdateFeed(true)
+		self:UpdateFeed(true, true)
 	end)
 
 	self:HookScript(feed, 'OnUpdate', 'UpdateFeedVisibility')
 
 	self.feed = feed
 
-	feed.filter_button = CreateFrame('Button', feed:GetName()..'FilterButton', feed)
-	feed.filter_button:SetSize(20, 20)
-	feed.filter_button.text = feed.filter_button:CreateFontString(nil, 'OVERLAY')
-	feed.filter_button.text:SetFontObject(GameFontNormal)
-	feed.filter_button.text:SetText('F')
-	feed.filter_button.text:SetPoint('CENTER')
+	self:InitializeFilterDropdown()
 
-	feed.reset_button = CreateFrame('Button', feed:GetName()..'ScrollReset', feed)
+	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'thick')
 	feed.reset_button:SetSize(20, 20)
-	feed.reset_button.text = feed.reset_button:CreateFontString(nil, 'OVERLAY')
-	feed.reset_button.text:SetFontObject(GameFontNormal)
-	feed.reset_button.text:SetText('V')
-	feed.reset_button.text:SetPoint('CENTER')
 	feed.reset_button:Hide()
-	feed.reset_button:SetPoint('BOTTOM', feed.filter_button, 'TOP', 0, self.config.feed.spacing)
+	feed.reset_button:SetPoint('BOTTOM', feed.filterButton, 'TOP', 0, self.config.feed.spacing)
 	feed.reset_button:SetScript('OnClick', function()
 		feed.offset = 0
 		feed.reset_button:Hide()

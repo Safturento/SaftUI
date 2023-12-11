@@ -8,7 +8,7 @@ function st:CreateButton(name, parent, text, template)
 	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
 	button.SetText = button.text.SetText
 
-    self:SkinButton(button)
+    self:SkinButton(button, template)
 
 	return button
 end

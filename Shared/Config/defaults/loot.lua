@@ -20,19 +20,18 @@ st.defaults.loot = {
 			x_off = -st.CLAMP_INSET,
 			y_off = st.CLAMP_INSET,
 		},
-		min_quality = 0,
-		spacing = 7,
+		spacing = 8,
 		max_items = 10,
 		fade_time = 10,
 		template = 'thick',
 		font = 'pixel',
 		filters = {
-			self_item = true,
-			other_item = true,
-			gold = true,
-			currency = true,
-			reputation = true,
-			experience = false
+			Loot = true,
+			Gold = true,
+			Self = true,
+			Honor = true,
+			Currency = true,
+			Reputation = true,
 		}
 	},
 	roll = {
