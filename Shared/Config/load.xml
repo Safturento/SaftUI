@@ -1,6 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Include file="defaults\load.xml"/>
-	<Script file="config.lua"/>
-	<Script file="colors.lua"/>
-	<Include file="dialog\load.xml"/>
-</Ui>

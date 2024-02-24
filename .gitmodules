@@ -1,5 +1,5 @@
-[submodule "Libraries/Mainline/oUF"]
-	path = Libraries/Mainline/oUF
+[submodule "Libraries/oUF"]
+	path = Libraries/oUF
 	url = git@github.com:oUF-wow/oUF.git
 [submodule "Libraries/LibStringFormat-1.0"]
 	path = Libraries/LibStringFormat-1.0

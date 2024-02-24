@@ -1,0 +1,38 @@
+## Interface: 100005
+## Version: 1.0
+## Title: |cff00adefSaftUI|r
+## SavedVariables: SaftUI_DB
+## OptionalDeps: RealMobHealth, ItemRack, WoWUnit
+## X-oUF: SaftUI
+
+Libraries\LibStub\LibStub.lua
+Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
+Libraries\LibDispel.lua
+Libraries\Wrath\oUF\oUF_Wrath.xml
+Libraries\LibSharedMedia-3.0\lib.xml
+Libraries\Ace3\AceAddon-3.0\AceAddon-3.0.lua
+Libraries\Ace3\AceHook-3.0\AceHook-3.0.lua
+Libraries\Ace3\AceEvent-3.0\AceEvent-3.0.lua
+Libraries\Ace3\AceDB-3.0\AceDB-3.0.lua
+Libraries\Ace3\AceDBOptions-3.0\AceDBOptions-3.0.lua
+Libraries\Ace3\AceSerializer-3.0\AceSerializer-3.0.lua
+Libraries\LibCompress\LibCompress.lua
+Libraries\LibBase64-1.0\LibBase64-1.0.lua
+
+Core\load.xml
+Utilities\load.xml
+Media\load.xml
+Widgets\load.xml
+Config\load.xml
+
+Modules\Unitframes\load.xml
+Modules\Loot\load.xml
+Modules\Maps\load.xml
+Modules\Micromenu\load.xml
+Modules\Inventory\load.xml
+Modules\auras.lua
+Modules\chatframe.lua
+Modules\experience.lua
+Modules\tooltip.lua
+Modules\fixtaint.lua

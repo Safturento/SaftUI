@@ -39,7 +39,7 @@ local function Update(self, event, unit)
 		element:PreUpdate()
 	end
 
-	local isQuestBoss = UnitIsQuestBoss(unit)
+	local isQuestBoss = UnitIsQuestBoss and UnitIsQuestBoss(unit)
 	if(isQuestBoss) then
 		element:Show()
 	else

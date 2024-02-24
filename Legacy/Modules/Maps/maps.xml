@@ -1,6 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">	
-	<Include file="maps.lua"/>
-	<Include file="minimap.lua"/>
-	 <Include file="worldmap.lua"/>
-	<!-- <Include file="bgmap.lua"/> -->
-</Ui>

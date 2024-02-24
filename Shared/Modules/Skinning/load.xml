@@ -1,6 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Script file="skinning.lua"/>
-	<Script file="characterframe.lua"/>
-<!--	<Include file="Addons\addons.xml"/>-->
-<!--	 <Include file="Frames\frames.xml"/>-->
-</Ui>
