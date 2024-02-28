@@ -90,8 +90,8 @@ local function isLegacyGear(item)
 	end
 
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
-	if UnitLevel('player') ~= MAX_PLAYER_LEVEL and requiredLevelDifference > 10 or requiredLevelDifference > 20 then
-		return true
+	if UnitLevel('player') ~= MAX_PLAYER_LEVEL then
+		return false
 	end
 
     if item.expacID > 7
@@ -128,8 +128,7 @@ INV:AddFilter("Grays/Auto Vendor", function(item)
 	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
 	if item.subclass == "Cosmetic" then return false end
 
-	if string.matchnocase(item.name, "Arclight Spanner")
-	or  string.matchnocase(item.name, "Blacksmith Hammer")
+	if item.ilvl <= 4
 	or string.matchnocase(item.tooltipText, "Fishing")
 	or string.matchnocase(item.tooltipText, "Blizzard Account Bound") then
 		return false

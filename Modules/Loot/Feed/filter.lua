@@ -6,11 +6,12 @@ LT.FilterTypes = {
         text = 'Loot',
 
     },
-    Gold = { text = 'Gold'},
-    Self = { text = 'Self Only'},
-    Honor = { text = 'Honor'},
-    Currency = { text = 'Currency'},
-    Reputation = { text = 'Reputation'},
+    Skill = { text = 'Skill ups' },
+    Gold = { text = 'Gold' },
+    Self = { text = 'Self Only' },
+    Honor = { text = 'Honor' },
+    Currency = { text = 'Currency' },
+    Reputation = { text = 'Reputation' },
 }
 
 local function checkButton(key, override)
@@ -35,6 +36,7 @@ local filterMenuList = {
 	checkButton('Gold'),
     checkButton('Honor'),
     checkButton('Reputation'),
+    checkButton('Skill'),
     checkButton('Loot'),
     checkButton('Self'),
 }

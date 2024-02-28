@@ -328,6 +328,13 @@ function LT:LootFeedAddGold(match)
 	})
 end
 
+function LT:LootFeedAddSkillUp(match)
+	self:LootFeedPush({
+		name = ('%s %d'):format(match['skill'], match['count']),
+		type = 'Skill'
+	})
+end
+
 function LT:LootFeedAddHonor(match)
 	if not match.honor then return end
 
@@ -373,6 +380,8 @@ function LT:LootFeedHandler(event, text)
 		self:LootFeedAddCurrency(match)
 	elseif match['gold'] then
 		self:LootFeedAddGold(match)
+	elseif match['skill'] then
+		self:LootFeedAddSkillUp(match)
 	elseif match['honor'] then
 		self:LootFeedAddHonor(match)
 	elseif match['faction'] then
