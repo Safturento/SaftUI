@@ -1,14 +1,20 @@
 local st = SaftUI
 local INV = st:NewModule('Inventory')
 
-local BACKPACK_IDS = {0, 1, 2, 3, 4}
-local BANK_IDS = {-1, 5, 6, 7, 8, 9, 10, 11}
-
-local BAG_IDS = {
-	['bag'] = {0, 1, 2, 3, 4, 5},
-	['bank'] = {-1, 6, 7, 8, 9, 10, 11, 12},
-	['reagent'] = {-3}
-}
+local BAG_IDS
+if st.retail then
+	BAG_IDS = {
+		['bag'] = {0, 1, 2, 3, 4, 5},
+		['bank'] = {-1, 6, 7, 8, 9, 10, 11, 12},
+		['reagent'] = {-3}
+	}
+else
+	BAG_IDS = {
+		['bag'] = {0, 1, 2, 3, 4},
+		['bank'] = {-1, 5, 6, 7, 8, 9, 10, 11},
+		['reagent'] = {-3}
+	}
+end
 
 INV.containers = {}
 INV.OnUseItems = {}
@@ -153,12 +159,12 @@ function INV:DisplayServerGold()
 	GameTooltip:SetOwner(self.containers.bag, "ANCHOR_NONE")
 	GameTooltip:ClearAllPoints()
 	GameTooltip:SetPoint('TOPRIGHT', self.containers.bag, 'TOPLEFT', -10, 0)
-	
-	GameTooltip:ClearLines()	
+
+	GameTooltip:ClearLines()
 	-- List server wide gold
 	GameTooltip:AddLine('Gold on ' .. st.my_realm)
 	local totalGold = 0
-	for toonName, summary in pairs(st.config.realm.summary) do 
+	for toonName, summary in pairs(st.config.realm.summary) do
 		GameTooltip:AddDoubleLine(toonName, summary.gold and st.StringFormat:GoldFormat(summary.gold) or "??", 1,1,1)
 		totalGold = totalGold + (summary.gold or 0)
 	end
@@ -167,7 +173,7 @@ function INV:DisplayServerGold()
 
 	GameTooltip:AddLine(' ')
 	GameTooltip:AddDoubleLine('Vendor profit', st.StringFormat:GoldFormat(select(2, self:GetVendorItems())))
-	
+
 	GameTooltip:Show()
 end
 
@@ -236,7 +242,7 @@ function INV:UpdateContainerHeight(id)
 			category:ClearAllPoints()
 
 			local newCount = (rowCount + category.numRows + 1)
-			if (breakPoint and newCount >= breakPoint) or newCount > self.config[container.id].maxRows then
+			if firstOfColumn and ((breakPoint and newCount >= breakPoint) or newCount > self.config[container.id].maxRows) then
 				category:SetPoint('TOPLEFT', firstOfColumn, 'TOPRIGHT', self.config.padding, 0)
 				firstOfColumn = category
 				numColumns = numColumns + 1
@@ -264,7 +270,7 @@ end
 
 function INV:UpdateConfig(id)
 	local container = self.containers[id]
-	
+
 	container:ClearAllPoints()
 	container:SetPoint(unpack(self.config[id].position))
 
@@ -272,7 +278,7 @@ function INV:UpdateConfig(id)
 
 	container:SetWidth(self.config.padding * 2 + inner_width)
 	container:SetHeight(200)
-	
+
 	for _, category in pairs(container.categories) do
 		category:SetWidth(inner_width)
 	end
@@ -328,7 +334,7 @@ function INV:ShowBags()
 	INV:MovePlayerBagSlots()
 end
 
-function INV:HideBags() 
+function INV:HideBags()
 	INV.containers.bag:Hide()
 	for _,slot in pairs(INV.containers.bag.slots) do
 		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)

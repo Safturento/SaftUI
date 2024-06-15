@@ -10,7 +10,7 @@ local MICRO_BUTTONS = {
 	"GuildMicroButton",
 	"LFDMicroButton",
 	"EJMicroButton",
-	"CollectionsMicroButton",
+	--"CollectionsMicroButton",
 	"MainMenuMicroButton",
 	"HelpMicroButton",
 	"StoreMicroButton",

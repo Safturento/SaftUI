@@ -138,6 +138,21 @@ function CHT:UpdateChatFrameDisplay(frame)
 	st:SetBackdrop(frame.Tab, self.config.tmeplate)
 end
 
+function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
+	if not (dock.isDirty or forceUpdate) then return end
+
+	local prev
+	for index, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
+		if prev then
+			frame.Tab:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', 0, 0)
+		else
+			frame.Tab:ClearAllPoints()
+			frame.Tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
+			prev = frame.Tab
+		end
+	end
+end
+
 -------------------------------------
 -- INITIALIZATION -------------------
 -------------------------------------
@@ -161,4 +176,5 @@ function CHT:OnEnable()
 	-- self:SecureHook('ChatEdit_UpdateHeader')
 	self:SecureHook('ChatFrame_OnUpdate')
 	self:SecureHook('FloatingChatFrame_UpdateBackgroundAnchors', 'UpdateChatFrameDisplay')
+	self:SecureHook('FCFDock_UpdateTabs')
 end

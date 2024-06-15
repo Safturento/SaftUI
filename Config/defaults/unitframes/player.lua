@@ -1,33 +1,36 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].player = {
-    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -170 },
+    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -200 },
     additionalpower = {
         enable = true,
         manaAsPrimary = true,
         relative_width = false,
         relative_height = false,
         width = 286,
-        height = 20,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -187 },
+        height = 10,
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -170 },
         text = {
-            font='pixel',
-            position = { rel_point = "CENTER", point = "CENTER",  x_off = 0, y_off = 1 },
+            font='pixel_med',
+            position = { rel_point = "CENTER", point = "CENTER",  x_off = 0, y_off = 7 },
         }
     },
     power = {
         text = {
-            enable = false,
+            enable = true,
         },
+    },
+    name = {
+        enable = false,
     },
     castbar = {
         enable = true,
         relative_width = false,
-        width = 286,
+        width = 273,
         relative_height = false,
         height = 24,
         template = 'thicktransparent',
-        position = { frame_type=false, point ='TOP', element = 'AdditionalPower', rel_point = 'BOTTOM', x_off = 0, y_off = -8 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -278 },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
         },
@@ -62,7 +65,7 @@ st.defaults.unitframes.profiles["**"].player = {
     debuffs = {
         enable = true,
         grow_right = false,
-        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -8, y_off = 2 },
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 0 },
         horizontal_growth = 'LEFT',
         initial_anchor = 'RIGHT',
         size = 35,

@@ -208,7 +208,7 @@ function UF:CreateGroupHeaders()
 	local party = self.oUF:SpawnHeader(
 		'SaftUI_Party',
 		nil,
-		'custom [@raid6,exists] hide;show',
+		'custom [@raid1,exists] hide;show',
 		"oUF-initialConfigFunction", [[
 			local header = self:GetParent()
 			self:SetWidth(header:GetAttribute("initial-width"))
@@ -217,7 +217,7 @@ function UF:CreateGroupHeaders()
 		"initial-width", config.width,
 		"initial-height", config.height,
 		"showParty", true,
-		"showRaid", true,
+		"showRaid", false,
 		'showSolo', TEST_PARTY_SOLO,
 		'showPlayer', TEST_PARTY_SOLO,
 		"xOffset", config.spacing,
@@ -241,8 +241,7 @@ function UF:CreateGroupHeaders()
 	local raid10 = self.oUF:SpawnHeader(
 		'SaftUI_Raid10',
 		nil,
-		-- 'custom [@raid6,exists] hide;show',
-		'custom [@raid11,exists] hide;[@raid6,exists] show;hide',
+		'custom [@raid11,exists] hide;[@raid1,exists] show;hide',
 		"oUF-initialConfigFunction", [[
 			local header = self:GetParent()
 			self:SetWidth(header:GetAttribute("initial-width"))
@@ -275,7 +274,6 @@ function UF:CreateGroupHeaders()
 	local raid40 = self.oUF:SpawnHeader(
 		'SaftUI_Raid40',
 		nil,
-		-- 'custom [@raid6,exists] hide;show',
 		'custom [@raid11,exists] show;hide',
 		"oUF-initialConfigFunction", [[
 			local header = self:GetParent()

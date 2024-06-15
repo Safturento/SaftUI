@@ -11,6 +11,7 @@ LT.FilterTypes = {
     Self = { text = 'Self Only' },
     Honor = { text = 'Honor' },
     Currency = { text = 'Currency' },
+    Experience = { text = 'Experience' },
     Reputation = { text = 'Reputation' },
 }
 
@@ -36,6 +37,7 @@ local filterMenuList = {
 	checkButton('Gold'),
     checkButton('Honor'),
     checkButton('Reputation'),
+    checkButton('Experience'),
     checkButton('Skill'),
     checkButton('Loot'),
     checkButton('Self'),

@@ -60,7 +60,7 @@ local raidtargetindicator = {
 }
 
 local portrait = {
-    enable = true,
+    enable = false,
     alpha = 0.1,
     framelevel = 20,
     template = "none",
@@ -96,7 +96,7 @@ local castbar = {
     },
     text = {
         enable = true,
-        font = 'normal',
+        font = 'pixel',
         position = {
             frame_type = false,
             point = "TOPLEFT",
@@ -108,7 +108,7 @@ local castbar = {
     },
     time = {
         enable = true,
-        font = 'normal',
+        font = 'pixel',
         position = {
             frame_type=false,
             rel_point = "RIGHT",
@@ -138,13 +138,14 @@ local castbar = {
 }
 
 local health = {
-    template = "thin",
-    position = { rel_point = "TOPRIGHT", x_off = "-2", point = "TOPRIGHT", y_off = "-2" },
-    height = -4,
+    template = "thick",
+    texture = 'SaftUI Flat',
+    position = { rel_point = "TOPRIGHT", x_off = 0, point = "TOPRIGHT", y_off = 0 },
+    height = -8,
     relative_height = true,
-    width = -4,
+    width = 0,
     relative_width = true,
-    framelevel = 20,
+    framelevel = 10,
     reverse_fill = false,
     vertical_fill = false,
     text = {
@@ -152,12 +153,12 @@ local health = {
         hide_full = false,
         percent = false,
         boss_percent = true,
-        font = 'normal',
+        font = 'pixel',
         position = {
             point = "RIGHT",
             element = "Health",
             rel_point = "RIGHT",
-            x_off = -10,
+            x_off = -7,
             y_off = 0,
         },
         tags = 'deficit'
@@ -182,16 +183,13 @@ local health = {
 
 local power = {
     framelevel = 10,
-    template = "thin",
-    height = 0,
-    relative_height = true,
+    template = "thick",
+    height = 5,
+    relative_height = false,
     width = 0,
     relative_width = true,
     position = {
-        rel_point = "TOPRIGHT",
-        y_off = "0",
-        point = "TOPRIGHT",
-        x_off = "0",
+        rel_point = "BOTTOMRIGHT", y_off = 0, point = "BOTTOMRIGHT", x_off = 0,
     },
     reverse_fill = false,
     vertical_fill = false,
@@ -204,12 +202,12 @@ local power = {
         enable = false,
         hide_full = false,
         percent = false,
-        font = 'normal',
+        font = 'pixel',
         position = {
             point = "LEFT",
             element = "Health",
             rel_point = "LEFT",
-            x_off = 10,
+            x_off = 7,
             y_off = 0,
         },
     },
@@ -272,7 +270,7 @@ local additionalpower = {
 local auras = {
     enable = false,
     size = 24,
-    spacing = 3,
+    spacing = 7,
     per_row = 9,
     max = 8,
     framelevel = 15,
@@ -316,26 +314,29 @@ local auras = {
 
 local buffs = st.tablemerge(auras, {
     enable = false,
+    onlyShowPlayer = true,
     enemy = {
         colorStealable = true,
     },
     position = {
         point = "BOTTOMLEFT",
         rel_point = "TOPLEFT",
-        x_off = "2",
-        y_off = "7",
+        x_off = 0,
+        y_off = 7,
     },
 })
 
 local debuffs = st.tablemerge(auras, {
     enable = false,
+    onlyShowPlayer = false,
+    showDebuffType = true,
     friend = {
         colorTypes = true,
     },
     enemy = {
         desaturateOthers = true,
     },
-    position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 2, y_off = 7 },
+    position = { point = 'BOTTOMLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 7 },
 })
 
 local name = {
@@ -345,14 +346,15 @@ local name = {
     all_caps = false,
     show_samelevel = false,
     show_classification = true,
-    font = 'normal',
+    font = 'pixel',
     position = {
-        rel_point = "LEFT",
-        x_off = "11",
         point = "LEFT",
-        y_off = "0",
+        element = "Health",
+        rel_point = "LEFT",
+        x_off = 7,
+        y_off = 0,
     },
-    tag = '[st:level][st:name]',
+    tag = '[st:name]',
 }
 
 local widget = {
@@ -387,12 +389,12 @@ st.defaults.unitframes = {
             ["**"] = {
                 enable = true,
                 width = 301,
-                height = 39,
+                height = 34,
                 position = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 0 },
                 template = 'none',
                 range_alpha = {
                     inside = 1,
-                    outside = 0.4,
+                    outside = 0.25,
                 },
                 ['**'] = {
                     enable = true,

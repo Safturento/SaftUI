@@ -39,6 +39,10 @@ end
 function UF.FilterAura(auras, unit, data)
 	local filter = auras.config[getHostility(unit)].filter
 
+    if auras.onlyShowPlayer and not data.isFromPlayerOrPlayerPet then
+		return false
+	end
+
     if filter.time.enable then
         if filter.time.hideAuras and data.duration == 0 then return end
         if filter.time.max and data.duration > filter.time.max then return end
@@ -48,7 +52,7 @@ function UF.FilterAura(auras, unit, data)
     return isWhitelisted(filter.whitelist, data) and not isBlacklisted(filter.blacklist, data)
 end
 
-function UF.PostUpdateButton(auras, unit, button, index, position, duration, expiration, debuffType, isStealable)
+function UF.PostUpdateButton(auras, button, unit, index, position, duration, expiration, debuffType, isStealable)
     local config = auras.config[getHostility(unit)]
     if config.colorStealable and isStealable then
         local c = DebuffTypeColor['Magic']
@@ -64,10 +68,12 @@ function UF.PostUpdateButton(auras, unit, button, index, position, duration, exp
 end
 
 function UF.PostCreateButton(auras, button)
-
 	st:SetBackdrop(button, auras.config.template)
 	st:SkinIcon(button.Icon)
 	button.Count:SetFontObject(st:GetFont(auras.config.font))
+
+    button.Stealable:SetTexture('')
+    button.Overlay:SetTexture('')
 
 	button.Cooldown.noOCC = not auras.config.cooldown.timer
 	button.Cooldown.noCooldownCount = not auras.config.cooldown.timer
@@ -99,7 +105,8 @@ local function UpdateConfig(unitframe, aura_type)
 	auras.initialAnchor = auras.config.initial_anchor
 	auras['growth-y'] = auras.config.grow_up and 'UP' or 'DOWN'
 	auras['growth-x'] = auras.config.grow_right and 'RIGHT' or 'LEFT'
-	auras.onlyShowPlayer = auras.config.self_only
+	auras.onlyShowPlayer = auras.config.onlyShowPlayer
+    auras.showDebuffType = auras.config.showDebuffType
 	auras.disableCooldown = not auras.config.cooldown.enable
 	auras.showDispellable = auras.config.show_dispellable
 	auras.FilterAura = UF.FilterAura

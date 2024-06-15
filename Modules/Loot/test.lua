@@ -42,6 +42,7 @@ function LT:UpdateHandler(timer, elapsed)
 		self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
 	end
 
+
 	self:UpdateFeed()
 end
 
@@ -59,5 +60,7 @@ function LT:InitializeTestMode()
 	self:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
 	self:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+	self:LootFeedHandler('CHAT_MSG_COMBAT_XP_GAIN', COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED:format("1234"))
+	self:LootFeedHandler('CHAT_MSG_COMBAT_XP_GAIN', COMBATLOG_XPGAIN_EXHAUSTION2:format("The Boss", "1337", "+666", "Rested"))
 	self:HookScript(CreateFrame('frame'), 'OnUpdate', 'UpdateHandler')
 end

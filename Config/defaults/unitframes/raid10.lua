@@ -7,7 +7,7 @@ st.defaults.unitframes.profiles["**"].raid10 = {
     unitsPerColumn = 5,
     columnSpacing = 3,
     initialAnchor = 'TOP',
-    position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = -2, y_off = -8 },
+    position = { point = 'TOPLEFT', frame = 'SaftUI_Player', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -8 },
     width = 57,
     height = 34
 ,

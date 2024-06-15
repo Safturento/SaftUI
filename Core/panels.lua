@@ -175,7 +175,7 @@ function st:CreateHeader(frame, title, close_button)
 		frame.title:SetParent(header)
 		frame.title:ClearAllPoints()
 		frame.title:SetPoint('CENTER', header)
-		frame.title:SetJustifyH('MIDDLE')
+		frame.title:SetJustifyH('CENTER')
 	end
 
 	if close_button then frame.close_button = close_button end

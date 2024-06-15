@@ -159,6 +159,38 @@ function st.imap(table, func)
 end
 
 
+local scanner = CreateFrame("GameTooltip", "ScanningTooltip", nil, "GameTooltipTemplate")
+scanner:SetOwner(WorldFrame, "ANCHOR_NONE")
+
+function st:ScanEquippedItem(slotId, unit)
+	scanner:ClearLines()
+	scanner:SetInventoryItem(unit or 'player', slotId)
+	scanner:SetScale(0.7)
+	--scanner:SetPoint('CENTER', 200, 0)
+	--scanner:Show()
+
+	--ItemRefTooltip:SetInventoryItem(unit or 'player', slotId)
+	--ItemRefTooltip:SetScale(0.7)
+	--ItemRefTooltip:SetPoint('CENTER', -200, 0)
+	--ItemRefTooltip:Show()
+    --ItemRefTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
+	----ItemRefTooltip.SetPoint = function() end
+	----ItemRefTooltip.Hide = function() end
+	--ItemRefTooltip.SetOwner = function() end
+
+	local data = {}
+    for i=1, ItemRefTooltip:NumLines() do
+		--print(left)
+        local left = _G["ScanningTooltipTextLeft"..i]:GetText()
+        local right = _G["ScanningTooltipTextRight"..i]:GetText()
+		if left and left:find("Reforged") then
+			data.reforge = { left:match("Reforged %((%a+) > (%a+)%)") }
+		end
+    end
+
+	return data
+end
+
 StaticPopupDialogs["EXTRACT_LINK_DIALOG"] = {
 	text = "Copy link",
 	button1 = "Close",

@@ -22,10 +22,5 @@ st.defaults.unitframes.profiles["**"].focus = {
         grow_right = false,
         initial_anchor = 'RIGHT',
         size = 25,
-        filter = {
-            friend = {
-                grow_right = false,
-            }
-        }
     }
 }

@@ -33,8 +33,8 @@ st.defaults.templates = {
 	},
 	thick = {
 		name = 'Thick',
-		bordercolor = { 0.4, 0.4, 0.4, 1.0 },
-		altbordercolor = { 0, 0, 0, 1.0 },
+		bordercolor = { 0.3, 0.3, 0.3, 1.0 },
+		altbordercolor = { 0.1, 0.1, 0.1, 1.0 },
 		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 		border = true,
 		thick = true,

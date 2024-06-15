@@ -103,7 +103,6 @@ local function isLegacyGear(item)
     or string.matchnocase(item.tooltipText, COSMETIC_TEXT)
     or string.matchnocase(item.tooltipText, USE_TEXT)
     or string.matchnocase(item.tooltipText, EQUIP_EFFECT_TEXT)
-	or not string.matchnocase(item.tooltipText, ARTIFACT_RELIC_TEXT)
 	then return false end
 
 	return true
@@ -128,8 +127,8 @@ INV:AddFilter("Grays/Auto Vendor", function(item)
 	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
 	if item.subclass == "Cosmetic" then return false end
 
-	if item.ilvl <= 4
-	or string.matchnocase(item.tooltipText, "Fishing")
+	--if (not st.retail and item.ilvl and item.ilvl <= 4) or string.matchnocase(item.tooltipText, "Fishing")
+	if string.matchnocase(item.tooltipText, "Fishing")
 	or string.matchnocase(item.tooltipText, "Blizzard Account Bound") then
 		return false
 	end
@@ -141,6 +140,7 @@ INV:AddFilter("Grays/Auto Vendor", function(item)
 		or (isLegacyGear(item) and item.quality < 5)
 		or item.soulbound and string.matchnocase(item.tooltipText, RED_CLASS)
 		or INV:ShouldAutoVendor(item.itemID)
+
 end, { autoVendor = true })
 
 INV:AddFilter("Reputation", function(item)

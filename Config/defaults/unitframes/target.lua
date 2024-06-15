@@ -1,7 +1,7 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].target = {
-    position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 150, y_off = -170 },
+    position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 151, y_off = -200 },
     castbar = {
         position = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 120 },
         enable = true,
@@ -24,14 +24,6 @@ st.defaults.unitframes.profiles["**"].target = {
             position = { point = 'BOTTOM', element = 'Castbar', rel_point = 'TOP', x_off = 0, y_off = 20 }
         }
     },
-    name = {
-        position = { point = 'RIGHT', rel_point = 'RIGHT', x_off = -10, y_off = 0 }
-    },
-    health = {
-        text = {
-            position = { point = 'LEFT', rel_point = 'LEFT', x_off = 10, y_off = 0 }
-        }
-    },
     buffs = {
         enable = true,
         grow_right = false,
@@ -40,7 +32,7 @@ st.defaults.unitframes.profiles["**"].target = {
         position = {
             point = "BOTTOMRIGHT",
             rel_point = "TOPRIGHT",
-            x_off = "-2",
+            x_off = 0,
         },
     },
     debuffs = {

@@ -189,7 +189,7 @@ end
 function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
-	local categoryFrame = CreateFrame('frame', nil, container)
+	local categoryFrame = CreateFrame('frame', container:GetName() .. '_' .. categoryName, container)
 	categoryFrame.name = categoryName
 	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
 	categoryFrame.slots = {}

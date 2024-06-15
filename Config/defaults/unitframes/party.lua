@@ -26,40 +26,54 @@ st.defaults.unitframes.profiles["**"].party = {
         },
     },
     buffs = {
-        enable = false,
---             friend = {
---                 filter = {
---                     blacklist = {
---                         enable = true,
---                         others = true,
---                         auras = true,
---                     },
---                 },
---             },
-    },
-    debuffs = {
         enable = true,
+        onlyShowPlayer = true,
         grow_right = false,
-        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -8, y_off = 2 },
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 0 },
         horizontal_growth = 'LEFT',
         initial_anchor = 'RIGHT',
         size = 35,
         friend = {
             filter = {
-                whitelist = {
-                    filters = {
-                        yours = false,
-                        auras = false,
-                    },
+                time = {
+                    enable = true,
+                    max = 30,
                 },
-            },
-        },
-        enemy = {
-            filter = {
                 whitelist = {
-                    enable = false,
+                    enable = true,
+                    self = true,
                 },
-            },
+                blacklist = {
+                    enable = true,
+                    auras = true,
+                    others = true,
+                }
+            }
         },
+    },
+    debuffs = {
+        enable = true,
+        grow_right = true,
+        position = { point = 'TOPLEFT',  rel_point = 'TOPRIGHT', x_off = 7, y_off = 0 },
+        horizontal_growth = 'RIGHT',
+        initial_anchor = 'LEFT',
+        size = 35,
+        --friend = {
+        --    filter = {
+        --        whitelist = {
+        --            filters = {
+        --                yours = false,
+        --                auras = false,
+        --            },
+        --        },
+        --    },
+        --},
+        --enemy = {
+        --    filter = {
+        --        whitelist = {
+        --            enable = false,
+        --        },
+        --    },
+        --},
     }
 }

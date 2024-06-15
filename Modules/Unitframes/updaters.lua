@@ -2,16 +2,17 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 function UF:UpdateElement(element)
-
     local enabled = self:SetElementEnabled(element)
     if not enabled then return false end
 
-    st:SetBackdrop(element, element.config.template)
+    if element.config.template then
+        st:SetBackdrop(element, element.config.template)
+    end
+
     element:SetAlpha(element.config.alpha or 1)
     self:UpdateElementSize(element)
     self:UpdateElementPosition(element)
     self:UpdateElementLevel(element)
-
 
     if element:IsObjectType('StatusBar') then
         self:UpdateStatusBarElement(element)
@@ -82,11 +83,8 @@ function UF:UpdateElementPosition(element, unitframe)
 end
 
 function UF:UpdateElementLevel(element)
-    if not element.config.framelevel then return end
-    if element.SetFrameLevel then
+    if element.config.framelevel and element.SetFrameLevel then
         element:SetFrameLevel(element.config.framelevel)
-    elseif element.SetDrawLayer then
-        element:SetDrawlayer(element.config.framelevel)
     end
 end
 

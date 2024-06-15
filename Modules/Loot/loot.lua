@@ -15,6 +15,7 @@ function LT:OnInitialize()
 	end
 
 -- 	self:InitializeLootFrame()
+	self:InitializeRollFrame()
 	self:InitializeLootFeed()
 
 	if self.DEBUG then

@@ -8,11 +8,13 @@ function CL:OnInitialize()
 end
 
 function CL:UpdateConfig()
+	--if not CUSTOM_CLASS_COLORS then CUSTOM_CLASS_COLORS = {} end
 	--for class, color in pairs(st.config.profile.colors.class) do
-	--	r, g, b = unpack(color)
-	--	RAID_CLASS_COLORS[class].r = r
-	--	RAID_CLASS_COLORS[class].g = g
-	--	RAID_CLASS_COLORS[class].b = b
+	--	local r, g, b = unpack(color)
+	--	print(class, r, g, b)
+	--	--CUSTOM_CLASS_COLORS[class].r = r
+	--	--CUSTOM_CLASS_COLORS[class].g = g
+	--	--CUSTOM_CLASS_COLORS[class].b = b
 	--end
 
 	for q,item_quality in pairs(st.config.profile.colors.item_quality) do

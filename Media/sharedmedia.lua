@@ -10,6 +10,7 @@ st.LSM:Register('border',		'SaftUI Solid Border',  st:TexturePath('borderTex.tga
 st.LSM:Register('statusbar',	'SaftUI Gloss', 		st:TexturePath('normTex.tga'))
 st.LSM:Register('statusbar',	'SaftUI Flat', 			[[Interface\BUTTONS\WHITE8X8]])
 
+st.LSM:Register('font', 		'envypn',				st:FontPath('envypn.ttf'))
 st.LSM:Register('font', 		'Semplice',				st:FontPath('Semplice_Reg.ttf'))
 st.LSM:Register('font', 		'Rainy Hearts',			st:FontPath('rainyhearts.ttf'))
 st.LSM:Register('font', 		'VCR OSD Mono',			st:FontPath('VCR_OSD_MONO_1.001.ttf'))

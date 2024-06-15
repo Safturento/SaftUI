@@ -22,7 +22,6 @@ local function PostUpdateHealth(health, unit, current, max)
 	end
 
 	if health.text then
-
 		local absorbs = st.retail and UnitGetTotalAbsorbs(unit) or 0
 		
 		if current == max and health.config.text.hide_full then

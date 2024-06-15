@@ -53,4 +53,6 @@ local function UpdateConfig(unitframe)
 	additionalPower.customColor    = config.customColor
 end
 
-UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig)
+if st.retail then
+	UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig)
+end

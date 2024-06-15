@@ -8,9 +8,9 @@ function st:StripTextures(frame, kill)
 
 	local name = frame.GetName and frame:GetName()
 	if name then
-		if _G[name..'Left'] then _G[name..'Left']:SetAlpha(0) end
-		if _G[name..'Middle'] then _G[name..'Middle']:SetAlpha(0) end
-		if _G[name..'Right'] then _G[name..'Right']:SetAlpha(0) end
+		if _G[name..'Left'] then st:StripTextures(_G[name..'Left']) end
+		if _G[name..'Middle'] then st:StripTextures(_G[name..'Middle']) end
+		if _G[name..'Right'] then st:StripTextures(_G[name..'Right']) end
 	end
 
 	if frame.Left then frame.Left:SetAlpha(0) end
@@ -19,13 +19,15 @@ function st:StripTextures(frame, kill)
 
 	if frame.NineSlice then st:Kill(frame.NineSlice) end
 
-	for i=1, frame:GetNumRegions() do
-		local region = select(i, frame:GetRegions())
-		if region:GetObjectType() == 'Texture' then
-			if kill then
-				st:Kill(region)
-			else
-				region:SetTexture(nil)
+	if frame.GetNumRegions then
+		for i=1, frame:GetNumRegions() do
+			local region = select(i, frame:GetRegions())
+			if region:GetObjectType() == 'Texture' then
+				if kill then
+					st:Kill(region)
+				else
+					region:SetTexture(nil)
+				end
 			end
 		end
 	end

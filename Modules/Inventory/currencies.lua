@@ -18,8 +18,12 @@ function INV.GetCurrencySlotPool(parent)
     )
 end
 
+local poolSize = 0
 function INV.CreateCurrencySlot(parent)
-    local slot = CreateFrame('ItemButton', nil, parent)
+    poolSize = poolSize + 1
+    local slotName = 'SaftUI_Bag_Currencies_Slot'..poolSize
+    local slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, parent, 'ContainerFrameItemButtonTemplate')
+    slot.NormalTexture = _G[slotName..'NormalTexture']
     slot.Count:SetDrawLayer('OVERLAY', 7)
     slot.Count:Show()
     slot.Count:SetText('-')
@@ -40,7 +44,11 @@ function INV.CreateCurrencySlot(parent)
         INV.config.filters.currencies[slot.info.id] = self:GetChecked() or nil
     end)
 
-    slot.NormalTexture:SetTexture('')
+    if slot.NormalTexture then slot.NormalTexture:SetTexture('') end
+
+    if slot.BattlepayItemTexture then
+        slot.BattlepayItemTexture:SetTexture('')
+    end
 
     slot:SetSize(INV.config.buttonwidth, INV.config.buttonheight)
 
@@ -71,21 +79,22 @@ local function shouldShow(info, editMode)
     return true
 end
 
---local GetCurrencyListSize = GetCurrencyListSize or C_CurrencyInfo.GetCurrencyListSize()
 
 function INV:GetCurrencies(editMode)
     local items = {}
-    --for i=1, C_CurrencyInfo.GetCurrencyListSize() do
-    --    local info = C_CurrencyInfo.GetCurrencyListInfo(i)
-    --    info.link = C_CurrencyInfo.GetCurrencyListLink(i)
-    --    if info.link then
-    --        info.id = C_CurrencyInfo.GetCurrencyIDFromLink(info.link)
-    --        info.index = i
-    --        if shouldShow(info, editMode) then
-    --            tinsert(items, info)
-    --        end
-    --    end
-    --end
+    for i=1, C_CurrencyInfo.GetCurrencyListSize() do
+        local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+        if info then
+            info.link = C_CurrencyInfo.GetCurrencyListLink(i)
+            if info.link then
+                info.id = C_CurrencyInfo.GetCurrencyIDFromLink(info.link)
+                info.index = i
+                if shouldShow(info, editMode) then
+                    tinsert(items, info)
+                end
+            end
+        end
+    end
     return items
 end
 
@@ -131,6 +140,13 @@ function INV:UpdateCurrencyCategory(forceShow)
         slot:ClearAllPoints()
         slot:Show()
         slot.info = currency
+        local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.info.id).quality
+        if quality > -1 then
+			local c = ITEM_QUALITY_COLORS[quality]
+			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+		else
+			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
+		end
 
         if i % self.config.bag.perrow == 1 then
             slot:SetPoint('TOPLEFT', prevRow, 'BOTTOMLEFT', 0, -self.config.buttonspacing)

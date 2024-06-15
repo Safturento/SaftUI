@@ -7,7 +7,7 @@ st.defaults.unitframes.profiles["**"].targettarget = {
         point = 'TOPLEFT',
         frame = 'SaftUI_Target',
         rel_point = 'TOPRIGHT',
-        x_off = 6,
+        x_off = 9,
         y_off = 0
     },
     name = {

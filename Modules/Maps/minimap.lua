@@ -15,6 +15,11 @@ function MP:InitializeMinimap()
 
     Minimap:SetSize(self.config.minimap.size, self.config.minimap.size)
 
+    UIWidgetBelowMinimapContainerFrame:ClearAllPoints()
+    UIWidgetBelowMinimapContainerFrame:SetPoint("TOP", Minimap, "BOTTOM", 0, -70)
+    UIWidgetBelowMinimapContainerFrame.ClearAllPoints = function()  end
+    UIWidgetBelowMinimapContainerFrame.SetPoint = function()  end
+
     if st.retail then
         self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
         self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')

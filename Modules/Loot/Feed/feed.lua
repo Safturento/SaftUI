@@ -29,6 +29,8 @@
 -- LOOT_ITEM_PUSHED_MULTIPLE = "%s receives item: %sx%d.",
 -- LOOT_ITEM_WHILE_PLAYER_INELIGIBLE = "%s receives loot: |TInterface\\Common\\Icon-NoLoot:13:13:0:0|t%s",
 
+-- COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED = You gain %d experience.
+
 local st = SaftUI
 local LT = st.Loot
 
@@ -42,13 +44,14 @@ local match_replacements = {
 	link = "(\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*",
 	currency = "(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)",
 	count =  '(%d+)',
-	honor = '(%d+)'
+	honor = '(%d+)',
+	experience = '(%d+)',
 }
 
 
 local patterns = {}
 
-local function generate_match(match, keys, categories)
+local function generate_match(match, keys, categories, fuzzy)
 	--[[
 	We need to do some escaping to convert the global strings into regex.
 	The result of this turns
@@ -67,13 +70,17 @@ local function generate_match(match, keys, categories)
 		tinsert(replacements, match_replacements[key] or '(.+)')
 	end
 
+	local patternKey = match:format(unpack(replacements))
+	if not fuzzy then
+		patternKey = patternKey ..'$'
+	end
 
-	patterns[match:format(unpack(replacements))..'$'] = {
+	patterns[patternKey] = {
 		categories = categories,
 		keys = keys
 	}
 
-	return match:format(unpack(replacements))..'$'
+	return patternKey
 end
 
 
@@ -81,7 +88,9 @@ local function get_match(string)
 	string = string:gsub("%(", ""):gsub("%)", "")
 	for pattern, details in pairs(patterns) do
 		local keys = details['keys']
+		-- ex: { 1 = [Volatile Life], 2 = 3 }
         local match = {string:match(pattern)}
+		--print('[', #match > 0, '] ', pattern, '|', string, '|', unpack(match))
 
         if #match > 0 and #match == #keys then
             local result = {}
@@ -114,6 +123,7 @@ SELF_GOLD = { categories.SELF, categories.GOLD }
 SELF_SKILL_UP = { categories.SELF, categories.SKILL_UP }
 SELF_HONOR = { categories.SELF, categories.HONOR }
 SELF_REPUTATION = { categories.SELF, categories.REPUTATION }
+SELF_EXPERIENCE = { categories.SELF, categories.EXPERIENCE }
 
 OTHERS_LOOT = {categories.OTHERS, categories.LOOT}
 
@@ -129,6 +139,9 @@ generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'}, SELF_LOOT)
 generate_match(LOOT_ITEM_SELF, {'link'}, SELF_LOOT)
 generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
 
+--self experience
+generate_match("You gain %d experience", {'experience'}, SELF_EXPERIENCE, true)
+generate_match("you gain %d experience", {'experience'}, SELF_EXPERIENCE, true)
 
 -- self currency
 generate_match(CURRENCY_GAINED, {'currency'}, SELF_CURRENCY)
@@ -158,13 +171,12 @@ generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'}, OTHERS_LOO
 generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
 
 --honor
-generate_match(COMBATLOG_HONORAWARD, {'honor'}, SELF_HONOR)
-generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'}, SELF_HONOR)
-generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'}, SELF_HONOR)
+--generate_match(COMBATLOG_HONORAWARD, {'honor'}, SELF_HONOR)
+--generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'}, SELF_HONOR)
+--generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'}, SELF_HONOR)
 
 --reputation
 generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'}, SELF_REPUTATION)
-generate_match(FACTION_STANDING_DECREASED, {'faction', 'count'}, SELF_REPUTATION)
 
 ------------------------------------
 ---- Feed updates ------------------
@@ -237,6 +249,9 @@ function LT:LootFeedPush(info)
 	if info.gold and feed_stack[1] and feed_stack[1].gold then
 		feed_stack[1].gold = feed_stack[1].gold + info.gold
 		feed_stack[1].time = info.time
+	elseif feed_stack[1] and info.name == feed_stack[1].name and info.rightText == feed_stack[1].rightText then
+		feed_stack[1].count = (feed_stack[1].count or 1) + (info.count or 1)
+		feed_stack[1].time = info.time
 	else
 		tinsert(feed_stack, 1, info)
 	end
@@ -260,6 +275,11 @@ function LT:LootFeedAddCurrency(match)
 	if not match['currency'] then return end
 
 	local info = C_CurrencyInfo.GetCurrencyInfoFromLink(match['currency'])
+
+	if not info then
+		st:Error("No current info found for", match['currency'])
+		return
+	end
 
 	local name
 	if info.maxQuantity > 0 then
@@ -335,6 +355,13 @@ function LT:LootFeedAddSkillUp(match)
 	})
 end
 
+function LT:LootFeedAddExperience(match)
+	self:LootFeedPush({
+		name = ('%d Experience'):format(match['experience']),
+		type = 'Experience'
+	})
+end
+
 function LT:LootFeedAddHonor(match)
 	if not match.honor then return end
 
@@ -370,7 +397,6 @@ end
 ------------------------------------
 
 function LT:LootFeedHandler(event, text)
-
 	local match = get_match(text)
 	if not match then return end
 
@@ -384,6 +410,8 @@ function LT:LootFeedHandler(event, text)
 		self:LootFeedAddSkillUp(match)
 	elseif match['honor'] then
 		self:LootFeedAddHonor(match)
+	elseif match['experience'] then
+		self:LootFeedAddExperience(match)
 	elseif match['faction'] then
 		match.count = tonumber(match.count)
 		if strfind(match.pattern, "decreased") then
@@ -578,4 +606,5 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_SKILL', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'LootFeedHandler')
+	self:RegisterEvent('CHAT_MSG_COMBAT_XP_GAIN', 'LootFeedHandler')
 end
