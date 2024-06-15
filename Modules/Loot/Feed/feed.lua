@@ -300,7 +300,7 @@ end
 function LT:LootFeedAddItem(match)
 	if not match['link'] then return end
 
-	local name, _, quality, _, _, _, _, _, _, texture = GetItemInfo(match['link'])
+	local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(match['link'])
 
 	if not name or not quality then
 		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))

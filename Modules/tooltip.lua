@@ -88,7 +88,7 @@ function TT:AddItemInfo(self)
 	local itemName, item_link = self:GetItem()
 	if not item_link then return end
 
-	local _, _, _, _, _, item_type, item_subtype, _, _, _, _, item_type_id, item_subtype_id, bind_type, expac_id, item_set_id = GetItemInfo(item_link) 
+	local _, _, _, _, _, item_type, item_subtype, _, _, _, _, item_type_id, item_subtype_id, bind_type, expac_id, item_set_id = C_Item.GetItemInfo(item_link)
 
 	if not item_type then return end
 	local item_id = select(2, strsplit(":", string.match(item_link, "item[%-?%d:]+")))

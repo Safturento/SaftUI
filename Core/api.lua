@@ -114,7 +114,7 @@ function st:SnapBottomRightOf(frame, anchorFrame, spacing)
 	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMRIGHT', xOffset, 0)
 end
 
-local title = select(2, GetAddOnInfo(st.name))
+local title = select(2, C_AddOns.GetAddOnInfo(st.name))
 
 function st:Print(...)
 	print(('[%s]: '):format(title), ...)

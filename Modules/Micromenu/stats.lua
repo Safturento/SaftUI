@@ -48,8 +48,8 @@ local function getSortedMemoryUsage()
     UpdateAddOnMemoryUsage()
 
     local usage = {}
-    for i=1, GetNumAddOns() do
-        local name = GetAddOnInfo(i)
+    for i=1, C_AddOns.GetNumAddOns() do
+        local name = C_AddOns.GetAddOnInfo(i)
         local memory = GetAddOnMemoryUsage(i)
         local cpu = GetAddOnCPUUsage(i)
         if memory > 1000 then

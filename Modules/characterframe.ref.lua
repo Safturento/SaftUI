@@ -71,7 +71,7 @@ function CharacterFrame:UpdateEquipSlot(equipSlot)
 	if not itemLink then
 		st:SetBackdrop(equipSlot, st.config.profile.buttons.template)
 	else
-		local name, link, quality, ilvl = GetItemInfo(itemLink)
+		local name, link, quality, ilvl = C_Item.GetItemInfo(itemLink)
 		local durability, maxDurability = GetInventoryItemDurability(equipSlot.ID)
 
 		if quality then

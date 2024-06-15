@@ -2,6 +2,7 @@
 	<Script file="button.lua"/>
 	<Script file="checkbutton.lua"/>
 	<Script file="scrollbar.lua"/>
+	<Script file="editbox.lua"/>
 	<Include file="templates.xml"/>
 	<Script file="scrolllist.lua"/>
 </Ui>

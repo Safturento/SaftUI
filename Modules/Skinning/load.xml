@@ -1,6 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="skinning.lua"/>
-	<Script file="characterframe.lua"/>
+	<Include file="characterframe/load.xml"/>
 	<Script file="weakauras.lua"/>
 	<Script file="hekili.lua"/>
 <!--	<Include file="Addons\addons.xml"/>-->

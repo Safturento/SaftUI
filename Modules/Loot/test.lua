@@ -15,7 +15,7 @@ local thunderfury = "\124cffff8000\124Hitem:19019::::::::70:262:::::::::\124h[Th
 local function generate_random_item()
 	local link
 	while not link do
-		link = select(2, GetItemInfo(random(0, 10000)))
+		link = select(2, C_Item.GetItemInfo(random(0, 10000)))
 	end
 	return link, random(1, 20)
 end

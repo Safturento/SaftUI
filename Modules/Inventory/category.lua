@@ -65,8 +65,8 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 	if item then
 		local tooltipText = self:ScanBagItem(bagID,slotID)
 		local name, _, quality, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
-			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(item.hyperlink)
-		local ilvl = GetDetailedItemLevelInfo(item.hyperlink)
+			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
+		local ilvl = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
 			local itemString = select(3, strfind(item.hyperlink, "|H(.+)|h"))
 			local itemType, itemId = string.split(':', itemString)
@@ -74,7 +74,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 			if itemType == "keystone" then
 				_, _, _, keyLevel =  string.split(':', itemString)
 				name, _, _, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
-					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemId)
+					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(itemId)
 				--\124cffa335ee\124Hkeystone:180653:198:15:10:136:8:0\124h[Keystone: Darkheart Thicket (15)]\124h\124r
 				class = 'Key'
 				item.stackCount = tonumber(keyLevel)

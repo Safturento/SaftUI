@@ -226,7 +226,7 @@ SLASH_PRINT_ITEM1 = '/item'
 SlashCmdList['PRINT_ITEM'] = function(link)
 	local itemName, itemLink, itemQuality, itemLevel, itemMinLevel, itemType, itemSubType,
 	itemStackCount, itemEquipLoc, itemTexture, sellPrice, classID, subclassID, bindType,
-	expacID, setID, isCraftingReagent = GetItemInfo(link)
+	expacID, setID, isCraftingReagent = C_Item.GetItemInfo(link)
 	st.tableprint({
 		itemName = itemName,
 		itemLink = itemLink,

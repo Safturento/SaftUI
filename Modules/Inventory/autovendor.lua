@@ -115,8 +115,8 @@ function INV:GetAutoVendorProfit()
 	for _,bagID in pairs(self.containers.bag.bag_ids) do
 		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
 			local link = C_Container.GetContainerItemLink(bagID, slotID)
-			if link and select(11, GetItemInfo(link)) then
-				local _,_,quality,_,_,_,_,_,_,_,price = GetItemInfo(link)
+			if link and select(11, C_Item.GetItemInfo(link)) then
+				local _,_,quality,_,_,_,_,_,_,_,price = C_Item.GetItemInfo(link)
 				local itemInfo = C_Container.GetContainerItemInfo(bagID, slotID)
 				local stackPrice = price * itemInfo.stackCount
 

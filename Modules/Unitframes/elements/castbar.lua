@@ -13,7 +13,7 @@ local function PostCastStart(castbar, unit)
 
 	if castbar.Icon.texture:GetTexture() == [[Interface\ICONS\INV_Misc_QuestionMark]] then
 		local name, _, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellID = CastingInfo(unit)
-		local icon = select(10, GetItemInfo(name))
+		local icon = select(10, C_Item.GetItemInfo(name))
 
 		if icon then
 			castbar.Icon.texture:SetTexture(icon)

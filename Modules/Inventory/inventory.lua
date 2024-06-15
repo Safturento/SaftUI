@@ -117,7 +117,7 @@ function INV:InitializeFooter(container)
 end
 
 function INV:InitializeSearch(container)
-	local search = st.Widgets:EditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
+	local search = st:CreateEditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
 	st:SkinEditBox(search, 'thicktransparent')
 	search:SetHeight(20)
 	self:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
@@ -336,6 +336,7 @@ end
 
 function INV:HideBags()
 	INV.containers.bag:Hide()
+	if not INV.containers.bag.slots then return end
 	for _,slot in pairs(INV.containers.bag.slots) do
 		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
 	end

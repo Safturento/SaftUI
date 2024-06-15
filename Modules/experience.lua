@@ -61,8 +61,21 @@ function XP:UpdateConfig()
 end
 
 function XP:GetWatchedFactionInfo()
+	local name, rank, minRep, maxRep, value, factionId
 
-	local name, rank, minRep, maxRep, value, factionId = GetWatchedFactionInfo()
+	if GetWatchedFactionInfo then
+		name, rank, minRep, maxRep, value, factionId = GetWatchedFactionInfo()
+	else
+		local selectedFactionIndex = C_Reputation.GetSelectedFaction();
+		local factionData = C_Reputation.GetFactionDataByIndex(selectedFactionIndex);
+		name = factionData.name
+		rank = factionData.reaction
+		minRep = factionData.currentReactionThreshold
+		maxRep = factionData.nextReactionThreshold
+		value = factionData.currentStanding
+		factionId = factionData.factionID
+	end
+
 	local friendshipInfo = C_GossipInfo.GetFriendshipReputation(factionId)
 
 	if C_Reputation.IsFactionParagon(factionId) then
@@ -123,9 +136,9 @@ end
 
 function XP:UpdateReputation()
 
-	if GetWatchedFactionInfo() then
-		local info = self:GetWatchedFactionInfo()
+	local info = self:GetWatchedFactionInfo()
 
+	if info then
 		self.bars.reputation:SetMinMaxValues(0, info.max)
 		self.bars.reputation:SetValue(info.current)
 			
@@ -181,7 +194,7 @@ function XP:OnEnter()
 		end
 	end
 
-	if GetWatchedFactionInfo() then
+	if C_Reputation.GetSelectedFaction() then
 		--Add a space between exp and rep
 		if MAX_PLAYER_LEVEL ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
 

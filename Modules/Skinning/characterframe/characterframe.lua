@@ -26,7 +26,7 @@ local CHARACTER_SLOTS = {
 	[INVSLOT_RANGED] = 'Ranged',
 }
 
-local SLOT_POSITIONS = {
+CF.SLOT_POSITIONS = {
 	[INVSLOT_HEAD] = 'LEFT',
 	[INVSLOT_NECK] = 'LEFT',
 	[INVSLOT_SHOULDER] = 'LEFT',
@@ -108,6 +108,8 @@ local function SkinSlot(ID, slotName)
 	reforgeTextBG:SetVertexColor(0,0,0)
 	equipSlot.reforgeText.bg = reforgeTextBG
 
+	CF:AddEquipSlotGems(equipSlot)
+
 	equipSlot:SetSize(46, 46)
 
 	st:SkinIcon(equipSlot.icon, nil, equipSlot)
@@ -129,19 +131,21 @@ function CF:SkinEquipSlots()
 	self:SecureHook('PaperDollItemSlotButton_Update', 'UpdateEquipSlot')
 	st.map(CHARACTER_SLOTS, SkinSlot)
 
-	if not st.retail then
-		CharacterHeadSlot:ClearAllPoints()
-		CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 9, -9)
+	CharacterHeadSlot:ClearAllPoints()
+	CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 9, -9)
 
-		CharacterModelScene:ClearAllPoints()
-		CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 9, 0)
+	CharacterModelScene:ClearAllPoints()
+	CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 9, 0)
 
-		CharacterHandsSlot:ClearAllPoints()
-		CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -9, -9)
-	end
+	CharacterHandsSlot:ClearAllPoints()
+	CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -9, -9)
 
 	CharacterSecondaryHandSlot:ClearAllPoints()
-	CharacterSecondaryHandSlot:SetPoint('BOTTOM', CharacterFrame, 'BOTTOM', 0, 7)
+	if st.retail then
+		CharacterSecondaryHandSlot:SetPoint('BOTTOMLEFT', CharacterFrame, 'BOTTOM', 3, 7)
+	else
+		CharacterSecondaryHandSlot:SetPoint('BOTTOM', CharacterFrame, 'BOTTOM', 0, 7)
+	end
 
 	CharacterMainHandSlot:ClearAllPoints()
 	CharacterMainHandSlot:SetPoint('TOPRIGHT', CharacterSecondaryHandSlot, 'TOPLEFT', -7, 0)
@@ -160,8 +164,8 @@ function CF:UpdateEquipSlot(equipSlot)
 	if not itemLink then
 		st:SetBackdrop(equipSlot, st.config.profile.buttons.template)
 	else
-		local name, link, quality = GetItemInfo(itemLink)
-		local ilvl = GetDetailedItemLevelInfo(itemLink)
+		local name, link, quality = C_Item.GetItemInfo(itemLink)
+		local ilvl = C_Item.GetDetailedItemLevelInfo(itemLink)
 		local durability, maxDurability = GetInventoryItemDurability(equipSlot.ID)
 
 		if quality then
@@ -202,93 +206,6 @@ function CF:UpdateEquipSlot(equipSlot)
 	end
 end
 
-function CF:InitEquipSlotEnhancements()
-	local overlay = st:CreateFrame('frame', 'CharacterFrameItemEnhancementOverlay', PaperDollItemsFrame)
-	overlay:SetAllPoints()
-
-	for id, slotName in pairs(CHARACTER_SLOTS) do
-		local equipSlot = _G[format('Character%sSlot', slotName)]
-		if not equipSlot then return end
-
-		local position = SLOT_POSITIONS[id]
-
-		--local reforgeText = st:CreateFontString(overlay, 'pixel', 'stat -> stat')
-		--equipSlot.reforgeText = reforgeText
-		--if position == 'LEFT' then
-		--	reforgeText:SetPoint('BOTTOMLEFT', equipSlot, 'BOTTOMRIGHT', 7, 0)
-		--elseif position == 'RIGHT' then
-		--	reforgeText:SetPoint('BOTTOMRIGHT', equipSlot, 'BOTTOMLEFT', -7, 0)
-		--elseif position == 'BOTTOM' then
-		--	reforgeText:SetPoint('BOTTOM', equipSlot, 'TOP', 0, 7)
-		--end
-
-
-		local gems = {}
-		for i=1, 4 do
-			local gem = st:CreateFrame('frame', equipSlot:GetName()..'GemSlot'..i, equipSlot)
-			gems[i] = gem
-			st:SetBackdrop(gem, 'thick')
-			gem:SetSize(20, 20)
-			gem:Hide()
-
-			gem.icon = gem:CreateTexture(nil, 'OVERLAY')
-			st:SkinIcon(gem.icon)
-			gem.icon:SetAllPoints()
-
-			gem:SetScript('OnEnter', function(self)
-				if self.itemId then
-					local _, itemLink = GetItemInfo(self.itemId)
-					GameTooltip:SetOwner(self, 'ANCHOR_NONE')
-					GameTooltip:ClearAllPoints()
-					GameTooltip:SetPoint('TOPLEFT', self, 'BOTTOMLEFT', 0, -7)
-					GameTooltip:SetHyperlink(itemLink)
-					GameTooltip:Show()
-				end
-			end)
-
-			gem:SetScript('OnLeave', function()
-				GameTooltip:Hide()
-			end)
-
-			if i == 1 then
-				if position == 'LEFT' then
-					gem:SetPoint('TOPLEFT', equipSlot, 'TOPRIGHT', 7, 0)
-				elseif position == 'RIGHT' then
-					gem:SetPoint('TOPRIGHT', equipSlot, 'TOPLEFT', -7, 0)
-				elseif position == 'BOTTOM' then
-					gem:SetPoint('BOTTOMLEFT', equipSlot, 'TOPLEFT', 0, 7)
-				end
-			else
-				if position == 'LEFT' then
-					gem:SetPoint('TOPLEFT', gems[i-1], 'TOPRIGHT', 7, 0)
-				elseif position == 'RIGHT' then
-					gem:SetPoint('TOPRIGHT', gems[i-1], 'TOPLEFT', -7, 0)
-				elseif position == 'BOTTOM' then
-					gem:SetPoint('BOTTOMLEFT', gems[i-1], 'TOPLEFT', 0, 7)
-				end
-			end
-		end
-
-		equipSlot.gems = gems
-	end
-end
-
-function CF:UpdateGems(equipSlot)
-	local gems = { GetInventoryItemGems(equipSlot.ID) }
-	for i=1, 4 do
-		local gem = equipSlot.gems[i]
-		if i <= #gems and gems[i] then
-			gem:Show()
-			gem.itemId = gems[i]
-			gem.icon:SetTexture(GetItemIcon(gems[i]))
-		else
-			gem:Hide()
-		end
-	end
-end
-
-
-
 local ScanQueue = {}
 function CF:QueueReforgeTextUpdate(equipSlot)
 	local equipSlotId = equipSlot.ID
@@ -326,13 +243,9 @@ function CF:UpdateReforgeText(equipSlot)
 end
 
 function CF:UpdateEquipSlotEnhancements()
-	--print('UpdateEquipSlotEnhancements')
-	for id, slotName in pairs(CHARACTER_SLOTS) do
-		local equipSlot = _G[format('Character%sSlot', slotName)]
-		if not equipSlot then return end
-
+	for slotName, equipSlot in pairs(equipSlots) do
 		self:QueueReforgeTextUpdate(equipSlot)
-		self:UpdateGems(equipSlot)
+		self:UpdateEquipSlotGems(equipSlot)
 	end
 end
 
@@ -509,9 +422,10 @@ end
 function CF:OnInitialize()
     SK:SkinBlizzardPanel(CharacterFrame, {title = CharacterNameText})
 	self:SkinEquipSlots()
-	self:InitEquipSlotEnhancements()
+	--self:InitEquipSlotEnhancements()
 	self:CreateTitleSelector()
     --self:SkinStatFrame()
+
 
 	self:RegisterEvent('PLAYER_EQUIPMENT_CHANGED', 'UpdateEquipSlotEnhancements');
 	self:RegisterEvent('SPELLS_CHANGED', 'UpdateEquipSlotEnhancements');
@@ -521,12 +435,16 @@ function CF:OnInitialize()
 	self:SecureHook('PaperDollFrame_SetSidebar', 'PositionSidebarTab')
 
 	CharacterFrame:SetSize(430, 500)
-	if CharacterFrame_Expand then
-		self:SecureHook('CharacterFrame_Collapse', 'SizeCharacterFrame')
-		self:SecureHook('CharacterFrame_Expand', 'SizeCharacterFrame')
-	else
-		self:SecureHook(CharacterFrame, 'UpdateSize', 'SizeCharacterFrame')
-		--self:SecureHook(CharacterFrame, 'Collapse', 'SizeCharacterFrame')
+	if CharacterFrame_Collapse then
+		CharacterFrame_Collapse()
+		CharacterFrame_Collapse = st.dummy
+		CharacterFrame_Expand = st.dummy
+		self:SizeCharacterFrame()
+	elseif CharacterFrame.Collapse then
+		CharacterFrame:Collapse()
+		CharacterFrame.Collapse = st.dummy
+		CharacterFrame.Expand = st.dummy
+		CharacterFrame.UpdateSize = st.dummy
 	end
 
 	CharacterFrame.ItemLevelText = st:CreateFontString(PaperDollItemsFrame, 'normal', 'Eq: 000 \t Avg: 000')

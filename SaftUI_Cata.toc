@@ -24,7 +24,6 @@ Libraries\LibBase64-1.0\LibBase64-1.0.lua
 Core\load.xml
 Utilities\load.xml
 Media\load.xml
-Widgets\load.xml
 Config\load.xml
 
 Modules\Unitframes\load.xml

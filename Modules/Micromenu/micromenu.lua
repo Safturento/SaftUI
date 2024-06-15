@@ -54,7 +54,7 @@ end
 
 function MicroMenu:SkinTrackingButton()
     if st.retail then
-        local button = MinimapCluster.TrackingFrame
+        local button = MinimapCluster.TrackingFrame or MinimapCluster.Tracking
         button.Button:SetAllPoints()
 
         for _,texture in pairs({
