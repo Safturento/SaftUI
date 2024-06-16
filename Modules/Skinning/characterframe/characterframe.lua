@@ -250,46 +250,36 @@ function CF:UpdateEquipSlotEnhancements()
 end
 
 function CF:SkinStatFrame()
-	st:Kill(CharacterAttributesFrame)
-	st:Kill(CharacterResistanceFrame)
+	if not CharacterStatsPane then return end
 
-	CharacterStatsFrame = CreateFrame('ScrollFrame', 'CharacterStatsFrame', PaperDollFrame, 'FauxScrollFrameTemplate')
-	CharacterStatsFrame:SetScript('OnVerticalScroll', UpdateStatsScroll)
-	CharacterStatsFrame:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 7, 0)
-	CharacterStatsFrame:SetPoint('BOTTOMRIGHT', CharacterTrinket0Slot, 'BOTTOMLEFT', -7, 0)
-	--CharacterStatsFrame:SetFrameLevel(CharacterModelFrame:GetFrameLevel()+4)
-	CharacterStatsFrame.offset = 0
+	CharacterStatsPane:SetParent(PaperDollFrame)
+	CharacterStatsPane:ClearAllPoints()
+	CharacterStatsPane:SetPoint('TOPLEFT', CharacterFrame, 'TOPRIGHT', 7, 0)
+	st:SetBackdrop(CharacterStatsPane, 'thick')
+	st:SkinScrollBar(CharacterStatsPane.ScrollBar)
+	CharacterStatsPane.ScrollBar:ClearAllPoints()
+	CharacterStatsPane.ScrollBar:SetPoint('TOPLEFT', CharacterStatsPane, 'TOPRIGHT', 7, 1)
+	CharacterStatsPane.ScrollBar:SetPoint('BOTTOMLEFT', CharacterStatsPane, 'BOTTOMRIGHT', 7, -1)
+	CharacterStatsPane:SetWidth(180)
+	CharacterStatsPane:SetHeight(CharacterFrame:GetHeight())
+	CharacterStatsPane.ScrollBox:ClearAllPoints()
+	CharacterStatsPane.ScrollBox:SetPoint('TOPLEFT', 0, 0)
+	CharacterStatsPane.ScrollBox:SetHeight(CharacterFrame:GetHeight())
+	CharacterStatsPane.ScrollBox:SetPadding(10)
 
-	CharacterStatsFrame.rows = {}
-	local prev
-	for i=1, 12 do
-		local row = CreateFrame('frame', nil, CharacterStatsFrame)
-		st:SetBackdrop(row, st.config.profile.panels.template)
-		--row.outer_shadow:Hide()
-
-		if prev then
-			row:SetPoint('TOPLEFT', prev, 'BOTTOMLEFT', 0, -1)
-		else
-			row:SetPoint('TOPLEFT', CharacterStatsFrame)
-		end
-		row:SetPoint('RIGHT', CharacterStatsFrame)
-		row:SetHeight(24)
-
-		row.stat_name = row:CreateFontString(nil, 'OVERLAY')
-		row.stat_name:SetPoint('LEFT', 10, 0)
-		row.stat_name:SetFontObject(st:GetFont(st.config.profile.panels.font))
-		row.stat_name:SetText('Stat'..i)
-
-		row.stat_value = row:CreateFontString(nil, 'OVERLAY')
-		row.stat_value:SetPoint('RIGHT', -10, 0)
-		row.stat_value:SetFontObject(st:GetFont(st.config.profile.panels.font))
-		row.stat_value:SetText(i*1000)
-
-		prev = row
-		CharacterStatsFrame.rows[i] = row
+	for i = 1, 7 do
+		local category = _G['CharacterStatsPaneCategory'..i]
+		st:StripTextures(category)
 	end
 
-	st:SetBackdrop(CharacterStatsFrame, st.config.profile.panels.template)
+	local statsButton = st:CreateButton(nil, PaperDollFrame, 'stats')
+	statsButton:SetPoint("BOTTOMRIGHT", CharacterFrame, -7, 7)
+	statsButton:SetSize(70, 20)
+	self:HookScript(statsButton, 'OnClick', 'ToggleStatsFrame')
+end
+
+function CF:ToggleStatsFrame()
+	ToggleFrame(CharacterStatsPane)
 end
 
 function CF:SkinSidebarTabs()
@@ -399,15 +389,12 @@ function CF:ToggleTitleSelectDropdown()
 
 	self.TitleSelectDropdown:SetData(getTitleDataProvider(), true)
 
-	if self.TitleSelectDropdown:IsShown() then
-		self.TitleSelectDropdown:Hide()
-	else
-		self.TitleSelectDropdown:Show()
-	end
+	ToggleFrame(self.TitleSelectDropdown)
 end
 
 function CF:CreateTitleSelector()
-	local button = st:CreateButton('CharacterFrameTitleSelectButton', CharacterFrame_Header)
+	local button = st:CreateButton('CharacterFrameTitleSelectButton', PaperDollFrame)
+	button:SetFrameLevel(CharacterFrame_Header:GetFrameLevel() + 2)
 	button:SetPoint('TOPLEFT', CharacterFrameTitleText, 'TOPRIGHT', 5, 0)
 	button:SetSize(14, 14)
 	self.TitleSelectButton = button
@@ -421,11 +408,26 @@ end
 
 function CF:OnInitialize()
     SK:SkinBlizzardPanel(CharacterFrame, {title = CharacterNameText})
-	self:SkinEquipSlots()
-	--self:InitEquipSlotEnhancements()
-	self:CreateTitleSelector()
-    --self:SkinStatFrame()
+	if CharacterFrame_Collapse then
+		CharacterFrame_Collapse()
+		CharacterFrame_Collapse = st.dummy
+		CharacterFrame_Expand = st.dummy
+	elseif CharacterFrame.Collapse then
+		CharacterFrame:Collapse()
+		CharacterFrame.Collapse = st.dummy
+		CharacterFrame.Expand = st.dummy
+		CharacterFrame.UpdateSize = st.dummy
+	end
 
+	if CharacterFrameExpandButton then
+		st:Kill(CharacterFrameExpandButton)
+	end
+
+	self:SizeCharacterFrame()
+
+	self:SkinEquipSlots()
+	self:CreateTitleSelector()
+    self:SkinStatFrame()
 
 	self:RegisterEvent('PLAYER_EQUIPMENT_CHANGED', 'UpdateEquipSlotEnhancements');
 	self:RegisterEvent('SPELLS_CHANGED', 'UpdateEquipSlotEnhancements');
@@ -433,19 +435,6 @@ function CF:OnInitialize()
 
 	self:SecureHook('PaperDollFrame_UpdateSidebarTabs', 'SkinSidebarTabs')
 	self:SecureHook('PaperDollFrame_SetSidebar', 'PositionSidebarTab')
-
-	CharacterFrame:SetSize(430, 500)
-	if CharacterFrame_Collapse then
-		CharacterFrame_Collapse()
-		CharacterFrame_Collapse = st.dummy
-		CharacterFrame_Expand = st.dummy
-		self:SizeCharacterFrame()
-	elseif CharacterFrame.Collapse then
-		CharacterFrame:Collapse()
-		CharacterFrame.Collapse = st.dummy
-		CharacterFrame.Expand = st.dummy
-		CharacterFrame.UpdateSize = st.dummy
-	end
 
 	CharacterFrame.ItemLevelText = st:CreateFontString(PaperDollItemsFrame, 'normal', 'Eq: 000 \t Avg: 000')
 	CharacterFrame.ItemLevelText:SetPoint('BOTTOMLEFT', CharacterFrame, 'BOTTOMLEFT', 7, 7)

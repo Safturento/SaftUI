@@ -1,7 +1,6 @@
 local st = SaftUI
 local CF = st:GetModule('Skinning'):GetModule('CharacterFrame')
 
-
 function CF:ShowGemTooltip(gemSlot)
 	if gemSlot.itemId then
 		local _, itemLink = C_Item.GetItemInfo(gemSlot.itemId)
