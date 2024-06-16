@@ -194,7 +194,7 @@ function XP:OnEnter()
 		end
 	end
 
-	if C_Reputation.GetSelectedFaction() then
+	if GetWatchedFactionInfo and GetWatchedFactionInfo() or C_Reputation.GetSelectedFaction() then
 		--Add a space between exp and rep
 		if MAX_PLAYER_LEVEL ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
 
