@@ -254,28 +254,93 @@ function CF:SkinStatFrame()
 
 	CharacterStatsPane:SetParent(PaperDollFrame)
 	CharacterStatsPane:ClearAllPoints()
-	CharacterStatsPane:SetPoint('TOPLEFT', CharacterFrame, 'TOPRIGHT', 7, 0)
-	st:SetBackdrop(CharacterStatsPane, 'thick')
-	st:SkinScrollBar(CharacterStatsPane.ScrollBar)
-	CharacterStatsPane.ScrollBar:ClearAllPoints()
-	CharacterStatsPane.ScrollBar:SetPoint('TOPLEFT', CharacterStatsPane, 'TOPRIGHT', 7, 1)
-	CharacterStatsPane.ScrollBar:SetPoint('BOTTOMLEFT', CharacterStatsPane, 'BOTTOMRIGHT', 7, -1)
 	CharacterStatsPane:SetWidth(180)
-	CharacterStatsPane:SetHeight(CharacterFrame:GetHeight())
-	CharacterStatsPane.ScrollBox:ClearAllPoints()
-	CharacterStatsPane.ScrollBox:SetPoint('TOPLEFT', 0, 0)
-	CharacterStatsPane.ScrollBox:SetHeight(CharacterFrame:GetHeight())
-	CharacterStatsPane.ScrollBox:SetPadding(10)
+	CharacterStatsPane:SetPoint('TOPLEFT', CharacterFrame, 'TOPRIGHT', 7, 0)
+	st:SetBackdrop(CharacterStatsPane, 'thicktransparent')
 
-	for i = 1, 7 do
-		local category = _G['CharacterStatsPaneCategory'..i]
-		st:StripTextures(category)
+	if CharacterStatsPane.ScrollBar then
+		self:SkinClassicStatFrame()
+	else
+		self:SkinRetailStatFrame()
 	end
 
 	local statsButton = st:CreateButton(nil, PaperDollFrame, 'stats')
 	statsButton:SetPoint("BOTTOMRIGHT", CharacterFrame, -7, 7)
 	statsButton:SetSize(70, 20)
 	self:HookScript(statsButton, 'OnClick', 'ToggleStatsFrame')
+end
+
+function CF:SkinClassicStatFrame()
+
+	CharacterStatsPane:SetHeight(CharacterFrame:GetHeight())
+
+	st:SkinScrollBar(CharacterStatsPane.ScrollBar)
+	CharacterStatsPane.ScrollBar:ClearAllPoints()
+	CharacterStatsPane.ScrollBar:SetPoint('TOPLEFT', CharacterStatsPane, 'TOPRIGHT', 7, 1)
+	CharacterStatsPane.ScrollBar:SetPoint('BOTTOMLEFT', CharacterStatsPane, 'BOTTOMRIGHT', 7, -1)
+	CharacterStatsPane.ScrollBox:ClearAllPoints()
+	CharacterStatsPane.ScrollBox:SetPoint('TOPLEFT', 0, 0)
+	CharacterStatsPane.ScrollBox:SetHeight(CharacterFrame:GetHeight())
+	CharacterStatsPane.ScrollBox:SetPadding(10)
+
+	for i = 1, 7 do
+		local categoryFrame = _G['CharacterStatsPaneCategory'..i]
+		st:StripTextures(categoryFrame)
+		categoryFrame.NameText:SetFontObject(st:GetFont('normal_med'))
+		categoryFrame.NameText:SetHeight(26)
+		local toolbar = _G[categoryFrame:GetName() .. 'Toolbar']
+		toolbar:SetHeight(categoryFrame.NameText:GetHeight())
+		toolbar:ClearAllPoints()
+		toolbar:SetPoint('TOPLEFT')
+		toolbar:SetPoint('RIGHT')
+	end
+
+	self:SecureHook('PaperDollFrame_UpdateStatCategory', 'UpdateClassicStatCategory')
+	self:SecureHook('PaperDollFrame_ExpandStatCategory', 'UpdateClassicStatCategory')
+	self:SecureHook('PaperDollFrame_CollapseStatCategory', 'UpdateClassicStatCategory')
+end
+
+function CF:UpdateClassicStatCategory(categoryFrame)
+	local i = 1
+	local statFrame = _G[categoryFrame:GetName().."Stat"..i];
+	while statFrame do
+		if i == 1 then
+			statFrame:ClearAllPoints(statFrame)
+			statFrame:SetPoint('TOPLEFT' ,_G[categoryFrame:GetName() .. 'Toolbar'], 'BOTTOMLEFT', 10, -13)
+			statFrame:SetPoint('RIGHT' , categoryFrame, 'RIGHT', 0, 0)
+		end
+
+		statFrame.Label:SetFontObject(st:GetFont('normal'))
+		statFrame.Label:SetTextColor(unpack(st.config.profile.colors.text.yellow))
+		statFrame.Value:SetFontObject(st:GetFont('normal'))
+		statFrame:SetHeight(20)
+
+		i = i + 1
+		statFrame = _G[categoryFrame:GetName().."Stat"..i];
+	end
+end
+
+function CF:SkinRetailStatFrame()
+	CharacterStatsPane:SetHeight(330)
+	st:StripTextures(CharacterStatsPane)
+	for _, categoryFrame in pairs({
+		CharacterStatsPane.ItemLevelCategory,
+		CharacterStatsPane.AttributesCategory,
+		CharacterStatsPane.EnhancementsCategory
+	}) do
+		categoryFrame.Background:SetTexture()
+		categoryFrame.Title:SetFontObject(st:GetFont('normal_med'))
+	end
+
+	CharacterStatsPane.ItemLevelFrame.Value:SetFontObject(st:GetFont('normal_med'))
+
+	self:SecureHook('PaperDollFrame_SetLabelAndText', 'UpdateRetailStatFrame')
+end
+
+function CF:UpdateRetailStatFrame(statFrame, label, text, isPercentage, numericValue)
+	statFrame:SetHeight(20)
+	statFrame.Label:SetFontObject(st:GetFont('normal'))
+	statFrame.Value:SetFontObject(st:GetFont('normal'))
 end
 
 function CF:ToggleStatsFrame()
