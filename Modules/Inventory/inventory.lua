@@ -4,7 +4,7 @@ local INV = st:NewModule('Inventory')
 local BAG_IDS
 if st.retail then
 	BAG_IDS = {
-		['bag'] = {0, 1, 2, 3, 4, 5},
+		['bag'] = { 0, 1, 2, 3, 4, 5 },
 		['bank'] = {-1, 6, 7, 8, 9, 10, 11, 12},
 		['reagent'] = {-3}
 	}
@@ -93,7 +93,7 @@ function INV:InitializeFooter(container)
 
 		container.footer.gold = goldstring
 		self:UpdateGold()
-	elseif container.id == 'bank' then
+	elseif container.id == 'bank' and st.retail then
 		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents')
 		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
 		reagentButton:SetScript('OnClick', function()
