@@ -57,6 +57,7 @@ function AB:SkinActionButtons()
 			self:SecureHook(slot, 'Update', 'UpdateActionButton')
 			self:SecureHook(slot, 'UpdateButtonArt', 'UpdateActionButton')
 
+			st:Kill(slot.SlotArt)
 			slot.count = _G[name..'Count']
 			slot.hotkey = _G[name..'HotKey']
 
@@ -136,6 +137,12 @@ end
 
 function AB:OnInitialize()
 	self.config = st.config.profile.actionbars
+
+	st:Kill(MainMenuBar.EndCaps)
+	st:Kill(MainMenuBar.BorderArt)
+	st:Kill(MainMenuBar.EndCaps.LeftEndCap)
+	st:Kill(MainMenuBar.EndCaps.RightEndCap)
+
 	self:SkinActionButtons()
 	self:UpdateConfig()
 end
