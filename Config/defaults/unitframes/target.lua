@@ -1,7 +1,7 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].target = {
-    position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 151, y_off = -200 },
+    position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'CENTER', x_off = 158, y_off = -200 },
     castbar = {
         position = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 120 },
         enable = true,

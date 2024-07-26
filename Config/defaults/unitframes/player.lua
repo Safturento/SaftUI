@@ -1,15 +1,15 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].player = {
-    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -150, y_off = -200 },
+    position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -157, y_off = -200 },
     additionalpower = {
         enable = true,
         manaAsPrimary = true,
         relative_width = false,
         relative_height = false,
-        width = 286,
-        height = 10,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -170 },
+        width = 299,
+        height = 9,
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -200 },
         text = {
             font='pixel_med',
             position = { rel_point = "CENTER", point = "CENTER",  x_off = 0, y_off = 7 },
@@ -26,11 +26,11 @@ st.defaults.unitframes.profiles["**"].player = {
     castbar = {
         enable = true,
         relative_width = false,
-        width = 273,
+        width = 301,
         relative_height = false,
         height = 24,
         template = 'thicktransparent',
-        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -278 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -281 },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
         },
