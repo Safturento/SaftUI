@@ -65,6 +65,7 @@ function XP:GetWatchedFactionInfo()
 
 	if C_Reputation.GetSelectedFaction then
 		local selectedFactionIndex = C_Reputation.GetSelectedFaction();
+		if selectedFactionIndex == 0 then return end
 		local factionData = C_Reputation.GetFactionDataByIndex(selectedFactionIndex);
 		name = factionData.name
 		rank = factionData.reaction
@@ -152,7 +153,7 @@ function XP:UpdateReputation()
 end
 
 function XP:UpdateExperience()
-	if MAX_PLAYER_LEVEL ~= UnitLevel('player') then
+	if GetMaxPlayerLevel() ~= UnitLevel('player') then
 		local current, max = UnitXP('player'), UnitXPMax('player')
 		local rest = GetXPExhaustion()
 
@@ -184,7 +185,7 @@ function XP:OnEnter()
 	end
 	GameTooltip:ClearLines()
 
-	if MAX_PLAYER_LEVEL ~= UnitLevel('player') then
+	if GetMaxPlayerLevel() ~= UnitLevel('player') then
 		local current, max = UnitXP('player'), UnitXPMax('player')
 		local rest = GetXPExhaustion()
 
@@ -198,7 +199,7 @@ function XP:OnEnter()
 	if C_Reputation.GetSelectedFaction and C_Reputation.GetSelectedFaction()
 			or GetWatchedFactionInfo and GetWatchedFactionInfo() then
 		--Add a space between exp and rep
-		if MAX_PLAYER_LEVEL ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
+		if GetMaxPlayerLevel() ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
 
 		local info = self:GetWatchedFactionInfo()
 		local current, max = info.current, info.max
