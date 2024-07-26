@@ -339,8 +339,8 @@ end
 
 function CF:UpdateRetailStatFrame(statFrame, label, text, isPercentage, numericValue)
 	statFrame:SetHeight(20)
-	statFrame.Label:SetFontObject(st:GetFont('normal'))
-	statFrame.Value:SetFontObject(st:GetFont('normal'))
+	if statFrame.Label then statFrame.Label:SetFontObject(st:GetFont('normal')) end
+	if statFrame.Value then statFrame.Value:SetFontObject(st:GetFont('normal')) end
 end
 
 function CF:ToggleStatsFrame()
