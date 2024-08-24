@@ -20,7 +20,31 @@ end
 INV.containers = {}
 INV.OnUseItems = {}
 
-function INV:CreateContainer(id, name)
+function INV:SelectBankCategory(clickedHeader)
+	local selectedContainer = clickedHeader:GetParent()
+    if selectedContainer.id == 'reagent' then
+        BankFrame_ShowPanel(ReagentBankFrame)
+    elseif selectedContainer.id == 'warband' then
+        BankFrame_ShowPanel('AccountBankPanel')
+    else
+        BankFrame_ShowPanel('BankSlotsFrame')
+    end
+
+    for containerName, container in pairs(self.containers) do
+        if containerName == selectedContainer.id then
+            container.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.blue))
+        else
+            st:SetBackdrop(container, self.config.template)
+        end
+    end
+end
+
+
+function INV:GetContainer(containerName)
+	return self.containers[containerName]
+end
+
+function INV:CreateContainer(id, name, isBankContainer)
 	local container = CreateFrame('frame', st.name ..name, UIParent)
 	container.id = id
 	container:SetFrameStrata('HIGH')
@@ -61,6 +85,10 @@ function INV:CreateContainer(id, name)
 		local bag = CreateFrame('frame', 'SaftUI_Bag'..bag_id, container)
 		bag:SetID(bag_id)
 		container.bags[bag_id] = bag
+	end
+
+	if isBankContainer then
+		 self:HookScript(container.header, 'OnClick', 'SelectBankCategory')
 	end
 
 	self:UpdateConfig(id)
@@ -202,7 +230,7 @@ end
 
 function INV:UpdateContainer(id)
 	local container = self.containers[id]
-	if not container:IsShown() then return end
+	if not container and container:IsShown() then return end
 	local sortedInventory = self:GetSortedInventory(id)
 
 	for name, items in pairs(sortedInventory) do
@@ -303,29 +331,22 @@ function INV:UpdateConfig(id)
 	st:SetBackdrop(container, self.config.template)
 end
 
-local lastUpdate = 0
-local interval = .01
-
-
-local barrier = st:createBarrier(1)
+function INV:UpdateVisibleContainers()
+	for containerName, container in pairs(self.containers) do
+		if container:IsShown() then
+			self:UpdateContainer(containerName)
+		end
+	end
+end
 
 function INV:UpdateHandler(_, elapsed)
+	if self.IS_UPDATING or not self.NEED_UPDATE then return end
 
-
-	if self.NEED_UPDATE and not self.IS_UPDATING then
-		self.IS_UPDATING = true
-		self.NEED_UPDATE = false
-		self:UpdateGold()
-		self:UpdateContainer('bag')
-		if self.containers.bank then
-			self:UpdateContainer('bank')
-		end
-
-		if self.containers.reagent then
-			self:UpdateContainer('reagent')
-		end
-		self.IS_UPDATING = false
-	end
+	self.IS_UPDATING = true
+	self.NEED_UPDATE = false
+	self:UpdateGold()
+	self:UpdateVisibleContainers()
+	self.IS_UPDATING = false
 end
 
 function INV:QueueUpdate()
@@ -369,7 +390,7 @@ end
 
 function INV:OpenBank()
 	if not self.containers.bank then
-		self:CreateContainer('bank', BANK)
+		self:CreateContainer('bank', BANK, true)
 		self:MoveBankBagSlots()
 		--self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
