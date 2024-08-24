@@ -13,14 +13,27 @@ function st:CreateButton(name, parent, text, template)
 	return button
 end
 
-function st:SkinButton(button, template, font, name)
+function st:SkinButton(button, template, font)
 	assert(button)
 	st:SetBackdrop(button, template or 'thick')
 
     local fontObject = st:GetFont(font or 'pixel')
+	if button.SetNormalFontObject then
+		button:SetNormalFontObject(fontObject)
+		button:SetHighlightFontObject(fontObject)
+		button:SetDisabledFontObject(fontObject)
+		button:SetPushedTextOffset(0, 0)
+	else
+		for _,region in pairs({ button:GetRegions() }) do
+			if region:GetObjectType() == 'FontString' then
+				region:SetFontObject(fontObject)
+			end
+		end
+	end
+
     for _,region in pairs({ button:GetRegions() }) do
-        if region:GetObjectType() == 'FontString' then
-            region:SetFontObject(fontObject)
+		if region:GetObjectType() == 'Texture' then
+			region:SetAlpha(0)
         end
     end
 

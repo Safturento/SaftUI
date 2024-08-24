@@ -1,7 +1,7 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-function isWhitelisted(whitelist, data)
+local function isWhitelisted(whitelist, data)
     if not whitelist.enable then return true end
     if whitelist.yours and isCastByPlayer(data) then return true end
     if whitelist.others and not isCastByPlayer(data) then return true end
@@ -12,7 +12,7 @@ function isWhitelisted(whitelist, data)
     return false
 end
 
-function isBlacklisted(blacklist, data)
+local function isBlacklisted(blacklist, data)
     if not blacklist.enable then return false end
     if blacklist.yours and isCastByPlayer(data) then return true end
     if blacklist.others and not isCastByPlayer(data) then return true end
@@ -23,7 +23,7 @@ function isBlacklisted(blacklist, data)
     return false
 end
 
-function getHostility(unit)
+local function getHostility(unit)
     return UnitIsFriend('player', unit) and 'friend' or 'enemy'
 end
 

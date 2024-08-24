@@ -1,7 +1,7 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-function Constructor(unitframe)
+local function Constructor(unitframe)
     if st.retail then
         local widget = UF:AddStatusBarElement(unitframe, 'Widget')
         UF:AddText(unitframe, widget)

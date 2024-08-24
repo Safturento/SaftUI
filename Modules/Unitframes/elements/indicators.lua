@@ -5,16 +5,16 @@ local UF = st:GetModule('Unitframes')
 local DEBUG = false
 
 local indicators = {
-    {
-        configKey = 'grouproleindicator',
-        name = 'GroupRoleIndicator',
-        postUpdate = function(self, role)
-            self:SetShown(role == 'HEALER' or role == 'TANK')
-        end,
-        debug = function(self)
-            self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
-        end
-    },
+    --{
+    --    configKey = 'grouproleindicator',
+    --    name = 'GroupRoleIndicator',
+    --    postUpdate = function(self, role)
+    --        self:SetShown(role == 'HEALER' or role == 'TANK')
+    --    end,
+    --    debug = function(self)
+    --        self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
+    --    end
+    --},
     {
         configKey = 'raidroleindicator',
         name = 'RaidRoleIndicator',

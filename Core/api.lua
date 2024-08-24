@@ -146,9 +146,9 @@ end
 
 function st:Hide(frame, reparent)
    frame:ClearAllPoints()
-   frame:SetPoint('BOTTOMRIGHT', UIParent, 'TOPLEFT', -9000, 9000)
+   frame:SetPoint('BOTTOM', HiddenFrame)
 
-   if reparent then frame:SetParent(st.hidden_frame) end
+   if reparent then frame:SetParent(st.HiddenFrame) end
 end
 
 function st:EnableMoving(frame)

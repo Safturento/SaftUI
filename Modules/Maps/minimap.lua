@@ -7,6 +7,13 @@ function MP:MiniMapIndicatorFrame_UpdatePosition()
     MinimapCluster.IndicatorFrame:SetPoint("TOPRIGHT", MinimapCluster.BorderTop, "TOPLEFT", -1, -1);
 end
 
+function MP:GarrisonMinimap_ShowCovenantCallingsNotification(ExpansionLandingPageMinimapButton)
+    if not ExpansionLandingPageMinimapButton then return end
+    ExpansionLandingPageMinimapButton.AlertText:SetText(COVENANT_CALLINGS_AVAILABLE);
+	ExpansionLandingPageMinimapButton.MinimapAlertAnim:Stop();
+	ExpansionLandingPageMinimapButton.MinimapLoopPulseAnim:Stop();
+end
+
 function MP:InitializeMinimap()
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
@@ -15,14 +22,10 @@ function MP:InitializeMinimap()
 
     Minimap:SetSize(self.config.minimap.size, self.config.minimap.size)
 
-    UIWidgetBelowMinimapContainerFrame:ClearAllPoints()
-    UIWidgetBelowMinimapContainerFrame:SetPoint("TOP", Minimap, "BOTTOM", 0, -70)
-    UIWidgetBelowMinimapContainerFrame.ClearAllPoints = function()  end
-    UIWidgetBelowMinimapContainerFrame.SetPoint = function()  end
-
     if st.retail then
         self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
         self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')
+        self:SecureHook('GarrisonMinimap_ShowCovenantCallingsNotification')
         Minimap:SetArchBlobRingScalar(0)
         Minimap:SetQuestBlobRingScalar(0)
     else

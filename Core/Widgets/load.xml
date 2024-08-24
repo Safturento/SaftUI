@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="button.lua"/>
 	<Script file="checkbutton.lua"/>
+	<Script file="dropdown.lua"/>
 	<Script file="scrollbar.lua"/>
 	<Script file="editbox.lua"/>
 	<Include file="templates.xml"/>

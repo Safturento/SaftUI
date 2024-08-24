@@ -55,7 +55,7 @@ local SHORT_STATS = {
 	['Crit'] = 'Cr',
 }
 
-function shortStat(stat)
+local function shortStat(stat)
 	if SHORT_STATS[stat] then
 		return stat:gsub(stat, SHORT_STATS[stat])
 	end
@@ -447,6 +447,7 @@ function CF:ToggleTitleSelectDropdown()
 		scrollList:SetItemHeight(20)
 		scrollList:SetItemSpacing(7)
 		scrollList:SetNumItems(10)
+		scrollList:SetFrameStrata('HIGH')
 		scrollList:Hide()
 
 		self.TitleSelectDropdown = scrollList

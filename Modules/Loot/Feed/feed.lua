@@ -60,7 +60,7 @@ local function generate_match(match, keys, categories, fuzzy)
 		(.+) receives item (\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*x(%d+).$
 						   |---------------this whole chunk is the item link-------|
 	]]--
-	replacements = {}
+	local replacements = {}
 
 	match = match:gsub("%(", "")
 	match = match:gsub("%)", "")
@@ -106,7 +106,7 @@ local function get_match(string)
 	end
 end
 
-categories = {
+local categories = {
 	LOOT = "LOOT",
 	OTHERS = "OTHERS",
 	EXPERIENCE = "EXPERIENCE",
@@ -117,15 +117,15 @@ categories = {
 	CURRENCY = "CURRENCY",
 }
 
-SELF_LOOT = {categories.SELF, categories.LOOT}
-SELF_CURRENCY = {categories.SELF, categories.CURRENCY}
-SELF_GOLD = { categories.SELF, categories.GOLD }
-SELF_SKILL_UP = { categories.SELF, categories.SKILL_UP }
-SELF_HONOR = { categories.SELF, categories.HONOR }
-SELF_REPUTATION = { categories.SELF, categories.REPUTATION }
-SELF_EXPERIENCE = { categories.SELF, categories.EXPERIENCE }
+local SELF_LOOT = {categories.SELF, categories.LOOT}
+local SELF_CURRENCY = {categories.SELF, categories.CURRENCY}
+local SELF_GOLD = { categories.SELF, categories.GOLD }
+local SELF_SKILL_UP = { categories.SELF, categories.SKILL_UP }
+local SELF_HONOR = { categories.SELF, categories.HONOR }
+local SELF_REPUTATION = { categories.SELF, categories.REPUTATION }
+local SELF_EXPERIENCE = { categories.SELF, categories.EXPERIENCE }
+local OTHERS_LOOT = {categories.OTHERS, categories.LOOT}
 
-OTHERS_LOOT = {categories.OTHERS, categories.LOOT}
 
 -- self loot
 generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'}, SELF_LOOT)
@@ -177,6 +177,7 @@ generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'}, OTHERS
 
 --reputation
 generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'}, SELF_REPUTATION)
+generate_match(FACTION_STANDING_INCREASED_ACCOUNT_WIDE, {'faction', 'count'}, SELF_REPUTATION)
 
 ------------------------------------
 ---- Feed updates ------------------

@@ -10,7 +10,7 @@ SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
 function SaftUI:OnInitialize()
-	SetCVar('autoLootDefault', 1)
+	--SetCVar('autoLootDefault', 1)
 	SetCVar('chatStyle', 'classic')
 	SetCVar('whisperMode', 'inline')
 
@@ -36,7 +36,7 @@ function SaftUI:OnInitialize()
 	self:RegisterEvent('PLAYER_ENTERING_WORLD')
 	RequestTimePlayed()
 
-	total_time = 0
+	local total_time = 0
 	for _, realm_config in pairs(SaftUI_DB.realm) do
 		if realm_config.summary then
 			for _, summary in pairs(realm_config.summary) do

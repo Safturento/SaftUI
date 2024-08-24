@@ -5,6 +5,7 @@
 	<Include file="tooltipscanner.lua"/>
 	<Include file="category.lua"/>
 	<Include file="reagentbank.lua"/>
+	<Include file="warbandbank.lua"/>
 	<Include file="slot.lua"/>
 	<Include file="utilities.lua"/>
 	<Include file="autovendor.lua"/>

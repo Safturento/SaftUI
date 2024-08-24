@@ -22,7 +22,7 @@ end
 
 
 function LT:UpdateHandler(timer, elapsed)
-	if barrier(timer, elapsed, 3) then return end
+	if st:barrier(timer, elapsed, 3) then return end
 
 	local randomValue = random()
 

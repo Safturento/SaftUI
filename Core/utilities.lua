@@ -28,7 +28,7 @@ string.unmagic = removeMagicChars
 function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
 function string.findnocase(str, pattern) return strlower(removeMagicChars(str)):find(strlower(pattern)) end
 
-function createBarrier(threshold)
+function st:createBarrier(threshold)
 	local frame = CreateFrame('frame')
 	frame.threshold = threshold
 	frame.isBlocking = function(self, elapsed)
@@ -41,7 +41,7 @@ function createBarrier(threshold)
 	return frame
 end
 
-function barrier(self, elapsed, threshold)
+function st:barrier(self, elapsed, threshold)
 	self.barrierTime = (self.barrierTime or 0) + elapsed
 	if self.barrierTime <= threshold then return true end
 	self.barrierTime = 0

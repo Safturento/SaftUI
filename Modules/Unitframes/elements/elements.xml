@@ -8,5 +8,5 @@
 	<Script file="portrait.lua"/>
 	<Script file="classpower.lua"/>
 	<Script file="indicators.lua"/>
-	<Script file="widget.lua"/>
+<!--	<Script file="widget.lua"/>-->
 </Ui>

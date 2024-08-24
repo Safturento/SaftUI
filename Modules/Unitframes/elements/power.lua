@@ -53,6 +53,7 @@ local function UpdateConfig(unitframe)
 	power.displayAltPower = unitframe.config.additionalpower
                         and unitframe.config.additionalpower.enable
                         and unitframe.config.additionalpower.manaAsPrimary
+						and UnitPowerMax('player', 0) > 0
 
     local config = power.config
 	power.colorTapping		= config.colorTapping

@@ -6,7 +6,7 @@ st.defaults.inventory = {
 	template = 'thicktransparent',
 	padding = 10,
 	buttonheight = 40,
-	buttonwidth = 40,
+	buttonwidth = 50,
 	buttonspacing = 7,
 	categoryspacing = 30,
 	categoryTitleHeight = 17,
@@ -18,7 +18,7 @@ st.defaults.inventory = {
 	},
 	bag = {
 		position = {'BOTTOMRIGHT', -20, 20},
-		perrow = 5,
+		perrow = 4,
 		maxRows = 15,
 	},
 	bank = {
@@ -30,5 +30,10 @@ st.defaults.inventory = {
 		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0},
 		perrow = 5,
 		maxRows = 20,
+	},
+	warband = {
+		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
+		perrow = 5,
+		maxRows = 20
 	}
 }

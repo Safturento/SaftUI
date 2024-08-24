@@ -117,6 +117,8 @@ function AB:UpdateHotkey(slot)
 end
 
 function AB:UpdateActionButton(slot)
+	if InCombatLockdown() then return end
+
 	if not slot.backdrop then return end
 
 	if slot.NormalTexture then slot.NormalTexture:SetTexture('') end

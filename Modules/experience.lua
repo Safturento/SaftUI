@@ -63,10 +63,8 @@ end
 function XP:GetWatchedFactionInfo()
 	local name, rank, minRep, maxRep, value, factionId
 
-	if C_Reputation.GetSelectedFaction then
-		local selectedFactionIndex = C_Reputation.GetSelectedFaction();
-		if selectedFactionIndex == 0 then return end
-		local factionData = C_Reputation.GetFactionDataByIndex(selectedFactionIndex);
+	local factionData = C_Reputation.GetWatchedFactionData()
+	if factionData then
 		name = factionData.name
 		rank = factionData.reaction
 		minRep = factionData.currentReactionThreshold
@@ -173,6 +171,37 @@ function XP:UpdateExperience()
 	end
 end
 
+function XP:AddExperienceTooltipInfo(tooltip)
+	if GetMaxPlayerLevel() == UnitLevel('player') then return end
+
+	local current, max = UnitXP('player'), UnitXPMax('player')
+	local rest = GetXPExhaustion()
+
+	GameTooltip:AddDoubleLine('Current XP:', format('%s/%s (%s%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
+	GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
+	if rest then
+		GameTooltip:AddDoubleLine('Rested:', format('%s (%s%%)', st.StringFormat:CommaFormat(rest), st.StringFormat:Round(rest/max*100)), nil,nil,nil, 0,.6,1)
+	end
+end
+
+function XP:AddFactionTooltipInfo(tooltip)
+	local info = XP:GetWatchedFactionInfo()
+	if not info then return end
+
+
+	local current, max = info.current, info.max
+	if max == 0 then return end
+
+	if GetMaxPlayerLevel() ~= UnitLevel('player') then tooltip:AddLine('  ') end
+
+	GameTooltip:AddDoubleLine(info.name, info.rankLabel, nil,nil,nil, unpack(info.color))
+	GameTooltip:AddDoubleLine('Current:', format('%s/%s (%d%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
+	GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
+
+	if info.rewardMessage then
+		GameTooltip:AddLine("\n" .. info.rewardMessage, 1, 1, 1, true)
+	end
+end
 
 function XP:OnEnter()
 	local container = self.container
@@ -185,33 +214,8 @@ function XP:OnEnter()
 	end
 	GameTooltip:ClearLines()
 
-	if GetMaxPlayerLevel() ~= UnitLevel('player') then
-		local current, max = UnitXP('player'), UnitXPMax('player')
-		local rest = GetXPExhaustion()
-
-		GameTooltip:AddDoubleLine('Current XP:', format('%s/%s (%s%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
-		GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
-		if rest then
-			GameTooltip:AddDoubleLine('Rested:', format('%s (%s%%)', st.StringFormat:CommaFormat(rest), st.StringFormat:Round(rest/max*100)), nil,nil,nil, 0,.6,1)
-		end
-	end
-
-	if C_Reputation.GetSelectedFaction and C_Reputation.GetSelectedFaction()
-			or GetWatchedFactionInfo and GetWatchedFactionInfo() then
-		--Add a space between exp and rep
-		if GetMaxPlayerLevel() ~= UnitLevel('player') then GameTooltip:AddLine('  ') end
-
-		local info = self:GetWatchedFactionInfo()
-		local current, max = info.current, info.max
-
-		GameTooltip:AddDoubleLine(info.name, info.rankLabel, nil,nil,nil, unpack(info.color))
-		GameTooltip:AddDoubleLine('Current:', format('%s/%s (%d%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
-		GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
-
-		if info.rewardMessage then
-			GameTooltip:AddLine("\n" .. info.rewardMessage, 1, 1, 1, true)
-		end
-	end
+	self:AddExperienceTooltipInfo(GameTooltip)
+	self:AddFactionTooltipInfo(GameTooltip)
 
 	GameTooltip:Show()
 end

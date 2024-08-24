@@ -69,6 +69,7 @@ local RIGHT_CLICK_TO_OPEN = "Right Click to Open"
 local OPEN_THE_CONTAINER = "Open the container"
 local OPEN_THE_SACK = "Open the sack"
 local USE_COLLECT = "Use: collect"
+local USE_OPEN = "Use: Open"
 local TOY_TEXT = "Adds this toy to your Toy Box"
 local BLUEPRINT_TEXT = "Blueprint: "
 local ARTIFACT_RELIC_TEXT = "Artifact Relic"
@@ -81,8 +82,16 @@ local TRAINING_STONE_TEXT = "Battle-Training Stone"
 local BATTLE_STONE_TEXT = "Battle-Stone"
 local RESTORED_ARTIFACT_TEXT = "Carefully crate the restored artifact"
 local TRADEABLE_ITEM = "You may trade this item with players"
-local DRAGON_ISLES_PROFESSION = "Study to increase your Dragon Isles"
+local PROFESSION_KNOWLEDGE = "Use: Study to increase your"
 local RED_CLASS = 'cffff2020Classes:'
+
+local function matchesAny(tooltipText, ...)
+	for _, pattern in pairs({ ... }) do
+		if string.matchnocase(tooltipText, pattern) then
+			return true
+		end
+	end
+end
 
 local function isLegacyGear(item)
 	if not (item.class == 'Armor' or item.class == 'Weapon') then
@@ -90,7 +99,7 @@ local function isLegacyGear(item)
 	end
 
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
-	if UnitLevel('player') ~= MAX_PLAYER_LEVEL then
+	if UnitLevel('player') ~= GetMaxLevelForLatestExpansion() then
 		return false
 	end
 
@@ -98,11 +107,10 @@ local function isLegacyGear(item)
     or item.equipSlot == "INVTYPE_TABARD"
     or item.equipSlot == "INVTYPE_BODY"
     or not (item.quality >= 2 and item.quality <=4)
-    or string.matchnocase(item.tooltipText, TRADEABLE_ITEM)
-    or string.matchnocase(item.tooltipText, BIND_ON_ACCOUNT)
-    or string.matchnocase(item.tooltipText, COSMETIC_TEXT)
-    or string.matchnocase(item.tooltipText, USE_TEXT)
-    or string.matchnocase(item.tooltipText, EQUIP_EFFECT_TEXT)
+	or matchesAny(item.tooltipText,
+			TRADEABLE_ITEM, BIND_ON_ACCOUNT,
+			COSMETIC_TEXT, USE_TEXT, EQUIP_EFFECT_TEXT
+	)
 	then return false end
 
 	return true
@@ -148,11 +156,10 @@ INV:AddFilter("Reputation", function(item)
 end)
 
 INV:AddFilter("Container", function(item)
-	return string.matchnocase(item.tooltipText, RIGHT_CLICK_TO_OPEN)
-		or string.matchnocase(item.tooltipText, OPEN_THE_CONTAINER)
-		or string.matchnocase(item.tooltipText, OPEN_THE_SACK)
-		or string.matchnocase(item.tooltipText, USE_COLLECT)
-		or string.matchnocase(item.tooltipText, "Flightstones")
+	return matchesAny(item.tooltipText,
+			RIGHT_CLICK_TO_OPEN, OPEN_THE_CONTAINER, OPEN_THE_SACK,
+			USE_COLLECT, USE_OPEN, "Flightstones"
+	)
 end)
 
 INV:AddFilter("Toys", function(item)
@@ -207,7 +214,7 @@ end)
 
 INV:AddFilter("Professions/Recipes", function(item)
 	return item.itemID == 191784 -- Dragon Shard of Knowledge
-		or string.matchnocase(item.tooltipText, DRAGON_ISLES_PROFESSION)
+		or string.matchnocase(item.tooltipText, PROFESSION_KNOWLEDGE)
 		or item.class == 'Recipe'
 end)
 

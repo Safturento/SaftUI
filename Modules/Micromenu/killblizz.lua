@@ -56,19 +56,19 @@ end
 function MicroMenu:HideMicroMenu()
     for _,buttonName in pairs(MICRO_BUTTONS) do
         if _G[buttonName] then
-            _G[buttonName]:SetParent(st.hidden_frame)
+            _G[buttonName]:SetParent(st.HiddenFrame)
         end
     end
 
     --This breaks dungeon finder icon, need to find what event needs to stay registered
-    --MicroButtonAndBagsBar:SetParent(st.hidden_frame)
+    --MicroButtonAndBagsBar:SetParent(st.HiddenFrame)
     --MicroButtonAndBagsBar:UnregisterAllEvents()
 end
 
 function MicroMenu:HideBagSlots()
     for _,buttonName in pairs(BAG_BUTTONS) do
         if _G[buttonName] then
-            _G[buttonName]:SetParent(st.hidden_frame)
+            _G[buttonName]:SetParent(st.HiddenFrame)
         end
     end
 end

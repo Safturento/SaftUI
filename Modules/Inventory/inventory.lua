@@ -5,14 +5,15 @@ local BAG_IDS
 if st.retail then
 	BAG_IDS = {
 		['bag'] = { 0, 1, 2, 3, 4, 5 },
-		['bank'] = {-1, 6, 7, 8, 9, 10, 11, 12},
-		['reagent'] = {-3}
+		['bank'] = { -1, 6, 7, 8, 9, 10, 11, 12 },
+		['reagent'] = { -3 },
+		['warband'] = { 13, 14, 15, 16, 17 }
 	}
 else
 	BAG_IDS = {
-		['bag'] = {0, 1, 2, 3, 4},
-		['bank'] = {-1, 5, 6, 7, 8, 9, 10, 11},
-		['reagent'] = {-3}
+		['bag'] = { 0, 1, 2, 3, 4 },
+		['bank'] = { -1, 5, 6, 7, 8, 9, 10, 11 },
+		['reagent'] = { -3 }
 	}
 end
 
@@ -105,6 +106,18 @@ function INV:InitializeFooter(container)
 		end)
 		reagentButton:SetSize(100, 16)
 		reagentButton:SetFrameLevel(90)
+
+		local warbandButton = st:CreateButton('WarbandBankButton', container, 'Warband Bank')
+		warbandButton:SetPoint('BOTTOMRIGHT', reagentButton, 'BOTTOMLEFT', -7, 0)
+		warbandButton:SetScript('OnClick', function()
+			if not self.containers.warband then
+				self:InitializeWarbandBank()
+			else
+				ToggleFrame(self.containers.warband)
+			end
+		end)
+		warbandButton:SetSize(100, 16)
+		warbandButton:SetFrameLevel(90)
 
 	elseif container.id == 'reagent' then
 		local deposit = ReagentBankFrame.DespositButton
@@ -294,7 +307,7 @@ local lastUpdate = 0
 local interval = .01
 
 
-local barrier = createBarrier(1)
+local barrier = st:createBarrier(1)
 
 function INV:UpdateHandler(_, elapsed)
 
@@ -320,6 +333,8 @@ function INV:QueueUpdate()
 end
 
 function INV:ToggleBags()
+	if IsOptionFrameOpen() then return end
+
 	if INV.containers.bag:IsShown() then
 		INV:HideBags()
 	else
@@ -348,7 +363,7 @@ end
 
 function INV:DisableBlizzardBank()
 	BankFrame:ClearAllPoints()
-	BankFrame:SetPoint('BOTTOMRIGHT', UIParent, 'TOPLEFT', -100, 100)
+	BankFrame:SetPoint('RIGHT', UIParent, 'LEFT', -100, 0)
 	BankFrame.SetPoint = function() end
 end
 
@@ -356,7 +371,7 @@ function INV:OpenBank()
 	if not self.containers.bank then
 		self:CreateContainer('bank', BANK)
 		self:MoveBankBagSlots()
-		self:DisableBlizzardBank()
+		--self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
 	self:UpdateContainer('bank')
@@ -487,15 +502,32 @@ function INV:ADDON_LOADED(event, addon)
 end
 
 function INV:OnEnable()
-	ToggleBackpack		= INV.ToggleBags
-	ToggleBag 			= INV.ToggleBags
-	ToggleAllBags 		= INV.ToggleBags
-	OpenAllBags 		= INV.ShowBags
-	OpenBackpack 		= INV.ShowBags
-	OpenBag 			= INV.ShowBags
-	CloseAllBags 		= INV.HideBags
-	CloseBackpack 		= INV.HideBags
-	CloseBag			= INV.HideBags
+	--ToggleBackpack		= INV.ToggleBags
+	--ToggleBag 			= INV.ToggleBags
+	--ToggleAllBags 		= INV.ToggleBags
+	--OpenAllBags 		= INV.ShowBags
+	--OpenBackpack 		= INV.ShowBags
+	--OpenBag 			= INV.ShowBags
+	--CloseAllBags 		= INV.HideBags
+	--CloseBackpack 		= INV.HideBags
+	--CloseBag			= INV.HideBags
+
+	self:SecureHook('OpenAllBags', 'ShowBags')
+	self:SecureHook('CloseAllBags', 'HideBags')
+	self:SecureHook('ToggleBag', 'ToggleBags')
+	self:SecureHook('ToggleAllBags', 'ToggleBags')
+	self:SecureHook('ToggleBackpack', 'ToggleBags')
+
+	for _,frame in pairs({ BankFrame, ContainerFrameCombinedBags }) do
+		frame:UnregisterAllEvents()
+		frame:SetScript('OnShow', nil)
+		frame:SetScript('OnHide', nil)
+		frame:SetParent(st.HiddenFrame)
+		frame:ClearAllPoints()
+		frame:SetPoint("BOTTOM")
+	end
+
+	ContainerFrameCombinedBags:RegisterEvent('BAG_CONTAINER_UPDATE')
 
 	self:InitializeTooltipScanner()
 

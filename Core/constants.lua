@@ -70,5 +70,6 @@ st.INVERSE_ANCHORS = {
 	['BOTTOMLEFT'] = 'TOPRIGHT',
 }
 
-st.hidden_frame = CreateFrame('frame')
-st.hidden_frame:Hide()
+st.HiddenFrame = CreateFrame('frame')
+st.HiddenFrame:SetPoint('BOTTOM', UIParent, 'TOP', 0, 9000)
+st.HiddenFrame:Hide()

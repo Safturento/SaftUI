@@ -54,7 +54,8 @@ function UF:SetElementEnabled(element)
 end
 
 function UF:UpdateElementSize(element)
-    unitframe = element.unitframe or element:GetParent()
+
+    local unitframe = element.unitframe or element:GetParent()
 
     if element.config.height then
         if element.config.relative_height then

@@ -1,7 +1,7 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-function PostUpdateClassPower(classPower, cur, max, hasMaxChanged, powerType)
+local function PostUpdateClassPower(classPower, cur, max, hasMaxChanged, powerType)
 	if not max then classPower:Hide() return end
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do
@@ -47,7 +47,7 @@ local function UpdateConfig(unitframe)
 	end
 end
 
-function ValidUnit(unit)
+local function ValidUnit(unit)
 	return unit == 'player'
 end
 
