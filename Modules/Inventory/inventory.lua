@@ -53,7 +53,9 @@ function INV:CreateContainer(id, name, isBankContainer)
 	st:CreateCloseButton(container)
 	st:CreateHeader(container, name)
 	self:InitializeFooter(container)
-	self:InitializeSearch(container)
+	if id == 'bag' then
+		self:InitializeSearch(container)
+	end
 
 	container.slots = {}
 	container.categories = {}
@@ -132,7 +134,7 @@ function INV:InitializeFooter(container)
 				ToggleFrame(self.containers.reagent)
 			end
 		end)
-		reagentButton:SetSize(100, 16)
+		reagentButton:SetSize(80, 16)
 		reagentButton:SetFrameLevel(90)
 
 		local warbandButton = st:CreateButton('WarbandBankButton', container, 'Warband Bank')
@@ -165,10 +167,37 @@ function INV:InitializeSearch(container)
 	container.search = search
 end
 
-function INV:SearchMatches(query, info)
-	query = query:lower()
-	return info.name:lower():find(query)
-		or (info.equipSlot and info.equipSlot:lower() == query)
+function INV:ParseSearchQuery(queryString)
+	local entries = { (";"):split(queryString) }
+	local info = {}
+
+	for _, entry in pairs(entries) do
+		entry = entry:lower()
+		if entry == "soulbound" then
+			info.showSoulbound = true
+		elseif entry == "warbound" then
+			info.showWarbound = true
+		elseif entry == "boe" then
+			info.showBoE = true
+		elseif entry == "useable" then
+			info.showUsable = true
+		end
+	end
+
+	return info
+end
+
+function INV:SearchMatches(queryString, info)
+	local queryTags = INV:ParseSearchQuery(queryString)
+	queryString = queryString:lower()
+
+	local showBoE = queryTags.showBoE and info.isBoE
+	local showSoulbound = queryTags.showSoulbound and info.isSoulbound and not info.isWarbound
+	local showWarbound = queryTags.showWarbound and info.isWarbound
+
+	return showSoulbound or showWarbound or showBoE
+			or info.name:lower():find(queryString)
+			or (info.equipSlot and info.equipSlot:lower() == queryString)
 end
 
 function INV:UpdateSearchFilter(editbox, is_user_input)
@@ -241,13 +270,13 @@ function INV:UpdateContainer(id)
 
 	self:FlushCategories(container, sortedInventory)
 
-	self:UpdateContainerHeight(id)
+	self:UpdateContainerLayout(id)
 
 	local empty, total = self:GetNumContainerSlots(container)
 	container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
 end
 
-function INV:UpdateContainerHeight(id)
+function INV:UpdateContainerLayout(id)
 	local container = self.containers[id]
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
 
@@ -305,8 +334,8 @@ function INV:UpdateContainerHeight(id)
 		end
 	end
 
-	container:SetHeight(height + tallestColumnHeight)
-	container:SetWidth(numColumns * prev:GetWidth() + (numColumns + 1) * self.config.padding)
+	container:SetHeight(max(200, height + tallestColumnHeight))
+	container:SetWidth(max(300, (prev and numColumns * prev:GetWidth() or 0) + (numColumns + 1) * self.config.padding))
 end
 
 function INV:UpdateConfig(id)
@@ -337,6 +366,7 @@ function INV:UpdateVisibleContainers()
 			self:UpdateContainer(containerName)
 		end
 	end
+	self:UpdateSearchFilter(self.containers.bag.search, false)
 end
 
 function INV:UpdateHandler(_, elapsed)
@@ -364,6 +394,9 @@ function INV:ToggleBags()
 end
 
 function INV:ShowBags()
+	if not C_CurrencyInfo.IsAccountCharacterCurrencyDataReady() then
+		C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
+	end
 	INV.containers.bag:Show()
 	INV:QueueUpdate()
 	INV:UpdateCooldowns()
@@ -378,8 +411,10 @@ function INV:HideBags()
 	end
 	if INV.containers.bank and INV.containers.bank:IsShown() then
 		INV.containers.bank:Hide()
-		BankFrame:Hide()
+		HideUIPanel(BankFrame);
+		C_Bank.CloseBankFrame();
 	end
+	if CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
 end
 
 function INV:DisableBlizzardBank()
@@ -395,12 +430,15 @@ function INV:OpenBank()
 		--self:DisableBlizzardBank()
 		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
-	self:UpdateContainer('bank')
 	self.containers.bank:Show()
+	self:ShowBags()
+	self:UpdateVisibleContainers()
+	--self:UpdateContainer('bank')
 end
 
 function INV:CloseBank()
 	self.containers.bank:Hide()
+	self:HideBags()
 end
 
 function INV:OnInitialize()

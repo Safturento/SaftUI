@@ -24,11 +24,20 @@ function INV:AssignSlot(container, slot, slotInfo)
 	slot.info = slotInfo
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
+		if slot.info.isWarbound then
+			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.cyan))
+		elseif slot.info.isBoE then
+			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.green))
+		else
+			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.white))
+		end
+
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 		slot.itemLevelBG:Show()
 
 		Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID)
 	else
+		SetItemCraftingQualityOverlay(slot, slot.info.link)
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
 	end
@@ -123,6 +132,10 @@ function INV:CreateSlot(container, categoryName)
 		slotName = bagName..'_'..(gsub(categoryName, '(%A)', ''))..'_Slot'..slotID
 		slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
 		if not slot.icon then st:Error(slotName.." is missing an icon") end
+
+		slot.IconOverlay:ClearAllPoints()
+		slot.IconOverlay:SetAllPoints(slot.icon)
+
 		slot.Count = _G[slot:GetName() .. "Count"]
 		slot.Count:SetDrawLayer('OVERLAY', 99)
 

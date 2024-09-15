@@ -2,12 +2,13 @@ local st = SaftUI
 
 st.defaults.inventory = {
 	enable = true,
+	compact = true, -- re-order categories to take up the least amount of space
 	buttontemplate = 'thicktransparent',
 	template = 'thicktransparent',
 	padding = 10,
-	buttonheight = 40,
-	buttonwidth = 50,
-	buttonspacing = 7,
+	buttonheight = 35,
+	buttonwidth = 40,
+	buttonspacing = 9,
 	categoryspacing = 30,
 	categoryTitleHeight = 17,
 	autorepair = true,

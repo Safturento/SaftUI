@@ -3,7 +3,26 @@ local INV = st:GetModule('Inventory')
 
 function INV:ShowCurrencyTooltip(slot)
     GameTooltip:SetOwner(slot, "ANCHOR_BOTTOMLEFT", 0, 0);
-    GameTooltip:SetCurrencyToken(slot.info.index);
+    GameTooltip:SetCurrencyToken(slot.elementData.currencyIndex)
+
+    if slot.elementData.isAccountTransferable then
+		local transferPercentage = slot.elementData.transferPercentage;
+		local percentageLost = transferPercentage and (100 - transferPercentage) or 0;
+		if percentageLost > 0 then
+			GameTooltip_AddNormalLine(GameTooltip, CURRENCY_TRANSFER_LOSS:format(math.ceil(percentageLost)));
+		end
+	end
+
+    local canTransfer, failureReason = self:IsCurrencyTransferable(slot);
+
+    if canTransfer then
+        GameTooltip_AddBlankLineToTooltip(GameTooltip);
+        GameTooltip_AddInstructionLine(GameTooltip, "<Click to transfer>");
+    elseif failureReason then
+        GameTooltip_AddBlankLineToTooltip(GameTooltip);
+        GameTooltip_AddErrorLine(GameTooltip, failureReason)
+    end
+
     GameTooltip:Show()
 end
 
@@ -11,18 +30,18 @@ function INV:HideCurrencyTooltip(slot)
     GameTooltip:Hide()
 end
 
-function INV.GetCurrencySlotPool(parent)
+function INV.GetCurrencySlotPool(category)
     return CreateObjectPool(
-        function() return INV.CreateCurrencySlot(parent) end,
+        function() return INV.CreateCurrencySlot(category) end,
         function(_, slot) slot:Hide() end
     )
 end
 
 local poolSize = 0
-function INV.CreateCurrencySlot(parent)
+function INV.CreateCurrencySlot(category)
     poolSize = poolSize + 1
     local slotName = 'SaftUI_Bag_Currencies_Slot'..poolSize
-    local slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, parent, 'ContainerFrameItemButtonTemplate')
+    local slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, category, 'TokenEntryTemplate')
     slot.NormalTexture = _G[slotName..'NormalTexture']
     slot.Count:SetDrawLayer('OVERLAY', 7)
     slot.Count:Show()
@@ -41,28 +60,28 @@ function INV.CreateCurrencySlot(parent)
     slot.filterCheckbox:SetSize(8, 8)
     slot.filterCheckbox:SetPoint('TOPRIGHT')
     slot.filterCheckbox:HookScript('OnClick', function(self)
-        INV.config.filters.currencies[slot.info.id] = self:GetChecked() or nil
+        INV.config.filters.currencies[slot.elementData.id] = self:GetChecked() or nil
     end)
 
     if slot.NormalTexture then slot.NormalTexture:SetTexture('') end
 
-    if slot.BattlepayItemTexture then
-        slot.BattlepayItemTexture:SetTexture('')
-    end
-
     slot:SetSize(INV.config.buttonwidth, INV.config.buttonheight)
 
     st:SkinIcon(slot.icon, nil, slot)
-
     st:SkinActionButton(slot, {
 		template = INV.config.template,
 		font = INV.config.fonts.icons
 	})
 	slot:SetNormalTexture("")
 	slot:SetPushedTexture("")
+    slot.Content.WatchedCurrencyCheck:ClearAllPoints()
 
-    slot.container = parent
-
+    slot.category = category
+    slot.container = category:GetParent()
+    slot:SetScript('OnClick', st.dummy)
+    slot:SetScript('OnEnter', st.dummy)
+    slot:SetScript('OnLeave', st.dummy)
+    INV:HookScript(slot, 'OnClick', 'CurrencyOnClick')
     INV:HookScript(slot, 'OnEnter', 'ShowCurrencyTooltip')
     INV:HookScript(slot, 'OnLeave', 'HideCurrencyTooltip')
 
@@ -79,6 +98,22 @@ local function shouldShow(info, editMode)
     return true
 end
 
+local DISABLED_ERROR_MESSAGE = {
+	[Enum.AccountCurrencyTransferResult.MaxQuantity] = CURRENCY_TRANSFER_DISABLED_MAX_QUANTITY,
+	[Enum.AccountCurrencyTransferResult.NoValidSourceCharacter] = CURRENCY_TRANSFER_DISABLED_NO_VALID_SOURCES,
+	[Enum.AccountCurrencyTransferResult.CannotUseCurrency] = CURRENCY_TRANSFER_DISABLED_UNMET_REQUIREMENTS,
+};
+
+function INV:IsCurrencyTransferable(slot)
+    if not slot.elementData.isAccountTransferable then return end
+
+    if not C_CurrencyInfo.IsAccountCharacterCurrencyDataReady() then
+        return false, RETRIEVING_DATA
+    end
+
+    local canTransfer, failureReason = C_CurrencyInfo.CanTransferCurrency(slot.elementData.currencyID);
+    return canTransfer, failureReason and DISABLED_ERROR_MESSAGE[failureReason]
+end
 
 function INV:GetCurrencies(editMode)
     local items = {}
@@ -88,7 +123,7 @@ function INV:GetCurrencies(editMode)
             info.link = C_CurrencyInfo.GetCurrencyListLink(i)
             if info.link then
                 info.id = C_CurrencyInfo.GetCurrencyIDFromLink(info.link)
-                info.index = i
+                info.currencyIndex = i
                 if shouldShow(info, editMode) then
                     tinsert(items, info)
                 end
@@ -118,10 +153,34 @@ function INV:InitializeCurrencyCategory()
         INV:UpdateContainer('bag')
         for slot in category.slotPool:EnumerateActive() do
             slot.filterCheckbox:SetShown(filterButton:GetChecked())
-            slot.filterCheckbox:SetChecked(INV.config.filters.currencies[slot.info.id])
+            slot.filterCheckbox:SetChecked(INV.config.filters.currencies[slot.elementData.id])
         end
     end)
+
     category.filterButton = filterButton
+
+    category.container.transferMenu = CurrencyTransferMenu
+end
+
+function INV:CurrencyOnClick(slot)
+    if IsModifiedClick("CHATLINK") then
+        HandleModifiedItemClick(C_CurrencyInfo.GetCurrencyListLink(self.currencyIndex));
+        return
+    end
+
+    if not INV:IsCurrencyTransferable(slot) then return end
+
+    local shouldHide = CurrencyTransferMenu.currencyInfo and CurrencyTransferMenu.currencyInfo.currencyID == slot.elementData.currencyID
+    CurrencyTransferMenu:Hide()
+
+    if shouldHide then return end
+
+    CurrencyTransferMenu:SetCurrency(slot.elementData.currencyID)
+    CurrencyTransferMenu:TriggerEvent(
+            CurrencyTransferMenuMixin.Event.CurrencyTransferRequested, slot.elementData.currencyID);
+    CurrencyTransferMenu:ClearAllPoints()
+    CurrencyTransferMenu:SetPoint('TOPRIGHT', slot.container, 'TOPLEFT', -7, 0)
+    CurrencyTransferMenu:Show()
 end
 
 function INV:UpdateCurrencyCategory(forceShow)
@@ -133,14 +192,24 @@ function INV:UpdateCurrencyCategory(forceShow)
     local currencyItems = self:GetCurrencies(category.filterButton:GetChecked())
     local prev
     local prevRow = category.header
-    for i, currency in pairs(currencyItems) do
+    for i, currencyData in pairs(currencyItems) do
         local slot = category.slotPool:Acquire()
-        slot.icon:SetTexture(currency.iconFileID)
-        slot.Count:SetText(currency.quantity)
+        slot.elementData = currencyData
+        slot.currencyIndex = currencyData.currencyIndex
+
+        slot.icon:SetTexture(currencyData.iconFileID)
+
+        slot.Count:SetText(currencyData.quantity)
+        if currencyData.isAccountTransferable or currencyData.isAccountWide then
+            slot.Count:SetTextColor(unpack(st.config.profile.colors.text.cyan))
+        else
+            slot.Count:SetTextColor(unpack(st.config.profile.colors.text.white))
+        end
+
         slot:ClearAllPoints()
         slot:Show()
-        slot.info = currency
-        local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.info.id).quality
+
+        local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
         if quality > -1 then
 			local c = ITEM_QUALITY_COLORS[quality]
 			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)

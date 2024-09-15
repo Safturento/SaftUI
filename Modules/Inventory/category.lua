@@ -63,7 +63,7 @@ end
 function INV:GetInventoryItemInfo(bagID, slotID)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
-		local tooltipText = self:ScanBagItem(bagID,slotID)
+		local tooltipText = self:ScanBagItem(bagID, slotID)
 		local name, _, quality, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
 		local ilvl = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
@@ -73,8 +73,6 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 
 			if itemType == "keystone" then
 				_, _, _, keyLevel =  string.split(':', itemString)
-				name, _, _, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
-					itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(itemId)
 				--\124cffa335ee\124Hkeystone:180653:198:15:10:136:8:0\124h[Keystone: Darkheart Thicket (15)]\124h\124r
 				class = 'Key'
 				item.stackCount = tonumber(keyLevel)
@@ -114,7 +112,14 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				name = name,
 				ilvl = ilvl,
 				reqLevel = reqLevel,
-				soulbound = item.isBound,
+				isWarbound = C_Item.IsBoundToAccountUntilEquip(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
+						     or string.matchnocase(tooltipText, "Warbound"),
+				--bindType == Enum.ItemBind.ToBnetAccount
+				--		  or bindType == Enum.ItemBind.ToWoWAccount
+				--		  or bindType == Enum.ItemBind.ToBnetAccountUntilEquipped,
+				isBoE = (not item.isBound) and (bindType == Enum.ItemBind.OnUse
+						or bindType == Enum.ItemBind.OnEquip),
+				isSoulbound = item.isBound,
 				count = item.stackCount,
 				--upgradeInfo = upgradeInfo,
 				itemID = item.itemID,
@@ -190,6 +195,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
 	local categoryFrame = CreateFrame('frame', container:GetName() .. '_' .. categoryName, container)
+	categoryFrame.container = container
 	categoryFrame.name = categoryName
 	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
 	categoryFrame.slots = {}
@@ -220,7 +226,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
     filterCheckbox:SetPoint('LEFT', header.text, 'RIGHT', 8, 0)
     filterCheckbox:HookScript('OnClick', function(self)
         INV.config.filters.categories[id][categoryName] = self:GetChecked() or nil
-		INV:UpdateContainerHeight(id)
+		INV:UpdateContainerLayout(id)
     end)
 	filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
 	categoryFrame.filterCheckbox = filterCheckbox
