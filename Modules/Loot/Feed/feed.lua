@@ -52,6 +52,8 @@ local match_replacements = {
 local patterns = {}
 
 local function generate_match(match, keys, categories, fuzzy)
+	if not match then return end
+
 	--[[
 	We need to do some escaping to convert the global strings into regex.
 	The result of this turns

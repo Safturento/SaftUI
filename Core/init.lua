@@ -50,6 +50,7 @@ end
 function SaftUI:TIME_PLAYED_MSG(event, total, level)
 	self.config.realm.summary[self.my_name]['time_played'] = total
 	self.config.realm.summary[self.my_name]['time_played_level'] = level
+	self.config.realm.summary[self.my_name]['class'] = st.my_class
 end
 
 function SaftUI:UpdateConfig()

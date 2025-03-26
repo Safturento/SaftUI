@@ -98,11 +98,11 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, ValidUnit)
 end
 
 function UF:UpdateColors()
-	UF.oUF.colors.disconnected 	= st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected)
-	UF.oUF.colors.tapped 		= st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped)
-	UF.oUF.colors.reaction 		= st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction)
-	UF.oUF.colors.power 		= st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power)
-	UF.oUF.colors.class 		= st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class)
+	st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected, true)
+	st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped, true)
+	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
+	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
+	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
 	UF.oUF.colors.roles 		= st.config.profile.colors.roles
 	UF.oUF.colors.runes 		= st.config.profile.colors.runes
 end

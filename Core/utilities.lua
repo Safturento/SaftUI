@@ -86,16 +86,18 @@ function st.tablecopy(t, deep, seen)
 end
 
 --Merge two tables, with variables from t2 overwriting t1 when a duplicate is found
-function st.tablemerge(t1, t2)
+function st.tablemerge(t1, t2, inPlace)
+	local rootTable = inPlace and t1 or st.tablecopy(t1)
+
 	if not t2 then t2 = {} end
 	for k, v in pairs(t2) do
-		if (type(v) == 'table') and (type(t1[k] or false) == 'table') then
-		   st.tablemerge(t1[k], t2[k])
+		if (type(v) == 'table') and (type(rootTable[k] or false) == 'table') then
+		   st.tablemerge(rootTable[k], t2[k], true)
 		else
-			t1[k] = v
+			rootTable[k] = v
 		end
 	end
-	return t1
+	return rootTable
 end
 
 --Purge any variable of t1 who's value is set to the same as t2

@@ -21,6 +21,7 @@ st.defaults.unitframes.profiles["**"].raid10 = {
         },
         colorCustom = false,
         colorClass = true,
+        colorClassNPC = true,
         text = {
             enable = false,
             hide_full = true,

@@ -35,9 +35,13 @@ function INV:AssignSlot(container, slot, slotInfo)
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 		slot.itemLevelBG:Show()
 
-		Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID)
+		if st.retail then
+			Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID)
+		end
 	else
-		SetItemCraftingQualityOverlay(slot, slot.info.link)
+		if st.retail then
+			SetItemCraftingQualityOverlay(slot, slot.info.link)
+		end
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
 	end

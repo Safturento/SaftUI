@@ -100,11 +100,13 @@ local function isLegacyGear(item)
 	end
 
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
-	if UnitLevel('player') ~= GetMaxLevelForLatestExpansion() then
+	if UnitLevel('player') ~= (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
 		return false
 	end
 
     if item.expacID > 7
+	-- This item level comparison makes sure that timewalking gear doesn't get vendored
+	or item.ilvl > GetAverageItemLevel() * 0.9
     or item.equipSlot == 'INVTYPE_TABARD'
     or item.equipSlot == 'INVTYPE_BODY'
     or not (item.quality >= 2 and item.quality <=4)
@@ -152,12 +154,25 @@ INV:AddFilter('Grays/Auto Vendor', function(item)
 
 end, { autoVendor = true })
 
+INV:AddFilter('Rogue/DK/Mage/Druid', function(item)
+	return matchesAny(item.tooltipText, "Rogue, Death Knight, Mage, Druid")
+end)
+
+INV:AddFilter('Warrior/Hunter/Shaman', function(item)
+	return matchesAny(item.tooltipText, "Warrior, Hunter, Shaman")
+end)
+
+INV:AddFilter('Paladin/Priest/Warlock', function(item)
+	return matchesAny(item.tooltipText, "Paladin, Priest, Warlock")
+end)
+
 INV:AddFilter('Reputation', function(item)
 	return string.matchnocase(item.tooltipText, USE_GRANTS)
 end)
 
 INV:AddFilter('Delves', function(item)
 	return string.matchnocase(item.tooltipText, DELVE_CURIO)
+		or item.name == 'Delver\'s Bounty'
 end)
 
 INV:AddFilter('Container', function(item)

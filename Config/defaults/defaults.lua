@@ -14,22 +14,6 @@ st.defaults.grid = {
 }
 
 st.defaults.fonts = {
-	pixel_huge = {
-		name = 'Pixel Huge',
-		font_name = 'Semplice',
-		font_size = 32,
-		font_outline = 'MONOCHROMEOUTLINE',
-		shadow_offset = {0, 0},
-		spacing = 4,
-	},
-	pixel_med = {
-		name = 'Pixel med',
-		font_name = 'Semplice',
-		font_size = 18,
-		font_outline = 'MONOCHROMEOUTLINE',
-		shadow_offset = {0, 0},
-		spacing = 4,
-	},
 	pixel = {
 		name = 'Pixel',
 		font_name = 'Semplice',
@@ -46,15 +30,19 @@ st.defaults.fonts = {
 		shadow_offset = {0, 0},
 		spacing = 4,
 	},
-	normal_med = {
-		name = 'Normal med',
-		font_name = 'AgencyFB Bold',
-		font_size = 24,
+	title = {
+		name = 'Colus',
+		font_name = 'Colus',
+		font_size = 72,
 		font_outline = 'OUTLINE',
-		shadow_offset = {0, 0},
+		shadow_offset = { 0, 0 },
 		spacing = 4,
-	}
+	},
 }
+st.defaults.fonts.pixel_med = st.tablemerge(st.defaults.fonts.pixel, { name='Pixel Med', font_size = 18 })
+st.defaults.fonts.pixel_huge = st.tablemerge(st.defaults.fonts.pixel, { name='Pixel Huge', font_size = 32 })
+st.defaults.fonts.normal_med = st.tablemerge(st.defaults.fonts.normal, { name='Normal Med', font_size = 24 })
+st.defaults.fonts.subtitle = st.tablemerge(st.defaults.fonts.title, { name='Subtitle', font_size = 24 })
 
 st.defaults.addon_manager = {
 	font = 'normal',
@@ -127,18 +115,6 @@ st.defaults.experience = {
 	rest_alpha = 1,
 	template = 'thicktransparent',
 	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
-}
-
-st.defaults.addon_skins = {
-	font = 'pixel',
-	template = 'thicktransparent',
-	['**'] = {
-		font = 'pixel',
-		template = 'thicktransparent',
-	},
-	['objective_tracker'] = {
-		-- font = 'normal',
-	},
 }
 
 st.defaults.micromenu = {

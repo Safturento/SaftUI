@@ -24,6 +24,7 @@ st.defaults.unitframes.profiles["**"].party = {
         text = {
             enable = false,
         },
+        colorClassNPC = true,
     },
     buffs = {
         enable = true,

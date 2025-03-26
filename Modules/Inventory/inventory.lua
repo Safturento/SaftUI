@@ -119,7 +119,7 @@ function INV:InitializeFooter(container)
 		goldstring.text:SetPoint('RIGHT', goldstring, 'RIGHT', -10, 0)
 		goldstring.text:SetJustifyH('RIGHT')
 
-		goldstring:SetScript('OnEnter', function() INV:DisplayServerGold() end)
+		goldstring:SetScript('OnEnter', function(self) INV:DisplayServerGold() end)
 		goldstring:SetScript('OnLeave', st.HideGameTooltip)
 
 		container.footer.gold = goldstring
@@ -221,7 +221,7 @@ end
 
 function INV:UpdateGold()
 	local money = GetMoney()
-	self.containers.bag.footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
+	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
 	st.config.realm.summary[st.my_name].gold = money
 end
 
@@ -235,9 +235,17 @@ function INV:DisplayServerGold()
 	GameTooltip:AddLine('Gold on ' .. st.my_realm)
 	local totalGold = 0
 	for toonName, summary in pairs(st.config.realm.summary) do
-		GameTooltip:AddDoubleLine(toonName, summary.gold and st.StringFormat:GoldFormat(summary.gold) or "??", 1,1,1)
+		local color = summary.class and RAID_CLASS_COLORS[summary.class] or { r = 1, g = 1, b = 1 }
+		GameTooltip:AddDoubleLine(toonName, summary.gold and st.StringFormat:GoldFormat(summary.gold) or "??", color.r, color.g, color.b)
 		totalGold = totalGold + (summary.gold or 0)
 	end
+
+
+	local warbandGold = C_Bank.FetchDepositedMoney(Enum.BankType.Account)
+	totalGold = totalGold + warbandGold
+	GameTooltip:AddLine(' ')
+	GameTooltip:AddDoubleLine("Warband bank", st.StringFormat:GoldFormat(warbandGold))
+
 	GameTooltip:AddLine(' ')
 	GameTooltip:AddDoubleLine('Total', st.StringFormat:GoldFormat(totalGold))
 
@@ -394,7 +402,7 @@ function INV:ToggleBags()
 end
 
 function INV:ShowBags()
-	if not C_CurrencyInfo.IsAccountCharacterCurrencyDataReady() then
+	if C_CurrencyInfo.IsAccountCharacterCurrencyDataReady and not (C_CurrencyInfo.IsAccountCharacterCurrencyDataReady()) then
 		C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
 	end
 	INV.containers.bag:Show()
@@ -414,7 +422,7 @@ function INV:HideBags()
 		HideUIPanel(BankFrame);
 		C_Bank.CloseBankFrame();
 	end
-	if CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
+	if CurrencyTransferMenu and CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
 end
 
 function INV:DisableBlizzardBank()
@@ -427,13 +435,10 @@ function INV:OpenBank()
 	if not self.containers.bank then
 		self:CreateContainer('bank', BANK, true)
 		self:MoveBankBagSlots()
-		--self:DisableBlizzardBank()
-		-- self:SecureHook('ContainerFrameItemButton_OnEnter', 'SetBankItemTooltip')
 	end
 	self.containers.bank:Show()
 	self:ShowBags()
 	self:UpdateVisibleContainers()
-	--self:UpdateContainer('bank')
 end
 
 function INV:CloseBank()
@@ -578,15 +583,19 @@ function INV:OnEnable()
 	self:SecureHook('ToggleBackpack', 'ToggleBags')
 
 	for _,frame in pairs({ BankFrame, ContainerFrameCombinedBags }) do
-		frame:UnregisterAllEvents()
-		frame:SetScript('OnShow', nil)
-		frame:SetScript('OnHide', nil)
-		frame:SetParent(st.HiddenFrame)
-		frame:ClearAllPoints()
-		frame:SetPoint("BOTTOM")
+		if frame then
+			frame:UnregisterAllEvents()
+			frame:SetScript('OnShow', nil)
+			frame:SetScript('OnHide', nil)
+			frame:SetParent(st.HiddenFrame)
+			frame:ClearAllPoints()
+			frame:SetPoint("BOTTOM")
+		end
 	end
 
-	ContainerFrameCombinedBags:RegisterEvent('BAG_CONTAINER_UPDATE')
+	if ContainerFrameCombinedBags then
+		ContainerFrameCombinedBags:RegisterEvent('BAG_CONTAINER_UPDATE')
+	end
 
 	self:InitializeTooltipScanner()
 

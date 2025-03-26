@@ -66,7 +66,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 		local tooltipText = self:ScanBagItem(bagID, slotID)
 		local name, _, quality, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
-		local ilvl = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
+		local itemLevel = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
 			local itemString = select(3, strfind(item.hyperlink, "|H(.+)|h"))
 			local itemType, itemId = string.split(':', itemString)
@@ -110,9 +110,9 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 		if name then
 			return {
 				name = name,
-				ilvl = ilvl,
+				ilvl = itemLevel,
 				reqLevel = reqLevel,
-				isWarbound = C_Item.IsBoundToAccountUntilEquip(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
+				isWarbound = C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
 						     or string.matchnocase(tooltipText, "Warbound"),
 				--bindType == Enum.ItemBind.ToBnetAccount
 				--		  or bindType == Enum.ItemBind.ToWoWAccount
@@ -138,7 +138,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				bagID = bagID,
 				slotID = slotID,
 				tooltipText = tooltipText,
-				sortString = (ilvl or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0),
+				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
 			}
 		end
 	end

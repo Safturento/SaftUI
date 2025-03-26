@@ -63,8 +63,9 @@ end
 function XP:GetWatchedFactionInfo()
 	local name, rank, minRep, maxRep, value, factionId
 
-	local factionData = C_Reputation.GetWatchedFactionData()
-	if factionData then
+	if C_Reputation.GetWatchedFactionData then
+		local factionData = C_Reputation.GetWatchedFactionData()
+		if not factionData then return end
 		name = factionData.name
 		rank = factionData.reaction
 		minRep = factionData.currentReactionThreshold
@@ -79,7 +80,7 @@ function XP:GetWatchedFactionInfo()
 
 	local friendshipInfo = C_GossipInfo.GetFriendshipReputation(factionId)
 
-	if C_Reputation.IsFactionParagon(factionId) then
+	if C_Reputation.IsFactionParagon and C_Reputation.IsFactionParagon(factionId) then
 		local value, max, rewardQuestID, rewardPending, tooLowLevelForParagon = C_Reputation.GetFactionParagonInfo(factionId)
 
 		return {

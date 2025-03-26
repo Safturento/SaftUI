@@ -1,9 +1,9 @@
 local st = SaftUI
 local SK = st:GetModule('Skinning')
 
-local WA = SK:NewModule('Hekili')
+local HK = SK:NewModule('Hekili')
 
-function WA:SkinIcon(_, dispID, id)
+function HK:SkinIcon(_, dispID, id)
 	local button = Hekili.DisplayPool[dispID] and Hekili.DisplayPool[dispID].Buttons[ id ]
 	if not button then return end
 
@@ -19,7 +19,7 @@ function WA:SkinIcon(_, dispID, id)
 	st:SkinIcon(button.Icon, nil, button)
 end
 
-function WA:OnInitialize()
+function HK:OnInitialize()
 	if not Hekili then return end
 	self:SecureHook(Hekili, 'CreateButton', 'SkinIcon')
 end

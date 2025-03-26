@@ -71,11 +71,8 @@ local function SkinSlot(ID, slotName)
 
 	equipSlot.ID = ID
 	equipSlot.slotName = slotName
-	if st.retail then
-		equipSlot.icon = equipSlot:GetItemButtonIconTexture()
-	else
-		equipSlot.icon = _G[format('Character%sSlotIconTexture', slotName)]
-	end
+	equipSlot.icon = _G[format('Character%sSlotIconTexture', slotName)]
+
 	equipSlots[slotName] = equipSlot
 
 	equipSlot.IconBorder:SetAlpha(0)

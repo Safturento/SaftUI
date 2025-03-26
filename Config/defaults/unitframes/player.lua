@@ -3,7 +3,7 @@ local st = SaftUI
 st.defaults.unitframes.profiles["**"].player = {
     position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -157, y_off = -200 },
     additionalpower = {
-        enable = true,
+        enable = false,
         manaAsPrimary = true,
         relative_width = false,
         relative_height = false,
@@ -26,11 +26,11 @@ st.defaults.unitframes.profiles["**"].player = {
     castbar = {
         enable = true,
         relative_width = false,
-        width = 301,
+        width = 293,
         relative_height = false,
         height = 24,
         template = 'thicktransparent',
-        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -281 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -304 },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
         },

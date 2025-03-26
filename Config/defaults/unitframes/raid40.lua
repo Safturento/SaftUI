@@ -28,6 +28,7 @@ st.defaults.unitframes.profiles["**"].raid40 = {
             deficit = true,
         },
         colorClass = true,
+        colorClassNPC = true,
     },
     power = {
         enable = false,

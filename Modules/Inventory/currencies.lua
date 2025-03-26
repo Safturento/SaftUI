@@ -90,7 +90,7 @@ end
 
 local function shouldShow(info, editMode)
     if info.isHeader then return end
-    if info.quantity == 0 then return end
+    if not editMode and info.quantity == 0 then return end
 
     if INV.config.filters.currencies[info.id]
         and not editMode then return end
@@ -105,6 +105,7 @@ local DISABLED_ERROR_MESSAGE = {
 };
 
 function INV:IsCurrencyTransferable(slot)
+    if not  C_CurrencyInfo.IsAccountCharacterCurrencyDataReady then return end
     if not slot.elementData.isAccountTransferable then return end
 
     if not C_CurrencyInfo.IsAccountCharacterCurrencyDataReady() then
@@ -134,6 +135,8 @@ function INV:GetCurrencies(editMode)
 end
 
 function INV:InitializeCurrencyCategory()
+    if not C_CurrencyInfo.RequestCurrencyDataForAccountCharacters then return end
+    C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
     local category = self:CreateCategory('bag', 'Currencies', self.GetCurrencySlotPool)
 
     if not self.config.filters.currencies then
@@ -184,7 +187,10 @@ function INV:CurrencyOnClick(slot)
 end
 
 function INV:UpdateCurrencyCategory(forceShow)
+    --C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
     local category = self.containers.bag.categories.Currencies
+    if not category then return end
+
     category:SetShown(forceShow or not INV.config.filters.categories.bag.Currencies)
     --TODO: We can definitely be smarter about updating but this is fine for now
     category.slotPool:ReleaseAll()
@@ -211,11 +217,11 @@ function INV:UpdateCurrencyCategory(forceShow)
 
         local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
         if quality > -1 then
-			local c = ITEM_QUALITY_COLORS[quality]
-			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-		else
-			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
-		end
+            local c = ITEM_QUALITY_COLORS[quality]
+            slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+        else
+            slot.backdrop:SetBackdropBorderColor(0, 0, 0)
+        end
 
         if i % self.config.bag.perrow == 1 then
             slot:SetPoint('TOPLEFT', prevRow, 'BOTTOMLEFT', 0, -self.config.buttonspacing)
@@ -227,7 +233,7 @@ function INV:UpdateCurrencyCategory(forceShow)
     end
 
     category.numRows = math.ceil(#currencyItems/self.config.bag.perrow)
-	category:SetHeight(
-        (self.config.buttonheight + self.config.buttonspacing) * category.numRows + self.config.categoryTitleHeight
+    category:SetHeight(
+            (self.config.buttonheight + self.config.buttonspacing) * category.numRows + self.config.categoryTitleHeight
     )
 end

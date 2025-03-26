@@ -34,6 +34,7 @@ function Util:SetItemQualityLevelText(equipSlot, level, maxLevel)
 end
 
 function Util:SetItemUpgradeQuality(equipSlot, itemLink)
+    if not st.retail then return end
     local quality, level, maxLevel = Util:ScanItemLink(itemLink):match("Upgrade Level: (%w+) (%d)/(%d)")
     if quality then
         equipSlot.isProfessionItem = true
