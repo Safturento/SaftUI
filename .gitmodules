@@ -10,3 +10,6 @@
 [submodule "Libraries/Ace3"]
 	path = Libraries/Ace3
 	url = https://github.com/WoWUIDev/Ace3.git
+[submodule "Libraries/Mainline/oUF"]
+	path = Libraries/Mainline/oUF
+	url = https://github.com/oUF-wow/oUF.git
