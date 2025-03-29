@@ -1,5 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Script file="widgets.lua"/>
-	<Script file="checkbox.lua"/>
-	<Script file="editbox.lua"/>
-</Ui>
