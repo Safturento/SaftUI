@@ -1,0 +1,10 @@
+## Interface: 110005
+## Version: 1.0
+## Title: |cff00adefSaftUI Core|r
+## SavedVariables: SaftUI_DB
+## OptionalDeps: RealMobHealth, ItemRack, WoWUnit, WeakAuras
+## X-oUF: SaftUI
+
+Libraries\LibStub\LibStub.lua
+Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
