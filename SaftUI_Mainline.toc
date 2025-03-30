@@ -9,7 +9,7 @@ Libraries\LibStub\LibStub.lua
 Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
 Libraries\LibDispel.lua
-Libraries\oUF\oUF.xml
+Libraries\Mainline\oUF\oUF.xml
 Libraries\Mainline\oUF-Widgets\oUF-Widgets.xml
 Libraries\LibSharedMedia-3.0\lib.xml
 Libraries\Ace3\AceAddon-3.0\AceAddon-3.0.lua
