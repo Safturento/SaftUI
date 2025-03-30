@@ -1,6 +1,3 @@
-[submodule "Libraries/oUF"]
-	path = Libraries/oUF
-	url = git@github.com:Safturento/oUF.git
 [submodule "Libraries/LibStringFormat-1.0"]
 	path = Libraries/LibStringFormat-1.0
 	url = git@github.com:Safturento/LibStringFormat-1.0.git
@@ -10,6 +7,3 @@
 [submodule "Libraries/Ace3"]
 	path = Libraries/Ace3
 	url = https://github.com/WoWUIDev/Ace3.git
-[submodule "Libraries/Mainline/oUF"]
-	path = Libraries/Mainline/oUF
-	url = https://github.com/oUF-wow/oUF.git
