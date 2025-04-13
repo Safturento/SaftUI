@@ -1,0 +1,13 @@
+## Interface: 110005
+## Version: 1.0
+## Title: |cff00adefSaftUI Loot|r
+## RequiredDeps: SaftUI-Core
+
+config.lua
+init.lua
+popup.lua
+roll.lua
+
+Feed/feed.lua
+Feed/filter.lua
+Feed/test.lua

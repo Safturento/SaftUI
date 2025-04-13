@@ -22,6 +22,22 @@ function st:SetSize(frame, width, height)
 	frame:SetSize(width, height)
 end
 
+function st:RegisterEditMode(frame, name, defaultPosition)
+	if not st.config.profile.edit_mode[name] then
+		st.config.profile.edit_mode[name] = {}
+	end
+
+	if defaultPosition then
+		local anchorFrame = type(defaultPosition.frame) == 'string' and _G[defaultPosition.frame] or defaultPosition.frame
+		frame:ClearAllPoints()
+		frame:SetPoint(st:UnpackPoint(defaultPosition))
+		st.EditMode:RegisterFrame(frame, name, st.config.profile.edit_mode[name],
+				anchorFrame or UIParent, defaultPosition.point, true)
+	else
+		st.EditMode:RegisterFrame(frame, name, st.config.profile.edit_mode[name], nil, nil, true)
+	end
+end
+
 local function calculateSpacing(frame, anchorFrame, spacing)
 	return (spacing or 0) + (frame.thick and 2 or frame.thick == false and 1 or 0) + (anchorFrame.thick and 2 or 0)
 end

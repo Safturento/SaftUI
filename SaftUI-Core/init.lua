@@ -8,9 +8,10 @@ SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
+SaftUI.EditMode = LibStub('EditModeExpanded-1.0')
 
 function SaftUI:OnInitialize()
-	--SetCVar('autoLootDefault', 1)
+	SetCVar('autoLootDefault', 1)
 	--SetCVar('chatStyle', 'classic')
 	--SetCVar('whisperMode', 'inline')
 
@@ -27,13 +28,13 @@ function SaftUI:OnInitialize()
 
 	if not self.config.realm.summary then self.config.realm.summary = {} end
 	if not self.config.realm.summary[self.my_name] then self.config.realm.summary[self.my_name] = {} end
+	if not self.config.profile.edit_mode then  self.config.profile.edit_mode = {} end
 
 	self.config.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.config.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
 
 	self:RegisterEvent('TIME_PLAYED_MSG')
-	self:RegisterEvent('PLAYER_ENTERING_WORLD')
 	RequestTimePlayed()
 
 	local total_time = 0
@@ -49,6 +50,10 @@ function SaftUI:OnInitialize()
 	print('Loaded SaftUI-Core')
 end
 
+function SaftUI:OnEnable()
+	UIParent:SetScale(st.scale)
+end
+
 function SaftUI:TIME_PLAYED_MSG(event, total, level)
 	self.config.realm.summary[self.my_name]['time_played'] = total
 	self.config.realm.summary[self.my_name]['time_played_level'] = level
@@ -61,8 +66,4 @@ function SaftUI:UpdateConfig()
 			module:UpdateConfig()
 		end
 	end
-end
-
-function SaftUI:PLAYER_ENTERING_WORLD()
-	UIParent:SetScale(st.scale)
 end

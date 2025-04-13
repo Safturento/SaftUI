@@ -4,7 +4,7 @@ local ADDON_NAME = ...
 st.DEBUG = false
 st.GAME_VERSION = select(4, GetBuildInfo())
 
-st.name = ADDON_NAME
+st.name = "SaftUI"
 st.retail = st.GAME_VERSION >= 70000
 
 st.my_name = select(1, UnitName('player'))
