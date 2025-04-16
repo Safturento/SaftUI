@@ -11,8 +11,7 @@ st.config.profile.loot = {
 	},
 	feed = {
 		width = 400,
-		-- anchor_height = 20,
-		item_height = 34,
+		item_height = 28,
 		position = {
 			point = 'BOTTOMRIGHT',
 			frame = 'UIParent',
@@ -32,6 +31,8 @@ st.config.profile.loot = {
 			Honor = true,
 			Currency = true,
 			Reputation = true,
+			Experience = true,
+			Skill = true
 		}
 	},
 	roll = {

@@ -10,7 +10,7 @@ end
 
 local cachedFilter = {}
 function LT:GetFilteredItems(useCache)
-	--if useCache then return cachedFilter end
+	if useCache then return cachedFilter end
 
 	local items = {}
 	for _, item in pairs(self:GetAllItems()) do

@@ -1,7 +1,7 @@
 local st = SaftUI
 
 local LT = st:GetModule('Loot')
-local DEBUG = true
+local DEBUG = false
 
 local roll_buttons = {
 	{name = 'Pass', icon_text = 'P', color = 'red',

@@ -196,6 +196,8 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 
 	local filteredItems =  self:GetFilteredItems(useCache)
 
+	self.debugText:SetFormattedText('%d/%d/%d', self.feed.offset, #filteredItems, #feed_stack)
+
 	for i=1, self.config.feed.max_items do
 		item = self.feed.items[i]
 		info = filteredItems[i + self.feed.offset]
@@ -209,11 +211,12 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
 			else
-				local quality = info.link and info.link:match(":(Professions%-ChatIcon%-Quality%-Tier%d+):")
+				local craftQuality = info.link and info.link:match(":(Professions%-ChatIcon%-Quality%-Tier%d+):")
 				local text = info.name
 
-				if quality then
-					text = text .. CreateAtlasMarkup(quality, 16, 16, 0, -5)
+				if craftQuality then
+					text = text .. CreateAtlasMarkup(craftQuality, 16, 16, 0, -5)
+					info.craftQuality = craftQuality
 				end
 
 				item.text:SetText(text)
@@ -253,7 +256,7 @@ function LT:LootFeedPush(info)
 	if info.gold and feed_stack[1] and feed_stack[1].gold then
 		feed_stack[1].gold = feed_stack[1].gold + info.gold
 		feed_stack[1].time = info.time
-	elseif feed_stack[1] and info.name == feed_stack[1].name and info.rightText == feed_stack[1].rightText then
+	elseif feed_stack[1] and info.name == feed_stack[1].name and info.craftQuality == feed_stack[1].craftQuality and info.rightText == feed_stack[1].rightText then
 		feed_stack[1].count = (feed_stack[1].count or 1) + (info.count or 1)
 		feed_stack[1].time = info.time
 	else
@@ -445,6 +448,7 @@ function LT:UpdateLootFeedConfig()
 	local config = self.config.feed
 
 	self.feed:SetWidth(config.width)
+	self.feed:SetHeight(config.max_items * config.item_height + (config.max_items - 1) * config.spacing)
 
 	for i=#self.feed.items+1, config.max_items do
 		local item = CreateFrame('button', st.name ..'LootFeed'..i, self.feed)
@@ -574,7 +578,7 @@ function LT:InitializeLootFeed()
 
 		feed.offset = min(
 			max(0, feed.offset + offset),
-			max(0, #feed_stack - self.config.feed.max_items)
+			max(0, #self:GetFilteredItems(true) - self.config.feed.max_items)
 		)
 
 		if feed.offset == 0 then
@@ -591,7 +595,6 @@ function LT:InitializeLootFeed()
 	self.feed = feed
 
 	self:InitializeFilterDropdown()
-
 	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'thick')
 	feed.reset_button:SetSize(20, 20)
 	feed.reset_button:Hide()
@@ -601,6 +604,10 @@ function LT:InitializeLootFeed()
 		feed.reset_button:Hide()
 		self:UpdateFeed()
 	end)
+
+	self.debugText = st:CreateFontString(self.feed, 'normal', '0/0')
+	self.debugText:SetPoint('RIGHT', self.feed, 'LEFT', -40, 0)
+	self.debugText:Hide()
 
 	self:UpdateLootFeedConfig()
 
