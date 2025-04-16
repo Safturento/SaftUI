@@ -19,7 +19,6 @@ Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
 Libraries\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 Libraries\EditModeExpanded-1.0\EditModeExpanded-1.0.lua
 
-
 init.lua
 constants.lua
 api.lua
@@ -33,3 +32,5 @@ Media\fonts.lua
 
 config.lua
 taintfix.lua
+
+Utilities\load.xml
