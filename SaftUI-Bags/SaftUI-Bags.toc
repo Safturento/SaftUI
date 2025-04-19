@@ -1,0 +1,17 @@
+## Interface: 110005
+## Version: 1.0
+## Title: |cff00adefSaftUI Bags|r
+## RequiredDeps: SaftUI-Core
+## Group: SaftUI-Core
+
+config.lua
+inventory.lua
+currencies.lua
+filters.lua
+tooltipscanner.lua
+category.lua
+reagentbank.lua
+warbandbank.lua
+slot.lua
+utilities.lua
+autovendor.lua
