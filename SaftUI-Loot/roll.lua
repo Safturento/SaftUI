@@ -134,7 +134,6 @@ function LT:GroupLootFrame_OnShow(frame)
 
 	frame:SetBackdrop(nil)
 	local color = ITEM_QUALITY_COLORS[quality]
-	print(unpack(color))
 	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
 	frame.Name:SetVertexColor(1, 1, 1)
 

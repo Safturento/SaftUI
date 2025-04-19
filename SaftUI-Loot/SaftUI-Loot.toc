@@ -2,6 +2,7 @@
 ## Version: 1.0
 ## Title: |cff00adefSaftUI Loot|r
 ## RequiredDeps: SaftUI-Core
+## Group: SaftUI-Core
 
 config.lua
 init.lua

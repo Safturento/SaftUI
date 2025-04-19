@@ -154,7 +154,6 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 end
 
 function CHT:OnEnable()
-	print('Loading SaftUI-Chat')
 	self.config =  st.config.profile.chat
 
 	-- Kill stuff
