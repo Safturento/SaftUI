@@ -4,6 +4,7 @@
 ## SavedVariables: SaftUI_DB
 ## OptionalDeps: RealMobHealth, ItemRack, WoWUnit, WeakAuras
 ## X-oUF: SaftUI
+## Group: SaftUI-Core
 
 Libraries\LibStub\LibStub.lua
 Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua

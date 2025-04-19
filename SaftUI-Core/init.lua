@@ -46,8 +46,6 @@ function SaftUI:OnInitialize()
 		end
 	end
 	-- print('You have played for a total of ' .. SecondsToTime(total_time) .. ' across your characters.')
-
-	print('Loaded SaftUI-Core')
 end
 
 function SaftUI:OnEnable()
