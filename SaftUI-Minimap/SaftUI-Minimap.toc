@@ -1,0 +1,17 @@
+## Interface: 110005
+## Version: 1.0
+## Title: |cff00adefSaftUI Minimap|r
+## RequiredDeps: SaftUI-Core
+## Group: SaftUI-Core
+
+config.lua
+minimap.lua
+micromenu.lua
+killblizz.lua
+expansionbutton.lua
+addoncompartmentframe.lua
+queuebutton.lua
+instancedifficulty.lua
+stats.lua
+zonetextbutton.lua
+clockbutton.lua
