@@ -1,6 +1,6 @@
 local st = SaftUI
 
-st.config.profile.inventory = st.tablemerge({
+st.defaults.inventory = {
 	enable = true,
 	compact = true, -- re-order categories to take up the least amount of space
 	buttontemplate = 'thicktransparent',
@@ -37,4 +37,4 @@ st.config.profile.inventory = st.tablemerge({
 		perrow = 5,
 		maxRows = 20
 	}
-}, st.config.profile.inventory)
+}

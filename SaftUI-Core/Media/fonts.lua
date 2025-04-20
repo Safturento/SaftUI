@@ -13,7 +13,7 @@ FN.outlines = {
 	MONOCHROMETHICKOUTLINE = 'Monochrome Thick Outine',
 }
 
-function FN:OnInitialize()
+function FN:OnEnable()
 	for key, config in pairs(st.config.profile.fonts) do
 		local font = CreateFont('SaftUI_'..config.name..'Font')
 

@@ -1,6 +1,6 @@
 local st = SaftUI
 
-st.config.profile.loot = st.tablemerge({
+st.defaults.loot = {
 	popup = {
 		template = 'thick',
 		font = 'pixel',
@@ -44,4 +44,4 @@ st.config.profile.loot = st.tablemerge({
 		font = 'normal',
 		grow_down = false,
 	}
-}, st.config.profile.loot)
+}

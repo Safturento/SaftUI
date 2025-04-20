@@ -1,6 +1,6 @@
 local st = SaftUI
 
-st.config.profile.chat = st.tablemerge({
+st.defaults.chat = {
 	position = {'BOTTOMLEFT', 'UIParent', 'BOTTOMLEFT', 30, 30},
 	template = 'thicktransparent',
 	font = 'normal',
@@ -15,4 +15,4 @@ st.config.profile.chat = st.tablemerge({
 	editbox = {
 		height = 25,
 	}
-}, st.config.profile.chat)
+}

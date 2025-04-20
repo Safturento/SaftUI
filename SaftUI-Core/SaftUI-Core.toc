@@ -3,7 +3,6 @@
 ## Title: |cff00adefSaftUI Core|r
 ## SavedVariables: SaftUI_DB
 ## OptionalDeps: RealMobHealth, ItemRack, WoWUnit, WeakAuras
-## X-oUF: SaftUI
 ## Group: SaftUI-Core
 
 Libraries\LibStub\LibStub.lua

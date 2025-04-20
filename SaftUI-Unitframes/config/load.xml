@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="default.lua"/>
+	<Script file="player.lua"/>
+	<Script file="target.lua"/>
+	<Script file="targettarget.lua"/>
+	<Script file="focus.lua"/>
+	<Script file="focustarget.lua"/>
+	<Script file="pet.lua"/>
+	<Script file="pettarget.lua"/>
+	<Script file="boss.lua"/>
+	<Script file="arena.lua"/>
+	<Script file="party.lua"/>
+	<Script file="raid10.lua"/>
+	<Script file="raid40.lua"/>
+	<Script file="nameplate.lua"/>
+</Ui>

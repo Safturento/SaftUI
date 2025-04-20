@@ -10,7 +10,7 @@ SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 SaftUI.EditMode = LibStub('EditModeExpanded-1.0')
 
-function SaftUI:OnInitialize()
+function SaftUI:OnEnable()
 	SetCVar('autoLootDefault', 1)
 	--SetCVar('chatStyle', 'classic')
 	--SetCVar('whisperMode', 'inline')
@@ -46,9 +46,6 @@ function SaftUI:OnInitialize()
 		end
 	end
 	-- print('You have played for a total of ' .. SecondsToTime(total_time) .. ' across your characters.')
-end
-
-function SaftUI:OnEnable()
 	UIParent:SetScale(st.scale)
 end
 

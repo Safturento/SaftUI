@@ -446,24 +446,6 @@ function INV:CloseBank()
 	self:HideBags()
 end
 
-function INV:OnInitialize()
-	self.config = st.config.profile.inventory
-	if self.config.enable == false then return end
-
-	if not self.config.filters then
-		self.config.filters = {}
-	end
-
-	if not self.config.filters.categories then
-        self.config.filters.categories = {}
-    end
-
-	self:CreateContainer('bag', INVTYPE_BAG)
-	self:InitializePlayerBagSlots()
-	self.containers.bag:Hide()
-	self:InitializeAllCategories('bag')
-end
-
 function INV:MovePlayerBagSlots()
 	local bagSlotContainer = self.containers.bag.bagSlotContainer
 	local BagSlots = bagSlotContainer.slots
@@ -566,6 +548,21 @@ function INV:ADDON_LOADED(event, addon)
 end
 
 function INV:OnEnable()
+	self.config = st.config.profile.inventory
+	if self.config.enable == false then return end
+
+	if not self.config.filters then
+		self.config.filters = {}
+	end
+
+	if not self.config.filters.categories then
+        self.config.filters.categories = {}
+    end
+
+	self:CreateContainer('bag', INVTYPE_BAG)
+	self:InitializePlayerBagSlots()
+	self.containers.bag:Hide()
+	self:InitializeAllCategories('bag')
 	--ToggleBackpack		= INV.ToggleBags
 	--ToggleBag 			= INV.ToggleBags
 	--ToggleAllBags 		= INV.ToggleBags

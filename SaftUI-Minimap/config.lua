@@ -1,6 +1,6 @@
 local st = SaftUI
 
-st.config.profile.minimap = st.tablemerge({
+st.defaults.minimap = {
     font = 'pixel',
     enable = true,
     template = 'thick',
@@ -12,9 +12,9 @@ st.config.profile.minimap = st.tablemerge({
         x_off = -st.CLAMP_INSET,
         y_off = -st.CLAMP_INSET
     },
-}, st.config.profile.minimap)
+}
 
-st.config.profile.micromenu = st.tablemerge({
+st.defaults.micromenu = {
     position = {
         point = 'TOPLEFT',
         frame = 'UIParent',
@@ -22,4 +22,4 @@ st.config.profile.micromenu = st.tablemerge({
         x_off = st.CLAMP_INSET,
         y_off = -st.CLAMP_INSET,
     },
-}, st.config.profile.micromenu)
+}
