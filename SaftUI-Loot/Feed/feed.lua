@@ -42,8 +42,8 @@ local feed_stack = {}
 ---- Pattern matching --------------
 ------------------------------------
 local match_replacements = {
-	link = "(\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*",
-	currency = "(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)",
+	link = '(\124cnIQ%d:\124H[^:]*:[^\124]*\124h.*\124h)%D*',
+	currency = '(\124cnIQ%d:\124Hcurrency[%-?%d:]+%D*)',
 	count =  '(%d+)',
 	honor = '(%d+)',
 	experience = '(%d+)',
