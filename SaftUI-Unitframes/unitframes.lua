@@ -41,7 +41,9 @@ function UF.ConstructUnit(self, unit)
 	end
 
 	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
-	
+	if UF.unit_strings[self.base_unit] then
+		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
+	end
 	self:RegisterForClicks('AnyUp')
 	self:SetScript('OnEnter', UnitFrame_OnEnter)
 	self:SetScript('OnLeave', UnitFrame_OnLeave)
@@ -65,6 +67,8 @@ function UF.ConstructUnit(self, unit)
 
 	if self.is_group_unit then
 		UF:UpdateUnitFrame(self)
+	else
+		UF.allUnits[unit] = self
 	end
 end
 
@@ -563,10 +567,6 @@ end
 
 function UF:GetProfileConfig()
 	local currentProfile = self:GetProfile()
-	---- If no profile exists then initialize it from the default
-	--if not st.config.profile.unitframes.profiles[currentProfile] then
-	--	st.config.profile.unitframes.profiles[currentProfile] = st.config.profile.unitframes.profiles['**']
-	--end
 	return st.config.profile.unitframes.profiles[currentProfile]
 end
 
@@ -575,14 +575,15 @@ function UF:OnEnable()
 	self.oUF:SetActiveStyle('SaftUI')
 
 	self.units = {}
-	for unit, global_name in pairs(self.unit_strings) do
+	self.allUnits = {}
+	for unit, labelName in pairs(self.unit_strings) do
 		if unit == 'boss' or unit == 'arena' then
 			self.units[unit] = {}
 			for i=1, 5 do
-				self.units[unit][i] = self.oUF:Spawn(unit..i, 'SaftUI_'..global_name..i)
+				self.units[unit][i] = self.oUF:Spawn(unit..i, 'SaftUI_'..labelName..i)
 			end
 		else
-			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..global_name)
+			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)
 		end
 	end
 
@@ -591,4 +592,11 @@ function UF:OnEnable()
 	UF:CreateGroupHeaders()
 	UF:UpdateConfig()
 	UF:UpdateColors()
+
+	for _, unitframe in pairs(self.units) do
+		-- We're going to register boss and arena frames as a group instead, this filters then out
+		if unitframe.unit then
+			st:RegisterEditMode(unitframe, ("%s Unitframe"):format(unitframe.unitLabel), unitframe.config.position)
+		end
+	end
 end
