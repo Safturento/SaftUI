@@ -36,9 +36,10 @@ end
 function Util:SetItemUpgradeQuality(equipSlot, itemLink)
     if not st.retail then return end
     local quality, level, maxLevel = Util:ScanItemLink(itemLink):match("Upgrade Level: (%w+) (%d)/(%d)")
+    equipSlot.alwaysShowProfessionsQuality = true
+
     if quality then
         equipSlot.isProfessionItem = true
-        equipSlot.alwaysShowProfessionsQuality = true
         SetItemCraftingQualityOverlayOverride(equipSlot, upgradeQualities[quality])
         self:SetItemQualityLevelText(equipSlot, level, maxLevel)
     end

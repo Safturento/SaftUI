@@ -80,17 +80,6 @@ st.defaults.maps = {
 	}
 }
 
-st.defaults.tooltip = {
-	template = 'thicktransparent',
-	font = 'normal',
-	attach_to_bags = true,
-}
-
-st.defaults.skinning = {
-	font = 'pixel',
-	template = 'thicktransparent',
-}
-
 --st.defaults.experience = {
 --	width = st.defaults.maps.minimap.size,
 --	height = 13,
