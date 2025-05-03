@@ -16,6 +16,8 @@ function MM:OnEnable()
     self.config = st.config.profile.minimap
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
+    MinimapCluster:ClearAllPoints()
+    MinimapCluster.SetPoint = function()  end
 	function GetMinimapShape() return "SQUARE" end
     st:SetBackdrop(Minimap, self.config.template)
 
