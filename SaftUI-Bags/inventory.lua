@@ -39,7 +39,6 @@ function INV:SelectBankCategory(clickedHeader)
     end
 end
 
-
 function INV:GetContainer(containerName)
 	return self.containers[containerName]
 end
@@ -126,7 +125,7 @@ function INV:InitializeFooter(container)
 		self:UpdateGold()
 	elseif container.id == 'bank' and st.retail then
 		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents')
-		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
+		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -6, 6)
 		reagentButton:SetScript('OnClick', function()
 			if not self.containers.reagent then
 				self:InitializeReagentBank()
@@ -148,14 +147,6 @@ function INV:InitializeFooter(container)
 		end)
 		warbandButton:SetSize(100, 16)
 		warbandButton:SetFrameLevel(90)
-
-	elseif container.id == 'reagent' then
-		local deposit = ReagentBankFrame.DespositButton
-		deposit:SetSize(200, 16)
-		deposit:SetParent(container)
-		deposit:ClearAllPoints()
-		deposit:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
-		st:SkinActionButton(deposit)
 	end
 end
 
@@ -222,6 +213,7 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
+	INV:UpdateWarbandMoney()
 	st.config.realm.summary[st.my_name].gold = money
 end
 
@@ -391,155 +383,6 @@ function INV:QueueUpdate()
 	self.NEED_UPDATE = true
 end
 
-function INV:ToggleBags()
-	if IsOptionFrameOpen() then return end
-
-	if INV.containers.bag:IsShown() then
-		INV:HideBags()
-	else
-		INV:ShowBags()
-	end
-end
-
-function INV:ShowBags()
-	if C_CurrencyInfo.IsAccountCharacterCurrencyDataReady and not (C_CurrencyInfo.IsAccountCharacterCurrencyDataReady()) then
-		C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
-	end
-	INV.containers.bag:Show()
-	INV:QueueUpdate()
-	INV:UpdateCooldowns()
-	INV:MovePlayerBagSlots()
-end
-
-function INV:HideBags()
-	INV.containers.bag:Hide()
-	if not INV.containers.bag.slots then return end
-	for _,slot in pairs(INV.containers.bag.slots) do
-		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
-	end
-	if INV.containers.bank and INV.containers.bank:IsShown() then
-		INV.containers.bank:Hide()
-		HideUIPanel(BankFrame);
-		C_Bank.CloseBankFrame();
-	end
-	if CurrencyTransferMenu and CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
-end
-
-function INV:DisableBlizzardBank()
-	BankFrame:ClearAllPoints()
-	BankFrame:SetPoint('RIGHT', UIParent, 'LEFT', -100, 0)
-	BankFrame.SetPoint = function() end
-end
-
-function INV:OpenBank()
-	if not self.containers.bank then
-		self:CreateContainer('bank', BANK, true)
-		self:MoveBankBagSlots()
-	end
-	self.containers.bank:Show()
-	self:ShowBags()
-	self:UpdateVisibleContainers()
-end
-
-function INV:CloseBank()
-	self.containers.bank:Hide()
-	self:HideBags()
-end
-
-function INV:MovePlayerBagSlots()
-	local bagSlotContainer = self.containers.bag.bagSlotContainer
-	local BagSlots = bagSlotContainer.slots
-
-	local prev
-	for _, slot in pairs(BagSlots) do
-		slot:ClearAllPoints()
-		if prev then
-			slot:SetPoint('BOTTOMLEFT', prev, 'BOTTOMRIGHT', self.config.buttonspacing, 0)
-		else
-			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
-		end
-		prev = slot
-	end
-end
-
-function INV:InitializePlayerBagSlots()
-	local BagSlots = {}
-	for i=0,3 do
-		local slot = _G['CharacterBag'..i..'Slot']
-		slot.icon = _G['CharacterBag'..i..'SlotIconTexture']
-		tinsert(BagSlots, slot)
-	end
-
-	if st.retail then
-		CharacterReagentBag0Slot.icon = CharacterReagentBag0SlotIconTexture
-		tinsert(BagSlots, CharacterReagentBag0Slot)
-	end
-	local bagSlotContainer = st:CreateFrame('frame', 'BagSlotFrame', self.containers.bag)
-	bagSlotContainer:Hide()
-	bagSlotContainer:SetSize(
-		self.config.buttonwidth * #BagSlots + self.config.buttonspacing * (#BagSlots - 1) + self.config.padding * 2,
-		self.config.buttonheight + self.config.padding * 2)
-	st:SetBackdrop(bagSlotContainer, 'thick')
-	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
-
-	bagSlotContainer.slots = BagSlots
-	local slotToggle = st:CreateButton('BagSlotToggle', self.containers.bag.header, 'Bag Slots', 'none')
-	slotToggle:SetPoint('LEFT', 8, 0)
-	slotToggle:SetSize(64, st.config.profile.headers.height - 8)
-	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown())  end)
-	self.containers.bag.header.slotToggle = slotToggle
-
-	for _,slot in pairs(BagSlots) do
-		slot.IconBorder:SetAlpha(0)
-		slot:SetParent(bagSlotContainer)
-		st:SkinIcon(slot.icon, nil, slot)
-		st:SkinActionButton(slot, st.config.profile.buttons)
-		st:SetBackdrop(slot, 'thick')
-		slot:SetNormalTexture("")
-		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
-	end
-
-	self.containers.bag.bagSlotContainer = bagSlotContainer
-
-	self:MovePlayerBagSlots()
-	self:RegisterEvent('BAG_SLOT_FLAGS_UPDATED', 'MovePlayerBagSlots')
-	if st.retail then
-		self:SecureHook(CharacterReagentBag0Slot, 'SetBarExpanded', 'MovePlayerBagSlots')
-		self:SecureHook(MainMenuBarBagManager, 'OnExpandBarChanged', 'MovePlayerBagSlots')
-	end
-end
-
-function INV:MoveBankBagSlots()
-	local BagSlots = {}
-	for i=1,7 do
-		BagSlots[i] = BankSlotsFrame['Bag'..i]
-		BagSlots[i].IconBorder:SetAlpha(0)
-	end
-
-	local bagSlotContainer = st:CreateFrame('frame', 'BankBagSlotFrame', self.containers.bank)
-	bagSlotContainer:SetSize(
-		self.config.buttonwidth * 7 + self.config.buttonspacing * 6 + self.config.padding * 2,
-		self.config.buttonheight + self.config.padding * 2)
-	st:SetBackdrop(bagSlotContainer, 'thick')
-
-	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bank, 'TOPLEFT', 0, self.config.buttonspacing)
-	for i,slot in pairs(BagSlots) do
-		slot:SetParent(bagSlotContainer)
-		slot:ClearAllPoints()
-		st:SkinIcon(slot.icon, nil, slot)
-		st:SkinActionButton(slot, st.config.profile.buttons)
-		st:SetBackdrop(slot, 'thick')
-		slot:SetNormalTexture("")
-		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
-		if i == 1 then
-			slot:SetPoint('BOTTOMLEFT', bagSlotContainer, 'BOTTOMLEFT', self.config.padding, self.config.padding)
-		else
-			slot:SetPoint('BOTTOMLEFT', BagSlots[i-1], 'BOTTOMRIGHT', self.config.buttonspacing, 0)
-		end
-	end
-	self.containers.bank.bagSlotContainer = bagSlotContainer
-end
-
 function INV:ADDON_LOADED(event, addon)
 	if addon == 'ItemRackOptions' then
 		self:SecureHook(ItemRackOpt, 'SaveSet', 'UpdateItemRackCategories')
@@ -597,7 +440,7 @@ function INV:OnEnable()
 	self:InitializeTooltipScanner()
 
 	if ItemRack then
-	self:UpdateItemRackCategories()
+		self:UpdateItemRackCategories()
 	end
 
 	-- Make sure the slots are all created immediately intead of on first open

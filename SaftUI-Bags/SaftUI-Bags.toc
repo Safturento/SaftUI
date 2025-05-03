@@ -10,8 +10,10 @@ currencies.lua
 filters.lua
 tooltipscanner.lua
 category.lua
-reagentbank.lua
-warbandbank.lua
+containers\bag.lua
+containers\bank.lua
+containers\reagentbank.lua
+containers\warbandbank.lua
 slot.lua
 utilities.lua
 autovendor.lua

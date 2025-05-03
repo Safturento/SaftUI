@@ -7,12 +7,13 @@ st.defaults.inventory = {
 	template = 'thicktransparent',
 	padding = 10,
 	buttonheight = 35,
-	buttonwidth = 40,
+	buttonwidth = 50,
 	buttonspacing = 9,
 	categoryspacing = 30,
 	categoryTitleHeight = 17,
 	autorepair = true,
 	autovendor = true,
+	mergeBanks = true,
 	fonts = {
 		titles = 'normal',
 		icons = 'pixel',
@@ -25,16 +26,16 @@ st.defaults.inventory = {
 	bank = {
 		position = {'TOPLEFT', 200, -200},
 		perrow = 5,
-		maxRows = 20,
+		maxRows = 30,
 	},
 	reagent = {
 		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0},
 		perrow = 5,
-		maxRows = 20,
+		maxRows = 30,
 	},
 	warband = {
 		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
 		perrow = 5,
-		maxRows = 20
+		maxRows = 30
 	}
 }

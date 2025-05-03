@@ -104,7 +104,7 @@ local function isLegacyGear(item)
 		return false
 	end
 
-    if item.expacID > 7
+    if item.expacID > 9
 	-- This item level comparison makes sure that timewalking gear doesn't get vendored
 	or item.ilvl > GetAverageItemLevel() * 0.9
     or item.equipSlot == 'INVTYPE_TABARD'
@@ -164,6 +164,22 @@ end)
 
 INV:AddFilter('Paladin/Priest/Warlock', function(item)
 	return matchesAny(item.tooltipText, "Paladin, Priest, Warlock")
+end)
+
+INV:AddFilter('Warrior/Rogue/Monk', function(item)
+	return matchesAny(item.tooltipText, "Warrior, Rogue, Monk")
+end)
+
+INV:AddFilter('Hunter/Mage/Druid', function(item)
+	return matchesAny(item.tooltipText, "Hunter, Mage, Druid")
+end)
+
+INV:AddFilter('Paladin/Priest/Shaman', function(item)
+	return matchesAny(item.tooltipText, "Paladin, Priest, Shaman")
+end)
+
+INV:AddFilter('Death Knight/Warlock/Demon Hunter', function(item)
+	return matchesAny(item.tooltipText, "Death Knight, Warlock, Demon Hunter")
 end)
 
 INV:AddFilter('Reputation', function(item)
