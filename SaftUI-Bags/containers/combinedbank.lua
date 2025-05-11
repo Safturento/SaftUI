@@ -40,6 +40,32 @@ function INV:MoveCombinedBankBagSlots()
 	(self.containers.combinedbank).bagSlotContainer = bagSlotContainer
 end
 
+function INV:InitializeBankCategorySelection()
+	local selector = st:CreateRadioGroup('SaftUIBankCategorySelector', self.containers.combinedbank, {
+		buttonHeight = 20,
+		buttonWidth = 100,
+		buttonSpacing = 6,
+		template = self.config.template,
+		items = {
+			{
+				label = 'Bank',
+				onClick = function(self) BankFrame_ShowPanel('BankSlotsFrame') end,
+			},
+			{
+				label = 'Reagent',
+				onClick = function(self)
+					BankFrame_ShowPanel('ReagentBankFrame') end,
+			},
+			{
+				label = 'Warband',
+				onClick = function(self) BankFrame_ShowPanel('AccountBankPanel') end,
+			},
+		}
+	})
+
+	selector:SetPoint('BOTTOMLEFT', self.containers.combinedbank, 'TOPLEFT', 0, 10)
+end
+
 function INV:OpenCombinedBank()
 	if not self.containers.combinedbank then
 		self:InitializeCombinedBank()
@@ -62,8 +88,30 @@ function INV:CloseCombinedBank()
 	end
 end
 
+function UpdateContainerSlots(container)
+	local empty, total
+	local text = ''
+	empty, total = INV:GetNumContainerSlots(INV.bankIds.bank)
+	text = text .. ('%d/%d '):format(total - empty, total)
+
+	empty, total = INV:GetNumContainerSlots(INV.bankIds.reagent)
+	text = text .. st.StringFormat:ColorString(
+			(('%d/%d '):format(total - empty, total)),
+			unpack(st.config.profile.colors.text.green)
+	)
+
+	empty, total = INV:GetNumContainerSlots(INV.bankIds.warband)
+	text = text .. st.StringFormat:ColorString(
+			(('%d/%d'):format(total - empty, total)),
+			unpack(st.config.profile.colors.text.cyan)
+	)
+
+	container.footer.slots:SetText(text)
+end
+
 function INV:InitializeCombinedBank()
     local container = self:CreateContainer('combinedbank', BANK, true)
+	container.UpdateContainerSlots = UpdateContainerSlots
     self:MoveCombinedBankBagSlots()
 
 	local depositButton = self:SkinReagentDepositButton(container)
@@ -73,6 +121,7 @@ function INV:InitializeCombinedBank()
 	self:CreateGoldString(container)
 	self:UpdateCombinedBankWarbandMoney()
 	self:InitializeWithdrawButton(container)
+	self:InitializeBankCategorySelection()
 
 	self:InitializeDepositButton()
 end

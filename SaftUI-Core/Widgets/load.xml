@@ -7,4 +7,5 @@
 	<Include file="templates.xml"/>
 	<Script file="scrolllist.lua"/>
 	<Script file="statusbar.lua"/>
+	<Script file="radiogroup.lua"/>
 </Ui>

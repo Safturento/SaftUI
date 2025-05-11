@@ -18,6 +18,8 @@ else
 	}
 end
 
+INV.bankIds = BAG_IDS
+
 INV.containers = {}
 INV.OnUseItems = {}
 
@@ -299,9 +301,9 @@ function INV:DisplayServerGold()
 	GameTooltip:Show()
 end
 
-function INV:GetNumContainerSlots(container)
+function INV:GetNumContainerSlots(bagIds)
 	local empty, total = 0, 0
-	for _,bagID in pairs(container.bag_ids) do
+	for _,bagID in pairs(bagIds) do
 		empty = empty + C_Container.GetContainerNumFreeSlots(bagID)
 		total = total + C_Container.GetContainerNumSlots(bagID)
 	end
@@ -326,8 +328,12 @@ function INV:UpdateContainer(id)
 
 	container:SetLoading(numItems - numLoading, numItems)
 
-	local empty, total = self:GetNumContainerSlots(container)
-	container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
+	if container.UpdateContainerSlots then
+		container:UpdateContainerSlots()
+	else
+		local empty, total = self:GetNumContainerSlots(container.bag_ids)
+			container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
+	end
 end
 
 function INV:UpdateContainerLayout(id)
