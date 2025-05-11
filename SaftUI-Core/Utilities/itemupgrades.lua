@@ -9,16 +9,17 @@ local upgradeQualities = {
 	Myth = 5,
 }
 
-function Util:SetItemQualityLevelText(equipSlot, level, maxLevel)
+function Util:SetItemQualityLevelText(equipSlot, level, maxLevel, anchor)
+    anchor = anchor or equipSlot
     if not equipSlot.qualityText then
         equipSlot.qualityText = equipSlot:CreateFontString(nil, 'OVERLAY')
         equipSlot.qualityText:SetFontObject(st:GetFont('pixel'))
-        equipSlot.qualityText:SetPoint('TOPRIGHT', equipSlot, 2, 0)
+        equipSlot.qualityText:SetPoint('TOPRIGHT', anchor, 2, 0)
         equipSlot.qualityText:SetDrawLayer("OVERLAY", 7);
 
         local textbg = equipSlot:CreateTexture(nil, 'OVERLAY')
         textbg:SetDrawLayer('OVERLAY', -8)
-        textbg:SetPoint('TOPRIGHT', equipSlot)
+        textbg:SetPoint('TOPRIGHT', anchor)
         textbg:SetPoint('BOTTOMLEFT', equipSlot.qualityText, -2, -1)
         textbg:SetTexture(st.BLANK_TEX)
         textbg:SetAlpha(0.8)
@@ -33,21 +34,39 @@ function Util:SetItemQualityLevelText(equipSlot, level, maxLevel)
     end
 end
 
-function Util:SetItemUpgradeQuality(equipSlot, itemLink)
-    if not st.retail then return end
-    local quality, level, maxLevel = Util:ScanItemLink(itemLink):match("Upgrade Level: (%w+) (%d)/(%d)")
-    equipSlot.alwaysShowProfessionsQuality = true
-
-    if quality then
-        equipSlot.isProfessionItem = true
-        SetItemCraftingQualityOverlayOverride(equipSlot, upgradeQualities[quality])
-        self:SetItemQualityLevelText(equipSlot, level, maxLevel)
+function Util:SetItemQuality(button, link, anchor)
+    ClearItemCraftingQualityOverlay(button)
+    if not Util:SetItemUpgradeQuality(button, link, anchor) then
+        SetItemCraftingQualityOverlay(button, link)
     end
 end
 
-function Util:SetItemUpgradeQualityForBagSlot(equipSlot, bagId, slotId)
+function Util:ClearItemQuality(button)
+        ClearItemCraftingQualityOverlay(button)
+        button.professionQualityOverlayOverride = nil
+        if button.qualityText then
+            button.qualityText:SetText('')
+        end
+end
+
+function Util:SetItemUpgradeQuality(button, itemLink, anchor)
+    if not st.retail then return end
+    local quality, level, maxLevel = Util:ScanItemLink(itemLink):match("Upgrade Level: (%w+) (%d)/(%d)")
+    button.alwaysShowProfessionsQuality = true
+
+    if quality then
+        button.isProfessionItem = true
+        SetItemCraftingQualityOverlayOverride(button, upgradeQualities[quality])
+        self:SetItemQualityLevelText(button, level, maxLevel, anchor)
+        return true
+    end
+
+    return false
+end
+
+function Util:SetItemUpgradeQualityForBagSlot(button, bagId, slotId)
     Util:SetItemUpgradeQuality(
-        equipSlot,
+        button,
         C_Container.GetContainerItemLink(bagId, slotId)
     )
 end

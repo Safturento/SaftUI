@@ -35,6 +35,8 @@ local st = SaftUI
 local LT = st.Loot
 local DEBUG = false
 
+local Util = st:GetModule('Utilities')
+
 local MAX_HISTORY = 500
 local feed_stack = {}
 
@@ -208,15 +210,13 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 		end
 
 		if (now - info.time <= self.config.feed.fade_time) then
+			Util:ClearItemQuality(item)
+
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
 			else
-				local craftQuality = info.link and info.link:match(":(Professions%-ChatIcon%-Quality%-Tier%d+):")
-				local text = info.name
-
-				if craftQuality then
-					text = text .. CreateAtlasMarkup(craftQuality, 16, 16, 0, -5)
-					info.craftQuality = craftQuality
+				if info.link then
+					Util:SetItemQuality(item, info.link, item.icon)
 				end
 
 				item.text:SetText(text)
@@ -307,7 +307,7 @@ end
 function LT:LootFeedAddItem(match)
 	if not match['link'] then return end
 
-	local name, _, quality, _, _, _, _, _, _, texture = C_Item.GetItemInfo(match['link'])
+	local name, _, quality, _, _, type, subType, _, _, texture = C_Item.GetItemInfo(match['link'])
 
 	if not name or not quality then
 		st:Error("Item has weird link:", match['link'], match['link']:gsub("|", "||"))
@@ -327,6 +327,8 @@ function LT:LootFeedAddItem(match)
 		count = match['count'],
 		notSelf = match['player'],
 		type = 'Loot',
+		itemType = type,
+		itemSubType = subType,
 	})
 end
 
@@ -444,6 +446,22 @@ local function HideTooltip()
 	GameTooltip:Hide()
 end
 
+local function HandleClick(self, button, upInside)
+	-- Only act if mouse is still inside on mouse up
+	if not upInside then return end
+
+	-- We don't care about non-items
+	if not self.link then return end
+
+	if button == 'LeftButton' then
+		if IsShiftKeyDown() then
+			-- chat link
+		elseif IsControlKeyDown() and C_Item.IsDressableItemByID(self.link) then
+			DressUpLink(self.link)
+		end
+	end
+end
+
 function LT:UpdateLootFeedConfig()
 	local config = self.config.feed
 
@@ -470,6 +488,7 @@ function LT:UpdateLootFeedConfig()
 
 		item:SetScript("OnEnter", ShowTooltip)
 		item:SetScript("OnLeave", HideTooltip)
+		item:SetScript('OnMouseUp', HandleClick)
 		item:EnableMouse(true)
 
 		self.feed.items[i] = item

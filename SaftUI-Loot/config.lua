@@ -11,7 +11,7 @@ st.defaults.loot = {
 	},
 	feed = {
 		width = 400,
-		item_height = 28,
+		item_height = 32,
 		position = {
 			point = 'BOTTOMRIGHT',
 			frame = 'UIParent',
