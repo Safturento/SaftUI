@@ -80,6 +80,7 @@ function INV:CreateContainer(id, name, isBankContainer)
             category.filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
         end
     end)
+	filterButton:Hide()
     container.filterButton = filterButton
 
 	container.bags = {}
