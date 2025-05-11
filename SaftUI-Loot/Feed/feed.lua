@@ -200,7 +200,9 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 
 	self.debugText:SetFormattedText('%d/%d/%d', self.feed.offset, #filteredItems, #feed_stack)
 
-	for i=1, self.config.feed.max_items do
+	local feedConfig = self.config.feed
+
+	for i=1, feedConfig.max_items do
 		item = self.feed.items[i]
 		info = filteredItems[i + self.feed.offset]
 		if not info then break end
@@ -209,8 +211,16 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			info.time = now
 		end
 
-		if (now - info.time <= self.config.feed.fade_time) then
+		if (now - info.time <= feedConfig.fade_time) then
 			Util:ClearItemQuality(item)
+
+			if info.itemSubType == "Mount" then
+				item.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.yellow))
+				item.icon.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.yellow))
+			else
+				st:SetBackdrop(item, feedConfig.template)
+				st:SetBackdrop(item.icon, feedConfig.template)
+			end
 
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
@@ -219,7 +229,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 					Util:SetItemQuality(item, info.link, item.icon)
 				end
 
-				item.text:SetText(text)
+				item.text:SetText(info.name)
 			end
 
 			item.rightText:SetText(info.rightText or '')

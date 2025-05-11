@@ -12,6 +12,7 @@ local test_armor_track_max = "\124cnIQ4:\124Hitem:234502::::::::80:262::35:7:103
 local test_currency = "|cffffffff|Hcurrency:1767:0|h[Stygia]|h|r"
 local test_currency_weekly_max = "|cffff8000|Hcurrency:1828:0|h[Soul Ash]|h|r"
 local thunderfury = "\124cffff8000\124Hitem:19019::::::::70:262:::::::::\124h[Thunderfury, Blessed Blade of the Windseeker]\124h\124r"
+local test_mount = "\124cnIQ4:\124Hitem:45693::::::::80:262:::::::::\124h[Mimiron's Head]\124h\124r"
 
 local function generate_random_item()
 	local link
@@ -53,9 +54,12 @@ function LT:InitializeTestMode()
 	C_Item.GetItemInfo(test_armor_track)
 	C_Item.GetItemInfo(test_armor_track_max)
 	C_Item.GetItemInfo(test_item_quality1)
+	C_Item.GetItemInfo(test_mount)
+	C_Item.GetItemInfo(test_item_quality1)
 
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_armor_track_max))
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_armor_track))
+	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_mount))
 	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality1, 5))
 	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality1, 5))
 	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality2, 4))
