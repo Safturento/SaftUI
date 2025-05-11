@@ -138,21 +138,21 @@ function INV:InitializeFooter(container)
 	container.footer.slots = slottext
 
 	if container.id == 'bag' then
-		local goldstring = CreateFrame('frame', nil, container.footer)
-		goldstring:EnableMouse(true)
-		goldstring:SetPoint('TOPRIGHT', container.footer, 'TOPRIGHT', 0, 0)
-		goldstring:SetPoint('BOTTOMRIGHT', container.footer, 'BOTTOMRIGHT', 0, 0)
-		goldstring:SetWidth(120)
+		local gold = CreateFrame('frame', nil, container.footer)
+		gold:EnableMouse(true)
+		gold:SetPoint('TOPRIGHT', container.footer, 'TOPRIGHT', 0, 0)
+		gold:SetPoint('BOTTOMRIGHT', container.footer, 'BOTTOMRIGHT', 0, 0)
+		gold:SetWidth(120)
 
-		goldstring.text = goldstring:CreateFontString(nil, 'OVERLAY')
-		goldstring.text:SetFontObject(st:GetFont(st.config.profile.headers.font))
-		goldstring.text:SetPoint('RIGHT', goldstring, 'RIGHT', -10, 0)
-		goldstring.text:SetJustifyH('RIGHT')
+		gold.text = gold:CreateFontString(nil, 'OVERLAY')
+		gold.text:SetFontObject(st:GetFont(st.config.profile.headers.font))
+		gold.text:SetPoint('RIGHT', gold, 'RIGHT', -10, 0)
+		gold.text:SetJustifyH('RIGHT')
 
-		goldstring:SetScript('OnEnter', function(self) INV:DisplayServerGold() end)
-		goldstring:SetScript('OnLeave', st.HideGameTooltip)
+		gold:SetScript('OnEnter', function(self) INV:DisplayServerGold() end)
+		gold:SetScript('OnLeave', st.HideGameTooltip)
 
-		container.footer.gold = goldstring
+		container.footer.gold = gold
 		self:UpdateGold()
 	elseif container.id == 'bank' and st.retail then
 		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents')
