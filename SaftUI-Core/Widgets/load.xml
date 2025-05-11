@@ -6,4 +6,5 @@
 	<Script file="editbox.lua"/>
 	<Include file="templates.xml"/>
 	<Script file="scrolllist.lua"/>
+	<Script file="statusbar.lua"/>
 </Ui>

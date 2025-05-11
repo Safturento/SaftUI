@@ -7,7 +7,8 @@ if st.retail then
 		['bag'] = { 0, 1, 2, 3, 4, 5 },
 		['bank'] = { -1, 6, 7, 8, 9, 10, 11, 12 },
 		['reagent'] = { -3 },
-		['warband'] = { 13, 14, 15, 16, 17 }
+		['warband'] = { 13, 14, 15, 16, 17 },
+		['combinedbank'] = { -3, -1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
 	}
 else
 	BAG_IDS = {
@@ -22,13 +23,13 @@ INV.OnUseItems = {}
 
 function INV:SelectBankCategory(clickedHeader)
 	local selectedContainer = clickedHeader:GetParent()
-    if selectedContainer.id == 'reagent' then
-        BankFrame_ShowPanel(ReagentBankFrame)
-    elseif selectedContainer.id == 'warband' then
-        BankFrame_ShowPanel('AccountBankPanel')
-    else
-        BankFrame_ShowPanel('BankSlotsFrame')
-    end
+	if selectedContainer.id == 'reagent' then
+		BankFrame_ShowPanel(ReagentBankFrame)
+	elseif selectedContainer.id == 'warband' then
+		BankFrame_ShowPanel('AccountBankPanel')
+	elseif selectedContainer.id == 'bank' then
+		BankFrame_ShowPanel('BankSlotsFrame')
+	end
 
     for containerName, container in pairs(self.containers) do
         if containerName == selectedContainer.id then
@@ -88,12 +89,41 @@ function INV:CreateContainer(id, name, isBankContainer)
 		container.bags[bag_id] = bag
 	end
 
-	if isBankContainer then
+	self:InitializeLoadingOverlay(container)
+
+	if isBankContainer and id ~= 'combinedbank' then
 		 self:HookScript(container.header, 'OnClick', 'SelectBankCategory')
 	end
 
 	self:UpdateConfig(id)
 	return container
+end
+
+function INV:InitializeLoadingOverlay(container)
+	local loadingOverlay = st:CreateFrame('frame', container:GetName().."LoadingOverlay", container)
+	loadingOverlay:SetBackdrop(st.BACKDROP)
+	loadingOverlay:SetBackdropColor(0, 0, 0, .7)
+	loadingOverlay:SetAllPoints()
+	loadingOverlay:SetFrameStrata('HIGH')
+	loadingOverlay:SetFrameLevel(50)
+
+	local loadingBar = st:CreateStatusBar(container:GetName().."LoadingBar", loadingOverlay, '-/-')
+	loadingBar:SetPoint('CENTER')
+	loadingBar:SetSize(300, 30)
+	loadingBar:SetStatusBarColor(unpack(st.config.profile.colors.button.blue))
+	loadingOverlay.loadingBar = loadingBar
+
+	container.loadingOverlay = loadingOverlay
+	container.SetLoading = function(self, current, max)
+		if current == max then
+			loadingOverlay:Hide()
+			return
+		end
+		loadingOverlay:Show()
+		loadingBar:SetMinMaxValues(0, max)
+		loadingBar:SetValue(current)
+		loadingBar.text:SetFormattedText('%d / %d', current, max)
+	end
 end
 
 function INV:InitializeFooter(container)
@@ -148,6 +178,26 @@ function INV:InitializeFooter(container)
 		warbandButton:SetSize(100, 16)
 		warbandButton:SetFrameLevel(90)
 	end
+end
+
+function INV:CreateGoldString(container)
+    local goldString = CreateFrame('frame', nil, container.footer)
+    goldString:EnableMouse(true)
+    goldString:SetPoint('TOPRIGHT', container.footer, 'TOPRIGHT', 0, 0)
+    goldString:SetPoint('BOTTOMRIGHT', container.footer, 'BOTTOMRIGHT', 0, 0)
+    goldString:SetWidth(120)
+
+    goldString.text = goldString:CreateFontString(nil, 'OVERLAY')
+    goldString.text:SetFontObject(st:GetFont(st.config.profile.headers.font))
+    goldString.text:SetPoint('RIGHT', goldString, 'RIGHT', -10, 0)
+    goldString.text:SetJustifyH('RIGHT')
+
+    goldString:SetScript('OnEnter', function() INV:DisplayServerGold() end)
+    goldString:SetScript('OnLeave', st.HideGameTooltip)
+
+	container.footer.gold = goldString
+
+    return goldString
 end
 
 function INV:InitializeSearch(container)
@@ -213,7 +263,8 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
-	INV:UpdateWarbandMoney()
+	self:UpdateWarbandMoney()
+	self:UpdateCombinedBankWarbandMoney()
 	st.config.realm.summary[st.my_name].gold = money
 end
 
@@ -260,7 +311,7 @@ end
 function INV:UpdateContainer(id)
 	local container = self.containers[id]
 	if not container and container:IsShown() then return end
-	local sortedInventory = self:GetSortedInventory(id)
+	local sortedInventory, numItems, numLoading = self:GetSortedInventory(id)
 
 	for name, items in pairs(sortedInventory) do
 		self:UpdateCategory(id, name, items)
@@ -271,6 +322,8 @@ function INV:UpdateContainer(id)
 	self:FlushCategories(container, sortedInventory)
 
 	self:UpdateContainerLayout(id)
+
+	container:SetLoading(numItems - numLoading, numItems)
 
 	local empty, total = self:GetNumContainerSlots(container)
 	container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
@@ -459,9 +512,15 @@ function INV:OnEnable()
 	self:RegisterEvent('ITEM_LOCK_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('PLAYERREAGENTBANKSLOTS_CHANGED', 'QueueUpdate')
+	self:RegisterEvent('GET_ITEM_INFO_RECEIVED', 'QueueUpdate')
 
-	self:RegisterEvent('BANKFRAME_OPENED', 'OpenBank')
-	self:RegisterEvent('BANKFRAME_CLOSED', 'CloseBank')
+	if self.config.combinedBank then
+		self:RegisterEvent('BANKFRAME_OPENED', 'OpenCombinedBank')
+		self:RegisterEvent('BANKFRAME_CLOSED', 'CloseCombinedBank')
+	else
+		self:RegisterEvent('BANKFRAME_OPENED', 'OpenBank')
+		self:RegisterEvent('BANKFRAME_CLOSED', 'CloseBank')
+	end
 
 	self.updater = CreateFrame('frame')
 	self:HookScript(self.updater, 'OnUpdate', 'UpdateHandler')

@@ -11,6 +11,7 @@ filters.lua
 tooltipscanner.lua
 category.lua
 containers\bag.lua
+containers\combinedbank.lua
 containers\bank.lua
 containers\reagentbank.lua
 containers\warbandbank.lua

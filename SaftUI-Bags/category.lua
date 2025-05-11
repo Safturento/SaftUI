@@ -21,6 +21,11 @@ function INV:GetItemCategory(info)
 		end
 	end
 
+	 --Reagent bag gets special categories
+	if info.bagID == REAGENTBANK_CONTAINER then
+		return info.subclass or "Other"
+	end
+
 	for i, category in ipairs(self.filters.categories) do
 		if category.func(info) then
 			return category.name
@@ -72,9 +77,15 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 			local itemType, itemId = string.split(':', itemString)
 
 			if itemType == "keystone" then
+				--StaticPopup_Show("EXTRACT_LINK_DIALOG", nil, nil, item.hyperlink)
+				--\124cnIQ4:\124Hkeystone:180653:504:11:162:10:9:0:0\124h[Keystone: Darkflame Cleft (11)]\124h\124r
+
 				_, _, _, keyLevel =  string.split(':', itemString)
-				--\124cffa335ee\124Hkeystone:180653:198:15:10:136:8:0\124h[Keystone: Darkheart Thicket (15)]\124h\124r
+
+				name = item.itemName
 				class = 'Key'
+				vendorPrice = 0
+				texture = item.iconFileID
 				item.stackCount = tonumber(keyLevel)
 				quality = 4
 
@@ -90,23 +101,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				quality = item.quality
 				texture = item.iconFileID
 			end
-		else
 		end
-
-		--local upgradeInfo
-		--if class == 'Armor' or class == 'Weapon' then
-		--	local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
-		--	local upgradable = C_ItemUpgrade.CanUpgradeItem(itemLocation);
-		--	if upgradable then
-		--		local quality, level, maxLevel = tooltipText:match("Upgrade Level: (%w+) (%d)/(%d)")
-		--		upgradeInfo = {
-		--			quality = quality,
-		--			level = level,
-		--			maxLevel = maxLevel,
-		--			qualityIndex = upgradeQualities[quality]
-		--		}
-		--	end
-		--end
 
 		if name then
 			return {
@@ -114,7 +109,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				ilvl = itemLevel,
 				reqLevel = reqLevel,
 				isWarbound = C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
-						     or string.matchnocase(tooltipText, "Warbound"),
+						or string.matchnocase(tooltipText, "Warbound"),
 				--bindType == Enum.ItemBind.ToBnetAccount
 				--		  or bindType == Enum.ItemBind.ToWoWAccount
 				--		  or bindType == Enum.ItemBind.ToBnetAccountUntilEquipped,
@@ -141,6 +136,10 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				tooltipText = tooltipText,
 				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
 			}
+		else
+			return {
+				loading = true
+			}
 		end
 	end
 end
@@ -155,27 +154,16 @@ function INV:GetSortedInventory(id)
 	end
 
 	local inventory = {}
-
-	if id == 'reagent' then
-		for slotID = 1, 98 do
-			local item = self:GetInventoryItemInfo(REAGENTBANK_CONTAINER, slotID)
+	local numItems = 0
+	local numLoading = 0
+	for _,bagID in pairs(container.bag_ids) do
+		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
+			local item = self:GetInventoryItemInfo(bagID, slotID)
 			if item then
-				local categoryName = item.subclass or "Other"
-
-				if item.expacID then
-					item.sortString = item.expacID .. item.sortString
-				end
-				if not inventory[categoryName] then inventory[categoryName] = {} end
-				tinsert(inventory[categoryName], item)
-			end
-		end
-	else
-		local numItems = 0
-		for _,bagID in pairs(container.bag_ids) do
-			for slotID=1, C_Container.GetContainerNumSlots(bagID) do
-				local item = self:GetInventoryItemInfo(bagID, slotID)
-				if item then
-					numItems = numItems + 1
+				numItems = numItems + 1
+				if item.loading then
+					numLoading = numLoading + 1
+				else
 					local categoryName = self:GetItemCategory(item)
 
 					if not inventory[categoryName] then inventory[categoryName] = {} end
@@ -191,7 +179,7 @@ function INV:GetSortedInventory(id)
 		end
 	end
 
-	return inventory
+	return inventory, numItems, numLoading
 end
 
 function INV:CreateCategory(id, categoryName, slotPoolFunc)
@@ -266,9 +254,9 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 	end
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
-	local categoryHeight = (self.config.buttonheight + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight
 	categoryFrame.numRows = numRows
-	categoryFrame:SetHeight(categoryHeight)
+	categoryFrame:SetHeight((self.config.buttonheight + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight)
+	categoryFrame:SetWidth((self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
 end
 
 function INV:FlushCategory(category)
