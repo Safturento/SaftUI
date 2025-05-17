@@ -33,12 +33,12 @@ function LT:DebugGroupLootFrame()
 		return texture, name, count, quality, bindOnPickUp, canNeed, canGreed, canDisenchant, reasonNeed, reasonGreed, reasonDisenchant, deSkillRequired, canTransmog
 	end
 
-	--function GroupLootFrame_OnUpdate(self, elapsed)
-	--end
+	function GetLootRollTimeLeft(rollId)
+		return rollId * 50
+	end
 
 	for i=1, 4 do
 		GroupLootContainer_AddRoll(i, 300)
-		_G['GroupLootFrame'..i].Timer:SetValue(math.random(30, 300))
 	end
 end
 
@@ -86,21 +86,26 @@ function LT:UpdateRollFrame(frame)
 
 	frame:SetSize(config.width, config.height)
 
+	frame.InfoFrame = st:CreateFrame('frame', nil, frame)
+	st:SetBackdrop(frame.InfoFrame, config.template)
+	frame.InfoFrame:SetPoint('BOTTOMRIGHT')
+	frame.InfoFrame:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
+	frame.InfoFrame:SetFrameLevel(1)
+
 	frame.Name:SetFontObject(st:GetFont(config.font))
 	frame.Name:ClearAllPoints()
 	frame.Name:SetHeight(config.height)
-	frame.Name:SetPoint('LEFT', frame.Timer, 5, 0)
+	frame.Name:SetPoint('LEFT', frame.InfoFrame, 5, 0)
 	frame.Name:SetPoint('RIGHT', frame.Timer.Text, 'LEFT', -5, 0)
 
 	st:SetBackdrop(frame.IconFrame, config.template)
 	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))
 	frame.IconFrame:SetSize(config.height, config.height)
 
-	st:SetBackdrop(frame.Timer, config.template)
 	frame.Timer:SetStatusBarTexture(st.BLANK_TEX)
 	frame.Timer:ClearAllPoints()
-	frame.Timer:SetPoint('LEFT', frame.IconFrame, 'RIGHT', config.spacing, 0)
-	frame.Timer:SetHeight(config.height)
+	frame.Timer:SetPoint('BOTTOMLEFT', frame.IconFrame, 'BOTTOMRIGHT', config.spacing, 0)
+	frame.Timer:SetHeight(1)
 	frame.Timer:SetWidth(config.width - config.height - config.spacing)
 
 	--st:StripTextures(frame.Timer, true)
@@ -111,7 +116,7 @@ function LT:UpdateRollFrame(frame)
 		if button:IsShown() then
 			button:ClearAllPoints()
 			if i == 1 then
-				button:SetPoint('RIGHT', frame.Timer, 'RIGHT', -2, 0)
+				button:SetPoint('RIGHT', frame.InfoFrame, 'RIGHT', -2, 0)
 			else
 				button:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
 			end
@@ -148,7 +153,6 @@ function LT:GroupLootFrame_OnShow(frame)
 	end
 
 	frame.Name:SetText(text .. name)
-
 end
 
 function LT:GroupLootFrame_OnUpdateTimer(self, elapsed)
@@ -156,7 +160,9 @@ function LT:GroupLootFrame_OnUpdateTimer(self, elapsed)
 
 	self.Text:SetText(st.StringFormat:ToClock(sec))
 
-	if sec < 30 then
+	self:SetStatusBarColor(unpack(st.config.profile.colors.button.blue))
+
+	if sec < 60 then
 		self.Text:SetVertexColor(unpack(st.config.profile.colors.text.red))
 	else
 		self.Text:SetVertexColor(1, 1, 1)
