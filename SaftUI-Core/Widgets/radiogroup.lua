@@ -42,17 +42,24 @@ function st:CreateRadioGroup(name, parent, options)
     radioGroup.buttons = {}
 
     local prev
-    for i, items in pairs(options.items) do
-        local button = st:CreateButton(name..'Button'..i, parent, items.label, self.config.template)
+    for i, item in pairs(options.items) do
+        local button = st:CreateButton(name..'Button'..i, parent, item.label, self.config.template)
         button:SetSize(options.buttonWidth, options.buttonHeight)
+        button.config = item --store button config for use in callbacks
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
 				st:SetBackdrop(_button, options.template)
 			end
 			self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.blue))
 
-            if items.onClick then
-                items.onClick(self, mouseButton, down)
+            -- global click handler
+            if options.onClick then
+                options.onClick(self, mouseButton, down)
+            end
+
+            -- per item click handler
+            if item.onClick then
+                item.onClick(self, mouseButton, down)
             end
         end)
 
@@ -63,6 +70,10 @@ function st:CreateRadioGroup(name, parent, options)
 			button:SetPoint('TOPLEFT', radioGroup, 'TOPLEFT', options.buttonSpacing, -options.buttonSpacing)
 		end
 		prev = button
+
+        if options.postCreate then
+            options.postCreate(button)
+        end
 
 		tinsert(radioGroup.buttons, button)
     end

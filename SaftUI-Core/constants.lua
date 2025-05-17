@@ -29,7 +29,7 @@ st.BACKDROP = {
 }
 st.CLAMP_INSET = 20
 
-local MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\', st.name)
+local MEDIA_PATH = format('Interface\\AddOns\\%s\\Media\\', ADDON_NAME)
 
 function st:TexturePath(fileName)
     return MEDIA_PATH .. 'Textures\\' .. fileName
@@ -44,6 +44,8 @@ st.textures = {
 	mail = st:TexturePath('mail.tga'),
 	mailSquare = st:TexturePath('mail-square.tga'),
 	glow = st:TexturePath('glowTex.tga'),
+	eyeClosed = st:TexturePath('eye-hidden.tga'),
+	eyeOpen = st:TexturePath('eye-visible.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp')
 }
 

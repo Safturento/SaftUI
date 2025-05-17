@@ -18,7 +18,7 @@ else
 	}
 end
 
-INV.bankIds = BAG_IDS
+INV.bagIds = BAG_IDS
 
 INV.containers = {}
 INV.OnUseItems = {}
@@ -235,13 +235,14 @@ function INV:SearchMatches(queryString, info)
 	local queryTags = INV:ParseSearchQuery(queryString)
 	queryString = queryString:lower()
 
-	local showBoE = queryTags.showBoE and info.isBoE
-	local showSoulbound = queryTags.showSoulbound and info.isSoulbound and not info.isWarbound
-	local showWarbound = queryTags.showWarbound and info.isWarbound
-
-	return showSoulbound or showWarbound or showBoE
-			or info.name:lower():find(queryString)
-			or (info.equipSlot and info.equipSlot:lower() == queryString)
+	for _, check in pairs({
+		queryTags.showBoE and info.isBoE,
+		queryTags.showSoulbound and info.isSoulbound and not info.isWarbound,
+		queryTags.showWarbound and info.isWarbound,
+		info.name:lower():find(queryString),
+		(info.equipSlot and info.equipSlot:lower() == queryString),
+		(info.class == 'Armor') and queryString:lower():find(info.subclass),
+	}) do if check then return true end end
 end
 
 function INV:UpdateSearchFilter(editbox, is_user_input)
@@ -462,10 +463,9 @@ function INV:OnEnable()
         self.config.filters.categories = {}
     end
 
-	self:CreateContainer('bag', INVTYPE_BAG)
-	self:InitializePlayerBagSlots()
-	self.containers.bag:Hide()
-	self:InitializeAllCategories('bag')
+	self:InitializeTooltipScanner()
+	self:InitializePlayerBags()
+
 	--ToggleBackpack		= INV.ToggleBags
 	--ToggleBag 			= INV.ToggleBags
 	--ToggleAllBags 		= INV.ToggleBags
@@ -475,12 +475,6 @@ function INV:OnEnable()
 	--CloseAllBags 		= INV.HideBags
 	--CloseBackpack 		= INV.HideBags
 	--CloseBag			= INV.HideBags
-
-	self:SecureHook('OpenAllBags', 'ShowBags')
-	self:SecureHook('CloseAllBags', 'HideBags')
-	self:SecureHook('ToggleBag', 'ToggleBags')
-	self:SecureHook('ToggleAllBags', 'ToggleBags')
-	self:SecureHook('ToggleBackpack', 'ToggleBags')
 
 	for _,frame in pairs({ BankFrame, ContainerFrameCombinedBags }) do
 		if frame then
@@ -497,7 +491,6 @@ function INV:OnEnable()
 		ContainerFrameCombinedBags:RegisterEvent('BAG_CONTAINER_UPDATE')
 	end
 
-	self:InitializeTooltipScanner()
 
 	if ItemRack then
 		self:UpdateItemRackCategories()

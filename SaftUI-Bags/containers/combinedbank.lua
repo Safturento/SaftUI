@@ -42,28 +42,80 @@ end
 
 function INV:InitializeBankCategorySelection()
 	local selector = st:CreateRadioGroup('SaftUIBankCategorySelector', self.containers.combinedbank, {
-		buttonHeight = 20,
-		buttonWidth = 100,
+		buttonHeight = 30,
+		buttonWidth = 140,
 		buttonSpacing = 6,
 		template = self.config.template,
+		onClick = function(button) BankFrame_ShowPanel(button.config.panel) end,
+		postCreate = function(button)
+			local visibility = st:CreateCheckButton(button:GetName()..'VisibilityCheckbox', button)
+			st:SetBackdrop(visibility, 'none')
+			visibility:SetPoint('RIGHT', button, 'RIGHT', -6, 0)
+			visibility:SetSize(16, 8)
+			visibility:SetChecked(true)
+
+			local unchecked = visibility:CreateTexture(nil, 'OVERLAY')
+			unchecked:SetAllPoints(visibility)
+			unchecked:Hide()
+			visibility:SetScript('OnClick', function(self, clickedButton, down)
+				if down then return end
+				local checked = self:GetChecked()
+				unchecked:SetShown(not checked)
+				INV:UpdateContainerBagIds(button.config.bagType, checked)
+			end)
+
+			local r,g,b = unpack(st.config.profile.colors.button.grey)
+			visibility:GetCheckedTexture():SetVertexColor(r, g, b, 1)
+			visibility:GetCheckedTexture():SetTexture(st.textures.eyeOpen)
+			unchecked:SetVertexColor(r, g, b, 0.3)
+			unchecked:SetTexture(st.textures.eyeClosed)
+		end,
 		items = {
 			{
 				label = 'Bank',
-				onClick = function(self) BankFrame_ShowPanel('BankSlotsFrame') end,
+				bagType = 'bank',
+				panel = 'BankSlotsFrame',
 			},
 			{
 				label = 'Reagent',
-				onClick = function(self)
-					BankFrame_ShowPanel('ReagentBankFrame') end,
+				bagType = 'reagent',
+				panel = 'ReagentBankFrame',
 			},
 			{
 				label = 'Warband',
-				onClick = function(self) BankFrame_ShowPanel('AccountBankPanel') end,
+				bagType = 'warband',
+				panel = 'AccountBankPanel',
 			},
 		}
 	})
 
 	selector:SetPoint('BOTTOMLEFT', self.containers.combinedbank, 'TOPLEFT', 0, 10)
+end
+
+function INV:UpdateContainerBagIds(key, val)
+	local container = self.containers.combinedbank
+	if not container.filter then
+		container.filter = {
+			bank = true,
+			reagent = true,
+			warband = true,
+		}
+	end
+
+	container.filter[key] = val
+
+	local bagIds = {}
+
+	for bagId, enabled in pairs(container.filter) do
+		if enabled then
+			for _, bagId in pairs(self.bagIds[bagId]) do
+				tinsert(bagIds, bagId)
+			end
+		end
+	end
+
+	container.bag_ids = bagIds
+	INV:UpdateContainer('combinedbank')
 end
 
 function INV:OpenCombinedBank()
@@ -88,19 +140,19 @@ function INV:CloseCombinedBank()
 	end
 end
 
-function UpdateContainerSlots(container)
+local function UpdateContainerSlots(container)
 	local empty, total
 	local text = ''
-	empty, total = INV:GetNumContainerSlots(INV.bankIds.bank)
+	empty, total = INV:GetNumContainerSlots(INV.bagIds.bank)
 	text = text .. ('%d/%d '):format(total - empty, total)
 
-	empty, total = INV:GetNumContainerSlots(INV.bankIds.reagent)
+	empty, total = INV:GetNumContainerSlots(INV.bagIds.reagent)
 	text = text .. st.StringFormat:ColorString(
 			(('%d/%d '):format(total - empty, total)),
 			unpack(st.config.profile.colors.text.green)
 	)
 
-	empty, total = INV:GetNumContainerSlots(INV.bankIds.warband)
+	empty, total = INV:GetNumContainerSlots(INV.bagIds.warband)
 	text = text .. st.StringFormat:ColorString(
 			(('%d/%d'):format(total - empty, total)),
 			unpack(st.config.profile.colors.text.cyan)

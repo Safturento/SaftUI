@@ -98,3 +98,33 @@ function INV:InitializePlayerBagSlots()
 		self:SecureHook(MainMenuBarBagManager, 'OnExpandBarChanged', 'MovePlayerBagSlots')
 	end
 end
+
+local function UpdateContainerSlots(container)
+	local empty, total
+	local text = ''
+	empty, total = INV:GetNumContainerSlots({ 0, 1, 2, 3, 4})
+	text = text .. ('%d/%d '):format(total - empty, total)
+
+	empty, total = INV:GetNumContainerSlots({ 5 })
+	text = text .. st.StringFormat:ColorString(
+			(('%d/%d '):format(total - empty, total)),
+			unpack(st.config.profile.colors.text.green)
+	)
+
+	container.footer.slots:SetText(text)
+end
+
+function INV:InitializePlayerBags()
+	local container = self:CreateContainer('bag', INVTYPE_BAG)
+	container:Hide()
+
+	self:InitializePlayerBagSlots()
+	self:InitializeAllCategories('bag')
+	container.UpdateContainerSlots = UpdateContainerSlots
+
+	self:SecureHook('OpenAllBags', 'ShowBags')
+	self:SecureHook('CloseAllBags', 'HideBags')
+	self:SecureHook('ToggleBag', 'ToggleBags')
+	self:SecureHook('ToggleAllBags', 'ToggleBags')
+	self:SecureHook('ToggleBackpack', 'ToggleBags')
+end

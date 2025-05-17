@@ -104,11 +104,13 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 		end
 
 		if name then
+			local itemLocation = ItemLocation:CreateFromBagAndSlot(bagID, slotID)
+
 			return {
 				name = name,
 				ilvl = itemLevel,
 				reqLevel = reqLevel,
-				isWarbound = C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(ItemLocation:CreateFromBagAndSlot(bagID, slotID))
+				isWarbound = (C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(itemLocation) and not C_Item.IsBound(itemLocation))
 						or string.matchnocase(tooltipText, "Warbound"),
 				--bindType == Enum.ItemBind.ToBnetAccount
 				--		  or bindType == Enum.ItemBind.ToWoWAccount
