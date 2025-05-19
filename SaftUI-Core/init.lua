@@ -11,28 +11,16 @@ SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 SaftUI.EditMode = LibStub('EditModeExpanded-1.0')
 
 function SaftUI:OnEnable()
+	UIParent:SetScale(st.scale)
 	SetCVar('autoLootDefault', 1)
 	--SetCVar('chatStyle', 'classic')
 	--SetCVar('whisperMode', 'inline')
 
-	self.config = LibStub('AceDB-3.0'):New('SaftUI_DB', {
-		char = {},
-		realm = {},
-		class = {},
-		race = {},
-		faction = {},
-		factionrealm = {},
-		global = {},
-		profile = self.defaults,
-	})
+	self:GetModule('Config'):InitializeAceConfig()
 
 	if not self.config.realm.summary then self.config.realm.summary = {} end
 	if not self.config.realm.summary[self.my_name] then self.config.realm.summary[self.my_name] = {} end
 	if not self.config.profile.edit_mode then  self.config.profile.edit_mode = {} end
-
-	self.config.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
-	self.config.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
-	self.config.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
 
 	self:RegisterEvent('TIME_PLAYED_MSG')
 	RequestTimePlayed()
@@ -46,7 +34,6 @@ function SaftUI:OnEnable()
 		end
 	end
 	-- print('You have played for a total of ' .. SecondsToTime(total_time) .. ' across your characters.')
-	UIParent:SetScale(st.scale)
 end
 
 function SaftUI:TIME_PLAYED_MSG(event, total, level)

@@ -121,7 +121,7 @@ local colors = {
 	'C14FE3',--purple
 }
 
-function st.tableprint(table, indent)
+function st.tableprint(table, indent, maxDepth)
 	if not indent then indent = 2 end
 
 	for key, val in pairs(table) do
@@ -130,10 +130,14 @@ function st.tableprint(table, indent)
 			prefix = prefix .. '    '
 		end
 		if type(val) == 'table' then
-			local colorIndex = (indent)%(#colors)+1
-			print(prefix .. st.StringFormat:ColorString(key .. ' = {', colors[colorIndex]))
-			st.tableprint(val, indent + 1)
-			print(prefix .. st.StringFormat:ColorString('}', colors[colorIndex]))
+			if maxDepth == 0 then
+				print(prefix .. val)
+			else
+				local colorIndex = (indent)%(#colors)+1
+				print(prefix .. st.StringFormat:ColorString(key .. ' = {', colors[colorIndex]))
+				st.tableprint(val, indent + 1, maxDepth and maxDepth - 1 or nil)
+				print(prefix .. st.StringFormat:ColorString('}', colors[colorIndex]))
+			end
 		else
 			print(prefix .. key .. ' = ' .. tostring(val))
 		end

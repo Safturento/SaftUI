@@ -6,8 +6,9 @@
 ## X-oUF: SaftUI-Unitframes
 
 Libraries\oUF\oUF.xml
-config\load.xml
+
 unitframes.lua
+config\load.xml
 constructors.lua
 updaters.lua
 tags.lua

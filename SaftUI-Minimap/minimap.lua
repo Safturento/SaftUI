@@ -19,9 +19,6 @@ function MM:OnEnable()
     MinimapCluster:ClearAllPoints()
     MinimapCluster.SetPoint = function()  end
 	function GetMinimapShape() return "SQUARE" end
-    st:SetBackdrop(Minimap, self.config.template)
-
-    Minimap:SetSize(self.config.size, self.config.size)
 
     if st.retail then
         self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
@@ -38,5 +35,6 @@ function MM:OnEnable()
     end
 
     st:Kill(MinimapCluster.Selection)
-    st:RegisterEditMode(Minimap, 'Minimap', self.config.position)
+
+	MM:UpdateConfig()
 end

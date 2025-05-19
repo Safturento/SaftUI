@@ -71,6 +71,7 @@ function FN:GetConfigTable()
 		}
 	}
 
+
 	for font_key, font_object in pairs(self.font_objects) do
 		config.args[font_key] = {
 			name = st.config.profile.fonts[font_key].name,
@@ -91,7 +92,7 @@ function FN:GetConfigTable()
 					values = st.LSM:HashTable("font"),
 					width = 0.75,
 				},
-				font_size = st.CF.generators.range(3, 'Font Size', 1, 100, 1),
+				font_size = st.Config.generators.range(3, 'Font Size', 1, 100, 1),
 				font_outline = {
 					order = 4,
 					type = 'select',

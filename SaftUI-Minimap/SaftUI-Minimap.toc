@@ -4,8 +4,8 @@
 ## RequiredDeps: SaftUI-Core
 ## Group: SaftUI-Core
 
-config.lua
 minimap.lua
+config.lua
 micromenu.lua
 killblizz.lua
 expansionbutton.lua

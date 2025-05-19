@@ -86,4 +86,86 @@ local function UpdateConfig(unitframe)
 	health.customColor 		 = config.customColor
 end
 
-UF:RegisterElement('Health', Constructor, UpdateConfig)
+
+
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+
+	return {
+		type = 'group',
+		name = 'Health',
+		get = function(info)
+			return config.profiles[config.config_profile][unit].health[info[#info]]
+		end,
+		set = function(info, value)
+			config.profiles[config.config_profile][unit].health[info[#info]] = value
+			UF:UpdateConfig(unit, 'Health')
+		end,
+		args = {
+			enable = st.Config.generators.enable(0),
+			framelevel = st.Config.generators.framelevel(1),
+			template = st.Config.generators.template(2),
+			size = UF.GenerateRelativeSizeConfigGroup(3),
+			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill', 1),
+			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
+			position = st.Config.generators.uf_element_position(50,
+				function(index) return
+					config.profiles[config.config_profile][unit].health.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].health.position[index] = value
+					UF:UpdateConfig(unit, 'Health')
+				end
+			),
+			text = {
+				order = 98,
+				name = 'Text',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return config.profiles[config.config_profile][unit].health.text[info[#info]]
+				end,
+				set = function(info, value)
+					config.profiles[config.config_profile][unit].health.text[info[#info]] = value
+					UF:UpdateConfig(unit, 'Health')
+				end,
+				args = {
+					enable = st.Config.generators.enable(0),
+					font = st.Config.generators.font(1),
+					position = st.Config.generators.uf_element_position(2,
+					function(index) return
+						config.profiles[config.config_profile][unit].health.text.position[index]
+					end,
+					function(index, value)
+						config.profiles[config.config_profile][unit].health.text.position[index] = value
+						UF:UpdateConfig(unit, 'Health')
+					end
+					),
+					deficit =st.Config.generators.toggle(3, 'Deficit'),
+					hide_full = st.Config.generators.toggle(4, 'Hide full'),
+					percent = st.Config.generators.toggle(5, 'Percent'),
+				},
+			},
+			bg = {
+				order = 99,
+				name = 'Status Bar BG',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return config.profiles[config.config_profile][unit].health.bg[info[#info]]
+				end,
+				set = function(info, value)
+					config.profiles[config.config_profile][unit].health.bg[info[#info]] = value
+					UF:UpdateConfig(unit, 'Health')
+				end,
+				args = {
+					enable = st.Config.generators.enable(1),
+					multiplier = st.Config.generators.range(2, 'Multiplier', 0, 1, 0.05),
+					alpha = st.Config.generators.alpha(3)
+				},
+			}
+		}
+	}
+end
+
+UF:RegisterElement('Health', Constructor, UpdateConfig, GetConfigTable)
