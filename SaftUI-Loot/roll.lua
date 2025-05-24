@@ -137,7 +137,6 @@ end
 function LT:GroupLootFrame_OnShow(frame)
 	local texture, name, count, quality, bindOnPickUp, canNeed, canGreed, canDisenchant, reasonNeed, reasonGreed, reasonDisenchant, deSkillRequired = GetLootRollItemInfo(frame.rollID);
 
-	frame:SetBackdrop(nil)
 	local color = ITEM_QUALITY_COLORS[quality]
 	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
 	frame.Name:SetVertexColor(1, 1, 1)
