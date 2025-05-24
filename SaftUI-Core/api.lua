@@ -130,7 +130,7 @@ function st:SnapBottomRightOf(frame, anchorFrame, spacing)
 	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMRIGHT', xOffset, 0)
 end
 
-local title = select(2, C_AddOns.GetAddOnInfo(st.name))
+local title = "|cff00adefSaftUI|r"
 
 function st:Print(...)
 	print(('[%s]: '):format(title), ...)

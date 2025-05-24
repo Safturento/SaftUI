@@ -2,6 +2,7 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 function UF:UpdateElement(element)
+    element.config = element:GetConfig()
     local enabled = self:SetElementEnabled(element)
     if not enabled then return false end
 

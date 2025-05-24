@@ -1,6 +1,9 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+local AceConfigDialog = LibStub('AceConfigDialog-3.0')
+local AceConfig = LibStub('AceConfig-3.0')
+
 local function get_profiles()
 	local profiles = {}
 	num_profiles = 0
@@ -41,8 +44,7 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 			st.Config:Refresh()
 		end
 	end,
-	OnCancel = function (_,reason)
-	end,
+	OnCancel = function () end,
 	whileDead = true,
 	hideOnEscape = true,
 	hasEditBox = true,
@@ -131,7 +133,7 @@ StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
 		UF:UpdateConfig()
 		st.Config:Refresh()
 
-		dialog:Close(st.addon_name..'_Copy_Unitframe')
+		AceConfigDialog:Close(st.name..'_Copy_Unitframe')
 	end,
 	OnCancel = function() end,
 	whileDead = true,
@@ -197,7 +199,7 @@ function UF:RegisterCopyTable()
 	}
 
 	UF.CopyTable = config_table
-	--LibStub('AceConfig-3.0'):RegisterOptionsTable(st.name ..'_Copy_Unitframe', config_table)
+	AceConfig:RegisterOptionsTable(st.name ..'_Copy_Unitframe', config_table)
 end
 
 function UF:OpenCopyTable(unit)
@@ -260,8 +262,8 @@ function UF:OpenCopyTable(unit)
 		end
 	end
 
-	dialog:SetDefaultSize(st.name ..'_Copy_Unitframe', 400, 300)
-	dialog:Open(st.name ..'_Copy_Unitframe')
+	AceConfigDialog:SetDefaultSize(st.name ..'_Copy_Unitframe', 400, 300)
+	AceConfigDialog:Open(st.name ..'_Copy_Unitframe')
 end
 
 function UF:GetProfile()
@@ -416,9 +418,9 @@ function UF:GetConfigTable()
 					args = {
 						enable = st.Config.generators.enable(0),
 						framelevel = st.Config.generators.framelevel(1),
-						height = st.Config.generators.height(2),
-						width = st.Config.generators.width(3),
-						template = st.Config.generators.template(4),
+						template = st.Config.generators.template(2),
+						height = st.Config.generators.height(3),
+						width = st.Config.generators.width(4),
 						position = st.Config.generators.position(5, true, frame_position_get, frame_position_set),
 					}
 				}

@@ -95,7 +95,7 @@ local function GetConfigTable(unit)
 		type = 'group',
 		name = 'Health',
 		get = function(info)
-			return config.profiles[config.config_profile][unit].health[info[#info]]
+			return tostring(config.profiles[config.config_profile][unit].health[info[#info]])
 		end,
 		set = function(info, value)
 			config.profiles[config.config_profile][unit].health[info[#info]] = value
@@ -109,8 +109,8 @@ local function GetConfigTable(unit)
 			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill', 1),
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
 			position = st.Config.generators.uf_element_position(50,
-				function(index) return
-					config.profiles[config.config_profile][unit].health.position[index]
+				function(index)
+					return tostring(config.profiles[config.config_profile][unit].health.position[index])
 				end,
 				function(index, value)
 					config.profiles[config.config_profile][unit].health.position[index] = value

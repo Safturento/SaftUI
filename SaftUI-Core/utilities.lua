@@ -186,7 +186,6 @@ function st:ScanEquippedItem(slotId, unit)
 
 	local data = {}
     for i=1, ItemRefTooltip:NumLines() do
-		--print(left)
         local left = _G["ScanningTooltipTextLeft"..i]:GetText()
         local right = _G["ScanningTooltipTextRight"..i]:GetText()
 		if left and left:find("Reforged") then

@@ -153,7 +153,7 @@ function generators.uf_element_position(order, get, set)
 	table.args.frame.get = function(info)
 		local frame_type = get('frame_type')
 		if frame_type == false then
-			return get('anchor_element')
+			return get('element')
 		elseif frame_type == true then
 			return get('anchor_frame')
 		end
@@ -161,7 +161,7 @@ function generators.uf_element_position(order, get, set)
 	table.args.frame.set = function(info, value)
 		local frame_type = get('frame_type')
 		if frame_type == false then
-			set('anchor_element', value)
+			set('element', value)
 		elseif frame_type == true then
 			set('anchor_frame', value)
 		end

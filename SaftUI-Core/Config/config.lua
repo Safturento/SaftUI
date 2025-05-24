@@ -3,13 +3,17 @@ local st = SaftUI
 local AceConfig = LibStub("AceConfig-3.0")
 local AceDB = LibStub('AceDB-3.0')
 local AceConfigDialog = LibStub('AceConfigDialog-3.0')
-local ACR = LibStub("AceConfigRegistry-3.0")
+local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
+local AceDBOptions = LibStub('AceDBOptions-3.0')
+local AceSerializer = LibStub('AceSerializer-3.0')
+local LibCompress = LibStub('LibCompress')
+local LibBase64 = LibStub('LibBase64-1.0')
 local Config = st:NewModule('Config')
 
 st.Config = Config
 
 function Config:Refresh()
-	ACR:NotifyChange(ADDON_NAME)
+	AceConfigRegistry:NotifyChange(ADDON_NAME)
 end
 
 function Config:Export(data)
@@ -25,7 +29,7 @@ function Config:Import(string)
 end
 
 function Config:InitializeAceConfig()
-    self.db = AceDB:New('SaftUI_DB', {
+    st.config = AceDB:New('SaftUI_DB', {
 		char = {},
 		realm = {},
 		class = {},
@@ -36,8 +40,7 @@ function Config:InitializeAceConfig()
 		profile = st.defaults,
 	})
 
-    st.config = self.db
-
+    self.db = st.config
     self.db.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
@@ -58,6 +61,8 @@ function Config:InitializeAceConfig()
 end
 
 function Config:GetOptionsTable()
+	local profile = AceDBOptions:GetOptionsTable(st.config)
+	profile.order = -999
 	local options = {
 		topmenu = {
 			name = '',
@@ -65,15 +70,16 @@ function Config:GetOptionsTable()
 			type = 'group',
 			order = 0,
 			args = {
-				toggle_movers = {
-					name = 'Toggle Positioning',
-					type = 'execute',
-					func = function()
-						--st:ToggleMovers()
-					end
-				}
+				--toggle_movers = {
+				--	name = 'Toggle Positioning',
+				--	type = 'execute',
+				--	func = function()
+				--		--st:ToggleMovers()
+				--	end
+				--}
 			}
-		}
+		},
+		profile = profile
 	}
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then

@@ -4,7 +4,6 @@ local UF = st:GetModule('Unitframes')
 local function Constructor(unitframe)
 	local name = unitframe.TextOverlay:CreateFontString(nil, 'OVERLAY')
 	name.unitframe = unitframe
-	name.config = unitframe.config.name
 	unitframe.Name = name
 	return name
 end

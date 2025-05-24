@@ -27,6 +27,7 @@ UF.group_strings = {
 }
 
 function UF:GetFrame(unitframe, configPosition)
+	--print(configPosition.element)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
 end
 
@@ -55,6 +56,7 @@ function UF.ConstructUnit(self, unit)
 	self.TextOverlay = textoverlay
 
 	self.config = UF:GetProfileConfig()[self.base_unit]
+	self.GetConfig = function() return UF:GetProfileConfig()[self.base_unit]  end
 	
 	-- Since oUF doesn't give us access to a table of active elements
 	-- we can keep track of them here to easily loop and update through them later
@@ -102,7 +104,7 @@ function UF:UpdateColors()
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
-	frame.config = st.config.profile.unitframes.profiles[self:GetProfile()][frame.base_unit]
+	frame.config = frame:GetConfig()
 
 	if element_name and self.elements[element_name] then
         if self.elements[element_name].UpdateConfig then
@@ -137,11 +139,11 @@ function UF:UpdateUnitFrame(frame, element_name)
 			outsideAlpha = frame.config.range_alpha.outside
 		}
 		
-		for element_name, element in pairs(frame.elements) do
-            if self.elements[element_name].UpdateConfig then
-                self.elements[element_name].UpdateConfig(frame, element_name)
+		for _element_name, element in pairs(frame.elements) do
+            if self.elements[_element_name].UpdateConfig then
+                self.elements[_element_name].UpdateConfig(frame, _element_name)
             else
-                self:UpdateElement(frame[element_name])
+                self:UpdateElement(frame[_element_name])
             end
 		end
 	end

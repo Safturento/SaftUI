@@ -48,7 +48,6 @@ local function UpdateConfig(unitframe)
 end
 
 local function ValidUnit(unit)
-	print('ValidUnit', unit)
 	return unit == 'player'
 end
 
