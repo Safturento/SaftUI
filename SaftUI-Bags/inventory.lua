@@ -400,6 +400,12 @@ function INV:UpdateContainerLayout(id)
 end
 
 function INV:UpdateConfig(id)
+	if not id then
+		for containerId, _ in pairs(self.containers) do
+			self:UpdateConfig(containerId)
+		end
+	end
+
 	local container = self.containers[id]
 
 	container:ClearAllPoints()
