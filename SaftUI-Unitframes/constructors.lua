@@ -14,6 +14,7 @@ end
 
 function UF:AddStatusBarElement(unitframe, elementName)
     local statusbar = self:AddElement('StatusBar', unitframe, elementName)
+    statusbar:SetStatusBarTexture(st.BLANK_TEX)
 
 	statusbar.bg = statusbar:CreateTexture(nil, 'BACKGROUND')
 	statusbar.bg:SetAllPoints(statusbar)
@@ -22,6 +23,18 @@ function UF:AddStatusBarElement(unitframe, elementName)
 	statusbar.Smooth = true
 
 	return statusbar
+end
+
+function UF:AddTextElement(unitframe, elementName)
+    local text = unitframe.TextOverlay:CreateFontString(nil, 'OVERLAY')
+    text.config = unitframe.config[string.lower(elementName)]
+    text.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
+    text.name = elementName
+	text.unitframe = unitframe
+    text.noSize = true
+	unitframe[elementName] = text
+
+    return text
 end
 
 function UF:AddText(unitframe, element, key, parent)

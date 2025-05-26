@@ -8,7 +8,7 @@ st.defaults.unitframes.profiles["**"].nameplate = {
     },
     name = {
         position = { point = 'LEFT', rel_point = 'LEFT', x_off = 10, y_off = 0 },
-        max_length = 30,
+        maxLength = 30,
         color_hostile = true,
     },
     castbar = {

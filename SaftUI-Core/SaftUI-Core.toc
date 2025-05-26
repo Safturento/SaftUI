@@ -24,6 +24,7 @@ Libraries\Ace3\AceConfig-3.0\AceConfig-3.0.xml
 Libraries\Ace3\AceComm-3.0\AceComm-3.0.xml
 Libraries\Ace3\AceTab-3.0\AceTab-3.0.xml
 Libraries\Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
+Libraries\AceGUI-3.0-SharedMediaWidgets\widget.xml
 
 Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
 Libraries\LibSharedMedia-3.0\LibSharedMedia-3.0.lua

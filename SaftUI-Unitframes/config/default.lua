@@ -179,6 +179,7 @@ local health = {
     colorSmooth = false,
     colorCustom = true,
     customColor = { 0.3, 0.3, 0.3 },
+    absorbColor = { 0.3, 0.4, 0.6}
 }
 
 local power = {
@@ -341,10 +342,11 @@ local debuffs = st.tablemerge(auras, {
 
 local name = {
     enable = true,
-    max_length = 30,
-    show_level = true,
-    all_caps = false,
-    show_samelevel = false,
+    maxLength = 30,
+    showLevel = true,
+    allCaps = false,
+    showSameLevel = false,
+    showMaxLevel = false,
     show_classification = true,
     font = 'pixel',
     position = {

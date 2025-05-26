@@ -39,8 +39,8 @@ st.defaults.unitframes.profiles["**"].raid40 = {
     },
     name = {
         enable = false,
-        show_level = false,
-        max_length = 8,
+        showLevel = false,
+        maxLength = 8,
     },
     buffs = {
       position = { point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 0}

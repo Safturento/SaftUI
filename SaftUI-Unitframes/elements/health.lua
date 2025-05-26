@@ -21,9 +21,12 @@ local function PostUpdateHealth(health, unit, current, max)
 		current, max = UF.RMH.GetUnitHealth(unit)
 	end
 
+	local absorbs = st.retail and UnitGetTotalAbsorbs(unit) or 0
+	health:SetMinMaxValues(0, max + absorbs)
+	health.absorbs:SetMinMaxValues(0, max + absorbs)
+	health.absorbs:SetValue(absorbs)
+
 	if health.text then
-		local absorbs = st.retail and UnitGetTotalAbsorbs(unit) or 0
-		
 		if current == max and health.config.text.hide_full then
 			health.text:SetText('')
 		elseif UnitIsDead(unit) or current == 0 then
@@ -62,6 +65,13 @@ end
 
 local function Constructor(unitframe)
     local health = UF:AddStatusBarElement(unitframe, 'Health')
+
+	local healthStatusBarTexture = health:GetStatusBarTexture()
+	local absorbs = CreateFrame('StatusBar', nil, unitframe)
+	absorbs:SetPoint('TOPLEFT', healthStatusBarTexture, 'TOPRIGHT', 0, 0)
+	absorbs:SetPoint('BOTTOMLEFT', healthStatusBarTexture, 'BOTTOMRIGHT', 0, 0)
+	health.absorbs = absorbs
+
 	UF:AddText(unitframe, health)
 	health.PostUpdate = PostUpdateHealth
 
@@ -74,6 +84,12 @@ local function UpdateConfig(unitframe)
     UF:UpdateElement(health)
 
     local config = health.config
+
+	UF:UpdateStatusBarElement(health.absorbs, config)
+	health.absorbs:SetSize(health:GetSize())
+	health.absorbs:SetStatusBarColor(unpack(config.absorbColor))
+	health.absorbs:SetFrameLevel(health:GetFrameLevel())
+
 	health.colorTapping		 = config.colorTapping
 	health.colorDisconnected = config.colorDisconnected
 	health.colorHealth		 = config.colorHealth

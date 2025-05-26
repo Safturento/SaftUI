@@ -11,8 +11,8 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local string = ''
 
 	local baseunit = unit == 'vehicle' and 'player' or strmatch(unit, '%D+')
-	if not st.config.profile.unitframes.profiles[UF:GetProfile()][baseunit] then return '' end
-	local config = st.config.profile.unitframes.profiles[UF:GetProfile()][baseunit].name
+	if not UF:GetProfileConfig()[baseunit] then return '' end
+	local config = UF:GetProfileConfig()[baseunit].name
 	if not config.enable then return '' end
 
 	-- mob level relative to you
@@ -32,11 +32,15 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	end
 
 	local levelString = ''
-	if config.show_level then
+	if config.showLevel then
 		if level < 0 then
 			levelString = '??'
-		elseif config.show_samelevel or level ~= playerLevel then
+		elseif (config.showSameLevel or level ~= playerLevel) then
 			levelString = level
+		end
+
+		if (not config.showMaxLevel and level == GetMaxLevelForLatestExpansion()) then
+			levelString = ''
 		end
 	end
 	
@@ -55,11 +59,11 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	levelString = st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '')
 	string = string .. levelString
 	
-	if config.all_caps then
+	if config.allCaps then
 		name = strupper(name)
 	end
 
-	name = st.StringFormat:UTF8strsub(name or '', config.max_length)
+	name = st.StringFormat:UTF8strsub(name or '', config.maxLength)
 	if config.color_hostile and reaction then
 		if reaction < 3 then
 			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.red))

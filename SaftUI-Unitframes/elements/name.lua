@@ -2,27 +2,50 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local function Constructor(unitframe)
-	local name = unitframe.TextOverlay:CreateFontString(nil, 'OVERLAY')
-	name.unitframe = unitframe
-	unitframe.Name = name
-	return name
+	return UF:AddTextElement(unitframe, 'Name')
 end
 
 local function UpdateConfig(unitframe)
 	unitframe.Name.config = unitframe.config.name
-	--UF:UpdateElement(unitframe.Name, 'Name')
-
-	if unitframe.config.name.enable == false then
-		unitframe.Name:Hide()
-		return
-	else
-		unitframe.Name:Show()
-	end
+	UF:UpdateElement(unitframe.Name, 'Name')
 
 	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
-	UF:UpdateElementPosition(unitframe.Name)
 
 	unitframe:Tag(unitframe.Name, unitframe.config.name.tag or '[st:name]')
 end
 
-UF:RegisterElement('Name', Constructor, UpdateConfig)
+local function GetConfigTable(unit)
+	local config = st.config.profile.unitframes
+	return {
+		type = 'group',
+		name = 'Name',
+		get = function(info)
+			return config.profiles[config.config_profile][unit].name[info[#info]]
+		end,
+		set = function(info, value)
+			config.profiles[config.config_profile][unit].name[info[#info]] = value
+			UF:UpdateConfig(unit, 'Name')
+		end,
+		args = {
+			enable = st.Config.generators.enable(0),
+			font = st.Config.generators.font(1),
+			alpha = st.Config.generators.alpha(3),
+			position = st.Config.generators.uf_element_position(4,
+				function(index) return
+					config.profiles[config.config_profile][unit].name.position[index]
+				end,
+				function(index, value)
+					config.profiles[config.config_profile][unit].name.position[index] = value
+					UF:UpdateConfig(unit, 'Name')
+				end
+			),
+			showLevel = st.Config.generators.toggle(5, 'Show level', 1),
+			showSameLevel = st.Config.generators.toggle(6, 'Show same level', 1),
+			showMaxLevel = st.Config.generators.toggle(6, 'Show max level', 1),
+			allCaps = st.Config.generators.toggle(6, 'All caps', 1),
+			maxLength = st.Config.generators.range(7, 'Max length', 1, 100, 1),
+		}
+	}
+end
+
+UF:RegisterElement('Name', Constructor, UpdateConfig, GetConfigTable)

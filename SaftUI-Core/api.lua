@@ -1,7 +1,5 @@
 local st = SaftUI
 
-local st = SaftUI
-
 function st:GetConfig(configUnit)
 	return st.config.profile[configUnit]
 end
@@ -171,11 +169,11 @@ function st:EnableMoving(frame)
 	frame:EnableMouse(true)
 	frame:SetMovable(true)
 	frame:SetClampedToScreen(true)
-	frame:HookScript('OnMouseDown', function(frame) frame:StartMoving() end)
-	frame:HookScript('OnMouseUp', function(frame)
-		frame:StopMovingOrSizing()
-		local point, relativeTo, relativePoint, offsetX, offsetY = frame:GetPoint()
-		frame:ClearAllPoints()
-		frame:SetPoint(point, relativeTo, relativePoint, math.floor(offsetX), math.floor(offsetY))
+	frame:HookScript('OnMouseDown', function(self) self:StartMoving() end)
+	frame:HookScript('OnMouseUp', function(self)
+		self:StopMovingOrSizing()
+		local point, relativeTo, relativePoint, offsetX, offsetY = self:GetPoint()
+		self:ClearAllPoints()
+		self:SetPoint(point, relativeTo, relativePoint, math.floor(offsetX), math.floor(offsetY))
 	end)
 end

@@ -37,8 +37,8 @@ st.defaults.unitframes.profiles["**"].raid10 = {
     },
     name = {
         enable = false,
-        show_level = false,
-        max_length = 8,
+        showLevel = false,
+        maxLength = 8,
     },
     debuffs = {
         enable = true,

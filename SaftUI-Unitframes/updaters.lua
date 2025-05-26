@@ -19,6 +19,10 @@ function UF:UpdateElement(element)
         self:UpdateStatusBarElement(element)
     end
 
+    if element:IsObjectType('FontString') then
+        element:SetFontObject(st:GetFont(element.config.font))
+    end
+
     if element.textElements then
         for _,text in pairs(element.textElements) do
             self:UpdateText(text)
@@ -55,6 +59,7 @@ function UF:SetElementEnabled(element)
 end
 
 function UF:UpdateElementSize(element)
+    if element.noSize then return end
 
     local unitframe = element.unitframe or element:GetParent()
 
@@ -90,24 +95,26 @@ function UF:UpdateElementLevel(element)
     end
 end
 
-function UF:UpdateStatusBarElement(element)
+function UF:UpdateStatusBarElement(element, configOverride)
+    local config = configOverride or element.config
+
     if not element:IsObjectType('StatusBar') then
         return st:Error(element:GetName(), 'is not a status bar')
     end
 
-    element:SetStatusBarTexture(st:GetStatusBarTexture(element.config.texture))
-    element:SetReverseFill(element.config.reverse_fill or false)
-	element:SetOrientation(element.config.vertical_fill and "VERTICAL" or "HORIZONTAL")
+    element:SetStatusBarTexture(st:GetStatusBarTexture(config.texture))
+    element:SetReverseFill(config.reverse_fill or false)
+	element:SetOrientation(config.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
-    if element.config.colorCustom then
-		element:SetStatusBarColor(unpack(element.config.customColor))
+    if config.colorCustom then
+		element:SetStatusBarColor(unpack(config.customColor))
 	end
 
-    if element.bg and element.config.bg then
-        if element.config.bg.enable then
+    if element.bg and config.bg then
+        if config.bg.enable then
             element.bg:Show()
-            element.bg:SetAlpha(element.config.bg.alpha)
-            element.bg.multiplier = element.config.bg.multiplier
+            element.bg:SetAlpha(config.bg.alpha)
+            element.bg.multiplier = config.bg.multiplier
         else
             element.bg:Hide()
         end
