@@ -21,6 +21,8 @@ function st:SetSize(frame, width, height)
 end
 
 function st:RegisterEditMode(frame, name, defaultPosition)
+    if not st.EditMode then return end
+
 	if not st.config.profile.edit_mode[name] then
 		st.config.profile.edit_mode[name] = {}
 	end

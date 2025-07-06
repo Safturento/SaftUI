@@ -39,7 +39,7 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 			levelString = level
 		end
 
-		if (not config.showMaxLevel and level == GetMaxLevelForLatestExpansion()) then
+		if (not config.showMaxLevel and level == (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel())) then
 			levelString = ''
 		end
 	end

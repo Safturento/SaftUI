@@ -5,7 +5,7 @@ st.DEBUG = false
 st.GAME_VERSION = select(4, GetBuildInfo())
 
 st.name = "SaftUI"
-st.retail = st.GAME_VERSION >= 70000
+st.retail = st.GAME_VERSION >= 110000
 
 st.my_name = select(1, UnitName('player'))
 st.my_class = select(2, UnitClass('player'))

@@ -138,12 +138,16 @@ function AB:UpdateActionButton(slot)
 end
 
 function AB:OnEnable()
+    if not st.retail then return end
+
 	self.config = st.config.profile.actionbars
 
-	st:Kill(MainMenuBar.EndCaps)
-	st:Kill(MainMenuBar.BorderArt)
-	st:Kill(MainMenuBar.EndCaps.LeftEndCap)
-	st:Kill(MainMenuBar.EndCaps.RightEndCap)
+    if MainMenuBar.EndCaps then
+        st:Kill(MainMenuBar.EndCaps)
+        st:Kill(MainMenuBar.BorderArt)
+        st:Kill(MainMenuBar.EndCaps.LeftEndCap)
+        st:Kill(MainMenuBar.EndCaps.RightEndCap)
+    end
 
     --ClickBindingFrame:UnregisterEvent('CLICKBINDINGS_SET_HIGHLIGHTS_SHOWN')
 

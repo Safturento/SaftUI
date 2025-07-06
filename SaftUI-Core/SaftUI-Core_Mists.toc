@@ -1,0 +1,49 @@
+## Interface: 50500
+## Version: 1.0
+## Title: |cff00adefSaftUI Core|r
+## SavedVariables: SaftUI_DB
+## OptionalDeps: RealMobHealth, ItemRack, WoWUnit, WeakAuras
+## Group: SaftUI-Core
+
+Libraries\LibStub\LibStub.lua
+Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libraries\LibBase64-1.0\LibBase64-1.0.lua
+Libraries\LibCompress\LibCompress.lua
+
+Libraries\Ace3\AceAddon-3.0\AceAddon-3.0.xml
+Libraries\Ace3\AceEvent-3.0\AceEvent-3.0.xml
+Libraries\Ace3\AceTimer-3.0\AceTimer-3.0.xml
+Libraries\Ace3\AceBucket-3.0\AceBucket-3.0.xml
+Libraries\Ace3\AceHook-3.0\AceHook-3.0.xml
+Libraries\Ace3\AceDB-3.0\AceDB-3.0.xml
+Libraries\Ace3\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libraries\Ace3\AceLocale-3.0\AceLocale-3.0.xml
+Libraries\Ace3\AceConsole-3.0\AceConsole-3.0.xml
+Libraries\Ace3\AceGUI-3.0\AceGUI-3.0.xml
+Libraries\Ace3\AceConfig-3.0\AceConfig-3.0.xml
+Libraries\Ace3\AceComm-3.0\AceComm-3.0.xml
+Libraries\Ace3\AceTab-3.0\AceTab-3.0.xml
+Libraries\Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
+Libraries\AceGUI-3.0-SharedMediaWidgets\widget.xml
+
+Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
+Libraries\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
+init.lua
+constants.lua
+api.lua
+Widgets\load.xml
+skinning.lua
+panels.lua
+utilities.lua
+
+Media\sharedmedia.lua
+Media\fonts.lua
+
+Config\defaults.lua
+Config\config.lua
+Config\widgets.lua
+
+taintfix.lua
+
+Utilities\load.xml

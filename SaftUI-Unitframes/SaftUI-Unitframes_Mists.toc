@@ -1,0 +1,15 @@
+## Interface: 110005
+## Version: 1.0
+## Title: |cff00adefSaftUI Unitframes|r
+## RequiredDeps: SaftUI-Core
+## Group: SaftUI-Core
+## X-oUF: SaftUI-Unitframes
+
+Libraries\oUF_Mists\oUF.xml
+
+unitframes.lua
+config\load.xml
+constructors.lua
+updaters.lua
+tags.lua
+elements\elements.xml

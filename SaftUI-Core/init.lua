@@ -8,7 +8,8 @@ SaftUI = LibStub('AceAddon-3.0'):NewAddon(
 SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
-SaftUI.EditMode = LibStub('EditModeExpanded-1.0')
+
+SaftUI.EditMode = LibStub('EditModeExpanded-1.0', true)
 
 function SaftUI:OnEnable()
 	UIParent:SetScale(st.scale)

@@ -215,8 +215,10 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			Util:ClearItemQuality(item)
 
 			if info.itemSubType == "Mount" then
-				item.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.yellow))
-				item.icon.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.yellow))
+                local r,g,b = unpack(st.config.profile.colors.button.yellow)
+				item.backdrop:SetBackdropBorderColor(r, g, b, 1)
+				item.backdrop:SetBackdropColor(r, g, b, .6)
+				item.icon.backdrop:SetBackdropBorderColor(r, g, b, 1)
 			else
 				st:SetBackdrop(item, feedConfig.template)
 				st:SetBackdrop(item.icon, feedConfig.template)
@@ -537,7 +539,7 @@ function LT:UpdateLootFeedConfig()
 	self.feed.overlay:SetPoint('TOPRIGHT', self.feed.items[config.max_items], 'TOPRIGHT')
 
 	local x = self.feed:GetCenter()
-	if x > GetScreenWidth()/2 then
+	if x and x > GetScreenWidth()/2 then
 		self.feed.filterButton:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
 		self.feed.filterButton:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)

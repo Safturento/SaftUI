@@ -13,8 +13,7 @@ if st.retail then
 else
 	BAG_IDS = {
 		['bag'] = { 0, 1, 2, 3, 4 },
-		['bank'] = { -1, 5, 6, 7, 8, 9, 10, 11 },
-		['reagent'] = { -3 }
+		['bank'] = { -1, 5, 6, 7, 8, 9, 10, 11 }
 	}
 end
 
@@ -242,6 +241,7 @@ function INV:SearchMatches(queryString, info)
 		info.name:lower():find(queryString),
 		(info.equipSlot and info.equipSlot:lower() == queryString),
 		(info.class == 'Armor') and queryString:lower():find(info.subclass),
+		info.tooltipText:lower():find(queryString)
 	}) do if check then return true end end
 end
 
@@ -517,8 +517,10 @@ function INV:OnEnable()
 	self:RegisterEvent('BAG_NEW_ITEMS_UPDATED', 'QueueUpdate')
 	self:RegisterEvent('ITEM_LOCK_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'QueueUpdate')
-	self:RegisterEvent('PLAYERREAGENTBANKSLOTS_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('GET_ITEM_INFO_RECEIVED', 'QueueUpdate')
+	if st.retail then
+        self:RegisterEvent('PLAYERREAGENTBANKSLOTS_CHANGED', 'QueueUpdate')
+	end
 
 	if self.config.combinedBank then
 		self:RegisterEvent('BANKFRAME_OPENED', 'OpenCombinedBank')

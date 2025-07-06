@@ -206,6 +206,7 @@ function LT:SkinNewRollFrame()
 end
 
 function LT:InitializeRollFrame()
+    if not GroupLootContainer_OpenNewFrame then return end
 	self:SecureHook('GroupLootContainer_Update')
 	self:SecureHook('GroupLootContainer_OpenNewFrame', 'SkinNewRollFrame')
 
