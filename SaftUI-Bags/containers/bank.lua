@@ -48,7 +48,11 @@ end
 function INV:CloseBank()
 	self.containers.bank:Hide()
 	self:HideBags()
-	AccountBankPanel.CloseAllBankPopups()
+
+	if AccountBankPanel then
+        AccountBankPanel.CloseAllBankPopups()
+    end
+
 	if self:GetContainer('bag').footer.depositButton then
 		self:GetContainer('bag').footer.depositButton:Hide()
 	end

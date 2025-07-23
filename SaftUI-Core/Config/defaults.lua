@@ -80,14 +80,14 @@ st.defaults.maps = {
 	}
 }
 
---st.defaults.experience = {
---	width = st.defaults.maps.minimap.size,
---	height = 13,
---	spacing = 8,
---	rest_alpha = 1,
---	template = 'thicktransparent',
---	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
---}
+st.defaults.experience = {
+	width = st.defaults.maps.minimap.size,
+	height = 13,
+	spacing = 8,
+	rest_alpha = 1,
+	template = 'thicktransparent',
+	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
+}
 
 st.defaults.templates = {
 	highlight = {

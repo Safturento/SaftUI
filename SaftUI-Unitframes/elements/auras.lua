@@ -54,17 +54,17 @@ end
 
 function UF.PostUpdateButton(auras, button, unit, data)
     local config = auras.config[getHostility(unit)]
-    if config.colorStealable and data.isStealable then
-        local c = DebuffTypeColor['Magic']
-        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-    elseif config.colorTypes and data.dispelName then
-        local c = DebuffTypeColor[data.dispelName]
-        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-    else
+--     if config.colorStealable and data.isStealable then
+--         local c = DebuffTypeColor['Magic']
+--         button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+--     elseif config.colorTypes and data.dispelName then
+--         local c = DebuffTypeColor[data.dispelName]
+--         button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+--     else
         st:SetBackdrop(button, auras.config.template)
-    end
+--     end
 
-    button.Icon:SetDesaturated(config.desaturateOthers and not data.isPlayerAura)
+--     button.Icon:SetDesaturated(config.desaturateOthers and not (data and data.isPlayerAura))
 end
 
 function UF.PostCreateButton(auras, button)

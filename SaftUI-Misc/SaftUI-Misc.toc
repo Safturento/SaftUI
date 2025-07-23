@@ -5,6 +5,7 @@
 ## Group: SaftUI-Core
 
 config.lua
-tooltip.lua
+#tooltip.lua
+experience.lua
 actionbars.lua
 Skinning\load.xml

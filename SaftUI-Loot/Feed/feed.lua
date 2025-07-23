@@ -43,9 +43,12 @@ local feed_stack = {}
 ------------------------------------
 ---- Pattern matching --------------
 ------------------------------------
+
 local match_replacements = {
-	link = '(\124cnIQ%d:\124H[^:]*:[^\124]*\124h.*\124h)%D*',
-	currency = '(\124cnIQ%d:\124Hcurrency[%-?%d:]+%D*)',
+	link = st.retail and '(\124cnIQ%d:\124H[^:]*:[^\124]*\124h.*\124h)%D*'
+	                  or '(\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*',
+	currency = st.retail and '(\124cnIQ%d:\124Hcurrency[%-?%d:]+%D*)'
+	                      or '(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)',
 	count =  '(%d+)',
 	honor = '(%d+)',
 	experience = '(%d+)',
@@ -594,7 +597,9 @@ function LT:InitializeLootFeed()
 	local config = self.config.feed
 	local feed = CreateFrame('frame', st.name ..'LootFeed', UIParent)
 	feed:SetSize(config.width, 20)
-	st:RegisterEditMode(feed, 'Loot Feed', config.position)
+	if not st:RegisterEditMode(feed, 'Loot Feed', config.position) then
+	    feed:SetPoint(st:UnpackPoint(config.position))
+    end
 	feed.items = {}
 	feed.offset = 0
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)

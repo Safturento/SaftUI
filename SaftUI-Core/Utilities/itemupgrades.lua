@@ -35,6 +35,7 @@ function Util:SetItemQualityLevelText(equipSlot, level, maxLevel, anchor)
 end
 
 function Util:SetItemQuality(button, link, anchor)
+    if not st.retail then return end
     ClearItemCraftingQualityOverlay(button)
     if not Util:SetItemUpgradeQuality(button, link, anchor) then
         SetItemCraftingQualityOverlay(button, link)
@@ -42,6 +43,7 @@ function Util:SetItemQuality(button, link, anchor)
 end
 
 function Util:ClearItemQuality(button)
+    if not st.retail then return end
         ClearItemCraftingQualityOverlay(button)
         button.professionQualityOverlayOverride = nil
         if button.qualityText then

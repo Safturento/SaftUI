@@ -36,6 +36,8 @@ function st:RegisterEditMode(frame, name, defaultPosition)
 	else
 		st.EditMode:RegisterFrame(frame, name, st.config.profile.edit_mode[name], nil, nil, true)
 	end
+
+    return true
 end
 
 local function calculateSpacing(frame, anchorFrame, spacing)

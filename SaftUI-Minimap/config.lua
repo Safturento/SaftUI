@@ -28,8 +28,11 @@ local MM = st:GetModule('Minimap')
 
 function MM:UpdateConfig()
     Minimap:SetSize(self.config.size, self.config.size)
+    MinimapCluster:SetSize(self.config.size, self.config.size)
     st:SetBackdrop(Minimap, self.config.template)
 
+    MinimapCluster:ClearAllPoints()
+    MinimapCluster:SetPoint(st:UnpackPoint(self.config.position))
 	Minimap:ClearAllPoints()
 	Minimap:SetPoint(st:UnpackPoint(self.config.position))
 end

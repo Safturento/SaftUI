@@ -267,8 +267,10 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
-	self:UpdateWarbandMoney()
-	self:UpdateCombinedBankWarbandMoney()
+	if st.retail then
+        self:UpdateWarbandMoney()
+        self:UpdateCombinedBankWarbandMoney()
+    end
 	st.config.realm.summary[st.my_name].gold = money
 end
 
@@ -522,7 +524,7 @@ function INV:OnEnable()
         self:RegisterEvent('PLAYERREAGENTBANKSLOTS_CHANGED', 'QueueUpdate')
 	end
 
-	if self.config.combinedBank then
+	if st.retail and self.config.combinedBank then
 		self:RegisterEvent('BANKFRAME_OPENED', 'OpenCombinedBank')
 		self:RegisterEvent('BANKFRAME_CLOSED', 'CloseCombinedBank')
 	else

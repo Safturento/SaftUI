@@ -100,9 +100,10 @@ local function isLegacyGear(item)
 	end
 
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
-	if UnitLevel('player') ~= (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
-		return false
-	end
+	if requiredLevelDifference < 10 then return false end
+-- 	if UnitLevel('player') ~= (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
+-- 		return false
+-- 	end
 
     if item.expacID > 9
 	-- This item level comparison makes sure that timewalking gear doesn't get vendored
@@ -111,8 +112,11 @@ local function isLegacyGear(item)
     or item.equipSlot == 'INVTYPE_BODY'
     or not (item.quality >= 2 and item.quality <=4)
 	or matchesAny(item.tooltipText,
-			TRADEABLE_ITEM, BIND_ON_ACCOUNT,
-			COSMETIC_TEXT, USE_TEXT, EQUIP_EFFECT_TEXT
+			TRADEABLE_ITEM,
+			BIND_ON_ACCOUNT,
+			COSMETIC_TEXT
+-- 			USE_TEXT,
+--             EQUIP_EFFECT_TEXT
 	)
 	then return false end
 

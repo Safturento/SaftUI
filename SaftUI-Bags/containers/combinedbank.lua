@@ -170,10 +170,13 @@ function INV:InitializeCombinedBank()
 	depositButton:ClearAllPoints()
 	depositButton:SetPoint('BOTTOM', container.footer, 0, 7)
 
-	self:CreateGoldString(container)
-	self:UpdateCombinedBankWarbandMoney()
-	self:InitializeWithdrawButton(container)
-	self:InitializeBankCategorySelection()
+	if st.retail then
+        self:CreateGoldString(container)
+        self:UpdateCombinedBankWarbandMoney()
+        self:InitializeWithdrawButton(container)
+        self:InitializeBankCategorySelection()
 
-	self:InitializeDepositButton()
+        self:InitializeDepositButton()
+    end
+
 end

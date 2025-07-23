@@ -1,6 +1,8 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
+local CloseBankFrame = C_Bank and C_Bank.CloseBankFrame or CloseBankFrame
+
 function INV:ToggleBags()
 	if IsOptionFrameOpen() then return end
 
@@ -30,7 +32,7 @@ function INV:HideBags()
 	if self.containers.bank and self.containers.bank:IsShown() then
 		self.containers.bank:Hide()
 		HideUIPanel(BankFrame);
-		C_Bank.CloseBankFrame();
+		CloseBankFrame();
 	end
 	if CurrencyTransferMenu and CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
 end

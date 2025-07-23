@@ -16,8 +16,7 @@ function MM:OnEnable()
     self.config = st.config.profile.minimap
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
-    MinimapCluster:ClearAllPoints()
-    MinimapCluster.SetPoint = function()  end
+    st:SetBackdrop(MinimapCluster, 'thick')
 	function GetMinimapShape() return "SQUARE" end
 
     if st.retail then
@@ -32,6 +31,12 @@ function MM:OnEnable()
         st:Kill(MinimapBorder)
         st:Kill(MinimapZoomIn)
         st:Kill(MinimapZoomOut)
+
+        hooksecurefunc('BuffFrame_UpdateAllBuffAnchors', function()
+            BuffFrame:ClearAllPoints();
+            BuffFrame:SetPoint('TOPRIGHT', Minimap, 'TOPLEFT', -10, 0)
+        end)
+
     end
 
     st:Kill(MinimapCluster.Selection)
