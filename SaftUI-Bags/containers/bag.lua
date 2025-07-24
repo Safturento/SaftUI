@@ -42,6 +42,7 @@ function INV:MovePlayerBagSlots()
 	local bagSlotContainer = self.containers.bag.bagSlotContainer
 	local BagSlots = bagSlotContainer.slots
 
+
 	local prev
 	for _, slot in pairs(BagSlots) do
 		slot:ClearAllPoints()
@@ -55,6 +56,9 @@ function INV:MovePlayerBagSlots()
 end
 
 function INV:InitializePlayerBagSlots()
+
+	st:Kill(MainMenuBarBackpackButton)
+
 	local BagSlots = {}
 	for i=0,3 do
 		local slot = _G['CharacterBag'..i..'Slot']
@@ -124,9 +128,15 @@ function INV:InitializePlayerBags()
 	self:InitializeAllCategories('bag')
 	container.UpdateContainerSlots = UpdateContainerSlots
 
-	self:SecureHook('OpenAllBags', 'ShowBags')
-	self:SecureHook('CloseAllBags', 'HideBags')
-	self:SecureHook('ToggleBag', 'ToggleBags')
-	self:SecureHook('ToggleAllBags', 'ToggleBags')
+    if st.retail then
+    	self:SecureHook('OpenAllBags', 'ShowBags')
+    	self:SecureHook('CloseAllBags', 'HideBags')
+    	self:SecureHook('ToggleBag', 'ToggleBags')
+    	self:SecureHook('ToggleAllBags', 'ToggleBags')
+    else
+        ContainerFrame1:ClearAllPoints()
+        ContainerFrame1:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 100, 100)
+    end
+
 	self:SecureHook('ToggleBackpack', 'ToggleBags')
 end
