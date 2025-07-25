@@ -16,6 +16,9 @@ st.defaults.unitframes.profiles["**"].focus = {
     health = {
         reverse_fill = true,
     },
+    buffs = {
+        enable = true,
+    },
     debuffs = {
         enable = true,
         position = {point = 'BOTTOMRIGHT',rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 2},

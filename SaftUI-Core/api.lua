@@ -17,7 +17,7 @@ function st:SetWidth(frame, width)
 end
 
 function st:SetSize(frame, width, height)
-	frame:SetSize(width, height)
+	frame:SetSize(width, height or width)
 end
 
 function st:RegisterEditMode(frame, name, defaultPosition)

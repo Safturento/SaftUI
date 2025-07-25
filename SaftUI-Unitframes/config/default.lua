@@ -23,15 +23,15 @@ local raidroleindicator = {
 }
 
 local grouproleindicator = {
+    enable = false,
     size = 16,
-    show_dps = false,
+    showDps = false,
     position = {
-        enable = false,
-        point = 'CENTER',
-        rel_point = 'TOPLEFT',
+        point = 'BOTTOMRIGHT',
         element = 'Health',
-        x_off = 0,
-        y_off = 0,
+        rel_point = 'BOTTOMRIGHT',
+        x_off = 2,
+        y_off = -2,
     }
 }
 
@@ -382,6 +382,21 @@ local widget = {
     },
 }
 
+local aurawatch = {
+    enable = false,
+    framelevel = 15,
+    icons = {
+        [1] = { point = 'TOPLEFT', element = 'Health', rel_point = 'TOPLEFT', x_off = 4, y_off = -4 },
+    },
+    spells = {
+        shaman = {
+            -- Riptide
+            [1] = { spell = 61295, color = '10A3B3' }
+        }
+    },
+    size = 20,
+}
+
 st.defaults.unitframes = {
     config_unit = 'player',
     config_element = 'general',
@@ -418,6 +433,7 @@ st.defaults.unitframes = {
                 castbar = castbar,
                 portrait = portrait,
                 widget = widget,
+                aurawatch = aurawatch,
                 questindicator = questindicator,
                 raidroleindicator = raidroleindicator,
                 grouproleindicator = grouproleindicator,

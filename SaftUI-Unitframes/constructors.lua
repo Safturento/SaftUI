@@ -1,12 +1,17 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-function UF:AddElement(frameType, unitframe, elementName)
+function UF:AddElement(frameType, unitframe, elementName, postInit)
     local element = CreateFrame(frameType, ('%s_%s'):format(unitframe:GetName(), elementName), unitframe)
     element.config = unitframe.config[string.lower(elementName)]
     element.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
     element.name = elementName
     element.unitframe = unitframe
+
+    if postInit then
+        postInit(unitframe, element)
+    end
+
     unitframe[elementName] = element
 
     return element
@@ -32,6 +37,18 @@ function UF:AddTextElement(unitframe, elementName)
     text.name = elementName
 	text.unitframe = unitframe
     text.noSize = true
+	unitframe[elementName] = text
+
+    return text
+end
+
+
+function UF:AddTextureElement(unitframe, elementName)
+    local text = unitframe.TextOverlay:CreateTexture(nil, 'OVERLAY')
+    text.config = unitframe.config[string.lower(elementName)]
+    text.GetConfig = function(self) return unitframe:GetConfig()[string.lower(elementName)] end
+    text.name = elementName
+	text.unitframe = unitframe
 	unitframe[elementName] = text
 
     return text

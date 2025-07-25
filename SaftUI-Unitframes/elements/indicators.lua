@@ -5,16 +5,27 @@ local UF = st:GetModule('Unitframes')
 local DEBUG = false
 
 local indicators = {
-    --{
-    --    configKey = 'grouproleindicator',
-    --    name = 'GroupRoleIndicator',
-    --    postUpdate = function(self, role)
-    --        self:SetShown(role == 'HEALER' or role == 'TANK')
-    --    end,
-    --    debug = function(self)
-    --        self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
-    --    end
-    --},
+    {
+       configKey = 'grouproleindicator',
+       name = 'GroupRoleIndicator',
+       postUpdate = function(self, role)
+           self:SetShown(self.config.showDps and true or role == 'HEALER' or role == 'TANK')
+           self:SetTexCoord(0, 1, 0, 1)
+           if role == 'HEALER' then
+               self:SetVertexColor(unpack(st.config.profile.colors.text.green))
+           elseif role == 'TANK' then
+               self:SetVertexColor(unpack(st.config.profile.colors.text.blue))
+           else
+               self:SetVertexColor(unpack(st.config.profile.colors.text.red))
+           end
+       end,
+       postCreate = function(self)
+           self:SetTexture(st.textures.cornerbr)
+       end,
+       debug = function(self)
+           self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
+       end
+    },
     {
         configKey = 'raidroleindicator',
         name = 'RaidRoleIndicator',
@@ -44,7 +55,8 @@ local indicators = {
 
 for _, config in pairs(indicators) do
     local function Constructor(unitframe)
-        local indicator = unitframe.TextOverlay:CreateTexture(('%s_%s'):format(unitframe:GetName(), config.name), 'OVERLAY')
+        local indicator = UF:AddTextureElement(unitframe, config.name)
+--         local indicator = unitframe.TextOverlay:CreateTexture(('%s_%s'):format(unitframe:GetName(), config.name), 'OVERLAY')
         indicator.PostUpdate = function(...)
             if config.postUpdate then
                 config.postUpdate(...)
@@ -59,29 +71,20 @@ for _, config in pairs(indicators) do
             end
         end
 
-        unitframe[config.name] = indicator
+        if config.postCreate then
+            config.postCreate(indicator)
+        end
+
         return indicator
     end
 
     local function UpdateConfig(unitframe)
         local indicator = unitframe[config.name]
 
-        indicator.config = unitframe.config[config.configKey]
-
-        if indicator.config.enable == false then
-            indicator:Hide()
-            return
-        else
-            indicator:Show()
-        end
+         UF:UpdateElement(indicator)
 
         indicator:SetSize(indicator.config.size, indicator.config.size)
-
-        indicator:ClearAllPoints()
-        local anchor, frame, rel_anchor, x_off, y_off = st:UnpackPoint(indicator.config.position)
-        local frame = UF:GetFrame(unitframe, indicator.config.position)
-        indicator:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
-        indicator:SetAlpha(indicator.config.alpha)
+--
     end
 
     UF:RegisterElement(config.name, Constructor, UpdateConfig)

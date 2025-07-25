@@ -1,13 +1,21 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+local function isSpellWhitelisted(whitelist, spellId)
+    if not whitelist.spellIds then return false end
+
+    return whitelist.spellIds[spellId]
+end
+
 local function isWhitelisted(whitelist, data)
     if not whitelist.enable then return true end
-    if whitelist.yours and isCastByPlayer(data) then return true end
-    if whitelist.others and not isCastByPlayer(data) then return true end
-    if whitelist.stealable and data.isStealable then return true end
-    if whitelist.auras and data.duration > 0 then return true end
-    if whitelist.boss and data.isBossAura then return true end
+
+    local spellWhitelisted = isSpellWhitelisted(whitelist, data.spellId)
+    if spellWhitelisted and whitelist.yours and isCastByPlayer(data) then return true end
+    if spellWhitelisted and whitelist.others and not isCastByPlayer(data) then return true end
+    if spellWhitelisted and whitelist.stealable and data.isStealable then return true end
+    if spellWhitelisted and whitelist.auras and data.duration > 0 then return true end
+    if spellWhitelisted and whitelist.boss and data.isBossAura then return true end
 
     return false
 end
@@ -54,17 +62,17 @@ end
 
 function UF.PostUpdateButton(auras, button, unit, data)
     local config = auras.config[getHostility(unit)]
---     if config.colorStealable and data.isStealable then
---         local c = DebuffTypeColor['Magic']
---         button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
---     elseif config.colorTypes and data.dispelName then
---         local c = DebuffTypeColor[data.dispelName]
---         button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
---     else
+    if config.colorStealable and data.isStealable then
+        local c = DebuffTypeColor['Magic']
+        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+    elseif config.colorTypes and data.dispelName then
+        local c = DebuffTypeColor[data.dispelName]
+        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+    else
         st:SetBackdrop(button, auras.config.template)
---     end
+    end
 
---     button.Icon:SetDesaturated(config.desaturateOthers and not (data and data.isPlayerAura))
+    button.Icon:SetDesaturated(config.desaturateOthers and not (data and data.isPlayerAura))
 end
 
 function UF.PostCreateButton(auras, button)
@@ -79,6 +87,7 @@ function UF.PostCreateButton(auras, button)
 	button.Cooldown.noCooldownCount = not auras.config.cooldown.timer
 	button.Cooldown:SetReverse(not auras.config.cooldown.reverse)
 	button.Cooldown:SetAlpha(auras.config.cooldown.alpha)
+	button.Cooldown:SetDrawEdge(false)
 	button.Cooldown:SetHideCountdownNumbers(true)
 end
 

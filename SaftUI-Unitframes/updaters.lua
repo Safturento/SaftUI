@@ -63,6 +63,13 @@ function UF:UpdateElementSize(element)
 
     local unitframe = element.unitframe or element:GetParent()
 
+    if element.config.size then
+        local size = element.config.relative_size
+                        and unitframe.config.height + element.config.size
+                        or element.config.size
+        st:SetSize(element, size)
+    end
+
     if element.config.height then
         if element.config.relative_height then
             st:SetHeight(element, unitframe.config.height + element.config.height)
