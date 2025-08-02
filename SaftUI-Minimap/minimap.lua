@@ -16,7 +16,8 @@ function MM:OnEnable()
     self.config = st.config.profile.minimap
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
-    st:SetBackdrop(MinimapCluster, 'thick')
+    -- TODO: figure out how to stop cluster resizing
+    -- st:SetBackdrop(MinimapCluster, 'thick')
 	function GetMinimapShape() return "SQUARE" end
 
     if st.retail then
@@ -40,6 +41,7 @@ function MM:OnEnable()
     end
 
     st:Kill(MinimapCluster.Selection)
+    MinimapCluster:EnableMouse(false)
 
 	MM:UpdateConfig()
 end

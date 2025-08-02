@@ -271,6 +271,7 @@ local additionalpower = {
 local auras = {
     enable = false,
     size = 24,
+    relative_size = false,
     spacing = 7,
     per_row = 9,
     max = 8,
@@ -282,7 +283,10 @@ local auras = {
     initial_anchor = 'BOTTOMLEFT',
     cooldown = {
         enable = true,
-        timer = false,
+        timer = {
+            enable = false,
+            position = { point = 'CENTER', rel_point = 'BOTTOM', x_off = 2, y_off = 0 },
+        },
         reverse = true,
         alpha = 0.7
     },
@@ -356,7 +360,6 @@ local name = {
         x_off = 7,
         y_off = 0,
     },
-    tag = '[st:name]',
 }
 
 local widget = {

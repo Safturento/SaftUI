@@ -114,6 +114,8 @@ end
 
 function lib:ShortFormat(value, decimals, decimal_threshold)
 	if type(value) == 'string' then value = tonumber(value) end
+	decimals = decimals or 1
+	decimal_threshold = decimal_threshold or 1000
 
 	local suffix = 'KMBTQ' --I doubt you'd need more than quadrillions..
 	local factor = floor((strlen(value)-1) / 3)

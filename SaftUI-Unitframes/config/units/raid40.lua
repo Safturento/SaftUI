@@ -38,12 +38,42 @@ st.defaults.unitframes.profiles["**"].raid40 = {
         text = { enable = false },
     },
     name = {
-        enable = false,
+        enable = true,
         showLevel = false,
-        maxLength = 8,
+        maxLength = 4,
+        position = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 },
     },
     buffs = {
-      position = { point = 'BOTTOMLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = 0}
+        enable = true,
+        onlyShowPlayer = true,
+        grow_right = true,
+        size = 15,
+        position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0 },
+        horizontal_growth = 'RIGHT',
+        initial_anchor = 'LEFT',
+        framelevel = 50,
+        template = 'thin',
+        cooldown = {
+            timer = {
+                enable = false,
+            },
+            alpha = 1,
+        },
+        friend = {
+            filter = {
+                time = {
+                    enable = true,
+                    max = 30,
+                },
+                whitelist = {
+                    enable = true,
+                    self = true,
+                    spellIds = {
+                        [61295] = true, -- Shaman: Riptide
+                    }
+                },
+            }
+        },
     },
     debuffs = {
         enable = false,

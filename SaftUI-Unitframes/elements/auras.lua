@@ -1,16 +1,17 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function isSpellWhitelisted(whitelist, spellId)
-    if not whitelist.spellIds then return false end
+local function spellInFilter(list, data)
+    if not list.spellIds then return false end
 
-    return whitelist.spellIds[spellId]
+    return list.spellIds[data.spellId] or list.spellIds[data.name]
 end
 
 local function isWhitelisted(whitelist, data)
     if not whitelist.enable then return true end
 
-    local spellWhitelisted = isSpellWhitelisted(whitelist, data.spellId)
+    local spellWhitelisted = spellInFilter(whitelist, data)
+
     if spellWhitelisted and whitelist.yours and isCastByPlayer(data) then return true end
     if spellWhitelisted and whitelist.others and not isCastByPlayer(data) then return true end
     if spellWhitelisted and whitelist.stealable and data.isStealable then return true end
@@ -22,11 +23,14 @@ end
 
 local function isBlacklisted(blacklist, data)
     if not blacklist.enable then return false end
-    if blacklist.yours and isCastByPlayer(data) then return true end
-    if blacklist.others and not isCastByPlayer(data) then return true end
-    if blacklist.stealable and data.isStealable then return true end
-    if blacklist.auras and data.duration == 0 then return true end
-    if blacklist.boss and data.isBossAura then return true end
+
+    local spellBlacklisted = spellInFilter(blacklist, data)
+
+    if spellBlacklisted or blacklist.yours and isCastByPlayer(data) then return true end
+    if spellBlacklisted or blacklist.others and not isCastByPlayer(data) then return true end
+    if spellBlacklisted or blacklist.stealable and data.isStealable then return true end
+    if spellBlacklisted or blacklist.auras and data.duration == 0 then return true end
+    if spellBlacklisted or blacklist.boss and data.isBossAura then return true end
 
     return false
 end
@@ -88,7 +92,16 @@ function UF.PostCreateButton(auras, button)
 	button.Cooldown:SetReverse(not auras.config.cooldown.reverse)
 	button.Cooldown:SetAlpha(auras.config.cooldown.alpha)
 	button.Cooldown:SetDrawEdge(false)
-	button.Cooldown:SetHideCountdownNumbers(true)
+	button.Cooldown:SetHideCountdownNumbers(not auras.config.cooldown.timer.enable)
+	for _,region in pairs({button.Cooldown:GetRegions()}) do
+        if region:GetObjectType() == 'FontString' then
+            button.Cooldown.Duration = region
+            button.Cooldown.Duration:SetFontObject(st:GetFont('pixel'))
+            button.Cooldown.Duration:ClearAllPoints()
+            local point, _, relPoint, x, y = st:UnpackPoint(auras.config.cooldown.timer.position)
+            button.Cooldown.Duration:SetPoint(point, button, relPoint, x, y)
+        end
+    end
 end
 
 local function UpdateConfig(unitframe, aura_type)
@@ -107,12 +120,16 @@ local function UpdateConfig(unitframe, aura_type)
 	auras:SetWidth(auras.config.per_row * auras.config.size + (auras.config.per_row - 1) * auras.config.spacing)
     st:SetBackdrop(auras, 'none')
 
-	auras.size = auras.config.size
+    local size = auras.config.relative_size
+                and unitframe.config.height + auras.config.size
+                or auras.config.size
+	auras.size = size
 	auras.num = auras.config.max
 	auras.numRow = auras.config.per_row
 	auras.spacing = auras.config.spacing
 	auras.initialAnchor = auras.config.initial_anchor
     auras.tooltipAnchor = 'ANCHOR_TOPLEFT'
+    auras.reanchorIfVisibleChanged = true
 	auras['growth-y'] = auras.config.grow_up and 'UP' or 'DOWN'
 	auras['growth-x'] = auras.config.grow_right and 'RIGHT' or 'LEFT'
 	auras.onlyShowPlayer = auras.config.onlyShowPlayer

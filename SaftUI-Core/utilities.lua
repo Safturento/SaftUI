@@ -144,6 +144,7 @@ function st.tableprint(table, indent, maxDepth)
 	end
 end
 
+
 function st.tableinvert(table)
 	local inverted = {}
 	for k,v in pairs(table) do

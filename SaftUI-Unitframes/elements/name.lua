@@ -10,8 +10,8 @@ local function UpdateConfig(unitframe)
 	UF:UpdateElement(unitframe.Name, 'Name')
 
 	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
-
-	unitframe:Tag(unitframe.Name, unitframe.config.name.tag or '[st:name]')
+    unitframe.Name.overrideUnit = true
+	unitframe:Tag(unitframe.Name, '[st:name('.. unitframe.base_unit..')]')
 end
 
 local function GetConfigTable(unit)

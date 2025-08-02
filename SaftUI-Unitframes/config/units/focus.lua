@@ -1,6 +1,7 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].focus = {
+    width = 140,
     position = {
         point = 'BOTTOMRIGHT',
         rel_point = 'CENTER',

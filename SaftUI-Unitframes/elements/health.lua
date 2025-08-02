@@ -32,7 +32,12 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif UnitIsDead(unit) or current == 0 then
 			health.text:SetText('Dead')
 		elseif health.config.text.deficit then
-			health.text:SetText(current - max)
+            local diff = max - current
+            if diff <= 0 then
+                health.text:SetText('')
+            else
+                health.text:SetText('-' .. st.StringFormat:ShortFormat(diff))
+            end
 		elseif health.config.text.percent then
 			health.text:SetText(getHealthPercentText(current, max, absorbs))
 		else

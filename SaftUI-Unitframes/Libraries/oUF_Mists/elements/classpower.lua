@@ -60,6 +60,8 @@ local SPELL_POWER_HOLY_POWER = Enum.PowerType.HolyPower or 9
 local SPELL_POWER_CHI = Enum.PowerType.Chi or 12
 local SPELL_POWER_ARCANE_CHARGES = Enum.PowerType.ArcaneCharges or 16
 
+local GetSpecialization = GetSpecialization or GetPrimaryTalentTree
+
 -- Holds the class specific stuff.
 local ClassPowerID, ClassPowerType
 local ClassPowerEnable, ClassPowerDisable
@@ -291,7 +293,7 @@ do
 	if(PlayerClass == 'MONK') then
 		ClassPowerID = SPELL_POWER_CHI
 		ClassPowerType = 'CHI'
-		RequireSpec = SPEC_MONK_WINDWALKER
+-- 		RequireSpec = SPEC_MONK_WINDWALKER
 	elseif(PlayerClass == 'PALADIN') then
 		ClassPowerID = SPELL_POWER_HOLY_POWER
 		ClassPowerType = 'HOLY_POWER'

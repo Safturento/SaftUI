@@ -2,7 +2,7 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 UF.oUF.Tags.Events['st:name'] = 'UNIT_NAME_UPDATE UNIT_LEVEL PLAYER_LEVEL_UP PLAYER_TARGET_CHANGED'
-UF.oUF.Tags.Methods['st:name'] = function(unit)
+UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	local level = UnitLevel(unit)
 	local playerLevel = UnitLevel('player')
 	local name = UnitName(unit)
@@ -10,9 +10,8 @@ UF.oUF.Tags.Methods['st:name'] = function(unit)
 	local classification = UnitClassification(unit)
 	local string = ''
 
-	local baseunit = unit == 'vehicle' and 'player' or strmatch(unit, '%D+')
-	if not UF:GetProfileConfig()[baseunit] then return '' end
-	local config = UF:GetProfileConfig()[baseunit].name
+	if not UF:GetProfileConfig()[baseUnit] then return '' end
+	local config = UF:GetProfileConfig()[baseUnit].name
 	if not config.enable then return '' end
 
 	-- mob level relative to you
