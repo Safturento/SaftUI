@@ -187,7 +187,7 @@ end
 function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	local container = self.containers[id]
 
-	local categoryFrame = CreateFrame('frame', container:GetName() .. '_' .. categoryName, container)
+	local categoryFrame = CreateFrame('frame', container:GetName() .. '_' .. categoryName, container.scrollFrame.ScrollChild)
 	categoryFrame.container = container
 	categoryFrame.name = categoryName
 	categoryFrame:SetWidth(container:GetWidth() - self.config.padding * 2)
@@ -208,7 +208,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 
 	header.text = header:CreateFontString(nil, 'OVERLAY')
 	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
-	header.text:SetPoint('LEFT', -2, 0)
+	header.text:SetPoint('BOTTOMLEFT', 2, 2)
 	header.text:SetText(categoryName)
 	categoryFrame.header = header
 

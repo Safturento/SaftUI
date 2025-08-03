@@ -119,6 +119,16 @@ end
 function st:SkinActionButton(button, config)
 	config = config or st.config.profile.buttons
 
+	if config and config.template then
+		st:SetBackdrop(button, config.template)
+	end
+
+    local inset = config.trueSize and st:CalculateSpacing(button) or 0
+    if config.trueSize then
+        button.backdrop:ClearAllPoints()
+        button.backdrop:SetAllPoints()
+    end
+
 	local name = button:GetName() or ''
 
 	local icon = _G[name.."Icon"] or _G[name..'IconTexture'] or button.icon or button.Icon
@@ -145,10 +155,12 @@ function st:SkinActionButton(button, config)
 
 	if flash then
 		flash:SetTexture('')
+		st:SetInside(flash, inset)
 	end
 
 	if icon then
 		st:SkinIcon(icon)
+		st:SetInside(icon, inset)
 	end
 
 	if config.font then
@@ -166,14 +178,14 @@ function st:SkinActionButton(button, config)
 
 		if count and type(count) == 'table' then
 			count:ClearAllPoints()
-			count:SetPoint('BOTTOMRIGHT', 2, 1)
+			count:SetPoint('BOTTOMRIGHT', 2 - inset, 1 + inset)
 			count:SetJustifyH('RIGHT')
 			count:SetJustifyV('BOTTOM')
 		end
 
 		if item_level then
 			item_level:ClearAllPoints()
-			item_level:SetPoint('BOTTOMRIGHT', 2, 1)
+			item_level:SetPoint('BOTTOMRIGHT', 2 - inset, 1 + inset)
 			item_level:SetJustifyH('RIGHT')
 			item_level:SetJustifyV('BOTTOM')
 		end
@@ -196,6 +208,7 @@ function st:SkinActionButton(button, config)
 
 	if button.SetNormalTexture then
 		button:SetNormalTexture('')
+		st:SetInside(normal, inset)
 	end
 
 	if button.SetHighlightTexture and not button.hover then
@@ -203,7 +216,7 @@ function st:SkinActionButton(button, config)
 		hover:SetTexture(st.BLANK_TEX)
 		-- hover:SetVertexColor(1, 1, 1, .1)
 		hover:SetVertexColor(unpack(st.config.profile.colors.button.blue))
-		hover:SetAllPoints(button)
+		st:SetInside(hover, inset)
 		button.hover = hover
 		button:SetHighlightTexture(hover)
 	end
@@ -212,7 +225,7 @@ function st:SkinActionButton(button, config)
 		local pushed = button:CreateTexture(nil, 'OVERLAY')
 		pushed:SetTexture(st.BLANK_TEX)
 		pushed:SetVertexColor(0, 0, 0, .1)
-		pushed:SetAllPoints(button)
+		st:SetInside(pushed, inset)
 		button.pushed = pushed
 		button:SetPushedTexture(pushed)
 	end
@@ -221,13 +234,9 @@ function st:SkinActionButton(button, config)
 		local disabled = button:CreateTexture(nil, 'OVERLAY')
 		disabled:SetTexture(st.BLANK_TEX)
 		disabled:SetVertexColor(0, 0, 0, .4)
-		disabled:SetAllPoints(button)
+		st:SetInside(disabled, inset)
 		button.disabled = disabled
 		button:SetDisabledTexture(disabled)
-	end
-
-	if config and config.template then
-		st:SetBackdrop(button, config.template)
 	end
 end
 

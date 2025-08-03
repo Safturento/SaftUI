@@ -97,7 +97,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.3, 0.3, 0.3, 0.4 },
 		border = false,
 		thick = true,
-		outer_shadow = {0, 0, 0, 0},
 		inner_shadow = {0, 0, 0, 0},
 	},
 	close = {
@@ -107,7 +106,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
 		border = false,
 		thick = true,
-		outer_shadow = {0, 0, 0, 0},
 		inner_shadow = {0, 0, 0, 0},
 	},
 	thin = {
@@ -117,7 +115,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.2, 0.2, 0.2, 1 },
 		border = true,
 		thick = false,
-		outer_shadow = {0, 0, 0, 0},
 		inner_shadow = {0, 0, 0, 0},
 	},
 	thick = {
@@ -127,7 +124,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 		border = true,
 		thick = true,
-		outer_shadow = {0, 0, 0, 0},
 		inner_shadow = {0, 0, 0, 0},
 	}
 }

@@ -17,7 +17,8 @@ end
 
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
-	slot:SetParent(container.bags[slotInfo.bagID])
+-- 	slot:SetParent(container.bags[slotInfo.bagID])
+	slot:SetParent(container.scrollFrame.ScrollChild)
 	slot:SetID(slotInfo.slotID)
 	slot.info = slotInfo
 
@@ -51,13 +52,6 @@ function INV:AssignSlot(container, slot, slotInfo)
 		else
 			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
 		end
-	end
-
-	if C_NewItems.IsNewItem(slotInfo.bagID, slotInfo.slotID) then
-		slot.backdrop.outer_shadow:SetBackdropBorderColor(1, 1, 1, 1)
-		slot.backdrop.outer_shadow:Show()
-	else
-		slot.backdrop.outer_shadow:Hide()
 	end
 
 	self:SetSlotCooldown(slot)
@@ -127,46 +121,44 @@ function INV:CreateSlot(container, categoryName)
 	local slotID = #categoryFrame.slots + 1
 	local slot, slotName
 
-	--if not (container.id == 'reagent') then
-		assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
+    assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 
-		local bagName = container:GetName()
-		slotName = bagName..'_'..(gsub(categoryName, '(%A)', ''))..'_Slot'..slotID
-		slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
-		if not slot.icon then st:Error(slotName.." is missing an icon") end
+    local bagName = container:GetName()
+    slotName = bagName..'_'..(gsub(categoryName, '(%A)', ''))..'_Slot'..slotID
+    slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
+    if not slot.icon then st:Error(slotName.." is missing an icon") end
 
-		slot.IconOverlay:ClearAllPoints()
-		slot.IconOverlay:SetAllPoints(slot.icon)
+    slot.IconOverlay:ClearAllPoints()
+    slot.IconOverlay:SetAllPoints(slot.icon)
 
-		slot.Count = _G[slot:GetName() .. "Count"]
-		slot.Count:SetDrawLayer('OVERLAY', 99)
+    slot.Count = _G[slot:GetName() .. "Count"]
+    slot.Count:SetDrawLayer('OVERLAY', 99)
 
-		slot.CountBG = slot:CreateTexture(nil, 'OVERLAY')
-		slot.CountBG:SetPoint('BOTTOMRIGHT', slot.icon)
-		slot.CountBG:SetPoint('TOPLEFT', slot.Count, -2, 1)
-		slot.CountBG:SetTexture(st.BLANK_TEX)
-		slot.CountBG:SetAlpha(0.6)
-		slot.CountBG:SetVertexColor(0,0,0)
+    slot.CountBG = slot:CreateTexture(nil, 'OVERLAY')
+    slot.CountBG:SetPoint('BOTTOMRIGHT', slot.icon)
+    slot.CountBG:SetPoint('TOPLEFT', slot.Count, -2, 1)
+    slot.CountBG:SetTexture(st.BLANK_TEX)
+    slot.CountBG:SetAlpha(0.6)
+    slot.CountBG:SetVertexColor(0,0,0)
 
-		slot.icon = _G[slot:GetName() .. "IconTexture"]
-		slot.border = _G[slot:GetName() .. "NormalTexture"]
-		slot.border:SetTexture('')
-		slot.cooldown = _G[slot:GetName() .. "Cooldown"]
-		
-		slot.container = container
-		slot.id = slotID
-		slot.type = container.id
-		slot.tainted = InCombatLockdown()
-		
-		slot.GetInventorySlot = ButtonInventorySlot
+    slot.icon = _G[slot:GetName() .. "IconTexture"]
+    slot.border = _G[slot:GetName() .. "NormalTexture"]
+    slot.border:SetTexture('')
+    slot.cooldown = _G[slot:GetName() .. "Cooldown"]
 
-		slot.UpdateTooltip = UpdateTooltip
-		slot:SetScript('OnEnter', UpdateTooltip)
-		slot:HookScript('OnClick', OpenSlotOptions)
+    slot.container = container
+    slot.id = slotID
+    slot.type = container.id
+    slot.tainted = InCombatLockdown()
 
-		self:SetSlotPosition(slot, categoryFrame, container)
-	--end
-	
+    slot.GetInventorySlot = ButtonInventorySlot
+
+    slot.UpdateTooltip = UpdateTooltip
+    slot:SetScript('OnEnter', UpdateTooltip)
+    slot:HookScript('OnClick', OpenSlotOptions)
+
+    self:SetSlotPosition(slot, categoryFrame, container)
+
 	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
 	
 	slot.cooldown = _G[slotName .. "Cooldown"]
@@ -193,10 +185,10 @@ function INV:CreateSlot(container, categoryName)
 	itemLevelBG:SetVertexColor(0,0,0)
 	slot.itemLevelBG = itemLevelBG
 
-
 	st:SkinActionButton(slot, {
 		template = self.config.template,
-		font = self.config.fonts.icons
+		font = self.config.fonts.icons,
+		trueSize = true
 	})
 	slot:SetNormalTexture("")
 	slot:SetPushedTexture("")

@@ -63,8 +63,14 @@ function st:SkinScrollBar(scrollBar)
     scrollBar.Thumb = st:CreateFrame('frame')
     scrollBar.ScrollDownButton:SetTexture(nil)
     scrollBar.ScrollUpButton:SetTexture(nil)
-
 end
 
---function st:CreateScrollbar(name, parent)
---end
+function st:CreateScrollBar(parent)
+    local scrollBar = CreateFrame('EventFrame', nil, parent, 'MinimalScrollBar')
+    scrollBar:SetPoint('TOPLEFT', parent, 'TOPRIGHT')
+    scrollBar:SetPoint('BOTTOMLEFT', parent, 'BOTTOMRIGHT')
+
+    st:SkinScrollBar(scrollBar)
+
+    return scrollBar
+end

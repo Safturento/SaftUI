@@ -72,7 +72,8 @@ function INV.CreateCurrencySlot(category)
     st:SkinIcon(slot.icon, nil, slot)
     st:SkinActionButton(slot, {
 		template = INV.config.template,
-		font = INV.config.fonts.icons
+		font = INV.config.fonts.icons,
+		trueSize = true
 	})
 	slot:SetNormalTexture("")
 	slot:SetPushedTexture("")
@@ -147,8 +148,8 @@ function INV:InitializeCurrencyCategory()
 
     local filterButton = st:CreateCheckButton(nil, category.header)
     category.header.filterButton = filterButton
-    filterButton:SetPoint('TOPRIGHT')
-    filterButton:SetSize(46, category.header:GetHeight())
+    filterButton:SetPoint('BOTTOMRIGHT')
+    filterButton:SetSize(max(46, self.config.buttonwidth), min(20, category.header:GetHeight()))
 
     filterButton.text:SetAllPoints(filterButton)
     filterButton:SetFont('pixel')

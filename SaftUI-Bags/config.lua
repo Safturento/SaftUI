@@ -8,9 +8,9 @@ st.defaults.inventory = {
 	padding = 10,
 	buttonheight = 40,
 	buttonwidth = 50,
-	buttonspacing = 9,
-	categoryspacing = 30,
-	categoryTitleHeight = 17,
+	buttonspacing = 3,
+	categoryTitleHeight = 40,
+	scrollSpeed = 3,
 	autorepair = true,
 	autovendor = true,
 	combinedBank = true,
@@ -22,25 +22,30 @@ st.defaults.inventory = {
 		position = {'BOTTOMRIGHT', -20, 20},
 		perrow = 4,
 		maxRows = 15,
+		maxColumns = 3
 	},
 	bank = {
 		position = {'TOPLEFT', 200, -200},
 		perrow = 4,
-		maxRows = 25,
+		maxRows = 20,
+		maxColumns = 3
 	},
 	reagent = {
 		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0},
 		perrow = 4,
-		maxRows = 25,
+		maxRows = 20,
+		maxColumns = 3
 	},
 	warband = {
 		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
 		perrow = 4,
-		maxRows = 25
+		maxRows = 20,
+		maxColumns = 3
 	},
 	combinedbank = {
 		position = {'TOPLEFT', 200, -200},
 		perrow = 4,
-		maxRows = 25,
+		maxRows = 20,
+		maxColumns = 5
 	}
 }
