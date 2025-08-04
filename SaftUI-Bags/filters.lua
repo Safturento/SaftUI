@@ -99,8 +99,11 @@ local function isLegacyGear(item)
 		return false
 	end
 
+	if item.isWarbound then return false end
+
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
 	if requiredLevelDifference < 10 then return false end
+
 -- 	if UnitLevel('player') ~= (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
 -- 		return false
 -- 	end
@@ -139,6 +142,10 @@ function INV:AddFilter(name, func, options)
 end
 
 INV:AddFilter('Grays/Auto Vendor', function(item)
+    if INV:IsProtected(item.itemID) then return false end
+
+    if item.isWarbound then return false end
+
 	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
 	if item.subclass == 'Cosmetic' then return false end
 

@@ -17,8 +17,7 @@ end
 
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
--- 	slot:SetParent(container.bags[slotInfo.bagID])
-	slot:SetParent(container.scrollFrame.ScrollChild)
+	slot:SetParent(container.bags[slotInfo.bagID])
 	slot:SetID(slotInfo.slotID)
 	slot.info = slotInfo
 
@@ -35,11 +34,19 @@ function INV:AssignSlot(container, slot, slotInfo)
 		slot.itemLevelBG:Show()
 
 		if st.retail then
-			Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID)
+			Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID, slot.icon)
+            if slot.ProfessionQualityOverlay then
+                slot.ProfessionQualityOverlay:ClearAllPoints()
+                slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
+            end
 		end
 	else
 		if st.retail then
 			SetItemCraftingQualityOverlay(slot, slot.info.link)
+			if slot.ProfessionQualityOverlay then
+                slot.ProfessionQualityOverlay:ClearAllPoints()
+                slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
+            end
 		end
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
@@ -86,25 +93,63 @@ function INV:ShouldAutoVendor(itemID)
     return INV.config.autoVendorFilter and INV.config.autoVendorFilter[itemID]
 end
 
-local function CreateSlotDropdown()
-    INV.SlotDropDown = CreateFrame("Frame", "SaftUI_SlotOptionsMenu", UIParent, "UIDropDownMenuTemplate")
-    UIDropDownMenu_SetWidth(INV.SlotDropDown, 200)
-    UIDropDownMenu_SetText(INV.SlotDropDown, "Options")
-    UIDropDownMenu_Initialize(INV.SlotDropDown, function(dropdown, level, menuList)
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = "Auto Vendor"
-        info.checked = function(self)
-            return INV.config.autoVendorFilter and INV.SelectedSlot.info and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
-        end
-        info.func = function(dropdown, arg1, arg2, checked)
+function INV:IsProtected(itemID)
+    return INV.config.protectFilter and INV.config.protectFilter[itemID]
+end
+
+local menuItems = {
+    autoVendor = {
+        text = 'Auto Vendor',
+        isChecked = function()
+            return INV.config.autoVendorFilter
+                and INV.SelectedSlot.info
+                and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+        end,
+        setChecked = function(key, menuInputData, menu)
             if not INV.SelectedSlot then return end
 
-            if not INV.config.autoVendorFilter then INV.config.autoVendorFilter = {} end
-            INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID] = not checked
+            if not INV.config.autoVendorFilter then
+                INV.config.autoVendorFilter = {}
+            end
+            local itemID = INV.SelectedSlot.info.itemID
+            INV.config.autoVendorFilter[itemID] = not INV.config.autoVendorFilter[itemID]
             INV:QueueUpdate()
-        end
-        UIDropDownMenu_AddButton(info)
-    end)
+       end,
+    },
+    protect = {
+        text = 'Protected',
+        isChecked = function() return INV.config.protectFilter
+            and INV.SelectedSlot.info
+            and INV.config.protectFilter[INV.SelectedSlot.info.itemID] end,
+        setChecked = function(key, menuInputData, menu)
+            if not INV.SelectedSlot then return end
+
+            if not INV.config.protectFilter then
+                INV.config.protectFilter = {}
+            end
+            local itemID = INV.SelectedSlot.info.itemID
+            INV.config.protectFilter[itemID] = not INV.config.protectFilter[itemID]
+            INV:QueueUpdate()
+        end,
+    }
+}
+
+local function isChecked(key)
+    return menuItems[key].isChecked()
+end
+
+local function setChecked(key, menuInputData, menu)
+   menuItems[key].setChecked(key, menuInputData, menu)
+   menu:Close()
+end
+
+local function CreateSlotDropdown()
+    if INV.SlotDropDown then return end
+
+    INV.SlotDropDown = st:CreateCheckboxDropdown("SaftUISlotOptionsMenu", UIParent, {
+        autoVendor = { text = 'Auto Vendor'},
+        protect = { text = 'Protected'}
+    }, isChecked, setChecked)
 end
 
 local function OpenSlotOptions(slot, button, down)
@@ -112,7 +157,8 @@ local function OpenSlotOptions(slot, button, down)
     if not INV.SlotDropDown then CreateSlotDropdown() end
 
     if IsControlKeyDown() and button == 'RightButton' then
-        ToggleDropDownMenu(1, nil, INV.SlotDropDown, "cursor",5, -5)
+        INV.SlotDropDown:Open()
+--         ToggleDropDownMenu(1, nil, INV.SlotDropDown, "cursor",5, -5)
     end
 end
 
@@ -174,7 +220,7 @@ function INV:CreateSlot(container, categoryName)
 
 	local itemLevel = slot:CreateFontString(nil, 'OVERLAY')
 	itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
-	itemLevel:SetPoint('BOTTOMRIGHT', slot.Count)
+	itemLevel:SetPoint('BOTTOMRIGHT', slot.Count, -1, 0)
 	slot.itemLevel = itemLevel
 
 	local itemLevelBG = slot:CreateTexture(nil, 'OVERLAY')

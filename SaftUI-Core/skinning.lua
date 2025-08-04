@@ -206,7 +206,7 @@ function st:SkinActionButton(button, config)
 		end
 	end
 
-	if button.SetNormalTexture then
+	if normal and button.SetNormalTexture then
 		button:SetNormalTexture('')
 		st:SetInside(normal, inset)
 	end

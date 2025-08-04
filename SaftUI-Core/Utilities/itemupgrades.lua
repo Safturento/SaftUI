@@ -66,16 +66,18 @@ function Util:SetItemUpgradeQuality(button, itemLink, anchor)
     return false
 end
 
-function Util:SetItemUpgradeQualityForBagSlot(button, bagId, slotId)
+function Util:SetItemUpgradeQualityForBagSlot(button, bagId, slotId, anchor)
     Util:SetItemUpgradeQuality(
         button,
-        C_Container.GetContainerItemLink(bagId, slotId)
+        C_Container.GetContainerItemLink(bagId, slotId),
+        anchor
     )
 end
 
-function Util:SetItemUpgradeQualityForEquipmentSlot(equipSlot, equipSlotId)
+function Util:SetItemUpgradeQualityForEquipmentSlot(equipSlot, equipSlotId, anchor)
     Util:SetItemUpgradeQuality(
         equipSlot,
-        GetInventoryItemLink('player', equipSlotId)
+        GetInventoryItemLink('player', equipSlotId),
+        anchor
     )
 end

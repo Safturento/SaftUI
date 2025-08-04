@@ -56,5 +56,6 @@ function LT:InitializeFilterDropdown()
 		Experience = { text = 'Experience' },
 		Reputation = { text = 'Reputation' },
 	}
-	self.filterDropdown = st:CreateCheckboxDropdown("LootFilterDropdownMenu", filterButton, entries, isChecked, setChecked)
+	self.filterDropdown = st:CreateCheckboxDropdown(
+	    "SaftUILootFilterDropdownMenu", filterButton, entries, isChecked, setChecked)
 end

@@ -57,7 +57,6 @@ function INV:UpdateConfig(id)
         local column = container.columns[i]
         if not column then
             column = st:CreateFrame('Frame', container:GetName() .. 'Column'..i, container.scrollFrame)
---             st:SetBackdrop(column, 'thin')
             container.columns[i] = column
         end
 

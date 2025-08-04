@@ -2,8 +2,8 @@ local st = SaftUI
 
 local function thumbOnEnter(self)
     self.entered = true
-        if self.pressed then return end
-        self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.hover))
+    if self.pressed then return end
+    self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.hover))
 end
 
 local function thumbOnLeave(self)

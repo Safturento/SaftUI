@@ -7,8 +7,7 @@ end
 
 
 function st:CreateCheckboxDropdown(name, parent, entries, isChecked, setChecked)
-    local dropdown
-    dropdown = CreateFrame("DropdownButton", name, parent or UIParent)
+    local dropdown = CreateFrame("DropdownButton", name, parent or UIParent)
     dropdown.entries = {}
     for key, entry in pairs(entries) do
         tinsert(dropdown.entries, { entry.text, key })

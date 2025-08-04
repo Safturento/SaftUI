@@ -64,7 +64,7 @@ function INV:CreateContainer(id, name, isBankContainer)
 
 	container.bags = {}
 	for _, bag_id in pairs(container.bag_ids) do
-		local bag = CreateFrame('frame', 'SaftUI_Bag'..bag_id, container)
+		local bag = CreateFrame('frame', 'SaftUI_Bag'..bag_id, container.scrollFrame.ScrollChild)
 		bag:SetID(bag_id)
 		container.bags[bag_id] = bag
 	end
