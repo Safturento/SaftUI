@@ -115,7 +115,6 @@ local function GetConfigTable(unit)
 					config.profiles[config.config_profile][unit].power.text.position[index]
 				end,
 				function(index, value)
-					print(index, value)
 					config.profiles[config.config_profile][unit].power.text.position[index] = value
 					UF:UpdateConfig(unit, 'Power')
 				end

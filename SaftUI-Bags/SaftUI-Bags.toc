@@ -14,7 +14,6 @@ container.lua
 containers\bag.lua
 containers\combinedbank.lua
 containers\bank.lua
-containers\reagentbank.lua
 containers\warbandbank.lua
 slot.lua
 utilities.lua

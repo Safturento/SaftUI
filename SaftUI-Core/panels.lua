@@ -104,13 +104,23 @@ function st:SetBackdrop(frame, template)
 
 	if not frame.GetObjectType then return print('GetObjectType missing',debugstack()) end
 
-	local is_texture = frame:GetObjectType() == 'Texture'
+	local isTexture = frame:GetObjectType() == 'Texture'
 
-	local parent = is_texture and frame:GetParent() or frame
+	local parent = isTexture and frame:GetParent() or frame
 
 	if not frame.backdrop then
 		frame.backdrop = st:CreateFrame('frame', nil, parent)
 		frame.backdrop:SetFrameLevel(max(0, parent:GetFrameLevel()-1))
+
+        if isTexture then
+           frame:HookScript('OnShow', function()
+               parent.backdrop:Show()
+           end)
+
+           frame:HookScript('OnHide', function()
+               parent.backdrop:Hide()
+           end)
+        end
 	end
 
 	local offset = config.thick and 2 or 1
@@ -145,9 +155,10 @@ function st:CreateHeader(frame, title, close_button)
 	header:SetScript('OnMouseDown', function() frame:StartMoving() end)
 	header:SetScript('OnMouseUp', function()
 		frame:StopMovingOrSizing()
-		frame:ClearAllPoints()
+-- 		frame:ClearAllPoints()
 		-- We reposition the frame using a corner point to the nearest pixel to ensure pixel perfectness
-		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', frame:GetLeft(), frame:GetTop())
+-- 		print(frame:GetLeft(), frame:GetTop())
+-- 		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', frame:GetLeft(), frame:GetTop())
 	end)
 
 	if title then

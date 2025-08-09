@@ -6,6 +6,7 @@ local WA = SK:NewModule('WeakAuras')
 function WA:SkinIcon(parent, region, data)
 	if not region.skinned then
 		st:SetBackdrop(region, SK.config.template)
+		region.backdrop:SetFrameLevel(region:GetFrameLevel()-4)
 
 		-- Make sure the backdrop always stay below the icons..
 		region.backdrop:SetFrameStrata('LOW')

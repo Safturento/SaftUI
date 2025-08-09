@@ -28,7 +28,7 @@ local BAG_BUTTONS = {
 
 function MicroMenu:KillBlizz()
     hooksecurefunc("MainMenuMicroButton_ShowAlert", function() HelpTip:HideAllSystem("MicroButtons") end)
---     _G.UpdateMicroButtons = function() end
+
     --self:HideBagSlots()
     --self:HideMicroMenu()
 

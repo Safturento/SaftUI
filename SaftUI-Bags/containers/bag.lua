@@ -108,10 +108,18 @@ end
 local function UpdateContainerSlots(container)
 	local empty, total
 	local text = ''
-	empty, total = INV:GetNumContainerSlots({ 0, 1, 2, 3, 4})
+	empty, total = INV:GetNumContainerSlots({
+        Enum.BagIndex.Backpack,
+        Enum.BagIndex.Bag_1,
+        Enum.BagIndex.Bag_2,
+        Enum.BagIndex.Bag_3,
+        Enum.BagIndex.Bag_4,
+     })
 	text = text .. ('%d/%d '):format(total - empty, total)
 
-	empty, total = INV:GetNumContainerSlots({ 5 })
+	empty, total = INV:GetNumContainerSlots({
+        Enum.BagIndex.ReagentBag,
+    })
 	text = text .. st.StringFormat:ColorString(
 			(('%d/%d '):format(total - empty, total)),
 			unpack(st.config.profile.colors.text.green)

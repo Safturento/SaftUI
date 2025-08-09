@@ -4,11 +4,44 @@ local INV = st:NewModule('Inventory')
 local BAG_IDS
 if st.retail then
 	BAG_IDS = {
-		['bag'] = { 0, 1, 2, 3, 4, 5 },
-		['bank'] = { -1, 6, 7, 8, 9, 10, 11, 12 },
-		['reagent'] = { -3 },
-		['warband'] = { 13, 14, 15, 16, 17 },
-		['combinedbank'] = { -3, -1, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17}
+		['bag'] = {
+            Enum.BagIndex.Backpack,
+            Enum.BagIndex.Bag_1,
+            Enum.BagIndex.Bag_2,
+            Enum.BagIndex.Bag_3,
+            Enum.BagIndex.Bag_4,
+            Enum.BagIndex.ReagentBag,
+         },
+		['bank'] = {
+            Enum.BagIndex.CharacterBankTab_1,
+            Enum.BagIndex.CharacterBankTab_2,
+            Enum.BagIndex.CharacterBankTab_3,
+            Enum.BagIndex.CharacterBankTab_4,
+            Enum.BagIndex.CharacterBankTab_5,
+            Enum.BagIndex.CharacterBankTab_6,
+        },
+		['warband'] = {
+            Enum.BagIndex.AccountBankTab_1,
+            Enum.BagIndex.AccountBankTab_2,
+            Enum.BagIndex.AccountBankTab_3,
+            Enum.BagIndex.AccountBankTab_4,
+            Enum.BagIndex.AccountBankTab_5,
+            Enum.BagIndex.AccountBankTab_6,
+        },
+		['combinedbank'] = {
+            Enum.BagIndex.CharacterBankTab_1,
+            Enum.BagIndex.CharacterBankTab_2,
+            Enum.BagIndex.CharacterBankTab_3,
+            Enum.BagIndex.CharacterBankTab_4,
+            Enum.BagIndex.CharacterBankTab_5,
+            Enum.BagIndex.CharacterBankTab_6,
+            Enum.BagIndex.AccountBankTab_1,
+            Enum.BagIndex.AccountBankTab_2,
+            Enum.BagIndex.AccountBankTab_3,
+            Enum.BagIndex.AccountBankTab_4,
+            Enum.BagIndex.AccountBankTab_5,
+            Enum.BagIndex.AccountBankTab_6,
+        }
 	}
 else
 	BAG_IDS = {
@@ -24,12 +57,10 @@ INV.OnUseItems = {}
 
 function INV:SelectBankCategory(clickedHeader)
 	local selectedContainer = clickedHeader:GetParent()
-	if selectedContainer.id == 'reagent' then
-		BankFrame_ShowPanel(ReagentBankFrame)
-	elseif selectedContainer.id == 'warband' then
-		BankFrame_ShowPanel('AccountBankPanel')
+    if selectedContainer.id == 'warband' then
+		BankFrame.BankPanel:SetBankType(Enum.BankType.Character)
 	elseif selectedContainer.id == 'bank' then
-		BankFrame_ShowPanel('BankSlotsFrame')
+        BankFrame.BankPanel:SetBankType(Enum.BankType.Account)
 	end
 
     for containerName, container in pairs(self.containers) do
@@ -177,9 +208,6 @@ function INV:OnEnable()
 	self:RegisterEvent('ITEM_LOCK_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('GET_ITEM_INFO_RECEIVED', 'QueueUpdate')
-	if st.retail then
-        self:RegisterEvent('PLAYERREAGENTBANKSLOTS_CHANGED', 'QueueUpdate')
-	end
 
 	if st.retail and self.config.combinedBank then
 		self:RegisterEvent('BANKFRAME_OPENED', 'OpenCombinedBank')

@@ -30,7 +30,7 @@ st.defaults.unitframes.profiles["**"].player = {
         relative_height = false,
         height = 24,
         template = 'thicktransparent',
-        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -207 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -206 },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
         },
