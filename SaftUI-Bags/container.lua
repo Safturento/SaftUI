@@ -391,7 +391,13 @@ function INV:UpdateContainerLayout(id)
     for _, category in pairs(container.categories) do
         tinsert(sorted, category)
     end
-    table.sort(sorted, function(a,b) return a:GetHeight() > b:GetHeight() end)
+    table.sort(sorted, function(a,b)
+        if self.config.inverted then
+            return a:GetHeight() < b:GetHeight()
+        else
+            return a:GetHeight() > b:GetHeight()
+        end
+     end)
 
     for _, category in pairs(sorted) do
         if not container.filterButton:GetChecked() and INV.config.filters.categories[id][category.name] then

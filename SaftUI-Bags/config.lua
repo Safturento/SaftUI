@@ -14,15 +14,16 @@ st.defaults.inventory = {
 	autorepair = true,
 	autovendor = true,
 	combinedBank = true,
+	inverted = true,
 	fonts = {
 		titles = 'normal',
 		icons = 'pixel',
 	},
 	bag = {
 		position = {'BOTTOMRIGHT', -20, 20},
-		perrow = 4,
+		perrow = 3,
 		maxRows = 15,
-		maxColumns = 2
+		maxColumns = 3
 	},
 	bank = {
 		position = {'TOPLEFT', 200, -200},
