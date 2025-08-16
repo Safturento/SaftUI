@@ -69,7 +69,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
 		local tooltipText = self:ScanBagItem(bagID, slotID)
-		local name, _, quality, _, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice,
+		local name, _, quality, _, reqLevel, class, subclass, _, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
 		local itemLevel = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
@@ -127,7 +127,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				quality = quality or 0,
 				class = class,
 				subclass = subclass,
-				maxStack = maxStack,
+				maxStack = C_Item.GetItemMaxStackSize(itemLocation) or 1,
 				equipSlot = _G[equipSlot],
 				expacID = expacID,
 				vendorPrice = vendorPrice,
@@ -155,6 +155,8 @@ function INV:GetSortedInventory(id)
 		st:Error('container with id ', id, 'not found')
 	end
 
+    local cachedItems = {}
+
 	local inventory = {}
 	local numItems = 0
 	local numLoading = 0
@@ -169,7 +171,18 @@ function INV:GetSortedInventory(id)
 					local categoryName = self:GetItemCategory(item)
 
 					if not inventory[categoryName] then inventory[categoryName] = {} end
-					tinsert(inventory[categoryName], item)
+					if self.config.stackItems and cachedItems[item.itemID] and item.maxStack > 1 then
+                        local cachedItem = cachedItems[item.itemID]
+                        inventory[categoryName][cachedItem.index].count
+                            = inventory[categoryName][cachedItem.index].count + item.count
+					else
+                        tinsert(inventory[categoryName], item)
+                        if self.config.stackItems and not cachedItems[item.itemId] and item.maxStack > 1 then
+                            cachedItems[item.itemID] = {
+                                index = #inventory[categoryName],
+                            }
+                        end
+                    end
 				end
 			end
 		end

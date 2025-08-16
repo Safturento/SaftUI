@@ -15,6 +15,7 @@ st.defaults.inventory = {
 	autovendor = true,
 	combinedBank = true,
 	inverted = true,
+	stackItems = true,
 	fonts = {
 		titles = 'normal',
 		icons = 'pixel',
