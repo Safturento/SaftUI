@@ -21,7 +21,6 @@ st.defaults.unitframes.profiles["**"].party = {
     },
     range_alpha = {
         inside = 1,
-        outside = 1,
     },
     power = {
         enable = true,

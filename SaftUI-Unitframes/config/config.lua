@@ -31,7 +31,8 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 	button1 = "Create",
 	button2 = "Cancel",
 	OnAccept = function(self)
-		local profile_name = self.editBox:GetText()
+        local editBox = _G[self:GetName()..'EditBox']
+		local profile_name = editBox:GetText()
 		if not get_profile_exists(profile_name) then
 			if self.is_copy then
 				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(

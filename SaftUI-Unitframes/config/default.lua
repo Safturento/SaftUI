@@ -414,7 +414,7 @@ st.defaults.unitframes = {
                 template = 'none',
                 range_alpha = {
                     inside = 1,
-                    outside = 0.25,
+                    outside = 0.4,
                 },
                 ['**'] = {
                     enable = true,
