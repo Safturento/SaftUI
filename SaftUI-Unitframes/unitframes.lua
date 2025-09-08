@@ -205,7 +205,7 @@ function UF:CreateGroupHeaders()
 		"showParty", true,
 		"showRaid", false,
 		'showSolo', TEST_PARTY_SOLO,
-		'showPlayer', false,
+		'showPlayer', TEST_PARTY_SOLO or config.showPlayer,
 		"xOffset", config.spacing,
 		"yOffset", config.spacing,
 		"point", config.growthDirection,

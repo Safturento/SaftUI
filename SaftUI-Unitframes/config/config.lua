@@ -26,6 +26,10 @@ local function get_num_profiles()
 	return select(2, get_profiles())
 end
 
+StaticPopup1.button1 = StaticPopup1Button1
+StaticPopup1.button2 = StaticPopup1Button2
+StaticPopup1.editBox = StaticPopup1EditBox
+
 StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 	text = "Enter a name for your new profile",
 	button1 = "Create",

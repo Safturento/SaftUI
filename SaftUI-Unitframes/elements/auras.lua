@@ -135,7 +135,6 @@ local function UpdateConfig(unitframe, aura_type)
 	auras.onlyShowPlayer = auras.config.onlyShowPlayer
     auras.showDebuffType = auras.config.showDebuffType
 	auras.disableCooldown = not auras.config.cooldown.enable
-	auras.showDispellable = auras.config.show_dispellable
 	auras.FilterAura = UF.FilterAura
 end
 
