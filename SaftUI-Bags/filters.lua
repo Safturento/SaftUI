@@ -203,7 +203,7 @@ INV:AddFilter('Delves', function(item)
 end)
 
 INV:AddFilter('Container', function(item)
-	return item.class ~= 'Armor' and item.class == 'Weapon'
+	return item.class ~= 'Armor' and item.class ~= 'Weapon'
 	    and matchesAny(item.tooltipText,
 			RIGHT_CLICK_TO_OPEN, OPEN_THE_CONTAINER, OPEN_THE_SACK,
 			USE_COLLECT, USE_OPEN, 'Flightstones'
@@ -245,6 +245,10 @@ end)
 
 INV:AddFilter('Consumables', function(item)
 	return item.class == 'Consumable'
+end)
+
+INV:AddFilter('Armor (Warbound)', function(item)
+    return item.class == 'Armor' and item.isWarbound
 end)
 
 INV:AddFilter('Armor', function(item)
