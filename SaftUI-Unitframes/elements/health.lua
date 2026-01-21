@@ -1,19 +1,12 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function getHealthPercentText(current, max, absorbs, precision)
-	local perc = current/max*100
+local function getHealthPercentText(perc, precision)
 	if precision and precision > 0 then
-		perc = ('%0.' .. (precision) .. 'f'):format(perc)
-	else
-		perc = floor(perc)
+		return ('%0.' .. (precision) .. 'f'):format(perc)
 	end
 
-	if absorbs > 0 then
-		return ('%s +%d'):format(perc, floor(absorbs/max*100))
-	else
-		return perc
-	end
+	return floor(perc)
 end
 
 local function PostUpdateHealth(health, unit, current, max)
@@ -21,35 +14,28 @@ local function PostUpdateHealth(health, unit, current, max)
 		current, max = UF.RMH.GetUnitHealth(unit)
 	end
 
-	local absorbs = st.retail and UnitGetTotalAbsorbs(unit) or 0
-	health:SetMinMaxValues(0, max + absorbs)
-	health.absorbs:SetMinMaxValues(0, max + absorbs)
-	health.absorbs:SetValue(absorbs)
+	local deficit = issecretvalue(current) and UnitHealthMissing(unit) or max - current
+	local percent = issecretvalue(current) and UnitHealthPercent(unit) or current / max * 100
 
 	if health.text then
-		if current == max and health.config.text.hide_full then
+		if health.config.text.hide_full and deficit == 0 then
 			health.text:SetText('')
-		elseif UnitIsDead(unit) or current == 0 then
+		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
 		elseif health.config.text.deficit then
-            local diff = max - current
-            if diff <= 0 then
+            if deficit <= 0 then
                 health.text:SetText('')
             else
                 health.text:SetText('-' .. st.StringFormat:ShortFormat(diff))
             end
 		elseif health.config.text.percent then
-			health.text:SetText(getHealthPercentText(current, max, absorbs))
+			health.text:SetText(getHealthPercentText(percent))
 		else
 			local text
-			if absorbs > 0 then
-				text = ('%s +%s'):format(st.StringFormat:ShortFormat(current, 1, 1000), st.StringFormat:ShortFormat(absorbs, 1, 1000))
-			else
-				text = current < 10000 and current or st.StringFormat:ShortFormat(current, 1, 1000)
-			end
+			text = current
 
 			if health.config.text.boss_percent and UnitLevel(unit) == -1 then
-				text = ("%s | %s"):format(text, getHealthPercentText(current, max, absorbs, 1))
+				text = ("%s | %s"):format(text, getHealthPercentText(percent, 1))
 			end
 
 			health.text:SetText(text)
@@ -71,12 +57,6 @@ end
 local function Constructor(unitframe)
     local health = UF:AddStatusBarElement(unitframe, 'Health')
 
-	local healthStatusBarTexture = health:GetStatusBarTexture()
-	local absorbs = CreateFrame('StatusBar', nil, unitframe)
-	absorbs:SetPoint('TOPLEFT', healthStatusBarTexture, 'TOPRIGHT', 0, 0)
-	absorbs:SetPoint('BOTTOMLEFT', healthStatusBarTexture, 'BOTTOMRIGHT', 0, 0)
-	health.absorbs = absorbs
-
 	UF:AddText(unitframe, health)
 	health.PostUpdate = PostUpdateHealth
 
@@ -89,11 +69,6 @@ local function UpdateConfig(unitframe)
     UF:UpdateElement(health)
 
     local config = health.config
-
-	UF:UpdateStatusBarElement(health.absorbs, config)
-	health.absorbs:SetSize(health:GetSize())
-	health.absorbs:SetStatusBarColor(unpack(config.absorbColor))
-	health.absorbs:SetFrameLevel(health:GetFrameLevel())
 
 	health.colorTapping		 = config.colorTapping
 	health.colorDisconnected = config.colorDisconnected

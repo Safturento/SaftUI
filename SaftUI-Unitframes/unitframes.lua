@@ -93,15 +93,15 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 	}
 end
 
-function UF:UpdateColors()
-	st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected, true)
-	st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped, true)
-	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
-	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
-	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
-	UF.oUF.colors.roles 		= st.config.profile.colors.roles
-	UF.oUF.colors.runes 		= st.config.profile.colors.runes
-end
+--function UF:UpdateColors()
+	--st.tablemerge(UF.oUF.colors.disconnected, st.config.profile.colors.status.disconnected, true)
+	--st.tablemerge(UF.oUF.colors.tapped, st.config.profile.colors.status.tapped, true)
+	--st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
+	--st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
+	--st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
+	--UF.oUF.colors.roles 		= st.config.profile.colors.roles
+	--UF.oUF.colors.runes 		= st.config.profile.colors.runes
+--end
 
 function UF:UpdateUnitFrame(frame, element_name)
 	frame.config = frame:GetConfig()
@@ -162,8 +162,10 @@ function UF:UpdateConfig(unit, element_name)
 			UF:UpdateConfig(unit, element_name)
 		end
 
-		for unit,_ in pairs(self.groups) do
-			UF:UpdateConfig(unit)
+		if self.groups then
+			for unit,_ in pairs(self.groups) do
+				UF:UpdateConfig(unit)
+			end
 		end
 	else
 		if self.units[unit] then
@@ -191,103 +193,95 @@ function UF:CreateGroupHeaders()
 	self.groups = {}
 
 	local config = st.config.profile.unitframes.profiles[self:GetProfile()].party
-	local party = self.oUF:SpawnHeader(
-		'SaftUI_Party',
-		nil,
-		'custom [@raid1,exists] hide;show',
-		"oUF-initialConfigFunction", [[
-			local header = self:GetParent()
-			self:SetWidth(header:GetAttribute("initial-width"))
-			self:SetHeight(header:GetAttribute("initial-height"))
-		]],
-		"initial-width", config.width,
-		"initial-height", config.height,
-		"showParty", true,
-		"showRaid", false,
-		'showSolo', TEST_PARTY_SOLO,
-		'showPlayer', TEST_PARTY_SOLO or config.showPlayer,
-		"xOffset", config.spacing,
-		"yOffset", config.spacing,
-		"point", config.growthDirection,
-		"groupFilter", "1,2,3,4,5,6,7,8",
-		"groupingOrder", "1,2,3,4,5,6,7,8",
-		"groupBy", "GROUP",
-		"maxColumns", config.maxColumns,
-		"unitsPerColumn", config.unitsPerColumn,
-		"columnSpacing", config.columnSpacing,
-		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "party"
-	)
+	local party = self.oUF:SpawnHeader('SaftUI_Party', nil, 'custom [@raid1,exists] hide;show', {
+		['oUF-initiateConfigFunction'] = ('self:SetWidth(%d); self:SetHeight(%d);'):format(config.width, config.height),
+		showParty = true,
+		showRaid = false,
+		showSolo = TEST_PARTY_SOLO,
+		showPlayer = TEST_PARTY_SOLO or config.showPlayer,
+		xOffset = config.spacing,
+		yOffset = config.spacing,
+		point = config.growthDirection,
+		groupFilter = "1,2,3,4,5,6,7,8",
+		groupingOrder = "1,2,3,4,5,6,7,8",
+		groupBy = "GROUP",
+		maxColumns = config.maxColumns,
+		unitsPerColumn = config.unitsPerColumn,
+		columnSpacing = config.columnSpacing,
+		columnAnchorPoint = config.initialAnchor,
+		base_unit = "party"
+	})
 
+	st:SetBackdrop(party, 'thin')
 	party.config = config
 	party:SetPoint(st:UnpackPoint(config.position))
 	self.groups.party = party
 
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid10
-	local raid10 = self.oUF:SpawnHeader(
-		'SaftUI_Raid10',
-		nil,
-		'custom [@raid11,exists] hide;[@raid1,exists] show;hide',
-		"oUF-initialConfigFunction", [[
-			local header = self:GetParent()
-			self:SetWidth(header:GetAttribute("initial-width"))
-			self:SetHeight(header:GetAttribute("initial-height"))
-		]],
-		"initial-width", config.width,
-		"initial-height", config.height,
-		"showParty", true,
-		"showRaid", true,
-		"showPlayer", true,
-		"showSolo", TEST_PARTY_SOLO,
-		"xOffset", config.spacing,
-		"yOffset", config.spacing,
-		"point", config.growthDirection,
-		"groupFilter", "1,2,3,4,5,6,7,8",
-		"groupingOrder", "1,2,3,4,5,6,7,8",
-		"groupBy", "GROUP",
-		"maxColumns", config.maxColumns,
-		"unitsPerColumn", config.unitsPerColumn,
-		"columnSpacing", config.columnSpacing,
-		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid10"
-	)
-
-	raid10.config = config
-	raid10:SetPoint(st:UnpackPoint(config.position))
-	self.groups.raid10 = raid10
-
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid40
-	local raid40 = self.oUF:SpawnHeader(
-		'SaftUI_Raid40',
-		nil,
-		'custom [@raid11,exists] show;hide',
-		"oUF-initialConfigFunction", [[
-			local header = self:GetParent()
-			self:SetWidth(header:GetAttribute("initial-width"))
-			self:SetHeight(header:GetAttribute("initial-height"))
-		]],
-		"initial-width", config.width,
-		"initial-height", config.height,
-		"showParty", true,
-		"showRaid", true,
-		"showPlayer", true,
-		"showSolo", TEST_PARTY_SOLO,
-		"xOffset", config.spacing,
-		"yOffset", config.spacing,
-		"point", config.growthDirection,
-		"groupFilter", "1,2,3,4,5,6,7,8",
-		"groupingOrder", "1,2,3,4,5,6,7,8",
-		"groupBy", "GROUP",
-		"maxColumns", config.maxColumns,
-		"unitsPerColumn", config.unitsPerColumn,
-		"columnSpacing", config.columnSpacing,
-		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid40"
-	)
-
-	raid40.config = config
-	raid40:SetPoint(st:UnpackPoint(config.position))
-	self.groups.raid40 = raid40
+	--local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid10
+	--local raid10 = self.oUF:SpawnHeader(
+	--	'SaftUI_Raid10',
+	--	nil,
+	--	'custom [@raid11,exists] hide;[@raid1,exists] show;hide',
+	--	"oUF-initialConfigFunction", [[
+	--		local header = self:GetParent()
+	--		self:SetWidth(header:GetAttribute("initial-width"))
+	--		self:SetHeight(header:GetAttribute("initial-height"))
+	--	]],
+	--	"initial-width", config.width,
+	--	"initial-height", config.height,
+	--	"showParty", true,
+	--	"showRaid", true,
+	--	"showPlayer", true,
+	--	"showSolo", TEST_PARTY_SOLO,
+	--	"xOffset", config.spacing,
+	--	"yOffset", config.spacing,
+	--	"point", config.growthDirection,
+	--	"groupFilter", "1,2,3,4,5,6,7,8",
+	--	"groupingOrder", "1,2,3,4,5,6,7,8",
+	--	"groupBy", "GROUP",
+	--	"maxColumns", config.maxColumns,
+	--	"unitsPerColumn", config.unitsPerColumn,
+	--	"columnSpacing", config.columnSpacing,
+	--	"columnAnchorPoint", config.initialAnchor,
+	--	"base_unit", "raid10"
+	--)
+	--
+	--raid10.config = config
+	--raid10:SetPoint(st:UnpackPoint(config.position))
+	--self.groups.raid10 = raid10
+	--
+	--local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid40
+	--local raid40 = self.oUF:SpawnHeader(
+	--	'SaftUI_Raid40',
+	--	nil,
+	--	'custom [@raid11,exists] show;hide',
+	--	"oUF-initialConfigFunction", [[
+	--		local header = self:GetParent()
+	--		self:SetWidth(header:GetAttribute("initial-width"))
+	--		self:SetHeight(header:GetAttribute("initial-height"))
+	--	]],
+	--	"initial-width", config.width,
+	--	"initial-height", config.height,
+	--	"showParty", true,
+	--	"showRaid", true,
+	--	"showPlayer", true,
+	--	"showSolo", TEST_PARTY_SOLO,
+	--	"xOffset", config.spacing,
+	--	"yOffset", config.spacing,
+	--	"point", config.growthDirection,
+	--	"groupFilter", "1,2,3,4,5,6,7,8",
+	--	"groupingOrder", "1,2,3,4,5,6,7,8",
+	--	"groupBy", "GROUP",
+	--	"maxColumns", config.maxColumns,
+	--	"unitsPerColumn", config.unitsPerColumn,
+	--	"columnSpacing", config.columnSpacing,
+	--	"columnAnchorPoint", config.initialAnchor,
+	--	"base_unit", "raid40"
+	--)
+	--
+	--raid40.config = config
+	--raid40:SetPoint(st:UnpackPoint(config.position))
+	--self.groups.raid40 = raid40
 end
 
 function UF:OnEnable()
@@ -311,7 +305,7 @@ function UF:OnEnable()
 
 	UF:CreateGroupHeaders()
 	UF:UpdateConfig()
-	UF:UpdateColors()
+	--UF:UpdateColors()
 
 	for _, unitframe in pairs(self.units) do
 		-- We're going to register boss and arena frames as a group instead, this filters then out
