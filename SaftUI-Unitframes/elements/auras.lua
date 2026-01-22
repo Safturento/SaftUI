@@ -14,9 +14,10 @@ local function isWhitelisted(whitelist, data)
 
     if spellWhitelisted and whitelist.yours and isCastByPlayer(data) then return true end
     if spellWhitelisted and whitelist.others and not isCastByPlayer(data) then return true end
-    if spellWhitelisted and whitelist.stealable and data.isStealable then return true end
-    if spellWhitelisted and whitelist.auras and data.duration > 0 then return true end
-    if spellWhitelisted and whitelist.boss and data.isBossAura then return true end
+    --TODO Figure out how to filter this in midnight
+    --if spellWhitelisted and whitelist.stealable and data.isStealable then return true end
+    --if spellWhitelisted and whitelist.auras and data.duration > 0 then return true end
+    --if spellWhitelisted and whitelist.boss and data.isBossAura then return true end
 
     return false
 end
@@ -28,9 +29,10 @@ local function isBlacklisted(blacklist, data)
 
     if spellBlacklisted or blacklist.yours and isCastByPlayer(data) then return true end
     if spellBlacklisted or blacklist.others and not isCastByPlayer(data) then return true end
-    if spellBlacklisted or blacklist.stealable and data.isStealable then return true end
-    if spellBlacklisted or blacklist.auras and data.duration == 0 then return true end
-    if spellBlacklisted or blacklist.boss and data.isBossAura then return true end
+    --TODO Figure out how to filter this in midnight
+    --if spellBlacklisted or blacklist.stealable and data.isStealable then return true end
+    --if spellBlacklisted or blacklist.auras and data.duration == 0 then return true end
+    --if spellBlacklisted or blacklist.boss and data.isBossAura then return true end
 
     return false
 end
@@ -51,11 +53,11 @@ end
 function UF.FilterAura(auras, unit, data)
 	local filter = auras.config[getHostility(unit)].filter
 
-    if auras.onlyShowPlayer and not data.isFromPlayerOrPlayerPet then
-		return false
-	end
+    --if auras.onlyShowPlayer and not data.isFromPlayerOrPlayerPet then
+	--	return false
+	--end
 
-    if filter.time.enable then
+    if filter.time.enable and not issecretvalue(data.duration) then
         if filter.time.hideAuras and data.duration == 0 then return end
         if filter.time.max and data.duration > filter.time.max then return end
         if filter.time.min and data.duration < filter.time.min then return end
@@ -66,14 +68,24 @@ end
 
 function UF.PostUpdateButton(auras, button, unit, data)
     local config = auras.config[getHostility(unit)]
-    if config.colorStealable and data.isStealable then
-        local c = DebuffTypeColor['Magic']
-        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-    elseif config.colorTypes and data.dispelName then
-        local c = DebuffTypeColor[data.dispelName]
-        button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+
+    if issecretvalue(data.isStealable) then
+        if config.colorTypes then
+            local color = C_UnitAuras.GetAuraDispelTypeColor(unit, data.auraInstanceID, auras.dispelColorCurve)
+            button.backdrop:SetBackdropBorderColor(color:GetRGBA())
+        end
+
+        -- TODO Make a color curve for stealable
     else
-        st:SetBackdrop(button, auras.config.template)
+        if config.colorStealable and data.isStealable then
+            local c = DebuffTypeColor['Magic']
+            button.backdrop:GetSetBackdropBorderColor(c.r, c.g, c.b)
+        elseif config.colorTypes and data.dispelName then
+            local c = DebuffTypeColor[data.dispelName]
+            button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+        else
+            st:SetBackdrop(button, auras.config.template)
+        end
     end
 
     button.Icon:SetDesaturated(config.desaturateOthers and not (data and data.isPlayerAura))

@@ -1,14 +1,17 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local st = SaftUI
-local UF = st:GetModule('Unitframes')
-
 local function PostCastStart(castbar, unit)
-	if castbar.notInterruptible then
-		castbar:SetColorFill(unpack(castbar.config.colors.nointerrupt))
+	if issecretvalue(castbar.notInterruptible) then
+		--castbar:SetColorFill(C_CurveUtil.EvaluateColorFromBoolean(
+		--	castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal):GetRGB()
+		--)
 	else
-		castbar:SetColorFill(unpack(castbar.config.colors.normal))
+		if castbar.notInterruptible then
+			castbar:SetColorFill(unpack(castbar.config.colors.nointerrupt))
+		else
+			castbar:SetColorFill(unpack(castbar.config.colors.normal))
+		end
 	end
 
 	if castbar.Icon.texture:GetTexture() == [[Interface\ICONS\INV_Misc_QuestionMark]] then
@@ -27,6 +30,11 @@ local function Constructor(unitframe)
     UF:AddText(unitframe, castbar, 'Time', castbar)
     UF:AddIcon(unitframe, castbar, 'Icon')
 
+
+	castbar.colors = {
+		normal = CreateColor(unpack(castbar.config.colors.normal)),
+		notInterruptible = CreateColor(unpack(castbar.config.colors.nointerrupt))
+	}
 	castbar.PostCastStart = PostCastStart
 	castbar.PostChannelStart = PostCastStart
 
