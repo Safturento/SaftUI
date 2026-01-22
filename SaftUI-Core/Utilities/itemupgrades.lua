@@ -58,7 +58,7 @@ function Util:SetItemUpgradeQuality(button, itemLink, anchor)
 
     if quality then
         button.isProfessionItem = true
-        SetItemCraftingQualityOverlayOverride(button, upgradeQualities[quality])
+        SetItemCraftingQualityOverlayOverride(button, { quality = upgradeQualities[quality] })
         self:SetItemQualityLevelText(button, level, maxLevel, anchor)
         return true
     end
