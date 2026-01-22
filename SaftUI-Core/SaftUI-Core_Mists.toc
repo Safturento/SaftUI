@@ -11,6 +11,9 @@ Libraries\CallbackHandler-1.0\CallbackHandler-1.0.lua
 Libraries\LibBase64-1.0\LibBase64-1.0.lua
 Libraries\LibCompress\LibCompress.lua
 
+Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
+Libraries\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
+
 Libraries\Ace3\AceAddon-3.0\AceAddon-3.0.xml
 Libraries\Ace3\AceEvent-3.0\AceEvent-3.0.xml
 Libraries\Ace3\AceTimer-3.0\AceTimer-3.0.xml
@@ -26,9 +29,6 @@ Libraries\Ace3\AceComm-3.0\AceComm-3.0.xml
 Libraries\Ace3\AceTab-3.0\AceTab-3.0.xml
 Libraries\Ace3\AceSerializer-3.0\AceSerializer-3.0.xml
 Libraries\AceGUI-3.0-SharedMediaWidgets\widget.xml
-
-Libraries\LibStringFormat-1.0\LibStringFormat-1.0.lua
-Libraries\LibSharedMedia-3.0\LibSharedMedia-3.0.lua
 
 init.lua
 constants.lua

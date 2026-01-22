@@ -142,7 +142,7 @@ function AB:OnEnable()
 
 	self.config = st.config.profile.actionbars
 
-    if MainMenuBar.EndCaps then
+    if MainMenuBar and MainMenuBar.EndCaps then
         st:Kill(MainMenuBar.EndCaps)
         st:Kill(MainMenuBar.BorderArt)
         st:Kill(MainMenuBar.EndCaps.LeftEndCap)

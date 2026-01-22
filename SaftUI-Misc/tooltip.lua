@@ -6,7 +6,7 @@ function TT:UpdateGameTooltipPosition()
 	if GameTooltip:IsForbidden() then return end
 
 	local INV = st:GetModule('Inventory')
-	local LT = st:GetModule('Loot')
+	local LT = st:GetModule('Loot', true)
 
 	if GameTooltip:GetAnchorType() == 'ANCHOR_NONE' then
 		GameTooltip:ClearAllPoints()
