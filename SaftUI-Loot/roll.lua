@@ -229,11 +229,13 @@ end
 
 function LT:RegisterRollFrameEditMode()
 	st:RegisterEditMode(GroupLootContainer, 'Group Loot Rolls', self.config.roll.position)
-	GroupLootContainer.Selection:SetFrameStrata('DIALOG')
-	st.EditMode:RegisterSlider(GroupLootContainer, "Width", "width", function(value)
-		self.config.roll.width = value
-		LT:UpdateGroupLootConfig()
-	end, 100, 1000, 1)
+	if GroupLootContainer.Selection then GroupLootContainer.Selection:SetFrameStrata('DIALOG')  end
+	if st.EditMode then
+		st.EditMode:RegisterSlider(GroupLootContainer, "Width", "width", function(value)
+			self.config.roll.width = value
+			LT:UpdateGroupLootConfig()
+		end, 100, 1000, 1)
+	end
 end
 
 function LT:UpdateGroupLootConfig()

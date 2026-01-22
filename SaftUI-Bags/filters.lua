@@ -233,6 +233,10 @@ INV:AddFilter('Pets', function(item)
 		or item.class == 'Battle Pet'
 end)
 
+INV:AddFilter('Housing', function(item)
+	return item.class == 'Housing'
+end)
+
 INV:AddFilter('Mounts', function(item)
 	return item.subclass == 'Mount'
 end)
@@ -241,6 +245,11 @@ INV:AddFilter('Flasks/Potions/Food', function(item)
 	return item.subclass == 'Flasks & Phials'
 		or item.subclass == 'Potions'
 		or item.subclass == 'Food & Drink'
+end)
+
+INV:AddFilter('Gems/Enchants', function(item)
+	return item.class == 'Gem'
+		or item.subclass == 'Item Enhancement'
 end)
 
 INV:AddFilter('Consumables', function(item)
