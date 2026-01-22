@@ -3,6 +3,10 @@ local st = SaftUI
 st.HideGameTooltip = function() GameTooltip:Hide() end
 st.dummy = function() end
 
+if not issecretvalue then
+	function issecretvalue() return false end
+end
+
 local function escape(str)
 	return string.gsub(str, "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1") -- escape pattern
 end
