@@ -28,12 +28,12 @@ st.defaults.unitframes.profiles["**"].target = {
         enable = true,
         grow_right = false,
         border = 'all',
-        initial_anchor = 'TOPRIGHT',
-        position = {
-            point = "BOTTOMRIGHT",
-            rel_point = "TOPRIGHT",
-            x_off = 0,
-        },
+        --initial_anchor = 'TOPRIGHT',
+        --position = {
+        --    point = "BOTTOMLEFT",
+        --    rel_point = "TOPLEFT",
+        --    x_off = 0,
+        --},
     },
     debuffs = {
         enable = true,

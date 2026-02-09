@@ -79,7 +79,7 @@ function UF.PostUpdateButton(auras, button, unit, data)
     else
         if config.colorStealable and data.isStealable then
             local c = DebuffTypeColor['Magic']
-            button.backdrop:GetSetBackdropBorderColor(c.r, c.g, c.b)
+            button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
         elseif config.colorTypes and data.dispelName then
             local c = DebuffTypeColor[data.dispelName]
             button.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)

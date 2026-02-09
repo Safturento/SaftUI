@@ -55,7 +55,7 @@ function oUF:CreateColor(r, g, b, a)
 
 		return color
 	else
-		if r >= 1 and g >= 1 and b >= 1 then
+		if r > 1 and g > 1 and b > 1 then
 			return { r/255, g/255, b/255 }
 		else
 			return {r, g, b}

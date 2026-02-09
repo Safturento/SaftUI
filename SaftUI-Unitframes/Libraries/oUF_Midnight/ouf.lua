@@ -236,7 +236,7 @@ end
 
 local function updateRaid(self, event)
 	local unitGUID = UnitGUID(self.unit)
-	if(unitGUID and unitGUID ~= self.unitGUID) then
+	if(unitGUID ~= nil and not issecretvalue(unitGUID) and unitGUID ~= self.unitGUID) then
 		self.unitGUID = unitGUID
 
 		self:UpdateAllElements(event)
@@ -631,7 +631,7 @@ do
 		end
 	end
 
-	--[[ oUF:SpawnHeader(overrideName, template, visibility, ...)
+	--[[ oUF:SpawnHeader(overrideName, template, ...)
 	Used to create a group header and apply the currently active style to it.
 
 	* self         - the global oUF object
@@ -658,7 +658,7 @@ do
 		local name = overrideName or generateName(nil, ...)
 		local header = Mixin(CreateFrame('Frame', name, PetBattleFrameHider, template), headerMixin)
 
-		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate, PingableUnitFrameTemplate')
+		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate') --, PingableUnitFrameTemplate') -- disabled until fixed
 
 		if(...) then
 			if(type(...) == 'table') then
@@ -745,7 +745,7 @@ function oUF:Spawn(unit, overrideName)
 	unit = unit:lower()
 
 	local name = overrideName or generateName(unit)
-	local object = CreateFrame('Button', name, PetBattleFrameHider, 'SecureUnitButtonTemplate, PingableUnitFrameTemplate')
+	local object = CreateFrame('Button', name, PetBattleFrameHider, 'SecureUnitButtonTemplate') --, PingableUnitFrameTemplate') -- disabled until fixed
 	Private.UpdateUnits(object, unit)
 
 	self:DisableBlizzard(unit)
@@ -763,7 +763,7 @@ do
 		if(IsLoggedIn()) then
 			C_NamePlate.SetNamePlateSize(driver.plateWidth or 200, driver.plateHeight or 30)
 
-			local enemyInset = driver.friendlyNonInteractible and hitInset or -hitInset
+			local enemyInset = driver.enemyNonInteractible and hitInset or -hitInset
 			C_NamePlateManager.SetNamePlateHitTestInsets(Enum.NamePlateType.Enemy, enemyInset, enemyInset, enemyInset, enemyInset)
 
 			local friendlyInset = driver.friendlyNonInteractible and hitInset or -hitInset
@@ -771,7 +771,13 @@ do
 
 			if(driver.cvars) then
 				for name, value in next, driver.cvars do
-					C_CVar.SetCVar(name, value)
+					if(type(value) == 'table') then
+						for bitmaskIndex, bitmaskValue in next, value do
+							C_CVar.SetCVarBitfield(name, bitmaskIndex, bitmaskValue)
+						end
+					else
+						C_CVar.SetCVar(name, value)
+					end
 				end
 			end
 		end
@@ -882,7 +888,7 @@ do
 			if(not nameplate.unitFrame) then
 				nameplate.style = self.style
 
-				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, 'PingableUnitFrameTemplate')
+				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate) --, 'PingableUnitFrameTemplate') -- disabled until fixed
 				nameplate.unitFrame:EnableMouse(false)
 				nameplate.unitFrame.isNamePlate = true
 				nameplate.unitFrame:SetAllPoints()
@@ -980,9 +986,9 @@ function oUF:AddElement(name, update, enable, disable)
 
 	if(elements[name]) then return nierror(string.format('Element [%s] is already registered.', name)) end
 	elements[name] = {
-		update = update;
-		enable = enable;
-		disable = disable;
+		update = update,
+		enable = enable,
+		disable = disable,
 	}
 end
 

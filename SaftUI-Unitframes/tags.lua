@@ -62,7 +62,9 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 		name = strupper(name)
 	end
 
-	name = st.StringFormat:UTF8strsub(name or '', config.maxLength)
+	if not issecretvalue(name) then
+		name = st.StringFormat:UTF8strsub(name or '', config.maxLength)
+	end
 	if config.color_hostile and reaction then
 		if reaction < 3 then
 			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.red))

@@ -17,20 +17,18 @@ local function GetDisplayPower(element)
 end
 
 local function PostUpdatePower(power, unit, current, min, max)
-	local deficit = issecretvalue(current) and UnitHealthMissing(unit) or max - current
-	local percent = issecretvalue(current) and UnitHealthPercent(unit) or current / max * 100
-	current = d
-
+	local deficit = issecretvalue(current) and C_StringUtil.TruncateWhenZero(UnitPowerMissing(unit)) or max - current
+	local percent = issecretvalue(current) and UnitPowerPercent(unit) or current / max * 100
 
 	if  power.text then
-		if power.config.text.hide_full and  deficit == 0 then
+		if power.config.text.hide_full and deficit == 0 then
 			power.text:SetText('')
 		else
-			--if issecretvalue(current) then
+			if issecretvalue(current) then
 				power.text:SetText(current)
-			--else
-			--	power.text:SetFormattedText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
-			--end
+			else
+				power.text:SetFormattedText(current < 10000 and current or st.StringFormat:ShortFormat(current, 1))
+			end
 		end
 	end
 
@@ -44,13 +42,12 @@ local function PostUpdatePower(power, unit, current, min, max)
 end
 
 local function PostUpdateColor(power, unit, color, r, g, b)
-	if not (color or (r and g and b)) then return end
-
-	if not b then
+	if color then
 		r, g, b = color:GetRGB()
 	end
-
-	power.bg:SetVertexColor(r * power.config.bg.multiplier, g * power.config.bg.multiplier, b * power.config.bg.multiplier, power.config.bg.alpha)
+	if r and g and b then
+		power.bg:SetVertexColor(r * power.config.bg.multiplier, g * power.config.bg.multiplier, b * power.config.bg.multiplier, power.config.bg.alpha)
+	end
 end
 
 
@@ -59,7 +56,9 @@ local function Constructor(unitframe)
     UF:AddText(unitframe, power)
 	power.GetDisplayPower = GetDisplayPower
 	power.PostUpdate = PostUpdatePower
-	power.PostUpdateColor = PostUpdateColor
+	if st.retail then
+		power.PostUpdateColor = PostUpdateColor
+	end
 
 	return power
 end

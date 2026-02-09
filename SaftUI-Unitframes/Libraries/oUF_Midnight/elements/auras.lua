@@ -38,6 +38,7 @@ At least one of the above widgets must be present for the element to work.
 .showBuffType             - Show Overlay texture colored by oUF.colors.dispel when it's a buff. Exclusive with .showType (boolean)
 .minCount                 - Minimum number of aura applications for the Count text to be visible. Defaults to 2 (number)
 .maxCount                 - Maximum number of aura applications for the Count text, anything above renders "*". Defaults to 999 (number)
+.maxCols                  - Maximum number of aura button columns before wrapping to a new row. Defaults to element width divided by aura button size (number)
 
 ## Options Auras
 
@@ -157,7 +158,7 @@ local function SetPosition(element, from, to)
 	local anchor = element.initialAnchor or 'BOTTOMLEFT'
 	local growthX = (element.growthX == 'LEFT' and -1) or 1
 	local growthY = (element.growthY == 'DOWN' and -1) or 1
-	local cols = math.floor(element:GetWidth() / sizeX + 0.5)
+	local cols = element.maxCols or math.floor(element:GetWidth() / sizeX + 0.5)
 
 	for i = from, to do
 		local button = element[i]
@@ -840,11 +841,13 @@ local function Enable(self)
 			auras.visibleButtons = 0
 			auras.tooltipAnchor = auras.tooltipAnchor or 'ANCHOR_BOTTOMRIGHT'
 
-			auras.dispelColorCurve = auras.dispelColorCurve or C_CurveUtil.CreateColorCurve()
-			auras.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
-			for _, dispelIndex in next, oUF.Enum.DispelType do
-				if(self.colors.dispel[dispelIndex]) then
-					auras.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+			if(not auras.dispelColorCurve) then
+				auras.dispelColorCurve = C_CurveUtil.CreateColorCurve()
+				auras.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+				for _, dispelIndex in next, oUF.Enum.DispelType do
+					if(self.colors.dispel[dispelIndex]) then
+						auras.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+					end
 				end
 			end
 
@@ -863,11 +866,13 @@ local function Enable(self)
 			buffs.visibleButtons = 0
 			buffs.tooltipAnchor = buffs.tooltipAnchor or 'ANCHOR_BOTTOMRIGHT'
 
-			buffs.dispelColorCurve = buffs.dispelColorCurve or C_CurveUtil.CreateColorCurve()
-			buffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
-			for _, dispelIndex in next, oUF.Enum.DispelType do
-				if(self.colors.dispel[dispelIndex]) then
-					buffs.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+			if(not buffs.dispelColorCurve) then
+				buffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
+				buffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+				for _, dispelIndex in next, oUF.Enum.DispelType do
+					if(self.colors.dispel[dispelIndex]) then
+						buffs.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+					end
 				end
 			end
 
@@ -886,11 +891,13 @@ local function Enable(self)
 			debuffs.visibleButtons = 0
 			debuffs.tooltipAnchor = debuffs.tooltipAnchor or 'ANCHOR_BOTTOMRIGHT'
 
-			debuffs.dispelColorCurve = debuffs.dispelColorCurve or C_CurveUtil.CreateColorCurve()
-			debuffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
-			for _, dispelIndex in next, oUF.Enum.DispelType do
-				if(self.colors.dispel[dispelIndex]) then
-					debuffs.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+			if(not debuffs.dispelColorCurve) then
+				debuffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
+				debuffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+				for _, dispelIndex in next, oUF.Enum.DispelType do
+					if(self.colors.dispel[dispelIndex]) then
+						debuffs.dispelColorCurve:AddPoint(dispelIndex, self.colors.dispel[dispelIndex])
+					end
 				end
 			end
 

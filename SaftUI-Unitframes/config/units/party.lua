@@ -21,7 +21,7 @@ st.defaults.unitframes.profiles["**"].party = {
         frame = 'UIParent',
         rel_point = 'CENTER',
         x_off = 0,
-        y_off = -245
+        y_off = -260
     },
 
     grouproleindicator = {

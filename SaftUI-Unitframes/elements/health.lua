@@ -10,11 +10,7 @@ local function getHealthPercentText(perc, precision)
 end
 
 local function PostUpdateHealth(health, unit, current, max)
-	if UF.RMH and UF.RMH.UnitHasHealthData(unit) then
-		current, max = UF.RMH.GetUnitHealth(unit)
-	end
-
-	local deficit = issecretvalue(current) and UnitHealthMissing(unit) or max - current
+	local deficit = issecretvalue(current) and C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit)) or max - current
 	local percent = issecretvalue(current) and UnitHealthPercent(unit) or current / max * 100
 
 	if health.text then
@@ -23,11 +19,15 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
 		elseif health.config.text.deficit then
-            if deficit <= 0 then
-                health.text:SetText('')
-            else
-                health.text:SetText('-' .. st.StringFormat:ShortFormat(diff))
-            end
+			if st.retail then
+				health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
+			else
+				if deficit <= 0 then
+					health.text:SetText('')
+				else
+					health.text:SetText('-' .. st.StringFormat:ShortFormat(deficit))
+				end
+			end
 		elseif health.config.text.percent then
 			health.text:SetText(getHealthPercentText(percent))
 		else
@@ -51,7 +51,6 @@ local function PostUpdateHealth(health, unit, current, max)
 		local mu = health.config.bg.multiplier or 1
 		health.bg:SetVertexColor(r * mu, g * mu, b * mu)
 	end
-	
 end
 
 local function Constructor(unitframe)

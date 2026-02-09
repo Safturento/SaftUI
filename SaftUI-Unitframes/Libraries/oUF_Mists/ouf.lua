@@ -649,10 +649,19 @@ do
 		local header = CreateFrame('Frame', name, PetBattleFrameHider, template)
 
 		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate')
-		for i = 1, select('#', ...), 2 do
-			local att, val = select(i, ...)
-			if(not att) then break end
-			header:SetAttribute(att, val)
+
+		if(...) then
+			if(type(...) == 'table') then
+				for att, val in next, (...) do
+					header:SetAttribute(att, val)
+				end
+			else
+				for i = 1, select('#', ...), 2 do
+					local att, val = select(i, ...)
+					if(not att) then break end
+					header:SetAttribute(att, val)
+				end
+			end
 		end
 
 		header.style = style
