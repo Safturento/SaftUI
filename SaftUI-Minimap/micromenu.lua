@@ -78,7 +78,7 @@ function MicroMenu:SkinTrackingButton()
 
         local hover = MiniMapTrackingButton:CreateTexture(nil, 'OVERLAY')
         hover:SetTexture(st.BLANK_TEX)
-        hover:SetVertexColor(unpack(st.config.profile.colors.button.hover))
+        hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
         hover:SetAllPoints(MiniMapTrackingButton)
         MiniMapTrackingButton:SetHighlightTexture(hover)
 

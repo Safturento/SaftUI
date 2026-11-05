@@ -5,9 +5,9 @@ local BUTTON_WIDTH = 48
 
 local function getColorGradient(percent, inverted)
     local colors = st.config.profile.colors.text
-    local badR, badG, badB = unpack(colors.orange)
-    local okayR, okayG, okayB = unpack(colors.yellow)
-    local goodR, goodG, goodB = unpack(colors.green)
+    local badR, badG, badB = colors.orange:GetRGB()
+    local okayR, okayG, okayB = colors.yellow:GetRGB()
+    local goodR, goodG, goodB = colors.green:GetRGB()
 
     if inverted then
         return st:ColorGradient(percent,

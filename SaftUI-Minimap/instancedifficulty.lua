@@ -44,15 +44,15 @@ function MicroMenu:UpdateDungeonDifficulty()
     st:InsetTexture(button.Bg, .2)
 
     if displayMythic then
-        button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[4]))
+        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[4]:GetRGB())
         button.Icon:SetAtlas('ui-hud-minimap-guildbanner-mythic-large', true)
         text = 'M' .. text
     elseif (isHeroic or displayHeroic) then
-        button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[3]))
+        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[3]:GetRGB())
         button.Icon:SetAtlas('ui-hud-minimap-guildbanner-heroic-large', true)
         text = 'H' .. text
     else
-        button.Bg:SetVertexColor(unpack(st.config.profile.colors.item_quality[1]))
+        button.Bg:SetVertexColor(st.config.profile.colors.item_quality[1]:GetRGB())
         button.Icon:SetTexture('')
     end
 
