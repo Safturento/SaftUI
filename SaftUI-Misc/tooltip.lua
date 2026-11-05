@@ -108,7 +108,7 @@ function TT:OnEnable()
 	GameTooltipStatusBar:SetPoint('BOTTOMRIGHT', GameTooltip, 'TOPRIGHT', 0, 7)
 
 	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
-	self:SecureHook('GameTooltip_SetDefaultAnchor', 'UpdateGameTooltipPosition')
+	--self:SecureHook('GameTooltip_SetDefaultAnchor', 'UpdateGameTooltipPosition')
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
 	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
 	self:SecureHook(GameTooltip, 'GetUnit', 'GameTooltip_OnTooltipSetUnit')

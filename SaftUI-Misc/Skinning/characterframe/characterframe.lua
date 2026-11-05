@@ -134,20 +134,20 @@ function CF:SkinEquipSlots()
 	self:SecureHook('PaperDollItemSlotButton_Update', 'UpdateEquipSlot')
 	st.map(CHARACTER_SLOTS, SkinSlot)
 
-	CharacterHeadSlot:ClearAllPoints()
-	CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 9, -9)
-
-	CharacterModelScene:ClearAllPoints()
-	CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 9, 0)
-
-	CharacterHandsSlot:ClearAllPoints()
-	CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -9, -9)
-
+	--CharacterHeadSlot:ClearAllPoints()
+	--CharacterHeadSlot:SetPoint('TOPLEFT', CharacterFrame.header, 'BOTTOMLEFT', 9, -9)
+	--
+	--CharacterModelScene:ClearAllPoints()
+	--CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 9, 0)
+	--
+	--CharacterHandsSlot:ClearAllPoints()
+	--CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -9, -9)
+	--
 	CharacterSecondaryHandSlot:ClearAllPoints()
 	if st.retail then
-		CharacterSecondaryHandSlot:SetPoint('BOTTOMLEFT', CharacterFrame, 'BOTTOM', 3, 7)
+		CharacterSecondaryHandSlot:SetPoint('BOTTOMLEFT', CharacterFrameInset, 'BOTTOM', 3, 1)
 	else
-		CharacterSecondaryHandSlot:SetPoint('BOTTOM', CharacterFrame, 'BOTTOM', 0, 7)
+		CharacterSecondaryHandSlot:SetPoint('BOTTOM', CharacterFrameInset, 'BOTTOM', 0, 1)
 	end
 
 	CharacterMainHandSlot:ClearAllPoints()
@@ -184,7 +184,7 @@ function CF:UpdateEquipSlot(equipSlot)
 		equipSlot.itemLevel:SetText(ilvl)
 
 		local avgItemLevel, avgItemLevelEquipped, avgItemLevelPvp = GetAverageItemLevel()
-		CharacterFrame.ItemLevelText:SetText(('Eq: %d   Avg: %d'):format(avgItemLevelEquipped, avgItemLevel))
+		CharacterStatsPane.ItemLevelFrame.Value:SetText(('Eq: %d   Avg: %d'):format(avgItemLevelEquipped, avgItemLevel))
 
 		Util:SetItemUpgradeQualityForEquipmentSlot(equipSlot, equipSlot.ID)
 
@@ -202,7 +202,7 @@ function CF:UpdateEquipSlot(equipSlot)
 				color = st.config.profile.colors.text.yellow
 			end
 
-			equipSlot.durability:SetTextColor(unpack(color))
+			equipSlot.durability:SetTextColor(color:GetRGB())
 		else
 			equipSlot.durability:SetText('')
 		end
@@ -314,7 +314,7 @@ function CF:UpdateClassicStatCategory(categoryFrame)
 		end
 
 		statFrame.Label:SetFontObject(st:GetFont('normal'))
-		statFrame.Label:SetTextColor(unpack(st.config.profile.colors.text.yellow))
+		statFrame.Label:SetTextColor(st.config.profile.colors.text.yellow:GetRGB())
 		statFrame.Value:SetFontObject(st:GetFont('normal'))
 		statFrame:SetHeight(20)
 
@@ -472,42 +472,42 @@ function CF:CreateTitleSelector()
 end
 
 function CF:SizeCharacterFrame()
-	CharacterFrame:SetSize(430, 500)
+	CharacterFrame:SetSize(430, 489)
 end
 
 function CF:OnEnable()
     SK:SkinBlizzardPanel(CharacterFrame, {title = CharacterNameText})
-	if CharacterFrame_Collapse then
-		CharacterFrame_Collapse()
-		CharacterFrame_Collapse = st.dummy
-		CharacterFrame_Expand = st.dummy
-	elseif CharacterFrame.Collapse then
-		CharacterFrame:Collapse()
-		CharacterFrame.Collapse = st.dummy
-		CharacterFrame.Expand = st.dummy
-		CharacterFrame.UpdateSize = st.dummy
-	end
-
-	if CharacterFrameExpandButton then
-		st:Kill(CharacterFrameExpandButton)
-	end
+	--if CharacterFrame_Collapse then
+	--	CharacterFrame_Collapse()
+	--	CharacterFrame_Collapse = st.dummy
+	--	CharacterFrame_Expand = st.dummy
+	--elseif CharacterFrame.Collapse then
+	--	CharacterFrame:Collapse()
+	--	CharacterFrame.Collapse = st.dummy
+	--	CharacterFrame.Expand = st.dummy
+	--	CharacterFrame.UpdateSize = st.dummy
+	--end
+	--
+	--if CharacterFrameExpandButton then
+	--	st:Kill(CharacterFrameExpandButton)
+	--end
 
 	self:SizeCharacterFrame()
 
 	self:SkinEquipSlots()
-	self:CreateTitleSelector()
-    self:SkinStatFrame()
+	--self:CreateTitleSelector()
+    --self:SkinStatFrame()
 
 	self:RegisterEvent('PLAYER_EQUIPMENT_CHANGED', 'UpdateEquipSlotEnhancements');
 	self:RegisterEvent('SPELLS_CHANGED', 'UpdateEquipSlotEnhancements');
-	self:RegisterEvent('ITEM_DATA_LOAD_RESULT', 'HandleScanEvent');
+	--self:RegisterEvent('ITEM_DATA_LOAD_RESULT', 'HandleScanEvent');
 
-	self:SecureHook('PaperDollFrame_UpdateSidebarTabs', 'SkinSidebarTabs')
-	self:SecureHook('PaperDollFrame_SetSidebar', 'PositionSidebarTab')
+	--self:SecureHook('PaperDollFrame_UpdateSidebarTabs', 'SkinSidebarTabs')
+	--self:SecureHook('PaperDollFrame_SetSidebar', 'PositionSidebarTab')
 
-	CharacterFrame.ItemLevelText = st:CreateFontString(PaperDollItemsFrame, 'normal', 'Eq: 000 \t Avg: 000')
-	CharacterFrame.ItemLevelText:SetPoint('BOTTOMLEFT', CharacterFrame, 'BOTTOMLEFT', 7, 7)
-	CharacterFrame.ItemLevelText:SetJustifyH('LEFT')
+	--CharacterFrame.ItemLevelText = st:CreateFontString(PaperDollItemsFrame, 'normal', 'Eq: 000 \t Avg: 000')
+	--CharacterFrame.ItemLevelText:SetPoint('BOTTOMLEFT', CharacterFrame, 'BOTTOMLEFT', 7, 7)
+	--CharacterFrame.ItemLevelText:SetJustifyH('LEFT')
 
 	if CharacterModelScene then
 		st:StripTextures(CharacterModelScene)
@@ -521,22 +521,22 @@ function CF:OnEnable()
 		st:Kill(CharacterModelScene.BackgroundBotRight)
 	end
 
-    for _,frame in pairs({
-		CharacterFramePortrait,
-		CharacterModelFrameRotateLeftButton,
-		CharacterModelFrameRotateRightButton,
-		CharacterLevelText,
-		CharacterGuildText,
-		PaperDollInnerBorderBottom,
-		PaperDollInnerBorderBottom2
-	}) do st:Kill(frame) end
+    --for _,frame in pairs({
+	--	CharacterFramePortrait,
+	--	CharacterModelFrameRotateLeftButton,
+	--	CharacterModelFrameRotateRightButton,
+	--	CharacterLevelText,
+	--	CharacterGuildText,
+	--	PaperDollInnerBorderBottom,
+	--	PaperDollInnerBorderBottom2
+	--}) do st:Kill(frame) end
+	--
+	--for _,frame in pairs({
+	--	PaperDollFrame,
+	--	ReputationFrame,
+	--	SkillFrame,
+	--	CharacterFrame.NineSlice
+	--}) do st:StripTextures(frame) end
 
-	for _,frame in pairs({
-		PaperDollFrame,
-		ReputationFrame,
-		SkillFrame,
-		CharacterFrame.NineSlice
-	}) do st:StripTextures(frame) end
-
-	self:SkinSidebarTabs()
+	--self:SkinSidebarTabs()
 end

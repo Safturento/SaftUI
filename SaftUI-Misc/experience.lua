@@ -42,13 +42,13 @@ end
 
 function XP:UpdateConfig()
 	self.bars.experience:SetStatusBarTexture(st.BLANK_TEX)
-	self.bars.experience:SetStatusBarColor(unpack(self.colors.experience.normal))
+	self.bars.experience:SetStatusBarColor(self.colors.experience.normal:GetRGB())
 	self.bars.experience:SetFrameLevel(5)
 	self.bars.experience:SetSize(self.config.width, self.config.height)
 	st:SetBackdrop(self.bars.experience, self.config.template)
 
 	self.bars.experience.rested:SetStatusBarTexture(st.BLANK_TEX)
-	self.bars.experience.rested:SetStatusBarColor(unpack(self.colors.experience.rested))
+	self.bars.experience.rested:SetStatusBarColor(self.colors.experience.rested:GetRGB())
 	self.bars.experience.rested:SetFrameLevel(3)
 	self.bars.experience.rested:SetSize(self.config.width, self.config.height)
 	self.bars.experience.rested:SetAlpha(self.config.rest_alpha)
@@ -80,9 +80,21 @@ function XP:GetWatchedFactionInfo()
 
 	local friendshipInfo = C_GossipInfo.GetFriendshipReputation(factionId)
 
-	if C_Reputation.IsFactionParagon and C_Reputation.IsFactionParagon(factionId) then
+	if st.retail and C_Reputation.IsMajorFaction(factionId) then
+		-- https://wowpedia.fandom.com/wiki/API_C_MajorFactions.GetMajorFactionData
+		local factionData = C_MajorFactions.GetMajorFactionData(factionId)
+		return {
+			name = factionData.name,
+			rank = factionData.renownLevel,
+			rankLabel = 'Rank '..factionData.renownLevel,
+			color = self.colors.renown,
+			current = factionData.renownReputationEarned,
+			max = factionData.renownLevelThreshold,
+			rewardMessage = factionData.unlockDescription or nil
+		}
+	elseif C_Reputation.IsFactionParagon and C_Reputation.IsFactionParagon(factionId) then
 		local value, max, rewardQuestID, rewardPending, tooLowLevelForParagon = C_Reputation.GetFactionParagonInfo(factionId)
-
+		local rewardMessage = C_QuestLog.GetTitleForQuestID(rewardQuestID)
 		return {
 			name = name,
 			rank = rank,
@@ -91,7 +103,7 @@ function XP:GetWatchedFactionInfo()
 			current = rewardPending and max or value % 10000,
 			max = max,
 			rewardPending = rewardPending,
-			rewardMessage = "Reward Pending: " .. C_QuestLog.GetTitleForQuestID(rewardQuestID)
+			rewardMessage = rewardMessage and ("Reward Pending: " .. C_QuestLog.GetTitleForQuestID(rewardQuestID))
 		}
 	elseif friendshipInfo and friendshipInfo.friendshipFactionID > 0 then
 		return {
@@ -102,18 +114,6 @@ function XP:GetWatchedFactionInfo()
 			current = friendshipInfo.standing - friendshipInfo.reactionThreshold,
 			-- TODO: nextThreshold is nil when maxed, need to handle that edge case
 			max = friendshipInfo.nextThreshold - friendshipInfo.reactionThreshold
-		}
-	elseif st.retail and C_Reputation.IsMajorFaction(factionId) then
-		-- https://wowpedia.fandom.com/wiki/API_C_MajorFactions.GetMajorFactionData
-		local factionData = C_MajorFactions.GetMajorFactionData(factionId)
-		return {
-			name = factionData.name,
-			rank = factionData.renownLevel,
-			rankLabel = 'Rank '..factionData.renownLevel,
-			color = self.colors.renown,
-			current = value,
-			max = factionData.renownLevelThreshold,
-			rewardMessage = factionData.unlockDescription or nil
 		}
 	else
 		return {
@@ -143,7 +143,7 @@ function XP:UpdateReputation()
 		self.bars.reputation:SetMinMaxValues(0, info.max)
 		self.bars.reputation:SetValue(info.current)
 
-		self.bars.reputation:SetStatusBarColor(unpack(info.color))
+		self.bars.reputation:SetStatusBarColor(info.color:GetRGB())
 
 		self.bars.reputation:Show()
 	else
@@ -159,7 +159,7 @@ function XP:UpdateExperience()
 		self.bars.experience:SetMinMaxValues(0, max)
 		self.bars.experience:SetValue(current)
 		self.bars.experience:SetStatusBarColor(
-			unpack(self.colors.experience[rest and 'rested' or 'normal'])
+			self.colors.experience[rest and 'rested' or 'normal']:GetRGB()
 		)
 
 		self.bars.experience.rested:SetMinMaxValues(0, max)
@@ -195,7 +195,7 @@ function XP:AddFactionTooltipInfo(tooltip)
 
 	if GetMaxPlayerLevel() ~= UnitLevel('player') then tooltip:AddLine('  ') end
 
-	GameTooltip:AddDoubleLine(info.name, info.rankLabel, nil,nil,nil, unpack(info.color))
+	GameTooltip:AddDoubleLine(info.name, info.rankLabel, nil,nil,nil, info.color:GetRGB())
 	GameTooltip:AddDoubleLine('Current:', format('%s/%s (%d%%)', st.StringFormat:ShortFormat(current, 1), st.StringFormat:ShortFormat(max, 1), st.StringFormat:Round(current/max*100)), nil,nil,nil, 1,1,1)
 	GameTooltip:AddDoubleLine('To go:', st.StringFormat:CommaFormat(max-current), nil,nil,nil, 1,1,1)
 

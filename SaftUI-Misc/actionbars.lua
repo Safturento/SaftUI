@@ -129,7 +129,7 @@ function AB:UpdateActionButton(slot)
 	slot:SetSize(39, 39)
 
 	if IsEquippedAction(slot.action) then
-		slot.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.green))
+		slot.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.green:GetRGB())
 	else
 		if slot.backdrop then
 			st:SetBackdrop(slot, slot.backdrop.template)
