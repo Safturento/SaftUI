@@ -3,26 +3,26 @@ local st = SaftUI
 local function thumbOnEnter(self)
     self.entered = true
     if self.pressed then return end
-    self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.hover))
+    self.backdrop:SetBackdropColor(st.config.profile.colors.button.hover:GetRGB())
 end
 
 local function thumbOnLeave(self)
     self.entered = false
     if self.pressed then return end
-    self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.normal))
+    self.backdrop:SetBackdropColor(st.config.profile.colors.button.normal:GetRGB())
 end
 
 local function thumbOnMouseDown(self)
     self.pressed = true
-    self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.pushed))
+    self.backdrop:SetBackdropColor(st.config.profile.colors.button.pushed:GetRGB())
 end
 
 local function thumbOnMouseUp(self)
     self.pressed = false
     if self.entered then
-        self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.hover))
+        self.backdrop:SetBackdropColor(st.config.profile.colors.button.hover:GetRGB())
     else
-        self.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.normal))
+        self.backdrop:SetBackdropColor(st.config.profile.colors.button.normal:GetRGB())
     end
 end
 
@@ -33,7 +33,7 @@ function st:SkinNewScrollBar(scrollBar)
     thumb:DisableDrawLayer('BACKGROUND')
     thumb:DisableDrawLayer('ARTWORK')
     st:SetBackdrop(thumb, 'thick')
-    thumb.backdrop:SetBackdropColor(unpack(st.config.profile.colors.button.normal))
+    thumb.backdrop:SetBackdropColor(st.config.profile.colors.button.normal:GetRGB())
 
     thumb:HookScript('OnEnter', thumbOnEnter)
     thumb:HookScript('OnLeave', thumbOnLeave)

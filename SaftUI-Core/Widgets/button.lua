@@ -44,7 +44,7 @@ function st:SkinButton(button, template, font)
 	if button.SetHighlightTexture and not button.hover then
 		local hover = button:CreateTexture(nil, 'OVERLAY')
         hover:SetTexture(self.BLANK_TEX)
-        hover:SetVertexColor(unpack(self.config.profile.colors.button.normal))
+        hover:SetVertexColor(self.config.profile.colors.button.normal:GetRGB())
         hover:SetAllPoints(button)
 
         button:SetHighlightTexture(hover)
@@ -54,7 +54,7 @@ function st:SkinButton(button, template, font)
 	if button.SetPushedTexture and not button.pushed then
 		local pushed = button:CreateTexture(nil, 'OVERLAY')
         pushed:SetTexture(self.BLANK_TEX)
-        pushed:SetVertexColor(unpack(self.config.profile.colors.button.pushed))
+        pushed:SetVertexColor(self.config.profile.colors.button.pushed:GetRGB())
         pushed:SetAllPoints(button)
 
         button:SetPushedTexture(pushed)

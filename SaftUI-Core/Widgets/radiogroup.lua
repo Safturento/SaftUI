@@ -25,7 +25,7 @@ local function createButton(buttonName, buttons, label, onClick)
         for _,button in pairs(buttons) do
             st:SetBackdrop(button, self.config.template)
         end
-        self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.blue))
+        self.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
         BankFrame_ShowPanel(bankFrameName)
     end)
 
@@ -50,7 +50,7 @@ function st:CreateRadioGroup(name, parent, options)
             for _, _button in pairs(radioGroup.buttons) do
 				st:SetBackdrop(_button, options.template)
 			end
-			self.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.blue))
+			self.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
 
             -- global click handler
             if options.onClick then

@@ -58,7 +58,8 @@ function Util:SetItemUpgradeQuality(button, itemLink, anchor)
 
     if quality then
         button.isProfessionItem = true
-        SetItemCraftingQualityOverlayOverride(button, { quality = upgradeQualities[quality] })
+        local atlas = ("Professions-Icon-Quality-Tier%d-Inv"):format(upgradeQualities[quality])
+        SetItemCraftingQualityOverlayOverride(button, { iconInventory =  atlas})
         self:SetItemQualityLevelText(button, level, maxLevel, anchor)
         return true
     end

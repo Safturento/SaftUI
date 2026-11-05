@@ -10,13 +10,13 @@ function st:SkinCheckButton(button)
 
 	local checked = button:CreateTexture(nil, 'OVERLAY')
 	checked:SetTexture(self.BLANK_TEX)
-	checked:SetVertexColor(unpack(self.config.profile.colors.button.hover))
+	checked:SetVertexColor(self.config.profile.colors.button.hover:GetRGB())
 	checked:SetAllPoints(button)
 	button:SetCheckedTexture(checked)
 
 	local hover = button:CreateTexture(nil, 'OVERLAY')
 	hover:SetTexture(self.BLANK_TEX)
-	hover:SetVertexColor(unpack(self.config.profile.colors.button.normal))
+	hover:SetVertexColor(self.config.profile.colors.button.normal:GetRGB())
 	hover:SetAllPoints(button)
 	button:SetHighlightTexture(hover)
 

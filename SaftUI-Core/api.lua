@@ -146,7 +146,7 @@ function st:Debug(module, ...)
 	if not self.DEBUG then return end
 
 	debug = st.StringFormat:ColorString(
-			'DEBUG', unpack(st.config.profile.colors.text.red))
+			'DEBUG', st.config.profile.colors.text.red:GetRGB())
 	st:Print(('<%s:%s>'):format(debug, module), ...)
 end
 
@@ -156,9 +156,16 @@ function st:Kill(frame)
 		frame:UnregisterAllEvents()
 		frame:SetParent(st.HiddenFrame)
 	end
+	st:StripTextures(frame)
+
+	if frame.SetAlpha then frame:SetAlpha(0) end
+
 	frame._Show = frame.Show
 	frame.Show = frame.Hide
-	
+
+	frame._SetAtlas = frame.SetAtlas
+	frame.SetAtlas = frame.Hide
+
 	frame:Hide()
 end
 

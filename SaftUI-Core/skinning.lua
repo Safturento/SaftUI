@@ -44,13 +44,13 @@ end
 --
 --	local checked = button:CreateTexture(nil, 'OVERLAY')
 --	checked:SetTexture(st.BLANK_TEX)
---	checked:SetVertexColor(unpack(st.config.profile.colors.button.hover))
+--	checked:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
 --	checked:SetAllPoints(button)
 --	button:SetCheckedTexture(checked)
 --
 --	local hover = button:CreateTexture(nil, 'OVERLAY')
 --	hover:SetTexture(st.BLANK_TEX)
---	hover:SetVertexColor(unpack(st.config.profile.colors.button.normal))
+--	hover:SetVertexColor(st.config.profile.colors.button.normal:GetRGB())
 --	hover:SetAllPoints(button)
 --	button:SetHighlightTexture(hover)
 --
@@ -98,7 +98,7 @@ local function OnSetCooldown(self, start, duration, modRate)
 end
 
 local function OnUpdateCooldown(self)
-	local remaining = self.endTime - GetTime()
+	local remaining = self.endTime and (self.endTime - GetTime()) or 0
 	if remaining <= 0 then
 		self.text:SetText('')
 	else
@@ -112,8 +112,8 @@ function st:SkinCooldown(button, cooldown)
 	text:SetFontObject(st:GetFont('pixel'))
 	text:SetAllPoints(cooldown)
 	cooldown.text = text
-	cooldown:SetScript('OnUpdate', OnUpdateCooldown)
-	hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
+	--cooldown:SetScript('OnUpdate', OnUpdateCooldown)
+	--hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
 end
 
 function st:SkinActionButton(button, config)
@@ -162,6 +162,8 @@ function st:SkinActionButton(button, config)
 		st:SkinIcon(icon)
 		st:SetInside(icon, inset)
 	end
+
+	st:Kill(button.CircleMask)
 
 	if config.font then
 		local font_object = st:GetFont(config.font)
@@ -215,7 +217,7 @@ function st:SkinActionButton(button, config)
 		local hover = button:CreateTexture(nil, 'OVERLAY')
 		hover:SetTexture(st.BLANK_TEX)
 		-- hover:SetVertexColor(1, 1, 1, .1)
-		hover:SetVertexColor(unpack(st.config.profile.colors.button.blue))
+		hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
 		st:SetInside(hover, inset)
 		button.hover = hover
 		button:SetHighlightTexture(hover)
@@ -294,8 +296,14 @@ function st:EnableResizing(frame, resizeButton, callback)
 		frame.ResizeButton = resizeButton
 	else
 		local resize = st:CreateFrame('Button', nil, frame)
-		resize:SetScript('OnMouseDown', function(self) frame:StartSizing() end)
-		resize:SetScript('OnMouseUp', function(self) frame:StopMovingOrSizing() end)
+		resize:SetScript('OnMouseDown', function(self)
+			if frame.PreResize then frame:PreResize() end
+			frame:StartSizing()
+		end)
+		resize:SetScript('OnMouseUp', function(self)
+			frame:StopMovingOrSizing()
+			if frame.PostResize then frame:PostResize() end
+		end)
 		resize:SetFrameStrata("HIGH")
 		frame.ResizeButton = resize
 	end
@@ -308,10 +316,10 @@ function st:EnableResizing(frame, resizeButton, callback)
 	frame.ResizeButton:SetNormalTexture(st.textures.cornerbr)
 
 	frame.ResizeButton:SetPushedTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetPushedTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
+	frame.ResizeButton:GetPushedTexture():SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
 
 	frame.ResizeButton:SetHighlightTexture(st.textures.cornerbr)
-	frame.ResizeButton:GetHighlightTexture():SetVertexColor(unpack(st.config.profile.colors.button.hover))
+	frame.ResizeButton:GetHighlightTexture():SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
 	frame.ResizeButton:GetHighlightTexture():SetBlendMode('BLEND')
 
 	frame.ResizeButton:SetFrameLevel(4)

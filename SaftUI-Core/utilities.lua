@@ -169,6 +169,10 @@ function st.imap(table, func)
 	end
 end
 
+function st.normalizeRGB(r, g, b)
+	return r/255, g/255, b/255
+end
+
 
 local scanner = CreateFrame("GameTooltip", "ScanningTooltip", nil, "GameTooltipTemplate")
 scanner:SetOwner(WorldFrame, "ANCHOR_NONE")
