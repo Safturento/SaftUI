@@ -15,7 +15,7 @@ UF.unit_strings = {
 	['focus'] = 'Focus',
 	['focustarget'] = 'FocusTarget',
 	['pet'] = 'Pet',
-	['pettarget'] = 'PetTarget',
+	--['pettarget'] = 'PetTarget',
 	['boss'] = 'Boss',
 	--['arena'] = 'Arena'
 }
@@ -307,7 +307,7 @@ function UF:OnEnable()
 
 	self.RMH = RealMobHealth
 
-	UF:CreateGroupHeaders()
+-- 	UF:CreateGroupHeaders()
 	UF:UpdateConfig()
 	UF:UpdateColors()
 

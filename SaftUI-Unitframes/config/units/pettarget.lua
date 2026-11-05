@@ -3,6 +3,9 @@ local st = SaftUI
 st.defaults.unitframes.profiles["**"].pettarget = {
     width = 50,
     enable = false,
+    auras = {
+        enable = false
+    },
     position = {
         point = 'RIGHT',
         frame = 'SaftUI_Pet',

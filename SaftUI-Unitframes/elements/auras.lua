@@ -69,9 +69,15 @@ end
 function UF.PostUpdateButton(auras, button, unit, data)
     local config = auras.config[getHostility(unit)]
 
-    if issecretvalue(data.isStealable) then
+    if st.retail then
         if config.colorTypes then
             local color = C_UnitAuras.GetAuraDispelTypeColor(unit, data.auraInstanceID, auras.dispelColorCurve)
+
+            if color == nil then
+				-- BUG: this shouldn't happen but color can be nil, so default to None color
+				color = element.dispelColorCurve:Evaluate(0)
+			end
+
             button.backdrop:SetBackdropBorderColor(color:GetRGBA())
         end
 
@@ -142,12 +148,14 @@ local function UpdateConfig(unitframe, aura_type)
 	auras.initialAnchor = auras.config.initial_anchor
     auras.tooltipAnchor = 'ANCHOR_TOPLEFT'
     auras.reanchorIfVisibleChanged = true
-	auras['growth-y'] = auras.config.grow_up and 'UP' or 'DOWN'
-	auras['growth-x'] = auras.config.grow_right and 'RIGHT' or 'LEFT'
+	auras.growthY = auras.config.grow_up and 'UP' or 'DOWN'
+	auras.growthX = auras.config.grow_right and 'RIGHT' or 'LEFT'
 	auras.onlyShowPlayer = auras.config.onlyShowPlayer
     auras.showDebuffType = auras.config.showDebuffType
 	auras.disableCooldown = not auras.config.cooldown.enable
-	auras.FilterAura = UF.FilterAura
+    if not st.retail then
+        auras.FilterAura = UF.FilterAura
+    end
 end
 
 local function Constructor(unitframe, aura_type)

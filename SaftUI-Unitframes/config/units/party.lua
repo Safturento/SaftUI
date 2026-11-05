@@ -1,27 +1,20 @@
 local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].party = {
-    spacing = -8,
-    growthDirection = 'RIGHT',
+    spacing = 8,
+    growthDirection = 'BOTTOM',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,
     initialAnchor = 'TOP',
     showPlayer = false,
     width = 200,
-
-    -- Healer override
-    columnSpacing = 8,
-    initialAnchor = 'LEFT',
-    height = 60,
-    width = 80,
-    showPlayer = true,
     position = {
-        point = 'TOP',
-        frame = 'UIParent',
-        rel_point = 'CENTER',
+        point = 'TOPLEFT',
+        frame = 'SaftUI_Player',
+        rel_point = 'BOTTOMLEFT',
         x_off = 0,
-        y_off = -260
+        y_off = -7
     },
 
     grouproleindicator = {
@@ -46,9 +39,6 @@ st.defaults.unitframes.profiles["**"].party = {
         },
         colorClass = true,
         colorClassNPC = true,
-        bg = {
-            multiplier = 0.4
-        }
     },
     name = {
         enable = true,
@@ -60,12 +50,12 @@ st.defaults.unitframes.profiles["**"].party = {
         enable = true,
         onlyShowPlayer = true,
         grow_right = true,
-        position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0 },
+        position = { point = 'TOPLEFT', rel_point = 'TOPRIGHT', x_off = 7, y_off = 0 },
         horizontal_growth = 'RIGHT',
         initial_anchor = 'LEFT',
-        size = 20,
+        size = 34,
         framelevel = 50,
-        template = 'thin',
+        template = 'thick',
         cooldown = {
             timer = {
                 enable = true,
@@ -90,13 +80,13 @@ st.defaults.unitframes.profiles["**"].party = {
     },
     debuffs = {
         enable = true,
-        grow_right = true,
-        position = { point = 'TOPLEFT', rel_point = 'BOTTOMLEFT', x_off = 0, y_off = -2 },
-        horizontal_growth = 'RIGHT',
-        initial_anchor = 'LEFT',
+        grow_right = false,
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 0 },
+        horizontal_growth = 'LEFT',
+        initial_anchor = 'RIGHT',
+        size = 34,
         framelevel = 50,
-        size = 20,
-        spacing = 1,
+        --spacing = 1,
         friend = {
            filter = {
 --                whitelist = {

@@ -54,6 +54,7 @@ end
 local function Constructor(unitframe)
     local power = UF:AddStatusBarElement(unitframe, 'Power')
     UF:AddText(unitframe, power)
+
 	power.GetDisplayPower = GetDisplayPower
 	power.PostUpdate = PostUpdatePower
 	if st.retail then
@@ -65,13 +66,15 @@ end
 
 local function UpdateConfig(unitframe)
     local power = unitframe.Power
-    UF:UpdateElement(power)
 
-	-- Toggle forcing main power as mana for shaman/druid/priest in specs with additionalPower
-	power.displayAltPower = unitframe.config.additionalpower
-                        and unitframe.config.additionalpower.enable
-                        and unitframe.config.additionalpower.manaAsPrimary
-						and UnitPowerMax('player', 0) > 0
+	if unitframe.config.additionalpower
+			and unitframe.config.additionalpower.enable
+			and unitframe.config.additionalpower.manaAsPrimary
+			and UnitPowerMax('player', 0) > 0 then
+		UF:UpdateElement(power, unitframe.AdditionalPower:GetConfig())
+	else
+		UF:UpdateElement(power)
+	end
 
 	power.colorTapping		= power.config.colorTapping
 	power.colorDisconnected	= power.config.colorDisconnected

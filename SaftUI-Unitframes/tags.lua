@@ -8,6 +8,7 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	local name = UnitName(unit)
 	local reaction = UnitReaction(unit, 'player')
 	local classification = UnitClassification(unit)
+	local _, class = UnitClass(unit)
 	local string = ''
 
 	if not UF:GetProfileConfig()[baseUnit] then return '' end
@@ -17,17 +18,17 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	-- mob level relative to you
 	local levelDiff = level - playerLevel;
 	
-	local color
+	local levelColor
 	if (levelDiff >= 5) then
-		color = st.config.profile.colors.text.red
+		levelColor = st.config.profile.colors.text.red
 	elseif ( levelDiff >= 3 ) then
-		color = st.config.profile.colors.text.orange
+		levelColor = st.config.profile.colors.text.orange
 	elseif ( levelDiff >= -3 ) then
-		color = st.config.profile.colors.text.yellow
+		levelColor = st.config.profile.colors.text.yellow
 	elseif ( levelDiff >= -10 ) then
-		color = st.config.profile.colors.text.green
+		levelColor = st.config.profile.colors.text.green
 	else
-		color = st.config.profile.colors.text.grey
+		levelColor = st.config.profile.colors.text.grey
 	end
 
 	local levelString = ''
@@ -55,7 +56,7 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 		end
 	end
 
-	levelString = st.StringFormat:ColorString(levelString, unpack(color)) .. (strlen(levelString) > 0 and ' ' or '')
+	levelString = st.StringFormat:ColorString(levelString, levelColor:GetRGB()) .. (strlen(levelString) > 0 and ' ' or '')
 	string = string .. levelString
 	
 	if config.allCaps then
@@ -65,11 +66,16 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	if not issecretvalue(name) then
 		name = st.StringFormat:UTF8strsub(name or '', config.maxLength)
 	end
-	if config.color_hostile and reaction then
+
+	if(config.colorClass and (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
+			or (config.colorClassNPC and not (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
+			or (config.colorClassPet and UnitPlayerControlled(unit) and not UnitIsPlayer(unit)) then
+		name = st.StringFormat:ColorString(name, UF.oUF.colors.class[class]:GetRGB())
+	elseif config.color_hostile and reaction then
 		if reaction < 3 then
-			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.red))
+			name = st.StringFormat:ColorString(name, st.config.profile.colors.text.red:GetRGB())
 		elseif reaction < 5 then
-			name = st.StringFormat:ColorString(name, unpack(st.config.profile.colors.text.yellow))
+			name = st.StringFormat:ColorString(name, st.config.profile.colors.text.yellow:GetRGB())
 		end
 	end
 	string = string .. name

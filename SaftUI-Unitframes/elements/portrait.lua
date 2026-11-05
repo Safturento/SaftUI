@@ -6,4 +6,4 @@ local function Constructor(self)
 	return UF:AddElement('PlayerModel', self, 'Portrait')
 end
 
-UF:RegisterElement('Portrait', Constructor)
+--UF:RegisterElement('Portrait', Constructor)

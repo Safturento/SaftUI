@@ -12,11 +12,11 @@ local indicators = {
            self:SetShown(self.config.showDps and true or role == 'HEALER' or role == 'TANK')
            self:SetTexCoord(0, 1, 0, 1)
            if role == 'HEALER' then
-               self:SetVertexColor(unpack(st.config.profile.colors.text.green))
+               self:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
            elseif role == 'TANK' then
-               self:SetVertexColor(unpack(st.config.profile.colors.text.blue))
+               self:SetVertexColor(st.config.profile.colors.text.blue:GetRGB())
            else
-               self:SetVertexColor(unpack(st.config.profile.colors.text.red))
+               self:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
            end
        end,
        postCreate = function(self)

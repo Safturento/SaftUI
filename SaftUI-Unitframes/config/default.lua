@@ -91,8 +91,8 @@ local castbar = {
     },
     framelevel = 15,
     colors = {
-        normal = { .5, .7, .9 },
-        nointerrupt = { .6, .3, .3 },
+        normal = CreateColor(.5, .7, .9),
+        nointerrupt = CreateColor(.7, .4, .4),
     },
     text = {
         enable = true,
@@ -138,10 +138,10 @@ local castbar = {
 }
 
 local health = {
-    template = "thick",
+    template = "thicktransparent",
     texture = 'SaftUI Flat',
     position = { rel_point = "TOPRIGHT", x_off = 0, point = "TOPRIGHT", y_off = 0 },
-    height = -8,
+    height = 0,
     relative_height = true,
     width = 0,
     relative_width = true,
@@ -153,38 +153,39 @@ local health = {
         hide_full = false,
         percent = false,
         boss_percent = true,
-        font = 'pixel',
+        font = 'normal',
         position = {
             point = "RIGHT",
             element = "Health",
             rel_point = "RIGHT",
             x_off = -7,
-            y_off = 0,
+            y_off = -1,
         },
         tags = 'deficit'
     },
     bg = {
-        enable = true,
+        enable = false,
         alpha = 1,
-        multiplier = 0.6,
+        multiplier = 0.2,
     },
     Smooth = true,
     colorTapping = true,
     colorDisconnected = true,
     colorHealth = false,
-    colorClass = false,
+    colorClass = true,
     colorClassNPC = false,
     colorClassPet = false,
-    colorReaction = false,
+    colorReaction = true,
     colorSmooth = false,
-    colorCustom = true,
+    colorCustom = false,
     customColor = { 0.3, 0.3, 0.3 },
-    absorbColor = { 0.3, 0.4, 0.6}
+    absorbColor = { 0.3, 0.4, 0.6 }
 }
 
 local power = {
+    enable = false,
     framelevel = 10,
-    template = "thick",
+    template = "thicktransparent",
     height = 5,
     relative_height = false,
     width = 0,
@@ -195,7 +196,7 @@ local power = {
     reverse_fill = false,
     vertical_fill = false,
     bg = {
-        enable = true,
+        enable = false,
         alpha = 1,
         multiplier = .6,
     },
@@ -203,7 +204,7 @@ local power = {
         enable = false,
         hide_full = false,
         percent = false,
-        font = 'pixel',
+        font = 'normal',
         position = {
             point = "LEFT",
             element = "Health",
@@ -319,7 +320,7 @@ local auras = {
 
 local buffs = st.tablemerge(auras, {
     enable = false,
-    onlyShowPlayer = true,
+    onlyShowPlayer = false,
     enemy = {
         colorStealable = true,
     },
@@ -352,13 +353,14 @@ local name = {
     showSameLevel = false,
     showMaxLevel = false,
     show_classification = true,
-    font = 'pixel',
+    colorClass = false,
+    font = 'normal',
     position = {
         point = "LEFT",
         element = "Health",
         rel_point = "LEFT",
         x_off = 7,
-        y_off = 0,
+        y_off = -1,
     },
 }
 

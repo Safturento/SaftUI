@@ -1,16 +1,43 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+local function GetColorFromBoolean(bool, trueColor, falseColor)
+	local trueR, trueG, trueB, falseR, falseG, falseB;
+
+	if trueColor.r then
+		trueR = trueColor.r
+		trueG = trueColor.g
+		trueB = trueColor.b
+	else
+		trueR, trueG, trueB = unpack(trueColor)
+	end
+
+	if falseColor.r then
+		falseR = falseColor.r
+		falseG = falseColor.g
+		falseB = falseColor.b
+	else
+		falseR, falseG, falseB = unpack(falseColor)
+	end
+
+	return
+		C_CurveUtil.EvaluateColorValueFromBoolean(bool, trueR, falseR),
+		C_CurveUtil.EvaluateColorValueFromBoolean(bool, trueG, falseG),
+		C_CurveUtil.EvaluateColorValueFromBoolean(bool, trueB, falseB)
+end
+
 local function PostCastStart(castbar, unit)
+	castbar:SetColorFill(castbar.config.colors.normal:GetRGB())
 	if issecretvalue(castbar.notInterruptible) then
+		castbar:SetStatusBarColor(GetColorFromBoolean(castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal))
 		--castbar:SetColorFill(C_CurveUtil.EvaluateColorFromBoolean(
-		--	castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal):GetRGB()
+		--	castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal):GetRGBA()
 		--)
 	else
 		if castbar.notInterruptible then
-			castbar:SetColorFill(unpack(castbar.config.colors.nointerrupt))
+			castbar:SetColorFill(castbar.config.colors.nointerrupt:GetRGB())
 		else
-			castbar:SetColorFill(unpack(castbar.config.colors.normal))
+			castbar:SetColorFill(castbar.config.colors.normal:GetRGB())
 		end
 	end
 
@@ -32,8 +59,8 @@ local function Constructor(unitframe)
 
 
 	castbar.colors = {
-		normal = CreateColor(unpack(castbar.config.colors.normal)),
-		notInterruptible = CreateColor(unpack(castbar.config.colors.nointerrupt))
+		normal = CreateColor(castbar.config.colors.normal:GetRGB()),
+		notInterruptible = CreateColor(castbar.config.colors.nointerrupt:GetRGB())
 	}
 	castbar.PostCastStart = PostCastStart
 	castbar.PostChannelStart = PostCastStart

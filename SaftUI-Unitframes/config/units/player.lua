@@ -4,20 +4,36 @@ st.defaults.unitframes.profiles["**"].player = {
     position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'CENTER', x_off = -157, y_off = -130 },
     additionalpower = {
         enable = false,
-        manaAsPrimary = true,
+        manaAsPrimary = false,
         relative_width = false,
         relative_height = false,
         width = 299,
-        height = 9,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -200 },
+        height = 20,
+        colorClass = true,
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
         text = {
             font='pixel_med',
-            position = { rel_point = "CENTER", point = "CENTER",  x_off = 0, y_off = 7 },
+            position = { rel_point = "CENTER", element = 'Power', point = "TOP",  x_off = 0, y_off = 0 },
         }
     },
     power = {
+        enable = true,
+        relative_width = false,
+        relative_height = false,
+        width = 299,
+        height = 20,
+        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
+        colorPower = true,
         text = {
             enable = true,
+            font='normal',
+            position = {
+                point = "CENTER",
+                element = 'Power',
+                rel_point = "CENTER",
+                x_off = 0,
+                y_off = 0,
+            },
         },
     },
     name = {
@@ -49,6 +65,7 @@ st.defaults.unitframes.profiles["**"].player = {
     buffs = {
         enable = true,
         showBar = true,
+        onlyShowPlayer = true,
         friend = {
             filter = {
                 time = {
@@ -68,7 +85,7 @@ st.defaults.unitframes.profiles["**"].player = {
         position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMLEFT', x_off = -7, y_off = 0 },
         horizontal_growth = 'LEFT',
         initial_anchor = 'RIGHT',
-        size = 35,
+        size = 34,
     },
     classpower = {
         enable = true,

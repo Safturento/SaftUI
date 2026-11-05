@@ -1,31 +1,34 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-function UF:UpdateElement(element)
+function UF:UpdateElement(element, configOverride)
     element.config = element:GetConfig()
-    local enabled = self:SetElementEnabled(element)
+
+    local config = element.config or configOverride
+
+    local enabled = self:SetElementEnabled(element, configOverride)
     if not enabled then return false end
 
     if element.config.template then
-        st:SetBackdrop(element, element.config.template)
+        st:SetBackdrop(element, config.template)
     end
 
-    element:SetAlpha(element.config.alpha or 1)
-    self:UpdateElementSize(element)
-    self:UpdateElementPosition(element)
-    self:UpdateElementLevel(element)
+    element:SetAlpha(config.alpha or 1)
+    self:UpdateElementSize(element, configOverride)
+    self:UpdateElementPosition(element, configOverride)
+    self:UpdateElementLevel(element, configOverride)
 
     if element:IsObjectType('StatusBar') then
-        self:UpdateStatusBarElement(element)
+        self:UpdateStatusBarElement(element, configOverride)
     end
 
     if element:IsObjectType('FontString') then
-        element:SetFontObject(st:GetFont(element.config.font))
+        element:SetFontObject(st:GetFont(config.font))
     end
 
     if element.textElements then
-        for _,text in pairs(element.textElements) do
-            self:UpdateText(text)
+        for key, text in pairs(element.textElements) do
+            self:UpdateText(text, configOverride and configOverride[key] or nil)
         end
     end
 
@@ -58,47 +61,50 @@ function UF:SetElementEnabled(element)
     return element.config.enable
 end
 
-function UF:UpdateElementSize(element)
+function UF:UpdateElementSize(element, configOverride)
     if element.noSize then return end
+    local config = configOverride or element.config
 
     local unitframe = element.unitframe or element:GetParent()
 
-    if element.config.size then
-        local size = element.config.relative_size
-                        and unitframe.config.height + element.config.size
-                        or element.config.size
+    if config.size then
+        local size = config.relative_size
+                        and unitframe.config.height + config.size
+                        or config.size
         st:SetSize(element, size)
     end
 
-    if element.config.height then
-        if element.config.relative_height then
-            st:SetHeight(element, unitframe.config.height + element.config.height)
+    if config.height then
+        if config.relative_height then
+            st:SetHeight(element, unitframe.config.height + config.height)
         else
-            st:SetHeight(element, element.config.height)
+            st:SetHeight(element, config.height)
         end
     end
 
-    if element.config.width then
-        if element.config.relative_width then
-            st:SetWidth(element, unitframe.config.width + element.config.width)
+    if config.width then
+        if config.relative_width then
+            st:SetWidth(element, unitframe.config.width + config.width)
         else
-            st:SetWidth(element, element.config.width)
+            st:SetWidth(element, config.width)
         end
     end
 end
 
-function UF:UpdateElementPosition(element, unitframe)
+function UF:UpdateElementPosition(element, unitframe, configOverride)
+    local config = configOverride or element.config
     unitframe = element.unitframe or element:GetParent()
 
-    local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(element.config.position)
-    local frame = self:GetFrame(unitframe, element.config.position)
+    local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(config.position)
+    local frame = self:GetFrame(unitframe, config.position)
     element:ClearAllPoints()
     element:SetPoint(anchor, frame, rel_anchor, x_off, y_off)
 end
 
-function UF:UpdateElementLevel(element)
-    if element.config.framelevel and element.SetFrameLevel then
-        element:SetFrameLevel(element.config.framelevel)
+function UF:UpdateElementLevel(element, configOverride)
+    local config = configOverride or element.config
+    if config.framelevel and element.SetFrameLevel then
+        element:SetFrameLevel(config.framelevel)
     end
 end
 
@@ -114,7 +120,7 @@ function UF:UpdateStatusBarElement(element, configOverride)
 	element:SetOrientation(config.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
     if config.colorCustom then
-		element:SetStatusBarColor(unpack(config.customColor))
+		element:SetStatusBarColor(config.customColor:GetRGB())
 	end
 
     if element.bg and config.bg then
@@ -128,13 +134,14 @@ function UF:UpdateStatusBarElement(element, configOverride)
     end
 end
 
-function UF:UpdateText(text)
+function UF:UpdateText(text, configOverride)
+    local config = configOverride or text:GetConfig()
     if not text:IsObjectType('FontString') then
         return st:Error(text:GetName(), 'is not a text object')
     end
 
-    UF:UpdateElement(text)
-    text:SetFontObject(st:GetFont(text.config.font))
+    UF:UpdateElement(text, configOverride)
+    text:SetFontObject(st:GetFont(config.font))
 end
 
 function UF:UpdateIcon(icon)

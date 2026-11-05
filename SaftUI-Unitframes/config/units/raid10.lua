@@ -7,7 +7,7 @@ st.defaults.unitframes.profiles["**"].raid10 = {
     unitsPerColumn = 5,
     columnSpacing = 3,
     initialAnchor = 'TOP',
-    position = { point = 'TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -236 },
+    position = { point = 'TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = -396 },
     width = 80,
     height = 50,
     template = 'thick',
@@ -41,7 +41,7 @@ st.defaults.unitframes.profiles["**"].raid10 = {
         position = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 },
     },
     buffs = {
-        enable = true,
+        enable = false,
         onlyShowPlayer = true,
         grow_right = true,
         position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0 },

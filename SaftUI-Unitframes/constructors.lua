@@ -68,7 +68,7 @@ function UF:AddText(unitframe, element, key, parent)
 
     -- Allow for easy bi-directional access for all text elements
     if not element.textElements then element.textElements = {} end
-    tinsert(element.textElements, text)
+    element.textElements[key] = text
 
     element[key] = text
 

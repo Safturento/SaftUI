@@ -44,7 +44,7 @@ st.defaults.unitframes.profiles["**"].raid40 = {
         position = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 },
     },
     buffs = {
-        enable = true,
+        enable = false,
         onlyShowPlayer = true,
         grow_right = true,
         size = 15,

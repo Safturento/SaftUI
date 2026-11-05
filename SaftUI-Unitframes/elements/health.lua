@@ -43,13 +43,13 @@ local function PostUpdateHealth(health, unit, current, max)
 	end
 
 	if health.config.colorCustom then
-		health:SetStatusBarColor(unpack(health.config.customColor))
+		health:SetStatusBarColor(health.config.customColor:GetRGB())
 	end
 
 	if health.config.bg.enable then
 		r, g, b = health:GetStatusBarColor()
 		local mu = health.config.bg.multiplier or 1
-		health.bg:SetVertexColor(r * mu, g * mu, b * mu)
+		health.bg:SetVertexColor(mu, mu, mu)
 	end
 end
 

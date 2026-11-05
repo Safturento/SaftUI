@@ -23,6 +23,15 @@ local function Update(unitframe, event, unit, powerType)
 	end
 end
 
+local function PostUpdateColor(power, color, r, g, b)
+	if color then
+		r, g, b = color:GetRGB()
+	end
+	if r and g and b then
+		power.bg:SetVertexColor(r * power.config.bg.multiplier, g * power.config.bg.multiplier, b * power.config.bg.multiplier, power.config.bg.alpha)
+	end
+end
+
 local function PostUpdate(additionalPower, curr, max)
 	additionalPower.text:SetText(curr)
 end
@@ -36,6 +45,9 @@ local function Constructor(self)
     UF:AddText(self, additionalPower)
 	additionalPower.PostVisibility = PostVisibility
 	additionalPower.PostUpdate = PostUpdate
+	if st.retail then
+		additionalPower.PostUpdateColor = PostUpdateColor
+	end
 
 	return additionalPower
 end
@@ -44,9 +56,19 @@ local function UpdateConfig(unitframe)
     local additionalPower = unitframe.AdditionalPower
     local config = additionalPower.config
 
-    UF:UpdateElement(additionalPower)
+	additionalPower:SetStatusBarTexture(st.BLANK_TEX)
+	additionalPower.bg:SetTexture(st.BLANK_TEX)
 
-	additionalPower.Override       = config.manaAsPrimary and Update or nil
+	if unitframe.config.additionalpower
+			and unitframe.config.additionalpower.enable
+			and unitframe.config.additionalpower.manaAsPrimary
+			and UnitPowerMax('player', 0) > 0 then
+    	UF:UpdateElement(additionalPower, unitframe.Power:GetConfig())
+	else
+		UF:UpdateElement(additionalPower)
+	end
+
+	--additionalPower.Override       = config.manaAsPrimary and Update or nil
 	additionalPower.colorPower     = config.colorPower
 	additionalPower.colorClass     = config.colorClass
 	additionalPower.colorCustom    = config.colorCustom
