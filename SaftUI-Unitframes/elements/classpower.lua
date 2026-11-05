@@ -1,7 +1,7 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function PostUpdateClassPower(classPower, cur, max, hasMaxChanged, powerType)
+local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxChanged, powerType)
 	if not max then classPower:Hide() return end
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do

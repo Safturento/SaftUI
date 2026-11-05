@@ -8,7 +8,15 @@ local indicators = {
     {
        configKey = 'grouproleindicator',
        name = 'GroupRoleIndicator',
-       postUpdate = function(self, role)
+       postUpdate = function(self)
+           -- oUF no longer passes a usable role to PostUpdate (nil on Forever/12.1.5+,
+           -- an enum before that), so look up the role string ourselves.
+           local unit = self.unitframe and self.unitframe.unit
+           local role = unit and UnitGroupRolesAssigned(unit)
+           if issecretvalue(role) then role = nil end
+
+           -- oUF applies its own role atlas on update; restore our corner texture.
+           self:SetTexture(st.textures.cornerbr)
            self:SetShown(self.config.showDps and true or role == 'HEALER' or role == 'TANK')
            self:SetTexCoord(0, 1, 0, 1)
            if role == 'HEALER' then
