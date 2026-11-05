@@ -36,10 +36,10 @@ local _, ns = ...
 local oUF = ns.oUF
 
 local function Update(self, event, unit)
-	if(unit and unit ~= self.unit) then return end
+	if(unit and unit ~= self.__unit) then return end
 
 	local element = self.PvPIndicator
-	unit = unit or self.unit
+	unit = unit or self.__unit
 
 	--[[ Callback: PvPIndicator:PreUpdate(unit)
 	Called before the element has been updated.
@@ -53,24 +53,31 @@ local function Update(self, event, unit)
 
 	local status
 	local factionGroup = UnitFactionGroup(unit) or 'Neutral'
-	local honorRewardInfo = C_PvP.GetHonorRewardInfo(UnitHonorLevel(unit))
+	if(unit == 'player' and UnitIsMercenary(unit)) then
+		if(factionGroup == 'Horde') then
+			factionGroup = 'Alliance'
+		elseif(factionGroup == 'Alliance') then
+			factionGroup = 'Horde'
+		end
+	end
 
 	if(UnitIsPVPFreeForAll(unit)) then
 		status = 'FFA'
-	elseif(factionGroup ~= 'Neutral' and UnitIsPVP(unit)) then
-		if(unit == 'player' and UnitIsMercenary(unit)) then
-			if(factionGroup == 'Horde') then
-				factionGroup = 'Alliance'
-			elseif(factionGroup == 'Alliance') then
-				factionGroup = 'Horde'
-			end
+	else
+		local isPvP = UnitIsPVP(unit)
+		if(factionGroup ~= 'Neutral' and not issecretvalue(isPvP) and isPvP) then
+			status = factionGroup
 		end
-
-		status = factionGroup
 	end
 
 	if(status) then
 		element:Show()
+
+		local honorRewardInfo
+		local honorLevel = UnitHonorLevel(unit)
+		if(not issecretvalue(honorLevel)) then
+			honorRewardInfo = C_PvP.GetHonorRewardInfo(honorLevel)
+		end
 
 		if(element.Badge and honorRewardInfo) then
 			element:SetTexture(honorRewardInfo.badgeFileDataID)
@@ -118,7 +125,7 @@ local function Path(self, ...)
 end
 
 local function ForceUpdate(element)
-	return Path(element.__owner, 'ForceUpdate', element.__owner.unit)
+	return Path(element.__owner, 'ForceUpdate', element.__owner.__unit)
 end
 
 local function Enable(self)
@@ -129,6 +136,7 @@ local function Enable(self)
 
 		self:RegisterEvent('UNIT_FACTION', Path)
 		self:RegisterEvent('HONOR_LEVEL_UPDATE', Path, true)
+		self:RegisterEvent('PLAYER_REGEN_ENABLED', Path, true)
 
 		return true
 	end
@@ -145,6 +153,7 @@ local function Disable(self)
 
 		self:UnregisterEvent('UNIT_FACTION', Path)
 		self:UnregisterEvent('HONOR_LEVEL_UPDATE', Path)
+		self:UnregisterEvent('PLAYER_REGEN_ENABLED', Path)
 	end
 end
 

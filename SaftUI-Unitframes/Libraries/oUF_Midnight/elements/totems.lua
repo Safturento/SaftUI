@@ -5,16 +5,12 @@ Handles the updating and visibility of totems.
 
 ## Widget
 
-Totems - A `table` to hold sub-widgets.
+Totems - A `table` to hold widgets of any kind.
 
 ## Sub-Widgets
 
-Totem - Any UI widget.
-
-## Sub-Widget Options
-
-.Icon     - A `Texture` representing the totem icon.
-.Cooldown - A `Cooldown` representing the duration of the totem.
+.Icon     - An optional `Texture` widget representing the totem icon.
+.Cooldown - An optional `Cooldown` widget representing the duration of the totem.
 
 ## Notes
 
@@ -48,6 +44,7 @@ OnEnter and OnLeave script handlers will be set to display a Tooltip if the `Tot
 local _, ns = ...
 local oUF = ns.oUF
 
+-- sourced from Blizzard_FrameXMLBase/Constants.lua
 local TOTEM_PRIORITIES = _G.STANDARD_TOTEM_PRIORITIES
 if(UnitClassBase('player') == 'SHAMAN') then
 	TOTEM_PRIORITIES = _G.SHAMAN_TOTEM_PRIORITIES
@@ -83,34 +80,31 @@ local function UpdateTotem(self, event, slot)
 	if(element.PreUpdate) then element:PreUpdate(slot) end
 
 	local totem = element[TOTEM_PRIORITIES[slot]]
-	local haveTotem, name, start, duration, icon = GetTotemInfo(slot)
-	if(haveTotem and duration > 0) then
-		if(totem.Icon) then
-			totem.Icon:SetTexture(icon)
-		end
+	local haveTotem, name, _, _, icon = GetTotemInfo(slot)
+	local duration = GetTotemDuration(slot)
 
-		if(totem.Cooldown) then
-			totem.Cooldown:SetCooldown(start, duration)
-		end
+	totem:SetAlphaFromBoolean(haveTotem, 1, 0)
 
-		totem:Show()
-	else
-		totem:Hide()
+	if(totem.Icon) then
+		totem.Icon:SetTexture(icon)
 	end
 
-	--[[ Callback: Totems:PostUpdate(slot, haveTotem, name, start, duration, icon)
+	if(totem.Cooldown and duration ~= nil) then
+		totem.Cooldown:SetCooldownFromDurationObject(duration)
+	end
+
+	--[[ Callback: Totems:PostUpdate(slot, haveTotem, name, icon, duration)
 	Called after the element has been updated.
 
 	* self      - the Totems element
 	* slot      - the slot of the updated totem (number)
 	* haveTotem - indicates if a totem is present in the given slot (boolean)
 	* name      - the name of the totem (string)
-	* start     - the value of `GetTime()` when the totem was created (number)
-	* duration  - the total duration for which the totem should last (number)
 	* icon      - the totem's icon (Texture)
+	* duration  - totem duration ([DurationObject](https://warcraft.wiki.gg/wiki/ScriptObject_DurationObject))
 	--]]
 	if(element.PostUpdate) then
-		return element:PostUpdate(slot, haveTotem, name, start, duration, icon)
+		return element:PostUpdate(slot, haveTotem, name, icon, duration)
 	end
 end
 
@@ -144,6 +138,7 @@ local function Enable(self)
 		for i = 1, #element do
 			local totem = element[TOTEM_PRIORITIES[i]]
 			totem:SetID(i)
+			totem:Show()
 
 			if(totem:IsMouseEnabled()) then
 				totem:SetScript('OnEnter', OnEnter)

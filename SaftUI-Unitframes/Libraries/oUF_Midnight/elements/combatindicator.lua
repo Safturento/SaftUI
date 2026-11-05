@@ -26,7 +26,7 @@ local _, ns = ...
 local oUF = ns.oUF
 
 local function Update(self, event, unit)
-	if(not unit or self.unit ~= unit) then return end
+	if(not unit or self.__unit ~= unit) then return end
 	local element = self.CombatIndicator
 
 	--[[ Callback: CombatIndicator:PreUpdate()
@@ -79,8 +79,7 @@ local function Enable(self, unit)
 		self:RegisterEvent('UNIT_FLAGS', Path)
 
 		if(element:IsObjectType('Texture') and not element:GetTexture()) then
-			element:SetTexture([[Interface\CharacterFrame\UI-StateIcon]])
-			element:SetTexCoord(.5, 1, 0, .49)
+			element:SetAtlas('UI-HUD-UnitFrame-Player-CombatIcon')
 		end
 
 		return true

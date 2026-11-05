@@ -11,6 +11,10 @@ GroupRoleIndicator - A `Texture` used to display the group role icon.
 
 A default texture will be applied if the widget is a Texture and doesn't have a texture or a color set.
 
+## Options
+
+.useAtlasSize - Makes the element use preprogrammed atlas' size instead of its set dimensions (boolean)
+
 ## Examples
 
     -- Position and size
@@ -25,17 +29,6 @@ A default texture will be applied if the widget is a Texture and doesn't have a 
 local _, ns = ...
 local oUF = ns.oUF
 
--- originally sourced from Blizzard_Deprecated/Deprecated_10_1_5.lua
-local function GetTexCoordsForRoleSmallCircle(role)
-	if(role == 'TANK') then
-		return 0, 19 / 64, 22 / 64, 41 / 64
-	elseif(role == 'HEALER') then
-		return 20 / 64, 39 / 64, 1 / 64, 20 / 64
-	elseif(role == 'DAMAGER') then
-		return 20 / 64, 39 / 64, 22 / 64, 41 / 64
-	end
-end
-
 local function Update(self, event)
 	local element = self.GroupRoleIndicator
 
@@ -48,9 +41,19 @@ local function Update(self, event)
 		element:PreUpdate()
 	end
 
-	local role = UnitGroupRolesAssigned(self.unit)
-	if(role == 'TANK' or role == 'HEALER' or role == 'DAMAGER') then
-		element:SetTexCoord(GetTexCoordsForRoleSmallCircle(role))
+	local role = UnitGroupRolesAssignedEnum(self.__unit)
+	if(issecretvalue(role)) then
+		role = nil
+	end
+
+	if(role == Enum.LFGRole.Tank) then
+		element:SetAtlas('UI-LFG-RoleIcon-Tank-Micro-Raid', element.useAtlasSize)
+		element:Show()
+	elseif(role == Enum.LFGRole.Healer) then
+		element:SetAtlas('UI-LFG-RoleIcon-Healer-Micro-Raid', element.useAtlasSize)
+		element:Show()
+	elseif(role == Enum.LFGRole.Damage) then
+		element:SetAtlas('UI-LFG-RoleIcon-DPS-Micro-Raid', element.useAtlasSize)
 		element:Show()
 	else
 		element:Hide()
@@ -60,7 +63,7 @@ local function Update(self, event)
 	Called after the element has been updated.
 
 	* self - the GroupRoleIndicator element
-	* role - the role as returned by [UnitGroupRolesAssigned](https://warcraft.wiki.gg/wiki/API_UnitGroupRolesAssigned)
+	* role - the role as returned by [UnitGroupRolesAssignedEnum](https://warcraft.wiki.gg/wiki/API_UnitGroupRolesAssignedEnum) (number)
 	--]]
 	if(element.PostUpdate) then
 		return element:PostUpdate(role)
@@ -82,20 +85,16 @@ local function ForceUpdate(element)
 	return Path(element.__owner, 'ForceUpdate')
 end
 
-local function Enable(self)
+local function Enable(self, unit)
 	local element = self.GroupRoleIndicator
 	if(element) then
 		element.__owner = self
 		element.ForceUpdate = ForceUpdate
 
-		if(self.unit == 'player') then
+		if(unit == 'player') then
 			self:RegisterEvent('PLAYER_ROLES_ASSIGNED', Path, true)
 		else
 			self:RegisterEvent('GROUP_ROSTER_UPDATE', Path, true)
-		end
-
-		if(element:IsObjectType('Texture') and not element:GetTexture()) then
-			element:SetTexture([[Interface\LFGFrame\UI-LFG-ICON-PORTRAITROLES]])
 		end
 
 		return true

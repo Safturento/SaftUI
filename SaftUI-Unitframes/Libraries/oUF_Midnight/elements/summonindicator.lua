@@ -11,6 +11,10 @@ SummonIndicator - A `Texture` used to display if the unit has an incoming summon
 
 This element updates by changing the texture.
 
+## Options
+
+.useAtlasSize - Makes the element use preprogrammed atlas' size instead of its set dimensions (boolean)
+
 ## Examples
 
     -- Position and size
@@ -25,14 +29,8 @@ This element updates by changing the texture.
 local _, ns = ...
 local oUF = ns.oUF
 
--- sourced from Blizzard_APIDocumentationGenerated/IncomingSummonDocumentation.lua
-local SUMMON_STATUS_NONE = Enum.SummonStatus.None or 0
-local SUMMON_STATUS_PENDING = Enum.SummonStatus.Pending or 1
-local SUMMON_STATUS_ACCEPTED = Enum.SummonStatus.Accepted or 2
-local SUMMON_STATUS_DECLINED = Enum.SummonStatus.Declined or 3
-
 local function Update(self, event, unit)
-	if(self.unit ~= unit) then return end
+	if(self.__unit ~= unit) then return end
 
 	local element = self.SummonIndicator
 
@@ -46,13 +44,13 @@ local function Update(self, event, unit)
 	end
 
 	local status = C_IncomingSummon.IncomingSummonStatus(unit)
-	if(status ~= SUMMON_STATUS_NONE) then
-		if(status == SUMMON_STATUS_PENDING) then
-			element:SetAtlas('Raid-Icon-SummonPending')
-		elseif(status == SUMMON_STATUS_ACCEPTED) then
-			element:SetAtlas('Raid-Icon-SummonAccepted')
-		elseif(status == SUMMON_STATUS_DECLINED) then
-			element:SetAtlas('Raid-Icon-SummonDeclined')
+	if(status ~= Enum.SummonStatus.None) then
+		if(status == Enum.SummonStatus.Pending) then
+			element:SetAtlas('RaidFrame-Icon-SummonPending', element.useAtlasSize)
+		elseif(status == Enum.SummonStatus.Accepted) then
+			element:SetAtlas('RaidFrame-Icon-SummonAccepted', element.useAtlasSize)
+		elseif(status == Enum.SummonStatus.Declined) then
+			element:SetAtlas('RaidFrame-Icon-SummonDeclined', element.useAtlasSize)
 		end
 
 		element:Show()
@@ -83,7 +81,7 @@ local function Path(self, ...)
 end
 
 local function ForceUpdate(element)
-	return Path(element.__owner, 'ForceUpdate', element.__owner.unit)
+	return Path(element.__owner, 'ForceUpdate', element.__owner.__unit)
 end
 
 local function Enable(self)

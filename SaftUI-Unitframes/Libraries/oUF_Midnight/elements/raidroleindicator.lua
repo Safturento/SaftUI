@@ -11,6 +11,10 @@ RaidRoleIndicator - A `Texture` representing the unit's raid assignment.
 
 This element updates by changing the texture.
 
+## Options
+
+.useAtlasSize - Makes the element use preprogrammed atlas' size instead of its set dimensions (boolean)
+
 ## Examples
 
     -- Position and size
@@ -25,12 +29,11 @@ This element updates by changing the texture.
 local _, ns = ...
 local oUF = ns.oUF
 
-local MAINTANK_ICON = [[Interface\GROUPFRAME\UI-GROUP-MAINTANKICON]]
-local MAINASSIST_ICON = [[Interface\GROUPFRAME\UI-GROUP-MAINASSISTICON]]
+local STATE = {}
 
 local function Update(self, event)
 	local element = self.RaidRoleIndicator
-	local unit = self.unit
+	local unit = self.__unit
 
 	--[[ Callback: RaidRoleIndicator:PreUpdate()
 	Called before the element has been updated.
@@ -41,20 +44,38 @@ local function Update(self, event)
 		element:PreUpdate()
 	end
 
-	local role, isShown
-	if(UnitInRaid(unit) and not UnitHasVehicleUI(unit)) then
-		if(GetPartyAssignment('MAINTANK', unit)) then
-			isShown = true
-			element:SetTexture(MAINTANK_ICON)
+	if(event == 'OnShow') then
+		STATE[element] = {}
+	end
+
+	local role, shouldShow
+	if(UnitInRaid(unit) ~= nil and not UnitHasVehicleUI(unit)) then
+		local isMainTank = GetPartyAssignment('MAINTANK', unit)
+		if(issecretvalue(isMainTank)) then
+			isMainTank = STATE[element].isMainTank
+		else
+			STATE[element].isMainTank = isMainTank
+		end
+
+		local isMainAssist = GetPartyAssignment('MAINASSIST', unit)
+		if(issecretvalue(isMainAssist)) then
+			isMainAssist = STATE[element].isMainAssist
+		else
+			STATE[element].isMainAssist = isMainAssist
+		end
+
+		if(isMainTank) then
 			role = 'MAINTANK'
-		elseif(GetPartyAssignment('MAINASSIST', unit)) then
-			isShown = true
-			element:SetTexture(MAINASSIST_ICON)
+			shouldShow = true
+			element:SetAtlas('RaidFrame-Icon-MainTank', element.useAtlasSize)
+		elseif(isMainAssist) then
 			role = 'MAINASSIST'
+			shouldShow = true
+			element:SetAtlas('RaidFrame-Icon-MainAssist', element.useAtlasSize)
 		end
 	end
 
-	element:SetShown(isShown)
+	element:SetShown(shouldShow)
 
 	--[[ Callback: RaidRoleIndicator:PostUpdate(role)
 	Called after the element has been updated.
@@ -88,7 +109,10 @@ local function Enable(self)
 		element.__owner = self
 		element.ForceUpdate = ForceUpdate
 
+		STATE[element] = {}
+
 		self:RegisterEvent('GROUP_ROSTER_UPDATE', Path, true)
+		self:RegisterEvent('PLAYER_REGEN_ENABLED', Path, true)
 
 		return true
 	end
@@ -100,6 +124,7 @@ local function Disable(self)
 		element:Hide()
 
 		self:UnregisterEvent('GROUP_ROSTER_UPDATE', Path)
+		self:UnregisterEvent('PLAYER_REGEN_ENABLED', Path)
 	end
 end
 
