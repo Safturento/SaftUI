@@ -5,7 +5,7 @@
 ## Group: SaftUI-Core
 ## X-oUF: SaftUI-Unitframes
 
-Libraries\oUF_Midnight\oUF.xml
+Libraries\oUF\oUF.xml
 
 unitframes.lua
 config\load.xml

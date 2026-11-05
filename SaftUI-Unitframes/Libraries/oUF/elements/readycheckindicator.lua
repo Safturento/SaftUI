@@ -17,13 +17,7 @@ Default textures will be applied if the layout does not provide custom ones. See
 .finishedTime    - For how many seconds the icon should stick after a check has completed. Defaults to 10 (number).
 .fadeTime        - For how many seconds the icon should fade away after the stick duration has completed. Defaults to
                    1.5 (number).
-.readyTexture    - Path to an alternate texture for the ready check 'ready' status.
-.notReadyTexture - Path to an alternate texture for the ready check 'notready' status.
-.waitingTexture  - Path to an alternate texture for the ready check 'waiting' status.
-
-## Attributes
-
-.status - the unit's ready check status (string?)['ready', 'noready', 'waiting']
+.useAtlasSize    - Makes the element use preprogrammed atlas' size instead of its set dimensions (boolean)
 
 ## Examples
 
@@ -42,11 +36,6 @@ local Private = oUF.Private
 
 local unitExists = Private.unitExists
 
--- TODO: Replace with atlases in the next major
-local READY_CHECK_READY_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-Ready"
-local READY_CHECK_NOT_READY_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-NotReady"
-local READY_CHECK_WAITING_TEXTURE = "Interface\\RaidFrame\\ReadyCheck-Waiting"
-
 local function OnFinished(self)
 	local element = self:GetParent()
 	element:Hide()
@@ -63,7 +52,7 @@ end
 
 local function Update(self, event)
 	local element = self.ReadyCheckIndicator
-	local unit = self.unit
+	local unit = self.__unit
 
 	--[[ Callback: ReadyCheckIndicator:PreUpdate()
 	Called before the element has been updated.
@@ -77,23 +66,22 @@ local function Update(self, event)
 	local status = GetReadyCheckStatus(unit)
 	if(unitExists(unit) and status) then
 		if(status == 'ready') then
-			element:SetTexture(element.readyTexture)
+			element:SetAtlas('UI-LFG-ReadyMark-Raid', element.useAtlasSize)
 		elseif(status == 'notready') then
-			element:SetTexture(element.notReadyTexture)
+			element:SetAtlas('UI-LFG-DeclineMark-Raid', element.useAtlasSize)
 		else
-			element:SetTexture(element.waitingTexture)
+			element:SetAtlas('UI-LFG-PendingMark-Raid', element.useAtlasSize)
 		end
 
-		element.status = status
 		element:Show()
 	elseif(event ~= 'READY_CHECK_FINISHED') then
-		element.status = nil
+		status = nil
 		element:Hide()
 	end
 
 	if(event == 'READY_CHECK_FINISHED') then
-		if(element.status == 'waiting') then
-			element:SetTexture(element.notReadyTexture)
+		if(status == 'waiting') then
+			element:SetAtlas('UI-LFG-DeclineMark-Raid', element.useAtlasSize)
 		end
 
 		element.Animation:Play()
@@ -132,19 +120,16 @@ local function Enable(self, unit)
 		element.__owner = self
 		element.ForceUpdate = ForceUpdate
 
-		element.readyTexture = element.readyTexture or READY_CHECK_READY_TEXTURE
-		element.notReadyTexture = element.notReadyTexture or READY_CHECK_NOT_READY_TEXTURE
-		element.waitingTexture = element.waitingTexture or READY_CHECK_WAITING_TEXTURE
-
-		local AnimationGroup = element:CreateAnimationGroup()
-		AnimationGroup:HookScript('OnFinished', OnFinished)
+		local AnimationGroup = element.Animation or element:CreateAnimationGroup()
+		AnimationGroup:SetScript('OnFinished', OnFinished)
 		element.Animation = AnimationGroup
 
-		local Animation = AnimationGroup:CreateAnimation('Alpha')
+		local Animation = AnimationGroup.Alpha or AnimationGroup:CreateAnimation('Alpha')
 		Animation:SetFromAlpha(1)
 		Animation:SetToAlpha(0)
 		Animation:SetDuration(element.fadeTime or 1.5)
 		Animation:SetStartDelay(element.finishedTime or 10)
+		AnimationGroup.Alpha = Animation
 
 		self:RegisterEvent('READY_CHECK', Path, true)
 		self:RegisterEvent('READY_CHECK_CONFIRM', Path, true)

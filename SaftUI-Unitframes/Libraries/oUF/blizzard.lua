@@ -1,33 +1,21 @@
 local _, ns = ...
 local oUF = ns.oUF
+local Private = oUF.Private
 
--- sourced from Blizzard_UnitFrame/TargetFrame.lua
-local MAX_BOSS_FRAMES = 8 -- blizzard can spawn more than the default 5 apparently
+local GameVersion = Private.GameVersion
+
+-- sourced from Blizzard_UnitFrame/Mainline/TargetFrame.lua
+local MAX_BOSS_FRAMES = _G.MAX_BOSS_FRAMES or 5
 
 -- sourced from Blizzard_FrameXMLBase/Shared/Constants.lua
 local MEMBERS_PER_RAID_GROUP = _G.MEMBERS_PER_RAID_GROUP or 5
 
-local hookedFrames = {}
-local hookedNameplates = {}
+local isPlayerHooked = false
 local isArenaHooked = false
 local isBossHooked = false
 local isPartyHooked = false
 
-local hiddenParent = CreateFrame('Frame', nil, UIParent)
-hiddenParent:SetAllPoints()
-hiddenParent:Hide()
-
-local function insecureHide(self)
-	self:Hide()
-end
-
-local function resetParent(self, parent)
-	if(parent ~= hiddenParent) then
-		self:SetParent(hiddenParent)
-	end
-end
-
-local function handleFrame(baseName, doNotReparent)
+local function handleFrame(baseName)
 	local frame
 	if(type(baseName) == 'string') then
 		frame = _G[baseName]
@@ -37,19 +25,9 @@ local function handleFrame(baseName, doNotReparent)
 
 	if(frame) then
 		frame:UnregisterAllEvents()
-		frame:Hide()
+		frame:SetRolesets('alwaysBlocked')
 
-		if(not doNotReparent) then
-			frame:SetParent(hiddenParent)
-
-			if(not hookedFrames[frame]) then
-				hooksecurefunc(frame, 'SetParent', resetParent)
-
-				hookedFrames[frame] = true
-			end
-		end
-
-		local health = frame.healthBar or frame.healthbar or frame.HealthBar
+		local health = frame.healthBar or frame.healthbar or frame.HealthBar or (frame.HealthBarsContainer and frame.HealthBarsContainer.healthBar)
 		if(health) then
 			health:UnregisterAllEvents()
 		end
@@ -59,9 +37,9 @@ local function handleFrame(baseName, doNotReparent)
 			power:UnregisterAllEvents()
 		end
 
-		local spell = frame.castBar or frame.spellbar or frame.CastingBarFrame
-		if(spell) then
-			spell:UnregisterAllEvents()
+		local castbar = frame.castBar or frame.spellbar or frame.CastingBarFrame or (frame.CastBarsContainer and frame.CastBarsContainer.castBar)
+		if(castbar) then
+			castbar:UnregisterAllEvents()
 		end
 
 		local altpowerbar = frame.powerBarAlt or frame.PowerBarAlt
@@ -69,7 +47,7 @@ local function handleFrame(baseName, doNotReparent)
 			altpowerbar:UnregisterAllEvents()
 		end
 
-		local buffFrame = frame.BuffFrame
+		local buffFrame = frame.BuffFrame or frame.AurasFrame
 		if(buffFrame) then
 			buffFrame:UnregisterAllEvents()
 		end
@@ -82,11 +60,6 @@ local function handleFrame(baseName, doNotReparent)
 		local totFrame = frame.totFrame
 		if(totFrame) then
 			totFrame:UnregisterAllEvents()
-		end
-
-		local classPowerBar = frame.classPowerBar
-		if(classPowerBar) then
-			classPowerBar:UnregisterAllEvents()
 		end
 
 		local ccRemoverFrame = frame.CcRemoverFrame
@@ -106,6 +79,22 @@ function oUF:DisableBlizzard(unit)
 
 	if(unit == 'player') then
 		handleFrame(PlayerFrame)
+
+		if(GameVersion.Forever and not isPlayerHooked) then
+			isPlayerHooked = true
+
+			-- by killing PlayerFrame we also inadvertedly kill the sound played when
+			-- the player toggles pvp status, so we'll have to re-implement that.
+			-- no fix for this for retail (yet - the event might be added in 12.1.7).
+			-- this should really be handled by GameEvent...
+			local f = CreateFrame('Frame')
+			f:RegisterEvent('PLAYER_PVP_FLAG_CHANGED')
+			f:SetScript('OnEvent', function(_, _, isFlagged)
+				if(isFlagged) then
+					PlaySound(SOUNDKIT.IG_PVP_UPDATE)
+				end
+			end)
+		end
 	elseif(unit == 'pet') then
 		handleFrame(PetFrame)
 	elseif(unit == 'target') then
@@ -123,12 +112,8 @@ function oUF:DisableBlizzard(unit)
 			-- future, watch it
 			handleFrame(BossTargetFrameContainer)
 
-			-- do not reparent frames controlled by containers, the vert/horiz
-			-- layout code will go insane because it won't be able to calculate
-			-- the size properly, 0 or negative sizes in turn will break the
-			-- layout manager, fun...
 			for i = 1, MAX_BOSS_FRAMES do
-				handleFrame('Boss' .. i .. 'TargetFrame', true)
+				handleFrame('Boss' .. i .. 'TargetFrame')
 			end
 		end
 	elseif(unit:match('party%d?$')) then
@@ -138,7 +123,7 @@ function oUF:DisableBlizzard(unit)
 			handleFrame(PartyFrame)
 
 			for frame in PartyFrame.PartyMemberFramePool:EnumerateActive() do
-				handleFrame(frame, true)
+				handleFrame(frame)
 			end
 
 			for i = 1, MEMBERS_PER_RAID_GROUP do
@@ -149,24 +134,25 @@ function oUF:DisableBlizzard(unit)
 		if(not isArenaHooked) then
 			isArenaHooked = true
 
-			handleFrame(CompactArenaFrame)
+			if(CompactArenaFrame) then -- does not exist in Forever
+				handleFrame(CompactArenaFrame)
 
-			for _, frame in next, CompactArenaFrame.memberUnitFrames do
-				handleFrame(frame, true)
+				for _, frame in next, CompactArenaFrame.memberUnitFrames do
+					handleFrame(frame)
+				end
+			end
+
+			if(ArenaEnemyMatchFramesContainer) then
+				-- old arena frames, they're still used for flag carriers etc in battlegrounds
+				handleFrame(ArenaEnemyMatchFramesContainer)
+
+				for _, frame in next, ArenaEnemyMatchFramesContainer.UnitFrames do
+					handleFrame(frame)
+				end
 			end
 		end
+	elseif(unit:match('nameplate%d?%d?%d?$')) then
+		local frame = C_NamePlate.GetNamePlateForUnit(unit)
+		handleFrame(frame.UnitFrame)
 	end
-end
-
-function oUF:DisableNamePlate(frame)
-	if(not(frame and frame.UnitFrame)) then return end
-	if(frame.UnitFrame:IsForbidden()) then return end
-
-	if(not hookedNameplates[frame]) then
-		frame.UnitFrame:HookScript('OnShow', insecureHide)
-
-		hookedNameplates[frame] = true
-	end
-
-	handleFrame(frame.UnitFrame, true)
 end

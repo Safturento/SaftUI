@@ -1,12 +1,12 @@
 --[[
 # Element: Threat Indicator
 
-Handles the visibility and updating of an indicator based on the unit's current threat level.
+Handles the visibility and updating of an indicator based on the unit's current threat level.  
+The element works by changing the texture's vertex color.
 
 ## Widget
 
 ThreatIndicator - A `Texture` used to display the current threat level.
-The element works by changing the texture's vertex color.
 
 ## Notes
 
@@ -35,7 +35,7 @@ local Private = oUF.Private
 local unitExists = Private.unitExists
 
 local function Update(self, event, unit)
-	if(unit ~= self.unit) then return end
+	if(unit ~= self.__unit) then return end
 
 	local element = self.ThreatIndicator
 	--[[ Callback: ThreatIndicator:PreUpdate(unit)
@@ -47,7 +47,7 @@ local function Update(self, event, unit)
 	if(element.PreUpdate) then element:PreUpdate(unit) end
 
 	local feedbackUnit = element.feedbackUnit
-	unit = unit or self.unit
+	unit = unit or self.__unit
 
 	local status
 	-- BUG: Non-existent '*target' or '*pet' units cause UnitThreatSituation() errors
@@ -59,13 +59,12 @@ local function Update(self, event, unit)
 		end
 	end
 
-	local r, g, b
+	local color
 	if(status and status > 0) then
-		local color = self.colors.threat[status]
-		r, g, b = color[1], color[2], color[3]
+		color = self.colors.threat[status]
 
-		if(element.SetVertexColor) then
-			element:SetVertexColor(r, g, b)
+		if(element.SetVertexColor and color) then
+			element:SetVertexColor(color:GetRGB())
 		end
 
 		element:Show()
@@ -73,18 +72,16 @@ local function Update(self, event, unit)
 		element:Hide()
 	end
 
-	--[[ Callback: ThreatIndicator:PostUpdate(unit, status, r, g, b)
+	--[[ Callback: ThreatIndicator:PostUpdate(unit, status, color)
 	Called after the element has been updated.
 
 	* self   - the ThreatIndicator element
 	* unit   - the unit for which the update has been triggered (string)
 	* status - the unit's threat status (see [UnitThreatSituation](https://warcraft.wiki.gg/wiki/API_UnitThreatSituation))
-	* r      - the red color component based on the unit's threat status (number?)[0-1]
-	* g      - the green color component based on the unit's threat status (number?)[0-1]
-	* b      - the blue color component based on the unit's threat status (number?)[0-1]
+	* color  - the used ColorMixin-based object (table?)
 	--]]
 	if(element.PostUpdate) then
-		return element:PostUpdate(unit, status, r, g, b)
+		return element:PostUpdate(unit, status, color)
 	end
 end
 
@@ -100,7 +97,7 @@ local function Path(self, ...)
 end
 
 local function ForceUpdate(element)
-	return Path(element.__owner, 'ForceUpdate', element.__owner.unit)
+	return Path(element.__owner, 'ForceUpdate', element.__owner.__unit)
 end
 
 local function Enable(self)
