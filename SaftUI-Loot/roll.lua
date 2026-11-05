@@ -70,7 +70,7 @@ function LT:SkinRollFrame(frame)
 		button.Text = button:CreateFontString(nil, 'OVERLAY')
 		button.Text:SetFontObject(GameFontNormal)
 		button.Text:SetPoint('CENTER', 1, 0)
-		button.Text:SetVertexColor(unpack(st.config.profile.colors.text[info.color]))
+		button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
 
 		prev = button
 	end
@@ -159,10 +159,10 @@ function LT:GroupLootFrame_OnUpdateTimer(self, elapsed)
 
 	self.Text:SetText(st.StringFormat:ToClock(sec))
 
-	self:SetStatusBarColor(unpack(st.config.profile.colors.button.blue))
+	self:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
 
 	if sec < 60 then
-		self.Text:SetVertexColor(unpack(st.config.profile.colors.text.red))
+		self.Text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
 	else
 		self.Text:SetVertexColor(1, 1, 1)
 	end

@@ -1,4 +1,3 @@
-
 -- LOOT_ROLL_YOU_WON = "You won: %s",
 -- LOOT_ITEM_SELF = "You receive loot: %s.",
 -- LOOT_ITEM_REFUND = "You are refunded: %s.",
@@ -93,6 +92,8 @@ end
 
 
 local function get_match(string)
+	if issecretvalue(string) then return end
+
 	string = string:gsub("%(", ""):gsub("%)", "")
 	for pattern, details in pairs(patterns) do
 		local keys = details['keys']
@@ -218,7 +219,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			Util:ClearItemQuality(item)
 
 			if info.itemSubType == "Mount" then
-                local r,g,b = unpack(st.config.profile.colors.button.yellow)
+                local r,g,b = st.config.profile.colors.button.yellow:GetRGB()
 				item.backdrop:SetBackdropBorderColor(r, g, b, 1)
 				item.backdrop:SetBackdropColor(r, g, b, .6)
 				item.icon.backdrop:SetBackdropBorderColor(r, g, b, 1)
@@ -290,7 +291,7 @@ local function colorItemName(name, quality)
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
 
-	return st.StringFormat:ColorString(name, unpack(item_color))
+	return st.StringFormat:ColorString(name, item_color:GetRGB())
 end
 
 function LT:LootFeedAddCurrency(match)
@@ -332,7 +333,7 @@ function LT:LootFeedAddItem(match)
 	local item_color = st.config.profile.colors.item_quality[quality]
 	if not item_color then return st:Debug('Loot', ('Invalid quality (%d) for item %s'):format(quality, name)) end
 
-	name = st.StringFormat:ColorString(name, unpack(item_color))
+	name = st.StringFormat:ColorString(name, item_color:GetRGB())
 
 	self:LootFeedPush({
 		name = name,
