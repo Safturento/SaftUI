@@ -1,0 +1,20 @@
+# Store every text file as LF, regardless of each machine's core.autocrlf.
+* text=auto eol=lf
+
+*.lua       text eol=lf
+*.toc       text eol=lf
+*.xml       text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.sh        text eol=lf
+
+# Windows batch files need CRLF to run correctly.
+*.bat       text eol=crlf
+
+# Game media — never attempt line-ending conversion.
+*.tga       binary
+*.blp       binary
+*.ttf       binary
+*.otf       binary
+*.png       binary
+*.jpg       binary
