@@ -90,7 +90,7 @@ function INV:InitializeLoadingOverlay(container)
 	local loadingBar = st:CreateStatusBar(container:GetName().."LoadingBar", loadingOverlay, '-/-')
 	loadingBar:SetPoint('CENTER')
 	loadingBar:SetSize(300, 30)
-	loadingBar:SetStatusBarColor(unpack(st.config.profile.colors.button.blue))
+	loadingBar:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
 	loadingOverlay.loadingBar = loadingBar
 
 	container.loadingOverlay = loadingOverlay
@@ -292,7 +292,7 @@ function INV:GetNumContainerSlots(bagIds)
 	return empty, total
 end
 
-function INV:UpdateContainer(id)
+function INV:UpdateContainer(id, updateLayout)
 	local container = self.containers[id]
 	if not container and container:IsShown() then return end
 	local sortedInventory, numItems, numLoading = self:GetSortedInventory(id)
@@ -305,7 +305,9 @@ function INV:UpdateContainer(id)
 
 	self:FlushCategories(container, sortedInventory)
 
-	self:UpdateContainerLayout(id)
+	if updateLayout then
+		self:UpdateContainerLayout(id)
+	end
 
 	container:SetLoading(numItems - numLoading, numItems)
 
@@ -355,6 +357,47 @@ local function getNumUsedColumns(columns)
     return #columns
 end
 
+function INV:CompactCategories(container)
+	local prev
+    local sorted = {}
+
+    for _, category in pairs(container.categories) do
+        tinsert(sorted, category)
+    end
+    table.sort(sorted, function(a,b)
+        if self.config.inverted then
+            return a:GetHeight() < b:GetHeight()
+        else
+            return a:GetHeight() > b:GetHeight()
+        end
+     end)
+
+    for _, category in pairs(sorted) do
+        if not container.filterButton:GetChecked() and INV.config.filters.categories[container.id][category.name] then
+            INV:FlushCategory(category)
+        end
+
+        if category and category:IsShown() then
+            category:ClearAllPoints()
+
+            local column = getShortestColumn(container.columns)
+            category:ClearAllPoints()
+            if #column.categories == 0 then
+                category:SetPoint('TOPLEFT', column, 'TOPLEFT', 0, 0)
+            else
+                category:SetPoint('TOPLEFT', column.categories[#column.categories], 'BOTTOMLEFT', 0, -self.config.buttonspacing)
+            end
+
+            tinsert(column.categories, category)
+            column:SetHeight(column:GetHeight() + category:GetHeight() + self.config.buttonspacing)
+        end
+    end
+
+     for _, column in pairs(container.columns) do
+         column:SetHeight(column:GetHeight() - self.config.buttonspacing)
+     end
+end
+
 function INV:UpdateContainerLayout(id)
 	local container = self.containers[id]
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
@@ -380,49 +423,12 @@ function INV:UpdateContainerLayout(id)
     local maxWidth = self.config.buttonheight * containerConfig.maxColumns
                     + self.config.buttonspacing * (containerConfig.maxColumns - 1)
 
-     for _, column in pairs(container.columns) do
-         column:SetHeight(0)
-         column.categories = {}
-     end
+	for _, column in pairs(container.columns) do
+		column:SetHeight(0)
+		column.categories = {}
+	end
 
-    local prev
-    local sorted = {}
-
-    for _, category in pairs(container.categories) do
-        tinsert(sorted, category)
-    end
-    table.sort(sorted, function(a,b)
-        if self.config.inverted then
-            return a:GetHeight() < b:GetHeight()
-        else
-            return a:GetHeight() > b:GetHeight()
-        end
-     end)
-
-    for _, category in pairs(sorted) do
-        if not container.filterButton:GetChecked() and INV.config.filters.categories[id][category.name] then
-            INV:FlushCategory(category)
-        end
-
-        if category and category:IsShown() then
-            category:ClearAllPoints()
-
-            local column = getShortestColumn(container.columns)
-            category:ClearAllPoints()
-            if #column.categories == 0 then
-                category:SetPoint('TOPLEFT', column, 'TOPLEFT', 0, 0)
-            else
-                category:SetPoint('TOPLEFT', column.categories[#column.categories], 'BOTTOMLEFT', 0, -self.config.buttonspacing)
-            end
-
-            tinsert(column.categories, category)
-            column:SetHeight(column:GetHeight() + category:GetHeight() + self.config.buttonspacing)
-        end
-    end
-
-     for _, column in pairs(container.columns) do
-         column:SetHeight(column:GetHeight() - self.config.buttonspacing)
-     end
+	self:CompactCategories(container)
 
     local numUsedColumns = getNumUsedColumns(container.columns)
     local tallestColumn = getTallestColumn(container.columns)

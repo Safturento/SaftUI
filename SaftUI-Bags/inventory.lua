@@ -65,7 +65,7 @@ function INV:SelectBankCategory(clickedHeader)
 
     for containerName, container in pairs(self.containers) do
         if containerName == selectedContainer.id then
-            container.backdrop:SetBackdropBorderColor(unpack(st.config.profile.colors.button.blue))
+            container.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
         else
             st:SetBackdrop(container, self.config.template)
         end
@@ -116,10 +116,10 @@ function INV:UpdateConfig(id)
 	st:SetBackdrop(container, self.config.template)
 end
 
-function INV:UpdateVisibleContainers()
+function INV:UpdateVisibleContainers(updateLayout)
 	for containerName, container in pairs(self.containers) do
 		if container:IsShown() then
-			self:UpdateContainer(containerName)
+			self:UpdateContainer(containerName, updateLayout)
 		end
 	end
 	self:UpdateSearchFilter(self.containers.bag.search, false)
@@ -131,12 +131,16 @@ function INV:UpdateHandler(_, elapsed)
 	self.IS_UPDATING = true
 	self.NEED_UPDATE = false
 	self:UpdateGold()
-	self:UpdateVisibleContainers()
+	self:UpdateVisibleContainers(self.UPDATE_LAYOUT)
+	self.UPDATE_LAYOUT = false
 	self.IS_UPDATING = false
 end
 
-function INV:QueueUpdate()
+function INV:QueueUpdate(updateLayout)
 	self.NEED_UPDATE = true
+	if updateLayout then
+		self.UPDATE_LAYOUT = true
+	end
 end
 
 function INV:ADDON_LOADED(event, addon)
@@ -145,7 +149,6 @@ function INV:ADDON_LOADED(event, addon)
 		self:SecureHook(ItemRackOpt, 'DeleteSet', 'UpdateItemRackCategories')
 	end
 end
-
 
 function INV:OnEnable()
 	self.config = st.config.profile.inventory

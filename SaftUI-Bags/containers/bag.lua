@@ -18,7 +18,7 @@ function INV:ShowBags()
 		C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
 	end
 	self.containers.bag:Show()
-	self:QueueUpdate()
+	self:QueueUpdate(true)
 	self:UpdateCooldowns()
 	self:MovePlayerBagSlots()
 end
@@ -29,19 +29,24 @@ function INV:HideBags()
 	for _,slot in pairs(self.containers.bag.slots) do
 		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
 	end
+
 	if self.containers.bank and self.containers.bank:IsShown() then
 		self.containers.bank:Hide()
+		HideUIPanel(BankFrame);
+		CloseBankFrame();
+	end
+
+	if self.containers.combinedbank and self.containers.combinedbank:IsShown() then
+		self.containers.combinedbank:Hide()
 		HideUIPanel(BankFrame);
 		CloseBankFrame();
 	end
 	if CurrencyTransferMenu and CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
 end
 
-
 function INV:MovePlayerBagSlots()
 	local bagSlotContainer = self.containers.bag.bagSlotContainer
 	local BagSlots = bagSlotContainer.slots
-
 
 	local prev
 	for _, slot in pairs(BagSlots) do
@@ -55,9 +60,42 @@ function INV:MovePlayerBagSlots()
 	end
 end
 
+local settingsMenuItems = {
+    mergeStacks = {
+        text = 'Merge Stacks',
+        isChecked = function()
+            return INV.config.stackItems
+        end,
+        setChecked = function(key, menuInputData, menu)
+            INV.config.stackItems = not INV.config.stackItems
+            INV:QueueUpdate()
+       end,
+    },
+}
+
+local function isChecked(key)
+    return settingsMenuItems[key].isChecked()
+end
+
+local function setChecked(key, menuInputData, menu)
+   settingsMenuItems[key].setChecked(key, menuInputData, menu)
+   menu:Close()
+end
+
+function INV:OpenSettingsDropdown()
+	if not INV.SettingsDropdown then
+		INV.SettingsDropdown = st:CreateCheckboxDropdown("SaftUIBagsSettingsMenu", UIParent, {
+			mergeStacks = { text = 'Merge Stacks'},
+		}, isChecked, setChecked)
+	end
+
+	INV.SettingsDropdown:Open()
+end
+
 function INV:InitializePlayerBagSlots()
 
 	st:Kill(MainMenuBarBackpackButton)
+	st:Kill(BagBarExpandToggle)
 
 	local BagSlots = {}
 	for i=0,3 do
@@ -85,14 +123,37 @@ function INV:InitializePlayerBagSlots()
 	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown()) end)
 	self.containers.bag.header.slotToggle = slotToggle
 
+
+	local settingsButton = st:CreateButton('BagSettingsButton', self.containers.bag.header, 'Settings', 'none')
+	settingsButton:SetPoint('LEFT',slotToggle, 'RIGHT', 8, 0)
+	settingsButton:SetSize(64, st.config.profile.headers.height - 8)
+	settingsButton:SetScript('OnClick', function()
+		INV:OpenSettingsDropdown()
+	end)
+
+	self.containers.bag.header.settingsButton = settingsButton
+
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
-		st:SkinIcon(slot.icon, nil, slot)
 		st:SkinActionButton(slot, st.config.profile.buttons)
-		st:SetBackdrop(slot, 'thick')
-		slot:SetNormalTexture("")
+
+		st:Kill(slot.AnimIcon)
+
+		st:Kill(slot.SlotHighlightTexture)
+		st:Kill(slot:GetPushedTexture())
+		st:Kill(slot:GetHighlightTexture())
+		if slot.UpdateTextures then
+			self:SecureHook(slot, 'UpdateTextures', function(self)
+				self:GetNormalTexture():Hide()
+				self:GetPushedTexture():Hide()
+				self:GetHighlightTexture():Hide()
+				self.SlotHighlightTexture:Hide()
+			end)
+		end
+
 		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+
 	end
 
 	self.containers.bag.bagSlotContainer = bagSlotContainer
@@ -122,7 +183,7 @@ local function UpdateContainerSlots(container)
     })
 	text = text .. st.StringFormat:ColorString(
 			(('%d/%d '):format(total - empty, total)),
-			unpack(st.config.profile.colors.text.green)
+			st.config.profile.colors.text.green:GetRGB()
 	)
 
 	container.footer.slots:SetText(text)

@@ -210,9 +210,9 @@ function INV:UpdateCurrencyCategory(forceShow)
 
         slot.Count:SetText(currencyData.quantity)
         if currencyData.isAccountTransferable or currencyData.isAccountWide then
-            slot.Count:SetTextColor(unpack(st.config.profile.colors.text.cyan))
+            slot.Count:SetTextColor(st.config.profile.colors.text.cyan:GetRGB())
         else
-            slot.Count:SetTextColor(unpack(st.config.profile.colors.text.white))
+            slot.Count:SetTextColor(st.config.profile.colors.text.white:GetRGB())
         end
 
         slot:ClearAllPoints()

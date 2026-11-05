@@ -23,11 +23,11 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
 		if slot.info.isWarbound then
-			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.cyan))
+			slot.itemLevel:SetTextColor(st.config.profile.colors.text.cyan:GetRGB())
 		elseif slot.info.isBoE then
-			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.green))
+			slot.itemLevel:SetTextColor(st.config.profile.colors.text.green:GetRGB())
 		else
-			slot.itemLevel:SetTextColor(unpack(st.config.profile.colors.text.white))
+			slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
 		end
 
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
@@ -74,7 +74,9 @@ function INV:AssignSlot(container, slot, slotInfo)
 	slot:Show()
 end
 
-hooksecurefunc(st.retail and 'StackSplitOkayButton_OnClick' or 'StackSplitFrameOkay_Click', function()
+local stackSplitButtonClick = StackSplitOkayButton_OnClick and 'StackSplitOkayButton_OnClick' or 'StackSplitFrameOkay_Click'
+
+hooksecurefunc(stackSplitButtonClick, function()
 	local bag_id, slot_id = INV:GetFirstEmptySlot(StackSplitFrame.owner.container.id)
 	if bag_id and slot_id then
 		C_Container.PickupContainerItem(bag_id, slot_id)
@@ -174,8 +176,10 @@ function INV:CreateSlot(container, categoryName)
     slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
     if not slot.icon then st:Error(slotName.." is missing an icon") end
 
-    slot.IconOverlay:ClearAllPoints()
-    slot.IconOverlay:SetAllPoints(slot.icon)
+    if slot.IconOverlay then
+        slot.IconOverlay:ClearAllPoints()
+        slot.IconOverlay:SetAllPoints(slot.icon)
+    end
 
     slot.Count = _G[slot:GetName() .. "Count"]
     slot.Count:SetDrawLayer('OVERLAY', 99)

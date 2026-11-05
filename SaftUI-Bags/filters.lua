@@ -84,7 +84,8 @@ local RESTORED_ARTIFACT_TEXT = 'Carefully crate the restored artifact'
 local TRADEABLE_ITEM = 'You may trade this item with players'
 local PROFESSION_KNOWLEDGE = 'Use: Study to increase your'
 local RED_CLASS = 'cffff2020Classes:'
-local DELVE_CURIO = 'Combat Curio'
+local DELVE_CURIO = ' Curio'
+local SECRETS_OF_AZEROTH = 'Secrets of Azeroth'
 
 local function matchesAny(tooltipText, ...)
 	for _, pattern in pairs({ ... }) do
@@ -193,6 +194,10 @@ INV:AddFilter('Death Knight/Warlock/Demon Hunter', function(item)
 	return matchesAny(item.tooltipText, "Death Knight, Warlock, Demon Hunter")
 end)
 
+INV:AddFilter('Secrets of Azeroth', function(item)
+	return matchesAny(item.tooltipText, SECRETS_OF_AZEROTH)
+end)
+
 INV:AddFilter('Reputation', function(item)
 	return string.matchnocase(item.tooltipText, USE_GRANTS)
 end)
@@ -200,6 +205,7 @@ end)
 INV:AddFilter('Delves', function(item)
 	return string.matchnocase(item.tooltipText, DELVE_CURIO)
 		or item.name == 'Delver\'s Bounty'
+		or item.name == 'Trovehunter\'s Bounty'
 end)
 
 INV:AddFilter('Container', function(item)

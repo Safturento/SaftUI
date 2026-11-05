@@ -25,7 +25,7 @@ function INV:InitializeBankCategorySelection()
 		buttonWidth = 140,
 		buttonSpacing = 6,
 		template = self.config.template,
-		onClick = function(button) BankFrame.BankPanel:SetBankType(button.config.bankType) end,
+		onClick = function(button) BankFrame:SetTab(button.config.bankId) end,
 		postCreate = function(button)
 			local visibility = st:CreateCheckButton(button:GetName()..'VisibilityCheckbox', button)
 			st:SetBackdrop(visibility, 'none')
@@ -43,7 +43,7 @@ function INV:InitializeBankCategorySelection()
 				INV:UpdateContainerBagIds(button.config.bagType, checked)
 			end)
 
-			local r,g,b = unpack(st.config.profile.colors.button.grey)
+			local r,g,b = st.config.profile.colors.button.grey:GetRGB()
 			visibility:GetCheckedTexture():SetVertexColor(r, g, b, 1)
 			visibility:GetCheckedTexture():SetTexture(st.textures.eyeOpen)
 			unchecked:SetVertexColor(r, g, b, 0.3)
@@ -54,14 +54,17 @@ function INV:InitializeBankCategorySelection()
 				label = 'Bank',
 				bagType = 'bank',
 				bankType = Enum.BankType.Character,
+				bankId = BankFrame.characterBankTabID,
 			},
 			{
 				label = 'Warband',
 				bagType = 'warband',
 				bankType = Enum.BankType.Account,
+				bankId = BankFrame.accountBankTabID,
 			},
 		}
 	})
+
 
 	selector:SetPoint('BOTTOMLEFT', self.containers.combinedbank, 'TOPLEFT', 0, 10)
 end
@@ -121,7 +124,7 @@ local function UpdateContainerSlots(container)
 	empty, total = INV:GetNumContainerSlots(INV.bagIds.warband)
 	text = text .. st.StringFormat:ColorString(
 			(('%d/%d'):format(total - empty, total)),
-			unpack(st.config.profile.colors.text.cyan)
+			st.config.profile.colors.text.cyan:GetRGB()
 	)
 
 	container.footer.slots:SetText(text)
@@ -143,5 +146,4 @@ function INV:InitializeCombinedBank()
 
         self:InitializeDepositButton()
     end
-
 end

@@ -65,7 +65,7 @@ end
 --	self:QueueUpdate()
 --end
 
-function INV:GetInventoryItemInfo(bagID, slotID)
+function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
 		local tooltipText = self:ScanBagItem(bagID, slotID)
@@ -133,6 +133,7 @@ function INV:GetInventoryItemInfo(bagID, slotID)
 				vendorPrice = vendorPrice,
 				texture = texture or item.iconFileId,
 				locked = item.locked,
+				container = containerId,
 				bagID = bagID,
 				slotID = slotID,
 				tooltipText = tooltipText,
@@ -162,7 +163,7 @@ function INV:GetSortedInventory(id)
 	local numLoading = 0
 	for _,bagID in pairs(container.bag_ids) do
 		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
-			local item = self:GetInventoryItemInfo(bagID, slotID)
+			local item = self:GetInventoryItemInfo(bagID, slotID, id)
 			if item then
 				numItems = numItems + 1
 				if item.loading then
@@ -286,8 +287,6 @@ function INV:FlushCategories(container, sorted_inv)
 	for categoryName,category in pairs(container.categories) do
 		if not (sorted_inv[categoryName] or categoryName == 'Bags' or categoryName == 'Currencies') then
 			INV:FlushCategory(category)
-			--for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
-			--category:Hide()
 		end
 	end
 end
