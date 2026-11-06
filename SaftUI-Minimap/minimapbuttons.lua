@@ -13,6 +13,11 @@ local MicroMenu = st:GetModule('MicroMenu')
 
 local DBICON_PREFIX = 'LibDBIcon10_'
 
+-- Addons that build their own button without LibDBIcon (FollowTheArrow, DungeonMaster, Lueur, ...)
+-- name it '<Addon>MinimapButton' and parent it to Minimap. That naming is the explicit marker we
+-- key on: map pins (HandyNotes, Questie) and other Minimap children never use it.
+local CUSTOM_BUTTON_SUFFIX = 'MinimapButton'
+
 local entries = {} -- [name] = compartment data we registered
 local handled = {} -- [name] = true once a LibDBIcon button has been processed
 local callbackOwner = {} -- key for LibDBIcon / LibDataBroker callbacks
@@ -133,6 +138,71 @@ local function RegisterEntry(name, button)
     AddonCompartmentFrame:RegisterAddon(data)
 end
 
+-- Custom (non-LibDBIcon) buttons have no data object, so entries forward to the button's own
+-- scripts. They get our anchor frame as `self` so menus/tooltips open at the compartment.
+local function GetCustomIcon(button)
+    local icon = button.icon or button.Icon
+    if icon and icon.GetTexture then
+        return icon:GetTexture(), icon.GetAtlas and icon:GetAtlas()
+    end
+
+    for _, region in ipairs({ button:GetRegions() }) do
+        if region:IsObjectType('Texture') and region:GetDrawLayer() == 'ARTWORK' then
+            return region:GetTexture(), region:GetAtlas()
+        end
+    end
+end
+
+local function RegisterCustomEntry(name, title, button)
+    local texture, atlas = GetCustomIcon(button)
+
+    local data = {
+        text = title,
+        icon = atlas or texture,
+        func = function(_, menuInputData)
+            local onClick = button:GetScript('OnClick')
+            if onClick then
+                onClick(GetAnchor(), menuInputData and menuInputData.buttonName or 'LeftButton')
+            end
+        end,
+        funcOnEnter = function(frame)
+            local onEnter = button:GetScript('OnEnter')
+            if onEnter then onEnter(frame) end
+        end,
+        funcOnLeave = function(frame)
+            local onLeave = button:GetScript('OnLeave')
+            if onLeave then
+                onLeave(frame)
+            elseif GameTooltip:GetOwner() == frame then
+                GameTooltip:Hide()
+            end
+        end,
+    }
+
+    entries[name] = data
+    AddonCompartmentFrame:RegisterAddon(data)
+end
+
+local function HandleCustomButton(name, button)
+    if handled[name] then return end
+    if not button:IsObjectType('Button') or button:GetParent() ~= Minimap then return end
+    if not button:GetScript('OnClick') then return end
+    handled[name] = true
+
+    HideButton(button)
+
+    -- DungeonMaster and Lueur declare AddonCompartmentFunc in their TOC, so hiding the button is enough
+    local addon = name:sub(1, -#CUSTOM_BUTTON_SUFFIX - 1)
+    local title = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addon, 'Title')
+    if type(title) ~= 'string' or title == '' then
+        title = addon:gsub('(%l)(%u)', '%1 %2')
+    end
+
+    if not (InCompartmentByToc(addon) or InCompartmentByText(title)) then
+        RegisterCustomEntry(name, title, button)
+    end
+end
+
 local function HandleButton(name, button)
     if handled[name] or not button then return end
     if not GetDataObject(name, button) then return end
@@ -187,13 +257,26 @@ local function HookLibraries()
     end
 end
 
+local function ScanCustomButtons()
+    for _, child in ipairs({ Minimap:GetChildren() }) do
+        local name = child:GetName()
+        if name and #name > #CUSTOM_BUTTON_SUFFIX and name:sub(-#CUSTOM_BUTTON_SUFFIX) == CUSTOM_BUTTON_SUFFIX
+            and not name:find('^'..DBICON_PREFIX) and not name:find('^SaftUI')
+            and not issecurevariable(name) then
+            HandleCustomButton(name, child)
+        end
+    end
+end
+
 local function ScanButtons()
     local dbicon = LibStub('LibDBIcon-1.0', true)
-    if not dbicon then return end
-
-    for _, name in ipairs(dbicon:GetButtonList()) do
-        HandleButton(name, dbicon:GetMinimapButton(name))
+    if dbicon then
+        for _, name in ipairs(dbicon:GetButtonList()) do
+            HandleButton(name, dbicon:GetMinimapButton(name))
+        end
     end
+
+    ScanCustomButtons()
 end
 
 -- Lists Minimap children that aren't Blizzard's, LibDBIcon's or SaftUI's
@@ -226,6 +309,7 @@ function MicroMenu:FindUnhandledMinimapButtons()
 end
 
 local function ReportUnhandled()
+    ScanCustomButtons() -- catches buttons created after login
     local found, unnamed = MicroMenu:FindUnhandledMinimapButtons()
     if #found == 0 and unnamed == 0 then return end
 
@@ -261,8 +345,11 @@ function MicroMenu:SetupMinimapButtons()
             C_Timer.After(0, Start)
         elseif ready then
             -- Load-on-demand addons can bring LibDBIcon in late
-            HookLibraries()
-            ScanButtons()
+            -- The addon's own ADDON_LOADED handler (which may create its button) runs after ours
+            C_Timer.After(0, function()
+                HookLibraries()
+                ScanButtons()
+            end)
         end
     end)
 
