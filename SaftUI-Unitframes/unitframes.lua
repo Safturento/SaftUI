@@ -31,6 +31,13 @@ function UF:GetFrame(unitframe, configPosition)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
 end
 
+-- Blizzard's UnitFrame_OnEnter passes self.unit straight to GameTooltip:SetUnit,
+-- which throws if the frame has no unit yet (or the unit doesn't exist).
+function UF.OnEnter(self)
+	if not self.unit or not UnitExists(self.unit) then return end
+	UnitFrame_OnEnter(self)
+end
+
 function UF.ConstructUnit(self, unit)
 	-- Ensure that we have access to a numberless unit type for config tables
 	local base_unit = self:GetParent():GetAttribute('base_unit')
@@ -46,7 +53,7 @@ function UF.ConstructUnit(self, unit)
 		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
 	end
 	self:RegisterForClicks('AnyUp')
-	self:SetScript('OnEnter', UnitFrame_OnEnter)
+	self:SetScript('OnEnter', UF.OnEnter)
 	self:SetScript('OnLeave', UnitFrame_OnLeave)
 	
 	-- Used as a parent to text objects to ensure they're always above status bars
