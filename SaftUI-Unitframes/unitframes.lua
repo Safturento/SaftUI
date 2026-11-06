@@ -31,10 +31,12 @@ function UF:GetFrame(unitframe, configPosition)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
 end
 
--- Blizzard's UnitFrame_OnEnter passes self.unit straight to GameTooltip:SetUnit,
--- which throws if the frame has no unit yet (or the unit doesn't exist).
+-- oUF keeps the active unit in __unit, but Blizzard's UnitFrame_OnEnter reads
+-- self.unit and passes it straight to GameTooltip:SetUnit, which throws on nil.
 function UF.OnEnter(self)
-	if not self.unit or not UnitExists(self.unit) then return end
+	local unit = self.__unit
+	if not unit or not UnitExists(unit) then return end
+	self.unit = unit
 	UnitFrame_OnEnter(self)
 end
 

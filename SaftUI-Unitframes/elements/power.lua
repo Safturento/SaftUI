@@ -9,7 +9,7 @@ local UF = st:GetModule('Unitframes')
 	are set as true
 ]]
 local function GetDisplayPower(element)
-	local unit = element.__owner.unit
+	local unit = element.__owner.__unit
 
 	if unit == 'player' then
 		return Enum.PowerType.Mana, 0

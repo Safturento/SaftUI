@@ -2,7 +2,7 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local function Update(unitframe, event, unit, powerType)
-	if(unitframe.unit ~= unit) then return end
+	if(unitframe.__unit ~= unit) then return end
 	local additionalPower = unitframe.AdditionalPower
 
 	if(additionalPower.PreUpdate) then

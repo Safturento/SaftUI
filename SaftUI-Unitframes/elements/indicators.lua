@@ -11,7 +11,7 @@ local indicators = {
        postUpdate = function(self)
            -- oUF no longer passes a usable role to PostUpdate (nil on Forever/12.1.5+,
            -- an enum before that), so look up the role string ourselves.
-           local unit = self.unitframe and self.unitframe.unit
+           local unit = self.unitframe and self.unitframe.__unit
            local role = unit and UnitGroupRolesAssigned(unit)
            if issecretvalue(role) then role = nil end
 

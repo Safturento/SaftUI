@@ -13,7 +13,7 @@ local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxC
 end
 
 local function Constructor(unitframe)
-	if not (unitframe.unit == 'player') then return end
+	if not (unitframe.base_unit == 'player') then return end
 
 	local classPower = UF:AddElement('Frame', unitframe, 'ClassPower')
 	for i = 1, 10 do
