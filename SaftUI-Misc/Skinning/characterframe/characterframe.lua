@@ -143,6 +143,10 @@ function CF:SkinEquipSlots()
 	--CharacterHandsSlot:ClearAllPoints()
 	--CharacterHandsSlot:SetPoint('TOPRIGHT', CharacterFrame.header, 'BOTTOMRIGHT', -9, -9)
 	--
+	-- The weapon slot re-layout below is built around retail's CharacterFrameInset.
+	-- Forever's CharacterFrame (pane hosts) has no inset and lays these out itself.
+	if not CharacterFrameInset then return end
+
 	CharacterSecondaryHandSlot:ClearAllPoints()
 	if st.retail then
 		CharacterSecondaryHandSlot:SetPoint('BOTTOMLEFT', CharacterFrameInset, 'BOTTOM', 3, 1)
@@ -512,9 +516,12 @@ function CF:OnEnable()
 	if CharacterModelScene then
 		st:StripTextures(CharacterModelScene)
 		--st:SetBackdrop(CharacterModelScene, st.config.profile.panels.template)
-		CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 7, 0)
-		CharacterModelScene:SetPoint('TOPRIGHT', CharacterHandsSlot, 'TOPLEFT', -7, 0)
-		CharacterModelScene:SetPoint('BOTTOM', CharacterMainHandSlot, 'TOP', 0, 7)
+		-- Retail layout only; Forever anchors the model to its own pane host.
+		if CharacterFrameInset then
+			CharacterModelScene:SetPoint('TOPLEFT', CharacterHeadSlot, 'TOPRIGHT', 7, 0)
+			CharacterModelScene:SetPoint('TOPRIGHT', CharacterHandsSlot, 'TOPLEFT', -7, 0)
+			CharacterModelScene:SetPoint('BOTTOM', CharacterMainHandSlot, 'TOP', 0, 7)
+		end
 		st:Kill(CharacterModelScene.BackgroundTopLeft)
 		st:Kill(CharacterModelScene.BackgroundTopRight)
 		st:Kill(CharacterModelScene.BackgroundBotLeft)
