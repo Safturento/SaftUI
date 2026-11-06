@@ -113,12 +113,13 @@ function st:SetBackdrop(frame, template)
 		frame.backdrop:SetFrameLevel(max(0, parent:GetFrameLevel()-1))
 
         if isTexture then
-           frame:HookScript('OnShow', function()
-               parent.backdrop:Show()
+           -- The backdrop lives on the texture, not its parent
+           frame:HookScript('OnShow', function(self)
+               self.backdrop:Show()
            end)
 
-           frame:HookScript('OnHide', function()
-               parent.backdrop:Hide()
+           frame:HookScript('OnHide', function(self)
+               self.backdrop:Hide()
            end)
         end
 	end
