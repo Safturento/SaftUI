@@ -16,10 +16,13 @@ function st:RoundToPixel(value, frame)
 		return value
 	end
 	local pixel = (768 / physicalHeight) / scale
-	if value < 0 then
-		return -math.floor(-value / pixel + 0.5) * pixel
-	end
-	return math.floor(value / pixel + 0.5) * pixel
+	local pixels = math.floor(math.abs(value) / pixel + 0.5)
+	if pixels == 0 then return 0 end -- avoid -0
+
+	-- Pixel sizes like 0.99999995 leave float noise (25px -> 24.999998); trim it
+	-- so stored offsets stay clean. 1e-4 is far below a pixel at any UI scale.
+	local result = math.floor(pixels * pixel * 10000 + 0.5) / 10000
+	return value < 0 and -result or result
 end
 
 -- Resolves a global frame name or frame object to a frame, or nil.
