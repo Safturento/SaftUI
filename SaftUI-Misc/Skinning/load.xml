@@ -3,6 +3,7 @@
 	<Include file="characterframe/load.xml"/>
 	<Script file="weakauras.lua"/>
 	<Script file="hekili.lua"/>
+	<Script file="Blizzard_BuffFrame.lua"/>
 	<Script file="Blizzard_WeeklyRewards.lua"/>
 	<Script file="Blizzard_WatchFrame.lua"/>
 	<Script file="Blizzard_WorldMap.lua"/>
