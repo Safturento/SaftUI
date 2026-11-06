@@ -79,24 +79,41 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 		local w, h = icon:GetSize()
 		local scale
 		local trim = customTrim or st.config.profile.misc.icon_trim
+		local left, right, top, bottom
 		if issecretvalue(w) or issecretvalue(h) then
 			-- Icons inside restricted frames (e.g. aura containers) have secret
 			-- sizes that can't be compared; assume a square icon.
-			icon:SetTexCoord(trim, 1 - trim, trim, 1 - trim)
+			left, right, top, bottom = trim, 1 - trim, trim, 1 - trim
 		elseif w ~= h then
 			local biggest = max( icon:GetHeight(), icon:GetWidth() )
 			local height = 0.5 * icon:GetHeight() / biggest - trim
 			local width = 0.5 * icon:GetWidth() / biggest - trim
 
-			icon:SetTexCoord( 0.5 - width, 0.5 + width, 0.5 - height, 0.5 + height )
+			left, right, top, bottom = 0.5 - width, 0.5 + width, 0.5 - height, 0.5 + height
 		elseif (w == 0) and (h == 0) then
-			icon:SetTexCoord(trim, 1 - trim, trim, 1 - trim)
+			left, right, top, bottom = trim, 1 - trim, trim, 1 - trim
 		elseif w > h then
 			scale = (1 - h / w) / 2
-			icon:SetTexCoord(trim, 1-trim, scale + trim, 1 - scale - trim)
+			left, right, top, bottom = trim, 1-trim, scale + trim, 1 - scale - trim
 		else
 			scale = (1 - w / h) / 2
-			icon:SetTexCoord(scale + trim, 1 - scale - trim, trim, 1 - trim)
+			left, right, top, bottom = scale + trim, 1 - scale - trim, trim, 1 - trim
+		end
+
+		icon:SetTexCoord(left, right, top, bottom)
+
+		-- Blizzard's SetItemButtonTexture resets icons to full tex coords (0, 1, 0, 1)
+		-- every time it assigns a texture, which would undo our trim. Put it back.
+		icon.__stTexCoord = { left, right, top, bottom }
+		if not icon.__stTexCoordHooked then
+			icon.__stTexCoordHooked = true
+			hooksecurefunc(icon, 'SetTexCoord', function(self, l, r, t, b, ...)
+				local c = self.__stTexCoord
+				if issecretvalue(l) then return end
+				if c and select('#', ...) == 0 and l == 0 and r == 1 and t == 0 and b == 1 then
+					self:SetTexCoord(c[1], c[2], c[3], c[4])
+				end
+			end)
 		end
 	else
 		print('function SetTexCoord does not exist for', icon:GetName() or icon)
