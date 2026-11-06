@@ -279,56 +279,13 @@ local function ScanButtons()
     ScanCustomButtons()
 end
 
--- Lists Minimap children that aren't Blizzard's, LibDBIcon's or SaftUI's
-function MicroMenu:FindUnhandledMinimapButtons()
-    local found, unnamed = {}, 0
-
-    local blizzardKeys = {}
-    for key, value in pairs(Minimap) do
-        if type(value) == 'table' and issecurevariable(Minimap, key) then
-            blizzardKeys[value] = true
-        end
-    end
-
-    for _, child in ipairs({ Minimap:GetChildren() }) do
-        local name = child:GetName()
-        if name then
-            if not name:find('^'..DBICON_PREFIX) then
-                local secure, owner = issecurevariable(name)
-                if not secure and not (owner and owner:find('^SaftUI')) and child:IsShown() then
-                    tinsert(found, ('%s (%s)'):format(name, owner or '?'))
-                end
-            end
-        elseif not blizzardKeys[child] and child:IsShown() and child:IsObjectType('Button') then
-            unnamed = unnamed + 1
-        end
-    end
-
-    self.unhandledMinimapButtons = found
-    return found, unnamed
-end
-
-local function ReportUnhandled()
-    ScanCustomButtons() -- catches buttons created after login
-    local found, unnamed = MicroMenu:FindUnhandledMinimapButtons()
-    if #found == 0 and unnamed == 0 then return end
-
-    st:Print('Minimap buttons not moved to the addon compartment:')
-    for _, line in ipairs(found) do
-        st:Print('  '..line)
-    end
-    if unnamed > 0 then
-        st:Print(('  %d unnamed button(s), usually map pins'):format(unnamed))
-    end
-end
-
 local function Start()
     if ready then return end
     ready = true
 
     HookLibraries()
     ScanButtons()
-    C_Timer.After(5, ReportUnhandled)
+    C_Timer.After(5, ScanCustomButtons) -- catches buttons created after login
 end
 
 function MicroMenu:SetupMinimapButtons()
