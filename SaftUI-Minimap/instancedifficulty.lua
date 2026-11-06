@@ -2,7 +2,8 @@ local st = SaftUI
 local MicroMenu = st:GetModule('MicroMenu')
 
 function MicroMenu:SkinInstanceDifficulty()
-    if not st.retail then return end
+    -- Forever counts as retail but has no instance difficulty frame
+    if not (st.retail and MinimapCluster.InstanceDifficulty) then return end
 
     local button = CreateFrame('Button', 'SaftUI_DungeonDifficulty', UIParent)
 
