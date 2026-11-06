@@ -34,6 +34,16 @@ local function PostCreateButton(auras, button)
 	st:SetBackdrop(button, config.template)
 	st:SkinIcon(button.Icon)
 
+	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
+	-- secret color, so instead of Blizzard's border art we make it a flat fill behind
+	-- the icon that covers our backdrop, recoloring the SaftUI border by dispel type.
+	if button.Border then
+		button.Border:SetTexture(st.BLANK_TEX)
+		button.Border:SetDrawLayer('BACKGROUND')
+		button.Border:ClearAllPoints()
+		button.Border:SetAllPoints(button.backdrop)
+	end
+
 	if button.Count then
 		local countConfig = config.count or {}
 		button.Count:SetFontObject(st:GetFont(countConfig.font or config.font))
@@ -92,6 +102,7 @@ local function AddGroup(unitframe, auras, aura_type)
 		size = getButtonSize(unitframe, config),
 		showCount = true,
 		showDebuffBorder = aura_type == 'Debuffs' and eitherHostility(config, 'colorTypes'),
+		dispelBorderStyle = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
 		showStealableBorder = aura_type == 'Buffs' and eitherHostility(config, 'colorStealable'),
 		disableCooldown = not config.cooldown.enable,
 		tooltipAnchor = 'ANCHOR_TOPLEFT',
