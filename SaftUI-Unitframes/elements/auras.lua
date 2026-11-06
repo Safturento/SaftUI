@@ -35,25 +35,44 @@ local function PostCreateButton(auras, button)
 	st:SkinIcon(button.Icon)
 
 	if button.Count then
-		button.Count:SetFontObject(st:GetFont(config.font))
+		local countConfig = config.count or {}
+		button.Count:SetFontObject(st:GetFont(countConfig.font or config.font))
+		if countConfig.position then
+			local point, _, relPoint, x, y = st:UnpackPoint(countConfig.position)
+			button.Count:ClearAllPoints()
+			button.Count:SetPoint(point, button, relPoint, x, y)
+		end
 	end
 
 	local cooldown = button.Cooldown
 	if cooldown then
-		cooldown.noOCC = not config.cooldown.timer.enable
-		cooldown.noCooldownCount = not config.cooldown.timer.enable
+		local showTimer = config.cooldown.timer.enable
+
+		cooldown.noOCC = not showTimer
+		cooldown.noCooldownCount = not showTimer
 		cooldown:SetReverse(not config.cooldown.reverse)
 		cooldown:SetAlpha(config.cooldown.alpha)
 		cooldown:SetDrawEdge(false)
-		cooldown:SetHideCountdownNumbers(not config.cooldown.timer.enable)
+		cooldown:SetHideCountdownNumbers(not showTimer)
 
-		for _, region in pairs({ cooldown:GetRegions() }) do
-			if region:GetObjectType() == 'FontString' then
-				cooldown.Duration = region
-				region:SetFontObject(st:GetFont('pixel'))
-				region:ClearAllPoints()
+		if not showTimer then
+			-- The aura container re-enables countdown numbers when it binds the
+			-- cooldown, so force them back off whenever that happens.
+			hooksecurefunc(cooldown, 'SetHideCountdownNumbers', function(self, hide)
+				if not hide then self:SetHideCountdownNumbers(true) end
+			end)
+		end
+
+		local countdown = cooldown.GetCountdownFontString and cooldown:GetCountdownFontString()
+		if countdown then
+			cooldown.Duration = countdown
+			if showTimer then
+				countdown:SetFontObject(st:GetFont('pixel'))
+				countdown:ClearAllPoints()
 				local point, _, relPoint, x, y = st:UnpackPoint(config.cooldown.timer.position)
-				region:SetPoint(point, button, relPoint, x, y)
+				countdown:SetPoint(point, button, relPoint, x, y)
+			else
+				countdown:SetAlpha(0)
 			end
 		end
 	end

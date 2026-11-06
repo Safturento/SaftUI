@@ -282,6 +282,10 @@ local auras = {
     grow_up = true,
     grow_right = true,
     initial_anchor = 'BOTTOMLEFT',
+    count = {
+        font = 'pixel',
+        position = { point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
+    },
     cooldown = {
         enable = true,
         timer = {
