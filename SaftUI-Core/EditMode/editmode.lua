@@ -1,0 +1,98 @@
+local st = SaftUI
+
+-- SaftUI's own edit mode. Exposed as st.EditModeFrames because st.EditMode is
+-- taken by the (dead) EditModeExpanded library reference set in init.lua.
+local EM = st:NewModule('EditMode')
+st.EditModeFrames = EM
+
+EM.movers = {}
+EM.active = false
+EM.selected = nil
+
+local callbacks = {}
+
+-- Registers fn for event ('PositionChanged', 'Selected', 'Enabled', 'Disabled').
+function EM:On(event, fn)
+	callbacks[event] = callbacks[event] or {}
+	table.insert(callbacks[event], fn)
+end
+
+function EM:Fire(event, ...)
+	local list = callbacks[event]
+	if not list then return end
+	for _, fn in ipairs(list) do
+		fn(...)
+	end
+end
+
+function EM:IsActive()
+	return self.active
+end
+
+function EM:Activate()
+	if self.active then return end
+	if InCombatLockdown() then
+		st:Print("Can't open edit mode in combat.")
+		return
+	end
+	self.active = true
+	for _, mover in pairs(self.movers) do
+		mover.overlay:Show()
+	end
+	self:UpdateKeyboard()
+	self:Fire('Enabled')
+end
+
+function EM:Deactivate()
+	if not self.active then return end
+	self.active = false
+	for _, mover in pairs(self.movers) do
+		self:StopDrag(mover)
+		mover.overlay:Hide()
+	end
+	self:Select(nil)
+	self:UpdateKeyboard()
+	self:Fire('Disabled')
+end
+
+function EM:Toggle()
+	if self.active then
+		self:Deactivate()
+	else
+		self:Activate()
+	end
+end
+
+function EM:OnInitialize()
+	-- Follow Blizzard's Edit Mode. Only listen; never touch its frames.
+	EventRegistry:RegisterCallback('EditMode.Enter', function() self:Activate() end, self)
+	EventRegistry:RegisterCallback('EditMode.Exit', function() self:Deactivate() end, self)
+	self:RegisterEvent('PLAYER_REGEN_DISABLED')
+end
+
+function EM:PLAYER_REGEN_DISABLED()
+	if not self.active then return end
+	self:Deactivate() -- stops any drag, committing the last applied offset
+	st:Print('Edit mode closed: entering combat.')
+end
+
+-- Writes the (rounded) offsets into the mover's stored position and re-applies it.
+function EM:CommitPosition(mover, x, y)
+	local def = mover.def
+	x = st:RoundToPixel(x, def.frame)
+	y = st:RoundToPixel(y, def.frame)
+	local pos = def.getPosition()
+	pos.x_off = x
+	pos.y_off = y
+	def.setPosition(pos)
+	def.apply()
+	self:Fire('PositionChanged', mover)
+end
+
+-- Registers a movable frame. See the EditMode spec for the MoverDef shape.
+function st:RegisterMover(key, def)
+	assert(type(key) == 'string', 'RegisterMover: key must be a string')
+	assert(def and def.frame and def.getPosition and def.setPosition and def.apply,
+		'RegisterMover: def needs frame, getPosition, setPosition and apply')
+	return EM:CreateMover(key, def)
+end

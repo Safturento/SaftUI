@@ -8,14 +8,22 @@ function st:UnpackPoint(config)
 	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
 end
 
--- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
-function st:RoundToPixel(value, frame)
+-- Size of one physical pixel in frame's (or UIParent's) coordinate space, or nil if unknown.
+function st:GetPixelSize(frame)
 	local physicalHeight = select(2, GetPhysicalScreenSize())
 	local scale = (frame or UIParent):GetEffectiveScale()
 	if not physicalHeight or physicalHeight == 0 or not scale or scale == 0 then
+		return nil
+	end
+	return (768 / physicalHeight) / scale
+end
+
+-- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
+function st:RoundToPixel(value, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then
 		return value
 	end
-	local pixel = (768 / physicalHeight) / scale
 	local pixels = math.floor(math.abs(value) / pixel + 0.5)
 	if pixels == 0 then return 0 end -- avoid -0
 

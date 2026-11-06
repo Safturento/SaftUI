@@ -13,6 +13,11 @@ st.defaults.grid = {
 	verticalSpacing = 20
 }
 
+st.defaults.editmode = {
+	grid = false,
+	snap = false,
+}
+
 st.defaults.fonts = {
 	pixel = {
 		name = 'Pixel',

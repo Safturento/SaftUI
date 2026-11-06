@@ -50,7 +50,11 @@ function Config:InitializeAceConfig()
 
     _G.SLASH_SAFTUI1 = '/sui'
     _G.SLASH_SAFTUI2 = '/saftui'
-    _G.SlashCmdList.SAFTUI = function()
+    _G.SlashCmdList.SAFTUI = function(msg)
+		if strtrim(msg or ''):lower() == 'edit' then
+			st.EditModeFrames:Toggle()
+			return
+		end
 		AceConfig:RegisterOptionsTable(st.name, {
 			name = st.names,
 			type='group',
@@ -70,13 +74,14 @@ function Config:GetOptionsTable()
 			type = 'group',
 			order = 0,
 			args = {
-				--toggle_movers = {
-				--	name = 'Toggle Positioning',
-				--	type = 'execute',
-				--	func = function()
-				--		--st:ToggleMovers()
-				--	end
-				--}
+				edit_mode = {
+					name = 'Edit mode',
+					type = 'execute',
+					func = function()
+						AceConfigDialog:Close(st.name)
+						st.EditModeFrames:Toggle()
+					end,
+				},
 			}
 		},
 		profile = profile

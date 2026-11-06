@@ -45,6 +45,8 @@ Config\defaults.lua
 Config\config.lua
 Config\widgets.lua
 
+EditMode\load.xml
+
 taintfix.lua
 
 Utilities\load.xml
