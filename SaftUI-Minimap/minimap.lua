@@ -23,7 +23,9 @@ function MM:OnEnable()
     if st.retail then
         self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
         self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')
-        self:SecureHook('GarrisonMinimap_ShowCovenantCallingsNotification')
+        if GarrisonMinimap_ShowCovenantCallingsNotification then
+            self:SecureHook('GarrisonMinimap_ShowCovenantCallingsNotification')
+        end
         Minimap:SetArchBlobRingScalar(0)
         Minimap:SetQuestBlobRingScalar(0)
     else

@@ -33,7 +33,9 @@ function MicroMenu:KillBlizz()
     --self:HideMicroMenu()
 
     if st.retail then
-        MinimapCluster.BorderTop:Hide()
+        if MinimapCluster.BorderTop then
+            MinimapCluster.BorderTop:Hide()
+        end
     else
         st:Kill(MiniMapWorldMapButton)
         st:Kill(MinimapBorderTop)
