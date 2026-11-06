@@ -20,7 +20,11 @@ function MicroMenu:UpdateButtons()
             if button.text then
                 button.text:SetFontObject(st:GetFont('pixel'))
                 button.text:SetJustifyH('CENTER')
-                button.text:SetPoint('CENTER', 1, 0)
+                -- Clear Blizzard's anchors (the zone text is LEFT-anchored with a
+                -- fixed width) so the text spans the button and centers properly
+                button.text:ClearAllPoints()
+                button.text:SetPoint('LEFT', button, 'LEFT', 4, 0)
+                button.text:SetPoint('RIGHT', button, 'RIGHT', -4, 0)
             end
 
             st:SetBackdrop(button, 'thicktransparent')
@@ -65,6 +69,30 @@ function MicroMenu:SkinTrackingButton()
             texture:ClearAllPoints()
             texture:SetPoint("CENTER")
             texture:SetSize(16, 16)
+        end
+
+        -- Forever draws the icon as a single atlas with a gold ring baked in, and
+        -- re-applies it on every button state change. Hide it and its hover copy,
+        -- and draw a plain magnifier instead.
+        local trackingButton = button.Button
+        if trackingButton.StateTexture then
+            trackingButton.StateTexture:SetAlpha(0)
+            trackingButton.AddTexture:SetAlpha(0)
+            hooksecurefunc(trackingButton, 'OnButtonStateChanged', function(self)
+                self.AddTexture:Hide()
+            end)
+
+            local icon = trackingButton:CreateTexture(nil, 'ARTWORK')
+            icon:SetTexture([[Interface\Minimap\Tracking\None]])
+            icon:SetPoint('CENTER')
+            icon:SetSize(16, 16)
+            trackingButton.SaftIcon = icon
+
+            local hover = trackingButton:CreateTexture(nil, 'OVERLAY')
+            hover:SetTexture(st.BLANK_TEX)
+            hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+            hover:SetAllPoints(trackingButton)
+            trackingButton:SetHighlightTexture(hover)
         end
 
         return button
