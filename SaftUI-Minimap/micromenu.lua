@@ -140,4 +140,5 @@ function MicroMenu:OnEnable()
     end
 
     self:UpdateButtons()
+    self:SetupMinimapButtons()
 end

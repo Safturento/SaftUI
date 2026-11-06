@@ -5,6 +5,7 @@ st.defaults.minimap = {
     enable = true,
     template = 'thick',
     size = 250,
+    compartment_buttons = true,
     position = {
         point = 'TOPRIGHT',
         frame = 'UIParent',
@@ -52,6 +53,14 @@ function MM:GetConfigTable()
 				args = {
 					template = st.Config.generators.template(1),
 					size = st.Config.generators.range(2, 'Size', 30, 500, 1),
+					compartment_buttons = {
+						order = 3,
+						name = 'Addon buttons in compartment',
+						desc = 'Move addon minimap buttons into the addon compartment menu. Requires a reload.',
+						type = 'toggle',
+						width = 'full',
+						set = function(info, value) config[info[#info]] = value; st:Print('Reload your UI to apply.') end,
+					},
 					position = st.Config.generators.position(6, true,
 						function(key) return config.position[key] end,
 						function(key, value)

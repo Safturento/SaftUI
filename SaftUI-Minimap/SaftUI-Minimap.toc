@@ -10,6 +10,7 @@ micromenu.lua
 killblizz.lua
 expansionbutton.lua
 addoncompartmentframe.lua
+minimapbuttons.lua
 queuebutton.lua
 instancedifficulty.lua
 stats.lua
