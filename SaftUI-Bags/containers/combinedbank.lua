@@ -9,7 +9,11 @@ function INV:UpdateCombinedBankWarbandMoney()
 end
 
 function INV:SkinReagentDepositButton(container)
-    local depositButton = BankPanel.AutoDepositFrame.DepositButton
+    -- Forever's bank panel has no auto deposit (reagent) button
+    local autoDeposit = BankPanel and BankPanel.AutoDepositFrame
+    if not autoDeposit then return end
+
+    local depositButton = autoDeposit.DepositButton
     depositButton:SetSize(200, 16)
     depositButton:SetParent(container)
     depositButton:ClearAllPoints()
@@ -135,8 +139,10 @@ function INV:InitializeCombinedBank()
 	container.UpdateContainerSlots = UpdateContainerSlots
 
 	local depositButton = self:SkinReagentDepositButton(container)
-	depositButton:ClearAllPoints()
-	depositButton:SetPoint('BOTTOM', container.footer, 0, 7)
+	if depositButton then
+		depositButton:ClearAllPoints()
+		depositButton:SetPoint('BOTTOM', container.footer, 0, 7)
+	end
 
 	if st.retail then
         self:CreateGoldString(container)
