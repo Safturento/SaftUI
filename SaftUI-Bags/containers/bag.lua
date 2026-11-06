@@ -92,6 +92,28 @@ function INV:OpenSettingsDropdown()
 	INV.SettingsDropdown:Open()
 end
 
+-- Re-apply SaftUI styling on top of Blizzard's BaseBagSlotButtonMixin:UpdateTextures.
+local function RestyleBagSlot(slot)
+	slot:GetNormalTexture():SetAlpha(0)
+	if slot.SlotHighlightTexture then slot.SlotHighlightTexture:SetAlpha(0) end
+
+	-- GetHighlightTexture/GetPushedTexture are SaftUI's hover/pushed textures from
+	-- SkinActionButton; Blizzard overwrites their atlas, size, anchors and blending.
+	local hover = slot:GetHighlightTexture()
+	hover:SetTexture(st.BLANK_TEX)
+	hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
+	hover:SetBlendMode('ADD')
+	hover:SetAlpha(1)
+	hover:ClearAllPoints()
+	hover:SetAllPoints(slot.icon)
+
+	local pushed = slot:GetPushedTexture()
+	pushed:SetTexture(st.BLANK_TEX)
+	pushed:SetVertexColor(0, 0, 0, .1)
+	pushed:ClearAllPoints()
+	pushed:SetAllPoints(slot.icon)
+end
+
 function INV:InitializePlayerBagSlots()
 
 	st:Kill(MainMenuBarBackpackButton)
@@ -136,33 +158,36 @@ function INV:InitializePlayerBagSlots()
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
+		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
 		st:SkinActionButton(slot, st.config.profile.buttons)
 
 		st:Kill(slot.AnimIcon)
 
-		st:Kill(slot.SlotHighlightTexture)
-		st:Kill(slot:GetPushedTexture())
-		st:Kill(slot:GetHighlightTexture())
+		-- Blizzard's UpdateTextures runs on load and on every bag change, re-applying
+		-- its frame atlas to the normal texture and its atlases to our hover/pushed
+		-- textures. Undo that after every call, and once now for the initial state.
 		if slot.UpdateTextures then
-			self:SecureHook(slot, 'UpdateTextures', function(self)
-				self:GetNormalTexture():Hide()
-				self:GetPushedTexture():Hide()
-				self:GetHighlightTexture():Hide()
-				self.SlotHighlightTexture:Hide()
+			self:SecureHook(slot, 'UpdateTextures', RestyleBagSlot)
+		end
+		RestyleBagSlot(slot)
+
+		-- With the bar collapsed Blizzard hides the slots; ours should always show.
+		if slot.SetBarExpanded then
+			self:SecureHook(slot, 'SetBarExpanded', function(slot, isExpanded)
+				if not isExpanded then slot:Show() end
 			end)
 		end
-
-		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
-
 	end
 
 	self.containers.bag.bagSlotContainer = bagSlotContainer
 
 	self:MovePlayerBagSlots()
 	self:RegisterEvent('BAG_SLOT_FLAGS_UPDATED', 'MovePlayerBagSlots')
-	if st.retail then
-		self:SecureHook(CharacterReagentBag0Slot, 'SetBarExpanded', 'MovePlayerBagSlots')
-		self:SecureHook(MainMenuBarBagManager, 'OnExpandBarChanged', 'MovePlayerBagSlots')
+
+	-- BagsBar:Layout re-anchors every bag slot back onto Blizzard's bar (on load,
+	-- Edit Mode changes and bar expand/collapse), so move them back after it.
+	if BagsBar and BagsBar.Layout then
+		self:SecureHook(BagsBar, 'Layout', 'MovePlayerBagSlots')
 	end
 end
 
