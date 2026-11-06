@@ -148,7 +148,10 @@ function INV:InitializeCombinedBank()
         self:CreateGoldString(container)
         self:UpdateCombinedBankWarbandMoney()
         self:InitializeWithdrawButton(container)
-        self:InitializeBankCategorySelection()
+        -- Forever's bank has no separate bank/warband tabs worth switching between
+        if not st.forever then
+            self:InitializeBankCategorySelection()
+        end
 
         self:InitializeDepositButton()
     end
