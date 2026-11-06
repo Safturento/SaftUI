@@ -46,23 +46,34 @@ end
 local generators = {}
 st.Config.generators = generators
 
-function generators.position(order, global_frame, get, set)
+function generators.position(order, global_frame, get, set, target)
 	local table = {
 		order = order or 0,
 		name = 'Position',
 		type = 'group',
 		inline = true,
 		get = function(info)
+			local key = info[#info]
+			local value
 			if type(get) == 'function' then
-				return get(info[#info])
+				value = get(key)
+			else
+				value = get[key]
 			end
-			return get[info[#info]]
+			if key == 'x_off' or key == 'y_off' then
+				return tostring(value or 0)
+			end
+			return value
 		end,
 		set = function(info, value)
+			local key = info[#info]
+			if key == 'x_off' or key == 'y_off' then
+				value = tonumber(st:RoundToPixel(tonumber(value) or 0))
+			end
 			if set then
-				set(info[#info], value)
+				set(key, value)
 			else
-				get[info[#info]] = value
+				get[key] = value
 			end
 		end,
 		args = {
@@ -84,14 +95,14 @@ function generators.position(order, global_frame, get, set)
 				order = 5,
 				name = 'X Offset',
 				type = 'input',
-				pattern = '%d+',
+				pattern = '^%-?%d+%.?%d*$',
 				width = 0.4
 			},
 			y_off = {
 				order = 6,
 				name = 'Y Offset',
 				type = 'input',
-				pattern = '%d+',
+				pattern = '^%-?%d+%.?%d*$',
 				width = 0.4
 			},
 		}
@@ -103,6 +114,10 @@ function generators.position(order, global_frame, get, set)
 			name = 'Frame',
 			type = 'input',
 			validate = function(info, name)
+				if target then
+					local ok, err = st:ValidateAnchor(target, name)
+					return ok or err
+				end
 				return _G[name] and true or "Frame doesn't exist"
 			end
 		}

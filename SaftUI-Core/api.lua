@@ -8,6 +8,73 @@ function st:UnpackPoint(config)
 	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
 end
 
+-- Rounds a value (in frame's coordinate space) to the nearest physical pixel.
+function st:RoundToPixel(value, frame)
+	local physicalHeight = select(2, GetPhysicalScreenSize())
+	local scale = (frame or UIParent):GetEffectiveScale()
+	if not physicalHeight or physicalHeight == 0 or not scale or scale == 0 then
+		return value
+	end
+	local pixel = (768 / physicalHeight) / scale
+	if value < 0 then
+		return -math.floor(-value / pixel + 0.5) * pixel
+	end
+	return math.floor(value / pixel + 0.5) * pixel
+end
+
+-- Resolves a global frame name or frame object to a frame, or nil.
+function st:ResolveFrame(ref)
+	if type(ref) == 'string' then
+		return _G[ref]
+	elseif type(ref) == 'table' and ref.GetObjectType then
+		return ref
+	end
+	return nil
+end
+
+local function AnchorReaches(from, target, visited)
+	if from == target then
+		return true
+	end
+	if visited[from] then
+		return false
+	end
+	visited[from] = true
+	if not from.GetNumPoints then
+		return false
+	end
+	for i = 1, from:GetNumPoints() do
+		local _, relativeTo = from:GetPoint(i)
+		if relativeTo and not issecretvalue(relativeTo) and type(relativeTo) == 'table'
+				and AnchorReaches(relativeTo, target, visited) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Returns true if anchoring frame to relative is valid, else false and an error message.
+function st:ValidateAnchor(frame, relative)
+	local relativeFrame = st:ResolveFrame(relative)
+	if not relativeFrame then
+		return false, "Frame doesn't exist"
+	end
+	if relativeFrame == frame then
+		return false, "Can't anchor a frame to itself"
+	end
+	if AnchorReaches(relativeFrame, frame, {}) then
+		return false, "Anchor would create a loop"
+	end
+	local parent = relativeFrame.GetParent and relativeFrame:GetParent()
+	while parent do
+		if parent == frame then
+			return false, "Anchor would create a loop"
+		end
+		parent = parent.GetParent and parent:GetParent()
+	end
+	return true
+end
+
 function st:SetHeight(frame, height)
 	frame:SetHeight(height)
 end
