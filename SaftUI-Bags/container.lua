@@ -305,9 +305,13 @@ function INV:UpdateContainer(id, updateLayout)
 
 	self:FlushCategories(container, sortedInventory)
 
-	if updateLayout then
+	-- Items whose data is still loading (cold item cache after a reload) are left
+	-- out until GET_ITEM_INFO_RECEIVED fires, and those updates don't request a
+	-- layout. Keep relaying out until loading finishes so they actually appear.
+	if updateLayout or container.layoutPending then
 		self:UpdateContainerLayout(id)
 	end
+	container.layoutPending = numLoading > 0
 
 	container:SetLoading(numItems - numLoading, numItems)
 
