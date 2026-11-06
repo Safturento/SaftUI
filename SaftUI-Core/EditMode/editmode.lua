@@ -41,6 +41,7 @@ function EM:Activate()
 	end
 	self:UpdateKeyboard()
 	self:Fire('Enabled')
+	st:Print('Edit mode on.')
 end
 
 function EM:Deactivate()
@@ -53,6 +54,7 @@ function EM:Deactivate()
 	self:Select(nil)
 	self:UpdateKeyboard()
 	self:Fire('Disabled')
+	st:Print('Edit mode off.')
 end
 
 function EM:Toggle()
