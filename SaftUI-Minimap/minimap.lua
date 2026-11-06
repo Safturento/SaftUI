@@ -42,6 +42,12 @@ function MM:OnEnable()
 
     end
 
+    -- Forever's day/night indicator is pinned to Blizzard's minimap container,
+    -- so it floats once our minimap is moved. Nothing re-shows it after load.
+    if MinimapCluster.DielFrame then
+        MinimapCluster.DielFrame:Hide()
+    end
+
     st:Kill(MinimapCluster.Selection)
     MinimapCluster:EnableMouse(false)
 
