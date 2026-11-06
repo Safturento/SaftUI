@@ -71,7 +71,11 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 		local w, h = icon:GetSize()
 		local scale
 		local trim = customTrim or st.config.profile.misc.icon_trim
-		if w ~= h then
+		if issecretvalue(w) or issecretvalue(h) then
+			-- Icons inside restricted frames (e.g. aura containers) have secret
+			-- sizes that can't be compared; assume a square icon.
+			icon:SetTexCoord(trim, 1 - trim, trim, 1 - trim)
+		elseif w ~= h then
 			local biggest = max( icon:GetHeight(), icon:GetWidth() )
 			local height = 0.5 * icon:GetHeight() / biggest - trim
 			local width = 0.5 * icon:GetWidth() / biggest - trim
