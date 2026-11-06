@@ -67,6 +67,14 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 		icon:SetSize(anchorFrame:GetSize())
 	end
 
+	-- Modern item/action buttons mask their icons (e.g. ItemButton.Mask rounds the
+	-- corners), which SetTexCoord can't undo. Strip them so the trim shows square.
+	if icon.GetNumMaskTextures then
+		for i = icon:GetNumMaskTextures(), 1, -1 do
+			icon:RemoveMaskTexture(icon:GetMaskTexture(i))
+		end
+	end
+
 	if icon.SetTexCoord then
 		local w, h = icon:GetSize()
 		local scale
