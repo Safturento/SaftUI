@@ -130,6 +130,19 @@ function INV:InitializePlayerBagSlots()
 		CharacterReagentBag0Slot.icon = CharacterReagentBag0SlotIconTexture
 		tinsert(BagSlots, CharacterReagentBag0Slot)
 	end
+
+	-- Forever has a keyring bag button on the bags bar
+	if KeyRingButton and C_ActionBar.ShouldShowKeyring and C_ActionBar.ShouldShowKeyring() then
+		tinsert(BagSlots, KeyRingButton)
+	end
+
+	-- The slots get reparented into our container below; hide what's left of
+	-- Blizzard's bags bar (border art and the dividers it draws between slots).
+	-- Alpha rather than Kill, since BagsBar is an Edit Mode system frame.
+	if BagsBar then
+		BagsBar:SetAlpha(0)
+	end
+
 	local bagSlotContainer = st:CreateFrame('frame', 'BagSlotFrame', self.containers.bag)
 	bagSlotContainer:Hide()
 	bagSlotContainer:SetSize(
