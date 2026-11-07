@@ -143,7 +143,7 @@ Blizzard's bars are hidden at load, taint-free. The pieces SaftUI also takes ove
 **Interfaces:**
 - Produces: bars `'pet'` and `'stance'` in `AB.bars`, the same config shape, movers `ab_pet` and `ab_stance`, and `/sui` subsections. Bindings come from `BONUSACTIONBUTTON*` and `SHAPESHIFTBUTTON*`, through Task 2's `UpdateBindings`.
 
-- [ ] **Step 1:** Pet bar: LibActionButton pet buttons if supported, otherwise SaftUI secure buttons with `type = 'pet'` attributes. It shows only with a pet bar (state driver `[pet,nooverridebar,novehicleui,nopossessbar] show; hide`). Autocast and cooldown work.
+- [ ] **Step 1:** Pet bar (note from Task 1's review: on a `/reload` with a pet out, Blizzard's pet bar is on screen, so `hideblizzard.lua` takes the conceal path instead of blocking it; make sure it stays hidden and unclickable): LibActionButton pet buttons if supported, otherwise SaftUI secure buttons with `type = 'pet'` attributes. It shows only with a pet bar (state driver `[pet,nooverridebar,novehicleui,nopossessbar] show; hide`). Autocast and cooldown work.
 - [ ] **Step 2:** Stance bar: secure buttons with `type = 'spell'` built from `GetShapeshiftFormInfo`. It's re-laid out when forms change, out of combat only. It's hidden when the class has no forms.
 - [ ] **Step 3: In-game check:**
   - Pet abilities, autocast and pet commands work.
@@ -162,7 +162,7 @@ Blizzard's bars are hidden at load, taint-free. The pieces SaftUI also takes ove
 - Produces: movers `ab_extra`, `ab_zone` and `ab_vehicleleave`, and `/sui` subsections with General (scale or size) and Position.
 
 - [ ] **Step 1:** Research in the forever and live source how `ExtraActionBarFrame`/`ExtraAbilityContainer` and `ZoneAbilityFrame` are positioned. They're managed frames. Re-anchor them to SaftUI holders the taint-safe way: post-hooks plus `st:SetPointDirect` where `SetPoint` is a Lua override, and never moves in combat. Deferring to after combat is acceptable, as long as they're never stuck where they can't be reached.
-- [ ] **Step 2:** Vehicle leave button: a SaftUI secure button with the `VehicleExit` behaviour, shown by state driver `[canexitvehicle] show; hide`, skinned.
+- [ ] **Step 2:** Vehicle leave button: a SaftUI secure button with the `VehicleExit` behaviour, shown by state driver `[canexitvehicle] show; hide`, skinned. It must also cover **taxi early landing** (Blizzard's leave button does `TaxiRequestEarlyLanding()` while `UnitOnTaxi('player')`). Task 1 hid Blizzard's button, so that's currently missing.
 - [ ] **Step 3: In-game check:**
   - In a quest or encounter with an extra action button, it shows at SaftUI's spot and works.
   - The zone ability shows and works.
