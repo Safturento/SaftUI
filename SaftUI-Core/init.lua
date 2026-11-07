@@ -9,8 +9,6 @@ SaftUI:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 
 SaftUI.StringFormat = LibStub('LibStringFormat-1.0')
 
-SaftUI.EditMode = LibStub('EditModeExpanded-1.0', true)
-
 function SaftUI:OnEnable()
 	UIParent:SetScale(st.scale)
 	SetCVar('autoLootDefault', 1)
@@ -21,7 +19,6 @@ function SaftUI:OnEnable()
 
 	if not self.config.realm.summary then self.config.realm.summary = {} end
 	if not self.config.realm.summary[self.my_name] then self.config.realm.summary[self.my_name] = {} end
-	if not self.config.profile.edit_mode then  self.config.profile.edit_mode = {} end
 
 	self:RegisterEvent('TIME_PLAYED_MSG')
 	RequestTimePlayed()

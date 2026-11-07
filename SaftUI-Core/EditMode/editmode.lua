@@ -1,7 +1,6 @@
 local st = SaftUI
 
--- SaftUI's own edit mode. Exposed as st.EditModeFrames because st.EditMode is
--- taken by the (dead) EditModeExpanded library reference set in init.lua.
+-- SaftUI's own edit mode, exposed as st.EditModeFrames.
 local EM = st:NewModule('EditMode')
 st.EditModeFrames = EM
 

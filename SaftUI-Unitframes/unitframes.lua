@@ -12,6 +12,9 @@ local TEST_PARTY_SOLO = false
 
 UF.elements = {}
 
+-- Boss and arena holders (unit -> frame), made in OnEnable. See UF:PlaceHolder.
+UF.holders = {}
+
 UF.unit_strings = {
 	['player'] = 'Player',
 	['target'] = 'Target',
@@ -184,6 +187,48 @@ function UF:RefreshConfigReferences()
 	end
 end
 
+-- Sizes and places one unit frame from frame.config. A group child places its
+-- header. Boss/arena 1 sits at the top of its group's holder and the others
+-- chain below it. A disabled frame goes off screen, and false is returned for
+-- it. Unit frames are secure: out of combat only.
+function UF:PlaceUnitFrame(frame)
+	local config = frame.config
+	if frame.is_group_unit then
+		local header = frame:GetParent()
+		header:ClearAllPoints()
+		header:SetPoint(st:UnpackPoint(config.position))
+	else
+		frame:ClearAllPoints()
+		if not config.enable then
+			frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+			return false
+		end
+		local holder = self.holders[frame.base_unit]
+		if frame.ID and frame.ID > 1 then
+			frame:SetPoint('TOPLEFT', self.units[frame.base_unit][frame.ID-1], 'BOTTOMLEFT', 0, -config.spacing)
+		elseif holder then
+			frame:SetPoint('TOPLEFT', holder, 'TOPLEFT')
+		else
+			frame:SetPoint(st:UnpackPoint(config.position))
+		end
+	end
+	st:SetSize(frame, config.width, config.height)
+	return true
+end
+
+-- Sizes a boss/arena holder to its whole group, all five frames whether shown
+-- or not, and places it at the group's position. The holder is the group's edit
+-- mode outline, so it covers the group's spot even with no boss up. It counts
+-- as protected in combat while frame 1 is anchored to it (st:CanMoveNow).
+function UF:PlaceHolder(unit)
+	local holder = self.holders[unit]
+	local config = self:GetProfileConfig()[unit]
+	local count = #self.units[unit]
+	holder:ClearAllPoints()
+	holder:SetPoint(st:UnpackPoint(config.position))
+	st:SetSize(holder, config.width, count * config.height + (count - 1) * config.spacing)
+end
+
 function UF:UpdateUnitFrame(frame, element_name)
 	frame.config = frame:GetConfig()
 
@@ -194,23 +239,8 @@ function UF:UpdateUnitFrame(frame, element_name)
             self:UpdateElement(frame[element_name])
         end
 	else
-		if not (InCombatLockdown()) then
-			if frame.is_group_unit then
-				local header = frame:GetParent()
-				header:ClearAllPoints()
-				header:SetPoint(st:UnpackPoint(frame.config.position))
-			else
-				frame:ClearAllPoints()
-				if not frame.config.enable then
-					frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
-					return
-				elseif frame.ID and frame.ID > 1 then
-					frame:SetPoint('TOPLEFT', self.units[frame.base_unit][frame.ID-1], 'BOTTOMLEFT', 0, -frame.config.spacing)
-				else
-					frame:SetPoint(st:UnpackPoint(frame.config.position))
-				end
-			end
-			st:SetSize(frame, frame.config.width, frame.config.height)
+		if not InCombatLockdown() and not self:PlaceUnitFrame(frame) then
+			return -- disabled, and moved off screen
 		end
 
 		st:SetBackdrop(frame, frame.config.template)
@@ -262,10 +292,10 @@ local function SafeUpdateUnitFrame(frame, element_name)
 	xpcall(function() UF:UpdateUnitFrame(frame, element_name) end, geterrorhandler())
 end
 
--- Clears the points of every frame UpdateUnitFrame places: the single and
--- numbered unit frames, and the group headers (their children are placed by
--- the header). Returns each frame's old points, for st:RestorePoints. Unit
--- frames are secure: out of combat only.
+-- Clears the points of every frame ApplyConfig places: the single and
+-- numbered unit frames, the boss/arena holders, and the group headers (their
+-- children are placed by the header). Returns each frame's old points, for
+-- st:RestorePoints. Unit frames are secure: out of combat only.
 local function ClearUnitFramePoints(self)
 	local previous = {}
 	local function Clear(frame)
@@ -280,6 +310,9 @@ local function ClearUnitFramePoints(self)
 		else
 			Clear(frame)
 		end
+	end
+	for _, holder in pairs(self.holders) do
+		Clear(holder)
 	end
 	for _, header in pairs(self.groups or {}) do
 		Clear(header)
@@ -322,6 +355,11 @@ function UF:ApplyConfig(unit, element_name)
 	else
 		if self.units[unit] then
 			if unit == 'boss' or unit == 'arena' then
+				-- The holder follows the group's size and position, like the
+				-- frames, and only out of combat, like UpdateUnitFrame.
+				if self.holders[unit] and not element_name and not InCombatLockdown() then
+					xpcall(function() self:PlaceHolder(unit) end, geterrorhandler())
+				end
 				for i,frame in pairs(self.units[unit]) do
 					SafeUpdateUnitFrame(frame, element_name)
 				end
@@ -440,6 +478,49 @@ function UF:CreateGroupHeaders()
 	self.groups.raid40 = raid40
 end
 
+-- The frame a unit's mover drags and outlines, and its Position section
+-- validates typed anchors against: a boss/arena group's holder, or the
+-- unit's own frame.
+function UF:GetMoverFrame(unit)
+	return self.holders[unit] or self.units[unit]
+end
+
+-- A mover's apply, after a drag, a nudge or a profile change: sizes and places
+-- one unit's frames (and a group's holder) from the profile with the same code
+-- as UpdateUnitFrame. A move doesn't need the elements refreshed. Unit frames
+-- are secure, so in combat this waits for the end of combat.
+function UF:ApplyPosition(unit)
+	local holder = self.holders[unit]
+	local frames = holder and self.units[unit] or { self.units[unit] }
+	if holder then
+		st:SafeReposition(holder, 'uf_holder_' .. unit, function() self:PlaceHolder(unit) end)
+	end
+	st:SafeReposition(frames[1], 'uf_' .. unit, function()
+		for _, frame in ipairs(frames) do
+			frame.config = frame:GetConfig()
+			self:PlaceUnitFrame(frame)
+		end
+	end)
+end
+
+-- Every spawned unit gets an edit mode mover: each single frame, and boss as
+-- one group (its holder). Clicking one opens its General group in /sui.
+-- Arena isn't spawned (commented out of unit_strings), and neither are the
+-- party and raid headers (CreateGroupHeaders is off), so they have none.
+function UF:RegisterMovers()
+	for unit in pairs(self.units) do
+		st:RegisterMover('uf_' .. unit, {
+			frame = self:GetMoverFrame(unit),
+			label = self.unit_strings[unit],
+			-- Looked up on every call: a profile change replaces these tables.
+			getPosition = function() return self:GetProfileConfig()[unit].position end,
+			setPosition = function(pos) self:GetProfileConfig()[unit].position = pos end,
+			apply = function() self:ApplyPosition(unit) end,
+			configPath = { 'Unitframes', unit, 'general' },
+		})
+	end
+end
+
 function UF:OnEnable()
 	self.oUF:RegisterStyle('SaftUI', UF.ConstructUnit)
 	self.oUF:SetActiveStyle('SaftUI')
@@ -452,6 +533,8 @@ function UF:OnEnable()
 			for i=1, 5 do
 				self.units[unit][i] = self.oUF:Spawn(unit..i, 'SaftUI_'..labelName..i)
 			end
+			-- The five frames move as one group, on a SaftUI holder.
+			self.holders[unit] = CreateFrame('Frame', 'SaftUI_'..labelName..'Holder', UIParent)
 		else
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)
 		end
@@ -462,11 +545,5 @@ function UF:OnEnable()
 -- 	UF:CreateGroupHeaders()
 	UF:ApplyConfig()
 	UF:UpdateColors()
-
-	for _, unitframe in pairs(self.units) do
-		-- We're going to register boss and arena frames as a group instead, this filters then out
-		if unitframe.unit then
-			st:RegisterEditMode(unitframe, ("%s Unitframe"):format(unitframe.unitLabel), unitframe.config.position)
-		end
-	end
+	UF:RegisterMovers()
 end

@@ -397,7 +397,7 @@ function UF:GetConfigTable()
 			return UnitConfig().position[key]
 		end
 
-		config_table = {
+		local config_table = {
 			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
 			type = 'group',
 			inline = false,
@@ -411,6 +411,8 @@ function UF:GetConfigTable()
 					end,
 					order = -99,
 				},
+				-- Clicking the unit's frame in edit mode selects this group (the
+				-- mover's configPath, UF:RegisterMovers).
 				general = {
 					order = 0,
 					name = 'General',
@@ -428,7 +430,12 @@ function UF:GetConfigTable()
 						template = st.Config.generators.template(2),
 						height = st.Config.generators.height(3),
 						width = st.Config.generators.width(4),
-						position = st.Config.generators.position(5, true, frame_position_get, frame_position_set),
+						-- Every SetPoint parameter, the relative frame included.
+						-- Passing the mover's frame makes a typed frame go through
+						-- st:ValidateAnchor, which rejects the frame itself and
+						-- anything anchored back to it (e.g. Pet for Player).
+						position = st.Config.generators.position(5, true, frame_position_get, frame_position_set,
+							self:GetMoverFrame(unit)),
 					}
 				}
 			}
