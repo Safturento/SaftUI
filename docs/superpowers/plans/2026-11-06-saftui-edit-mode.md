@@ -109,6 +109,7 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - `local EM = st:NewModule('EditMode')`, also exposed as `st.EditModeFrames = EM`. Don't reuse `st.EditMode`, which `init.lua` sets to the dead `EditModeExpanded` lib.
   - `st:RegisterMover(key: string, def: MoverDef) -> mover`
     - `MoverDef = { frame: Region, label: string, getPosition: fun(): PositionTable, setPosition: fun(pos: PositionTable), apply: fun(), options: fun(): AceConfigGroup|nil, shared: { key: string, label: string, options: fun(): AceConfigGroup }|nil }`
+    - *Superseded by Task 7:* `options`/`shared` were replaced by `configPath: string[]`, the option keys from the `/sui` root to the frame's section.
     - `PositionTable = { point, frame, rel_point, x_off, y_off }`
   - Edit mode on/off: `EM:Activate()` / `EM:Deactivate()` / `EM:Toggle()` / `EM:IsActive()` so they don't clash with AceAddon's module `Enable` / `Disable` / `IsEnabled`.
   - `EM:Select(mover|nil)` sets the selected mover.
@@ -322,7 +323,7 @@ The orchestrator pauses after each task for the user's in-game result before sta
 **Interfaces:**
 - **Consumes:** `st:RegisterMover`, `EM:On('Selected')` (Task 2); `st.AceSkin:CreateWindow`, `EM:AddFooterButton` (Task 4); `Config:Refresh()` / `AceConfigRegistry:NotifyChange(st.name)`.
 - **Produces:**
-  - `def.configPath`: an array of option-table keys from the `/sui` root to the frame's section, e.g. `{ 'Minimap', 'minimap' }`. It replaces `def.options`.
+  - `def.configPath`: an array of option-table keys from the `/sui` root to the frame's section, e.g. `{ 'Minimap', 'general' }` (it ends at a leaf group, since selecting a node that only holds subgroups shows an empty pane). It replaces `def.options`.
   - `st.Config:Open(...)`: opens the skinned `/sui` window if needed and, given a path, selects it via `AceConfigDialog:SelectGroup(st.name, ...)`. The `/sui` slash command uses it too.
   - `EM:AddFooterButton(text, onClick)`: same signature as before, but the buttons sit on the `/sui` window's footer and show only while edit mode is active, keeping validation status text clear of them.
 

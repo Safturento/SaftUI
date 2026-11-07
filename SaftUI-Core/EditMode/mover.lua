@@ -128,7 +128,11 @@ function EM:CreateMover(key, def)
 	overlay:SetScript('OnClick', function()
 		if mover.dragged then return end -- a drag, not a click
 		if EM.selected == mover then
-			EM:ShowSettings(mover) -- e.g. /sui was closed since it was selected
+			-- Reopen /sui if it was closed since; if it's open, leave the user
+			-- on whatever section they're in (e.g. Position).
+			if not st.Config:GetWindow() then
+				EM:ShowSettings(mover)
+			end
 		else
 			EM:Select(mover) -- 'Selected' shows its settings
 		end

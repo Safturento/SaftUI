@@ -106,7 +106,9 @@ EM:On('Selected', function(mover)
 	end
 end)
 
--- Registers a movable frame. See the EditMode spec for the MoverDef shape.
+-- Registers a movable frame. def = { frame, label, getPosition, setPosition,
+-- apply, configPath }; configPath is the option keys from the /sui root to the
+-- frame's section, e.g. { 'Minimap', 'general' }. apply can run in combat.
 -- def.configPath is the option keys from the /sui root to the group shown
 -- when the frame is clicked, e.g. { 'Minimap', 'general' }.
 function st:RegisterMover(key, def)
