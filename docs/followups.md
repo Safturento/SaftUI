@@ -56,6 +56,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** Has any of this caused a real `ADDON_ACTION_BLOCKED` so far, or is it latent? Check the BugGrabber log before prioritizing.
 
+**Also (2026-11-07, retail only):** Blizzard's `MicroMenu:Layout` re-anchors `QueueStatusButton` to its own micro menu on every layout, which can pull the queue eye out of SaftUI's bar. Forever doesn't do this. Found while putting the micro buttons inline (`116e9b6`).
+
 ### 2026-11-07 — Bank leftovers: broken non-combined bank path, Forever gold tooltip, leaked globals
 
 **What:** Three bank problems found while adding the bank bag slot bar (`4f86164`, `f3d2d4b`, `3ec5a77`), all outside that change:
