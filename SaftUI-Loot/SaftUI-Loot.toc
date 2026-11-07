@@ -11,6 +11,7 @@ popup.lua
 roll.lua
 
 Feed/icons.lua
+Feed/progress.lua
 Feed/feed.lua
 Feed/filter.lua
 Feed/test.lua

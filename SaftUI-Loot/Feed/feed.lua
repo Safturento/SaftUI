@@ -273,6 +273,17 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 
 			item.count:SetText(info.count or '')
 			item.icon:SetTexture(info.icon)
+
+			-- Items are reused across entry types, so the bar hides on entries
+			-- without a progress snapshot.
+			local progress = info.progress
+			if progress then
+				item.progressBar:SetMinMaxValues(0, progress.max)
+				item.progressBar:SetValue(progress.value)
+				item.progressBar:SetStatusBarColor(progress.r, progress.g, progress.b)
+			end
+			item.progressBar:SetShown(progress ~= nil)
+
 			item.link = info.link
 			item.info = info
 
@@ -332,6 +343,8 @@ function LT:LootFeedPush(info)
 	elseif top and info.name == top.name and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
 		top.count = (top.count or 1) + (info.count or 1)
 		top.time = info.time
+		-- The merged entry now stands for the latest gain, so it shows that snapshot.
+		top.progress = info.progress
 	else
 		tinsert(feed_stack, 1, info)
 	end
@@ -442,7 +455,8 @@ function LT:LootFeedAddExperience(match)
 	self:LootFeedPush({
 		name = ('%d Experience'):format(match['experience']),
 		icon = self.FEED_ICONS.Experience,
-		type = 'Experience'
+		type = 'Experience',
+		progress = self:SnapshotExperienceProgress(),
 	})
 end
 
@@ -474,6 +488,7 @@ function LT:LootFeedAddReputation(match)
 		name = ('%d Reputation (%s)'):format(match.count, match.faction),
 		icon = icon,
 		type = 'Reputation',
+		progress = self:SnapshotReputationProgress(match.faction),
 	})
 end
 ------------------------------------
@@ -562,6 +577,11 @@ function LT:UpdateLootFeedConfig()
 		item.icon = item:CreateTexture(nil, 'OVERLAY', nil, 1)
 		item.count = item:CreateFontString(nil, 'OVERLAY')
 
+		-- XP and reputation progress, styled like the roll frame's timer bar.
+		item.progressBar = CreateFrame('StatusBar', nil, item)
+		item.progressBar:SetStatusBarTexture(st.BLANK_TEX)
+		item.progressBar:Hide()
+
 		st:SetBackdrop(item.icon, config.template)
 
 		item:SetScript("OnEnter", ShowTooltip)
@@ -614,6 +634,12 @@ function LT:UpdateLootFeedConfig()
 		item.icon:SetPoint('LEFT', item)
 		st:SkinIcon(item.icon)
 		st:SetBackdrop(item, config.template)
+
+		-- Along the bottom edge next to the icon, placed like LT:UpdateRollFrame's timer.
+		item.progressBar:ClearAllPoints()
+		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', config.spacing, 0)
+		item.progressBar:SetHeight(1)
+		item.progressBar:SetWidth(config.width - config.item_height - config.spacing)
 	end
 
 	self.feed.overlay:SetPoint('BOTTOMLEFT', self.feed)
@@ -741,4 +767,6 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_XP_GAIN', 'LootFeedHandler')
+	-- Lets reputation entries find factions hidden under collapsed headers.
+	self:RegisterEvent('FACTION_STANDING_CHANGED', 'RememberChangedFaction')
 end

@@ -56,6 +56,24 @@ local function PickCurrencyLink()
 	end
 end
 
+-- A faction from the character's own reputation list, so test entries find
+-- real standing data and show a progress bar. The fixed names are the
+-- fallback when the list has nothing to offer.
+local function PickTestFaction()
+	local names = {}
+	if C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetFactionDataByIndex then
+		for index = 1, C_Reputation.GetNumFactions() do
+			local data = C_Reputation.GetFactionDataByIndex(index)
+			if data and (not data.isHeader or data.isHeaderWithRep)
+				and not issecretvalue(data.name) and type(data.name) == 'string' and data.name ~= '' then
+				tinsert(names, data.name)
+			end
+		end
+	end
+	if #names > 0 then return names[random(#names)] end
+	return TEST_FACTIONS[random(#TEST_FACTIONS)]
+end
+
 local function MoneyString()
 	local gold, silver, copper = random(0, 25), random(0, 99), random(0, 99)
 	return ('%s %s %s'):format(
@@ -104,7 +122,7 @@ local generators = {
 	function(self)
 		if not FACTION_STANDING_INCREASED then return end
 		self:LootFeedHandler('CHAT_MSG_COMBAT_FACTION_CHANGE',
-			FACTION_STANDING_INCREASED:format(TEST_FACTIONS[random(#TEST_FACTIONS)], random(5, 250)))
+			FACTION_STANDING_INCREASED:format(PickTestFaction(), random(5, 250)))
 	end,
 	-- honor: the feed has no chat pattern for honor, so hand it to the honor
 	-- builder directly with the fields a match would carry
