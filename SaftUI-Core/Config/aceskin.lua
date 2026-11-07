@@ -71,9 +71,13 @@ end
 -- region inherit from itself, which overflows the C stack and crashes the game.
 -- So only a named global font object is ever restored as an object; anything
 -- else is restored from the recorded file, size and flags.
+local function IsNamedFont(object)
+	local name = object and object.GetName and object:GetName()
+	return name ~= nil and _G[name] == object
+end
+
 local function RestoreFont(fs, oldObject, file, size, flags)
-	local name = oldObject and oldObject.GetName and oldObject:GetName()
-	if name and _G[name] == oldObject then
+	if IsNamedFont(oldObject) then
 		fs:SetFontObject(oldObject)
 	elseif file then
 		fs:SetFont(file, size, flags)
@@ -92,6 +96,20 @@ local function SetFont(state, fs, font)
 	local r, g, b, a = fs:GetTextColor()
 	fs:SetFontObject(font)
 	fs:SetTextColor(r, g, b, a)
+end
+
+-- Saves a Button's state font objects for the undo; the caller sets new ones
+-- as often as it needs. Like RestoreFont, only named global font objects are
+-- put back.
+local function SaveButtonFonts(state, button)
+	local normal = button:GetNormalFontObject()
+	local hover = button:GetHighlightFontObject()
+	local disabled = button:GetDisabledFontObject()
+	Push(state, function()
+		if IsNamedFont(normal) then button:SetNormalFontObject(normal) end
+		if IsNamedFont(hover) then button:SetHighlightFontObject(hover) end
+		if IsNamedFont(disabled) then button:SetDisabledFontObject(disabled) end
+	end)
 end
 
 local function SameColor(r1, g1, b1, a1, r2, g2, b2, a2)
@@ -217,7 +235,8 @@ end
 
 -- Wraps a method on one widget instance; the undo puts back exactly what was
 -- there (nil when the method came from the widget's metatable). The hooked
--- methods (AddChild, AddChildren, AddItem, RefreshTree) return nothing.
+-- methods (AddChild, AddChildren, AddItem, RefreshTree, BuildTabs, SelectTab,
+-- and a tab button's SetSelected and SetDisabled) return nothing.
 local function HookMethod(state, obj, key, after)
 	local orig = obj[key]
 	if type(orig) ~= 'function' then return end
@@ -227,6 +246,13 @@ local function HookMethod(state, obj, key, after)
 		after(...)
 	end)
 	Push(state, function() rawset(obj, key, raw) end)
+end
+
+-- For styling that runs inside AceGUI's own calls: an error is reported
+-- instead of breaking the call.
+local function Try(fn, ...)
+	local ok, err = pcall(fn, ...)
+	if not ok then geterrorhandler()(err) end
 end
 
 --------------------------------------------------------------------------------
@@ -349,6 +375,24 @@ local function HideButtonArt(state, button)
 	end
 end
 
+-- A Button's label takes its color from the state font objects (a color set on
+-- the font string is reset by the next hover), so tab labels use copies of the
+-- pixel font in their own colors. They're ours and shared by every scoped tab;
+-- each TabGroup styling re-copies them, so font and color changes reach them.
+local tabFonts = {}
+local function TabFont(key, r, g, b, a)
+	local pixel = Font('pixel')
+	if not pixel then return nil end
+	local font = tabFonts[key]
+	if not font then
+		font = CreateFont('SaftUI_AceTab' .. key .. 'Font')
+		tabFonts[key] = font
+	end
+	font:CopyFontObject(pixel)
+	font:SetTextColor(r, g, b, a or 1)
+	return font
+end
+
 --------------------------------------------------------------------------------
 -- Per widget type
 --------------------------------------------------------------------------------
@@ -467,6 +511,112 @@ STYLERS['DropdownGroup'] = function(state, w)
 		Scope(w.dropdown)
 		Push(state, function() Unscope(w.dropdown) end)
 	end
+end
+
+-- Tab buttons are made on demand by BuildTabs and stay with the pooled frame.
+-- Selecting, deselecting or disabling a tab (AceGUI's PanelTemplates_* calls)
+-- shows and hides its art, resets its disabled font and re-anchors its text,
+-- so each tab is put back in our look after those, and tabs made later are
+-- styled after BuildTabs. AceGUI's layout (sizes, rows) is left alone.
+STYLERS['TabGroup'] = function(state, w)
+	FlatBackdrop(state, w.border, 'thick')
+	StyleLabel(state, w.titletext)
+
+	local r, g, b = Blue()
+	local gr, gg, gb = st.config.profile.colors.text.grey:GetRGB()
+	local borderColor = st.config.profile.templates.thick.bordercolor
+	local pixel = Font('pixel')
+	local dim = TabFont('Dim', gr, gg, gb)
+	local disabledFont = TabFont('Disabled', gr, gg, gb, 0.4)
+	local boxes = {} -- tab -> its box, for the tabs styled in this scope
+
+	local function PlaceText(fs, box)
+		fs:SetPoint('CENTER', box, 'CENTER', 0, 0)
+	end
+
+	-- Puts a styled tab in its current state. Only our own box and values
+	-- recorded in StyleTab are written here, so it can run any number of times.
+	local function UpdateTab(tab)
+		local box = boxes[tab]
+		if not box then return end
+		local disabled = tab.disabled and true or false
+		local selected = (tab.selected and not disabled) and true or false
+		if selected then
+			box:SetBackdropBorderColor(r, g, b, 1)
+		else
+			box:SetBackdropBorderColor(unpack(borderColor))
+		end
+		box.fill:SetShown(selected)
+		if dim then tab:SetNormalFontObject(dim) end
+		if pixel then tab:SetHighlightFontObject(pixel) end
+		-- A selected tab is a disabled button too, so this is its label's font.
+		local label = disabled and disabledFont or pixel
+		if label then tab:SetDisabledFontObject(label) end
+		local fs = tab:GetFontString()
+		if fs then
+			fs:ClearAllPoints()
+			PlaceText(fs, box)
+		end
+	end
+
+	-- Once per tab per scope: records everything UpdateTab changes.
+	local function StyleTab(tab)
+		state.saved[tab] = true
+		local highlight = tab:GetHighlightTexture()
+		for _, region in ipairs({ tab:GetRegions() }) do
+			if region ~= highlight and region:IsObjectType('Texture') then
+				SetAlpha(state, region, 0)
+			end
+		end
+
+		-- Tabs are 24px high on a 20px row pitch and overlap the tab before
+		-- them by 10px. This box (and the 1px a thick template draws outside
+		-- it) leaves 2px between tabs, between rows, and above the border.
+		local box = Box(state, tab, 'box', 'thick')
+		box:ClearAllPoints()
+		box:SetPoint('TOPLEFT', tab, 'TOPLEFT', 7, -4)
+		box:SetPoint('BOTTOMRIGHT', tab, 'BOTTOMRIGHT', -7, 4)
+		if not box.fill then
+			box.fill = box:CreateTexture(nil, 'ARTWORK')
+			box.fill:SetTexture(st.BLANK_TEX)
+			box.fill:SetPoint('TOPLEFT', box, 'TOPLEFT', 2, -2)
+			box.fill:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', -2, 2)
+		end
+		-- The selected tab gets the TreeGroup's selected-entry blue.
+		box.fill:SetVertexColor(r, g, b, 0.3)
+
+		if highlight then
+			Retexture(state, highlight, st.BLANK_TEX, r, g, b, 0.25, 'BLEND')
+			SetPoints(state, highlight, function(tex)
+				tex:SetPoint('TOPLEFT', box, 'TOPLEFT', 2, -2)
+				tex:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', -2, 2)
+			end)
+		end
+
+		SaveButtonFonts(state, tab)
+		local fs = tab:GetFontString()
+		if fs then
+			SetPoints(state, fs, function(f) PlaceText(f, box) end)
+		end
+		boxes[tab] = box
+
+		HookMethod(state, tab, 'SetSelected', function(t) Try(UpdateTab, t) end)
+		HookMethod(state, tab, 'SetDisabled', function(t) Try(UpdateTab, t) end)
+	end
+
+	local function StyleTabs(self)
+		if not self.tabs then return end
+		for _, tab in ipairs(self.tabs) do
+			if not state.saved[tab] then
+				StyleTab(tab)
+			end
+			UpdateTab(tab)
+		end
+	end
+
+	HookMethod(state, w, 'BuildTabs', function(self) Try(StyleTabs, self) end)
+	HookMethod(state, w, 'SelectTab', function(self) Try(StyleTabs, self) end)
+	StyleTabs(w)
 end
 
 STYLERS['ScrollFrame'] = function(state, w)
