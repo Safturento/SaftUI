@@ -13,7 +13,7 @@ local Config = st:NewModule('Config')
 st.Config = Config
 
 function Config:Refresh()
-	AceConfigRegistry:NotifyChange(ADDON_NAME)
+	AceConfigRegistry:NotifyChange(st.name)
 end
 
 function Config:Export(data)
@@ -48,6 +48,9 @@ function Config:InitializeAceConfig()
     --AceConfig:RegisterOptionsTable(st.name, options)
     --AceConfigDialog:AddToBlizOptions(st.name, st.name)
 
+	-- Keep an open /sui window in sync with drags and nudges.
+	st.EditModeFrames:On('PositionChanged', function() self:Refresh() end)
+
     _G.SLASH_SAFTUI1 = '/sui'
     _G.SLASH_SAFTUI2 = '/saftui'
     _G.SlashCmdList.SAFTUI = function(msg)
@@ -78,7 +81,6 @@ function Config:GetOptionsTable()
 					name = 'Edit mode',
 					type = 'execute',
 					func = function()
-						AceConfigDialog:Close(st.name)
 						st.EditModeFrames:Toggle()
 					end,
 				},
