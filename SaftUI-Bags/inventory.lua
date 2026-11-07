@@ -1,8 +1,28 @@
 local st = SaftUI
 local INV = st:NewModule('Inventory')
 
+-- Every bank tab the client defines, in order. The tab count differs per client
+-- (Forever defines nine character tabs, the base bank plus one per bank bag
+-- slot, where retail defines six), so read it from the enum instead of listing it.
+local function GetBankTabBagIds(prefix)
+	local bagIds = {}
+	local index = 1
+	while Enum.BagIndex[prefix .. index] do
+		tinsert(bagIds, Enum.BagIndex[prefix .. index])
+		index = index + 1
+	end
+	return bagIds
+end
+
 local BAG_IDS
 if st.retail then
+	local characterTabs = GetBankTabBagIds('CharacterBankTab_')
+	local accountTabs = GetBankTabBagIds('AccountBankTab_')
+
+	local combinedTabs = {}
+	for _, bagId in ipairs(characterTabs) do tinsert(combinedTabs, bagId) end
+	for _, bagId in ipairs(accountTabs) do tinsert(combinedTabs, bagId) end
+
 	BAG_IDS = {
 		['bag'] = {
             Enum.BagIndex.Backpack,
@@ -12,36 +32,9 @@ if st.retail then
             Enum.BagIndex.Bag_4,
             Enum.BagIndex.ReagentBag,
          },
-		['bank'] = {
-            Enum.BagIndex.CharacterBankTab_1,
-            Enum.BagIndex.CharacterBankTab_2,
-            Enum.BagIndex.CharacterBankTab_3,
-            Enum.BagIndex.CharacterBankTab_4,
-            Enum.BagIndex.CharacterBankTab_5,
-            Enum.BagIndex.CharacterBankTab_6,
-        },
-		['warband'] = {
-            Enum.BagIndex.AccountBankTab_1,
-            Enum.BagIndex.AccountBankTab_2,
-            Enum.BagIndex.AccountBankTab_3,
-            Enum.BagIndex.AccountBankTab_4,
-            Enum.BagIndex.AccountBankTab_5,
-            Enum.BagIndex.AccountBankTab_6,
-        },
-		['combinedbank'] = {
-            Enum.BagIndex.CharacterBankTab_1,
-            Enum.BagIndex.CharacterBankTab_2,
-            Enum.BagIndex.CharacterBankTab_3,
-            Enum.BagIndex.CharacterBankTab_4,
-            Enum.BagIndex.CharacterBankTab_5,
-            Enum.BagIndex.CharacterBankTab_6,
-            Enum.BagIndex.AccountBankTab_1,
-            Enum.BagIndex.AccountBankTab_2,
-            Enum.BagIndex.AccountBankTab_3,
-            Enum.BagIndex.AccountBankTab_4,
-            Enum.BagIndex.AccountBankTab_5,
-            Enum.BagIndex.AccountBankTab_6,
-        }
+		['bank'] = characterTabs,
+		['warband'] = accountTabs,
+		['combinedbank'] = combinedTabs,
 	}
 else
 	BAG_IDS = {

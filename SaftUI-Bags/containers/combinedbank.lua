@@ -144,6 +144,8 @@ function INV:InitializeCombinedBank()
 		depositButton:SetPoint('BOTTOM', container.footer, 0, 7)
 	end
 
+	self:InitializeBankBagSlots(container)
+
 	if st.retail then
         self:CreateGoldString(container)
         self:UpdateCombinedBankWarbandMoney()
