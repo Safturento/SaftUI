@@ -19,11 +19,12 @@ covers:
 - Every folder `SaftUI-<Name>/` is a separate WoW addon. All of them `## RequiredDeps: SaftUI-Core` and `## Group: SaftUI-Core`.
 - **TOCs:** Core and Unitframes have per-client TOCs (`*_Forever.toc` = `## Interface: 16001`, `*_Mainline.toc` = `120000`). The other addons use one TOC listing both (`## Interface: 120000, 16001`). When you add a file, add it to **every** TOC of that addon (and to the folder's `load.xml` where one is used, e.g. `SaftUI-Core/EditMode/load.xml`, `SaftUI-Misc/Skinning/load.xml`).
 - Load order matters: Core loads first, then each module addon in its TOC order. Defaults (`st.defaults.*`) must be defined at file load, before Core creates the AceDB (see below).
+- **Libraries:** Core bundles LibStub, CallbackHandler-1.0, Ace3 and the shared media libraries. An addon that needs more bundles them in its own `Libraries/` and lists them first in its TOC, without a second copy of LibStub or CallbackHandler: Unitframes has oUF, ActionBars has LibActionButton-1.0 and LibButtonGlow-1.0 (sources and versions in `SaftUI-ActionBars/Libraries/README.md`).
 
 ## The `st` object and modules
 
 - `SaftUI-Core/init.lua` creates the addon: `SaftUI = AceAddon:NewAddon(st, 'SaftUI-Core', 'AceEvent-3.0', 'AceHook-3.0')`. Every file starts with `local st = SaftUI`.
-- A module is `local M = st:NewModule('Name')` (AceAddon module, with AceEvent + AceHook mixed in). Module names are the keys used everywhere else: `st.modules[name]`, the `/sui` tree, and edit mode `configPath`s. Current modules include Actionbars, Auras, Chat, Config, EditMode, Experience, Fonts, Inventory, Loot, MicroMenu, Minimap, Movable, Skinning, SwingTimer, TaintFix, Tooltip, TotemBar, Unitframes, Utilities.
+- A module is `local M = st:NewModule('Name')` (AceAddon module, with AceEvent + AceHook mixed in). Module names are the keys used everywhere else: `st.modules[name]`, the `/sui` tree, and edit mode `configPath`s. Current modules include ActionBars, Auras, Chat, Config, EditMode, Experience, Fonts, Inventory, Loot, MicroMenu, Minimap, Movable, Skinning, SwingTimer, TaintFix, Tooltip, TotemBar, Unitframes, Utilities.
 - Lifecycle: `OnInitialize` (rarely used), `OnEnable` (build frames, register movers, hook Blizzard), `UpdateConfig` (re-apply everything from the profile; see below), `GetConfigTable` (the module's `/sui` section).
 - `SaftUI-Core/constants.lua` sets client flags and screen constants. See `.agents/clients.md` for `st.retail` / `st.forever`.
 - Core helpers live in `SaftUI-Core/api.lua`. The ones you'll use most:

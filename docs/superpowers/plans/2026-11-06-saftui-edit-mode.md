@@ -445,7 +445,7 @@ The orchestrator pauses after each task for the user's in-game result before sta
 
 ### Tasks 10–14: more modules as movers
 
-*Added 2026-11-07 at the user's request: "can we start getting edit mode for unit frames and all of the other components we mentioned earlier? I think it's stable enough now that we can just start doing a lot of the modules". Action bars are deferred: SaftUI only skins Blizzard's secure Edit Mode action bars, and the `SaftUIActionBar1..` positions in `SaftUI-Misc/config.lua` point at bars that no longer exist. That needs its own design decision.*
+*Added 2026-11-07 at the user's request: "can we start getting edit mode for unit frames and all of the other components we mentioned earlier? I think it's stable enough now that we can just start doing a lot of the modules". Action bars got their own design and plan: `docs/superpowers/specs/2026-11-07-saftui-action-bars-design.md` and `docs/superpowers/plans/2026-11-07-saftui-action-bars.md`.*
 
 **Shared rules for Tasks 10–14** (they run in parallel, one worktree each):
 - Follow the mover pattern already in the repo:

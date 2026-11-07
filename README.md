@@ -1,6 +1,6 @@
 # SaftUI
 
-A modular World of Warcraft UI replacement: unit frames, bags and bank, chat, minimap and micro menu, loot rolls and loot feed, and a set of flat, pixel-perfect skins for Blizzard frames. Every part is its own addon on top of `SaftUI-Core`. It runs on WoW Forever (interface 16001) and retail (interface 120000).
+A modular World of Warcraft UI replacement: unit frames, action bars, bags and bank, chat, minimap and micro menu, loot rolls and loot feed, and a set of flat, pixel-perfect skins for Blizzard frames. Every part is its own addon on top of `SaftUI-Core`. It runs on WoW Forever (interface 16001) and retail (interface 120000).
 
 ## Installation
 

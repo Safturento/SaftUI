@@ -1,0 +1,14 @@
+## Interface: 120000, 16001
+## Version: 1.0
+## Title: |cff00adefSaftUI Action Bars|r
+## RequiredDeps: SaftUI-Core
+## Group: SaftUI-Core
+
+Libraries\LibButtonGlow-1.0\LibButtonGlow-1.0.lua
+Libraries\LibActionButton-1.0\LibActionButton-1.0.lua
+
+config.lua
+init.lua
+hideblizzard.lua
+skin.lua
+bars.lua

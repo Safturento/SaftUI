@@ -7,8 +7,8 @@ rules only.
 ## What this is
 
 SaftUI is a modular World of Warcraft UI replacement: a set of Lua addons that share
-one core (`SaftUI-Core`) and each own one area of the UI (unit frames, bags, chat,
-minimap and micro menu, loot, and a grab-bag of skins and small modules). It targets
+one core (`SaftUI-Core`) and each own one area of the UI (unit frames, action bars, bags,
+chat, minimap and micro menu, loot, and a grab-bag of skins and small modules). It targets
 two clients at once: **WoW Forever** (interface 16001, a mainline-family client with
 "Camelot" overrides, the one the user plays) and **retail** (Midnight, interface
 120000). It has its own edit mode, where registered frames are dragged and nudged on
@@ -26,7 +26,8 @@ user checking them in game.
 | `SaftUI-Chat/` | Chat frame placement, size and skin. |
 | `SaftUI-Loot/` | Loot roll frames, loot feed (`Feed/`), loot window popup. |
 | `SaftUI-Minimap/` | Minimap, SaftUI's micro menu bar and the pieces it hosts, Blizzard micro buttons inline, addon compartment. |
-| `SaftUI-Misc/` | Experience/rep bars, action bar skin, tooltip, totem bar, and Blizzard skins in `Skinning/` (buff frames, swing timer, character frame). |
+| `SaftUI-ActionBars/` | SaftUI's own action bars, built on a bundled LibActionButton-1.0 (`Libraries/`), in place of Blizzard's, which it takes off screen at load (`hideblizzard.lua`). |
+| `SaftUI-Misc/` | Experience/rep bars, tooltip, totem bar, and Blizzard skins in `Skinning/` (buff frames, swing timer, character frame). |
 | `docs/` | Followups queue, design specs and implementation plans. |
 
 ## When you need it

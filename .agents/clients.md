@@ -19,6 +19,7 @@ covers:
 - **Forever specifics found so far:**
   - **Swing timer.** Forever has `Blizzard_SwingTimer` (an Edit Mode system); retail doesn't.
   - **Totem bar.** `MultiCastActionBarFrame` is protected; `TotemFrame` isn't loaded.
+  - **Action bars.** The same bars as retail (`MainActionBar`, the four multibars and `MultiBar5`–`7` on pages 13–15), with the same binding commands. LibActionButton-1.0 treats Forever as mainline.
   - **Minimap.** The day/night indicator is `MinimapCluster.DielFrame`.
   - **Queue eye.** `QueueStatusButton` is an Edit Mode system.
   - **Loot rolls.** The buttons live under `frame.LootButtonContainer`.

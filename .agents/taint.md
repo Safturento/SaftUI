@@ -8,6 +8,8 @@ covers:
   - 'SaftUI-Misc/Skinning/**'
   - 'SaftUI-Misc/totembar.lua'
   - 'SaftUI-Minimap/**'
+  - 'SaftUI-ActionBars/hideblizzard.lua'
+  - 'SaftUI-ActionBars/skin.lua'
 ---
 
 # Taint and combat safety
@@ -37,6 +39,7 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - Edit mode and `/sui` close on `PLAYER_REGEN_DISABLED` and refuse to open in combat.
 7. **No arithmetic or comparisons on secret values.** See `.agents/clients.md`.
 8. **To hide a Blizzard frame for good**, prefer `frame:SetRolesets('alwaysBlocked')`, as oUF does for party frames and `SaftUI-Unitframes/groups.lua` does for `CompactRaidFrameContainer`. It's one C call that writes nothing onto the frame, and the frame stops drawing whatever Blizzard's own Show/Hide calls do. It's still bound by rule 4: apply it only while the frame isn't on screen, and only out of combat.
+   - A frame that's always on screen when SaftUI loads (Blizzard's `MainActionBar`) can be concealed instead, without changing its visibility: `SetAlpha(0)` and `EnableMouse(false)` on it and its mouse-enabled children, called through `getmetatable(frame).__index`. See `SaftUI-ActionBars/hideblizzard.lua`.
 9. **Don't override Blizzard globals or APIs**, not even for test data (e.g. faking `GetLootRollItemInfo` or `UnitExists`). Build SaftUI-owned preview frames instead (`SaftUI-Loot/roll.lua` `CreateRollPreviews`).
 10. **Ace skin fonts:** never `SetFontObject` with an object you got from `GetFontObject()` unless it's a named global Font. Restoring an engine-made Font made a region inherit from itself and crashed the client with a C stack overflow (`31afa68`). Use `IsNamedFont`/`RestoreFont` in `SaftUI-Core/Config/aceskin.lua`.
 
