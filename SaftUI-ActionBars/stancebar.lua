@@ -14,7 +14,10 @@ local AB = st:GetModule('ActionBars')
 	    as casting the form's spell from an action bar. Blizzard's own button
 	    and binding call CastShapeshiftForm(slot) instead, which is protected
 	    and has no secure template type. A slot without a spell ID (or a secret
-	    one) has no type and does nothing.
+	    one) has no type and does nothing. If a form turns out not to cast this
+	    way, casting by name won't help (it's the same spell-cast path); build
+	    the buttons from Blizzard's StanceButtonTemplate instead, as Bartender4
+	    and ElvUI do.
 	  - The attributes are protected, so they're set out of combat: when the
 	    bar is built, and whenever the forms change (UPDATE_SHAPESHIFT_FORMS,
 	    SPELLS_CHANGED for new ranks), through AB:UpdateBar, which also lays the
