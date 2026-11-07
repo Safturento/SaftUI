@@ -502,3 +502,17 @@ The orchestrator pauses after each task for the user's in-game result before sta
 - **Position:** only if a clean way exists. The bar is protected, so all moves must happen out of combat, and Blizzard must not re-anchor it in combat. Otherwise leave position to Blizzard and say why.
 - Retail has no totem bar, so this must be inert there.
 - Commit: `misc: add a hide option and mover for forever's totem bar`
+
+---
+
+### Task 15: Party and raid frames: re-enable the group headers and make them movers
+
+*Added 2026-11-07 at the user's request ("can we setup the party and raid frames?"). This resolves the followup "Party and raid unit frames: re-enable headers and add edit mode movers".*
+
+- **Fix and re-enable the headers.** Fix `UF:CreateGroupHeaders` in `SaftUI-Unitframes/unitframes.lua`: party passes a table to `SpawnHeader`, and there's an `oUF-initiateConfigFunction` typo. Check the header attributes against the bundled oUF master's `SpawnHeader` and Blizzard's `SecureGroupHeaderTemplate` (forever and live). Re-enable the call in `OnEnable`. Re-enable the groups loop in `UF:GetConfigTable` so party, raid10 and raid40 get `/sui` sections. Group visibility: party shows in a party but not a raid; raid10 and raid40 show by raid size. Use the existing config, or a sensible visibility macro if there is none.
+- **Holders and movers.** Follow the boss pattern from Task 10 (`SaftUI_BossHolder`, `UF:RegisterMovers`). Each group gets a SaftUI holder sized from its layout config (unitsPerColumn, maxColumns, spacing, grow direction), and the header is anchored to the holder. Movers are keyed `uf_party`, `uf_raid10` and `uf_raid40`, with configPath `{ 'Unitframes', <group>, 'general' }`. The outline shows even when solo. Headers are secure: all moves, sizes and attribute changes go through `st:SafeReposition`/`st:CanMoveNow`, out of combat only.
+- **Profile switches.** Header attributes are set at spawn. On a profile switch, re-apply the attributes that can change out of combat, or print "reload to apply" for anything that can't. Close the matching item in the "Profile settings that still need a /reload" followup.
+- **Testing aid.** Add a "Test mode" toggle per group in `/sui`, like the loot test mode. It's session-only and uses SaftUI-owned preview frames, or oUF's own test approach if it has a taint-free one. The user can only see raid layouts in a raid otherwise. Never fake units through Blizzard globals.
+- **Followups.** Move the party/raid followup to Resolved in the same change.
+- **In-game check.** Party frames appear in a party; raid frames appear in a raid of the right size. Outlines and test previews show when solo. Drag, nudge and click work. `/reload` and profile switches keep the frames in place. No errors or taint in combat (joining or leaving a group in combat must not error).
+- **Commit:** `unitframes: re-enable party and raid frames as movers`
