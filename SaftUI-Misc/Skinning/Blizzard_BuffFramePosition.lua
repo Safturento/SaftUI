@@ -408,10 +408,29 @@ function AP:ApplyHolder(key)
 	end)
 end
 
+-- Shows again the buttons ApplyMax hid that are now within the max (after raising
+-- it, live or by a profile switch). Only buttons Blizzard filled (hasValidInfo) or its
+-- Edit Mode examples (isExample); Blizzard's own UpdateAuraButtons isn't called from
+-- here, since that would run its aura bookkeeping in SaftUI's call chain.
+function AP:RestoreUnderMax(key)
+	local max = self:GetGeometry(key).max
+	local cell = (key == 'buffs' and self.consolidatedShown) and 1 or 0
+	for _, button in ipairs(self.frames[key].auraFrames) do
+		if not button.isAuraAnchor then
+			cell = cell + 1
+			if cell <= max and not button:IsShown() and (button.hasValidInfo or button.isExample)
+					and st:CanMoveNow(button) then
+				button:Show()
+			end
+		end
+	end
+end
+
 -- Applies one frame's settings: holder size and position, then its buttons.
 function AP:Refresh(key)
 	self:Invalidate(key)
 	self:ApplyHolder(key)
+	self:RestoreUnderMax(key)
 	self:LayoutButtons(key)
 end
 
