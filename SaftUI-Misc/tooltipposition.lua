@@ -72,11 +72,18 @@ function TT:UpdateTooltipAnchor()
 
 	st:ClearAllPointsDirect(container)
 	local target = SnapTarget(self.config)
+	local ok
 	if target then
-		st:SetPointDirect(container, 'BOTTOMRIGHT', target, 'BOTTOMLEFT', -SNAP_GAP, 0)
+		ok = pcall(st.SetPointDirect, st, container, 'BOTTOMRIGHT', target, 'BOTTOMLEFT', -SNAP_GAP, 0)
 	else
 		local corner = GrowthCorner(holder, self.config.position.point)
-		st:SetPointDirect(container, corner, holder, corner, 0, 0)
+		ok = pcall(st.SetPointDirect, st, container, corner, holder, corner, 0, 0)
+	end
+	-- Blizzard's code errors on every default tooltip if the container has no
+	-- point, e.g. after an anchor loop through a frame typed into Position.
+	if not ok then
+		st:ClearAllPointsDirect(container)
+		st:SetPointDirect(container, 'BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', -20, 20)
 	end
 end
 
@@ -130,6 +137,9 @@ function TT:SetupTooltipPosition()
 
 	self.tooltipContainer = container
 	self.tooltipHolder = CreateFrame('Frame', st.name .. 'TooltipHolder', UIParent)
+	-- Blizzard clamps the container; clamp the outline too, so it shows where the
+	-- tooltip really goes.
+	self.tooltipHolder:SetClampedToScreen(true)
 	self:ApplyTooltipHolder()
 
 	-- Blizzard's Edit Mode places the container through these on every layout load
@@ -169,10 +179,37 @@ function TT:GetConfigTable()
 	if not self.tooltipHolder then return end
 	local generators = st.Config.generators
 
-	local function Toggle(order, name, desc)
+	local function Toggle(order, name, desc, available)
 		local option = generators.toggle(order, name, 'full')
 		option.desc = desc
+		option.hidden = function() return not available() end
 		return option
+	end
+	local function HasBags()
+		local INV = st:GetModule('Inventory', true)
+		return INV and INV.containers and INV.containers.bag ~= nil
+	end
+	local function HasFeed()
+		local LT = st:GetModule('Loot', true)
+		return LT and LT.feed ~= nil
+	end
+
+	-- The tooltip anchors to its container, and the container to this holder:
+	-- either as the holder's frame would be a loop.
+	local position = generators.position(2, true,
+		function(key) return self.config.position[key] end,
+		function(key, value)
+			self.config.position[key] = value
+			self:ApplyTooltipHolder()
+		end,
+		function() return self.tooltipHolder end
+	)
+	local validate = position.args.frame.validate
+	position.args.frame.validate = function(info, name)
+		if name == 'GameTooltip' or name == 'GameTooltipDefaultContainer' then
+			return "The tooltip's position can't be anchored to the tooltip itself."
+		end
+		return validate(info, name)
 	end
 
 	return {
@@ -190,19 +227,12 @@ function TT:GetConfigTable()
 				end,
 				args = {
 					attach_to_bags = Toggle(1, 'Next to the bag window',
-						'While the bag window is open, the tooltip shows to its left.'),
+						'While the bag window is open, the tooltip shows to its left.', HasBags),
 					attach_to_feed = Toggle(2, 'Next to the loot feed',
-						'While the loot feed shows entries, the tooltip shows to its left. The bag window comes first.'),
+						'While the loot feed shows entries, the tooltip shows to its left. The bag window comes first.', HasFeed),
 				},
 			},
-			position = generators.position(2, true,
-				function(key) return self.config.position[key] end,
-				function(key, value)
-					self.config.position[key] = value
-					self:ApplyTooltipHolder()
-				end,
-				function() return self.tooltipHolder end
-			),
+			position = position,
 		},
 	}
 end

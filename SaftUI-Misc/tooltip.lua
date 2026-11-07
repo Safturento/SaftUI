@@ -133,12 +133,15 @@ function TT:OnEnable()
 			tooltip.CloseButton:Hide()
 			st:CreateCloseButton(tooltip)
 		end
-		if not self.hooked then
-			self:HookScript(tooltip, 'OnShow', 'UpdateTooltipDisplay')
-			self.hooked = true
-		end
 	end
 
+
+	-- A post-hook (rule 2 in .agents/taint.md): AceHook's plain HookScript
+	-- replaces Blizzard's OnShow handler with an addon closure. This only ever
+	-- hooked GameTooltip (the first in the list above), so that stays the case.
+	if not self:IsHooked(GameTooltip, 'OnShow') then
+		self:SecureHookScript(GameTooltip, 'OnShow', 'UpdateTooltipDisplay')
+	end
 
 	for i=1, 2 do
 		local name = 'DropDownList'..i
