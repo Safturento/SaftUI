@@ -17,6 +17,12 @@ local function GetDisplayPower(element)
 end
 
 local function PostUpdatePower(power, unit, current, min, max)
+	-- oUF's power update calls element:Show() every time, so Enable = false only
+	-- sticks if it's re-applied here, after oUF's update.
+	if power.config and power.config.enable == false then
+		power:Hide()
+		return
+	end
 	local deficit = issecretvalue(current) and C_StringUtil.TruncateWhenZero(UnitPowerMissing(unit)) or max - current
 	local percent = issecretvalue(current) and UnitPowerPercent(unit) or current / max * 100
 
