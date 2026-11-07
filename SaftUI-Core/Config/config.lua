@@ -119,6 +119,25 @@ local function HasSections(group)
 	return false
 end
 
+-- A frame's size and its position belong together: a section with both a
+-- `general` and a `position` subgroup gets the position shown as a box at the
+-- end of General instead of as its own tab or sidebar entry. Its own get/set
+-- travel with it, and edit mode's configPath (ending at `general`) still works.
+local function MergePositionIntoGeneral(group)
+	if type(group) ~= 'table' or type(group.args) ~= 'table' then return end
+	local general, position = group.args.general, group.args.position
+	if IsSection(general) and type(position) == 'table' and position.type == 'group'
+			and type(general.args) == 'table' and not general.args.position then
+		position.inline = true
+		position.order = 1000
+		general.args.position = position
+		group.args.position = nil
+	end
+	for _, child in pairs(group.args) do
+		if IsSection(child) then MergePositionIntoGeneral(child) end
+	end
+end
+
 -- The innermost sections (e.g. a frame's General and Position) show as tabs in
 -- their parent's page instead of another sidebar level. A group whose sections
 -- have no sections of their own gets childGroups = 'tab', unless it already
@@ -161,6 +180,7 @@ function Config:GetOptionsTable()
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			options[name] = module:GetConfigTable()
+			MergePositionIntoGeneral(options[name])
 			UseTabsForInnermostSections(options[name])
 		end
 	end

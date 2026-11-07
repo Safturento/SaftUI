@@ -452,7 +452,8 @@ function UF:GetConfigTable()
 			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
 			type = 'group',
 			inline = false,
-			childGroups = 'select',
+			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
+			childGroups = 'tab',
 			args = {
 				copy = {
 					name = 'Copy from',
