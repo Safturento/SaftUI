@@ -136,7 +136,10 @@ local function GetLayoutAttributes(group, config)
 		xOffset = layout.xOffset,
 		yOffset = layout.yOffset,
 		unitsPerColumn = layout.unitsPerColumn,
-		maxColumns = layout.maxColumns,
+		-- Never more columns than the group needs. Otherwise raid10's 5x8 default lets
+		-- the header lay out an 11th member (in combat, at the 10 -> 11 change, before
+		-- its state driver hides it) and create a button that wasn't made out of combat.
+		maxColumns = math.min(layout.maxColumns, math.ceil(GetGroupSize(group, config) / layout.unitsPerColumn)),
 		columnSpacing = layout.columnSpacing,
 		columnAnchorPoint = layout.columnAnchorPoint,
 		showPlayer = (group == 'party' and config.showPlayer) and true or false,
