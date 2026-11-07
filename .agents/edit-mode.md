@@ -43,6 +43,8 @@ st:RegisterMover('key', {
   - belongs to Blizzard (swing timer, buffs, chat).
 
   Size the holder from the config, place it from the profile, and anchor the real frame to it. The overlay then always has a footprint.
+
+  A SaftUI frame that's only hidden, and still sized and placed from the profile while hidden, can be its own mover frame: the overlay follows its edges either way. SaftUI's action bars (`SaftUI-ActionBars/options.lua`) move their secure headers this way, also while a bar is disabled or hidden by its Visibility setting. Label the outline when the frame may not be visible (`mover.label:SetText`), as the action bars and the swing timer do.
 - **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`) and chat (`SaftUI-Chat/chatframe.lua`) all follow the same pattern:
   - Use a holder.
   - Re-anchor the Blizzard frame with `st:SetPointDirect` / `st:ClearAllPointsDirect` in post-hooks on its `SetPoint` / `ClearAllPoints` / `UpdateSystem`.
@@ -58,9 +60,9 @@ st:RegisterMover('key', {
 
 - `/sui` is one window. It's built in `Config:GetOptionsTable` from each module's `GetConfigTable()`, and opened with `st.Config:Open(...path)`, which uses `AceConfigDialog:SelectGroup`.
 - **Subcommands.** `st.Config:AddCommand(command, label, func)` makes `/sui <command>` run `func`, and adds a `label` button after "Edit mode" in the window's top row. Call it at file load or in `OnEnable`. SaftUI-ActionBars adds `kb` (Keybind mode, `SaftUI-ActionBars/bindings.lua`).
-- **Section shape.** A mover's section is a group with `general` and `position` subgroups.
-  - `MergePositionIntoGeneral` moves `position` into the General tab as an inline box at the end, so size and position sit together.
-  - `UseTabsForInnermostSections` then turns innermost subgroups into tabs automatically (`childGroups = 'tab'`), unless the group already sets `childGroups`.
+- **Section shape.** A mover's section is a group with `general` and `position` subgroups, plus any others it needs (e.g. the action bars' Text and Visibility). `Config:GetOptionsTable` then:
+  - moves `position` into General as a box at its end (`MergePositionIntoGeneral`), so size and position sit together and the mover's `configPath` still ends at `general`;
+  - turns innermost subgroups into tabs (`UseTabsForInnermostSections`, `childGroups = 'tab'`) unless the group already sets `childGroups`.
   - A unit frame's section shows its elements as tabs (General, Health, Castbar, ...): one per element that registered a `GetConfigTable` and whose `ValidUnit` accepts the unit. Keep sub-areas inside a tab as inline groups.
 - **Widgets** are `st.Config.generators` in `SaftUI-Core/Config/widgets.lua`:
   - `position(order, true, get, set, target)` is the full SetPoint editor. `target` (the frame being placed, or a function returning it) is what typed anchors are checked against.

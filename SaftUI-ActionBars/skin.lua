@@ -9,7 +9,8 @@ local LAB = LibStub('LibActionButton-1.0')
 
 	  - The button's size is its whole footprint. The template's backdrop fills it,
 	    and the icon, cooldowns and state textures sit inside the backdrop's border
-	    (2px for thick templates, 1px for thin ones). Bars then fit on a
+	    (2px for thick templates, 1px for thin ones, none for templates without a
+	    border). Bars then fit on a
 	    size + spacing grid, and the hotkey, count and macro text stay on the button.
 	  - The icon is cropped square (st:SkinIcon). LibActionButton drops its round
 	    mask itself with hideElements.border.
@@ -23,8 +24,16 @@ local LAB = LibStub('LibActionButton-1.0')
 	  - Cooldown swipes, charges, loss of control and the out-of-range and unusable
 	    tints are LibActionButton's own. Cooldown numbers follow Blizzard's "Show
 	    Numbers for Cooldowns" setting (the countdownForCooldowns CVar), in SaftUI's
-	    pixel font.
+	    pixel font: Pixel Med on buttons of 36px and up, Pixel below that, so the
+	    numbers fit on small buttons.
 	  - Hotkeys are shortened ("SHIFT-MOUSEWHEELUP" -> "SMU").
+	  - Text. The hotkey, stack count and macro name follow the bar's Text
+	    settings (font, size, outline, show, and where each is anchored), set
+	    through LibActionButton's text config. The hotkey and macro name are one
+	    line, as tall as their font and cut to the room the anchor leaves inside
+	    the button's border (TextWidth), so they stay on the button at any size.
+	    The count is as wide as its number and right-aligned by default, so it
+	    grows over the icon, not off the button.
 
 	LibActionButton puts some of this back on every update of a button (it anchors
 	the cooldown over the whole button), so its OnButtonUpdate callback re-applies
@@ -49,10 +58,16 @@ local OVER_ICON = {
 	'cooldown', 'chargeCooldown', 'lossOfControlCooldown',
 }
 
--- The border a template draws inside the button.
+-- Buttons at least this big get the bigger cooldown numbers (Pixel Med, 18px by
+-- default). Smaller ones get Pixel (10px), so the numbers fit inside a 28px
+-- button.
+local LARGE_COUNTDOWN_SIZE = 36
+
+-- The border a template draws inside the button, as st:SetTemplate insets it:
+-- none for a template without a border.
 local function TemplateInset(template)
 	local config = template and st.config.profile.templates[template]
-	if not config then return 0 end
+	if not (config and config.border) then return 0 end
 	return config.thick and 2 or 1
 end
 
@@ -132,23 +147,70 @@ local function Justify(point)
 	return 'CENTER'
 end
 
+-- SaftUI's outline names, as font flags. 'NONE' is no flags.
+local function OutlineFlags(outline)
+	if not outline or outline == 'NONE' then
+		return ''
+	end
+	return outline
+end
+
+-- A text offset in whole pixels, so the pixel fonts stay sharp. The buttons are
+-- at UIParent's scale.
+local function Offset(value)
+	return st:RoundToPixel(tonumber(value) or 0)
+end
+
 -- One of a bar's text settings in LibActionButton's shape.
 local function TextConfig(text)
 	return {
 		font = {
 			font = st.LSM:Fetch('font', text.font),
 			size = text.size,
-			flags = text.outline,
+			flags = OutlineFlags(text.outline),
 		},
 		color = { 1, 1, 1 },
 		position = {
 			anchor = text.point,
 			relAnchor = text.rel_point,
-			offsetX = text.x_off,
-			offsetY = text.y_off,
+			offsetX = Offset(text.x_off),
+			offsetY = Offset(text.y_off),
 		},
 		justifyH = Justify(text.point),
 	}
+end
+
+-- Where a point of the button sits across it: 0 at the left edge, size at the
+-- right.
+local function PointX(point, size)
+	if point:find('LEFT') then
+		return 0
+	elseif point:find('RIGHT') then
+		return size
+	end
+	return size / 2
+end
+
+-- The widest a one-line text can be and stay inside the button's border, from
+-- where it's anchored: a left-aligned text has the room to its right, a
+-- right-aligned one the room to its left, a centred one twice the room to the
+-- nearer side. A text anchored outside the button gets the button's inside
+-- width, as it's been put there on purpose.
+local function TextWidth(text, size, inset)
+	local inside = size - 2 * inset
+	local x = PointX(text.rel_point or text.point, size) + Offset(text.x_off)
+	local width
+	if text.point:find('LEFT') then
+		width = size - inset - x
+	elseif text.point:find('RIGHT') then
+		width = x - inset
+	else
+		width = 2 * math.min(x - inset, size - inset - x)
+	end
+	if width <= 0 then
+		return inside
+	end
+	return math.min(width, inside)
 end
 
 -- The LibActionButton config of button i on bar id, from the profile.
@@ -261,18 +323,24 @@ function AB:StyleButton(button, config, template)
 	local r, g, b = colors.button.red:GetRGB()
 	button.Flash:SetColorTexture(r, g, b, 0.4)
 
-	-- LibActionButton set the fonts from the bar's text settings (GetButtonConfig).
-	-- SaftUI's pixel fonts are drawn without a shadow, and the hotkey and macro name
-	-- are cut to the inside of the border.
-	local width = st:RoundToPixel(config.size, button) - 2 * inset
+	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's
+	-- showing from the bar's text settings (GetButtonConfig). SaftUI's pixel fonts
+	-- are drawn without a shadow. The hotkey and macro name are one line, as tall
+	-- as their font, and cut to the room inside the border (see the top of this
+	-- file). LibActionButton never shows or hides the count, so its setting is
+	-- applied here.
+	local size = st:RoundToPixel(config.size, button)
 	for _, text in ipairs({ button.HotKey, button.Count, button.Name }) do
 		text:SetShadowOffset(0, 0)
 	end
-	button.HotKey:SetWidth(width)
-	button.Name:SetWidth(width)
+	for region, text in pairs({ [button.HotKey] = config.text.hotkey, [button.Name] = config.text.macro }) do
+		region:SetWordWrap(false)
+		region:SetWidth(TextWidth(text, size, inset))
+		region:SetHeight(text.size)
+	end
 	button.Count:SetShown(config.text.count.show)
 
-	local countdownFont = st:GetFont('pixel_med')
+	local countdownFont = st:GetFont(config.size >= LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
 	if countdownFont then
 		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end

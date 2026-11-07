@@ -11,6 +11,7 @@ covers:
   - 'SaftUI-ActionBars/hideblizzard.lua'
   - 'SaftUI-ActionBars/skin.lua'
   - 'SaftUI-ActionBars/bindings.lua'
+  - 'SaftUI-ActionBars/bars.lua'
 ---
 
 # Taint and combat safety
@@ -38,6 +39,8 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - Secure frames (unit frames, action buttons, group headers) can't be moved, sized, shown, hidden, reparented or have attributes set in combat. Neither can any frame a secure frame is anchored to, which becomes implicitly protected.
    - Route every move through `st:SafeReposition(frame, key, fn)`, which runs `fn` now or after combat. Check with `st:CanMoveNow(frame)`. Defer other work with `st:QueueAfterCombat(key, fn)`.
    - Key binding calls are blocked in combat too: `SetBinding`, `SaveBindings`, `SetOverrideBindingClick` and the other `SetOverrideBinding*`, and `ClearOverrideBindings`. Queue them with `st:QueueAfterCombat`, as `SaftUI-ActionBars/bindings.lua` does.
+   - `RegisterStateDriver` sets attributes, so a state driver can't be changed in combat either. A driver that's set keeps showing, hiding and paging its frame in combat with no addon Lua (`[combat] show; hide` shows a bar only in combat).
+   - Alpha isn't protected. `SetAlpha` on a secure frame works in combat, so a fade that only changes alpha is combat-safe (the action bars' mouseover fade in `SaftUI-ActionBars/bars.lua`).
    - Edit mode, `/sui` and the action bars' keybind mode close on `PLAYER_REGEN_DISABLED` and refuse to open in combat.
 7. **No arithmetic or comparisons on secret values.** See `.agents/clients.md`.
 8. **To hide a Blizzard frame for good**, prefer `frame:SetRolesets('alwaysBlocked')`, as oUF does for party frames and `SaftUI-Unitframes/groups.lua` does for `CompactRaidFrameContainer`. It's one C call that writes nothing onto the frame, and the frame stops drawing whatever Blizzard's own Show/Hide calls do. It's still bound by rule 4: apply it only while the frame isn't on screen, and only out of combat.

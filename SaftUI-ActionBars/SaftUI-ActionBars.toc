@@ -13,3 +13,4 @@ hideblizzard.lua
 skin.lua
 bars.lua
 bindings.lua
+options.lua

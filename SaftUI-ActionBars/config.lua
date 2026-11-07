@@ -11,10 +11,13 @@ local st = SaftUI
 	    border, so bars fit together on a size + spacing grid.
 	  - spacing: the gap between buttons, and in the default layout between bars.
 	  - position: { point, frame, rel_point, x_off, y_off }, as everywhere in SaftUI.
-	  - visibility: 'always' for now. The Visibility settings come with the options.
+	  - visibility: 'always', 'combat' (shown only in combat) or 'mouseover'
+	    (faded to fade_alpha until the mouse is over it). See bars.lua.
+	  - fade_alpha: the opacity of a 'mouseover' bar while the mouse isn't on it.
 	  - text: hotkey, stack count and macro name. Each has show, font (a
-	    LibSharedMedia font name), size, outline, point and rel_point (the text's
-	    point and the button's), and x_off / y_off from there.
+	    LibSharedMedia font name), size, outline (a Fonts outline name, 'NONE' for
+	    none), point and rel_point (the text's point and the button's), and
+	    x_off / y_off from there.
 	template is the backdrop template every button uses.
 
 	The default layout, at 45px buttons 2px apart (a 47px pitch):
@@ -54,6 +57,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		spacing = 2,
 		position = { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off },
 		visibility = 'always',
+		fade_alpha = 0,
 		text = {
 			hotkey = Text('TOPRIGHT', -3, -3),
 			count = Text('BOTTOMRIGHT', -3, 3),

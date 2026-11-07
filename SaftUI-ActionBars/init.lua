@@ -11,6 +11,7 @@ st.ActionBars = AB
 	  - bars.lua: building, laying out and updating the bars.
 	  - bindings.lua: the bars' keys, from Blizzard's binding commands, and
 	    hover binding (/sui kb).
+	  - options.lua: the /sui section and the edit mode movers.
 
 	Each bar mirrors one Blizzard bar: the same action slots and the same binding
 	command. These were checked against Blizzard_ActionBar on the forever and live
@@ -60,7 +61,20 @@ AB.BINDING_PREFIXES = {
 	stance = 'SHAPESHIFTBUTTON',
 }
 
+-- Each bar's name in /sui and on its edit mode outline.
+AB.BAR_LABELS = {
+	bar1 = 'Bar 1',
+	bar2 = 'Bar 2',
+	bar3 = 'Bar 3',
+	bar4 = 'Bar 4',
+	bar5 = 'Bar 5',
+	bar6 = 'Bar 6',
+	bar7 = 'Bar 7',
+	bar8 = 'Bar 8',
+}
+
 AB.bars = {}
+AB.movers = {}
 
 -- The Blizzard binding command whose keys button i of bar id takes, e.g.
 -- ('bar2', 3) -> 'MULTIACTIONBAR1BUTTON3'. nil for an unknown bar.
@@ -93,9 +107,11 @@ function AB:OnEnable()
 	self:Build()
 end
 
--- Makes every bar, then lays them all out and maps their keys. Bars are
--- anchored to each other by name, so every frame exists before any is placed.
--- Once.
+-- Makes every bar, then lays them all out, maps their keys and gives each an
+-- edit mode mover. Bars are anchored to each other by name, so every frame
+-- exists before any is placed. One bar failing (e.g. a profile whose anchors
+-- form a loop) doesn't stop the others, and a bar left without anchors goes
+-- to the middle of the screen, where its mover can reach it. Once.
 function AB:Build()
 	if self.built then return end
 	self.built = true
@@ -104,7 +120,11 @@ function AB:Build()
 		self:CreateBar(id)
 	end
 	for _, id in ipairs(self.BAR_IDS) do
-		self:UpdateBar(id)
+		xpcall(function() self:UpdateBar(id) end, geterrorhandler())
+		st:RestorePoints(self.bars[id])
+	end
+	for _, id in ipairs(self.BAR_IDS) do
+		self:RegisterBarMover(id)
 	end
 	self:SetupBindings()
 end

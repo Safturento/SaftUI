@@ -23,9 +23,9 @@ local LAB = LibStub('LibActionButton-1.0')
 	  [vehicleui]       vehicle    -> GetVehicleBarIndex()
 	  [overridebar]     override   -> GetOverrideBarIndex()
 	  [shapeshift]      shapeshift -> GetTempShapeshiftBarIndex()
+	  [possessbar]      possess    -> Blizzard's order above, worked out again
 	  [bar:2]..[bar:6]  2..6       -> that page
 	  [bonusbar:1..5]   bonus1..5  -> GetBonusBarIndex(), if HasBonusActionBar()
-	  [possessbar]      possess    -> Blizzard's order above, worked out again
 	  otherwise         1
 	The vehicle, override and shapeshift tokens map straight to their page, as
 	ElvUI does, so a condition that turns true a moment before the bar's actions
@@ -39,13 +39,26 @@ local LAB = LibStub('LibActionButton-1.0')
 
 	Visibility. A state driver shows or hides each bar. Bar 1 hides in pet battles,
 	whose abilities take its keys. Bars 2-8 also hide while a vehicle or override
-	bar replaces bar 1, as ElvUI's do. A disabled bar is always hidden. (The
-	Visibility settings arrive with the options; AB:GetVisibilityDriver is where
-	they go.)
+	bar replaces bar 1, as ElvUI's do (AB.HIDE_CONDITIONS). A disabled bar is
+	always hidden. Then the bar's Visibility setting:
+	  - always:    '<hide conditions> hide; show'
+	  - combat:    '<hide conditions> hide; [combat] show; hide', so bar 2 is
+	               '[petbattle][vehicleui][overridebar] hide; [combat] show; hide'
+	  - mouseover: shown as with always, and faded to its fade_alpha while the
+	               mouse isn't over it (the fader below). Only the bar's alpha
+	               changes, which isn't protected, so it fades in combat too.
+	               LibActionButton keeps using the buttons' own alpha for empty
+	               slots; the two multiply.
+	The drivers are secure, so combat starting or ending shows and hides bars
+	with no Lua of SaftUI's. Changing them is protected: out of combat only.
+	While keybind mode is on (bindings.lua), every enabled bar is shown and not
+	faded (AB:SetForceShown), so bars that are only shown in combat or faded can
+	be hover-bound.
 
 	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 at the
-	top left, filling rows left to right. A disabled bar keeps its size and place,
-	so bars anchored to it stay put. All protected: st:SafeReposition waits for
+	top left, filling rows left to right. A disabled or hidden bar keeps its size
+	and place, so bars anchored to it stay put, and its edit mode outline
+	(options.lua) still covers it. All protected: st:SafeReposition waits for
 	the end of combat.
 ]]
 
@@ -104,8 +117,18 @@ local PAGE_SNIPPET = [[
 	control:ChildUpdate('state', page)
 ]]
 
-local VISIBILITY_MAIN = '[petbattle] hide; show'
-local VISIBILITY_OTHER = '[petbattle][vehicleui][overridebar] hide; show'
+-- When each bar hides whatever its Visibility setting says. Bars without an
+-- entry use DEFAULT_HIDE_CONDITIONS.
+AB.HIDE_CONDITIONS = {
+	bar1 = '[petbattle]',
+}
+local DEFAULT_HIDE_CONDITIONS = '[petbattle][vehicleui][overridebar]'
+
+-- How long the mouseover fade takes from faded to shown, and back.
+local FADE_TIME = 0.2
+
+-- True while keybind mode shows every enabled bar (AB:SetForceShown).
+local forceShown = false
 
 -- The pages bar 1 needs a state for. 18 covers Blizzard's vehicle, temporary
 -- shapeshift and override pages; the client's own numbers are checked too.
@@ -152,12 +175,103 @@ function AB:CreateBar(id)
 	return bar
 end
 
--- The state driver that shows or hides bar id.
+-- The state driver that shows or hides bar id (see the top of this file).
 function AB:GetVisibilityDriver(id)
-	if not self.config[id].enable then
+	local config = self.config[id]
+	if not config.enable then
 		return 'hide'
 	end
-	return id == 'bar1' and VISIBILITY_MAIN or VISIBILITY_OTHER
+	local hide = (self.HIDE_CONDITIONS[id] or DEFAULT_HIDE_CONDITIONS) .. ' hide'
+	if config.visibility == 'combat' and not forceShown then
+		return hide .. '; [combat] show; hide'
+	end
+	return hide .. '; show'
+end
+
+------------------------------------
+--- Mouseover fade ------------------
+------------------------------------
+
+-- The bars faded until moused over: bar -> id. The fader runs while there are any.
+local fading = {}
+local fader = CreateFrame('Frame')
+fader:Hide()
+
+local function FadeAlpha(id)
+	local config = AB.config[id]
+	local alpha = tonumber(config and config.fade_alpha) or 0
+	return math.min(math.max(alpha, 0), 1)
+end
+
+-- The mouse is over the bar, or LibActionButton's flyout is open on one of its
+-- buttons. The flyout is parented to the button while it's open, so it fades
+-- with the bar, and would be invisible if the bar faded under it.
+local function IsHovered(bar)
+	if bar:IsMouseOver() then return true end
+	local flyout = LAB:GetSpellFlyoutFrame()
+	local button = flyout and flyout:IsShown() and flyout:GetParent()
+	return button and button:GetParent() == bar or false
+end
+
+-- Moves each faded bar's alpha toward 1 while hovered, and toward its
+-- fade_alpha otherwise, the whole way in FADE_TIME. Alpha only: safe in combat.
+-- GetAlpha gives back a float, so a bar within a hair of its target is left be.
+fader:SetScript('OnUpdate', function(_, elapsed)
+	local step = elapsed / FADE_TIME
+	for bar, id in pairs(fading) do
+		local target = IsHovered(bar) and 1 or FadeAlpha(id)
+		local alpha = bar:GetAlpha()
+		if alpha < target - 0.001 then
+			bar:SetAlpha(math.min(alpha + step, target))
+		elseif alpha > target + 0.001 then
+			bar:SetAlpha(math.max(alpha - step, target))
+		end
+	end
+end)
+
+-- Starts or stops fading bar id, from its Visibility setting. A bar that starts
+-- fading goes straight to faded unless the mouse is over it. Alpha only.
+function AB:UpdateFade(id)
+	local bar = self.bars[id]
+	if not bar then return end
+	local config = self.config[id]
+	if config.enable and config.visibility == 'mouseover' and not forceShown then
+		if not fading[bar] then
+			fading[bar] = id
+			bar:SetAlpha(IsHovered(bar) and 1 or FadeAlpha(id))
+		end
+	else
+		fading[bar] = nil
+		bar:SetAlpha(1)
+	end
+	fader:SetShown(next(fading) ~= nil)
+end
+
+-- Applies bar id's visibility: its state driver, and its fade. Changing the
+-- driver is protected, so in combat this waits for the end of combat.
+function AB:UpdateVisibility(id)
+	local bar = self.bars[id]
+	if not bar then return end
+	if st:QueueAfterCombat('actionbars_visibility_' .. id, function() self:UpdateVisibility(id) end) then return end
+
+	local driver = self:GetVisibilityDriver(id)
+	if bar.visibilityDriver ~= driver then
+		bar.visibilityDriver = driver
+		RegisterStateDriver(bar, 'visibility', driver)
+	end
+	self:UpdateFade(id)
+end
+
+-- Keybind mode (bindings.lua): while on, every enabled bar is shown and not
+-- faded, whatever its Visibility setting, so it can be hovered. Turned on out
+-- of combat only; turning it off in combat waits for the end of combat.
+function AB:SetForceShown(on)
+	on = on and true or false
+	if forceShown == on then return end
+	forceShown = on
+	for id in pairs(self.bars) do
+		self:UpdateVisibility(id)
+	end
 end
 
 -- How many of bar id's buttons it shows, its first ones: the buttons setting,
@@ -204,9 +318,10 @@ function AB:LayoutBar(id)
 	end)
 end
 
--- Applies bar id's profile settings: layout, skin, whether it's shown and
--- where its keys go (a disabled bar's do nothing). All protected, so in combat
--- it waits for the end of combat.
+-- Applies bar id's profile settings: layout, skin and text, whether it's shown
+-- or faded, where its keys go (a disabled bar's do nothing) and its edit mode
+-- outline's label. Every /sui option of a bar runs this. All protected, so in
+-- combat it waits for the end of combat.
 function AB:UpdateBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
@@ -214,12 +329,7 @@ function AB:UpdateBar(id)
 
 	self:LayoutBar(id)
 	self:StyleBar(id)
-
-	local driver = self:GetVisibilityDriver(id)
-	if bar.visibilityDriver ~= driver then
-		bar.visibilityDriver = driver
-		RegisterStateDriver(bar, 'visibility', driver)
-	end
-
+	self:UpdateVisibility(id)
 	self:UpdateBindings()
+	self:UpdateMoverLabel(id)
 end

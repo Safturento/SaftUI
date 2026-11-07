@@ -60,7 +60,9 @@ local AB = st:GetModule('ActionBars')
 	    Blizzard's Quick Keybind Mode reports the same for the mouse wheel.
 	  - Right-click clears all of the button's keys.
 	  - Escape, Done or entering combat leaves the mode.
-	Empty buttons show while it's on, as Blizzard shows its grid.
+	Empty buttons show while it's on, as Blizzard shows its grid. So do bars that
+	their Visibility setting keeps hidden out of combat or faded
+	(AB:SetForceShown, bars.lua); they go back when the mode ends.
 ]]
 
 -- Bars whose keys go back to Blizzard's commands in a pet battle.
@@ -377,6 +379,10 @@ function AB:StartKeybindMode()
 	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
 	binder.highlight:SetVertexColor(r, g, b, 0.4)
 
+	-- Bars shown only in combat, or faded, show so they can be hovered. Out of
+	-- combat, checked above.
+	self:SetForceShown(true)
+
 	for id, bar in pairs(self.bars) do
 		for i, button in ipairs(bar.buttons) do
 			buttonCommands[button] = self:GetBindingCommand(id, i)
@@ -413,6 +419,11 @@ function AB:StopKeybindMode(message)
 		end
 	end
 	wipe(shownEmpty)
+
+	-- Bars go back to their Visibility setting. On PLAYER_REGEN_DISABLED this
+	-- still runs before combat lockdown starts; if lockdown is on, the state
+	-- drivers wait for the end of combat (AB:UpdateVisibility).
+	self:SetForceShown(false)
 	st:Print(message or 'Keybind mode off.')
 end
 
