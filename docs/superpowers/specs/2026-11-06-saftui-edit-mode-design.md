@@ -45,6 +45,17 @@ The user wants this to be SaftUI's own system. SaftUI's frames must never be add
 
 ### Settings window
 
+**Revised 2026-11-07 (user, after testing):** "clicking on the edit mode windows to load the config opens a new window, can we just have all of those components registered on the main SaftUI config window and it just switches to the appropriate tab? that way we can keep everything grouped up and not have multiple windows open." This replaces the per-frame window:
+
+- There is one settings window, the `/sui` window. Clicking a frame in edit mode opens `/sui` if it's closed and selects that frame's section in its tree. No second window opens.
+- Every registered frame has its section in the `/sui` tree, with sub-sections such as General and Position (e.g. Minimap → General / Position; Loot → Rolls → General / Position, Loot → Feed → General / Position).
+- *Builder's calls, made with this revision:*
+  - `/sui` stays where the user put it. It doesn't jump beside the clicked frame.
+  - Deselecting a frame doesn't close `/sui`.
+  - The footer buttons (grid, snap) sit on the `/sui` window's footer while edit mode is active.
+
+The rest of this section still applies to the `/sui` window. Where it says "the window" or "per-frame windows" below, read `/sui`.
+
 - Ace's AceConfigDialog renders the window with a tree/sidebar layout.
   - The sidebar lists the clicked frame's sections.
   - For frames with shared settings, a group below the sidebar holds settings shared across frames of that kind. Example for later: "All unit frames" → Colors, Fonts.

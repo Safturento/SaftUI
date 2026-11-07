@@ -256,6 +256,8 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - `EM:SetGridShown(shown: boolean)`
   - `EM:Snap(mover, x: number, y: number) -> x: number, y: number`
 
+*(Task 7 moved the footer to the `/sui` window: `EM:AddFooterButton` buttons show on `/sui` while edit mode is active.)*
+
 - [ ] **Step 1: Grid.**
   - A full-screen, click-through frame of 1-physical-pixel lines at the configured spacing, centered on the screen center (thicker or colored center lines).
   - Shown only while edit mode is active and `editmode.grid` is true.
@@ -304,3 +306,36 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - `/reload` keeps both positions.
   - No errors or taint in combat after using edit mode.
 - [ ] **Step 7: Commit:** `loot: make loot rolls and the loot feed edit mode movers`
+
+---
+
+### Task 7: One settings window: clicking a frame selects its section in `/sui`
+
+*Added 2026-11-07 at the user's request, replacing Task 4's per-frame window (spec: "Settings window", revision 2026-11-07). Runs before Task 5, whose footer buttons now go on `/sui`.*
+
+**Files:**
+- Modify: `SaftUI-Core/EditMode/editmode.lua` / `mover.lua` (selection → open `/sui` at the mover's section), `SaftUI-Core/Config/config.lua` (opening `/sui` and selecting a path, footer while edit mode is active)
+- Delete or reduce: `SaftUI-Core/EditMode/window.lua` (keep only the footer API, re-pointed at `/sui`); the cross-window relay and `LinkOptions` in `SaftUI-Core/Config/aceskin.lua` if nothing else needs them with one window
+- Modify: `SaftUI-Minimap/config.lua` (`MM:GetConfigTable` becomes a tree section with General and Position subgroups); `SaftUI-Loot/options.lua` plus a new `LT:GetConfigTable` (Loot → Rolls, Feed, each with General and Position)
+- Modify: the `st:RegisterMover` calls in `SaftUI-Minimap/minimap.lua`, `SaftUI-Loot/roll.lua`, `SaftUI-Loot/Feed/feed.lua`
+
+**Interfaces:**
+- **Consumes:** `st:RegisterMover`, `EM:On('Selected')` (Task 2); `st.AceSkin:CreateWindow`, `EM:AddFooterButton` (Task 4); `Config:Refresh()` / `AceConfigRegistry:NotifyChange(st.name)`.
+- **Produces:**
+  - `def.configPath`: an array of option-table keys from the `/sui` root to the frame's section, e.g. `{ 'Minimap', 'minimap' }`. It replaces `def.options`.
+  - `st.Config:Open(...)`: opens the skinned `/sui` window if needed and, given a path, selects it via `AceConfigDialog:SelectGroup(st.name, ...)`. The `/sui` slash command uses it too.
+  - `EM:AddFooterButton(text, onClick)`: same signature as before, but the buttons sit on the `/sui` window's footer and show only while edit mode is active, keeping validation status text clear of them.
+
+- [ ] **Step 1: Sections in `/sui`.** Each mover's options become a non-inline group in the `/sui` tree with General and Position subgroups, reusing the existing option pieces (`MM:GetOptionPieces`, `SaftUI-Loot/options.lua`). Keep every SetPoint field, including the typed relative frame validated with `target`.
+- [ ] **Step 2: Select on click.** `EM:On('Selected', mover)` calls `st.Config:Open(unpack(def.configPath))`. Re-selecting while `/sui` is open just switches the tree selection. Deselecting doesn't close `/sui`, and closing `/sui` doesn't change edit mode.
+- [ ] **Step 3: Remove the second window.** Drop the edit mode app (`SaftUI_EditMode`), its placement code, and anything that only existed to sync two windows. Drags and nudges still refresh `/sui` live through `Config:Refresh()`.
+- [ ] **Step 4: Footer on `/sui`.** `EM:AddFooterButton` buttons attach to the `/sui` window's status bar area while edit mode is active and `/sui` is open. They hide when edit mode turns off, and re-attach whenever `/sui` is (re)opened. Status text stays clear of them.
+- [ ] **Step 5: Self-review.**
+  - `grep -rn "SaftUI_EditMode\|OpenWindow\|def.options" SaftUI-*/` returns nothing stale.
+  - Every `st:RegisterMover` passes a `configPath` that exists in `Config:GetOptionsTable()`.
+- [ ] **Step 6: In-game check (user).**
+  - In edit mode, clicking the minimap opens `/sui` at Minimap → General. Clicking Loot Rolls or Loot Feed switches the same window to that section, with no second window.
+  - Drags and nudges update Position live.
+  - The crash retest still passes: `/sui` → Edit mode several times, then close and reopen.
+  - Other addons' Ace windows still look stock.
+- [ ] **Step 7: Commit:** `core: select a frame's section in /sui instead of opening a window`
