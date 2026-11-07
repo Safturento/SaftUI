@@ -271,8 +271,8 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 
 	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
 	categoryFrame.numRows = numRows
-	categoryFrame:SetHeight((self.config.buttonheight + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight)
-	categoryFrame:SetWidth((self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+	categoryFrame:SetHeight((self:GetButtonHeight() + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight)
+	categoryFrame:SetWidth((self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
 end
 
 function INV:FlushCategory(category)

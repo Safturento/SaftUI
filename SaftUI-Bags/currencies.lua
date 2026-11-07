@@ -68,7 +68,7 @@ function INV.CreateCurrencySlot(category)
 
     if slot.NormalTexture then slot.NormalTexture:SetTexture('') end
 
-    slot:SetSize(INV.config.buttonwidth, INV.config.buttonheight)
+    slot:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 
     st:SkinIcon(slot.icon, nil, slot)
     st:SkinActionButton(slot, {
@@ -98,7 +98,7 @@ end
 -- changes; skinning a slot again is safe.
 function INV:StyleCurrencySlots()
     for _, slot in ipairs(currencySlots) do
-        slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+        slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
         st:SkinActionButton(slot, {
             template = self.config.template,
             font = self.config.fonts.icons,
@@ -111,7 +111,7 @@ function INV:StyleCurrencySlots()
     local bag = self.containers.bag
     local category = bag and bag.categories.Currencies
     if category and category.filterButton then
-        category.filterButton:SetSize(max(46, self.config.buttonwidth), min(20, category.header:GetHeight()))
+        category.filterButton:SetSize(max(46, self:GetButtonWidth()), min(20, category.header:GetHeight()))
     end
 end
 
@@ -173,7 +173,7 @@ function INV:InitializeCurrencyCategory()
     local filterButton = st:CreateCheckButton(nil, category.header)
     category.header.filterButton = filterButton
     filterButton:SetPoint('BOTTOMRIGHT')
-    filterButton:SetSize(max(46, self.config.buttonwidth), min(20, category.header:GetHeight()))
+    filterButton:SetSize(max(46, self:GetButtonWidth()), min(20, category.header:GetHeight()))
 
     filterButton.text:SetAllPoints(filterButton)
     filterButton:SetFont('pixel')
@@ -261,6 +261,6 @@ function INV:UpdateCurrencyCategory(forceShow)
 
     category.numRows = math.ceil(#currencyItems/self.config.bag.perrow)
     category:SetHeight(
-            (self.config.buttonheight + self.config.buttonspacing) * category.numRows + self.config.categoryTitleHeight
+            (self:GetButtonHeight() + self.config.buttonspacing) * category.numRows + self.config.categoryTitleHeight
     )
 end

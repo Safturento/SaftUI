@@ -42,7 +42,7 @@ end
 
 local function CreateBankBagSlot(bar, tab)
 	local slot = CreateFrame('Button', bar:GetName() .. 'Slot' .. tab, bar)
-	slot:SetSize(INV.config.buttonwidth, INV.config.buttonheight)
+	slot:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 	slot.tab = tab
 
 	slot.icon = slot:CreateTexture(nil, 'ARTWORK')
@@ -91,7 +91,7 @@ local function CreateBankBagPurchaseButton(bar)
 	-- C_Bank.PurchaseBankTab, so the purchase stays on Blizzard's own path.
 	local button = CreateFrame('Button', bar:GetName() .. 'PurchaseButton', bar, 'BankPanelPurchaseButtonScriptTemplate')
 	button:SetAttribute('overrideBankType', Enum.BankType.Character)
-	button:SetSize(INV.config.buttonwidth, INV.config.buttonheight)
+	button:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 
 	button.text = st:CreateFontString(button, 'pixel', 'Buy')
 	button.text:SetAllPoints()
@@ -166,8 +166,8 @@ function INV:UpdateBankBagSlots(bar)
 
 	numButtons = max(numButtons, 1)
 	bar:SetSize(
-		self.config.buttonwidth * numButtons + spacing * (numButtons - 1) + padding * 2,
-		self.config.buttonheight + padding * 2)
+		self:GetButtonWidth() * numButtons + spacing * (numButtons - 1) + padding * 2,
+		self:GetButtonHeight() + padding * 2)
 end
 
 function INV:InitializeBankBagSlots(container)

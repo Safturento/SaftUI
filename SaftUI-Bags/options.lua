@@ -52,7 +52,23 @@ end
 function INV:GetConfigTable()
 	if not self.config or self.config.enable == false or not self.containers.bag then return end
 
-	local args = {}
+	local args = {
+		-- Icon size and spacing are shared by every window and both bag slot bars.
+		icons = {
+			name = 'Icons',
+			type = 'group',
+			order = 0,
+			get = function(info) return INV.config[info[#info]] end,
+			set = function(info, value)
+				INV.config[info[#info]] = value
+				INV:ApplyButtonSize()
+			end,
+			args = {
+				iconsize = generators.range(1, 'Icon size', 20, 80, 1),
+				buttonspacing = generators.range(2, 'Spacing', 0, 10, 1),
+			},
+		},
+	}
 	for order, id in ipairs(self.windowIds) do
 		if self.moverIds[id] then
 			args[id] = BuildWindow(id, order)

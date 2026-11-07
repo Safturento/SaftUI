@@ -31,7 +31,7 @@ INV.moverIds = {}
 -- configured width, 200 tall.
 local function ConfiguredSize(self, id)
 	local config = self.config
-	local inner = (config.buttonwidth + config.buttonspacing) * config[id].perrow - config.buttonspacing
+	local inner = (self:GetButtonWidth() + config.buttonspacing) * config[id].perrow - config.buttonspacing
 	return config.padding * 2 + inner, 200
 end
 

@@ -55,6 +55,22 @@ end
 INV.containers = {}
 INV.OnUseItems = {}
 
+-- Item buttons are not square: 60 wide by 50 tall by default, with the icon
+-- cropped to fit (st:SkinIcon). One setting, iconsize, is the height, and the
+-- width keeps the 6:5 shape so the crop stays right at any size. The bag slot
+-- bars use the same size. Both are rounded to whole screen pixels.
+local BUTTON_ASPECT = 6 / 5
+
+function INV:GetButtonHeight()
+	local size = tonumber(self.config.iconsize) or 50
+	return st:RoundToPixel(max(size, 1))
+end
+
+function INV:GetButtonWidth()
+	local size = tonumber(self.config.iconsize) or 50
+	return st:RoundToPixel(max(size, 1) * BUTTON_ASPECT)
+end
+
 function INV:SelectBankCategory(clickedHeader)
 	local selectedContainer = clickedHeader:GetParent()
     if selectedContainer.id == 'warband' then
@@ -81,6 +97,19 @@ function INV:EnsureConfigTables()
 	filters.currencies = filters.currencies or {}
 	for id in pairs(self.containers) do
 		filters.categories[id] = filters.categories[id] or {}
+	end
+end
+
+-- Applies a changed icon size or spacing: re-lays out every window, restyles
+-- the item and currency slots, resizes both bag slot bars (UpdateConfig does
+-- all of that), then resizes the edit mode outlines, including windows that
+-- aren't made yet.
+function INV:ApplyButtonSize()
+	self:UpdateConfig()
+	for _, id in ipairs(self.windowIds) do
+		if self.anchors[id] then
+			self:SyncAnchorSize(id)
+		end
 	end
 end
 
@@ -112,6 +141,8 @@ function INV:UpdateConfig(id)
 		for containerId, container in pairs(self.containers) do
 			self:UpdateConfig(containerId)
 			self:StyleContainerContents(container)
+			-- A closed window is laid out when it next updates (UpdateContainer).
+			container.layoutPending = true
 		end
 		self:StyleCurrencySlots()
 		self:UpdateBagSlotBars()
@@ -142,7 +173,7 @@ function INV:UpdateConfig(id)
         end
         column:Show()
 
-        column:SetWidth((self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+        column:SetWidth((self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
         column:ClearAllPoints()
         if i == 1 then
             column:SetPoint('TOPLEFT', container.scrollFrame.ScrollChild, 'TOPLEFT')
@@ -155,7 +186,7 @@ function INV:UpdateConfig(id)
         container.columnFrames[i]:Hide()
     end
 
-	local inner_width = (self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing
+	local inner_width = (self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing
 
 	container:SetWidth(self.config.padding * 2 + inner_width)
 	container:SetHeight(200)
@@ -197,7 +228,7 @@ end
 -- Re-sizes the bag slot bars to the profile's button size, spacing and
 -- padding: the bags' bar (Blizzard's bag slots) and the bank's own.
 function INV:UpdateBagSlotBars()
-	local width, height = self.config.buttonwidth, self.config.buttonheight
+	local width, height = self:GetButtonWidth(), self:GetButtonHeight()
 	local spacing, padding = self.config.buttonspacing, self.config.padding
 
 	local bag = self.containers.bag

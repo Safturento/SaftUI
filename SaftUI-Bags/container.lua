@@ -16,7 +16,7 @@ function INV:CreateContainer(id, name, isBankContainer)
 	container.scrollFrame:SetScript('OnMouseWheel', function(self, delta)
         local current = self:GetVerticalScroll()
         local maxScroll = self:GetVerticalScrollRange()
-        local newScroll = current - (delta * INV.config.scrollSpeed * (INV.config.buttonheight + INV.config.buttonspacing))
+        local newScroll = current - (delta * INV.config.scrollSpeed * (INV:GetButtonHeight() + INV.config.buttonspacing))
 
         newScroll = max(0, min(newScroll, maxScroll))
         self:SetVerticalScroll(newScroll)
@@ -413,10 +413,10 @@ function INV:UpdateContainerLayout(id)
     local columns = container.columns
     local containerConfig = self.config[container.id]
 
-    local maxHeight = self.config.buttonheight * containerConfig.maxRows
+    local maxHeight = self:GetButtonHeight() * containerConfig.maxRows
                     + self.config.buttonspacing * (containerConfig.maxRows - 1)
 
-    local maxWidth = self.config.buttonheight * containerConfig.maxColumns
+    local maxWidth = self:GetButtonHeight() * containerConfig.maxColumns
                     + self.config.buttonspacing * (containerConfig.maxColumns - 1)
 
 	for _, column in pairs(container.columns) do
@@ -433,7 +433,7 @@ function INV:UpdateContainerLayout(id)
 
     container.scrollFrame:SetSize(
         scrollFrameWidth,
-        min(tallestColumn:GetHeight() + self.config.padding, containerConfig.maxRows * (self.config.buttonheight + self.config.buttonspacing) - self.config.buttonspacing)
+        min(tallestColumn:GetHeight() + self.config.padding, containerConfig.maxRows * (self:GetButtonHeight() + self.config.buttonspacing) - self.config.buttonspacing)
     )
     container.scrollFrame:SetContentSize(scrollFrameWidth, tallestColumn:GetHeight())
 

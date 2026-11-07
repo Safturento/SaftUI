@@ -209,7 +209,7 @@ function INV:CreateSlot(container, categoryName)
 
     self:SetSlotPosition(slot, categoryFrame, container)
 
-	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	
 	slot.cooldown = _G[slotName .. "Cooldown"]
 
@@ -259,7 +259,7 @@ end
 -- INV:CreateSlot. Runs on profile changes; skinning a slot again is safe.
 function INV:StyleSlot(slot, categoryFrame, container)
 	self:SetSlotPosition(slot, categoryFrame, container)
-	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
 
 	st:SkinActionButton(slot, {

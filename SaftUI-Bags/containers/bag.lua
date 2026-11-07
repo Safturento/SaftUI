@@ -146,8 +146,8 @@ function INV:InitializePlayerBagSlots()
 	local bagSlotContainer = st:CreateFrame('frame', 'BagSlotFrame', self.containers.bag)
 	bagSlotContainer:Hide()
 	bagSlotContainer:SetSize(
-		self.config.buttonwidth * #BagSlots + self.config.buttonspacing * (#BagSlots - 1) + self.config.padding * 2,
-		self.config.buttonheight + self.config.padding * 2)
+		self:GetButtonWidth() * #BagSlots + self.config.buttonspacing * (#BagSlots - 1) + self.config.padding * 2,
+		self:GetButtonHeight() + self.config.padding * 2)
 	st:SetBackdrop(bagSlotContainer, 'thick')
 	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
 
@@ -171,7 +171,7 @@ function INV:InitializePlayerBagSlots()
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
-		slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+		slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 		st:SkinActionButton(slot, st.config.profile.buttons)
 
 		st:Kill(slot.AnimIcon)
