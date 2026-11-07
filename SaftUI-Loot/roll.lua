@@ -348,8 +348,13 @@ local function CreatePreviewBar(parent, spec)
 	bar.Timer:SetFrameLevel(level + 2)
 	bar.Timer:SetStatusBarTexture(st.BLANK_TEX)
 	bar.Timer:SetMinMaxValues(0, PREVIEW_DURATION)
+	-- A font is needed before FillPreviewBar sets text (SetText errors on a
+	-- font string without one); ApplyPreviewConfig re-applies it with the rest.
+	local font = st:GetFont(LT.config.roll.font)
 	bar.Timer.Text = bar.Timer:CreateFontString(nil, 'OVERLAY')
+	bar.Timer.Text:SetFontObject(font)
 	bar.Name = bar.Timer:CreateFontString(nil, 'OVERLAY')
+	bar.Name:SetFontObject(font)
 	bar.Name:SetJustifyH('LEFT')
 	bar.Name:SetWordWrap(false)
 	bar.Name:SetVertexColor(1, 1, 1)
