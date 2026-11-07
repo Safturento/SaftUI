@@ -18,3 +18,19 @@ function LT:OnEnable()
 	self:InitializeRollFrame()
 	self:InitializeLootFeed()
 end
+
+-- A profile change: re-applies the rolls' and feed's size, spacing, template,
+-- font and position, and re-filters the feed with the new profile's filters.
+-- Safe in combat: neither touches a protected frame.
+function LT:UpdateConfig()
+	if self.rollAnchor then
+		self:UpdateGroupLootConfig()
+	end
+	if self.feed then
+		self:UpdateLootFeedConfig()
+		-- The new filters give a different list, so start back at the top.
+		self.feed.offset = 0
+		self.feed.reset_button:Hide()
+		self:UpdateFeed()
+	end
+end

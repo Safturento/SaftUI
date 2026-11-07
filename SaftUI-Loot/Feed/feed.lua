@@ -600,6 +600,8 @@ function LT:UpdateLootFeedConfig()
 
 	self.feed.reset_button.text:SetFontObject(font_obj)
 	st:SetBackdrop(self.feed.reset_button, config.template)
+	self.feed.reset_button:ClearAllPoints()
+	self.feed.reset_button:SetPoint('BOTTOM', self.feed.filterButton, 'TOP', 0, config.spacing)
 end
 
 
@@ -679,7 +681,6 @@ function LT:InitializeLootFeed()
 	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'thick')
 	feed.reset_button:SetSize(20, 20)
 	feed.reset_button:Hide()
-	feed.reset_button:SetPoint('BOTTOM', feed.filterButton, 'TOP', 0, self.config.feed.spacing)
 	feed.reset_button:SetScript('OnClick', function()
 		feed.offset = 0
 		feed.reset_button:Hide()
