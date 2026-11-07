@@ -3,6 +3,8 @@ local SK = st:GetModule('Skinning')
 
 local WA = SK:NewModule('WeakAuras')
 
+local skinnedRegions = {} -- every region given a backdrop, for UpdateConfig
+
 function WA:SkinIcon(parent, region, data)
 	if not region.skinned then
 		st:SetBackdrop(region, SK.config.template)
@@ -12,10 +14,18 @@ function WA:SkinIcon(parent, region, data)
 		region.backdrop:SetFrameStrata('LOW')
 		
 		region.skinned = true
+		tinsert(skinnedRegions, region)
 	end
 
 	local icon = region.icon
 	st:SkinIcon(icon, nil, region)
+end
+
+-- A profile change: re-applies the profile's skinning template.
+function WA:UpdateConfig()
+	for _, region in ipairs(skinnedRegions) do
+		st:SetBackdrop(region, SK.config.template)
+	end
 end
 
 function WA:OnEnable()

@@ -6,6 +6,17 @@ function SK:OnEnable()
 	st:BindModuleConfig(self, 'skinning')
 end
 
+-- A profile change. The skins are this module's submodules, which aren't in
+-- st.modules, so Config:UpdateConfig only reaches them through here. Each one
+-- with an UpdateConfig re-applies the profile's skinning font and template.
+function SK:UpdateConfig()
+	for _, module in self:IterateModules() do
+		if module.UpdateConfig then
+			xpcall(function() module:UpdateConfig() end, geterrorhandler())
+		end
+	end
+end
+
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
 	if not options then options = {} end
 	-- if not panel then return end

@@ -31,8 +31,14 @@ local DURATION_OFFSETS = {
 }
 
 local skinned = {}
+local borderUpdaters = {} -- button -> re-applies its border color
 local atlasColors = {}
 local noneColor
+
+-- Read at use time, so a profile change takes effect.
+local function SkinningFont()
+	return st:GetFont(st.config.profile.skinning.font)
+end
 
 local function BuildAtlasColors()
 	local displayInfo = AuraUtil and AuraUtil.GetDebuffDisplayInfoTable and AuraUtil.GetDebuffDisplayInfoTable() or {}
@@ -68,6 +74,7 @@ local function SkinBorders(button)
 	local function Update()
 		UpdateBorderColor(button, debuffColor)
 	end
+	borderUpdaters[button] = Update
 
 	if button.TempEnchantBorder then
 		button.TempEnchantBorder:SetAlpha(0)
@@ -101,6 +108,14 @@ local function SkinBorders(button)
 	Update()
 end
 
+-- Re-runs the duration's SetPoint hook, so its offset follows the backdrop.
+local function ReanchorDuration(duration)
+	local point, relativeTo, relativePoint = duration:GetPoint(1)
+	if point and not issecretvalue(point) then
+		duration:SetPoint(point, relativeTo, relativePoint)
+	end
+end
+
 local function SkinDuration(button, font)
 	local duration = button.Duration
 	if not duration then return end
@@ -108,26 +123,25 @@ local function SkinDuration(button, font)
 	duration:SetFontObject(font)
 	-- Edit Mode and some locales swap the duration font while updating
 	hooksecurefunc(duration, 'SetFontObject', function(self, fontObject)
-		if fontObject ~= font then self:SetFontObject(font) end
+		local current = SkinningFont()
+		if fontObject ~= current then self:SetFontObject(current) end
 	end)
 
 	-- The grid layout re-anchors the duration flush against the icon; push it past the backdrop
-	local gap = (button.Icon.thick and 2 or 1) + 1
 	local anchoring
 	hooksecurefunc(duration, 'SetPoint', function(self, point, relativeTo, relativePoint)
 		if anchoring or relativeTo ~= button.Icon then return end
 		local offset = DURATION_OFFSETS[point]
 		if not offset then return end
 
+		-- The backdrop's thickness follows the template, which can change
+		local gap = (button.Icon.thick and 2 or 1) + 1
 		anchoring = true
 		self:SetPoint(point, relativeTo, relativePoint, offset[1] * gap, offset[2] * gap)
 		anchoring = false
 	end)
 
-	local point, relativeTo, relativePoint = duration:GetPoint(1)
-	if point and not issecretvalue(point) then
-		duration:SetPoint(point, relativeTo, relativePoint)
-	end
+	ReanchorDuration(duration)
 end
 
 local function SkinAuraButton(button)
@@ -180,6 +194,31 @@ function BF:SkinFrames()
 
 	if DeadlyDebuffFrame then
 		SkinAuraButton(DeadlyDebuffFrame.Debuff)
+	end
+end
+
+-- A profile change: every skinned button gets the profile's skinning template
+-- and font. Only regions and SaftUI's own backdrops are touched, the same as
+-- the hooks above, which already run in combat.
+function BF:UpdateConfig()
+	local config = st.config.profile.skinning
+	local font = st:GetFont(config.font)
+
+	for button in pairs(skinned) do
+		st:SetBackdrop(button.Icon, config.template)
+		-- SetBackdrop reset the border to the template's color
+		if borderUpdaters[button] then borderUpdaters[button]() end
+
+		if button.Duration then
+			button.Duration:SetFontObject(font)
+			ReanchorDuration(button.Duration)
+		end
+		if button.Count then
+			button.Count:SetFontObject(font)
+		end
+		if button.Symbol then
+			button.Symbol:SetFontObject(font)
+		end
 	end
 end
 

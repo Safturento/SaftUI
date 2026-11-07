@@ -3,6 +3,8 @@ local SK = st:GetModule('Skinning')
 
 local HK = SK:NewModule('Hekili')
 
+local skinnedButtons = {} -- every button given a backdrop, for UpdateConfig
+
 function HK:SkinIcon(_, dispID, id)
 	local button = Hekili.DisplayPool[dispID] and Hekili.DisplayPool[dispID].Buttons[ id ]
 	if not button then return end
@@ -14,9 +16,17 @@ function HK:SkinIcon(_, dispID, id)
 		button.backdrop:SetFrameStrata('LOW')
 		
 		button.skinned = true
+		tinsert(skinnedButtons, button)
 	end
 
 	st:SkinIcon(button.Icon, nil, button)
+end
+
+-- A profile change: re-applies the profile's skinning template.
+function HK:UpdateConfig()
+	for _, button in ipairs(skinnedButtons) do
+		st:SetBackdrop(button, SK.config.template)
+	end
 end
 
 function HK:OnEnable()
