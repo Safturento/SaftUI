@@ -201,6 +201,6 @@ function Config:UpdateConfig()
 	self:Refresh()
 
 	if InCombatLockdown() then
-		st:Print('Profile changed in combat. Unit frames, action bars, bags and the micro menu finish updating when combat ends.')
+		st:Print('Profile changed in combat. Frames that are locked in combat (unit frames, action bars, bags, and anything anchored to them) finish updating when combat ends.')
 	end
 end
