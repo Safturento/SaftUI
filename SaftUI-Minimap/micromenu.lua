@@ -3,6 +3,10 @@ local MicroMenu = st:NewModule('MicroMenu')
 MicroMenu.Buttons = {}
 
 local BUTTON_SIZE = 25
+local BUTTON_SPACING = 8
+-- Shared with microbuttons.lua, which lays Blizzard's micro buttons out under the bar
+MicroMenu.BUTTON_SIZE = BUTTON_SIZE
+MicroMenu.BUTTON_SPACING = BUTTON_SPACING
 
 function MicroMenu:AddButton(button)
     if button then
@@ -12,8 +16,10 @@ end
 
 function MicroMenu:UpdateButtons()
     local prev
+    local width = 0
     for _,button in pairs(self.Buttons) do
         if button:IsShown() then
+            width = width + (button.width or BUTTON_SIZE) + (prev and BUTTON_SPACING or 0)
             button:SetParent(self.Container)
             button:SetSize(button.width or BUTTON_SIZE, BUTTON_SIZE)
 
@@ -31,7 +37,7 @@ function MicroMenu:UpdateButtons()
 
             button:ClearAllPoints()
             if prev then
-                button:SetPoint('TOPLEFT', prev, 'TOPRIGHT', 8, 0)
+                button:SetPoint('TOPLEFT', prev, 'TOPRIGHT', BUTTON_SPACING, 0)
             else
                 button:SetPoint('TOPLEFT', self.Container)
             end
@@ -40,6 +46,9 @@ function MicroMenu:UpdateButtons()
         end
     end
 
+    -- Blizzard's micro buttons span the bar's width in a row under it
+    self.barWidth = width
+    self:UpdateBlizzardButtons()
 end
 
 function MicroMenu:SkinMailIcon()
@@ -123,6 +132,7 @@ function MicroMenu:OnEnable()
     self.Container.Layout = function() end
 
     self:KillBlizz()
+    self:SkinBlizzardMicroMenu()
     self:AddButton(self:SkinZoneTextButton())
     self:AddButton(self:SkinTimeManagerClockButton())
     self:AddButton(self:CreateLatencyButton())

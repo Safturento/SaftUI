@@ -1,21 +1,6 @@
 local st = SaftUI
 local MicroMenu = st:GetModule('MicroMenu')
 
-local MICRO_BUTTONS = {
-	"CharacterMicroButton",
-	"SpellbookMicroButton",
-	"TalentMicroButton",
-	"AchievementMicroButton",
-	"QuestLogMicroButton",
-	"GuildMicroButton",
-	"LFDMicroButton",
-	"EJMicroButton",
-	--"CollectionsMicroButton",
-	"MainMenuMicroButton",
-	"HelpMicroButton",
-	"StoreMicroButton",
-}
-
 local BAG_BUTTONS = {
     "MainMenuBarBackpackButton",
     "CharacterBag0Slot",
@@ -33,7 +18,7 @@ function MicroMenu:KillBlizz()
     -- in combat (ADDON_ACTION_BLOCKED on MultiBar*:SetFrameStrata/SetShown).
 
     --self:HideBagSlots()
-    --self:HideMicroMenu()
+    -- Blizzard's micro menu isn't hidden; microbuttons.lua restyles it into SaftUI's bar.
 
     if st.retail then
         if MinimapCluster.BorderTop then
@@ -57,18 +42,6 @@ function MicroMenu:KillBlizz()
     end)
     st:Kill(TimeManagerClockButton)
     GameTimeFrame:Hide()
-end
-
-function MicroMenu:HideMicroMenu()
-    for _,buttonName in pairs(MICRO_BUTTONS) do
-        if _G[buttonName] then
-            _G[buttonName]:SetParent(st.HiddenFrame)
-        end
-    end
-
-    --This breaks dungeon finder icon, need to find what event needs to stay registered
-    --MicroButtonAndBagsBar:SetParent(st.HiddenFrame)
-    --MicroButtonAndBagsBar:UnregisterAllEvents()
 end
 
 function MicroMenu:HideBagSlots()
