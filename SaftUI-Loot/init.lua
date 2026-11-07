@@ -6,10 +6,10 @@ LT.DEBUG = false
 function LT:OnEnable()
 	st:BindModuleConfig(self, 'loot')
 
-	LOOTFRAME_AUTOLOOT_RATE = 0.1
-	LOOTFRAME_AUTOLOOT_DELAY = 0.1
-	AlertFrame:SetAlertsEnabled(false, "")
-	AlertFrame.SetAlertsEnabled = st.dummy
+	-- Blizzard's own API, with a reason key only SaftUI uses: AlertFrame queues
+	-- alerts while any reason's flag is false, and other code can only change the
+	-- flags of its own reasons, so nothing needs to be replaced to keep this off.
+	AlertFrame:SetAlertsEnabled(false, 'SaftUI')
 	if BossBanner then
 		BossBanner:UnregisterEvent("ENCOUNTER_LOOT_RECEIVED")
 	end
