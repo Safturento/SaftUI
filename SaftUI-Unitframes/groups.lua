@@ -637,9 +637,8 @@ local function FillPreviewFrame(frame, member)
 	end
 
 	-- The role corner's colors and rules from its postUpdate in
-	-- elements/indicators.lua. That one doesn't check enable, but a disabled
-	-- corner is never anchored (UF:UpdateElement stops first), so enable
-	-- decides here: on for party, off for the raids, by default.
+	-- elements/indicators.lua, plus the enable check its PostUpdate wrapper
+	-- adds: on for party, off for the raids, by default.
 	local role = frame.GroupRoleIndicator
 	local roleConfig = role.config
 	local textColors = st.config.profile.colors.text

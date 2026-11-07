@@ -54,7 +54,7 @@ covers:
 
 - These are oUF (`SaftUI-Unitframes/Libraries/oUF`, oUF master). In this oUF the active unit is `frame.__unit`, **not** `frame.unit`.
 - Elements register through `UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)`.
-  - `ValidUnit(unit)` gets the config unit (`player`, `boss`, `party`, ...). A unit it rejects gets neither the element nor its `/sui` tab (ClassPower and AdditionalPower are player-only).
+  - `ValidUnit(unit)` gets the config unit (`player`, `boss`, `party`, ...). A unit it rejects gets neither the element nor its `/sui` tab. ClassPower and AdditionalPower are player-only, Castbar skips `targettarget` and `focustarget` (as oUF does), and ReadyCheckIndicator is party and raid only.
   - `GetConfigTable(unit)` returns the element's tab. Its `set` calls `UF:UpdateConfig(unit, '<Element>')`, which re-runs that element's `UpdateConfig` on every frame of the unit.
   - oUF shows and hides many elements itself (castbar on a cast, indicators by state, additional power by power type), so `UF:SetElementEnabled` alone doesn't keep a disabled one hidden. Those elements also check `config.enable` in an oUF hook (`ShouldShow`, `PostVisibility`, `PostUpdate`).
 - Layout "profiles" inside the SaftUI profile: `st.config.profile.unitframes.profiles[UF:GetProfile()]`, read through `UF:GetProfileConfig()`.

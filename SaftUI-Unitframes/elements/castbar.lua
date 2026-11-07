@@ -53,9 +53,15 @@ end
 
 -- oUF shows the castbar on every cast of the unit, whatever UF:SetElementEnabled
 -- did. It skips a cast event while this returns false, so a disabled castbar
--- stays hidden. oUF's own check is just the unit.
+-- stays hidden. oUF's own check is just the unit. It skips the stop and fail
+-- events too, so a bar mid-cast when it's disabled (a profile switch in combat
+-- re-points the config before SetElementEnabled can run) is hidden here.
 local function ShouldShow(castbar, unit)
-	return castbar.config.enable and castbar.__owner.__unit == unit
+	if not castbar.config.enable then
+		castbar:Hide()
+		return false
+	end
+	return castbar.__owner.__unit == unit
 end
 
 local function Constructor(unitframe)
@@ -149,6 +155,12 @@ local function GetConfigTable(unit)
 		}
 	end
 
+	local enable = generators.enable(0)
+	if unit == 'player' then
+		-- oUF hides them when it enables the player castbar, and Enable doesn't undo that.
+		enable.desc = "Blizzard's player and pet castbars stay hidden either way."
+	end
+
 	return {
 		order = 6,
 		type = 'group',
@@ -159,7 +171,7 @@ local function GetConfigTable(unit)
 			Update()
 		end,
 		args = {
-			enable = generators.enable(0),
+			enable = enable,
 			bar = {
 				order = 1,
 				name = 'Bar',

@@ -2,8 +2,11 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxChanged, powerType)
-	-- oUF passes no max when it turns class power off (e.g. a druid leaving
-	-- cat form), and a max again when it turns it back on.
+	-- oUF passes no max only when the element itself is disabled. When class
+	-- power turns off with the power type (e.g. a druid leaving cat form), oUF
+	-- hides the points itself without calling this; the container has no
+	-- backdrop, so nothing is left on screen. Otherwise class power is on, and
+	-- the container follows Enable.
 	if not max then classPower:Hide() return end
 	classPower:SetShown(classPower.config.enable and true or false)
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
