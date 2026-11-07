@@ -7,7 +7,17 @@ function UF:UpdateElement(element, configOverride)
     local config = element.config or configOverride
 
     local enabled = self:SetElementEnabled(element, configOverride)
-    if not enabled then return false end
+    if not enabled then
+        -- An element's texts usually live on the unit frame's TextOverlay, not
+        -- on the element, so they don't hide with it. Enabling it again shows
+        -- them through UpdateText below, each by its own config.
+        if element.textElements then
+            for _, text in pairs(element.textElements) do
+                text:Hide()
+            end
+        end
+        return false
+    end
 
     if element.config.template then
         st:SetBackdrop(element, config.template)
