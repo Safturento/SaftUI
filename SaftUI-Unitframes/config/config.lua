@@ -292,6 +292,57 @@ function UF:GetProfileConfig()
 	return st.config.profile.unitframes.profiles[currentProfile]
 end
 
+-- Group header 'point' / 'columnAnchorPoint' values, named for the way the
+-- frames (or columns) grow from them.
+local GROWTH_DIRECTIONS = { TOP = 'Down', BOTTOM = 'Up', LEFT = 'Right', RIGHT = 'Left' }
+
+-- Party and raid only: the header's layout, and test mode. The values sit on
+-- the group's own config, so General's get and set handle them.
+local function GetGroupLayoutConfig(unit, order)
+	local args = {
+		test_mode = {
+			order = 0,
+			name = 'Test mode',
+			desc = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
+			type = 'toggle',
+			width = 'full',
+			-- Not a config value: a plain module field, never saved.
+			get = function() return UF.testGroups[unit] and true or false end,
+			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
+		},
+		growthDirection = {
+			order = 1,
+			name = 'Growth',
+			desc = 'Which way each frame follows the one before it.',
+			type = 'select',
+			values = GROWTH_DIRECTIONS,
+			width = 0.75,
+		},
+		spacing = st.Config.generators.range(2, 'Spacing', 0, 50, 1),
+		unitsPerColumn = st.Config.generators.range(3, 'Units per column', 1, 40, 1),
+		initialAnchor = {
+			order = 4,
+			name = 'Column growth',
+			desc = 'Which way each new column follows the one before it. A column runs the way the frames grow, so it is a row when they grow sideways.',
+			type = 'select',
+			values = GROWTH_DIRECTIONS,
+			width = 0.75,
+		},
+		columnSpacing = st.Config.generators.range(5, 'Column spacing', 0, 50, 1),
+		maxColumns = st.Config.generators.range(6, 'Max columns', 1, 40, 1),
+	}
+	if unit == 'party' then
+		args.showPlayer = st.Config.generators.toggle(7, 'Show player', 1)
+	end
+	return {
+		order = order,
+		name = 'Layout',
+		type = 'group',
+		inline = true,
+		args = args,
+	}
+end
+
 
 function UF:GetConfigTable()
 	self:RegisterCopyTable()
@@ -441,6 +492,10 @@ function UF:GetConfigTable()
 			}
 		}
 
+		if self.groups and self.groups[unit] then
+			config_table.args.general.args.layout = GetGroupLayoutConfig(unit, 6)
+		end
+
 		for element_name, element in pairs(UF.elements) do
 			if self.elements[element_name].GetConfigTable and not (self.elements[element_name].valid_units and self.elements[element_name].valid_units(unit)) then
 				config_table.args[element_name] =
@@ -454,10 +509,10 @@ function UF:GetConfigTable()
 	for unit,frame in pairs(self.units) do
 		config.args[unit] = GetUnitConfig(unit)
 	end
-	--
-	--for unit, header in pairs(self.groups) do
-	--	config.args[unit] = GetUnitConfig(unit)
-	--end
+
+	for unit in pairs(self.groups or {}) do
+		config.args[unit] = GetUnitConfig(unit)
+	end
 
 	return config
 end

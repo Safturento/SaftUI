@@ -8,6 +8,7 @@
 Libraries\oUF\oUF.xml
 
 unitframes.lua
+groups.lua
 config\load.xml
 constructors.lua
 updaters.lua

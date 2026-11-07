@@ -8,11 +8,11 @@ assert(UF.oUF, 'st was unable to locate oUF.')
 local DEFAULT_ROLE_COLORS = UF.oUF.colors.roles
 local DEFAULT_RUNE_COLORS = UF.oUF.colors.runes
 
-local TEST_PARTY_SOLO = false
-
 UF.elements = {}
 
--- Boss and arena holders (unit -> frame), made in OnEnable. See UF:PlaceHolder.
+-- Holders (unit -> frame): boss and arena (made in OnEnable, see
+-- UF:PlaceHolder) and party and raid (UF:CreateGroupHeaders, see
+-- UF:PlaceGroupHolder).
 UF.holders = {}
 
 UF.unit_strings = {
@@ -74,7 +74,14 @@ function UF.ConstructUnit(self, unit)
 	if UF.unit_strings[self.base_unit] then
 		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
 	end
-	self:RegisterForClicks('AnyUp')
+	-- RegisterForClicks is protected on a secure button in combat. Group
+	-- buttons are all made out of combat (UF:ApplyGroupLayout), but one the
+	-- header still makes in combat gets right-click once combat ends.
+	if InCombatLockdown() then
+		st:QueueAfterCombat('uf_clicks_' .. self:GetName(), function() self:RegisterForClicks('AnyUp') end)
+	else
+		self:RegisterForClicks('AnyUp')
+	end
 	self:SetScript('OnEnter', UF.OnEnter)
 	self:SetScript('OnLeave', UnitFrame_OnLeave)
 	
@@ -187,17 +194,14 @@ function UF:RefreshConfigReferences()
 	end
 end
 
--- Sizes and places one unit frame from frame.config. A group child places its
--- header. Boss/arena 1 sits at the top of its group's holder and the others
--- chain below it. A disabled frame goes off screen, and false is returned for
--- it. Unit frames are secure: out of combat only.
+-- Sizes and places one unit frame from frame.config. A group button is only
+-- sized: its header places it (and UF:AnchorGroupHeader places the header).
+-- Boss/arena 1 sits at the top of its group's holder and the others chain
+-- below it. A disabled frame goes off screen, and false is returned for it.
+-- Unit frames are secure: out of combat only.
 function UF:PlaceUnitFrame(frame)
 	local config = frame.config
-	if frame.is_group_unit then
-		local header = frame:GetParent()
-		header:ClearAllPoints()
-		header:SetPoint(st:UnpackPoint(config.position))
-	else
+	if not frame.is_group_unit then
 		frame:ClearAllPoints()
 		if not config.enable then
 			frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
@@ -293,8 +297,8 @@ local function SafeUpdateUnitFrame(frame, element_name)
 end
 
 -- Clears the points of every frame ApplyConfig places: the single and
--- numbered unit frames, the boss/arena holders, and the group headers (their
--- children are placed by the header). Returns each frame's old points, for
+-- numbered unit frames, the boss/arena, party and raid holders, and the group
+-- headers (their children are placed by the header). Returns each frame's old points, for
 -- st:RestorePoints. Unit frames are secure: out of combat only.
 local function ClearUnitFramePoints(self)
 	local previous = {}
@@ -343,7 +347,7 @@ function UF:ApplyConfig(unit, element_name)
 
 		if self.groups then
 			for unit,_ in pairs(self.groups) do
-				UF:ApplyConfig(unit)
+				UF:ApplyConfig(unit, element_name)
 			end
 		end
 
@@ -367,120 +371,38 @@ function UF:ApplyConfig(unit, element_name)
 				SafeUpdateUnitFrame(self.units[unit], element_name)
 			end
 		elseif self.groups and self.groups[unit] then
-			self.groups[unit].config = st.config.profile.unitframes.profiles[self:GetProfile()][unit]
+			local header = self.groups[unit]
+			header.config = self:GetProfileConfig()[unit]
+			-- The holder, the header's anchor and attributes follow the group's
+			-- config, out of combat only, like UpdateUnitFrame.
+			local layout = not element_name and not InCombatLockdown()
 
-			for i=1,self.groups[unit]:GetNumChildren() do
-				local frame = select(i, self.groups[unit]:GetChildren())
+			if layout then
+				xpcall(function()
+					self:PlaceGroupHolder(unit)
+					self:AnchorGroupHeader(unit)
+				end, geterrorhandler())
+			end
+
+			for i=1,header:GetNumChildren() do
+				local frame = select(i, header:GetChildren())
 				if frame and frame.Health then
 					SafeUpdateUnitFrame(frame, element_name)
 				end
 			end
+
+			-- After the buttons are resized, so the header measures them anew.
+			if layout then
+				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())
+			end
+			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 		end
 	end
 end
 
-function UF:CreateGroupHeader(name, visibility, ...)
-	if st.retail then
-		local header = self.oUF:SpawnHeader(name, nil, ...)
-		header:SetVisibility(visibility)
-		return header
-	else
-		return self.oUF:SpawnHeader(name, nil, visibility, ...)
-	end
-
-end
-
-function UF:CreateGroupHeaders()
-	self.groups = {}
-
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].party
-	local party = self:CreateGroupHeader('SaftUI_Party', 'custom [@raid1,exists] hide;show',  {
-		['oUF-initiateConfigFunction'] = ('self:SetWidth(%d); self:SetHeight(%d);'):format(config.width, config.height),
-		showParty = true,
-		showRaid = false,
-		showSolo = TEST_PARTY_SOLO,
-		showPlayer = TEST_PARTY_SOLO or config.showPlayer,
-		xOffset = config.spacing,
-		yOffset = config.spacing,
-		point = config.growthDirection,
-		groupFilter = "1,2,3,4,5,6,7,8",
-		groupingOrder = "1,2,3,4,5,6,7,8",
-		groupBy = "GROUP",
-		maxColumns = config.maxColumns,
-		unitsPerColumn = config.unitsPerColumn,
-		columnSpacing = config.columnSpacing,
-		columnAnchorPoint = config.initialAnchor,
-		base_unit = "party"
-	})
-
-	party.config = config
-	party:SetPoint(st:UnpackPoint(config.position))
-	self.groups.party = party
-
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid10
-	local raid10 = self:CreateGroupHeader('SaftUI_Raid10', 'custom [@raid11,exists] hide;[@raid1,exists] show;hide',
-		"oUF-initialConfigFunction", [[
-			local header = self:GetParent()
-			self:SetWidth(header:GetAttribute("initial-width"))
-			self:SetHeight(header:GetAttribute("initial-height"))
-		]],
-		"initial-width", config.width,
-		"initial-height", config.height,
-		"showParty", true,
-		"showRaid", true,
-		"showPlayer", true,
-		"showSolo", TEST_PARTY_SOLO,
-		"xOffset", config.spacing,
-		"yOffset", config.spacing,
-		"point", config.growthDirection,
-		"groupFilter", "1,2,3,4,5,6,7,8",
-		"groupingOrder", "1,2,3,4,5,6,7,8",
-		"groupBy", "GROUP",
-		"maxColumns", config.maxColumns,
-		"unitsPerColumn", config.unitsPerColumn,
-		"columnSpacing", config.columnSpacing,
-		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid10"
-	)
-
-	raid10.config = config
-	raid10:SetPoint(st:UnpackPoint(config.position))
-	self.groups.raid10 = raid10
-
-	local config = st.config.profile.unitframes.profiles[self:GetProfile()].raid40
-	local raid40 = self:CreateGroupHeader('SaftUI_Raid40', 'custom [@raid11,exists] show;hide',
-		"oUF-initialConfigFunction", [[
-			local header = self:GetParent()
-			self:SetWidth(header:GetAttribute("initial-width"))
-			self:SetHeight(header:GetAttribute("initial-height"))
-		]],
-		"initial-width", config.width,
-		"initial-height", config.height,
-		"showParty", true,
-		"showRaid", true,
-		"showPlayer", true,
-		"showSolo", TEST_PARTY_SOLO,
-		"xOffset", config.spacing,
-		"yOffset", config.spacing,
-		"point", config.growthDirection,
-		"groupFilter", "1,2,3,4,5,6,7,8",
-		"groupingOrder", "1,2,3,4,5,6,7,8",
-		"groupBy", "GROUP",
-		"maxColumns", config.maxColumns,
-		"unitsPerColumn", config.unitsPerColumn,
-		"columnSpacing", config.columnSpacing,
-		"columnAnchorPoint", config.initialAnchor,
-		"base_unit", "raid40"
-	)
-
-	raid40.config = config
-	raid40:SetPoint(st:UnpackPoint(config.position))
-	self.groups.raid40 = raid40
-end
-
 -- The frame a unit's mover drags and outlines, and its Position section
--- validates typed anchors against: a boss/arena group's holder, or the
--- unit's own frame.
+-- validates typed anchors against: a boss/arena, party or raid group's
+-- holder, or the unit's own frame.
 function UF:GetMoverFrame(unit)
 	return self.holders[unit] or self.units[unit]
 end
@@ -490,6 +412,9 @@ end
 -- as UpdateUnitFrame. A move doesn't need the elements refreshed. Unit frames
 -- are secure, so in combat this waits for the end of combat.
 function UF:ApplyPosition(unit)
+	if self.groups and self.groups[unit] then
+		return self:ApplyGroupPosition(unit)
+	end
 	local holder = self.holders[unit]
 	local frames = holder and self.units[unit] or { self.units[unit] }
 	if holder then
@@ -503,21 +428,27 @@ function UF:ApplyPosition(unit)
 	end)
 end
 
--- Every spawned unit gets an edit mode mover: each single frame, and boss as
--- one group (its holder). Clicking one opens its General group in /sui.
--- Arena isn't spawned (commented out of unit_strings), and neither are the
--- party and raid headers (CreateGroupHeaders is off), so they have none.
+-- Every spawned unit gets an edit mode mover: each single frame, and boss,
+-- party, raid10 and raid40 as one group each (its holder). Clicking one opens
+-- its General group in /sui. Arena isn't spawned (commented out of
+-- unit_strings), so it has none.
 function UF:RegisterMovers()
-	for unit in pairs(self.units) do
+	local function Register(unit, label)
 		st:RegisterMover('uf_' .. unit, {
 			frame = self:GetMoverFrame(unit),
-			label = self.unit_strings[unit],
+			label = label,
 			-- Looked up on every call: a profile change replaces these tables.
 			getPosition = function() return self:GetProfileConfig()[unit].position end,
 			setPosition = function(pos) self:GetProfileConfig()[unit].position = pos end,
 			apply = function() self:ApplyPosition(unit) end,
 			configPath = { 'Unitframes', unit, 'general' },
 		})
+	end
+	for unit in pairs(self.units) do
+		Register(unit, self.unit_strings[unit])
+	end
+	for group in pairs(self.groups or {}) do
+		Register(group, self.group_strings[group])
 	end
 end
 
@@ -542,7 +473,7 @@ function UF:OnEnable()
 
 	self.RMH = RealMobHealth
 
--- 	UF:CreateGroupHeaders()
+	UF:CreateGroupHeaders()
 	UF:ApplyConfig()
 	UF:UpdateColors()
 	UF:RegisterMovers()
