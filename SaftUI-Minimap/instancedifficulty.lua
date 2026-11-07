@@ -5,9 +5,8 @@ function MicroMenu:SkinInstanceDifficulty()
     -- Forever counts as retail but has no instance difficulty frame
     if not (st.retail and MinimapCluster.InstanceDifficulty) then return end
 
+    -- No backdrop of its own: the bar draws every item's panel
     local button = CreateFrame('Button', 'SaftUI_DungeonDifficulty', UIParent)
-
-    st:SetBackdrop(button, 'thick')
 
     button.Text = st:CreateFontString(button, 'pixel', '10')
     button.Text:SetPoint('BOTTOM', 2, 2)

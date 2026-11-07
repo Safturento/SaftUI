@@ -20,7 +20,6 @@ end
 
 function MicroMenu:CreateLatencyButton()
     local latency = st:CreateFrame('Frame', nil, UIParent)
-    latency.width = BUTTON_WIDTH
     --st:SetBackdrop(latency, 'thick')
     latency.text = latency:CreateFontString(nil, 'OVERLAY')
     latency.text:SetFontObject(st:GetFont('pixel'))
@@ -31,7 +30,7 @@ function MicroMenu:CreateLatencyButton()
     self.Latency = latency
     latency:SetScript('OnUpdate', function(frame) MicroMenu:UpdateLatency(frame) end)
 
-    return latency
+    return latency, { width = BUTTON_WIDTH, text = latency.text }
 end
 
 function MicroMenu:UpdateLatency(latency)
@@ -77,7 +76,6 @@ end
 
 function MicroMenu:CreateFramerateButton()
     local framerate = st:CreateFrame('Frame', nil, UIParent)
-    framerate.width = BUTTON_WIDTH
     --st:SetBackdrop(framerate, 'thick')
     --framerate:SetPoint('TOPLEFT')
     --framerate:SetPoint('BOTTOMRIGHT', button, 'RIGHT', 0, 1)
@@ -90,7 +88,7 @@ function MicroMenu:CreateFramerateButton()
     framerate:SetScript('OnUpdate', function(frame) MicroMenu:UpdateFramerate(frame) end)
     framerate:SetScript('OnEnter', function() MicroMenu:ShowAddonStatsTooltip() end)
     framerate:SetScript('OnLeave', function() GameTooltip:Hide() end)
-    return framerate
+    return framerate, { width = BUTTON_WIDTH, text = framerate.text }
 end
 
 function MicroMenu:UpdateFramerate(framerate)

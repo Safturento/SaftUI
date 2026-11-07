@@ -5,7 +5,6 @@ function MicroMenu:SkinQueueButton()
 
     local button = st.retail and QueueStatusButton or MiniMapLFGFrame
     button:SetHitRectInsets(0,0, 0, 0)
-    st:SetBackdrop(button, 'thick')
 
     if st.retail then
         button.Eye:Hide()

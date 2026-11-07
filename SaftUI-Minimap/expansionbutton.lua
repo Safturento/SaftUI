@@ -24,7 +24,6 @@ function MicroMenu:SkinExpansionButton()
     if not ExpansionLandingPageMinimapButton then return end
 
     local button = ExpansionLandingPageMinimapButton
-    st:SetBackdrop(button, 'thick')
     self:SecureHook(button, 'UpdateIcon', 'UpdateExpansionLandingPageButton')
     -- Blizzard's tooltip stays off this button. Its scripts aren't replaced
     -- (that would leave an addon function as Blizzard's OnEnter/OnLeave):

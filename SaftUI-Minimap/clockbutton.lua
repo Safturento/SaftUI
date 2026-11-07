@@ -35,8 +35,8 @@ end
 function MicroMenu:SkinTimeManagerClockButton()
     self:KillBlizzard_TimeManager()
 
-    local button = st:CreateButton('ClockButton', UIParent)
-    button.width = 60
+    -- No backdrop of its own: the bar draws every item's panel
+    local button = st:CreateButton('ClockButton', UIParent, nil, 'none')
 
     button:SetScript('OnUpdate', Update)
     button:SetScript('OnClick', function()
@@ -49,5 +49,5 @@ function MicroMenu:SkinTimeManagerClockButton()
             GameTimeFrame_OnClick()
         end
     end)
-    return button
+    return button, { width = 60, text = button.text }
 end

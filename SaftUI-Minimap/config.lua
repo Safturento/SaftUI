@@ -27,6 +27,31 @@ st.defaults.micromenu = {
 
 local MM = st:GetModule('Minimap')
 
+-- The minimap's panel: a SaftUI frame kept here. st:SetBackdrop would store it
+-- on Blizzard's Minimap frame as .backdrop (and .thick). One frame level down,
+-- so it draws under the map.
+local backdrop
+local function UpdateBackdrop(template)
+	if template == nil or template == 'none' or template == '' then
+		if backdrop then st:SetTemplate(backdrop, 'none') end
+		return
+	end
+
+	if not backdrop then
+		backdrop = st:CreateFrame('Frame', nil, Minimap)
+		local level = Minimap:GetFrameLevel()
+		if not issecretvalue(level) then
+			backdrop:SetFrameLevel(math.max(0, level - 1))
+		end
+	end
+
+	st:SetTemplate(backdrop, template)
+	local offset = st.config.profile.templates[template].thick and 2 or 1
+	backdrop:ClearAllPoints()
+	backdrop:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', -offset, offset)
+	backdrop:SetPoint('BOTTOMRIGHT', Minimap, 'BOTTOMRIGHT', offset, -offset)
+end
+
 function MM:UpdateConfig()
 	-- Minimap is owned by SaftUI (parented to UIParent), so it is sized and
 	-- placed directly. MinimapCluster stays wherever Blizzard's Edit Mode puts it.
@@ -40,7 +65,7 @@ function MM:UpdateConfig()
 	end)
 
 	-- Only SaftUI's backdrop frame is touched, so this is fine in combat.
-	st:SetBackdrop(Minimap, self.config.template)
+	UpdateBackdrop(self.config.template)
 end
 
 -- The minimap's section in the /sui tree. Clicking the minimap in edit mode

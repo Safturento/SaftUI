@@ -4,12 +4,12 @@ local MicroMenu = st:GetModule('MicroMenu')
 function MicroMenu:SkinAddonCompartmentFrame()
     if not AddonCompartmentFrame then return end
 
-    st:SkinButton(AddonCompartmentFrame)
+    self:SkinBarButton(AddonCompartmentFrame)
 
     --TODO: Figure out how to get text to stop changing font objects
     --self:SecureHook(AddonCompartmentFrame, 'UpdateDisplay', function()
     --    print('skinning AddonCompartmentFrame')
-    --    st:SkinButton(AddonCompartmentFrame)
+    --    self:SkinBarButton(AddonCompartmentFrame)
     --end)
 
     return AddonCompartmentFrame

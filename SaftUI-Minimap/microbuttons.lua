@@ -12,10 +12,10 @@ local MicroMenu = st:GetModule('MicroMenu')
 -- hooksecurefunc and HookScript. No Blizzard Lua function is ever called from
 -- here, so nothing Blizzard writes happens under our taint.
 --
--- The bar's AddButton/UpdateButtons write SaftUI fields onto every item they
--- lay out, so Blizzard's buttons are never given to them. Each button gets a
--- SaftUI holder frame instead: the holder is the bar item that takes the
--- button's slot, and the button is anchored over it.
+-- The bar's UpdateButtons reparents every item it lays out into SaftUI's bar,
+-- so Blizzard's buttons are never given to it (they stay MicroMenu's, below).
+-- Each button gets a SaftUI holder frame instead: the holder is the bar item
+-- that takes the button's slot, and the button is anchored over it.
 --
 -- The buttons stay parented to MicroMenu, so Blizzard's own scripts, alerts,
 -- notification pips and vehicle/pet battle handling keep working. Blizzard
@@ -113,7 +113,7 @@ end
 
 -- Shows each holder while its button is shown, so the bar closes up around
 -- buttons Blizzard hides (game rules, level, region). A holder's OnShow/OnHide
--- lays the bar out again (MicroMenu:OnEnable hooks every bar item). This reads
+-- lays the bar out again (MicroMenu:AddButton hooks every bar item). This reads
 -- the shown flag, not visibility, so the slots don't come and go when Blizzard
 -- moves MicroMenu to a vehicle or pet battle bar.
 local function UpdateHolders()
@@ -138,7 +138,6 @@ end
 local function CreateHolder(button)
     local holder = CreateFrame('Frame', nil, MicroMenu.Container)
     holder.width = st:RoundToPixel(BUTTON_HEIGHT * BUTTON_RATIO, MicroMenu.Container)
-    holder.barTemplate = 'none'
     holder:SetShown(button:IsShown())
     holders[button] = holder
     return holder
@@ -247,7 +246,8 @@ function MicroMenu:SkinBlizzardMicroMenu()
 
     for _, button in ipairs(buttons) do
         SkinButton(button)
-        self:AddButton(holders[button])
+        local holder = holders[button]
+        self:AddButton(holder, { width = holder.width, template = 'none' })
     end
 
     -- Layout re-anchors the buttons into Blizzard's grid; UpdateScale follows

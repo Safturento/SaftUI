@@ -7,34 +7,131 @@ local BUTTON_SPACING = 8
 -- Shared with microbuttons.lua, which sizes Blizzard's micro buttons to the bar
 MicroMenu.BUTTON_SIZE = BUTTON_SIZE
 
--- Items can set .width (default BUTTON_SIZE) and .barTemplate (the backdrop
--- template, default thicktransparent; 'none' for no backdrop).
-function MicroMenu:AddButton(button)
-    if button then
-        tinsert(self.Buttons, button)
+-- Taint: most bar items are Blizzard frames (the zone text, the addon
+-- compartment, tracking, the expansion button, mail and the queue eye).
+-- Nothing here writes a Lua field onto them. Each item's SaftUI data lives in
+-- this weak table, its backdrop is a SaftUI frame, and Blizzard regions are
+-- only changed through widget methods. Every hook on a Blizzard frame or
+-- function is a post-hook (HookScript, hooksecurefunc, SecureHook): Blizzard's
+-- own handler runs first and untainted, and SaftUI re-applies its state after.
+local items = setmetatable({}, { __mode = 'k' }) -- bar item -> its settings
+
+local function LayoutBar()
+    MicroMenu:UpdateButtons()
+end
+
+-- Adds a frame to the end of the bar. options (all optional): width (default
+-- BUTTON_SIZE), template (the backdrop template, default thicktransparent;
+-- 'none' for no backdrop) and text (a font string to center across the item).
+function MicroMenu:AddButton(button, options)
+    if not button then return end
+    tinsert(self.Buttons, button)
+    items[button] = options or {}
+
+    -- The bar closes up around items that come and go. HookScript is a
+    -- post-hook: Blizzard's own OnShow/OnHide run first and untainted.
+    -- AceHook's HookScript would replace the script with a SaftUI closure, and
+    -- Blizzard's handler would then run inside it.
+    button:HookScript('OnShow', LayoutBar)
+    button:HookScript('OnHide', LayoutBar)
+end
+
+-- st:SkinButton's look for a Blizzard button: SaftUI's font, Blizzard's art
+-- faded out, and flat hover, pushed and disabled textures. st:SkinButton
+-- itself stores those (and a backdrop) on the button as fields, so it's only
+-- for SaftUI's own buttons. The bar draws the backdrop.
+local skinned = setmetatable({}, { __mode = 'k' })
+function MicroMenu:SkinBarButton(button)
+    if skinned[button] then return end
+    skinned[button] = true
+
+    local font = st:GetFont('pixel')
+    if button.SetNormalFontObject then
+        button:SetNormalFontObject(font)
+        button:SetHighlightFontObject(font)
+        button:SetDisabledFontObject(font)
+        button:SetPushedTextOffset(0, 0)
     end
+
+    for _, region in pairs({ button:GetRegions() }) do
+        if region:GetObjectType() == 'Texture' then
+            region:SetAlpha(0)
+        end
+    end
+    button:SetNormalTexture('')
+
+    local colors = st.config.profile.colors.button
+
+    local hover = button:CreateTexture(nil, 'OVERLAY')
+    hover:SetTexture(st.BLANK_TEX)
+    hover:SetVertexColor(colors.normal:GetRGB())
+    hover:SetAllPoints(button)
+    button:SetHighlightTexture(hover)
+
+    local pushed = button:CreateTexture(nil, 'OVERLAY')
+    pushed:SetTexture(st.BLANK_TEX)
+    pushed:SetVertexColor(colors.pushed:GetRGB())
+    pushed:SetAllPoints(button)
+    button:SetPushedTexture(pushed)
+
+    local disabled = button:CreateTexture(nil, 'OVERLAY')
+    disabled:SetTexture(st.BLANK_TEX)
+    disabled:SetVertexColor(0, 0, 0, .4)
+    disabled:SetAllPoints(button)
+    button:SetDisabledTexture(disabled)
+end
+
+-- The item's panel: a SaftUI frame kept in its entry. st:SetBackdrop would
+-- store it on the item as .backdrop (and .thick). It's a child of the item, so
+-- it shows and hides with it, one frame level down so it draws under the
+-- item's own art.
+local function UpdateBackdrop(button, item)
+    local template = item.template or 'thicktransparent'
+    if template == 'none' then
+        if item.backdrop then st:SetTemplate(item.backdrop, 'none') end
+        return
+    end
+
+    if not item.backdrop then
+        item.backdrop = st:CreateFrame('Frame', nil, button)
+    end
+    local backdrop = item.backdrop
+
+    local level = button:GetFrameLevel()
+    if not issecretvalue(level) then
+        backdrop:SetFrameLevel(math.max(0, level - 1))
+    end
+
+    st:SetTemplate(backdrop, template)
+    local offset = st.config.profile.templates[template].thick and 2 or 1
+    backdrop:ClearAllPoints()
+    backdrop:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
+    backdrop:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)
 end
 
 function MicroMenu:UpdateButtons()
     local prev
     local barWidth = 0
-    for _,button in pairs(self.Buttons) do
+    for _, button in ipairs(self.Buttons) do
         if button:IsShown() then
-            barWidth = barWidth + (button.width or BUTTON_SIZE) + (prev and BUTTON_SPACING or 0)
+            local item = items[button]
+            local width = item.width or BUTTON_SIZE
+            barWidth = barWidth + width + (prev and BUTTON_SPACING or 0)
             button:SetParent(self.Container)
-            button:SetSize(button.width or BUTTON_SIZE, BUTTON_SIZE)
+            button:SetSize(width, BUTTON_SIZE)
 
-            if button.text then
-                button.text:SetFontObject(st:GetFont('pixel'))
-                button.text:SetJustifyH('CENTER')
+            local text = item.text
+            if text then
+                text:SetFontObject(st:GetFont('pixel'))
+                text:SetJustifyH('CENTER')
                 -- Clear Blizzard's anchors (the zone text is LEFT-anchored with a
                 -- fixed width) so the text spans the button and centers properly
-                button.text:ClearAllPoints()
-                button.text:SetPoint('LEFT', button, 'LEFT', 4, 0)
-                button.text:SetPoint('RIGHT', button, 'RIGHT', -4, 0)
+                text:ClearAllPoints()
+                text:SetPoint('LEFT', button, 'LEFT', 4, 0)
+                text:SetPoint('RIGHT', button, 'RIGHT', -4, 0)
             end
 
-            st:SetBackdrop(button, button.barTemplate or 'thicktransparent')
+            UpdateBackdrop(button, item)
 
             button:ClearAllPoints()
             if prev then
@@ -72,9 +169,11 @@ function MicroMenu:SkinMailIcon()
 
     local button = st.retail and MinimapCluster.IndicatorFrame.MailFrame or MiniMapMailFrame
 
-    st:Kill(MiniMapMailBorder)
-
-    MiniMapMailFrame_UpdatePosition = function() end
+    -- Classic's border and position function; retail and Forever have neither
+    if not st.retail then
+        st:Kill(MiniMapMailBorder)
+        MiniMapMailFrame_UpdatePosition = function() end
+    end
 
     MiniMapMailIcon:SetTexture(st.textures.mailSquare)
     MiniMapMailIcon:SetAllPoints(button)
@@ -112,7 +211,6 @@ function MicroMenu:SkinTrackingButton()
             icon:SetTexture([[Interface\Minimap\Tracking\None]])
             icon:SetPoint('CENTER')
             icon:SetSize(16, 16)
-            trackingButton.SaftIcon = icon
 
             local hover = trackingButton:CreateTexture(nil, 'OVERLAY')
             hover:SetTexture(st.BLANK_TEX)
@@ -213,15 +311,6 @@ function MicroMenu:OnEnable()
     self:AddButton(self:SkinMailIcon())
     self:AddButton(self:SkinInstanceDifficulty())
     self:AddButton(self:SkinQueueButton())
-
-    -- The bar closes up around items that come and go. Most items are Blizzard
-    -- frames, so these are post-hooks (HookScript): Blizzard's own OnShow/OnHide
-    -- run first and untainted. AceHook's HookScript would replace the script
-    -- with a SaftUI closure, and Blizzard's handler would then run inside it.
-    for _, button in ipairs(self.Buttons) do
-        button:HookScript('OnShow', function() MicroMenu:UpdateButtons() end)
-        button:HookScript('OnHide', function() MicroMenu:UpdateButtons() end)
-    end
 
     self:UpdateButtons()
     self:SetupMinimapButtons()
