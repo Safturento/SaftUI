@@ -287,6 +287,8 @@ function UF:UpdateConfig(unit, element_name)
 		self:UpdateColors()
 	end
 	self:ApplyConfig(unit, element_name)
+	-- Either raid group being on hides Blizzard's raid frames (groups.lua).
+	self:UpdateBlizzardRaidFrames()
 end
 
 -- Updates one frame, reporting an error instead of raising it, so one frame
@@ -477,4 +479,5 @@ function UF:OnEnable()
 	UF:ApplyConfig()
 	UF:UpdateColors()
 	UF:RegisterMovers()
+	UF:SetupBlizzardRaidFrames()
 end

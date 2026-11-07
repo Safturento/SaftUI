@@ -496,6 +496,11 @@ function UF:GetConfigTable()
 			config_table.args.general.args.layout = GetGroupLayoutConfig(unit, 6)
 		end
 
+		-- Either raid group being on hides Blizzard's raid frames (groups.lua).
+		if self.groups and self.groups[unit] and unit ~= 'party' then
+			config_table.args.general.args.enable.desc = "While either raid group is on, Blizzard's raid frames are hidden. Blizzard's raid manager tab at the left edge of the screen stays. Turning both raid groups off brings Blizzard's raid frames back. In a raid, hiding them waits until you leave the raid, and bringing them back waits until you leave it or /reload."
+		end
+
 		for element_name, element in pairs(UF.elements) do
 			if self.elements[element_name].GetConfigTable and not (self.elements[element_name].valid_units and self.elements[element_name].valid_units(unit)) then
 				config_table.args[element_name] =
