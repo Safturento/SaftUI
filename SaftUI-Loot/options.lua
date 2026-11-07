@@ -19,10 +19,12 @@ local function BuildGeneral(config_key, args, apply)
 	}
 end
 
--- Frame stays 'UIParent' (no free-text frame field), so the anchor can never
--- be pointed at one of its own descendants.
+-- Every SetPoint parameter is editable, the relative frame included (a user
+-- requirement). Passing `target` makes the typed frame go through
+-- st:ValidateAnchor, which rejects anchoring to the target itself, to anything
+-- whose anchors lead back to it (the roll frames) and to its own children.
 local function BuildPosition(config_key, target, apply)
-	return generators.position(2, false,
+	return generators.position(2, true,
 		function(key) return LT.config[config_key].position[key] end,
 		function(key, value)
 			LT.config[config_key].position[key] = value

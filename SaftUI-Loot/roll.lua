@@ -215,21 +215,21 @@ function LT:LayoutRollFrames()
 	for i = 1, container.maxIndex or 4 do
 		local frame = container.rollFrames[i]
 		if frame then
-		frame:ClearAllPoints()
-		if not prev then
-			if config.grow_down then
-				frame:SetPoint('TOP', anchor)
+			frame:ClearAllPoints()
+			if not prev then
+				if config.grow_down then
+					frame:SetPoint('TOP', anchor)
+				else
+					frame:SetPoint('BOTTOM', anchor)
+				end
 			else
-				frame:SetPoint('BOTTOM', anchor)
+				if config.grow_down then
+					frame:SetPoint('TOP', prev, 'BOTTOM', 0, -config.spacing)
+				else
+					frame:SetPoint('BOTTOM', prev, 'TOP', 0, config.spacing)
+				end
 			end
-		else
-			if config.grow_down then
-				frame:SetPoint('TOP', prev, 'BOTTOM', 0, -config.spacing)
-			else
-				frame:SetPoint('BOTTOM', prev, 'TOP', 0, config.spacing)
-			end
-		end
-		prev = frame
+			prev = frame
 		end
 	end
 end
