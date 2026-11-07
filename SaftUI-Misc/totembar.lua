@@ -59,12 +59,25 @@ function TB:Apply()
 	if not bar then return end
 	if st:QueueAfterCombat('totembar', function() self:Apply() end) then return end
 
+	-- Only reparent when it doesn't change whether the bar is on screen. If it did,
+	-- the secure buttons' OnHide/OnShow would run from SaftUI's call chain and can
+	-- leave tainted state in Blizzard's shared action button code (an
+	-- ADDON_ACTION_BLOCKED later, e.g. entering a vehicle in combat). At login the bar
+	-- is still hidden, so a reload always applies the setting cleanly.
 	if self.config.hide then
 		if bar:GetParent() ~= hider then
+			if bar:IsVisible() then
+				st:Print('The totem bar will be hidden after a /reload.')
+				return
+			end
 			self.oldParent, self.oldLevel = bar:GetParent(), bar:GetFrameLevel()
 			bar:SetParent(hider)
 		end
 	elseif bar:GetParent() == hider then
+		if bar:IsShown() then
+			st:Print('The totem bar will show again after a /reload.')
+			return
+		end
 		bar:SetParent(self.oldParent or UIParent)
 		-- SetParent can renumber the bar's frame level, so put back the one it had.
 		if self.oldLevel then bar:SetFrameLevel(self.oldLevel) end
@@ -113,7 +126,7 @@ function TB:GetConfigTable()
 	if not self.bar then return end
 
 	local hide = st.Config.generators.toggle(1, 'Hide totem bar', 'full')
-	hide.desc = "Hides Blizzard's totem bar. Turning this off shows it again whenever Blizzard would show it."
+	hide.desc = "Hides Blizzard's totem bar. Turning this off shows it again whenever Blizzard would show it. If the bar is on screen when you change this, it applies after a /reload."
 
 	return {
 		name = 'Totem Bar',
@@ -125,7 +138,7 @@ function TB:GetConfigTable()
 		end,
 		args = {
 			hide = hide,
-			position = {
+			move_note = {
 				order = 2,
 				type = 'description',
 				name = ("To move the totem bar, open Blizzard's Edit Mode, tick %s in its settings and drag the bar. "
