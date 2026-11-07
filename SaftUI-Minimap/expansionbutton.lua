@@ -25,15 +25,9 @@ function MicroMenu:SkinExpansionButton()
 
     local button = ExpansionLandingPageMinimapButton
     self:SecureHook(button, 'UpdateIcon', 'UpdateExpansionLandingPageButton')
-    -- Blizzard's tooltip stays off this button. Its scripts aren't replaced
-    -- (that would leave an addon function as Blizzard's OnEnter/OnLeave):
-    -- Blizzard's OnEnter runs, then this post-hook hides the tooltip it opened,
-    -- before it's drawn. Blizzard's OnLeave only hides the tooltip.
-    button:HookScript('OnEnter', function(self)
-        if GameTooltip:IsOwned(self) then
-            GameTooltip:Hide()
-        end
-    end)
+    -- Blizzard's own tooltip shows on hover. Suppressing it meant calling
+    -- GameTooltip:Hide() from SaftUI on every hover, which runs Blizzard's
+    -- GameTooltip OnHide in SaftUI's tainted context.
     --MicroMenu:HookScript(button, 'OnEnter', 'ShowRenownTooltip')
     --MicroMenu:HookScript(button, 'OnLeave', 'HideGameTooltip')
     return button

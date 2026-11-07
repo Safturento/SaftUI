@@ -117,7 +117,11 @@ function MicroMenu:UpdateButtons()
             local item = items[button]
             local width = item.width or BUTTON_SIZE
             barWidth = barWidth + width + (prev and BUTTON_SPACING or 0)
-            button:SetParent(self.Container)
+            -- Reparent only once. Each SetParent that makes a Blizzard item visible runs
+            -- its OnShow from SaftUI's call chain, so don't repeat it on every layout.
+            if button:GetParent() ~= self.Container then
+                button:SetParent(self.Container)
+            end
             button:SetSize(width, BUTTON_SIZE)
 
             local text = item.text
