@@ -126,7 +126,7 @@ local function OnWindowClosed()
 end
 
 function EM:OpenWindow(mover)
-	AceConfigRegistry:RegisterOptionsTable(APP, BuildOptions(mover))
+	AceConfigRegistry:RegisterOptionsTable(APP, st.AceSkin:LinkOptions(APP, BuildOptions(mover)))
 
 	local status = AceConfigDialog:GetStatusTable(APP)
 	status.width = status.width or DEFAULT_WIDTH

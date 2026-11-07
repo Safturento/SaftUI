@@ -58,11 +58,11 @@ function Config:InitializeAceConfig()
 			st.EditModeFrames:Toggle()
 			return
 		end
-		AceConfig:RegisterOptionsTable(st.name, {
+		AceConfig:RegisterOptionsTable(st.name, st.AceSkin:LinkOptions(st.name, {
 			name = st.name,
 			type='group',
 			args = self:GetOptionsTable(),
-		})
+		}))
 		-- SaftUI-styled window, registered as AceConfigDialog's frame for st.name
 		-- so NotifyChange refreshes it and Escape closes it.
 		st.AceSkin:CreateWindow(st.name, st.name)

@@ -18,7 +18,7 @@ st.AceSkin = Skin
 
 local states = {}   -- scoped widget -> { undo = { fn, ... }, saved = {} }
 local windows = {}  -- window widget -> { name, onClose }
-local refreshing = {} -- app name -> true while a NotifyChange refresh of it is pending
+local apps = {}       -- AceConfig app names that open in SaftUI windows
 local owned = setmetatable({}, { __mode = 'k' }) -- host frame -> { key -> object we created }
 
 local FLAT_BACKDROP = {
@@ -692,7 +692,6 @@ local function OnRelease(_, widget)
 	local window = windows[widget]
 	if window then
 		windows[widget] = nil
-		refreshing[window.name] = nil
 		if AceConfigDialog.OpenFrames[window.name] == widget then
 			AceConfigDialog.OpenFrames[window.name] = nil
 		end
@@ -703,64 +702,90 @@ local function OnRelease(_, widget)
 end
 
 --------------------------------------------------------------------------------
--- Keeping SaftUI's windows in sync. A value changed in one window (e.g. the
--- minimap's size or x offset typed in /sui) refreshes the others, since several
--- windows show the same settings.
+-- Keeping SaftUI's windows in sync. Several windows show the same settings
+-- (e.g. the minimap's size and offsets in /sui and in its edit mode window),
+-- so a change in one refreshes the others.
 --
--- AceConfigDialog refreshes a window by calling Open(app) on it, both after a
--- user change and when NotifyChange(app) was called. Only the first should
--- notify the other windows, or two windows would refresh each other forever.
--- NotifyChange fires ConfigTableChange right away and AceConfigDialog refreshes
--- on the next frame, so ConfigTableChange marks the app as `refreshing` and
--- the Open that follows clears the mark instead of notifying.
+-- Two triggers, one relay:
+--  * NotifyChange on a SaftUI app (drags, nudges, SelectGroup) reaches the
+--    registry's ConfigTableChange callback below.
+--  * A value changed by the user in a window doesn't call NotifyChange
+--    (AceConfigDialog just re-opens that window), so LinkOptions wraps the
+--    tables' set/func handlers to relay after they run.
+-- The relay calls NotifyChange on every other SaftUI app. Those calls come back
+-- through ConfigTableChange while `relaying` is set and are ignored, so windows
+-- can't keep refreshing each other; each just gets AceConfigDialog's normal
+-- deferred refresh. No AceConfigDialog methods are hooked for this.
 --------------------------------------------------------------------------------
 
-local function IsSaftUIApp(name)
-	local frame = AceConfigDialog.OpenFrames[name]
-	return frame and windows[frame] ~= nil
+local relaying = false
+local function Relay(appName)
+	if relaying or not apps[appName] then return end
+	relaying = true
+	for other in pairs(apps) do
+		if other ~= appName then
+			local ok, err = pcall(AceConfigRegistry.NotifyChange, AceConfigRegistry, other)
+			if not ok then geterrorhandler()(err) end
+		end
+	end
+	relaying = false
 end
 
-local function OnConfigTableChange(_, appName)
-	if IsSaftUIApp(appName) then
-		refreshing[appName] = true
+AceConfigRegistry.RegisterCallback(Skin, 'ConfigTableChange', function(_, appName)
+	Relay(appName)
+end)
+
+local wrapped = setmetatable({}, { __mode = 'k' }) -- our wrapper functions
+
+-- The app is taken from AceConfig's info table (info.appName), so a table
+-- shared by two apps relays from whichever window it was changed in.
+local function Wrap(fn, appName)
+	if wrapped[fn] then return fn end
+	local wrapper = function(info, ...)
+		local source = type(info) == 'table' and info.appName or appName
+		local a, b, c = fn(info, ...)
+		Relay(source)
+		return a, b, c
 	end
+	wrapped[wrapper] = true
+	return wrapper
 end
 
-local function OnOpen(_, appName)
-	if type(appName) ~= 'string' or not IsSaftUIApp(appName) then return end
-	if refreshing[appName] then
-		refreshing[appName] = nil
-		return
+local function LinkGroup(option, appName, seen)
+	if type(option) ~= 'table' or seen[option] then return end
+	seen[option] = true
+	if type(option.set) == 'function' then option.set = Wrap(option.set, appName) end
+	if type(option.func) == 'function' then option.func = Wrap(option.func, appName) end
+	if type(option.args) == 'table' then
+		for _, child in pairs(option.args) do
+			LinkGroup(child, appName, seen)
+		end
 	end
-	for _, window in pairs(windows) do
-		if window.name ~= appName and IsSaftUIApp(window.name) then
-			AceConfigRegistry:NotifyChange(window.name)
+	if type(option.plugins) == 'table' then
+		for _, plugin in pairs(option.plugins) do
+			for _, child in pairs(plugin) do
+				LinkGroup(child, appName, seen)
+			end
 		end
 	end
 end
 
--- Hooked lazily, and again if a newer library loaded later replaced the hooked
--- function (checked on every CreateWindow and every ADDON_LOADED).
-local hookedRelease, hookedOpen, listening
-local function EnsureHooks()
-	if AceGUI.Release ~= hookedRelease then
+-- Hooked lazily. Re-checked when an addon loads, but only re-hooked if a newer
+-- AceGUI (different minor) replaced Release, so the hook can't stack however
+-- other addons hook it.
+local hookedMinor
+local function EnsureReleaseHook()
+	local lib, minor = LibStub('AceGUI-3.0')
+	if lib == AceGUI and minor ~= hookedMinor then
 		hooksecurefunc(AceGUI, 'Release', OnRelease)
-		hookedRelease = AceGUI.Release
-	end
-	if AceConfigDialog.Open ~= hookedOpen then
-		hooksecurefunc(AceConfigDialog, 'Open', OnOpen)
-		hookedOpen = AceConfigDialog.Open
-	end
-	if not listening then
-		AceConfigRegistry.RegisterCallback(Skin, 'ConfigTableChange', OnConfigTableChange)
-		listening = true
+		hookedMinor = minor
 	end
 end
 
 local loader = CreateFrame('Frame')
 loader:RegisterEvent('ADDON_LOADED')
 loader:SetScript('OnEvent', function()
-	if hookedRelease then EnsureHooks() end
+	if hookedMinor then EnsureReleaseHook() end
 end)
 
 --------------------------------------------------------------------------------
@@ -779,7 +804,8 @@ end
 -- `title` shows until the window is opened; AceConfigDialog:Open then sets
 -- the options table's `name` as the title.
 function Skin:CreateWindow(name, title, onClose)
-	EnsureHooks()
+	EnsureReleaseHook()
+	apps[name] = true
 
 	local existing = AceConfigDialog.OpenFrames[name]
 	if existing and windows[existing] then
@@ -797,6 +823,15 @@ function Skin:CreateWindow(name, title, onClose)
 	windows[window] = { name = name, onClose = onClose }
 	AceConfigDialog.OpenFrames[name] = window
 	return window
+end
+
+-- Wraps the function set/func handlers in an options table (in place, at every
+-- level) so that a change made in appName's window refreshes SaftUI's other
+-- windows. Returns the table, for RegisterOptionsTable. Handlers given as
+-- method names (handler tables, e.g. AceDBOptions' profiles) aren't wrapped.
+function Skin:LinkOptions(appName, options)
+	LinkGroup(options, appName, {})
+	return options
 end
 
 -- The status bar strip at the bottom of a window, for footer content.
