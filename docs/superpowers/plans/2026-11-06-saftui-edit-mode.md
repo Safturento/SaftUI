@@ -440,3 +440,65 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - Weapon enchants and the collapse button still work.
   - `/reload` and profile switches keep everything.
 - [ ] **Step 9: Commit:** `misc: make the buff and debuff frames saftui movers with layout settings`
+
+---
+
+### Tasks 10–14: more modules as movers
+
+*Added 2026-11-07 at the user's request: "can we start getting edit mode for unit frames and all of the other components we mentioned earlier? I think it's stable enough now that we can just start doing a lot of the modules". Action bars are deferred: SaftUI only skins Blizzard's secure Edit Mode action bars, and the `SaftUIActionBar1..` positions in `SaftUI-Misc/config.lua` point at bars that no longer exist. That needs its own design decision.*
+
+**Shared rules for Tasks 10–14** (they run in parallel, one worktree each):
+- Follow the mover pattern already in the repo:
+  - minimap: `SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/config.lua`
+  - loot: `SaftUI-Loot/options.lua`, `SaftUI-Loot/roll.lua`
+  - swing timer: `SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`
+- Use these helpers:
+  - `st:RegisterMover(key, def)` with `def = { frame, label, getPosition, setPosition, apply, configPath }`; `configPath` ends at a leaf group, usually `general`
+  - `st.Config.generators.position(order, true, get, set, target)`
+  - `st:BindModuleConfig`, the module's `UpdateConfig`
+  - `st:SafeReposition` / `st:CanMoveNow` for anything a secure frame could be anchored to
+  - `st:SetPointDirect` / `st:ClearAllPointsDirect` for Blizzard frames whose `SetPoint` is a Lua override
+- Blizzard Edit Mode boxes for frames SaftUI takes over get hidden with `Selection:HookScript('OnShow', Hide)`. List which Blizzard settings become unreachable.
+- Position config uses the `{ point, frame, rel_point, x_off, y_off }` shape. Convert older array-style positions, migrating saved values so nothing jumps.
+- Defaults match today's on-screen spots.
+- Never write fields or methods onto Blizzard frames or tables. No `st:Kill` on Edit Mode frames. No protected calls in combat. No arithmetic on possibly secret values.
+- Stay inside your module's files. Only Task 10 may edit `SaftUI-Core` (removing `st:RegisterEditMode`). If another task needs a Core helper, report it instead of adding one.
+- In-game check for each task: outlines in `/sui edit`; drag, nudge and click open the right `/sui` section; `/reload` and profile switch keep positions; no errors or taint in combat.
+
+
+### Task 10: Unit frames as movers
+
+- Each single unit frame (player, target, targettarget, focus, pet, and any others SaftUI spawns) gets a mover, keyed `uf_<unit>`. Party, raid, boss and arena each get one mover for the whole group, positioned by the group's config. Labels use `UF.unit_strings`.
+- `configPath` points into the existing `/sui` unit frames tree (`UF:GetConfigTable`): the unit's General group. Each unit's General gets a full Position section through `generators.position(..., true, get, set, frame)`. The existing frame_position get/set read `UF:GetProfileConfig()[unit].position`.
+- Unit frames are secure. Edit mode already closes in combat. `apply` must use `st:SafeReposition` and the unit frames' existing apply path. Group headers can only move out of combat.
+- Remove the dead old edit mode code: `st:RegisterEditMode` (SaftUI-Core/api.lua) and its caller in `SaftUI-Unitframes/unitframes.lua`, `SaftUI.EditMode` (SaftUI-Core/init.lua), and the commented TOC line and `Libraries/EditModeExpanded-1.0`. Also update the comment in `SaftUI-Core/EditMode/editmode.lua`.
+- Commit: `unitframes: register unit frames as edit mode movers`
+
+### Task 11: SaftUI micro menu bar and XP/rep bars as movers
+
+- The micro menu bar (`SaftUI-Minimap/micromenu.lua`, positioned from `micromenu.position`) gets mover `'micromenu'`. Its container is 1x1 with items chained from it, so give the overlay a frame sized to the bar's real extent: a SaftUI holder, or size the container. Add a `/sui` section for it, with General plus Position.
+- The XP and rep bars (`SaftUI-Misc/experience.lua`, `SaftUI_Experience`, positioned from `experience.position`) get mover `'experience'`, with a `/sui` section holding its existing options plus Position.
+- Commit: `minimap: make the micro menu bar a mover`, then `misc: make the experience bars a mover`
+
+### Task 12: Chat frame as a mover
+
+- `ChatFrame1` (`SaftUI-Chat/chatframe.lua`, `CHT:ApplyPosition`, `chat.position`, placed with `st:SetPointDirect`) gets mover `'chat'`. The overlay covers the chat frame plus SaftUI's chat panel or backdrop, whichever is the visible footprint.
+- Add a `/sui` section with the chat options plus Position, and width and height if SaftUI sizes the chat frame.
+- Hide Blizzard's Edit Mode box for the chat frame.
+- Commit: `chat: make the chat frame a mover`
+
+### Task 13: Bag and bank windows as movers
+
+- Each SaftUI container window in `SaftUI-Bags` (`inventory` config: bag, bank, and whatever else has a `position` in `SaftUI-Bags/config.lua`) gets mover `'bags_<id>'`. The positions are currently array-style, e.g. `{'BOTTOMRIGHT', -20, 20}`. Convert them to the shared shape and migrate saved values.
+- Windows that aren't open still need to be placeable in edit mode. Show the outline at their position even while the window is closed, using a holder if needed.
+- Add `/sui` sections, reusing the existing bag config where it exists.
+- Commit: `bags: make the bag and bank windows movers`
+
+### Task 14: Forever totem bar: hide option and mover
+
+- This is the request that started edit mode: a hide option for WoW Forever's totem bar.
+- `MultiCastActionBarFrame` is a protected Blizzard Edit Mode system with no settings. Research the forever source first: what positions and shows it, and what is protected.
+- **Hide option:** a `/sui` toggle that hides it the taint-free way (e.g. a state driver, or parenting to a hidden SaftUI frame out of combat). It applies on the next out-of-combat moment if toggled in combat.
+- **Position:** only if a clean way exists. The bar is protected, so all moves must happen out of combat, and Blizzard must not re-anchor it in combat. Otherwise leave position to Blizzard and say why.
+- Retail has no totem bar, so this must be inert there.
+- Commit: `misc: add a hide option and mover for forever's totem bar`
