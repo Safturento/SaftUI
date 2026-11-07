@@ -17,8 +17,10 @@ end
 
 function MicroMenu:UpdateButtons()
     local prev
+    local barWidth = 0
     for _,button in pairs(self.Buttons) do
         if button:IsShown() then
+            barWidth = barWidth + (button.width or BUTTON_SIZE) + (prev and BUTTON_SPACING or 0)
             button:SetParent(self.Container)
             button:SetSize(button.width or BUTTON_SIZE, BUTTON_SIZE)
 
@@ -47,6 +49,23 @@ function MicroMenu:UpdateButtons()
 
     -- Blizzard's micro buttons sit over their holders, laid out above
     self:UpdateBlizzardButtons()
+
+    self.barWidth = barWidth
+    self:SizeContainer()
+end
+
+-- Sizes the container to the bar's real extent (from SaftUI's own item widths,
+-- not frame geometry), so edit mode's overlay covers the whole bar. The items
+-- are anchored to the container's top left corner, so its size moves nothing.
+-- A bar item can have a protected Blizzard button anchored to it, which makes
+-- the container protected too; then the size waits for the end of combat.
+function MicroMenu:SizeContainer()
+    st:SafeReposition(self.Container, 'MicroMenu_size', function()
+        -- Read when it runs, so a deferred size uses the latest layout. Whole
+        -- pixels, and never empty so the overlay can still be grabbed.
+        local w = math.max(st:RoundToPixel(self.barWidth or 0, self.Container), BUTTON_SIZE)
+        self.Container:SetSize(w, BUTTON_SIZE)
+    end)
 end
 
 function MicroMenu:SkinMailIcon()
@@ -133,11 +152,49 @@ function MicroMenu:UpdateConfig()
     self:UpdateButtons()
 end
 
+-- The micro menu's section in the /sui tree. Clicking the bar in edit mode
+-- selects its General group (the mover's configPath).
+function MicroMenu:GetConfigTable()
+    -- Getters and setters go through self.config, which a profile change
+    -- re-points at the new profile's table.
+    local position = st.Config.generators.position(2, true,
+        function(key) return self.config.position[key] end,
+        function(key, value)
+            self.config.position[key] = value
+            self:UpdateConfig()
+        end,
+        self.Container
+    )
+    position.inline = false -- a tree section, not an inline box
+    return {
+        name = 'Micro Menu',
+        type = 'group',
+        args = {
+            general = {
+                name = 'General',
+                type = 'group',
+                order = 1,
+                args = {
+                    about = {
+                        order = 1,
+                        type = 'description',
+                        fontSize = 'medium',
+                        name = 'The bar of info buttons and Blizzard\'s micro menu buttons. ' ..
+                            'Use the Position section, or drag it in edit mode, to move it.',
+                    },
+                },
+            },
+            position = position,
+        },
+    }
+end
+
 function MicroMenu:OnEnable()
     st:BindModuleConfig(self, 'micromenu')
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)
     self.Container:SetPoint(st:UnpackPoint(self.config.position))
-    self.Container:SetSize(1,1)
+    -- Sized to the bar by UpdateButtons
+    self.Container:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     -- No-op to ignore Layout calls for buttons like mail icon
     self.Container.Layout = function() end
 
@@ -164,4 +221,13 @@ function MicroMenu:OnEnable()
 
     self:UpdateButtons()
     self:SetupMinimapButtons()
+
+    st:RegisterMover('micromenu', {
+        frame = self.Container,
+        label = 'Micro Menu',
+        getPosition = function() return self.config.position end,
+        setPosition = function(pos) self.config.position = pos end,
+        apply = function() MicroMenu:UpdateConfig() end,
+        configPath = { 'MicroMenu', 'general' },
+    })
 end
