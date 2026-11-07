@@ -12,5 +12,8 @@ init.lua
 hideblizzard.lua
 skin.lua
 bars.lua
+buttons.lua
+petbar.lua
+stancebar.lua
 bindings.lua
 options.lua

@@ -4,9 +4,12 @@ local LAB = LibStub('LibActionButton-1.0')
 
 --[[
 	The bars. Each one is a SecureHandlerStateTemplate frame (the "header") on
-	UIParent, named SaftUI_ActionBar1..8, holding 12 LibActionButton buttons named
-	SaftUI_ActionBar<n>Button1..12. AB.bars[id] is the header, and
-	AB.bars[id].buttons[i] its buttons.
+	UIParent, named by AB:GetBarFrameName. Bars 1-8 are SaftUI_ActionBar1..8,
+	holding 12 LibActionButton buttons named SaftUI_ActionBar<n>Button1..12. The
+	pet and stance bars, SaftUI_PetBar and SaftUI_StanceBar, hold 10 of SaftUI's
+	own secure buttons each (buttons.lua, made by AB.barTypes, petbar.lua and
+	stancebar.lua). AB.bars[id] is the header, and AB.bars[id].buttons[i] its
+	buttons. Everything below works the same for every bar, unless it says so.
 
 	Paging (bar 1 only). Bars 2-8 always show their one Blizzard page (state 0).
 	Bar 1 has a state per page, 1 to 18, so every page Blizzard's main bar can
@@ -39,8 +42,10 @@ local LAB = LibStub('LibActionButton-1.0')
 
 	Visibility. A state driver shows or hides each bar. Bar 1 hides in pet battles,
 	whose abilities take its keys. Bars 2-8 also hide while a vehicle or override
-	bar replaces bar 1, as ElvUI's do (AB.HIDE_CONDITIONS). A disabled bar is
-	always hidden. Then the bar's Visibility setting:
+	bar replaces bar 1, as ElvUI's do (AB.HIDE_CONDITIONS). The pet and stance
+	bars add their own conditions (petbar.lua, stancebar.lua). A disabled bar is
+	always hidden, and so is a bar that isn't available (a class without forms has
+	no stance bar). Then the bar's Visibility setting:
 	  - always:    '<hide conditions> hide; show'
 	  - combat:    '<hide conditions> hide; [combat] show; hide', so bar 2 is
 	               '[petbattle][vehicleui][overridebar] hide; [combat] show; hide'
@@ -56,10 +61,11 @@ local LAB = LibStub('LibActionButton-1.0')
 	be hover-bound.
 
 	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 at the
-	top left, filling rows left to right. A disabled or hidden bar keeps its size
-	and place, so bars anchored to it stay put, and its edit mode outline
-	(options.lua) still covers it. All protected: st:SafeReposition waits for
-	the end of combat.
+	top left, filling rows left to right. A bar shows no more buttons than it has
+	something for (the stance bar one per form, AB:GetNumButtons), and at least
+	one. A disabled or hidden bar keeps its size and place, so bars anchored to
+	it stay put, and its edit mode outline (options.lua) still covers it. All
+	protected: st:SafeReposition waits for the end of combat.
 ]]
 
 local PAGE_DRIVER = table.concat({
@@ -160,16 +166,10 @@ local function EvenIfCentred(length, point, edge1, edge2, bar)
 	return st:RoundToPixel(length + pixel, bar)
 end
 
--- Makes bar id and its buttons, with their actions, paging and skin. Out of
--- combat only (AB:Build). Returns the existing bar if it's made already.
-function AB:CreateBar(id)
-	if self.bars[id] then return self.bars[id] end
-
-	local name = 'SaftUI_ActionBar' .. self:GetFrameSuffix(id)
-	local bar = CreateFrame('Frame', name, UIParent, 'SecureHandlerStateTemplate')
-	bar.id = id
-	bar.buttons = {}
-
+-- Bars 1-8: 12 LibActionButton buttons with their action slots, paging and skin.
+local function CreateActionButtons(self, bar)
+	local id = bar.id
+	local name = bar:GetName()
 	local page = self.BAR_PAGES[id]
 	local pages = id == 'bar1' and MainBarPages() or 0
 	for i = 1, self.NUM_BUTTONS do
@@ -187,15 +187,39 @@ function AB:CreateBar(id)
 		bar:SetAttribute('_onstate-page', PAGE_SNIPPET)
 		RegisterStateDriver(bar, 'page', PAGE_DRIVER)
 	end
+end
+
+-- Makes bar id and its buttons: LibActionButton's for bars 1-8, the bar type's
+-- for the others (AB.barTypes). Out of combat only (AB:Build). Returns the
+-- existing bar if it's made already.
+function AB:CreateBar(id)
+	if self.bars[id] then return self.bars[id] end
+
+	local bar = CreateFrame('Frame', self:GetBarFrameName(id), UIParent, 'SecureHandlerStateTemplate')
+	bar.id = id
+	bar.buttons = {}
+
+	local barType = self.barTypes[id]
+	if barType then
+		barType.CreateButtons(bar)
+	else
+		CreateActionButtons(self, bar)
+	end
 
 	self.bars[id] = bar
 	return bar
 end
 
+-- False while bar id has nothing to show whatever its settings (AB.barTypes).
+function AB:IsBarAvailable(id)
+	local barType = self.barTypes[id]
+	return not (barType and barType.IsAvailable) or barType.IsAvailable()
+end
+
 -- The state driver that shows or hides bar id (see the top of this file).
 function AB:GetVisibilityDriver(id)
 	local config = self.config[id]
-	if not config.enable then
+	if not config.enable or not self:IsBarAvailable(id) then
 		return 'hide'
 	end
 	local hide = (self.HIDE_CONDITIONS[id] or DEFAULT_HIDE_CONDITIONS) .. ' hide'
@@ -293,11 +317,16 @@ function AB:SetForceShown(on)
 end
 
 -- How many of bar id's buttons it shows, its first ones: the buttons setting,
--- from 1 to all of them. The keys of the others do nothing (bindings.lua).
+-- from 1 to as many as the bar has something for (all of them but on the
+-- stance bar, which has one per form). The keys of the others do nothing
+-- (bindings.lua). A bar with nothing still lays out one button, so its edit
+-- mode outline has a size.
 function AB:GetNumButtons(id)
 	local bar = self.bars[id]
 	if not bar then return 0 end
-	return Clamp(self.config[id].buttons, 1, #bar.buttons)
+	local barType = self.barTypes[id]
+	local slots = barType and barType.GetNumSlots and barType.GetNumSlots() or #bar.buttons
+	return Clamp(self.config[id].buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
 end
 
 -- Sizes bar id, lays out its buttons and places it, from the profile. In combat
@@ -339,13 +368,19 @@ end
 
 -- Applies bar id's profile settings: layout, skin and text, whether it's shown
 -- or faded, where its keys go (a disabled bar's do nothing) and its edit mode
--- outline's label. Every /sui option of a bar runs this. All protected, so in
--- combat it waits for the end of combat.
+-- outline's label. The pet and stance bars also take their actions from the
+-- game first (AB.barTypes UpdateActions), so a change there (forms learned in
+-- combat) is laid out with them. Every /sui option of a bar runs this. All
+-- protected, so in combat it waits for the end of combat.
 function AB:UpdateBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
 	if st:QueueAfterCombat('actionbars_update_' .. id, function() self:UpdateBar(id) end) then return end
 
+	local barType = self.barTypes[id]
+	if barType and barType.UpdateActions then
+		barType.UpdateActions(bar)
+	end
 	self:LayoutBar(id)
 	self:StyleBar(id)
 	self:UpdateVisibility(id)

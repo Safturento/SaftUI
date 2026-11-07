@@ -7,32 +7,42 @@ st.ActionBars = AB
 
 	  - init.lua: the module, the bars it owns and their Blizzard counterparts.
 	  - hideblizzard.lua: takes Blizzard's bars off screen at load.
-	  - skin.lua: SaftUI's look for the LibActionButton buttons.
+	  - skin.lua: SaftUI's look for the action buttons.
 	  - bars.lua: building, laying out and updating the bars.
+	  - buttons.lua: SaftUI's own secure buttons, for the pet and stance bars.
+	  - petbar.lua and stancebar.lua: the pet bar and the stance bar.
 	  - bindings.lua: the bars' keys, from Blizzard's binding commands, and
 	    hover binding (/sui kb).
 	  - options.lua: the /sui section and the edit mode movers.
 
 	Each bar mirrors one Blizzard bar: the same action slots and the same binding
 	command. These were checked against Blizzard_ActionBar on the forever and live
-	branches (MainActionBar.xml, MultiActionBars.xml: commandNamePrefix and the
-	actionpage attribute of each bar; a slot is (page - 1) * 12 + button).
+	branches (MainActionBar.xml, MultiActionBars.xml, PetActionBar.xml,
+	StanceBar.xml: commandNamePrefix and the actionpage attribute of each bar; a
+	slot is (page - 1) * 12 + button; Bindings_Standard.xml for the pet and
+	stance commands).
 
-	  bar   Blizzard frame        page  slots    binding command
-	  bar1  MainActionBar         1*    1-12     ACTIONBUTTON1-12 (*paged, bars.lua)
-	  bar2  MultiBarBottomLeft    6     61-72    MULTIACTIONBAR1BUTTON1-12
-	  bar3  MultiBarBottomRight   5     49-60    MULTIACTIONBAR2BUTTON1-12
-	  bar4  MultiBarRight         3     25-36    MULTIACTIONBAR3BUTTON1-12
-	  bar5  MultiBarLeft          4     37-48    MULTIACTIONBAR4BUTTON1-12
-	  bar6  MultiBar5             13    145-156  MULTIACTIONBAR5BUTTON1-12
-	  bar7  MultiBar6             14    157-168  MULTIACTIONBAR6BUTTON1-12
-	  bar8  MultiBar7             15    169-180  MULTIACTIONBAR7BUTTON1-12
+	  bar     Blizzard frame        page  slots         binding command
+	  bar1    MainActionBar         1*    1-12          ACTIONBUTTON1-12 (*paged, bars.lua)
+	  bar2    MultiBarBottomLeft    6     61-72         MULTIACTIONBAR1BUTTON1-12
+	  bar3    MultiBarBottomRight   5     49-60         MULTIACTIONBAR2BUTTON1-12
+	  bar4    MultiBarRight         3     25-36         MULTIACTIONBAR3BUTTON1-12
+	  bar5    MultiBarLeft          4     37-48         MULTIACTIONBAR4BUTTON1-12
+	  bar6    MultiBar5             13    145-156       MULTIACTIONBAR5BUTTON1-12
+	  bar7    MultiBar6             14    157-168       MULTIACTIONBAR6BUTTON1-12
+	  bar8    MultiBar7             15    169-180       MULTIACTIONBAR7BUTTON1-12
+	  pet     PetActionBar          -     pet 1-10      BONUSACTIONBUTTON1-10
+	  stance  StanceBar             -     forms 1-10    SHAPESHIFTBUTTON1-10
 
-	Forever has all eight. The pet and stance bars (BONUSACTIONBUTTON1-10,
-	SHAPESHIFTBUTTON1-10) come later; their commands are listed here already.
+	Forever has all of them. Bars 1-8 are LibActionButton buttons (bars.lua).
+	The pet and stance bars are SaftUI's own secure buttons (buttons.lua), as
+	LibActionButton has no pet or stance button: AB.barTypes holds what's
+	different about them.
 ]]
 
-AB.BAR_IDS = { 'bar1', 'bar2', 'bar3', 'bar4', 'bar5', 'bar6', 'bar7', 'bar8' }
+AB.BAR_IDS = { 'bar1', 'bar2', 'bar3', 'bar4', 'bar5', 'bar6', 'bar7', 'bar8', 'pet', 'stance' }
+
+-- The buttons of an action bar (bars 1-8), and of an action bar page.
 AB.NUM_BUTTONS = 12
 
 -- The Blizzard action bar page each bar shows. bar1's is its unpaged page.
@@ -71,7 +81,32 @@ AB.BAR_LABELS = {
 	bar6 = 'Bar 6',
 	bar7 = 'Bar 7',
 	bar8 = 'Bar 8',
+	pet = 'Pet bar',
+	stance = 'Stance bar',
 }
+
+-- Each bar's frame name. Bars 1-8 are SaftUI_ActionBar1..8.
+AB.BAR_FRAME_NAMES = {
+	pet = 'SaftUI_PetBar',
+	stance = 'SaftUI_StanceBar',
+}
+
+--[[
+	The bars whose buttons aren't LibActionButton's, keyed by bar id. petbar.lua
+	and stancebar.lua fill it in at file load. Each entry has:
+	  - CreateButtons(bar): makes bar.buttons, once, out of combat (AB:CreateBar).
+	  - UpdateActions(bar): sets the buttons' secure attributes from the game,
+	    out of combat (AB:UpdateBar).
+	  - GetNumSlots(): optional, how many buttons the bar has something for now.
+	    The bar shows at most that many (AB:GetNumButtons). All of them if unset.
+	  - IsAvailable(): optional. While false the bar is hidden and its keys do
+	    nothing, whatever its settings (a class without forms has no stance bar).
+	  - unavailableLabel: its edit mode outline's second line while unavailable.
+	  - buttonsNote: optional, added to its Buttons option's description.
+	  - texts: the text settings its buttons use, as a set ({ hotkey = true }),
+	    for /sui (options.lua). All of them if unset.
+]]
+AB.barTypes = {}
 
 AB.bars = {}
 AB.movers = {}
@@ -88,9 +123,10 @@ function AB:GetActionSlot(page, i)
 	return (page - 1) * self.NUM_BUTTONS + i
 end
 
--- The number in a bar's frame name: 'bar3' -> '3'. Other ids are used as they are.
-function AB:GetFrameSuffix(id)
-	return (id:gsub('^bar', ''))
+-- Bar id's frame name: 'bar3' -> 'SaftUI_ActionBar3', 'pet' -> 'SaftUI_PetBar'.
+-- Its buttons are this name plus 'Button' and their index.
+function AB:GetBarFrameName(id)
+	return self.BAR_FRAME_NAMES[id] or ('SaftUI_ActionBar' .. id:gsub('^bar', ''))
 end
 
 function AB:OnEnable()

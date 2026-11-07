@@ -22,18 +22,21 @@ local AB = st:GetModule('ActionBars')
 	  1. Blocked, with SetRolesets('alwaysBlocked'), when it isn't on screen. Every
 	     bar but the main bar is created hidden (hidden="true" in its XML), and this
 	     file runs while SaftUI-ActionBars loads, before Blizzard first shows them
-	     (the multibars on SETTINGS_LOADED, the pet and stance bars after
-	     PLAYER_ENTERING_WORLD). The client then never draws the bar or anything in
-	     it, whatever Blizzard's own Show and Hide calls do. It's one C call that
-	     writes nothing onto the frame. Blizzard keeps running its bars as before:
-	     it shows and hides them, pages them, and its binding commands still click
-	     its (hidden) buttons, so binds keep working until SaftUI maps them.
+	     (the multibars on SETTINGS_LOADED, the stance bar after
+	     PLAYER_ENTERING_WORLD, the pet bar on its pet events). The client then
+	     never draws the bar or anything in it, whatever Blizzard's own Show and
+	     Hide calls do. It's one C call that writes nothing onto the frame.
+	     Blizzard keeps running its bars as before: it shows and hides them, pages
+	     them, and its binding commands still click its (hidden) buttons, so binds
+	     keep working until SaftUI maps them.
 
 	  2. Concealed, when it's on screen. The main bar is always on screen at load:
-	     MainActionBar isn't hidden in its XML. Blocking it then would hide it from
-	     SaftUI's call chain and run the OnHide of its twelve secure buttons
-	     (ActionBarActionButtonMixin:OnHide) tainted. That writes the buttons'
-	     needsUpdate fields and entries of Blizzard's range and usable check
+	     MainActionBar isn't hidden in its XML. So is the pet bar on a /reload
+	     with a pet out: PetActionBarMixin:OnLoad shows it when PetHasActionBar().
+	     Blocking a shown bar would hide it from SaftUI's call chain and run its
+	     buttons' OnHide tainted. For the main bar that's
+	     ActionBarActionButtonMixin:OnHide on twelve secure buttons, which writes
+	     their needsUpdate fields and entries of Blizzard's range and usable check
 	     tables. The buttons read those again whenever Blizzard pages them, in
 	     combat too, just before SetAttribute('pressAndHoldAction') (UpdateAction):
 	     the shape of an ADDON_ACTION_BLOCKED on a stance change in combat. So the
@@ -42,9 +45,16 @@ local AB = st:GetModule('ActionBars')
 	       - SetAlpha(0) on the bar. Its children (buttons, art, page arrows, proc
 	         alerts) inherit it. Blizzard's Edit Mode never sets an action bar's
 	         alpha, and nothing else in Blizzard_ActionBar does.
-	       - EnableMouse(false) on the bar, its buttons and its page arrows, so
-	         nothing invisible catches the mouse. Nothing in Blizzard_ActionBar or
-	         Blizzard_EditMode turns their mouse back on.
+	       - EnableMouse(false) on the bar, its buttons (actionButtons, which
+	         ActionBarMixin:ActionBar_OnLoad fills for every bar: the main bar's
+	         ActionButton1-12, the pet bar's PetActionButton1-10) and its page
+	         arrows, so nothing invisible catches the mouse. Nothing in
+	         Blizzard_ActionBar or Blizzard_EditMode turns their mouse back on.
+	     The pet bar's events are off too (below), so it no longer follows the pet.
+	     What Blizzard still calls on it (the spellbook's PetActionBar:Update when
+	     a pet spell is hovered) only shows, hides or redraws it, which keeps its
+	     alpha and mouse. SaftUI's override bindings take its keys (bindings.lua),
+	     so it stays invisible, can't be clicked and does nothing.
 	       - Its Edit Mode box (Selection) ignores its parent's alpha
 	         (ignoreParentAlpha in EditModeSystemTemplates.xml), so it's kept
 	         hidden instead, with taint.md rule 5's HookScript. Blizzard's Edit

@@ -1,11 +1,12 @@
 local st = SaftUI
 
 --[[
-	SaftUI's action bars (SaftUI-ActionBars). One table per bar, keyed 'bar1'..'bar8'
-	(see AB.BAR_IDS in init.lua). Every key of a bar:
+	SaftUI's action bars (SaftUI-ActionBars). One table per bar, keyed 'bar1'..'bar8',
+	'pet' and 'stance' (see AB.BAR_IDS in init.lua). Every key of a bar:
 	  - enable: a disabled bar is hidden, and its keys do nothing (bindings.lua).
-	  - buttons: how many of its 12 buttons are shown. The keys of the others do
-	    nothing.
+	  - buttons: how many of its buttons are shown: 12 on bars 1-8, 10 on the pet
+	    and stance bars. The stance bar shows no more than the class has forms.
+	    The keys of the others do nothing.
 	  - perrow: buttons per row. 1 makes a column.
 	  - size: the edge of a button, its border included. The icon sits inside the
 	    border, so bars fit together on a size + spacing grid.
@@ -17,7 +18,8 @@ local st = SaftUI
 	  - text: hotkey, stack count and macro name. Each has show, font (a
 	    LibSharedMedia font name), size, outline (a Fonts outline name, 'NONE' for
 	    none), point and rel_point (the text's point and the button's), and
-	    x_off / y_off from there.
+	    x_off / y_off from there. The pet and stance buttons only have a hotkey;
+	    their count and macro name keep the shape and go unused.
 	template is the backdrop template every button uses.
 
 	The default layout, at 45px buttons 3px apart (a 48px pitch):
@@ -30,6 +32,12 @@ local st = SaftUI
 	  - Bars 6-8 are off. When turned on they continue the columns leftwards, so
 	    they stay out of the space above the bottom stack (pet, stance and the extra
 	    buttons go there).
+	  - The pet and stance bars are rows of 30px buttons 3px apart, 3px above bar
+	    3: the pet bar at its left end, the stance bar at its right end, each
+	    growing towards the middle as it gets more buttons. They're anchored by a
+	    corner, so neither is centred on an axis. All 10 pet buttons are 327px,
+	    more than half of bar 3, so the extra action and zone ability buttons go
+	    above this row.
 ]]
 
 local pixel = st.defaults.fonts.pixel
@@ -69,6 +77,15 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 	}
 end
 
+-- The pet and stance bars: a row of 10 buttons of 30px, on bar 3 by the
+-- corner point.
+local function SmallBar(point, rel_point)
+	local bar = Bar(true, 10, point, 'SaftUI_ActionBar3', rel_point, 0, SPACING)
+	bar.buttons = 10
+	bar.size = 30
+	return bar
+end
+
 -- Replaces the legacy table from SaftUI-Misc/config.lua, whose positions named
 -- SaftUIActionBar1.. frames that no longer existed.
 st.defaults.actionbars = {
@@ -82,4 +99,6 @@ st.defaults.actionbars = {
 	bar6 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar5', 'LEFT', -SPACING, 0),
 	bar7 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar6', 'LEFT', -SPACING, 0),
 	bar8 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -SPACING, 0),
+	pet = SmallBar('BOTTOMLEFT', 'TOPLEFT'),
+	stance = SmallBar('BOTTOMRIGHT', 'TOPRIGHT'),
 }

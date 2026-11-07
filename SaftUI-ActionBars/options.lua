@@ -4,23 +4,27 @@ local AB = st:GetModule('ActionBars')
 --[[
 	The action bars' edit mode movers and their /sui section.
 
-	Movers. ab_bar1..ab_bar8 move the bars themselves (the SaftUI_ActionBar1..8
-	headers), as the single unit frames' movers do. AB:LayoutBar sizes and
-	places every bar, a disabled one too and one its Visibility setting hides,
-	and the edit mode outline is anchored to the bar's edges, so the outline
-	always covers the bar's whole layout. Its label says when a bar is off, shown
-	only in combat, or faded. Drags and nudges write the bar's position, and
-	AB:LayoutBar places it through st:SafeReposition: the bars are secure, so
-	they can't be moved in combat. Clicking a bar opens its General tab.
+	Movers. ab_bar1..ab_bar8, ab_pet and ab_stance move the bars themselves (the
+	SaftUI_ActionBar1..8, SaftUI_PetBar and SaftUI_StanceBar headers), as the
+	single unit frames' movers do. AB:LayoutBar sizes and places every bar, a
+	disabled one too, one its Visibility setting hides, the pet bar without a
+	pet and the stance bar without forms (laid out as one button), and the edit
+	mode outline is anchored to the bar's edges, so the outline always covers
+	the bar's whole layout. Its label says when a bar is off, has nothing to
+	show (the stance bar's 'no forms'), is shown only in combat, or is faded.
+	Drags and nudges write the bar's position, and AB:LayoutBar places it
+	through st:SafeReposition: the bars are secure, so they can't be moved in
+	combat. Clicking a bar opens its General tab.
 
 	/sui -> Action Bars has one section per bar, each with tabs:
-	  - General: enable, buttons, buttons per row, button size and spacing, and
-	    the Position box (Config:GetOptionsTable moves the position group into
-	    General). The relative frame typed there goes through st:ValidateAnchor
-	    with the bar, so a bar can't be anchored to itself, its own buttons, or a
-	    bar anchored to it.
+	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
+	    button size and spacing, and the Position box (Config:GetOptionsTable
+	    moves the position group into General). The relative frame typed there
+	    goes through st:ValidateAnchor with the bar, so a bar can't be anchored
+	    to itself, its own buttons, or a bar anchored to it.
 	  - Text: the hotkey, stack count and macro name, each with show, font, size,
-	    outline, the text's point and the button's, and x / y offsets.
+	    outline, the text's point and the button's, and x / y offsets. The pet
+	    and stance bars only have the hotkey (AB.barTypes texts).
 	  - Visibility: always, in combat only, or faded until moused over, with how
 	    faded.
 	Every option applies at once through AB:UpdateBar (bars.lua). /sui can't be
@@ -41,6 +45,14 @@ local HIDDEN_LABELS = {
 	mouseover = 'mouseover',
 }
 
+-- Every text setting of a button, in the order of the Text tab: its key in the
+-- bar's text table, and its name.
+local TEXTS = {
+	{ 'hotkey', 'Hotkey' },
+	{ 'count', 'Stack count' },
+	{ 'macro', 'Macro name' },
+}
+
 function AB:GetBarLabel(id)
 	return self.BAR_LABELS[id] or id
 end
@@ -50,7 +62,7 @@ end
 ------------------------------------
 
 -- The bar's name on its outline, and on a second line why it may not be seen:
--- off, only in combat, or faded.
+-- off, nothing to show, only in combat, or faded.
 function AB:UpdateMoverLabel(id)
 	local mover = self.movers[id]
 	local config = self.config[id]
@@ -58,6 +70,8 @@ function AB:UpdateMoverLabel(id)
 	local state
 	if not config.enable then
 		state = 'off'
+	elseif not self:IsBarAvailable(id) then
+		state = self.barTypes[id].unavailableLabel
 	else
 		state = HIDDEN_LABELS[config.visibility]
 	end
@@ -148,10 +162,22 @@ function AB:GetTextOptions(id, kind, name, order)
 	}
 end
 
--- One bar's section: General (with Position), Text and Visibility tabs.
+-- One bar's section: General (with Position), Text and Visibility tabs. The
+-- ranges go up to the bar's own number of buttons, and the Text tab has the
+-- texts its buttons use.
 function AB:GetBarOptions(id, order)
 	local generators = st.Config.generators
-	local numButtons = self.NUM_BUTTONS
+	local numButtons = #self.bars[id].buttons
+	local barType = self.barTypes[id]
+
+	local texts = {}
+	local used = barType and barType.texts
+	for i, text in ipairs(TEXTS) do
+		local kind, name = text[1], text[2]
+		if not used or used[kind] then
+			texts[kind] = self:GetTextOptions(id, kind, name, i)
+		end
+	end
 
 	-- Options of the bar's own table (General and Visibility).
 	local get = function(info) return self.config[id][info[#info]] end
@@ -177,6 +203,9 @@ function AB:GetBarOptions(id, order)
 
 	local buttons = generators.range(2, 'Buttons', 1, numButtons, 1)
 	buttons.desc = ('How many of the bar\'s %d buttons it shows. The keys of the others do nothing.'):format(numButtons)
+	if barType and barType.buttonsNote then
+		buttons.desc = buttons.desc .. ' ' .. barType.buttonsNote
+	end
 
 	local perrow = generators.range(3, 'Buttons per row', 1, numButtons, 1)
 	perrow.desc = '1 makes a column.'
@@ -214,11 +243,7 @@ function AB:GetBarOptions(id, order)
 				name = 'Text',
 				type = 'group',
 				order = 2,
-				args = {
-					hotkey = self:GetTextOptions(id, 'hotkey', 'Hotkey', 1),
-					count = self:GetTextOptions(id, 'count', 'Stack count', 2),
-					macro = self:GetTextOptions(id, 'macro', 'Macro name', 3),
-				},
+				args = texts,
 			},
 			visibility = {
 				name = 'Visibility',

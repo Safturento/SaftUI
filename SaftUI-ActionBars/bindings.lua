@@ -11,17 +11,21 @@ local AB = st:GetModule('ActionBars')
 	SaftUI never binds a key to anything but a Blizzard command, so disabling
 	SaftUI-ActionBars and reloading gives every key back to Blizzard's bars.
 
-	AB:UpdateBindings goes through every bar in AB.bars (the pet and stance bars
-	too, once they exist):
+	AB:UpdateBindings goes through every bar in AB.bars, the pet bar
+	(BONUSACTIONBUTTON1-10) and the stance bar (SHAPESHIFTBUTTON1-10) too:
 	  - Each key of a button's command (GetBindingKey, the saved binds) clicks the
 	    button: SetOverrideBindingClick with the 'Keybind' mouse button, as
 	    Bartender4 binds. LibActionButton's OnClick wrap takes a 'Keybind' click
 	    as a key press, not a pickup click, so a bind with the pickup modifier
 	    (Shift by default) still casts on key down. A flyout action opens
-	    LibActionButton's flyout from the SaftUI button.
-	  - The keys of a disabled bar, and of the buttons a bar doesn't show, click
+	    LibActionButton's flyout from the SaftUI button. The pet and stance
+	    buttons (buttons.lua) do what a left click does.
+	  - The keys of a disabled bar, of a bar that isn't available (the stance
+	    bar of a class without forms) and of the buttons a bar doesn't show click
 	    SaftUI_ActionBarNoop, a button that does nothing. Released instead, they'd
 	    go back to Blizzard's commands, which click Blizzard's hidden buttons.
+	    The pet bar's keys stay on its buttons without a pet, as a pet can come
+	    in combat, when binds can't change; its buttons do nothing then.
 	  - In a pet battle, bar 1's keys are released. Blizzard's ACTIONBUTTON
 	    commands drive the pet battle's abilities (ActionButtonDown ->
 	    CheckPetActionButtonEvent -> PetBattleFrame_ButtonDown), and bar 1 hides.
@@ -35,7 +39,8 @@ local AB = st:GetModule('ActionBars')
 	  - when the bars are built
 	  - on UPDATE_BINDINGS, when any bind changes (Blizzard's menu, hover binding,
 	    a binding set loaded)
-	  - from AB:UpdateBar, when a bar is turned on or off or a profile switches
+	  - from AB:UpdateBar, when a bar is turned on or off, a profile switches or
+	    the class's forms change (stancebar.lua)
 	  - on the pet battle events
 	Binding calls are blocked in combat, so in combat it waits for the end of
 	combat. Until then a newly bound key does what it does in Blizzard's UI.
@@ -62,7 +67,9 @@ local AB = st:GetModule('ActionBars')
 	  - Escape, Done or entering combat leaves the mode.
 	Empty buttons show while it's on, as Blizzard shows its grid. So do bars that
 	their Visibility setting keeps hidden out of combat or faded
-	(AB:SetForceShown, bars.lua); they go back when the mode ends.
+	(AB:SetForceShown, bars.lua); they go back when the mode ends. The pet bar
+	still shows only with a pet out, and the stance bar only for a class with
+	forms: without, they'd be rows of empty buttons.
 ]]
 
 -- Bars whose keys go back to Blizzard's commands in a pet battle.
@@ -95,7 +102,7 @@ local function WantedBindings(self)
 		if not (inPetBattle and PET_BATTLE_BARS[id]) then
 			local bar = self.bars[id]
 			local config = self.config[id]
-			local numShown = (config and config.enable) and self:GetNumButtons(id) or 0
+			local numShown = (config and config.enable and self:IsBarAvailable(id)) and self:GetNumButtons(id) or 0
 			for i, button in ipairs(bar.buttons) do
 				local command = self:GetBindingCommand(id, i)
 				local target = i <= numShown and button:GetName() or NOOP

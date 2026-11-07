@@ -5,7 +5,10 @@ local LAB = LibStub('LibActionButton-1.0')
 --[[
 	SaftUI's look for the action buttons. The buttons are SaftUI's own: LibActionButton
 	makes them for SaftUI's bars from Blizzard's ActionButtonTemplate, so their
-	regions and children belong to SaftUI too (.agents/taint.md rule 1).
+	regions and children belong to SaftUI too (.agents/taint.md rule 1). The pet
+	and stance bars' buttons (buttons.lua) are made from the same templates and
+	take the same config table (GetButtonConfig), so everything here applies to
+	them too.
 
 	  - The button's size is its whole footprint. The template's backdrop fills it,
 	    and the icon, cooldowns and state textures sit inside the backdrop's border
@@ -21,6 +24,8 @@ local LAB = LibStub('LibActionButton-1.0')
 	  - The attack flash is a flat red tint over the icon.
 	  - An equipped item gets a green border on the backdrop, in place of the
 	    template's green glow (hideElements.equipped).
+	  - A pet action's autocast corners and ants (the template's AutoCastOverlay)
+	    sit over the icon.
 	  - Cooldown swipes, charges, loss of control and the out-of-range and unusable
 	    tints are LibActionButton's own. Cooldown numbers follow Blizzard's "Show
 	    Numbers for Cooldowns" setting (the countdownForCooldowns CVar), in SaftUI's
@@ -56,6 +61,7 @@ local TEMPLATE_ART = {
 local OVER_ICON = {
 	'Flash', 'NewActionTexture', 'SpellHighlightTexture',
 	'cooldown', 'chargeCooldown', 'lossOfControlCooldown',
+	'AutoCastOverlay',
 }
 
 -- Buttons at least this big get the bigger cooldown numbers (Pixel Med, 18px by
@@ -213,12 +219,14 @@ local function TextWidth(text, size, inset)
 	return math.min(width, inside)
 end
 
--- The LibActionButton config of button i on bar id, from the profile.
+-- The LibActionButton config of button i on bar id, from the profile. The pet
+-- and stance buttons take it too (buttons.lua), and use its text, hideElements,
+-- keyBoundTarget, showGrid, colors and tooltip settings.
 --   - keyBoundTarget is the Blizzard binding command whose keys the button takes,
 --     so its hotkey text shows those keys.
 --   - actionButtonUI registers the button with the client like Blizzard's own
 --     action buttons (C_ActionBar.RegisterActionUIButton), as Bartender4 does for
---     its action bars. Every button here is a plain action button.
+--     its action bars. Every LibActionButton button here is a plain action button.
 --   - cooldownCount is left unset: the numbers follow the countdownForCooldowns CVar.
 --   - Flyouts open upwards from rows and to the left from columns.
 function AB:GetButtonConfig(id, i)
@@ -362,13 +370,14 @@ function AB:StyleBar(id)
 end
 
 -- A green border while the button holds an equipped item, the template's border
--- otherwise. Only touches the backdrop when that changes.
+-- otherwise. Only touches the backdrop when that changes. The pet and stance
+-- buttons never hold an item, and have no IsEquipped.
 function AB:UpdateEquippedBorder(button)
 	local skin = skins[button]
 	local backdrop = button.backdrop
 	if not (skin and backdrop) then return end
 
-	local equipped = button:IsEquipped()
+	local equipped = button.IsEquipped and button:IsEquipped()
 	if issecretvalue(equipped) then equipped = false end
 	equipped = equipped and true or false
 	if equipped == skin.equipped then return end

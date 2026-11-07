@@ -13,6 +13,9 @@ covers:
   - 'SaftUI-ActionBars/skin.lua'
   - 'SaftUI-ActionBars/bindings.lua'
   - 'SaftUI-ActionBars/bars.lua'
+  - 'SaftUI-ActionBars/buttons.lua'
+  - 'SaftUI-ActionBars/petbar.lua'
+  - 'SaftUI-ActionBars/stancebar.lua'
 ---
 
 # Taint and combat safety
@@ -42,10 +45,11 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - Key binding calls are blocked in combat too: `SetBinding`, `SaveBindings`, `SetOverrideBindingClick` and the other `SetOverrideBinding*`, and `ClearOverrideBindings`. Queue them with `st:QueueAfterCombat`, as `SaftUI-ActionBars/bindings.lua` does.
    - `RegisterStateDriver` sets attributes, so a state driver can't be changed in combat either. A driver that's set keeps showing, hiding and paging its frame in combat with no addon Lua (`[combat] show; hide` shows a bar only in combat).
    - Alpha isn't protected. `SetAlpha` on a secure frame works in combat, so a fade that only changes alpha is combat-safe (the action bars' mouseover fade in `SaftUI-ActionBars/bars.lua`).
+   - Protected actions (casting, `CastPetAction`, `CastShapeshiftForm`, pet commands) can't be called from addon code at all, in or out of combat. Do them from a `SecureActionButtonTemplate` button: a type that calls the function (`pet`, `spell`), or a secure macro command (`macro` with `macrotext`, e.g. `/petautocasttoggle <name>`) when there's no type for it. Set the attributes out of combat. A secure pre-click snippet (`header:WrapScript(button, 'OnClick', snippet)`) can stop a click in combat by returning false. See `SaftUI-ActionBars/petbar.lua` and `stancebar.lua`.
    - Edit mode, `/sui` and the action bars' keybind mode close on `PLAYER_REGEN_DISABLED` and refuse to open in combat.
 7. **No arithmetic or comparisons on secret values.** See `.agents/clients.md`.
 8. **To hide a Blizzard frame for good**, prefer `frame:SetRolesets('alwaysBlocked')`, as oUF does for party frames and `SaftUI-Unitframes/groups.lua` does for `CompactRaidFrameContainer`. It's one C call that writes nothing onto the frame, and the frame stops drawing whatever Blizzard's own Show/Hide calls do. It's still bound by rule 4: apply it only while the frame isn't on screen, and only out of combat.
-   - A frame that's always on screen when SaftUI loads (Blizzard's `MainActionBar`) can be concealed instead, without changing its visibility: `SetAlpha(0)` and `EnableMouse(false)` on it and its mouse-enabled children, called through `getmetatable(frame).__index`. See `SaftUI-ActionBars/hideblizzard.lua`.
+   - A frame that's on screen when SaftUI loads (Blizzard's `MainActionBar` always, `PetActionBar` after a `/reload` with a pet out) can be concealed instead, without changing its visibility: `SetAlpha(0)` and `EnableMouse(false)` on it and its mouse-enabled children, called through `getmetatable(frame).__index`. See `SaftUI-ActionBars/hideblizzard.lua`.
 9. **Don't override Blizzard globals or APIs**, not even for test data (e.g. faking `GetLootRollItemInfo` or `UnitExists`). Build SaftUI-owned preview frames instead (`SaftUI-Loot/roll.lua` `CreateRollPreviews`).
 10. **Ace skin fonts:** never `SetFontObject` with an object you got from `GetFontObject()` unless it's a named global Font. Restoring an engine-made Font made a region inherit from itself and crashed the client with a C stack overflow (`31afa68`). Use `IsNamedFont`/`RestoreFont` in `SaftUI-Core/Config/aceskin.lua`.
 

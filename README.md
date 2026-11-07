@@ -20,8 +20,8 @@ SaftUI sets the UI scale itself, to be pixel-perfect for your screen height, and
 
 - `/sui` (or `/saftui`) opens the options window.
 - `/sui edit` toggles SaftUI's edit mode. Drag frames, nudge them with the arrow keys (Shift for 10px), and click a frame to open its settings. Where frames overlap, a list by the cursor shows which one you'd grab, and Alt switches to the next. It also turns on when Blizzard's Edit Mode opens. Edit mode and the options window close when combat starts.
-- `/sui` → Action Bars sets each bar's buttons, size, spacing, text and visibility (always, in combat only, or faded until moused over). Every bar is an edit mode frame.
-- `/sui kb` (or "Keybind mode" in `/sui`) binds keys to SaftUI's action bars by hovering. Hover a button and press a key or mouse button, with any modifiers; right-click a button to clear its keys; Escape leaves. Bars set to show only in combat or faded show while it's on. SaftUI's bars use Blizzard's own action bar bindings, so binds show in Blizzard's Key Bindings menu, and the binds you already have keep working.
+- `/sui` → Action Bars sets each bar's buttons, size, spacing, text and visibility (always, in combat only, or faded until moused over), for bars 1–8, the pet bar and the stance bar. Every bar is an edit mode frame. The pet bar shows while you have a pet out (right-click a pet ability to toggle its autocast), and the stance bar shows one button per stance or form your class has.
+- `/sui kb` (or "Keybind mode" in `/sui`) binds keys to SaftUI's action bars by hovering. Hover a button and press a key or mouse button, with any modifiers; right-click a button to clear its keys; Escape leaves. Bars set to show only in combat or faded show while it's on; to bind pet bar keys this way, have a pet out. SaftUI's bars use Blizzard's own action bar bindings, so binds show in Blizzard's Key Bindings menu, and the binds you already have keep working.
 - Profiles live under `/sui` → Profiles, and switching applies live.
 - `/rl` reloads the UI.
 
