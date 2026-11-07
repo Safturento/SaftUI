@@ -42,6 +42,13 @@ function LT:DebugGroupLootFrame()
 	end
 end
 
+-- Forever keeps the roll buttons in a LootButtonContainer child; retail has
+-- them directly on the roll frame.
+local function GetRollButton(frame, name)
+	local container = frame.LootButtonContainer or frame
+	return container[name..'Button']
+end
+
 function LT:SkinRollFrame(frame)
 	if frame.skinned then return end
 	frame.skinned = true
@@ -66,13 +73,15 @@ function LT:SkinRollFrame(frame)
 
 	local prev
 	for i, info in ipairs(roll_buttons) do
-		local button = frame[info.name..'Button']
-		button.Text = button:CreateFontString(nil, 'OVERLAY')
-		button.Text:SetFontObject(GameFontNormal)
-		button.Text:SetPoint('CENTER', 1, 0)
-		button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
+		local button = GetRollButton(frame, info.name)
+		if button then
+			button.Text = button:CreateFontString(nil, 'OVERLAY')
+			button.Text:SetFontObject(GameFontNormal)
+			button.Text:SetPoint('CENTER', 1, 0)
+			button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
 
-		prev = button
+			prev = button
+		end
 	end
 
 	self:SecureHookScript(frame, 'OnShow', 'GroupLootFrame_OnShow')
@@ -112,8 +121,8 @@ function LT:UpdateRollFrame(frame)
 
 	local prev
 	for i, info in ipairs(roll_buttons) do
-		local button = frame[info.name..'Button']
-		if button:IsShown() then
+		local button = GetRollButton(frame, info.name)
+		if button and button:IsShown() then
 			button:ClearAllPoints()
 			if i == 1 then
 				button:SetPoint('RIGHT', frame.InfoFrame, 'RIGHT', -2, 0)
