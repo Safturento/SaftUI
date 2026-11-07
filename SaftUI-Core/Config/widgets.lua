@@ -46,6 +46,15 @@ end
 local generators = {}
 st.Config.generators = generators
 
+-- target is the frame being placed, or a function returning it (or nil while
+-- it doesn't exist), looked up each time an anchor is checked.
+local function ResolveTarget(target)
+	if type(target) == 'function' then
+		return target()
+	end
+	return target
+end
+
 function generators.position(order, global_frame, get, set, target)
 	local table = {
 		order = order or 0,
@@ -114,8 +123,9 @@ function generators.position(order, global_frame, get, set, target)
 			name = 'Frame',
 			type = 'input',
 			validate = function(info, name)
-				if target then
-					local ok, err = st:ValidateAnchor(target, name)
+				local frame = ResolveTarget(target)
+				if frame then
+					local ok, err = st:ValidateAnchor(frame, name)
 					return ok or err
 				end
 				return _G[name] and true or "Frame doesn't exist"
@@ -126,70 +136,116 @@ function generators.position(order, global_frame, get, set, target)
 	return table
 end
 
-function generators.uf_element_position(order, get, set)
-	local table = generators.position(order, true, get, set)
-	local values = {}
-	for key,_ in pairs(st:GetModule('Unitframes').elements) do
-		values[key] = key
+-- The Frame choices that aren't an element name.
+local UNIT_FRAME, GLOBAL_FRAME = '__unitframe', '__global'
+
+--[[
+	The Position editor for a unit frame element, or for an element's text or
+	icon. UF:GetFrame places it relative to another element of the same unit
+	frame (position.element) if that unit frame has it, else to a global frame
+	(position.frame), else to its own unit frame. The Frame select shows and
+	sets that choice from those two keys. It clears a key by writing false, not
+	nil: AceDB would fill a nil key with its default again at the next login.
+
+	target is the frame being placed, or a function returning it (nil while it
+	doesn't exist). The elements offered come from its unit frame, and every
+	picked or typed anchor is checked with st:ValidateAnchor against it.
+]]
+function generators.uf_element_position(order, get, set, target)
+	local options = generators.position(order, true, get, set, target)
+
+	local function UnitFrame()
+		local frame = ResolveTarget(target)
+		return frame and frame.unitframe
 	end
 
-	table.args.frame_type = {
-		name = 'Anchor type',
-		type = 'toggle',
-		desc = 'unchecked: element selection \nchecked: global frame \ngrayed: self',
-		order = 0,
-		width = 'full',
-		tristate = true,
-		get = function(info)
-			local value = get('frame_type')
-			if value == false then
-				table.args.frame.values = values
-				table.args.frame.type = 'select'
-			elseif value == true then
-				table.args.frame.type = 'input'
+	-- What UF:GetFrame anchors to: an element name, UNIT_FRAME or GLOBAL_FRAME.
+	local function GetRelativeTo()
+		local element, frame = get('element'), get('frame')
+		local unitframe = UnitFrame()
+		if element and (not unitframe or unitframe[element]) then
+			return element
+		elseif frame then
+			return GLOBAL_FRAME
+		end
+		return UNIT_FRAME
+	end
+
+	-- The elements of the target's unit frame, apart from the target itself,
+	-- sorted. Every registered element while the unit frame isn't known.
+	local function GetElementNames()
+		local unitframe, frame = UnitFrame(), ResolveTarget(target)
+		local names = {}
+		for name in pairs(unitframe and unitframe.elements or st:GetModule('Unitframes').elements) do
+			if not (unitframe and unitframe[name] == frame) then
+				tinsert(names, name)
 			end
-			return value
+		end
+		sort(names)
+		return names
+	end
+
+	options.args.relative_to = {
+		order = 2,
+		name = 'Frame',
+		type = 'select',
+		width = 0.75,
+		values = function()
+			local values = { [UNIT_FRAME] = 'Unit frame', [GLOBAL_FRAME] = 'Global frame' }
+			for _, name in ipairs(GetElementNames()) do
+				values[name] = name
+			end
+			return values
+		end,
+		sorting = function()
+			local sorting = { UNIT_FRAME }
+			for _, name in ipairs(GetElementNames()) do
+				tinsert(sorting, name)
+			end
+			tinsert(sorting, GLOBAL_FRAME)
+			return sorting
+		end,
+		get = function()
+			return GetRelativeTo()
+		end,
+		-- Picking Global frame starts at UIParent; its name is typed below.
+		validate = function(info, value)
+			local frame, unitframe = ResolveTarget(target), UnitFrame()
+			if not (frame and unitframe) then return true end
+			local relative
+			if value == UNIT_FRAME then
+				relative = unitframe
+			elseif value == GLOBAL_FRAME then
+				relative = UIParent
+			else
+				relative = unitframe[value]
+			end
+			if not relative then return true end
+			local ok, err = st:ValidateAnchor(frame, relative)
+			return ok or err
 		end,
 		set = function(info, value)
-			set('frame_type', value)
-			if value == false then
-				table.args.frame.values = values
-				table.args.frame.type = 'select'
-			elseif value == true then
-				table.args.frame.type = 'input'
+			if value == GetRelativeTo() then return end
+			if value == UNIT_FRAME then
+				set('element', false)
+				set('frame', false)
+			elseif value == GLOBAL_FRAME then
+				set('element', false)
+				set('frame', 'UIParent')
+			else
+				set('frame', false)
+				set('element', value)
 			end
-		end
+		end,
 	}
 
-	table.args.frame.hidden = function(info)
-		return get('frame_type') == nil
+	-- generators.position's input, for the global frame's name.
+	options.args.frame.name = 'Frame name'
+	options.args.frame.hidden = function()
+		return GetRelativeTo() ~= GLOBAL_FRAME
 	end
 
-	table.args.frame.get = function(info)
-		local frame_type = get('frame_type')
-		if frame_type == false then
-			return get('element')
-		elseif frame_type == true then
-			return get('anchor_frame')
-		end
-	end
-	table.args.frame.set = function(info, value)
-		local frame_type = get('frame_type')
-		if frame_type == false then
-			set('element', value)
-		elseif frame_type == true then
-			set('anchor_frame', value)
-		end
-	end
-
-	table.args.frame.validate = function(info, name)
-		if get('frame_type') == nil then
-			return _G[name] and true or "Frame doesn't exist"
-		end
-		return true
-	end
-
-	return table
+	return options
 end
 
 function generators.toggle(order, name, width)
@@ -292,7 +348,7 @@ function generators.font(order)
 	return {
 		name = 'Font',
 		type = 'select',
-		order = 1,
+		order = order,
 		values = st.Config:GetFontObjects(),
 	}
 end

@@ -95,10 +95,12 @@ function UF.ConstructUnit(self, unit)
 	self.GetConfig = function() return UF:GetProfileConfig()[self.base_unit]  end
 	
 	-- Since oUF doesn't give us access to a table of active elements
-	-- we can keep track of them here to easily loop and update through them later
+	-- we can keep track of them here to easily loop and update through them later.
+	-- ValidUnit gets the config unit (self.base_unit, e.g. 'player', 'boss' or
+	-- 'party'), like the /sui unit sections (UF:GetConfigTable).
 	self.elements = {}
 	for element_name, funcs in pairs(UF.elements) do
-		if (not funcs.ValidUnit) or funcs.ValidUnit(base_unit) then
+		if (not funcs.ValidUnit) or funcs.ValidUnit(self.base_unit) then
 			self.elements[element_name] = funcs.Constructor(self, element_name)
 		end
 	end
@@ -113,11 +115,13 @@ end
 --[[
 name (string): the name of the element to use as the key
 Constructor (function): for actually creating the element and binding it to oUF
-GetConfigTable (function): returns and AceConfig table for the element's configuration options.
 UpdateConfig (function): the function used to update the display of the element based on the configuration table
-
-All three functions take one argument - the unitframe object created from oUF:Spawn
-
+	Constructor and UpdateConfig take the unitframe object created from oUF:Spawn and the element name.
+GetConfigTable (function, optional): GetConfigTable(unit, frame_position_get, frame_position_set)
+	returns the AceConfig group for the element's tab in the unit's /sui section.
+ValidUnit (function, optional): ValidUnit(unit) is true for the config units
+	('player', 'boss', 'party', ...) that get the element. Others get neither the
+	element nor its tab.
 ]]--
 function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
 	self.elements[name] = {

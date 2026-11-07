@@ -95,6 +95,7 @@ local function GetConfigTable(unit)
 	return {
 		type = 'group',
 		name = 'Power',
+		order = 2,
 		get = function(info)
 			return UnitConfig().power[info[#info]]
 		end,
@@ -116,7 +117,8 @@ local function GetConfigTable(unit)
 				function(index, value)
 					UnitConfig().power.position[index] = value
 					UF:UpdateConfig(unit, 'Power')
-				end
+				end,
+				UF:ConfigTarget(unit, 'Power')
 			),
 			text = {
 				order = 98,
@@ -140,7 +142,8 @@ local function GetConfigTable(unit)
 				function(index, value)
 					UnitConfig().power.text.position[index] = value
 					UF:UpdateConfig(unit, 'Power')
-				end
+				end,
+				UF:ConfigTarget(unit, 'Power', 'text')
 			),
 				},
 			},

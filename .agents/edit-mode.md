@@ -58,9 +58,13 @@ st:RegisterMover('key', {
 
 - `/sui` is one window. It's built in `Config:GetOptionsTable` from each module's `GetConfigTable()`, and opened with `st.Config:Open(...path)`, which uses `AceConfigDialog:SelectGroup`.
 - **Subcommands.** `st.Config:AddCommand(command, label, func)` makes `/sui <command>` run `func`, and adds a `label` button after "Edit mode" in the window's top row. Call it at file load or in `OnEnable`. SaftUI-ActionBars adds `kb` (Keybind mode, `SaftUI-ActionBars/bindings.lua`).
-- **Section shape.** A mover's section is a group with `general` and `position` subgroups. `UseTabsForInnermostSections` turns innermost subgroups into tabs automatically (`childGroups = 'tab'`) unless the group already sets `childGroups`. Unit frames use `select`.
+- **Section shape.** A mover's section is a group with `general` and `position` subgroups.
+  - `MergePositionIntoGeneral` moves `position` into the General tab as an inline box at the end, so size and position sit together.
+  - `UseTabsForInnermostSections` then turns innermost subgroups into tabs automatically (`childGroups = 'tab'`), unless the group already sets `childGroups`.
+  - A unit frame's section shows its elements as tabs (General, Health, Castbar, ...): one per element that registered a `GetConfigTable` and whose `ValidUnit` accepts the unit. Keep sub-areas inside a tab as inline groups.
 - **Widgets** are `st.Config.generators` in `SaftUI-Core/Config/widgets.lua`:
-  - `position(order, true, get, set, target)` is the full SetPoint editor.
+  - `position(order, true, get, set, target)` is the full SetPoint editor. `target` (the frame being placed, or a function returning it) is what typed anchors are checked against.
+  - `uf_element_position(order, get, set, target)` places a unit frame element, text or icon. Its Frame select (unit frame, another element, or a global frame) reads and writes `position.element` / `position.frame` the way `UF:GetFrame` resolves them, and clears a key with `false` so it overrides an AceDB default. Pass `UF:ConfigTarget(unit, element, key)` as `target`.
   - `width`/`height` are input boxes that display numbers and save numbers.
   - Also available: `range`, `toggle`, `template`, `font`, …
   - AceConfigDialog shows an `input` as blank unless `get` returns a string, so use these generators rather than raw inputs for numbers.

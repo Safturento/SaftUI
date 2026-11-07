@@ -20,6 +20,7 @@ local function GetConfigTable(unit)
 	return {
 		type = 'group',
 		name = 'Name',
+		order = 5,
 		get = function(info)
 			return UnitConfig().name[info[#info]]
 		end,
@@ -38,7 +39,8 @@ local function GetConfigTable(unit)
 				function(index, value)
 					UnitConfig().name.position[index] = value
 					UF:UpdateConfig(unit, 'Name')
-				end
+				end,
+				UF:ConfigTarget(unit, 'Name')
 			),
 			showLevel = st.Config.generators.toggle(5, 'Show level', 1),
 			showSameLevel = st.Config.generators.toggle(6, 'Show same level', 1),

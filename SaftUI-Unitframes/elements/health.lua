@@ -90,8 +90,9 @@ local function GetConfigTable(unit)
 	return {
 		type = 'group',
 		name = 'Health',
+		order = 1,
 		get = function(info)
-			return tostring(UnitConfig().health[info[#info]])
+			return UnitConfig().health[info[#info]]
 		end,
 		set = function(info, value)
 			UnitConfig().health[info[#info]] = value
@@ -106,12 +107,13 @@ local function GetConfigTable(unit)
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
 			position = st.Config.generators.uf_element_position(50,
 				function(index)
-					return tostring(UnitConfig().health.position[index])
+					return UnitConfig().health.position[index]
 				end,
 				function(index, value)
 					UnitConfig().health.position[index] = value
 					UF:UpdateConfig(unit, 'Health')
-				end
+				end,
+				UF:ConfigTarget(unit, 'Health')
 			),
 			text = {
 				order = 98,
@@ -135,7 +137,8 @@ local function GetConfigTable(unit)
 					function(index, value)
 						UnitConfig().health.text.position[index] = value
 						UF:UpdateConfig(unit, 'Health')
-					end
+					end,
+					UF:ConfigTarget(unit, 'Health', 'text')
 					),
 					deficit =st.Config.generators.toggle(3, 'Deficit'),
 					hide_full = st.Config.generators.toggle(4, 'Hide full'),

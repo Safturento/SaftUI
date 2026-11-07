@@ -145,6 +145,41 @@ StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
 	hideOnEscape = true,
 }
 
+-- One spawned frame of a config unit, for its options to look at: the unit's
+-- frame, boss (or arena) 1, or a party or raid group's first button. nil while
+-- a group has no buttons.
+function UF:GetConfigFrame(unit)
+	local frame = self.units and self.units[unit]
+	if frame then
+		-- boss and arena are a list of five frames.
+		return frame.GetConfig and frame or frame[1]
+	end
+	local header = self.groups and self.groups[unit]
+	if header then
+		for i = 1, header:GetNumChildren() do
+			local child = select(i, header:GetChildren())
+			if child and child.GetConfig then
+				return child
+			end
+		end
+	end
+end
+
+-- The target of an element's Position editor (generators.uf_element_position):
+-- a function returning the element (or the text or icon at element[key]) on
+-- UF:GetConfigFrame(unit), or nil. Looked up on every call, as group buttons
+-- come and go.
+function UF:ConfigTarget(unit, element, key)
+	return function()
+		local frame = self:GetConfigFrame(unit)
+		local target = frame and frame[element]
+		if target and key then
+			target = target[key]
+		end
+		return target
+	end
+end
+
 function UF.GenerateRelativeSizeConfigGroup(order)
 	return {
 		order = order,
@@ -502,10 +537,11 @@ function UF:GetConfigTable()
 			config_table.args.general.args.enable.desc = "While either raid group is on, Blizzard's raid frames are hidden. Blizzard's raid manager tab at the left edge of the screen stays. Turning both raid groups off brings Blizzard's raid frames back. In a raid, hiding them waits until you leave the raid, and bringing them back waits until you leave it or /reload."
 		end
 
+		-- One tab per element the unit has (ValidUnit, as in UF.ConstructUnit).
 		for element_name, element in pairs(UF.elements) do
-			if self.elements[element_name].GetConfigTable and not (self.elements[element_name].valid_units and self.elements[element_name].valid_units(unit)) then
+			if element.GetConfigTable and (not element.ValidUnit or element.ValidUnit(unit)) then
 				config_table.args[element_name] =
-					self.elements[element_name].GetConfigTable(unit, frame_position_get, frame_position_set)
+					element.GetConfigTable(unit, frame_position_get, frame_position_set)
 			end
 		end
 

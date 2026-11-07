@@ -10,7 +10,7 @@ st.defaults.unitframes.profiles["**"].player = {
         width = 299,
         height = 20,
         colorClass = true,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
         text = {
             font='pixel_med',
             position = { rel_point = "CENTER", element = 'Power', point = "TOP",  x_off = 0, y_off = 0 },
@@ -22,7 +22,7 @@ st.defaults.unitframes.profiles["**"].player = {
         relative_height = false,
         width = 299,
         height = 20,
-        position = { frame_type=true, point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
+        position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
         colorPower = true,
         text = {
             enable = true,
