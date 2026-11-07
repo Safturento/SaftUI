@@ -36,8 +36,21 @@ local function PostUpdate(additionalPower, curr, max)
 	additionalPower.text:SetText(curr)
 end
 
+-- oUF shows the bar only while the player's power bar shows a power the game
+-- pairs with mana (ALT_POWER_BAR_PAIR_DISPLAY_INFO), and tells PostVisibility
+-- after each change. A disabled bar stays hidden whatever oUF shows. The text
+-- sits on the unit frame's text overlay, not on the bar, so it's shown and
+-- hidden with the bar here.
+local function ApplyVisibility(additionalPower)
+	local config = additionalPower.config
+	local shown = additionalPower.shownByOUF and config.enable or false
+	additionalPower:SetShown(shown)
+	additionalPower.text:SetShown(shown and config.text.enable or false)
+end
+
 local function PostVisibility(additionalPower, enabled)
-	additionalPower.text:SetShown(enabled)
+	additionalPower.shownByOUF = enabled
+	ApplyVisibility(additionalPower)
 end
 
 local function Constructor(self)
@@ -75,8 +88,89 @@ local function UpdateConfig(unitframe)
 	additionalPower.colorClass     = config.colorClass
 	additionalPower.colorCustom    = config.colorCustom
 	additionalPower.customColor    = config.customColor
+
+	-- UpdateElement showed the bar and its text from the config alone.
+	ApplyVisibility(additionalPower)
+end
+
+local function GetConfigTable(unit)
+	local generators = st.Config.generators
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function Config() return UF:GetProfileConfig()[unit].additionalpower end
+	local function Update() UF:UpdateConfig(unit, 'AdditionalPower') end
+
+	-- The settings in additionalpower[key].
+	local function Section(order, name, key, args)
+		return {
+			order = order,
+			name = name,
+			type = 'group',
+			inline = true,
+			get = function(info) return Config()[key][info[#info]] end,
+			set = function(info, value)
+				Config()[key][info[#info]] = value
+				Update()
+			end,
+			args = args,
+		}
+	end
+
+	local enable = generators.enable(0)
+	enable.desc = "Your mana, shown while your power bar shows a power the game pairs with mana (e.g. a shadow priest's insanity)."
+	local colorPower = generators.toggle(6, 'Color by power type', 1)
+	colorPower.desc = "Colors the bar and its background with the mana color. Nothing else colors them: with this off they keep the last color they had, white if this was never on."
+
+	return {
+		order = 3,
+		type = 'group',
+		name = 'Additional power',
+		get = function(info) return Config()[info[#info]] end,
+		set = function(info, value)
+			Config()[info[#info]] = value
+			Update()
+		end,
+		args = {
+			enable = enable,
+			framelevel = generators.framelevel(1),
+			template = generators.template(2),
+			size = UF.GenerateRelativeSizeConfigGroup(3),
+			reverse_fill = generators.toggle(4, 'Reverse Fill', 1),
+			vertical_fill = generators.toggle(5, 'Vertical Fill', 1),
+			colorPower = colorPower,
+			position = generators.uf_element_position(50,
+				function(index) return Config().position[index] end,
+				function(index, value)
+					Config().position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, 'AdditionalPower')
+			),
+			text = Section(98, 'Text', 'text', {
+				enable = generators.enable(0),
+				font = generators.font(1),
+				position = generators.uf_element_position(2,
+					function(index) return Config().text.position[index] end,
+					function(index, value)
+						Config().text.position[index] = value
+						Update()
+					end,
+					UF:ConfigTarget(unit, 'AdditionalPower', 'text')
+				),
+			}),
+			bg = Section(99, 'Status Bar BG', 'bg', {
+				enable = generators.enable(0),
+				multiplier = generators.range(2, 'Multiplier', 0, 1, 0.05),
+				alpha = generators.alpha(3),
+			}),
+		},
+	}
+end
+
+-- oUF only enables it on the player.
+local function ValidUnit(unit)
+	return unit == 'player'
 end
 
 if st.retail then
-	UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig)
+	UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig, GetConfigTable, ValidUnit)
 end

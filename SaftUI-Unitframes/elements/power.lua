@@ -67,7 +67,10 @@ end
 local function UpdateConfig(unitframe)
     local power = unitframe.Power
 
-	if unitframe.config.additionalpower
+	-- Only the player has the AdditionalPower element (its ValidUnit), though
+	-- a copied unit config can carry these settings.
+	if unitframe.AdditionalPower
+			and unitframe.config.additionalpower
 			and unitframe.config.additionalpower.enable
 			and unitframe.config.additionalpower.manaAsPrimary
 			and UnitPowerMax('player', 0) > 0 then
