@@ -2,7 +2,10 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxChanged, powerType)
+	-- oUF passes no max when it turns class power off (e.g. a druid leaving
+	-- cat form), and a max again when it turns it back on.
 	if not max then classPower:Hide() return end
+	classPower:SetShown(classPower.config.enable and true or false)
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do
 		st:SetWidth(classPower[i], width)
