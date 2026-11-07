@@ -3,6 +3,23 @@ local CHT = st:GetModule('Chat')
 
 local generators = st.Config.generators
 
+-- Blizzard's own minimum chat size. A whole number at least this big is required:
+-- the text box would otherwise accept 0, negatives or text like "12abc", and a
+-- non-numeric size silently turns off SaftUI's sizing.
+local MIN_WIDTH, MIN_HEIGHT = 250, 120
+
+local function SizeInput(option, minimum)
+	option.pattern = nil
+	option.validate = function(_, value)
+		local number = tonumber(value)
+		if not (value and value:match('^%s*%d+%s*$') and number and number >= minimum) then
+			return ('Enter a whole number of at least %d.'):format(minimum)
+		end
+		return true
+	end
+	return option
+end
+
 -- The chat section in the /sui tree. Clicking the chat frame in edit mode selects its
 -- General group (the mover's configPath). Absent until the chat frame is taken over.
 function CHT:GetConfigTable()
@@ -56,8 +73,8 @@ function CHT:GetConfigTable()
 				end,
 				args = {
 					-- Text boxes; the size is rounded to the pixel when it's applied.
-					width = generators.width(1),
-					height = generators.height(2),
+					width = SizeInput(generators.width(1), MIN_WIDTH),
+					height = SizeInput(generators.height(2), MIN_HEIGHT),
 					template = generators.template(3),
 					font = font,
 					fontsize = generators.range(5, 'Font size', 8, 32, 1),
