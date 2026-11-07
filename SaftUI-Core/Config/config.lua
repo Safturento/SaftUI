@@ -167,6 +167,11 @@ function Config:UpdateConfig()
 		end
 	end
 
+	-- Movers can be anchored to each other; clear them all before anything is
+	-- placed, so no order of placing them passes through an anchor loop.
+	local editMode = st.EditModeFrames
+	Safely(function() editMode:ClearPositions() end)
+
 	-- Shared Core config first: modules copy font files out of the font objects
 	-- (e.g. chat), and lay out around header heights (e.g. bags).
 	local fonts = st:GetModule('Fonts', true)
@@ -174,7 +179,6 @@ function Config:UpdateConfig()
 	Safely(function() st:UpdateHeader() end)
 
 	-- Edit mode last, so every mover ends at the new profile's position.
-	local editMode = st.EditModeFrames
 	for name, module in pairs(st.modules) do
 		-- Config is a module too; calling itself here recursed until the stack
 		-- overflowed on every profile change, copy or reset.

@@ -91,6 +91,17 @@ function EM:CommitPosition(mover, x, y)
 	self:Fire('PositionChanged', mover)
 end
 
+-- Start of a profile change: clears every mover frame's anchors. Movers can be
+-- anchored to each other, and placing them one by one while some still hold
+-- the old profile's anchors could form a loop (SetPoint errors). With every
+-- frame cleared first, they can be placed in any order. Config:UpdateConfig
+-- runs this before any module updates, and EM:UpdateConfig places them all.
+function EM:ClearPositions()
+	for _, mover in pairs(self.movers) do
+		mover.def.frame:ClearAllPoints()
+	end
+end
+
 -- A profile change: every mover's frame goes to the new profile's position.
 -- A drag in progress is dropped without committing, since its start offsets
 -- came from the old profile. Config:UpdateConfig runs this after every other
