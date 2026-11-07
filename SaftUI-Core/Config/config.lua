@@ -51,6 +51,9 @@ function Config:InitializeAceConfig()
 	-- Keep an open /sui window in sync with drags and nudges.
 	st.EditModeFrames:On('PositionChanged', function() self:Refresh() end)
 
+	-- No settings changes in combat: they can touch protected frames and taint.
+	self:RegisterEvent('PLAYER_REGEN_DISABLED')
+
     _G.SLASH_SAFTUI1 = '/sui'
     _G.SLASH_SAFTUI2 = '/saftui'
     _G.SlashCmdList.SAFTUI = function(msg)
@@ -68,6 +71,10 @@ local window -- the open /sui window, or nil
 -- the given path of option keys (e.g. 'Minimap', 'general') in its tree. The
 -- window keeps the size and spot the user last gave it.
 function Config:Open(...)
+	if InCombatLockdown() then
+		st:Print("Can't open SaftUI options in combat.")
+		return
+	end
 	AceConfig:RegisterOptionsTable(st.name, {
 		name = st.name,
 		type = 'group',
@@ -84,6 +91,15 @@ function Config:Open(...)
 	end
 	AceConfigDialog:Open(st.name)
 	st.EditModeFrames:UpdateFooter()
+end
+
+-- Entering combat closes /sui. PLAYER_REGEN_DISABLED fires just before the
+-- lockdown starts, so the window's release still runs out of combat.
+function Config:PLAYER_REGEN_DISABLED()
+	if window then
+		AceConfigDialog:Close(st.name)
+		st:Print('SaftUI options closed: entering combat.')
+	end
 end
 
 function Config:GetWindow()
