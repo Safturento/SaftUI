@@ -39,14 +39,23 @@ function MicroMenu:SkinExpansionButton()
     return button
 end
 
+local hover -- SaftUI's flat highlight, made once
+
+-- After Blizzard's UpdateIcon, which swaps the button's atlases, sizes it from
+-- them and (SetLandingPageIconOffset) re-anchors it to its parent, which is
+-- the bar's container.
 function MicroMenu:UpdateExpansionLandingPageButton()
     local button = ExpansionLandingPageMinimapButton
-    button:SetSize(28, 28)
     button:SetHitRectInsets(0, 0, 0, 0)
 
-    local hover = button:CreateTexture(nil, 'OVERLAY')
+    -- SetLandingPageIconFromAtlases puts an atlas on the highlight, which is
+    -- this texture once it's set, so the flat color goes back every time
+    if not hover then
+        hover = button:CreateTexture(nil, 'OVERLAY')
+    end
     hover:SetTexture(st.BLANK_TEX)
     hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
+    hover:ClearAllPoints()
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
 
@@ -57,4 +66,7 @@ function MicroMenu:UpdateExpansionLandingPageButton()
     local normal = button:GetNormalTexture()
     st:InsetTexture(normal, 0.2)
     normal:SetAllPoints()
+
+    -- Back into its slot in the bar, at the bar's size
+    self:UpdateButtons()
 end

@@ -133,11 +133,13 @@ function MicroMenu:UpdateButtons()
 
             UpdateBackdrop(button, item)
 
-            button:ClearAllPoints()
+            -- The widget API's own methods: Forever's queue eye is an Edit Mode
+            -- system, whose Lua SetPoint/ClearAllPoints write Edit Mode state.
+            st:ClearAllPointsDirect(button)
             if prev then
-                button:SetPoint('TOPLEFT', prev, 'TOPRIGHT', BUTTON_SPACING, 0)
+                st:SetPointDirect(button, 'TOPLEFT', prev, 'TOPRIGHT', BUTTON_SPACING, 0)
             else
-                button:SetPoint('TOPLEFT', self.Container)
+                st:SetPointDirect(button, 'TOPLEFT', self.Container)
             end
 
             prev = button
@@ -311,6 +313,13 @@ function MicroMenu:OnEnable()
     self:AddButton(self:SkinMailIcon())
     self:AddButton(self:SkinInstanceDifficulty())
     self:AddButton(self:SkinQueueButton())
+
+    -- Forever's MinimapCluster:SetHeaderUnderneath (run by Blizzard's Edit
+    -- Mode) re-anchors the zone text and the addon compartment to the cluster,
+    -- which pulls them out of the bar. Put them back after it.
+    if MinimapCluster.SetHeaderUnderneath then
+        hooksecurefunc(MinimapCluster, 'SetHeaderUnderneath', LayoutBar)
+    end
 
     self:UpdateButtons()
     self:SetupMinimapButtons()
