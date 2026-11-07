@@ -38,6 +38,7 @@ function INV.GetCurrencySlotPool(category)
 end
 
 local poolSize = 0
+local currencySlots = {} -- every currency slot made, for INV:StyleCurrencySlots
 function INV.CreateCurrencySlot(category)
     poolSize = poolSize + 1
     local slotName = 'SaftUI_Bag_Currencies_Slot'..poolSize
@@ -88,7 +89,30 @@ function INV.CreateCurrencySlot(category)
     INV:HookScript(slot, 'OnEnter', 'ShowCurrencyTooltip')
     INV:HookScript(slot, 'OnLeave', 'HideCurrencyTooltip')
 
+    tinsert(currencySlots, slot)
     return slot
+end
+
+-- Re-applies the profile's slot size, template and fonts to every currency
+-- slot, and sizes the currency category's filter button. Runs on profile
+-- changes; skinning a slot again is safe.
+function INV:StyleCurrencySlots()
+    for _, slot in ipairs(currencySlots) do
+        slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+        st:SkinActionButton(slot, {
+            template = self.config.template,
+            font = self.config.fonts.icons,
+            trueSize = true
+        })
+        slot:SetNormalTexture("")
+        slot:SetPushedTexture("")
+    end
+
+    local bag = self.containers.bag
+    local category = bag and bag.categories.Currencies
+    if category and category.filterButton then
+        category.filterButton:SetSize(max(46, self.config.buttonwidth), min(20, category.header:GetHeight()))
+    end
 end
 
 local function shouldShow(info, editMode)

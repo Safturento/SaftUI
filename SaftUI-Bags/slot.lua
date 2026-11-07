@@ -255,6 +255,22 @@ function INV:CreateSlot(container, categoryName)
 	return slot
 end
 
+-- Applies the profile's slot size, spot, template and fonts to a slot made by
+-- INV:CreateSlot. Runs on profile changes; skinning a slot again is safe.
+function INV:StyleSlot(slot, categoryFrame, container)
+	self:SetSlotPosition(slot, categoryFrame, container)
+	slot:SetSize(self.config.buttonwidth, self.config.buttonheight)
+	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
+
+	st:SkinActionButton(slot, {
+		template = self.config.template,
+		font = self.config.fonts.icons,
+		trueSize = true
+	})
+	slot:SetNormalTexture("")
+	slot:SetPushedTexture("")
+end
+
 function INV:SetSlotCooldown(slot)
 	local start, duration, enable = C_Container.GetContainerItemCooldown(slot.info.bagID, slot.info.slotID)
 	 CooldownFrame_Set(slot.cooldown, start, duration, enable)

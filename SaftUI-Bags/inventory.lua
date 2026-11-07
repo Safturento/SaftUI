@@ -65,11 +65,40 @@ function INV:SelectBankCategory(clickedHeader)
     end
 end
 
+-- The filter tables bag updates index, which a new or reset profile doesn't
+-- have yet. Plain table writes, so it's safe in combat.
+function INV:EnsureConfigTables()
+	local filters = self.config.filters or {}
+	self.config.filters = filters
+	filters.categories = filters.categories or {}
+	filters.currencies = filters.currencies or {}
+	for id in pairs(self.containers) do
+		filters.categories[id] = filters.categories[id] or {}
+	end
+end
+
+--[[
+	With an id: applies the profile to that container (position, columns,
+	widths, search box, backdrop). Also runs when a container is made.
+
+	With no id, a profile change: makes sure the profile has the filter tables,
+	then re-applies every container, the slots and category headers they've
+	made, and the bag slot bars, and lays the bags out again. Bag slots are
+	Blizzard item buttons, so in combat that restyle waits until combat ends.
+]]
 function INV:UpdateConfig(id)
 	if not id then
-		for containerId, _ in pairs(self.containers) do
+		if not self.containers.bag then return end -- not enabled
+		self:EnsureConfigTables()
+		if st:QueueAfterCombat('Inventory', function() INV:UpdateConfig() end) then return end
+
+		for containerId, container in pairs(self.containers) do
 			self:UpdateConfig(containerId)
+			self:StyleContainerContents(container)
 		end
+		self:StyleCurrencySlots()
+		self:UpdateBagSlotBars()
+		self:QueueUpdate(true)
 		return
 	end
 
@@ -78,12 +107,23 @@ function INV:UpdateConfig(id)
 	container:ClearAllPoints()
 	container:SetPoint(unpack(self.config[id].position))
 
+	if container.search then
+		container.scrollFrame:SetPoint('TOPLEFT', container.search, 'BOTTOMLEFT', 0, -self.config.padding)
+	else
+		container.scrollFrame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
+	end
+
+	-- Column frames are kept for reuse. container.columns holds the profile's
+	-- maxColumns of them (the layout uses every one in it); the rest hide.
+	container.columnFrames = container.columnFrames or {}
+	wipe(container.columns)
     for i=1, self.config[id].maxColumns do
-        local column = container.columns[i]
+        local column = container.columnFrames[i]
         if not column then
             column = st:CreateFrame('Frame', container:GetName() .. 'Column'..i, container.scrollFrame)
-            container.columns[i] = column
+            container.columnFrames[i] = column
         end
+        column:Show()
 
         column:SetWidth((self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
         column:ClearAllPoints()
@@ -92,6 +132,10 @@ function INV:UpdateConfig(id)
         else
             column:SetPoint('TOPLEFT', container.columns[i-1], 'TOPRIGHT', self.config.buttonspacing, 0)
         end
+        container.columns[i] = column
+    end
+    for i = self.config[id].maxColumns + 1, #container.columnFrames do
+        container.columnFrames[i]:Hide()
     end
 
 	local inner_width = (self.config.buttonwidth + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing
@@ -104,10 +148,59 @@ function INV:UpdateConfig(id)
 	end
 	if container.search then
 		container.search:SetWidth(inner_width)
-		st:SkinEditBox(container.search, self.config.template, self.config.fonts.titles)
+		st:StyleEditBox(container.search, self.config.template, self.config.fonts.titles)
 	end
 
 	st:SetBackdrop(container, self.config.template)
+end
+
+-- Re-applies the profile to the category headers and item slots a container
+-- has made.
+function INV:StyleContainerContents(container)
+	local titleFont = st:GetFont(self.config.fonts.titles)
+	for _, category in pairs(container.categories) do
+		category.header:SetHeight(self.config.categoryTitleHeight)
+		category.header.text:SetFontObject(titleFont)
+		for _, slot in pairs(category.slots) do
+			self:StyleSlot(slot, category, container)
+		end
+	end
+end
+
+-- Re-sizes the bag slot bars to the profile's button size, spacing and
+-- padding: the bags' bar (Blizzard's bag slots) and the bank's own.
+function INV:UpdateBagSlotBars()
+	local width, height = self.config.buttonwidth, self.config.buttonheight
+	local spacing, padding = self.config.buttonspacing, self.config.padding
+
+	local bag = self.containers.bag
+	local bar = bag and bag.bagSlotContainer
+	if bar then
+		local numSlots = #bar.slots
+		bar:SetSize(width * numSlots + spacing * (numSlots - 1) + padding * 2, height + padding * 2)
+		bar:ClearAllPoints()
+		bar:SetPoint('BOTTOMLEFT', bag, 'TOPLEFT', 0, spacing)
+		for _, slot in pairs(bar.slots) do
+			slot:SetSize(width, height)
+		end
+		self:MovePlayerBagSlots()
+	end
+
+	for _, id in ipairs({ 'bank', 'combinedbank' }) do
+		local container = self.containers[id]
+		local bankBar = container and container.bagSlotContainer
+		if bankBar then
+			bankBar:ClearAllPoints()
+			bankBar:SetPoint('BOTTOMLEFT', container, 'TOPLEFT', 0, spacing)
+			for _, slot in pairs(bankBar.slots) do
+				slot:SetSize(width, height)
+			end
+			bankBar.purchaseButton:SetSize(width, height)
+			if bankBar:IsShown() then
+				self:UpdateBankBagSlots(bankBar)
+			end
+		end
+	end
 end
 
 function INV:UpdateVisibleContainers(updateLayout)
@@ -144,17 +237,34 @@ function INV:ADDON_LOADED(event, addon)
 	end
 end
 
+-- The bank layout (combined, or the separate bank) is read from the profile
+-- each time the bank opens, so a profile change applies from the next visit.
+-- Closing goes to whichever layout was opened.
+function INV:BANKFRAME_OPENED()
+	if st.retail and self.config.combinedBank then
+		self.openedBankLayout = 'combined'
+		self:OpenCombinedBank()
+	else
+		self.openedBankLayout = 'separate'
+		self:OpenBank()
+	end
+end
+
+function INV:BANKFRAME_CLOSED()
+	local opened = self.openedBankLayout
+	self.openedBankLayout = nil
+	if opened == 'combined' then
+		self:CloseCombinedBank()
+	elseif opened == 'separate' then
+		self:CloseBank()
+	end
+end
+
 function INV:OnEnable()
 	st:BindModuleConfig(self, 'inventory')
 	if self.config.enable == false then return end
 
-	if not self.config.filters then
-		self.config.filters = {}
-	end
-
-	if not self.config.filters.categories then
-        self.config.filters.categories = {}
-    end
+	self:EnsureConfigTables()
 
 	self:InitializeTooltipScanner()
 	self:InitializePlayerBags()
@@ -206,13 +316,8 @@ function INV:OnEnable()
 	self:RegisterEvent('PLAYERBANKSLOTS_CHANGED', 'QueueUpdate')
 	self:RegisterEvent('GET_ITEM_INFO_RECEIVED', 'QueueUpdate')
 
-	if st.retail and self.config.combinedBank then
-		self:RegisterEvent('BANKFRAME_OPENED', 'OpenCombinedBank')
-		self:RegisterEvent('BANKFRAME_CLOSED', 'CloseCombinedBank')
-	else
-		self:RegisterEvent('BANKFRAME_OPENED', 'OpenBank')
-		self:RegisterEvent('BANKFRAME_CLOSED', 'CloseBank')
-	end
+	self:RegisterEvent('BANKFRAME_OPENED')
+	self:RegisterEvent('BANKFRAME_CLOSED')
 
 	self.updater = CreateFrame('frame')
 	self:HookScript(self.updater, 'OnUpdate', 'UpdateHandler')
