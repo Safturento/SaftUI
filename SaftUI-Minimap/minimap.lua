@@ -1,8 +1,11 @@
 local st = SaftUI
 local MM = st:NewModule('Minimap')
 
+-- Re-anchors the cluster's indicator frame (mail, crafting orders) to the
+-- minimap. It used to hang off the cluster's hidden BorderTop, which sat on the
+-- minimap only while the cluster was pinned to it; now the cluster stays put.
 function MM:MiniMapIndicatorFrame_UpdatePosition()
-    MinimapCluster.IndicatorFrame:SetPoint("TOPRIGHT", MinimapCluster.BorderTop, "TOPLEFT", -1, -1);
+    MinimapCluster.IndicatorFrame:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -1, -1);
 end
 
 function MM:GarrisonMinimap_ShowCovenantCallingsNotification(ExpansionLandingPageMinimapButton)
@@ -48,8 +51,21 @@ function MM:OnEnable()
         MinimapCluster.DielFrame:Hide()
     end
 
-    st:Kill(MinimapCluster.Selection)
-    MinimapCluster:EnableMouse(false)
+    -- Take the minimap out of Blizzard's cluster so Blizzard's Edit Mode no
+    -- longer moves it. Parenting resets strata/level, so restore them.
+    local strata, level = Minimap:GetFrameStrata(), Minimap:GetFrameLevel()
+    Minimap:SetParent(UIParent)
+    Minimap:SetFrameStrata(strata)
+    Minimap:SetFrameLevel(level)
 
 	MM:UpdateConfig()
+
+    st:RegisterMover('minimap', {
+        frame = Minimap,
+        label = 'Minimap',
+        getPosition = function() return self.config.position end,
+        setPosition = function(pos) self.config.position = pos end,
+        apply = function() MM:UpdateConfig() end,
+        options = function() return MM:GetMoverOptions() end,
+    })
 end
