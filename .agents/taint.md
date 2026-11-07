@@ -7,6 +7,7 @@ covers:
   - 'SaftUI-Core/taintfix.lua'
   - 'SaftUI-Misc/Skinning/**'
   - 'SaftUI-Misc/totembar.lua'
+  - 'SaftUI-Misc/tooltipposition.lua'
   - 'SaftUI-Minimap/**'
   - 'SaftUI-ActionBars/hideblizzard.lua'
   - 'SaftUI-ActionBars/skin.lua'
@@ -31,7 +32,7 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
 2. **Hook only with post-hooks:** `hooksecurefunc(...)`, native `frame:HookScript(...)`, or AceHook `SecureHook`/`SecureHookScript`. Never AceHook `Hook`/`RawHook`/`HookScript`, which install closures with `SetScript` and replace Blizzard's handlers. Never `SetScript` on a Blizzard frame.
 3. **Don't run Blizzard callbacks from SaftUI code.** Calling a Blizzard function that writes Blizzard state (e.g. `HelpTip:HideAllSystem`, a frame's `Update()`, alert or close callbacks) runs that code in SaftUI's tainted context and taints what it writes. Prefer re-applying SaftUI's own state in a post-hook after Blizzard runs.
 4. **Moving or showing a frame can run its scripts.** `SetParent`, `Show` and `Hide` on a visible frame fire `OnShow`/`OnHide` in your call chain. For Blizzard secure buttons that writes tainted state. Only reparent or hide when it won't change on-screen visibility, otherwise apply at the next `/reload` (see `SaftUI-Misc/totembar.lua`).
-5. **Blizzard Edit Mode system frames have Lua overrides** for `SetPoint`, `ClearAllPoints`, `SetScale`, `SetShown` and `Hide` that write Edit Mode state (e.g. `EditModeManagerFrame.editModeSystemAnchorDirty`). Examples: ChatFrame1, BuffFrame/DebuffFrame, QueueStatusButton (Forever), swing timer bars, the totem bar, MinimapCluster, the micro menu, the status tracking bars.
+5. **Blizzard Edit Mode system frames have Lua overrides** for `SetPoint`, `ClearAllPoints`, `SetScale`, `SetShown` and `Hide` that write Edit Mode state (e.g. `EditModeManagerFrame.editModeSystemAnchorDirty`). Examples: ChatFrame1, BuffFrame/DebuffFrame, QueueStatusButton (Forever), swing timer bars, GameTooltipDefaultContainer (where the default tooltip anchors), the totem bar, MinimapCluster, the micro menu, the status tracking bars.
    - Move them with `st:SetPointDirect` / `st:ClearAllPointsDirect` / `st:SetSizeDirect`. These call the C widget methods via `getmetatable(frame).__index`.
    - Never call the overridden methods from SaftUI code.
    - To keep a position, post-hook their `SetPoint`/`ClearAllPoints` (or `UpdateSystem`) and re-apply with the direct helpers. Hide their Edit Mode box with `frame.Selection:HookScript('OnShow', function(s) s:Hide() end)`.

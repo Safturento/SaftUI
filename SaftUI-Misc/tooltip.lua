@@ -2,26 +2,6 @@
 local st = SaftUI
 local TT = st:NewModule('Tooltip')
 
-function TT:UpdateGameTooltipPosition()
-	if GameTooltip:IsForbidden() then return end
-
-	local INV = st:GetModule('Inventory')
-	local LT = st:GetModule('Loot', true)
-
-	if GameTooltip:GetAnchorType() == 'ANCHOR_NONE' then
-		GameTooltip:ClearAllPoints()
-
-		if INV and INV.containers.bag:IsShown() then
-			GameTooltip:SetPoint('BOTTOMRIGHT', INV.containers.bag, 'BOTTOMLEFT', -10, 0)
-		elseif LT and LT.feed.items[1]:IsShown() then
-			GameTooltip:SetPoint('BOTTOMRIGHT', LT.feed, 'BOTTOMLEFT', -10, 0)
-		else
-			GameTooltip:SetPoint('BOTTOMRIGHT', UIParent, 'BOTTOMRIGHT', -20, 20)
-		end
-	end
-end
-
-
 function TT:UpdateTooltipDisplay(tooltip)
 	local font,size,outline = st:GetFont(self.config.font):GetFont()
 
@@ -100,10 +80,13 @@ function TT:AddItemInfo(self)
 end
 
 -- A profile change: re-applies the template to every skinned tooltip, the
--- status bar and the dropdown lists. Fonts are applied each time a tooltip
--- shows (UpdateTooltipDisplay), so they follow the profile already.
+-- status bar and the dropdown lists, and the default tooltip's position
+-- (tooltipposition.lua). Fonts are applied each time a tooltip shows
+-- (UpdateTooltipDisplay), so they follow the profile already.
 function TT:UpdateConfig()
 	if not self.AllTooltips then return end -- not enabled
+
+	self:ApplyTooltipHolder()
 
 	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
 	for _, tooltip in pairs(self.AllTooltips) do
@@ -126,7 +109,7 @@ function TT:OnEnable()
 	GameTooltipStatusBar:SetPoint('BOTTOMRIGHT', GameTooltip, 'TOPRIGHT', 0, 7)
 
 	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
-	--self:SecureHook('GameTooltip_SetDefaultAnchor', 'UpdateGameTooltipPosition')
+	self:SetupTooltipPosition()
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
 	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
 	self:SecureHook(GameTooltip, 'GetUnit', 'GameTooltip_OnTooltipSetUnit')

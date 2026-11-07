@@ -10,10 +10,15 @@ st.defaults.experience.position = {
 	y_off = -7,
 }
 
+-- position is the default tooltip's edit mode holder (tooltipposition.lua). The
+-- tooltip grows from the holder's corner. attach_to_bags and attach_to_feed put
+-- it to the left of the bag window or the loot feed while they show.
 st.defaults.tooltip = {
 	template = 'thicktransparent',
 	font = 'normal',
 	attach_to_bags = true,
+	attach_to_feed = true,
+	position = { point = 'BOTTOMRIGHT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = -20, y_off = 20 },
 }
 
 st.defaults.skinning = {

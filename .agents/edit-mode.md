@@ -9,6 +9,7 @@ covers:
   - 'SaftUI-*/options.lua'
   - 'SaftUI-*/movers.lua'
   - 'SaftUI-Misc/Skinning/*Position.lua'
+  - 'SaftUI-Misc/tooltipposition.lua'
 ---
 
 # Edit mode and `/sui`
@@ -45,7 +46,7 @@ st:RegisterMover('key', {
   Size the holder from the config, place it from the profile, and anchor the real frame to it. The overlay then always has a footprint.
 
   A SaftUI frame that's only hidden, and still sized and placed from the profile while hidden, can be its own mover frame: the overlay follows its edges either way. SaftUI's action bars (`SaftUI-ActionBars/options.lua`) move their secure headers this way, also while a bar is disabled or hidden by its Visibility setting. Label the outline when the frame may not be visible (`mover.label:SetText`), as the action bars and the swing timer do.
-- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`) and chat (`SaftUI-Chat/chatframe.lua`) all follow the same pattern:
+- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`), chat (`SaftUI-Chat/chatframe.lua`) and the default tooltip's `GameTooltipDefaultContainer` (`SaftUI-Misc/tooltipposition.lua`; the tooltip itself is never moved) all follow the same pattern:
   - Use a holder.
   - Re-anchor the Blizzard frame with `st:SetPointDirect` / `st:ClearAllPointsDirect` in post-hooks on its `SetPoint` / `ClearAllPoints` / `UpdateSystem`.
   - Hide its `Selection` box with a `HookScript('OnShow', Hide)`.
