@@ -214,9 +214,13 @@ function MicroMenu:OnEnable()
     self:AddButton(self:SkinInstanceDifficulty())
     self:AddButton(self:SkinQueueButton())
 
-    for _,button in pairs(self.Buttons) do
-        self:HookScript(button, 'OnShow', 'UpdateButtons')
-        self:HookScript(button, 'OnHide', 'UpdateButtons')
+    -- The bar closes up around items that come and go. Most items are Blizzard
+    -- frames, so these are post-hooks (HookScript): Blizzard's own OnShow/OnHide
+    -- run first and untainted. AceHook's HookScript would replace the script
+    -- with a SaftUI closure, and Blizzard's handler would then run inside it.
+    for _, button in ipairs(self.Buttons) do
+        button:HookScript('OnShow', function() MicroMenu:UpdateButtons() end)
+        button:HookScript('OnHide', function() MicroMenu:UpdateButtons() end)
     end
 
     self:UpdateButtons()

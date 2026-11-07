@@ -23,14 +23,19 @@ function MicroMenu:SkinInstanceDifficulty()
     button.Bg:SetAllPoints()
     button.Bg:SetVertexColor(0.66, 0.40, 0.72)
 
-    st:Hide(MinimapCluster.InstanceDifficulty)
-    self:SecureHook(MinimapCluster.InstanceDifficulty, 'Update', 'UpdateDungeonDifficulty')
+    -- Blizzard's difficulty frame is hidden for good; its Update post-hook
+    -- fills in SaftUI's button. It has no OnShow or OnHide script, so hiding
+    -- it runs no Blizzard code, and the OnShow post-hook hides it again if
+    -- anything shows it.
+    local blizzard = MinimapCluster.InstanceDifficulty
+    blizzard:Hide()
+    blizzard:HookScript('OnShow', blizzard.Hide)
+    self:SecureHook(blizzard, 'Update', 'UpdateDungeonDifficulty')
 
     return button
 end
 
 function MicroMenu:UpdateDungeonDifficulty()
-    MinimapCluster.InstanceDifficulty:Hide()
     local name, instanceType, difficultyID, difficultyName, maxPlayers, dynamicDifficulty,
         isDynamic, instanceID, instanceGroupSize, LfgDungeonID = GetInstanceInfo()
 	local name, groupType, isHeroic, isChallengeMode, displayHeroic,

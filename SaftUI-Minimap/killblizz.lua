@@ -29,18 +29,8 @@ function MicroMenu:KillBlizz()
         st:Kill(MinimapBorderTop)
         --st:Kill(MinimapBackdrop)
     end
-    
-    local disable = CreateFrame('frame')
-    disable:RegisterEvent('ADDON_LOADED')
-    disable:SetScript('OnEvent', function(self, event, addon)
-        if addon == 'Blizzard_TimeManager' then
-            hooksecurefunc('TimeManagerClockButton_OnLoad', function(self)
-                self:Hide()
-            end)
-        end
-        self:UnregisterAllEvents()
-    end)
-    st:Kill(TimeManagerClockButton)
+
+    -- Blizzard's clock is hidden by KillBlizzard_TimeManager (clockbutton.lua)
     GameTimeFrame:Hide()
 end
 

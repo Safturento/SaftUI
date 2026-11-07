@@ -26,8 +26,15 @@ function MicroMenu:SkinExpansionButton()
     local button = ExpansionLandingPageMinimapButton
     st:SetBackdrop(button, 'thick')
     self:SecureHook(button, 'UpdateIcon', 'UpdateExpansionLandingPageButton')
-    button:SetScript('OnEnter', st.dummy)
-    button:SetScript('OnLeave', st.dummy)
+    -- Blizzard's tooltip stays off this button. Its scripts aren't replaced
+    -- (that would leave an addon function as Blizzard's OnEnter/OnLeave):
+    -- Blizzard's OnEnter runs, then this post-hook hides the tooltip it opened,
+    -- before it's drawn. Blizzard's OnLeave only hides the tooltip.
+    button:HookScript('OnEnter', function(self)
+        if GameTooltip:IsOwned(self) then
+            GameTooltip:Hide()
+        end
+    end)
     --MicroMenu:HookScript(button, 'OnEnter', 'ShowRenownTooltip')
     --MicroMenu:HookScript(button, 'OnLeave', 'HideGameTooltip')
     return button

@@ -5,13 +5,29 @@ local function Update(self)
     self.text:SetText(GameTime_GetTime())
 end
 
+-- Blizzard's clock is hidden with Hide() and kept hidden by a post-hook, since
+-- Blizzard shows it again when an alarm fires. It has no OnShow or OnHide
+-- script, so no Blizzard code runs from either call. Not st:Kill: that
+-- replaces the frame's Show, which Blizzard's alarm code then calls.
+local function HideBlizzardClock()
+    local clock = TimeManagerClockButton
+    clock:Hide()
+    clock:HookScript('OnShow', clock.Hide)
+end
+
 function MicroMenu:KillBlizzard_TimeManager()
+    if TimeManagerClockButton then
+        HideBlizzardClock()
+        return
+    end
+
+    -- Blizzard_TimeManager is load on demand
     local frame = CreateFrame('frame')
     frame:RegisterEvent("ADDON_LOADED")
     frame:SetScript('OnEvent', function(self, event, addon)
-        if event == 'ADDON_LOADED' and addon == 'Blizzard_TimeManager' then
-            st:Kill(TimeManagerClockButton)
+        if addon == 'Blizzard_TimeManager' then
             self:UnregisterAllEvents()
+            HideBlizzardClock()
         end
     end)
 end

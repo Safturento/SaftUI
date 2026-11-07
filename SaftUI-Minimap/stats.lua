@@ -29,7 +29,7 @@ function MicroMenu:CreateLatencyButton()
 
 
     self.Latency = latency
-    self:HookScript(latency, 'OnUpdate', 'UpdateLatency')
+    latency:SetScript('OnUpdate', function(frame) MicroMenu:UpdateLatency(frame) end)
 
     return latency
 end
@@ -87,9 +87,9 @@ function MicroMenu:CreateFramerateButton()
     framerate.text:SetText('999fps')
 
     self.Framerate = framerate
-    self:HookScript(framerate, 'OnUpdate', 'UpdateFramerate')
-    self:HookScript(framerate, 'OnEnter', 'ShowAddonStatsTooltip')
-    self:HookScript(framerate, 'OnLeave', function() GameTooltip:Hide() end)
+    framerate:SetScript('OnUpdate', function(frame) MicroMenu:UpdateFramerate(frame) end)
+    framerate:SetScript('OnEnter', function() MicroMenu:ShowAddonStatsTooltip() end)
+    framerate:SetScript('OnLeave', function() GameTooltip:Hide() end)
     return framerate
 end
 
