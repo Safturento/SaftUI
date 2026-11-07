@@ -671,7 +671,7 @@ function LT:InitializeLootFeed()
 		getPosition = function() return self.config.feed.position end,
 		setPosition = function(pos) self.config.feed.position = pos end,
 		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
-		options = function() return self:GetFeedMoverOptions() end,
+		configPath = { 'Loot', 'feed', 'general' },
 	})
 
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')

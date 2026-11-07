@@ -74,6 +74,6 @@ function MM:OnEnable()
         getPosition = function() return self.config.position end,
         setPosition = function(pos) self.config.position = pos end,
         apply = function() MM:UpdateConfig() end,
-        options = function() return MM:GetMoverOptions() end,
+        configPath = { 'Minimap', 'general' },
     })
 end

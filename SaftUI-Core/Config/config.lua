@@ -58,16 +58,36 @@ function Config:InitializeAceConfig()
 			st.EditModeFrames:Toggle()
 			return
 		end
-		AceConfig:RegisterOptionsTable(st.name, st.AceSkin:LinkOptions(st.name, {
-			name = st.name,
-			type='group',
-			args = self:GetOptionsTable(),
-		}))
-		-- SaftUI-styled window, registered as AceConfigDialog's frame for st.name
-		-- so NotifyChange refreshes it and Escape closes it.
-		st.AceSkin:CreateWindow(st.name, st.name)
-        AceConfigDialog:Open(st.name)
+		self:Open()
     end
+end
+
+local window -- the open /sui window, or nil
+
+-- Opens the /sui window, or reuses it if it's open, and selects the group at
+-- the given path of option keys (e.g. 'Minimap', 'general') in its tree. The
+-- window keeps the size and spot the user last gave it.
+function Config:Open(...)
+	AceConfig:RegisterOptionsTable(st.name, {
+		name = st.name,
+		type = 'group',
+		args = self:GetOptionsTable(),
+	})
+	-- SaftUI-styled window, registered as AceConfigDialog's frame for st.name
+	-- so NotifyChange refreshes it and Escape closes it.
+	window = st.AceSkin:CreateWindow(st.name, st.name, function()
+		window = nil
+		st.EditModeFrames:UpdateFooter()
+	end)
+	if select('#', ...) > 0 then
+		AceConfigDialog:SelectGroup(st.name, ...)
+	end
+	AceConfigDialog:Open(st.name)
+	st.EditModeFrames:UpdateFooter()
+end
+
+function Config:GetWindow()
+	return window
 end
 
 function Config:GetOptionsTable()

@@ -269,7 +269,7 @@ function LT:RegisterRollMover()
 		getPosition = function() return self.config.roll.position end,
 		setPosition = function(pos) self.config.roll.position = pos end,
 		apply = function() self:UpdateGroupLootConfig() end,
-		options = function() return self:GetRollMoverOptions() end,
+		configPath = { 'Loot', 'roll', 'general' },
 	})
 end
 

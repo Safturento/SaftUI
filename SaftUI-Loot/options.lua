@@ -34,11 +34,12 @@ local function BuildPosition(config_key, target, apply)
 	)
 end
 
-local function WrapMoverOptions(name, general, position)
-	position.inline = false -- a sidebar section, not an inline box
+local function Section(name, order, general, position)
+	position.inline = false -- a tree section, not an inline box
 	return {
 		name = name,
 		type = 'group',
+		order = order,
 		args = {
 			general = general,
 			position = position,
@@ -46,7 +47,7 @@ local function WrapMoverOptions(name, general, position)
 	}
 end
 
-function LT:GetRollMoverOptions()
+function LT:GetRollOptions()
 	local apply = function() LT:UpdateGroupLootConfig() end
 	local font = generators.font()
 	font.order = 6
@@ -66,10 +67,10 @@ function LT:GetRollMoverOptions()
 		},
 	}, apply)
 
-	return WrapMoverOptions('Loot Rolls', general, BuildPosition('roll', LT.rollAnchor, apply))
+	return Section('Rolls', 1, general, BuildPosition('roll', LT.rollAnchor, apply))
 end
 
-function LT:GetFeedMoverOptions()
+function LT:GetFeedOptions()
 	local apply = function() LT:UpdateLootFeedConfig() end
 	local font = generators.font()
 	font.order = 7
@@ -84,5 +85,21 @@ function LT:GetFeedMoverOptions()
 		font = font,
 	}, apply)
 
-	return WrapMoverOptions('Loot Feed', general, BuildPosition('feed', LT.feed, apply))
+	return Section('Feed', 2, general, BuildPosition('feed', LT.feed, apply))
+end
+
+-- Loot's section in the /sui tree: Rolls and Feed, each with General and
+-- Position. Clicking either frame in edit mode selects its General group (the
+-- mover's configPath). A section is only there once its frame exists (the
+-- roll frames need GroupLootContainer).
+function LT:GetConfigTable()
+	local args = {}
+	if self.rollAnchor then args.roll = self:GetRollOptions() end
+	if self.feed then args.feed = self:GetFeedOptions() end
+	if not next(args) then return end
+	return {
+		name = 'Loot',
+		type = 'group',
+		args = args,
+	}
 end

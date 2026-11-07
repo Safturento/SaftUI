@@ -54,8 +54,8 @@ function EM:UpdateDrag(mover)
 	drag.y = st:RoundToPixel(drag.y0 + dy, mover.def.frame)
 	ApplyOffsets(mover, drag.x, drag.y)
 
-	-- Keep open settings windows showing the live x/y. Throttled: each
-	-- refresh rebuilds their widgets. The drag's end commits as before.
+	-- Keep an open /sui showing the live x/y. Throttled: each refresh
+	-- rebuilds its widgets. The drag's end commits as before.
 	local now = GetTime()
 	if (drag.x ~= drag.shownX or drag.y ~= drag.shownY)
 			and now - (drag.shownAt or 0) >= LIVE_INTERVAL then
@@ -127,7 +127,11 @@ function EM:CreateMover(key, def)
 	overlay:SetScript('OnDragStop', function() EM:StopDrag(mover) end)
 	overlay:SetScript('OnClick', function()
 		if mover.dragged then return end -- a drag, not a click
-		EM:Select(mover)
+		if EM.selected == mover then
+			EM:ShowSettings(mover) -- e.g. /sui was closed since it was selected
+		else
+			EM:Select(mover) -- 'Selected' shows its settings
+		end
 	end)
 
 	SetBorderColor(mover, false)

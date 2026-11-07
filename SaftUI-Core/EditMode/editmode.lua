@@ -91,7 +91,24 @@ function EM:CommitPosition(mover, x, y)
 	self:Fire('PositionChanged', mover)
 end
 
+-- Shows the mover's section in /sui, opening /sui if it's closed.
+function EM:ShowSettings(mover)
+	local path = mover.def.configPath
+	if path then
+		st.Config:Open(unpack(path))
+	end
+end
+
+-- Selecting a frame shows its settings. Deselecting leaves /sui as it is.
+EM:On('Selected', function(mover)
+	if mover then
+		EM:ShowSettings(mover)
+	end
+end)
+
 -- Registers a movable frame. See the EditMode spec for the MoverDef shape.
+-- def.configPath is the option keys from the /sui root to the group shown
+-- when the frame is clicked, e.g. { 'Minimap', 'general' }.
 function st:RegisterMover(key, def)
 	assert(type(key) == 'string', 'RegisterMover: key must be a string')
 	assert(def and def.frame and def.getPosition and def.setPosition and def.apply,
