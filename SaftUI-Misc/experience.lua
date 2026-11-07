@@ -23,6 +23,8 @@ end
 
 -- Stacks the shown bars and fits the container's height around them.
 function XP:StackBars()
+	local barHeight = st:RoundToPixel(self.config.height, self.container)
+	local spacing = st:RoundToPixel(self.config.spacing, self.container)
 	local num_bars = 0
 	local prev
 	for _,bar in pairs(self.bars) do
@@ -31,7 +33,7 @@ function XP:StackBars()
 
 			bar:ClearAllPoints()
 			if prev then
-				bar:SetPoint('TOP', prev, 'BOTTOM', 0, -self.config.spacing)
+				bar:SetPoint('TOP', prev, 'BOTTOM', 0, -spacing)
 			else
 				bar:SetPoint('TOP', self.container)
 			end
@@ -39,7 +41,12 @@ function XP:StackBars()
 		end
 	end
 
-	self.container:SetHeight(num_bars*(self.config.height+self.config.spacing) - self.config.spacing)
+	-- With no bar shown the container keeps one bar's height, so edit mode's
+	-- overlay still has something to grab.
+	local height = num_bars > 0
+		and num_bars*(barHeight+spacing) - spacing
+		or barHeight
+	self.container:SetHeight(height)
 end
 
 function XP:Update()
@@ -52,24 +59,80 @@ function XP:Update()
 	st:SafeReposition(self.container, 'experience_stack', function() self:StackBars() end)
 end
 
+-- The position used to be saved as a { point, frame, rel_point, x, y } array.
+-- Converts that to the named shape in place, so the saved spot is kept. AceDB
+-- fills the named keys with defaults, so every one is overwritten.
+function XP:MigratePosition()
+	local pos = self.config.position
+	if pos[1] == nil then return end
+	pos.point, pos.frame, pos.rel_point, pos.x_off, pos.y_off = pos[1], pos[2], pos[3], pos[4] or 0, pos[5] or 0
+	for i = 1, 5 do
+		pos[i] = nil
+	end
+end
+
+-- The experience section in the /sui tree. Clicking the bars in edit mode
+-- selects its General group (the mover's configPath).
+function XP:GetConfigTable()
+	-- Getters and setters go through self.config, which a profile change
+	-- re-points at the new profile's table.
+	local position = st.Config.generators.position(2, true,
+		function(key)
+			self:MigratePosition()
+			return self.config.position[key]
+		end,
+		function(key, value)
+			self.config.position[key] = value
+			self:UpdateConfig()
+		end,
+		self.container
+	)
+	position.inline = false -- a tree section, not an inline box
+	return {
+		name = 'Experience',
+		type = 'group',
+		args = {
+			general = {
+				name = 'General',
+				type = 'group',
+				order = 1,
+				get = function(info) return self.config[info[#info]] end,
+				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
+				args = {
+					template = st.Config.generators.template(1),
+					width = st.Config.generators.range(2, 'Width', 50, 800, 1),
+					height = st.Config.generators.range(3, 'Height', 2, 60, 1),
+					spacing = st.Config.generators.range(4, 'Spacing', 0, 30, 1),
+					rest_alpha = st.Config.generators.range(5, 'Rested bar alpha', 0, 1, 0.05),
+				},
+			},
+			position = position,
+		},
+	}
+end
+
 -- Applies the profile's size, spacing, template, colors and position. Runs on
 -- enable and on every profile change.
 function XP:UpdateConfig()
 	if not self.bars then return end -- not enabled
+	self:MigratePosition()
 
 	-- Size, position and frame levels; in combat these wait for the end of
 	-- combat if a protected frame is anchored to the container or a bar.
 	st:SafeReposition(self.container, 'experience', function()
-		self.container:SetWidth(self.config.width)
+		-- Whole pixels (sizes are rounded like positions)
+		local width = st:RoundToPixel(self.config.width, self.container)
+		local height = st:RoundToPixel(self.config.height, self.container)
+		self.container:SetWidth(width)
 		self.container:ClearAllPoints()
-		self.container:SetPoint(unpack(self.config.position))
+		self.container:SetPoint(st:UnpackPoint(self.config.position))
 
 		self.bars.experience:SetFrameLevel(5)
-		self.bars.experience:SetSize(self.config.width, self.config.height)
+		self.bars.experience:SetSize(width, height)
 		self.bars.experience.rested:SetFrameLevel(3)
-		self.bars.experience.rested:SetSize(self.config.width, self.config.height)
+		self.bars.experience.rested:SetSize(width, height)
 		self.bars.reputation:SetFrameLevel(5)
-		self.bars.reputation:SetSize(self.config.width, self.config.height)
+		self.bars.reputation:SetSize(width, height)
 	end)
 
 	self.bars.experience:SetStatusBarTexture(st.BLANK_TEX)
@@ -290,6 +353,13 @@ function XP:HideBlizz()
 			if not hookedBlizzBars[frame] then
 				hookedBlizzBars[frame] = true
 				frame:HookScript('OnShow', HideBlizzBar)
+				-- Blizzard's Edit Mode box for the container no longer
+				-- controls anything, so keep it hidden. HookScript only.
+				if frame.Selection then
+					frame.Selection:HookScript('OnShow', function(selection)
+						selection:Hide()
+					end)
+				end
 			end
 			if frame:IsShown() then
 				HideBlizzBar(frame)
@@ -307,7 +377,8 @@ function XP:OnEnable()
 
 	local container = CreateFrame('frame', st.name ..'_Experience', UIParent)
 	container:SetWidth(self.config.width)
-	container:SetPoint(unpack(self.config.position))
+	self:MigratePosition()
+	container:SetPoint(st:UnpackPoint(self.config.position))
 	self:HookScript(container, 'OnEnter')
 	self:HookScript(container, 'OnLeave')
 	self.container = container
@@ -334,4 +405,16 @@ function XP:OnEnable()
 
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'Update')
 	self:RegisterEvent('UPDATE_FACTION', 'Update')
+
+	st:RegisterMover('experience', {
+		frame = self.container,
+		label = 'Experience',
+		getPosition = function()
+			self:MigratePosition()
+			return self.config.position
+		end,
+		setPosition = function(pos) self.config.position = pos end,
+		apply = function() XP:UpdateConfig() end,
+		configPath = { 'Experience', 'general' },
+	})
 end

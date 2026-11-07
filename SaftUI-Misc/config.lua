@@ -1,5 +1,15 @@
 local st = SaftUI
 
+-- The experience bars' default spot, in the named position shape (Core's default
+-- is an array). Same spot: under the minimap, right edges lined up.
+st.defaults.experience.position = {
+	point = 'TOPRIGHT',
+	frame = 'Minimap',
+	rel_point = 'BOTTOMRIGHT',
+	x_off = 0,
+	y_off = -7,
+}
+
 st.defaults.actionbars = {
 	font = 'pixel',
 	hide_empty = true,
