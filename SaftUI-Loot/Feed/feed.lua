@@ -635,11 +635,15 @@ function LT:UpdateLootFeedConfig()
 		st:SkinIcon(item.icon)
 		st:SetBackdrop(item, config.template)
 
-		-- Along the bottom edge next to the icon, placed like LT:UpdateRollFrame's timer.
+		-- Along the bottom edge of the text panel. The panel's visible left edge is
+		-- the icon's border, which st:SetBackdrop draws outside the icon (2px for
+		-- thick templates, 1px otherwise), so start right after it and run to the
+		-- entry's right edge.
+		local iconBorder = item.icon.thick and 2 or 1
 		item.progressBar:ClearAllPoints()
-		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', config.spacing, 0)
+		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', iconBorder, 0)
+		item.progressBar:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 0, 0)
 		item.progressBar:SetHeight(1)
-		item.progressBar:SetWidth(config.width - config.item_height - config.spacing)
 	end
 
 	self.feed.overlay:SetPoint('BOTTOMLEFT', self.feed)
