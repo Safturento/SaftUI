@@ -381,3 +381,62 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - Switching profiles re-applies them.
   - No errors or taint in combat.
 - [ ] **Step 7: Commit:** `misc: make forever's swing timer bars saftui movers`
+
+---
+
+### Task 9: BuffFrame and DebuffFrame layout owned by SaftUI and registered as movers
+
+*Added 2026-11-07 at the user's request: "can we setup configs for the BuffFrame and DebuffFrame to be able to configure text (position, size, font, etc.) spacing, wrap count (Icon Limit in blizzard options), grow direction (all four directions) icon size, and general position and add them to edit mode?"*
+
+**Approach (controller's call):**
+- Keep Blizzard's `BuffFrame` and `DebuffFrame`. They are Edit Mode system frames built from `AuraFrameEditModeTemplate`, and their aura buttons are plain, non-secure `Button`s (`AuraButtonTemplate`). SaftUI takes over their position and layout, the same way it took over the swing timer bars (Task 8).
+- Rejected alternative: SaftUI's own secure aura headers. That means more code and re-implementing Blizzard's collapse button, private auras, weapon enchants and dispel-type borders.
+- Blizzard's layout fields (`isHorizontal`, `iconStride`, `iconPadding`, `addIconsToRight`, `addIconsToTop`, `maxAuras`) are Lua state written by Blizzard's Edit Mode settings, so SaftUI must not write them. SaftUI re-lays out the aura buttons itself in a post-hook instead.
+
+**Files:**
+- Create: `SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua`, loaded from `SaftUI-Misc/Skinning/load.xml` after `Blizzard_BuffFrame.lua`.
+- Modify: `SaftUI-Misc/config.lua`, adding `buffs` and `debuffs` defaults.
+- Modify: `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` only where its text and icon styling must follow the new settings.
+
+**Interfaces:**
+- **Consumes:**
+  - `st:RegisterMover(key, def)` with `def = { frame, label, getPosition, setPosition, apply, configPath }`
+  - `st.Config.generators.position(order, true, get, set, target)`, plus `range` and font helpers
+  - `st:BindModuleConfig`
+  - `st:SafeReposition(frame, key, fn)` and `st:CanMoveNow(frame)` (SaftUI-Core/api.lua)
+  - `st:SetPointDirect` / `st:ClearAllPointsDirect`, for frames whose `SetPoint` is a Blizzard Lua override
+  - The pattern to follow: `SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua` (holders, post-hooks, the hidden Blizzard Edit Mode box, `/sui` section, `UpdateConfig`)
+- **Produces:**
+  - Movers `'buffs'` and `'debuffs'`.
+  - A `/sui` section "Auras" with Buffs and Debuffs. Each has:
+    - **General:** icon size, spacing (x and y), icons per row ("wrap count", like Blizzard's Icon Limit/Wrap), max icons shown, and grow direction. Grow direction covers all four primary directions (left, right, up, down), plus the wrap direction perpendicular to it.
+    - **Text:** duration and stack count, each with font, size, outline, anchor point and x/y offset.
+    - **Position.**
+
+- [ ] **Step 1: Research.** In the forever source (`Interface/AddOns/Blizzard_BuffFrame/`, `Blizzard_EditMode`), find:
+  - every path that lays out the aura buttons: `AuraContainerMixin:UpdateGridLayout`, `AuraFrameMixin:UpdateGridLayout`/`UpdateSize`, the expand/collapse button, Edit Mode setting handlers, and `ExternalDefensivesFrame`, which is out of scope but must not break
+  - how `BuffFrame` and `DebuffFrame` are positioned, including whether they are managed-frame-container children
+  - which Blizzard settings SaftUI replaces
+- [ ] **Step 2: Own position.** Use SaftUI holder frames sized to the computed grid, as in Task 8.
+- [ ] **Step 3: Own layout.**
+  - In a post-hook after Blizzard's grid layout, re-anchor every shown aura button by SaftUI's settings using plain widget methods: size, spacing, per-row count, grow and wrap direction.
+  - Hide buttons beyond the max-shown setting.
+  - Keep Blizzard's ordering (sort, weapon enchants first, and so on).
+  - Every position and size goes through `st:RoundToPixel`.
+- [ ] **Step 4: Text.** Style the duration and count font strings per the Text settings, re-applying after Blizzard updates them (`UpdateDuration`, count updates). Keep Blizzard's duration color, such as the expiring warning, unless the existing skin already overrides it.
+- [ ] **Step 5: Hide Blizzard's Edit Mode boxes** for `BuffFrame` and `DebuffFrame`, as with the minimap. List which Blizzard settings become unreachable, and rebuild any of those that matter here in SaftUI.
+- [ ] **Step 6: Combat.** Aura buttons aren't protected, but use `st:CanMoveNow`/`st:SafeReposition` for the holders and frames in case something protected is anchored to them. Layout must keep working in combat, since auras change constantly.
+- [ ] **Step 7: Self-review.**
+  - No fields or methods written onto Blizzard frames or tables.
+  - No `st:Kill`.
+  - No arithmetic on possibly secret values without `issecretvalue`.
+  - Both clients covered: Forever 16001 and retail 120000. Check the retail source too.
+- [ ] **Step 8: In-game check (user, Forever).**
+  - `/sui edit` shows Buffs and Debuffs outlines. Dragging moves them, and clicking opens their `/sui` section.
+  - Each grow direction and wrap direction lays icons out correctly as buffs come and go, in and out of combat.
+  - Icon size, spacing, per-row and max apply live.
+  - Text settings apply live.
+  - Right-click cancelling a buff still works out of combat.
+  - Weapon enchants and the collapse button still work.
+  - `/reload` and profile switches keep everything.
+- [ ] **Step 9: Commit:** `misc: make the buff and debuff frames saftui movers with layout settings`
