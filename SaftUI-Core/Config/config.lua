@@ -122,7 +122,9 @@ end
 
 function Config:UpdateConfig()
 	for name, module in pairs(st.modules) do
-		if module.UpdateConfig then
+		-- Config is a module too; calling itself here recursed until the stack
+		-- overflowed on every profile change, copy or reset.
+		if module ~= self and module.UpdateConfig then
 			module:UpdateConfig()
 		end
 	end
