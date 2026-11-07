@@ -169,7 +169,7 @@ function INV:GetMoverIds()
 		tinsert(ids, 'combinedbank')
 	else
 		tinsert(ids, 'bank')
-		if st.retail and self.bagIds.warband and #self.bagIds.warband > 0 then
+		if self:HasWarbandBank() then
 			tinsert(ids, 'warband')
 		end
 	end

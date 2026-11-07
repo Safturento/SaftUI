@@ -45,6 +45,13 @@ end
 
 INV.bagIds = BAG_IDS
 
+-- Whether this client has a warband bank worth showing: retail only (Forever
+-- defines the account tabs and Enum.BankType.Account but has no warband bank
+-- UI here) and with warband tabs to hold items.
+function INV:HasWarbandBank()
+	return st.retail and not st.forever and self.bagIds.warband ~= nil and #self.bagIds.warband > 0
+end
+
 INV.containers = {}
 INV.OnUseItems = {}
 

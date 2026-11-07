@@ -215,9 +215,11 @@ function INV:CloseBank()
 	self.containers.bank:Hide()
 	self:HideBags()
 
-	if AccountBankPanel then
-        AccountBankPanel.CloseAllBankPopups()
-    end
+	-- Blizzard's bank panel (retail's BankFrame.BankPanel, Forever's too) owns the
+	-- tab purchase and settings popups; close them with the bank.
+	if BankPanel and BankPanel.CloseAllBankPopups then
+		BankPanel:CloseAllBankPopups()
+	end
 
 	if self:GetContainer('bag').footer.depositButton then
 		self:GetContainer('bag').footer.depositButton:Hide()

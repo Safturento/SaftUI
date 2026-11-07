@@ -133,21 +133,11 @@ function INV:InitializeFooter(container)
 
 		container.footer.gold = gold
 		self:UpdateGold()
-	elseif container.id == 'bank' and st.retail then
-		local reagentButton = st:CreateButton('ReagentBankButton', container, 'Reagents')
-		reagentButton:SetPoint('BOTTOMRIGHT', container.footer, -6, 6)
-		reagentButton:SetScript('OnClick', function()
-			if not self.containers.reagent then
-				self:InitializeReagentBank()
-			else
-				ToggleFrame(self.containers.reagent)
-			end
-		end)
-		reagentButton:SetSize(80, 16)
-		reagentButton:SetFrameLevel(90)
-
+	elseif container.id == 'bank' and self:HasWarbandBank() then
+		-- Neither client has a reagent bank anymore, so the separate bank only
+		-- needs the way into the warband window.
 		local warbandButton = st:CreateButton('WarbandBankButton', container, 'Warband Bank')
-		warbandButton:SetPoint('BOTTOMRIGHT', reagentButton, 'BOTTOMLEFT', -7, 0)
+		warbandButton:SetPoint('BOTTOMRIGHT', container.footer, -6, 6)
 		warbandButton:SetScript('OnClick', function()
 			if not self.containers.warband then
 				self:InitializeWarbandBank()
@@ -268,10 +258,12 @@ function INV:DisplayServerGold()
 	end
 
 
-	local warbandGold = C_Bank.FetchDepositedMoney(Enum.BankType.Account)
-	totalGold = totalGold + warbandGold
-	GameTooltip:AddLine(' ')
-	GameTooltip:AddDoubleLine("Warband bank", st.StringFormat:GoldFormat(warbandGold))
+	if self:HasWarbandBank() then
+		local warbandGold = C_Bank.FetchDepositedMoney(Enum.BankType.Account)
+		totalGold = totalGold + warbandGold
+		GameTooltip:AddLine(' ')
+		GameTooltip:AddDoubleLine("Warband bank", st.StringFormat:GoldFormat(warbandGold))
+	end
 
 	GameTooltip:AddLine(' ')
 	GameTooltip:AddDoubleLine('Total', st.StringFormat:GoldFormat(totalGold))
