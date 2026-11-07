@@ -118,7 +118,7 @@ local function AddGroup(unitframe, auras, aura_type)
 		filter = filter .. '|PLAYER'
 	end
 
-	auras:AddGroup(filter, {
+	auras.groupKey = auras:AddGroup(filter, {
 		maxFrameCount = config.max,
 		size = getButtonSize(unitframe, config),
 		showCount = true,
@@ -160,6 +160,12 @@ local function UpdateConfig(unitframe, aura_type)
 
 	if not auras.hasGroup then
 		AddGroup(unitframe, auras, aura_type)
+	else
+		-- oUF copies the spacing into the group's layout only in AddGroup.
+		auras:SetAuraGroupLayout(auras.groupKey, {
+			elementSpacing = config.spacing,
+			lineSpacing = config.spacing,
+		})
 	end
 
 	for _, button in ipairs(buttonsByElement[auras] or {}) do
