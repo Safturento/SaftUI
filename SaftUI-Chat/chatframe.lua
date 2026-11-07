@@ -154,7 +154,7 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 end
 
 function CHT:OnEnable()
-	self.config =  st.config.profile.chat
+	st:BindModuleConfig(self, 'chat')
 
 	-- Kill stuff
 	st:Kill(ChatFrameMenuButton)

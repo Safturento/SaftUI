@@ -232,7 +232,7 @@ function XP:OnLeave()
 end
 
 function XP:OnEnable()
-	self.config = st.config.profile.experience
+	st:BindModuleConfig(self, 'experience')
 	self.colors = st.config.profile.colors
 
 	local container = CreateFrame('frame', st.name ..'_Experience', UIParent)

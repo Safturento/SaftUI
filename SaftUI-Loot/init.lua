@@ -4,7 +4,7 @@ st.Loot = LT
 LT.DEBUG = false
 
 function LT:OnEnable()
-	self.config = st.config.profile.loot
+	st:BindModuleConfig(self, 'loot')
 
 	LOOTFRAME_AUTOLOOT_RATE = 0.1
 	LOOTFRAME_AUTOLOOT_DELAY = 0.1

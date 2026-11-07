@@ -16,7 +16,7 @@ function MM:GarrisonMinimap_ShowCovenantCallingsNotification(ExpansionLandingPag
 end
 
 function MM:OnEnable()
-    self.config = st.config.profile.minimap
+    st:BindModuleConfig(self, 'minimap')
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
     -- TODO: figure out how to stop cluster resizing

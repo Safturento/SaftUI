@@ -100,7 +100,7 @@ function TT:AddItemInfo(self)
 end
 
 function TT:OnEnable()
-	self.config = st.config.profile.tooltip
+	st:BindModuleConfig(self, 'tooltip')
 
 	GameTooltipStatusBar:SetStatusBarTexture(st.BLANK_TEX)
 	GameTooltipStatusBar:ClearAllPoints()

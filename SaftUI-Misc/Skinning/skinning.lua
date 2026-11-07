@@ -3,7 +3,7 @@ local SK = st:NewModule('Skinning')
 SK:SetDefaultModuleLibraries('AceEvent-3.0', 'AceHook-3.0')
 
 function SK:OnEnable()
-	self.config = st.config.profile.skinning
+	st:BindModuleConfig(self, 'skinning')
 end
 
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)

@@ -140,7 +140,7 @@ end
 function AB:OnEnable()
     if not st.retail then return end
 
-	self.config = st.config.profile.actionbars
+	st:BindModuleConfig(self, 'actionbars')
 
     if MainMenuBar and MainMenuBar.EndCaps then
         st:Kill(MainMenuBar.EndCaps)

@@ -120,7 +120,23 @@ function Config:GetOptionsTable()
     return options
 end
 
+-- Points module.config at st.config.profile[key] and remembers the key, so a
+-- profile change can re-point it (see Config:UpdateConfig).
+function st:BindModuleConfig(module, key)
+	module.configKey = key
+	module.config = st.config.profile[key]
+	return module.config
+end
+
 function Config:UpdateConfig()
+	-- On a profile change AceDB switches to the new profile's tables and strips
+	-- defaults from the old ones, so cached module.config references go stale
+	-- (nil fields). Re-point every bound module before any of them updates.
+	for _, module in pairs(st.modules) do
+		if module.configKey then
+			module.config = st.config.profile[module.configKey]
+		end
+	end
 	for name, module in pairs(st.modules) do
 		-- Config is a module too; calling itself here recursed until the stack
 		-- overflowed on every profile change, copy or reset.

@@ -124,7 +124,7 @@ function MicroMenu:SkinTrackingButton()
 end
 
 function MicroMenu:OnEnable()
-    self.config = st.config.profile.micromenu
+    st:BindModuleConfig(self, 'micromenu')
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)
     self.Container:SetPoint('TOPLEFT', UIParent, st.CLAMP_INSET, -st.CLAMP_INSET)
     self.Container:SetSize(1,1)
