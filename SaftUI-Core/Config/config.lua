@@ -144,6 +144,19 @@ function st:BindModuleConfig(module, key)
 	return module.config
 end
 
+-- Runs fn, reporting an error instead of raising it, so one failing update
+-- doesn't stop the rest of a profile change.
+local function Safely(fn)
+	xpcall(fn, geterrorhandler())
+end
+
+local function UpdateModule(module)
+	if module and module.UpdateConfig then
+		Safely(function() module:UpdateConfig() end)
+	end
+end
+
+-- Runs on every profile change, copy or reset.
 function Config:UpdateConfig()
 	-- On a profile change AceDB switches to the new profile's tables and strips
 	-- defaults from the old ones, so cached module.config references go stale
@@ -153,11 +166,37 @@ function Config:UpdateConfig()
 			module.config = st.config.profile[module.configKey]
 		end
 	end
+
+	-- Shared Core config first: modules copy font files out of the font objects
+	-- (e.g. chat), and lay out around header heights (e.g. bags).
+	local fonts = st:GetModule('Fonts', true)
+	UpdateModule(fonts)
+	Safely(function() st:UpdateHeader() end)
+
+	-- Edit mode last, so every mover ends at the new profile's position.
+	local editMode = st.EditModeFrames
 	for name, module in pairs(st.modules) do
 		-- Config is a module too; calling itself here recursed until the stack
 		-- overflowed on every profile change, copy or reset.
-		if module ~= self and module.UpdateConfig then
-			module:UpdateConfig()
+		if module ~= self and module ~= fonts and module ~= editMode then
+			UpdateModule(module)
 		end
+	end
+	UpdateModule(editMode)
+
+	-- An open /sui window's option table was built for the old profile (some
+	-- getters and setters, and values read while building it). Rebuild it;
+	-- re-registering it redraws the window and keeps the selected section.
+	if window then
+		AceConfig:RegisterOptionsTable(st.name, {
+			name = st.name,
+			type = 'group',
+			args = self:GetOptionsTable(),
+		})
+	end
+	self:Refresh()
+
+	if InCombatLockdown() then
+		st:Print('Profile changed in combat. Unit frames, bags and action bars finish updating when combat ends.')
 	end
 end

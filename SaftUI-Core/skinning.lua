@@ -134,8 +134,14 @@ local function OnUpdateCooldown(self)
 		self.text:SetText(st.StringFormat:ToTime(remaining))
 	end
 end
+-- Cooldowns st:SkinCooldown has done, so skinning a button again (e.g. on a
+-- profile change) doesn't add another text. Weak keys: nothing is written onto
+-- the (often Blizzard) cooldown to remember it.
+local skinnedCooldowns = setmetatable({}, { __mode = 'k' })
+
 function st:SkinCooldown(button, cooldown)
-	if cooldown.initialized then return end
+	if skinnedCooldowns[cooldown] then return end
+	skinnedCooldowns[cooldown] = true
 	cooldown:SetHideCountdownNumbers(true)
 	local text = cooldown:CreateFontString(nil, 'OVERLAY')
 	text:SetFontObject(st:GetFont('pixel'))
@@ -242,32 +248,40 @@ function st:SkinActionButton(button, config)
 		st:SetInside(normal, inset)
 	end
 
+	-- These are made once; skinning again (e.g. on a profile change) only
+	-- re-applies their color and inset, which follow the template.
 	if button.SetHighlightTexture and not button.hover then
 		local hover = button:CreateTexture(nil, 'OVERLAY')
 		hover:SetTexture(st.BLANK_TEX)
-		-- hover:SetVertexColor(1, 1, 1, .1)
-		hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
-		st:SetInside(hover, inset)
 		button.hover = hover
 		button:SetHighlightTexture(hover)
+	end
+	if button.hover then
+		-- button.hover:SetVertexColor(1, 1, 1, .1)
+		button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
+		st:SetInside(button.hover, inset)
 	end
 
 	if button.SetPushedTexture and not button.pushed then
 		local pushed = button:CreateTexture(nil, 'OVERLAY')
 		pushed:SetTexture(st.BLANK_TEX)
 		pushed:SetVertexColor(0, 0, 0, .1)
-		st:SetInside(pushed, inset)
 		button.pushed = pushed
 		button:SetPushedTexture(pushed)
+	end
+	if button.pushed then
+		st:SetInside(button.pushed, inset)
 	end
 
 	if button.SetDisabledTexture and not button.disabled then
 		local disabled = button:CreateTexture(nil, 'OVERLAY')
 		disabled:SetTexture(st.BLANK_TEX)
 		disabled:SetVertexColor(0, 0, 0, .4)
-		st:SetInside(disabled, inset)
 		button.disabled = disabled
 		button:SetDisabledTexture(disabled)
+	end
+	if button.disabled then
+		st:SetInside(button.disabled, inset)
 	end
 end
 
@@ -291,28 +305,37 @@ function st:SkinEditBox(editbox, template, font)
 	if editbox.Instructions then
 		editbox.Instructions:ClearAllPoints()
 		editbox.Instructions:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
-		if font then
-			editbox.Instructions:SetFontObject(st:GetFont(font))
-		end
 	end
 
-	st:SetBackdrop(editbox, template)
-
-	local text, _, _, _, header = editbox:GetRegions()
-	if font then
-		text:SetFontObject(st:GetFont(font or 'normal'))
-		-- if header then
-		-- 	header:SetFontObject(st:GetFont(font))
-		-- end
-	end
+	st:StyleEditBox(editbox, template, font)
 
 	editbox:HookScript('OnEditFocusGained', function(self)
 		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
 	end)
 
+	-- Restore whichever template the box has now (st:StyleEditBox may have
+	-- changed it since), not the one it was skinned with.
 	editbox:HookScript('OnEditFocusLost', function(self)
-		st:SetBackdrop(self, template)
+		st:SetBackdrop(self, self.backdrop and self.backdrop.template or template)
 	end)
+end
+
+-- Applies a template and font to an edit box st:SkinEditBox skinned. Safe to
+-- call again (e.g. on a profile change): it adds no hooks or regions.
+function st:StyleEditBox(editbox, template, font)
+	st:SetBackdrop(editbox, template or 'thick')
+
+	if font then
+		local fontObject = st:GetFont(font)
+		if editbox.Instructions then
+			editbox.Instructions:SetFontObject(fontObject)
+		end
+		local text, _, _, _, header = editbox:GetRegions()
+		text:SetFontObject(fontObject)
+		-- if header then
+		-- 	header:SetFontObject(fontObject)
+		-- end
+	end
 end
 
 function st:EnableHorizontalResizing(frame, ...)

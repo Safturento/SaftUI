@@ -139,6 +139,7 @@ end
 
 --Creates a dragable header for a frame
 st.headers = {}
+local headerTitles = {} -- header -> the title st:CreateHeader put on it
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
 	frame:SetClampedToScreen(true)
@@ -176,6 +177,7 @@ function st:CreateHeader(frame, title, close_button)
 		frame.title:ClearAllPoints()
 		frame.title:SetPoint('CENTER', header)
 		frame.title:SetJustifyH('CENTER')
+		headerTitles[header] = frame.title
 	end
 
 	if close_button then frame.close_button = close_button end
@@ -195,19 +197,27 @@ function st:CreateHeader(frame, title, close_button)
 	return header
 end
 
+-- Applies the profile's header height and font to a header made by
+-- st:CreateHeader. With no header, updates every header and footer.
 function st:UpdateHeader(header)
 	if not header then
-		for header in self.headers do
-			self:UpdateHeader(header)
+		for _, h in ipairs(self.headers) do
+			self:UpdateHeader(h)
 		end
+		for _, footer in ipairs(self.footers) do
+			footer:SetHeight(st.config.profile.headers.height)
+		end
+		return
 	end
 
 	header:SetHeight(st.config.profile.headers.height)
-	if header.title then
-		header.title:SetFontObject(st:GetFont(st.config.profile.headers.font))
+	local title = headerTitles[header]
+	if title then
+		title:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	end
 end
 
+st.footers = {}
 function st:CreateFooter(frame)
 	local footer = st:CreateFrame('Frame', nil, frame)
 	footer:SetPoint('BOTTOMLEFT')
@@ -215,6 +225,7 @@ function st:CreateFooter(frame)
 	footer:SetHeight(st.config.profile.headers.height)
 	st:SetTemplate(footer, 'highlight')
 	frame.footer = footer
+	table.insert(st.footers, footer)
 end
 
 function st:CreateCloseButton(frame)

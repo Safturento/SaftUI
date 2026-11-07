@@ -254,6 +254,29 @@ function st:Hide(frame, reparent)
    if reparent then frame:SetParent(st.HiddenFrame) end
 end
 
+-- Work that touches protected (secure) frames can't run in combat. In combat,
+-- st:QueueAfterCombat queues fn under key and returns true; fn then runs once
+-- on PLAYER_REGEN_ENABLED. Queuing the same key again replaces the earlier fn,
+-- so repeated profile changes in one fight refresh once. Out of combat it
+-- queues nothing and returns false, and the caller goes ahead now.
+local combatQueue = {}
+local combatQueueFrame = CreateFrame('Frame')
+combatQueueFrame:SetScript('OnEvent', function(self)
+	self:UnregisterEvent('PLAYER_REGEN_ENABLED')
+	local queued = combatQueue
+	combatQueue = {}
+	for _, fn in pairs(queued) do
+		xpcall(fn, geterrorhandler())
+	end
+end)
+
+function st:QueueAfterCombat(key, fn)
+	if not InCombatLockdown() then return false end
+	combatQueue[key] = fn
+	combatQueueFrame:RegisterEvent('PLAYER_REGEN_ENABLED')
+	return true
+end
+
 function st:EnableMoving(frame)
 	frame:EnableMouse(true)
 	frame:SetMovable(true)

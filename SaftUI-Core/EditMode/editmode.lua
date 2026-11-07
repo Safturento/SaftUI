@@ -91,6 +91,20 @@ function EM:CommitPosition(mover, x, y)
 	self:Fire('PositionChanged', mover)
 end
 
+-- A profile change: every mover's frame goes to the new profile's position.
+-- A drag in progress is dropped without committing, since its start offsets
+-- came from the old profile. Config:UpdateConfig runs this after every other
+-- module's UpdateConfig, so it has the last word on positions.
+function EM:UpdateConfig()
+	for _, mover in pairs(self.movers) do
+		if mover.drag then
+			mover.drag = nil
+			mover.overlay:SetScript('OnUpdate', nil)
+		end
+		mover.def.apply()
+	end
+end
+
 -- Shows the mover's section in /sui, opening /sui if it's closed.
 function EM:ShowSettings(mover)
 	local path = mover.def.configPath
