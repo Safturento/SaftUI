@@ -126,11 +126,16 @@ local function UpdateContainerSlots(container)
 	empty, total = INV:GetNumContainerSlots(INV.bagIds.bank)
 	text = text .. ('%d/%d '):format(total - empty, total)
 
+	-- The second count is the warband bank. Leave it out when it has no slots
+	-- (no warband bank on this client, or no tabs bought) instead of showing a
+	-- useless 0/0.
 	empty, total = INV:GetNumContainerSlots(INV.bagIds.warband)
-	text = text .. st.StringFormat:ColorString(
-			(('%d/%d'):format(total - empty, total)),
-			st.config.profile.colors.text.cyan:GetRGB()
-	)
+	if total > 0 then
+		text = text .. st.StringFormat:ColorString(
+				(('%d/%d'):format(total - empty, total)),
+				st.config.profile.colors.text.cyan:GetRGB()
+		)
+	end
 
 	container.footer.slots:SetText(text)
 end

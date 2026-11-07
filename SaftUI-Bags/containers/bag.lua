@@ -216,13 +216,17 @@ local function UpdateContainerSlots(container)
      })
 	text = text .. ('%d/%d '):format(total - empty, total)
 
+	-- The second count is the reagent bag. Leave it out when there is none
+	-- equipped instead of showing a useless 0/0.
 	empty, total = INV:GetNumContainerSlots({
         Enum.BagIndex.ReagentBag,
     })
-	text = text .. st.StringFormat:ColorString(
-			(('%d/%d '):format(total - empty, total)),
-			st.config.profile.colors.text.green:GetRGB()
-	)
+	if total > 0 then
+		text = text .. st.StringFormat:ColorString(
+				(('%d/%d '):format(total - empty, total)),
+				st.config.profile.colors.text.green:GetRGB()
+		)
+	end
 
 	container.footer.slots:SetText(text)
 end
