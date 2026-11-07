@@ -32,7 +32,6 @@
 
 local st = SaftUI
 local LT = st.Loot
-local DEBUG = false
 
 local Util = st:GetModule('Utilities')
 
@@ -221,6 +220,13 @@ function LT:GetAllItems()
 	return feed_stack
 end
 
+-- Whether an entry is still within its fade time. Test entries stay put while
+-- test mode is on so the feed doesn't fade out while it's being tuned.
+function LT:IsFeedEntryFresh(info, now)
+	if self.testFeed and info.test then return true end
+	return now - info.time <= self.config.feed.fade_time
+end
+
 function LT:UpdateFeed(recentlyScrolled, useCache)
 	local now = GetTime()
 	local item, info
@@ -240,7 +246,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			info.time = now
 		end
 
-		if (now - info.time <= feedConfig.fade_time) then
+		if self:IsFeedEntryFresh(info, now) then
 			Util:ClearItemQuality(item)
 
 			if info.itemSubType == "Mount" then
@@ -275,6 +281,26 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 	end
 end
 
+-- Drops every entry test mode pushed, leaves real ones alone, and hides the
+-- feed lines that no longer have an entry behind them.
+function LT:RemoveTestFeedEntries()
+	for i = #feed_stack, 1, -1 do
+		if feed_stack[i].test then tremove(feed_stack, i) end
+	end
+
+	if not self.feed then return end
+	self.feed.offset = 0
+	self.feed.reset_button:Hide()
+
+	local filteredItems = self:GetFilteredItems()
+	for i, item in ipairs(self.feed.items) do
+		if not filteredItems[i] then
+			item:Hide()
+		end
+	end
+	self:UpdateFeed()
+end
+
 function LT:UpdateAllFeedTimers(index)
 	local now = GetTime()
 	for i=1, index or self.config.feed.max_items do
@@ -292,14 +318,20 @@ function LT:LootFeedPush(info)
 	end
 
 	info.time = GetTime()
+	-- Entries pushed by test mode are tagged so they can be told apart (and
+	-- removed) later; they never merge with real entries.
+	info.test = self.pushingTest or nil
+
+	local top = feed_stack[1]
+	if top and (top.test or false) ~= (info.test or false) then top = nil end
 
 	-- If you loot gold multiple times together, group it up into one item
-	if info.gold and feed_stack[1] and feed_stack[1].gold then
-		feed_stack[1].gold = feed_stack[1].gold + info.gold
-		feed_stack[1].time = info.time
-	elseif feed_stack[1] and info.name == feed_stack[1].name and info.craftQuality == feed_stack[1].craftQuality and info.rightText == feed_stack[1].rightText then
-		feed_stack[1].count = (feed_stack[1].count or 1) + (info.count or 1)
-		feed_stack[1].time = info.time
+	if info.gold and top and top.gold then
+		top.gold = top.gold + info.gold
+		top.time = info.time
+	elseif top and info.name == top.name and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
+		top.count = (top.count or 1) + (info.count or 1)
+		top.time = info.time
 	else
 		tinsert(feed_stack, 1, info)
 	end
@@ -609,7 +641,7 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 	if self.config.feed.fade_time == 0  then return end
 	local filteredItems = self:GetFilteredItems()
 
-	if DEBUG then
+	if self.testFeed then
 		local now = GetTime()
 		for i=1, self.config.feed.max_items do
 			local item = self.feed.items[i]
@@ -627,7 +659,7 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 		local item = self.feed.items[i]
 		local info = filteredItems[i + self.feed.offset]
 
-		if info and now - info.time <= self.config.feed.fade_time then
+		if info and self:IsFeedEntryFresh(info, now) then
 			item:SetAlpha(1)
 			item:Show()
 		elseif item:IsShown() and item:GetAlpha() == 1 and self.feed.offset == 0 then
@@ -709,8 +741,4 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_COMBAT_HONOR_GAIN', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_COMBAT_XP_GAIN', 'LootFeedHandler')
-
-	if DEBUG then
-		self:InitializeTestMode()
-	end
 end

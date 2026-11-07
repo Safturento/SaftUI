@@ -3,6 +3,20 @@ local LT = st:GetModule('Loot')
 
 local generators = st.Config.generators
 
+-- A "Test mode" toggle. It is not a config value: `get`/`set` read and write
+-- a plain module field (via `setter`), so it is never saved to the profile.
+local function TestModeToggle(desc, field, setter)
+	return {
+		order = 0,
+		name = 'Test mode',
+		desc = desc,
+		type = 'toggle',
+		width = 'full',
+		get = function() return LT[field] and true or false end,
+		set = function(_, value) setter(LT, value) end,
+	}
+end
+
 -- Builds the General group for one of the loot movers. `config_key` is the
 -- loot config table ('roll' or 'feed'), `apply` re-applies it live.
 local function BuildGeneral(config_key, args, apply)
@@ -53,6 +67,10 @@ function LT:GetRollOptions()
 	font.order = 6
 
 	local general = BuildGeneral('roll', {
+		test_mode = TestModeToggle(
+			'Show sample roll bars so you can tune the rolls without waiting for loot. ' ..
+			'Not saved: off again after a reload or profile change. Hidden while a real roll is up.',
+			'testRolls', LT.SetTestRolls),
 		width = generators.range(1, 'Width', 100, 1000, 1),
 		height = generators.range(2, 'Height', 16, 80, 1),
 		spacing = generators.range(3, 'Spacing', 0, 30, 1),
@@ -76,6 +94,11 @@ function LT:GetFeedOptions()
 	font.order = 7
 
 	local general = BuildGeneral('feed', {
+		test_mode = TestModeToggle(
+			'Keep the feed filled with sample entries (items, gold, currency, skill ups, ' ..
+			'experience, reputation, honor). Turning it off removes only the samples. ' ..
+			'Not saved: off again after a reload or profile change.',
+			'testFeed', LT.SetTestFeed),
 		width = generators.range(1, 'Width', 100, 1000, 1),
 		item_height = generators.range(2, 'Item height', 16, 80, 1),
 		spacing = generators.range(3, 'Spacing', 0, 30, 1),

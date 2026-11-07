@@ -21,8 +21,12 @@ end
 
 -- A profile change: re-applies the rolls' and feed's size, spacing, template,
 -- font and position, and re-filters the feed with the new profile's filters.
--- Safe in combat: neither touches a protected frame.
+-- Also ends test mode. Safe in combat: neither touches a protected frame.
 function LT:UpdateConfig()
+	-- Test mode is never part of a profile; a profile change ends it.
+	self:SetTestRolls(false)
+	self:SetTestFeed(false)
+
 	if self.rollAnchor then
 		self:UpdateGroupLootConfig()
 	end

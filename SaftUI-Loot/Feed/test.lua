@@ -1,82 +1,157 @@
+-- Feed test mode. While LT.testFeed is on, a timer pushes varied fake entries
+-- through LT:LootFeedHandler, the same path real chat messages take, so the
+-- pattern matching, icons and filters all get exercised. Entries are tagged
+-- (info.test, see LT:LootFeedPush) so turning test mode off removes only them.
+-- The state is a plain module field: it is never saved and resets on /reload.
+
 local st = SaftUI
 local LT = st:GetModule('Loot')
 
-local test_item = "\124cff0070dd\124Hitem:16309::::::::60:::::\124h[Drakefire Amulet]\124h\124r"
-local test_item2 = "\124cffffffff\124Hitem:2589::::::::60:::::\124h[Linen Cloth]\124h\124r"
-local test_item_quality1 = "\124cnIQ3:\124Hitem:222427::::::::80:262:::::::::\124h[Ironclaw Alloy \124A:Professions-ChatIcon-Quality-Tier2:17:23::1\124a]\124h\124r"
-local test_item_quality2 = "\124cff1eff00\124Hitem:210937::::::::75:102::::1:38:2:::::\124h[Ironclaw Ore \124A:Professions-ChatIcon-Quality-Tier2:17:23::1\124a]\124h\124r"
-local test_item_quality3 = "\124cff1eff00\124Hitem:210938::::::::75:102::::1:38:3:::::\124h[Ironclaw Ore \124A:Professions-ChatIcon-Quality-Tier3:17:18::1\124a]\124h\124r"
-local test_item_quality5 = "\124cffa335ee\124Hitem:222568:7460:::::::80:262::13:9:10421:9633:8902:9627:12040:11300:8960:8793:12043:9:28:2734:29:49:30:40:38:8:40:2251:45:230906:46:226024:47:222584:48:230935::::Player-3676-0A85482B:\124h[Vagabond's Bounding Baton \124A:Professions-ChatIcon-Quality-Tier5:17:17::1\124a]\124h\124r"
-local test_armor_track = "\124cnIQ4:\124Hitem:228866::::::::80:262::5:6:6652:11967:10355:11988:1507:10255:1:28:2462:::::\124h[Deep-Pocketed Pantaloons]\124h\124r"
-local test_armor_track_max = "\124cnIQ4:\124Hitem:234502::::::::80:262::35:7:10390:6652:11964:10383:11996:1527:10255:1:28:2462:::::\124h[Bront's Singed Blastcoat]\124h\124r"
-local test_currency = "|cffffffff|Hcurrency:1767:0|h[Stygia]|h|r"
-local test_currency_weekly_max = "|cffff8000|Hcurrency:1828:0|h[Soul Ash]|h|r"
-local thunderfury = "\124cffff8000\124Hitem:19019::::::::70:262:::::::::\124h[Thunderfury, Blessed Blade of the Windseeker]\124h\124r"
-local test_mount = "\124cnIQ4:\124Hitem:45693::::::::80:262:::::::::\124h[Mimiron's Head]\124h\124r"
+local PUSH_INTERVAL = 1
 
-local function generate_random_item()
-	local link
-	while not link do
-		link = select(2, C_Item.GetItemInfo(random(0, 10000)))
+-- A spread of qualities. Item data can be uncached, so these are looked up by
+-- ID and skipped (after requesting a load) until the client knows them.
+local TEST_ITEMS = {
+	7073,   -- Broken Fang (poor)
+	2589,   -- Linen Cloth (common)
+	1204,   -- The Green Tower (uncommon)
+	16309,  -- Drakefire Amulet (rare)
+	18814,  -- Choker of the Fire Lord (epic)
+	19019,  -- Thunderfury (legendary)
+	45693,  -- Mimiron's Head (mount, epic; retail only)
+}
+
+local TEST_CURRENCIES = { 1767, 1828, 515, 1220 }
+
+local TEST_FACTIONS = { 'Stormwind', 'Orgrimmar', 'Darnassus', 'Thunder Bluff' }
+
+local TEST_SKILLS = { 'Swords', 'Defense', 'Mining', 'Blacksmithing', 'Herbalism' }
+
+-- Returns an item link the client has data for, or nil (and asks for the data
+-- so a later tick can use it) when the item isn't cached.
+local function GetTestItemLink(itemID)
+	local _, link = C_Item.GetItemInfo(itemID)
+	if not link and C_Item.RequestLoadItemDataByID then
+		C_Item.RequestLoadItemDataByID(itemID)
 	end
-	return link, random(1, 20)
+	return link
 end
 
-local function AddRandomFeedItem()
-	local randomValue = random()
-	if randomValue < .5 then
-		LT:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item(), 12))
-	elseif randomValue < .2 then
-		LT:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-	elseif randomValue < .3 then
-		LT:LootFeedHandler('CHAT_MSG_MONEY', YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper'))
-	elseif randomValue < .4 then
-		LT:LootFeedHandler('CHAT_MSG_CURRENCY', CURRENCY_GAINED:format(test_currency))
-	elseif randomValue < .5 then
-		LT:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
-	elseif randomValue < .6 then
-		LT:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
+local function PickRandomItemLink()
+	-- Bounded: try each item at most once, starting from a random one.
+	local start = random(#TEST_ITEMS)
+	for offset = 0, #TEST_ITEMS - 1 do
+		local link = GetTestItemLink(TEST_ITEMS[(start + offset - 1) % #TEST_ITEMS + 1])
+		if link then return link end
+	end
+end
+
+local function PickCurrencyLink()
+	if not (C_CurrencyInfo and C_CurrencyInfo.GetCurrencyLink) then return end
+	local start = random(#TEST_CURRENCIES)
+	for offset = 0, #TEST_CURRENCIES - 1 do
+		local id = TEST_CURRENCIES[(start + offset - 1) % #TEST_CURRENCIES + 1]
+		local link = C_CurrencyInfo.GetCurrencyLink(id, random(1, 50))
+		if link and C_CurrencyInfo.GetCurrencyInfoFromLink(link) then return link end
+	end
+end
+
+local function MoneyString()
+	local gold, silver, copper = random(0, 25), random(0, 99), random(0, 99)
+	return ('%s %s %s'):format(
+		GOLD_AMOUNT:format(gold), SILVER_AMOUNT:format(silver), COPPER_AMOUNT:format(copper))
+end
+
+-- Each generator pushes one entry, or does nothing when its data isn't
+-- available on this client (uncached item, unknown global string).
+local generators = {
+	-- items, single and stacked
+	function(self)
+		local link = PickRandomItemLink()
+		if link then self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(link)) end
+	end,
+	function(self)
+		local link = PickRandomItemLink()
+		if link then
+			self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(link, random(2, 20)))
+		end
+	end,
+	function(self)
+		local link = GetTestItemLink(TEST_ITEMS[#TEST_ITEMS])
+		if link then self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(link)) end
+	end,
+	-- gold
+	function(self)
+		self:LootFeedHandler('CHAT_MSG_MONEY', YOU_LOOT_MONEY:format(MoneyString()))
+	end,
+	-- currency
+	function(self)
+		local link = PickCurrencyLink()
+		if link and CURRENCY_GAINED then
+			self:LootFeedHandler('CHAT_MSG_CURRENCY', CURRENCY_GAINED:format(link))
+		end
+	end,
+	-- skill up
+	function(self)
+		self:LootFeedHandler('CHAT_MSG_SKILL',
+			SKILL_RANK_UP:format(TEST_SKILLS[random(#TEST_SKILLS)], random(2, 300)))
+	end,
+	-- experience
+	function(self)
+		self:LootFeedHandler('CHAT_MSG_COMBAT_XP_GAIN', ('You gain %d experience.'):format(random(50, 5000)))
+	end,
+	-- reputation
+	function(self)
+		if not FACTION_STANDING_INCREASED then return end
+		self:LootFeedHandler('CHAT_MSG_COMBAT_FACTION_CHANGE',
+			FACTION_STANDING_INCREASED:format(TEST_FACTIONS[random(#TEST_FACTIONS)], random(5, 250)))
+	end,
+	-- honor: the feed has no chat pattern for honor, so hand it to the honor
+	-- builder directly with the fields a match would carry
+	function(self)
+		self:LootFeedAddHonor({ honor = random(10, 500) })
+	end,
+}
+
+local last_generator
+
+local function PushTestEntry(self)
+	local index = random(#generators)
+	if index == last_generator then index = index % #generators + 1 end
+	last_generator = index
+
+	-- LootFeedPush tags entries pushed while this flag is up.
+	self.pushingTest = true
+	local ok, err = pcall(generators[index], self)
+	self.pushingTest = nil
+	if not ok then st:Error('Loot feed test mode:', err) end
+end
+
+local function OnTestUpdate(driver, elapsed)
+	if st:barrier(driver, elapsed, PUSH_INTERVAL) then return end
+	PushTestEntry(LT)
+end
+
+function LT:SetTestFeed(enabled)
+	enabled = enabled and true or false
+	if enabled == (self.testFeed or false) then return end
+	if not self.feed then return end
+
+	self.testFeed = enabled or nil
+
+	if enabled then
+		self.testFeedDriver = self.testFeedDriver or CreateFrame('frame')
+		self.testFeedDriver.barrierTime = 0
+		self.testFeedDriver:SetScript('OnUpdate', OnTestUpdate)
+		self.debugText:Show()
+
+		-- Don't wait a second for the first entries.
+		for _ = 1, 3 do PushTestEntry(self) end
 	else
-		LT:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
+		if self.testFeedDriver then
+			self.testFeedDriver:SetScript('OnUpdate', nil)
+		end
+		self.debugText:Hide()
+		self:RemoveTestFeedEntries()
 	end
-end
-
-function LT:UpdateHandler(timer, elapsed)
-	if st:barrier(timer, elapsed, 1) then return end
-
-	AddRandomFeedItem()
-
-	self:UpdateFeed()
-end
-
-function LT:InitializeTestMode()
-	self.debugText:Show()
-	C_Item.GetItemInfo(test_armor_track)
-	C_Item.GetItemInfo(test_armor_track_max)
-	C_Item.GetItemInfo(test_item_quality1)
-	C_Item.GetItemInfo(test_mount)
-	C_Item.GetItemInfo(test_item_quality1)
-
-	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_armor_track_max))
-	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_armor_track))
-	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_mount))
-	self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality1, 5))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality1, 5))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality2, 4))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(test_item_quality3, 3))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF:format(test_item_quality5))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_SELF_MULTIPLE:format(generate_random_item()))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_PUSHED:format("Party-Othr'relm", test_item_quality5))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item(), 5))
-	self:LootFeedHandler('CHAT_MSG_MONEY', YOU_LOOT_MONEY:format('1 Gold, 23 Silver, 45 Copper'))
-	self:LootFeedHandler('CHAT_MSG_CURRENCY', CURRENCY_GAINED:format(test_currency))
-	--self:LootFeedHandler('CHAT_MSG_SKILL', 	SKILL_RANK_UP:format('Blacksmithing', 375))
-	--self:LootFeedHandler('CHAT_MSG_HONOR_GAIN', COMBATLOG_HONORGAIN:format(UnitName('player'), 'High Warlord', 198))
-	--self:LootFeedHandler('CHAT_MSG_LOOT', LOOT_ITEM_MULTIPLE:format('Party'.."-Othr'relm", generate_random_item()))
-	--self:LootFeedHandler('CHAT_MSG_COMBAT_XP_GAIN', COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED:format("1234"))
-	--self:LootFeedHandler('CHAT_MSG_COMBAT_XP_GAIN', COMBATLOG_XPGAIN_EXHAUSTION2:format("The Boss", "1337", "+666", "Rested"))
-	--for i=1,15 do
-	--	AddRandomFeedItem()
-	--end
-	--self:HookScript(CreateFrame('frame'), 'OnUpdate', 'UpdateHandler')
 end
