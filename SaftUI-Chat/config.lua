@@ -1,7 +1,13 @@
 local st = SaftUI
 
 st.defaults.chat = {
-	position = {'BOTTOMLEFT', 'UIParent', 'BOTTOMLEFT', 30, 30},
+	position = {
+		point = 'BOTTOMLEFT',
+		frame = 'UIParent',
+		rel_point = 'BOTTOMLEFT',
+		x_off = 30,
+		y_off = 30,
+	},
 	template = 'thicktransparent',
 	font = 'normal',
 	padding = 10,

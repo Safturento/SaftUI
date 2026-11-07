@@ -6,3 +6,4 @@
 
 config.lua
 chatframe.lua
+options.lua

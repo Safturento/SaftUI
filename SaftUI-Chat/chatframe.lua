@@ -131,10 +131,17 @@ function CHT:UpdateChatFrameDisplay(frame)
 	if frame.CombatLogQuickButtonFrame then
 		offset = frame.CombatLogQuickButtonFrame:GetHeight()
 	end
-	frame.backdrop:ClearAllPoints()
-	frame.backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
-	frame.backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
-	
+	-- No backdrop is made while the template is 'none'.
+	if frame.backdrop then
+		frame.backdrop:ClearAllPoints()
+		frame.backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
+		frame.backdrop:SetPoint('BOTTOMRIGHT', self.config.padding, -self.config.padding)
+	end
+
+	if frame == ChatFrame1 then
+		self:UpdateFootprint()
+	end
+
 	st:SetBackdrop(frame.Tab, self.config.tmeplate)
 end
 
@@ -154,21 +161,100 @@ function CHT:ApplyChatFrameConfig(frame)
 	self:UpdateChatFrameDisplay(frame)
 end
 
--- Places ChatFrame1 from chat.position. In combat it can't move if a
--- protected frame (e.g. a unit frame) is anchored to it; then this waits for
--- the end of combat.
---
--- ChatFrame1 is a Blizzard Edit Mode system on retail and Forever alike
--- (EditModeChatFrameSystemTemplate). EditModeSystemMixin:OnSystemLoad replaces
--- its SetPoint and ClearAllPoints with Lua overrides, and SetPointOverride
--- writes EditModeManagerFrame.editModeSystemAnchorDirty, which Blizzard reads
--- while Edit Mode is open. Calling them from here would taint that, so the
--- widget API's own methods are called instead; they run no Blizzard Lua.
-function CHT:ApplyPosition()
+--[[
+	ChatFrame1 is a Blizzard Edit Mode system on retail and Forever alike
+	(EditModeChatFrameSystemTemplate). Blizzard re-applies its Edit Mode position on every
+	layout load or change (EditModeSystemMixin:ApplySystemAnchor: ClearAllPoints, then
+	SetPoint with the layout's anchor). Both are Lua overrides installed by
+	EditModeSystemMixin:OnSystemLoad, and SetPointOverride writes
+	EditModeManagerFrame.editModeSystemAnchorDirty, so addon code never calls them on
+	ChatFrame1. st:ClearAllPointsDirect and st:SetPointDirect run the widget API's own
+	methods instead.
+
+	SaftUI's edit mode moves a holder frame, not ChatFrame1 (a drag calls the mover frame's
+	ClearAllPoints and SetPoint). The holder is a plain SaftUI frame the same size as
+	ChatFrame1 (a post-hook on ChatFrame1's OnSizeChanged copies the size), anchored from
+	chat.position. ChatFrame1 gets the same single anchor as the holder, so the two cover
+	the same rectangle. Whenever the holder's SetPoint runs (the profile, the Position
+	section, a drag or a nudge), a post-hook copies its anchor to ChatFrame1.
+
+	Post-hooks on ChatFrame1's own ClearAllPoints and SetPoint put the holder's anchor
+	back straight after each Blizzard layout apply. They re-anchor ChatFrame1 with the
+	direct helpers only, which skip those hooks, so they can't loop. Blizzard's size is
+	left alone: its Width and Height settings and the resize handle still size ChatFrame1,
+	and the holder follows.
+
+	Blizzard's Edit Mode box on ChatFrame1 is kept hidden (HookScript only), so Blizzard's
+	Edit Mode can't select or drag it. Nothing is written onto ChatFrame1 or any other
+	Blizzard table here.
+]]
+
+local OLD_POSITION_KEYS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
+
+-- Profiles saved before the chat frame became a mover keep chat.position as an array
+-- ({ point, frame, rel_point, x, y }, SetPoint's argument order). Converts one to the
+-- { point, frame, rel_point, x_off, y_off } shape in place, with the saved values, so
+-- the chat frame doesn't move. The array entries are cleared.
+function CHT:MigratePosition()
+	local position = self.config and self.config.position
+	if not position or position[1] == nil then return end
+
+	for i, key in ipairs(OLD_POSITION_KEYS) do
+		local value = position[i]
+		if value == nil and i >= 4 then
+			value = 0 -- SetPoint(point, frame, rel_point) means no offset
+		end
+		if value ~= nil then
+			position[key] = value
+		end
+		position[i] = nil
+	end
+end
+
+-- Anchors ChatFrame1 where the holder is. In combat it can't move if a protected frame
+-- (e.g. a unit frame) is anchored to it; then this waits for the end of combat and
+-- reads the holder's anchor when it runs.
+function CHT:PlaceChatFrame()
 	st:SafeReposition(ChatFrame1, 'chat', function()
+		local point, relative, rel_point, x, y = self.holder:GetPoint(1)
+		if not point then return end -- the holder is between ClearAllPoints and SetPoint
 		st:ClearAllPointsDirect(ChatFrame1)
-		st:SetPointDirect(ChatFrame1, unpack(self.config.position))
+		st:SetPointDirect(ChatFrame1, point, relative, rel_point, x, y)
 	end)
+end
+
+-- Places the holder from chat.position; ChatFrame1 follows (see PlaceChatFrame).
+function CHT:ApplyPosition()
+	local holder = self.holder
+	if not holder then return end
+
+	st:SafeReposition(holder, 'chat_holder', function()
+		local point, relative, rel_point, x, y = st:UnpackPoint(self.config.position)
+		holder:ClearAllPoints()
+		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
+			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
+	end)
+end
+
+-- Makes the mover's outline cover what shows of the chat frame: ChatFrame1 plus the
+-- padding SaftUI's backdrop extends past it. The outline is SaftUI's own frame, so
+-- this is safe in combat.
+function CHT:UpdateFootprint()
+	local mover = self.mover
+	if not mover then return end
+
+	local padding = self.config.padding
+	local overlay = mover.overlay
+	overlay:ClearAllPoints()
+	overlay:SetPoint('TOPLEFT', ChatFrame1, 'TOPLEFT', -padding, padding)
+	overlay:SetPoint('BOTTOMRIGHT', ChatFrame1, 'BOTTOMRIGHT', padding, -padding)
+end
+
+-- Font, template, padding and edit box height of every chat frame.
+function CHT:ApplyAppearance()
+	for chatID=1, NUM_CHAT_WINDOWS do
+		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
+	end
 end
 
 -- A profile change: chat position, then each chat frame's look. Tab fading
@@ -176,11 +262,52 @@ end
 function CHT:UpdateConfig()
 	if not self.config then return end -- not enabled
 
+	self:MigratePosition()
 	self:ApplyPosition()
+	self:ApplyAppearance()
+end
 
-	for chatID=1, NUM_CHAT_WINDOWS do
-		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
+-- Keeps the holder the size of ChatFrame1, and puts the holder's anchor back on
+-- ChatFrame1 after anything Blizzard does to its position.
+function CHT:TakeOverChatFrame()
+	local holder = self.holder
+
+	local function CopySize()
+		local width, height = ChatFrame1:GetSize()
+		if width and height then
+			holder:SetSize(width, height)
+		end
 	end
+	ChatFrame1:HookScript('OnSizeChanged', CopySize)
+	CopySize()
+
+	-- Every SaftUI placement of the holder, and a mover drag (which calls SetPoint on
+	-- it), is copied to ChatFrame1. ClearAllPoints needs no hook: SetPoint follows it.
+	hooksecurefunc(holder, 'SetPoint', function() self:PlaceChatFrame() end)
+
+	-- Blizzard's Edit Mode applies its layout through these two (see above).
+	hooksecurefunc(ChatFrame1, 'ClearAllPoints', function() self:PlaceChatFrame() end)
+	hooksecurefunc(ChatFrame1, 'SetPoint', function() self:PlaceChatFrame() end)
+
+	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden.
+	-- HookScript only; nothing is written onto the frame.
+	local selection = ChatFrame1.Selection
+	if selection then
+		selection:HookScript('OnShow', function(box) box:Hide() end)
+		selection:Hide()
+	end
+end
+
+function CHT:RegisterChatMover()
+	self.mover = st:RegisterMover('chat', {
+		frame = self.holder,
+		label = 'Chat',
+		getPosition = function() return self.config.position end,
+		setPosition = function(position) self.config.position = position end,
+		apply = function() self:ApplyPosition() end,
+		configPath = { 'Chat', 'general' },
+	})
+	self:UpdateFootprint()
 end
 
 function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
@@ -206,11 +333,18 @@ function CHT:OnEnable()
 	st:Kill(ChatFrameChannelButton)
 	st:Kill(QuickJoinToastButton)
 
-	self:ApplyPosition()
+	self:MigratePosition()
 
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:SkinChatFrame(_G['ChatFrame'..chatID])
 	end
+
+	-- The holder exists, with its hooks, before it is first placed: placing it copies
+	-- the anchor to ChatFrame1.
+	self.holder = CreateFrame('Frame', st.name .. 'ChatHolder', UIParent)
+	self:TakeOverChatFrame()
+	self:ApplyPosition()
+	self:RegisterChatMover()
 
 	-- self:SecureHook('FCFDock_UpdateTabs')
 	-- self:SecureHook('ChatEdit_UpdateHeader')
