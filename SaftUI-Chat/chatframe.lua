@@ -138,6 +138,35 @@ function CHT:UpdateChatFrameDisplay(frame)
 	st:SetBackdrop(frame.Tab, self.config.tmeplate)
 end
 
+-- Applies the profile's font, font size, template, padding and edit box
+-- height to a chat frame SkinChatFrame already skinned.
+function CHT:ApplyChatFrameConfig(frame)
+	local font, _, outline = st:GetFont(self.config.font):GetFont()
+	frame:SetFont(font, self.config.fontsize, outline)
+	frame:SetShadowOffset(0, 0)
+
+	local editbox = _G[frame:GetName()..'EditBox']
+	if editbox then
+		editbox:SetHeight(self.config.editbox.height)
+		st:StyleEditBox(editbox, self.config.template, self.config.font)
+	end
+
+	self:UpdateChatFrameDisplay(frame)
+end
+
+-- A profile change: chat position, then each chat frame's look. Tab fading
+-- (tabs.fade) is only applied when the frames are first skinned.
+function CHT:UpdateConfig()
+	if not self.config then return end -- not enabled
+
+	ChatFrame1:ClearAllPoints()
+	ChatFrame1:SetPoint(unpack(self.config.position))
+
+	for chatID=1, NUM_CHAT_WINDOWS do
+		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
+	end
+end
+
 function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 	if not (dock.isDirty or forceUpdate) then return end
 
