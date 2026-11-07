@@ -293,10 +293,21 @@ function st:CreateArrowCluster(parent)
 
 end
 
+-- A backdrop anchored to a region with a secret size (e.g. some icons in combat)
+-- gets a secret width, and BackdropTemplateMixin's texcoord math errors on it.
+-- Skip until the size is readable; OnSizeChanged runs again when it changes.
+local function SafeSetupTextureCoordinates(self)
+	local width, height = self:GetSize()
+	if issecretvalue(width) or issecretvalue(height) then return end
+	return BackdropTemplateMixin.SetupTextureCoordinates(self)
+end
+
 function st:CreateFrame(frameType, frameName, parentFrame, templates, id)
 	local templateString = "BackdropTemplate"
 	if templates then templateString = templateString .. "," .. templates end
-	return CreateFrame(frameType, frameName, parentFrame, templateString, id)
+	local frame = CreateFrame(frameType, frameName, parentFrame, templateString, id)
+	frame.SetupTextureCoordinates = SafeSetupTextureCoordinates
+	return frame
 end
 
 function st:CreatePanel(name, width, height)
