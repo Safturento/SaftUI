@@ -63,7 +63,7 @@ function MicroMenu:UpdateDungeonDifficulty()
 
 
 
-    if isDynamic then text = "~" + text end
+    if isDynamic then text = "~" .. text end
 
     button.Text:SetText(text)
 end
