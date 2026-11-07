@@ -269,6 +269,14 @@ function st:SetPointDirect(frame, ...)
 	getmetatable(frame).__index.SetPoint(frame, ...)
 end
 
+-- The widget API's own SetSize, called the same way. Edit Mode systems keep the
+-- plain SetSize today (OnSystemLoad doesn't replace it), but a frame placed with
+-- the helpers above is sized without going through its fields either, so
+-- neither a later Lua override nor a hook on the frame's SetSize runs.
+function st:SetSizeDirect(frame, width, height)
+	getmetatable(frame).__index.SetSize(frame, width, height)
+end
+
 -- Every anchor of frame, for st:RestorePoints. The values are only kept and
 -- handed back to SetPoint, never compared, so secret values are fine.
 function st:GetPoints(frame)
