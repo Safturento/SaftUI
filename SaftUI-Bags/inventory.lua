@@ -244,9 +244,14 @@ function INV:UpdateHandler(_, elapsed)
 
 	self.IS_UPDATING = true
 	self.NEED_UPDATE = false
-	self:UpdateGold()
-	self:UpdateVisibleContainers(self.UPDATE_LAYOUT)
+	local updateLayout = self.UPDATE_LAYOUT
 	self.UPDATE_LAYOUT = false
+	-- An error here must not leave IS_UPDATING set, or the bags would never update
+	-- again this session. Report it and carry on.
+	xpcall(function()
+		self:UpdateGold()
+		self:UpdateVisibleContainers(updateLayout)
+	end, geterrorhandler())
 	self.IS_UPDATING = false
 end
 
