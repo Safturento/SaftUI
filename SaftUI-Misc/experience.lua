@@ -2,6 +2,11 @@ local st = SaftUI
 
 local XP = st:NewModule('Experience')
 
+-- Read at use time: a profile change replaces the profile's colors table.
+local function Colors()
+	return st.config.profile.colors
+end
+
 function XP:SetupExperience()
 	local expbar = CreateFrame('StatusBar', st.name ..'_ExperienceBar', self.container)
 	self.bars.experience = expbar
@@ -40,15 +45,23 @@ function XP:Update()
 
 end
 
+-- Applies the profile's size, spacing, template, colors and position. Runs on
+-- enable and on every profile change.
 function XP:UpdateConfig()
+	if not self.bars then return end -- not enabled
+
+	self.container:SetWidth(self.config.width)
+	self.container:ClearAllPoints()
+	self.container:SetPoint(unpack(self.config.position))
+
 	self.bars.experience:SetStatusBarTexture(st.BLANK_TEX)
-	self.bars.experience:SetStatusBarColor(self.colors.experience.normal:GetRGB())
+	self.bars.experience:SetStatusBarColor(Colors().experience.normal:GetRGB())
 	self.bars.experience:SetFrameLevel(5)
 	self.bars.experience:SetSize(self.config.width, self.config.height)
 	st:SetBackdrop(self.bars.experience, self.config.template)
 
 	self.bars.experience.rested:SetStatusBarTexture(st.BLANK_TEX)
-	self.bars.experience.rested:SetStatusBarColor(self.colors.experience.rested:GetRGB())
+	self.bars.experience.rested:SetStatusBarColor(Colors().experience.rested:GetRGB())
 	self.bars.experience.rested:SetFrameLevel(3)
 	self.bars.experience.rested:SetSize(self.config.width, self.config.height)
 	self.bars.experience.rested:SetAlpha(self.config.rest_alpha)
@@ -58,6 +71,9 @@ function XP:UpdateConfig()
 	self.bars.reputation:SetFrameLevel(5)
 	self.bars.reputation:SetSize(self.config.width, self.config.height)
 	st:SetBackdrop(self.bars.reputation, self.config.template)
+
+	-- Re-stacks the bars with the new spacing and height
+	self:Update()
 end
 
 function XP:GetWatchedFactionInfo()
@@ -87,7 +103,7 @@ function XP:GetWatchedFactionInfo()
 			name = factionData.name,
 			rank = factionData.renownLevel,
 			rankLabel = 'Rank '..factionData.renownLevel,
-			color = self.colors.renown,
+			color = Colors().renown,
 			current = factionData.renownReputationEarned,
 			max = factionData.renownLevelThreshold,
 			rewardMessage = factionData.unlockDescription or nil
@@ -99,7 +115,7 @@ function XP:GetWatchedFactionInfo()
 			name = name,
 			rank = rank,
 			rankLabel = "Paragon " .. math.floor(value/10000),
-			color = self.colors.reaction[rank],
+			color = Colors().reaction[rank],
 			current = rewardPending and max or value % 10000,
 			max = max,
 			rewardPending = rewardPending,
@@ -110,7 +126,7 @@ function XP:GetWatchedFactionInfo()
 			name = friendshipInfo.name,
 			rank = rank,
 			rankLabel = friendshipInfo.reaction,
-			color = self.colors.reaction[rank],
+			color = Colors().reaction[rank],
 			current = friendshipInfo.standing - friendshipInfo.reactionThreshold,
 			-- TODO: nextThreshold is nil when maxed, need to handle that edge case
 			max = friendshipInfo.nextThreshold - friendshipInfo.reactionThreshold
@@ -120,7 +136,7 @@ function XP:GetWatchedFactionInfo()
 			name = name,
 			rank = rank,
 			rankLabel = _G['FACTION_STANDING_LABEL'..rank],
-			color = self.colors.reaction[rank],
+			color = Colors().reaction[rank],
 			current = value - minRep,
 			max = maxRep - minRep
 		}
@@ -130,7 +146,7 @@ function XP:GetWatchedFactionInfo()
 		name = name,
 		rank = rank,
 		rankLabel = _G['FACTION_STANDING_LABEL'..rank],
-		color = self.colors.reaction[rank],
+		color = Colors().reaction[rank],
 		current = value - minRep,
 		max = maxRep - minRep
 	}
@@ -159,7 +175,7 @@ function XP:UpdateExperience()
 		self.bars.experience:SetMinMaxValues(0, max)
 		self.bars.experience:SetValue(current)
 		self.bars.experience:SetStatusBarColor(
-			self.colors.experience[rest and 'rested' or 'normal']:GetRGB()
+			Colors().experience[rest and 'rested' or 'normal']:GetRGB()
 		)
 
 		self.bars.experience.rested:SetMinMaxValues(0, max)
@@ -233,7 +249,6 @@ end
 
 function XP:OnEnable()
 	st:BindModuleConfig(self, 'experience')
-	self.colors = st.config.profile.colors
 
 	local container = CreateFrame('frame', st.name ..'_Experience', UIParent)
 	container:SetWidth(self.config.width)
@@ -248,7 +263,6 @@ function XP:OnEnable()
 	self:SetupExperience()
 	self:SetupReputation()
 	self:UpdateConfig()
-	self:Update()
 
 	self:RegisterEvent('PLAYER_ENTERING_WORLD', 'Update')
 

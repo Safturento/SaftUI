@@ -87,7 +87,16 @@ function AB:InitializePetBar()
 	self.bars.pet = bar
 end
 
+-- A profile change: re-skins every action button with the profile's button
+-- template and font. Action buttons are secure, so in combat this waits until
+-- combat ends.
 function AB:UpdateConfig()
+	if not self.bars then return end -- not enabled
+	if st:QueueAfterCombat('Actionbars', function() AB:UpdateConfig() end) then return end
+	self:ApplyConfig()
+end
+
+function AB:ApplyConfig()
 	for _, bar in pairs(self.bars) do
         for _, slot in ipairs(bar) do
             st:SkinActionButton(slot)
@@ -152,5 +161,5 @@ function AB:OnEnable()
     --ClickBindingFrame:UnregisterEvent('CLICKBINDINGS_SET_HIGHLIGHTS_SHOWN')
 
 	self:SkinActionButtons()
-	self:UpdateConfig()
+	self:ApplyConfig()
 end

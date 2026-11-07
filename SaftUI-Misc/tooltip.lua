@@ -99,6 +99,24 @@ function TT:AddItemInfo(self)
 	self:AddDoubleLine('Item Set ID', item_set_id)
 end
 
+-- A profile change: re-applies the template to every skinned tooltip, the
+-- status bar and the dropdown lists. Fonts are applied each time a tooltip
+-- shows (UpdateTooltipDisplay), so they follow the profile already.
+function TT:UpdateConfig()
+	if not self.AllTooltips then return end -- not enabled
+
+	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
+	for _, tooltip in pairs(self.AllTooltips) do
+		st:SetBackdrop(tooltip, self.config.template)
+	end
+	for i = 1, 2 do
+		local dropdown = _G['DropDownList'..i]
+		if dropdown then
+			st:SetBackdrop(dropdown, self.config.template)
+		end
+	end
+end
+
 function TT:OnEnable()
 	st:BindModuleConfig(self, 'tooltip')
 
