@@ -10,6 +10,7 @@ options.lua
 popup.lua
 roll.lua
 
+Feed/icons.lua
 Feed/feed.lua
 Feed/filter.lua
 Feed/test.lua

@@ -185,8 +185,33 @@ generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'}, OTHERS
 --generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'}, SELF_HONOR)
 
 --reputation
-generate_match(FACTION_STANDING_INCREASED, {'faction', 'count'}, SELF_REPUTATION)
-generate_match(FACTION_STANDING_INCREASED_ACCOUNT_WIDE, {'faction', 'count'}, SELF_REPUTATION)
+local decreasePatterns = {}
+for _, name in ipairs({
+	'FACTION_STANDING_INCREASED',
+	'FACTION_STANDING_INCREASED_ACCOUNT_WIDE',
+	'FACTION_STANDING_DECREASED',
+	'FACTION_STANDING_DECREASED_ACCOUNT_WIDE',
+}) do
+	local key = generate_match(_G[name], {'faction', 'count'}, SELF_REPUTATION)
+	if key and name:find('DECREASED') then decreasePatterns[key] = true end
+end
+
+-- Gains with a bonus suffix, e.g. "... increased by 12. (+1.2 Bonus)", never match the
+-- end-anchored patterns above. Strip the suffix from the global and match loosely.
+for _, name in ipairs({
+	'FACTION_STANDING_INCREASED_ACH_BONUS',
+	'FACTION_STANDING_INCREASED_BONUS',
+	'FACTION_STANDING_INCREASED_ACH_BONUS_ACCOUNT_WIDE',
+	'FACTION_STANDING_INCREASED_BONUS_ACCOUNT_WIDE',
+	'FACTION_STANDING_DECREASED_ACH_BONUS',
+}) do
+	local global = _G[name]
+	if type(global) == 'string' then
+		local stripped = global:gsub('%s*%(.-%%%.1f.-%)%s*$', '')
+		local key = generate_match(stripped, {'faction', 'count'}, SELF_REPUTATION, true)
+		if key and name:find('DECREASED') then decreasePatterns[key] = true end
+	end
+end
 
 ------------------------------------
 ---- Feed updates ------------------
@@ -376,6 +401,7 @@ end
 function LT:LootFeedAddSkillUp(match)
 	self:LootFeedPush({
 		name = ('%s %d'):format(match['skill'], match['count']),
+		icon = self:GetSkillIcon(match['skill']),
 		type = 'Skill'
 	})
 end
@@ -383,6 +409,7 @@ end
 function LT:LootFeedAddExperience(match)
 	self:LootFeedPush({
 		name = ('%d Experience'):format(match['experience']),
+		icon = self.FEED_ICONS.Experience,
 		type = 'Experience'
 	})
 end
@@ -409,11 +436,11 @@ end
 function LT:LootFeedAddReputation(match)
 	if not match.faction then return end
 
-	local iconId = match.count >= 0 and 5 or 3
+	local icon = match.count >= 0 and self.FEED_ICONS.ReputationUp or self.FEED_ICONS.ReputationDown
 	--TODO: Add font color based on current status with the faction? Add current faction rank?
 	self:LootFeedPush({
 		name = ('%d Reputation (%s)'):format(match.count, match.faction),
-		icon = "Interface\\ICONS\\Achievement_Reputation_0" .. iconId,
+		icon = icon,
 		type = 'Reputation',
 	})
 end
@@ -439,7 +466,7 @@ function LT:LootFeedHandler(event, text)
 		self:LootFeedAddExperience(match)
 	elseif match['faction'] then
 		match.count = tonumber(match.count)
-		if strfind(match.pattern, "decreased") then
+		if decreasePatterns[match.pattern] then
 			match.count = -match.count
 		end
 		self:LootFeedAddReputation(match)
