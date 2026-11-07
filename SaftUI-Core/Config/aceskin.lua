@@ -11,12 +11,14 @@ local st = SaftUI
 
 local AceGUI = LibStub('AceGUI-3.0')
 local AceConfigDialog = LibStub('AceConfigDialog-3.0')
+local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 
 local Skin = {}
 st.AceSkin = Skin
 
 local states = {}   -- scoped widget -> { undo = { fn, ... }, saved = {} }
 local windows = {}  -- window widget -> { name, onClose }
+local refreshing = {} -- app name -> true while a NotifyChange refresh of it is pending
 local owned = setmetatable({}, { __mode = 'k' }) -- host frame -> { key -> object we created }
 
 local FLAT_BACKDROP = {
@@ -57,14 +59,21 @@ local function SetAlpha(state, region, alpha)
 	region:SetAlpha(alpha)
 end
 
--- FontStrings and EditBoxes. The text color is kept, since SetFontObject would
--- otherwise replace a color the widget set (e.g. greyed out when disabled).
+-- Undos run after AceGUI:Release has called the widget's OnRelease, and some
+-- OnRelease functions reset state themselves (e.g. Dropdown's SetDisabled(false)
+-- resets its text colors). So undos never put back a value the widget may have
+-- reset since: font undos restore only the font, and color undos restore only
+-- if the color is still the one we set.
+
+-- FontStrings and EditBoxes. SetFontObject also applies the font object's
+-- color, so the color in place is re-applied after it, both when styling and
+-- when restoring: the font changes, the color stays whatever the widget set.
 local function SetFont(state, fs, font)
 	if not fs or not font then return end
 	local oldObject = fs:GetFontObject()
 	local file, size, flags = fs:GetFont()
-	local r, g, b, a = fs:GetTextColor()
 	Push(state, function()
+		local r, g, b, a = fs:GetTextColor()
 		if oldObject then
 			fs:SetFontObject(oldObject)
 		elseif file then
@@ -72,19 +81,32 @@ local function SetFont(state, fs, font)
 		end
 		fs:SetTextColor(r, g, b, a)
 	end)
+	local r, g, b, a = fs:GetTextColor()
 	fs:SetFontObject(font)
 	fs:SetTextColor(r, g, b, a)
 end
 
-local function SetTextColor(state, fs, r, g, b, a)
-	if not fs then return end
-	local or_, og, ob, oa = fs:GetTextColor()
-	Push(state, function() fs:SetTextColor(or_, og, ob, oa) end)
-	fs:SetTextColor(r, g, b, a or 1)
+local function SameColor(r1, g1, b1, a1, r2, g2, b2, a2)
+	local e = 0.005
+	return math.abs(r1 - r2) < e and math.abs(g1 - g2) < e
+		and math.abs(b1 - b2) < e and math.abs((a1 or 1) - (a2 or 1)) < e
 end
 
--- Replaces a texture's image. r == nil keeps its vertex color (it is still
--- restored, in case it changes while scoped).
+local function SetTextColor(state, fs, r, g, b, a)
+	if not fs then return end
+	a = a or 1
+	local or_, og, ob, oa = fs:GetTextColor()
+	Push(state, function()
+		local cr, cg, cb, ca = fs:GetTextColor()
+		if SameColor(cr, cg, cb, ca, r, g, b, a) then
+			fs:SetTextColor(or_, og, ob, oa)
+		end
+	end)
+	fs:SetTextColor(r, g, b, a)
+end
+
+-- Replaces a texture's image. r == nil keeps its vertex color, and then the
+-- undo leaves the vertex color alone too (e.g. a ColorPicker's picked color).
 local function Retexture(state, tex, file, r, g, b, a, blend)
 	if not tex then return end
 	local atlas = tex.GetAtlas and tex:GetAtlas()
@@ -100,7 +122,7 @@ local function Retexture(state, tex, file, r, g, b, a, blend)
 			tex:SetTexture(oldFile)
 			if #coords == 8 then tex:SetTexCoord(unpack(coords)) end
 		end
-		tex:SetVertexColor(vr, vg, vb, va)
+		if r then tex:SetVertexColor(vr, vg, vb, va) end
 		tex:SetBlendMode(oldBlend)
 	end)
 	tex:SetTexture(file)
@@ -149,10 +171,9 @@ local function SetPoints(state, region, place)
 	place(region)
 end
 
--- Swaps a BackdropTemplate frame's backdrop for a flat one in a SaftUI
--- template's colors.
-local function FlatBackdrop(state, frame, template)
-	if not frame or not frame.SetBackdrop then return end
+-- Saves a BackdropTemplate frame's backdrop and colors for the undo. No
+-- AceGUI OnRelease touches backdrops, so restoring the snapshot is safe.
+local function SaveBackdrop(state, frame)
 	local info = frame.backdropInfo -- the original table (GetBackdrop returns an altered copy)
 	local bg = { frame:GetBackdropColor() }
 	local border = { frame:GetBackdropBorderColor() }
@@ -163,6 +184,13 @@ local function FlatBackdrop(state, frame, template)
 			if border[1] then frame:SetBackdropBorderColor(border[1], border[2], border[3], border[4]) end
 		end
 	end)
+end
+
+-- Swaps a BackdropTemplate frame's backdrop for a flat one in a SaftUI
+-- template's colors.
+local function FlatBackdrop(state, frame, template)
+	if not frame or not frame.SetBackdrop then return end
+	SaveBackdrop(state, frame)
 	local config = st.config.profile.templates[template]
 	frame:SetBackdrop(FLAT_BACKDROP)
 	frame:SetBackdropColor(unpack(config.backdropcolor))
@@ -175,16 +203,7 @@ end
 
 local function ClearBackdrop(state, frame)
 	if not frame or not frame.SetBackdrop then return end
-	local info = frame.backdropInfo -- the original table (GetBackdrop returns an altered copy)
-	local bg = { frame:GetBackdropColor() }
-	local border = { frame:GetBackdropBorderColor() }
-	Push(state, function()
-		frame:SetBackdrop(info)
-		if info then
-			if bg[1] then frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4]) end
-			if border[1] then frame:SetBackdropBorderColor(border[1], border[2], border[3], border[4]) end
-		end
-	end)
+	SaveBackdrop(state, frame)
 	frame:SetBackdrop(nil)
 end
 
@@ -520,8 +539,10 @@ STYLERS['Label'] = function(state, w)
 	local oldObject = fs:GetFontObject()
 	local r, g, b, a = fs:GetTextColor()
 	Push(state, function()
+		-- font only; the color stays whatever the widget has now
+		local cr, cg, cb, ca = fs:GetTextColor()
 		if oldObject then fs:SetFontObject(oldObject) end
-		fs:SetTextColor(r, g, b, a)
+		fs:SetTextColor(cr, cg, cb, ca)
 	end)
 	-- Through the widget's own method so it re-measures its height.
 	local large = oldObject == GameFontHighlightLarge
@@ -671,6 +692,7 @@ local function OnRelease(_, widget)
 	local window = windows[widget]
 	if window then
 		windows[widget] = nil
+		refreshing[window.name] = nil
 		if AceConfigDialog.OpenFrames[window.name] == widget then
 			AceConfigDialog.OpenFrames[window.name] = nil
 		end
@@ -680,14 +702,66 @@ local function OnRelease(_, widget)
 	end
 end
 
--- Hooked lazily, and again if a newer AceGUI loaded later replaced Release.
-local hookedRelease
-local function EnsureReleaseHook()
+--------------------------------------------------------------------------------
+-- Keeping SaftUI's windows in sync. A value changed in one window (e.g. the
+-- minimap's size or x offset typed in /sui) refreshes the others, since several
+-- windows show the same settings.
+--
+-- AceConfigDialog refreshes a window by calling Open(app) on it, both after a
+-- user change and when NotifyChange(app) was called. Only the first should
+-- notify the other windows, or two windows would refresh each other forever.
+-- NotifyChange fires ConfigTableChange right away and AceConfigDialog refreshes
+-- on the next frame, so ConfigTableChange marks the app as `refreshing` and
+-- the Open that follows clears the mark instead of notifying.
+--------------------------------------------------------------------------------
+
+local function IsSaftUIApp(name)
+	local frame = AceConfigDialog.OpenFrames[name]
+	return frame and windows[frame] ~= nil
+end
+
+local function OnConfigTableChange(_, appName)
+	if IsSaftUIApp(appName) then
+		refreshing[appName] = true
+	end
+end
+
+local function OnOpen(_, appName)
+	if type(appName) ~= 'string' or not IsSaftUIApp(appName) then return end
+	if refreshing[appName] then
+		refreshing[appName] = nil
+		return
+	end
+	for _, window in pairs(windows) do
+		if window.name ~= appName and IsSaftUIApp(window.name) then
+			AceConfigRegistry:NotifyChange(window.name)
+		end
+	end
+end
+
+-- Hooked lazily, and again if a newer library loaded later replaced the hooked
+-- function (checked on every CreateWindow and every ADDON_LOADED).
+local hookedRelease, hookedOpen, listening
+local function EnsureHooks()
 	if AceGUI.Release ~= hookedRelease then
 		hooksecurefunc(AceGUI, 'Release', OnRelease)
 		hookedRelease = AceGUI.Release
 	end
+	if AceConfigDialog.Open ~= hookedOpen then
+		hooksecurefunc(AceConfigDialog, 'Open', OnOpen)
+		hookedOpen = AceConfigDialog.Open
+	end
+	if not listening then
+		AceConfigRegistry.RegisterCallback(Skin, 'ConfigTableChange', OnConfigTableChange)
+		listening = true
+	end
 end
+
+local loader = CreateFrame('Frame')
+loader:RegisterEvent('ADDON_LOADED')
+loader:SetScript('OnEvent', function()
+	if hookedRelease then EnsureHooks() end
+end)
 
 --------------------------------------------------------------------------------
 -- API
@@ -702,8 +776,10 @@ end
 -- `name`, so open it with AceConfigDialog:Open(name): that way NotifyChange
 -- refreshes it and Escape closes it, like a stock options window.
 -- onClose(window) runs after the window is released.
+-- `title` shows until the window is opened; AceConfigDialog:Open then sets
+-- the options table's `name` as the title.
 function Skin:CreateWindow(name, title, onClose)
-	EnsureReleaseHook()
+	EnsureHooks()
 
 	local existing = AceConfigDialog.OpenFrames[name]
 	if existing and windows[existing] then
@@ -728,5 +804,26 @@ function Skin:GetStatusBar(window)
 	local statusbg = window.statustext and window.statustext:GetParent()
 	if statusbg ~= window.frame then
 		return statusbg
+	end
+end
+
+-- Moves the status text (where AceConfigDialog shows validation errors) to
+-- start `left` px into the status bar, clear of footer content. The original
+-- anchors are recorded on the first call and restored when the window is released.
+function Skin:SetStatusTextInset(window, left)
+	local state = states[window]
+	local statusbg = self:GetStatusBar(window)
+	if not state or not statusbg then return end
+	local fs = window.statustext
+	local function Place(text)
+		text:SetPoint('TOPLEFT', statusbg, 'TOPLEFT', left + 7, -2)
+		text:SetPoint('BOTTOMRIGHT', statusbg, 'BOTTOMRIGHT', -7, 2)
+	end
+	if state.saved[fs] then
+		fs:ClearAllPoints()
+		Place(fs)
+	else
+		state.saved[fs] = true
+		SetPoints(state, fs, Place)
 	end
 end

@@ -85,6 +85,17 @@ local function GetFooter()
 	return footer
 end
 
+-- Keeps AceConfigDialog's status text (validation errors) right of the buttons.
+local function UpdateStatusText()
+	if not window then return end
+	-- Buttons are laid out from the left edge: spacing, button, spacing, button...
+	local inset = 0
+	for _, button in ipairs(footerButtons) do
+		inset = inset + FOOTER_SPACING + button:GetWidth()
+	end
+	st.AceSkin:SetStatusTextInset(window, inset)
+end
+
 local function AttachFooter()
 	local statusbar = st.AceSkin:GetStatusBar(window)
 	if not statusbar then return end
@@ -94,6 +105,7 @@ local function AttachFooter()
 	f:SetAllPoints(statusbar)
 	f:SetFrameLevel(statusbar:GetFrameLevel() + 2)
 	f:Show()
+	UpdateStatusText()
 end
 
 local function DetachFooter()
@@ -152,6 +164,7 @@ function EM:AddFooterButton(text, onClick)
 		button:SetPoint('LEFT', f, 'LEFT', FOOTER_SPACING, 0)
 	end
 	footerButtons[#footerButtons + 1] = button
+	UpdateStatusText()
 	return button
 end
 
