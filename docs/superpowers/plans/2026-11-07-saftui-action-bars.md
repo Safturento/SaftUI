@@ -142,6 +142,7 @@ Blizzard's bars are hidden at load, taint-free. The pieces SaftUI also takes ove
 
 **Interfaces:**
 - Produces: bars `'pet'` and `'stance'` in `AB.bars`, the same config shape, movers `ab_pet` and `ab_stance`, and `/sui` subsections. Bindings come from `BONUSACTIONBUTTON*` and `SHAPESHIFTBUTTON*`, through Task 2's `UpdateBindings`.
+- Layout: size and place them the way `AB:LayoutBar` does, including `EvenIfCentred` in `bars.lua` (added after Task 3): a bar centred on an axis is rounded up to an even pixel length on it, so its buttons don't land half a pixel off the grid.
 
 - [ ] **Step 1:** Pet bar (note from Task 1's review: on a `/reload` with a pet out, Blizzard's pet bar is on screen, so `hideblizzard.lua` takes the conceal path instead of blocking it; make sure it stays hidden and unclickable): LibActionButton pet buttons if supported, otherwise SaftUI secure buttons with `type = 'pet'` attributes. It shows only with a pet bar (state driver `[pet,nooverridebar,novehicleui,nopossessbar] show; hide`). Autocast and cooldown work.
 - [ ] **Step 2:** Stance bar: secure buttons with `type = 'spell'` built from `GetShapeshiftFormInfo`. It's re-laid out when forms change, out of combat only. It's hidden when the class has no forms.

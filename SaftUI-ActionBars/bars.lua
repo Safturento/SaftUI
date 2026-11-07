@@ -143,6 +143,23 @@ local function Clamp(value, low, high)
 	return math.min(math.max(math.floor(value or low), low), high)
 end
 
+-- A bar anchored by its centre on one axis (BOTTOM and TOP centre it across,
+-- LEFT and RIGHT up and down, CENTER both) has its edges half a pixel off the
+-- grid when it's an odd number of pixels long on that axis. Every button is
+-- then too, and they round to whole pixels in different directions either
+-- side of the centre: on a centred row of 12, buttons 6 and 7 end up a pixel
+-- closer than the rest. So on a centred axis the bar is rounded up to an even
+-- length, with the spare pixel past the last button. Its centre stays on a
+-- whole pixel too, so bars stacked on it line up the same way, as long as the
+-- frame a bar is anchored to sits on whole pixels.
+local function EvenIfCentred(length, point, edge1, edge2, bar)
+	if point:find(edge1) or point:find(edge2) then return length end
+	local pixel = st:GetPixelSize(bar)
+	if not pixel then return length end
+	if math.floor(length / pixel + 0.5) % 2 == 0 then return length end
+	return st:RoundToPixel(length + pixel, bar)
+end
+
 -- Makes bar id and its buttons, with their actions, paging and skin. Out of
 -- combat only (AB:Build). Returns the existing bar if it's made already.
 function AB:CreateBar(id)
@@ -309,9 +326,10 @@ function AB:LayoutBar(id)
 			end
 		end
 
-		bar:SetSize(perRow * size + (perRow - 1) * spacing, numRows * size + (numRows - 1) * spacing)
-
 		local point, frame, relPoint, x, y = st:UnpackPoint(config.position)
+		bar:SetSize(
+			EvenIfCentred(perRow * size + (perRow - 1) * spacing, point, 'LEFT', 'RIGHT', bar),
+			EvenIfCentred(numRows * size + (numRows - 1) * spacing, point, 'TOP', 'BOTTOM', bar))
 		bar:ClearAllPoints()
 		bar:SetPoint(point, st:ResolveFrame(frame) or UIParent, relPoint,
 			st:RoundToPixel(x, bar), st:RoundToPixel(y, bar))
