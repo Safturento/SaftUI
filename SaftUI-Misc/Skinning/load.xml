@@ -4,6 +4,7 @@
 	<Script file="weakauras.lua"/>
 	<Script file="hekili.lua"/>
 	<Script file="Blizzard_BuffFrame.lua"/>
+	<Script file="Blizzard_BuffFramePosition.lua"/>
 	<Script file="Blizzard_SwingTimer.lua"/>
 	<Script file="Blizzard_SwingTimerPosition.lua"/>
 	<Script file="Blizzard_WeeklyRewards.lua"/>

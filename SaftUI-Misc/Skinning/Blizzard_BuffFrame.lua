@@ -7,10 +7,16 @@ local BF = SK:NewModule('Blizzard_BuffFrame')
 	same templates (external defensives, the consolidated buffs tooltip, the deadly
 	debuff warning).
 
-	These are Edit Mode system frames, so only the buttons' visual regions are touched:
-	the frames themselves are never moved, reparented or given new fields, and Blizzard's
-	methods are only ever followed with hooksecurefunc. Every button is created up front
-	in AuraFrame_OnLoad, so they can all be skinned once on enable.
+	These are Edit Mode system frames. This file only touches the buttons' visual regions:
+	it never moves, reparents or adds fields to the frames, and Blizzard's methods are only
+	ever followed with hooksecurefunc. BuffFrame's and DebuffFrame's position and button
+	layout (icon size included) are SaftUI's, in Blizzard_BuffFramePosition.lua. The
+	backdrop and borders here hang off the button's Icon, so they follow that layout. Every
+	button is created up front in AuraFrame_OnLoad, so they can all be skinned once on enable.
+
+	The duration and stack count text of BuffFrame's and DebuffFrame's own buttons follow
+	that file's Text settings: font, size, outline and anchor (see AuraTextStyle). All
+	other aura buttons keep the skinning font and Blizzard's anchors.
 
 	Aura data isn't read here. Debuff borders take their color from the atlas Blizzard
 	assigns to the button's DebuffBorder for its dispel type. If that atlas ever comes
@@ -32,12 +38,39 @@ local DURATION_OFFSETS = {
 
 local skinned = {}
 local borderUpdaters = {} -- button -> re-applies its border color
+local durationAnchorers = {} -- button -> re-applies its duration text's anchor
 local atlasColors = {}
 local noneColor
 
 -- Read at use time, so a profile change takes effect.
 local function SkinningFont()
 	return st:GetFont(st.config.profile.skinning.font)
+end
+
+-- The Auras module's style for a button's 'duration' or 'count' text: its font object,
+-- then its anchor relative to the icon (text point, icon point, x, y). Only BuffFrame's
+-- and DebuffFrame's own buttons have one; for any other aura button (external
+-- defensives, the consolidated buffs tooltip, the deadly debuff) this is nil. Read at
+-- use time, so settings and profile changes take effect.
+local function AuraTextStyle(button, kind)
+	local auras = st:GetModule('Auras', true)
+	if auras and auras.GetTextStyle then
+		return auras:GetTextStyle(button, kind)
+	end
+end
+
+-- Anchors a duration or count text where the Auras settings say. False if the button
+-- has no Auras style.
+local function AnchorAuraText(text, button, kind)
+	local font, point, relativePoint, x, y = AuraTextStyle(button, kind)
+	if not font then return false end
+	text:ClearAllPoints()
+	text:SetPoint(point, button.Icon, relativePoint, x, y)
+	return true
+end
+
+local function DurationFont(button)
+	return AuraTextStyle(button, 'duration') or SkinningFont()
 end
 
 local function BuildAtlasColors()
@@ -108,40 +141,61 @@ local function SkinBorders(button)
 	Update()
 end
 
--- Re-runs the duration's SetPoint hook, so its offset follows the backdrop.
-local function ReanchorDuration(duration)
-	local point, relativeTo, relativePoint = duration:GetPoint(1)
-	if point and not issecretvalue(point) then
-		duration:SetPoint(point, relativeTo, relativePoint)
-	end
-end
-
-local function SkinDuration(button, font)
+local function SkinDuration(button)
 	local duration = button.Duration
 	if not duration then return end
 
-	duration:SetFontObject(font)
+	duration:SetFontObject(DurationFont(button))
 	-- Edit Mode and some locales swap the duration font while updating
 	hooksecurefunc(duration, 'SetFontObject', function(self, fontObject)
-		local current = SkinningFont()
+		local current = DurationFont(button)
 		if fontObject ~= current then self:SetFontObject(current) end
 	end)
 
-	-- The grid layout re-anchors the duration flush against the icon; push it past the backdrop
+	-- Blizzard's grid layout re-anchors the duration flush against the icon (and zhTW's
+	-- OnUpdate re-anchors it every frame). Put it where the Auras settings say, or else
+	-- push it past the backdrop.
 	local anchoring
-	hooksecurefunc(duration, 'SetPoint', function(self, point, relativeTo, relativePoint)
-		if anchoring or relativeTo ~= button.Icon then return end
-		local offset = DURATION_OFFSETS[point]
-		if not offset then return end
-
-		-- The backdrop's thickness follows the template, which can change
-		local gap = (button.Icon.thick and 2 or 1) + 1
+	local function Anchor(point, relativeTo, relativePoint)
+		if anchoring then return end
 		anchoring = true
-		self:SetPoint(point, relativeTo, relativePoint, offset[1] * gap, offset[2] * gap)
+		if not AnchorAuraText(duration, button, 'duration') and relativeTo == button.Icon then
+			local offset = DURATION_OFFSETS[point]
+			if offset then
+				-- The backdrop's thickness follows the template, which can change
+				local gap = (button.Icon.thick and 2 or 1) + 1
+				duration:SetPoint(point, relativeTo, relativePoint, offset[1] * gap, offset[2] * gap)
+			end
+		end
 		anchoring = false
+	end
+	hooksecurefunc(duration, 'SetPoint', function(_, point, relativeTo, relativePoint)
+		Anchor(point, relativeTo, relativePoint)
 	end)
 
-	ReanchorDuration(duration)
+	-- Re-applies the anchor from the duration's current point, e.g. after a backdrop or
+	-- settings change.
+	durationAnchorers[button] = function()
+		local point, relativeTo, relativePoint = duration:GetPoint(1)
+		if issecretvalue(point) or issecretvalue(relativeTo) or issecretvalue(relativePoint) then
+			point, relativeTo, relativePoint = nil, nil, nil
+		end
+		Anchor(point, relativeTo, relativePoint)
+	end
+	durationAnchorers[button]()
+end
+
+-- The stack count: the Auras settings, or else the icon's bottom-right corner. Blizzard
+-- only ever sets its text and shows or hides it, so it's styled here once, and again
+-- when settings change (BF:UpdateText).
+local function StyleCount(button)
+	local count = button.Count
+	if not count then return end
+	count:SetFontObject(AuraTextStyle(button, 'count') or SkinningFont())
+	if not AnchorAuraText(count, button, 'count') then
+		count:ClearAllPoints()
+		count:SetPoint('BOTTOMRIGHT', button.Icon, 'BOTTOMRIGHT', 0, 1)
+	end
 end
 
 local function SkinAuraButton(button)
@@ -155,13 +209,8 @@ local function SkinAuraButton(button)
 	st:SetBackdrop(button.Icon, config.template)
 
 	SkinBorders(button)
-	SkinDuration(button, font)
-
-	if button.Count then
-		button.Count:SetFontObject(font)
-		button.Count:ClearAllPoints()
-		button.Count:SetPoint('BOTTOMRIGHT', button.Icon, 'BOTTOMRIGHT', 0, 1)
-	end
+	SkinDuration(button)
+	StyleCount(button)
 
 	if button.Symbol then
 		button.Symbol:SetFontObject(font)
@@ -197,9 +246,22 @@ function BF:SkinFrames()
 	end
 end
 
+-- Re-applies every skinned button's duration and count text (font and anchor). The
+-- Auras module calls this when its text settings change. Only font strings are
+-- touched, the same as the hooks above, which already run in combat.
+function BF:UpdateText()
+	for button in pairs(skinned) do
+		if button.Duration then
+			button.Duration:SetFontObject(DurationFont(button))
+			if durationAnchorers[button] then durationAnchorers[button]() end
+		end
+		StyleCount(button)
+	end
+end
+
 -- A profile change: every skinned button gets the profile's skinning template
--- and font. Only regions and SaftUI's own backdrops are touched, the same as
--- the hooks above, which already run in combat.
+-- and font, and the profile's Auras text settings. Only regions and SaftUI's own
+-- backdrops are touched, the same as the hooks above, which already run in combat.
 function BF:UpdateConfig()
 	local config = st.config.profile.skinning
 	local font = st:GetFont(config.font)
@@ -209,17 +271,13 @@ function BF:UpdateConfig()
 		-- SetBackdrop reset the border to the template's color
 		if borderUpdaters[button] then borderUpdaters[button]() end
 
-		if button.Duration then
-			button.Duration:SetFontObject(font)
-			ReanchorDuration(button.Duration)
-		end
-		if button.Count then
-			button.Count:SetFontObject(font)
-		end
 		if button.Symbol then
 			button.Symbol:SetFontObject(font)
 		end
 	end
+
+	-- The duration's backdrop gap follows the template's thickness
+	self:UpdateText()
 end
 
 function BF:ADDON_LOADED(event, addon)
