@@ -106,6 +106,37 @@ function Config:GetWindow()
 	return window
 end
 
+-- A sub-section is a non-inline group (a sidebar entry or a tab).
+local function IsSection(option)
+	return type(option) == 'table' and option.type == 'group' and not option.inline
+end
+
+local function HasSections(group)
+	if type(group.args) ~= 'table' then return false end
+	for _, child in pairs(group.args) do
+		if IsSection(child) then return true end
+	end
+	return false
+end
+
+-- The innermost sections (e.g. a frame's General and Position) show as tabs in
+-- their parent's page instead of another sidebar level. A group whose sections
+-- have no sections of their own gets childGroups = 'tab', unless it already
+-- chose a layout. The first tab (lowest order) is selected by default.
+local function UseTabsForInnermostSections(group)
+	if type(group) ~= 'table' or type(group.args) ~= 'table' then return end
+	local innermost = true
+	for _, child in pairs(group.args) do
+		if IsSection(child) then
+			if HasSections(child) then innermost = false end
+			UseTabsForInnermostSections(child)
+		end
+	end
+	if innermost and HasSections(group) and group.childGroups == nil then
+		group.childGroups = 'tab'
+	end
+end
+
 function Config:GetOptionsTable()
 	local profile = AceDBOptions:GetOptionsTable(st.config)
 	profile.order = -999
@@ -130,6 +161,7 @@ function Config:GetOptionsTable()
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			options[name] = module:GetConfigTable()
+			UseTabsForInnermostSections(options[name])
 		end
 	end
 
