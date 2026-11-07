@@ -255,6 +255,38 @@ function UF:UpdateConfig(unit, element_name)
 	self:ApplyConfig(unit, element_name)
 end
 
+-- Updates one frame, reporting an error instead of raising it, so one frame
+-- that fails (e.g. a SetPoint into an anchor loop) doesn't stop the frames
+-- after it.
+local function SafeUpdateUnitFrame(frame, element_name)
+	xpcall(function() UF:UpdateUnitFrame(frame, element_name) end, geterrorhandler())
+end
+
+-- Clears the points of every frame UpdateUnitFrame places: the single and
+-- numbered unit frames, and the group headers (their children are placed by
+-- the header). Returns each frame's old points, for st:RestorePoints. Unit
+-- frames are secure: out of combat only.
+local function ClearUnitFramePoints(self)
+	local previous = {}
+	local function Clear(frame)
+		previous[frame] = st:GetPoints(frame)
+		frame:ClearAllPoints()
+	end
+	for unit, frame in pairs(self.units) do
+		if unit == 'boss' or unit == 'arena' then
+			for _, numbered in pairs(frame) do
+				Clear(numbered)
+			end
+		else
+			Clear(frame)
+		end
+	end
+	for _, header in pairs(self.groups or {}) do
+		Clear(header)
+	end
+	return previous
+end
+
 --[[
 	Wrapper function for UpdateUnitFrame that allows you to update
 		using unit string instead of the frame object. Also used 
@@ -262,6 +294,16 @@ end
 ]]
 function UF:ApplyConfig(unit, element_name)
 	if not unit then
+		-- Two profiles can anchor frames the other way round (Pet to Player in
+		-- one, Player to Pet in the other), and placing them one by one would
+		-- then pass through an anchor loop. Out of combat, every frame's points
+		-- are cleared first, so they can be placed in any order. In combat
+		-- nothing is placed (UpdateUnitFrame skips it, UpdateConfig waits).
+		local previous
+		if not element_name and not InCombatLockdown() then
+			previous = ClearUnitFramePoints(self)
+		end
+
 		for unit, frame in pairs(self.units) do
 			UF:ApplyConfig(unit, element_name)
 		end
@@ -271,14 +313,20 @@ function UF:ApplyConfig(unit, element_name)
 				UF:ApplyConfig(unit)
 			end
 		end
+
+		-- A frame whose update failed after its points were cleared gets its
+		-- old ones back, now that every other frame is placed.
+		for frame, points in pairs(previous or {}) do
+			st:RestorePoints(frame, points)
+		end
 	else
 		if self.units[unit] then
 			if unit == 'boss' or unit == 'arena' then
 				for i,frame in pairs(self.units[unit]) do
-					self:UpdateUnitFrame(frame, element_name)
+					SafeUpdateUnitFrame(frame, element_name)
 				end
 			else
-				self:UpdateUnitFrame(self.units[unit], element_name)
+				SafeUpdateUnitFrame(self.units[unit], element_name)
 			end
 		elseif self.groups and self.groups[unit] then
 			self.groups[unit].config = st.config.profile.unitframes.profiles[self:GetProfile()][unit]
@@ -286,7 +334,7 @@ function UF:ApplyConfig(unit, element_name)
 			for i=1,self.groups[unit]:GetNumChildren() do
 				local frame = select(i, self.groups[unit]:GetChildren())
 				if frame and frame.Health then
-					self:UpdateUnitFrame(frame, element_name)
+					SafeUpdateUnitFrame(frame, element_name)
 				end
 			end
 		end
