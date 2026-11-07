@@ -22,7 +22,7 @@ The user wants this to be SaftUI's own system. SaftUI's frames must never be add
 
 - Wiring any frame other than the minimap. The framework must support the others, but only the minimap gets registered now.
 - Unit-frame-specific features (per-element sidebar sections, the shared "All unit frames" section). They are designed for, but not built.
-- Removing `st:RegisterEditMode`. It goes away when unit frames move to this system, not in this version. Its library, `EditModeExpanded-1.0`, is already commented out of the Mainline TOC and absent from the Forever TOC, so `st:RegisterEditMode` currently does nothing on both clients.
+- Removing `st:RegisterEditMode`. It goes away when unit frames move to this system, not in this version. Its library, `EditModeExpanded-1.0`, is already commented out of the Mainline TOC and absent from the Forever TOC, so `st:RegisterEditMode` currently does nothing on both clients. *(Done 2026-11-07 in Task 10, `3c0108b`, when unit frames became movers.)*
 - Blizzard frames (e.g. the Forever totem bar, `MultiCastActionBarFrame`). They come later, as frames that get an overlay and options.
 
 ## Anti-goals (would make this a failure even if it works)
