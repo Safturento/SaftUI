@@ -11,7 +11,13 @@ function st:CreateScrollFrame(parent, content)
     scrollFrame:SetScrollChild(content)
     scrollFrame.ScrollChild = content
 
-    scrollFrame.SetContentSize = function(self, width, height) content:SetSize(width, height) end
+    -- A ScrollFrame keeps its own picture of the scroll child's size and only refreshes
+    -- it when told to. Without this, content resized after the frame was shown (the bags'
+    -- first open after a reload) stays drawn at its old 0x0 size, i.e. not at all.
+    scrollFrame.SetContentSize = function(self, width, height)
+        content:SetSize(width, height)
+        self:UpdateScrollChildRect()
+    end
 
     return scrollFrame
 end
