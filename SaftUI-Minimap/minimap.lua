@@ -51,6 +51,14 @@ function MM:OnEnable()
         MinimapCluster.DielFrame:Hide()
     end
 
+    -- Blizzard's Edit Mode box for the cluster no longer controls our minimap,
+    -- so keep it hidden. HookScript only; nothing is written onto the frame.
+    if MinimapCluster.Selection then
+        MinimapCluster.Selection:HookScript('OnShow', function(selection)
+            selection:Hide()
+        end)
+    end
+
     -- Take the minimap out of Blizzard's cluster so Blizzard's Edit Mode no
     -- longer moves it. Parenting resets strata/level, so restore them.
     local strata, level = Minimap:GetFrameStrata(), Minimap:GetFrameLevel()
