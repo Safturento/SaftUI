@@ -31,6 +31,19 @@ function UF:GetFrame(unitframe, configPosition)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
 end
 
+-- Colors a power bar's background as a darker shade of the bar color.
+-- oUF can hand us secret colors (smoothed power colors, secret class colors),
+-- which can't be multiplied; for those the multiplier goes into the alpha
+-- instead, which looks the same over the frame's dark backdrop.
+function UF.SetPowerBackgroundColor(power, r, g, b)
+	local bg = power.config.bg
+	if issecretvalue(r) or issecretvalue(g) or issecretvalue(b) then
+		power.bg:SetVertexColor(r, g, b, bg.alpha * bg.multiplier)
+	else
+		power.bg:SetVertexColor(r * bg.multiplier, g * bg.multiplier, b * bg.multiplier, bg.alpha)
+	end
+end
+
 -- oUF keeps the active unit in __unit, but Blizzard's UnitFrame_OnEnter reads
 -- self.unit and passes it straight to GameTooltip:SetUnit, which throws on nil.
 function UF.OnEnter(self)

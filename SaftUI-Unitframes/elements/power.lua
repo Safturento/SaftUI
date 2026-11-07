@@ -46,7 +46,7 @@ local function PostUpdateColor(power, unit, color, r, g, b)
 		r, g, b = color:GetRGB()
 	end
 	if r and g and b then
-		power.bg:SetVertexColor(r * power.config.bg.multiplier, g * power.config.bg.multiplier, b * power.config.bg.multiplier, power.config.bg.alpha)
+		UF.SetPowerBackgroundColor(power, r, g, b)
 	end
 end
 
