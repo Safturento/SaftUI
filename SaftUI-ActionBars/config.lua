@@ -20,12 +20,12 @@ local st = SaftUI
 	    x_off / y_off from there.
 	template is the backdrop template every button uses.
 
-	The default layout, at 45px buttons 2px apart (a 47px pitch):
+	The default layout, at 45px buttons 3px apart (a 48px pitch):
 	  - Bars 1-3 are rows of 12 at the bottom centre. Bar 1 is 20px up from the
 	    bottom edge (st.CLAMP_INSET, the minimap's gap), and bars 2 and 3 stack above
-	    it, 2px apart. Each row is 562px wide and 45px high.
+	    it, 3px apart. Each row is 573px wide and 45px high.
 	  - Bars 4 and 5 are columns of 12, side by side, centred vertically. Bar 4 is
-	    20px in from the right edge and bar 5 is 2px to its left, the way Blizzard's
+	    20px in from the right edge and bar 5 is 3px to its left, the way Blizzard's
 	    Right and Left bars sit.
 	  - Bars 6-8 are off. When turned on they continue the columns leftwards, so
 	    they stay out of the space above the bottom stack (pet, stance and the extra
@@ -33,6 +33,9 @@ local st = SaftUI
 ]]
 
 local pixel = st.defaults.fonts.pixel
+
+-- The gap between buttons, and between the bars the default layout stacks.
+local SPACING = 3
 
 local function Text(point, x_off, y_off)
 	return {
@@ -54,7 +57,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		buttons = 12,
 		perrow = perrow,
 		size = 45,
-		spacing = 2,
+		spacing = SPACING,
 		position = { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off },
 		visibility = 'always',
 		fade_alpha = 0,
@@ -72,11 +75,11 @@ st.defaults.actionbars = {
 	template = 'thicktransparent',
 
 	bar1 = Bar(true, 12, 'BOTTOM', 'UIParent', 'BOTTOM', 0, st.CLAMP_INSET),
-	bar2 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar1', 'TOP', 0, 2),
-	bar3 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar2', 'TOP', 0, 2),
+	bar2 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar1', 'TOP', 0, SPACING),
+	bar3 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar2', 'TOP', 0, SPACING),
 	bar4 = Bar(true, 1, 'RIGHT', 'UIParent', 'RIGHT', -st.CLAMP_INSET, 0),
-	bar5 = Bar(true, 1, 'RIGHT', 'SaftUI_ActionBar4', 'LEFT', -2, 0),
-	bar6 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar5', 'LEFT', -2, 0),
-	bar7 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar6', 'LEFT', -2, 0),
-	bar8 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -2, 0),
+	bar5 = Bar(true, 1, 'RIGHT', 'SaftUI_ActionBar4', 'LEFT', -SPACING, 0),
+	bar6 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar5', 'LEFT', -SPACING, 0),
+	bar7 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar6', 'LEFT', -SPACING, 0),
+	bar8 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -SPACING, 0),
 }

@@ -40,7 +40,7 @@ Blizzard's bars are hidden at load, taint-free. The pieces SaftUI also takes ove
 - Default layout (spec):
   - Bars 1–3 are rows of 12, bottom centre: bar 1 at the bottom, 20px from the bottom edge, with 2 and 3 stacked above.
   - Bars 4 and 5 are vertical columns of 12, side by side, 20px from the right edge, centred vertically.
-  - Icons are 45px with 2px spacing.
+  - Icons are 45px with 3px spacing (2px in the spec; the user changed it on 2026-11-07). Bars stacked on other bars sit 3px apart.
   - Bars 6–8 are disabled.
   - Pet and stance bars use ~30px icons, just above the bottom stack (pet on the left, stance on the right).
   - The extra action button, the zone ability and the vehicle leave button sit above the bottom stack.
