@@ -68,17 +68,27 @@ end
 -- FontStrings and EditBoxes. SetFontObject also applies the font object's
 -- color, so the color in place is re-applied after it, both when styling and
 -- when restoring: the font changes, the color stays whatever the widget set.
+-- GetFontObject() can return an engine-made Font that belongs to the region
+-- itself (e.g. after its text color was changed). Setting that back makes the
+-- region inherit from itself, which overflows the C stack and crashes the game.
+-- So only a named global font object is ever restored as an object; anything
+-- else is restored from the recorded file, size and flags.
+local function RestoreFont(fs, oldObject, file, size, flags)
+	local name = oldObject and oldObject.GetName and oldObject:GetName()
+	if name and _G[name] == oldObject then
+		fs:SetFontObject(oldObject)
+	elseif file then
+		fs:SetFont(file, size, flags)
+	end
+end
+
 local function SetFont(state, fs, font)
 	if not fs or not font then return end
 	local oldObject = fs:GetFontObject()
 	local file, size, flags = fs:GetFont()
 	Push(state, function()
 		local r, g, b, a = fs:GetTextColor()
-		if oldObject then
-			fs:SetFontObject(oldObject)
-		elseif file then
-			fs:SetFont(file, size, flags)
-		end
+		RestoreFont(fs, oldObject, file, size, flags)
 		fs:SetTextColor(r, g, b, a)
 	end)
 	local r, g, b, a = fs:GetTextColor()
@@ -537,11 +547,12 @@ end
 STYLERS['Label'] = function(state, w)
 	local fs = w.label
 	local oldObject = fs:GetFontObject()
+	local file, size, flags = fs:GetFont()
 	local r, g, b, a = fs:GetTextColor()
 	Push(state, function()
 		-- font only; the color stays whatever the widget has now
 		local cr, cg, cb, ca = fs:GetTextColor()
-		if oldObject then fs:SetFontObject(oldObject) end
+		RestoreFont(fs, oldObject, file, size, flags)
 		fs:SetTextColor(cr, cg, cb, ca)
 	end)
 	-- Through the widget's own method so it re-measures its height.
