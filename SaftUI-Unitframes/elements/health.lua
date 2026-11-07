@@ -84,16 +84,17 @@ end
 
 
 local function GetConfigTable(unit)
-	local config = st.config.profile.unitframes
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function UnitConfig() return UF:GetProfileConfig()[unit] end
 
 	return {
 		type = 'group',
 		name = 'Health',
 		get = function(info)
-			return tostring(config.profiles[config.config_profile][unit].health[info[#info]])
+			return tostring(UnitConfig().health[info[#info]])
 		end,
 		set = function(info, value)
-			config.profiles[config.config_profile][unit].health[info[#info]] = value
+			UnitConfig().health[info[#info]] = value
 			UF:UpdateConfig(unit, 'Health')
 		end,
 		args = {
@@ -105,10 +106,10 @@ local function GetConfigTable(unit)
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
 			position = st.Config.generators.uf_element_position(50,
 				function(index)
-					return tostring(config.profiles[config.config_profile][unit].health.position[index])
+					return tostring(UnitConfig().health.position[index])
 				end,
 				function(index, value)
-					config.profiles[config.config_profile][unit].health.position[index] = value
+					UnitConfig().health.position[index] = value
 					UF:UpdateConfig(unit, 'Health')
 				end
 			),
@@ -118,10 +119,10 @@ local function GetConfigTable(unit)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return config.profiles[config.config_profile][unit].health.text[info[#info]]
+					return UnitConfig().health.text[info[#info]]
 				end,
 				set = function(info, value)
-					config.profiles[config.config_profile][unit].health.text[info[#info]] = value
+					UnitConfig().health.text[info[#info]] = value
 					UF:UpdateConfig(unit, 'Health')
 				end,
 				args = {
@@ -129,10 +130,10 @@ local function GetConfigTable(unit)
 					font = st.Config.generators.font(1),
 					position = st.Config.generators.uf_element_position(2,
 					function(index) return
-						config.profiles[config.config_profile][unit].health.text.position[index]
+						UnitConfig().health.text.position[index]
 					end,
 					function(index, value)
-						config.profiles[config.config_profile][unit].health.text.position[index] = value
+						UnitConfig().health.text.position[index] = value
 						UF:UpdateConfig(unit, 'Health')
 					end
 					),
@@ -147,10 +148,10 @@ local function GetConfigTable(unit)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return config.profiles[config.config_profile][unit].health.bg[info[#info]]
+					return UnitConfig().health.bg[info[#info]]
 				end,
 				set = function(info, value)
-					config.profiles[config.config_profile][unit].health.bg[info[#info]] = value
+					UnitConfig().health.bg[info[#info]] = value
 					UF:UpdateConfig(unit, 'Health')
 				end,
 				args = {

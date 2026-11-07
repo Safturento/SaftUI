@@ -89,16 +89,17 @@ local function UpdateConfig(unitframe)
 end
 
 local function GetConfigTable(unit)
-	local config = st.config.profile.unitframes
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function UnitConfig() return UF:GetProfileConfig()[unit] end
 
 	return {
 		type = 'group',
 		name = 'Power',
 		get = function(info)
-			return config.profiles[config.config_profile][unit].power[info[#info]]
+			return UnitConfig().power[info[#info]]
 		end,
 		set = function(info, value)
-			config.profiles[config.config_profile][unit].power[info[#info]] = value
+			UnitConfig().power[info[#info]] = value
 			UF:UpdateConfig(unit, 'Power')
 		end,
 		args = {
@@ -110,10 +111,10 @@ local function GetConfigTable(unit)
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
 			position = st.Config.generators.uf_element_position(50,
 				function(index) return
-					config.profiles[config.config_profile][unit].power.position[index]
+					UnitConfig().power.position[index]
 				end,
 				function(index, value)
-					config.profiles[config.config_profile][unit].power.position[index] = value
+					UnitConfig().power.position[index] = value
 					UF:UpdateConfig(unit, 'Power')
 				end
 			),
@@ -123,10 +124,10 @@ local function GetConfigTable(unit)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return config.profiles[config.config_profile][unit].power.text[info[#info]]
+					return UnitConfig().power.text[info[#info]]
 				end,
 				set = function(info, value)
-					config.profiles[config.config_profile][unit].power.text[info[#info]] = value
+					UnitConfig().power.text[info[#info]] = value
 					UF:UpdateConfig(unit, 'Power')
 				end,
 				args = {
@@ -134,10 +135,10 @@ local function GetConfigTable(unit)
 					font = st.Config.generators.font(1),
 					position = st.Config.generators.uf_element_position(5,
 				function(index) return
-					config.profiles[config.config_profile][unit].power.text.position[index]
+					UnitConfig().power.text.position[index]
 				end,
 				function(index, value)
-					config.profiles[config.config_profile][unit].power.text.position[index] = value
+					UnitConfig().power.text.position[index] = value
 					UF:UpdateConfig(unit, 'Power')
 				end
 			),
@@ -149,10 +150,10 @@ local function GetConfigTable(unit)
 				type = 'group',
 				inline = true,
 				get = function(info)
-					return config.profiles[config.config_profile][unit].power.bg[info[#info]]
+					return UnitConfig().power.bg[info[#info]]
 				end,
 				set = function(info, value)
-					config.profiles[config.config_profile][unit].power.bg[info[#info]] = value
+					UnitConfig().power.bg[info[#info]] = value
 					UF:UpdateConfig(unit, 'Power')
 				end,
 				args = {

@@ -54,7 +54,6 @@ end
 
 local function UpdateConfig(unitframe)
     local additionalPower = unitframe.AdditionalPower
-    local config = additionalPower.config
 
 	additionalPower:SetStatusBarTexture(st.BLANK_TEX)
 	additionalPower.bg:SetTexture(st.BLANK_TEX)
@@ -67,6 +66,9 @@ local function UpdateConfig(unitframe)
 	else
 		UF:UpdateElement(additionalPower)
 	end
+
+	-- Read after UpdateElement, which points it at the current profile.
+	local config = additionalPower.config
 
 	--additionalPower.Override       = config.manaAsPrimary and Update or nil
 	additionalPower.colorPower     = config.colorPower

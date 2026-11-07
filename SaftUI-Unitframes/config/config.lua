@@ -208,7 +208,7 @@ function UF:RegisterCopyTable()
 end
 
 function UF:OpenCopyTable(unit)
-	local config = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
+	local config = self:GetProfileConfig()
 	-- We use a local table of configurations and reset all of the setters and getters
 	-- To ensure there's no funny business with accidentally not clearing old values
 
@@ -228,7 +228,8 @@ function UF:OpenCopyTable(unit)
 		self.CopyTable.args.copy_from.get = function(info) return copy_options.from end
 		self.CopyTable.args.copy_from.values = function(info)
 			local units = {}
-			for key,_ in pairs(config) do
+			-- The current profile's, in case the profile changed since opening
+			for key,_ in pairs(UF:GetProfileConfig()) do
 				if not (key == unit) then
 					units[key] = key
 				end
@@ -383,16 +384,17 @@ function UF:GetConfigTable()
 	}
 
 	local function GetUnitConfig(unit)
-		local config = st.config.profile.unitframes
-
 		if not unit then return end
 
+		-- Looked up on every get/set: a profile change replaces these tables.
+		local function UnitConfig() return UF:GetProfileConfig()[unit] end
+
 		local function frame_position_set(key, value)
-			config.profiles[config.config_profile][unit].position[key] = value
+			UnitConfig().position[key] = value
 			UF:UpdateConfig(unit)
 		end
 		local function frame_position_get(key)
-			return config.profiles[config.config_profile][unit].position[key]
+			return UnitConfig().position[key]
 		end
 
 		config_table = {
@@ -414,10 +416,10 @@ function UF:GetConfigTable()
 					name = 'General',
 					type = 'group',
 					get = function(info)
-						return config.profiles[config.config_profile][unit][info[#info]]
+						return UnitConfig()[info[#info]]
 					end,
 					set = function(info, value)
-						config.profiles[config.config_profile][unit][info[#info]] = value
+						UnitConfig()[info[#info]] = value
 						UF:UpdateConfig(unit)
 					end,
 					args = {

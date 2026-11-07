@@ -121,8 +121,66 @@ function UF:UpdateColors()
 	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
 	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
 	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
-	UF.oUF.colors.roles 		= st.config.profile.colors.roles
-	UF.oUF.colors.runes 		= st.config.profile.colors.runes
+	-- The profile has no roles or runes colors by default; keep oUF's then
+	-- instead of wiping them.
+	if st.config.profile.colors.roles then
+		UF.oUF.colors.roles = st.config.profile.colors.roles
+	end
+	if st.config.profile.colors.runes then
+		UF.oUF.colors.runes = st.config.profile.colors.runes
+	end
+end
+
+-- Calls fn(frame) for every spawned unit frame: single units, the numbered
+-- boss/arena frames, and group header children.
+function UF:ForEachUnitFrame(fn)
+	for unit, frame in pairs(self.units or {}) do
+		if unit == 'boss' or unit == 'arena' then
+			for _, numbered in pairs(frame) do
+				fn(numbered)
+			end
+		else
+			fn(frame)
+		end
+	end
+	for _, header in pairs(self.groups or {}) do
+		for i = 1, header:GetNumChildren() do
+			local child = select(i, header:GetChildren())
+			if child and child.GetConfig then
+				fn(child)
+			end
+		end
+	end
+end
+
+-- Points an element's cached config (and its texts' and icons') at the
+-- current profile.
+local function RefreshElementConfig(element)
+	if element.GetConfig then
+		element.config = element:GetConfig()
+	end
+	for _, text in pairs(element.textElements or {}) do
+		text.config = text:GetConfig()
+	end
+	for _, icon in pairs(element.icons or {}) do
+		icon.config = icon:GetConfig()
+	end
+end
+
+-- Points every frame's and element's cached config at the current profile.
+-- Element callbacks (PostUpdate and friends) read those tables, and after a
+-- profile switch the old ones have lost their defaults. Only plain table
+-- writes, so it's safe in combat.
+function UF:RefreshConfigReferences()
+	self:ForEachUnitFrame(function(frame)
+		frame.config = frame:GetConfig()
+		for _, element in pairs(frame.elements or {}) do
+			RefreshElementConfig(element)
+		end
+	end)
+	for unit, header in pairs(self.groups or {}) do
+		header.config = self:GetProfileConfig()[unit]
+	end
 end
 
 function UF:UpdateUnitFrame(frame, element_name)
@@ -155,11 +213,11 @@ function UF:UpdateUnitFrame(frame, element_name)
 		end
 
 		st:SetBackdrop(frame, frame.config.template)
-		
-		frame.Range = {
-			insideAlpha = frame.config.range_alpha.inside,
-			outsideAlpha = frame.config.range_alpha.outside
-		}
+
+		-- Updated in place: oUF's range element keeps its state on this table.
+		frame.Range = frame.Range or {}
+		frame.Range.insideAlpha = frame.config.range_alpha.inside
+		frame.Range.outsideAlpha = frame.config.range_alpha.outside
 		
 		for _element_name, element in pairs(frame.elements) do
             if self.elements[_element_name].UpdateConfig then
@@ -174,19 +232,42 @@ function UF:UpdateUnitFrame(frame, element_name)
 end
 
 --[[
+	Updates unit frames from the current profile: one unit (and optionally one
+	of its elements), or with no unit everything, colors included. Runs on
+	profile changes (Config:UpdateConfig) and option edits.
+
+	Unit frames are secure, so their size and position can't change in combat.
+	In combat the cached config is re-pointed right away (element callbacks
+	read it) and the full update waits for PLAYER_REGEN_ENABLED.
+]]
+function UF:UpdateConfig(unit, element_name)
+	if not self.units then return end -- not enabled
+
+	if st:QueueAfterCombat('Unitframes', function() UF:UpdateConfig() end) then
+		self:RefreshConfigReferences()
+		return
+	end
+
+	if not unit then
+		self:UpdateColors()
+	end
+	self:ApplyConfig(unit, element_name)
+end
+
+--[[
 	Wrapper function for UpdateUnitFrame that allows you to update
 		using unit string instead of the frame object. Also used 
 		to update all group frames at once
 ]]
-function UF:UpdateConfig(unit, element_name)
+function UF:ApplyConfig(unit, element_name)
 	if not unit then
 		for unit, frame in pairs(self.units) do
-			UF:UpdateConfig(unit, element_name)
+			UF:ApplyConfig(unit, element_name)
 		end
 
 		if self.groups then
 			for unit,_ in pairs(self.groups) do
-				UF:UpdateConfig(unit)
+				UF:ApplyConfig(unit)
 			end
 		end
 	else
@@ -198,7 +279,7 @@ function UF:UpdateConfig(unit, element_name)
 			else
 				self:UpdateUnitFrame(self.units[unit], element_name)
 			end
-		elseif self.groups[unit] then
+		elseif self.groups and self.groups[unit] then
 			self.groups[unit].config = st.config.profile.unitframes.profiles[self:GetProfile()][unit]
 
 			for i=1,self.groups[unit]:GetNumChildren() do
@@ -330,7 +411,7 @@ function UF:OnEnable()
 	self.RMH = RealMobHealth
 
 -- 	UF:CreateGroupHeaders()
-	UF:UpdateConfig()
+	UF:ApplyConfig()
 	UF:UpdateColors()
 
 	for _, unitframe in pairs(self.units) do

@@ -15,15 +15,16 @@ local function UpdateConfig(unitframe)
 end
 
 local function GetConfigTable(unit)
-	local config = st.config.profile.unitframes
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function UnitConfig() return UF:GetProfileConfig()[unit] end
 	return {
 		type = 'group',
 		name = 'Name',
 		get = function(info)
-			return config.profiles[config.config_profile][unit].name[info[#info]]
+			return UnitConfig().name[info[#info]]
 		end,
 		set = function(info, value)
-			config.profiles[config.config_profile][unit].name[info[#info]] = value
+			UnitConfig().name[info[#info]] = value
 			UF:UpdateConfig(unit, 'Name')
 		end,
 		args = {
@@ -32,10 +33,10 @@ local function GetConfigTable(unit)
 			alpha = st.Config.generators.alpha(3),
 			position = st.Config.generators.uf_element_position(4,
 				function(index) return
-					config.profiles[config.config_profile][unit].name.position[index]
+					UnitConfig().name.position[index]
 				end,
 				function(index, value)
-					config.profiles[config.config_profile][unit].name.position[index] = value
+					UnitConfig().name.position[index] = value
 					UF:UpdateConfig(unit, 'Name')
 				end
 			),

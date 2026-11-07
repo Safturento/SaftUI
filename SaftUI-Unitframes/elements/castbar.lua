@@ -68,4 +68,15 @@ local function Constructor(unitframe)
 	return castbar
 end
 
-UF:RegisterElement('Castbar', Constructor)
+local function UpdateConfig(unitframe)
+	local castbar = unitframe.Castbar
+	UF:UpdateElement(castbar)
+
+	-- castbar.colors are copies (made once above), so carry the profile's
+	-- colors over into them.
+	local colors = castbar.config.colors
+	castbar.colors.normal:SetRGB(colors.normal:GetRGB())
+	castbar.colors.notInterruptible:SetRGB(colors.nointerrupt:GetRGB())
+end
+
+UF:RegisterElement('Castbar', Constructor, UpdateConfig)
