@@ -22,7 +22,8 @@ local ST = SK:NewModule('Blizzard_SwingTimer')
 	    texture and shows/hides it on swing start/end; only its texture and size change.
 	  - TypeLabel / TimeLabel: SaftUI font. Blizzard keeps recoloring them (red when out
 	    of range), so their color is left alone.
-	  - TypeLabelShadow: hidden.
+	  - TypeLabelShadow: hidden. Whether TypeLabel / TimeLabel show, and the bar's
+	    opacity, are /sui settings applied by Blizzard_SwingTimerPosition.lua.
 ]]
 
 local issecretvalue = issecretvalue or function() return false end

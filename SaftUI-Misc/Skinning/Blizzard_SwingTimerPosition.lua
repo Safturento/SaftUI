@@ -37,6 +37,25 @@ local STP = st:NewModule('SwingTimer')
 	Blizzard's Edit Mode box on each bar is kept hidden, as with the minimap cluster, so
 	Blizzard's Edit Mode can't select or drag them. State lives on this module and in
 	closures; nothing is written onto the bars or any Blizzard table.
+
+	With that box hidden, Blizzard's per-bar Show Bar Title, Show Time and Opacity
+	settings can't be reached, so /sui owns them (showtitle, showtime, opacity):
+	  - Title and time: Blizzard shows/hides TypeLabel, TypeLabelShadow and TimeLabel only
+	    through region:SetShown (EditModeSwingTimerSystemMixin:UpdateSystemSettingShowBarTitle
+	    and ...ShowTime), so a post-hook on each region's SetShown re-applies the SaftUI
+	    value. The shadow stays hidden, as the skin wants.
+	  - Opacity: Blizzard sets the bar's own alpha in one place (UpdateSystemSettingOpacity,
+	    a SetAlpha on the bar). A post-hook on the bar's SetAlpha puts the SaftUI value
+	    back. Range dimming sets the alpha of the bar's Background, Border and StatusBar
+	    children (ApplyRangePresentation), never the bar's, so the two multiply and the
+	    out-of-range dim stays visible at any opacity.
+	  - Visibility (Always / In Combat / Hidden) isn't replaced. ShouldBeShown and the
+	    swing event registration read the Lua field bar.visibility, and the show/hide goes
+	    through the Edit Mode SetShown/Hide overrides. Owning it would mean writing that
+	    field or those methods, which taints. A saved "Hidden" is only detected (a read of
+	    bar.visibility) and noted on the bar's edit mode outline.
+	  - Scale isn't replaced: width and height cover size. Blizzard's Scale setting now
+	    only scales the bar's text, pip and border.
 ]]
 
 local BARS = {
@@ -53,7 +72,7 @@ local INSET_X, INSET_Y = 5, 4
 
 -- The widget API's own methods, called directly so the bars' Lua overrides are skipped.
 -- Looked up in Setup, so nothing runs on clients without the bars.
-local ClearAllPoints, SetPoint
+local ClearAllPoints, SetPoint, SetAlpha
 
 local function AnchorBar(bar, holder)
 	ClearAllPoints(bar)
@@ -66,8 +85,14 @@ end
 -- goes through its ClearAllPoints or SetPoint, so these post-hooks undo each one
 -- straight after. They only touch the bar (not protected), so they're safe when
 -- Blizzard lays a bar out in combat.
-local function TakeOver(bar, holder)
+local function TakeOver(bar, holder, key, getConfig)
 	local function Reanchor()
+		-- A protected frame anchored to the bar makes the bar protected, and it can't
+		-- be re-anchored in combat. Wait for the end of combat then.
+		if InCombatLockdown() and bar:IsProtected()
+			and st:QueueAfterCombat('swingtimer_anchor_' .. key, Reanchor) then
+			return
+		end
 		AnchorBar(bar, holder)
 	end
 
@@ -83,6 +108,54 @@ local function TakeOver(bar, holder)
 	end
 
 	Reanchor()
+
+	-- Title and time text. Blizzard only ever calls SetShown on these regions, so each
+	-- gets a post-hook that puts the SaftUI choice back. Show and Hide are not hooked,
+	-- so applying it here doesn't loop. The shadow stays hidden (the skin hides it).
+	local statusBar = bar.StatusBar
+	local typeLabel, shadow, timeLabel = statusBar.TypeLabel, statusBar.TypeLabelShadow, statusBar.TimeLabel
+	local function ApplyTitle()
+		if typeLabel then
+			if getConfig().showtitle ~= false then typeLabel:Show() else typeLabel:Hide() end
+		end
+		if shadow then shadow:Hide() end
+	end
+	local function ApplyTime()
+		if timeLabel then
+			if getConfig().showtime ~= false then timeLabel:Show() else timeLabel:Hide() end
+		end
+	end
+	if typeLabel then hooksecurefunc(typeLabel, 'SetShown', ApplyTitle) end
+	if shadow then hooksecurefunc(shadow, 'SetShown', ApplyTitle) end
+	if timeLabel then hooksecurefunc(timeLabel, 'SetShown', ApplyTime) end
+
+	-- Opacity. Blizzard's Edit Mode Opacity setting is a SetAlpha on the bar; put the
+	-- SaftUI value back. The widget method is called directly so the hook can't recurse.
+	hooksecurefunc(bar, 'SetAlpha', function()
+		SetAlpha(bar, getConfig().opacity or 1)
+	end)
+
+	return ApplyTitle, ApplyTime
+end
+
+-- Applies a bar's title, time and opacity settings.
+function STP:ApplyAppearance(key)
+	local appearance = self.appearance and self.appearance[key]
+	if not appearance then return end
+	appearance.title()
+	appearance.time()
+	SetAlpha(appearance.bar, self.config[key].opacity or 1)
+end
+
+-- Notes on a bar's edit mode outline when Blizzard's saved Visibility is Hidden, since
+-- the outline would otherwise sit around a bar that never shows. Only reads the
+-- bar's visibility field; the outline's label is SaftUI's.
+function STP:UpdateMoverLabel(key)
+	local info, mover, bar = self.infos[key], self.movers[key], self.bars[key]
+	if not (mover and mover.label) then return end
+	local visibilities = Enum and Enum.EditModeSwingTimerVisibility
+	local hidden = visibilities and bar.visibility == visibilities.Hidden
+	mover.label:SetText(info.label .. ' Swing' .. (hidden and ' (hidden by Blizzard setting)' or ''))
 end
 
 -- Sizes and places one holder from the profile. Only SaftUI's holder is touched (the
@@ -107,12 +180,13 @@ function STP:UpdateConfig()
 	end
 	for _, info in ipairs(BARS) do
 		self:ApplyHolder(info.key)
+		self:ApplyAppearance(info.key)
 	end
 end
 
 function STP:RegisterBarMover(info)
 	local key = info.key
-	st:RegisterMover('swingtimer_' .. key, {
+	self.movers[key] = st:RegisterMover('swingtimer_' .. key, {
 		frame = self.holders[key],
 		label = info.label .. ' Swing',
 		getPosition = function() return self.config[key].position end,
@@ -133,7 +207,7 @@ function STP:Setup()
 
 	-- The shared Frame method table (the bars are plain Frames, like UIParent).
 	local methods = getmetatable(UIParent).__index
-	ClearAllPoints, SetPoint = methods.ClearAllPoints, methods.SetPoint
+	ClearAllPoints, SetPoint, SetAlpha = methods.ClearAllPoints, methods.SetPoint, methods.SetAlpha
 
 	-- Every holder exists before any is placed, since the defaults chain them by name.
 	self.holders = {}
@@ -142,9 +216,20 @@ function STP:Setup()
 	end
 	self:UpdateConfig()
 
+	self.bars, self.movers, self.infos, self.appearance = bars, {}, {}, {}
 	for _, info in ipairs(BARS) do
-		TakeOver(bars[info.key], self.holders[info.key])
+		local key, bar = info.key, bars[info.key]
+		self.infos[key] = info
+		local title, time = TakeOver(bar, self.holders[key], key, function() return self.config[key] end)
+		self.appearance[key] = { bar = bar, title = title, time = time }
 		self:RegisterBarMover(info)
+		self:ApplyAppearance(key)
+		self:UpdateMoverLabel(key)
+
+		-- A layout load or change re-runs Blizzard's Visibility handler.
+		if bar.UpdateSystemSettingVisibility then
+			hooksecurefunc(bar, 'UpdateSystemSettingVisibility', function() self:UpdateMoverLabel(key) end)
+		end
 	end
 end
 
@@ -195,10 +280,14 @@ function STP:GetBarOptions(info, order)
 				set = function(i, value)
 					self.config[key][i[#i]] = value
 					apply()
+					self:ApplyAppearance(key)
 				end,
 				args = {
 					width = generators.range(1, 'Width', 50, 1000, 1),
 					height = generators.range(2, 'Height', 4, 80, 1),
+					showtitle = generators.toggle(3, 'Show bar title', 1),
+					showtime = generators.toggle(4, 'Show time', 1),
+					opacity = generators.range(5, 'Opacity', 0, 1, 0.05),
 				},
 			},
 			position = position,
