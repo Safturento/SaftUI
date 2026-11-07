@@ -72,7 +72,8 @@ end
 -- So only a named global font object is ever restored as an object; anything
 -- else is restored from the recorded file, size and flags.
 local function IsNamedFont(object)
-	local name = object and object.GetName and object:GetName()
+	if not (object and object.IsObjectType and object:IsObjectType('Font')) then return false end
+	local name = object:GetName()
 	return name ~= nil and _G[name] == object
 end
 
@@ -614,8 +615,13 @@ STYLERS['TabGroup'] = function(state, w)
 		end
 	end
 
-	HookMethod(state, w, 'BuildTabs', function(self) Try(StyleTabs, self) end)
-	HookMethod(state, w, 'SelectTab', function(self) Try(StyleTabs, self) end)
+	-- Only while still scoped: a group released inside OnGroupSelected has
+	-- already had its tabs restored, and must not be restyled after that.
+	local function Restyle(self)
+		if states[self] == state then Try(StyleTabs, self) end
+	end
+	HookMethod(state, w, 'BuildTabs', Restyle)
+	HookMethod(state, w, 'SelectTab', Restyle)
 	StyleTabs(w)
 end
 
