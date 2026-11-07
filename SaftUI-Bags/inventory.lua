@@ -90,6 +90,16 @@ function INV:UpdateConfig(id)
 	if not id then
 		if not self.containers.bag then return end -- not enabled
 		self:EnsureConfigTables()
+		-- Saved positions of an older shape, and a bank layout the new profile
+		-- uses, before anything is placed. Windows not made yet only have their
+		-- anchor to resize; the made ones resize in UpdateConfig(id).
+		self:MigratePositions()
+		self:RegisterMovers()
+		for _, anchorId in ipairs(self.windowIds) do
+			if self.anchors[anchorId] and not self.containers[anchorId] then
+				self:SyncAnchorSize(anchorId)
+			end
+		end
 		if st:QueueAfterCombat('Inventory', function() INV:UpdateConfig() end) then return end
 
 		for containerId, container in pairs(self.containers) do
@@ -104,8 +114,8 @@ function INV:UpdateConfig(id)
 
 	local container = self.containers[id]
 
-	container:ClearAllPoints()
-	container:SetPoint(unpack(self.config[id].position))
+	-- The window is anchored to its mover's anchor frame (see movers.lua).
+	self:ApplyPosition(id)
 
 	if container.search then
 		container.scrollFrame:SetPoint('TOPLEFT', container.search, 'BOTTOMLEFT', 0, -self.config.padding)
@@ -152,6 +162,16 @@ function INV:UpdateConfig(id)
 	end
 
 	st:SetBackdrop(container, self.config.template)
+	self:SyncAnchorSize(id)
+
+	-- A window placed relative to this one (typed in its Position) can only
+	-- resolve the name now that it exists.
+	for _, otherId in ipairs(self.windowIds) do
+		local position = otherId ~= id and self.anchors[otherId] and self.config[otherId].position
+		if position and position.frame == container:GetName() then
+			self:ApplyPosition(otherId)
+		end
+	end
 end
 
 -- Re-applies the profile to the category headers and item slots a container
@@ -265,9 +285,11 @@ function INV:OnEnable()
 	if self.config.enable == false then return end
 
 	self:EnsureConfigTables()
+	self:MigratePositions()
 
 	self:InitializeTooltipScanner()
 	self:InitializePlayerBags()
+	self:RegisterMovers()
 
 	--ToggleBackpack		= INV.ToggleBags
 	--ToggleBag 			= INV.ToggleBags

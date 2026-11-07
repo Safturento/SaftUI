@@ -21,31 +21,61 @@ st.defaults.inventory = {
 		icons = 'pixel',
 	},
 	bag = {
-		position = {'BOTTOMRIGHT', -20, 20},
+		position = {
+			point = 'BOTTOMRIGHT',
+			frame = 'UIParent',
+			rel_point = 'BOTTOMRIGHT',
+			x_off = -20,
+			y_off = 20,
+		},
 		perrow = 3,
 		maxRows = 15,
 		maxColumns = 3
 	},
 	bank = {
-		position = {'TOPLEFT', 200, -200},
+		position = {
+			point = 'TOPLEFT',
+			frame = 'UIParent',
+			rel_point = 'TOPLEFT',
+			x_off = 200,
+			y_off = -200,
+		},
 		perrow = 4,
 		maxRows = 20,
 		maxColumns = 3
 	},
 	reagent = {
-		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0},
+		position = {
+			point = 'TOPLEFT',
+			frame = 'SaftUIBagsAnchor_bank',
+			rel_point = 'TOPRIGHT',
+			x_off = 20,
+			y_off = 0,
+		},
 		perrow = 4,
 		maxRows = 20,
 		maxColumns = 3
 	},
 	warband = {
-		position = {'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
+		position = {
+			point = 'TOPLEFT',
+			frame = 'SaftUIBagsAnchor_bank',
+			rel_point = 'TOPRIGHT',
+			x_off = 20,
+			y_off = 0,
+		},
 		perrow = 4,
 		maxRows = 20,
 		maxColumns = 3
 	},
 	combinedbank = {
-		position = {'TOPLEFT', 200, -200},
+		position = {
+			point = 'TOPLEFT',
+			frame = 'UIParent',
+			rel_point = 'TOPLEFT',
+			x_off = 200,
+			y_off = -200,
+		},
 		perrow = 4,
 		maxRows = 20,
 		maxColumns = 5

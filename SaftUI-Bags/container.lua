@@ -447,4 +447,5 @@ function INV:UpdateContainerLayout(id)
 
 	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
 	container:SetWidth(container.scrollFrame:GetWidth() + self.config.padding * 2)
+	self:SyncAnchorSize(id)
 end

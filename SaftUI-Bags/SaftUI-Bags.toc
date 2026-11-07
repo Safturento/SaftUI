@@ -18,3 +18,5 @@ containers\warbandbank.lua
 slot.lua
 utilities.lua
 autovendor.lua
+movers.lua
+options.lua
