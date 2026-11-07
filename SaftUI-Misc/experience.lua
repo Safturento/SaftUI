@@ -237,9 +237,52 @@ function XP:OnEnter()
 	GameTooltip:Show()
 end
 
+-- Blizzard's status tracking bars (xp/rep/honor/azerite/artifact/house favor)
+-- live in two Edit Mode system containers, on retail and on Forever alike.
+-- StatusTrackingBarContainerMixin:UpdateShownState re-shows them on every bar
+-- change (level up, rep, honor, equipment, zone, Edit Mode enter/exit), so a
+-- single Hide() doesn't stick. Hook OnShow instead. Hidden is also the state
+-- Blizzard's own bottom-bar stacking expects when no bar is active (it only
+-- stacks frames where IsShown() is true), so the action bars close the gap.
+-- Nothing is written onto the Blizzard frames, only method calls and a hook.
+local BLIZZ_BAR_CONTAINERS = {
+	'MainStatusTrackingBarContainer',
+	'SecondaryStatusTrackingBarContainer',
+}
+
+local hookedBlizzBars = {}
+local pendingBlizzBars = {}
+
+local function HideBlizzBar(frame)
+	-- A protected frame can't be hidden from addon code in combat; wait it out.
+	if InCombatLockdown() and frame:IsProtected() then
+		pendingBlizzBars[frame] = true
+		return
+	end
+	pendingBlizzBars[frame] = nil
+	frame:Hide()
+end
+
+function XP:FlushBlizzBars()
+	for frame in pairs(pendingBlizzBars) do
+		HideBlizzBar(frame)
+	end
+end
+
 function XP:HideBlizz()
-	if st.retail then
-		MainStatusTrackingBarContainer:Hide()
+	self:RegisterEvent('PLAYER_REGEN_ENABLED', 'FlushBlizzBars')
+
+	for _, name in ipairs(BLIZZ_BAR_CONTAINERS) do
+		local frame = _G[name]
+		if frame then
+			if not hookedBlizzBars[frame] then
+				hookedBlizzBars[frame] = true
+				frame:HookScript('OnShow', HideBlizzBar)
+			end
+			if frame:IsShown() then
+				HideBlizzBar(frame)
+			end
+		end
 	end
 end
 
