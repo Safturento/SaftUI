@@ -270,3 +270,37 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - The Grid footer button shows and hides the grid, and the choice persists across `/reload`.
   - With Snap on, dragging the minimap near the screen center lines snaps to them. Only one mover exists, so frame-to-frame snapping is verified later when more movers exist.
 - [ ] **Step 5: Commit:** `core: add edit mode grid and snapping`
+
+---
+
+### Task 6: Loot roll frames and loot feed as movers
+
+*Added 2026-11-07 at the user's request ("the loot window is fixed, can we make that the next movable item?", then chose roll frames + feed). Independent of Task 5.*
+
+**Files:**
+- Modify: `SaftUI-Loot/roll.lua`, `SaftUI-Loot/Feed/feed.lua`
+- Create: `SaftUI-Loot/options.lua` (option pieces for both movers), added to `SaftUI-Loot/SaftUI-Loot.toc` (check for per-client TOCs too)
+
+**Interfaces:**
+- **Consumes:** `st:RegisterMover(key, def)` (Task 2); `st.Config.generators.position(order, global_frame, get, set, target)` (Task 1); the existing generators in `SaftUI-Core/Config/widgets.lua` (template, range, font, toggle); `st:UnpackPoint`.
+- **Produces:**
+  - `LT:GetRollMoverOptions() -> AceConfigGroup`: `General` (width, height, spacing, template, font, grow_down) and `Position`.
+  - `LT:GetFeedMoverOptions() -> AceConfigGroup`: `General` (width, item_height, spacing, max_items, fade_time, template, font) and `Position`.
+  - Mover keys `'lootroll'` (label `'Loot Rolls'`) and `'lootfeed'` (label `'Loot Feed'`).
+
+- [ ] **Step 1: Roll anchor owned by SaftUI.** `GroupLootContainer` is a Blizzard bottom-managed frame (`BottomManagedFrameTemplate`), so SaftUI must not move or size it.
+  - Create a SaftUI frame (e.g. `SaftUILootRollAnchor`) on UIParent, sized `roll.width` x `roll.height` and positioned from `loot.roll.position`.
+  - In the `GroupLootContainer_Update` hook, anchor the first roll frame to that anchor (TOP or BOTTOM per `grow_down`) instead of to the container. Roll frames stay parented where Blizzard puts them.
+  - Remove SaftUI's writes onto `GroupLootContainer`: `container:SetHeight`, `GroupLootContainer:SetWidth`, the `GroupLootContainer.Selection:SetFrameStrata` line, and the `UIPARENT_MANAGED_FRAME_POSITIONS.GroupLootContainer = nil` write. Replace the old no-op `st:RegisterEditMode` registration (`LT:RegisterRollFrameEditMode`) with the mover.
+- [ ] **Step 2: Feed.** The feed frame (`SaftUILootFeed`) is already SaftUI's. Position it only from `loot.feed.position` (drop the `st:RegisterEditMode` branch), and make re-applying the position a function the mover's `apply` can call.
+- [ ] **Step 3: Register both movers** after their frames exist, in the same shape as the minimap (`SaftUI-Minimap/minimap.lua`, `SaftUI-Minimap/config.lua` `MM:GetMoverOptions`). `apply` re-applies position and size and must be safe in combat lockdown (these frames are not protected). Option `set`s apply live.
+- [ ] **Step 4: Visible while editing.** The roll anchor is empty unless a roll is up and the feed fades when idle. The overlays must still be clickable and show the frames' footprint in edit mode. The overlay covers the anchor and feed frames themselves, so they need real sizes even when nothing is showing.
+- [ ] **Step 5: Self-review:** `grep -n "GroupLootContainer" SaftUI-Loot/*.lua` shows only reads, `rollFrames` iteration, and `SecureHook` targets.
+- [ ] **Step 6: In-game check (user).**
+  - `/sui edit` shows outlines for Loot Rolls and Loot Feed.
+  - Dragging each moves it; clicking opens its window with General and Position.
+  - On the next group roll, rolls stack from the new spot (up or down per Grow down).
+  - New loot shows in the feed at its new spot.
+  - `/reload` keeps both positions.
+  - No errors or taint in combat after using edit mode.
+- [ ] **Step 7: Commit:** `loot: make loot rolls and the loot feed edit mode movers`
