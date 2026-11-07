@@ -8,5 +8,6 @@ config.lua
 tooltip.lua
 experience.lua
 actionbars.lua
+totembar.lua
 movable.lua
 Skinning\load.xml

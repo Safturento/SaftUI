@@ -111,3 +111,8 @@ st.defaults.swingtimer = {
 		position = { point = 'TOP', frame = st.name .. 'SwingTimerOffHand', rel_point = 'BOTTOM', x_off = 0, y_off = -12 },
 	},
 }
+
+-- Forever's totem bar (SaftUI-Misc/totembar.lua). Shown by default, as Blizzard shows it.
+st.defaults.totembar = {
+	hide = false,
+}
