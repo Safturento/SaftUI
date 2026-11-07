@@ -142,6 +142,7 @@ function EM:CreateMover(key, def)
 
 	SetBorderColor(mover, false)
 	self.movers[key] = mover
+	self:StackMover(mover) -- its own frame levels, on top (picker.lua)
 	if self.active then overlay:Show() end
 	return mover
 end

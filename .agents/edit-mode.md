@@ -17,6 +17,7 @@ covers:
 SaftUI has its own edit mode. It never adds frames to Blizzard's Edit Mode.
 - `/sui edit` or the `/sui` "Edit mode" button toggles it. It also follows Blizzard's Edit Mode opening and closing.
 - Registered frames get a draggable overlay. Arrow keys nudge 1px, Shift+arrows 10px.
+- Where overlays overlap, a list by the cursor names every one under it and marks the one a click or drag gets; the rest dim. Alt brings the next one to the front (`EditMode/picker.lua`, like `/fstack`). Overlays share one strata, so their frame levels decide which is on top: each gets its own pair (backdrop one below), handed out rising by `EM:BringToFront`. Don't set an overlay's level anywhere else.
 - Clicking a frame opens `/sui` at that frame's section.
 - It closes on combat and refuses to open in combat.
 
