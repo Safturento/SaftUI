@@ -670,7 +670,7 @@ function LT:InitializeLootFeed()
 		label = 'Loot Feed',
 		getPosition = function() return self.config.feed.position end,
 		setPosition = function(pos) self.config.feed.position = pos end,
-		apply = function() self:UpdateLootFeedConfig() end,
+		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
 		options = function() return self:GetFeedMoverOptions() end,
 	})
 

@@ -6,26 +6,26 @@ local generators = st.Config.generators
 -- Builds the General group for one of the loot movers. `config_key` is the
 -- loot config table ('roll' or 'feed'), `apply` re-applies it live.
 local function BuildGeneral(config_key, args, apply)
-	local config = LT.config[config_key]
 	return {
 		name = 'General',
 		type = 'group',
 		order = 1,
-		get = function(info) return config[info[#info]] end,
+		get = function(info) return LT.config[config_key][info[#info]] end,
 		set = function(info, value)
-			config[info[#info]] = value
+			LT.config[config_key][info[#info]] = value
 			apply()
 		end,
 		args = args,
 	}
 end
 
+-- Frame stays 'UIParent' (no free-text frame field), so the anchor can never
+-- be pointed at one of its own descendants.
 local function BuildPosition(config_key, target, apply)
-	local config = LT.config[config_key]
-	return generators.position(2, true,
-		function(key) return config.position[key] end,
+	return generators.position(2, false,
+		function(key) return LT.config[config_key].position[key] end,
 		function(key, value)
-			config.position[key] = value
+			LT.config[config_key].position[key] = value
 			apply()
 		end,
 		target

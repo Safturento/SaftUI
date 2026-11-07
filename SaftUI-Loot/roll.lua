@@ -53,6 +53,11 @@ function LT:SkinRollFrame(frame)
 	if frame.skinned then return end
 	frame.skinned = true
 
+	-- Blizzard drops ended rolls from rollFrames, so track every skinned frame
+	-- ourselves to keep idle ones in sync with option edits.
+	self.skinnedRollFrames = self.skinnedRollFrames or {}
+	tinsert(self.skinnedRollFrames, frame)
+
 	st:StripTextures(frame)
 
 	st:SkinIcon(frame.IconFrame.Icon, nil, frame.IconFrame)
@@ -206,9 +211,12 @@ function LT:LayoutRollFrames()
 	local config = self.config.roll
 	local prev
 
-	for id, frame in ipairs(container.rollFrames) do
+	-- Blizzard leaves holes in rollFrames when a roll ends, and walks 1..maxIndex.
+	for i = 1, container.maxIndex or 4 do
+		local frame = container.rollFrames[i]
+		if frame then
 		frame:ClearAllPoints()
-		if id == 1 then
+		if not prev then
 			if config.grow_down then
 				frame:SetPoint('TOP', anchor)
 			else
@@ -222,6 +230,7 @@ function LT:LayoutRollFrames()
 			end
 		end
 		prev = frame
+		end
 	end
 end
 
@@ -268,10 +277,8 @@ end
 -- frames are touched, never GroupLootContainer.
 function LT:UpdateGroupLootConfig()
 	self:ApplyRollAnchor()
-	for _,frame in pairs(GroupLootContainer.rollFrames) do
-		if frame.skinned then
-			self:UpdateRollFrame(frame)
-		end
+	for _,frame in ipairs(self.skinnedRollFrames or {}) do
+		self:UpdateRollFrame(frame)
 	end
 	self:LayoutRollFrames()
 end
