@@ -22,7 +22,9 @@ end
 local function GetAnchor(mover)
 	local pos = mover.def.getPosition()
 	local point, relative, rel_point, x, y = st:UnpackPoint(pos)
-	return point, st:ResolveFrame(relative) or UIParent, rel_point, x, y
+	-- Older profiles saved typed offsets as strings; drags and nudges do math
+	-- on them (st:RoundToPixel compares with <), so normalise here.
+	return point, st:ResolveFrame(relative) or UIParent, rel_point, tonumber(x) or 0, tonumber(y) or 0
 end
 
 local function ApplyOffsets(mover, x, y)
