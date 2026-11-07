@@ -42,12 +42,36 @@ end
 	in beside it), so convert it in place, keeping the spot it described. Plain
 	table writes, safe in combat. Does nothing for a position already converted.
 ]]
+-- The array-style defaults positions had before they moved to the named shape.
+-- AceDB saves only the slots that differ from the default, so a saved array can
+-- be missing any slot (e.g. { [2] = -100 }); the gaps come from these.
+local OLD_ARRAY_DEFAULTS = {
+	bag = { 'BOTTOMRIGHT', -20, 20 },
+	bank = { 'TOPLEFT', 200, -200 },
+	combinedbank = { 'TOPLEFT', 200, -200 },
+	reagent = { 'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
+	warband = { 'TOPLEFT', 'SaftUIBank', 'TOPRIGHT', 20, 0 },
+}
+
+local function HasArraySlots(position)
+	for key in pairs(position) do
+		if type(key) == 'number' then return true end
+	end
+	return false
+end
+
 function INV:MigratePosition(id)
 	local settings = self.config and self.config[id]
 	local position = settings and settings.position
-	if type(position) ~= 'table' or position[1] == nil then return end
+	if type(position) ~= 'table' or not HasArraySlots(position) then return end
 
-	local point, second, third, fourth, fifth = position[1], position[2], position[3], position[4], position[5]
+	local old = OLD_ARRAY_DEFAULTS[id] or {}
+	local function slot(i)
+		if position[i] ~= nil then return position[i] end
+		return old[i]
+	end
+	local point, second, third, fourth, fifth = slot(1), slot(2), slot(3), slot(4), slot(5)
+	if point == nil then return end
 	local frame, relPoint, x, y
 	if type(second) == 'string' then
 		frame, relPoint, x, y = second, third or point, fourth, fifth
