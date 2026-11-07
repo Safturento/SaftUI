@@ -340,3 +340,44 @@ The orchestrator pauses after each task for the user's in-game result before sta
   - The crash retest still passes: `/sui` → Edit mode several times, then close and reopen.
   - Other addons' Ace windows still look stock.
 - [ ] **Step 7: Commit:** `core: select a frame's section in /sui instead of opening a window`
+
+---
+
+### Task 8: Forever swing timer bars owned by SaftUI and registered as movers
+
+*Added 2026-11-07 at the user's request: "can we replace the blizzard swing timer edit mode with the saftui one the same way we did with minimap? and also adding configs for it for sizing and position." Independent of Task 5.*
+
+**Context:**
+- Forever's `Blizzard_SwingTimer` bars are Blizzard Edit Mode system frames: `SwingTimerMainHandFrame`, `SwingTimerOffHandFrame` and `SwingTimerRangedFrame` (`SwingTimerMixin`, whose `OnLoad` calls `EditModeSystemMixin.OnSystemLoad`).
+- SaftUI already skins them (`SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua`, commit `a250261`).
+- Retail has no swing timer, so everything here must be inert there.
+
+**Files:**
+- Modify: `SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua`, or split positioning into a sibling file loaded from `SaftUI-Misc/Skinning/load.xml`.
+- Modify: SaftUI-Misc defaults (`SaftUI-Misc/config.lua`): a `swingtimer` table with per-bar `width`, `height` and `position` `{ point, frame, rel_point, x_off, y_off }`.
+
+**Interfaces:**
+- **Consumes:**
+  - `st:RegisterMover(key, def)` with `def = { frame, label, getPosition, setPosition, apply, configPath }` (`SaftUI-Core/EditMode/editmode.lua`).
+  - `st.Config.generators.position(order, true, get, set, target)` and `range`.
+  - `st:BindModuleConfig(module, key)` (`SaftUI-Core/Config/config.lua`).
+  - The minimap pattern: `SaftUI-Minimap/minimap.lua` (mover registration, Blizzard Edit Mode box hidden with `Selection:HookScript('OnShow', Hide)`) and `SaftUI-Minimap/config.lua` (`GetConfigTable` tree section with General/Position, `configPath` ending at `general`).
+- **Produces:**
+  - Movers `'swingtimer_mainhand'`, `'swingtimer_offhand'` and `'swingtimer_ranged'`.
+  - A `/sui` tree section "Swing Timer" with Main Hand, Off Hand and Ranged, each with General (width, height) and Position.
+  - A module `UpdateConfig` that re-applies size and position, so profile changes apply live.
+
+- [ ] **Step 1: Research.** In the forever source, find how Blizzard positions and sizes these bars: the Edit Mode system anchor and settings, `UpdateSystem`, and any `SetSize`/`SetScale` calls. Find what re-applies them (layout load, Edit Mode exit, `UpdateFrameState`). List the bars' Blizzard Edit Mode settings, and say which ones SaftUI replaces (position, size) and which it doesn't (e.g. visibility).
+- [ ] **Step 2: Own position and size.** SaftUI applies size and position from its profile, and re-applies them in post-hooks wherever Blizzard re-applies its own. Use the least invasive way that holds, and taint-safe calls only. If Blizzard's own layout fights direct `SetPoint` on the bars, use SaftUI-owned holder frames.
+- [ ] **Step 3: Hide Blizzard's Edit Mode box** for each bar, as with the minimap cluster, so Blizzard's Edit Mode can't move them. Make sure any Blizzard setting SaftUI doesn't replace stays reachable (e.g. its CVar or the game options), and say how.
+- [ ] **Step 4: Movers and `/sui` section** as in Interfaces. The defaults reproduce the bars' current default spots and sizes as closely as the source allows.
+- [ ] **Step 5: Self-review.** Check that no fields or methods are written onto Blizzard frames or tables, that nothing does arithmetic on possibly-secret values without `issecretvalue`, and that retail stays inert.
+- [ ] **Step 6: In-game check (user, Forever).**
+  - `/sui edit` shows outlines for the three bars.
+  - Dragging moves each bar, and clicking one opens its `/sui` section.
+  - Width and height apply live.
+  - Blizzard's Edit Mode shows no swing timer boxes.
+  - `/reload` keeps positions and sizes.
+  - Switching profiles re-applies them.
+  - No errors or taint in combat.
+- [ ] **Step 7: Commit:** `misc: make forever's swing timer bars saftui movers`
