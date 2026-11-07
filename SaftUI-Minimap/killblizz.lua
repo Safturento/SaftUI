@@ -27,7 +27,10 @@ local BAG_BUTTONS = {
 }
 
 function MicroMenu:KillBlizz()
-    hooksecurefunc("MainMenuMicroButton_ShowAlert", function() HelpTip:HideAllSystem("MicroButtons") end)
+    -- Don't hide Blizzard's micro button alerts from addon code: HideAllSystem
+    -- runs their close callback here, which taints the alert globals that the
+    -- spellbook reads on show, and that blocks the action bar update after it
+    -- in combat (ADDON_ACTION_BLOCKED on MultiBar*:SetFrameStrata/SetShown).
 
     --self:HideBagSlots()
     --self:HideMicroMenu()
