@@ -1,0 +1,27 @@
+# IDE / editor
+/.idea
+.vscode/*.local
+*.swp
+*.swo
+*~
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local env / overrides / secrets
+*.local
+.env
+.env.*
+
+# Logs
+*.log
+logs
+
+# Test outputs
+coverage
+.nyc_output
+
+# WSL download metadata
+*:Zone.Identifier
