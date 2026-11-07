@@ -57,6 +57,7 @@ covers:
   - `ValidUnit(unit)` gets the config unit (`player`, `boss`, `party`, ...). A unit it rejects gets neither the element nor its `/sui` tab. ClassPower and AdditionalPower are player-only, Castbar skips `targettarget` and `focustarget` (as oUF does), and ReadyCheckIndicator is party and raid only.
   - `GetConfigTable(unit)` returns the element's tab. Its `set` calls `UF:UpdateConfig(unit, '<Element>')`, which re-runs that element's `UpdateConfig` on every frame of the unit.
   - oUF shows and hides many elements itself (castbar on a cast, indicators by state, additional power by power type), so `UF:SetElementEnabled` alone doesn't keep a disabled one hidden. Those elements also check `config.enable` in an oUF hook (`ShouldShow`, `PostVisibility`, `PostUpdate`).
+  - Texts made by `UF:AddText` sit on the unit frame's `TextOverlay`, not on their element, so they don't hide with it. `UF:UpdateElement` hides them when the element is disabled.
 - Layout "profiles" inside the SaftUI profile: `st.config.profile.unitframes.profiles[UF:GetProfile()]`, read through `UF:GetProfileConfig()`.
 - Unit frames are secure. See `.agents/taint.md` before moving or resizing them.
 
