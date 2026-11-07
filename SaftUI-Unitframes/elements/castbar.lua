@@ -51,6 +51,13 @@ local function PostCastStart(castbar, unit)
 	end
 end
 
+-- oUF shows the castbar on every cast of the unit, whatever UF:SetElementEnabled
+-- did. It skips a cast event while this returns false, so a disabled castbar
+-- stays hidden. oUF's own check is just the unit.
+local function ShouldShow(castbar, unit)
+	return castbar.config.enable and castbar.__owner.__unit == unit
+end
+
 local function Constructor(unitframe)
     local castbar = UF:AddStatusBarElement(unitframe, 'Castbar')
     UF:AddText(unitframe, castbar, 'Text', castbar)
@@ -62,6 +69,7 @@ local function Constructor(unitframe)
 		normal = CreateColor(castbar.config.colors.normal:GetRGB()),
 		notInterruptible = CreateColor(castbar.config.colors.nointerrupt:GetRGB())
 	}
+	castbar.ShouldShow = ShouldShow
 	castbar.PostCastStart = PostCastStart
 	castbar.PostChannelStart = PostCastStart
 
@@ -79,4 +87,109 @@ local function UpdateConfig(unitframe)
 	castbar.colors.notInterruptible:SetRGB(colors.nointerrupt:GetRGB())
 end
 
-UF:RegisterElement('Castbar', Constructor, UpdateConfig)
+local function GetConfigTable(unit)
+	local generators = st.Config.generators
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function Config() return UF:GetProfileConfig()[unit].castbar end
+	local function Update() UF:UpdateConfig(unit, 'Castbar') end
+
+	-- The settings of the castbar (key nil), or of its text, time or icon
+	-- (castbar[key]), placed on the castbar's frame at frameKey.
+	local function Position(order, key, frameKey)
+		local function Get() return key and Config()[key].position or Config().position end
+		return generators.uf_element_position(order,
+			function(index) return Get()[index] end,
+			function(index, value)
+				Get()[index] = value
+				Update()
+			end,
+			UF:ConfigTarget(unit, 'Castbar', frameKey)
+		)
+	end
+
+	-- A text's or the icon's settings, in castbar[key].
+	local function Section(order, name, key, args)
+		return {
+			order = order,
+			name = name,
+			type = 'group',
+			inline = true,
+			get = function(info) return Config()[key][info[#info]] end,
+			set = function(info, value)
+				Config()[key][info[#info]] = value
+				Update()
+			end,
+			args = args,
+		}
+	end
+
+	-- castbar.colors[key]. Shown from the next cast.
+	local function Color(order, name, key)
+		return {
+			order = order,
+			name = name,
+			type = 'color',
+			get = function()
+				local color = Config().colors[key]
+				return color.r, color.g, color.b
+			end,
+			set = function(_, r, g, b)
+				local color = Config().colors[key]
+				color.r, color.g, color.b = r, g, b
+				Update()
+			end,
+		}
+	end
+
+	local function TextArgs(frameKey, key)
+		return {
+			enable = generators.enable(0),
+			font = generators.font(1),
+			position = Position(2, key, frameKey),
+		}
+	end
+
+	return {
+		order = 6,
+		type = 'group',
+		name = 'Castbar',
+		get = function(info) return Config()[info[#info]] end,
+		set = function(info, value)
+			Config()[info[#info]] = value
+			Update()
+		end,
+		args = {
+			enable = generators.enable(0),
+			bar = {
+				order = 1,
+				name = 'Bar',
+				type = 'group',
+				inline = true,
+				args = {
+					framelevel = generators.framelevel(1),
+					template = generators.template(2),
+					size = UF.GenerateRelativeSizeConfigGroup(3),
+					normal = Color(4, 'Color', 'normal'),
+					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt'),
+					position = Position(6),
+				},
+			},
+			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text')),
+			time = Section(3, 'Time', 'time', TextArgs('Time', 'time')),
+			icon = Section(4, 'Icon', 'icon', {
+				enable = generators.enable(0),
+				framelevel = generators.framelevel(1),
+				template = generators.template(2),
+				size = UF.GenerateRelativeSizeConfigGroup(3),
+				position = Position(4, 'icon', 'Icon'),
+			}),
+		},
+	}
+end
+
+-- oUF never enables a castbar on a unit's target (targettarget, focustarget).
+local function ValidUnit(unit)
+	return not unit:match('%wtarget$')
+end
+
+UF:RegisterElement('Castbar', Constructor, UpdateConfig, GetConfigTable, ValidUnit)
