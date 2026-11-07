@@ -157,10 +157,17 @@ end
 -- Places ChatFrame1 from chat.position. In combat it can't move if a
 -- protected frame (e.g. a unit frame) is anchored to it; then this waits for
 -- the end of combat.
+--
+-- ChatFrame1 is a Blizzard Edit Mode system on retail and Forever alike
+-- (EditModeChatFrameSystemTemplate). EditModeSystemMixin:OnSystemLoad replaces
+-- its SetPoint and ClearAllPoints with Lua overrides, and SetPointOverride
+-- writes EditModeManagerFrame.editModeSystemAnchorDirty, which Blizzard reads
+-- while Edit Mode is open. Calling them from here would taint that, so the
+-- widget API's own methods are called instead; they run no Blizzard Lua.
 function CHT:ApplyPosition()
 	st:SafeReposition(ChatFrame1, 'chat', function()
-		ChatFrame1:ClearAllPoints()
-		ChatFrame1:SetPoint(unpack(self.config.position))
+		st:ClearAllPointsDirect(ChatFrame1)
+		st:SetPointDirect(ChatFrame1, unpack(self.config.position))
 	end)
 end
 
