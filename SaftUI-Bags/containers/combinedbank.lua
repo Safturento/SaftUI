@@ -3,7 +3,8 @@ local INV = st:GetModule('Inventory')
 
 function INV:UpdateCombinedBankWarbandMoney()
     local container = self:GetContainer('combinedbank')
-    if not container then return end
+    -- Forever's combined bank has no gold string
+    if not (container and container.footer.gold) then return end
     local warbandGold = C_Bank.FetchDepositedMoney(Enum.BankType.Account)
     container.footer.gold.text:SetText(st.StringFormat:GoldFormat(warbandGold))
 end
@@ -146,15 +147,14 @@ function INV:InitializeCombinedBank()
 
 	self:InitializeBankBagSlots(container)
 
-	if st.retail then
+	-- Retail only: the warband money controls (the bank's gold string, its Withdraw
+	-- button and the bags' Deposit button) and the bank category selector. Forever
+	-- has no separate bank and warband tabs worth switching between.
+	if st.retail and not st.forever then
         self:CreateGoldString(container)
         self:UpdateCombinedBankWarbandMoney()
         self:InitializeWithdrawButton(container)
-        -- Forever's bank has no separate bank/warband tabs worth switching between
-        if not st.forever then
-            self:InitializeBankCategorySelection()
-        end
-
+        self:InitializeBankCategorySelection()
         self:InitializeDepositButton()
     end
 end
