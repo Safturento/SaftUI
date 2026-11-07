@@ -66,3 +66,28 @@ st.defaults.skinning = {
 	font = 'pixel',
 	template = 'thicktransparent',
 }
+
+-- Forever's swing timer bars (SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua).
+-- Width and height are the visible bar: Blizzard's default 426x30 frame less the
+-- 5/4px art inset around its StatusBar. Blizzard stacks the bars in its bottom managed
+-- container, main hand on top with a 12px gap between visible bars; the chain below
+-- keeps that stack. The container's spot depends on Blizzard's action bars, so the main
+-- hand uses Blizzard's own out-of-container anchor (BOTTOM, UIParent, BOTTOM, 0, 450)
+-- plus the 4px inset.
+st.defaults.swingtimer = {
+	mainhand = {
+		width = 416,
+		height = 22,
+		position = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'BOTTOM', x_off = 0, y_off = 454 },
+	},
+	offhand = {
+		width = 416,
+		height = 22,
+		position = { point = 'TOP', frame = st.name .. 'SwingTimerMainHand', rel_point = 'BOTTOM', x_off = 0, y_off = -12 },
+	},
+	ranged = {
+		width = 416,
+		height = 22,
+		position = { point = 'TOP', frame = st.name .. 'SwingTimerOffHand', rel_point = 'BOTTOM', x_off = 0, y_off = -12 },
+	},
+}

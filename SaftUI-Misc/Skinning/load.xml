@@ -5,6 +5,7 @@
 	<Script file="hekili.lua"/>
 	<Script file="Blizzard_BuffFrame.lua"/>
 	<Script file="Blizzard_SwingTimer.lua"/>
+	<Script file="Blizzard_SwingTimerPosition.lua"/>
 	<Script file="Blizzard_WeeklyRewards.lua"/>
 	<Script file="Blizzard_WatchFrame.lua"/>
 	<Script file="Blizzard_WorldMap.lua"/>

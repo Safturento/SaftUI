@@ -6,8 +6,9 @@ local ST = SK:NewModule('Blizzard_SwingTimer')
 	Skins the swing timer bars Blizzard ships on WoW Forever (Blizzard_SwingTimer).
 	Retail has no such addon, so nothing here runs unless the frames exist.
 
-	The bars are Edit Mode system frames, so nothing is moved, resized, reparented or
-	given new fields, and Blizzard's methods are only ever followed with hooksecurefunc.
+	The bars are Edit Mode system frames. This file only restyles them: their size and
+	position are owned by Blizzard_SwingTimerPosition.lua, nothing here gives them new
+	fields, and Blizzard's methods are only ever followed with hooksecurefunc.
 	State lives in the local `skinned` table. The only new frame is a SaftUI-owned
 	backdrop parented to the bar's StatusBar, so it shares the StatusBar's alpha (Blizzard
 	dims that alpha while out of range) and visibility.
