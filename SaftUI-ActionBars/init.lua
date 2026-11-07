@@ -139,7 +139,9 @@ function AB:UpdateConfig()
 	-- The new profile may chain the bars the other way round (bar 1 on bar 2
 	-- instead of bar 2 on bar 1). Clear every bar's anchors before any is placed,
 	-- so no order passes through an anchor loop, and give any bar left without
-	-- anchors its old ones back.
+	-- anchors its old ones back. On a profile switch out of combat, edit mode has
+	-- cleared them already (EM:ClearPositions) and restores them itself
+	-- (EM:UpdateConfig), so there's nothing saved here to restore.
 	local saved = {}
 	for _, bar in pairs(self.bars) do
 		saved[bar] = st:GetPoints(bar)
@@ -151,6 +153,8 @@ function AB:UpdateConfig()
 		end
 	end
 	for bar, points in pairs(saved) do
-		st:RestorePoints(bar, points)
+		if #points > 0 then
+			st:RestorePoints(bar, points)
+		end
 	end
 end

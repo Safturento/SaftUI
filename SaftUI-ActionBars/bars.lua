@@ -265,10 +265,12 @@ function AB:UpdateFade(id)
 end
 
 -- Applies bar id's visibility: its state driver, and its fade. Changing the
--- driver is protected, so in combat this waits for the end of combat.
+-- driver is protected, so in combat that waits for the end of combat. The fade
+-- is only alpha, so it applies at once.
 function AB:UpdateVisibility(id)
 	local bar = self.bars[id]
 	if not bar then return end
+	self:UpdateFade(id)
 	if st:QueueAfterCombat('actionbars_visibility_' .. id, function() self:UpdateVisibility(id) end) then return end
 
 	local driver = self:GetVisibilityDriver(id)
@@ -276,7 +278,6 @@ function AB:UpdateVisibility(id)
 		bar.visibilityDriver = driver
 		RegisterStateDriver(bar, 'visibility', driver)
 	end
-	self:UpdateFade(id)
 end
 
 -- Keybind mode (bindings.lua): while on, every enabled bar is shown and not
