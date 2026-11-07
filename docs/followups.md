@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-07 — SaftUI-Minimap's bar replaces Blizzard frame scripts and writes onto them (taint risk)](#2026-11-07--saftui-minimaps-bar-replaces-blizzard-frame-scripts-and-writes-onto-them-taint-risk)
   - [2026-11-07 — Bank leftovers: broken non-combined bank path, Forever gold tooltip, leaked globals](#2026-11-07--bank-leftovers-broken-non-combined-bank-path-forever-gold-tooltip-leaked-globals)
   - [2026-11-07 — SaftUI-Loot writes onto Blizzard frames and globals (taint risk)](#2026-11-07--saftui-loot-writes-onto-blizzard-frames-and-globals-taint-risk)
@@ -15,6 +16,28 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-07 — Profile settings that still need a /reload after a profile switch
+
+**What:** Switching the SaftUI profile now re-applies almost everything live (every module's `UpdateConfig`, run in order by `Config:UpdateConfig`). A few profile settings still only take effect on `/reload`:
+1. Aura group options on unit frames: filter (`onlyShowPlayer`), `max`, button `size`, and which borders show. They're baked into the `AuraContainer` group when it's made. This is the open question in the aura-container followup below.
+2. `chat.tabs.fade`: turning fading off replaces `Tab.SetAlpha` on Blizzard's chat tabs at enable. Undoing or redoing that live would mean more writes onto Blizzard frames.
+3. Module on/off switches such as `inventory.enable`, and `minimap.compartment_buttons` (its option already says it needs a reload).
+4. Party and raid group headers: their size and layout attributes are set at spawn. They're disabled for now (`UF:CreateGroupHeaders` is commented out in `UF:OnEnable`).
+5. Templates, colors, headers and buttons have no options UI, so they're the same in every profile unless the saved variables are edited by hand. Modules re-apply their own templates on a switch, but frames styled once at creation with a fixed template (header bars, close buttons, edit mode overlays, the /sui window) don't pick up a profile's different template colors. `st.template_cache` and `Config:UpdateTemplateConfig` look meant for this, but `UpdateTemplateConfig` reads `self.template_cache` on the Config module (it lives on `st`) and loops without `pairs`, so it never worked.
+
+**Why noticed:** On 2026-11-07, while making profile switches apply live across all modules and unit frames. The user asked for "update steps for those modules and for unit frames so that everything cleanly changes" on a profile switch, instead of needing a `/reload`. These were the pieces that couldn't be made live cleanly in that pass.
+
+**Anchors:** `SaftUI-Core/Config/config.lua` (`Config:UpdateConfig`), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`), `SaftUI-Chat/chatframe.lua` (`SkinChatFrame`, `tabs.fade`), `SaftUI-Bags/inventory.lua` (`OnEnable`), `SaftUI-Unitframes/unitframes.lua` (`CreateGroupHeaders`), `SaftUI-Core/panels.lua` (`st:SetTemplate`, `template_cache`), `SaftUI-Core/Config/widgets.lua` (`UpdateTemplateConfig`).
+
+**What's been considered:**
+- Items 3 and 4 match the rest of the UI: module toggles and secure header attributes generally need a reload. A "Reload to apply" message on a switch that changes one would be enough.
+- For item 2, a `hooksecurefunc` on each tab's `SetAlpha` that re-applies alpha 1 while fading is off would be taint-safe and could follow the profile.
+- For item 5, fixing `UpdateTemplateConfig` (`pairs(st.template_cache)`, and recording the latest template per frame) would re-color every templated frame. But it would also reset borders that modules recolor after `SetBackdrop` (bag slot quality, the edit mode overlay, the unit tooltip), so those would need re-applying after it.
+
+**Shape of work:** Small items, separable: a reload hint for 3 and 4, a tab `SetAlpha` hook for 2, and a template re-color pass for 5 if template options ever get a UI. Item 1 depends on the aura-container research.
+
+**Open questions:** Will templates or colors ever get options? If not, item 5 can be dropped.
 
 ### 2026-11-07 — SaftUI-Minimap's bar replaces Blizzard frame scripts and writes onto them (taint risk)
 
