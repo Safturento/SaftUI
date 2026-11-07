@@ -53,6 +53,10 @@ local PAGE_DRIVER = table.concat({
 	'[vehicleui] vehicle',
 	'[overridebar] override',
 	'[shapeshift] shapeshift',
+	-- Possess before the manual pages and bonus bars, as Blizzard's
+	-- ActionBarController orders it: mind control etc. must show the possessed
+	-- unit's page, not the stance/form or Shift+number page.
+	'[possessbar] possess',
 	'[bar:2] 2',
 	'[bar:3] 3',
 	'[bar:4] 4',
@@ -63,7 +67,6 @@ local PAGE_DRIVER = table.concat({
 	'[bonusbar:3] bonus3',
 	'[bonusbar:4] bonus4',
 	'[bonusbar:5] bonus5',
-	'[possessbar] possess',
 	'1',
 }, '; ')
 
