@@ -4,6 +4,10 @@ local UF = st:NewModule('Unitframes')
 UF.oUF = ns.oUF
 assert(UF.oUF, 'st was unable to locate oUF.')
 
+-- oUF's own role and rune colors, for profiles that have none (UF:UpdateColors).
+local DEFAULT_ROLE_COLORS = UF.oUF.colors.roles
+local DEFAULT_RUNE_COLORS = UF.oUF.colors.runes
+
 local TEST_PARTY_SOLO = false
 
 UF.elements = {}
@@ -121,14 +125,11 @@ function UF:UpdateColors()
 	st.tablemerge(UF.oUF.colors.reaction, st.config.profile.colors.reaction, true)
 	st.tablemerge(UF.oUF.colors.power, st.config.profile.colors.power, true)
 	st.tablemerge(UF.oUF.colors.class, st.config.profile.colors.class, true)
-	-- The profile has no roles or runes colors by default; keep oUF's then
-	-- instead of wiping them.
-	if st.config.profile.colors.roles then
-		UF.oUF.colors.roles = st.config.profile.colors.roles
-	end
-	if st.config.profile.colors.runes then
-		UF.oUF.colors.runes = st.config.profile.colors.runes
-	end
+	-- The profile has no roles or runes colors by default; use oUF's then
+	-- instead of wiping them. Set every time, so a profile without them doesn't
+	-- keep the colors of a profile switched away from.
+	UF.oUF.colors.roles = st.config.profile.colors.roles or DEFAULT_ROLE_COLORS
+	UF.oUF.colors.runes = st.config.profile.colors.runes or DEFAULT_RUNE_COLORS
 end
 
 -- Calls fn(frame) for every spawned unit frame: single units, the numbered
