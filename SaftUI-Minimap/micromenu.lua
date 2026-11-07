@@ -123,10 +123,22 @@ function MicroMenu:SkinTrackingButton()
     end
 end
 
+-- Places the bar from the profile and lays its buttons out again. Runs on every
+-- profile change. Blizzard's micro buttons and bar pieces hang off the bar, so
+-- in combat this waits until combat ends.
+function MicroMenu:UpdateConfig()
+    if not self.Container then return end
+    if st:QueueAfterCombat('MicroMenu', function() MicroMenu:UpdateConfig() end) then return end
+
+    self.Container:ClearAllPoints()
+    self.Container:SetPoint(st:UnpackPoint(self.config.position))
+    self:UpdateButtons()
+end
+
 function MicroMenu:OnEnable()
     st:BindModuleConfig(self, 'micromenu')
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)
-    self.Container:SetPoint('TOPLEFT', UIParent, st.CLAMP_INSET, -st.CLAMP_INSET)
+    self.Container:SetPoint(st:UnpackPoint(self.config.position))
     self.Container:SetSize(1,1)
     -- No-op to ignore Layout calls for buttons like mail icon
     self.Container.Layout = function() end
