@@ -160,6 +160,14 @@ function AB:GetVisibilityDriver(id)
 	return id == 'bar1' and VISIBILITY_MAIN or VISIBILITY_OTHER
 end
 
+-- How many of bar id's buttons it shows, its first ones: the buttons setting,
+-- from 1 to all of them. The keys of the others do nothing (bindings.lua).
+function AB:GetNumButtons(id)
+	local bar = self.bars[id]
+	if not bar then return 0 end
+	return Clamp(self.config[id].buttons, 1, #bar.buttons)
+end
+
 -- Sizes bar id, lays out its buttons and places it, from the profile. In combat
 -- this waits for the end of combat and reads the profile then.
 function AB:LayoutBar(id)
@@ -168,7 +176,7 @@ function AB:LayoutBar(id)
 
 	st:SafeReposition(bar, 'actionbars_layout_' .. id, function()
 		local config = self.config[id]
-		local numButtons = Clamp(config.buttons, 1, self.NUM_BUTTONS)
+		local numButtons = self:GetNumButtons(id)
 		local perRow = Clamp(config.perrow, 1, numButtons)
 		local numRows = math.ceil(numButtons / perRow)
 		local size = st:RoundToPixel(config.size, bar)
@@ -196,8 +204,9 @@ function AB:LayoutBar(id)
 	end)
 end
 
--- Applies bar id's profile settings: layout, skin and whether it's shown. All
--- protected, so in combat it waits for the end of combat.
+-- Applies bar id's profile settings: layout, skin, whether it's shown and
+-- where its keys go (a disabled bar's do nothing). All protected, so in combat
+-- it waits for the end of combat.
 function AB:UpdateBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
@@ -211,4 +220,6 @@ function AB:UpdateBar(id)
 		bar.visibilityDriver = driver
 		RegisterStateDriver(bar, 'visibility', driver)
 	end
+
+	self:UpdateBindings()
 end

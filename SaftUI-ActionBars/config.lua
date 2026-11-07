@@ -3,9 +3,9 @@ local st = SaftUI
 --[[
 	SaftUI's action bars (SaftUI-ActionBars). One table per bar, keyed 'bar1'..'bar8'
 	(see AB.BAR_IDS in init.lua). Every key of a bar:
-	  - enable: a disabled bar is hidden. Its keys go to a no-op once bindings.lua
-	    maps them (Task 2).
-	  - buttons: how many of its 12 buttons are shown.
+	  - enable: a disabled bar is hidden, and its keys do nothing (bindings.lua).
+	  - buttons: how many of its 12 buttons are shown. The keys of the others do
+	    nothing.
 	  - perrow: buttons per row. 1 makes a column.
 	  - size: the edge of a button, its border included. The icon sits inside the
 	    border, so bars fit together on a size + spacing grid.

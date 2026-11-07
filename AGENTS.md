@@ -26,7 +26,7 @@ user checking them in game.
 | `SaftUI-Chat/` | Chat frame placement, size and skin. |
 | `SaftUI-Loot/` | Loot roll frames, loot feed (`Feed/`), loot window popup. |
 | `SaftUI-Minimap/` | Minimap, SaftUI's micro menu bar and the pieces it hosts, Blizzard micro buttons inline, addon compartment. |
-| `SaftUI-ActionBars/` | SaftUI's own action bars, built on a bundled LibActionButton-1.0 (`Libraries/`), in place of Blizzard's, which it takes off screen at load (`hideblizzard.lua`). |
+| `SaftUI-ActionBars/` | SaftUI's own action bars, built on a bundled LibActionButton-1.0 (`Libraries/`), in place of Blizzard's, which it takes off screen at load (`hideblizzard.lua`). Their keys come from Blizzard's binding commands, with hover binding in `/sui kb` (`bindings.lua`). |
 | `SaftUI-Misc/` | Experience/rep bars, tooltip, totem bar, and Blizzard skins in `Skinning/` (buff frames, swing timer, character frame). |
 | `docs/` | Followups queue, design specs and implementation plans. |
 

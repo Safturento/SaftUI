@@ -9,6 +9,8 @@ st.ActionBars = AB
 	  - hideblizzard.lua: takes Blizzard's bars off screen at load.
 	  - skin.lua: SaftUI's look for the LibActionButton buttons.
 	  - bars.lua: building, laying out and updating the bars.
+	  - bindings.lua: the bars' keys, from Blizzard's binding commands, and
+	    hover binding (/sui kb).
 
 	Each bar mirrors one Blizzard bar: the same action slots and the same binding
 	command. These were checked against Blizzard_ActionBar on the forever and live
@@ -91,8 +93,9 @@ function AB:OnEnable()
 	self:Build()
 end
 
--- Makes every bar, then lays them all out. Bars are anchored to each other by
--- name, so every frame exists before any is placed. Once.
+-- Makes every bar, then lays them all out and maps their keys. Bars are
+-- anchored to each other by name, so every frame exists before any is placed.
+-- Once.
 function AB:Build()
 	if self.built then return end
 	self.built = true
@@ -103,6 +106,7 @@ function AB:Build()
 	for _, id in ipairs(self.BAR_IDS) do
 		self:UpdateBar(id)
 	end
+	self:SetupBindings()
 end
 
 -- A profile change. Every bar is re-laid out, re-skinned and shown or hidden for

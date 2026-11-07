@@ -12,3 +12,4 @@ init.lua
 hideblizzard.lua
 skin.lua
 bars.lua
+bindings.lua

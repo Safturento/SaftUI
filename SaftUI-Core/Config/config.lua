@@ -12,6 +12,23 @@ local Config = st:NewModule('Config')
 
 st.Config = Config
 
+-- /sui subcommands that other SaftUI addons add, e.g. SaftUI-ActionBars' 'kb'.
+-- Each also gets a button in the /sui window's top row, after Edit mode, in
+-- the order they were added. Add them at file load or in OnEnable.
+local commands = {}
+
+-- '/sui <command>' runs func, and so does a button labelled label in /sui.
+-- command is matched lowercase.
+function Config:AddCommand(command, label, func)
+	commands[#commands + 1] = { command = command:lower(), label = label, func = func }
+end
+
+local function FindCommand(command)
+	for _, entry in ipairs(commands) do
+		if entry.command == command then return entry end
+	end
+end
+
 function Config:Refresh()
 	AceConfigRegistry:NotifyChange(st.name)
 end
@@ -57,8 +74,14 @@ function Config:InitializeAceConfig()
     _G.SLASH_SAFTUI1 = '/sui'
     _G.SLASH_SAFTUI2 = '/saftui'
     _G.SlashCmdList.SAFTUI = function(msg)
-		if strtrim(msg or ''):lower() == 'edit' then
+		local command = strtrim(msg or ''):lower()
+		if command == 'edit' then
 			st.EditModeFrames:Toggle()
+			return
+		end
+		local entry = FindCommand(command)
+		if entry then
+			entry.func()
 			return
 		end
 		self:Open()
@@ -169,6 +192,7 @@ function Config:GetOptionsTable()
 				edit_mode = {
 					name = 'Edit mode',
 					type = 'execute',
+					order = 1,
 					func = function()
 						st.EditModeFrames:Toggle()
 					end,
@@ -177,6 +201,14 @@ function Config:GetOptionsTable()
 		},
 		profile = profile
 	}
+	for i, entry in ipairs(commands) do
+		options.topmenu.args['command_' .. entry.command] = {
+			name = entry.label,
+			type = 'execute',
+			order = 1 + i,
+			func = function() entry.func() end,
+		}
+	end
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			options[name] = module:GetConfigTable()

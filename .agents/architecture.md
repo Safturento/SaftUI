@@ -25,7 +25,7 @@ covers:
 
 - `SaftUI-Core/init.lua` creates the addon: `SaftUI = AceAddon:NewAddon(st, 'SaftUI-Core', 'AceEvent-3.0', 'AceHook-3.0')`. Every file starts with `local st = SaftUI`.
 - A module is `local M = st:NewModule('Name')` (AceAddon module, with AceEvent + AceHook mixed in). Module names are the keys used everywhere else: `st.modules[name]`, the `/sui` tree, and edit mode `configPath`s. Current modules include ActionBars, Auras, Chat, Config, EditMode, Experience, Fonts, Inventory, Loot, MicroMenu, Minimap, Movable, Skinning, SwingTimer, TaintFix, Tooltip, TotemBar, Unitframes, Utilities.
-- Lifecycle: `OnInitialize` (rarely used), `OnEnable` (build frames, register movers, hook Blizzard), `UpdateConfig` (re-apply everything from the profile; see below), `GetConfigTable` (the module's `/sui` section).
+- Lifecycle: `OnInitialize` (rarely used), `OnEnable` (build frames, register movers, hook Blizzard), `UpdateConfig` (re-apply everything from the profile; see below), `GetConfigTable` (the module's `/sui` section). A `/sui <command>` with its own top-row button is `st.Config:AddCommand` (see `.agents/edit-mode.md`).
 - `SaftUI-Core/constants.lua` sets client flags and screen constants. See `.agents/clients.md` for `st.retail` / `st.forever`.
 - Core helpers live in `SaftUI-Core/api.lua`. The ones you'll use most:
   - position: `st:UnpackPoint`, `st:ResolveFrame`, `st:ValidateAnchor`, `st:RoundToPixel`, `st:GetPixelSize`

@@ -57,6 +57,7 @@ st:RegisterMover('key', {
 ## `/sui` options
 
 - `/sui` is one window. It's built in `Config:GetOptionsTable` from each module's `GetConfigTable()`, and opened with `st.Config:Open(...path)`, which uses `AceConfigDialog:SelectGroup`.
+- **Subcommands.** `st.Config:AddCommand(command, label, func)` makes `/sui <command>` run `func`, and adds a `label` button after "Edit mode" in the window's top row. Call it at file load or in `OnEnable`. SaftUI-ActionBars adds `kb` (Keybind mode, `SaftUI-ActionBars/bindings.lua`).
 - **Section shape.** A mover's section is a group with `general` and `position` subgroups. `UseTabsForInnermostSections` turns innermost subgroups into tabs automatically (`childGroups = 'tab'`) unless the group already sets `childGroups`. Unit frames use `select`.
 - **Widgets** are `st.Config.generators` in `SaftUI-Core/Config/widgets.lua`:
   - `position(order, true, get, set, target)` is the full SetPoint editor.
