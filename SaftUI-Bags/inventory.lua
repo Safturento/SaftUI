@@ -70,6 +70,7 @@ function INV:UpdateConfig(id)
 		for containerId, _ in pairs(self.containers) do
 			self:UpdateConfig(containerId)
 		end
+		return
 	end
 
 	local container = self.containers[id]
@@ -144,7 +145,7 @@ function INV:ADDON_LOADED(event, addon)
 end
 
 function INV:OnEnable()
-	self.config = st.config.profile.inventory
+	st:BindModuleConfig(self, 'inventory')
 	if self.config.enable == false then return end
 
 	if not self.config.filters then
