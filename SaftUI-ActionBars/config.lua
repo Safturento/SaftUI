@@ -60,7 +60,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		spacing = SPACING,
 		position = { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off },
 		visibility = 'always',
-		fade_alpha = 0,
+		fade_alpha = 0.3,
 		text = {
 			hotkey = Text('TOPRIGHT', -3, -3),
 			count = Text('BOTTOMRIGHT', -3, 3),
