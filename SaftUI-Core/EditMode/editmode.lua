@@ -99,9 +99,12 @@ end
 -- A frame that can't be moved now (in combat, and protected: see
 -- st:CanMoveNow) keeps its anchors; EM:UpdateConfig leaves it for after combat.
 -- No loop can form around it: whatever it's anchored to is protected too.
+-- Each frame's anchors are kept first, for EM:UpdateConfig to put back if
+-- placing it fails.
 function EM:ClearPositions()
 	for _, mover in pairs(self.movers) do
 		local frame = mover.def.frame
+		mover.previousPoints = st:GetPoints(frame)
 		if st:CanMoveNow(frame) then
 			frame:ClearAllPoints()
 		end
@@ -113,13 +116,30 @@ end
 -- came from the old profile. Config:UpdateConfig runs this after every other
 -- module's UpdateConfig, so it has the last word on positions. In combat a
 -- protected mover frame gets its position when combat ends.
+--
+-- An apply that errors is reported, and the movers after it are still placed.
+-- If it left its frame with no anchors (ClearPositions cleared them), the
+-- frame gets its anchors from before the profile change back. That waits until
+-- every other mover is placed, so none of them is placed onto restored anchors
+-- that point back at it.
 function EM:UpdateConfig()
+	local failed = {}
 	for key, mover in pairs(self.movers) do
 		if mover.drag then
 			mover.drag = nil
 			mover.overlay:SetScript('OnUpdate', nil)
 		end
-		st:SafeReposition(mover.def.frame, 'mover_' .. key, mover.def.apply)
+		local def = mover.def
+		st:SafeReposition(def.frame, 'mover_' .. key, function()
+			if not xpcall(def.apply, geterrorhandler()) then
+				failed[mover] = true
+			end
+		end)
+	end
+	-- A deferred apply runs after combat; st:SafeReposition's queue restores
+	-- anchors the same way there.
+	for mover in pairs(failed) do
+		st:RestorePoints(mover.def.frame, mover.previousPoints)
 	end
 end
 
