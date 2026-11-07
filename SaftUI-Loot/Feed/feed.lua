@@ -478,19 +478,22 @@ local function HandleClick(self, button, upInside)
 	end
 end
 
+-- Places the feed from loot.feed.position. Also used by the edit mode mover.
+function LT:ApplyFeedPosition()
+	self.feed:ClearAllPoints()
+	self.feed:SetPoint(st:UnpackPoint(self.config.feed.position))
+end
+
+-- Safe in combat lockdown: the feed and its items are not protected.
 function LT:UpdateLootFeedConfig()
 	local config = self.config.feed
 
 	self.feed:SetWidth(config.width)
 	self.feed:SetHeight(config.max_items * config.item_height + (config.max_items - 1) * config.spacing)
+	self:ApplyFeedPosition()
 
 	for i=#self.feed.items+1, config.max_items do
 		local item = CreateFrame('button', st.name ..'LootFeed'..i, self.feed)
-		if i == 1 then
-			item:SetPoint('BOTTOMRIGHT', self.feed , 'BOTTOMRIGHT', 0, 0)
-		else
-			item:SetPoint('BOTTOMRIGHT', self.feed.items[i-1], 'TOPRIGHT', 0, config.spacing)
-		end
 
 		item:Hide()
 		item:SetID(i)
@@ -513,13 +516,22 @@ function LT:UpdateLootFeedConfig()
 	local font_obj = st:GetFont(config.font)
 
 	for i,item in pairs(self.feed.items) do
+		item:ClearAllPoints()
+		if i == 1 then
+			item:SetPoint('BOTTOMRIGHT', self.feed , 'BOTTOMRIGHT', 0, 0)
+		else
+			item:SetPoint('BOTTOMRIGHT', self.feed.items[i-1], 'TOPRIGHT', 0, config.spacing)
+		end
+
+		-- Lowering max_items leaves the extra items behind; keep them out of sight.
+		if i > config.max_items then item:Hide() end
+
 		item:SetSize(config.width, config.item_height)
 		item.text:SetFontObject(font_obj)
 		item.text:SetPoint('LEFT', item.icon, 'RIGHT', 10, 0)
 		item.text:SetPoint('RIGHT', item.rightText, 'LEFT', -10, 0)
 		item.text:SetJustifyH('LEFT')
 		item.text:SetWordWrap(false)
-		item.text:SetText('Item '..i)
 
 		item.timer:SetPoint('RIGHT', item, 'LEFT', -20, 0)
 		item.timer:SetFontObject(font_obj)
@@ -528,7 +540,13 @@ function LT:UpdateLootFeedConfig()
 		item.rightText:SetFontObject(font_obj)
 		item.rightText:SetPoint('RIGHT', item, 'RIGHT', -10, 0)
 		item.rightText:SetJustifyH('RIGHT')
-		item.rightText:SetText('Player '..i)
+
+		-- Placeholder text for new items only; re-applying must not clobber live entries.
+		if not item.placeholderSet then
+			item.placeholderSet = true
+			item.text:SetText('Item '..i)
+			item.rightText:SetText('Player '..i)
+		end
 
 		item.count:SetFontObject(font_obj)
 		item.count:SetPoint('BOTTOMRIGHT', item.icon, 0, 2)
@@ -543,6 +561,7 @@ function LT:UpdateLootFeedConfig()
 	self.feed.overlay:SetPoint('TOPRIGHT', self.feed.items[config.max_items], 'TOPRIGHT')
 
 	local x = self.feed:GetCenter()
+	self.feed.filterButton:ClearAllPoints()
 	if x and x > GetScreenWidth()/2 then
 		self.feed.filterButton:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
@@ -598,9 +617,7 @@ function LT:InitializeLootFeed()
 	local config = self.config.feed
 	local feed = CreateFrame('frame', st.name ..'LootFeed', UIParent)
 	feed:SetSize(config.width, 20)
-	if not st:RegisterEditMode(feed, 'Loot Feed', config.position) then
-	    feed:SetPoint(st:UnpackPoint(config.position))
-    end
+	feed:SetPoint(st:UnpackPoint(config.position))
 	feed.items = {}
 	feed.offset = 0
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
@@ -647,6 +664,15 @@ function LT:InitializeLootFeed()
 	self.debugText:Hide()
 
 	self:UpdateLootFeedConfig()
+
+	st:RegisterMover('lootfeed', {
+		frame = feed,
+		label = 'Loot Feed',
+		getPosition = function() return self.config.feed.position end,
+		setPosition = function(pos) self.config.feed.position = pos end,
+		apply = function() self:UpdateLootFeedConfig() end,
+		options = function() return self:GetFeedMoverOptions() end,
+	})
 
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')
 	self:RegisterEvent('CHAT_MSG_MONEY', 'LootFeedHandler')

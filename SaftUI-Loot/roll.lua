@@ -95,11 +95,14 @@ function LT:UpdateRollFrame(frame)
 
 	frame:SetSize(config.width, config.height)
 
-	frame.InfoFrame = st:CreateFrame('frame', nil, frame)
+	-- Updates run on every live option change, so only create this once.
+	if not frame.InfoFrame then
+		frame.InfoFrame = st:CreateFrame('frame', nil, frame)
+		frame.InfoFrame:SetPoint('BOTTOMRIGHT')
+		frame.InfoFrame:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
+		frame.InfoFrame:SetFrameLevel(1)
+	end
 	st:SetBackdrop(frame.InfoFrame, config.template)
-	frame.InfoFrame:SetPoint('BOTTOMRIGHT')
-	frame.InfoFrame:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
-	frame.InfoFrame:SetFrameLevel(1)
 
 	frame.Name:SetFontObject(st:GetFont(config.font))
 	frame.Name:ClearAllPoints()
@@ -177,19 +180,39 @@ function LT:GroupLootFrame_OnUpdateTimer(self, elapsed)
 	end
 end
 
-function LT:GroupLootContainer_Update(container)
-	local config = st.config.profile.loot.roll
-	local prev
+-- SaftUI owns this anchor; GroupLootContainer is part of Blizzard's managed
+-- frame layout, so we never move or size it. Roll frames stay parented where
+-- Blizzard puts them and are only anchored to this frame.
+function LT:CreateRollAnchor()
+	if self.rollAnchor then return self.rollAnchor end
+	self.rollAnchor = CreateFrame('frame', st.name .. 'LootRollAnchor', UIParent)
+	return self.rollAnchor
+end
 
-	local height = 0
+function LT:ApplyRollAnchor()
+	local config = self.config.roll
+	local anchor = self:CreateRollAnchor()
+
+	anchor:SetSize(st:RoundToPixel(config.width, anchor), st:RoundToPixel(config.height, anchor))
+	anchor:ClearAllPoints()
+	anchor:SetPoint(st:UnpackPoint(config.position))
+end
+
+function LT:LayoutRollFrames()
+	local container = GroupLootContainer
+	local anchor = self.rollAnchor
+	if not anchor or not container or not container.rollFrames then return end
+
+	local config = self.config.roll
+	local prev
 
 	for id, frame in ipairs(container.rollFrames) do
 		frame:ClearAllPoints()
 		if id == 1 then
 			if config.grow_down then
-				frame:SetPoint('TOP', container)
+				frame:SetPoint('TOP', anchor)
 			else
-				frame:SetPoint('BOTTOM', container)
+				frame:SetPoint('BOTTOM', anchor)
 			end
 		else
 			if config.grow_down then
@@ -199,13 +222,11 @@ function LT:GroupLootContainer_Update(container)
 			end
 		end
 		prev = frame
-		height = height + config.height + config.spacing
 	end
+end
 
-	container:SetHeight(height - config.spacing)
-
-	--GroupLootContainer:ClearAllPoints()
-	--GroupLootContainer:SetPoint(unpack(self.config.roll.position))
+function LT:GroupLootContainer_Update()
+	self:LayoutRollFrames()
 end
 
 function LT:SkinNewRollFrame()
@@ -223,33 +244,34 @@ function LT:InitializeRollFrame()
 		self:SkinRollFrame(frame)
 	end
 
-	-- Stop UIParent from moving the loot frame, we'll handle it
-	if UIPARENT_MANAGED_FRAME_POSITIONS then
-		UIPARENT_MANAGED_FRAME_POSITIONS.GroupLootContainer = nil
-	end
-
-	self:RegisterRollFrameEditMode()
+	self:CreateRollAnchor()
 	self:UpdateGroupLootConfig()
+	self:RegisterRollMover()
 
 	if DEBUG then
 		self:DebugGroupLootFrame()
 	end
 end
 
-function LT:RegisterRollFrameEditMode()
-	st:RegisterEditMode(GroupLootContainer, 'Group Loot Rolls', self.config.roll.position)
-	if GroupLootContainer.Selection then GroupLootContainer.Selection:SetFrameStrata('DIALOG')  end
-	if st.EditMode then
-		st.EditMode:RegisterSlider(GroupLootContainer, "Width", "width", function(value)
-			self.config.roll.width = value
-			LT:UpdateGroupLootConfig()
-		end, 100, 1000, 1)
-	end
+function LT:RegisterRollMover()
+	st:RegisterMover('lootroll', {
+		frame = self.rollAnchor,
+		label = 'Loot Rolls',
+		getPosition = function() return self.config.roll.position end,
+		setPosition = function(pos) self.config.roll.position = pos end,
+		apply = function() self:UpdateGroupLootConfig() end,
+		options = function() return self:GetRollMoverOptions() end,
+	})
 end
 
+-- Safe in combat lockdown: only SaftUI's anchor and the (unprotected) roll
+-- frames are touched, never GroupLootContainer.
 function LT:UpdateGroupLootConfig()
+	self:ApplyRollAnchor()
 	for _,frame in pairs(GroupLootContainer.rollFrames) do
-		self:UpdateRollFrame(frame)
+		if frame.skinned then
+			self:UpdateRollFrame(frame)
+		end
 	end
-	GroupLootContainer:SetWidth(self.config.roll.width)
+	self:LayoutRollFrames()
 end

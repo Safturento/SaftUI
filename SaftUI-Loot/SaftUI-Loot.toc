@@ -6,6 +6,7 @@
 
 config.lua
 init.lua
+options.lua
 popup.lua
 roll.lua
 
