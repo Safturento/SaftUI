@@ -4,6 +4,7 @@ local CF = st:GetModule('Skinning'):GetModule('CharacterFrame')
 function CF:ShowGemTooltip(gemSlot)
 	if gemSlot.itemId then
 		local _, itemLink = C_Item.GetItemInfo(gemSlot.itemId)
+		if not itemLink then return end
 		GameTooltip:SetOwner(gemSlot, 'ANCHOR_NONE')
 		GameTooltip:ClearAllPoints()
 		GameTooltip:SetPoint('TOPLEFT', gemSlot, 'BOTTOMLEFT', 0, -7)
@@ -12,10 +13,8 @@ function CF:ShowGemTooltip(gemSlot)
 	end
 end
 
-function CF:AddEquipSlotGems(equipSlot)
-	local position = self.SLOT_POSITIONS[equipSlot.ID]
-
-	local gems = CreateFrame('frame', equipSlot:GetName()..'Gems', equipSlot)
+function CF:CreateSlotGems(equipSlot, position)
+	local gems = CreateFrame('frame', nil, equipSlot)
 	for i=1, 4 do
 		local gemSlot = st:CreateFrame('frame', nil, gems)
 		gems[i] = gemSlot
@@ -49,16 +48,15 @@ function CF:AddEquipSlotGems(equipSlot)
 		end
 	end
 
-	equipSlot.gems = gems
+	return gems
 end
 
-function CF:UpdateEquipSlotGems(equipSlot)
-	local itemLink = GetInventoryItemLink('player', equipSlot.ID)
-	if not itemLink then equipSlot.gems:Hide() return end
+function CF:UpdateSlotGems(gems, itemLink)
+	if not itemLink then gems:Hide() return end
+	gems:Show()
 	for i=1, 4 do
-		equipSlot.gems:Show()
-		local gemName, gemLink = C_Item.GetItemGem(itemLink, i)
-		local gemButton = equipSlot.gems[i]
+		local _, gemLink = C_Item.GetItemGem(itemLink, i)
+		local gemButton = gems[i]
 		if gemLink then
 			local itemId = C_Item.GetItemIDForItemInfo(gemLink)
 			gemButton:Show()
