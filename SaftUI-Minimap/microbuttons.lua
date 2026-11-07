@@ -1,8 +1,8 @@
 local st = SaftUI
 local MicroMenu = st:GetModule('MicroMenu')
 
--- Restyles Blizzard's micro menu as a second row of SaftUI's micro menu,
--- spanning the bar's width directly under it.
+-- Restyles Blizzard's micro menu and puts its buttons inline in SaftUI's micro
+-- menu bar, next to the bar's other items.
 --
 -- Taint: MicroMenuContainer is an Edit Mode system frame, and MicroMenu and its
 -- buttons belong to Blizzard. Nothing here writes a Lua field onto them. Our
@@ -12,19 +12,29 @@ local MicroMenu = st:GetModule('MicroMenu')
 -- hooksecurefunc and HookScript. No Blizzard Lua function is ever called from
 -- here, so nothing Blizzard writes happens under our taint.
 --
+-- The bar's AddButton/UpdateButtons write SaftUI fields onto every item they
+-- lay out, so Blizzard's buttons are never given to them. Each button gets a
+-- SaftUI holder frame instead: the holder is the bar item that takes the
+-- button's slot, and the button is anchored over it.
+--
 -- The buttons stay parented to MicroMenu, so Blizzard's own scripts, alerts,
 -- notification pips and vehicle/pet battle handling keep working. Blizzard
 -- still runs MicroMenu:Layout, and the post-hook moves the buttons afterwards.
 
 local BUTTON_HEIGHT = MicroMenu.BUTTON_SIZE
-local SPACING = MicroMenu.BUTTON_SPACING
-local MIN_WIDTH = 20
+-- Blizzard's MainMenuBarMicroButton template is 32x40 on Forever and retail
+-- (Blizzard_MicroMenu/Mainline/MainMenuBarMicroButtons.xml). The buttons keep
+-- that shape at the bar's height: 20x25.
+local BUTTON_RATIO = 32 / 40
 local TEMPLATE = 'thicktransparent'
 
 -- Blizzard's icon atlases are 32x41, with the glyph (at most 22x28) centered in
--- transparent padding. Drawn at 22x28 the glyph is about 19px tall, which
--- leaves a 3px margin in a 25px button. Keeping the atlas's own aspect means no
--- texcoord crop, which Blizzard would undo every time it swaps an atlas.
+-- transparent padding. Drawn at 22x28 the glyph is at most about 15x19, which
+-- leaves a 2px margin across a 20px wide button and 3px down a 25px tall one,
+-- about the same share of the button as in Blizzard's own 32x40. The texture
+-- is a little wider than the button, but only its padding hangs over. Keeping
+-- the atlas's own aspect means no texcoord crop, which Blizzard would undo
+-- every time it swaps an atlas.
 local ICON_WIDTH, ICON_HEIGHT = 22, 28
 local ICON_TOP = math.ceil((ICON_HEIGHT - BUTTON_HEIGHT) / 2)
 -- The guild emblem sits on the tabard glyph at 12x14; scaled with the icon.
@@ -35,9 +45,8 @@ local PUSHED_ALPHA = 0.6
 local ALERT_ALPHA = 0.5
 
 local buttons = {} -- Blizzard's micro buttons, in Blizzard's order
-local shown = {}
 local skins = setmetatable({}, { __mode = 'k' }) -- button -> SaftUI backdrop
-local widths = setmetatable({}, { __mode = 'k' }) -- button -> width we gave it
+local holders = setmetatable({}, { __mode = 'k' }) -- button -> SaftUI holder in the bar
 
 -- Crops a square portrait to width x height, zoomed in a little, with the face
 -- slightly above center.
@@ -63,7 +72,8 @@ end
 -- friends), the highlight (SetNormal/SetPushed swap its atlas, blend and
 -- alpha), and the portrait (Character's SetNormal/SetPushed re-anchor it).
 local function StyleTextures(button)
-    local width = widths[button] or BUTTON_HEIGHT
+    local holder = holders[button]
+    local width = holder and holder.width or BUTTON_HEIGHT
 
     PlaceIcon(button:GetNormalTexture(), button, width)
     PlaceIcon(button:GetPushedTexture(), button, width)
@@ -101,7 +111,42 @@ local function UpdateSkinLevel(button)
     end
 end
 
+-- Shows each holder while its button is shown, so the bar closes up around
+-- buttons Blizzard hides (game rules, level, region). A holder's OnShow/OnHide
+-- lays the bar out again (MicroMenu:OnEnable hooks every bar item). This reads
+-- the shown flag, not visibility, so the slots don't come and go when Blizzard
+-- moves MicroMenu to a vehicle or pet battle bar.
+local function UpdateHolders()
+    for _, button in ipairs(buttons) do
+        local holder = holders[button]
+        if holder then
+            holder:SetShown(button:IsShown())
+        end
+    end
+end
+
+-- After any Blizzard layout, scale or show/hide change. Every button is
+-- checked, not just the one that changed: a button Blizzard hid while the menu
+-- was out of sight fired no OnHide of its own.
+local function Refresh()
+    UpdateHolders()
+    MicroMenu:UpdateBlizzardButtons()
+end
+
+-- The bar item that takes the button's slot. The button's own panel (below)
+-- draws under its art, so the holder has no backdrop and only reserves space.
+local function CreateHolder(button)
+    local holder = CreateFrame('Frame', nil, MicroMenu.Container)
+    holder.width = st:RoundToPixel(BUTTON_HEIGHT * BUTTON_RATIO, MicroMenu.Container)
+    holder.barTemplate = 'none'
+    holder:SetShown(button:IsShown())
+    holders[button] = holder
+    return holder
+end
+
 local function SkinButton(button)
+    CreateHolder(button)
+
     local offset = st.config.profile.templates[TEMPLATE].thick and 2 or 1
     local skin = st:CreateFrame('Frame', nil, button)
     skin:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
@@ -172,14 +217,17 @@ local function SkinButton(button)
         if normal then normal:SetAlpha(1) end
     end)
 
-    -- Shown/hidden buttons only re-run MicroMenu:Layout while the menu sits in
-    -- its container, not in a vehicle or pet battle bar.
-    button:HookScript('OnShow', function() MicroMenu:UpdateBlizzardButtons() end)
-    button:HookScript('OnHide', function() MicroMenu:UpdateBlizzardButtons() end)
+    -- Blizzard re-runs MicroMenu:Layout on show/hide only while the menu sits
+    -- in its container, not in a vehicle or pet battle bar.
+    button:HookScript('OnShow', Refresh)
+    button:HookScript('OnHide', Refresh)
 
     StyleTextures(button)
 end
 
+-- Skins Blizzard's micro buttons and adds a holder for each to SaftUI's bar
+-- with AddButton, so MicroMenu:OnEnable calls this at the spot in the bar's
+-- order where the buttons go.
 function MicroMenu:SkinBlizzardMicroMenu()
     local menu = _G.MicroMenu
     if not menu then return end
@@ -199,13 +247,14 @@ function MicroMenu:SkinBlizzardMicroMenu()
 
     for _, button in ipairs(buttons) do
         SkinButton(button)
+        self:AddButton(holders[button])
     end
 
     -- Layout re-anchors the buttons into Blizzard's grid; UpdateScale follows
     -- Edit Mode's size and the vehicle/pet battle scale override.
-    hooksecurefunc(menu, 'Layout', function() self:UpdateBlizzardButtons() end)
+    hooksecurefunc(menu, 'Layout', Refresh)
     if menu.UpdateScale then
-        hooksecurefunc(menu, 'UpdateScale', function() self:UpdateBlizzardButtons() end)
+        hooksecurefunc(menu, 'UpdateScale', Refresh)
     end
     -- It sets a guild tabard's color after the atlas swap we hook per button
     if LoadMicroButtonTextures then
@@ -223,29 +272,12 @@ function MicroMenu:SkinBlizzardMicroMenu()
     end
 end
 
--- Lays the shown buttons out in one row under SaftUI's bar, splitting the bar's
--- width between them. Sizes and offsets come from SaftUI's own numbers, never
--- from Blizzard frame geometry; the scale and frame level reads are guarded
--- for secret values.
+-- Puts each button over its holder in SaftUI's bar (UpdateButtons places the
+-- holders). Sizes come from SaftUI's own numbers, never from Blizzard frame
+-- geometry; the scale and frame level reads are guarded for secret values.
 function MicroMenu:UpdateBlizzardButtons()
     local menu = _G.MicroMenu
-    if not (menu and self.barWidth and #buttons > 0) then return end
-
-    wipe(shown)
-    for _, button in ipairs(buttons) do
-        if button:IsShown() then
-            tinsert(shown, button)
-        end
-    end
-    local count = #shown
-    if count == 0 then return end
-
-    local available = self.barWidth - SPACING * (count - 1)
-    local width = math.floor(available / count)
-    local remainder = available - width * count
-    if width < MIN_WIDTH then
-        width, remainder = MIN_WIDTH, 0
-    end
+    if not (menu and #buttons > 0) then return end
 
     -- The buttons inherit MicroMenu's scale (Edit Mode size, vehicle override);
     -- cancel it so they match the bar.
@@ -255,22 +287,17 @@ function MicroMenu:UpdateBlizzardButtons()
         scale = barScale / menuScale
     end
 
-    local prev
-    for i, button in ipairs(shown) do
-        local buttonWidth = width + (i <= remainder and 1 or 0)
-        widths[button] = buttonWidth
+    -- Hidden buttons too, so one Blizzard shows later is already in its slot
+    for _, button in ipairs(buttons) do
+        local holder = holders[button]
+        if holder then
+            button:SetScale(scale)
+            button:SetSize(holder.width, BUTTON_HEIGHT)
+            button:ClearAllPoints()
+            button:SetPoint('TOPLEFT', holder, 'TOPLEFT')
 
-        button:SetScale(scale)
-        button:SetSize(buttonWidth, BUTTON_HEIGHT)
-        button:ClearAllPoints()
-        if prev then
-            button:SetPoint('TOPLEFT', prev, 'TOPRIGHT', SPACING, 0)
-        else
-            button:SetPoint('TOPLEFT', self.Container, 'TOPLEFT', 0, -(BUTTON_HEIGHT + SPACING))
+            UpdateSkinLevel(button)
+            StyleTextures(button)
         end
-
-        UpdateSkinLevel(button)
-        StyleTextures(button)
-        prev = button
     end
 end

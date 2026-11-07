@@ -4,10 +4,11 @@ MicroMenu.Buttons = {}
 
 local BUTTON_SIZE = 25
 local BUTTON_SPACING = 8
--- Shared with microbuttons.lua, which lays Blizzard's micro buttons out under the bar
+-- Shared with microbuttons.lua, which sizes Blizzard's micro buttons to the bar
 MicroMenu.BUTTON_SIZE = BUTTON_SIZE
-MicroMenu.BUTTON_SPACING = BUTTON_SPACING
 
+-- Items can set .width (default BUTTON_SIZE) and .barTemplate (the backdrop
+-- template, default thicktransparent; 'none' for no backdrop).
 function MicroMenu:AddButton(button)
     if button then
         tinsert(self.Buttons, button)
@@ -16,10 +17,8 @@ end
 
 function MicroMenu:UpdateButtons()
     local prev
-    local width = 0
     for _,button in pairs(self.Buttons) do
         if button:IsShown() then
-            width = width + (button.width or BUTTON_SIZE) + (prev and BUTTON_SPACING or 0)
             button:SetParent(self.Container)
             button:SetSize(button.width or BUTTON_SIZE, BUTTON_SIZE)
 
@@ -33,7 +32,7 @@ function MicroMenu:UpdateButtons()
                 button.text:SetPoint('RIGHT', button, 'RIGHT', -4, 0)
             end
 
-            st:SetBackdrop(button, 'thicktransparent')
+            st:SetBackdrop(button, button.barTemplate or 'thicktransparent')
 
             button:ClearAllPoints()
             if prev then
@@ -46,8 +45,7 @@ function MicroMenu:UpdateButtons()
         end
     end
 
-    -- Blizzard's micro buttons span the bar's width in a row under it
-    self.barWidth = width
+    -- Blizzard's micro buttons sit over their holders, laid out above
     self:UpdateBlizzardButtons()
 end
 
@@ -144,11 +142,14 @@ function MicroMenu:OnEnable()
     self.Container.Layout = function() end
 
     self:KillBlizz()
-    self:SkinBlizzardMicroMenu()
     self:AddButton(self:SkinZoneTextButton())
     self:AddButton(self:SkinTimeManagerClockButton())
     self:AddButton(self:CreateLatencyButton())
     self:AddButton(self:CreateFramerateButton())
+    -- Adds a holder per Blizzard micro button at this spot. The items before
+    -- them don't come and go, so the micro buttons stay put while mail, the
+    -- queue eye and the like appear after them.
+    self:SkinBlizzardMicroMenu()
     self:AddButton(self:SkinAddonCompartmentFrame())
     self:AddButton(self:SkinTrackingButton())
     self:AddButton(self:SkinExpansionButton())
