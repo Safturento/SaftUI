@@ -36,8 +36,9 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - Route every move through `st:SafeReposition(frame, key, fn)`, which runs `fn` now or after combat. Check with `st:CanMoveNow(frame)`. Defer other work with `st:QueueAfterCombat(key, fn)`.
    - Edit mode and `/sui` close on `PLAYER_REGEN_DISABLED` and refuse to open in combat.
 7. **No arithmetic or comparisons on secret values.** See `.agents/clients.md`.
-8. **Don't override Blizzard globals or APIs**, not even for test data (e.g. faking `GetLootRollItemInfo` or `UnitExists`). Build SaftUI-owned preview frames instead (`SaftUI-Loot/roll.lua` `CreateRollPreviews`).
-9. **Ace skin fonts:** never `SetFontObject` with an object you got from `GetFontObject()` unless it's a named global Font. Restoring an engine-made Font made a region inherit from itself and crashed the client with a C stack overflow (`31afa68`). Use `IsNamedFont`/`RestoreFont` in `SaftUI-Core/Config/aceskin.lua`.
+8. **To hide a Blizzard frame for good**, prefer `frame:SetRolesets('alwaysBlocked')`, as oUF does for party frames and `SaftUI-Unitframes/groups.lua` does for `CompactRaidFrameContainer`. It's one C call that writes nothing onto the frame, and the frame stops drawing whatever Blizzard's own Show/Hide calls do. It's still bound by rule 4: apply it only while the frame isn't on screen, and only out of combat.
+9. **Don't override Blizzard globals or APIs**, not even for test data (e.g. faking `GetLootRollItemInfo` or `UnitExists`). Build SaftUI-owned preview frames instead (`SaftUI-Loot/roll.lua` `CreateRollPreviews`).
+10. **Ace skin fonts:** never `SetFontObject` with an object you got from `GetFontObject()` unless it's a named global Font. Restoring an engine-made Font made a region inherit from itself and crashed the client with a C stack overflow (`31afa68`). Use `IsNamedFont`/`RestoreFont` in `SaftUI-Core/Config/aceskin.lua`.
 
 ## Past incidents (to recognize the pattern)
 

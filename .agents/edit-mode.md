@@ -71,6 +71,6 @@ AceGUI widgets are **pooled and shared with every other addon**:
 - Only widgets inside windows from `st.AceSkin:CreateWindow` are styled (`Scope`). Every change pushes an undo, and the undos run on `AceGUI:Release`, so other addons get stock widgets back.
 - Never hook `AceGUI:Create` or a widget constructor globally.
 - New styling goes through the recorded helpers (`SetFont`, `SetAlpha`, `Retexture`, `Box`, `Owned`, `HookMethod`, …).
-- Fonts: see rule 9 in `.agents/taint.md`.
+- Fonts: see rule 10 in `.agents/taint.md`.
 - `STYLERS[type]` covers Frame, TreeGroup, TabGroup, InlineGroup, ScrollFrame, CheckBox, Slider, EditBox, Button, Heading, Label, ColorPicker, Dropdown and its pullout, and the LSM30 widgets.
 - On Forever the AceGUI and AceConfigDialog that actually load come from another addon (HandyNotes' copies). Stay defensive about version differences.
