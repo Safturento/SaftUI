@@ -277,6 +277,101 @@ function st:QueueAfterCombat(key, fn)
 	return true
 end
 
+-- The widget API's own ClearAllPoints and SetPoint, called directly so any Lua
+-- replacement on the frame itself is skipped. Blizzard's Edit Mode systems (e.g.
+-- ChatFrame1) get Lua overrides of both (EditModeSystemMixin:OnSystemLoad) that
+-- write Edit Mode state, and calling those from addon code taints it.
+function st:ClearAllPointsDirect(frame)
+	getmetatable(frame).__index.ClearAllPoints(frame)
+end
+
+function st:SetPointDirect(frame, ...)
+	getmetatable(frame).__index.SetPoint(frame, ...)
+end
+
+-- Every anchor of frame, for st:RestorePoints. The values are only kept and
+-- handed back to SetPoint, never compared, so secret values are fine.
+function st:GetPoints(frame)
+	local points = {}
+	for i = 1, frame:GetNumPoints() do
+		points[i] = { frame:GetPoint(i) }
+	end
+	return points
+end
+
+-- Gives a frame left with no anchors (e.g. by a placement that failed after
+-- its anchors were cleared) somewhere to be again: the points st:GetPoints
+-- saved, or the middle of the screen if there are none or they fail (e.g. the
+-- frame they name is now anchored to this one). A frame with anchors is left alone.
+function st:RestorePoints(frame, points)
+	if frame:GetNumPoints() > 0 then return end
+	local restored = points and #points > 0 and pcall(function()
+		for _, p in ipairs(points) do
+			st:SetPointDirect(frame, p[1], p[2], p[3], p[4], p[5])
+		end
+	end)
+	if not restored then
+		st:ClearAllPointsDirect(frame)
+		st:SetPointDirect(frame, 'CENTER', UIParent, 'CENTER')
+	end
+end
+
+-- Moving a protected frame (ClearAllPoints, SetPoint, SetSize and the like) is
+-- blocked in combat. A frame that isn't protected by itself counts as protected
+-- while a protected frame is anchored to it, directly or through a chain of
+-- anchors. Users can set that up, e.g. by anchoring a unit frame to the minimap
+-- or a swing timer. True if frame can be moved right now.
+function st:CanMoveNow(frame)
+	return not (InCombatLockdown() and frame:IsProtected())
+end
+
+-- Repositions waiting for the end of combat: key -> { frame = frame, fn = fn }.
+local pendingMoves = {}
+
+-- Runs every waiting reposition together. All their frames' anchors are
+-- cleared before any fn runs, so the frames can be placed in any order without
+-- passing through an anchor loop (a new profile may chain them the other way
+-- round). A frame still without anchors afterwards (its fn failed, or only
+-- arranged what hangs off it) gets its old ones back.
+local function FlushPendingMoves()
+	-- PLAYER_REGEN_ENABLED can fire while combat is still on; wait again then.
+	if st:QueueAfterCombat('SafeReposition', FlushPendingMoves) then return end
+
+	local moves = pendingMoves
+	pendingMoves = {}
+
+	local saved = {}
+	for _, move in pairs(moves) do
+		local frame = move.frame
+		if not saved[frame] then
+			saved[frame] = st:GetPoints(frame)
+			st:ClearAllPointsDirect(frame)
+		end
+	end
+	for _, move in pairs(moves) do
+		xpcall(move.fn, geterrorhandler())
+	end
+	for frame, points in pairs(saved) do
+		st:RestorePoints(frame, points)
+	end
+end
+
+-- Runs fn, which sizes or places frame, now if frame can be moved now
+-- (st:CanMoveNow). Otherwise frame is left exactly as it is, anchors included,
+-- and fn waits for the end of combat under key (one key per frame or module;
+-- queuing a key again replaces its fn). fn should read the profile when it
+-- runs, so a deferred one places the frame for the profile active by then.
+-- Returns true if fn ran now.
+function st:SafeReposition(frame, key, fn)
+	if st:CanMoveNow(frame) then
+		fn()
+		return true
+	end
+	pendingMoves[key] = { frame = frame, fn = fn }
+	st:QueueAfterCombat('SafeReposition', FlushPendingMoves)
+	return false
+end
+
 function st:EnableMoving(frame)
 	frame:EnableMouse(true)
 	frame:SetMovable(true)

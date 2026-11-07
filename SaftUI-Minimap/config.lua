@@ -30,12 +30,17 @@ local MM = st:GetModule('Minimap')
 function MM:UpdateConfig()
 	-- Minimap is owned by SaftUI (parented to UIParent), so it is sized and
 	-- placed directly. MinimapCluster stays wherever Blizzard's Edit Mode puts it.
-	local size = st:RoundToPixel(self.config.size, Minimap)
-	Minimap:SetSize(size, size)
-	st:SetBackdrop(Minimap, self.config.template)
+	-- In combat it can't move if a protected frame (e.g. a unit frame) is
+	-- anchored to it; then its size and position wait for the end of combat.
+	st:SafeReposition(Minimap, 'minimap', function()
+		local size = st:RoundToPixel(self.config.size, Minimap)
+		Minimap:SetSize(size, size)
+		Minimap:ClearAllPoints()
+		Minimap:SetPoint(st:UnpackPoint(self.config.position))
+	end)
 
-	Minimap:ClearAllPoints()
-	Minimap:SetPoint(st:UnpackPoint(self.config.position))
+	-- Only SaftUI's backdrop frame is touched, so this is fine in combat.
+	st:SetBackdrop(Minimap, self.config.template)
 end
 
 -- The minimap's section in the /sui tree. Clicking the minimap in edit mode

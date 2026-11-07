@@ -154,13 +154,22 @@ function CHT:ApplyChatFrameConfig(frame)
 	self:UpdateChatFrameDisplay(frame)
 end
 
+-- Places ChatFrame1 from chat.position. In combat it can't move if a
+-- protected frame (e.g. a unit frame) is anchored to it; then this waits for
+-- the end of combat.
+function CHT:ApplyPosition()
+	st:SafeReposition(ChatFrame1, 'chat', function()
+		ChatFrame1:ClearAllPoints()
+		ChatFrame1:SetPoint(unpack(self.config.position))
+	end)
+end
+
 -- A profile change: chat position, then each chat frame's look. Tab fading
 -- (tabs.fade) is only applied when the frames are first skinned.
 function CHT:UpdateConfig()
 	if not self.config then return end -- not enabled
 
-	ChatFrame1:ClearAllPoints()
-	ChatFrame1:SetPoint(unpack(self.config.position))
+	self:ApplyPosition()
 
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])
@@ -190,8 +199,7 @@ function CHT:OnEnable()
 	st:Kill(ChatFrameChannelButton)
 	st:Kill(QuickJoinToastButton)
 
-	ChatFrame1:ClearAllPoints()
-	ChatFrame1:SetPoint(unpack(self.config.position))
+	self:ApplyPosition()
 
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:SkinChatFrame(_G['ChatFrame'..chatID])

@@ -159,24 +159,32 @@ function STP:UpdateMoverLabel(key)
 end
 
 -- Sizes and places one holder from the profile. Only SaftUI's holder is touched (the
--- bar follows through its anchors), so this is safe in combat.
+-- bar follows through its anchors). The bar is anchored to the holder, so a protected
+-- frame (e.g. a unit frame) anchored to either makes the holder protected; in combat
+-- the holder then waits for the end of combat.
 function STP:ApplyHolder(key)
 	local holder = self.holders[key]
-	local config = self.config[key]
-	holder:SetSize(st:RoundToPixel(config.width, holder), st:RoundToPixel(config.height, holder))
+	st:SafeReposition(holder, 'swingtimer_' .. key, function()
+		local config = self.config[key]
+		holder:SetSize(st:RoundToPixel(config.width, holder), st:RoundToPixel(config.height, holder))
 
-	local point, relative, rel_point, x, y = st:UnpackPoint(config.position)
-	holder:ClearAllPoints()
-	holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point, x, y)
+		local point, relative, rel_point, x, y = st:UnpackPoint(config.position)
+		holder:ClearAllPoints()
+		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point, x, y)
+	end)
 end
 
 -- Re-applies every bar's size and position, e.g. after a profile change. All holders
 -- are cleared first: the new profile may chain them in another order, and anchoring
--- one to another that still points back at it would be a loop.
+-- one to another that still points back at it would be a loop. A holder that can't
+-- move now (st:CanMoveNow) keeps its anchors, and ApplyHolder leaves it for after combat.
 function STP:UpdateConfig()
 	if not self.holders then return end
 	for _, info in ipairs(BARS) do
-		self.holders[info.key]:ClearAllPoints()
+		local holder = self.holders[info.key]
+		if st:CanMoveNow(holder) then
+			holder:ClearAllPoints()
+		end
 	end
 	for _, info in ipairs(BARS) do
 		self:ApplyHolder(info.key)

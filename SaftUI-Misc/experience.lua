@@ -21,10 +21,8 @@ function XP:SetupReputation()
 	self.bars.reputation = reputation
 end
 
-function XP:Update()
-	self:UpdateExperience()
-	self:UpdateReputation()
-
+-- Stacks the shown bars and fits the container's height around them.
+function XP:StackBars()
 	local num_bars = 0
 	local prev
 	for _,bar in pairs(self.bars) do
@@ -42,7 +40,16 @@ function XP:Update()
 	end
 
 	self.container:SetHeight(num_bars*(self.config.height+self.config.spacing) - self.config.spacing)
+end
 
+function XP:Update()
+	self:UpdateExperience()
+	self:UpdateReputation()
+
+	-- The bars hang off the container, so a protected frame (e.g. a unit frame)
+	-- anchored to any of them makes the container protected too. In combat the
+	-- stacking then waits for the end of combat.
+	st:SafeReposition(self.container, 'experience_stack', function() self:StackBars() end)
 end
 
 -- Applies the profile's size, spacing, template, colors and position. Runs on
@@ -50,26 +57,31 @@ end
 function XP:UpdateConfig()
 	if not self.bars then return end -- not enabled
 
-	self.container:SetWidth(self.config.width)
-	self.container:ClearAllPoints()
-	self.container:SetPoint(unpack(self.config.position))
+	-- Size, position and frame levels; in combat these wait for the end of
+	-- combat if a protected frame is anchored to the container or a bar.
+	st:SafeReposition(self.container, 'experience', function()
+		self.container:SetWidth(self.config.width)
+		self.container:ClearAllPoints()
+		self.container:SetPoint(unpack(self.config.position))
+
+		self.bars.experience:SetFrameLevel(5)
+		self.bars.experience:SetSize(self.config.width, self.config.height)
+		self.bars.experience.rested:SetFrameLevel(3)
+		self.bars.experience.rested:SetSize(self.config.width, self.config.height)
+		self.bars.reputation:SetFrameLevel(5)
+		self.bars.reputation:SetSize(self.config.width, self.config.height)
+	end)
 
 	self.bars.experience:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.experience:SetStatusBarColor(Colors().experience.normal:GetRGB())
-	self.bars.experience:SetFrameLevel(5)
-	self.bars.experience:SetSize(self.config.width, self.config.height)
 	st:SetBackdrop(self.bars.experience, self.config.template)
 
 	self.bars.experience.rested:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.experience.rested:SetStatusBarColor(Colors().experience.rested:GetRGB())
-	self.bars.experience.rested:SetFrameLevel(3)
-	self.bars.experience.rested:SetSize(self.config.width, self.config.height)
 	self.bars.experience.rested:SetAlpha(self.config.rest_alpha)
 
 	self.bars.reputation:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.reputation:SetStatusBarColor(1, 1, 1)
-	self.bars.reputation:SetFrameLevel(5)
-	self.bars.reputation:SetSize(self.config.width, self.config.height)
 	st:SetBackdrop(self.bars.reputation, self.config.template)
 
 	-- Re-stacks the bars with the new spacing and height

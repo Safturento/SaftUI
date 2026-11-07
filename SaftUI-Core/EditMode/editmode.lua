@@ -96,23 +96,30 @@ end
 -- the old profile's anchors could form a loop (SetPoint errors). With every
 -- frame cleared first, they can be placed in any order. Config:UpdateConfig
 -- runs this before any module updates, and EM:UpdateConfig places them all.
+-- A frame that can't be moved now (in combat, and protected: see
+-- st:CanMoveNow) keeps its anchors; EM:UpdateConfig leaves it for after combat.
+-- No loop can form around it: whatever it's anchored to is protected too.
 function EM:ClearPositions()
 	for _, mover in pairs(self.movers) do
-		mover.def.frame:ClearAllPoints()
+		local frame = mover.def.frame
+		if st:CanMoveNow(frame) then
+			frame:ClearAllPoints()
+		end
 	end
 end
 
 -- A profile change: every mover's frame goes to the new profile's position.
 -- A drag in progress is dropped without committing, since its start offsets
 -- came from the old profile. Config:UpdateConfig runs this after every other
--- module's UpdateConfig, so it has the last word on positions.
+-- module's UpdateConfig, so it has the last word on positions. In combat a
+-- protected mover frame gets its position when combat ends.
 function EM:UpdateConfig()
-	for _, mover in pairs(self.movers) do
+	for key, mover in pairs(self.movers) do
 		if mover.drag then
 			mover.drag = nil
 			mover.overlay:SetScript('OnUpdate', nil)
 		end
-		mover.def.apply()
+		st:SafeReposition(mover.def.frame, 'mover_' .. key, mover.def.apply)
 	end
 end
 

@@ -241,15 +241,19 @@ function LT:RegisterRollMover()
 	})
 end
 
--- Safe in combat lockdown: only SaftUI's anchor and the (unprotected) roll
--- frames are touched, never GroupLootContainer.
+-- Only SaftUI's anchor and the (unprotected) roll frames are touched, never
+-- GroupLootContainer. Everything here hangs off the anchor, so a protected
+-- frame (e.g. a unit frame) anchored to any of it makes the anchor protected;
+-- in combat the update then waits for the end of combat.
 function LT:UpdateGroupLootConfig()
-	self:ApplyRollAnchor()
-	for _,frame in ipairs(self.skinnedRollFrames or {}) do
-		self:UpdateRollFrame(frame)
-	end
-	self:LayoutRollFrames()
-	self:UpdateRollPreviews()
+	st:SafeReposition(self:CreateRollAnchor(), 'lootroll', function()
+		self:ApplyRollAnchor()
+		for _,frame in ipairs(self.skinnedRollFrames or {}) do
+			self:UpdateRollFrame(frame)
+		end
+		self:LayoutRollFrames()
+		self:UpdateRollPreviews()
+	end)
 end
 
 ------------------------------------
