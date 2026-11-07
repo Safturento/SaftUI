@@ -44,6 +44,7 @@ Media\fonts.lua
 Config\defaults.lua
 Config\config.lua
 Config\widgets.lua
+Config\aceskin.lua
 
 EditMode\load.xml
 

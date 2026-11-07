@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="editmode.lua"/>
 	<Script file="mover.lua"/>
+	<Script file="window.lua"/>
 </Ui>

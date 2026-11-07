@@ -5,6 +5,7 @@ local ARROW_KEYS = { UP = true, DOWN = true, LEFT = true, RIGHT = true }
 local NUDGE = {
 	UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 },
 }
+local LIVE_INTERVAL = 0.1 -- seconds between settings refreshes while dragging
 
 local function SetBorderColor(mover, selected)
 	local r, g, b = 1, 1, 1
@@ -52,6 +53,19 @@ function EM:UpdateDrag(mover)
 	drag.x = st:RoundToPixel(drag.x0 + dx, mover.def.frame)
 	drag.y = st:RoundToPixel(drag.y0 + dy, mover.def.frame)
 	ApplyOffsets(mover, drag.x, drag.y)
+
+	-- Keep open settings windows showing the live x/y. Throttled: each
+	-- refresh rebuilds their widgets. The drag's end commits as before.
+	local now = GetTime()
+	if (drag.x ~= drag.shownX or drag.y ~= drag.shownY)
+			and now - (drag.shownAt or 0) >= LIVE_INTERVAL then
+		drag.shownX, drag.shownY, drag.shownAt = drag.x, drag.y, now
+		local pos = mover.def.getPosition()
+		pos.x_off = drag.x
+		pos.y_off = drag.y
+		mover.def.setPosition(pos)
+		self:Fire('PositionChanged', mover)
+	end
 end
 
 -- Ends a drag (if any), committing the last applied offset.
@@ -128,6 +142,13 @@ local keys = CreateFrame('Frame', nil, UIParent)
 keys:Hide()
 
 keys:SetScript('OnKeyDown', function(self, key)
+	-- A focused edit box (e.g. a settings window field) gets typing, not us.
+	if GetCurrentKeyBoardFocus() then
+		if not InCombatLockdown() then
+			self:SetPropagateKeyboardInput(true)
+		end
+		return
+	end
 	local mover = EM.selected
 	local consumed = false
 	if key == 'ESCAPE' then

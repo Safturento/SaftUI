@@ -59,10 +59,13 @@ function Config:InitializeAceConfig()
 			return
 		end
 		AceConfig:RegisterOptionsTable(st.name, {
-			name = st.names,
+			name = st.name,
 			type='group',
 			args = self:GetOptionsTable(),
 		})
+		-- SaftUI-styled window, registered as AceConfigDialog's frame for st.name
+		-- so NotifyChange refreshes it and Escape closes it.
+		st.AceSkin:CreateWindow(st.name, st.name)
         AceConfigDialog:Open(st.name)
     end
 end
