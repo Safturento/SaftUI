@@ -535,11 +535,14 @@ function LT:LootFeedHandler(event, text)
 	end
 end
 
-local function ShowTooltip(self)
+-- The line's tooltip. It's also the line's UpdateTooltip: when the item's data
+-- arrives, GameTooltip redoes the item part and drops the lines added after it,
+-- unless the owner has an UpdateTooltip, which it calls instead (then, and on
+-- its update timer). The fade timers aren't touched here, so hovering doesn't
+-- keep resetting them.
+local function BuildTooltip(self)
 	local info = self.info
 	if not self.link and not info then return end
-
-	LT:UpdateAllFeedTimers(self:GetID())
 
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
@@ -559,6 +562,13 @@ local function ShowTooltip(self)
 		GameTooltip:AddLine(ago, .6, .6, .6)
 	end
 	GameTooltip:Show()
+end
+
+-- Hovering a line restarts the fade of it and the lines above it, once.
+local function ShowTooltip(self)
+	if not self.link and not self.info then return end
+	LT:UpdateAllFeedTimers(self:GetID())
+	BuildTooltip(self)
 end
 
 local function HideTooltip()
@@ -613,6 +623,7 @@ function LT:UpdateLootFeedConfig()
 
 		st:SetBackdrop(item.icon, config.template)
 
+		item.UpdateTooltip = BuildTooltip
 		item:SetScript("OnEnter", ShowTooltip)
 		item:SetScript("OnLeave", HideTooltip)
 		item:SetScript('OnMouseUp', HandleClick)
