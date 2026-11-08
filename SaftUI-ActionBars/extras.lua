@@ -141,6 +141,8 @@ local LEAVE_EVENTS = {
 	'UPDATE_MULTI_CAST_ACTIONBAR',
 	'PLAYER_CONTROL_LOST',
 	'PLAYER_CONTROL_GAINED',
+	-- Changes during combat waited for this.
+	'PLAYER_REGEN_ENABLED',
 }
 
 local leaveButton -- SaftUI_VehicleLeaveButton, once made
@@ -235,7 +237,10 @@ end
 local function LeaveOnClick(button)
 	if UnitOnTaxi('player') then
 		TaxiRequestEarlyLanding()
+		-- Show that the request went through, as Blizzard's button does. The
+		-- button isn't a secure one, so this is fine in combat.
 		button:SetChecked(true)
+		button:Disable()
 	else
 		VehicleExit()
 		button:SetChecked(false)
@@ -280,6 +285,7 @@ local function CreateLeaveButton(self)
 	-- Each ride starts unchecked. The header is SaftUI's own frame.
 	local function Uncheck()
 		button:SetChecked(false)
+		button:Enable()
 	end
 	header:HookScript('OnShow', Uncheck)
 	header:HookScript('OnHide', Uncheck)
