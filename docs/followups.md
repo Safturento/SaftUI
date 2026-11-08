@@ -7,6 +7,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-08 — Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)
+  - [2026-11-08 — Saved loot feed size in SaftUI_DB](#2026-11-08--saved-loot-feed-size-in-saftui_db)
+  - [2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges](#2026-11-08--older-loot-feed-quirks-timer-refresh-by-unfiltered-index-a-full-feed-trims-on-merges)
   - [2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern](#2026-11-08--confirm-the-totem-bars-protection-and-secret-value-claims-in-game-then-document-the-duration-object-pattern)
   - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
@@ -33,6 +36,52 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-08 — Loot rolls: confirm the client assumptions in game
+
+**What:** The roll bar counts and the feed's roll results (`SaftUI-Loot/rollinfo.lua`, `Feed/rolls.lua`) rest on assumptions about `C_LootHistory` and the roll frames that come from reading Blizzard's source, not from the game.
+- **Timing:** drops' and encounters' `startTime` and `duration` are on the same millisecond clock as `GetLootHistoryTime()`, and `duration` is the roll window. `GetOpenDrops` skips drops past it. If that's wrong, counts never appear or vanish mid-roll, and the "ago" time of a result added at load is off.
+- **Roll order:** rollIDs rise in the order rolls start. Identical items pair with bars first come, first served on that.
+- **History at load:** `C_LootHistory` is filled at PLAYER_LOGIN after a `/reload`, empty after a relog, and filled an encounter at a time. The load-time prune only drops keys of encounters present in the history. If an encounter is only partly listed at load, a drop missing from it can come back as a duplicate result.
+- **History clears:** it's unknown when `LOOT_HISTORY_CLEAR_HISTORY` fires (zoning, leaving the group).
+- **Trash rolls:** it's unknown whether trash and other non-boss group-loot rolls appear in `C_LootHistory` on Forever. README says "every item your group rolls on".
+
+**Why noticed:** The loot rolls plan's final review (2026-11-08) listed these as unverifiable outside the game.
+
+**Anchors:**
+- `SaftUI-Loot/Feed/rolls.lua`: `RollTimeOver`, `GetOpenDrops`, `CatchUp`, `EstimateWhen`.
+- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`.
+- `.agents/clients.md` "Loot rolls".
+- `docs/superpowers/specs/2026-11-08-saftui-loot-rolls-history-design.md`.
+
+**Shape of work:**
+- In game (Forever, group loot): watch counts through a whole roll, roll two copies at once, `/reload` mid-roll and after, relog, roll on trash.
+- Fix whatever doesn't hold.
+- Record what's confirmed in `.agents/clients.md`.
+
+### 2026-11-08 — Saved loot feed size in SaftUI_DB
+
+**What:** The loot feed is saved per character in `SaftUI_DB` (AceDB char namespace), which is account-wide, so every character's feed is loaded at every login. 500 roll results with full roll lists come to about 1.6 MB per character at 20 players and 2.8 MB at 40, by the final reviewer's estimate. Several raiding characters could push `SaftUI_DB.lua` to 10 MB or more, parsed at every login and written at every reload.
+
+**Why noticed:** The loot rolls plan's final review (2026-11-08), finding 4.
+
+**Anchors:** `SaftUI-Loot/Feed/history.lua` (`SAVED_FIELDS`, `CopyRolls`), `SaftUI-Loot/Feed/rolls.lua` (`SummarizeDrop`'s trimmed lists). The reviewer's size estimate script is gone with the session scratchpad.
+
+**What's been considered:** Store each choice's names as one compact string, Pass especially. Cap roll lists. Keep fewer entries for other players' results.
+
+**Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
+
+### 2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges
+
+**What:** Two older behaviours in `SaftUI-Loot/Feed/feed.lua` that the saved feed makes more visible:
+- `LT:UpdateAllFeedTimers(index)` indexes the unfiltered `feed_stack` with an index from the filtered list. While filters hide some entries, hovering a line can refresh the wrong entries' fade timers.
+- `LT:LootFeedPush` drops the oldest entry when the feed is full, even when the push then merges into the top entry. So a full feed loses an entry on a merge. The saved store is trimmed separately, so the two only drift slightly.
+
+**Why noticed:** The loot rolls plan's reviews (2026-11-08) noted both as existing code, outside that plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`UpdateAllFeedTimers`, `LootFeedPush`), `SaftUI-Loot/Feed/filter.lua` (`GetFilteredItems`).
+
+**Shape of work:** Small: index the filtered list in `UpdateAllFeedTimers`, and trim only when an entry is actually inserted.
 
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
