@@ -17,6 +17,9 @@ local backdropCleared = setmetatable({}, { __mode = 'k' })
 local applyingFont = false                          -- our own SetFont isn't re-handled
 local highlights = {}                               -- hover highlight textures of the step frames
 local skinnedSteps = setmetatable({}, { __mode = 'k' })
+local skinnedCurrent = setmetatable({}, { __mode = 'k' }) -- [currentStepFrame] = divider texture
+local tipPanels = setmetatable({}, { __mode = 'k' })       -- [currentStepFrame] = panel, made when it first serves as a tip
+local stepsPanel                                    -- the panel behind the current steps
 local scrollTrack                                   -- the scroll bar's track texture
 
 -- The chat's panel template and font name; SaftUI's defaults when chat has no config.
@@ -198,6 +201,62 @@ function RX:SkinScrollBar()
 	bar:SetWidth(8)
 end
 
+-- The first step of the current steps sits at the top of CurrentStepFrame, tips
+-- are anchored to the screen, any other step hangs off the one above it.
+local function RoleOf(frame)
+	local _, rel = frame:GetPoint(1)
+	if rel == UIParent or (frame.step and frame.step.tip) then return 'tip' end
+	return rel == RX.frames.CurrentStepFrame and 'first' or 'later'
+end
+
+-- A current step frame: flat, SaftUI's font, grey title at the right, a line above it.
+local function SkinCurrentStep(frame)
+	if skinnedCurrent[frame] then return end
+
+	NoBackdrop(frame)
+	NoBackdrop(frame.number)
+
+	local title = frame.number.text
+	HookFont(title, 'text')
+	title:SetTextColor(GreyRGB())
+	title:ClearAllPoints()
+	title:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -5, -1)
+	title:SetJustifyH('RIGHT')
+
+	local line = MakeDivider(frame)
+	line:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 2)
+	line:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', 0, 2)
+	skinnedCurrent[frame] = line
+end
+
+-- Skins the current steps (and the pooled frames RestedXP made since the last
+-- pass), and gives each frame the look of the role it has now.
+function RX:SkinCurrentSteps()
+	local current = self.frames and self.frames.CurrentStepFrame
+	local pool = current and current.framePool
+	if not pool then return end
+
+	for _, frame in ipairs(pool) do
+		if frame.number and frame.number.text and frame.elements then
+			SkinCurrentStep(frame)
+			for _, element in ipairs(frame.elements) do
+				if element.text then HookFont(element.text, 'text') end
+			end
+
+			local role = RoleOf(frame)
+			skinnedCurrent[frame]:SetShown(role == 'later')
+			if role == 'tip' and not tipPanels[frame] then
+				local panel = MakePanel(frame)
+				panel:SetAllPoints(frame)
+				tipPanels[frame] = panel
+			end
+			if tipPanels[frame] then tipPanels[frame]:SetShown(role == 'tip') end
+		end
+	end
+
+	if stepsPanel then stepsPanel:SetShown(current:GetHeight() > 2) end
+end
+
 function RX:Setup()
 	if self.frames then return end
 	local rxp = RXPFrame
@@ -253,6 +312,16 @@ function RX:Setup()
 	self:SecureHook(frames.BottomFrame, 'UpdateFrame', 'SkinList')
 	self:SkinScrollBar()
 	self:SecureHook(rxp, 'UpdateScrollBar', 'SkinScrollBar')
+
+	-- RestedXP anchors the current steps once, just above the title.
+	local current = frames.CurrentStepFrame
+	current:SetPoint('BOTTOMLEFT', guideName, 'TOPLEFT', 0, 9)
+	current:SetPoint('BOTTOMRIGHT', guideName, 'TOPRIGHT', 0, 9)
+	stepsPanel = MakePanel(current)
+	stepsPanel:SetAllPoints(current)
+
+	self:SkinCurrentSteps()
+	self:SecureHook(current, 'UpdateText', 'SkinCurrentSteps')
 end
 
 function RX:ADDON_LOADED(_, name)
