@@ -41,6 +41,7 @@ On retail (and some Forever paths), protected data such as some unit, aura, powe
 - Guard with `issecretvalue(v)`. A shim in `SaftUI-Core/utilities.lua` makes it safe on clients without it.
 - When a value is secret, skip the math. Either pass it through unchanged, or fold the operation into something widget-side. For example, a power background multiplier becomes an alpha multiplier.
 - Sizes and positions read from Blizzard frames can be secret. Guard them before any math.
+- Blizzard's Lua wrappers aren't always pass-through. `SetBackdropBorderColor` runs `a or 1` on the alpha, which errors on a secret, so a secret color goes onto the backdrop's edge pieces (`TopEdge`, `TopLeftCorner` and so on) with `SetVertexColor` directly. The unit frame auras' dispel border does this (`SaftUI-Unitframes/elements/auras.lua`).
 
 ## Reference sources
 

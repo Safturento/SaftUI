@@ -34,22 +34,69 @@ end
 -- Every button each aura element has made, so a config update can restyle them.
 local buttonsByElement = setmetatable({}, { __mode = 'k' })
 
+-- The dispel border: the aura container colors and shows the button's Border
+-- texture, and in combat that color is a secret value. Border stays invisible and
+-- its color goes onto the backdrop's edge, so it's 1px like SaftUI's other borders.
+-- The edge pieces get the color directly: SetBackdropBorderColor tests the alpha
+-- (`a or 1`), which errors on a secret value, while SetVertexColor accepts one.
+local BORDER_PIECES = {
+	'TopEdge', 'BottomEdge', 'LeftEdge', 'RightEdge',
+	'TopLeftCorner', 'TopRightCorner', 'BottomLeftCorner', 'BottomRightCorner',
+}
+local backdrops = setmetatable({}, { __mode = 'k' }) -- button -> its backdrop
+local dispelColors = setmetatable({}, { __mode = 'k' }) -- button -> { r, g, b, a } last set on Border
+local dispelShown = setmetatable({}, { __mode = 'k' }) -- button -> whether Border is shown
+
+local function UpdateBorderColor(button)
+	local backdrop = backdrops[button]
+	if not backdrop then return end
+
+	local color = dispelShown[button] and dispelColors[button]
+	if color then
+		for _, piece in ipairs(BORDER_PIECES) do
+			local region = backdrop[piece]
+			if region then region:SetVertexColor(color[1], color[2], color[3], color[4]) end
+		end
+	else
+		local template = st.config.profile.templates[backdrop.template]
+		if template and template.border then
+			backdrop:SetBackdropBorderColor(unpack(template.bordercolor))
+		else
+			backdrop:SetBackdropBorderColor(0, 0, 0, 0)
+		end
+	end
+end
+
+local function HookDispelBorder(button)
+	local border = button.Border
+	if not border then return end
+
+	border:SetAlpha(0)
+	hooksecurefunc(border, 'SetVertexColor', function(_, r, g, b, a)
+		local color = dispelColors[button] or {}
+		color[1], color[2], color[3], color[4] = r, g, b, a
+		dispelColors[button] = color
+		if dispelShown[button] then UpdateBorderColor(button) end
+	end)
+	hooksecurefunc(border, 'Show', function()
+		dispelShown[button] = true
+		UpdateBorderColor(button)
+	end)
+	hooksecurefunc(border, 'Hide', function()
+		dispelShown[button] = false
+		UpdateBorderColor(button)
+	end)
+end
+
 -- Applies the element's current config to one of its buttons. Runs when the
 -- button is made and again on every config update, so it only sets things.
 local function StyleButton(auras, button)
 	local config = auras.config
 
 	st:SetBackdrop(button, config.template)
-
-	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
-	-- secret color, so instead of Blizzard's border art we make it a flat fill behind
-	-- the icon that covers our backdrop, recoloring the SaftUI border by dispel type.
-	if button.Border then
-		button.Border:SetTexture(st.BLANK_TEX)
-		button.Border:SetDrawLayer('BACKGROUND')
-		button.Border:ClearAllPoints()
-		button.Border:SetAllPoints(button.backdrop)
-	end
+	-- SetBackdrop reset the edge to the template's color; put a dispel color back.
+	backdrops[button] = button.backdrop
+	UpdateBorderColor(button)
 
 	if button.Count then
 		local countConfig = config.count or {}
@@ -90,6 +137,7 @@ end
 
 local function PostCreateButton(auras, button)
 	st:SkinIcon(button.Icon)
+	HookDispelBorder(button)
 
 	local cooldown = button.Cooldown
 	if cooldown then
