@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern](#2026-11-08--confirm-the-totem-bars-protection-and-secret-value-claims-in-game-then-document-the-duration-object-pattern)
+  - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
   - [2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window](#2026-11-08--specialty-bags-herb-mining-etc-count-as-normal-bags-in-the-bag-window)
   - [2026-11-07 — Minimap pieces still belong to MinimapCluster, which stretches across the screen](#2026-11-07--minimap-pieces-still-belong-to-minimapcluster-which-stretches-across-the-screen)
@@ -31,6 +33,32 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
+
+**What:** Two things in the totem bar work (`SaftUI-Misc/totemskin.lua`, `totemtimers.lua`) rest on reading Blizzard's source and API docs, not on the game:
+1. The flyout, its choices and its open arrow aren't protected, so SaftUI resizes them and re-anchors the first choice in combat.
+2. The timers' secret-value path works, if totem times are ever secret. It uses `GetTotemDuration` → `StatusBar:SetTimerDuration`, `FormatRemainingDuration` with a `C_StringUtil` rule formatter (probe-checked, falling back to a seconds formatter), colour curves for the 10-second warning, and `SetAlphaFromBoolean(duration:IsActive())`.
+
+Once both are confirmed, record the duration-object pattern in `.agents/clients.md`'s secret values section, and drop the "not yet confirmed in game" wording from `.agents/taint.md` rule 6.
+
+**Why noticed:** The totem bar plan's final review (2026-11-08). The pattern is reusable for any secret-safe timer, and it lives only in code comments until it's confirmed.
+
+**Anchors:** `SaftUI-Misc/totemtimers.lua` (`RefreshSecret`, the formatter probe), `.agents/taint.md` rule 6, `.agents/clients.md` "Secret values", `docs/superpowers/specs/2026-11-08-saftui-totem-bar-skin-design.md`.
+
+**Shape of work:**
+- In game (Forever shaman, `/console taintLog 1`): open flyouts and change the summon page in combat, then check `taint.log`.
+- A doc edit after that. The secret path only shows if totem slots ever go secret, so it may stay unconfirmed.
+
+### 2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc
+
+**What:** The helper that works out how far a template's border insets the icon exists in `SaftUI-ActionBars/skin.lua` and again as `TB.TemplateInset` in `SaftUI-Misc/totemskin.lua`, which `totemtimers.lua` shares. If one copy changes, the totem bar and the action bars drift apart.
+
+**Why noticed:** The totem bar plan's Task 1 review (2026-11-08) parked it. SaftUI-Misc must not depend on SaftUI-ActionBars, so it couldn't call the ActionBars copy.
+
+**Anchors:** `SaftUI-ActionBars/skin.lua` (`TemplateInset`), `SaftUI-Misc/totemskin.lua` (`TB.TemplateInset`).
+
+**Shape of work:** Small: move it into SaftUI-Core (next to `st:CalculateSpacing` / the template helpers) as `st:TemplateInset(template)` and use it from both.
 
 ### 2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames
 
