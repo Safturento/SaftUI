@@ -62,38 +62,6 @@ function INV:MovePlayerBagSlots()
 	end
 end
 
-local settingsMenuItems = {
-    mergeStacks = {
-        text = 'Merge Stacks',
-        isChecked = function()
-            return INV.config.stackItems
-        end,
-        setChecked = function(key, menuInputData, menu)
-            INV.config.stackItems = not INV.config.stackItems
-            INV:QueueUpdate()
-       end,
-    },
-}
-
-local function isChecked(key)
-    return settingsMenuItems[key].isChecked()
-end
-
-local function setChecked(key, menuInputData, menu)
-   settingsMenuItems[key].setChecked(key, menuInputData, menu)
-   menu:Close()
-end
-
-function INV:OpenSettingsDropdown()
-	if not INV.SettingsDropdown then
-		INV.SettingsDropdown = st:CreateCheckboxDropdown("SaftUIBagsSettingsMenu", UIParent, {
-			mergeStacks = { text = 'Merge Stacks'},
-		}, isChecked, setChecked)
-	end
-
-	INV.SettingsDropdown:Open()
-end
-
 -- Re-apply SaftUI styling on top of Blizzard's BaseBagSlotButtonMixin:UpdateTextures.
 local function RestyleBagSlot(slot)
 	slot:GetNormalTexture():SetAlpha(0)
@@ -160,15 +128,6 @@ function INV:InitializePlayerBagSlots()
 	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown()) end)
 	self.containers.bag.header.slotToggle = slotToggle
 
-
-	local settingsButton = st:CreateButton('BagSettingsButton', self.containers.bag.header, 'Settings', 'none')
-	settingsButton:SetPoint('LEFT',slotToggle, 'RIGHT', 8, 0)
-	settingsButton:SetSize(64, st.config.profile.headers.height - 8)
-	settingsButton:SetScript('OnClick', function()
-		INV:OpenSettingsDropdown()
-	end)
-
-	self.containers.bag.header.settingsButton = settingsButton
 
 	for _,slot in pairs(BagSlots) do
 		slot.IconBorder:SetAlpha(0)
