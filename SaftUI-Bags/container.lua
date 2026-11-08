@@ -223,11 +223,10 @@ function INV:UpdateSearchFilter(editbox, is_user_input)
 			for _,category in pairs(container.categories) do
 				for _,slot in pairs(category.slots) do
 					if slot:IsShown() then
-						if self:SearchMatches(query, slot.info) then
-							slot:SetAlpha(1)
-						else
-							slot:SetAlpha(0.1)
-						end
+						-- The reagent wedge isn't faded with the item button.
+						local alpha = self:SearchMatches(query, slot.info) and 1 or 0.1
+						slot:SetAlpha(alpha)
+						slot.reagentMarker:SetAlpha(alpha)
 					end
 				end
 			end

@@ -176,7 +176,7 @@ local function GetEmptySlotInfo(bagID, slotID, containerId)
 end
 
 -- Makes sure the Empty Slots category has a button for every bag slot when the
--- setting is 'every slot'. Buttons made in combat are flagged as broken (see
+-- setting is 'all' (Every slot). Buttons made in combat are flagged as broken (see
 -- CreateSlot), and a fight can free any number of slots, so they are all made
 -- ahead of time, out of combat. Runs on every bag update, so a bigger bag
 -- being equipped is covered too.
@@ -193,7 +193,10 @@ function INV:EnsureEmptySlotPool()
 	end
 	if #category.slots >= total then return end
 
-	if st:QueueAfterCombat('InventoryEmptySlotPool', function() INV:EnsureEmptySlotPool() end) then return end
+	if st:QueueAfterCombat('InventoryEmptySlotPool', function()
+		INV:EnsureEmptySlotPool()
+		INV:QueueUpdate(true)
+	end) then return end
 
 	for _ = #category.slots + 1, total do
 		self:CreateSlot(container, self.EMPTY_SLOTS_CATEGORY)
@@ -212,6 +215,7 @@ function INV:GetSortedInventory(id)
 	local emptyMode = id == 'bag' and self.config.bag.emptySlots
 	if emptyMode ~= 'grouped' and emptyMode ~= 'all' then emptyMode = nil end
 	local emptyNormal, emptyReagent = {}, {}
+	local numFreeNormal, numFreeReagent = 0, 0
 
 	local inventory = {}
 	local numItems = 0
@@ -245,7 +249,17 @@ function INV:GetSortedInventory(id)
                     end
 				end
 			elseif emptyMode then
-				tinsert(isReagent and emptyReagent or emptyNormal, GetEmptySlotInfo(bagID, slotID, id))
+				-- Grouped only needs the first free slot of each kind; every
+				-- slot needs them all.
+				if isReagent then
+					numFreeReagent = numFreeReagent + 1
+				else
+					numFreeNormal = numFreeNormal + 1
+				end
+				local list = isReagent and emptyReagent or emptyNormal
+				if emptyMode == 'all' or #list == 0 then
+					tinsert(list, GetEmptySlotInfo(bagID, slotID, id))
+				end
 			end
 		end
 	end
@@ -256,14 +270,20 @@ function INV:GetSortedInventory(id)
 		local empties = {}
 		for _, info in ipairs(emptyNormal) do tinsert(empties, info) end
 		for _, info in ipairs(emptyReagent) do tinsert(empties, info) end
+		-- In combat no button can be made, so show only as many as exist; the
+		-- queued pool top-up asks for a full update when combat ends.
+		local made = container.categories[self.EMPTY_SLOTS_CATEGORY]
+		if made and InCombatLockdown() then
+			for i = #empties, #made.slots + 1, -1 do empties[i] = nil end
+		end
 		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
 	elseif emptyMode == 'grouped' then
 		-- One slot per kind of bag, pointing at its first free slot, so an item
 		-- dropped on it lands there. A kind with no free slots has no slot.
 		local empties = {}
-		for _, list in ipairs({ emptyNormal, emptyReagent }) do
+		for kind, list in ipairs({ emptyNormal, emptyReagent }) do
 			if #list > 0 then
-				list[1].count = #list
+				list[1].count = kind == 1 and numFreeNormal or numFreeReagent
 				tinsert(empties, list[1])
 			end
 		end
@@ -332,7 +352,7 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 
 	-- Hide any visible icons that are no longer in use
 	for i = #categoryItems + 1, #categoryFrame.slots do
-		self:ClearSlot(categoryFrame.slots[i])
+		if categoryFrame.slots[i].info then self:ClearSlot(categoryFrame.slots[i]) end
 	end
 
 	-- A grouped empty slot stands for several free slots, so count those.
@@ -363,7 +383,9 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 end
 
 function INV:FlushCategory(category)
-	for _,slot in pairs(category.slots) do self:ClearSlot(slot) end
+	for _,slot in pairs(category.slots) do
+		if slot.info then self:ClearSlot(slot) end
+	end
 	category:Hide()
 end
 

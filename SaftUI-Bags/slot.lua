@@ -40,7 +40,8 @@ function INV:AssignEmptySlot(slot, info)
 
 	slot.cooldown:Hide()
 	SetItemButtonTextureVertexColor(slot, 1, 1, 1)
-	SetItemButtonTexture(slot, nil)
+	-- Hide the icon outright: SetItemButtonTexture(nil) would show Blizzard's
+	-- empty slot art (the template's background atlas).
 	slot.icon:Hide()
 	SetItemButtonDesaturated(slot, false)
 
@@ -133,7 +134,13 @@ local function UpdateTooltip(self)
 
 	-- Blizzard's tooltip code looks the item up in the bag, and there is none.
 	if info.empty then
-		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		-- Same placement as an item's tooltip.
+		if ContainerFrameItemButton_CalculateItemTooltipAnchors then
+			GameTooltip:SetOwner(self, 'ANCHOR_NONE')
+			ContainerFrameItemButton_CalculateItemTooltipAnchors(self, GameTooltip)
+		else
+			GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		end
 		GameTooltip:SetText(INV:IsReagentBag(info.bagID) and 'Empty reagent bag slot' or 'Empty bag slot')
 		if info.count then
 			GameTooltip:AddLine(('%d free'):format(info.count), 1, 1, 1)
