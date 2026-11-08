@@ -3,8 +3,6 @@ local st = SaftUI
 local TT = st:NewModule('Tooltip')
 
 function TT:UpdateTooltipDisplay(tooltip)
-	local font,size,outline = st:GetFont(self.config.font):GetFont()
-
 	st:SetBackdrop(tooltip, self.config.template)
 	--tooltip.NineSlice:Hide()
 
@@ -12,18 +10,29 @@ function TT:UpdateTooltipDisplay(tooltip)
 		self:AddItemInfo(tooltip)
 	end
 
+	self:UpdateTooltipFonts(tooltip)
+end
+
+-- SaftUI's font on every line. The tooltip makes its line font strings as it
+-- first needs them, in Blizzard's font, so lines added after OnShow (an addon's
+-- AddLine followed by Show, like the loot roll lines) are styled again from the
+-- post-hook on Show.
+-- Show runs often (every tooltip refresh), so only touch lines not in the font yet.
+local function StyleLine(line, font, size, outline)
+	if not line then return end
+	local current, currentSize, currentOutline = line:GetFont()
+	if current ~= font or currentSize ~= size or currentOutline ~= outline then
+		line:SetFont(font, size, outline)
+	end
+end
+
+function TT:UpdateTooltipFonts(tooltip)
+	local font,size,outline = st:GetFont(self.config.font):GetFont()
 	local name = tooltip:GetName()
 
 	for i=1, tooltip:NumLines() do
-		local left = _G[format('%sTextLeft%d', name, i)]
-		if left then
-			left:SetFont(font,size,outline)
-		end
-
-		local right = _G[format('%sTextRight%d', name, i)]
-		if right then
-			right:SetFont(font,size,outline)
-		end
+		StyleLine(_G[format('%sTextLeft%d', name, i)], font, size, outline)
+		StyleLine(_G[format('%sTextRight%d', name, i)], font, size, outline)
 	end
 end
 
@@ -141,6 +150,11 @@ function TT:OnEnable()
 	-- hooked GameTooltip (the first in the list above), so that stays the case.
 	if not self:IsHooked(GameTooltip, 'OnShow') then
 		self:SecureHookScript(GameTooltip, 'OnShow', 'UpdateTooltipDisplay')
+	end
+	-- Also a post-hook (AceHook's SecureHook is hooksecurefunc): Show again after
+	-- lines are added restyles the new ones.
+	if not self:IsHooked(GameTooltip, 'Show') then
+		self:SecureHook(GameTooltip, 'Show', 'UpdateTooltipFonts')
 	end
 
 	for i=1, 2 do
