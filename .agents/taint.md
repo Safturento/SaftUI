@@ -1,12 +1,13 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
   - 'SaftUI-Misc/Skinning/**'
   - 'SaftUI-Misc/totembar.lua'
+  - 'SaftUI-Misc/totemskin.lua'
   - 'SaftUI-Misc/tooltipposition.lua'
   - 'SaftUI-Minimap/**'
   - 'SaftUI-ActionBars/hideblizzard.lua'
@@ -33,6 +34,13 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - adding keys to Blizzard tables
 
    Keep SaftUI's per-frame data in a local weak table (`setmetatable({}, { __mode = 'k' })`) or on a SaftUI-owned frame. Writing fields onto frames SaftUI created (including oUF frames it spawned) is fine.
+
+   The skinning helpers write fields too: `st:SetBackdrop` (`frame.backdrop`, `frame.thick`), `st:SkinActionButton` (that, plus `button.hover` and the like) and `st:SkinIcon` (`icon.__stTexCoord`, plus a hook on the icon). Use them on SaftUI's own buttons only. To skin one of Blizzard's buttons, as `SaftUI-Misc/totemskin.lua` does for the totem bar's secure buttons:
+   - Keep SaftUI's pieces in the weak table, keyed by Blizzard's button.
+   - The backdrop is a frame of SaftUI's (`st:CreateFrame` + `st:SetTemplate`), made as the button's child one frame level below it.
+   - Flat hover, pushed and checked textures are made on the button and set with `SetHighlightTexture`/`SetPushedTexture`/`SetCheckedTexture`, out of combat.
+   - Fade Blizzard's other art with `SetAlpha(0)`, but only regions whose alpha Blizzard never sets. `ActionBarActionButtonMixin:UpdateFlash` sets the checked texture's alpha and `SpellHighlightAnim` animates `SpellHighlightTexture`'s, so swap the state textures instead and keep the spell highlight, over the icon.
+   - Crop the icon with `SetTexCoord`. Re-crop it in a post-hook wherever Blizzard resets its tex coords.
 2. **Hook only with post-hooks:** `hooksecurefunc(...)`, native `frame:HookScript(...)`, or AceHook `SecureHook`/`SecureHookScript`. Never AceHook `Hook`/`RawHook`/`HookScript`, which install closures with `SetScript` and replace Blizzard's handlers. Never `SetScript` on a Blizzard frame.
 3. **Don't run Blizzard callbacks from SaftUI code.** Calling a Blizzard function that writes Blizzard state (e.g. `HelpTip:HideAllSystem`, a frame's `Update()`, alert or close callbacks) runs that code in SaftUI's tainted context and taints what it writes. Prefer re-applying SaftUI's own state in a post-hook after Blizzard runs.
 4. **Moving or showing a frame can run its scripts.** `SetParent`, `Show` and `Hide` on a visible frame fire `OnShow`/`OnHide` in your call chain. For Blizzard secure buttons that writes tainted state. Only reparent or hide when it won't change on-screen visibility, otherwise apply at the next `/reload` (see `SaftUI-Misc/totembar.lua`).

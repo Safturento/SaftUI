@@ -49,6 +49,8 @@ local TB = st:NewModule('TotemBar')
 	Nothing is written onto the bar or any Blizzard table. The only calls on the bar are
 	GetParent, GetFrameLevel, SetParent and SetFrameLevel, all plain widget methods (the
 	bar's Edit Mode overrides are SetScale, SetPoint, ClearAllPoints, SetShown and Hide).
+
+	SaftUI's look for the bar's buttons and its flyout is in totemskin.lua.
 ]]
 
 -- Puts the bar under the hidden frame, or back under the parent it had, as the
@@ -87,6 +89,7 @@ end
 -- A profile change.
 function TB:UpdateConfig()
 	self:Apply()
+	self:ApplySkin()
 end
 
 function TB:Setup()
@@ -102,6 +105,9 @@ function TB:Setup()
 	-- Blizzard first counts the totem slots on PLAYER_ENTERING_WORLD, so at login the
 	-- bar is still hidden here and reparenting it runs none of its scripts.
 	self:Apply()
+
+	-- SaftUI's look for the bar's buttons and its flyout (totemskin.lua).
+	self:SetupSkin()
 end
 
 function TB:ADDON_LOADED(event, addon)
