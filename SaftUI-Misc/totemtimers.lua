@@ -248,12 +248,36 @@ local secretFailed = false
 -- compared or tested: each value goes into a widget setter, which takes secret values,
 -- and a colour curve's result only gives its fields back through GetRGB.
 -- SetAlphaFromBoolean's own defaults are opaque for true and clear for false.
+-- Centres the time on the visible characters. The pixel font draws a 1px gap after
+-- every character, the last one too, so centring the text's box would put the
+-- characters half a pixel left, and snapping to whole pixels can make that a whole
+-- pixel. So the box's left edge goes on a whole pixel, worked out from the width
+-- without that gap. A secret text width (the secret path) falls back to plain centring.
+local function PlaceText(timer)
+	local text, ref, place = timer.text, timer.textRef, timer.textPlace
+	if not (ref and place) then return end
+	text:ClearAllPoints()
+
+	local width, textWidth = ref:GetWidth(), text:GetStringWidth()
+	local pixel = st:GetPixelSize(text)
+	if pixel and not issecretvalue(width) and not issecretvalue(textWidth) and textWidth > 0 then
+		local boxPixels = math.floor(width / pixel + 0.5)
+		local letterPixels = math.floor(textWidth / pixel + 0.5) - 1
+		local x = math.floor((boxPixels - letterPixels) / 2) * pixel
+		text:SetPoint(place.point .. 'LEFT', ref, place.relPoint .. 'LEFT', x, place.y)
+	else
+		text:SetPoint(place.point == '' and 'CENTER' or place.point, ref,
+			place.relPoint == '' and 'CENTER' or place.relPoint, 0, place.y)
+	end
+end
+
 local function RefreshSecret(timer)
 	local duration = timer.duration
 	timer.frame:SetAlphaFromBoolean(duration:IsActive())
 	local textFormatter = Formatter()
 	if textFormatter then
 		timer.text:SetText(duration:FormatRemainingDuration(textFormatter))
+		PlaceText(timer)
 	else
 		timer.text:SetText('')
 	end
@@ -296,6 +320,7 @@ local function RefreshPlain(timer)
 	if seconds ~= timer.seconds then
 		timer.seconds = seconds
 		timer.text:SetText(FormatSeconds(seconds))
+		PlaceText(timer)
 	end
 end
 
@@ -507,14 +532,16 @@ function TB:ApplyTimerLayout()
 		st:SetInside(bar, inset)
 
 		text:SetFontObject(font)
-		text:ClearAllPoints()
+		-- Where the time sits; PlaceText centres it there on whole pixels. The point
+		-- names are the vertical half of the anchor ('' for the middle).
 		if onBar then
-			text:SetPoint('CENTER', bar, 'CENTER', 0, 0)
+			timer.textRef, timer.textPlace = bar, { point = '', relPoint = '', y = 0 }
 		elseif showBar then
-			text:SetPoint('BOTTOM', backdrop, 'TOP', 0, TEXT_GAP)
+			timer.textRef, timer.textPlace = backdrop, { point = 'BOTTOM', relPoint = 'TOP', y = TEXT_GAP }
 		else
-			text:SetPoint('BOTTOM', timer.frame, 'BOTTOM', 0, 0)
+			timer.textRef, timer.textPlace = timer.frame, { point = 'BOTTOM', relPoint = 'BOTTOM', y = 0 }
 		end
+		PlaceText(timer)
 		text:SetShown(showText)
 	end
 
