@@ -189,18 +189,36 @@ function LT:SummarizeDrop(dropInfo)
 	return Summarize(dropInfo, false)
 end
 
+-- Whether a roll time that began at `start` and lasts `duration` has run out,
+-- by the history's clock (`now`). All three count milliseconds; the test is
+-- the one Blizzard's Loot Rolls window uses for its timer. False when any of
+-- them isn't plain or the duration isn't positive.
+local function RollTimeOver(now, start, duration)
+	start, duration = PlainNumber(start), PlainNumber(duration)
+	if not (now and start and duration and duration > 0) then return false end
+	return now - start > duration
+end
+
 -- Every drop still being rolled, oldest first, as { id, encounterID, index,
--- link } with plain values only. rollinfo.lua matches the roll bars to these.
--- A boss's drops all start together, so ties go by encounter and index to keep
--- the order the same from one call to the next.
+-- link, start, playerState } with plain values only (playerState is your own
+-- choice on it, nil when not plain). rollinfo.lua matches the roll bars to
+-- these. A boss's drops all start together, so ties go by encounter and index
+-- to keep the order the same from one call to the next. Encounters and drops
+-- whose roll time has run out are skipped: that keeps a drop that never got a
+-- result from taking a later roll of the same item, and the scan short.
 function LT:GetOpenDrops()
 	local open = {}
 	if not C_LootHistory then return open end
+	local now = C_LootHistory.GetLootHistoryTime and PlainNumber(C_LootHistory.GetLootHistoryTime())
 	for _, encounter in ipairs(C_LootHistory.GetAllEncounterInfos() or {}) do
-		local encounterID = type(encounter) == 'table' and PlainNumber(encounter.encounterID)
+		local encounterID = type(encounter) == 'table'
+			and not RollTimeOver(now, encounter.startTime, encounter.duration)
+			and PlainNumber(encounter.encounterID)
 		if encounterID then
 			for _, drop in ipairs(C_LootHistory.GetSortedDropsForEncounter(encounterID) or {}) do
-				local index = type(drop) == 'table' and not HasEnded(drop) and DropIndex(drop)
+				local index = type(drop) == 'table' and not HasEnded(drop)
+					and not RollTimeOver(now, drop.startTime, drop.duration)
+					and DropIndex(drop)
 				local link = index and PlainString(drop.itemHyperlink)
 				if link then
 					tinsert(open, {
@@ -209,6 +227,7 @@ function LT:GetOpenDrops()
 						index = index,
 						link = link,
 						start = PlainNumber(drop.startTime) or 0,
+						playerState = PlainNumber(drop.playerRollState),
 					})
 				end
 			end

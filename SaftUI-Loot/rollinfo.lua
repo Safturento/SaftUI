@@ -5,11 +5,12 @@
 -- The game doesn't link a roll (a bar's rollID) to its drop in C_LootHistory,
 -- so a bar is matched to a drop still being rolled by its item, comparing
 -- GetLootRollItemLink(rollID) with the drop's itemHyperlink. Each drop goes to
--- one bar at most. Two copies of an item go first come, first served: bars in
--- the order their rolls started, drops oldest first. Copies rolled at once can
--- end up swapped; that's accepted. A bar that keeps its roll keeps its drop
--- while the drop is still open, so a later update never swaps them. A bar with
--- no drop shows no counts, and its tooltip is just the item's.
+-- one bar at most, and a drop you've already chosen on goes to none. Two
+-- copies of an item go first come, first served: bars by rollID, drops oldest
+-- first. Copies rolled at once can end up swapped; that's accepted. A bar that
+-- keeps its roll keeps its drop while the drop is still open, so a later
+-- update never swaps them. A bar with no drop shows no counts, and its tooltip
+-- is just the item's.
 --
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
@@ -24,7 +25,7 @@ local st = SaftUI
 local LT = st:GetModule('Loot')
 
 -- [Blizzard roll frame] = {
---   counts = { [button name] = font string },
+--   counts = { [font string] = { choice, color } } (LT:CreateRollCounts),
 --   rollID, item, itemID (the roll's item string and ID),
 --   dropID (the matched drop's encounterID:index), rolls (its live summary),
 -- }
@@ -51,19 +52,34 @@ local function ButtonForState(state)
 	return buttonForState[state]
 end
 
--- A roll button's count: a small number in its bottom right corner, like a
--- stack count on an item. Hidden until someone has picked that choice.
-function LT:CreateRollCount(button)
+-- Blizzard shows Greed or Transmog on a bar, never both. The one it shows also
+-- counts the other's picks, as a second number in that choice's colour (the
+-- colours roll.lua gives those buttons' letters).
+local PAIRED = {
+	Greed = { choice = 'Transmog', color = 'purple' },
+	Transmog = { choice = 'Greed', color = 'yellow' },
+}
+
+local function NewCount(button, point, x, y)
 	local text = button:CreateFontString(nil, 'OVERLAY')
 	text:SetFontObject(st:GetFont('pixel'))
 	text:SetJustifyH('RIGHT')
-	text:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', 1, 1)
+	text:SetPoint(point, button, point, x, y)
 	text:Hide()
 	return text
 end
 
--- Sets each button's count from a summary in LT:SummarizeDrop's shape. With no
--- summary (a bar with no drop), every count is hidden.
+-- Adds a roll button's counts to `counts`, a table of [font string] = { choice,
+-- color }: its own, a small white number in its bottom right corner like a
+-- stack count on an item, and on Greed or Transmog the other one's, top right.
+-- Each is hidden until someone has picked that choice.
+function LT:CreateRollCounts(counts, button, name)
+	counts[NewCount(button, 'BOTTOMRIGHT', 1, 1)] = { choice = name }
+	if PAIRED[name] then counts[NewCount(button, 'TOPRIGHT', 1, -1)] = PAIRED[name] end
+end
+
+-- Sets every count from a summary in LT:SummarizeDrop's shape. With no summary
+-- (a bar with no drop), every count is hidden.
 function LT:SetRollCounts(counts, rolls)
 	local totals = {}
 	local list = type(rolls) == 'table' and type(rolls.list) == 'table' and rolls.list or {}
@@ -72,10 +88,11 @@ function LT:SetRollCounts(counts, rolls)
 		if name then totals[name] = (totals[name] or 0) + 1 end
 	end
 
-	for name, text in pairs(counts) do
-		local total = totals[name]
+	for text, count in pairs(counts) do
+		local total = totals[count.choice]
 		if total then
 			text:SetText(total)
+			if count.color then text:SetTextColor(st.config.profile.colors.text[count.color]:GetRGB()) end
 			text:Show()
 		else
 			text:SetText('')
@@ -146,6 +163,15 @@ local function ClearBar(state)
 	LT:SetRollCounts(state.counts, nil)
 end
 
+-- A bar still up means you haven't chosen on its roll yet, so a drop you've
+-- chosen on (your state on it plain and not NoRoll) is never a bar's. That
+-- keeps a frame reused for a queued copy of an item off the copy you already
+-- chose on. During the Need dice animation the bar stays up after you chose
+-- and loses its match; that's accepted (its buttons are hidden then anyway).
+local function StillYours(drop)
+	return drop.playerState == nil or drop.playerState == LT.ROLL_STATE.NoRoll
+end
+
 -- Pass 1 matches the same item string, pass 2 only the same item ID: a link
 -- that differs from the history's in its other fields still finds its drop,
 -- without taking a drop from a bar whose item string matches it exactly.
@@ -184,13 +210,17 @@ function LT:UpdateRollBars()
 		end
 	end
 	if not shown[1] then return end
-	-- The game numbers rolls as they start, so this is first come, first served.
+	-- First come, first served, assuming the game numbers rolls in the order
+	-- they start (likely, not confirmed).
 	table.sort(shown, function(a, b) return a.rollID < b.rollID end)
 
-	local open, byID = self:GetOpenDrops(), {}
-	for _, drop in ipairs(open) do
-		drop.item, drop.itemID = self.ItemString(drop.link), self.ItemID(drop.link)
-		byID[drop.id] = drop
+	local open, byID = {}, {}
+	for _, drop in ipairs(self:GetOpenDrops()) do
+		if StillYours(drop) then
+			drop.item, drop.itemID = self.ItemString(drop.link), self.ItemID(drop.link)
+			tinsert(open, drop)
+			byID[drop.id] = drop
+		end
 	end
 
 	-- Bars keep their drop while it's still open.
@@ -246,8 +276,7 @@ local function OnBarHide(frame)
 end
 
 -- Called once per roll frame from SkinRollFrame (roll.lua), after its info
--- frame exists. `counts` holds the font strings from LT:CreateRollCount, by
--- roll button name.
+-- frame exists. `counts` is the table LT:CreateRollCounts filled for its buttons.
 function LT:AttachRollInfo(frame, counts)
 	if bars[frame] then return end
 	bars[frame] = { counts = counts }

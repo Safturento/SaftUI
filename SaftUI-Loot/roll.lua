@@ -47,8 +47,8 @@ function LT:SkinRollFrame(frame)
 	frame.Timer.Text = frame.Timer:CreateFontString(nil, 'OVERLAY')
 	frame.Timer.Text:SetFontObject(GameFontNormal)
 
-	-- How many have picked each choice, by button name. rollinfo.lua keeps this
-	-- table; nothing of it goes onto the buttons.
+	-- How many have picked each choice (LT:CreateRollCounts). rollinfo.lua
+	-- keeps this table; no fields go onto the buttons.
 	local counts = {}
 	local prev
 	for i, info in ipairs(roll_buttons) do
@@ -58,7 +58,7 @@ function LT:SkinRollFrame(frame)
 			button.Text:SetFontObject(GameFontNormal)
 			button.Text:SetPoint('CENTER', 1, 0)
 			button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
-			counts[info.name] = self:CreateRollCount(button)
+			self:CreateRollCounts(counts, button, info.name)
 
 			prev = button
 		end
@@ -293,6 +293,7 @@ local PREVIEW_ROLLS = {
 			{ name = 'Ironhide', class = 'WARRIOR', state = 'NeedMainSpec', roll = 41 },
 			{ name = 'Mistweave', class = 'PRIEST', state = 'NeedOffSpec' },
 			{ name = 'Quickshot', class = 'HUNTER', state = 'Transmog' },
+			{ name = 'Stonefist', class = 'SHAMAN', state = 'Greed' },
 			{ name = 'Emberfall', class = 'MAGE', state = 'Pass' },
 			{ name = 'Duskwhisper', class = 'ROGUE', state = 'NoRoll' },
 			{ me = true, state = 'NoRoll' },
@@ -431,17 +432,20 @@ local function CreatePreviewBar(parent, spec)
 	bar.Name:SetVertexColor(1, 1, 1)
 
 	-- Same order as the real buttons: the first one sits at the right edge.
+	-- Like Blizzard, a bar has Transmog in place of Greed when the item can
+	-- be transmogged.
 	bar.buttons = {}
 	bar.counts = {}
 	for _, info in ipairs(roll_buttons) do
-		if info.name ~= 'Transmog' or spec.transmog then
+		local skip = (info.name == 'Transmog' and not spec.transmog) or (info.name == 'Greed' and spec.transmog)
+		if not skip then
 			local button = CreateFrame('frame', nil, bar)
 			button:SetFrameLevel(level + 3)
 			button.Icon = button:CreateTexture(nil, 'ARTWORK')
 			button.Icon:SetAllPoints()
 			button.Icon:SetTexture(info.icon_texture)
 			st:SkinIcon(button.Icon)
-			bar.counts[info.name] = LT:CreateRollCount(button)
+			LT:CreateRollCounts(bar.counts, button, info.name)
 			tinsert(bar.buttons, button)
 		end
 	end
