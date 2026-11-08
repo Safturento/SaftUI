@@ -68,6 +68,12 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
    - Blocking only stops the drawing. Blizzard's Lua for the frame keeps running on its events, and it can move other frames into it, which then vanish too. In a skinned vehicle, `OverrideActionBar`'s `UNIT_ENTERED_VEHICLE` handler reparents Blizzard's micro menu into the bar, which would take SaftUI-Minimap's micro buttons with it. So also `UnregisterAllEvents` on a blocked frame whose handlers reach outside it, unless something SaftUI needs runs on them. A blocked frame isn't on screen (the roleset API docs: `IsRolesetFiltered` is "hidden because of its rolesets"), so Blizzard's `Show` shouldn't run its `OnShow`; not yet confirmed in game.
 9. **Don't override Blizzard globals or APIs**, not even for test data (e.g. faking `GetLootRollItemInfo` or `UnitExists`). Build SaftUI-owned preview frames instead (`SaftUI-Loot/roll.lua` `CreateRollPreviews`).
 10. **Ace skin fonts:** never `SetFontObject` with an object you got from `GetFontObject()` unless it's a named global Font. Restoring an engine-made Font made a region inherit from itself and crashed the client with a C stack overflow (`31afa68`). Use `IsNamedFont`/`RestoreFont` in `SaftUI-Core/Config/aceskin.lua`.
+11. **Blizzard's aura containers (unit frame buffs and debuffs) carry forbidden aspects** (`Blizzard_AuraContainer`):
+    - The aura buttons forbid addon scripts on them and on their children (`UntrustedScriptExecution`), so a `HookScript` or a child frame's script on a button never runs.
+    - The buttons also refuse tainted access while aura data is secret (`DenyTaintedAccessWhenAurasAreSecret`; see `C_Secrets.ShouldAurasBeSecret`).
+    - Their tooltip, `AuraButtonTooltip`, is a forbidden frame hidden from addons: it can't be hooked or restyled.
+    - Once a container has an aura group, a frame anchored to it, or to anything anchored to it, must carry its layout aspect. Create it with `DisableUntrustedLayoutScriptsTemplate`, and never anchor a frame without that aspect, like `GameTooltip`, to it.
+    - `SaftUI-Unitframes/elements/auratooltip.lua` works within all of this.
 
 ## Past incidents (to recognize the pattern)
 

@@ -30,7 +30,8 @@ covers:
     - Forever's Loot Rolls window (`GroupLootHistoryFrame`) never opens by itself: `ShouldAutoOpen` in `Blizzard_FrameXML/Camelot/LootHistory.lua` returns false.
   - **Auras on other players** (checked on a party member, 2026-11-08):
     - `sourceUnit` is nil on every aura, and the `PLAYER` filter keeps them all: `HELPFUL|PLAYER` returns the same list as `HELPFUL`. `isFromPlayerOrPlayerPet` is right (false on others' auras, true on the player's), so unit frame "Only mine" filters on that flag (`SaftUI-Unitframes/elements/auras.lua`).
-    - `SetUnitAuraByAuraInstanceID` gives the wrong aura or none for some of them. Blizzard's aura buttons build their tooltips with it, so some unit frame aura tooltips are wrong or missing.
+    - `SetUnitAuraByAuraInstanceID` gives the wrong aura or none for some of them. By index (`SetUnitAura(unit, index, filter)`) it's right. Blizzard's aura buttons build their tooltips by instance ID, so SaftUI shows its own by index out of combat (`SaftUI-Unitframes/elements/auratooltip.lua`).
+    - `C_Secrets.ShouldAurasBeSecret()` is false out of combat and true in combat. Out of combat, an aura button's rect and icon texture (`button.Icon:GetTexture()`) can be read; its `IsMouseOver` read false with the cursor on it.
   - **Bank.** It's built from bank tabs holding bags (`Enum.BagIndex.CharacterBankTab_*`). There's no `BankPanel.AutoDepositFrame` and no reagent bank, and the warband bank isn't used.
 - Neither client has a reagent bank anymore.
 

@@ -27,6 +27,7 @@ SaftUI sets the UI scale itself, to be pixel-perfect for your screen height, and
 - While a roll is open, each button on SaftUI's roll bars shows how many players have picked that choice so far (main and off spec needs both count as Need). A bar has Greed or Transmog, never both, so the one it has also shows the other choice's count at its top right, in that choice's colour. Hover the bar's icon or body for the item tooltip with everyone's choice, their roll once the game has it, who hasn't chosen yet, and who leads. It updates as people choose. The sample roll bars (`/sui` → Loot → Rolls → General → Test mode) show sample counts and choices.
 - The loot feed is kept per character across reloads and logouts: scroll the feed back to see earlier entries, hover one to see how long ago it happened. `/sui` → Loot → Feed → General → Clear history empties it.
 - Every item your group rolls on gets one loot feed entry when its roll ends, naming the winner (or "All passed"); hover it to see everyone's choice and roll. When the winner loots the item, that goes into the same entry rather than a second one. Roll results show even with Self Only on. Untick Rolls in the feed's F menu to hide them; items you looted still show while Loot is ticked.
+- Hovering a buff or debuff on a unit frame shows its tooltip in SaftUI's tooltip style. In combat the game keeps aura data from addons, so Blizzard's own aura tooltip shows instead.
 - Profiles live under `/sui` → Profiles, and switching applies live.
 - `/rl` reloads the UI.
 
