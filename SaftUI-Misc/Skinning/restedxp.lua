@@ -5,10 +5,20 @@ local SK = st:GetModule('Skinning')
 -- not Blizzard's) in SaftUI's chat look: the chat panel template, the chat font
 -- and fine divider lines. Its pieces are kept in side tables keyed by RestedXP's
 -- frames. Scripts are only ever hooked, never replaced.
+--
+-- What it relies on RestedXP doing:
+-- - Its v2 window hides the v1 frames itself, so the skin stands down with them
+--   (the guide panel shows and hides with GuideName).
+-- - It re-anchors CurrentStepFrame on every step advance, every mouse-up on the
+--   window, at login and on an orientation change, so SaftUI's gap between the
+--   two panels comes from a post-hook on CurrentStepFrame's SetPoint.
+-- - It SetScripts each list step's OnEnter/OnLeave anew on every guide load, so
+--   the hover highlight follows their SetBackdropColor calls, not a script hook.
 local RX = SK:NewModule('RestedXP')
 
 local TITLE_SIZE_BONUS = 3
 local DIVIDER_ALPHA = 0.5
+local STEPS_GAP = 7 -- added to RestedXP's offset of the current steps, away from the window
 
 local panels = {}                                   -- SaftUI panels made by MakePanel
 local dividers = {}                                 -- divider textures
@@ -16,11 +26,13 @@ local fontState = setmetatable({}, { __mode = 'k' }) -- [fontString] = { kind = 
 local backdropCleared = setmetatable({}, { __mode = 'k' })
 local applyingFont = false                          -- our own SetFont isn't re-handled
 local highlights = {}                               -- hover highlight textures of the step frames
-local skinnedSteps = setmetatable({}, { __mode = 'k' })
-local skinnedCurrent = setmetatable({}, { __mode = 'k' }) -- [currentStepFrame] = divider texture
-local tipPanels = setmetatable({}, { __mode = 'k' })       -- [currentStepFrame] = panel, made when it first serves as a tip
+local skinnedSteps = setmetatable({}, { __mode = 'k' })   -- [list step frame] = true once skinned
+local stepLines = setmetatable({}, { __mode = 'k' })      -- [list step frame] = the line above it (none on step 1)
+local skinnedCurrent = setmetatable({}, { __mode = 'k' }) -- [pooled current step frame] = the line above it; set once skinned
+local tipPanels = setmetatable({}, { __mode = 'k' })       -- [pooled current step frame] = its panel, made the first time it is a tip
 local stepsPanel                                    -- the panel behind the current steps
 local scrollTrack                                   -- the scroll bar's track texture
+local gappingSteps = false                          -- our own SetPoint on CurrentStepFrame isn't re-handled
 
 -- The chat's panel template and font name; SaftUI's defaults when chat has no config.
 function RX:GetStyle()
@@ -67,9 +79,10 @@ local function HookFont(fs, kind)
 	ApplyFont(fs)
 end
 
--- RestedXP sets its backdrops on every theme refresh; keep them off.
+-- RestedXP sets its backdrops on every theme refresh; keep them off. A frame
+-- without Blizzard's Backdrop mixin has none to clear.
 local function NoBackdrop(frame)
-	if backdropCleared[frame] then return end
+	if backdropCleared[frame] or not (frame.ClearBackdrop and frame.SetBackdrop) then return end
 	backdropCleared[frame] = true
 
 	frame:ClearBackdrop()
@@ -125,6 +138,19 @@ function RX:SkinChrome()
 	if self.frames then HideBanner(self.frames) end
 end
 
+-- RestedXP hides a step by fading it out (alpha 0) or hiding it.
+local function IsVisible(frame)
+	return frame:IsShown() and frame:GetAlpha() > 0
+end
+
+-- Whether the cursor's OnEnter/OnLeave belong to frame. IsMouseOver is only a
+-- rectangle test: RestedXP's menu opens at the cursor, over the step, and the
+-- step's OnLeave then fires with the cursor still inside it.
+local function IsHovered(frame)
+	if frame.IsMouseMotionFocus then return frame:IsMouseMotionFocus() end
+	return frame:IsMouseOver()
+end
+
 -- One step frame: flat, a hover highlight, SaftUI's font, a line above it.
 local function SkinStep(frame, isFirst)
 	if skinnedSteps[frame] then return end
@@ -134,14 +160,16 @@ local function SkinStep(frame, isFirst)
 
 	-- RestedXP's OnEnter/OnLeave (set anew on every guide load) call
 	-- SetBackdropColor, which is what we follow.
-	local highlight = frame:CreateTexture(nil, 'BACKGROUND')
-	highlight:SetAllPoints(frame)
-	ColorHighlight(highlight)
-	highlight:Hide()
-	tinsert(highlights, highlight)
-	hooksecurefunc(frame, 'SetBackdropColor', function(self)
-		highlight:SetShown(self:IsMouseOver())
-	end)
+	if frame.SetBackdropColor then
+		local highlight = frame:CreateTexture(nil, 'BACKGROUND')
+		highlight:SetAllPoints(frame)
+		ColorHighlight(highlight)
+		highlight:Hide()
+		tinsert(highlights, highlight)
+		hooksecurefunc(frame, 'SetBackdropColor', function(self)
+			highlight:SetShown(IsHovered(self))
+		end)
+	end
 
 	HookFont(frame.text, 'text')
 	HookFont(frame.number.text, 'text')
@@ -153,16 +181,22 @@ local function SkinStep(frame, isFirst)
 		local line = MakeDivider(frame)
 		line:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 1)
 		line:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', 0, 1)
+		stepLines[frame] = line
 	end
 end
 
 -- Skins every step frame RestedXP has made so far; pooled frames keep their skin.
+-- A step's line shows only below a visible step, so the first visible one sits
+-- right under the title line however many are hidden above it.
 function RX:SkinList()
 	local pool = self.frames and self.frames.ScrollChild.framePool
 	if not pool then return end
+	local above = false -- a visible step above this one
 	for i, frame in ipairs(pool) do
 		if frame.text and frame.number and frame.number.text then
 			SkinStep(frame, i == 1)
+			if stepLines[frame] then stepLines[frame]:SetShown(above) end
+			above = above or IsVisible(frame)
 		end
 	end
 end
@@ -201,12 +235,11 @@ function RX:SkinScrollBar()
 	bar:SetWidth(8)
 end
 
--- The first step of the current steps sits at the top of CurrentStepFrame, tips
--- are anchored to the screen, any other step hangs off the one above it.
-local function RoleOf(frame)
+-- Tips are anchored to the screen; every other current step is stacked in
+-- CurrentStepFrame.
+local function IsTip(frame)
 	local _, rel = frame:GetPoint(1)
-	if rel == UIParent or (frame.step and frame.step.tip) then return 'tip' end
-	return rel == RX.frames.CurrentStepFrame and 'first' or 'later'
+	return rel == UIParent or (frame.step and frame.step.tip and true) or false
 end
 
 -- A current step frame: flat, SaftUI's font, grey title at the right, a line above it.
@@ -230,12 +263,16 @@ local function SkinCurrentStep(frame)
 end
 
 -- Skins the current steps (and the pooled frames RestedXP made since the last
--- pass), and gives each frame the look of the role it has now.
+-- pass), and gives each frame the look of the role it has now. A stacked step's
+-- line shows only below a visible stacked step, and the panel only behind at
+-- least one: RestedXP keeps a hidden step 1px tall, and starts the frame 25px
+-- tall before its first step.
 function RX:SkinCurrentSteps()
 	local current = self.frames and self.frames.CurrentStepFrame
 	local pool = current and current.framePool
 	if not pool then return end
 
+	local above = false -- a visible stacked step above this one
 	for _, frame in ipairs(pool) do
 		if frame.number and frame.number.text and frame.elements then
 			SkinCurrentStep(frame)
@@ -243,18 +280,47 @@ function RX:SkinCurrentSteps()
 				if element.text then HookFont(element.text, 'text') end
 			end
 
-			local role = RoleOf(frame)
-			skinnedCurrent[frame]:SetShown(role == 'later')
-			if role == 'tip' and not tipPanels[frame] then
+			local tip = IsTip(frame)
+			local visible = not tip and IsVisible(frame)
+			skinnedCurrent[frame]:SetShown(visible and above)
+			above = above or visible
+			if tip and not tipPanels[frame] then
 				local panel = MakePanel(frame)
 				panel:SetAllPoints(frame)
 				tipPanels[frame] = panel
 			end
-			if tipPanels[frame] then tipPanels[frame]:SetShown(role == 'tip') end
+			if tipPanels[frame] then tipPanels[frame]:SetShown(tip) end
 		end
 	end
 
-	if stepsPanel then stepsPanel:SetShown(current:GetHeight() > 2) end
+	if stepsPanel then stepsPanel:SetShown(above) end
+end
+
+-- RestedXP hangs the current steps just above the guide name or, in its bottom
+-- orientation, just below the window (GuideWindow.lua SetStepFrameAnchor). Each
+-- of those points goes STEPS_GAP further from the window, so the steps panel's
+-- border and the guide panel's don't touch. [point] = { frame, relative point, dy }.
+local STEPS_POINTS = {
+	BOTTOMLEFT = { 'GuideName', 'TOPLEFT', STEPS_GAP },
+	BOTTOMRIGHT = { 'GuideName', 'TOPRIGHT', STEPS_GAP },
+	TOPLEFT = { 'RXPFrame', 'BOTTOMLEFT', -STEPS_GAP },
+	TOPRIGHT = { 'RXPFrame', 'BOTTOMRIGHT', -STEPS_GAP },
+}
+
+local function GapStepsPoint(current, point)
+	if gappingSteps then return end
+	for i = 1, current:GetNumPoints() do
+		local p, rel, relPoint, x, y = current:GetPoint(i)
+		if p == point then
+			local gap = STEPS_POINTS[p]
+			if gap and rel == RX.frames[gap[1]] and relPoint == gap[2] then
+				gappingSteps = true
+				current:SetPoint(p, rel, relPoint, x, y + gap[3])
+				gappingSteps = false
+			end
+			return
+		end
+	end
 end
 
 function RX:Setup()
@@ -273,6 +339,10 @@ function RX:Setup()
 	local guideName, footer = frames.GuideName, frames.Footer
 	if not (guideName.text and guideName.bg and guideName.icon and guideName.classIcon
 		and footer.text and footer.bg) then return end
+	-- AceHook errors on a missing target, so a RestedXP that renamed one is left alone.
+	if type(rxp.UpdateVisuals) ~= 'function' or type(rxp.UpdateScrollBar) ~= 'function'
+		or type(frames.BottomFrame.UpdateFrame) ~= 'function'
+		or type(frames.CurrentStepFrame.UpdateText) ~= 'function' then return end
 	self.frames = frames
 
 	NoBackdrop(frames.BottomFrame)
@@ -294,9 +364,14 @@ function RX:Setup()
 	local titleLine = MakeDivider(panel)
 	titleLine:SetPoint('TOPLEFT', guideName, 'BOTTOMLEFT')
 	titleLine:SetPoint('TOPRIGHT', guideName, 'BOTTOMRIGHT')
+	-- RestedXP hides the list for a window too short for it (28px), where this
+	-- line would cross the title.
 	local footerLine = MakeDivider(panel)
 	footerLine:SetPoint('BOTTOMLEFT', footer, 'TOPLEFT')
 	footerLine:SetPoint('BOTTOMRIGHT', footer, 'TOPRIGHT')
+	footerLine:SetShown(frames.BottomFrame:IsShown())
+	frames.BottomFrame:HookScript('OnShow', function() footerLine:Show() end)
+	frames.BottomFrame:HookScript('OnHide', function() footerLine:Hide() end)
 
 	-- RestedXP anchors these once, at load, around its logo and banner.
 	guideName.text:SetPoint('LEFT', guideName, 'LEFT', 4, 0)
@@ -313,10 +388,14 @@ function RX:Setup()
 	self:SkinScrollBar()
 	self:SecureHook(rxp, 'UpdateScrollBar', 'SkinScrollBar')
 
-	-- RestedXP anchors the current steps once, just above the title.
+	-- Gap the current steps' anchors now and each time RestedXP re-anchors them.
+	-- A hook on RXPFrame.SetStepFrameAnchor would miss the window's mouse-up,
+	-- which calls RestedXP's local copy of it.
 	local current = frames.CurrentStepFrame
-	current:SetPoint('BOTTOMLEFT', guideName, 'TOPLEFT', 0, 9)
-	current:SetPoint('BOTTOMRIGHT', guideName, 'TOPRIGHT', 0, 9)
+	hooksecurefunc(current, 'SetPoint', GapStepsPoint)
+	local points = {}
+	for i = 1, current:GetNumPoints() do points[i] = (current:GetPoint(i)) end
+	for _, point in ipairs(points) do GapStepsPoint(current, point) end
 	stepsPanel = MakePanel(current)
 	stepsPanel:SetAllPoints(current)
 
@@ -330,7 +409,7 @@ function RX:ADDON_LOADED(_, name)
 	self:Setup()
 end
 
--- A profile change, or SaftUI-Chat's config changing: re-applies the style.
+-- A profile change, or SaftUI-Chat's look changing: re-applies the style.
 function RX:UpdateConfig()
 	local template = self:GetStyle()
 	for _, panel in ipairs(panels) do
@@ -350,10 +429,11 @@ function RX:UpdateConfig()
 end
 
 function RX:OnEnable()
-	-- Chat's template and font are this window's too.
+	-- Chat's template and font are this window's too. Its options apply them
+	-- with ApplyAppearance, and its UpdateConfig (a profile change) ends in it.
 	local chat = st:GetModule('Chat', true)
-	if chat and chat.UpdateConfig then
-		self:SecureHook(chat, 'UpdateConfig', 'UpdateConfig')
+	if chat and type(chat.ApplyAppearance) == 'function' then
+		self:SecureHook(chat, 'ApplyAppearance', 'UpdateConfig')
 	end
 
 	if C_AddOns.IsAddOnLoaded('RXPGuides') and RXPFrame then
