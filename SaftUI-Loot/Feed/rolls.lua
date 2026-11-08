@@ -51,6 +51,7 @@ local CHOICES = {
 local openRolls = {} -- results still waiting for the winner's loot message
 local pending = {}   -- ended drops waiting for their item's data
 local pendingKeys = {}
+local declinedKeys = {} -- found at load with no room in the feed; retried next load
 -- The entry each drop recorded this session went into, by its key, so later
 -- updates to the drop (a roll number arriving after the winner) reach it.
 local entryByKey = setmetatable({}, { __mode = 'v' })
@@ -75,13 +76,23 @@ end
 ---- Drops -------------------------
 ------------------------------------
 
--- encounterID:lootListKey:itemHyperlink, or nil when any part isn't plain.
+-- A drop's index in its encounter. Forever's EncounterLootDropInfo calls it
+-- lootListKey; retail's still calls it lootListID.
+local function DropIndex(drop)
+	return PlainNumber(drop.lootListKey) or PlainNumber(drop.lootListID)
+end
+
+-- encounterID:lootListKey:item string, or nil when any part isn't plain. The
+-- item string (the link's "item:..." part) stands in for the whole link: a link
+-- built while the item wasn't cached can differ in its name or colour from the
+-- same drop's link later, and the whole link would then record the drop twice.
 local function DropKey(encounterID, drop)
 	encounterID = PlainNumber(encounterID)
-	local lootListKey = PlainNumber(drop.lootListKey)
+	local index = DropIndex(drop)
 	local link = PlainString(drop.itemHyperlink)
-	if encounterID and lootListKey and link then
-		return encounterID .. ':' .. lootListKey .. ':' .. link
+	if encounterID and index and link then
+		local item = link:match('|H(item:[^|]*)|h') or link
+		return encounterID .. ':' .. index .. ':' .. item
 	end
 end
 
@@ -110,16 +121,19 @@ local function SamePlayer(a, b)
 	return nameA ~= nil and nameA == PlainString(b.playerName)
 end
 
--- The roll of a drop the addon didn't see end, as a real time: the history's
--- clock says how long ago the roll started.
+-- When the roll of a drop the addon didn't see end started, as a real time,
+-- and when it could have ended at the latest (nil when unknown). The history's
+-- clock, a drop's startTime and its duration all count milliseconds.
 local function EstimateWhen(drop)
 	local now = time()
 	local historyNow = C_LootHistory.GetLootHistoryTime and PlainNumber(C_LootHistory.GetLootHistoryTime())
 	local start = PlainNumber(drop.startTime)
-	if historyNow and start then
-		return now - max(0, floor(historyNow - start))
-	end
-	return now
+	if not (historyNow and start) then return now end
+
+	local when = now - max(0, floor((historyNow - start) / 1000))
+	local duration = PlainNumber(drop.duration)
+	local ends = duration and duration > 0 and when + floor(duration / 1000) or nil
+	return when, ends
 end
 
 -- A plain-data copy of a drop's rolls. `ended` trims it for keeping: an ended
@@ -201,6 +215,18 @@ end
 local function WaitingOnPrefix()
 	local text = type(LOOT_HISTORY_WAITING_ON) == 'string' and LOOT_HISTORY_WAITING_ON or 'Waiting on:'
 	return (text:gsub('%s*$', ' '))
+end
+
+-- As Blizzard's Loot Rolls window words the leader: its current-winner text
+-- with the leader's name, or its tie text in place of the name.
+local function CurrentLeader(tied, leader)
+	local fmt = LOOT_HISTORY_CURRENT_WINNER
+	if type(fmt) ~= 'string' or not fmt:find('%%s') then fmt = 'Leading: %s (%d)' end
+	local name = ClassColored(leader.name, leader.class)
+	if tied then
+		name = type(LOOT_HISTORY_ROLL_TIE) == 'string' and LOOT_HISTORY_ROLL_TIE or 'Tie'
+	end
+	return fmt:format(name, leader.roll)
 end
 
 local function Delimiter()
@@ -285,11 +311,7 @@ function LT:AddRollLines(tooltip, rolls, live)
 
 		local leader = list[rolls.leader]
 		if IsLine(leader) and type(leader.roll) == 'number' then
-			if rolls.tied then
-				tooltip:AddLine(('Tied at %d'):format(leader.roll), nr, ng, nb)
-			else
-				tooltip:AddLine(('Leading: %s (%d)'):format(ClassColored(leader.name, leader.class), leader.roll), nr, ng, nb)
-			end
+			tooltip:AddLine(CurrentLeader(rolls.tied, leader), nr, ng, nb)
 		end
 	end
 end
@@ -376,13 +398,13 @@ local function InFeed(info)
 end
 
 -- The winner's loot message already in the feed (it came before the roll's
--- end): a Loot entry for the same item and player from `from` (a time()) on.
--- Takes the oldest such entry, the nearest to the roll.
-local function FindLootEntry(link, winner, from)
+-- end): a Loot entry for the same item and player with a real time between
+-- `from` and `to`. Takes the oldest such entry, the nearest to the roll.
+local function FindLootEntry(link, winner, from, to)
 	local found
 	for _, info in ipairs(LT:GetAllItems()) do
 		if info.type == 'Loot' and not info.test
-			and type(info.when) == 'number' and info.when >= from
+			and type(info.when) == 'number' and info.when >= from and info.when <= to
 			and SameItem(info.link, link) and IsLooterWinner(info.notSelf, winner) then
 			found = info
 		end
@@ -407,27 +429,33 @@ end
 
 -- Adds a recorded drop to the feed: folded into the winner's loot message if
 -- that came first, else as a new entry (live) or as history (found at load).
--- False while the item's data isn't cached.
+-- Returns 'added', 'uncached' (the item's data isn't in yet) or 'declined' (a
+-- drop found at load that's older than everything in a full feed).
 local function AddRollResult(result, allowUncached)
 	local info = LT:BuildRollEntry(result.link, result.rolls, allowUncached)
-	if not info then return false end
+	if not info then return 'uncached' end
+
+	-- A live result's loot message comes within the window either side of now.
+	-- One found at load could have come any time from the roll's start to its
+	-- end (or to now, when the end isn't known).
+	local from, to = result.when - FOLD_WINDOW, result.when + FOLD_WINDOW
+	if result.restored then to = result.ends and result.ends + FOLD_WINDOW or time() end
 
 	local winner = Winner(result.rolls)
-	local loot = winner and FindLootEntry(result.link, winner, result.when - FOLD_WINDOW)
+	local loot = winner and FindLootEntry(result.link, winner, from, to)
 	if loot then
 		FoldIntoLootEntry(loot, result.rolls)
 		info = loot
+	elseif result.restored then
+		info.when = result.when
+		if not LT:InsertRestoredEntry(info) then return 'declined' end
+		if winner then OpenForLoot(info) end
 	else
-		if result.restored then
-			info.when = result.when
-			LT:InsertRestoredEntry(info)
-		else
-			LT:LootFeedPush(info)
-		end
+		LT:LootFeedPush(info)
 		if winner then OpenForLoot(info) end
 	end
 	entryByKey[result.key] = info
-	return true
+	return 'added'
 end
 
 -- A drop already recorded changed again: its entry takes the new rolls.
@@ -460,19 +488,23 @@ local function RecordDrop(encounterID, drop, restored)
 		RefreshResult(key, drop)
 		return
 	end
-	if pendingKeys[key] or not SomeoneRolled(drop) then return end
+	if pendingKeys[key] or declinedKeys[key] or not SomeoneRolled(drop) then return end
 
 	local result = {
 		key = key,
 		link = PlainString(drop.itemHyperlink),
 		rolls = Summarize(drop, true),
-		when = restored and EstimateWhen(drop) or time(),
+		when = time(),
 		restored = restored,
 	}
-	if AddRollResult(result) then
-		recorded[key] = true
-		return
-	end
+	if restored then result.when, result.ends = EstimateWhen(drop) end
+
+	local outcome = AddRollResult(result)
+	if outcome == 'added' then recorded[key] = true end
+	-- Declined: left unrecorded, so it can go in at a later load once the feed
+	-- has room (after Clear history, say), but not as a fresh line this session.
+	if outcome == 'declined' then declinedKeys[key] = true end
+	if outcome ~= 'uncached' then return end
 
 	-- The item isn't cached yet (say, a drop you weren't eligible for). The
 	-- key is recorded once the entry is in, so a reload before then adds it at
@@ -490,10 +522,12 @@ function LT:OnRollItemInfo(event, itemID)
 	local i = 1
 	while pending[i] do
 		local result = pending[i]
-		if AddRollResult(result, itemID ~= nil and itemID == ItemID(result.link)) then
+		local outcome = AddRollResult(result, itemID ~= nil and itemID == ItemID(result.link))
+		if outcome ~= 'uncached' then
 			tremove(pending, i)
 			pendingKeys[result.key] = nil
-			RecordedDrops()[result.key] = true
+			if outcome == 'added' then RecordedDrops()[result.key] = true end
+			if outcome == 'declined' then declinedKeys[result.key] = true end
 		else
 			i = i + 1
 		end
@@ -590,9 +624,13 @@ local function CatchUp()
 		end
 	end
 
+	-- An empty history at load may only be one that isn't filled yet; pruning
+	-- against it would forget every recorded drop and record them all again.
 	local recorded = RecordedDrops()
-	for key in pairs(recorded) do
-		if not live[key] then recorded[key] = nil end
+	if next(live) then
+		for key in pairs(recorded) do
+			if not live[key] then recorded[key] = nil end
+		end
 	end
 
 	-- Oldest first, so of two results for the same item and player, the older

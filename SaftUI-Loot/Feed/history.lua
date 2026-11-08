@@ -181,7 +181,9 @@ function LT:RestoreFeed()
 end
 
 -- Inserts a not-fresh entry by its `when` (newest first), without merging, and
--- saves it. For things that happened while the addon wasn't watching.
+-- saves it. For things that happened while the addon wasn't watching. Returns
+-- false, inserting nothing, when the entry is older than everything in a full
+-- feed.
 function LT:InsertRestoredEntry(info)
 	info.restored = true
 	info.test = nil
@@ -191,13 +193,14 @@ function LT:InsertRestoredEntry(info)
 	local stack = self:GetAllItems()
 	local index = 1
 	while stack[index] and (stack[index].when or 0) >= info.when do index = index + 1 end
-	if index > MAX_HISTORY then return end
+	if index > MAX_HISTORY then return false end
 
 	tinsert(stack, index, info)
 	while #stack > MAX_HISTORY do tremove(stack) end
 
 	self:SaveFeedEntry(info)
 	if self.feed then self:UpdateFeed() end
+	return true
 end
 
 -- Empties the saved feed and the feed on screen. The recorded drops stay, so
