@@ -64,29 +64,60 @@ local AB = st:GetModule('ActionBars')
 	    its bindings have no EXTRAACTIONBUTTON1. Its frames exist though, so the
 	    holder and outline do too.
 
-	Leave vehicle button. Blizzard's (MainMenuBarVehicleLeaveButton) is off
-	screen (hideblizzard.lua), so SaftUI has its own: SaftUI_VehicleLeaveButton,
-	made from ActionButtonTemplate and skinned like SaftUI's other buttons
-	(skin.lua), in the secure header SaftUI_VehicleLeave, which is its holder.
-	It does what Blizzard's does (Blizzard_ActionBar/Shared/
-	VehicleLeaveButton.lua, the same on forever and live):
-	  - A click on a flight path requests an early landing (TaxiRequestEarlyLanding
-	    while UnitOnTaxi('player')), and leaves the vehicle otherwise
-	    (VehicleExit). Neither is protected, so a plain OnClick works in combat
-	    too; Blizzard's button calls them from a plain OnClick as well. It stays
-	    checked once a landing is asked for, as Blizzard's button locks its
-	    highlight.
-	  - It shows while CanExitVehicle(), which is true on a flight path too.
-	    Blizzard also hides its button while an override bar is up, as that bar
-	    has a leave button of its own. SaftUI hides Blizzard's override bar
-	    (hideblizzard.lua), so SaftUI's button shows then too.
-	  - In combat only a state driver can show and hide it. [canexitvehicle]
-	    doesn't turn true on a flight path, so the driver's token changes on
-	    [canexitvehicle] and on [mounted] (a flight path mounts you), and the
-	    header's snippet shows it while CanExitVehicle(). Out of combat,
-	    Blizzard's leave button events, and a flight starting or ending
-	    (PLAYER_CONTROL_LOST/GAINED), check again: that catches a flight
-	    taken while already mounted, when the token doesn't change.
+	Leave vehicle button. Blizzard's (MainMenuBarVehicleLeaveButton) and its
+	possess bar (PossessActionBar) are off screen (hideblizzard.lua), so SaftUI
+	has its own button for both: SaftUI_VehicleLeaveButton, made from
+	ActionButtonTemplate and SecureActionButtonTemplate and skinned like SaftUI's
+	other buttons (skin.lua), in the secure header SaftUI_VehicleLeave, which is
+	its holder. It does what Blizzard's leave button does
+	(Blizzard_ActionBar/Shared/VehicleLeaveButton.lua) and what the possess
+	bar's cancel slot does (Blizzard_ActionBar/Shared/PossessActionBar.lua),
+	both the same on forever and live:
+	  - A click on a flight path requests an early landing
+	    (TaxiRequestEarlyLanding while UnitOnTaxi('player')), and leaves the
+	    vehicle otherwise (VehicleExit). Neither is protected, so the button's
+	    PostClick calls them, in combat too; Blizzard's button calls them from
+	    a plain OnClick as well. It stays checked once a landing is asked for,
+	    as Blizzard's button locks its highlight.
+	  - While possessing (a mind control, a quest that has you control a
+	    creature) with no vehicle to leave, a click cancels the possess.
+	    Blizzard's only way to do that is the possess bar's cancel slot,
+	    PossessButton2 (POSSESS_CANCEL_SLOT). Its OnClick
+	    (PossessButtonMixin:OnClick) requests an early landing on a flight
+	    path, leaves a vehicle the player controls, and otherwise calls
+	    CancelPetPossess. Blizzard makes
+	    that button a SecureFrameTemplate one, as it does the stance and pet
+	    buttons whose OnClicks call protected functions, and not its two leave
+	    buttons. So CancelPetPossess is taken to be protected (its C side isn't
+	    in the source), and SaftUI's button clicks Blizzard's instead of calling
+	    it: the secure template's 'click' type (SECURE_ACTIONS.click,
+	    Blizzard_FrameXML/SecureTemplates.lua) clicks PossessButton2 from
+	    secure code. That runs Blizzard's own OnClick, in Blizzard's order, in
+	    combat too, and nothing of SaftUI's runs in it. The possess bar is
+	    blocked, but ActionBarController still keeps it current
+	    (PossessActionBar:Update on UPDATE_POSSESS_BAR), which enables the
+	    cancel button. The header's snippet sets the 'click' type only while
+	    possessing; otherwise the type is empty and the secure template does
+	    nothing.
+	  - It shows while CanExitVehicle(), which is true on a flight path too, or
+	    while possessing. Blizzard also hides its leave button while an
+	    override bar is up, as that bar has a leave button of its own. SaftUI
+	    hides Blizzard's override bar (hideblizzard.lua), so SaftUI's button
+	    shows then too.
+	  - In combat only a state driver can show and hide it and set its type.
+	    [canexitvehicle] doesn't turn true on a flight path, so the driver's
+	    token changes on [canexitvehicle], on [possessbar] and on [mounted] (a
+	    flight path mounts you), and the header's snippet shows it while
+	    CanExitVehicle() or possessing. [canexitvehicle] comes first, so a
+	    vehicle you can leave keeps the leave click even while possessing.
+	    Out of combat, Blizzard's leave button events, the possess bar's event
+	    and a flight starting or ending (PLAYER_CONTROL_LOST/GAINED) apply the
+	    same rules from Lua: that catches a flight taken while already
+	    mounted, when the token doesn't change.
+	  - It's a secure button, so Enable and Disable are protected on it in
+	    combat. A landing request disables it out of combat only (a flight
+	    path can't be taken in combat). It's enabled again each time the
+	    header shows or hides: by Lua out of combat, by the snippet in combat.
 	  - Size: SaftUI's own button, so a Size setting, as on the bars.
 ]]
 
@@ -117,28 +148,51 @@ local NO_TEXT = { show = false, size = 10, point = 'CENTER', rel_point = 'CENTER
 local LEAVE_TEXT = { hotkey = NO_TEXT, count = NO_TEXT, macro = NO_TEXT }
 
 -- The header's state driver: its token changes as you get into or out of a
--- vehicle you can leave, and as you mount or dismount (a flight path).
-local LEAVE_DRIVER = '[canexitvehicle] vehicle; [mounted] mounted; none'
+-- vehicle you can leave, as you start or stop possessing, and as you mount or
+-- dismount (a flight path). Lua reads the same token out of combat
+-- (SecureCmdOptionParse), so both apply one rule.
+local LEAVE_DRIVER = '[canexitvehicle] vehicle; [possessbar] possess; [mounted] mounted; none'
 
--- Restricted code: self is the header. CanExitVehicle is in the restricted
--- environment (Blizzard_RestrictedAddOnEnvironment/RestrictedEnvironment.lua,
--- the same on forever and live).
+-- The leave button's secure type while possessing: click Blizzard's possess
+-- cancel button (see the top of this file).
+local POSSESS_TYPE = 'click'
+
+-- Restricted code: self is the header, newstate the driver's token, and the
+-- 'button' frame ref the leave button. CanExitVehicle is in the restricted
+-- environment (Blizzard_RestrictedAddOnEnvironment/RestrictedEnvironment.lua),
+-- and the handles' SetAttribute, Enable, Show and Hide are in
+-- RestrictedFrames.lua next to it, all the same on forever and live.
 local LEAVE_SNIPPET = [[
-	if CanExitVehicle() then
+	local button = self:GetFrameRef('button')
+	local possess = newstate == 'possess'
+	if possess then
+		button:SetAttribute('type', 'click')
+	else
+		button:SetAttribute('type', nil)
+	end
+
+	local show = (CanExitVehicle() or possess) and true or false
+	-- Each ride starts clickable. The header's OnShow and OnHide hooks uncheck
+	-- the button, but Lua can't enable a secure button in combat.
+	if show ~= (self:IsShown() and true or false) then
+		button:Enable()
+	end
+	if show then
 		self:Show()
 	else
 		self:Hide()
 	end
 ]]
 
--- Blizzard's leave button's events (VehicleLeaveButton.lua), and a flight
--- path starting and ending.
+-- Blizzard's leave button's events (VehicleLeaveButton.lua), its possess bar's
+-- (ActionBarController.lua), and a flight path starting and ending.
 local LEAVE_EVENTS = {
 	'UNIT_ENTERED_VEHICLE',
 	'UNIT_EXITED_VEHICLE',
 	'VEHICLE_UPDATE',
 	'UPDATE_BONUS_ACTIONBAR',
 	'UPDATE_MULTI_CAST_ACTIONBAR',
+	'UPDATE_POSSESS_BAR',
 	'PLAYER_CONTROL_LOST',
 	'PLAYER_CONTROL_GAINED',
 	-- Changes during combat waited for this.
@@ -234,26 +288,43 @@ end
 --- Leave vehicle button ------------
 ------------------------------------
 
+-- True while a click goes to Blizzard's possess cancel button.
+local function IsCancellingPossess(button)
+	return button:GetAttribute('type') == POSSESS_TYPE
+end
+
+-- After the secure template's click (PostClick): it did nothing unless
+-- possessing. A CheckButton checks itself on every click, so the check is set
+-- here each time.
 local function LeaveOnClick(button)
-	if UnitOnTaxi('player') then
+	if IsCancellingPossess(button) then
+		-- Blizzard's possess cancel button did it all.
+		button:SetChecked(false)
+	elseif UnitOnTaxi('player') then
 		TaxiRequestEarlyLanding()
-		-- Show that the request went through, as Blizzard's button does. The
-		-- button isn't a secure one, so this is fine in combat.
+		-- Show that the request went through, as Blizzard's button does.
+		-- SetChecked isn't protected. Disable is, on a secure button in combat,
+		-- and a flight path can't be taken in combat.
 		button:SetChecked(true)
-		button:Disable()
+		if not InCombatLockdown() then
+			button:Disable()
+		end
 	else
 		VehicleExit()
 		button:SetChecked(false)
 	end
 end
 
--- Blizzard's leave button's tooltip, where SaftUI's buttons put theirs.
+-- Blizzard's tooltips for its leave button and possess cancel button, where
+-- SaftUI's buttons put theirs.
 local function LeaveOnEnter(button)
 	if GameTooltip:IsForbidden() then return end
 	AB:AnchorTooltip(button)
 	if UnitOnTaxi('player') then
 		GameTooltip:SetText(TAXI_CANCEL, 1, 1, 1)
 		GameTooltip:AddLine(TAXI_CANCEL_DESCRIPTION, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+	elseif IsCancellingPossess(button) then
+		GameTooltip:SetText(CANCEL, 1, 1, 1)
 	else
 		GameTooltip:SetText(LEAVE_VEHICLE, 1, 1, 1)
 	end
@@ -269,10 +340,20 @@ end
 local function CreateLeaveButton(self)
 	local header = CreateFrame('Frame', 'SaftUI_VehicleLeave', UIParent, 'SecureHandlerStateTemplate')
 
-	local button = CreateFrame('CheckButton', 'SaftUI_VehicleLeaveButton', header, 'ActionButtonTemplate')
-	-- A left click, as on Blizzard's button.
+	local button = CreateFrame('CheckButton', 'SaftUI_VehicleLeaveButton', header,
+		'ActionButtonTemplate, SecureActionButtonTemplate')
+	-- A left click, as on Blizzard's buttons. The secure template acts on the
+	-- release, the click it gets, whatever Blizzard's "cast on key down"
+	-- setting says (SecureActionButton_ShouldUseOnKeyDown).
 	button:RegisterForClicks('LeftButtonUp')
-	button:SetScript('OnClick', LeaveOnClick)
+	button:SetAttribute('useOnKeyDown', false)
+	-- What the 'click' type clicks while possessing. The type itself is set by
+	-- the header's snippet.
+	local possessCancel = _G['PossessButton' .. (POSSESS_CANCEL_SLOT or 2)]
+	if possessCancel then
+		button:SetAttribute('clickbutton', possessCancel)
+	end
+	button:SetScript('PostClick', LeaveOnClick)
 	button:SetScript('OnEnter', LeaveOnEnter)
 	button:SetScript('OnLeave', LeaveOnLeave)
 	-- The template's flyout handlers; this button has no flyout.
@@ -282,27 +363,34 @@ local function CreateLeaveButton(self)
 	self:SkinButton(button)
 	leaveButton = button
 
-	-- Each ride starts unchecked. The header is SaftUI's own frame.
+	-- Each ride starts unchecked. The header is SaftUI's own frame. Enable is
+	-- protected on the secure button in combat; the snippet enables it then.
 	local function Uncheck()
 		button:SetChecked(false)
-		button:Enable()
+		if not InCombatLockdown() then
+			button:Enable()
+		end
 	end
 	header:HookScript('OnShow', Uncheck)
 	header:HookScript('OnHide', Uncheck)
 
-	-- The snippet first: registering the driver sets the state straight away.
+	-- The snippet and its frame ref first: registering the driver sets the
+	-- state straight away.
+	header:SetFrameRef('button', button)
 	header:SetAttribute('_onstate-exit', LEAVE_SNIPPET)
 	RegisterStateDriver(header, 'exit', LEAVE_DRIVER)
 
-	-- Showing a secure frame from Lua is protected, so only out of combat.
+	-- The snippet's rules, from Lua. Setting attributes on a secure frame and
+	-- showing it from Lua are protected, so only out of combat.
 	local events = CreateFrame('Frame')
 	for _, event in ipairs(LEAVE_EVENTS) do
 		events:RegisterEvent(event)
 	end
 	events:SetScript('OnEvent', function()
-		if not InCombatLockdown() then
-			header:SetShown(CanExitVehicle() and true or false)
-		end
+		if InCombatLockdown() then return end
+		local possess = SecureCmdOptionParse(LEAVE_DRIVER) == 'possess'
+		button:SetAttribute('type', possess and POSSESS_TYPE or nil)
+		header:SetShown((CanExitVehicle() or possess) and true or false)
 	end)
 
 	return header

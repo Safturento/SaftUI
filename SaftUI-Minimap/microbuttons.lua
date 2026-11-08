@@ -20,6 +20,11 @@ local MicroMenu = st:GetModule('MicroMenu')
 -- The buttons stay parented to MicroMenu, so Blizzard's own scripts, alerts,
 -- notification pips and vehicle/pet battle handling keep working. Blizzard
 -- still runs MicroMenu:Layout, and the post-hook moves the buttons afterwards.
+-- So the buttons only draw while whatever Blizzard parents MicroMenu to is on
+-- screen. Blizzard moves it into the pet battle frame and, for a skinned
+-- vehicle, into OverrideActionBar. SaftUI-ActionBars blocks that bar, so it
+-- turns the bar's events off too, which keeps the menu out of it
+-- (SaftUI-ActionBars/hideblizzard.lua).
 
 local BUTTON_HEIGHT = MicroMenu.BUTTON_SIZE
 -- Blizzard's MainMenuBarMicroButton template is 32x40 on Forever and retail

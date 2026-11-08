@@ -70,13 +70,46 @@ local AB = st:GetModule('ActionBars')
 	grid and strata on drag, the pet bar's buttons, the vehicle leave button's
 	showing (SaftUI's own leave button is in extras.lua). With them off,
 	Blizzard's code doesn't call protected methods on those bars at all, and the
-	pet bar and vehicle leave button keep still in Blizzard's bottom stack. Two
-	bars keep their events, as Bartender4 leaves them:
-	  - MainActionBar: on PLAYER_ENTERING_WORLD it registers Blizzard's gamepad and
-	    keyboard switch handlers, which also show and hide the micro menu and the
-	    bags bar.
-	  - OverrideActionBar: in a skinned vehicle Blizzard's ACTIONBUTTON binds click
-	    its buttons (GetActionButtonForID), which it keeps up to date.
+	pet bar and vehicle leave button keep still in Blizzard's bottom stack. Only
+	MainActionBar keeps its events, as Bartender4 leaves them: on
+	PLAYER_ENTERING_WORLD it registers Blizzard's gamepad and keyboard switch
+	handlers, which also show and hide the micro menu and the bags bar.
+
+	OverrideActionBar's events are off too, for the micro menu. In a skinned
+	vehicle or override bar, Blizzard moves its micro menu into the override
+	bar: OverrideActionBarMixin:UpdateMicroButtons
+	(Blizzard_OverrideActionBar/OverrideActionBar.lua, the same on forever and
+	live) calls MicroMenu:OverrideMicroMenuPosition(self, ...), which reparents
+	MicroMenu to the bar (Blizzard_MicroMenu/Shared/MicroMenuContainer.lua).
+	SaftUI-Minimap keeps Blizzard's micro buttons parented to MicroMenu
+	(microbuttons.lua), and the client draws nothing inside a blocked frame, so
+	every micro button would vanish from SaftUI's micro menu bar for the ride.
+	UpdateMicroButtons only moves the menu while ActionBarController's state is
+	LE_ACTIONBAR_STATE_OVERRIDE. It's called from three places:
+	  - the bar's UNIT_ENTERED_VEHICLE handler (UpdateSkin, in a vehicle).
+	    Gone with the bar's events.
+	  - the bar's OnShow. The roleset system hides a blocked frame
+	    (SetRolesets "gates visibility", IsRolesetFiltered "hidden because of
+	    its rolesets", SimpleFrameAPIDocumentation.lua), so Blizzard's Show
+	    doesn't bring it on screen and OnShow doesn't run. That's the same
+	    rule that makes blocking a visible frame run its OnHide (taint.md rule
+	    8). Not yet confirmed in game.
+	  - ActionBarController_UpdateAll's own UpdateSkin call, which runs while
+	    the state is still LE_ACTIONBAR_STATE_MAIN (ActionBarController.lua),
+	    so it never moves the menu.
+	So the menu stays in MicroMenuContainer. Nothing SaftUI needs is lost with
+	the events. ActionBarController's own events still drive the bar:
+	UpdateSkin pages its buttons, and ValidateActionBarTransition shows and
+	hides it. Setup registers the bar's two XP events again, which only redraw
+	its XP bar. The bar's ACTIONBUTTON keys are SaftUI's in every state but a
+	pet battle (bindings.lua), and Blizzard drops the override bar for a pet
+	battle (PET_BATTLE_OPENING_START in ActionBarController.lua). Bar 1 pages
+	to the vehicle and override bars itself ([vehicleui], [overridebar],
+	bars.lua). The bar's pitch buttons and its vehicle health, power and XP
+	bars don't show while it's blocked (docs/followups.md).
+	Putting the menu back with a post-hook isn't safe: reparenting MicroMenu
+	shows the micro buttons, which runs their OnShow
+	(MainMenuBarMicroButtonMixin) in SaftUI's call chain (taint.md rule 4).
 
 	Out of combat only: blocking and EnableMouse are protected on these frames.
 	This runs while SaftUI-ActionBars loads, which is before combat lockdown
@@ -98,7 +131,7 @@ local BLIZZARD_BARS = {
 	{ name = 'PetActionBar', events = true },
 	{ name = 'PossessActionBar', events = true },
 	{ name = 'MainMenuBarVehicleLeaveButton', events = true },
-	{ name = 'OverrideActionBar', events = false },
+	{ name = 'OverrideActionBar', events = true },
 }
 
 -- The Blizzard addons that create those bars.

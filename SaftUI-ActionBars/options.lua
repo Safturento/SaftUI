@@ -57,7 +57,7 @@ local HIDDEN_LABELS = {
 local EXTRA_NOTES = {
 	extra = 'when active',
 	zone = 'when active',
-	vehicleleave = 'vehicles, flights',
+	vehicleleave = 'vehicles, flights, possess',
 }
 
 -- The extra buttons that are Blizzard's, sized by a Scale setting. The others
