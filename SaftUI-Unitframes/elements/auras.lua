@@ -34,6 +34,9 @@ end
 -- Every button each aura element has made, so a config update can restyle them.
 local buttonsByElement = setmetatable({}, { __mode = 'k' })
 
+-- Each button's dark line over its dispel border fill (see StyleButton).
+local innerLines = setmetatable({}, { __mode = 'k' })
+
 -- Applies the element's current config to one of its buttons. Runs when the
 -- button is made and again on every config update, so it only sets things.
 local function StyleButton(auras, button)
@@ -42,13 +45,36 @@ local function StyleButton(auras, button)
 	st:SetBackdrop(button, config.template)
 
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
-	-- secret color, so instead of Blizzard's border art we make it a flat fill behind
-	-- the icon that covers our backdrop, recoloring the SaftUI border by dispel type.
+	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
+	-- instead of Blizzard's border art we make it a flat fill behind the icon that
+	-- covers our backdrop, recoloring the SaftUI border by dispel type.
 	if button.Border then
 		button.Border:SetTexture(st.BLANK_TEX)
 		button.Border:SetDrawLayer('BACKGROUND')
 		button.Border:ClearAllPoints()
 		button.Border:SetAllPoints(button.backdrop)
+
+		-- The fill shows in the whole gap between the icon and the backdrop's edge.
+		-- A thick template's gap is 2px, its border line and then a dark line, so
+		-- the color would be 2px wide. This dark fill over it, 1px in from the edge
+		-- and under the icon (BORDER layer), puts the dark line back on top.
+		local inner = innerLines[button]
+		if not inner and button.backdrop then
+			inner = button:CreateTexture(nil, 'BACKGROUND', nil, 1)
+			inner:SetTexture(st.BLANK_TEX)
+			inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
+			inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
+			innerLines[button] = inner
+		end
+		if inner then
+			local template = st.config.profile.templates[config.template]
+			if template and template.border and template.thick then
+				inner:SetVertexColor(unpack(template.altbordercolor))
+				inner:Show()
+			else
+				inner:Hide()
+			end
+		end
 	end
 
 	if button.Count then
