@@ -15,11 +15,55 @@ function INV:SetSlotPosition(slot, categoryFrame, container)
 	end
 end
 
+--[[
+	slot.info is an item's info table (INV:GetInventoryItemInfo) or, for a free
+	bag slot shown in the Empty Slots category, a stub with `empty = true`, the
+	bagID/slotID to put an item in, `count` (the free slots a grouped slot
+	stands for, nil for a single one) and blank name, tooltipText, vendorPrice
+	and stackPrice. It has no icon, quality, class, link or itemID, so anything
+	reading slot.info that does more than the above must check info.empty first.
+]]
+
+-- Makes a slot look like an empty one: no icon, level, cooldown, quality
+-- colour or desaturation, and a count only for a grouped slot.
+function INV:AssignEmptySlot(slot, info)
+	slot.itemLevel:SetText('')
+	slot.itemLevelBG:Hide()
+	Util:ClearItemQuality(slot)
+
+	local template = st.config.profile.templates[self.config.template]
+	if template and template.border then
+		slot.backdrop:SetBackdropBorderColor(unpack(template.bordercolor))
+	else
+		slot.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
+	end
+
+	slot.cooldown:Hide()
+	SetItemButtonTextureVertexColor(slot, 1, 1, 1)
+	SetItemButtonTexture(slot, nil)
+	slot.icon:Hide()
+	SetItemButtonDesaturated(slot, false)
+
+	-- Item buttons hide a count of 1 (minDisplayCount); a free slot count of 1
+	-- is worth showing.
+	slot.minDisplayCount = info.count and 0 or nil
+	SetItemButtonCount(slot, info.count)
+	slot.CountBG:SetShown(info.count ~= nil)
+end
+
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
 	slot:SetParent(container.bags[slotInfo.bagID])
 	slot:SetID(slotInfo.slotID)
 	slot.info = slotInfo
+
+	slot.reagentMarker:SetShown(self:IsReagentBag(slotInfo.bagID))
+
+	if slotInfo.empty then
+		self:AssignEmptySlot(slot, slotInfo)
+		slot:Show()
+		return
+	end
 
 	if (slot.info.class == 'Armor' or slot.info.class == 'Weapon') then
 		if slot.info.isWarbound then
@@ -84,6 +128,20 @@ hooksecurefunc(stackSplitButtonClick, function()
 end)
 
 local function UpdateTooltip(self)
+	local info = self.info
+	if not info then return end
+
+	-- Blizzard's tooltip code looks the item up in the bag, and there is none.
+	if info.empty then
+		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
+		GameTooltip:SetText(INV:IsReagentBag(info.bagID) and 'Empty reagent bag slot' or 'Empty bag slot')
+		if info.count then
+			GameTooltip:AddLine(('%d free'):format(info.count), 1, 1, 1)
+		end
+		GameTooltip:Show()
+		return
+	end
+
 	if self.info.bagID == -1 then
 		BankFrameItemButton_OnEnter(self)
 	else
@@ -155,6 +213,8 @@ local function CreateSlotDropdown()
 end
 
 local function OpenSlotOptions(slot, button, down)
+    -- A free slot has no item to mark.
+    if slot.info and slot.info.empty then return end
     INV.SelectedSlot = slot
     if not INV.SlotDropDown then CreateSlotDropdown() end
 
@@ -235,6 +295,19 @@ function INV:CreateSlot(container, categoryName)
 	itemLevelBG:SetVertexColor(0,0,0)
 	slot.itemLevelBG = itemLevelBG
 
+	-- A green wedge in the icon's top right marks an item in the reagent bag
+	-- (and a free slot of it). The corner texture fills the bottom right, so it
+	-- is flipped upside down. The top right is clear of the count and item
+	-- level (bottom right) and the crafting quality pip (top left).
+	local reagentMarker = slot:CreateTexture(nil, 'OVERLAY', nil, 6)
+	reagentMarker:SetTexture(st.textures.cornerbr)
+	reagentMarker:SetTexCoord(0, 1, 1, 0)
+	reagentMarker:SetPoint('TOPRIGHT', slot.icon, 'TOPRIGHT', 0, 0)
+	reagentMarker:SetSize(st:RoundToPixel(14), st:RoundToPixel(14))
+	reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
+	reagentMarker:Hide()
+	slot.reagentMarker = reagentMarker
+
 	st:SkinActionButton(slot, {
 		template = self.config.template,
 		font = self.config.fonts.icons,
@@ -261,6 +334,7 @@ function INV:StyleSlot(slot, categoryFrame, container)
 	self:SetSlotPosition(slot, categoryFrame, container)
 	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
+	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
 
 	st:SkinActionButton(slot, {
 		template = self.config.template,
@@ -297,6 +371,8 @@ end
 
 function INV:ClearSlot(slot)
 	slot:Hide()
+	if slot.reagentMarker then slot.reagentMarker:Hide() end
+	slot.minDisplayCount = nil
 	if slot.Reset then slot:Reset() end
 	if slot.info then
 		-- self.SlotMap[tostring(slot.info.bagID) .. tostring(slot.info.slotID)] = nil

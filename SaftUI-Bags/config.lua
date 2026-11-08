@@ -29,7 +29,11 @@ st.defaults.inventory = {
 		},
 		perrow = 3,
 		maxRows = 15,
-		maxColumns = 3
+		maxColumns = 3,
+		-- Free bag slots shown as an 'Empty Slots' category: 'off', 'grouped' (one
+		-- slot for the bags and one for the reagent bag, each with its free count)
+		-- or 'all' (one slot per free slot). Bag window only.
+		emptySlots = 'off',
 	},
 	bank = {
 		position = {

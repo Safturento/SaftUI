@@ -199,6 +199,9 @@ function INV:ParseSearchQuery(queryString)
 end
 
 function INV:SearchMatches(queryString, info)
+	-- A free slot has nothing to match: it only stays lit with no search.
+	if info.empty then return queryString == '' end
+
 	local queryTags = INV:ParseSearchQuery(queryString)
 	queryString = queryString:lower()
 
@@ -287,6 +290,7 @@ end
 function INV:UpdateContainer(id, updateLayout)
 	local container = self.containers[id]
 	if not container and container:IsShown() then return end
+	if id == 'bag' then self:EnsureEmptySlotPool() end
 	local sortedInventory, numItems, numLoading = self:GetSortedInventory(id)
 
 	for name, items in pairs(sortedInventory) do

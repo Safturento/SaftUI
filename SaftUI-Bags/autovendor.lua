@@ -11,7 +11,7 @@ function INV:GetVendorItems()
 		local category = self.containers.bag.categories[categoryName]
 		for _,slot in pairs(category.slots) do
 			local info = slot and slot.info
-			if info and info.vendorPrice > 0 then
+			if info and not info.empty and info.vendorPrice > 0 then
 				tinsert(items, info)
 				profit = profit + info.stackPrice
 			end
@@ -59,7 +59,7 @@ function INV:VendorCategory(categoryKey)
 
             ids = {}
             for _,item in pairs(category.slots) do
-                if item.info then
+                if item.info and not item.info.empty then
                     tinsert(ids, { bagID = item.info.bagID, slotID = item.info.slotID })
                 end
             end
@@ -76,7 +76,7 @@ function INV:VendorCategory(categoryKey)
         end)
 
         for _,item in pairs(INV.containers.bag.categories[categoryKey].slots) do
-            if item.info then
+            if item.info and not item.info.empty then
                 vendorHandler.profit = vendorHandler.profit + item.info.vendorPrice
             end
         end

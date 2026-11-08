@@ -2,6 +2,13 @@ local st = SaftUI
 local INV = st:GetModule('Inventory')
 
 INV.CATEGORY_SLOT_POOL = 10
+INV.EMPTY_SLOTS_CATEGORY = 'Empty Slots'
+
+-- Whether a bag ID is the reagent bag. Guarded because the enum entry only
+-- exists on clients that have a reagent bag.
+function INV:IsReagentBag(bagID)
+	return Enum.BagIndex ~= nil and Enum.BagIndex.ReagentBag ~= nil and bagID == Enum.BagIndex.ReagentBag
+end
 
 local upgradeQualities = {
 	Adventurer = 1,
@@ -150,6 +157,49 @@ end
 
 local function sortCategory(a,b) return a.sortString > b.sortString end
 
+-- The info for a free bag slot. It carries the fields the readers of slot.info
+-- use (vendor price, name, tooltip text) as harmless blanks, and `empty` so
+-- code that cares can tell it from an item. `count` is only set on a grouped
+-- slot, where it is how many free slots of that kind there are.
+local function GetEmptySlotInfo(bagID, slotID, containerId)
+	return {
+		empty = true,
+		name = '',
+		tooltipText = '',
+		sortString = '',
+		vendorPrice = 0,
+		stackPrice = 0,
+		container = containerId,
+		bagID = bagID,
+		slotID = slotID,
+	}
+end
+
+-- Makes sure the Empty Slots category has a button for every bag slot when the
+-- setting is 'every slot'. Buttons made in combat are flagged as broken (see
+-- CreateSlot), and a fight can free any number of slots, so they are all made
+-- ahead of time, out of combat. Runs on every bag update, so a bigger bag
+-- being equipped is covered too.
+function INV:EnsureEmptySlotPool()
+	local container = self.containers.bag
+	if not container or self.config.bag.emptySlots ~= 'all' then return end
+
+	local category = container.categories[self.EMPTY_SLOTS_CATEGORY]
+	if not category then return end
+
+	local total = 0
+	for _, bagID in pairs(container.bag_ids) do
+		total = total + C_Container.GetContainerNumSlots(bagID)
+	end
+	if #category.slots >= total then return end
+
+	if st:QueueAfterCombat('InventoryEmptySlotPool', function() INV:EnsureEmptySlotPool() end) then return end
+
+	for _ = #category.slots + 1, total do
+		self:CreateSlot(container, self.EMPTY_SLOTS_CATEGORY)
+	end
+end
+
 function INV:GetSortedInventory(id)
 	local container = self.containers[id]
 	if not container then 
@@ -158,10 +208,18 @@ function INV:GetSortedInventory(id)
 
     local cachedItems = {}
 
+	-- Free slots only show in the bag window, and only when asked for.
+	local emptyMode = id == 'bag' and self.config.bag.emptySlots
+	if emptyMode ~= 'grouped' and emptyMode ~= 'all' then emptyMode = nil end
+	local emptyNormal, emptyReagent = {}, {}
+
 	local inventory = {}
 	local numItems = 0
 	local numLoading = 0
 	for _,bagID in pairs(container.bag_ids) do
+		-- The reagent bag is its own kind of bag: the same item in it and in a
+		-- normal bag stays two slots when stacks are merged.
+		local isReagent = self:IsReagentBag(bagID)
 		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
 			local item = self:GetInventoryItemInfo(bagID, slotID, id)
 			if item then
@@ -172,25 +230,48 @@ function INV:GetSortedInventory(id)
 					local categoryName = self:GetItemCategory(item)
 
 					if not inventory[categoryName] then inventory[categoryName] = {} end
-					if self.config.stackItems and cachedItems[item.itemID] and item.maxStack > 1 then
-                        local cachedItem = cachedItems[item.itemID]
+					local mergeKey = tostring(item.itemID) .. (isReagent and ':reagent' or ':bag')
+					if self.config.stackItems and cachedItems[mergeKey] and item.maxStack > 1 then
+                        local cachedItem = cachedItems[mergeKey]
                         inventory[categoryName][cachedItem.index].count
                             = inventory[categoryName][cachedItem.index].count + item.count
 					else
                         tinsert(inventory[categoryName], item)
-                        if self.config.stackItems and not cachedItems[item.itemId] and item.maxStack > 1 then
-                            cachedItems[item.itemID] = {
+                        if self.config.stackItems and not cachedItems[mergeKey] and item.maxStack > 1 then
+                            cachedItems[mergeKey] = {
                                 index = #inventory[categoryName],
                             }
                         end
                     end
 				end
+			elseif emptyMode then
+				tinsert(isReagent and emptyReagent or emptyNormal, GetEmptySlotInfo(bagID, slotID, id))
 			end
 		end
 	end
 
+	-- Normal bags first, then the reagent bag. This category isn't sorted below,
+	-- so it keeps that order.
+	if emptyMode == 'all' then
+		local empties = {}
+		for _, info in ipairs(emptyNormal) do tinsert(empties, info) end
+		for _, info in ipairs(emptyReagent) do tinsert(empties, info) end
+		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
+	elseif emptyMode == 'grouped' then
+		-- One slot per kind of bag, pointing at its first free slot, so an item
+		-- dropped on it lands there. A kind with no free slots has no slot.
+		local empties = {}
+		for _, list in ipairs({ emptyNormal, emptyReagent }) do
+			if #list > 0 then
+				list[1].count = #list
+				tinsert(empties, list[1])
+			end
+		end
+		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
+	end
+
 	for categoryName,categoryItems in pairs(inventory) do
-		if #categoryItems > 1 then
+		if #categoryItems > 1 and categoryName ~= self.EMPTY_SLOTS_CATEGORY then
 			table.sort(categoryItems, sortCategory)
 		end
 	end
@@ -254,7 +335,13 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 		self:ClearSlot(categoryFrame.slots[i])
 	end
 
-	categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, #categoryItems)
+	-- A grouped empty slot stands for several free slots, so count those.
+	local numShown = #categoryItems
+	if categoryName == self.EMPTY_SLOTS_CATEGORY then
+		numShown = 0
+		for _, item in pairs(categoryItems) do numShown = numShown + (item.count or 1) end
+	end
+	categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, numShown)
 
 	for i, item in pairs(categoryItems) do
 		local slot = categoryFrame.slots[i] or self:CreateSlot(container, categoryName)
@@ -297,6 +384,10 @@ function INV:InitializeAllCategories(containerName)
 		self:UpdateCategory(containerName, category.name, {})
 	end
 	if containerName == 'bag' then
+		-- Made now, out of combat, with its slot pool, even while the setting is
+		-- off: it is flushed like any empty category until it has slots.
+		self:CreateCategory(containerName, self.EMPTY_SLOTS_CATEGORY)
+		self:UpdateCategory(containerName, self.EMPTY_SLOTS_CATEGORY, {})
 		self:InitializeCurrencyCategory()
 	end
 end

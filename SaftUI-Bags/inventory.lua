@@ -281,6 +281,9 @@ function INV:UpdateHandler(_, elapsed)
 	-- again this session. Report it and carry on.
 	xpcall(function()
 		self:UpdateGold()
+		-- Even with the bags closed, so an Empty Slots button is never first
+		-- made in combat.
+		self:EnsureEmptySlotPool()
 		self:UpdateVisibleContainers(updateLayout)
 	end, geterrorhandler())
 	self.IS_UPDATING = false

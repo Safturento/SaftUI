@@ -19,6 +19,25 @@ local function BuildWindow(id, order)
 	)
 	position.inline = false -- a tree section, not an inline box
 
+	local general = {
+		perrow = generators.range(1, 'Items per row', 1, 12, 1),
+		maxRows = generators.range(2, 'Max rows', 1, 40, 1),
+		maxColumns = generators.range(3, 'Max columns', 1, 8, 1),
+	}
+	-- Free bag slots as a category: the bag window only, the banks have none.
+	-- There is no select generator; sorting keeps the dropdown in this order.
+	-- Changing it goes through the group's set, which re-lays the bags out.
+	if id == 'bag' then
+		general.emptySlots = {
+			name = 'Empty slots',
+			desc = 'Show free bag slots as an Empty Slots category. Grouped shows one slot for the bags and one for the reagent bag, each with its free count; Every slot shows each free slot.',
+			type = 'select',
+			order = 4,
+			values = { off = 'Off', grouped = 'Grouped', all = 'Every slot' },
+			sorting = { 'off', 'grouped', 'all' },
+		}
+	end
+
 	return {
 		name = INV.windowLabels[id],
 		type = 'group',
@@ -36,11 +55,7 @@ local function BuildWindow(id, order)
 					INV:UpdateConfig()
 					INV:SyncAnchorSize(id)
 				end,
-				args = {
-					perrow = generators.range(1, 'Items per row', 1, 12, 1),
-					maxRows = generators.range(2, 'Max rows', 1, 40, 1),
-					maxColumns = generators.range(3, 'Max columns', 1, 8, 1),
-				},
+				args = general,
 			},
 			position = position,
 		},

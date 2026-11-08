@@ -27,7 +27,9 @@ function INV:HideBags()
 	self.containers.bag:Hide()
 	if not self.containers.bag.slots then return end
 	for _,slot in pairs(self.containers.bag.slots) do
-		C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
+		if slot.info and not slot.info.empty then
+			C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
+		end
 	end
 
 	if self.containers.bank and self.containers.bank:IsShown() then
