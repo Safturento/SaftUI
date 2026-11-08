@@ -50,7 +50,8 @@ local TB = st:NewModule('TotemBar')
 	GetParent, GetFrameLevel, SetParent and SetFrameLevel, all plain widget methods (the
 	bar's Edit Mode overrides are SetScale, SetPoint, ClearAllPoints, SetShown and Hide).
 
-	SaftUI's look for the bar's buttons and its flyout is in totemskin.lua.
+	SaftUI's look for the bar's buttons and its flyout is in totemskin.lua, and the totem
+	timers above its element buttons are in totemtimers.lua.
 ]]
 
 -- Puts the bar under the hidden frame, or back under the parent it had, as the
@@ -90,6 +91,7 @@ end
 function TB:UpdateConfig()
 	self:Apply()
 	self:ApplySkin()
+	self:ApplyTimerLayout()
 end
 
 function TB:Setup()
@@ -106,8 +108,10 @@ function TB:Setup()
 	-- bar is still hidden here and reparenting it runs none of its scripts.
 	self:Apply()
 
-	-- SaftUI's look for the bar's buttons and its flyout (totemskin.lua).
+	-- SaftUI's look for the bar's buttons and its flyout (totemskin.lua), then the
+	-- timers above its element buttons (totemtimers.lua), whose hooks go after the skin's.
 	self:SetupSkin()
+	self:SetupTimers()
 end
 
 function TB:ADDON_LOADED(event, addon)
@@ -134,18 +138,43 @@ function TB:GetConfigTable()
 	local hide = st.Config.generators.toggle(1, 'Hide totem bar', 'full')
 	hide.desc = "Hides Blizzard's totem bar. Turning this off shows it again whenever Blizzard would show it. If the bar is on screen when you change this, it applies after a /reload."
 
+	-- The totem timers above the element buttons (totemtimers.lua).
+	local timerBar = st.Config.generators.toggle(2, 'Show timer bar', 'full')
+	timerBar.desc = "A bar above each element button that drains, in the element's colour, as that element's totem runs out. It turns red in the last 10 seconds."
+	local timerText = st.Config.generators.toggle(3, 'Show timer text', 'full')
+	timerText.desc = "How long each element's totem has left, above its button. It turns red in the last 10 seconds."
+
+	-- Text alone sits just above the button either way, so this only matters with both on.
+	local timerTextPosition = {
+		order = 4,
+		name = 'Text position',
+		desc = 'Where the time goes while both the bar and the text show: above a thin bar, or on a taller one.',
+		type = 'select',
+		values = { above = 'Above the bar', on = 'On the bar' },
+		sorting = { 'above', 'on' },
+		disabled = function() return not (self.config.timer_bar and self.config.timer_text) end,
+	}
+
 	return {
 		name = 'Totem Bar',
 		type = 'group',
 		get = function(info) return self.config[info[#info]] end,
 		set = function(info, value)
-			self.config[info[#info]] = value
-			self:Apply()
+			local key = info[#info]
+			self.config[key] = value
+			if key == 'hide' then
+				self:Apply()
+			else
+				self:ApplyTimerLayout()
+			end
 		end,
 		args = {
 			hide = hide,
+			timer_bar = timerBar,
+			timer_text = timerText,
+			timer_text_position = timerTextPosition,
 			move_note = {
-				order = 2,
+				order = 5,
 				type = 'description',
 				name = ("To move the totem bar, open Blizzard's Edit Mode, tick %s in its settings and drag the bar. "
 					.. "SaftUI doesn't move it: Blizzard re-places the bar during combat, and because its buttons "

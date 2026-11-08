@@ -10,5 +10,6 @@ tooltipposition.lua
 experience.lua
 totembar.lua
 totemskin.lua
+totemtimers.lua
 movable.lua
 Skinning\load.xml
