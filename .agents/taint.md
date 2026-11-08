@@ -71,9 +71,9 @@ WoW marks every Lua value written by addon code as *tainted* by that addon. Secu
 11. **Blizzard's aura containers (unit frame buffs and debuffs) carry forbidden aspects** (`Blizzard_AuraContainer`):
     - The aura buttons forbid addon scripts on them and on their children (`UntrustedScriptExecution`), so a `HookScript` or a child frame's script on a button never runs.
     - The buttons also refuse tainted access while aura data is secret (`DenyTaintedAccessWhenAurasAreSecret`; see `C_Secrets.ShouldAurasBeSecret`).
+    - Blizzard sets each button's shown state, position and icon, and the container's size, through `secretwrap`. So `IsShown`, `GetRect` and `button.Icon:GetTexture()` return secret values to addons even out of combat. A boolean test on `IsShown()` errors: that's how SaftUI's aura tooltip overlay (`e3c6548`, backed out) failed. Addons can't tell which aura a button holds, or where it is.
     - Their tooltip, `AuraButtonTooltip`, is a forbidden frame hidden from addons: it can't be hooked or restyled.
     - Once a container has an aura group, a frame anchored to it, or to anything anchored to it, must carry its layout aspect. Create it with `DisableUntrustedLayoutScriptsTemplate`, and never anchor a frame without that aspect, like `GameTooltip`, to it.
-    - `SaftUI-Unitframes/elements/auratooltip.lua` works within all of this.
 
 ## Past incidents (to recognize the pattern)
 

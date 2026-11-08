@@ -144,8 +144,6 @@ local function UpdateConfig(unitframe, aura_type)
 	local enabled = UF:UpdateElement(auras)
 
 	auras:SetEnabled(enabled and true or false)
-	-- After UpdateElement, which sets the element's frame level.
-	UF:UpdateAuraTooltip(auras, enabled and true or false)
 	if not enabled then return end
 
 	local config = auras.config
@@ -190,8 +188,6 @@ local function Constructor(unitframe, aura_type)
 	auras.name = aura_type
 	auras.unitframe = unitframe
 	auras.PostCreateButton = PostCreateButton
-	-- SaftUI's own tooltips over the buttons (elements/auratooltip.lua).
-	UF:AttachAuraTooltip(auras, AURA_FILTERS[aura_type])
 
 	unitframe[aura_type] = auras
 

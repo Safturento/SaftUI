@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-08 — Forever: wrong or missing aura tooltips on party frames](#2026-11-08--forever-wrong-or-missing-aura-tooltips-on-party-frames)
   - [2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers](#2026-11-08--edit-mode-frames-anchored-straight-to-saftui-holders-tooltip-container-buffs-swing-timers)
   - [2026-11-08 — Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)
   - [2026-11-08 — Saved loot feed size in SaftUI_DB](#2026-11-08--saved-loot-feed-size-in-saftui_db)
@@ -27,7 +28,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
-  - [2026-11-08 — Forever: wrong or missing aura tooltips on party frames](#2026-11-08--forever-wrong-or-missing-aura-tooltips-on-party-frames)
   - [2026-11-07 — No way to cancel a possess](#2026-11-07--no-way-to-cancel-a-possess)
   - [2026-11-07 — Unit frame indicators ignore their enable setting once oUF updates them](#2026-11-07--unit-frame-indicators-ignore-their-enable-setting-once-ouf-updates-them)
   - [2026-11-07 — Blizzard's raid frames still show next to SaftUI's raid frames](#2026-11-07--blizzards-raid-frames-still-show-next-to-saftuis-raid-frames)
@@ -38,6 +38,26 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-08 — Forever: wrong or missing aura tooltips on party frames
+
+**What:** On Forever, hovering a buff on a SaftUI party frame shows another buff's tooltip or none. Blizzard's aura buttons (the `AuraContainer` that `SaftUI-Unitframes/elements/auras.lua` builds on, through oUF's Auras) fill their tooltip with `AuraButtonTooltip:SetUnitAuraByAuraInstanceID(unit, auraInstanceID)`, and on Forever that call returns the wrong aura or nothing for some party member auras. SaftUI doesn't touch that tooltip.
+
+**Why noticed:** The user reported "Only mine" not working on party frames (fixed separately, see the Forever aura notes in `.agents/clients.md`) and noticed the tooltips along the way. Two in-game checks on `party1`, with five buffs up (Find Herbs, Mark of the Wild, Blood Pact, Arcane Intellect, Camp Benefits): `GameTooltip:SetUnitAuraByAuraInstanceID` with each aura's own `auraInstanceID` gave Find Herbs, Mark of the Wild, then Camp Benefits for Blood Pact, and nothing for Arcane Intellect or Camp Benefits.
+
+**Anchors:** `Blizzard_AuraContainer/Blizzard_AuraButton.lua` (`ShowTooltip`, `PopulateTooltip`), `Blizzard_PrivateAurasUI/*/PrivateAurasTooltip.lua` (`ShowAuraTooltip`), `SaftUI-Unitframes/elements/auras.lua`.
+
+**What's been considered:**
+- The by-index tooltip is right on Forever: `GameTooltip:SetUnitAura('party1', i, 'HELPFUL')` gave the right name for all five buffs.
+- SaftUI can't hook the buttons. The button's aura (`GetAuraInstance`) is on a secure-sourced private mixin, and the `AuraButton` template forbids `UntrustedScriptExecution` (no addon scripts on the button, propagated to its children) and `QueryFocus` (`Blizzard_AuraButton.xml`). So neither a HookScript nor a child overlay frame on a button would run.
+- What's left is a SaftUI frame over the aura row, parented to the unit frame rather than to a button. On enter or update it would find the shown button under the cursor (`GetAuraGroupFrame(groupKey, i)`, `IsShown`, `IsMouseOver`), match that button's icon texture to `C_UnitAuras.GetAuraDataByIndex`, and show `GameTooltip:SetUnitAura(unit, index, filter)`. Unknowns: whether those reads are allowed (the buttons carry `DenyTaintedAccessWhenAurasAreSecret`, so not while auras are secret), two auras sharing an icon, and the overlay eating clicks meant for the buttons (cancel-aura clicks only matter on the player's own frame).
+- It may be a Forever client bug better reported to its developers. Unchecked whether Blizzard's own party frames show the same thing.
+
+**Shape of work:** The overlay idea above was built (`e3c6548`) and backed out. Blizzard sets each aura button's shown state, position and icon through `secretwrap` (`Blizzard_CustomAuraButton.lua` `ApplyVisibility`, `Blizzard_CustomAuraContainer.lua` `ApplyElementLayout`, `Blizzard_AuraContainerUtil.lua` `SetIconTextureForAura`), so they're secret to addons even out of combat: `IsShown()` errored on a boolean test, and every tooltip vanished behind the overlay. Addons can't learn which aura a button holds.
+
+The one route left is to work out the button order without reading the buttons. Rebuild the displayed list from `C_UnitAuras` (readable out of combat): the group's filter, the Only mine candidate filter, Blizzard's sort comparator (`AuraContainerSortComparators`, ExpirationOnly), capped at the group's max. Then lay it out with SaftUI's own layout settings (size, spacing, anchor, growth, per-row width) to find which slot is under the cursor, from an overlay sized and placed by SaftUI rather than anchored to the secret-sized container. Any difference from Blizzard's order or layout shows the wrong aura's tooltip, the bug this is meant to fix. It's a design pass and a plan, not a small fix.
+
+**Open questions:** Is the rebuilt order worth its fragility, given it only helps out of combat? Does it happen on target, focus or raid frames too, or only party? Does it hit the player's own auras on party members, which are all "Only mine" shows there? Do Blizzard's own party frames show it?
 
 ### 2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers
 
@@ -336,26 +356,6 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
-
-### 2026-11-08 — Forever: wrong or missing aura tooltips on party frames
-
-**What:** On Forever, hovering a buff on a SaftUI party frame shows another buff's tooltip or none. Blizzard's aura buttons (the `AuraContainer` that `SaftUI-Unitframes/elements/auras.lua` builds on, through oUF's Auras) fill their tooltip with `AuraButtonTooltip:SetUnitAuraByAuraInstanceID(unit, auraInstanceID)`, and on Forever that call returns the wrong aura or nothing for some party member auras. SaftUI doesn't touch that tooltip.
-
-**Why noticed:** The user reported "Only mine" not working on party frames (fixed separately, see the Forever aura notes in `.agents/clients.md`) and noticed the tooltips along the way. Two in-game checks on `party1`, with five buffs up (Find Herbs, Mark of the Wild, Blood Pact, Arcane Intellect, Camp Benefits): `GameTooltip:SetUnitAuraByAuraInstanceID` with each aura's own `auraInstanceID` gave Find Herbs, Mark of the Wild, then Camp Benefits for Blood Pact, and nothing for Arcane Intellect or Camp Benefits.
-
-**Anchors:** `Blizzard_AuraContainer/Blizzard_AuraButton.lua` (`ShowTooltip`, `PopulateTooltip`), `Blizzard_PrivateAurasUI/*/PrivateAurasTooltip.lua` (`ShowAuraTooltip`), `SaftUI-Unitframes/elements/auras.lua`.
-
-**What's been considered:**
-- The by-index tooltip is right on Forever: `GameTooltip:SetUnitAura('party1', i, 'HELPFUL')` gave the right name for all five buffs.
-- SaftUI can't hook the buttons. The button's aura (`GetAuraInstance`) is on a secure-sourced private mixin, and the `AuraButton` template forbids `UntrustedScriptExecution` (no addon scripts on the button, propagated to its children) and `QueryFocus` (`Blizzard_AuraButton.xml`). So neither a HookScript nor a child overlay frame on a button would run.
-- What's left is a SaftUI frame over the aura row, parented to the unit frame rather than to a button. On enter or update it would find the shown button under the cursor (`GetAuraGroupFrame(groupKey, i)`, `IsShown`, `IsMouseOver`), match that button's icon texture to `C_UnitAuras.GetAuraDataByIndex`, and show `GameTooltip:SetUnitAura(unit, index, filter)`. Unknowns: whether those reads are allowed (the buttons carry `DenyTaintedAccessWhenAurasAreSecret`, so not while auras are secret), two auras sharing an icon, and the overlay eating clicks meant for the buttons (cancel-aura clicks only matter on the player's own frame).
-- It may be a Forever client bug better reported to its developers. Unchecked whether Blizzard's own party frames show the same thing.
-
-**Shape of work:** The overlay above, in `SaftUI-Unitframes/elements/auras.lua`, Forever only. Small, but needs in-game iteration on the access questions first.
-
-**Open questions:** Does it happen on target, focus or raid frames too, or only party? Does it hit the player's own auras on party members, which are all "Only mine" shows there? Do Blizzard's own party frames show it?
-
-**Resolved 2026-11-08:** Every unit frame aura element gets an overlay (`SaftUI-Unitframes/elements/auratooltip.lua`). Out of combat it finds the button under the cursor, matches its icon to the unit's auras and shows `GameTooltip:SetUnitAura` by index, in SaftUI's tooltip style. While aura data is secret (on Forever, in combat) it steps aside and Blizzard's tooltip shows as before, still wrong for some auras on Forever. `AuraButtonTooltip` turned out to be a forbidden frame, so hooking it to correct it (the cleaner fix) wasn't possible.
 
 ### 2026-11-07 — No way to cancel a possess
 
