@@ -15,6 +15,9 @@ local dividers = {}                                 -- divider textures
 local fontState = setmetatable({}, { __mode = 'k' }) -- [fontString] = { kind = , size = }
 local backdropCleared = setmetatable({}, { __mode = 'k' })
 local applyingFont = false                          -- our own SetFont isn't re-handled
+local highlights = {}                               -- hover highlight textures of the step frames
+local skinnedSteps = setmetatable({}, { __mode = 'k' })
+local scrollTrack                                   -- the scroll bar's track texture
 
 -- The chat's panel template and font name; SaftUI's defaults when chat has no config.
 function RX:GetStyle()
@@ -86,6 +89,20 @@ local function MakeDivider(frame)
 	return tex
 end
 
+local function GreyRGB()
+	return st.config.profile.colors.text.grey:GetRGB()
+end
+
+local function ColorHighlight(tex)
+	tex:SetColorTexture(unpack(st.config.profile.templates.highlight.backdropcolor))
+end
+
+-- The thumb is RestedXP's, re-textured by it on every UpdateScrollBar.
+local function ColorThumb(bar)
+	local thumb = bar:GetThumbTexture()
+	if thumb then thumb:SetVertexColor(GreyRGB()) end
+end
+
 local function MakePanel(parent)
 	local panel = st:CreateFrame('Frame', nil, parent)
 	st:SetBackdrop(panel, (RX:GetStyle()))
@@ -103,6 +120,82 @@ end
 -- so this is a safety net. NoBackdrop's hooks keep the backdrops off.
 function RX:SkinChrome()
 	if self.frames then HideBanner(self.frames) end
+end
+
+-- One step frame: flat, a hover highlight, SaftUI's font, a line above it.
+local function SkinStep(frame, isFirst)
+	if skinnedSteps[frame] then return end
+	skinnedSteps[frame] = true
+
+	NoBackdrop(frame)
+
+	-- RestedXP's OnEnter/OnLeave (set anew on every guide load) call
+	-- SetBackdropColor, which is what we follow.
+	local highlight = frame:CreateTexture(nil, 'BACKGROUND')
+	highlight:SetAllPoints(frame)
+	ColorHighlight(highlight)
+	highlight:Hide()
+	tinsert(highlights, highlight)
+	hooksecurefunc(frame, 'SetBackdropColor', function(self)
+		highlight:SetShown(self:IsMouseOver())
+	end)
+
+	HookFont(frame.text, 'text')
+	HookFont(frame.number.text, 'text')
+	frame.number.text:SetTextColor(GreyRGB())
+
+	-- The first step sits under the title line already. The line is a region
+	-- of its step, so it fades with a hidden one.
+	if not isFirst then
+		local line = MakeDivider(frame)
+		line:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 1)
+		line:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', 0, 1)
+	end
+end
+
+-- Skins every step frame RestedXP has made so far; pooled frames keep their skin.
+function RX:SkinList()
+	local pool = self.frames and self.frames.ScrollChild.framePool
+	if not pool then return end
+	for i, frame in ipairs(pool) do
+		if frame.text and frame.number and frame.number.text then
+			SkinStep(frame, i == 1)
+		end
+	end
+end
+
+-- RestedXP's default scroll bar, flattened to a thin thumb on a dark track.
+function RX:SkinScrollBar()
+	local scrollFrame = self.frames and self.frames.ScrollFrame
+	local bar = scrollFrame and scrollFrame.ScrollBar
+	if not bar then return end
+
+	for _, button in ipairs({ bar.ScrollUpButton, bar.ScrollDownButton }) do
+		button:SetAlpha(0)
+		button:EnableMouse(false)
+	end
+
+	if not scrollTrack then
+		scrollTrack = bar:CreateTexture(nil, 'BACKGROUND')
+		scrollTrack:SetPoint('TOP')
+		scrollTrack:SetPoint('BOTTOM')
+		scrollTrack:SetWidth(4)
+		scrollTrack:SetColorTexture(0, 0, 0, 0.5)
+	end
+
+	bar:SetThumbTexture(st.BLANK_TEX)
+	local thumb = bar:GetThumbTexture()
+	thumb:SetSize(4, 32)
+	ColorThumb(bar)
+
+	for _, region in ipairs({ bar:GetRegions() }) do
+		if region ~= thumb and region ~= scrollTrack then region:Hide() end
+	end
+
+	bar:ClearAllPoints()
+	bar:SetPoint('TOPLEFT', scrollFrame, 'TOPRIGHT', 6, 0)
+	bar:SetPoint('BOTTOMLEFT', scrollFrame, 'BOTTOMRIGHT', 6, 0)
+	bar:SetWidth(8)
 end
 
 function RX:Setup()
@@ -155,6 +248,11 @@ function RX:Setup()
 	HookFont(footer.text, 'text')
 
 	self:SecureHook(rxp, 'UpdateVisuals', 'SkinChrome')
+
+	self:SkinList()
+	self:SecureHook(frames.BottomFrame, 'UpdateFrame', 'SkinList')
+	self:SkinScrollBar()
+	self:SecureHook(rxp, 'UpdateScrollBar', 'SkinScrollBar')
 end
 
 function RX:ADDON_LOADED(_, name)
@@ -175,6 +273,11 @@ function RX:UpdateConfig()
 	for _, tex in ipairs(dividers) do
 		ColorDivider(tex)
 	end
+	for _, tex in ipairs(highlights) do
+		ColorHighlight(tex)
+	end
+	local bar = self.frames and self.frames.ScrollFrame.ScrollBar
+	if bar then ColorThumb(bar) end
 end
 
 function RX:OnEnable()
