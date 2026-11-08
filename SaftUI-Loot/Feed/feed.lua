@@ -543,6 +543,8 @@ end
 local function BuildTooltip(self)
 	local info = self.info
 	if not self.link and not info then return end
+	-- UpdateTooltip runs this every 0.2s while hovered; a forbidden tooltip errors on SetOwner.
+	if GameTooltip:IsForbidden() then return end
 
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()

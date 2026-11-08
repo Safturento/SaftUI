@@ -48,7 +48,8 @@ function LT:SkinRollFrame(frame)
 	frame.Timer.Text:SetFontObject(GameFontNormal)
 
 	-- How many have picked each choice (LT:CreateRollCounts). rollinfo.lua
-	-- keeps this table; no fields go onto the buttons.
+	-- keeps this table, so the counts add no fields to the buttons. (The skin's
+	-- older button.Text and friends still do; see docs/followups.md.)
 	local counts = {}
 	local prev
 	for i, info in ipairs(roll_buttons) do
