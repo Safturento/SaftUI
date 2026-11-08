@@ -76,6 +76,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
     - The buttons also refuse tainted access while aura data is secret (`DenyTaintedAccessWhenAurasAreSecret`; see `C_Secrets.ShouldAurasBeSecret`).
     - Blizzard sets each button's shown state, position and icon, and the container's size, through `secretwrap`. So `IsShown`, `GetRect` and `button.Icon:GetTexture()` return secret values to addons even out of combat. A boolean test on `IsShown()` errors: that's how SaftUI's aura tooltip overlay (`e3c6548`, backed out) failed. Addons can't tell which aura a button holds, or where it is.
     - Their tooltip, `AuraButtonTooltip`, is a forbidden frame hidden from addons: it can't be hooked or restyled.
+    - A texture handed to a button (`AddDispelTypeTexture`, which oUF uses for `button.Border`) is held through its forbidden object table, so the container's `Show`, `Hide` and `SetVertexColor` calls on it never reach `hooksecurefunc` hooks. It also gets secret alpha, vertex color, tex coord and shown aspects. Addons can restyle and move it, but can't learn its color or whether it's shown. Hooking it to copy the dispel color onto the backdrop's edge (`ee0254f`, reverted) left the border uncolored.
     - Once a container has an aura group, a frame anchored to it, or to anything anchored to it, must carry its layout aspect. Create it with `DisableUntrustedLayoutScriptsTemplate`, and never anchor a frame without that aspect, like `GameTooltip`, to it.
 
 ## Past incidents (to recognize the pattern)
