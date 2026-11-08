@@ -111,14 +111,17 @@ function TB:Setup()
 	self:SetupSkinAndTimers()
 end
 
--- SaftUI's look for the bar's buttons and its flyout (totemskin.lua), then the timers
--- above its element buttons (totemtimers.lua). Both set up secure buttons, so after a
--- /reload in combat they wait for the end of combat, queued as one so the skin's hooks
--- still register before the timers'. Asks again if combat is still on by then.
+-- The timers above the element buttons (totemtimers.lua) and SaftUI's look for the
+-- bar's buttons and its flyout (totemskin.lua). The timers are SaftUI's own frames,
+-- anchored to the slot buttons but never moving them, so they're made straight away,
+-- in combat too: a /reload mid-fight still shows how long the totems have left. The
+-- skin anchors regions of the secure buttons, so after a /reload in combat it waits
+-- for the end of combat. The two sets of hooks touch separate things, so their order
+-- doesn't matter.
 function TB:SetupSkinAndTimers()
-	if st:QueueAfterCombat('totembar_setup', function() self:SetupSkinAndTimers() end) then return end
-	self:SetupSkin()
 	self:SetupTimers()
+	if st:QueueAfterCombat('totembar_setup', function() self:SetupSkin() end) then return end
+	self:SetupSkin()
 end
 
 function TB:ADDON_LOADED(event, addon)

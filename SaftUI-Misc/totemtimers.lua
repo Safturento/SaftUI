@@ -523,9 +523,10 @@ function TB:ApplyTimerLayout()
 	GrowFlyout()
 end
 
--- Makes the timers and hooks Blizzard's updates (see the top of this file). Once, out of
--- combat, as the timers are made as children of the slot buttons: TB:SetupSkinAndTimers
--- runs it after TB:SetupSkin, so these hooks run after the skin's.
+-- Makes the timers and hooks Blizzard's updates (see the top of this file). Once, from
+-- TB:SetupSkinAndTimers, in combat too: the timers are SaftUI's own frames, children of
+-- the slot buttons, and nothing here moves or resizes a protected frame. These hooks
+-- touch nothing the skin's hooks do, so it doesn't matter which run first.
 function TB:SetupTimers()
 	if timersReady then return end
 	timersReady = true
