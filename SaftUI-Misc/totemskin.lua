@@ -144,12 +144,13 @@ end
 ------------------------------------
 
 -- The border a template draws inside its frame, as st:SetTemplate insets it: none for a
--- template without a border.
-local function TemplateInset(template)
+-- template without a border. On TB for totemtimers.lua too.
+function TB.TemplateInset(template)
 	local config = template and st.config.profile.templates[template]
 	if not (config and config.border) then return 0 end
 	return config.thick and 2 or 1
 end
+local TemplateInset = TB.TemplateInset
 
 local function Fade(region)
 	if region then region:SetAlpha(0) end
@@ -197,12 +198,14 @@ local function CreateStateTexture(button)
 	return texture
 end
 
--- hooksecurefunc on one of Blizzard's global functions, if this client has it.
-local function PostHook(name, hook)
+-- hooksecurefunc on one of Blizzard's global functions, if this client has it. On TB
+-- for totemtimers.lua too.
+function TB.PostHook(name, hook)
 	if type(_G[name]) == 'function' then
 		hooksecurefunc(name, hook)
 	end
 end
+local PostHook = TB.PostHook
 
 ------------------------------------
 --- Styles --------------------------
@@ -453,12 +456,11 @@ end
 ------------------------------------
 
 -- Skins the bar's buttons, its flyout and the flyout's arrows, and hooks Blizzard's
--- redraws (see the top of this file). Once. TB:Setup runs it at load, out of combat; it
--- waits for the end of combat otherwise (a /reload in combat), as some of these calls on
--- secure buttons may be blocked then.
+-- redraws (see the top of this file). Once, out of combat, as some of these calls on
+-- secure buttons may be blocked then: TB:SetupSkinAndTimers runs it, waiting for the end
+-- of combat after a /reload in combat.
 function TB:SetupSkin()
 	if skinned then return end
-	if st:QueueAfterCombat('totemskin_setup', function() self:SetupSkin() end) then return end
 	skinned = true
 
 	-- The summon and recall buttons also draw Blizzard's ring around the icon

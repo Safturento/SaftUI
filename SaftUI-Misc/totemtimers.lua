@@ -25,7 +25,9 @@ local TB = st:GetModule('TotemBar')
 	    totem slot is, and secret values can't be compared or added. Then the duration
 	    object does it: FormatRemainingDuration with a formatter set up for m:ss, the
 	    colours from colour curves evaluated on the time left, and the timer is shown by
-	    alpha from the duration's IsActive, as there's nothing to test in Lua.
+	    alpha from the duration's IsActive, as there's nothing to test in Lua. So on
+	    that path a timer for an element with no totem down is only see-through, and
+	    its 0.1s OnUpdate keeps running.
 	GetTotemInfo's first value can be true with no totem down (Blizzard's bar shows a slot
 	button wherever it's true), so a totem counts as down while its duration runs.
 
@@ -55,13 +57,15 @@ local TB = st:GetModule('TotemBar')
 	summon button has no timer under its arrow.
 
 	All of this works in combat. The timers are SaftUI's frames. They're children of the
-	slot buttons and anchored to them, and a protected frame's restrictions spread to its
-	parents and to the frames it's anchored to, not to its children or to frames anchored
-	to it. The arrow, the flyout and its choices aren't protected: no secure template, no
-	secure children, nothing secure anchored to them. Only making the timers waits for the
-	end of combat (a /reload in combat). The slot buttons are never moved, sized, shown or
-	hidden here, and nothing is written onto Blizzard's frames: SaftUI's pieces are in the
-	timers table below, keyed by slot button.
+	slot buttons and anchored to them. The slot buttons are plain CheckButtons, protected
+	only through an anchor: the secure recall button is anchored to the last shown one,
+	and they chain from there. A protected frame's restrictions spread to its parents and
+	to the frames it's anchored to, not to its children or to frames anchored to it. The
+	arrow, the flyout and its choices aren't protected: no secure template, no secure
+	children, nothing secure anchored to them. Only making the timers waits for the end of
+	combat (a /reload in combat, TB:SetupSkinAndTimers). The slot buttons are never moved,
+	sized, shown or hidden here, and nothing is written onto Blizzard's frames: SaftUI's
+	pieces are in the timers table below, keyed by slot button.
 ]]
 
 -- The gap between the button's top and the timer.
@@ -104,24 +108,25 @@ local flyoutBaseHeight
 --- Helpers -------------------------
 ------------------------------------
 
--- The border a template draws inside its frame, as st:SetTemplate insets it (the same as
--- totemskin.lua's).
-local function TemplateInset(template)
-	local config = template and st.config.profile.templates[template]
-	if not (config and config.border) then return 0 end
-	return config.thick and 2 or 1
+-- totemskin.lua's helpers (it loads first): a template's inner border, and
+-- hooksecurefunc on a Blizzard global if this client has it.
+local TemplateInset, PostHook = TB.TemplateInset, TB.PostHook
+
+-- The text's font: the profile's button font, else SaftUI's pixel font, else one of
+-- Blizzard's, so the text always has one (SetText errors without). Also its name, when
+-- it's one of SaftUI's fonts.
+local function TimerFont()
+	local name = st.config.profile.buttons.font
+	local font = st:GetFont(name)
+	if font then return font, name end
+	font = st:GetFont('pixel')
+	if font then return font, 'pixel' end
+	return NumberFontNormalSmall
 end
 
--- hooksecurefunc on one of Blizzard's global functions, if this client has it.
-local function PostHook(name, hook)
-	if type(_G[name]) == 'function' then
-		hooksecurefunc(name, hook)
-	end
-end
-
--- The text's height in the profile's button font.
+-- The text's height in its font.
 local function TextHeight()
-	local font = st:GetFont(st.config.profile.buttons.font)
+	local font = TimerFont()
 	local size = font and select(2, font:GetFont())
 	return math.ceil(size or DEFAULT_TEXT_HEIGHT)
 end
@@ -239,15 +244,18 @@ end
 -- secret values gets no timer, rather than an error on every update.
 local secretFailed = false
 
--- Text, colours and visibility from the duration object, for secret values. Every value
--- goes straight into a widget setter, which takes secret values. SetAlphaFromBoolean's
--- own defaults are opaque for true and clear for false.
+-- Text, colours and visibility from the duration object, for secret values. Nothing is
+-- compared or tested: each value goes into a widget setter, which takes secret values,
+-- and a colour curve's result only gives its fields back through GetRGB.
+-- SetAlphaFromBoolean's own defaults are opaque for true and clear for false.
 local function RefreshSecret(timer)
 	local duration = timer.duration
 	timer.frame:SetAlphaFromBoolean(duration:IsActive())
 	local textFormatter = Formatter()
 	if textFormatter then
 		timer.text:SetText(duration:FormatRemainingDuration(textFormatter))
+	else
+		timer.text:SetText('')
 	end
 	timer.text:SetTextColor(duration:EvaluateRemainingDuration(TextCurve()):GetRGB())
 	timer.bar:SetStatusBarColor(duration:EvaluateRemainingDuration(BarCurve(timer)):GetRGB())
@@ -369,11 +377,14 @@ local function CreateTimer(button)
 	cover:SetAllPoints(frame)
 	cover:SetFrameLevel(bar:GetFrameLevel() + 1)
 
+	local text = cover:CreateFontString(nil, 'OVERLAY')
+	text:SetFontObject((TimerFont()))
+
 	local timer = {
 		frame = frame,
 		backdrop = backdrop,
 		bar = bar,
-		text = cover:CreateFontString(nil, 'OVERLAY'),
+		text = text,
 		elapsed = 0,
 	}
 	timers[button] = timer
@@ -479,7 +490,7 @@ function TB:ApplyTimerLayout()
 	local onBar = showBar and showText and config.timer_text_position == 'on'
 	local template = st.config.profile.buttons.template
 	local inset = TemplateInset(template)
-	local font = st:GetFont(st.config.profile.buttons.font)
+	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
 
 	-- The colours may have changed.
@@ -495,7 +506,7 @@ function TB:ApplyTimerLayout()
 		backdrop:SetShown(showBar)
 		st:SetInside(bar, inset)
 
-		if font then text:SetFontObject(font) end
+		text:SetFontObject(font)
 		text:ClearAllPoints()
 		if onBar then
 			text:SetPoint('CENTER', bar, 'CENTER', 0, 0)
@@ -512,13 +523,11 @@ function TB:ApplyTimerLayout()
 	GrowFlyout()
 end
 
--- Makes the timers and hooks Blizzard's updates (see the top of this file). Once, after
--- TB:SetupSkin, so these hooks run after the skin's. TB:Setup runs it at load, out of
--- combat; it waits for the end of combat otherwise (a /reload in combat), as the timers
--- are made as children of the slot buttons.
+-- Makes the timers and hooks Blizzard's updates (see the top of this file). Once, out of
+-- combat, as the timers are made as children of the slot buttons: TB:SetupSkinAndTimers
+-- runs it after TB:SetupSkin, so these hooks run after the skin's.
 function TB:SetupTimers()
 	if timersReady then return end
-	if st:QueueAfterCombat('totemtimers_setup', function() self:SetupTimers() end) then return end
 	timersReady = true
 
 	for i = 1, NUM_MULTI_CAST_BUTTONS_PER_PAGE or 4 do
@@ -533,6 +542,18 @@ function TB:SetupTimers()
 	PostHook('MultiCastSlotButton_Update', UpdateTimer)
 	PostHook('MultiCastFlyoutFrameOpenButton_Show', GrowArrow)
 	PostHook('MultiCastFlyoutFrame_ToggleFlyout', OnToggleFlyout)
+
+	-- A size change to the timers' font in /sui -> Fonts changes their height, and so how
+	-- far the arrow and the flyout grow. SaftUI's own Fonts module, so a plain post-hook.
+	-- With no font name it updates every font, calling itself for each one.
+	local fonts = st:GetModule('Fonts', true)
+	if fonts and type(fonts.UpdateFontConfig) == 'function' then
+		hooksecurefunc(fonts, 'UpdateFontConfig', function(_, fontName)
+			if fontName and fontName == select(2, TimerFont()) then
+				self:ApplyTimerLayout()
+			end
+		end)
+	end
 
 	self:ApplyTimerLayout()
 end

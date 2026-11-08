@@ -108,8 +108,15 @@ function TB:Setup()
 	-- bar is still hidden here and reparenting it runs none of its scripts.
 	self:Apply()
 
-	-- SaftUI's look for the bar's buttons and its flyout (totemskin.lua), then the
-	-- timers above its element buttons (totemtimers.lua), whose hooks go after the skin's.
+	self:SetupSkinAndTimers()
+end
+
+-- SaftUI's look for the bar's buttons and its flyout (totemskin.lua), then the timers
+-- above its element buttons (totemtimers.lua). Both set up secure buttons, so after a
+-- /reload in combat they wait for the end of combat, queued as one so the skin's hooks
+-- still register before the timers'. Asks again if combat is still on by then.
+function TB:SetupSkinAndTimers()
+	if st:QueueAfterCombat('totembar_setup', function() self:SetupSkinAndTimers() end) then return end
 	self:SetupSkin()
 	self:SetupTimers()
 end
