@@ -329,24 +329,32 @@ function LT:LootFeedPush(info)
 	end
 
 	info.time = GetTime()
+	info.when = time()
 	-- Entries pushed by test mode are tagged so they can be told apart (and
 	-- removed) later; they never merge with real entries.
 	info.test = self.pushingTest or nil
 
 	local top = feed_stack[1]
 	if top and (top.test or false) ~= (info.test or false) then top = nil end
+	-- Restored entries are history; new gains start their own entry.
+	if top and top.restored then top = nil end
 
 	-- If you loot gold multiple times together, group it up into one item
 	if info.gold and top and top.gold then
 		top.gold = top.gold + info.gold
 		top.time = info.time
+		top.when = info.when
+		self:SaveFeedEntry(top)
 	elseif top and info.name == top.name and info.craftQuality == top.craftQuality and info.rightText == top.rightText then
 		top.count = (top.count or 1) + (info.count or 1)
 		top.time = info.time
 		-- The merged entry now stands for the latest gain, so it shows that snapshot.
 		top.progress = info.progress
+		top.when = info.when
+		self:SaveFeedEntry(top)
 	else
 		tinsert(feed_stack, 1, info)
+		self:SaveFeedEntry(info)
 	end
 
 	-- If scrolling through history, don't push the feed upwards
@@ -521,14 +529,25 @@ function LT:LootFeedHandler(event, text)
 end
 
 local function ShowTooltip(self)
-	if not self.link then return end
+	local info = self.info
+	if not self.link and not info then return end
 
 	LT:UpdateAllFeedTimers(self:GetID())
 
 	GameTooltip:SetOwner(self, 'ANCHOR_NONE')
 	GameTooltip:ClearAllPoints()
 	GameTooltip:SetPoint('BOTTOMRIGHT', self, 'BOTTOMLEFT', -10, 0)
-	GameTooltip:SetHyperlink(self.link)
+	if self.link then
+		GameTooltip:SetHyperlink(self.link)
+	else
+		-- Gold, XP, reputation and the like have no link: a small tooltip with
+		-- the line's own text.
+		GameTooltip:SetText(info.gold and st.StringFormat:GoldFormat(info.gold) or info.name or '')
+	end
+	local ago = LT:FormatAgo(info and info.when)
+	if ago ~= '' then
+		GameTooltip:AddLine(ago, .6, .6, .6)
+	end
 	GameTooltip:Show()
 end
 
@@ -752,6 +771,9 @@ function LT:InitializeLootFeed()
 	self.debugText = st:CreateFontString(self.feed, 'normal', '0/0')
 	self.debugText:SetPoint('RIGHT', self.feed, 'LEFT', -40, 0)
 	self.debugText:Hide()
+
+	-- Before the first draw: the saved feed fills feed_stack as non-fresh entries.
+	self:RestoreFeed()
 
 	self:UpdateLootFeedConfig()
 

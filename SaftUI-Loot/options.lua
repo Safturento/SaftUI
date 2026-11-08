@@ -106,6 +106,14 @@ function LT:GetFeedOptions()
 		fade_time = generators.range(5, 'Fade time', 0, 60, 1),
 		template = generators.template(6),
 		font = font,
+		clear_history = {
+			order = 8,
+			name = 'Clear history',
+			desc = 'Empties the loot feed, including what is saved for this character.',
+			type = 'execute',
+			confirm = true,
+			func = function() LT:ClearFeedHistory() end,
+		},
 	}, apply)
 
 	return Section('Feed', 2, general, BuildPosition('feed', LT.feed, apply))
