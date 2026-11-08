@@ -59,6 +59,21 @@ function MM:OnEnable()
         end)
     end
 
+    -- MinimapCluster is a ResizeLayoutFrame: it grows to cover its children, and
+    -- the zone text, tracking and mail buttons now sit in SaftUI's bar across the
+    -- top of the screen, so the cluster spans it too. Blizzard gives it
+    -- enableMouse, so it ate every click in that strip. Nothing needs the cluster
+    -- itself to take the mouse (its Edit Mode box is a separate frame, hidden
+    -- above); its buttons keep their own. EnableMouse is the widget method, not an
+    -- Edit Mode override, and nothing is written onto the frame. Out of combat,
+    -- in case the cluster counts as protected.
+    local function ClusterClickThrough()
+        MinimapCluster:EnableMouse(false)
+    end
+    if not st:QueueAfterCombat('minimap_cluster_mouse', ClusterClickThrough) then
+        ClusterClickThrough()
+    end
+
     -- Take the minimap out of Blizzard's cluster so Blizzard's Edit Mode no
     -- longer moves it. Parenting resets strata/level, so restore them.
     local strata, level = Minimap:GetFrameStrata(), Minimap:GetFrameLevel()
