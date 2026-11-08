@@ -6,10 +6,11 @@
 -- of the two arrives first.
 --
 -- Recorded drops: st.config.char.loot.drops is a saved set of the drops that
--- already have an entry, so a reload never adds one twice. At load, keys no
--- longer in Blizzard's history are dropped (a later drop could reuse them),
--- and a drop that ended while the addon wasn't watching (a roll that ended
--- during a reload) is added then, as history rather than a fresh line.
+-- already have an entry, so a reload never adds one twice. At load, keys whose
+-- encounter is in Blizzard's history but whose drop isn't are dropped (a later
+-- drop could reuse them), and a drop that ended while the addon wasn't
+-- watching (a roll that ended during a reload) is added then, as history
+-- rather than a fresh line.
 --
 -- Nothing secret is kept or compared: every value read from C_LootHistory goes
 -- through the Plain* checks first.
@@ -671,10 +672,11 @@ function LT:OnLootHistoryClear()
 	RefreshRollBars()
 end
 
--- Once at load. Keeps only the recorded keys still in Blizzard's history, then
--- adds every drop that ended and isn't recorded yet, oldest first, as history.
+-- Once at load. Forgets the recorded keys Blizzard's history no longer has,
+-- then adds every drop that ended and isn't recorded yet, oldest first, as
+-- history.
 local function CatchUp()
-	local live, drops = {}, {}
+	local live, liveEncounters, drops = {}, {}, {}
 	for _, encounter in ipairs(C_LootHistory.GetAllEncounterInfos() or {}) do
 		local encounterID = type(encounter) == 'table' and PlainNumber(encounter.encounterID)
 		if encounterID then
@@ -682,18 +684,25 @@ local function CatchUp()
 				local key = type(drop) == 'table' and DropKey(encounterID, drop)
 				if key then
 					live[key] = true
+					liveEncounters[tostring(encounterID)] = true
 					tinsert(drops, { encounterID = encounterID, drop = drop, start = PlainNumber(drop.startTime) or 0 })
 				end
 			end
 		end
 	end
 
-	-- An empty history at load may only be one that isn't filled yet; pruning
-	-- against it would forget every recorded drop and record them all again.
+	-- The history may be only partly filled when it's read at load, so a key
+	-- goes only when its encounter is there (with its drops) and its drop isn't.
+	-- Keys of encounters that aren't there are kept: forgetting them would
+	-- record those drops again once their encounter comes in. With no encounter
+	-- there at all (an empty history), nothing is pruned.
 	local recorded = RecordedDrops()
-	if next(live) then
+	if next(liveEncounters) then
 		for key in pairs(recorded) do
-			if not live[key] then recorded[key] = nil end
+			local encounter = type(key) == 'string' and key:match('^(%-?%d+):')
+			if encounter and liveEncounters[encounter] and not live[key] then
+				recorded[key] = nil
+			end
 		end
 	end
 

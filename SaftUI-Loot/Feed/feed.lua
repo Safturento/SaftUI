@@ -709,9 +709,12 @@ function LT:UpdateLootFeedConfig()
 end
 
 
+-- Runs every frame, so it reads the filtered list cached by the last
+-- GetFilteredItems() rather than filtering the whole feed (up to 500 entries)
+-- again. Everything that changes the feed or a filter refreshes that cache.
 function LT:UpdateFeedVisibility(feed, elapsed)
 	if self.config.feed.fade_time == 0  then return end
-	local filteredItems = self:GetFilteredItems()
+	local filteredItems = self:GetFilteredItems(true)
 
 	if self.testFeed then
 		local now = GetTime()
@@ -796,7 +799,11 @@ function LT:InitializeLootFeed()
 	self.debugText:Hide()
 
 	-- Before the first draw: the saved feed fills feed_stack as non-fresh entries.
+	-- Then the filtered list is cached once, for the fade and for scrolling,
+	-- which both read the cache (with Fade time 0 nothing else fills it until
+	-- the first new entry).
 	self:RestoreFeed()
+	self:GetFilteredItems()
 
 	self:UpdateLootFeedConfig()
 

@@ -152,9 +152,15 @@ function LT:RestoreFeed()
 	local stack = self:GetAllItems()
 	local now = GetTime()
 	for _, saved in ipairs(self:GetHistoryStore().feed) do
-		if type(saved) == 'table' and saved.name and saved.type then
-			local info = {}
-			for _, key in ipairs(SAVED_FIELDS) do info[key] = saved[key] end
+		-- Only plain values are copied (a hand-edited save could hold anything);
+		-- an entry left without a name or type is skipped.
+		local info = {}
+		if type(saved) == 'table' then
+			for _, key in ipairs(SAVED_FIELDS) do
+				if IsPlain(saved[key]) then info[key] = saved[key] end
+			end
+		end
+		if info.name and info.type then
 			-- Older or hand-edited saves can hold the wrong shapes; drop what would
 			-- error later (the progress bar's min/max, sorting by `when`).
 			if type(info.when) ~= 'number' then info.when = nil end

@@ -1,7 +1,7 @@
 ---
 name: clients
 description: WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 covers:
   - 'SaftUI-Core/constants.lua'
   - 'SaftUI-Core/utilities.lua'
@@ -23,7 +23,11 @@ covers:
   - **Extra action button.** Forever has none: `ActionButtonUtil.IsExtraActionButtonDisabled` (`Blizzard_ActionBar/Camelot`) returns true, there's no `EXTRAACTIONBUTTON1` binding, and Edit Mode hides its Extra Abilities option. `ExtraActionBarFrame` and `ExtraAbilityContainer` still exist, and `Blizzard_ZoneAbility` loads (`AllowLoadGameType: mainline`, which takes in Camelot), so test those on retail.
   - **Minimap.** The day/night indicator is `MinimapCluster.DielFrame`.
   - **Queue eye.** `QueueStatusButton` is an Edit Mode system.
-  - **Loot rolls.** The buttons live under `frame.LootButtonContainer`.
+  - **Loot rolls.**
+    - The roll frame's buttons live under `frame.LootButtonContainer`.
+    - `C_LootHistory`'s drop index is `lootListKey` on Forever and `lootListID` on retail (`EncounterLootDropInfo`). Read either.
+    - `C_LootHistory.GetLootHistoryTime()` and the history's `startTime` and `duration` count milliseconds. Blizzard's Loot Rolls window subtracts one from the other for its timer.
+    - Forever's Loot Rolls window (`GroupLootHistoryFrame`) never opens by itself: `ShouldAutoOpen` in `Blizzard_FrameXML/Camelot/LootHistory.lua` returns false.
   - **Bank.** It's built from bank tabs holding bags (`Enum.BagIndex.CharacterBankTab_*`). There's no `BankPanel.AutoDepositFrame` and no reagent bank, and the warband bank isn't used.
 - Neither client has a reagent bank anymore.
 
