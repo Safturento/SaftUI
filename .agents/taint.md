@@ -26,7 +26,7 @@ covers:
 WoW marks every Lua value written by addon code as *tainted* by that addon. Secure Blizzard code that later reads a tainted value runs tainted, and if it then makes a protected call (moving or showing an action bar, `SetAttribute` on a secure button, etc.), the game blocks it with `ADDON_ACTION_BLOCKED` blamed on SaftUI. The error usually fires far from the cause, often in combat, so these rules are strict.
 
 Third-party addon frames (RestedXP Guides in `SaftUI-Misc/Skinning/restedxp.lua`) aren't Blizzard frames, so rule 1 doesn't bind them. SaftUI still only adds to their scripts (hooks, never `SetScript`) and keeps its state in side tables keyed by their frames.
-The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides the v1 frames itself, and it relies on RestedXP re-anchoring `CurrentStepFrame` (hence a `SetPoint` post-hook that keeps SaftUI's gap) and re-`SetScript`ing the list steps on every guide load (hence hover follows their `SetBackdropColor` calls).
+The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides the v1 frames itself, and it relies on RestedXP re-anchoring `CurrentStepFrame` (hence a `SetPoint` post-hook that keeps SaftUI's gap) and re-`SetScript`ing the list steps on every guide load (hence hover follows their `SetBackdropColor` calls). RestedXP sizes `GuideName` only once, at load, so the skin grows it to fit a long or two-line title.
 
 ## Rules
 

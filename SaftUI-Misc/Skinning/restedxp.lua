@@ -14,9 +14,13 @@ local SK = st:GetModule('Skinning')
 --   two panels comes from a post-hook on CurrentStepFrame's SetPoint.
 -- - It SetScripts each list step's OnEnter/OnLeave anew on every guide load, so
 --   the hover highlight follows their SetBackdropColor calls, not a script hook.
+-- - It sizes GuideName only once, at load, so the skin can grow it to fit the
+--   title (FitTitle).
 local RX = SK:NewModule('RestedXP')
 
 local TITLE_SIZE_BONUS = 3
+local TITLE_PAD = 6         -- room above and below the guide name's text
+local TITLE_MIN_HEIGHT = 35 -- RestedXP's own height for the guide name
 local DIVIDER_ALPHA = 0.5
 local STEPS_GAP = 7 -- added to RestedXP's offset of the current steps, away from the window
 
@@ -40,6 +44,19 @@ function RX:GetStyle()
 	return (chat and chat.template) or 'thicktransparent', (chat and chat.font) or 'normal'
 end
 
+-- RestedXP gives the guide name a fixed 35px, which a two-line title in Colus
+-- overflows. This sizes it to the text plus padding. Its bottom is anchored to the
+-- step list, so it grows upward, and the current steps move up with it.
+local function FitTitle()
+	local guideName = RX.frames and RX.frames.GuideName
+	if not guideName then return end
+	local textHeight = guideName.text:GetStringHeight() or 0
+	local height = math.max(TITLE_MIN_HEIGHT, math.ceil(textHeight + 2 * TITLE_PAD))
+	-- An equal height is left alone, so the resize hook doesn't loop.
+	if math.abs((guideName:GetHeight() or 0) - height) < 0.5 then return end
+	guideName:SetHeight(height)
+end
+
 -- Applies SaftUI's face and outline at the size RestedXP asked for.
 local function ApplyFont(fs)
 	local state = fontState[fs]
@@ -56,6 +73,8 @@ local function ApplyFont(fs)
 	applyingFont = true
 	fs:SetFont(face, size, outline)
 	applyingFont = false
+
+	if state.kind == 'title' then FitTitle() end
 end
 
 -- RestedXP's text keeps the size it asks for (its "Guide font size" setting) but
@@ -380,6 +399,11 @@ function RX:Setup()
 
 	HookFont(guideName.text, 'title')
 	HookFont(footer.text, 'text')
+	-- Refit the title's box when RestedXP sets a guide's name, and when a resize
+	-- rewraps it. HookFont's ApplyFont refits on a font change.
+	hooksecurefunc(guideName.text, 'SetText', FitTitle)
+	guideName:HookScript('OnSizeChanged', FitTitle)
+	FitTitle()
 
 	self:SecureHook(rxp, 'UpdateVisuals', 'SkinChrome')
 
