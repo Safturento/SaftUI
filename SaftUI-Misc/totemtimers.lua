@@ -8,7 +8,8 @@ local TB = st:GetModule('TotemBar')
 	element's colour, and a countdown: m:ss from a minute up, whole seconds below, rounded
 	up as Blizzard's totem timers are. Both turn the warning colour (the profile's red
 	text colour) in the last 10 seconds. Each can be turned off, and with both on the text
-	sits above a thin bar or on a taller one (timer_bar, timer_text, timer_text_position).
+	sits above the bar or on it (timer_bar, timer_text, timer_text_position). The bar is
+	timer_bar_height tall, and with the text on it never shorter than the text needs.
 
 	One timer per slot button (MultiCastSlotButton1-4), made as its child, so it hides
 	with the bar (including under "Hide totem bar"'s hidden parent) and with a slot button
@@ -75,12 +76,7 @@ local TB = st:GetModule('TotemBar')
 -- The gap between the button's top and the timer.
 local TIMER_GAP = 3
 
--- The bar's height with its border: thin with the text above it or no text, tall with the
--- text on it.
-local BAR_THIN = 8
-local BAR_TALL = 14
-
--- The gap between a thin bar and the text above it.
+-- The gap between the bar and the text above it.
 local TEXT_GAP = 2
 
 -- The text's height when the profile's button font can't be read.
@@ -105,7 +101,8 @@ local timers = setmetatable({}, { __mode = 'k' })
 -- True once TB:SetupTimers has run, with the hooks in place.
 local timersReady = false
 
--- The height Blizzard gave the flyout on its last opening, before it was grown.
+-- The flyout's height on its last opening, before it was grown: Blizzard's, corrected for
+-- the choices' size (totemskin.lua's SizeChoices, which runs before).
 local flyoutBaseHeight
 
 ------------------------------------
@@ -133,6 +130,18 @@ local function TextHeight()
 	local font = TimerFont()
 	local size = font and select(2, font:GetFont())
 	return math.ceil(size or DEFAULT_TEXT_HEIGHT)
+end
+
+-- The bar's height with its border: the setting, and with the text on it (onBar) never
+-- less than the text inside the template's border. With the default pixel font (10) and
+-- thick template (2 each side) that's 14.
+local function BarHeight(onBar)
+	local height = TB.config.timer_bar_height
+	if onBar then
+		local border = 2 * TemplateInset(st.config.profile.buttons.template)
+		height = math.max(height, TextHeight() + border)
+	end
+	return height
 end
 
 -- A slot's element colour, or the text colour for a slot without one.
@@ -496,12 +505,12 @@ function TB:GetTimerAreaHeight()
 	local showBar, showText = config.timer_bar, config.timer_text
 	if not (showBar or showText) then return 0 end
 	if showBar and showText and config.timer_text_position == 'on' then
-		return TIMER_GAP + BAR_TALL
+		return TIMER_GAP + BarHeight(true)
 	end
 
 	local height = TIMER_GAP
 	if showBar then
-		height = height + BAR_THIN
+		height = height + BarHeight(false)
 	end
 	if showText then
 		height = height + (showBar and TEXT_GAP or 0) + TextHeight()
@@ -537,6 +546,7 @@ function TB:ApplyTimerLayout()
 	local inset = TemplateInset(template)
 	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
+	local barHeight = BarHeight(onBar)
 
 	-- The colours may have changed.
 	textCurve = nil
@@ -547,7 +557,7 @@ function TB:ApplyTimerLayout()
 
 		local backdrop, bar, text = timer.backdrop, timer.bar, timer.text
 		st:SetTemplate(backdrop, template)
-		backdrop:SetHeight(onBar and BAR_TALL or BAR_THIN)
+		backdrop:SetHeight(barHeight)
 		backdrop:SetShown(showBar)
 		st:SetInside(bar, inset)
 

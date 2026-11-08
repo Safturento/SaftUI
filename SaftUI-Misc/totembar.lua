@@ -2,10 +2,10 @@ local st = SaftUI
 local TB = st:NewModule('TotemBar')
 
 --[[
-	A /sui option to hide WoW Forever's totem bar, MultiCastActionBarFrame
-	(Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml). Blizzard_ActionBar loads it
-	only for the camelot, wrath and cata game types, so retail has no totem bar: nothing
-	here runs there and the /sui section doesn't appear.
+	/sui options to hide WoW Forever's totem bar, MultiCastActionBarFrame
+	(Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml), and to size and space its
+	buttons. Blizzard_ActionBar loads it only for the camelot, wrath and cata game types, so
+	retail has no totem bar: nothing here runs there and the /sui section doesn't appear.
 
 	What Blizzard does with the bar:
 	  - Shows and hides it in TotemActionBarMixin:UpdateShownState, through the bar's
@@ -47,11 +47,55 @@ local TB = st:NewModule('TotemBar')
 	Blizzard's spot mid-fight.
 
 	Nothing is written onto the bar or any Blizzard table. The only calls on the bar are
-	GetParent, GetFrameLevel, SetParent and SetFrameLevel, all plain widget methods (the
-	bar's Edit Mode overrides are SetScale, SetPoint, ClearAllPoints, SetShown and Hide).
+	GetParent, GetFrameLevel, SetParent, SetFrameLevel and SetSize (through st:SetSizeDirect),
+	all plain widget methods (the bar's Edit Mode overrides are SetScale, SetPoint,
+	ClearAllPoints, SetShown and Hide).
+
+	The buttons' size and the gap between them are settings (button_size, button_spacing),
+	laid out by TB:ApplyButtonLayout. Blizzard's XML makes every button 30px, puts the
+	first one 3 in from the bar's bottom-left corner and the rest 3 or 8 apart, in a 230x38
+	bar. SaftUI keeps that 3px margin and puts one gap between all neighbouring buttons:
+	  - The summon button in the corner, then the element buttons, then the recall button
+	    after the last element shown. Blizzard hides the summon button without a summon
+	    spell, and the elements then start in the corner.
+	  - Each element is a slot button with an action button on it per summon page
+	    (totemskin.lua). Each page's four action buttons sit in a page frame. The pages go
+	    where the first slot button goes, a row of buttons wide and a button tall, and
+	    their buttons chain the same way, so every page lines up with the slot buttons.
+	  - The bar is sized to hold the summon button, four elements and the recall button
+	    (margin + buttons + gaps + margin), whichever show, as Blizzard's 230x38 holds
+	    them all. That keeps Blizzard's Edit Mode outline (its Selection is set to the
+	    bar's edges) and snapping on the buttons. It's only sized, never moved. Edit Mode
+	    never sizes it. In its default position UpdateBottomActionBarPositions anchors
+	    the bar's bottom-left corner above the bars stacked on MainActionBar, so a new size
+	    doesn't move the buttons. The stack reads each bar's height for the next bar up,
+	    and the totem bar is the last one. With Camelot's stacking from MainActionBar
+	    (ACTION_BARS_RELATIVE_TO_BASE_POSITIONING) it doesn't read the bars' widths. A bar
+	    moved in Edit Mode stays on the anchor point Edit Mode saved, which can be its
+	    centre or right edge, so there a new size moves the buttons around that point, as
+	    resizing any Edit Mode frame would.
+	Blizzard re-anchors some of these in MultiCastActionBarFrame_Update, on
+	PLAYER_ENTERING_WORLD, UPDATE_MULTI_CAST_ACTIONBAR and a summon page change, in combat
+	too:
+	  - MultiCastSummonSpellButton_Update puts the pages and the first slot button 8 after
+	    the summon button, or in the corner while it's hidden.
+	  - MultiCastRecallSpellButton_Update puts the recall button 8 after the last shown slot
+	    button.
+	Post-hooks on both put SaftUI's layout back. Everything it sizes and moves is
+	protected: the summon, recall and action buttons are secure, the slot buttons are
+	protected through the recall button's anchor (.agents/taint.md rule 6), and the pages
+	and the bar hold secure buttons. So in combat the layout waits for the end of combat,
+	and a fight that runs Blizzard's update (a summon page change does) shows Blizzard's 8
+	after the summon button and before the recall button until it ends. The sizes and the
+	gaps between elements stay SaftUI's, as Blizzard never sets them, and the pages move
+	with the first slot button, so they still line up. SaftUI
+	anchors these by the points Blizzard re-sets (BOTTOMLEFT for the pages and the first
+	slot button, LEFT for the recall button), so Blizzard's SetPoint replaces SaftUI's
+	anchor instead of adding a second one that would pull against it.
 
 	SaftUI's look for the bar's buttons and its flyout is in totemskin.lua, and the totem
-	timers above its element buttons are in totemtimers.lua.
+	timers above its element buttons are in totemtimers.lua. The flyout's choices follow the
+	button size (totemskin.lua), and the timers follow the slot buttons' width.
 ]]
 
 -- Puts the bar under the hidden frame, or back under the parent it had, as the
@@ -87,9 +131,144 @@ function TB:Apply()
 	end
 end
 
+------------------------------------
+--- Button layout -------------------
+------------------------------------
+
+-- Blizzard's margin between the bar's edges and its buttons: its XML puts the first
+-- button 3 in from the bar's bottom-left corner.
+local MARGIN = 3
+
+-- Blizzard's button size, which the buttons have until SaftUI first lays them out.
+local BLIZZARD_BUTTON_SIZE = 30
+
+-- Blizzard's frames the layout sizes and places, collected once by TB:SetupButtonLayout:
+-- { summon, recall, slots = { MultiCastSlotButton1-4 }, pages = { { frame, buttons } } },
+-- a page being a MultiCastActionPage and its four MultiCastActionButtons. A SaftUI table,
+-- so nothing is written onto Blizzard's frames. nil until the layout is set up.
+local layout
+
+-- The button size last laid out. The timers' text is centred from the slot buttons'
+-- width, and the cooldown numbers' font depends on the size (totemskin.lua), so both are
+-- refreshed when it changes.
+local laidOutSize = BLIZZARD_BUTTON_SIZE
+
+-- Sizes a row of buttons and anchors each one after the one before it, spacing apart,
+-- LEFT to RIGHT as Blizzard chains them. The caller places the first one.
+local function ChainRow(buttons, size, spacing)
+	for i, button in ipairs(buttons) do
+		button:SetSize(size, size)
+		if i > 1 then
+			button:ClearAllPoints()
+			button:SetPoint('LEFT', buttons[i - 1], 'RIGHT', spacing, 0)
+		end
+	end
+end
+
+-- Lays the bar's buttons out from the profile (see the top of this file): their size,
+-- one gap between neighbours, and the bar's size around them. Out of combat only, as all
+-- of it is protected: in combat this waits for the end of combat, then reads the profile
+-- and Blizzard's buttons again.
+function TB:ApplyButtonLayout()
+	local bar = self.bar
+	if not (bar and layout) then return end
+	if st:QueueAfterCombat('totembar_layout', function() self:ApplyButtonLayout() end) then return end
+
+	local size, spacing = self.config.button_size, self.config.button_spacing
+	local slots = layout.slots
+	local numSlots = #slots
+
+	st:SetSizeDirect(bar,
+		2 * MARGIN + (numSlots + 2) * size + (numSlots + 1) * spacing,
+		2 * MARGIN + size)
+
+	local summon = layout.summon
+	summon:SetSize(size, size)
+	summon:ClearAllPoints()
+	summon:SetPoint('BOTTOMLEFT', bar, 'BOTTOMLEFT', MARGIN, MARGIN)
+
+	-- The elements start after the summon button, or in its place while Blizzard hides it.
+	local x = summon:IsShown() and MARGIN + size + spacing or MARGIN
+
+	ChainRow(slots, size, spacing)
+	slots[1]:ClearAllPoints()
+	slots[1]:SetPoint('BOTTOMLEFT', bar, 'BOTTOMLEFT', x, MARGIN)
+
+	-- Blizzard anchors each page's first button by its LEFT, so with the page a button
+	-- tall the row's bottom is the page's.
+	for _, page in ipairs(layout.pages) do
+		local frame, buttons = page.frame, page.buttons
+		frame:SetSize(numSlots * size + (numSlots - 1) * spacing, size)
+		frame:ClearAllPoints()
+		frame:SetPoint('BOTTOMLEFT', bar, 'BOTTOMLEFT', x, MARGIN)
+		ChainRow(buttons, size, spacing)
+		buttons[1]:ClearAllPoints()
+		buttons[1]:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+	end
+
+	-- After the last element shown, as Blizzard does: it shows the first
+	-- numActiveSlots slot buttons and hides the rest. With none shown, Blizzard hides the
+	-- recall button too, and it goes after the first slot button.
+	local last = slots[1]
+	for _, slot in ipairs(slots) do
+		if slot:IsShown() then last = slot end
+	end
+	local recall = layout.recall
+	recall:SetSize(size, size)
+	recall:ClearAllPoints()
+	recall:SetPoint('LEFT', last, 'RIGHT', spacing, 0)
+
+	if size ~= laidOutSize then
+		laidOutSize = size
+		self:ApplySkin()
+		self:ApplyTimerLayout()
+	end
+end
+
+-- Collects the frames the layout places, hooks Blizzard's updates that re-anchor them,
+-- and lays them out. Once, out of combat, as the layout sizes and moves protected frames:
+-- after a /reload in combat the buttons keep Blizzard's layout until the end of combat. Not
+-- set up if any of Blizzard's frames is missing.
+function TB:SetupButtonLayout()
+	if layout then return end
+	if st:QueueAfterCombat('totembar_layout_setup', function() self:SetupButtonLayout() end) then return end
+
+	local perPage = NUM_MULTI_CAST_BUTTONS_PER_PAGE or 4
+	local frames = {
+		summon = _G.MultiCastSummonSpellButton,
+		recall = _G.MultiCastRecallSpellButton,
+		slots = {},
+		pages = {},
+	}
+	if not (frames.summon and frames.recall) then return end
+	for i = 1, perPage do
+		local slot = _G['MultiCastSlotButton' .. i]
+		if not slot then return end
+		frames.slots[i] = slot
+	end
+	for p = 1, NUM_MULTI_CAST_PAGES or 3 do
+		local page = { frame = _G['MultiCastActionPage' .. p], buttons = {} }
+		if not page.frame then return end
+		for i = 1, perPage do
+			local button = _G['MultiCastActionButton' .. ((p - 1) * perPage + i)]
+			if not button then return end
+			page.buttons[i] = button
+		end
+		frames.pages[p] = page
+	end
+	layout = frames
+
+	local function Reapply() self:ApplyButtonLayout() end
+	TB.PostHook('MultiCastSummonSpellButton_Update', Reapply)
+	TB.PostHook('MultiCastRecallSpellButton_Update', Reapply)
+
+	self:ApplyButtonLayout()
+end
+
 -- A profile change.
 function TB:UpdateConfig()
 	self:Apply()
+	self:ApplyButtonLayout()
 	self:ApplySkin()
 	self:ApplyTimerLayout()
 end
@@ -109,6 +288,7 @@ function TB:Setup()
 	self:Apply()
 
 	self:SetupSkinAndTimers()
+	self:SetupButtonLayout()
 end
 
 -- The timers above the element buttons (totemtimers.lua) and SaftUI's look for the
@@ -148,15 +328,22 @@ function TB:GetConfigTable()
 	local hide = st.Config.generators.toggle(1, 'Hide totem bar', 'full')
 	hide.desc = "Hides Blizzard's totem bar. Turning this off shows it again whenever Blizzard would show it. If the bar is on screen when you change this, it applies after a /reload."
 
+	-- The bar's buttons (TB:ApplyButtonLayout). /sui doesn't open in combat, so these
+	-- always apply straight away.
+	local buttonSize = st.Config.generators.range(2, 'Button size', 20, 60, 1)
+	buttonSize.desc = "Every button on the bar, its border included. The totem choices that open above a button are 6 smaller, so the flyout is as wide as the button. Blizzard's are 30."
+	local buttonSpacing = st.Config.generators.range(3, 'Spacing', 0, 20, 1)
+	buttonSpacing.desc = 'The gap between buttons.'
+
 	-- The totem timers above the element buttons (totemtimers.lua).
-	local timerBar = st.Config.generators.toggle(2, 'Show timer bar', 'full')
+	local timerBar = st.Config.generators.toggle(4, 'Show timer bar', 'full')
 	timerBar.desc = "A bar above each element button that drains, in the element's colour, as that element's totem runs out. It turns red in the last 10 seconds."
-	local timerText = st.Config.generators.toggle(3, 'Show timer text', 'full')
+	local timerText = st.Config.generators.toggle(5, 'Show timer text', 'full')
 	timerText.desc = "How long each element's totem has left, above its button. It turns red in the last 10 seconds."
 
 	-- Text alone sits just above the button either way, so this only matters with both on.
 	local timerTextPosition = {
-		order = 4,
+		order = 6,
 		name = 'Text position',
 		desc = 'Where the time goes while both the bar and the text show: above a thin bar, or on a taller one.',
 		type = 'select',
@@ -164,6 +351,10 @@ function TB:GetConfigTable()
 		sorting = { 'above', 'on' },
 		disabled = function() return not (self.config.timer_bar and self.config.timer_text) end,
 	}
+
+	local timerBarHeight = st.Config.generators.range(7, 'Timer bar height', 2, 20, 1)
+	timerBarHeight.desc = "The timer bar's height, its border included. With the text on the bar, it's never shorter than the text needs."
+	timerBarHeight.disabled = function() return not self.config.timer_bar end
 
 	return {
 		name = 'Totem Bar',
@@ -174,17 +365,22 @@ function TB:GetConfigTable()
 			self.config[key] = value
 			if key == 'hide' then
 				self:Apply()
+			elseif key == 'button_size' or key == 'button_spacing' then
+				self:ApplyButtonLayout()
 			else
 				self:ApplyTimerLayout()
 			end
 		end,
 		args = {
 			hide = hide,
+			button_size = buttonSize,
+			button_spacing = buttonSpacing,
 			timer_bar = timerBar,
 			timer_text = timerText,
 			timer_text_position = timerTextPosition,
+			timer_bar_height = timerBarHeight,
 			move_note = {
-				order = 5,
+				order = 8,
 				type = 'description',
 				name = ("To move the totem bar, open Blizzard's Edit Mode, tick %s in its settings and drag the bar. "
 					.. "SaftUI doesn't move it: Blizzard re-places the bar during combat, and because its buttons "

@@ -74,6 +74,11 @@ So:
     choices "Above the bar" (`'above'`) and "On the bar" (`'on'`). It only
     matters while both the bar and the text are on (text alone sits above the
     button either way), so it's greyed out otherwise (my call).
+  - Revised 2026-11-08: "Button size" (`button_size`, 20–60, default 30),
+    "Spacing" (`button_spacing`, 0–20, default 3) and "Timer bar height"
+    (`timer_bar_height`, 2–20, default 8; with the text on the bar, never shorter
+    than the text needs). See the revised note under "Settled after the builder
+    check".
 - Changing any of them applies straight away, and profile switches apply them
   (`TB:UpdateConfig`).
 
@@ -169,6 +174,14 @@ So:
   table. Buttons keep Blizzard's sizes, since resizing secure buttons is blocked
   in combat and Blizzard sizes them. Keybinds use the profile's button font. No
   hotkey shortening: that lives in ActionBars.
+  - **Revised 2026-11-08:** sizes are now settings, applied out of combat. Button
+    size (`button_size`, default 30) and one gap between neighbouring buttons
+    (`button_spacing`, default 3, in place of Blizzard's 3 and 8) are laid out by
+    `SaftUI-Misc/totembar.lua`, which also sizes the bar to fit and puts the layout
+    back after Blizzard's bar update re-anchors the buttons (waiting for the end of
+    combat in a fight). The flyout's choices follow the button size, 6 smaller.
+    The timer bar's height is a setting too (`timer_bar_height`, default 8). See
+    `totembar.lua`'s header for the details.
 - **Timer data path.** What the user sees comes first: the format and the
   warning colour. The other rule is to never error on a secret value.
   - **The bar:** `GetTotemDuration(slot)` with `StatusBar:SetTimerDuration`,

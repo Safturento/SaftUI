@@ -7,8 +7,9 @@ local TB = st:GetModule('TotemBar')
 	flat backdrop in the profile's button template, the icon cropped square, flat hover,
 	pushed and checked, and the profile's button font on the keybind.
 	SaftUI-ActionBars/skin.lua is the visual reference, but Misc only needs Core, so
-	nothing here calls into ActionBars. Buttons keep Blizzard's sizes: Blizzard sizes
-	them, and resizing a secure button is blocked in combat.
+	nothing here calls into ActionBars. The buttons' size is the bar's setting, and
+	totembar.lua sizes them, out of combat. The skin holds at any size: the backdrop fills
+	the button and the icon is inset from the button's edges by the template's border.
 
 	What's skinned:
 	  - The summon and recall buttons, with the template's own border.
@@ -26,7 +27,9 @@ local TB = st:GetModule('TotemBar')
 	    button's page): a SaftUI panel behind its column of choices, and each choice
 	    skinned like a button. The first choice of an element's flyout ("none", it
 	    clears the slot) is an empty button in the element's colour. Blizzard makes the
-	    choices (MultiCastFlyoutButton<n>) the first time a flyout needs them.
+	    choices (MultiCastFlyoutButton<n>) the first time a flyout needs them, 24px for
+	    its 30px buttons. They're sized to the bar's buttons less the panel's padding on
+	    each side, so the panel is as wide as the button the flyout opens from.
 	  - The flyout's open and close arrows: SaftUI's flat arrow, in the element's colour
 	    (the text colour for the summon button's), drawn thicker under the mouse.
 
@@ -44,9 +47,11 @@ local TB = st:GetModule('TotemBar')
 	    bar updates, and the bar re-orders the elements when a slot is learned: the
 	    border takes the colour of whichever element the button now holds.
 	  - MultiCastFlyoutFrame_LoadSlotSpells and _LoadPageSpells make any new choices and
-	    set every shown choice's icon and tex coords, on each opening: new choices are
-	    skinned, the icons cropped again, the "none" choice's icon hidden, and the panel
-	    anchored to the column again (it's as long as the number of choices).
+	    set every shown choice's icon and tex coords, on each opening: the choices are
+	    sized, new ones skinned, the icons cropped again, the "none" choice's icon hidden,
+	    and the panel anchored to the column again (it's as long as the number of
+	    choices). Both set the flyout's height from the shown choices' heights first, so
+	    sizing the choices corrects that height (SizeChoices).
 	  - MultiCastFlyoutFrame_ToggleFlyout opens the flyout on a button: the "none"
 	    choice and the close arrow take that button's element colour.
 	  - MultiCastFlyoutFrameOpenButton_Show moves the open arrow to a hovered button: it
@@ -60,7 +65,8 @@ local TB = st:GetModule('TotemBar')
 	anchored to, not to its children), and the rest only touches SaftUI's own frames
 	and Blizzard's regions. The slot buttons, on the other hand, are protected that
 	way: the recall button is anchored to the last shown one and they chain left to
-	right, so they're never moved or resized here.
+	right, so they're never moved or resized here (totembar.lua lays them out, out of
+	combat). The flyout's choices are sized here, in combat too.
 
 	The flyout's layout leaves room for the totem timers: the panel is anchored to the
 	flyout's first and last shown choices, not to the flyout's edges, and the arrows'
@@ -100,6 +106,10 @@ local PANEL_PADDING = 3
 
 -- The size st:CreateArrowButton draws SaftUI's arrows at.
 local ARROW_SIZE = 16
+
+-- From this button size up, cooldown numbers are in the larger pixel font, as on SaftUI's
+-- action bars (SaftUI-ActionBars/skin.lua's LARGE_COUNTDOWN_SIZE).
+local LARGE_COUNTDOWN_SIZE = 36
 
 ------------------------------------
 --- Element colours -----------------
@@ -249,9 +259,9 @@ local function StyleButton(button, skin, template)
 		end
 	end
 
-	-- Cooldown numbers in the pixel font, as on SaftUI's action bars below 36px
-	-- (SaftUI-ActionBars/skin.lua); these buttons are 30px.
-	local countdownFont = st:GetFont('pixel')
+	-- Cooldown numbers in the pixel font, larger on large buttons, as on SaftUI's action
+	-- bars. A new button size styles the buttons again (TB:ApplyButtonLayout).
+	local countdownFont = st:GetFont(TB.config.button_size >= LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
 	if countdownFont and button.cooldown and button.cooldown.GetCountdownFontString then
 		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end
@@ -396,6 +406,34 @@ end
 --- Flyout --------------------------
 ------------------------------------
 
+-- Sizes the flyout's choices to the bar's buttons less the panel's padding, straight
+-- after Blizzard loaded them. Blizzard has just set the flyout's height from the shown
+-- choices' heights as they were (24 for one it made just now), so the height is corrected
+-- by how much those choices grow, keeping Blizzard's own gaps and padding. That has to
+-- happen before MultiCastFlyoutFrame_ToggleFlyout returns, as the timers grow the flyout
+-- from its height then (totemtimers.lua). So the choices aren't sized anywhere else: a
+-- flyout that's open while the button size changes keeps its old choices until it next
+-- opens.
+local function SizeChoices()
+	local flyout = MultiCastFlyoutFrame
+	local buttons = flyout and flyout.buttons
+	if not buttons then return end
+	local height = flyout:GetHeight()
+	if issecretvalue(height) then return end
+
+	local size = TB.config.button_size - 2 * PANEL_PADDING
+	local grow = 0
+	for _, button in ipairs(buttons) do
+		if button:IsShown() then
+			grow = grow + size - button:GetHeight()
+		end
+		button:SetSize(size, size)
+	end
+	if grow ~= 0 then
+		flyout:SetHeight(height + grow)
+	end
+end
+
 -- After Blizzard loads the flyout's choices (MultiCastFlyoutFrame_LoadSlotSpells or
 -- _LoadPageSpells): skins any new ones, crops the icons Blizzard just set (it resets
 -- their tex coords), hides the "none" choice's icon, and anchors the panel to the shown
@@ -487,15 +525,20 @@ function TB:SetupSkin()
 	if MultiCastFlyoutFrameOpenButton then SkinArrow(MultiCastFlyoutFrameOpenButton, 'up') end
 	if MultiCastFlyoutFrameCloseButton then SkinArrow(MultiCastFlyoutFrameCloseButton, 'down') end
 
+	local function OnLoadChoices()
+		SizeChoices()
+		UpdateFlyoutButtons()
+	end
 	PostHook('MultiCastSlotButton_Update', ColorSlotButton)
-	PostHook('MultiCastFlyoutFrame_LoadSlotSpells', UpdateFlyoutButtons)
-	PostHook('MultiCastFlyoutFrame_LoadPageSpells', UpdateFlyoutButtons)
+	PostHook('MultiCastFlyoutFrame_LoadSlotSpells', OnLoadChoices)
+	PostHook('MultiCastFlyoutFrame_LoadPageSpells', OnLoadChoices)
 	PostHook('MultiCastFlyoutFrame_ToggleFlyout', ColorFlyout)
 	PostHook('MultiCastFlyoutFrameOpenButton_Show', function(button, kind, parent)
 		ColorArrow(button, ButtonSlot(kind, parent))
 	end)
 
-	-- Choices a flyout already made (e.g. one opened in combat before this ran).
+	-- Choices a flyout already made (e.g. one opened in combat before this ran). They're
+	-- sized at the flyout's next opening (SizeChoices).
 	UpdateFlyoutButtons()
 	self:ApplySkin()
 end

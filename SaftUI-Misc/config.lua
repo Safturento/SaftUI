@@ -62,18 +62,24 @@ st.defaults.swingtimer = {
 }
 
 -- Forever's totem bar (SaftUI-Misc/totembar.lua). Shown by default, as Blizzard shows it.
--- timer_bar and timer_text show a draining bar and a countdown above each element button
--- while that element has a totem down (SaftUI-Misc/totemtimers.lua). timer_text_position
--- is 'above' (a thin bar with the text above it) or 'on' (a taller bar with the text on
--- it); it only applies while both show. colors are the bar's element colours, by element
--- (SaftUI-Misc/totemskin.lua): each element button's border, its flyout's "none" choice
--- and its timer bar. Sampled from Blizzard's UI-TotemBar border art, so they read as the
--- same elements. Not in /sui.
+-- button_size is every button on the bar, its border included (Blizzard's is 30), and
+-- button_spacing the gap between neighbouring buttons (3, as on SaftUI's action bars;
+-- Blizzard has 3 or 8). timer_bar and timer_text show a draining bar and a countdown above
+-- each element button while that element has a totem down (SaftUI-Misc/totemtimers.lua).
+-- timer_text_position is 'above' (a thin bar with the text above it) or 'on' (a taller bar
+-- with the text on it); it only applies while both show. timer_bar_height is the bar's
+-- height with its border; with the text on it the bar is never shorter than the text
+-- needs. colors are the bar's element colours, by element (SaftUI-Misc/totemskin.lua):
+-- each element button's border, its flyout's "none" choice and its timer bar. Sampled from
+-- Blizzard's UI-TotemBar border art, so they read as the same elements. Not in /sui.
 st.defaults.totembar = {
 	hide = false,
+	button_size = 30,
+	button_spacing = 3,
 	timer_bar = true,
 	timer_text = true,
 	timer_text_position = 'above',
+	timer_bar_height = 8,
 	colors = {
 		earth = { 0.29, 0.55, 0.16 },
 		fire = { 0.71, 0.28, 0.13 },
