@@ -22,6 +22,14 @@ local st = SaftUI
 	    their count and macro name keep the shape and go unused.
 	template is the backdrop template every button uses.
 
+	The extra buttons (extras.lua) have a table each too, 'extra' (the extra
+	action button), 'zone' (the zone ability) and 'vehicleleave' (the leave
+	vehicle button), with a position and:
+	  - scale on the extra action button and zone ability: Blizzard's own
+	    buttons, 52px at scale 1.
+	  - size on the leave vehicle button, SaftUI's own: its edge, border
+	    included, as on the bars.
+
 	The default layout, at 45px buttons 3px apart (a 48px pitch):
 	  - Bars 1-3 are rows of 12 at the bottom centre. Bar 1 is 20px up from the
 	    bottom edge (st.CLAMP_INSET, the minimap's gap), and bars 2 and 3 stack above
@@ -38,12 +46,37 @@ local st = SaftUI
 	    corner, so neither is centred on an axis. All 10 pet buttons are 327px,
 	    more than half of bar 3, so the extra action and zone ability buttons go
 	    above this row.
+	  - The extra action button and the zone ability sit side by side above the
+	    pet and stance row, either side of the centre, their centres 226px
+	    apart as Blizzard's container puts them. Blizzard's art around each
+	    reaches (128 - 52) / 2 = 38px past the button, so they're that far above
+	    the row: the art stays off the pet and stance buttons. They're anchored
+	    by their inner bottom corner to bar 3's top, so neither is centred.
+	  - The leave vehicle button, 30px like the pet and stance buttons, sits
+	    between them, level with their middle.
 ]]
 
 local pixel = st.defaults.fonts.pixel
 
 -- The gap between buttons, and between the bars the default layout stacks.
 local SPACING = 3
+
+-- The pet and stance buttons, and the leave vehicle button.
+local SMALL_SIZE = 30
+
+-- Blizzard's extra action and zone ability buttons at scale 1.
+local BLIZZARD_SIZE = 52
+
+-- How far above bar 3's top the extra action and zone ability sit: past the
+-- pet and stance row, and the 38px of Blizzard's art below the buttons.
+local EXTRA_Y = SPACING + SMALL_SIZE + 38
+
+-- How far from the centre their inner edges are: centres 226px apart.
+local EXTRA_X = 113 - BLIZZARD_SIZE / 2
+
+local function Position(point, frame, rel_point, x_off, y_off)
+	return { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off }
+end
 
 local function Text(point, x_off, y_off)
 	return {
@@ -66,7 +99,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		perrow = perrow,
 		size = 45,
 		spacing = SPACING,
-		position = { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off },
+		position = Position(point, frame, rel_point, x_off, y_off),
 		visibility = 'always',
 		fade_alpha = 0.3,
 		text = {
@@ -82,7 +115,7 @@ end
 local function SmallBar(point, rel_point)
 	local bar = Bar(true, 10, point, 'SaftUI_ActionBar3', rel_point, 0, SPACING)
 	bar.buttons = 10
-	bar.size = 30
+	bar.size = SMALL_SIZE
 	return bar
 end
 
@@ -101,4 +134,17 @@ st.defaults.actionbars = {
 	bar8 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -SPACING, 0),
 	pet = SmallBar('BOTTOMLEFT', 'TOPLEFT'),
 	stance = SmallBar('BOTTOMRIGHT', 'TOPRIGHT'),
+
+	extra = {
+		scale = 1,
+		position = Position('BOTTOMRIGHT', 'SaftUI_ActionBar3', 'TOP', -EXTRA_X, EXTRA_Y),
+	},
+	zone = {
+		scale = 1,
+		position = Position('BOTTOMLEFT', 'SaftUI_ActionBar3', 'TOP', EXTRA_X, EXTRA_Y),
+	},
+	vehicleleave = {
+		size = SMALL_SIZE,
+		position = Position('BOTTOM', 'SaftUI_ActionBar3', 'TOP', 0, EXTRA_Y + (BLIZZARD_SIZE - SMALL_SIZE) / 2),
+	},
 }

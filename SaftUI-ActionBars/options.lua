@@ -16,6 +16,10 @@ local AB = st:GetModule('ActionBars')
 	through st:SafeReposition: the bars are secure, so they can't be moved in
 	combat. Clicking a bar opens its General tab.
 
+	ab_extra, ab_zone and ab_vehicleleave move the extra buttons' holders
+	(extras.lua), which always have a size. Their outlines say when the
+	buttons show, as they mostly don't.
+
 	/sui -> Action Bars has one section per bar, each with tabs:
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
 	    button size and spacing, and the Position box (Config:GetOptionsTable
@@ -27,9 +31,13 @@ local AB = st:GetModule('ActionBars')
 	    and stance bars only have the hotkey (AB.barTypes texts).
 	  - Visibility: always, in combat only, or faded until moused over, with how
 	    faded.
-	Every option applies at once through AB:UpdateBar (bars.lua). /sui can't be
-	open in combat, so none of this runs in combat lockdown; a profile switch in
-	combat waits for the end of combat (AB:UpdateConfig).
+	Then one section per extra button, with General: Scale for Blizzard's extra
+	action button and zone ability, Size for SaftUI's leave vehicle button, and
+	the Position box.
+	Every option applies at once through AB:UpdateBar (bars.lua) or
+	AB:LayoutExtra (extras.lua). /sui can't be open in combat, so none of this
+	runs in combat lockdown; a profile switch in combat waits for the end of
+	combat (AB:UpdateConfig).
 ]]
 
 local VISIBILITY_VALUES = {
@@ -43,6 +51,20 @@ local VISIBILITY_ORDER = { 'always', 'combat', 'mouseover' }
 local HIDDEN_LABELS = {
 	combat = 'in combat',
 	mouseover = 'mouseover',
+}
+
+-- The second line of each extra button's outline label: when it's on screen.
+local EXTRA_NOTES = {
+	extra = 'when active',
+	zone = 'when active',
+	vehicleleave = 'vehicles, flights',
+}
+
+-- The extra buttons that are Blizzard's, sized by a Scale setting. The others
+-- (SaftUI's leave vehicle button) have a Size setting.
+local SCALED_EXTRAS = {
+	extra = true,
+	zone = true,
 }
 
 -- Every text setting of a button, in the order of the Text tab: its key in the
@@ -92,6 +114,22 @@ function AB:RegisterBarMover(id)
 		configPath = { 'ActionBars', id, 'general' },
 	})
 	self:UpdateMoverLabel(id)
+end
+
+-- Once per extra button, when they're set up (AB:SetupExtras). The holder
+-- always has the button's size, so the outline shows where it will be.
+function AB:RegisterExtraMover(id)
+	local holder = self.extras[id]
+	if not holder or self.movers[id] then return end
+	self.movers[id] = st:RegisterMover('ab_' .. id, {
+		frame = holder,
+		label = self.EXTRA_LABELS[id] .. '\n' .. EXTRA_NOTES[id],
+		-- Read through self.config on every call: a profile change replaces it.
+		getPosition = function() return self.config[id].position end,
+		setPosition = function(position) self.config[id].position = position end,
+		apply = function() self:LayoutExtra(id) end,
+		configPath = { 'ActionBars', id, 'general' },
+	})
 end
 
 ------------------------------------
@@ -269,15 +307,70 @@ function AB:GetBarOptions(id, order)
 	}
 end
 
--- The Action Bars section of /sui: one section per bar. Clicking a bar in edit
--- mode selects its General tab (the mover's configPath). Absent until the bars
--- are built.
+-- One extra button's section: General with its Scale or Size, and the Position
+-- box (Config:GetOptionsTable moves it into General).
+function AB:GetExtraOptions(id, order)
+	local generators = st.Config.generators
+
+	local size
+	if SCALED_EXTRAS[id] then
+		size = generators.range(1, 'Scale', 0.5, 2, 0.05)
+		size.isPercent = true
+		size.desc = "Blizzard's button and the art around it. 100% is Blizzard's size."
+	else
+		size = generators.range(1, 'Button size', 16, 80, 1)
+		size.desc = 'The whole button, its border included.'
+	end
+
+	-- Every SetPoint parameter is editable, the relative frame included. Passing
+	-- the holder makes a typed frame go through st:ValidateAnchor, which rejects
+	-- what's anchored to the holder (the extra action button) too.
+	local position = generators.position(10, true,
+		function(key) return self.config[id].position[key] end,
+		function(key, value)
+			self.config[id].position[key] = value
+			self:LayoutExtra(id)
+		end,
+		self.extras[id]
+	)
+
+	return {
+		name = self.EXTRA_LABELS[id],
+		type = 'group',
+		order = order,
+		args = {
+			general = {
+				name = 'General',
+				type = 'group',
+				order = 1,
+				get = function(info) return self.config[id][info[#info]] end,
+				set = function(info, value)
+					self.config[id][info[#info]] = value
+					self:LayoutExtra(id)
+				end,
+				args = {
+					[SCALED_EXTRAS[id] and 'scale' or 'size'] = size,
+				},
+			},
+			position = position,
+		},
+	}
+end
+
+-- The Action Bars section of /sui: one section per bar, then one per extra
+-- button. Clicking one in edit mode selects its General tab (the mover's
+-- configPath). Absent until the bars are built.
 function AB:GetConfigTable()
 	if not self.built then return end
 	local args = {}
 	for i, id in ipairs(self.BAR_IDS) do
 		if self.bars[id] then
 			args[id] = self:GetBarOptions(id, i)
+		end
+	end
+	for i, id in ipairs(self.EXTRA_IDS) do
+		if self.extras[id] then
+			args[id] = self:GetExtraOptions(id, #self.BAR_IDS + i)
 		end
 	end
 	return {

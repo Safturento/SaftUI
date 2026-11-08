@@ -13,6 +13,8 @@ st.ActionBars = AB
 	  - petbar.lua and stancebar.lua: the pet bar and the stance bar.
 	  - bindings.lua: the bars' keys, from Blizzard's binding commands, and
 	    hover binding (/sui kb).
+	  - extras.lua: the extra action button, the zone ability and the leave
+	    vehicle button, on holders of SaftUI's.
 	  - options.lua: the /sui section and the edit mode movers.
 
 	Each bar mirrors one Blizzard bar: the same action slots and the same binding
@@ -147,7 +149,9 @@ end
 -- edit mode mover. Bars are anchored to each other by name, so every frame
 -- exists before any is placed. One bar failing (e.g. a profile whose anchors
 -- form a loop) doesn't stop the others, and a bar left without anchors goes
--- to the middle of the screen, where its mover can reach it. Once.
+-- to the middle of the screen, where its mover can reach it. Then the extra
+-- buttons, which sit on bar 3 by default (extras.lua); an error there doesn't
+-- stop the keys being mapped. Once.
 function AB:Build()
 	if self.built then return end
 	self.built = true
@@ -162,12 +166,14 @@ function AB:Build()
 	for _, id in ipairs(self.BAR_IDS) do
 		self:RegisterBarMover(id)
 	end
+	xpcall(function() self:SetupExtras() end, geterrorhandler())
 	self:SetupBindings()
 end
 
 -- A profile change. Every bar is re-laid out, re-skinned and shown or hidden for
--- the new profile. All of it is protected, so in combat it waits for the end of
--- combat and reads the profile then.
+-- the new profile, then the extra buttons are placed and sized. All of it is
+-- protected, so in combat it waits for the end of combat and reads the profile
+-- then.
 function AB:UpdateConfig()
 	if not self.built then return end
 	if st:QueueAfterCombat('actionbars', function() self:UpdateConfig() end) then return end
@@ -193,4 +199,5 @@ function AB:UpdateConfig()
 			st:RestorePoints(bar, points)
 		end
 	end
+	self:UpdateExtras()
 end

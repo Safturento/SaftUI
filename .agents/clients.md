@@ -20,6 +20,7 @@ covers:
   - **Swing timer.** Forever has `Blizzard_SwingTimer` (an Edit Mode system); retail doesn't.
   - **Totem bar.** `MultiCastActionBarFrame` is protected; `TotemFrame` isn't loaded.
   - **Action bars.** The same bars as retail (`MainActionBar`, the four multibars and `MultiBar5`–`7` on pages 13–15), with the same binding commands. LibActionButton-1.0 treats Forever as mainline.
+  - **Extra action button.** Forever has none: `ActionButtonUtil.IsExtraActionButtonDisabled` (`Blizzard_ActionBar/Camelot`) returns true, there's no `EXTRAACTIONBUTTON1` binding, and Edit Mode hides its Extra Abilities option. `ExtraActionBarFrame` and `ExtraAbilityContainer` still exist, and `Blizzard_ZoneAbility` loads (`AllowLoadGameType: mainline`, which takes in Camelot), so test those on retail.
   - **Minimap.** The day/night indicator is `MinimapCluster.DielFrame`.
   - **Queue eye.** `QueueStatusButton` is an Edit Mode system.
   - **Loot rolls.** The buttons live under `frame.LootButtonContainer`.

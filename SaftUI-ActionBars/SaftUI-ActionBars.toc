@@ -16,4 +16,5 @@ buttons.lua
 petbar.lua
 stancebar.lua
 bindings.lua
+extras.lua
 options.lua

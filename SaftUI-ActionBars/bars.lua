@@ -157,13 +157,29 @@ end
 -- closer than the rest. So on a centred axis the bar is rounded up to an even
 -- length, with the spare pixel past the last button. Its centre stays on a
 -- whole pixel too, so bars stacked on it line up the same way, as long as the
--- frame a bar is anchored to sits on whole pixels.
-local function EvenIfCentred(length, point, edge1, edge2, bar)
+-- frame a bar is anchored to sits on whole pixels. The same goes for the
+-- extra buttons' holders (extras.lua). Both go through AB:PlaceFrame.
+local function EvenIfCentred(length, point, edge1, edge2, frame)
 	if point:find(edge1) or point:find(edge2) then return length end
-	local pixel = st:GetPixelSize(bar)
+	local pixel = st:GetPixelSize(frame)
 	if not pixel then return length end
 	if math.floor(length / pixel + 0.5) % 2 == 0 then return length end
-	return st:RoundToPixel(length + pixel, bar)
+	return st:RoundToPixel(length + pixel, frame)
+end
+
+-- Sizes frame, a bar or a holder, and places it at position ({ point, frame,
+-- rel_point, x_off, y_off }, offsets pixel-rounded). width and height are
+-- whole pixels already. On an axis its point centres it on, it's rounded up
+-- to an even length (EvenIfCentred). Protected for a secure frame, and for a
+-- frame a secure one is anchored to: callers go through st:SafeReposition.
+function AB:PlaceFrame(frame, width, height, position)
+	local point, relative, relPoint, x, y = st:UnpackPoint(position)
+	frame:SetSize(
+		EvenIfCentred(width, point, 'LEFT', 'RIGHT', frame),
+		EvenIfCentred(height, point, 'TOP', 'BOTTOM', frame))
+	frame:ClearAllPoints()
+	frame:SetPoint(point, st:ResolveFrame(relative) or UIParent, relPoint,
+		st:RoundToPixel(x, frame), st:RoundToPixel(y, frame))
 end
 
 -- Bars 1-8: 12 LibActionButton buttons with their action slots, paging and skin.
@@ -356,13 +372,10 @@ function AB:LayoutBar(id)
 			end
 		end
 
-		local point, frame, relPoint, x, y = st:UnpackPoint(config.position)
-		bar:SetSize(
-			EvenIfCentred(perRow * size + (perRow - 1) * spacing, point, 'LEFT', 'RIGHT', bar),
-			EvenIfCentred(numRows * size + (numRows - 1) * spacing, point, 'TOP', 'BOTTOM', bar))
-		bar:ClearAllPoints()
-		bar:SetPoint(point, st:ResolveFrame(frame) or UIParent, relPoint,
-			st:RoundToPixel(x, bar), st:RoundToPixel(y, bar))
+		self:PlaceFrame(bar,
+			perRow * size + (perRow - 1) * spacing,
+			numRows * size + (numRows - 1) * spacing,
+			config.position)
 	end)
 end
 

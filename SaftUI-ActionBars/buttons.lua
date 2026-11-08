@@ -129,15 +129,28 @@ end
 --- Scripts ------------------------
 ------------------------------------
 
--- LibActionButton's tooltip: Blizzard's default anchor with the "Enhanced
--- tooltips" setting, else to the right. UpdateTooltip refreshes it while shown.
+-- Where LibActionButton puts a button's tooltip: Blizzard's default anchor with
+-- the "Enhanced tooltips" setting, else to the right. extras.lua's leave
+-- button uses it too.
+function AB:AnchorTooltip(owner)
+	if GetCVar('UberTooltips') == '1' then
+		GameTooltip_SetDefaultAnchor(GameTooltip, owner)
+	else
+		GameTooltip:SetOwner(owner, 'ANCHOR_RIGHT')
+	end
+end
+
+-- Hides the tooltip if owner's showing it.
+function AB:HideTooltip(owner)
+	if not GameTooltip:IsForbidden() and GameTooltip:IsOwned(owner) then
+		GameTooltip:Hide()
+	end
+end
+
+-- UpdateTooltip refreshes the tooltip while it's shown.
 local function OnEnter(self)
 	if GameTooltip:IsForbidden() then return end
-	if GetCVar('UberTooltips') == '1' then
-		GameTooltip_SetDefaultAnchor(GameTooltip, self)
-	else
-		GameTooltip:SetOwner(self, 'ANCHOR_RIGHT')
-	end
+	AB:AnchorTooltip(self)
 	if self:SetTooltip() then
 		self.UpdateTooltip = OnEnter
 	else
@@ -146,9 +159,7 @@ local function OnEnter(self)
 end
 
 local function OnLeave(self)
-	if not GameTooltip:IsForbidden() and GameTooltip:IsOwned(self) then
-		GameTooltip:Hide()
-	end
+	AB:HideTooltip(self)
 end
 
 -- A CheckButton checks or unchecks itself on every click. Put it back to what

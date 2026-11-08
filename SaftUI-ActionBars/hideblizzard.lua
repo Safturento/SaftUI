@@ -61,15 +61,17 @@ local AB = st:GetModule('ActionBars')
 	         Mode then doesn't offer the bar.
 	     A bar that was concealed stays concealed. It goes on taking its place in
 	     Blizzard's bottom bar stack, so whatever Blizzard stacks above it (the
-	     totem bar, the extra action button, the zone ability) stays where Blizzard
-	     put it before.
+	     totem bar, the extra abilities container) stays where Blizzard put it
+	     before. The extra action button and the zone ability inside that
+	     container are anchored to SaftUI's holders instead (extras.lua).
 
 	The bars' own events are switched off too, as oUF does for the frames it
 	replaces (UnregisterAllEvents, a C call). They only drive the bars' looks:
 	grid and strata on drag, the pet bar's buttons, the vehicle leave button's
-	showing. With them off, Blizzard's code doesn't call protected methods on those
-	bars at all, and the pet bar and vehicle leave button keep still in Blizzard's
-	bottom stack. Two bars keep their events, as Bartender4 leaves them:
+	showing (SaftUI's own leave button is in extras.lua). With them off,
+	Blizzard's code doesn't call protected methods on those bars at all, and the
+	pet bar and vehicle leave button keep still in Blizzard's bottom stack. Two
+	bars keep their events, as Bartender4 leaves them:
 	  - MainActionBar: on PLAYER_ENTERING_WORLD it registers Blizzard's gamepad and
 	    keyboard switch handlers, which also show and hide the micro menu and the
 	    bags bar.
@@ -114,34 +116,44 @@ local function IsKnownFalse(value)
 	return not issecretvalue(value) and not value
 end
 
--- The widget's own C method, so no Lua replacement on the frame runs.
-local function DisableMouse(frame)
+-- Makes a Blizzard frame click-through with the widget's own C method, so no
+-- Lua replacement on the frame runs and nothing is written onto it. Protected
+-- on a protected frame: out of combat only. extras.lua uses it too.
+function AB:DisableMouse(frame)
 	if frame and frame.EnableMouse then
 		getmetatable(frame).__index.EnableMouse(frame, false)
 	end
 end
 
+-- Keeps a Blizzard Edit Mode system's box (its Selection) hidden, so Blizzard's
+-- Edit Mode doesn't offer the frame. A HookScript, as .agents/taint.md rule 5
+-- has it; nothing is written onto the frame. extras.lua uses it too.
+function AB:HideEditModeSelection(frame)
+	local selection = frame and frame.Selection
+	if selection then
+		selection:HookScript('OnShow', function(box)
+			box:Hide()
+		end)
+	end
+end
+
 local function Conceal(frame)
 	getmetatable(frame).__index.SetAlpha(frame, 0)
-	DisableMouse(frame)
+	AB:DisableMouse(frame)
 
 	if type(frame.actionButtons) == 'table' then
 		for _, button in ipairs(frame.actionButtons) do
-			DisableMouse(button)
+			AB:DisableMouse(button)
 		end
 	end
 
 	local pageNumber = frame.ActionBarPageNumber
 	if pageNumber then
-		DisableMouse(pageNumber.UpButton)
-		DisableMouse(pageNumber.DownButton)
+		AB:DisableMouse(pageNumber.UpButton)
+		AB:DisableMouse(pageNumber.DownButton)
 	end
 
-	if frame.Selection then
-		frame.Selection:HookScript('OnShow', function(selection)
-			selection:Hide()
-		end)
-	end
+	AB:HideEditModeSelection(frame)
 end
 
 local function HideBar(info)
