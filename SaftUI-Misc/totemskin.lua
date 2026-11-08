@@ -55,8 +55,12 @@ local TB = st:GetModule('TotemBar')
 	and flyout art's tex coords, the icons' textures, the keybind's text and anchor) is
 	either faded out for good or left as Blizzard has it. None of these hooks makes a
 	protected call, so they work in combat: the flyout, its choices and its arrows have
-	no secure template and no secure frame anchored to them, and the rest only touches
-	SaftUI's own frames and Blizzard's regions.
+	no secure template, no secure children and no secure frame anchored to them (a
+	protected frame's restrictions spread to its parents and to the frames it's
+	anchored to, not to its children), and the rest only touches SaftUI's own frames
+	and Blizzard's regions. The slot buttons, on the other hand, are protected that
+	way: the recall button is anchored to the last shown one and they chain left to
+	right, so they're never moved or resized here.
 
 	The flyout's layout leaves room for the totem timers: the panel is anchored to the
 	flyout's first and last shown choices, not to the flyout's edges, and the arrows'
@@ -240,6 +244,13 @@ local function StyleButton(button, skin, template)
 				text:SetShadowOffset(0, 0)
 			end
 		end
+	end
+
+	-- Cooldown numbers in the pixel font, as on SaftUI's action bars below 36px
+	-- (SaftUI-ActionBars/skin.lua); these buttons are 30px.
+	local countdownFont = st:GetFont('pixel')
+	if countdownFont and button.cooldown and button.cooldown.GetCountdownFontString then
+		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end
 end
 
