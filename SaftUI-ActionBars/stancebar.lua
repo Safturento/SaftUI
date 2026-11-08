@@ -64,10 +64,12 @@ local function FormSpell(i)
 end
 
 -- The forms as one string, to tell when the buttons' spells are out of date.
+-- 0 stands for a slot with no spell: FormSpell returns no value at all there,
+-- and tostring() with no argument errors.
 local function Signature()
 	local parts = { NumForms() }
 	for i = 1, NUM_SLOTS do
-		parts[#parts + 1] = tostring(FormSpell(i))
+		parts[#parts + 1] = FormSpell(i) or 0
 	end
 	return table.concat(parts, ',')
 end
