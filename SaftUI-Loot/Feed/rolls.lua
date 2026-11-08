@@ -480,8 +480,10 @@ local function RecordDrop(encounterID, drop, restored)
 
 	if not HasEnded(drop) then
 		-- A drop still being rolled has no result yet, so a key already in the
-		-- set belongs to an older drop with the same encounter, slot and item.
+		-- set belongs to an older drop with the same encounter, slot and item. The
+		-- same goes for a key declined at load.
 		recorded[key] = nil
+		declinedKeys[key] = nil
 		return
 	end
 	if recorded[key] then
@@ -601,9 +603,10 @@ function LT:OnLootHistoryUpdateEncounter(event, encounterID)
 	RefreshRollBars()
 end
 
--- Blizzard's history is gone, so every recorded key is free to be reused.
+-- Blizzard's history is gone, so every recorded or declined key is free to be reused.
 function LT:OnLootHistoryClear()
 	wipe(RecordedDrops())
+	wipe(declinedKeys)
 	RefreshRollBars()
 end
 
