@@ -35,7 +35,7 @@ local LT = st.Loot
 
 local Util = st:GetModule('Utilities')
 
-local MAX_HISTORY = 500
+local MAX_HISTORY = LT.MAX_HISTORY -- Feed/history.lua
 local feed_stack = {}
 
 ------------------------------------

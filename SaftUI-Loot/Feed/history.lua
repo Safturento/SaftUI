@@ -9,7 +9,9 @@
 local st = SaftUI
 local LT = st.Loot
 
-local MAX_HISTORY = 500
+-- The feed's cap, shared with feed.lua (which loads after this file).
+LT.MAX_HISTORY = 500
+local MAX_HISTORY = LT.MAX_HISTORY
 
 -- How far in the past a restored entry's session clock is put, so it is not
 -- fresh. Scrolling or hovering it still sets time to now, like any entry.
@@ -104,7 +106,19 @@ function LT:RestoreFeed()
 		if type(saved) == 'table' and saved.name and saved.type then
 			local info = {}
 			for _, key in ipairs(SAVED_FIELDS) do info[key] = saved[key] end
-			info.progress = saved.progress
+			-- Older or hand-edited saves can hold the wrong shapes; drop what would
+			-- error later (the progress bar's min/max, sorting by `when`).
+			if type(info.when) ~= 'number' then info.when = nil end
+			local progress = saved.progress
+			local valid = type(progress) == 'table'
+			if valid then
+				for _, key in ipairs({ 'max', 'value', 'r', 'g', 'b' }) do
+					if type(progress[key]) ~= 'number' then valid = false end
+				end
+			end
+			if valid then
+				info.progress = progress
+			end
 			info.saved = saved
 			info.restored = true
 			info.time = now - STALE_AGE
