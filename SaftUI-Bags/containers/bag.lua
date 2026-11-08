@@ -163,6 +163,19 @@ function INV:InitializePlayerBagSlots()
 	if BagsBar and BagsBar.Layout then
 		self:SecureHook(BagsBar, 'Layout', 'MovePlayerBagSlots')
 	end
+
+	-- The expand/collapse layout doesn't go through that hook. BagsBar registered
+	-- its original Layout as an EventRegistry callback at load, before the hook
+	-- existed, and MainMenuBarBagManager fires it whenever an item goes on or off
+	-- the cursor (the bar expands while you hold one). Put the slots back on that
+	-- event too: now, and again next frame, since the registry runs callbacks in
+	-- no set order and Blizzard's may come after ours.
+	if EventRegistry then
+		EventRegistry:RegisterCallback('MainMenuBarManager.OnExpandChanged', function()
+			INV:MovePlayerBagSlots()
+			C_Timer.After(0, function() INV:MovePlayerBagSlots() end)
+		end, self)
+	end
 end
 
 local function UpdateContainerSlots(container)
