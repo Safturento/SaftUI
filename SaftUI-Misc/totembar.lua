@@ -278,8 +278,8 @@ function TB:ApplyButtonLayout()
 	local numSlots = #slots
 	local base = self:LayoutBase()
 
-	-- The holder always has the bar's size, so the bar on it covers it exactly and its
-	-- outline is on the buttons.
+	-- The holder always has the bar's size, so the bar at its spot covers it exactly and
+	-- its outline is on the buttons.
 	local width, height = BarSize(self.config, bar)
 	st:SetSizeDirect(bar, width, height)
 	if self.holder then self.holder:SetSize(width, height) end
@@ -460,7 +460,7 @@ function TB:CapturePosition()
 end
 
 -- Captures the bar's spot, if the profile has no position, and places the holder there.
--- Out of combat only, as placing the holder moves the protected bar onto it: in combat
+-- Out of combat only, as placing the holder moves the protected bar to its spot: in combat
 -- this waits for the end of combat and tries again then.
 function TB:TryCapture()
 	if self.config.position then return end
