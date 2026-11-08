@@ -73,6 +73,10 @@ st.defaults.swingtimer = {
 -- needs. colors are the bar's element colours, by element (SaftUI-Misc/totemskin.lua):
 -- each element button's border, its flyout's "none" choice and its timer bar. Sampled from
 -- Blizzard's UI-TotemBar border art, so they read as the same elements. Not in /sui.
+-- position (a shaman's holder, SaftUI's edit mode mover for the bar) has no default: a
+-- profile without one (a new or reset one too) keeps the holder's spot from the last
+-- profile, or takes the bar's spot on screen once Blizzard has placed it
+-- (SaftUI-Misc/totembar.lua), so nothing moves on first load or on a profile change.
 st.defaults.totembar = {
 	hide = false,
 	button_size = 30,

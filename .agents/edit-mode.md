@@ -1,7 +1,7 @@
 ---
 name: edit-mode
 description: SaftUI's edit mode (movers), the /sui options tree, option widgets and the scoped Ace skin
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 covers:
   - 'SaftUI-Core/EditMode/**'
   - 'SaftUI-Core/Config/aceskin.lua'
@@ -10,6 +10,7 @@ covers:
   - 'SaftUI-*/movers.lua'
   - 'SaftUI-Misc/Skinning/*Position.lua'
   - 'SaftUI-Misc/tooltipposition.lua'
+  - 'SaftUI-Misc/totembar.lua'
   - 'SaftUI-ActionBars/extras.lua'
 ---
 
@@ -48,14 +49,15 @@ st:RegisterMover('key', {
   Size the holder from the config, place it from the profile, and anchor the real frame to it. The overlay then always has a footprint.
 
   A SaftUI frame that's only hidden, and still sized and placed from the profile while hidden, can be its own mover frame: the overlay follows its edges either way. SaftUI's action bars (`SaftUI-ActionBars/options.lua`) move their secure headers this way, also while a bar is disabled or hidden by its Visibility setting, and while the pet bar has no pet or the stance bar no forms (laid out as one button then, so the outline keeps a size). Label the outline when the frame may not be visible (`mover.label:SetText`), as the action bars and the swing timer do. The extra buttons' outlines (`SaftUI-ActionBars/options.lua`) always say when they show, as they mostly don't.
-- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`), chat (`SaftUI-Chat/chatframe.lua`) and the default tooltip's `GameTooltipDefaultContainer` (`SaftUI-Misc/tooltipposition.lua`; the tooltip itself is never moved) all follow the same pattern:
+- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`), chat (`SaftUI-Chat/chatframe.lua`), the default tooltip's `GameTooltipDefaultContainer` (`SaftUI-Misc/tooltipposition.lua`; the tooltip itself is never moved) and, on a shaman, Forever's totem bar `MultiCastActionBarFrame` (`SaftUI-Misc/totembar.lua`, mover `totembar`) all follow the same pattern:
   - Use a holder.
-  - Re-anchor the Blizzard frame with `st:SetPointDirect` / `st:ClearAllPointsDirect` in post-hooks on its `SetPoint` / `ClearAllPoints` / `UpdateSystem`.
+  - Re-anchor the Blizzard frame with `st:SetPointDirect` / `st:ClearAllPointsDirect` in post-hooks on its `SetPoint` / `ClearAllPoints` / `UpdateSystem`. If it's protected (the totem bar holds secure buttons), the re-anchor waits for the end of combat (`st:QueueAfterCombat`), and the holder goes through `st:SafeReposition`.
   - Hide its `Selection` box with a `HookScript('OnShow', Hide)`.
   - List which Blizzard settings become unreachable, and rebuild the useful ones in `/sui`.
+  - Keep first load from moving anything. Profiles saved before the takeover have no position, so either give `position` a default that reproduces Blizzard's default layout (swing timer, buffs) or give it none and capture the frame's spot on screen once Blizzard's Edit Mode has placed it (the totem bar, `TB:CapturePosition`, and chat's size, `CHT:CaptureSize`). Blizzard's layout can arrive after SaftUI loads, and a frame in its default position can sit somewhere temporary until Blizzard lays it out (a totem bar in its default position waits at UIParent's top-left until it first shows), so capture outside Blizzard's re-places, on the next frame.
 
   Read `.agents/taint.md` first.
-- **When post-hooks can't hold it.** The extra action button and the zone ability (`SaftUI-ActionBars/extras.lua`) live in Blizzard's `ExtraAbilityContainer`, which lays its frames out again each time one is added, in combat too. `ExtraActionBarFrame` holds a secure button, so a post-hook couldn't move it back until combat ends. So SaftUI moves none of Blizzard's frames. It anchors what Blizzard never re-anchors (`ExtraActionButton1`, the zone's `SpellButtonContainer` and `Style` art) to the holder once, out of combat, and the buttons then show at SaftUI's spot even when they first appear mid-fight. Blizzard's empty frames stay in Blizzard's layout; make any that take the mouse click-through (`AB:DisableMouse` in `SaftUI-ActionBars/hideblizzard.lua`), so they don't block clicks to what's under them. Before using this, grep both branches to confirm nothing re-anchors the inner frame. Size Blizzard's buttons with a Scale setting (the widget's own `SetScale`), since their art is laid out for one size.
+- **When post-hooks can't hold it.** The extra action button and the zone ability (`SaftUI-ActionBars/extras.lua`) live in Blizzard's `ExtraAbilityContainer`, which lays its frames out again each time one is added, in combat too. `ExtraActionBarFrame` holds a secure button, so a post-hook couldn't move it back until combat ends. So SaftUI moves none of Blizzard's frames. It anchors what Blizzard never re-anchors (`ExtraActionButton1`, the zone's `SpellButtonContainer` and `Style` art) to the holder once, out of combat, and the buttons then show at SaftUI's spot even when they first appear mid-fight. Blizzard's empty frames stay in Blizzard's layout; make any that take the mouse click-through (`AB:DisableMouse` in `SaftUI-ActionBars/hideblizzard.lua`), so they don't block clicks to what's under them. Before using this, grep both branches to confirm nothing re-anchors the inner frame. The totem bar combines both patterns: Blizzard re-places the bar itself in combat, so its buttons are anchored straight to the holder too and only the empty bar frame moves until combat ends. Blizzard's own button update re-anchors two of them to the bar (the first element and the summon pages), so in a fight that runs it while the bar is elsewhere they follow the bar until combat ends. Size Blizzard's buttons with a Scale setting (the widget's own `SetScale`), since their art is laid out for one size.
 - **Validating anchors.** The Position editor's typed relative frame is validated with `st:ValidateAnchor(target, name)`. Always pass `target` (the frame being moved) so self-anchors, anchor loops and descendants are rejected.
 - **Profile switches.** `EM:ClearPositions` then `EM:UpdateConfig` re-apply every mover. Implement `UpdateConfig` in your module too (see `.agents/architecture.md`).
 - **Test modes.** Loot rolls/feed and party/raid groups have session-only test toggles that draw SaftUI-owned previews anchored to the holder. Never fake units or override Blizzard APIs.

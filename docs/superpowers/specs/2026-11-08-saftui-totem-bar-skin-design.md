@@ -86,6 +86,18 @@ So:
 
 - Moving the bar. Its position stays Blizzard's (see `totembar.lua`'s header for
   why); the timers and the flyout shift are relative to Blizzard's buttons.
+  - Revised 2026-11-08: the bar is now moved in SaftUI's edit mode, on a shaman.
+    A SaftUI holder (`SaftUITotemBarHolder`, mover `totembar`) is the mover and the
+    `/sui` Position, placed from a new `totembar.position` with no default: a
+    profile without one takes the bar's spot once Blizzard has placed it, so first
+    load moves nothing. Blizzard's bar and the summon button, first element and
+    summon pages are anchored to the holder, and post-hooks on the bar's
+    `SetPoint`/`ClearAllPoints` put it back, at the end of combat when Blizzard
+    re-places it mid-fight. Blizzard's Edit Mode box for the bar is kept hidden.
+    The user accepted the combat limit: "I won't ever care about moving it in
+    combat and probably won't ever mess with changing the pages mid combat
+    either." The timers and the flyout still follow the buttons. See
+    `totembar.lua`'s header.
 - Retail's `TotemFrame` (the totem icons by the player frame).
 - Clicking a timer to destroy a totem.
 - A skin toggle. The skin is always on while the bar is shown.
