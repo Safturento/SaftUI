@@ -69,7 +69,7 @@ local AB = st:GetModule('ActionBars')
 	replaces (UnregisterAllEvents, a C call). They only drive the bars' looks:
 	grid and strata on drag, the pet bar's buttons, the vehicle leave button's
 	showing (SaftUI's own leave button is in extras.lua). With them off,
-	Blizzard's code doesn't call protected methods on those bars at all, and the
+	Blizzard's code for those bars no longer runs on their own events, and the
 	pet bar and vehicle leave button keep still in Blizzard's bottom stack. Only
 	MainActionBar keeps its events, as Bartender4 leaves them: on
 	PLAYER_ENTERING_WORLD it registers Blizzard's gamepad and keyboard switch
