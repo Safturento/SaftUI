@@ -107,12 +107,12 @@ That's three parts:
 
 - **Which drops get a roll result:** a drop that ended (`winner` or `allPassed`) and that someone actually rolled on, meaning at least one `rollInfos` entry has a state other than NoRoll. That excludes master-looted, personal-loot and auto-assigned drops. It doesn't matter whether this client showed a roll bar for it: a drop you were ineligible for still records who won.
 - **No duplicates, no replays.**
-  - Keep a saved set of recorded drops next to the saved feed, keyed by `encounterID`, `lootListKey` and `itemHyperlink`.
+  - Keep a saved set of recorded drops next to the saved feed, keyed by `encounterID`, `lootListKey` and the item string of `itemHyperlink` (see Revised 2026-11-08 below).
   - Record a result only if its key isn't in the set.
   - At login and after a reload, drop keys that are no longer in `C_LootHistory`, so keys can't collide once Blizzard's history moves on. On `LOOT_HISTORY_CLEAR_HISTORY`, empty the set.
   - Any drop that has ended and isn't recorded yet when the addon loads (say, a roll that ended during a reload) is added then:
     - as a restored entry, not a fresh one
-    - with its real time estimated as `time() - (C_LootHistory.GetLootHistoryTime() - drop.startTime)`
+    - with its real time estimated as `time() - (C_LootHistory.GetLootHistoryTime() - drop.startTime) / 1000` (the history's clock counts milliseconds; see Revised 2026-11-08 below)
   - So a reload mid-roll loses nothing, and the first use after install adds what's in Blizzard's history without flashing it.
 - **Folding and the filters.**
   - Folding works in either order:
@@ -130,6 +130,13 @@ That's three parts:
   - Only the restore itself mustn't make an entry fresh. Hovering or scrolling a restored entry behaves like any entry today. The real time doesn't change on hover or scroll, only on a merge.
 - **Test mode.** The feed's test mode (`Feed/test.lua`) adds a sample roll result with sample rolls, tagged `test` so it's never saved. That way the roll tooltip in the feed can be checked without a group.
 - **Hover target on the roll bar.** Blizzard's roll frame has no OnEnter; its icon frame shows the item tooltip. The roll lines go into the item tooltip wherever the bar shows one, and SaftUI's own info frame (the bar's body) shows the same tooltip. Names show as the game gives them.
+
+## Revised 2026-11-08 (after the Task 2 review)
+
+- **Retail's field name.** Retail's `EncounterLootDropInfo` calls the drop index `lootListID`; Forever renamed it `lootListKey`. Read either.
+- **Milliseconds.** `C_LootHistory.GetLootHistoryTime()` and the history's `startTime` count milliseconds. Blizzard's own timer subtracts one from the other, and two other addons divide `startTime` by 1000. The load-time estimate divides by 1000.
+- **Item string in the key.** The recorded-drop key uses the item string (`item:…` from the hyperlink) instead of the whole hyperlink. A link built while the item wasn't cached can differ from the same drop's link later, in its name or colour, and the whole link would then record the drop twice.
+- **Empty history at load.** The load-time prune only runs when the history isn't empty. An empty history at load may simply not be filled yet, and pruning then would forget every recorded drop.
 
 ## Left to the builder
 

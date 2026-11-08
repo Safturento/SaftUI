@@ -20,7 +20,7 @@
   - It lives in `st.config.char.loot`, as `{ feed = { entries newest first }, drops = { [key] = true } }`.
   - Plain data only. Never a secret value (`issecretvalue`). Never test entries.
 - **Cap:** `MAX_HISTORY = 500` entries (the existing constant).
-- **Recorded-drop key:** `encounterID .. ':' .. lootListKey .. ':' .. itemHyperlink`.
+- **Recorded-drop key:** `encounterID .. ':' .. lootListKey .. ':' .. itemString`, where `itemString` is the `item:…` part of `itemHyperlink`, and `lootListKey` falls back to retail's `lootListID` (spec, Revised 2026-11-08).
 - **Real time:** `info.when = time()`. Restored entries are never fresh at restore.
 - **Copy, verbatim:**
   - "All passed"
