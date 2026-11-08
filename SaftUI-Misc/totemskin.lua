@@ -300,8 +300,26 @@ local function ColorArrow(button, slot)
 	skin.hover:SetVertexColor(r, g, b)
 end
 
+-- Puts the arrow's art at the top of its button, centred. Both arrows are centred on the
+-- bar's button they open from (the open arrow over it, the close arrow at the top of the
+-- flyout above it), so with an odd button size that centre is half a pixel off the grid.
+-- SaftUI's art is an even ARROW_SIZE, so it goes half a pixel right there, to keep its
+-- edges on whole pixels. Again on a new button size, which styles the skin again.
+local function PlaceArrowArt(button, skin)
+	local pixel = st:GetPixelSize(button)
+	local x = 0
+	if pixel and math.floor(TB.config.button_size / pixel + 0.5) % 2 == 1 then
+		x = pixel / 2
+	end
+	for _, region in ipairs({ skin.arrow, skin.hover }) do
+		region:ClearAllPoints()
+		region:SetPoint('TOP', button, 'TOP', x, 0)
+	end
+end
+
 local function StyleArrow(button, skin)
 	ColorArrow(button, skin.slot)
+	PlaceArrowArt(button, skin)
 end
 
 ------------------------------------
@@ -397,8 +415,8 @@ local function SkinArrow(button, direction)
 	for region, key in pairs({ [skin.arrow] = direction .. '-arrow', [skin.hover] = direction .. '-arrow-thick' }) do
 		st:SetTexture(region, key)
 		region:SetSize(ARROW_SIZE, ARROW_SIZE)
-		region:SetPoint('TOP', button, 'TOP', 0, 0)
 	end
+	PlaceArrowArt(button, skin)
 	button:SetHighlightTexture(skin.hover, 'BLEND')
 end
 

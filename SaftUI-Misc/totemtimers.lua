@@ -51,7 +51,8 @@ local TB = st:GetModule('TotemBar')
 	down):
 	  - MultiCastFlyoutFrameOpenButton_Show anchors the arrow's BOTTOM to the button's
 	    TOP. Afterwards the arrow is made taller, so it still starts at the button and
-	    the mouse never leaves it on the way up. Its art is at its top (totemskin.lua).
+	    the mouse never leaves it on the way up, and as wide as the button. Its art is at
+	    its top (totemskin.lua).
 	  - MultiCastFlyoutFrame_ToggleFlyout loads the choices (they set the flyout's height)
 	    and anchors the flyout's BOTTOM to the button's TOP. Afterwards the flyout is made
 	    taller than Blizzard made it, and its first choice, which the column chains off,
@@ -132,13 +133,15 @@ local function TextHeight()
 	return math.ceil(size or DEFAULT_TEXT_HEIGHT)
 end
 
--- The bar's height with its border: the setting, and with the text on it (onBar) never
--- less than the text inside the template's border. With the default pixel font (10) and
--- thick template (2 each side) that's 14.
+-- The bar's height with its border: the setting, but always with MIN_FILL of bar inside
+-- the template's border (2-4px with 2px of border each side would show none), and with
+-- the text on it (onBar) never less than the text inside the border. With the default
+-- pixel font (10) and thick template (2 each side) that's 14.
+local MIN_FILL = 2
 local function BarHeight(onBar)
-	local height = TB.config.timer_bar_height
+	local border = 2 * TemplateInset(st.config.profile.buttons.template)
+	local height = math.max(TB.config.timer_bar_height, border + MIN_FILL)
 	if onBar then
-		local border = 2 * TemplateInset(st.config.profile.buttons.template)
 		height = math.max(height, TextHeight() + border)
 	end
 	return height
@@ -456,11 +459,14 @@ local function Growth(kind)
 end
 
 -- After MultiCastFlyoutFrameOpenButton_Show: the arrow as tall as Blizzard's plus the
--- timers, for the button Blizzard just put it on (its type, which it clears on hiding).
+-- timers, for the button Blizzard just put it on (its type, which it clears on hiding),
+-- and as wide as the bar's buttons rather than Blizzard's 28. Blizzard centres it over the
+-- button, so it then covers the button's whole top edge, and the mouse can go up from
+-- anywhere on the button without leaving both (MultiCastFlyoutFrameOpenButton_Hide).
 local function GrowArrow()
 	local arrow = MultiCastFlyoutFrameOpenButton
 	if arrow then
-		arrow:SetHeight(ARROW_HEIGHT + Growth(arrow.type))
+		arrow:SetSize(TB.config.button_size, ARROW_HEIGHT + Growth(arrow.type))
 	end
 end
 

@@ -74,6 +74,12 @@ local TB = st:NewModule('TotemBar')
 	    moved in Edit Mode stays on the anchor point Edit Mode saved, which can be its
 	    centre or right edge, so there a new size moves the buttons around that point, as
 	    resizing any Edit Mode frame would.
+	  - The bar's width and height are always rounded up to an even number of pixels.
+	    Anchored by its centre on an axis (Edit Mode can save BOTTOM, TOP or CENTER), an
+	    odd length would put its edges, and every button, on half pixels
+	    (.agents/architecture.md). The anchor is Edit Mode's and a drag changes it without
+	    SaftUI seeing, so the bar is even whatever its anchor. The spare pixel is empty bar
+	    at the right or the top.
 	Blizzard re-anchors some of these in MultiCastActionBarFrame_Update, on
 	PLAYER_ENTERING_WORLD, UPDATE_MULTI_CAST_ACTIONBAR and a summon page change, in combat
 	too:
@@ -88,10 +94,10 @@ local TB = st:NewModule('TotemBar')
 	and a fight that runs Blizzard's update (a summon page change does) shows Blizzard's 8
 	after the summon button and before the recall button until it ends. The sizes and the
 	gaps between elements stay SaftUI's, as Blizzard never sets them, and the pages move
-	with the first slot button, so they still line up. SaftUI
-	anchors these by the points Blizzard re-sets (BOTTOMLEFT for the pages and the first
-	slot button, LEFT for the recall button), so Blizzard's SetPoint replaces SaftUI's
-	anchor instead of adding a second one that would pull against it.
+	with the first slot button, so they still line up. SaftUI anchors these by the points
+	Blizzard re-sets (BOTTOMLEFT for the pages and the first slot button, LEFT for the
+	recall button), so Blizzard's SetPoint replaces SaftUI's anchor instead of adding a
+	second one that would pull against it.
 
 	SaftUI's look for the bar's buttons and its flyout is in totemskin.lua, and the totem
 	timers above its element buttons are in totemtimers.lua. The flyout's choices follow the
@@ -153,6 +159,17 @@ local layout
 -- refreshed when it changes.
 local laidOutSize = BLIZZARD_BUTTON_SIZE
 
+-- A length of the bar rounded up to an even number of pixels, counted as
+-- SaftUI-ActionBars/bars.lua's EvenIfCentred counts them, in case the UI scale doesn't make
+-- one unit one pixel. Unlike EvenIfCentred it doesn't look at the anchor, which belongs
+-- to Edit Mode (see the top of this file).
+local function EvenPixels(length, frame)
+	local pixel = st:GetPixelSize(frame)
+	if not pixel then return length end
+	if math.floor(length / pixel + 0.5) % 2 == 0 then return length end
+	return st:RoundToPixel(length + pixel, frame)
+end
+
 -- Sizes a row of buttons and anchors each one after the one before it, spacing apart,
 -- LEFT to RIGHT as Blizzard chains them. The caller places the first one.
 local function ChainRow(buttons, size, spacing)
@@ -179,8 +196,8 @@ function TB:ApplyButtonLayout()
 	local numSlots = #slots
 
 	st:SetSizeDirect(bar,
-		2 * MARGIN + (numSlots + 2) * size + (numSlots + 1) * spacing,
-		2 * MARGIN + size)
+		EvenPixels(2 * MARGIN + (numSlots + 2) * size + (numSlots + 1) * spacing, bar),
+		EvenPixels(2 * MARGIN + size, bar))
 
 	local summon = layout.summon
 	summon:SetSize(size, size)
@@ -353,7 +370,7 @@ function TB:GetConfigTable()
 	}
 
 	local timerBarHeight = st.Config.generators.range(7, 'Timer bar height', 2, 20, 1)
-	timerBarHeight.desc = "The timer bar's height, its border included. With the text on the bar, it's never shorter than the text needs."
+	timerBarHeight.desc = "The timer bar's height, its border included. It always leaves room for the bar inside its border, and with the text on the bar it's never shorter than the text needs."
 	timerBarHeight.disabled = function() return not self.config.timer_bar end
 
 	return {
