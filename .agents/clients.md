@@ -28,6 +28,9 @@ covers:
     - `C_LootHistory`'s drop index is `lootListKey` on Forever and `lootListID` on retail (`EncounterLootDropInfo`). Read either.
     - `C_LootHistory.GetLootHistoryTime()` and the history's `startTime` and `duration` count milliseconds. Blizzard's Loot Rolls window subtracts one from the other for its timer.
     - Forever's Loot Rolls window (`GroupLootHistoryFrame`) never opens by itself: `ShouldAutoOpen` in `Blizzard_FrameXML/Camelot/LootHistory.lua` returns false.
+  - **Auras on other players** (checked on a party member, 2026-11-08):
+    - `sourceUnit` is nil on every aura, and the `PLAYER` filter keeps them all: `HELPFUL|PLAYER` returns the same list as `HELPFUL`. `isFromPlayerOrPlayerPet` read false on all of them (none were the player's), so unit frame "Only mine" filters on that flag (`SaftUI-Unitframes/elements/auras.lua`).
+    - `SetUnitAuraByAuraInstanceID` gives the wrong aura or none for some of them. Blizzard's aura buttons build their tooltips with it, so some unit frame aura tooltips are wrong or missing.
   - **Bank.** It's built from bank tabs holding bags (`Enum.BagIndex.CharacterBankTab_*`). There's no `BankPanel.AutoDepositFrame` and no reagent bank, and the warband bank isn't used.
 - Neither client has a reagent bank anymore.
 

@@ -5,8 +5,9 @@ local UF = st:GetModule('Unitframes')
 	Buffs and Debuffs are built on oUF's Auras meta element, which wraps Blizzard's
 	AuraContainer. Aura data is no longer exposed to Lua (secret values), so the old
 	Lua-side filters (whitelist/blacklist/time) and per-aura styling can't be applied.
-	Filtering is done with the aura filter string, and dispel/stealable coloring with
-	the container's built-in dispel textures.
+	Filtering is done with the aura filter string (plus a candidate filter for Only
+	mine, see AddGroup), and dispel/stealable coloring with the container's
+	built-in dispel textures.
 
 	Group options (filter, max count, button size, which borders to show, whether
 	buttons get a cooldown) are baked in when the group is created on the first config
@@ -113,12 +114,18 @@ end
 local function AddGroup(unitframe, auras, aura_type)
 	local config = auras.config
 
+	-- Only mine: Forever leaves sourceUnit nil on other players' auras, and its
+	-- PLAYER filter keeps every one of them. The isFromPlayerOrPlayerPet
+	-- candidate filter checks each aura's own flag instead; on retail the two agree.
 	local filter = AURA_FILTERS[aura_type]
+	local candidateFilters
 	if config.onlyShowPlayer then
 		filter = filter .. '|PLAYER'
+		candidateFilters = { isFromPlayerOrPlayerPet = true }
 	end
 
 	auras.groupKey = auras:AddGroup(filter, {
+		candidateFilters = candidateFilters,
 		maxFrameCount = config.max,
 		size = getButtonSize(unitframe, config),
 		showCount = true,
