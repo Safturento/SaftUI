@@ -47,6 +47,9 @@ function LT:SkinRollFrame(frame)
 	frame.Timer.Text = frame.Timer:CreateFontString(nil, 'OVERLAY')
 	frame.Timer.Text:SetFontObject(GameFontNormal)
 
+	-- How many have picked each choice, by button name. rollinfo.lua keeps this
+	-- table; nothing of it goes onto the buttons.
+	local counts = {}
 	local prev
 	for i, info in ipairs(roll_buttons) do
 		local button = GetRollButton(frame, info.name)
@@ -55,6 +58,7 @@ function LT:SkinRollFrame(frame)
 			button.Text:SetFontObject(GameFontNormal)
 			button.Text:SetPoint('CENTER', 1, 0)
 			button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
+			counts[info.name] = self:CreateRollCount(button)
 
 			prev = button
 		end
@@ -63,6 +67,9 @@ function LT:SkinRollFrame(frame)
 	self:SecureHookScript(frame, 'OnShow', 'GroupLootFrame_OnShow')
 	self:SecureHookScript(frame.Timer, 'OnUpdate', 'GroupLootFrame_OnUpdateTimer')
 	self:UpdateRollFrame(frame)
+	-- The live counts and the rolls in the bar's tooltip (rollinfo.lua). After
+	-- UpdateRollFrame, which makes the info frame.
+	self:AttachRollInfo(frame, counts)
 end
 
 function LT:UpdateRollFrame(frame)
@@ -264,22 +271,79 @@ end
 -- Real Blizzard roll frames are never created, fed fake data or touched; the
 -- previews only read whether one is showing. They hide while a real roll is
 -- up (the real rolls own the anchor then) and come back when it ends.
+-- Each one has sample choices too: counts on its buttons and the rolls in its
+-- tooltip, the way rollinfo.lua shows a real roll's.
 -- LT.testRolls is a plain field: not saved, off after /reload.
 
 local PREVIEW_FALLBACK_ICON = 134400 -- INV_Misc_QuestionMark
 local PREVIEW_DURATION = 300
 
 -- The fallback name and quality are used until the client has the item data.
+-- `choices` are made-up players with a state from LT.ROLL_STATE and, for a
+-- main spec need, the roll the game makes at once. `me` is you, still to
+-- choose, as on any roll bar that's still up. `leader` indexes `choices`.
 local PREVIEW_ROLLS = {
 	{ itemID = 19019, name = 'Thunderfury, Blessed Blade of the Windseeker', quality = 5,
-		count = 1, bindOnPickUp = true, transmog = true, remaining = 250 },
+		count = 1, bindOnPickUp = true, transmog = true, remaining = 250,
+		leader = 1, choices = {
+			{ name = 'Brightblade', class = 'PALADIN', state = 'NeedMainSpec', roll = 92 },
+			{ name = 'Ironhide', class = 'WARRIOR', state = 'NeedMainSpec', roll = 41 },
+			{ name = 'Mistweave', class = 'PRIEST', state = 'NeedOffSpec' },
+			{ name = 'Quickshot', class = 'HUNTER', state = 'Transmog' },
+			{ name = 'Emberfall', class = 'MAGE', state = 'Pass' },
+			{ name = 'Duskwhisper', class = 'ROGUE', state = 'NoRoll' },
+			{ me = true, state = 'NoRoll' },
+		} },
 	{ itemID = 16309, name = 'Drakefire Amulet', quality = 4,
-		count = 1, bindOnPickUp = false, transmog = false, remaining = 170 },
+		count = 1, bindOnPickUp = false, transmog = false, remaining = 170,
+		choices = {
+			{ name = 'Mistweave', class = 'PRIEST', state = 'Greed' },
+			{ name = 'Quickshot', class = 'HUNTER', state = 'Greed' },
+			{ name = 'Brightblade', class = 'PALADIN', state = 'Pass' },
+			{ name = 'Emberfall', class = 'MAGE', state = 'Pass' },
+			{ me = true, state = 'NoRoll' },
+		} },
 	{ itemID = 2589, name = 'Linen Cloth', quality = 1,
-		count = 5, bindOnPickUp = false, transmog = true, remaining = 90 },
+		count = 5, bindOnPickUp = false, transmog = true, remaining = 90,
+		choices = {
+			{ name = 'Emberfall', class = 'MAGE', state = 'Greed' },
+			{ name = 'Brightblade', class = 'PALADIN', state = 'Pass' },
+			{ name = 'Mistweave', class = 'PRIEST', state = 'Pass' },
+			{ name = 'Quickshot', class = 'HUNTER', state = 'Pass' },
+			{ name = 'Duskwhisper', class = 'ROGUE', state = 'Pass' },
+			{ me = true, state = 'NoRoll' },
+		} },
 	{ itemID = 1204, name = 'The Green Tower', quality = 2,
-		count = 1, bindOnPickUp = false, transmog = false, remaining = 45 },
+		count = 1, bindOnPickUp = false, transmog = false, remaining = 45,
+		leader = 1, tied = true, choices = {
+			{ name = 'Ironhide', class = 'WARRIOR', state = 'NeedMainSpec', roll = 77 },
+			{ name = 'Brightblade', class = 'PALADIN', state = 'NeedMainSpec', roll = 77 },
+			{ name = 'Duskwhisper', class = 'ROGUE', state = 'NoRoll' },
+			{ me = true, state = 'NoRoll' },
+		} },
 }
+
+-- A preview's sample choices as a summary in LT:SummarizeDrop's shape, the
+-- rolls table that LT:AddRollLines and LT:SetRollCounts take.
+local function PreviewRolls(spec)
+	local states = LT.ROLL_STATE
+	local list = {}
+	for i, choice in ipairs(spec.choices) do
+		local line = { name = choice.name, class = choice.class, state = states[choice.state], roll = choice.roll }
+		if choice.me then
+			local _, class = UnitClass('player')
+			line.name, line.class, line.isSelf = UnitName('player'), class, true
+		end
+		list[i] = line
+	end
+	return { list = list, leader = spec.leader, tied = spec.tied }
+end
+
+-- The tooltip on a preview's icon and info frames: the item, then its sample rolls.
+local function PreviewTooltip(owner)
+	local bar = owner:GetParent()
+	return 'SetItemByID', bar.spec.itemID, bar.rolls
+end
 
 local function RealRollShowing()
 	local container = GroupLootContainer
@@ -365,6 +429,7 @@ local function CreatePreviewBar(parent, spec)
 
 	-- Same order as the real buttons: the first one sits at the right edge.
 	bar.buttons = {}
+	bar.counts = {}
 	for _, info in ipairs(roll_buttons) do
 		if info.name ~= 'Transmog' or spec.transmog then
 			local button = CreateFrame('frame', nil, bar)
@@ -373,9 +438,15 @@ local function CreatePreviewBar(parent, spec)
 			button.Icon:SetAllPoints()
 			button.Icon:SetTexture(info.icon_texture)
 			st:SkinIcon(button.Icon)
+			bar.counts[info.name] = LT:CreateRollCount(button)
 			tinsert(bar.buttons, button)
 		end
 	end
+
+	bar.rolls = PreviewRolls(spec)
+	LT:SetRollCounts(bar.counts, bar.rolls)
+	LT:SetRollTooltipScripts(bar.IconFrame, PreviewTooltip)
+	LT:SetRollTooltipScripts(bar.InfoFrame, PreviewTooltip)
 
 	FillPreviewBar(bar)
 	return bar

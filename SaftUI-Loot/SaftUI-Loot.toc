@@ -9,6 +9,7 @@ init.lua
 options.lua
 popup.lua
 roll.lua
+rollinfo.lua
 
 Feed/icons.lua
 Feed/progress.lua

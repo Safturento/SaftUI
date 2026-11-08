@@ -72,6 +72,9 @@ local function IsTrue(v)
 	return not issecretvalue(v) and v == true
 end
 
+-- rollinfo.lua (the live choices on the roll bars) checks what it reads the same way.
+LT.PlainNumber, LT.PlainString = PlainNumber, PlainString
+
 ------------------------------------
 ---- Drops -------------------------
 ------------------------------------
@@ -82,17 +85,22 @@ local function DropIndex(drop)
 	return PlainNumber(drop.lootListKey) or PlainNumber(drop.lootListID)
 end
 
+-- A link's "item:..." part, or the whole link when it has none.
+local function ItemString(link)
+	return link:match('|H(item:[^|]*)|h') or link
+end
+LT.ItemString = ItemString
+
 -- encounterID:lootListKey:item string, or nil when any part isn't plain. The
--- item string (the link's "item:..." part) stands in for the whole link: a link
--- built while the item wasn't cached can differ in its name or colour from the
--- same drop's link later, and the whole link would then record the drop twice.
+-- item string stands in for the whole link: a link built while the item wasn't
+-- cached can differ in its name or colour from the same drop's link later, and
+-- the whole link would then record the drop twice.
 local function DropKey(encounterID, drop)
 	encounterID = PlainNumber(encounterID)
 	local index = DropIndex(drop)
 	local link = PlainString(drop.itemHyperlink)
 	if encounterID and index and link then
-		local item = link:match('|H(item:[^|]*)|h') or link
-		return encounterID .. ':' .. index .. ':' .. item
+		return encounterID .. ':' .. index .. ':' .. ItemString(link)
 	end
 end
 
@@ -179,6 +187,39 @@ end
 function LT:SummarizeDrop(dropInfo)
 	if type(dropInfo) ~= 'table' then return end
 	return Summarize(dropInfo, false)
+end
+
+-- Every drop still being rolled, oldest first, as { id, encounterID, index,
+-- link } with plain values only. rollinfo.lua matches the roll bars to these.
+-- A boss's drops all start together, so ties go by encounter and index to keep
+-- the order the same from one call to the next.
+function LT:GetOpenDrops()
+	local open = {}
+	if not C_LootHistory then return open end
+	for _, encounter in ipairs(C_LootHistory.GetAllEncounterInfos() or {}) do
+		local encounterID = type(encounter) == 'table' and PlainNumber(encounter.encounterID)
+		if encounterID then
+			for _, drop in ipairs(C_LootHistory.GetSortedDropsForEncounter(encounterID) or {}) do
+				local index = type(drop) == 'table' and not HasEnded(drop) and DropIndex(drop)
+				local link = index and PlainString(drop.itemHyperlink)
+				if link then
+					tinsert(open, {
+						id = encounterID .. ':' .. index,
+						encounterID = encounterID,
+						index = index,
+						link = link,
+						start = PlainNumber(drop.startTime) or 0,
+					})
+				end
+			end
+		end
+	end
+	table.sort(open, function(a, b)
+		if a.start ~= b.start then return a.start < b.start end
+		if a.encounterID ~= b.encounterID then return a.encounterID < b.encounterID end
+		return a.index < b.index
+	end)
+	return open
 end
 
 local function RecordedDrops()
@@ -364,6 +405,7 @@ local function ItemID(link)
 	local id = link:match('item:(%d+)')
 	return id and tonumber(id)
 end
+LT.ItemID = ItemID
 
 -- Whether two links are the same item. The loot history's link and a chat
 -- message's can differ in their trailing context fields, so the item ID
