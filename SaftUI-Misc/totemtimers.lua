@@ -270,16 +270,20 @@ local function PlaceText(timer)
 	if not (ref and place) then return end
 	text:ClearAllPoints()
 
+	-- The Text X / Y offset settings, in whole pixels, on top of the centring.
+	local offsetX = st:RoundToPixel(TB.config.timer_text_x or 0, text)
+	local offsetY = st:RoundToPixel(TB.config.timer_text_y or 0, text)
+
 	local width, textWidth = ref:GetWidth(), text:GetStringWidth()
 	local pixel = st:GetPixelSize(text)
 	if pixel and not issecretvalue(width) and not issecretvalue(textWidth) and textWidth > 0 then
 		local boxPixels = math.floor(width / pixel + 0.5)
 		local letterPixels = math.floor(textWidth / pixel + 0.5) - 1
 		local x = math.floor((boxPixels - letterPixels) / 2) * pixel
-		text:SetPoint(place.point .. 'LEFT', ref, place.relPoint .. 'LEFT', x, place.y)
+		text:SetPoint(place.point .. 'LEFT', ref, place.relPoint .. 'LEFT', x + offsetX, place.y + offsetY)
 	else
 		text:SetPoint(place.point == '' and 'CENTER' or place.point, ref,
-			place.relPoint == '' and 'CENTER' or place.relPoint, 0, place.y)
+			place.relPoint == '' and 'CENTER' or place.relPoint, offsetX, place.y + offsetY)
 	end
 end
 
@@ -510,8 +514,10 @@ function TB:GetTimerAreaHeight()
 	local config = self.config
 	local showBar, showText = config.timer_bar, config.timer_text
 	if not (showBar or showText) then return 0 end
+	-- Text moved up by its Y offset needs that much more room under the arrow.
+	local raised = showText and math.max(0, config.timer_text_y or 0) or 0
 	if showBar and showText and config.timer_text_position == 'on' then
-		return TIMER_GAP + BarHeight(true)
+		return TIMER_GAP + BarHeight(true) + raised
 	end
 
 	local height = TIMER_GAP
@@ -521,7 +527,7 @@ function TB:GetTimerAreaHeight()
 	if showText then
 		height = height + (showBar and TEXT_GAP or 0) + TextHeight()
 	end
-	return height
+	return height + raised
 end
 
 -- Refreshes the timers from their slot buttons' totems: on PLAYER_TOTEM_UPDATE only the

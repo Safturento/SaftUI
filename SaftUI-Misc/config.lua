@@ -67,7 +67,8 @@ st.defaults.swingtimer = {
 -- Blizzard has 3 or 8). timer_bar and timer_text show a draining bar and a countdown above
 -- each element button while that element has a totem down (SaftUI-Misc/totemtimers.lua).
 -- timer_text_position is 'above' (a thin bar with the text above it) or 'on' (a taller bar
--- with the text on it); it only applies while both show. timer_bar_height is the bar's
+-- with the text on it); it only applies while both show. timer_text_x and timer_text_y
+-- move the text from its centred spot, in pixels. timer_bar_height is the bar's
 -- height with its border; with the text on it the bar is never shorter than the text
 -- needs. colors are the bar's element colours, by element (SaftUI-Misc/totemskin.lua):
 -- each element button's border, its flyout's "none" choice and its timer bar. Sampled from
@@ -79,6 +80,8 @@ st.defaults.totembar = {
 	timer_bar = true,
 	timer_text = true,
 	timer_text_position = 'above',
+	timer_text_x = 0,
+	timer_text_y = 0,
 	timer_bar_height = 8,
 	colors = {
 		earth = { 0.29, 0.55, 0.16 },

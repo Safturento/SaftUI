@@ -369,6 +369,14 @@ function TB:GetConfigTable()
 		disabled = function() return not (self.config.timer_bar and self.config.timer_text) end,
 	}
 
+	-- Offsets for the time, from the spot Text position puts it in.
+	local timerTextX = st.Config.generators.range(6.1, 'Text X offset', -20, 20, 1)
+	timerTextX.desc = 'Moves the time left or right from the middle of its button, in pixels.'
+	timerTextX.disabled = function() return not self.config.timer_text end
+	local timerTextY = st.Config.generators.range(6.2, 'Text Y offset', -20, 20, 1)
+	timerTextY.desc = 'Moves the time up or down from where Text position puts it, in pixels. Moving it up also moves the flyout arrow up to make room.'
+	timerTextY.disabled = function() return not self.config.timer_text end
+
 	local timerBarHeight = st.Config.generators.range(7, 'Timer bar height', 2, 20, 1)
 	timerBarHeight.desc = "The timer bar's height, its border included. It always leaves room for the bar inside its border, and with the text on the bar it's never shorter than the text needs."
 	timerBarHeight.disabled = function() return not self.config.timer_bar end
@@ -395,6 +403,8 @@ function TB:GetConfigTable()
 			timer_bar = timerBar,
 			timer_text = timerText,
 			timer_text_position = timerTextPosition,
+			timer_text_x = timerTextX,
+			timer_text_y = timerTextY,
 			timer_bar_height = timerBarHeight,
 			move_note = {
 				order = 8,
