@@ -131,6 +131,9 @@ end
 
 function LT:GroupLootFrame_OnShow(frame)
 	local texture, name, count, quality, bindOnPickUp, canNeed, canGreed, canDisenchant, reasonNeed, reasonGreed, reasonDisenchant, deSkillRequired = GetLootRollItemInfo(frame.rollID);
+	-- A queued roll that expired before its turn has no item: Blizzard's own
+	-- OnShow has already taken the frame away, so there's nothing to style.
+	if not name then return end
 
 	local color = ITEM_QUALITY_COLORS[quality]
 	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
