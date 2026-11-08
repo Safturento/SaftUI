@@ -25,6 +25,8 @@ covers:
 
 WoW marks every Lua value written by addon code as *tainted* by that addon. Secure Blizzard code that later reads a tainted value runs tainted, and if it then makes a protected call (moving or showing an action bar, `SetAttribute` on a secure button, etc.), the game blocks it with `ADDON_ACTION_BLOCKED` blamed on SaftUI. The error usually fires far from the cause, often in combat, so these rules are strict.
 
+Third-party addon frames (RestedXP Guides in `SaftUI-Misc/Skinning/restedxp.lua`) aren't Blizzard frames, so rule 1 doesn't bind them. SaftUI still only adds to their scripts (hooks, never `SetScript`) and keeps its state in side tables keyed by their frames.
+
 ## Rules
 
 1. **Never write Lua fields or methods onto a Blizzard frame or table.** That includes:
