@@ -90,8 +90,10 @@ So:
     A SaftUI holder (`SaftUITotemBarHolder`, mover `totembar`) is the mover and the
     `/sui` Position, placed from a new `totembar.position` with no default: a
     profile without one takes the bar's spot once Blizzard has placed it, so first
-    load moves nothing. Blizzard's bar and the summon button, first element and
-    summon pages are anchored to the holder, and post-hooks on the bar's
+    load moves nothing. The summon button, first element and summon pages are
+    anchored to the holder. Blizzard's bar is put at the holder's spot on UIParent,
+    never anchored to the holder, as Blizzard's Edit Mode can record its anchor into
+    the layout after a snap break (fix round 1). Post-hooks on the bar's
     `SetPoint`/`ClearAllPoints` put it back, at the end of combat when Blizzard
     re-places it mid-fight. Blizzard's Edit Mode box for the bar is kept hidden.
     The user accepted the combat limit: "I won't ever care about moving it in

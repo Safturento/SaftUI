@@ -44,14 +44,30 @@ local TB = st:NewModule('TotemBar')
 	  - A holder of SaftUI's (SaftUITotemBarHolder) is the edit mode mover and the /sui
 	    Position. It's placed from the profile's position and is always the bar's size
 	    (TB:ApplyButtonLayout sizes both).
-	  - The bar's bottom-left corner is anchored to the holder's, with the plain widget
-	    methods (st:ClearAllPointsDirect, st:SetPointDirect): the bar's own SetPoint and
+	  - The bar is put where the holder is: its bottom-left corner on UIParent's, at the
+	    holder's left and bottom in whole pixels (TB:AnchorBar), with the plain widget
+	    methods (st:ClearAllPointsDirect, st:SetPointDirect). The bar's own SetPoint and
 	    ClearAllPoints are Blizzard's Edit Mode overrides, which write Edit Mode state.
+	    It's put there again whenever the holder is placed (a post-hook on the holder's
+	    SetPoint: a drag, a nudge, /sui, a profile change) or resized (the button
+	    layout), out of combat only.
+	  - The bar is never anchored to the holder itself, because Blizzard's Edit Mode
+	    reads its anchor. The bar is snapped to MainActionBar in its default position
+	    (SetPointOverride's SetSnappedToFrame). When MainActionBar hides, e.g. entering a
+	    vehicle out of combat, BreakSnappedFrames runs the bar's BreakFrameSnap, which
+	    re-anchors it (the post-hooks below put it back) and then reads GetPoint(1) in
+	    UpdateSystemAnchorInfo, into the active layout, which a later save keeps.
+	    Anchored to the holder, the layout would name SaftUITotemBarHolder, and on an alt
+	    without the holder (another class, SaftUI-Misc off) Blizzard would anchor the
+	    bar to a frame that isn't there. On UIParent, Blizzard records the spot the bar
+	    is at, as it would for any snap break.
 	  - Blizzard re-places the bar when an Edit Mode layout loads, and in its default
 	    position from UpdateBottomActionBarPositions (see above), in combat too.
-	    Post-hooks on the bar's ClearAllPoints and SetPoint put it back on the holder:
-	    straight away, or at the end of combat if it's on, as the bar is protected. Its
-	    Edit Mode position stays as it was, so these re-places keep coming.
+	    Post-hooks on the bar's ClearAllPoints and SetPoint put it back at the holder's
+	    spot: straight away, or at the end of combat if it's on, as the bar is protected.
+	    SaftUI never changes the bar's Edit Mode position, so these re-places keep coming,
+	    until Blizzard itself records a spot for it after a snap break (above), which
+	    stops UpdateBottomActionBarPositions from stacking it.
 	  - So the buttons don't go with the bar when Blizzard re-places it mid-fight, they're
 	    anchored to the holder, not to the bar, as SaftUI-ActionBars/extras.lua does with
 	    the extra action button. Blizzard's bar frame then sits at Blizzard's spot until
@@ -76,14 +92,16 @@ local TB = st:NewModule('TotemBar')
 	back until combat ends. With the buttons on the holder only Blizzard's empty frame
 	moves, except as said below for Blizzard's own button update in combat.
 
-	Nothing is written onto the bar or any Blizzard table, except that hooksecurefunc
+	SaftUI writes nothing onto the bar or any Blizzard table, except that hooksecurefunc
 	replaces the two methods it hooks on the bar (ClearAllPoints and SetPoint) with its own
-	secure wrappers. SaftUI's calls on the bar are GetParent, GetFrameLevel, GetPoint,
+	secure wrappers. Blizzard's Edit Mode can write the bar's UIParent anchor into its own
+	layout after a snap break (above); that's Blizzard's code, and no SaftUI frame is in it.
+	SaftUI's calls on the bar are GetParent, GetFrameLevel, GetPoint,
 	GetRect, GetEffectiveScale, IsShown, IsVisible, SetParent, SetFrameLevel, and SetSize,
 	ClearAllPoints, SetPoint and EnableMouse through the plain widget methods
 	(st:SetSizeDirect and the like; the bar's Edit Mode overrides are SetScale, SetPoint,
-	ClearAllPoints, SetShown and Hide). It reads, never writes, the bar's systemInfo (its
-	Edit Mode layout entry).
+	ClearAllPoints, SetShown and Hide), and HookScript for its OnShow. It reads, never
+	writes, the bar's systemInfo (its Edit Mode layout entry).
 
 	The buttons' size and the gap between them are settings (button_size, button_spacing),
 	laid out by TB:ApplyButtonLayout. Blizzard's XML makes every button 30px, puts the
@@ -129,7 +147,7 @@ local TB = st:NewModule('TotemBar')
 	Post-hooks on both put SaftUI's layout back. Everything it sizes and moves is
 	protected: the summon, recall and action buttons are secure, the slot buttons are
 	protected through the recall button's anchor (.agents/taint.md rule 6), the pages and
-	the bar hold secure buttons, and the holder has the bar and the buttons anchored to it.
+	the bar hold secure buttons, and the holder has the buttons anchored to it.
 	So in combat the layout waits for the end of combat, and a fight that runs Blizzard's
 	update (a summon page change does) shows Blizzard's 8 after the summon button and
 	before the recall button until it ends. The sizes and the gaps between elements stay
@@ -303,6 +321,10 @@ function TB:ApplyButtonLayout()
 	recall:SetPoint('LEFT', last, 'RIGHT', spacing, 0)
 	laidOutOn = base
 
+	-- A holder anchored by its centre or an edge moves its bottom-left corner when it's
+	-- resized, so the bar goes to its spot again.
+	self:AnchorBar()
+
 	if size ~= laidOutSize then
 		laidOutSize = size
 		self:ApplySkin()
@@ -399,8 +421,8 @@ end
 
 -- A profile with no position (a new or reset one) keeps the spot the holder was last
 -- placed at by another profile, so switching profiles doesn't move the bar. The bar is
--- on the holder then, so there's nothing to read from Blizzard. Safe in combat: it only
--- writes the profile.
+-- at the holder's spot then, so there's nothing to read from Blizzard. Safe in combat: it
+-- only writes the profile.
 function TB:KeepPlacement()
 	if self.holder and not self.config.position and placedAt then
 		self.config.position = CopyPosition(placedAt)
@@ -461,22 +483,32 @@ function TB:QueueCapture()
 	end)
 end
 
--- Puts Blizzard's bar on the holder, its bottom-left corner on the holder's. They're the
--- same size (TB:ApplyButtonLayout), so the bar covers the holder exactly. Plain widget
--- methods, as the bar's own are Edit Mode's overrides; they don't run the post-hooks
--- below either. The bar is protected, so in combat this waits for the end of combat.
+-- Puts Blizzard's bar where the holder is: its bottom-left corner on UIParent's, at the
+-- holder's left and bottom, in whole pixels. They're the same size (TB:ApplyButtonLayout),
+-- so the bar covers the holder exactly. Never anchored to the holder itself, as Blizzard's
+-- Edit Mode can record the bar's anchor into its layout (see the top of this file). Plain
+-- widget methods, as the bar's own are Edit Mode's overrides; they don't run the
+-- post-hooks below either. The bar is protected, so in combat this waits for the end of
+-- combat. A holder with no place yet (between ClearAllPoints and SetPoint on a profile
+-- change) leaves the bar where it is: placing the holder calls this again.
 function TB:AnchorBar()
 	local bar, holder = self.bar, self.holder
 	if not (holder and self.config.position) then return end
 	if st:QueueAfterCombat('totembar_anchor', function() self:AnchorBar() end) then return end
+	local left, bottom = holder:GetLeft(), holder:GetBottom()
+	if not (left and bottom) then return end
+	local scale = holder:GetEffectiveScale() / bar:GetEffectiveScale()
 	st:ClearAllPointsDirect(bar)
-	st:SetPointDirect(bar, 'BOTTOMLEFT', holder, 'BOTTOMLEFT', 0, 0)
+	st:SetPointDirect(bar, 'BOTTOMLEFT', UIParent, 'BOTTOMLEFT',
+		st:RoundToPixel(left * scale, bar), st:RoundToPixel(bottom * scale, bar))
 end
 
--- Sizes and places the holder from the profile, then puts the bar on it and lays the
--- buttons out on it, the first time it's placed from a position. The edit mode mover's
--- apply, so it runs on every drag and nudge. The holder is protected once the bar or
--- the buttons are anchored to it, so in combat it's placed at the end of combat.
+-- Sizes and places the holder from the profile, then puts the bar at its spot and lays
+-- the buttons out on it, the first time it's placed from a position. The edit mode mover's
+-- apply, so it runs at the end of every drag and on every nudge. The holder is protected
+-- once the buttons are anchored to it, so in combat it's placed at the end of combat.
+-- Placing it puts the bar at its spot through the holder's SetPoint hook (TB:SetupPosition);
+-- AnchorBar here covers a holder that was already where the position says.
 function TB:ApplyHolder()
 	local holder = self.holder
 	if not holder then return end
@@ -506,16 +538,22 @@ function TB:DisableBarMouse()
 	getmetatable(self.bar).__index.EnableMouse(self.bar, false)
 end
 
--- The holder's hooks and mover, on a shaman (see the top of this file). Once. Nothing here
--- moves anything in combat: the holder, the bar and the bar's mouse wait for the end of
--- combat after a /reload in combat.
+-- The holder's hooks and mover, on a shaman (see the top of this file). Once. After a
+-- /reload in combat the holder is still placed straight away, as nothing is anchored to it
+-- yet (the button layout waits for the end of combat), so it isn't protected. The bar and
+-- its mouse wait for the end of combat.
 function TB:SetupPosition()
 	local bar, holder = self.bar, self.holder
 	if not holder then return end
 
+	-- Every placement of the holder (ApplyHolder, and a drag, which calls its SetPoint) puts
+	-- the bar at its new spot. ClearAllPoints needs no hook: SetPoint follows it.
+	hooksecurefunc(holder, 'SetPoint', function() self:AnchorBar() end)
+
 	-- Blizzard's Edit Mode places the bar through these on every layout load, and in its
-	-- default position on every bottom bar update. Put it back on the holder after each,
-	-- or, while the profile has no position, take its new spot once Blizzard is done.
+	-- default position on every bottom bar update, and after a snap break. Put it back at
+	-- the holder's spot after each, or, while the profile has no position, take its new
+	-- spot once Blizzard is done.
 	local function PutBack()
 		if self.config.position then
 			self:AnchorBar()
@@ -536,9 +574,13 @@ function TB:SetupPosition()
 	self:DisableBarMouse()
 
 	-- A shaman whose bar is hidden at login (no totems yet, or in a vehicle) gets it
-	-- placed by Blizzard later, through the hooks above. PLAYER_ENTERING_WORLD also tries,
-	-- after every loading screen. On the holder: totemtimers.lua has TB's own
-	-- PLAYER_ENTERING_WORLD, and AceEvent keeps one handler per event.
+	-- placed by Blizzard later, through the hooks above. A bar moved in Blizzard's Edit
+	-- Mode isn't re-placed when it shows, so its showing tries too (the capture waits for
+	-- it, if it can't read the hidden bar's spot). PLAYER_ENTERING_WORLD also tries, after
+	-- every loading screen. On the holder: totemtimers.lua has TB's own
+	-- PLAYER_ENTERING_WORLD, and AceEvent keeps one handler per event. Each is a no-op once
+	-- the profile has a position.
+	bar:HookScript('OnShow', function() self:QueueCapture() end)
 	holder:RegisterEvent('PLAYER_ENTERING_WORLD')
 	holder:SetScript('OnEvent', function() self:QueueCapture() end)
 
@@ -713,10 +755,11 @@ function TB:GetConfigTable()
 		end,
 		function() return self.holder end
 	)
-	-- The bar and its buttons go on the holder, so the holder anchored to any of them
-	-- would be a loop. Checked by parent as well as by st:ValidateAnchor's walk of the
-	-- anchors: until the profile has a position, neither the bar nor its buttons are on
-	-- the holder yet, and the walk can't see the loop coming.
+	-- The buttons go on the holder and the bar goes to its spot, so the holder anchored to
+	-- any of them would be a loop, or the bar would chase the holder. Checked by parent as
+	-- well as by st:ValidateAnchor's walk of the anchors: the bar itself is never anchored
+	-- to the holder, and until the profile has a position the buttons aren't either, so the
+	-- walk can't see either coming.
 	local validate = position.args.frame.validate
 	position.args.frame.validate = function(info, name)
 		local frame = st:ResolveFrame(name)
