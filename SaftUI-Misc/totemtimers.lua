@@ -19,7 +19,9 @@ local TB = st:GetModule('TotemBar')
 	Where the time comes from:
 	  - The bar: GetTotemDuration(slot), a duration object, handed to the bar's
 	    SetTimerDuration, which then drains on its own. It works whether or not the
-	    totem's values are secret, with no math in Lua.
+	    totem's values are secret, with no math in Lua. It's nil for a slot with no
+	    totem, which is also how a timer knows to hide in combat (GetTotemInfo is
+	    secret there).
 	  - The text and the warning colour: plain math on GetTotemInfo's start time and
 	    duration while they aren't secret. GetTotemInfo is documented secret while its
 	    totem slot is, and secret values can't be compared or added. Then the duration
@@ -32,8 +34,10 @@ local TB = st:GetModule('TotemBar')
 	button wherever it's true), so a totem counts as down while its duration runs.
 
 	PLAYER_TOTEM_UPDATE comes when a totem is dropped, replaced, destroyed, recalled or
-	runs out, and refreshes every timer: a new totem restarts its timer at its own
-	duration, and a timer with no totem left hides at once. While a timer shows, a
+	runs out, and refreshes the timer of the slot it names: a new totem restarts its
+	timer at its own duration, and a timer with no totem left hides at once. Other
+	timers keep the times they read, so one started out of combat stays on its plain
+	times through a fight. While a timer shows, a
 	throttled OnUpdate (about 0.1s) updates its text and colours. It doesn't run while the
 	timer is hidden.
 
@@ -244,10 +248,6 @@ end
 -- secret values gets no timer, rather than an error on every update.
 local secretFailed = false
 
--- Text, colours and visibility from the duration object, for secret values. Nothing is
--- compared or tested: each value goes into a widget setter, which takes secret values,
--- and a colour curve's result only gives its fields back through GetRGB.
--- SetAlphaFromBoolean's own defaults are opaque for true and clear for false.
 -- Centres the time on the visible characters. The pixel font draws a 1px gap after
 -- every character, the last one too, so centring the text's box would put the
 -- characters half a pixel left, and snapping to whole pixels can make that a whole
@@ -271,6 +271,10 @@ local function PlaceText(timer)
 	end
 end
 
+-- Text, colours and visibility from the duration object, for secret values. Nothing is
+-- compared or tested: each value goes into a widget setter, which takes secret values,
+-- and a colour curve's result only gives its fields back through GetRGB.
+-- SetAlphaFromBoolean's own defaults are opaque for true and clear for false.
 local function RefreshSecret(timer)
 	local duration = timer.duration
 	timer.frame:SetAlphaFromBoolean(duration:IsActive())
@@ -351,6 +355,15 @@ local function UpdateTimer(button)
 		return
 	end
 
+	-- No duration object means no totem in the slot. In combat that's the only way to
+	-- tell: GetTotemInfo's values are secret there, so haveTotem can't be tested (oUF's
+	-- totems element checks the same way).
+	local durationObject = GetTotemDuration(slot)
+	if not durationObject then
+		frame:Hide()
+		return
+	end
+
 	local haveTotem, _, startTime, duration = GetTotemInfo(slot)
 	local secret = issecretvalue(haveTotem) or issecretvalue(startTime) or issecretvalue(duration)
 	if secret then
@@ -370,7 +383,7 @@ local function UpdateTimer(button)
 	timer.slot = slot
 	timer.secret = secret
 	timer.warning, timer.seconds = nil, nil
-	timer.duration = GetTotemDuration(slot)
+	timer.duration = durationObject
 	timer.bar:SetTimerDuration(timer.duration, Enum.StatusBarInterpolation.Immediate, Enum.StatusBarTimerDirection.RemainingTime)
 	timer.elapsed = 0
 	frame:Show()
@@ -496,10 +509,17 @@ function TB:GetTimerAreaHeight()
 	return height
 end
 
--- Refreshes every timer from its slot button's totem.
-function TB:UpdateTimers()
+-- Refreshes the timers from their slot buttons' totems: on PLAYER_TOTEM_UPDATE only the
+-- slot it names, otherwise all of them. Leaving the other slots alone keeps a timer
+-- that started out of combat on its plain times, rather than re-reading them as secret
+-- once combat has started.
+function TB:UpdateTimers(event, totemSlot)
+	local onlySlot = event == 'PLAYER_TOTEM_UPDATE' and not issecretvalue(totemSlot)
+		and type(totemSlot) == 'number' and totemSlot or nil
 	for button in pairs(timers) do
-		UpdateTimer(button)
+		if not onlySlot or button:GetID() == onlySlot then
+			UpdateTimer(button)
+		end
 	end
 end
 
