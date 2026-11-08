@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
   - [2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window](#2026-11-08--specialty-bags-herb-mining-etc-count-as-normal-bags-in-the-bag-window)
   - [2026-11-07 — Minimap pieces still belong to MinimapCluster, which stretches across the screen](#2026-11-07--minimap-pieces-still-belong-to-minimapcluster-which-stretches-across-the-screen)
   - [2026-11-07 — Extra buttons leftovers: zone ability hidden by Blizzard's bar settings, Blizzard's art, skinned vehicles' pitch and status bars](#2026-11-07--extra-buttons-leftovers-zone-ability-hidden-by-blizzards-bar-settings-blizzards-art-skinned-vehicles-pitch-and-status-bars)
@@ -30,6 +31,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames
+
+**What:** `SaftUI-Loot/roll.lua`'s skin of Blizzard's roll frames writes fields onto them: `frame.skinned`, `frame.Timer.Text`, each roll button's `.Text`, `frame.InfoFrame` (`LT:SkinRollFrame`, `LT:UpdateRollFrame`), and `st:SetBackdrop` on `frame.InfoFrame` / `frame.IconFrame` writes `.backdrop` onto `IconFrame`. That breaks `.agents/taint.md` rule 1. The roll frames aren't protected, so the risk is Blizzard's GroupLootFrame code reading a tainted value, not a blocked action, but it's the same pattern the rule exists for.
+
+**Why noticed:** Writing the loot rolls and saved feed design (2026-11-08), which adds counts to the roll buttons. That design makes new code keep its pieces in its own tables and leaves the existing writes alone to keep its scope.
+
+**Anchors:** `SaftUI-Loot/roll.lua` (lines around `frame.skinned`, `frame.Timer.Text`, `button.Text`, `frame.InfoFrame`); `.agents/taint.md` rule 1 and its "skinning a Blizzard button" pattern (added with the totem bar skin); `docs/superpowers/specs/2026-11-08-saftui-loot-rolls-history-design.md`.
+
+**What's been considered:** Move every SaftUI piece into a table keyed by the roll frame, as `SaftUI-Misc/totemskin.lua` does, and build backdrops as SaftUI frames rather than `st:SetBackdrop` on Blizzard's.
+
+**Shape of work:** Small refactor of `roll.lua`, plus an in-game check of rolls in a group and the test previews.
 
 ### 2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window
 
