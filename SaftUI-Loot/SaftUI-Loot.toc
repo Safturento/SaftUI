@@ -14,5 +14,6 @@ Feed/icons.lua
 Feed/progress.lua
 Feed/history.lua
 Feed/feed.lua
+Feed/rolls.lua
 Feed/filter.lua
 Feed/test.lua

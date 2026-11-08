@@ -1,8 +1,9 @@
 -- Feed test mode. While LT.testFeed is on, a timer pushes varied fake entries
 -- through LT:LootFeedHandler, the same path real chat messages take, so the
 -- pattern matching, icons and filters all get exercised. Entries are tagged
--- (info.test, see LT:LootFeedPush) so turning test mode off removes only them.
--- The state is a plain module field: it is never saved and resets on /reload.
+-- (info.test, see LT:LootFeedPush) so turning test mode off removes only them,
+-- and tagged entries are never saved. The state is a plain module field: it is
+-- never saved and resets on /reload.
 
 local st = SaftUI
 local LT = st:GetModule('Loot')
@@ -74,6 +75,34 @@ local function PickTestFaction()
 	return TEST_FACTIONS[random(#TEST_FACTIONS)]
 end
 
+-- Sample rolls for a roll result: someone else won, you won, or everyone
+-- passed. The other names are made up.
+local function SampleRolls()
+	local S = LT.ROLL_STATE
+	local variant = random(3)
+	if variant == 3 then return { allPassed = true, list = {} } end
+
+	local me = UnitName('player')
+	local _, myClass = UnitClass('player')
+	local list
+	if variant == 1 then
+		list = {
+			{ name = 'Brightblade', class = 'PALADIN', state = S.NeedMainSpec, roll = 92, isWinner = true },
+			{ name = me, class = myClass, state = S.NeedMainSpec, roll = 71, isSelf = true },
+		}
+	else
+		list = {
+			{ name = me, class = myClass, state = S.NeedMainSpec, roll = 97, isSelf = true, isWinner = true },
+			{ name = 'Brightblade', class = 'PALADIN', state = S.NeedMainSpec, roll = 92 },
+		}
+	end
+	tinsert(list, { name = 'Mistweave', class = 'PRIEST', state = S.NeedOffSpec, roll = 88 })
+	tinsert(list, { name = 'Quickshot', class = 'HUNTER', state = S.Greed, roll = 64 })
+	tinsert(list, { name = 'Emberfall', class = 'MAGE', state = S.Pass })
+	tinsert(list, { name = 'Duskwhisper', class = 'ROGUE', state = S.Pass })
+	return { winner = 1, list = list }
+end
+
 local function MoneyString()
 	local gold, silver, copper = random(0, 25), random(0, 99), random(0, 99)
 	return ('%s %s %s'):format(
@@ -128,6 +157,14 @@ local generators = {
 	-- builder directly with the fields a match would carry
 	function(self)
 		self:LootFeedAddHonor({ honor = random(10, 500) })
+	end,
+	-- roll result: these come from the loot history, not chat, so the sample
+	-- is built and pushed directly. It never touches the recorded drops.
+	function(self)
+		local link = PickRandomItemLink()
+		if not link then return end
+		local info = self:BuildRollEntry(link, SampleRolls())
+		if info then self:LootFeedPush(info) end
 	end,
 }
 

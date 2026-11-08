@@ -32,7 +32,8 @@ st.defaults.loot = {
 			Currency = true,
 			Reputation = true,
 			Experience = true,
-			Skill = true
+			Skill = true,
+			Rolls = true,
 		}
 	},
 	roll = {

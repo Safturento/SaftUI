@@ -4,7 +4,8 @@
 -- tooltip read; session-only fields (time, test, restored, saved) are left out.
 --
 -- st.config.char.loot = { feed = { entries, newest first }, drops = { [key] = true } }
--- `drops` is for the roll results (recorded drops) and is not touched here.
+-- `drops` is for the roll results (recorded drops, Feed/rolls.lua) and is not
+-- touched here.
 
 local st = SaftUI
 local LT = st.Loot
@@ -18,9 +19,18 @@ local MAX_HISTORY = LT.MAX_HISTORY
 local STALE_AGE = 24 * 3600
 
 -- Every field a feed line (UpdateFeed), the filters and the tooltip read.
+-- Roll results also keep `rolls`, copied by CopyRolls.
 local SAVED_FIELDS = {
 	'name', 'gold', 'icon', 'link', 'count', 'rightText', 'notSelf',
-	'type', 'itemSubType', 'craftQuality', 'when',
+	'type', 'itemSubType', 'craftQuality', 'when', 'looted',
+}
+
+-- A roll result's summary (LT:SummarizeDrop) and each player's line in it, by
+-- the type each field must have.
+local ROLLS_FIELDS = { allPassed = 'boolean', winner = 'number', leader = 'number', tied = 'boolean' }
+local ROLL_LINE_FIELDS = {
+	name = 'string', class = 'string', state = 'number', roll = 'number',
+	isSelf = 'boolean', isWinner = 'boolean',
 }
 
 -- Read through this each time: st.config does not exist at file load.
@@ -38,6 +48,40 @@ end
 local function IsPlain(v)
 	local t = type(v)
 	return (t == 'string' or t == 'number' or t == 'boolean') and not issecretvalue(v)
+end
+
+-- A copy of the fields of `src` named in `fields`, or nil if one has the wrong
+-- type or is secret.
+local function CopyTyped(src, fields)
+	local copy = {}
+	for key, kind in pairs(fields) do
+		local v = src[key]
+		if v ~= nil then
+			if issecretvalue(v) or type(v) ~= kind then return end
+			copy[key] = v
+		end
+	end
+	return copy
+end
+
+-- A copy of a roll summary, field by field, or nil if anything in it isn't
+-- the plain data the tooltip reads.
+local function CopyRolls(r)
+	if type(r) ~= 'table' then return end
+	local rolls = CopyTyped(r, ROLLS_FIELDS)
+	if not rolls then return end
+
+	local list = {}
+	if r.list ~= nil then
+		if type(r.list) ~= 'table' then return end
+		for i, line in ipairs(r.list) do
+			local copy = type(line) == 'table' and CopyTyped(line, ROLL_LINE_FIELDS)
+			if not copy then return end
+			list[i] = copy
+		end
+	end
+	rolls.list = list
+	return rolls
 end
 
 -- A plain-data copy of the saved fields, or nil if any value is secret or not
@@ -62,6 +106,11 @@ local function CopyEntry(info)
 			progress[key] = v
 		end
 		copy.progress = progress
+	end
+
+	if info.rolls ~= nil then
+		copy.rolls = CopyRolls(info.rolls)
+		if not copy.rolls then return end
 	end
 
 	return copy
@@ -118,6 +167,10 @@ function LT:RestoreFeed()
 			end
 			if valid then
 				info.progress = progress
+			end
+			-- LT:AddRollLines checks each part of it as it reads.
+			if type(saved.rolls) == 'table' then
+				info.rolls = saved.rolls
 			end
 			info.saved = saved
 			info.restored = true

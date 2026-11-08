@@ -1,7 +1,7 @@
 ---
 name: architecture
 description: How SaftUI's addons, modules, config, profiles and load order fit together
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 covers:
   - 'SaftUI-*/*.toc'
   - 'SaftUI-Core/init.lua'
@@ -39,6 +39,7 @@ covers:
 - Each module defines its defaults at file load in its own `config.lua`, as `st.defaults.<key> = { ... }`. Unit frames keep theirs in `SaftUI-Unitframes/config/`.
 - `Config:InitializeAceConfig` (called from `SaftUI:OnEnable`) creates `st.config = AceDB:New('SaftUI_DB', { profile = st.defaults, ... })`. Read settings through `st.config.profile.<key>`.
 - **Bind, don't cache.** In `OnEnable`, call `st:BindModuleConfig(self, '<key>')` instead of `self.config = st.config.profile.<key>`. On a profile change, AceDB switches to the new profile's tables and strips defaults from the old ones, so any reference cached at enable time (including upvalues and closures holding sub-tables) returns nil fields. Bound modules are re-pointed automatically. In option `get`/`set` functions and hooks, read through `self.config` at call time.
+- **Per-character saved data** (not settings) goes in AceDB's char namespace, `st.config.char.<key>`, which a profile switch doesn't touch. SaftUI-Loot keeps its saved feed and recorded roll drops there (`Feed/history.lua`, `Feed/rolls.lua`). Read it through an accessor at call time (`st.config` doesn't exist at file load). Save only plain data (strings, numbers, booleans and tables of them), never a secret value (`.agents/clients.md`) and never test-mode entries, and keep each record to the fields its readers need.
 - **Profile changes** (`OnProfileChanged`/`Copied`/`Reset`) run `Config:UpdateConfig()` in `SaftUI-Core/Config/config.lua`. Order:
   1. Re-point every bound `module.config`.
   2. Clear mover anchors (`EM:ClearPositions`, which saves them and skips frames that are protected in combat).

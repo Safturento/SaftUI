@@ -1,11 +1,23 @@
 local st = SaftUI
 local LT = st:GetModule('Loot')
 
+-- Roll results show while the Rolls filter is on, Self Only or not: seeing who
+-- won what is their point. With Rolls off, a result the winner's loot message
+-- was folded into still shows wherever that loot would (the Loot filter, and
+-- Self Only for someone else's), so turning Rolls off never hides an item you
+-- looted.
 function LT:ShouldAddItem(item)
+	local filters = self.config.feed.filters
+	local kind = item.type
+	if kind == 'Rolls' then
+		if filters.Rolls then return true end
+		if not item.looted then return false end
+		kind = 'Loot'
+	end
 
-	if self.config.feed.filters.Self == true and item.notSelf then return end
+	if filters.Self == true and item.notSelf then return end
 
-    return self.config.feed.filters[item.type]
+	return filters[kind]
 end
 
 local cachedFilter = {}
@@ -55,6 +67,7 @@ function LT:InitializeFilterDropdown()
 		Currency = { text = 'Currency' },
 		Experience = { text = 'Experience' },
 		Reputation = { text = 'Reputation' },
+		Rolls = { text = 'Rolls' },
 	}
 	self.filterDropdown = st:CreateCheckboxDropdown(
 	    "SaftUILootFilterDropdownMenu", filterButton, entries, isChecked, setChecked)

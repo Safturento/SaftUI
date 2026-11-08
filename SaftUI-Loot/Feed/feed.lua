@@ -339,6 +339,9 @@ function LT:LootFeedPush(info)
 	-- Restored entries are history; new gains start their own entry.
 	if top and top.restored then top = nil end
 
+	-- Each rolled item is its own entry, with its own rolls.
+	if top and (top.rolls or info.rolls) then top = nil end
+
 	-- If you loot gold multiple times together, group it up into one item
 	if info.gold and top and top.gold then
 		top.gold = top.gold + info.gold
@@ -400,6 +403,10 @@ end
 
 function LT:LootFeedAddItem(match)
 	if not match['link'] then return end
+
+	-- The winner's loot for a roll result already in the feed goes into that
+	-- entry instead (Feed/rolls.lua).
+	if self:AbsorbLootMessage(match) then return end
 
 	local name, _, quality, _, _, type, subType, _, _, texture = C_Item.GetItemInfo(match['link'])
 
@@ -543,6 +550,9 @@ local function ShowTooltip(self)
 		-- Gold, XP, reputation and the like have no link: a small tooltip with
 		-- the line's own text.
 		GameTooltip:SetText(info.gold and st.StringFormat:GoldFormat(info.gold) or info.name or '')
+	end
+	if info and info.rolls then
+		LT:AddRollLines(GameTooltip, info.rolls, false)
 	end
 	local ago = LT:FormatAgo(info and info.when)
 	if ago ~= '' then
@@ -795,4 +805,7 @@ function LT:InitializeLootFeed()
 	self:RegisterEvent('CHAT_MSG_COMBAT_XP_GAIN', 'LootFeedHandler')
 	-- Lets reputation entries find factions hidden under collapsed headers.
 	self:RegisterEvent('FACTION_STANDING_CHANGED', 'RememberChangedFaction')
+
+	-- Roll results (Feed/rolls.lua), now the restored feed is in place.
+	self:InitializeRollResults()
 end

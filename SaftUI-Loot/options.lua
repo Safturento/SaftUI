@@ -96,7 +96,7 @@ function LT:GetFeedOptions()
 	local general = BuildGeneral('feed', {
 		test_mode = TestModeToggle(
 			'Keep the feed filled with sample entries (items, gold, currency, skill ups, ' ..
-			'experience, reputation, honor). Turning it off removes only the samples. ' ..
+			'experience, reputation, honor, roll results). Turning it off removes only the samples. ' ..
 			'Not saved: off again after a reload or profile change.',
 			'testFeed', LT.SetTestFeed),
 		width = generators.range(1, 'Width', 100, 1000, 1),
