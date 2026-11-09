@@ -60,6 +60,7 @@ The API (globals, defined in `tests/lib/harness.lua`):
 
 - Cases share the file's world and run in order. A case may build on the one before, or call `reset_world()` for a clean start.
 - Keep test state in locals: `reset_world()` removes globals.
+- The parts of Lua's library WoW lacks aren't there: `io`, `os`, `require`, `dofile`, `loadfile`, `package` and `module` are nil, for test files and SaftUI files alike. Load files with `load_saftui` or `load_test_file`, never end a run yourself (the runner owns the exit status), and add WoW's own `time` or `date` to `tests/wow/lua.lua` if SaftUI code needs them.
 - `print` output is captured, and shown for a failing case (or with `-v`).
 - The game shows an error passed to `geterrorhandler()` and carries on. So the stubbed handler records it, the code goes on as in game, and the case fails unless the test takes it with `take_errors()`. AceAddon-style `Enable`, event dispatch, scripts and `EventRegistry` callbacks all report errors this way.
 

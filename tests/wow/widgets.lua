@@ -96,12 +96,13 @@ end
 local THIS_FILE = debug.getinfo(1, 'S').source
 
 -- Errors as the game's usage errors do: at the code that called the widget
--- method, the first stack level outside this file.
+-- method, the first stack level outside this file. Levels Lua 5.1 shows as
+-- "(tail call)" (a method's wrapper tail-calls it) are skipped too.
 local function usage(s, text)
 	local level = 2
 	while true do
 		local info = debug.getinfo(level, 'S')
-		if not info or info.source ~= THIS_FILE then break end
+		if not info or (info.source ~= THIS_FILE and info.what ~= 'tail') then break end
 		level = level + 1
 	end
 	error(('%s: %s'):format(s.name or ('<unnamed ' .. s.type .. '>'), text), level)

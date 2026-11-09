@@ -9,6 +9,20 @@ test('runs on Lua 5.1, the version WoW uses', function()
 	eq(_VERSION, 'Lua 5.1')
 end)
 
+-- WoW's Lua has no files, process or module loading. Without this a test
+-- could end the run with os.exit before its report, or load a SaftUI file
+-- around load_saftui's ... and line-ending handling.
+test("Lua's library WoW lacks is out of reach", function()
+	local names = { 'io', 'os', 'require', 'dofile', 'loadfile', 'package', 'module', 'python' }
+	for _, name in ipairs(names) do
+		eq(_G[name], nil, name)
+	end
+	reset_world()
+	for _, name in ipairs(names) do
+		eq(_G[name], nil, name .. ' after reset_world')
+	end
+end)
+
 test('a stub frame answers only the methods it defines', function()
 	local frame = CreateFrame('Frame')
 	eq(frame.NotAMethod, nil, 'a frame has no NotAMethod')
@@ -37,6 +51,10 @@ test('a FontString with no font refuses text, as in game', function()
 	local ok, err = pcall(fs.SetText, fs, 'x')
 	eq(ok, false, 'SetText before any font is set')
 	check(tostring(err):find('Font not set', 1, true), "WoW's error: " .. tostring(err))
+
+	-- Like the game's, the error points at the code that called the method.
+	ok, err = pcall(function() fs:SetText('x') end)
+	check(tostring(err):find('^tests/lib/harness_self_test%.lua:%d+: '), 'the error starts with the caller\'s file:line: ' .. tostring(err))
 end)
 
 test("the real st:CreateButton's SetText alias errors, as in game", function()

@@ -213,12 +213,13 @@ local function on_error(err)
 end
 
 -- A traceback without the frames that only add noise: the harness's own,
--- and the error and xpcall calls.
+-- and the error and xpcall calls. The first line, the error message itself,
+-- is always kept.
 local function trim(trace)
 	local lines = {}
 	for line in (trace .. '\n'):gmatch('(.-)\n') do
-		if not line:find('tests/lib/harness.lua', 1, true) and not line:find("in function 'xpcall'", 1, true)
-				and not line:find("in function 'error'", 1, true) then
+		if #lines == 0 or not (line:find('tests/lib/harness.lua', 1, true) or line:find("in function 'xpcall'", 1, true)
+				or line:find("in function 'error'", 1, true)) then
 			lines[#lines + 1] = line
 		end
 	end
@@ -285,8 +286,15 @@ local function run_file(path, shown)
 	return result
 end
 
--- lupa's bridge to Python. WoW has nothing like it, so SaftUI code can't use it.
-python = nil
+-- What WoW's Lua doesn't have, so neither test files nor SaftUI files can use
+-- it: lupa's bridge to Python, files and the process (io, os, whose os.exit
+-- would end the run before its report and exit status), and loading code
+-- from disk around load_saftui (require, dofile, loadfile, package, module).
+-- The harness keeps its own io above (a local, hence clearing through _G). If
+-- SaftUI code needs WoW's time or date, add them to tests/wow/lua.lua.
+for _, name in ipairs({ 'python', 'io', 'os', 'require', 'dofile', 'loadfile', 'package', 'module' }) do
+	_G[name] = nil
+end
 
 base_globals = {}
 for name in pairs(_G) do
