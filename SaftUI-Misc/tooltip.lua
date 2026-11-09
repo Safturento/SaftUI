@@ -2,8 +2,17 @@
 local st = SaftUI
 local TT = st:NewModule('Tooltip')
 
+-- The SaftUI backdrop frame of each skinned Blizzard frame (the tooltips, the
+-- status bar, the dropdown lists). Kept here, not on the frames (rule 1 in
+-- .agents/taint.md).
+local backdrops = setmetatable({}, { __mode = 'k' })
+
+local function SkinBackdrop(frame, template)
+	return st:SetBackdropIn(backdrops, frame, template)
+end
+
 function TT:UpdateTooltipDisplay(tooltip)
-	st:SetBackdrop(tooltip, self.config.template)
+	SkinBackdrop(tooltip, self.config.template)
 	--tooltip.NineSlice:Hide()
 
 	if IsModifierKeyDown() and tooltip.GetItem and tooltip:GetItem() then
@@ -50,8 +59,10 @@ function TT:GameTooltip_OnTooltipSetUnit(tooltip)
 
 	if c then
 		_G[tooltip:GetName()..'TextLeft1']:SetTextColor(c.r, c.g, c.b)
-		tooltip.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-		GameTooltipStatusBar.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+		local backdrop = backdrops[tooltip]
+		if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
+		backdrop = backdrops[GameTooltipStatusBar]
+		if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
 	end
 end
 
@@ -97,14 +108,14 @@ function TT:UpdateConfig()
 
 	self:ApplyTooltipHolder()
 
-	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
+	SkinBackdrop(GameTooltipStatusBar, self.config.template)
 	for _, tooltip in pairs(self.AllTooltips) do
-		st:SetBackdrop(tooltip, self.config.template)
+		SkinBackdrop(tooltip, self.config.template)
 	end
 	for i = 1, 2 do
 		local dropdown = _G['DropDownList'..i]
 		if dropdown then
-			st:SetBackdrop(dropdown, self.config.template)
+			SkinBackdrop(dropdown, self.config.template)
 		end
 	end
 end
@@ -117,7 +128,7 @@ function TT:OnEnable()
 	GameTooltipStatusBar:SetPoint('BOTTOMLEFT', GameTooltip, 'TOPLEFT', 0, 7)
 	GameTooltipStatusBar:SetPoint('BOTTOMRIGHT', GameTooltip, 'TOPRIGHT', 0, 7)
 
-	st:SetBackdrop(GameTooltipStatusBar, self.config.template)
+	SkinBackdrop(GameTooltipStatusBar, self.config.template)
 	self:SetupTooltipPosition()
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
 	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
@@ -136,7 +147,7 @@ function TT:OnEnable()
 		WorldMapTooltip,
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
-		st:SetBackdrop(tooltip, self.config.template)
+		SkinBackdrop(tooltip, self.config.template)
 		tooltip.NineSlice:SetAlpha(0)
 		if tooltip.CloseButton then
 			tooltip.CloseButton:Hide()
@@ -160,6 +171,6 @@ function TT:OnEnable()
 	for i=1, 2 do
 		local name = 'DropDownList'..i
 		local dropdown = _G[name]
-		st:SetBackdrop(dropdown, self.config.template)
+		SkinBackdrop(dropdown, self.config.template)
 	end
 end

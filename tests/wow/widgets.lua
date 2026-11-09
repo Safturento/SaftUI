@@ -887,6 +887,9 @@ end
 function GameTooltip.GetOwner(self, s) return s.owner end
 function GameTooltip.ClearLines(self, s) s.lines = 0 end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
+-- The tooltip's unit: name and unit token, or nothing (nil, nil) when it isn't
+-- showing a unit. Nothing in the stubs sets one yet.
+function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
 
 ------------------------------------------------------------------ method tables
 

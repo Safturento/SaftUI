@@ -14,7 +14,7 @@
 	  SaftUI                  SaftUI-Core's namespace, as in game
 	  st:NewModule(name), st:GetModule(name, silent), st:IterateModules(), st.modules
 	  on every module (and SaftUI): NewModule, GetModule, IterateModules, SetDefaultModuleLibraries, Enable,
-	    IsEnabled, RegisterEvent, UnregisterEvent, SecureHook, HookScript
+	    IsEnabled, RegisterEvent, UnregisterEvent, SecureHook, SecureHookScript, HookScript, IsHooked
 	  st.config.profile       empty until apply_defaults()
 	  st:BindModuleConfig     as SaftUI-Core/Config/config.lua has it
 	  st.Config               the Config module, with Refresh and GetWindow (no /sui window)
@@ -268,6 +268,30 @@ function Object:HookScript(frame, script, handler)
 		call_handler(self, handler, ...)
 		return original(...)
 	end)
+end
+
+-- AceHook:SecureHookScript(frame, script, [handler]): a post-hook on a frame's
+-- script, through the frame's own HookScript (the original handler stays).
+function Object:SecureHookScript(frame, script, handler)
+	local usage = 'Usage: SecureHookScript(object, method, [handler])'
+	handler = handler or script
+	check_handler(self, handler, usage)
+	if type(frame) ~= 'table' or not frame.GetScript or not frame:HasScript(script) then
+		error(usage .. ': You can only hook a script on a frame object', 2)
+	end
+	claim_hook(self, frame, script)
+	frame:HookScript(script, function(...) call_handler(self, handler, ...) end)
+end
+
+-- AceHook:IsHooked([object], method): whether self has an active hook on it
+-- (SecureHook or HookScript; there's no Unhook here, so it never goes false).
+function Object:IsHooked(object, method)
+	if type(object) == 'string' then
+		object, method = nil, object
+	end
+	local byTarget = hooked[self]
+	local names = byTarget and byTarget[object or _G]
+	return names and names[method] or false
 end
 
 ------------------------------------------------------------------ SaftUI
