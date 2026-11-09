@@ -7,8 +7,13 @@ and runs its cases (see .agents/testing.md). This file finds the test files,
 prints the results and sets the exit status:
 
   0  every file loaded, ran at least one check, and had no failures
-  1  anything else
+  1  test failures: a file failed to load, ran no checks, or had a failing check
   2  bad arguments (a path that doesn't exist, a folder with no tests)
+  70 the runner itself crashed (a Python exception; the traceback is on stderr)
+
+Exit 0 means all passed and every other status is a failure. 1 and 70 are kept
+apart so `tests/run --self-check` can tell a caught failure from a runner crash
+(Python's own exit status for an uncaught exception is also 1).
 """
 
 import argparse
@@ -21,6 +26,8 @@ TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(TESTS_DIR)
 HARNESS = os.path.join(TESTS_DIR, 'lib', 'harness.lua')
 TEST_SUFFIX = '_test.lua'
+EXIT_FAILED = 1
+EXIT_CRASHED = 70
 
 
 class UsageError(Exception):
@@ -122,34 +129,75 @@ def report(path, verbose):
 
 
 FIXTURES = os.path.join(TESTS_DIR, 'lib', 'runner_fixtures')
-# fixture file -> the exit status the runner must give it
+# fixture file -> (exit status the runner must give it, text its output must contain)
 FIXTURE_EXPECTED = {
-    'passing.lua': 0,
-    'syntax_error.lua': 1,
-    'no_cases.lua': 1,
-    'no_checks.lua': 1,
-    'failing_check.lua': 1,
-    'case_error.lua': 1,
-    'endless_loop.lua': 1,
+    'passing.lua': (0, 'ok    tests/lib/runner_fixtures/passing.lua'),
+    'syntax_error.lua': (EXIT_FAILED, 'error while loading the file:'),
+    'no_cases.lua': (EXIT_FAILED, 'the file registers no test() cases'),
+    'no_checks.lua': (EXIT_FAILED, 'no checks ran in this case'),
+    'failing_check.lua': (EXIT_FAILED, 'one is not two: expected 2, got 1'),
+    'case_error.lua': (EXIT_FAILED, 'error: tests/lib/runner_fixtures/case_error.lua:4: boom'),
+    'endless_loop.lua': (EXIT_FAILED, 'so the harness stopped it'),
 }
+# The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag.
+CRASH_FIXTURE = ('passing.lua', EXIT_CRASHED, 'runner crash (self-check)')
+TRACEBACK = 'Traceback (most recent call last)'
+
+
+def classify(done):
+    """'crash' when the runner itself broke (a Python traceback, or an exit status
+    that isn't the runner's own 0 or 1), else 'pass' or 'fail'."""
+    if TRACEBACK in done.stderr or TRACEBACK in done.stdout:
+        return 'crash'
+    if done.returncode == 0:
+        return 'pass'
+    return 'fail' if done.returncode == EXIT_FAILED else 'crash'
 
 
 def self_check():
     """Runs each tests/lib/runner_fixtures file through this runner, in a
-    separate process, and checks its exit status: the passing one 0 and every
-    broken one non-zero, so a runner that stops noticing a failure mode is
-    caught. Returns 0 when all behave."""
+    separate process, and checks its exit status AND its output: the passing one
+    exits 0, every broken one exits EXIT_FAILED with its own failure text and no
+    Python traceback, and a deliberately crashed runner must be told apart from
+    a caught failure (it has to come out as 'crash'). So a runner that stops
+    noticing a failure mode, or one that crashes, is caught. Returns 0 when all
+    behave."""
     import subprocess
     bad = 0
-    for name, expected in FIXTURE_EXPECTED.items():
-        path = os.path.join(FIXTURES, name)
-        done = subprocess.run([sys.executable, os.path.abspath(__file__), path],
+
+    def run(path, *flags):
+        return subprocess.run([sys.executable, os.path.abspath(__file__), *flags, path],
                               capture_output=True, text=True)
-        good = (done.returncode == 0) if expected == 0 else (done.returncode == 1)
-        print(f'{"ok  " if good else "FAIL"}  {name}: exit {done.returncode}, expected {"0" if expected == 0 else "1"}')
-        if not good:
+
+    for name, (expected, text) in FIXTURE_EXPECTED.items():
+        done = run(os.path.join(FIXTURES, name))
+        kind = classify(done)
+        want = 'pass' if expected == 0 else 'fail'
+        problems = []
+        if kind != want:
+            problems.append(f'classified {kind}, expected {want}')
+        if done.returncode != expected:
+            problems.append(f'exit {done.returncode}, expected {expected}')
+        if text not in done.stdout:
+            problems.append(f'output lacks {text!r}')
+        if done.stderr.strip():
+            problems.append('wrote to stderr')
+        print(f'{"FAIL" if problems else "ok  "}  {name}: exit {done.returncode} ({kind})'
+              + (f' - {"; ".join(problems)}' if problems else ''))
+        if problems:
             bad += 1
             print_lines((done.stdout + done.stderr).splitlines(), '      ')
+
+    name, expected, text = CRASH_FIXTURE
+    done = run(os.path.join(FIXTURES, name), '--crash-for-self-check')
+    kind = classify(done)
+    good = kind == 'crash' and done.returncode == expected and text in done.stderr
+    print(f'{"ok  " if good else "FAIL"}  {name} with --crash-for-self-check: exit {done.returncode} ({kind}), '
+          f'expected a crash (exit {expected})')
+    if not good:
+        bad += 1
+        print_lines((done.stdout + done.stderr).splitlines(), '      ')
+
     # every fixture on disk must be listed, so a new one can't go unchecked
     on_disk = {n for n in os.listdir(FIXTURES) if n.endswith('.lua')}
     for name in sorted(on_disk - set(FIXTURE_EXPECTED)):
@@ -165,7 +213,10 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='list every case and show what tests printed')
     parser.add_argument('--self-check', action='store_true',
                         help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
+    parser.add_argument('--crash-for-self-check', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.crash_for_self_check:  # only the self-check uses this: a runner crash on demand
+        raise RuntimeError('runner crash (self-check)')
     if args.self_check:
         return self_check()
 
@@ -185,8 +236,19 @@ def main():
     print()
     print(f'{count(len(files), "file")}: {len(files) - failed_files} passed, {failed_files} failed '
           f'({count(total_checks, "check")}, {total_failures} failed)')
-    return 1 if failed_files else 0
+    return EXIT_FAILED if failed_files else 0
+
+
+def entry():
+    """Runs main(), turning an uncaught Python exception into EXIT_CRASHED
+    (Python's own status for it is 1, the same as a test failure)."""
+    try:
+        return main()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return EXIT_CRASHED
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(entry())
