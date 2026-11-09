@@ -386,28 +386,114 @@ function INV:FlushIfFiltered(container, category)
 	end
 end
 
--- Packs the categories afresh: by height (shortest first when inverted), each
--- into the column that is shortest so far.
+-- How many partial arrangements packColumns tries before it settles for the
+-- best it has found. Bags have few enough categories that it rarely gets close.
+local PACK_BUDGET = 10000
+local EPSILON = 0.01
+
+--[[
+	Splits weights (sorted heaviest first) over k columns so the heaviest column
+	is as light as possible, and returns each weight's column. Biggest first into
+	the lightest column gives the starting answer, usually within a row of the
+	best. A depth-first search then looks for a lighter one: each weight tries
+	each column that would stay under the best so far, columns holding the same
+	load are tried once, and it stops at the lower bound (the heaviest weight, or
+	an even split) or after PACK_BUDGET steps.
+]]
+local function packColumns(weights, k)
+	local n = #weights
+	local loads, assign, bestAssign = {}, {}, {}
+	for j = 1, k do loads[j] = 0 end
+
+	for i = 1, n do
+		local lightest = 1
+		for j = 2, k do
+			if loads[j] < loads[lightest] then lightest = j end
+		end
+		loads[lightest] = loads[lightest] + weights[i]
+		bestAssign[i] = lightest
+	end
+
+	local best, total = 0, 0
+	for j = 1, k do
+		best = max(best, loads[j])
+		total = total + loads[j]
+		loads[j] = 0
+	end
+	local lowerBound = max(weights[1] or 0, total / k)
+
+	local steps = 0
+	local function search(i, heaviest)
+		if best <= lowerBound + EPSILON or steps >= PACK_BUDGET then return end
+		if i > n then
+			best = heaviest
+			for x = 1, n do bestAssign[x] = assign[x] end
+			return
+		end
+		steps = steps + 1
+		local tried = {}
+		for j = 1, k do
+			local load = loads[j]
+			local newLoad = load + weights[i]
+			if not tried[load] and newLoad < best - EPSILON then
+				tried[load] = true
+				loads[j] = newLoad
+				assign[i] = j
+				search(i + 1, max(heaviest, newLoad))
+				loads[j] = load
+			end
+		end
+	end
+	search(1, 0)
+
+	return bestAssign
+end
+
+-- Biggest first, then by name, so equal categories always land the same way.
+local function heaviestFirst(a, b)
+	local ha, hb = a:GetHeight(), b:GetHeight()
+	if ha ~= hb then return ha > hb end
+	return a.name < b.name
+end
+
+-- Packs the categories afresh into the shortest window the columns allow
+-- (packColumns). A column's order doesn't change its height, so each one runs
+-- smallest first when inverted, biggest first otherwise, and by name on a tie.
 function INV:CompactCategories(container)
-    local sorted = {}
+	local spacing = self.config.buttonspacing
+	local columns = container.columns
 
-    for _, category in pairs(container.categories) do
-        tinsert(sorted, category)
-    end
-    table.sort(sorted, function(a,b)
-        if self.config.inverted then
-            return a:GetHeight() < b:GetHeight()
-        else
-            return a:GetHeight() > b:GetHeight()
-        end
-     end)
+	local shown = {}
+	for _, category in pairs(container.categories) do
+		self:FlushIfFiltered(container, category)
+		if category:IsShown() then tinsert(shown, category) end
+	end
+	table.sort(shown, heaviestFirst)
 
-    for _, category in ipairs(sorted) do
-        self:FlushIfFiltered(container, category)
-        if category:IsShown() then
-            addToColumn(getShortestColumn(container.columns), category, self.config.buttonspacing)
-        end
-    end
+	local weights = {}
+	for i, category in ipairs(shown) do
+		weights[i] = category:GetHeight() + spacing
+	end
+	local assign = packColumns(weights, #columns)
+
+	local inverted = self.config.inverted
+	for j, column in ipairs(columns) do
+		local list = {}
+		for i, category in ipairs(shown) do
+			if assign[i] == j then tinsert(list, category) end
+		end
+		table.sort(list, function(a, b)
+			local ha, hb = a:GetHeight(), b:GetHeight()
+			if ha ~= hb then
+				if inverted then return ha < hb end
+				return ha > hb
+			end
+			return a.name < b.name
+		end)
+		for _, category in ipairs(list) do
+			addToColumn(column, category, spacing)
+		end
+	end
 end
 
 --[[
