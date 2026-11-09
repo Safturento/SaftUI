@@ -1,9 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local AceConfigDialog = LibStub('AceConfigDialog-3.0')
-local AceConfig = LibStub('AceConfig-3.0')
-
 local function get_profiles()
 	local profiles = {}
 	local num_profiles = 0
@@ -165,34 +162,6 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
 	hideOnEscape = true,
 }
 
-StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"] = {
-	text = "",
-	button1 = "Copy",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		local profile = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		if not self.options.from then return end
-
-		for element,copy in pairs(self.options.elements) do
-			if copy then
-				if type(profile[self.options.from][element]) == 'table' then
-					profile[self.options.to][element] = st.tablecopy(profile[self.options.from][element], true)
-				else
-					profile[self.options.to][element] = profile[self.options.from][element]
-				end
-			end
-		end
-
-		UF:UpdateConfig()
-		st.Config:Refresh()
-
-		AceConfigDialog:Close(st.name..'_Copy_Unitframe')
-	end,
-	OnCancel = function() end,
-	whileDead = true,
-	hideOnEscape = true,
-}
-
 -- One spawned frame of a config unit, for its options to look at: the unit's
 -- frame, boss (or arena) 1, or a party or raid group's first button. nil while
 -- a group has no buttons.
@@ -244,8 +213,22 @@ function UF.GenerateRelativeSizeConfigGroup(order)
 end
 
 
-function UF:RegisterCopyTable()
-	local config_table = {
+-- The Copy from dialog: copies the ticked settings of another unit (in the
+-- current unit frame profile) onto unit, after asking. SaftUI's options window
+-- draws it as a small dialog (st.OptionsWindow:OpenDialog). The table is made
+-- anew each time, so nothing carries over from the last unit.
+function UF:OpenCopyTable(unit)
+	local copy = { from = nil, settings = {} }
+	local settingArgs = {}
+	for key in pairs(self:GetProfileConfig()[unit]) do
+		copy.settings[key] = false
+		settingArgs[key] = st.Config.generators.toggle(0, key, 0.7)
+	end
+	local function SetAll(value)
+		for key in pairs(copy.settings) do copy.settings[key] = value end
+	end
+
+	local options = {
 		name = 'Copy from',
 		type = 'group',
 		args = {
@@ -253,106 +236,74 @@ function UF:RegisterCopyTable()
 				order = 0,
 				name = 'Copy from',
 				type = 'select',
-				values = function() return {} end,
+				width = 'full',
+				values = function()
+					local units = {}
+					-- The current profile's, in case the profile changed since opening
+					for key in pairs(UF:GetProfileConfig()) do
+						if key ~= unit then
+							units[key] = key
+						end
+					end
+					return units
+				end,
+				get = function() return copy.from end,
+				set = function(_, from) copy.from = from end,
 			},
 			toggle_all = {
 				order = 1,
 				name = 'All',
 				type = 'execute',
-				func = function(self, info) end,
 				width = 0.5,
+				func = function() SetAll(true) end,
 			},
 			toggle_none = {
 				order = 1,
 				name = 'None',
 				type = 'execute',
-				func = function(self, info) end,
 				width = 0.5,
+				func = function() SetAll(false) end,
 			},
-			elements = {
+			settings = {
 				order = -99,
-				name = '',
+				name = 'Settings',
 				type = 'group',
 				inline = true,
-				childGroups = 'inline',
-				args = {}
+				get = function(info) return copy.settings[info[#info]] end,
+				set = function(info, value) copy.settings[info[#info]] = value end,
+				args = settingArgs,
 			},
 			accept = {
 				order = -95,
 				name = 'Confirm copy',
 				type = 'execute',
-
+				disabled = function() return not copy.from end,
+				confirm = function()
+					return 'Are you sure you want to clone ' .. unit .. ' from ' .. tostring(copy.from) .. '?'
+				end,
+				func = function()
+					local profile = UF:GetProfileConfig()
+					for key, ticked in pairs(copy.settings) do
+						if ticked then
+							local value = profile[copy.from][key]
+							if type(value) == 'table' then
+								profile[unit][key] = st.tablecopy(value, true)
+							else
+								profile[unit][key] = value
+							end
+						end
+					end
+					UF:UpdateConfig()
+					st.Config:Refresh()
+					st.OptionsWindow:CloseDialog()
+				end,
 			},
 		},
 	}
 
-	UF.CopyTable = config_table
-	AceConfig:RegisterOptionsTable(st.name ..'_Copy_Unitframe', config_table)
-end
-
-function UF:OpenCopyTable(unit)
-	local config = self:GetProfileConfig()
-	-- We use a local table of configurations and reset all of the setters and getters
-	-- To ensure there's no funny business with accidentally not clearing old values
-
-	local copy_options = {
-		['to'] = unit,
-		['elements'] = {}
-	}
-
-	for element,_ in pairs(config[unit]) do
-		copy_options.elements[element] = false
-		self.CopyTable.name = 'Clone '..unit..' from..'
-
-		self.CopyTable.args.copy_from.set = function(info, from)
-			copy_options.from = from
-			self.CopyTable.name = 'Clone '..unit..' from '..from
-		end
-		self.CopyTable.args.copy_from.get = function(info) return copy_options.from end
-		self.CopyTable.args.copy_from.values = function(info)
-			local units = {}
-			-- The current profile's, in case the profile changed since opening
-			for key,_ in pairs(UF:GetProfileConfig()) do
-				if not (key == unit) then
-					units[key] = key
-				end
-			end
-			return units
-		end
-
-		self.CopyTable.args.toggle_all.func = function()
-			for k,v in pairs(copy_options.elements) do
-				copy_options.elements[k] = true
-			end
-			LibStub("AceConfigRegistry-3.0"):NotifyChange(st.name ..'_Copy_Unitframe')
-		end
-
-		self.CopyTable.args.toggle_none.func = function()
-			for k,v in pairs(copy_options.elements) do
-				copy_options.elements[k] = false
-			end
-			LibStub("AceConfigRegistry-3.0"):NotifyChange(st.name ..'_Copy_Unitframe')
-		end
-
-		self.CopyTable.args.elements.get = function(info)
-			return copy_options.elements[info[#info]]
-		end
-		self.CopyTable.args.elements.set = function(info, value)
-			copy_options.elements[info[#info]] = value
-		end
-
-		self.CopyTable.args.elements.args[element] =  st.Config.generators.toggle(0, element, 0.7)
-
-		self.CopyTable.args.accept.func = function()
-			if not copy_options.from then return end
-			StaticPopupDialogs["SAFTUI_UF_CONFIRM_UNIT_COPY"].text = 'Are you sure you want to clone '..unit..' from ' .. copy_options.from .. '?'
-			local popup = StaticPopup_Show('SAFTUI_UF_CONFIRM_UNIT_COPY')
-			popup.options = copy_options
-		end
-	end
-
-	AceConfigDialog:SetDefaultSize(st.name ..'_Copy_Unitframe', 400, 300)
-	AceConfigDialog:Open(st.name ..'_Copy_Unitframe')
+	st.OptionsWindow:OpenDialog(function()
+		return 'Clone ' .. unit .. (copy.from and (' from ' .. copy.from) or ' from..')
+	end, options)
 end
 
 function UF:GetProfile()
@@ -428,8 +379,6 @@ end
 
 
 function UF:GetConfigTable()
-	self:RegisterCopyTable()
-
 	local config = {
 		name = 'Unitframes',
 		type = 'group',

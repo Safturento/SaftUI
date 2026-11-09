@@ -22,6 +22,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  OW:GetFooter()        the footer region between Reload UI and Close, for
 	                        edit mode's controls
 	  OW:UpdateFonts()      the profile's faces again (a profile change)
+	  OW:OpenDialog(title, options), OW:CloseDialog(), OW:IsDialogShown()
+	                        a small dialog over the window for an option table
+	                        of its own (UF's Copy from; "a small dialog" below)
 
 	The window (1040x700, the thick template, FULLSCREEN_DIALOG like the old
 	AceGUI window, so edit mode's outlines draw under it):
@@ -255,20 +258,27 @@ end
 
 ------------------------------------------------------------------ scrolling
 
-local function SetScroll(offset)
-	local view = F.body:GetHeight() or 0
-	local range = max(0, contentHeight - view)
-	scrollOffset = max(0, min(range, floor(offset + 0.5)))
-	F.body:SetVerticalScroll(scrollOffset)
+-- Scrolls frame (a scroll frame) to offset, within the height of what it
+-- holds, and places its bar 10 to its right. Returns the offset it took.
+local function ScrollTo(frame, bar, offset, height)
+	local view = frame:GetHeight() or 0
+	local range = max(0, height - view)
+	offset = max(0, min(range, floor(offset + 0.5)))
+	frame:SetVerticalScroll(offset)
 	if range > 0 and view > 0 then
-		local size = max(20, floor(view * view / contentHeight))
-		F.bar:SetHeight(size)
-		F.bar:ClearAllPoints()
-		F.bar:SetPoint('TOPLEFT', F.body, 'TOPRIGHT', 10, -floor((view - size) * scrollOffset / range))
-		F.bar:Show()
+		local size = max(20, floor(view * view / height))
+		bar:SetHeight(size)
+		bar:ClearAllPoints()
+		bar:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 10, -floor((view - size) * offset / range))
+		bar:Show()
 	else
-		F.bar:Hide()
+		bar:Hide()
 	end
+	return offset
+end
+
+local function SetScroll(offset)
+	scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
 end
 
 local function SetNavScroll(offset)
@@ -725,6 +735,7 @@ local function OnHide()
 	W.CloseList()
 	W.CancelConfirm()
 	OW:SetStatus(nil)
+	OW:CloseDialog()
 	if st.EditModeFrames then st.EditModeFrames:UpdateFooter() end
 end
 
@@ -924,7 +935,8 @@ local function Build()
 	keys:Hide()
 	keys:SetScript('OnKeyDown', function(self, key)
 		if InCombatLockdown() then return end
-		if GetCurrentKeyBoardFocus() then
+		-- A box's keys, and the dialog's Esc (its catcher closes it).
+		if GetCurrentKeyBoardFocus() or OW:IsDialogShown() then
 			self:SetPropagateKeyboardInput(true)
 			return
 		end
@@ -955,6 +967,136 @@ local function Build()
 		EM:On('Enabled', UpdateEditModeButton)
 		EM:On('Disabled', UpdateEditModeButton)
 	end
+end
+
+------------------------------------------------------------------ a small dialog
+
+--[[
+	OW:OpenDialog(title, options): a small SaftUI window, over /sui, for an
+	option table of its own (UF's Copy from). title is text, or a function
+	that gives it, read on each render. options is a group, as a page's: its
+	options and inline groups are drawn by a body of its own (OB.New), two
+	columns of rows as in the window. A dialog has no tabs or picker: of child
+	groups that aren't inline, only the first one's rows show.
+
+	A set re-renders it, after the drag for a slider's, and not while
+	Blizzard's color picker is open (the swatch shows its color itself; the
+	next set draws the rest). A failed validate shows its message at the
+	bottom. Esc (its own keyboard catcher, which the window's passes to) and
+	the close X close it, and so do closing the window and entering combat.
+	It refuses to open in combat (false).
+]]
+
+local DIALOG_WIDTH, DIALOG_PAD = 568, 24
+local DIALOG_CONTENT = DIALOG_WIDTH - 2 * DIALOG_PAD -- two columns of 240
+local DIALOG_HEAD, DIALOG_FOOT, DIALOG_MAX_BODY = 58, 30, 600
+local DIALOG_KEY = 'dialog' -- the table's key in the dialog's root
+local D = { offset = 0, height = 0 } -- the dialog's frames, body and what it draws
+
+local function SetDialogScroll(offset)
+	D.offset = ScrollTo(D.scroll, D.bar, offset, D.height)
+end
+
+local function DrawDialog()
+	D.body:Release()
+	local title = D.titleSource
+	if type(title) == 'function' then title = title() end
+	D.title:SetText(tostring(title or ''))
+	local view = OM.BuildView(D.root, DIALOG_KEY)
+	D.height = view and D.body:Draw(view.sections) or 0
+	D.content:SetHeight(max(1, D.height))
+	D.frame:SetHeight(DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + DIALOG_FOOT)
+	D.scroll:UpdateScrollChildRect()
+	SetDialogScroll(D.offset)
+end
+
+local function RenderDialog()
+	if D.frame and D.frame:IsShown() then xpcall(DrawDialog, geterrorhandler()) end
+end
+
+-- The dialog's widgets' onChanged, as the window's Changed.
+local function DialogChanged(ok, err, isDragging)
+	D.status:SetText(ok == false and err or '')
+	if ok == false and err then return end
+	if isDragging then return end
+	if ColorPickerFrame and ColorPickerFrame:IsShown() then return end
+	RenderDialog()
+end
+
+local function BuildDialog()
+	local frame = st:CreateFrame('Frame', nil, UIParent)
+	frame:SetFrameStrata('FULLSCREEN_DIALOG')
+	frame:SetFrameLevel(300) -- over the window (100) and all it holds
+	frame:SetWidth(DIALOG_WIDTH)
+	frame:SetClampedToScreen(true)
+	frame:EnableMouse(true)
+	frame:Hide()
+	st:SetTemplate(frame, 'thick')
+	D.frame = frame
+
+	D.title = Text(frame, 'brand')
+	D.title:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIALOG_PAD, -18)
+	D.title:SetWidth(DIALOG_CONTENT - 40)
+	local close = st:CreateCloseButton(frame)
+	close:ClearAllPoints()
+	close:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -14, -14)
+	local line = Line(frame)
+	line:SetPoint('TOPLEFT', frame, 'TOPLEFT', 2, -(DIALOG_HEAD - 6))
+	line:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -2, -(DIALOG_HEAD - 6))
+	line:SetHeight(1)
+
+	local scroll = CreateFrame('ScrollFrame', nil, frame)
+	scroll:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIALOG_PAD, -DIALOG_HEAD)
+	scroll:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -DIALOG_PAD, DIALOG_FOOT)
+	local content = CreateFrame('Frame', nil, scroll)
+	content:SetSize(DIALOG_CONTENT, 1)
+	scroll:SetScrollChild(content)
+	scroll:EnableMouseWheel(true)
+	scroll:SetScript('OnMouseWheel', function(_, delta) SetDialogScroll(D.offset - delta * SCROLL_STEP) end)
+	D.scroll, D.content = scroll, content
+	D.bar = frame:CreateTexture(nil, 'OVERLAY')
+	D.bar:SetColorTexture(unpack(st.BOX_COLORS.edge))
+	D.bar:SetWidth(3)
+	D.bar:Hide()
+	D.body = OB.New(content, nil, DialogChanged, DIALOG_CONTENT)
+
+	D.status = Text(frame, 'field')
+	D.status:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', DIALOG_PAD, 10)
+	D.status:SetWidth(DIALOG_CONTENT)
+	D.status:SetTextColor(Colors().text.red:GetRGB())
+
+	-- Esc, only while the dialog is shown.
+	local keys = CreateFrame('Frame', nil, frame)
+	keys:Hide()
+	keys:SetScript('OnKeyDown', function(self, key)
+		if InCombatLockdown() then return end
+		if GetCurrentKeyBoardFocus() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
+			self:SetPropagateKeyboardInput(true)
+			return
+		end
+		local escape = key == 'ESCAPE'
+		self:SetPropagateKeyboardInput(not escape)
+		if escape then OW:CloseDialog() end
+	end)
+	D.keys = keys
+
+	frame:SetScript('OnShow', function()
+		keys:Show()
+		keys:EnableKeyboard(true)
+		if not InCombatLockdown() then keys:SetPropagateKeyboardInput(true) end
+	end)
+	frame:SetScript('OnHide', function()
+		keys:EnableKeyboard(false)
+		keys:Hide()
+		D.body:Release()
+		local owner = W.ListOwner()
+		if owner and Inside(owner, frame) then W.CloseList() end
+		W.CancelConfirm()
+		D.status:SetText('')
+	end)
+	-- Its sets can reach protected frames (UF's copy updates the unit frames).
+	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
+	frame:SetScript('OnEvent', function() OW:CloseDialog() end)
 end
 
 ------------------------------------------------------------------ the API
@@ -1027,6 +1169,29 @@ function OW:SetRoot(tree)
 	Schedule()
 end
 
+-- A small dialog over the window for options, a group table of its own
+-- (see "a small dialog" above). False in combat.
+function OW:OpenDialog(title, options)
+	if InCombatLockdown() then return false end
+	if not D.frame then BuildDialog() end
+	D.titleSource, D.root, D.offset = title, { [DIALOG_KEY] = options }, 0
+	D.body:SetRoot(D.root)
+	D.status:SetText('')
+	D.frame:ClearAllPoints()
+	D.frame:SetPoint('CENTER', self:IsShown() and F.window or UIParent, 'CENTER', 0, 0)
+	D.frame:Show()
+	RenderDialog()
+	return true
+end
+
+function OW:CloseDialog()
+	if self:IsDialogShown() then D.frame:Hide() end
+end
+
+function OW:IsDialogShown()
+	return D.frame ~= nil and D.frame:IsShown()
+end
+
 function OW:SetStatus(text)
 	if F.status then F.status:SetText(text or '') end
 end
@@ -1044,6 +1209,9 @@ end
 -- For tests: the frames, the drawn body rows, how many renders ran.
 function OW.GetFrames() return F end
 function OW.GetDrawnRows() return pageBody and pageBody.cells or EMPTY end
+-- The dialog's: { frame, title, scroll, content, bar, status, keys, body };
+-- its drawn rows are body.cells.
+function OW.GetDialogFrames() return D end
 function OW.GetRenderCount() return renders end
 
 -- st.Config:Refresh notifies AceConfigRegistry: re-render on the next frame.

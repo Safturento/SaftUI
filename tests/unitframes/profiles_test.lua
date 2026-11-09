@@ -19,7 +19,6 @@
 load_saftui('SaftUI-Core/Config/defaults.lua')
 load_saftui('SaftUI-Unitframes/config/default.lua')
 apply_defaults()
-load_test_file('unitframes/fixtures/ace_libs.lua')
 
 local st = SaftUI
 local UF = st:NewModule('Unitframes')
