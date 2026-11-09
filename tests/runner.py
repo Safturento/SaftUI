@@ -20,7 +20,9 @@ import argparse
 import os
 import sys
 
-from lupa import lua51
+
+lua51 = LuaError = None  # imported in entry(), so a missing lupa is reported as a crash
+CRASH_IN_RUN_FILE = False  # set by --crash-for-self-check=run_file
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(TESTS_DIR)
@@ -73,6 +75,8 @@ def lua_list(table):
 
 def run_file(path):
     """Runs one test file in a fresh Lua state and returns the harness's result table."""
+    if CRASH_IN_RUN_FILE:
+        raise RuntimeError('runner crash in run_file (self-check)')
     lua = lua51.LuaRuntime(unpack_returned_tuples=True, register_eval=False, register_builtins=False)
     lua.globals().REPO_ROOT = REPO_ROOT
     lua.globals().TESTS_DIR = TESTS_DIR
@@ -101,7 +105,7 @@ def report(path, verbose):
     """
     try:
         result = run_file(path)
-    except Exception as error:  # a bug in the harness itself, not in the test
+    except LuaError as error:  # the Lua harness failed on this file. Python exceptions are runner bugs and propagate to entry()
         print(f'FAIL  {shown_path(path)}')
         print_lines([f'harness error: {error}'], '      ')
         return False, 0, 1
@@ -139,8 +143,11 @@ FIXTURE_EXPECTED = {
     'case_error.lua': (EXIT_FAILED, 'error: tests/lib/runner_fixtures/case_error.lua:4: boom'),
     'endless_loop.lua': (EXIT_FAILED, 'so the harness stopped it'),
 }
-# The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag.
-CRASH_FIXTURE = ('passing.lua', EXIT_CRASHED, 'runner crash (self-check)')
+# The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag, in main() or inside run_file().
+CRASH_FIXTURES = [  # (fixture, flag value, text on stderr)
+    ('passing.lua', 'main', 'runner crash (self-check)'),
+    ('passing.lua', 'run_file', 'runner crash in run_file (self-check)'),
+]
 TRACEBACK = 'Traceback (most recent call last)'
 
 
@@ -188,15 +195,15 @@ def self_check():
             bad += 1
             print_lines((done.stdout + done.stderr).splitlines(), '      ')
 
-    name, expected, text = CRASH_FIXTURE
-    done = run(os.path.join(FIXTURES, name), '--crash-for-self-check')
-    kind = classify(done)
-    good = kind == 'crash' and done.returncode == expected and text in done.stderr
-    print(f'{"ok  " if good else "FAIL"}  {name} with --crash-for-self-check: exit {done.returncode} ({kind}), '
-          f'expected a crash (exit {expected})')
-    if not good:
-        bad += 1
-        print_lines((done.stdout + done.stderr).splitlines(), '      ')
+    for name, where, text in CRASH_FIXTURES:
+        done = run(os.path.join(FIXTURES, name), f'--crash-for-self-check={where}')
+        kind = classify(done)
+        good = kind == 'crash' and done.returncode == EXIT_CRASHED and text in done.stderr
+        print(f'{"ok  " if good else "FAIL"}  {name} with --crash-for-self-check={where}: exit {done.returncode} ({kind}), '
+              f'expected a crash (exit {EXIT_CRASHED})')
+        if not good:
+            bad += 1
+            print_lines((done.stdout + done.stderr).splitlines(), '      ')
 
     # every fixture on disk must be listed, so a new one can't go unchecked
     on_disk = {n for n in os.listdir(FIXTURES) if n.endswith('.lua')}
@@ -213,10 +220,14 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='list every case and show what tests printed')
     parser.add_argument('--self-check', action='store_true',
                         help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
-    parser.add_argument('--crash-for-self-check', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--crash-for-self-check', nargs='?', const='main', choices=['main', 'run_file'],
+                        help=argparse.SUPPRESS)  # only the self-check uses this: a runner crash on demand
     args = parser.parse_args()
-    if args.crash_for_self_check:  # only the self-check uses this: a runner crash on demand
+    if args.crash_for_self_check == 'main':
         raise RuntimeError('runner crash (self-check)')
+    if args.crash_for_self_check == 'run_file':
+        global CRASH_IN_RUN_FILE
+        CRASH_IN_RUN_FILE = True
     if args.self_check:
         return self_check()
 
@@ -242,7 +253,10 @@ def main():
 def entry():
     """Runs main(), turning an uncaught Python exception into EXIT_CRASHED
     (Python's own status for it is 1, the same as a test failure)."""
+    global lua51, LuaError
     try:
+        from lupa import lua51 as _lua51
+        lua51, LuaError = _lua51, _lua51.LuaError
         return main()
     except Exception:
         import traceback
