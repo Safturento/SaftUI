@@ -299,19 +299,22 @@ function CHT:ApplyHolder()
 	end)
 end
 
--- Makes the mover's outline cover what shows of the chat frame: the holder (ChatFrame1's
--- rectangle) plus the padding SaftUI's backdrop extends past it, or none with the 'none'
--- template, which draws no backdrop. Anchored to the holder, the outline follows its
--- size. The outline is SaftUI's own frame, so this is safe in combat.
+-- Puts the mover's outline on the chat frame's border line. SaftUI's backdrop sits
+-- `padding` outside the holder (ChatFrame1's rectangle), with its line on its outer
+-- edge, and an overlay draws its line EM.OUTLINE_OUTSET outside its own rect, so the
+-- overlay goes that much inside the padding. With the 'none' template there's no
+-- backdrop, and the overlay covers the holder. Anchored to the holder, the outline
+-- follows its size. The outline is SaftUI's own frame, so this is safe in combat.
 function CHT:UpdateFootprint()
 	local mover = self.mover
 	if not mover then return end
 
-	local padding = self.config.template == 'none' and 0 or self.config.padding
+	local inset = self.config.template == 'none' and 0
+		or self.config.padding - st.EditModeFrames.OUTLINE_OUTSET
 	local overlay = mover.overlay
 	overlay:ClearAllPoints()
-	overlay:SetPoint('TOPLEFT', self.holder, 'TOPLEFT', -padding, padding)
-	overlay:SetPoint('BOTTOMRIGHT', self.holder, 'BOTTOMRIGHT', padding, -padding)
+	overlay:SetPoint('TOPLEFT', self.holder, 'TOPLEFT', -inset, inset)
+	overlay:SetPoint('BOTTOMRIGHT', self.holder, 'BOTTOMRIGHT', inset, -inset)
 end
 
 -- Font, template, padding and edit box height of every chat frame.

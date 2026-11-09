@@ -7,15 +7,22 @@ local NUDGE = {
 }
 local LIVE_INTERVAL = 0.1 -- seconds between settings refreshes while dragging
 
+-- The overlay has a thick SaftUI border: a 1px line EM.OUTLINE_OUTSET (2px)
+-- outside the frame, between two dark lines. Only that line takes the
+-- highlight color, so the outline sits exactly where a thick SaftUI frame's own
+-- border line is, and gaps between frames look the same in edit mode as out of
+-- it. The fill stays see-through so the frame shows; the selected frame's is
+-- tinted blue, since a 1px line alone is easy to miss.
 local function SetBorderColor(mover, selected)
+	local backdrop = mover.overlay.backdrop
 	local r, g, b = 1, 1, 1
 	if selected then
 		r, g, b = st.config.profile.colors.button.blue:GetRGB()
+		backdrop:SetBackdropColor(r, g, b, 0.15)
+	else
+		backdrop:SetBackdropColor(0, 0, 0, 0.3)
 	end
-	mover.overlay.backdrop:SetBackdropBorderColor(r, g, b, 1)
-	for _, border in pairs(mover.overlay.backdrop.altborder or {}) do
-		border:SetVertexColor(r, g, b, 1)
-	end
+	backdrop:SetBackdropBorderColor(r, g, b, 1)
 end
 
 -- The anchor the mover's frame is positioned with, taken from its stored position.
@@ -41,10 +48,10 @@ function EM:StartDrag(mover)
 	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y }
 	-- For snapping: where the frame is now, and the lines it can snap to. The
 	-- other frames don't move during a drag, so the lines are made once.
-	-- The overlay's rect is what's outlined on screen (it can be bigger than the
-	-- frame, like chat's padding). It's anchored to the frame, so it moves by
+	-- It's measured by its outline, the line its overlay draws (chat's sits on
+	-- its padded border). The overlay is anchored to the frame, so it moves by
 	-- the same delta.
-	local l, r, b, t = EM.GetRectInUI(mover.overlay)
+	local l, r, b, t = EM.GetOutlineRect(mover)
 	if l then
 		mover.drag.rect0 = { left = l, right = r, bottom = b, top = t }
 	end
@@ -129,9 +136,7 @@ function EM:CreateMover(key, def)
 	overlay:RegisterForClicks('LeftButtonUp')
 	overlay:RegisterForDrag('LeftButton')
 	overlay:Hide()
-	st:SetBackdrop(overlay, 'thick')
-	-- keep the target frame visible through the overlay
-	overlay.backdrop:SetBackdropColor(0, 0, 0, 0.3)
+	st:SetBackdrop(overlay, 'thick') -- colored by SetBorderColor
 
 	local label = overlay:CreateFontString(nil, 'OVERLAY')
 	label:SetFontObject(st:GetFont('pixel'))

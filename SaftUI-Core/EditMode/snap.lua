@@ -62,12 +62,29 @@ local function GetRectInUI(f)
 end
 EM.GetRectInUI = GetRectInUI
 
+-- How far outside its rect an overlay draws its line. The overlay has a thick
+-- SaftUI backdrop, which st:SetBackdrop places 2px outside the frame, and that
+-- is also where a thick-bordered SaftUI frame's own border line sits. Snapping
+-- measures this line, so the borders you see land on the grid lines and on
+-- each other.
+EM.OUTLINE_OUTSET = 2
+
+-- A mover's outline (the line its overlay draws) in UIParent units, or nil.
+-- Overlays are UIParent's children with no scale of their own, so the outset
+-- is already in UIParent units.
+function EM.GetOutlineRect(mover)
+	local l, r, b, t = GetRectInUI(mover.overlay)
+	if not l then return end
+	local o = EM.OUTLINE_OUTSET
+	return l - o, r + o, b - o, t + o
+end
+
 -- The vertical lines (xLines) and horizontal lines (yLines) the dragged mover
 -- can snap to, in UIParent units. Computed once per drag.
 --   Snap to grid:   the grid's lines across the screen.
 --   Snap to frames: the screen's center lines, and the left/middle/right and
---                   bottom/middle/top of every other shown mover that is on
---                   screen. Frames that move with the dragged one (anchored to
+--                   bottom/middle/top of every other shown mover's outline
+--                   that is on screen. Frames that move with the dragged one (anchored to
 --                   it, or its children) are left out: they shift as it
 --                   moves, so snapping to them would jitter.
 function EM:GetSnapLines(mover)
@@ -91,7 +108,7 @@ function EM:GetSnapLines(mover)
 		for _, other in pairs(self.movers) do
 			if other ~= mover and other.overlay:IsShown()
 					and not st:MovesWith(other.def.frame, mover.def.frame) then
-				local l, r, b, t = GetRectInUI(other.overlay)
+				local l, r, b, t = EM.GetOutlineRect(other)
 				if l and r > 0 and l < width and t > 0 and b < height then
 					xLines[#xLines + 1] = l
 					xLines[#xLines + 1] = (l + r) / 2
