@@ -57,7 +57,8 @@
   - `EM.GridLinePositions(center, low, high, size) -> { number... }`: every `center + k*size` (k any integer) with `low <= p <= high`, ascending. When `size < 1` it returns `{ center }`.
   - `EM:GetSettings() -> table`, which returns `st.config.profile.editmode`.
   - `EM:UpdateGrid()` shows the grid if `self.active and settings.grid`, otherwise hides it. When shown, it redraws it.
-  - `EM:UpdateFooterToggles()`.
+  - `EM:UpdateFooterToggles()`. It also refreshes the grid size label.
+  - `EM:StepGridSize(delta)`: adds `delta` to `grid_size`, clamped to 8–128. Then it calls `UpdateGrid` and `UpdateFooterToggles`, and refreshes an open `/sui` (`st.Config:Refresh()`).
   - `EM:GetConfigTable()` makes the `/sui` section, keyed `EditMode` by module name, with the name "Edit mode".
 
 - [ ] **Step 1: Write the harness and the failing tests.**
@@ -75,6 +76,7 @@
     - `UpdateGrid hides when inactive`: with `EM.active = false`, the grid frame is hidden.
     - `UpdateGrid reuses and hides pooled lines`: at size 8 on 3840×2160 then size 64, the second draw creates no new textures, and exactly the second draw's line count is shown.
     - `UpdateConfig refreshes the grid`: set the profile's `grid = false` and call `EM:UpdateConfig()`, and the grid is hidden. Set `grid = true` and call it again, and it's shown.
+    - `StepGridSize clamps`: from 32, `StepGridSize(4)` gives 36. From 126, `StepGridSize(4)` gives 128. From 10, `StepGridSize(-4)` gives 8.
 - [ ] **Step 2: Run** `lupavenv/bin/python emsim/run.py emsim/test_grid.lua`. Expected: FAIL, with `GridLinePositions` undefined.
 - [ ] **Step 3: Defaults.** Remove `st.defaults.grid`. Set `st.defaults.editmode = { grid = false, grid_size = 32, snap_grid = false, snap_frames = false }`.
 - [ ] **Step 4: `grid.lua`.**
@@ -85,6 +87,12 @@
   - **When it updates:** `UpdateGrid` runs on `EM:On('Enabled')` and `EM:On('Disabled')`.
 - [ ] **Step 5: `settings.lua`.**
   - **Footer buttons**, made in `EM:OnEnable` (define it, or extend it if one exists): `EM:AddFooterButton('Grid', …)`, `'Snap to grid'` and `'Snap to frames'`. Each flips its key, then calls `EM:UpdateGrid()` and `EM:UpdateFooterToggles()`. `UpdateFooterToggles` gives each button a visible on/off look; you choose how.
+  - **Grid size on the footer:** after those buttons, three more:
+    - `'-'`, which calls `EM:StepGridSize(-4)`;
+    - a label showing the current `grid_size`;
+    - `'+'`, which calls `EM:StepGridSize(4)`.
+
+    Give the label a fixed width that fits "128", since `AddFooterButton` sizes a button from its first text. Clicking the label does nothing.
   - **The `/sui` section:** `EM:GetConfigTable()` returns a group with an inner `general` group holding:
     - `grid` (toggle "Show grid");
     - `grid_size` (`st.Config.generators.range(…, 'Grid size', 8, 128, 1)`);
@@ -163,7 +171,7 @@
 
 ## In-game checks (for the user, after both tasks)
 
-- `/sui edit`: the footer shows Grid, Snap to grid and Snap to frames. Grid toggles the grid. The center lines are clearly stronger. `/sui` → Edit mode → Grid size redraws the grid live.
+- `/sui edit`: the footer shows Grid, Snap to grid, Snap to frames and − size +. Grid toggles the grid. The center lines are clearly stronger. The footer's − and + step the size by 4px, and `/sui` → Edit mode → Grid size redraws the grid live. Both stay in step.
 - With Snap to grid on, dragging the minimap near a line makes it jump onto it. With Ctrl held, it doesn't.
 - With Snap to frames on, dragging the experience bar lines its edges up with the minimap's. Dragging Target doesn't snap to TargetTarget.
 - Arrow keys still nudge 1px and 10px, ignoring snapping.

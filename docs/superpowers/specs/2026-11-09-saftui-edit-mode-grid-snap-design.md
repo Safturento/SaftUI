@@ -39,6 +39,10 @@ The original edit mode spec (`docs/superpowers/specs/2026-11-06-saftui-edit-mode
 
 - **Footer buttons** on the `/sui` window while edit mode is active: **Grid**, **Snap to grid**, **Snap to frames**. Each toggles its setting, and each shows whether it's on.
 - **A `/sui` section for edit mode** has the same three toggles plus **Grid size** (a slider, about 8 to 128px). Changing Grid size redraws the grid live.
+- **Grid size on the footer** (*revised 2026-11-09*). After reviewing the plan, the user asked: "can we add an adjustment for the grid size as well?"
+  - The footer also has **−** and **+** buttons around a label showing the current grid size.
+  - Each click steps the size by 4px, within the slider's range, and redraws the grid.
+  - The `/sui` slider stays.
 
 ### Settings
 
