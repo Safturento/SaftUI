@@ -53,7 +53,9 @@ function INV:CreateContainer(id, name, isBankContainer)
     filterButton:SetFont('pixel')
     filterButton:SetText('Edit')
     filterButton:SetScript('OnClick', function()
-        INV:UpdateContainer(id)
+        -- Showing or hiding the hidden categories re-packs the window.
+        INV:ReleaseLayout(container)
+        INV:UpdateContainer(id, true)
         for categoryName, category in pairs(container.categories) do
             category.filterCheckbox:SetShown(filterButton:GetChecked())
             category.filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
@@ -70,6 +72,9 @@ function INV:CreateContainer(id, name, isBankContainer)
 	end
 
 	self:InitializeLoadingOverlay(container)
+
+	-- The next time it opens, the window is packed afresh.
+	container:HookScript('OnHide', function() INV:ReleaseLayout(container) end)
 
 	if isBankContainer and id ~= 'combinedbank' then
 		 self:HookScript(container.header, 'OnClick', 'SelectBankCategory')
@@ -300,6 +305,9 @@ function INV:UpdateContainer(id, updateLayout)
 
 	self:FlushCategories(container, sortedInventory)
 
+	-- A layout is only held once every item is in it (see HoldLayout).
+	container.loadingItems = numLoading > 0
+
 	-- Items whose data is still loading (cold item cache after a reload) are left
 	-- out until GET_ITEM_INFO_RECEIVED fires, and those updates don't request a
 	-- layout. Keep relaying out until loading finishes so they actually appear.
@@ -318,18 +326,17 @@ function INV:UpdateContainer(id, updateLayout)
 	end
 end
 
+-- The shortest column and its index.
 local function getShortestColumn(columns)
-    local shortest = columns[1]
-    local minHeight = shortest:GetHeight()
+    local shortest, index = columns[1], 1
 
     for i=2, #columns do
-        local height = columns[i]:GetHeight()
-        if height < shortest:GetHeight() then
-            shortest = columns[i]
+        if columns[i]:GetHeight() < shortest:GetHeight() then
+            shortest, index = columns[i], i
         end
     end
 
-    return shortest
+    return shortest, index
 end
 
 local function getTallestColumn(columns)
@@ -346,18 +353,42 @@ local function getTallestColumn(columns)
     return tallest
 end
 
+-- Columns up to the last one holding a category. While a layout is held (see
+-- below), a column in the middle can empty out and the ones after it still count.
 local function getNumUsedColumns(columns)
-    for i=2, #columns do
-        if columns[i]:GetHeight() == 0 then
-            return i-1
+    for i = #columns, 1, -1 do
+        if #columns[i].categories > 0 then
+            return i
         end
     end
 
-    return #columns
+    return 1
 end
 
+-- Puts a category at the bottom of a column. The column's height counts the
+-- spacing after each category; UpdateContainerLayout takes the last one off.
+local function addToColumn(column, category, spacing)
+    category:ClearAllPoints()
+    if #column.categories == 0 then
+        category:SetPoint('TOPLEFT', column, 'TOPLEFT', 0, 0)
+    else
+        category:SetPoint('TOPLEFT', column.categories[#column.categories], 'BOTTOMLEFT', 0, -spacing)
+    end
+
+    tinsert(column.categories, category)
+    column:SetHeight(column:GetHeight() + category:GetHeight() + spacing)
+end
+
+-- A category the player hid (the Edit view's checkboxes) is hidden outside that view.
+function INV:FlushIfFiltered(container, category)
+	if not container.filterButton:GetChecked() and self.config.filters.categories[container.id][category.name] then
+		self:FlushCategory(category)
+	end
+end
+
+-- Packs the categories afresh: by height (shortest first when inverted), each
+-- into the column that is shortest so far.
 function INV:CompactCategories(container)
-	local prev
     local sorted = {}
 
     for _, category in pairs(container.categories) do
@@ -371,30 +402,76 @@ function INV:CompactCategories(container)
         end
      end)
 
-    for _, category in pairs(sorted) do
-        if not container.filterButton:GetChecked() and INV.config.filters.categories[container.id][category.name] then
-            INV:FlushCategory(category)
-        end
-
-        if category and category:IsShown() then
-            category:ClearAllPoints()
-
-            local column = getShortestColumn(container.columns)
-            category:ClearAllPoints()
-            if #column.categories == 0 then
-                category:SetPoint('TOPLEFT', column, 'TOPLEFT', 0, 0)
-            else
-                category:SetPoint('TOPLEFT', column.categories[#column.categories], 'BOTTOMLEFT', 0, -self.config.buttonspacing)
-            end
-
-            tinsert(column.categories, category)
-            column:SetHeight(column:GetHeight() + category:GetHeight() + self.config.buttonspacing)
+    for _, category in ipairs(sorted) do
+        self:FlushIfFiltered(container, category)
+        if category:IsShown() then
+            addToColumn(getShortestColumn(container.columns), category, self.config.buttonspacing)
         end
     end
+end
 
-     for _, column in pairs(container.columns) do
-         column:SetHeight(column:GetHeight() - self.config.buttonspacing)
-     end
+--[[
+	While a window is open its categories keep the columns and order they were
+	packed into when it opened, and the window doesn't shrink, so selling or
+	moving items never sends a category to another column or slides the window's
+	contents. Inside a category the items still close up, and a category below
+	one that shrinks still moves up. The held layout is dropped when the window
+	closes, or for a deliberate re-arrangement: a settings change (UpdateConfig)
+	or toggling the Edit view. Until a window's items have loaded (a cold item
+	cache after a reload) it is packed afresh on every layout, so the held
+	layout is a whole one.
+]]
+
+-- Records the columns' categories, by name, as the held layout.
+function INV:HoldLayout(container)
+	local layout = {}
+	for i, column in ipairs(container.columns) do
+		layout[i] = {}
+		for _, category in ipairs(column.categories) do
+			tinsert(layout[i], category.name)
+		end
+	end
+	container.heldLayout = layout
+end
+
+function INV:ReleaseLayout(container)
+	container.heldLayout = nil
+	container.heldSize = nil
+end
+
+-- Lays the categories out in the held layout. One that has emptied is skipped,
+-- and comes back in its place if it fills again. One that wasn't there when the
+-- window opened goes at the bottom of the shortest column, and is held there.
+function INV:PlaceHeldCategories(container)
+	local spacing = self.config.buttonspacing
+	local layout = container.heldLayout
+	local placed = {}
+
+	for i, column in ipairs(container.columns) do
+		layout[i] = layout[i] or {}
+		for _, name in ipairs(layout[i]) do
+			placed[name] = true
+			local category = container.categories[name]
+			if category then
+				self:FlushIfFiltered(container, category)
+				if category:IsShown() then addToColumn(column, category, spacing) end
+			end
+		end
+	end
+
+	local new = {}
+	for name, category in pairs(container.categories) do
+		if not placed[name] then
+			self:FlushIfFiltered(container, category)
+			if category:IsShown() then tinsert(new, category) end
+		end
+	end
+	table.sort(new, function(a, b) return a.name < b.name end)
+	for _, category in ipairs(new) do
+		local column, index = getShortestColumn(container.columns)
+		addToColumn(column, category, spacing)
+		tinsert(layout[index], category.name)
+	end
 end
 
 function INV:UpdateContainerLayout(id)
@@ -427,17 +504,37 @@ function INV:UpdateContainerLayout(id)
 		column.categories = {}
 	end
 
-	self:CompactCategories(container)
+	if container.heldLayout then
+		self:PlaceHeldCategories(container)
+	else
+		self:CompactCategories(container)
+		if not container.loadingItems then self:HoldLayout(container) end
+	end
+
+	-- The spacing after each column's last category
+	for _, column in pairs(container.columns) do
+		if #column.categories > 0 then
+			column:SetHeight(column:GetHeight() - self.config.buttonspacing)
+		end
+	end
 
     local numUsedColumns = getNumUsedColumns(container.columns)
     local tallestColumn = getTallestColumn(container.columns)
+    local visibleHeight = min(tallestColumn:GetHeight() + self.config.padding, containerConfig.maxRows * (self:GetButtonHeight() + self.config.buttonspacing) - self.config.buttonspacing)
+
+	-- A held layout's window keeps the size it had, and grows if it must.
+	if container.heldLayout then
+		local held = container.heldSize
+		if held then
+			numUsedColumns = max(numUsedColumns, held.columns)
+			visibleHeight = max(visibleHeight, held.height)
+		end
+		container.heldSize = { columns = numUsedColumns, height = visibleHeight }
+	end
+
     local scrollFrameWidth = numUsedColumns * (container.columns[1]:GetWidth() + self.config.buttonspacing) - self.config.buttonspacing
 
-
-    container.scrollFrame:SetSize(
-        scrollFrameWidth,
-        min(tallestColumn:GetHeight() + self.config.padding, containerConfig.maxRows * (self:GetButtonHeight() + self.config.buttonspacing) - self.config.buttonspacing)
-    )
+    container.scrollFrame:SetSize(scrollFrameWidth, visibleHeight)
     container.scrollFrame:SetContentSize(scrollFrameWidth, tallestColumn:GetHeight())
 
 	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))

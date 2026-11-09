@@ -151,6 +151,8 @@ function INV:UpdateConfig(id)
 	end
 
 	local container = self.containers[id]
+	-- New settings re-pack the window (container.lua, HoldLayout).
+	self:ReleaseLayout(container)
 
 	-- The window is anchored to its mover's anchor frame (see movers.lua).
 	self:ApplyPosition(id)
