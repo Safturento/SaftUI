@@ -1,7 +1,7 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
 	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin, PixelUtil, the
-	Enum tables and GameFontNormal. Each follows its
+	Enum tables, GameFontNormal and GameFontWhiteSmall, and ColorPickerFrame. Each follows its
 	source in Gethe/wow-ui-source (forever branch), trimmed to what tests use.
 ]]
 
@@ -322,3 +322,76 @@ GameFontNormal = CreateFont('GameFontNormal')
 GameFontNormal:SetFont('Fonts\\FRIZQT__.TTF', 12, '')
 GameFontNormal:SetShadowOffset(1, -1)
 GameFontNormal:SetTextColor(1, 0.82, 0)
+
+-- GameFontWhiteSmall: SystemFont_Shadow_Small (FRIZQT__.TTF at 10, shadow
+-- offset 1, -1) in white. st:CreateHeader gives a header's title this font first.
+GameFontWhiteSmall = CreateFont('GameFontWhiteSmall')
+GameFontWhiteSmall:SetFont('Fonts\\FRIZQT__.TTF', 10, '')
+GameFontWhiteSmall:SetShadowOffset(1, -1)
+GameFontWhiteSmall:SetTextColor(1, 1, 1)
+
+------------------------------------------------------------------ ColorPickerFrame
+
+-- Blizzard_ColorPickerFrame (forever branch, Mainline family): the public
+-- API addons use, with opacity as alpha (1 is solid). SetupColorPickerAndShow
+-- stores the callbacks and sets the color, which makes the picker's color
+-- select fire swatchFunc and opacityFunc once while it opens (with the alpha
+-- the picker still had from before, as GetColorAlpha gives it), then shows it;
+-- OnShow sets the alpha when hasOpacity. A user picking a color calls both
+-- functions; Okay calls both and hides; Cancel calls cancelFunc(previousValues)
+-- and hides. stub.pick_color, stub.color_picker_okay and stub.color_picker_cancel
+-- play the user. Not mimicked: the wheel, the hex box, GLOBAL_MOUSE_DOWN
+-- (which cancels when the user clicks elsewhere), or the older picker's
+-- fields (func, opacityFunc, ...) that Classic-family clients use.
+do
+	local picker = CreateFrame('Frame', 'ColorPickerFrame', UIParent)
+	picker:Hide()
+	local color = { r = 1, g = 1, b = 1, a = 1 }
+
+	local function select_color()
+		if picker.swatchFunc then picker.swatchFunc() end
+		if picker.opacityFunc then picker.opacityFunc() end
+	end
+
+	function picker:SetupColorPickerAndShow(info)
+		self.swatchFunc = info.swatchFunc
+		self.hasOpacity = info.hasOpacity
+		self.opacityFunc = info.opacityFunc
+		self.opacity = info.opacity
+		self.previousValues = { r = info.r, g = info.g, b = info.b, a = info.opacity }
+		self.cancelFunc = info.cancelFunc
+		self.extraInfo = info.extraInfo
+		color.r, color.g, color.b = info.r, info.g, info.b
+		select_color()
+		self:Show()
+		if self.hasOpacity then
+			color.a = self.opacity
+			select_color()
+		end
+	end
+	function picker:GetColorRGB() return color.r, color.g, color.b end
+	function picker:GetColorAlpha() return color.a end
+	function picker:GetExtraInfo() return self.extraInfo end
+	function picker:GetPreviousValues()
+		local p = self.previousValues
+		return p.r, p.g, p.b, p.a
+	end
+
+	function stub.pick_color(r, g, b, a)
+		color.r, color.g, color.b = r, g, b
+		if a ~= nil then color.a = a end
+		select_color()
+	end
+	function stub.color_picker_okay()
+		picker.swatchFunc()
+		if picker.opacityFunc then picker.opacityFunc() end
+		picker:Hide()
+	end
+	function stub.color_picker_cancel()
+		if picker.cancelFunc then picker.cancelFunc(picker.previousValues) end
+		picker:Hide()
+	end
+	-- What alpha the picker still holds, for a test of the stale value a
+	-- picker opened without opacity reads.
+	function stub.set_color_picker_alpha(a) color.a = a end
+end

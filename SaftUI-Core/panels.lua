@@ -139,6 +139,7 @@ end
 
 --Creates a dragable header for a frame
 st.headers = {}
+local closeButtons = setmetatable({}, { __mode = 'k' }) -- the buttons st:CreateCloseButton made
 local headerTitles = {} -- header -> the title st:CreateHeader put on it
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
@@ -180,8 +181,18 @@ function st:CreateHeader(frame, title, close_button)
 		headerTitles[header] = frame.title
 	end
 
+	-- A button from st:CreateCloseButton is taken without being asked (frame.close).
+	if not close_button and closeButtons[frame.close] then close_button = frame.close end
 	if close_button then frame.close_button = close_button end
-	if frame.close_button then
+	if frame.close_button and closeButtons[frame.close_button] then
+		-- SaftUI's own button already has its look; it only sits in the header.
+		local button = frame.close_button
+		button:ClearAllPoints()
+		button:SetFrameLevel(header:GetFrameLevel()+4)
+		button:SetPoint('RIGHT', header, 'RIGHT', -10, 0)
+		button:SetSize(unpack(st.CLOSE_BUTTON_SIZE))
+	elseif frame.close_button then
+		-- A button that isn't SaftUI's (Blizzard's) keeps the look it has always had.
 		st:StripTextures(frame.close_button)
 		st:SetBackdrop(frame.close_button, 'close')
 		frame.close_button.backdrop:SetAllPoints()
@@ -228,14 +239,57 @@ function st:CreateFooter(frame)
 	table.insert(st.footers, footer)
 end
 
+-- The close button: 24x24, the field color with a 1px edge border (and a dark
+-- line outside it) and a grey pixel X. Hovering turns the border and X red
+-- over a faint red fill, and while pressed the X sits 1px lower. A click hides
+-- frame, which keeps the button as frame.close.
 function st:CreateCloseButton(frame)
 	local close = st:CreateFrame('Button', nil, frame)
-	self:SetTemplate(close, 'close')
+	closeButtons[close] = true
 	close:SetPoint('TOPRIGHT', 0, 0)
 	close:SetSize(unpack(self.CLOSE_BUTTON_SIZE))
+	close:SetBackdrop({ bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
+
+	-- The dark line outside the border.
+	local outline = st:CreateFrame('Frame', nil, close)
+	outline:SetPoint('TOPLEFT', close, 'TOPLEFT', -1, 1)
+	outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', 1, -1)
+	outline:SetFrameLevel(max(0, close:GetFrameLevel() - 1))
+	outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = 1 })
+	outline:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+	close.outline = outline
+
+	local x = close:CreateTexture(nil, 'OVERLAY')
+	x:SetTexture(self.textures.close)
+	x:SetTexCoord(unpack(self.CLOSE_X_COORDS))
+	x:SetSize(10, 10)
+	x:SetPoint('CENTER', 0, 0)
+	close.icon = x
+
+	local function Look(hover)
+		local colors = self.config.profile.colors
+		if hover then
+			close:SetBackdropColor(0.5, 0.1, 0.1, 0.4)
+			close:SetBackdropBorderColor(colors.text.red:GetRGB())
+			x:SetVertexColor(colors.text.red:GetRGB())
+		else
+			close:SetBackdropColor(0.078, 0.078, 0.078, 1)
+			close:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+			x:SetVertexColor(colors.text.grey:GetRGB())
+		end
+	end
+	Look(false)
+
+	close:SetScript('OnEnter', function() Look(true) end)
+	close:SetScript('OnLeave', function()
+		Look(false)
+		x:SetPoint('CENTER', 0, 0)
+	end)
+	close:SetScript('OnMouseDown', function() x:SetPoint('CENTER', 0, -1) end)
+	close:SetScript('OnMouseUp', function() x:SetPoint('CENTER', 0, 0) end)
 	close:SetScript('OnClick', function() frame:Hide() end)
 
-	frame.close = close_button
+	frame.close = close
 	return close
 end
 

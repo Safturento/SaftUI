@@ -19,7 +19,9 @@ st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
 st.scale = 768/st.screenHeight
 st.mult = 1
 
-st.CLOSE_BUTTON_SIZE = {20, 10}
+st.CLOSE_BUTTON_SIZE = {24, 24}
+-- The close X's part of close.tga: a power-of-two canvas (like the other textures), with the X in the middle 10x10.
+st.CLOSE_X_COORDS = {3/16, 13/16, 3/16, 13/16}
 st.ICON_COORDS = {.08, .92, .08, .92}
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
 st.TAB_HEIGHT = 20
@@ -48,7 +50,8 @@ st.textures = {
 	glow = st:TexturePath('glowTex.tga'),
 	eyeClosed = st:TexturePath('eye-hidden.tga'),
 	eyeOpen = st:TexturePath('eye-visible.tga'),
-	atlas = st:TexturePath('SaftUIAtlas.blp')
+	atlas = st:TexturePath('SaftUIAtlas.blp'),
+	close = st:TexturePath('close.tga'), -- the close button's X: white, 16x16 with the 10x10 X at 3,3 (see CLOSE_X_COORDS)
 }
 
 st.FRAME_ANCHORS = {

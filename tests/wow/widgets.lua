@@ -577,6 +577,7 @@ function FontInstance.SetFontObject(self, s, font)
 	if type(font) == 'string' then font = _G[font] end
 	if not is_widget(font, 'FontInstance') then usage(s, 'SetFontObject(): font must be a font object') end
 	s.font_object = font
+	s.font = nil -- the object's font replaces one set with SetFont, as in game
 end
 function FontInstance.GetFontObject(self, s) return s.font_object end
 function FontInstance.SetTextColor(self, s, r, g, b, a)
@@ -626,6 +627,10 @@ end
 
 -- There are no font metrics outside the game, so each character counts as
 -- half the font's height wide, and a line of text is one font height tall.
+-- Whether the text wraps at the font string's width. Wrapping itself isn't done (a
+-- font string is one line here), so this only remembers the setting.
+function FontString.SetWordWrap(self, s, wrap) s.word_wrap = wrap and true or false end
+function FontString.CanWordWrap(self, s) return s.word_wrap ~= false end
 function FontString.GetStringWidth(self, s)
 	local font = font_of(s)
 	if not font or not s.text then return 0 end
@@ -700,10 +705,20 @@ function Frame.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') 
 function Frame.GetScale(self, s) return s.scale end
 function Frame.GetEffectiveScale(self, s) return effective_scale(s) end
 
+function Frame.EnableMouseWheel(self, s, enable) s.mouse_wheel_enabled = enable and true or false end
+function Frame.IsMouseWheelEnabled(self, s) return s.mouse_wheel_enabled == true end
 function Frame.EnableKeyboard(self, s, enable) s.keyboard_enabled = enable and true or false end
 function Frame.IsKeyboardEnabled(self, s) return s.keyboard_enabled == true end
 function Frame.SetPropagateKeyboardInput(self, s, propagate) s.propagate_keyboard = propagate and true or false end
 function Frame.GetPropagateKeyboardInput(self, s) return s.propagate_keyboard == true end
+-- The insets the clamp rectangle is grown by. Not mimicked: clamping.
+function Frame.SetClampRectInsets(self, s, left, right, top, bottom)
+	s.clamp_insets = { number_arg(s, left, 'left'), number_arg(s, right, 'right'), number_arg(s, top, 'top'), number_arg(s, bottom, 'bottom') }
+end
+function Frame.GetClampRectInsets(self, s)
+	local i = s.clamp_insets or { 0, 0, 0, 0 }
+	return i[1], i[2], i[3], i[4]
+end
 function Frame.SetMovable(self, s, movable) s.movable = movable and true or false end
 function Frame.IsMovable(self, s) return s.movable == true end
 function Frame.SetClampedToScreen(self, s, clamped) s.clamped = clamped and true or false end
@@ -827,6 +842,20 @@ min_max(StatusBar)
 
 -- The thumb is a texture of the slider, made the first time one is set.
 -- asset is a file, or a Texture of the slider's.
+-- The step and orientation are remembered. The value isn't snapped to the step
+-- (the game does it for a drag; code that needs a grid snaps itself and tests it).
+function Slider.SetValueStep(self, s, step) s.value_step = number_arg(s, step, 'step') end
+function Slider.GetValueStep(self, s) return s.value_step or 0 end
+function Slider.SetObeyStepOnDrag(self, s, obey) s.obey_step = obey and true or false end
+function Slider.GetObeyStepOnDrag(self, s) return s.obey_step == true end
+function Slider.SetOrientation(self, s, orientation)
+	if orientation ~= 'HORIZONTAL' and orientation ~= 'VERTICAL' then
+		usage(s, 'SetOrientation(): orientation must be HORIZONTAL or VERTICAL')
+	end
+	s.orientation = orientation
+end
+function Slider.GetOrientation(self, s) return s.orientation or 'VERTICAL' end
+
 function Slider.SetThumbTexture(self, s, asset)
 	if is_widget(asset, 'Texture') then
 		s.thumb = asset
@@ -888,6 +917,34 @@ function EditBox.SetText(self, s, text)
 	if changed then run_script(self, 'OnTextChanged', false) end
 end
 function EditBox.GetText(self, s) return s.text or '' end
+
+-- Focus. One edit box has the keyboard at a time: taking it makes the one that
+-- had it lose it (OnEditFocusLost), then OnEditFocusGained. Not mimicked: the
+-- game also drops focus when the box hides, and a box made with autofocus
+-- (the default) takes focus when shown. SetAutoFocus only remembers the setting.
+local focused
+function EditBox.SetAutoFocus(self, s, auto) s.auto_focus = auto and true or false end
+function EditBox.HasFocus(self, s) return focused == self end
+function EditBox.ClearFocus(self, s)
+	if focused ~= self then return end
+	focused = nil
+	run_script(self, 'OnEditFocusLost')
+end
+function EditBox.SetFocus(self, s)
+	if focused == self then return end
+	local previous = focused
+	focused = self
+	if previous then run_script(previous, 'OnEditFocusLost') end
+	run_script(self, 'OnEditFocusGained')
+end
+function GetCurrentKeyBoardFocus() return focused end
+function EditBox.SetTextInsets(self, s, left, right, top, bottom)
+	s.text_insets = { number_arg(s, left, 'left'), number_arg(s, right, 'right'), number_arg(s, top, 'top'), number_arg(s, bottom, 'bottom') }
+end
+function EditBox.GetTextInsets(self, s)
+	local i = s.text_insets or { 0, 0, 0, 0 }
+	return i[1], i[2], i[3], i[4]
+end
 -- Selects text from start to stop (0 and -1: all of it). The selection is
 -- kept in stub.state(editbox).highlight as { start, stop }.
 function EditBox.HighlightText(self, s, start, stop)

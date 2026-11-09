@@ -64,7 +64,7 @@ C_AddOns = {
 	end,
 }
 
-function GetCurrentKeyBoardFocus() return nil end -- no edit box has focus
+-- GetCurrentKeyBoardFocus (the edit box that has focus) is in widgets.lua, with EditBox:SetFocus.
 
 -- The player: a human warrior named Tester on Testrealm. Other units don't
 -- exist, so they give nil, as the game does for a unit that isn't there.
