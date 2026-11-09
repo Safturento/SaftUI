@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-09 — Test runner self-check: tell a runner crash from a caught failure](#2026-11-09--test-runner-self-check-tell-a-runner-crash-from-a-caught-failure)
   - [2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods](#2026-11-09--stcreatebuttons-settext-and-setfont-aliases-break-when-called-as-methods)
@@ -19,7 +20,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers](#2026-11-08--edit-mode-frames-anchored-straight-to-saftui-holders-tooltip-container-buffs-swing-timers)
   - [2026-11-08 — Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)
   - [2026-11-08 — Saved loot feed size in SaftUI_DB](#2026-11-08--saved-loot-feed-size-in-saftui_db)
-  - [2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges](#2026-11-08--older-loot-feed-quirks-timer-refresh-by-unfiltered-index-a-full-feed-trims-on-merges)
   - [2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern](#2026-11-08--confirm-the-totem-bars-protection-and-secret-value-claims-in-game-then-document-the-duration-object-pattern)
   - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
@@ -36,6 +36,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges](#2026-11-08--older-loot-feed-quirks-timer-refresh-by-unfiltered-index-a-full-feed-trims-on-merges)
   - [2026-11-07 — No way to cancel a possess](#2026-11-07--no-way-to-cancel-a-possess)
   - [2026-11-07 — Unit frame indicators ignore their enable setting once oUF updates them](#2026-11-07--unit-frame-indicators-ignore-their-enable-setting-once-ouf-updates-them)
   - [2026-11-07 — Blizzard's raid frames still show next to SaftUI's raid frames](#2026-11-07--blizzards-raid-frames-still-show-next-to-saftuis-raid-frames)
@@ -46,6 +47,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset
+
+**What:** `LootFeedPush` (`SaftUI-Loot/Feed/feed.lua`) still does `offset = offset + 1` when the feed is scrolled, even when the push merges into an existing entry (gold, or the same item) instead of adding one. A merge adds no entry, so the view probably shifts by one line for no reason.
+
+**Why noticed:** The review of the "Older loot feed quirks" fix (2026-11-09) noticed it. It was outside that fix's scope.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`LootFeedPush`, the merge branches, `offset`); `tests/loot/feed_test.lua`.
+
+**Shape of work:** Small: bump the offset only on an insert, with a test.
 
 ### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
 
@@ -329,18 +340,6 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Shape of work:** Measure first: check `SaftUI_DB.lua`'s size after a raid night. Shrink the saved roll format only if it's large.
 
-### 2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges
-
-**What:** Two older behaviours in `SaftUI-Loot/Feed/feed.lua` that the saved feed makes more visible:
-- `LT:UpdateAllFeedTimers(index)` indexes the unfiltered `feed_stack` with an index from the filtered list. While filters hide some entries, hovering a line can refresh the wrong entries' fade timers.
-- `LT:LootFeedPush` drops the oldest entry when the feed is full, even when the push then merges into the top entry. So a full feed loses an entry on a merge. The saved store is trimmed separately, so the two only drift slightly.
-
-**Why noticed:** The loot rolls plan's reviews (2026-11-08) noted both as existing code, outside that plan.
-
-**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`UpdateAllFeedTimers`, `LootFeedPush`), `SaftUI-Loot/Feed/filter.lua` (`GetFilteredItems`).
-
-**Shape of work:** Small: index the filtered list in `UpdateAllFeedTimers`, and trim only when an entry is actually inserted.
-
 ### 2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern
 
 **What:** Two things in the totem bar work (`SaftUI-Misc/totemskin.lua`, `totemtimers.lua`) rest on reading Blizzard's source and API docs, not on the game:
@@ -578,6 +577,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-08 — Older loot feed quirks: timer refresh by unfiltered index, a full feed trims on merges
+
+**What:** Two older behaviours in `SaftUI-Loot/Feed/feed.lua` that the saved feed makes more visible:
+- `LT:UpdateAllFeedTimers(index)` indexes the unfiltered `feed_stack` with an index from the filtered list. While filters hide some entries, hovering a line can refresh the wrong entries' fade timers.
+- `LT:LootFeedPush` drops the oldest entry when the feed is full, even when the push then merges into the top entry. So a full feed loses an entry on a merge. The saved store is trimmed separately, so the two only drift slightly.
+
+**Why noticed:** The loot rolls plan's reviews (2026-11-08) noted both as existing code, outside that plan.
+
+**Anchors:** `SaftUI-Loot/Feed/feed.lua` (`UpdateAllFeedTimers`, `LootFeedPush`), `SaftUI-Loot/Feed/filter.lua` (`GetFilteredItems`).
+
+**Shape of work:** Small: index the filtered list in `UpdateAllFeedTimers`, and trim only when an entry is actually inserted.
+
+**Resolved 2026-11-09:** both quirks are fixed in SaftUI-Loot/Feed/feed.lua: hover refreshes timers through the filtered list, and only an insert trims a full feed. tests/loot/feed_test.lua pins both.
 
 ### 2026-11-07 — No way to cancel a possess
 
