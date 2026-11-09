@@ -65,7 +65,7 @@ test('current_steps_skinned', function()
 		end
 		local t = f.number.text
 		local r, g, b = t:GetTextColor()
-		check(near(r, 0.59) and near(g, 0.59) and near(b, 0.59), 'current_steps_skinned: number grey ' .. i)
+		check(H.is_grey(r, g, b), 'current_steps_skinned: number grey ' .. i)
 		local p = pt(t, 'TOPRIGHT')
 		check(p and p.rel == f and p.relPoint == 'TOPRIGHT' and p.x == -5 and p.y == -1, 'current_steps_skinned: number anchor ' .. i)
 		check(t:GetNumPoints() == 1, 'current_steps_skinned: number single anchor ' .. i)

@@ -83,7 +83,7 @@ Every file starts with the WoW stubs and the core shell loaded.
 
 ## The stub rules
 
-1. **Real SaftUI helpers.** Where SaftUI has its own helper (`st:CreateButton`, `st:SetBackdrop`, `st:RoundToPixel`, the edit mode framework, …), load its real file with `load_saftui`. Never fake a SaftUI function in a test or a stub. The shell stands in only for plumbing (Ace3, AceDB) and never fakes behavior a test checks.
+1. **Real SaftUI helpers.** Where SaftUI has its own helper (`st:CreateButton`, `st:SetBackdrop`, `st:RoundToPixel`, the edit mode framework, …), load its real file with `load_saftui`. Never fake a SaftUI function in a test or a stub. The shell stands in only for plumbing (Ace3, AceDB) and never fakes behavior a test checks. One narrow exception: `H.make_chat` in `tests/misc/restedxp_helpers.lua` stands in for SaftUI-Chat, whose real code needs Blizzard's chat frames; a stand-in like it models only the contract the code under test consumes (here, `ApplyAppearance` exists and is hookable, and `UpdateConfig` and the option setter end in it) and says in a comment what the real code does beyond it.
 2. **Strict.** A stub widget answers only the methods `tests/wow/` defines. Any other name is nil, so calling it errors with the method's name. Never add a catch-all `__index` that turns unknown names into no-ops. When a test needs a method, add it.
 3. **Faithful.** A stub behaves like the real API, including how it fails:
    - a widget method called with the wrong type of self errors "Wrong object type" (a FontString's `SetText` on a Button);

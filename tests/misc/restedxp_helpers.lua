@@ -12,12 +12,9 @@ H.RXP = load_test_file('misc/fixtures/restedxp_world.lua')
 -- chat's template and font), the Skinning module the skin is a submodule of,
 -- then SaftUI-Misc's restedxp.lua. RestedXP itself comes from RXP.make().
 --
--- The profile keeps Core's real defaults, except two values the tests' checks
--- need to tell apart:
---   - thick's border color, because in the defaults thick and thicktransparent
---     (the chat's template) share one, so a switch from one to the other
---     wouldn't show in a divider's color;
---   - the text grey, written as the two-digit 0.59 the checks compare with.
+-- The profile keeps Core's real defaults, except thick's border color: in the
+-- defaults thick and thicktransparent (the chat's template) share one, so a
+-- switch from one to the other wouldn't show in a divider's color.
 function H.fresh()
 	reset_world()
 	load_core_helpers()
@@ -25,13 +22,18 @@ function H.fresh()
 	apply_defaults()
 	local profile = SaftUI.config.profile
 	profile.templates.thick.bordercolor = { 0.5, 0.2, 0.2, 1 }
-	profile.colors.text.grey = CreateColor(0.59, 0.59, 0.59)
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 	load_saftui('SaftUI-Misc/Skinning/restedxp.lua')
 end
 
 function H.get_rx()
 	return SaftUI:GetModule('Skinning'):GetModule('RestedXP')
+end
+
+-- The profile's text grey, which the skin's grey text should be.
+function H.is_grey(r, g, b)
+	local gr, gg, gb = SaftUI.config.profile.colors.text.grey:GetRGB()
+	return H.near(r, gr) and H.near(g, gg) and H.near(b, gb)
 end
 
 function H.near(a, b)
@@ -119,10 +121,19 @@ function H.count_hooks(fn)
 	return counts
 end
 
--- SaftUI-Chat as the skin sees it, standing in for the module (whose real
--- code needs Blizzard's chat frames): its options setter calls ApplyAppearance
--- (SaftUI-Chat/options.lua:63-72), and a profile change calls UpdateConfig,
--- which ends in ApplyAppearance (SaftUI-Chat/chatframe.lua:326-333).
+-- SaftUI-Chat as the skin sees it: a stand-in, the one exception to rule 1 in
+-- .agents/testing.md (never fake a SaftUI function), because the real chat
+-- code needs Blizzard's ChatFrame1..N, tabs and edit boxes. It models only the
+-- contract the skin consumes (restedxp.lua OnEnable): ApplyAppearance exists
+-- and can be hooked, and UpdateConfig and the options setter end in it.
+--
+-- What the real ones also do, which this omits:
+--   - CHT:UpdateConfig (SaftUI-Chat/chatframe.lua:326-335) runs MigratePosition,
+--     CaptureSize and ApplyHolder before ApplyAppearance;
+--   - the options General setter (SaftUI-Chat/options.lua:63-72) takes the
+--     width/height branch (CaptureSize, ApplyHolder) instead of ApplyAppearance
+--     for those two keys. SetOption is this stand-in's name for that closure,
+--     and covers only the other keys.
 function H.make_chat()
 	local Chat = SaftUI:NewModule('Chat')
 	Chat.config = SaftUI.config.profile.chat
@@ -131,7 +142,7 @@ function H.make_chat()
 		if not self.config then return end
 		self:ApplyAppearance()
 	end
-	-- the options window's General setter for any key but width/height
+	-- the General setter's path for any key but width/height
 	function Chat:SetOption(key, value)
 		self.config[key] = value
 		self:ApplyAppearance()
