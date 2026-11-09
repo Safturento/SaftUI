@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators](#2026-11-09--unit-frame-portrait-and-aurawatch-as-grid2-style-corner-indicators)
   - [2026-11-09 — Aura timer bars: stacked bars instead of icons](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons)
   - [2026-11-09 — Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen)
   - [2026-11-09 — The /link copy dialog replaces scripts on Blizzard's popup edit box](#2026-11-09--the-link-copy-dialog-replaces-scripts-on-blizzards-popup-edit-box)
@@ -42,6 +43,30 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators
+
+**What:** Two unit frame elements the user wants built. Both have defaults in `SaftUI-Unitframes/config/default.lua` but were never registered:
+- **Portrait** (`elements/portrait.lua`).
+- **AuraWatch** (`elements/aurawatch.lua`, a commented-out stub). The user wants Grid2's corner indicators (https://github.com/michaelnpsp/Grid2): small colored squares in the corners of party and raid frames. Each square means the unit has one of the player's tracked auras, for example Riptide or Rejuvenation. The user's screenshot showed green, yellow and olive squares in the top-left and bottom-left corners of Grid2 cells, and a debuff icon in the center of one cell. The user: "it could be really useful for tracking heals on raid frames (defining heals for each corner, like riptide, rejuv, etc.) - if restrictions don't allow you to filter down to that level then maybe we just drop it."
+
+**Why noticed:** The 2026-11-09 settings audit found both elements' defaults unused. The user chose to build them rather than remove them.
+
+**Anchors:**
+- oUF's Auras meta element, `AddSlot(filter, { candidateFilters = { includeSpellIDs = { [id] = true } } })` (`SaftUI-Unitframes/Libraries/oUF/elements/auras.lua`). Each slot is one aura button that Blizzard's `AuraContainer` fills natively, so it works when aura data is secret in combat.
+- SaftUI's "Only mine" candidate filter (`elements/auras.lua`). On Forever the `PLAYER` filter string keeps others' auras too; see `.agents/clients.md`.
+- `taint.md` rule 11: aura buttons' state is secret, and hooks on dispel textures don't fire.
+- oUF's Portrait element (`Libraries/oUF/elements/portrait.lua`).
+
+**What's been considered:**
+- AuraWatch: one slot per tracked spell, all of a corner's slots stacked on that corner. Each button gets a custom `initializeFrame` that draws a flat colored square (the spell's color) instead of the icon, maybe with a cooldown swipe. Blizzard decides when each shows. No external AuraWatch library is needed. The old oUF_AuraWatch plugin was never bundled.
+- Settings: per corner (top-left, top-right, bottom-left, bottom-right), a list of spell IDs with a color each. Probably per class, since the spells are class spells.
+
+**Shape of work:** A brainstorm and spec covering both elements. Portrait needs a look decision: 3D model or 2D, and placement inside or beside the frame. AuraWatch needs a research spike in game first, to confirm that `includeSpellIDs` slots plus the only-mine filter show only the player's HoTs on Forever.
+
+**Open questions:**
+- Portrait look and placement.
+- AuraWatch spell lists: per class or per character? Size and offset per corner? Show a duration (swipe or a draining square)?
 
 ### 2026-11-09 — Aura timer bars: stacked bars instead of icons
 
@@ -155,7 +180,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - `portrait` and `aurawatch` are elements the user wants built. AuraWatch: per-corner HoT tracking on raid frames, which may be possible with AuraContainer slots (`AddSlot` with `candidateFilters.includeSpellIDs`); no separate library is needed.
   - `arena`: the user will deal with arena frames one day.
   - The size and frame level keys every element inherits are harmless, and stay.
-- **Still open:** `widget` is a retail-only status bar stub with no update code, for Blizzard's NPC widget bars. Dropping it was proposed to the user.
+- **Widget** was a retail-only status bar stub with no update code, for Blizzard's NPC widget bars. It was dropped with the user's OK, along with its defaults.
 
 **Broken options and defaults:**
 - **Fixed 2026-11-09 (5962f4d):**

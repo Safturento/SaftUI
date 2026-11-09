@@ -363,28 +363,6 @@ local name = {
     },
 }
 
-local widget = {
-    enable = true,
-    width = -2,
-    relative_width = true,
-    height = 20,
-    relative_height = false,
-    framelevel = 10,
-    position = { point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -5 },
-    template = 'thick',
-    text = {
-        enable = true,
-        font = 'normal',
-        position = {
-            point = "CENTER",
-            element = 'Widget',
-            rel_point = "CENTER",
-            x_off = 0,
-            y_off = 0,
-        },
-    },
-}
-
 local aurawatch = {
     enable = false,
     framelevel = 15,
@@ -433,7 +411,6 @@ st.defaults.unitframes = {
                 health = health,
                 castbar = castbar,
                 portrait = portrait,
-                widget = widget,
                 aurawatch = aurawatch,
                 questindicator = questindicator,
                 raidroleindicator = raidroleindicator,
