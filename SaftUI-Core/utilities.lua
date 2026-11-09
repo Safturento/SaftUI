@@ -205,6 +205,20 @@ function st:ScanEquippedItem(slotId, unit)
 	return data
 end
 
+-- The dialog's edit box is Blizzard's StaticPopupN edit box, so nothing here
+-- SetScripts on it or writes onto it: Blizzard calls the dialog's own
+-- EditBoxOnTextChanged / EditBoxOnEscapePressed (editBox, data), where data is
+-- the link passed to StaticPopup_Show. Blizzard passes no userInput flag.
+local function EscapedLink(link)
+	return gsub(link, "\124", "\\124")
+end
+
+-- GetEditBox on current clients, the named child before.
+local function EditBoxOf(dialog)
+	if dialog.GetEditBox then return dialog:GetEditBox() end
+	return _G[dialog:GetName() .. 'EditBox']
+end
+
 StaticPopupDialogs["EXTRACT_LINK_DIALOG"] = {
 	text = "Copy link",
 	button1 = "Close",
@@ -215,19 +229,20 @@ StaticPopupDialogs["EXTRACT_LINK_DIALOG"] = {
 	hideOnEscape = true,
 	preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
 	OnShow = function(self, link)
-		local escapedLink = gsub(link, "\124", "\\124")
-
-		self.editBox:SetText(escapedLink)
-		self.editBox:HighlightText()
-
-		self.editBox:SetScript('OnTextChanged', function(self, userInput)
-			if userInput then self:SetText(escapedLink) end
-		end)
-
-		self.editBox:SetScript('OnEscapePressed', function(self)
-			StaticPopup_Hide("EXTRACT_LINK_DIALOG")
-		end)
-	end
+		local editBox = EditBoxOf(self)
+		editBox:SetText(EscapedLink(link))
+		editBox:HighlightText()
+	end,
+	-- Typing can't change the text: put the link back.
+	EditBoxOnTextChanged = function(editBox, link)
+		local escapedLink = EscapedLink(link)
+		if editBox:GetText() ~= escapedLink then
+			editBox:SetText(escapedLink)
+		end
+	end,
+	EditBoxOnEscapePressed = function(editBox, link)
+		StaticPopup_Hide("EXTRACT_LINK_DIALOG")
+	end,
 }
 
  --extract chat link to dialog box for easy copying
