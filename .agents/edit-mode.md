@@ -7,6 +7,7 @@ covers:
   - 'SaftUI-Core/Config/aceskin.lua'
   - 'SaftUI-Core/Config/widgets.lua'
   - 'SaftUI-Core/Config/optionswidgets.lua'
+  - 'SaftUI-Core/Config/optionsbody.lua'
   - 'SaftUI-Core/Config/optionswindow.lua'
   - 'SaftUI-*/options.lua'
   - 'SaftUI-*/movers.lua'
@@ -94,7 +95,7 @@ st:RegisterMover('key', {
 - **Sidebar** (210 wide): Edit mode and the command buttons, then Global Settings, Profiles and the category groups (`OW.SidebarEntries`), and the profile's name at the bottom.
 - **Header:** the page's name (Colus 34) and desc (15, grey), and the close X (`st:CreateCloseButton`). Dragging the header or the sidebar's title moves the window; where it's left is saved as `st.config.global.optionsWindow = { point, x, y }` (account-wide) and restored on open.
 - **Tabs** (17, the active one underlined blue), wrapping to more lines when they don't fit; a page's single tab isn't drawn. A second row for subtabs, then the picker row (the group's name and a select widget). The search box sits at the right of the first tab line.
-- **Body:** a scroll frame of sections (`OW.LayoutSections`): a 1px `#2e2e2e` line and a Colus 15 title between them, never boxes. An untitled section after another (rows that follow a nested group) gets no line, so it reads as a continuation. Rows (`OW.LayoutRows`) are 34 high in two 367-wide columns 40 apart; a full row (`width = 'full'`/`'double'`, a description) takes a line of its own. The label (16) is on the left and the widget right-aligned; an execute button stands alone, and a desc shows as the label's tooltip.
+- **Body:** a scroll frame of sections, drawn by a body object (`st.OptionsBody`, `optionsbody.lua`: `OB.New(content, root, onChanged, width)`, then `body:Draw(sections)` or `body:DrawResults(sections, onPick)`, and `body:Release()`). Sections (`OB.LayoutSections`) have a 1px `#2e2e2e` line and a Colus 15 title between them, never boxes. An untitled section after another (rows that follow a nested group) gets no line, so it reads as a continuation. Rows (`OB.LayoutRows`) are 34 high in two 367-wide columns 40 apart; a full row (`width = 'full'`/`'double'`, a description) takes a line of its own. The label (16) is on the left and the widget right-aligned; an execute button stands alone, and a desc shows as the label's tooltip. The window's fonts live in `optionsbody.lua` too (`OB.Font`), since it loads first.
 - **Footer:** Reload UI, the region `OW:GetFooter()` returns (for edit mode's controls), the status line (validate errors, `OW:SetStatus`), and Close.
 - **Re-rendering** redraws the page, keeping the page, tab, picker value and scroll when they still exist. It runs straight away after the window's own set, except mid-drag (a slider's `onChanged` says so; the render waits for the mouse to be let go) and while Blizzard's color picker is open. On `ConfigTableChange` for `st.name` it runs on the next frame, several in a frame coalesced; never during a render (UF's profile select's `get` notifies), and not while the user is busy (a list or confirm dialog open, a drag, the color picker, typing in one of the window's boxes).
 - **Search** runs `OM.Search` once typing pauses for 0.25s, and shows the results grouped by page, tabs and section. A click opens the row's page and scrolls it into view.

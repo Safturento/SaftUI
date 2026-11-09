@@ -45,6 +45,7 @@ Config\defaults.lua
 Config\config.lua
 Config\optionsmodel.lua
 Config\optionswidgets.lua
+Config\optionsbody.lua
 Config\optionswindow.lua
 Config\widgets.lua
 Config\aceskin.lua

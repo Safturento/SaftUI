@@ -1,14 +1,14 @@
 local st = SaftUI
-local OM, W = st.OptionsModel, st.OptionsWidgets
+local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 --[[
 	SaftUI's options window: /sui, drawn by SaftUI from the same Ace option
 	tree AceConfigDialog drew (st.Config:GetOptionsTable()), laid out as the
 	approved mockup (docs/superpowers/specs/assets/2026-11-09-options-window-
 	mockup.html). The model (optionsmodel.lua) turns the tree into pages, tabs,
-	a picker, sections and rows; the widgets (optionswidgets.lua) draw the rows'
-	controls. This file owns the frame, navigation, search, the footer and the
-	keyboard.
+	a picker, sections and rows; the body (optionsbody.lua) draws the sections
+	and rows, and the widgets (optionswidgets.lua) the rows' controls. This file
+	owns the frame, navigation, search, the footer and the keyboard.
 
 	  OW:Open(path, root)   shows the window (root: the tree, kept for later
 	                        opens), at the page, picker, tab and subtab a path
@@ -33,7 +33,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	    window, and where it was left is kept in st.config.global.optionsWindow;
 	  - the tab row, with the search box at its right; a second row for
 	    subtabs; the picker row; the body, a scroll frame of sections
-	    (OW.LayoutSections) of two-column rows (OW.LayoutRows);
+	    (OB.LayoutSections) of two-column rows (OB.LayoutRows), drawn by an
+	    OB.New body;
 	  - the footer: Reload UI, the region, the status line, Close.
 
 	Re-rendering redraws the whole page from the model, keeping the page, tab,
@@ -58,14 +59,14 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	anyway (st.Config's PLAYER_REGEN_DISABLED), and opening refuses.
 
 	Every frame and texture here is SaftUI's; nothing is written onto Blizzard
-	frames or tables. GameTooltip shows a row's desc through its public API.
+	frames or tables.
 ]]
 
 local OW = {}
 st.OptionsWindow = OW
 
 local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
-local format, tremove = string.format, table.remove
+local format = string.format
 
 ------------------------------------------------------------------ the mockup's numbers
 
@@ -74,12 +75,10 @@ local SIDEBAR_WIDTH = 210
 local MAIN_WIDTH = WIDTH - SIDEBAR_WIDTH - 2 -- inside the window's border
 local FOOTER_HEIGHT = 46
 local PAD = 28 -- the main column's left padding
-local CONTENT_WIDTH = 774 -- the body: two columns of 367 with a gap of 40
+local CONTENT_WIDTH = OB.WIDTH -- the body: two columns of 367 with a gap of 40
 local RIGHT_PAD = MAIN_WIDTH - PAD - CONTENT_WIDTH
-local COLUMN_GAP = 40
-local COLUMN_WIDTH = (CONTENT_WIDTH - COLUMN_GAP) / 2
-local ROW_HEIGHT = 34
-local LABEL_GAP = 10
+local ROW_HEIGHT = OB.ROW_HEIGHT
+local LABEL_GAP = OB.LABEL_GAP
 local FIELD_HEIGHT = 24
 
 local HEAD_TOP = 20 -- the title's top, in the main column
@@ -88,12 +87,6 @@ local TAB_HEIGHT, TAB_GAP, TAB_WRAP_GAP, SUBTAB_GAP = 24, 22, 6, 10
 local SEARCH_WIDTH, SEARCH_DELAY = 190, 0.25
 local PICKER_GAP = 12
 
--- Sections, in the body (OW.LayoutSections).
-local BODY_TOP, BODY_BOTTOM = 4, 24
-local SECTION_PAD, SECTION_MARGIN = 16, 14
-local TITLE_HEIGHT, TITLE_GAP = 15, 6
-local NOTE_HEIGHT, NOTE_GAP = 13, 4
-local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 local SCROLL_STEP = ROW_HEIGHT * 2
 
 -- The sidebar.
@@ -103,7 +96,6 @@ local ACTION_WIDTH = floor((SIDEBAR_WIDTH - 3 - 24 - ACTION_GAP) / 2)
 local NAV_ITEM, NAV_GROUP, NAV_TOP = 26, 29, 6
 local FOOT_HEIGHT = 30
 
-local LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717
 local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
 
@@ -116,65 +108,8 @@ local EMPTY = {}
 
 ------------------------------------------------------------------ the pure layout
 
--- Places rows in two columns: a normal row takes the next column (1, then 2),
--- a full row a line of its own. A line is as tall as its tallest row
--- (heightOf(row), ROW_HEIGHT without it). Returns { {row, col = 1|2|'full',
--- y} } and the height of them all.
-function OW.LayoutRows(rows, heightOf)
-	local placed, y, col, lineHeight = {}, 0, 1, 0
-	local function NextLine()
-		y, col, lineHeight = y + lineHeight, 1, 0
-	end
-	for _, row in ipairs(rows) do
-		local height = heightOf and heightOf(row) or ROW_HEIGHT
-		if row.width == 'full' then
-			if col == 2 then NextLine() end
-			placed[#placed + 1] = { row = row, col = 'full', y = y }
-			lineHeight = height
-			NextLine()
-		else
-			placed[#placed + 1] = { row = row, col = col, y = y }
-			lineHeight = max(lineHeight, height)
-			if col == 1 then col = 2 else NextLine() end
-		end
-	end
-	if col == 2 then NextLine() end
-	return placed, y
-end
-
--- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
--- placed} } and the body's height. Sections after the first are separated by
--- a line; an untitled one (rows that follow a nested group) gets none, so it
--- reads as a continuation of the one above.
-function OW.LayoutSections(sections, heightOf)
-	local laid, y = {}, BODY_TOP
-	for i, section in ipairs(sections) do
-		local entry = { section = section }
-		if i == 1 then
-			y = y + SECTION_PAD
-		elseif section.title then
-			y = y + SECTION_MARGIN
-			entry.lineY = y
-			y = y + 1 + SECTION_PAD
-		else
-			y = y + CONTINUE_GAP
-		end
-		if section.title then
-			entry.titleY = y
-			y = y + TITLE_HEIGHT + TITLE_GAP
-		end
-		if section.note then
-			entry.noteY = y - 2
-			y = y + NOTE_HEIGHT + NOTE_GAP
-		end
-		entry.rowsY = y
-		local placed, height = OW.LayoutRows(section.rows, heightOf)
-		entry.placed = placed
-		y = y + height
-		laid[#laid + 1] = entry
-	end
-	return laid, y + BODY_BOTTOM
-end
+-- The body's layout (optionsbody.lua), here too for the window's tests.
+OW.LayoutRows, OW.LayoutSections = OB.LayoutRows, OB.LayoutSections
 
 -- The sidebar's entries from OM.Pages: Global Settings and Profiles, then a
 -- { group = category } header and its pages for each category, in the fixed
@@ -220,7 +155,7 @@ local root -- the tree drawn: Config:GetOptionsTable()'s args
 local state = { page = nil, selections = {}, search = '' } -- what the user chose
 local shown = {} -- what the last render drew: page, tab, subtab, pick
 local results -- the current search's results
-local cells = {} -- the body's drawn rows: { row, frame, widget, label, height, y }
+local pageBody -- the body (OB.New) the page is drawn in: its cells are the drawn rows
 local rendering, pending, dragging = false, false, false
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
@@ -238,53 +173,13 @@ local function Copy(t)
 	return copy
 end
 
------------------------------------------------------------------- fonts
-
--- The window's own font objects: the profile's title (Colus) and normal
--- (Agency FB) faces and outlines, at the window's sizes. 'field' is the
--- widgets' (15).
-local FONTS = {
-	title = { 'title', 34 }, brand = { 'title', 26 }, section = { 'title', 15 }, group = { 'title', 13 },
-	tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
-}
-local fontObjects = {}
-
-local function ApplyFont(key)
-	local face, size = FONTS[key][1], FONTS[key][2]
-	local config = st.config.profile.fonts[face]
-	fontObjects[key]:SetFont(st.LSM:Fetch('font', config.font_name), size, config.font_outline)
-	fontObjects[key]:SetTextColor(Normal())
-end
-
-local function Font(key)
-	if key == 'field' then return W.GetFont() end
-	if not fontObjects[key] then
-		local name = 'SaftUI_Options' .. key:gsub('^%l', string.upper) .. 'Font'
-		fontObjects[key] = _G[name] or CreateFont(name)
-		ApplyFont(key)
-	end
-	return fontObjects[key]
-end
-
-function OW:UpdateFonts()
-	for key in pairs(fontObjects) do ApplyFont(key) end
-	W.UpdateFonts()
-end
-
 ------------------------------------------------------------------ small pieces
 
-local function Text(parent, font, justify)
-	local fs = parent:CreateFontString(nil, 'OVERLAY')
-	fs:SetFontObject(Font(font))
-	fs:SetJustifyH(justify or 'LEFT')
-	fs:SetWordWrap(false)
-	return fs
-end
+-- The window's fonts and pieces (optionsbody.lua).
+local Text, Line, Pool, Acquire, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.Acquire, OB.ReleaseAll
 
-local function Line(parent)
-	local line = parent:CreateTexture(nil, 'ARTWORK')
-	line:SetColorTexture(unpack(LINE))
-	return line
+function OW:UpdateFonts()
+	OB.UpdateFonts()
 end
 
 -- A line along the bottom (or top) of frame.
@@ -310,27 +205,6 @@ local function Button(parent, label, onClick)
 	button:SetScript('OnClick', onClick)
 	button:SetSize(max(80, ceil(button.text:GetStringWidth()) + 28), 26)
 	return button
-end
-
--- Pools of frames, font strings or textures, handed out per render.
-local function Pool(make) return { make = make, free = {}, used = {} } end
-
-local function Acquire(pool)
-	local object = tremove(pool.free) or pool.make()
-	pool.used[#pool.used + 1] = object
-	object:ClearAllPoints()
-	object:Show()
-	return object
-end
-
-local function ReleaseAll(pool)
-	for i = #pool.used, 1, -1 do
-		local object = pool.used[i]
-		pool.used[i] = nil
-		object:Hide()
-		object:ClearAllPoints()
-		pool.free[#pool.free + 1] = object
-	end
 end
 
 local pools = {}
@@ -698,112 +572,8 @@ end
 
 ------------------------------------------------------------------ the body
 
-local function ShowTip(frame)
-	local row = frame.row
-	if not (row and row.desc and row.desc ~= '') then return end
-	GameTooltip:SetOwner(frame, 'ANCHOR_TOPLEFT')
-	GameTooltip:AddLine(row.name, 1, 1, 1)
-	GameTooltip:AddLine(row.desc, nil, nil, nil, true)
-	GameTooltip:Show()
-end
-
-local function HideTip(frame)
-	if GameTooltip:IsOwned(frame) then GameTooltip:Hide() end
-end
-
-local function MakeRow()
-	local frame = CreateFrame('Frame', nil, F.content)
-	frame:EnableMouse(true)
-	frame.label = Text(frame, 'label')
-	frame:SetScript('OnEnter', ShowTip)
-	frame:SetScript('OnLeave', HideTip)
-	return frame
-end
-
--- A row's place in its cell: the label on the left, the control on the
--- right. A description is text across the row, and a button stands alone.
-local function PlaceRow(cell, x, y, width)
-	local frame, widget, label, row = cell.frame, cell.widget, cell.label, cell.row
-	frame:SetPoint('TOPLEFT', F.content, 'TOPLEFT', x, -y)
-	frame:SetSize(width, cell.height)
-	label:ClearAllPoints()
-	if row.type == 'description' then
-		label:Hide()
-		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
-	elseif row.type == 'execute' then
-		label:Hide()
-		widget:SetPoint('LEFT', frame, 'LEFT', 0, 0)
-	else
-		label:SetText(row.name)
-		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
-		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
-		label:Show()
-		if cell.height > ROW_HEIGHT then
-			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((ROW_HEIGHT - 16) / 2))
-			widget:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, -6)
-		else
-			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
-			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
-		end
-	end
-end
-
--- A drawn row of the page: its frame and widget, and its height.
-local function RowCell(row)
-	if not W.WIDTH[row.type] then return nil end -- not a type the widgets draw
-	local frame = Acquire(pools.row)
-	frame.row = row
-	local widget = W.Create(frame, row.type)
-	widget:Bind(root, row, Changed)
-	local cell = { row = row, frame = frame, widget = widget, label = frame.label, height = ROW_HEIGHT, place = PlaceRow }
-	if row.type == 'description' then
-		widget:SetWidth(CONTENT_WIDTH)
-		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
-	elseif row.type == 'multiselect' then
-		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
-	end
-	cells[#cells + 1] = cell
-	return cell
-end
-
-local function MakeResult()
-	local button = CreateFrame('Button', nil, F.content)
-	button.hover = button:CreateTexture(nil, 'BACKGROUND')
-	button.hover:SetAllPoints(button)
-	button.hover:Hide()
-	button.text = Text(button, 'label')
-	button.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
-	button:SetScript('OnEnter', function(self)
-		local r, g, b = Blue()
-		self.hover:SetColorTexture(r, g, b, 0.25)
-		self.hover:Show()
-	end)
-	button:SetScript('OnLeave', function(self) self.hover:Hide() end)
-	button:SetScript('OnClick', function(self) GoTo(self.row.path) end)
-	return button
-end
-
-local function PlaceResult(cell, x, y, width)
-	cell.frame:SetPoint('TOPLEFT', F.content, 'TOPLEFT', x, -y)
-	cell.frame:SetSize(width, cell.height)
-	cell.label:SetWidth(width - 16)
-end
-
-local function ResultCell(row)
-	local button = Acquire(pools.result)
-	button.row = row
-	button.text:SetText(row.name)
-	local cell = { row = row, frame = button, label = button.text, height = ROW_HEIGHT, place = PlaceResult }
-	cells[#cells + 1] = cell
-	return cell
-end
-
 local function ReleaseBody()
-	for _, cell in ipairs(cells) do
-		if cell.widget then cell.widget:Release() end
-	end
-	wipe(cells)
-	for _, key in ipairs({ 'row', 'result', 'title', 'note', 'line' }) do ReleaseAll(pools[key]) end
+	pageBody:Release()
 	F.placeholder:Hide()
 end
 
@@ -811,48 +581,6 @@ local function PlaceBody(top)
 	F.body:ClearAllPoints()
 	F.body:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
 	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -RIGHT_PAD, FOOTER_HEIGHT)
-end
-
--- Draws sections of rows with makeCell (rows it draws nothing for are left
--- out, and so are sections left empty).
-local function DrawSections(sections, makeCell)
-	local byRow, kept = {}, {}
-	for _, section in ipairs(sections) do
-		local rows = {}
-		for _, row in ipairs(section.rows) do
-			local cell = makeCell(row)
-			if cell then
-				byRow[row] = cell
-				rows[#rows + 1] = row
-			end
-		end
-		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
-	end
-	local laid, height = OW.LayoutSections(kept, function(row) return byRow[row].height end)
-	for _, entry in ipairs(laid) do
-		if entry.lineY then
-			local line = Acquire(pools.line)
-			line:SetPoint('TOPLEFT', F.content, 'TOPLEFT', 0, -entry.lineY)
-			line:SetSize(CONTENT_WIDTH, 1)
-		end
-		if entry.titleY then
-			local title = Acquire(pools.title)
-			title:SetPoint('TOPLEFT', F.content, 'TOPLEFT', 0, -entry.titleY)
-			title:SetText(entry.section.title)
-		end
-		if entry.noteY then
-			local note = Acquire(pools.note)
-			note:SetPoint('TOPLEFT', F.content, 'TOPLEFT', 0, -entry.noteY)
-			note:SetText(entry.section.note)
-		end
-		for _, p in ipairs(entry.placed) do
-			local cell = byRow[p.row]
-			cell.y = entry.rowsY + p.y
-			cell.place(cell, p.col == 2 and (COLUMN_WIDTH + COLUMN_GAP) or 0, cell.y,
-				p.col == 'full' and CONTENT_WIDTH or COLUMN_WIDTH)
-		end
-	end
-	contentHeight = #kept > 0 and height or 0
 end
 
 local function SamePath(a, b)
@@ -868,7 +596,7 @@ local function BringIntoView()
 	local path = focusPath
 	focusPath = nil
 	if not path then return end
-	for _, cell in ipairs(cells) do
+	for _, cell in ipairs(pageBody.cells) do
 		if cell.row.path and SamePath(cell.row.path, path) then
 			scrollOffset = max(0, cell.y - ROW_HEIGHT)
 			cell.label:SetTextColor(Colors().text.blue:GetRGB())
@@ -918,8 +646,8 @@ local function DrawPage()
 		HidePicker()
 	end
 	PlaceBody(bottom)
-	DrawSections(view.sections, RowCell)
-	if #cells == 0 then Placeholder('Nothing to set here.') end
+	contentHeight = pageBody:Draw(view.sections)
+	if #pageBody.cells == 0 then Placeholder('Nothing to set here.') end
 	BringIntoView()
 end
 
@@ -947,13 +675,14 @@ local function DrawSearch(pages)
 		end
 		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, width = 'normal', path = result.path }
 	end
-	DrawSections(sections, ResultCell)
+	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path) end)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
 local function Draw()
 	ReleaseBody()
 	contentHeight = 0
+	pageBody:SetRoot(root)
 	local pages = OM.Pages(root)
 	local entries = OW.SidebarEntries(pages)
 	local found = false
@@ -1140,25 +869,11 @@ local function BuildMain(window)
 	F.bar:SetWidth(3)
 	F.bar:Hide()
 	F.placeholder = Text(content, 'label')
-	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -(BODY_TOP + SECTION_PAD))
+	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -OB.TOP)
 	F.placeholder:SetTextColor(Grey())
 	F.placeholder:Hide()
 
-	pools.row = Pool(MakeRow)
-	pools.result = Pool(MakeResult)
-	pools.line = Pool(function() return Line(content) end)
-	pools.title = Pool(function()
-		local title = Text(content, 'section')
-		title:SetTextColor(Grey())
-		title:SetWidth(CONTENT_WIDTH)
-		return title
-	end)
-	pools.note = Pool(function()
-		local note = Text(content, 'small')
-		note:SetTextColor(Grey())
-		note:SetWidth(CONTENT_WIDTH)
-		return note
-	end)
+	pageBody = OB.New(content, root, Changed, CONTENT_WIDTH)
 end
 
 local function BuildFooter()
@@ -1328,7 +1043,7 @@ end
 
 -- For tests: the frames, the drawn body rows, how many renders ran.
 function OW.GetFrames() return F end
-function OW.GetDrawnRows() return cells end
+function OW.GetDrawnRows() return pageBody and pageBody.cells or EMPTY end
 function OW.GetRenderCount() return renders end
 
 -- st.Config:Refresh notifies AceConfigRegistry: re-render on the next frame.

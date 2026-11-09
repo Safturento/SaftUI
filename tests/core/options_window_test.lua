@@ -5,7 +5,7 @@
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
--- (optionswidgets.lua), the window, and edit mode. The /sui tree is the real
+-- (optionswidgets.lua), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
 -- one Config:GetOptionsTable builds, from the real Fonts and EditMode modules,
 -- AceDBOptions' profiles table, and synthetic modules registered here: one
 -- shaped like Unitframes (a unit picker, element tabs) and small ones for the
@@ -17,6 +17,7 @@ load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_saftui('SaftUI-Core/Config/optionswindow.lua')
 local OM, W, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsWindow
 
