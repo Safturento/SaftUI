@@ -281,11 +281,12 @@ function generators.alpha(order)
 	return generators.range(order, 'Alpha', 0, 1, 0.05)
 end
 
--- AceConfigDialog shows an input box empty unless its get returns a string,
--- and hands back whatever was typed as a string. So numeric inputs (e.g. a
--- default width of 200) showed blank. These delegate to the nearest parent
--- group's get/set (the one the option would otherwise inherit), converting the
--- value to text for the box and back to a number for the profile.
+-- An input is text both ways: AceConfig's contract gives its get's value to
+-- the box as a string, and its set what was typed, as a string. So a numeric
+-- input (e.g. a default width of 200) needs converting. These delegate to the
+-- nearest parent group's get/set (the one the option would otherwise
+-- inherit), converting the value to text for the box and back to a number for
+-- the profile.
 local function InheritedHandler(info, key)
 	local node = info.options
 	local handler = node[key]

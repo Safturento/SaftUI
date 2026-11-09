@@ -2,8 +2,8 @@ local st = SaftUI
 local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 --[[
-	SaftUI's options window: /sui, drawn by SaftUI from the same Ace option
-	tree AceConfigDialog drew (st.Config:GetOptionsTable()), laid out as the
+	SaftUI's options window: /sui, drawn by SaftUI from the modules' Ace
+	option tables (the tree st.Config:GetOptionsTable() builds), laid out as the
 	approved mockup (docs/superpowers/specs/assets/2026-11-09-options-window-
 	mockup.html). The model (optionsmodel.lua) turns the tree into pages, tabs,
 	a picker, sections and rows; the body (optionsbody.lua) draws the sections
@@ -28,8 +28,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	                        a small dialog over the window for an option table
 	                        of its own (UF's Copy from; "a small dialog" below)
 
-	The window (1040x700, the thick template, FULLSCREEN_DIALOG like the old
-	AceGUI window, so edit mode's outlines draw under it):
+	The window (1040x700, the thick template, FULLSCREEN_DIALOG, so edit
+	mode's outlines draw under it):
 	  - the sidebar: Edit mode and the st.Config:AddCommand buttons, then Global
 	    Settings and Profiles, then the module pages under their category
 	    (Frames, Combat, Info, any other, then Other; OW.SidebarEntries);

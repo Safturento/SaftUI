@@ -118,6 +118,6 @@ Add a row here for each `.agents/<topic>.md` as you create it (mirror of the roo
 | workflow | Followups, specs/plans, branching and how subagents work in SaftUI (no Jira) |
 | architecture | How SaftUI's addons, modules, config, profiles and load order fit together |
 | taint | Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes |
-| edit-mode | SaftUI's edit mode (movers), the /sui options tree, option widgets and the scoped Ace skin |
+| edit-mode | SaftUI's edit mode (movers), the /sui options tree, and SaftUI's options window with its model, body, widgets and dialog |
 | clients | WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs |
 | testing | SaftUI's Lua test suite in tests/ - running it, writing tests, the WoW stub rules, and when tests are required |

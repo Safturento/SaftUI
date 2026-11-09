@@ -21,7 +21,7 @@ code, and by the user checking them in game.
 
 | Path | What it is |
 | ---- | ---------- |
-| `SaftUI-Core/` | Shared core every module depends on: addon object, constants, API helpers (`api.lua`), backdrops/templates (`panels.lua`), fonts and media, config (AceDB profile, `/sui`, Ace skin), and the edit mode framework (`EditMode/`). Bundles Ace3 and other libraries. Has per-client TOCs. |
+| `SaftUI-Core/` | Shared core every module depends on: addon object, constants, API helpers (`api.lua`), backdrops/templates (`panels.lua`), fonts and media, config (AceDB profile, `/sui` and SaftUI's options window), and the edit mode framework (`EditMode/`). Bundles Ace3 and other libraries. Has per-client TOCs. |
 | `SaftUI-Unitframes/` | Unit frames built on a bundled oUF (`Libraries/oUF`, oUF master). Elements in `elements/`, config in `config/`. Per-client TOCs. |
 | `SaftUI-Bags/` | Bag, bank and combined bank windows, filters, categories, bag slot bars. |
 | `SaftUI-Chat/` | Chat frame placement, size and skin. |
@@ -41,7 +41,7 @@ Topic docs live in `.agents/`. Load one when your work matches its row.
 | Planning, followups, specs/plans, branching, running subagents, committing | `.agents/workflow.md` |
 | Adding or changing a module, its config/defaults, `UpdateConfig`, profile switching, TOCs/load order | `.agents/architecture.md` |
 | Touching any Blizzard frame, hooking Blizzard code, anything that can run in combat | `.agents/taint.md` |
-| Making a frame movable, `/sui` options, option widgets, the Ace skin | `.agents/edit-mode.md` |
+| Making a frame movable, `/sui` options, the options window and its widgets | `.agents/edit-mode.md` |
 | Forever vs retail differences, secret values, Blizzard source/icon lookups, reading the user's error logs | `.agents/clients.md` |
 | Writing or running tests | `.agents/testing.md` |
 

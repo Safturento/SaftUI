@@ -1,11 +1,11 @@
 ---
 name: edit-mode
-description: SaftUI's edit mode (movers), the /sui options tree and SaftUI's options window and widgets, and the scoped Ace skin
+description: SaftUI's edit mode (movers), the /sui options tree, and SaftUI's options window with its model, body, widgets and dialog
 last_updated: 2026-11-09
 covers:
   - 'SaftUI-Core/EditMode/**'
-  - 'SaftUI-Core/Config/aceskin.lua'
   - 'SaftUI-Core/Config/widgets.lua'
+  - 'SaftUI-Core/Config/optionsmodel.lua'
   - 'SaftUI-Core/Config/optionswidgets.lua'
   - 'SaftUI-Core/Config/optionsbody.lua'
   - 'SaftUI-Core/Config/optionswindow.lua'
@@ -25,7 +25,7 @@ SaftUI has its own edit mode. It never adds frames to Blizzard's Edit Mode.
 - Where overlays overlap, a list by the cursor names every one under it and marks the one a click or drag gets; the rest dim. Alt brings the next one to the front (`EditMode/picker.lua`, like `/fstack`). Overlays share one strata, so their frame levels decide which is on top: each gets its own pair (backdrop one below), handed out rising by `EM:BringToFront`. Don't set an overlay's level anywhere else.
 - Clicking a frame opens `/sui` at that frame's section.
 - A grid shows behind the UI while edit mode is on and Grid is enabled (`EditMode/grid.lua`). Two center lines sit on UIParent's center, rounded to a physical pixel (`EM:GetGridCenter`), and the other lines repeat outward every Grid size (`EM.GridLinePositions`), each 1 physical pixel thick. Snapping reads the same two functions, so what's drawn is what snaps. The grid also redraws from its own frame's `OnSizeChanged` (the screen events can fire before UIParent resizes). The lines are pooled textures on a SaftUI frame at `BACKGROUND` strata that never takes the mouse.
-- The `/sui` footer has Grid, Snap to grid and Snap to frames toggles (green text when on), and `-` / size / `+` buttons that step Grid size by 4 between 8 and 128 (`EditMode/settings.lua`). For now they don't show: `EditMode/footer.lua` still looks for the old Ace window's status bar, which the new window doesn't have, and attaching them to `st.OptionsWindow:GetFooter()` is the next step. The "Edit mode" section in `/sui` holds the same toggles and a Grid size slider. The values are in the profile (`st.defaults.editmode`: `grid`, `grid_size`, `snap_grid`, `snap_frames`), and `EM:UpdateConfig` redraws the grid and toggles after a profile change.
+- The `/sui` footer has Grid, Snap to grid and Snap to frames toggles (green text when on), and `-` / size / `+` buttons that step Grid size by 4 between 8 and 128 (`EditMode/settings.lua`). `EditMode/footer.lua` (`EM:AddFooterButton`, `EM:UpdateFooter`) puts them on the window's footer region (`st.OptionsWindow:GetFooter()`, between Reload UI and Close) while edit mode is on and `/sui` is open, and takes them off otherwise; the window's status line then starts clear of them (`OW:SetFooterInset`). Edit mode works with `/sui` closed; the buttons just don't show. The "Edit mode" section in `/sui` holds the same toggles and a Grid size slider. The values are in the profile (`st.defaults.editmode`: `grid`, `grid_size`, `snap_grid`, `snap_frames`), and `EM:UpdateConfig` redraws the grid and toggles after a profile change.
 - **The outline.** An overlay draws one 1px line (white, or blue with a blue tint when selected) `EM.OUTLINE_OUTSET` (2px) outside its rect, between two dark lines. That's where a thick SaftUI border's line sits, so frames look as far apart in edit mode as out of it. A frame whose border line sits elsewhere re-anchors its overlay so the line lands on it. Chat does this: its backdrop is `padding` outside the holder, so its overlay goes `padding - OUTLINE_OUTSET` out (`CHT:UpdateFootprint`). Don't color the overlay's dark lines; that widens the outline past the border.
 - Dragging snaps (`EditMode/snap.lua`, wired into `EM:StartDrag` / `EM:UpdateDrag`). The dragged mover's outline (`EM.GetOutlineRect`: its overlay's rect plus `OUTLINE_OUTSET`) has its left, middle and right (and bottom, middle and top) pulled onto the nearest line within `EM.SNAP_REACH` (8 UIParent units). Snap to grid uses the grid's lines (same `EM.GridLinePositions` and `EM:GetGridCenter`, so it works with the grid hidden). Snap to frames uses the screen's center lines and the outline edges and centers of every other mover whose overlay is shown and on screen; with both on, the nearest line wins per axis. Snapping only corrects the drag's `x_off`/`y_off` (converted by the ratio of effective scales, rounded with `st:RoundToPixel`), never the anchor. Holding Ctrl suspends it, and arrow-key nudges ignore it. Movers whose frame moves with the dragged one (`st:MovesWith`: anchored to it, directly or through other frames, or its children) are skipped as targets, since they would shift during the drag. The lines are computed once at drag start. `EM.GetRectInUI` returns nil for a frame with a secret edge or scale (the Minimap's frame is Blizzard's), and that mover is skipped.
 - It closes on combat and refuses to open in combat.
@@ -74,6 +74,14 @@ st:RegisterMover('key', {
 
 - `/sui` is SaftUI's own window (`st.OptionsWindow`, below), drawn from the tree `Config:GetOptionsTable` builds from each module's `GetConfigTable()`. AceConfigDialog no longer draws it.
 - `st.Config:Open(...path)` rebuilds the tree, registers it with AceConfigRegistry as `st.name`, and opens the window at the path's page, picker value and tab (`OM.SelectionForPath`). `st.Config:Close()` closes it, and `st.Config:GetWindow()` is its frame while it's open, else nil. `st.Config:Refresh()` (AceConfigRegistry's NotifyChange) re-renders an open window on the next frame.
+- **How a table maps onto the window.** The model (`SaftUI-Core/Config/optionsmodel.lua`, `st.OptionsModel`) reads AceConfig option tables as AceConfig defines them, so a module's `GetConfigTable` is a plain AceConfig table:
+  - A top-level group is a sidebar page: its `name` is the page title and its `desc` the line under it.
+  - The page's child groups that aren't inline are its tabs (whatever its `childGroups`, except `'select'`, which makes them the picker). Inside the chosen tab or pick, child groups that aren't inline are a second tab row, or the picker when that group says `'select'`. Anything deeper is drawn as sections on the page; nothing is dropped.
+  - Inline groups (`inline = true`, or the parent's `childGroups = 'inline'`) are sections titled with their `name`, with any `desc` as a note. A `header` starts a section titled with its name. Options after a nested group continue in an untitled section.
+  - Options are rows in `order` (100 by default, negative orders last, then by name), two to a line. `width = 'full'` or `'double'`, and every `description`, take a line of their own.
+  - Hidden and `guiHidden` options are left out; disabled ones are dimmed and don't respond. `get`, `set`, `func`, `validate`, `confirm`, `disabled`, `hidden` and `handler` are inherited from parent groups, method-name strings resolve on the handler, and function-valued `name`, `desc`, `values`, `disabled` and `hidden` are called with an AceConfigDialog-style `info`.
+  - A failed `validate` shows in the footer's status line. `confirm` asks in SaftUI's confirm dialog. A `set` re-renders the page.
+  - Each type has a widget: toggle, range (slider and value box), select (a dropdown; `dialogControl = 'LSM30_Font'` lists each font in its own face), multiselect (checkboxes), input, color (Blizzard's color picker), execute (a button), keybinding, description.
 - **Sidebar groups.** A module's top-level table sets `category`: Frames (Unitframes, ActionBars, Inventory, Chat, Minimap, MicroMenu), Combat (Auras, SwingTimer, TotemBar) or Info (Loot, Experience, Tooltip). A page without one lists under Other (Edit mode does). Fonts shows as Global Settings and AceDBOptions' table as Profiles, at the top. `category` is SaftUI's field, and AceConfigRegistry's validator rejects fields it doesn't know, so the tree is registered with validation skipped.
 - **Subcommands.** `st.Config:AddCommand(command, label, func)` makes `/sui <command>` run `func`, and adds a `label` button after "Edit mode" at the top of the window's sidebar (`st.Config:GetCommands()` lists them). Call it at file load or in `OnEnable`. SaftUI-ActionBars adds `kb` (Keybind mode, `SaftUI-ActionBars/bindings.lua`).
 - **Section shape.** A mover's section is a group with `general` and `position` subgroups, plus any others it needs (e.g. the action bars' Text and Visibility). `Config:GetOptionsTable` then:
@@ -86,23 +94,24 @@ st:RegisterMover('key', {
   - `uf_element_position(order, get, set, target)` places a unit frame element, text or icon. Its Frame select (unit frame, another element, or a global frame) reads and writes `position.element` / `position.frame` the way `UF:GetFrame` resolves them, and clears a key with `false` so it overrides an AceDB default. Pass `UF:ConfigTarget(unit, element, key)` as `target`.
   - `width`/`height` are input boxes that display numbers and save numbers.
   - Also available: `range`, `toggle`, `template`, `font`, …
-  - AceConfigDialog shows an `input` as blank unless `get` returns a string, so use these generators rather than raw inputs for numbers.
+  - An `input` is text both ways (its `set` gets what was typed, as a string), so use these generators rather than raw inputs for numbers: they show the number and store a number.
 - Option `get`/`set` must read through `self.config` (or `UF:GetProfileConfig()`) at call time, never a captured table.
 
 ## Options window (`SaftUI-Core/Config/optionswindow.lua`)
 
-`st.OptionsWindow` (`OW`) draws `/sui` as the approved mockup lays it out (`docs/superpowers/specs/assets/2026-11-09-options-window-mockup.html`): 1040x700 in the thick template, at `FULLSCREEN_DIALOG` level 100 like the old AceGUI window, so edit mode's outlines draw under it. The model (`optionsmodel.lua`, `st.OptionsModel`) turns the tree into pages, tabs, a picker, sections and rows; the window draws them:
+`st.OptionsWindow` (`OW`) draws `/sui` as the approved mockup lays it out (`docs/superpowers/specs/assets/2026-11-09-options-window-mockup.html`): 1040x700 in the thick template, at `FULLSCREEN_DIALOG` level 100, so edit mode's outlines draw under it. The model (`optionsmodel.lua`, `st.OptionsModel`) turns the tree into pages, tabs, a picker, sections and rows; the window draws them:
 - **Sidebar** (210 wide): Edit mode and the command buttons, then Global Settings, Profiles and the category groups (`OW.SidebarEntries`), and the profile's name at the bottom.
 - **Header:** the page's name (Colus 34) and desc (15, grey), and the close X (`st:CreateCloseButton`). Dragging the header or the sidebar's title moves the window; where it's left is saved as `st.config.global.optionsWindow = { point, x, y }` (account-wide) and restored on open.
 - **Tabs** (17, the active one underlined blue), wrapping to more lines when they don't fit; a page's single tab isn't drawn. A second row for subtabs, then the picker row (the group's name and a select widget). The search box sits at the right of the first tab line.
 - **Body:** a scroll frame of sections, drawn by a body object (`st.OptionsBody`, `optionsbody.lua`: `OB.New(content, root, onChanged, width)`, then `body:Draw(sections)` or `body:DrawResults(sections, onPick)`, and `body:Release()`). Sections (`OB.LayoutSections`) have a 1px `#2e2e2e` line and a Colus 15 title between them, never boxes. An untitled section after another (rows that follow a nested group) gets no line, so it reads as a continuation. Rows (`OB.LayoutRows`) are 34 high in two 367-wide columns 40 apart; a full row (`width = 'full'`/`'double'`, a description) takes a line of its own. The label (16) is on the left and the widget right-aligned; an execute button stands alone, and a desc shows as the label's tooltip. The window's fonts live in `optionsbody.lua` too (`OB.Font`), since it loads first.
-- **Footer:** Reload UI, the region `OW:GetFooter()` returns (for edit mode's controls), the status line (validate errors, `OW:SetStatus`), and Close.
+- **Footer:** Reload UI, the region `OW:GetFooter()` returns (edit mode's buttons go there while edit mode is on), the status line (validate errors, `OW:SetStatus`; `OW:SetFooterInset` starts it clear of edit mode's buttons), and Close.
 - **Re-rendering** redraws the page, keeping the page, tab, picker value and scroll when they still exist. It runs straight away after the window's own set, except mid-drag (a slider's `onChanged` says so; the render waits for the mouse to be let go) and while Blizzard's color picker is open. On `ConfigTableChange` for `st.name` it runs on the next frame, several in a frame coalesced; never during a render (UF's profile select's `get` notifies), and not while the user is busy (a list or confirm dialog open, a drag, the color picker, typing in one of the window's boxes).
 - **Search** runs `OM.Search` once typing pauses for 0.25s, and shows the results grouped by page, tabs and section. A click opens the row's page and scrolls it into view.
 - **Esc** closes the window through a keyboard catcher that is on only while it's shown, not `UISpecialFrames`. Other keys, and Esc while a box has the keyboard, pass on. It does nothing in combat; the window closes on `PLAYER_REGEN_DISABLED` and refuses to open in combat.
 - The fonts are the window's own objects with the profile's title and normal faces at fixed sizes (`OW:UpdateFonts` on a profile change).
+- **A small dialog:** `OW:OpenDialog(title, options)` shows an option table of its own (a group) in a small SaftUI window over `/sui`, drawn by a body of its own: the title (text, or a function read on each render), the close X, two columns of rows, a status line for validate errors. Its own set re-renders it. Esc closes it (its own keyboard catcher; the window's passes keys on while it shows), and so do closing the window and entering combat; it refuses to open in combat. It draws no tabs or picker. `OW:CloseDialog()`, `OW:IsDialogShown()`. UF's Copy from (`UF:OpenCopyTable`) uses it, with `confirm` on its Confirm copy button.
 
-Tests: `tests/core/options_window_test.lua`.
+Tests: `tests/core/options_window_test.lua` (the window, the dialog, edit mode's footer buttons) and `tests/unitframes/config_test.lua` (UF's Copy from).
 
 ## Options window widgets (`SaftUI-Core/Config/optionswidgets.lua`)
 
@@ -110,14 +119,6 @@ Tests: `tests/core/options_window_test.lua`.
 
 `st:CreateCloseButton(frame)` (`panels.lua`) makes the 24x24 close button (`st.CLOSE_X_BUTTON_SIZE`; `st.CLOSE_BUTTON_SIZE` stays the Blizzard buttons' size) (`close.tga`, a 16x16 canvas with the 10x10 X in the middle) and remembers it in a side table (`st:GetCloseButton(frame)`; nothing is written onto the frame, which may be Blizzard's); `st:CreateHeader` seats such a button in the header and leaves any other button the old look.
 
-## Scoped Ace skin (`SaftUI-Core/Config/aceskin.lua`)
+## Ace3's own windows
 
-`/sui` no longer uses it. It stays loaded until edit mode's footer stops calling `st.AceSkin:GetStatusBar`, which gives nil for the new window.
-
-AceGUI widgets are **pooled and shared with every other addon**:
-- Only widgets inside windows from `st.AceSkin:CreateWindow` are styled (`Scope`). Every change pushes an undo, and the undos run on `AceGUI:Release`, so other addons get stock widgets back.
-- Never hook `AceGUI:Create` or a widget constructor globally.
-- New styling goes through the recorded helpers (`SetFont`, `SetAlpha`, `Retexture`, `Box`, `Owned`, `HookMethod`, …).
-- Fonts: see rule 10 in `.agents/taint.md`.
-- `STYLERS[type]` covers Frame, TreeGroup, TabGroup, InlineGroup, ScrollFrame, CheckBox, Slider, EditBox, Button, Heading, Label, ColorPicker, Dropdown and its pullout, and the LSM30 widgets.
-- On Forever the AceGUI and AceConfigDialog that actually load come from another addon (HandyNotes' copies). Stay defensive about version differences.
+SaftUI doesn't use AceConfigDialog or AceGUI: `/sui`, its dialog and every option widget are SaftUI's. Core's TOCs still load both (with the LibSharedMedia AceGUI widgets) as libraries for other addons. SaftUI's reskin of them (`aceskin.lua`) is gone; it only ever styled SaftUI's own windows, so other addons' Ace windows look as they did. Don't hook `AceGUI:Create`, a widget constructor or `AceGUI:Release`: AceGUI's widgets are pooled and shared with every addon.

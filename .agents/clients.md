@@ -51,7 +51,7 @@ On retail (and some Forever paths), protected data such as some unit, aura, powe
 - **Icons and file IDs:** the `wowdev/wow-listfile` releases, via `gh release download -R wowdev/wow-listfile -p 'verified-listfile-withcapitals.csv'` (~74 MB).
   - Lines look like `236681;Interface/ICONS/Achievement_Reputation_01.blp`. Use the numeric file ID in Lua.
   - Save the download to its own scratch directory. Only grep it; never run anything from it.
-- **AceGUI/AceConfig:** use the bundled copies in `SaftUI-Core/Libraries/Ace3`. On Forever, a newer copy from another addon (HandyNotes) may be what's actually loaded.
+- **Ace3:** use the bundled copies in `SaftUI-Core/Libraries/Ace3`. On Forever, a newer copy from another addon (HandyNotes) may be what's actually loaded. SaftUI uses AceAddon, AceEvent, AceHook, AceDB, AceDBOptions, AceConfigRegistry and AceSerializer; AceConfigDialog and AceGUI stay loaded for other addons, but SaftUI's own options window doesn't use them.
 
 ## The user's install and logs (WSL paths)
 

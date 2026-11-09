@@ -999,8 +999,7 @@ builders.keybinding = function(w)
 	w.text:SetAllPoints()
 	HoverEdge(button, function() return w.disabled or w.waiting end)
 
-	-- A press while waiting is the new key. Esc clears the binding, as it does
-	-- in AceGUI's keybinding box.
+	-- A press while waiting is the new key. Esc clears the binding.
 	local function Press(key)
 		if not w.waiting then return end
 		if key ~= 'ESCAPE' then
