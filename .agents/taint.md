@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
@@ -26,7 +26,7 @@ covers:
 WoW marks every Lua value written by addon code as *tainted* by that addon. Secure Blizzard code that later reads a tainted value runs tainted, and if it then makes a protected call (moving or showing an action bar, `SetAttribute` on a secure button, etc.), the game blocks it with `ADDON_ACTION_BLOCKED` blamed on SaftUI. The error usually fires far from the cause, often in combat, so these rules are strict.
 
 Third-party addon frames (RestedXP Guides in `SaftUI-Misc/Skinning/restedxp.lua`) aren't Blizzard frames, so rule 1 doesn't bind them. SaftUI still only adds to their scripts (hooks, never `SetScript`) and keeps its state in side tables keyed by their frames.
-The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides the v1 frames itself, and it relies on RestedXP re-anchoring `CurrentStepFrame` (hence a `SetPoint` post-hook that keeps SaftUI's gap) and re-`SetScript`ing the list steps on every guide load (hence hover follows their `SetBackdropColor` calls). RestedXP sizes `GuideName` and `Footer` only once, at load, so the skin grows them to fit a long or two-line title and its timer bars. Those timers are LibCandyBar bars, which LibCandyBar recycles between every addon that uses it (BigWigs, for one). The skin styles only bars in RestedXP's `BarContainer.bars`, and on `LibCandyBar_Stop` it hides its boxes. LibCandyBar resets everything else when it hands a bar out again. Without LibCandyBar's callback it leaves the timers alone.
+The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides the v1 frames itself, and it relies on RestedXP re-anchoring `CurrentStepFrame` (hence a `SetPoint` post-hook that keeps SaftUI's gap) and re-`SetScript`ing the list steps on every guide load (hence hover follows their `SetBackdropColor` calls). RestedXP sizes `GuideName` and `Footer` only once, at load, so the skin grows them to fit a long or two-line title and its timer bars. The title's `GetStringHeight` counts its wrapping only once WoW has laid the text out, which the welcome text (set during load) and a window resize both come before, so the skin refits from the `OnSizeChanged` of a frame pinned to the text, not from the box's own. Those timers are LibCandyBar bars, which LibCandyBar recycles between every addon that uses it (BigWigs, for one). The skin styles only bars in RestedXP's `BarContainer.bars`, and on `LibCandyBar_Stop` it hides its boxes. LibCandyBar resets everything else when it hands a bar out again. Without LibCandyBar's callback it leaves the timers alone.
 
 ## Rules
 

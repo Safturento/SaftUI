@@ -566,10 +566,15 @@ function RX:Setup()
 
 	HookFont(guideName.text, 'title')
 	HookFont(footer.text, 'text')
-	-- Refit the title's box when RestedXP sets a guide's name, and when a resize
-	-- rewraps it. HookFont's ApplyFont refits on a font change.
+	-- Refit the title's box when RestedXP sets a guide's name. HookFont's
+	-- ApplyFont refits on a font change.
 	hooksecurefunc(guideName.text, 'SetText', FitTitle)
-	guideName:HookScript('OnSizeChanged', FitTitle)
+	-- The text's height counts its wrapping only once WoW has laid it out, which
+	-- the welcome text (set during load) and a resize both come before. This
+	-- frame resizes with the text once it's laid out, and refits the box then.
+	local titleWatcher = CreateFrame('Frame', nil, guideName)
+	titleWatcher:SetAllPoints(guideName.text)
+	titleWatcher:SetScript('OnSizeChanged', FitTitle)
 	FitTitle()
 
 	-- The list ends at the footer's top, as RestedXP has it (1px above), so a
