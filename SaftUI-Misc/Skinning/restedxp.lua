@@ -14,13 +14,23 @@ local SK = st:GetModule('Skinning')
 --   two panels comes from a post-hook on CurrentStepFrame's SetPoint.
 -- - It SetScripts each list step's OnEnter/OnLeave anew on every guide load, so
 --   the hover highlight follows their SetBackdropColor calls, not a script hook.
--- - It sizes GuideName only once, at load, so the skin can grow it to fit the
---   title (FitTitle).
+-- - It sizes GuideName and Footer only once, at load, so the skin can grow them
+--   to fit the title (FitTitle) and the timer bars (FitFooter).
+-- - Its timers (Timers.lua) are LibCandyBar bars, which LibCandyBar recycles
+--   between every addon that uses it. The skin styles only bars in RestedXP's
+--   BarContainer.bars, and takes itself off a bar on LibCandyBar_Stop.
 local RX = SK:NewModule('RestedXP')
 
 local TITLE_SIZE_BONUS = 3
 local TITLE_PAD = 6         -- room above and below the guide name's text
 local TITLE_MIN_HEIGHT = 35 -- RestedXP's own height for the guide name
+local FOOTER_MIN_HEIGHT = 20 -- RestedXP's own height for the footer
+local TIMER_TEMPLATE = 'thin' -- the timer's boxes, like SaftUI's cast bar
+local TIMER_MIN_HEIGHT = 16  -- RestedXP's own timer height
+local TIMER_TEXT_PAD = 3     -- above and below the timer's text
+local TIMER_PAD = 4          -- footer room above and below the timer
+local TIMER_INSET = 5        -- timer from the footer's sides
+local TIMER_ICON_GAP = 3     -- between the icon's box and the bar's
 local DIVIDER_ALPHA = 0.5
 local STEPS_GAP = 7 -- added to RestedXP's offset of the current steps, away from the window
 
@@ -37,6 +47,9 @@ local tipPanels = setmetatable({}, { __mode = 'k' })       -- [pooled current st
 local stepsPanel                                    -- the panel behind the current steps
 local scrollTrack                                   -- the scroll bar's track texture
 local gappingSteps = false                          -- our own SetPoint on CurrentStepFrame isn't re-handled
+local timerSkins = setmetatable({}, { __mode = 'k' }) -- [LibCandyBar bar] = { bar = box, icon = box, active = }
+local sizingTimer = false                           -- our own SetHeight on a timer isn't re-handled
+local placingTimers = false                         -- our own SetPoint on BarContainer isn't re-handled
 
 -- The chat's panel template and font name; SaftUI's defaults when chat has no config.
 function RX:GetStyle()
@@ -57,6 +70,28 @@ local function FitTitle()
 	guideName:SetHeight(height)
 end
 
+-- Timers take RestedXP's footer text size (its "Guide font size") in the chat font.
+local function TimerFontSize()
+	local footerText = RX.frames and RX.frames.Footer.text
+	local state = footerText and fontState[footerText]
+	return state and state.size or 9
+end
+
+local function TimerHeight()
+	return math.max(TIMER_MIN_HEIGHT, math.ceil(TimerFontSize() + 2 * TIMER_TEXT_PAD))
+end
+
+-- RestedXP's footer is 20px, its timers 16px inside it. A timer tall enough for
+-- the chat font needs a taller footer. The step list ends at the footer's top
+-- (Setup), so it gives up the room.
+local function FitFooter()
+	local footer = RX.frames and RX.frames.Footer
+	if not footer then return end
+	local height = math.max(FOOTER_MIN_HEIGHT, TimerHeight() + 2 * TIMER_PAD)
+	if math.abs((footer:GetHeight() or 0) - height) >= 0.5 then footer:SetHeight(height) end
+	RX:SkinTimers()
+end
+
 -- Applies SaftUI's face and outline at the size RestedXP asked for.
 local function ApplyFont(fs)
 	local state = fontState[fs]
@@ -74,7 +109,11 @@ local function ApplyFont(fs)
 	fs:SetFont(face, size, outline)
 	applyingFont = false
 
-	if state.kind == 'title' then FitTitle() end
+	if state.kind == 'title' then
+		FitTitle()
+	elseif RX.frames and fs == RX.frames.Footer.text then
+		FitFooter()
+	end
 end
 
 -- RestedXP's text keeps the size it asks for (its "Guide font size" setting) but
@@ -342,6 +381,134 @@ local function GapStepsPoint(current, point)
 	end
 end
 
+-- RestedXP's timers (Timers.lua) are LibCandyBar bars, styled like SaftUI's cast
+-- bar: a flat bar and its icon, each in a thin box, in the chat font. Only bars in
+-- RestedXP's BarContainer.bars are styled. LibCandyBar resets a bar's texture,
+-- colors and fonts when it hands it out again, so a stopped bar only needs its
+-- boxes hidden.
+local function IsRXPTimer(bar)
+	local container = RX.frames and RX.frames.BarContainer
+	if not container then return false end
+	for _, b in pairs(container.bars) do
+		if b == bar then return true end
+	end
+	return false
+end
+
+local function MakeTimerBox(bar, region)
+	local box = st:CreateFrame('Frame', nil, bar)
+	box:SetPoint('TOPLEFT', region, 'TOPLEFT', -1, 1)
+	box:SetPoint('BOTTOMRIGHT', region, 'BOTTOMRIGHT', 1, -1)
+	return box
+end
+
+-- After LibCandyBar lays a running bar out (restyleBar, on every SetHeight): a gap
+-- between the icon and the bar, so their boxes don't touch.
+local function LayoutTimer(bar, skin)
+	local icon, statusBar = bar.candyBarIconFrame, bar.candyBarBar
+	local hasIcon = icon:IsShown() and bar.iconPosition ~= 'RIGHT'
+	skin.icon:SetShown(hasIcon)
+	if not (bar.running and hasIcon) then return end
+	statusBar:ClearAllPoints()
+	statusBar:SetPoint('TOPLEFT', icon, 'TOPRIGHT', TIMER_ICON_GAP, 0)
+	statusBar:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT')
+end
+
+-- RestedXP sets every timer to 16px when it lines them up; this puts back the
+-- height the chat font needs.
+local function OnTimerHeight(bar)
+	local skin = timerSkins[bar]
+	if sizingTimer or not (skin and skin.active and IsRXPTimer(bar)) then return end
+	local height = TimerHeight()
+	if bar.height ~= height then
+		sizingTimer = true
+		bar:SetHeight(height)
+		sizingTimer = false
+	end
+	LayoutTimer(bar, skin)
+end
+
+local function SkinTimer(bar)
+	local skin = timerSkins[bar]
+	if not skin then
+		skin = { bar = MakeTimerBox(bar, bar.candyBarBar), icon = MakeTimerBox(bar, bar.candyBarIconFrame) }
+		timerSkins[bar] = skin
+		hooksecurefunc(bar, 'SetHeight', OnTimerHeight)
+	end
+	skin.active = true
+
+	-- Under the bar's own icon and status bar (LibCandyBar gives each bar its level).
+	local level = math.max(0, bar:GetFrameLevel() - 1)
+	for _, box in ipairs({ skin.bar, skin.icon }) do
+		box:SetFrameLevel(level)
+		if st.config.profile.templates[TIMER_TEMPLATE] then st:SetTemplate(box, TIMER_TEMPLATE) end
+	end
+	skin.bar:Show()
+
+	bar:SetTexture(st.BLANK_TEX)
+	bar:SetBackgroundColor(0, 0, 0, 0) -- the box's background shows through
+	local _, fontName = RX:GetStyle()
+	local fontObject = st:GetFont(fontName)
+	if fontObject then
+		local face, _, outline = fontObject:GetFont()
+		bar:SetFont(face, TimerFontSize(), outline)
+	end
+	bar:SetHeight(TimerHeight()) -- OnTimerHeight lays it out
+end
+
+local function UnskinTimer(bar)
+	local skin = timerSkins[bar]
+	if not skin then return end
+	skin.active = false
+	skin.bar:Hide()
+	skin.icon:Hide()
+end
+
+-- RestedXP lines its timers up (SortTimers) after starting, stopping or showing
+-- one, and that starts by re-anchoring BarContainer, so its hook lands here. The
+-- timers stand down with the rest of the skin for the v2 window.
+function RX:SkinTimers()
+	local container = self.frames and self.frames.BarContainer
+	if not container then return end
+	local active = self.frames.GuideName:IsShown()
+	for _, bar in pairs(container.bars) do
+		if active then SkinTimer(bar) else UnskinTimer(bar) end
+	end
+end
+
+-- RestedXP puts the timers over the footer row or, in its bottom orientation with
+-- two or more, above the guide name (Timers.lua SortTimers). Each of those points
+-- gets SaftUI's offsets: inside the footer with room around it, or clear of the
+-- guide panel. The v2 window's points are left alone.
+local TIMER_POINTS = {
+	{ 'TOPLEFT', 'Footer', 'TOPLEFT', TIMER_INSET, -TIMER_PAD },
+	{ 'BOTTOMRIGHT', 'Footer', 'BOTTOMRIGHT', -TIMER_INSET, TIMER_PAD },
+	{ 'BOTTOMLEFT', 'GuideName', 'TOPLEFT', 0, STEPS_GAP },
+	{ 'BOTTOMRIGHT', 'GuideName', 'TOPRIGHT', 0, STEPS_GAP },
+}
+
+local function PlaceTimersPoint(container, point)
+	if placingTimers then return end
+	for i = 1, container:GetNumPoints() do
+		local p, rel, relPoint = container:GetPoint(i)
+		if p == point then
+			for _, target in ipairs(TIMER_POINTS) do
+				if p == target[1] and rel == RX.frames[target[2]] and relPoint == target[3] then
+					placingTimers = true
+					container:SetPoint(p, rel, relPoint, target[4], target[5])
+					placingTimers = false
+					return
+				end
+			end
+			return
+		end
+	end
+end
+
+function RX:OnTimerStop(_, bar)
+	UnskinTimer(bar)
+end
+
 function RX:Setup()
 	if self.frames then return end
 	local rxp = RXPFrame
@@ -404,6 +571,25 @@ function RX:Setup()
 	hooksecurefunc(guideName.text, 'SetText', FitTitle)
 	guideName:HookScript('OnSizeChanged', FitTitle)
 	FitTitle()
+
+	-- The list ends at the footer's top, as RestedXP has it (1px above), so a
+	-- taller footer takes its room from the list instead of covering it.
+	frames.ScrollFrame:SetPoint('BOTTOMRIGHT', footer, 'TOPRIGHT', -20, 1)
+
+	-- Timers. Without LibCandyBar's stop callback a recycled bar would keep the
+	-- skin in another addon, so no callback means no timer skin.
+	local container = rxp.BarContainer
+	local candy = LibStub and LibStub('LibCandyBar-3.0', true)
+	if container and type(container.bars) == 'table' and candy and candy.RegisterCallback then
+		frames.BarContainer = container
+		candy.RegisterCallback(self, 'LibCandyBar_Stop', 'OnTimerStop')
+		hooksecurefunc(container, 'ClearAllPoints', function() RX:SkinTimers() end)
+		hooksecurefunc(container, 'SetPoint', PlaceTimersPoint)
+		local timerPoints = {}
+		for i = 1, container:GetNumPoints() do timerPoints[i] = (container:GetPoint(i)) end
+		for _, point in ipairs(timerPoints) do PlaceTimersPoint(container, point) end
+	end
+	FitFooter()
 
 	self:SecureHook(rxp, 'UpdateVisuals', 'SkinChrome')
 
