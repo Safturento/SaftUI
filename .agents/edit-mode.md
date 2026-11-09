@@ -86,9 +86,9 @@ st:RegisterMover('key', {
 
 ## Options window widgets (`SaftUI-Core/Config/optionswidgets.lua`)
 
-`st.OptionsWidgets` (`W`) draws the controls of SaftUI's own options window, which is replacing AceConfigDialog. `W.Create(parent, rowType)` gives a pooled widget (toggle, range, select, multiselect, input, color, execute, keybinding, description). `widget:Bind(root, row, onChanged)` reads with `OM.Get`, and a change the user makes runs `OM.Validate`, then `OM.Confirm` (asked with `W.Confirm`), then `OM.Set`, and calls `onChanged(ok, err)`. `widget:Release()` returns it to the pool. Widgets are SaftUI frames; the color picker is Blizzard's `ColorPickerFrame`, used only through `SetupColorPickerAndShow` (old fields as a fallback), and nothing is written onto it. Tests: `tests/core/options_widgets_test.lua`.
+`st.OptionsWidgets` (`W`) draws the controls of SaftUI's own options window, which is replacing AceConfigDialog. `W.Create(parent, rowType)` gives a pooled widget (toggle, range, select, multiselect, input, color, execute, keybinding, description). `widget:Bind(root, row, onChanged)` reads with `OM.Get`, and a change the user makes runs `OM.Validate`, then `OM.Confirm` (asked with `W.Confirm`), then `OM.Set`, and calls `onChanged(ok, err)`. `widget:Release()` returns it to the pool. Widgets are SaftUI frames; the color picker is Blizzard's `ColorPickerFrame`, used only through `SetupColorPickerAndShow` (the swatch does nothing without it), and nothing is written onto it. Tests: `tests/core/options_widgets_test.lua`.
 
-`st:CreateCloseButton(frame)` (`panels.lua`) makes the 24x24 close button (`close.tga`, a 16x16 canvas with the 10x10 X in the middle) and stores it as `frame.close`; `st:CreateHeader` seats such a button in the header and leaves any other button the old look.
+`st:CreateCloseButton(frame)` (`panels.lua`) makes the 24x24 close button (`st.CLOSE_X_BUTTON_SIZE`; `st.CLOSE_BUTTON_SIZE` stays the Blizzard buttons' size) (`close.tga`, a 16x16 canvas with the 10x10 X in the middle) and remembers it in a side table (`st:GetCloseButton(frame)`; nothing is written onto the frame, which may be Blizzard's); `st:CreateHeader` seats such a button in the header and leaves any other button the old look.
 
 ## Scoped Ace skin (`SaftUI-Core/Config/aceskin.lua`)
 

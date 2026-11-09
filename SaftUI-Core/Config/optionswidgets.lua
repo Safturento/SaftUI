@@ -30,7 +30,8 @@ local OM = st.OptionsModel
 	(widget.frame:GetHeight()); the others are 18, 22, 24 or 26 high.
 
 	Left out: input's multiline (one line), select's radio style (a dropdown,
-	as the spec says), description's image and fontSize.
+	as the spec says), description's image. A description's fontSize is small
+	(the default), medium or large.
 ]]
 
 local W = {}
@@ -51,10 +52,7 @@ local LIST_STRATA = 'FULLSCREEN_DIALOG'
 ------------------------------------------------------------------ look
 
 -- The mockup's colors (the thick template's, and the field fill).
-local FIELD = { 0.078, 0.078, 0.078, 1 }
-local EDGE = { 0.3, 0.3, 0.3, 1 }
-local ALT = { 0.1, 0.1, 0.1, 1 }
-local BG = { 0.12, 0.12, 0.12, 1 }
+local FIELD, EDGE, ALT, BG = st.BOX_COLORS.field, st.BOX_COLORS.edge, st.BOX_COLORS.alt, st.BOX_COLORS.bg
 
 local function Colors()
 	return st.config.profile.colors
@@ -730,12 +728,18 @@ local function ListEntries(root, row)
 end
 
 define('select', {
+	-- Only the chosen key's label is resolved here; the list is built when it opens.
 	Refresh = function(self)
 		self.value = self:Value()
-		local entries, fontMode = ListEntries(self.root, self.row)
+		local values = OM.Member(self.root, self.row, 'values')
+		local fontMode = self.row.option.dialogControl == 'LSM30_Font'
 		local label, font = '', nil
-		for _, entry in ipairs(entries) do
-			if entry.key == self.value then label, font = entry.label, entry.font break end
+		if type(values) == 'table' and self.value ~= nil and values[self.value] ~= nil then
+			if fontMode then
+				label, font = tostring(self.value), values[self.value]
+			else
+				label = tostring(values[self.value])
+			end
 		end
 		self.text:SetFontObject(W.GetFont())
 		if fontMode and font then self.text:SetFont(font, FIELD_FONT_SIZE, '') end
@@ -777,7 +781,7 @@ local function MultiRow(w, i)
 	row:SetHeight(MULTI_ROW)
 	row:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', 0, -(i - 1) * MULTI_ROW)
 	row:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -(i - 1) * MULTI_ROW)
-	row.box = CheckBox(row, 14)
+	row.box = CheckBox(row, 18)
 	row.box:SetPoint('LEFT', row, 'LEFT', 0, 0)
 	row.box:EnableMouse(false)
 	row.label = NewText(row, 'LEFT')
@@ -859,16 +863,10 @@ define('input', {
 -- nothing is written onto it. The forever branch's picker is the mainline
 -- one, where opacity is the alpha (1 is solid).
 local function OpenPicker(info)
+	-- Forever and retail both have SetupColorPickerAndShow. Without it the swatch
+	-- does nothing: the older way means writing fields onto Blizzard's frame.
 	if ColorPickerFrame.SetupColorPickerAndShow then
 		ColorPickerFrame:SetupColorPickerAndShow(info)
-	else
-		-- The older picker's fields (Blizzard's own, set as addons always did).
-		ColorPickerFrame.func, ColorPickerFrame.opacityFunc, ColorPickerFrame.cancelFunc = info.swatchFunc, info.opacityFunc, info.cancelFunc
-		ColorPickerFrame.hasOpacity, ColorPickerFrame.opacity = info.hasOpacity, info.opacity
-		ColorPickerFrame.previousValues = { r = info.r, g = info.g, b = info.b, a = info.opacity }
-		ColorPickerFrame:SetColorRGB(info.r, info.g, info.b)
-		ColorPickerFrame:Hide()
-		ColorPickerFrame:Show()
 	end
 end
 
@@ -1084,6 +1082,8 @@ builders.description = function(w)
 	w.measure:Hide()
 end
 
+local DESCRIPTION_SIZES = { small = FIELD_FONT_SIZE, medium = FIELD_FONT_SIZE + 2, large = FIELD_FONT_SIZE + 5 }
+
 define('description', {
 	GetWidth = function(self) return self.frame:GetWidth() end,
 
@@ -1094,7 +1094,7 @@ define('description', {
 	end,
 
 	Fit = function(self)
-		local lineHeight = floor(FIELD_FONT_SIZE * 1.3)
+		local lineHeight = floor((self.size or FIELD_FONT_SIZE) * 1.3)
 		local lines = max(1, ceil(self.measure:GetStringWidth() / max(1, self.frame:GetWidth() - 10)))
 		self.text:SetHeight(lines * lineHeight)
 		self.frame:SetHeight(lines * lineHeight)
@@ -1103,6 +1103,16 @@ define('description', {
 	Refresh = function(self)
 		local text = self.row.name
 		if type(text) ~= 'string' then text = '' end
+		-- fontSize: small (the default), medium or large.
+		local size = DESCRIPTION_SIZES[OM.Member(self.root, self.row, 'fontSize')] or FIELD_FONT_SIZE
+		self.size = size
+		for _, fs in ipairs({ self.text, self.measure }) do
+			fs:SetFontObject(W.GetFont())
+			if size ~= FIELD_FONT_SIZE then
+				local path, _, flags = W.GetFont():GetFont()
+				fs:SetFont(path, size, flags)
+			end
+		end
 		self.text:SetText(text)
 		self.measure:SetText(text)
 		self.text:SetTextColor(Colors().text.normal:GetRGB())

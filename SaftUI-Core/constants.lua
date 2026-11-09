@@ -19,7 +19,15 @@ st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
 st.scale = 768/st.screenHeight
 st.mult = 1
 
-st.CLOSE_BUTTON_SIZE = {24, 24}
+st.CLOSE_BUTTON_SIZE = {20, 10} -- a Blizzard close button handed to st:CreateHeader
+st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
+-- The options window's box colors, shared by its widgets and the close button.
+st.BOX_COLORS = {
+	field = { 0.078, 0.078, 0.078, 1 },
+	edge = { 0.3, 0.3, 0.3, 1 },
+	alt = { 0.1, 0.1, 0.1, 1 },
+	bg = { 0.12, 0.12, 0.12, 1 },
+}
 -- The close X's part of close.tga: a power-of-two canvas (like the other textures), with the X in the middle 10x10.
 st.CLOSE_X_COORDS = {3/16, 13/16, 3/16, 13/16}
 st.ICON_COORDS = {.08, .92, .08, .92}

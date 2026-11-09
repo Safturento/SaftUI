@@ -140,6 +140,13 @@ end
 --Creates a dragable header for a frame
 st.headers = {}
 local closeButtons = setmetatable({}, { __mode = 'k' }) -- the buttons st:CreateCloseButton made
+local closeOf = setmetatable({}, { __mode = 'k' }) -- frame -> its button (nothing is written onto the frame: it may be Blizzard's)
+
+-- The close button st:CreateCloseButton made for frame, or nil.
+function st:GetCloseButton(frame)
+	return closeOf[frame]
+end
+
 local headerTitles = {} -- header -> the title st:CreateHeader put on it
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
@@ -181,8 +188,8 @@ function st:CreateHeader(frame, title, close_button)
 		headerTitles[header] = frame.title
 	end
 
-	-- A button from st:CreateCloseButton is taken without being asked (frame.close).
-	if not close_button and closeButtons[frame.close] then close_button = frame.close end
+	-- A button from st:CreateCloseButton is taken without being asked.
+	if not close_button and closeOf[frame] then close_button = closeOf[frame] end
 	if close_button then frame.close_button = close_button end
 	if frame.close_button and closeButtons[frame.close_button] then
 		-- SaftUI's own button already has its look; it only sits in the header.
@@ -190,7 +197,7 @@ function st:CreateHeader(frame, title, close_button)
 		button:ClearAllPoints()
 		button:SetFrameLevel(header:GetFrameLevel()+4)
 		button:SetPoint('RIGHT', header, 'RIGHT', -10, 0)
-		button:SetSize(unpack(st.CLOSE_BUTTON_SIZE))
+		button:SetSize(unpack(st.CLOSE_X_BUTTON_SIZE))
 	elseif frame.close_button then
 		-- A button that isn't SaftUI's (Blizzard's) keeps the look it has always had.
 		st:StripTextures(frame.close_button)
@@ -242,12 +249,12 @@ end
 -- The close button: 24x24, the field color with a 1px edge border (and a dark
 -- line outside it) and a grey pixel X. Hovering turns the border and X red
 -- over a faint red fill, and while pressed the X sits 1px lower. A click hides
--- frame, which keeps the button as frame.close.
+-- frame. st:GetCloseButton(frame) finds it again (nothing is written onto frame).
 function st:CreateCloseButton(frame)
 	local close = st:CreateFrame('Button', nil, frame)
 	closeButtons[close] = true
 	close:SetPoint('TOPRIGHT', 0, 0)
-	close:SetSize(unpack(self.CLOSE_BUTTON_SIZE))
+	close:SetSize(unpack(self.CLOSE_X_BUTTON_SIZE))
 	close:SetBackdrop({ bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
 
 	-- The dark line outside the border.
@@ -256,7 +263,7 @@ function st:CreateCloseButton(frame)
 	outline:SetPoint('BOTTOMRIGHT', close, 'BOTTOMRIGHT', 1, -1)
 	outline:SetFrameLevel(max(0, close:GetFrameLevel() - 1))
 	outline:SetBackdrop({ edgeFile = self.BLANK_TEX, edgeSize = 1 })
-	outline:SetBackdropBorderColor(0.1, 0.1, 0.1, 1)
+	outline:SetBackdropBorderColor(unpack(self.BOX_COLORS.alt))
 	close.outline = outline
 
 	local x = close:CreateTexture(nil, 'OVERLAY')
@@ -273,8 +280,8 @@ function st:CreateCloseButton(frame)
 			close:SetBackdropBorderColor(colors.text.red:GetRGB())
 			x:SetVertexColor(colors.text.red:GetRGB())
 		else
-			close:SetBackdropColor(0.078, 0.078, 0.078, 1)
-			close:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+			close:SetBackdropColor(unpack(self.BOX_COLORS.field))
+			close:SetBackdropBorderColor(unpack(self.BOX_COLORS.edge))
 			x:SetVertexColor(colors.text.grey:GetRGB())
 		end
 	end
@@ -289,7 +296,7 @@ function st:CreateCloseButton(frame)
 	close:SetScript('OnMouseUp', function() x:SetPoint('CENTER', 0, 0) end)
 	close:SetScript('OnClick', function() frame:Hide() end)
 
-	frame.close = close
+	closeOf[frame] = close
 	return close
 end
 

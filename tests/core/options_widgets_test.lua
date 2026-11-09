@@ -465,6 +465,7 @@ test('multiselect: get(info, key) and set(info, key, value)', function()
 	}))
 	eq(w:GetWidth(), 170, 'width')
 	eq(w.frame:GetHeight(), 3 * 22, 'one row per value')
+	eq(w.rows[1].box:GetWidth(), 18, 'checkboxes are 18')
 	local rows = w.rows
 	eq(text_of(rows[1].label), 'Alpha', 'sorted by key')
 	eq(rows[1].box:GetChecked(), true, 'a is on')
@@ -600,24 +601,17 @@ test('color: with no alpha the picker has no opacity and a is 1', function()
 	w:Release()
 end)
 
-test('color: without SetupColorPickerAndShow the older fields are used', function()
-	-- A Classic-family picker: a frame with the old fields and SetColorRGB, not the new method.
+test('color: without SetupColorPickerAndShow the swatch does nothing, and writes nothing onto the picker', function()
 	local old = CreateFrame('Frame', nil, UIParent)
 	old:Hide()
-	local rgb
-	function old:SetColorRGB(r, g, b) rgb = { r, g, b } end
 	local real = ColorPickerFrame
 	ColorPickerFrame = old
-	local w, _, sets = color_widget({ hasAlpha = true })
+	local w = color_widget({ hasAlpha = true })
 	click(w.frame)
 	ColorPickerFrame = real
-	check(old:IsShown(), 'shown')
-	eq(rgb[1], 0.2, 'color given')
-	eq(old.hasOpacity, true, 'opacity flag')
-	eq(old.opacity, 0.8, 'and value')
-	eq(type(old.func), 'function', 'func')
-	eq(type(old.cancelFunc), 'function', 'cancelFunc')
-	eq(old.previousValues.b, 0.6, 'previousValues')
+	check(not old:IsShown(), 'not shown')
+	eq(old.func, nil, 'no field written')
+	eq(old.hasOpacity, nil, 'none')
 	w:Release()
 end)
 
@@ -750,6 +744,26 @@ end)
 
 ------------------------------------------------------------------ description
 
+test('description: fontSize small, medium and large step up from the default', function()
+	local sizes = {}
+	for _, fs in ipairs({ 'small', 'medium', 'large', false }) do
+		local w = bind('description', 'd', opt('description', 'Words', { fontSize = fs or nil }))
+		sizes[#sizes + 1] = select(2, w.text:GetFont())
+		w:Release()
+	end
+	check(sizes[2] > sizes[1] and sizes[3] > sizes[2], 'small < medium < large')
+	eq(sizes[4], sizes[1], 'no fontSize is small')
+end)
+
+test('select: the closed button shows the chosen key\'s label', function()
+	local w = bind('select', 'p', opt('select', 'P', {
+		values = function() return { a = 'A', b = 'B' } end,
+		get = function() return 'b' end, set = function() end,
+	}))
+	eq(text_of(w.text), 'B', 'label of the chosen key')
+	w:Release()
+end)
+
 test('description: shows its text, and its height follows the width', function()
 	local w = bind('description', 'about', opt('description', 'Some words about it.'))
 	eq(w:GetWidth(), 400, 'default width')
@@ -824,10 +838,11 @@ end)
 test('CreateCloseButton: the look', function()
 	local frame = st:CreateFrame('Frame', nil, UIParent)
 	local close = st:CreateCloseButton(frame)
-	eq(frame.close, close, 'stored as frame.close')
+	eq(st:GetCloseButton(frame), close, 'found with st:GetCloseButton')
 	eq(close:GetWidth(), 24, '24 wide')
 	eq(close:GetHeight(), 24, '24 tall')
-	eq(st.CLOSE_BUTTON_SIZE[1], 24, 'the constant says so too')
+	eq(st.CLOSE_X_BUTTON_SIZE[1], 24, 'the constant says so too')
+	eq(st.CLOSE_BUTTON_SIZE[1], 20, 'a Blizzard button keeps its old size constant')
 	eq(close.icon:GetTexture(), st.textures.close, 'the close texture')
 	check(st.textures.close:find('close.tga', 1, true), 'registered in st.textures')
 	local colors = st.config.profile.colors
@@ -841,6 +856,14 @@ test('CreateCloseButton: the look', function()
 	eq(fr, 0.078, 'the field fill')
 	check(close.outline ~= nil, 'a dark line outside')
 	eq(close.outline:GetBackdropBorderColor(), 0.1, 'in the alt color')
+end)
+
+test('CreateCloseButton writes no field onto the frame it is given', function()
+	local frame = CreateFrame('Frame', nil, UIParent)
+	local before = {}
+	for k in pairs(frame) do before[k] = true end
+	st:CreateCloseButton(frame)
+	for k in pairs(frame) do check(before[k], 'new field on the frame: ' .. tostring(k)) end
 end)
 
 test('CreateCloseButton: hover turns red, pressed moves the X down 1px, a click hides the frame', function()
@@ -895,13 +918,15 @@ test('CreateHeader: a SaftUI close button keeps its look and sits in the header;
 	local plain = st:CreateFrame('Button', nil, other)
 	st:CreateHeader(other, 'Other', plain)
 	check(plain.backdrop ~= nil, 'a button that is not SaftUI\'s is skinned as before')
-	eq(plain:GetWidth(), 24, 'at the new size')
+	eq(plain:GetWidth(), 20, 'at the old size')
+	eq(plain:GetHeight(), 10, 'and height')
 end)
 
 test('CreatePanel builds its header with the new close button', function()
 	local panel = st:CreatePanel('Test panel', 200, 100)
-	check(panel.close ~= nil, 'the panel has its close button')
-	eq(panel.close.icon:GetTexture(), st.textures.close, 'with the X')
-	click(panel.close)
+	local close = st:GetCloseButton(panel)
+	check(close ~= nil, 'the panel has its close button')
+	eq(close.icon:GetTexture(), st.textures.close, 'with the X')
+	click(close)
 	check(not panel:IsShown(), 'and it closes the panel')
 end)
