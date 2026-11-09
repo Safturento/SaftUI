@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Aura timer bars: stacked bars instead of icons](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons)
   - [2026-11-09 — Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen)
   - [2026-11-09 — The /link copy dialog replaces scripts on Blizzard's popup edit box](#2026-11-09--the-link-copy-dialog-replaces-scripts-on-blizzards-popup-edit-box)
   - [2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover)
@@ -41,6 +42,26 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-09 — Aura timer bars: stacked bars instead of icons
+
+**What:** An option to show a unit frame's buffs and debuffs as stacked timer bars (name, time left, a draining bar) instead of icons. Some aura defaults that nothing reads today look meant for this, and were kept for it:
+- `font`;
+- `showBar` (player buffs);
+- `horizontal_growth`;
+- target buffs' `border`.
+
+**Why noticed:** The 2026-11-09 settings audit proposed removing those keys. The user: "I think could be useful to leave it and implement stacked timer bars instead of just the aura icons, lets leave for now and track that implementation as a followup".
+
+**Anchors:**
+- `SaftUI-Unitframes/elements/auras.lua`, built on oUF's Auras meta element over Blizzard's `AuraContainer`.
+- The `buffs` and `debuffs` defaults in `SaftUI-Unitframes/config/default.lua` and `config/units/*.lua`.
+
+**What's been considered:** Aura data is secret in combat, so bars can't be built from Lua-side aura data. The container's buttons draw natively. A bar look probably has to come from the container's own button options or a custom `initializeFrame` with a duration-driven bar, like the totem timers (`SetTimerDuration` in `SaftUI-Misc/totemtimers.lua`). That needs research.
+
+**Shape of work:** First, a research pass on what a container button can show: a duration bar and a name. Then a design pass and an implementation in `elements/auras.lua`.
+
+**Open questions:** Which units get bars (player only, or player and target)? Do bars replace icons per group, or show next to them?
 
 ### 2026-11-09 — Edit mode movers for unit frame parts placed on the screen
 
@@ -110,23 +131,31 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - `name.show_classification` and `name.colorClass`.
   - The indicators' `template`.
 
-**Read by nothing:**
-- **Core:**
-  - `grid.horizontalSpacing` and `.verticalSpacing`.
-  - `editmode.grid` and `.snap`. `EM:AddFooterButton` (`SaftUI-Core/EditMode/footer.lua`) was meant for these and has no callers.
-  - `addon_manager.*`, `buttons.height`, `panels.padding`, and every template's `inner_shadow`.
-  - `maps.*`. It was superseded by `st.defaults.minimap`; only `maps.minimap.size` is read, once, to seed `experience.width`.
-- **Minimap:** `minimap.font` and `minimap.enable`.
-- **Bags:** `inventory.compact` and `inventory.buttontemplate`.
-- **Chat:** `chat.fadetabs` (the live key is `tabs.fade`) and `chat.tabs.height`.
-- **Unit frames:**
-  - `unitframes.config_unit` and `.config_element`.
-  - `health.text.tags`, `health.Smooth` and `health.absorbColor`.
-  - `power.text.percent` and `power.Smooth`.
-  - `power.colorSmooth`. It is copied onto the element, but the bundled oUF only knows `colorPowerSmooth`.
-  - Boss `growthDirection`, `maxColumns`, `unitsPerColumn`, `columnSpacing` and `initialAnchor`. Only party and the raids lay out by these.
-  - The arena, pettarget and nameplate tables. Those units aren't spawned. Nameplate holds the only default for `name.color_hostile`, which `tags.lua:74` reads.
-  - Size, frame level and template keys that the element defaults (`config/default.lua:420-430`) merge into auras, Name and the indicators. Each of these elements sizes itself or can't take them.
+**Read by nothing:** settled with the user on 2026-11-09.
+- **Done in 0308977:**
+  - Removed:
+    - `addon_manager`, `buttons.height`, `panels.padding`, every template's `inner_shadow`, and `maps` (`experience.width` is now a plain 250);
+    - `minimap.font` and `.enable`;
+    - bags' `compact`;
+    - chat's `fadetabs` and `tabs.height`;
+    - unit frames' `config_unit`, `config_element`, `health.text.tags`, `health.absorbColor` and additional power's `colorClass`;
+    - the nameplate table (the user: "almost everyone just uses plater").
+  - Hooked up:
+    - bags' `buttontemplate`, now the item and currency slots' template;
+    - `Smooth` on health, power and additional power, mapped to oUF's `smoothing`, on by default;
+    - `power.colorSmooth`, mapped to oUF's `colorPowerSmooth`;
+    - power and additional power `text.percent` and `text.hide_full`;
+    - `name.color_hostile`, now a Name option, off by default.
+  - Pettarget is now spawned, off by default.
+- **Kept, for work to come:**
+  - `grid.*` and `editmode.grid`/`.snap` are for edit mode's grid and snap.
+  - Boss `growthDirection`, `maxColumns`, `unitsPerColumn`, `columnSpacing` and `initialAnchor`: the user wants these implemented as options, not removed.
+  - The aura keys `font`, `horizontal_growth`, `showBar` and target buffs' `border` are for aura timer bars; see [Aura timer bars](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons).
+  - The aura filters, `showDebuffType` and `desaturateOthers` stay with the aura-container followup.
+  - `portrait` and `aurawatch` are elements the user wants built. AuraWatch: per-corner HoT tracking on raid frames, which may be possible with AuraContainer slots (`AddSlot` with `candidateFilters.includeSpellIDs`); no separate library is needed.
+  - `arena`: the user will deal with arena frames one day.
+  - The size and frame level keys every element inherits are harmless, and stay.
+- **Still open:** `widget` is a retail-only status bar stub with no update code, for Blizzard's NPC widget bars. Dropping it was proposed to the user.
 
 **Broken options and defaults:**
 - **Fixed 2026-11-09 (5962f4d):**
@@ -372,7 +401,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **What:** Adding `/sui` tabs for the remaining unit frame elements turned up defaults (`SaftUI-Unitframes/config/default.lua`, `config/units/*.lua`) that do nothing, or that error once turned on. They were left out of the options:
 - **Read by nothing:**
   - Auras: `font` (the count always has its own `count.font`), `showDebuffType`, `horizontal_growth`, `showBar` (player buffs) and `border` (target buffs). Also the `filter` tables and `desaturateOthers`, which the aura-container followup below covers.
-  - Additional power: `colorClass` (oUF's AdditionalPower only knows `colorPower`), `text.hide_full`, `text.percent`.
+  - Additional power: `colorClass` (oUF's AdditionalPower only knows `colorPower`), `text.hide_full`, `text.percent`. *2026-11-09 (0308977): `colorClass` removed; `text.hide_full` and `text.percent` hooked up.*
   - Class power: `show_empty` is read (`elements/classpower.lua`) but changes nothing, since oUF already shows every point up to the max.
   - Focus `castbar.colors.normal = { .5, .9, .7 }`: a list, but `GetRGB` reads the `r`/`g`/`b` that the base default's color fills in, so the focus castbar uses the base color.
   - Raid target `position.element = 'Portrait'`: Portrait isn't registered, so the marker anchors to the unit frame.
