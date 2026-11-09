@@ -933,6 +933,10 @@ function EditBox.SetText(self, s, text)
 	if changed then run_script(self, 'OnTextChanged', false) end
 end
 function EditBox.GetText(self, s) return s.text or '' end
+-- The cap on how many letters the box takes (0 is no cap, the default). Only
+-- remembered: this stub doesn't cut text that is set or typed past it.
+function EditBox.SetMaxLetters(self, s, n) s.max_letters = number_arg(s, n, 'maxLetters') end
+function EditBox.GetMaxLetters(self, s) return s.max_letters or 0 end
 
 -- Focus. One edit box has the keyboard at a time: taking it makes the one that
 -- had it lose it (OnEditFocusLost), then OnEditFocusGained. Not mimicked: the
