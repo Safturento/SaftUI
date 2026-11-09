@@ -106,16 +106,43 @@ for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
 	end)
 end
 
-test('health PostUpdate keeps the custom color when oUF recolors the bar', function()
-	local health = bar('Health')
-	health.config.colorCustom = true
-	health.config.customColor = rgb(.2, .4, .6)
-	health.text = nil
-	health:SetStatusBarColor(1, 1, 1)
-	health.PostUpdate(health, 'player', 50, 100)
-	local r, g, b = bar_color(health)
-	check(near(r, .2) and near(g, .4) and near(b, .6), 'custom color applied after the update')
-end)
+-- oUF recolors a bar for any color flag (UpdateColor: SetStatusBarColor), then
+-- calls the element's PostUpdateColor; its Path runs Update before ColorPath, so
+-- PostUpdate runs before the recolor. oUF can't load here, so this does that order
+-- by hand with each element's real callbacks and oUF's callback signatures.
+local function oUF_path(element, name)
+	if name == 'Health' then element.text = nil; element:PostUpdate('player', 50, 100) -- no text: its Unit* calls aren't stubbed
+	elseif name == 'AdditionalPower' then element:PostUpdate(40, 100) end
+	element:SetStatusBarColor(1, 0, 0) -- oUF's recolor for colorPower / colorClass / ...
+	if name == 'Health' then element:PostUpdateColor('player', nil)
+	elseif name == 'Power' then element:PostUpdateColor('player', nil, nil, nil, nil)
+	else element:PostUpdateColor(nil) end
+end
+
+for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
+	test(name .. ': colorCustom wins over a color flag after oUF recolors the bar', function()
+		local element = bar(name)
+		element.config.colorPower, element.config.colorClass = true, true
+		element.config.colorCustom = true
+		element.config.customColor = rgb(.2, .4, .6)
+		element.bg:SetVertexColor(1, 1, 1)
+		oUF_path(element, name)
+		local r, g, b = bar_color(element)
+		check(near(r, .2) and near(g, .4) and near(b, .6), ('bar ends in customColor, got %s %s %s'):format(r, g, b))
+		if name ~= 'Health' then
+			local br = element.bg:GetVertexColor()
+			check(near(br, .2 * element.config.bg.multiplier), 'background follows the custom color')
+		end
+	end)
+
+	test(name .. ': without colorCustom oUF\'s color stays', function()
+		local element = bar(name)
+		element.config.colorPower = true
+		oUF_path(element, name)
+		local r = bar_color(element)
+		check(near(r, 1), 'oUF color kept')
+	end)
+end
 
 test('castbar bg defaults have the same shape as health and power', function()
 	local bg = unit_defaults['**'] and unit_defaults['**'].castbar.bg or unit_defaults.castbar.bg

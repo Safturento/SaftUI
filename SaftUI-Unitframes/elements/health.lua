@@ -42,14 +42,18 @@ local function PostUpdateHealth(health, unit, current, max)
 		end
 	end
 
-	if health.config.colorCustom then
-		health:SetStatusBarColor(UF.UnpackColor(health.config.customColor))
-	end
-
 	if health.config.bg.enable then
 		r, g, b = health:GetStatusBarColor()
 		local mu = health.config.bg.multiplier or 1
 		health.bg:SetVertexColor(mu, mu, mu)
+	end
+end
+
+-- oUF's Path runs Update (PostUpdate) and then ColorPath, which recolors the
+-- bar for any color flag; PostUpdateColor is the callback after that.
+local function PostUpdateColor(health)
+	if health.config.colorCustom then
+		health:SetStatusBarColor(UF.UnpackColor(health.config.customColor))
 	end
 end
 
@@ -58,6 +62,7 @@ local function Constructor(unitframe)
 
 	UF:AddText(unitframe, health)
 	health.PostUpdate = PostUpdateHealth
+	health.PostUpdateColor = PostUpdateColor
 
 	return health
 end

@@ -49,7 +49,17 @@ local function PostUpdatePower(power, unit, current, min, max)
 	power.bg:SetTexture(st.BLANK_TEX)
 end
 
+-- oUF calls this after it recolors the bar (any color flag), so a custom color
+-- set earlier or in PostUpdate would be overwritten. The custom color comes
+-- from the config, so it is never secret.
 local function PostUpdateColor(power, unit, color, r, g, b)
+	if power.config.colorCustom then
+		r, g, b = UF.UnpackColor(power.config.customColor)
+		power:SetStatusBarColor(r, g, b)
+		UF.SetPowerBackgroundColor(power, r, g, b)
+		return
+	end
+	if not st.retail then return end
 	if color then
 		r, g, b = color:GetRGB()
 	end
@@ -65,9 +75,7 @@ local function Constructor(unitframe)
 
 	power.GetDisplayPower = GetDisplayPower
 	power.PostUpdate = PostUpdatePower
-	if st.retail then
-		power.PostUpdateColor = PostUpdateColor
-	end
+	power.PostUpdateColor = PostUpdateColor
 
 	return power
 end

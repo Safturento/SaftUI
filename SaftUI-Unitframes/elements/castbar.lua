@@ -28,7 +28,6 @@ end
 
 local function PostCastStart(castbar, unit)
 	local r, g, b
-	castbar:SetColorFill(castbar.config.colors.normal:GetRGB())
 	r, g, b = castbar.config.colors.normal:GetRGB()
 	if issecretvalue(castbar.notInterruptible) then
 		r, g, b = GetColorFromBoolean(castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal)

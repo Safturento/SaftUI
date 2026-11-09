@@ -23,7 +23,15 @@ local function Update(unitframe, event, unit, powerType)
 	end
 end
 
+-- oUF calls this after it recolors the bar (see power.lua's PostUpdateColor).
 local function PostUpdateColor(power, color, r, g, b)
+	if power.config.colorCustom then
+		r, g, b = UF.UnpackColor(power.config.customColor)
+		power:SetStatusBarColor(r, g, b)
+		UF.SetPowerBackgroundColor(power, r, g, b)
+		return
+	end
+	if not st.retail then return end
 	if color then
 		r, g, b = color:GetRGB()
 	end
@@ -67,9 +75,7 @@ local function Constructor(self)
     UF:AddText(self, additionalPower)
 	additionalPower.PostVisibility = PostVisibility
 	additionalPower.PostUpdate = PostUpdate
-	if st.retail then
-		additionalPower.PostUpdateColor = PostUpdateColor
-	end
+	additionalPower.PostUpdateColor = PostUpdateColor
 
 	return additionalPower
 end
