@@ -44,6 +44,7 @@ Repo-specific overlay on the user-level `~/.claude/CLAUDE.md` "Planning workflow
 
 - **Worktrees.** The Agent tool's `isolation: "worktree"` creates worktrees from `main`, which is stale here, and an agent's `git reset --hard` to fix that may be denied. So:
   1. Create the worktree yourself at the right commit: `git worktree add -b <branch> .claude/worktrees/<branch> <commit>`.
+     `tests/run` in the worktree reuses the main checkout's `tests/.venv` when it has one (`.agents/testing.md`), and only makes a new venv if neither exists, so no setup step is needed.
   2. Tell the agent to work only in that path. Don't use `isolation: "worktree"`.
   3. Once the agent reports, cherry-pick its commits onto `modular`, then `git worktree remove` the worktree and `git branch -D` its branch.
 - **Briefs.** A worker gets:

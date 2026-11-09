@@ -21,9 +21,9 @@ local REPO_ROOT, TESTS_DIR = REPO_ROOT, TESTS_DIR
 
 -- Keep our own references, so a test or a SaftUI file replacing a global
 -- can't break the harness.
-local io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs =
-	io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs
-local traceback, getinfo = debug.traceback, debug.getinfo
+local io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs, rawget, rawset =
+	io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs, rawget, rawset
+local traceback, getinfo, sethook = debug.traceback, debug.getinfo, debug.sethook
 local clock = os.clock -- os is removed below
 local format, concat = string.format, table.concat
 
@@ -190,16 +190,36 @@ end
 ------------------------------------------------------------------ the world
 
 local base_globals -- every global that exists once this file has loaded
+local base_values -- name -> its value then, for restoring a base global a test replaced
+local base_library -- 'string' -> { member -> value }, the same for the library tables
+
+-- The library tables a test or a SaftUI file might change a member of
+-- (string.format, table.insert, ...): restored by reset_world like the
+-- globals are.
+local LIBRARIES = { 'string', 'table', 'math', 'coroutine', 'debug' }
 
 -- Rebuilds the stubbed WoW world and the core shell in this Lua state: every
 -- global made since the harness loaded (by stubs, SaftUI files or tests) is
--- removed, namespaces start empty, and the stub files and shell load again.
--- Values the test file holds in locals survive. Load SaftUI files again after
--- calling it.
+-- removed, a base global (print, pairs, string.format, ...) that was replaced
+-- gets its value back, namespaces start empty, and the stub files and shell
+-- load again. Values the test file holds in locals survive. Load SaftUI files
+-- again after calling it.
 function reset_world()
 	for name in pairs(_G) do
 		if not base_globals[name] then
 			_G[name] = nil
+		end
+	end
+	for name, value in pairs(base_values) do
+		if rawget(_G, name) ~= value then rawset(_G, name, value) end
+	end
+	for library, members in pairs(base_library) do
+		local lib = _G[library]
+		for name in pairs(lib) do
+			if members[name] == nil then lib[name] = nil end
+		end
+		for name, value in pairs(members) do
+			if rawget(lib, name) ~= value then rawset(lib, name, value) end
 		end
 	end
 	namespaces = {}
@@ -237,16 +257,40 @@ local function flush_reported(rec)
 	rec.reported = {}
 end
 
+-- The most Lua VM instructions one unit of work (loading the file, or one
+-- case) may run before the harness stops it with an error naming the file
+-- and case, so an endless loop fails instead of hanging the run. The biggest
+-- unit today, container_pack_test.lua's stress case, runs about 300 million.
+-- The limit is over 13 times that, and takes about 5 seconds to reach. The
+-- count is in steps of HOOK_STEP. Hooks are per coroutine in Lua 5.1, so code
+-- running inside a coroutine isn't watched.
+local INSTRUCTION_LIMIT = 4000000000
+local HOOK_STEP = 1000000
+
+local function limited(label, fn)
+	local used = 0
+	sethook(function()
+		used = used + HOOK_STEP
+		if used > INSTRUCTION_LIMIT then
+			error(format('%s ran more than %d million instructions (an endless loop?), so the harness stopped it',
+				label, INSTRUCTION_LIMIT / 1000000), 0)
+		end
+	end, '', HOOK_STEP)
+	local ok, err = xpcall(fn, on_error)
+	sethook()
+	return ok, err
+end
+
 -- Loads the test file at path (shown in reports as shown) in a fresh world,
 -- runs its cases, and returns the result for runner.py.
 local function run_file(path, shown)
 	local result = { path = shown, ok = false, checks = 0, failures = 0, cases = {} }
 
 	current = new_record('(loading)')
-	local loaded, err = xpcall(function()
+	local loaded, err = limited('loading ' .. shown, function()
 		reset_world()
 		compile(path, shown, 1)()
-	end, on_error)
+	end)
 	local load = current
 	if not loaded then
 		load.problems[#load.problems + 1] = 'error while loading the file:\n' .. trim(err)
@@ -262,7 +306,7 @@ local function run_file(path, shown)
 		running_cases = true
 		for _, case in ipairs(cases) do
 			current = new_record(case.name)
-			local ok, case_err = xpcall(case.fn, on_error)
+			local ok, case_err = limited(shown .. ' case ' .. format('%q', case.name), case.fn)
 			if not ok then
 				current.problems[#current.problems + 1] = 'error: ' .. trim(case_err)
 			end
@@ -306,9 +350,15 @@ function debugprofilestop()
 	return clock() * 1000
 end
 
-base_globals = {}
-for name in pairs(_G) do
+base_globals, base_values, base_library = {}, {}, {}
+for name, value in pairs(_G) do
 	base_globals[name] = true
+	base_values[name] = value
+end
+for _, library in ipairs(LIBRARIES) do
+	local members = {}
+	for name, value in pairs(_G[library]) do members[name] = value end
+	base_library[library] = members
 end
 
 return run_file

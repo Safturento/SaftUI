@@ -30,7 +30,10 @@ end)
 test('the levels hold on a second UpdateConfig, and the rested alpha comes from config', function()
 	XP:UpdateConfig()
 	check(exp.backdrop:GetFrameLevel() == 3 and exp.rested:GetFrameLevel() == 4 and exp:GetFrameLevel() == 5, 'levels hold on a second UpdateConfig')
-	eq(exp.rested:GetAlpha(), 0.4, 'rested alpha from config')
+	eq(exp.rested:GetAlpha(), profile.experience.rest_alpha, 'rested alpha is the profile\'s rest_alpha')
+	profile.experience.rest_alpha = 0.55
+	XP:UpdateConfig()
+	eq(exp.rested:GetAlpha(), 0.55, 'and follows a change to it')
 end)
 
 local args = XP:GetConfigTable().args.general.args
@@ -38,7 +41,8 @@ local args = XP:GetConfigTable().args.general.args
 test('the Experience and Rested colors are color options that read the profile', function()
 	check(args.normal_color.type == 'color' and args.rested_color.type == 'color', 'two color options')
 	local r, g, b = args.rested_color.get()
-	check(r == .3 and g == .6 and b == .8, 'rested get')
+	local rested = profile.colors.experience.rested
+	check(r == rested.r and g == rested.g and b == rested.b, "rested get returns the profile's rested color")
 end)
 
 test('setting the rested color writes the profile and recolors the fill at once', function()

@@ -188,6 +188,70 @@ test('the shell enables a module once: OnInitialize, then OnEnable, then its sub
 	check(not pcall(SaftUI.NewModule, SaftUI, 'Probe'), 'a second module with the same name errors')
 end)
 
+test("apply_defaults copies AceDB's conditions: false under a table default, a non-table value, a top-level '*'", function()
+	reset_world()
+	SaftUI.defaults = { a = { b = 1 }, c = { d = 2 }, e = { f = { g = 3 } } }
+	SaftUI.config.profile = { a = false, c = 5, e = { f = false } }
+	apply_defaults()
+	local profile = SaftUI.config.profile
+	-- AceDB: `if not rawget(dest, k) then rawset(dest, k, {})`, so false is replaced.
+	eq(type(profile.a), 'table', 'false under a table default becomes a table')
+	eq(profile.a.b, 1, 'and is filled with the defaults')
+	eq(type(profile.e.f), 'table', 'also when nested')
+	eq(profile.e.f.g, 3, 'and filled')
+	-- A truthy non-table value is kept, and the table defaults are skipped.
+	eq(profile.c, 5, 'a non-table value under a table default is kept')
+
+	reset_world()
+	SaftUI.defaults = { ['*'] = { x = 1, list = { 'a' } } }
+	SaftUI.config.profile = { Old = { x = 9 } }
+	apply_defaults()
+	profile = SaftUI.config.profile
+	eq(rawget(profile, '*'), nil, "a top-level '*' is not a key of the profile")
+	eq(profile.Old.x, 9, 'a value the profile has is kept')
+	eq(profile.Old.list[1], 'a', "an existing table gets the '*' defaults")
+	eq(profile.New.x, 1, "a key made later gets the '*' defaults")
+end)
+
+test('Enable runs every OnInitialize in the subtree before any OnEnable', function()
+	reset_world()
+	local calls = {}
+	local Parent = SaftUI:NewModule('Parent')
+	local Child = Parent:NewModule('Child')
+	local Grandchild = Child:NewModule('Grandchild')
+	for name, module in pairs({ Parent = Parent, Child = Child, Grandchild = Grandchild }) do
+		module.OnInitialize = function() calls[#calls + 1] = 'init ' .. name end
+		module.OnEnable = function() calls[#calls + 1] = 'enable ' .. name end
+	end
+	Parent:Enable()
+	eq(table.concat(calls, ','),
+		'init Parent,init Child,init Grandchild,enable Parent,enable Child,enable Grandchild',
+		"a parent's OnEnable runs after its children's OnInitialize")
+end)
+
+test('reset_world restores a base global or library member a test replaced', function()
+	local print_, pairs_, format_, insert_ = print, pairs, string.format, table.insert
+	print = function() end
+	pairs = function() return next, {} end
+	string.format = function() return 'replaced' end
+	table.insert = nil
+	string.added_by_a_test = true
+	reset_world()
+	check(print == print_ and pairs == pairs_, 'print and pairs are back')
+	check(string.format == format_ and table.insert == insert_, 'library members are back')
+	eq(string.added_by_a_test, nil, 'a member a test added is gone')
+	eq(('%d'):format(5), '5', 'string methods work again')
+	check(type(table.wipe) == 'function', "the stubs' own additions are still there")
+end)
+
+test('a name the trimmed Enum.PowerType lacks errors instead of reading nil', function()
+	local ok, err = pcall(function() return Enum.PowerType.Rage end)
+	eq(ok, false, 'Enum.PowerType.Rage errors')
+	check(tostring(err):find('Enum.PowerType.Rage is not stubbed', 1, true), 'and names the enum and the name: ' .. tostring(err))
+	eq(Enum.PowerType.Mana, 0, 'a stubbed name still reads')
+	eq(Enum.BagIndex.CharacterBankTab_10, nil, "BagIndex is complete: probing past its last tab reads nil, as in game (inventory.lua relies on it)")
+end)
+
 test('module events dispatch the way AceEvent does', function()
 	reset_world()
 	local M = SaftUI:NewModule('Events')

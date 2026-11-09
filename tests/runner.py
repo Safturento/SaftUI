@@ -121,11 +121,53 @@ def report(path, verbose):
     return passed, result.checks, result.failures
 
 
+FIXTURES = os.path.join(TESTS_DIR, 'lib', 'runner_fixtures')
+# fixture file -> the exit status the runner must give it
+FIXTURE_EXPECTED = {
+    'passing.lua': 0,
+    'syntax_error.lua': 1,
+    'no_cases.lua': 1,
+    'no_checks.lua': 1,
+    'failing_check.lua': 1,
+    'case_error.lua': 1,
+    'endless_loop.lua': 1,
+}
+
+
+def self_check():
+    """Runs each tests/lib/runner_fixtures file through this runner, in a
+    separate process, and checks its exit status: the passing one 0 and every
+    broken one non-zero, so a runner that stops noticing a failure mode is
+    caught. Returns 0 when all behave."""
+    import subprocess
+    bad = 0
+    for name, expected in FIXTURE_EXPECTED.items():
+        path = os.path.join(FIXTURES, name)
+        done = subprocess.run([sys.executable, os.path.abspath(__file__), path],
+                              capture_output=True, text=True)
+        good = (done.returncode == 0) if expected == 0 else (done.returncode == 1)
+        print(f'{"ok  " if good else "FAIL"}  {name}: exit {done.returncode}, expected {"0" if expected == 0 else "1"}')
+        if not good:
+            bad += 1
+            print_lines((done.stdout + done.stderr).splitlines(), '      ')
+    # every fixture on disk must be listed, so a new one can't go unchecked
+    on_disk = {n for n in os.listdir(FIXTURES) if n.endswith('.lua')}
+    for name in sorted(on_disk - set(FIXTURE_EXPECTED)):
+        print(f'FAIL  {name}: a fixture the self-check does not list')
+        bad += 1
+    print(f'runner self-check: {"all fixtures behave" if not bad else f"{bad} problem(s)"}')
+    return 1 if bad else 0
+
+
 def main():
     parser = argparse.ArgumentParser(prog='tests/run', description="Runs SaftUI's Lua tests on Lua 5.1.")
     parser.add_argument('paths', nargs='*', help='test files, or folders to search for *_test.lua (default: tests/)')
     parser.add_argument('-v', '--verbose', action='store_true', help='list every case and show what tests printed')
+    parser.add_argument('--self-check', action='store_true',
+                        help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
     args = parser.parse_args()
+    if args.self_check:
+        return self_check()
 
     try:
         files = collect(args.paths)

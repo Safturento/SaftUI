@@ -25,7 +25,10 @@
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
 	itself (fire it with stub.fire_script); text wrapping (a font string is one
 	line); OnUpdate; a backdrop's border textures; secret values; taint and
-	protected frames.
+	protected frames; RegisterEvent takes any event name (the game errors
+	"Attempt to register unknown event"); SetFont and SetTexture always
+	succeed (in game a file that doesn't exist fails the call, or draws
+	nothing).
 ]]
 
 local states = setmetatable({}, { __mode = 'k' }) -- widget -> its state

@@ -45,7 +45,10 @@ end
 -- AceEvent registers its events on one frame and dispatches them to every
 -- object registered for them, through CallbackHandler.
 local eventFrame = CreateFrame('Frame')
-local handlers = {} -- event -> list of { owner, fn }, in registration order
+-- event -> list of { owner, fn }. The shell calls them in registration order.
+-- Real CallbackHandler iterates its registry with pairs, so the game
+-- guarantees no order between objects: tests must not rely on handler order.
+local handlers = {}
 
 eventFrame:SetScript('OnEvent', function(_, event, ...)
 	local args = pack(...)
@@ -141,14 +144,21 @@ end
 
 local initialized, enabled = {}, {}
 
--- In game AceAddon runs OnInitialize when the addon loads and OnEnable at
--- login. The shell's Enable does both, each once, then enables the object's
--- modules in the order they were made, as AceAddon:EnableAddon does.
-local function enable(object)
-	if not initialized[object] then
-		initialized[object] = true
-		safecall(object.OnInitialize, object)
+-- In game AceAddon runs every OnInitialize (the addon's, then its modules',
+-- at ADDON_LOADED) before any OnEnable (at login). The shell's Enable does
+-- both, each once: it initializes the object and its whole module subtree
+-- first, then enables the object and then its modules in the order they were
+-- made, as AceAddon:EnableAddon does.
+local function initialize(object)
+	if initialized[object] then return end
+	initialized[object] = true
+	safecall(object.OnInitialize, object)
+	for _, module in ipairs(object.orderedModules) do
+		initialize(module)
 	end
+end
+
+local function enable(object)
 	if enabled[object] or not object.enabledState then return false end
 	enabled[object] = true
 	safecall(object.OnEnable, object)
@@ -160,6 +170,7 @@ end
 
 function Object:Enable()
 	self.enabledState = true
+	initialize(self)
 	return enable(self)
 end
 
@@ -301,7 +312,7 @@ local function copy_defaults(dest, src)
 					end,
 				})
 				for existing_key, existing in pairs(dest) do
-					if rawget(src, existing_key) == nil and type(existing) == 'table' then
+					if not rawget(src, existing_key) and type(existing) == 'table' then
 						copy_defaults(existing, value)
 					end
 				end
@@ -309,7 +320,7 @@ local function copy_defaults(dest, src)
 				setmetatable(dest, { __index = function(t, key2) return key2 ~= nil and value or nil end })
 			end
 		elseif type(value) == 'table' then
-			if rawget(dest, key) == nil then rawset(dest, key, {}) end
+			if not rawget(dest, key) then rawset(dest, key, {}) end
 			if type(dest[key]) == 'table' then
 				copy_defaults(dest[key], value)
 				if src['**'] then

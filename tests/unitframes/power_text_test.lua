@@ -6,8 +6,14 @@
 --
 -- The stubs can't make a secret value: a Lua value the code may pass on but
 -- not read, compare or format. So this file does by hand what the game does:
---   * `secret` is a table. Comparing it with a number errors in Lua, as
---     reading a secret does in game, so code that compares it fails here.
+--   * `secret` is a userdata (newproxy, a Lua 5.1 base function the harness
+--     keeps) whose metatable errors on indexing (read or write), calling,
+--     `#`, `..`, arithmetic and ordering comparisons, as a secret does in
+--     game (.agents/clients.md). The one thing Lua 5.1 can't catch is `==`
+--     against a number or string: __eq only fires between two tables or two
+--     userdata, so `secret == 5` quietly gives false here, where the game
+--     errors. Code must guard with issecretvalue before any `==`; nothing
+--     here proves it did.
 --   * issecretvalue says which values are secret.
 --   * A FontString takes a secret in SetText and SetFormattedText, as in
 --     game, but the stub's FontString only takes strings and numbers, so
@@ -28,8 +34,23 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
 end
 
-local secret = setmetatable({}, { __tostring = function() return 'SECRET' end })
-local secret_percent = setmetatable({}, { __tostring = function() return 'SECRET PERCENT' end })
+local function make_secret(name)
+	local value = newproxy(true)
+	local meta = getmetatable(value)
+	local function refuse(what)
+		return function() error(('attempt to %s a secret value (%s)'):format(what, name), 2) end
+	end
+	meta.__tostring = function() return name end
+	meta.__index, meta.__newindex = refuse('index'), refuse('index')
+	meta.__call, meta.__len, meta.__concat = refuse('call'), refuse('take the length of'), refuse('concatenate')
+	meta.__lt, meta.__le = refuse('compare'), refuse('compare')
+	for _, op in ipairs({ '__add', '__sub', '__mul', '__div', '__mod', '__pow', '__unm' }) do
+		meta[op] = refuse('do arithmetic on')
+	end
+	return value
+end
+local secret = make_secret('SECRET')
+local secret_percent = make_secret('SECRET PERCENT')
 function issecretvalue(v) return v == secret or v == secret_percent end
 CurveConstants = { ScaleTo100 = {} } -- Blizzard's 0-100 curve; only its identity matters here
 local lastPercentArgs
@@ -60,6 +81,22 @@ local function new_text()
 	text:SetFontObject(GameFontNormal)
 	return secret_text(text)
 end
+
+test('the secret stand-in errors on what a game secret errors on', function()
+	for _, s in ipairs({ secret, secret_percent }) do
+		check(not pcall(function() return s.x end), 'indexing errors')
+		check(not pcall(function() s.x = 1 end), 'assigning a field errors')
+		check(not pcall(function() return s < 1 end), 'ordering errors')
+		check(not pcall(function() return s + 1 end), 'arithmetic errors')
+		check(not pcall(function() return 'a' .. s end), 'concatenation errors')
+		check(not pcall(function() return #s end), 'length errors')
+		check(not pcall(function() return s() end), 'calling errors')
+		check(issecretvalue(s) and not issecretvalue(5) and not issecretvalue({}), 'issecretvalue tells them apart')
+	end
+	-- Not catchable in Lua 5.1: == against a number is quietly false.
+	check(secret ~= 5, "== against a number doesn't error here, though it does in game")
+	check(tostring(secret) == 'SECRET', 'tostring is for test messages only')
+end)
 
 test('smoothing: eased while on, immediate while off', function()
 	check(UF:GetSmoothing(true) == 1 and UF:GetSmoothing(false) == 0 and UF:GetSmoothing(nil) == 0, 'smoothing on/off')

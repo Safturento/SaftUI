@@ -8,8 +8,12 @@
 # Paths are relative to the current directory, or absolute, so this works from
 # any folder. Lua comes from Python's lupa package (lupa.lua51). The first run
 # makes a git-ignored virtual environment in tests/.venv with lupa 2.8 pinned,
-# and later runs reuse it. Set SAFTUI_TEST_PYTHON to use another Python that
-# already has lupa instead.
+# and later runs reuse it. A git worktree without its own tests/.venv uses the
+# main checkout's tests/.venv when that exists, and only makes its own if
+# neither does. Set SAFTUI_TEST_PYTHON to use another Python that already has
+# lupa instead.
+#
+#   tests/run --self-check     checks the runner itself against tests/lib/runner_fixtures
 
 set -euo pipefail
 
@@ -20,11 +24,20 @@ if [[ -n "${SAFTUI_TEST_PYTHON:-}" ]]; then
 	PYTHON="$SAFTUI_TEST_PYTHON"
 	if ! "$PYTHON" -c 'from lupa import lua51' 2>/dev/null; then
 		echo "tests/run: SAFTUI_TEST_PYTHON ($PYTHON) can't import lupa.lua51." >&2
-		echo "Install it with: \"$PYTHON\" -m pip install lupa==$LUPA_VERSION" >&2
+		echo "Install it into that Python's own virtual environment (not the system Python):" >&2
+		echo "  python3 -m venv <dir> && <dir>/bin/python -m pip install lupa==$LUPA_VERSION" >&2
+		echo "then set SAFTUI_TEST_PYTHON=<dir>/bin/python." >&2
 		exit 2
 	fi
 else
 	VENV="$TESTS_DIR/.venv"
+	if [[ ! -x "$VENV/bin/python" ]]; then
+		# A worktree: reuse the main checkout's venv rather than making another.
+		COMMON_DIR="$(git -C "$TESTS_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+		if [[ -n "$COMMON_DIR" && -x "$COMMON_DIR/../tests/.venv/bin/python" ]]; then
+			VENV="$(cd "$COMMON_DIR/../tests/.venv" && pwd)"
+		fi
+	fi
 	PYTHON="$VENV/bin/python"
 	if ! "$PYTHON" -c 'from lupa import lua51' 2>/dev/null; then
 		echo "tests/run: setting up tests/.venv with lupa $LUPA_VERSION (first run only)..." >&2
