@@ -81,6 +81,10 @@ function UnitFactionGroup(unit)
 	if unit == 'player' then return 'Alliance', 'Alliance' end
 end
 function GetRealmName() return 'Testrealm' end
+-- The region the client is on: 1 is the US, the first in the game's list
+-- (US, KR, EU, TW, CN). AceDB-3.0 reads both when it loads.
+function GetCurrentRegion() return 1 end
+function GetCurrentRegionName() return 'US' end
 
 -- Experience. The player's level is stub.level; other units don't exist.
 function GetMaxPlayerLevel() return stub.max_level end

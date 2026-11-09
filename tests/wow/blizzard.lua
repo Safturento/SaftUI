@@ -1,6 +1,6 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
-	(CreateColor), EventRegistry, BackdropTemplateMixin, PixelUtil, the
+	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin, PixelUtil, the
 	Enum tables and GameFontNormal. Each follows its
 	source in Gethe/wow-ui-source (forever branch), trimmed to what tests use.
 ]]
@@ -66,6 +66,13 @@ end
 function ColorMixin:SetRGB(r, g, b)
 	self:SetRGBA(r, g, b, nil)
 end
+
+-- Color escape codes. FONT_COLOR_CODE_CLOSE is in
+-- Blizzard_SharedXML/SharedColorConstants.lua. The game makes
+-- NORMAL_FONT_COLOR_CODE from its color table: NORMAL_FONT_COLOR's gold
+-- (1, 0.82, 0).
+NORMAL_FONT_COLOR_CODE = '|cffffd200'
+FONT_COLOR_CODE_CLOSE = '|r'
 
 ------------------------------------------------------------------ EventRegistry
 

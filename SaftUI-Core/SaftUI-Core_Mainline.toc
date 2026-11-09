@@ -43,6 +43,7 @@ Media\fonts.lua
 
 Config\defaults.lua
 Config\config.lua
+Config\optionsmodel.lua
 Config\widgets.lua
 Config\aceskin.lua
 

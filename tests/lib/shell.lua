@@ -18,6 +18,7 @@
 	  st.config.profile       empty until apply_defaults()
 	  st:BindModuleConfig     as SaftUI-Core/Config/config.lua has it
 	  st.Config               the Config module, with Refresh and GetWindow (no /sui window)
+	  remove_shell_config()   takes that Config module out, for a test that loads the real config.lua
 	  apply_defaults()        fills st.config.profile from st.defaults, with AceDB's wildcard keys
 	  load_core_helpers()     loads Core's frame helpers and what they need
 ]]
@@ -397,6 +398,24 @@ load_saftui('SaftUI-Core/utilities.lua')
 st.Config = st:NewModule('Config')
 function st.Config:Refresh() end
 function st.Config:GetWindow() return nil end
+
+-- For a test that loads Core's real Config/config.lua instead: it makes the
+-- Config module itself, and NewModule errors on a name that exists (as
+-- AceAddon's does), so this takes the shell's out of st.modules, the enable
+-- order and st.Config. Load config.lua before Config/widgets.lua
+-- (load_core_helpers), as Core's TOC does: widgets.lua adds to st.Config.
+-- tests/core/config_helpers.lua does all of it.
+function remove_shell_config()
+	local config = st.modules.Config
+	st.modules.Config = nil
+	for i, module in ipairs(st.orderedModules) do
+		if module == config then
+			table.remove(st.orderedModules, i)
+			break
+		end
+	end
+	st.Config = nil
+end
 
 -- What init.lua's OnEnable does: SaftUI's pixel-perfect scale, one UIParent
 -- unit per physical pixel.

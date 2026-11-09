@@ -462,3 +462,19 @@ test("LibStub is the real one: a library nobody registered errors, and a fixture
 	check(not pcall(LibStub, 'AceGUI-3.0'), 'an unregistered one errors')
 	eq(LibStub('AceConfig-3.0').RegisterOptionsTable, nil, 'the fixture has no methods nothing calls')
 end)
+
+test("remove_shell_config takes the shell's Config module out, so the real config.lua can make it", function()
+	reset_world()
+	local shells = SaftUI.Config
+	check(shells ~= nil and SaftUI:GetModule('Config', true) == shells, 'the shell makes Config')
+	remove_shell_config()
+	eq(SaftUI:GetModule('Config', true), nil, 'gone from the modules')
+	eq(SaftUI.Config, nil, 'and from st.Config')
+	for _, module in ipairs(SaftUI.orderedModules) do
+		check(module ~= shells, 'and from the enable order')
+	end
+	local config = SaftUI:NewModule('Config')
+	eq(SaftUI:GetModule('Config'), config, 'so NewModule can make it again')
+	reset_world()
+	check(SaftUI.Config ~= nil and SaftUI.Config ~= config, 'reset_world brings the shell\'s back')
+end)
