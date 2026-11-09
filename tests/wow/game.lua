@@ -20,6 +20,7 @@ stub = {
 	cursor_x = 0, -- GetCursorPosition, in screen units (UIParent's units times its scale)
 	cursor_y = 0,
 	time = 0, -- GetTime, in seconds
+	epoch = 1800000000, -- time(), in seconds since 1970
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
@@ -43,6 +44,12 @@ function GetPhysicalScreenSize() return stub.screen_width, stub.screen_height en
 function InCombatLockdown() return stub.in_combat end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
 function GetTime() return stub.time end
+-- WoW's time(): the clock, as seconds since 1970. Only the no-argument form
+-- exists here; the table form (a date to seconds) errors until a test needs it.
+function time(date)
+	if date ~= nil then error('time(table) is not stubbed', 2) end
+	return stub.epoch
+end
 function IsShiftKeyDown() return stub.shift_down end
 function IsControlKeyDown() return stub.ctrl_down end
 function IsAltKeyDown() return stub.alt_down end

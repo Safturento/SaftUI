@@ -32,6 +32,7 @@ covers:
 | `tests/bags/` | The bag layout tests (`container_hold_test.lua`, `container_pack_test.lua`), with `container_helpers.lua` (the world with the real `container.lua`, `inventory.lua`, `movers.lua`, `category.lua` and the module's defaults, and the container and category frames the layout works on). |
 | `tests/unitframes/` | `power_text_test.lua` (smoothing, power percent text, the additional power bar's text, secret values) and `profiles_test.lua` (the unit frame profile popups), with `fixtures/ace_libs.lua` (the Ace3 libraries `config/config.lua` takes from LibStub). |
 | `tests/misc/` | `experience_test.lua` (the XP bar's frame levels and colors). The RestedXP skin's tests (`restedxp_*_test.lua`), with `restedxp_helpers.lua` (the world they build and the readers they share), `fixtures/restedxp_world.lua` (RestedXP's guide window), `fixtures/libcandybar.lua` (LibCandyBar and RestedXP's timers) and `fixtures/locked_widget.lua` (the lock both fixtures put on their frames, so a skin that writes a field onto, or `SetScript`s, another addon's frame fails). `restedxp_fixtures_test.lua` checks the fixtures' own behavior. |
+| `tests/loot/` | `feed_test.lua` (the loot feed: hover refreshes fade timers by the filtered list, the 500-entry cap trims only on an insert), over the real `Feed/history.lua`, `feed.lua` and `filter.lua`; `UpdateFeed` is replaced by its cache refresh (the lines need Blizzard's item widgets). |
 
 ## Writing a test
 
@@ -82,7 +83,7 @@ Every file starts with the WoW stubs and the core shell loaded.
   - `st.config.profile` (empty until `apply_defaults()`), `st:BindModuleConfig`, and `st.Config` with `Refresh` and `GetWindow` (no `/sui` window, so `nil`).
 
   It then loads Core's real `constants.lua`, `api.lua` and `utilities.lua` in TOC order, and sets UIParent's scale to `st.scale`, as `init.lua` does.
-- **The `stub` table** puts the game in a state: `stub.interface` (16001, Forever), `stub.screen_width` / `screen_height` (UIParent follows them and its scale), `stub.in_combat`, `stub.cursor_x` / `cursor_y`, `stub.time`, `stub.shift_down` / `ctrl_down` / `alt_down`, and `stub.loaded_addons` (a set of names for `C_AddOns.IsAddOnLoaded`), and the player's experience: `stub.max_level`, `level`, `xp`, `xp_max` and `rested_xp` (nil for none). Its helpers:
+- **The `stub` table** puts the game in a state: `stub.interface` (16001, Forever), `stub.screen_width` / `screen_height` (UIParent follows them and its scale), `stub.in_combat`, `stub.cursor_x` / `cursor_y`, `stub.time` (GetTime), `stub.epoch` (`time()`), `stub.shift_down` / `ctrl_down` / `alt_down`, and `stub.loaded_addons` (a set of names for `C_AddOns.IsAddOnLoaded`), and the player's experience: `stub.max_level`, `level`, `xp`, `xp_max` and `rested_xp` (nil for none). Its helpers:
   - `stub.state(widget)` reads what the API has no getter for (e.g. `.color_texture`);
   - `stub.fire_event(event, ...)` fires a game event to every registered frame, and so to shell modules;
   - `stub.fire_script(widget, script, ...)` runs a script handler and its hooks.

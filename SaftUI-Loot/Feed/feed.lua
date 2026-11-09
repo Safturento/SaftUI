@@ -314,9 +314,10 @@ end
 
 function LT:UpdateAllFeedTimers(index)
 	local now = GetTime()
+	-- The lines show the filtered list, so `index` and the offset count in it.
+	local filteredItems = self:GetFilteredItems(true)
 	for i=1, index or self.config.feed.max_items do
-		local item = self.feed.items[i]
-		local info = feed_stack[i + self.feed.offset]
+		local info = filteredItems[i + self.feed.offset]
 		if not info then break end
 
 		info.time = now
@@ -324,10 +325,6 @@ function LT:UpdateAllFeedTimers(index)
 end
 
 function LT:LootFeedPush(info)
-	if #feed_stack == MAX_HISTORY then
-		tremove(feed_stack)
-	end
-
 	info.time = GetTime()
 	info.when = time()
 	-- Entries pushed by test mode are tagged so they can be told apart (and
@@ -356,6 +353,10 @@ function LT:LootFeedPush(info)
 		top.when = info.when
 		self:SaveFeedEntry(top)
 	else
+		-- Only an inserted entry grows the feed; a merge leaves it as it was.
+		while #feed_stack >= MAX_HISTORY do
+			tremove(feed_stack)
+		end
 		tinsert(feed_stack, 1, info)
 		self:SaveFeedEntry(info)
 	end
