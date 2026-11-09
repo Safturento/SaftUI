@@ -23,8 +23,9 @@
 	  changes. Errors in scripts go to the game's error handler.
 
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
-	itself (fire it with stub.fire_script); OnUpdate; a backdrop's border
-	textures; secret values; taint and protected frames.
+	itself (fire it with stub.fire_script); text wrapping (a font string is one
+	line); OnUpdate; a backdrop's border textures; secret values; taint and
+	protected frames.
 ]]
 
 local states = setmetatable({}, { __mode = 'k' }) -- widget -> its state
@@ -40,7 +41,11 @@ end
 local TYPES = {
 	Frame = { 'Object', 'ScriptRegion', 'Frame' },
 	Button = { 'Object', 'ScriptRegion', 'Frame', 'Button' },
+	CheckButton = { 'Object', 'ScriptRegion', 'Frame', 'Button', 'CheckButton' },
 	GameTooltip = { 'Object', 'ScriptRegion', 'Frame', 'GameTooltip' },
+	ScrollFrame = { 'Object', 'ScriptRegion', 'Frame', 'ScrollFrame' },
+	Slider = { 'Object', 'ScriptRegion', 'Frame', 'Slider' },
+	StatusBar = { 'Object', 'ScriptRegion', 'Frame', 'StatusBar' },
 	Texture = { 'Object', 'ScriptRegion', 'Region', 'Texture' },
 	FontString = { 'Object', 'ScriptRegion', 'Region', 'FontInstance', 'FontString' },
 	Font = { 'Object', 'FontInstance', 'Font' },
@@ -53,6 +58,9 @@ local SCRIPTS = {
 	Frame = { 'OnEvent', 'OnUpdate', 'OnSizeChanged', 'OnLoad', 'OnKeyDown', 'OnKeyUp', 'OnChar',
 		'OnDragStart', 'OnDragStop', 'OnReceiveDrag', 'OnAttributeChanged' },
 	Button = { 'OnClick', 'PreClick', 'PostClick', 'OnDoubleClick', 'OnEnable', 'OnDisable' },
+	ScrollFrame = { 'OnScrollRangeChanged', 'OnVerticalScroll', 'OnHorizontalScroll' },
+	Slider = { 'OnValueChanged', 'OnMinMaxChanged' },
+	StatusBar = { 'OnValueChanged', 'OnMinMaxChanged' },
 }
 
 local POINTS_H = {
@@ -80,6 +88,7 @@ end
 local Object, ScriptRegion, Region, Frame, Button, GameTooltip, Texture, FontInstance, FontString =
 	API.Object, API.ScriptRegion, API.Region, API.Frame, API.Button, API.GameTooltip,
 	API.Texture, API.FontInstance, API.FontString
+local CheckButton, ScrollFrame, Slider, StatusBar = API.CheckButton, API.ScrollFrame, API.Slider, API.StatusBar
 
 ------------------------------------------------------------------ helpers
 
@@ -151,10 +160,13 @@ local function run_script(widget, script, ...)
 	return ran
 end
 
+local serial = 0 -- creation order, which breaks ties between frames drawn at one level
+
 local function new_widget(typeName, name, parent)
 	local widget = setmetatable({ [0] = newproxy() }, TYPES[typeName].metatable)
+	serial = serial + 1
 	local s = {
-		type = typeName, groups = TYPES[typeName].groups, name = name, parent = parent,
+		type = typeName, groups = TYPES[typeName].groups, name = name, parent = parent, serial = serial,
 		points = {}, shown = true, alpha = 1, scale = 1, scripts = {}, hooks = {},
 	}
 	states[widget] = s
@@ -365,6 +377,49 @@ function ScriptRegion.IsVisible(self, s) return is_visible(s) end
 
 function ScriptRegion.EnableMouse(self, s, enable) s.mouse_enabled = enable and true or false end
 function ScriptRegion.IsMouseEnabled(self, s) return s.mouse_enabled == true end
+
+-- Whether the cursor (stub.cursor_x, stub.cursor_y) is inside the region: a
+-- rectangle test, in the region's own units.
+local function cursor_inside(widget, s)
+	local l, r, b, t = rect_of(widget, {})
+	if not l then return false end
+	local scale = effective_scale(s)
+	local x, y = stub.cursor_x / scale, stub.cursor_y / scale
+	return x >= l and x <= r and y >= b and y <= t
+end
+
+-- IsMouseOver is only the rectangle test, so it is true for a frame under
+-- another one. The offsets aren't stubbed.
+function ScriptRegion.IsMouseOver(self, s, ...)
+	if select('#', ...) > 0 then usage(s, 'IsMouseOver(): offsets are not stubbed') end
+	return is_visible(s) and cursor_inside(self, s)
+end
+
+-- The frame under the cursor that gets its OnEnter and OnLeave: the topmost
+-- visible, mouse-enabled frame there. Higher strata win, then higher levels,
+-- then the frame made later. A frame under another mouse-enabled frame (a menu
+-- opened at the cursor) is under the cursor without being the focus.
+local STRATA_ORDER = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+
+local function draws_above(widget, s, other, os)
+	local a, b = STRATA_ORDER[Frame.GetFrameStrata(widget, s)], STRATA_ORDER[Frame.GetFrameStrata(other, os)]
+	if a ~= b then return a > b end
+	if s.level ~= os.level then return s.level > os.level end
+	return s.serial > os.serial
+end
+
+function ScriptRegion.IsMouseMotionFocus(self, s)
+	local function takes_mouse(widget, ws)
+		return ws.groups.Frame and ws.mouse_enabled and is_visible(ws) and cursor_inside(widget, ws)
+	end
+	if not takes_mouse(self, s) then return false end
+	for other, os in pairs(states) do
+		if other ~= self and takes_mouse(other, os) and draws_above(other, os, self, s) then
+			return false
+		end
+	end
+	return true
+end
 -- Stub widgets are never secure frames.
 function ScriptRegion.IsProtected(self, s) return false, false end
 
@@ -451,6 +506,14 @@ end
 
 function Region.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
 function Region.GetAlpha(self, s) return s.alpha end
+function Region.GetEffectiveAlpha(self, s)
+	local alpha, parent = s.alpha, s.parent
+	while parent do
+		alpha = alpha * states[parent].alpha
+		parent = states[parent].parent
+	end
+	return alpha
+end
 function Region.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
 function Region.GetScale(self, s) return s.scale end
 function Region.GetEffectiveScale(self, s) return effective_scale(s) end
@@ -713,6 +776,76 @@ for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = '
 	Button['Get' .. state .. 'Texture'] = function(self, s) return s[key] end
 end
 
+------------------------------------------------------------------ CheckButton
+
+function CheckButton.SetChecked(self, s, checked) s.checked = checked and true or false end
+function CheckButton.GetChecked(self, s) return s.checked == true end
+
+------------------------------------------------------------------ ScrollFrame
+
+function ScrollFrame.SetScrollChild(self, s, child)
+	if not is_widget(child, 'Frame') then usage(s, 'SetScrollChild(): child must be a frame') end
+	s.scroll_child = child
+end
+function ScrollFrame.GetScrollChild(self, s) return s.scroll_child end
+
+------------------------------------------------------------------ Slider and StatusBar
+
+-- The two share a value between a minimum and a maximum.
+local function min_max(group)
+	group.SetMinMaxValues = function(self, s, min, max)
+		s.min, s.max = number_arg(s, min, 'min'), number_arg(s, max, 'max')
+		s.value = math.max(s.min, math.min(s.max, s.value or s.min))
+		run_script(self, 'OnMinMaxChanged', s.min, s.max)
+	end
+	group.GetMinMaxValues = function(self, s) return s.min or 0, s.max or 1 end
+	group.SetValue = function(self, s, value)
+		value = math.max(s.min or 0, math.min(s.max or 1, number_arg(s, value, 'value')))
+		if value ~= s.value then
+			s.value = value
+			run_script(self, 'OnValueChanged', value)
+		end
+	end
+	group.GetValue = function(self, s) return s.value or s.min or 0 end
+end
+min_max(Slider)
+min_max(StatusBar)
+
+-- The thumb is a texture of the slider, made the first time one is set.
+-- asset is a file, or a Texture of the slider's.
+function Slider.SetThumbTexture(self, s, asset)
+	if is_widget(asset, 'Texture') then
+		s.thumb = asset
+	elseif type(asset) == 'string' or type(asset) == 'number' then
+		s.thumb = s.thumb or create_region(self, s, 'Texture', nil, 'ARTWORK')
+		states[s.thumb].texture, states[s.thumb].color_texture = asset, nil
+	else
+		usage(s, 'SetThumbTexture(): asset must be a texture, a path or a file ID')
+	end
+end
+function Slider.GetThumbTexture(self, s) return s.thumb end
+
+-- The bar's fill is a texture of the status bar, made the first time one is
+-- set; its color tints that texture.
+function StatusBar.SetStatusBarTexture(self, s, asset)
+	if is_widget(asset, 'Texture') then
+		s.bar_texture = asset
+	elseif type(asset) == 'string' or type(asset) == 'number' then
+		s.bar_texture = s.bar_texture or create_region(self, s, 'Texture', nil, 'ARTWORK')
+		states[s.bar_texture].texture, states[s.bar_texture].color_texture = asset, nil
+	else
+		usage(s, 'SetStatusBarTexture(): asset must be a texture, a path or a file ID')
+	end
+end
+function StatusBar.GetStatusBarTexture(self, s) return s.bar_texture end
+function StatusBar.SetStatusBarColor(self, s, r, g, b, a)
+	s.bar_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+end
+function StatusBar.GetStatusBarColor(self, s)
+	local c = s.bar_color or { 1, 1, 1, 1 }
+	return c[1], c[2], c[3], c[4]
+end
+
 ------------------------------------------------------------------ GameTooltip
 
 function GameTooltip.SetOwner(self, s, owner, anchor)
@@ -750,7 +883,10 @@ end
 ------------------------------------------------------------------ globals
 
 -- Frame types CreateFrame knows, by lowercase name (the game ignores case).
-local FRAME_TYPES = { frame = 'Frame', button = 'Button', gametooltip = 'GameTooltip' }
+local FRAME_TYPES = {
+	frame = 'Frame', button = 'Button', checkbutton = 'CheckButton', gametooltip = 'GameTooltip',
+	scrollframe = 'ScrollFrame', slider = 'Slider', statusbar = 'StatusBar',
+}
 
 -- Templates CreateFrame knows. Each sets up a new frame the way the template
 -- would.
@@ -788,7 +924,7 @@ function CreateFrame(frameType, name, parent, template, id)
 	local frame, s = new_widget(typeName, name, parent)
 	s.children, s.regions, s.events, s.id = {}, {}, {}, id
 	s.level = parent and states[parent].level + 1 or 0
-	if typeName == 'Button' then
+	if s.groups.Button then
 		s.enabled, s.pushed_text_offset = true, { 0, 0 }
 	end
 	if parent then table.insert(states[parent].children, frame) end

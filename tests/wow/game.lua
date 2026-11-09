@@ -23,6 +23,7 @@ stub = {
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
+	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
 }
 
 -- Only the interface number means anything here.
@@ -38,6 +39,17 @@ function GetTime() return stub.time end
 function IsShiftKeyDown() return stub.shift_down end
 function IsControlKeyDown() return stub.ctrl_down end
 function IsAltKeyDown() return stub.alt_down end
+-- Returns loaded and finished loading, which are the same here.
+C_AddOns = {
+	IsAddOnLoaded = function(name)
+		if type(name) ~= 'string' and type(name) ~= 'number' then
+			error('Usage: C_AddOns.IsAddOnLoaded(name)', 2)
+		end
+		local loaded = stub.loaded_addons[name] == true
+		return loaded, loaded
+	end,
+}
+
 function GetCurrentKeyBoardFocus() return nil end -- no edit box has focus
 
 -- The player: a human warrior named Tester on Testrealm. Other units don't

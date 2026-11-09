@@ -13,7 +13,7 @@
 	What it gives tests, besides the real files' contents:
 	  SaftUI                  SaftUI-Core's namespace, as in game
 	  st:NewModule(name), st:GetModule(name, silent), st:IterateModules(), st.modules
-	  on every module (and SaftUI): NewModule, GetModule, IterateModules, Enable,
+	  on every module (and SaftUI): NewModule, GetModule, IterateModules, SetDefaultModuleLibraries, Enable,
 	    IsEnabled, RegisterEvent, UnregisterEvent, SecureHook, HookScript
 	  st.config.profile       empty until apply_defaults()
 	  st:BindModuleConfig     as SaftUI-Core/Config/config.lua has it
@@ -105,6 +105,21 @@ function Object:NewModule(name, ...)
 	self.modules[name] = module
 	table.insert(self.orderedModules, module)
 	return module
+end
+
+-- AceAddon's: the libraries every module made after this call gets. The shell
+-- gives every module AceEvent and AceHook (SaftUI's default), so those are the
+-- only ones it takes. Like AceAddon, it can't change once a module exists.
+function Object:SetDefaultModuleLibraries(...)
+	if next(self.modules) then
+		error('Usage: SetDefaultModuleLibraries(...): cannot change the module defaults after a module has been registered.', 2)
+	end
+	for i = 1, select('#', ...) do
+		local library = select(i, ...)
+		if library ~= 'AceEvent-3.0' and library ~= 'AceHook-3.0' then
+			error(("the core shell's modules only have AceEvent-3.0 and AceHook-3.0, got '%s'"):format(tostring(library)), 2)
+		end
+	end
 end
 
 function Object:GetModule(name, silent)

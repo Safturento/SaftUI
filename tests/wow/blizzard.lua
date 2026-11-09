@@ -1,6 +1,6 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
-	(CreateColor), EventRegistry and BackdropTemplateMixin. Each follows its
+	(CreateColor), EventRegistry, BackdropTemplateMixin and PixelUtil. Each follows its
 	source in Gethe/wow-ui-source (forever branch), trimmed to what tests use.
 ]]
 
@@ -208,4 +208,71 @@ end
 function BackdropTemplateMixin:SetBackdropBorderColor(r, g, b, a)
 	if not self.backdropInfo then return end
 	stub.state(self).backdrop_border_color = { r, g, b, a or 1 }
+end
+
+------------------------------------------------------------------ pixels
+
+-- The game's Round: halves round away from zero.
+function Round(value)
+	if value < 0 then return math.ceil(value - 0.5) end
+	return math.floor(value + 0.5)
+end
+
+-- Blizzard_SharedXML/PixelUtil.lua, less SetRoundLayoutToNearestPixelRecursively
+-- (the stub widgets have no such layout rounding).
+PixelUtil = {}
+
+function PixelUtil.GetPixelToUIUnitFactor()
+	local physicalWidth, physicalHeight = GetPhysicalScreenSize()
+	return 768.0 / physicalHeight
+end
+
+function PixelUtil.GetNearestPixelSize(uiUnitSize, layoutScale, minPixels)
+	if uiUnitSize == 0 and (not minPixels or minPixels == 0) then
+		return 0
+	end
+
+	local uiUnitFactor = PixelUtil.GetPixelToUIUnitFactor()
+	local numPixels = Round((uiUnitSize * layoutScale) / uiUnitFactor)
+	if minPixels then
+		if uiUnitSize < 0.0 then
+			if numPixels > -minPixels then
+				numPixels = -minPixels
+			end
+		else
+			if numPixels < minPixels then
+				numPixels = minPixels
+			end
+		end
+	end
+
+	return numPixels * uiUnitFactor / layoutScale
+end
+
+function PixelUtil.ConvertPixelsToUI(desiredPixels, layoutScale)
+	return PixelUtil.GetNearestPixelSize(desiredPixels, layoutScale)
+end
+
+function PixelUtil.ConvertPixelsToUIForRegion(desiredPixels, region)
+	return PixelUtil.GetNearestPixelSize(desiredPixels, region:GetEffectiveScale())
+end
+
+function PixelUtil.SetWidth(region, width, minPixels)
+	region:SetWidth(PixelUtil.GetNearestPixelSize(width, region:GetEffectiveScale(), minPixels))
+end
+
+function PixelUtil.SetHeight(region, height, minPixels)
+	region:SetHeight(PixelUtil.GetNearestPixelSize(height, region:GetEffectiveScale(), minPixels))
+end
+
+function PixelUtil.SetSize(region, width, height, minWidthPixels, minHeightPixels)
+	PixelUtil.SetWidth(region, width, minWidthPixels)
+	PixelUtil.SetHeight(region, height, minHeightPixels)
+end
+
+function PixelUtil.SetPoint(region, point, relativeTo, relativePoint, offsetX, offsetY, minOffsetXPixels, minOffsetYPixels)
+	region:SetPoint(point, relativeTo, relativePoint,
+		PixelUtil.GetNearestPixelSize(offsetX, region:GetEffectiveScale(), minOffsetXPixels),
+		PixelUtil.GetNearestPixelSize(offsetY, region:GetEffectiveScale(), minOffsetYPixels)
+	)
 end
