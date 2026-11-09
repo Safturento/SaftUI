@@ -6,7 +6,7 @@ local AceConfig = LibStub('AceConfig-3.0')
 
 local function get_profiles()
 	local profiles = {}
-	num_profiles = 0
+	local num_profiles = 0
 	for key,_ in pairs(st.config.profile.unitframes.profiles) do
 		profiles[key] = key
 		num_profiles = num_profiles + 1
@@ -26,19 +26,43 @@ local function get_num_profiles()
 	return select(2, get_profiles())
 end
 
-StaticPopup1.button1 = StaticPopup1Button1
-StaticPopup1.button2 = StaticPopup1Button2
-StaticPopup1.editBox = StaticPopup1EditBox
+-- A dialog's edit box: GetEditBox on current clients, the named child before.
+-- Nothing is written onto Blizzard's dialogs to find it.
+local function EditBoxOf(dialog)
+	if dialog.GetEditBox then return dialog:GetEditBox() end
+	return _G[dialog:GetName() .. 'EditBox']
+end
+
+local function UFProfiles()
+	return st.config.profile.unitframes
+end
+
+-- name, or name 2, name 3, ... whichever no profile has yet.
+local function UnusedProfileName(name)
+	local candidate, i = name, 1
+	while get_profile_exists(candidate) do
+		i = i + 1
+		candidate = name .. ' ' .. i
+	end
+	return candidate
+end
+
+-- Makes name the profile being edited and refreshes the frames and /sui.
+local function SwitchProfile(name)
+	UFProfiles().config_profile = name
+	UF:UpdateConfig()
+	st.Config:Refresh()
+end
 
 StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
 	text = "Enter a name for your new profile",
 	button1 = "Create",
 	button2 = "Cancel",
-	OnAccept = function(self)
-        local editBox = _G[self:GetName()..'EditBox']
-		local profile_name = editBox:GetText()
+	-- data is { copy = true } from Copy (StaticPopup_Show's data argument).
+	OnAccept = function(self, data)
+		local profile_name = EditBoxOf(self):GetText()
 		if not get_profile_exists(profile_name) then
-			if self.is_copy then
+			if data and data.copy then
 				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(
 					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
 					true
@@ -78,41 +102,65 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_RENAME"] = {
 	text = "Enter a new profile name",
 	button1 = "Rename",
 	button2 = "Cancel",
+	OnShow = function(self)
+		local editBox = EditBoxOf(self)
+		editBox:SetText(UFProfiles().config_profile)
+		editBox:HighlightText()
+	end,
 	OnAccept = function(self)
-
+		local profiles = UFProfiles()
+		local old = profiles.config_profile
+		local new = strtrim(EditBoxOf(self):GetText())
+		-- '**' is AceDB's every-profile defaults key.
+		if new == '' or new == '**' or new == old then return end
+		if get_profile_exists(new) then
+			st:Print(("There's already a unit frame profile named %s."):format(new))
+			return
+		end
+		profiles.profiles[new] = profiles.profiles[old]
+		profiles.profiles[old] = nil
+		SwitchProfile(new)
 	end,
 	OnCancel = function() end,
 	whileDead = true,
 	hideOnEscape = true,
+	hasEditBox = true,
 }
 
 StaticPopupDialogs["SAFTUI_UF_PROFILE_EXPORT"] = {
-	text = "",
+	text = "Copy this text to share the profile",
 	button1 = "Close",
 	OnShow = function(self)
-		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		self.editBox:SetText(st.Config:Export(data))
-
-	end,
-	OnAccept = function(self)
-
+		local profiles = UFProfiles()
+		local editBox = EditBoxOf(self)
+		editBox:SetText(st.Config:Export(profiles.profiles[profiles.config_profile]))
+		editBox:HighlightText()
 	end,
 	hasEditBox = true,
+	maxLetters = 0, -- an exported profile is longer than the default limit
 	whileDead = true,
 	hideOnEscape = true,
 }
 
+-- Imports into a new profile ("Imported", "Imported 2", ...), so nothing is
+-- overwritten.
 StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
-	text = "",
-	button1 = "Close",
-	OnShow = function(self)
-		local data = st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile]
-		self.wideEditBox:Show()
-	end,
+	text = "Paste an exported unit frame profile",
+	button1 = "Import",
+	button2 = "Cancel",
 	OnAccept = function(self)
-
+		local ok, data = st.Config:Import(strtrim(EditBoxOf(self):GetText()))
+		if not ok or type(data) ~= 'table' then
+			st:Print("That isn't an exported unit frame profile.")
+			return
+		end
+		local name = UnusedProfileName('Imported')
+		UFProfiles().profiles[name] = data
+		SwitchProfile(name)
 	end,
+	OnCancel = function() end,
 	hasEditBox = true,
+	maxLetters = 0, -- an exported profile is longer than the default limit
 	whileDead = true,
 	hideOnEscape = true,
 }
@@ -422,8 +470,7 @@ function UF:GetConfigTable()
 						name = 'Copy',
 						width = 0.5,
 						func = function()
-							local dialog = StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
-							dialog.is_copy = true
+							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW', nil, nil, { copy = true })
 						end,
 					},
 					delete = {
@@ -443,7 +490,7 @@ function UF:GetConfigTable()
 						name = 'Rename',
 						width = 0.5,
 						func = function()
-							StaticPopup_Show('SAFTIU_UF_PROFILE_RENAME')
+							StaticPopup_Show('SAFTUI_UF_PROFILE_RENAME')
 						end,
 					},
 					export = {
@@ -513,7 +560,6 @@ function UF:GetConfigTable()
 					end,
 					args = {
 						enable = st.Config.generators.enable(0),
-						framelevel = st.Config.generators.framelevel(1),
 						template = st.Config.generators.template(2),
 						height = st.Config.generators.height(3),
 						width = st.Config.generators.width(4),

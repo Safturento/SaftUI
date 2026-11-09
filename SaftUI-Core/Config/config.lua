@@ -39,10 +39,15 @@ function Config:Export(data)
 	AceSerializer:Serialize(data)))
 end
 
-function Config:Import(string)
-	return AceSerializer:Deserialize(
-				 LibCompress:Decompress(
-						 LibBase64:Decode(data)))
+-- Export's text back to data. Returns true and the data, or false for text
+-- that isn't an export. Decode errors on characters outside Base64, and
+-- Decompress can error on bytes that aren't its own.
+function Config:Import(text)
+	local ok, compressed = pcall(LibBase64.Decode, text)
+	if not ok then return false end
+	local decompressed, serialized = pcall(LibCompress.Decompress, LibCompress, compressed)
+	if not decompressed or type(serialized) ~= 'string' then return false end
+	return AceSerializer:Deserialize(serialized)
 end
 
 function Config:InitializeAceConfig()

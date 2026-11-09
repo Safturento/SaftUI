@@ -8,9 +8,6 @@ st.defaults.unitframes.profiles["**"].focus = {
         x_off = -180,
         y_off = 181
     },
-    health = {
-        position = { rel_point = "BOTTOMRIGHT", x_off = "-4", point = "BOTTOMRIGHT", y_off = "4" },
-    },
     castbar = {
         position = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 180 },
         enable = true,
