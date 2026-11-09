@@ -25,7 +25,7 @@ function EM:UpdateFooterToggles()
 		button.text:SetTextColor(color:GetRGB())
 	end
 	if sizeLabel then
-		sizeLabel:SetText(tostring(settings.grid_size))
+		sizeLabel.text:SetText(tostring(settings.grid_size))
 	end
 end
 
@@ -54,10 +54,12 @@ function EM:OnEnable()
 	AddToggle('Snap to frames', 'snap_frames')
 
 	-- Grid size: - label +. AddFooterButton sizes a button from its first
-	-- text, so the label starts as "128", the widest it gets. Clicking it does
-	-- nothing.
+	-- text, so the label starts as "128", the widest it gets. It is a button only
+	-- for its look, so it takes no mouse. (Set its text through .text:
+	-- st:CreateButton's SetText alias passes the button, not the FontString.)
 	self:AddFooterButton('-', function() self:StepGridSize(-GRID_STEP) end)
 	sizeLabel = self:AddFooterButton('128', function() end)
+	sizeLabel:EnableMouse(false)
 	self:AddFooterButton('+', function() self:StepGridSize(GRID_STEP) end)
 	self:UpdateFooterToggles()
 

@@ -31,12 +31,19 @@ function EM:GetGridCenter()
 		st:RoundToPixel(UIParent:GetHeight() / 2, UIParent)
 end
 
+local Draw
+
 local function GetGridFrame()
 	if not gridFrame then
 		gridFrame = st:CreateFrame('Frame', nil, UIParent)
 		gridFrame:SetAllPoints(UIParent)
 		gridFrame:SetFrameStrata('BACKGROUND') -- behind every frame, so they stay readable
 		gridFrame:EnableMouse(false)
+		-- The screen events can fire before UIParent has its new size, so the
+		-- grid also redraws when its own size (UIParent's) changes.
+		gridFrame:SetScript('OnSizeChanged', function()
+			if gridFrame:IsShown() then Draw() end
+		end)
 		gridFrame:Hide()
 		EM.gridFrame = gridFrame
 	end
@@ -55,7 +62,7 @@ local function GetLine(index)
 	return line
 end
 
-local function Draw()
+function Draw()
 	local settings = EM:GetSettings()
 	local pixel = st:GetPixelSize(gridFrame) or 1
 	local width, height = UIParent:GetWidth(), UIParent:GetHeight()

@@ -41,7 +41,10 @@ function EM:StartDrag(mover)
 	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y }
 	-- For snapping: where the frame is now, and the lines it can snap to. The
 	-- other frames don't move during a drag, so the lines are made once.
-	local l, r, b, t = EM.GetRectInUI(mover.def.frame)
+	-- The overlay's rect is what's outlined on screen (it can be bigger than the
+	-- frame, like chat's padding). It's anchored to the frame, so it moves by
+	-- the same delta.
+	local l, r, b, t = EM.GetRectInUI(mover.overlay)
 	if l then
 		mover.drag.rect0 = { left = l, right = r, bottom = b, top = t }
 	end

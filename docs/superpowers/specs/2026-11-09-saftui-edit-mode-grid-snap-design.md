@@ -69,7 +69,8 @@ These came from a builder check after the user's approval. They're marked so the
   - The center lines sit at UIParent's center, rounded to the nearest physical pixel. That pixel is also the "screen center" snap target.
   - Lines repeat outward from it to the screen edges. The outermost cell can be partial.
 - **What's measured.**
-  - Snapping uses the rects the edit mode overlays outline. For the dragged frame that's its mover frame (`def.frame`); for the others, their overlays.
+  - Snapping uses the rects the edit mode overlays outline, for the dragged mover and for the others alike: each mover's overlay (`EM.GetRectInUI(mover.overlay)`). The overlay is parented to UIParent and anchored to the frame, so it moves by the same delta as the frame. For most movers it equals `def.frame`.
+  - *Changed 2026-11-09 (final review):* the dragged rect was first taken from `def.frame`. Chat's overlay is its holder plus `padding` (10 by default), so its visible outline snapped 10 units off, more than the snap reach of 8.
   - Everything is compared in UIParent space. The snap correction is converted to the dragged frame's offset units the same way `EM:UpdateDrag` converts the cursor delta, by the ratio of effective scales. It is then rounded with `st:RoundToPixel(value, frame)`.
   - This works with any anchor point and relative frame, since an offset change moves the frame by the same amount on screen.
 - **Snap targets for Snap to frames.**

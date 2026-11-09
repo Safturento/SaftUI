@@ -47,11 +47,16 @@ function EM.SnappedOffset(x0, d, s, ratio)
 end
 
 -- A rect's left, right, bottom and top in UIParent units, or nil if the frame
--- has no position yet (or a scale of 0).
+-- has no position yet, any edge or scale is a secret value (a Blizzard frame,
+-- like the Minimap, can report those), or UIParent's scale is 0.
 local function GetRectInUI(f)
 	local l, r, b, t = f:GetLeft(), f:GetRight(), f:GetBottom(), f:GetTop()
 	local scale, uiScale = f:GetEffectiveScale(), UIParent:GetEffectiveScale()
 	if not (l and r and b and t and scale and uiScale) or uiScale == 0 then return end
+	if issecretvalue(l) or issecretvalue(r) or issecretvalue(b) or issecretvalue(t)
+			or issecretvalue(scale) or issecretvalue(uiScale) then
+		return
+	end
 	local k = scale / uiScale
 	return l * k, r * k, b * k, t * k
 end
