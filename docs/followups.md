@@ -11,7 +11,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
   - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
-  - [2026-11-09 — Test runner self-check: tell a runner crash from a caught failure](#2026-11-09--test-runner-self-check-tell-a-runner-crash-from-a-caught-failure)
   - [2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods](#2026-11-09--stcreatebuttons-settext-and-setfont-aliases-break-when-called-as-methods)
   - [2026-11-09 — Unit frame Portrait, and AuraWatch as Grid2-style corner indicators](#2026-11-09--unit-frame-portrait-and-aurawatch-as-grid2-style-corner-indicators)
   - [2026-11-09 — Aura timer bars: stacked bars instead of icons](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons)
@@ -35,6 +34,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-09 — Test runner self-check: tell a runner crash from a caught failure](#2026-11-09--test-runner-self-check-tell-a-runner-crash-from-a-caught-failure)
   - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
   - [2026-11-09 — The /link copy dialog replaces scripts on Blizzard's popup edit box](#2026-11-09--the-link-copy-dialog-replaces-scripts-on-blizzards-popup-edit-box)
   - [2026-11-07 — Tooltip skin writes .backdrop onto Blizzard's tooltips](#2026-11-07--tooltip-skin-writes-backdrop-onto-blizzards-tooltips)
@@ -99,18 +99,6 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 **What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
 
 **Shape of work:** A small refactor in `panels.lua`, plus its readers.
-
-### 2026-11-09 — Test runner self-check: tell a runner crash from a caught failure
-
-**What:** Two small gaps in the new test suite (`tests/`):
-- `tests/run --self-check` (`tests/runner.py`) treats any exit code of 1 as "the runner caught the broken fixture". A Python traceback in `runner.py` also exits 1, so a crashing runner would pass its own self-check. The fix is to assert on the output text, or give test failures a distinct exit code.
-- `.agents/testing.md` doesn't say that code running inside a coroutine escapes the per-case instruction limit. Lua 5.1's `debug.sethook` is per coroutine, and only `tests/lib/harness.lua`'s comment says so.
-
-**Why noticed:** The scoped re-review of the test suite's final fix wave (2026-11-09) listed both as out of scope. The suite merged without them.
-
-**Anchors:** `tests/runner.py` (`--self-check`, `FIXTURE_EXPECTED`), `tests/lib/runner_fixtures/`, `tests/lib/harness.lua` (`limited()`), `.agents/testing.md`.
-
-**Shape of work:** Small: one runner change with a fixture that crashes the runner, and one doc line.
 
 ### 2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods
 
@@ -466,7 +454,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
   - Focus `castbar.colors.normal = { .5, .9, .7 }`: a list, but `GetRGB` reads the `r`/`g`/`b` that the base default's color fills in, so the focus castbar uses the base color.
   - Raid target `position.element = 'Portrait'`: Portrait isn't registered, so the marker anchors to the unit frame.
   - `widget` (`widget.lua` is commented out of `elements/elements.xml`, and it has no `UpdateConfig`), `portrait` and `aurawatch` (their `RegisterElement` calls are commented out).
-- **Errors once on:**
+- **Errors once on** (*both fixed 2026-11-09:* `colorCustom` reads either color shape through `UF.UnpackColor`, and is applied in `PostUpdateColor` after oUF's recolor on health, power and additional power, with power backgrounds following it. The castbar's `bg` has `alpha`/`multiplier` defaults and is colored from the bar. `tests/unitframes/bar_colors_test.lua`. Still open: `groups.lua`'s preview path applies the custom power color without `UF.SetPowerBackgroundColor`):
   - `castbar.bg.enable`: the castbar's `bg` has no `alpha` or `multiplier`, so `UF:UpdateStatusBarElement` calls `bg:SetAlpha(nil)`. Nothing colors the background either.
   - `colorCustom` on health, power and additional power: the `customColor` defaults are plain `{ r, g, b }` lists, and `config.customColor:GetRGB()` errors on them.
 - **Half done:** `additionalpower.manaAsPrimary` swaps the size, texture and text settings of the Power and AdditionalPower bars (`UF:UpdateElement`'s `configOverride`), but not their positions: `UF:UpdateElementPosition(element, unitframe, configOverride)` gets the override in its `unitframe` slot. The `Override` that would keep the bar on mana is commented out, and power's `GetDisplayPower` never runs (oUF only calls it with `displayAltPower`).
@@ -571,6 +559,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-09 — Test runner self-check: tell a runner crash from a caught failure
+
+**What:** Two small gaps in the new test suite (`tests/`):
+- `tests/run --self-check` (`tests/runner.py`) treats any exit code of 1 as "the runner caught the broken fixture". A Python traceback in `runner.py` also exits 1, so a crashing runner would pass its own self-check. The fix is to assert on the output text, or give test failures a distinct exit code.
+- `.agents/testing.md` doesn't say that code running inside a coroutine escapes the per-case instruction limit. Lua 5.1's `debug.sethook` is per coroutine, and only `tests/lib/harness.lua`'s comment says so.
+
+**Why noticed:** The scoped re-review of the test suite's final fix wave (2026-11-09) listed both as out of scope. The suite merged without them.
+
+**Anchors:** `tests/runner.py` (`--self-check`, `FIXTURE_EXPECTED`), `tests/lib/runner_fixtures/`, `tests/lib/harness.lua` (`limited()`), `.agents/testing.md`.
+
+**Shape of work:** Small: one runner change with a fixture that crashes the runner, and one doc line.
+
+**Resolved 2026-11-09:** test failures exit 1, a runner crash exits 70 (any Python exception, including one inside running a file), and the self-check checks each fixture's expected text with no traceback, plus two hidden crash cases. .agents/testing.md also says code inside a coroutine escapes the instruction limit.
 
 ### 2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames
 
