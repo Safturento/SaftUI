@@ -13,13 +13,15 @@
 --     game, but the stub's FontString only takes strings and numbers, so
 --     secret_text() keeps a secret passed to either on the font string
 --     (.secret, and .format) and hands anything else to the stub's own method.
+--     For plain values it records .format too (nil after SetText), so a check
+--     can tell which of the two the code called.
 --   * UnitPowerPercent returns a secret percent, and records its arguments.
 load_core_helpers()
 
 local st = SaftUI
 local UF = st:NewModule('Unitframes')
--- What unitframes.lua's UF:RegisterElement does (it keeps the constructor in
--- UF.elements). The real file needs oUF, which isn't loaded here.
+-- What unitframes.lua's UF:RegisterElement does (lines 126-134: it keeps the
+-- constructor in UF.elements). The real file needs oUF, which isn't loaded here.
 UF.elements = {}
 function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
 	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
@@ -44,11 +46,11 @@ local function secret_text(text)
 	local set_text, set_formatted = text.SetText, text.SetFormattedText
 	text.SetText = function(self, value)
 		if issecretvalue(value) then self.secret, self.format = value, nil
-		else self.secret = nil; set_text(self, value) end
+		else self.secret, self.format = nil, nil; set_text(self, value) end
 	end
 	text.SetFormattedText = function(self, format, value)
 		if issecretvalue(value) then self.secret, self.format = value, format
-		else self.secret = nil; set_formatted(self, format, value) end
+		else self.secret, self.format = nil, format; set_formatted(self, format, value) end
 	end
 	return text
 end
@@ -65,7 +67,7 @@ end)
 
 test('a power percent text is a whole percent', function()
 	local t = new_text(); UF:SetPowerPercentText(t, 'player', 50, 200)
-	eq(t:GetText(), '25', 'plain percent 25')
+	check(t.format == '%.0f' and t:GetText() == '25', 'plain percent 25')
 	t = new_text(); UF:SetPowerPercentText(t, 'player', 0, 0)
 	eq(t:GetText(), '', 'zero max -> empty')
 end)
@@ -93,9 +95,9 @@ test('additional power text: hide full, value, percent', function()
 	ap = make_bar()
 	ap.config = { text = { hide_full = true, percent = false } }
 	ap:PostUpdate(100, 100); eq(ap.text:GetText(), '', 'hide full when full')
-	ap:PostUpdate(40, 100); eq(ap.text:GetText(), '40', 'value when not full')
+	ap:PostUpdate(40, 100); check(ap.text.format == nil and ap.text:GetText() == '40', 'value when not full')
 	ap.config.text.percent = true
-	ap:PostUpdate(40, 100); eq(ap.text:GetText(), '40', 'percent 40')
+	ap:PostUpdate(40, 100); check(ap.text.format == '%.0f' and ap.text:GetText() == '40', 'percent 40')
 end)
 
 test('additional power text with secret values', function()

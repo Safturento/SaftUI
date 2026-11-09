@@ -12,7 +12,8 @@
 --     into text and back (Base64 of compressed AceSerializer text); these
 --     take the text 'GOOD' for { target = { width = 9 } } and any other text
 --     for no profile, and Export records what it was given and returns
---     'EXPORTED'.
+--     'EXPORTED'. The real Base64 / compress / serialize round trip is not
+--     tested here.
 --   * The popup is a frame with GetEditBox, as Blizzard's StaticPopup has on
 --     current clients (config.lua's EditBoxOf). Its edit box is a real one.
 load_saftui('SaftUI-Core/Config/defaults.lua')

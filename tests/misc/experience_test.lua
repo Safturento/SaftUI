@@ -11,6 +11,9 @@ for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap',
 end
 load_saftui('SaftUI-Misc/experience.lua')
 
+-- Rested experience present, so the bar's first update takes the rested path.
+stub.rested_xp = 300
+
 local st = SaftUI
 local XP = st:GetModule('Experience')
 XP:Enable()
