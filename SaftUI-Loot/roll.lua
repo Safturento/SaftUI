@@ -68,6 +68,9 @@ function LT:SkinRollFrame(frame)
 	self:SecureHookScript(frame, 'OnShow', 'GroupLootFrame_OnShow')
 	self:SecureHookScript(frame.Timer, 'OnUpdate', 'GroupLootFrame_OnUpdateTimer')
 	self:UpdateRollFrame(frame)
+	-- A frame is first skinned after GroupLootContainer_OpenNewFrame has shown
+	-- it, so its first roll missed the OnShow hook above. Style that roll now.
+	if frame:IsShown() then self:GroupLootFrame_OnShow(frame) end
 	-- The live counts and the rolls in the bar's tooltip (rollinfo.lua). After
 	-- UpdateRollFrame, which makes the info frame.
 	self:AttachRollInfo(frame, counts)
@@ -138,7 +141,8 @@ function LT:GroupLootFrame_OnShow(frame)
 
 	local color = ITEM_QUALITY_COLORS[quality]
 	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
-	frame.Name:SetVertexColor(1, 1, 1)
+	-- The item's quality color, as Blizzard's own OnShow gives it.
+	frame.Name:SetVertexColor(color.r, color.g, color.b)
 
 	local text = ''
 
@@ -378,6 +382,8 @@ local function FillPreviewBar(bar)
 	if quality >= 3 and not spec.bindOnPickUp then text = 'BoE ' end
 	if spec.count > 1 then text = text .. '(' .. spec.count .. ') ' end
 	bar.Name:SetText(text .. name)
+	local color = ITEM_QUALITY_COLORS[quality]
+	if color then bar.Name:SetVertexColor(color.r, color.g, color.b) end
 
 	local icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(spec.itemID)
 	bar.Icon:SetTexture(icon or PREVIEW_FALLBACK_ICON)
