@@ -608,6 +608,59 @@ test('the footer region sits between Reload UI and Close', function()
 	close_all()
 end)
 
+-- Whether frame is inside ancestor (its parent, or its parent's, ...).
+local function inside(frame, ancestor)
+	while frame do
+		if frame == ancestor then return true end
+		frame = frame:GetParent()
+	end
+	return false
+end
+
+test("edit mode's footer buttons sit on the window's footer while edit mode is on and the window is open", function()
+	local EM = st.EditModeFrames
+	-- OnEnable (EditMode/settings.lua) makes them with st:CreateButton: Grid,
+	-- Snap to grid, Snap to frames, -, the size, +. Keep them as they're made.
+	local buttons, createButton = {}, st.CreateButton
+	st.CreateButton = function(...)
+		local button = createButton(...)
+		buttons[#buttons + 1] = button
+		return button
+	end
+	EM:Enable()
+	st.CreateButton = createButton
+	eq(#take_errors(), 0, 'edit mode enabled without errors')
+	eq(#buttons, 6, 'six buttons')
+	local grid, plus = buttons[1], buttons[6]
+	local region = OW:GetFooter()
+
+	st.Config:Open('Loot')
+	check(not grid:IsVisible(), 'edit mode off: not shown')
+	printed(function() EM:Activate() end)
+	check(grid:IsVisible() and plus:IsVisible(), 'edit mode on, window open: shown')
+	check(inside(grid, region), "on the window's footer region")
+	check(grid:GetLeft() >= region:GetLeft() and plus:GetRight() <= region:GetRight(), 'inside it, left to right')
+	check(frames().status:GetLeft() >= plus:GetRight(), 'the status line starts clear of them')
+
+	st.Config:Close()
+	check(not grid:IsVisible(), 'window closed: not shown')
+	check(not inside(grid, region), 'and taken off it')
+	st.Config:Open('Loot')
+	check(grid:IsVisible() and inside(grid, region), 'opened again in edit mode: back')
+	printed(function() EM:Deactivate() end)
+	check(not grid:IsVisible(), 'edit mode off: not shown')
+	check(not inside(grid, region), 'and taken off it')
+	eq(frames().status:GetLeft(), region:GetLeft(), 'the status line has the region back')
+	check(OW:IsShown(), 'the window stays open')
+
+	-- Edit mode works with the window closed; the buttons just don't show.
+	st.Config:Close()
+	printed(function() EM:Activate() end)
+	check(not grid:IsVisible(), 'edit mode on, window closed: not shown')
+	printed(function() EM:Deactivate() end)
+	close_all()
+end)
+
 test('a profile change rebuilds the open window from the new tree', function()
 	st.Config:Open('Loot')
 	local old = OW:GetRoot()

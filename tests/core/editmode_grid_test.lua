@@ -218,6 +218,11 @@ test('the footer and the screen events', function()
 	check(ok and #reported == 0, 'OnEnable builds the footer without error: ' .. tostring(not ok and err or reported[1]))
 	st.CreateButton = createButton
 
+	-- Edit mode is on, but this world has no /sui window (the shell's
+	-- GetWindow is nil), so the buttons aren't shown. options_window_test.lua
+	-- checks them on the real window's footer.
+	check(EM.active and not buttons[1]:IsVisible(), 'no /sui window: the footer buttons are hidden')
+
 	local sizeLabel = buttons[5]
 	settings.grid_size = 32
 	ok, err = pcall(function() EM:StepGridSize(4) end)

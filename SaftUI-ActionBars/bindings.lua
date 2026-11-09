@@ -378,7 +378,7 @@ function AB:StartKeybindMode()
 	st.EditModeFrames:Deactivate()
 	if st.Config:GetWindow() then
 		C_Timer.After(0, function()
-			LibStub('AceConfigDialog-3.0'):Close(st.name)
+			st.Config:Close()
 		end)
 	end
 

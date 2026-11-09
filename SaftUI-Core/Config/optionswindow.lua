@@ -21,6 +21,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  OW:SetStatus(text)    the footer's status line (validate errors)
 	  OW:GetFooter()        the footer region between Reload UI and Close, for
 	                        edit mode's controls
+	  OW:SetFooterInset(w)  the status line starts w into the region, clear of
+	                        them
 	  OW:UpdateFonts()      the profile's faces again (a profile change)
 	  OW:OpenDialog(title, options), OW:CloseDialog(), OW:IsDialogShown()
 	                        a small dialog over the window for an option table
@@ -1199,6 +1201,13 @@ end
 function OW:GetFooter()
 	if not F.window then Build() end
 	return F.footerRegion
+end
+
+-- Edit mode's buttons take the region's left (EditMode/footer.lua): the
+-- status line starts width in, clear of them.
+function OW:SetFooterInset(width)
+	if not F.status then return end
+	F.status:SetPoint('LEFT', F.footerRegion, 'LEFT', width or 0, 0)
 end
 
 -- What the last render drew: { page, tab, subtab, pick, search }.
