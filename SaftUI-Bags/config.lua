@@ -2,9 +2,8 @@ local st = SaftUI
 
 st.defaults.inventory = {
 	enable = true,
-	compact = true, -- re-order categories to take up the least amount of space
-	buttontemplate = 'thicktransparent',
-	template = 'thicktransparent',
+	buttontemplate = 'thicktransparent', -- item and currency slots
+	template = 'thicktransparent', -- the windows
 	padding = 10,
 	iconsize = 50, -- item button height; the width follows at 6:5 (60 by default), see INV:GetButtonWidth
 	buttonspacing = 3,

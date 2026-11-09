@@ -72,7 +72,7 @@ function INV.CreateCurrencySlot(category)
 
     st:SkinIcon(slot.icon, nil, slot)
     st:SkinActionButton(slot, {
-		template = INV.config.template,
+		template = INV.config.buttontemplate,
 		font = INV.config.fonts.icons,
 		trueSize = true
 	})
@@ -100,7 +100,7 @@ function INV:StyleCurrencySlots()
     for _, slot in ipairs(currencySlots) do
         slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
         st:SkinActionButton(slot, {
-            template = self.config.template,
+            template = self.config.buttontemplate,
             font = self.config.fonts.icons,
             trueSize = true
         })

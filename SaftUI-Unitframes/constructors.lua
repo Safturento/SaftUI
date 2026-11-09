@@ -25,8 +25,6 @@ function UF:AddStatusBarElement(unitframe, elementName)
 	statusbar.bg:SetAllPoints(statusbar)
 	statusbar.bg:SetTexture(st.BLANK_TEX)
 
-	statusbar.Smooth = true
-
 	return statusbar
 end
 

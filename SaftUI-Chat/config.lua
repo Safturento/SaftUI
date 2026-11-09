@@ -15,9 +15,7 @@ st.defaults.chat = {
 	padding = 10,
 	fontsize = 16,
 	linespacing = 5,
-	fadetabs = true,
 	tabs = {
-		height = 25,
 		fade = false,
 	},
 	editbox = {

@@ -31,7 +31,7 @@ function INV:AssignEmptySlot(slot, info)
 	slot.itemLevelBG:Hide()
 	Util:ClearItemQuality(slot)
 
-	local template = st.config.profile.templates[self.config.template]
+	local template = st.config.profile.templates[self.config.buttontemplate]
 	if template and template.border then
 		slot.backdrop:SetBackdropBorderColor(unpack(template.bordercolor))
 	else
@@ -316,7 +316,7 @@ function INV:CreateSlot(container, categoryName)
 	slot.reagentMarker = reagentMarker
 
 	st:SkinActionButton(slot, {
-		template = self.config.template,
+		template = self.config.buttontemplate,
 		font = self.config.fonts.icons,
 		trueSize = true
 	})
@@ -344,7 +344,7 @@ function INV:StyleSlot(slot, categoryFrame, container)
 	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
 
 	st:SkinActionButton(slot, {
-		template = self.config.template,
+		template = self.config.buttontemplate,
 		font = self.config.fonts.icons,
 		trueSize = true
 	})

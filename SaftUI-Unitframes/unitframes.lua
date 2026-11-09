@@ -22,7 +22,7 @@ UF.unit_strings = {
 	['focus'] = 'Focus',
 	['focustarget'] = 'FocusTarget',
 	['pet'] = 'Pet',
-	--['pettarget'] = 'PetTarget',
+	['pettarget'] = 'PetTarget', -- off by default (its enable), turned on in /sui
 	['boss'] = 'Boss',
 	--['arena'] = 'Arena'
 }

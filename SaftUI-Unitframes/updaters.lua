@@ -1,6 +1,25 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
+-- oUF's smoothing for a bar's Smooth setting: eased while on, immediate while
+-- off (oUF's own default).
+function UF:GetSmoothing(smooth)
+	return smooth and Enum.StatusBarInterpolation.ExponentialEaseOut or Enum.StatusBarInterpolation.Immediate
+end
+
+-- A power bar's text as a whole percent. With secret values the game works the
+-- percent out through Blizzard's 0-100 curve, and the FontString formats it
+-- without Lua reading it.
+function UF:SetPowerPercentText(text, unit, current, max, powerType)
+	if issecretvalue(current) or issecretvalue(max) then
+		text:SetFormattedText('%.0f', UnitPowerPercent(unit, powerType, false, CurveConstants.ScaleTo100))
+	elseif max > 0 then
+		text:SetFormattedText('%.0f', current / max * 100)
+	else
+		text:SetText('')
+	end
+end
+
 function UF:UpdateElement(element, configOverride)
     element.config = element:GetConfig()
 

@@ -9,7 +9,6 @@ st.defaults.unitframes.profiles["**"].player = {
         relative_height = false,
         width = 299,
         height = 20,
-        colorClass = true,
         position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -144 },
         text = {
             font='pixel_med',

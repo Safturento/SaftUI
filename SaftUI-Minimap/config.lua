@@ -1,8 +1,6 @@
 local st = SaftUI
 
 st.defaults.minimap = {
-    font = 'pixel',
-    enable = true,
     template = 'thick',
     size = 250,
     compartment_buttons = true,

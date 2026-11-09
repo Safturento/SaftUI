@@ -12,6 +12,5 @@
 	<Script file="units\party.lua"/>
 	<Script file="units\raid10.lua"/>
 	<Script file="units\raid40.lua"/>
-	<Script file="units\nameplate.lua"/>
 	<Script file="config.lua"/>
 </Ui>

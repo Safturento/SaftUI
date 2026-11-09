@@ -46,6 +46,7 @@ local function GetConfigTable(unit)
 			showSameLevel = st.Config.generators.toggle(6, 'Show same level', 1),
 			showMaxLevel = st.Config.generators.toggle(6, 'Show max level', 1),
 			allCaps = st.Config.generators.toggle(6, 'All caps', 1),
+			color_hostile = st.Config.generators.toggle(6, 'Color hostile', 1),
 			maxLength = st.Config.generators.range(7, 'Max length', 1, 100, 1),
 		}
 	}

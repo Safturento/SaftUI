@@ -79,6 +79,7 @@ local function UpdateConfig(unitframe)
 	health.colorSmooth		 = config.colorSmooth
 	health.colorCustom		 = config.colorCustom
 	health.customColor 		 = config.customColor
+	health.smoothing		 = UF:GetSmoothing(config.Smooth)
 end
 
 
@@ -105,6 +106,7 @@ local function GetConfigTable(unit)
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill', 1),
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
+			Smooth = st.Config.generators.toggle(5.5, 'Smooth', 1),
 			position = st.Config.generators.uf_element_position(50,
 				function(index)
 					return UnitConfig().health.position[index]

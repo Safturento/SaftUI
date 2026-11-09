@@ -49,13 +49,6 @@ st.defaults.fonts.pixel_huge = st.tablemerge(st.defaults.fonts.pixel, { name='Pi
 st.defaults.fonts.normal_med = st.tablemerge(st.defaults.fonts.normal, { name='Normal Med', font_size = 24 })
 st.defaults.fonts.subtitle = st.tablemerge(st.defaults.fonts.title, { name='Subtitle', font_size = 24 })
 
-st.defaults.addon_manager = {
-	font = 'normal',
-	num_rows = 18,
-	row_height = 20,
-	spacing = 7,
-}
-
 st.defaults.headers = {
 	height = 31,
 	font = 'normal',
@@ -64,29 +57,16 @@ st.defaults.headers = {
 st.defaults.buttons = {
 	font = 'pixel',
 	template = 'thicktransparent',
-	height = 21,
 }
 
 st.defaults.panels = {
 	font = 'normal',
 	template = 'thicktransparent',
-	padding = 20,
 	tab_height = 21,
 }
 
-st.defaults.maps = {
-	minimap = {
-		font = 'pixel',
-		enable = true,
-		template = 'thick',
-		size = 250,
-		position = {point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -st.CLAMP_INSET, y_off = -st.CLAMP_INSET},
-		mail_position = {'TOPRIGHT', 'TOPRIGHT', -5, -2},
-	}
-}
-
 st.defaults.experience = {
-	width = st.defaults.maps.minimap.size,
+	width = 250, -- the minimap's default size
 	height = 13,
 	spacing = 8,
 	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
@@ -102,7 +82,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.3, 0.3, 0.3, 0.4 },
 		border = false,
 		thick = true,
-		inner_shadow = {0, 0, 0, 0},
 	},
 	close = {
 		name = 'Close Button',
@@ -111,7 +90,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
 		border = false,
 		thick = true,
-		inner_shadow = {0, 0, 0, 0},
 	},
 	thin = {
 		name = 'Thin',
@@ -120,7 +98,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.2, 0.2, 0.2, 1 },
 		border = true,
 		thick = false,
-		inner_shadow = {0, 0, 0, 0},
 	},
 	thick = {
 		name = 'Thick',
@@ -129,7 +106,6 @@ st.defaults.templates = {
 		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 		border = true,
 		thick = true,
-		inner_shadow = {0, 0, 0, 0},
 	}
 }
 

@@ -32,8 +32,17 @@ local function PostUpdateColor(power, color, r, g, b)
 	end
 end
 
+-- The bar always shows mana, so a secret percent is mana's.
 local function PostUpdate(additionalPower, curr, max)
-	additionalPower.text:SetText(curr)
+	local config = additionalPower.config.text
+	local text = additionalPower.text
+	if config.hide_full and not issecretvalue(curr) and not issecretvalue(max) and curr >= max then
+		text:SetText('')
+	elseif config.percent then
+		UF:SetPowerPercentText(text, additionalPower.__owner.unit, curr, max, Enum.PowerType.Mana)
+	else
+		text:SetText(curr)
+	end
 end
 
 -- oUF shows the bar only while the player's power bar shows a power the game
@@ -85,9 +94,9 @@ local function UpdateConfig(unitframe)
 
 	--additionalPower.Override       = config.manaAsPrimary and Update or nil
 	additionalPower.colorPower     = config.colorPower
-	additionalPower.colorClass     = config.colorClass
 	additionalPower.colorCustom    = config.colorCustom
 	additionalPower.customColor    = config.customColor
+	additionalPower.smoothing      = UF:GetSmoothing(config.Smooth)
 
 	-- UpdateElement showed the bar and its text from the config alone.
 	ApplyVisibility(additionalPower)
@@ -136,6 +145,7 @@ local function GetConfigTable(unit)
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			reverse_fill = generators.toggle(4, 'Reverse Fill', 1),
 			vertical_fill = generators.toggle(5, 'Vertical Fill', 1),
+			Smooth = generators.toggle(5.5, 'Smooth', 1),
 			colorPower = colorPower,
 			position = generators.uf_element_position(50,
 				function(index) return Config().position[index] end,
@@ -148,6 +158,8 @@ local function GetConfigTable(unit)
 			text = Section(98, 'Text', 'text', {
 				enable = generators.enable(0),
 				font = generators.font(1),
+				hide_full = generators.toggle(1.2, 'Hide full'),
+				percent = generators.toggle(1.4, 'Percent'),
 				position = generators.uf_element_position(2,
 					function(index) return Config().text.position[index] end,
 					function(index, value)

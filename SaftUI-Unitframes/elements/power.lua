@@ -29,6 +29,8 @@ local function PostUpdatePower(power, unit, current, min, max)
 	if  power.text then
 		if power.config.text.hide_full and deficit == 0 then
 			power.text:SetText('')
+		elseif power.config.text.percent then
+			UF:SetPowerPercentText(power.text, unit, current, max)
 		else
 			if issecretvalue(current) then
 				power.text:SetText(current)
@@ -92,9 +94,11 @@ local function UpdateConfig(unitframe)
 	power.colorClassNPC		= power.config.colorClassNPC
 	power.colorClassPet		= power.config.colorClassPet
 	power.colorReaction		= power.config.colorReaction
-	power.colorSmooth		= power.config.colorSmooth
+	-- oUF calls it colorPowerSmooth; it needs colorPower on as well.
+	power.colorPowerSmooth	= power.config.colorSmooth
 	power.colorCustom		= power.config.colorCustom
 	power.customColor 		= power.config.customColor
+	power.smoothing			= UF:GetSmoothing(power.config.Smooth)
 end
 
 local function GetConfigTable(unit)
@@ -119,6 +123,7 @@ local function GetConfigTable(unit)
 			size = UF.GenerateRelativeSizeConfigGroup(3),
 			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill', 1),
 			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
+			Smooth = st.Config.generators.toggle(5.5, 'Smooth', 1),
 			position = st.Config.generators.uf_element_position(50,
 				function(index) return
 					UnitConfig().power.position[index]
@@ -144,6 +149,8 @@ local function GetConfigTable(unit)
 				args = {
 					enable = st.Config.generators.enable(0),
 					font = st.Config.generators.font(1),
+					hide_full = st.Config.generators.toggle(2, 'Hide full'),
+					percent = st.Config.generators.toggle(3, 'Percent'),
 					position = st.Config.generators.uf_element_position(5,
 				function(index) return
 					UnitConfig().power.text.position[index]

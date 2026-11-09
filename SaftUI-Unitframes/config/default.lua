@@ -158,7 +158,6 @@ local health = {
             x_off = -7,
             y_off = -1,
         },
-        tags = 'deficit'
     },
     bg = {
         enable = false,
@@ -176,7 +175,6 @@ local health = {
     colorSmooth = false,
     colorCustom = false,
     customColor = { 0.3, 0.3, 0.3 },
-    absorbColor = { 0.3, 0.4, 0.6 }
 }
 
 local power = {
@@ -258,8 +256,8 @@ local additionalpower = {
             y_off = 0,
         },
     },
+    Smooth = true,
     colorPower = false,
-    colorClass = true,
     colorCustom = false,
     customColor = { 0.25, 0.25, 0.25 },
 }
@@ -354,6 +352,7 @@ local name = {
     showMaxLevel = false,
     show_classification = true,
     colorClass = false,
+    color_hostile = false, -- hostile names red, neutral yellow
     font = 'normal',
     position = {
         point = "LEFT",
@@ -402,8 +401,6 @@ local aurawatch = {
 }
 
 st.defaults.unitframes = {
-    config_unit = 'player',
-    config_element = 'general',
     config_profile = 'SaftUI',
     profiles = {
         ['**'] = {
