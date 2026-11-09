@@ -8,14 +8,13 @@ st.defaults.misc = {
 	clamp_inset = st.CLAMP_INSET
 }
 
-st.defaults.grid = {
-	horizontalSpacing = 20,
-	verticalSpacing = 20
-}
-
+-- Edit mode's alignment grid and snapping (see EditMode/grid.lua, snap.lua).
+-- grid_size is in UIParent units, which are physical pixels at SaftUI's scale.
 st.defaults.editmode = {
 	grid = false,
-	snap = false,
+	grid_size = 32,
+	snap_grid = false,
+	snap_frames = false,
 }
 
 st.defaults.fonts = {

@@ -140,6 +140,9 @@ function EM:UpdateConfig()
 	for mover in pairs(failed) do
 		st:RestorePoints(mover.def.frame, mover.previousPoints)
 	end
+	-- The new profile has its own grid settings.
+	self:UpdateGrid()
+	self:UpdateFooterToggles()
 end
 
 -- Shows the mover's section in /sui, opening /sui if it's closed.

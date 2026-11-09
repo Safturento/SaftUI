@@ -1,7 +1,7 @@
 ---
 name: edit-mode
 description: SaftUI's edit mode (movers), the /sui options tree, option widgets and the scoped Ace skin
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 covers:
   - 'SaftUI-Core/EditMode/**'
   - 'SaftUI-Core/Config/aceskin.lua'
@@ -21,6 +21,8 @@ SaftUI has its own edit mode. It never adds frames to Blizzard's Edit Mode.
 - Registered frames get a draggable overlay. Arrow keys nudge 1px, Shift+arrows 10px.
 - Where overlays overlap, a list by the cursor names every one under it and marks the one a click or drag gets; the rest dim. Alt brings the next one to the front (`EditMode/picker.lua`, like `/fstack`). Overlays share one strata, so their frame levels decide which is on top: each gets its own pair (backdrop one below), handed out rising by `EM:BringToFront`. Don't set an overlay's level anywhere else.
 - Clicking a frame opens `/sui` at that frame's section.
+- A grid shows behind the UI while edit mode is on and Grid is enabled (`EditMode/grid.lua`). Two center lines sit on UIParent's center, rounded to a physical pixel (`EM:GetGridCenter`), and the other lines repeat outward every Grid size (`EM.GridLinePositions`), each 1 physical pixel thick. Snapping reads the same two functions, so what's drawn is what snaps. The lines are pooled textures on a SaftUI frame at `BACKGROUND` strata that never takes the mouse.
+- The `/sui` footer has Grid, Snap to grid and Snap to frames toggles (green text when on), and `-` / size / `+` buttons that step Grid size by 4 between 8 and 128 (`EditMode/settings.lua`). The "Edit mode" section in `/sui` holds the same toggles and a Grid size slider. The values are in the profile (`st.defaults.editmode`: `grid`, `grid_size`, `snap_grid`, `snap_frames`), and `EM:UpdateConfig` redraws the grid and toggles after a profile change.
 - It closes on combat and refuses to open in combat.
 
 The spec is in `docs/superpowers/specs/2026-11-06-saftui-edit-mode-design.md`, and the plan (Tasks 1–15) in `docs/superpowers/plans/2026-11-06-saftui-edit-mode.md`.

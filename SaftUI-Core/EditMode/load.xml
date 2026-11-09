@@ -3,4 +3,7 @@
 	<Script file="mover.lua"/>
 	<Script file="picker.lua"/>
 	<Script file="footer.lua"/>
+	<Script file="grid.lua"/>
+	<Script file="snap.lua"/>
+	<Script file="settings.lua"/>
 </Ui>
