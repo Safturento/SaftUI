@@ -83,6 +83,7 @@ function MM:GetConfigTable()
 	return {
 		name = 'Minimap',
 		type = 'group',
+		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
 		args = {
 			general = {
 				name = 'General',

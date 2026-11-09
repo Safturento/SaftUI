@@ -376,6 +376,10 @@ function AB:GetConfigTable()
 	return {
 		name = 'Action Bars',
 		type = 'group',
+		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
+		-- The bars and extra buttons are the page's picker; each one's General,
+		-- Text, ... are its tabs.
+		childGroups = 'select',
 		args = args,
 	}
 end

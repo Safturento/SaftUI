@@ -47,7 +47,9 @@ W.WIDTH = {
 local TRACK_WIDTH, VALUE_WIDTH, GAP = 116, 46, 6
 local FIELD_HEIGHT = 24
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
-local LIST_STRATA = 'FULLSCREEN_DIALOG'
+-- Above the options window (FULLSCREEN_DIALOG, like edit mode's outlines), so
+-- the list and the confirm dialog show over it and catch the clicks around them.
+local LIST_STRATA = 'TOOLTIP'
 
 ------------------------------------------------------------------ look
 
@@ -119,6 +121,9 @@ local function HoverEdge(frame, isDisabled)
 	frame:SetScript('OnLeave', function(self) Edge(self, false) end)
 end
 
+-- For the options window's own boxes and buttons (the search box, Reload UI).
+W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
+
 ------------------------------------------------------------------ numbers
 
 -- Strips float drift (0.1 * 3 is 0.30000000000000004).
@@ -176,7 +181,7 @@ local function BuildDialog()
 	-- A full-screen catcher keeps clicks from reaching the window under the dialog.
 	local catcher = CreateFrame('Frame', nil, UIParent)
 	catcher:SetAllPoints(UIParent)
-	catcher:SetFrameStrata('FULLSCREEN_DIALOG')
+	catcher:SetFrameStrata(LIST_STRATA)
 	catcher:SetFrameLevel(100)
 	catcher:EnableMouse(true)
 	catcher:Hide()
@@ -238,6 +243,11 @@ function W.Confirm(text, onYes, onNo)
 	dialog.frame:ClearAllPoints()
 	dialog.frame:SetPoint('CENTER', W.dialogAnchor or UIParent, 'CENTER', 0, 0)
 	dialog.catcher:Show()
+end
+
+-- Answers an open confirm dialog No (the options window closing).
+function W.CancelConfirm()
+	Answer(false)
 end
 
 -- The open confirm dialog's text, or nil.

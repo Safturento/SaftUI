@@ -1,8 +1,6 @@
 local st = SaftUI
 
-local AceConfig = LibStub("AceConfig-3.0")
 local AceDB = LibStub('AceDB-3.0')
-local AceConfigDialog = LibStub('AceConfigDialog-3.0')
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 local AceDBOptions = LibStub('AceDBOptions-3.0')
 local AceSerializer = LibStub('AceSerializer-3.0')
@@ -13,8 +11,8 @@ local Config = st:NewModule('Config')
 st.Config = Config
 
 -- /sui subcommands that other SaftUI addons add, e.g. SaftUI-ActionBars' 'kb'.
--- Each also gets a button in the /sui window's top row, after Edit mode, in
--- the order they were added. Add them at file load or in OnEnable.
+-- Each also gets a button at the top of the /sui window's sidebar, after Edit
+-- mode, in the order they were added. Add them at file load or in OnEnable.
 local commands = {}
 
 -- '/sui <command>' runs func, and so does a button labelled label in /sui.
@@ -27,6 +25,16 @@ local function FindCommand(command)
 	for _, entry in ipairs(commands) do
 		if entry.command == command then return entry end
 	end
+end
+
+-- The added commands, in order: { {command, label, func} }. The /sui window's
+-- sidebar makes a button of each.
+function Config:GetCommands()
+	local list = {}
+	for i, entry in ipairs(commands) do
+		list[i] = { command = entry.command, label = entry.label, func = entry.func }
+	end
+	return list
 end
 
 function Config:Refresh()
@@ -67,9 +75,6 @@ function Config:InitializeAceConfig()
 	self.db.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
 
-    --AceConfig:RegisterOptionsTable(st.name, options)
-    --AceConfigDialog:AddToBlizOptions(st.name, st.name)
-
 	-- Keep an open /sui window in sync with drags and nudges.
 	st.EditModeFrames:On('PositionChanged', function() self:Refresh() end)
 
@@ -93,45 +98,46 @@ function Config:InitializeAceConfig()
     end
 end
 
-local window -- the open /sui window, or nil
+-- Builds the /sui tree and registers it with AceConfigRegistry as st.name, so
+-- Config:Refresh (NotifyChange) reaches the window as ConfigTableChange.
+-- Returns the tree. Ace's validation is skipped: the window doesn't need it,
+-- and it rejects the `category` field SaftUI's module tables carry.
+function Config:RegisterOptions()
+	local root = self:GetOptionsTable()
+	AceConfigRegistry:RegisterOptionsTable(st.name, { name = st.name, type = 'group', args = root }, true)
+	return root
+end
 
--- Opens the /sui window, or reuses it if it's open, and selects the group at
--- the given path of option keys (e.g. 'Minimap', 'general') in its tree. The
--- window keeps the size and spot the user last gave it.
+-- Opens the /sui window (st.OptionsWindow, optionswindow.lua), or brings the
+-- open one to the group at the given path of option keys (e.g. 'Unitframes',
+-- 'player', 'general': its page, picker and tab). The tree is rebuilt each
+-- time, so modules that built their options since show. The window opens
+-- where the user last left it.
 function Config:Open(...)
 	if InCombatLockdown() then
 		st:Print("Can't open SaftUI options in combat.")
 		return
 	end
-	AceConfig:RegisterOptionsTable(st.name, {
-		name = st.name,
-		type = 'group',
-		args = self:GetOptionsTable(),
-	})
-	-- SaftUI-styled window, registered as AceConfigDialog's frame for st.name
-	-- so NotifyChange refreshes it and Escape closes it.
-	window = st.AceSkin:CreateWindow(st.name, st.name, function()
-		window = nil
-		st.EditModeFrames:UpdateFooter()
-	end)
-	if select('#', ...) > 0 then
-		AceConfigDialog:SelectGroup(st.name, ...)
-	end
-	AceConfigDialog:Open(st.name)
-	st.EditModeFrames:UpdateFooter()
+	st.OptionsWindow:Open({ ... }, self:RegisterOptions())
+end
+
+function Config:Close()
+	st.OptionsWindow:Close()
 end
 
 -- Entering combat closes /sui. PLAYER_REGEN_DISABLED fires just before the
--- lockdown starts, so the window's release still runs out of combat.
+-- lockdown starts, so the window still closes out of combat.
 function Config:PLAYER_REGEN_DISABLED()
-	if window then
-		AceConfigDialog:Close(st.name)
+	if st.OptionsWindow:IsShown() then
+		st.OptionsWindow:Close()
 		st:Print('SaftUI options closed: entering combat.')
 	end
 end
 
+-- The /sui window's frame while it's open, else nil.
 function Config:GetWindow()
-	return window
+	local OW = st.OptionsWindow
+	return OW and OW:IsShown() and OW:GetFrame() or nil
 end
 
 -- A sub-section is a non-inline group (a sidebar entry or a tab).
@@ -184,36 +190,15 @@ local function UseTabsForInnermostSections(group)
 	end
 end
 
+-- The /sui tree: one group per page, keyed by module name, plus AceDBOptions'
+-- profiles. Edit mode and the AddCommand commands are the window's sidebar
+-- buttons, not options.
 function Config:GetOptionsTable()
 	local profile = AceDBOptions:GetOptionsTable(st.config)
 	profile.order = -999
 	local options = {
-		topmenu = {
-			name = '',
-			inline = true,
-			type = 'group',
-			order = 0,
-			args = {
-				edit_mode = {
-					name = 'Edit mode',
-					type = 'execute',
-					order = 1,
-					func = function()
-						st.EditModeFrames:Toggle()
-					end,
-				},
-			}
-		},
 		profile = profile
 	}
-	for i, entry in ipairs(commands) do
-		options.topmenu.args['command_' .. entry.command] = {
-			name = entry.label,
-			type = 'execute',
-			order = 1 + i,
-			func = function() entry.func() end,
-		}
-	end
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			options[name] = module:GetConfigTable()
@@ -277,15 +262,15 @@ function Config:UpdateConfig()
 	end
 	UpdateModule(editMode)
 
-	-- An open /sui window's option table was built for the old profile (some
-	-- getters and setters, and values read while building it). Rebuild it;
-	-- re-registering it redraws the window and keeps the selected section.
-	if window then
-		AceConfig:RegisterOptionsTable(st.name, {
-			name = st.name,
-			type = 'group',
-			args = self:GetOptionsTable(),
-		})
+	-- An open /sui window's tree was built for the old profile (some getters
+	-- and setters, and values read while building it). Rebuild it; the window
+	-- redraws it next frame and keeps the page, tab and picker. Its fonts take
+	-- the new profile's faces. (optionswindow.lua loads after this file; tests
+	-- that build the tree without the window run this too.)
+	local OW = st.OptionsWindow
+	if OW then
+		if OW:IsShown() then OW:SetRoot(self:RegisterOptions()) end
+		OW:UpdateFonts()
 	end
 	self:Refresh()
 

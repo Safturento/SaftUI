@@ -724,6 +724,15 @@ function Frame.IsMovable(self, s) return s.movable == true end
 function Frame.SetClampedToScreen(self, s, clamped) s.clamped = clamped and true or false end
 function Frame.IsClampedToScreen(self, s) return s.clamped == true end
 function Frame.RegisterForDrag(self, s, ...) s.drag_buttons = { ... } end
+-- Moving by the mouse: StartMoving errors on a frame that isn't movable, as
+-- in game. Not mimicked: the frame following the cursor, and the anchor the
+-- game gives it when the move stops (a test places the frame itself between
+-- the two calls). The state is in stub.state(frame).moving.
+function Frame.StartMoving(self, s)
+	if not s.movable then usage(s, 'StartMoving(): the frame is not movable') end
+	s.moving = true
+end
+function Frame.StopMovingOrSizing(self, s) s.moving = false end
 
 -- Events: frames registered for an event, in registration order, so
 -- stub.fire_event runs them in a stable order.
@@ -817,6 +826,13 @@ function ScrollFrame.SetScrollChild(self, s, child)
 	s.scroll_child = child
 end
 function ScrollFrame.GetScrollChild(self, s) return s.scroll_child end
+-- The vertical scroll offset, remembered. Not mimicked: the scroll child is
+-- drawn where its own anchors put it, not shifted up by the offset.
+function ScrollFrame.SetVerticalScroll(self, s, offset) s.vertical_scroll = number_arg(s, offset, 'offset') end
+function ScrollFrame.GetVerticalScroll(self, s) return s.vertical_scroll or 0 end
+-- The game re-reads the scroll child's size only when told to; the stub reads
+-- it whenever asked, so this only counts the calls (stub.state(frame).child_rect_updates).
+function ScrollFrame.UpdateScrollChildRect(self, s) s.child_rect_updates = (s.child_rect_updates or 0) + 1 end
 
 ------------------------------------------------------------------ Slider and StatusBar
 

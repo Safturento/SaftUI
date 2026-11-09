@@ -1,8 +1,20 @@
 --[[
 	WoW's additions to Lua 5.1: the short global names for math, string and
-	table functions, wipe, strtrim and the bit library. Add more here when
-	SaftUI code needs them, with the game's behavior.
+	table functions, wipe, strtrim, xpcall's arguments and the bit library.
+	Add more here when SaftUI code needs them, with the game's behavior.
 ]]
+
+-- WoW's xpcall passes the arguments after the handler on to the function (as
+-- Lua 5.2's does); Lua 5.1's drops them. CallbackHandler-1.0 dispatches every
+-- callback this way, so without them an AceConfigRegistry or AceDB callback
+-- would get no event name or arguments.
+local xpcall51, unpack51, select51 = xpcall, unpack, select
+function xpcall(f, handler, ...)
+	local n = select51('#', ...)
+	if n == 0 then return xpcall51(f, handler) end
+	local args = { ... }
+	return xpcall51(function() return f(unpack51(args, 1, n)) end, handler)
+end
 
 -- Global aliases WoW defines (the same functions as the library ones).
 abs, ceil, floor, max, min, sqrt = math.abs, math.ceil, math.floor, math.max, math.min, math.sqrt

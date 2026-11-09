@@ -54,6 +54,7 @@ function CHT:GetConfigTable()
 	return {
 		name = 'Chat',
 		type = 'group',
+		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
 		args = {
 			general = {
 				name = 'General',

@@ -131,6 +131,7 @@ function LT:GetConfigTable()
 	return {
 		name = 'Loot',
 		type = 'group',
+		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
 		args = args,
 	}
 end

@@ -111,6 +111,7 @@ function XP:GetConfigTable()
 	return {
 		name = 'Experience',
 		type = 'group',
+		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
 		args = {
 			general = {
 				name = 'General',

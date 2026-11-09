@@ -8,7 +8,7 @@
 -- contract the popups use:
 --   * UF:UpdateConfig is unitframes.lua's (it needs oUF). It counts its calls.
 --   * st.Config:Export and Import are SaftUI-Core/Config/config.lua's, which
---     needs AceDB, AceConfigDialog and others. The real ones turn the data
+--     needs AceDB, AceConfigRegistry and others. The real ones turn the data
 --     into text and back (Base64 of compressed AceSerializer text); these
 --     take the text 'GOOD' for { target = { width = 9 } } and any other text
 --     for no profile, and Export records what it was given and returns

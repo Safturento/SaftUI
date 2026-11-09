@@ -113,6 +113,7 @@ function INV:GetConfigTable()
 	return {
 		name = 'Bags',
 		type = 'group',
+		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
 		args = args,
 	}
 end

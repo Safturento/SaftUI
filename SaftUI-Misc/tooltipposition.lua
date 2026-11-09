@@ -215,6 +215,7 @@ function TT:GetConfigTable()
 	return {
 		name = 'Tooltip',
 		type = 'group',
+		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
 		args = {
 			general = {
 				name = 'General',

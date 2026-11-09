@@ -789,6 +789,7 @@ function AP:GetConfigTable()
 	return {
 		name = 'Auras',
 		type = 'group',
+		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
 		args = args,
 	}
 end
