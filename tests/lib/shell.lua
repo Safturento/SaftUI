@@ -18,7 +18,7 @@
 	  st.config.profile       empty until apply_defaults()
 	  st:BindModuleConfig     as SaftUI-Core/Config/config.lua has it
 	  st.Config               the Config module, with Refresh and GetWindow (no /sui window)
-	  apply_defaults()        fills st.config.profile from st.defaults
+	  apply_defaults()        fills st.config.profile from st.defaults, with AceDB's wildcard keys
 	  load_core_helpers()     loads Core's frame helpers and what they need
 ]]
 
@@ -276,26 +276,58 @@ function st:BindModuleConfig(module, key)
 	return module.config
 end
 
--- Fills st.config.profile from st.defaults, as AceDB does in game: every key
--- the profile lacks gets the default (tables are deep-copied), and values the
--- profile has are kept. Load the defaults files (e.g.
--- SaftUI-Core/Config/defaults.lua) first.
-local function fill(profile, defaults)
-	for key, value in pairs(defaults) do
-		if profile[key] == nil then
-			profile[key] = type(value) == 'table' and fill({}, value) or value
-		elseif type(profile[key]) == 'table' and type(value) == 'table' then
-			fill(profile[key], value)
+-- Fills st.config.profile from st.defaults the way AceDB-3.0's copyDefaults
+-- does (SaftUI-Core/Libraries/Ace3/AceDB-3.0/AceDB-3.0.lua): every key the
+-- profile lacks gets the default (tables are deep-copied), and values the
+-- profile has are kept. The wildcard keys are AceDB's too:
+--   ['*'] and ['**'] are never keys of the profile. Their value is the
+--   default of every key the table doesn't have: a table is copied into each
+--   new subtable, a plain value is what any other key reads as. It works for
+--   keys made later, through a metatable on the table, and it is filled into
+--   the tables the profile already has there.
+--   ['**'] beside other tables' keys also fills those keys' tables.
+-- Load the defaults files (e.g. SaftUI-Core/Config/defaults.lua) first.
+local function copy_defaults(dest, src)
+	for key, value in pairs(src) do
+		if key == '*' or key == '**' then
+			if type(value) == 'table' then
+				setmetatable(dest, {
+					__index = function(t, key2)
+						if key2 == nil then return nil end
+						local subtable = {}
+						copy_defaults(subtable, value)
+						rawset(t, key2, subtable)
+						return subtable
+					end,
+				})
+				for existing_key, existing in pairs(dest) do
+					if rawget(src, existing_key) == nil and type(existing) == 'table' then
+						copy_defaults(existing, value)
+					end
+				end
+			else
+				setmetatable(dest, { __index = function(t, key2) return key2 ~= nil and value or nil end })
+			end
+		elseif type(value) == 'table' then
+			if rawget(dest, key) == nil then rawset(dest, key, {}) end
+			if type(dest[key]) == 'table' then
+				copy_defaults(dest[key], value)
+				if src['**'] then
+					copy_defaults(dest[key], src['**'])
+				end
+			end
+		elseif rawget(dest, key) == nil then
+			rawset(dest, key, value)
 		end
 	end
-	return profile
+	return dest
 end
 
 function apply_defaults()
 	if type(st.defaults) ~= 'table' then
 		error('apply_defaults: there is no st.defaults yet; load SaftUI-Core/Config/defaults.lua first', 2)
 	end
-	fill(st.config.profile, st.defaults)
+	copy_defaults(st.config.profile, st.defaults)
 end
 
 -- Core's frame helpers and what they need, in TOC order: LibSharedMedia and

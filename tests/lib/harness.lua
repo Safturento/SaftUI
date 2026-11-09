@@ -13,6 +13,7 @@
 	  reset_world()                  rebuilds the WoW stubs and the core shell.
 	  take_errors()                  the errors reported to the game's error handler so far in this case.
 	  report_error(message)          what the stubbed error handler calls.
+	  debugprofilestop()             WoW's timer, in milliseconds.
 	  REPO_ROOT, TESTS_DIR           absolute paths, without a trailing slash.
 ]]
 
@@ -23,6 +24,7 @@ local REPO_ROOT, TESTS_DIR = REPO_ROOT, TESTS_DIR
 local io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs =
 	io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs
 local traceback, getinfo = debug.traceback, debug.getinfo
+local clock = os.clock -- os is removed below
 local format, concat = string.format, table.concat
 
 -- The WoW stubs and the core shell, from tests/, in load order. Every test
@@ -294,6 +296,14 @@ end
 -- SaftUI code needs WoW's time or date, add them to tests/wow/lua.lua.
 for _, name in ipairs({ 'python', 'io', 'os', 'require', 'dofile', 'loadfile', 'package', 'module' }) do
 	_G[name] = nil
+end
+
+-- WoW's debugprofilestop: milliseconds of a high-resolution timer, for a test
+-- that checks how long code takes. Here it is the process's CPU time, so it
+-- counts the code's own work. It lives here, not in tests/wow/, because it
+-- needs os.clock, which is gone by the time the stubs load.
+function debugprofilestop()
+	return clock() * 1000
 end
 
 base_globals = {}

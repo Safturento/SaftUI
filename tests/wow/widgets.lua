@@ -45,6 +45,7 @@ local TYPES = {
 	GameTooltip = { 'Object', 'ScriptRegion', 'Frame', 'GameTooltip' },
 	ScrollFrame = { 'Object', 'ScriptRegion', 'Frame', 'ScrollFrame' },
 	Slider = { 'Object', 'ScriptRegion', 'Frame', 'Slider' },
+	EditBox = { 'Object', 'ScriptRegion', 'Frame', 'FontInstance', 'EditBox' },
 	StatusBar = { 'Object', 'ScriptRegion', 'Frame', 'StatusBar' },
 	Texture = { 'Object', 'ScriptRegion', 'Region', 'Texture' },
 	FontString = { 'Object', 'ScriptRegion', 'Region', 'FontInstance', 'FontString' },
@@ -61,6 +62,7 @@ local SCRIPTS = {
 	ScrollFrame = { 'OnScrollRangeChanged', 'OnVerticalScroll', 'OnHorizontalScroll' },
 	Slider = { 'OnValueChanged', 'OnMinMaxChanged' },
 	StatusBar = { 'OnValueChanged', 'OnMinMaxChanged' },
+	EditBox = { 'OnTextChanged', 'OnEnterPressed', 'OnEscapePressed', 'OnTabPressed', 'OnEditFocusGained', 'OnEditFocusLost' },
 }
 
 local POINTS_H = {
@@ -89,6 +91,7 @@ local Object, ScriptRegion, Region, Frame, Button, GameTooltip, Texture, FontIns
 	API.Object, API.ScriptRegion, API.Region, API.Frame, API.Button, API.GameTooltip,
 	API.Texture, API.FontInstance, API.FontString
 local CheckButton, ScrollFrame, Slider, StatusBar = API.CheckButton, API.ScrollFrame, API.Slider, API.StatusBar
+local EditBox = API.EditBox
 
 ------------------------------------------------------------------ helpers
 
@@ -610,6 +613,14 @@ function FontString.SetText(self, s, text)
 end
 function FontString.GetText(self, s) return s.text end
 
+-- SetText of string.format(format, ...). Secret values can't be mimicked, so
+-- the arguments are plain; format errors as string.format does.
+function FontString.SetFormattedText(self, s, format, ...)
+	if not font_of(s) then usage(s, 'SetFormattedText(): Font not set') end
+	if type(format) ~= 'string' then usage(s, 'SetFormattedText(): format must be a string') end
+	s.text = string.format(format, ...)
+end
+
 -- There are no font metrics outside the game, so each character counts as
 -- half the font's height wide, and a line of text is one font height tall.
 function FontString.GetStringWidth(self, s)
@@ -846,6 +857,24 @@ function StatusBar.GetStatusBarColor(self, s)
 	return c[1], c[2], c[3], c[4]
 end
 
+------------------------------------------------------------------ EditBox
+
+-- Setting different text runs OnTextChanged(self, false): the change didn't
+-- come from the user typing.
+function EditBox.SetText(self, s, text)
+	if type(text) ~= 'string' and type(text) ~= 'number' then usage(s, 'SetText(): text must be a string') end
+	text = tostring(text)
+	local changed = text ~= (s.text or '')
+	s.text = text
+	if changed then run_script(self, 'OnTextChanged', false) end
+end
+function EditBox.GetText(self, s) return s.text or '' end
+-- Selects text from start to stop (0 and -1: all of it). The selection is
+-- kept in stub.state(editbox).highlight as { start, stop }.
+function EditBox.HighlightText(self, s, start, stop)
+	s.highlight = { start or 0, stop or -1 }
+end
+
 ------------------------------------------------------------------ GameTooltip
 
 function GameTooltip.SetOwner(self, s, owner, anchor)
@@ -885,7 +914,7 @@ end
 -- Frame types CreateFrame knows, by lowercase name (the game ignores case).
 local FRAME_TYPES = {
 	frame = 'Frame', button = 'Button', checkbutton = 'CheckButton', gametooltip = 'GameTooltip',
-	scrollframe = 'ScrollFrame', slider = 'Slider', statusbar = 'StatusBar',
+	scrollframe = 'ScrollFrame', slider = 'Slider', statusbar = 'StatusBar', editbox = 'EditBox',
 }
 
 -- Templates CreateFrame knows. Each sets up a new frame the way the template

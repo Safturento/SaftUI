@@ -127,6 +127,46 @@ test('apply_defaults fills the profile from st.defaults and keeps what is there'
 	check(r == 0 and g == 0.68 and b == 0.94, 'colors keep their ColorMixin methods')
 end)
 
+test("apply_defaults has AceDB's wildcard keys: '**' fills every sibling, made later too", function()
+	reset_world()
+	SaftUI.defaults = {
+		profiles = { ['**'] = { player = { width = 1, tags = { 'a' } }, ['*'] = 7 } },
+		named = { fixed = { own = 1 }, ['**'] = { extra = 2 } },
+		scalar = { ['*'] = 'x' },
+	}
+	SaftUI.config.profile = { profiles = { Old = { player = { width = 9 } } } }
+	apply_defaults()
+	local profiles = SaftUI.config.profile.profiles
+	eq(rawget(profiles, '**'), nil, "'**' is not a key of the profile")
+	eq(profiles.Old.player.width, 9, 'a value the profile has is kept')
+	eq(profiles.Old.player.tags[1], 'a', 'a table the profile already had gets the defaults')
+	eq(rawget(profiles, 'New'), nil, 'a profile nobody has asked for is not there')
+	eq(profiles.New.player.width, 1, 'a key made later gets the defaults')
+	check(rawget(profiles, 'New') ~= nil, 'and is kept once read')
+	check(profiles.New.player ~= profiles.Other.player and profiles.New.player.tags ~= profiles.Other.player.tags,
+		'each key gets its own copy')
+	profiles.New.player.width = 5
+	eq(profiles.Other.player.width, 1, 'changing one leaves the next key at the defaults')
+	eq(profiles.New.anything, 7, "'*' with a plain value is what any other key reads as")
+	eq(rawget(profiles.New, 'anything'), nil, 'and is not stored')
+	eq(SaftUI.config.profile.named.fixed.extra, 2, "a '**' beside a table's key also fills that key's table")
+	eq(SaftUI.config.profile.named.fixed.own, 1, 'and its own defaults stay')
+	eq(SaftUI.config.profile.named.other.extra, 2, 'and fills any other key')
+	eq(SaftUI.config.profile.scalar.whatever, 'x', 'a scalar wildcard answers any key')
+	local count = 0
+	for _ in pairs(profiles) do count = count + 1 end
+	eq(count, 3, 'pairs sees only the profiles made (Old, New, Other)')
+
+	-- With the unit frames' real defaults, where config.lua depends on '**'.
+	reset_world()
+	load_saftui('SaftUI-Core/Config/defaults.lua')
+	load_saftui('SaftUI-Unitframes/config/default.lua')
+	apply_defaults()
+	local uf = SaftUI.config.profile.unitframes
+	eq(rawget(uf.profiles, '**'), nil, "unitframes.profiles has no literal '**' key")
+	eq(uf.profiles.Fresh.player.width, 301, 'a new unit frame profile gets the real unit defaults')
+end)
+
 test('the shell enables a module once: OnInitialize, then OnEnable, then its submodules', function()
 	reset_world()
 	local calls = {}
@@ -316,4 +356,45 @@ test('SetDefaultModuleLibraries is AceAddon\'s: before any module, and the libra
 	eq(ok, false, 'it errors once a module exists')
 	check(tostring(err):find('cannot change the module defaults', 1, true), 'AceAddon\'s message: ' .. tostring(err))
 	check(not pcall(SaftUI:NewModule('Other').SetDefaultModuleLibraries, SaftUI:GetModule('Other'), 'AceTimer-3.0'), 'a library the shell lacks errors')
+end)
+
+test('an edit box, SetFormattedText, the Enums, GameFontNormal and debugprofilestop', function()
+	reset_world()
+	local box = CreateFrame('EditBox', nil, UIParent)
+	eq(box:GetText(), '', 'an edit box starts empty')
+	local changes = {}
+	box:SetScript('OnTextChanged', function(_, user_input) changes[#changes + 1] = user_input end)
+	box:SetText('abc'); box:SetText('abc')
+	eq(#changes, 1, 'OnTextChanged runs only when the text changes')
+	eq(changes[1], false, 'and says the user did not type it')
+	eq(box:GetText(), 'abc')
+	check(not pcall(box.SetText, box, {}), 'SetText wants a string')
+	check(not pcall(function() return UIParent:NotAMethod() end), 'a frame is still strict')
+	local plain = CreateFrame('Frame', nil, UIParent)
+	check(not pcall(plain.HighlightText, plain), 'HighlightText on a plain frame errors, wrong object type')
+
+	local fs = UIParent:CreateFontString(nil, 'OVERLAY')
+	check(not pcall(fs.SetFormattedText, fs, '%d', 1), 'SetFormattedText needs a font, as SetText does')
+	fs:SetFontObject(GameFontNormal)
+	fs:SetFormattedText('%.0f', 25.4)
+	eq(fs:GetText(), '25', 'SetFormattedText formats')
+	check(not pcall(fs.SetFormattedText, fs, '%d', {}), 'and errors as string.format does')
+	eq(select(2, GameFontNormal:GetFont()), 12, 'GameFontNormal is 12 high')
+
+	eq(Enum.BagIndex.AccountBankTab_9, 23, 'Enum.BagIndex')
+	eq(Enum.StatusBarInterpolation.ExponentialEaseOut, 1, 'Enum.StatusBarInterpolation')
+	eq(Enum.PowerType.Mana, 0, 'Enum.PowerType')
+
+	local t0 = debugprofilestop()
+	check(type(t0) == 'number' and debugprofilestop() >= t0, 'debugprofilestop is a number that does not go back')
+	reset_world()
+	check(type(debugprofilestop) == 'function', 'and survives reset_world')
+end)
+
+test("LibStub is the real one: a library nobody registered errors, and a fixture's has only its methods", function()
+	reset_world()
+	load_test_file('unitframes/fixtures/ace_libs.lua')
+	check(type(LibStub('AceConfigDialog-3.0')) == 'table', 'a registered library is found')
+	check(not pcall(LibStub, 'AceGUI-3.0'), 'an unregistered one errors')
+	eq(LibStub('AceConfig-3.0').RegisterOptionsTable, nil, 'the fixture has no methods nothing calls')
 end)

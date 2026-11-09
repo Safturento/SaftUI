@@ -23,9 +23,11 @@ covers:
 | `tests/lib/harness.lua` | The test API and the loader. |
 | `tests/lib/shell.lua` | The core shell (below). |
 | `tests/lib/harness_self_test.lua` | The harness's own checks: Lua 5.1, strict and faithful stubs, the loader, the shell. If these fail, trust nothing else. |
-| `tests/wow/` | WoW API stubs, shared by every test: `lua.lua` (WoW's Lua additions), `game.lua` (game state API and the `stub` controls), `widgets.lua` (frames, buttons, status bars, sliders, scroll frames, textures, font strings, fonts), `blizzard.lua` (Blizzard's Lua: mixins, colors, EventRegistry, backdrops, PixelUtil). |
+| `tests/wow/` | WoW API stubs, shared by every test: `lua.lua` (WoW's Lua additions), `game.lua` (game state API and the `stub` controls), `widgets.lua` (frames, buttons, edit boxes, status bars, sliders, scroll frames, textures, font strings, fonts), `blizzard.lua` (Blizzard's Lua: mixins, colors, EventRegistry, backdrops, PixelUtil, the `Enum` tables, `GameFontNormal`). |
 | `tests/<area>/` | Tests by addon (`core/`, `bags/`, `misc/`, `unitframes/`, …), named `*_test.lua`. Stand-ins for third-party addons go in `tests/<area>/fixtures/`. A file without the `_test` suffix (a helper the area's tests share) isn't run. |
-| `tests/misc/` | The RestedXP skin's tests (`restedxp_*_test.lua`), with `restedxp_helpers.lua` (the world they build and the readers they share), `fixtures/restedxp_world.lua` (RestedXP's guide window), `fixtures/libcandybar.lua` (LibCandyBar and RestedXP's timers) and `fixtures/locked_widget.lua` (the lock both fixtures put on their frames, so a skin that writes a field onto, or `SetScript`s, another addon's frame fails). `restedxp_fixtures_test.lua` checks the fixtures' own behavior. |
+| `tests/bags/` | The bag layout tests (`container_hold_test.lua`, `container_pack_test.lua`), with `container_helpers.lua` (the world with the real `container.lua`, `inventory.lua`, `movers.lua`, `category.lua` and the module's defaults, and the container and category frames the layout works on). |
+| `tests/unitframes/` | `power_text_test.lua` (smoothing, power percent text, the additional power bar's text, secret values) and `profiles_test.lua` (the unit frame profile popups), with `fixtures/ace_libs.lua` (the Ace3 libraries `config/config.lua` takes from LibStub). |
+| `tests/misc/` | `experience_test.lua` (the XP bar's frame levels and colors). The RestedXP skin's tests (`restedxp_*_test.lua`), with `restedxp_helpers.lua` (the world they build and the readers they share), `fixtures/restedxp_world.lua` (RestedXP's guide window), `fixtures/libcandybar.lua` (LibCandyBar and RestedXP's timers) and `fixtures/locked_widget.lua` (the lock both fixtures put on their frames, so a skin that writes a field onto, or `SetScript`s, another addon's frame fails). `restedxp_fixtures_test.lua` checks the fixtures' own behavior. |
 
 ## Writing a test
 
@@ -54,9 +56,10 @@ The API (globals, defined in `tests/lib/harness.lua`):
 | `load_test_file(path)` | Runs a helper or fixture by its path from `tests/`. |
 | `addon_namespace(addon)` | The namespace table `load_saftui` gives that addon's files (e.g. `addon_namespace('SaftUI-Unitframes').oUF`). |
 | `reset_world()` | Rebuilds the stubs and the shell in the same Lua state, for files that want a fresh world per case. Globals made since the harness loaded are removed; the test file's locals survive. Load SaftUI files again after it. |
-| `apply_defaults()` | Fills `st.config.profile` from `st.defaults` as AceDB does: missing keys get deep copies, existing values stay. Load the defaults files first. |
+| `apply_defaults()` | Fills `st.config.profile` from `st.defaults` as AceDB's `copyDefaults` does: missing keys get deep copies, existing values stay, and the `['*']` / `['**']` wildcard keys work (never keys of the profile; a `'**'` table's defaults fill every sibling key, including keys made later by reading them, so `rawget` tells whether a key was made). Load the defaults files first. |
 | `load_core_helpers()` | Loads Core's frame helpers for real: LibSharedMedia, `Widgets/button.lua`, `panels.lua`, the media and fonts, `Config/defaults.lua` (then `apply_defaults()`) and `Config/widgets.lua`, and enables the Fonts module. Use it before anything that calls `st:CreateFrame`, `st:SetBackdrop`, `st:CreateButton`, `st:GetFont` or `st.Config.generators`. |
 | `take_errors()` | The errors reported to the game's error handler so far in this case, as a list, cleared. |
+| `debugprofilestop()` | WoW's timer, in milliseconds (the process's CPU time), for a check on how long code takes. |
 | `REPO_ROOT`, `TESTS_DIR` | Absolute paths. |
 
 - Cases share the file's world and run in order. A case may build on the one before, or call `reset_world()` for a clean start.
@@ -75,7 +78,7 @@ Every file starts with the WoW stubs and the core shell loaded.
   - `st.config.profile` (empty until `apply_defaults()`), `st:BindModuleConfig`, and `st.Config` with `Refresh` and `GetWindow` (no `/sui` window, so `nil`).
 
   It then loads Core's real `constants.lua`, `api.lua` and `utilities.lua` in TOC order, and sets UIParent's scale to `st.scale`, as `init.lua` does.
-- **The `stub` table** puts the game in a state: `stub.interface` (16001, Forever), `stub.screen_width` / `screen_height` (UIParent follows them and its scale), `stub.in_combat`, `stub.cursor_x` / `cursor_y`, `stub.time`, `stub.shift_down` / `ctrl_down` / `alt_down`, and `stub.loaded_addons` (a set of names for `C_AddOns.IsAddOnLoaded`). Its helpers:
+- **The `stub` table** puts the game in a state: `stub.interface` (16001, Forever), `stub.screen_width` / `screen_height` (UIParent follows them and its scale), `stub.in_combat`, `stub.cursor_x` / `cursor_y`, `stub.time`, `stub.shift_down` / `ctrl_down` / `alt_down`, and `stub.loaded_addons` (a set of names for `C_AddOns.IsAddOnLoaded`), and the player's experience: `stub.max_level`, `level`, `xp`, `xp_max` and `rested_xp` (nil for none). Its helpers:
   - `stub.state(widget)` reads what the API has no getter for (e.g. `.color_texture`);
   - `stub.fire_event(event, ...)` fires a game event to every registered frame, and so to shell modules;
   - `stub.fire_script(widget, script, ...)` runs a script handler and its hooks.
@@ -83,7 +86,13 @@ Every file starts with the WoW stubs and the core shell loaded.
 
 ## The stub rules
 
-1. **Real SaftUI helpers.** Where SaftUI has its own helper (`st:CreateButton`, `st:SetBackdrop`, `st:RoundToPixel`, the edit mode framework, …), load its real file with `load_saftui`. Never fake a SaftUI function in a test or a stub. The shell stands in only for plumbing (Ace3, AceDB) and never fakes behavior a test checks. One narrow exception: `H.make_chat` in `tests/misc/restedxp_helpers.lua` stands in for SaftUI-Chat, whose real code needs Blizzard's chat frames; a stand-in like it models only the contract the code under test consumes (here, `ApplyAppearance` exists and is hookable, and `UpdateConfig` and the option setter end in it) and says in a comment what the real code does beyond it.
+1. **Real SaftUI helpers.** Where SaftUI has its own helper (`st:CreateButton`, `st:SetBackdrop`, `st:RoundToPixel`, the edit mode framework, …), load its real file with `load_saftui`. Never fake a SaftUI function in a test or a stub. The shell stands in only for plumbing (Ace3, AceDB) and never fakes behavior a test checks. One narrow exception, for a file whose real code can't load here (it needs a library or Blizzard frames that aren't stubbed): a stand-in models only the contract the code under test consumes and says in a comment what the real code does beyond it. The stand-ins are:
+   - `H.make_chat` in `tests/misc/restedxp_helpers.lua` (SaftUI-Chat: `ApplyAppearance` exists and is hookable, and `UpdateConfig` and the option setter end in it);
+   - in `tests/bags/container_helpers.lua`, the scroll frame (`st:CreateScrollFrame` needs Blizzard's `ScrollFrameTemplate` and the scroll bar skin; the layout only calls its `SetContentSize`);
+   - in `tests/unitframes/profiles_test.lua`, `UF:UpdateConfig` (needs oUF), `st.Config:Export` / `Import` (`Config/config.lua` needs AceDB and AceConfigDialog, and the shell already makes the Config module) and the popup frame with `GetEditBox`;
+   - in `tests/unitframes/power_text_test.lua`, `UF:RegisterElement` (a copy of unitframes.lua's table store) and the secret value (see rule 4).
+
+   A third-party library is never a stand-in: load real `LibStub` and register a fixture per library (`tests/unitframes/fixtures/ace_libs.lua`) with only the methods the loaded files call, so an unknown library, or a method nothing gave it, errors.
 2. **Strict.** A stub widget answers only the methods `tests/wow/` defines. Any other name is nil, so calling it errors with the method's name. Never add a catch-all `__index` that turns unknown names into no-ops. When a test needs a method, add it.
 3. **Faithful.** A stub behaves like the real API, including how it fails:
    - a widget method called with the wrong type of self errors "Wrong object type" (a FontString's `SetText` on a Button);
@@ -91,7 +100,7 @@ Every file starts with the WoW stubs and the core shell loaded.
    - `SetFontObject(nil)`, an unknown template, point, strata or script name, and an anchor loop all error.
 
    A stub kinder than the real thing is a bug in the stub: it lets a test pass where the game errors. Check real behavior in Blizzard's source (Gethe/wow-ui-source, `forever` branch; widget methods in `Blizzard_APIDocumentationGenerated`), as `.agents/clients.md` describes.
-4. **Say what can't be mimicked.** The stubs don't run the game's layout pass (so `OnSizeChanged` never fires by itself, and a font string is one line, never wrapped), `OnUpdate`, secret values or taint. A test that needs one drives it by hand (`stub.fire_script`, a method overridden on one frame), with a comment saying so. The mouse is a position (`stub.cursor_x` / `cursor_y`): `IsMouseOver` is the rectangle test, and `IsMouseMotionFocus` is true for the topmost visible mouse-enabled frame under it.
+4. **Say what can't be mimicked.** The stubs don't run the game's layout pass (so `OnSizeChanged` never fires by itself, and a font string is one line, never wrapped), `OnUpdate`, secret values or taint. A test that needs one drives it by hand (`stub.fire_script`, a method overridden on one frame), with a comment saying so. A secret value is a table that errors when compared (`tests/unitframes/power_text_test.lua`), and a test that passes one to a font string overrides `SetText` / `SetFormattedText` on that one font string, since the stub's take only strings and numbers. The mouse is a position (`stub.cursor_x` / `cursor_y`): `IsMouseOver` is the rectangle test, and `IsMouseMotionFocus` is true for the topmost visible mouse-enabled frame under it.
 5. **Pinned paths.** Tests name the real files they load, by path from the repo root.
 6. **Shared stubs, local fixtures.** WoW's API goes in `tests/wow/`, for every test. Stand-ins for other addons (RestedXP, LibCandyBar) are fixtures beside their tests.
 

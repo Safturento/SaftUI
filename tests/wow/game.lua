@@ -24,6 +24,13 @@ stub = {
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
 	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
+	-- The player's experience: GetMaxPlayerLevel, UnitLevel('player'), UnitXP,
+	-- UnitXPMax and GetXPExhaustion (rested experience; nil for none).
+	max_level = 80,
+	level = 20,
+	xp = 450,
+	xp_max = 1000,
+	rested_xp = nil,
 }
 
 -- Only the interface number means anything here.
@@ -67,6 +74,24 @@ function UnitFactionGroup(unit)
 	if unit == 'player' then return 'Alliance', 'Alliance' end
 end
 function GetRealmName() return 'Testrealm' end
+
+-- Experience. The player's level is stub.level; other units don't exist.
+function GetMaxPlayerLevel() return stub.max_level end
+function UnitLevel(unit)
+	if unit == 'player' then return stub.level end
+end
+function UnitXP(unit)
+	if unit == 'player' then return stub.xp end
+end
+function UnitXPMax(unit)
+	if unit == 'player' then return stub.xp_max end
+end
+function GetXPExhaustion() return stub.rested_xp end
+
+-- Reputation: no faction is watched.
+C_Reputation = {
+	GetWatchedFactionData = function() return nil end,
+}
 
 -- The game shows an error passed to its handler and carries on. The default
 -- handler here hands it to the harness (report_error), which fails the

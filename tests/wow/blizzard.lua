@@ -1,6 +1,7 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
-	(CreateColor), EventRegistry, BackdropTemplateMixin and PixelUtil. Each follows its
+	(CreateColor), EventRegistry, BackdropTemplateMixin, PixelUtil, the
+	Enum tables and GameFontNormal. Each follows its
 	source in Gethe/wow-ui-source (forever branch), trimmed to what tests use.
 ]]
 
@@ -276,3 +277,33 @@ function PixelUtil.SetPoint(region, point, relativeTo, relativePoint, offsetX, o
 		PixelUtil.GetNearestPixelSize(offsetY, region:GetEffectiveScale(), minOffsetYPixels)
 	)
 end
+
+------------------------------------------------------------------ Enum
+
+-- Blizzard_APIDocumentationGenerated (forever branch), the enums SaftUI
+-- reads: BagIndexConstants, SimpleStatusBarConstants and PowerTypeConstants
+-- (PowerType trimmed to Mana).
+Enum = {
+	BagIndex = {
+		Accountbanktab = -3, Characterbanktab = -2, Keyring = -1,
+		Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5,
+		CharacterBankTab_1 = 6, CharacterBankTab_2 = 7, CharacterBankTab_3 = 8,
+		CharacterBankTab_4 = 9, CharacterBankTab_5 = 10, CharacterBankTab_6 = 11,
+		CharacterBankTab_7 = 12, CharacterBankTab_8 = 13, CharacterBankTab_9 = 14,
+		AccountBankTab_1 = 15, AccountBankTab_2 = 16, AccountBankTab_3 = 17,
+		AccountBankTab_4 = 18, AccountBankTab_5 = 19, AccountBankTab_6 = 20,
+		AccountBankTab_7 = 21, AccountBankTab_8 = 22, AccountBankTab_9 = 23,
+	},
+	StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
+	PowerType = { Mana = 0 },
+}
+
+------------------------------------------------------------------ fonts
+
+-- GameFontNormal: Blizzard_Fonts_Shared/Shared/FontStyles.xml gives it
+-- SystemFont_Shadow_Med1 (Fonts.xml: FRIZQT__.TTF at 12, shadow offset 1, -1)
+-- and NORMAL_FONT_COLOR (1, 0.82, 0). The other game fonts aren't stubbed.
+GameFontNormal = CreateFont('GameFontNormal')
+GameFontNormal:SetFont('Fonts\\FRIZQT__.TTF', 12, '')
+GameFontNormal:SetShadowOffset(1, -1)
+GameFontNormal:SetTextColor(1, 0.82, 0)
