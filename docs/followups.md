@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen)
+  - [2026-11-09 — The /link copy dialog replaces scripts on Blizzard's popup edit box](#2026-11-09--the-link-copy-dialog-replaces-scripts-on-blizzards-popup-edit-box)
   - [2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover)
   - [2026-11-08 — Forever: wrong or missing aura tooltips on party frames](#2026-11-08--forever-wrong-or-missing-aura-tooltips-on-party-frames)
   - [2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers](#2026-11-08--edit-mode-frames-anchored-straight-to-saftui-holders-tooltip-container-buffs-swing-timers)
@@ -40,6 +42,44 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-09 — Edit mode movers for unit frame parts placed on the screen
+
+**What:** Some unit frame elements are positioned against the screen (`position.frame = 'UIParent'`) rather than on their unit frame. They have no edit mode mover, so they move only by typing x/y offsets in `/sui`:
+- the player's power bar, castbar, class power and additional power (`SaftUI-Unitframes/config/units/player.lua`);
+- the target's castbar (`config/units/target.lua`);
+- the focus castbar (`config/units/focus.lua`).
+
+**Why noticed:** The 2026-11-09 settings and edit mode audit. The user said: "lets plan the unit frame parts positioning for later - that's a pretty big endeavor on its own".
+
+**Anchors:**
+- `UF:RegisterMovers` and `UF:GetMoverFrame` in `SaftUI-Unitframes/unitframes.lua`.
+- `UF:UpdateElementPosition` in `SaftUI-Unitframes/updaters.lua`.
+- The element position editor `generators.uf_element_position` in `SaftUI-Core/Config/widgets.lua`.
+- `st:RegisterMover` in `SaftUI-Core/EditMode/`.
+
+**What's been considered:** One idea: register a mover for any element whose position's `frame` is `UIParent`, re-registered when that changes. Most of these elements are children of secure unit frames, so moves go through `st:SafeReposition`.
+
+**Shape of work:** Needs a design pass. Open points:
+- the mover's frame (the element itself, or a holder);
+- what happens when an element switches between frame-relative and screen-relative;
+- group units (party, raid), whose elements repeat per member.
+
+**Open questions:**
+- Should every element be able to detach to the screen, or only the ones that do today?
+- Should dragging a frame-relative element in edit mode detach it?
+
+### 2026-11-09 — The /link copy dialog replaces scripts on Blizzard's popup edit box
+
+**What:** `EXTRACT_LINK_DIALOG` (`SaftUI-Core/utilities.lua`, `/link`) calls `SetScript('OnTextChanged')` and `SetScript('OnEscapePressed')` on the dialog's edit box. That replaces Blizzard's handlers on that `StaticPopupN` for good, so later Blizzard dialogs on the same frame lose them. A delete-item confirmation's typed text, for one, is reset to the link. That breaks taint rule 2. It also reads `self.editBox`, which current dialogs don't have (`GetEditBox()`), so `/link` likely errors anyway.
+
+**Why noticed:** On 2026-11-09, while fixing the unit frame profile popups, which had the same kind of field writes on `StaticPopup1`.
+
+**Anchors:** `SaftUI-Core/utilities.lua` (`EXTRACT_LINK_DIALOG`). Blizzard's dialog keys `EditBoxOnTextChanged` and `EditBoxOnEscapePressed` (`Blizzard_StaticPopup/SharedTemplates.lua` on the forever branch).
+
+**What's been considered:** Put the handlers in the dialog definition's `EditBoxOnTextChanged` / `EditBoxOnEscapePressed` keys. Blizzard calls those per dialog, so nothing is replaced. Find the edit box with `dialog:GetEditBox()`.
+
+**Shape of work:** A small fix in one file.
+
 ### 2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover
 
 **What:** An audit of every `st.defaults` table against `/sui` and edit mode. It found three kinds of gap. Some settings are read by the code but have no option. Some settings are read by nothing. Some frames SaftUI places have no edit mode mover. It also found a few broken options. Unit frame findings already listed in [Unit frame defaults that nothing reads, or that break when turned on](#2026-11-07--unit-frame-defaults-that-nothing-reads-or-that-break-when-turned-on) aren't repeated here.
@@ -58,7 +98,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons`.
 - **Chat:** `chat.linespacing`.
-- **Loot:** the whole loot window (`loot.popup.*`: template, font, name_wrap, width, button_height, spacing). `LT:GetConfigTable` (`SaftUI-Loot/options.lua:126`) adds only rolls and the feed.
+- **Loot:** `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) is in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
 - **Unit frames:**
   - `range_alpha.inside` and `.outside`.
   - `boss.spacing`: boss has no Layout group.
@@ -89,17 +129,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - Size, frame level and template keys that the element defaults (`config/default.lua:420-430`) merge into auras, Name and the indicators. Each of these elements sizes itself or can't take them.
 
 **Broken options and defaults:**
-- **Unitframes → General → Frame level** (`SaftUI-Unitframes/config/config.lua:516`): units have no `framelevel` default, so its get returns a table, and nothing reads the value.
-- **Unit frame profile Rename** (`config/config.lua:446`) shows `SAFTIU_UF_PROFILE_RENAME`, but the popup is `SAFTUI_UF_PROFILE_RENAME`. Its OnAccept is empty too, and so is Import's.
-- **Focus** (`config/units/focus.lua`) defines `health` twice (lines 11 and 39). The second replaces the first, so focus's health position override is lost.
+- **Fixed 2026-11-09 (5962f4d):**
+  - the unit frame profile Rename and Import, which also fixed `Config:Import`;
+  - the Frame level option, removed;
+  - focus's duplicate `health` table. The first table was removed, since it would have offset focus health without shrinking it.
 - **Health → Text → Deficit** has defaults only on party and the raids.
 
 **Frames with no edit mode mover:**
-- **Unit frame elements placed on the screen**, not on their frame. They are moved only by x/y offsets in `/sui`:
-  - the player's power, castbar, class power and additional power (`config/units/player.lua`);
-  - the target's castbar and the focus castbar.
-- **The zone text banner,** fixed at `TOP, 0, -300` (`SaftUI-Misc/Skinning/ZoneText.lua:51`).
-- **The loot window.** SaftUI restyles Blizzard's `LootFrame`, and Blizzard places it.
+- **Unit frame elements placed on the screen** are moved to their own entry, [Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen). The user wants that planned later as its own effort.
+- **The zone text banner,** fixed at `TOP, 0, -300` (`SaftUI-Misc/Skinning/ZoneText.lua:51`). The user said to leave it for now.
+- **The loot window.** Blizzard places it, and SaftUI's skin isn't loaded (see Loot above). The user said to leave its position for now.
 - **`Blizzard_WatchFrame.lua`** returns early on `st.retail`, which is true on both supported clients, so it is dead code rather than a gap.
 - Everything else SaftUI places has a mover.
 
