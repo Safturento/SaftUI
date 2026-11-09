@@ -51,6 +51,14 @@ function MM:OnEnable()
         MinimapCluster.DielFrame:Hide()
     end
 
+    -- Forever's player coordinates hang 18px under the minimap, across SaftUI's
+    -- experience bar. Nothing re-shows them after load, and hidden they stop
+    -- their OnUpdate. They have no OnHide.
+    local container = MinimapCluster.MinimapContainer
+    if container and container.PlayerCoords then
+        container.PlayerCoords:Hide()
+    end
+
     -- Blizzard's Edit Mode box for the cluster no longer controls our minimap,
     -- so keep it hidden. HookScript only; nothing is written onto the frame.
     if MinimapCluster.Selection then
