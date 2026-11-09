@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SaftUI options mockup</title>
+<style>
+@font-face { font-family: 'Colus'; src: url('/files/Colus-Regular.otf'); }
+@font-face { font-family: 'Agency'; src: url('/files/AgencyFB.ttf'); }
+@font-face { font-family: 'Agency'; font-weight: bold; src: url('/files/AgencyFB_Bold.ttf'); }
+@font-face { font-family: 'Homespun'; src: url('/files/homespun.ttf'); }
+
+:root {
+	--bg: #1f1f1f;          /* thick template backdrop (0.12) */
+	--bg-dark: #171717;
+	--edge: #4d4d4d;        /* thick template border (0.3) */
+	--alt: #1a1a1a;         /* thick template alt border (0.1) */
+	--line: #2e2e2e;        /* section divider */
+	--text: #e6e6cc;        /* colors.text.normal (0.9, 0.9, 0.8) */
+	--grey: #969696;        /* colors.text.grey */
+	--blue: #00adef;        /* colors.button.blue (0, 0.68, 0.94) */
+	--blue-dim: rgba(0, 173, 239, 0.25);
+	--field: #141414;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+	background: #3a3f2c url() center/cover;
+	background: radial-gradient(ellipse at 30% 20%, #5b5a3c 0%, #2f3324 55%, #1d2016 100%);
+	display: flex; align-items: center; justify-content: center;
+	font-family: 'Agency', sans-serif; color: var(--text);
+	-webkit-font-smoothing: none; image-rendering: pixelated;
+}
+
+/* SaftUI's thick template: dark line, grey border line, dark line, then the fill */
+.thick {
+	background: var(--bg);
+	border: 1px solid var(--edge);
+	box-shadow: 0 0 0 1px var(--alt), inset 0 0 0 1px var(--alt);
+}
+
+.window { width: 1040px; height: 700px; display: grid; grid-template-columns: 210px 1fr; grid-template-rows: 1fr 46px; }
+
+/* Sidebar */
+.side { grid-row: 1 / 3; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: var(--bg-dark); }
+.brand { padding: 18px 18px 14px; font-family: 'Colus'; font-size: 26px; letter-spacing: 1px; border-bottom: 1px solid var(--line); }
+.brand small { display: block; font-family: 'Agency'; font-size: 13px; color: var(--grey); letter-spacing: 0; margin-top: 2px; }
+.side-actions { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-bottom: 1px solid var(--line); }
+.nav { overflow-y: auto; padding: 6px 0 10px; flex: 1; }
+.nav-group { font-family: 'Colus'; font-size: 13px; color: var(--grey); padding: 12px 18px 4px; letter-spacing: 1px; }
+.nav-item { padding: 5px 18px 5px 22px; font-size: 16px; font-weight: bold; cursor: pointer; border-left: 2px solid transparent; }
+.nav-item:hover { background: #222; }
+.nav-item.active { background: var(--blue-dim); border-left-color: var(--blue); }
+.nav-item.top { padding-left: 18px; }
+.side-foot { padding: 8px 18px; font-size: 12px; color: var(--grey); border-top: 1px solid var(--line); }
+
+/* Main */
+.main { display: flex; flex-direction: column; min-height: 0; }
+.head { padding: 20px 28px 0; }
+.head h1 { margin: 0; font-family: 'Colus'; font-weight: normal; font-size: 34px; letter-spacing: 1px; }
+.head p { margin: 4px 0 0; color: var(--grey); font-size: 15px; }
+.tabs { display: flex; gap: 22px; padding: 14px 28px 0; border-bottom: 1px solid var(--line); align-items: flex-end; }
+.tab { padding: 0 2px 7px; font-size: 17px; font-weight: bold; color: var(--grey); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab.active { color: var(--text); border-bottom-color: var(--blue); }
+.tabs .spacer { flex: 1; }
+.search { width: 190px; margin-bottom: 6px; }
+.picker { padding: 12px 28px 0; display: flex; gap: 10px; align-items: center; font-weight: bold; font-size: 15px; }
+.body { flex: 1; overflow-y: auto; padding: 4px 28px 24px; }
+
+/* Sections and rows */
+.section { padding-top: 16px; }
+.section + .section { border-top: 1px solid var(--line); margin-top: 14px; }
+.section-title { font-family: 'Colus'; font-size: 15px; letter-spacing: 1px; color: var(--grey); margin-bottom: 6px; }
+.section-note { font-size: 13px; color: var(--grey); margin: -2px 0 6px; }
+.rows { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+.rows.four { grid-template-columns: repeat(4, 1fr); column-gap: 24px; }
+.row { display: flex; align-items: center; height: 34px; gap: 10px; }
+.row .label { flex: 1; font-weight: bold; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .label .hint { font-weight: normal; color: var(--grey); font-size: 13px; margin-left: 4px; }
+.row .ctl { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.row.wide { grid-column: 1 / -1; }
+
+/* Controls (SaftUI look: flat, square, 1px borders) */
+.field { background: var(--field); border: 1px solid var(--edge); color: var(--text); font-family: 'Agency'; font-size: 15px; height: 24px; padding: 0 8px; outline: none; }
+.field:focus { border-color: var(--blue); }
+select.field { width: 170px; appearance: none; cursor: pointer;
+	background-image: linear-gradient(45deg, transparent 50%, var(--grey) 50%), linear-gradient(135deg, var(--grey) 50%, transparent 50%);
+	background-position: calc(100% - 13px) 10px, calc(100% - 8px) 10px; background-size: 5px 5px; background-repeat: no-repeat; }
+input.field.text { width: 170px; }
+input.field.num { width: 46px; text-align: center; padding: 0 2px; }
+.slider { width: 116px; height: 24px; position: relative; display: flex; align-items: center; cursor: pointer; }
+.slider .track { position: absolute; left: 0; right: 0; height: 6px; background: var(--field); border: 1px solid var(--edge); }
+.slider .fill { position: absolute; left: 0; height: 6px; background: var(--blue); top: 9px; }
+.slider .knob { position: absolute; width: 6px; height: 14px; background: var(--text); top: 5px; margin-left: -3px; }
+.check { width: 18px; height: 18px; border: 1px solid var(--edge); background: var(--field); cursor: pointer; position: relative; }
+.check.on::after { content: ''; position: absolute; inset: 3px; background: var(--blue); }
+.swatch { width: 22px; height: 22px; border: 1px solid var(--edge); box-shadow: inset 0 0 0 1px #000; cursor: pointer; position: relative; overflow: hidden; }
+.swatch input { opacity: 0; position: absolute; inset: 0; cursor: pointer; }
+.reset { color: var(--grey); font-size: 14px; cursor: pointer; width: 12px; text-align: center; }
+.reset:hover { color: var(--text); }
+.btn { background: var(--bg); border: 1px solid var(--edge); color: var(--text); font-family: 'Agency'; font-weight: bold; font-size: 15px; height: 26px; padding: 0 14px; cursor: pointer; box-shadow: 0 0 0 1px var(--alt); }
+.btn:hover { border-color: var(--blue); }
+.btn.small { height: 24px; font-size: 14px; padding: 0 8px; }
+
+/* Previews */
+.preview { display: flex; align-items: center; justify-content: flex-end; }
+.tpl-preview { width: 170px; height: 24px; }
+.font-preview { font-size: 18px; color: var(--text); }
+
+/* Close button: a pixel-art X (SVG with crisp edges), three styles to compare */
+.main { position: relative; }
+.close { position: absolute; top: 14px; right: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.close svg { width: 10px; height: 10px; shape-rendering: crispEdges; fill: var(--grey); }
+.close:hover svg { fill: #dc6464; }
+.close:active svg { transform: translateY(1px); }
+/* A: square outline */
+.close.a { width: 24px; height: 24px; background: var(--field); border: 1px solid var(--edge); box-shadow: 0 0 0 1px var(--alt); }
+.close.a:hover { border-color: #dc6464; background: rgba(128, 26, 26, 0.4); }
+/* B: borderless X */
+.close.b { width: 24px; height: 24px; }
+.close.b svg { width: 12px; height: 12px; }
+.close.b:hover { background: rgba(128, 26, 26, 0.4); }
+/* C: corner tab, flush with the window's top right like today's red bar */
+.close.c { top: 0; right: 0; width: 36px; height: 24px; background: rgba(128, 26, 26, 0.4); border-left: 1px solid var(--edge); border-bottom: 1px solid var(--edge); }
+.close.c svg { fill: var(--text); }
+.close.c:hover { background: rgba(160, 30, 30, 0.75); }
+.close.c:hover svg { fill: #fff; }
+.variants { margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+.variants button { font-family: 'Agency'; font-weight: bold; font-size: 13px; background: #222; color: #ddd; border: 1px solid #555; padding: 2px 8px; cursor: pointer; }
+.variants button.on { border-color: var(--blue); color: #fff; }
+
+.foot { grid-column: 2; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-top: 1px solid var(--line); }
+.placeholder { color: var(--grey); padding: 40px 0; font-size: 16px; }
+.note { position: fixed; left: 16px; bottom: 12px; max-width: 360px; font-size: 13px; color: #ddd; background: rgba(0,0,0,0.55); padding: 8px 10px; }
+</style>
+</head>
+<body>
+
+<div class="window thick">
+	<div class="side">
+		<div class="brand">SaftUI<small>Options</small></div>
+		<div class="side-actions">
+			<button class="btn small">Edit mode</button>
+			<button class="btn small">Keybinds</button>
+		</div>
+		<div class="nav" id="nav"></div>
+		<div class="side-foot">Profile: <span style="color:var(--text)">Default</span></div>
+	</div>
+	<div class="main">
+		<div class="close a" id="close" title="Close (Esc)">
+			<svg viewBox="0 0 10 10" aria-hidden="true">
+				<!-- 2px-thick diagonals, pixel by pixel -->
+				<rect x="0" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="5" y="5" width="2" height="1"/><rect x="6" y="6" width="2" height="1"/><rect x="7" y="7" width="2" height="1"/><rect x="8" y="8" width="2" height="1"/><rect x="8" y="9" width="2" height="1"/>
+				<rect x="8" y="0" width="2" height="1"/><rect x="7" y="1" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="5" y="3" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="3" y="5" width="2" height="1"/><rect x="2" y="6" width="2" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="0" y="8" width="2" height="1"/><rect x="0" y="9" width="2" height="1"/>
+			</svg>
+		</div>
+		<div class="head"><h1 id="title"></h1><p id="desc"></p></div>
+		<div class="tabs" id="tabs"></div>
+		<div class="picker" id="picker"></div>
+		<div class="body" id="body"></div>
+	</div>
+	<div class="foot">
+		<button class="btn">Reload UI</button>
+		<button class="btn">Close</button>
+	</div>
+</div>
+
+<div class="note">Mockup only. Click the sidebar, tabs, checkboxes, sliders and color swatches. Settings and values are SaftUI's real ones; grouping is a first proposal.
+	<div class="variants">Close button:
+		<button class="on" data-v="a">A: square</button>
+		<button data-v="b">B: borderless</button>
+		<button data-v="c">C: corner tab</button>
+	</div>
+	<div id="closed" style="display:none;margin-top:6px;color:#dc6464">(The window would close here. Esc does the same.)</div>
+</div>
+
+<script>
+// --- Control builders -------------------------------------------------------
+const C = {
+	select: (value, options) => ({ t: 'select', value, options: options || [value] }),
+	slider: (value, min, max, step) => ({ t: 'slider', value, min, max, step: step || 1 }),
+	check: (value) => ({ t: 'check', value: !!value }),
+	color: (hex) => ({ t: 'color', value: hex }),
+	text: (value) => ({ t: 'text', value }),
+	num: (value) => ({ t: 'num', value }),
+	tpl: (name) => ({ t: 'tpl', value: name }),
+	font: (face, size) => ({ t: 'font', face, size }),
+};
+const TEMPLATES = ['Thick', 'Thin', 'ThickTransparent', 'ThinTransparent', 'Highlight', 'None'];
+const FONTS = ['Normal', 'Normal Med', 'Pixel', 'Pixel Med', 'Pixel Huge', 'Colus', 'Subtitle'];
+const FACES = ['AgencyFB Bold', 'AgencyFB', 'Colus', 'Homespun', 'Bebas Neue', 'Oswald', 'Dosis'];
+const OUTLINES = ['None', 'Outline', 'Thick Outline', 'Monochrome Outline'];
+const POINTS = ['Top Left', 'Top', 'Top Right', 'Left', 'Center', 'Right', 'Bottom Left', 'Bottom', 'Bottom Right'];
+const position = (point, frame, rel, x, y) => ({ title: 'Position', rows: [
+	['Anchor', C.select(point, POINTS)], ['Relative to', C.text(frame)],
+	['Relative point', C.select(rel, POINTS)], ['X offset', C.num(x)],
+	['', null], ['Y offset', C.num(y)],
+]});
+const colorGrid = (title, items, note) => ({ title, note, four: true,
+	rows: items.map(([name, hex, nameColor]) => [name, C.color(hex), { reset: true, nameColor }]) });
+
+// --- Pages -----------------------------------------------------------------
+const PAGES = {
+	global: { group: null, label: 'Global Settings', desc: 'Fonts, colors and panel looks shared by every SaftUI module.', tabs: {
+		General: [
+			{ title: 'Interface', rows: [
+				['Icon trim', C.slider(0.065, 0, 0.2, 0.005), { hint: 'crop of every icon' }], ['Screen inset', C.slider(20, 0, 60), { hint: 'how close frames go to the edge' }],
+			]},
+			{ title: 'Panels', rows: [
+				['Panel template', C.select('ThickTransparent', TEMPLATES)], ['Panel font', C.select('Normal', FONTS)],
+				['Tab height', C.slider(21, 14, 40)], ['', null],
+			]},
+			{ title: 'Headers and buttons', rows: [
+				['Header height', C.slider(31, 18, 50)], ['Header font', C.select('Normal', FONTS)],
+				['Button template', C.select('ThickTransparent', TEMPLATES)], ['Button font', C.select('Pixel', FONTS)],
+			]},
+		],
+		Fonts: [
+			{ title: 'Normal', note: 'Labels, values and most text.', rows: [
+				['Font', C.select('AgencyFB Bold', FACES)], ['Preview', C.font('Agency', 16)],
+				['Size', C.slider(16, 6, 40)], ['Outline', C.select('Outline', OUTLINES)],
+				['Shadow offset', C.num('0, 0')], ['Line spacing', C.slider(4, 0, 12)],
+			]},
+			{ title: 'Colus', note: 'Titles.', rows: [
+				['Font', C.select('Colus', FACES)], ['Preview', C.font('Colus', 22)],
+				['Size', C.slider(72, 6, 100)], ['Outline', C.select('Outline', OUTLINES)],
+				['Shadow offset', C.num('0, 0')], ['Line spacing', C.slider(4, 0, 12)],
+			]},
+			{ title: 'Pixel', note: 'Counts, timers and small labels.', rows: [
+				['Font', C.select('Homespun', FACES)], ['Preview', C.font('Homespun', 10)],
+				['Size', C.slider(10, 6, 40)], ['Outline', C.select('Monochrome Outline', OUTLINES)],
+				['Shadow offset', C.num('0, 0')], ['Line spacing', C.slider(4, 0, 12)],
+			]},
+		],
+		Templates: [
+			{ title: 'Thick', note: 'A grey line between two dark lines, 2px outside the frame.', rows: [
+				['Preview', C.tpl('Thick')], ['Thick border', C.check(true)],
+				['Border', C.color('#4d4d4d')], ['Inner and outer lines', C.color('#1a1a1a')],
+				['Background', C.color('#1f1f1f')], ['Background opacity', C.slider(1, 0, 1, 0.05)],
+			]},
+			{ title: 'Thick transparent', rows: [
+				['Preview', C.tpl('ThickTransparent')], ['Thick border', C.check(true)],
+				['Border', C.color('#4d4d4d')], ['Inner and outer lines', C.color('#1a1a1a')],
+				['Background', C.color('#1f1f1f')], ['Background opacity', C.slider(0.9, 0, 1, 0.05)],
+			]},
+			{ title: 'Thin', note: 'One black line, 1px outside the frame.', rows: [
+				['Preview', C.tpl('Thin')], ['Thick border', C.check(false)],
+				['Border', C.color('#000000')], ['', null],
+				['Background', C.color('#333333')], ['Background opacity', C.slider(1, 0, 1, 0.05)],
+			]},
+		],
+		Colors: [
+			colorGrid('Text', [['Normal', '#e6e6cc'], ['Grey', '#969696'], ['White', '#ffffff'], ['Red', '#dc6464'], ['Orange', '#dc9664'], ['Yellow', '#c8c864'], ['Green', '#3cf03c'], ['Blue', '#00adef'], ['Purple', '#c580ff'], ['Cyan', '#78cafa']].map(([n, h]) => [n, h, h])),
+			colorGrid('Buttons', [['Normal', '#1a1a1a'], ['Hover', '#4d80b3'], ['Pushed', '#4d6680'], ['Blue', '#00adef'], ['Red', '#9a1a1a'], ['Green', '#1a9a1a'], ['Yellow', '#9a9a1a'], ['Grey', '#969696']]),
+			colorGrid('Item quality', [['Poor', '#9c9c9c'], ['Common', '#ffffff'], ['Uncommon', '#5ac84b'], ['Rare', '#3a85cf'], ['Epic', '#a063c9'], ['Legendary', '#d18e3d'], ['Artifact', '#f0d489']].map(([n, h]) => [n, h, h])),
+			colorGrid('Class', [['Warrior', '#a1805d'], ['Paladin', '#c77d9e'], ['Hunter', '#86a35f'], ['Rogue', '#adaa4b'], ['Priest', '#a9a9a9'], ['Death Knight', '#c41e3a'], ['Shaman', '#325f96'], ['Mage', '#83bfc9'], ['Warlock', '#9482c9'], ['Monk', '#71c7ac'], ['Druid', '#b56b33'], ['Demon Hunter', '#894f9c'], ['Evoker', '#3d9174']].map(([n, h]) => [n, h, h]), 'Unit frame health and names.'),
+			colorGrid('Power', [['Mana', '#4f73a1'], ['Rage', '#b04f4f'], ['Energy', '#a6a159'], ['Focus', '#b56e45'], ['Runic power', '#00d1ff'], ['Insanity', '#6600cc'], ['Maelstrom', '#0080ff'], ['Lunar power', '#ed82ed'], ['Fury', '#c742fc'], ['Holy power', '#f2e699'], ['Chi', '#b5ffeb'], ['Soul shards', '#80528c']]),
+			colorGrid('Reputation', [['Hated', '#875151'], ['Hostile', '#875151'], ['Unfriendly', '#875151'], ['Neutral', '#878451'], ['Friendly', '#518755'], ['Honored', '#518755'], ['Revered', '#518755'], ['Exalted', '#518755'], ['Renown', '#00b3e6']].map(([n, h]) => [n, h, h])),
+		],
+	}},
+	profiles: { group: null, label: 'Profiles', desc: 'Save, switch and share whole SaftUI setups.', tabs: { Profiles: [
+		{ title: 'Current profile', rows: [['Profile', C.select('Default', ['Default', 'Safturento - Stormsong'])], ['New profile', C.text('')], ['Copy from', C.select('Choose a profile', ['Choose a profile', 'Default'])], ['Reset profile', null]] },
+	]}},
+
+	unitframes: { group: 'Frames', label: 'Unit Frames', desc: 'Player, target, party and raid frames.', picker: ['Unit', ['Player', 'Target', 'TargetTarget', 'Focus', 'FocusTarget', 'Pet', 'PetTarget', 'Boss', 'Party', 'Raid 10', 'Raid 40']], tabs: {
+		General: [
+			{ title: 'Frame', rows: [
+				['Enable', C.check(true)], ['Template', C.select('None', TEMPLATES)],
+				['Width', C.slider(301, 20, 600)], ['Height', C.slider(34, 10, 120)],
+			]},
+			{ title: 'Out of range', rows: [['Alpha in range', C.slider(1, 0, 1, 0.05)], ['Alpha out of range', C.slider(0.4, 0, 1, 0.05)]] },
+			position('Top Right', 'UIParent', 'Center', -157, -130),
+		],
+		Health: [
+			{ title: 'Bar', rows: [
+				['Template', C.select('ThickTransparent', TEMPLATES)], ['Texture', C.select('SaftUI Flat', ['SaftUI Flat', 'Blizzard'])],
+				['Reverse fill', C.check(false)], ['Vertical fill', C.check(false)],
+				['Smooth', C.check(true)], ['Alpha', C.slider(1, 0, 1, 0.05)],
+			]},
+			{ title: 'Color', note: 'The first that applies wins, top to bottom.', rows: [
+				['Class', C.check(true)], ['Reaction', C.check(true)],
+				['Tapped', C.check(true)], ['Disconnected', C.check(true)],
+				['Smooth gradient', C.check(false)], ['Custom color', C.check(false), { extra: C.color('#4d4d4d') }],
+			]},
+			{ title: 'Text', rows: [
+				['Show text', C.check(true)], ['Font', C.select('Normal', FONTS)],
+				['Hide when full', C.check(false)], ['Percent', C.check(false)],
+				['Deficit', C.check(false)], ['Boss percent', C.check(true)],
+			]},
+			{ title: 'Background', rows: [['Show background', C.check(false)], ['Darkness', C.slider(0.2, 0, 1, 0.05)], ['Alpha', C.slider(1, 0, 1, 0.05)], ['', null]] },
+		],
+		Power: [{ title: 'Bar', rows: [['Enable', C.check(true)], ['Template', C.select('ThickTransparent', TEMPLATES)], ['Smooth', C.check(true)], ['Detached from frame', C.check(true)]] },
+			{ title: 'Text', rows: [['Show text', C.check(true)], ['Font', C.select('Normal', FONTS)], ['Hide when full', C.check(false)], ['Percent', C.check(false)]] }],
+		Castbar: null, Name: null, Auras: null, Indicators: null,
+	}},
+	actionbars: { group: 'Frames', label: 'Action Bars', desc: 'Bars 1 to 8, pet, stance and the extra buttons.', picker: ['Bar', ['Bar 1', 'Bar 2', 'Bar 3', 'Bar 4', 'Bar 5', 'Bar 6', 'Bar 7', 'Bar 8', 'Pet', 'Stance']], tabs: { General: null, Text: null, Visibility: null } },
+	bags: { group: 'Frames', label: 'Bags', desc: 'Bag and bank windows, categories and slots.', tabs: {
+		General: [
+			{ title: 'Slots', rows: [
+				['Slot size', C.slider(50, 20, 80)], ['Slot spacing', C.slider(3, 0, 12)],
+				['Slot template', C.select('ThickTransparent', TEMPLATES)], ['Slot font', C.select('Pixel', FONTS)],
+				['Merge stacks', C.check(true)], ['Empty slots', C.select('Grouped', ['Off', 'Grouped', 'Every slot'])],
+			]},
+			{ title: 'Windows', rows: [
+				['Window template', C.select('ThickTransparent', TEMPLATES)], ['Padding', C.slider(10, 0, 30)],
+				['Category title height', C.slider(50, 20, 80)], ['Category title font', C.select('Normal', FONTS)],
+				['Newest at the bottom', C.check(true)], ['Scroll speed', C.slider(3, 1, 10)],
+			]},
+			{ title: 'Merchant', rows: [['Repair automatically', C.check(true)], ['Sell junk automatically', C.check(true)]] },
+			{ title: 'Bank', rows: [['Combined bank window', C.check(true), { hint: 'retail' }], ['', null]] },
+		],
+		Bag: [position('Bottom Right', 'UIParent', 'Bottom Right', -20, 20)],
+		Bank: [position('Bottom Left', 'UIParent', 'Bottom Left', 20, 20)],
+	}},
+	chat: { group: 'Frames', label: 'Chat', desc: 'The chat window, its font and tabs.', tabs: { General: null } },
+	minimap: { group: 'Frames', label: 'Minimap', desc: 'The minimap and the buttons on it.', tabs: { General: null } },
+	micromenu: { group: 'Frames', label: 'Micro Menu', desc: 'The bar across the top of the screen.', tabs: { General: null } },
+	auras: { group: 'Combat', label: 'Buffs & Debuffs', desc: "Blizzard's buff and debuff frames.", tabs: { Buffs: null, Debuffs: null } },
+	swingtimer: { group: 'Combat', label: 'Swing Timer', desc: "Blizzard's swing timer bars.", tabs: { General: null } },
+	totembar: { group: 'Combat', label: 'Totem Bar', desc: "The shaman totem bar on WoW Forever.", tabs: { General: null } },
+	loot: { group: 'Info', label: 'Loot', desc: 'Roll bars, the loot feed and the loot window.', tabs: { Rolls: null, Feed: null, Window: null } },
+	experience: { group: 'Info', label: 'Experience', desc: 'The experience and reputation bars under the minimap.', tabs: { General: [
+		{ title: 'Size', rows: [
+			['Width', C.slider(250, 50, 800)], ['Template', C.select('ThickTransparent', TEMPLATES)],
+			['Height', C.slider(13, 2, 60)], ['Spacing', C.slider(8, 0, 30), { hint: 'between the bars' }],
+		]},
+		{ title: 'Colors', rows: [
+			['Experience', C.color('#994dcc')], ['Rested', C.color('#4d99cc')],
+			['Rested part alpha', C.slider(0.4, 0, 1, 0.05)], ['', null],
+		]},
+		position('Top Right', 'Minimap', 'Bottom Right', 0, -8),
+	]}},
+	tooltip: { group: 'Info', label: 'Tooltip', desc: 'Where the tooltip shows and how it looks.', tabs: { General: null } },
+};
+
+// --- Rendering --------------------------------------------------------------
+let current = 'experience', currentTab = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+function renderNav() {
+	const nav = $('nav'); nav.innerHTML = '';
+	const top = ['global', 'profiles'];
+	top.forEach(k => nav.appendChild(navItem(k, true)));
+	const groups = [];
+	Object.entries(PAGES).forEach(([k, p]) => { if (p.group && !groups.includes(p.group)) groups.push(p.group); });
+	groups.forEach(g => {
+		nav.appendChild(el('div', 'nav-group', g));
+		Object.entries(PAGES).filter(([, p]) => p.group === g).forEach(([k]) => nav.appendChild(navItem(k)));
+	});
+}
+function navItem(key, isTop) {
+	const item = el('div', 'nav-item' + (isTop ? ' top' : '') + (key === current ? ' active' : ''), PAGES[key].label);
+	item.onclick = () => { current = key; currentTab = null; render(); };
+	return item;
+}
+
+function control(spec) {
+	if (!spec) return el('span');
+	switch (spec.t) {
+		case 'select': {
+			const s = el('select', 'field');
+			spec.options.forEach(o => { const opt = el('option', null, o); if (o === spec.value) opt.selected = true; s.appendChild(opt); });
+			return s;
+		}
+		case 'text': { const i = el('input', 'field text'); i.value = spec.value; return i; }
+		case 'num': { const i = el('input', 'field num'); i.value = spec.value; return i; }
+		case 'check': {
+			const c = el('div', 'check' + (spec.value ? ' on' : ''));
+			c.onclick = () => c.classList.toggle('on');
+			return c;
+		}
+		case 'color': {
+			const w = el('div', 'swatch'); w.style.background = spec.value;
+			const i = el('input'); i.type = 'color'; i.value = spec.value;
+			i.oninput = () => { w.style.background = i.value; };
+			w.appendChild(i); return w;
+		}
+		case 'slider': {
+			const wrap = el('div', 'ctl');
+			const s = el('div', 'slider'); const track = el('div', 'track'); const fill = el('div', 'fill'); const knob = el('div', 'knob');
+			s.append(track, fill, knob);
+			const box = el('input', 'field num');
+			const decimals = (String(spec.step).split('.')[1] || '').length;
+			const set = (v) => {
+				v = Math.min(spec.max, Math.max(spec.min, Math.round(v / spec.step) * spec.step));
+				const f = (v - spec.min) / (spec.max - spec.min);
+				fill.style.width = (f * 100) + '%'; knob.style.left = (f * 100) + '%';
+				box.value = v.toFixed(decimals);
+			};
+			const drag = (e) => { const r = s.getBoundingClientRect(); set(spec.min + (e.clientX - r.left) / r.width * (spec.max - spec.min)); };
+			s.onmousedown = (e) => { drag(e); const mv = (ev) => drag(ev); const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); }; addEventListener('mousemove', mv); addEventListener('mouseup', up); };
+			box.onchange = () => set(parseFloat(box.value) || spec.min);
+			set(spec.value);
+			wrap.append(s, box); return wrap;
+		}
+		case 'tpl': {
+			const p = el('div', 'tpl-preview');
+			if (spec.value === 'Thick' || spec.value === 'ThickTransparent') { p.className += ' thick'; if (spec.value === 'ThickTransparent') p.style.background = 'rgba(31,31,31,0.9)'; }
+			else { p.style.background = '#333'; p.style.border = '1px solid #000'; }
+			return p;
+		}
+		case 'font': { const f = el('span', 'font-preview', 'The quick brown fox'); f.style.fontFamily = spec.face; f.style.fontSize = spec.size + 'px'; return f; }
+	}
+}
+
+function row(label, spec, opts) {
+	opts = opts || {};
+	const r = el('div', 'row');
+	if (!label && !spec) return r; // empty cell keeps the grid aligned
+	const l = el('div', 'label', label + (opts.hint ? `<span class="hint">${opts.hint}</span>` : ''));
+	if (opts.nameColor) l.style.color = opts.nameColor;
+	const ctl = el('div', 'ctl');
+	if (opts.reset) { const z = el('span', 'reset', '&#8634;'); z.title = 'Reset to default'; ctl.appendChild(z); }
+	if (opts.extra) ctl.appendChild(control(opts.extra));
+	if (spec) ctl.appendChild(control(spec));
+	else if (label === 'Reset profile') ctl.appendChild(el('button', 'btn small', 'Reset'));
+	r.append(l, ctl);
+	return r;
+}
+
+function render() {
+	renderNav();
+	const page = PAGES[current];
+	$('title').textContent = page.label;
+	$('desc').textContent = page.desc;
+	const tabNames = Object.keys(page.tabs);
+	if (!currentTab || !tabNames.includes(currentTab)) currentTab = tabNames[0];
+	const tabs = $('tabs'); tabs.innerHTML = '';
+	if (tabNames.length > 1) tabNames.forEach(t => {
+		const tab = el('div', 'tab' + (t === currentTab ? ' active' : ''), t);
+		tab.onclick = () => { currentTab = t; render(); };
+		tabs.appendChild(tab);
+	});
+	tabs.appendChild(el('div', 'spacer'));
+	const search = el('input', 'field search'); search.placeholder = 'Search settings...'; tabs.appendChild(search);
+	tabs.style.paddingTop = tabNames.length > 1 ? '14px' : '10px';
+
+	const picker = $('picker'); picker.innerHTML = '';
+	picker.style.display = page.picker ? 'flex' : 'none';
+	if (page.picker) {
+		picker.appendChild(el('span', null, page.picker[0]));
+		picker.appendChild(control(C.select(page.picker[1][0], page.picker[1])));
+		picker.appendChild(el('span', null, '&nbsp;&nbsp;Copy settings from'));
+		picker.appendChild(control(C.select('Choose a unit', ['Choose a unit'].concat(page.picker[1]))));
+	}
+
+	const body = $('body'); body.innerHTML = '';
+	const sections = page.tabs[currentTab];
+	if (!sections) { body.appendChild(el('div', 'placeholder', 'Not drawn in this mockup yet. The real page would follow the same pattern: titled sections, two columns of rows.')); return; }
+	sections.forEach(sec => {
+		const s = el('div', 'section');
+		s.appendChild(el('div', 'section-title', sec.title));
+		if (sec.note) s.appendChild(el('div', 'section-note', sec.note));
+		const rows = el('div', 'rows' + (sec.four ? ' four' : ''));
+		sec.rows.forEach(([label, spec, opts]) => rows.appendChild(row(label, spec, opts)));
+		s.appendChild(rows);
+		body.appendChild(s);
+	});
+}
+render();
+
+// Close button style switcher, and what a click would do
+document.querySelectorAll('.variants button').forEach(b => b.onclick = () => {
+	document.querySelectorAll('.variants button').forEach(x => x.classList.toggle('on', x === b));
+	$('close').className = 'close ' + b.dataset.v;
+});
+$('close').onclick = () => { const n = $('closed'); n.style.display = 'block'; setTimeout(() => n.style.display = 'none', 1500); };
+</script>
+</body>
+</html>
