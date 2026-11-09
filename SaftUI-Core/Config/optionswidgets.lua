@@ -79,6 +79,17 @@ function W.UpdateFonts()
 	fieldFont:SetTextColor(Colors().text.normal:GetRGB())
 end
 
+-- Gives fs the field font, or path at size with flags (each defaulting to the
+-- field font's). Always set outright: in game SetFontObject doesn't undo an
+-- earlier SetFont, so a pooled font string would keep a font list's face or a
+-- large description's size. A profile change re-renders, which sets it again.
+local function SetFieldFont(fs, path, size, flags)
+	local font = W.GetFont()
+	local fieldPath, fieldSize, fieldFlags = font:GetFont()
+	fs:SetFontObject(font)
+	fs:SetFont(path or fieldPath, size or fieldSize, flags or fieldFlags)
+end
+
 local function NewText(parent, justify)
 	local fs = parent:CreateFontString(nil, 'OVERLAY')
 	fs:SetFontObject(W.GetFont())
@@ -351,8 +362,11 @@ local function ListFill()
 		local entry = entries[offset + i]
 		if entry then
 			row.entry = entry
-			row.text:SetFontObject(W.GetFont())
-			if list.fontMode then row.text:SetFont(entry.font, FIELD_FONT_SIZE, '') end
+			if list.fontMode then
+				SetFieldFont(row.text, entry.font, FIELD_FONT_SIZE, '')
+			else
+				SetFieldFont(row.text)
+			end
 			row.text:SetText(entry.label)
 			if entry.key == list.selected then
 				row.text:SetTextColor(Colors().text.blue:GetRGB())
@@ -842,8 +856,11 @@ define('select', {
 				label = tostring(values[self.value])
 			end
 		end
-		self.text:SetFontObject(W.GetFont())
-		if fontMode and font then self.text:SetFont(font, FIELD_FONT_SIZE, '') end
+		if fontMode and font then
+			SetFieldFont(self.text, font, FIELD_FONT_SIZE, '')
+		else
+			SetFieldFont(self.text)
+		end
 		self.text:SetText(label)
 	end,
 
@@ -1213,11 +1230,7 @@ define('description', {
 		local size = DESCRIPTION_SIZES[OM.Member(self.root, self.row, 'fontSize')] or FIELD_FONT_SIZE
 		self.size = size
 		for _, fs in ipairs({ self.text, self.measure }) do
-			fs:SetFontObject(W.GetFont())
-			if size ~= FIELD_FONT_SIZE then
-				local path, _, flags = W.GetFont():GetFont()
-				fs:SetFont(path, size, flags)
-			end
+			SetFieldFont(fs, nil, size)
 		end
 		self.fullText = text
 		self.text:SetText(text)

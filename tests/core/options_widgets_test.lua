@@ -451,6 +451,25 @@ test('select: LSM30_Font entries are drawn in their own face', function()
 	plain:Release()
 end)
 
+test('select: a widget reused after a font list shows its value in the field font', function()
+	local font = bind('select', 'font', opt('select', 'Font', {
+		dialogControl = 'LSM30_Font',
+		values = { ['Beta Face'] = [[Interface\AddOns\X\Beta.ttf]] },
+		get = function() return 'Beta Face' end, set = function() end,
+	}))
+	font:Release()
+	local plain = bind('select', 'p', opt('select', 'P', {
+		values = { a = 'Plain' }, get = function() return 'a' end, set = function() end,
+	}))
+	check(plain == font, 'the pool hands back the same widget')
+	local path, size, flags = W.GetFont():GetFont()
+	local p, s, f = plain.text:GetFont()
+	eq(p, path, 'the field font face')
+	eq(s, size, 'the field font size')
+	eq(f, flags, 'the field font outline')
+	plain:Release()
+end)
+
 test('select: a validation failure keeps the old choice', function()
 	local value = 'a'
 	local w, told = bind('select', 'pick', opt('select', 'Pick', {

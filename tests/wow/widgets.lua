@@ -577,7 +577,9 @@ function FontInstance.SetFontObject(self, s, font)
 	if type(font) == 'string' then font = _G[font] end
 	if not is_widget(font, 'FontInstance') then usage(s, 'SetFontObject(): font must be a font object') end
 	s.font_object = font
-	s.font = nil -- the object's font replaces one set with SetFont, as in game
+	-- A font set with SetFont stays: in game a reused dropdown kept a font
+	-- list's face through SetFontObject with the same object. Whether another
+	-- object clears it is unverified; keeping it is the stricter reading.
 end
 function FontInstance.GetFontObject(self, s) return s.font_object end
 function FontInstance.SetTextColor(self, s, r, g, b, a)
