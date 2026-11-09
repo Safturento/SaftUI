@@ -27,18 +27,25 @@ local function GetColorFromBoolean(bool, trueColor, falseColor)
 end
 
 local function PostCastStart(castbar, unit)
+	local r, g, b
 	castbar:SetColorFill(castbar.config.colors.normal:GetRGB())
+	r, g, b = castbar.config.colors.normal:GetRGB()
 	if issecretvalue(castbar.notInterruptible) then
-		castbar:SetStatusBarColor(GetColorFromBoolean(castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal))
+		r, g, b = GetColorFromBoolean(castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal)
+		castbar:SetStatusBarColor(r, g, b)
 		--castbar:SetColorFill(C_CurveUtil.EvaluateColorFromBoolean(
 		--	castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal):GetRGBA()
 		--)
 	else
 		if castbar.notInterruptible then
-			castbar:SetColorFill(castbar.config.colors.nointerrupt:GetRGB())
-		else
-			castbar:SetColorFill(castbar.config.colors.normal:GetRGB())
+			r, g, b = castbar.config.colors.nointerrupt:GetRGB()
 		end
+		castbar:SetColorFill(r, g, b)
+	end
+
+	-- The background is a darker shade of the bar color, as for the power bar.
+	if castbar.config.bg.enable then
+		UF.SetPowerBackgroundColor(castbar, r, g, b)
 	end
 
 	if castbar.Icon.texture:GetTexture() == [[Interface\ICONS\INV_Misc_QuestionMark]] then

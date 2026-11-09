@@ -82,6 +82,8 @@ local castbar = {
     template = 'thin',
     bg = {
         enable = false,
+        alpha = 1,
+        multiplier = .6,
     },
     position = {
         point = "BOTTOM",

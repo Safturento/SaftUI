@@ -43,7 +43,7 @@ local function PostUpdateHealth(health, unit, current, max)
 	end
 
 	if health.config.colorCustom then
-		health:SetStatusBarColor(health.config.customColor:GetRGB())
+		health:SetStatusBarColor(UF.UnpackColor(health.config.customColor))
 	end
 
 	if health.config.bg.enable then

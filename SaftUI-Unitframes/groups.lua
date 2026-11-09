@@ -478,12 +478,6 @@ local function AsColor(color)
 	if type(color) == 'table' and color.GetRGB then return color end
 end
 
--- r, g, b of a color object or a plain { r, g, b } list (customColor can be either).
-local function UnpackColor(color)
-	if AsColor(color) then return color:GetRGB() end
-	return color[1], color[2], color[3]
-end
-
 -- One preview frame, with the same pieces UF.ConstructUnit and the element
 -- constructors give a real button (made with the same helpers), minus
 -- everything oUF drives: health and power bars with their texts, the name
@@ -554,7 +548,7 @@ local function FillPreviewFrame(frame, member)
 	end
 	color = AsColor(color)
 	if healthConfig.colorCustom and healthConfig.customColor then
-		health:SetStatusBarColor(UnpackColor(healthConfig.customColor))
+		health:SetStatusBarColor(UF.UnpackColor(healthConfig.customColor))
 	elseif color then
 		health:SetStatusBarColor(color:GetRGB())
 	end
@@ -608,7 +602,7 @@ local function FillPreviewFrame(frame, member)
 			power:SetStatusBarColor(r, g, b)
 			UF.SetPowerBackgroundColor(power, r, g, b)
 		elseif powerConfig.colorCustom and powerConfig.customColor then
-			power:SetStatusBarColor(UnpackColor(powerConfig.customColor))
+			power:SetStatusBarColor(UF.UnpackColor(powerConfig.customColor))
 		end
 
 		if power.text and powerConfig.text.enable then

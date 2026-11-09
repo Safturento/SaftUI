@@ -137,6 +137,27 @@ function UF:UpdateElementLevel(element, configOverride)
     end
 end
 
+-- r, g, b of a color object or a plain { r, g, b } list (a config's customColor
+-- is a list in the defaults, and can be a color object in a saved profile).
+function UF.UnpackColor(color)
+	if type(color) == 'table' and color.GetRGB then return color:GetRGB() end
+	return color[1], color[2], color[3]
+end
+
+-- Colors a status bar's background (power, additional power, castbar: anything
+-- with .bg and .config.bg) as a darker shade of the bar color.
+-- oUF can hand us secret colors (smoothed power colors, secret class colors),
+-- which can't be multiplied; for those the multiplier goes into the alpha
+-- instead, which looks the same over the frame's dark backdrop.
+function UF.SetPowerBackgroundColor(power, r, g, b)
+	local bg = power.config.bg
+	if issecretvalue(r) or issecretvalue(g) or issecretvalue(b) then
+		power.bg:SetVertexColor(r, g, b, bg.alpha * bg.multiplier)
+	else
+		power.bg:SetVertexColor(r * bg.multiplier, g * bg.multiplier, b * bg.multiplier, bg.alpha)
+	end
+end
+
 function UF:UpdateStatusBarElement(element, configOverride)
     local config = configOverride or element.config
 
@@ -149,7 +170,7 @@ function UF:UpdateStatusBarElement(element, configOverride)
 	element:SetOrientation(config.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
     if config.colorCustom then
-		element:SetStatusBarColor(config.customColor:GetRGB())
+		element:SetStatusBarColor(UF.UnpackColor(config.customColor))
 	end
 
     if element.bg and config.bg then

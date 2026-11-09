@@ -852,6 +852,22 @@ function StatusBar.SetStatusBarTexture(self, s, asset)
 	end
 end
 function StatusBar.GetStatusBarTexture(self, s) return s.bar_texture end
+-- A solid fill in place of the bar's texture.
+function StatusBar.SetColorFill(self, s, r, g, b, a)
+	s.color_fill = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+end
+function StatusBar.SetReverseFill(self, s, reverse)
+	if type(reverse) ~= 'boolean' then usage(s, 'SetReverseFill(): reverse must be a boolean, got ' .. type(reverse)) end
+	s.reverse_fill = reverse
+end
+function StatusBar.GetReverseFill(self, s) return s.reverse_fill or false end
+function StatusBar.SetOrientation(self, s, orientation)
+	if orientation ~= 'HORIZONTAL' and orientation ~= 'VERTICAL' then
+		usage(s, 'SetOrientation(): unknown orientation ' .. tostring(orientation))
+	end
+	s.orientation = orientation
+end
+function StatusBar.GetOrientation(self, s) return s.orientation or 'HORIZONTAL' end
 function StatusBar.SetStatusBarColor(self, s, r, g, b, a)
 	s.bar_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
 end
