@@ -15,7 +15,7 @@
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
 -- the roll frame, and Blizzard's scripts get post-hooks only. The info frame
--- (the bar's body) is SaftUI's own, from roll.lua.
+-- (the bar's body) is SaftUI's own, from roll.lua (LT:GetRollInfoFrame).
 --
 -- Feed/rolls.lua calls LT:UpdateRollBars after every loot history update, and
 -- provides the plain-value checks and LT:GetOpenDrops used here. It loads after
@@ -256,7 +256,7 @@ function LT:UpdateRollBars()
 		state.rolls = self:SummarizeDrop(info)
 		self:SetRollCounts(state.counts, state.rolls)
 
-		local body = frames[state].InfoFrame
+		local body = self:GetRollInfoFrame(frames[state])
 		if body and GameTooltip:IsOwned(body) then body:UpdateTooltip() end
 	end
 end
@@ -285,7 +285,7 @@ function LT:AttachRollInfo(frame, counts)
 	frame:HookScript('OnHide', OnBarHide)
 	frame.IconFrame:HookScript('OnEnter', AddIconLines)
 	frame.IconFrame:HookScript('OnUpdate', AddIconLines)
-	self:SetRollTooltipScripts(frame.InfoFrame, InfoTooltip)
+	self:SetRollTooltipScripts(self:GetRollInfoFrame(frame), InfoTooltip)
 
 	-- A frame is skinned just after its first roll shows.
 	self:UpdateRollBars()

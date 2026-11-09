@@ -13,6 +13,22 @@ local roll_buttons = {
 		icon_texture = [[Interface\ICONS\INV_Misc_PunchCards_White]]},
 }
 
+-- SaftUI's pieces on Blizzard's roll frames. The frames and what's on them are
+-- Blizzard's, so nothing is written onto them (.agents/taint.md rule 1): each
+-- skinned frame has an entry here, keyed by the frame, and a Timer's text is
+-- found through `timerTexts`, keyed by the Timer (the OnUpdate hook only gets
+-- the Timer). An entry is { info = the info frame, iconBox = the frame that
+-- holds the icon's backdrop, timerText, buttonText = { [choice] = font string } }.
+-- The info frame, icon box and texts are SaftUI's own.
+local skins = setmetatable({}, { __mode = 'k' })
+local timerTexts = setmetatable({}, { __mode = 'k' })
+
+-- The bar's body, SaftUI's frame that rollinfo.lua puts the tooltip on.
+function LT:GetRollInfoFrame(frame)
+	local skin = skins[frame]
+	return skin and skin.info
+end
+
 -- Forever keeps the roll buttons in a LootButtonContainer child; retail has
 -- them directly on the roll frame.
 local function GetRollButton(frame, name)
@@ -21,8 +37,9 @@ local function GetRollButton(frame, name)
 end
 
 function LT:SkinRollFrame(frame)
-	if frame.skinned then return end
-	frame.skinned = true
+	if skins[frame] then return end
+	local skin = { buttonText = {} }
+	skins[frame] = skin
 
 	-- Blizzard drops ended rolls from rollFrames, so track every skinned frame
 	-- ourselves to keep idle ones in sync with option edits.
@@ -44,21 +61,22 @@ function LT:SkinRollFrame(frame)
 
 	st:Kill(frame.IconFrame.Count)
 
-	frame.Timer.Text = frame.Timer:CreateFontString(nil, 'OVERLAY')
-	frame.Timer.Text:SetFontObject(GameFontNormal)
+	skin.timerText = frame.Timer:CreateFontString(nil, 'OVERLAY')
+	skin.timerText:SetFontObject(GameFontNormal)
+	timerTexts[frame.Timer] = skin.timerText
 
 	-- How many have picked each choice (LT:CreateRollCounts). rollinfo.lua
-	-- keeps this table, so the counts add no fields to the buttons. (The skin's
-	-- older button.Text and friends still do; see docs/followups.md.)
+	-- keeps this table, so the counts add no fields to the buttons.
 	local counts = {}
 	local prev
 	for i, info in ipairs(roll_buttons) do
 		local button = GetRollButton(frame, info.name)
 		if button then
-			button.Text = button:CreateFontString(nil, 'OVERLAY')
-			button.Text:SetFontObject(GameFontNormal)
-			button.Text:SetPoint('CENTER', 1, 0)
-			button.Text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
+			local text = button:CreateFontString(nil, 'OVERLAY')
+			skin.buttonText[info.name] = text
+			text:SetFontObject(GameFontNormal)
+			text:SetPoint('CENTER', 1, 0)
+			text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
 			self:CreateRollCounts(counts, button, info.name)
 
 			prev = button
@@ -79,25 +97,34 @@ end
 function LT:UpdateRollFrame(frame)
 	local config = self.config.roll
 	local font_obj = st:GetFont(config.font)
+	local skin = skins[frame]
 
 	frame:SetSize(config.width, config.height)
 
 	-- Updates run on every live option change, so only create this once.
-	if not frame.InfoFrame then
-		frame.InfoFrame = st:CreateFrame('frame', nil, frame)
-		frame.InfoFrame:SetPoint('BOTTOMRIGHT')
-		frame.InfoFrame:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
-		frame.InfoFrame:SetFrameLevel(1)
+	if not skin.info then
+		skin.info = st:CreateFrame('frame', nil, frame)
+		skin.info:SetPoint('BOTTOMRIGHT')
+		skin.info:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
+		skin.info:SetFrameLevel(1)
 	end
-	st:SetBackdrop(frame.InfoFrame, config.template)
+	st:SetBackdrop(skin.info, config.template)
 
 	frame.Name:SetFontObject(st:GetFont(config.font))
 	frame.Name:ClearAllPoints()
 	frame.Name:SetHeight(config.height)
-	frame.Name:SetPoint('LEFT', frame.InfoFrame, 5, 0)
-	frame.Name:SetPoint('RIGHT', frame.Timer.Text, 'LEFT', -5, 0)
+	frame.Name:SetPoint('LEFT', skin.info, 5, 0)
+	frame.Name:SetPoint('RIGHT', skin.timerText, 'LEFT', -5, 0)
 
-	st:SetBackdrop(frame.IconFrame, config.template)
+	-- st:SetBackdrop writes onto the frame it's given, so the icon's backdrop
+	-- hangs off a SaftUI frame laid over the icon frame instead. Same frame
+	-- level as the icon frame, so the backdrop sits one below it, as before.
+	if not skin.iconBox then
+		skin.iconBox = st:CreateFrame('frame', nil, frame.IconFrame)
+		skin.iconBox:SetAllPoints(frame.IconFrame)
+		skin.iconBox:SetFrameLevel(frame.IconFrame:GetFrameLevel())
+	end
+	st:SetBackdrop(skin.iconBox, config.template)
 	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))
 	frame.IconFrame:SetSize(config.height, config.height)
 
@@ -115,12 +142,12 @@ function LT:UpdateRollFrame(frame)
 		if button and button:IsShown() then
 			button:ClearAllPoints()
 			if i == 1 then
-				button:SetPoint('RIGHT', frame.InfoFrame, 'RIGHT', -2, 0)
+				button:SetPoint('RIGHT', skin.info, 'RIGHT', -2, 0)
 			else
 				button:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
 			end
 
-			button.Text:SetFontObject(st:GetFont(config.font))
+			skin.buttonText[info.name]:SetFontObject(st:GetFont(config.font))
 
 			button:SetSize(config.height - 4, config.height - 4)
 			--st:SetBackdrop(button, config.template)
@@ -128,9 +155,9 @@ function LT:UpdateRollFrame(frame)
 		end
 	end
 
-	frame.Timer.Text:SetFontObject(st:GetFont(config.font))
-	frame.Timer.Text:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
-	frame.Timer.Text:SetWidth(40)
+	skin.timerText:SetFontObject(st:GetFont(config.font))
+	skin.timerText:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
+	skin.timerText:SetWidth(40)
 end
 
 function LT:GroupLootFrame_OnShow(frame)
@@ -157,17 +184,19 @@ function LT:GroupLootFrame_OnShow(frame)
 	frame.Name:SetText(text .. name)
 end
 
-function LT:GroupLootFrame_OnUpdateTimer(self, elapsed)
-	local sec = self:GetValue()
+function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
+	local text = timerTexts[timer]
+	if not text then return end
+	local sec = timer:GetValue()
 
-	self.Text:SetText(st.StringFormat:ToClock(sec))
+	text:SetText(st.StringFormat:ToClock(sec))
 
-	self:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
+	timer:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
 
 	if sec < 60 then
-		self.Text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
+		text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
 	else
-		self.Text:SetVertexColor(1, 1, 1)
+		text:SetVertexColor(1, 1, 1)
 	end
 end
 
