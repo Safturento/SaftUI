@@ -23,13 +23,6 @@ local function get_num_profiles()
 	return select(2, get_profiles())
 end
 
--- A dialog's edit box: GetEditBox on current clients, the named child before.
--- Nothing is written onto Blizzard's dialogs to find it.
-local function EditBoxOf(dialog)
-	if dialog.GetEditBox then return dialog:GetEditBox() end
-	return _G[dialog:GetName() .. 'EditBox']
-end
-
 local function UFProfiles()
 	return st.config.profile.unitframes
 end
@@ -51,102 +44,75 @@ local function SwitchProfile(name)
 	st.Config:Refresh()
 end
 
-StaticPopupDialogs["SAFTUI_UF_PROFILE_NEW"] = {
-	text = "Enter a name for your new profile",
-	button1 = "Create",
-	button2 = "Cancel",
-	-- data is { copy = true } from Copy (StaticPopup_Show's data argument).
-	OnAccept = function(self, data)
-		local profile_name = EditBoxOf(self):GetText()
-		if not get_profile_exists(profile_name) then
-			if data and data.copy then
-				st.config.profile.unitframes.profiles[profile_name] = st.tablecopy(
-					st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile],
-					true
-				)
-			end
-			st.config.profile.unitframes.config_profile = profile_name
-			UF:UpdateConfig()
-			st.Config:Refresh()
-		end
-	end,
-	OnCancel = function () end,
-	whileDead = true,
-	hideOnEscape = true,
-	hasEditBox = true,
-}
+-- The profile prompts are SaftUI's own dialog (st.OptionsWidgets Prompt and
+-- Confirm), which shows over the /sui window; StaticPopups would sit under it.
 
-StaticPopupDialogs["SAFTUI_UF_PROFILE_DELETE"] = {
-	text = "Are you sure you wish to delete this profile?",
-	button1 = "Delete",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		if get_num_profiles() > 1 then
-			st.config.profile.unitframes.profiles[st.config.profile.unitframes.config_profile] = nil
+-- A new profile's name from the box: trimmed, and nil for one that can't be
+-- used ('**' is AceDB's every-profile defaults key). Prints why on a duplicate.
+local function UsableName(text)
+	local name = strtrim(text)
+	if name == '' or name == '**' then return end
+	if get_profile_exists(name) then
+		st:Print(("There's already a unit frame profile named %s."):format(name))
+		return
+	end
+	return name
+end
+
+-- New, or with copy the current profile copied into the new one.
+local function PromptNewProfile(copy)
+	st.OptionsWidgets.Prompt('Enter a name for your new profile', '', function(text)
+		local name = UsableName(text)
+		if not name then return end
+		if copy then
+			local profiles = UFProfiles()
+			profiles.profiles[name] = st.tablecopy(profiles.profiles[profiles.config_profile], true)
 		end
-		st.config.profile.unitframes.config_profile = next(st.config.profile.unitframes.profiles)
+		SwitchProfile(name)
+	end, { accept = 'Create', cancel = 'Cancel' })
+end
+
+local function ConfirmDeleteProfile()
+	st.OptionsWidgets.Confirm('Are you sure you wish to delete this profile?', function()
+		local profiles = UFProfiles()
+		if get_num_profiles() > 1 then
+			profiles.profiles[profiles.config_profile] = nil
+		end
+		profiles.config_profile = next(profiles.profiles)
 		UF:UpdateConfig()
 		st.Config:Refresh()
-	end,
-	OnCancel = function (_,reason)
-	end,
-	whileDead = true,
-	hideOnEscape = true,
-}
+	end)
+end
 
-
-StaticPopupDialogs["SAFTUI_UF_PROFILE_RENAME"] = {
-	text = "Enter a new profile name",
-	button1 = "Rename",
-	button2 = "Cancel",
-	OnShow = function(self)
-		local editBox = EditBoxOf(self)
-		editBox:SetText(UFProfiles().config_profile)
-		editBox:HighlightText()
-	end,
-	OnAccept = function(self)
-		local profiles = UFProfiles()
-		local old = profiles.config_profile
-		local new = strtrim(EditBoxOf(self):GetText())
-		-- '**' is AceDB's every-profile defaults key.
-		if new == '' or new == '**' or new == old then return end
-		if get_profile_exists(new) then
-			st:Print(("There's already a unit frame profile named %s."):format(new))
-			return
-		end
+local function PromptRenameProfile()
+	local profiles = UFProfiles()
+	local old = profiles.config_profile
+	st.OptionsWidgets.Prompt('Enter a new profile name', old, function(text)
+		local new = strtrim(text)
+		if new == old then return end
+		new = UsableName(new)
+		if not new then return end
+		profiles = UFProfiles()
 		profiles.profiles[new] = profiles.profiles[old]
 		profiles.profiles[old] = nil
 		SwitchProfile(new)
-	end,
-	OnCancel = function() end,
-	whileDead = true,
-	hideOnEscape = true,
-	hasEditBox = true,
-}
+	end, { accept = 'Rename', cancel = 'Cancel' })
+end
 
-StaticPopupDialogs["SAFTUI_UF_PROFILE_EXPORT"] = {
-	text = "Copy this text to share the profile",
-	button1 = "Close",
-	OnShow = function(self)
-		local profiles = UFProfiles()
-		local editBox = EditBoxOf(self)
-		editBox:SetText(st.Config:Export(profiles.profiles[profiles.config_profile]))
-		editBox:HighlightText()
-	end,
-	hasEditBox = true,
-	maxLetters = 0, -- an exported profile is longer than the default limit
-	whileDead = true,
-	hideOnEscape = true,
-}
+local function PromptExportProfile()
+	local profiles = UFProfiles()
+	st.OptionsWidgets.Prompt('Copy this text to share the profile',
+		st.Config:Export(profiles.profiles[profiles.config_profile]),
+		function() end,
+		-- An exported profile is longer than the default limit.
+		{ accept = 'Close', cancel = false, maxLetters = 0 })
+end
 
 -- Imports into a new profile ("Imported", "Imported 2", ...), so nothing is
 -- overwritten.
-StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
-	text = "Paste an exported unit frame profile",
-	button1 = "Import",
-	button2 = "Cancel",
-	OnAccept = function(self)
-		local ok, data = st.Config:Import(strtrim(EditBoxOf(self):GetText()))
+local function PromptImportProfile()
+	st.OptionsWidgets.Prompt('Paste an exported unit frame profile', '', function(text)
+		local ok, data = st.Config:Import(strtrim(text))
 		if not ok or type(data) ~= 'table' then
 			st:Print("That isn't an exported unit frame profile.")
 			return
@@ -154,13 +120,8 @@ StaticPopupDialogs["SAFTUI_UF_PROFILE_IMPORT"] = {
 		local name = UnusedProfileName('Imported')
 		UFProfiles().profiles[name] = data
 		SwitchProfile(name)
-	end,
-	OnCancel = function() end,
-	hasEditBox = true,
-	maxLetters = 0, -- an exported profile is longer than the default limit
-	whileDead = true,
-	hideOnEscape = true,
-}
+	end, { accept = 'Import', cancel = 'Cancel', maxLetters = 0 })
+end
 
 -- One spawned frame of a config unit, for its options to look at: the unit's
 -- frame, boss (or arena) 1, or a party or raid group's first button. nil while
@@ -425,7 +386,7 @@ function UF:GetConfigTable()
 						name = 'New',
 						width = 0.5,
 						func = function()
-							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW')
+							PromptNewProfile(false)
 						end,
 					},
 					copy = {
@@ -434,7 +395,7 @@ function UF:GetConfigTable()
 						name = 'Copy',
 						width = 0.5,
 						func = function()
-							StaticPopup_Show('SAFTUI_UF_PROFILE_NEW', nil, nil, { copy = true })
+							PromptNewProfile(true)
 						end,
 					},
 					delete = {
@@ -444,7 +405,7 @@ function UF:GetConfigTable()
 						width = 0.5,
 						func = function()
 							if get_num_profiles() > 1 then
-								StaticPopup_Show('SAFTUI_UF_PROFILE_DELETE')
+								ConfirmDeleteProfile()
 							end
 						end,
 					},
@@ -454,7 +415,7 @@ function UF:GetConfigTable()
 						name = 'Rename',
 						width = 0.5,
 						func = function()
-							StaticPopup_Show('SAFTUI_UF_PROFILE_RENAME')
+							PromptRenameProfile()
 						end,
 					},
 					export = {
@@ -463,7 +424,7 @@ function UF:GetConfigTable()
 						name = 'Export',
 						width = 0.5,
 						func = function()
-							local popup = StaticPopup_Show('SAFTUI_UF_PROFILE_EXPORT')
+							PromptExportProfile()
 						end
 					},
 					import = {
@@ -472,7 +433,7 @@ function UF:GetConfigTable()
 						name = 'Import',
 						width = 0.5,
 						func = function()
-							StaticPopup_Show('SAFTUI_UF_PROFILE_IMPORT')
+							PromptImportProfile()
 						end
 					}
 				}

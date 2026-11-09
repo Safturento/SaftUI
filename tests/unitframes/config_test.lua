@@ -140,6 +140,16 @@ test("opening Copy from again starts over, with the new unit's settings", functi
 	OW:CloseDialog()
 end)
 
+test('closing the Copy from dialog cancels a prompt or confirm open over it', function()
+	local cancelled = 0
+	UF:OpenCopyTable('player')
+	W.Prompt('Name?', '', function() end, { onCancel = function() cancelled = cancelled + 1 end })
+	check(W.PromptBox() ~= nil, 'the prompt is up')
+	OW:CloseDialog()
+	eq(cancelled, 1, 'the dialog hiding cancelled it')
+	eq(W.PromptBox(), nil, 'and closed it')
+end)
+
 test('the unit picker lists the units in a fixed order, Player first, and Profile last', function()
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
