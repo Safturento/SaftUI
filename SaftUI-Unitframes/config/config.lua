@@ -378,6 +378,17 @@ local function GetGroupLayoutConfig(unit, order)
 end
 
 
+-- The units' order in /sui's unit picker (their keys are UF.unit_strings' and
+-- UF.group_strings'); the page opens on the first. A unit not listed sorts
+-- after these, and the Profile group (a negative order) after everything.
+local UNIT_ORDER = {}
+for i, unit in ipairs({
+	'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
+	'party', 'raid10', 'raid40',
+}) do
+	UNIT_ORDER[unit] = i
+end
+
 function UF:GetConfigTable()
 	local config = {
 		name = 'Unitframes',
@@ -485,6 +496,7 @@ function UF:GetConfigTable()
 
 		local config_table = {
 			name = self.unit_strings[unit] or self.group_strings[unit] or unit,
+			order = UNIT_ORDER[unit],
 			type = 'group',
 			inline = false,
 			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.

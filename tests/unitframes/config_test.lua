@@ -1,5 +1,6 @@
 -- SaftUI-Unitframes/config/config.lua's /sui pieces: the Copy from dialog
--- (UF:OpenCopyTable, drawn by st.OptionsWindow:OpenDialog).
+-- (UF:OpenCopyTable, drawn by st.OptionsWindow:OpenDialog), the order of the
+-- units in the page's picker, and AceConfigRegistry's validation of the table.
 --
 -- Real: Core's helpers and profile defaults (load_core_helpers), the unit
 -- frames' defaults, filled the way AceDB fills them (apply_defaults), so a
@@ -7,8 +8,16 @@
 -- (the options window listens to it); the options model, widgets, body and
 -- window; and config/config.lua.
 --
--- Stand-in, for unitframes.lua, which needs oUF: UF:UpdateConfig, which counts
--- its calls. The real one re-applies every unit frame from the profile.
+-- Stand-ins, for unitframes.lua, which needs oUF:
+--   * UF:UpdateConfig counts its calls. The real one re-applies every unit
+--     frame from the profile.
+--   * What its OnEnable makes, as far as UF:GetConfigTable reads it: UF.units
+--     and UF.groups, a frame by config unit (boss is a list of five frames in
+--     game), UF.holders for the groups, and UF:GetMoverFrame (unitframes.lua's:
+--     the holder, else the unit's frame). No elements: each element's file
+--     needs oUF, so the units have no element tabs here.
+--   * UF.unit_strings and UF.group_strings, empty: unitframes.lua's name the
+--     units (Player, Raid 10, ...), and without them a unit is named by its key.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
 apply_defaults()
@@ -19,10 +28,22 @@ load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_saftui('SaftUI-Core/Config/optionswindow.lua')
 
 local st = SaftUI
-local OW, W = st.OptionsWindow, st.OptionsWidgets
+local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
+local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 local UF = st:NewModule('Unitframes')
 local updates = 0
 function UF:UpdateConfig() updates = updates + 1 end
+
+UF.units, UF.groups, UF.holders, UF.elements = {}, {}, {}, {}
+for _, unit in ipairs({ 'boss', 'focustarget', 'player', 'pettarget', 'target', 'pet', 'targettarget', 'focus' }) do
+	UF.units[unit] = CreateFrame('Frame', nil, UIParent)
+end
+for _, group in ipairs({ 'raid40', 'party', 'raid10' }) do
+	UF.groups[group] = CreateFrame('Frame', nil, UIParent)
+	UF.holders[group] = CreateFrame('Frame', nil, UIParent)
+end
+UF.unit_strings, UF.group_strings = {}, {}
+function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 
 load_saftui('SaftUI-Unitframes/config/config.lua')
 
@@ -117,4 +138,23 @@ test("opening Copy from again starts over, with the new unit's settings", functi
 	end
 	check(cell('accept').widget:IsDisabled(), 'no unit picked yet')
 	OW:CloseDialog()
+end)
+
+test('the unit picker lists the units in a fixed order, Player first, and Profile last', function()
+	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
+	local keys = {}
+	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
+	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,profile',
+		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, then Profile')
+	eq(view.picker.selected, 'player', 'the page opens on Player')
+end)
+
+test("the unit frames' table passes AceConfigRegistry validation, category aside", function()
+	local copy = {}
+	for k, v in pairs(UF:GetConfigTable()) do copy[k] = v end
+	check(copy.category ~= nil, 'it has a category')
+	copy.category = nil
+	local ok, err = pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
+		{ name = st.name, type = 'group', args = { Unitframes = copy } }, st.name)
+	check(ok, 'valid: ' .. tostring(err))
 end)

@@ -304,9 +304,14 @@ test("a real module's category: Experience is under Info", function()
 	load_saftui('SaftUI-Misc/experience.lua')
 	st:GetModule('Experience'):Enable()
 	local root = st.Config:GetOptionsTable()
+	local found = false
 	for _, page in ipairs(OM.Pages(root)) do
-		if page.key == 'Experience' then eq(page.category, 'Info', 'Experience is Info') end
+		if page.key == 'Experience' then
+			found = true
+			eq(page.category, 'Info', 'Experience is Info')
+		end
 	end
+	check(found, 'Experience has a page')
 end)
 
 test("Open({'Unitframes','player','general'}) selects the page, the picker value and the tab", function()
@@ -510,6 +515,50 @@ test('search waits for typing to pause, shows results by page, and a click goes 
 	close_all()
 end)
 
+test('a search still waiting for typing to pause gives way to navigating', function()
+	st.Config:Open('Loot')
+	local box = frames().search
+	box:SetFocus()
+	-- Typing, the search not run yet: each part starts from an empty box.
+	local function type_search()
+		box:SetText('')
+		box:SetText('frame')
+		eq(OW:GetState().search, '', 'typed, not searched yet')
+	end
+
+	-- The sidebar (OW:Navigate).
+	type_search()
+	for _, item in ipairs(frames().nav) do
+		if item.key == 'Chat' then click(item) end
+	end
+	tick(1)
+	eq(OW:GetState().search, '', 'a page click: no search ran after it')
+	eq(frames().title:GetText(), 'Chat', 'the page stays')
+	eq(box:GetText(), '', 'the box is cleared')
+
+	-- Open with a path, the window open (an edit mode click).
+	type_search()
+	st.Config:Open('Unitframes', 'player', 'general')
+	tick(1)
+	eq(OW:GetState().search, '', 'Open: no search ran after it')
+	eq(OW:GetState().page .. '/' .. OW:GetState().tab, 'Unitframes/general', 'the page stays')
+
+	-- A tab, and the picker (Select).
+	type_search()
+	click(frames().tabs[2])
+	tick(1)
+	eq(OW:GetState().search, '', 'a tab click: no search ran after it')
+	eq(OW:GetState().tab, 'power', 'the tab stays')
+	type_search()
+	click(frames().picker.frame)
+	click(W.GetListFrames().rows[2]) -- Target
+	tick(1)
+	eq(OW:GetState().search, '', 'a pick: no search ran after it')
+	eq(OW:GetState().pick, 'target', 'the pick stays')
+	box:ClearFocus()
+	close_all()
+end)
+
 test('clearing the search box goes back to the page', function()
 	st.Config:Open('Loot')
 	frames().search:SetText('enable')
@@ -570,6 +619,21 @@ test('Esc closes the window through its own catcher; other keys pass on', functi
 	eq(keys:GetPropagateKeyboardInput(), false, 'Esc is kept')
 	check(not keys:IsKeyboardEnabled(), 'the catcher is off once closed')
 	check(UISpecialFrames == nil, "Blizzard's UISpecialFrames isn't used")
+	close_all()
+end)
+
+test("Esc passes on while Blizzard's color picker is open, so it closes the picker, not the window", function()
+	st.Config:Open('Loot')
+	local keys = frames().keys
+	ColorPickerFrame:SetupColorPickerAndShow({ r = 1, g = 0, b = 0, swatchFunc = function() end, cancelFunc = function() end })
+	check(ColorPickerFrame:IsShown(), 'the picker is open')
+	stub.fire_script(keys, 'OnKeyDown', 'ESCAPE')
+	check(OW:IsShown(), 'the window stays open')
+	eq(keys:GetPropagateKeyboardInput(), true, 'Esc is passed on')
+	stub.color_picker_cancel()
+	check(not ColorPickerFrame:IsShown(), 'the picker closed')
+	stub.fire_script(keys, 'OnKeyDown', 'ESCAPE')
+	check(not OW:IsShown(), 'then Esc closes the window')
 	close_all()
 end)
 

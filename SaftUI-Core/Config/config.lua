@@ -100,8 +100,12 @@ end
 
 -- Builds the /sui tree and registers it with AceConfigRegistry as st.name, so
 -- Config:Refresh (NotifyChange) reaches the window as ConfigTableChange.
--- Returns the tree. Ace's validation is skipped: the window doesn't need it,
--- and it rejects the `category` field SaftUI's module tables carry.
+-- Returns the tree. Validation is skipped. AceConfigRegistry validates lazily,
+-- the first time its getter (GetOptionsTable) hands the table to a UI, and
+-- nothing calls the getter for SaftUI's: the window reads the tree itself. The
+-- validator would also reject the `category` field SaftUI's module tables
+-- carry, should another addon ask. tests/core/options_validate_test.lua runs
+-- it over the built tree instead, with category left off.
 function Config:RegisterOptions()
 	local root = self:GetOptionsTable()
 	AceConfigRegistry:RegisterOptionsTable(st.name, { name = st.name, type = 'group', args = root }, true)

@@ -55,11 +55,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	Search waits for typing to pause (SEARCH_DELAY), then shows OM.Search's
 	results as a page of sections (page > tabs, then the section); clicking one
-	opens its page and brings the row into view.
+	opens its page and brings the row into view. Going to a page, tab or pick
+	clears the search, one still waiting for the typing to pause too.
 
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every
-	other key on, and Esc too while a box has the keyboard. In combat it does
+	other key on, and Esc too while a box has the keyboard, the dialog is
+	shown or Blizzard's color picker is open. In combat it does
 	nothing (SetPropagateKeyboardInput is protected); the window is closed then
 	anyway (st.Config's PLAYER_REGEN_DISABLED), and opening refuses.
 
@@ -488,6 +490,7 @@ local function Select(slot, key)
 	local selection = state.selections[state.page] or {}
 	state.selections[state.page] = selection
 	selection[slot] = key
+	if state.search ~= '' or searchDue then ClearSearch() end
 	scrollOffset = 0
 	OW:SetStatus(nil)
 	OW:Render()
@@ -937,8 +940,9 @@ local function Build()
 	keys:Hide()
 	keys:SetScript('OnKeyDown', function(self, key)
 		if InCombatLockdown() then return end
-		-- A box's keys, and the dialog's Esc (its catcher closes it).
-		if GetCurrentKeyBoardFocus() or OW:IsDialogShown() then
+		-- A box's keys, the dialog's Esc (its catcher closes it), and Esc while
+		-- Blizzard's color picker is open (it's the picker's).
+		if GetCurrentKeyBoardFocus() or OW:IsDialogShown() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
 			self:SetPropagateKeyboardInput(true)
 			return
 		end
@@ -1129,7 +1133,7 @@ function OW:Open(path, tree)
 			state.page = pageKey
 			state.selections[pageKey] = selection
 			scrollOffset = 0
-			if state.search ~= '' then ClearSearch() end
+			if state.search ~= '' or searchDue then ClearSearch() end
 		end
 	end
 	if F.window:IsShown() then
@@ -1150,7 +1154,7 @@ end
 function OW:Navigate(pageKey, selection)
 	state.page = pageKey
 	if selection then state.selections[pageKey] = Copy(selection) end
-	if state.search ~= '' then ClearSearch() end
+	if state.search ~= '' or searchDue then ClearSearch() end
 	scrollOffset = 0
 	self:SetStatus(nil)
 	self:Render()
