@@ -88,6 +88,26 @@ function XP:GetConfigTable()
 		self.container
 	)
 	position.inline = false -- a tree section, not an inline box
+
+	-- The profile's colors.experience[key]. 'normal' also colors the loot feed's
+	-- experience entries.
+	local function Color(order, name, key, desc)
+		return {
+			order = order,
+			name = name,
+			desc = desc,
+			type = 'color',
+			get = function()
+				return Colors().experience[key]:GetRGB()
+			end,
+			set = function(_, r, g, b)
+				local color = Colors().experience[key]
+				color.r, color.g, color.b = r, g, b
+				self:UpdateConfig()
+			end,
+		}
+	end
+
 	return {
 		name = 'Experience',
 		type = 'group',
@@ -104,6 +124,9 @@ function XP:GetConfigTable()
 					height = st.Config.generators.range(3, 'Height', 2, 60, 1),
 					spacing = st.Config.generators.range(4, 'Spacing', 0, 30, 1),
 					rest_alpha = st.Config.generators.range(5, 'Rested bar alpha', 0, 1, 0.05),
+					normal_color = Color(6, 'Experience color', 'normal', 'The bar while you have no rested experience.'),
+					rested_color = Color(7, 'Rested color', 'rested',
+						'The bar while you have rested experience, and the rested part past it (at Rested bar alpha).'),
 				},
 			},
 			position = position,
@@ -117,6 +140,9 @@ function XP:UpdateConfig()
 	if not self.bars then return end -- not enabled
 	self:MigratePosition()
 
+	-- Before the frame levels below, which place its backdrop.
+	st:SetBackdrop(self.bars.experience, self.config.template)
+
 	-- Size, position and frame levels; in combat these wait for the end of
 	-- combat if a protected frame is anchored to the container or a bar.
 	st:SafeReposition(self.container, 'experience', function()
@@ -127,17 +153,20 @@ function XP:UpdateConfig()
 		self.container:ClearAllPoints()
 		self.container:SetPoint(st:UnpackPoint(self.config.position))
 
-		self.bars.experience:SetFrameLevel(5)
-		self.bars.experience:SetSize(width, height)
-		self.bars.experience.rested:SetFrameLevel(3)
-		self.bars.experience.rested:SetSize(width, height)
+		-- The rested bar goes between the experience bar's backdrop and its fill.
+		-- Under the backdrop it only showed through the backdrop's transparency.
+		local expbar = self.bars.experience
+		expbar:SetFrameLevel(5)
+		if expbar.backdrop then expbar.backdrop:SetFrameLevel(3) end
+		expbar:SetSize(width, height)
+		expbar.rested:SetFrameLevel(4)
+		expbar.rested:SetSize(width, height)
 		self.bars.reputation:SetFrameLevel(5)
 		self.bars.reputation:SetSize(width, height)
 	end)
 
 	self.bars.experience:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.experience:SetStatusBarColor(Colors().experience.normal:GetRGB())
-	st:SetBackdrop(self.bars.experience, self.config.template)
 
 	self.bars.experience.rested:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.experience.rested:SetStatusBarColor(Colors().experience.rested:GetRGB())

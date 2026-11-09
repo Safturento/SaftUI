@@ -89,7 +89,7 @@ st.defaults.experience = {
 	width = st.defaults.maps.minimap.size,
 	height = 13,
 	spacing = 8,
-	rest_alpha = 1,
+	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
 	template = 'thicktransparent',
 	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
 }
