@@ -64,6 +64,24 @@ local function AnchorReaches(from, target, visited)
 	return false
 end
 
+-- True if frame moves when target moves: it is target, one of its anchors
+-- reaches target (directly or through other frames), or target is one of its
+-- parents. Anchoring target to frame would therefore make a loop, and edit
+-- mode skips such frames as snap targets because they ride along with a drag.
+function st:MovesWith(frame, target)
+	if AnchorReaches(frame, target, {}) then
+		return true
+	end
+	local parent = frame.GetParent and frame:GetParent()
+	while parent do
+		if parent == target then
+			return true
+		end
+		parent = parent.GetParent and parent:GetParent()
+	end
+	return false
+end
+
 -- Returns true if anchoring frame to relative is valid, else false and an error message.
 function st:ValidateAnchor(frame, relative)
 	local relativeFrame = st:ResolveFrame(relative)
@@ -73,15 +91,8 @@ function st:ValidateAnchor(frame, relative)
 	if relativeFrame == frame then
 		return false, "Can't anchor a frame to itself"
 	end
-	if AnchorReaches(relativeFrame, frame, {}) then
+	if st:MovesWith(relativeFrame, frame) then
 		return false, "Anchor would create a loop"
-	end
-	local parent = relativeFrame.GetParent and relativeFrame:GetParent()
-	while parent do
-		if parent == frame then
-			return false, "Anchor would create a loop"
-		end
-		parent = parent.GetParent and parent:GetParent()
 	end
 	return true
 end

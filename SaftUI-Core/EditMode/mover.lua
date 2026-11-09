@@ -39,6 +39,13 @@ function EM:StartDrag(mover)
 	local cx, cy = GetCursorPosition()
 	local uiScale = UIParent:GetEffectiveScale()
 	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y }
+	-- For snapping: where the frame is now, and the lines it can snap to. The
+	-- other frames don't move during a drag, so the lines are made once.
+	local l, r, b, t = EM.GetRectInUI(mover.def.frame)
+	if l then
+		mover.drag.rect0 = { left = l, right = r, bottom = b, top = t }
+	end
+	mover.drag.xLines, mover.drag.yLines = self:GetSnapLines(mover)
 	mover.dragged = true
 	mover.overlay:SetScript('OnUpdate', function() EM:UpdateDrag(mover) end)
 end
@@ -50,10 +57,17 @@ function EM:UpdateDrag(mover)
 	local uiScale = UIParent:GetEffectiveScale()
 	-- cursor delta in UIParent units, converted to the moved frame's units
 	local ratio = uiScale / mover.def.frame:GetEffectiveScale()
-	local dx = (cx / uiScale - drag.cx) * ratio
-	local dy = (cy / uiScale - drag.cy) * ratio
-	drag.x = st:RoundToPixel(drag.x0 + dx, mover.def.frame)
-	drag.y = st:RoundToPixel(drag.y0 + dy, mover.def.frame)
+	local dUIx = cx / uiScale - drag.cx
+	local dUIy = cy / uiScale - drag.cy
+	-- Snapping adds a correction (in UIParent units) that pulls an edge or the
+	-- center onto a nearby line. Ctrl held suspends it.
+	local sx, sy = 0, 0
+	if drag.rect0 and not IsControlKeyDown()
+			and (#drag.xLines > 0 or #drag.yLines > 0) then
+		sx, sy = EM.SnapDrag(drag.rect0, dUIx, dUIy, drag.xLines, drag.yLines, EM.SNAP_REACH)
+	end
+	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
+	drag.y = st:RoundToPixel(EM.SnappedOffset(drag.y0, dUIy, sy, ratio), mover.def.frame)
 	ApplyOffsets(mover, drag.x, drag.y)
 
 	-- Keep an open /sui showing the live x/y. Throttled: each refresh
