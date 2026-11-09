@@ -1,7 +1,7 @@
 ---
 name: workflow
 description: Followups, specs/plans, branching and how subagents work in SaftUI (no Jira)
-last_updated: 2026-11-07
+last_updated: 2026-11-09
 covers:
   - 'docs/followups.md'
   - 'docs/superpowers/**'
@@ -53,6 +53,7 @@ Repo-specific overlay on the user-level `~/.claude/CLAUDE.md` "Planning workflow
   - a report path in the session scratchpad, since `.superpowers/` isn't present inside a worktree
 
   Workers never dispatch subagents.
+- **Tests.** Workers write their logic tests in `tests/` (`.agents/testing.md`) and run `tests/run`, never a harness of their own in the scratchpad.
 - **Reviews.** Every task gets a reviewer, and fix rounds get a scoped re-review. For changes that touch Blizzard frames, ask the reviewer to check taint against the forever source specifically (see `.agents/taint.md`).
 - **Merge conflicts.** Parallel tasks often conflict where each appends defaults to the end of `SaftUI-Misc/config.lua`, or edits `docs/followups.md`. Keep both sides.
 
@@ -61,7 +62,7 @@ Repo-specific overlay on the user-level `~/.claude/CLAUDE.md` "Planning workflow
 - Subjects are lowercase `module: imperative summary` (`minimap: …`, `core: …`, `unitframes: …`, `docs: …`). End with the session's `Co-Authored-By` line.
 - **Stage by explicit path only.** Never `git add -A`, `git add .` or a directory: the user may have unrelated local changes.
 - **Line endings.** `.gitattributes` normalizes to LF on commit, but some working-tree files are CRLF. Keep each file's existing endings when editing (check with `file`).
-- **Verification.** There is no Lua tooling or test runner. Verify by re-reading changed files end to end and checking Blizzard names against the source (`.agents/clients.md`). Every change ends with a short in-game checklist for the user, and nothing counts as verified until the user confirms it in game.
+- **Verification.** Run `tests/run` and have it pass (`.agents/testing.md`). It covers logic only, so also verify by re-reading changed files end to end and checking Blizzard names against the source (`.agents/clients.md`). Every change ends with a short in-game checklist for the user, and nothing counts as verified until the user confirms it in game.
 
 ## See also
 

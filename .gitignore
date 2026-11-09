@@ -25,3 +25,6 @@ coverage
 
 # WSL download metadata
 *:Zone.Identifier
+
+# The test runner's Python environment (tests/run makes it)
+tests/.venv/

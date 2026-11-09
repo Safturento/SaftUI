@@ -1,0 +1,830 @@
+--[[
+	The game's widget API: frames, buttons, tooltips, textures, font strings
+	and fonts, CreateFrame and CreateFont, UIParent and WorldFrame. Method
+	names and arguments follow Blizzard_APIDocumentationGenerated (Gethe/
+	wow-ui-source, forever branch).
+
+	Strict: a widget answers only the methods defined here. Any other name is
+	nil, so calling it errors with the method's name, as a missing API would.
+	Add a method when a test needs it, and make it behave like the real one,
+	including how it fails.
+
+	Faithful:
+	- Every method checks that its self is a widget of the right type, and
+	  errors with "Wrong object type" if not, as the game does when a
+	  FontString's SetText is called on a Button.
+	- Widget state lives in a side table (stub.state), so a widget's own table
+	  holds only what code puts on it, as in game. getmetatable(widget).__index
+	  is the type's method table, which api.lua's *Direct helpers rely on.
+	- Frames are laid out from their anchors and sizes, so GetLeft, GetWidth
+	  and the rest work. UIParent fills the screen: its size is
+	  GetPhysicalScreenSize times one pixel at its scale.
+	- Showing or hiding runs OnShow / OnHide on every widget whose visibility
+	  changes. Errors in scripts go to the game's error handler.
+
+	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
+	itself (fire it with stub.fire_script); OnUpdate; a backdrop's border
+	textures; secret values; taint and protected frames.
+]]
+
+local states = setmetatable({}, { __mode = 'k' }) -- widget -> its state
+
+-- A widget's state, for reading what the API has no getter for (e.g. a
+-- texture's color: stub.state(texture).color_texture).
+function stub.state(widget)
+	return states[widget] or error('stub.state: not a widget: ' .. tostring(widget), 2)
+end
+
+-- Each widget type and the API groups it has, in order. A method checks that
+-- its self has the group it's defined in.
+local TYPES = {
+	Frame = { 'Object', 'ScriptRegion', 'Frame' },
+	Button = { 'Object', 'ScriptRegion', 'Frame', 'Button' },
+	GameTooltip = { 'Object', 'ScriptRegion', 'Frame', 'GameTooltip' },
+	Texture = { 'Object', 'ScriptRegion', 'Region', 'Texture' },
+	FontString = { 'Object', 'ScriptRegion', 'Region', 'FontInstance', 'FontString' },
+	Font = { 'Object', 'FontInstance', 'Font' },
+}
+
+-- The scripts each group has. SetScript, HookScript and GetScript error on
+-- any other name, as the game does.
+local SCRIPTS = {
+	ScriptRegion = { 'OnShow', 'OnHide', 'OnEnter', 'OnLeave', 'OnMouseDown', 'OnMouseUp', 'OnMouseWheel' },
+	Frame = { 'OnEvent', 'OnUpdate', 'OnSizeChanged', 'OnLoad', 'OnKeyDown', 'OnKeyUp', 'OnChar',
+		'OnDragStart', 'OnDragStop', 'OnReceiveDrag', 'OnAttributeChanged' },
+	Button = { 'OnClick', 'PreClick', 'PostClick', 'OnDoubleClick', 'OnEnable', 'OnDisable' },
+}
+
+local POINTS_H = {
+	TOPLEFT = 'left', LEFT = 'left', BOTTOMLEFT = 'left',
+	TOP = 'middle', CENTER = 'middle', BOTTOM = 'middle',
+	TOPRIGHT = 'right', RIGHT = 'right', BOTTOMRIGHT = 'right',
+}
+local POINTS_V = {
+	TOPLEFT = 'top', TOP = 'top', TOPRIGHT = 'top',
+	LEFT = 'middle', CENTER = 'middle', RIGHT = 'middle',
+	BOTTOMLEFT = 'bottom', BOTTOM = 'bottom', BOTTOMRIGHT = 'bottom',
+}
+local STRATA = {
+	PARENT = true, BACKGROUND = true, LOW = true, MEDIUM = true, HIGH = true, DIALOG = true,
+	FULLSCREEN = true, FULLSCREEN_DIALOG = true, TOOLTIP = true,
+}
+local DRAW_LAYERS = { BACKGROUND = true, BORDER = true, ARTWORK = true, OVERLAY = true, HIGHLIGHT = true }
+
+local API = {} -- group -> { name = function(self, state, ...) }
+for _, groups in pairs(TYPES) do
+	for _, group in ipairs(groups) do
+		API[group] = API[group] or {}
+	end
+end
+local Object, ScriptRegion, Region, Frame, Button, GameTooltip, Texture, FontInstance, FontString =
+	API.Object, API.ScriptRegion, API.Region, API.Frame, API.Button, API.GameTooltip,
+	API.Texture, API.FontInstance, API.FontString
+
+------------------------------------------------------------------ helpers
+
+local function pack(...)
+	return { n = select('#', ...), ... }
+end
+
+local function describe(widget)
+	local s = states[widget]
+	if not s then return type(widget) end
+	return s.name and (s.type .. ' ' .. s.name) or ('unnamed ' .. s.type)
+end
+
+local THIS_FILE = debug.getinfo(1, 'S').source
+
+-- Errors as the game's usage errors do: at the code that called the widget
+-- method, the first stack level outside this file.
+local function usage(s, text)
+	local level = 2
+	while true do
+		local info = debug.getinfo(level, 'S')
+		if not info or info.source ~= THIS_FILE then break end
+		level = level + 1
+	end
+	error(('%s: %s'):format(s.name or ('<unnamed ' .. s.type .. '>'), text), level)
+end
+
+local function is_widget(value, group)
+	local s = states[value]
+	return s ~= nil and (group == nil or s.groups[group] == true)
+end
+
+local function number_arg(s, value, what)
+	if type(value) ~= 'number' then usage(s, ('%s must be a number, got %s'):format(what, type(value))) end
+	return value
+end
+
+local function has_script(s, script)
+	for group in pairs(s.groups) do
+		local names = SCRIPTS[group]
+		if names then
+			for _, name in ipairs(names) do
+				if name == script then return true end
+			end
+		end
+	end
+	return false
+end
+
+local function check_script(s, script, method)
+	if type(script) ~= 'string' or not has_script(s, script) then
+		usage(s, ('%s(): %s doesn\'t have a "%s" script'):format(method, s.type, tostring(script)))
+	end
+end
+
+-- Runs a widget's script handler and then its hooks, through the game's error
+-- handler. Returns true if anything ran.
+local function run_script(widget, script, ...)
+	local s = states[widget]
+	local args = pack(...)
+	local ran = false
+	local function call(fn)
+		ran = true
+		xpcall(function() fn(widget, unpack(args, 1, args.n)) end, geterrorhandler())
+	end
+	if s.scripts[script] then call(s.scripts[script]) end
+	for _, hook in ipairs(s.hooks[script] or {}) do call(hook) end
+	return ran
+end
+
+local function new_widget(typeName, name, parent)
+	local widget = setmetatable({ [0] = newproxy() }, TYPES[typeName].metatable)
+	local s = {
+		type = typeName, groups = TYPES[typeName].groups, name = name, parent = parent,
+		points = {}, shown = true, alpha = 1, scale = 1, scripts = {}, hooks = {},
+	}
+	states[widget] = s
+	if name then _G[name] = widget end
+	return widget, s
+end
+
+------------------------------------------------------------------ visibility
+
+local function is_visible(s)
+	while s do
+		if not s.shown then return false end
+		s = s.parent and states[s.parent]
+	end
+	return true
+end
+
+-- widget and everything under it, parents before children.
+local function subtree(widget, out)
+	out[#out + 1] = widget
+	local s = states[widget]
+	for _, region in ipairs(s.regions or {}) do out[#out + 1] = region end
+	for _, child in ipairs(s.children or {}) do subtree(child, out) end
+	return out
+end
+
+-- Runs change, then OnShow / OnHide on each widget under widget whose
+-- visibility it changed.
+local function changing_visibility(widget, change)
+	local tree = subtree(widget, {})
+	local before = {}
+	for i, w in ipairs(tree) do before[i] = is_visible(states[w]) end
+	change()
+	for i, w in ipairs(tree) do
+		local now = is_visible(states[w])
+		if now ~= before[i] then
+			run_script(w, now and 'OnShow' or 'OnHide')
+		end
+	end
+end
+
+------------------------------------------------------------------ layout
+
+local function effective_scale(s)
+	local scale = s.scale
+	local parent = s.parent
+	while parent do
+		local ps = states[parent]
+		scale = scale * ps.scale
+		parent = ps.parent
+	end
+	return scale
+end
+
+-- widget's left, right, bottom and top in its own units, or nil if it can't
+-- be placed (no anchors, or anchored to something that can't be).
+local function rect_of(widget, visiting)
+	local s = states[widget]
+	if s.fills_screen then
+		-- One physical pixel in this widget's units, times the screen's pixels.
+		local pixel = (768 / stub.screen_height) / effective_scale(s)
+		return 0, stub.screen_width * pixel, 0, stub.screen_height * pixel
+	end
+	if #s.points == 0 or visiting[widget] then return nil end
+	visiting[widget] = true
+	local scale = effective_scale(s)
+	local h, v = {}, {}
+	for _, p in ipairs(s.points) do
+		local l, r, b, t = rect_of(p.relativeTo, visiting)
+		if not l then
+			visiting[widget] = nil
+			return nil
+		end
+		local k = effective_scale(states[p.relativeTo]) / scale -- its units to ours
+		local side = POINTS_H[p.relativePoint]
+		local x = side == 'left' and l or side == 'right' and r or (l + r) / 2
+		side = POINTS_V[p.relativePoint]
+		local y = side == 'bottom' and b or side == 'top' and t or (b + t) / 2
+		h[POINTS_H[p.point]] = x * k + p.x
+		v[POINTS_V[p.point]] = y * k + p.y
+	end
+	visiting[widget] = nil
+
+	local w, ht = s.width or 0, s.height or 0
+	local left, right = h.left, h.right
+	if left and not right then right = left + w
+	elseif right and not left then left = right - w
+	elseif not left then left, right = h.middle - w / 2, h.middle + w / 2 end
+	local bottom, top = v.bottom, v.top
+	if bottom and not top then top = bottom + ht
+	elseif top and not bottom then bottom = top - ht
+	elseif not bottom then bottom, top = v.middle - ht / 2, v.middle + ht / 2 end
+	return left, right, bottom, top
+end
+
+-- True if s is anchored on both of the opposite sides a and b, so its size
+-- comes from its anchors rather than SetWidth / SetHeight.
+local function anchored_across(s, sides, a, b)
+	local has = {}
+	for _, p in ipairs(s.points) do has[sides[p.point]] = true end
+	return has[a] and has[b]
+end
+
+local function width_of(widget, s)
+	if s.fills_screen or anchored_across(s, POINTS_H, 'left', 'right') then
+		local l, r = rect_of(widget, {})
+		if l then return r - l end
+	end
+	return s.width or 0
+end
+
+local function height_of(widget, s)
+	if s.fills_screen or anchored_across(s, POINTS_V, 'bottom', 'top') then
+		local _, _, b, t = rect_of(widget, {})
+		if b then return t - b end
+	end
+	return s.height or 0
+end
+
+-- True if from's position depends on target: it is target, or anchored to
+-- it directly or through other regions.
+local function depends_on(from, target, seen)
+	if from == target then return true end
+	if seen[from] then return false end
+	seen[from] = true
+	for _, p in ipairs(states[from].points) do
+		if depends_on(p.relativeTo, target, seen) then return true end
+	end
+	return false
+end
+
+-- Where a widget anchors when no relative region is given: its parent, or
+-- the screen.
+local function default_relative(s)
+	return s.parent or WorldFrame
+end
+
+-- The region self would anchor to: relativeTo itself, the region a name
+-- names, or by default the parent. Errors, as the game does, on anything
+-- else and on an anchor that would make a loop.
+local function resolve_relative(self, s, relativeTo, method)
+	if type(relativeTo) == 'string' then
+		local name = relativeTo
+		relativeTo = _G[name]
+		if not is_widget(relativeTo, 'ScriptRegion') then
+			usage(s, ("%s(): Couldn't find region named '%s'"):format(method, name))
+		end
+	elseif relativeTo == nil then
+		relativeTo = default_relative(s)
+	elseif not is_widget(relativeTo, 'ScriptRegion') then
+		usage(s, method .. '(): relativeTo must be a region')
+	end
+	if relativeTo == self then usage(s, method .. '(): Cannot anchor to itself') end
+	if depends_on(relativeTo, self, {}) then usage(s, method .. '(): Cannot anchor to a region dependent on it') end
+	return relativeTo
+end
+
+-- A point name, uppercased (the game ignores case). Errors on anything else.
+local function point_name(s, point, what)
+	local name = type(point) == 'string' and point:upper()
+	if not POINTS_H[name] then usage(s, ('SetPoint(): invalid %s %s'):format(what, tostring(point))) end
+	return name
+end
+
+------------------------------------------------------------------ Object
+
+function Object.GetName(self, s) return s.name end
+function Object.GetObjectType(self, s) return s.type end
+function Object.IsObjectType(self, s, typeName) return s.groups[typeName] == true end
+
+------------------------------------------------------------------ ScriptRegion (frames, textures, font strings)
+
+function ScriptRegion.GetParent(self, s) return s.parent end
+
+function ScriptRegion.SetParent(self, s, parent)
+	if parent ~= nil and not is_widget(parent, 'Frame') then usage(s, 'SetParent(): parent must be a frame') end
+	if parent == nil and not s.groups.Frame then usage(s, 'SetParent(): a region needs a parent') end
+	if parent == s.parent then return end
+	changing_visibility(self, function()
+		local list = s.groups.Frame and 'children' or 'regions'
+		if s.parent then
+			local siblings = states[s.parent][list]
+			for i, w in ipairs(siblings) do
+				if w == self then table.remove(siblings, i) break end
+			end
+		end
+		s.parent = parent
+		if parent then
+			table.insert(states[parent][list], self)
+		end
+		if s.groups.Frame then
+			s.level = parent and states[parent].level + 1 or 0
+		end
+	end)
+end
+
+function ScriptRegion.Show(self, s)
+	changing_visibility(self, function() s.shown = true end)
+end
+function ScriptRegion.Hide(self, s)
+	changing_visibility(self, function() s.shown = false end)
+end
+function ScriptRegion.SetShown(self, s, shown)
+	changing_visibility(self, function() s.shown = shown and true or false end)
+end
+function ScriptRegion.IsShown(self, s) return s.shown end
+function ScriptRegion.IsVisible(self, s) return is_visible(s) end
+
+function ScriptRegion.EnableMouse(self, s, enable) s.mouse_enabled = enable and true or false end
+function ScriptRegion.IsMouseEnabled(self, s) return s.mouse_enabled == true end
+-- Stub widgets are never secure frames.
+function ScriptRegion.IsProtected(self, s) return false, false end
+
+function ScriptRegion.HasScript(self, s, script) return has_script(s, script) end
+function ScriptRegion.GetScript(self, s, script)
+	check_script(s, script, 'GetScript')
+	return s.scripts[script]
+end
+-- Setting a script also drops its HookScript hooks, as in game.
+function ScriptRegion.SetScript(self, s, script, fn)
+	check_script(s, script, 'SetScript')
+	if fn ~= nil and type(fn) ~= 'function' then usage(s, 'SetScript(): the handler must be a function or nil') end
+	s.scripts[script] = fn
+	s.hooks[script] = nil
+end
+function ScriptRegion.HookScript(self, s, script, fn)
+	check_script(s, script, 'HookScript')
+	if type(fn) ~= 'function' then usage(s, 'HookScript(): the hook must be a function') end
+	s.hooks[script] = s.hooks[script] or {}
+	table.insert(s.hooks[script], fn)
+end
+
+-- Anchors and size (the game's ScriptRegionResizing).
+-- Setting a point the region already has replaces it.
+function ScriptRegion.SetPoint(self, s, point, relativeTo, relativePoint, x, y)
+	if type(relativeTo) == 'number' then -- SetPoint(point, x, y)
+		relativeTo, relativePoint, x, y = nil, nil, relativeTo, relativePoint
+	elseif type(relativePoint) == 'number' then -- SetPoint(point, relativeTo, x, y)
+		relativePoint, x, y = nil, relativePoint, x
+	end
+	point = point_name(s, point, 'point')
+	local p = {
+		point = point,
+		relativeTo = resolve_relative(self, s, relativeTo, 'SetPoint'),
+		relativePoint = relativePoint and point_name(s, relativePoint, 'relative point') or point,
+		x = number_arg(s, x or 0, 'offsetX'),
+		y = number_arg(s, y or 0, 'offsetY'),
+	}
+	for i, existing in ipairs(s.points) do
+		if existing.point == point then
+			s.points[i] = p
+			return
+		end
+	end
+	s.points[#s.points + 1] = p
+end
+function ScriptRegion.SetAllPoints(self, s, relativeTo)
+	relativeTo = resolve_relative(self, s, relativeTo, 'SetAllPoints')
+	s.points = {
+		{ point = 'TOPLEFT', relativeTo = relativeTo, relativePoint = 'TOPLEFT', x = 0, y = 0 },
+		{ point = 'BOTTOMRIGHT', relativeTo = relativeTo, relativePoint = 'BOTTOMRIGHT', x = 0, y = 0 },
+	}
+end
+function ScriptRegion.ClearAllPoints(self, s) s.points = {} end
+function ScriptRegion.GetNumPoints(self, s) return #s.points end
+function ScriptRegion.GetPoint(self, s, index)
+	local p = s.points[index or 1]
+	if p then return p.point, p.relativeTo, p.relativePoint, p.x, p.y end
+end
+
+function ScriptRegion.SetWidth(self, s, width) s.width = number_arg(s, width, 'width') end
+function ScriptRegion.SetHeight(self, s, height) s.height = number_arg(s, height, 'height') end
+function ScriptRegion.SetSize(self, s, width, height)
+	s.width, s.height = number_arg(s, width, 'width'), number_arg(s, height, 'height')
+end
+function ScriptRegion.GetWidth(self, s) return width_of(self, s) end
+function ScriptRegion.GetHeight(self, s) return height_of(self, s) end
+function ScriptRegion.GetSize(self, s) return width_of(self, s), height_of(self, s) end
+
+function ScriptRegion.GetLeft(self, s) return (rect_of(self, {})) end
+function ScriptRegion.GetRight(self, s) return (select(2, rect_of(self, {}))) end
+function ScriptRegion.GetBottom(self, s) return (select(3, rect_of(self, {}))) end
+function ScriptRegion.GetTop(self, s) return (select(4, rect_of(self, {}))) end
+function ScriptRegion.GetCenter(self, s)
+	local l, r, b, t = rect_of(self, {})
+	if l then return (l + r) / 2, (b + t) / 2 end
+end
+function ScriptRegion.GetRect(self, s)
+	local l, r, b, t = rect_of(self, {})
+	if l then return l, b, r - l, t - b end
+end
+
+------------------------------------------------------------------ Region (textures, font strings)
+
+function Region.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
+function Region.GetAlpha(self, s) return s.alpha end
+function Region.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
+function Region.GetScale(self, s) return s.scale end
+function Region.GetEffectiveScale(self, s) return effective_scale(s) end
+function Region.SetVertexColor(self, s, r, g, b, a)
+	s.vertex_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+end
+function Region.GetVertexColor(self, s)
+	local c = s.vertex_color or { 1, 1, 1, 1 }
+	return c[1], c[2], c[3], c[4]
+end
+function Region.SetDrawLayer(self, s, layer, sublevel)
+	if not DRAW_LAYERS[layer] then usage(s, 'SetDrawLayer(): invalid layer ' .. tostring(layer)) end
+	s.draw_layer, s.sublevel = layer, sublevel or 0
+end
+function Region.GetDrawLayer(self, s) return s.draw_layer, s.sublevel end
+
+------------------------------------------------------------------ Texture
+
+-- asset is a file path or file ID; nil clears the texture.
+function Texture.SetTexture(self, s, asset)
+	if asset ~= nil and type(asset) ~= 'string' and type(asset) ~= 'number' then
+		usage(s, 'SetTexture(): asset must be a path or a file ID')
+	end
+	s.texture, s.color_texture = asset, nil
+	return true
+end
+function Texture.GetTexture(self, s) return s.texture end
+function Texture.SetColorTexture(self, s, r, g, b, a)
+	s.color_texture = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+	s.texture = nil
+end
+function Texture.SetTexCoord(self, s, ...) s.tex_coord = { ... } end
+function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
+function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
+
+------------------------------------------------------------------ FontInstance (font strings, fonts)
+
+-- The font a font string or font object draws with: its own SetFont, or its
+-- font object's (font objects are shared, so a later change shows through).
+local function font_of(s)
+	if s.font then return s.font end
+	if s.font_object then return font_of(states[s.font_object]) end
+end
+
+function FontInstance.SetFont(self, s, path, size, flags)
+	if type(path) ~= 'string' and type(path) ~= 'number' then usage(s, 'SetFont(): path must be a font file') end
+	s.font = { path, number_arg(s, size, 'height'), flags or '' }
+	return true
+end
+function FontInstance.GetFont(self, s)
+	local font = font_of(s)
+	if font then return font[1], font[2], font[3] end
+end
+function FontInstance.SetFontObject(self, s, font)
+	if type(font) == 'string' then font = _G[font] end
+	if not is_widget(font, 'FontInstance') then usage(s, 'SetFontObject(): font must be a font object') end
+	s.font_object = font
+end
+function FontInstance.GetFontObject(self, s) return s.font_object end
+function FontInstance.SetTextColor(self, s, r, g, b, a)
+	s.text_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+end
+-- Its own SetTextColor, else its font object's, else white.
+local function text_color_of(s)
+	if s.text_color then return s.text_color end
+	if s.font_object then return text_color_of(states[s.font_object]) end
+end
+function FontInstance.GetTextColor(self, s)
+	local c = text_color_of(s) or { 1, 1, 1, 1 }
+	return c[1], c[2], c[3], c[4]
+end
+function FontInstance.SetJustifyH(self, s, justify) s.justify_h = justify end
+function FontInstance.GetJustifyH(self, s) return s.justify_h or 'CENTER' end
+function FontInstance.SetJustifyV(self, s, justify) s.justify_v = justify end
+function FontInstance.GetJustifyV(self, s) return s.justify_v or 'MIDDLE' end
+function FontInstance.SetShadowOffset(self, s, x, y) s.shadow_offset = { x, y } end
+function FontInstance.GetShadowOffset(self, s)
+	local o = s.shadow_offset or { 0, 0 }
+	return o[1], o[2]
+end
+function FontInstance.SetSpacing(self, s, spacing) s.spacing = number_arg(s, spacing, 'spacing') end
+function FontInstance.GetSpacing(self, s) return s.spacing or 0 end
+
+------------------------------------------------------------------ FontString
+
+-- Like the game, a font string needs a font before it takes text. text is a
+-- string or number; nil sets "".
+function FontString.SetText(self, s, text)
+	if not font_of(s) then usage(s, 'SetText(): Font not set') end
+	if text ~= nil and type(text) ~= 'string' and type(text) ~= 'number' then
+		usage(s, 'SetText(): text must be a string')
+	end
+	s.text = text == nil and '' or tostring(text)
+end
+function FontString.GetText(self, s) return s.text end
+
+-- There are no font metrics outside the game, so each character counts as
+-- half the font's height wide, and a line of text is one font height tall.
+function FontString.GetStringWidth(self, s)
+	local font = font_of(s)
+	if not font or not s.text then return 0 end
+	return #s.text * font[2] / 2
+end
+function FontString.GetStringHeight(self, s)
+	local font = font_of(s)
+	if not font or not s.text or s.text == '' then return 0 end
+	return font[2]
+end
+
+------------------------------------------------------------------ Frame
+
+local function create_region(self, s, typeName, name, layer)
+	layer = layer or 'ARTWORK'
+	if not DRAW_LAYERS[layer] then usage(s, ('Create%s(): invalid layer %s'):format(typeName, tostring(layer))) end
+	local region, rs = new_widget(typeName, name, self)
+	rs.draw_layer, rs.sublevel = layer, 0
+	table.insert(s.regions, region)
+	return region
+end
+
+-- No texture templates are stubbed yet, so inherits must be nil.
+function Frame.CreateTexture(self, s, name, layer, inherits, sublevel)
+	if inherits ~= nil then usage(s, ('CreateTexture(): Couldn\'t find inherited node "%s"'):format(tostring(inherits))) end
+	local texture = create_region(self, s, 'Texture', name, layer)
+	states[texture].sublevel = sublevel or 0
+	return texture
+end
+-- inherits names a font object (e.g. 'GameFontNormal'), which the font string
+-- then uses.
+function Frame.CreateFontString(self, s, name, layer, inherits)
+	local font
+	if inherits ~= nil then
+		font = _G[inherits]
+		if not is_widget(font, 'FontInstance') then
+			usage(s, ('CreateFontString(): Couldn\'t find inherited node "%s"'):format(tostring(inherits)))
+		end
+	end
+	local fontString = create_region(self, s, 'FontString', name, layer)
+	states[fontString].font_object = font
+	return fontString
+end
+
+function Frame.GetChildren(self, s) return unpack(s.children) end
+function Frame.GetNumChildren(self, s) return #s.children end
+function Frame.GetRegions(self, s) return unpack(s.regions) end
+function Frame.GetNumRegions(self, s) return #s.regions end
+
+function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
+function Frame.GetFrameLevel(self, s) return s.level end
+function Frame.SetFrameStrata(self, s, strata)
+	if not STRATA[strata] then usage(s, 'SetFrameStrata(): invalid strata ' .. tostring(strata)) end
+	s.strata = strata ~= 'PARENT' and strata or nil
+end
+function Frame.GetFrameStrata(self, s)
+	if s.strata then return s.strata end
+	return s.parent and states[s.parent].groups.Frame and Frame.GetFrameStrata(s.parent, states[s.parent]) or 'MEDIUM'
+end
+
+function Frame.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
+function Frame.GetAlpha(self, s) return s.alpha end
+function Frame.GetEffectiveAlpha(self, s)
+	local alpha, parent = s.alpha, s.parent
+	while parent do
+		alpha = alpha * states[parent].alpha
+		parent = states[parent].parent
+	end
+	return alpha
+end
+function Frame.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
+function Frame.GetScale(self, s) return s.scale end
+function Frame.GetEffectiveScale(self, s) return effective_scale(s) end
+
+function Frame.EnableKeyboard(self, s, enable) s.keyboard_enabled = enable and true or false end
+function Frame.IsKeyboardEnabled(self, s) return s.keyboard_enabled == true end
+function Frame.SetPropagateKeyboardInput(self, s, propagate) s.propagate_keyboard = propagate and true or false end
+function Frame.GetPropagateKeyboardInput(self, s) return s.propagate_keyboard == true end
+function Frame.SetMovable(self, s, movable) s.movable = movable and true or false end
+function Frame.IsMovable(self, s) return s.movable == true end
+function Frame.SetClampedToScreen(self, s, clamped) s.clamped = clamped and true or false end
+function Frame.IsClampedToScreen(self, s) return s.clamped == true end
+function Frame.RegisterForDrag(self, s, ...) s.drag_buttons = { ... } end
+
+-- Events: frames registered for an event, in registration order, so
+-- stub.fire_event runs them in a stable order.
+local eventFrames = {} -- event -> list of frames
+
+function Frame.RegisterEvent(self, s, event)
+	if type(event) ~= 'string' then usage(s, 'RegisterEvent(): event must be a string') end
+	if not s.events[event] then
+		s.events[event] = true
+		eventFrames[event] = eventFrames[event] or {}
+		table.insert(eventFrames[event], self)
+	end
+	return true
+end
+function Frame.UnregisterEvent(self, s, event)
+	if not s.events[event] then return end
+	s.events[event] = nil
+	for i, frame in ipairs(eventFrames[event]) do
+		if frame == self then table.remove(eventFrames[event], i) break end
+	end
+end
+function Frame.UnregisterAllEvents(self, s)
+	for event in pairs(s.events) do Frame.UnregisterEvent(self, s, event) end
+end
+function Frame.IsEventRegistered(self, s, event) return s.events[event] == true end
+
+------------------------------------------------------------------ Button
+
+function Button.RegisterForClicks(self, s, ...) s.click_buttons = { ... } end
+function Button.IsEnabled(self, s) return s.enabled end
+function Button.Enable(self, s)
+	if not s.enabled then
+		s.enabled = true
+		run_script(self, 'OnEnable')
+	end
+end
+function Button.Disable(self, s)
+	if s.enabled then
+		s.enabled = false
+		run_script(self, 'OnDisable')
+	end
+end
+function Button.SetEnabled(self, s, enabled)
+	if enabled then Button.Enable(self, s) else Button.Disable(self, s) end
+end
+function Button.SetPushedTextOffset(self, s, x, y) s.pushed_text_offset = { x, y } end
+function Button.GetPushedTextOffset(self, s) return s.pushed_text_offset[1], s.pushed_text_offset[2] end
+
+-- Font objects for the button's text in each state. A font is required.
+for _, state in ipairs({ 'Normal', 'Highlight', 'Disabled' }) do
+	local key = state:lower() .. '_font_object'
+	Button['Set' .. state .. 'FontObject'] = function(self, s, font)
+		if type(font) == 'string' then font = _G[font] end
+		if not is_widget(font, 'FontInstance') then
+			usage(s, ('Set%sFontObject(): font must be a font object'):format(state))
+		end
+		s[key] = font
+	end
+	Button['Get' .. state .. 'FontObject'] = function(self, s) return s[key] end
+end
+
+-- The texture for each button state: a texture of the button's, or a file
+-- (path or ID), which the button makes a texture for. nil clears it.
+for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = 'ARTWORK', Highlight = 'HIGHLIGHT' }) do
+	local key = state:lower() .. '_texture'
+	Button['Set' .. state .. 'Texture'] = function(self, s, asset)
+		if asset == nil then
+			s[key] = nil
+		elseif is_widget(asset, 'Texture') then
+			s[key] = asset
+		elseif type(asset) == 'string' or type(asset) == 'number' then
+			local texture = create_region(self, s, 'Texture', nil, layer)
+			states[texture].texture = asset
+			s[key] = texture
+		else
+			usage(s, ('Set%sTexture(): asset must be a texture, a path or a file ID'):format(state))
+		end
+	end
+	Button['Get' .. state .. 'Texture'] = function(self, s) return s[key] end
+end
+
+------------------------------------------------------------------ GameTooltip
+
+function GameTooltip.SetOwner(self, s, owner, anchor)
+	if not is_widget(owner, 'Frame') then usage(s, 'SetOwner(): owner must be a frame') end
+	s.owner, s.anchor = owner, anchor or 'ANCHOR_LEFT'
+end
+function GameTooltip.GetOwner(self, s) return s.owner end
+function GameTooltip.ClearLines(self, s) s.lines = 0 end
+function GameTooltip.NumLines(self, s) return s.lines or 0 end
+
+------------------------------------------------------------------ method tables
+
+-- Wraps a method so it checks its self, then gets the widget's state.
+local function method(group, name, impl)
+	return function(self, ...)
+		local s = states[self]
+		if not (s and s.groups[group]) then
+			error(('Wrong object type for function %s:%s (called on %s)'):format(group, name, describe(self)), 2)
+		end
+		return impl(self, s, ...)
+	end
+end
+
+for typeName, groups in pairs(TYPES) do
+	local methods, isa = {}, { [typeName] = true }
+	for _, group in ipairs(groups) do
+		isa[group] = true
+		for name, impl in pairs(API[group]) do
+			methods[name] = method(group, name, impl)
+		end
+	end
+	TYPES[typeName] = { groups = isa, metatable = { __index = methods } }
+end
+
+------------------------------------------------------------------ globals
+
+-- Frame types CreateFrame knows, by lowercase name (the game ignores case).
+local FRAME_TYPES = { frame = 'Frame', button = 'Button', gametooltip = 'GameTooltip' }
+
+-- Templates CreateFrame knows. Each sets up a new frame the way the template
+-- would.
+local TEMPLATES = {
+	-- Blizzard_SharedXML/Backdrop.xml: the mixin, its OnSizeChanged, then OnLoad.
+	BackdropTemplate = function(frame)
+		Mixin(frame, BackdropTemplateMixin)
+		frame:SetScript('OnSizeChanged', function(self, ...) self:OnBackdropSizeChanged(...) end)
+		frame:OnBackdropLoaded()
+	end,
+	-- The tooltip's text lines (TextLeft1, ...) aren't made. Add them when a
+	-- test needs them.
+	GameTooltipTemplate = function() end,
+}
+
+function CreateFrame(frameType, name, parent, template, id)
+	local typeName = type(frameType) == 'string' and FRAME_TYPES[frameType:lower()]
+	if not typeName then
+		error(("CreateFrame: Unknown frame type '%s'"):format(tostring(frameType)), 2)
+	end
+	if name ~= nil and type(name) ~= 'string' then
+		error('CreateFrame: name must be a string or nil', 2)
+	end
+	if parent ~= nil and not is_widget(parent, 'Frame') then
+		error('CreateFrame: parent must be a frame or nil', 2)
+	end
+	local templates = {}
+	for templateName in tostring(template or ''):gmatch('[^,%s]+') do
+		if not TEMPLATES[templateName] then
+			error(('CreateFrame: Couldn\'t find inherited node "%s"'):format(templateName), 2)
+		end
+		templates[#templates + 1] = TEMPLATES[templateName]
+	end
+
+	local frame, s = new_widget(typeName, name, parent)
+	s.children, s.regions, s.events, s.id = {}, {}, {}, id
+	s.level = parent and states[parent].level + 1 or 0
+	if typeName == 'Button' then
+		s.enabled, s.pushed_text_offset = true, { 0, 0 }
+	end
+	if parent then table.insert(states[parent].children, frame) end
+	for _, setup in ipairs(templates) do setup(frame) end
+	return frame
+end
+
+function CreateFont(name)
+	local font = new_widget('Font', name, nil)
+	return font
+end
+
+-- Runs a frame's script (its handler, then its hooks) as the game would,
+-- e.g. stub.fire_script(frame, 'OnSizeChanged', width, height). Returns true
+-- if anything ran.
+function stub.fire_script(widget, script, ...)
+	local s = stub.state(widget)
+	check_script(s, script, 'fire_script')
+	return run_script(widget, script, ...)
+end
+
+-- Fires a game event: every frame registered for it gets OnEvent(event, ...),
+-- in registration order. Shell modules hear it through the shell's AceEvent.
+function stub.fire_event(event, ...)
+	local frames = {}
+	for i, frame in ipairs(eventFrames[event] or {}) do frames[i] = frame end
+	for _, frame in ipairs(frames) do
+		if states[frame].events[event] then
+			run_script(frame, 'OnEvent', event, ...)
+		end
+	end
+end
+
+-- The screen, and UIParent filling it. Their size follows stub.screen_width
+-- and stub.screen_height; UIParent's units also follow its scale, which the
+-- core shell sets as SaftUI does.
+WorldFrame = CreateFrame('Frame', 'WorldFrame')
+states[WorldFrame].fills_screen = true
+UIParent = CreateFrame('Frame', 'UIParent')
+states[UIParent].fills_screen = true

@@ -1,6 +1,6 @@
 ---
 description: How the .agents/ system works and how to extend it
-last_updated: 2026-11-07
+last_updated: 2026-11-09
 ---
 
 # `.agents/` — repo-scoped topic docs for AI agents
@@ -120,3 +120,4 @@ Add a row here for each `.agents/<topic>.md` as you create it (mirror of the roo
 | taint | Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes |
 | edit-mode | SaftUI's edit mode (movers), the /sui options tree, option widgets and the scoped Ace skin |
 | clients | WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs |
+| testing | SaftUI's Lua test suite in tests/ - running it, writing tests, the WoW stub rules, and when tests are required |

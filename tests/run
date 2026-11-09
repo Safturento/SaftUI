@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Runs SaftUI's Lua tests on real Lua 5.1, the version WoW uses.
+#
+#   tests/run                  every tests/**/*_test.lua
+#   tests/run PATH...          those files, or the *_test.lua files in those folders
+#   tests/run -v ...           also list every case and show what tests printed
+#
+# Paths are relative to the current directory, or absolute, so this works from
+# any folder. Lua comes from Python's lupa package (lupa.lua51). The first run
+# makes a git-ignored virtual environment in tests/.venv with lupa 2.8 pinned,
+# and later runs reuse it. Set SAFTUI_TEST_PYTHON to use another Python that
+# already has lupa instead.
+
+set -euo pipefail
+
+TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LUPA_VERSION=2.8
+
+if [[ -n "${SAFTUI_TEST_PYTHON:-}" ]]; then
+	PYTHON="$SAFTUI_TEST_PYTHON"
+	if ! "$PYTHON" -c 'from lupa import lua51' 2>/dev/null; then
+		echo "tests/run: SAFTUI_TEST_PYTHON ($PYTHON) can't import lupa.lua51." >&2
+		echo "Install it with: \"$PYTHON\" -m pip install lupa==$LUPA_VERSION" >&2
+		exit 2
+	fi
+else
+	VENV="$TESTS_DIR/.venv"
+	PYTHON="$VENV/bin/python"
+	if ! "$PYTHON" -c 'from lupa import lua51' 2>/dev/null; then
+		echo "tests/run: setting up tests/.venv with lupa $LUPA_VERSION (first run only)..." >&2
+		if ! { python3 -m venv "$VENV" && "$PYTHON" -m pip install --quiet "lupa==$LUPA_VERSION"; }; then
+			echo "tests/run: setup failed. Run these by hand from the repo root:" >&2
+			echo "  python3 -m venv tests/.venv" >&2
+			echo "  tests/.venv/bin/python -m pip install lupa==$LUPA_VERSION" >&2
+			echo "or set SAFTUI_TEST_PYTHON to a Python that already has lupa." >&2
+			exit 2
+		fi
+	fi
+fi
+
+exec "$PYTHON" "$TESTS_DIR/runner.py" "$@"

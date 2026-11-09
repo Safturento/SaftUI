@@ -36,7 +36,7 @@ SaftUI sets the UI scale itself, to be pixel-perfect for your screen height, and
 ## Development
 
 - Plain Lua and XML, with no build step. Edit, then `/reload` in game.
-- There's no test runner. Changes are checked in game; BugSack is recommended for reading errors.
+- `tests/run` runs the Lua tests in `tests/`. They check SaftUI's logic on Lua 5.1 against stubbed WoW API, and the first run sets up `tests/.venv` with Python's lupa. They're for agents and development: changes are still checked in game, where BugSack is recommended for reading errors.
 - Blizzard's UI source for reference: [Gethe/wow-ui-source](https://github.com/Gethe/wow-ui-source), on the `forever` and `live` branches.
 - Agent and contributor conventions are in [`AGENTS.md`](AGENTS.md) and `.agents/`. Design specs, plans and the followups queue are in `docs/`.
 
