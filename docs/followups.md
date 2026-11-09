@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover)
   - [2026-11-08 — Forever: wrong or missing aura tooltips on party frames](#2026-11-08--forever-wrong-or-missing-aura-tooltips-on-party-frames)
   - [2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers](#2026-11-08--edit-mode-frames-anchored-straight-to-saftui-holders-tooltip-container-buffs-swing-timers)
   - [2026-11-08 — Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)
@@ -38,6 +39,92 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover
+
+**What:** An audit of every `st.defaults` table against `/sui` and edit mode. It found three kinds of gap. Some settings are read by the code but have no option. Some settings are read by nothing. Some frames SaftUI places have no edit mode mover. It also found a few broken options. Unit frame findings already listed in [Unit frame defaults that nothing reads, or that break when turned on](#2026-11-07--unit-frame-defaults-that-nothing-reads-or-that-break-when-turned-on) aren't repeated here.
+
+**Read by the code, no option in `/sui`:**
+- **Core** (`SaftUI-Core/Config/defaults.lua`). Core has a `/sui` section only for Fonts.
+  - `misc.icon_trim`, `misc.clamp_inset`.
+  - `fonts.<key>.shadow_offset` and `.spacing`. Fonts exposes only the face, size and outline.
+  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`.
+  - `templates.*` can be picked from a dropdown but not edited.
+  - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09).
+- **Misc** (`SaftUI-Misc/config.lua`):
+  - `tooltip.template` and `.font`. Tooltip's section has only its attach toggles and position.
+  - `skinning.font` and `.template`. Skinning has no `GetConfigTable`, and Config only adds top-level modules (`SaftUI-Core/Config/config.lua:212`).
+  - `totembar.colors.*`.
+- **Action bars:** `actionbars.template`.
+- **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons`.
+- **Chat:** `chat.linespacing`.
+- **Loot:** the whole loot window (`loot.popup.*`: template, font, name_wrap, width, button_height, spacing). `LT:GetConfigTable` (`SaftUI-Loot/options.lua:126`) adds only rolls and the feed.
+- **Unit frames:**
+  - `range_alpha.inside` and `.outside`.
+  - `boss.spacing`: boss has no Layout group.
+  - `alpha` on every element but Name.
+  - `health.texture` and `health.text.boss_percent`.
+  - Health's color toggles: `colorTapping`, `colorDisconnected`, `colorHealth`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`, `colorSmooth`.
+  - `power.text.hide_full`.
+  - Power's color toggles: `colorTapping`, `colorDisconnected`, `colorPower`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`.
+  - `name.show_classification` and `name.colorClass`.
+  - The indicators' `template`.
+
+**Read by nothing:**
+- **Core:**
+  - `grid.horizontalSpacing` and `.verticalSpacing`.
+  - `editmode.grid` and `.snap`. `EM:AddFooterButton` (`SaftUI-Core/EditMode/footer.lua`) was meant for these and has no callers.
+  - `addon_manager.*`, `buttons.height`, `panels.padding`, and every template's `inner_shadow`.
+  - `maps.*`. It was superseded by `st.defaults.minimap`; only `maps.minimap.size` is read, once, to seed `experience.width`.
+- **Minimap:** `minimap.font` and `minimap.enable`.
+- **Bags:** `inventory.compact` and `inventory.buttontemplate`.
+- **Chat:** `chat.fadetabs` (the live key is `tabs.fade`) and `chat.tabs.height`.
+- **Unit frames:**
+  - `unitframes.config_unit` and `.config_element`.
+  - `health.text.tags`, `health.Smooth` and `health.absorbColor`.
+  - `power.text.percent` and `power.Smooth`.
+  - `power.colorSmooth`. It is copied onto the element, but the bundled oUF only knows `colorPowerSmooth`.
+  - Boss `growthDirection`, `maxColumns`, `unitsPerColumn`, `columnSpacing` and `initialAnchor`. Only party and the raids lay out by these.
+  - The arena, pettarget and nameplate tables. Those units aren't spawned. Nameplate holds the only default for `name.color_hostile`, which `tags.lua:74` reads.
+  - Size, frame level and template keys that the element defaults (`config/default.lua:420-430`) merge into auras, Name and the indicators. Each of these elements sizes itself or can't take them.
+
+**Broken options and defaults:**
+- **Unitframes → General → Frame level** (`SaftUI-Unitframes/config/config.lua:516`): units have no `framelevel` default, so its get returns a table, and nothing reads the value.
+- **Unit frame profile Rename** (`config/config.lua:446`) shows `SAFTIU_UF_PROFILE_RENAME`, but the popup is `SAFTUI_UF_PROFILE_RENAME`. Its OnAccept is empty too, and so is Import's.
+- **Focus** (`config/units/focus.lua`) defines `health` twice (lines 11 and 39). The second replaces the first, so focus's health position override is lost.
+- **Health → Text → Deficit** has defaults only on party and the raids.
+
+**Frames with no edit mode mover:**
+- **Unit frame elements placed on the screen**, not on their frame. They are moved only by x/y offsets in `/sui`:
+  - the player's power, castbar, class power and additional power (`config/units/player.lua`);
+  - the target's castbar and the focus castbar.
+- **The zone text banner,** fixed at `TOP, 0, -300` (`SaftUI-Misc/Skinning/ZoneText.lua:51`).
+- **The loot window.** SaftUI restyles Blizzard's `LootFrame`, and Blizzard places it.
+- **`Blizzard_WatchFrame.lua`** returns early on `st.retail`, which is true on both supported clients, so it is dead code rather than a gap.
+- Everything else SaftUI places has a mover.
+
+**Why noticed:** On 2026-11-09 the user asked to "go through all of the existing config settings in saftui and see what all hasn't been setup in the config gui yet as well as what modules haven't been setup on edit mode". Three read-only agents audited the defaults by area (unit frames; Core, minimap and misc; action bars, bags, chat and loot). The session checked the edit mode side, and spot-checked the dead-setting and broken-option claims with greps.
+
+**Anchors:**
+- Defaults: `SaftUI-Core/Config/defaults.lua`, `SaftUI-*/config.lua`, `SaftUI-Unitframes/config/default.lua`, `SaftUI-Unitframes/config/units/*.lua`.
+- Options: each module's `GetConfigTable`; the shared generators in `SaftUI-Core/Config/widgets.lua`.
+- Movers: `st:RegisterMover` calls; `UF:RegisterMovers` in `SaftUI-Unitframes/unitframes.lua`.
+
+**What's been considered:**
+- Dead keys can be dropped from the defaults. Their saved values are harmless.
+- Global colors and editable templates would be a bigger design (a Core "Appearance" section) than per-module options.
+- Screen-placed unit frame elements could get their own movers when their `position.frame` is `UIParent`.
+
+**Shape of work:** Several independent pieces:
+- Quick fixes: Rename, focus `health`, the Frame level option.
+- Removing the dead defaults.
+- Options, one module at a time: the Loot window and Bags first, since they have the most settings with no option.
+- Movers for the screen-placed unit frame elements and the zone text.
+- Optionally, a Core appearance section for colors and templates.
+
+**Open questions:**
+- Which settings should never be in `/sui`, as internal tuning (e.g. `misc.clamp_inset`, `headers.height`)?
+- Should global colors and templates be editable at all?
 
 ### 2026-11-08 — Forever: wrong or missing aura tooltips on party frames
 
