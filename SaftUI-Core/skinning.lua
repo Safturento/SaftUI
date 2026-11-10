@@ -154,10 +154,16 @@ function st:SkinCooldown(button, cooldown)
 	--hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
 end
 
-function st:SkinActionButton(button, config)
+-- Skins button with config (the profile's buttons by default): its backdrop in
+-- config.theme and config.background, drawn as kind ('action' by default; a
+-- bag slot is a 'slot'), and config.font and config.trueSize. A config not yet
+-- moved to themes has template, an old template name, and draws as before.
+function st:SkinActionButton(button, config, kind)
 	config = config or st.config.profile.buttons
 
-	if config and config.template then
+	if config.theme then
+		st:SetBackdrop(button, config.theme, config.background, kind or 'action')
+	elseif config.template then
 		st:SetBackdrop(button, config.template)
 	end
 
@@ -252,7 +258,7 @@ function st:SkinActionButton(button, config)
 	end
 
 	-- These are made once; skinning again (e.g. on a profile change) only
-	-- re-applies their color and inset, which follow the template.
+	-- re-applies their color and inset, which follow the theme.
 	if button.SetHighlightTexture and not button.hover then
 		local hover = button:CreateTexture(nil, 'OVERLAY')
 		hover:SetTexture(st.BLANK_TEX)
@@ -288,9 +294,31 @@ function st:SkinActionButton(button, config)
 	end
 end
 
-function st:SkinEditBox(editbox, template, font)
+-- The Background values (st:ResolveTheme). An edit box wrapper given one was
+-- called with a Theme and a Background; given anything else, by a caller not
+-- yet moved to themes, with (template, font): an old template name, then the
+-- font.
+local BACKGROUNDS = { theme = true, solid = true, transparent = true }
+
+-- editbox -> { theme, background } it was last styled with (background nil:
+-- theme is an old template name), so losing focus draws it again. Kept here,
+-- not on the box: chat's is Blizzard's.
+local editBoxLooks = setmetatable({}, { __mode = 'k' })
+
+local function DrawEditBox(editbox, look)
+	if look[2] then
+		st:SetBackdrop(editbox, look[1], look[2], 'small')
+	else
+		st:SetBackdrop(editbox, look[1])
+	end
+end
+
+-- Skins an edit box: Blizzard's art killed, SaftUI's backdrop in theme and
+-- background (Use SaftUI's theme and Solid by default), font for its text, and
+-- a white border while it has focus. A caller not yet moved to themes passes
+-- (editbox, template, font), and it draws as before.
+function st:SkinEditBox(editbox, theme, background, font)
 	local name = editbox:GetName()
-	template = template or 'thick'
 
 	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid'}) do
 		local region = _G[name..region_name] or editbox[region_name]
@@ -310,23 +338,33 @@ function st:SkinEditBox(editbox, template, font)
 		editbox.Instructions:SetPoint('LEFT', editbox, 'LEFT', editbox.searchIcon and 20 or 5, 0)
 	end
 
-	st:StyleEditBox(editbox, template, font)
+	st:StyleEditBox(editbox, theme, background, font)
 
 	editbox:HookScript('OnEditFocusGained', function(self)
 		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
 	end)
 
-	-- Restore whichever template the box has now (st:StyleEditBox may have
-	-- changed it since), not the one it was skinned with.
+	-- Restore the look the box has now (st:StyleEditBox may have changed it
+	-- since), not the one it was skinned with.
 	editbox:HookScript('OnEditFocusLost', function(self)
-		st:SetBackdrop(self, self.backdrop and self.backdrop.template or template)
+		DrawEditBox(self, editBoxLooks[self])
 	end)
 end
 
--- Applies a template and font to an edit box st:SkinEditBox skinned. Safe to
--- call again (e.g. on a profile change): it adds no hooks or regions.
-function st:StyleEditBox(editbox, template, font)
-	st:SetBackdrop(editbox, template or 'thick')
+-- Applies a theme, background and font to an edit box st:SkinEditBox skinned,
+-- as st:SkinEditBox takes them. Safe to call again (e.g. on a profile change):
+-- it adds no hooks or regions.
+function st:StyleEditBox(editbox, theme, background, font)
+	local look
+	if BACKGROUNDS[background] then
+		look = { theme or 'theme', background }
+	else
+		-- (editbox, template, font). No template drew 'thick'.
+		font = background or font
+		look = theme and { theme } or { 'theme', 'solid' }
+	end
+	editBoxLooks[editbox] = look
+	DrawEditBox(editbox, look)
 
 	if font then
 		local fontObject = st:GetFont(font)

@@ -4,7 +4,8 @@ function st:SkinCheckButton(button)
 	self:StripTextures(button)
 
 	button:SetSize(12, 12)
-	self:SetBackdrop(button, self.config.profile.panels.template)
+	local panels = st.config.profile.panels
+	st:SetBackdrop(button, panels.theme, panels.background, 'small')
 
 	button:SetFrameLevel(button:GetFrameLevel()+1)
 

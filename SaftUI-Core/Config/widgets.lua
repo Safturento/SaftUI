@@ -341,6 +341,44 @@ function generators.template(order, desc)
 	}
 end
 
+-- A frame's Theme and Background (theme.lua): overrides of SaftUI's theme for
+-- the frames the option governs. A profile key of either holds the value; its
+-- default is 'theme', which follows SaftUI's.
+local THEME_VALUES = {
+	{ 'theme', "Use SaftUI's theme" }, { 'thick', 'Thick' }, { 'thin', 'Thin' }, { 'none', 'None' },
+}
+local BACKGROUND_VALUES = {
+	{ 'theme', "Use SaftUI's theme" }, { 'solid', 'Solid' }, { 'transparent', 'Transparent' },
+}
+local THEME_DESC = "Use SaftUI's theme follows Global Settings → Theme; None draws no border or background."
+local BACKGROUND_DESC = "Solid, or see-through by Global Settings → Theme's Opacity. Use SaftUI's theme follows its Transparent background."
+
+-- A select of choices ({ value, name } pairs), listed in their order.
+local function OrderedSelect(order, name, desc, choices)
+	local values, sorting = {}, {}
+	for i, choice in ipairs(choices) do
+		values[choice[1]] = choice[2]
+		sorting[i] = choice[1]
+	end
+	return {
+		order = order,
+		name = name,
+		desc = desc,
+		type = 'select',
+		values = values,
+		sorting = sorting,
+	}
+end
+
+-- desc says which frames it governs; what the choices do is added after it.
+function generators.theme(order, desc)
+	return OrderedSelect(order, 'Theme', desc and desc .. ' ' .. THEME_DESC or THEME_DESC, THEME_VALUES)
+end
+
+function generators.background(order, desc)
+	return OrderedSelect(order, 'Background', desc or BACKGROUND_DESC, BACKGROUND_VALUES)
+end
+
 function generators.font(order, desc)
 	return {
 		name = 'Font',

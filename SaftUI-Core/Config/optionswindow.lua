@@ -28,8 +28,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	                        a small dialog over the window for an option table
 	                        of its own (UF's Copy from; "a small dialog" below)
 
-	The window (1040x700, the thick template, FULLSCREEN_DIALOG, so edit
-	mode's outlines draw under it):
+	The window (1040x700, SaftUI's theme with a solid background,
+	FULLSCREEN_DIALOG, so edit mode's outlines draw under it):
 	  - the sidebar: Edit mode and the st.Config:AddCommand buttons, then Global
 	    Settings and Profiles, then the module pages under their category
 	    (Frames, Combat, Info, any other, then Other; OW.SidebarEntries);
@@ -939,7 +939,7 @@ local function Build()
 	st:KeepInScreenMargin(window) -- dragged by its header, so it keeps to the margin too
 	window:EnableMouse(true)
 	window:Hide()
-	st:SetTemplate(window, 'thick')
+	st:SetTemplate(window, 'theme', 'solid', 'panel')
 	F.window = window
 	W.SetDialogAnchor(window)
 
@@ -1054,7 +1054,7 @@ local function BuildDialog()
 	st:KeepInScreenMargin(frame)
 	frame:EnableMouse(true)
 	frame:Hide()
-	st:SetTemplate(frame, 'thick')
+	st:SetTemplate(frame, 'theme', 'solid', 'panel')
 	D.frame = frame
 
 	D.title = Text(frame, 'brand')

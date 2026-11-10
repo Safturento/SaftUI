@@ -21,7 +21,7 @@ function st:CreateHeader(frame, title, close_button)
 	local frameName = frame:GetName()
 	local header = st:CreateFrame('Button', frameName and frameName ..'_Header' or '', frame)
 	header:SetFrameLevel(frame:GetFrameLevel()+2)
-	st:SetTemplate(header, 'highlight')
+	st:SetTemplate(header, 'theme', 'theme', 'header') -- SaftUI's theme, whatever the window's
 
 	header:SetPoint('TOPLEFT')
 	header:SetPoint('TOPRIGHT')
@@ -66,7 +66,7 @@ function st:CreateHeader(frame, title, close_button)
 	elseif frame.close_button then
 		-- A button that isn't SaftUI's (Blizzard's) keeps the look it has always had.
 		st:StripTextures(frame.close_button)
-		st:SetBackdrop(frame.close_button, 'close')
+		st:SetBackdrop(frame.close_button, 'theme', 'theme', 'close')
 		frame.close_button.backdrop:SetAllPoints()
 		frame.close_button:ClearAllPoints()
 		frame.close_button:SetFrameLevel(header:GetFrameLevel()+4)
@@ -107,7 +107,7 @@ function st:CreateFooter(frame)
 	footer:SetPoint('BOTTOMLEFT')
 	footer:SetPoint('BOTTOMRIGHT')
 	footer:SetHeight(st.config.profile.headers.height)
-	st:SetTemplate(footer, 'highlight')
+	st:SetTemplate(footer, 'theme', 'theme', 'header')
 	frame.footer = footer
 	table.insert(st.footers, footer)
 end
@@ -250,7 +250,8 @@ end
 
 function st:CreatePanel(name, width, height)
 	local panel = st:CreateFrame('Frame', 'SaftUI_Panel_'..name:gsub(' ', '_'), UIParent)
-	self:SetBackdrop(panel, self.config.profile.panels.template)
+	local panels = st.config.profile.panels
+	st:SetBackdrop(panel, panels.theme, panels.background, 'panel')
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
 	if width then st:SetWidth(panel, width) end
 	if height then st:SetHeight(panel, height) end

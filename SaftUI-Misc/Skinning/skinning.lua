@@ -69,7 +69,8 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 	st:StripTextures(panel)
 
 	st:CreateHeader(panel, title, close)
-	st:SetBackdrop(panel, st.config.profile.panels.template)
+	local panels = st.config.profile.panels
+	st:SetBackdrop(panel, panels.theme, panels.background, 'panel')
 
 	if options.fix_padding then
 		panel.backdrop:ClearAllPoints()
@@ -108,7 +109,7 @@ end
 
 function SK:SkinTab(tab)
 	st:StripTextures(tab)
-	st:SkinActionButton(tab, st.config.profile.panels)
+	st:SkinActionButton(tab, st.config.profile.panels, 'small')
 	if not tab.Text then tab.Text = _G[tab:GetName()..'Text'] end
 	tab.skinned = true
 

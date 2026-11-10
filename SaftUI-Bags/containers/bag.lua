@@ -133,7 +133,7 @@ function INV:InitializePlayerBagSlots()
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
 		slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
-		st:SkinActionButton(slot, st.config.profile.buttons)
+		st:SkinActionButton(slot, st.config.profile.buttons, 'slot')
 
 		st:Kill(slot.AnimIcon)
 

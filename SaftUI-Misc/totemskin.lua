@@ -4,7 +4,7 @@ local TB = st:GetModule('TotemBar')
 --[[
 	SaftUI's look for WoW Forever's totem bar (totembar.lua says what the bar is and how
 	Blizzard shows and places it). Every button looks like SaftUI's action bar buttons: a
-	flat backdrop in the profile's button template, the icon cropped square, flat hover,
+	flat backdrop in the profile's button theme, the icon cropped square, flat hover,
 	pushed and checked, and the profile's button font on the keybind.
 	SaftUI-ActionBars/skin.lua is the visual reference, but Misc only needs Core, so
 	nothing here calls into ActionBars. The buttons' size is the bar's setting, and
@@ -75,8 +75,8 @@ local TB = st:GetModule('TotemBar')
 ]]
 
 -- SaftUI's pieces of each skinned frame: Blizzard's frame -> { backdrop, hover, pushed,
--- checked, panel, arrow, ..., style }. style(frame, skin, template) re-applies the
--- profile to them. Kept here, so nothing is written onto Blizzard's frames.
+-- checked, panel, arrow, ..., style }. style(frame, skin, theme, background) re-applies
+-- the profile to them. Kept here, so nothing is written onto Blizzard's frames.
 local skins = setmetatable({}, { __mode = 'k' })
 
 -- True once TB:SetupSkin has run, with the hooks in place.
@@ -178,7 +178,7 @@ local function SetBorderColor(skin, r, g, b)
 		skin.backdrop:SetBackdropBorderColor(r, g, b)
 		skin.tinted = true
 	elseif skin.tinted then
-		st:SetTemplate(skin.backdrop, skin.template)
+		st:SetTemplate(skin.backdrop, skin.theme, skin.background, 'action')
 		skin.tinted = false
 	end
 end
@@ -214,18 +214,18 @@ local PostHook = TB.PostHook
 
 -- Places and colours a skinned button's pieces from the profile. Safe to run again: it
 -- makes nothing new.
-local function StyleButton(button, skin, template)
+local function StyleButton(button, skin, theme, background)
 	local colors = st.config.profile.colors
 
 	if skin.backdrop then
-		st:SetTemplate(skin.backdrop, template)
-		skin.template = template
+		st:SetTemplate(skin.backdrop, theme, background, 'action')
+		skin.theme, skin.background = theme, background
 		skin.tinted = false
 	end
 
 	local icon = button.icon
 	icon:ClearAllPoints()
-	st:SetInside(icon, st:ThemeInset(template))
+	st:SetInside(icon, st:ThemeInset(theme, background))
 	CropIcon(icon)
 
 	skin.hover:SetVertexColor(colors.button.blue:GetRGB())
@@ -266,15 +266,15 @@ local function ColorSlotButton(button)
 	end
 end
 
-local function StyleSlotButton(button, skin, template)
-	st:SetTemplate(skin.backdrop, template)
-	skin.template = template
+local function StyleSlotButton(button, skin, theme, background)
+	st:SetTemplate(skin.backdrop, theme, background, 'action')
+	skin.theme, skin.background = theme, background
 	skin.tinted = false
 	ColorSlotButton(button)
 end
 
-local function StyleFlyout(flyout, skin, template)
-	st:SetTemplate(skin.panel, template)
+local function StyleFlyout(flyout, skin, theme, background)
+	st:SetTemplate(skin.panel, theme, background, 'small')
 end
 
 -- An arrow in the colour of the element in slot, or the text colour for none (the
@@ -455,9 +455,10 @@ local function UpdateFlyoutButtons()
 	if not (flyoutSkin and buttons) then return end
 
 	local first, last
+	local look = st.config.profile.buttons
 	for _, button in ipairs(buttons) do
 		if not skins[button] then
-			StyleButton(button, SkinButton(button, true, false), st.config.profile.buttons.template)
+			StyleButton(button, SkinButton(button, true, false), look.theme, look.background)
 		end
 		if button:IsShown() then
 			local none = IsNoneChoice(button)
@@ -552,16 +553,16 @@ function TB:SetupSkin()
 	self:ApplySkin()
 end
 
--- Re-applies the profile's button template, font and element colours to everything
+-- Re-applies the profile's button theme, font and element colours to everything
 -- skinned, for a profile change. Waits for the end of combat, with the rest of the
 -- totem bar's profile change (TB:Apply).
 function TB:ApplySkin()
 	if not skinned then return end
 	if st:QueueAfterCombat('totemskin_apply', function() self:ApplySkin() end) then return end
 
-	local template = st.config.profile.buttons.template
+	local look = st.config.profile.buttons
 	for frame, skin in pairs(skins) do
-		skin.style(frame, skin, template)
+		skin.style(frame, skin, look.theme, look.background)
 	end
 	ColorFlyout()
 end

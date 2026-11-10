@@ -1,6 +1,6 @@
 local st = SaftUI
 
-function st:CreateButton(name, parent, text, template)
+function st:CreateButton(name, parent, text, theme, background)
 	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
 	button.text = self:CreateFontString(button, 'pixel', text)
 	button.text:SetAllPoints()
@@ -8,14 +8,24 @@ function st:CreateButton(name, parent, text, template)
 	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
 	button.SetText = button.text.SetText
 
-    self:SkinButton(button, template)
+    self:SkinButton(button, theme, background)
 
 	return button
 end
 
-function st:SkinButton(button, template, font)
+-- Draws button's backdrop in theme and background (Use SaftUI's theme and
+-- Solid by default), and gives it font and SaftUI's hover, pushed and disabled
+-- looks. A caller not yet moved to themes passes an old template name as
+-- theme with no background, and the button draws as before.
+function st:SkinButton(button, theme, background, font)
 	assert(button)
-	st:SetBackdrop(button, template or 'thick')
+	if background then
+		st:SetBackdrop(button, theme, background, 'small')
+	elseif theme then
+		st:SetBackdrop(button, theme)
+	else
+		st:SetBackdrop(button, 'theme', 'solid', 'small')
+	end
 
     local fontObject = st:GetFont(font or 'pixel')
 	if button.SetNormalFontObject then

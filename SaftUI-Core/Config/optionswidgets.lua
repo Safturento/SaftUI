@@ -41,7 +41,8 @@ local OM = st.OptionsModel
 	imageWidth and imageHeight otherwise (32 each by default); imageCoords 4
 	or 8 numbers, or a function giving them, else the whole texture. The image
 	sits at the description's left with the text to its right, and the height
-	covers both. Refresh reads them all again (the window refreshes the other
+	covers both. It has a border in SaftUI's theme, as an icon SaftUI skins
+	does. Refresh reads them all again (the window refreshes the other
 	rows while a slider is dragged, so a preview can follow it).
 ]]
 
@@ -1228,6 +1229,10 @@ builders.description = function(w)
 	w.image = frame:CreateTexture(nil, 'ARTWORK')
 	w.image:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
 	w.image:Hide()
+	-- The image's border, in SaftUI's theme like an action button's icon (Icon
+	-- zoom's preview is one). It shows only with an image (ShowImage).
+	st:SetBackdrop(w.image, 'theme', 'theme', 'action')
+	w.image.backdrop:Hide()
 	w.text = NewText(frame, 'LEFT')
 	w.text:SetWordWrap(true)
 	w.measure = NewText(frame, 'LEFT')
@@ -1274,6 +1279,7 @@ define('description', {
 		local image, width, height = OM.Member(root, row, 'image')
 		if type(image) ~= 'string' and type(image) ~= 'number' then
 			self.image:Hide()
+			self.image.backdrop:Hide()
 			return
 		end
 		if not width then width = OM.Member(root, row, 'imageWidth') end
@@ -1289,6 +1295,7 @@ define('description', {
 			self.image:SetTexCoord(0, 1, 0, 1)
 		end
 		self.image:Show()
+		self.image.backdrop:Show()
 	end,
 
 	Refresh = function(self)

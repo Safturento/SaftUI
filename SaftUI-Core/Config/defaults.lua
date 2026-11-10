@@ -53,14 +53,18 @@ st.defaults.headers = {
 	font = 'normal',
 }
 
+-- Buttons and panels follow SaftUI's theme (theme.lua): Theme and Background
+-- 'theme'. Nothing in the options sets them yet.
 st.defaults.buttons = {
 	font = 'pixel',
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 }
 
 st.defaults.panels = {
 	font = 'normal',
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 	tab_height = 21,
 }
 

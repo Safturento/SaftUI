@@ -5,7 +5,8 @@ local st = SaftUI
         buttonWidth: number
         buttonHeight: number
         buttonSpacing: number
-        template: string
+        theme, background: strings, the look a click gives the buttons (or
+            template, an old template name, from a caller not yet moved to themes)
         growthDirection: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
         items = [
             {
@@ -15,26 +16,9 @@ local st = SaftUI
         ]
     }
 ]]--
-local function createButton(buttonName, buttons, label, onClick)
-    local button = st:CreateButton(buttonName,
-            selector, buttonName, self.config.template)
-
-    button:SetSize(buttonWidth, buttonHeight)
-
-    button:SetScript('OnClick', function(self)
-        for _,button in pairs(buttons) do
-            st:SetBackdrop(button, self.config.template)
-        end
-        self.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
-        BankFrame_ShowPanel(bankFrameName)
-    end)
-
-    return button
-end
-
 function st:CreateRadioGroup(name, parent, options)
+    -- The group has no backdrop of its own; its buttons have theirs.
     local radioGroup = st:CreateFrame('frame', name, parent)
-    st:SetBackdrop(radioGroup, self.config.template)
 
 	radioGroup:SetHeight(options.buttonHeight + options.buttonSpacing * 2)
 	radioGroup:SetWidth(options.buttonWidth * 3 + options.buttonSpacing * 5)
@@ -43,12 +27,16 @@ function st:CreateRadioGroup(name, parent, options)
 
     local prev
     for i, item in pairs(options.items) do
-        local button = st:CreateButton(name..'Button'..i, parent, item.label, self.config.template)
+        local button = st:CreateButton(name..'Button'..i, parent, item.label)
         button:SetSize(options.buttonWidth, options.buttonHeight)
         button.config = item --store button config for use in callbacks
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
-				st:SetBackdrop(_button, options.template)
+				if options.theme then
+					st:SetBackdrop(_button, options.theme, options.background, 'small')
+				else
+					st:SetBackdrop(_button, options.template)
+				end
 			end
 			self.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
 

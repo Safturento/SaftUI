@@ -7,12 +7,12 @@ local NUDGE = {
 }
 local LIVE_INTERVAL = 0.1 -- seconds between settings refreshes while dragging
 
--- The overlay has a thick SaftUI border: a 1px line EM.OUTLINE_OUTSET (2px)
--- outside the frame, between two dark lines. Only that line takes the
--- highlight color, so the outline sits exactly where a thick SaftUI frame's own
--- border line is, and gaps between frames look the same in edit mode as out of
--- it. The fill stays see-through so the frame shows; the selected frame's is
--- tinted blue, since a 1px line alone is easy to miss.
+-- The overlay has SaftUI's theme's border: under Thick a 1px line
+-- EM.OUTLINE_OUTSET (2px) outside the frame, between two dark lines. Only that
+-- line takes the highlight color, so the outline sits exactly where a thick
+-- SaftUI frame's own border line is, and gaps between frames look the same in
+-- edit mode as out of it. The fill stays see-through so the frame shows; the
+-- selected frame's is tinted blue, since a 1px line alone is easy to miss.
 local function SetBorderColor(mover, selected)
 	local backdrop = mover.overlay.backdrop
 	local r, g, b = 1, 1, 1
@@ -189,7 +189,7 @@ function EM:CreateMover(key, def)
 	overlay:RegisterForClicks('LeftButtonUp')
 	overlay:RegisterForDrag('LeftButton')
 	overlay:Hide()
-	st:SetBackdrop(overlay, 'thick') -- colored by SetBorderColor
+	st:SetBackdrop(overlay, 'theme', 'solid', 'small') -- colored by SetBorderColor
 
 	local label = overlay:CreateFontString(nil, 'OVERLAY')
 	label:SetFontObject(st:GetFont('pixel'))
@@ -220,6 +220,15 @@ function EM:CreateMover(key, def)
 	self:StackMover(mover) -- its own frame levels, on top (picker.lua)
 	if self.active then overlay:Show() end
 	return mover
+end
+
+-- A theme recolor (or redraw) gives every drawn frame the theme's colors; the
+-- overlays take their own back.
+function EM:OnColorsChanged(group)
+	if group ~= 'theme' then return end
+	for _, mover in pairs(self.movers) do
+		SetBorderColor(mover, mover == self.selected)
+	end
 end
 
 -- Keyboard catcher: only exists while edit mode is active. Everything except

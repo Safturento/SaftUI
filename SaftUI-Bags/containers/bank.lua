@@ -55,7 +55,7 @@ local function CreateBankBagSlot(bar, tab)
 	slot.locked:SetAlpha(0.3)
 	slot.locked:SetAllPoints()
 
-	st:SkinActionButton(slot, st.config.profile.buttons)
+	st:SkinActionButton(slot, st.config.profile.buttons, 'slot')
 
 	slot:RegisterForClicks('LeftButtonUp')
 	slot:RegisterForDrag('LeftButton')
@@ -95,7 +95,8 @@ local function CreateBankBagPurchaseButton(bar)
 
 	button.text = st:CreateFontString(button, 'pixel', 'Buy')
 	button.text:SetAllPoints()
-	st:SkinButton(button, st.config.profile.buttons.template)
+	local buttons = st.config.profile.buttons
+	st:SkinButton(button, buttons.theme, buttons.background)
 
 	button:SetScript('OnEnter', BankBagPurchase_OnEnter)
 	button:SetScript('OnLeave', st.HideGameTooltip)

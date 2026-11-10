@@ -32,7 +32,7 @@ function st:SkinNewScrollBar(scrollBar)
     local thumb = scrollBar:GetThumb()
     thumb:DisableDrawLayer('BACKGROUND')
     thumb:DisableDrawLayer('ARTWORK')
-    st:SetBackdrop(thumb, 'thick')
+    st:SetBackdrop(thumb, 'theme', 'solid', 'small')
     thumb.backdrop:SetBackdropColor(st.config.profile.colors.button.normal:GetRGB())
 
     thumb:HookScript('OnEnter', thumbOnEnter)

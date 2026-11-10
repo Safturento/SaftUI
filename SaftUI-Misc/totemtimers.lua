@@ -139,7 +139,8 @@ end
 -- pixel font (10) and thick template (2 each side) that's 14.
 local MIN_FILL = 2
 local function BarHeight(onBar)
-	local border = 2 * st:ThemeInset(st.config.profile.buttons.template)
+	local look = st.config.profile.buttons
+	local border = 2 * st:ThemeInset(look.theme, look.background)
 	local height = math.max(TB.config.timer_bar_height, border + MIN_FILL)
 	if onBar then
 		height = math.max(height, TextHeight() + border)
@@ -407,7 +408,7 @@ local function UpdateTimer(button)
 end
 
 -- One slot button's timer: a frame the width of the button, above it, holding the bar
--- (in a backdrop of the profile's button template) and the text, on a frame over the bar
+-- (in a backdrop of the profile's button theme) and the text, on a frame over the bar
 -- so text written on it isn't covered. Hidden until a totem is down. None of it takes the
 -- mouse.
 local function CreateTimer(button)
@@ -554,8 +555,8 @@ function TB:ApplyTimerLayout()
 	local config = self.config
 	local showBar, showText = config.timer_bar, config.timer_text
 	local onBar = showBar and showText and config.timer_text_position == 'on'
-	local template = st.config.profile.buttons.template
-	local inset = st:ThemeInset(template)
+	local look = st.config.profile.buttons
+	local inset = st:ThemeInset(look.theme, look.background)
 	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
 	local barHeight = BarHeight(onBar)
@@ -568,7 +569,7 @@ function TB:ApplyTimerLayout()
 		timer.frame:SetHeight(height)
 
 		local backdrop, bar, text = timer.backdrop, timer.bar, timer.text
-		st:SetTemplate(backdrop, template)
+		st:SetTemplate(backdrop, look.theme, look.background, 'bar')
 		backdrop:SetHeight(barHeight)
 		backdrop:SetShown(showBar)
 		st:SetInside(bar, inset)

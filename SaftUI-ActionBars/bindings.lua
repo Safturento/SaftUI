@@ -382,7 +382,8 @@ function AB:StartKeybindMode()
 		end)
 	end
 
-	st:SetTemplate(mode, st.config.profile.panels.template)
+	local panels = st.config.profile.panels
+	st:SetTemplate(mode, panels.theme, panels.background, 'panel')
 	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
 	binder.highlight:SetVertexColor(r, g, b, 0.4)
 

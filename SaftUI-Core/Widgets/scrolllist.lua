@@ -3,7 +3,7 @@ local st = SaftUI
 SaftUIScrollListItemMixin = {}
 
 function SaftUIScrollListItemMixin:Init()
-	self.button = st:CreateButton(nil, self, '', 'thick')
+	self.button = st:CreateButton(nil, self, '', 'theme', 'solid')
     self.button:SetAllPoints()
 end
 
