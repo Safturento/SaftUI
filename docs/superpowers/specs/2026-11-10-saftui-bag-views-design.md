@@ -1,6 +1,6 @@
 # SaftUI bags: switchable views (One bag, Multi bag, Compact, Rows)
 
-Date: 2026-11-10. Status: for the user's review, after a builder check. Calls marked "my call" are mine, not the user's.
+Date: 2026-11-10. Status: approved by the user (2026-11-10), after a builder check. Calls marked "my call" are mine, not the user's.
 
 ## Intent
 
@@ -33,7 +33,12 @@ The user's descriptions, then what was agreed in the review of the mockups (2026
 - **Grouped:** one empty slot with a count. In Multi bag that's one per bag ("show one per bag with stack count"). In One bag, one for the regular bags and one per special bag section.
 - **All:** every empty slot. In Multi bag, each bag's own ("show all for each bag").
 
-Today the setting exists for the bag window only. It stays that way: the other windows keep their current empty-slot behaviour in every view. My call.
+Today the setting exists for the bag window only. The bank windows get it too: "banks should also get empty slot options" (the user, 2026-11-10).
+- Each of the bank, warband bank and combined bank windows has its own Empty slots setting (`inventory.<window>.emptySlots`), with the same three choices.
+- It applies in every view.
+- It's shown in `/sui` → Bags beside that window's other settings.
+- The bank windows default to `'off'`, how they look today.
+- For a bank, "grouped" means one empty slot with a count per bank bag or tab in Multi bag, and one for the whole bank in the other views (one each for the bank and the warband bank in the combined bank).
 
 ## The switch
 
@@ -78,7 +83,6 @@ Today the setting exists for the bag window only. It stays that way: the other w
 - **An Ellesmere-style text sidebar.**
 - **Physically sorting items in the bags.** The views sort what's shown, as today.
 - **The item sort's text comparison of item levels** (`sortString`, `SaftUI-Bags/category.lua:147`): a followup, not changed here.
-- **New empty-slot behaviour for the bank windows.**
 
 ## Anti-goals
 
@@ -106,6 +110,7 @@ Today the setting exists for the bag window only. It stays that way: the other w
   - a section per shown category in priority order, empty slots last;
   - wrapping at the window's line width;
   - hidden categories stay hidden.
+- **Bank empty slots:** each bank window's own setting, defaulting to off, in each view, for each of the three modes.
 - **Width:** the same window width in all four views.
 - **Combat:** a switch in combat waits, then applies, with no protected call made in combat.
 - **Compact:** unchanged, and the existing bag tests still pass.
