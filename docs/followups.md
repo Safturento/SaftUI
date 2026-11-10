@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
@@ -54,6 +55,31 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Bag categories: make the category rules configurable in /sui
+
+**What:** The bag categories (which items go where, and in what order) are hard-coded Lua. The user wants them exposed in `/sui`, so categories can be added, removed, reordered and given their own rules there.
+
+**Why noticed:** The user, 2026-11-10, while asking for new bag views: "I'd like to expose the category configurations in the config, we have a lot of complexity to the filters right now and it's hard coded, we should do some analysis on the different mechanisms for sorting and build a UI that allows this customization to extend to the config. This will need some research and design passes and should be worked separately from the other views."
+
+For prior art they shared Ellesmere's bag window. Its left sidebar lists the categories, some nested (The Armory → Weapons / Trinkets and Armor; Adventure Prep → Consumables and Camp Items), with counts and an "Add Category" entry. They noted that sidebar "takes up quite a bit of room with all of the text".
+
+**Anchors:**
+- **The category rules:** `SaftUI-Bags/filters.lua`. `INV:AddFilter(name, func, options)` builds `INV.filters.categories` in order, and the first matching filter wins. The filters include Grays/Auto Vendor (`autoVendor`, with protection and legacy-gear rules), class-tier token groups matched on tooltip text, Secrets of Azeroth, and `customItemLists`.
+- **How an item gets its category:** `SaftUI-Bags/category.lua`, `INV:GetItemCategory`. Retail equipment-set items go to `Set: <name>`, reagent bag items go by subclass, then the filters run in order, and anything left falls back to Miscellaneous. Also `INV:GetSortedInventory`, and `sortCategory` (by `sortString`).
+- **Per-container toggles:** `filters.categories[id]` (`SaftUI-Bags/inventory.lua` ~line 96).
+- **Auto vendor:** `SaftUI-Bags/autovendor.lua` and `INV.AUTO_VENDOR_CATEGORIES`.
+- **Related:** the bag views work (one bag, multi bag, compact, rows) is being designed separately, the same day. Its row view relies on a consistent category order, which this work would make configurable.
+
+**What's been considered:** Nothing yet. The user asked for an analysis of the current mechanisms (first-match filter order, tooltip-text matching, item lists, equipment sets, reagent subclasses, auto vendor, the sort keys) before any UI design.
+
+**Shape of work:** A research pass that maps every mechanism and what a configurable form of each would need. Then a design pass for the `/sui` UI (and maybe an in-bag sidebar or editor). Then a spec and a plan. Probably more than one project: a data model and migration for saved categories, then the UI.
+
+**Open questions:**
+- Which mechanisms stay code-only (e.g. tooltip scanning)?
+- Do nested categories (Ellesmere-style groups) come in?
+- How do user categories interact with SaftUI's built-in ones and their order?
+- Where does the UI live: `/sui`, the bag window, or both?
 
 ### 2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode
 
