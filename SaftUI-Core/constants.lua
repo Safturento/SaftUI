@@ -60,6 +60,7 @@ st.textures = {
 	eyeOpen = st:TexturePath('eye-visible.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp'),
 	close = st:TexturePath('close.tga'), -- the close button's X: white, 16x16 with the 10x10 X at 3,3 (see CLOSE_X_COORDS)
+	filter = st:TexturePath('funnel.tga'), -- a funnel: white, a 24x24 drawing centred on 32x32 (the bags' currency Filter button)
 }
 
 st.FRAME_ANCHORS = {

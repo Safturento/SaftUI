@@ -111,7 +111,8 @@ function INV:StyleCurrencySlots()
     local bag = self.containers.bag
     local category = bag and bag.categories.Currencies
     if category and category.filterButton then
-        category.filterButton:SetSize(max(46, self:GetButtonWidth()), min(20, category.header:GetHeight()))
+        local size = min(20, category.header:GetHeight())
+        category.filterButton:SetSize(size, size)
     end
 end
 
@@ -173,11 +174,24 @@ function INV:InitializeCurrencyCategory()
     local filterButton = st:CreateCheckButton(nil, category.header)
     category.header.filterButton = filterButton
     filterButton:SetPoint('BOTTOMRIGHT')
-    filterButton:SetSize(max(46, self:GetButtonWidth()), min(20, category.header:GetHeight()))
+    local size = min(20, category.header:GetHeight())
+    filterButton:SetSize(size, size)
 
-    filterButton.text:SetAllPoints(filterButton)
-    filterButton:SetFont('pixel')
-    filterButton:SetText('Filter')
+    -- SaftUI's funnel in place of the word, tinted like text. The button still
+    -- toggles: its checked fill shows behind the icon.
+    local icon = filterButton:CreateTexture(nil, 'OVERLAY', nil, 7)
+    icon:SetTexture(st.textures.filter)
+    icon:SetAllPoints(filterButton)
+    icon:SetVertexColor(st.config.profile.colors.text.normal:GetRGB())
+    filterButton.icon = icon
+
+    filterButton:SetScript('OnEnter', function(button)
+        GameTooltip:SetOwner(button, 'ANCHOR_TOP')
+        GameTooltip:SetText('Filter')
+        GameTooltip:AddLine('Choose which currencies show here.', 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    filterButton:SetScript('OnLeave', st.HideGameTooltip)
 
     filterButton:SetScript('OnClick', function()
         INV:UpdateContainer('bag')

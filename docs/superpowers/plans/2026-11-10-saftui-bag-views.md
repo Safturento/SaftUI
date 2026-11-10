@@ -67,7 +67,7 @@
 - Task 1 comes first.
 - Task 2 after 1.
 - Tasks 3 and 4 can run in parallel after 2: 3 touches the data and layout files, 4 the title bar and options.
-- Task 5 runs last.
+- Task 5 (docs) runs last.
 
 ---
 
@@ -216,21 +216,16 @@
 - [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
 - [ ] **Step 5: Commit.** `bags: view buttons in the title bar, and View and Empty slots for every window in /sui`
 
-### Task 5: The currency Filter icon, and docs
+### Task 5: Docs
+
+The currency Filter button's icon landed separately on `modular` (2026-11-10): SaftUI's own funnel, `st.textures.filter`, `SaftUI-Core/Media/Textures/funnel.tga`. Keep it on the Currencies section's header in every view.
 
 **Files:**
-- Modify: `SaftUI-Bags/currencies.lua`. The Currencies Filter button shows an icon in place of its "Filter" text. Use the icon the user picks from `/suiicons`, recorded in the SDD ledger at execution time; if none is recorded, keep the text and note it.
-  - The button keeps its toggle behaviour, gains a tooltip "Filter", and is sized to the icon.
-  - It reads the same on both clients: if the picked atlas is missing on one client (`C_Texture.GetAtlasInfo`), fall back to the text.
-- **Docs:**
-  - `README.md` (Bags: the four views, the title-bar switch, Empty slots for the banks);
-  - `.agents/testing.md` (the new bags tests and the `C_Container` stub);
-  - `.agents/architecture.md`, if the module list or file roles change (`views.lua`);
-  - `docs/followups.md`, cross-linking the bag views from the category configuration followup.
-- Test: extend `tests/bags/slot_quality_test.lua` or `views_switch_test.lua`: `'the currency Filter button shows the icon, keeps its toggle, and falls back to text when the atlas is missing'`.
+- `README.md`: Bags. The four views, the title-bar switch, and Empty slots for the banks.
+- `.agents/testing.md`: the new bags tests and the `C_Container` stub.
+- `.agents/architecture.md`: only if the module list or file roles change (`views.lua`).
+- `docs/followups.md`: cross-link the bag views from the category configuration followup.
 
-- [ ] **Step 1: Write the failing test.**
-- [ ] **Step 2: Run it; it fails.**
-- [ ] **Step 3: Implement,** and update the docs.
-- [ ] **Step 4: Run all tests.** `tests/run`: everything passes. Run `agents-doc-parity-check` and `readme-freshness-check`.
-- [ ] **Step 5: Commit.** `bags: an icon for the currency Filter button; docs for the bag views`
+- [ ] **Step 1: Update the docs.**
+- [ ] **Step 2: Run all tests and the doc audits.** `tests/run`: everything passes. Run `agents-doc-parity-check` and `readme-freshness-check`.
+- [ ] **Step 3: Commit.** `docs: the bag views`

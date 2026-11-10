@@ -1015,6 +1015,9 @@ end
 function GameTooltip.GetOwner(self, s) return s.owner end
 function GameTooltip.ClearLines(self, s) s.lines = 0 end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
+-- SetText starts the tooltip over with one line; AddLine adds one.
+function GameTooltip.SetText(self, s, text) s.lines = 1 end
+function GameTooltip.AddLine(self, s, text) s.lines = (s.lines or 0) + 1 end
 -- The tooltip's unit: name and unit token, or nothing (nil, nil) when it isn't
 -- showing a unit. Nothing in the stubs sets one yet.
 function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
