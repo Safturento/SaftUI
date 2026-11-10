@@ -26,7 +26,9 @@ local W = st.OptionsWidgets
 	rows by OB.LayoutRows, both pure: a row is small (a quarter of the line;
 	two make a half), normal (a half) or wide (the whole line), by row.size.
 	A toggle's check box and a color's swatch sit just after their label's
-	text; a small input's box is OB.SMALL_INPUT_WIDTH wide.
+	text; a small input's box is OB.SMALL_INPUT_WIDTH wide. A position block
+	has no label (its section is titled Position), is as tall as the widget
+	plus 12, and shows the row's desc when the mouse is anywhere on it.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools), as this file loads first.
@@ -75,7 +77,7 @@ local function Blue() return Colors().button.blue:GetRGB() end
 -- widgets' (15).
 local FONTS = {
 	title = { 'title', 34 }, brand = { 'title', 26 }, section = { 'title', 15 }, group = { 'title', 13 },
-	tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
+	caption = { 'title', 11 }, tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
 }
 local fontObjects = {}
 
@@ -242,6 +244,9 @@ local function PlaceRow(cell, x, y, width)
 	elseif row.type == 'execute' then
 		label:Hide()
 		widget:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+	elseif row.type == 'position' then
+		label:Hide()
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 	else
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
@@ -347,6 +352,11 @@ function Body:RowCell(row)
 		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
 	elseif row.type == 'multiselect' then
 		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
+	elseif row.type == 'position' then
+		cell.height = ceil(widget:GetHeight()) + 12
+		widget.onTip = function(on)
+			if on then ShowTip(frame) else HideTip(frame) end
+		end
 	end
 	self.cells[#self.cells + 1] = cell
 	return cell

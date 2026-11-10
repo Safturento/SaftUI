@@ -1,6 +1,6 @@
 -- SaftUI-Core/Config/optionswidgets.lua, the widgets SaftUI's options window
 -- draws rows with (toggle, range, select, multiselect, input, color, execute,
--- keybinding, description, the confirm dialog), and the close button of
+-- keybinding, description, position, the confirm dialog), and the close button of
 -- SaftUI-Core/panels.lua (st:CreateCloseButton, st:CreateHeader).
 --
 -- Real: the model (optionsmodel.lua) the widgets read and write through, the
@@ -14,6 +14,7 @@ local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua') -- st:StripTextures, which a header uses on a button that isn't SaftUI's
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_saftui('SaftUI-Core/Config/optionsbody.lua') -- the position block's caption font
 local OM, W = st.OptionsModel, st.OptionsWidgets
 
 ------------------------------------------------------------------ helpers
@@ -1126,4 +1127,287 @@ test('CreatePanel builds its header with the new close button', function()
 	eq(close.icon:GetTexture(), st.textures.close, 'with the X')
 	click(close)
 	check(not panel:IsShown(), 'and it closes the panel')
+end)
+
+------------------------------------------------------------------ position
+
+-- A position option over a plain table; sets are recorded.
+local function position_option(fields, store)
+	store = store or { point = 'TOPRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -8, frame = 'Minimap' }
+	local sets = {}
+	local option = opt('position', 'Position', {
+		get = function(info, part) return store[part] end,
+		set = function(info, part, value) sets[#sets + 1] = part .. '=' .. tostring(value); store[part] = value end,
+	})
+	for k, v in pairs(fields or {}) do option[k] = v end
+	return option, sets, store
+end
+
+local function bind_position(fields, store)
+	local option, sets, store = position_option(fields, store)
+	local w, told = bind('position', 'pos', option)
+	return w, told, sets, store
+end
+
+local function caption_texts(w)
+	local out = {}
+	for i, fs in ipairs(w.captions) do out[i] = fs:GetText() end
+	return table.concat(out, ',')
+end
+
+local function type_into(box, text)
+	box:SetText(text)
+	stub.fire_script(box, 'OnEnterPressed')
+end
+
+local function rgb_text(r, g, b) return string.format('%.3f,%.3f,%.3f', r, g, b) end
+local function dot_color(button)
+	local c = stub.state(button.dot).color_texture
+	return rgb_text(c[1], c[2], c[3])
+end
+
+local function picked(dots)
+	local out = {}
+	for i, dot in ipairs(dots) do
+		if dot.picked then out[#out + 1] = i end
+	end
+	return table.concat(out, ',')
+end
+
+test('position: captions read THIS, TO, AT ITS, OFFSET with a name target, and THIS, AT ITS, OFFSET without one', function()
+	local w = bind_position({ target = 'name' })
+	eq(caption_texts(w), 'THIS,TO,AT ITS,OFFSET', 'with a target')
+	w:Release()
+	local w2 = bind_position()
+	eq(caption_texts(w2), 'THIS,AT ITS,OFFSET', 'without one')
+	w2:Release()
+end)
+
+test('position: the parts are laid out 12 apart, each caption over its part, on a 48 band', function()
+	local w = bind_position({ target = 'name' })
+	eq(w:GetWidth(), 48 + 12 + 120 + 12 + 48 + 12 + 80, 'width: dots, name, dots, offset')
+	eq(w.frame:GetWidth(), w:GetWidth(), 'the frame is as wide')
+	eq(w:GetHeight(), 65, 'a 13 caption, 4, a 48 band')
+	local _, _, _, x1 = w.this[1]:GetParent():GetPoint(1)
+	local _, _, _, x2 = w.name:GetPoint(1)
+	local _, _, _, x3 = w.at[1]:GetParent():GetPoint(1)
+	eq(x1, 0, 'THIS starts the block')
+	eq(x2, 60, 'TO is 12 after the 48 dots')
+	eq(x3, 192, 'AT ITS is 12 after the 120 name box')
+	eq(w.this[1]:GetParent():GetWidth(), 48, 'a 48 dot square')
+	eq(w.x:GetWidth(), 46, 'a 46 wide X box')
+	eq(w.x:GetHeight(), 22, 'which is 22 tall')
+	eq(w.xUp:GetWidth(), 14, 'with a 14 wide nudge')
+	eq(w.xUp:GetHeight() + w.xDown:GetHeight(), 22, 'pair as tall as the box')
+	eq(w.captions[2]:GetWidth(), 120, 'the TO caption spans its part to center on it')
+	w:Release()
+end)
+
+test('position: the picked dots show the stored points; clicking a dot sets that point', function()
+	local w, told, sets, store = bind_position({ target = 'name' })
+	eq(#w.this, 9, 'nine dots')
+	eq(w.this[1].point, 'TOPLEFT', 'first is TOPLEFT')
+	eq(w.this[5].point, 'CENTER', 'fifth is CENTER')
+	eq(w.at[9].point, 'BOTTOMRIGHT', 'last is BOTTOMRIGHT')
+	eq(picked(w.this), '3', 'THIS: TOPRIGHT is picked')
+	eq(picked(w.at), '9', 'AT ITS: BOTTOMRIGHT is picked')
+	eq(w.this[3].dot:GetWidth(), 8, 'the picked dot is 8')
+	eq(w.this[1].dot:GetWidth(), 4, 'the others are 4')
+	local br, bg, bb = st.config.profile.colors.button.blue:GetRGB()
+	eq(dot_color(w.this[3]), rgb_text(br, bg, bb), 'the picked dot is the profile blue')
+	eq(dot_color(w.this[1]), rgb_text(0.333, 0.333, 0.333), 'the others are #555555')
+
+	click(w.this[2])
+	eq(sets[#sets], 'point=TOP', 'clicking a dot sets the point')
+	eq(told.ok, true, 'told ok')
+	eq(picked(w.this), '2', 'and it is the picked one now')
+	click(w.at[5])
+	eq(sets[#sets], 'rel_point=CENTER', 'the AT ITS dots set rel_point')
+	eq(store.rel_point, 'CENTER', 'stored')
+
+	stub.fire_script(w.this[7], 'OnEnter')
+	local tr, tg, tb = st.config.profile.colors.text.normal:GetRGB()
+	eq(dot_color(w.this[7]), rgb_text(tr, tg, tb), 'a hovered dot is in the text color')
+	stub.fire_script(w.this[7], 'OnLeave')
+	eq(dot_color(w.this[7]), rgb_text(0.333, 0.333, 0.333), 'and grey again after')
+	w:Release()
+end)
+
+test('position: X and Y show the stored offsets, strings included; Enter sets the typed number', function()
+	local w, told, sets, store = bind_position(nil, { point = 'TOP', rel_point = 'TOP', x_off = '-6', y_off = nil })
+	eq(w.x:GetText(), '-6', 'a string offset shows')
+	eq(w.y:GetText(), '0', 'a missing one shows 0')
+	type_into(w.y, '12')
+	eq(sets[#sets], 'y_off=12', 'Enter sets the number')
+	eq(type(store.y_off), 'number', 'as a number')
+	eq(w.y:GetText(), '12', 'and shows it')
+	type_into(w.x, ' 3.5 ')
+	eq(sets[#sets], 'x_off=3.5', 'spaces around the number are fine')
+	w:Release()
+end)
+
+test('position: text that is not a number reports it, sets nothing and puts the stored value back', function()
+	local w, told, sets = bind_position()
+	type_into(w.x, 'abc')
+	eq(#sets, 0, 'nothing set')
+	eq(told.ok, false, 'told: not ok')
+	eq(told.err, 'X must be a number', 'with the X message')
+	eq(w.x:GetText(), '0', 'the box has the stored value again')
+	type_into(w.y, '')
+	eq(told.err, 'Y must be a number', 'and the Y message')
+	eq(w.y:GetText(), '-8', 'Y is back')
+	w:Release()
+end)
+
+test('position: Esc and focus loss put a box back to the stored value', function()
+	local w, _, sets = bind_position()
+	w.x:SetText('99')
+	stub.fire_script(w.x, 'OnEscapePressed')
+	eq(w.x:GetText(), '0', 'Esc reverts')
+	w.y:SetText('77')
+	stub.fire_script(w.y, 'OnEditFocusLost')
+	eq(w.y:GetText(), '-8', 'losing focus reverts')
+	eq(#sets, 0, 'neither sets')
+	w:Release()
+end)
+
+test('position: nudges move 1, or 10 with Shift, from a string offset too', function()
+	local w, _, sets = bind_position(nil, { point = 'TOP', rel_point = 'TOP', x_off = '-6', y_off = -8 })
+	click(w.xUp)
+	eq(sets[#sets], 'x_off=-5', 'up from a string -6')
+	click(w.xDown)
+	eq(sets[#sets], 'x_off=-6', 'down')
+	stub.shift_down = true
+	click(w.yDown)
+	stub.shift_down = false
+	eq(sets[#sets], 'y_off=-18', 'Shift moves 10')
+	eq(w.y:GetText(), '-18', 'the box follows')
+	click(w.yUp)
+	eq(sets[#sets], 'y_off=-17', 'Y up, 1 without Shift')
+	w:Release()
+end)
+
+test('position: a name typed and Entered sets frame; a failed validate sets nothing and reports its message', function()
+	local w, told, sets = bind_position({
+		target = 'name',
+		validate = function(info, part, value)
+			if part == 'frame' and value == 'Nope' then return "Frame doesn't exist" end
+			return true
+		end,
+	})
+	eq(w.name:GetText(), 'Minimap', 'the stored frame shows')
+	type_into(w.name, 'Nope')
+	eq(#sets, 0, 'nothing set')
+	eq(told.ok, false, 'told: not ok')
+	eq(told.err, "Frame doesn't exist", 'with the message')
+	eq(w.name:GetText(), 'Minimap', 'the stored name is back')
+	type_into(w.name, '  UIParent ')
+	eq(sets[#sets], 'frame=UIParent', 'a valid trimmed name sets frame')
+	eq(told.ok, true, 'told ok')
+	w:Release()
+end)
+
+test('position: a select target shows the dropdown, and the name box only for nameKey', function()
+	local store = { point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0, frame = 'PlayerFrame', relative_to = 'Health' }
+	local w, told, sets = bind_position({
+		target = 'select', nameKey = '__global',
+		values = { __unitframe = 'Unit frame', Health = 'Health', __global = 'Global frame' },
+	}, store)
+	eq(caption_texts(w), 'THIS,TO,AT ITS,OFFSET', 'the TO caption shows')
+	eq(w:GetWidth(), 48 + 12 + 140 + 12 + 48 + 12 + 80, 'the TO part is 140 wide')
+	check(w.select:IsShown(), 'the dropdown shows')
+	eq(w.select.text:GetText(), 'Health', 'with the stored choice')
+	check(not w.name:IsShown(), 'no name box for Health')
+
+	click(w.select)
+	local list = W.GetListFrames()
+	check(list.catcher:IsShown(), 'the list opened')
+	local labels = {}
+	for i, entry in ipairs(list.entries) do labels[i] = entry.label end
+	eq(table.concat(labels, ','), 'Health,Global frame,Unit frame', 'with the values, sorted by key')
+	for i, entry in ipairs(list.entries) do
+		if entry.key == '__global' then click(list.rows[i]) end
+	end
+	eq(sets[#sets], 'relative_to=__global', 'picking sets relative_to')
+	eq(w.select.text:GetText(), 'Global frame', 'the dropdown follows')
+	check(w.name:IsShown(), 'the name box shows for nameKey')
+	eq(w.name:GetText(), 'PlayerFrame', 'with the stored frame')
+	eq(w.name:GetWidth(), 140, 'a 140 wide name box')
+	eq(w.name:GetHeight(), 22, 'on the bottom row')
+	local _, _, _, _, y1 = w.select:GetPoint(1)
+	local _, _, _, _, y2 = w.name:GetPoint(1)
+	eq(y2, y1 - 26, 'the name box is 22 + 4 under the dropdown')
+
+	type_into(w.name, 'UIParent')
+	eq(sets[#sets], 'frame=UIParent', 'the name box sets frame')
+	w:Release()
+end)
+
+test('position: a block reused after a select target has no dropdown, and one reused without a target has no TO part', function()
+	local w = bind_position({ target = 'select', nameKey = '__global', values = { __global = 'Global frame' } },
+		{ point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0, relative_to = '__global', frame = 'X' })
+	check(w.select:IsShown() and w.name:IsShown(), 'the select shape shows both')
+	w:Release()
+
+	local w2 = bind_position({ target = 'name' })
+	eq(w2, w, 'the same widget came back from the pool')
+	check(not w2.select:IsShown(), 'no dropdown')
+	check(w2.name:IsShown(), 'the name box shows')
+	eq(w2.name:GetWidth(), 120, 'at 120 again')
+	eq(w2.name:GetText(), 'Minimap', 'with this row\'s frame')
+	eq(w2:GetWidth(), 332, 'and the block is narrower again')
+	w2:Release()
+
+	local w3 = bind_position()
+	eq(w3, w, 'the pool again')
+	check(not w3.name:IsShown(), 'no name box')
+	check(not w3.select:IsShown(), 'no dropdown')
+	eq(caption_texts(w3), 'THIS,AT ITS,OFFSET', 'no TO caption')
+	check(not w.captionFor.to:IsShown(), 'the TO caption is hidden')
+	eq(w3:GetWidth(), 200, 'and 200 wide')
+	w3:Release()
+end)
+
+test('position: the caption font is the title face at 11, in grey', function()
+	local w = bind_position()
+	local path, size = w.captions[1]:GetFont()
+	local config = st.config.profile.fonts.title
+	eq(path, st.LSM:Fetch('font', config.font_name), 'the title face')
+	eq(size, 11, 'at 11')
+	local r, g, b = w.captions[1]:GetTextColor()
+	local gr, gg, gb = st.config.profile.colors.text.grey:GetRGB()
+	check(r == gr and g == gg and b == gb, 'grey')
+	w:Release()
+end)
+
+test('position: the block calls onTip as the mouse enters and leaves its parts', function()
+	local w = bind_position({ target = 'name' })
+	local log = {}
+	w.onTip = function(on) log[#log + 1] = on end
+	stub.fire_script(w.this[1], 'OnEnter')
+	stub.fire_script(w.this[1], 'OnLeave')
+	stub.fire_script(w.x, 'OnEnter')
+	eq(#log, 3, 'three calls')
+	eq(log[1], true, 'on')
+	eq(log[2], false, 'off')
+	w:Release()
+	eq(w.onTip, nil, 'released: no tip hook left')
+end)
+
+test('position: disabled dims the block and ignores clicks and nudges', function()
+	local w, told, sets = bind_position({ target = 'name', disabled = true })
+	check(w:IsDisabled(), 'disabled from the row')
+	eq(w.frame:GetAlpha(), 0.4, 'dimmed')
+	click(w.this[1])
+	click(w.at[1])
+	click(w.xUp)
+	click(w.yDown)
+	type_into(w.x, '5')
+	type_into(w.name, 'Other')
+	eq(#sets, 0, 'nothing set')
+	eq(told.n, 0, 'nobody told')
+	w:SetDisabled(false)
+	click(w.xUp)
+	eq(sets[#sets], 'x_off=1', 'enabled again')
+	w:Release()
 end)

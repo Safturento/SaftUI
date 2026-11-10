@@ -266,6 +266,36 @@ test('a toggle and a color sit 10 past the end of their label, at normal and sma
 	body:Release()
 end)
 
+test('a position cell is wide, has no label, is the block plus 12 tall, and shows the row\'s desc over the block', function()
+	local body, by = draw_body(774, { { 'pos', 'position', 'Position' }, { 'after', 'toggle', 'After' } })
+	local c = by.pos
+	eq(c.height, 65 + 12, 'the widget plus 12')
+	eq(c.frame:GetWidth(), 774, 'the whole line')
+	check(not c.label:IsShown(), 'no label: the section says Position')
+	local point, rel, _, x, y = c.widget.frame:GetPoint(1)
+	eq(point, 'TOPLEFT', 'the block sits at the cell\'s top left')
+	check(rel == c.frame, 'in the cell')
+	eq(x, 0); eq(y, -6, 'with 6 above it')
+	check(by.after.y >= c.y + c.height, 'the next row is under the block')
+	c.row.desc = 'Where the frame sits.'
+	local owner, lines = nil, {}
+	local saved = _G.GameTooltip
+	_G.GameTooltip = {
+		SetOwner = function(_, frame) owner = frame end,
+		AddLine = function(_, text) lines[#lines + 1] = text end,
+		Show = function() end,
+		IsOwned = function(_, frame) return owner == frame end,
+		Hide = function() owner = nil end,
+	}
+	c.widget.onTip(true)
+	check(owner == c.frame, 'the tooltip shows for the cell')
+	eq(lines[2], 'Where the frame sits.', 'with the desc')
+	c.widget.onTip(false)
+	check(owner == nil, 'and goes')
+	_G.GameTooltip = saved
+	body:Release()
+end)
+
 test('a label too long for its small cell is cut to leave room for the control', function()
 	local body, by = draw_body(774, { { 'x', 'toggle', 'A very very long small toggle name', 'small' } })
 	local c = by.x
