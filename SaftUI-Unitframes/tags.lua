@@ -47,7 +47,7 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	if config.show_classification then
 		if(classification == 'rare') then
 			levelString = levelString .. 'R'
-		elseif(classification == 'eliterare') then
+		elseif(classification == 'rareelite') then
 			levelString = levelString .. 'R+'
 		elseif(classification == 'elite') then
 			levelString = levelString .. '+'

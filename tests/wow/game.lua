@@ -32,6 +32,16 @@ stub = {
 	xp = 450,
 	xp_max = 1000,
 	rested_xp = nil,
+	-- Units other than the player, by unit token (e.g. stub.units.target), for
+	-- the unit API below. Each is a table of:
+	--   name, level, class (the class token, e.g. 'MAGE'), classification
+	--   ('normal', 'rare', 'rareelite', 'elite', 'worldboss', ...; 'normal'
+	--   if nil), reaction (UnitReaction between it and the player, 1 hated to
+	--   8 exalted), player (true for a player character), controlled (true
+	--   for a unit a player controls, e.g. a pet; players count without it)
+	--   and party_ai (true for a party follower, UnitInPartyIsAI).
+	-- A unit not listed doesn't exist, so the API gives nil for it.
+	units = {},
 }
 
 -- Only the interface number means anything here.
@@ -66,13 +76,20 @@ C_AddOns = {
 
 -- GetCurrentKeyBoardFocus (the edit box that has focus) is in widgets.lua, with EditBox:SetFocus.
 
--- The player: a human warrior named Tester on Testrealm. Other units don't
--- exist, so they give nil, as the game does for a unit that isn't there.
+-- The player: a human warrior named Tester on Testrealm. Other units are
+-- stub.units'; one not there doesn't exist, so it gives nil, as the game does
+-- for a unit that isn't there.
+local function OtherUnit(unit) return unit ~= 'player' and stub.units[unit] or nil end
 function UnitName(unit)
 	if unit == 'player' then return 'Tester', nil end
+	local other = OtherUnit(unit)
+	if other then return other.name, nil end
 end
 function UnitClass(unit)
 	if unit == 'player' then return 'Warrior', 'WARRIOR', 1 end
+	-- Another unit's class token stands for its name too.
+	local other = OtherUnit(unit)
+	if other then return other.class, other.class end
 end
 function UnitRace(unit)
 	if unit == 'player' then return 'Human', 'Human', 1 end
@@ -86,10 +103,41 @@ function GetRealmName() return 'Testrealm' end
 function GetCurrentRegion() return 1 end
 function GetCurrentRegionName() return 'US' end
 
--- Experience. The player's level is stub.level; other units don't exist.
+-- Experience. The player's level is stub.level, another unit's its stub.units level.
 function GetMaxPlayerLevel() return stub.max_level end
 function UnitLevel(unit)
 	if unit == 'player' then return stub.level end
+	local other = OtherUnit(unit)
+	if other then return other.level end
+end
+-- The highest level there is: GetMaxPlayerLevel's.
+function GetMaxLevelForLatestExpansion() return stub.max_level end
+function UnitClassification(unit)
+	if unit == 'player' then return 'normal' end
+	local other = OtherUnit(unit)
+	if other then return other.classification or 'normal' end
+end
+function UnitIsPlayer(unit)
+	if unit == 'player' then return true end
+	local other = OtherUnit(unit)
+	return other and other.player and true or false
+end
+function UnitPlayerControlled(unit)
+	if unit == 'player' then return true end
+	local other = OtherUnit(unit)
+	return other and (other.player or other.controlled) and true or false
+end
+function UnitInPartyIsAI(unit)
+	local other = OtherUnit(unit)
+	return other and other.party_ai and true or false
+end
+-- Between a stub.units unit and the player (either way round): its reaction.
+-- No other pair is stubbed, so it errors rather than guess the game's answer.
+function UnitReaction(unit, otherUnit)
+	local other = (otherUnit == 'player' and OtherUnit(unit)) or (unit == 'player' and OtherUnit(otherUnit))
+	if other then return other.reaction end
+	if not (OtherUnit(unit) or unit == 'player') or not (OtherUnit(otherUnit) or otherUnit == 'player') then return nil end
+	error(('UnitReaction(%s, %s) is not stubbed: only a stub.units unit and the player'):format(tostring(unit), tostring(otherUnit)), 2)
 end
 function UnitXP(unit)
 	if unit == 'player' then return stub.xp end

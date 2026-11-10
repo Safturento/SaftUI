@@ -24,6 +24,12 @@
 --   * UF.unit_strings, empty: unitframes.lua's name the units (Player,
 --     Target, ...), and without them a unit is named by its key. UF.group_strings
 --     is unitframes.lua's, as the Ready check element's ValidUnit reads it.
+--   * UF.oUF, as far as tags.lua uses it: oUF's tag tables, where tags.lua
+--     registers its st:name tag (oUF calls the tag with the unit, the real
+--     unit and the tag's argument, the config unit), and the class colors
+--     (oUF's own, into which UF:UpdateColors merges the profile's; here the
+--     profile's). The tag reads the unit through the stubbed unit API
+--     (stub.units).
 --
 -- AceConfigRegistry validates ace_ready (tests/core/options_walk.lua) of the
 -- table: a copy without SaftUI's own fields and Position options.
@@ -66,6 +72,12 @@ load_saftui('SaftUI-Unitframes/updaters.lua')
 for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end
+-- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
+-- st.StringFormat.
+UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
+load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+st.StringFormat = LibStub('LibStringFormat-1.0')
+load_saftui('SaftUI-Unitframes/tags.lua')
 
 local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
 
@@ -596,4 +608,50 @@ test("Health's first section: the toggles four to a line, then the settings two 
 		.. 'template:normal 1, texture:normal 2, alpha:normal 1, framelevel:normal 2',
 		"Health's first section")
 	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
+end)
+
+test("the name tag marks rare (R), rare elite (R+), elite (+) and world boss (B) units with Classification on", function()
+	local P = UF:GetProfileConfig()
+	local tag = UF.oUF.Tags.Methods['st:name']
+	local name = P.target.name
+	check(name.enable and name.showLevel and name.show_classification, "target's name shows its level and classification by default")
+	-- What the tag gives the level part: the level and the mark, colored, then a space.
+	local function level_part(text) return (text:match('^|cff%x%x%x%x%x%x(.-)|r ')) end
+	local MARKS = { normal = '', rare = 'R', rareelite = 'R+', elite = '+', worldboss = 'B' }
+	for classification, mark in pairs(MARKS) do
+		stub.units.target = { name = 'Mob', level = 22, class = 'WARRIOR', classification = classification, reaction = 2 }
+		local text = tag('target', 'target', 'target')
+		eq(level_part(text), '22' .. mark, classification .. ' gets ' .. (mark == '' and 'no mark' or mark))
+		check(text:sub(-3) == 'Mob', classification .. ': then the name')
+	end
+	name.show_classification = false
+	stub.units.target = { name = 'Mob', level = 22, class = 'WARRIOR', classification = 'rareelite', reaction = 2 }
+	eq(level_part(tag('target', 'target', 'target')), '22', 'no mark with Classification off')
+	name.show_classification = true
+	stub.units.target = nil
+end)
+
+test("the name tag's Class color colors a player's name by class, and leaves a secret class alone", function()
+	local P = UF:GetProfileConfig()
+	local tag = UF.oUF.Tags.Methods['st:name']
+	local name = P.target.name
+	stub.units.target = { name = 'Jaina', level = 20, class = 'MAGE', player = true, reaction = 5 }
+	local hex = st.StringFormat:ToHex(st.config.profile.colors.class.MAGE:GetRGB())
+	check(not tag('target', 'target', 'target'):find('|cff' .. hex .. 'Jaina', 1, true), 'not colored with Class color off')
+	name.colorClass = true
+	check(tag('target', 'target', 'target'):find('|cff' .. hex .. 'Jaina|r', 1, true), "colored in the mage color")
+	-- On retail the class can be secret: it can't index the class colors.
+	local secret = newproxy(true)
+	local meta = getmetatable(secret)
+	local function refuse() error('attempt to use a secret value', 2) end
+	meta.__index, meta.__newindex, meta.__call, meta.__len, meta.__concat = refuse, refuse, refuse, refuse, refuse
+	local real = issecretvalue
+	issecretvalue = function(v) return v == secret end
+	stub.units.target.class = secret
+	local ok, text = pcall(tag, 'target', 'target', 'target')
+	check(ok, 'no error with a secret class: ' .. tostring(text))
+	check(ok and text:sub(-5) == 'Jaina' and not text:find('|cff' .. hex .. 'Jaina', 1, true), 'the name left uncolored')
+	issecretvalue = real
+	name.colorClass = false
+	stub.units.target = nil
 end)
