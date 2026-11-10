@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
@@ -52,6 +53,25 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — panels.tab_height has no option, because nothing live reads it
+
+**What:** `panels.tab_height` (21, in `st.defaults.panels`, `SaftUI-Core/Config/defaults.lua`) is the one leftover Core setting that got no `/sui` option when Global Settings gained its General tab and the Fonts tab's new rows. Nothing that runs reads it. Either wire it to something that draws tabs and give it an option, or remove the key.
+
+**Why noticed:** Options project 3 (Core's leftover settings, `coresettings` branch, approved by the user 2026-11-10). The approved design gave every other Core setting an option (icon trim, title bar height, clamp inset, font shadow and spacing, and the header, button and panel fonts) and said `panels.tab_height` gets none, to be treated like chat's `linespacing`: a setting nothing applies gets no option, only a followup to wire it up or drop it. Chat's `linespacing` is in the Chat line of [Settings with no /sui option](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover).
+
+**Anchors:**
+- Its only readers are in `SaftUI-Misc/Skinning/skinning.lua`: `SK:UpdateTab` (`tab:SetHeight(...)`, reached from `SK:SkinTab`) and `SK:SkinTabHeader` (`header:SetHeight(...)`). `SK:SkinTab` is called only by `SK:SkinBlizzardPanel` and `SK:SkinTabHeader`, and nothing calls either of those (grep `SkinBlizzardPanel`, `SkinTabHeader`).
+- The same dead path also reads `panels.font` (`SK:UpdateTab`'s `SetDisabledFontObject`) and `panels.template` (`SK:SkinBlizzardPanel`, and `SK:SkinTab` through `st:SkinActionButton(tab, st.config.profile.panels)`). `panels.font` stays alive through check box labels (`SaftUI-Core/Widgets/checkbutton.lua`), which is the reader its Fonts → Kinds of text → Check box labels option names.
+- The dead helpers also write fields onto Blizzard's tabs (`tab.skinned`, `tab.Text`, and `st:SkinActionButton`'s fields), which `.agents/taint.md` rule 1 forbids, so reviving them as they are isn't an option.
+
+**What's been considered:**
+- Removing the key: saved values are harmless (the 2026-11-09 audit settled that dead keys can be dropped from the defaults). `SK:SkinBlizzardPanel`, `SkinTab`, `UpdateTab` and `SkinTabHeader` could go with it, or be left for a future Blizzard panel skin.
+- Wiring it up: only worth it once SaftUI skins a Blizzard window with tabs again, through side tables. Its option would then sit in General → Windows, with Title bar height.
+
+**Shape of work:** Small. Removal: one default, and the dead helpers if they go too, plus the line in the options-coverage entry's Core list. Wiring it up belongs with whichever skin first needs tabs.
+
+**Open questions:** Remove now, or keep it for a Blizzard panel skin the Themes project might bring?
 
 ### 2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors
 
@@ -220,13 +240,15 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Progress 2026-11-09 (options layout project 2, `optlayout` branch):** the per-module gaps in the lists below are closed: Misc (Tooltip, Skinning, Totem bar), Bags, Action bars (`actionbars.template`), and the unit frames (range alpha, the boss layout, `alpha`, `health.texture`, the color toggles and the rest, as itemized under Unit frames). Each also got tooltips on every option and its Position options. **Still open:** Core's settings (the "Core" list: icon trim, font shadow and spacing, header, button and panel fonts and templates, editable templates, `colors.*`), which are project 3 of the options redesign; and `loot.popup.*`, which waits on the loot window's own design. Chat's `linespacing` and the broken-option, mover and unit frame "still without an option" items below are as they were.
 
+**Progress 2026-11-10 (options project 3):** the Colors tab (`colors.*`) and Core's leftover settings (`coresettings` branch: Global Settings' General tab, and the Fonts tab's shadow, spacing and Kinds of text rows) close the Core list, but for the templates (`templates.*`, `buttons.template`, `panels.template`), which wait on the Themes project, and `panels.tab_height`, which has [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it). **Still open:** those, `loot.popup.*`, Chat's `linespacing`, and the broken-option, mover and unit frame items below.
+
 **Read by the code, no option in `/sui`:**
-- **Core** (`SaftUI-Core/Config/defaults.lua`). Core has a `/sui` section only for Fonts.
-  - `misc.icon_trim`, `misc.clamp_inset`.
-  - `fonts.<key>.shadow_offset` and `.spacing`. Fonts exposes only the face, size and outline.
-  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`.
-  - `templates.*` can be picked from a dropdown but not edited.
-  - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09).
+- **Core** (`SaftUI-Core/Config/defaults.lua`). Core's settings are under Global Settings in `/sui`.
+  - `misc.icon_trim`, `misc.clamp_inset`. *Done 2026-11-10 (options project 3, `coresettings` branch): General → Icons → Icon zoom, and General → Windows → Off-screen margin.*
+  - `fonts.<key>.shadow_offset` and `.spacing`. *Done 2026-11-10: each font's Shadow offset X, Shadow offset Y and Line spacing on the Fonts tab.*
+  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`. *Done 2026-11-10: `headers.height` is General → Windows → Title bar height, and `headers.font`, `buttons.font` and `panels.font` are Fonts → Kinds of text (Window titles, Button text, Check box labels). `buttons.template` and `panels.template` wait on the Themes project. `panels.tab_height` gets no option, since nothing live reads it: see [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it).*
+  - `templates.*` can be picked from a dropdown but not edited. *Waits on the Themes project.*
+  - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09). *Done 2026-11-10: the Colors tab of Global Settings.*
 - **Misc** (`SaftUI-Misc/config.lua`): `tooltip.template` and `.font`, `skinning.font` and `.template` (the new Skinning page, `SK:GetConfigTable`) and `totembar.colors.*` now have options (Task 4 of the options layout project, 2026-11-09).
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons` now have options (Task 5 of the options layout project, 2026-11-09): Bags → General and Look.
@@ -306,7 +328,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - Optionally, a Core appearance section for colors and templates.
 
 **Open questions:**
-- Which settings should never be in `/sui`, as internal tuning (e.g. `misc.clamp_inset`, `headers.height`)?
+- Which settings should never be in `/sui`, as internal tuning (e.g. `misc.clamp_inset`, `headers.height`)? *Answered 2026-11-10: the user approved options for both (Global Settings → General).*
 - Should global colors and templates be editable at all?
 
 ### 2026-11-08 — Forever: wrong or missing aura tooltips on party frames
