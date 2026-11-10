@@ -116,6 +116,10 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	table.sort(got)
 	eq(table.concat(got, ','), table.concat(expected, ','), "a toggle per setting of player's")
 	check(#got > 10, 'many of them: ' .. #got)
+	for i = 4, #keys - 1 do
+		local size = cell(keys[i]).row.size
+		check(size == nil or size == 'normal', keys[i] .. ' is a normal toggle, so its label has half the line: ' .. tostring(size))
+	end
 	check(cell('accept').widget:IsDisabled(), 'Confirm copy waits for a unit')
 
 	-- Pick target.

@@ -298,7 +298,7 @@ function UF:OpenCopyTable(unit)
 	for key in pairs(self:GetProfileConfig()[unit]) do
 		copy.settings[key] = false
 		settingArgs[key] = st.Config.generators.toggle(0, key,
-			'Copies this setting from the other unit frame onto this one.', 'small')
+			'Copies this setting from the other unit frame onto this one.')
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
