@@ -225,7 +225,17 @@ local function UpdateModule(module)
 	end
 end
 
--- Runs on every profile change, copy or reset.
+-- Draws every themed frame again in the profile's theme (theme.lua), then has
+-- modules color again what they color themselves. Redrawing touches frames that
+-- may be protected, so in combat both wait for the end of it, once however many
+-- profile changes were made.
+local function RedrawTheme()
+	st:RedrawThemed()
+	st:ColorsChanged('theme')
+end
+
+-- Runs on every profile change, copy or reset, and on a change of the theme or
+-- its Transparent background toggle (st:ThemeChanged, Media/theme.lua).
 function Config:UpdateConfig()
 	-- A profile switched to or copied from one saved before themes still has
 	-- its template choices: they become a Theme and Background first, so every
@@ -240,6 +250,13 @@ function Config:UpdateConfig()
 			module.config = st.config.profile[module.configKey]
 		end
 	end
+
+	-- The profile's theme may not be the one frames were drawn in (a switch or
+	-- copy to a profile with another theme, or the Theme tab): every drawn frame
+	-- takes it before the modules lay out around its border. Frames a module
+	-- colors itself get their colors back at the end (ColorsChanged('theme')).
+	local redraw = not st:QueueAfterCombat('ThemeRedraw', RedrawTheme)
+	if redraw then Safely(function() st:RedrawThemed() end) end
 
 	-- Movers can be anchored to each other; clear them all before anything is
 	-- placed, so no order of placing them passes through an anchor loop.
@@ -276,6 +293,8 @@ function Config:UpdateConfig()
 		OW:UpdateFonts()
 	end
 	self:Refresh()
+
+	if redraw then Safely(function() st:ColorsChanged('theme') end) end
 
 	if InCombatLockdown() then
 		st:Print('Profile changed in combat. Frames that are locked in combat (unit frames, action bars, bags, and anything anchored to them) finish updating when combat ends.')

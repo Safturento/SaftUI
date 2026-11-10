@@ -9,16 +9,15 @@ local TH = st:NewModule('Theme')
 local NAMES = { thick = 'Thick', thin = 'Thin' }
 local COLORS = { 'bordercolor', 'altbordercolor', 'backdropcolor' }
 
--- After the theme or the Transparent background toggle changed: draws every
--- themed frame again, has every module lay itself out again (the border's
--- width moves what sits inside it), and tells them the theme's colors changed.
--- Redrawing touches frames that may be protected, so in combat it waits for
--- the end of it, once however many changes were made.
+-- After the theme or the Transparent background toggle changed: the profile
+-- update a profile switch runs (Config:UpdateConfig), which draws every themed
+-- frame again, has every module lay itself out again (the border's width moves
+-- what sits inside it), and tells them the theme's colors changed. Redrawing
+-- touches frames that may be protected, so in combat it waits for the end of
+-- it, once however many changes were made.
 function st:ThemeChanged()
 	if st:QueueAfterCombat('ThemeChanged', function() st:ThemeChanged() end) then return end
-	st:RedrawThemed()
 	st.Config:UpdateConfig()
-	st:ColorsChanged('theme')
 end
 
 -- After a theme color or the opacity changed: the same wait for combat.

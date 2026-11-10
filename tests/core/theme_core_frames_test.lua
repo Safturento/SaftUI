@@ -127,6 +127,101 @@ test("the /sui window takes the theme's border and stays solid", function()
 	st.Config:Close()
 end)
 
+-- A profile switch, copy or reset is a theme change when the profiles' themes
+-- differ (ruling R13): Config:UpdateConfig redraws every drawn frame before the
+-- modules update, and ends with ColorsChanged('theme').
+test('a profile switch to a profile with another theme redraws what was drawn once, with no reload, and back', function()
+	local st = fresh()
+	local EM = st.EditModeFrames
+	-- Drawn once, when made: a window's panel and header strip, a Core button
+	-- and the /sui window.
+	local panel = frame(st, 'Frame', 'ThemeTestSwitchPanel')
+	st:SetBackdrop(panel, 'theme', 'theme', 'panel')
+	st:CreateHeader(panel, 'Title')
+	local button = st:CreateButton('ThemeTestSwitchButton', UIParent, 'x')
+	button:SetSize(80, 20)
+	button:SetPoint('CENTER')
+	st.Config:Open()
+	local window = OW.GetFrames().window
+	-- A mover colors its own line: the selected one blue.
+	local position = { point = 'CENTER', x_off = 0, y_off = 0 }
+	local mover = st:RegisterMover('theme_switch', {
+		frame = frame(st),
+		getPosition = function() return position end,
+		setPosition = function(pos) position = pos end,
+		apply = function() end,
+	})
+	EM:Select(mover)
+	local blue = text(st.config.profile.colors.button.blue:GetRGB())
+
+	local function looks(theme, edgeColor, header)
+		local px = theme == 'thin' and 1 or 2
+		local out = ('%d.00,%d.00'):format(-px, px)
+		eq(inset(panel.backdrop), px, theme .. ": the panel's border")
+		eq(offset(panel.backdrop, 'TOPLEFT'), out, theme .. ': the panel sits its border outside the window')
+		eq(edge(panel.backdrop), edgeColor, theme .. ": the panel's border color")
+		eq(fill(panel.header), header, theme .. ": the header strip, the theme's border color at 0.4")
+		eq(inset(button.backdrop), px, theme .. ": the button's border")
+		eq(offset(button.backdrop, 'TOPLEFT'), out, theme .. ': the button sits its border outside it')
+		eq(edge(button.backdrop), edgeColor, theme .. ": the button's border color")
+		eq(inset(window), px, theme .. ": the /sui window's border")
+		eq(edge(window), edgeColor, theme .. ": the /sui window's border color")
+		eq(alpha(window), '1.00', theme .. ': the /sui window stays solid')
+		eq(inset(mover.overlay.backdrop), px, theme .. ": the mover's outline at the theme's border")
+		eq(edge(mover.overlay.backdrop), blue .. ',1.00', theme .. ': the selected mover keeps its blue line')
+		eq(fill(mover.overlay.backdrop), blue .. ',0.15', theme .. ': and its blue tint')
+	end
+	looks('thick', THICK_EDGE, '0.30,0.30,0.30,0.40')
+
+	-- A profile saved with the Thin theme.
+	local first = st.config:GetCurrentProfile()
+	SaftUI_DB.profiles.ThemeTestThin = { theme = { name = 'thin' } }
+	st.config:SetProfile('ThemeTestThin')
+	looks('thin', THIN_EDGE, '0.00,0.00,0.00,0.40')
+
+	st.config:SetProfile(first)
+	looks('thick', THICK_EDGE, '0.30,0.30,0.30,0.40')
+
+	-- A copy of the Thin profile into this one is a theme change too.
+	st.config:CopyProfile('ThemeTestThin')
+	looks('thin', THIN_EDGE, '0.00,0.00,0.00,0.40')
+	-- And a reset, back to the default Thick.
+	st.config:ResetProfile()
+	looks('thick', THICK_EDGE, '0.30,0.30,0.30,0.40')
+
+	EM:Select(nil)
+	st.Config:Close()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a profile switch in combat redraws once combat ends, once, with the colors after it', function()
+	local st = fresh()
+	local panel = frame(st, 'Frame', 'ThemeTestCombatPanel')
+	st:SetBackdrop(panel, 'theme', 'theme', 'panel')
+	local log = {}
+	local redraw, colors = st.RedrawThemed, st.ColorsChanged
+	st.RedrawThemed = function(...) log[#log + 1] = 'RedrawThemed'; return redraw(...) end
+	st.ColorsChanged = function(self, group)
+		if group == 'theme' then log[#log + 1] = 'ColorsChanged(theme)' end
+		return colors(self, group)
+	end
+
+	local first = st.config:GetCurrentProfile()
+	SaftUI_DB.profiles.ThemeTestThin = { theme = { name = 'thin' } }
+	stub.in_combat = true
+	st.config:SetProfile('ThemeTestThin')
+	st.config:SetProfile(first)
+	st.config:SetProfile('ThemeTestThin')
+	eq(table.concat(log, ','), '', 'nothing redrawn in combat')
+	eq(inset(panel.backdrop), 2, 'the panel keeps its border until then')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(table.concat(log, ','), 'RedrawThemed,ColorsChanged(theme)', 'one redraw after combat, then the colors')
+	eq(inset(panel.backdrop), 1, "then the Thin profile's border")
+	st.RedrawThemed, st.ColorsChanged = redraw, colors
+	take_errors()
+end)
+
 -- The model's row for option key in a one-page tree, and the tree.
 local function make(key, option)
 	local root = { page = { type = 'group', name = 'Page', args = { [key] = option } } }

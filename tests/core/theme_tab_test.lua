@@ -138,27 +138,30 @@ test('a color set recolors without a config update', function()
 	eq(st.config.profile.theme.opacity, 0.5)
 end)
 
-test('a theme or toggle switch runs ThemeChanged: redraw, then UpdateConfig, then ColorsChanged(theme)', function()
+test('a theme or toggle switch runs ThemeChanged: the profile update, which redraws first, then updates the modules, then ColorsChanged(theme)', function()
+	-- A module, so the log shows where the modules update.
+	local probe = st:NewModule('ThemeTabProbe')
 	local log, restore = {}, {}
+	function probe:UpdateConfig() log[#log + 1] = 'module' end
 	restore[1] = Spy(st, 'RedrawThemed', log)
 	restore[2] = Spy(st.Config, 'UpdateConfig', log)
 	local real = st.ColorsChanged
 	st.ColorsChanged = function(_, group) log[#log + 1] = 'ColorsChanged(' .. group .. ')'; return real(st, group) end
 	local recolor = Spy(st, 'RecolorThemed', log)
 
+	-- st:ThemeChanged is Config:UpdateConfig, the profile update, which
+	-- redraws once before any module lays itself out around the new border.
 	Set('theme', 'thin')
-	eq(table.concat(log, ','), 'RedrawThemed,UpdateConfig,ColorsChanged(theme)', 'a theme switch')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'a theme switch')
 	eq(st.config.profile.theme.name, 'thin')
 
-	log = {}
-	restore[1](); restore[2]()
-	restore[1] = Spy(st, 'RedrawThemed', log)
-	restore[2] = Spy(st.Config, 'UpdateConfig', log)
+	for i = #log, 1, -1 do log[i] = nil end
 	Set('transparent', false)
-	eq(table.concat(log, ','), 'RedrawThemed,UpdateConfig,ColorsChanged(theme)', 'the toggle')
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'the toggle')
 	eq(st.config.profile.theme.transparent, false)
 
 	recolor(); restore[1](); restore[2](); st.ColorsChanged = real
+	probe.UpdateConfig = nil
 	Set('transparent', true)
 	Set('theme', 'thick')
 end)
