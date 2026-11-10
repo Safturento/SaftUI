@@ -17,9 +17,10 @@ local OM = st.OptionsModel
 	onChanged(false, message) and sets nothing), then OM.Confirm (a text asks
 	with W.Confirm first), then OM.Set. After that onChanged(ok, err) runs, ok
 	false when the set errored. The window re-renders from it. While a slider
-	is being dragged, onChanged gets a third argument, true; one more
-	onChanged(true) comes when the mouse is let go, so the window doesn't
-	rebuild the slider under the user's mouse.
+	is being dragged, onChanged gets a third argument, true, and a fourth,
+	the widget, so the window can refresh the other rows and leave the
+	slider be; one more onChanged(true) comes when the mouse is let go, so
+	the window doesn't rebuild the slider under the user's mouse.
 
 	Types: toggle, range, select, multiselect, input, color, execute,
 	keybinding, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
@@ -34,8 +35,14 @@ local OM = st.OptionsModel
 	(widget.frame:GetHeight()); the others are 18, 22, 24 or 26 high.
 
 	Left out: input's multiline (one line), select's radio style (a dropdown,
-	as the spec says), description's image. A description's fontSize is small
-	(the default), medium or large.
+	as the spec says). A description's fontSize is small (the default), medium
+	or large. Its image is read as AceConfigDialog reads it: image a texture
+	path or fileID, or a function giving that with a width and height;
+	imageWidth and imageHeight otherwise (32 each by default); imageCoords 4
+	or 8 numbers, or a function giving them, else the whole texture. The image
+	sits at the description's left with the text to its right, and the height
+	covers both. Refresh reads them all again (the window refreshes the other
+	rows while a slider is dragged, so a preview can follow it).
 ]]
 
 local W = {}
@@ -549,7 +556,7 @@ function Base:Commit(...)
 		if self.root ~= root or self.row ~= row then return end -- released meanwhile
 		local ok = OM.Set(root, row, unpack(args, 1, n))
 		self:Refresh()
-		if self.onChanged then self.onChanged(ok ~= false, nil, self.dragging) end
+		if self.onChanged then self.onChanged(ok ~= false, nil, self.dragging, self) end
 	end
 	local valid, err = OM.Validate(root, row, ...)
 	if not valid then
@@ -1218,31 +1225,70 @@ builders.description = function(w)
 	local frame = CreateFrame('Frame', nil, UIParent)
 	frame:SetSize(W.WIDTH.description, 18)
 	w.frame = frame
+	w.image = frame:CreateTexture(nil, 'ARTWORK')
+	w.image:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+	w.image:Hide()
 	w.text = NewText(frame, 'LEFT')
 	w.text:SetWordWrap(true)
-	w.text:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
-	w.text:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, 0)
 	w.measure = NewText(frame, 'LEFT')
 	w.measure:SetWordWrap(false)
 	w.measure:Hide()
 end
 
 local DESCRIPTION_SIZES = { small = FIELD_FONT_SIZE, medium = FIELD_FONT_SIZE + 2, large = FIELD_FONT_SIZE + 5 }
+local IMAGE_SIZE, IMAGE_GAP = 32, 8 -- AceGUI's label image is 32 square without a size
 
 define('description', {
 	GetWidth = function(self) return self.frame:GetWidth() end,
 
-	-- The window sizes a description to its row. The height follows the text.
+	-- The window sizes a description to its row. The height follows the text,
+	-- and the image when there is one.
 	SetWidth = function(self, width)
 		self.frame:SetWidth(width)
 		self:Fit()
 	end,
 
+	-- The text takes what the image leaves of the width. Beside an image
+	-- taller than it, it sits in the image's middle, as AceGUI's label puts it.
 	Fit = function(self)
+		local imageWidth, imageHeight = 0, 0
+		if self.image:IsShown() then imageWidth, imageHeight = self.image:GetWidth(), self.image:GetHeight() end
+		local textLeft = imageWidth > 0 and imageWidth + IMAGE_GAP or 0
 		local lineHeight = floor((self.size or FIELD_FONT_SIZE) * 1.3)
-		local lines = CountLines(self.measure, self.fullText or '', self.frame:GetWidth() - 10)
-		self.text:SetHeight(lines * lineHeight)
-		self.frame:SetHeight(lines * lineHeight)
+		local lines = CountLines(self.measure, self.fullText or '', self.frame:GetWidth() - textLeft - 10)
+		local textHeight = lines * lineHeight
+		local textTop = imageHeight > textHeight and floor((imageHeight - textHeight) / 2) or 0
+		self.text:ClearAllPoints()
+		self.text:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', textLeft, -textTop)
+		self.text:SetPoint('TOPRIGHT', self.frame, 'TOPRIGHT', 0, -textTop)
+		self.text:SetHeight(textHeight)
+		self.frame:SetHeight(max(textHeight, imageHeight))
+	end,
+
+	-- AceConfigDialog's description image: image (a path or fileID, or a
+	-- function giving one with its width and height), imageWidth and
+	-- imageHeight, and imageCoords (4 or 8 numbers in a table, or a function
+	-- giving one). Anything but a path or fileID draws no image.
+	ShowImage = function(self)
+		local root, row = self.root, self.row
+		local image, width, height = OM.Member(root, row, 'image')
+		if type(image) ~= 'string' and type(image) ~= 'number' then
+			self.image:Hide()
+			return
+		end
+		if not width then width = OM.Member(root, row, 'imageWidth') end
+		if not height then height = OM.Member(root, row, 'imageHeight') end
+		self.image:SetTexture(image)
+		self.image:SetSize(type(width) == 'number' and width or IMAGE_SIZE, type(height) == 'number' and height or IMAGE_SIZE)
+		-- As AceGUI's label: any other count of numbers shows the whole texture,
+		-- which also undoes a pooled widget's last crop.
+		local coords = OM.Member(root, row, 'imageCoords')
+		if type(coords) == 'table' and (#coords == 4 or #coords == 8) then
+			self.image:SetTexCoord(unpack(coords))
+		else
+			self.image:SetTexCoord(0, 1, 0, 1)
+		end
+		self.image:Show()
 	end,
 
 	Refresh = function(self)
@@ -1257,6 +1303,7 @@ define('description', {
 		self.fullText = text
 		self.text:SetText(text)
 		self.text:SetTextColor(Colors().text.normal:GetRGB())
+		self:ShowImage()
 		self:Fit()
 	end,
 })

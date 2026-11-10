@@ -351,6 +351,20 @@ test('a status bar, slider, scroll frame and check button have their own methods
 	eq(check_button:IsEnabled(), true, 'a check button is a button')
 end)
 
+test("a texture's tex coords: 4 numbers or 8, read back as the 8 corners", function()
+	reset_world()
+	local texture = CreateFrame('Frame', nil, UIParent):CreateTexture(nil, 'ARTWORK')
+	local function corners() return table.concat({ texture:GetTexCoord() }, ',') end
+	eq(corners(), '0,0,0,1,1,0,1,1', 'the whole texture before any SetTexCoord')
+	texture:SetTexCoord(0.1, 0.9, 0.2, 0.8)
+	eq(corners(), '0.1,0.2,0.1,0.8,0.9,0.2,0.9,0.8', 'left, right, top, bottom as the corners UL, LL, UR, LR')
+	texture:SetTexCoord(1, 2, 3, 4, 5, 6, 7, 8)
+	eq(corners(), '1,2,3,4,5,6,7,8', 'eight numbers are the corners')
+	check(not pcall(texture.SetTexCoord, texture, 0, 1, 0), 'three numbers are a usage error')
+	check(not pcall(texture.SetTexCoord, texture, 0, 1, 0, 'x'), 'so is a coord that is not a number')
+	check(not pcall(texture.SetTexCoord, texture), 'and none')
+end)
+
 test('the mouse focus is the topmost mouse-enabled frame under the cursor', function()
 	reset_world()
 	stub.screen_width, stub.screen_height = 1000, 600

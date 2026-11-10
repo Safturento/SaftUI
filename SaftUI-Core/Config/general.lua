@@ -6,7 +6,9 @@ local st = SaftUI
 -- call time, so a profile switch reaches the new profile.
 local GN = st:NewModule('General')
 
-local ICONS_NOTE = 'SaftUI cuts its icons when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
+-- Icon zoom's preview: any spell's icon would do.
+local PREVIEW_ICON, PREVIEW_SIZE = 'Interface\\Icons\\Spell_Nature_Lightning', 36
 local WINDOWS_NOTE = "Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
 
 -- A range bound to st.config.profile[group][key]. apply, if given, runs after
@@ -32,6 +34,22 @@ function GN:GetConfigTable()
 		'misc', 'icon_trim')
 	zoom.isPercent = true
 
+	-- An icon cut as SaftUI cuts the ones it skins at the zoom set now. SaftUI
+	-- cuts its icons when it builds its frames, so they take a new zoom on a
+	-- reload; the preview reads it whenever the window draws or refreshes the
+	-- row, which it does while the slider is dragged.
+	local preview = {
+		type = 'description',
+		order = 2,
+		name = 'Preview',
+		image = PREVIEW_ICON,
+		imageWidth = PREVIEW_SIZE,
+		imageHeight = PREVIEW_SIZE,
+		imageCoords = function()
+			return { st:IconTexCoords(st.config.profile.misc.icon_trim, PREVIEW_SIZE, PREVIEW_SIZE) }
+		end,
+	}
+
 	return {
 		type = 'group',
 		name = 'General',
@@ -42,7 +60,7 @@ function GN:GetConfigTable()
 				order = 1,
 				name = 'Icons',
 				desc = ICONS_NOTE,
-				args = { icon_trim = zoom },
+				args = { icon_trim = zoom, icon_preview = preview },
 			},
 			windows = {
 				type = 'group',

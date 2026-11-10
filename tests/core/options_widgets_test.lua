@@ -985,6 +985,132 @@ test('description: shows its text, and its height follows the width', function()
 	w:Release()
 end)
 
+-- A texture's eight corners as text, rounded so float drift doesn't decide a
+-- check; corners(l, r, t, b) is what SetTexCoord(l, r, t, b) gives back.
+local function coords_of(texture)
+	local out = {}
+	for i, v in ipairs({ texture:GetTexCoord() }) do out[i] = string.format('%.4f', v) end
+	return table.concat(out, ',')
+end
+local function corners(l, r, t, b)
+	local out = {}
+	for i, v in ipairs({ l, t, l, b, r, t, r, b }) do out[i] = string.format('%.4f', v) end
+	return table.concat(out, ',')
+end
+local ICON = 'Interface\\Icons\\Spell_Nature_Lightning'
+
+-- A description bound, placed so its parts have a rect, and given its width
+-- as the window does (a pooled one keeps its last).
+local function placed_description(key, option)
+	local w, told, root, row = bind('description', key, option)
+	w:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	w:SetWidth(400)
+	return w, told, root, row
+end
+
+test('description: an image sits at its left, the text to its right, and the height covers the image', function()
+	local w = placed_description('pic', opt('description', 'Words', { image = ICON, imageWidth = 36, imageHeight = 36 }))
+	local lineHeight = math.floor(15 * 1.3)
+	check(w.image:IsShown(), 'the image shows')
+	eq(w.image:GetTexture(), ICON, 'its texture')
+	eq(w.image:GetWidth() .. 'x' .. w.image:GetHeight(), '36x36', 'imageWidth by imageHeight')
+	eq(coords_of(w.image), corners(0, 1, 0, 1), 'the whole texture with no imageCoords')
+	eq(w.image:GetLeft(), w.frame:GetLeft(), 'at the left of the row')
+	eq(w.image:GetTop(), w.frame:GetTop(), 'and its top')
+	check(w.text:GetLeft() > w.image:GetRight(), 'the text right of the image')
+	eq(w.text:GetRight(), w.frame:GetRight(), 'to the row\'s right edge')
+	eq(w:GetHeight(), 36, 'the row is as tall as the image, which is taller than the text')
+	eq(w.text:GetHeight(), lineHeight, 'one line of text')
+	eq(w.text:GetTop(), w.frame:GetTop() - math.floor((36 - lineHeight) / 2), 'the line is in the middle of the image')
+
+	-- Narrow enough to wrap to three lines, the text is the taller.
+	local one = w:GetHeight()
+	w:SetWidth(36 + 8 + 10 + 1)
+	check(w.text:GetHeight() > 36, 'many lines')
+	eq(w:GetHeight(), w.text:GetHeight(), 'the row covers the text then')
+	eq(w.text:GetTop(), w.frame:GetTop(), 'from the top')
+	check(w:GetHeight() > one, 'taller than the image alone')
+	w:Release()
+
+	-- No text: just the image.
+	w = placed_description('bare', opt('description', '', { image = ICON, imageWidth = 36, imageHeight = 36 }))
+	eq(w:GetHeight(), 36, 'no text: as tall as the image')
+	w:Release()
+end)
+
+test('description: imageCoords, a table of 4 or 8 numbers or a function giving one, crop the image', function()
+	local w = placed_description('four', opt('description', 'x', { image = ICON, imageCoords = { 0.1, 0.9, 0.2, 0.8 } }))
+	eq(coords_of(w.image), corners(0.1, 0.9, 0.2, 0.8), 'left, right, top, bottom')
+	w:Release()
+	w = placed_description('eight', opt('description', 'x', { image = ICON, imageCoords = { 0, 0, 0, 1, 1, 0, 1, 1 } }))
+	eq(coords_of(w.image), corners(0, 1, 0, 1), 'the eight corners')
+	w:Release()
+	w = placed_description('three', opt('description', 'x', { image = ICON, imageCoords = { 0.1, 0.9, 0.2 } }))
+	eq(coords_of(w.image), corners(0, 1, 0, 1), 'any other count: the whole texture, as AceGUI\'s label')
+	w:Release()
+
+	-- A function is called with an info table, on each Refresh.
+	local trim, calls, seen = 0.1, 0, nil
+	w = placed_description('fn', opt('description', 'x', {
+		image = ICON,
+		imageCoords = function(info)
+			calls, seen = calls + 1, info[#info]
+			return { trim, 1 - trim, trim, 1 - trim }
+		end,
+	}))
+	eq(coords_of(w.image), corners(0.1, 0.9, 0.1, 0.9), 'what the function gives')
+	eq(seen, 'fn', 'called with an info table for the row')
+	trim = 0.2
+	w:Refresh()
+	eq(coords_of(w.image), corners(0.2, 0.8, 0.2, 0.8), 'read again on a Refresh')
+	eq(calls, 2, 'once per Refresh')
+	w:Release()
+
+	-- A reused widget with no imageCoords shows the whole texture again.
+	w = placed_description('plain', opt('description', 'x', { image = ICON }))
+	eq(coords_of(w.image), corners(0, 1, 0, 1), 'no imageCoords on the next row: the whole texture')
+	w:Release()
+end)
+
+test('description: image may be a fileID, or a function giving the texture, width and height; 32 square by default', function()
+	local w = placed_description('id', opt('description', 'x', { image = 136048 }))
+	eq(w.image:GetTexture(), 136048, 'a fileID')
+	eq(w.image:GetWidth() .. 'x' .. w.image:GetHeight(), '32x32', 'no imageWidth or imageHeight: 32 by 32')
+	w:Release()
+	w = placed_description('fn', opt('description', 'x', {
+		image = function() return ICON, 20, 24 end,
+		imageWidth = 50, imageHeight = 50,
+	}))
+	eq(w.image:GetTexture(), ICON, "the function's texture")
+	eq(w.image:GetWidth() .. 'x' .. w.image:GetHeight(), '20x24', "its width and height win over imageWidth and imageHeight")
+	w:Release()
+	w = placed_description('half', opt('description', 'x', { image = function() return ICON end, imageWidth = 40 }))
+	eq(w.image:GetWidth() .. 'x' .. w.image:GetHeight(), '40x32', 'or imageWidth and imageHeight fill in')
+	w:Release()
+end)
+
+test('description: no image, or one that is not a path or fileID, draws none and keeps the text at the left', function()
+	local plain = placed_description('plain', opt('description', 'Some words about it.'))
+	local plainHeight = plain:GetHeight()
+	plain:Release()
+	for _, image in ipairs({ false, true, {} }) do
+		local w = placed_description('odd', opt('description', 'Some words about it.', { image = image or nil, imageWidth = 36, imageHeight = 36 }))
+		check(not w.image:IsShown(), tostring(image) .. ': no image')
+		eq(w.text:GetLeft(), w.frame:GetLeft(), tostring(image) .. ': the text at the left')
+		eq(w:GetHeight(), plainHeight, tostring(image) .. ': as tall as the text')
+		w:Release()
+	end
+	-- A widget reused after an image row shows none.
+	local pic = placed_description('pic', opt('description', 'x', { image = ICON }))
+	pic:Release()
+	local w = placed_description('after', opt('description', 'Some words about it.'))
+	check(w == pic, 'the same widget, reused')
+	check(not w.image:IsShown(), 'no image')
+	eq(w.text:GetLeft(), w.frame:GetLeft(), 'the text back at the left')
+	eq(w:GetHeight(), plainHeight, 'and the height the text alone')
+	w:Release()
+end)
+
 ------------------------------------------------------------------ pooling
 
 test('a released widget is reused for the same type, and only that type', function()

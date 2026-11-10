@@ -116,15 +116,29 @@ end
 SmallModule('Chat', 'Chat', 'Frames')
 
 -- Inventory's shape: tabs (settings for every window, then each window), and a
--- window's own groups as a second tab row.
+-- window's own groups as a second tab row. Its General tab also has rows that
+-- follow its Columns slider, for a drag: a box showing the value, a toggle
+-- disabled at 8 columns or more, and one hidden at 9 or more.
 local bagValue = 5
+local columns = 5
 local INVM = st:NewModule('Inventory')
 function INVM:GetConfigTable()
 	local function toggle(name) return { type = 'toggle', name = name, get = function() return true end, set = function() end } end
+	local wide, extra = toggle('Wide slots'), toggle('Extra row')
+	wide.order, wide.disabled = 3, function() return columns >= 8 end
+	extra.order, extra.hidden = 4, function() return columns >= 9 end
 	return {
 		name = 'Bags', type = 'group', category = 'Frames',
 		args = {
-			general = { order = 0, name = 'General', type = 'group', args = { merge = toggle('Merge stacks') } },
+			general = { order = 0, name = 'General', type = 'group', args = {
+				merge = toggle('Merge stacks'),
+				columns = { order = 1, type = 'range', name = 'Columns', min = 1, max = 12, step = 1,
+					get = function() return columns end, set = function(_, v) columns = v end },
+				columns_shown = { order = 2, type = 'input', name = 'Columns shown',
+					get = function() return tostring(columns) end, set = function() end },
+				wide = wide,
+				extra = extra,
+			} },
 			bag = {
 				order = 1, name = 'Bag', type = 'group',
 				args = {
@@ -554,7 +568,7 @@ end)
 test("Icon zoom's box shows the profile's fraction as a percent, and a typed percent stores the fraction", function()
 	st.Config:Open('Fonts', 'general')
 	eq(OW:GetState().tab, 'general', 'the General tab')
-	eq(drawn(), 'icon_trim,header_height,clamp_inset', "the tab's rows")
+	eq(drawn(), 'icon_trim,icon_preview,header_height,clamp_inset', "the tab's rows, Icon zoom's preview after it")
 	local w = cell('icon_trim').widget
 	eq(w.edit:GetText(), '6.5%', 'the default 0.065 shows as 6.5%')
 	w.edit:SetText('10')
@@ -765,6 +779,104 @@ test('a drag whose mouse-up never arrives still renders once the button is up', 
 	stub.mouse_buttons.LeftButton = nil
 	tick()
 	eq(OW.GetRenderCount(), before + 1, 'released: the page catches up')
+	close_all()
+end)
+
+-- A texture's eight corners as text, rounded so float drift doesn't decide a
+-- check; corners(l, r, t, b) is what SetTexCoord(l, r, t, b) gives back.
+local function coords_of(texture)
+	local out = {}
+	for i, v in ipairs({ texture:GetTexCoord() }) do out[i] = string.format('%.4f', v) end
+	return table.concat(out, ',')
+end
+local function corners(l, r, t, b)
+	local out = {}
+	for i, v in ipairs({ l, t, l, b, r, t, r, b }) do out[i] = string.format('%.4f', v) end
+	return table.concat(out, ',')
+end
+
+test('mid-drag the other rows read their rows again in place: values and disabled follow, no row comes or goes', function()
+	st.Config:Open('Inventory', 'general')
+	eq(drawn(), 'columns,columns_shown,wide,extra,merge', "the General tab's rows")
+	local w = cell('columns').widget
+	local cellsBefore, widgetsBefore = {}, {}
+	for i, c in ipairs(OW.GetDrawnRows()) do cellsBefore[i], widgetsBefore[i] = c, c.widget end
+	local pooled = W.Pooled('toggle') .. ',' .. W.Pooled('input') .. ',' .. W.Pooled('range')
+	-- The dragged slider is refreshed by its own commit, and by nothing else.
+	local refreshes, refresh = 0, w.Refresh
+	w.Refresh = function(...) refreshes = refreshes + 1; return refresh(...) end
+
+	local before = OW.GetRenderCount()
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(9)
+	w.Refresh = refresh
+	eq(columns, 9, 'set while dragging')
+	eq(refreshes, 1, "the slider was refreshed once, by its commit")
+	eq(OW.GetRenderCount(), before, 'no render mid-drag')
+	eq(cell('columns_shown').widget.frame:GetText(), '9', "another row's value follows the drag")
+	check(cell('wide').widget:IsDisabled(), 'a row disabled at 8 or more is disabled now')
+	local r, g, b = cell('wide').label:GetTextColor()
+	local gr, gg, gb = st.config.profile.colors.text.grey:GetRGB()
+	check(r == gr and g == gg and b == gb, 'and its label is grey')
+	eq(drawn(), 'columns,columns_shown,wide,extra,merge', 'a row hidden at 9 or more stays until the drag ends')
+	for i, c in ipairs(OW.GetDrawnRows()) do
+		check(c == cellsBefore[i] and c.widget == widgetsBefore[i], 'cell ' .. i .. ' and its widget are the ones drawn')
+	end
+	eq(W.Pooled('toggle') .. ',' .. W.Pooled('input') .. ',' .. W.Pooled('range'), pooled, 'nothing was released')
+
+	-- Back under 8: enabled again, label in the normal color.
+	w.slider:SetValue(7)
+	check(not cell('wide').widget:IsDisabled(), 'enabled again')
+	r, g, b = cell('wide').label:GetTextColor()
+	local nr, ng, nb = st.config.profile.colors.text.normal:GetRGB()
+	check(r == nr and g == ng and b == nb, 'and its label is the normal color')
+	w.slider:SetValue(9)
+
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(OW.GetRenderCount(), before + 1, 'one render when let go')
+	eq(drawn(), 'columns,columns_shown,wide,merge', 'which leaves the hidden row out')
+	eq(cell('columns_shown').widget.frame:GetText(), '9', 'the value as it was set')
+	check(cell('wide').widget:IsDisabled(), 'still disabled')
+	columns = 5
+	close_all()
+end)
+
+test("dragging Icon zoom crops its preview as it goes, with no render, and the slider stays the one dragged", function()
+	st.Config:Open('Fonts', 'general')
+	local w = cell('icon_trim').widget
+	local preview = cell('icon_preview').widget
+	eq(preview.type, 'description', 'the preview is a description row')
+	eq(preview.image:GetTexture(), 'Interface\\Icons\\Spell_Nature_Lightning', 'with the lightning icon')
+	eq(preview.image:GetWidth() .. 'x' .. preview.image:GetHeight(), '36x36', 'at 36 by 36')
+	eq(coords_of(preview.image), corners(st:IconTexCoords(0.065, 36, 36)), 'cut at the default zoom')
+	eq(coords_of(preview.image), corners(0.065, 0.935, 0.065, 0.935), 'which is 6.5% off each edge')
+
+	local before = OW.GetRenderCount()
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(0.15)
+	eq(st.config.profile.misc.icon_trim, 0.15, 'set while dragging')
+	eq(OW.GetRenderCount(), before, 'no render mid-drag')
+	eq(cell('icon_trim').widget, w, 'the same slider is still drawn')
+	eq(cell('icon_preview').widget, preview, 'and the same preview')
+	eq(coords_of(preview.image), corners(st:IconTexCoords(0.15, 36, 36)), 'the preview follows the drag')
+	w.slider:SetValue(0)
+	eq(coords_of(preview.image), corners(0, 1, 0, 1), 'at 0%, the whole icon')
+	w.slider:SetValue(0.2)
+
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(OW.GetRenderCount(), before + 1, 'one render when let go')
+	eq(coords_of(cell('icon_preview').widget.image), corners(0.2, 0.8, 0.2, 0.8), 'drawn again at the zoom left set')
+
+	-- A typed zoom re-renders at once, so the preview takes it too.
+	local edit = cell('icon_trim').widget.edit
+	edit:SetText('10')
+	stub.fire_script(edit, 'OnEnterPressed')
+	eq(coords_of(cell('icon_preview').widget.image), corners(0.1, 0.9, 0.1, 0.9), 'a typed 10%')
+	st.config.profile.misc.icon_trim = 0.065
 	close_all()
 end)
 
@@ -1117,6 +1229,33 @@ test("OpenDialog's title can be a function, read on each render", function()
 	eq(d.title:GetText(), 'Pick one', 'before')
 	click(dialogCell('on').widget.frame)
 	eq(d.title:GetText(), 'Picked', 'after the set')
+	OW:CloseDialog()
+end)
+
+test("a drag in the dialog refreshes its other rows in place too; it's drawn again when let go", function()
+	local size = 5
+	OW:OpenDialog('Drag', {
+		type = 'group', name = 'Drag',
+		args = {
+			size = { order = 1, type = 'range', name = 'Size', min = 1, max = 10, step = 1,
+				get = function() return size end, set = function(_, v) size = v end },
+			shown = { order = 2, type = 'input', name = 'Size shown',
+				get = function() return tostring(size) end, set = function() end },
+		},
+	})
+	local w, sizeRow = dialogCell('size').widget, dialogCell('size').row
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(8)
+	eq(size, 8, 'set while dragging')
+	eq(dialogCell('shown').widget.frame:GetText(), '8', 'the other row follows')
+	-- A render builds the rows anew from the model; mid-drag they're the ones drawn.
+	eq(dialogCell('size').row, sizeRow, 'not drawn again mid-drag')
+	eq(dialogCell('size').widget, w, 'the slider is the one dragged')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	check(dialogCell('size').row ~= sizeRow, 'drawn again when let go')
+	eq(dialogCell('shown').widget.frame:GetText(), '8', 'with the value set')
 	OW:CloseDialog()
 end)
 

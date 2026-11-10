@@ -46,7 +46,10 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	subtab and pick (and the scroll) when they still exist:
 	  - straight away after the window's own set, except mid-drag (a slider's
 	    onChanged says so; the render waits for the mouse to be let go) and
-	    while Blizzard's color picker is open;
+	    while Blizzard's color picker is open. Mid-drag, each set refreshes
+	    the other drawn widgets in place instead (body:Refresh): their values,
+	    a description's image, and whether they're disabled follow the drag,
+	    while rows that would show or hide wait for the render;
 	  - on AceConfigRegistry's ConfigTableChange for st.name (st.Config:Refresh),
 	    on the next frame, several in one frame coalesced. Never during a render
 	    (a get may notify, as UF's profile select's does), and not while the user
@@ -313,7 +316,7 @@ end
 
 -- A widget's onChanged. A failed validate shows its message and changed
 -- nothing; anything else re-renders, after the drag if there is one.
-local function Changed(ok, err, isDragging)
+local function Changed(ok, err, isDragging, widget)
 	OW:SetStatus(ok == false and err or nil)
 	if ok == false and err then return end
 	if isDragging then
@@ -321,6 +324,9 @@ local function Changed(ok, err, isDragging)
 		-- lost OnMouseUp can't hold it off for good (see Busy).
 		dragging = true
 		Schedule()
+		-- Meanwhile the other rows follow the drag in place (a preview of the
+		-- value, a row it disables), leaving the dragged slider be.
+		xpcall(function() pageBody:Refresh(widget) end, geterrorhandler())
 		return
 	end
 	dragging = false
@@ -991,7 +997,8 @@ end
 	columns of rows as in the window. A dialog has no tabs or picker: of child
 	groups that aren't inline, only the first one's rows show.
 
-	A set re-renders it, after the drag for a slider's, and not while
+	A set re-renders it, after the drag for a slider's (meanwhile its other
+	rows follow the drag in place, as the window's do), and not while
 	Blizzard's color picker is open (the swatch shows its color itself; the
 	next set draws the rest). A failed validate shows its message at the
 	bottom. Esc (its own keyboard catcher, which the window's passes to) and
@@ -1026,11 +1033,15 @@ local function RenderDialog()
 	if D.frame and D.frame:IsShown() then xpcall(DrawDialog, geterrorhandler()) end
 end
 
--- The dialog's widgets' onChanged, as the window's Changed.
-local function DialogChanged(ok, err, isDragging)
+-- The dialog's widgets' onChanged, as the window's Changed: mid-drag its other
+-- rows follow in place, and it's drawn again when the mouse is let go.
+local function DialogChanged(ok, err, isDragging, widget)
 	D.status:SetText(ok == false and err or '')
 	if ok == false and err then return end
-	if isDragging then return end
+	if isDragging then
+		xpcall(function() D.body:Refresh(widget) end, geterrorhandler())
+		return
+	end
 	if ColorPickerFrame and ColorPickerFrame:IsShown() then return end
 	RenderDialog()
 end

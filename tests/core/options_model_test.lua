@@ -417,10 +417,19 @@ test('hidden and disabled: booleans, functions, guiHidden, and values inherited 
 	eq(disabled('child'), true, "the group's disabled is inherited")
 	eq(seen[1], 'child', "the group's disabled function is called with the child's info")
 	eq(disabled('free'), false, "an option's own disabled = false wins")
+	local locked = view
 	state.hide, state.lock = false, false
 	view = OM.BuildView(root, 'Vis')
 	eq(layout(view), '-:shown,hiddenFn,override,off,offFn|Locked:child,free|Secret:one', 'a hidden function is read again')
 	check(disabled('offFn') == false and disabled('child') == false and disabled('off') == true, 'and so is a disabled function')
+
+	-- IsDisabled checks a row built earlier as it is now (the window, mid-drag).
+	local offFn, child = row(locked, 'offFn'), row(locked, 'child')
+	check(offFn.disabled and child.disabled, 'built while locked')
+	check(OM.IsDisabled(root, offFn) == false and OM.IsDisabled(root, child) == false, 'unlocked now: its own and an inherited disabled')
+	check(OM.IsDisabled(root, row(locked, 'off')) == true and OM.IsDisabled(root, row(locked, 'free')) == false, 'true stays true, false = false wins')
+	state.lock = true
+	check(OM.IsDisabled(root, row(view, 'offFn')) == true, 'and the other way')
 end)
 
 test('tabs: hidden ones are left out, disabled ones are listed but not selected by default', function()
@@ -568,6 +577,32 @@ test("info.options works with SaftUI's own code that walks it (Config/widgets.lu
 	eq(OM.Get(root, r), '200', "the box shows the group's number as text (NumberInputGet finds the get through info.options)")
 	eq(OM.Set(root, r, '250'), true, 'set')
 	eq(store.width, 250, 'and stored as a number')
+end)
+
+test("Member: a description's image, its size and imageCoords, as AceConfigDialog reads them", function()
+	local trim = 0.1
+	local handler = { Coords = function(_, info) return { 0, 1, 0, 1 }, info[#info] end }
+	local root = { Pics = group('Pics', {
+		path = opt('description', 'Path', { order = 1, image = 'Interface\\Icons\\X', imageWidth = 36, imageHeight = 20,
+			imageCoords = { 0.1, 0.9, 0.1, 0.9 } }),
+		fn = opt('description', 'Fn', { order = 2,
+			image = function(info) return 'Interface\\Icons\\' .. info[#info], 24, 28 end,
+			imageCoords = function() return { trim, 1 - trim, trim, 1 - trim } end }),
+		method = opt('description', 'Method', { order = 3, image = 136048, imageCoords = 'Coords' }),
+	}, { handler = handler }) }
+	local view = OM.BuildView(root, 'Pics')
+	local p, f, m = row(view, 'path'), row(view, 'fn'), row(view, 'method')
+	eq(OM.Member(root, p, 'image'), 'Interface\\Icons\\X', 'a path is the image, not a method name')
+	eq(OM.Member(root, p, 'imageWidth') .. 'x' .. OM.Member(root, p, 'imageHeight'), '36x20', 'its size')
+	eq(table.concat(OM.Member(root, p, 'imageCoords'), ','), '0.1,0.9,0.1,0.9', 'a table of coords')
+	local image, width, height = OM.Member(root, f, 'image')
+	eq(image .. ' ' .. width .. 'x' .. height, 'Interface\\Icons\\fn 24x28', 'a function gives the texture, width and height, called with info')
+	eq(table.concat(OM.Member(root, f, 'imageCoords'), ','), '0.1,0.9,0.1,0.9', 'a coords function')
+	trim = 0.2
+	eq(table.concat(OM.Member(root, f, 'imageCoords'), ','), '0.2,0.8,0.2,0.8', 'called again on each read')
+	eq(OM.Member(root, m, 'image'), 136048, 'a fileID')
+	local coords, key = OM.Member(root, m, 'imageCoords')
+	eq(table.concat(coords, ',') .. ' ' .. key, '0,1,0,1 method', "a string is a handler method's name, as AceConfigDialog reads imageCoords")
 end)
 
 ------------------------------------------------------------------ values, confirm

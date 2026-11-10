@@ -551,7 +551,27 @@ function Texture.SetColorTexture(self, s, r, g, b, a)
 	s.color_texture = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
 	s.texture = nil
 end
-function Texture.SetTexCoord(self, s, ...) s.tex_coord = { ... } end
+-- Takes left, right, top, bottom, or the eight corners (ULx, ULy, LLx, LLy,
+-- URx, URy, LRx, LRy); any other count of numbers is a usage error, as in
+-- game. GetTexCoord gives the eight corners either way, the whole texture
+-- (0, 0, 0, 1, 1, 0, 1, 1) before any SetTexCoord.
+function Texture.SetTexCoord(self, s, ...)
+	local n = select('#', ...)
+	if n ~= 4 and n ~= 8 then
+		usage(s, ('SetTexCoord(): expects 4 or 8 numbers, got %d'):format(n))
+	end
+	local c = {}
+	for i = 1, n do c[i] = number_arg(s, (select(i, ...)), 'coord ' .. i) end
+	if n == 4 then
+		local left, right, top, bottom = c[1], c[2], c[3], c[4]
+		c = { left, top, left, bottom, right, top, right, bottom }
+	end
+	s.tex_coord = c
+end
+function Texture.GetTexCoord(self, s)
+	local c = s.tex_coord or { 0, 0, 0, 1, 1, 0, 1, 1 }
+	return c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]
+end
 function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
 function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
 

@@ -531,6 +531,12 @@ function OM.Member(root, row, membername, ...)
 	return GetMember(membername, row.option, Options(root), row.path, ...)
 end
 
+-- Whether the row's option is disabled now, checked as when the view was
+-- built (row.disabled is that answer, which a set since may have changed).
+function OM.IsDisabled(root, row)
+	return IsDisabled(row.option, Options(root), row.path)
+end
+
 -- The row's value: its get, called with info and ... (a multiselect's key).
 -- A color gives r, g, b, a. get = false gives false; no get gives nil.
 function OM.Get(root, row, ...)

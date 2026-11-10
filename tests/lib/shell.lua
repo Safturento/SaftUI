@@ -367,17 +367,20 @@ function apply_defaults()
 end
 
 -- Core's frame helpers and what they need, in TOC order: LibSharedMedia and
--- its libraries, Widgets/button.lua (st:CreateButton), panels.lua
--- (st:CreateFrame, st:SetBackdrop, st:CreateFontString), the media and fonts
--- (st:GetFont) with the Colors module, the profile defaults, Config/widgets.lua
--- (st.Config.generators) and the General module (Global Settings' General
--- tab). Then the profile is filled from the defaults and
--- the Fonts module enabled, as at login, so st:GetFont has font objects.
+-- its libraries, Widgets/button.lua (st:CreateButton), skinning.lua
+-- (st:SkinIcon and st:IconTexCoords, which the General tab's Icon zoom
+-- preview cuts its icon with), panels.lua (st:CreateFrame, st:SetBackdrop,
+-- st:CreateFontString), the media and fonts (st:GetFont) with the Colors
+-- module, the profile defaults, Config/widgets.lua (st.Config.generators) and
+-- the General module (Global Settings' General tab). Then the profile is
+-- filled from the defaults and the Fonts module enabled, as at login, so
+-- st:GetFont has font objects.
 function load_core_helpers()
 	load_saftui('SaftUI-Core/Libraries/LibStub/LibStub.lua')
 	load_saftui('SaftUI-Core/Libraries/CallbackHandler-1.0/CallbackHandler-1.0.lua')
 	load_saftui('SaftUI-Core/Libraries/LibSharedMedia-3.0/LibSharedMedia-3.0.lua')
 	load_saftui('SaftUI-Core/Widgets/button.lua')
+	load_saftui('SaftUI-Core/skinning.lua')
 	load_saftui('SaftUI-Core/panels.lua')
 	load_saftui('SaftUI-Core/Media/sharedmedia.lua')
 	load_saftui('SaftUI-Core/Media/fonts.lua')

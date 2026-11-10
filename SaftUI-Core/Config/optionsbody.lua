@@ -1,5 +1,5 @@
 local st = SaftUI
-local W = st.OptionsWidgets
+local OM, W = st.OptionsModel, st.OptionsWidgets
 
 --[[
 	The body of SaftUI's options window, and of its small dialogs: sections of
@@ -17,6 +17,8 @@ local W = st.OptionsWidgets
 	                                   search results: a button per row,
 	                                   onPick(row) on a click
 	  body:Release()                   everything drawn goes back to its pool
+	  body:Refresh(except)             every drawn widget but except shows its
+	                                   row again in place (a drag, below)
 	  body.cells                       the drawn rows, in order:
 	                                   { row, frame, widget, label, height, y }
 
@@ -472,6 +474,29 @@ function Body:DrawResults(sections, onPick)
 	-- A result is a half, whatever size its setting is.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
 		function() return 'normal' end)
+end
+
+-- While a slider is dragged the window can't draw the page again (that would
+-- take the slider out from under the mouse), so the other rows follow the
+-- drag in place: each widget but except (the dragged one, whose own commit
+-- has refreshed it) reads its value again, a description its image too, and
+-- whether it's disabled, which greys its label as the next Draw would.
+-- Nothing is released or laid out again: rows that would show, hide or
+-- change height wait for the Draw after the drag.
+function Body:Refresh(except)
+	for _, cell in ipairs(self.cells) do
+		local widget = cell.widget
+		if widget and widget ~= except then
+			local disabled = OM.IsDisabled(self.root, cell.row)
+			if disabled ~= widget:IsDisabled() then
+				widget:SetDisabled(disabled)
+				if cell.label:IsShown() then
+					if disabled then cell.label:SetTextColor(Grey()) else cell.label:SetTextColor(Normal()) end
+				end
+			end
+			widget:Refresh()
+		end
+	end
 end
 
 function Body:Release()

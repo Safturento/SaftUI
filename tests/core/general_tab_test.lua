@@ -1,20 +1,23 @@
 -- The General tab of Global Settings (SaftUI-Core/Config/general.lua): Icon
--- zoom, Title bar height and Screen edge margin. Each row reads and writes its
--- profile key at call time, so a profile switch reaches the new profile, and
--- the two window settings reach every window with a header at once
--- (st:UpdateHeader, SaftUI-Core/panels.lua), in combat too where the window
--- isn't protected.
+-- zoom with its preview, Title bar height and Screen edge margin. Each row
+-- reads and writes its profile key at call time, so a profile switch reaches
+-- the new profile; the preview is cut as st:IconTexCoords (skinning.lua) cuts
+-- SaftUI's icons at the zoom set now; and the two window settings reach every
+-- window with a header at once (st:UpdateHeader, SaftUI-Core/panels.lua), in
+-- combat too where the window isn't protected.
 --
--- Real: Core's Config/config.lua on a real AceDB-3.0 (config_helpers.lua),
--- the options model the window reads rows with (optionsmodel.lua), and
--- panels.lua's headers and footers on a panel from st:CreatePanel.
+-- Real: Core's Config/config.lua on a real AceDB-3.0 (config_helpers.lua,
+-- with Core's helpers, skinning.lua among them), the options model the window
+-- reads rows with (optionsmodel.lua), and panels.lua's headers and footers on
+-- a panel from st:CreatePanel.
 
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 local OM = st.OptionsModel
 
-local ICONS_NOTE = 'SaftUI cuts its icons when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
+local PREVIEW_ICON = 'Interface\\Icons\\Spell_Nature_Lightning'
 local WINDOWS_NOTE = "Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.general end
@@ -50,7 +53,7 @@ end
 local panel = st:CreatePanel('General test', 200, 100)
 st:CreateFooter(panel)
 
-test('General: an Icons section, then Windows, each with a note; ranges with tooltips', function()
+test('General: an Icons section, then Windows, each with a note; ranges with tooltips, and the preview', function()
 	local tab = Tab()
 	eq(tab.name, 'General')
 	eq(tab.type, 'group')
@@ -70,16 +73,22 @@ test('General: an Icons section, then Windows, each with a note; ranges with too
 		for i, r in ipairs(ByOrder(section.args)) do out[i] = r.key .. '=' .. r.v.name end
 		return table.concat(out, ',')
 	end
-	eq(names(tab.args.icons), 'icon_trim=Icon zoom')
+	eq(names(tab.args.icons), 'icon_trim=Icon zoom,icon_preview=Preview')
 	eq(names(tab.args.windows), 'header_height=Title bar height,clamp_inset=Screen edge margin')
 
+	-- Every row is a range but the preview, a description (a line of its own,
+	-- with no tooltip: it shows what the zoom does).
+	eq(tab.args.icons.args.icon_preview.type, 'description', 'the preview')
+	eq(tab.args.icons.args.icon_preview.width, nil, 'the preview has no Ace width')
 	for _, section in pairs(tab.args) do
 		for key, option in pairs(section.args) do
-			eq(option.type, 'range', key)
-			check(type(option.desc) == 'string' and #option.desc > 40, key .. ' has a desc')
-			eq(option.width, nil, key .. ' has no Ace width')
-			-- A slider can't be small in SaftUI's window; it takes a half.
-			eq(option.size, nil, key .. ' takes the normal size')
+			if key ~= 'icon_preview' then
+				eq(option.type, 'range', key)
+				check(type(option.desc) == 'string' and #option.desc > 40, key .. ' has a desc')
+				eq(option.width, nil, key .. ' has no Ace width')
+				-- A slider can't be small in SaftUI's window; it takes a half.
+				eq(option.size, nil, key .. ' takes the normal size')
+			end
 		end
 	end
 	check(tab.args.windows.args.clamp_inset.desc:find('in from', 1, true), "the margin's tooltip says it keeps windows in from the edge")
@@ -94,6 +103,36 @@ test("Icon zoom is a percent of each edge, and its value is the profile's fracti
 	Set('icon_trim', 0.1)
 	eq(st.config.profile.misc.icon_trim, 0.1, 'a set writes the fraction')
 	eq(Get('icon_trim'), 0.1, 'and reads it back')
+	Set('icon_trim', 0.065)
+end)
+
+-- The preview's imageCoords as text, read through the model as the window
+-- reads them.
+local function PreviewCoords()
+	local root, row = Row('icon_preview')
+	local coords = OM.Member(root, row, 'imageCoords')
+	return type(coords) == 'table' and table.concat(coords, ',') or tostring(coords)
+end
+
+test("Icon zoom's preview: a lightning icon at 36 by 36, cut as st:IconTexCoords cuts SaftUI's icons at the zoom set now", function()
+	local root, row = Row('icon_preview')
+	eq(row.type, 'description', 'a description row')
+	eq(row.size, 'wide', 'on a line of its own')
+	eq(row.name, 'Preview', 'its text')
+	local zoomOrder = Tab().args.icons.args.icon_trim.order
+	check(Tab().args.icons.args.icon_preview.order > zoomOrder, 'after Icon zoom')
+	eq(OM.Member(root, row, 'image'), PREVIEW_ICON, 'the icon')
+	eq(OM.Member(root, row, 'imageWidth'), 36, 'width')
+	eq(OM.Member(root, row, 'imageHeight'), 36, 'height')
+
+	local function Expected(trim) return table.concat({ st:IconTexCoords(trim, 36, 36) }, ',') end
+	eq(PreviewCoords(), Expected(0.065), 'the default zoom')
+	eq(#OM.Member(root, row, 'imageCoords'), 4, 'left, right, top, bottom')
+	Set('icon_trim', 0.15)
+	eq(PreviewCoords(), Expected(0.15), 'a new zoom, read when the coords are read')
+	eq(PreviewCoords(), '0.15,0.85,0.15,0.85', '0.15 off each edge')
+	st.config.profile.misc.icon_trim = 0
+	eq(PreviewCoords(), '0,1,0,1', 'no zoom: the whole icon')
 	Set('icon_trim', 0.065)
 end)
 
@@ -149,8 +188,10 @@ test('after a profile switch, each row reads and writes the new profile, and the
 	Set('header_height', 44)
 	Set('clamp_inset', 0)
 
+	eq(PreviewCoords(), table.concat({ st:IconTexCoords(0.1, 36, 36) }, ','), 'the preview at the first profile\'s zoom')
 	st.config:SetProfile('GeneralTestTwo')
 	eq(Get('icon_trim'), 0.065, "the new profile's icon zoom")
+	eq(PreviewCoords(), table.concat({ st:IconTexCoords(0.065, 36, 36) }, ','), "the preview takes the new profile's zoom")
 	eq(Get('header_height'), 31, "the new profile's title bar height")
 	eq(Get('clamp_inset'), 20, "the new profile's margin")
 	eq(panel.header:GetHeight(), 31, 'the header takes it')

@@ -61,6 +61,22 @@ end
 --	end
 --end
 
+-- The tex coords (left, right, top, bottom) SaftUI crops an icon width by
+-- height to: trim, a fraction of the art, off each edge, after a wide or tall
+-- icon's art is cut to its shape around the middle so it isn't stretched. A
+-- square icon, or one with no size yet, just loses trim off each edge.
+-- st:SkinIcon crops with these, and so does Icon zoom's preview in /sui
+-- (Config/general.lua), so the preview shows what the icons will.
+function st:IconTexCoords(trim, width, height)
+	if width and height and width ~= height then
+		local biggest = max(width, height)
+		local halfWidth = 0.5 * width / biggest - trim
+		local halfHeight = 0.5 * height / biggest - trim
+		return 0.5 - halfWidth, 0.5 + halfWidth, 0.5 - halfHeight, 0.5 + halfHeight
+	end
+	return trim, 1 - trim, trim, 1 - trim
+end
+
 function st:SkinIcon(icon, customTrim, anchorFrame)
 	if anchorFrame then
 		icon:SetAllPoints(anchorFrame)
@@ -77,27 +93,14 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 
 	if icon.SetTexCoord then
 		local w, h = icon:GetSize()
-		local scale
 		local trim = customTrim or st.config.profile.misc.icon_trim
 		local left, right, top, bottom
 		if issecretvalue(w) or issecretvalue(h) then
 			-- Icons inside restricted frames (e.g. aura containers) have secret
 			-- sizes that can't be compared; assume a square icon.
 			left, right, top, bottom = trim, 1 - trim, trim, 1 - trim
-		elseif w ~= h then
-			local biggest = max( icon:GetHeight(), icon:GetWidth() )
-			local height = 0.5 * icon:GetHeight() / biggest - trim
-			local width = 0.5 * icon:GetWidth() / biggest - trim
-
-			left, right, top, bottom = 0.5 - width, 0.5 + width, 0.5 - height, 0.5 + height
-		elseif (w == 0) and (h == 0) then
-			left, right, top, bottom = trim, 1 - trim, trim, 1 - trim
-		elseif w > h then
-			scale = (1 - h / w) / 2
-			left, right, top, bottom = trim, 1-trim, scale + trim, 1 - scale - trim
 		else
-			scale = (1 - w / h) / 2
-			left, right, top, bottom = scale + trim, 1 - scale - trim, trim, 1 - trim
+			left, right, top, bottom = st:IconTexCoords(trim, w, h)
 		end
 
 		icon:SetTexCoord(left, right, top, bottom)
