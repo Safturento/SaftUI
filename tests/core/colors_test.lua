@@ -166,8 +166,22 @@ test('the class power colors say they are the player frame\'s class power points
 	local power = Section('power').args
 	check(power.COMBO_POINTS.desc:find('class power points', 1, true), 'combo points')
 	check(power.ARCANE_CHARGES.desc:find('Retail only', 1, true), 'arcane charges are retail only')
+	-- The bundled oUF builds paladin and warlock class power only from Cataclysm on.
+	check(power.HOLY_POWER.desc:find('Retail only', 1, true), 'holy power is retail only')
+	check(power.SOUL_SHARDS.desc:find('Retail only', 1, true), 'soul shards are retail only')
+	check(not power.COMBO_POINTS.desc:find('Retail only', 1, true), 'combo points show on Forever')
+	check(not power.CHI.desc:find('Retail only', 1, true), 'chi shows on Forever')
 	check(power.MANA.desc:find('power bar', 1, true), 'mana stays a power bar')
 	eq(power.RUNES, nil, 'no Runes row')
 	eq(power.ALTPOWER, nil, 'no Alternate power row')
 	check(Section('class').args.MAGE.desc:find('tooltip', 1, true), "a class color's tooltip names the unit tooltip")
+end)
+
+test('the roll timer bars are under Buttons Blue, not Item quality, and the difficulty badge covers every instance', function()
+	-- The roll timer's OnUpdate paints it Buttons Blue every frame.
+	local quality = Section('item_quality').args
+	check(not quality['3'].desc:find('timer', 1, true), 'Item quality names no timer bar')
+	check(Section('button').args.blue.desc:find('loot roll timer bars', 1, true), 'Buttons Blue names the roll timer bars')
+	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
+	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 end)

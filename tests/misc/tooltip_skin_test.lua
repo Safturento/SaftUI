@@ -16,6 +16,9 @@ local names = { 'GameTooltip', 'ItemRefTooltip', 'ItemRefShoppingTooltip1', 'Ite
 	'ItemRefShoppingTooltip3', 'ShoppingTooltip1', 'ShoppingTooltip2', 'ShoppingTooltip3', 'WorldMapTooltip' }
 local tooltips = {}
 for _, name in ipairs(names) do tooltips[name] = make_tooltip(name) end
+-- GameTooltip's name line, which Blizzard makes before SaftUI loads and the unit hook colors.
+local left1 = tooltips.GameTooltip:CreateFontString('GameTooltipTextLeft1', 'ARTWORK')
+left1:SetFontObject(GameFontNormal)
 local bar = CreateFrame('StatusBar', 'GameTooltipStatusBar', UIParent)
 local dropdowns = {
 	CreateFrame('Frame', 'DropDownList1', UIParent),
@@ -91,8 +94,6 @@ test('a unit tooltip colors the border of the tooltip and the status bar', funct
 	_G.UnitClass = function() return 'Mage', 'MAGE' end
 	st.config.profile.colors.class.MAGE = c
 	_G.RAID_CLASS_COLORS = { MAGE = { r = 0.9, g = 0.9, b = 0.9 } } -- Blizzard's, not used
-	local left1 = tooltips.GameTooltip:CreateFontString('GameTooltipTextLeft1', 'ARTWORK')
-	left1:SetFontObject(GameFontNormal)
 	TT:GameTooltip_OnTooltipSetUnit(tooltips.GameTooltip)
 	for _, frame in ipairs({ tooltips.GameTooltip, bar }) do
 		local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
@@ -105,6 +106,7 @@ end)
 
 test('an NPC tooltip takes the profile reaction color', function()
 	local c = { r = 0.4, g = 0.5, b = 0.6 }
+	_G.UnitName = function() return 'Someone' end
 	_G.UnitPlayerControlled = function() return false end
 	_G.UnitReaction = function() return 2 end
 	st.config.profile.colors.reaction[2] = c
@@ -114,7 +116,7 @@ test('an NPC tooltip takes the profile reaction color', function()
 		local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
 		check(r == c.r and g == c.g and b == c.b, (frame:GetName()) .. ' border is the reaction color')
 	end
-	local tr, tg, tb = _G.GameTooltipTextLeft1:GetTextColor()
+	local tr, tg, tb = left1:GetTextColor()
 	check(tr == c.r and tg == c.g and tb == c.b, "the name line is the profile's reaction color")
 end)
 

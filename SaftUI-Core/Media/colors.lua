@@ -46,7 +46,7 @@ CO.SECTIONS = {
 	{
 		key = 'text', name = 'Text', note = RELOAD_NOTE,
 		colors = Colors('text', {
-			{ 'normal', 'Text', "Ordinary text: the options window and totem timers." },
+			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, and the flyout arrow on the totem bar's summon button." },
 			{ 'grey', 'Grey', "Dimmed text: the options window's hints and disabled controls, and a unit frame's level tag for a far lower level." },
 			{ 'red', 'Red', "Warnings and Pass: loot roll Pass buttons and timers, a unit frame's level tag for a much higher level, DPS role marks, and expiring totem timers." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats." },
@@ -66,7 +66,7 @@ CO.SECTIONS = {
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
 			{ 'green', 'Green', "The border of an equipped item's action button." },
-			{ 'blue', 'Blue', 'The accent color: hovered and active controls, and the options window\'s tabs and slider fill.' },
+			{ 'blue', 'Blue', 'The accent color: hovered and active controls, the options window\'s tabs and slider fill, and loot roll timer bars.' },
 			{ 'yellow', 'Yellow', "A fresh mount's entry in the loot feed: its border and fill." },
 			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
@@ -127,18 +127,22 @@ CO.SECTIONS = {
 local GENERIC_DESC = {
 	class = "The %s class color on unit frames, name tags and raid frames, and the unit tooltip's name and border.",
 	power = 'The %s power bar on unit frames.',
-	item_quality = "The %s item color: item names in the loot feed and loot rolls, the loot roll's timer bar, and item and currency borders in bags.",
+	item_quality = "The %s item color: item names in the loot feed and loot rolls, and item and currency borders in bags.",
 }
 -- Power colors that SaftUI shows on the player frame's class power points
 -- rather than a power bar, with where each exists: combo points (rogues, cat
--- form druids, vehicles), holy power (paladins), chi (windwalker monks), soul
--- shards (warlocks) and, on retail only, arcane charges (arcane mages).
+-- form druids, vehicles), chi (windwalker monks), and on retail only holy power
+-- (paladins), soul shards (warlocks) and arcane charges (arcane mages). The
+-- bundled oUF builds paladin and warlock class power only from Cataclysm on
+-- (GameCompatibility.Cataclysm) and arcane charges only on Midnight, so
+-- Forever shows those three nowhere.
 local CLASS_POWER_POINTS = {
-	COMBO_POINTS = '', HOLY_POWER = '', CHI = '', SOUL_SHARDS = '',
-	ARCANE_CHARGES = ' Retail only.',
+	COMBO_POINTS = '', CHI = '',
+	HOLY_POWER = ' Retail only.', SOUL_SHARDS = ' Retail only.', ARCANE_CHARGES = ' Retail only.',
 }
--- The minimap's difficulty badge reads Common, Rare and Epic.
-local DIFFICULTY_BADGE = { [1] = 'normal dungeons', [3] = 'heroic ones', [4] = 'mythic ones' }
+-- The minimap's difficulty badge, shown in any instance, reads Common for
+-- normal, Rare for heroic and Epic for mythic.
+local DIFFICULTY_BADGE = { [1] = 'normal instances', [3] = 'heroic ones', [4] = 'mythic ones' }
 for _, section in ipairs(CO.SECTIONS) do
 	local pattern = GENERIC_DESC[section.key]
 	for _, color in ipairs(section.colors) do
