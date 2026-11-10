@@ -1185,7 +1185,7 @@ end)
 
 test('position: the parts are laid out 12 apart, each caption over its part, on a 48 band', function()
 	local w = bind_position({ target = 'name' })
-	eq(w:GetWidth(), 48 + 12 + 120 + 12 + 48 + 12 + 80, 'width: dots, name, dots, offset')
+	eq(w:GetWidth(), 48 + 12 + 120 + 12 + 48 + 12 + 79, 'width: dots, name, dots, offset')
 	eq(w.frame:GetWidth(), w:GetWidth(), 'the frame is as wide')
 	eq(w:GetHeight(), 65, 'a 13 caption, 4, a 48 band')
 	local _, _, _, x1 = w.this[1]:GetParent():GetPoint(1)
@@ -1195,10 +1195,42 @@ test('position: the parts are laid out 12 apart, each caption over its part, on 
 	eq(x2, 60, 'TO is 12 after the 48 dots')
 	eq(x3, 192, 'AT ITS is 12 after the 120 name box')
 	eq(w.this[1]:GetParent():GetWidth(), 48, 'a 48 dot square')
+	local _, _, _, dx1 = w.this[1]:GetPoint(1)
+	local _, _, _, dx3 = w.this[3]:GetPoint(1)
+	eq(dx1, 3, 'the first dot cell starts 3 in (centers at 10/24/38)')
+	eq(dx3 + w.this[3]:GetWidth(), 45, 'and the third ends 3 from the far side')
 	eq(w.x:GetWidth(), 46, 'a 46 wide X box')
 	eq(w.x:GetHeight(), 22, 'which is 22 tall')
 	eq(w.xUp:GetWidth(), 14, 'with a 14 wide nudge')
 	eq(w.xUp:GetHeight() + w.xDown:GetHeight(), 22, 'pair as tall as the box')
+	local pair = w.xUp:GetParent()
+	check(w.xDown:GetParent() == pair, 'up and down are halves of one box')
+	eq(pair:GetWidth(), 14, 'a 14 wide box')
+	eq(pair:GetHeight(), 22, 'as tall as the edit box')
+	local _, rel, relPoint, px, py = pair:GetPoint(1)
+	check(rel == w.x and relPoint == 'TOPRIGHT', 'on the edit box\'s right edge')
+	eq(px, -1, 'overlapping it by 1: one shared seam')
+	eq(py, 0)
+	local function arrows(button)
+		local out = {}
+		for i, t in ipairs(button.arrows) do
+			local _, _, _, ax, ay = t:GetPoint(1)
+			out[i] = ('%d@%d,%d'):format(t:GetWidth(), ax, ay)
+			eq(t:GetHeight(), 1)
+			eq((14 - t:GetWidth()) % 2, 0, 'arrow ' .. i .. ' is centered on whole pixels')
+			eq(ay, math.floor(ay), 'and on a whole row')
+		end
+		return table.concat(out, ' ')
+	end
+	eq(arrows(w.xUp), '2@0,-4 4@0,-5 6@0,-6', 'the up arrow: 2/4/6 wide, widest at the base')
+	eq(arrows(w.xDown), '6@0,-3 4@0,-4 2@0,-5', 'the down arrow: 6/4/2 wide, widest at the top')
+	local divider
+	for _, region in ipairs({ pair:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' then divider = region end
+	end
+	check(divider ~= nil, 'one divider')
+	eq(divider:GetHeight(), 1, '1px')
+	eq(divider:GetWidth(), 12, 'inside the border')
 	eq(w.captions[2]:GetWidth(), 120, 'the TO caption spans its part to center on it')
 	w:Release()
 end)
@@ -1314,7 +1346,7 @@ test('position: a select target shows the dropdown, and the name box only for na
 		values = { __unitframe = 'Unit frame', Health = 'Health', __global = 'Global frame' },
 	}, store)
 	eq(caption_texts(w), 'THIS,TO,AT ITS,OFFSET', 'the TO caption shows')
-	eq(w:GetWidth(), 48 + 12 + 140 + 12 + 48 + 12 + 80, 'the TO part is 140 wide')
+	eq(w:GetWidth(), 48 + 12 + 140 + 12 + 48 + 12 + 79, 'the TO part is 140 wide')
 	check(w.select:IsShown(), 'the dropdown shows')
 	eq(w.select.text:GetText(), 'Health', 'with the stored choice')
 	check(not w.name:IsShown(), 'no name box for Health')
@@ -1355,7 +1387,7 @@ test('position: a block reused after a select target has no dropdown, and one re
 	check(w2.name:IsShown(), 'the name box shows')
 	eq(w2.name:GetWidth(), 120, 'at 120 again')
 	eq(w2.name:GetText(), 'Minimap', 'with this row\'s frame')
-	eq(w2:GetWidth(), 332, 'and the block is narrower again')
+	eq(w2:GetWidth(), 331, 'and the block is narrower again')
 	w2:Release()
 
 	local w3 = bind_position()
@@ -1364,7 +1396,7 @@ test('position: a block reused after a select target has no dropdown, and one re
 	check(not w3.select:IsShown(), 'no dropdown')
 	eq(caption_texts(w3), 'THIS,AT ITS,OFFSET', 'no TO caption')
 	check(not w.captionFor.to:IsShown(), 'the TO caption is hidden')
-	eq(w3:GetWidth(), 200, 'and 200 wide')
+	eq(w3:GetWidth(), 199, 'and 200 wide')
 	w3:Release()
 end)
 

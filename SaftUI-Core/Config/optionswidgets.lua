@@ -1253,10 +1253,11 @@ define('description', {
 local POINTS = { 'TOPLEFT', 'TOP', 'TOPRIGHT', 'LEFT', 'CENTER', 'RIGHT', 'BOTTOMLEFT', 'BOTTOM', 'BOTTOMRIGHT' }
 local POS_GAP, POS_BAND, POS_CAPTION_HEIGHT, POS_CAPTION_GAP = 12, 48, 13, 4
 local POS_BAND_TOP = POS_CAPTION_HEIGHT + POS_CAPTION_GAP
-local POS_DOT_CELL, POS_DOT_MARGIN = 14, 2
+local POS_DOT_CELL, POS_DOT_MARGIN = 14, 3
 local POS_BOX, POS_NUDGE, POS_AXIS, POS_AXIS_GAP = 22, 14, 12, 8
 local POS_NAME_WIDTH, POS_SELECT_WIDTH, POS_NAME_HEIGHT = 120, 140, 24
-local POS_OFFSET_WIDTH = POS_AXIS + POS_AXIS_GAP + 46 + POS_NUDGE
+-- The nudge box overlaps the edit box's right edge by 1: one shared seam.
+local POS_OFFSET_WIDTH = POS_AXIS + POS_AXIS_GAP + 46 + POS_NUDGE - 1
 local DOT_GREY = { 0.333, 0.333, 0.333 }
 
 -- The dot's look: 4x4 grey, or 8x8 blue when it is the picked one; the text
@@ -1307,16 +1308,19 @@ local function DotSquare(w, parent, onPick)
 	return square
 end
 
--- A 14x11 box with a three-row arrow pointing up or down.
+-- One half of the nudge pair: a 14x11 button (a clickable region of the
+-- pair's box) with a three-row arrow, 2/4/6 wide, in whole pixels. Up sits in
+-- the box's rows 1-9 (the arrow in rows 4-6, from the button's TOP); down in rows
+-- 11-20 (rows 3-5 of its button, from its TOP).
 local function NudgeButton(w, parent, up, onClick)
-	local button = Box(st:CreateFrame('Button', nil, parent))
+	local button = st:CreateFrame('Button', nil, parent)
 	button:SetSize(POS_NUDGE, POS_BOX / 2)
 	button.arrows = {}
-	for i, width in ipairs({ 5, 3, 1 }) do
+	for i = 1, 3 do
 		local t = button:CreateTexture(nil, 'OVERLAY')
 		t:SetColorTexture(Colors().text.grey:GetRGB())
-		t:SetSize(width, 1)
-		t:SetPoint(up and 'BOTTOM' or 'TOP', button, 'CENTER', 0, up and (i - 3) or (2 - i))
+		t:SetSize(up and (2 * i) or (8 - 2 * i), 1)
+		t:SetPoint('TOP', button, 'TOP', 0, -((up and 3 or 2) + i))
 		button.arrows[i] = t
 	end
 	button:SetScript('OnClick', function()
@@ -1334,6 +1338,22 @@ local function NudgeButton(w, parent, up, onClick)
 		w:Tip(false)
 	end)
 	return button
+end
+
+-- The nudge pair: one 14x22 box with a 1px divider between up and down, and
+-- the two buttons over its halves.
+local function NudgePair(w, parent, onUp, onDown)
+	local pair = Box(st:CreateFrame('Frame', nil, parent))
+	pair:SetSize(POS_NUDGE, POS_BOX)
+	local divider = pair:CreateTexture(nil, 'ARTWORK')
+	divider:SetColorTexture(unpack(EDGE))
+	divider:SetSize(POS_NUDGE - 2, 1)
+	divider:SetPoint('TOPLEFT', pair, 'TOPLEFT', 1, -(POS_BOX / 2 - 1))
+	local up = NudgeButton(w, pair, true, onUp)
+	up:SetPoint('TOPLEFT', pair, 'TOPLEFT', 0, 0)
+	local down = NudgeButton(w, pair, false, onDown)
+	down:SetPoint('BOTTOMLEFT', pair, 'BOTTOMLEFT', 0, 0)
+	return pair, up, down
 end
 
 -- An edit box of the block. onEnter(text) runs on Enter, after focus is dropped.
@@ -1397,7 +1417,7 @@ builders.position = function(w)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
 
-	-- X and Y: label, box, then the nudge pair flush on the box's right.
+	-- X and Y: label, box, then the nudge pair, overlapping the box's right edge by 1.
 	local function Axis(label, part, errName)
 		local axis = NewText(frame, 'LEFT')
 		axis:SetText(label)
@@ -1412,10 +1432,8 @@ builders.position = function(w)
 			w:Commit(part, number)
 		end)
 		box:SetSize(46, POS_BOX)
-		local up = NudgeButton(w, frame, true, function() w:Nudge(part, 1) end)
-		local down = NudgeButton(w, frame, false, function() w:Nudge(part, -1) end)
-		up:SetPoint('TOPLEFT', box, 'TOPRIGHT', 0, 0)
-		down:SetPoint('TOPLEFT', up, 'BOTTOMLEFT', 0, 0)
+		local pair, up, down = NudgePair(w, frame, function() w:Nudge(part, 1) end, function() w:Nudge(part, -1) end)
+		pair:SetPoint('TOPLEFT', box, 'TOPRIGHT', -1, 0)
 		return axis, box, up, down
 	end
 	w.xLabel, w.x, w.xUp, w.xDown = Axis('X', 'x_off', 'X')
@@ -1467,7 +1485,6 @@ define('position', {
 		elseif target == 'select' then
 			toWidth = POS_SELECT_WIDTH
 			local key = self:Value('relative_to')
-			self.relativeTo = key
 			local values = OM.Member(root, row, 'values')
 			local label = ''
 			if type(values) == 'table' and key ~= nil and values[key] ~= nil then label = tostring(values[key]) end
