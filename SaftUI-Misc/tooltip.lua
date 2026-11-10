@@ -50,11 +50,11 @@ function TT:GameTooltip_OnTooltipSetUnit(tooltip)
 
 	local c
 	if (select(1, UnitName('mouseover')) == nil) and UnitPlayerControlled('mouseover') then
-		c = RAID_CLASS_COLORS[st.my_class]
+		c = st.config.profile.colors.class[st.my_class]
 	elseif UnitPlayerControlled('mouseover') then
-		c = RAID_CLASS_COLORS[select(2, UnitClass('mouseover'))]
+		c = st.config.profile.colors.class[select(2, UnitClass('mouseover'))]
 	else
-		c = FACTION_BAR_COLORS[UnitReaction('player', 'mouseover')]
+		c = st.config.profile.colors.reaction[UnitReaction('player', 'mouseover')]
 	end
 
 	if c then

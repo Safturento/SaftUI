@@ -243,8 +243,8 @@ function INV:UpdateCurrencyCategory(forceShow)
         slot:Show()
 
         local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
-        if quality > -1 then
-            local c = ITEM_QUALITY_COLORS[quality]
+        local c = quality > -1 and st:QualityColor(quality)
+        if c then
             slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
         else
             slot.backdrop:SetBackdropBorderColor(0, 0, 0)

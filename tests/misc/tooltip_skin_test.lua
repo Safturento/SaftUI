@@ -89,7 +89,8 @@ test('a unit tooltip colors the border of the tooltip and the status bar', funct
 	_G.UnitName = function() return 'Someone' end
 	_G.UnitPlayerControlled = function() return true end
 	_G.UnitClass = function() return 'Mage', 'MAGE' end
-	_G.RAID_CLASS_COLORS = { MAGE = c }
+	st.config.profile.colors.class.MAGE = c
+	_G.RAID_CLASS_COLORS = { MAGE = { r = 0.9, g = 0.9, b = 0.9 } } -- Blizzard's, not used
 	local left1 = tooltips.GameTooltip:CreateFontString('GameTooltipTextLeft1', 'ARTWORK')
 	left1:SetFontObject(GameFontNormal)
 	TT:GameTooltip_OnTooltipSetUnit(tooltips.GameTooltip)
@@ -98,6 +99,19 @@ test('a unit tooltip colors the border of the tooltip and the status bar', funct
 		check(r == c.r and g == c.g and b == c.b, (frame:GetName()) .. ' border is the class color')
 	end
 	eq(keys(tooltips.GameTooltip), before[tooltips.GameTooltip], 'still no new field')
+end)
+
+test('an NPC tooltip takes the profile reaction color', function()
+	local c = { r = 0.4, g = 0.5, b = 0.6 }
+	_G.UnitPlayerControlled = function() return false end
+	_G.UnitReaction = function() return 2 end
+	st.config.profile.colors.reaction[2] = c
+	_G.FACTION_BAR_COLORS = { [2] = { r = 0.9, g = 0.9, b = 0.9 } } -- Blizzard's, not used
+	TT:GameTooltip_OnTooltipSetUnit(tooltips.GameTooltip)
+	for _, frame in ipairs({ tooltips.GameTooltip, bar }) do
+		local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
+		check(r == c.r and g == c.g and b == c.b, (frame:GetName()) .. ' border is the reaction color')
+	end
 end)
 
 test('UpdateConfig finds the same backdrops and re-colors them for a new template', function()

@@ -52,6 +52,34 @@ function INV:AssignEmptySlot(slot, info)
 	slot.CountBG:SetShown(info.count ~= nil)
 end
 
+-- The border in the item's quality color (the profile's, see st:QualityColor),
+-- black for quality -1 or a quality with no color. A locked slot, or one with
+-- no quality, keeps the border it has.
+function INV:SetSlotQualityBorder(slot)
+	if not slot.info.locked and slot.info.quality then
+		local c = slot.info.quality > -1 and st:QualityColor(slot.info.quality)
+		if c then
+			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
+		else
+			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
+		end
+	end
+end
+
+-- A quality color changed in the options: redraw the borders of the filled slots.
+function INV:OnColorsChanged(group)
+	if group ~= 'item_quality' then return end
+	for _, container in pairs(self.containers) do
+		for _, category in pairs(container.categories) do
+			for _, slot in pairs(category.slots) do
+				if slot.info and not slot.info.empty then
+					self:SetSlotQualityBorder(slot)
+				end
+			end
+		end
+	end
+end
+
 function INV:AssignSlot(container, slot, slotInfo)
 	self:ClearSlot(slot)
 	slot:SetParent(container.bags[slotInfo.bagID])
@@ -97,14 +125,7 @@ function INV:AssignSlot(container, slot, slotInfo)
 		slot.itemLevelBG:Hide()
 	end
 
-	if not slot.info.locked and slot.info.quality then
-		if slot.info.quality > -1 then
-			local c = ITEM_QUALITY_COLORS[slot.info.quality]
-			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-		else
-			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
-		end
-	end
+	self:SetSlotQualityBorder(slot)
 
 	self:SetSlotCooldown(slot)
 

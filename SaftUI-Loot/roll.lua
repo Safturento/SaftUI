@@ -166,7 +166,7 @@ function LT:GroupLootFrame_OnShow(frame)
 	-- OnShow has already taken the frame away, so there's nothing to style.
 	if not name then return end
 
-	local color = ITEM_QUALITY_COLORS[quality]
+	local color = st:QualityColor(quality)
 	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
 	-- The item's quality color, as Blizzard's own OnShow gives it.
 	frame.Name:SetVertexColor(color.r, color.g, color.b)
@@ -411,7 +411,7 @@ local function FillPreviewBar(bar)
 	if quality >= 3 and not spec.bindOnPickUp then text = 'BoE ' end
 	if spec.count > 1 then text = text .. '(' .. spec.count .. ') ' end
 	bar.Name:SetText(text .. name)
-	local color = ITEM_QUALITY_COLORS[quality]
+	local color = st:QualityColor(quality)
 	if color then bar.Name:SetVertexColor(color.r, color.g, color.b) end
 
 	local icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(spec.itemID)
