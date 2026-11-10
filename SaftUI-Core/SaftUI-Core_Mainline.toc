@@ -49,6 +49,7 @@ Config\optionswidgets.lua
 Config\optionsbody.lua
 Config\optionswindow.lua
 Config\widgets.lua
+Config\general.lua
 
 EditMode\load.xml
 

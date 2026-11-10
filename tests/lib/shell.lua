@@ -369,8 +369,9 @@ end
 -- Core's frame helpers and what they need, in TOC order: LibSharedMedia and
 -- its libraries, Widgets/button.lua (st:CreateButton), panels.lua
 -- (st:CreateFrame, st:SetBackdrop, st:CreateFontString), the media and fonts
--- (st:GetFont), the profile defaults and Config/widgets.lua
--- (st.Config.generators). Then the profile is filled from the defaults and
+-- (st:GetFont) with the Colors module, the profile defaults, Config/widgets.lua
+-- (st.Config.generators) and the General module (Global Settings' General
+-- tab). Then the profile is filled from the defaults and
 -- the Fonts module enabled, as at login, so st:GetFont has font objects.
 function load_core_helpers()
 	load_saftui('SaftUI-Core/Libraries/LibStub/LibStub.lua')
@@ -383,6 +384,7 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Media/colors.lua')
 	load_saftui('SaftUI-Core/Config/defaults.lua')
 	load_saftui('SaftUI-Core/Config/widgets.lua')
+	load_saftui('SaftUI-Core/Config/general.lua')
 	apply_defaults()
 	st:GetModule('Fonts'):Enable()
 end

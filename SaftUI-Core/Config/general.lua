@@ -1,0 +1,64 @@
+local st = SaftUI
+
+-- The General tab of Global Settings: Core's settings that aren't fonts or
+-- colors. Config:GetOptionsTable makes this module's table the page's first
+-- tab. Each row is bound to its profile key and reads st.config.profile at
+-- call time, so a profile switch reaches the new profile.
+local GN = st:NewModule('General')
+
+local ICONS_NOTE = 'SaftUI cuts its icons when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local WINDOWS_NOTE = "Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
+
+-- A range bound to st.config.profile[group][key]. apply, if given, runs after
+-- a set, for a setting that can be re-applied to what's already built.
+local function Setting(order, name, min, max, step, desc, group, key, apply)
+	local option = st.Config.generators.range(order, name, min, max, step, desc)
+	option.get = function() return st.config.profile[group][key] end
+	option.set = function(_, value)
+		st.config.profile[group][key] = value
+		if apply then apply() end
+	end
+	return option
+end
+
+-- Title bar height and the margin reach every window with a header at once.
+local function UpdateHeaders() st:UpdateHeader() end
+
+function GN:GetConfigTable()
+	-- The profile keeps the fraction of each edge that's cut (0.065); the
+	-- window shows it as a percent.
+	local zoom = Setting(1, 'Icon zoom', 0, 0.2, 0.005,
+		"How much of each edge SaftUI cuts off the icons it skins, zooming them in so the border drawn into Blizzard's icon art doesn't show: action buttons, bag and currency slots, buffs, unit frame auras and icons, loot rolls and the loot feed, the totem bar, the character frame's gems, and WeakAuras and Hekili icons.",
+		'misc', 'icon_trim')
+	zoom.isPercent = true
+
+	return {
+		type = 'group',
+		name = 'General',
+		args = {
+			icons = {
+				type = 'group',
+				inline = true,
+				order = 1,
+				name = 'Icons',
+				desc = ICONS_NOTE,
+				args = { icon_trim = zoom },
+			},
+			windows = {
+				type = 'group',
+				inline = true,
+				order = 2,
+				name = 'Windows',
+				desc = WINDOWS_NOTE,
+				args = {
+					header_height = Setting(1, 'Title bar height', 20, 60, 1,
+						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom.",
+						'headers', 'height', UpdateHeaders),
+					clamp_inset = Setting(2, 'Off-screen margin', -50, 50, 1,
+						"How close to the screen's edges you can drag SaftUI's windows (the bags and bank): they're kept this many pixels in from each edge. Below 0, they can go that far past it.",
+						'misc', 'clamp_inset', UpdateHeaders),
+				},
+			},
+		},
+	}
+end

@@ -6,8 +6,8 @@
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
 -- (optionswidgets.lua), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
--- one Config:GetOptionsTable builds, from the real Fonts and EditMode modules,
--- AceDBOptions' profiles table, and synthetic modules registered here: one
+-- one Config:GetOptionsTable builds, from the real General, Fonts, Colors and
+-- EditMode modules, AceDBOptions' profiles table, and synthetic modules registered here: one
 -- shaped like Unitframes (a unit picker, element tabs) and small ones for the
 -- sidebar's categories. The mouse, the keyboard and the frame clock are played
 -- by firing scripts (stub.fire_script): the window re-renders and searches on
@@ -502,7 +502,7 @@ test("a real module's category: Experience is under Info", function()
 	check(found, 'Experience has a page')
 end)
 
-test('Global Settings has Fonts, Colors and Edit mode tabs, and the sidebar has no Edit mode page', function()
+test('Global Settings has General, Fonts, Colors and Edit mode tabs, and the sidebar has no Edit mode page', function()
 	local root = st.Config:GetOptionsTable()
 	eq(root.EditMode, nil, 'no EditMode page in the tree')
 	for _, page in ipairs(OM.Pages(root)) do
@@ -515,10 +515,13 @@ test('Global Settings has Fonts, Colors and Edit mode tabs, and the sidebar has 
 
 	local view = OM.BuildView(root, 'Fonts')
 	eq(view.title, 'Global Settings', 'the page')
-	eq(keys(view.tabs), 'fonts,colors,editmode', 'Fonts, Colors, then Edit mode')
-	eq(keys(view.tabs, 'name'), 'Fonts,Colors,Edit mode', 'tab names')
+	eq(keys(view.tabs), 'general,fonts,colors,editmode', 'General, Fonts, Colors, then Edit mode')
+	eq(keys(view.tabs, 'name'), 'General,Fonts,Colors,Edit mode', 'tab names')
+	eq(view.tab, 'general', 'General is the tab the page opens on')
 	eq(root.Colors, nil, 'no Colors page in the tree')
-	eq(root.Fonts.desc, "Fonts and colors used across SaftUI, and edit mode's grid and snapping.")
+	eq(root.General, nil, 'no General page in the tree')
+	eq(root.Fonts.order, 1, 'the page keeps its place')
+	eq(root.Fonts.desc, "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, and edit mode's grid and snapping.")
 
 	view = OM.BuildView(root, 'Fonts', { tab = 'editmode' })
 	eq(view.tab, 'editmode', 'Edit mode selected')
@@ -546,6 +549,24 @@ test('Global Settings has Fonts, Colors and Edit mode tabs, and the sidebar has 
 	end
 	check(size ~= nil, 'a font size row')
 	check(type(OM.Get(root, size)) == 'number', 'reads a number')
+end)
+
+test("Icon zoom's box shows the profile's fraction as a percent, and a typed percent stores the fraction", function()
+	st.Config:Open('Fonts', 'general')
+	eq(OW:GetState().tab, 'general', 'the General tab')
+	eq(drawn(), 'icon_trim,header_height,clamp_inset', "the tab's rows")
+	local w = cell('icon_trim').widget
+	eq(w.edit:GetText(), '6.5%', 'the default 0.065 shows as 6.5%')
+	w.edit:SetText('10')
+	stub.fire_script(w.edit, 'OnEnterPressed')
+	eq(st.config.profile.misc.icon_trim, 0.1, 'typed 10 stores 0.1')
+	eq(cell('icon_trim').widget.edit:GetText(), '10%', 'and shows 10%')
+	w = cell('icon_trim').widget
+	w.edit:SetText('35%')
+	stub.fire_script(w.edit, 'OnEnterPressed')
+	eq(st.config.profile.misc.icon_trim, 0.2, 'past the top, 20%')
+	st.config.profile.misc.icon_trim = 0.065
+	close_all()
 end)
 
 test("Open({'Unitframes','player','general'}) selects the page, the picker value and the tab", function()

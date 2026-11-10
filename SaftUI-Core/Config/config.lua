@@ -144,12 +144,22 @@ function Config:GetWindow()
 	return OW and OW:IsShown() and OW:GetFrame() or nil
 end
 
+-- Global Settings' tabs, in order: the tab's key, and the module whose
+-- GetConfigTable it is. A new tab is a line here; the orders follow the list.
+local GLOBAL_TABS = {
+	{ 'general', 'General' },
+	{ 'fonts', 'Fonts' },
+	{ 'colors', 'Colors' },
+	{ 'editmode', 'EditMode' },
+}
+
 -- The /sui tree: one group per page, keyed by module name, plus AceDBOptions'
 -- profiles. The AddCommand commands and the Edit mode button are the window's
--- sidebar buttons, not options. Colors and Edit mode (its grid and snap
--- settings) are tabs of the Global Settings page (key Fonts, which the options
--- model shows by that name), after the Fonts tab. Each module's table already
--- declares its own tabs (childGroups) and Position option.
+-- sidebar buttons, not options. The GLOBAL_TABS modules' tables (General,
+-- Fonts, Colors and Edit mode, its grid and snap settings) are the tabs of the
+-- Global Settings page, whose key stays Fonts (the options model shows it by
+-- that name). Each module's table already declares its own tabs (childGroups)
+-- and Position option.
 function Config:GetOptionsTable()
 	local profile = AceDBOptions:GetOptionsTable(st.config)
 	profile.order = -999
@@ -162,31 +172,25 @@ function Config:GetOptionsTable()
 		end
 	end
 
-	local fonts, colors, editMode = options.Fonts, options.Colors, options.EditMode
-	if fonts or colors or editMode then
-		local tabs = {}
-		if fonts then
-			fonts.order = 1
-			tabs.fonts = fonts
+	local tabs = {}
+	for i, tab in ipairs(GLOBAL_TABS) do
+		local key, moduleName = tab[1], tab[2]
+		local moduleTable = options[moduleName]
+		if moduleTable then
+			moduleTable.order = i
+			tabs[key] = moduleTable
+			options[moduleName] = nil
 		end
-		if colors then
-			colors.order = 2
-			tabs.colors = colors
-		end
-		if editMode then
-			editMode.order = 3
-			tabs.editmode = editMode
-		end
+	end
+	if next(tabs) then
 		options.Fonts = {
 			name = 'Global Settings',
-			desc = "Fonts and colors used across SaftUI, and edit mode's grid and snapping.",
+			desc = "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, and edit mode's grid and snapping.",
 			type = 'group',
-			order = fonts and fonts.order or 1,
+			order = 1,
 			childGroups = 'tab',
 			args = tabs,
 		}
-		options.Colors = nil
-		options.EditMode = nil
 	end
 
     return options
