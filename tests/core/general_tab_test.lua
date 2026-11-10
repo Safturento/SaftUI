@@ -2,9 +2,12 @@
 -- zoom with its preview, Title bar height and Screen edge margin. Each row
 -- reads and writes its profile key at call time, so a profile switch reaches
 -- the new profile; the preview is cut as st:IconTexCoords (skinning.lua) cuts
--- SaftUI's icons at the zoom set now; and the two window settings reach every
--- window with a header at once (st:UpdateHeader, SaftUI-Core/panels.lua), in
--- combat too where the window isn't protected.
+-- SaftUI's icons at the zoom set now. Title bar height reaches every window
+-- with a header at once (st:UpdateHeader, SaftUI-Core/panels.lua), and the
+-- margin every frame kept inside it (st:UpdateScreenMargin, SaftUI-Core/api.lua;
+-- the window with a header here), in combat too where the frame isn't
+-- protected. tests/core/screen_margin_test.lua checks the margin on the other
+-- frames it keeps in.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 (config_helpers.lua,
 -- with Core's helpers, skinning.lua among them), the options model the window
@@ -18,7 +21,7 @@ local OM = st.OptionsModel
 
 local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
 local PREVIEW_ICON = 'Interface\\Icons\\Spell_Nature_Lightning'
-local WINDOWS_NOTE = "Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
+local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the screen's edges, not just the bags and bank; the minimap, which is Blizzard's, only when you drag it. Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.general end
 
@@ -53,20 +56,22 @@ end
 local panel = st:CreatePanel('General test', 200, 100)
 st:CreateFooter(panel)
 
-test('General: an Icons section, then Windows, each with a note; ranges with tooltips, and the preview', function()
+test('General: an Icons section, then Layout, each with a note; ranges with tooltips, and the preview', function()
 	local tab = Tab()
 	eq(tab.name, 'General')
 	eq(tab.type, 'group')
 	local sections = ByOrder(tab.args)
 	eq(#sections, 2, 'two sections')
 	eq(sections[1].key .. ',' .. sections[2].key, 'icons,windows')
-	eq(sections[1].v.name .. ',' .. sections[2].v.name, 'Icons,Windows')
+	-- The second section's key is still windows; its name is Layout, since the
+	-- margin keeps every frame in, not just the windows.
+	eq(sections[1].v.name .. ',' .. sections[2].v.name, 'Icons,Layout')
 	for _, s in ipairs(sections) do
 		eq(s.v.type, 'group', s.key)
 		eq(s.v.inline, true, s.key .. ' is a section, not a tab')
 	end
 	eq(tab.args.icons.desc, ICONS_NOTE, "Icons' note")
-	eq(tab.args.windows.desc, WINDOWS_NOTE, "Windows' note")
+	eq(tab.args.windows.desc, WINDOWS_NOTE, "Layout's note")
 
 	local function names(section)
 		local out = {}
@@ -91,7 +96,8 @@ test('General: an Icons section, then Windows, each with a note; ranges with too
 			end
 		end
 	end
-	check(tab.args.windows.args.clamp_inset.desc:find('in from', 1, true), "the margin's tooltip says it keeps windows in from the edge")
+	check(tab.args.windows.args.clamp_inset.desc:find('in from', 1, true), "the margin's tooltip says it keeps frames in from the edge")
+	check(tab.args.windows.args.clamp_inset.desc:find('not just the bags and bank', 1, true), 'all of them, not just the bags and bank')
 	check(tab.args.windows.args.clamp_inset.desc:find('past', 1, true), 'and that below 0 lets them past it')
 end)
 
@@ -171,14 +177,14 @@ test("in combat a protected window's margin waits for the end of combat; the oth
 	function guarded:IsProtected() return true, true end
 	stub.in_combat = true
 	st.config.profile.misc.clamp_inset = 5
-	st:UpdateHeader() -- what a profile change in combat runs
+	st:UpdateScreenMargin() -- what a profile change in combat runs
 	eq(Insets(panel), '-5,5,5,-5', 'an unprotected window, at once')
 	eq(Insets(guarded), '-20,20,20,-20', 'the protected one keeps its margin in combat')
 	stub.in_combat = false
 	stub.fire_event('PLAYER_REGEN_ENABLED')
 	eq(Insets(guarded), '-5,5,5,-5', 'and takes the new one when combat ends')
 	st.config.profile.misc.clamp_inset = 20
-	st:UpdateHeader()
+	st:UpdateScreenMargin()
 	eq(#take_errors(), 0, 'no errors')
 end)
 

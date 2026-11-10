@@ -124,7 +124,8 @@ st.defaults.auras = {
 		max = 32,
 		grow = 'LEFT',
 		wrap = 'DOWN',
-		position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -270, y_off = -10 },
+		-- The screen edge margin in from the top, so its clamp doesn't push the buffs.
+		position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -270, y_off = -st.CLAMP_INSET },
 		duration = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'TOP', rel_point = 'BOTTOM', x_off = 0, y_off = -3 },
 		count = { font = pixel.font_name, size = pixel.font_size, outline = pixel.font_outline, point = 'BOTTOMRIGHT', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = 1 },
 	},

@@ -148,25 +148,13 @@ function st:GetCloseButton(frame)
 end
 
 local headerTitles = {} -- header -> the title st:CreateHeader put on it
-local headerFrames = {} -- header -> the frame st:CreateHeader made it for
 
--- Keeps frame misc.clamp_inset pixels in from the screen's edges (below 0, it
--- can go that far past them): the game keeps the frame's rect, grown by its
--- clamp insets, on screen. SetClampRectInsets is blocked in combat on a
--- protected frame (a bag window can be one: it holds Blizzard's item buttons),
--- so there it waits for the end of combat.
-local function ApplyClampInset(frame)
-	if not st:CanMoveNow(frame) then
-		st:QueueAfterCombat('HeaderClampInsets', function() st:UpdateHeader() end)
-		return
-	end
-	local inset = st.config.profile.misc.clamp_inset
-	frame:SetClampRectInsets(-inset, inset, inset, -inset)
-end
-
+-- The frame can be dragged by its header, and is kept inside the screen edge
+-- margin (st:KeepInScreenMargin), which waits for the end of combat on a
+-- protected frame (a bag window can be one: it holds Blizzard's item buttons).
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
-	frame:SetClampedToScreen(true)
+	st:KeepInScreenMargin(frame)
 	local frameName = frame:GetName()
 	local header = st:CreateFrame('Button', frameName and frameName ..'_Header' or '', frame)
 	header:SetFrameLevel(frame:GetFrameLevel()+2)
@@ -224,16 +212,14 @@ function st:CreateHeader(frame, title, close_button)
 	end
 
 	frame.header = header
-	headerFrames[header] = frame
 	table.insert(st.headers, header)
 	st:UpdateHeader(header)
 	return header
 end
 
--- Applies the profile's header height and font, and its clamp inset, to a
--- header made by st:CreateHeader and its frame. With no header, updates every
--- header and footer. A profile change and the General and Fonts tabs of
--- Global Settings call it.
+-- Applies the profile's header height and font to a header made by
+-- st:CreateHeader. With no header, updates every header and footer. A profile
+-- change and the General and Fonts tabs of Global Settings call it.
 function st:UpdateHeader(header)
 	if not header then
 		for _, h in ipairs(self.headers) do
@@ -250,7 +236,6 @@ function st:UpdateHeader(header)
 	if title then
 		title:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	end
-	ApplyClampInset(headerFrames[header])
 end
 
 st.footers = {}

@@ -402,6 +402,103 @@ function st:SafeReposition(frame, key, fn)
 	return false
 end
 
+--[[
+	The screen edge margin (misc.clamp_inset, Global Settings > General): how far
+	in from the screen's edges SaftUI keeps the frames the user can move or, below
+	0, how far past them it lets them go. The game does the keeping: it keeps a
+	frame clamped to the screen on screen with the frame's rect grown by its clamp
+	insets, so insets of -m, m, m, -m keep it m in from each edge. The margin is in
+	the frame's own units, which for SaftUI's frames are UIParent's (physical
+	pixels at SaftUI's scale).
+
+	st:KeepInScreenMargin(frame) clamps frame with the margin now and remembers it,
+	and st:UpdateScreenMargin() re-applies the margin to every frame it remembers:
+	the General tab's row and a profile switch run that. Edit mode's movers
+	(st:RegisterMover), windows with a header (st:CreateHeader) and /sui's window
+	and dialog are given to it. So are the holders of the Blizzard frames SaftUI
+	moves, which follow their holder.
+
+	Only SaftUI's own frames, never a Blizzard frame (.agents/taint.md). Blizzard
+	clamps some of its frames itself: its Edit Mode systems (ChatFrame1, the
+	tooltip container, the buffs) rewrite their insets from their Selection box on
+	every layout apply and Edit Mode enter (EditModeSystemMixin:UpdateClampOffsets).
+
+	Both calls are blocked in combat on a protected frame (a secure unit frame or
+	action bar, or a frame one is anchored to). That frame keeps the margin it had,
+	and one re-apply of them all waits for the end of combat.
+]]
+local marginFrames = {} -- every frame st:KeepInScreenMargin was given, in order
+local inMargin = {} -- frame -> true for those
+
+-- Clamps frame with the profile's margin. False if it can't be now (combat).
+local function ApplyScreenMargin(frame)
+	if not st:CanMoveNow(frame) then return false end
+	local inset = st.config.profile.misc.clamp_inset
+	frame:SetClampedToScreen(true)
+	frame:SetClampRectInsets(-inset, inset, inset, -inset)
+	return true
+end
+
+local function UpdateScreenMarginAfterCombat()
+	st:QueueAfterCombat('ScreenMargin', function() st:UpdateScreenMargin() end)
+end
+
+-- Keeps frame, one of SaftUI's own the user can move, inside the screen edge
+-- margin, now and whenever the margin changes. Safe to call again for a frame.
+function st:KeepInScreenMargin(frame)
+	if not inMargin[frame] then
+		inMargin[frame] = true
+		marginFrames[#marginFrames + 1] = frame
+	end
+	if not ApplyScreenMargin(frame) then UpdateScreenMarginAfterCombat() end
+end
+
+-- Re-applies the profile's margin to every frame kept inside it, after the
+-- margin changes or the profile does.
+function st:UpdateScreenMargin()
+	local waiting = false
+	for _, frame in ipairs(marginFrames) do
+		if not ApplyScreenMargin(frame) then waiting = true end
+	end
+	if waiting then UpdateScreenMarginAfterCombat() end
+end
+
+-- Where point (a SetPoint point) is on frame, in frame's own units, or nil if an
+-- edge is missing (not laid out) or a secret value.
+local function PointOn(frame, point)
+	if not frame.GetLeft then return end
+	local l, r, b, t = frame:GetLeft(), frame:GetRight(), frame:GetBottom(), frame:GetTop()
+	if not (l and r and b and t) then return end
+	if issecretvalue(l) or issecretvalue(r) or issecretvalue(b) or issecretvalue(t) then return end
+	local x = point:find('LEFT') and l or point:find('RIGHT') and r or (l + r) / 2
+	local y = point:find('TOP') and t or point:find('BOTTOM') and b or (b + t) / 2
+	return x, y
+end
+
+-- How far the game's clamp shows frame from where its first anchor puts it, in
+-- the units of SetPoint's offsets: a frame kept inside the screen edge margin
+-- shows inside it whatever its anchor says, and its anchor stays as it was set.
+-- 0, 0 for a frame shown where its anchor puts it. nil if it has no anchor, or
+-- an edge, offset or scale can't be read (a secret value, or not laid out yet).
+function st:GetClampShift(frame)
+	local point, relative, rel_point, x, y = frame:GetPoint(1)
+	if not point or issecretvalue(x) or issecretvalue(y) then return end
+	relative = relative or UIParent
+	if issecretvalue(relative) or not relative.GetEffectiveScale then return end
+	local fx, fy = PointOn(frame, point)
+	local rx, ry = PointOn(relative, rel_point)
+	if not (fx and rx) then return end
+	local scale, relScale = frame:GetEffectiveScale(), relative:GetEffectiveScale()
+	if issecretvalue(scale) or issecretvalue(relScale) or not scale or scale == 0 then return end
+	-- The relative frame's point in frame's units, plus the offsets: where the
+	-- anchor puts the point.
+	local k = relScale / scale
+	return fx - (rx * k + x), fy - (ry * k + y)
+end
+
+-- Makes frame draggable with the mouse, and keeps it on screen. Every caller
+-- hands it a Blizzard frame (UI panels such as SettingsPanel and WorldMapFrame),
+-- so it doesn't get SaftUI's screen edge margin (st:KeepInScreenMargin).
 function st:EnableMoving(frame)
 	frame:EnableMouse(true)
 	frame:SetMovable(true)

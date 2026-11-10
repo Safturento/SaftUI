@@ -233,10 +233,13 @@ function Config:UpdateConfig()
 	Safely(function() editMode:ClearPositions() end)
 
 	-- Shared Core config first: modules copy font files out of the font objects
-	-- (e.g. chat), and lay out around header heights (e.g. bags).
+	-- (e.g. chat), and lay out around header heights (e.g. bags). The screen
+	-- edge margin goes on before the modules place their frames, so a frame that
+	-- copies where another shows (chat) reads it with the new margin.
 	local fonts = st:GetModule('Fonts', true)
 	UpdateModule(fonts)
 	Safely(function() st:UpdateHeader() end)
+	Safely(function() st:UpdateScreenMargin() end)
 
 	-- Edit mode last, so every mover ends at the new profile's position.
 	for name, module in pairs(st.modules) do

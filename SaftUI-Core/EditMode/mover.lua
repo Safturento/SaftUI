@@ -41,11 +41,49 @@ local function ApplyOffsets(mover, x, y)
 	frame:SetPoint(point, relative, rel_point, x, y)
 end
 
-function EM:StartDrag(mover)
+-- Where the mover's frame shows: the offsets that anchor it there, and its rect
+-- in UIParent units ({ left, right, bottom, top }, nil if it can't be read, e.g.
+-- a secret edge). The game shows a frame kept inside the screen edge margin
+-- inside it even when its anchor would put it in the margin (st:GetClampShift),
+-- so a drag or nudge starts from where it shows, and stores where it ends.
+local function Where(mover)
 	local _, _, _, x, y = GetAnchor(mover)
+	local frame = mover.def.frame
+	local sx, sy = st:GetClampShift(frame)
+	if sx then x, y = x + sx, y + sy end
+	local l, r, b, t = EM.GetRectInUI(frame)
+	return x, y, l and { left = l, right = r, bottom = b, top = t }
+end
+
+-- The correction (mx, my), in UIParent units, that keeps a frame moved by
+-- (dx, dy) inside the screen edge margin: rect is where it shows before the
+-- move ({ left, right, bottom, top }, UIParent units), the screen is width x
+-- height, and inset is the margin (below 0, how far past the edges it can go).
+-- 0, 0 for a move that stays inside. A frame too wide or tall for the room
+-- inside the margin keeps its left and top edges in.
+function EM.MarginCorrection(rect, dx, dy, width, height, inset)
+	-- The smallest and largest moves that keep low..high inside 0..size.
+	local function Range(low, high, size)
+		return inset - low, size - inset - high
+	end
+	local leastX, mostX = Range(rect.left, rect.right, width)
+	local leastY, mostY = Range(rect.bottom, rect.top, height)
+	local x = math.max(math.min(dx, mostX), leastX) -- left wins
+	local y = math.min(math.max(dy, leastY), mostY) -- top wins
+	return x - dx, y - dy
+end
+
+-- The screen edge margin in UIParent units. It's in the frame's own units
+-- (SetClampRectInsets), and ratio is UIParent's scale over the frame's.
+local function MarginInUI(ratio)
+	return st.config.profile.misc.clamp_inset / ratio
+end
+
+function EM:StartDrag(mover)
+	local x, y, shown = Where(mover)
 	local cx, cy = GetCursorPosition()
 	local uiScale = UIParent:GetEffectiveScale()
-	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y }
+	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y, shown = shown }
 	-- For snapping: where the frame is now, and the lines it can snap to. The
 	-- other frames don't move during a drag, so the lines are made once.
 	-- It's measured by its outline, the line its overlay draws (chat's sits on
@@ -75,6 +113,12 @@ function EM:UpdateDrag(mover)
 	if drag.rect0 and not IsControlKeyDown()
 			and (#drag.xLines > 0 or #drag.yLines > 0) then
 		sx, sy = EM.SnapDrag(drag.rect0, dUIx, dUIy, drag.xLines, drag.yLines, EM.SNAP_REACH)
+	end
+	-- The screen edge margin has the last word: the frame can't be dragged into it.
+	if drag.shown then
+		local mx, my = EM.MarginCorrection(drag.shown, dUIx + sx, dUIy + sy,
+			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(ratio))
+		sx, sy = sx + mx, sy + my
 	end
 	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
 	drag.y = st:RoundToPixel(EM.SnappedOffset(drag.y0, dUIy, sy, ratio), mover.def.frame)
@@ -116,14 +160,23 @@ function EM:Select(mover)
 	self:Fire('Selected', mover)
 end
 
+-- Moves the frame a pixel (big: 10), from where it shows, and not into the
+-- screen edge margin.
 function EM:Nudge(mover, key, big)
 	local def = mover.def
 	local pixel = st:GetPixelSize(def.frame)
 	if not pixel then return end
 	local step = st:RoundToPixel(pixel, def.frame) * (big and 10 or 1)
-	local _, _, _, x, y = GetAnchor(mover)
+	local x, y, shown = Where(mover)
 	local dir = NUDGE[key]
-	self:CommitPosition(mover, x + dir[1] * step, y + dir[2] * step)
+	local dx, dy = dir[1] * step, dir[2] * step
+	if shown then
+		local ratio = UIParent:GetEffectiveScale() / def.frame:GetEffectiveScale()
+		local mx, my = EM.MarginCorrection(shown, dx / ratio, dy / ratio,
+			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(ratio))
+		dx, dy = dx + mx * ratio, dy + my * ratio
+	end
+	self:CommitPosition(mover, x + dx, y + dy)
 end
 
 function EM:CreateMover(key, def)

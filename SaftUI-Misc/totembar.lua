@@ -549,6 +549,9 @@ function TB:SetupPosition()
 	-- Every placement of the holder (ApplyHolder, and a drag, which calls its SetPoint) puts
 	-- the bar at its new spot. ClearAllPoints needs no hook: SetPoint follows it.
 	hooksecurefunc(holder, 'SetPoint', function() self:AnchorBar() end)
+	-- The holder's mover keeps it inside the screen edge margin, and a new margin can move
+	-- where it shows without its SetPoint (st:UpdateScreenMargin).
+	hooksecurefunc(st, 'UpdateScreenMargin', function() self:AnchorBar() end)
 
 	-- Blizzard's Edit Mode places the bar through these on every layout load, and in its
 	-- default position on every bottom bar update, and after a snap break. Put it back at

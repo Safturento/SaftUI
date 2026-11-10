@@ -137,9 +137,10 @@ function TT:SetupTooltipPosition()
 
 	self.tooltipContainer = container
 	self.tooltipHolder = CreateFrame('Frame', st.name .. 'TooltipHolder', UIParent)
-	-- Blizzard clamps the container; clamp the outline too, so it shows where the
-	-- tooltip really goes.
-	self.tooltipHolder:SetClampedToScreen(true)
+	-- Kept inside the screen edge margin (its mover would do this too), so the
+	-- container, anchored to it, and the tooltip go no nearer the edges. Blizzard
+	-- clamps the container itself, with insets of its own.
+	st:KeepInScreenMargin(self.tooltipHolder)
 	self:ApplyTooltipHolder()
 
 	-- Blizzard's Edit Mode places the container through these on every layout load

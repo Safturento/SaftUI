@@ -183,6 +183,14 @@ end
 	SaftUI is off. Whenever the holder's SetPoint runs (the profile, /sui, a drag or a
 	nudge), a post-hook copies its size and anchor to ChatFrame1.
 
+	The holder, not ChatFrame1, is kept inside SaftUI's screen edge margin
+	(st:KeepInScreenMargin). ChatFrame1's clamp insets are Blizzard's: its Edit Mode
+	rewrites them from the frame's Selection box on every layout apply and Edit Mode
+	enter (EditModeSystemMixin:UpdateClampOffsets). The game shows a holder anchored
+	into the margin at the margin, but its anchor stays as set, so ChatFrame1 takes the
+	anchor moved by as much as the holder was (st:GetClampShift), and is placed again
+	whenever the margin changes.
+
 	These put SaftUI's size and anchor back after Blizzard changes them:
 	  - post-hooks on ChatFrame1's ClearAllPoints and SetPoint, after each anchor change;
 	  - a post-hook on ChatFrame1's UpdateSystem, after each layout apply and its SetSize;
@@ -256,6 +264,12 @@ function CHT:PlaceChatFrame()
 	st:SafeReposition(ChatFrame1, 'chat', function()
 		local point, relative, rel_point, x, y = self.holder:GetPoint(1)
 		if not point then return end -- the holder is between ClearAllPoints and SetPoint
+		-- Where the holder shows, which the screen edge margin can keep in from
+		-- where its anchor puts it.
+		local dx, dy = st:GetClampShift(self.holder)
+		if dx then
+			x, y = st:RoundToPixel(x + dx, ChatFrame1), st:RoundToPixel(y + dy, ChatFrame1)
+		end
 		st:ClearAllPointsDirect(ChatFrame1)
 		st:SetPointDirect(ChatFrame1, point, relative, rel_point, x, y)
 
@@ -343,6 +357,8 @@ function CHT:TakeOverChatFrame()
 	-- Every SaftUI placement of the holder, and a mover drag (which calls SetPoint on
 	-- it), is copied to ChatFrame1. ClearAllPoints needs no hook: SetPoint follows it.
 	hooksecurefunc(self.holder, 'SetPoint', Place)
+	-- A new screen edge margin can move where the holder shows without moving its anchor.
+	hooksecurefunc(st, 'UpdateScreenMargin', Place)
 
 	-- Blizzard's Edit Mode applies its layout's anchor through these two.
 	hooksecurefunc(ChatFrame1, 'ClearAllPoints', Place)
@@ -412,9 +428,10 @@ function CHT:OnEnable()
 		self:SkinChatFrame(_G['ChatFrame'..chatID])
 	end
 
-	-- The holder exists, with its hooks, before it is first placed: placing it copies
-	-- the size and anchor to ChatFrame1.
+	-- The holder exists, with its hooks and the screen edge margin, before it is first
+	-- placed: placing it copies the size and where it shows to ChatFrame1.
 	self.holder = CreateFrame('Frame', st.name .. 'ChatHolder', UIParent)
+	st:KeepInScreenMargin(self.holder)
 	self:TakeOverChatFrame()
 	self:CaptureSize()
 	self:ApplyHolder()

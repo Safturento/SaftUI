@@ -161,13 +161,21 @@ EM:On('Selected', function(mover)
 end)
 
 -- Registers a movable frame. def = { frame, label, getPosition, setPosition,
--- apply, configPath }; configPath is the option keys from the /sui root to the
--- frame's section, e.g. { 'Minimap', 'general' }. apply can run in combat.
--- def.configPath is the option keys from the /sui root to the group shown
--- when the frame is clicked, e.g. { 'Minimap', 'general' }.
+-- apply, configPath, blizzardFrame }; configPath is the option keys from the
+-- /sui root to the frame's section, e.g. { 'Minimap', 'general' }. apply can
+-- run in combat.
+--
+-- The frame is kept inside the screen edge margin (st:KeepInScreenMargin), and
+-- drags and nudges stop at it (mover.lua). def.blizzardFrame says the frame is
+-- Blizzard's own, moved with no SaftUI holder (the Minimap): SaftUI never clamps
+-- a Blizzard frame, so only its drags and nudges keep to the margin.
 function st:RegisterMover(key, def)
 	assert(type(key) == 'string', 'RegisterMover: key must be a string')
 	assert(def and def.frame and def.getPosition and def.setPosition and def.apply,
 		'RegisterMover: def needs frame, getPosition, setPosition and apply')
-	return EM:CreateMover(key, def)
+	local mover = EM:CreateMover(key, def)
+	if not def.blizzardFrame then
+		st:KeepInScreenMargin(def.frame)
+	end
+	return mover
 end
