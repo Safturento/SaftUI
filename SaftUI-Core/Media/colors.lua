@@ -61,13 +61,13 @@ CO.SECTIONS = {
 	{
 		key = 'button', name = 'Buttons', note = RELOAD_NOTE, hasAlpha = true,
 		colors = Colors('button', {
-			{ 'normal', 'Normal', "The resting fill of SaftUI's check boxes and scroll bars." },
-			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar and micro menu button, and resize handles." },
-			{ 'pushed', 'Pushed', 'A pressed scroll bar or micro menu button.' },
+			{ 'normal', 'Normal', "A SaftUI button's or check box's highlight, a scroll bar thumb at rest, and the micro menu's button highlight." },
+			{ 'hover', 'Hover', "A checked check box, a hovered scroll bar thumb, the minimap tracking button's hover, micro menu button highlights and resize handles." },
+			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
 			{ 'green', 'Green', "The border of an equipped item's action button." },
 			{ 'blue', 'Blue', 'The accent color: hovered and active controls, and the options window\'s tabs and slider fill.' },
-			{ 'yellow', 'Yellow', 'The yellow button fill; SaftUI has no control that shows it yet.' },
+			{ 'yellow', 'Yellow', "A fresh mount's entry in the loot feed: its border and fill." },
 			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
 	},
