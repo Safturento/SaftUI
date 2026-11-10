@@ -199,7 +199,20 @@ function UF:PlaceUnitFrame(frame)
 			return false
 		end
 		local holder = self.holders[frame.base_unit]
-		if frame.ID and frame.ID > 1 then
+		if frame.ID and holder then
+			-- Boss/arena share party and raid's layout math (groups.lua). Arena has
+			-- no layout keys, so GetGroupLayout's fallbacks give it one column
+			-- growing down by its spacing, as before. Frame i then hangs TOP to
+			-- BOTTOM under frame i-1 (it was TOPLEFT to BOTTOMLEFT) and frame 1
+			-- sits at the holder's TOP (it was TOPLEFT): the same spots while the
+			-- frames are as wide as the holder.
+			local frames = self.units[frame.base_unit]
+			local layout = UF.GetGroupLayout(config)
+			local _, _, unitsPerColumn, numColumns = UF.GetGroupLayoutSize(layout, #frames)
+			for _, a in ipairs(UF.GroupAnchor(frame.ID, frames, holder, layout, unitsPerColumn, numColumns)) do
+				frame:SetPoint(a[1], a[2], a[3], a[4], a[5])
+			end
+		elseif frame.ID and frame.ID > 1 then
 			frame:SetPoint('TOPLEFT', self.units[frame.base_unit][frame.ID-1], 'BOTTOMLEFT', 0, -config.spacing)
 		elseif holder then
 			frame:SetPoint('TOPLEFT', holder, 'TOPLEFT')
@@ -221,7 +234,9 @@ function UF:PlaceHolder(unit)
 	local count = #self.units[unit]
 	holder:ClearAllPoints()
 	holder:SetPoint(st:UnpackPoint(config.position))
-	st:SetSize(holder, config.width, count * config.height + (count - 1) * config.spacing)
+	-- Boss/arena lay out like party and raid: the holder covers all of it.
+	local width, height = UF.GetGroupLayoutSize(UF.GetGroupLayout(config), count)
+	st:SetSize(holder, width, height)
 end
 
 function UF:UpdateUnitFrame(frame, element_name)

@@ -3,7 +3,7 @@ local st = SaftUI
 
 st.defaults.unitframes.profiles["**"].boss = {
     spacing = 41,
-    growthDirection = 'DOWN',
+    growthDirection = 'TOP',
     maxColumns = 1,
     unitsPerColumn = 5,
     columnSpacing = 0,

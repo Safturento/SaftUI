@@ -79,7 +79,7 @@ end
 -- The header adds xOffset/yOffset as they are, so they're signed here to make
 -- spacing a gap whichever way the frames grow (unsigned, frames growing down
 -- or left overlapped).
-local function GetLayout(config)
+function UF.GetGroupLayout(config)
 	local point = GROWTH_POINTS[config.growthDirection] and config.growthDirection or 'TOP'
 	local _, xMult, yMult = GetRelativePointAnchor(point)
 	local spacing = tonumber(config.spacing) or 0
@@ -99,7 +99,7 @@ end
 -- The size the header gives itself for count members (the same sums as
 -- configureChildren in SecureGroupHeaders.lua), its column length and column
 -- count, and how many of the count it shows (maxColumns can cut it short).
-local function GetLayoutSize(layout, count)
+function UF.GetGroupLayoutSize(layout, count)
 	count = math.max(1, count)
 	local _, xMult, yMult = GetRelativePointAnchor(layout.point)
 	local unitsPerColumn, numColumns = layout.unitsPerColumn, 1
@@ -131,7 +131,7 @@ end
 
 -- The header attributes that come from the group's config.
 local function GetLayoutAttributes(group, config)
-	local layout = GetLayout(config)
+	local layout = UF.GetGroupLayout(config)
 	return {
 		['initial-width'] = layout.width,
 		['initial-height'] = layout.height,
@@ -215,7 +215,7 @@ function UF:ApplyGroupLayout(group)
 	end
 	header:SetAttribute('_ignore', nil)
 
-	local _, _, _, _, count = GetLayoutSize(GetLayout(config), GetGroupSize(group, config))
+	local _, _, _, _, count = UF.GetGroupLayoutSize(UF.GetGroupLayout(config), GetGroupSize(group, config))
 	CreateHeaderChildren(header, count)
 
 	-- A shown header lays itself out again on any attribute change, so this
@@ -234,7 +234,7 @@ end
 function UF:PlaceGroupHolder(group)
 	local holder = self.holders[group]
 	local config = self:GetProfileConfig()[group]
-	local width, height = GetLayoutSize(GetLayout(config), GetGroupSize(group, config))
+	local width, height = UF.GetGroupLayoutSize(UF.GetGroupLayout(config), GetGroupSize(group, config))
 	holder:ClearAllPoints()
 	holder:SetPoint(st:UnpackPoint(config.position))
 	st:SetSize(holder, width, height)
@@ -652,9 +652,14 @@ local function FillPreviewFrame(frame, member)
 	frame:SetAlpha((member.outOfRange and not member.offline) and alpha.outside or alpha.inside)
 end
 
--- Places the first count frames inside container the way configureChildren in
--- SecureGroupHeaders.lua places a header's buttons inside the header.
-local function ArrangeLikeHeader(container, frames, count, layout, unitsPerColumn, numColumns)
+-- The points that put frames[index] where configureChildren in
+-- SecureGroupHeaders.lua puts a header's index-th button inside the header:
+-- a list of { point, relativeTo, relativePoint, x, y }, relativeTo being the
+-- container or an earlier frame of frames. Party and raid previews use it,
+-- and so do boss and arena frames (UF:PlaceUnitFrame), which are plain unit
+-- frames laid out the same way. unitsPerColumn and numColumns come from
+-- UF.GetGroupLayoutSize.
+function UF.GroupAnchor(index, frames, container, layout, unitsPerColumn, numColumns)
 	local point = layout.point
 	local relativePoint, xOffsetMult, yOffsetMult = GetRelativePointAnchor(point)
 	local xMultiplier, yMultiplier = math.abs(xOffsetMult), math.abs(yOffsetMult)
@@ -665,26 +670,29 @@ local function ArrangeLikeHeader(container, frames, count, layout, unitsPerColum
 		columnRelPoint, colxMulti, colyMulti = GetRelativePointAnchor(columnAnchorPoint)
 	end
 
-	local columnUnitCount = 0
+	local columnUnitCount = (index - 1) % unitsPerColumn + 1
+	if index == 1 then
+		local anchors = { { point, container, point, 0, 0 } }
+		if columnAnchorPoint then
+			anchors[2] = { columnAnchorPoint, container, columnAnchorPoint, 0, 0 }
+		end
+		return anchors
+	elseif columnUnitCount == 1 then
+		return { { columnAnchorPoint, frames[index - unitsPerColumn], columnRelPoint,
+			colxMulti * layout.columnSpacing, colyMulti * layout.columnSpacing } }
+	end
+	return { { point, frames[index - 1], relativePoint,
+		xMultiplier * layout.xOffset, yMultiplier * layout.yOffset } }
+end
+
+-- Places the first count frames inside container the way a header places its
+-- buttons.
+local function ArrangeLikeHeader(container, frames, count, layout, unitsPerColumn, numColumns)
 	for i = 1, count do
 		local frame = frames[i]
-		columnUnitCount = columnUnitCount + 1
-		if columnUnitCount > unitsPerColumn then
-			columnUnitCount = 1
-		end
-
 		frame:ClearAllPoints()
-		if i == 1 then
-			frame:SetPoint(point, container, point, 0, 0)
-			if columnAnchorPoint then
-				frame:SetPoint(columnAnchorPoint, container, columnAnchorPoint, 0, 0)
-			end
-		elseif columnUnitCount == 1 then
-			frame:SetPoint(columnAnchorPoint, frames[i - unitsPerColumn], columnRelPoint,
-				colxMulti * layout.columnSpacing, colyMulti * layout.columnSpacing)
-		else
-			frame:SetPoint(point, frames[i - 1], relativePoint,
-				xMultiplier * layout.xOffset, yMultiplier * layout.yOffset)
+		for _, a in ipairs(UF.GroupAnchor(i, frames, container, layout, unitsPerColumn, numColumns)) do
+			frame:SetPoint(a[1], a[2], a[3], a[4], a[5])
 		end
 	end
 end
@@ -709,8 +717,8 @@ function UF:UpdateGroupPreview(group)
 		self.previews[group] = container
 	end
 
-	local layout = GetLayout(config)
-	local width, height, unitsPerColumn, numColumns, count = GetLayoutSize(layout, GetGroupSize(group, config))
+	local layout = UF.GetGroupLayout(config)
+	local width, height, unitsPerColumn, numColumns, count = UF.GetGroupLayoutSize(layout, GetGroupSize(group, config))
 	local point = config.position.point
 	container:ClearAllPoints()
 	container:SetPoint(point, self.holders[group], point)
