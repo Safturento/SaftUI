@@ -252,7 +252,10 @@ local function PlaceRow(cell, x, y, width)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
 		label:Show()
 		if row.type == 'toggle' or row.type == 'color' then
-			label:SetWidth(max(1, min(label:GetStringWidth(), width - widget:GetWidth() - LABEL_GAP)))
+			-- GetStringWidth is the truncated width of a fixed-width label, so a reused
+			-- one would measure at its old width; the unbounded width is the text's own.
+			local textWidth = ceil((label.GetUnboundedStringWidth or label.GetStringWidth)(label))
+			label:SetWidth(max(1, min(textWidth, width - widget:GetWidth() - LABEL_GAP)))
 			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
 			widget:SetPoint('LEFT', label, 'RIGHT', LABEL_GAP, 0)
 			return

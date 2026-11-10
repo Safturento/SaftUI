@@ -633,10 +633,18 @@ end
 -- font string is one line here), so this only remembers the setting.
 function FontString.SetWordWrap(self, s, wrap) s.word_wrap = wrap and true or false end
 function FontString.CanWordWrap(self, s) return s.word_wrap ~= false end
-function FontString.GetStringWidth(self, s)
+-- The text's full width, however narrow the font string is.
+function FontString.GetUnboundedStringWidth(self, s)
 	local font = font_of(s)
 	if not font or not s.text then return 0 end
 	return #s.text * font[2] / 2
+end
+-- Like the modern client, a fixed-width font string that doesn't wrap reports
+-- the truncated width: never more than its width.
+function FontString.GetStringWidth(self, s)
+	local full = FontString.GetUnboundedStringWidth(self, s)
+	if s.width and s.word_wrap == false then return math.min(full, s.width) end
+	return full
 end
 function FontString.GetStringHeight(self, s)
 	local font = font_of(s)

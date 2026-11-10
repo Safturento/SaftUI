@@ -263,8 +263,29 @@ test('a toggle and a color sit 10 past the end of their label, at normal and sma
 		check(rel == c.label, key .. ' is anchored to its label')
 		eq(relPoint, 'RIGHT', key .. ' to the label\'s right')
 		eq(x, 10, key .. ' offset')
-		eq(c.label:GetWidth(), c.label:GetStringWidth(), key .. ' label is its text wide, not the leftover')
+		eq(c.label:GetWidth(), math.ceil(c.label:GetUnboundedStringWidth()), key .. ' label is its text wide, rounded up, not the leftover')
 	end
+	body:Release()
+end)
+
+test('a label reused from a shorter toggle is its full text width, rounded up, with the checkbox 10 after it', function()
+	local body, by = draw_body(774, { { 't', 'toggle', 'Show' } })
+	local label = by.t.label
+	-- The pools belong to the body: release it and draw the long toggle on the same one.
+	body:Release()
+	body.cells = {}
+	local root = { page = {
+		type = 'group', name = 'Page',
+		args = { t = { type = 'toggle', name = 'Show damage dealers', order = 1 } },
+		get = function() return true end, set = function() end,
+	} }
+	body:SetRoot(root)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local c = body.cells[1]
+	check(c.label == label, 'the label was reused')
+	eq(c.label:GetWidth(), math.ceil(c.label:GetUnboundedStringWidth()), 'the whole text, not the old width')
+	eq(c.label:GetWidth(), c.label:GetStringWidth(), 'so the game reports it uncut')
+	eq(select(4, c.widget.frame:GetPoint(1)), 10, 'the checkbox is 10 after the label')
 	body:Release()
 end)
 
