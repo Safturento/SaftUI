@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
   - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
@@ -49,6 +50,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered
+
+**What:** oUF's Health and Power register `UNIT_FACTION` (for `colorTapping` and `colorReaction`), `UNIT_FLAGS` (`colorSelection`) and `UNIT_THREAT_LIST_UPDATE` (`colorThreat`) in their `Enable`, and only if the flag is already on then; turning a flag on later is meant to go through the element's `SetColorTapping` / `SetColorReaction` / ..., which register the event. SaftUI assigns the flags straight onto the element in each element's `UpdateConfig` (`elements/health.lua`, `elements/power.lua`). For single units (player, target, focus, ...) that first runs in `UF:ApplyConfig`, after `oUF:Spawn` has enabled the elements, so the flags were nil at `Enable` and those events are never registered, even for the defaults (Health's `colorTapping` and `colorReaction` are on). Group buttons are fine: `UF.ConstructUnit` updates them inside the style function, before `Enable`.
+
+**Why noticed:** Task 9 of the options layout project (2026-11-09) exposed the color flags in `/sui` and checked that oUF re-reads them. It does, on every health or power update (`Path` runs `ColorPath`), and SaftUI's option set ends in `UpdateAllElements`, so each option works at once. What's missed is a recolor between updates: a target someone else tags without damaging it (no `UNIT_HEALTH`) stays its old color until its next health or power change, or until it's targeted again.
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua` and `power.lua` (`UpdateConfig`); `SaftUI-Unitframes/Libraries/oUF/elements/health.lua` and `power.lua` (`Enable`, `SetColorTapping`, `SetColorReaction`); `SaftUI-Unitframes/Libraries/oUF/ouf.lua` (`initObject`: the style function, then `EnableElement`); `UF.ConstructUnit`, `UF:ApplyConfig` (`unitframes.lua`).
+
+**What's been considered:** Call `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` in `UpdateConfig` instead of assigning those two (the forced call registers or unregisters the event to match). Plain table writes stay fine in combat; registering an event on a unit frame is too.
+
+**Shape of work:** A few lines in health.lua and power.lua, and an in-game check: tag a target with a debuff from another player and watch it go grey.
 
 ### 2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)
 
@@ -201,16 +214,19 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons` now have options (Task 5 of the options layout project, 2026-11-09): Bags → General and Look.
 - **Chat:** `chat.linespacing` is left without an option, because nothing applies it. Only `CHT:ChatFrame_OnUpdate` (`SaftUI-Chat/chatframe.lua`) reads it, and its `SecureHook` is commented out, so the setting is read by nothing. Either hook it back up (the function sets each line's spacing once, so a change would also need the lines un-marked `handled`, and it writes a field onto Blizzard's chat lines, which `.agents/taint.md` forbids, so it needs a side table) and give it an option, or remove the key.
 - **Loot:** `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) is in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
-- **Unit frames:**
-  - `range_alpha.inside` and `.outside`.
-  - `boss.spacing`: boss has no Layout group.
-  - `alpha` on every element but Name.
-  - `health.texture` and `health.text.boss_percent`.
-  - Health's color toggles: `colorTapping`, `colorDisconnected`, `colorHealth`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`, `colorSmooth`.
-  - `power.text.hide_full`.
-  - Power's color toggles: `colorTapping`, `colorDisconnected`, `colorPower`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`.
-  - `name.show_classification` and `name.colorClass`.
+- **Unit frames:** these now have options (Tasks 8 and 9 of the options layout project, 2026-11-09), each only on the units where it does something:
+  - `range_alpha.inside` and `.outside`: on party and the raids, the only frames with oUF's Range element.
+  - `boss.spacing`, with the rest of boss's layout: boss has a Layout group.
+  - `alpha` on every element: each element tab, in Castbar's Bar and the auras' Buttons.
+  - `health.texture` on every unit, and `health.text.boss_percent` where a skull-level unit can show (boss, target, focus and their targets, the pet's target; not player, pet, party or raid).
+  - Health's color toggles (`colorTapping`, `colorDisconnected`, `colorHealth`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`, `colorSmooth`) and Power's (`colorTapping`, `colorDisconnected`, `colorPower`, `colorClass`, `colorClassNPC`, `colorClassPet`, `colorReaction`), in each tab's Colors section. A flag is left off the units whose frames never show what it checks for (`UF.CanShow` in `config/config.lua`): e.g. Tapped isn't on player, pet, party or raid, Class isn't on pet or boss.
+  - `colorCustom` and `customColor` on Health, Power and Additional power.
+  - `power.text.hide_full` already had one.
+  - `name.show_classification` (not on player, pet, party or raid) and `name.colorClass` (not on pet or boss).
   - The indicators' `template`.
+  - **Still without an option, and not on this list:**
+    - Power's `colorSmooth` (oUF's `colorPowerSmooth`, a gradient by power percent). It's applied (`elements/power.lua`) and needs `colorPower` on too; oUF's power colors keep their curves through `UF:UpdateColors`' merge. Check it in game, then add it to Power's Colors after Power type.
+    - The castbar's `bg` (`enable`, `alpha`, `multiplier`), which works since 2026-11-09 (`bar_colors_test.lua`). The Castbar tab could take a Background section like Health's and Power's.
 
 **Read by nothing:** settled with the user on 2026-11-09.
 - **Done in 0308977:**
@@ -243,7 +259,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
   - the unit frame profile Rename and Import, which also fixed `Config:Import`;
   - the Frame level option, removed;
   - focus's duplicate `health` table. The first table was removed, since it would have offset focus health without shrinking it.
-- **Health → Text → Deficit** has defaults only on party and the raids.
+- **Health → Text → Deficit** had defaults only on party and the raids. *Fixed 2026-11-09 (options layout project, Task 9): `deficit = false` in the base health text defaults.*
 
 **Frames with no edit mode mover:**
 - **Unit frame elements placed on the screen** are moved to their own entry, [Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen). The user wants that planned later as its own effort.
@@ -448,14 +464,14 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
   - Auras: `font` (the count always has its own `count.font`), `showDebuffType`, `horizontal_growth`, `showBar` (player buffs) and `border` (target buffs). Also the `filter` tables and `desaturateOthers`, which the aura-container followup below covers.
   - Additional power: `colorClass` (oUF's AdditionalPower only knows `colorPower`), `text.hide_full`, `text.percent`. *2026-11-09 (0308977): `colorClass` removed; `text.hide_full` and `text.percent` hooked up.*
   - Class power: `show_empty` is read (`elements/classpower.lua`) but changes nothing, since oUF already shows every point up to the max.
-  - Focus `castbar.colors.normal = { .5, .9, .7 }`: a list, but `GetRGB` reads the `r`/`g`/`b` that the base default's color fills in, so the focus castbar uses the base color.
+  - Focus `castbar.colors.normal = { .5, .9, .7 }`: a list, but `GetRGB` reads the `r`/`g`/`b` that the base default's color fills in, so the focus castbar uses the base color. *Fixed 2026-11-09 (options layout project, Task 9): now `{ r = .5, g = .9, b = .7 }`.*
   - Raid target `position.element = 'Portrait'`: Portrait isn't registered, so the marker anchors to the unit frame.
   - `widget` (`widget.lua` is commented out of `elements/elements.xml`, and it has no `UpdateConfig`), `portrait` and `aurawatch` (their `RegisterElement` calls are commented out).
 - **Errors once on** (*both fixed 2026-11-09:* `colorCustom` reads either color shape through `UF.UnpackColor`, and is applied in `PostUpdateColor` after oUF's recolor on health, power and additional power, with power backgrounds following it. The castbar's `bg` has `alpha`/`multiplier` defaults and is colored from the bar. `tests/unitframes/bar_colors_test.lua`. Still open: `groups.lua`'s preview path applies the custom power color without `UF.SetPowerBackgroundColor`):
   - `castbar.bg.enable`: the castbar's `bg` has no `alpha` or `multiplier`, so `UF:UpdateStatusBarElement` calls `bg:SetAlpha(nil)`. Nothing colors the background either.
   - `colorCustom` on health, power and additional power: the `customColor` defaults are plain `{ r, g, b }` lists, and `config.customColor:GetRGB()` errors on them.
 - **Half done:** `additionalpower.manaAsPrimary` swaps the size, texture and text settings of the Power and AdditionalPower bars (`UF:UpdateElement`'s `configOverride`), but not their positions: `UF:UpdateElementPosition(element, unitframe, configOverride)` gets the override in its `unitframe` slot. The `Override` that would keep the bar on mana is commented out, and power's `GetDisplayPower` never runs (oUF only calls it with `displayAltPower`).
-- **Looks broken:** additional power defaults to `colorPower = false`, and nothing else colors the bar or its background, so it's white once enabled. Its `/sui` option says so.
+- **Looks broken:** additional power defaults to `colorPower = false`, and nothing else colors the bar or its background, so it's white once enabled. Its `/sui` option says so. *Fixed 2026-11-09 (options layout project, Task 9): the default is `colorPower = true`.*
 
 **Why noticed:** On 2026-11-07, while adding Castbar, Class power, Additional power, Buffs, Debuffs and indicator tabs to `/sui` → Unitframes (the user asked to "start adding other UF elements to the config"). The rule for that pass was to expose only settings the element code reads, and note the rest.
 
@@ -469,7 +485,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Shape of work:** A small cleanup of the defaults, plus two small fixes (`customColor`, the castbar background). `manaAsPrimary` needs a decision first.
 
-**Open questions:** Finish `manaAsPrimary` or remove it? Should the focus castbar get its own color back?
+**Open questions:** Finish `manaAsPrimary` or remove it? Should the focus castbar get its own color back? *(The second was settled by the options layout spec: yes, fixed 2026-11-09.)*
 
 ### 2026-11-07 — Action bar leftovers: main bar concealed not blocked, LibActionButton on deprecated APIs, unskinned flyouts
 

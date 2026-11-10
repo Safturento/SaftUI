@@ -59,8 +59,10 @@ local function GetConfigTable(unit)
 	local function Config() return UF:GetProfileConfig()[unit].classpower end
 	local function Update() UF:UpdateConfig(unit, 'ClassPower') end
 
-	local template = generators.template(2)
-	template.desc = 'The backdrop of each point.'
+	local width = generators.width(1, "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame.")
+	width.size = 'small'
+	local height = generators.height(3, "Each point's height in pixels.")
+	height.size = 'small'
 
 	return {
 		order = 4,
@@ -72,30 +74,33 @@ local function GetConfigTable(unit)
 			Update()
 		end,
 		args = {
-			enable = generators.enable(0),
-			framelevel = generators.framelevel(1),
-			template = template,
+			enable = generators.toggle(0, 'Enable', 'Shows your combo points, holy power, chi, soul shards and the like, as a row of points.', 'small'),
+			template = generators.template(1, "Each point's background and border."),
+			alpha = generators.alpha(2, 'How solid the points are, from see-through to opaque.'),
+			framelevel = generators.framelevel(3, 'Draws the points over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
+			spacing = generators.range(4, 'Spacing', 0, 20, 1, 'The gap between one point and the next.'),
 			-- Each point is height tall (UpdateConfig), never relative to the
 			-- unit frame, so height has no Relative toggle.
 			size = {
-				order = 3,
+				order = 5,
 				name = '',
 				type = 'group',
 				inline = true,
 				args = {
-					width = generators.width(1),
-					relative_width = generators.toggle(2, 'Relative'),
-					height = generators.height(3),
+					width = width,
+					relative_width = generators.toggle(2, 'Relative', "Width follows the unit frame: it is added to the unit frame's width.", 'small'),
+					height = height,
 				},
 			},
-			spacing = generators.range(4, 'Spacing', 0, 20, 1),
-			position = generators.uf_element_position(50,
+			-- Last in the tab.
+			position = generators.uf_element_position(1000,
 				function(index) return Config().position[index] end,
 				function(index, value)
 					Config().position[index] = value
 					Update()
 				end,
-				UF:ConfigTarget(unit, 'ClassPower')
+				UF:ConfigTarget(unit, 'ClassPower'),
+				"Where the row sits: which of its anchor points goes to which point of what it's attached to, then moved by X and Y."
 			),
 		},
 	}

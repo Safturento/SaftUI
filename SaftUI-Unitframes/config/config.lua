@@ -158,18 +158,132 @@ function UF:ConfigTarget(unit, element, key)
 	end
 end
 
+-- An element's size (UF:UpdateElementSize), on one line: Width and its
+-- Relative, Height and its Relative. Untitled, so it reads as part of the
+-- options above it.
 function UF.GenerateRelativeSizeConfigGroup(order)
+	local G = st.Config.generators
+	local width = G.width(1, "The width in pixels. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame, -4 is 4 narrower.")
+	width.size = 'small'
+	local height = G.height(3, "The height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter.")
+	height.size = 'small'
 	return {
 		order = order,
 		name = '',
 		type = 'group',
 		inline = true,
 		args = {
-			width =  st.Config.generators.width(1),
-			relative_width =  st.Config.generators.toggle(2, 'Relative'),
-			height =  st.Config.generators.height(3),
-			relative_height =  st.Config.generators.toggle(4, 'Relative'),
+			width = width,
+			relative_width = G.toggle(2, 'Relative', 'Width follows the unit frame: it is added to the unit frame\'s width.', 'small'),
+			height = height,
+			relative_height = G.toggle(4, 'Relative', 'Height follows the unit frame: it is added to the unit frame\'s height.', 'small'),
 		},
+	}
+end
+
+-- What each config unit's frames show, for the options that only work on
+-- some kinds of unit. Player shows you, pet your pet, boss frames bosses, and
+-- party and raid frames players (party AI followers count as players, as oUF
+-- counts them). Any other unit (target, focus and their targets, the pet's
+-- target) can show anything. The kinds:
+--   players  a player (oUF's UnitIsPlayer or UnitInPartyIsAI)
+--   npcs     anything that isn't a player, pets too
+--   pets     a unit a player controls that isn't a player
+--   mobs     an NPC no player controls: tapped, rare, elite or skull level
+--   offline  a player who can be offline
+local UNIT_SHOWS = {
+	player = { players = true },
+	pet = { npcs = true, pets = true },
+	boss = { npcs = true, mobs = true },
+	party = { players = true, offline = true },
+	raid10 = { players = true, offline = true },
+	raid40 = { players = true, offline = true },
+}
+
+-- Whether unit's frames can ever show a unit of kind (above).
+function UF.CanShow(unit, kind)
+	local shows = UNIT_SHOWS[unit]
+	return not shows or shows[kind] or false
+end
+
+-- oUF's color flags, as its health and power elements check them: the
+-- option's name and desc, and the kind of unit it needs (UF.CanShow), if any.
+local COLOR_FLAGS = {
+	colorDisconnected = { name = 'Disconnected', shows = 'offline',
+		desc = 'Grey while the unit is offline.' },
+	colorTapping = { name = 'Tapped', shows = 'mobs',
+		desc = "Grey while someone else has tagged the unit, so it won't give you loot or experience." },
+	colorPower = { name = 'Power type',
+		desc = 'By the power the bar shows: blue for mana, red for rage, yellow for energy and so on.' },
+	colorClass = { name = 'Class', shows = 'players',
+		desc = 'Players in their class color.' },
+	colorClassNPC = { name = 'NPC class', shows = 'npcs',
+		desc = "Units that aren't players, pets included, in their class color." },
+	colorClassPet = { name = 'Pet class', shows = 'pets',
+		desc = "Pets and other units players control, in their class color." },
+	colorReaction = { name = 'Reaction',
+		desc = 'By how the unit stands with you: red when hostile, yellow when neutral, green when friendly.' },
+	colorSmooth = { name = 'Gradient',
+		desc = 'From red at low health through yellow to green at full health.' },
+	colorHealth = { name = 'Health color',
+		desc = 'Plain green, for when none of the colors above fits.' },
+}
+
+--[[
+	A bar's Colors section (health, power, additional power): the color flags
+	in flags' order, which is the order oUF checks them in, then Custom and
+	its color on a line of their own (an untitled group, args.custom). A flag
+	the unit's frames never show the kind of unit for (UF.CanShow) is left
+	out. The toggles read and write the element's config through the tab's
+	get and set; descs overrides a flag's desc. config() returns the
+	element's config, and update() re-applies it.
+]]
+function UF.GenerateColorsConfigGroup(order, unit, flags, config, update, descs)
+	local G = st.Config.generators
+	local args, i = {}, 0
+	for _, key in ipairs(flags) do
+		local flag = COLOR_FLAGS[key]
+		if not flag.shows or UF.CanShow(unit, flag.shows) then
+			i = i + 1
+			args[key] = G.toggle(i, flag.name, descs and descs[key] or flag.desc, 'small')
+		end
+	end
+	args.custom = {
+		order = i + 1,
+		name = '',
+		type = 'group',
+		inline = true,
+		args = {
+			colorCustom = G.toggle(1, 'Custom', 'Colors the bar with Custom color, over every color above.', 'small'),
+			-- customColor is a { r, g, b } list in the defaults, and can be a
+			-- color object in a saved profile (UF.UnpackColor reads both); it's
+			-- written in the shape it has.
+			customColor = {
+				order = 2,
+				name = 'Custom color',
+				desc = 'The color Custom gives the bar.',
+				type = 'color',
+				size = 'small',
+				get = function() return UF.UnpackColor(config().customColor) end,
+				set = function(_, r, g, b)
+					local color = config().customColor
+					if type(color) == 'table' and color.GetRGB then
+						color.r, color.g, color.b = r, g, b
+					else
+						color[1], color[2], color[3] = r, g, b
+					end
+					update()
+				end,
+			},
+		},
+	}
+	return {
+		order = order,
+		name = 'Colors',
+		desc = 'The bar takes the first of these that fits the unit, in this order.',
+		type = 'group',
+		inline = true,
+		args = args,
 	}
 end
 

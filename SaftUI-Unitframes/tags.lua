@@ -70,7 +70,13 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	if(config.colorClass and (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
 			or (config.colorClassNPC and not (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)))
 			or (config.colorClassPet and UnitPlayerControlled(unit) and not UnitIsPlayer(unit)) then
-		name = st.StringFormat:ColorString(name, UF.oUF.colors.class[class]:GetRGB())
+		-- A secret class can't index the colors, nor a secret name be colored
+		-- here (as oUF's health element notes, the class can be secret on
+		-- retail): the name is then left as it is.
+		local classColor = not issecretvalue(class) and class and UF.oUF.colors.class[class]
+		if classColor and not issecretvalue(name) then
+			name = st.StringFormat:ColorString(name, classColor:GetRGB())
+		end
 	elseif config.color_hostile and reaction then
 		if reaction < 3 then
 			name = st.StringFormat:ColorString(name, st.config.profile.colors.text.red:GetRGB())

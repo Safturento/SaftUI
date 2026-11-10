@@ -106,8 +106,9 @@ local function GetConfigTable(unit)
 	local function Update() UF:UpdateConfig(unit, 'Castbar') end
 
 	-- The settings of the castbar (key nil), or of its text, time or icon
-	-- (castbar[key]), placed on the castbar's frame at frameKey.
-	local function Position(order, key, frameKey)
+	-- (castbar[key]), placed on the castbar's frame at frameKey. what names it
+	-- in the desc.
+	local function Position(order, key, frameKey, what)
 		local function Get() return key and Config()[key].position or Config().position end
 		return generators.uf_element_position(order,
 			function(index) return Get()[index] end,
@@ -115,7 +116,8 @@ local function GetConfigTable(unit)
 				Get()[index] = value
 				Update()
 			end,
-			UF:ConfigTarget(unit, 'Castbar', frameKey)
+			UF:ConfigTarget(unit, 'Castbar', frameKey),
+			("Where the %s sits: which of its points goes to which point of what it's attached to, then moved by X and Y."):format(what)
 		)
 	end
 
@@ -136,11 +138,13 @@ local function GetConfigTable(unit)
 	end
 
 	-- castbar.colors[key]. Shown from the next cast.
-	local function Color(order, name, key)
+	local function Color(order, name, key, desc)
 		return {
 			order = order,
 			name = name,
+			desc = desc,
 			type = 'color',
+			size = 'small',
 			get = function()
 				local color = Config().colors[key]
 				return color.r, color.g, color.b
@@ -153,19 +157,21 @@ local function GetConfigTable(unit)
 		}
 	end
 
-	local function TextArgs(frameKey, key)
+	-- The spell name's or the time's settings, in castbar[key].
+	local function TextArgs(frameKey, key, what)
 		return {
-			enable = generators.enable(0),
-			font = generators.font(1),
-			position = Position(2, key, frameKey),
+			enable = generators.toggle(0, 'Enable', ('Shows the %s on the castbar.'):format(what), 'small'),
+			font = generators.font(1, ("The %s's font."):format(what)),
+			-- Last in its section.
+			position = Position(1000, key, frameKey, what),
 		}
 	end
 
-	local enable = generators.enable(0)
-	if unit == 'player' then
-		-- oUF hides them when it enables the player castbar, and Enable doesn't undo that.
-		enable.desc = "Blizzard's player and pet castbars stay hidden either way."
-	end
+	local FRAME_LEVEL = 'Draws it over the parts of the unit frame with a lower frame level, and under those with a higher one.'
+	-- oUF hides them when it enables the player castbar, and Enable doesn't undo that.
+	local enableDesc = unit == 'player'
+		and "Shows your castbar while you cast. Blizzard's player and pet castbars stay hidden either way."
+		or 'Shows the castbar while the unit casts.'
 
 	return {
 		order = 6,
@@ -177,29 +183,32 @@ local function GetConfigTable(unit)
 			Update()
 		end,
 		args = {
-			enable = enable,
+			enable = generators.toggle(0, 'Enable', enableDesc, 'small'),
 			bar = {
 				order = 1,
 				name = 'Bar',
 				type = 'group',
 				inline = true,
 				args = {
-					framelevel = generators.framelevel(1),
-					template = generators.template(2),
-					size = UF.GenerateRelativeSizeConfigGroup(3),
-					normal = Color(4, 'Color', 'normal'),
-					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt'),
-					position = Position(6),
+					template = generators.template(1, "The castbar's background and border."),
+					alpha = generators.alpha(2, 'How solid the castbar, its texts and its icon are, from see-through to opaque.'),
+					framelevel = generators.framelevel(3, FRAME_LEVEL),
+					normal = Color(4, 'Color', 'normal', "The bar's color while the cast can be interrupted. Shown from the next cast."),
+					nointerrupt = Color(5, "Can't interrupt", 'nointerrupt', "The bar's color while the cast can't be interrupted. Shown from the next cast."),
+					size = UF.GenerateRelativeSizeConfigGroup(6),
+					-- Last in Bar.
+					position = Position(1000, nil, nil, 'castbar'),
 				},
 			},
-			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text')),
-			time = Section(3, 'Time', 'time', TextArgs('Time', 'time')),
+			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text', 'spell name')),
+			time = Section(3, 'Time', 'time', TextArgs('Time', 'time', 'cast time')),
 			icon = Section(4, 'Icon', 'icon', {
-				enable = generators.enable(0),
-				framelevel = generators.framelevel(1),
-				template = generators.template(2),
+				enable = generators.toggle(0, 'Enable', "Shows the spell's icon.", 'small'),
+				template = generators.template(1, "The icon's background and border."),
+				framelevel = generators.framelevel(2, FRAME_LEVEL),
 				size = UF.GenerateRelativeSizeConfigGroup(3),
-				position = Position(4, 'icon', 'Icon'),
+				-- Last in Icon.
+				position = Position(1000, 'icon', 'Icon', 'icon'),
 			}),
 		},
 	}

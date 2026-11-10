@@ -89,9 +89,44 @@ end
 
 
 
+-- The status bar textures LibSharedMedia has, by name (SaftUI's and any other
+-- addon's), as st:GetStatusBarTexture looks them up.
+local function StatusBarTextures()
+	local textures = {}
+	for _, name in ipairs(st.LSM:List('statusbar')) do
+		textures[name] = name
+	end
+	return textures
+end
+
 local function GetConfigTable(unit)
+	local G = st.Config.generators
 	-- Looked up on every get/set: a profile change replaces these tables.
 	local function UnitConfig() return UF:GetProfileConfig()[unit] end
+	local function Update() UF:UpdateConfig(unit, 'Health') end
+
+	local text = {
+		enable = G.toggle(0, 'Enable', "Shows the health as text on the unit frame.", 'small'),
+		hide_full = G.toggle(1, 'Hide full', 'Hides the text while health is full.', 'small'),
+		font = G.font(2, "The health text's font."),
+		deficit = G.toggle(3, 'Deficit', 'Shows how much health is missing, as -1234, instead of the health.', 'small'),
+		percent = G.toggle(4, 'Percent', 'Shows the health as a percent instead. Deficit wins when both are on.', 'small'),
+		-- Last in Text.
+		position = G.uf_element_position(1000,
+			function(index) return UnitConfig().health.text.position[index] end,
+			function(index, value)
+				UnitConfig().health.text.position[index] = value
+				Update()
+			end,
+			UF:ConfigTarget(unit, 'Health', 'text'),
+			"Where the health text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+		),
+	}
+	-- PostUpdateHealth adds it for a unit whose level is -1 (a skull).
+	if UF.CanShow(unit, 'mobs') then
+		text.boss_percent = G.toggle(5, 'Boss percent',
+			'On a skull-level unit, such as a boss, adds the health percent after the health: 1234567 | 45.6. Not with Deficit or Percent on.', 'small')
+	end
 
 	return {
 		type = 'group',
@@ -102,27 +137,27 @@ local function GetConfigTable(unit)
 		end,
 		set = function(info, value)
 			UnitConfig().health[info[#info]] = value
-			UF:UpdateConfig(unit, 'Health')
+			Update()
 		end,
 		args = {
-			enable = st.Config.generators.enable(0),
-			framelevel = st.Config.generators.framelevel(1),
-			template = st.Config.generators.template(2),
-			size = UF.GenerateRelativeSizeConfigGroup(3),
-			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill'),
-			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill'),
-			Smooth = st.Config.generators.toggle(5.5, 'Smooth'),
-			-- Last in the tab, after Text and Status Bar BG.
-			position = st.Config.generators.uf_element_position(1000,
-				function(index)
-					return UnitConfig().health.position[index]
-				end,
-				function(index, value)
-					UnitConfig().health.position[index] = value
-					UF:UpdateConfig(unit, 'Health')
-				end,
-				UF:ConfigTarget(unit, 'Health')
-			),
+			enable = G.toggle(0, 'Enable', "Shows the health bar.", 'small'),
+			reverse_fill = G.toggle(1, 'Reverse fill', 'Fills the bar from the other end: right to left, or top down when vertical.', 'small'),
+			vertical_fill = G.toggle(2, 'Vertical fill', 'Fills the bar from the bottom up instead of from left to right.', 'small'),
+			Smooth = G.toggle(3, 'Smooth', 'Slides the bar to each new value instead of jumping to it.', 'small'),
+			template = G.template(4, "The health bar's background and border."),
+			texture = {
+				order = 5,
+				name = 'Texture',
+				desc = 'What the bar is filled with.',
+				type = 'select',
+				values = StatusBarTextures,
+			},
+			alpha = G.alpha(6, 'How solid the health bar is, from see-through to opaque.'),
+			framelevel = G.framelevel(7, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
+			colors = UF.GenerateColorsConfigGroup(9, unit,
+				{ 'colorDisconnected', 'colorTapping', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction', 'colorSmooth', 'colorHealth' },
+				function() return UnitConfig().health end, Update),
 			text = {
 				order = 98,
 				name = 'Text',
@@ -133,30 +168,13 @@ local function GetConfigTable(unit)
 				end,
 				set = function(info, value)
 					UnitConfig().health.text[info[#info]] = value
-					UF:UpdateConfig(unit, 'Health')
+					Update()
 				end,
-				args = {
-					enable = st.Config.generators.enable(0),
-					font = st.Config.generators.font(1),
-					-- Last in Text.
-					position = st.Config.generators.uf_element_position(1000,
-					function(index) return
-						UnitConfig().health.text.position[index]
-					end,
-					function(index, value)
-						UnitConfig().health.text.position[index] = value
-						UF:UpdateConfig(unit, 'Health')
-					end,
-					UF:ConfigTarget(unit, 'Health', 'text')
-					),
-					deficit =st.Config.generators.toggle(3, 'Deficit'),
-					hide_full = st.Config.generators.toggle(4, 'Hide full'),
-					percent = st.Config.generators.toggle(5, 'Percent'),
-				},
+				args = text,
 			},
 			bg = {
 				order = 99,
-				name = 'Status Bar BG',
+				name = 'Background',
 				type = 'group',
 				inline = true,
 				get = function(info)
@@ -164,14 +182,26 @@ local function GetConfigTable(unit)
 				end,
 				set = function(info, value)
 					UnitConfig().health.bg[info[#info]] = value
-					UF:UpdateConfig(unit, 'Health')
+					Update()
 				end,
 				args = {
-					enable = st.Config.generators.enable(1),
-					multiplier = st.Config.generators.range(2, 'Multiplier', 0, 1, 0.05),
-					alpha = st.Config.generators.alpha(3)
+					enable = G.toggle(0, 'Enable', "Shows a grey background in the bar's empty part.", 'small'),
+					multiplier = G.range(1, 'Brightness', 0, 1, 0.05, 'How light the grey is: 0 is black, 1 is white.'),
+					alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 				},
-			}
+			},
+			-- Last in the tab, after Text and Background.
+			position = G.uf_element_position(1000,
+				function(index)
+					return UnitConfig().health.position[index]
+				end,
+				function(index, value)
+					UnitConfig().health.position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, 'Health'),
+				"Where the health bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			),
 		}
 	}
 end

@@ -130,11 +130,7 @@ local function GetConfigTable(unit)
 		}
 	end
 
-	local enable = generators.enable(0)
-	enable.desc = "Your mana, shown while your power bar shows a power the game pairs with mana (e.g. a shadow priest's insanity)."
-	local colorPower = generators.toggle(6, 'Color by power type')
-	colorPower.desc = "Colors the bar and its background with the mana color. Nothing else colors them: with this off they keep the last color they had, white if this was never on."
-
+	local G = generators
 	return {
 		order = 3,
 		type = 'group',
@@ -145,42 +141,50 @@ local function GetConfigTable(unit)
 			Update()
 		end,
 		args = {
-			enable = enable,
-			framelevel = generators.framelevel(1),
-			template = generators.template(2),
-			size = UF.GenerateRelativeSizeConfigGroup(3),
-			reverse_fill = generators.toggle(4, 'Reverse Fill'),
-			vertical_fill = generators.toggle(5, 'Vertical Fill'),
-			Smooth = generators.toggle(5.5, 'Smooth'),
-			colorPower = colorPower,
-			-- Last in the tab, after Text and Status Bar BG.
-			position = generators.uf_element_position(1000,
-				function(index) return Config().position[index] end,
-				function(index, value)
-					Config().position[index] = value
-					Update()
-				end,
-				UF:ConfigTarget(unit, 'AdditionalPower')
-			),
+			enable = G.toggle(0, 'Enable',
+				"Your mana, shown while your power bar shows a power the game pairs with mana (e.g. a shadow priest's insanity).", 'small'),
+			reverse_fill = G.toggle(1, 'Reverse fill', 'Fills the bar from the other end: right to left, or top down when vertical.', 'small'),
+			vertical_fill = G.toggle(2, 'Vertical fill', 'Fills the bar from the bottom up instead of from left to right.', 'small'),
+			Smooth = G.toggle(3, 'Smooth', 'Slides the bar to each new value instead of jumping to it.', 'small'),
+			template = G.template(4, "The mana bar's background and border."),
+			alpha = G.alpha(5, 'How solid the mana bar is, from see-through to opaque.'),
+			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
+			-- oUF's AdditionalPower knows only colorPower.
+			colors = UF.GenerateColorsConfigGroup(9, unit, { 'colorPower' }, Config, Update, {
+				colorPower = 'Colors the bar and its background in the mana color. With this and Custom both off, nothing colors them: they keep the last color they had.',
+			}),
 			text = Section(98, 'Text', 'text', {
-				enable = generators.enable(0),
-				font = generators.font(1),
-				hide_full = generators.toggle(1.2, 'Hide full'),
-				percent = generators.toggle(1.4, 'Percent'),
-				position = generators.uf_element_position(2,
+				enable = G.toggle(0, 'Enable', 'Shows your mana as text, while the bar shows.', 'small'),
+				hide_full = G.toggle(1, 'Hide full', 'Hides the text while your mana is full.', 'small'),
+				font = G.font(2, "The mana text's font."),
+				percent = G.toggle(3, 'Percent', 'Shows your mana as a percent instead of the number.', 'small'),
+				-- Last in Text.
+				position = G.uf_element_position(1000,
 					function(index) return Config().text.position[index] end,
 					function(index, value)
 						Config().text.position[index] = value
 						Update()
 					end,
-					UF:ConfigTarget(unit, 'AdditionalPower', 'text')
+					UF:ConfigTarget(unit, 'AdditionalPower', 'text'),
+					"Where the mana text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
 				),
 			}),
-			bg = Section(99, 'Status Bar BG', 'bg', {
-				enable = generators.enable(0),
-				multiplier = generators.range(2, 'Multiplier', 0, 1, 0.05),
-				alpha = generators.alpha(3),
+			bg = Section(99, 'Background', 'bg', {
+				enable = G.toggle(0, 'Enable', "Shows a background in the bar's empty part, a darker shade of the bar's color.", 'small'),
+				multiplier = G.range(1, 'Brightness', 0, 1, 0.05, "How light the shade is: 0 is black, 1 is the bar's own color."),
+				alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 			}),
+			-- Last in the tab, after Text and Background.
+			position = G.uf_element_position(1000,
+				function(index) return Config().position[index] end,
+				function(index, value)
+					Config().position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, 'AdditionalPower'),
+				"Where the mana bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			),
 		},
 	}
 end

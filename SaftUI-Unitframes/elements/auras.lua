@@ -260,15 +260,20 @@ local function GetConfigTable(unit, aura_type)
 
 	-- A spot on each button (its count, its timer), which StyleButton always
 	-- anchors to the button: only the points and offsets are read.
-	local function ButtonPosition(order, getPosition)
+	local function ButtonPosition(order, getPosition, what)
 		return generators.position(order, false,
 			function(index) return getPosition()[index] end,
 			function(index, value)
 				getPosition()[index] = value
 				Update()
-			end
+			end,
+			nil,
+			('Where the %s sits on each button: which of its points goes to which point of the button, then moved by X and Y.'):format(what)
 		)
 	end
+
+	local noun = aura_type == 'Buffs' and 'buffs' or 'debuffs'
+	local FRAME_LEVEL = 'Draws the auras over the parts of the unit frame with a lower frame level, and under those with a higher one.'
 
 	local initialAnchor = {
 		order = 1,
@@ -278,17 +283,13 @@ local function GetConfigTable(unit, aura_type)
 		values = st.FRAME_ANCHORS,
 	}
 
-	local relativeSize = generators.toggle(3, 'Relative size')
-	relativeSize.desc = "Size is added to the unit frame's height."
-	local onlyShowPlayer = generators.toggle(5, 'Only mine')
-	onlyShowPlayer.desc = 'Only auras you cast.'
-
 	local borderInfo = BORDERS[aura_type]
 	local border = {
-		order = 6,
+		order = 7,
 		name = borderInfo.name,
 		desc = borderInfo.desc,
 		type = 'toggle',
+		size = 'small',
 		get = function() return eitherHostility(Config(), borderInfo.key) end,
 		set = function(_, value)
 			local config = Config()
@@ -297,11 +298,6 @@ local function GetConfigTable(unit, aura_type)
 			Update()
 		end,
 	}
-
-	local showCooldown = generators.toggle(0, 'Show')
-	showCooldown.desc = 'The swipe over each button.'
-	local showTimer = generators.enable(0)
-	showTimer.desc = 'The time left, as text on each button. Needs the cooldown shown.'
 
 	return {
 		order = aura_type == 'Buffs' and 7 or 8,
@@ -313,7 +309,7 @@ local function GetConfigTable(unit, aura_type)
 			Update()
 		end,
 		args = {
-			enable = generators.enable(0),
+			enable = generators.toggle(0, 'Enable', ("Shows the unit's %s."):format(noun), 'small'),
 			layout = {
 				order = 1,
 				name = 'Layout',
@@ -321,18 +317,20 @@ local function GetConfigTable(unit, aura_type)
 				inline = true,
 				args = {
 					initial_anchor = initialAnchor,
-					grow_right = generators.toggle(2, 'Grow right'),
-					grow_up = generators.toggle(3, 'Grow up'),
-					per_row = generators.range(4, 'Per row', 1, 40, 1),
-					spacing = generators.range(5, 'Spacing', 0, 30, 1),
-					framelevel = generators.framelevel(6),
-					position = generators.uf_element_position(50,
+					grow_right = generators.toggle(2, 'Grow right', 'Each button goes to the right of the one before. Off, to the left.', 'small'),
+					grow_up = generators.toggle(3, 'Grow up', 'Each new row goes above the one before. Off, below.', 'small'),
+					per_row = generators.range(4, 'Per row', 1, 40, 1, 'How many buttons fill a row before the next row starts.'),
+					spacing = generators.range(5, 'Spacing', 0, 30, 1, 'The gap between one button and the next, and between rows.'),
+					framelevel = generators.framelevel(6, FRAME_LEVEL),
+					-- Last in Layout.
+					position = generators.uf_element_position(1000,
 						function(index) return Config().position[index] end,
 						function(index, value)
 							Config().position[index] = value
 							Update()
 						end,
-						UF:ConfigTarget(unit, aura_type)
+						UF:ConfigTarget(unit, aura_type),
+						"Where the aura area sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
 					),
 				},
 			},
@@ -342,26 +340,29 @@ local function GetConfigTable(unit, aura_type)
 				type = 'group',
 				inline = true,
 				args = {
-					template = generators.template(1),
-					size = NeedsReload(generators.range(2, 'Size', 4, 80, 1)),
-					relative_size = NeedsReload(relativeSize),
-					max = NeedsReload(generators.range(4, 'Max', 1, 40, 1)),
-					onlyShowPlayer = NeedsReload(onlyShowPlayer),
+					template = generators.template(1, "Each button's background and border."),
+					alpha = generators.alpha(2, ('How solid the %s are, from see-through to opaque.'):format(noun)),
+					size = NeedsReload(generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels.")),
+					relative_size = NeedsReload(generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small')),
+					max = NeedsReload(generators.range(5, 'Max', 1, 40, 1, ('The most %s shown.'):format(noun))),
+					onlyShowPlayer = NeedsReload(generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small')),
 					border = NeedsReload(border),
 				},
 			},
 			cooldown = Section(3, 'Cooldown', function() return Config().cooldown end, {
-				enable = NeedsReload(showCooldown),
-				reverse = generators.toggle(1, 'Reverse swipe'),
-				alpha = generators.alpha(2),
+				enable = NeedsReload(generators.toggle(0, 'Show', 'The swipe over each button.', 'small')),
+				reverse = generators.toggle(1, 'Reverse swipe', 'On, the dark part of the swipe shrinks as the aura runs out. Off, it grows.', 'small'),
+				alpha = generators.alpha(2, 'How solid the swipe is, from see-through to opaque. The timer text fades with it.'),
 				timer = Section(3, 'Timer', function() return Config().cooldown.timer end, {
-					enable = showTimer,
-					position = ButtonPosition(1, function() return Config().cooldown.timer.position end),
+					enable = generators.toggle(0, 'Enable', 'The time left, as text on each button. Needs the cooldown shown.', 'small'),
+					-- Last in Timer.
+					position = ButtonPosition(1000, function() return Config().cooldown.timer.position end, 'time left'),
 				}),
 			}),
 			count = Section(4, 'Count', function() return Config().count end, {
-				font = generators.font(1),
-				position = ButtonPosition(2, function() return Config().count.position end),
+				font = generators.font(1, "The stack count's font."),
+				-- Last in Count.
+				position = ButtonPosition(1000, function() return Config().count.position end, 'stack count'),
 			}),
 		},
 	}

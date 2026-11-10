@@ -22,8 +22,8 @@ local indicators = {
        order = 11,
        desc = 'A corner colored by group role: green for healers, blue for tanks.',
        addOptions = function(args)
-           args.showDps = st.Config.generators.toggle(2, 'Show damage dealers')
-           args.showDps.desc = 'Also shows the corner, in red, on damage dealers and on units without a role.'
+           args.showDps = st.Config.generators.toggle(1, 'Show damage dealers',
+               'Also shows the corner, in red, on damage dealers and on units without a role.', 'small')
        end,
        postUpdate = function(self)
            -- oUF no longer passes a usable role to PostUpdate (nil on Forever/12.1.5+,
@@ -140,19 +140,22 @@ for _, config in pairs(indicators) do
         local function Config() return UF:GetProfileConfig()[unit][config.configKey] end
         local function Update() UF:UpdateConfig(unit, config.name) end
 
-        local enable = generators.enable(0)
-        enable.desc = config.desc
-
         local args = {
-            enable = enable,
-            size = generators.range(1, 'Size', 4, 64, 1),
-            position = generators.uf_element_position(50,
+            enable = generators.toggle(0, 'Enable', config.desc, 'small'),
+            size = generators.range(2, 'Size', 4, 64, 1, "The icon's width and height in pixels."),
+            -- UF:UpdateElement puts the backdrop behind the icon (st:SetBackdrop
+            -- on a texture), shown and hidden with it.
+            template = generators.template(3, 'A background and border behind the icon.'),
+            alpha = generators.alpha(4, 'How solid the icon is, from see-through to opaque.'),
+            -- Last in the tab.
+            position = generators.uf_element_position(1000,
                 function(index) return Config().position[index] end,
                 function(index, value)
                     Config().position[index] = value
                     Update()
                 end,
-                UF:ConfigTarget(unit, config.name)
+                UF:ConfigTarget(unit, config.name),
+                "Where the icon sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
             ),
         }
         if config.addOptions then

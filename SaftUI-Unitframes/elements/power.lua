@@ -110,8 +110,10 @@ local function UpdateConfig(unitframe)
 end
 
 local function GetConfigTable(unit)
+	local G = st.Config.generators
 	-- Looked up on every get/set: a profile change replaces these tables.
 	local function UnitConfig() return UF:GetProfileConfig()[unit] end
+	local function Update() UF:UpdateConfig(unit, 'Power') end
 
 	return {
 		type = 'group',
@@ -122,27 +124,20 @@ local function GetConfigTable(unit)
 		end,
 		set = function(info, value)
 			UnitConfig().power[info[#info]] = value
-			UF:UpdateConfig(unit, 'Power')
+			Update()
 		end,
 		args = {
-			enable = st.Config.generators.enable(0),
-			framelevel = st.Config.generators.framelevel(1),
-			template = st.Config.generators.template(2),
-			size = UF.GenerateRelativeSizeConfigGroup(3),
-			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill'),
-			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill'),
-			Smooth = st.Config.generators.toggle(5.5, 'Smooth'),
-			-- Last in the tab, after Text and Status Bar BG.
-			position = st.Config.generators.uf_element_position(1000,
-				function(index) return
-					UnitConfig().power.position[index]
-				end,
-				function(index, value)
-					UnitConfig().power.position[index] = value
-					UF:UpdateConfig(unit, 'Power')
-				end,
-				UF:ConfigTarget(unit, 'Power')
-			),
+			enable = G.toggle(0, 'Enable', 'Shows the power bar: mana, rage, energy and the like.', 'small'),
+			reverse_fill = G.toggle(1, 'Reverse fill', 'Fills the bar from the other end: right to left, or top down when vertical.', 'small'),
+			vertical_fill = G.toggle(2, 'Vertical fill', 'Fills the bar from the bottom up instead of from left to right.', 'small'),
+			Smooth = G.toggle(3, 'Smooth', 'Slides the bar to each new value instead of jumping to it.', 'small'),
+			template = G.template(4, "The power bar's background and border."),
+			alpha = G.alpha(5, 'How solid the power bar is, from see-through to opaque.'),
+			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
+			size = UF.GenerateRelativeSizeConfigGroup(8),
+			colors = UF.GenerateColorsConfigGroup(9, unit,
+				{ 'colorDisconnected', 'colorTapping', 'colorPower', 'colorClass', 'colorClassNPC', 'colorClassPet', 'colorReaction' },
+				function() return UnitConfig().power end, Update),
 			text = {
 				order = 98,
 				name = 'Text',
@@ -153,28 +148,28 @@ local function GetConfigTable(unit)
 				end,
 				set = function(info, value)
 					UnitConfig().power.text[info[#info]] = value
-					UF:UpdateConfig(unit, 'Power')
+					Update()
 				end,
 				args = {
-					enable = st.Config.generators.enable(0),
-					font = st.Config.generators.font(1),
-					hide_full = st.Config.generators.toggle(2, 'Hide full'),
-					percent = st.Config.generators.toggle(3, 'Percent'),
-					position = st.Config.generators.uf_element_position(5,
-				function(index) return
-					UnitConfig().power.text.position[index]
-				end,
-				function(index, value)
-					UnitConfig().power.text.position[index] = value
-					UF:UpdateConfig(unit, 'Power')
-				end,
-				UF:ConfigTarget(unit, 'Power', 'text')
-			),
+					enable = G.toggle(0, 'Enable', 'Shows the power as text on the unit frame.', 'small'),
+					hide_full = G.toggle(1, 'Hide full', 'Hides the text while power is full.', 'small'),
+					font = G.font(2, "The power text's font."),
+					percent = G.toggle(3, 'Percent', 'Shows the power as a percent instead of the number.', 'small'),
+					-- Last in Text.
+					position = G.uf_element_position(1000,
+						function(index) return UnitConfig().power.text.position[index] end,
+						function(index, value)
+							UnitConfig().power.text.position[index] = value
+							Update()
+						end,
+						UF:ConfigTarget(unit, 'Power', 'text'),
+						"Where the power text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+					),
 				},
 			},
 			bg = {
 				order = 99,
-				name = 'Status Bar BG',
+				name = 'Background',
 				type = 'group',
 				inline = true,
 				get = function(info)
@@ -182,21 +177,24 @@ local function GetConfigTable(unit)
 				end,
 				set = function(info, value)
 					UnitConfig().power.bg[info[#info]] = value
-					UF:UpdateConfig(unit, 'Power')
+					Update()
 				end,
 				args = {
-					enable = st.Config.generators.enable(0),
-					multiplier = {
-						order = 2,
-						name = 'Multiplier',
-						type = 'range',
-						min = 0,
-						max = 1,
-						step = 0.05,
-					},
-					alpha = st.Config.generators.alpha(3)
+					enable = G.toggle(0, 'Enable', "Shows a background in the bar's empty part, a darker shade of the bar's color.", 'small'),
+					multiplier = G.range(1, 'Brightness', 0, 1, 0.05, "How light the shade is: 0 is black, 1 is the bar's own color."),
+					alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 				},
-			}
+			},
+			-- Last in the tab, after Text and Background.
+			position = G.uf_element_position(1000,
+				function(index) return UnitConfig().power.position[index] end,
+				function(index, value)
+					UnitConfig().power.position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, 'Power'),
+				"Where the power bar sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			),
 		}
 	}
 end
