@@ -150,13 +150,14 @@ local GLOBAL_TABS = {
 	{ 'general', 'General' },
 	{ 'fonts', 'Fonts' },
 	{ 'colors', 'Colors' },
+	{ 'theme', 'Theme' },
 	{ 'editmode', 'EditMode' },
 }
 
 -- The /sui tree: one group per page, keyed by module name, plus AceDBOptions'
 -- profiles. The AddCommand commands and the Edit mode button are the window's
 -- sidebar buttons, not options. The GLOBAL_TABS modules' tables (General,
--- Fonts, Colors and Edit mode, its grid and snap settings) are the tabs of the
+-- Fonts, Colors, Theme and Edit mode, its grid and snap settings) are the tabs of the
 -- Global Settings page, whose key stays Fonts (the options model shows it by
 -- that name). Each module's table already declares its own tabs (childGroups)
 -- and Position option.
@@ -185,7 +186,7 @@ function Config:GetOptionsTable()
 	if next(tabs) then
 		options.Fonts = {
 			name = 'Global Settings',
-			desc = "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, and edit mode's grid and snapping.",
+			desc = "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, themes, and edit mode's grid and snapping.",
 			type = 'group',
 			order = 1,
 			childGroups = 'tab',

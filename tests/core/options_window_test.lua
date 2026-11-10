@@ -6,7 +6,7 @@
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
 -- (optionswidgets.lua), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
--- one Config:GetOptionsTable builds, from the real General, Fonts, Colors and
+-- one Config:GetOptionsTable builds, from the real General, Fonts, Colors, Theme and
 -- EditMode modules, AceDBOptions' profiles table, and synthetic modules registered here: one
 -- shaped like Unitframes (a unit picker, element tabs) and small ones for the
 -- sidebar's categories. The mouse, the keyboard and the frame clock are played
@@ -516,7 +516,7 @@ test("a real module's category: Experience is under Info", function()
 	check(found, 'Experience has a page')
 end)
 
-test('Global Settings has General, Fonts, Colors and Edit mode tabs, and the sidebar has no Edit mode page', function()
+test('Global Settings has General, Fonts, Colors, Theme and Edit mode tabs, and the sidebar has no Edit mode page', function()
 	local root = st.Config:GetOptionsTable()
 	eq(root.EditMode, nil, 'no EditMode page in the tree')
 	for _, page in ipairs(OM.Pages(root)) do
@@ -529,13 +529,13 @@ test('Global Settings has General, Fonts, Colors and Edit mode tabs, and the sid
 
 	local view = OM.BuildView(root, 'Fonts')
 	eq(view.title, 'Global Settings', 'the page')
-	eq(keys(view.tabs), 'general,fonts,colors,editmode', 'General, Fonts, Colors, then Edit mode')
-	eq(keys(view.tabs, 'name'), 'General,Fonts,Colors,Edit mode', 'tab names')
+	eq(keys(view.tabs), 'general,fonts,colors,theme,editmode', 'General, Fonts, Colors, Theme, then Edit mode')
+	eq(keys(view.tabs, 'name'), 'General,Fonts,Colors,Theme,Edit mode', 'tab names')
 	eq(view.tab, 'general', 'General is the tab the page opens on')
 	eq(root.Colors, nil, 'no Colors page in the tree')
 	eq(root.General, nil, 'no General page in the tree')
 	eq(root.Fonts.order, 1, 'the page keeps its place')
-	eq(root.Fonts.desc, "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, and edit mode's grid and snapping.")
+	eq(root.Fonts.desc, "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, themes, and edit mode's grid and snapping.")
 
 	view = OM.BuildView(root, 'Fonts', { tab = 'editmode' })
 	eq(view.tab, 'editmode', 'Edit mode selected')

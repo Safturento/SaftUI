@@ -372,7 +372,7 @@ end
 -- preview cuts its icon with), panels.lua (st:CreateFrame,
 -- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
 -- theme they draw), the media and fonts (st:GetFont) with the Colors
--- module, the profile defaults, Config/widgets.lua (st.Config.generators) and
+-- and Theme modules, the profile defaults, Config/widgets.lua (st.Config.generators) and
 -- the General module (Global Settings' General tab). Then the profile is
 -- filled from the defaults and the Fonts module enabled, as at login, so
 -- st:GetFont has font objects.
@@ -387,6 +387,7 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Media/sharedmedia.lua')
 	load_saftui('SaftUI-Core/Media/fonts.lua')
 	load_saftui('SaftUI-Core/Media/colors.lua')
+	load_saftui('SaftUI-Core/Media/theme.lua')
 	load_saftui('SaftUI-Core/Config/defaults.lua')
 	load_saftui('SaftUI-Core/Config/widgets.lua')
 	load_saftui('SaftUI-Core/Config/general.lua')

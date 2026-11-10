@@ -4,7 +4,7 @@
 --
 -- The tree is built as tests/core/options_validate_test.lua builds it, with
 -- the same files: Core's real Config/config.lua on a real AceDB-3.0
--- (config_helpers.lua: Global Settings' General, Fonts, Colors and Edit mode
+-- (config_helpers.lua: Global Settings' General, Fonts, Colors, Theme and Edit mode
 -- tabs, and AceDBOptions' profiles), and Experience, the minimap and the
 -- micro menu, whose tables build with no frames of their own made.
 
