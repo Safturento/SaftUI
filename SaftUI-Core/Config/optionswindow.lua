@@ -295,6 +295,9 @@ end
 
 -- Whether the user is in the middle of something a render would break.
 local function Busy()
+	-- A drag ends when the button comes up, even if the slider's OnMouseUp
+	-- never arrived.
+	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
 	if dragging or W.ListOwner() or W.ConfirmText() then return true end
 	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
@@ -314,7 +317,10 @@ local function Changed(ok, err, isDragging)
 	OW:SetStatus(ok == false and err or nil)
 	if ok == false and err then return end
 	if isDragging then
+		-- The render waits for the drag; Schedule keeps the clock running so a
+		-- lost OnMouseUp can't hold it off for good (see Busy).
 		dragging = true
+		Schedule()
 		return
 	end
 	dragging = false

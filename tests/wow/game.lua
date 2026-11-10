@@ -24,6 +24,7 @@ stub = {
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
+	mouse_buttons = {}, -- IsMouseButtonDown: a set, e.g. stub.mouse_buttons.LeftButton = true
 	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
 	-- The player's experience: GetMaxPlayerLevel, UnitLevel('player'), UnitXP,
 	-- UnitXPMax and GetXPExhaustion (rested experience; nil for none).
@@ -52,6 +53,7 @@ end
 function GetLocale() return 'enUS' end
 function GetPhysicalScreenSize() return stub.screen_width, stub.screen_height end
 function InCombatLockdown() return stub.in_combat end
+function IsMouseButtonDown(button) return stub.mouse_buttons[button or 'LeftButton'] == true end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
 function GetTime() return stub.time end
 -- WoW's time(): the clock, as seconds since 1970. Only the no-argument form

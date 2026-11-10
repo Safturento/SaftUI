@@ -717,6 +717,7 @@ test("a slider drag doesn't re-render until the mouse is let go", function()
 	st.Config:Open('Unitframes', 'player', 'general')
 	local w = cell('width').widget
 	local before = OW.GetRenderCount()
+	stub.mouse_buttons.LeftButton = true -- held for the whole drag, as in game
 	stub.fire_script(w.slider, 'OnMouseDown')
 	w.slider:SetValue(250)
 	w.slider:SetValue(260)
@@ -725,10 +726,45 @@ test("a slider drag doesn't re-render until the mouse is let go", function()
 	st.Config:Refresh(); tick()
 	eq(OW.GetRenderCount(), before, 'nor from the registry')
 	eq(cell('width').widget, w, 'the same slider is still drawn')
+	stub.mouse_buttons.LeftButton = nil
 	stub.fire_script(w.slider, 'OnMouseUp')
 	eq(OW.GetRenderCount(), before + 1, 'one render when let go')
 	tick()
 	eq(OW.GetRenderCount(), before + 1, 'the pending one went with it')
+	close_all()
+end)
+
+-- In game a click on the track can move the slider before its OnMouseDown
+-- runs; a render then would take the slider out from under the drag.
+test("a drag whose first move comes before its mouse-down still doesn't re-render until let go", function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local w = cell('width').widget
+	local before = OW.GetRenderCount()
+	stub.mouse_buttons.LeftButton = true
+	w.slider:SetValue(250)
+	eq(OW.GetRenderCount(), before, 'no render from the first move')
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(260)
+	eq(uf.player.width, 260, 'set while dragging')
+	eq(OW.GetRenderCount(), before, 'no render mid-drag')
+	eq(cell('width').widget, w, 'the same slider is still drawn')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	eq(OW.GetRenderCount(), before + 1, 'one render when let go')
+	close_all()
+end)
+
+test('a drag whose mouse-up never arrives still renders once the button is up', function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local w = cell('width').widget
+	local before = OW.GetRenderCount()
+	stub.mouse_buttons.LeftButton = true
+	w.slider:SetValue(255)
+	tick()
+	eq(OW.GetRenderCount(), before, 'held: no render')
+	stub.mouse_buttons.LeftButton = nil
+	tick()
+	eq(OW.GetRenderCount(), before + 1, 'released: the page catches up')
 	close_all()
 end)
 

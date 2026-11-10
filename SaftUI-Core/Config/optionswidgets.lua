@@ -721,6 +721,10 @@ builders.range = function(w)
 
 	slider:SetScript('OnValueChanged', function(_, value)
 		if w.updating or not w.row or w.disabled then return end
+		-- A click on the track moves the slider before OnMouseDown runs, so a
+		-- held button already means a drag: the window mustn't re-render (and
+		-- take this slider away) until it's let go.
+		if IsMouseButtonDown('LeftButton') then w.dragging = true end
 		w:Dragged(value)
 	end)
 	slider:SetScript('OnMouseDown', function() w.dragging = true end)
