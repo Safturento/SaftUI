@@ -70,7 +70,11 @@ for i = 1, 5 do
 	UF.units.boss[i] = frame
 end
 -- As OnEnable does for boss: the previews watch the boss frames, then the
--- frames are placed and the colors go to oUF.
+-- frames are placed and the colors go to oUF. This call stands in for
+-- UF:OnEnable's own WatchFramesForPreview(unit) after it spawns the boss frames
+-- (SaftUI-Unitframes/unitframes.lua), which no test runs, since spawning needs
+-- oUF. Without that line in OnEnable the previews would stay up over real
+-- bosses in game, and these tests would still pass.
 UF:WatchFramesForPreview('boss')
 UF:ApplyConfig('boss')
 UF:UpdateColors()
@@ -198,7 +202,7 @@ test('a Layout change places them again with the boss frames: two columns of thr
 	eq(shown_previews(), 5, 'five again')
 end)
 
-test('a real boss frame showing hides the previews, and they come back when it hides, in combat too', function()
+test('a real boss frame showing hides the previews, and they come back when it hides, with no wait for combat to end', function()
 	check(previews_shown(), 'shown with no boss up')
 	bosses[3]:Show()
 	check(not previews_shown(), 'hidden while boss 3 is up')
@@ -206,7 +210,9 @@ test('a real boss frame showing hides the previews, and they come back when it h
 	bosses[3]:Hide()
 	check(not previews_shown(), 'still hidden while boss 1 is up')
 
-	-- Nothing secure is touched, so nothing waits for the end of combat.
+	-- Nothing secure is touched, so nothing waits for the end of combat. The
+	-- stubs don't model protection: this shows only that there's no
+	-- InCombatLockdown gate, not that the game allows it. That needs a pull in game.
 	stub.in_combat = true
 	bosses[1]:Hide()
 	check(previews_shown(), 'back once no boss frame is up')
