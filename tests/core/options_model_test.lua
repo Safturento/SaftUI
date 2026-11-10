@@ -318,7 +318,45 @@ end)
 
 ------------------------------------------------------------------ rows
 
-test('rows: in order (100 by default, negatives last), then name, then key; full width for full, double and descriptions', function()
+test('rows: size is the option\'s small or wide; Ace width is ignored; small only for toggle, color, execute, input', function()
+	local root = { Sizes = group('Sizes', {
+		t = opt('toggle', 'T', { order = 1, size = 'small' }),
+		c = opt('color', 'C', { order = 2, size = 'small' }),
+		e = opt('execute', 'E', { order = 3, size = 'small' }),
+		i = opt('input', 'I', { order = 4, size = 'small' }),
+		r = opt('range', 'R', { order = 5, size = 'small' }),
+		s = opt('select', 'S', { order = 6, size = 'wide' }),
+		w = opt('toggle', 'W', { order = 7, width = 'full' }),
+		h = opt('toggle', 'H', { order = 8, size = 'huge' }),
+		d = opt('description', 'D', { order = 9, size = 'small' }),
+		p = opt('position', 'P', { order = 10, get = function() end, set = function() end }),
+	}) }
+	local view = OM.BuildView(root, 'Sizes')
+	local function size(key) return row(view, key).size end
+	eq(size('t'), 'small', 'a small toggle')
+	eq(size('c'), 'small', 'a small color')
+	eq(size('e'), 'small', 'a small execute')
+	eq(size('i'), 'small', 'a small input')
+	eq(size('r'), 'normal', 'a range cannot be small')
+	eq(size('s'), 'wide', 'wide')
+	eq(size('w'), 'normal', "Ace's width is not read")
+	eq(size('h'), 'normal', 'an unknown size is normal')
+	eq(size('d'), 'wide', 'a description is wide, whatever its size')
+	eq(size('p'), 'wide', 'a position row is wide')
+	eq(row(view, 't').width, nil, 'rows carry no width')
+end)
+
+test('a position row gets a section of its own, titled with its name; rows after it continue untitled', function()
+	local root = { Pos = group('Pos', {
+		a = opt('toggle', 'A', { order = 1 }),
+		pos = opt('position', 'Position', { order = 2, get = function() end, set = function() end }),
+		b = opt('toggle', 'B', { order = 3 }),
+	}) }
+	eq(layout(OM.BuildView(root, 'Pos')), '-:a|Position:pos|-:b', 'sections')
+end)
+
+
+test('rows: in order (100 by default, negatives last), then name, then key', function()
 	local root = { Order = group('Order', {
 		z = opt('toggle', 'Zed', { order = 1 }),
 		a = opt('toggle', 'alpha', { order = 1, desc = 'A tip.' }), -- names compare uppercased, as AceConfigDialog's do
@@ -337,12 +375,6 @@ test('rows: in order (100 by default, negatives last), then name, then key; full
 	}) }
 	local view = OM.BuildView(root, 'Order')
 	eq(layout(view), '-:a,z,f,d,h,num,big,text,textw,same1,same2,fnorder,n,neg', 'the order')
-	local width = {}
-	for _, r in ipairs(all_rows(view)) do width[r.key] = r.width end
-	check(width.f == 'full' and width.d == 'full', "'full' and 'double' are full")
-	check(width.text == 'full' and width.textw == 'full', 'a description is full, whatever its width')
-	check(width.h == 'normal' and width.num == 'normal' and width.big == 'normal' and width.z == 'normal',
-		"'half', numbers and no width are normal")
 	local r = row(view, 'a')
 	eq(r.key, 'a', 'key')
 	eq(r.type, 'toggle', 'type')

@@ -43,10 +43,13 @@ local st = SaftUI
 	as nil. A disabled tab chosen by key still opens, as AceConfigDialog
 	reopens a saved selection.
 
-	A row is { key, type, name, desc, width = 'normal' | 'full', disabled,
-	path, option }: path is the keys from the root, option the option table.
-	full is width 'full' or 'double', and every description; everything else
-	is normal.
+	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
+	disabled, path, option }: path is the keys from the root, option the option
+	table. size is the option's own size member: 'small' (honored only for a
+	toggle, color, execute or input) or 'wide'; anything else is normal. Every
+	description and every position row is wide. Ace's width is not read.
+	A position row sits in a section of its own, titled with its name; the
+	rows after it continue in an untitled one.
 ]]
 
 local OM = {}
@@ -72,6 +75,7 @@ local isInherited = {
 -- Members where a string is the value, not a handler method name.
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
+	size = true, target = true, nameKey = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -331,15 +335,24 @@ end
 
 ------------------------------------------------------------------ sections and rows
 
+-- The types a setting can be small for.
+local canBeSmall = { toggle = true, color = true, execute = true, input = true }
+
+local function SizeOf(option, options, path)
+	if option.type == 'description' or option.type == 'position' then return 'wide' end
+	local size = GetMember('size', option, options, path)
+	if size == 'wide' then return 'wide' end
+	if size == 'small' and canBeSmall[option.type] then return 'small' end
+	return 'normal'
+end
+
 local function Row(option, options, path)
-	local width = GetMember('width', option, options, path)
-	local full = option.type == 'description' or width == 'full' or width == 'double'
 	return {
 		key = path[#path],
 		type = option.type,
 		name = Text(GetMember('name', option, options, path)),
 		desc = Desc(GetMember('desc', option, options, path)),
-		width = full and 'full' or 'normal',
+		size = SizeOf(option, options, path),
 		disabled = IsDisabled(option, options, path),
 		path = path,
 		option = option,
@@ -368,6 +381,11 @@ local function Feed(sections, options, group, path, deep, title, note)
 				end
 			elseif option.type == 'header' then
 				section = { title = Title(GetMember('name', option, options, childPath)), rows = {} }
+				sections[#sections + 1] = section
+			elseif option.type == 'position' then
+				local row = Row(option, options, childPath)
+				sections[#sections + 1] = { title = Title(row.name), rows = { row } }
+				section = { rows = {} }
 				sections[#sections + 1] = section
 			else
 				section.rows[#section.rows + 1] = Row(option, options, childPath)

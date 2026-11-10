@@ -23,7 +23,10 @@ local W = st.OptionsWidgets
 	sections are the model's ({ title, note, rows }, OM.BuildView). Rows no
 	widget draws are left out, and so are sections left empty; the height is
 	0 when nothing is drawn. Sections are laid out by OB.LayoutSections, their
-	rows in two columns by OB.LayoutRows, both pure.
+	rows by OB.LayoutRows, both pure: a row is small (a quarter of the line;
+	two make a half), normal (a half) or wide (the whole line), by row.size.
+	A toggle's check box and a color's swatch sit just after their label's
+	text; a small input's box is OB.SMALL_INPUT_WIDTH wide.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools), as this file loads first.
@@ -35,7 +38,7 @@ local W = st.OptionsWidgets
 local OB = {}
 st.OptionsBody = OB
 
-local floor, max, ceil = math.floor, math.max, math.ceil
+local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local tremove = table.remove
 
 ------------------------------------------------------------------ the mockup's numbers
@@ -43,6 +46,8 @@ local tremove = table.remove
 local ROW_HEIGHT = 34
 local LABEL_GAP = 10
 local COLUMN_GAP = 40
+local QUARTER_GAP = 24 -- between the two quarters of a half
+local SMALL_INPUT_WIDTH = 60
 local WIDTH = 774 -- the window's body: two columns of 367 with a gap of 40
 
 -- Sections (OB.LayoutSections).
@@ -53,6 +58,7 @@ local NOTE_HEIGHT, NOTE_GAP = 13, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.COLUMN_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, COLUMN_GAP, WIDTH
+OB.QUARTER_GAP, OB.SMALL_INPUT_WIDTH = QUARTER_GAP, SMALL_INPUT_WIDTH
 OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
@@ -137,29 +143,38 @@ local Text, Line, Pool, Acquire, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.Acqu
 
 ------------------------------------------------------------------ the pure layout
 
--- Places rows in two columns: a normal row takes the next column (1, then 2),
--- a full row a line of its own. A line is as tall as its tallest row
--- (heightOf(row), ROW_HEIGHT without it). Returns { {row, col = 1|2|'full',
--- y} } and the height of them all.
-function OB.LayoutRows(rows, heightOf)
-	local placed, y, col, lineHeight = {}, 0, 1, 0
+-- Places rows on lines of four quarters (two halves). A small row takes the
+-- next quarter, a normal row the next whole half (it skips a lone quarter's
+-- other half), a wide row a line of its own. A line is as tall as its
+-- tallest row (heightOf(row), ROW_HEIGHT without it). sizeOf(row) gives a
+-- row's size (row.size without it; no size is normal). Returns { {row,
+-- col = 1|2|'full', quarter = 1|2|nil (smalls only), y} } and the height of
+-- them all.
+function OB.LayoutRows(rows, heightOf, sizeOf)
+	local placed, y, cursor, lineHeight = {}, 0, 0, 0 -- cursor: quarters used in the line
 	local function NextLine()
-		y, col, lineHeight = y + lineHeight, 1, 0
+		y, cursor, lineHeight = y + lineHeight, 0, 0
 	end
 	for _, row in ipairs(rows) do
 		local height = heightOf and heightOf(row) or ROW_HEIGHT
-		if row.width == 'full' then
-			if col == 2 then NextLine() end
+		local size = (sizeOf and sizeOf(row) or row.size) or 'normal'
+		if size == 'wide' then
+			if cursor > 0 then NextLine() end
 			placed[#placed + 1] = { row = row, col = 'full', y = y }
 			lineHeight = height
 			NextLine()
 		else
-			placed[#placed + 1] = { row = row, col = col, y = y }
+			if size == 'normal' and cursor % 2 == 1 then cursor = cursor + 1 end
+			if cursor >= 4 then NextLine() end
+			local col = cursor < 2 and 1 or 2
+			placed[#placed + 1] = {
+				row = row, col = col, y = y, quarter = size == 'small' and (cursor % 2 + 1) or nil,
+			}
 			lineHeight = max(lineHeight, height)
-			if col == 1 then col = 2 else NextLine() end
+			cursor = cursor + (size == 'small' and 1 or 2)
 		end
 	end
-	if col == 2 then NextLine() end
+	if cursor > 0 then NextLine() end
 	return placed, y
 end
 
@@ -167,7 +182,7 @@ end
 -- placed} } and the body's height. Sections after the first are separated by
 -- a line; an untitled one (rows that follow a nested group) gets none, so it
 -- reads as a continuation of the one above.
-function OB.LayoutSections(sections, heightOf)
+function OB.LayoutSections(sections, heightOf, sizeOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
 		local entry = { section = section }
@@ -189,7 +204,7 @@ function OB.LayoutSections(sections, heightOf)
 			y = y + NOTE_HEIGHT + NOTE_GAP
 		end
 		entry.rowsY = y
-		local placed, height = OB.LayoutRows(section.rows, heightOf)
+		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf)
 		entry.placed = placed
 		y = y + height
 		laid[#laid + 1] = entry
@@ -213,7 +228,9 @@ local function HideTip(frame)
 end
 
 -- A row's place in its cell: the label on the left, the control on the
--- right. A description is text across the row, and a button stands alone.
+-- right, except a toggle's check box and a color's swatch, which follow the
+-- end of the label's text. A description is text across the row, and a
+-- button stands alone.
 local function PlaceRow(cell, x, y, width)
 	local frame, widget, label, row = cell.frame, cell.widget, cell.label, cell.row
 	frame:SetPoint('TOPLEFT', frame:GetParent(), 'TOPLEFT', x, -y)
@@ -228,8 +245,14 @@ local function PlaceRow(cell, x, y, width)
 	else
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
-		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
 		label:Show()
+		if row.type == 'toggle' or row.type == 'color' then
+			label:SetWidth(max(1, min(label:GetStringWidth(), width - widget:GetWidth() - LABEL_GAP)))
+			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+			widget:SetPoint('LEFT', label, 'RIGHT', LABEL_GAP, 0)
+			return
+		end
+		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
 		if cell.height > ROW_HEIGHT then
 			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((ROW_HEIGHT - 16) / 2))
 			widget:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, -6)
@@ -257,6 +280,7 @@ function OB.New(content, root, onChanged, width)
 		width = width or WIDTH, cells = {},
 	}, Body)
 	body.columnWidth = (body.width - COLUMN_GAP) / 2
+	body.quarterWidth = (body.columnWidth - QUARTER_GAP) / 2
 
 	body.pools = {
 		row = Pool(function()
@@ -313,6 +337,10 @@ function Body:RowCell(row)
 	frame.row = row
 	local widget = W.Create(frame, row.type)
 	widget:Bind(self.root, row, self.onChanged)
+	if row.type == 'input' then -- a reused box is sized again: small or not
+		widget.width = row.size == 'small' and SMALL_INPUT_WIDTH or W.WIDTH.input
+		widget.frame:SetWidth(widget.width)
+	end
 	local cell = { row = row, frame = frame, widget = widget, label = frame.label, height = ROW_HEIGHT, place = PlaceRow }
 	if row.type == 'description' then
 		widget:SetWidth(self.width)
@@ -335,8 +363,9 @@ function Body:ResultCell(row, onPick)
 end
 
 -- Draws sections of rows with makeCell (rows it draws nothing for are left
--- out, and so are sections left empty). Returns the height drawn.
-function Body:DrawSections(sections, makeCell)
+-- out, and so are sections left empty). sizeOf(row) overrides the rows'
+-- sizes in the layout. Returns the height drawn.
+function Body:DrawSections(sections, makeCell, sizeOf)
 	local byRow, kept = {}, {}
 	for _, section in ipairs(sections) do
 		local rows = {}
@@ -349,7 +378,7 @@ function Body:DrawSections(sections, makeCell)
 		end
 		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
 	end
-	local laid, height = OB.LayoutSections(kept, function(row) return byRow[row].height end)
+	local laid, height = OB.LayoutSections(kept, function(row) return byRow[row].height end, sizeOf)
 	local pools, content = self.pools, self.content
 	for _, entry in ipairs(laid) do
 		if entry.lineY then
@@ -370,8 +399,16 @@ function Body:DrawSections(sections, makeCell)
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
-			cell.place(cell, p.col == 2 and (self.columnWidth + COLUMN_GAP) or 0, cell.y,
-				p.col == 'full' and self.width or self.columnWidth)
+			local x, cellWidth = 0, self.width
+			if p.col ~= 'full' then
+				x = p.col == 2 and (self.columnWidth + COLUMN_GAP) or 0
+				cellWidth = self.columnWidth
+				if p.quarter then
+					x = x + (p.quarter - 1) * (self.quarterWidth + QUARTER_GAP)
+					cellWidth = self.quarterWidth
+				end
+			end
+			cell.place(cell, x, cell.y, cellWidth)
 		end
 	end
 	return #kept > 0 and height or 0
@@ -382,7 +419,9 @@ function Body:Draw(sections)
 end
 
 function Body:DrawResults(sections, onPick)
-	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end)
+	-- A result is a half, whatever size its setting is.
+	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
+		function() return 'normal' end)
 end
 
 function Body:Release()

@@ -38,8 +38,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    window, and where it was left is kept in st.config.global.optionsWindow;
 	  - the tab row, with the search box at its right; a second row for
 	    subtabs; the picker row; the body, a scroll frame of sections
-	    (OB.LayoutSections) of two-column rows (OB.LayoutRows), drawn by an
-	    OB.New body;
+	    (OB.LayoutSections) of rows in quarters, halves and whole lines
+	    (OB.LayoutRows), drawn by an OB.New body;
 	  - the footer: Reload UI, the region, the status line, Close.
 
 	Re-rendering redraws the whole page from the model, keeping the page, tab,
@@ -557,7 +557,7 @@ local pickerOption = {
 	set = function(_, key) Select('pick', key) end,
 }
 local pickerRoot = { picker = pickerOption }
-local pickerRow = { key = 'picker', type = 'select', name = '', width = 'normal', path = { 'picker' }, option = pickerOption }
+local pickerRow = { key = 'picker', type = 'select', name = '', size = 'normal', path = { 'picker' }, option = pickerOption }
 local function NoChange() end
 
 local function HidePicker()
@@ -688,7 +688,7 @@ local function DrawSearch(pages)
 			last = { title = title, note = result.sectionTitle, rows = {} }
 			sections[#sections + 1] = last
 		end
-		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, width = 'normal', path = result.path }
+		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, size = 'normal', path = result.path }
 	end
 	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path) end)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end

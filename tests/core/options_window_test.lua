@@ -190,24 +190,31 @@ end
 
 ------------------------------------------------------------------ the pure layout
 
-test('LayoutRows: normal rows alternate columns 1 and 2, a full row takes a line of its own, y steps by 34', function()
-	local rows = {
-		{ key = 'a', width = 'normal' }, { key = 'b', width = 'normal' },
-		{ key = 'c', width = 'normal' }, { key = 'wide', width = 'full' },
-		{ key = 'd', width = 'normal' }, { key = 'e', width = 'normal' }, { key = 'f', width = 'normal' },
-	}
-	local placed, height = OW.LayoutRows(rows)
-	local got = {}
-	for i, p in ipairs(placed) do got[i] = p.row.key .. ':' .. tostring(p.col) .. '@' .. p.y end
-	eq(table.concat(got, ' '), 'a:1@0 b:2@0 c:1@34 wide:full@68 d:1@102 e:2@102 f:1@136', 'columns and lines')
-	eq(height, 170, 'five lines of 34')
+test('LayoutRows: smalls take quarters, two to a half; a normal takes the next whole half; a wide its own line', function()
+	local function r(key, size) return { key = key, size = size } end
+	local placed, height = OW.LayoutRows({
+		r('a'), r('b'),
+		r('c', 'small'), r('d', 'small'), r('e'),
+		r('f', 'small'), r('g'),
+		r('h', 'small'), r('i', 'wide'),
+		r('j'), r('k', 'small'), r('l', 'small'), r('m', 'small'),
+	})
+	local function at(i) local p = placed[i]; return p.col .. '/' .. tostring(p.quarter) .. '@' .. p.y end
+	eq(at(1), '1/nil@0'); eq(at(2), '2/nil@0')
+	eq(at(3), '1/1@34'); eq(at(4), '1/2@34'); eq(at(5), '2/nil@34')
+	eq(at(6), '1/1@68'); eq(at(7), '2/nil@68')          -- a normal after a lone small skips to the next half
+	eq(at(8), '1/1@102'); eq(at(9), 'full/nil@136')    -- a wide starts its own line
+	eq(at(10), '1/nil@170'); eq(at(11), '2/1@170'); eq(at(12), '2/2@170'); eq(at(13), '1/1@204')
+	eq(height, 238)
 
-	-- A full row right after a full row, and one first.
-	placed, height = OW.LayoutRows({ { key = 'x', width = 'full' }, { key = 'y', width = 'full' }, { key = 'z', width = 'normal' } })
-	eq(placed[1].y .. ',' .. placed[2].y .. ',' .. placed[3].y, '0,34,68', 'each full row its own line')
+	-- A wide row right after a wide row, and one first.
+	local rows = { r('x', 'wide'), r('y', 'wide'), r('z') }
+	placed, height = OW.LayoutRows(rows)
+	eq(placed[1].y .. ',' .. placed[2].y .. ',' .. placed[3].y, '0,34,68', 'each wide row its own line')
 	eq(height, 102, 'three lines')
 
 	-- A taller row makes its line taller.
+	rows = { r('a'), r('b'), r('c'), r('wide', 'wide'), r('d'), r('e'), r('f') }
 	placed, height = OW.LayoutRows(rows, function(row) return row.key == 'b' and 60 or 34 end)
 	eq(placed[3].y, 60, 'the line after a 60-high cell starts at 60')
 	eq(height, 196, 'total')
@@ -215,10 +222,99 @@ test('LayoutRows: normal rows alternate columns 1 and 2, a full row takes a line
 	eq(select(2, OW.LayoutRows({})), 0, 'no rows, no height')
 end)
 
+------------------------------------------------------------------ the body
+
+-- A body of width, on a fresh content frame, with the given options on one
+-- page (each { key, type, name, size }). Returns the body and its cells by key.
+local function draw_body(width, options)
+	local store, args = {}, {}
+	for i, o in ipairs(options) do
+		args[o[1]] = { type = o[2], name = o[3], size = o[4], order = i, min = 0, max = 10, step = 1, values = { a = 'A' } }
+		store[o[1]] = o[2] == 'toggle' and true or o[2] == 'color' and { 1, 0, 0, 1 } or o[2] == 'input' and 'text' or nil
+	end
+	local root = { page = {
+		type = 'group', name = 'Page', args = args,
+		get = function(info) local v = store[info[#info]]; if type(v) == 'table' then return unpack(v) end; return v end,
+		set = function() end,
+	} }
+	local content = CreateFrame('Frame', nil, UIParent)
+	local body = st.OptionsBody.New(content, root, nil, width)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local by = {}
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	return body, by
+end
+
+local function point_x(frame, n)
+	local _, _, _, x = frame:GetPoint(n or 1)
+	return x
+end
+
+test('a toggle and a color sit 10 past the end of their label, at normal and small size', function()
+	local body, by = draw_body(774, {
+		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' },
+		{ 'nc', 'color', 'A color that is long' },
+	})
+	for key, c in pairs(by) do
+		local point, rel, relPoint, x = c.widget.frame:GetPoint(1)
+		eq(point, 'LEFT', key .. ' point')
+		check(rel == c.label, key .. ' is anchored to its label')
+		eq(relPoint, 'RIGHT', key .. ' to the label\'s right')
+		eq(x, 10, key .. ' offset')
+		eq(c.label:GetWidth(), c.label:GetStringWidth(), key .. ' label is its text wide, not the leftover')
+	end
+	body:Release()
+end)
+
+test('a label too long for its small cell is cut to leave room for the control', function()
+	local body, by = draw_body(774, { { 'x', 'toggle', 'A very very long small toggle name', 'small' } })
+	local c = by.x
+	eq(c.label:GetWidth(), 171.5 - 18 - 10, 'the label gives way')
+	body:Release()
+end)
+
+test('a small input draws a 60-wide box; the same widget reused for a normal input is 170 again', function()
+	local body, by = draw_body(774, { { 'i', 'input', 'Small', 'small' } })
+	local first = by.i.widget
+	eq(first.frame:GetWidth(), 60, 'small box')
+	eq(first:GetWidth(), 60, 'and the widget says so')
+	body:Release()
+	local body2, by2 = draw_body(774, { { 'i', 'input', 'Normal' } })
+	check(by2.i.widget == first, 'the widget was reused')
+	eq(by2.i.widget.frame:GetWidth(), 170, 'a normal box again')
+	eq(by2.i.widget:GetWidth(), 170)
+	body2:Release()
+end)
+
+test('quarter cells sit at x = column x + (quarter - 1) * (quarter width + 24), in the window and a 520 dialog body', function()
+	local function xs(width)
+		local body, by = draw_body(width, {
+			{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'input', 'C' },
+			{ 'd', 'toggle', 'D', 'small' }, { 'e', 'toggle', 'E', 'small' }, { 'f', 'toggle', 'F', 'small' },
+		})
+		local out = {}
+		for _, k in ipairs({ 'a', 'b', 'c', 'd', 'e', 'f' }) do
+			out[k] = { x = point_x(by[k].frame), w = by[k].frame:GetWidth() }
+		end
+		body:Release()
+		return out
+	end
+	local w = xs(774)
+	eq(w.a.x, 0); eq(w.b.x, 195.5); eq(w.c.x, 407)
+	eq(w.a.w, 171.5); eq(w.b.w, 171.5); eq(w.c.w, 367)
+	eq(w.d.x, 0); eq(w.e.x, 195.5); eq(w.f.x, 407); eq(w.f.w, 171.5)
+	local d = xs(520)
+	eq(d.a.x, 0); eq(d.b.x, 132); eq(d.c.x, 280)
+	eq(d.a.w, 108); eq(d.b.w, 108); eq(d.c.w, 240)
+	eq(d.f.x, 280); eq(d.f.w, 108)
+	local _, wide = draw_body(520, { { 'w', 'input', 'Wide', 'wide' } })
+	eq(wide.w.frame:GetWidth(), 520, 'a wide row takes the body\'s width')
+end)
+
 test('LayoutSections: titled sections get a line, an untitled one after a nested group continues without one', function()
 	local function rows(n)
 		local list = {}
-		for i = 1, n do list[i] = { key = 'r' .. i, width = 'normal' } end
+		for i = 1, n do list[i] = { key = 'r' .. i, size = 'normal' } end
 		return list
 	end
 	local laid = OW.LayoutSections({
