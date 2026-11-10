@@ -9,8 +9,7 @@
 --   - the buttons.theme / panels.theme defaults (Config/defaults.lua);
 --   - the wrappers st:SkinActionButton and st:SkinEditBox (skinning.lua) and
 --     Core's widgets (Widgets/button.lua, scrollbar.lua, statusbar.lua,
---     radiogroup.lua), which still draw an old template name from a caller
---     not yet moved to themes exactly as before;
+--     radiogroup.lua), which draw a Theme and Background as their kind;
 --   - edit mode's movers, and Core's widgets that color their own backdrops
 --     (a scroll bar thumb, a radio group's pick, a focused edit box), which
 --     keep their colors through a recolor;
@@ -22,15 +21,18 @@
 -- and Widgets/scrollbar.lua, statusbar.lua and radiogroup.lua, with a stand-in
 -- for Blizzard's MinimalScrollBar (scrollBar below). Each case starts from a fresh
 -- world, since cases change the profile's theme. The kind a frame was drawn
--- with changes nothing under Thick and Thin, so the draw calls are watched:
--- st:SetTemplate and st:SetBackdrop are wrapped to note their arguments, and
--- still draw.
+-- with changes nothing under Thick and Thin, so the draw calls are watched
+-- (tests/lib/theme_helpers.lua's T.watch: they note their arguments, and still
+-- draw).
+local T = load_test_file('lib/theme_helpers.lua')
+local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offset
 
 local OM, W, OW
 
--- A fresh world, with Core's draw calls watched: draws[frame] is the theme,
--- background and kind frame was last drawn with.
-local draws
+-- A fresh world, with Core's draw calls watched: drawn(frame) is the theme,
+-- background and kind frame was last drawn with, as 'theme,background,kind'
+-- ('nil' for what wasn't passed), or nil if it wasn't.
+local drawn
 local function fresh()
 	reset_world()
 	load_test_file('core/config_helpers.lua')
@@ -43,45 +45,11 @@ local function fresh()
 	load_saftui('SaftUI-Core/Widgets/radiogroup.lua')
 	local st = SaftUI
 	OM, W, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsWindow
-
-	draws = setmetatable({}, { __mode = 'k' })
-	for _, name in ipairs({ 'SetTemplate', 'SetBackdrop' }) do
-		local real = st[name]
-		st[name] = function(self, frame, theme, background, kind)
-			draws[frame] = { theme, background, kind }
-			return real(self, frame, theme, background, kind)
-		end
-	end
+	drawn = T.watch()
 	return st
 end
 
--- How frame was last drawn: 'theme,background,kind' ('nil' for what wasn't
--- passed), or nil if it wasn't.
-local function drawn(frame)
-	local d = draws[frame]
-	if not d then return nil end
-	return ('%s,%s,%s'):format(tostring(d[1]), tostring(d[2]), tostring(d[3]))
-end
-
--- Numbers as text, rounded so float drift doesn't decide a check.
-local function text(...)
-	local out = {}
-	for i = 1, select('#', ...) do out[i] = string.format('%.2f', (select(i, ...))) end
-	return table.concat(out, ',')
-end
-
-local function fill(f) return text(f:GetBackdropColor()) end
-local function edge(f) return text(f:GetBackdropBorderColor()) end
-local function inset(f) return f.backdropInfo and f.backdropInfo.insets.left end
 local function alpha(f) return text(select(4, f:GetBackdropColor())) end
-
--- The x and y of one of a frame's points, as text.
-local function offset(f, point)
-	for i = 1, f:GetNumPoints() do
-		local p, _, _, x, y = f:GetPoint(i)
-		if p == point then return text(x, y) end
-	end
-end
 
 local function frame(st, frameType, name)
 	local f = st:CreateFrame(frameType or 'Frame', name, UIParent)
@@ -282,7 +250,7 @@ end)
 
 ------------------------------------------------------------------ wrappers
 
-test('st:SkinActionButton draws config.theme and config.background, and an old config.template as before', function()
+test('st:SkinActionButton draws config.theme and config.background as its kind', function()
 	local st = fresh()
 	local function button(name)
 		local b = frame(st, 'Button', name)
@@ -304,15 +272,16 @@ test('st:SkinActionButton draws config.theme and config.background, and an old c
 	st:SkinActionButton(d)
 	eq(drawn(d), 'theme,theme,action', "no config: the profile's buttons.theme and buttons.background")
 
-	-- A config not yet moved to themes: the old name, with no kind, as before.
-	local l = button('ThemeTestLegacy')
-	st:SkinActionButton(l, { template = 'thin' })
-	eq(drawn(l), 'thin,nil,nil', 'an old config.template draws with no kind')
-	eq(l.backdrop.template, 'thin', 'backdrop.template is the old name, as before')
-	eq(fill(l.backdrop), '0.20,0.20,0.20,1.00', "thin as it always drew: Thin's background, solid")
-	local n = button('ThemeTestNone')
-	st:SkinActionButton(n, {})
-	eq(drawn(n), nil, 'no theme or template draws nothing, as before')
+	-- A config with no Theme or Background follows SaftUI's theme; an old
+	-- template key is nothing to it.
+	local n = button('ThemeTestNoTheme')
+	st:SkinActionButton(n, { template = 'thin' })
+	eq(drawn(n), 'nil,nil,action', 'drawn as an action button, with nothing to override the theme')
+	eq(inset(n.backdrop), 2, "SaftUI's theme: Thick")
+	eq(fill(n.backdrop), '0.12,0.12,0.12,0.90', "and its background, at the opacity")
+	local none = button('ThemeTestNone')
+	st:SkinActionButton(none, { theme = 'none', background = 'theme' })
+	eq(none.backdrop, nil, 'None: no backdrop')
 
 	-- trueSize still fills the button with its backdrop.
 	local t = button('ThemeTestTrueSize')
@@ -324,7 +293,7 @@ test('st:SkinActionButton draws config.theme and config.background, and an old c
 	eq(offset(s.backdrop, 'TOPLEFT'), '-1.00,1.00', "the theme's slot moves to Thin's 1px")
 end)
 
-test('st:SkinEditBox and st:StyleEditBox take a Theme and Background, and an old template name with its font as before', function()
+test('st:SkinEditBox and st:StyleEditBox take a Theme, a Background and a font', function()
 	local st = fresh()
 	local e = frame(st, 'EditBox', 'ThemeTestEdit')
 	st:SkinEditBox(e, 'thin', 'solid')
@@ -347,26 +316,33 @@ test('st:SkinEditBox and st:StyleEditBox take a Theme and Background, and an old
 	local d = frame(st, 'EditBox', 'ThemeTestEditDefault')
 	st:SkinEditBox(d)
 	eq(drawn(d), 'theme,solid,small', "no theme: Use SaftUI's theme and Solid (it drew thick)")
+	local t = frame(st, 'EditBox', 'ThemeTestEditTheme')
+	st:SkinEditBox(t, 'thin')
+	eq(drawn(t), 'thin,solid,small', 'a Theme with no Background: Solid')
 
-	-- A caller not yet moved to themes: (editbox, template, font).
-	local o = frame(st, 'EditBox', 'ThemeTestEditOld')
+	-- The font is the fourth argument.
+	local o = frame(st, 'EditBox', 'ThemeTestEditFont')
 	local words = o:CreateFontString(nil, 'OVERLAY') -- the box's text, its first region
-	st:SkinEditBox(o, 'thintransparent', 'pixel')
-	eq(drawn(o), 'thintransparent,nil,nil', 'an old name draws with no kind')
-	eq(o.backdrop.template, 'thintransparent', 'as before')
-	check(words:GetFontObject() == st:GetFont('pixel'), 'the third argument is still its font')
-	o:SetFocus()
-	o:ClearFocus()
-	eq(drawn(o), 'thintransparent,nil,nil', 'losing focus draws the old name again')
-	st:StyleEditBox(o, 'thick', 'normal')
-	eq(drawn(o), 'thick,nil,nil', "StyleEditBox's old form too")
-	eq(alpha(o.backdrop), '1.00', 'thick as it always drew: solid')
+	st:SkinEditBox(o, 'thin', 'transparent', 'pixel')
+	eq(drawn(o), 'thin,transparent,small', 'Theme and Background')
+	check(words:GetFontObject() == st:GetFont('pixel'), 'and its font')
+	st:StyleEditBox(o, 'thick', 'solid', 'normal')
+	eq(drawn(o), 'thick,solid,small', 'StyleEditBox: the new Theme and Background')
+	eq(alpha(o.backdrop), '1.00', 'solid')
 	check(words:GetFontObject() == st:GetFont('normal'), 'with its font')
+
+	-- A box drawn with None errors on nothing when it takes focus.
+	local n = frame(st, 'EditBox', 'ThemeTestEditNone')
+	st:SkinEditBox(n, 'none', 'theme')
+	eq(n.backdrop, nil, 'None: no backdrop')
+	n:SetFocus()
+	n:ClearFocus()
+	eq(#take_errors(), 0, 'focus and losing it raise no error')
 end)
 
 ------------------------------------------------------------------ widgets
 
-test("Core's buttons and status bars draw with a kind; an old template name from a caller not yet moved draws as before", function()
+test("Core's buttons and status bars draw a Theme and Background as their kind", function()
 	local st = fresh()
 	local b = st:CreateButton('ThemeTestButton', UIParent, 'x')
 	eq(drawn(b), 'theme,solid,small', "no theme: Use SaftUI's theme and Solid (it was thick)")
@@ -374,9 +350,8 @@ test("Core's buttons and status bars draw with a kind; an old template name from
 	eq(edge(b.backdrop), THICK_EDGE, "the theme's (Thick's) border")
 	local t = st:CreateButton(nil, UIParent, 'x', 'thin', 'transparent')
 	eq(drawn(t), 'thin,transparent,small', 'Theme and Background')
-	local o = st:CreateButton(nil, UIParent, 'x', 'thicktransparent')
-	eq(drawn(o), 'thicktransparent,nil,nil', 'an old name draws with no kind')
-	eq(o.backdrop.template, 'thicktransparent', 'as before')
+	local o = st:CreateButton(nil, UIParent, 'x', 'thin')
+	eq(drawn(o), 'thin,solid,small', 'a Theme with no Background: Solid')
 	local n = st:CreateButton(nil, UIParent, 'x', 'none')
 	eq(n.backdrop, nil, 'none: no backdrop, as before')
 	local s = frame(st, 'Button')
@@ -388,17 +363,16 @@ test("Core's buttons and status bars draw with a kind; an old template name from
 	local tbar = st:CreateStatusBar(nil, UIParent, 'x', 'thin', 'solid')
 	eq(drawn(tbar), 'thin,solid,bar', 'a status bar with a Theme and Background')
 	local obar = st:CreateStatusBar(nil, UIParent, 'x', 'thick')
-	eq(drawn(obar), 'thick,nil,nil', 'a status bar with an old name: no kind, as before')
+	eq(drawn(obar), 'thick,solid,bar', 'a status bar with a Theme and no Background: Solid')
 
-	-- A switch moves what follows the theme and leaves the old names as they drew.
+	-- A switch moves what follows the theme and leaves an override as it is.
 	switch(st, 'thin')
 	eq(offset(b.backdrop, 'TOPLEFT'), '-1.00,1.00', "the button moves to Thin's 1px")
 	eq(offset(bar.backdrop, 'TOPLEFT'), '-1.00,1.00', 'the status bar too')
-	eq(inset(o.backdrop), 2, 'thicktransparent still draws Thick')
-	eq(inset(obar.backdrop), 2, 'thick still draws Thick')
+	eq(inset(obar.backdrop), 2, 'a Thick status bar still draws Thick')
 end)
 
-test('a radio group draws its buttons with options.theme and options.background, or an old options.template as before', function()
+test('a radio group draws its buttons with options.theme and options.background', function()
 	local st = fresh()
 	local function group(name, options)
 		options.buttonHeight, options.buttonWidth, options.buttonSpacing = 20, 50, 2
@@ -414,10 +388,10 @@ test('a radio group draws its buttons with options.theme and options.background,
 	eq(drawn(g.buttons[1]), 'thin,solid,small', 'a click draws the buttons with the Theme and Background')
 	eq(edge(g.buttons[2].backdrop), blue, 'and the clicked one blue')
 
-	local o = group('ThemeTestRadioOld', { template = 'thintransparent' })
-	stub.fire_script(o.buttons[1], 'OnClick', 'LeftButton', false)
-	eq(drawn(o.buttons[2]), 'thintransparent,nil,nil', 'an old options.template draws with no kind, as before')
-	eq(edge(o.buttons[1].backdrop), blue, 'and the clicked one blue')
+	local d = group('ThemeTestRadioDefault', {})
+	eq(drawn(d.buttons[1]), 'theme,solid,small', "no Theme or Background: Use SaftUI's theme, Solid")
+	stub.fire_script(d.buttons[1], 'OnClick', 'LeftButton', false)
+	eq(drawn(d.buttons[2]), 'theme,solid,small', 'and the same after a click')
 end)
 
 -- Blizzard's MinimalScrollBar, as far as st:SkinNewScrollBar uses it: its
@@ -489,13 +463,6 @@ test("Core widgets keep their own colors through a recolor: a scroll bar thumb's
 	recolor()
 	eq(edge(g.buttons[1].backdrop), blue, 'a new pick: blue through a recolor')
 	eq(edge(g.buttons[2].backdrop), text(unpack(thick.bordercolor)), "the old pick takes the theme's border")
-	local o = st:CreateRadioGroup('ThemeTestRadioColorsOld', UIParent, {
-		buttonHeight = 20, buttonWidth = 50, buttonSpacing = 2, template = 'thicktransparent',
-		items = { { label = 'A' }, { label = 'B' } },
-	})
-	stub.fire_script(o.buttons[1], 'OnClick', 'LeftButton', false)
-	recolor()
-	eq(edge(o.buttons[1].backdrop), blue, 'an old options.template: the picked button stays blue too')
 
 	-- A focused edit box keeps its white border, and takes the theme's once it loses focus.
 	local e = frame(st, 'EditBox', 'ThemeTestEditColors')

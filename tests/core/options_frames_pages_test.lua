@@ -17,6 +17,7 @@ load_saftui('SaftUI-ActionBars/config.lua')
 load_saftui('SaftUI-ActionBars/init.lua') -- the bar ids and labels
 apply_defaults()
 load_test_file('core/options_walk.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local st = SaftUI
@@ -31,6 +32,8 @@ local function info_for(key) return { key } end
 -- siblings. Returns the number of Position options.
 local function check_page(name, tree)
 	check(tree ~= nil, name .. ' builds')
+	-- Nothing on it is a Template, Highlight or Close Button, or an old template name.
+	T.check_no_old_names(tree, name)
 	local positions = 0
 	local function siblings(group, where)
 		for key, option in pairs(group.args) do

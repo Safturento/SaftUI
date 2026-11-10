@@ -11,7 +11,7 @@
 -- Feed/history.lua, feed.lua, filter.lua and progress.lua, Core's helpers, the
 -- theme engine and Core's Utilities (the feed's item quality overlay).
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 load_saftui('SaftUI-Core/Utilities/utilities.lua')
 load_saftui('SaftUI-Core/Utilities/itemupgrades.lua')

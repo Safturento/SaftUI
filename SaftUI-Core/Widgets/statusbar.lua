@@ -19,13 +19,7 @@ end
 -- flat texture.
 function st:SkinStatusBar(statusbar, theme, background, font)
 	assert(statusbar)
-	if background then
-		st:SetBackdrop(statusbar, theme, background, 'bar')
-	elseif theme then
-		st:SetBackdrop(statusbar, theme)
-	else
-		st:SetBackdrop(statusbar, 'theme', 'solid', 'bar')
-	end
+	st:SetBackdrop(statusbar, theme or 'theme', background or 'solid', 'bar')
 
     statusbar.text:SetFontObject(st:GetFont(font or 'pixel'))
 	statusbar:SetStatusBarTexture(st.BLANK_TEX)

@@ -10,7 +10,7 @@
 -- Real: SaftUI-Chat's config.lua, chatframe.lua and options.lua, Core's helpers,
 -- the theme engine and edit mode.
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
 	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order

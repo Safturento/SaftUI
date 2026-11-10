@@ -15,17 +15,10 @@ end
 
 -- Draws button's backdrop in theme and background (Use SaftUI's theme and
 -- Solid by default), and gives it font and SaftUI's hover, pushed and disabled
--- looks. A caller not yet moved to themes passes an old template name as
--- theme with no background, and the button draws as before.
+-- looks.
 function st:SkinButton(button, theme, background, font)
 	assert(button)
-	if background then
-		st:SetBackdrop(button, theme, background, 'small')
-	elseif theme then
-		st:SetBackdrop(button, theme)
-	else
-		st:SetBackdrop(button, 'theme', 'solid', 'small')
-	end
+	st:SetBackdrop(button, theme or 'theme', background or 'solid', 'small')
 
     local fontObject = st:GetFont(font or 'pixel')
 	if button.SetNormalFontObject then

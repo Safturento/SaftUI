@@ -31,7 +31,7 @@ local function fresh()
 	reset_world()
 	load_core_helpers()
 	st = SaftUI
-	drawn = T.watch_draws(st)
+	drawn = T.watch()
 	LAB = load_test_file('actionbars/fixtures/libactionbutton.lua')
 	load_saftui('SaftUI-ActionBars/config.lua')
 	apply_defaults()

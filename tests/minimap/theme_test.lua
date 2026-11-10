@@ -10,7 +10,8 @@
 -- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+load_test_file('core/options_walk.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap: SaftUI sizes and places it, and draws its panel behind it.
 CreateFrame('Frame', 'Minimap', UIParent)
@@ -33,6 +34,10 @@ test('each page offers Theme and Background, not Template', function()
 	local updates = 0
 	local update = MM.UpdateConfig
 	function MM:UpdateConfig() updates = updates + 1 end -- counted; run for real below
+	T.check_no_old_names(MM:GetConfigTable(), 'Minimap')
+	local MicroMenu = st:GetModule('MicroMenu')
+	MicroMenu.Container = CreateFrame('Frame', nil, UIParent) -- SaftUI's, made by OnEnable
+	T.check_no_old_names(MicroMenu:GetConfigTable(), 'Micro Menu')
 	local general = MM:GetConfigTable().args.general
 	T.check_options(general, 'Minimap')
 	eq(general.get({ 'theme' }), 'theme', 'Theme reads minimap.theme')

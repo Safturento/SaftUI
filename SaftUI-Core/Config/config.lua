@@ -49,13 +49,17 @@ end
 
 -- Export's text back to data. Returns true and the data, or false for text
 -- that isn't an export. Decode errors on characters outside Base64, and
--- Decompress can error on bytes that aren't its own.
+-- Decompress can error on bytes that aren't its own. Data exported before
+-- themes has its template choices made a Theme and Background
+-- (st:MigrateTemplateKeys), as a saved profile does.
 function Config:Import(text)
 	local ok, compressed = pcall(LibBase64.Decode, text)
 	if not ok then return false end
 	local decompressed, serialized = pcall(LibCompress.Decompress, LibCompress, compressed)
 	if not decompressed or type(serialized) ~= 'string' then return false end
-	return AceSerializer:Deserialize(serialized)
+	local success, data = AceSerializer:Deserialize(serialized)
+	if success then st:MigrateTemplateKeys(data) end
+	return success, data
 end
 
 function Config:InitializeAceConfig()
@@ -71,6 +75,10 @@ function Config:InitializeAceConfig()
 	})
 
     self.db = st.config
+	-- A profile saved before themes: its template choices become a Theme and
+	-- Background before any module reads it. Every profile change, copy or
+	-- reset does the same for the profile it lands on (UpdateConfig).
+	st:MigrateTemplateKeys(st.config.profile)
     self.db.RegisterCallback(self, 'OnProfileChanged', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileCopied', 'UpdateConfig')
 	self.db.RegisterCallback(self, 'OnProfileReset', 'UpdateConfig')
@@ -219,6 +227,11 @@ end
 
 -- Runs on every profile change, copy or reset.
 function Config:UpdateConfig()
+	-- A profile switched to or copied from one saved before themes still has
+	-- its template choices: they become a Theme and Background first, so every
+	-- module reads them. Nothing to do on a profile already migrated.
+	st:MigrateTemplateKeys(st.config.profile)
+
 	-- On a profile change AceDB switches to the new profile's tables and strips
 	-- defaults from the old ones, so cached module.config references go stale
 	-- (nil fields). Re-point every bound module before any of them updates.

@@ -43,7 +43,7 @@ local function fresh()
 	load_test_file('core/config_helpers.lua')
 	load_test_file('core/options_walk.lua')
 	st = SaftUI
-	drawn = T.watch_draws(st)
+	drawn = T.watch()
 	load_saftui('SaftUI-Core/Utilities/utilities.lua')
 	load_saftui('SaftUI-Bags/config.lua')
 	-- AceDB filled the profile from every default at login: the bags'

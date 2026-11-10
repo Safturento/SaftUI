@@ -5,9 +5,8 @@ local st = SaftUI
         buttonWidth: number
         buttonHeight: number
         buttonSpacing: number
-        theme, background: strings, the buttons' look (or template, an old
-            template name, which only a click gives them, from a caller not
-            yet moved to themes)
+        theme, background: strings, the buttons' Theme and Background (Use
+            SaftUI's theme and Solid by default, as st:SkinButton's)
         growthDirection: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
         items = [
             {
@@ -38,11 +37,7 @@ function st:CreateRadioGroup(name, parent, options)
         button.config = item --store button config for use in callbacks
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
-				if options.theme then
-					st:SetBackdrop(_button, options.theme, options.background, 'small')
-				else
-					st:SetBackdrop(_button, options.template)
-				end
+				st:SetBackdrop(_button, options.theme or 'theme', options.background or 'solid', 'small')
 				st:KeepOwnColors(_button, nil)
 			end
 			ColorPicked(self)

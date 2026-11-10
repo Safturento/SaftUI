@@ -33,34 +33,6 @@ function st:StripTextures(frame, kill)
 	end
 end
 
---function st:SkinCheckButton(button)
---	print('skinning checkbutton')
---	st:StripTextures(button)
---
---	button:SetSize(12, 12)
---	st:SetBackdrop(button, st.config.profile.panels.template)
---
---	button:SetFrameLevel(button:GetFrameLevel()+1)
---
---	local checked = button:CreateTexture(nil, 'OVERLAY')
---	checked:SetTexture(st.BLANK_TEX)
---	checked:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
---	checked:SetAllPoints(button)
---	button:SetCheckedTexture(checked)
---
---	local hover = button:CreateTexture(nil, 'OVERLAY')
---	hover:SetTexture(st.BLANK_TEX)
---	hover:SetVertexColor(st.config.profile.colors.button.normal:GetRGB())
---	hover:SetAllPoints(button)
---	button:SetHighlightTexture(hover)
---
---	local name = button:GetName()
---	local text = button.Text or button.Label or name and _G[name..'Text']
---	if text then
---		text:SetFontObject(st:GetFont(st.config.profile.panels.font))
---	end
---end
-
 -- The tex coords (left, right, top, bottom) SaftUI crops an icon width by
 -- height to: trim, a fraction of the art, off each edge, after a wide or tall
 -- icon's art is cut to its shape around the middle so it isn't stretched. A
@@ -156,16 +128,11 @@ end
 
 -- Skins button with config (the profile's buttons by default): its backdrop in
 -- config.theme and config.background, drawn as kind ('action' by default; a
--- bag slot is a 'slot'), and config.font and config.trueSize. A config not yet
--- moved to themes has template, an old template name, and draws as before.
+-- bag slot is a 'slot'), and config.font and config.trueSize.
 function st:SkinActionButton(button, config, kind)
 	config = config or st.config.profile.buttons
 
-	if config.theme then
-		st:SetBackdrop(button, config.theme, config.background, kind or 'action')
-	elseif config.template then
-		st:SetBackdrop(button, config.template)
-	end
+	st:SetBackdrop(button, config.theme, config.background, kind or 'action')
 
     local inset = config.trueSize and st:CalculateSpacing(button) or 0
     if config.trueSize then
@@ -294,15 +261,8 @@ function st:SkinActionButton(button, config, kind)
 	end
 end
 
--- The Background values (st:ResolveTheme). An edit box wrapper given one was
--- called with a Theme and a Background; given anything else, by a caller not
--- yet moved to themes, with (template, font): an old template name, then the
--- font.
-local BACKGROUNDS = { theme = true, solid = true, transparent = true }
-
--- editbox -> { theme, background } it was last styled with (background nil:
--- theme is an old template name), so losing focus draws it again. Kept here,
--- not on the box: chat's is Blizzard's.
+-- editbox -> { theme, background } it was last styled with, so losing focus
+-- draws it again. Kept here, not on the box: chat's is Blizzard's.
 local editBoxLooks = setmetatable({}, { __mode = 'k' })
 
 -- A focused box's white border. Kept through a theme recolor.
@@ -313,17 +273,12 @@ local function ColorFocused(editbox)
 end
 
 local function DrawEditBox(editbox, look)
-	if look[2] then
-		st:SetBackdrop(editbox, look[1], look[2], 'small')
-	else
-		st:SetBackdrop(editbox, look[1])
-	end
+	st:SetBackdrop(editbox, look[1], look[2], 'small')
 end
 
 -- Skins an edit box: Blizzard's art killed, SaftUI's backdrop in theme and
 -- background (Use SaftUI's theme and Solid by default), font for its text, and
--- a white border while it has focus. A caller not yet moved to themes passes
--- (editbox, template, font), and it draws as before.
+-- a white border while it has focus.
 function st:SkinEditBox(editbox, theme, background, font)
 	local name = editbox:GetName()
 
@@ -347,9 +302,8 @@ function st:SkinEditBox(editbox, theme, background, font)
 
 	st:StyleEditBox(editbox, theme, background, font)
 
-	editbox:HookScript('OnEditFocusGained', function(self)
-		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
-	end)
+	-- A box drawn with None has no backdrop to color.
+	editbox:HookScript('OnEditFocusGained', ColorFocused)
 	st:KeepOwnColors(editbox, ColorFocused)
 
 	-- Restore the look the box has now (st:StyleEditBox may have changed it
@@ -363,14 +317,7 @@ end
 -- as st:SkinEditBox takes them. Safe to call again (e.g. on a profile change):
 -- it adds no hooks or regions.
 function st:StyleEditBox(editbox, theme, background, font)
-	local look
-	if BACKGROUNDS[background] then
-		look = { theme or 'theme', background }
-	else
-		-- (editbox, template, font). No template drew 'thick'.
-		font = background or font
-		look = theme and { theme } or { 'theme', 'solid' }
-	end
+	local look = { theme or 'theme', background or 'solid' }
 	editBoxLooks[editbox] = look
 	DrawEditBox(editbox, look)
 

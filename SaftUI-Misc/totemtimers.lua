@@ -134,9 +134,9 @@ local function TextHeight()
 end
 
 -- The bar's height with its border: the setting, but always with MIN_FILL of bar inside
--- the template's border (2-4px with 2px of border each side would show none), and with
+-- the theme's border (2-4px with 2px of border each side would show none), and with
 -- the text on it (onBar) never less than the text inside the border. With the default
--- pixel font (10) and thick template (2 each side) that's 14.
+-- pixel font (10) and the Thick theme (2 each side) that's 14.
 local MIN_FILL = 2
 local function BarHeight(onBar)
 	local look = st.config.profile.buttons
@@ -546,7 +546,7 @@ function TB:UpdateTimers(event, totemSlot)
 end
 
 -- Lays the timers out from the profile: whether the bar and the text show, where the text
--- sits, the bar's height, template and colours, the font, and how much the arrow and the
+-- sits, the bar's height, theme and colours, the font, and how much the arrow and the
 -- flyout grow. Only SaftUI's frames and the unprotected arrow and flyout are touched, so
 -- it applies in combat too.
 function TB:ApplyTimerLayout()

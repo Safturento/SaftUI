@@ -1,28 +1,23 @@
 -- SaftUI's theme engine (SaftUI-Core/theme.lua):
 --   - st:ResolveTheme, which turns a Theme and a Background override into the
---     look a frame is drawn with, and st:ResolveLegacyTemplate and
---     st:ThemeInset, which read the old template names;
---   - the draw calls st:SetTemplate, st:SetBackdrop and st:SetBackdropIn, with
---     a kind, and with none (the transition mode, where the theme argument is
---     an old template name and draws as it did before themes);
+--     look a frame is drawn with, st:ResolveLegacyTemplate, which reads an old
+--     template name (the module tests compare their defaults with it), and
+--     st:ThemeInset;
+--   - the draw calls st:SetTemplate, st:SetBackdrop and st:SetBackdropIn, each
+--     with a kind; a call with no kind is an error unless it draws None;
 --   - st:RecolorThemed and st:RedrawThemed, which bring every drawn frame up to
 --     a changed theme.
 --
 -- Real: theme.lua, with Core's helpers it's loaded with (load_core_helpers) and
 -- the profile's defaults. Each case starts from a fresh world, since cases
 -- change the profile's theme.
+local T = load_test_file('lib/theme_helpers.lua')
+local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offset
 
 local function fresh()
 	reset_world()
 	load_core_helpers()
 	return SaftUI
-end
-
--- Numbers as text, rounded so float drift doesn't decide a check.
-local function text(...)
-	local out = {}
-	for i = 1, select('#', ...) do out[i] = string.format('%.2f', (select(i, ...))) end
-	return table.concat(out, ',')
 end
 
 local function frame(st)
@@ -31,18 +26,6 @@ local function frame(st)
 	f:SetPoint('CENTER')
 	return f
 end
-
--- The x and y of one of a frame's points, as text.
-local function offset(f, point)
-	for i = 1, f:GetNumPoints() do
-		local p, _, _, x, y = f:GetPoint(i)
-		if p == point then return text(x, y) end
-	end
-end
-
-local function fill(f) return text(f:GetBackdropColor()) end
-local function edge(f) return text(f:GetBackdropBorderColor()) end
-local function inset(f) return f.backdropInfo and f.backdropInfo.insets.left end
 
 -- Whether Thick's outer lines (the dark ones either side of the border) show.
 local function outerShown(f)
@@ -118,68 +101,54 @@ test('old names read as LEGACY', function()
 	check(look.name == 'thick' and text(look.alpha) == '0.90', "an old name keeps its own look whatever the theme")
 end)
 
-test('a call with no kind draws an old name exactly as today', function()
+test('a call with no kind is an error, unless it draws None', function()
 	local st = fresh()
 	local f = frame(st)
+	st:SetTemplate(f, 'thin', 'solid', 'panel')
 
-	st:SetTemplate(f, 'thick')
-	eq(edge(f), '0.30,0.30,0.30,1.00', 'thick: border color')
-	eq(fill(f), '0.12,0.12,0.12,1.00', 'thick: background, solid')
-	eq(inset(f), 2, 'thick: background 2px in')
-	check(outerShown(f), 'thick: the outer lines show')
-	eq(text(f.altborder.LEFT:GetVertexColor()), '0.10,0.10,0.10,1.00', "thick: the outer lines in Thick's outer border color")
-
-	st:SetTemplate(f, 'thicktransparent')
-	eq(fill(f), '0.12,0.12,0.12,0.90', 'thicktransparent: background alpha 0.9')
-	eq(edge(f), '0.30,0.30,0.30,1.00', 'thicktransparent: border color')
-
-	st:SetTemplate(f, 'thin')
-	eq(edge(f), '0.00,0.00,0.00,1.00', 'thin: border color')
-	eq(fill(f), '0.20,0.20,0.20,1.00', 'thin: background')
-	eq(inset(f), 1, 'thin: background 1px in')
-	check(not outerShown(f), 'thin: no outer lines')
-
-	st:SetTemplate(f, 'thintransparent')
-	eq(fill(f), '0.20,0.20,0.20,0.90', 'thintransparent: background alpha 0.9')
-
-	st:SetTemplate(f, 'none')
-	check(bare(f), 'none: no backdrop, no outer lines')
-
-	-- An old name is drawn as it was, whatever the theme says.
-	st.config.profile.theme.name = 'thin'
-	st.config.profile.theme.transparent = false
-	st:SetTemplate(f, 'thicktransparent')
-	check(inset(f) == 2 and outerShown(f) and fill(f) == '0.12,0.12,0.12,0.90', 'thicktransparent stays Thick at 0.9 under a Thin, solid theme')
-
-	-- st:SetBackdrop: the backdrop sits the template's thickness outside the
-	-- frame, and the frame and backdrop keep the fields unconverted code reads.
+	-- An old template name, or any Theme, with no kind: the call errors and
+	-- draws nothing.
+	local function fails(label, fn, ...)
+		local ok, err = pcall(fn, st, ...)
+		eq(ok, false, label .. ' errors')
+		check(tostring(err):find('kind', 1, true) ~= nil, label .. ': the error says the kind is missing: ' .. tostring(err))
+	end
+	fails('SetTemplate with an old name', st.SetTemplate, f, 'thick')
+	fails('SetTemplate with a Theme and Background', st.SetTemplate, f, 'theme', 'solid')
+	fails('SetTemplate with nothing', st.SetTemplate, f)
+	eq(inset(f), 1, 'the frame keeps what it was drawn with: Thin')
+	eq(edge(f), '0.00,0.00,0.00,1.00', "and Thin's border")
 	local p = frame(st)
-	st:SetBackdrop(p, 'thintransparent')
-	eq(offset(p.backdrop, 'TOPLEFT'), '-1.00,1.00', 'SetBackdrop thin: 1px out')
-	eq(offset(p.backdrop, 'BOTTOMRIGHT'), '1.00,-1.00', 'SetBackdrop thin: 1px out (bottom right)')
-	eq(p.thick, false, 'SetBackdrop thin: frame.thick is false')
-	eq(p.backdrop.template, 'thintransparent', 'SetBackdrop: backdrop.template is the old name')
-	eq(fill(p.backdrop), '0.20,0.20,0.20,0.90', 'SetBackdrop thintransparent: background')
-	st:SetBackdrop(p, 'thick')
-	eq(offset(p.backdrop, 'TOPLEFT'), '-2.00,2.00', 'SetBackdrop thick: 2px out')
-	eq(p.thick, true, 'SetBackdrop thick: frame.thick is true')
-	st:SetBackdrop(p, 'none')
-	check(bare(p.backdrop), 'SetBackdrop none: the backdrop is cleared')
-
-	-- st:SetBackdropIn keeps its backdrop in the caller's table and writes
-	-- nothing onto the frame.
+	fails('SetBackdrop with an old name', st.SetBackdrop, p, 'thintransparent')
+	eq(p.backdrop, nil, 'no backdrop made')
+	eq(p.thick, nil, 'nothing written onto the frame')
 	local backdrops = setmetatable({}, { __mode = 'k' })
 	local b = frame(st)
-	local made = st:SetBackdropIn(backdrops, b, 'thick')
+	fails('SetBackdropIn with an old name', st.SetBackdropIn, backdrops, b, 'thick')
+	eq(backdrops[b], nil, 'nothing kept')
+
+	-- None needs no kind: it only clears.
+	st:SetTemplate(f, 'none')
+	check(bare(f), 'SetTemplate none: no backdrop, no outer lines')
+	st:SetBackdrop(p, 'none')
+	eq(p.backdrop, nil, 'SetBackdrop none on a frame never drawn makes nothing')
+	st:SetBackdrop(p, 'theme', 'theme', 'panel')
+	eq(p.backdrop.template, nil, 'no old name kept on the backdrop')
+	st:SetBackdrop(p, 'none')
+	check(bare(p.backdrop), 'SetBackdrop none clears a drawn backdrop')
+	local made = st:SetBackdropIn(backdrops, b, 'theme', 'theme', 'tooltip')
 	check(made ~= nil and made == backdrops[b], "SetBackdropIn returns the backdrop it keeps in the caller's table")
-	eq(offset(made, 'TOPLEFT'), '-2.00,2.00', 'SetBackdropIn thick: 2px out')
-	eq(made.template, 'thick', 'SetBackdropIn: backdrop.template is the old name')
-	check(b.backdrop == nil and b.thick == nil and b.altborder == nil, 'SetBackdropIn writes nothing onto the frame')
 	eq(st:SetBackdropIn(backdrops, b, 'none'), nil, 'SetBackdropIn none returns nil')
-	check(bare(made), 'SetBackdropIn none: the backdrop is cleared')
+	check(bare(made), 'SetBackdropIn none clears it')
+	check(b.backdrop == nil and b.thick == nil and b.altborder == nil, 'SetBackdropIn writes nothing onto the frame')
 	local other = frame(st)
 	eq(st:SetBackdropIn(backdrops, other, 'none'), nil, 'SetBackdropIn none on a new frame makes nothing')
-	eq(backdrops[other], nil, 'SetBackdropIn none on a new frame keeps nothing')
+	eq(backdrops[other], nil, 'and keeps nothing')
+
+	-- Cleared with no kind, a frame stays bare through a redraw.
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	check(bare(f) and bare(p.backdrop) and bare(made), 'None stays bare after a redraw')
 end)
 
 test('header and close draw their own looks from the theme', function()
@@ -227,8 +196,8 @@ test('a recolor changes colors, not places, and calls ColorsChanged theme once',
 	st:SetBackdrop(panel, 'theme', 'theme', 'panel')
 	local thin = frame(st)
 	st:SetTemplate(thin, 'thin', 'solid', 'small')
-	local legacy = frame(st)
-	st:SetTemplate(legacy, 'thicktransparent')
+	local override = frame(st)
+	st:SetTemplate(override, 'thick', 'transparent', 'small')
 
 	local before = offset(panel.backdrop, 'TOPLEFT')
 	local moves = 0
@@ -251,7 +220,7 @@ test('a recolor changes colors, not places, and calls ColorsChanged theme once',
 	eq(text(panel.backdrop.altborder.LEFT:GetVertexColor()), '0.00,1.00,0.00,1.00', 'the outer lines take the new color')
 	eq(edge(thin), '0.00,0.00,0.00,1.00', "a Thin frame keeps Thin's border color")
 	eq(fill(thin), '0.20,0.20,0.20,1.00', "a Thin frame keeps Thin's background")
-	eq(fill(legacy), '0.00,0.00,1.00,0.50', 'a frame drawn with an old name follows its colors and the opacity too')
+	eq(fill(override), '0.00,0.00,1.00,0.50', 'a Thick, Transparent override follows its colors and the opacity too')
 	eq(table.concat(groups, ','), 'theme', "ColorsChanged('theme') once")
 end)
 
@@ -310,11 +279,11 @@ test('ThemeInset', function()
 	eq(st:ThemeInset('thin'), 1, 'Thin')
 	eq(st:ThemeInset('thick', 'solid'), 2, 'Thick')
 	eq(st:ThemeInset('none'), 0, 'None')
-	eq(st:ThemeInset('thicktransparent'), 2, 'old thicktransparent')
-	eq(st:ThemeInset('thintransparent'), 1, 'old thintransparent')
+	eq(st:ThemeInset('none', 'solid'), 0, 'None, whatever the background')
+	eq(st:ThemeInset('thin', 'transparent'), 1, 'the background moves no border')
 	st.config.profile.theme.name = 'thin'
 	eq(st:ThemeInset('theme'), 1, 'the theme under Thin')
-	eq(st:ThemeInset('thicktransparent'), 2, 'an old name keeps its thickness under Thin')
+	eq(st:ThemeInset('thick', 'theme'), 2, 'Thick under Thin')
 end)
 
 test('every override combination resolves by the rule', function()
@@ -353,28 +322,6 @@ test('every override combination resolves by the rule', function()
 	end
 end)
 
-test('old highlight and close names still draw their own looks', function()
-	local st = fresh()
-	local h = frame(st)
-	st:SetTemplate(h, 'highlight')
-	eq(fill(h), '0.30,0.30,0.30,0.40', 'highlight: the strip fill')
-	eq(text(select(4, h:GetBackdropBorderColor())), '0.00', 'highlight: no border line')
-	check(not outerShown(h), 'highlight: no outer lines')
-	eq(inset(h), 0, 'highlight: the fill covers the frame')
-
-	local c = frame(st)
-	st:SetTemplate(c, 'close')
-	eq(fill(c), '0.50,0.10,0.10,0.40', 'close: the red fill')
-	eq(text(select(4, c:GetBackdropBorderColor())), '0.00', 'close: no border line')
-
-	local cb = frame(st)
-	st:SetBackdrop(cb, 'close')
-	eq(offset(cb.backdrop, 'TOPLEFT'), '-2.00,2.00', "close backdrop: Thick's 2px out, as before")
-	eq(cb.thick, true, 'close backdrop: frame.thick as before')
-	eq(cb.backdrop.template, 'close', 'close backdrop: backdrop.template as before')
-	eq(fill(cb.backdrop), '0.50,0.10,0.10,0.40', 'close backdrop: the red fill')
-end)
-
 test('THEME_KINDS has the nine kinds, and a draw with another kind errors', function()
 	local st = fresh()
 	local kinds = {}
@@ -410,16 +357,16 @@ test('a redraw keeps the anchors of a backdrop its caller placed itself, and sti
 	tb:ClearAllPoints()
 	tb:SetPoint('TOPLEFT', t, 'TOPLEFT', -5, 5)
 	tb:SetPoint('BOTTOMRIGHT', t, 'BOTTOMRIGHT', 5, -5)
-	-- With no kind: a Blizzard close button's backdrop (st:CreateHeader), a
-	-- strip that follows the theme, and an old name placed by its caller.
+	-- A Blizzard close button's backdrop (st:CreateHeader), a strip that
+	-- follows the theme, and a Thick override, each placed by its caller.
 	local c = frame(st)
-	st:SetBackdrop(c, 'close')
+	st:SetBackdrop(c, 'theme', 'theme', 'close')
 	c.backdrop:SetAllPoints()
 	local h = frame(st)
-	st:SetBackdrop(h, 'highlight')
+	st:SetBackdrop(h, 'theme', 'theme', 'header')
 	h.backdrop:SetAllPoints()
 	local l = frame(st)
-	st:SetBackdrop(l, 'thicktransparent')
+	st:SetBackdrop(l, 'thick', 'transparent', 'panel')
 	l.backdrop:ClearAllPoints()
 	l.backdrop:SetPoint('TOPLEFT', l, 'TOPLEFT', -4, 4)
 	l.backdrop:SetPoint('BOTTOMRIGHT', l, 'BOTTOMRIGHT', 4, -4)
@@ -438,13 +385,13 @@ test('a redraw keeps the anchors of a backdrop its caller placed itself, and sti
 	eq(anchors(tb), before[tb], 'SetBackdropIn backdrop: the anchors its caller set')
 	eq(edge(tb), '0.00,0.00,0.00,1.00', "SetBackdropIn backdrop: Thin's border color")
 	check(t.thick == nil and t.backdrop == nil, 'SetBackdropIn: still nothing written onto the frame')
-	eq(anchors(c.backdrop), before[c.backdrop], 'old close backdrop: the anchors its caller set')
-	eq(fill(c.backdrop), '0.50,0.10,0.10,0.40', 'old close backdrop: the red fill')
-	eq(anchors(h.backdrop), before[h.backdrop], 'old highlight backdrop: the anchors its caller set')
-	eq(fill(h.backdrop), '0.00,0.00,0.00,0.40', "old highlight backdrop: Thin's border color at 0.4")
-	eq(anchors(l.backdrop), before[l.backdrop], 'old thicktransparent backdrop: the anchors its caller set')
-	eq(edge(l.backdrop), '1.00,0.00,0.00,1.00', "old thicktransparent backdrop: Thick's changed border color")
-	eq(inset(l.backdrop), 2, 'old thicktransparent backdrop: still Thick')
+	eq(anchors(c.backdrop), before[c.backdrop], 'close backdrop: the anchors its caller set')
+	eq(fill(c.backdrop), '0.50,0.10,0.10,0.40', 'close backdrop: the red fill')
+	eq(anchors(h.backdrop), before[h.backdrop], 'header backdrop: the anchors its caller set')
+	eq(fill(h.backdrop), '0.00,0.00,0.00,0.40', "header backdrop: Thin's border color at 0.4")
+	eq(anchors(l.backdrop), before[l.backdrop], 'Thick override: the anchors its caller set')
+	eq(edge(l.backdrop), '1.00,0.00,0.00,1.00', "Thick override: Thick's changed border color")
+	eq(inset(l.backdrop), 2, 'Thick override: still Thick')
 end)
 
 test('a redraw moves a backdrop that still sits where it was drawn', function()

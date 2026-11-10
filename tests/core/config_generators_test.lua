@@ -183,7 +183,7 @@ test('the other generators take desc and size, and carry no Ace width', function
 		{ 'framelevel', generators.framelevel(2, 'D'), 'range' },
 		{ 'height', generators.height(2, 'D'), 'input' },
 		{ 'width', generators.width(2, 'D'), 'input' },
-		{ 'template', generators.template(2, 'D'), 'select' },
+		{ 'background', generators.background(2, 'D'), 'select' },
 		{ 'font', generators.font(2, 'D'), 'select' },
 	}
 	for _, case in ipairs(cases) do

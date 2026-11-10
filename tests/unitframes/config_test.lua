@@ -42,6 +42,7 @@ load_saftui('SaftUI-Core/Config/optionswidgets.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_saftui('SaftUI-Core/Config/optionswindow.lua')
 load_test_file('core/options_walk.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 
 local st = SaftUI
 local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
@@ -184,6 +185,28 @@ test('closing the Copy from dialog cancels a prompt or confirm open over it', fu
 	OW:CloseDialog()
 	eq(cancelled, 1, 'the dialog hiding cancelled it')
 	eq(W.PromptBox(), nil, 'and closed it')
+end)
+
+test("Copy from lists a migrated profile's Theme and Background, not its old template", function()
+	local P = UF:GetProfileConfig()
+	local player, health = P.player, P.player.health
+	local kept = { player.theme, player.background, health.theme, health.background }
+	-- What the old version saved, as the profile has it before it migrates
+	-- (at login or on the profile switch to it).
+	player.theme, player.background, player.template = nil, nil, 'thicktransparent'
+	health.theme, health.background, health.template = nil, nil, 'thin'
+	st:MigrateTemplateKeys(st.config.profile)
+	eq(player.theme .. ',' .. player.background, 'thick,transparent', 'the unit: Thick, Transparent')
+	eq(health.theme .. ',' .. health.background, 'thin,solid', 'its health bar: Thin, Solid')
+
+	UF:OpenCopyTable('player')
+	local listed = {}
+	for _, key in ipairs(rows()) do listed[key] = true end
+	check(listed.theme and listed.background, 'Theme and Background are settings to copy')
+	check(not listed.template, 'template is not')
+	OW:CloseDialog()
+
+	player.theme, player.background, health.theme, health.background = unpack(kept)
 end)
 
 test('the unit picker lists the units in a fixed order, Player first, and Profile last', function()
@@ -694,17 +717,7 @@ test('each element tab offers Theme and Background, with descs, and no template'
 
 	-- Nothing in the unit frames' pages is a Template, or offers an old
 	-- template, Highlight or Close Button.
-	local OLD_NAMES = { Template = true, ThickTransparent = true, ThinTransparent = true, Highlight = true, ['Close Button'] = true }
-	each_option(config, function(option, path)
-		local where = table.concat(path, '.')
-		check(path[#path] ~= 'template', where .. ' is not a template key')
-		check(not OLD_NAMES[option.name], where .. ' is not named ' .. tostring(option.name))
-		if option.type == 'select' and type(option.values) == 'table' then
-			for _, name in pairs(option.values) do
-				check(not OLD_NAMES[name], where .. ' does not offer ' .. tostring(name))
-			end
-		end
-	end)
+	T.check_no_old_names(config, 'Unitframes')
 end)
 
 -- The castbar's Bar and Icon sections each have their own Theme and

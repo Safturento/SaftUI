@@ -6,7 +6,7 @@
 -- reaction border kept through a theme recolor.
 -- Core's real helpers (st:SetBackdropIn, st:SetTemplate) make the backdrops.
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 
 -- The Blizzard frames the module skins, as bare frames. A tooltip has the

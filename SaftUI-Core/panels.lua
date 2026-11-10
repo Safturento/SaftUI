@@ -263,18 +263,6 @@ function st:CreatePanel(name, width, height)
 	return panel
 end
 
---function st:CreateButton(name, parent, text, template)
---	local button = self:CreateFrame('Button', name and 'SaftUI_'..name or nil, parent)
---	button.text = self:CreateFontString(button, 'pixel', text)
---	button.text:SetAllPoints()
---	st:SetBackdrop(button, template or 'thick')
---
---	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
---	button.SetText = button.text.SetText
---
---	return button
---end
-
 function st:CreateFontString(parent, font, text)
 	local fontString = parent:CreateFontString(nil, 'OVERLAY')
 	fontString:SetFontObject(st:GetFont(font or 'pixel'))

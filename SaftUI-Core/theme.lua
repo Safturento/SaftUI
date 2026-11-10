@@ -11,13 +11,17 @@ local st = SaftUI
 	st:ResolveTheme turns the pair into the look a frame is drawn with.
 
 	Every draw call (st:SetTemplate, st:SetBackdrop, st:SetBackdropIn) names the
-	kind of frame it draws (st.THEME_KINDS). Under Thick and Thin only the
+	kind of frame it draws (st.THEME_KINDS), last. Under Thick and Thin only the
 	header strips and the close button draw differently; the kinds are there so
-	a theme can draw each its own way.
+	a theme can draw each its own way. A call with no kind is an error, unless
+	its theme is 'none', which only clears (tests/core/theme_kinds_test.lua
+	scans every SaftUI file for calls without one).
 
-	A call with no kind comes from code that hasn't moved to themes yet. Its
-	theme argument is an old template name ('thicktransparent', 'thin',
-	'highlight', ...), read through LEGACY, so it draws exactly as before.
+	Profiles saved before themes kept template names ('thicktransparent', 'thin',
+	'highlight', ...) in keys named template or <something>template.
+	st:MigrateTemplateKeys rewrites them into a Theme and a Background through
+	LEGACY. Config/config.lua runs it wherever saved data enters a profile: at
+	login, on every profile change, copy or reset, and on an imported string.
 
 	Each drawn frame is recorded with the arguments it was last drawn with, so a
 	change to the theme reaches every frame: st:RecolorThemed for a color or the
@@ -47,8 +51,7 @@ local INSETS = { thick = 2, thin = 1 }
 local HEADER_ALPHA = 0.4
 
 -- An old template name's Theme and Background. highlight and close were never
--- real choices: they follow the theme (as draw calls they're the header and
--- close kinds, LEGACY_KINDS). none leaves the background unset.
+-- real choices: they follow the theme. none leaves the background unset.
 local LEGACY = {
 	thicktransparent = { theme = 'thick', background = 'transparent' },
 	thintransparent = { theme = 'thin', background = 'transparent' },
@@ -58,7 +61,6 @@ local LEGACY = {
 	highlight = {},
 	close = {},
 }
-local LEGACY_KINDS = { highlight = 'header', close = 'close' }
 
 -- The look for a Theme and Background override: { name, inset, alpha, colors },
 -- or nil for None. A transparent background is see-through at the profile's
@@ -86,7 +88,9 @@ function st:ResolveTheme(theme, background)
 end
 
 -- The look an old template name drew: nil for none, and for no name, which drew
--- nothing. A name LEGACY doesn't know reads as a Theme.
+-- nothing. A name LEGACY doesn't know reads as a Theme. Nothing draws with an
+-- old name any more; the tests compare a module's new defaults with the old
+-- names they replaced through it.
 function st:ResolveLegacyTemplate(name)
 	if name == nil or name == '' then return nil end
 	local legacy = LEGACY[name]
@@ -95,16 +99,47 @@ function st:ResolveLegacyTemplate(name)
 end
 
 -- How far in from a frame's edge its border reaches (2, 1, or 0 for None): where
--- content sits inside a frame drawn with this Theme and Background. An old
--- template name with no background is read as it drew.
+-- content sits inside a frame drawn with this Theme and Background.
 function st:ThemeInset(theme, background)
-	local look
-	if background == nil and LEGACY[theme] then
-		look = st:ResolveLegacyTemplate(theme)
-	else
-		look = st:ResolveTheme(theme, background)
-	end
+	local look = st:ResolveTheme(theme, background)
 	return look and look.inset or 0
+end
+
+-- Rewrites every saved template choice in tbl, at any depth, into a Theme and
+-- a Background: a key template or <prefix>template (buttontemplate) holding
+-- an old name becomes <prefix>theme and <prefix>background through LEGACY,
+-- and is removed. none sets only the Theme; highlight, close and a name that
+-- was never a template only go, so the module's defaults apply. templates (the
+-- themes' colors) isn't a template key. Only what's saved is read: the walk
+-- goes by pairs, never through a table's __index (AceDB's '**' defaults would
+-- make keys), and each table once. Running it again changes nothing.
+function st:MigrateTemplateKeys(tbl)
+	local seen = {}
+	local function walk(t)
+		if seen[t] then return end
+		seen[t] = true
+		-- Keys are added below, so they're collected before anything changes.
+		local old, children = {}, {}
+		for key, value in pairs(t) do
+			if type(key) == 'string' and key:find('template$') then
+				old[#old + 1] = key
+			elseif type(value) == 'table' then
+				children[#children + 1] = value
+			end
+		end
+		for _, key in ipairs(old) do
+			local prefix = key:sub(1, -#'template' - 1)
+			local legacy = LEGACY[t[key]]
+			if legacy then
+				if legacy.theme then t[prefix .. 'theme'] = legacy.theme end
+				if legacy.background then t[prefix .. 'background'] = legacy.background end
+			end
+			t[key] = nil
+		end
+		for _, child in ipairs(children) do walk(child) end
+	end
+	if type(tbl) == 'table' then walk(tbl) end
+	return tbl
 end
 
 -- The fill of a header or footer strip: SaftUI's theme's border color, faint.
@@ -146,16 +181,23 @@ local function IsStrip(kind)
 	return kind == 'header' or kind == 'close'
 end
 
--- The look a draw call draws, and the kind it draws it as. A header or close
--- button takes SaftUI's theme whatever its call says. With no kind, theme is an
--- old template name.
-local function DrawLook(theme, background, kind)
+-- A draw call names the kind of frame it draws. Only one drawing None may
+-- leave it out: it only clears. Errors at the draw call's caller.
+local function CheckKind(theme, kind)
 	if kind == nil then
-		kind = LEGACY_KINDS[theme]
-		if not kind then return st:ResolveLegacyTemplate(theme) end
-	else
-		assert(st.THEME_KINDS[kind], tostring(kind) .. ' is not a kind of frame')
+		if theme ~= 'none' then
+			error(('a draw call with Theme %s names no kind of frame (st.THEME_KINDS)'):format(tostring(theme)), 3)
+		end
+	elseif not st.THEME_KINDS[kind] then
+		error(tostring(kind) .. ' is not a kind of frame', 3)
 	end
+end
+
+-- The look a draw call draws (nil for None), and the kind it draws it as. A
+-- header or close button takes SaftUI's theme whatever its call says. No kind
+-- is None (CheckKind lets nothing else through).
+local function DrawLook(theme, background, kind)
+	if kind == nil then return nil end
 	if IsStrip(kind) then
 		return st:ResolveTheme(), kind
 	end
@@ -289,8 +331,6 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 			backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', offset, -offset)
 			entry.placed = offset
 		end
-		-- Code not yet moved to themes reads the old name back from here.
-		backdrop.template = kind == nil and theme or nil
 		if not backdrops then
 			-- true or false, so thick is only nil on a frame never given a backdrop
 			owner.thick = look.name == 'thick'
@@ -300,9 +340,9 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 	return look
 end
 
--- Draws theme and background on frame as kind (see the top of this file). With
--- no kind, theme is an old template name.
+-- Draws theme and background on frame as kind (see the top of this file).
 function st:SetTemplate(frame, theme, background, kind)
+	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
 	Paint(frame, look, drawKind)
 	Record(frame, theme, background, kind)
@@ -313,6 +353,7 @@ end
 -- own content isn't covered. Sets frame.thick for st:CalculateSpacing. For a
 -- frame that isn't SaftUI's use st:SetBackdropIn, which writes nothing onto it.
 function st:SetBackdrop(frame, theme, background, kind)
+	CheckKind(theme, kind)
 	if not frame.backdrop then
 		if not DrawLook(theme, background, kind) then return end
 		if not frame.GetObjectType then return print('GetObjectType missing', debugstack()) end
@@ -341,8 +382,16 @@ end
 -- list): the backdrop frame is kept in `backdrops`, the caller's weak table keyed
 -- by the frame, and nothing is written onto the frame (.agents/taint.md, rule 1;
 -- st:SetBackdrop would set .backdrop and .thick). Returns the backdrop frame, or
--- nil for None. Frames only, not textures.
+-- nil for None.
+--
+-- Made here, the backdrop is a child of frame one level under it. A caller that
+-- wants it elsewhere makes its own frame of SaftUI's and puts it in
+-- backdrops[frame] first; this draws on that one and places it the theme's
+-- border outside frame. That's also how to draw behind a texture, which has no
+-- frame level to make one under (a buff's icon, Misc's Blizzard_BuffFrame.lua;
+-- a micro button's panel with its own alpha, Minimap's microbuttons.lua).
 function st:SetBackdropIn(backdrops, frame, theme, background, kind)
+	CheckKind(theme, kind)
 	local backdrop = backdrops[frame]
 	if not backdrop then
 		if not DrawLook(theme, background, kind) then return end
@@ -390,10 +439,9 @@ end
 -- After the theme or the Transparent background toggle changed: draws every
 -- drawn frame again, itself and once, with the arguments it was drawn with, and
 -- clears one that now resolves to None; then puts the colors kept with
--- st:KeepOwnColors back on. A backdrop drawn with a kind moves to the theme's
--- border if it still sits where it was drawn. Anything drawn with no kind is
--- code not yet moved to themes: it's repainted where it is, so it keeps the
--- place it has always had.
+-- st:KeepOwnColors back on. A backdrop moves to the theme's border if it still
+-- sits where it was drawn; one its caller anchored itself is repainted where it
+-- is.
 function st:RedrawThemed()
 	-- Drawing records again, so walk a copy.
 	local frames = {}
@@ -401,7 +449,7 @@ function st:RedrawThemed()
 
 	for _, frame in ipairs(frames) do
 		local entry = drawn[frame]
-		if entry.owner and entry.kind ~= nil then
+		if entry.owner then
 			DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
 		else
 			Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))

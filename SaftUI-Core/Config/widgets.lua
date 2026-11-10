@@ -8,19 +8,6 @@ st.Config.options = {
 	},
 }
 
--- The old template names a Template dropdown (generators.template) offers,
--- until each module's option is a Theme and a Background. A fixed list: the
--- profile's templates hold only the themes' colors now.
-function st.Config:GetFrameTemplates()
-	return {
-		thick = 'Thick',
-		thicktransparent = 'ThickTransparent',
-		thin = 'Thin',
-		thintransparent = 'ThinTransparent',
-		none = 'None',
-	}
-end
-
 function st.Config:GetFontObjects()
 	local font_objects = {}
 	for k,v in pairs(st.config.profile.fonts) do
@@ -328,16 +315,6 @@ function generators.width(order, desc)
 		pattern = '%d+',
 		get = NumberInputGet,
 		set = NumberInputSet,
-	}
-end
-
-function generators.template(order, desc)
-	return {
-		order = order,
-		name = 'Template',
-		desc = desc,
-		type = 'select',
-		values = st.Config:GetFrameTemplates(),
 	}
 end
 

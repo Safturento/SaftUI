@@ -16,7 +16,8 @@
 -- theme engine. Blizzard's frames are built as far as the skins read them, and
 -- locked (fixtures/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+load_test_file('core/options_walk.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 local locked = load_test_file('misc/fixtures/locked_widget.lua')
 load_saftui('SaftUI-Misc/config.lua')
@@ -48,6 +49,7 @@ test('each page offers Theme and Background, not Template', function()
 	-- Experience: before the bars exist, a change has nothing to apply.
 	local XP = st:GetModule('Experience')
 	st:BindModuleConfig(XP, 'experience')
+	T.check_no_old_names(XP:GetConfigTable(), 'Experience')
 	local general = XP:GetConfigTable().args.general
 	T.check_options(general, 'Experience')
 	eq(general.get({ 'theme' }), 'theme', 'Experience: Theme reads experience.theme')

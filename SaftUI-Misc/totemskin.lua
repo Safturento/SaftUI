@@ -100,7 +100,7 @@ local OVER_ICON = {
 local TEXTS = { 'HotKey', 'Count', 'Name' }
 
 -- The gap between the flyout's panel and its column of choices. Small enough that, with
--- a thick template, the panel's border sits just above the element button's border
+-- the Thick theme, the panel's border sits just above the element button's border
 -- below it rather than over it, and the panel is as wide as the element button.
 local PANEL_PADDING = 3
 

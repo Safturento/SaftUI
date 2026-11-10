@@ -12,11 +12,11 @@ H.RXP = load_test_file('misc/fixtures/restedxp_world.lua')
 -- chat's Theme, Background and font), the Skinning module the skin is a
 -- submodule of, then SaftUI-Misc's restedxp.lua. RestedXP itself comes from
 -- RXP.make(). The profile keeps Core's real defaults. H.drawn(frame) is how a
--- SaftUI frame was last drawn: 'theme,background,kind' (lib/theme_draws.lua).
+-- SaftUI frame was last drawn: 'theme,background,kind' (lib/theme_helpers.lua).
 function H.fresh()
 	reset_world()
 	load_core_helpers()
-	H.drawn = load_test_file('lib/theme_draws.lua').watch()
+	H.drawn = load_test_file('lib/theme_helpers.lua').watch()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')

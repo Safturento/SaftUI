@@ -4,7 +4,7 @@
 -- Migrated from the xpsim harness. The config is Core's real defaults, and
 -- the frames come from Core's real helpers (st:SetBackdrop and the rest).
 load_core_helpers()
-local T = load_test_file('lib/theme_draws.lua')
+local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap, which the bar's default position anchors to (the profile
 -- has Core's real defaults).
