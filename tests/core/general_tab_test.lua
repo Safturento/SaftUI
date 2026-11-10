@@ -1,5 +1,5 @@
 -- The General tab of Global Settings (SaftUI-Core/Config/general.lua): Icon
--- zoom, Title bar height and Off-screen margin. Each row reads and writes its
+-- zoom, Title bar height and Screen edge margin. Each row reads and writes its
 -- profile key at call time, so a profile switch reaches the new profile, and
 -- the two window settings reach every window with a header at once
 -- (st:UpdateHeader, SaftUI-Core/panels.lua), in combat too where the window
@@ -71,7 +71,7 @@ test('General: an Icons section, then Windows, each with a note; ranges with too
 		return table.concat(out, ',')
 	end
 	eq(names(tab.args.icons), 'icon_trim=Icon zoom')
-	eq(names(tab.args.windows), 'header_height=Title bar height,clamp_inset=Off-screen margin')
+	eq(names(tab.args.windows), 'header_height=Title bar height,clamp_inset=Screen edge margin')
 
 	for _, section in pairs(tab.args) do
 		for key, option in pairs(section.args) do
@@ -110,7 +110,7 @@ test('Title bar height resizes every header and footer at once', function()
 	eq(panel.header:GetHeight(), 31, 'and back')
 end)
 
-test("Off-screen margin keeps a window that far in from the screen's edges, and changes at once", function()
+test("Screen edge margin keeps a window that far in from the screen's edges, and changes at once", function()
 	eq(Get('clamp_inset'), 20, 'the default')
 	check(panel:IsClampedToScreen(), 'a window with a header is clamped to the screen')
 	-- The clamp rect is the frame's rect grown by the insets, and the game keeps

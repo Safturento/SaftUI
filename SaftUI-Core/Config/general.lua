@@ -54,7 +54,7 @@ function GN:GetConfigTable()
 					header_height = Setting(1, 'Title bar height', 20, 60, 1,
 						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom.",
 						'headers', 'height', UpdateHeaders),
-					clamp_inset = Setting(2, 'Off-screen margin', -50, 50, 1,
+					clamp_inset = Setting(2, 'Screen edge margin', -50, 50, 1,
 						"How close to the screen's edges you can drag SaftUI's windows (the bags and bank): they're kept this many pixels in from each edge. Below 0, they can go that far past it.",
 						'misc', 'clamp_inset', UpdateHeaders),
 				},

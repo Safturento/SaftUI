@@ -97,6 +97,13 @@ test("Shadow offset X and Y read and write the font's shadow_offset, and its fon
 	Set('pixel', 'shadow_y', 0)
 end)
 
+test("every font's shadow is opaque black, so a shadow offset shows", function()
+	for fontKey in pairs(st.config.profile.fonts) do
+		local r, g, b, a = st:GetFont(fontKey):GetShadowColor()
+		eq(table.concat({ r, g, b, a }, ','), '0,0,0,1', fontKey)
+	end
+end)
+
 test("Line spacing reads and writes the font's spacing, and its font object takes it at once", function()
 	eq(Get('normal', 'spacing'), 4, 'the default')
 	eq(st:GetFont('normal'):GetSpacing(), 4)

@@ -46,6 +46,9 @@ function FN:UpdateFontConfig(font_name)
 		config.font_size,
 		config.font_outline
 	)
+	-- Opaque black, so a shadow offset shows: a font object's own shadow color
+	-- may be clear. At offset 0, 0 the shadow sits behind the letters, unseen.
+	font:SetShadowColor(0, 0, 0, 1)
 	font:SetShadowOffset(unpack(config.shadow_offset))
 	font:SetSpacing(config.spacing)
 end

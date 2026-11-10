@@ -599,6 +599,11 @@ function FontInstance.GetJustifyH(self, s) return s.justify_h or 'CENTER' end
 function FontInstance.SetJustifyV(self, s, justify) s.justify_v = justify end
 function FontInstance.GetJustifyV(self, s) return s.justify_v or 'MIDDLE' end
 function FontInstance.SetShadowOffset(self, s, x, y) s.shadow_offset = { x, y } end
+function FontInstance.SetShadowColor(self, s, r, g, b, a) s.shadow_color = { r, g, b, a or 1 } end
+function FontInstance.GetShadowColor(self, s)
+	local c = s.shadow_color or { 0, 0, 0, 0 }
+	return c[1], c[2], c[3], c[4]
+end
 function FontInstance.GetShadowOffset(self, s)
 	local o = s.shadow_offset or { 0, 0 }
 	return o[1], o[2]
