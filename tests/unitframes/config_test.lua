@@ -205,7 +205,7 @@ test("the unit frames' table passes AceConfigRegistry validation, SaftUI's field
 	check(config.category ~= nil, 'the table itself keeps its category')
 end)
 
-test("the unit frames' page: picker labelled Unit; boss has Layout without test mode; range alpha on the groups only", function()
+test("the unit frames' page: picker labelled Unit; boss has Layout with test mode; range alpha on the groups only", function()
 	local config = UF:GetConfigTable()
 	eq(config.pickerLabel, 'Unit', 'the picker is labelled Unit')
 
@@ -214,7 +214,17 @@ test("the unit frames' page: picker labelled Unit; boss has Layout without test 
 	for _, key in ipairs({ 'growthDirection', 'spacing', 'unitsPerColumn', 'initialAnchor', 'columnSpacing', 'maxColumns' }) do
 		check(layout.args[key], 'boss Layout has ' .. key)
 	end
-	eq(layout.args.test_mode, nil, 'no test mode for boss')
+	-- Boss's Test mode is party's and raid's toggle, with its own tooltip.
+	local boss_test, party_test = layout.args.test_mode, config.args.party.args.general.args.layout.args.test_mode
+	if check(boss_test, 'boss has test mode') then
+		for _, key in ipairs({ 'name', 'type', 'size', 'order' }) do
+			eq(boss_test[key], party_test[key], 'boss test mode has party\'s ' .. key)
+		end
+		eq(boss_test.size, 'small', 'a small toggle')
+		eq(boss_test.width, nil, 'no Ace width')
+		check(type(boss_test.desc) == 'string' and boss_test.desc:find('boss', 1, true), 'its tooltip speaks of bosses: ' .. tostring(boss_test.desc))
+		check(boss_test.desc ~= party_test.desc, "not party's tooltip")
+	end
 	eq(layout.args.showPlayer, nil, 'no show player for boss')
 	check(config.args.party.args.general.args.layout.args.test_mode, 'party keeps test mode')
 	check(config.args.party.args.general.args.layout.args.showPlayer, 'party keeps show player')

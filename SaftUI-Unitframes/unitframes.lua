@@ -412,6 +412,8 @@ function UF:ApplyConfig(unit, element_name)
 				for i,frame in pairs(self.units[unit]) do
 					SafeUpdateUnitFrame(frame, element_name)
 				end
+				-- Boss's test mode previews follow the frames (groups.lua).
+				xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 			else
 				SafeUpdateUnitFrame(self.units[unit], element_name)
 			end
@@ -511,6 +513,8 @@ function UF:OnEnable()
 			end
 			-- The five frames move as one group, on a SaftUI holder.
 			self.holders[unit] = CreateFrame('Frame', 'SaftUI_'..labelName..'Holder', UIParent)
+			-- Test mode's previews make way for them (groups.lua).
+			self:WatchFramesForPreview(unit)
 		else
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)
 		end

@@ -22,7 +22,7 @@ local UF = st:GetModule('Unitframes')
 	(the section before test mode).
 
 	Test mode (bottom of the file) fills the holder with SaftUI-owned preview
-	frames for made-up members.
+	frames for made-up members, and the boss holder with made-up bosses.
 ]]
 
 -- Group key -> its frame names, how many members it can list, and when it
@@ -411,9 +411,15 @@ end
 	Not drawn: auras, castbars, portraits, raid target, ready check and
 	leader/assist icons, and the level in the name.
 
+	Boss frames have a test mode too, with made-up bosses. They have no
+	header: they're five unit frames on the boss holder (unitframes.lua), so
+	the container stands in for the holder, and the previews go where
+	UF:PlaceUnitFrame puts the boss frames, one for each boss frame the
+	layout shows.
+
 	UF.testGroups is a plain field: not saved, off after a /reload. A profile
 	switch keeps it on and restyles the previews for the new profile. They hide
-	while the group's real header shows.
+	while the group's real header shows, or any real boss frame.
 ]]
 
 UF.testGroups = {}
@@ -461,6 +467,8 @@ for i, name in ipairs(PREVIEW_NAMES) do
 	local shift = math.floor((i - 1) / #PREVIEW_SPECS)
 	PREVIEW_MEMBERS[i] = {
 		name = name,
+		player = true,
+		reaction = 5, -- friendly
 		class = spec.class,
 		-- A raid needs two tanks; the later tank slots play damage.
 		role = (spec.role == 'TANK' and i > #PREVIEW_SPECS) and 'DAMAGER' or spec.role,
@@ -473,9 +481,34 @@ for i, name in ipairs(PREVIEW_NAMES) do
 	}
 end
 
+-- Made-up bosses: NPCs, hostile, skull level, at full health and with no
+-- role. An NPC's class (what NPC class colors by) is one of these four.
+local PREVIEW_BOSSES = {
+	{ name = 'Vorgath the Unbound', class = 'WARRIOR' },
+	{ name = 'Sister Maelis', class = 'PALADIN' },
+	{ name = 'Grimjaw', class = 'WARRIOR' },
+	{ name = 'The Hollow Warden', class = 'ROGUE' },
+	{ name = 'Ixalith', class = 'MAGE' },
+}
+for _, boss in ipairs(PREVIEW_BOSSES) do
+	boss.player = false
+	boss.reaction = 2 -- hostile
+	boss.skull = true
+	boss.powerType = 'MANA'
+	boss.health, boss.power = 1, 1
+	boss.outOfRange, boss.dead, boss.offline = false, false, false
+end
+
 -- A color object, or nil for anything else (a missing class or power color).
 local function AsColor(color)
 	if type(color) == 'table' and color.GetRGB then return color end
+end
+
+-- Whether an element's class color flags color this member, as oUF checks
+-- them: Class for players, NPC class for anyone else (a boss).
+local function ColorsByClass(config, member)
+	if member.player then return config.colorClass end
+	return config.colorClassNPC
 end
 
 -- One preview frame, with the same pieces UF.ConstructUnit and the element
@@ -483,7 +516,8 @@ end
 -- everything oUF drives: health and power bars with their texts, the name
 -- and the role corner.
 local function CreatePreviewFrame(container, group, index)
-	local frame = CreateFrame('Frame', ('SaftUI_%sPreview%d'):format(GROUP_HEADERS[group].name, index), container)
+	local label = GROUP_HEADERS[group] and GROUP_HEADERS[group].name or UF.unit_strings[group]
+	local frame = CreateFrame('Frame', ('SaftUI_%sPreview%d'):format(label, index), container)
 	frame.base_unit = group
 	frame.GetConfig = function() return UF:GetProfileConfig()[group] end
 	frame.config = frame:GetConfig()
@@ -522,12 +556,13 @@ local function StylePreviewFrame(frame)
 end
 
 -- Shows one member the way the real elements would: the health color order
--- of oUF's health element, the deficit text of SaftUI's health PostUpdate,
--- the power color order of oUF's power element, the name tag's caps, length
--- and class color, the role corner's colors, and the range element's alpha.
+-- of oUF's health element, the texts of SaftUI's health PostUpdate, the
+-- power color order of oUF's power element, the name tag's caps, length and
+-- colors, the role corner's colors, and the range element's alpha.
 local function FillPreviewFrame(frame, member)
 	local colors = UF.oUF.colors
 	local classColor = AsColor(colors.class[member.class])
+	local textColors = st.config.profile.colors.text
 
 	local health = frame.Health
 	local healthConfig = health.config
@@ -539,10 +574,10 @@ local function FillPreviewFrame(frame, member)
 	local color
 	if healthConfig.colorDisconnected and member.offline then
 		color = colors.disconnected
-	elseif healthConfig.colorClass then
+	elseif ColorsByClass(healthConfig, member) then
 		color = classColor
 	elseif healthConfig.colorReaction then
-		color = colors.reaction[5] -- friendly
+		color = colors.reaction[member.reaction]
 	elseif healthConfig.colorHealth then
 		color = colors.health
 	end
@@ -572,6 +607,10 @@ local function FillPreviewFrame(frame, member)
 			text = math.floor(healthValue * 100)
 		else
 			text = current
+			-- The percent after it on a skull-level unit, as on a boss.
+			if textConfig.boss_percent and member.skull then
+				text = ('%s | %.1f'):format(text, healthValue * 100)
+			end
 		end
 		health.text:SetText(text)
 	end
@@ -591,10 +630,10 @@ local function FillPreviewFrame(frame, member)
 			color = colors.disconnected
 		elseif powerConfig.colorPower then
 			color = AsColor(colors.power[member.powerType]) or colors.power.MANA
-		elseif powerConfig.colorClass then
+		elseif ColorsByClass(powerConfig, member) then
 			color = classColor
 		elseif powerConfig.colorReaction then
-			color = colors.reaction[5]
+			color = colors.reaction[member.reaction]
 		end
 		color = AsColor(color)
 		if color then
@@ -624,18 +663,23 @@ local function FillPreviewFrame(frame, member)
 			text = strupper(text)
 		end
 		text = st.StringFormat:UTF8strsub(text, nameConfig.maxLength)
-		if nameConfig.colorClass and classColor then
-			text = st.StringFormat:ColorString(text, classColor:GetRGB())
+		if ColorsByClass(nameConfig, member) then
+			if classColor then
+				text = st.StringFormat:ColorString(text, classColor:GetRGB())
+			end
+		elseif nameConfig.color_hostile and member.reaction < 5 then
+			local hostile = member.reaction < 3 and textColors.red or textColors.yellow
+			text = st.StringFormat:ColorString(text, hostile:GetRGB())
 		end
 		name:SetText(text)
 	end
 
 	-- The role corner's colors and rules from its postUpdate in
 	-- elements/indicators.lua, plus the enable check its PostUpdate wrapper
-	-- adds: on for party, off for the raids, by default.
+	-- adds: on for party, off for the raids, by default. A boss has no role,
+	-- and oUF hides the corner then.
 	local role = frame.GroupRoleIndicator
 	local roleConfig = role.config
-	local textColors = st.config.profile.colors.text
 	role:SetTexture(st.textures.cornerbr)
 	role:SetTexCoord(0, 1, 0, 1)
 	if member.role == 'HEALER' then
@@ -645,7 +689,7 @@ local function FillPreviewFrame(frame, member)
 	else
 		role:SetVertexColor(textColors.red:GetRGB())
 	end
-	role:SetShown((roleConfig.enable and (roleConfig.showDps or member.role == 'HEALER' or member.role == 'TANK')) and true or false)
+	role:SetShown((roleConfig.enable and member.role and (roleConfig.showDps or member.role == 'HEALER' or member.role == 'TANK')) and true or false)
 
 	-- oUF's range element shows offline members at full alpha.
 	local alpha = frame.config.range_alpha
@@ -699,16 +743,37 @@ local function ArrangeLikeHeader(container, frames, count, layout, unitsPerColum
 	end
 end
 
+-- Whether a group's real frames are up: its header, or any boss frame (each
+-- shows while its boss exists). nil while they haven't been made.
+local function RealFramesShown(group)
+	local header = UF.groups and UF.groups[group]
+	if header then return header:IsShown() end
+	local frames = UF.units and UF.units[group]
+	if not frames then return nil end
+	for _, frame in ipairs(frames) do
+		if frame:IsShown() then return true end
+	end
+	return false
+end
+
+-- How many frames a group's previews stand in for: every member its header
+-- can list, or every boss frame (UF:PlaceHolder sizes the holder for them).
+local function GetPreviewSize(group, config)
+	if GROUP_HEADERS[group] then return GetGroupSize(group, config) end
+	return #UF.units[group]
+end
+
 -- Shows, restyles and lays out a group's previews from the current profile,
--- or hides them: test mode off, the group disabled, or its real header
+-- or hides them: test mode off, the group disabled, or its real frames
 -- showing. The container stands in for the header: same size for the same
--- members, anchored to the holder at the same point. None of this is secure,
--- so it can run in combat (the header's OnShow/OnHide).
+-- members, anchored to the holder at the same point. For boss it covers the
+-- holder the boss frames are placed in, so the previews land where
+-- UF:PlaceUnitFrame puts them. None of this is secure, so it can run in combat
+-- (the real frames' OnShow/OnHide).
 function UF:UpdateGroupPreview(group)
 	local container = self.previews[group]
-	local header = self.groups and self.groups[group]
 	local config = self:GetProfileConfig()[group]
-	if not (self.testGroups[group] and header and config.enable and not header:IsShown()) then
+	if not (self.testGroups[group] and config.enable and RealFramesShown(group) == false) then
 		if container then container:Hide() end
 		return
 	end
@@ -720,17 +785,18 @@ function UF:UpdateGroupPreview(group)
 	end
 
 	local layout = UF.GetGroupLayout(config)
-	local width, height, unitsPerColumn, numColumns, count = UF.GetGroupLayoutSize(layout, GetGroupSize(group, config))
+	local width, height, unitsPerColumn, numColumns, count = UF.GetGroupLayoutSize(layout, GetPreviewSize(group, config))
 	local point = config.position.point
 	container:ClearAllPoints()
 	container:SetPoint(point, self.holders[group], point)
 	container:SetSize(width, height)
 
+	local members = group == 'boss' and PREVIEW_BOSSES or PREVIEW_MEMBERS
 	for i = 1, count do
 		local frame = container.frames[i] or CreatePreviewFrame(container, group, i)
 		container.frames[i] = frame
 		StylePreviewFrame(frame)
-		FillPreviewFrame(frame, PREVIEW_MEMBERS[i])
+		FillPreviewFrame(frame, members[i])
 		frame:Show()
 	end
 	for i = count + 1, #container.frames do
@@ -745,4 +811,15 @@ end
 function UF:SetGroupTestMode(group, enabled)
 	self.testGroups[group] = enabled and true or nil
 	self:UpdateGroupPreview(group)
+end
+
+-- Boss frames have no header to watch: oUF's unit watch shows each one while
+-- its boss exists. So the previews make way for any of them, and come back,
+-- from their OnShow and OnHide. HookScript runs after oUF's own handlers.
+-- Once, from OnEnable.
+function UF:WatchFramesForPreview(group)
+	for _, frame in ipairs(self.units[group]) do
+		frame:HookScript('OnShow', function() UF:UpdateGroupPreview(group) end)
+		frame:HookScript('OnHide', function() UF:UpdateGroupPreview(group) end)
+	end
 end

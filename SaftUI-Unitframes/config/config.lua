@@ -410,10 +410,14 @@ end
 local GROWTH_DIRECTIONS = { TOP = 'Down', BOTTOM = 'Up', LEFT = 'Right', RIGHT = 'Left' }
 
 -- Party, raid and boss: how the frames are laid out (a party or raid header's
--- attributes; boss frames by UF.GetGroupLayout), and test mode for the groups.
--- The values sit on the unit's own config, so General's get and set handle
--- them, and set re-places the frames and the holder (UF:UpdateConfig(unit),
+-- attributes; boss frames by UF.GetGroupLayout), and test mode. The values sit
+-- on the unit's own config, so General's get and set handle them, and set
+-- re-places the frames, the holder and any test previews (UF:UpdateConfig(unit),
 -- which waits for the end of combat).
+local TEST_MODE_DESCS = {
+	group = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
+	boss = "Fills the boss frames' spot with made-up bosses, styled and laid out like the real frames, so the layout can be checked out of an encounter. Hidden while a real boss frame is showing. Not saved: it's off after a /reload.",
+}
 local function GetGroupLayoutConfig(unit, order)
 	local G = st.Config.generators
 	local args = {
@@ -435,19 +439,17 @@ local function GetGroupLayoutConfig(unit, order)
 		columnSpacing = G.range(5, 'Column spacing', 0, 50, 1, 'The gap between one column and the next.'),
 		unitsPerColumn = G.range(6, 'Units per column', 1, 40, 1, 'How many unit frames fill a column before the next column starts.'),
 		maxColumns = G.range(7, 'Max columns', 1, 40, 1, 'The most columns shown. Unit frames past the last column are not shown.'),
-	}
-	if unit ~= 'boss' then
-		args.test_mode = {
+		test_mode = {
 			order = 0,
 			name = 'Test mode',
-			desc = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
+			desc = TEST_MODE_DESCS[unit] or TEST_MODE_DESCS.group,
 			type = 'toggle',
 			size = 'small',
 			-- Not a config value: a plain module field, never saved.
 			get = function() return UF.testGroups[unit] and true or false end,
 			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
-		}
-	end
+		},
+	}
 	if unit == 'party' then
 		args.showPlayer = G.toggle(1, 'Show player', 'Shows you as the first unit frame of the party.', 'small')
 	end
