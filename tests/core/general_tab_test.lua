@@ -96,9 +96,7 @@ test('General: an Icons section, then Layout, each with a note; ranges with tool
 			end
 		end
 	end
-	check(tab.args.windows.args.clamp_inset.desc:find('in from', 1, true), "the margin's tooltip says it keeps frames in from the edge")
-	check(tab.args.windows.args.clamp_inset.desc:find('not just the bags and bank', 1, true), 'all of them, not just the bags and bank')
-	check(tab.args.windows.args.clamp_inset.desc:find('past', 1, true), 'and that below 0 lets them past it')
+	eq(tab.args.windows.args.clamp_inset.desc, "How close to the screen's edges frames can go.", "the margin's tooltip, in the user's words")
 end)
 
 test("Icon zoom is a percent of each edge, and its value is the profile's fraction", function()

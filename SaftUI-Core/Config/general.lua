@@ -75,7 +75,7 @@ function GN:GetConfigTable()
 						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom.",
 						'headers', 'height', UpdateHeaders),
 					clamp_inset = Setting(2, 'Screen edge margin', -50, 50, 1,
-						"How close to the screen's edges SaftUI's frames can go: all of them, not just the bags and bank. They're kept this many pixels in from each edge, and edit mode won't drag them closer. Below 0, they can go that far past it.",
+						"How close to the screen's edges frames can go.",
 						'misc', 'clamp_inset', UpdateScreenMargin),
 				},
 			},
