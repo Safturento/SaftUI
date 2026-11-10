@@ -177,13 +177,14 @@ function INV:UpdateConfig(id)
         end
         column:Show()
 
-        column:SetWidth((self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+        local columnWidth = (self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing
+        column:SetWidth(columnWidth)
+        -- Each column at its own offset on the scroll child, never chained to
+        -- the one before it: while a layout is held, a column whose categories
+        -- sold out has no height, and in game a column anchored to it lost its
+        -- place, taking every category after it out of sight.
         column:ClearAllPoints()
-        if i == 1 then
-            column:SetPoint('TOPLEFT', container.scrollFrame.ScrollChild, 'TOPLEFT')
-        else
-            column:SetPoint('TOPLEFT', container.columns[i-1], 'TOPRIGHT', self.config.buttonspacing, 0)
-        end
+        column:SetPoint('TOPLEFT', container.scrollFrame.ScrollChild, 'TOPLEFT', (i - 1) * (columnWidth + self.config.buttonspacing), 0)
         container.columns[i] = column
     end
     for i = self.config[id].maxColumns + 1, #container.columnFrames do

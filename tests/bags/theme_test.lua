@@ -383,3 +383,25 @@ test('Bags Look offers Theme, Background, Slot theme and Slot background, with d
 		"the slots are see-through at SaftUI's opacity")
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+-- The columns, from INV:UpdateConfig. While a window is open its layout is
+-- held, and a column whose categories all sell out drops to no height. A column
+-- chained to the one before it (TOPLEFT to its TOPRIGHT) then lost its place in
+-- game, and every category after it vanished (a bank down to a few items). Each
+-- column is placed on the scroll child by its own offset instead.
+test('each column is placed on the scroll child by its own offset, never on the column before it', function()
+	local container = bags()
+	local columns = container.columns
+	check(#columns >= 3, 'the window has columns')
+	local width = columns[1]:GetWidth()
+	local spacing = INV.config.buttonspacing
+	for i, column in ipairs(columns) do
+		eq(column:GetNumPoints(), 1, 'column ' .. i .. ' has one point')
+		local point, rel, relPoint, x, y = column:GetPoint(1)
+		eq(point, 'TOPLEFT', 'column ' .. i)
+		check(rel == container.scrollFrame.ScrollChild, 'column ' .. i .. ' is placed on the scroll child')
+		eq(relPoint, 'TOPLEFT', 'column ' .. i)
+		eq(x, (i - 1) * (width + spacing), 'column ' .. i .. ' at its own offset')
+		eq(y, 0, 'column ' .. i)
+	end
+end)
