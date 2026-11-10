@@ -238,7 +238,7 @@ function UF:PlaceUnitFrame(frame)
 			-- sits at the holder's TOP (it was TOPLEFT): the same spots while the
 			-- frames are as wide as the holder.
 			local frames = self.units[frame.base_unit]
-			local layout = UF.GetGroupLayout(config)
+			local layout = UF.GetUnitGroupLayout(frame.base_unit, config)
 			local _, _, unitsPerColumn, numColumns, shown = UF.GetGroupLayoutSize(layout, #frames)
 			if frame.ID > shown then
 				-- The layout holds fewer than all of them (max columns x units per
@@ -272,7 +272,7 @@ function UF:PlaceHolder(unit)
 	holder:ClearAllPoints()
 	holder:SetPoint(st:UnpackPoint(config.position))
 	-- Boss/arena lay out like party and raid: the holder covers all of it.
-	local width, height = UF.GetGroupLayoutSize(UF.GetGroupLayout(config), count)
+	local width, height = UF.GetGroupLayoutSize(UF.GetUnitGroupLayout(unit, config), count)
 	st:SetSize(holder, width, height)
 end
 

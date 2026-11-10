@@ -4,10 +4,6 @@ local st = SaftUI
 st.defaults.unitframes.profiles["**"].boss = {
     spacing = 41,
     growthDirection = 'TOP',
-    maxColumns = 1,
-    unitsPerColumn = 5,
-    columnSpacing = 0,
-    initialAnchor = 'LEFT',
     width = 200,
     position = {point = 'TOPRIGHT', frame = 'SaftUI_Target', rel_point = 'BOTTOMRIGHT', x_off = 0, y_off = -40},
     castbar = {

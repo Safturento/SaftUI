@@ -180,26 +180,46 @@ test('a preview shows a boss: a name, full health in the hostile reaction color,
 	UF:UpdateGroupPreview('boss')
 end)
 
-test('a Layout change places them again with the boss frames: two columns of three, then one column of three', function()
-	set_layout('unitsPerColumn', 3)
-	set_layout('maxColumns', 2)
-	set_layout('columnSpacing', 10)
-	eq(shown_previews(), 5, 'all five, in two columns')
+test('a Layout change places them again with the boss frames, in one line for each growth direction and spacing', function()
+	for _, growth in ipairs({ 'TOP', 'BOTTOM', 'LEFT', 'RIGHT' }) do
+		for _, spacing in ipairs({ 0, 12 }) do
+			set_layout('growthDirection', growth)
+			set_layout('spacing', spacing)
+			local tag = growth .. ' ' .. spacing
+			eq(shown_previews(), 5, 'all five: ' .. tag)
+			for i = 1, 5 do
+				eq(rect(previews()[i]), rect(bosses[i]), 'preview ' .. i .. ' covers boss frame ' .. i .. ': ' .. tag)
+			end
+			eq(rect(UF.previews.boss), rect(UF.holders.boss), 'together they fill the boss holder: ' .. tag)
+			local a, b = previews()[1], previews()[2]
+			if growth == 'TOP' then
+				eq(a:GetBottom() - spacing, b:GetTop(), 'the second hangs spacing below the first: ' .. tag)
+			elseif growth == 'BOTTOM' then
+				eq(a:GetTop() + spacing, b:GetBottom(), 'the second sits spacing above the first: ' .. tag)
+			elseif growth == 'LEFT' then
+				eq(a:GetRight() + spacing, b:GetLeft(), 'the second sits spacing right of the first: ' .. tag)
+			else
+				eq(a:GetLeft() - spacing, b:GetRight(), 'the second sits spacing left of the first: ' .. tag)
+			end
+		end
+	end
+	set_layout('growthDirection', 'TOP')
+	set_layout('spacing', 41)
+end)
+
+test('column keys an old profile saved on boss change neither the boss frames nor the previews', function()
+	local P = UF:GetProfileConfig()
+	local before = rect(UF.previews.boss)
+	P.boss.unitsPerColumn, P.boss.maxColumns, P.boss.columnSpacing, P.boss.initialAnchor = 2, 3, 10, 'RIGHT'
+	UF:ApplyConfig('boss')
+	UF:UpdateGroupPreview('boss')
+	eq(shown_previews(), 5, 'all five, in one line')
 	for i = 1, 5 do
 		eq(rect(previews()[i]), rect(bosses[i]), 'preview ' .. i .. ' covers boss frame ' .. i)
 	end
-	eq(previews()[4]:GetLeft(), previews()[1]:GetRight() + 10, 'the fourth starts the second column, 10 to the right')
-	eq(rect(UF.previews.boss), rect(UF.holders.boss), 'together they fill the boss holder')
-
-	set_layout('maxColumns', 1)
-	eq(shown_previews(), 3, 'only the three the layout shows')
-	for i = 1, 3 do
-		eq(rect(previews()[i]), rect(bosses[i]), 'preview ' .. i .. ' covers boss frame ' .. i)
-	end
-
-	set_layout('unitsPerColumn', 5)
-	set_layout('columnSpacing', 0)
-	eq(shown_previews(), 5, 'five again')
+	eq(rect(UF.previews.boss), before, 'the same spot and size')
+	P.boss.unitsPerColumn, P.boss.maxColumns, P.boss.columnSpacing, P.boss.initialAnchor = nil, nil, nil, nil
+	UF:ApplyConfig('boss')
 end)
 
 test('a real boss frame showing hides the previews, and they come back when it hides, with no wait for combat to end', function()

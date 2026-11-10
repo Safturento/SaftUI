@@ -1,7 +1,8 @@
 -- Boss (and arena) frames laid out like party and raid: the shared layout math
 -- in SaftUI-Unitframes/groups.lua (UF.GetGroupLayout, UF.GetGroupLayoutSize,
 -- UF.GroupAnchor), which UF:PlaceUnitFrame and UF:PlaceHolder
--- (unitframes.lua) call. Pure functions: no frames are placed here.
+-- (unitframes.lua) call. Boss gets its layout from UF.GetUnitGroupLayout: always
+-- one column, whatever column keys an old profile saved. Pure functions: no frames are placed here.
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults, and
 -- groups.lua. Stand-in: the Unitframes module, which unitframes.lua makes and
@@ -27,8 +28,7 @@ local function expect_anchor(actual, point, relativeTo, relativePoint, x, y)
 end
 
 test('GroupAnchor: the default boss layout hangs each frame 41 below the one before it', function()
-	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 5,
-		maxColumns = 1, width = 200, height = 30 })
+	local layout = UF.GetUnitGroupLayout('boss', { growthDirection = 'TOP', spacing = 41, width = 200, height = 30 })
 	local _, _, perColumn, columns = UF.GetGroupLayoutSize(layout, 5)
 	local container, frames = {}, { {}, {}, {}, {}, {} }
 	expect_anchor(UF.GroupAnchor(1, frames, container, layout, perColumn, columns), 'TOP', container, 'TOP', 0, 0)
@@ -36,7 +36,7 @@ test('GroupAnchor: the default boss layout hangs each frame 41 below the one bef
 	expect_anchor(UF.GroupAnchor(5, frames, container, layout, perColumn, columns), 'TOP', frames[4], 'BOTTOM', 0, -41)
 end)
 
-test('GroupAnchor: two columns of three, each growing down and the columns going right, start each column at the first of the last', function()
+test('GroupAnchor (party and raid headers): two columns of three, each growing down and the columns going right, start each column at the first of the last', function()
 	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 3,
 		maxColumns = 2, columnSpacing = 10, initialAnchor = 'LEFT', width = 200, height = 30 })
 	local _, _, perColumn, columns = UF.GetGroupLayoutSize(layout, 5)
@@ -48,16 +48,19 @@ test('GroupAnchor: two columns of three, each growing down and the columns going
 	eq(#UF.GroupAnchor(1, frames, container, layout, perColumn, columns), 2)
 end)
 
-test('the boss holder covers the whole layout: five in a column by default, two columns when set (columns going right)', function()
-	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 5,
-		maxColumns = 1, width = 200, height = 30 })
+test('the boss holder covers the whole layout: one column of every boss frame', function()
+	local layout = UF.GetUnitGroupLayout('boss', { growthDirection = 'TOP', spacing = 41, width = 200, height = 30 })
 	local w, h = UF.GetGroupLayoutSize(layout, 5)
 	eq(w, 200)
 	eq(h, 5 * 30 + 4 * 41)
+	w, h = UF.GetGroupLayoutSize(layout, 8)
+	eq(h, 8 * 30 + 7 * 41, 'more than five stay in the one column')
+end)
 
-	layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 3,
+test('the shared layout holds two columns when a party or raid config asks for them', function()
+	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 3,
 		maxColumns = 2, columnSpacing = 10, initialAnchor = 'LEFT', width = 200, height = 30 })
-	w, h = UF.GetGroupLayoutSize(layout, 5)
+	local w, h = UF.GetGroupLayoutSize(layout, 5)
 	eq(w, 410)
 	eq(h, 3 * 30 + 2 * 41)
 end)
@@ -82,7 +85,7 @@ test("boss's default growth is a Layout dropdown key", function()
 	eq(({ TOP = true, BOTTOM = true, LEFT = true, RIGHT = true })[growth], true)
 end)
 
-test('a layout that holds fewer than all the frames: shown is its capacity, and GroupAnchor gives nothing past it', function()
+test('a shared layout that holds fewer than all the frames: shown is its capacity, and GroupAnchor gives nothing past it', function()
 	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 3,
 		maxColumns = 1, width = 200, height = 30 })
 	local _, _, perColumn, columns, shown = UF.GetGroupLayoutSize(layout, 5)
@@ -99,6 +102,30 @@ test('a layout that holds fewer than all the frames: shown is its capacity, and 
 	eq(UF.GroupAnchor(5, frames, {}, layout, perColumn, columns), nil)
 end)
 
-test("boss's columns grow right by default, so a second column goes beside the first", function()
-	eq(st.defaults.unitframes.profiles['**'].boss.initialAnchor, 'LEFT')
+test('boss defaults have no column keys: growth and spacing are its only layout keys', function()
+	local boss = st.defaults.unitframes.profiles['**'].boss
+	for _, key in ipairs({ 'initialAnchor', 'unitsPerColumn', 'maxColumns', 'columnSpacing' }) do
+		eq(boss[key], nil, 'boss has no ' .. key)
+	end
+	eq(boss.growthDirection, 'TOP')
+	eq(boss.spacing, 41)
+end)
+
+test('column keys an old profile saved on boss change nothing: still one line, spacing apart', function()
+	local old = { growthDirection = 'TOP', spacing = 41, width = 200, height = 30,
+		unitsPerColumn = 2, maxColumns = 3, columnSpacing = 10, initialAnchor = 'RIGHT' }
+	local layout = UF.GetUnitGroupLayout('boss', old)
+	local w, h, perColumn, columns, shown = UF.GetGroupLayoutSize(layout, 5)
+	eq(perColumn, 5)
+	eq(columns, 1)
+	eq(shown, 5)
+	eq(w, 200)
+	eq(h, 5 * 30 + 4 * 41)
+	local container, frames = {}, { {}, {}, {}, {}, {} }
+	expect_anchor(UF.GroupAnchor(3, frames, container, layout, perColumn, columns), 'TOP', frames[2], 'BOTTOM', 0, -41)
+	eq(#UF.GroupAnchor(1, frames, container, layout, perColumn, columns), 1, 'the first is pinned by the growth point alone')
+	-- Only boss ignores them: party and raid read the same keys.
+	local party = UF.GetUnitGroupLayout('party', old)
+	eq(party.unitsPerColumn, 2)
+	eq(party.maxColumns, 3)
 end)

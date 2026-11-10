@@ -96,6 +96,21 @@ function UF.GetGroupLayout(config)
 	}
 end
 
+-- The layout of a unit's frames, from its config: party and raid's as
+-- UF.GetGroupLayout reads it, boss's always one column holding every boss
+-- frame, growing the way growthDirection says, spacing apart. Boss has no
+-- column options, so a column key an old profile saved on it is ignored.
+function UF.GetUnitGroupLayout(unit, config)
+	local layout = UF.GetGroupLayout(config)
+	if unit == 'boss' then
+		layout.unitsPerColumn = math.huge
+		layout.maxColumns = 1
+		layout.columnSpacing = 0
+		layout.columnAnchorPoint = 'LEFT'
+	end
+	return layout
+end
+
 -- The size the header gives itself for count members (the same sums as
 -- configureChildren in SecureGroupHeaders.lua), its column length and column
 -- count, and how many of the count it shows (maxColumns can cut it short).
@@ -784,7 +799,7 @@ function UF:UpdateGroupPreview(group)
 		self.previews[group] = container
 	end
 
-	local layout = UF.GetGroupLayout(config)
+	local layout = UF.GetUnitGroupLayout(group, config)
 	local width, height, unitsPerColumn, numColumns, count = UF.GetGroupLayoutSize(layout, GetPreviewSize(group, config))
 	local point = config.position.point
 	container:ClearAllPoints()

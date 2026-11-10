@@ -264,7 +264,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
   - Pettarget is now spawned, off by default.
 - **Kept, for work to come:**
   - `grid.*` and `editmode.grid`/`.snap` were replaced by edit mode's grid and snap (2026-11-09): `editmode.grid`, `grid_size`, `snap_grid`, `snap_frames`.
-  - Boss `growthDirection`, `maxColumns`, `unitsPerColumn`, `columnSpacing` and `initialAnchor`: the user wants these implemented as options, not removed.
+  - Boss `growthDirection` and `spacing` stay as options. Decided 2026-11-10: the other boss layout keys, `maxColumns`, `unitsPerColumn`, `columnSpacing` and `initialAnchor`, were removed (options and defaults; boss is always one line, and a saved value is ignored). The user, after checking them in boss Test mode: "on the layout the only options that do anything are growth and spacing, we can scrap the other layout config options." (An earlier note had the user wanting all five implemented as options.)
   - The aura keys `font`, `horizontal_growth`, `showBar` and target buffs' `border` are for aura timer bars; see [Aura timer bars](#2026-11-09--aura-timer-bars-stacked-bars-instead-of-icons).
   - The aura filters, `showDebuffType` and `desaturateOthers` stay with the aura-container followup.
   - `portrait` and `aurawatch` are elements the user wants built. AuraWatch: per-corner HoT tracking on raid frames, which may be possible with AuraContainer slots (`AddSlot` with `candidateFilters.includeSpellIDs`); no separate library is needed.

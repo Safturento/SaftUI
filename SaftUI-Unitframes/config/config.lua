@@ -410,7 +410,8 @@ end
 local GROWTH_DIRECTIONS = { TOP = 'Down', BOTTOM = 'Up', LEFT = 'Right', RIGHT = 'Left' }
 
 -- Party, raid and boss: how the frames are laid out (a party or raid header's
--- attributes; boss frames by UF.GetGroupLayout), and test mode. The values sit
+-- attributes; boss frames by UF.GetUnitGroupLayout, one line, so boss has only
+-- Growth and Spacing), and test mode. The values sit
 -- on the unit's own config, so General's get and set handle them, and set
 -- re-places the frames, the holder and any test previews (UF:UpdateConfig(unit),
 -- which waits for the end of combat).
@@ -428,17 +429,7 @@ local function GetGroupLayoutConfig(unit, order)
 			type = 'select',
 			values = GROWTH_DIRECTIONS,
 		},
-		initialAnchor = {
-			order = 3,
-			name = 'Column growth',
-			desc = 'Which way each new column follows the one before it. A column runs the way the frames grow, so it is a row when they grow sideways.',
-			type = 'select',
-			values = GROWTH_DIRECTIONS,
-		},
-		spacing = G.range(4, 'Spacing', 0, 50, 1, 'The gap between one unit frame and the next in a column.'),
-		columnSpacing = G.range(5, 'Column spacing', 0, 50, 1, 'The gap between one column and the next.'),
-		unitsPerColumn = G.range(6, 'Units per column', 1, 40, 1, 'How many unit frames fill a column before the next column starts.'),
-		maxColumns = G.range(7, 'Max columns', 1, 40, 1, 'The most columns shown. Unit frames past the last column are not shown.'),
+		spacing = G.range(4, 'Spacing', 0, 50, 1, 'The gap between one unit frame and the next.'),
 		test_mode = {
 			order = 0,
 			name = 'Test mode',
@@ -450,6 +441,19 @@ local function GetGroupLayoutConfig(unit, order)
 			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
 		},
 	}
+	if unit ~= 'boss' then
+		-- Boss is always one line, so these are party and raid's.
+		args.initialAnchor = {
+			order = 3,
+			name = 'Column growth',
+			desc = 'Which way each new column follows the one before it. A column runs the way the frames grow, so it is a row when they grow sideways.',
+			type = 'select',
+			values = GROWTH_DIRECTIONS,
+		}
+		args.columnSpacing = G.range(5, 'Column spacing', 0, 50, 1, 'The gap between one column and the next.')
+		args.unitsPerColumn = G.range(6, 'Units per column', 1, 40, 1, 'How many unit frames fill a column before the next column starts.')
+		args.maxColumns = G.range(7, 'Max columns', 1, 40, 1, 'The most columns shown. Unit frames past the last column are not shown.')
+	end
 	if unit == 'party' then
 		args.showPlayer = G.toggle(1, 'Show player', 'Shows you as the first unit frame of the party.', 'small')
 	end

@@ -211,8 +211,20 @@ test("the unit frames' page: picker labelled Unit; boss has Layout with test mod
 
 	local layout = config.args.boss.args.general.args.layout
 	check(layout, 'boss has a Layout group in General')
-	for _, key in ipairs({ 'growthDirection', 'spacing', 'unitsPerColumn', 'initialAnchor', 'columnSpacing', 'maxColumns' }) do
+	for _, key in ipairs({ 'growthDirection', 'spacing' }) do
 		check(layout.args[key], 'boss Layout has ' .. key)
+	end
+	for _, key in ipairs({ 'unitsPerColumn', 'initialAnchor', 'columnSpacing', 'maxColumns' }) do
+		eq(layout.args[key], nil, 'boss Layout has no ' .. key)
+	end
+	local kept = {}
+	for key in pairs(layout.args) do kept[#kept + 1] = key end
+	table.sort(kept)
+	eq(table.concat(kept, ','), 'growthDirection,spacing,test_mode', 'Growth, Spacing and Test mode')
+	for _, unit in ipairs({ 'party', 'raid10', 'raid40' }) do
+		for _, key in ipairs({ 'unitsPerColumn', 'initialAnchor', 'columnSpacing', 'maxColumns' }) do
+			check(config.args[unit].args.general.args.layout.args[key], unit .. ' Layout keeps ' .. key)
+		end
 	end
 	-- Boss's Test mode is party's and raid's toggle, with its own tooltip.
 	local boss_test, party_test = layout.args.test_mode, config.args.party.args.general.args.layout.args.test_mode
@@ -235,10 +247,10 @@ test("the unit frames' page: picker labelled Unit; boss has Layout with test mod
 	local P = UF:GetProfileConfig()
 	local before = updates
 	local g = config.args.boss.args.general
-	g.set({ 'boss', 'general', 'maxColumns' }, 2)
-	eq(P.boss.maxColumns, 2, 'written to the boss config')
+	g.set({ 'boss', 'general', 'spacing' }, 20)
+	eq(P.boss.spacing, 20, 'written to the boss config')
 	eq(updates, before + 1, 'and boss was updated')
-	P.boss.maxColumns = 1
+	P.boss.spacing = 41
 
 	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss' }) do
 		eq(config.args[unit].args.general.args.range_alpha, nil, unit .. " has no range alpha: only group members' frames use it")
