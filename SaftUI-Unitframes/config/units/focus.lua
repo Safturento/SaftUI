@@ -17,7 +17,9 @@ st.defaults.unitframes.profiles["**"].focus = {
         height = 30,
         template = 'thicktransparent',
         colors = {
-            normal = { .5, .9, .7 },
+            -- Keyed like the base default's color (CreateColor), whose r, g and
+            -- b GetRGB reads: a { .5, .9, .7 } list would be left behind them.
+            normal = { r = .5, g = .9, b = .7 },
         },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }

@@ -150,6 +150,7 @@ local health = {
     text = {
         enable = true,
         hide_full = false,
+        deficit = false,
         percent = false,
         boss_percent = true,
         font = 'normal',
@@ -259,7 +260,9 @@ local additionalpower = {
         },
     },
     Smooth = true,
-    colorPower = false,
+    -- Only this and colorCustom color the bar and its background (oUF's
+    -- AdditionalPower knows no other flag): with both off it would be white.
+    colorPower = true,
     colorCustom = false,
     customColor = { 0.25, 0.25, 0.25 },
 }

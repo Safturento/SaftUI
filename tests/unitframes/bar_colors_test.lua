@@ -196,3 +196,42 @@ test('castbar: no bg coloring while bg is off', function()
 	castbar.PostCastStart(castbar, 'player')
 	check(not castbar.bg:IsShown(), 'bg hidden')
 end)
+
+-- The defaults a newly exposed option would error or do nothing with, as AceDB
+-- fills a profile from them: the base defaults, then each unit's (the TOC's
+-- config/load.xml order), read through the profile.
+test('defaults that block their options are fixed', function()
+	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget',
+			'boss', 'arena', 'party', 'raid10', 'raid40' }) do
+		load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')
+	end
+	apply_defaults()
+	local profiles = st.config.profile.unitframes
+	local P = profiles.profiles[profiles.config_profile]
+
+	-- Additional power: colored by the mana color, not left white.
+	eq(unit_defaults['**'].additionalpower.colorPower, true, 'additional power defaults to Color by power type')
+	eq(P.player.additionalpower.colorPower, true, "and the player's has it")
+
+	-- Focus's castbar color is its own: a keyed color, which GetRGB reads.
+	local focus, target = P.focus.castbar.colors.normal, P.target.castbar.colors.normal
+	local r, g, b = focus:GetRGB()
+	check(near(r, .5) and near(g, .9) and near(b, .7), ('focus castbar color is .5 .9 .7, got %s %s %s'):format(r, g, b))
+	r, g, b = UF.UnpackColor(focus)
+	check(near(r, .5) and near(g, .9) and near(b, .7), 'UF.UnpackColor reads it too')
+	check(near(focus.r, .5) and near(focus.g, .9) and near(focus.b, .7), "and the castbar's Color option, which reads r, g and b")
+	r, g, b = target:GetRGB()
+	check(near(r, .5) and near(g, .7) and near(b, .9), 'other units keep the base color')
+	-- The focus castbar takes it, as UpdateConfig copies it into castbar.colors.
+	local frame = new_unitframe()
+	frame.config.castbar = P.focus.castbar
+	local castbar = UF.elements.Castbar.Constructor(frame)
+	r, g, b = castbar.colors.normal:GetRGB()
+	check(near(r, .5) and near(g, .9) and near(b, .7), "the focus castbar's color")
+
+	-- Health text's Deficit on every unit: on for party and raid, off elsewhere.
+	for unit, on in pairs({ player = false, target = false, targettarget = false, focus = false, focustarget = false,
+			pet = false, pettarget = false, boss = false, arena = false, party = true, raid10 = true, raid40 = true }) do
+		eq(P[unit].health.text.deficit, on, unit .. "'s health text Deficit default")
+	end
+end)
