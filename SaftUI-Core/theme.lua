@@ -106,13 +106,16 @@ function st:ThemeInset(theme, background)
 end
 
 -- Rewrites every saved template choice in tbl, at any depth, into a Theme and
--- a Background: a key template or <prefix>template (buttontemplate) holding
--- an old name becomes <prefix>theme and <prefix>background through LEGACY,
--- and is removed. none sets only the Theme; highlight, close and a name that
--- was never a template only go, so the module's defaults apply. templates (the
--- themes' colors) isn't a template key. Only what's saved is read: the walk
--- goes by pairs, never through a table's __index (AceDB's '**' defaults would
--- make keys), and each table once. Running it again changes nothing.
+-- a Background: a key template or <prefix>template (buttontemplate) holding a
+-- string, an old name, becomes <prefix>theme and <prefix>background through
+-- LEGACY, and is removed. none sets only the Theme; highlight, close and a
+-- name that was never a template only go, so the module's defaults apply.
+-- Every old choice was saved as a string, so any other value under such a key
+-- is data and stays: a table is walked like any other (a unit frame profile
+-- the user named 'raid template'). templates (the themes' colors) isn't a
+-- template key. Only what's saved is read: the walk goes by pairs, never
+-- through a table's __index (AceDB's '**' defaults would make keys), and each
+-- table once. Running it again changes nothing.
 function st:MigrateTemplateKeys(tbl)
 	local seen = {}
 	local function walk(t)
@@ -121,7 +124,7 @@ function st:MigrateTemplateKeys(tbl)
 		-- Keys are added below, so they're collected before anything changes.
 		local old, children = {}, {}
 		for key, value in pairs(t) do
-			if type(key) == 'string' and key:find('template$') then
+			if type(key) == 'string' and key:find('template$') and type(value) == 'string' then
 				old[#old + 1] = key
 			elseif type(value) == 'table' then
 				children[#children + 1] = value

@@ -2,8 +2,10 @@
 -- (st:MigrateTemplateKeys, SaftUI-Core/theme.lua), wherever saved data enters
 -- a profile, so a profile the old version saved keeps its look with no step
 -- the user takes:
---   - the walk itself: every key named template or <something>template, read
---     through the old names' table, and idempotent;
+--   - the walk itself: every string under a key named template or
+--     <something>template, read through the old names' table, and idempotent;
+--     any other value there (a unit frame profile the user named 'raid
+--     template') is data, kept and walked into;
 --   - at login, once the AceDB database is made (Config:InitializeAceConfig);
 --   - a profile switch to a profile the old version saved (Review Focus 3), and
 --     a profile copied from one (Config:UpdateConfig, which AceDB's profile
@@ -123,6 +125,35 @@ test('old template keys migrate', function()
 	st:MigrateTemplateKeys(wild)
 	eq(made, 0, 'no key read through __index')
 	eq(look(rawget(wild, 'unit')), 'thin,solid,nil', 'its saved tables migrate')
+end)
+
+test('a table under a key ending in template is data, not a choice: it stays, and its own choices migrate', function()
+	fresh()
+	-- Unit frame profile names are the user's: 'raid template' and 'template'
+	-- are names UF's New and Rename accept.
+	local profiles = {
+		['raid template'] = { raid10 = { template = 'thin', health = { template = 'thicktransparent', height = 7 } } },
+		template = { player = { template = 'none' } },
+		SaftUI = { player = { width = 301 } },
+	}
+	local raid, named = profiles['raid template'], profiles.template
+	st:MigrateTemplateKeys({ unitframes = { profiles = profiles } })
+	check(profiles['raid template'] == raid, "the profile named 'raid template' is still there, the same table")
+	check(profiles.template == named, "and the one named 'template'")
+	eq(raid.raid10.theme .. ',' .. raid.raid10.background, 'thin,solid', 'its units migrate')
+	eq(raid.raid10.template, nil, 'their template keys go')
+	eq(raid.raid10.health.theme .. ',' .. raid.raid10.health.background, 'thick,transparent', 'and their elements')
+	eq(raid.raid10.health.height, 7, 'the rest as it was')
+	eq(named.player.theme, 'none', "the 'template' profile's units migrate too")
+	eq(profiles.SaftUI.player.width, 301, 'other profiles untouched')
+	eq(profiles.theme, nil, "no theme key made beside a profile named 'template'")
+	eq(profiles.background, nil, 'nor a background')
+
+	-- Only a string under such a key is a template choice; any other value stays.
+	local other = { template = true, buttontemplate = 3 }
+	st:MigrateTemplateKeys(other)
+	eq(other.template, true, 'a boolean stays')
+	eq(other.buttontemplate, 3, 'a number stays')
 end)
 
 test('a profile the old version saved migrates at login', function()
