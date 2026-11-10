@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter](#2026-11-10--boss-frames-have-no-test-mode-so-their-layout-options-cant-be-checked-out-of-an-encounter)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
@@ -51,6 +52,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors
+
+**What:** Two additions to the Colors tab of Global Settings (spec `docs/superpowers/specs/2026-11-10-saftui-colors-tab-design.md`), left out of its first version: editable role colors (tank, healer, damage) and death knight rune colors (blood, frost, unholy), and a switch to use Blizzard's class colors instead of SaftUI's own muted palette.
+
+**Why noticed:** Drafting the Colors tab design (2026-11-10). The draft listed both as non-goals; the user answered "we should follow up with this".
+
+**Anchors:** `UF:UpdateColors` (`SaftUI-Unitframes/unitframes.lua`): `UF.oUF.colors.roles = st.config.profile.colors.roles or DEFAULT_ROLE_COLORS`, and the same for `runes`. The profile (`st.defaults.colors`, `SaftUI-Core/Config/defaults.lua`) has neither table, so oUF's colors are used. `colors.class` in the same defaults is SaftUI's palette; Blizzard's is `RAID_CLASS_COLORS` (or `C_ClassColor.GetClassColor`).
+
+**What's been considered:** Roles and runes would be two more sections of the Colors tab, which needs their defaults added to the profile (oUF's values) so there's something to edit; `UF:UpdateColors` then drops the fallback. The class switch is a toggle at the top of the Class section that greys the swatches out while on. Everything that reads `colors.class` (unit frames through `UF.oUF.colors.class`, the group previews, the unit tooltip) would then need to read through one helper, so the switch reaches them all.
+
+**Shape of work:** Small to medium, after the Colors tab ships: two sections with defaults, plus a toggle and a single class color lookup.
+
+**Open questions:** Whether the Blizzard switch also covers reaction colors (Blizzard's `FACTION_BAR_COLORS`).
 
 ### 2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter
 
