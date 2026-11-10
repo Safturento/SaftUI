@@ -145,7 +145,8 @@ local function GetConfigTable(unit)
 			reverse_fill = G.toggle(1, 'Reverse fill', 'Fills the bar from the other end: right to left, or top down when vertical.', 'small'),
 			vertical_fill = G.toggle(2, 'Vertical fill', 'Fills the bar from the bottom up instead of from left to right.', 'small'),
 			Smooth = G.toggle(3, 'Smooth', 'Slides the bar to each new value instead of jumping to it.', 'small'),
-			template = G.template(4, "The health bar's background and border."),
+			theme = G.theme(4, "The health bar's border and background."),
+			background = G.background(4.5),
 			texture = {
 				order = 5,
 				name = 'Texture',

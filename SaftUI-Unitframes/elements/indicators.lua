@@ -148,7 +148,8 @@ for _, config in pairs(indicators) do
             size = generators.range(2, 'Size', 4, 64, 1, "The icon's width and height in pixels."),
             -- UF:UpdateElement puts the backdrop behind the icon (st:SetBackdrop
             -- on a texture), shown and hidden with it.
-            template = generators.template(3, 'A background and border behind the icon.'),
+            theme = generators.theme(3, 'A border and background behind the icon.'),
+            background = generators.background(3.5),
             alpha = generators.alpha(4, 'How solid the icon is, from see-through to opaque.'),
             -- Last in the tab.
             position = generators.uf_element_position(1000,

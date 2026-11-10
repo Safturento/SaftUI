@@ -631,7 +631,8 @@ function UF:GetConfigTable()
 					end,
 					args = {
 						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
-						template = st.Config.generators.template(1, "The look of this unit frame's background and border."),
+						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
+						background = st.Config.generators.background(1.5),
 						width = st.Config.generators.width(2, "The unit frame's width."),
 						height = st.Config.generators.height(3, "The unit frame's height."),
 						-- Every SetPoint parameter, the relative frame included.

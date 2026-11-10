@@ -15,7 +15,8 @@ st.defaults.unitframes.profiles["**"].focus = {
         width = 300,
         relative_height = false,
         height = 30,
-        template = 'thicktransparent',
+        theme = 'theme',
+        background = 'theme',
         colors = {
             -- Keyed like the base default's color (CreateColor), whose r, g and
             -- b GetRGB reads: a { .5, .9, .7 } list would be left behind them.

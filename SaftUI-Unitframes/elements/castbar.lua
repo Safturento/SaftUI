@@ -191,7 +191,8 @@ local function GetConfigTable(unit)
 				type = 'group',
 				inline = true,
 				args = {
-					template = generators.template(1, "The castbar's background and border."),
+					theme = generators.theme(1, "The castbar's border and background."),
+					background = generators.background(1.5),
 					alpha = generators.alpha(2, 'How solid the castbar, its texts and its icon are, from see-through to opaque.'),
 					framelevel = generators.framelevel(3, FRAME_LEVEL),
 					normal = Color(4, 'Color', 'normal', "The bar's color while the cast can be interrupted. Shown from the next cast."),
@@ -205,7 +206,8 @@ local function GetConfigTable(unit)
 			time = Section(3, 'Time', 'time', TextArgs('Time', 'time', 'cast time', 'Time position')),
 			icon = Section(4, 'Icon', 'icon', {
 				enable = generators.toggle(0, 'Enable', "Shows the spell's icon.", 'small'),
-				template = generators.template(1, "The icon's background and border."),
+				theme = generators.theme(1, "The icon's border and background."),
+				background = generators.background(1.5),
 				framelevel = generators.framelevel(2, FRAME_LEVEL),
 				size = UF.GenerateRelativeSizeConfigGroup(3),
 				-- Last in Icon.

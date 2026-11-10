@@ -417,7 +417,7 @@ end
 	A group's test mode fills its holder with preview frames for made-up
 	members, so a raid layout can be checked without a raid. The previews are
 	SaftUI's own plain frames, built from the same element helpers and the
-	same config as the real buttons (size, template, health and power bars,
+	same config as the real buttons (size, theme, health and power bars,
 	name text, role corner, range alpha), and laid out with the header's own
 	sums. No unit is ever faked: no secure frame, unit attribute or Blizzard
 	unit function is involved, and the bars are filled straight from the data
@@ -562,7 +562,7 @@ local function StylePreviewFrame(frame)
 	local config = frame:GetConfig()
 	frame.config = config
 	st:SetSize(frame, config.width, config.height)
-	st:SetBackdrop(frame, config.template)
+	st:SetBackdrop(frame, config.theme, config.background, 'bar')
 	for _, element in ipairs(frame.previewElements) do
 		UF:UpdateElement(element)
 	end

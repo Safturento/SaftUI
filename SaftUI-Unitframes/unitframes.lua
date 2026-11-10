@@ -290,7 +290,7 @@ function UF:UpdateUnitFrame(frame, element_name)
 			return -- disabled, and moved off screen
 		end
 
-		st:SetBackdrop(frame, frame.config.template)
+		st:SetBackdrop(frame, frame.config.theme, frame.config.background, 'bar')
 
 		-- Updated in place: oUF's range element keeps its state on this table.
 		frame.Range = frame.Range or {}

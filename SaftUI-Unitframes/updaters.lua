@@ -20,6 +20,19 @@ function UF:SetPowerPercentText(text, unit, current, max, powerType)
 	end
 end
 
+-- The kind of frame (st.THEME_KINDS) an element's Theme draws it as. Its bars
+-- (health, power, additional power, the castbar) are bars, like the unit frame
+-- itself; the aura areas are auras; everything else (the castbar's icon, the
+-- indicators, the class power row) is small. The aura and class power areas
+-- are left bare by their own UpdateConfig, which draws their buttons and
+-- points with the same Theme.
+local AURA_ELEMENTS = { Buffs = true, Debuffs = true }
+local function ElementKind(element)
+	if element:IsObjectType('StatusBar') then return 'bar' end
+	if AURA_ELEMENTS[element.name] then return 'aura' end
+	return 'small'
+end
+
 function UF:UpdateElement(element, configOverride)
     element.config = element:GetConfig()
 
@@ -38,8 +51,8 @@ function UF:UpdateElement(element, configOverride)
         return false
     end
 
-    if element.config.template then
-        st:SetBackdrop(element, config.template)
+    if config.theme then
+        st:SetBackdrop(element, config.theme, config.background, ElementKind(element))
     end
 
     element:SetAlpha(config.alpha or 1)

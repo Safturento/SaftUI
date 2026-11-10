@@ -34,12 +34,12 @@ local function UpdateConfig(unitframe)
     local classPower = unitframe.ClassPower
     UF:UpdateElement(classPower)
 
-	st:SetBackdrop(classPower, 'none')
+	st:SetBackdrop(classPower, 'none', 'theme', 'small')
 	
 	local prev
 	for i=1, 10 do
 		local point = classPower[i]
-		st:SetBackdrop(point, classPower.config.template)
+		st:SetBackdrop(point, classPower.config.theme, classPower.config.background, 'small')
 		
 		point:SetStatusBarTexture(st.BLANK_TEX)
 		point:ClearAllPoints()
@@ -75,7 +75,8 @@ local function GetConfigTable(unit)
 		end,
 		args = {
 			enable = generators.toggle(0, 'Enable', 'Shows your combo points, holy power, chi, soul shards and the like, as a row of points.', 'small'),
-			template = generators.template(1, "Each point's background and border."),
+			theme = generators.theme(1, "Each point's border and background."),
+			background = generators.background(1.5),
 			alpha = generators.alpha(2, 'How solid the points are, from see-through to opaque.'),
 			framelevel = generators.framelevel(3, 'Draws the points over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
 			spacing = generators.range(4, 'Spacing', 0, 20, 1, 'The gap between one point and the next.'),

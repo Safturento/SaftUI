@@ -619,25 +619,92 @@ test('Name: Classification where rare and elite units can show, Class color wher
 	end
 end)
 
-test("each indicator's Template picks the indicator's backdrop", function()
-	local config = UF:GetConfigTable()
-	local P = UF:GetProfileConfig()
-	local seen = 0
-	for _, unit in ipairs(UNITS) do
-		for tab in pairs(element_tabs(config, unit)) do
-			if tab:match('Indicator$') then
-				seen = seen + 1
-				local option, row = option_at(config, unit, tab, 'template')
-				if check(option and option.type == 'select', unit .. '.' .. tab .. ' has Template') then
-					local names = {}
-					for _, entry in ipairs(OM.Values({ Unitframes = config }, row)) do names[entry.key] = true end
-					check(names.none and names.thick, unit .. '.' .. tab .. ': the templates, and None')
-				end
-				reads_and_writes(config, unit, tab, { 'template' }, P[unit][string.lower(tab)], 'template', 'thick')
-			end
+-- The parts of a unit's section with a Theme and a Background: { tab, the
+-- keys of the section they sit in under the tab, the profile table they
+-- write }. The unit frame's own are in General; the castbar has the bar's and
+-- the icon's; the aura tabs have them in Buttons. Name has none: it's a text.
+local function themed_parts(config, P, unit)
+	local parts = { { 'general', {}, P[unit] } }
+	for tab in pairs(element_tabs(config, unit)) do
+		local store = P[unit][string.lower(tab)]
+		if tab == 'Castbar' then
+			parts[#parts + 1] = { tab, { 'bar' }, store }
+			parts[#parts + 1] = { tab, { 'icon' }, store.icon }
+		elseif tab == 'Buffs' or tab == 'Debuffs' then
+			parts[#parts + 1] = { tab, { 'buttons' }, store }
+		elseif tab ~= 'Name' then
+			parts[#parts + 1] = { tab, {}, store }
 		end
 	end
-	eq(seen, 11 * 4 + 3, 'four indicators on every unit, and the ready check on the groups')
+	return parts
+end
+
+-- A select's values as 'key=name' in the order the window lists them.
+local function listed(config, row)
+	local out = {}
+	for _, entry in ipairs(OM.Values({ Unitframes = config }, row)) do out[#out + 1] = entry.key .. '=' .. entry.name end
+	return table.concat(out, ';')
+end
+
+test('each element tab offers Theme and Background, with descs, and no template', function()
+	local config = UF:GetConfigTable()
+	local P = UF:GetProfileConfig()
+	local generic = st.Config.generators.theme(1).desc
+	local seen = 0
+	for _, unit in ipairs(UNITS) do
+		for _, part in ipairs(themed_parts(config, P, unit)) do
+			local tab, keys, store = part[1], part[2], part[3]
+			local where = unit .. '.' .. table.concat({ tab, unpack(keys) }, '.')
+			local function at(key)
+				local path = { unpack(keys) }
+				path[#path + 1] = key
+				return path
+			end
+			seen = seen + 1
+
+			local theme, themeRow = option_at(config, unit, tab, unpack(at('theme')))
+			if check(theme and theme.type == 'select' and theme.name == 'Theme', where .. ' has Theme') then
+				eq(listed(config, themeRow), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;none=None", where .. ": Theme's choices, in order")
+				check(type(theme.desc) == 'string' and theme.desc:find('Global Settings > Theme', 1, true) ~= nil,
+					where .. "'s Theme says what its choices do")
+				check(theme.desc ~= generic, where .. "'s Theme says which frames it draws: " .. tostring(theme.desc))
+				eq(theme.width, nil, where .. "'s Theme has no Ace width")
+				reads_and_writes(config, unit, tab, at('theme'), store, 'theme', 'thin')
+			end
+
+			local background, backgroundRow = option_at(config, unit, tab, unpack(at('background')))
+			if check(background and background.type == 'select' and background.name == 'Background', where .. ' has Background') then
+				eq(listed(config, backgroundRow), "theme=Use SaftUI's theme;solid=Solid;transparent=Transparent",
+					where .. ": Background's choices, in order")
+				check(type(background.desc) == 'string' and background.desc ~= '', where .. "'s Background has a desc")
+				eq(background.order, theme and theme.order + 0.5, where .. ': Background comes right after Theme')
+				eq(background.width, nil, where .. "'s Background has no Ace width")
+				reads_and_writes(config, unit, tab, at('background'), store, 'background', 'transparent')
+			end
+
+			eq(option_at(config, unit, tab, unpack(at('template'))), nil, where .. ' has no Template')
+		end
+		eq(option_at(config, unit, 'Name', 'theme'), nil, unit .. "'s Name, a text, has no Theme")
+	end
+	-- General, Health, Power, Buffs, Debuffs and four indicators on every unit;
+	-- the castbar's bar and icon where there's a castbar (all but the targets
+	-- of targets); the ready check on the groups; additional and class power on
+	-- the player.
+	eq(seen, 11 * 9 + 8 * 2 + 3 + 2, 'every part with a Theme')
+
+	-- Nothing in the unit frames' pages is a Template, or offers an old
+	-- template, Highlight or Close Button.
+	local OLD_NAMES = { Template = true, ThickTransparent = true, ThinTransparent = true, Highlight = true, ['Close Button'] = true }
+	each_option(config, function(option, path)
+		local where = table.concat(path, '.')
+		check(path[#path] ~= 'template', where .. ' is not a template key')
+		check(not OLD_NAMES[option.name], where .. ' is not named ' .. tostring(option.name))
+		if option.type == 'select' and type(option.values) == 'table' then
+			for _, name in pairs(option.values) do
+				check(not OLD_NAMES[name], where .. ' does not offer ' .. tostring(name))
+			end
+		end
+	end)
 end)
 
 test("Health's first section: the toggles four to a line, then the settings two to a line", function()
@@ -654,7 +721,7 @@ test("Health's first section: the toggles four to a line, then the settings two 
 	end
 	eq(table.concat(got, ', '),
 		'enable:small 1/1, reverse_fill:small 1/2, vertical_fill:small 2/1, Smooth:small 2/2, '
-		.. 'template:normal 1, texture:normal 2, alpha:normal 1, framelevel:normal 2',
+		.. 'theme:normal 1, background:normal 2, texture:normal 1, alpha:normal 2, framelevel:normal 1',
 		"Health's first section")
 	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
 end)

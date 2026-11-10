@@ -3,7 +3,8 @@ local st = SaftUI
 st.defaults.unitframes.profiles["**"].raid40 = {
     spacing = 3,
     growthDirection = 'LEFT',
-    template = 'thick',
+    theme = 'theme',
+    background = 'solid',
     maxColumns = 8,
     unitsPerColumn = 5,
     columnSpacing = 3,
@@ -11,7 +12,6 @@ st.defaults.unitframes.profiles["**"].raid40 = {
     position = { point = 'TOPRIGHT', frame = 'SaftUI_Player', rel_point = 'BOTTOMRIGHT', x_off = -2, y_off = -8 },
     width = 57,
     height = 30,
-    -- template = 'thick',
     portrait = {
         enable = false,
     },
@@ -52,7 +52,8 @@ st.defaults.unitframes.profiles["**"].raid40 = {
         horizontal_growth = 'RIGHT',
         initial_anchor = 'LEFT',
         framelevel = 50,
-        template = 'thin',
+        theme = 'thin',
+        background = 'solid',
         cooldown = {
             timer = {
                 enable = false,
@@ -77,7 +78,8 @@ st.defaults.unitframes.profiles["**"].raid40 = {
     },
     debuffs = {
         enable = false,
-        template = 'thin',
+        theme = 'thin',
+        background = 'solid',
         per_row = 2,
         max = 2,
         spacing = 3,

@@ -12,7 +12,7 @@ local UF = st:GetModule('Unitframes')
 	Group options (filter, max count, button size, which borders to show, whether
 	buttons get a cooldown) are baked in when the group is created on the first config
 	update, so changing them requires a /reload, and their /sui options say so. Layout
-	(anchor, growth, spacing, wrapping) and button styling (template, count font and
+	(anchor, growth, spacing, wrapping) and button styling (theme, count font and
 	spot, cooldown look and timer) update live, profile changes included.
 ]]
 
@@ -37,12 +37,31 @@ local buttonsByElement = setmetatable({}, { __mode = 'k' })
 -- Each button's dark line over its dispel border fill (see StyleButton).
 local innerLines = setmetatable({}, { __mode = 'k' })
 
+-- The element each button belongs to.
+local buttonElements = setmetatable({}, { __mode = 'k' })
+
+-- Shows a button's dark line while its element's Theme draws Thick, in Thick's
+-- outer border color, and hides it otherwise. The line isn't part of the
+-- backdrop the theme engine draws, so the engine runs this again after every
+-- theme recolor and redraw (st:KeepOwnColors, from PostCreateButton).
+local function ColorInnerLine(button)
+	local inner, auras = innerLines[button], buttonElements[button]
+	if not (inner and auras) then return end
+	local look = st:ResolveTheme(auras.config.theme, auras.config.background)
+	if look and look.name == 'thick' then
+		inner:SetVertexColor(unpack(look.colors.altbordercolor))
+		inner:Show()
+	else
+		inner:Hide()
+	end
+end
+
 -- Applies the element's current config to one of its buttons. Runs when the
 -- button is made and again on every config update, so it only sets things.
 local function StyleButton(auras, button)
 	local config = auras.config
 
-	st:SetBackdrop(button, config.template)
+	st:SetBackdrop(button, config.theme, config.background, 'aura')
 
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
 	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
@@ -55,26 +74,17 @@ local function StyleButton(auras, button)
 		button.Border:SetAllPoints(button.backdrop)
 
 		-- The fill shows in the whole gap between the icon and the backdrop's edge.
-		-- A thick template's gap is 2px, its border line and then a dark line, so
-		-- the color would be 2px wide. This dark fill over it, 1px in from the edge
-		-- and under the icon (BORDER layer), puts the dark line back on top.
-		local inner = innerLines[button]
-		if not inner and button.backdrop then
-			inner = button:CreateTexture(nil, 'BACKGROUND', nil, 1)
+		-- Thick's gap is 2px, its border line and then a dark line, so the color
+		-- would be 2px wide. This dark fill over it, 1px in from the edge and
+		-- under the icon (BORDER layer), puts the dark line back on top.
+		if not innerLines[button] and button.backdrop then
+			local inner = button:CreateTexture(nil, 'BACKGROUND', nil, 1)
 			inner:SetTexture(st.BLANK_TEX)
 			inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
 			inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
 			innerLines[button] = inner
 		end
-		if inner then
-			local look = st:ResolveLegacyTemplate(config.template)
-			if look and look.name == 'thick' then
-				inner:SetVertexColor(unpack(look.colors.altbordercolor))
-				inner:Show()
-			else
-				inner:Hide()
-			end
-		end
+		ColorInnerLine(button)
 	end
 
 	if button.Count then
@@ -132,6 +142,8 @@ local function PostCreateButton(auras, button)
 
 	buttonsByElement[auras] = buttonsByElement[auras] or {}
 	tinsert(buttonsByElement[auras], button)
+	buttonElements[button] = auras
+	st:KeepOwnColors(button, ColorInnerLine)
 
 	StyleButton(auras, button)
 end
@@ -179,7 +191,7 @@ local function UpdateConfig(unitframe, aura_type)
 
 	auras:SetHeight(num_rows * size + (num_rows - 1) * config.spacing)
 	auras:SetWidth(width)
-	st:SetBackdrop(auras, 'none')
+	st:SetBackdrop(auras, 'none', 'theme', 'aura')
 
 	auras.elementSpacing = config.spacing
 	auras.lineSpacing = config.spacing
@@ -341,7 +353,8 @@ local function GetConfigTable(unit, aura_type)
 				type = 'group',
 				inline = true,
 				args = {
-					template = generators.template(1, "Each button's background and border."),
+					theme = generators.theme(1, "Each button's border and background."),
+					background = generators.background(1.5),
 					alpha = generators.alpha(2, ('How solid the %s are, from see-through to opaque.'):format(noun)),
 					size = NeedsReload(generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels.")),
 					relative_size = NeedsReload(generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small')),

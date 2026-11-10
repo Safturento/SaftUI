@@ -44,7 +44,8 @@ st.defaults.unitframes.profiles["**"].player = {
         width = 299,
         relative_height = false,
         height = 24,
-        template = 'thicktransparent',
+        theme = 'theme',
+        background = 'theme',
         position = { point ='TOP', frame = 'UIParent', rel_point = 'CENTER', x_off = 0.5, y_off = -226 },
         text = {
          position = { point = 'LEFT', rel_point = 'LEFT', x_off = 4, y_off = 0 }
@@ -95,7 +96,8 @@ st.defaults.unitframes.profiles["**"].player = {
         spacing = 7,
         show_empty = true,
         framelevel = 20,
-        template = 'thicktransparent',
+        theme = 'theme',
+        background = 'theme',
         position = {
             point = 'TOPLEFT',
             frame = 'UIParent',
