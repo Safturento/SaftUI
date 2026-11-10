@@ -674,7 +674,7 @@ test('Experience on the real tree: the General page with its rows, then its Posi
 	eq(view.title, 'Experience', 'title')
 	eq(keys(view.tabs), 'general', 'Position is in General, so General is the only tab')
 	eq(view.tab, 'general', 'and selected')
-	eq(layout(view), '-:template,width,height,spacing,rest_alpha,normal_color,rested_color|Position:position',
+	eq(layout(view), '-:template,spacing,height,width,normal_color,rested_color,rest_alpha|Position:position',
 		"General's rows, then the Position option in a section of its own")
 	local config = st.config.profile.experience
 	local width = row(view, 'width')
@@ -698,7 +698,7 @@ test('Experience on the real tree: the General page with its rows, then its Posi
 	local page, selection = OM.SelectionForPath(root, { 'Experience', 'general' })
 	check(page == 'Experience' and selection.tab == 'general', "the bar's mover path opens General")
 	local found = OM.Search(root, 'rested')
-	eq(paths(found), 'Experience.general.rest_alpha,Experience.general.rested_color', 'search finds the rested options')
+	eq(paths(found), 'Experience.general.rested_color,Experience.general.rest_alpha', 'search finds the rested options')
 	eq(found[1].tabName, 'General', 'on the General tab')
 	local fonts = OM.BuildView(root, 'Fonts')
 	eq(fonts.title, 'Global Settings', 'the Fonts page is Global Settings')

@@ -22,7 +22,7 @@ end
 
 -- The pages whose descriptions aren't written yet. Their tasks take them out
 -- of this set when they write them.
-local DESC_PENDING = { Experience = true, Minimap = true, MicroMenu = true }
+local DESC_PENDING = { Minimap = true, MicroMenu = true }
 
 -- AceDBOptions' table, which is Ace's own.
 local NOT_SAFTUI = { profile = true }
@@ -68,7 +68,7 @@ test('every option on a finished page has a tooltip and no Ace width', function(
 			end
 		end
 	end
-	eq(table.concat(checked, ','), 'EditMode,Fonts', 'the finished pages built here')
+	eq(table.concat(checked, ','), 'EditMode,Experience,Fonts', 'the finished pages built here')
 end)
 
 test("no SaftUI page carries an Ace width, a pending one included", function()

@@ -17,6 +17,38 @@ function SK:UpdateConfig()
 	end
 end
 
+-- The Skinning page in /sui: the font and template the skins share. The skins that
+-- re-apply on a profile change (SK:UpdateConfig above) take a new one at once; a
+-- skin that reads them only as it skins a frame (the swing timer bars) takes it
+-- after a /reload.
+function SK:GetConfigTable()
+	local generators = st.Config.generators
+	return {
+		name = 'Skinning',
+		type = 'group',
+		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
+		args = {
+			general = {
+				name = 'General',
+				type = 'group',
+				order = 1,
+				get = function(info) return self.config[info[#info]] end,
+				set = function(info, value)
+					self.config[info[#info]] = value
+					self:UpdateConfig()
+				end,
+				args = {
+					template = generators.template(1,
+						"The look of the frames SaftUI skins (the buff icons, Hekili and WeakAuras). The swing timer bars take it after a /reload."),
+					font = generators.font(2,
+						"The font of the text on the frames SaftUI skins (the buff icons). The swing timer bars take it after a /reload."),
+				},
+			},
+		},
+	}
+end
+
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
 	if not options then options = {} end
 	-- if not panel then return end

@@ -631,10 +631,17 @@ function AP:OnEnable()
 	end
 end
 
--- One text's options (duration or count), inline in the Text section.
+-- One text's options (duration or count), inline in the Text section: its font, size
+-- and outline, then its Position (last). The text's point, the icon's point and the
+-- offsets are the profile's point, rel_point, x_off and y_off.
 function AP:GetTextOptions(key, kind, name, order)
 	local generators = st.Config.generators
 	local fontsModule = st:GetModule('Fonts', true)
+	local what = kind == 'duration' and 'time left' or 'stack count'
+	local function Apply()
+		self:UpdateFont(key, kind)
+		self:UpdateText()
+	end
 	return {
 		name = name,
 		type = 'group',
@@ -643,40 +650,34 @@ function AP:GetTextOptions(key, kind, name, order)
 		get = function(i) return self.config[key][kind][i[#i]] end,
 		set = function(i, value)
 			self.config[key][kind][i[#i]] = value
-			self:UpdateFont(key, kind)
-			self:UpdateText()
+			Apply()
 		end,
 		args = {
 			font = {
 				order = 1,
 				name = 'Font',
+				desc = ('The font of the %s on each icon.'):format(what),
 				type = 'select',
 				dialogControl = 'LSM30_Font',
 				values = st.LSM:HashTable('font'),
 			},
-			size = generators.range(2, 'Size', 6, 40, 1),
+			size = generators.range(2, 'Size', 6, 40, 1, ('The size of the %s text.'):format(what)),
 			outline = {
 				order = 3,
 				name = 'Outline',
+				desc = ('The outline around the %s text.'):format(what),
 				type = 'select',
 				values = fontsModule and fontsModule.outlines or { NONE = 'None', OUTLINE = 'Outline' },
 			},
-			point = {
-				order = 4,
-				name = 'Text point',
-				desc = 'The point of the text that is anchored.',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-			},
-			rel_point = {
-				order = 5,
-				name = 'Icon point',
-				desc = 'The point of the icon the text is anchored to.',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-			},
-			x_off = generators.range(6, 'X offset', -50, 50, 1),
-			y_off = generators.range(7, 'Y offset', -50, 50, 1),
+			position = generators.position(1000, false,
+				function(part) return self.config[key][kind][part] end,
+				function(part, value)
+					self.config[key][kind][part] = value
+					Apply()
+				end,
+				nil,
+				('Where the %s text sits on each icon: which point of the text goes to which point of the icon, then moved by X and Y.'):format(what)
+			),
 		},
 	}
 end
@@ -699,18 +700,19 @@ function AP:GetFrameOptions(info, order)
 		self.holders[key]
 	)
 
-	local perrow = generators.range(6, 'Icons per row', 1, buttons, 1)
+	local perrow = generators.range(7, 'Icons per row', 1, buttons, 1,
+		"How many icons before wrapping, like Blizzard's Icon Limit.")
 	perrow.name = function()
 		return self:GetGeometry(key).horizontal and 'Icons per row' or 'Icons per column'
 	end
-	perrow.desc = "How many icons before wrapping, like Blizzard's Icon Limit."
 
-	local max = generators.range(7, 'Max icons shown', 1, buttons, 1)
-	max.desc = ('Up to the %d buttons Blizzard makes. Auras past this are not shown.'):format(buttons)
+	local max = generators.range(2, 'Max icons shown', 1, buttons, 1,
+		('Up to the %d buttons Blizzard makes. Auras past this are not shown.'):format(buttons))
 
 	return {
 		name = info.label,
 		type = 'group',
+		childGroups = 'tab',
 		order = order,
 		args = {
 			general = {
@@ -734,18 +736,19 @@ function AP:GetFrameOptions(info, order)
 					self:Refresh(key)
 				end,
 				args = {
-					size = generators.range(1, 'Icon size', 10, 80, 1),
-					spacing_x = generators.range(2, 'Horizontal spacing', 0, 50, 1),
-					spacing_y = generators.range(3, 'Vertical spacing', 0, 50, 1),
+					size = generators.range(1, 'Icon size', 10, 80, 1, "The icons' width and height."),
+					max = max,
+					spacing_x = generators.range(3, 'Horizontal spacing', 0, 50, 1, 'The gap between icons side by side.'),
+					spacing_y = generators.range(4, 'Vertical spacing', 0, 50, 1, 'The gap between rows of icons, which leaves room for the time under each icon.'),
 					grow = {
-						order = 4,
+						order = 5,
 						name = 'Grow direction',
 						desc = 'The direction icons are added in.',
 						type = 'select',
 						values = GROW_VALUES,
 					},
 					wrap = {
-						order = 5,
+						order = 6,
 						name = 'Wrap direction',
 						desc = 'The direction new rows (or columns) go.',
 						type = 'select',
@@ -754,7 +757,6 @@ function AP:GetFrameOptions(info, order)
 						end,
 					},
 					perrow = perrow,
-					max = max,
 					position = position,
 				},
 			},
@@ -784,6 +786,7 @@ function AP:GetConfigTable()
 		name = 'Auras',
 		type = 'group',
 		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = args,
 	}
 end

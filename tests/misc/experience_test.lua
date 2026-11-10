@@ -10,6 +10,9 @@ for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap',
 	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order; the bar registers a mover
 end
 load_saftui('SaftUI-Misc/experience.lua')
+-- The page's layout, as the options window lays it out.
+load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+load_saftui('SaftUI-Core/Config/optionsbody.lua')
 
 -- Rested experience present, so the bar's first update takes the rested path.
 stub.rested_xp = 300
@@ -60,4 +63,27 @@ test('without rested experience the normal color is used', function()
 	XP:Update()
 	local r, g = exp:GetStatusBarColor()
 	check(r == 0 and g == 1, 'normal color used without rest')
+end)
+
+test('the Experience page reads Template | Spacing, Height | Width, the two colors | Rested bar alpha, then Position', function()
+	local root = { Experience = XP:GetConfigTable() }
+	local view = st.OptionsModel.BuildView(root, 'Experience')
+	local sections = view.sections
+	eq(#sections, 2, 'General, then the Position section')
+	local placed = st.OptionsBody.LayoutRows(sections[1].rows)
+	local got = {}
+	for _, p in ipairs(placed) do
+		got[#got + 1] = string.format('%s:%s %s%s', p.row.key, p.row.size or 'normal', tostring(p.col),
+			p.quarter and ('/' .. p.quarter) or '')
+	end
+	eq(table.concat(got, ', '),
+		'template:normal 1, spacing:normal 2, height:normal 1, width:normal 2, '
+		.. 'normal_color:small 1/1, rested_color:small 1/2, rest_alpha:normal 2',
+		'General reads in pairs, the two colors sharing a half')
+	eq(placed[3].y, placed[4].y, 'Height and Width share a line')
+	eq(placed[5].y, placed[7].y, 'the colors and Rested bar alpha share a line')
+	eq(sections[2].title, 'Position', 'Position has a section of its own')
+	eq(#sections[2].rows, 1, 'with the one row')
+	eq(sections[2].rows[1].type, 'position', 'the Position block')
+	eq(st.OptionsBody.LayoutRows(sections[2].rows)[1].col, 'full', 'on a line of its own')
 end)

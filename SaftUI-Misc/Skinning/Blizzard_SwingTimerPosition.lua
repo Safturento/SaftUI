@@ -277,6 +277,7 @@ function STP:GetBarOptions(info, order)
 	return {
 		name = info.label,
 		type = 'group',
+		childGroups = 'tab',
 		order = order,
 		args = {
 			general = {
@@ -290,11 +291,11 @@ function STP:GetBarOptions(info, order)
 					self:ApplyAppearance(key)
 				end,
 				args = {
-					width = generators.range(1, 'Width', 50, 1000, 1),
-					height = generators.range(2, 'Height', 4, 80, 1),
-					showtitle = generators.toggle(3, 'Show bar title'),
-					showtime = generators.toggle(4, 'Show time'),
-					opacity = generators.range(5, 'Opacity', 0, 1, 0.05),
+					width = generators.range(1, 'Width', 50, 1000, 1, "The bar's width."),
+					height = generators.range(2, 'Height', 4, 80, 1, "The bar's height."),
+					showtitle = generators.toggle(3, 'Show bar title', 'Shows the name of the swing (Main Hand, Off Hand, Ranged) on the bar.', 'small'),
+					showtime = generators.toggle(4, 'Show time', 'Shows the time left until the next swing on the bar.', 'small'),
+					opacity = generators.range(5, 'Opacity', 0, 1, 0.05, 'How solid the whole bar is, from clear to opaque.'),
 					position = position,
 				},
 			},
@@ -316,6 +317,7 @@ function STP:GetConfigTable()
 		name = 'Swing Timer',
 		type = 'group',
 		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = args,
 	}
 end

@@ -91,12 +91,13 @@ function XP:GetConfigTable()
 
 	-- The profile's colors.experience[key]. 'normal' also colors the loot feed's
 	-- experience entries.
-	local function Color(order, name, key, desc)
+	local function Color(order, name, key, desc, size)
 		return {
 			order = order,
 			name = name,
 			desc = desc,
 			type = 'color',
+			size = size,
 			get = function()
 				return Colors().experience[key]:GetRGB()
 			end,
@@ -112,6 +113,7 @@ function XP:GetConfigTable()
 		name = 'Experience',
 		type = 'group',
 		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -120,14 +122,17 @@ function XP:GetConfigTable()
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
-					template = st.Config.generators.template(1),
-					width = st.Config.generators.range(2, 'Width', 50, 800, 1),
-					height = st.Config.generators.range(3, 'Height', 2, 60, 1),
-					spacing = st.Config.generators.range(4, 'Spacing', 0, 30, 1),
-					rest_alpha = st.Config.generators.range(5, 'Rested bar alpha', 0, 1, 0.05),
-					normal_color = Color(6, 'Experience color', 'normal', 'The bar while you have no rested experience.'),
-					rested_color = Color(7, 'Rested color', 'rested',
-						'The bar while you have rested experience, and the rested part past it (at Rested bar alpha).'),
+					template = st.Config.generators.template(1, 'The look of the bars: their background and border.'),
+					spacing = st.Config.generators.range(2, 'Spacing', 0, 30, 1,
+						'The gap between the stacked bars (experience, reputation).'),
+					height = st.Config.generators.range(3, 'Height', 2, 60, 1, "Each bar's height."),
+					width = st.Config.generators.range(4, 'Width', 50, 800, 1, "Each bar's width."),
+					normal_color = Color(5, 'Experience color', 'normal',
+						'The experience bar while you have no rested experience.', 'small'),
+					rested_color = Color(6, 'Rested color', 'rested',
+						'The experience bar while you have rested experience, and the rested part past it (at Rested bar alpha).', 'small'),
+					rest_alpha = st.Config.generators.range(7, 'Rested bar alpha', 0, 1, 0.05,
+						'How solid the rested part of the bar is, from clear to opaque.'),
 					position = position,
 				},
 			},

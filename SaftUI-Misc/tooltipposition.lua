@@ -215,6 +215,7 @@ function TT:GetConfigTable()
 		name = 'Tooltip',
 		type = 'group',
 		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -222,13 +223,20 @@ function TT:GetConfigTable()
 				order = 1,
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value)
-					self.config[info[#info]] = value
-					self:UpdateTooltipAnchor()
+					local key = info[#info]
+					self.config[key] = value
+					if key == 'template' then
+						self:UpdateConfig() -- re-skins every tooltip now
+					elseif key ~= 'font' then -- the font is applied as each tooltip shows
+						self:UpdateTooltipAnchor()
+					end
 				end,
 				args = {
-					attach_to_bags = Toggle(1, 'Next to the bag window',
+					template = generators.template(1, 'The look of the tooltips: their background and border.'),
+					font = generators.font(2, 'The font of the text in tooltips. Tooltips already open keep their font until they show again.'),
+					attach_to_bags = Toggle(3, 'Next to the bag window',
 						'While the bag window is open, the tooltip shows to its left.', HasBags),
-					attach_to_feed = Toggle(2, 'Next to the loot feed',
+					attach_to_feed = Toggle(4, 'Next to the loot feed',
 						'While the loot feed shows entries, the tooltip shows to its left. The bag window comes first.', HasFeed),
 					position = position,
 				},

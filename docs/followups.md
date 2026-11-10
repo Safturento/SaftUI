@@ -196,10 +196,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
   - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`.
   - `templates.*` can be picked from a dropdown but not edited.
   - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09).
-- **Misc** (`SaftUI-Misc/config.lua`):
-  - `tooltip.template` and `.font`. Tooltip's section has only its attach toggles and position.
-  - `skinning.font` and `.template`. Skinning has no `GetConfigTable`, and Config only adds top-level modules (`SaftUI-Core/Config/config.lua:212`).
-  - `totembar.colors.*`.
+- **Misc** (`SaftUI-Misc/config.lua`): `tooltip.template` and `.font`, `skinning.font` and `.template` (the new Skinning page, `SK:GetConfigTable`) and `totembar.colors.*` now have options (Task 4 of the options layout project, 2026-11-09).
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons`.
 - **Chat:** `chat.linespacing`.
