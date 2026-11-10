@@ -71,7 +71,7 @@
 
 - Task 1 comes first.
 - Tasks 2 and 3 can run in parallel after 1.
-- Tasks 4, 5 and 6 can run in parallel after 3: they touch disjoint addons. Task 3 converts the Core keys every module reads.
+- Tasks 4, 5 and 6 can run in parallel after both 2 and 3: they touch disjoint addons. They use Task 2's `st:ThemeChanged`, and Task 3's option builders and Core keys.
 - Task 7 runs last.
 
 ---
@@ -97,7 +97,7 @@
 - `st:ResolveLegacyTemplate(name) -> look | nil`: an old template name through `LEGACY`. `highlight` and `close` read as `'theme', 'theme'`.
 - `st:ThemeInset(theme, background) -> 2|1|0`, through the legacy reading when `theme` is an old name with no background.
 - `st:SetTemplate(frame, theme, background, kind)`, `st:SetBackdrop(frame, theme, background, kind)`, `st:SetBackdropIn(backdrops, frame, theme, background, kind)`.
-  - **Transition mode:** while `kind == nil`, `theme` is read as an old template name (`st:ResolveLegacyTemplate`), so unconverted call sites draw exactly as today.
+  - **Transition mode:** while `kind == nil`, `theme` is read as an old template name (`st:ResolveLegacyTemplate`), so unconverted call sites draw exactly as today. The names `'highlight'` and `'close'` draw as kinds `header` and `close` (below).
   - **Kinds `header` and `close` ignore `theme`/`background`** and draw SaftUI's theme's strip or close look:
     - `header`: fill = the resolved theme's `bordercolor` RGB at alpha 0.4, no border lines;
     - `close`: fill = `templates.close.backdropcolor`, no border lines;
@@ -125,11 +125,15 @@
     - `st:SetBackdrop(f, 'theme', 'theme', 'panel')`, then set `profile.theme.name = 'thin'` and `RedrawThemed()`: the backdrop's TOPLEFT offset is `-1, 1`;
     - a frame drawn `'none'` has no backdrop after a redraw, and after `profile.theme.transparent = false` and a redraw.
   - `'ThemeInset'`: `('theme')` is 2 under Thick, `('thin')` is 1, `('none')` is 0, `('thicktransparent')` is 2.
+  - `'every override combination resolves by the rule'`. Cover theme in `theme, thick, thin, none` × background in `theme, solid, transparent` × `profile.theme.name` in `thick, thin` × `profile.theme.transparent` in `true, false`, with opacity 0.6. `ResolveTheme` gives:
+    - nil for none;
+    - otherwise the name (`theme` → the profile's), and inset 2 or 1;
+    - alpha 0.6 when the background is `transparent`, or `theme` with the toggle on; otherwise 1.
+  - `'old highlight and close names still draw their own looks'`: `st:SetTemplate(f, 'highlight')` fills `0.3,0.3,0.3,0.4`, with no border lines.
 - [ ] **Step 2: Run them; they fail.** `tests/run tests/core/theme_test.lua` fails, since `st:ResolveTheme` is nil.
 - [ ] **Step 3: Implement.** Write `theme.lua` and the panels/api changes. Change the defaults:
   - add `st.defaults.theme`;
-  - trim `templates` to `thick`, `thin` and `close`;
-  - add `thick = true`/`false` to nothing new: the name decides thickness.
+  - trim `templates` to `thick`, `thin` and `close`. The theme's name decides thickness, so their `border` and `thick` flags can go.
 
   Convert the direct `profile.templates[...]` reads listed above.
 - [ ] **Step 4: Run all tests.** `tests/run`: everything passes. Existing tests use 2-argument calls, which the transition mode keeps as they were.
@@ -156,6 +160,8 @@
 
 Descs are the builder's, plain and specific, in the Colors tab's voice.
 
+If a module can't re-lay itself out live on a theme switch, and that can't be fixed within this plan, the tab's note says a reload is needed, as Colors' Text and Buttons do. The aim is no note.
+
 - [ ] **Step 1: Write the failing tests:**
   - `'the Theme tab sits between Colors and Edit mode'`.
   - `'its rows, in order, with descs'`.
@@ -172,6 +178,10 @@ Descs are the builder's, plain and specific, in the Colors tab's voice.
 - [ ] **Step 5: Commit.** `config: a Theme tab in Global Settings: Thick or Thin, its colors, transparent background and opacity`
 
 ### Task 3: Core's own frames and keys
+
+- **The option builders:** `SaftUI-Core/Config/widgets.lua` gets `generators.theme(order, desc)` and `generators.background(order, desc)`. Both return selects with the values, order and words in Global Constraints, named "Theme" and "Background".
+  - Theme's desc is the caller's desc plus " Use SaftUI's theme follows Global Settings → Theme; None draws no border or background."
+  - Background's desc defaults to "Solid, or see-through by Global Settings → Theme's Opacity. Use SaftUI's theme follows its Transparent background."
 
 **Files:** every draw call in `SaftUI-Core/`:
 - `panels.lua`: the header and footer → kind `header`; the close button → `close`; `st:CreatePanel`'s `panels.template` → `panels.theme`/`panels.background`, kind `panel`;
@@ -194,6 +204,7 @@ Hard-coded names map by the old→new defaults table.
   - `'the /sui window takes the theme's border and stays solid'`: under the default theme, background alpha 1, border 0.3 grey; after a switch to Thin, 1px.
   - `'Core defaults: buttons and panels follow the theme'`: their theme and background resolve to today's `thicktransparent` look (`ResolveLegacyTemplate`).
   - `'a mover keeps its color through a recolor'`.
+  - `'the theme and background builders: names, values in order, descs'`.
 - [ ] **Step 2: Run them; they fail.**
 - [ ] **Step 3: Implement.** Every Core draw call passes a kind; convert the keys and their readers.
 - [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
@@ -207,11 +218,7 @@ Hard-coded names map by the old→new defaults table.
 - **Draw calls:** `updaters.lua`, `unitframes.lua`, `groups.lua` (previews draw like their real frames) and the elements. Kinds: the frame and its bars → `bar`; auras → `aura`; the castbar icon, class power points and indicators → `small`.
 - **Tests:** update `tests/unitframes/*` that read `template`. Add `tests/unitframes/theme_test.lua`.
 
-**Interfaces:** consumes `generators.theme(order, desc)` and `generators.background(order, desc?)` from `SaftUI-Core/Config/widgets.lua`. **This task adds them**, if Task 5 or 6 hasn't already: both return selects with the values, order and words in Global Constraints, named "Theme" and "Background".
-- Theme's desc is the caller's desc plus " Use SaftUI's theme follows Global Settings → Theme; None draws no border or background."
-- Background's desc defaults to "Solid, or see-through by Global Settings → Theme's Opacity. Use SaftUI's theme follows its Transparent background."
-
-**Merging with Tasks 5 and 6:** if they run in parallel, the first to land adds the generators, and the others take theirs.
+**Interfaces:** consumes `generators.theme(order, desc)` and `generators.background(order, desc)` (Task 3).
 
 - [ ] **Step 1: Write the failing tests:**
   - `'every unit frame default looks as it did'`. For each unit and element whose old default is known, `ResolveTheme(cfg.theme, cfg.background)` matches `ResolveLegacyTemplate(old)` on name, inset and alpha (nil for none). Take the old defaults from the base commit's `default.lua` and write them into the test as a table.
@@ -232,7 +239,7 @@ Hard-coded names map by the old→new defaults table.
 - **Action bars on a theme change:** `OnColorsChanged('theme')` re-applies the equipped border (`skin.lua:387`).
 - **Tests:** update `tests/bags/*` and `tests/actionbars/*` that read `template`. Add `tests/bags/theme_test.lua` and `tests/actionbars/theme_test.lua`.
 
-**Interfaces:** consumes the generators (see Task 4), `st:ThemeChanged()` and `st:RecolorThemed()`.
+**Interfaces:** consumes the option builders (Task 3), `st:ThemeChanged()` (Task 2) and `st:RecolorThemed()` (Task 1).
 
 - [ ] **Step 1: Write the failing tests:**
   - `'bag and action bar defaults look as they did'` (as in Task 4).
@@ -261,7 +268,7 @@ Hard-coded names map by the old→new defaults table.
 - **Misc on a theme change:** the buff skin re-applies debuff-type and enchant borders, and the totem skin its element borders.
 - **Tests:** update `tests/loot/*`, `tests/chat/*`, `tests/minimap/*` and `tests/misc/*` that read `template` (`tooltip_skin_test.lua` checks `backdrop.template`). Add a defaults-look test per addon, as in Task 4.
 
-**Interfaces:** consumes the generators (see Task 4) and `OnColorsChanged('theme')`.
+**Interfaces:** consumes the option builders (Task 3), `st:RecolorThemed()` (Task 1) and `OnColorsChanged('theme')`.
 
 - [ ] **Step 1: Write the failing tests:**
   - `'<addon> defaults look as they did'`, for loot, chat, minimap and misc.

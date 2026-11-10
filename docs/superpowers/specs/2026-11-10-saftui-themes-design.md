@@ -1,6 +1,6 @@
 # SaftUI options, project 3b-1: Themes
 
-Date: 2026-11-10. Status: for the user's review, after a builder check. The calls marked "my call" are mine, not the user's.
+Date: 2026-11-10. Status: approved by the user (2026-11-10), after a builder check. The calls marked "my call" are mine, not the user's.
 
 Project 3 of the options redesign (asked for on 2026-11-09) is Global Settings with editable fonts, colors and templates. Fonts and Colors (3a, `docs/superpowers/specs/2026-11-10-saftui-colors-tab-design.md`) are done. Templates turned into three projects, agreed with the user on 2026-11-10, in this order:
 
