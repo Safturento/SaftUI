@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter](#2026-11-10--boss-frames-have-no-test-mode-so-their-layout-options-cant-be-checked-out-of-an-encounter)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
@@ -50,6 +51,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter
+
+**What:** Party and raid have a Test mode toggle that fills their holder with SaftUI-owned preview frames (`UF:UpdateGroupPreview`, `SaftUI-Unitframes/groups.lua`). Boss has none, so its new Layout options (Growth, Column growth, Spacing, Column spacing, Units per column, Max columns) can only be seen with real boss frames up.
+
+**Why noticed:** The user's in-game check of options project 2 (2026-11-10): the boss Layout options "look good", but "I'd need a test mode with boss frames to see them".
+
+**Anchors:** `SaftUI-Unitframes/groups.lua` (the group test mode section: `UF.testGroups`, `UF.previews`, `CreatePreviewFrame`, `StylePreviewFrame`, `FillPreviewFrame`); `SaftUI-Unitframes/unitframes.lua` (`PlaceUnitFrame`, which parks boss frames past `shown`); `UF.GroupAnchor` and `UF.GetGroupLayoutSize`; the Test mode toggle in `SaftUI-Unitframes/config/config.lua` (`args.test_mode`, groups only today); `.agents/edit-mode.md` "Test modes" rule (never fake units or override Blizzard APIs).
+
+**What's been considered:** Reuse the group previews: they're plain frames styled from the same config and laid out with the same sums. Boss frames aren't a header, so the preview container would stand in for the boss holder and place previews with `UF.GroupAnchor`, hiding while any real boss frame shows. Nothing secure is touched, so it can run in combat like the group previews.
+
+**Shape of work:** Small: widen the test mode to boss (preview count = the boss frame count the layout shows), add the toggle to the boss page, a test like the group preview tests.
 
 ### 2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered
 

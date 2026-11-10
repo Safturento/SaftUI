@@ -219,6 +219,18 @@ test('range: the slider and its value box show the value', function()
 	w:Release()
 end)
 
+test('range: the track is drawn on the slider under its knob, so no frame level can put it over the knob', function()
+	local w = range({ value = 0.5, min = 0, max = 1, step = 0.1 })
+	-- A frame of its own under the slider went over the knob once reparented.
+	check(w.track:IsObjectType('Texture'), 'the track is a texture, not a frame')
+	check(w.track:GetParent() == w.slider and w.fill:GetParent() == w.slider, 'the track and fill are the slider\'s')
+	eq(w.track:GetDrawLayer(), 'BORDER', 'the track')
+	eq(w.fill:GetDrawLayer(), 'ARTWORK', 'the fill over it')
+	eq(w.slider:GetThumbTexture():GetDrawLayer(), 'OVERLAY', 'the knob over both')
+	eq(w.track:GetWidth(), 116); eq(w.track:GetHeight(), 6)
+	w:Release()
+end)
+
 test('range: dragging snaps to bigStep, else step', function()
 	local w, told, sets, get = range({ value = 0, min = 0, max = 1, step = 0.05, bigStep = 0.1 })
 	eq(w.slider:GetValueStep(), 0.1, 'the slider steps by bigStep')

@@ -680,12 +680,24 @@ builders.range = function(w)
 	slider:SetObeyStepOnDrag(true)
 	w.slider = slider
 
-	local track = Box(st:CreateFrame('Frame', nil, slider))
+	-- The track is the slider's own textures, under the knob by draw layer. A
+	-- child frame put under it by frame level drew over it in game once the
+	-- widget was reparented (that moves children back above their parent).
+	-- A box's look: the dark line outside, the edge, the field inside it.
+	local outline = slider:CreateTexture(nil, 'BACKGROUND')
+	outline:SetColorTexture(unpack(ALT))
+	outline:SetPoint('LEFT', slider, 'LEFT', -1, 0)
+	outline:SetSize(TRACK_WIDTH + 2, 8)
+	local track = slider:CreateTexture(nil, 'BORDER', nil, 0)
+	track:SetColorTexture(unpack(EDGE))
 	track:SetPoint('LEFT', slider, 'LEFT', 0, 0)
 	track:SetSize(TRACK_WIDTH, 6)
-	track:SetFrameLevel(max(0, slider:GetFrameLevel() - 1)) -- under the knob
 	w.track = track
-	local fill = track:CreateTexture(nil, 'ARTWORK')
+	local inside = slider:CreateTexture(nil, 'BORDER', nil, 1)
+	inside:SetColorTexture(unpack(FIELD))
+	inside:SetPoint('TOPLEFT', track, 'TOPLEFT', 1, -1)
+	inside:SetPoint('BOTTOMRIGHT', track, 'BOTTOMRIGHT', -1, 1)
+	local fill = slider:CreateTexture(nil, 'ARTWORK')
 	fill:SetColorTexture(Colors().button.blue:GetRGB())
 	fill:SetPoint('TOPLEFT', track, 'TOPLEFT', 1, -1)
 	fill:SetPoint('BOTTOMLEFT', track, 'BOTTOMLEFT', 1, 1)
@@ -694,6 +706,7 @@ builders.range = function(w)
 
 	slider:SetThumbTexture(st.BLANK_TEX)
 	local knob = slider:GetThumbTexture()
+	knob:SetDrawLayer('OVERLAY')
 	knob:SetSize(6, 14)
 	knob:SetVertexColor(Colors().text.normal:GetRGB())
 

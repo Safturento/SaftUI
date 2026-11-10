@@ -40,7 +40,7 @@ local W = st.OptionsWidgets
 local OB = {}
 st.OptionsBody = OB
 
-local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
+local floor, max, ceil = math.floor, math.max, math.ceil
 local tremove = table.remove
 
 ------------------------------------------------------------------ the mockup's numbers
@@ -214,6 +214,41 @@ function OB.LayoutSections(sections, heightOf, sizeOf)
 	return laid, y + BODY_BOTTOM
 end
 
+-- The vertical lines between the cells of a section's lines (placed, as
+-- OB.LayoutRows gives it): one between the halves of a line with a row in
+-- each, and one between the quarters of a half with two small rows. A
+-- divider is as tall as its line (heightOf as for OB.LayoutRows), so the
+-- dividers of lines that follow each other join up. Returns { {at = 'half'
+-- | 'quarter', col = 1|2 (quarters), y, height} }.
+function OB.Dividers(placed, heightOf)
+	local lines, order = {}, {}
+	for _, p in ipairs(placed) do
+		if p.col ~= 'full' then
+			local line = lines[p.y]
+			if not line then
+				line = { y = p.y, height = 0, halves = {}, smalls = { 0, 0 } }
+				lines[p.y] = line
+				order[#order + 1] = line
+			end
+			line.height = max(line.height, heightOf and heightOf(p.row) or ROW_HEIGHT)
+			line.halves[p.col] = true
+			if p.quarter then line.smalls[p.col] = line.smalls[p.col] + 1 end
+		end
+	end
+	local dividers = {}
+	for _, line in ipairs(order) do
+		if line.halves[1] and line.halves[2] then
+			dividers[#dividers + 1] = { at = 'half', y = line.y, height = line.height }
+		end
+		for col = 1, 2 do
+			if line.smalls[col] == 2 then
+				dividers[#dividers + 1] = { at = 'quarter', col = col, y = line.y, height = line.height }
+			end
+		end
+	end
+	return dividers
+end
+
 ------------------------------------------------------------------ rows
 
 local function ShowTip(frame)
@@ -230,9 +265,7 @@ local function HideTip(frame)
 end
 
 -- A row's place in its cell: the label on the left, the control on the
--- right, except a toggle's check box and a color's swatch, which follow the
--- end of the label's text. A description is text across the row, and a
--- button stands alone.
+-- right. A description is text across the row, and a button stands alone.
 local function PlaceRow(cell, x, y, width)
 	local frame, widget, label, row = cell.frame, cell.widget, cell.label, cell.row
 	frame:SetPoint('TOPLEFT', frame:GetParent(), 'TOPLEFT', x, -y)
@@ -251,15 +284,6 @@ local function PlaceRow(cell, x, y, width)
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
 		label:Show()
-		if row.type == 'toggle' or row.type == 'color' then
-			-- GetStringWidth is the truncated width of a fixed-width label, so a reused
-			-- one would measure at its old width; the unbounded width is the text's own.
-			local textWidth = ceil((label.GetUnboundedStringWidth or label.GetStringWidth)(label))
-			label:SetWidth(max(1, min(textWidth, width - widget:GetWidth() - LABEL_GAP)))
-			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
-			widget:SetPoint('LEFT', label, 'RIGHT', LABEL_GAP, 0)
-			return
-		end
 		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
 		if cell.height > ROW_HEIGHT then
 			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((ROW_HEIGHT - 16) / 2))
@@ -376,8 +400,9 @@ function Body:ResultCell(row, onPick)
 end
 
 -- Draws sections of rows with makeCell (rows it draws nothing for are left
--- out, and so are sections left empty). sizeOf(row) overrides the rows'
--- sizes in the layout. Returns the height drawn.
+-- out, and so are sections left empty), with OB.Dividers' lines between
+-- their cells. sizeOf(row) overrides the rows' sizes in the layout. Returns
+-- the height drawn.
 function Body:DrawSections(sections, makeCell, sizeOf)
 	local byRow, kept = {}, {}
 	for _, section in ipairs(sections) do
@@ -391,7 +416,8 @@ function Body:DrawSections(sections, makeCell, sizeOf)
 		end
 		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
 	end
-	local laid, height = OB.LayoutSections(kept, function(row) return byRow[row].height end, sizeOf)
+	local function heightOf(row) return byRow[row].height end
+	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf)
 	local pools, content = self.pools, self.content
 	for _, entry in ipairs(laid) do
 		if entry.lineY then
@@ -422,6 +448,17 @@ function Body:DrawSections(sections, makeCell, sizeOf)
 				end
 			end
 			cell.place(cell, x, cell.y, cellWidth)
+		end
+		for _, d in ipairs(OB.Dividers(entry.placed, heightOf)) do
+			local x
+			if d.at == 'half' then
+				x = self.columnWidth + COLUMN_GAP / 2
+			else
+				x = (d.col == 2 and (self.columnWidth + COLUMN_GAP) or 0) + self.quarterWidth + QUARTER_GAP / 2
+			end
+			local line = Acquire(pools.line)
+			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -(entry.rowsY + d.y))
+			line:SetSize(1, d.height)
 		end
 	end
 	return #kept > 0 and height or 0

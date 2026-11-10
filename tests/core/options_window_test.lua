@@ -224,6 +224,26 @@ test('LayoutRows: smalls take quarters, two to a half; a normal takes the next w
 	eq(select(2, OW.LayoutRows({})), 0, 'no rows, no height')
 end)
 
+test('Dividers: one between halves that both have a row, one between two smalls of a half, none across a wide row', function()
+	local function r(key, size) return { key = key, size = size } end
+	local rows = {
+		r('a'), r('b'),                                   -- line 0: both halves
+		r('c', 'small'), r('d', 'small'), r('e'),         -- line 34 (60 high): two smalls left, a normal right
+		r('f', 'small'), r('g', 'small'), r('h', 'small'), r('i', 'small'), -- line 94: four smalls
+		r('w', 'wide'),                                   -- line 128: no divider
+		r('j', 'small'), r('k'),                          -- line 162: a lone small, then a normal right
+		r('l'),                                           -- line 196: the left half only
+	}
+	local placed = OW.LayoutRows(rows, function(row) return row.key == 'e' and 60 or 34 end)
+	local got = {}
+	for _, d in ipairs(st.OptionsBody.Dividers(placed, function(row) return row.key == 'e' and 60 or 34 end)) do
+		got[#got + 1] = d.at .. (d.col and ('/' .. d.col) or '') .. '@' .. d.y .. '+' .. d.height
+	end
+	eq(table.concat(got, ' '), 'half@0+34 half@34+60 quarter/1@34+60 half@94+34 quarter/1@94+34 quarter/2@94+34 half@162+34',
+		'a line\'s dividers are its height; a wide line and a half alone get none')
+	eq(#st.OptionsBody.Dividers(OW.LayoutRows({})), 0, 'no rows, no dividers')
+end)
+
 ------------------------------------------------------------------ the body
 
 -- A body of width, on a fresh content frame, with the given options on one
@@ -252,26 +272,27 @@ local function point_x(frame, n)
 	return x
 end
 
-test('a toggle and a color sit 10 past the end of their label, at normal and small size', function()
+test('a toggle and a color sit at their cell\'s right edge, at normal and small size, the label taking the rest', function()
 	local body, by = draw_body(774, {
 		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' },
 		{ 'nc', 'color', 'A color that is long' },
 	})
 	for key, c in pairs(by) do
 		local point, rel, relPoint, x = c.widget.frame:GetPoint(1)
-		eq(point, 'LEFT', key .. ' point')
-		check(rel == c.label, key .. ' is anchored to its label')
-		eq(relPoint, 'RIGHT', key .. ' to the label\'s right')
-		eq(x, 10, key .. ' offset')
-		eq(c.label:GetWidth(), math.ceil(c.label:GetUnboundedStringWidth()), key .. ' label is its text wide, rounded up, not the leftover')
+		eq(point, 'RIGHT', key .. ' point')
+		check(rel == c.frame, key .. ' is anchored to its cell')
+		eq(relPoint, 'RIGHT', key .. ' at the cell\'s right')
+		eq(x, 0, key .. ' offset')
+		local cellWidth = c.row.size == 'small' and 171.5 or 367
+		eq(c.label:GetWidth(), cellWidth - c.widget:GetWidth() - 10, key .. ' label is the rest of the cell')
 	end
 	body:Release()
 end)
 
-test('a label reused from a shorter toggle is its full text width, rounded up, with the checkbox 10 after it', function()
-	local body, by = draw_body(774, { { 't', 'toggle', 'Show' } })
+test('a label reused from a small toggle takes the normal cell\'s width, so its text isn\'t cut', function()
+	local body, by = draw_body(774, { { 't', 'toggle', 'Show', 'small' } })
 	local label = by.t.label
-	-- The pools belong to the body: release it and draw the long toggle on the same one.
+	-- The pools belong to the body: release it and draw the normal toggle on the same one.
 	body:Release()
 	body.cells = {}
 	local root = { page = {
@@ -283,9 +304,27 @@ test('a label reused from a shorter toggle is its full text width, rounded up, w
 	body:Draw(OM.BuildView(root, 'page').sections)
 	local c = body.cells[1]
 	check(c.label == label, 'the label was reused')
-	eq(c.label:GetWidth(), math.ceil(c.label:GetUnboundedStringWidth()), 'the whole text, not the old width')
-	eq(c.label:GetWidth(), c.label:GetStringWidth(), 'so the game reports it uncut')
-	eq(select(4, c.widget.frame:GetPoint(1)), 10, 'the checkbox is 10 after the label')
+	eq(c.label:GetWidth(), 367 - 18 - 10, 'the normal cell\'s width, not the small one\'s')
+	eq(c.label:GetStringWidth(), c.label:GetUnboundedStringWidth(), 'so the game reports it uncut')
+	body:Release()
+end)
+
+test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 183', function()
+	local body, by = draw_body(774, {
+		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'color', 'B', 'small' }, { 'c', 'toggle', 'C' },
+		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
+	})
+	local got = {}
+	for _, line in ipairs(body.pools.line.used) do
+		if line:GetWidth() == 1 then
+			local _, _, _, x, y = line:GetPoint(1)
+			got[#got + 1] = x .. ',' .. -y .. ',' .. line:GetHeight()
+		end
+	end
+	table.sort(got)
+	local y = by.a.y
+	eq(table.concat(got, ' '), '183,' .. y .. ',34 387,' .. y .. ',34',
+		'none beside the wide row or the lone half after it')
 	body:Release()
 end)
 
