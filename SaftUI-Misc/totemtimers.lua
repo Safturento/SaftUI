@@ -110,9 +110,9 @@ local flyoutBaseHeight
 --- Helpers -------------------------
 ------------------------------------
 
--- totemskin.lua's helpers (it loads first): a template's inner border, and
--- hooksecurefunc on a Blizzard global if this client has it.
-local TemplateInset, PostHook = TB.TemplateInset, TB.PostHook
+-- totemskin.lua's helper (it loads first): hooksecurefunc on a Blizzard global
+-- if this client has it.
+local PostHook = TB.PostHook
 
 -- The text's font: the profile's button font, else SaftUI's pixel font, else one of
 -- Blizzard's, so the text always has one (SetText errors without). Also its name, when
@@ -139,7 +139,7 @@ end
 -- pixel font (10) and thick template (2 each side) that's 14.
 local MIN_FILL = 2
 local function BarHeight(onBar)
-	local border = 2 * TemplateInset(st.config.profile.buttons.template)
+	local border = 2 * st:ThemeInset(st.config.profile.buttons.template)
 	local height = math.max(TB.config.timer_bar_height, border + MIN_FILL)
 	if onBar then
 		height = math.max(height, TextHeight() + border)
@@ -555,7 +555,7 @@ function TB:ApplyTimerLayout()
 	local showBar, showText = config.timer_bar, config.timer_text
 	local onBar = showBar and showText and config.timer_text_position == 'on'
 	local template = st.config.profile.buttons.template
-	local inset = TemplateInset(template)
+	local inset = st:ThemeInset(template)
 	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
 	local barHeight = BarHeight(onBar)

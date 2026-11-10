@@ -73,48 +73,31 @@ st.defaults.experience = {
 	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
 }
 
+-- SaftUI's theme (SaftUI-Core/theme.lua): Thick or Thin, and whether
+-- backgrounds are see-through, at opacity, where a module doesn't say.
+st.defaults.theme = {
+	name = 'thick',
+	transparent = true,
+	opacity = 0.9,
+}
+
+-- Each theme's colors, by its name, and the close button's fill. Thick draws
+-- its border between two lines of altbordercolor.
 st.defaults.templates = {
-	highlight = {
-		name = 'Highlight',
-		bordercolor = { 0.3, 0.3, 0.3, 1 },
-		altbordercolor = { 0.0, 0.0, 0.0, 1 },
-		backdropcolor = { 0.3, 0.3, 0.3, 0.4 },
-		border = false,
-		thick = true,
-	},
 	close = {
-		name = 'Close Button',
-		bordercolor = { 0.3, 0.3, 0.3, 1 },
-		altbordercolor = { 0.0, 0.0, 0.0, 1 },
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
-		border = false,
-		thick = true,
 	},
 	thin = {
-		name = 'Thin',
 		bordercolor = { 0, 0, 0, 1.0 },
 		altbordercolor = { 0.0, 0.0, 0.0, 0.0 },
 		backdropcolor = { 0.2, 0.2, 0.2, 1 },
-		border = true,
-		thick = false,
 	},
 	thick = {
-		name = 'Thick',
 		bordercolor = { 0.3, 0.3, 0.3, 1.0 },
 		altbordercolor = { 0.1, 0.1, 0.1, 1.0 },
 		backdropcolor = { 0.12, 0.12, 0.12, 1 },
-		border = true,
-		thick = true,
 	}
 }
-
-st.defaults.templates.thintransparent = st.tablecopy(st.defaults.templates.thin, true)
-st.defaults.templates.thintransparent.name = 'ThinTransparent'
-st.defaults.templates.thintransparent.backdropcolor[4] = 0.9
-
-st.defaults.templates.thicktransparent = st.tablecopy(st.defaults.templates.thick, true)
-st.defaults.templates.thicktransparent.name = 'ThickTransparent'
-st.defaults.templates.thicktransparent.backdropcolor[4] = 0.9
 
 st.defaults.colors = {
 	text = {

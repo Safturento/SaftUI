@@ -92,9 +92,9 @@ local function UpdateBorderColor(button, debuffColor)
 	elseif button.DebuffBorder and button.DebuffBorder:IsShown() and debuffColor then
 		backdrop:SetBackdropBorderColor(debuffColor:GetRGB())
 	else
-		local config = st.config.profile.templates[backdrop.template]
-		if config.border then
-			backdrop:SetBackdropBorderColor(unpack(config.bordercolor))
+		local look = st:ResolveLegacyTemplate(backdrop.template)
+		if look then
+			backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
 		else
 			backdrop:SetBackdropBorderColor(0, 0, 0, 0)
 		end

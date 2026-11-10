@@ -153,15 +153,6 @@ end
 --- Helpers -------------------------
 ------------------------------------
 
--- The border a template draws inside its frame, as st:SetTemplate insets it: none for a
--- template without a border. On TB for totemtimers.lua too.
-function TB.TemplateInset(template)
-	local config = template and st.config.profile.templates[template]
-	if not (config and config.border) then return 0 end
-	return config.thick and 2 or 1
-end
-local TemplateInset = TB.TemplateInset
-
 local function Fade(region)
 	if region then region:SetAlpha(0) end
 end
@@ -234,7 +225,7 @@ local function StyleButton(button, skin, template)
 
 	local icon = button.icon
 	icon:ClearAllPoints()
-	st:SetInside(icon, TemplateInset(template))
+	st:SetInside(icon, st:ThemeInset(template))
 	CropIcon(icon)
 
 	skin.hover:SetVertexColor(colors.button.blue:GetRGB())

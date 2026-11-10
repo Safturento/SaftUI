@@ -1,20 +1,5 @@
 local st = SaftUI
 
-function st.Config:UpdateTemplateConfig(template)
-	if not template then
-		for template,_ in pairs(st.config.profile.templates) do
-			self:UpdateTemplateConfig(template)
-		end
-		return
-	end
-
-	for frame, t in self.template_cache do
-		if t == template then
-			st:SetTemplate(frame, t)
-		end
-	end
-end
-
 st.Config.options = {
 	type = 'group',
 	name = st.name,
@@ -23,15 +8,17 @@ st.Config.options = {
 	},
 }
 
+-- The old template names a Template dropdown (generators.template) offers,
+-- until each module's option is a Theme and a Background. A fixed list: the
+-- profile's templates hold only the themes' colors now.
 function st.Config:GetFrameTemplates()
-	local templates = {}
-	for k,v in pairs(st.config.profile.templates) do
-		templates[k] = v.name
-	end
-
-	templates.none = 'None'
-
-	return templates
+	return {
+		thick = 'Thick',
+		thicktransparent = 'ThickTransparent',
+		thin = 'Thin',
+		thintransparent = 'ThinTransparent',
+		none = 'None',
+	}
 end
 
 function st.Config:GetFontObjects()

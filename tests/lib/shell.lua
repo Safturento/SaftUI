@@ -369,8 +369,9 @@ end
 -- Core's frame helpers and what they need, in TOC order: LibSharedMedia and
 -- its libraries, Widgets/button.lua (st:CreateButton), skinning.lua
 -- (st:SkinIcon and st:IconTexCoords, which the General tab's Icon zoom
--- preview cuts its icon with), panels.lua (st:CreateFrame, st:SetBackdrop,
--- st:CreateFontString), the media and fonts (st:GetFont) with the Colors
+-- preview cuts its icon with), panels.lua (st:CreateFrame,
+-- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
+-- theme they draw), the media and fonts (st:GetFont) with the Colors
 -- module, the profile defaults, Config/widgets.lua (st.Config.generators) and
 -- the General module (Global Settings' General tab). Then the profile is
 -- filled from the defaults and the Fonts module enabled, as at login, so
@@ -382,6 +383,7 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Widgets/button.lua')
 	load_saftui('SaftUI-Core/skinning.lua')
 	load_saftui('SaftUI-Core/panels.lua')
+	load_saftui('SaftUI-Core/theme.lua')
 	load_saftui('SaftUI-Core/Media/sharedmedia.lua')
 	load_saftui('SaftUI-Core/Media/fonts.lua')
 	load_saftui('SaftUI-Core/Media/colors.lua')
@@ -392,8 +394,8 @@ function load_core_helpers()
 	st:GetModule('Fonts'):Enable()
 end
 
--- Core's TOC loads these three in this order (with Widgets, skinning.lua and
--- panels.lua between api.lua and utilities.lua).
+-- Core's TOC loads these three in this order (with Widgets, skinning.lua,
+-- panels.lua and theme.lua between api.lua and utilities.lua).
 load_saftui('SaftUI-Core/constants.lua')
 load_saftui('SaftUI-Core/api.lua')
 load_saftui('SaftUI-Core/utilities.lua')

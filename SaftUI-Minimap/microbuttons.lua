@@ -151,7 +151,7 @@ end
 local function SkinButton(button)
     CreateHolder(button)
 
-    local offset = st.config.profile.templates[TEMPLATE].thick and 2 or 1
+    local offset = st:ThemeInset(TEMPLATE)
     local skin = st:CreateFrame('Frame', nil, button)
     skin:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
     skin:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)

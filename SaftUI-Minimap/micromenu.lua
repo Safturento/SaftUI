@@ -103,7 +103,7 @@ local function UpdateBackdrop(button, item)
     end
 
     st:SetTemplate(backdrop, template)
-    local offset = st.config.profile.templates[template].thick and 2 or 1
+    local offset = st:ThemeInset(template)
     backdrop:ClearAllPoints()
     backdrop:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
     backdrop:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)

@@ -36,6 +36,7 @@ api.lua
 Widgets\load.xml
 skinning.lua
 panels.lua
+theme.lua
 utilities.lua
 
 Media\sharedmedia.lua

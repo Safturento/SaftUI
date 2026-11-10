@@ -34,13 +34,15 @@ local function boxAround(bar, region)
 		if tl and tl.rel == region then return b end
 	end
 end
--- A box is in the template when it has the template's backdrop and border colors.
+-- A box is in a (solid) template when it has the template's border width (how
+-- far in its background sits) and its backdrop and border colors.
+local INSETS = { thick = 2, thin = 1 }
 local function inTemplate(box, name)
 	local template = SaftUI.config.profile.templates[name]
 	local r, g, b, a = box:GetBackdropColor()
 	local br, bg, bb, ba = box:GetBackdropBorderColor()
 	local bd, bo = template.backdropcolor, template.bordercolor
-	return SaftUI.template_cache[box] == name
+	return box.backdropInfo and box.backdropInfo.insets.left == INSETS[name]
 		and r == bd[1] and g == bd[2] and b == bd[3] and a == bd[4]
 		and br == bo[1] and bg == bo[2] and bb == bo[3] and ba == bo[4]
 end

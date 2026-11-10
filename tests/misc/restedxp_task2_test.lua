@@ -134,8 +134,12 @@ test('config_recolours', function()
 	local R = setup()
 	R.LoadGuide(3)
 	local RX = H.get_rx()
-	SaftUI.config.profile.templates.highlight.backdropcolor = { 0.1, 0.2, 0.3, 0.4 }
-	SaftUI.config.profile.chat.template = 'thick'
+	-- The highlight is SaftUI's header strip: the theme's border color, faint.
+	-- The divider is the chat panel's border color, here Thin's.
+	local templates = SaftUI.config.profile.templates
+	templates.thick.bordercolor = { 0.1, 0.2, 0.3, 1 }
+	templates.thin.bordercolor = { 0.5, 0.2, 0.2, 1 }
+	SaftUI.config.profile.chat.template = 'thin'
 	RX:UpdateConfig()
 	local h = colored(pool(R)[2], 0.1, 0.2, 0.3, 0.4)[1]
 	check(h ~= nil, 'config_recolours: highlight follows profile')

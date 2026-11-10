@@ -86,10 +86,7 @@ local function SkinBackdrop(statusBar)
 	local template = config.template
 	if template == nil or template == 'none' or template == '' then return end
 
-	local templateConfig = st.config.profile.templates[template]
-	if not templateConfig then return end
-
-	local offset = templateConfig.thick and 2 or 1
+	local offset = st:ThemeInset(template)
 
 	local holder = st:CreateFrame('Frame', nil, statusBar)
 	holder:SetFrameLevel(max(0, statusBar:GetFrameLevel() - 1))

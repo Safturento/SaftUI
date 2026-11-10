@@ -147,10 +147,10 @@ local function NoBackdrop(frame)
 	hooksecurefunc(frame, 'SetBackdrop', function(self) self:ClearBackdrop() end)
 end
 
+-- In the chat panel's border color; the theme's when the chat has no border.
 local function ColorDivider(tex)
-	local template = st.config.profile.templates[(RX:GetStyle())] or st.config.profile.templates.thicktransparent
-	if not template then return end
-	local r, g, b = unpack(template.bordercolor)
+	local look = st:ResolveLegacyTemplate((RX:GetStyle())) or st:ResolveTheme()
+	local r, g, b = unpack(look.colors.bordercolor)
 	tex:SetColorTexture(r, g, b, DIVIDER_ALPHA)
 end
 
@@ -167,8 +167,9 @@ local function GreyRGB()
 	return st.config.profile.colors.text.grey:GetRGB()
 end
 
+-- SaftUI's header strip fill.
 local function ColorHighlight(tex)
-	tex:SetColorTexture(unpack(st.config.profile.templates.highlight.backdropcolor))
+	tex:SetColorTexture(st:ThemeHeaderColor())
 end
 
 -- The thumb is RestedXP's, re-textured by it on every UpdateScrollBar.
@@ -441,7 +442,7 @@ local function SkinTimer(bar)
 	local level = math.max(0, bar:GetFrameLevel() - 1)
 	for _, box in ipairs({ skin.bar, skin.icon }) do
 		box:SetFrameLevel(level)
-		if st.config.profile.templates[TIMER_TEMPLATE] then st:SetTemplate(box, TIMER_TEMPLATE) end
+		st:SetTemplate(box, TIMER_TEMPLATE)
 	end
 	skin.bar:Show()
 

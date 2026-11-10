@@ -31,9 +31,9 @@ function INV:AssignEmptySlot(slot, info)
 	slot.itemLevelBG:Hide()
 	Util:ClearItemQuality(slot)
 
-	local template = st.config.profile.templates[self.config.buttontemplate]
-	if template and template.border then
-		slot.backdrop:SetBackdropBorderColor(unpack(template.bordercolor))
+	local look = st:ResolveLegacyTemplate(self.config.buttontemplate)
+	if look then
+		slot.backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
 	else
 		slot.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
 	end

@@ -11,17 +11,12 @@ H.RXP = load_test_file('misc/fixtures/restedxp_world.lua')
 -- (real: panels, fonts, templates), SaftUI-Chat's defaults (the skin follows
 -- chat's template and font), the Skinning module the skin is a submodule of,
 -- then SaftUI-Misc's restedxp.lua. RestedXP itself comes from RXP.make().
---
--- The profile keeps Core's real defaults, except thick's border color: in the
--- defaults thick and thicktransparent (the chat's template) share one, so a
--- switch from one to the other wouldn't show in a divider's color.
+-- The profile keeps Core's real defaults.
 function H.fresh()
 	reset_world()
 	load_core_helpers()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()
-	local profile = SaftUI.config.profile
-	profile.templates.thick.bordercolor = { 0.5, 0.2, 0.2, 1 }
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 	load_saftui('SaftUI-Misc/Skinning/restedxp.lua')
 end

@@ -97,37 +97,6 @@ function st:ValidateAnchor(frame, relative)
 	return true
 end
 
--- st:SetBackdrop for a frame that isn't SaftUI's (a Blizzard tooltip, a dropdown
--- list): the backdrop frame is kept in `backdrops`, the caller's weak table keyed
--- by the frame, and nothing is written onto the frame (.agents/taint.md, rule 1;
--- st:SetBackdrop would set .backdrop and .thick). Returns the backdrop frame, or
--- nil when the template is none. Frames only, not textures.
-function st:SetBackdropIn(backdrops, frame, template)
-	local backdrop = backdrops[frame]
-	if template == nil or template == 'none' or template == '' then
-		if backdrop then st:SetTemplate(backdrop, 'none') end
-		return
-	end
-
-	local config = st.config.profile.templates[template]
-	assert(config, template .. ' template not found')
-
-	if not backdrop then
-		backdrop = st:CreateFrame('frame', nil, frame)
-		backdrop:SetFrameLevel(max(0, frame:GetFrameLevel() - 1))
-		backdrops[frame] = backdrop
-	end
-
-	local offset = config.thick and 2 or 1
-	backdrop:ClearAllPoints()
-	backdrop:SetPoint('TOPLEFT', frame, 'TOPLEFT', -offset, offset)
-	backdrop:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', offset, -offset)
-	backdrop.template = template
-
-	st:SetTemplate(backdrop, template)
-	return backdrop
-end
-
 function st:SetHeight(frame, height)
 	frame:SetHeight(height)
 end

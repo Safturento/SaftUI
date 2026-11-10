@@ -69,14 +69,6 @@ local OVER_ICON = {
 -- button.
 local LARGE_COUNTDOWN_SIZE = 36
 
--- The border a template draws inside the button, as st:SetTemplate insets it:
--- none for a template without a border.
-local function TemplateInset(template)
-	local config = template and st.config.profile.templates[template]
-	if not (config and config.border) then return 0 end
-	return config.thick and 2 or 1
-end
-
 ------------------------------------
 --- Hotkeys -------------------------
 ------------------------------------
@@ -307,7 +299,7 @@ function AB:StyleButton(button, config, template)
 	skin.template = template
 	skin.equipped = nil -- the backdrop's border was just reset
 
-	local inset = TemplateInset(template)
+	local inset = st:ThemeInset(template)
 	local icon = button.icon
 	icon:ClearAllPoints()
 	st:SetInside(icon, inset)

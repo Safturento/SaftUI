@@ -67,9 +67,9 @@ local function StyleButton(auras, button)
 			innerLines[button] = inner
 		end
 		if inner then
-			local template = st.config.profile.templates[config.template]
-			if template and template.border and template.thick then
-				inner:SetVertexColor(unpack(template.altbordercolor))
+			local look = st:ResolveLegacyTemplate(config.template)
+			if look and look.name == 'thick' then
+				inner:SetVertexColor(unpack(look.colors.altbordercolor))
 				inner:Show()
 			else
 				inner:Hide()

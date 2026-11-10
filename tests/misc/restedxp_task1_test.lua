@@ -178,10 +178,12 @@ end)
 test('config_follows_chat', function()
 	local R, RX = setup()
 	local chat = SaftUI.config.profile.chat
-	chat.font, chat.template = 'pixel', 'thick'
+	-- Thin's own border color, so the divider shows it follows the chat's template.
+	SaftUI.config.profile.templates.thin.bordercolor = { 0.5, 0.2, 0.2, 1 }
+	chat.font, chat.template = 'pixel', 'thin'
 	RX:UpdateConfig()
 	check(font(R.Footer.text, 'pixel', 9, 'MONOCHROMEOUTLINE'), 'config_follows_chat: font')
-	check(findPanel(R).backdrop.template == 'thick', 'config_follows_chat: template')
+	check(findPanel(R).backdrop.template == 'thin', 'config_follows_chat: template')
 	local c = H.color_of(dividers(findPanel(R))[1])
 	check(near(c[1], 0.5) and near(c[2], 0.2) and near(c[4], 0.5), 'config_follows_chat: divider colour')
 	SaftUI.config.profile.chat = nil

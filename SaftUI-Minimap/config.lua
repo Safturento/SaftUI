@@ -44,7 +44,7 @@ local function UpdateBackdrop(template)
 	end
 
 	st:SetTemplate(backdrop, template)
-	local offset = st.config.profile.templates[template].thick and 2 or 1
+	local offset = st:ThemeInset(template)
 	backdrop:ClearAllPoints()
 	backdrop:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', -offset, offset)
 	backdrop:SetPoint('BOTTOMRIGHT', Minimap, 'BOTTOMRIGHT', offset, -offset)
