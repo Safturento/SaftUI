@@ -1024,33 +1024,45 @@ local function placed_description(key, option)
 	return w, told, root, row
 end
 
-test('description: an image sits at its left, the text to its right, and the height covers the image', function()
+test('description: an image sits at its left inside its border, the text to its right, and the height covers both', function()
 	local w = placed_description('pic', opt('description', 'Words', { image = ICON, imageWidth = 36, imageHeight = 36 }))
 	local lineHeight = math.floor(15 * 1.3)
+	-- The image's border (SaftUI's theme, Thick here) lies outside it, so the
+	-- image sits the border's width in from the row's corner: the row's edge
+	-- is the scroll area's, which would cut a border drawn past it.
+	local border = SaftUI:ThemeInset('theme', 'theme')
+	eq(border, 2, "Thick's 2px border")
+	local box = 36 + 2 * border
 	check(w.image:IsShown(), 'the image shows')
 	eq(w.image:GetTexture(), ICON, 'its texture')
 	eq(w.image:GetWidth() .. 'x' .. w.image:GetHeight(), '36x36', 'imageWidth by imageHeight')
 	eq(coords_of(w.image), corners(0, 1, 0, 1), 'the whole texture with no imageCoords')
-	eq(w.image:GetLeft(), w.frame:GetLeft(), 'at the left of the row')
-	eq(w.image:GetTop(), w.frame:GetTop(), 'and its top')
-	check(w.text:GetLeft() > w.image:GetRight(), 'the text right of the image')
+	eq(w.image:GetLeft(), w.frame:GetLeft() + border, 'at the left of the row, inside its border')
+	eq(w.image:GetTop(), w.frame:GetTop() - border, 'and its top')
+	eq(w.text:GetLeft(), w.image:GetRight() + border + 8, 'the text 8 right of the border')
 	eq(w.text:GetRight(), w.frame:GetRight(), 'to the row\'s right edge')
-	eq(w:GetHeight(), 36, 'the row is as tall as the image, which is taller than the text')
+	eq(w:GetHeight(), box, 'the row is as tall as the image and its border, taller than the text')
 	eq(w.text:GetHeight(), lineHeight, 'one line of text')
-	eq(w.text:GetTop(), w.frame:GetTop() - math.floor((36 - lineHeight) / 2), 'the line is in the middle of the image')
+	eq(w.text:GetTop(), w.frame:GetTop() - math.floor((box - lineHeight) / 2), 'the line is in the middle of the bordered image')
 
 	-- Narrow enough to wrap to three lines, the text is the taller.
 	local one = w:GetHeight()
-	w:SetWidth(36 + 8 + 10 + 1)
-	check(w.text:GetHeight() > 36, 'many lines')
+	w:SetWidth(box + 8 + 10 + 1)
+	check(w.text:GetHeight() > box, 'many lines')
 	eq(w:GetHeight(), w.text:GetHeight(), 'the row covers the text then')
 	eq(w.text:GetTop(), w.frame:GetTop(), 'from the top')
 	check(w:GetHeight() > one, 'taller than the image alone')
 	w:Release()
 
-	-- No text: just the image.
+	-- No text: just the image and its border.
 	w = placed_description('bare', opt('description', '', { image = ICON, imageWidth = 36, imageHeight = 36 }))
-	eq(w:GetHeight(), 36, 'no text: as tall as the image')
+	eq(w:GetHeight(), box, 'no text: as tall as the image and its border')
+	w:Release()
+
+	-- No image: the text from the row's left, and no room kept for a border.
+	w = placed_description('words', opt('description', 'Words'))
+	eq(w.text:GetLeft(), w.frame:GetLeft(), 'no image: the text at the left')
+	eq(w:GetHeight(), lineHeight, 'as tall as the text')
 	w:Release()
 end)
 

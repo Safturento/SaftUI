@@ -1230,10 +1230,11 @@ builders.description = function(w)
 	frame:SetSize(W.WIDTH.description, 18)
 	w.frame = frame
 	w.image = frame:CreateTexture(nil, 'ARTWORK')
-	w.image:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
 	w.image:Hide()
 	-- The image's border, in SaftUI's theme like an action button's icon (Icon
-	-- zoom's preview is one). It shows only with an image (ShowImage).
+	-- zoom's preview is one). It shows only with an image (ShowImage), and lies
+	-- outside the image, which Fit places the border's width in from the row's
+	-- corner: the row's edge is the scroll area's, which cuts what lies past it.
 	st:SetBackdrop(w.image, 'theme', 'theme', 'action')
 	w.image.backdrop:Hide()
 	w.text = NewText(frame, 'LEFT')
@@ -1256,11 +1257,19 @@ define('description', {
 		self:Fit()
 	end,
 
-	-- The text takes what the image leaves of the width. Beside an image
-	-- taller than it, it sits in the image's middle, as AceGUI's label puts it.
+	-- The text takes what the image and its border leave of the width. Beside
+	-- an image taller than it, it sits in the image's middle, as AceGUI's label
+	-- puts it. The border's width is the theme's now: a theme picked on the
+	-- Theme tab reaches the row when it is drawn again.
 	Fit = function(self)
 		local imageWidth, imageHeight = 0, 0
-		if self.image:IsShown() then imageWidth, imageHeight = self.image:GetWidth(), self.image:GetHeight() end
+		if self.image:IsShown() then
+			local border = st:ThemeInset('theme', 'theme')
+			self.image:ClearAllPoints()
+			self.image:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', border, -border)
+			imageWidth = self.image:GetWidth() + 2 * border
+			imageHeight = self.image:GetHeight() + 2 * border
+		end
 		local textLeft = imageWidth > 0 and imageWidth + IMAGE_GAP or 0
 		local lineHeight = floor((self.size or FIELD_FONT_SIZE) * 1.3)
 		local lines = CountLines(self.measure, self.fullText or '', self.frame:GetWidth() - textLeft - 10)

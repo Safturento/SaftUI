@@ -290,6 +290,10 @@ test("Icon zoom's preview has a border in SaftUI's theme, and a description with
 	eq(fill(backdrop), '0.12,0.12,0.12,0.90', "Thick's background at the opacity")
 	eq(offset(backdrop, 'TOPLEFT'), '-2.00,2.00', "Thick's 2px outside the icon")
 	eq(offset(backdrop, 'BOTTOMRIGHT'), '2.00,-2.00', "Thick's 2px outside the icon (bottom right)")
+	-- The row's left and top are the scroll area's, which cuts what lies past
+	-- them: the icon sits the border's width in from the row's corner, so the
+	-- border starts on them, not outside.
+	eq(offset(image, 'TOPLEFT'), '2.00,-2.00', "the icon Thick's 2px in from the row's corner")
 
 	-- A recolor and a redraw reach it.
 	st.config.profile.templates.thick.bordercolor = { 1, 0, 0, 1 }
@@ -298,6 +302,12 @@ test("Icon zoom's preview has a border in SaftUI's theme, and a description with
 	switch(st, 'thin')
 	eq(offset(backdrop, 'TOPLEFT'), '-1.00,1.00', "a switch to Thin moves it to Thin's 1px")
 	eq(edge(backdrop), THIN_EDGE, "with Thin's border color")
+	-- The theme is picked on the Theme tab: back on General, the row is drawn
+	-- again, its icon 1px in.
+	st.Config:Close()
+	st.Config:Open('Fonts', 'general')
+	preview = drawnRow('icon_preview').widget
+	eq(offset(preview.image, 'TOPLEFT'), '1.00,-1.00', "the icon Thin's 1px in from the row's corner")
 	st.Config:Close()
 
 	-- The pooled descriptions, the preview's among them, bound to a row with
