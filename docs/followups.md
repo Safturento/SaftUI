@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
   - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
@@ -56,6 +57,38 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)
+
+**What:** After you choose on a loot roll, the roll stays on screen until the roll ends, showing everything it showed before plus your choice. The buttons are locked.
+
+**Why noticed:** The user, 2026-11-10: "can we make the loot roll frame not disappear once I've made a selection for a loot roll? just signal that the buttons are locked in but still show them so I can see who has rolled on what so far". Asked what they'd want to see: "all the info I can see prior to rolling plus some signal of what selection I made on the roll". They approved the description below ("that's all good"), seeing a mockup (`.superpowers/brainstorm/…/roll-locked.html`).
+
+**Approved description (a small change, in chat):**
+- **What stays:** everything the bar shows before you choose:
+  - the item icon and name (with BoE and count);
+  - the timer bar and countdown;
+  - the four roll buttons with their live counts (`SaftUI-Loot/rollinfo.lua`);
+  - the hover tooltip listing everyone's choices so far (`LT:AddRollLines`).
+- **Your choice:** your button stays bright with a lit border (Buttons → Blue) and the other three dim, and a small label in the bar names your choice. No button can be clicked.
+- **When it goes:** when the roll ends: its timer runs out, or the game awards the item (the loot feed already shows the result).
+- **Where it sits:** in the same place in the roll stack. New rolls stack as now.
+- **How it's built:**
+  - Blizzard removes its own frame when you choose (`CANCEL_LOOT_ROLL` → `GroupLootFrame_Remove`), and preventing that would mean replacing Blizzard code (`.agents/taint.md`, rule 2).
+  - So SaftUI shows its own copy of the bar in that spot, built like Test mode's bars (`CreatePreviewBar`, `SaftUI-Loot/roll.lua`) and fed by the same live roll data. Nothing of Blizzard's is changed.
+- **When the game can't match the roll:** a roll with no matched loot-history drop still shows the item, timer and choice, without counts. Whether trash rolls appear in `C_LootHistory` on Forever is unknown; see the trash-rolls item in this file.
+- **Test mode** shows a locked bar too.
+
+**Anchors:** `SaftUI-Loot/roll.lua` (`LT:LayoutRollFrames`, `LT:GroupLootFrame_OnShow`, the preview bars), `SaftUI-Loot/rollinfo.lua` (`bars`, `UpdateRollBars`, `OnBarHide`, the drop matching and `StillYours`), `SaftUI-Loot/Feed/rolls.lua` (`LT:GetOpenDrops`).
+
+**Shape of work:** Small to medium, one implementation task with tests:
+- on the player's choice (the Blizzard bar hiding while its matched drop is still open), show a SaftUI held bar in its slot carrying the drop;
+- update its counts on loot-history updates;
+- remove it when the drop resolves or its timer ends;
+- lay held bars out with the live ones;
+- give Test mode a locked bar.
+
+Build it after the Themes branch merges, since Themes also edits `roll.lua`, drawing the held bar the Themes way (with a kind).
 
 ### 2026-11-10 — Bag item sort compares item levels as text
 
