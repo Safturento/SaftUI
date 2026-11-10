@@ -176,7 +176,7 @@ function INV:InitializeBankBagSlots(container)
 
 	local bar = st:CreateFrame('frame', container:GetName() .. 'BagSlotFrame', container)
 	bar:Hide()
-	st:SetBackdrop(bar, 'thick')
+	st:SetBackdrop(bar, 'theme', 'solid', 'panel')
 	bar:SetPoint('BOTTOMLEFT', container, 'TOPLEFT', 0, self.config.buttonspacing)
 	bar.slots = {}
 	bar.purchaseButton = CreateBankBagPurchaseButton(bar)
@@ -191,7 +191,7 @@ function INV:InitializeBankBagSlots(container)
 	bar:SetScript('OnHide', bar.UnregisterAllEvents)
 	bar:SetScript('OnEvent', function(bar) INV:UpdateBankBagSlots(bar) end)
 
-	local slotToggle = st:CreateButton(nil, container.header, 'Bag Slots', 'none')
+	local slotToggle = st:CreateButton(nil, container.header, 'Bag Slots', 'none', 'theme')
 	slotToggle:SetPoint('LEFT', 8, 0)
 	slotToggle:SetSize(64, st.config.profile.headers.height - 8)
 	slotToggle:SetScript('OnClick', function() bar:SetShown(not bar:IsShown()) end)

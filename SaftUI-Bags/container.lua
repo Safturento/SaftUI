@@ -92,7 +92,7 @@ function INV:InitializeLoadingOverlay(container)
 	loadingOverlay:SetFrameStrata('HIGH')
 	loadingOverlay:SetFrameLevel(50)
 
-	local loadingBar = st:CreateStatusBar(container:GetName().."LoadingBar", loadingOverlay, '-/-')
+	local loadingBar = st:CreateStatusBar(container:GetName().."LoadingBar", loadingOverlay, '-/-', 'theme', 'solid')
 	loadingBar:SetPoint('CENTER')
 	loadingBar:SetSize(300, 30)
 	loadingBar:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
@@ -141,7 +141,7 @@ function INV:InitializeFooter(container)
 	elseif container.id == 'bank' and self:HasWarbandBank() then
 		-- Neither client has a reagent bank anymore, so the separate bank only
 		-- needs the way into the warband window.
-		local warbandButton = st:CreateButton('WarbandBankButton', container, 'Warband Bank')
+		local warbandButton = st:CreateButton('WarbandBankButton', container, 'Warband Bank', 'theme', 'solid')
 		warbandButton:SetPoint('BOTTOMRIGHT', container.footer, -6, 6)
 		warbandButton:SetScript('OnClick', function()
 			if not self.containers.warband then
@@ -177,7 +177,7 @@ end
 
 function INV:InitializeSearch(container)
 	local search = st:CreateEditBox(container:GetName()..'Search',  container.footer, 'SearchBoxTemplate')
-	st:SkinEditBox(search, 'thicktransparent')
+	st:SkinEditBox(search, 'theme', 'theme')
 	search:SetHeight(20)
 	self:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
 	container.search = search

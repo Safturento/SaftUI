@@ -10,10 +10,10 @@ local LAB = LibStub('LibActionButton-1.0')
 	take the same config table (GetButtonConfig), so everything here applies to
 	them too.
 
-	  - The button's size is its whole footprint. The template's backdrop fills it,
-	    and the icon, cooldowns and state textures sit inside the backdrop's border
-	    (2px for thick templates, 1px for thin ones, none for templates without a
-	    border). Bars then fit on a
+	  - The button's size is its whole footprint. Its backdrop, drawn with the
+	    action bars' Theme and Background as an action button, fills it, and the
+	    icon, cooldowns and state textures sit inside the backdrop's border (2px
+	    for Thick, 1px for Thin, none for None). Bars then fit on a
 	    size + spacing grid, and the hotkey, count and macro text stay on the button.
 	  - The icon is cropped square (st:SkinIcon). LibActionButton drops its round
 	    mask itself with hideElements.border.
@@ -23,7 +23,8 @@ local LAB = LibStub('LibActionButton-1.0')
 	    their alpha.
 	  - The attack flash is a flat red tint over the icon.
 	  - An equipped item gets a green border on the backdrop, in place of the
-	    template's green glow (hideElements.equipped).
+	    template's green glow (hideElements.equipped). It goes back on after a
+	    theme recolor or redraw (AB:OnColorsChanged).
 	  - A pet action's autocast corners and ants (the template's AutoCastOverlay)
 	    sit over the icon.
 	  - Cooldown swipes, charges, loss of control and the out-of-range and unusable
@@ -46,8 +47,8 @@ local LAB = LibStub('LibActionButton-1.0')
 ]]
 
 -- SaftUI's pieces of each skinned button: button -> { hover, pushed, checked,
--- template, equipped }. Kept here so no key on the button can clash with
--- LibActionButton's or the template's.
+-- theme, background, equipped }. Kept here so no key on the button can clash
+-- with LibActionButton's or the template's.
 local skins = {}
 
 -- The template's art (ActionButtonTemplate, the same keys on forever and live).
@@ -284,22 +285,22 @@ function AB:SkinButton(button)
 	ShortenHotkey(button.HotKey, button.HotKey:GetText())
 end
 
--- Applies the profile's template and the bar's size to a skinned button. Safe to
--- run again: it makes nothing new.
-function AB:StyleButton(button, config, template)
+-- Applies the action bars' Theme and Background and the bar's size to a
+-- skinned button. Safe to run again: it makes nothing new.
+function AB:StyleButton(button, config, theme, background)
 	local skin = skins[button]
 	if not skin then return end
 	local colors = st.config.profile.colors
 
-	st:SetBackdrop(button, template)
+	st:SetBackdrop(button, theme, background, 'action')
 	if button.backdrop then
 		button.backdrop:ClearAllPoints()
 		button.backdrop:SetAllPoints(button)
 	end
-	skin.template = template
+	skin.theme, skin.background = theme, background
 	skin.equipped = nil -- the backdrop's border was just reset
 
-	local inset = st:ThemeInset(template)
+	local inset = st:ThemeInset(theme, background)
 	local icon = button.icon
 	icon:ClearAllPoints()
 	st:SetInside(icon, inset)
@@ -354,14 +355,19 @@ function AB:StyleBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
 	local config = self.config[id]
-	local template = self.config.template
+	local theme, background = self.config.theme, self.config.background
 	for i, button in ipairs(bar.buttons) do
 		button:UpdateConfig(self:GetButtonConfig(id, i))
-		self:StyleButton(button, config, template)
+		self:StyleButton(button, config, theme, background)
 	end
 end
 
--- A green border while the button holds an equipped item, the template's border
+-- An equipped item's border.
+local function ColorEquipped(backdrop)
+	backdrop:SetBackdropBorderColor(st.config.profile.colors.button.green:GetRGB())
+end
+
+-- A green border while the button holds an equipped item, the theme's border
 -- otherwise. Only touches the backdrop when that changes. The pet and stance
 -- buttons never hold an item, and have no IsEquipped.
 function AB:UpdateEquippedBorder(button)
@@ -376,9 +382,20 @@ function AB:UpdateEquippedBorder(button)
 	skin.equipped = equipped
 
 	if equipped then
-		backdrop:SetBackdropBorderColor(st.config.profile.colors.button.green:GetRGB())
+		ColorEquipped(backdrop)
 	else
-		st:SetTemplate(backdrop, skin.template)
+		st:SetTemplate(backdrop, skin.theme, skin.background, 'action')
+	end
+end
+
+-- A theme recolor or redraw put the theme's border back on every button
+-- (group 'theme'): the equipped ones get their green again.
+function AB:OnColorsChanged(group)
+	if group ~= 'theme' then return end
+	for button, skin in pairs(skins) do
+		if skin.equipped and button.backdrop then
+			ColorEquipped(button.backdrop)
+		end
 	end
 end
 

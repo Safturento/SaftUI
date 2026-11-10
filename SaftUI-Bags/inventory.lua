@@ -81,9 +81,11 @@ function INV:SelectBankCategory(clickedHeader)
 
     for containerName, container in pairs(self.containers) do
         if containerName == selectedContainer.id then
-            container.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+            if container.backdrop then
+                container.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+            end
         else
-            st:SetBackdrop(container, self.config.template)
+            st:SetBackdrop(container, self.config.theme, self.config.background, 'panel')
         end
     end
 end
@@ -198,10 +200,10 @@ function INV:UpdateConfig(id)
 	end
 	if container.search then
 		container.search:SetWidth(inner_width)
-		st:StyleEditBox(container.search, self.config.template, self.config.fonts.titles)
+		st:StyleEditBox(container.search, self.config.theme, self.config.background, self.config.fonts.titles)
 	end
 
-	st:SetBackdrop(container, self.config.template)
+	st:SetBackdrop(container, self.config.theme, self.config.background, 'panel')
 	self:SyncAnchorSize(id)
 
 	-- A window placed relative to this one (typed in its Position) can only

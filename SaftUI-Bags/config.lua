@@ -2,8 +2,12 @@ local st = SaftUI
 
 st.defaults.inventory = {
 	enable = true,
-	buttontemplate = 'thicktransparent', -- item and currency slots
-	template = 'thicktransparent', -- the windows
+	-- The Theme and Background (SaftUI-Core/theme.lua) of the item and currency
+	-- slots, and of the windows. 'theme' follows SaftUI's.
+	buttontheme = 'theme',
+	buttonbackground = 'theme',
+	theme = 'theme',
+	background = 'theme',
 	padding = 10,
 	iconsize = 50, -- item button height; the width follows at 6:5 (60 by default), see INV:GetButtonWidth
 	buttonspacing = 3,

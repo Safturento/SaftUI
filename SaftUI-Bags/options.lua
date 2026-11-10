@@ -77,6 +77,13 @@ local function FontOption(order, name, key, desc)
 	return option
 end
 
+-- A Theme or Background option for the item and currency slots: the same
+-- choices as the windows' own, named apart from them.
+local function SlotOption(option, name)
+	option.name = name
+	return option
+end
+
 -- Bags' section in the /sui tree: General (the settings for every window), the
 -- windows' Look and Icons, then one subsection per window that can be placed
 -- with a mover (this client's windows, for the bank layout in use). With the
@@ -152,7 +159,8 @@ function INV:GetConfigTable()
 					'How many rows of item slots one notch of the mouse wheel scrolls.'),
 			},
 		},
-		-- How the windows look: their background, text, padding and category titles.
+		-- How the windows look: the windows' and the slots' Theme and Background,
+		-- text, padding and category titles.
 		look = {
 			name = 'Look',
 			type = 'group',
@@ -160,17 +168,20 @@ function INV:GetConfigTable()
 			get = function(info) return INV.config[info[#info]] end,
 			set = function(info, value)
 				INV.config[info[#info]] = value
-				INV:ApplyButtonSize() -- re-styles every window and resizes their movers' outlines
+				INV:ApplyButtonSize() -- re-styles every window and slot and resizes their movers' outlines
 			end,
 			args = {
-				template = generators.template(1, 'The look of the bag and bank windows: their background and border.'),
-				padding = generators.range(2, 'Padding', 0, 30, 1,
+				theme = generators.theme(1, 'The border of the bag and bank windows and their search box.'),
+				background = generators.background(1.5),
+				buttontheme = SlotOption(generators.theme(2, 'The border of the item and currency slots.'), 'Slot theme'),
+				buttonbackground = SlotOption(generators.background(2.5), 'Slot background'),
+				padding = generators.range(3, 'Padding', 0, 30, 1,
 					"The gap between a window's edge and its contents."),
-				categoryTitleHeight = generators.range(3, 'Category title height', 20, 80, 1,
+				categoryTitleHeight = generators.range(4, 'Category title height', 20, 80, 1,
 					'How tall each category title is.'),
-				titles = FontOption(4, 'Title font', 'titles',
+				titles = FontOption(5, 'Title font', 'titles',
 					'The font of the category titles and the search box.'),
-				icons = FontOption(5, 'Icon font', 'icons',
+				icons = FontOption(6, 'Icon font', 'icons',
 					'The font of the numbers on the item and currency slots: item level and stack count.'),
 			},
 		},

@@ -19,7 +19,7 @@ function INV:SkinReagentDepositButton(container)
     depositButton:SetParent(container)
     depositButton:ClearAllPoints()
     depositButton:SetPoint('BOTTOMRIGHT', container.footer, -3, 3)
-    st:SkinButton(depositButton)
+    st:SkinButton(depositButton, 'theme', 'solid')
 
     return depositButton
 end
@@ -29,11 +29,12 @@ function INV:InitializeBankCategorySelection()
 		buttonHeight = 30,
 		buttonWidth = 140,
 		buttonSpacing = 6,
-		template = self.config.template,
+		theme = self.config.theme,
+		background = self.config.background,
 		onClick = function(button) BankFrame:SetTab(button.config.bankId) end,
 		postCreate = function(button)
 			local visibility = st:CreateCheckButton(button:GetName()..'VisibilityCheckbox', button)
-			st:SetBackdrop(visibility, 'none')
+			st:SetBackdrop(visibility, 'none', 'theme', 'small')
 			visibility:SetPoint('RIGHT', button, 'RIGHT', -6, 0)
 			visibility:SetSize(16, 8)
 			visibility:SetChecked(true)

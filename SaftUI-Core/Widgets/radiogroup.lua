@@ -5,8 +5,9 @@ local st = SaftUI
         buttonWidth: number
         buttonHeight: number
         buttonSpacing: number
-        theme, background: strings, the look a click gives the buttons (or
-            template, an old template name, from a caller not yet moved to themes)
+        theme, background: strings, the buttons' look (or template, an old
+            template name, which only a click gives them, from a caller not
+            yet moved to themes)
         growthDirection: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
         items = [
             {
@@ -32,7 +33,7 @@ function st:CreateRadioGroup(name, parent, options)
 
     local prev
     for i, item in pairs(options.items) do
-        local button = st:CreateButton(name..'Button'..i, parent, item.label)
+        local button = st:CreateButton(name..'Button'..i, parent, item.label, options.theme, options.background)
         button:SetSize(options.buttonWidth, options.buttonHeight)
         button.config = item --store button config for use in callbacks
         button:SetScript('OnClick', function(self, mouseButton, down)

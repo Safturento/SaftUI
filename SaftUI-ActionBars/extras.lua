@@ -257,7 +257,7 @@ function layouts.vehicleleave(self, header, config)
 	leaveButton:ClearAllPoints()
 	leaveButton:SetSize(size, size)
 	leaveButton:SetPoint('TOPLEFT', header, 'TOPLEFT')
-	self:StyleButton(leaveButton, { size = size, text = LEAVE_TEXT }, self.config.template)
+	self:StyleButton(leaveButton, { size = size, text = LEAVE_TEXT }, self.config.theme, self.config.background)
 	-- After the style, which crops icons for spell art.
 	leaveButton.icon:SetTexCoord(LEAVE_CROP_MIN, LEAVE_CROP_MAX, LEAVE_CROP_MIN, LEAVE_CROP_MAX)
 

@@ -860,6 +860,26 @@ end
 function CheckButton.SetChecked(self, s, checked) s.checked = checked and true or false end
 function CheckButton.GetChecked(self, s) return s.checked == true end
 
+-- The checked state's textures, as the button's other states' (above): a
+-- texture of the button's, or a file it makes a texture for. nil clears it.
+for _, state in ipairs({ 'Checked', 'DisabledChecked' }) do
+	local key = state:lower() .. '_texture'
+	CheckButton['Set' .. state .. 'Texture'] = function(self, s, asset)
+		if asset == nil then
+			s[key] = nil
+		elseif is_widget(asset, 'Texture') then
+			s[key] = asset
+		elseif type(asset) == 'string' or type(asset) == 'number' then
+			local texture = create_region(self, s, 'Texture', nil, 'ARTWORK')
+			states[texture].texture = asset
+			s[key] = texture
+		else
+			usage(s, ('Set%sTexture(): asset must be a texture, a path or a file ID'):format(state))
+		end
+	end
+	CheckButton['Get' .. state .. 'Texture'] = function(self, s) return s[key] end
+end
+
 ------------------------------------------------------------------ ScrollFrame
 
 function ScrollFrame.SetScrollChild(self, s, child)

@@ -3,7 +3,7 @@ local INV = st:GetModule('Inventory')
 
 function INV:InitializeDepositButton(container)
     container = container or self:GetContainer('bag')
-    local depositButton = st:CreateButton('GoldDepositButton', container, 'Deposit', 'thick')
+    local depositButton = st:CreateButton('GoldDepositButton', container, 'Deposit', 'theme', 'solid')
     depositButton:SetPoint('BOTTOMRIGHT', container.footer.gold, 'BOTTOMLEFT', 0, 7)
     depositButton:SetSize(100, 16)
     depositButton:SetFrameLevel(90)
@@ -25,7 +25,7 @@ end
 
 function INV:InitializeWithdrawButton(container)
     container = container or self:GetContainer('warband')
-    local withdrawButton = st:CreateButton('GoldWithdrawButton', container, 'Withdraw', 'thick')
+    local withdrawButton = st:CreateButton('GoldWithdrawButton', container, 'Withdraw', 'theme', 'solid')
     withdrawButton:SetPoint('BOTTOMRIGHT',  container.footer.gold, 'BOTTOMLEFT', 0, 7)
     withdrawButton:SetSize(100, 16)
     withdrawButton:SetFrameLevel(90)

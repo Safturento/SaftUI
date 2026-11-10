@@ -30,13 +30,7 @@ function INV:AssignEmptySlot(slot, info)
 	slot.itemLevel:SetText('')
 	slot.itemLevelBG:Hide()
 	Util:ClearItemQuality(slot)
-
-	local look = st:ResolveLegacyTemplate(self.config.buttontemplate)
-	if look then
-		slot.backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
-	else
-		slot.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
-	end
+	self:SetSlotThemeBorder(slot)
 
 	slot.cooldown:Hide()
 	SetItemButtonTextureVertexColor(slot, 1, 1, 1)
@@ -62,16 +56,46 @@ function INV:QualityBorderColor(quality)
 end
 
 -- The border in the item's quality color. A locked slot, or one with no
--- quality, keeps the border it has.
+-- quality, keeps the border it has. A slot drawn with None has none to color.
 function INV:SetSlotQualityBorder(slot)
-	if not slot.info.locked and slot.info.quality then
+	if slot.backdrop and not slot.info.locked and slot.info.quality then
 		slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(slot.info.quality))
 	end
 end
 
--- A quality color changed in the options: redraw the borders of the filled slots.
+-- The border of a slot with no item's quality on it (a free slot, which may
+-- have shown an item's): its Slot theme's border, none for None.
+function INV:SetSlotThemeBorder(slot)
+	if not slot.backdrop then return end
+	local look = st:ResolveTheme(self.config.buttontheme, self.config.buttonbackground)
+	if look then
+		slot.backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
+	else
+		slot.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
+	end
+end
+
+-- Skins an item or currency slot (st:SkinActionButton) with the Slot theme and
+-- background, as a slot, and the icon font. Its backdrop fills the slot and its
+-- icon sits inside the border (trueSize); None has no backdrop, so the icon
+-- fills the slot. Safe to run again.
+function INV:SkinSlot(slot)
+	local theme, background = self.config.buttontheme, self.config.buttonbackground
+	st:SkinActionButton(slot, {
+		theme = theme,
+		background = background,
+		font = self.config.fonts.icons,
+		trueSize = theme ~= 'none',
+	}, 'slot')
+	slot:SetNormalTexture("")
+	slot:SetPushedTexture("")
+end
+
+-- A quality color changed in the options, or a theme recolor or redraw put the
+-- theme's border back on every slot (group 'theme'): redraw the borders of the
+-- filled slots and the shown currencies.
 function INV:OnColorsChanged(group)
-	if group ~= 'item_quality' then return end
+	if group ~= 'item_quality' and group ~= 'theme' then return end
 	for _, container in pairs(self.containers) do
 		for _, category in pairs(container.categories) do
 			for _, slot in pairs(category.slots) do
@@ -340,13 +364,7 @@ function INV:CreateSlot(container, categoryName)
 	reagentMarker:Hide()
 	slot.reagentMarker = reagentMarker
 
-	st:SkinActionButton(slot, {
-		template = self.config.buttontemplate,
-		font = self.config.fonts.icons,
-		trueSize = true
-	})
-	slot:SetNormalTexture("")
-	slot:SetPushedTexture("")
+	self:SkinSlot(slot)
 	slot:Hide()
 
 	-- tinsert(self.AllSlots, slot)
@@ -360,21 +378,14 @@ function INV:CreateSlot(container, categoryName)
 	return slot
 end
 
--- Applies the profile's slot size, spot, template and fonts to a slot made by
+-- Applies the profile's slot size, spot, Slot theme and fonts to a slot made by
 -- INV:CreateSlot. Runs on profile changes; skinning a slot again is safe.
 function INV:StyleSlot(slot, categoryFrame, container)
 	self:SetSlotPosition(slot, categoryFrame, container)
 	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
 	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
-
-	st:SkinActionButton(slot, {
-		template = self.config.buttontemplate,
-		font = self.config.fonts.icons,
-		trueSize = true
-	})
-	slot:SetNormalTexture("")
-	slot:SetPushedTexture("")
+	self:SkinSlot(slot)
 end
 
 function INV:SetSlotCooldown(slot)

@@ -20,7 +20,9 @@ local st = SaftUI
 	    none), point and rel_point (the text's point and the button's), and
 	    x_off / y_off from there. The pet and stance buttons only have a hotkey;
 	    their count and macro name keep the shape and go unused.
-	template is the backdrop template every button uses.
+	theme and background are the Theme and Background (SaftUI-Core/theme.lua)
+	every button is drawn with, the leave vehicle button too. 'theme' follows
+	SaftUI's.
 
 	The extra buttons (extras.lua) have a table each too, 'extra' (the extra
 	action button), 'zone' (the zone ability) and 'vehicleleave' (the leave
@@ -122,7 +124,8 @@ end
 -- Replaces the legacy table from SaftUI-Misc/config.lua, whose positions named
 -- SaftUIActionBar1.. frames that no longer existed.
 st.defaults.actionbars = {
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 
 	bar1 = Bar(true, 12, 'BOTTOM', 'UIParent', 'BOTTOM', 0, st.CLAMP_INSET),
 	bar2 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar1', 'TOP', 0, SPACING),

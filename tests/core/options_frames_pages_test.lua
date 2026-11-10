@@ -92,9 +92,10 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	local general, look = tree.args.general, tree.args.look
 	local config = profile.inventory
 
-	-- The eleven settings: where each lives, and that its option reads the profile.
+	-- The settings: where each lives, and that its option reads the profile.
 	local where = {
-		enable = general, template = look, padding = look, categoryTitleHeight = look, scrollSpeed = general,
+		enable = general, theme = look, background = look, buttontheme = look, buttonbackground = look,
+		padding = look, categoryTitleHeight = look, scrollSpeed = general,
 		autorepair = general, autovendor = general, combinedBank = general, inverted = general,
 	}
 	for key, group in pairs(where) do
@@ -135,8 +136,12 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	eq(config.padding, 14, 'Padding writes inventory.padding')
 	set(look, 'categoryTitleHeight', 40)
 	eq(config.categoryTitleHeight, 40, 'Category title height writes inventory.categoryTitleHeight')
-	set(look, 'template', 'thick')
-	eq(config.template, 'thick', 'Template writes inventory.template')
+	eq(look.args.template, nil, 'no Template')
+	for key, value in pairs({ theme = 'thin', background = 'solid', buttontheme = 'thin', buttonbackground = 'solid' }) do
+		eq(set(look, key, value), 'ApplyButtonSize', key .. ' restyles the windows and slots')
+		eq(config[key], value, key .. ' writes inventory.' .. key)
+		config[key] = 'theme'
+	end
 	eq(set(look, 'titles', 'pixel'), 'UpdateConfig', 'the title font restyles the windows')
 	eq(config.fonts.titles, 'pixel', 'Title font writes inventory.fonts.titles')
 	set(look, 'icons', 'normal')
@@ -203,7 +208,7 @@ test('Loot: Test mode is small, every option has a desc, Position is last', func
 	eq(got:match('^test_mode:small 1/1'), 'test_mode:small 1/1', 'Test mode takes a quarter')
 end)
 
-test('Action bars: tooltips, Position last, the Template option, and the Text positions over the stored keys', function()
+test('Action bars: tooltips, Position last, the Theme and Background options, and the Text positions over the stored keys', function()
 	local AB = st:GetModule('ActionBars')
 	st:BindModuleConfig(AB, 'actionbars')
 	AB.EXTRA_IDS = { 'extra', 'zone', 'vehicleleave' }
@@ -231,17 +236,25 @@ test('Action bars: tooltips, Position last, the Template option, and the Text po
 	local picked = {}
 	for _, entry in ipairs(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.values) do picked[#picked + 1] = entry.key end
 	eq(table.concat(picked, ','), 'bar1,bar2,bar3,bar4,bar5,bar6,bar7,bar8,pet,stance,extra,zone,vehicleleave',
-		'the picker lists the bars and extras, not the Template option')
+		'the picker lists the bars and extras, not the Theme and Background options')
 
-	-- Template reads and writes actionbars.template, and restyles every bar at once.
-	local template = tree.args.template
-	eq(template.type, 'select', 'Template is a select')
-	eq(template.get(), profile.actionbars.template, 'Template reads actionbars.template')
-	calls = {}
-	template.set(info_for('template'), 'thin')
-	eq(profile.actionbars.template, 'thin', 'Template writes actionbars.template')
-	eq(table.concat(calls, ','), 'UpdateConfig', 'and re-skins the bars and extras')
-	check(template.values.thin ~= nil, 'its values are the profile templates')
+	-- Theme and Background read and write actionbars.theme and .background, and
+	-- restyle every bar at once.
+	eq(tree.args.template, nil, 'no Template')
+	for key, name in pairs({ theme = 'Theme', background = 'Background' }) do
+		local option = tree.args[key]
+		eq(option.type, 'select', name .. ' is a select')
+		eq(option.name, name, name .. ' is named so')
+		eq(option.get(), profile.actionbars[key], name .. ' reads actionbars.' .. key)
+		calls = {}
+		option.set(info_for(key), key == 'theme' and 'thin' or 'solid')
+		eq(profile.actionbars[key], key == 'theme' and 'thin' or 'solid', name .. ' writes actionbars.' .. key)
+		eq(table.concat(calls, ','), 'UpdateConfig', 'and re-skins the bars and extras')
+		profile.actionbars[key] = 'theme'
+	end
+	check(tree.args.theme.values.thin ~= nil and tree.args.theme.values.thicktransparent == nil,
+		'Theme offers the themes, not the old template names')
+	check(tree.args.theme.order < tree.args.background.order, 'Theme, then Background')
 
 	-- Each bar: Position last in General; the Text tab has the hotkey, count and macro (the
 	-- pet and stance bars only the hotkey), each a Position block with no target over the

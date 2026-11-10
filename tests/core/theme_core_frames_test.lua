@@ -409,7 +409,7 @@ test('a radio group draws its buttons with options.theme and options.background,
 
 	local g = group('ThemeTestRadio', { theme = 'thin', background = 'solid' })
 	eq(g.backdrop, nil, 'the group itself draws nothing, as before')
-	eq(drawn(g.buttons[1]), 'theme,solid,small', "its buttons start in SaftUI's theme, Solid (they were thick)")
+	eq(drawn(g.buttons[1]), 'thin,solid,small', 'its buttons start with the Theme and Background, before any click')
 	stub.fire_script(g.buttons[2], 'OnClick', 'LeftButton', false)
 	eq(drawn(g.buttons[1]), 'thin,solid,small', 'a click draws the buttons with the Theme and Background')
 	eq(edge(g.buttons[2].backdrop), blue, 'and the clicked one blue')

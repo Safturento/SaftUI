@@ -56,7 +56,7 @@ function INV.CreateCurrencySlot(category)
     slot.CountBG:SetVertexColor(0,0,0)
 
     slot.filterCheckbox = st:CreateCheckButton(nil, slot)
-    st:SetBackdrop(slot.filterCheckbox, 'none')
+    st:SetBackdrop(slot.filterCheckbox, 'none', 'theme', 'small')
     slot.filterCheckbox:Hide()
     slot.filterCheckbox:SetAllPoints(slot)
     slot.filterCheckbox:GetCheckedTexture():SetVertexColor(0, 0, 0, .6)
@@ -71,13 +71,7 @@ function INV.CreateCurrencySlot(category)
     slot:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 
     st:SkinIcon(slot.icon, nil, slot)
-    st:SkinActionButton(slot, {
-		template = INV.config.buttontemplate,
-		font = INV.config.fonts.icons,
-		trueSize = true
-	})
-	slot:SetNormalTexture("")
-	slot:SetPushedTexture("")
+    INV:SkinSlot(slot)
     slot.Content.WatchedCurrencyCheck:ClearAllPoints()
 
     slot.category = category
@@ -93,19 +87,13 @@ function INV.CreateCurrencySlot(category)
     return slot
 end
 
--- Re-applies the profile's slot size, template and fonts to every currency
+-- Re-applies the profile's slot size, Slot theme and fonts to every currency
 -- slot, and sizes the currency category's filter button. Runs on profile
 -- changes; skinning a slot again is safe.
 function INV:StyleCurrencySlots()
     for _, slot in ipairs(currencySlots) do
         slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
-        st:SkinActionButton(slot, {
-            template = self.config.buttontemplate,
-            font = self.config.fonts.icons,
-            trueSize = true
-        })
-        slot:SetNormalTexture("")
-        slot:SetPushedTexture("")
+        self:SkinSlot(slot)
     end
 
     local bag = self.containers.bag
@@ -228,13 +216,16 @@ function INV:CurrencyOnClick(slot)
 end
 
 -- The currency slot's border in its quality color (see INV:QualityBorderColor).
+-- A slot drawn with None has none to color.
 function INV:SetCurrencyBorder(slot)
+    if not slot.backdrop then return end
     local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
     slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(quality))
 end
 
--- A quality color changed in the options: redraws the borders of the shown
--- currency slots, without rebuilding the list.
+-- A quality color changed in the options, or a theme recolor put the theme's
+-- border back on: redraws the borders of the shown currency slots, without
+-- rebuilding the list.
 function INV:UpdateCurrencyBorders()
     local category = self.containers and self.containers.bag and self.containers.bag.categories.Currencies
     if not category then return end

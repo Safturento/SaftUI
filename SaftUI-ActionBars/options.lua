@@ -20,9 +20,9 @@ local AB = st:GetModule('ActionBars')
 	(extras.lua), which always have a size. Their outlines say when the
 	buttons show, as they mostly don't.
 
-	/sui -> Action Bars has the Template option (actionbars.template, the
-	backdrop every button is drawn with), then one picker entry ('Bar') per
-	bar, each with tabs:
+	/sui -> Action Bars has the Theme and Background options
+	(actionbars.theme and .background, which every button is drawn with), then
+	one picker entry ('Bar') per bar, each with tabs:
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
 	    button size and spacing, and the Position option, last. The relative
 	    frame typed there goes through st:ValidateAnchor with the bar, so a bar
@@ -37,10 +37,11 @@ local AB = st:GetModule('ActionBars')
 	action button and zone ability, Size for SaftUI's leave vehicle button, and
 	the Position option.
 	Every option applies at once through AB:UpdateBar (bars.lua), AB:LayoutExtra
-	(extras.lua) or, for the template, AB:UpdateConfig (which re-skins every bar
-	and the leave vehicle button, skin.lua's StyleBar reading actionbars.template). /sui can't be open in combat, so none of this
-	runs in combat lockdown; a profile switch in combat waits for the end of
-	combat (AB:UpdateConfig).
+	(extras.lua) or, for the Theme and Background, AB:UpdateConfig (which
+	re-skins every bar and the leave vehicle button, skin.lua's StyleBar
+	reading actionbars.theme and .background). /sui can't be open in combat,
+	so none of this runs in combat lockdown; a profile switch in combat waits
+	for the end of combat (AB:UpdateConfig).
 ]]
 
 local VISIBILITY_VALUES = {
@@ -373,17 +374,19 @@ function AB:GetConfigTable()
 	if not self.built then return end
 	local generators = st.Config.generators
 	local args = {}
-	-- The backdrop of every bar button and of the leave vehicle button. skin.lua
-	-- reads it each time a bar is styled, so AB:UpdateConfig (every bar, then the
-	-- extras) applies it at once; it waits for the end of combat if need be.
-	local template = generators.template(0,
-		'The backdrop and border every action button is drawn with, the leave vehicle button too.')
-	template.get = function() return self.config.template end
-	template.set = function(_, value)
-		self.config.template = value
-		self:UpdateConfig()
+	-- The Theme and Background of every bar button and of the leave vehicle
+	-- button. skin.lua reads them each time a bar is styled, so AB:UpdateConfig
+	-- (every bar, then the extras) applies them at once; it waits for the end of
+	-- combat if need be.
+	args.theme = generators.theme(0, 'The border of every action button, the leave vehicle button too.')
+	args.background = generators.background(0.5)
+	for key in pairs({ theme = true, background = true }) do
+		args[key].get = function() return self.config[key] end
+		args[key].set = function(_, value)
+			self.config[key] = value
+			self:UpdateConfig()
+		end
 	end
-	args.template = template
 	for i, id in ipairs(self.BAR_IDS) do
 		if self.bars[id] then
 			args[id] = self:GetBarOptions(id, i)

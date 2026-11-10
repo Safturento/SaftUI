@@ -350,7 +350,7 @@ local function CreateMode()
 	mode.text:SetPoint('TOP', mode.title, 'BOTTOM', 0, -6)
 	mode.text:SetWidth(340)
 
-	mode.done = st:CreateButton(nil, mode, 'Done')
+	mode.done = st:CreateButton(nil, mode, 'Done', 'theme', 'solid')
 	mode.done:SetSize(60, 16)
 	mode.done:SetPoint('BOTTOM', mode, 'BOTTOM', 0, 8)
 	mode.done:SetScript('OnClick', function() AB:StopKeybindMode() end)
