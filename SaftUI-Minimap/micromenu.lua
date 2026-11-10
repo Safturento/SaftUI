@@ -256,12 +256,13 @@ function MicroMenu:UpdateConfig()
     self:UpdateButtons()
 end
 
--- The micro menu's section in the /sui tree. Clicking the bar in edit mode
--- selects its General group (the mover's configPath).
+-- The micro menu's section in the /sui tree: General, with the Position
+-- option last. Clicking the bar in edit mode selects its General group (the
+-- mover's configPath).
 function MicroMenu:GetConfigTable()
     -- Getters and setters go through self.config, which a profile change
     -- re-points at the new profile's table.
-    local position = st.Config.generators.position(2, true,
+    local position = st.Config.generators.position(1000, true,
         function(key) return self.config.position[key] end,
         function(key, value)
             self.config.position[key] = value
@@ -269,7 +270,6 @@ function MicroMenu:GetConfigTable()
         end,
         self.Container
     )
-    position.inline = false -- a tree section, not an inline box
     return {
         name = 'Micro Menu',
         type = 'group',
@@ -287,9 +287,9 @@ function MicroMenu:GetConfigTable()
                         name = 'The bar of info buttons and Blizzard\'s micro menu buttons. ' ..
                             'Use the Position section, or drag it in edit mode, to move it.',
                     },
+                    position = position,
                 },
             },
-            position = position,
         },
     }
 end

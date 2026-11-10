@@ -32,7 +32,7 @@ function CHT:GetConfigTable()
 	-- the relative frame is validated against both: ValidateAnchor rejects anchoring
 	-- either to itself, to its children and to anything anchored back to it (e.g.
 	-- ChatFrame1's tabs, edit box and docked chat windows).
-	local position = generators.position(2, true,
+	local position = generators.position(1000, true,
 		function(key) return self.config.position[key] end,
 		function(key, value)
 			self.config.position[key] = value
@@ -40,12 +40,13 @@ function CHT:GetConfigTable()
 		end,
 		self.holder
 	)
-	position.inline = false -- a tree section, not an inline box
-	local validateForHolder = position.args.frame.validate
-	position.args.frame.validate = function(info, name)
-		local ok, err = st:ValidateAnchor(ChatFrame1, name)
-		if not ok then return err end
-		return validateForHolder(info, name)
+	local validateForHolder = position.validate
+	position.validate = function(info, part, value)
+		if part == 'frame' then
+			local ok, err = st:ValidateAnchor(ChatFrame1, value)
+			if not ok then return err end
+		end
+		return validateForHolder(info, part, value)
 	end
 
 	local font = generators.font()
@@ -98,16 +99,15 @@ function CHT:GetConfigTable()
 						name = 'Fade tabs',
 						desc = 'Let the chat tabs fade out. Requires a reload.',
 						type = 'toggle',
-						width = 'full',
 						get = function() return self.config.tabs.fade end,
 						set = function(_, value)
 							self.config.tabs.fade = value
 							st:Print('Reload your UI to apply.')
 						end,
 					},
+					position = position, -- last
 				},
 			},
-			position = position,
 		},
 	}
 end

@@ -66,12 +66,13 @@ function MM:UpdateConfig()
 	UpdateBackdrop(self.config.template)
 end
 
--- The minimap's section in the /sui tree. Clicking the minimap in edit mode
--- selects its General group (the mover's configPath).
+-- The minimap's section in the /sui tree: General, with the Position option
+-- last. Clicking the minimap in edit mode selects its General group (the
+-- mover's configPath).
 function MM:GetConfigTable()
 	-- Getters and setters go through self.config, which a profile change
 	-- re-points at the new profile's table.
-	local position = st.Config.generators.position(2, true,
+	local position = st.Config.generators.position(1000, true,
 		function(key) return self.config.position[key] end,
 		function(key, value)
 			self.config.position[key] = value
@@ -79,7 +80,6 @@ function MM:GetConfigTable()
 		end,
 		Minimap
 	)
-	position.inline = false -- a tree section, not an inline box
 	return {
 		name = 'Minimap',
 		type = 'group',
@@ -99,12 +99,11 @@ function MM:GetConfigTable()
 						name = 'Addon buttons in compartment',
 						desc = 'Move addon minimap buttons into the addon compartment menu. Requires a reload.',
 						type = 'toggle',
-						width = 'full',
 						set = function(info, value) self.config[info[#info]] = value; st:Print('Reload your UI to apply.') end,
 					},
+					position = position,
 				}
 			},
-			position = position,
 		}
 	}
 end

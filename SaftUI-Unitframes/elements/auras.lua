@@ -276,12 +276,11 @@ local function GetConfigTable(unit, aura_type)
 		desc = 'Where in the aura area the first button goes.',
 		type = 'select',
 		values = st.FRAME_ANCHORS,
-		width = 0.75,
 	}
 
-	local relativeSize = generators.toggle(3, 'Relative size', 1)
+	local relativeSize = generators.toggle(3, 'Relative size')
 	relativeSize.desc = "Size is added to the unit frame's height."
-	local onlyShowPlayer = generators.toggle(5, 'Only mine', 1)
+	local onlyShowPlayer = generators.toggle(5, 'Only mine')
 	onlyShowPlayer.desc = 'Only auras you cast.'
 
 	local borderInfo = BORDERS[aura_type]
@@ -290,7 +289,6 @@ local function GetConfigTable(unit, aura_type)
 		name = borderInfo.name,
 		desc = borderInfo.desc,
 		type = 'toggle',
-		width = 1,
 		get = function() return eitherHostility(Config(), borderInfo.key) end,
 		set = function(_, value)
 			local config = Config()
@@ -300,7 +298,7 @@ local function GetConfigTable(unit, aura_type)
 		end,
 	}
 
-	local showCooldown = generators.toggle(0, 'Show', 0.5)
+	local showCooldown = generators.toggle(0, 'Show')
 	showCooldown.desc = 'The swipe over each button.'
 	local showTimer = generators.enable(0)
 	showTimer.desc = 'The time left, as text on each button. Needs the cooldown shown.'
@@ -323,8 +321,8 @@ local function GetConfigTable(unit, aura_type)
 				inline = true,
 				args = {
 					initial_anchor = initialAnchor,
-					grow_right = generators.toggle(2, 'Grow right', 0.6),
-					grow_up = generators.toggle(3, 'Grow up', 0.6),
+					grow_right = generators.toggle(2, 'Grow right'),
+					grow_up = generators.toggle(3, 'Grow up'),
 					per_row = generators.range(4, 'Per row', 1, 40, 1),
 					spacing = generators.range(5, 'Spacing', 0, 30, 1),
 					framelevel = generators.framelevel(6),
@@ -354,7 +352,7 @@ local function GetConfigTable(unit, aura_type)
 			},
 			cooldown = Section(3, 'Cooldown', function() return Config().cooldown end, {
 				enable = NeedsReload(showCooldown),
-				reverse = generators.toggle(1, 'Reverse swipe', 1),
+				reverse = generators.toggle(1, 'Reverse swipe'),
 				alpha = generators.alpha(2),
 				timer = Section(3, 'Timer', function() return Config().cooldown.timer end, {
 					enable = showTimer,

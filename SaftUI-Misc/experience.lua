@@ -71,12 +71,13 @@ function XP:MigratePosition()
 	end
 end
 
--- The experience section in the /sui tree. Clicking the bars in edit mode
--- selects its General group (the mover's configPath).
+-- The experience section in the /sui tree: General, with the Position option
+-- last. Clicking the bars in edit mode selects its General group (the mover's
+-- configPath).
 function XP:GetConfigTable()
 	-- Getters and setters go through self.config, which a profile change
 	-- re-points at the new profile's table.
-	local position = st.Config.generators.position(2, true,
+	local position = st.Config.generators.position(1000, true,
 		function(key)
 			self:MigratePosition()
 			return self.config.position[key]
@@ -87,7 +88,6 @@ function XP:GetConfigTable()
 		end,
 		self.container
 	)
-	position.inline = false -- a tree section, not an inline box
 
 	-- The profile's colors.experience[key]. 'normal' also colors the loot feed's
 	-- experience entries.
@@ -128,9 +128,9 @@ function XP:GetConfigTable()
 					normal_color = Color(6, 'Experience color', 'normal', 'The bar while you have no rested experience.'),
 					rested_color = Color(7, 'Rested color', 'rested',
 						'The bar while you have rested experience, and the rested part past it (at Rested bar alpha).'),
+					position = position,
 				},
 			},
-			position = position,
 		},
 	}
 end

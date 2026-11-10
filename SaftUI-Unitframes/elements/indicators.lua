@@ -22,7 +22,7 @@ local indicators = {
        order = 11,
        desc = 'A corner colored by group role: green for healers, blue for tanks.',
        addOptions = function(args)
-           args.showDps = st.Config.generators.toggle(2, 'Show damage dealers', 1)
+           args.showDps = st.Config.generators.toggle(2, 'Show damage dealers')
            args.showDps.desc = 'Also shows the corner, in red, on damage dealers and on units without a role.'
        end,
        postUpdate = function(self)

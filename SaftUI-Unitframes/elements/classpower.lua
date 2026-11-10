@@ -84,7 +84,7 @@ local function GetConfigTable(unit)
 				inline = true,
 				args = {
 					width = generators.width(1),
-					relative_width = generators.toggle(2, 'Relative', 1),
+					relative_width = generators.toggle(2, 'Relative'),
 					height = generators.height(3),
 				},
 			},

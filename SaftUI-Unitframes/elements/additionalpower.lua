@@ -132,7 +132,7 @@ local function GetConfigTable(unit)
 
 	local enable = generators.enable(0)
 	enable.desc = "Your mana, shown while your power bar shows a power the game pairs with mana (e.g. a shadow priest's insanity)."
-	local colorPower = generators.toggle(6, 'Color by power type', 1)
+	local colorPower = generators.toggle(6, 'Color by power type')
 	colorPower.desc = "Colors the bar and its background with the mana color. Nothing else colors them: with this off they keep the last color they had, white if this was never on."
 
 	return {
@@ -149,11 +149,12 @@ local function GetConfigTable(unit)
 			framelevel = generators.framelevel(1),
 			template = generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
-			reverse_fill = generators.toggle(4, 'Reverse Fill', 1),
-			vertical_fill = generators.toggle(5, 'Vertical Fill', 1),
-			Smooth = generators.toggle(5.5, 'Smooth', 1),
+			reverse_fill = generators.toggle(4, 'Reverse Fill'),
+			vertical_fill = generators.toggle(5, 'Vertical Fill'),
+			Smooth = generators.toggle(5.5, 'Smooth'),
 			colorPower = colorPower,
-			position = generators.uf_element_position(50,
+			-- Last in the tab, after Text and Status Bar BG.
+			position = generators.uf_element_position(1000,
 				function(index) return Config().position[index] end,
 				function(index, value)
 					Config().position[index] = value

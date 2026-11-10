@@ -265,7 +265,7 @@ function STP:GetBarOptions(info, order)
 	-- holder makes a typed frame go through st:ValidateAnchor, which rejects anchoring
 	-- it to itself, to its own bar, or to anything anchored back to it (e.g. the bars
 	-- chained below it).
-	local position = generators.position(2, true,
+	local position = generators.position(1000, true,
 		function(k) return self.config[key].position[k] end,
 		function(k, value)
 			self.config[key].position[k] = value
@@ -273,7 +273,6 @@ function STP:GetBarOptions(info, order)
 		end,
 		self.holders[key]
 	)
-	position.inline = false -- a tree section, not an inline box
 
 	return {
 		name = info.label,
@@ -293,19 +292,20 @@ function STP:GetBarOptions(info, order)
 				args = {
 					width = generators.range(1, 'Width', 50, 1000, 1),
 					height = generators.range(2, 'Height', 4, 80, 1),
-					showtitle = generators.toggle(3, 'Show bar title', 1),
-					showtime = generators.toggle(4, 'Show time', 1),
+					showtitle = generators.toggle(3, 'Show bar title'),
+					showtime = generators.toggle(4, 'Show time'),
 					opacity = generators.range(5, 'Opacity', 0, 1, 0.05),
+					position = position,
 				},
 			},
-			position = position,
 		},
 	}
 end
 
--- The Swing Timer section in the /sui tree: Main Hand, Off Hand and Ranged, each with
--- General and Position. Clicking a bar in edit mode selects its General group (the
--- mover's configPath). Absent until the bars exist, so never shown on retail.
+-- The Swing Timer section in the /sui tree: Main Hand, Off Hand and Ranged, each a
+-- General group with the Position option last. Clicking a bar in edit mode selects its
+-- General group (the mover's configPath). Absent until the bars exist, so never shown on
+-- retail.
 function STP:GetConfigTable()
 	if not self.holders then return end
 	local args = {}

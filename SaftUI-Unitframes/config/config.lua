@@ -166,9 +166,9 @@ function UF.GenerateRelativeSizeConfigGroup(order)
 		inline = true,
 		args = {
 			width =  st.Config.generators.width(1),
-			relative_width =  st.Config.generators.toggle(2, 'Relative', 1),
+			relative_width =  st.Config.generators.toggle(2, 'Relative'),
 			height =  st.Config.generators.height(3),
-			relative_height =  st.Config.generators.toggle(4, 'Relative', 1),
+			relative_height =  st.Config.generators.toggle(4, 'Relative'),
 		},
 	}
 end
@@ -183,7 +183,7 @@ function UF:OpenCopyTable(unit)
 	local settingArgs = {}
 	for key in pairs(self:GetProfileConfig()[unit]) do
 		copy.settings[key] = false
-		settingArgs[key] = st.Config.generators.toggle(0, key, 0.7)
+		settingArgs[key] = st.Config.generators.toggle(0, key)
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
@@ -197,7 +197,6 @@ function UF:OpenCopyTable(unit)
 				order = 0,
 				name = 'Copy from',
 				type = 'select',
-				width = 'full',
 				values = function()
 					local units = {}
 					-- The current profile's, in case the profile changed since opening
@@ -215,14 +214,12 @@ function UF:OpenCopyTable(unit)
 				order = 1,
 				name = 'All',
 				type = 'execute',
-				width = 0.5,
 				func = function() SetAll(true) end,
 			},
 			toggle_none = {
 				order = 1,
 				name = 'None',
 				type = 'execute',
-				width = 0.5,
 				func = function() SetAll(false) end,
 			},
 			settings = {
@@ -300,7 +297,6 @@ local function GetGroupLayoutConfig(unit, order)
 			name = 'Test mode',
 			desc = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
 			type = 'toggle',
-			width = 'full',
 			-- Not a config value: a plain module field, never saved.
 			get = function() return UF.testGroups[unit] and true or false end,
 			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
@@ -311,7 +307,6 @@ local function GetGroupLayoutConfig(unit, order)
 			desc = 'Which way each frame follows the one before it.',
 			type = 'select',
 			values = GROWTH_DIRECTIONS,
-			width = 0.75,
 		},
 		spacing = st.Config.generators.range(2, 'Spacing', 0, 50, 1),
 		unitsPerColumn = st.Config.generators.range(3, 'Units per column', 1, 40, 1),
@@ -321,13 +316,12 @@ local function GetGroupLayoutConfig(unit, order)
 			desc = 'Which way each new column follows the one before it. A column runs the way the frames grow, so it is a row when they grow sideways.',
 			type = 'select',
 			values = GROWTH_DIRECTIONS,
-			width = 0.75,
 		},
 		columnSpacing = st.Config.generators.range(5, 'Column spacing', 0, 50, 1),
 		maxColumns = st.Config.generators.range(6, 'Max columns', 1, 40, 1),
 	}
 	if unit == 'party' then
-		args.showPlayer = st.Config.generators.toggle(7, 'Show player', 1)
+		args.showPlayer = st.Config.generators.toggle(7, 'Show player')
 	end
 	return {
 		order = order,
@@ -384,7 +378,6 @@ function UF:GetConfigTable()
 						order = 2,
 						type = 'execute',
 						name = 'New',
-						width = 0.5,
 						func = function()
 							PromptNewProfile(false)
 						end,
@@ -393,7 +386,6 @@ function UF:GetConfigTable()
 						order = 3,
 						type = 'execute',
 						name = 'Copy',
-						width = 0.5,
 						func = function()
 							PromptNewProfile(true)
 						end,
@@ -402,7 +394,6 @@ function UF:GetConfigTable()
 						order = 4,
 						type = 'execute',
 						name = 'Delete',
-						width = 0.5,
 						func = function()
 							if get_num_profiles() > 1 then
 								ConfirmDeleteProfile()
@@ -413,7 +404,6 @@ function UF:GetConfigTable()
 						order = 5,
 						type = 'execute',
 						name = 'Rename',
-						width = 0.5,
 						func = function()
 							PromptRenameProfile()
 						end,
@@ -422,7 +412,6 @@ function UF:GetConfigTable()
 						order = 6,
 						type = 'execute',
 						name = 'Export',
-						width = 0.5,
 						func = function()
 							PromptExportProfile()
 						end
@@ -431,7 +420,6 @@ function UF:GetConfigTable()
 						order = 6,
 						type = 'execute',
 						name = 'Import',
-						width = 0.5,
 						func = function()
 							PromptImportProfile()
 						end
@@ -493,7 +481,8 @@ function UF:GetConfigTable()
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
 						-- anything anchored back to it (e.g. Pet for Player).
-						position = st.Config.generators.position(5, true, frame_position_get, frame_position_set,
+						-- Last in General, after a group's Layout too.
+						position = st.Config.generators.position(1000, true, frame_position_get, frame_position_set,
 							self:GetMoverFrame(unit)),
 					}
 				}

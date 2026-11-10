@@ -18,6 +18,9 @@
 --     needs oUF, so the units have no element tabs here.
 --   * UF.unit_strings and UF.group_strings, empty: unitframes.lua's name the
 --     units (Player, Raid 10, ...), and without them a unit is named by its key.
+--
+-- AceConfigRegistry validates ace_ready (tests/core/options_walk.lua) of the
+-- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
 apply_defaults()
@@ -26,6 +29,7 @@ load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionswidgets.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_saftui('SaftUI-Core/Config/optionswindow.lua')
+load_test_file('core/options_walk.lua')
 
 local st = SaftUI
 local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
@@ -159,12 +163,12 @@ test('the unit picker lists the units in a fixed order, Player first, and Profil
 	eq(view.picker.selected, 'player', 'the page opens on Player')
 end)
 
-test("the unit frames' table passes AceConfigRegistry validation, category aside", function()
-	local copy = {}
-	for k, v in pairs(UF:GetConfigTable()) do copy[k] = v end
-	check(copy.category ~= nil, 'it has a category')
-	copy.category = nil
+test("the unit frames' table passes AceConfigRegistry validation, SaftUI's fields aside", function()
+	local config = UF:GetConfigTable()
+	check(config.category ~= nil, 'it has a category')
+	eq(config.args.player.args.general.args.position.type, 'position', 'and Position options')
 	local ok, err = pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
-		{ name = st.name, type = 'group', args = { Unitframes = copy } }, st.name)
+		ace_ready({ name = st.name, type = 'group', args = { Unitframes = config } }), st.name)
 	check(ok, 'valid: ' .. tostring(err))
+	check(config.category ~= nil, 'the table itself keeps its category')
 end)

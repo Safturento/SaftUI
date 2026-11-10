@@ -6,7 +6,7 @@
 --
 -- Synthetic option tables pin each rule. Then the real tree that Core's real
 -- Config/config.lua builds (config_helpers.lua): SaftUI-Misc/experience.lua's
--- page, with the Position box config.lua merges into its General tab, and
+-- page, with its Position option last in its General tab, and
 -- AceDBOptions-3.0's profiles table on a real AceDB-3.0.
 
 -- First, in the bare shell: the model needs nothing but SaftUI.
@@ -667,29 +667,29 @@ end)
 
 ------------------------------------------------------------------ the real tree
 
-test('Experience on the real tree: the General page with its rows, and the Position box config.lua merged into it', function()
+test('Experience on the real tree: the General page with its rows, then its Position option', function()
 	local root = st.Config:GetOptionsTable()
 	eq(keys(OM.Pages(root)), 'Fonts,EditMode,Experience,profile', "the real tree's pages; topmenu left out")
 	local view = OM.BuildView(root, 'Experience')
 	eq(view.title, 'Experience', 'title')
-	eq(keys(view.tabs), 'general', 'Position was merged into General, so General is the only tab')
+	eq(keys(view.tabs), 'general', 'Position is in General, so General is the only tab')
 	eq(view.tab, 'general', 'and selected')
-	eq(layout(view), '-:template,width,height,spacing,rest_alpha,normal_color,rested_color|Position:point,frame,rel_point,x_off,y_off',
-		"General's rows, then the Position box as a section")
+	eq(layout(view), '-:template,width,height,spacing,rest_alpha,normal_color,rested_color|Position:position',
+		"General's rows, then the Position option in a section of its own")
 	local config = st.config.profile.experience
 	local width = row(view, 'width')
 	eq(OM.Get(root, width), config.width, "General's get reads the profile")
 	eq(OM.Set(root, width, 300), true, 'a set')
 	eq(config.width, 300, "General's set writes the profile")
 	eq(XP.container:GetWidth(), 300, 'and the bar updates')
-	local x = row(view, 'x_off')
-	eq(OM.Get(root, x), tostring(config.position.x_off), "Position's own get, inherited by its options")
-	local ok, err = OM.Set(root, x, 'left')
-	check(ok == false and err == 'X Offset: Expected ^%-?%d+%.?%d*$', "the offset's pattern")
-	eq(OM.Set(root, x, '12'), true, 'a number')
-	eq(config.position.x_off, 12, 'is stored as one')
-	ok, err = OM.Set(root, row(view, 'frame'), 'NoSuchFrame')
-	check(ok == false and err == "Frame doesn't exist", "the Frame input's validate (st:ValidateAnchor)")
+	local pos = row(view, 'position')
+	eq(pos.type, 'position', 'one Position row')
+	eq(OM.Get(root, pos, 'point'), config.position.point, "Position's own get, the part first")
+	eq(OM.Get(root, pos, 'x_off'), tonumber(config.position.x_off) or 0, 'an offset as a number')
+	eq(OM.Set(root, pos, 'x_off', 12), true, 'a set, the part first')
+	eq(config.position.x_off, 12, 'is stored as a number')
+	local ok, err = OM.Set(root, pos, 'frame', 'NoSuchFrame')
+	check(ok == false and err == "Frame doesn't exist", "a typed frame goes through its validate (st:ValidateAnchor)")
 	local rested = st.config.profile.colors.experience.rested
 	local r, g, b = OM.Get(root, row(view, 'rested_color'))
 	check(r == rested.r and g == rested.g and b == rested.b, 'a color option reads r, g, b')

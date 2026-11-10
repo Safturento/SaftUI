@@ -109,10 +109,11 @@ local function GetConfigTable(unit)
 			framelevel = st.Config.generators.framelevel(1),
 			template = st.Config.generators.template(2),
 			size = UF.GenerateRelativeSizeConfigGroup(3),
-			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill', 1),
-			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill', 1),
-			Smooth = st.Config.generators.toggle(5.5, 'Smooth', 1),
-			position = st.Config.generators.uf_element_position(50,
+			reverse_fill = st.Config.generators.toggle(4, 'Reverse Fill'),
+			vertical_fill = st.Config.generators.toggle(5, 'Vertical Fill'),
+			Smooth = st.Config.generators.toggle(5.5, 'Smooth'),
+			-- Last in the tab, after Text and Status Bar BG.
+			position = st.Config.generators.uf_element_position(1000,
 				function(index)
 					return UnitConfig().health.position[index]
 				end,
@@ -137,7 +138,8 @@ local function GetConfigTable(unit)
 				args = {
 					enable = st.Config.generators.enable(0),
 					font = st.Config.generators.font(1),
-					position = st.Config.generators.uf_element_position(2,
+					-- Last in Text.
+					position = st.Config.generators.uf_element_position(1000,
 					function(index) return
 						UnitConfig().health.text.position[index]
 					end,

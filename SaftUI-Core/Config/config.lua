@@ -161,6 +161,8 @@ end
 -- `general` and a `position` subgroup gets the position shown as a box at the
 -- end of General instead of as its own tab or sidebar entry. Its own get/set
 -- travel with it, and edit mode's configPath (ending at `general`) still works.
+-- Only a `position` group moves: the generators' Position is an option, not a
+-- group, and modules put it last in General themselves.
 local function MergePositionIntoGeneral(group)
 	if type(group) ~= 'table' or type(group.args) ~= 'table' then return end
 	local general, position = group.args.general, group.args.position

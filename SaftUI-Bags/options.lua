@@ -3,26 +3,25 @@ local INV = st:GetModule('Inventory')
 
 local generators = st.Config.generators
 
--- One window's section in the /sui tree: General (its layout) and Position.
--- Clicking the window's outline in edit mode selects its General group (the
--- mover's configPath).
+-- One window's section in the /sui tree: General (its layout, then its
+-- Position). Clicking the window's outline in edit mode selects its General
+-- group (the mover's configPath).
 local function BuildWindow(id, order)
 	-- Getters and setters go through INV.config, which a profile change
 	-- re-points at the new profile's table.
-	local position = generators.position(2, true,
-		function(key) return INV.config[id].position[key] end,
-		function(key, value)
-			INV.config[id].position[key] = value
-			INV:ApplyPosition(id)
-		end,
-		INV:GetAnchor(id)
-	)
-	position.inline = false -- a tree section, not an inline box
-
 	local general = {
 		perrow = generators.range(1, 'Items per row', 1, 12, 1),
 		maxRows = generators.range(2, 'Max rows', 1, 40, 1),
 		maxColumns = generators.range(3, 'Max columns', 1, 8, 1),
+		-- Last in General.
+		position = generators.position(1000, true,
+			function(key) return INV.config[id].position[key] end,
+			function(key, value)
+				INV.config[id].position[key] = value
+				INV:ApplyPosition(id)
+			end,
+			INV:GetAnchor(id)
+		),
 	}
 	-- Free bag slots as a category: the bag window only, the banks have none.
 	-- There is no select generator; sorting keeps the dropdown in this order.
@@ -57,7 +56,6 @@ local function BuildWindow(id, order)
 				end,
 				args = general,
 			},
-			position = position,
 		},
 	}
 end
@@ -85,7 +83,6 @@ function INV:GetConfigTable()
 					desc = 'Show stacks of the same item as one slot with their total count. Items in the reagent bag are merged separately from the same item in your other bags.',
 					type = 'toggle',
 					order = 1,
-					width = 'full',
 				},
 			},
 		},

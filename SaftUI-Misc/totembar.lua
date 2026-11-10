@@ -663,13 +663,13 @@ function TB:OnEnable()
 end
 
 -- The Totem Bar section in the /sui tree. Absent until the bar exists, so never shown
--- on retail. On a shaman it's General (these options, with Position merged in at the end
--- by Config:GetOptionsTable), the leaf group the edit mode mover's configPath opens. On
--- other classes the bar has no mover, and the section is these options alone.
+-- on retail. On a shaman it's General (these options, then the Position option), the
+-- leaf group the edit mode mover's configPath opens. On other classes the bar has no
+-- mover, and the section is these options alone.
 function TB:GetConfigTable()
 	if not self.bar then return end
 
-	local hide = st.Config.generators.toggle(1, 'Hide totem bar', 'full')
+	local hide = st.Config.generators.toggle(1, 'Hide totem bar')
 	hide.desc = "Hides Blizzard's totem bar. Turning this off shows it again whenever Blizzard would show it. If the bar is on screen when you change this, it applies after a /reload."
 
 	-- The bar's buttons (TB:ApplyButtonLayout). /sui doesn't open in combat, so these
@@ -680,9 +680,9 @@ function TB:GetConfigTable()
 	buttonSpacing.desc = 'The gap between buttons.'
 
 	-- The totem timers above the element buttons (totemtimers.lua).
-	local timerBar = st.Config.generators.toggle(4, 'Show timer bar', 'full')
+	local timerBar = st.Config.generators.toggle(4, 'Show timer bar')
 	timerBar.desc = "A bar above each element button that drains, in the element's colour, as that element's totem runs out. It turns red in the last 10 seconds."
-	local timerText = st.Config.generators.toggle(5, 'Show timer text', 'full')
+	local timerText = st.Config.generators.toggle(5, 'Show timer text')
 	timerText.desc = "How long each element's totem has left, above its button. It turns red in the last 10 seconds."
 
 	-- Text alone sits just above the button either way, so this only matters with both on.
@@ -743,9 +743,9 @@ function TB:GetConfigTable()
 		return general
 	end
 
-	-- The holder's position (TB:ApplyHolder). A change saves the table GetPosition hands
-	-- out, so a first change from the waiting spot saves a position too.
-	local position = st.Config.generators.position(2, true,
+	-- The holder's position (TB:ApplyHolder), last in General. A change saves the table
+	-- GetPosition hands out, so a first change from the waiting spot saves a position too.
+	local position = st.Config.generators.position(1000, true,
 		function(key) return self:GetPosition()[key] end,
 		function(key, value)
 			local pos = self:GetPosition()
@@ -760,17 +760,18 @@ function TB:GetConfigTable()
 	-- well as by st:ValidateAnchor's walk of the anchors: the bar itself is never anchored
 	-- to the holder, and until the profile has a position the buttons aren't either, so the
 	-- walk can't see either coming.
-	local validate = position.args.frame.validate
-	position.args.frame.validate = function(info, name)
-		local frame = st:ResolveFrame(name)
+	local validate = position.validate
+	position.validate = function(info, part, value)
+		local frame = part == 'frame' and st:ResolveFrame(value)
 		while frame do
 			if frame == self.bar then
 				return "The totem bar's position can't be anchored to the totem bar or its buttons."
 			end
 			frame = frame.GetParent and frame:GetParent()
 		end
-		return validate(info, name)
+		return validate(info, part, value)
 	end
+	general.args.position = position
 
 	return {
 		name = 'Totem Bar',
@@ -778,7 +779,6 @@ function TB:GetConfigTable()
 		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
 		args = {
 			general = general,
-			position = position,
 		},
 	}
 end

@@ -11,7 +11,6 @@ local function TestModeToggle(desc, field, setter)
 		name = 'Test mode',
 		desc = desc,
 		type = 'toggle',
-		width = 'full',
 		get = function() return LT[field] and true or false end,
 		set = function(_, value) setter(LT, value) end,
 	}
@@ -37,8 +36,9 @@ end
 -- requirement). Passing `target` makes the typed frame go through
 -- st:ValidateAnchor, which rejects anchoring to the target itself, to anything
 -- whose anchors lead back to it (the roll frames) and to its own children.
+-- Section puts it last in General.
 local function BuildPosition(config_key, target, apply)
-	return generators.position(2, true,
+	return generators.position(1000, true,
 		function(key) return LT.config[config_key].position[key] end,
 		function(key, value)
 			LT.config[config_key].position[key] = value
@@ -48,15 +48,15 @@ local function BuildPosition(config_key, target, apply)
 	)
 end
 
+-- A loot mover's section: its General group, with the Position option last.
 local function Section(name, order, general, position)
-	position.inline = false -- a tree section, not an inline box
+	general.args.position = position
 	return {
 		name = name,
 		type = 'group',
 		order = order,
 		args = {
 			general = general,
-			position = position,
 		}
 	}
 end
@@ -81,7 +81,6 @@ function LT:GetRollOptions()
 			name = 'Grow down',
 			desc = 'Stack new rolls downward from the anchor instead of upward.',
 			type = 'toggle',
-			width = 'full',
 		},
 	}, apply)
 
@@ -119,10 +118,10 @@ function LT:GetFeedOptions()
 	return Section('Feed', 2, general, BuildPosition('feed', LT.feed, apply))
 end
 
--- Loot's section in the /sui tree: Rolls and Feed, each with General and
--- Position. Clicking either frame in edit mode selects its General group (the
--- mover's configPath). A section is only there once its frame exists (the
--- roll frames need GroupLootContainer).
+-- Loot's section in the /sui tree: Rolls and Feed, each a General group with
+-- the Position option last. Clicking either frame in edit mode selects its
+-- General group (the mover's configPath). A section is only there once its
+-- frame exists (the roll frames need GroupLootContainer).
 function LT:GetConfigTable()
 	local args = {}
 	if self.rollAnchor then args.roll = self:GetRollOptions() end

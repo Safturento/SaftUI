@@ -653,15 +653,13 @@ function AP:GetTextOptions(key, kind, name, order)
 				type = 'select',
 				dialogControl = 'LSM30_Font',
 				values = st.LSM:HashTable('font'),
-				width = 0.75,
 			},
-			size = generators.range(2, 'Size', 6, 40, 1, 0.75),
+			size = generators.range(2, 'Size', 6, 40, 1),
 			outline = {
 				order = 3,
 				name = 'Outline',
 				type = 'select',
 				values = fontsModule and fontsModule.outlines or { NONE = 'None', OUTLINE = 'Outline' },
-				width = 0.75,
 			},
 			point = {
 				order = 4,
@@ -669,7 +667,6 @@ function AP:GetTextOptions(key, kind, name, order)
 				desc = 'The point of the text that is anchored.',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 0.75,
 			},
 			rel_point = {
 				order = 5,
@@ -677,10 +674,9 @@ function AP:GetTextOptions(key, kind, name, order)
 				desc = 'The point of the icon the text is anchored to.',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 0.75,
 			},
-			x_off = generators.range(6, 'X offset', -50, 50, 1, 0.75),
-			y_off = generators.range(7, 'Y offset', -50, 50, 1, 0.75),
+			x_off = generators.range(6, 'X offset', -50, 50, 1),
+			y_off = generators.range(7, 'Y offset', -50, 50, 1),
 		},
 	}
 end
@@ -692,8 +688,9 @@ function AP:GetFrameOptions(info, order)
 
 	-- Every SetPoint parameter is editable, the relative frame included. Passing the
 	-- holder makes a typed frame go through st:ValidateAnchor, which rejects anchoring it
-	-- to itself, to its own Blizzard frame, or to anything anchored back to it.
-	local position = generators.position(3, true,
+	-- to itself, to its own Blizzard frame, or to anything anchored back to it. Last
+	-- in General.
+	local position = generators.position(1000, true,
 		function(k) return self.config[key].position[k] end,
 		function(k, value)
 			self.config[key].position[k] = value
@@ -701,7 +698,6 @@ function AP:GetFrameOptions(info, order)
 		end,
 		self.holders[key]
 	)
-	position.inline = false -- a tree section, not an inline box
 
 	local perrow = generators.range(6, 'Icons per row', 1, buttons, 1)
 	perrow.name = function()
@@ -747,7 +743,6 @@ function AP:GetFrameOptions(info, order)
 						desc = 'The direction icons are added in.',
 						type = 'select',
 						values = GROW_VALUES,
-						width = 0.75,
 					},
 					wrap = {
 						order = 5,
@@ -757,10 +752,10 @@ function AP:GetFrameOptions(info, order)
 						values = function()
 							return self:GetGeometry(key).horizontal and WRAP_VALUES.horizontal or WRAP_VALUES.vertical
 						end,
-						width = 0.75,
 					},
 					perrow = perrow,
 					max = max,
+					position = position,
 				},
 			},
 			text = {
@@ -772,14 +767,13 @@ function AP:GetFrameOptions(info, order)
 					count = self:GetTextOptions(key, 'count', 'Stack count', 2),
 				},
 			},
-			position = position,
 		},
 	}
 end
 
--- The Auras section in the /sui tree: Buffs and Debuffs, each with General, Text and
--- Position. Clicking a frame in edit mode selects its General group (the mover's
--- configPath). Absent until Blizzard's frames exist.
+-- The Auras section in the /sui tree: Buffs and Debuffs, each with General (the
+-- Position option last) and Text. Clicking a frame in edit mode selects its General
+-- group (the mover's configPath). Absent until Blizzard's frames exist.
 function AP:GetConfigTable()
 	if not self.holders then return end
 	local args = {}

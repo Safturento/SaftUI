@@ -81,24 +81,25 @@ function FN:GetConfigTable()
 				name = {
 					order = 1,
 					name = 'Name',
+					desc = "What this font is called in the Font lists of SaftUI's settings.",
 					type = 'input',
-					width = 0.75,
 				},
 				font_name = {
 					order = 2,
 					type = 'select',
 					dialogControl = 'LSM30_Font',
 					name = 'Font Name',
+					desc = 'The typeface of every text that uses this font.',
 					values = st.LSM:HashTable("font"),
-					width = 0.75,
 				},
-				font_size = st.Config.generators.range(3, 'Font Size', 1, 100, 1),
+				font_size = st.Config.generators.range(3, 'Font Size', 1, 100, 1,
+					'How big every text that uses this font is.'),
 				font_outline = {
 					order = 4,
 					type = 'select',
 					name = 'Font Outline',
+					desc = 'The outline around the letters of every text that uses this font.',
 					values = FN.outlines,
-					width = 0.75,
 				}
 			},
 		}

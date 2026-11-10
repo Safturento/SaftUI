@@ -87,10 +87,14 @@ function EM:GetConfigTable()
 					self:UpdateFooterToggles()
 				end,
 				args = {
-					grid = generators.toggle(1, 'Show grid'),
-					grid_size = generators.range(2, 'Grid size', MIN_GRID_SIZE, MAX_GRID_SIZE, 1),
-					snap_grid = generators.toggle(3, 'Snap to grid'),
-					snap_frames = generators.toggle(4, 'Snap to frames'),
+					grid = generators.toggle(1, 'Show grid',
+						"Draws a grid over the screen while edit mode is on, centered on the screen's middle."),
+					grid_size = generators.range(2, 'Grid size', MIN_GRID_SIZE, MAX_GRID_SIZE, 1,
+						"The gap between the grid's lines. Edit mode's - and + buttons change it too."),
+					snap_grid = generators.toggle(3, 'Snap to grid',
+						"A frame you drag in edit mode snaps to the grid's lines, shown or not."),
+					snap_frames = generators.toggle(4, 'Snap to frames',
+						"A frame you drag in edit mode snaps to the edges and middles of the other frames on screen, and to the screen's middle."),
 				},
 			},
 		},

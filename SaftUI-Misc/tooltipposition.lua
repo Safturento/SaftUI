@@ -173,15 +173,14 @@ function TT:SetupTooltipPosition()
 	})
 end
 
--- The Tooltip section in /sui: General (the snap settings, with Position merged
--- in at the end by Config:GetOptionsTable).
+-- The Tooltip section in /sui: General (the snap settings, then the Position
+-- option).
 function TT:GetConfigTable()
 	if not self.tooltipHolder then return end
 	local generators = st.Config.generators
 
 	local function Toggle(order, name, desc, available)
-		local option = generators.toggle(order, name, 'full')
-		option.desc = desc
+		local option = generators.toggle(order, name, desc)
 		option.hidden = function() return not available() end
 		return option
 	end
@@ -196,7 +195,7 @@ function TT:GetConfigTable()
 
 	-- The tooltip anchors to its container, and the container to this holder:
 	-- either as the holder's frame would be a loop.
-	local position = generators.position(2, true,
+	local position = generators.position(1000, true,
 		function(key) return self.config.position[key] end,
 		function(key, value)
 			self.config.position[key] = value
@@ -204,12 +203,12 @@ function TT:GetConfigTable()
 		end,
 		function() return self.tooltipHolder end
 	)
-	local validate = position.args.frame.validate
-	position.args.frame.validate = function(info, name)
-		if name == 'GameTooltip' or name == 'GameTooltipDefaultContainer' then
+	local validate = position.validate
+	position.validate = function(info, part, value)
+		if part == 'frame' and (value == 'GameTooltip' or value == 'GameTooltipDefaultContainer') then
 			return "The tooltip's position can't be anchored to the tooltip itself."
 		end
-		return validate(info, name)
+		return validate(info, part, value)
 	end
 
 	return {
@@ -231,9 +230,9 @@ function TT:GetConfigTable()
 						'While the bag window is open, the tooltip shows to its left.', HasBags),
 					attach_to_feed = Toggle(2, 'Next to the loot feed',
 						'While the loot feed shows entries, the tooltip shows to its left. The bag window comes first.', HasFeed),
+					position = position,
 				},
 			},
-			position = position,
 		},
 	}
 end

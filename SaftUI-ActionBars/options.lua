@@ -22,10 +22,9 @@ local AB = st:GetModule('ActionBars')
 
 	/sui -> Action Bars has one section per bar, each with tabs:
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
-	    button size and spacing, and the Position box (Config:GetOptionsTable
-	    moves the position group into General). The relative frame typed there
-	    goes through st:ValidateAnchor with the bar, so a bar can't be anchored
-	    to itself, its own buttons, or a bar anchored to it.
+	    button size and spacing, and the Position option, last. The relative
+	    frame typed there goes through st:ValidateAnchor with the bar, so a bar
+	    can't be anchored to itself, its own buttons, or a bar anchored to it.
 	  - Text: the hotkey, stack count and macro name, each with show, font, size,
 	    outline, the text's point and the button's, and x / y offsets. The pet
 	    and stance bars only have the hotkey (AB.barTypes texts).
@@ -33,7 +32,7 @@ local AB = st:GetModule('ActionBars')
 	    faded.
 	Then one section per extra button, with General: Scale for Blizzard's extra
 	action button and zone ability, Size for SaftUI's leave vehicle button, and
-	the Position box.
+	the Position option.
 	Every option applies at once through AB:UpdateBar (bars.lua) or
 	AB:LayoutExtra (extras.lua). /sui can't be open in combat, so none of this
 	runs in combat lockdown; a profile switch in combat waits for the end of
@@ -161,22 +160,20 @@ function AB:GetTextOptions(id, kind, name, order)
 			self:UpdateBar(id)
 		end,
 		args = {
-			show = generators.toggle(1, 'Show', 'full'),
+			show = generators.toggle(1, 'Show'),
 			font = {
 				order = 2,
 				name = 'Font',
 				type = 'select',
 				dialogControl = 'LSM30_Font',
 				values = st.LSM:HashTable('font'),
-				width = 0.75,
 			},
-			size = generators.range(3, 'Size', 6, 32, 1, 0.75),
+			size = generators.range(3, 'Size', 6, 32, 1),
 			outline = {
 				order = 4,
 				name = 'Outline',
 				type = 'select',
 				values = OutlineValues(),
-				width = 0.75,
 			},
 			point = {
 				order = 5,
@@ -184,7 +181,6 @@ function AB:GetTextOptions(id, kind, name, order)
 				desc = 'The point of the text that is anchored.',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 0.75,
 			},
 			rel_point = {
 				order = 6,
@@ -192,15 +188,14 @@ function AB:GetTextOptions(id, kind, name, order)
 				desc = 'The point of the button the text is anchored to.',
 				type = 'select',
 				values = st.FRAME_ANCHORS,
-				width = 0.75,
 			},
-			x_off = generators.range(7, 'X offset', -50, 50, 1, 0.75),
-			y_off = generators.range(8, 'Y offset', -50, 50, 1, 0.75),
+			x_off = generators.range(7, 'X offset', -50, 50, 1),
+			y_off = generators.range(8, 'Y offset', -50, 50, 1),
 		},
 	}
 end
 
--- One bar's section: General (with Position), Text and Visibility tabs. The
+-- One bar's section: General (Position last), Text and Visibility tabs. The
 -- ranges go up to the bar's own number of buttons, and the Text tab has the
 -- texts its buttons use.
 function AB:GetBarOptions(id, order)
@@ -225,8 +220,8 @@ function AB:GetBarOptions(id, order)
 	end
 
 	-- Every SetPoint parameter is editable, the relative frame included. Passing
-	-- the bar makes a typed frame go through st:ValidateAnchor.
-	local position = generators.position(10, true,
+	-- the bar makes a typed frame go through st:ValidateAnchor. Last in General.
+	local position = generators.position(1000, true,
 		function(key) return self.config[id].position[key] end,
 		function(key, value)
 			self.config[id].position[key] = value
@@ -237,7 +232,6 @@ function AB:GetBarOptions(id, order)
 
 	local enable = generators.enable(1)
 	enable.desc = 'A disabled bar is hidden and its keys do nothing.'
-	enable.width = 'full'
 
 	local buttons = generators.range(2, 'Buttons', 1, numButtons, 1)
 	buttons.desc = ('How many of the bar\'s %d buttons it shows. The keys of the others do nothing.'):format(numButtons)
@@ -275,6 +269,7 @@ function AB:GetBarOptions(id, order)
 					perrow = perrow,
 					size = size,
 					spacing = spacing,
+					position = position,
 				},
 			},
 			text = {
@@ -297,18 +292,16 @@ function AB:GetBarOptions(id, order)
 						type = 'select',
 						values = VISIBILITY_VALUES,
 						sorting = VISIBILITY_ORDER,
-						width = 1.25,
 					},
 					fade_alpha = fade,
 				},
 			},
-			position = position,
 		},
 	}
 end
 
--- One extra button's section: General with its Scale or Size, and the Position
--- box (Config:GetOptionsTable moves it into General).
+-- One extra button's section: General with its Scale or Size, then the
+-- Position option.
 function AB:GetExtraOptions(id, order)
 	local generators = st.Config.generators
 
@@ -325,7 +318,7 @@ function AB:GetExtraOptions(id, order)
 	-- Every SetPoint parameter is editable, the relative frame included. Passing
 	-- the holder makes a typed frame go through st:ValidateAnchor, which rejects
 	-- what's anchored to the holder (the extra action button) too.
-	local position = generators.position(10, true,
+	local position = generators.position(1000, true,
 		function(key) return self.config[id].position[key] end,
 		function(key, value)
 			self.config[id].position[key] = value
@@ -350,9 +343,9 @@ function AB:GetExtraOptions(id, order)
 				end,
 				args = {
 					[SCALED_EXTRAS[id] and 'scale' or 'size'] = size,
+					position = position,
 				},
 			},
-			position = position,
 		},
 	}
 end

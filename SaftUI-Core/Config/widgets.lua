@@ -43,6 +43,12 @@ function st.Config:GetFontObjects()
 	return font_objects
 end
 
+--[[
+	Generators for SaftUI's option tables. Each returns a fresh option. desc is
+	its tooltip; size ('small' or 'wide', where a generator takes one) is how
+	much of a line SaftUI's options window gives it, and no size is a half.
+	They set no Ace width: the window doesn't read it.
+]]
 local generators = {}
 st.Config.generators = generators
 
@@ -55,104 +61,97 @@ local function ResolveTarget(target)
 	return target
 end
 
-function generators.position(order, global_frame, get, set, target)
-	local table = {
+local POSITION_DESC = "Where this sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+
+--[[
+	The Position option: one option for every SetPoint parameter, drawn by the
+	options window's Position block (type 'position', optionswidgets.lua). Its
+	get, set and validate take the part first: 'point', 'rel_point', 'x_off',
+	'y_off', and with global_frame 'frame', the name of the frame it's placed
+	on (the block's TO part, a name box: target = 'name').
+
+	get and set are the caller's: get(key) and set(key, value) functions, or a
+	table read and written by key (then set is nil). The keys are the parts', as
+	the profile stores a position. Offsets read as numbers (a profile can hold
+	"-6") and are stored as numbers rounded to the pixel.
+
+	target is the frame being placed, or a function returning it (nil while it
+	doesn't exist). A typed frame name must be a frame, and with a target it
+	goes through st:ValidateAnchor, which rejects the target itself, its own
+	children and anything anchored back to it.
+
+	In a mover's section the option goes last in its General group, after every
+	other option there: the window gives it a section of its own, and options
+	after it would follow on untitled.
+]]
+function generators.position(order, global_frame, get, set, target, desc)
+	local function Read(key)
+		if type(get) == 'function' then
+			return get(key)
+		end
+		return get[key]
+	end
+	local function Write(key, value)
+		if set then
+			set(key, value)
+		else
+			get[key] = value
+		end
+	end
+
+	return {
 		order = order or 0,
 		name = 'Position',
-		type = 'group',
-		inline = true,
-		get = function(info)
-			local key = info[#info]
-			local value
-			if type(get) == 'function' then
-				value = get(key)
-			else
-				value = get[key]
-			end
-			if key == 'x_off' or key == 'y_off' then
-				return tostring(value or 0)
+		desc = desc or POSITION_DESC,
+		type = 'position',
+		target = global_frame and 'name' or nil,
+		get = function(info, part)
+			local value = Read(part)
+			if part == 'x_off' or part == 'y_off' then
+				return tonumber(value) or 0
 			end
 			return value
 		end,
-		set = function(info, value)
-			local key = info[#info]
-			if key == 'x_off' or key == 'y_off' then
+		set = function(info, part, value)
+			if part == 'x_off' or part == 'y_off' then
 				value = tonumber(st:RoundToPixel(tonumber(value) or 0))
 			end
-			if set then
-				set(key, value)
-			else
-				get[key] = value
-			end
+			Write(part, value)
 		end,
-		args = {
-			point = {
-				order = 1,
-				name = 'Anchor',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-				width = 0.65,
-			},
-			rel_point = {
-				order = 4,
-				name = 'Relative',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-				width = 0.65,
-			},
-			x_off = {
-				order = 5,
-				name = 'X Offset',
-				type = 'input',
-				pattern = '^%-?%d+%.?%d*$',
-				width = 0.4
-			},
-			y_off = {
-				order = 6,
-				name = 'Y Offset',
-				type = 'input',
-				pattern = '^%-?%d+%.?%d*$',
-				width = 0.4
-			},
-		}
-	}
-
-	if global_frame then
-		table.args.frame = {
-			order = 3,
-			name = 'Frame',
-			type = 'input',
-			validate = function(info, name)
-				local frame = ResolveTarget(target)
-				if frame then
-					local ok, err = st:ValidateAnchor(frame, name)
-					return ok or err
-				end
-				return _G[name] and true or "Frame doesn't exist"
+		validate = function(info, part, value)
+			if part ~= 'frame' or not global_frame then return true end
+			local frame = ResolveTarget(target)
+			if frame then
+				local ok, err = st:ValidateAnchor(frame, value)
+				return ok or err
 			end
-		}
-	end
-
-	return table
+			return _G[value] and true or "Frame doesn't exist"
+		end,
+	}
 end
 
--- The Frame choices that aren't an element name.
+-- The relative_to choices that aren't an element name.
 local UNIT_FRAME, GLOBAL_FRAME = '__unitframe', '__global'
 
 --[[
-	The Position editor for a unit frame element, or for an element's text or
+	The Position option for a unit frame element, or for an element's text or
 	icon. UF:GetFrame places it relative to another element of the same unit
 	frame (position.element) if that unit frame has it, else to a global frame
-	(position.frame), else to its own unit frame. The Frame select shows and
-	sets that choice from those two keys. It clears a key by writing false, not
-	nil: AceDB would fill a nil key with its default again at the next login.
+	(position.frame), else to its own unit frame. The block's TO part is a
+	dropdown (target = 'select') of those choices, its part 'relative_to': it
+	shows and sets that choice from those two keys. Global frame starts at
+	UIParent, and while it's picked the name box under the dropdown types the
+	frame's name (nameKey). A key is cleared by writing false, not nil: AceDB
+	would fill a nil key with its default again at the next login.
 
-	target is the frame being placed, or a function returning it (nil while it
-	doesn't exist). The elements offered come from its unit frame, and every
-	picked or typed anchor is checked with st:ValidateAnchor against it.
+	get and set are get(key) and set(key, value) functions. target is the frame
+	being placed, or a function returning it (nil while it doesn't exist). The
+	elements offered come from its unit frame, and every picked or typed anchor
+	is checked with st:ValidateAnchor against it.
 ]]
-function generators.uf_element_position(order, get, set, target)
-	local options = generators.position(order, true, get, set, target)
+function generators.uf_element_position(order, get, set, target, desc)
+	local option = generators.position(order, true, get, set, target, desc)
+	local GetPart, SetPart, ValidatePart = option.get, option.set, option.validate
 
 	local function UnitFrame()
 		local frame = ResolveTarget(target)
@@ -185,100 +184,105 @@ function generators.uf_element_position(order, get, set, target)
 		return names
 	end
 
-	options.args.relative_to = {
-		order = 2,
-		name = 'Frame',
-		type = 'select',
-		width = 0.75,
-		values = function()
-			local values = { [UNIT_FRAME] = 'Unit frame', [GLOBAL_FRAME] = 'Global frame' }
-			for _, name in ipairs(GetElementNames()) do
-				values[name] = name
-			end
-			return values
-		end,
-		sorting = function()
-			local sorting = { UNIT_FRAME }
-			for _, name in ipairs(GetElementNames()) do
-				tinsert(sorting, name)
-			end
-			tinsert(sorting, GLOBAL_FRAME)
-			return sorting
-		end,
-		get = function()
-			return GetRelativeTo()
-		end,
-		-- Picking Global frame starts at UIParent; its name is typed below.
-		validate = function(info, value)
-			local frame, unitframe = ResolveTarget(target), UnitFrame()
-			if not (frame and unitframe) then return true end
-			local relative
-			if value == UNIT_FRAME then
-				relative = unitframe
-			elseif value == GLOBAL_FRAME then
-				relative = UIParent
-			else
-				relative = unitframe[value]
-			end
-			if not relative then return true end
-			local ok, err = st:ValidateAnchor(frame, relative)
-			return ok or err
-		end,
-		set = function(info, value)
-			if value == GetRelativeTo() then return end
-			if value == UNIT_FRAME then
-				set('element', false)
-				set('frame', false)
-			elseif value == GLOBAL_FRAME then
-				set('element', false)
-				set('frame', 'UIParent')
-			else
-				set('frame', false)
-				set('element', value)
-			end
-		end,
-	}
+	option.target = 'select'
+	option.nameKey = GLOBAL_FRAME
 
-	-- generators.position's input, for the global frame's name.
-	options.args.frame.name = 'Frame name'
-	options.args.frame.hidden = function()
-		return GetRelativeTo() ~= GLOBAL_FRAME
+	-- The dropdown: Unit frame, the elements, Global frame.
+	option.values = function()
+		local values = { [UNIT_FRAME] = 'Unit frame', [GLOBAL_FRAME] = 'Global frame' }
+		for _, name in ipairs(GetElementNames()) do
+			values[name] = name
+		end
+		return values
+	end
+	option.sorting = function()
+		local sorting = { UNIT_FRAME }
+		for _, name in ipairs(GetElementNames()) do
+			tinsert(sorting, name)
+		end
+		tinsert(sorting, GLOBAL_FRAME)
+		return sorting
 	end
 
-	return options
+	option.get = function(info, part)
+		if part == 'relative_to' then
+			return GetRelativeTo()
+		end
+		return GetPart(info, part)
+	end
+
+	option.validate = function(info, part, value)
+		if part ~= 'relative_to' then
+			return ValidatePart(info, part, value)
+		end
+		local frame, unitframe = ResolveTarget(target), UnitFrame()
+		if not (frame and unitframe) then return true end
+		local relative
+		if value == UNIT_FRAME then
+			relative = unitframe
+		elseif value == GLOBAL_FRAME then
+			relative = UIParent
+		else
+			relative = unitframe[value]
+		end
+		if not relative then return true end
+		local ok, err = st:ValidateAnchor(frame, relative)
+		return ok or err
+	end
+
+	option.set = function(info, part, value)
+		if part ~= 'relative_to' then
+			return SetPart(info, part, value)
+		end
+		if value == GetRelativeTo() then return end
+		if value == UNIT_FRAME then
+			set('element', false)
+			set('frame', false)
+		elseif value == GLOBAL_FRAME then
+			set('element', false)
+			set('frame', 'UIParent')
+		else
+			set('frame', false)
+			set('element', value)
+		end
+	end
+
+	return option
 end
 
-function generators.toggle(order, name, width)
+function generators.toggle(order, name, desc, size)
 	return {
 		order = order,
 		name = name,
+		desc = desc,
 		type = 'toggle',
-		width = width or 0.5
+		size = size,
 	}
 end
 
-function generators.enable(order)
-	return generators.toggle(order, 'Enable')
+function generators.enable(order, desc)
+	return generators.toggle(order, 'Enable', desc)
 end
 
-function generators.range(order, name, min, max, step, width)
+function generators.range(order, name, min, max, step, desc, size)
 	return {
 		order = order,
 		name = name,
+		desc = desc,
 		type = 'range',
 		min = min or 1,
 		max = max or 99,
 		step = step or 1,
-		width = width or 1,
+		size = size,
 	}
 end
 
-function generators.framelevel(order)
-	return generators.range(order, 'Frame level', 0, 99, 1)
+function generators.framelevel(order, desc)
+	return generators.range(order, 'Frame level', 0, 99, 1, desc)
 end
 
-function generators.alpha(order)
-	return generators.range(order, 'Alpha', 0, 1, 0.05)
+function generators.alpha(order, desc)
+	return generators.range(order, 'Alpha', 0, 1, 0.05, desc)
 end
 
 -- An input is text both ways: AceConfig's contract gives its get's value to
@@ -312,42 +316,44 @@ local function NumberInputSet(info, value)
 	end
 end
 
-function generators.height(order)
+function generators.height(order, desc)
 	return {
 		order = order,
 		name = 'Height',
+		desc = desc,
 		type = 'input',
 		pattern = '%d+',
-		width = 0.5,
 		get = NumberInputGet,
 		set = NumberInputSet,
 	}
 end
 
-function generators.width(order)
+function generators.width(order, desc)
 	return {
 		order = order,
 		name = 'Width',
+		desc = desc,
 		type = 'input',
 		pattern = '%d+',
-		width = 0.5,
 		get = NumberInputGet,
 		set = NumberInputSet,
 	}
 end
 
-function generators.template(order)
+function generators.template(order, desc)
 	return {
 		order = order,
 		name = 'Template',
+		desc = desc,
 		type = 'select',
 		values = st.Config:GetFrameTemplates(),
 	}
 end
 
-function generators.font(order)
+function generators.font(order, desc)
 	return {
 		name = 'Font',
+		desc = desc,
 		type = 'select',
 		order = order,
 		values = st.Config:GetFontObjects(),
