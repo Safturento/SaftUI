@@ -140,11 +140,18 @@ end
 -- don't use (text, button, item quality, renown) and a module that isn't
 -- enabled yet (no UF.units) change nothing.
 local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true }
-local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower' }
+-- ClassPower sets its color only when it checks its visibility, which
+-- ForceUpdate runs.
+local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower', 'ClassPower' }
 function UF:OnColorsChanged(group)
 	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end
 	self:UpdateColors()
 	self:ForEachUnitFrame(function(frame)
+		-- A frame whose unit doesn't exist (a boss or arena frame out of an
+		-- encounter, an empty party slot) has nothing to draw, and its tags
+		-- error on a nil name; oUF updates it, with the colors merged above,
+		-- when its unit appears.
+		if not (frame.unit and UnitExists(frame.unit)) then return end
 		for _, name in ipairs(RECOLORED_ELEMENTS) do
 			if frame[name] and frame:IsElementEnabled(name) then
 				frame[name]:ForceUpdate()

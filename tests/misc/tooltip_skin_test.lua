@@ -98,6 +98,8 @@ test('a unit tooltip colors the border of the tooltip and the status bar', funct
 		local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
 		check(r == c.r and g == c.g and b == c.b, (frame:GetName()) .. ' border is the class color')
 	end
+	local tr, tg, tb = left1:GetTextColor()
+	check(tr == c.r and tg == c.g and tb == c.b, "the name line is the profile's class color")
 	eq(keys(tooltips.GameTooltip), before[tooltips.GameTooltip], 'still no new field')
 end)
 
@@ -112,6 +114,8 @@ test('an NPC tooltip takes the profile reaction color', function()
 		local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
 		check(r == c.r and g == c.g and b == c.b, (frame:GetName()) .. ' border is the reaction color')
 	end
+	local tr, tg, tb = _G.GameTooltipTextLeft1:GetTextColor()
+	check(tr == c.r and tg == c.g and tb == c.b, "the name line is the profile's reaction color")
 end)
 
 test('UpdateConfig finds the same backdrops and re-colors them for a new template', function()

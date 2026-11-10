@@ -21,9 +21,11 @@ Today the profile holds a palette (`st.defaults.colors`, `SaftUI-Core/Config/def
   | Buttons | `colors.button` | Normal, Hover, Pushed, Red, Green, Blue, Yellow, Grey, with opacity (`hasAlpha`) |
   | Class | `colors.class` | Death Knight, Demon Hunter, Druid, Evoker, Hunter, Mage, Monk, Paladin, Priest, Rogue, Shaman, Warlock, Warrior |
   | Reputation | `colors.reaction` [1]-[8], `colors.renown` | Hated, Hostile, Unfriendly, Neutral, Friendly, Honored, Revered, Exalted, Renown |
-  | Power | `colors.power` | Mana, Rage, Focus, Energy, Runic power, Combo points, Holy power, Chi, Soul shards, Astral power (`LUNAR_POWER`), Insanity, Maelstrom, Fury, Pain, Arcane charges, Runes, then the vehicle and encounter ones: Alternate power (`ALTPOWER`), Ammo (`AMMOSLOT`), Fuel, Steam (`POWER_TYPE_STEAM`), Pyrite (`POWER_TYPE_PYRITE`) |
+  | Power | `colors.power` | Mana, Rage, Focus, Energy, Runic power, Combo points, Holy power, Chi, Soul shards, Astral power (`LUNAR_POWER`), Insanity, Maelstrom, Fury, Pain, Arcane charges, then the vehicle and encounter ones: Ammo (`AMMOSLOT`), Fuel, Steam (`POWER_TYPE_STEAM`), Pyrite (`POWER_TYPE_PYRITE`) |
   | Item quality | `colors.item_quality` [0]-[8] | Poor, Common, Uncommon, Rare, Epic, Legendary, Artifact, Heirloom, WoW Token |
   | Status | `colors.status` | Disconnected, Tapped |
+
+  Runes and Alternate power (`RUNES`, `ALTPOWER`) have no row: nothing in SaftUI draws them (no Runes element, no alternate power bar). Their defaults stay in the profile.
 
 - **Each section ends with a small Reset button.** It asks "Reset the <section> colors to SaftUI's defaults?" (the execute row's `confirm`, through `W.Confirm`), then puts every color of that section back to `st.defaults.colors`.
 - **Every color has a tooltip** saying where SaftUI shows it, written from the code's reads of it (e.g. Buttons → Blue: "The accent color: hovered and active controls, and the options window's tabs and slider fill."). The Reset button's tooltip: "Puts every color in this section back to SaftUI's default."

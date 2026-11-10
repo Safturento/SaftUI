@@ -39,19 +39,19 @@ local function Colors(group, list)
 end
 
 local function Reaction(name)
-	return ('The experience bar and loot feed bar while your standing is %s, and unit frames of NPCs that are %s to you.'):format(name, name)
+	return ("The experience bar's reputation bar and the loot feed bar while your standing is %s, and unit frames and the unit tooltip's name and border of NPCs that are %s to you."):format(name, name)
 end
 
 CO.SECTIONS = {
 	{
 		key = 'text', name = 'Text', note = RELOAD_NOTE,
 		colors = Colors('text', {
-			{ 'normal', 'Text', "Ordinary text: the options window, totem timers and the micro menu's stats." },
+			{ 'normal', 'Text', "Ordinary text: the options window and totem timers." },
 			{ 'grey', 'Grey', "Dimmed text: the options window's hints and disabled controls, and a unit frame's level tag for a far lower level." },
 			{ 'red', 'Red', "Warnings and Pass: loot roll Pass buttons and timers, a unit frame's level tag for a much higher level, DPS role marks, and expiring totem timers." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats." },
-			{ 'yellow', 'Yellow', "Greed on loot rolls, a unit frame's level tag near your level, unfriendly names and the micro menu's alert flash." },
-			{ 'green', 'Green', "Good or active things: edit mode being on, healer role marks, a lower level's tag, and bag item levels for a Bind on Equip item." },
+			{ 'yellow', 'Yellow', "Greed on loot rolls, a unit frame's level tag near your level, unfriendly names, the micro menu's alert flash and the middle of its stats." },
+			{ 'green', 'Green', "Good or active things: edit mode being on, healer role marks, a lower level's tag, bag item levels for a Bind on Equip item, and the good end of the micro menu's stats." },
 			{ 'blue', 'Blue', "Selected options window tabs and rows, and tank role marks on unit frames." },
 			{ 'purple', 'Purple', 'Transmog on loot rolls: the roll buttons and the roll counts.' },
 			{ 'cyan', 'Cyan', 'Warbound item levels and the warband bank count in bags.' },
@@ -91,7 +91,7 @@ CO.SECTIONS = {
 				color.desc = Reaction(color.name:lower())
 			end
 			list[#list + 1] = { group = 'renown', key = nil, name = 'Renown',
-				desc = "The experience bar and loot feed's bar for a renown (major faction) track." }
+				desc = "The experience bar's reputation bar and the loot feed's bar for a renown (major faction) track." }
 			return list
 		end)(),
 	},
@@ -102,7 +102,7 @@ CO.SECTIONS = {
 			{ 'RUNIC_POWER', 'Runic power' }, { 'COMBO_POINTS', 'Combo points' }, { 'HOLY_POWER', 'Holy power' },
 			{ 'CHI', 'Chi' }, { 'SOUL_SHARDS', 'Soul shards' }, { 'LUNAR_POWER', 'Astral power' },
 			{ 'INSANITY', 'Insanity' }, { 'MAELSTROM', 'Maelstrom' }, { 'FURY', 'Fury' }, { 'PAIN', 'Pain' },
-			{ 'ARCANE_CHARGES', 'Arcane charges' }, { 'RUNES', 'Runes' }, { 'ALTPOWER', 'Alternate power' },
+			{ 'ARCANE_CHARGES', 'Arcane charges' },
 			{ 'AMMOSLOT', 'Ammo' }, { 'FUEL', 'Fuel' }, { 'POWER_TYPE_STEAM', 'Steam' },
 			{ 'POWER_TYPE_PYRITE', 'Pyrite' },
 		}),
@@ -125,15 +125,30 @@ CO.SECTIONS = {
 
 -- Colors whose readers are generic share a sentence per section.
 local GENERIC_DESC = {
-	class = 'The %s class color on unit frames, name tags and raid frames.',
+	class = "The %s class color on unit frames, name tags and raid frames, and the unit tooltip's name and border.",
 	power = 'The %s power bar on unit frames.',
-	item_quality = 'The %s item color: item names in the loot feed and loot rolls, and item borders in bags.',
+	item_quality = "The %s item color: item names in the loot feed and loot rolls, the loot roll's timer bar, and item and currency borders in bags.",
 }
+-- Power colors that SaftUI shows on the player frame's class power points
+-- rather than a power bar, with where each exists: combo points (rogues, cat
+-- form druids, vehicles), holy power (paladins), chi (windwalker monks), soul
+-- shards (warlocks) and, on retail only, arcane charges (arcane mages).
+local CLASS_POWER_POINTS = {
+	COMBO_POINTS = '', HOLY_POWER = '', CHI = '', SOUL_SHARDS = '',
+	ARCANE_CHARGES = ' Retail only.',
+}
+-- The minimap's difficulty badge reads Common, Rare and Epic.
+local DIFFICULTY_BADGE = { [1] = 'normal dungeons', [3] = 'heroic ones', [4] = 'mythic ones' }
 for _, section in ipairs(CO.SECTIONS) do
 	local pattern = GENERIC_DESC[section.key]
 	for _, color in ipairs(section.colors) do
-		if not color.desc and pattern then
+		if not color.desc and section.key == 'power' and CLASS_POWER_POINTS[color.key] then
+			color.desc = ("The %s color on the player frame's class power points."):format(color.name:lower()) .. CLASS_POWER_POINTS[color.key]
+		elseif not color.desc and pattern then
 			color.desc = pattern:format(color.name)
+			if section.key == 'item_quality' and DIFFICULTY_BADGE[color.key] then
+				color.desc = color.desc .. " It also colors the minimap's difficulty badge for " .. DIFFICULTY_BADGE[color.key] .. '.'
+			end
 		end
 	end
 end

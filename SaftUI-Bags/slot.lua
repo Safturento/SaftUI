@@ -52,17 +52,20 @@ function INV:AssignEmptySlot(slot, info)
 	slot.CountBG:SetShown(info.count ~= nil)
 end
 
--- The border in the item's quality color (the profile's, see st:QualityColor),
--- black for quality -1 or a quality with no color. A locked slot, or one with
--- no quality, keeps the border it has.
+-- The border color r, g, b for a quality (the profile's, see st:QualityColor):
+-- black for quality -1 or a quality with no color. Item slots and currency
+-- slots both use it.
+function INV:QualityBorderColor(quality)
+	local c = quality > -1 and st:QualityColor(quality)
+	if c then return c.r, c.g, c.b end
+	return 0, 0, 0
+end
+
+-- The border in the item's quality color. A locked slot, or one with no
+-- quality, keeps the border it has.
 function INV:SetSlotQualityBorder(slot)
 	if not slot.info.locked and slot.info.quality then
-		local c = slot.info.quality > -1 and st:QualityColor(slot.info.quality)
-		if c then
-			slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-		else
-			slot.backdrop:SetBackdropBorderColor(0, 0, 0)
-		end
+		slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(slot.info.quality))
 	end
 end
 
@@ -78,6 +81,7 @@ function INV:OnColorsChanged(group)
 			end
 		end
 	end
+	self:UpdateCurrencyBorders()
 end
 
 function INV:AssignSlot(container, slot, slotInfo)

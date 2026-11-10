@@ -166,10 +166,12 @@ function LT:GroupLootFrame_OnShow(frame)
 	-- OnShow has already taken the frame away, so there's nothing to style.
 	if not name then return end
 
-	local color = st:QualityColor(quality)
-	frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
 	-- The item's quality color, as Blizzard's own OnShow gives it.
-	frame.Name:SetVertexColor(color.r, color.g, color.b)
+	local color = st:QualityColor(quality)
+	if color then
+		frame.Timer:SetStatusBarColor(color.r, color.g, color.b)
+		frame.Name:SetVertexColor(color.r, color.g, color.b)
+	end
 
 	local text = ''
 

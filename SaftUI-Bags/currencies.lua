@@ -213,6 +213,22 @@ function INV:CurrencyOnClick(slot)
     CurrencyTransferMenu:Show()
 end
 
+-- The currency slot's border in its quality color (see INV:QualityBorderColor).
+function INV:SetCurrencyBorder(slot)
+    local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
+    slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(quality))
+end
+
+-- A quality color changed in the options: redraws the borders of the shown
+-- currency slots, without rebuilding the list.
+function INV:UpdateCurrencyBorders()
+    local category = self.containers and self.containers.bag and self.containers.bag.categories.Currencies
+    if not category then return end
+    for slot in category.slotPool:EnumerateActive() do
+        self:SetCurrencyBorder(slot)
+    end
+end
+
 function INV:UpdateCurrencyCategory(forceShow)
     --C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
     local category = self.containers.bag.categories.Currencies
@@ -242,13 +258,7 @@ function INV:UpdateCurrencyCategory(forceShow)
         slot:ClearAllPoints()
         slot:Show()
 
-        local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
-        local c = quality > -1 and st:QualityColor(quality)
-        if c then
-            slot.backdrop:SetBackdropBorderColor(c.r, c.g, c.b)
-        else
-            slot.backdrop:SetBackdropBorderColor(0, 0, 0)
-        end
+        self:SetCurrencyBorder(slot)
 
         if i % self.config.bag.perrow == 1 then
             slot:SetPoint('TOPLEFT', prevRow, 'BOTTOMLEFT', 0, -self.config.buttonspacing)

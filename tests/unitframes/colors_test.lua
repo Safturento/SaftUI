@@ -27,9 +27,13 @@ local function rgb(c)
 	return string.format('%.2f,%.2f,%.2f', r, g, b)
 end
 
-local function make_frame(additional_enabled)
-	local frame = { tags = 0 }
-	for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
+-- A unit exists unless a test lists it here.
+local missing_units = {}
+UnitExists = function(unit) return not missing_units[unit] end
+
+local function make_frame(additional_enabled, unit)
+	local frame = { tags = 0, unit = unit or 'player' }
+	for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower', 'ClassPower' }) do
 		local element = { updates = 0 }
 		function element:ForceUpdate() self.updates = self.updates + 1 end
 		frame[name] = element
@@ -41,9 +45,14 @@ local function make_frame(additional_enabled)
 	return frame
 end
 
+-- The real methods, which a test replaces and reset() puts back.
+local real_update_config, real_apply_config = UF.UpdateConfig, UF.ApplyConfig
+
 local a, b
 local function reset()
-	a, b = make_frame(false), make_frame(true)
+	UF.UpdateConfig, UF.ApplyConfig = real_update_config, real_apply_config
+	missing_units = {}
+	a, b = make_frame(false, 'player'), make_frame(true, 'boss1')
 	UF.units = { player = a, boss = { [1] = b } }
 	UF.groups = {}
 	UF.testGroups = nil
@@ -54,7 +63,7 @@ reset()
 local function total_updates()
 	local n = 0
 	for _, f in ipairs({ a, b }) do
-		n = n + f.Health.updates + f.Power.updates + f.AdditionalPower.updates + f.tags
+		n = n + f.Health.updates + f.Power.updates + f.AdditionalPower.updates + f.ClassPower.updates + f.tags
 	end
 	return n
 end
@@ -81,7 +90,20 @@ test('a class color change recolors every unit frame lightly', function()
 	end
 	eq(a.AdditionalPower.updates, 0, 'disabled additional power left alone')
 	eq(b.AdditionalPower.updates, 1, 'enabled additional power updated')
-	UF.UpdateConfig, UF.ApplyConfig = nil, nil
+	eq(a.ClassPower.updates, 1, 'class power updated (it sets its color only on a visibility check)')
+end)
+
+test('a frame whose unit does not exist is skipped, the others still update', function()
+	reset()
+	missing_units = { boss1 = true }
+	local c = make_frame(false, 'party1')
+	UF.units.party1 = c
+	UF.UpdateGroupPreview = function() end
+	UF:OnColorsChanged('class')
+	missing_units = {}
+	eq(b.Health.updates + b.tags, 0, 'the absent boss frame is left alone')
+	eq(a.Health.updates, 1, 'player updated')
+	eq(c.Health.updates, 1, 'party frame updated')
 end)
 
 test('the test previews are drawn again', function()

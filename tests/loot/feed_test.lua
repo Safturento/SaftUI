@@ -9,6 +9,7 @@ load_saftui('SaftUI-Loot/init.lua')
 load_saftui('SaftUI-Loot/Feed/history.lua')
 load_saftui('SaftUI-Loot/Feed/feed.lua')
 load_saftui('SaftUI-Loot/Feed/filter.lua')
+load_saftui('SaftUI-Loot/Feed/progress.lua')
 
 local st = SaftUI
 local LT = st.Loot
@@ -116,4 +117,24 @@ test('a gold merge into a full feed drops nothing either', function()
 	eq(#stack, MAX, 'full')
 	eq(stack[MAX], oldest, 'oldest kept')
 	eq(stack[1].gold, 12, 'gold summed')
+end)
+
+test("a reputation entry's bar takes the profile's reaction color, not Blizzard's", function()
+	local saved_bar_colors, saved_rep = FACTION_BAR_COLORS, C_Reputation
+	-- Blizzard's Friendly is a different color from the profile's.
+	FACTION_BAR_COLORS = { [5] = CreateColor(0.1, 0.1, 0.1) }
+	st.config.profile.colors.reaction[5] = CreateColor(0.8, 0.4, 0.2)
+	C_Reputation = {
+		GetFactionDataByID = function(id)
+			return { factionID = id, name = 'Stormwind', reaction = 5, currentStanding = 50,
+				currentReactionThreshold = 0, nextReactionThreshold = 100 }
+		end,
+		GetNumFactions = function() return 1 end,
+		GetFactionDataByIndex = function() return { factionID = 72, name = 'Stormwind' } end,
+	}
+	local progress = LT:SnapshotReputationProgress('Stormwind')
+	FACTION_BAR_COLORS, C_Reputation = saved_bar_colors, saved_rep
+	check(progress ~= nil, 'a snapshot is taken')
+	check(math.abs(progress.r - 0.8) < 0.001 and math.abs(progress.g - 0.4) < 0.001 and math.abs(progress.b - 0.2) < 0.001,
+		"the bar is the profile's color")
 end)

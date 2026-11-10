@@ -216,3 +216,13 @@ test('a roll takes the profile quality color for its name and timer', function()
 	r, g, b = frame.Timer:GetStatusBarColor()
 	check(r == er and g == eg and b == eb, "the timer is the profile's quality color, not Blizzard's")
 end)
+
+test('a roll of an item whose quality has no color does not error', function()
+	local LT = world()
+	-- Quality 99: not in the profile's colors or Blizzard's.
+	GetLootRollItemInfo = function() return 134400, 'Strange Thing', 1, 99, true, true, true, false end
+	local frame = blizzard_roll_frame()
+	LT:SkinRollFrame(frame)
+	LT:GroupLootFrame_OnShow(frame)
+	check(true, 'OnShow returned')
+end)

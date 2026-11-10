@@ -65,6 +65,36 @@ test('without rested experience the normal color is used', function()
 	check(r == 0 and g == 1, 'normal color used without rest')
 end)
 
+test('a reputation color change recolors the reputation bar at once; other groups do not', function()
+	C_GossipInfo = { GetFriendshipReputation = function() end }
+	C_Reputation.IsMajorFaction = function() return false end
+	C_Reputation.GetWatchedFactionData = function()
+		return { name = 'Stormwind', reaction = 5, factionID = 72, currentReactionThreshold = 0,
+			nextReactionThreshold = 100, currentStanding = 40 }
+	end
+	XP:UpdateReputation()
+	profile.colors.reaction[5] = CreateColor(0.9, 0.1, 0.2)
+	XP:OnColorsChanged('class')
+	local r1 = XP.bars.reputation:GetStatusBarColor()
+	check(math.abs(r1 - 0.9) > 0.001, 'a class change leaves the bar alone')
+	XP:OnColorsChanged('reaction')
+	local r, g, b = XP.bars.reputation:GetStatusBarColor()
+	check(math.abs(r - 0.9) < 0.001 and math.abs(g - 0.1) < 0.001 and math.abs(b - 0.2) < 0.001, 'the bar takes the new standing color')
+	C_Reputation.GetWatchedFactionData = function() return nil end
+end)
+
+test('before the module is enabled a color change does nothing', function()
+	local bars = XP.bars
+	local drawn = 0
+	local original = XP.UpdateReputation
+	XP.UpdateReputation = function() drawn = drawn + 1 end
+	XP.bars = nil
+	XP:OnColorsChanged('reaction')
+	XP.bars = bars
+	XP.UpdateReputation = original
+	eq(drawn, 0, 'no redraw')
+end)
+
 test('the Experience page reads Template | Spacing, Height | Width, the two colors | Rested bar alpha, then Position', function()
 	local root = { Experience = XP:GetConfigTable() }
 	local view = st.OptionsModel.BuildView(root, 'Experience')

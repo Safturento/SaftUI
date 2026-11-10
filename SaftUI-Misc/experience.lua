@@ -277,6 +277,15 @@ function XP:UpdateReputation()
 	end
 end
 
+-- A reputation or renown color changed on the Colors tab (st:ColorsChanged
+-- calls this): draws the reputation bar again, which reads them in
+-- GetWatchedFactionInfo. Nothing to do before the module is enabled.
+function XP:OnColorsChanged(group)
+	if (group == 'reaction' or group == 'renown') and self.bars and self.bars.reputation then
+		self:UpdateReputation()
+	end
+end
+
 function XP:UpdateExperience()
 	if GetMaxPlayerLevel() ~= UnitLevel('player') then
 		local current, max = UnitXP('player'), UnitXPMax('player')

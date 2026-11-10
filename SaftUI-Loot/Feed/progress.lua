@@ -98,11 +98,13 @@ function LT:RememberChangedFaction(_, factionID)
 	RememberFaction(C_Reputation.GetFactionDataByID(factionID))
 end
 
--- Blizzard's standing colors, else SaftUI's reaction colors.
+-- SaftUI's reaction colors (the profile's, which the Colors tab edits), else
+-- Blizzard's standing colors.
 local function ReactionColor(reaction)
-	local color = FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
+	local color = st.config.profile.colors.reaction[reaction]
+	if color then return color end
+	color = FACTION_BAR_COLORS and FACTION_BAR_COLORS[reaction]
 	if color and color.GetRGB then return color end
-	return st.config.profile.colors.reaction[reaction]
 end
 
 -- Progress within the current rank, in the same order Blizzard's own

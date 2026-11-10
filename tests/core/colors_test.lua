@@ -61,7 +61,7 @@ test('the sections and their colors, in order, as small color swatches with tool
 		button = 'Normal,Hover,Pushed,Red,Green,Blue,Yellow,Grey',
 		class = 'Death Knight,Demon Hunter,Druid,Evoker,Hunter,Mage,Monk,Paladin,Priest,Rogue,Shaman,Warlock,Warrior',
 		reaction = 'Hated,Hostile,Unfriendly,Neutral,Friendly,Honored,Revered,Exalted,Renown',
-		power = 'Mana,Rage,Focus,Energy,Runic power,Combo points,Holy power,Chi,Soul shards,Astral power,Insanity,Maelstrom,Fury,Pain,Arcane charges,Runes,Alternate power,Ammo,Fuel,Steam,Pyrite',
+		power = 'Mana,Rage,Focus,Energy,Runic power,Combo points,Holy power,Chi,Soul shards,Astral power,Insanity,Maelstrom,Fury,Pain,Arcane charges,Ammo,Fuel,Steam,Pyrite',
 		item_quality = 'Poor,Common,Uncommon,Rare,Epic,Legendary,Artifact,Heirloom,WoW Token',
 		status = 'Disconnected,Tapped',
 	}
@@ -160,4 +160,14 @@ test('Reset puts a section back to the defaults and says so once per group', fun
 	eq(table.concat(got, ','), 'reaction,renown')
 	eq(st.config.profile.colors.renown.r, st.defaults.colors.renown.r, 'renown is reset too')
 	restore()
+end)
+
+test('the class power colors say they are the player frame\'s class power points, and Runes and Alternate power have no row', function()
+	local power = Section('power').args
+	check(power.COMBO_POINTS.desc:find('class power points', 1, true), 'combo points')
+	check(power.ARCANE_CHARGES.desc:find('Retail only', 1, true), 'arcane charges are retail only')
+	check(power.MANA.desc:find('power bar', 1, true), 'mana stays a power bar')
+	eq(power.RUNES, nil, 'no Runes row')
+	eq(power.ALTPOWER, nil, 'no Alternate power row')
+	check(Section('class').args.MAGE.desc:find('tooltip', 1, true), "a class color's tooltip names the unit tooltip")
 end)

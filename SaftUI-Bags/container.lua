@@ -259,7 +259,9 @@ function INV:DisplayServerGold()
 	GameTooltip:AddLine('Gold on ' .. st.my_realm)
 	local totalGold = 0
 	for toonName, summary in pairs(st.config.realm.summary) do
-		local color = summary.class and RAID_CLASS_COLORS[summary.class] or { r = 1, g = 1, b = 1 }
+		local color = summary.class
+			and (st.config.profile.colors.class[summary.class] or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[summary.class]))
+			or { r = 1, g = 1, b = 1 }
 		GameTooltip:AddDoubleLine(toonName, summary.gold and st.StringFormat:GoldFormat(summary.gold) or "??", color.r, color.g, color.b)
 		totalGold = totalGold + (summary.gold or 0)
 	end

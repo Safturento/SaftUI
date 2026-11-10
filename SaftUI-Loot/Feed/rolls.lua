@@ -261,7 +261,9 @@ local function Colored(text, key)
 end
 
 local function ClassColored(name, class)
-	local color = type(class) == 'string' and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+	-- The profile's class colors (the Colors tab's), else Blizzard's.
+	local color = type(class) == 'string'
+		and (st.config.profile.colors.class[class] or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]))
 	if color then return st.StringFormat:ColorString(name, color.r, color.g, color.b) end
 	return name
 end
