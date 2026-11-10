@@ -51,6 +51,13 @@ function FN:UpdateFontConfig(font_name)
 	font:SetShadowColor(0, 0, 0, 1)
 	font:SetShadowOffset(unpack(config.shadow_offset))
 	font:SetSpacing(config.spacing)
+	-- The game measures a text when it's laid out, and a font's shadow or line
+	-- spacing changing doesn't measure the texts using it again: a shadow pushed
+	-- right cut their last letters off until a reload. A size change does, so
+	-- the size goes up by one and straight back (checked in game: no flicker).
+	local path = st.LSM:Fetch('font', config.font_name)
+	font:SetFont(path, config.font_size + 1, config.font_outline)
+	font:SetFont(path, config.font_size, config.font_outline)
 end
 
 function st:GetFont(font_name)

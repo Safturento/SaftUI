@@ -97,6 +97,29 @@ test("Shadow offset X and Y read and write the font's shadow_offset, and its fon
 	Set('pixel', 'shadow_y', 0)
 end)
 
+-- In game a font's shadow or line spacing changing doesn't measure the texts
+-- using it again: a shadow pushed right cut their last letters off until a
+-- reload. A size change does, so after setting them the size goes up by one and
+-- straight back (/suishadowlive in game, 2026-11-10: that row kept every word).
+test('a shadow or line spacing change nudges the font size up and back, so its texts are measured again', function()
+	for _, key in ipairs({ 'shadow_x', 'shadow_y', 'spacing' }) do
+		local font = st:GetFont('pixel')
+		local size = st.config.profile.fonts.pixel.font_size
+		local sizes = {}
+		local real = font.SetFont
+		font.SetFont = function(self, path, s, flags)
+			sizes[#sizes + 1] = s
+			return real(self, path, s, flags)
+		end
+		Set('pixel', key, 1)
+		font.SetFont = real
+		eq(sizes[#sizes - 1], size + 1, key .. ': up by one')
+		eq(sizes[#sizes], size, key .. ': and back')
+		eq(select(2, font:GetFont()), size, key .. ': the size ends where the profile has it')
+		Set('pixel', key, 0)
+	end
+end)
+
 test("every font's shadow is opaque black, so a shadow offset shows", function()
 	for fontKey in pairs(st.config.profile.fonts) do
 		local r, g, b, a = st:GetFont(fontKey):GetShadowColor()
