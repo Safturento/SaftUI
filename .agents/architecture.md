@@ -44,7 +44,7 @@ covers:
 - **Profile changes** (`OnProfileChanged`/`Copied`/`Reset`) run `Config:UpdateConfig()` in `SaftUI-Core/Config/config.lua`. Order:
   1. Re-point every bound `module.config`.
   2. Clear mover anchors (`EM:ClearPositions`, which saves them and skips frames that are protected in combat).
-  3. Apply fonts, then headers (`st:UpdateHeader`: every header's and footer's height, window title fonts and the clamp inset of windows with a header).
+  3. Apply fonts, then headers (`st:UpdateHeader`: every header's and footer's height and window title fonts), then the screen edge margin (`st:UpdateScreenMargin`: every frame kept inside it; see `.agents/edit-mode.md`).
   4. Run every module's `UpdateConfig` inside `xpcall`, with errors going to `geterrorhandler()`.
   5. Re-apply edit mode movers (`EM:UpdateConfig`), restoring the old anchors of any frame left without points.
   6. Rebuild and refresh an open `/sui`.

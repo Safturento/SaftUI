@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
@@ -51,6 +51,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
 5. **Blizzard Edit Mode system frames have Lua overrides** for `SetPoint`, `ClearAllPoints`, `SetScale`, `SetShown` and `Hide` that write Edit Mode state (e.g. `EditModeManagerFrame.editModeSystemAnchorDirty`). Examples: ChatFrame1, BuffFrame/DebuffFrame, QueueStatusButton (Forever), swing timer bars, GameTooltipDefaultContainer (where the default tooltip anchors), the totem bar, MinimapCluster, the micro menu, the status tracking bars.
    - Move them with `st:SetPointDirect` / `st:ClearAllPointsDirect` / `st:SetSizeDirect`. These call the C widget methods via `getmetatable(frame).__index`.
    - Never call the overridden methods from SaftUI code.
+   - They also set their own clamp insets, from their `Selection` box, on every layout apply and Edit Mode enter (`EditModeSystemMixin:UpdateClampOffsets`). So SaftUI's screen edge margin (`st:KeepInScreenMargin`, `.agents/edit-mode.md`) goes on SaftUI's own frames and holders only, never on a Blizzard frame. A Blizzard frame anchored to a holder follows the holder's clamp. One that only copies the holder's anchor (ChatFrame1) adds `st:GetClampShift(holder)`, as `CHT:PlaceChatFrame` does.
    - To keep a position, post-hook their `SetPoint`/`ClearAllPoints` (or `UpdateSystem`) and re-apply with the direct helpers. Hide their Edit Mode box with `frame.Selection:HookScript('OnShow', function(s) s:Hide() end)`. On a protected one (the totem bar, which holds secure buttons) the re-apply in combat goes through `st:QueueAfterCombat`, so the frame sits at Blizzard's spot until the fight ends. For the totem bar that's only its empty, click-through frame: its buttons are anchored to SaftUI's holder and stay put, apart from the two exceptions in `.agents/edit-mode.md` (`SaftUI-Misc/totembar.lua`).
 6. **Combat:**
    - Secure frames (unit frames, action buttons, group headers) can't be moved, sized, shown, hidden, reparented or have attributes set in combat. Neither can any frame a secure frame is anchored to, which becomes implicitly protected.

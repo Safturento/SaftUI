@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
@@ -54,6 +55,22 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode
+
+**What:** Every frame the user can move is now kept inside the screen edge margin (`misc.clamp_inset`, General → Layout) by the game's clamp, except the minimap. Its mover's frame is Blizzard's `Minimap`, moved with no SaftUI holder (`SaftUI-Minimap/minimap.lua`, `blizzardFrame = true`), and SaftUI never clamps a Blizzard frame. So edit mode drags and nudges stop at the margin, but a Position typed in `/sui`, a position saved before the margin, or a larger margin leaves the minimap where it is.
+
+**Why noticed:** The screen edge margin sweep (2026-11-10). The user asked for the margin to guard every frame "the same way bags do"; the decided design ruled out clamping Blizzard's frames (`.agents/taint.md`), and the minimap is the one mover without a holder.
+
+**Anchors:** `SaftUI-Minimap/minimap.lua` (`OnEnable`, `UpdateConfig`, the `minimap` mover), `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`), `.agents/edit-mode.md` (Screen edge margin, the holder pattern). Other frames anchored to the minimap: the experience bar's default (`SaftUI-Misc/config.lua`, `frame = 'Minimap'`).
+
+**What's been considered:**
+- A SaftUI holder, as the other takeovers have: the holder is the mover and is clamped, and `Minimap` is anchored to it. Frames anchored to `Minimap` keep working. Needs a check that nothing of Blizzard's re-anchors `Minimap` once it's out of the cluster.
+- Clamping `Minimap` itself: it isn't an Edit Mode system (MinimapCluster is), and Blizzard's minimap code sets no clamp (`Blizzard_Minimap`'s `Mainline/Minimap.lua`, `Minimap.xml` and `Camelot/Minimap.lua` on `forever` have no `Clamp`), so `SetClampRectInsets` wouldn't fight Blizzard. But it goes against the rule of never clamping a Blizzard frame, and its rect can be secret on retail.
+
+**Shape of work:** Small: a holder in `minimap.lua` and its mover pointing at it, then an in-game check on both clients.
+
+**Open questions:** Holder, or an exception to the rule for `Minimap`?
+
 ### 2026-11-10 — panels.tab_height has no option, because nothing live reads it
 
 **What:** `panels.tab_height` (21, in `st.defaults.panels`, `SaftUI-Core/Config/defaults.lua`) is the one leftover Core setting that got no `/sui` option when Global Settings gained its General tab and the Fonts tab's new rows. Nothing that runs reads it. Either wire it to something that draws tabs and give it an option, or remove the key.
@@ -67,7 +84,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **What's been considered:**
 - Removing the key: saved values are harmless (the 2026-11-09 audit settled that dead keys can be dropped from the defaults). `SK:SkinBlizzardPanel`, `SkinTab`, `UpdateTab` and `SkinTabHeader` could go with it, or be left for a future Blizzard panel skin.
-- Wiring it up: only worth it once SaftUI skins a Blizzard window with tabs again, through side tables. Its option would then sit in General → Windows, with Title bar height.
+- Wiring it up: only worth it once SaftUI skins a Blizzard window with tabs again, through side tables. Its option would then sit in General → Layout, with Title bar height.
 
 **Shape of work:** Small. Removal: one default, and the dead helpers if they go too, plus the line in the options-coverage entry's Core list. Wiring it up belongs with whichever skin first needs tabs.
 
@@ -139,7 +156,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 ### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
 
-**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: `SK:SkinBlizzardPanel` (`SaftUI-Misc/Skinning/skinning.lua`) calls it for Blizzard frames, and so does the unloaded loot window code (`SaftUI-Loot/popup.lua`). Writing them breaks `.agents/taint.md` rule 1.
+**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: `SK:SkinBlizzardPanel` (`SaftUI-Misc/Skinning/skinning.lua`) calls it for Blizzard frames, and so does the unloaded loot window code (`SaftUI-Loot/popup.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). Neither caller runs today.
 
 **Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
 
@@ -244,9 +261,9 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Read by the code, no option in `/sui`:**
 - **Core** (`SaftUI-Core/Config/defaults.lua`). Core's settings are under Global Settings in `/sui`.
-  - `misc.icon_trim`, `misc.clamp_inset`. *Done 2026-11-10 (options project 3, `coresettings` branch): General → Icons → Icon zoom, and General → Windows → Screen edge margin.*
+  - `misc.icon_trim`, `misc.clamp_inset`. *Done 2026-11-10 (options project 3, `coresettings` branch): General → Icons → Icon zoom, and General → Windows (now Layout) → Screen edge margin.*
   - `fonts.<key>.shadow_offset` and `.spacing`. *Done 2026-11-10: each font's Shadow offset X, Shadow offset Y and Line spacing on the Fonts tab.*
-  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`. *Done 2026-11-10: `headers.height` is General → Windows → Title bar height, and `headers.font`, `buttons.font` and `panels.font` are Fonts → Kinds of text (Window titles, Button text, Check box labels). `buttons.template` and `panels.template` wait on the Themes project. `panels.tab_height` gets no option, since nothing live reads it: see [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it).*
+  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`. *Done 2026-11-10: `headers.height` is General → Windows (now Layout) → Title bar height, and `headers.font`, `buttons.font` and `panels.font` are Fonts → Kinds of text (Window titles, Button text, Check box labels). `buttons.template` and `panels.template` wait on the Themes project. `panels.tab_height` gets no option, since nothing live reads it: see [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it).*
   - `templates.*` can be picked from a dropdown but not edited. *Waits on the Themes project.*
   - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09). *Done 2026-11-10: the Colors tab of Global Settings.*
 - **Misc** (`SaftUI-Misc/config.lua`): `tooltip.template` and `.font`, `skinning.font` and `.template` (the new Skinning page, `SK:GetConfigTable`) and `totembar.colors.*` now have options (Task 4 of the options layout project, 2026-11-09).
@@ -552,12 +569,13 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 1. `SaftUI-Chat` re-anchors the edit mode mover's overlay (`mover.overlay`, a Core internal) to cover the chat plus padding. A Core API for a mover's footprint (e.g. `def.footprint` or an `overlayInsets` field) would replace that reach-in.
 2. Blizzard's `UpdateSystemAnchorInfo` copies ChatFrame1's current anchor into Blizzard's saved Edit Mode layout. A Blizzard Save can store SaftUI's placement there. It's harmless while SaftUI-Chat is on, but with it off the chat comes back at that spot instead of Blizzard's.
 3. Blizzard clamps the chat frame about 32px from the screen's left and bottom edges (`UpdateClampOffsets`). SaftUI's holder isn't clamped, so dragging the outline into that band leaves the outline and the chat apart.
+   *Update 2026-11-10:* the holder is now kept inside SaftUI's screen edge margin (20 by default), and ChatFrame1 follows where it shows (`st:GetClampShift`), so drags stop at the margin. Where the margin is narrower than Blizzard's band, the outline and the chat can still be apart by the difference (about 12px at the left and bottom with the default margin). Not yet confirmed in game.
 
 **Why noticed:** The Task 12 review and the fix round (`.superpowers/sdd/2026-11-06-saftui-edit-mode/task-12-review.md`).
 
 **Anchors:** `SaftUI-Chat/chatframe.lua` (holder, `PlaceChatFrame`, overlay re-anchor); `SaftUI-Core/EditMode/mover.lua` (overlay creation).
 
-**Shape of work:** Small. A footprint option in `st:RegisterMover`; clamp the holder with the same insets; item 2 may just be documented.
+**Shape of work:** Small. A footprint option in `st:RegisterMover`; keep the holder at least Blizzard's insets in (e.g. the larger of them and the margin); item 2 may just be documented.
 
 ### 2026-11-07 — Profile switch: Show/Hide on protected frames in combat, mover/unit-frame anchor swaps
 
