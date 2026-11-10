@@ -709,7 +709,7 @@ test('Experience on the real tree: the General page with its rows, then its Posi
 	eq(view.title, 'Experience', 'title')
 	eq(keys(view.tabs), 'general', 'Position is in General, so General is the only tab')
 	eq(view.tab, 'general', 'and selected')
-	eq(layout(view), '-:template,spacing,height,width,normal_color,rested_color,rest_alpha|Position:position',
+	eq(layout(view), '-:theme,background,spacing,height,width,normal_color,rested_color,rest_alpha|Position:position',
 		"General's rows, then the Position option in a section of its own")
 	local config = st.config.profile.experience
 	local width = row(view, 'width')

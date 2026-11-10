@@ -7,12 +7,28 @@ local TT = st:NewModule('Tooltip')
 -- .agents/taint.md).
 local backdrops = setmetatable({}, { __mode = 'k' })
 
-local function SkinBackdrop(frame, template)
-	return st:SetBackdropIn(backdrops, frame, template)
+-- A tooltip showing a unit -> the class or reaction color its border and the
+-- status bar's took (GameTooltip_OnTooltipSetUnit), until it shows again.
+local unitColors = setmetatable({}, { __mode = 'k' })
+
+-- Draws the Tooltip page's Theme and Background on one of Blizzard's frames, as
+-- kind: 'tooltip' for the tooltips and dropdown lists, 'bar' for the status bar.
+local function SkinBackdrop(frame, kind)
+	return st:SetBackdropIn(backdrops, frame, TT.config.theme, TT.config.background, kind)
+end
+
+-- A unit tooltip's border, and the status bar's, in the unit's color.
+local function ColorUnitBorders(tooltip, c)
+	local backdrop = backdrops[tooltip]
+	if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
+	backdrop = backdrops[GameTooltipStatusBar]
+	if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
 end
 
 function TT:UpdateTooltipDisplay(tooltip)
-	SkinBackdrop(tooltip, self.config.template)
+	-- Drawn again, so in the theme's border until the unit hook colors it.
+	unitColors[tooltip] = nil
+	SkinBackdrop(tooltip, 'tooltip')
 	--tooltip.NineSlice:Hide()
 
 	if IsModifierKeyDown() and tooltip.GetItem and tooltip:GetItem() then
@@ -59,10 +75,17 @@ function TT:GameTooltip_OnTooltipSetUnit(tooltip)
 
 	if c then
 		_G[tooltip:GetName()..'TextLeft1']:SetTextColor(c.r, c.g, c.b)
-		local backdrop = backdrops[tooltip]
-		if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
-		backdrop = backdrops[GameTooltipStatusBar]
-		if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
+		ColorUnitBorders(tooltip, c)
+	end
+	unitColors[tooltip] = c
+end
+
+-- After a theme recolor (st:RecolorThemed gave every backdrop the theme's
+-- border): a unit tooltip that's still showing takes its unit's color back.
+function TT:OnColorsChanged(group)
+	if group ~= 'theme' then return end
+	for tooltip, c in pairs(unitColors) do
+		if tooltip:IsShown() then ColorUnitBorders(tooltip, c) end
 	end
 end
 
@@ -99,7 +122,7 @@ function TT:AddItemInfo(self)
 	self:AddDoubleLine('Item Set ID', item_set_id)
 end
 
--- A profile change: re-applies the template to every skinned tooltip, the
+-- A profile change: re-applies the theme to every skinned tooltip, the
 -- status bar and the dropdown lists, and the default tooltip's position
 -- (tooltipposition.lua). Fonts are applied each time a tooltip shows
 -- (UpdateTooltipDisplay), so they follow the profile already.
@@ -108,14 +131,14 @@ function TT:UpdateConfig()
 
 	self:ApplyTooltipHolder()
 
-	SkinBackdrop(GameTooltipStatusBar, self.config.template)
+	SkinBackdrop(GameTooltipStatusBar, 'bar')
 	for _, tooltip in pairs(self.AllTooltips) do
-		SkinBackdrop(tooltip, self.config.template)
+		SkinBackdrop(tooltip, 'tooltip')
 	end
 	for i = 1, 2 do
 		local dropdown = _G['DropDownList'..i]
 		if dropdown then
-			SkinBackdrop(dropdown, self.config.template)
+			SkinBackdrop(dropdown, 'tooltip')
 		end
 	end
 end
@@ -128,7 +151,7 @@ function TT:OnEnable()
 	GameTooltipStatusBar:SetPoint('BOTTOMLEFT', GameTooltip, 'TOPLEFT', 0, 7)
 	GameTooltipStatusBar:SetPoint('BOTTOMRIGHT', GameTooltip, 'TOPRIGHT', 0, 7)
 
-	SkinBackdrop(GameTooltipStatusBar, self.config.template)
+	SkinBackdrop(GameTooltipStatusBar, 'bar')
 	self:SetupTooltipPosition()
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
 	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
@@ -147,7 +170,7 @@ function TT:OnEnable()
 		WorldMapTooltip,
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
-		SkinBackdrop(tooltip, self.config.template)
+		SkinBackdrop(tooltip, 'tooltip')
 		tooltip.NineSlice:SetAlpha(0)
 		if tooltip.CloseButton then
 			tooltip.CloseButton:Hide()
@@ -171,6 +194,6 @@ function TT:OnEnable()
 	for i=1, 2 do
 		local name = 'DropDownList'..i
 		local dropdown = _G[name]
-		SkinBackdrop(dropdown, self.config.template)
+		SkinBackdrop(dropdown, 'tooltip')
 	end
 end

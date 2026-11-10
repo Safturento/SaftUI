@@ -24,7 +24,7 @@ function LT:SkinLootButton(button)
 	button.icon:ClearAllPoints()
 	button.icon:SetPoint('LEFT')
 	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
-	st:SkinActionButton(button, self.config.popup)
+	st:SkinActionButton(button, self.config.popup, 'slot')
 
 	if _G[button:GetName()..'IconQuestTexture'] then
 		_G[button:GetName()..'IconQuestTexture']:SetAllPoints(button.icon)
@@ -70,7 +70,7 @@ function LT:SkinLootFrame()
 
 	LootFrameTitle:SetFontObject(st:GetFont(config.font))
 	st:CreateHeader(LootFrame, LootFrameTitle, LootFrameCloseButton) 
-	st:SetBackdrop(LootFrame.header, config.template)
+	st:SetBackdrop(LootFrame.header, config.theme, config.background, 'panel')
 	
 	LootFrame.buttons = {}
 	for i=1, 4 do

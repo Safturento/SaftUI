@@ -226,14 +226,15 @@ function TT:GetConfigTable()
 				set = function(info, value)
 					local key = info[#info]
 					self.config[key] = value
-					if key == 'template' then
+					if key == 'theme' or key == 'background' then
 						self:UpdateConfig() -- re-skins every tooltip now
 					elseif key ~= 'font' then -- the font is applied as each tooltip shows
 						self:UpdateTooltipAnchor()
 					end
 				end,
 				args = {
-					template = generators.template(1, 'The look of the tooltips: their background and border.'),
+					theme = generators.theme(1, "The tooltips' border and background."),
+					background = generators.background(1.5),
 					font = generators.font(2, 'The font of the text in tooltips. Tooltips already open keep their font until they show again.'),
 					attach_to_bags = Toggle(3, 'Next to the bag window',
 						'While the bag window is open, the tooltip shows to its left.', HasBags),

@@ -227,6 +227,41 @@ function LT:IsFeedEntryFresh(info, now)
 	return now - info.time <= self.config.feed.fade_time
 end
 
+-- A mount's entry in yellow: its border and fill, and its icon's border. Every
+-- other entry has the feed's Theme and Background (drawn by DrawEntry).
+local function ColorMount(item)
+	local r, g, b = st.config.profile.colors.button.yellow:GetRGB()
+	if item.backdrop then
+		item.backdrop:SetBackdropBorderColor(r, g, b, 1)
+		item.backdrop:SetBackdropColor(r, g, b, .6)
+	end
+	if item.icon.backdrop then
+		item.icon.backdrop:SetBackdropBorderColor(r, g, b, 1)
+	end
+end
+
+-- Draws a feed line for the entry it shows: an entry as a panel, its icon as a
+-- small frame, or a mount in yellow.
+local function DrawEntry(item, info, config)
+	if info.itemSubType == "Mount" then
+		ColorMount(item)
+	else
+		st:SetBackdrop(item, config.theme, config.background, 'panel')
+		st:SetBackdrop(item.icon, config.theme, config.background, 'small')
+	end
+end
+
+-- After a theme recolor (st:RecolorThemed gave every line the theme's colors):
+-- the shown mount entries take their yellow back.
+function LT:OnColorsChanged(group)
+	if group ~= 'theme' or not self.feed then return end
+	for _, item in ipairs(self.feed.items) do
+		if item:IsShown() and item.info and item.info.itemSubType == "Mount" then
+			ColorMount(item)
+		end
+	end
+end
+
 function LT:UpdateFeed(recentlyScrolled, useCache)
 	local now = GetTime()
 	local item, info
@@ -248,16 +283,7 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 
 		if self:IsFeedEntryFresh(info, now) then
 			Util:ClearItemQuality(item)
-
-			if info.itemSubType == "Mount" then
-                local r,g,b = st.config.profile.colors.button.yellow:GetRGB()
-				item.backdrop:SetBackdropBorderColor(r, g, b, 1)
-				item.backdrop:SetBackdropColor(r, g, b, .6)
-				item.icon.backdrop:SetBackdropBorderColor(r, g, b, 1)
-			else
-				st:SetBackdrop(item, feedConfig.template)
-				st:SetBackdrop(item.icon, feedConfig.template)
-			end
+			DrawEntry(item, info, feedConfig)
 
 			if info.gold then
 				item.text:SetText(st.StringFormat:GoldFormat(info.gold))
@@ -624,7 +650,7 @@ function LT:UpdateLootFeedConfig()
 		item.progressBar:SetStatusBarTexture(st.BLANK_TEX)
 		item.progressBar:Hide()
 
-		st:SetBackdrop(item.icon, config.template)
+		st:SetBackdrop(item.icon, config.theme, config.background, 'small')
 
 		item.UpdateTooltip = BuildTooltip
 		item:SetScript("OnEnter", ShowTooltip)
@@ -676,13 +702,13 @@ function LT:UpdateLootFeedConfig()
 		item.icon:SetSize(config.item_height, config.item_height)
 		item.icon:SetPoint('LEFT', item)
 		st:SkinIcon(item.icon)
-		st:SetBackdrop(item, config.template)
+		st:SetBackdrop(item, config.theme, config.background, 'panel')
 
 		-- Along the bottom edge of the text panel. The panel's visible left edge is
 		-- the icon's border, which st:SetBackdrop draws outside the icon (2px for
-		-- thick templates, 1px otherwise), so start right after it and run to the
-		-- entry's right edge.
-		local iconBorder = item.icon.thick and 2 or 1
+		-- Thick, 1px for Thin, none for None), so start right after it and run to
+		-- the entry's right edge.
+		local iconBorder = st:ThemeInset(config.theme, config.background)
 		item.progressBar:ClearAllPoints()
 		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', iconBorder, 0)
 		item.progressBar:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 0, 0)
@@ -701,10 +727,10 @@ function LT:UpdateLootFeedConfig()
 	end
 
 	self.feed.filterButton.text:SetFontObject(font_obj)
-	st:SetBackdrop(self.feed.filterButton, config.template)
+	st:SetBackdrop(self.feed.filterButton, config.theme, config.background, 'small')
 
 	self.feed.reset_button.text:SetFontObject(font_obj)
-	st:SetBackdrop(self.feed.reset_button, config.template)
+	st:SetBackdrop(self.feed.reset_button, config.theme, config.background, 'small')
 	self.feed.reset_button:ClearAllPoints()
 	self.feed.reset_button:SetPoint('BOTTOM', self.feed.filterButton, 'TOP', 0, config.spacing)
 end
@@ -786,7 +812,7 @@ function LT:InitializeLootFeed()
 	self.feed = feed
 
 	self:InitializeFilterDropdown()
-	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'thick')
+	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'theme', 'solid')
 	feed.reset_button:SetSize(20, 20)
 	feed.reset_button:Hide()
 	feed.reset_button:SetScript('OnClick', function()

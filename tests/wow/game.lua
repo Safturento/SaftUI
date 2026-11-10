@@ -65,6 +65,7 @@ end
 function IsShiftKeyDown() return stub.shift_down end
 function IsControlKeyDown() return stub.ctrl_down end
 function IsAltKeyDown() return stub.alt_down end
+function IsModifierKeyDown() return (stub.shift_down or stub.ctrl_down or stub.alt_down) and true or false end
 -- Returns loaded and finished loading, which are the same here.
 C_AddOns = {
 	IsAddOnLoaded = function(name)

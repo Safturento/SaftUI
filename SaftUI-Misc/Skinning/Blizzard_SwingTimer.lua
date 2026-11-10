@@ -9,9 +9,10 @@ local ST = SK:NewModule('Blizzard_SwingTimer')
 	The bars are Edit Mode system frames. This file only restyles them: their size and
 	position are owned by Blizzard_SwingTimerPosition.lua, nothing here gives them new
 	fields, and Blizzard's methods are only ever followed with hooksecurefunc.
-	State lives in the local `skinned` table. The only new frame is a SaftUI-owned
-	backdrop parented to the bar's StatusBar, so it shares the StatusBar's alpha (Blizzard
-	dims that alpha while out of range) and visibility.
+	State lives in the local `skinned` and `backdrops` tables. The only new frame is a
+	SaftUI-owned backdrop parented to the bar's StatusBar, so it shares the StatusBar's
+	alpha (Blizzard dims that alpha while out of range) and visibility. It's drawn as a bar
+	in the Skinning page's Theme and Background, the theme's border outside the StatusBar.
 
 	Restyled:
 	  - Background / Border art: hidden (Blizzard only touches their alpha, never their
@@ -38,6 +39,7 @@ local BARS = {
 local PIP_WIDTH = 2
 
 local skinned = setmetatable({}, { __mode = 'k' })
+local backdrops = setmetatable({}, { __mode = 'k' }) -- StatusBar -> SaftUI's backdrop behind it
 
 local function KeepHidden(region)
 	if not region then return end
@@ -81,18 +83,16 @@ local function SkinPip(statusBar)
 	UpdateHeight()
 end
 
-local function SkinBackdrop(statusBar)
+-- The backdrop, and the labels' font, from the Skinning page. st:SetBackdropIn makes
+-- the backdrop the first time (none while the theme is None), one level under the
+-- StatusBar, and keeps it the theme's border outside it.
+local function StyleBar(statusBar)
 	local config = st.config.profile.skinning
-	local template = config.template
-	if template == nil or template == 'none' or template == '' then return end
+	st:SetBackdropIn(backdrops, statusBar, config.theme, config.background, 'bar')
 
-	local offset = st:ThemeInset(template)
-
-	local holder = st:CreateFrame('Frame', nil, statusBar)
-	holder:SetFrameLevel(max(0, statusBar:GetFrameLevel() - 1))
-	holder:SetPoint('TOPLEFT', statusBar, 'TOPLEFT', -offset, offset)
-	holder:SetPoint('BOTTOMRIGHT', statusBar, 'BOTTOMRIGHT', offset, -offset)
-	st:SetTemplate(holder, template)
+	local font = st:GetFont(config.font)
+	if statusBar.TypeLabel then statusBar.TypeLabel:SetFontObject(font) end
+	if statusBar.TimeLabel then statusBar.TimeLabel:SetFontObject(font) end
 end
 
 local function SkinBar(bar, color)
@@ -102,23 +102,26 @@ local function SkinBar(bar, color)
 	if not statusBar then return end
 	skinned[bar] = true
 
-	local font = st:GetFont(st.config.profile.skinning.font)
-
 	KeepHidden(bar.Background)
 	KeepHidden(bar.Border)
 	KeepHidden(statusBar.TypeLabelShadow)
 
 	SkinFill(statusBar, color)
 	SkinPip(statusBar)
-	SkinBackdrop(statusBar)
-
-	if statusBar.TypeLabel then statusBar.TypeLabel:SetFontObject(font) end
-	if statusBar.TimeLabel then statusBar.TimeLabel:SetFontObject(font) end
+	StyleBar(statusBar)
 end
 
 function ST:SkinFrames()
 	for _, info in ipairs(BARS) do
 		SkinBar(_G[info.name], info.color)
+	end
+end
+
+-- A profile change, or the Skinning page: every skinned bar takes its Theme,
+-- Background and font. Only SaftUI's backdrop and the labels' fonts are touched.
+function ST:UpdateConfig()
+	for bar in pairs(skinned) do
+		StyleBar(bar.StatusBar)
 	end
 end
 

@@ -37,12 +37,25 @@ function ZT:SetZoneDifficultyText()
     self.DifficultyTextString:SetText(st.StringFormat:ColorString(difficultyName, color))
 end
 
-function ZT:OnEvent(frame, event, ...)
+-- The lines either side of the zone name take its color.
+function ZT:ColorFlourishes()
     local zoneTextColor = { ZoneTextString:GetTextColor() }
-    ZoneTextFrame.LeftFlourish.backdrop:SetBackdropColor(unpack(zoneTextColor))
-    ZoneTextFrame.RightFlourish.backdrop:SetBackdropColor(unpack(zoneTextColor))
+    for _, flourish in pairs(self.flourishes) do
+        flourish.backdrop:SetBackdropColor(unpack(zoneTextColor))
+    end
+end
 
+function ZT:OnEvent(frame, event, ...)
+    self:ColorFlourishes()
     self:SetZoneDifficultyText()
+end
+
+-- After a theme recolor (st:RecolorThemed gave the lines Thin's colors): the zone
+-- name's color goes back on. Skinning passes it on.
+function ZT:OnColorsChanged(group)
+    if group == 'theme' and self.flourishes then
+        self:ColorFlourishes()
+    end
 end
 
 function ZT:OnEnable()
@@ -69,16 +82,19 @@ function ZT:OnEnable()
 	FadingFrame_SetHoldTime(SubZoneTextFrame, ZoneHoldDuration);
 	FadingFrame_SetFadeOutTime(SubZoneTextFrame, ZoneFadeOutDuration);
 
+    -- SaftUI's lines either side of the zone name, kept here: nothing is written onto
+    -- Blizzard's ZoneTextFrame.
+    self.flourishes = {}
     for _,side in pairs({'Left', 'Right'}) do
         local flourish = st:CreateFrame('Frame', nil, ZoneTextFrame)
         flourish:SetSize(100, 2)
-        st:SetBackdrop(flourish, 'thin')
+        st:SetBackdrop(flourish, 'thin', 'solid', 'small')
         ZoneTextString:SetWidth(0)
         if side == 'Left' then
             flourish:SetPoint('RIGHT', ZoneTextString, 'LEFT', -20, 0)
         else
             flourish:SetPoint('LEFT', ZoneTextString, 'RIGHT', 20, 0)
         end
-        ZoneTextFrame[side .. 'Flourish'] = flourish
+        self.flourishes[side] = flourish
     end
 end

@@ -20,7 +20,7 @@ function MM:OnEnable()
     MinimapCompassTexture:Hide()
     Minimap:SetMaskTexture(st.BLANK_TEX)
     -- TODO: figure out how to stop cluster resizing
-    -- st:SetBackdrop(MinimapCluster, 'thick')
+    -- st:SetBackdrop(MinimapCluster, 'theme', 'solid', 'panel')
 	function GetMinimapShape() return "SQUARE" end
 
     if st.retail then

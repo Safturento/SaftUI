@@ -20,7 +20,7 @@ end
 
 function MicroMenu:CreateLatencyButton()
     local latency = st:CreateFrame('Frame', nil, UIParent)
-    --st:SetBackdrop(latency, 'thick')
+    --st:SetBackdrop(latency, 'theme', 'solid', 'small')
     latency.text = latency:CreateFontString(nil, 'OVERLAY')
     latency.text:SetFontObject(st:GetFont('pixel'))
     latency.text:SetPoint('CENTER', 1, 0)
@@ -76,7 +76,7 @@ end
 
 function MicroMenu:CreateFramerateButton()
     local framerate = st:CreateFrame('Frame', nil, UIParent)
-    --st:SetBackdrop(framerate, 'thick')
+    --st:SetBackdrop(framerate, 'theme', 'solid', 'small')
     --framerate:SetPoint('TOPLEFT')
     --framerate:SetPoint('BOTTOMRIGHT', button, 'RIGHT', 0, 1)
     framerate.text = framerate:CreateFontString(nil, 'OVERLAY')

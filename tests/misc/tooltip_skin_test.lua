@@ -1,8 +1,13 @@
 -- SaftUI-Misc/tooltip.lua: the skin keeps its backdrop frames in its own weak
 -- table and writes nothing onto Blizzard's tooltips, the status bar or the
--- dropdown lists (.agents/taint.md, rule 1), and still colors them.
+-- dropdown lists (.agents/taint.md, rule 1), and still colors them: the
+-- tooltips and dropdown lists drawn as tooltips and the status bar as a bar, in
+-- the Tooltip page's Theme and Background, and a unit tooltip's class or
+-- reaction border kept through a theme recolor.
 -- Core's real helpers (st:SetBackdropIn, st:SetTemplate) make the backdrops.
 load_core_helpers()
+local T = load_test_file('lib/theme_draws.lua')
+local drawn = T.watch()
 
 -- The Blizzard frames the module skins, as bare frames. A tooltip has the
 -- NineSlice child the module fades, and the close-button-less ones skip that branch.
@@ -61,11 +66,12 @@ local TT = st:GetModule('Tooltip')
 TT:Enable()
 local enable_errors = take_errors()
 
--- The SaftUI backdrop frame of a skinned frame: the child of it that has a
--- backdrop and the template the module set.
+-- The SaftUI backdrop frame of a skinned frame: its child with Blizzard's
+-- Backdrop mixin, which st:CreateFrame gives SaftUI's frames (Blizzard's
+-- NineSlice here has none, and these tooltips have no close button).
 local function backdrop_of(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do
-		if child.template ~= nil then return child end
+		if child.SetBackdrop then return child end
 	end
 end
 
@@ -79,11 +85,13 @@ test('skinning adds no field to any Blizzard frame it skins', function()
 	end
 end)
 
-test('every skinned frame got a SaftUI backdrop in the profile template', function()
+test("every skinned frame got a SaftUI backdrop in the Tooltip page's Theme and Background", function()
 	for _, frame in ipairs(blizzard) do
 		local backdrop = backdrop_of(frame)
 		check(backdrop ~= nil, (frame:GetName() or '?') .. ' has a backdrop child')
-		if backdrop then eq(backdrop.template, TT.config.template, 'template') end
+		if backdrop then eq(T.inset(backdrop), 2, (frame:GetName() or '?') .. ": Thick's border") end
+		local kind = frame == bar and 'bar' or 'tooltip'
+		eq(drawn(frame), 'theme,theme,' .. kind, (frame:GetName() or '?') .. ' is drawn as a ' .. kind)
 	end
 end)
 
@@ -120,13 +128,14 @@ test('an NPC tooltip takes the profile reaction color', function()
 	check(tr == c.r and tg == c.g and tb == c.b, "the name line is the profile's reaction color")
 end)
 
-test('UpdateConfig finds the same backdrops and re-colors them for a new template', function()
+test('UpdateConfig finds the same backdrops and re-colors them for a new Theme and Background', function()
 	local backdrop = backdrop_of(tooltips.ShoppingTooltip1)
 	st.config.profile.templates.thick.bordercolor = { 0.9, 0.8, 0.7, 1 }
-	TT.config.template = 'thick'
+	TT.config.theme, TT.config.background = 'thick', 'solid'
 	TT:UpdateConfig()
 	eq(backdrop_of(tooltips.ShoppingTooltip1), backdrop, 'the backdrop frame is reused')
-	eq(backdrop.template, 'thick', 'template updated')
+	eq(drawn(tooltips.ShoppingTooltip1), 'thick,solid,tooltip', 'Theme and Background updated')
+	eq(select(4, backdrop:GetBackdropColor()), 1, 'Solid')
 	local r, g, b = backdrop:GetBackdropBorderColor()
 	check(r == 0.9 and g == 0.8 and b == 0.7, 'border re-colored')
 	for _, frame in ipairs(blizzard) do
@@ -134,11 +143,42 @@ test('UpdateConfig finds the same backdrops and re-colors them for a new templat
 	end
 end)
 
-test('a none template clears the backdrop and writes nothing', function()
-	TT.config.template = 'none'
+test('a None theme clears the backdrop and writes nothing', function()
+	TT.config.theme = 'none'
 	TT:UpdateConfig()
 	for _, frame in ipairs(blizzard) do
 		eq(keys(frame), before[frame], (frame:GetName() or '?') .. ' keys unchanged')
 	end
 	eq(backdrop_of(tooltips.GameTooltip).backdropInfo, nil, 'backdrop cleared')
+end)
+
+test("a unit tooltip's class border survives a theme recolor, until the tooltip shows something else", function()
+	TT.config.theme, TT.config.background = 'theme', 'theme'
+	TT:UpdateConfig()
+	local tip = tooltips.GameTooltip
+	local c = { r = 0.1, g = 0.2, b = 0.3 }
+	_G.UnitName = function() return 'Someone' end
+	_G.UnitPlayerControlled = function() return true end
+	_G.UnitClass = function() return 'Mage', 'MAGE' end
+	st.config.profile.colors.class.MAGE = c
+	tip:Show()
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	local saved = st.config.profile.templates.thick.bordercolor
+	for _ = 1, 3 do
+		st.config.profile.templates.thick.bordercolor = { 0.7, 0.1, 0.1, 1 }
+		st:RecolorThemed()
+	end
+	for _, frame in ipairs({ tip, bar }) do
+		eq(T.edge(backdrop_of(frame)), '0.10,0.20,0.30,1.00', frame:GetName() .. ' keeps the class color through a recolor')
+	end
+	eq(T.edge(backdrop_of(tooltips.ShoppingTooltip1)), '0.70,0.10,0.10,1.00', 'another tooltip takes the new border color')
+
+	-- Shown again for something else (an item): the theme's border.
+	tip:Hide()
+	tip:Show()
+	st:RecolorThemed()
+	eq(T.edge(backdrop_of(tip)), '0.70,0.10,0.10,1.00', 'shown again, the tooltip takes the theme border')
+	st.config.profile.templates.thick.bordercolor = saved
+	st:RecolorThemed()
+	eq(keys(tip), before[tip], 'still no new field')
 end)

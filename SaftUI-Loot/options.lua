@@ -75,7 +75,8 @@ function LT:GetRollOptions()
 		width = generators.range(1, 'Width', 100, 1000, 1, "Each roll bar's width."),
 		height = generators.range(2, 'Height', 16, 80, 1, "Each roll bar's height."),
 		spacing = generators.range(3, 'Spacing', 0, 30, 1, 'The gap between roll bars.'),
-		template = generators.template(4, 'The look of the roll bars: their background and border.'),
+		theme = generators.theme(4, "The roll bars' border and background."),
+		background = generators.background(4.5),
 		font = font,
 		grow_down = {
 			order = 7,
@@ -104,7 +105,8 @@ function LT:GetFeedOptions()
 		max_items = generators.range(4, 'Max items', 1, 30, 1, 'How many entries the feed shows at once.'),
 		fade_time = generators.range(5, 'Fade time', 1, 60, 1,
 			'How many seconds an entry stays on screen before it fades out. At least 1.'),
-		template = generators.template(6, 'The look of the feed entries: their background and border.'),
+		theme = generators.theme(6, "The feed entries' border and background."),
+		background = generators.background(6.5),
 		font = font,
 		clear_history = {
 			order = 8,

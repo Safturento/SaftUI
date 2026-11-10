@@ -10,7 +10,7 @@ function HK:SkinIcon(_, dispID, id)
 	if not button then return end
 
 	if not button.skinned then
-		st:SetBackdrop(button, SK.config.template)
+		st:SetBackdrop(button, SK.config.theme, SK.config.background, 'action')
 
 		-- Make sure the backdrop always stay below the icons..
 		button.backdrop:SetFrameStrata('LOW')
@@ -22,10 +22,10 @@ function HK:SkinIcon(_, dispID, id)
 	st:SkinIcon(button.Icon, nil, button)
 end
 
--- A profile change: re-applies the profile's skinning template.
+-- A profile change: re-applies the profile's skinning Theme and Background.
 function HK:UpdateConfig()
 	for _, button in ipairs(skinnedButtons) do
-		st:SetBackdrop(button, SK.config.template)
+		st:SetBackdrop(button, SK.config.theme, SK.config.background, 'action')
 	end
 end
 

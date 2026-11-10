@@ -122,7 +122,8 @@ function XP:GetConfigTable()
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
-					template = st.Config.generators.template(1, 'The look of the bars: their background and border.'),
+					theme = st.Config.generators.theme(1, "The bars' border and background."),
+					background = st.Config.generators.background(1.5),
 					spacing = st.Config.generators.range(2, 'Spacing', 0, 30, 1,
 						'The gap between the stacked bars (experience, reputation).'),
 					height = st.Config.generators.range(3, 'Height', 2, 60, 1, "Each bar's height."),
@@ -140,14 +141,14 @@ function XP:GetConfigTable()
 	}
 end
 
--- Applies the profile's size, spacing, template, colors and position. Runs on
+-- Applies the profile's size, spacing, theme, colors and position. Runs on
 -- enable and on every profile change.
 function XP:UpdateConfig()
 	if not self.bars then return end -- not enabled
 	self:MigratePosition()
 
 	-- Before the frame levels below, which place its backdrop.
-	st:SetBackdrop(self.bars.experience, self.config.template)
+	st:SetBackdrop(self.bars.experience, self.config.theme, self.config.background, 'bar')
 
 	-- Size, position and frame levels; in combat these wait for the end of
 	-- combat if a protected frame is anchored to the container or a bar.
@@ -180,7 +181,7 @@ function XP:UpdateConfig()
 
 	self.bars.reputation:SetStatusBarTexture(st.BLANK_TEX)
 	self.bars.reputation:SetStatusBarColor(1, 1, 1)
-	st:SetBackdrop(self.bars.reputation, self.config.template)
+	st:SetBackdrop(self.bars.reputation, self.config.theme, self.config.background, 'bar')
 
 	-- Re-stacks the bars with the new spacing and height
 	self:Update()

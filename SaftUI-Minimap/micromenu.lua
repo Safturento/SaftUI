@@ -21,8 +21,8 @@ local function LayoutBar()
 end
 
 -- Adds a frame to the end of the bar. options (all optional): width (default
--- BUTTON_SIZE), template (the backdrop template, default thicktransparent;
--- 'none' for no backdrop) and text (a font string to center across the item).
+-- BUTTON_SIZE), theme and background (its panel's, by default SaftUI's theme;
+-- theme 'none' for no panel) and text (a font string to center across the item).
 function MicroMenu:AddButton(button, options)
     if not button then return end
     tinsert(self.Buttons, button)
@@ -81,14 +81,14 @@ function MicroMenu:SkinBarButton(button)
     button:SetDisabledTexture(disabled)
 end
 
--- The item's panel: a SaftUI frame kept in its entry. st:SetBackdrop would
--- store it on the item as .backdrop (and .thick). It's a child of the item, so
--- it shows and hides with it, one frame level down so it draws under the
--- item's own art.
+-- The item's panel: a SaftUI frame kept in its entry, drawn as a small frame.
+-- st:SetBackdrop would store it on the item as .backdrop (and .thick). It's a
+-- child of the item, so it shows and hides with it, one frame level down so it
+-- draws under the item's own art.
 local function UpdateBackdrop(button, item)
-    local template = item.template or 'thicktransparent'
-    if template == 'none' then
-        if item.backdrop then st:SetTemplate(item.backdrop, 'none') end
+    local theme, background = item.theme or 'theme', item.background or 'theme'
+    if theme == 'none' then
+        if item.backdrop then st:SetTemplate(item.backdrop, 'none', background, 'small') end
         return
     end
 
@@ -102,8 +102,8 @@ local function UpdateBackdrop(button, item)
         backdrop:SetFrameLevel(math.max(0, level - 1))
     end
 
-    st:SetTemplate(backdrop, template)
-    local offset = st:ThemeInset(template)
+    st:SetTemplate(backdrop, theme, background, 'small')
+    local offset = st:ThemeInset(theme, background)
     backdrop:ClearAllPoints()
     backdrop:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
     backdrop:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)

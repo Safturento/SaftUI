@@ -18,7 +18,7 @@ function CF:CreateSlotGems(equipSlot, position)
 	for i=1, 4 do
 		local gemSlot = st:CreateFrame('frame', nil, gems)
 		gems[i] = gemSlot
-		st:SetBackdrop(gemSlot, 'thick')
+		st:SetBackdrop(gemSlot, 'theme', 'solid', 'small')
 		gemSlot:SetSize(20, 20)
 		gemSlot:Hide()
 

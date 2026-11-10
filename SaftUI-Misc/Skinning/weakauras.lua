@@ -7,7 +7,7 @@ local skinnedRegions = {} -- every region given a backdrop, for UpdateConfig
 
 function WA:SkinIcon(parent, region, data)
 	if not region.skinned then
-		st:SetBackdrop(region, SK.config.template)
+		st:SetBackdrop(region, SK.config.theme, SK.config.background, 'aura')
 		region.backdrop:SetFrameLevel(region:GetFrameLevel()-4)
 
 		-- Make sure the backdrop always stay below the icons..
@@ -21,10 +21,10 @@ function WA:SkinIcon(parent, region, data)
 	st:SkinIcon(icon, nil, region)
 end
 
--- A profile change: re-applies the profile's skinning template.
+-- A profile change: re-applies the profile's skinning Theme and Background.
 function WA:UpdateConfig()
 	for _, region in ipairs(skinnedRegions) do
-		st:SetBackdrop(region, SK.config.template)
+		st:SetBackdrop(region, SK.config.theme, SK.config.background, 'aura')
 	end
 end
 

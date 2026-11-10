@@ -8,7 +8,8 @@ end
 
 -- A profile change. The skins are this module's submodules, which aren't in
 -- st.modules, so Config:UpdateConfig only reaches them through here. Each one
--- with an UpdateConfig re-applies the profile's skinning font and template.
+-- with an UpdateConfig re-applies the profile's skinning font, Theme and
+-- Background.
 function SK:UpdateConfig()
 	for _, module in self:IterateModules() do
 		if module.UpdateConfig then
@@ -17,10 +18,19 @@ function SK:UpdateConfig()
 	end
 end
 
--- The Skinning page in /sui: the font and template the skins share. The skins that
--- re-apply on a profile change (SK:UpdateConfig above) take a new one at once; a
--- skin that reads them only as it skins a frame (the swing timer bars) takes it
--- after a /reload.
+-- A color changed (st:ColorsChanged). It reaches the skins the same way: each one
+-- with an OnColorsChanged colors again what it colors itself, such as a debuff's
+-- border after a theme recolor.
+function SK:OnColorsChanged(group)
+	for _, module in self:IterateModules() do
+		if module.OnColorsChanged then
+			xpcall(module.OnColorsChanged, geterrorhandler(), module, group)
+		end
+	end
+end
+
+-- The Skinning page in /sui: the font, Theme and Background the skins share. The
+-- skins re-apply them at once (SK:UpdateConfig above).
 function SK:GetConfigTable()
 	local generators = st.Config.generators
 	return {
@@ -39,10 +49,11 @@ function SK:GetConfigTable()
 					self:UpdateConfig()
 				end,
 				args = {
-					template = generators.template(1,
-						"The look of the frames SaftUI skins (the buff icons, Hekili and WeakAuras). The swing timer bars take it after a /reload."),
+					theme = generators.theme(1,
+						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, Hekili and WeakAuras."),
+					background = generators.background(1.5),
 					font = generators.font(2,
-						"The font of the text on the frames SaftUI skins (the buff icons). The swing timer bars take it after a /reload."),
+						"The font of the text on the frames SaftUI skins: the buff icons and the swing timer bars."),
 				},
 			},
 		},

@@ -31,7 +31,8 @@ local BUTTON_HEIGHT = MicroMenu.BUTTON_SIZE
 -- (Blizzard_MicroMenu/Mainline/MainMenuBarMicroButtons.xml). The buttons keep
 -- that shape at the bar's height: 20x25.
 local BUTTON_RATIO = 32 / 40
-local TEMPLATE = 'thicktransparent'
+-- Each button's panel follows SaftUI's theme.
+local THEME, BACKGROUND = 'theme', 'theme'
 
 -- Blizzard's icon atlases are 32x41, with the glyph (at most 22x28) centered in
 -- transparent padding. Drawn at 22x28 the glyph is at most about 15x19, which
@@ -151,15 +152,15 @@ end
 local function SkinButton(button)
     CreateHolder(button)
 
-    local offset = st:ThemeInset(TEMPLATE)
+    -- The button's panel, a small frame: made here, where its level is read
+    -- safely (UpdateSkinLevel), and drawn with st:SetBackdropIn, which keeps it
+    -- the theme's border outside the button through a theme switch.
     local skin = st:CreateFrame('Frame', nil, button)
-    skin:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
-    skin:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)
     -- Blizzard halves a disabled button's alpha; dim the icon, not the panel
     skin:SetIgnoreParentAlpha(true)
-    st:SetTemplate(skin, TEMPLATE)
     skins[button] = skin
     UpdateSkinLevel(button)
+    st:SetBackdropIn(skins, button, THEME, BACKGROUND, 'small')
 
     -- Blizzard only Show/Hides these, so alpha 0 sticks
     for _, region in pairs({ button.Background, button.Shadow, button.PushedShadow, button.MainMenuBarPerformanceBar }) do
@@ -252,7 +253,7 @@ function MicroMenu:SkinBlizzardMicroMenu()
     for _, button in ipairs(buttons) do
         SkinButton(button)
         local holder = holders[button]
-        self:AddButton(holder, { width = holder.width, template = 'none' })
+        self:AddButton(holder, { width = holder.width, theme = 'none' })
     end
 
     -- Layout re-anchors the buttons into Blizzard's grid; UpdateScale follows

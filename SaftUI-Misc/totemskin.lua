@@ -566,3 +566,14 @@ function TB:ApplySkin()
 	end
 	ColorFlyout()
 end
+
+-- After a theme recolor (st:RecolorThemed gave every backdrop the theme's border): the
+-- slot buttons and the open flyout's "none" choice take their element colour back. Only
+-- SaftUI's backdrops are touched.
+function TB:OnColorsChanged(group)
+	if group ~= 'theme' or not skinned then return end
+	for frame, skin in pairs(skins) do
+		if skin.style == StyleSlotButton then ColorSlotButton(frame) end
+	end
+	ColorFlyout()
+end

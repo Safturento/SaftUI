@@ -49,7 +49,7 @@ function LT:OpenSlotOptions(filterButton, mouseButton, down)
 end
 
 function LT:InitializeFilterDropdown()
-	local filterButton = st:CreateButton(self.feed:GetName()..'FilterButton', self.feed, 'F', 'thick')
+	local filterButton = st:CreateButton(self.feed:GetName()..'FilterButton', self.feed, 'F', 'theme', 'solid')
 	filterButton:SetSize(20, 20)
 	self.feed.filterButton = filterButton
 	self:HookScript(filterButton, 'OnClick', 'OpenSlotOptions')

@@ -1,8 +1,11 @@
 -- SaftUI-Misc/experience.lua: the XP bar's frame levels (backdrop below the
--- rested part below the fill) and the Experience and Rested color options.
+-- rested part below the fill), the Experience and Rested color options, and the
+-- bars drawn as bars in the page's Theme and Background.
 -- Migrated from the xpsim harness. The config is Core's real defaults, and
 -- the frames come from Core's real helpers (st:SetBackdrop and the rest).
 load_core_helpers()
+local T = load_test_file('lib/theme_draws.lua')
+local drawn = T.watch()
 -- Blizzard's minimap, which the bar's default position anchors to (the profile
 -- has Core's real defaults).
 CreateFrame('Frame', 'Minimap', UIParent)
@@ -95,7 +98,7 @@ test('before the module is enabled a color change does nothing', function()
 	eq(drawn, 0, 'no redraw')
 end)
 
-test('the Experience page reads Template | Spacing, Height | Width, the two colors | Rested bar alpha, then Position', function()
+test('the Experience page reads Theme | Background, Spacing | Height, Width | the two colors, Rested bar alpha, then Position', function()
 	local root = { Experience = XP:GetConfigTable() }
 	local view = st.OptionsModel.BuildView(root, 'Experience')
 	local sections = view.sections
@@ -107,13 +110,32 @@ test('the Experience page reads Template | Spacing, Height | Width, the two colo
 			p.quarter and ('/' .. p.quarter) or '')
 	end
 	eq(table.concat(got, ', '),
-		'template:normal 1, spacing:normal 2, height:normal 1, width:normal 2, '
-		.. 'normal_color:small 1/1, rested_color:small 1/2, rest_alpha:normal 2',
+		'theme:normal 1, background:normal 2, spacing:normal 1, height:normal 2, '
+		.. 'width:normal 1, normal_color:small 2/1, rested_color:small 2/2, rest_alpha:normal 1',
 		'General reads in pairs, the two colors sharing a half')
-	eq(placed[3].y, placed[4].y, 'Height and Width share a line')
-	eq(placed[5].y, placed[7].y, 'the colors and Rested bar alpha share a line')
+	eq(placed[1].y, placed[2].y, 'Theme and Background share a line')
+	eq(placed[5].y, placed[7].y, 'Width and the colors share a line')
 	eq(sections[2].title, 'Position', 'Position has a section of its own')
 	eq(#sections[2].rows, 1, 'with the one row')
 	eq(sections[2].rows[1].type, 'position', 'the Position block')
 	eq(st.OptionsBody.LayoutRows(sections[2].rows)[1].col, 'full', 'on a line of its own')
+end)
+
+test("the bars are drawn as bars in the page's Theme and Background", function()
+	XP:UpdateConfig()
+	for _, key in ipairs({ 'experience', 'reputation' }) do
+		local bar = XP.bars[key]
+		eq(drawn(bar), 'theme,theme,bar', key .. ': the Experience Theme and Background, as a bar')
+		eq(T.inset(bar.backdrop), 2, key .. ": Thick's border")
+	end
+	profile.experience.theme, profile.experience.background = 'thin', 'solid'
+	XP:UpdateConfig()
+	for _, key in ipairs({ 'experience', 'reputation' }) do
+		local bar = XP.bars[key]
+		eq(drawn(bar), 'thin,solid,bar', key .. ': a new Theme and Background')
+		eq(T.offset(bar.backdrop, 'TOPLEFT'), '-1.00,1.00', key .. ": Thin's border outside the bar")
+	end
+	eq(exp.backdrop:GetFrameLevel(), 3, 'the backdrop keeps its level under the rested part')
+	profile.experience.theme, profile.experience.background = 'theme', 'theme'
+	XP:UpdateConfig()
 end)

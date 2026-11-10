@@ -19,7 +19,7 @@ function LT:OnEnable()
 	self:InitializeLootFeed()
 end
 
--- A profile change: re-applies the rolls' and feed's size, spacing, template,
+-- A profile change: re-applies the rolls' and feed's size, spacing, theme,
 -- font and position, and re-filters the feed with the new profile's filters.
 -- Also ends test mode. Neither is protected, but in combat one becomes
 -- protected if a protected frame (e.g. a unit frame) is anchored to it or to

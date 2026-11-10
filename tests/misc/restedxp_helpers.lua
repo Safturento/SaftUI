@@ -8,13 +8,15 @@ local H = {}
 H.RXP = load_test_file('misc/fixtures/restedxp_world.lua')
 
 -- A fresh world with the skin loaded, as in game: the core's frame helpers
--- (real: panels, fonts, templates), SaftUI-Chat's defaults (the skin follows
--- chat's template and font), the Skinning module the skin is a submodule of,
--- then SaftUI-Misc's restedxp.lua. RestedXP itself comes from RXP.make().
--- The profile keeps Core's real defaults.
+-- (real: panels, fonts, the theme), SaftUI-Chat's defaults (the skin follows
+-- chat's Theme, Background and font), the Skinning module the skin is a
+-- submodule of, then SaftUI-Misc's restedxp.lua. RestedXP itself comes from
+-- RXP.make(). The profile keeps Core's real defaults. H.drawn(frame) is how a
+-- SaftUI frame was last drawn: 'theme,background,kind' (lib/theme_draws.lua).
 function H.fresh()
 	reset_world()
 	load_core_helpers()
+	H.drawn = load_test_file('lib/theme_draws.lua').watch()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
@@ -75,7 +77,7 @@ end
 function H.panels_of(frame, all)
 	local out = {}
 	for _, c in ipairs({ frame:GetChildren() }) do
-		if not H.RXP.is_rxp(c) and c.backdrop and c.backdrop.template then table.insert(out, c) end
+		if not H.RXP.is_rxp(c) and c.backdrop then table.insert(out, c) end
 	end
 	if all then return out end
 	return out[1]

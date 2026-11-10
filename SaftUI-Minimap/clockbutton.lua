@@ -36,7 +36,7 @@ function MicroMenu:SkinTimeManagerClockButton()
     self:KillBlizzard_TimeManager()
 
     -- No backdrop of its own: the bar draws every item's panel
-    local button = st:CreateButton('ClockButton', UIParent, nil, 'none')
+    local button = st:CreateButton('ClockButton', UIParent, nil, 'none', 'theme')
 
     button:SetScript('OnUpdate', Update)
     button:SetScript('OnClick', function()

@@ -73,7 +73,8 @@ st.defaults.experience = {
 	height = 13,
 	spacing = 8,
 	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
 }
 

@@ -10,7 +10,8 @@ st.defaults.chat = {
 	},
 	-- width and height (ChatFrame1's size) have no defaults: a profile without them (a
 	-- new or reset one too) takes the chat frame's current size once (CHT:CaptureSize).
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 	font = 'normal',
 	padding = 10,
 	fontsize = 16,

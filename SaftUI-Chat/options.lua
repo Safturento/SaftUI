@@ -77,7 +77,8 @@ function CHT:GetConfigTable()
 					-- Text boxes; the size is rounded to the pixel when it's applied.
 					width = SizeInput(generators.width(1, 'How wide the chat window is, in pixels. At least 250.'), MIN_WIDTH),
 					height = SizeInput(generators.height(2, 'How tall the chat window is, in pixels. At least 120.'), MIN_HEIGHT),
-					template = generators.template(3, 'The look of the chat window and its edit box: their background and border.'),
+					theme = generators.theme(3, 'The border and background of the chat window and its edit box.'),
+					background = generators.background(3.5),
 					font = font,
 					fontsize = generators.range(5, 'Font size', 8, 32, 1, 'The size of the chat text.'),
 					padding = generators.range(6, 'Padding', 0, 30, 1,

@@ -184,8 +184,8 @@ test('Chat: every option has a desc; Line spacing is left out because nothing re
 	eq(check_page('Chat', tree), 1, 'one Position')
 	eq(tree.args.general.args.linespacing, nil, 'no Line spacing option (ChatFrame_OnUpdate is not hooked)')
 	local got = layout({ Chat = tree }, 'Chat')
-	eq(got, 'width:normal 1, height:normal 2, template:normal 1, font:normal 2, fontsize:normal 1, padding:normal 2, '
-		.. 'editbox_height:normal 1, tabs_fade:normal 2', 'the settings in pairs')
+	eq(got, 'width:normal 1, height:normal 2, theme:normal 1, background:normal 2, font:normal 1, fontsize:normal 2, '
+		.. 'padding:normal 1, editbox_height:normal 2, tabs_fade:normal 1', 'the settings in pairs')
 end)
 
 test('Loot: Test mode is small, every option has a desc, Position is last', function()

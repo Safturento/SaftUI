@@ -1,7 +1,8 @@
 local st = SaftUI
 
 st.defaults.minimap = {
-    template = 'thick',
+    theme = 'theme',
+    background = 'solid',
     size = 250,
     compartment_buttons = true,
     position = {
@@ -25,13 +26,13 @@ st.defaults.micromenu = {
 
 local MM = st:GetModule('Minimap')
 
--- The minimap's panel: a SaftUI frame kept here. st:SetBackdrop would store it
--- on Blizzard's Minimap frame as .backdrop (and .thick). One frame level down,
--- so it draws under the map.
+-- The minimap's panel: a SaftUI frame kept here, drawn as a panel. st:SetBackdrop
+-- would store it on Blizzard's Minimap frame as .backdrop (and .thick). One frame
+-- level down, so it draws under the map, and the theme's border outside the map.
 local backdrop
-local function UpdateBackdrop(template)
-	if template == nil or template == 'none' or template == '' then
-		if backdrop then st:SetTemplate(backdrop, 'none') end
+local function UpdateBackdrop(theme, background)
+	if theme == 'none' then
+		if backdrop then st:SetTemplate(backdrop, 'none', background, 'panel') end
 		return
 	end
 
@@ -43,8 +44,8 @@ local function UpdateBackdrop(template)
 		end
 	end
 
-	st:SetTemplate(backdrop, template)
-	local offset = st:ThemeInset(template)
+	st:SetTemplate(backdrop, theme, background, 'panel')
+	local offset = st:ThemeInset(theme, background)
 	backdrop:ClearAllPoints()
 	backdrop:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', -offset, offset)
 	backdrop:SetPoint('BOTTOMRIGHT', Minimap, 'BOTTOMRIGHT', offset, -offset)
@@ -63,7 +64,7 @@ function MM:UpdateConfig()
 	end)
 
 	-- Only SaftUI's backdrop frame is touched, so this is fine in combat.
-	UpdateBackdrop(self.config.template)
+	UpdateBackdrop(self.config.theme, self.config.background)
 end
 
 -- The minimap's section in the /sui tree: General, with the Position option
@@ -93,8 +94,8 @@ function MM:GetConfigTable()
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
-					template = st.Config.generators.template(1,
-						"The look of the minimap's border and background. None draws no frame around it."),
+					theme = st.Config.generators.theme(1, "The minimap's border and background."),
+					background = st.Config.generators.background(1.5),
 					size = st.Config.generators.range(2, 'Size', 30, 500, 1, "The minimap's width and height, in pixels."),
 					compartment_buttons = {
 						order = 3,

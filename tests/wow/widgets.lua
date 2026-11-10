@@ -543,13 +543,13 @@ function Texture.SetTexture(self, s, asset)
 	if asset ~= nil and type(asset) ~= 'string' and type(asset) ~= 'number' then
 		usage(s, 'SetTexture(): asset must be a path or a file ID')
 	end
-	s.texture, s.color_texture = asset, nil
+	s.texture, s.color_texture, s.atlas = asset, nil, nil
 	return true
 end
 function Texture.GetTexture(self, s) return s.texture end
 function Texture.SetColorTexture(self, s, r, g, b, a)
 	s.color_texture = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
-	s.texture = nil
+	s.texture, s.atlas = nil, nil
 end
 -- Takes left, right, top, bottom, or the eight corners (ULx, ULy, LLx, LLy,
 -- URx, URy, LRx, LRy); any other count of numbers is a usage error, as in
@@ -572,6 +572,14 @@ function Texture.GetTexCoord(self, s)
 	local c = s.tex_coord or { 0, 0, 0, 1, 1, 0, 1, 1 }
 	return c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]
 end
+-- An atlas by name, in place of a texture or color; nil clears it. Not
+-- mimicked: the atlas's file and size (any name is taken).
+function Texture.SetAtlas(self, s, atlas, useAtlasSize, filterMode, resetTexCoords)
+	if atlas ~= nil and type(atlas) ~= 'string' then usage(s, 'SetAtlas(): atlas must be a name') end
+	s.atlas, s.texture, s.color_texture = atlas, nil, nil
+	return true
+end
+function Texture.GetAtlas(self, s) return s.atlas end
 function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
 function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
 
@@ -720,6 +728,10 @@ function Frame.DisableDrawLayer(self, s, layer)
 	s.disabled_layers = s.disabled_layers or {}
 	s.disabled_layers[layer] = true
 end
+
+-- A frame's ID (0 until set), which Blizzard's buttons use for their slot or index.
+function Frame.SetID(self, s, id) s.id = number_arg(s, id, 'id') end
+function Frame.GetID(self, s) return s.id or 0 end
 
 function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
 function Frame.GetFrameLevel(self, s) return s.level end
@@ -1157,3 +1169,7 @@ WorldFrame = CreateFrame('Frame', 'WorldFrame')
 states[WorldFrame].fills_screen = true
 UIParent = CreateFrame('Frame', 'UIParent')
 states[UIParent].fills_screen = true
+
+-- The screen's size in UIParent's units, as the game gives it.
+function GetScreenWidth() return UIParent:GetWidth() end
+function GetScreenHeight() return UIParent:GetHeight() end

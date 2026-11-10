@@ -2,7 +2,7 @@ local st = SaftUI
 local SK = st:GetModule('Skinning')
 
 -- Restyles the guide window of the RestedXP Guides addon (a third-party addon,
--- not Blizzard's) in SaftUI's chat look: the chat panel template, the chat font
+-- not Blizzard's) in SaftUI's chat look: the chat's Theme and Background, the chat font
 -- and fine divider lines. Its pieces are kept in side tables keyed by RestedXP's
 -- frames. Scripts are only ever hooked, never replaced.
 --
@@ -25,7 +25,7 @@ local TITLE_SIZE_BONUS = 3
 local TITLE_PAD = 6         -- room above and below the guide name's text
 local TITLE_MIN_HEIGHT = 35 -- RestedXP's own height for the guide name
 local FOOTER_MIN_HEIGHT = 20 -- RestedXP's own height for the footer
-local TIMER_TEMPLATE = 'thin' -- the timer's boxes, like SaftUI's cast bar
+local TIMER_THEME, TIMER_BACKGROUND = 'thin', 'solid' -- the timer's boxes, like SaftUI's cast bar
 local TIMER_MIN_HEIGHT = 16  -- RestedXP's own timer height
 local TIMER_TEXT_PAD = 3     -- above and below the timer's text
 local TIMER_PAD = 4          -- footer room above and below the timer
@@ -51,10 +51,11 @@ local timerSkins = setmetatable({}, { __mode = 'k' }) -- [LibCandyBar bar] = { b
 local sizingTimer = false                           -- our own SetHeight on a timer isn't re-handled
 local placingTimers = false                         -- our own SetPoint on BarContainer isn't re-handled
 
--- The chat's panel template and font name; SaftUI's defaults when chat has no config.
+-- The chat's Theme, Background and font name; SaftUI's defaults when chat has no config.
 function RX:GetStyle()
 	local chat = st.config.profile.chat
-	return (chat and chat.template) or 'thicktransparent', (chat and chat.font) or 'normal'
+	if not chat then return 'theme', 'theme', 'normal' end
+	return chat.theme or 'theme', chat.background or 'theme', chat.font or 'normal'
 end
 
 -- RestedXP gives the guide name a fixed 35px, which a two-line title in Colus
@@ -97,7 +98,7 @@ local function ApplyFont(fs)
 	local state = fontState[fs]
 	if not state.size then return end
 
-	local _, fontName = RX:GetStyle()
+	local _, _, fontName = RX:GetStyle()
 	if state.kind == 'title' then fontName = 'title' end
 	local fontObject = st:GetFont(fontName)
 	if not fontObject then return end
@@ -149,7 +150,8 @@ end
 
 -- In the chat panel's border color; the theme's when the chat has no border.
 local function ColorDivider(tex)
-	local look = st:ResolveLegacyTemplate((RX:GetStyle())) or st:ResolveTheme()
+	local theme, background = RX:GetStyle()
+	local look = st:ResolveTheme(theme, background) or st:ResolveTheme()
 	local r, g, b = unpack(look.colors.bordercolor)
 	tex:SetColorTexture(r, g, b, DIVIDER_ALPHA)
 end
@@ -180,7 +182,8 @@ end
 
 local function MakePanel(parent)
 	local panel = st:CreateFrame('Frame', nil, parent)
-	st:SetBackdrop(panel, (RX:GetStyle()))
+	local theme, background = RX:GetStyle()
+	st:SetBackdrop(panel, theme, background, 'panel')
 	tinsert(panels, panel)
 	return panel
 end
@@ -442,13 +445,14 @@ local function SkinTimer(bar)
 	local level = math.max(0, bar:GetFrameLevel() - 1)
 	for _, box in ipairs({ skin.bar, skin.icon }) do
 		box:SetFrameLevel(level)
-		st:SetTemplate(box, TIMER_TEMPLATE)
 	end
+	st:SetTemplate(skin.bar, TIMER_THEME, TIMER_BACKGROUND, 'bar')
+	st:SetTemplate(skin.icon, TIMER_THEME, TIMER_BACKGROUND, 'small')
 	skin.bar:Show()
 
 	bar:SetTexture(st.BLANK_TEX)
 	bar:SetBackgroundColor(0, 0, 0, 0) -- the box's background shows through
-	local _, fontName = RX:GetStyle()
+	local _, _, fontName = RX:GetStyle()
 	local fontObject = st:GetFont(fontName)
 	if fontObject then
 		local face, _, outline = fontObject:GetFont()
@@ -625,27 +629,38 @@ function RX:ADDON_LOADED(_, name)
 	self:Setup()
 end
 
--- A profile change, or SaftUI-Chat's look changing: re-applies the style.
-function RX:UpdateConfig()
-	local template = self:GetStyle()
-	for _, panel in ipairs(panels) do
-		st:SetBackdrop(panel, template)
-	end
-	for fs in pairs(fontState) do
-		ApplyFont(fs)
-	end
+-- The dividers and hover highlights, in the theme's border color.
+local function ColorLines()
 	for _, tex in ipairs(dividers) do
 		ColorDivider(tex)
 	end
 	for _, tex in ipairs(highlights) do
 		ColorHighlight(tex)
 	end
+end
+
+-- A profile change, or SaftUI-Chat's look changing: re-applies the style.
+function RX:UpdateConfig()
+	local theme, background = self:GetStyle()
+	for _, panel in ipairs(panels) do
+		st:SetBackdrop(panel, theme, background, 'panel')
+	end
+	for fs in pairs(fontState) do
+		ApplyFont(fs)
+	end
+	ColorLines()
 	local bar = self.frames and self.frames.ScrollFrame.ScrollBar
 	if bar then ColorThumb(bar) end
 end
 
+-- After a theme recolor (st:RecolorThemed recolored the panels and timer boxes): the
+-- dividers and hover highlights follow it. Skinning passes it on.
+function RX:OnColorsChanged(group)
+	if group == 'theme' then ColorLines() end
+end
+
 function RX:OnEnable()
-	-- Chat's template and font are this window's too. Its options apply them
+	-- Chat's Theme, Background and font are this window's too. Its options apply them
 	-- with ApplyAppearance, and its UpdateConfig (a profile change) ends in it.
 	local chat = st:GetModule('Chat', true)
 	if chat and type(chat.ApplyAppearance) == 'function' then

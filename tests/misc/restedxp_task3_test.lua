@@ -11,7 +11,7 @@ local function setup()
 	return R
 end
 local function divider(f) return colored(f, 0.3, 0.3, 0.3, 0.5)[1] end
--- SaftUI panels a frame owns: children with a template set
+-- SaftUI panels a frame owns: children with a backdrop of their own
 local function panelsOf(f)
 	return H.panels_of(f, true)
 end
@@ -27,7 +27,7 @@ test('steps_panel', function()
 	check(#ps == 1, 'steps_panel: one panel on CurrentStepFrame')
 	local p = ps[1]
 	check(p and p:GetParent() == cur and allPoints(p), 'steps_panel: parented, all points')
-	check(p and p.backdrop.template == 'thicktransparent', 'steps_panel: template')
+	check(p and H.drawn(p) == 'theme,theme,panel', "steps_panel: chat's Theme and Background, as a panel")
 	local bl, br = pt(cur, 'BOTTOMLEFT'), pt(cur, 'BOTTOMRIGHT')
 	check(bl and bl.rel == R.GuideName and bl.relPoint == 'TOPLEFT' and bl.y == 9, 'steps_panel: BOTTOMLEFT')
 	check(br and br.rel == R.GuideName and br.relPoint == 'TOPRIGHT' and br.y == 9, 'steps_panel: BOTTOMRIGHT')
@@ -94,7 +94,7 @@ test('tip_frame_switches_role', function()
 	local tip = pool(R)[2]
 	local ps = panelsOf(tip)
 	check(#ps == 1 and ps[1]:GetParent() == tip and allPoints(ps[1]), 'tip_frame_switches_role: tip panel')
-	check(ps[1] and ps[1].backdrop.template == 'thicktransparent', 'tip_frame_switches_role: tip template')
+	check(ps[1] and H.drawn(ps[1]) == 'theme,theme,panel', "tip_frame_switches_role: tip in chat's Theme and Background")
 	check(ps[1] and ps[1]:IsShown(), 'tip_frame_switches_role: tip panel shown')
 	check(not divider(tip):IsShown(), 'tip_frame_switches_role: tip divider hidden')
 	check(#panelsOf(pool(R)[1]) == 0, 'tip_frame_switches_role: no panel on a normal step')
@@ -140,8 +140,8 @@ test('config_current', function()
 	R.AddCurrentStep({ elements = 1, tip = true })
 	R.CurrentStepFrame.UpdateText()
 	local RX = H.get_rx()
-	SaftUI.config.profile.chat.template = 'thick'
+	SaftUI.config.profile.chat.theme, SaftUI.config.profile.chat.background = 'thick', 'solid'
 	RX:UpdateConfig()
-	check(panelsOf(R.CurrentStepFrame)[1].backdrop.template == 'thick', 'config_current: steps panel')
-	check(panelsOf(pool(R)[2])[1].backdrop.template == 'thick', 'config_current: tip panel')
+	check(H.drawn(panelsOf(R.CurrentStepFrame)[1]) == 'thick,solid,panel', 'config_current: steps panel')
+	check(H.drawn(panelsOf(pool(R)[2])[1]) == 'thick,solid,panel', 'config_current: tip panel')
 end)

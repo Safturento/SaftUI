@@ -108,7 +108,7 @@ function LT:UpdateRollFrame(frame)
 		skin.info:SetPoint('TOPLEFT', frame.IconFrame, 'TOPRIGHT', 7, 0)
 		skin.info:SetFrameLevel(1)
 	end
-	st:SetBackdrop(skin.info, config.template)
+	st:SetBackdrop(skin.info, config.theme, config.background, 'bar')
 
 	frame.Name:SetFontObject(st:GetFont(config.font))
 	frame.Name:ClearAllPoints()
@@ -124,7 +124,7 @@ function LT:UpdateRollFrame(frame)
 		skin.iconBox:SetAllPoints(frame.IconFrame)
 		skin.iconBox:SetFrameLevel(frame.IconFrame:GetFrameLevel())
 	end
-	st:SetBackdrop(skin.iconBox, config.template)
+	st:SetBackdrop(skin.iconBox, config.theme, config.background, 'small')
 	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))
 	frame.IconFrame:SetSize(config.height, config.height)
 
@@ -150,7 +150,7 @@ function LT:UpdateRollFrame(frame)
 			skin.buttonText[info.name]:SetFontObject(st:GetFont(config.font))
 
 			button:SetSize(config.height - 4, config.height - 4)
-			--st:SetBackdrop(button, config.template)
+			--st:SetBackdrop(button, config.theme, config.background, 'small')
 			prev = button
 		end
 	end
@@ -306,7 +306,7 @@ end
 ---- Test mode ---------------------
 ------------------------------------
 -- Preview bars are SaftUI's own frames that copy the look of a skinned roll
--- frame (same size, template, font, spacing, icon, name, timer and buttons).
+-- frame (same size, theme, font, spacing, icon, name, timer and buttons).
 -- Real Blizzard roll frames are never created, fed fake data or touched; the
 -- previews only read whether one is showing. They hide while a real roll is
 -- up (the real rolls own the anchor then) and come back when it ends.
@@ -503,8 +503,8 @@ local function ApplyPreviewConfig(bar, config)
 
 	bar:SetSize(config.width, config.height)
 	bar.IconFrame:SetSize(config.height, config.height)
-	st:SetBackdrop(bar.IconFrame, config.template)
-	st:SetBackdrop(bar.InfoFrame, config.template)
+	st:SetBackdrop(bar.IconFrame, config.theme, config.background, 'small')
+	st:SetBackdrop(bar.InfoFrame, config.theme, config.background, 'bar')
 
 	bar.Timer:ClearAllPoints()
 	bar.Timer:SetPoint('BOTTOMLEFT', bar.IconFrame, 'BOTTOMRIGHT', config.spacing, 0)
@@ -551,7 +551,7 @@ function LT:CreateRollPreviews()
 	return container
 end
 
--- Re-applies size, template, font, spacing, grow direction and position to the
+-- Re-applies size, theme, font, spacing, grow direction and position to the
 -- previews (they anchor to rollAnchor like the real rolls do). Runs from
 -- UpdateGroupLootConfig, so option edits and edit mode drags both reach it.
 function LT:UpdateRollPreviews()

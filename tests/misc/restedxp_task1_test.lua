@@ -74,7 +74,7 @@ test('chrome_skinned', function()
 		'chrome_skinned: backdrops cleared')
 	local panel = findPanel(R)
 	check(panel ~= nil, 'chrome_skinned: guide panel exists')
-	check(panel and panel.backdrop.template == 'thicktransparent', 'chrome_skinned: template')
+	check(panel and H.drawn(panel) == 'theme,theme,panel', "chrome_skinned: chat's Theme and Background, as a panel")
 	local tl, br = pt(panel, 'TOPLEFT'), pt(panel, 'BOTTOMRIGHT')
 	check(tl and tl.rel == R.GuideName and tl.relPoint == 'TOPLEFT', 'chrome_skinned: TOPLEFT to GuideName TOPLEFT')
 	check(br and br.rel == R.Footer and br.relPoint == 'BOTTOMRIGHT', 'chrome_skinned: BOTTOMRIGHT to Footer BOTTOMRIGHT')
@@ -178,17 +178,17 @@ end)
 test('config_follows_chat', function()
 	local R, RX = setup()
 	local chat = SaftUI.config.profile.chat
-	-- Thin's own border color, so the divider shows it follows the chat's template.
+	-- Thin's own border color, so the divider shows it follows the chat's Theme.
 	SaftUI.config.profile.templates.thin.bordercolor = { 0.5, 0.2, 0.2, 1 }
-	chat.font, chat.template = 'pixel', 'thin'
+	chat.font, chat.theme, chat.background = 'pixel', 'thin', 'solid'
 	RX:UpdateConfig()
 	check(font(R.Footer.text, 'pixel', 9, 'MONOCHROMEOUTLINE'), 'config_follows_chat: font')
-	check(findPanel(R).backdrop.template == 'thin', 'config_follows_chat: template')
+	check(H.drawn(findPanel(R)) == 'thin,solid,panel', 'config_follows_chat: Theme and Background')
 	local c = H.color_of(dividers(findPanel(R))[1])
 	check(near(c[1], 0.5) and near(c[2], 0.2) and near(c[4], 0.5), 'config_follows_chat: divider colour')
 	SaftUI.config.profile.chat = nil
-	local t, f = RX:GetStyle()
-	check(t == 'thicktransparent' and f == 'normal', 'config_follows_chat: defaults when chat config is missing')
+	local t, b, f = RX:GetStyle()
+	check(t == 'theme' and b == 'theme' and f == 'normal', 'config_follows_chat: defaults when chat config is missing')
 end)
 
 test('chat_update_hooked', function()

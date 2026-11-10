@@ -11,8 +11,10 @@ local BF = SK:NewModule('Blizzard_BuffFrame')
 	it never moves, reparents or adds fields to the frames, and Blizzard's methods are only
 	ever followed with hooksecurefunc. BuffFrame's and DebuffFrame's position and button
 	layout (icon size included) are SaftUI's, in Blizzard_BuffFramePosition.lua. The
-	backdrop and borders here hang off the button's Icon, so they follow that layout. Every
-	button is created up front in AuraFrame_OnLoad, so they can all be skinned once on enable.
+	backdrop and borders here hang off the button's Icon, so they follow that layout. The
+	backdrop is a frame of SaftUI's, kept in a table here, drawn as an aura in the Skinning
+	page's Theme and Background. Every button is created up front in AuraFrame_OnLoad, so
+	they can all be skinned once on enable.
 
 	The duration and stack count text of BuffFrame's and DebuffFrame's own buttons follow
 	that file's Text settings: font, size, outline and anchor (see AuraTextStyle). All
@@ -37,6 +39,7 @@ local DURATION_OFFSETS = {
 }
 
 local skinned = {}
+local backdrops = setmetatable({}, { __mode = 'k' }) -- button's Icon -> SaftUI's backdrop behind it
 local borderUpdaters = {} -- button -> re-applies its border color
 local durationAnchorers = {} -- button -> re-applies its duration text's anchor
 local atlasColors = {}
@@ -45,6 +48,28 @@ local noneColor
 -- Read at use time, so a profile change takes effect.
 local function SkinningFont()
 	return st:GetFont(st.config.profile.skinning.font)
+end
+
+-- The Skinning page's Theme and Background, read at use time.
+local function SkinningLook()
+	local config = st.config.profile.skinning
+	return config.theme, config.background
+end
+
+-- Draws the backdrop behind a button's icon. It's made the first time: a frame of
+-- SaftUI's, a child of the button one level under it, so under the icon, and laid over
+-- the icon until st:SetBackdropIn places it the theme's border outside it. Under None it
+-- stays there bare, so the debuff border's fallback (SkinBorders) still has its place.
+local function DrawBackdrop(button)
+	local icon = button.Icon
+	if not backdrops[icon] then
+		local backdrop = st:CreateFrame('Frame', nil, button)
+		backdrop:SetFrameLevel(max(0, button:GetFrameLevel() - 1))
+		backdrop:SetAllPoints(icon)
+		backdrops[icon] = backdrop
+	end
+	local theme, background = SkinningLook()
+	st:SetBackdropIn(backdrops, icon, theme, background, 'aura')
 end
 
 -- The Auras module's style for a button's 'duration' or 'count' text: its font object,
@@ -85,14 +110,14 @@ local function BuildAtlasColors()
 end
 
 local function UpdateBorderColor(button, debuffColor)
-	local backdrop = button.Icon.backdrop
+	local backdrop = backdrops[button.Icon]
 
 	if button.TempEnchantBorder and button.TempEnchantBorder:IsShown() then
 		backdrop:SetBackdropBorderColor(unpack(TEMP_ENCHANT_COLOR))
 	elseif button.DebuffBorder and button.DebuffBorder:IsShown() and debuffColor then
 		backdrop:SetBackdropBorderColor(debuffColor:GetRGB())
 	else
-		local look = st:ResolveLegacyTemplate(backdrop.template)
+		local look = st:ResolveTheme(SkinningLook())
 		if look then
 			backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
 		else
@@ -121,7 +146,7 @@ local function SkinBorders(button)
 		-- covers our backdrop, so its edge reads as the border.
 		border:SetAlpha(0)
 		border:ClearAllPoints()
-		border:SetAllPoints(button.Icon.backdrop)
+		border:SetAllPoints(backdrops[button.Icon])
 		border:SetDrawLayer('BACKGROUND', -1)
 
 		hooksecurefunc(border, 'SetAtlas', function(self, atlas)
@@ -162,8 +187,8 @@ local function SkinDuration(button)
 		if not AnchorAuraText(duration, button, 'duration') and relativeTo == button.Icon then
 			local offset = DURATION_OFFSETS[point]
 			if offset then
-				-- The backdrop's thickness follows the template, which can change
-				local gap = (button.Icon.thick and 2 or 1) + 1
+				-- Past the backdrop's border, whose width follows the theme
+				local gap = st:ThemeInset(SkinningLook()) + 1
 				duration:SetPoint(point, relativeTo, relativePoint, offset[1] * gap, offset[2] * gap)
 			end
 		end
@@ -206,7 +231,7 @@ local function SkinAuraButton(button)
 	local font = st:GetFont(config.font)
 
 	st:SkinIcon(button.Icon)
-	st:SetBackdrop(button.Icon, config.template)
+	DrawBackdrop(button)
 
 	SkinBorders(button)
 	SkinDuration(button)
@@ -259,16 +284,17 @@ function BF:UpdateText()
 	end
 end
 
--- A profile change: every skinned button gets the profile's skinning template
--- and font, and the profile's Auras text settings. Only regions and SaftUI's own
--- backdrops are touched, the same as the hooks above, which already run in combat.
+-- A profile change: every skinned button gets the profile's skinning Theme,
+-- Background and font, and the profile's Auras text settings. Only regions and
+-- SaftUI's own backdrops are touched, the same as the hooks above, which already
+-- run in combat.
 function BF:UpdateConfig()
 	local config = st.config.profile.skinning
 	local font = st:GetFont(config.font)
 
 	for button in pairs(skinned) do
-		st:SetBackdrop(button.Icon, config.template)
-		-- SetBackdrop reset the border to the template's color
+		DrawBackdrop(button)
+		-- Drawing reset the border to the theme's color
 		if borderUpdaters[button] then borderUpdaters[button]() end
 
 		if button.Symbol then
@@ -276,8 +302,17 @@ function BF:UpdateConfig()
 		end
 	end
 
-	-- The duration's backdrop gap follows the template's thickness
+	-- The duration's backdrop gap follows the theme's border
 	self:UpdateText()
+end
+
+-- After a theme recolor (st:RecolorThemed gave every backdrop the theme's border):
+-- the debuff type and weapon enchant borders go back on. Skinning passes it on.
+function BF:OnColorsChanged(group)
+	if group ~= 'theme' then return end
+	for _, update in pairs(borderUpdaters) do
+		update()
+	end
 end
 
 function BF:ADDON_LOADED(event, addon)

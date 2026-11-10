@@ -70,7 +70,7 @@ end
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
-	st:SetBackdrop(frame, self.config.template)
+	st:SetBackdrop(frame, self.config.theme, self.config.background, 'panel')
 
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
@@ -100,7 +100,7 @@ function CHT:SkinChatFrame(frame)
 	frame.EditBox:SetHeight(self.config.editbox.height)
 	frame.EditBox:SetFrameLevel(frame:GetFrameLevel()+2)
 	frame.EditBox:SetAltArrowKeyMode(false)
-	st:SkinEditBox(frame.EditBox, self.config.template, self.config.font)
+	st:SkinEditBox(frame.EditBox, self.config.theme, self.config.background, self.config.font)
 	frame.EditBox:ClearAllPoints()
 	frame.EditBox:SetPoint('BOTTOMLEFT', frame.backdrop, 'TOPLEFT', 0, 1)
 	frame.EditBox:SetPoint('BOTTOMRIGHT', frame.backdrop, 'TOPRIGHT', 0, 1)
@@ -125,13 +125,13 @@ function CHT:SkinChatFrame(frame)
 end
 
 function CHT:UpdateChatFrameDisplay(frame)
-	st:SetBackdrop(frame, self.config.template)
+	st:SetBackdrop(frame, self.config.theme, self.config.background, 'panel')
 
 	local offset = 0
 	if frame.CombatLogQuickButtonFrame then
 		offset = frame.CombatLogQuickButtonFrame:GetHeight()
 	end
-	-- No backdrop is made while the template is 'none'.
+	-- No backdrop is made while the theme is None.
 	if frame.backdrop then
 		frame.backdrop:ClearAllPoints()
 		frame.backdrop:SetPoint('TOPLEFT', -self.config.padding, self.config.padding + offset)
@@ -141,11 +141,9 @@ function CHT:UpdateChatFrameDisplay(frame)
 	if frame == ChatFrame1 then
 		self:UpdateFootprint()
 	end
-
-	st:SetBackdrop(frame.Tab, self.config.tmeplate)
 end
 
--- Applies the profile's font, font size, template, padding and edit box
+-- Applies the profile's font, font size, theme, padding and edit box
 -- height to a chat frame SkinChatFrame already skinned.
 function CHT:ApplyChatFrameConfig(frame)
 	local font, _, outline = st:GetFont(self.config.font):GetFont()
@@ -155,7 +153,7 @@ function CHT:ApplyChatFrameConfig(frame)
 	local editbox = _G[frame:GetName()..'EditBox']
 	if editbox then
 		editbox:SetHeight(self.config.editbox.height)
-		st:StyleEditBox(editbox, self.config.template, self.config.font)
+		st:StyleEditBox(editbox, self.config.theme, self.config.background, self.config.font)
 	end
 
 	self:UpdateChatFrameDisplay(frame)
@@ -316,14 +314,14 @@ end
 -- Puts the mover's outline on the chat frame's border line. SaftUI's backdrop sits
 -- `padding` outside the holder (ChatFrame1's rectangle), with its line on its outer
 -- edge, and an overlay draws its line EM.OutlineOutset() outside its own rect, so the
--- overlay goes that much inside the padding. With the 'none' template there's no
+-- overlay goes that much inside the padding. With the None theme there's no
 -- backdrop, and the overlay covers the holder. Anchored to the holder, the outline
 -- follows its size. The outline is SaftUI's own frame, so this is safe in combat.
 function CHT:UpdateFootprint()
 	local mover = self.mover
 	if not mover then return end
 
-	local inset = self.config.template == 'none' and 0
+	local inset = self.config.theme == 'none' and 0
 		or self.config.padding - st.EditModeFrames.OutlineOutset()
 	local overlay = mover.overlay
 	overlay:ClearAllPoints()
@@ -331,7 +329,7 @@ function CHT:UpdateFootprint()
 	overlay:SetPoint('BOTTOMRIGHT', self.holder, 'BOTTOMRIGHT', inset, -inset)
 end
 
--- Font, template, padding and edit box height of every chat frame.
+-- Font, theme, padding and edit box height of every chat frame.
 function CHT:ApplyAppearance()
 	for chatID=1, NUM_CHAT_WINDOWS do
 		self:ApplyChatFrameConfig(_G['ChatFrame'..chatID])

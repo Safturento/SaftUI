@@ -139,9 +139,24 @@ test('config_recolours', function()
 	local templates = SaftUI.config.profile.templates
 	templates.thick.bordercolor = { 0.1, 0.2, 0.3, 1 }
 	templates.thin.bordercolor = { 0.5, 0.2, 0.2, 1 }
-	SaftUI.config.profile.chat.template = 'thin'
+	SaftUI.config.profile.chat.theme = 'thin'
 	RX:UpdateConfig()
 	local h = colored(pool(R)[2], 0.1, 0.2, 0.3, 0.4)[1]
 	check(h ~= nil, 'config_recolours: highlight follows profile')
-	check(#colored(pool(R)[2], 0.5, 0.2, 0.2, 0.5) == 1, 'config_recolours: list divider follows template')
+	check(#colored(pool(R)[2], 0.5, 0.2, 0.2, 0.5) == 1, "config_recolours: list divider follows chat's Theme")
+end)
+
+test('theme_recolour', function()
+	local R = setup()
+	R.LoadGuide(3)
+	-- A border color changed on the Theme tab: st:RecolorThemed recolors the
+	-- panels, and the highlight and dividers, which take the theme's border
+	-- color, follow it.
+	SaftUI.config.profile.templates.thick.bordercolor = { 0.1, 0.2, 0.3, 1 }
+	SaftUI:RecolorThemed()
+	check(colored(pool(R)[2], 0.1, 0.2, 0.3, 0.4)[1] ~= nil, 'theme_recolour: highlight follows the theme')
+	check(#colored(pool(R)[2], 0.1, 0.2, 0.3, 0.5) == 1, 'theme_recolour: list divider follows the theme')
+	local panel = H.panels_of(R)
+	local r, g, b = panel.backdrop:GetBackdropBorderColor()
+	check(near(r, 0.1) and near(g, 0.2) and near(b, 0.3), 'theme_recolour: the panel too')
 end)

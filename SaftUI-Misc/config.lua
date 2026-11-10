@@ -14,7 +14,8 @@ st.defaults.experience.position = {
 -- tooltip grows from the holder's corner. attach_to_bags and attach_to_feed put
 -- it to the left of the bag window or the loot feed while they show.
 st.defaults.tooltip = {
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 	font = 'normal',
 	attach_to_bags = true,
 	attach_to_feed = true,
@@ -23,7 +24,8 @@ st.defaults.tooltip = {
 
 st.defaults.skinning = {
 	font = 'pixel',
-	template = 'thicktransparent',
+	theme = 'theme',
+	background = 'theme',
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua).
