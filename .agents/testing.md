@@ -108,6 +108,7 @@ Every file starts with the WoW stubs and the core shell loaded.
    - a widget method called with the wrong type of self errors "Wrong object type" (a FontString's `SetText` on a Button);
    - `SetText` on a font string with no font errors "Font not set";
    - `SetFontObject(nil)`, an unknown template, point, strata or script name, and an anchor loop all error.
+   - `GetStringWidth` of a font string with a width and `SetWordWrap(false)` is cut to that width, as in the modern client; `GetUnboundedStringWidth` is the text's full width. Code that sizes a reused label from its text uses the unbounded one.
    - `SetFontObject` keeps a font set with `SetFont`: in game a reused dropdown kept a font list's face through `SetFontObject` with the same object (whether another object clears it is unverified; the stub keeps it either way). Code that reuses a font string sets its font outright (`SetFieldFont` in `optionswidgets.lua`).
 
    A stub kinder than the real thing is a bug in the stub: it lets a test pass where the game errors. Check real behavior in Blizzard's source (Gethe/wow-ui-source, `forever` branch; widget methods in `Blizzard_APIDocumentationGenerated`), as `.agents/clients.md` describes.

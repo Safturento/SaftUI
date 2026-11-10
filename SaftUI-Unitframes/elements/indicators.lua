@@ -131,6 +131,9 @@ for _, config in pairs(indicators) do
          UF:UpdateElement(indicator)
 
         indicator:SetSize(indicator.config.size, indicator.config.size)
+        -- The backdrop is SaftUI's frame behind the icon: it takes the Alpha the
+        -- icon does.
+        if indicator.backdrop then indicator.backdrop:SetAlpha(indicator.config.alpha or 1) end
 --
     end
 

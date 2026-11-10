@@ -72,7 +72,7 @@ st.defaults.swingtimer = {
 -- height with its border; with the text on it the bar is never shorter than the text
 -- needs. colors are the bar's element colours, by element (SaftUI-Misc/totemskin.lua):
 -- each element button's border, its flyout's "none" choice and its timer bar. Sampled from
--- Blizzard's UI-TotemBar border art, so they read as the same elements. Not in /sui.
+-- Blizzard's UI-TotemBar border art, so they read as the same elements. One color per element in /sui (the totem bar's Element colors).
 -- position (a shaman's holder, SaftUI's edit mode mover for the bar) has no default: a
 -- profile without one (a new or reset one too) keeps the holder's spot from the last
 -- profile, or takes the bar's spot on screen once Blizzard has placed it

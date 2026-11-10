@@ -102,8 +102,8 @@ function LT:GetFeedOptions()
 		item_height = generators.range(2, 'Item height', 16, 80, 1, "Each entry's height."),
 		spacing = generators.range(3, 'Spacing', 0, 30, 1, 'The gap between entries.'),
 		max_items = generators.range(4, 'Max items', 1, 30, 1, 'How many entries the feed shows at once.'),
-		fade_time = generators.range(5, 'Fade time', 0, 60, 1,
-			'How many seconds an entry stays on screen before it fades out.'),
+		fade_time = generators.range(5, 'Fade time', 1, 60, 1,
+			'How many seconds an entry stays on screen before it fades out. At least 1.'),
 		template = generators.template(6, 'The look of the feed entries: their background and border.'),
 		font = font,
 		clear_history = {

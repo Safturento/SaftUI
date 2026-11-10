@@ -230,8 +230,8 @@ function UF:PlaceUnitFrame(frame)
 	return true
 end
 
--- Sizes a boss/arena holder to its whole group, all five frames whether shown
--- or not, and places it at the group's position. The holder is the group's edit
+-- Sizes a boss/arena holder to its group, the frames the layout shows (shown
+-- or not), and places it at the group's position. The holder is the group's edit
 -- mode outline, so it covers the group's spot even with no boss up. It counts
 -- as protected in combat while frame 1 is anchored to it (st:CanMoveNow).
 function UF:PlaceHolder(unit)
