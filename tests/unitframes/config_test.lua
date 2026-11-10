@@ -707,6 +707,37 @@ test('each element tab offers Theme and Background, with descs, and no template'
 	end)
 end)
 
+-- The castbar's Bar and Icon sections each have their own Theme and
+-- Background, so a section, not a tab, has one Background at most.
+test('no element tab shows two settings named Background: the bar\'s own empty-part fill is Bar background', function()
+	local config = UF:GetConfigTable()
+	local bars = 0
+	for _, unit in ipairs(UNITS) do
+		for tab, group in pairs(element_tabs(config, unit)) do
+			local where = unit .. '.' .. tab
+			local bySection = {}
+			each_option(group, function(option, path)
+				if option.name ~= 'Background' then return end
+				local at = where .. '.' .. table.concat(path, '.')
+				check(option.type == 'select' and path[#path] == 'background', at .. ' is the theme override, not ' .. tostring(option.type))
+				local section = table.concat(path, '.', 1, #path - 1)
+				bySection[section] = (bySection[section] or 0) + 1
+			end)
+			for section, count in pairs(bySection) do
+				eq(count, 1, where .. (section ~= '' and ('.' .. section) or '') .. ' has one Background')
+			end
+			local bg = group.args.bg
+			if bg then
+				bars = bars + 1
+				eq(bg.type, 'group', where .. "'s bar background is a section")
+				eq(bg.name, 'Bar background', where .. "'s empty-part fill is Bar background")
+			end
+		end
+	end
+	-- Health and Power on every unit, Additional power on the player.
+	eq(bars, 11 * 2 + 1, 'every bar with a fill of its own')
+end)
+
 test("Health's first section: the toggles four to a line, then the settings two to a line", function()
 	local config = UF:GetConfigTable()
 	local view = OM.BuildView({ Unitframes = config }, 'Unitframes', { pick = 'target', tab = 'Health' })

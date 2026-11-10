@@ -172,12 +172,12 @@ local function GetConfigTable(unit)
 					'Text position'
 				),
 			}),
-			bg = Section(99, 'Background', 'bg', {
+			bg = Section(99, 'Bar background', 'bg', {
 				enable = G.toggle(0, 'Enable', "Shows a background in the bar's empty part, a darker shade of the bar's color.", 'small'),
 				multiplier = G.range(1, 'Brightness', 0, 1, 0.05, "How light the shade is: 0 is black, 1 is the bar's own color."),
 				alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 			}),
-			-- Last in the tab, after Text and Background.
+			-- Last in the tab, after Text and Bar background.
 			position = G.uf_element_position(1000,
 				function(index) return Config().position[index] end,
 				function(index, value)

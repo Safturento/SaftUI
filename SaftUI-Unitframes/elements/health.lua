@@ -176,7 +176,7 @@ local function GetConfigTable(unit)
 			},
 			bg = {
 				order = 99,
-				name = 'Background',
+				name = 'Bar background',
 				type = 'group',
 				inline = true,
 				get = function(info)
@@ -192,7 +192,7 @@ local function GetConfigTable(unit)
 					alpha = G.alpha(2, 'How solid the background is, from see-through to opaque.'),
 				},
 			},
-			-- Last in the tab, after Text and Background.
+			-- Last in the tab, after Text and Bar background.
 			position = G.uf_element_position(1000,
 				function(index)
 					return UnitConfig().health.position[index]
