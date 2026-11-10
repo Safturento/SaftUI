@@ -62,12 +62,14 @@ local function GetRectInUI(f)
 end
 EM.GetRectInUI = GetRectInUI
 
--- How far outside its rect an overlay draws its line. The overlay has a thick
--- SaftUI backdrop, which st:SetBackdrop places 2px outside the frame, and that
--- is also where a thick-bordered SaftUI frame's own border line sits. Snapping
--- measures this line, so the borders you see land on the grid lines and on
--- each other.
-EM.OUTLINE_OUTSET = 2
+-- How far outside its rect an overlay draws its line: SaftUI's theme's border
+-- (2px under Thick, 1px under Thin). The overlay has a backdrop in SaftUI's
+-- theme, which st:SetBackdrop places that far outside the frame, and that is
+-- also where a SaftUI frame's own border line sits. Snapping measures this
+-- line, so the borders you see land on the grid lines and on each other.
+function EM.OutlineOutset()
+	return st:ThemeInset('theme', 'solid')
+end
 
 -- A mover's outline (the line its overlay draws) in UIParent units, or nil.
 -- Overlays are UIParent's children with no scale of their own, so the outset
@@ -75,7 +77,7 @@ EM.OUTLINE_OUTSET = 2
 function EM.GetOutlineRect(mover)
 	local l, r, b, t = GetRectInUI(mover.overlay)
 	if not l then return end
-	local o = EM.OUTLINE_OUTSET
+	local o = EM.OutlineOutset()
 	return l - o, r + o, b - o, t + o
 end
 

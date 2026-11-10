@@ -315,7 +315,7 @@ end
 
 -- Puts the mover's outline on the chat frame's border line. SaftUI's backdrop sits
 -- `padding` outside the holder (ChatFrame1's rectangle), with its line on its outer
--- edge, and an overlay draws its line EM.OUTLINE_OUTSET outside its own rect, so the
+-- edge, and an overlay draws its line EM.OutlineOutset() outside its own rect, so the
 -- overlay goes that much inside the padding. With the 'none' template there's no
 -- backdrop, and the overlay covers the holder. Anchored to the holder, the outline
 -- follows its size. The outline is SaftUI's own frame, so this is safe in combat.
@@ -324,7 +324,7 @@ function CHT:UpdateFootprint()
 	if not mover then return end
 
 	local inset = self.config.template == 'none' and 0
-		or self.config.padding - st.EditModeFrames.OUTLINE_OUTSET
+		or self.config.padding - st.EditModeFrames.OutlineOutset()
 	local overlay = mover.overlay
 	overlay:ClearAllPoints()
 	overlay:SetPoint('TOPLEFT', self.holder, 'TOPLEFT', -inset, inset)

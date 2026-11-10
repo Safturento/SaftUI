@@ -22,6 +22,8 @@ local st = SaftUI
 	Each drawn frame is recorded with the arguments it was last drawn with, so a
 	change to the theme reaches every frame: st:RecolorThemed for a color or the
 	opacity, st:RedrawThemed for the theme or the toggle, which move borders.
+	Colors a frame's own code puts on its backdrop (a scroll bar thumb's fill, a
+	focused edit box's border) go back on after either (st:KeepOwnColors).
 ]]
 
 -- The kinds of frame a draw call names.
@@ -354,23 +356,44 @@ function st:SetBackdropIn(backdrops, frame, theme, background, kind)
 	end
 end
 
+-- frame -> color(frame), which puts back the colors frame's own code gives its
+-- backdrop (st:KeepOwnColors).
+local ownColors = setmetatable({}, { __mode = 'k' })
+
+-- Keeps the colors color(frame) puts on a drawn frame's backdrop through a
+-- theme recolor or redraw: color(frame) runs again after each. For a widget's
+-- state (a thumb under the mouse, a picked button); nil forgets it. frame may
+-- be Blizzard's: it's only a key here.
+function st:KeepOwnColors(frame, color)
+	ownColors[frame] = color
+end
+
+local function PutOwnColors()
+	for frame, color in pairs(ownColors) do
+		xpcall(color, geterrorhandler(), frame)
+	end
+end
+
 -- After a theme color or the opacity changed: puts the colors and alpha on every
--- drawn frame, moving nothing, then tells modules (OnColorsChanged('theme')), so
--- borders they color themselves are colored again.
+-- drawn frame, moving nothing, and the colors kept with st:KeepOwnColors back
+-- on, then tells modules (OnColorsChanged('theme')), so borders they color
+-- themselves are colored again.
 function st:RecolorThemed()
 	for frame, entry in pairs(drawn) do
 		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
 		if look then Color(frame, look, kind) end
 	end
+	PutOwnColors()
 	st:ColorsChanged('theme')
 end
 
 -- After the theme or the Transparent background toggle changed: draws every
 -- drawn frame again, itself and once, with the arguments it was drawn with, and
--- clears one that now resolves to None. A backdrop drawn with a kind moves to
--- the theme's border if it still sits where it was drawn. Anything drawn with no
--- kind is code not yet moved to themes: it's repainted where it is, so it keeps
--- the place it has always had.
+-- clears one that now resolves to None; then puts the colors kept with
+-- st:KeepOwnColors back on. A backdrop drawn with a kind moves to the theme's
+-- border if it still sits where it was drawn. Anything drawn with no kind is
+-- code not yet moved to themes: it's repainted where it is, so it keeps the
+-- place it has always had.
 function st:RedrawThemed()
 	-- Drawing records again, so walk a copy.
 	local frames = {}
@@ -384,4 +407,5 @@ function st:RedrawThemed()
 			Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))
 		end
 	end
+	PutOwnColors()
 end

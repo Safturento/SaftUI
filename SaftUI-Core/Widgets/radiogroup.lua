@@ -16,6 +16,11 @@ local st = SaftUI
         ]
     }
 ]]--
+-- The picked button's blue border. Kept through a theme recolor.
+local function ColorPicked(button)
+    button.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+end
+
 function st:CreateRadioGroup(name, parent, options)
     -- The group has no backdrop of its own; its buttons have theirs.
     local radioGroup = st:CreateFrame('frame', name, parent)
@@ -37,8 +42,10 @@ function st:CreateRadioGroup(name, parent, options)
 				else
 					st:SetBackdrop(_button, options.template)
 				end
+				st:KeepOwnColors(_button, nil)
 			end
-			self.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+			ColorPicked(self)
+			st:KeepOwnColors(self, ColorPicked)
 
             -- global click handler
             if options.onClick then

@@ -714,6 +714,12 @@ function Frame.GetChildren(self, s) return unpack(s.children) end
 function Frame.GetNumChildren(self, s) return #s.children end
 function Frame.GetRegions(self, s) return unpack(s.regions) end
 function Frame.GetNumRegions(self, s) return #s.regions end
+-- Nothing is drawn here, so a disabled layer is only remembered.
+function Frame.DisableDrawLayer(self, s, layer)
+	if not DRAW_LAYERS[layer] then usage(s, 'DisableDrawLayer(): invalid layer ' .. tostring(layer)) end
+	s.disabled_layers = s.disabled_layers or {}
+	s.disabled_layers[layer] = true
+end
 
 function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
 function Frame.GetFrameLevel(self, s) return s.level end

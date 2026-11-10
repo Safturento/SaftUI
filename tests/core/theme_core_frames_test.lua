@@ -8,15 +8,19 @@
 --     Config/optionswidgets.lua);
 --   - the buttons.theme / panels.theme defaults (Config/defaults.lua);
 --   - the wrappers st:SkinActionButton and st:SkinEditBox (skinning.lua) and
---     Core's widgets (Widgets/button.lua, statusbar.lua, radiogroup.lua),
---     which still draw an old template name from a caller not yet moved to
---     themes exactly as before;
---   - edit mode's movers, which keep their own colors through a recolor;
---   - the Theme and Background option builders (Config/widgets.lua).
+--     Core's widgets (Widgets/button.lua, scrollbar.lua, statusbar.lua,
+--     radiogroup.lua), which still draw an old template name from a caller
+--     not yet moved to themes exactly as before;
+--   - edit mode's movers, and Core's widgets that color their own backdrops
+--     (a scroll bar thumb, a radio group's pick, a focused edit box), which
+--     keep their colors through a recolor;
+--   - the Theme and Background option builders (Config/widgets.lua), and no
+--     desc with an arrow SaftUI's fonts may not draw.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 with Core's helpers and
 -- edit mode (config_helpers.lua), the options model, widgets, body and window,
--- and Widgets/statusbar.lua and radiogroup.lua. Each case starts from a fresh
+-- and Widgets/scrollbar.lua, statusbar.lua and radiogroup.lua, with a stand-in
+-- for Blizzard's MinimalScrollBar (scrollBar below). Each case starts from a fresh
 -- world, since cases change the profile's theme. The kind a frame was drawn
 -- with changes nothing under Thick and Thin, so the draw calls are watched:
 -- st:SetTemplate and st:SetBackdrop are wrapped to note their arguments, and
@@ -34,6 +38,7 @@ local function fresh()
 	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_saftui('SaftUI-Core/Config/optionswindow.lua')
+	load_saftui('SaftUI-Core/Widgets/scrollbar.lua')
 	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
 	load_saftui('SaftUI-Core/Widgets/radiogroup.lua')
 	local st = SaftUI
@@ -415,6 +420,105 @@ test('a radio group draws its buttons with options.theme and options.background,
 	eq(edge(o.buttons[1].backdrop), blue, 'and the clicked one blue')
 end)
 
+-- Blizzard's MinimalScrollBar, as far as st:SkinNewScrollBar uses it: its
+-- thumb, track and steppers (frames of its own in game too). In game it also
+-- scrolls, sizes the thumb and steps; nothing here needs that.
+local function scrollBar()
+	local bar = CreateFrame('Frame', nil, UIParent)
+	local parts = {}
+	for _, key in ipairs({ 'thumb', 'track', 'forward', 'back' }) do
+		parts[key] = CreateFrame('Button', nil, bar)
+		parts[key]:SetSize(8, 20)
+		parts[key]:SetPoint('CENTER')
+	end
+	function bar:GetThumb() return parts.thumb end
+	function bar:GetTrack() return parts.track end
+	function bar:GetForwardStepper() return parts.forward end
+	function bar:GetBackStepper() return parts.back end
+	return bar
+end
+
+test("Core widgets keep their own colors through a recolor: a scroll bar thumb's fill, a radio group's picked button, a focused edit box", function()
+	local st = fresh()
+	local colors = st.config.profile.colors.button
+	local function rgb(f)
+		local r, g, b = f:GetBackdropColor()
+		return text(r, g, b)
+	end
+	local function color(c) return text(c:GetRGB()) end
+	local thick = st.config.profile.templates.thick
+	local shade = 0
+	-- A new background and border for Thick, then a recolor, as the Theme tab's pickers do.
+	local function recolor()
+		shade = shade + 0.1
+		thick.backdropcolor = { shade, 0.5, 0.5, 1 }
+		thick.bordercolor = { 1, 0, shade, 1 }
+		st:RecolorThemed()
+	end
+
+	-- The scroll bar thumb: normal, hover under the mouse, pushed while pressed.
+	local bar = scrollBar()
+	st:SkinNewScrollBar(bar)
+	local thumb = bar:GetThumb()
+	eq(drawn(thumb), 'theme,solid,small', "the thumb: SaftUI's theme, Solid")
+	eq(rgb(thumb.backdrop), color(colors.normal), 'the thumb in the button color')
+	recolor()
+	eq(rgb(thumb.backdrop), color(colors.normal), 'after a recolor, still the button color')
+	stub.fire_script(thumb, 'OnEnter')
+	recolor()
+	eq(rgb(thumb.backdrop), color(colors.hover), 'under the mouse, after a recolor: the hover color')
+	stub.fire_script(thumb, 'OnMouseDown')
+	recolor()
+	eq(rgb(thumb.backdrop), color(colors.pushed), 'pressed, after a recolor: the pushed color')
+	stub.fire_script(thumb, 'OnMouseUp')
+	stub.fire_script(thumb, 'OnLeave')
+	recolor()
+	eq(rgb(thumb.backdrop), color(colors.normal), 'let go and left, after a recolor: the button color')
+
+	-- A radio group's picked button keeps its blue border; the others take the theme's.
+	local blue = text(colors.blue:GetRGB()) .. ',1.00'
+	local g = st:CreateRadioGroup('ThemeTestRadioColors', UIParent, {
+		buttonHeight = 20, buttonWidth = 50, buttonSpacing = 2, theme = 'theme', background = 'theme',
+		items = { { label = 'A' }, { label = 'B' } },
+	})
+	stub.fire_script(g.buttons[2], 'OnClick', 'LeftButton', false)
+	recolor()
+	eq(edge(g.buttons[2].backdrop), blue, 'the picked button stays blue through a recolor')
+	eq(edge(g.buttons[1].backdrop), text(unpack(thick.bordercolor)), "the other takes the theme's new border")
+	stub.fire_script(g.buttons[1], 'OnClick', 'LeftButton', false)
+	recolor()
+	eq(edge(g.buttons[1].backdrop), blue, 'a new pick: blue through a recolor')
+	eq(edge(g.buttons[2].backdrop), text(unpack(thick.bordercolor)), "the old pick takes the theme's border")
+	local o = st:CreateRadioGroup('ThemeTestRadioColorsOld', UIParent, {
+		buttonHeight = 20, buttonWidth = 50, buttonSpacing = 2, template = 'thicktransparent',
+		items = { { label = 'A' }, { label = 'B' } },
+	})
+	stub.fire_script(o.buttons[1], 'OnClick', 'LeftButton', false)
+	recolor()
+	eq(edge(o.buttons[1].backdrop), blue, 'an old options.template: the picked button stays blue too')
+
+	-- A focused edit box keeps its white border, and takes the theme's once it loses focus.
+	local e = frame(st, 'EditBox', 'ThemeTestEditColors')
+	st:SkinEditBox(e, 'theme', 'theme')
+	e:SetFocus()
+	recolor()
+	eq(edge(e.backdrop), '1.00,1.00,1.00,1.00', 'focused: white through a recolor')
+	e:ClearFocus()
+	recolor()
+	eq(edge(e.backdrop), text(unpack(thick.bordercolor)), "unfocused: the theme's new border")
+
+	-- A theme switch (st:ThemeChanged: a redraw, then OnColorsChanged('theme')) keeps them too.
+	stub.fire_script(thumb, 'OnEnter')
+	e:SetFocus()
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	st:ColorsChanged('theme')
+	eq(rgb(thumb.backdrop), color(colors.hover), 'a switch to Thin: the thumb keeps its hover color')
+	eq(edge(g.buttons[1].backdrop), blue, 'the picked button stays blue')
+	eq(edge(e.backdrop), '1.00,1.00,1.00,1.00', 'the focused edit box stays white')
+	e:ClearFocus()
+end)
+
 ------------------------------------------------------------------ option builders
 
 test('the theme and background builders: names, values in order, descs', function()
@@ -436,7 +540,7 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(theme.order, 3, 'its order')
 	eq(theme.width, nil, 'no Ace width')
 	eq(listed(theme), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;none=None", 'its values, in order')
-	eq(theme.desc, "The bags and bank windows. Use SaftUI's theme follows Global Settings → Theme; None draws no border or background.",
+	eq(theme.desc, "The bags and bank windows. Use SaftUI's theme follows Global Settings > Theme; None draws no border or background.",
 		"the caller's desc, then what the choices do")
 
 	local background = generators.background(4)
@@ -445,10 +549,33 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(background.order, 4, 'its order')
 	eq(background.width, nil, 'no Ace width')
 	eq(listed(background), "theme=Use SaftUI's theme;solid=Solid;transparent=Transparent", 'its values, in order')
-	eq(background.desc, "Solid, or see-through by Global Settings → Theme's Opacity. Use SaftUI's theme follows its Transparent background.",
+	eq(background.desc, "Solid, or see-through by Global Settings > Theme's Opacity. Use SaftUI's theme follows its Transparent background.",
 		'its desc by default')
 	eq(generators.background(4, 'Own words.').desc, 'Own words.', "a caller's desc instead")
 
 	-- Each option has its own tables, so a page changing one changes no other.
 	check(generators.theme(1, 'x').values ~= theme.values, 'fresh values each time')
+end)
+
+test('no desc in /sui, nor the Theme and Background builders, has an arrow', function()
+	local st = fresh()
+	load_test_file('core/options_walk.lua')
+	local ARROW = '\226\134\146' -- U+2192, which SaftUI's fonts may not have
+	local found = {}
+	local function look(where, desc)
+		if type(desc) == 'string' and desc:find(ARROW, 1, true) then found[#found + 1] = where end
+	end
+	each_option({ type = 'group', args = st.Config:GetOptionsTable() }, function(option, path)
+		if type(option) == 'table' then
+			look(table.concat(path, '.'), option.desc)
+			look(table.concat(path, '.') .. ' (name)', option.name)
+		end
+	end)
+	local generators = st.Config.generators
+	look('generators.theme', generators.theme(1).desc)
+	look('generators.theme with a desc', generators.theme(1, 'x').desc)
+	look('generators.background', generators.background(1).desc)
+	eq(table.concat(found, '; '), '', 'no arrow anywhere')
+	check(generators.theme(1).desc:find('Global Settings > Theme', 1, true) ~= nil, "Theme's desc says Global Settings > Theme")
+	check(generators.background(1).desc:find('Global Settings > Theme', 1, true) ~= nil, "Background's desc says Global Settings > Theme")
 end)

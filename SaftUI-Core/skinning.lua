@@ -305,6 +305,13 @@ local BACKGROUNDS = { theme = true, solid = true, transparent = true }
 -- not on the box: chat's is Blizzard's.
 local editBoxLooks = setmetatable({}, { __mode = 'k' })
 
+-- A focused box's white border. Kept through a theme recolor.
+local function ColorFocused(editbox)
+	if editbox:HasFocus() and editbox.backdrop then
+		editbox.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
+	end
+end
+
 local function DrawEditBox(editbox, look)
 	if look[2] then
 		st:SetBackdrop(editbox, look[1], look[2], 'small')
@@ -343,6 +350,7 @@ function st:SkinEditBox(editbox, theme, background, font)
 	editbox:HookScript('OnEditFocusGained', function(self)
 		self.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
 	end)
+	st:KeepOwnColors(editbox, ColorFocused)
 
 	-- Restore the look the box has now (st:StyleEditBox may have changed it
 	-- since), not the one it was skinned with.

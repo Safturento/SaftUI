@@ -496,3 +496,33 @@ test('a redraw draws each recorded frame once, with its own arguments', function
 	eq(fill(second), '0.20,0.20,0.20,1.00', 'the second keeps its own arguments: Thin, solid')
 	eq(offset(first, 'TOPLEFT'), '-1.00,1.00', 'the first moves to the new inset')
 end)
+
+test('colors kept with st:KeepOwnColors go back on after a recolor and a redraw', function()
+	local st = fresh()
+	local f = frame(st)
+	st:SetBackdrop(f, 'theme', 'theme', 'small')
+	local function own(frame) frame.backdrop:SetBackdropBorderColor(0, 0, 1, 1) end
+	own(f)
+	st:KeepOwnColors(f, own)
+	local broken = frame(st)
+	st:SetBackdrop(broken, 'theme', 'theme', 'small')
+	st:KeepOwnColors(broken, function() error('broken') end)
+
+	st.config.profile.templates.thick.bordercolor = { 1, 0, 0, 1 }
+	st:RecolorThemed()
+	eq(edge(f.backdrop), '0.00,0.00,1.00,1.00', 'after a recolor, its own border color')
+	eq(edge(broken.backdrop), '1.00,0.00,0.00,1.00', "one that errors keeps the theme's")
+	eq(#take_errors(), 1, 'its error is reported, and the others still ran')
+
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	eq(edge(f.backdrop), '0.00,0.00,1.00,1.00', 'after a redraw, its own border color')
+	eq(offset(f.backdrop, 'TOPLEFT'), '-1.00,1.00', 'drawn at the new inset')
+	eq(#take_errors(), 1, 'the broken one reported again')
+
+	st:KeepOwnColors(f, nil)
+	st:KeepOwnColors(broken, nil)
+	st:RecolorThemed()
+	eq(edge(f.backdrop), '0.00,0.00,0.00,1.00', "forgotten: the theme's border")
+	eq(#take_errors(), 0, 'and nothing runs')
+end)

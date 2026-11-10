@@ -7,11 +7,11 @@ local NUDGE = {
 }
 local LIVE_INTERVAL = 0.1 -- seconds between settings refreshes while dragging
 
--- The overlay has SaftUI's theme's border: under Thick a 1px line
--- EM.OUTLINE_OUTSET (2px) outside the frame, between two dark lines. Only that
--- line takes the highlight color, so the outline sits exactly where a thick
--- SaftUI frame's own border line is, and gaps between frames look the same in
--- edit mode as out of it. The fill stays see-through so the frame shows; the
+-- The overlay has SaftUI's theme's border: a 1px line EM.OutlineOutset()
+-- outside the frame (under Thick 2px, between two dark lines). Only that line
+-- takes the highlight color, so the outline sits exactly where a SaftUI
+-- frame's own border line is, and gaps between frames look the same in edit
+-- mode as out of it. The fill stays see-through so the frame shows; the
 -- selected frame's is tinted blue, since a 1px line alone is easy to miss.
 local function SetBorderColor(mover, selected)
 	local backdrop = mover.overlay.backdrop

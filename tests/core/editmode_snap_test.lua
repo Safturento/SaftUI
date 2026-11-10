@@ -121,8 +121,8 @@ test('GetSnapLines', function()
 	settings.snap_frames = true
 	local xl, yl = EM:GetSnapLines(movers.me)
 	local cx = EM:GetGridCenter()
-	-- Frames snap by their outline: the overlay's line, OUTLINE_OUTSET outside it.
-	check(EM.OUTLINE_OUTSET == 2, 'outline outset is 2')
+	-- Frames snap by their outline: the overlay's line, EM.OutlineOutset() outside it.
+	check(EM.OutlineOutset() == 2, "the outline outset is Thick's 2")
 	check(has(xl, 98) and has(xl, 150) and has(xl, 202), 'free x lines are its outline')
 	check(has(xl, cx), 'screen center x')
 	check(not has(xl, 298) and not has(xl, 350) and not has(xl, 402), 'child skipped')
@@ -187,4 +187,41 @@ test('StartDrag measures the overlay', function()
 	check(r0 and r0.left == 88 and r0.right == 212 and r0.bottom == 88 and r0.top == 152, 'StartDrag rect0 is the overlay outline')
 	local sdx = EM.SnapDrag(r0, 0, 0, me.drag.xLines, me.drag.yLines, EM.SNAP_REACH)
 	check(sdx == 3, 'outline right (212) snaps to the other outline left (215)')
+end)
+
+-- The overlay is drawn in SaftUI's theme, so its line sits the theme's border
+-- outside it: Thick's 2px, Thin's 1px. The outline snapping measures follows.
+test("the outline follows SaftUI's theme: 2px out under Thick, 1px under Thin", function()
+	reset_world()
+	load_edit_mode()
+	local function rect(mover) return table.concat({ EM.GetOutlineRect(mover) }, ',') end
+	local function lineOffset(mover)
+		local _, _, _, x, y = mover.overlay.backdrop:GetPoint(1)
+		return x .. ',' .. y
+	end
+
+	local me = addMover('me', rectFrame(0, 10, 0, 10))
+	local other = addMover('other', rectFrame(100, 200, 100, 140))
+	settings.snap_grid = false
+	settings.snap_frames = true
+
+	eq(EM.OutlineOutset(), 2, 'Thick: 2')
+	eq(rect(other), '98,202,98,142', 'Thick: the outline 2px outside the overlay')
+	eq(lineOffset(other), '-2,2', "where the overlay's backdrop draws its line")
+	local xl, yl = EM:GetSnapLines(me)
+	check(has(xl, 98) and has(xl, 202) and has(yl, 98) and has(yl, 142), 'Thick: snapping measures it')
+
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	eq(EM.OutlineOutset(), 1, 'Thin: 1')
+	eq(rect(other), '99,201,99,141', 'Thin: the outline 1px outside the overlay')
+	eq(lineOffset(other), '-1,1', "where the overlay's backdrop now draws its line")
+	xl, yl = EM:GetSnapLines(me)
+	check(has(xl, 99) and has(xl, 201) and has(yl, 99) and has(yl, 141), 'Thin: snapping measures it')
+	check(not has(xl, 98) and not has(xl, 202), "Thin: not Thick's lines")
+
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(EM.OutlineOutset(), 2, 'back to Thick: 2')
+	eq(rect(other), '98,202,98,142', 'back to Thick: 2px out again')
 end)
