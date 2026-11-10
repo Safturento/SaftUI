@@ -829,14 +829,17 @@ define('range', {
 
 ------------------------------------------------------------------ select
 
--- A box that shows its choice and opens the list. The caret is four rows of pixels.
+-- A box that shows its choice and opens the list. The caret is four rows of
+-- pixels, 7, 5, 3 and 1 wide, each placed by its left edge on a whole pixel
+-- around one centre: placed by their centre, the odd widths would start half a
+-- pixel off and blur.
 local function Caret(parent)
 	local carets = {}
 	for i, width in ipairs({ 7, 5, 3, 1 }) do
 		local t = parent:CreateTexture(nil, 'OVERLAY')
 		t:SetColorTexture(Colors().text.grey:GetRGB())
 		t:SetSize(width, 1)
-		t:SetPoint('TOP', parent, 'RIGHT', -12, 3 - i)
+		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
 		carets[i] = t
 	end
 end

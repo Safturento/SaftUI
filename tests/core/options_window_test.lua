@@ -297,7 +297,7 @@ test('a toggle and a color sit at their cell\'s right edge, at normal and small 
 		check(rel == c.frame, key .. ' is anchored to its cell')
 		eq(relPoint, 'RIGHT', key .. ' at the cell\'s right')
 		eq(x, 0, key .. ' offset')
-		local cellWidth = c.row.size == 'small' and 171.5 or 367
+		local cellWidth = c.row.size == 'small' and 171 or 367 -- whole pixels: a 367 column's quarter is 171
 		eq(c.label:GetWidth(), cellWidth - c.widget:GetWidth() - 10, key .. ' label is the rest of the cell')
 	end
 	body:Release()
@@ -375,7 +375,7 @@ end)
 test('a label too long for its small cell is cut to leave room for the control', function()
 	local body, by = draw_body(774, { { 'x', 'toggle', 'A very very long small toggle name', 'small' } })
 	local c = by.x
-	eq(c.label:GetWidth(), 171.5 - 18 - 10, 'the label gives way')
+	eq(c.label:GetWidth(), 171 - 18 - 10, 'the label gives way')
 	body:Release()
 end)
 
@@ -392,7 +392,7 @@ test('a small input draws a 60-wide box; the same widget reused for a normal inp
 	body2:Release()
 end)
 
-test('quarter cells sit at x = column x + (quarter - 1) * (quarter width + 24), in the window and a 520 dialog body', function()
+test('quarter cells are whole pixels, the second flush with its column\'s right edge, in the window and a 520 dialog body', function()
 	local function xs(width)
 		local body, by = draw_body(width, {
 			{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'input', 'C' },
@@ -406,9 +406,10 @@ test('quarter cells sit at x = column x + (quarter - 1) * (quarter width + 24), 
 		return out
 	end
 	local w = xs(774)
-	eq(w.a.x, 0); eq(w.b.x, 195.5); eq(w.c.x, 407)
-	eq(w.a.w, 171.5); eq(w.b.w, 171.5); eq(w.c.w, 367)
-	eq(w.d.x, 0); eq(w.e.x, 195.5); eq(w.f.x, 407); eq(w.f.w, 171.5)
+	-- A 367 column's quarters are 171 wide, 25 apart: the second ends at 367.
+	eq(w.a.x, 0); eq(w.b.x, 196); eq(w.c.x, 407)
+	eq(w.a.w, 171); eq(w.b.w, 171); eq(w.c.w, 367)
+	eq(w.d.x, 0); eq(w.e.x, 196); eq(w.f.x, 407); eq(w.f.w, 171)
 	local d = xs(520)
 	eq(d.a.x, 0); eq(d.b.x, 132); eq(d.c.x, 280)
 	eq(d.a.w, 108); eq(d.b.w, 108); eq(d.c.w, 240)
@@ -878,6 +879,30 @@ test("dragging Icon zoom crops its preview as it goes, with no render, and the s
 	eq(coords_of(cell('icon_preview').widget.image), corners(0.1, 0.9, 0.1, 0.9), 'a typed 10%')
 	st.config.profile.misc.icon_trim = 0.065
 	close_all()
+end)
+
+-- A 1px border blurs when its frame sits between two pixels. The window is on
+-- whole pixels (SaftUI's scale makes a unit a pixel), so every cell of the body
+-- must start and end on whole units too: a quarter of a 367 column is 171.5.
+test('every cell of the body starts and ends on whole pixels, at any width', function()
+	local OB = st.OptionsBody
+	for _, width in ipairs({ OB.WIDTH, 775, 480 }) do
+		local body = OB.New(CreateFrame('Frame', nil, UIParent), nil, function() end, width)
+		local spans = {}
+		for _, col in ipairs({ 'full', 1, 2 }) do
+			for _, quarter in ipairs(col == 'full' and { false } or { false, 1, 2 }) do
+				local x, w = body:CellRect(col, quarter or nil)
+				spans[#spans + 1] = { col, quarter, x, w }
+				eq(x, math.floor(x), ('width %d, col %s, quarter %s: x %s is whole'):format(width, tostring(col), tostring(quarter), tostring(x)))
+				eq(w, math.floor(w), ('width %d, col %s, quarter %s: width %s is whole'):format(width, tostring(col), tostring(quarter), tostring(w)))
+			end
+		end
+		local x1, w1 = body:CellRect(1)
+		local x2, w2 = body:CellRect(2)
+		eq(x2 + w2, width, 'the second column ends at the body\'s edge')
+		local q2x, q2w = body:CellRect(1, 2)
+		eq(q2x + q2w, x1 + w1, "a column's second quarter ends at the column's edge")
+	end
 end)
 
 test('the picker and tabs switch the selection', function()

@@ -231,6 +231,22 @@ test('range: the track is drawn on the slider under its knob, so no frame level 
 	w:Release()
 end)
 
+-- The caret's rows are 7, 5, 3 and 1 wide. Placed by their centre, an odd width
+-- starts half a pixel off and blurs; each is placed by its left edge instead.
+test("select: the caret's rows sit on whole pixels", function()
+	local w = bind('select', 'pick', opt('select', 'Pick', { values = { a = 'Alpha' }, get = function() return 'a' end, set = function() end }))
+	local rows = 0
+	for _, region in ipairs({ w.frame:GetRegions() }) do
+		if region.GetHeight and region:GetObjectType() == 'Texture' and region:GetHeight() == 1 and region:GetWidth() % 2 == 1 then
+			rows = rows + 1
+			local point, _, _, x = region:GetPoint(1)
+			check(point == 'TOPLEFT' or point == 'LEFT' or point == 'BOTTOMLEFT', 'a caret row is placed by its left edge, not ' .. tostring(point))
+			eq(x, math.floor(x), 'at a whole x')
+		end
+	end
+	eq(rows, 4, 'four caret rows')
+end)
+
 test('range: dragging snaps to bigStep, else step', function()
 	local w, told, sets, get = range({ value = 0, min = 0, max = 1, step = 0.05, bigStep = 0.1 })
 	eq(w.slider:GetValueStep(), 0.1, 'the slider steps by bigStep')

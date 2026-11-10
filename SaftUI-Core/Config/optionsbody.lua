@@ -313,8 +313,13 @@ function OB.New(content, root, onChanged, width)
 		content = content, root = root, onChanged = onChanged,
 		width = width or WIDTH, cells = {},
 	}, Body)
-	body.columnWidth = (body.width - COLUMN_GAP) / 2
-	body.quarterWidth = (body.columnWidth - QUARTER_GAP) / 2
+	-- Whole units only: SaftUI's scale makes a unit a pixel, and a 1px border on
+	-- a frame that starts or ends between two pixels blurs. Halves round down,
+	-- and the second of each pair sits flush with the outer edge (CellRect), so
+	-- an odd remainder widens the gap by a pixel (a 367 column's quarters are
+	-- 171 and 171, 25 apart).
+	body.columnWidth = floor((body.width - COLUMN_GAP) / 2)
+	body.quarterWidth = floor((body.columnWidth - QUARTER_GAP) / 2)
 
 	body.pools = {
 		row = Pool(function()
@@ -358,6 +363,18 @@ function OB.New(content, root, onChanged, width)
 		end),
 	}
 	return body
+end
+
+-- Where a cell goes: its x in the content and its width, for a column ('full',
+-- 1 or 2) and, in a half, a quarter (1 or 2, or nil for the whole half). The
+-- second column and the second quarter sit flush with their right edge, so
+-- every edge is a whole unit.
+function Body:CellRect(col, quarter)
+	if col == 'full' then return 0, self.width end
+	local x = col == 2 and (self.width - self.columnWidth) or 0
+	if not quarter then return x, self.columnWidth end
+	if quarter == 2 then x = x + self.columnWidth - self.quarterWidth end
+	return x, self.quarterWidth
 end
 
 function Body:SetRoot(root)
@@ -440,23 +457,16 @@ function Body:DrawSections(sections, makeCell, sizeOf)
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
-			local x, cellWidth = 0, self.width
-			if p.col ~= 'full' then
-				x = p.col == 2 and (self.columnWidth + COLUMN_GAP) or 0
-				cellWidth = self.columnWidth
-				if p.quarter then
-					x = x + (p.quarter - 1) * (self.quarterWidth + QUARTER_GAP)
-					cellWidth = self.quarterWidth
-				end
-			end
+			local x, cellWidth = self:CellRect(p.col, p.quarter)
 			cell.place(cell, x, cell.y, cellWidth)
 		end
 		for _, d in ipairs(OB.Dividers(entry.placed, heightOf)) do
 			local x
+			-- In the middle of the gap the line divides.
 			if d.at == 'half' then
-				x = self.columnWidth + COLUMN_GAP / 2
+				x = self.width / 2
 			else
-				x = (d.col == 2 and (self.columnWidth + COLUMN_GAP) or 0) + self.quarterWidth + QUARTER_GAP / 2
+				x = self:CellRect(d.col) + self.columnWidth / 2
 			end
 			local line = Acquire(pools.line)
 			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -(entry.rowsY + d.y))
