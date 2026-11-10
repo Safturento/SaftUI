@@ -183,7 +183,8 @@ function UF:OpenCopyTable(unit)
 	local settingArgs = {}
 	for key in pairs(self:GetProfileConfig()[unit]) do
 		copy.settings[key] = false
-		settingArgs[key] = st.Config.generators.toggle(0, key)
+		settingArgs[key] = st.Config.generators.toggle(0, key,
+			'Copies this setting from the other unit frame onto this one.', 'small')
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
@@ -196,6 +197,7 @@ function UF:OpenCopyTable(unit)
 			copy_from = {
 				order = 0,
 				name = 'Copy from',
+				desc = 'The unit frame to copy settings from.',
 				type = 'select',
 				values = function()
 					local units = {}
@@ -213,12 +215,16 @@ function UF:OpenCopyTable(unit)
 			toggle_all = {
 				order = 1,
 				name = 'All',
+				desc = 'Ticks every setting below.',
+				size = 'small',
 				type = 'execute',
 				func = function() SetAll(true) end,
 			},
 			toggle_none = {
 				order = 1,
 				name = 'None',
+				desc = 'Clears every tick below.',
+				size = 'small',
 				type = 'execute',
 				func = function() SetAll(false) end,
 			},
@@ -234,6 +240,7 @@ function UF:OpenCopyTable(unit)
 			accept = {
 				order = -95,
 				name = 'Confirm copy',
+				desc = 'Copies the ticked settings onto this unit frame, after asking.',
 				type = 'execute',
 				disabled = function() return not copy.from end,
 				confirm = function()
@@ -288,40 +295,47 @@ end
 -- frames (or columns) grow from them.
 local GROWTH_DIRECTIONS = { TOP = 'Down', BOTTOM = 'Up', LEFT = 'Right', RIGHT = 'Left' }
 
--- Party and raid only: the header's layout, and test mode. The values sit on
--- the group's own config, so General's get and set handle them.
+-- Party, raid and boss: how the frames are laid out (a party or raid header's
+-- attributes; boss frames by UF.GetGroupLayout), and test mode for the groups.
+-- The values sit on the unit's own config, so General's get and set handle
+-- them, and set re-places the frames and the holder (UF:UpdateConfig(unit),
+-- which waits for the end of combat).
 local function GetGroupLayoutConfig(unit, order)
+	local G = st.Config.generators
 	local args = {
-		test_mode = {
-			order = 0,
-			name = 'Test mode',
-			desc = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
-			type = 'toggle',
-			-- Not a config value: a plain module field, never saved.
-			get = function() return UF.testGroups[unit] and true or false end,
-			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
-		},
 		growthDirection = {
-			order = 1,
+			order = 2,
 			name = 'Growth',
-			desc = 'Which way each frame follows the one before it.',
+			desc = 'Which way each unit frame follows the one before it.',
 			type = 'select',
 			values = GROWTH_DIRECTIONS,
 		},
-		spacing = st.Config.generators.range(2, 'Spacing', 0, 50, 1),
-		unitsPerColumn = st.Config.generators.range(3, 'Units per column', 1, 40, 1),
 		initialAnchor = {
-			order = 4,
+			order = 3,
 			name = 'Column growth',
 			desc = 'Which way each new column follows the one before it. A column runs the way the frames grow, so it is a row when they grow sideways.',
 			type = 'select',
 			values = GROWTH_DIRECTIONS,
 		},
-		columnSpacing = st.Config.generators.range(5, 'Column spacing', 0, 50, 1),
-		maxColumns = st.Config.generators.range(6, 'Max columns', 1, 40, 1),
+		spacing = G.range(4, 'Spacing', 0, 50, 1, 'The gap between one unit frame and the next in a column.'),
+		columnSpacing = G.range(5, 'Column spacing', 0, 50, 1, 'The gap between one column and the next.'),
+		unitsPerColumn = G.range(6, 'Units per column', 1, 40, 1, 'How many unit frames fill a column before the next column starts.'),
+		maxColumns = G.range(7, 'Max columns', 1, 40, 1, 'The most columns shown. Unit frames past the last column are not shown.'),
 	}
+	if unit ~= 'boss' then
+		args.test_mode = {
+			order = 0,
+			name = 'Test mode',
+			desc = "Fills this group's spot with made-up members, styled and laid out like the real frames, so the layout can be checked without a group. Hidden while a real group of this kind is showing. Not saved: it's off after a /reload.",
+			type = 'toggle',
+			size = 'small',
+			-- Not a config value: a plain module field, never saved.
+			get = function() return UF.testGroups[unit] and true or false end,
+			set = function(_, value) UF:SetGroupTestMode(unit, value) end,
+		}
+	end
 	if unit == 'party' then
-		args.showPlayer = st.Config.generators.toggle(7, 'Show player')
+		args.showPlayer = G.toggle(1, 'Show player', 'Shows you as the first unit frame of the party.', 'small')
 	end
 	return {
 		order = order,
@@ -344,6 +358,13 @@ for i, unit in ipairs({
 	UNIT_ORDER[unit] = i
 end
 
+-- An alpha option under its own name.
+local function RangeAlpha(order, name, desc)
+	local option = st.Config.generators.alpha(order, desc)
+	option.name = name
+	return option
+end
+
 function UF:GetConfigTable()
 	local config = {
 		name = 'Unitframes',
@@ -352,6 +373,7 @@ function UF:GetConfigTable()
 		-- The units (and the Profile group) are the page's picker; each unit's
 		-- elements are its tabs.
 		childGroups = 'select',
+		pickerLabel = 'Unit',
 		args = {
 			profile = {
 				order = -99,
@@ -363,6 +385,7 @@ function UF:GetConfigTable()
 						order = 1,
 						type = 'select',
 						name = 'Profile',
+						desc = 'The unit frame profile being edited. Every unit frame uses it.',
 						values = get_profiles,
 						get = function(info)
 							st.Config:Refresh()
@@ -378,6 +401,8 @@ function UF:GetConfigTable()
 						order = 2,
 						type = 'execute',
 						name = 'New',
+						desc = 'Makes a new unit frame profile with the default settings and switches to it.',
+						size = 'small',
 						func = function()
 							PromptNewProfile(false)
 						end,
@@ -386,6 +411,8 @@ function UF:GetConfigTable()
 						order = 3,
 						type = 'execute',
 						name = 'Copy',
+						desc = 'Makes a new unit frame profile as a copy of this one and switches to it.',
+						size = 'small',
 						func = function()
 							PromptNewProfile(true)
 						end,
@@ -394,6 +421,8 @@ function UF:GetConfigTable()
 						order = 4,
 						type = 'execute',
 						name = 'Delete',
+						desc = 'Deletes this unit frame profile, after asking. The last profile cannot be deleted.',
+						size = 'small',
 						func = function()
 							if get_num_profiles() > 1 then
 								ConfirmDeleteProfile()
@@ -404,6 +433,8 @@ function UF:GetConfigTable()
 						order = 5,
 						type = 'execute',
 						name = 'Rename',
+						desc = 'Renames this unit frame profile.',
+						size = 'small',
 						func = function()
 							PromptRenameProfile()
 						end,
@@ -412,14 +443,18 @@ function UF:GetConfigTable()
 						order = 6,
 						type = 'execute',
 						name = 'Export',
+						desc = 'Shows this unit frame profile as text to share.',
+						size = 'small',
 						func = function()
 							PromptExportProfile()
 						end
 					},
 					import = {
-						order = 6,
+						order = 7,
 						type = 'execute',
 						name = 'Import',
+						desc = 'Makes a new unit frame profile from pasted text and switches to it.',
+						size = 'small',
 						func = function()
 							PromptImportProfile()
 						end
@@ -453,6 +488,8 @@ function UF:GetConfigTable()
 			args = {
 				copy = {
 					name = 'Copy from',
+					desc = "Copies chosen settings from another unit frame onto this one.",
+					size = 'small',
 					type = 'execute',
 					func = function()
 						UF:OpenCopyTable(unit)
@@ -473,10 +510,27 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(unit)
 					end,
 					args = {
-						enable = st.Config.generators.enable(0),
-						template = st.Config.generators.template(2),
-						height = st.Config.generators.height(3),
-						width = st.Config.generators.width(4),
+						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
+						template = st.Config.generators.template(1, "The look of this unit frame's background and border."),
+						width = st.Config.generators.width(2, "The unit frame's width."),
+						height = st.Config.generators.height(3, "The unit frame's height."),
+						range_alpha = {
+							order = 500,
+							name = 'Range',
+							type = 'group',
+							inline = true,
+							get = function(info)
+								return UnitConfig().range_alpha[info[#info]]
+							end,
+							set = function(info, value)
+								UnitConfig().range_alpha[info[#info]] = value
+								UF:UpdateConfig(unit)
+							end,
+							args = {
+								inside = RangeAlpha(0, 'Inside range', "How solid this unit frame is while its unit is within range."),
+								outside = RangeAlpha(1, 'Outside range', "How solid this unit frame is while its unit is out of range."),
+							},
+						},
 						-- Every SetPoint parameter, the relative frame included.
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
@@ -489,7 +543,7 @@ function UF:GetConfigTable()
 			}
 		}
 
-		if self.groups and self.groups[unit] then
+		if (unit == 'boss' or (self.groups and self.groups[unit])) then
 			config_table.args.general.args.layout = GetGroupLayoutConfig(unit, 6)
 		end
 

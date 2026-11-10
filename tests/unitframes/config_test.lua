@@ -172,3 +172,63 @@ test("the unit frames' table passes AceConfigRegistry validation, SaftUI's field
 	check(ok, 'valid: ' .. tostring(err))
 	check(config.category ~= nil, 'the table itself keeps its category')
 end)
+
+test("the unit frames' page: picker labelled Unit; boss has Layout without test mode; range alpha on every unit", function()
+	local config = UF:GetConfigTable()
+	eq(config.pickerLabel, 'Unit', 'the picker is labelled Unit')
+
+	local layout = config.args.boss.args.general.args.layout
+	check(layout, 'boss has a Layout group in General')
+	for _, key in ipairs({ 'growthDirection', 'spacing', 'unitsPerColumn', 'initialAnchor', 'columnSpacing', 'maxColumns' }) do
+		check(layout.args[key], 'boss Layout has ' .. key)
+	end
+	eq(layout.args.test_mode, nil, 'no test mode for boss')
+	eq(layout.args.showPlayer, nil, 'no show player for boss')
+	check(config.args.party.args.general.args.layout.args.test_mode, 'party keeps test mode')
+	check(config.args.party.args.general.args.layout.args.showPlayer, 'party keeps show player')
+	check(config.args.raid10.args.general.args.layout.args.test_mode, 'raid keeps test mode')
+	eq(config.args.raid10.args.general.args.layout.args.showPlayer, nil, 'raid has no show player')
+
+	-- A Layout change on boss re-applies boss, as General's other settings do.
+	local P = UF:GetProfileConfig()
+	local before = updates
+	local g = config.args.boss.args.general
+	g.set({ 'boss', 'general', 'maxColumns' }, 2)
+	eq(P.boss.maxColumns, 2, 'written to the boss config')
+	eq(updates, before + 1, 'and boss was updated')
+	P.boss.maxColumns = 1
+
+	for unit, group in pairs(config.args) do
+		if unit ~= 'profile' then
+			local defaults = P[unit].range_alpha
+			check(defaults, unit .. ' has range_alpha defaults')
+			local range = group.args.general.args.range_alpha
+			check(range, unit .. ' has range alpha options')
+			for _, key in ipairs({ 'inside', 'outside' }) do
+				local o = range.args[key]
+				eq(o.type, 'range', unit .. ' ' .. key)
+				eq(o.min, 0); eq(o.max, 1)
+				eq(range.get({ [1] = unit, [2] = 'general', [3] = 'range_alpha', [4] = key }), defaults[key], unit .. ' reads ' .. key)
+				local n = updates
+				range.set({ [1] = unit, [2] = 'general', [3] = 'range_alpha', [4] = key }, 0.25)
+				eq(P[unit].range_alpha[key], 0.25, unit .. ' writes ' .. key)
+				eq(updates, n + 1, unit .. ' updated')
+				P[unit].range_alpha[key] = defaults[key] == 0.25 and 0.4 or defaults[key]
+			end
+		end
+	end
+end)
+
+test('every unit-level option has a tooltip and no Ace width', function()
+	local config = UF:GetConfigTable()
+	each_option(config, function(option, path)
+		-- The element tabs are the next task's.
+		if #path >= 2 and path[2] ~= 'general' and path[2] ~= 'copy' and path[1] ~= 'profile' then return end
+		local where = table.concat(path, '.')
+		eq(option.width, nil, where .. ' has no width')
+		if option.type ~= 'group' and option.type ~= 'header' and option.type ~= 'description' then
+			check(type(option.desc) == 'string' and option.desc ~= '', where .. ' has a desc')
+		end
+	end)
+	eq(config.args.profile.args.new.size, 'small', 'Profile buttons are small')
+end)

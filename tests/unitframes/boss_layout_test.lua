@@ -98,3 +98,7 @@ test('a layout that holds fewer than all the frames: shown is its capacity, and 
 	eq(shown, 4)
 	eq(UF.GroupAnchor(5, frames, {}, layout, perColumn, columns), nil)
 end)
+
+test("boss's columns grow right by default, so a second column goes beside the first", function()
+	eq(st.defaults.unitframes.profiles['**'].boss.initialAnchor, 'LEFT')
+end)
