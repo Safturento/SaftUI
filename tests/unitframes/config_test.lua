@@ -173,7 +173,7 @@ test("the unit frames' table passes AceConfigRegistry validation, SaftUI's field
 	check(config.category ~= nil, 'the table itself keeps its category')
 end)
 
-test("the unit frames' page: picker labelled Unit; boss has Layout without test mode; range alpha on every unit", function()
+test("the unit frames' page: picker labelled Unit; boss has Layout without test mode; range alpha on the groups only", function()
 	local config = UF:GetConfigTable()
 	eq(config.pickerLabel, 'Unit', 'the picker is labelled Unit')
 
@@ -198,8 +198,12 @@ test("the unit frames' page: picker labelled Unit; boss has Layout without test 
 	eq(updates, before + 1, 'and boss was updated')
 	P.boss.maxColumns = 1
 
-	for unit, group in pairs(config.args) do
-		if unit ~= 'profile' then
+	for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss' }) do
+		eq(config.args[unit].args.general.args.range_alpha, nil, unit .. " has no range alpha: only group members' frames use it")
+	end
+	for _, unit in ipairs({ 'party', 'raid10', 'raid40' }) do
+		local group = config.args[unit]
+		do
 			local defaults = P[unit].range_alpha
 			check(defaults, unit .. ' has range_alpha defaults')
 			local range = group.args.general.args.range_alpha

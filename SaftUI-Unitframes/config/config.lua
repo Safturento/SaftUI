@@ -514,23 +514,6 @@ function UF:GetConfigTable()
 						template = st.Config.generators.template(1, "The look of this unit frame's background and border."),
 						width = st.Config.generators.width(2, "The unit frame's width."),
 						height = st.Config.generators.height(3, "The unit frame's height."),
-						range_alpha = {
-							order = 500,
-							name = 'Range',
-							type = 'group',
-							inline = true,
-							get = function(info)
-								return UnitConfig().range_alpha[info[#info]]
-							end,
-							set = function(info, value)
-								UnitConfig().range_alpha[info[#info]] = value
-								UF:UpdateConfig(unit)
-							end,
-							args = {
-								inside = RangeAlpha(0, 'Inside range', "How solid this unit frame is while its unit is within range."),
-								outside = RangeAlpha(1, 'Outside range', "How solid this unit frame is while its unit is out of range."),
-							},
-						},
 						-- Every SetPoint parameter, the relative frame included.
 						-- Passing the mover's frame makes a typed frame go through
 						-- st:ValidateAnchor, which rejects the frame itself and
@@ -545,6 +528,28 @@ function UF:GetConfigTable()
 
 		if (unit == 'boss' or (self.groups and self.groups[unit])) then
 			config_table.args.general.args.layout = GetGroupLayoutConfig(unit, 6)
+		end
+
+		-- Range alpha only does anything on group members' frames: oUF's range
+		-- element is enabled only on header children.
+		if self.groups and self.groups[unit] then
+			config_table.args.general.args.range_alpha = {
+				order = 500,
+				name = 'Range',
+				type = 'group',
+				inline = true,
+				get = function(info)
+					return UnitConfig().range_alpha[info[#info]]
+				end,
+				set = function(info, value)
+					UnitConfig().range_alpha[info[#info]] = value
+					UF:UpdateConfig(unit)
+				end,
+				args = {
+					inside = RangeAlpha(0, 'Inside range', "How solid a group member's unit frame is while the member is within range."),
+					outside = RangeAlpha(1, 'Outside range', "How solid a group member's unit frame is while the member is out of range."),
+				},
+			}
 		end
 
 		-- Either raid group being on hides Blizzard's raid frames (groups.lua).
