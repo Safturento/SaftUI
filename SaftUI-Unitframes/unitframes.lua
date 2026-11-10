@@ -133,6 +133,30 @@ function UF:UpdateColors()
 	UF.oUF.colors.runes = st.config.profile.colors.runes or DEFAULT_RUNE_COLORS
 end
 
+-- A color changed on the Colors tab (st:ColorsChanged calls this). Lighter than
+-- UF:UpdateConfig, because the picker sets a color on every move of its cursor:
+-- it copies the colors to oUF, makes the bars and tags read them again, and
+-- draws the test previews again, and rebuilds nothing. Groups the unit frames
+-- don't use (text, button, item quality, renown) and a module that isn't
+-- enabled yet (no UF.units) change nothing.
+local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true }
+local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower' }
+function UF:OnColorsChanged(group)
+	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end
+	self:UpdateColors()
+	self:ForEachUnitFrame(function(frame)
+		for _, name in ipairs(RECOLORED_ELEMENTS) do
+			if frame[name] and frame:IsElementEnabled(name) then
+				frame[name]:ForceUpdate()
+			end
+		end
+		frame:UpdateTags()
+	end)
+	for testGroup in pairs(self.testGroups or {}) do
+		self:UpdateGroupPreview(testGroup)
+	end
+end
+
 -- Calls fn(frame) for every spawned unit frame: single units, the numbered
 -- boss/arena frames, and group header children.
 function UF:ForEachUnitFrame(fn)
