@@ -384,3 +384,115 @@ test('THEME_KINDS has the nine kinds, and a draw with another kind errors', func
 	local ok = pcall(st.SetTemplate, st, frame(st), 'theme', 'theme', 'button')
 	eq(ok, false, 'an unknown kind errors')
 end)
+
+-- Every anchor of a frame, as text, in a fixed order.
+local function anchors(f)
+	local out = {}
+	for i = 1, f:GetNumPoints() do
+		local p, rel, rp, x, y = f:GetPoint(i)
+		out[#out + 1] = table.concat({ p, tostring(rel), rp, text(x, y) }, ' ')
+	end
+	table.sort(out)
+	return table.concat(out, '; ')
+end
+
+test('a redraw keeps the anchors of a backdrop its caller placed itself, and still recolors it', function()
+	local st = fresh()
+	-- With a kind: an action button's backdrop, made to fill its button.
+	local a = frame(st)
+	st:SetBackdrop(a, 'theme', 'theme', 'action')
+	a.backdrop:ClearAllPoints()
+	a.backdrop:SetAllPoints(a)
+	-- With a kind, through st:SetBackdropIn, placed further out.
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	local t = frame(st)
+	local tb = st:SetBackdropIn(backdrops, t, 'theme', 'theme', 'tooltip')
+	tb:ClearAllPoints()
+	tb:SetPoint('TOPLEFT', t, 'TOPLEFT', -5, 5)
+	tb:SetPoint('BOTTOMRIGHT', t, 'BOTTOMRIGHT', 5, -5)
+	-- With no kind: a Blizzard close button's backdrop (st:CreateHeader), a
+	-- strip that follows the theme, and an old name placed by its caller.
+	local c = frame(st)
+	st:SetBackdrop(c, 'close')
+	c.backdrop:SetAllPoints()
+	local h = frame(st)
+	st:SetBackdrop(h, 'highlight')
+	h.backdrop:SetAllPoints()
+	local l = frame(st)
+	st:SetBackdrop(l, 'thicktransparent')
+	l.backdrop:ClearAllPoints()
+	l.backdrop:SetPoint('TOPLEFT', l, 'TOPLEFT', -4, 4)
+	l.backdrop:SetPoint('BOTTOMRIGHT', l, 'BOTTOMRIGHT', 4, -4)
+
+	local before = {}
+	for _, b in ipairs({ a.backdrop, tb, c.backdrop, h.backdrop, l.backdrop }) do before[b] = anchors(b) end
+
+	st.config.profile.templates.thick.bordercolor = { 1, 0, 0, 1 }
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+
+	eq(anchors(a.backdrop), before[a.backdrop], 'action backdrop: the anchors its caller set')
+	eq(edge(a.backdrop), '0.00,0.00,0.00,1.00', "action backdrop: Thin's border color")
+	eq(inset(a.backdrop), 1, "action backdrop: Thin's 1px border")
+	eq(a.thick, false, 'action backdrop: frame.thick follows the theme')
+	eq(anchors(tb), before[tb], 'SetBackdropIn backdrop: the anchors its caller set')
+	eq(edge(tb), '0.00,0.00,0.00,1.00', "SetBackdropIn backdrop: Thin's border color")
+	check(t.thick == nil and t.backdrop == nil, 'SetBackdropIn: still nothing written onto the frame')
+	eq(anchors(c.backdrop), before[c.backdrop], 'old close backdrop: the anchors its caller set')
+	eq(fill(c.backdrop), '0.50,0.10,0.10,0.40', 'old close backdrop: the red fill')
+	eq(anchors(h.backdrop), before[h.backdrop], 'old highlight backdrop: the anchors its caller set')
+	eq(fill(h.backdrop), '0.00,0.00,0.00,0.40', "old highlight backdrop: Thin's border color at 0.4")
+	eq(anchors(l.backdrop), before[l.backdrop], 'old thicktransparent backdrop: the anchors its caller set')
+	eq(edge(l.backdrop), '1.00,0.00,0.00,1.00', "old thicktransparent backdrop: Thick's changed border color")
+	eq(inset(l.backdrop), 2, 'old thicktransparent backdrop: still Thick')
+end)
+
+test('a redraw moves a backdrop that still sits where it was drawn', function()
+	local st = fresh()
+	local f = frame(st)
+	st:SetBackdrop(f, 'theme', 'theme', 'panel')
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	local t = frame(st)
+	local tb = st:SetBackdropIn(backdrops, t, 'theme', 'theme', 'tooltip')
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	eq(offset(f.backdrop, 'TOPLEFT'), '-1.00,1.00', 'SetBackdrop: 1px out under Thin')
+	eq(offset(f.backdrop, 'BOTTOMRIGHT'), '1.00,-1.00', 'SetBackdrop: 1px out under Thin (bottom right)')
+	eq(offset(tb, 'TOPLEFT'), '-1.00,1.00', 'SetBackdropIn: 1px out under Thin')
+	-- Placed by the redraw, it moves again on the next one.
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(offset(f.backdrop, 'TOPLEFT'), '-2.00,2.00', 'SetBackdrop: back to 2px out under Thick')
+	eq(offset(tb, 'TOPLEFT'), '-2.00,2.00', 'SetBackdropIn: back to 2px out under Thick')
+end)
+
+test('a redraw draws each recorded frame once, with its own arguments', function()
+	local st = fresh()
+	-- Two backdrops recorded for one frame: the first is replaced, the second
+	-- made in its place with other arguments.
+	local f = frame(st)
+	st:SetBackdrop(f, 'theme', 'theme', 'panel')
+	local first = f.backdrop
+	f.backdrop = nil
+	st:SetBackdrop(f, 'thin', 'solid', 'panel')
+	local second = f.backdrop
+	check(first ~= second, 'two backdrop frames')
+
+	local draws = { [first] = 0, [second] = 0 }
+	for b in pairs(draws) do
+		local real = b.SetBackdrop
+		b.SetBackdrop = function(self, ...)
+			draws[self] = draws[self] + 1
+			return real(self, ...)
+		end
+	end
+
+	st.config.profile.theme.name = 'thin'
+	st.config.profile.theme.transparent = true
+	st:RedrawThemed()
+	eq(draws[first], 1, 'the first backdrop is drawn once')
+	eq(draws[second], 1, 'the second backdrop is drawn once')
+	eq(fill(first), '0.20,0.20,0.20,0.90', "the first keeps its own arguments: the theme's, transparent")
+	eq(fill(second), '0.20,0.20,0.20,1.00', 'the second keeps its own arguments: Thin, solid')
+	eq(offset(first, 'TOPLEFT'), '-1.00,1.00', 'the first moves to the new inset')
+end)

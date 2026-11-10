@@ -116,10 +116,12 @@ end
 --- Drawing ------------------------
 ------------------------------------
 
--- frame -> { theme, background, kind, owner, backdrops }: the arguments each
--- drawn frame was last drawn with. owner is the frame a backdrop made by
--- st:SetBackdrop or st:SetBackdropIn sits behind, and backdrops the caller's
--- table st:SetBackdropIn keeps it in, so a redraw can place it again.
+-- frame -> { theme, background, kind, owner, backdrops, placed }: the
+-- arguments each drawn frame was last drawn with. For a backdrop made by
+-- st:SetBackdrop or st:SetBackdropIn, owner is the frame it sits behind,
+-- backdrops the caller's table st:SetBackdropIn keeps it in, and placed the
+-- offset outside owner it was last put at, so a redraw can tell whether it
+-- still sits there.
 local drawn = setmetatable({}, { __mode = 'k' })
 
 local function Record(frame, theme, background, kind, owner, backdrops)
@@ -134,6 +136,7 @@ local function Record(frame, theme, background, kind, owner, backdrops)
 	if owner then
 		entry.owner, entry.backdrops = owner, backdrops
 	end
+	return entry
 end
 
 -- Header and footer strips and the close button: SaftUI's theme's fill, no lines.
@@ -249,20 +252,49 @@ local function Paint(frame, look, kind)
 	Color(frame, look, kind)
 end
 
--- Draws a backdrop frame of SaftUI's behind owner, the look's inset outside it,
--- and records it. Returns the look, nil for None (which only clears it).
-local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind)
+-- Whether a backdrop still sits offset outside owner, where DrawBackdrop put
+-- it. Many callers anchor their backdrop themselves after drawing it (an action
+-- button's fills the button), and a redraw must leave those anchors alone.
+local function IsPlaced(backdrop, owner, offset)
+	if not offset or backdrop:GetNumPoints() ~= 2 then return false end
+	local want = { TOPLEFT = { -offset, offset }, BOTTOMRIGHT = { offset, -offset } }
+	for i = 1, 2 do
+		local point, relativeTo, relativePoint, x, y = backdrop:GetPoint(i)
+		if issecretvalue(relativeTo) or issecretvalue(x) or issecretvalue(y) then return false end
+		local xy = want[point]
+		if not xy or relativeTo ~= owner or relativePoint ~= point or x ~= xy[1] or y ~= xy[2] then
+			return false
+		end
+		want[point] = nil
+	end
+	return true
+end
+
+-- Draws a backdrop frame of SaftUI's behind owner, records it, and places it the
+-- look's inset outside owner. A redraw places it only while it still sits where
+-- the last draw put it; one its caller anchored is repainted where it is, and
+-- the caller's UpdateConfig anchors it again. Sets owner.thick for
+-- st:SetBackdrop (not for st:SetBackdropIn, whose frames aren't SaftUI's).
+-- Returns the look, nil for None (which only clears it).
+local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind, redraw)
 	local look, drawKind = DrawLook(theme, background, kind)
+	local entry = Record(backdrop, theme, background, kind, owner, backdrops)
 	if look then
-		local offset = look.inset
-		backdrop:ClearAllPoints()
-		backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -offset, offset)
-		backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', offset, -offset)
+		if not redraw or IsPlaced(backdrop, owner, entry.placed) then
+			local offset = look.inset
+			backdrop:ClearAllPoints()
+			backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -offset, offset)
+			backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', offset, -offset)
+			entry.placed = offset
+		end
 		-- Code not yet moved to themes reads the old name back from here.
 		backdrop.template = kind == nil and theme or nil
+		if not backdrops then
+			-- true or false, so thick is only nil on a frame never given a backdrop
+			owner.thick = look.name == 'thick'
+		end
 	end
 	Paint(backdrop, look, drawKind)
-	Record(backdrop, theme, background, kind, owner, backdrops)
 	return look
 end
 
@@ -300,11 +332,7 @@ function st:SetBackdrop(frame, theme, background, kind)
 		end
 	end
 
-	local look = DrawBackdrop(frame.backdrop, frame, nil, theme, background, kind)
-	if look then
-		-- true or false, so thick is only nil on a frame never given a backdrop
-		frame.thick = look.name == 'thick'
-	end
+	DrawBackdrop(frame.backdrop, frame, nil, theme, background, kind)
 end
 
 -- st:SetBackdrop for a frame that isn't SaftUI's (a Blizzard tooltip, a dropdown
@@ -338,8 +366,11 @@ function st:RecolorThemed()
 end
 
 -- After the theme or the Transparent background toggle changed: draws every
--- drawn frame again with the arguments it was drawn with. Backdrops move to the
--- theme's border, and a frame that now resolves to None is cleared.
+-- drawn frame again, itself and once, with the arguments it was drawn with, and
+-- clears one that now resolves to None. A backdrop drawn with a kind moves to
+-- the theme's border if it still sits where it was drawn. Anything drawn with no
+-- kind is code not yet moved to themes: it's repainted where it is, so it keeps
+-- the place it has always had.
 function st:RedrawThemed()
 	-- Drawing records again, so walk a copy.
 	local frames = {}
@@ -347,12 +378,10 @@ function st:RedrawThemed()
 
 	for _, frame in ipairs(frames) do
 		local entry = drawn[frame]
-		if entry.backdrops then
-			st:SetBackdropIn(entry.backdrops, entry.owner, entry.theme, entry.background, entry.kind)
-		elseif entry.owner then
-			st:SetBackdrop(entry.owner, entry.theme, entry.background, entry.kind)
+		if entry.owner and entry.kind ~= nil then
+			DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
 		else
-			st:SetTemplate(frame, entry.theme, entry.background, entry.kind)
+			Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))
 		end
 	end
 end
