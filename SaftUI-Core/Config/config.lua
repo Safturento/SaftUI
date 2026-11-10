@@ -146,10 +146,10 @@ end
 
 -- The /sui tree: one group per page, keyed by module name, plus AceDBOptions'
 -- profiles. The AddCommand commands and the Edit mode button are the window's
--- sidebar buttons, not options. Edit mode's grid and snap settings are a tab of
--- the Global Settings page (key Fonts, which the options model shows by that
--- name), next to the Fonts tab. Each module's table already declares its own
--- tabs (childGroups) and Position option.
+-- sidebar buttons, not options. Colors and Edit mode (its grid and snap
+-- settings) are tabs of the Global Settings page (key Fonts, which the options
+-- model shows by that name), after the Fonts tab. Each module's table already
+-- declares its own tabs (childGroups) and Position option.
 function Config:GetOptionsTable()
 	local profile = AceDBOptions:GetOptionsTable(st.config)
 	profile.order = -999
@@ -162,25 +162,30 @@ function Config:GetOptionsTable()
 		end
 	end
 
-	local fonts, editMode = options.Fonts, options.EditMode
-	if fonts or editMode then
+	local fonts, colors, editMode = options.Fonts, options.Colors, options.EditMode
+	if fonts or colors or editMode then
 		local tabs = {}
 		if fonts then
 			fonts.order = 1
 			tabs.fonts = fonts
 		end
+		if colors then
+			colors.order = 2
+			tabs.colors = colors
+		end
 		if editMode then
-			editMode.order = 2
+			editMode.order = 3
 			tabs.editmode = editMode
 		end
 		options.Fonts = {
 			name = 'Global Settings',
-			desc = 'Fonts used across SaftUI, and edit mode\'s grid and snapping.',
+			desc = "Fonts and colors used across SaftUI, and edit mode's grid and snapping.",
 			type = 'group',
 			order = fonts and fonts.order or 1,
 			childGroups = 'tab',
 			args = tabs,
 		}
+		options.Colors = nil
 		options.EditMode = nil
 	end
 

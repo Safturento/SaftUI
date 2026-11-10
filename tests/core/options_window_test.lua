@@ -502,7 +502,7 @@ test("a real module's category: Experience is under Info", function()
 	check(found, 'Experience has a page')
 end)
 
-test('Global Settings has Fonts and Edit mode tabs, and the sidebar has no Edit mode page', function()
+test('Global Settings has Fonts, Colors and Edit mode tabs, and the sidebar has no Edit mode page', function()
 	local root = st.Config:GetOptionsTable()
 	eq(root.EditMode, nil, 'no EditMode page in the tree')
 	for _, page in ipairs(OM.Pages(root)) do
@@ -515,8 +515,10 @@ test('Global Settings has Fonts and Edit mode tabs, and the sidebar has no Edit 
 
 	local view = OM.BuildView(root, 'Fonts')
 	eq(view.title, 'Global Settings', 'the page')
-	eq(keys(view.tabs), 'fonts,editmode', 'Fonts then Edit mode')
-	eq(keys(view.tabs, 'name'), 'Fonts,Edit mode', 'tab names')
+	eq(keys(view.tabs), 'fonts,colors,editmode', 'Fonts, Colors, then Edit mode')
+	eq(keys(view.tabs, 'name'), 'Fonts,Colors,Edit mode', 'tab names')
+	eq(root.Colors, nil, 'no Colors page in the tree')
+	eq(root.Fonts.desc, "Fonts and colors used across SaftUI, and edit mode's grid and snapping.")
 
 	view = OM.BuildView(root, 'Fonts', { tab = 'editmode' })
 	eq(view.tab, 'editmode', 'Edit mode selected')
