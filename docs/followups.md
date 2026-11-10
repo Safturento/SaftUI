@@ -15,7 +15,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
-  - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
   - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
   - [2026-11-09 — st:CreateButton's SetText and SetFont aliases break when called as methods](#2026-11-09--stcreatebuttons-settext-and-setfont-aliases-break-when-called-as-methods)
@@ -28,7 +27,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-08 — Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)
   - [2026-11-08 — Saved loot feed size in SaftUI_DB](#2026-11-08--saved-loot-feed-size-in-saftui_db)
   - [2026-11-08 — Confirm the totem bar's protection and secret-value claims in game, then document the duration-object pattern](#2026-11-08--confirm-the-totem-bars-protection-and-secret-value-claims-in-game-then-document-the-duration-object-pattern)
-  - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window](#2026-11-08--specialty-bags-herb-mining-etc-count-as-normal-bags-in-the-bag-window)
   - [2026-11-07 — Minimap pieces still belong to MinimapCluster, which stretches across the screen](#2026-11-07--minimap-pieces-still-belong-to-minimapcluster-which-stretches-across-the-screen)
   - [2026-11-07 — Extra buttons leftovers: zone ability hidden by Blizzard's bar settings, Blizzard's art, skinned vehicles' pitch and status bars](#2026-11-07--extra-buttons-leftovers-zone-ability-hidden-by-blizzards-bar-settings-blizzards-art-skinned-vehicles-pitch-and-status-bars)
@@ -41,6 +39,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
+  - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter](#2026-11-10--boss-frames-have-no-test-mode-so-their-layout-options-cant-be-checked-out-of-an-encounter)
   - [2026-11-09 — Test runner self-check: tell a runner crash from a caught failure](#2026-11-09--test-runner-self-check-tell-a-runner-crash-from-a-caught-failure)
   - [2026-11-08 — The roll bar skin writes fields onto Blizzard's GroupLootFrames](#2026-11-08--the-roll-bar-skin-writes-fields-onto-blizzards-grouplootframes)
@@ -204,16 +204,6 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Shape of work:** An audit of the callers, then a side-table version of each helper for Blizzard targets.
 
-### 2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop
-
-**What:** `st:SetBackdropIn` (`SaftUI-Core/api.lua`, added by the tooltip side-table fix) copies the body of `st:SetBackdrop` (`SaftUI-Core/panels.lua`), but returns the backdrop frame without storing it on its target. If `SetBackdrop`'s offset or frame-level rules change, the two will drift.
-
-**Why noticed:** The review of the tooltip fix (2026-11-09). That fix wasn't allowed to touch `panels.lua` while the options window work was changing it.
-
-**Anchors:** `SaftUI-Core/api.lua` (`SetBackdropIn`), `SaftUI-Core/panels.lua` (`SetBackdrop`).
-
-**Shape of work:** Small, once the options window branch has landed: make `SetBackdrop` call `SetBackdropIn` and then store the result, or share one inner function.
-
 ### 2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset
 
 **What:** `LootFeedPush` (`SaftUI-Loot/Feed/feed.lua`) still does `offset = offset + 1` when the feed is scrolled, even when the push merges into an existing entry (gold, or the same item) instead of adding one. A merge adds no entry, so the view probably shifts by one line for no reason.
@@ -329,12 +319,14 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Progress 2026-11-10 (options project 3):** the Colors tab (`colors.*`) and Core's leftover settings (`coresettings` branch: Global Settings' General tab, and the Fonts tab's shadow, spacing and Kinds of text rows) close the Core list, but for the templates (`templates.*`, `buttons.template`, `panels.template`), which wait on the Themes project, and `panels.tab_height`, which has [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it). **Still open:** those, `loot.popup.*`, Chat's `linespacing`, and the broken-option, mover and unit frame items below.
 
+**Progress 2026-11-10 (Themes, `themes` branch):** the templates are done. Global Settings has a Theme tab (Thick or Thin, the chosen theme's colors, Transparent background and Opacity, Reset), and every module's template option is a Theme and Background override that follows it by default; saved template choices migrate by themselves. That closes the Core list. **Next:** the Blizzard theme (project 2 of the templates split, its own spec), which builds on the kinds of frame every draw call now names. **Still open here:** `loot.popup.*`, Chat's `linespacing`, and the broken-option, mover and unit frame items below.
+
 **Read by the code, no option in `/sui`:**
 - **Core** (`SaftUI-Core/Config/defaults.lua`). Core's settings are under Global Settings in `/sui`.
   - `misc.icon_trim`, `misc.clamp_inset`. *Done 2026-11-10 (options project 3, `coresettings` branch): General → Icons → Icon zoom, and General → Windows (now Layout) → Screen edge margin.*
   - `fonts.<key>.shadow_offset` and `.spacing`. *Done 2026-11-10: each font's Shadow offset X, Shadow offset Y and Line spacing on the Fonts tab.*
-  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`. *Done 2026-11-10: `headers.height` is General → Windows (now Layout) → Title bar height, and `headers.font`, `buttons.font` and `panels.font` are Fonts → Kinds of text (Window titles, Button text, Check box labels). `buttons.template` and `panels.template` wait on the Themes project. `panels.tab_height` gets no option, since nothing live reads it: see [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it).*
-  - `templates.*` can be picked from a dropdown but not edited. *Waits on the Themes project.*
+  - `headers.font` and `.height`; `buttons.font` and `.template`; `panels.font`, `.template` and `.tab_height`. *Done 2026-11-10: `headers.height` is General → Windows (now Layout) → Title bar height, and `headers.font`, `buttons.font` and `panels.font` are Fonts → Kinds of text (Window titles, Button text, Check box labels). `buttons.template` and `panels.template` wait on the Themes project (*done 2026-11-10: they're `buttons.theme`/`background` and `panels.theme`/`background`, following Global Settings → Theme; a module's own look is set on its page*). `panels.tab_height` gets no option, since nothing live reads it: see [its own entry](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it).*
+  - `templates.*` can be picked from a dropdown but not edited. *Done 2026-11-10 (Themes): Global Settings → Theme edits the chosen theme's colors (`templates.thick` and `.thin`), its transparency and opacity; the dropdown is gone, and each module has a Theme and Background instead.*
   - `colors.text`, `.button`, `.item_quality`, `.power`, `.class`, `.reaction`, `.status` and `.renown`. Only `colors.experience` has pickers (Experience → General, since 2026-11-09). *Done 2026-11-10: the Colors tab of Global Settings.*
 - **Misc** (`SaftUI-Misc/config.lua`): `tooltip.template` and `.font`, `skinning.font` and `.template` (the new Skinning page, `SK:GetConfigTable`) and `totembar.colors.*` now have options (Task 4 of the options layout project, 2026-11-09).
 - **Action bars:** `actionbars.template`.
@@ -416,7 +408,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Open questions:**
 - Which settings should never be in `/sui`, as internal tuning (e.g. `misc.clamp_inset`, `headers.height`)? *Answered 2026-11-10: the user approved options for both (Global Settings → General).*
-- Should global colors and templates be editable at all?
+- Should global colors and templates be editable at all? *Answered 2026-11-10: yes. Colors are the Colors tab; templates became themes, edited on the Theme tab.*
 
 ### 2026-11-08 — Forever: wrong or missing aura tooltips on party frames
 
@@ -501,16 +493,6 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Shape of work:**
 - In game (Forever shaman, `/console taintLog 1`): open flyouts and change the summon page in combat, then check `taint.log`.
 - A doc edit after that. The secret path only shows if totem slots ever go secret, so it may stay unconfirmed.
-
-### 2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc
-
-**What:** The helper that works out how far a template's border insets the icon exists in `SaftUI-ActionBars/skin.lua` and again as `TB.TemplateInset` in `SaftUI-Misc/totemskin.lua`, which `totemtimers.lua` shares. If one copy changes, the totem bar and the action bars drift apart.
-
-**Why noticed:** The totem bar plan's Task 1 review (2026-11-08) parked it. SaftUI-Misc must not depend on SaftUI-ActionBars, so it couldn't call the ActionBars copy.
-
-**Anchors:** `SaftUI-ActionBars/skin.lua` (`TemplateInset`), `SaftUI-Misc/totemskin.lua` (`TB.TemplateInset`).
-
-**Shape of work:** Small: move it into SaftUI-Core (next to `st:CalculateSpacing` / the template helpers) as `st:TemplateInset(template)` and use it from both.
 
 ### 2026-11-08 — Specialty bags (herb, mining, etc.) count as normal bags in the bag window
 
@@ -669,19 +651,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 3. Module on/off switches such as `inventory.enable`, and `minimap.compartment_buttons` (its option already says it needs a reload).
 4. ~~Party and raid group headers: their size and layout attributes are set at spawn.~~ **Resolved 2026-11-07** (edit mode Task 15): `UF:ApplyGroupLayout` (`SaftUI-Unitframes/groups.lua`) re-applies every header attribute, resizes the buttons, and re-registers the visibility on option edits and profile switches. In combat it waits for combat to end. Nothing in the headers needs a reload now.
 5. Templates, colors, headers and buttons have no options UI, so they're the same in every profile unless the saved variables are edited by hand. Modules re-apply their own templates on a switch, but frames styled once at creation with a fixed template (header bars, close buttons, edit mode overlays, the /sui window) don't pick up a profile's different template colors. `st.template_cache` and `Config:UpdateTemplateConfig` look meant for this, but `UpdateTemplateConfig` reads `self.template_cache` on the Config module (it lives on `st`) and loops without `pairs`, so it never worked.
+   *Update 2026-11-10 (Themes):* `st.template_cache` and `UpdateTemplateConfig` are gone. Colors have the Colors tab and the theme the Theme tab, and `SaftUI-Core/theme.lua` records every drawn frame, so a theme change on the tab recolors or redraws them all (`st:RecolorThemed`, `st:RedrawThemed`, through `st:ThemeChanged`), putting back the borders modules color themselves (`OnColorsChanged('theme')`, `st:KeepOwnColors`). **Still open:** a profile switch runs only `Config:UpdateConfig`, not the redraw, so frames drawn once at creation (header strips, the /sui window, edit mode's overlays, Core's buttons) keep the old profile's theme and colors until a reload when the new profile's differ. Modules' own frames do follow, through their `UpdateConfig`.
 
 **Why noticed:** On 2026-11-07, while making profile switches apply live across all modules and unit frames. The user asked for "update steps for those modules and for unit frames so that everything cleanly changes" on a profile switch, instead of needing a `/reload`. These were the pieces that couldn't be made live cleanly in that pass.
 
-**Anchors:** `SaftUI-Core/Config/config.lua` (`Config:UpdateConfig`), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`), `SaftUI-Chat/chatframe.lua` (`SkinChatFrame`, `tabs.fade`), `SaftUI-Bags/inventory.lua` (`OnEnable`), `SaftUI-Core/panels.lua` (`st:SetTemplate`, `template_cache`), `SaftUI-Core/Config/widgets.lua` (`UpdateTemplateConfig`).
+**Anchors:** `SaftUI-Core/Config/config.lua` (`Config:UpdateConfig`), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`), `SaftUI-Chat/chatframe.lua` (`SkinChatFrame`, `tabs.fade`), `SaftUI-Bags/inventory.lua` (`OnEnable`), `SaftUI-Core/theme.lua` (`st:SetTemplate` and the other draw calls, the drawn-frame record, `st:RecolorThemed`, `st:RedrawThemed`), `SaftUI-Core/Media/theme.lua` (`st:ThemeChanged`).
 
 **What's been considered:**
 - Item 3 matches the rest of the UI: module toggles generally need a reload. A "Reload to apply" message on a switch that changes one would be enough.
 - For item 2, a `hooksecurefunc` on each tab's `SetAlpha` that re-applies alpha 1 while fading is off would be taint-safe and could follow the profile.
-- For item 5, fixing `UpdateTemplateConfig` (`pairs(st.template_cache)`, and recording the latest template per frame) would re-color every templated frame. But it would also reset borders that modules recolor after `SetBackdrop` (bag slot quality, the edit mode overlay, the unit tooltip), so those would need re-applying after it.
+- For item 5, fixing `UpdateTemplateConfig` (`pairs(st.template_cache)`, and recording the latest template per frame) would re-color every templated frame. But it would also reset borders that modules recolor after `SetBackdrop` (bag slot quality, the edit mode overlay, the unit tooltip), so those would need re-applying after it. *Superseded 2026-11-10: the Themes project built that (the drawn-frame record and its recolor and redraw, with those borders put back). What's left of item 5 is running `st:RedrawThemed` and `st:ColorsChanged('theme')` on a profile switch too, out of combat (a redraw waits for the end of combat, as `st:ThemeChanged` does).*
 
-**Shape of work:** Small items, separable: a reload hint for 3, a tab `SetAlpha` hook for 2, and a template re-color pass for 5 if template options ever get a UI. Item 1 depends on the aura-container research.
+**Shape of work:** Small items, separable: a reload hint for 3, a tab `SetAlpha` hook for 2, and for 5 a redraw and theme recolor in `Config:UpdateConfig` (without `st:ThemeChanged`, which runs `UpdateConfig` itself, redrawing twice). Item 1 depends on the aura-container research.
 
-**Open questions:** Will templates or colors ever get options? If not, item 5 can be dropped.
+**Open questions:** Will templates or colors ever get options? *Answered 2026-11-10: both did (the Colors and Theme tabs).*
 
 ### 2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite
 
@@ -702,6 +685,30 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop
+
+**What:** `st:SetBackdropIn` (`SaftUI-Core/api.lua`, added by the tooltip side-table fix) copies the body of `st:SetBackdrop` (`SaftUI-Core/panels.lua`), but returns the backdrop frame without storing it on its target. If `SetBackdrop`'s offset or frame-level rules change, the two will drift.
+
+**Why noticed:** The review of the tooltip fix (2026-11-09). That fix wasn't allowed to touch `panels.lua` while the options window work was changing it.
+
+**Anchors:** `SaftUI-Core/api.lua` (`SetBackdropIn`), `SaftUI-Core/panels.lua` (`SetBackdrop`).
+
+**Shape of work:** Small, once the options window branch has landed: make `SetBackdrop` call `SetBackdropIn` and then store the result, or share one inner function.
+
+**Resolved 2026-11-10:** the Themes project (Task 1) moved both into `SaftUI-Core/theme.lua`, where `st:SetBackdrop` and `st:SetBackdropIn` draw through one shared `DrawBackdrop`; they differ only in where the backdrop frame is kept (`frame.backdrop`, or the caller's table).
+
+### 2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc
+
+**What:** The helper that works out how far a template's border insets the icon exists in `SaftUI-ActionBars/skin.lua` and again as `TB.TemplateInset` in `SaftUI-Misc/totemskin.lua`, which `totemtimers.lua` shares. If one copy changes, the totem bar and the action bars drift apart.
+
+**Why noticed:** The totem bar plan's Task 1 review (2026-11-08) parked it. SaftUI-Misc must not depend on SaftUI-ActionBars, so it couldn't call the ActionBars copy.
+
+**Anchors:** `SaftUI-ActionBars/skin.lua` (`TemplateInset`), `SaftUI-Misc/totemskin.lua` (`TB.TemplateInset`).
+
+**Shape of work:** Small: move it into SaftUI-Core (next to `st:CalculateSpacing` / the template helpers) as `st:TemplateInset(template)` and use it from both.
+
+**Resolved 2026-11-10:** the Themes project (Tasks 5 and 6) replaced both copies with Core's `st:ThemeInset(theme, background)` (`SaftUI-Core/theme.lua`), which the action bars, the totem bar and its timers, the minimap, the micro menu, the loot feed and the buff skin read.
 
 ### 2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter
 
