@@ -10,9 +10,12 @@ local function BuildWindow(id, order)
 	-- Getters and setters go through INV.config, which a profile change
 	-- re-points at the new profile's table.
 	local general = {
-		perrow = generators.range(1, 'Items per row', 1, 12, 1),
-		maxRows = generators.range(2, 'Max rows', 1, 40, 1),
-		maxColumns = generators.range(3, 'Max columns', 1, 8, 1),
+		perrow = generators.range(1, 'Items per row', 1, 12, 1,
+			'How many item slots sit side by side inside a category.'),
+		maxRows = generators.range(2, 'Max rows', 1, 40, 1,
+			'How many rows of item slots the window shows before it scrolls.'),
+		maxColumns = generators.range(3, 'Max columns', 1, 8, 1,
+			'How many columns of categories the window is split into.'),
 		-- Last in General.
 		position = generators.position(1000, true,
 			function(key) return INV.config[id].position[key] end,
@@ -41,6 +44,7 @@ local function BuildWindow(id, order)
 		name = INV.windowLabels[id],
 		type = 'group',
 		order = order,
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -60,10 +64,51 @@ local function BuildWindow(id, order)
 	}
 end
 
--- Bags' section in the /sui tree: one subsection per window that can be placed
--- with a mover (this client's windows, for the bank layout in use).
+-- A setting of the bag fonts table (fonts.titles, fonts.icons): the key of one
+-- of the profile's font objects, like the Font option of the other pages.
+local function FontOption(order, name, key, desc)
+	local option = generators.font(order, desc)
+	option.name = name
+	option.get = function() return INV.config.fonts[key] end
+	option.set = function(_, value)
+		INV.config.fonts[key] = value
+		INV:UpdateConfig()
+	end
+	return option
+end
+
+-- Bags' section in the /sui tree: General (the settings for every window), the
+-- windows' Look and Icons, then one subsection per window that can be placed
+-- with a mover (this client's windows, for the bank layout in use). With the
+-- bags turned off, only General, with the Enable toggle that turns them back on.
 function INV:GetConfigTable()
-	if not self.config or self.config.enable == false or not self.containers.bag then return end
+	if not self.config then return end
+
+	local enable = generators.toggle(1, 'Enable',
+		'Turn SaftUI\'s bags and bank off or on. Takes effect after /reload.', 'small')
+	-- A reload builds or skips the windows; nothing here can do either live.
+	enable.set = function(_, value)
+		INV.config.enable = value
+		st:Print('Reload your UI to apply.')
+	end
+
+	if self.config.enable == false then
+		return {
+			name = 'Bags',
+			type = 'group',
+			category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
+			args = {
+				general = {
+					name = 'General',
+					type = 'group',
+					order = 0,
+					get = function(info) return INV.config[info[#info]] end,
+					args = { enable = enable },
+				},
+			},
+		}
+	end
+	if not self.containers.bag then return end
 
 	local args = {
 		-- Settings for every window. Merge Stacks used to be in the bag window's
@@ -78,33 +123,78 @@ function INV:GetConfigTable()
 				INV:QueueUpdate(true)
 			end,
 			args = {
-				stackItems = {
-					name = 'Merge stacks',
-					desc = 'Show stacks of the same item as one slot with their total count. Items in the reagent bag are merged separately from the same item in your other bags.',
+				enable = enable,
+				stackItems = generators.toggle(2, 'Merge stacks',
+					'Show stacks of the same item as one slot with their total count. Items in the reagent bag are merged separately from the same item in your other bags.',
+					'small'),
+				inverted = generators.toggle(3, 'Inverted',
+					'Order the categories in each column shortest first. Off puts the tallest first.',
+					'small'),
+				combinedBank = {
+					order = 4,
+					name = 'Combined bank',
+					desc = 'Show the bank and the warband bank as one window instead of separate ones. Takes effect the next time you open the bank.',
 					type = 'toggle',
-					order = 1,
+					size = 'small',
+					set = function(info, value)
+						INV.config[info[#info]] = value
+						-- Registers the movers of the layout now in use.
+						INV:UpdateConfig()
+					end,
 				},
+				autorepair = generators.toggle(5, 'Auto repair',
+					'Repair all your gear when you open a vendor that can repair, if you have the gold.',
+					'small'),
+				autovendor = generators.toggle(6, 'Auto sell junk',
+					'Sell your junk to a vendor when you open one. Not in combat.',
+					'small'),
+				scrollSpeed = generators.range(7, 'Scroll speed', 1, 10, 1,
+					'How many rows of item slots one notch of the mouse wheel scrolls.'),
+			},
+		},
+		-- How the windows look: their background, text, padding and category titles.
+		look = {
+			name = 'Look',
+			type = 'group',
+			order = 1,
+			get = function(info) return INV.config[info[#info]] end,
+			set = function(info, value)
+				INV.config[info[#info]] = value
+				INV:ApplyButtonSize() -- re-styles every window and resizes their movers' outlines
+			end,
+			args = {
+				template = generators.template(1, 'The look of the bag and bank windows: their background and border.'),
+				padding = generators.range(2, 'Padding', 0, 30, 1,
+					"The gap between a window's edge and its contents."),
+				categoryTitleHeight = generators.range(3, 'Category title height', 20, 80, 1,
+					'How tall each category title is.'),
+				titles = FontOption(4, 'Title font', 'titles',
+					'The font of the category titles and the search box.'),
+				icons = FontOption(5, 'Icon font', 'icons',
+					'The font of the numbers on the item and currency slots: item level and stack count.'),
 			},
 		},
 		-- Icon size and spacing are shared by every window and both bag slot bars.
 		icons = {
 			name = 'Icons',
 			type = 'group',
-			order = 1,
+			order = 2,
 			get = function(info) return INV.config[info[#info]] end,
 			set = function(info, value)
 				INV.config[info[#info]] = value
 				INV:ApplyButtonSize()
 			end,
 			args = {
-				iconsize = generators.range(1, 'Icon size', 20, 80, 1),
-				buttonspacing = generators.range(2, 'Spacing', 0, 10, 1),
+				iconsize = generators.range(1, 'Icon size', 20, 80, 1,
+					'The height of an item slot; its width follows. Applies to every window and bag slot bar.'),
+				buttonspacing = generators.range(2, 'Spacing', 0, 10, 1,
+					'The gap between item slots, in every window and bag slot bar.'),
 			},
 		},
 	}
 	for order, id in ipairs(self.windowIds) do
 		if self.moverIds[id] then
-			args[id] = BuildWindow(id, order + 1) -- after General and Icons
+			args[id] = BuildWindow(id, order + 2) -- after General, Look and Icons
 		end
 	end
 	return {

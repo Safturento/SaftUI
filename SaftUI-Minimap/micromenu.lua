@@ -274,6 +274,7 @@ function MicroMenu:GetConfigTable()
         name = 'Micro Menu',
         type = 'group',
         category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
+        childGroups = 'tab',
         args = {
             general = {
                 name = 'General',

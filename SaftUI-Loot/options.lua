@@ -11,6 +11,7 @@ local function TestModeToggle(desc, field, setter)
 		name = 'Test mode',
 		desc = desc,
 		type = 'toggle',
+		size = 'small',
 		get = function() return LT[field] and true or false end,
 		set = function(_, value) setter(LT, value) end,
 	}
@@ -55,6 +56,7 @@ local function Section(name, order, general, position)
 		name = name,
 		type = 'group',
 		order = order,
+		childGroups = 'tab',
 		args = {
 			general = general,
 		}
@@ -63,18 +65,17 @@ end
 
 function LT:GetRollOptions()
 	local apply = function() LT:UpdateGroupLootConfig() end
-	local font = generators.font()
-	font.order = 6
+	local font = generators.font(6, 'The font of the text on the roll bars.')
 
 	local general = BuildGeneral('roll', {
 		test_mode = TestModeToggle(
 			'Show sample roll bars so you can tune the rolls without waiting for loot. ' ..
 			'Not saved: off again after a reload or profile change. Hidden while a real roll is up.',
 			'testRolls', LT.SetTestRolls),
-		width = generators.range(1, 'Width', 100, 1000, 1),
-		height = generators.range(2, 'Height', 16, 80, 1),
-		spacing = generators.range(3, 'Spacing', 0, 30, 1),
-		template = generators.template(4),
+		width = generators.range(1, 'Width', 100, 1000, 1, "Each roll bar's width."),
+		height = generators.range(2, 'Height', 16, 80, 1, "Each roll bar's height."),
+		spacing = generators.range(3, 'Spacing', 0, 30, 1, 'The gap between roll bars.'),
+		template = generators.template(4, 'The look of the roll bars: their background and border.'),
 		font = font,
 		grow_down = {
 			order = 7,
@@ -89,8 +90,7 @@ end
 
 function LT:GetFeedOptions()
 	local apply = function() LT:UpdateLootFeedConfig() end
-	local font = generators.font()
-	font.order = 7
+	local font = generators.font(7, 'The font of the feed text.')
 
 	local general = BuildGeneral('feed', {
 		test_mode = TestModeToggle(
@@ -98,18 +98,20 @@ function LT:GetFeedOptions()
 			'experience, reputation, honor, roll results). Turning it off removes only the samples. ' ..
 			'Not saved: off again after a reload or profile change.',
 			'testFeed', LT.SetTestFeed),
-		width = generators.range(1, 'Width', 100, 1000, 1),
-		item_height = generators.range(2, 'Item height', 16, 80, 1),
-		spacing = generators.range(3, 'Spacing', 0, 30, 1),
-		max_items = generators.range(4, 'Max items', 1, 30, 1),
-		fade_time = generators.range(5, 'Fade time', 0, 60, 1),
-		template = generators.template(6),
+		width = generators.range(1, 'Width', 100, 1000, 1, "The feed's width."),
+		item_height = generators.range(2, 'Item height', 16, 80, 1, "Each entry's height."),
+		spacing = generators.range(3, 'Spacing', 0, 30, 1, 'The gap between entries.'),
+		max_items = generators.range(4, 'Max items', 1, 30, 1, 'How many entries the feed shows at once.'),
+		fade_time = generators.range(5, 'Fade time', 0, 60, 1,
+			'How many seconds an entry stays on screen before it fades out.'),
+		template = generators.template(6, 'The look of the feed entries: their background and border.'),
 		font = font,
 		clear_history = {
 			order = 8,
 			name = 'Clear history',
 			desc = 'Empties the loot feed, including what is saved for this character.',
 			type = 'execute',
+			size = 'small',
 			confirm = true,
 			func = function() LT:ClearFeedHistory() end,
 		},

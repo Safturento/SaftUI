@@ -49,13 +49,13 @@ function CHT:GetConfigTable()
 		return validateForHolder(info, part, value)
 	end
 
-	local font = generators.font()
-	font.order = 4
+	local font = generators.font(4, 'The font of the chat text and the edit box.')
 
 	return {
 		name = 'Chat',
 		type = 'group',
 		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -75,15 +75,17 @@ function CHT:GetConfigTable()
 				end,
 				args = {
 					-- Text boxes; the size is rounded to the pixel when it's applied.
-					width = SizeInput(generators.width(1), MIN_WIDTH),
-					height = SizeInput(generators.height(2), MIN_HEIGHT),
-					template = generators.template(3),
+					width = SizeInput(generators.width(1, 'How wide the chat window is, in pixels. At least 250.'), MIN_WIDTH),
+					height = SizeInput(generators.height(2, 'How tall the chat window is, in pixels. At least 120.'), MIN_HEIGHT),
+					template = generators.template(3, 'The look of the chat window and its edit box: their background and border.'),
 					font = font,
-					fontsize = generators.range(5, 'Font size', 8, 32, 1),
-					padding = generators.range(6, 'Padding', 0, 30, 1),
+					fontsize = generators.range(5, 'Font size', 8, 32, 1, 'The size of the chat text.'),
+					padding = generators.range(6, 'Padding', 0, 30, 1,
+						'How far the chat background extends past the chat text.'),
 					editbox_height = {
 						order = 7,
 						name = 'Edit box height',
+						desc = 'How tall the box you type chat messages in is.',
 						type = 'range',
 						min = 15,
 						max = 60,

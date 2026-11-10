@@ -84,6 +84,7 @@ function MM:GetConfigTable()
 		name = 'Minimap',
 		type = 'group',
 		category = 'Frames', -- the /sui sidebar's group (optionswindow.lua)
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -92,8 +93,9 @@ function MM:GetConfigTable()
 				get = function(info) return self.config[info[#info]] end,
 				set = function(info, value) self.config[info[#info]] = value; self:UpdateConfig() end,
 				args = {
-					template = st.Config.generators.template(1),
-					size = st.Config.generators.range(2, 'Size', 30, 500, 1),
+					template = st.Config.generators.template(1,
+						"The look of the minimap's border and background. None draws no frame around it."),
+					size = st.Config.generators.range(2, 'Size', 30, 500, 1, "The minimap's width and height, in pixels."),
 					compartment_buttons = {
 						order = 3,
 						name = 'Addon buttons in compartment',
