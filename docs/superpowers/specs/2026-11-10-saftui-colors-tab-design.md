@@ -78,7 +78,7 @@ Editing these colors would change nothing today, so the tab fixes them.
 
 - The Colors tab sits between Fonts and Edit mode in Global Settings. Its sections, their titles and their colors' names are as in the table above, in that order. Every color is a small `color` row with a desc; Buttons' have `hasAlpha`.
 - A color's get returns the profile's color. Its set writes it onto the profile's object (the same table, so its methods stay) and calls `st:ColorsChanged` with its group. After a profile switch, get and set reach the new profile's colors.
-- Reset puts a section's defaults back and calls `st:ColorsChanged` once.
+- Reset puts a section's defaults back and calls `st:ColorsChanged` once per group the section holds (Reputation: `'reaction'`, then `'renown'`).
 - `st:ColorsChanged` calls `OnColorsChanged` on each module that has it; one module's error doesn't stop the others.
 - `UF:OnColorsChanged('class')` leaves `UF.oUF.colors.class` matching the profile, and force-updates each frame's Health and Power and its tags.
 - After `UF:UpdateColors`, `UF.oUF.colors.disconnected` and `.tapped` match the profile's status colors (the array regression).
