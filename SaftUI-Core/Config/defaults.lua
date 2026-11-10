@@ -151,6 +151,8 @@ st.defaults.colors = {
 		[4] = CreateColor(160/255, 99/255, 201/255),
 		[5] = CreateColor(209/255, 142/255, 61/255),
 		[6] = CreateColor(240/255, 212/255, 137/255),
+		[7] = CreateColor(0, 0.8, 1), -- Heirloom
+		[8] = CreateColor(0, 0.8, 1), -- WoW Token
 	},
 	power = {
 		MANA              = CreateColor(0.31, 0.45, 0.63),
@@ -172,7 +174,7 @@ st.defaults.colors = {
 		POWER_TYPE_STEAM  = CreateColor(0.55, 0.57, 0.61),
 		POWER_TYPE_PYRITE = CreateColor(0.60, 0.09, 0.17),
 		ALTPOWER          = CreateColor(0.00, 1.00, 1.00),
-		ARCANE_CHARGES	  = CreateColor(0.00, 0.67, 1.94),
+		ARCANE_CHARGES	  = CreateColor(0.00, 0.67, 0.94),
 		COMBO_POINTS	  = CreateColor(1.00, 0.95, 0.32),
 	},
 	class = {
@@ -202,7 +204,7 @@ st.defaults.colors = {
 		[8] = CreateColor(st.normalizeRGB(81, 135, 85)), -- Exalted
 	},
 	status = {
-		disconnected = { 0.6, 0.6, 0.6 },
-		tapped = { 0.6, 0.6, 0.6 },
+		disconnected = CreateColor(0.6, 0.6, 0.6),
+		tapped = CreateColor(0.6, 0.6, 0.6),
 	}
 }

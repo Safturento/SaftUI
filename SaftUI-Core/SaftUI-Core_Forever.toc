@@ -40,6 +40,7 @@ utilities.lua
 
 Media\sharedmedia.lua
 Media\fonts.lua
+Media\colors.lua
 
 Config\defaults.lua
 Config\config.lua
