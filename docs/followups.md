@@ -7,7 +7,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
   - [2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames](#2026-11-10--chat-writes-fields-and-scripts-onto-blizzards-chat-frames)
   - [2026-11-10 — The Hekili and WeakAuras skins error when Skinning's Theme is None](#2026-11-10--the-hekili-and-weakauras-skins-error-when-skinnings-theme-is-none)
   - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
@@ -46,6 +45,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
   - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
   - [2026-11-10 — Boss frames have no test mode, so their Layout options can't be checked out of an encounter](#2026-11-10--boss-frames-have-no-test-mode-so-their-layout-options-cant-be-checked-out-of-an-encounter)
@@ -64,38 +64,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
-
-### 2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)
-
-**What:** After you choose on a loot roll, the roll stays on screen until the roll ends, showing everything it showed before plus your choice. The buttons are locked.
-
-**Why noticed:** The user, 2026-11-10: "can we make the loot roll frame not disappear once I've made a selection for a loot roll? just signal that the buttons are locked in but still show them so I can see who has rolled on what so far". Asked what they'd want to see: "all the info I can see prior to rolling plus some signal of what selection I made on the roll". They approved the description below ("that's all good"), seeing a mockup (`.superpowers/brainstorm/…/roll-locked.html`).
-
-**Approved description (a small change, in chat):**
-- **What stays:** everything the bar shows before you choose:
-  - the item icon and name (with BoE and count);
-  - the timer bar and countdown;
-  - the four roll buttons with their live counts (`SaftUI-Loot/rollinfo.lua`);
-  - the hover tooltip listing everyone's choices so far (`LT:AddRollLines`).
-- **Your choice:** your button stays bright with a lit border (Buttons → Blue) and the other three dim, and a small label in the bar names your choice. No button can be clicked.
-- **When it goes:** when the roll ends: its timer runs out, or the game awards the item (the loot feed already shows the result).
-- **Where it sits:** in the same place in the roll stack. New rolls stack as now.
-- **How it's built:**
-  - Blizzard removes its own frame when you choose (`CANCEL_LOOT_ROLL` → `GroupLootFrame_Remove`), and preventing that would mean replacing Blizzard code (`.agents/taint.md`, rule 2).
-  - So SaftUI shows its own copy of the bar in that spot, built like Test mode's bars (`CreatePreviewBar`, `SaftUI-Loot/roll.lua`) and fed by the same live roll data. Nothing of Blizzard's is changed.
-- **When the game can't match the roll:** a roll with no matched loot-history drop still shows the item, timer and choice, without counts. Whether trash rolls appear in `C_LootHistory` on Forever is unknown; see the trash-rolls item in this file.
-- **Test mode** shows a locked bar too.
-
-**Anchors:** `SaftUI-Loot/roll.lua` (`LT:LayoutRollFrames`, `LT:GroupLootFrame_OnShow`, the preview bars), `SaftUI-Loot/rollinfo.lua` (`bars`, `UpdateRollBars`, `OnBarHide`, the drop matching and `StillYours`), `SaftUI-Loot/Feed/rolls.lua` (`LT:GetOpenDrops`).
-
-**Shape of work:** Small to medium, one implementation task with tests:
-- on the player's choice (the Blizzard bar hiding while its matched drop is still open), show a SaftUI held bar in its slot carrying the drop;
-- update its counts on loot-history updates;
-- remove it when the drop resolves or its timer ends;
-- lay held bars out with the live ones;
-- give Test mode a locked bar.
-
-Build it after the Themes branch merges, since Themes also edits `roll.lua`, drawing the held bar the Themes way (with a kind).
 
 ### 2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames
 
@@ -585,17 +553,23 @@ The one route left is to work out the button order without reading the buttons. 
 - **History at load:** `C_LootHistory` is filled at PLAYER_LOGIN after a `/reload`, empty after a relog, and filled an encounter at a time. The load-time prune only drops keys of encounters present in the history. If an encounter is only partly listed at load, a drop missing from it can come back as a duplicate result.
 - **History clears:** it's unknown when `LOOT_HISTORY_CLEAR_HISTORY` fires (zoning, leaving the group).
 - **Trash rolls:** it's unknown whether trash and other non-boss group-loot rolls appear in `C_LootHistory` on Forever. README says "every item your group rolls on".
+- **Held rolls** (`roll.lua`'s held rolls, `rollinfo.lua`'s `OnRollChosen` and `OnBarHide`), from Blizzard's source, not the game:
+  - choosing (any button) makes the server send `CANCEL_LOOT_ROLL`, so Blizzard's bar hides at once, and a main spec Need hides it after its 5 second dice animation;
+  - a roll's time (`START_LOOT_ROLL`'s rollTime, `GetLootRollTimeLeft`, so Blizzard's timer) is in milliseconds. `LT.RollSeconds` takes a length over 1000 as milliseconds, and the live bars' countdown now reads through it too, so if the game counts seconds nothing changes, and if milliseconds the live countdown was wrong before;
+  - `GameTooltip:SetHyperlink` takes the roll's full item link (a held bar's tooltip);
+  - visuals: a held bar sits exactly where its roll was, its icon inside a border on each button with your choice's in Buttons > Blue, the label before the timer, and a new roll after the held ones; a choice whose bind-on-pickup confirmation you cancelled, on a roll that then times out, holds it for a moment at most (its time is up as it's held).
 
 **Why noticed:** The loot rolls plan's final review (2026-11-08) listed these as unverifiable outside the game.
 
 **Anchors:**
 - `SaftUI-Loot/Feed/rolls.lua`: `RollTimeOver`, `GetOpenDrops`, `CatchUp`, `EstimateWhen`.
-- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`.
+- `SaftUI-Loot/rollinfo.lua`: `UpdateRollBars`, `OnRollChosen`, `OnBarHide`.
+- `SaftUI-Loot/roll.lua`: `LT.RollSeconds`, `LT:HoldRoll`, `LT:LayoutRollFrames`.
 - `.agents/clients.md` "Loot rolls".
 - `docs/superpowers/specs/2026-11-08-saftui-loot-rolls-history-design.md`.
 
 **Shape of work:**
-- In game (Forever, group loot): watch counts through a whole roll, roll two copies at once, `/reload` mid-roll and after, relog, roll on trash.
+- In game (Forever, group loot): watch counts through a whole roll, roll two copies at once, `/reload` mid-roll and after, relog, roll on trash. Choose on a roll (each button, and a main spec Need) and watch the held bar until the item is awarded, and let one run out.
 - Fix whatever doesn't hold.
 - Record what's confirmed in `.agents/clients.md`.
 
@@ -817,6 +791,40 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)
+
+**What:** After you choose on a loot roll, the roll stays on screen until the roll ends, showing everything it showed before plus your choice. The buttons are locked.
+
+**Why noticed:** The user, 2026-11-10: "can we make the loot roll frame not disappear once I've made a selection for a loot roll? just signal that the buttons are locked in but still show them so I can see who has rolled on what so far". Asked what they'd want to see: "all the info I can see prior to rolling plus some signal of what selection I made on the roll". They approved the description below ("that's all good"), seeing a mockup (`.superpowers/brainstorm/…/roll-locked.html`).
+
+**Approved description (a small change, in chat):**
+- **What stays:** everything the bar shows before you choose:
+  - the item icon and name (with BoE and count);
+  - the timer bar and countdown;
+  - the four roll buttons with their live counts (`SaftUI-Loot/rollinfo.lua`);
+  - the hover tooltip listing everyone's choices so far (`LT:AddRollLines`).
+- **Your choice:** your button stays bright with a lit border (Buttons → Blue) and the other three dim, and a small label in the bar names your choice. No button can be clicked.
+- **When it goes:** when the roll ends: its timer runs out, or the game awards the item (the loot feed already shows the result).
+- **Where it sits:** in the same place in the roll stack. New rolls stack as now.
+- **How it's built:**
+  - Blizzard removes its own frame when you choose (`CANCEL_LOOT_ROLL` → `GroupLootFrame_Remove`), and preventing that would mean replacing Blizzard code (`.agents/taint.md`, rule 2).
+  - So SaftUI shows its own copy of the bar in that spot, built like Test mode's bars (`CreatePreviewBar`, `SaftUI-Loot/roll.lua`) and fed by the same live roll data. Nothing of Blizzard's is changed.
+- **When the game can't match the roll:** a roll with no matched loot-history drop still shows the item, timer and choice, without counts. Whether trash rolls appear in `C_LootHistory` on Forever is unknown; see the trash-rolls item in this file.
+- **Test mode** shows a locked bar too.
+
+**Anchors:** `SaftUI-Loot/roll.lua` (`LT:LayoutRollFrames`, `LT:GroupLootFrame_OnShow`, the preview bars), `SaftUI-Loot/rollinfo.lua` (`bars`, `UpdateRollBars`, `OnBarHide`, the drop matching and `StillYours`), `SaftUI-Loot/Feed/rolls.lua` (`LT:GetOpenDrops`).
+
+**Shape of work:** Small to medium, one implementation task with tests:
+- on the player's choice (the Blizzard bar hiding while its matched drop is still open), show a SaftUI held bar in its slot carrying the drop;
+- update its counts on loot-history updates;
+- remove it when the drop resolves or its timer ends;
+- lay held bars out with the live ones;
+- give Test mode a locked bar.
+
+Build it after the Themes branch merges, since Themes also edits `roll.lua`, drawing the held bar the Themes way (with a kind).
+
+**Resolved 2026-11-10:** built as approved. `SaftUI-Loot/rollinfo.lua` notes your choice and its time left from a post-hook on `RollOnLoot`; when Blizzard's bar hides itself with a choice noted, `LT:HoldRoll` (`roll.lua`) shows a held bar in its place in the stack, carrying the roll's drop. `LT:UpdateRollBars` matches and updates held rolls with the live bars (a held roll takes only a drop you've chosen on, a live bar keeps its drop through a Need's dice animation) and releases one whose drop resolved; `LT:UpdateHeldRolls` releases one whose time ran out. Held bars and Test mode's previews share one builder (`CreateBar`, `ApplyBarConfig`); the second preview (Drakefire Amulet) is locked on Greed. The label sits before the timer rather than under the name as in the mockup. `tests/loot/roll_held_test.lua`. In-game checks are under "Loot rolls: confirm the client assumptions in game".
 
 ### 2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop
 

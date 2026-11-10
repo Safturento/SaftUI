@@ -5,12 +5,20 @@
 -- The game doesn't link a roll (a bar's rollID) to its drop in C_LootHistory,
 -- so a bar is matched to a drop still being rolled by its item, comparing
 -- GetLootRollItemLink(rollID) with the drop's itemHyperlink. Each drop goes to
--- one bar at most, and a drop you've already chosen on goes to none. Two
--- copies of an item go first come, first served: bars by rollID, drops oldest
--- first. Copies rolled at once can end up swapped; that's accepted. A bar that
--- keeps its roll keeps its drop while the drop is still open, so a later
--- update never swaps them. A bar with no drop shows no counts, and its tooltip
--- is just the item's.
+-- one bar at most. Two copies of an item go first come, first served: bars by
+-- rollID, drops oldest first. Copies rolled at once can end up swapped; that's
+-- accepted. A bar that keeps its roll keeps its drop while the drop is still
+-- open, so a later update never swaps them. A bar with no drop shows no
+-- counts, and its tooltip is just the item's.
+--
+-- Held rolls: once you choose on a roll, Blizzard takes its bar away, and
+-- roll.lua shows a bar of SaftUI's in its place, locked on your choice
+-- (LT:HoldRoll), until the roll ends. Your choice is seen through a post-hook on
+-- RollOnLoot; the held bar carries the roll's drop forward and is matched and
+-- updated here with the Blizzard bars. A Blizzard bar never takes a drop
+-- you've chosen on (only a bar that keeps its roll keeps one), and a held roll
+-- only takes one you have. It goes when its drop resolves (here) or its time
+-- runs out (roll.lua).
 --
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
@@ -26,10 +34,18 @@ local LT = st:GetModule('Loot')
 
 -- [Blizzard roll frame] = {
 --   counts = { [font string] = { choice, color } } (LT:CreateRollCounts),
---   rollID, item, itemID (the roll's item string and ID),
+--   rollID, link, item, itemID (the roll's link, item string and ID),
 --   dropID (the matched drop's encounterID:index), rolls (its live summary),
+--   lastDropID (the drop this roll was last matched to),
 -- }
 local bars = setmetatable({}, { __mode = 'k' })
+
+-- Your choice on each roll still on a Blizzard bar, by rollID: { choice (the
+-- roll button it's counted on), ends (the GetTime its time runs out), length
+-- (the roll's, in seconds) }. Recorded when RollOnLoot is called for it (a roll
+-- button's click, or an addon's), and taken when its bar goes. The time is read
+-- then: a main spec Need zeroes Blizzard's timer for its dice animation.
+local chosen = {}
 
 ------------------------------------
 ---- Counts ------------------------
@@ -158,18 +174,21 @@ end
 ------------------------------------
 
 local function ClearBar(state)
-	state.rollID, state.item, state.itemID = nil, nil, nil
-	state.dropID, state.rolls = nil, nil
+	state.rollID, state.link, state.item, state.itemID = nil, nil, nil, nil
+	state.dropID, state.rolls, state.lastDropID = nil, nil, nil
 	LT:SetRollCounts(state.counts, nil)
 end
 
--- A bar still up means you haven't chosen on its roll yet, so a drop you've
--- chosen on (your state on it plain and not NoRoll) is never a bar's. That
+-- A Blizzard bar still up means you haven't chosen on its roll yet, so it never
+-- takes a drop you've chosen on (your state on it plain and not NoRoll). That
 -- keeps a frame reused for a queued copy of an item off the copy you already
--- chose on. During the Need dice animation the bar stays up after you chose
--- and loses its match; that's accepted (its buttons are hidden then anyway).
+-- chose on. A held roll takes only a drop you've chosen on.
 local function StillYours(drop)
 	return drop.playerState == nil or drop.playerState == LT.ROLL_STATE.NoRoll
+end
+
+local function Chosen(drop)
+	return not StillYours(drop)
 end
 
 -- Pass 1 matches the same item string, pass 2 only the same item ID: a link
@@ -180,11 +199,35 @@ local function Matches(drop, state, pass)
 	return drop.itemID ~= nil and drop.itemID == state.itemID
 end
 
--- Matches every shown roll bar to a drop still being rolled, then sets its
--- counts and rebuilds its info frame's tooltip if that's open. Runs after
--- every loot history update (Feed/rolls.lua) and when a bar shows or hides,
--- so a drop a hidden bar let go of can match another bar. An open tooltip on
--- the icon frame needs nothing: Blizzard sets it again every frame.
+-- Each bar in `list` (Blizzard's or held, by rollID) with no drop takes the
+-- oldest unclaimed open drop of its item that `takes` allows.
+local function ClaimDrops(list, open, claimed, pass, takes)
+	for _, state in ipairs(list) do
+		if not state.dropID then
+			for _, drop in ipairs(open) do
+				if not claimed[drop.id] and takes(drop) and Matches(drop, state, pass) then
+					claimed[drop.id] = true
+					state.dropID = drop.id
+					break
+				end
+			end
+		end
+	end
+end
+
+-- Rebuilds an open tooltip on one of SaftUI's frames with its rolls.
+local function UpdateOpenTooltip(owner)
+	if owner and GameTooltip:IsOwned(owner) then owner:UpdateTooltip() end
+end
+
+local function ByRoll(a, b) return a.rollID < b.rollID end
+
+-- Matches every shown roll bar and every held roll (roll.lua) to a drop still
+-- being rolled, then sets its counts and rebuilds its tooltip if that's open;
+-- a held roll whose drop has resolved goes. Runs after every loot history
+-- update (Feed/rolls.lua) and when a bar shows or hides, so a drop a hidden bar
+-- let go of can match another bar. An open tooltip on a Blizzard bar's icon
+-- frame needs nothing: Blizzard sets it again every frame.
 function LT:UpdateRollBars()
 	local PlainNumber, PlainString = self.PlainNumber, self.PlainString
 	if not PlainNumber then return end
@@ -199,7 +242,7 @@ function LT:UpdateRollBars()
 		end
 		if rollID and not state.item then
 			local link = PlainString(GetLootRollItemLink(rollID))
-			if link then state.item, state.itemID = self.ItemString(link), self.ItemID(link) end
+			if link then state.link, state.item, state.itemID = link, self.ItemString(link), self.ItemID(link) end
 		end
 		if state.item then
 			tinsert(shown, state)
@@ -209,22 +252,40 @@ function LT:UpdateRollBars()
 			self:SetRollCounts(state.counts, nil)
 		end
 	end
-	if not shown[1] then return end
+	local held = {}
+	for _, bar in ipairs(self:GetHeldRolls()) do
+		if bar.item then tinsert(held, bar) end
+	end
+	if not shown[1] and not held[1] then return end
 	-- First come, first served, assuming the game numbers rolls in the order
 	-- they start (likely, not confirmed).
-	table.sort(shown, function(a, b) return a.rollID < b.rollID end)
+	table.sort(shown, ByRoll)
+	table.sort(held, ByRoll)
 
 	local open, byID = {}, {}
 	for _, drop in ipairs(self:GetOpenDrops()) do
-		if StillYours(drop) then
-			drop.item, drop.itemID = self.ItemString(drop.link), self.ItemID(drop.link)
-			tinsert(open, drop)
-			byID[drop.id] = drop
+		drop.item, drop.itemID = self.ItemString(drop.link), self.ItemID(drop.link)
+		tinsert(open, drop)
+		byID[drop.id] = drop
+	end
+
+	-- A held roll keeps its drop while it's open, and goes once it isn't: the
+	-- game has awarded the item or everyone passed, or its roll time is over.
+	local claimed, ended = {}, {}
+	for _, bar in ipairs(held) do
+		local drop = bar.dropID and byID[bar.dropID]
+		if drop and not claimed[drop.id] then
+			claimed[drop.id] = true
+		elseif drop then
+			bar.dropID = nil
+		elseif bar.dropID then
+			ended[bar] = true
 		end
 	end
 
-	-- Bars keep their drop while it's still open.
-	local claimed = {}
+	-- A Blizzard bar keeps its drop while it's open, even once you've chosen on
+	-- it: a main spec Need's dice animation keeps the bar up for a while after,
+	-- and the held roll then takes the drop from it.
 	for _, state in ipairs(shown) do
 		local drop = state.dropID and byID[state.dropID]
 		if drop and not claimed[drop.id] and (Matches(drop, state, 1) or Matches(drop, state, 2)) then
@@ -234,30 +295,35 @@ function LT:UpdateRollBars()
 		end
 	end
 
-	-- The rest take the oldest unclaimed drop of their item.
+	-- The rest take the oldest unclaimed drop of their item: a held roll one
+	-- you've chosen on, a Blizzard bar one you haven't.
 	for pass = 1, 2 do
-		for _, state in ipairs(shown) do
-			if not state.dropID then
-				for _, drop in ipairs(open) do
-					if not claimed[drop.id] and Matches(drop, state, pass) then
-						claimed[drop.id] = true
-						state.dropID = drop.id
-						break
-					end
-				end
-			end
-		end
+		ClaimDrops(held, open, claimed, pass, Chosen)
+		ClaimDrops(shown, open, claimed, pass, StillYours)
 	end
 
 	-- The sorted info orders each choice's players as Blizzard's Loot Rolls window does.
-	for _, state in ipairs(shown) do
+	local function Summary(state)
 		local drop = state.dropID and byID[state.dropID]
 		local info = drop and C_LootHistory.GetSortedInfoForDrop(drop.encounterID, drop.index)
-		state.rolls = self:SummarizeDrop(info)
+		return self:SummarizeDrop(info)
+	end
+	for _, state in ipairs(shown) do
+		state.rolls = Summary(state)
+		state.lastDropID = state.dropID or state.lastDropID
 		self:SetRollCounts(state.counts, state.rolls)
-
-		local body = self:GetRollInfoFrame(frames[state])
-		if body and GameTooltip:IsOwned(body) then body:UpdateTooltip() end
+		UpdateOpenTooltip(self:GetRollInfoFrame(frames[state]))
+	end
+	for _, bar in ipairs(held) do
+		if not ended[bar] then
+			bar.rolls = Summary(bar)
+			self:SetRollCounts(bar.counts, bar.rolls)
+			UpdateOpenTooltip(bar.InfoFrame)
+			UpdateOpenTooltip(bar.IconFrame)
+		end
+	end
+	for _, bar in ipairs(held) do
+		if ended[bar] then self:ReleaseHeldRoll(bar) end
 	end
 end
 
@@ -269,10 +335,60 @@ local function OnBarShow()
 	LT:UpdateRollBars()
 end
 
+-- The bar hid. Hidden itself (not only with UIParent), Blizzard took its roll
+-- away: it ended, or you chose on it. If you chose, the roll is held, carrying
+-- the drop it was matched to (or last was: one that resolved just before
+-- makes the held roll go at once, below).
 local function OnBarHide(frame)
 	local state = bars[frame]
-	if state then ClearBar(state) end
+	if state then
+		local choice = state.rollID and chosen[state.rollID]
+		if choice and not frame:IsShown() then
+			chosen[state.rollID] = nil
+			LT:HoldRoll(frame, {
+				rollID = state.rollID, choice = choice.choice, ends = choice.ends, length = choice.length,
+				link = state.link, item = state.item, itemID = state.itemID,
+				dropID = state.dropID or state.lastDropID, rolls = state.dropID and state.rolls,
+			})
+		end
+		ClearBar(state)
+	end
 	LT:UpdateRollBars()
+end
+
+-- RollOnLoot's roll types, the roll buttons' IDs (GroupLootFrame.xml), by the
+-- button each is counted on. Disenchant (3) has no button of its own on these
+-- bars; Transmog's is marked DE.
+local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 'Transmog', [4] = 'Transmog' }
+
+-- After RollOnLoot (a roll button's OnClick, or an addon): notes your choice on
+-- a roll a skinned bar shows, with the time it has left. A choice the game asks
+-- you to confirm (CONFIRM_LOOT_ROLL, for a bind on pickup item) is noted at
+-- once; cancelling it leaves the bar up, and the next choice replaces it.
+local function OnRollChosen(rollID, rollType)
+	local PlainNumber = LT.PlainNumber
+	if not PlainNumber then return end
+	rollID, rollType = PlainNumber(rollID), PlainNumber(rollType)
+	local choice = rollType and CHOICE_FOR_ROLL_TYPE[rollType]
+	if not (rollID and choice) then return end
+	for frame in pairs(bars) do
+		if frame:IsShown() and PlainNumber(frame.rollID) == rollID then
+			local _, length = frame.Timer:GetMinMaxValues()
+			local left = PlainNumber(frame.Timer:GetValue())
+			length = PlainNumber(length)
+			if left and length then
+				chosen[rollID] = {
+					choice = choice,
+					ends = GetTime() + LT.RollSeconds(left, length),
+					length = LT.RollSeconds(length, length),
+				}
+			end
+			return
+		end
+	end
+end
+if type(RollOnLoot) == 'function' then
+	hooksecurefunc('RollOnLoot', OnRollChosen)
 end
 
 -- Called once per roll frame from SkinRollFrame (roll.lua), after its info

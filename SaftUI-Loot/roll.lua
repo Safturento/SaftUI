@@ -18,10 +18,29 @@ local roll_buttons = {
 -- skinned frame has an entry here, keyed by the frame, and a Timer's text is
 -- found through `timerTexts`, keyed by the Timer (the OnUpdate hook only gets
 -- the Timer). An entry is { info = the info frame, iconBox = the frame that
--- holds the icon's backdrop, timerText, buttonText = { [choice] = font string } }.
+-- holds the icon's backdrop, timerText, buttonText = { [choice] = font string },
+-- shown = what the frame shows of its roll (GroupLootFrame_OnShow) }.
 -- The info frame, icon box and texts are SaftUI's own.
 local skins = setmetatable({}, { __mode = 'k' })
 local timerTexts = setmetatable({}, { __mode = 'k' })
+
+-- The held rolls (below) shown, oldest first; and released ones, kept to show
+-- the next held roll.
+local held, heldPool = {}, {}
+
+-- A value that isn't secret (.agents/clients.md), else nil.
+local function Plain(v)
+	if not issecretvalue(v) then return v end
+end
+
+-- A roll timer's value in seconds. Blizzard's roll timer runs from the roll's
+-- length (START_LOOT_ROLL's rollTime) down to 0 in the game's units, taken as
+-- milliseconds when the length is over 1000: no roll lasts under a second or
+-- over 1000 seconds. Which the game uses isn't confirmed in game.
+function LT.RollSeconds(value, length)
+	if type(length) == 'number' and length > 1000 then return value / 1000 end
+	return value
+end
 
 -- The bar's body, SaftUI's frame that rollinfo.lua puts the tooltip on.
 function LT:GetRollInfoFrame(frame)
@@ -161,7 +180,7 @@ function LT:UpdateRollFrame(frame)
 end
 
 function LT:GroupLootFrame_OnShow(frame)
-	local texture, name, count, quality, bindOnPickUp, canNeed, canGreed, canDisenchant, reasonNeed, reasonGreed, reasonDisenchant, deSkillRequired = GetLootRollItemInfo(frame.rollID);
+	local texture, name, count, quality, bindOnPickUp, canNeed, canGreed, canDisenchant, reasonNeed, reasonGreed, reasonDisenchant, deSkillRequired, canTransmog = GetLootRollItemInfo(frame.rollID);
 	-- A queued roll that expired before its turn has no item: Blizzard's own
 	-- OnShow has already taken the frame away, so there's nothing to style.
 	if not name then return end
@@ -184,12 +203,23 @@ function LT:GroupLootFrame_OnShow(frame)
 	end
 
 	frame.Name:SetText(text .. name)
+
+	-- What the bar shows of its roll, for the held bar that takes its place if
+	-- you choose on it (LT:HoldRoll).
+	local skin = skins[frame]
+	if skin then
+		skin.shown = {
+			rollID = Plain(frame.rollID), texture = texture, text = text .. name,
+			color = color, transmog = canTransmog == true,
+		}
+	end
 end
 
 function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
 	local text = timerTexts[timer]
 	if not text then return end
-	local sec = timer:GetValue()
+	local _, length = timer:GetMinMaxValues()
+	local sec = LT.RollSeconds(timer:GetValue(), length)
 
 	text:SetText(st.StringFormat:ToClock(sec))
 
@@ -201,6 +231,319 @@ function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
 		text:SetVertexColor(1, 1, 1)
 	end
 end
+
+------------------------------------
+---- SaftUI's own roll bars --------
+------------------------------------
+-- Copies of a skinned roll bar, SaftUI's own frames: Test mode's previews and
+-- the held rolls (below). Each has the same size, theme, font, spacing, icon,
+-- name, timer and buttons as a skinned bar, the buttons with their counts.
+
+-- The alpha of a locked bar's other buttons: Blizzard's for a roll button it
+-- disables.
+local LOCKED_ALPHA = 0.35
+
+-- A bar with all four roll buttons, in the real buttons' order (the first sits
+-- at the right edge), Greed or Transmog hidden by SetBarTransmog. The buttons
+-- are plain frames that take no mouse: nothing on a bar can be clicked. `Choice`
+-- is the label a locked bar names your choice with.
+local function CreateBar(parent)
+	local bar = CreateFrame('frame', nil, parent)
+	local level = bar:GetFrameLevel()
+
+	bar.IconFrame = st:CreateFrame('frame', nil, bar)
+	bar.IconFrame:SetPoint('LEFT', bar)
+	bar.Icon = bar.IconFrame:CreateTexture(nil, 'ARTWORK')
+	st:SkinIcon(bar.Icon, nil, bar.IconFrame)
+
+	bar.InfoFrame = st:CreateFrame('frame', nil, bar)
+	bar.InfoFrame:SetPoint('BOTTOMRIGHT', bar)
+	bar.InfoFrame:SetPoint('TOPLEFT', bar.IconFrame, 'TOPRIGHT', 7, 0)
+	bar.InfoFrame:SetFrameLevel(level + 1)
+
+	bar.Timer = CreateFrame('StatusBar', nil, bar)
+	bar.Timer:SetFrameLevel(level + 2)
+	bar.Timer:SetStatusBarTexture(st.BLANK_TEX)
+	-- A font is needed before text is set (SetText errors on a font string
+	-- without one); ApplyBarConfig re-applies it with the rest.
+	local font = st:GetFont(LT.config.roll.font)
+	bar.Timer.Text = bar.Timer:CreateFontString(nil, 'OVERLAY')
+	bar.Timer.Text:SetFontObject(font)
+	bar.Name = bar.Timer:CreateFontString(nil, 'OVERLAY')
+	bar.Name:SetFontObject(font)
+	bar.Name:SetJustifyH('LEFT')
+	bar.Name:SetWordWrap(false)
+	bar.Name:SetVertexColor(1, 1, 1)
+	bar.Choice = bar.Timer:CreateFontString(nil, 'OVERLAY')
+	bar.Choice:SetFontObject(st:GetFont('pixel'))
+	bar.Choice:Hide()
+
+	bar.buttons = {}
+	bar.counts = {}
+	for _, info in ipairs(roll_buttons) do
+		local button = CreateFrame('frame', nil, bar)
+		button.choice = info.name
+		button:SetFrameLevel(level + 3)
+		button:EnableMouse(false)
+		button.Icon = button:CreateTexture(nil, 'ARTWORK')
+		button.Icon:SetAllPoints()
+		button.Icon:SetTexture(info.icon_texture)
+		st:SkinIcon(button.Icon)
+		LT:CreateRollCounts(bar.counts, button, info.name)
+		tinsert(bar.buttons, button)
+	end
+	return bar
+end
+
+-- Like Blizzard, a bar has Transmog in place of Greed when the item can be
+-- transmogged.
+local function SetBarTransmog(bar, transmog)
+	for _, button in ipairs(bar.buttons) do
+		if button.choice == 'Greed' then
+			button:SetShown(not transmog)
+		elseif button.choice == 'Transmog' then
+			button:SetShown(transmog and true or false)
+		end
+	end
+end
+
+-- The lit border of a locked bar's chosen button: Buttons > Blue on its icon's
+-- backdrop. Kept through a theme recolor or redraw (st:KeepOwnColors).
+local function ColorLit(icon)
+	if icon.backdrop then
+		icon.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+	end
+end
+
+-- Locks a bar on your choice (a roll button's name), or unlocks it (nil): the
+-- chosen button stays bright and the others dim, and the label names it.
+-- ApplyBarConfig frames a locked bar's buttons and lights the chosen one.
+local function LockBar(bar, choice)
+	bar.choice = choice
+	for _, button in ipairs(bar.buttons) do
+		button:SetAlpha((choice == nil or button.choice == choice) and 1 or LOCKED_ALPHA)
+	end
+	bar.Choice:SetText(choice or '')
+	bar.Choice:SetShown(choice ~= nil)
+end
+
+-- The same sizing as UpdateRollFrame, from the live roll config. A locked bar
+-- also draws a border on each button, its icon inside it so the borders stay
+-- apart, and lights the chosen one's.
+local function ApplyBarConfig(bar, config)
+	local font = st:GetFont(config.font)
+
+	bar:SetSize(config.width, config.height)
+	bar.IconFrame:SetSize(config.height, config.height)
+	st:SetBackdrop(bar.IconFrame, config.theme, config.background, 'small')
+	st:SetBackdrop(bar.InfoFrame, config.theme, config.background, 'bar')
+
+	bar.Timer:ClearAllPoints()
+	bar.Timer:SetPoint('BOTTOMLEFT', bar.IconFrame, 'BOTTOMRIGHT', config.spacing, 0)
+	bar.Timer:SetHeight(1)
+	bar.Timer:SetWidth(config.width - config.height - config.spacing)
+
+	local inset = bar.choice and st:ThemeInset(config.theme, config.background) or 0
+	local prev
+	for _, button in ipairs(bar.buttons) do
+		button:SetSize(config.height - 4, config.height - 4)
+		button:ClearAllPoints()
+		if button:IsShown() then
+			if not prev then
+				button:SetPoint('RIGHT', bar.InfoFrame, 'RIGHT', -2, 0)
+			else
+				button:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
+			end
+			prev = button
+		end
+
+		button.Icon:ClearAllPoints()
+		button.Icon:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
+		button.Icon:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)
+		if bar.choice then
+			st:SetBackdrop(button.Icon, config.theme, config.background, 'small')
+			local lit = button.choice == bar.choice
+			if lit then ColorLit(button.Icon) end
+			st:KeepOwnColors(button.Icon, lit and ColorLit or nil)
+		end
+	end
+
+	bar.Timer.Text:SetFontObject(font)
+	bar.Timer.Text:ClearAllPoints()
+	bar.Timer.Text:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
+	bar.Timer.Text:SetWidth(40)
+
+	-- The label sits before the timer, and the name before it.
+	local nameEnd = bar.Timer.Text
+	bar.Choice:SetFontObject(st:GetFont('pixel'))
+	bar.Choice:SetTextColor(st.config.profile.colors.button.blue:GetRGB())
+	bar.Choice:ClearAllPoints()
+	if bar.choice then
+		bar.Choice:SetPoint('RIGHT', bar.Timer.Text, 'LEFT', -2, 0)
+		nameEnd = bar.Choice
+	end
+
+	bar.Name:SetFontObject(font)
+	bar.Name:ClearAllPoints()
+	bar.Name:SetHeight(config.height)
+	bar.Name:SetPoint('LEFT', bar.InfoFrame, 5, 0)
+	bar.Name:SetPoint('RIGHT', nameEnd, 'LEFT', -5, 0)
+end
+
+-- The timer at `sec` seconds left, as GroupLootFrame_OnUpdateTimer shows a
+-- skinned bar's.
+local function SetBarTimer(bar, sec)
+	bar.Timer:SetValue(sec)
+	bar.Timer:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
+
+	local whole = floor(sec)
+	if bar.shownSecond ~= whole then
+		bar.shownSecond = whole
+		bar.Timer.Text:SetText(st.StringFormat:ToClock(sec))
+	end
+
+	if sec < 60 then
+		bar.Timer.Text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
+	else
+		bar.Timer.Text:SetVertexColor(1, 1, 1)
+	end
+end
+
+------------------------------------
+---- Held rolls --------------------
+------------------------------------
+-- When you choose on a roll, Blizzard takes its bar away (CANCEL_LOOT_ROLL ->
+-- GroupLootFrame_Remove; a main spec Need after its dice animation). Keeping it
+-- would mean replacing Blizzard's code (.agents/taint.md rule 2), so SaftUI
+-- shows a bar of its own in its place instead, locked on your choice, until
+-- the roll ends. rollinfo.lua says when (LT:HoldRoll), matches it to its loot
+-- history drop and keeps its counts and tooltip up to date, and takes it away
+-- when the drop resolves; it goes here when its time runs out.
+
+local heldParent
+
+-- The held bars shown, oldest first. Read only.
+function LT:GetHeldRolls()
+	return held
+end
+
+-- A held bar's tooltip: its item, then its drop's rolls (none without a drop).
+local function HeldTooltip(owner)
+	local bar = owner:GetParent()
+	return 'SetHyperlink', bar.link, bar.rolls
+end
+
+-- Every frame while a roll is held.
+local function OnHeldUpdate()
+	LT:UpdateHeldRolls()
+end
+
+-- Counts each held roll's time down, and takes away those whose time is up.
+function LT:UpdateHeldRolls()
+	local now = GetTime()
+	local ended
+	for _, bar in ipairs(held) do
+		local left = bar.ends - now
+		if left > 0 then
+			SetBarTimer(bar, left)
+		else
+			ended = ended or {}
+			tinsert(ended, bar)
+		end
+	end
+	for _, bar in ipairs(ended or {}) do
+		self:ReleaseHeldRoll(bar)
+	end
+end
+
+-- SaftUI's roll stack, from the anchor out: Blizzard's roll frames ({ frame,
+-- rollID, slot }) and the held bars ({ bar }). LayoutRollFrames keeps it.
+local stack = {}
+
+-- Holds the roll `frame` showed, after you chose on it: a held bar, locked on
+-- your choice, takes the frame's place in the stack. `roll` is rollinfo.lua's:
+-- { rollID, choice (a roll button's name), ends (the GetTime its time runs
+-- out), length (the roll's, in seconds), link, item, itemID, dropID, rolls }.
+-- Returns the bar, or nil when there's nothing to hold: the frame didn't show
+-- that roll, or its time is up.
+function LT:HoldRoll(frame, roll)
+	local skin = skins[frame]
+	local shown = skin and skin.shown
+	if not shown or shown.rollID == nil or shown.rollID ~= roll.rollID then return end
+	if roll.ends <= GetTime() then return end
+
+	heldParent = heldParent or CreateFrame('frame', nil, UIParent)
+	local bar = tremove(heldPool)
+	if not bar then
+		bar = CreateBar(heldParent)
+		self:SetRollTooltipScripts(bar.IconFrame, HeldTooltip)
+		self:SetRollTooltipScripts(bar.InfoFrame, HeldTooltip)
+	end
+	bar.holding = true
+	bar.rollID, bar.from = roll.rollID, frame
+	bar.ends, bar.length = roll.ends, roll.length
+	bar.link, bar.item, bar.itemID = roll.link, roll.item, roll.itemID
+	bar.dropID, bar.rolls = roll.dropID, roll.rolls
+	bar.shownSecond = nil
+
+	bar.Icon:SetTexture(shown.texture)
+	bar.Name:SetText(shown.text)
+	local color = shown.color
+	if color then
+		bar.Name:SetVertexColor(color.r, color.g, color.b)
+	else
+		bar.Name:SetVertexColor(1, 1, 1)
+	end
+	SetBarTransmog(bar, shown.transmog)
+	LockBar(bar, roll.choice)
+	self:SetRollCounts(bar.counts, bar.rolls)
+	bar.Timer:SetMinMaxValues(0, roll.length)
+	ApplyBarConfig(bar, self.config.roll)
+	SetBarTimer(bar, roll.ends - GetTime())
+
+	local entry = { bar = bar }
+	for i, other in ipairs(stack) do
+		if other.frame == frame then
+			stack[i], entry = entry, nil
+			break
+		end
+	end
+	if entry then tinsert(stack, entry) end
+
+	tinsert(held, bar)
+	bar:Show()
+	heldParent:SetScript('OnUpdate', OnHeldUpdate)
+	self:LayoutRollFrames()
+	self:UpdateRollPreviewVisibility()
+	return bar
+end
+
+-- Takes a held bar away (its roll ended), and closes the gap.
+function LT:ReleaseHeldRoll(bar)
+	if not bar.holding then return end
+	for i, other in ipairs(held) do
+		if other == bar then
+			tremove(held, i)
+			break
+		end
+	end
+	bar.holding = nil
+	bar:Hide()
+	bar.rollID, bar.from, bar.link, bar.item, bar.itemID = nil, nil, nil, nil, nil
+	bar.dropID, bar.rolls = nil, nil
+	for _, button in ipairs(bar.buttons) do
+		st:KeepOwnColors(button.Icon, nil)
+	end
+	tinsert(heldPool, bar)
+	if not held[1] then heldParent:SetScript('OnUpdate', nil) end
+
+	self:LayoutRollFrames()
+	self:UpdateRollPreviewVisibility()
+end
+
+------------------------------------
+---- Anchor and layout -------------
+------------------------------------
 
 -- SaftUI owns this anchor; GroupLootContainer is part of Blizzard's managed
 -- frame layout, so we never move or size it. Roll frames stay parented where
@@ -220,34 +563,87 @@ function LT:ApplyRollAnchor()
 	anchor:SetPoint(st:UnpackPoint(config.position))
 end
 
+-- Stacks Blizzard's roll frames and the held rolls from the anchor, with no
+-- gaps. Blizzard's frames keep the order of their slots in rollFrames (it
+-- leaves holes there when a roll ends, puts a new roll in the first hole, and
+-- walks 1..maxIndex). A held bar stays where its roll's frame was. A new roll
+-- goes before the first frame in a later slot, so after any held bars before
+-- that frame, else last: one in a held roll's old slot comes after it.
 function LT:LayoutRollFrames()
-	local container = GroupLootContainer
 	local anchor = self.rollAnchor
-	if not anchor or not container or not container.rollFrames then return end
-
+	if not anchor then return end
+	local container = GroupLootContainer
 	local config = self.config.roll
-	local prev
 
-	-- Blizzard leaves holes in rollFrames when a roll ends, and walks 1..maxIndex.
-	for i = 1, container.maxIndex or 4 do
-		local frame = container.rollFrames[i]
-		if frame then
-			frame:ClearAllPoints()
-			if not prev then
-				if config.grow_down then
-					frame:SetPoint('TOP', anchor)
-				else
-					frame:SetPoint('BOTTOM', anchor)
-				end
-			else
-				if config.grow_down then
-					frame:SetPoint('TOP', prev, 'BOTTOM', 0, -config.spacing)
-				else
-					frame:SetPoint('BOTTOM', prev, 'TOP', 0, config.spacing)
-				end
-			end
-			prev = frame
+	local slots = {}
+	if container and container.rollFrames then
+		for i = 1, container.maxIndex or 4 do
+			local frame = container.rollFrames[i]
+			if frame then slots[frame] = i end
 		end
+	end
+
+	-- A frame a held bar has taken the place of, until it shows another roll
+	-- (Blizzard takes it out of rollFrames just after it hides).
+	local heldFrom = {}
+	for _, bar in ipairs(held) do
+		if bar.from then heldFrom[bar.from] = bar.rollID end
+	end
+
+	-- What's gone: a roll Blizzard took away, a frame that shows another roll
+	-- now, a held bar that went.
+	for i = #stack, 1, -1 do
+		local entry = stack[i]
+		local keep
+		if entry.frame then
+			keep = slots[entry.frame] ~= nil and Plain(entry.frame.rollID) == entry.rollID
+			if keep then
+				entry.slot = slots[entry.frame]
+				slots[entry.frame] = nil
+			end
+		else
+			keep = entry.bar.holding
+		end
+		if not keep then tremove(stack, i) end
+	end
+
+	local new = {}
+	for frame, slot in pairs(slots) do
+		local rollID = Plain(frame.rollID)
+		if heldFrom[frame] == nil or heldFrom[frame] ~= rollID then
+			tinsert(new, { frame = frame, rollID = rollID, slot = slot })
+		end
+	end
+	table.sort(new, function(a, b) return a.slot < b.slot end)
+	for _, entry in ipairs(new) do
+		local at = #stack + 1
+		for i, other in ipairs(stack) do
+			if other.frame and other.slot > entry.slot then
+				at = i
+				break
+			end
+		end
+		tinsert(stack, at, entry)
+	end
+
+	local prev
+	for _, entry in ipairs(stack) do
+		local frame = entry.frame or entry.bar
+		frame:ClearAllPoints()
+		if not prev then
+			if config.grow_down then
+				frame:SetPoint('TOP', anchor)
+			else
+				frame:SetPoint('BOTTOM', anchor)
+			end
+		else
+			if config.grow_down then
+				frame:SetPoint('TOP', prev, 'BOTTOM', 0, -config.spacing)
+			else
+				frame:SetPoint('BOTTOM', prev, 'TOP', 0, config.spacing)
+			end
+		end
+		prev = frame
 	end
 end
 
@@ -287,15 +683,19 @@ function LT:RegisterRollMover()
 	})
 end
 
--- Only SaftUI's anchor and the (unprotected) roll frames are touched, never
--- GroupLootContainer. Everything here hangs off the anchor, so a protected
--- frame (e.g. a unit frame) anchored to any of it makes the anchor protected;
--- in combat the update then waits for the end of combat.
+-- Only SaftUI's anchor, its own bars and the (unprotected) roll frames are
+-- touched, never GroupLootContainer. Everything here hangs off the anchor, so a
+-- protected frame (e.g. a unit frame) anchored to any of it makes the anchor
+-- protected; in combat the update then waits for the end of combat.
 function LT:UpdateGroupLootConfig()
 	st:SafeReposition(self:CreateRollAnchor(), 'lootroll', function()
 		self:ApplyRollAnchor()
 		for _,frame in ipairs(self.skinnedRollFrames or {}) do
 			self:UpdateRollFrame(frame)
+		end
+		for _, bar in ipairs(held) do
+			ApplyBarConfig(bar, self.config.roll)
+			SetBarTimer(bar, max(0, bar.ends - GetTime()))
 		end
 		self:LayoutRollFrames()
 		self:UpdateRollPreviews()
@@ -305,13 +705,14 @@ end
 ------------------------------------
 ---- Test mode ---------------------
 ------------------------------------
--- Preview bars are SaftUI's own frames that copy the look of a skinned roll
--- frame (same size, theme, font, spacing, icon, name, timer and buttons).
--- Real Blizzard roll frames are never created, fed fake data or touched; the
--- previews only read whether one is showing. They hide while a real roll is
--- up (the real rolls own the anchor then) and come back when it ends.
+-- Preview bars are SaftUI's own bars (CreateBar) that copy the look of a
+-- skinned roll frame. Real Blizzard roll frames are never created, fed fake
+-- data or touched; the previews only read whether one is showing. They hide
+-- while a real roll is up or held (the real rolls own the anchor then) and come
+-- back when it ends.
 -- Each one has sample choices too: counts on its buttons and the rolls in its
--- tooltip, the way rollinfo.lua shows a real roll's.
+-- tooltip, the way rollinfo.lua shows a real roll's. One is locked on your
+-- choice, as a held roll is.
 -- LT.testRolls is a plain field: not saved, off after /reload.
 
 local PREVIEW_FALLBACK_ICON = 134400 -- INV_Misc_QuestionMark
@@ -319,8 +720,9 @@ local PREVIEW_DURATION = 300
 
 -- The fallback name and quality are used until the client has the item data.
 -- `choices` are made-up players with a state from LT.ROLL_STATE and, for a
--- main spec need, the roll the game makes at once. `me` is you, still to
--- choose, as on any roll bar that's still up. `leader` indexes `choices`.
+-- main spec need, the roll the game makes at once. `me` is you: still to
+-- choose, as on any roll bar that's still up, or on a `locked` one, the roll
+-- button you chose (it's held). `leader` indexes `choices`.
 local PREVIEW_ROLLS = {
 	{ itemID = 19019, name = 'Thunderfury, Blessed Blade of the Windseeker', quality = 5,
 		count = 1, bindOnPickUp = true, transmog = true, remaining = 250,
@@ -336,12 +738,12 @@ local PREVIEW_ROLLS = {
 		} },
 	{ itemID = 16309, name = 'Drakefire Amulet', quality = 4,
 		count = 1, bindOnPickUp = false, transmog = false, remaining = 170,
-		choices = {
+		locked = 'Greed', choices = {
 			{ name = 'Mistweave', class = 'PRIEST', state = 'Greed' },
 			{ name = 'Quickshot', class = 'HUNTER', state = 'Greed' },
 			{ name = 'Brightblade', class = 'PALADIN', state = 'Pass' },
 			{ name = 'Emberfall', class = 'MAGE', state = 'Pass' },
-			{ me = true, state = 'NoRoll' },
+			{ me = true, state = 'Greed' },
 		} },
 	{ itemID = 2589, name = 'Linen Cloth', quality = 1,
 		count = 5, bindOnPickUp = false, transmog = true, remaining = 90,
@@ -385,7 +787,9 @@ local function PreviewTooltip(owner)
 	return 'SetItemByID', bar.spec.itemID, bar.rolls
 end
 
+-- A real roll is up, or held.
 local function RealRollShowing()
+	if held[1] then return true end
 	local container = GroupLootContainer
 	if not container or not container.rollFrames then return false end
 	for _, frame in pairs(container.rollFrames) do
@@ -420,73 +824,13 @@ local function FillPreviewBar(bar)
 	bar.Icon:SetTexture(icon or PREVIEW_FALLBACK_ICON)
 end
 
-local function SetPreviewTimer(bar)
-	local sec = bar.remaining
-	bar.Timer:SetValue(sec)
-	bar.Timer:SetStatusBarColor(st.config.profile.colors.button.blue:GetRGB())
-
-	local whole = floor(sec)
-	if bar.shownSecond ~= whole then
-		bar.shownSecond = whole
-		bar.Timer.Text:SetText(st.StringFormat:ToClock(sec))
-	end
-
-	if sec < 60 then
-		bar.Timer.Text:SetVertexColor(st.config.profile.colors.text.red:GetRGB())
-	else
-		bar.Timer.Text:SetVertexColor(1, 1, 1)
-	end
-end
-
 local function CreatePreviewBar(parent, spec)
-	local bar = CreateFrame('frame', nil, parent)
-	local level = bar:GetFrameLevel()
+	local bar = CreateBar(parent)
 	bar.spec = spec
 	bar.remaining = spec.remaining
-
-	bar.IconFrame = st:CreateFrame('frame', nil, bar)
-	bar.IconFrame:SetPoint('LEFT', bar)
-	bar.Icon = bar.IconFrame:CreateTexture(nil, 'ARTWORK')
-	st:SkinIcon(bar.Icon, nil, bar.IconFrame)
-
-	bar.InfoFrame = st:CreateFrame('frame', nil, bar)
-	bar.InfoFrame:SetPoint('BOTTOMRIGHT', bar)
-	bar.InfoFrame:SetPoint('TOPLEFT', bar.IconFrame, 'TOPRIGHT', 7, 0)
-	bar.InfoFrame:SetFrameLevel(level + 1)
-
-	bar.Timer = CreateFrame('StatusBar', nil, bar)
-	bar.Timer:SetFrameLevel(level + 2)
-	bar.Timer:SetStatusBarTexture(st.BLANK_TEX)
 	bar.Timer:SetMinMaxValues(0, PREVIEW_DURATION)
-	-- A font is needed before FillPreviewBar sets text (SetText errors on a
-	-- font string without one); ApplyPreviewConfig re-applies it with the rest.
-	local font = st:GetFont(LT.config.roll.font)
-	bar.Timer.Text = bar.Timer:CreateFontString(nil, 'OVERLAY')
-	bar.Timer.Text:SetFontObject(font)
-	bar.Name = bar.Timer:CreateFontString(nil, 'OVERLAY')
-	bar.Name:SetFontObject(font)
-	bar.Name:SetJustifyH('LEFT')
-	bar.Name:SetWordWrap(false)
-	bar.Name:SetVertexColor(1, 1, 1)
-
-	-- Same order as the real buttons: the first one sits at the right edge.
-	-- Like Blizzard, a bar has Transmog in place of Greed when the item can
-	-- be transmogged.
-	bar.buttons = {}
-	bar.counts = {}
-	for _, info in ipairs(roll_buttons) do
-		local skip = (info.name == 'Transmog' and not spec.transmog) or (info.name == 'Greed' and spec.transmog)
-		if not skip then
-			local button = CreateFrame('frame', nil, bar)
-			button:SetFrameLevel(level + 3)
-			button.Icon = button:CreateTexture(nil, 'ARTWORK')
-			button.Icon:SetAllPoints()
-			button.Icon:SetTexture(info.icon_texture)
-			st:SkinIcon(button.Icon)
-			LT:CreateRollCounts(bar.counts, button, info.name)
-			tinsert(bar.buttons, button)
-		end
-	end
+	SetBarTransmog(bar, spec.transmog)
+	LockBar(bar, spec.locked)
 
 	bar.rolls = PreviewRolls(spec)
 	LT:SetRollCounts(bar.counts, bar.rolls)
@@ -495,46 +839,6 @@ local function CreatePreviewBar(parent, spec)
 
 	FillPreviewBar(bar)
 	return bar
-end
-
--- The same sizing as UpdateRollFrame, from the live roll config.
-local function ApplyPreviewConfig(bar, config)
-	local font = st:GetFont(config.font)
-
-	bar:SetSize(config.width, config.height)
-	bar.IconFrame:SetSize(config.height, config.height)
-	st:SetBackdrop(bar.IconFrame, config.theme, config.background, 'small')
-	st:SetBackdrop(bar.InfoFrame, config.theme, config.background, 'bar')
-
-	bar.Timer:ClearAllPoints()
-	bar.Timer:SetPoint('BOTTOMLEFT', bar.IconFrame, 'BOTTOMRIGHT', config.spacing, 0)
-	bar.Timer:SetHeight(1)
-	bar.Timer:SetWidth(config.width - config.height - config.spacing)
-
-	local prev
-	for i, button in ipairs(bar.buttons) do
-		button:SetSize(config.height - 4, config.height - 4)
-		button:ClearAllPoints()
-		if i == 1 then
-			button:SetPoint('RIGHT', bar.InfoFrame, 'RIGHT', -2, 0)
-		else
-			button:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
-		end
-		prev = button
-	end
-
-	bar.Timer.Text:SetFontObject(font)
-	bar.Timer.Text:ClearAllPoints()
-	bar.Timer.Text:SetPoint('RIGHT', prev, 'LEFT', -2, 0)
-	bar.Timer.Text:SetWidth(40)
-
-	bar.Name:SetFontObject(font)
-	bar.Name:ClearAllPoints()
-	bar.Name:SetHeight(config.height)
-	bar.Name:SetPoint('LEFT', bar.InfoFrame, 5, 0)
-	bar.Name:SetPoint('RIGHT', bar.Timer.Text, 'LEFT', -5, 0)
-
-	SetPreviewTimer(bar)
 end
 
 function LT:CreateRollPreviews()
@@ -568,7 +872,8 @@ function LT:UpdateRollPreviews()
 	local config = self.config.roll
 	local prev
 	for _, bar in ipairs(container.bars) do
-		ApplyPreviewConfig(bar, config)
+		ApplyBarConfig(bar, config)
+		SetBarTimer(bar, bar.remaining)
 
 		bar:ClearAllPoints()
 		if not prev then
@@ -611,7 +916,7 @@ local function OnPreviewUpdate(driver, elapsed)
 	for _, bar in ipairs(container.bars) do
 		bar.remaining = bar.remaining - elapsed
 		if bar.remaining <= 0 then bar.remaining = PREVIEW_DURATION end
-		SetPreviewTimer(bar)
+		SetBarTimer(bar, bar.remaining)
 
 		if bar.pending then
 			driver.itemTime = (driver.itemTime or 0) + elapsed

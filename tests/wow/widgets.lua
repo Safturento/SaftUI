@@ -342,6 +342,8 @@ end
 function Object.GetName(self, s) return s.name end
 function Object.GetObjectType(self, s) return s.type end
 function Object.IsObjectType(self, s, typeName) return s.groups[typeName] == true end
+-- Forbidden objects (Blizzard's secure-only ones) are never made here.
+function Object.IsForbidden(self, s) return false end
 
 ------------------------------------------------------------------ ScriptRegion (frames, textures, font strings)
 
@@ -1051,11 +1053,29 @@ function GameTooltip.SetOwner(self, s, owner, anchor)
 	s.owner, s.anchor = owner, anchor or 'ANCHOR_LEFT'
 end
 function GameTooltip.GetOwner(self, s) return s.owner end
-function GameTooltip.ClearLines(self, s) s.lines = 0 end
+function GameTooltip.IsOwned(self, s, frame) return s.owner ~= nil and s.owner == frame end
+-- The lines' texts are kept in stub.state(tooltip).texts (the left text of
+-- each line) and .rights (a double line's right text), by line.
+function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights = 0, {}, {} end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
--- SetText starts the tooltip over with one line; AddLine adds one.
-function GameTooltip.SetText(self, s, text) s.lines = 1 end
-function GameTooltip.AddLine(self, s, text) s.lines = (s.lines or 0) + 1 end
+-- SetText starts the tooltip over with one line; AddLine and AddDoubleLine add one.
+function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights = 1, { text }, {} end
+function GameTooltip.AddLine(self, s, text)
+	s.lines = (s.lines or 0) + 1
+	s.texts, s.rights = s.texts or {}, s.rights or {}
+	s.texts[s.lines] = text
+end
+function GameTooltip.AddDoubleLine(self, s, left, right)
+	s.lines = (s.lines or 0) + 1
+	s.texts, s.rights = s.texts or {}, s.rights or {}
+	s.texts[s.lines], s.rights[s.lines] = left, right
+end
+-- Shows what a link names (an item, a spell, ...): the tooltip starts over with
+-- it, here one line whose text is the link.
+function GameTooltip.SetHyperlink(self, s, link)
+	if type(link) ~= 'string' then usage(s, 'SetHyperlink(): link must be a string') end
+	s.lines, s.texts, s.rights = 1, { link }, {}
+end
 -- The tooltip's unit: name and unit token, or nothing (nil, nil) when it isn't
 -- showing a unit. Nothing in the stubs sets one yet.
 function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
