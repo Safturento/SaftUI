@@ -75,7 +75,7 @@ local isInherited = {
 -- Members where a string is the value, not a handler method name.
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
-	size = true, target = true, nameKey = true,
+	size = true, target = true, nameKey = true, pickerLabel = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -438,6 +438,7 @@ end
 	  picker = { name, values = { {key, name, desc, disabled} }, selected } or nil,
 	  sections = { { title, note, rows = { row } } } }
 	tabs and subtabs are empty when there are none. The picker's name is the
+	group's pickerLabel when it has one, else the name of the
 	group whose children it picks, as AceConfigDialog titles its dropdown.
 ]]
 function OM.BuildView(root, pageKey, selection)
@@ -463,8 +464,13 @@ function OM.BuildView(root, pageKey, selection)
 	for i, level in ipairs(levels) do
 		local key = level.entry and level.entry.key
 		if level.slot == 'pick' then
+			-- A page's pickerLabel names its picker; else the group's own name.
+			local pickerName = Text(GetMember('pickerLabel', level.group, options, level.path))
+			if pickerName == '' then
+				pickerName = Text(GetMember('name', level.group, options, level.path))
+			end
 			view.picker = {
-				name = Text(GetMember('name', level.group, options, level.path)),
+				name = pickerName,
 				values = level.list,
 				selected = key,
 			}

@@ -20,21 +20,25 @@ local AB = st:GetModule('ActionBars')
 	(extras.lua), which always have a size. Their outlines say when the
 	buttons show, as they mostly don't.
 
-	/sui -> Action Bars has one section per bar, each with tabs:
+	/sui -> Action Bars has the Template option (actionbars.template, the
+	backdrop every button is drawn with), then one picker entry ('Bar') per
+	bar, each with tabs:
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
 	    button size and spacing, and the Position option, last. The relative
 	    frame typed there goes through st:ValidateAnchor with the bar, so a bar
 	    can't be anchored to itself, its own buttons, or a bar anchored to it.
 	  - Text: the hotkey, stack count and macro name, each with show, font, size,
-	    outline, the text's point and the button's, and x / y offsets. The pet
-	    and stance bars only have the hotkey (AB.barTypes texts).
+	    outline, and a Position block with no TO part: the text's point (THIS),
+	    the button's point it sits on (AT ITS) and the offsets. The pet and
+	    stance bars only have the hotkey (AB.barTypes texts).
 	  - Visibility: always, in combat only, or faded until moused over, with how
 	    faded.
 	Then one section per extra button, with General: Scale for Blizzard's extra
 	action button and zone ability, Size for SaftUI's leave vehicle button, and
 	the Position option.
-	Every option applies at once through AB:UpdateBar (bars.lua) or
-	AB:LayoutExtra (extras.lua). /sui can't be open in combat, so none of this
+	Every option applies at once through AB:UpdateBar (bars.lua), AB:LayoutExtra
+	(extras.lua) or, for the template, AB:UpdateConfig (which re-skins every bar
+	and the leave vehicle button, skin.lua's StyleBar reading actionbars.template). /sui can't be open in combat, so none of this
 	runs in combat lockdown; a profile switch in combat waits for the end of
 	combat (AB:UpdateConfig).
 ]]
@@ -146,9 +150,19 @@ local function OutlineValues()
 	return values
 end
 
--- One text's options (hotkey, count or macro name), a box in the Text tab.
+-- What each text is, for its tooltips.
+local TEXT_DESCS = {
+	hotkey = 'the key bound to the button',
+	count = "the button's stack or charge count",
+	macro = "a macro button's name",
+}
+
+-- One text's options (hotkey, count or macro name), a box in the Text tab. Its
+-- Position block has no TO part: the text sits inside its own button. It reads
+-- and writes the text's point, rel_point, x_off and y_off, and goes last.
 function AB:GetTextOptions(id, kind, name, order)
 	local generators = st.Config.generators
+	local what = TEXT_DESCS[kind]
 	return {
 		name = name,
 		type = 'group',
@@ -160,37 +174,32 @@ function AB:GetTextOptions(id, kind, name, order)
 			self:UpdateBar(id)
 		end,
 		args = {
-			show = generators.toggle(1, 'Show'),
+			show = generators.toggle(1, 'Show', 'Show ' .. what .. ' on the buttons.', 'small'),
 			font = {
 				order = 2,
 				name = 'Font',
+				desc = 'The font of ' .. what .. '.',
 				type = 'select',
 				dialogControl = 'LSM30_Font',
 				values = st.LSM:HashTable('font'),
 			},
-			size = generators.range(3, 'Size', 6, 32, 1),
+			size = generators.range(3, 'Size', 6, 32, 1, 'The size of ' .. what .. ', in points.'),
 			outline = {
 				order = 4,
 				name = 'Outline',
+				desc = 'The outline drawn around ' .. what .. '.',
 				type = 'select',
 				values = OutlineValues(),
 			},
-			point = {
-				order = 5,
-				name = 'Text point',
-				desc = 'The point of the text that is anchored.',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-			},
-			rel_point = {
-				order = 6,
-				name = 'Button point',
-				desc = 'The point of the button the text is anchored to.',
-				type = 'select',
-				values = st.FRAME_ANCHORS,
-			},
-			x_off = generators.range(7, 'X offset', -50, 50, 1),
-			y_off = generators.range(8, 'Y offset', -50, 50, 1),
+			position = generators.position(5, false,
+				function(key) return self.config[id].text[kind][key] end,
+				function(key, value)
+					self.config[id].text[kind][key] = value
+					self:UpdateBar(id)
+				end,
+				nil,
+				'Where ' .. what .. ' sits on the button: the point of the text that is anchored (THIS), the point of the button it is anchored to (AT ITS), and how far it is moved from there.'
+			),
 		},
 	}
 end
@@ -230,32 +239,31 @@ function AB:GetBarOptions(id, order)
 		self.bars[id]
 	)
 
-	local enable = generators.enable(1)
-	enable.desc = 'A disabled bar is hidden and its keys do nothing.'
+	local enable = generators.enable(1, 'A disabled bar is hidden and its keys do nothing.')
+	enable.size = 'small'
 
-	local buttons = generators.range(2, 'Buttons', 1, numButtons, 1)
-	buttons.desc = ('How many of the bar\'s %d buttons it shows. The keys of the others do nothing.'):format(numButtons)
+	local buttonsDesc = ('How many of the bar\'s %d buttons it shows. The keys of the others do nothing.'):format(numButtons)
 	if barType and barType.buttonsNote then
-		buttons.desc = buttons.desc .. ' ' .. barType.buttonsNote
+		buttonsDesc = buttonsDesc .. ' ' .. barType.buttonsNote
 	end
+	local buttons = generators.range(2, 'Buttons', 1, numButtons, 1, buttonsDesc)
 
-	local perrow = generators.range(3, 'Buttons per row', 1, numButtons, 1)
-	perrow.desc = '1 makes a column.'
+	local perrow = generators.range(3, 'Buttons per row', 1, numButtons, 1,
+		'How many buttons sit in a row before the next row starts. 1 makes a column.')
 
-	local size = generators.range(4, 'Button size', 16, 80, 1)
-	size.desc = 'The whole button, its border included.'
+	local size = generators.range(4, 'Button size', 16, 80, 1, 'The whole button, its border included.')
 
-	local spacing = generators.range(5, 'Spacing', 0, 20, 1)
-	spacing.desc = 'The gap between buttons.'
+	local spacing = generators.range(5, 'Spacing', 0, 20, 1, 'The gap between buttons.')
 
-	local fade = generators.range(2, 'Faded opacity', 0, 1, 0.05)
-	fade.desc = "How visible the bar is while the mouse isn't over it."
+	local fade = generators.range(2, 'Faded opacity', 0, 1, 0.05,
+		"How visible the bar is while the mouse isn't over it.")
 	fade.hidden = function() return self.config[id].visibility ~= 'mouseover' end
 
 	return {
 		name = self:GetBarLabel(id),
 		type = 'group',
 		order = order,
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -307,12 +315,11 @@ function AB:GetExtraOptions(id, order)
 
 	local size
 	if SCALED_EXTRAS[id] then
-		size = generators.range(1, 'Scale', 0.5, 2, 0.05)
+		size = generators.range(1, 'Scale', 0.5, 2, 0.05,
+			"The size of Blizzard's button and the art around it. 100% is Blizzard's size.")
 		size.isPercent = true
-		size.desc = "Blizzard's button and the art around it. 100% is Blizzard's size."
 	else
-		size = generators.range(1, 'Button size', 16, 80, 1)
-		size.desc = 'The whole button, its border included.'
+		size = generators.range(1, 'Button size', 16, 80, 1, 'The whole button, its border included.')
 	end
 
 	-- Every SetPoint parameter is editable, the relative frame included. Passing
@@ -331,6 +338,7 @@ function AB:GetExtraOptions(id, order)
 		name = self.EXTRA_LABELS[id],
 		type = 'group',
 		order = order,
+		childGroups = 'tab',
 		args = {
 			general = {
 				name = 'General',
@@ -355,7 +363,19 @@ end
 -- configPath). Absent until the bars are built.
 function AB:GetConfigTable()
 	if not self.built then return end
+	local generators = st.Config.generators
 	local args = {}
+	-- The backdrop of every bar button and of the leave vehicle button. skin.lua
+	-- reads it each time a bar is styled, so AB:UpdateConfig (every bar, then the
+	-- extras) applies it at once; it waits for the end of combat if need be.
+	local template = generators.template(0,
+		'The backdrop and border every action button is drawn with, the leave vehicle button too.')
+	template.get = function() return self.config.template end
+	template.set = function(_, value)
+		self.config.template = value
+		self:UpdateConfig()
+	end
+	args.template = template
 	for i, id in ipairs(self.BAR_IDS) do
 		if self.bars[id] then
 			args[id] = self:GetBarOptions(id, i)
@@ -373,6 +393,7 @@ function AB:GetConfigTable()
 		-- The bars and extra buttons are the page's picker; each one's General,
 		-- Text, ... are its tabs.
 		childGroups = 'select',
+		pickerLabel = 'Bar',
 		args = args,
 	}
 end

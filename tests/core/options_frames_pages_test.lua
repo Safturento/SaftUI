@@ -1,7 +1,7 @@
--- The /sui pages of Bags, Chat and Loot, which build their tables only after
+-- The /sui pages of Bags, Chat, Loot and Action bars, which build their tables only after
 -- OnEnable has made frames, so Config:GetOptionsTable can't get them here. Each
 -- is built with stand-ins for those frames (SaftUI's own: the bag windows' anchors, the
--- chat holder, the loot roll anchor and feed; the module methods that need them are
+-- chat holder, the loot roll anchor and feed, the action bars and extra buttons; the module methods that need them are
 -- counters, with a comment where Blizzard is what they would reach). Checked for each
 -- page: every option has a desc and no Ace width, Position is the last option of its
 -- General group, and the new options read and write their profile keys and apply them
@@ -13,6 +13,8 @@ load_core_helpers()
 load_saftui('SaftUI-Bags/config.lua')
 load_saftui('SaftUI-Chat/config.lua')
 load_saftui('SaftUI-Loot/config.lua')
+load_saftui('SaftUI-ActionBars/config.lua')
+load_saftui('SaftUI-ActionBars/init.lua') -- the bar ids and labels
 apply_defaults()
 load_test_file('core/options_walk.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
@@ -199,4 +201,79 @@ test('Loot: Test mode is small, every option has a desc, Position is last', func
 	end
 	local got = layout({ Loot = tree }, 'Loot', 'roll')
 	eq(got:match('^test_mode:small 1/1'), 'test_mode:small 1/1', 'Test mode takes a quarter')
+end)
+
+test('Action bars: tooltips, Position last, the Template option, and the Text positions over the stored keys', function()
+	local AB = st:GetModule('ActionBars')
+	st:BindModuleConfig(AB, 'actionbars')
+	AB.EXTRA_IDS = { 'extra', 'zone', 'vehicleleave' }
+	AB.EXTRA_LABELS = { extra = 'Extra action button', zone = 'Zone ability', vehicleleave = 'Leave vehicle button' }
+	AB.built = true
+	AB.bars, AB.extras = {}, {}
+	for _, id in ipairs(AB.BAR_IDS) do
+		AB.bars[id] = { buttons = {} }
+		for i = 1, (id == 'pet' or id == 'stance') and 10 or 12 do AB.bars[id].buttons[i] = {} end
+	end
+	for _, id in ipairs(AB.EXTRA_IDS) do AB.extras[id] = CreateFrame('Frame', nil, UIParent) end
+	AB.barTypes = { pet = { texts = { hotkey = true } }, stance = { texts = { hotkey = true } } }
+	-- The bars are secure and the skin restyles their buttons: counters here.
+	local calls = {}
+	local function count(name) return function(_, id) calls[#calls + 1] = name .. (id and (':' .. id) or '') end end
+	AB.UpdateBar, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = count('UpdateBar'), count('LayoutBar'), count('LayoutExtra'), count('UpdateConfig')
+	load_saftui('SaftUI-ActionBars/options.lua')
+
+	local tree = AB:GetConfigTable()
+	-- A Position in each bar's General, each extra's General and each text of the Text tabs.
+	local texts = 8 * 3 + 2
+	eq(check_page('ActionBars', tree), 10 + 3 + texts, 'a Position for every bar, extra button and text')
+	eq(tree.pickerLabel, 'Bar', 'the picker is labelled Bar')
+	eq(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.name, 'Bar', 'and the window shows it')
+	local picked = {}
+	for _, entry in ipairs(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.values) do picked[#picked + 1] = entry.key end
+	eq(table.concat(picked, ','), 'bar1,bar2,bar3,bar4,bar5,bar6,bar7,bar8,pet,stance,extra,zone,vehicleleave',
+		'the picker lists the bars and extras, not the Template option')
+
+	-- Template reads and writes actionbars.template, and restyles every bar at once.
+	local template = tree.args.template
+	eq(template.type, 'select', 'Template is a select')
+	eq(template.get(), profile.actionbars.template, 'Template reads actionbars.template')
+	calls = {}
+	template.set(info_for('template'), 'thin')
+	eq(profile.actionbars.template, 'thin', 'Template writes actionbars.template')
+	eq(table.concat(calls, ','), 'UpdateConfig', 'and re-skins the bars and extras')
+	check(template.values.thin ~= nil, 'its values are the profile templates')
+
+	-- Each bar: Position last in General; the Text tab has the hotkey, count and macro (the
+	-- pet and stance bars only the hotkey), each a Position block with no target over the
+	-- text's stored keys.
+	for _, id in ipairs(AB.BAR_IDS) do
+		local bar = tree.args[id]
+		eq(bar.childGroups, 'tab', id .. ' declares its own tabs')
+		local want = (id == 'pet' or id == 'stance') and 'hotkey' or 'count,hotkey,macro'
+		local kinds = {}
+		for kind in pairs(bar.args.text.args) do kinds[#kinds + 1] = kind end
+		table.sort(kinds)
+		eq(table.concat(kinds, ','), want, id .. ' text tab')
+		for kind, group in pairs(bar.args.text.args) do
+			local option = group.args.position
+			eq(option.type, 'position', id .. ' ' .. kind .. ' is a Position block')
+			eq(option.target, nil, id .. ' ' .. kind .. ' has no TO part')
+			check(group.args.show.size == 'small', id .. ' ' .. kind .. ': Show is small')
+			for _, part in ipairs({ 'point', 'rel_point', 'x_off', 'y_off' }) do
+				local stored = profile.actionbars[id].text[kind][part]
+				eq(option.get(info_for('position'), part), part:find('_off') and (tonumber(stored) or 0) or stored,
+					id .. ' ' .. kind .. ' reads text.' .. kind .. '.' .. part)
+			end
+			-- No 50 limit: the stored offset can be set past it.
+			calls = {}
+			option.set(info_for('position'), 'x_off', 120)
+			option.set(info_for('position'), 'point', 'CENTER')
+			eq(profile.actionbars[id].text[kind].x_off, 120, id .. ' ' .. kind .. ' writes text.' .. kind .. '.x_off')
+			eq(profile.actionbars[id].text[kind].point, 'CENTER', id .. ' ' .. kind .. ' writes text.' .. kind .. '.point')
+			eq(table.concat(calls, ','), 'UpdateBar:' .. id .. ',UpdateBar:' .. id, 'each change applies through UpdateBar')
+			eq(group.args.size.max, 32, 'Size keeps its range')
+		end
+	end
+	local view = OM.BuildView({ ActionBars = tree }, 'ActionBars', { pick = 'bar1', tab = 'general' })
+	eq(view.sections[#view.sections].title, 'Position', "General ends with the Position section")
 end)

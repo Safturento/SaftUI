@@ -32,6 +32,7 @@ local uf = {
 }
 local hideTarget = false
 local ufProfile = 'Main'
+local ufPickerLabel -- the page's pickerLabel, when a test sets one
 
 local function UnitTable(unit, name)
 	local cfg = uf[unit]
@@ -79,6 +80,7 @@ function UFM:GetConfigTable()
 		name = 'Unitframes',
 		type = 'group',
 		childGroups = 'select',
+		pickerLabel = ufPickerLabel,
 		category = 'Frames',
 		args = {
 			profile = {
@@ -460,6 +462,21 @@ test("Open({'Unitframes','player','general'}) selects the page, the picker value
 	-- Picker values: the units, then the profile group (negative order sorts last).
 	eq(keys(OM.BuildView(OW:GetRoot(), 'Unitframes').picker.values), 'player,target,profile', 'picker entries')
 	close_all()
+end)
+
+test("the picker is labelled with the page's pickerLabel, else its name", function()
+	local function label()
+		st.Config:Open('Unitframes', 'player')
+		local drawnLabel = frames().pickerLabel:GetText()
+		eq(OM.BuildView(OW:GetRoot(), 'Unitframes').picker.name, drawnLabel, 'the view and the window agree')
+		close_all()
+		return drawnLabel
+	end
+	eq(label(), 'Unitframes', 'no pickerLabel: the page name')
+	ufPickerLabel = 'Unit'
+	st.Config:Refresh()
+	eq(label(), 'Unit', 'pickerLabel set: the label')
+	ufPickerLabel = nil
 end)
 
 test("Open({'Inventory','bag','text'}) selects the tab and the second row's tab", function()
