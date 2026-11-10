@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: 'Colus'; src: url('/files/Colus-Regular.otf'); }
+@font-face { font-family: 'Agency'; src: url('/files/AgencyFB.ttf'); }
+@font-face { font-family: 'Agency'; font-weight: bold; src: url('/files/AgencyFB_Bold.ttf'); }
+:root {
+	--bg: #1f1f1f; --bg-dark: #171717; --edge: #4d4d4d; --alt: #1a1a1a; --line: #2e2e2e;
+	--text: #e6e6cc; --grey: #969696; --blue: #00adef; --blue-dim: rgba(0, 173, 239, 0.25); --field: #141414;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; padding: 28px 0 60px;
+	background: radial-gradient(ellipse at 30% 20%, #5b5a3c 0%, #2f3324 55%, #1d2016 100%);
+	font-family: 'Agency', sans-serif; color: var(--text);
+	-webkit-font-smoothing: none; min-height: 100vh;
+}
+.wrap { width: 860px; margin: 0 auto; }
+h2 { font-family: 'Colus'; font-weight: normal; font-size: 26px; letter-spacing: 1px; margin: 0 0 4px; text-shadow: 0 1px 2px #000; }
+.sub { color: #d8d8c0; font-size: 16px; margin: 0 0 14px; text-shadow: 0 1px 2px #000; }
+.thick { background: var(--bg); border: 1px solid var(--edge); box-shadow: 0 0 0 1px var(--alt), inset 0 0 0 1px var(--alt); }
+.page { padding: 4px 28px 22px; width: 830px; }
+.section { padding-top: 16px; }
+.section + .section { border-top: 1px solid var(--line); margin-top: 14px; }
+.section-title { font-family: 'Colus'; font-size: 15px; letter-spacing: 1px; color: var(--grey); margin-bottom: 6px; }
+
+/* The grid: two columns; a half can split into two quarters for small controls. */
+.rows { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; }
+.half { display: flex; align-items: center; height: 34px; gap: 10px; }
+.half .label { flex: 1; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+.quarter { display: flex; align-items: center; height: 34px; gap: 10px; }
+.label { font-weight: bold; font-size: 16px; white-space: nowrap; position: relative; cursor: default; }
+.wide { grid-column: 1 / -1; }
+
+.field { background: var(--field); border: 1px solid var(--edge); color: var(--text); font-family: 'Agency'; font-size: 15px; height: 24px; padding: 0 8px; outline: none; display: inline-flex; align-items: center; }
+.field:focus { border-color: var(--blue); }
+.select { width: 170px; justify-content: space-between; cursor: pointer; }
+.select::after { content: ''; width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid var(--grey); }
+.select.sm { width: 120px; }
+.text { width: 170px; }
+.text.sm { width: 110px; }
+.num { width: 46px; justify-content: center; padding: 0 2px; text-align: center; }
+.slider { width: 116px; height: 24px; position: relative; }
+.slider .track { position: absolute; left: 0; right: 0; top: 9px; height: 6px; background: var(--field); border: 1px solid var(--edge); }
+.slider .fill { position: absolute; left: 0; top: 9px; height: 6px; background: var(--blue); }
+.slider .knob { position: absolute; width: 6px; height: 14px; background: var(--text); top: 5px; margin-left: -3px; }
+.check { width: 18px; height: 18px; border: 1px solid var(--edge); background: var(--field); cursor: pointer; position: relative; flex: none; }
+.check.on::after { content: ''; position: absolute; inset: 3px; background: var(--blue); }
+.swatch { width: 22px; height: 22px; border: 1px solid var(--edge); box-shadow: inset 0 0 0 1px #000; flex: none; }
+
+/* Tooltip on the label */
+.tip { display: none; position: absolute; left: 0; top: 26px; z-index: 5; width: 230px; white-space: normal; font-weight: normal; font-size: 14px; padding: 7px 9px; color: var(--text); }
+.tip b { display: block; font-size: 15px; margin-bottom: 2px; }
+.label.has-tip { border-bottom: 1px dotted #666; }
+.label.has-tip:hover .tip, .tip.show { display: block; }
+
+/* Position option cards */
+.options { display: flex; flex-direction: column; gap: 14px; }
+.option { cursor: pointer; border: 1px solid transparent; padding: 10px 12px 12px; background: rgba(0,0,0,0.35); }
+.option:hover { border-color: #666; }
+.option.selected { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.option .head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.option .letter { font-family: 'Colus'; font-size: 20px; color: var(--blue); }
+.option .name { font-weight: bold; font-size: 18px; }
+.option .desc { color: #cfcfb8; font-size: 15px; margin-top: 8px; }
+.option .page { width: 100%; }
+
+/* A: sentence */
+.sentence { display: flex; align-items: center; gap: 8px; height: 34px; font-size: 16px; font-weight: bold; }
+.sentence .w { color: var(--grey); font-weight: normal; }
+.sentence .gap { width: 14px; }
+
+/* B: labeled strip */
+.strip { display: inline-grid; grid-template-columns: auto auto auto 46px 46px; column-gap: 10px; row-gap: 3px; padding: 7px 10px 8px; background: var(--bg-dark); border: 1px solid var(--line); }
+.strip .cap { font-family: 'Colus'; font-size: 11px; letter-spacing: 1px; color: var(--grey); }
+
+/* C: point pickers */
+.pickers { display: flex; align-items: center; gap: 14px; }
+.dots { display: grid; grid-template-columns: repeat(3, 14px); grid-template-rows: repeat(3, 14px); gap: 0; width: 48px; height: 48px; padding: 3px; background: var(--field); border: 1px solid var(--edge); }
+.dots i { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.dots i::after { content: ''; width: 4px; height: 4px; background: #555; }
+.dots i:hover::after { background: var(--text); }
+.dots i.on::after { width: 8px; height: 8px; background: var(--blue); }
+.picker-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.picker-col .cap { font-size: 13px; color: var(--grey); }
+.arrow { color: var(--grey); font-size: 20px; }
+.xy { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 16px; }
+.nudge { display: inline-flex; flex-direction: column; gap: 1px; margin-left: -6px; }
+.nudge span { width: 12px; height: 11px; border: 1px solid var(--edge); background: var(--field); font-size: 8px; line-height: 9px; text-align: center; color: var(--grey); cursor: pointer; }
+
+.hint { font-size: 14px; color: #d8d8c0; margin: 8px 0 26px; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h2>1. The Experience page, as you described it</h2>
+<p class="sub">Spacing moves up beside Template, so Height and Width share a row. The two colors split one half. Toggles and swatches sit right after their label. Hover <b>Spacing</b> for its tooltip.</p>
+
+<div class="thick page">
+	<div class="section">
+		<div class="section-title">GENERAL</div>
+		<div class="rows">
+			<div class="half"><span class="label">Template</span><span class="field select">ThickTransparent</span></div>
+			<div class="half"><span class="label has-tip">Spacing<span class="tip thick show"><b>Spacing</b>The gap between the stacked bars (experience, reputation), in pixels.</span></span>
+				<div class="slider"><div class="track"></div><div class="fill" style="width:27%"></div><div class="knob" style="left:27%"></div></div><span class="field num">8</span></div>
+
+			<div class="half"><span class="label">Height</span>
+				<div class="slider"><div class="track"></div><div class="fill" style="width:20%"></div><div class="knob" style="left:20%"></div></div><span class="field num">13</span></div>
+			<div class="half"><span class="label">Width</span>
+				<div class="slider"><div class="track"></div><div class="fill" style="width:25%"></div><div class="knob" style="left:25%"></div></div><span class="field num">250</span></div>
+
+			<div class="pair">
+				<div class="quarter"><span class="label">Experience</span><span class="swatch" style="background:#9b45c9"></span></div>
+				<div class="quarter"><span class="label">Rested</span><span class="swatch" style="background:#4a90c8"></span></div>
+			</div>
+			<div class="half"><span class="label">Rested bar alpha</span>
+				<div class="slider"><div class="track"></div><div class="fill" style="width:40%"></div><div class="knob" style="left:40%"></div></div><span class="field num">0.4</span></div>
+		</div>
+	</div>
+	<div class="section">
+		<div class="section-title">TOGGLES SIT BY THEIR LABEL (LOOT &gt; ROLLS)</div>
+		<div class="rows">
+			<div class="pair">
+				<div class="quarter"><span class="label">Test mode</span><span class="check"></span></div>
+				<div class="quarter"><span class="label">Show counts</span><span class="check on"></span></div>
+			</div>
+		</div>
+	</div>
+</div>
+<p class="hint">The columns still line up: a small control takes a quarter, everything else a half, and Position takes the whole row.</p>
+
+<h2>2. Position as one unit: which reads best?</h2>
+<p class="sub">Same setting in each: this frame's top right, on the Minimap's bottom right, 8 down. For unit frame parts, the frame box is a dropdown instead of a name.</p>
+
+<div class="options">
+
+	<div class="option" data-choice="sentence" onclick="toggleSelect(this)">
+		<div class="head"><span class="letter">A</span><span class="name">One line that reads as a sentence</span></div>
+		<div class="thick page"><div class="section"><div class="section-title">POSITION</div>
+			<div class="sentence">
+				<span class="w">Put its</span><span class="field select sm">Top Right</span>
+				<span class="w">on</span><span class="field text sm">Minimap</span>
+				<span class="w">at its</span><span class="field select sm">Bottom Right</span>
+				<span class="gap"></span>
+				<span>X</span><span class="field num">0</span><span>Y</span><span class="field num">-8</span>
+			</div>
+		</div></div>
+		<div class="desc">The words carry what the fields mean, so no labels are needed. Uses the least height, but the narrower dropdowns cut off long names.</div>
+	</div>
+
+	<div class="option" data-choice="strip" onclick="toggleSelect(this)">
+		<div class="head"><span class="letter">B</span><span class="name">A labeled strip</span></div>
+		<div class="thick page"><div class="section"><div class="section-title">POSITION</div>
+			<div class="strip">
+				<span class="cap">POINT</span><span class="cap">RELATIVE TO</span><span class="cap">ITS POINT</span><span class="cap">X</span><span class="cap">Y</span>
+				<span class="field select">Top Right</span><span class="field text">Minimap</span><span class="field select">Bottom Right</span><span class="field num">0</span><span class="field num">-8</span>
+			</div>
+		</div></div>
+		<div class="desc">Small captions above one row of fields, on a darker inset, so the five read as a set. It looks like a table row, and it would look the same on every page that has a position.</div>
+	</div>
+
+	<div class="option" data-choice="pickers" onclick="toggleSelect(this)">
+		<div class="head"><span class="letter">C</span><span class="name">Point pickers</span></div>
+		<div class="thick page"><div class="section"><div class="section-title">POSITION</div>
+			<div class="pickers">
+				<div class="picker-col"><div class="dots" data-grid><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="cap">this frame</span></div>
+				<span class="arrow">&rarr;</span>
+				<div class="picker-col"><div class="dots" data-grid><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i></div><span class="cap">Minimap</span></div>
+				<span class="field text sm" style="margin-left:6px">Minimap</span>
+				<span style="width:18px"></span>
+				<div class="xy">X <span class="field num">0</span><span class="nudge"><span>&#9650;</span><span>&#9660;</span></span>
+					Y <span class="field num">-8</span><span class="nudge"><span>&#9650;</span><span>&#9660;</span></span></div>
+			</div>
+		</div></div>
+		<div class="desc">Click a dot on each square to choose the two points, with no dropdowns to read through. It shows how the frame hangs off its target, and the little arrows nudge X and Y. It takes two rows' height. (The dots are clickable here.)</div>
+	</div>
+
+</div>
+</div>
+<script>
+document.querySelectorAll('[data-grid]').forEach(function (grid) {
+	grid.querySelectorAll('i').forEach(function (dot) {
+		dot.addEventListener('click', function (e) {
+			e.stopPropagation();
+			grid.querySelectorAll('i').forEach(function (d) { d.classList.remove('on'); });
+			dot.classList.add('on');
+		});
+	});
+});
+</script>
+</body>
+</html>

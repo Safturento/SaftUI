@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: 'Colus'; src: url('/files/Colus-Regular.otf'); }
+@font-face { font-family: 'Agency'; src: url('/files/AgencyFB.ttf'); }
+@font-face { font-family: 'Agency'; font-weight: bold; src: url('/files/AgencyFB_Bold.ttf'); }
+:root {
+	--bg: #1f1f1f; --bg-dark: #171717; --edge: #4d4d4d; --alt: #1a1a1a; --line: #2e2e2e;
+	--text: #e6e6cc; --grey: #969696; --blue: #00adef; --field: #141414;
+	--gap: 12px;          /* between parts of the block */
+	--col-gap: 40px;      /* between the page's two columns */
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; padding: 28px 0 60px;
+	background: radial-gradient(ellipse at 30% 20%, #5b5a3c 0%, #2f3324 55%, #1d2016 100%);
+	font-family: 'Agency', sans-serif; color: var(--text);
+	-webkit-font-smoothing: none; min-height: 100vh;
+}
+.wrap { width: 860px; margin: 0 auto; }
+h2 { font-family: 'Colus'; font-weight: normal; font-size: 26px; letter-spacing: 1px; margin: 0 0 4px; text-shadow: 0 1px 2px #000; }
+.sub { color: #d8d8c0; font-size: 16px; margin: 0 0 14px; text-shadow: 0 1px 2px #000; }
+.thick { background: var(--bg); border: 1px solid var(--edge); box-shadow: 0 0 0 1px var(--alt), inset 0 0 0 1px var(--alt); }
+.page { padding: 4px 28px 22px; position: relative; }
+.section { padding-top: 16px; }
+.section + .section { border-top: 1px solid var(--line); margin-top: 14px; }
+.section-title { font-family: 'Colus'; font-size: 15px; letter-spacing: 1px; color: var(--grey); margin-bottom: 6px; }
+
+.rows { display: grid; grid-template-columns: 1fr 1fr; column-gap: var(--col-gap); }
+.half { display: flex; align-items: center; height: 34px; gap: 10px; }
+.half .label { flex: 1; }
+.label { font-weight: bold; font-size: 16px; white-space: nowrap; }
+
+.field { background: var(--field); border: 1px solid var(--edge); color: var(--text); font-family: 'Agency'; font-size: 15px; height: 24px; padding: 0 8px; display: inline-flex; align-items: center; }
+.text { width: 120px; }
+.num { width: 46px; justify-content: center; padding: 0 2px; }
+.slider { width: 116px; height: 24px; position: relative; }
+.slider .track { position: absolute; left: 0; right: 0; top: 9px; height: 6px; background: var(--field); border: 1px solid var(--edge); }
+.slider .fill { position: absolute; left: 0; top: 9px; height: 6px; background: var(--blue); }
+.slider .knob { position: absolute; width: 6px; height: 14px; background: var(--text); top: 5px; margin-left: -3px; }
+
+/* The position block: one group of parts, each a caption over a 48px band */
+.group { display: flex; gap: var(--gap); align-items: flex-start; }
+.part { display: flex; flex-direction: column; gap: 4px; }
+.part.centered .cap { text-align: center; }
+.cap { font-family: 'Colus'; font-size: 11px; letter-spacing: 1px; color: var(--grey); height: 13px; line-height: 13px; white-space: nowrap; }
+.band { height: 48px; display: flex; align-items: center; }
+
+.dots { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 48px; height: 48px; padding: 3px; background: var(--field); border: 1px solid var(--edge); }
+.dots i { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.dots i::after { content: ''; width: 4px; height: 4px; background: #555; }
+.dots i:hover::after { background: var(--text); }
+.dots i.on::after { width: 8px; height: 8px; background: var(--blue); }
+
+/* OFFSET: X over Y, each label to the left of its box, the stack as tall as the dots */
+.offset { display: grid; grid-template-columns: auto auto; column-gap: 8px; row-gap: 4px; align-items: center; height: 48px; }
+.offset .axis { font-weight: bold; font-size: 16px; line-height: 22px; }
+.spin { display: inline-flex; }
+.spin .field { height: 22px; border-right: none; }
+.spin .arrows { display: flex; flex-direction: column; width: 14px; height: 22px; border: 1px solid var(--edge); background: var(--field); }
+.spin .arrows span { flex: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.spin .arrows span + span { border-top: 1px solid var(--edge); }
+.spin .arrows span::after { content: ''; border-left: 3px solid transparent; border-right: 3px solid transparent; }
+.spin .arrows .up::after { border-bottom: 3px solid var(--grey); }
+.spin .arrows .down::after { border-top: 3px solid var(--grey); }
+.spin .arrows span:hover::after { border-bottom-color: var(--text); border-top-color: var(--text); }
+
+/* Unit frame target: a dropdown over the frame name, the same two rows as OFFSET */
+.target { display: grid; grid-template-rows: 22px 22px; row-gap: 4px; height: 48px; }
+select.field { appearance: none; height: 22px; width: 140px; font-family: 'Agency'; font-size: 15px; cursor: pointer; outline: none;
+	background-image: linear-gradient(45deg, transparent 50%, var(--grey) 50%), linear-gradient(135deg, var(--grey) 50%, transparent 50%);
+	background-position: calc(100% - 13px) 9px, calc(100% - 8px) 9px; background-size: 5px 5px; background-repeat: no-repeat; }
+select.field:focus { border-color: var(--blue); }
+.target .field.text { height: 22px; width: 140px; }
+.target .empty { height: 22px; }
+.states { display: flex; gap: 8px; margin: 10px 0 0; }
+.states button { font-family: 'Agency'; font-weight: bold; font-size: 14px; background: #222; color: #ddd; border: 1px solid #555; padding: 3px 10px; cursor: pointer; }
+
+/* Column guides */
+.guides .page::before, .guides .page::after { content: ''; position: absolute; top: 0; bottom: 0; border-left: 1px dashed rgba(0, 173, 239, 0.45); pointer-events: none; }
+.guides .page::before { left: 28px; }
+.guides .page::after { left: calc(28px + (100% - 56px - var(--col-gap)) / 2 + var(--col-gap)); }
+.toolbar { margin: -4px 0 14px; }
+.toolbar button { font-family: 'Agency'; font-weight: bold; font-size: 14px; background: #222; color: #ddd; border: 1px solid #555; padding: 3px 10px; cursor: pointer; }
+.toolbar button.on { border-color: var(--blue); color: #fff; }
+.note { color: #cfcfb8; font-size: 15px; margin-top: 10px; text-shadow: 0 1px 2px #000; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h2>Position, one block</h2>
+<p class="sub">Every caption is centered, and the middle one says TO: "This [dots] to [frame] at its [dots]", then OFFSET. The second block is the unit frame version, where the middle part becomes a stack like OFFSET.</p>
+<div class="toolbar"><button id="guides">Show column guides</button></div>
+
+<div class="thick page">
+	<div class="section">
+		<div class="section-title">GENERAL</div>
+		<div class="rows">
+			<div class="half"><span class="label">Height</span><div class="slider"><div class="track"></div><div class="fill" style="width:20%"></div><div class="knob" style="left:20%"></div></div><span class="field num">13</span></div>
+			<div class="half"><span class="label">Width</span><div class="slider"><div class="track"></div><div class="fill" style="width:25%"></div><div class="knob" style="left:25%"></div></div><span class="field num">250</span></div>
+		</div>
+	</div>
+	<div class="section">
+		<div class="section-title">POSITION</div>
+		<div class="group">
+			<div class="part centered"><span class="cap">THIS</span><div class="band"><div class="dots" data-grid><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+			<div class="part centered"><span class="cap">TO</span><div class="band"><span class="field text">Minimap</span></div></div>
+			<div class="part centered"><span class="cap">AT ITS</span><div class="band"><div class="dots" data-grid><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i></div></div></div>
+			<div class="part centered"><span class="cap">OFFSET</span>
+				<div class="offset">
+					<span class="axis">X</span><span class="spin"><span class="field num">0</span><span class="arrows"><span class="up"></span><span class="down"></span></span></span>
+					<span class="axis">Y</span><span class="spin"><span class="field num">-8</span><span class="arrows"><span class="up"></span><span class="down"></span></span></span>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<h2 style="margin-top:28px">Unit frame parts</h2>
+<p class="sub">This is the middle part for a unit frame's parts (here the player's power bar). The dropdown on top picks Unit frame, one of that frame's parts, or Global frame. Only Global frame shows the name box below it. The other choices leave that row empty, so nothing shifts. The dropdown works here.</p>
+<div class="thick page">
+	<div class="section">
+		<div class="section-title">POSITION</div>
+		<div class="group">
+			<div class="part centered"><span class="cap">THIS</span><div class="band"><div class="dots" data-grid><i></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+			<div class="part centered"><span class="cap">TO</span>
+				<div class="target">
+					<select class="field" id="relto">
+						<option value="uf">Unit frame</option>
+						<option value="Castbar">Castbar</option>
+						<option value="Health" selected>Health</option>
+						<option value="Name">Name</option>
+						<option value="Portrait">Portrait</option>
+						<option value="global">Global frame</option>
+					</select>
+					<span class="empty" id="relname-empty"></span>
+					<span class="field text" id="relname" style="display:none">PlayerFrame</span>
+				</div>
+			</div>
+			<div class="part centered"><span class="cap">AT ITS</span><div class="band"><div class="dots" data-grid><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div></div></div>
+			<div class="part centered"><span class="cap">OFFSET</span>
+				<div class="offset">
+					<span class="axis">X</span><span class="spin"><span class="field num">0</span><span class="arrows"><span class="up"></span><span class="down"></span></span></span>
+					<span class="axis">Y</span><span class="spin"><span class="field num">-4</span><span class="arrows"><span class="up"></span><span class="down"></span></span></span>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<p class="note">The dots are clickable. For unit frame parts, the box under TO becomes a dropdown (the element or frame), the same size.</p>
+
+</div>
+<script>
+document.querySelectorAll('[data-grid]').forEach(function (grid) {
+	grid.querySelectorAll('i').forEach(function (dot) {
+		dot.addEventListener('click', function () {
+			grid.querySelectorAll('i').forEach(function (d) { d.classList.remove('on'); });
+			dot.classList.add('on');
+		});
+	});
+});
+var relto = document.getElementById('relto');
+relto.addEventListener('change', function () {
+	var global = relto.value === 'global';
+	document.getElementById('relname').style.display = global ? '' : 'none';
+	document.getElementById('relname-empty').style.display = global ? 'none' : '';
+});
+document.getElementById('guides').addEventListener('click', function () {
+	var on = document.body.classList.toggle('guides');
+	this.classList.toggle('on', on);
+	this.textContent = on ? 'Hide column guides' : 'Show column guides';
+});
+</script>
+</body>
+</html>
