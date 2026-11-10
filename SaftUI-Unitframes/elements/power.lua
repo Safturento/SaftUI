@@ -163,7 +163,8 @@ local function GetConfigTable(unit)
 							Update()
 						end,
 						UF:ConfigTarget(unit, 'Power', 'text'),
-						"Where the power text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+						"Where the power text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+						'Text position'
 					),
 				},
 			},

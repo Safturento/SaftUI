@@ -676,7 +676,8 @@ function AP:GetTextOptions(key, kind, name, order)
 					Apply()
 				end,
 				nil,
-				('Where the %s text sits on each icon: which point of the text goes to which point of the icon, then moved by X and Y.'):format(what)
+				('Where the %s text sits on each icon: which point of the text goes to which point of the icon, then moved by X and Y.'):format(what),
+				kind == 'duration' and 'Duration position' or 'Stack count position'
 			),
 		},
 	}

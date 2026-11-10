@@ -425,6 +425,29 @@ test('every element tab: a tooltip on every option, no Ace width, and each Posit
 	check(positions > 100, 'every element and text has a Position: ' .. positions)
 end)
 
+test('no element tab has two sections with the same title: a part\'s Position says what it places', function()
+	local config = UF:GetConfigTable()
+	local checked, named = 0, {}
+	for _, unit in ipairs(UNITS) do
+		for tab in pairs(element_tabs(config, unit)) do
+			local view = OM.BuildView({ Unitframes = config }, 'Unitframes', { pick = unit, tab = tab })
+			local seen = {}
+			for _, section in ipairs(view.sections) do
+				if section.title then
+					check(not seen[section.title], unit .. '.' .. tab .. ' has one section titled ' .. section.title)
+					seen[section.title] = true
+					named[section.title] = true
+				end
+			end
+			checked = checked + 1
+		end
+	end
+	check(checked > 50, 'every unit\'s tabs: ' .. checked)
+	for _, title in ipairs({ 'Text position', 'Spell name position', 'Time position', 'Icon position', 'Count position', 'Timer position' }) do
+		check(named[title], title .. ' is a section')
+	end
+end)
+
 test('Health and Power: the color toggles, small, in a Colors section, in the order oUF checks them, on the units they can color', function()
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()

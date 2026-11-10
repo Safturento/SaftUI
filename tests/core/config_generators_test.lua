@@ -69,6 +69,8 @@ test('position generator: one position option reading and writing the same keys'
 
 	eq(generators.position(1, false, store).target, nil, 'without a global frame, no TO part')
 	eq(generators.position(1, true, store, nil, nil, 'Where the bar sits.').desc, 'Where the bar sits.', 'a desc passed in')
+	eq(generators.position(1, true, store).name, 'Position', 'a frame\'s own is named Position')
+	eq(generators.position(1, true, store, nil, nil, nil, 'Count position').name, 'Count position', 'a part\'s says what it places')
 end)
 
 test('position generator: frame validate rejects a missing frame and an anchor loop, accepts a good name', function()

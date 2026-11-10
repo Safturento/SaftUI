@@ -260,7 +260,7 @@ local function GetConfigTable(unit, aura_type)
 
 	-- A spot on each button (its count, its timer), which StyleButton always
 	-- anchors to the button: only the points and offsets are read.
-	local function ButtonPosition(order, getPosition, what)
+	local function ButtonPosition(order, getPosition, what, name)
 		return generators.position(order, false,
 			function(index) return getPosition()[index] end,
 			function(index, value)
@@ -268,7 +268,8 @@ local function GetConfigTable(unit, aura_type)
 				Update()
 			end,
 			nil,
-			('Where the %s sits on each button: which of its points goes to which point of the button, then moved by X and Y.'):format(what)
+			('Where the %s sits on each button: which of its points goes to which point of the button, then moved by X and Y.'):format(what),
+			name
 		)
 	end
 
@@ -356,13 +357,13 @@ local function GetConfigTable(unit, aura_type)
 				timer = Section(3, 'Timer', function() return Config().cooldown.timer end, {
 					enable = generators.toggle(0, 'Enable', 'The time left, as text on each button. Needs the cooldown shown.', 'small'),
 					-- Last in Timer.
-					position = ButtonPosition(1000, function() return Config().cooldown.timer.position end, 'time left'),
+					position = ButtonPosition(1000, function() return Config().cooldown.timer.position end, 'time left', 'Timer position'),
 				}),
 			}),
 			count = Section(4, 'Count', function() return Config().count end, {
 				font = generators.font(1, "The stack count's font."),
 				-- Last in Count.
-				position = ButtonPosition(1000, function() return Config().count.position end, 'stack count'),
+				position = ButtonPosition(1000, function() return Config().count.position end, 'stack count', 'Count position'),
 			}),
 		},
 	}

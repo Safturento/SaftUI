@@ -151,6 +151,13 @@ local function OutlineValues()
 end
 
 -- What each text is, for its tooltips.
+-- The titles of the texts' Position sections: the Text tab has one for each.
+local TEXT_POSITION_NAMES = {
+	hotkey = 'Hotkey position',
+	count = 'Count position',
+	macro = 'Macro position',
+}
+
 local TEXT_DESCS = {
 	hotkey = 'the key bound to the button',
 	count = "the button's stack or charge count",
@@ -198,7 +205,8 @@ function AB:GetTextOptions(id, kind, name, order)
 					self:UpdateBar(id)
 				end,
 				nil,
-				'Where ' .. what .. ' sits on the button: the point of the text that is anchored (THIS), the point of the button it is anchored to (AT ITS), and how far it is moved from there.'
+				'Where ' .. what .. ' sits on the button: the point of the text that is anchored (THIS), the point of the button it is anchored to (AT ITS), and how far it is moved from there.',
+				TEXT_POSITION_NAMES[kind]
 			),
 		},
 	}

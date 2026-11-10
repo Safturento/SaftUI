@@ -119,7 +119,8 @@ local function GetConfigTable(unit)
 				Update()
 			end,
 			UF:ConfigTarget(unit, 'Health', 'text'),
-			"Where the health text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			"Where the health text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+			'Text position'
 		),
 	}
 	-- PostUpdateHealth adds it for a unit whose level is -1 (a skull).

@@ -83,8 +83,12 @@ local POSITION_DESC = "Where this sits: which of its points goes to which point 
 	In a mover's section the option goes last in its General group, after every
 	other option there: the window gives it a section of its own, and options
 	after it would follow on untitled.
+
+	The section is titled with the option's name, 'Position' for a frame's own.
+	A Position that places a part of the frame (a text, an icon) passes name,
+	such as 'Count position', so no tab has two sections of the same title.
 ]]
-function generators.position(order, global_frame, get, set, target, desc)
+function generators.position(order, global_frame, get, set, target, desc, name)
 	local function Read(key)
 		if type(get) == 'function' then
 			return get(key)
@@ -101,7 +105,7 @@ function generators.position(order, global_frame, get, set, target, desc)
 
 	return {
 		order = order or 0,
-		name = 'Position',
+		name = name or 'Position',
 		desc = desc or POSITION_DESC,
 		type = 'position',
 		target = global_frame and 'name' or nil,
@@ -149,8 +153,8 @@ local UNIT_FRAME, GLOBAL_FRAME = '__unitframe', '__global'
 	elements offered come from its unit frame, and every picked or typed anchor
 	is checked with st:ValidateAnchor against it.
 ]]
-function generators.uf_element_position(order, get, set, target, desc)
-	local option = generators.position(order, true, get, set, target, desc)
+function generators.uf_element_position(order, get, set, target, desc, name)
+	local option = generators.position(order, true, get, set, target, desc, name)
 	local GetPart, SetPart, ValidatePart = option.get, option.set, option.validate
 
 	local function UnitFrame()

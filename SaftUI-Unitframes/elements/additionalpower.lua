@@ -167,7 +167,8 @@ local function GetConfigTable(unit)
 						Update()
 					end,
 					UF:ConfigTarget(unit, 'AdditionalPower', 'text'),
-					"Where the mana text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+					"Where the mana text sits: which of its points goes to which point of what it's attached to, then moved by X and Y.",
+					'Text position'
 				),
 			}),
 			bg = Section(99, 'Background', 'bg', {

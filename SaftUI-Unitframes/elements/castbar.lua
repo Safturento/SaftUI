@@ -108,7 +108,7 @@ local function GetConfigTable(unit)
 	-- The settings of the castbar (key nil), or of its text, time or icon
 	-- (castbar[key]), placed on the castbar's frame at frameKey. what names it
 	-- in the desc.
-	local function Position(order, key, frameKey, what)
+	local function Position(order, key, frameKey, what, name)
 		local function Get() return key and Config()[key].position or Config().position end
 		return generators.uf_element_position(order,
 			function(index) return Get()[index] end,
@@ -117,7 +117,8 @@ local function GetConfigTable(unit)
 				Update()
 			end,
 			UF:ConfigTarget(unit, 'Castbar', frameKey),
-			("Where the %s sits: which of its points goes to which point of what it's attached to, then moved by X and Y."):format(what)
+			("Where the %s sits: which of its points goes to which point of what it's attached to, then moved by X and Y."):format(what),
+			name
 		)
 	end
 
@@ -158,12 +159,12 @@ local function GetConfigTable(unit)
 	end
 
 	-- The spell name's or the time's settings, in castbar[key].
-	local function TextArgs(frameKey, key, what)
+	local function TextArgs(frameKey, key, what, name)
 		return {
 			enable = generators.toggle(0, 'Enable', ('Shows the %s on the castbar.'):format(what), 'small'),
 			font = generators.font(1, ("The %s's font."):format(what)),
 			-- Last in its section.
-			position = Position(1000, key, frameKey, what),
+			position = Position(1000, key, frameKey, what, name),
 		}
 	end
 
@@ -200,15 +201,15 @@ local function GetConfigTable(unit)
 					position = Position(1000, nil, nil, 'castbar'),
 				},
 			},
-			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text', 'spell name')),
-			time = Section(3, 'Time', 'time', TextArgs('Time', 'time', 'cast time')),
+			text = Section(2, 'Spell name', 'text', TextArgs('Text', 'text', 'spell name', 'Spell name position')),
+			time = Section(3, 'Time', 'time', TextArgs('Time', 'time', 'cast time', 'Time position')),
 			icon = Section(4, 'Icon', 'icon', {
 				enable = generators.toggle(0, 'Enable', "Shows the spell's icon.", 'small'),
 				template = generators.template(1, "The icon's background and border."),
 				framelevel = generators.framelevel(2, FRAME_LEVEL),
 				size = UF.GenerateRelativeSizeConfigGroup(3),
 				-- Last in Icon.
-				position = Position(1000, 'icon', 'Icon', 'icon'),
+				position = Position(1000, 'icon', 'Icon', 'icon', 'Icon position'),
 			}),
 		},
 	}
