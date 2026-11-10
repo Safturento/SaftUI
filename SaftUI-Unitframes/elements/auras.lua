@@ -191,7 +191,6 @@ local function UpdateConfig(unitframe, aura_type)
 
 	auras:SetHeight(num_rows * size + (num_rows - 1) * config.spacing)
 	auras:SetWidth(width)
-	st:SetBackdrop(auras, 'none', 'theme', 'aura')
 
 	auras.elementSpacing = config.spacing
 	auras.lineSpacing = config.spacing

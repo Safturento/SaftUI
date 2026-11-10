@@ -32,10 +32,10 @@ end
 
 local function UpdateConfig(unitframe)
     local classPower = unitframe.ClassPower
+    -- Draws no backdrop on the row (updaters.lua's BARE_ELEMENTS): each point
+    -- is drawn below.
     UF:UpdateElement(classPower)
 
-	st:SetBackdrop(classPower, 'none', 'theme', 'small')
-	
 	local prev
 	for i=1, 10 do
 		local point = classPower[i]

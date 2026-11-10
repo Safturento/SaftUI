@@ -2,11 +2,12 @@
 --   - st:ResolveTheme, which turns a Theme and a Background override into the
 --     look a frame is drawn with, st:ResolveLegacyTemplate, which reads an old
 --     template name (the module tests compare their defaults with it), and
---     st:ThemeInset;
+--     st:ThemeInset; a saved theme this version doesn't know reads as Thick;
 --   - the draw calls st:SetTemplate, st:SetBackdrop and st:SetBackdropIn, each
 --     with a kind; a call with no kind is an error unless it draws None;
 --   - st:RecolorThemed and st:RedrawThemed, which bring every drawn frame up to
---     a changed theme.
+--     a changed theme, each frame on its own, so one that errors stops none of
+--     the others.
 --
 -- Real: theme.lua, with Core's helpers it's loaded with (load_core_helpers) and
 -- the profile's defaults. Each case starts from a fresh world, since cases
@@ -472,4 +473,104 @@ test('colors kept with st:KeepOwnColors go back on after a recolor and a redraw'
 	st:RecolorThemed()
 	eq(edge(f.backdrop), '0.00,0.00,0.00,1.00', "forgotten: the theme's border")
 	eq(#take_errors(), 0, 'and nothing runs')
+end)
+
+-- A frame Blizzard or another addon broke (one whose backdrop calls error):
+-- the game shows its error and carries on, so the rest still take the theme.
+test('a frame that errors while drawn stops neither a recolor nor a redraw of the others, and its error is reported', function()
+	local st = fresh()
+	-- Drawn frames of every sort the engine records: one drawn on itself, a
+	-- backdrop of st:SetBackdrop's and one of st:SetBackdropIn's, ten of each,
+	-- so the broken one isn't last in the record.
+	local good, backdrops = {}, setmetatable({}, { __mode = 'k' })
+	for _ = 1, 10 do
+		local f = frame(st)
+		st:SetTemplate(f, 'theme', 'theme', 'small')
+		good[#good + 1] = f
+		local b = frame(st)
+		st:SetBackdrop(b, 'theme', 'theme', 'panel')
+		good[#good + 1] = b.backdrop
+		good[#good + 1] = st:SetBackdropIn(backdrops, frame(st), 'theme', 'theme', 'tooltip')
+	end
+	local broken = frame(st)
+	st:SetTemplate(broken, 'theme', 'theme', 'small')
+	broken.SetBackdropColor = function() error('a broken frame') end
+	broken.SetBackdrop = function() error('a broken frame') end
+	local groups = {}
+	local colors = st.ColorsChanged
+	st.ColorsChanged = function(_, group) groups[#groups + 1] = tostring(group) end
+	local kept = 0
+	st:KeepOwnColors(good[1], function() kept = kept + 1 end)
+
+	local function reported(label)
+		local errors = take_errors()
+		eq(#errors, 1, label .. ": the broken frame's error is reported, once")
+		check(tostring(errors[1]):find('a broken frame', 1, true) ~= nil, label .. ': it is the broken frame\'s: ' .. tostring(errors[1]))
+	end
+
+	st.config.profile.templates.thick.bordercolor = { 1, 0, 0, 1 }
+	local ok, err = pcall(st.RecolorThemed, st)
+	check(ok, 'the recolor raises nothing: ' .. tostring(err))
+	reported('recolor')
+	local recolored = 0
+	for _, f in ipairs(good) do
+		if edge(f) == '1.00,0.00,0.00,1.00' then recolored = recolored + 1 end
+	end
+	eq(recolored, #good, 'every other frame takes the new border color')
+	eq(kept, 1, 'colors kept with st:KeepOwnColors go back on')
+	eq(table.concat(groups, ','), 'theme', "and ColorsChanged('theme') still runs")
+
+	st.config.profile.theme.name = 'thin'
+	ok, err = pcall(st.RedrawThemed, st)
+	check(ok, 'the redraw raises nothing: ' .. tostring(err))
+	reported('redraw')
+	local redrawn = 0
+	for _, f in ipairs(good) do
+		if inset(f) == 1 and edge(f) == '0.00,0.00,0.00,1.00' then redrawn = redrawn + 1 end
+	end
+	eq(redrawn, #good, "every other frame is drawn in Thin's border")
+	eq(kept, 2, 'colors kept with st:KeepOwnColors go back on after the redraw too')
+
+	st.ColorsChanged = colors
+	st:KeepOwnColors(good[1], nil)
+end)
+
+-- A profile a later version saved can name a theme this one doesn't have (the
+-- Blizzard theme, project 2). It reads as Thick, so every frame still draws.
+test("a saved theme name this version doesn't know reads as Thick, and draws", function()
+	local st = fresh()
+	local profile = st.config.profile
+	profile.theme.name = 'blizzard'
+
+	local look = st:ResolveTheme('theme', 'theme')
+	eq(look and look.name, 'thick', 'the theme reads as Thick')
+	eq(look and look.inset, 2, "Thick's inset")
+	eq(look and text(look.alpha), '0.90', 'the profile\'s toggle and opacity still apply')
+	check(look and look.colors == profile.templates.thick, "Thick's colors")
+	eq(st:ResolveTheme() and st:ResolveTheme().name, 'thick', 'no arguments: Thick')
+	eq(st:ResolveTheme('thin', 'solid').name, 'thin', 'an override to Thin is still Thin')
+	eq(st:ThemeInset('theme'), 2, "ThemeInset: Thick's 2")
+	local legacy = st:ResolveLegacyTemplate('highlight')
+	eq(legacy and legacy.name, 'thick', 'an old name that followed the theme reads as Thick')
+
+	local f, p, h = frame(st), frame(st), frame(st)
+	local ok, err = pcall(function()
+		st:SetTemplate(f, 'theme', 'theme', 'small')
+		st:SetBackdrop(p, 'theme', 'transparent', 'panel')
+		st:SetTemplate(h, 'theme', 'theme', 'header')
+	end)
+	check(ok, 'drawing raises nothing: ' .. tostring(err))
+	eq(inset(f), 2, "drawn with Thick's border")
+	eq(edge(f), '0.30,0.30,0.30,1.00', "in Thick's border color")
+	eq(p.backdrop and offset(p.backdrop, 'TOPLEFT'), '-2.00,2.00', "a backdrop sits Thick's 2px out")
+	eq(fill(h), '0.30,0.30,0.30,0.40', "a header strip: Thick's border color at 0.4")
+
+	ok, err = pcall(function()
+		st:RecolorThemed()
+		st:RedrawThemed()
+	end)
+	check(ok, 'a recolor and a redraw raise nothing: ' .. tostring(err))
+	eq(#take_errors(), 0, 'and report nothing')
+	eq(inset(f), 2, "still Thick's border after a redraw")
+	eq(profile.theme.name, 'blizzard', 'the saved name is kept, for the version that knows it')
 end)

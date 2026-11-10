@@ -4,6 +4,9 @@
 --   - each part of a unit frame draws as its kind: the unit frame and its bars
 --     as bars, the aura buttons as auras, and the castbar's icon, the class
 --     power points and the indicators as small;
+--   - a config update draws no backdrop on the aura and class power areas
+--     (their buttons and points are drawn), so nothing of SaftUI's is anchored
+--     to Blizzard's aura container (.agents/taint.md, rule 11);
 --   - a boss or party test mode preview draws like its real frame (groups.lua);
 --   - an aura button's dispel type fill keeps its color through a theme
 --     recolor and redraw, and the dark line SaftUI draws over it follows the
@@ -26,12 +29,15 @@
 --     elements' own constructors. Here a SaftUI button with ConstructUnit's
 --     fields and only the elements a test names, built by those same
 --     constructors; oUF's UpdateAllElements is a no-op.
---   * The aura container (make_auras): oUF's CreateAuras makes a Blizzard
---     AuraContainer, which makes a button for each aura that shows and hands
---     it to PostCreateButton, and tints the button's dispel type texture
---     (Border) with a secret color. Here a plain frame, and the test hands
---     PostCreateButton a button with oUF's Icon, Count and Border, and tints
---     the Border itself.
+--   * The aura container (frame:CreateAuras in make_unit_frame): oUF's
+--     CreateAuras makes a Blizzard AuraContainer, which makes a button for
+--     each aura that shows and hands it to PostCreateButton, and tints the
+--     button's dispel type texture (Border) with a secret color. Here a plain
+--     frame with the methods auras.lua's UpdateConfig calls on it (oUF's
+--     AddGroup, which gives a group key, and the container's SetEnabled, flow
+--     layout setters and SetAuraGroupLayout, which here only take their
+--     arguments), and the test hands PostCreateButton a button with oUF's
+--     Icon, Count and Border, and tints the Border itself.
 --
 -- The kind a frame is drawn with changes nothing under Thick and Thin, so the
 -- draw calls are watched: st:SetBackdrop is wrapped to note its arguments, and
@@ -108,7 +114,16 @@ local function make_unit_frame(name, unit, elements, parent)
 	frame.GetConfig = function() return UF:GetProfileConfig()[unit] end
 	frame.config = frame:GetConfig()
 	function frame:UpdateAllElements() end
-	function frame:CreateAuras() return CreateFrame('Frame', nil, self) end
+	function frame:CreateAuras()
+		local auras = CreateFrame('Frame', nil, self)
+		function auras:SetEnabled() end
+		function auras:SetFlowLayoutAnchorPoint() end
+		function auras:SetFlowLayoutMaximumLineSize() end
+		function auras:SetFlowLayoutGrowthDirection() end
+		function auras:AddGroup() return 'Group1' end
+		function auras:SetAuraGroupLayout() end
+		return auras
+	end
 	local overlay = CreateFrame('Frame', nil, frame)
 	overlay:SetFrameLevel(99)
 	overlay:SetAllPoints(frame)
@@ -217,8 +232,8 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 	for i = 1, 10 do
 		eq(drawn(frame.ClassPower[i]), 'theme,theme,small', 'class power point ' .. i .. ': small')
 	end
-	eq(drawn(frame.ClassPower), 'none,theme,small', 'the class power row itself is left bare')
-	eq(looks(frame.ClassPower), 'bare', 'and draws nothing')
+	eq(drawn(frame.ClassPower), nil, 'the class power row itself is not drawn')
+	eq(looks(frame.ClassPower), 'bare', 'and shows nothing')
 	eq(drawn(frame.GroupRoleIndicator), 'thin,theme,small', 'an indicator: small')
 	eq(drawn(frame.RaidRoleIndicator), 'none,theme,small', 'another, None by default')
 
@@ -240,6 +255,50 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 
 	player.additionalpower.enable, player.castbar.icon.enable = false, false
 	player.grouproleindicator.enable, player.grouproleindicator.theme = false, 'none'
+end)
+
+------------------------------------------------------------------ aura and class power areas
+
+-- The aura areas and the class power row are drawn through their buttons and
+-- points, each with the element's Theme; the area itself has no backdrop. An
+-- aura area is Blizzard's AuraContainer, and a frame anchored to it needs the
+-- container's layout aspect (.agents/taint.md, rule 11), so no backdrop of
+-- SaftUI's is made, or placed, on it.
+test('a config update draws no backdrop on the aura and class power areas, and the other elements as before', function()
+	local player = P.player
+	check(player.buffs.enable and player.debuffs.enable and player.classpower.enable, "the player's buffs, debuffs and class power are on by default")
+	check(player.buffs.theme ~= 'none' and player.classpower.theme ~= 'none', 'with a Theme that draws')
+	local frame = make_unit_frame('SaftUI_PlayerAreas', 'player', { 'Health', 'Power', 'ClassPower', 'Buffs', 'Debuffs' })
+	-- Twice: the first update, and a later one (an option set, a profile switch).
+	for pass = 1, 2 do
+		UF:UpdateUnitFrame(frame)
+		for _, name in ipairs({ 'Buffs', 'Debuffs', 'ClassPower' }) do
+			local area = frame[name]
+			local where = ('update %d, %s'):format(pass, name)
+			eq(drawn(area), nil, where .. ': no draw call on the area')
+			eq(area.backdrop, nil, where .. ': no backdrop made on it')
+			eq(looks(area), 'bare', where .. ': it draws nothing')
+		end
+		eq(frame.Buffs:GetNumChildren(), 0, ('update %d: nothing made on the buffs container to anchor to it'):format(pass))
+		eq(frame.Debuffs:GetNumChildren(), 0, ('update %d: nor on the debuffs container'):format(pass))
+		eq(frame.ClassPower:GetNumChildren(), 10, ('update %d: the class power row holds only its ten points'):format(pass))
+
+		eq(drawn(frame.Health), 'theme,theme,bar', 'health: drawn as before')
+		eq(drawn(frame.Power), 'theme,theme,bar', 'power: drawn as before')
+		for i = 1, 10 do
+			eq(drawn(frame.ClassPower[i]), 'theme,theme,small', 'class power point ' .. i .. ': drawn as before')
+		end
+		local thick = st.config.profile.templates.thick
+		local r, g, b, a = unpack(thick.backdropcolor)
+		eq(looks(frame.Health), ('inset 2, fill %s, edge %s, outer'):format(rgba(r, g, b, a * 0.9), rgba(unpack(thick.bordercolor))),
+			"health: SaftUI's theme")
+	end
+
+	-- An aura button is still drawn as an aura, with the element's Theme.
+	local button = make_aura_button(frame.Debuffs)
+	eq(drawn(button), 'theme,solid,aura', 'an aura button: an aura')
+	check(looks(button) ~= 'bare', 'and drawn')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ previews

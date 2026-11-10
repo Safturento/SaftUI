@@ -25,9 +25,13 @@ local st = SaftUI
 
 	Each drawn frame is recorded with the arguments it was last drawn with, so a
 	change to the theme reaches every frame: st:RecolorThemed for a color or the
-	opacity, st:RedrawThemed for the theme or the toggle, which move borders.
-	Colors a frame's own code puts on its backdrop (a scroll bar thumb's fill, a
-	focused edit box's border) go back on after either (st:KeepOwnColors).
+	opacity, st:RedrawThemed for the theme or the toggle, which move borders, and
+	for every profile switch, copy or reset. Each frame is drawn on its own, so
+	one that errors doesn't keep the rest in the old look. Colors a frame's own
+	code puts on its backdrop (a scroll bar thumb's fill, a focused edit box's
+	border) go back on after either (st:KeepOwnColors).
+
+	A saved theme this version doesn't know (a later version's) reads as Thick.
 ]]
 
 -- The kinds of frame a draw call names.
@@ -62,13 +66,19 @@ local LEGACY = {
 	close = {},
 }
 
+-- The theme a profile saved that this version doesn't have (a later version's,
+-- such as the Blizzard theme) reads as this one, so every frame still draws.
+local FALLBACK = 'thick'
+
 -- The look for a Theme and Background override: { name, inset, alpha, colors },
 -- or nil for None. A transparent background is see-through at the profile's
 -- Opacity, even one asked for while the Transparent background toggle is off.
+-- An unknown saved theme reads as FALLBACK; the saved name stays.
 function st:ResolveTheme(theme, background)
 	if theme == 'none' then return nil end
 	local profile = st.config.profile
 	local name = INSETS[theme] and theme or profile.theme.name
+	if not INSETS[name] then name = FALLBACK end
 
 	local transparent
 	if background == 'transparent' then
@@ -426,37 +436,48 @@ local function PutOwnColors()
 	end
 end
 
+-- Puts the theme's colors on one recorded frame, moving nothing.
+local function Recolor(frame, entry)
+	local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
+	if look then Color(frame, look, kind) end
+end
+
+-- Draws one recorded frame again with the arguments it was drawn with.
+local function Redraw(frame, entry)
+	if entry.owner then
+		DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
+	else
+		Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))
+	end
+end
+
 -- After a theme color or the opacity changed: puts the colors and alpha on every
 -- drawn frame, moving nothing, and the colors kept with st:KeepOwnColors back
 -- on, then tells modules (OnColorsChanged('theme')), so borders they color
--- themselves are colored again.
+-- themselves are colored again. Each frame is colored on its own: one that
+-- errors is reported and the rest are still colored.
 function st:RecolorThemed()
 	for frame, entry in pairs(drawn) do
-		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
-		if look then Color(frame, look, kind) end
+		xpcall(Recolor, geterrorhandler(), frame, entry)
 	end
 	PutOwnColors()
 	st:ColorsChanged('theme')
 end
 
--- After the theme or the Transparent background toggle changed: draws every
--- drawn frame again, itself and once, with the arguments it was drawn with, and
--- clears one that now resolves to None; then puts the colors kept with
--- st:KeepOwnColors back on. A backdrop moves to the theme's border if it still
--- sits where it was drawn; one its caller anchored itself is repainted where it
--- is.
+-- After the theme or the Transparent background toggle changed, and on every
+-- profile switch, copy or reset (Config:UpdateConfig): draws every drawn frame
+-- again, itself and once, with the arguments it was drawn with, and clears one
+-- that now resolves to None; then puts the colors kept with st:KeepOwnColors
+-- back on. A backdrop moves to the theme's border if it still sits where it was
+-- drawn; one its caller anchored itself is repainted where it is. Each frame is
+-- drawn on its own: one that errors is reported and the rest are still drawn.
 function st:RedrawThemed()
 	-- Drawing records again, so walk a copy.
 	local frames = {}
 	for frame in pairs(drawn) do frames[#frames + 1] = frame end
 
 	for _, frame in ipairs(frames) do
-		local entry = drawn[frame]
-		if entry.owner then
-			DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
-		else
-			Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))
-		end
+		xpcall(Redraw, geterrorhandler(), frame, drawn[frame])
 	end
 	PutOwnColors()
 end

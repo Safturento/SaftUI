@@ -288,13 +288,15 @@ end
 ------------------------------------------------------------------ Enum
 
 -- Blizzard_APIDocumentationGenerated (forever branch), the enums SaftUI
--- reads: BagIndexConstants, SimpleStatusBarConstants and PowerTypeConstants
--- (PowerType trimmed to Mana). A trimmed table errors on a name that isn't
--- stubbed ("Enum.PowerType.Rage is not stubbed") instead of reading nil,
--- which would pass a test where the game has a value. Add the name when a
--- test needs it. BagIndex and StatusBarInterpolation are complete, and
--- SaftUI's inventory.lua probes BagIndex past its last tab on purpose, so
--- an absent name there stays nil, as in game.
+-- reads: BagIndexConstants, SimpleStatusBarConstants, PowerTypeConstants
+-- (PowerType trimmed to Mana) and AuraContainerSharedDocumentation
+-- (CustomAuraButtonDispelTypeTextureStyle). A trimmed table errors on a name
+-- that isn't stubbed ("Enum.PowerType.Rage is not stubbed") instead of
+-- reading nil, which would pass a test where the game has a value. Add the
+-- name when a test needs it. BagIndex, StatusBarInterpolation and
+-- CustomAuraButtonDispelTypeTextureStyle are complete, and SaftUI's
+-- inventory.lua probes BagIndex past its last tab on purpose, so an absent
+-- name there stays nil, as in game.
 Enum = {
 	BagIndex = {
 		Accountbanktab = -3, Characterbanktab = -2, Keyring = -1,
@@ -308,6 +310,7 @@ Enum = {
 	},
 	StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
 	PowerType = { Mana = 0 },
+	CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
 }
 setmetatable(Enum.PowerType, { __index = function(_, name)
 	error(('Enum.PowerType.%s is not stubbed'):format(tostring(name)), 2)

@@ -27,7 +27,11 @@ local function Recolor()
 end
 
 local function Theme() return st.config.profile.theme end
-local function Colors() return st.config.profile.templates[Theme().name] end
+-- The theme frames are drawn in: the saved one, or Thick for a name this
+-- version doesn't know (a later version's), which st:ResolveTheme draws as
+-- Thick. The saved name stays until the user picks a theme.
+local function Name() return st:ResolveTheme().name end
+local function Colors() return st.config.profile.templates[Name()] end
 
 -- A color row for one of the chosen theme's three colors. It's written into
 -- the theme's array in place, with the array's own alpha left alone.
@@ -51,7 +55,7 @@ local function ColorRow(order, name, key, desc, hidden)
 	}
 end
 
-local function NotThick() return Theme().name ~= 'thick' end
+local function NotThick() return Name() ~= 'thick' end
 
 function TH:GetConfigTable()
 	return {
@@ -65,7 +69,7 @@ function TH:GetConfigTable()
 				name = 'Theme',
 				desc = "How SaftUI's frames are drawn: Thick has a dark line on each side of its border, Thin just the border. A module can use another theme or none in its own settings. Each theme keeps its own colors.",
 				values = NAMES,
-				get = function() return Theme().name end,
+				get = function() return Name() end,
 				set = function(_, value)
 					Theme().name = value
 					st:ThemeChanged()
@@ -110,10 +114,10 @@ function TH:GetConfigTable()
 				name = 'Reset',
 				desc = "Puts the chosen theme's colors, Transparent background and Opacity back to SaftUI's default.",
 				confirm = function()
-					return ("Reset the %s theme to SaftUI's defaults?"):format(NAMES[Theme().name])
+					return ("Reset the %s theme to SaftUI's defaults?"):format(NAMES[Name()])
 				end,
 				func = function()
-					local name = Theme().name
+					local name = Name()
 					local from, to = st.defaults.templates[name], Colors()
 					for _, key in ipairs(COLORS) do
 						for i, v in ipairs(from[key]) do to[key][i] = v end

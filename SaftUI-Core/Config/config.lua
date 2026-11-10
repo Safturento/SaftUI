@@ -228,10 +228,12 @@ end
 -- Draws every themed frame again in the profile's theme (theme.lua), then has
 -- modules color again what they color themselves. Redrawing touches frames that
 -- may be protected, so in combat both wait for the end of it, once however many
--- profile changes were made.
+-- profile changes were made. Two steps, each run Safely as Config:UpdateConfig
+-- runs them out of combat, so a redraw that errors still has the colors put
+-- back after it.
 local function RedrawTheme()
-	st:RedrawThemed()
-	st:ColorsChanged('theme')
+	Safely(function() st:RedrawThemed() end)
+	Safely(function() st:ColorsChanged('theme') end)
 end
 
 -- Runs on every profile change, copy or reset, and on a change of the theme or

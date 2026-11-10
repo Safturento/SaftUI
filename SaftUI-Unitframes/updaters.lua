@@ -22,16 +22,19 @@ end
 
 -- The kind of frame (st.THEME_KINDS) an element's Theme draws it as. Its bars
 -- (health, power, additional power, the castbar) are bars, like the unit frame
--- itself; the aura areas are auras; everything else (the castbar's icon, the
--- indicators, the class power row) is small. The aura and class power areas
--- are left bare by their own UpdateConfig, which draws their buttons and
--- points with the same Theme.
-local AURA_ELEMENTS = { Buffs = true, Debuffs = true }
+-- itself; everything else (the castbar's icon, the indicators) is small.
 local function ElementKind(element)
 	if element:IsObjectType('StatusBar') then return 'bar' end
-	if AURA_ELEMENTS[element.name] then return 'aura' end
 	return 'small'
 end
+
+-- Elements whose Theme draws their buttons or points, not the element: the
+-- aura areas (auras.lua draws each aura button, as an aura) and the class
+-- power row (classpower.lua draws each point). The area itself gets no
+-- backdrop. An aura area is Blizzard's AuraContainer, and a frame anchored to
+-- it must carry its layout aspect (.agents/taint.md, rule 11), so none of
+-- SaftUI's is made there.
+local BARE_ELEMENTS = { Buffs = true, Debuffs = true, ClassPower = true }
 
 function UF:UpdateElement(element, configOverride)
     element.config = element:GetConfig()
@@ -51,7 +54,7 @@ function UF:UpdateElement(element, configOverride)
         return false
     end
 
-    if config.theme then
+    if config.theme and not BARE_ELEMENTS[element.name] then
         st:SetBackdrop(element, config.theme, config.background, ElementKind(element))
     end
 

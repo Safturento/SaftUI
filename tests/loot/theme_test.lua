@@ -160,7 +160,7 @@ test("the feed draws its entries as panels, their icons and its buttons as small
 	LT:UpdateLootFeedConfig()
 end)
 
-test('shown feed entries keep their quality border through a recolor', function()
+test("a shown mount entry keeps its yellow border, fill and icon border through a recolor, and a hidden one doesn't", function()
 	local feed = LT.feed
 	wipe(LT:GetAllItems())
 	stub.time = 100

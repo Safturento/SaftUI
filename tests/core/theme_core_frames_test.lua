@@ -219,7 +219,46 @@ test('a profile switch in combat redraws once combat ends, once, with the colors
 	eq(table.concat(log, ','), 'RedrawThemed,ColorsChanged(theme)', 'one redraw after combat, then the colors')
 	eq(inset(panel.backdrop), 1, "then the Thin profile's border")
 	st.RedrawThemed, st.ColorsChanged = redraw, colors
-	take_errors()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The redraw and the colors after it are two steps, each run on its own: a
+-- redraw that errors is reported, and modules still color what they color
+-- themselves. In and out of combat alike.
+test('a profile switch whose redraw errors still recolors after it, in and out of combat', function()
+	local st = fresh()
+	local log = {}
+	local redraw, colors = st.RedrawThemed, st.ColorsChanged
+	-- The real redraw, then an error after it.
+	st.RedrawThemed = function(...)
+		log[#log + 1] = 'RedrawThemed'
+		redraw(...)
+		error('the redraw failed')
+	end
+	st.ColorsChanged = function(self, group)
+		if group == 'theme' then log[#log + 1] = 'ColorsChanged(theme)' end
+		return colors(self, group)
+	end
+	local function reported(label)
+		local errors = take_errors()
+		eq(#errors, 1, label .. ": the redraw's error is reported")
+		check(tostring(errors[1]):find('the redraw failed', 1, true) ~= nil, label .. ": it is the redraw's: " .. tostring(errors[1]))
+	end
+
+	local first = st.config:GetCurrentProfile()
+	SaftUI_DB.profiles.ThemeTestThin = { theme = { name = 'thin' } }
+	st.config:SetProfile('ThemeTestThin')
+	eq(table.concat(log, ','), 'RedrawThemed,ColorsChanged(theme)', 'out of combat: the colors still go back on')
+	reported('out of combat')
+
+	for i = #log, 1, -1 do log[i] = nil end
+	stub.in_combat = true
+	st.config:SetProfile(first)
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(table.concat(log, ','), 'RedrawThemed,ColorsChanged(theme)', 'after combat: the colors still go back on')
+	reported('after combat')
+	st.RedrawThemed, st.ColorsChanged = redraw, colors
 end)
 
 -- The model's row for option key in a one-page tree, and the tree.

@@ -233,3 +233,29 @@ test('after a profile switch the rows reach the new profile', function()
 	eq(Rgb({ Get('border') }), '0.11,0.12,0.13', "the first profile's are as they were")
 	eq(Get('opacity'), 0.33)
 end)
+
+-- A profile a later version saved can name a theme this one doesn't have (the
+-- Blizzard theme, project 2): the engine draws it as Thick
+-- (tests/core/theme_test.lua), and the tab shows and edits Thick's rows.
+test("a saved theme this version doesn't know shows as Thick, and its rows read, set and reset Thick's", function()
+	local theme = st.config.profile.theme
+	local thick = st.config.profile.templates.thick
+	theme.name = 'blizzard'
+	local ok, err = pcall(function()
+		eq(Get('theme'), 'thick', 'Theme shows Thick, what frames are drawn in')
+		eq(Rgb({ Get('border') }), Rgb(thick.bordercolor), "Border reads Thick's")
+		check(Row('outer') ~= nil, 'Outer border shows, as for Thick')
+		Set('border', 0.31, 0.32, 0.33)
+		eq(Rgb(thick.bordercolor), '0.31,0.32,0.33', "a Border set reaches Thick's")
+		local root, row = Row('reset')
+		eq(OM.Confirm(root, row), "Reset the Thick theme to SaftUI's defaults?", "Reset names Thick")
+		OM.Set(root, row)
+		eq(Rgb(thick.bordercolor), Rgb(st.defaults.templates.thick.bordercolor), "Reset puts back Thick's")
+	end)
+	check(ok, 'the rows raise nothing: ' .. tostring(err))
+	eq(#take_errors(), 0, 'and report nothing')
+	eq(theme.name, 'blizzard', 'the saved name stays until the user picks a theme')
+	Set('theme', 'thin')
+	eq(theme.name, 'thin', 'picking one saves it')
+	Set('theme', 'thick')
+end)
