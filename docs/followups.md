@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
@@ -55,6 +56,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Bag item sort compares item levels as text
+
+**What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`SaftUI-Bags/category.lua:147`, `sortCategory` at ~158). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
+
+**Why noticed:** The builder check of the bag views design (2026-11-10) pointed it out while asking how Multi bag should order a whole bag. Within one category of similar items it rarely shows. On retail, where item levels run into the hundreds, gear of mixed levels in one category can come out in a surprising order.
+
+**Anchors:** `SaftUI-Bags/category.lua` (`GetInventoryItemInfo`'s `sortString`, `sortCategory`); `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`, whose views all use this sort.
+
+**Shape of work:** Small: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string, with a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
 
 ### 2026-11-10 — Bag categories: make the category rules configurable in /sui
 
