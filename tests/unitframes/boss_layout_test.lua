@@ -81,3 +81,20 @@ test("boss's default growth is a Layout dropdown key", function()
 	eq(growth, 'TOP')
 	eq(({ TOP = true, BOTTOM = true, LEFT = true, RIGHT = true })[growth], true)
 end)
+
+test('a layout that holds fewer than all the frames: shown is its capacity, and GroupAnchor gives nothing past it', function()
+	local layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 3,
+		maxColumns = 1, width = 200, height = 30 })
+	local _, _, perColumn, columns, shown = UF.GetGroupLayoutSize(layout, 5)
+	eq(shown, 3)
+	local frames = { {}, {}, {}, {}, {} }
+	eq(UF.GroupAnchor(4, frames, {}, layout, perColumn, columns), nil)
+	eq(UF.GroupAnchor(5, frames, {}, layout, perColumn, columns), nil)
+	check(UF.GroupAnchor(3, frames, {}, layout, perColumn, columns) ~= nil, 'the last one that fits has a place')
+
+	layout = UF.GetGroupLayout({ growthDirection = 'TOP', spacing = 41, unitsPerColumn = 2,
+		maxColumns = 2, columnSpacing = 10, initialAnchor = 'LEFT', width = 200, height = 30 })
+	_, _, perColumn, columns, shown = UF.GetGroupLayoutSize(layout, 5)
+	eq(shown, 4)
+	eq(UF.GroupAnchor(5, frames, {}, layout, perColumn, columns), nil)
+end)

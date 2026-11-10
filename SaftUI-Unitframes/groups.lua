@@ -658,8 +658,10 @@ end
 -- container or an earlier frame of frames. Party and raid previews use it,
 -- and so do boss and arena frames (UF:PlaceUnitFrame), which are plain unit
 -- frames laid out the same way. unitsPerColumn and numColumns come from
--- UF.GetGroupLayoutSize.
+-- UF.GetGroupLayoutSize. Returns nil for an index past unitsPerColumn *
+-- numColumns: a header doesn't show those, so they have no place.
 function UF.GroupAnchor(index, frames, container, layout, unitsPerColumn, numColumns)
+	if index > unitsPerColumn * numColumns then return nil end
 	local point = layout.point
 	local relativePoint, xOffsetMult, yOffsetMult = GetRelativePointAnchor(point)
 	local xMultiplier, yMultiplier = math.abs(xOffsetMult), math.abs(yOffsetMult)

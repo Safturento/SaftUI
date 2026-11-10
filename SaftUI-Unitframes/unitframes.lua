@@ -208,7 +208,13 @@ function UF:PlaceUnitFrame(frame)
 			-- frames are as wide as the holder.
 			local frames = self.units[frame.base_unit]
 			local layout = UF.GetGroupLayout(config)
-			local _, _, unitsPerColumn, numColumns = UF.GetGroupLayoutSize(layout, #frames)
+			local _, _, unitsPerColumn, numColumns, shown = UF.GetGroupLayoutSize(layout, #frames)
+			if frame.ID > shown then
+				-- The layout holds fewer than all of them (max columns x units per
+				-- column): the rest are parked, as a header doesn't show them.
+				frame:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 10000, 10000)
+				return false
+			end
 			for _, a in ipairs(UF.GroupAnchor(frame.ID, frames, holder, layout, unitsPerColumn, numColumns)) do
 				frame:SetPoint(a[1], a[2], a[3], a[4], a[5])
 			end
