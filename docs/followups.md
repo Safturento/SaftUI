@@ -8,6 +8,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 - [Active](#active)
   - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
+  - [2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames](#2026-11-10--chat-writes-fields-and-scripts-onto-blizzards-chat-frames)
+  - [2026-11-10 — The Hekili and WeakAuras skins error when Skinning's Theme is None](#2026-11-10--the-hekili-and-weakauras-skins-error-when-skinnings-theme-is-none)
+  - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
+  - [2026-11-10 — Edit box focus borders lost on a theme switch, and two ways of keeping colors](#2026-11-10--edit-box-focus-borders-lost-on-a-theme-switch-and-two-ways-of-keeping-colors)
+  - [2026-11-10 — Retail bank leftovers after Themes: category selector, selected window's border, radio group under None](#2026-11-10--retail-bank-leftovers-after-themes-category-selector-selected-windows-border-radio-group-under-none)
+  - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
+  - [2026-11-10 — Themes: in-game checks for what was only compile-checked](#2026-11-10--themes-in-game-checks-for-what-was-only-compile-checked)
   - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
@@ -90,6 +97,132 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 Build it after the Themes branch merges, since Themes also edits `roll.lua`, drawing the held bar the Themes way (with a kind).
 
+### 2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames
+
+**What:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`) writes Lua fields onto Blizzard's chat frames and replaces their scripts, which `.agents/taint.md` rules 1 and 2 forbid:
+- `st:SetBackdrop` on each `ChatFrameN` (~73, ~128), and `st:SkinEditBox` / `st:StyleEditBox` on its edit box (~103, ~156), write `.backdrop` and `.thick` onto both.
+- `frame.EditBox`, `frame.EditBox.Header` and `.HeaderSuffix` (~96-98), `frame.Tab` (~113), and `frame.Tab.SetAlpha = UIFrameFadeRemoveFrame` (~121, when tab fading is off) are written onto Blizzard's frames.
+- `frame:SetScript('OnMouseWheel', onMouseScroll)` on `ChatFrameN` (~85), and `SetScript('OnShow')` / `SetScript('OnHide')` on its edit box (~107-108, hiding and showing `GeneralDockManager`), replace Blizzard's handlers.
+
+Since Themes there's also a new trigger for one of these writes. `st:RedrawThemed` (`SaftUI-Core/theme.lua`, `DrawBackdrop`, the `owner.thick = ...` line, ~349) runs the `owner.thick` write again on every theme change and every profile switch, copy or reset (ruling R13), for each `st:SetBackdrop` owner that isn't SaftUI's: `ChatFrame1` and the other chat frames, the chat edit boxes, and the unit frames' aura buttons (Blizzard's, `SaftUI-Unitframes/elements/auras.lua`, `StyleButton`). It's the same write the module's own `UpdateConfig` already made; only the trigger is new.
+
+**Why noticed:** The Themes project's reviews (2026-11-10). Task 6, which converted chat's draw calls to Theme and Background, carried the chat writes forward as pre-existing; the final review (`008527b..8250a53`) confirmed them and traced the new `owner.thick` trigger to R13's redraw on every profile change. None of the writes was introduced by Themes, which only changed the draw calls' arguments.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`, `onMouseScroll`, `CHT:UpdateFootprint`); `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `st:StyleEditBox`, `DrawEditBox`, `ColorFocused`); `SaftUI-Core/theme.lua` (`DrawBackdrop`, `st:SetBackdropIn`, `st:RedrawThemed`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, `ColorInnerLine`); `.agents/taint.md` rules 1, 2 and 11; `tests/chat/theme_test.lua`. The tooltip and roll bar skins already moved to side tables (see Resolved), and `tests/misc/fixtures/locked_widget.lua` locks a frame so a skin that writes onto it fails.
+
+**What's been considered:**
+- Draw the chat frames and edit boxes with `st:SetBackdropIn(backdrops, frame, ...)`, and keep the backdrop, edit box, header and tab references in weak side tables keyed by the chat frame. Everything that reads `frame.backdrop` (the retail scroll bar's anchors, the edit box's anchors, `UpdateChatFrameDisplay`'s padding) reads the side table instead.
+- `st:SkinEditBox` writes `.backdrop` through `st:SetBackdrop`. Blizzard's boxes need a form that draws through `st:SetBackdropIn` (a caller-supplied table); the bags' search boxes are SaftUI's and can keep the field.
+- Replace the `SetScript`s with post-hooks (native `HookScript`). Check whether `onMouseScroll` (Ctrl to the bottom, Shift a page, Alt a line, else several lines) can run after Blizzard's own wheel handler without scrolling twice. Replace the `Tab.SetAlpha` override with a post-hook that puts alpha 1 back after Blizzard's fade.
+- The aura buttons are the same pattern on Blizzard's frames, but `.agents/taint.md` rule 11 limits what can be anchored there, so they're a separate step.
+
+**Shape of work:** One task for chat (side tables, `st:SetBackdropIn`, post-hooks), with `tests/chat/theme_test.lua` locking Blizzard's chat frames as the misc fixtures do. A smaller second task for the aura buttons. Then an in-game check of chat scrolling, the edit box hiding the dock, and tab fading.
+
+**Open questions:** Can `onMouseScroll`'s behavior be added on top of Blizzard's wheel handler, or does it need to replace it (which would need another approach than a script)?
+
+### 2026-11-10 — The Hekili and WeakAuras skins error when Skinning's Theme is None
+
+**What:** With Skinning's Theme set to None, `st:SetBackdrop` makes no backdrop (None only clears, and a frame never drawn has nothing to clear), but both skins use it on the next line:
+- `SaftUI-Misc/Skinning/hekili.lua:16`, `button.backdrop:SetFrameStrata('LOW')`;
+- `SaftUI-Misc/Skinning/weakauras.lua:11` and `:14`, `region.backdrop:SetFrameLevel(...)` and `:SetFrameStrata('LOW')`.
+
+Each new Hekili button or WeakAuras icon then errors. The error comes before `skinned = true` and the `tinsert` into `skinnedButtons` / `skinnedRegions`, so it errors again on every call, and a later switch away from None doesn't reach those frames through `UpdateConfig`.
+
+**Why noticed:** The Themes project's reviews (2026-11-10): Task 6 converted these skins to Theme and Background and carried this forward as pre-existing, and the final review confirmed it. The old `none` template behaved the same, so it predates Themes.
+
+**Anchors:** `SaftUI-Misc/Skinning/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`), `SaftUI-Misc/Skinning/weakauras.lua` (`WA:SkinIcon`, `WA:UpdateConfig`), `SaftUI-Core/theme.lua` (`st:SetBackdrop`, which returns without making a backdrop for None); `tests/misc/theme_test.lua` (the Skinning page). There's no Hekili or WeakAuras stand-in in `tests/misc/fixtures/` yet.
+
+**What's been considered:** Guard each `.backdrop` use, and still mark the frame skinned and record it, so `UpdateConfig` draws it once the theme isn't None. The strata and level then need setting after every draw, in `UpdateConfig` too, or a backdrop first made there sits at the default level. Both skins also write `.skinned` and `.backdrop` onto another addon's frames. Rule 1 doesn't bind third-party frames, but `.agents/taint.md` asks for side tables there anyway, and the same pass could move them.
+
+**Shape of work:** Small: guards and a strata and level step after each draw in both files, with a test per skin over minimal Hekili and WeakAuras fixtures.
+
+### 2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript
+
+**What:** `ZT:OnEnable` (`SaftUI-Misc/Skinning/ZoneText.lua:63`) hooks `ZoneTextFrame`'s `OnEvent` with AceHook's `ZT:HookScript(ZoneTextFrame, 'OnEvent')`. AceHook's `HookScript` installs its closure with `SetScript`, replacing Blizzard's handler on a Blizzard frame, which `.agents/taint.md` rule 2 forbids. Use the native post-hook, `ZoneTextFrame:HookScript('OnEvent', function(frame, event, ...) ZT:OnEvent(frame, event, ...) end)`, or AceHook's `SecureHookScript`.
+
+**Why noticed:** The Themes project's reviews (2026-11-10). Task 6 moved the zone text's flourish lines off `ZoneTextFrame` into `ZT.flourishes` and gave them a Theme; its review, reading the same file, found the hook and deferred it to a followup. It predates Themes.
+
+**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:OnEnable`, `ZT:OnEvent`, `ZT:ColorFlourishes`, `ZT:OnColorsChanged`); `.agents/taint.md` rules 2 and 9. The same `OnEnable` also registers `PLAYER_ENTERING_WORLD` on `ZoneTextFrame`, calls its `SetPoint`, and assigns `ZoneFadeInDuration`, `ZoneHoldDuration` and `ZoneFadeOutDuration`, which look like Blizzard's own globals (rule 9). That's not yet checked against Blizzard's source.
+
+**Shape of work:** A one-line hook change, and a look at the other writes in the same function. Then an in-game check that the flourishes still take the zone name's color and the difficulty text still updates on entering a zone.
+
+### 2026-11-10 — Edit box focus borders lost on a theme switch, and two ways of keeping colors
+
+**What:**
+- A focused chat or bag search box loses its white focus border on a theme switch, and on a profile switch, copy or reset. `Config:UpdateConfig` runs `st:RedrawThemed`, whose last step puts the colors kept with `st:KeepOwnColors` back on (the box's white, `ColorFocused`). Then it runs every module's `UpdateConfig`, and Chat and Bags restyle their boxes (`st:StyleEditBox`, which draws with `st:SetBackdrop`), painting the theme's border over the white. Nothing puts it back: `st:ColorsChanged('theme')`, which ends the update, calls modules' `OnColorsChanged` but not the kept colors.
+- Colors a frame's own code puts on its backdrop are kept two ways. Modules use `OnColorsChanged('theme')`: edit mode's movers (`EM:OnColorsChanged`), and Bags, ActionBars, Loot's feed, Tooltip, the totem bar and Skinning's skins. Core's widgets and the unit frames' aura buttons register with `st:KeepOwnColors`. They run at different points of a profile update, which is what lets the first problem through. Unify them.
+
+**Why noticed:** The Themes project's reviews (2026-11-10). Task 3's review found the focused box losing its border (deferred as minor), and the final review asked for the two mechanisms to become one. `st:KeepOwnColors` came out of ruling R8, which had Core's widgets keep their own colors "as the movers do", without a module to hang `OnColorsChanged` on.
+
+**Anchors:** `SaftUI-Core/theme.lua` (`st:KeepOwnColors`, `PutOwnColors`, `st:RecolorThemed`, `st:RedrawThemed`); `SaftUI-Core/Config/config.lua` (`Config:UpdateConfig`, `RedrawTheme`); `SaftUI-Core/skinning.lua` (`ColorFocused`, `st:SkinEditBox`, `st:StyleEditBox`); `SaftUI-Core/Media/colors.lua` (`st:ColorsChanged`); `SaftUI-Core/EditMode/mover.lua` (`EM:OnColorsChanged`); `SaftUI-Chat/chatframe.lua` and `SaftUI-Bags/inventory.lua` (their `st:StyleEditBox` calls); `.agents/architecture.md`, Themes, "Colors a frame's own code puts on its backdrop".
+
+**What's been considered:**
+- The narrow fix: run the kept colors again at the end of `Config:UpdateConfig`, next to `ColorsChanged('theme')`, or have `st:StyleEditBox` run `ColorFocused` after it draws.
+- Unifying: one moment, after every module's `UpdateConfig`, when owned colors go back on. Either `st:ColorsChanged('theme')` also runs the `st:KeepOwnColors` registry (and modules register per-frame callbacks instead of walking their frames in `OnColorsChanged`), or the registry becomes a Core module's `OnColorsChanged('theme')`.
+
+**Shape of work:** Small for the edit box. A small refactor in Core for the unification, with each module's kept-color tests as the guard (`tests/core/theme_core_frames_test.lua`, `tests/bags/theme_test.lua`, `tests/actionbars/theme_test.lua`, `tests/misc/theme_test.lua`, `tests/loot/theme_test.lua`, `tests/unitframes/theme_test.lua`).
+
+**Open questions:** Unify toward per-frame callbacks, or toward per-module hooks?
+
+### 2026-11-10 — Retail bank leftovers after Themes: category selector, selected window's border, radio group under None
+
+**What:** Three retail-only issues in the bank windows (they use retail's `BankFrame.BankPanel` and the warband bank):
+- **The combined bank's category selector** (Bank / Warband, `st:CreateRadioGroup` in `INV:InitializeBankCategorySelection`, `SaftUI-Bags/containers/combinedbank.lua:~28`) takes the Bags Theme and Background once, when it's made. A later change to the Bags Theme override reaches it only after a reload. A change to SaftUI's own theme does reach it, since its buttons are recorded and redrawn with the arguments they were made with.
+- **The selected bank window's blue border** (`INV:SelectBankCategory`, `SaftUI-Bags/inventory.lua:~84-86`, for the separate bank and warband windows) is a plain `SetBackdropBorderColor`. No `OnColorsChanged('theme')` or `st:KeepOwnColors` puts it back, so a recolor or redraw turns it into the theme's border, and every Bags `UpdateConfig` resets it too.
+- **The radio group's `ColorPicked`** (`SaftUI-Core/Widgets/radiogroup.lua:~19-21`) indexes `button.backdrop`, which a group drawn with a Theme of None (a Bags Theme of None) doesn't have, so clicking a selector button errors. The old `none` template did the same.
+
+**Why noticed:** The Themes project's reviews (2026-11-10). Task 5 (Bags) found all three and deferred them: the selector as minor, the blue border and the None error as already so before Themes. All three are retail-only, and the user plays Forever, so none could be checked in game during the project.
+
+**Anchors:** `SaftUI-Bags/containers/combinedbank.lua` (`INV:InitializeBankCategorySelection`), `SaftUI-Bags/inventory.lua` (`INV:SelectBankCategory`, `INV:UpdateConfig`), `SaftUI-Bags/container.lua` (the header `OnClick` hook that calls `SelectBankCategory`), `SaftUI-Core/Widgets/radiogroup.lua` (`st:CreateRadioGroup`, `ColorPicked`); `tests/bags/theme_test.lua`, `tests/core/theme_core_frames_test.lua` (the radio group cases).
+
+**What's been considered:**
+- The selector: give the radio group a way to restyle (`radioGroup:SetTheme(theme, background)`, redrawing its buttons and keeping the pick), called from the Bags `UpdateConfig`.
+- The blue border: register it with `st:KeepOwnColors` on the selected window (forgetting the others), as the radio group does for its pick, or color it again in a Bags `OnColorsChanged('theme')`. This depends on how the "two ways of keeping colors" followup is unified.
+- `ColorPicked`: guard `button.backdrop`.
+
+**Shape of work:** Small, three pieces, with tests where the stubs reach (the radio group is tested; the bank windows need retail's `BankFrame`), and a retail in-game check.
+
+### 2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)
+
+**What:** When a module takes its own color off a border (an item's quality off an emptied bag slot, the green off an action button that no longer holds an equipped item), it puts the theme's border back in one of two ways:
+- Bags set it by hand. `INV:SetSlotThemeBorder` (`SaftUI-Bags/slot.lua:~68-76`) resolves the Slot theme and calls `SetBackdropBorderColor(unpack(look.colors.bordercolor))`, or a clear border for None.
+- Action bars draw the button again: `st:SetTemplate(backdrop, skin.theme, skin.background, 'action')` (`SaftUI-ActionBars/skin.lua:~387`, in `AB:UpdateEquippedBorder`).
+
+Both give the same border today, since under Thick and Thin a border is just `bordercolor`. Once the Blizzard theme (project 2) draws each kind its own way, the by-hand path will show the wrong border. Unify them before project 2.
+
+**Why noticed:** The Themes project's review of Task 5 (Bags, 2026-11-10), deferred as minor, and the final review, which asked for this entry.
+
+**Anchors:** `SaftUI-Bags/slot.lua` (`INV:SetSlotThemeBorder`, `INV:SetSlotQualityBorder`, `INV:AssignEmptySlot`); `SaftUI-ActionBars/skin.lua` (`AB:UpdateEquippedBorder`, `ColorEquipped`, `AB:OnColorsChanged`); `SaftUI-Core/theme.lua` (`Color`, `Paint`, the drawn-frame record); `docs/superpowers/specs/2026-11-10-saftui-themes-design.md` (project 2).
+
+**What's been considered:**
+- An engine call that puts a recorded frame's theme colors back, moving nothing (for example `st:ResetThemeColors(frame)`, running `Color` with the frame's recorded arguments), used by both modules. That suits a slot whose quality just went.
+- Or Bags redraw with `st:SetTemplate` as the action bars do, which costs a full draw per slot on bag updates.
+
+**Shape of work:** Small: one engine call and two call sites, with the Review Focus 2 and equipped-border tests as the guard (`tests/bags/theme_test.lua`, `tests/actionbars/theme_test.lua`).
+
+**Open questions:** Should the engine call put back only the border, or the fill and alpha too?
+
+### 2026-11-10 — Themes: in-game checks for what was only compile-checked
+
+**What:** Parts of the Themes project can't be loaded by `tests/run` (they need Blizzard frames, globals or other addons the stubs lack), so they were only compile-checked and read through. Check them in game, and fix what's found.
+
+On both clients:
+- the Blizzard micro buttons' panels (`SaftUI-Minimap/microbuttons.lua`, `SkinButton`, drawn with `st:SetBackdropIn`) moving from Thick's border to Thin's on a theme switch, with no gap or overlap;
+- zone text (`SaftUI-Misc/Skinning/ZoneText.lua`): the flourish lines drawn Thin, keeping the zone name's color after a recolor;
+- the character frame's gem slots (`SaftUI-Misc/Skinning/characterframe/gems.lua`) in SaftUI's theme;
+- the Hekili and WeakAuras skins (`SaftUI-Misc/Skinning/hekili.lua`, `weakauras.lua`) following Skinning's Theme and Background, and a profile switch;
+- the loot roll previews (`SaftUI-Loot/roll.lua`, `LT:CreateRollPreviews`) drawn like real roll bars.
+
+On retail:
+- the unit frames' aura buttons. `st:SetBackdrop` gives each of Blizzard's aura buttons a backdrop (`SaftUI-Unitframes/elements/auras.lua`, `StyleButton`), and `st:RedrawThemed` places it again on a theme switch and on every profile switch, copy or reset, while it still sits where it was drawn. Check, with auras up, in and out of combat, that this doesn't error or upset the aura container's layout (`.agents/taint.md` rule 11: a frame anchored to the container, or to anything anchored to it, must carry its layout aspect);
+- `SetBackdropBorderColor` on a cleared backdrop: an action button holding an equipped item while the action bars' Theme is None (`AB:UpdateEquippedBorder` → `ColorEquipped`, `SaftUI-ActionBars/skin.lua`). Retail's backdrop mixin may error on a frame whose backdrop was cleared.
+
+**Why noticed:** The Themes project's reviews (2026-11-10): Task 6 listed the micro buttons, zone text, gems, Hekili, WeakAuras and the roll previews as compile-checked only, and its review flagged the micro buttons' Thick → Thin switch; Task 4's review flagged the aura buttons' re-placing on a redraw; Task 5's review flagged the cleared backdrop. The final review gathered them into this list. The user plays Forever, so the retail items need a retail session.
+
+**Anchors:** per item above; `tests/minimap/theme_test.lua`, `tests/misc/theme_test.lua`, `tests/loot/theme_test.lua`, `tests/unitframes/theme_test.lua` and `tests/actionbars/theme_test.lua` cover what the stubs reach.
+
+**Shape of work:** An in-game pass on each client through the list, then a small fix for each problem found, with a test where the stubs allow.
+
 ### 2026-11-10 — Bag item sort compares item levels as text
 
 **What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`SaftUI-Bags/category.lua:147`, `sortCategory` at ~158). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
@@ -149,7 +282,7 @@ For prior art they shared Ellesmere's bag window. Its left sidebar lists the cat
 
 **Anchors:**
 - Its only readers are in `SaftUI-Misc/Skinning/skinning.lua`: `SK:UpdateTab` (`tab:SetHeight(...)`, reached from `SK:SkinTab`) and `SK:SkinTabHeader` (`header:SetHeight(...)`). `SK:SkinTab` is called only by `SK:SkinBlizzardPanel` and `SK:SkinTabHeader`, and nothing calls either of those (grep `SkinBlizzardPanel`, `SkinTabHeader`).
-- The same dead path also reads `panels.font` (`SK:UpdateTab`'s `SetDisabledFontObject`) and `panels.template` (`SK:SkinBlizzardPanel`, and `SK:SkinTab` through `st:SkinActionButton(tab, st.config.profile.panels)`). `panels.font` stays alive through check box labels (`SaftUI-Core/Widgets/checkbutton.lua`), which is the reader its Fonts → Kinds of text → Check box labels option names.
+- The same dead path also reads `panels.font` (`SK:UpdateTab`'s `SetDisabledFontObject`), and `panels.theme` and `panels.background` (`SK:SkinBlizzardPanel`'s `st:SetBackdrop(panel, panels.theme, panels.background, 'panel')`, and `SK:SkinTab` through `st:SkinActionButton(tab, st.config.profile.panels, 'small')`, which reads the same pair; `skinning.lua:~83-84,123`). Before Themes these read `panels.template`. `panels.font` stays alive through check box labels (`SaftUI-Core/Widgets/checkbutton.lua`), which is the reader its Fonts → Kinds of text → Check box labels option names.
 - The dead helpers also write fields onto Blizzard's tabs (`tab.skinned`, `tab.Text`, and `st:SkinActionButton`'s fields), which `.agents/taint.md` rule 1 forbids, so reviving them as they are isn't an option.
 
 **What's been considered:**
