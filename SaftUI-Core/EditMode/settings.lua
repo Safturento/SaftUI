@@ -79,6 +79,7 @@ function EM:GetConfigTable()
 			general = {
 				name = 'General',
 				type = 'group',
+				inline = true,
 				order = 1,
 				get = function(info) return self:GetSettings()[info[#info]] end,
 				set = function(info, value)

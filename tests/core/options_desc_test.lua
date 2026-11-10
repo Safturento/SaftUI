@@ -20,10 +20,6 @@ for _, file in ipairs({
 	load_saftui(file)
 end
 
--- The pages whose descriptions aren't written yet. Their tasks take them out
--- of this set when they write them.
-local DESC_PENDING = {}
-
 -- AceDBOptions' table, which is Ace's own.
 local NOT_SAFTUI = { profile = true }
 
@@ -61,17 +57,17 @@ test('every option on a finished page has a tooltip and no Ace width', function(
 	local root = st.Config:GetOptionsTable()
 	local checked = {}
 	for _, key in ipairs(SortedPages(root)) do
-		if not NOT_SAFTUI[key] and not DESC_PENDING[key] then
+		if not NOT_SAFTUI[key] then
 			checked[#checked + 1] = key
 			for _, problem in ipairs(Problems(key, root[key])) do
 				check(false, problem)
 			end
 		end
 	end
-	eq(table.concat(checked, ','), 'EditMode,Experience,Fonts,MicroMenu,Minimap', 'the finished pages built here')
+	eq(table.concat(checked, ','), 'Experience,Fonts,MicroMenu,Minimap', 'the finished pages built here')
 end)
 
-test("no SaftUI page carries an Ace width, a pending one included", function()
+test("no SaftUI page carries an Ace width", function()
 	local root = st.Config:GetOptionsTable()
 	local checked = 0
 	for _, key in ipairs(SortedPages(root)) do
@@ -82,7 +78,7 @@ test("no SaftUI page carries an Ace width, a pending one included", function()
 			end
 		end
 	end
-	eq(checked, 5, "every page but AceDBOptions' Profiles")
+	eq(checked, 4, "every page but AceDBOptions' Profiles")
 end)
 
 test('the check is real: an option without desc fails it, and so does an Ace width', function()

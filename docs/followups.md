@@ -59,7 +59,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** `SaftUI-Unitframes/elements/health.lua` and `power.lua` (`UpdateConfig`); `SaftUI-Unitframes/Libraries/oUF/elements/health.lua` and `power.lua` (`Enable`, `SetColorTapping`, `SetColorReaction`); `SaftUI-Unitframes/Libraries/oUF/ouf.lua` (`initObject`: the style function, then `EnableElement`); `UF.ConstructUnit`, `UF:ApplyConfig` (`unitframes.lua`).
 
-**What's been considered:** Call `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` in `UpdateConfig` instead of assigning those two (the forced call registers or unregisters the event to match). Plain table writes stay fine in combat; registering an event on a unit frame is too.
+**What's been considered:** Call `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` in `UpdateConfig` instead of assigning those two (the forced call registers or unregisters the event to match). Plain table writes stay fine in combat; registering an event on a unit frame is too. **A guard is needed (Task 9's review, 2026-11-09):** `SetColorTapping` and `SetColorReaction` only exist after oUF's `Enable`, and group buttons run `UpdateConfig` inside the style function, before `Enable`, so calling them unguarded errors on party and raid frames. Check for a nil `element.SetColorTapping`: when it's nil, assign the flag directly (as now), and `Enable` registers the event itself.
 
 **Shape of work:** A few lines in health.lua and power.lua, and an in-game check: tag a target with a debuff from another player and watch it go grey.
 
@@ -201,6 +201,8 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 ### 2026-11-09 — Settings with no /sui option, settings nothing reads, and frames with no edit mode mover
 
 **What:** An audit of every `st.defaults` table against `/sui` and edit mode. It found three kinds of gap. Some settings are read by the code but have no option. Some settings are read by nothing. Some frames SaftUI places have no edit mode mover. It also found a few broken options. Unit frame findings already listed in [Unit frame defaults that nothing reads, or that break when turned on](#2026-11-07--unit-frame-defaults-that-nothing-reads-or-that-break-when-turned-on) aren't repeated here.
+
+**Progress 2026-11-09 (options layout project 2, `optlayout` branch):** the per-module gaps in the lists below are closed: Misc (Tooltip, Skinning, Totem bar), Bags, Action bars (`actionbars.template`), and the unit frames (range alpha, the boss layout, `alpha`, `health.texture`, the color toggles and the rest, as itemized under Unit frames). Each also got tooltips on every option and its Position options. **Still open:** Core's settings (the "Core" list: icon trim, font shadow and spacing, header, button and panel fonts and templates, editable templates, `colors.*`), which are project 3 of the options redesign; and `loot.popup.*`, which waits on the loot window's own design. Chat's `linespacing` and the broken-option, mover and unit frame "still without an option" items below are as they were.
 
 **Read by the code, no option in `/sui`:**
 - **Core** (`SaftUI-Core/Config/defaults.lua`). Core has a `/sui` section only for Fonts.
@@ -472,6 +474,8 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
   - `colorCustom` on health, power and additional power: the `customColor` defaults are plain `{ r, g, b }` lists, and `config.customColor:GetRGB()` errors on them.
 - **Half done:** `additionalpower.manaAsPrimary` swaps the size, texture and text settings of the Power and AdditionalPower bars (`UF:UpdateElement`'s `configOverride`), but not their positions: `UF:UpdateElementPosition(element, unitframe, configOverride)` gets the override in its `unitframe` slot. The `Override` that would keep the bar on mana is commented out, and power's `GetDisplayPower` never runs (oUF only calls it with `displayAltPower`).
 - **Looks broken:** additional power defaults to `colorPower = false`, and nothing else colors the bar or its background, so it's white once enabled. Its `/sui` option says so. *Fixed 2026-11-09 (options layout project, Task 9): the default is `colorPower = true`.*
+
+**Progress 2026-11-09:** the additional power bar's color (`colorPower = true`), the focus castbar color (now `{ r, g, b }`) and the health text Deficit defaults (on every unit) are fixed (options layout project 2, Task 9, `e5e4426`), and `colorCustom` and the castbar background were fixed earlier the same day. What's left is the "read by nothing" keys, `show_empty`, Raid target's `Portrait` anchor, and the `manaAsPrimary` decision.
 
 **Why noticed:** On 2026-11-07, while adding Castbar, Class power, Additional power, Buffs, Debuffs and indicator tabs to `/sui` → Unitframes (the user asked to "start adding other UF elements to the config"). The rule for that pass was to expose only settings the element code reads, and note the rest.
 

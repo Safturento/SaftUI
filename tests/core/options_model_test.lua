@@ -669,7 +669,7 @@ end)
 
 test('Experience on the real tree: the General page with its rows, then its Position option', function()
 	local root = st.Config:GetOptionsTable()
-	eq(keys(OM.Pages(root)), 'Fonts,EditMode,Experience,profile', "the real tree's pages; topmenu left out")
+	eq(keys(OM.Pages(root)), 'Fonts,Experience,profile', "the real tree's pages; topmenu left out")
 	local view = OM.BuildView(root, 'Experience')
 	eq(view.title, 'Experience', 'title')
 	eq(keys(view.tabs), 'general', 'Position is in General, so General is the only tab')

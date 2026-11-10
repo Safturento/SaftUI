@@ -44,7 +44,7 @@ test("every page of the /sui tree passes AceConfigRegistry validation, SaftUI's 
 	local keys = {}
 	for key in pairs(root) do keys[#keys + 1] = key end
 	table.sort(keys)
-	eq(table.concat(keys, ','), 'EditMode,Experience,Fonts,MicroMenu,Minimap,profile', 'the pages built here')
+	eq(table.concat(keys, ','), 'Experience,Fonts,MicroMenu,Minimap,profile', 'the pages built here')
 	local ok, err = Validate(ace_ready(Registered(root)))
 	check(ok, 'valid: ' .. tostring(err))
 	check(root.Experience.category ~= nil, "the modules' own tables keep their category")

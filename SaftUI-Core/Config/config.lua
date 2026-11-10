@@ -144,61 +144,12 @@ function Config:GetWindow()
 	return OW and OW:IsShown() and OW:GetFrame() or nil
 end
 
--- A sub-section is a non-inline group (a sidebar entry or a tab).
-local function IsSection(option)
-	return type(option) == 'table' and option.type == 'group' and not option.inline
-end
-
-local function HasSections(group)
-	if type(group.args) ~= 'table' then return false end
-	for _, child in pairs(group.args) do
-		if IsSection(child) then return true end
-	end
-	return false
-end
-
--- A frame's size and its position belong together: a section with both a
--- `general` and a `position` subgroup gets the position shown as a box at the
--- end of General instead of as its own tab or sidebar entry. Its own get/set
--- travel with it, and edit mode's configPath (ending at `general`) still works.
--- Only a `position` group moves: the generators' Position is an option, not a
--- group, and modules put it last in General themselves.
-local function MergePositionIntoGeneral(group)
-	if type(group) ~= 'table' or type(group.args) ~= 'table' then return end
-	local general, position = group.args.general, group.args.position
-	if IsSection(general) and type(position) == 'table' and position.type == 'group'
-			and type(general.args) == 'table' and not general.args.position then
-		position.inline = true
-		position.order = 1000
-		general.args.position = position
-		group.args.position = nil
-	end
-	for _, child in pairs(group.args) do
-		if IsSection(child) then MergePositionIntoGeneral(child) end
-	end
-end
-
--- The innermost sections (e.g. a frame's General and Position) show as tabs in
--- their parent's page instead of another sidebar level. A group whose sections
--- have no sections of their own gets childGroups = 'tab', unless it already
--- chose a layout. The first tab (lowest order) is selected by default.
-local function UseTabsForInnermostSections(group)
-	if type(group) ~= 'table' or type(group.args) ~= 'table' then return end
-	local innermost = true
-	for _, child in pairs(group.args) do
-		if IsSection(child) then
-			if HasSections(child) then innermost = false end
-			UseTabsForInnermostSections(child)
-		end
-	end
-	if innermost and HasSections(group) and group.childGroups == nil then
-		group.childGroups = 'tab'
-	end
-end
-
 -- The /sui tree: one group per page, keyed by module name, plus AceDBOptions'
--- profiles. Edit mode and the AddCommand commands are the window's sidebar
--- buttons, not options.
+-- profiles. The AddCommand commands and the Edit mode button are the window's
+-- sidebar buttons, not options. Edit mode's grid and snap settings are a tab of
+-- the Global Settings page (key Fonts, which the options model shows by that
+-- name), next to the Fonts tab. Each module's table already declares its own
+-- tabs (childGroups) and Position option.
 function Config:GetOptionsTable()
 	local profile = AceDBOptions:GetOptionsTable(st.config)
 	profile.order = -999
@@ -208,9 +159,29 @@ function Config:GetOptionsTable()
     for name, module in pairs(st.modules) do
 		if module.GetConfigTable then
 			options[name] = module:GetConfigTable()
-			MergePositionIntoGeneral(options[name])
-			UseTabsForInnermostSections(options[name])
 		end
+	end
+
+	local fonts, editMode = options.Fonts, options.EditMode
+	if fonts or editMode then
+		local tabs = {}
+		if fonts then
+			fonts.order = 1
+			tabs.fonts = fonts
+		end
+		if editMode then
+			editMode.order = 2
+			tabs.editmode = editMode
+		end
+		options.Fonts = {
+			name = 'Global Settings',
+			desc = 'Fonts used across SaftUI, and edit mode\'s grid and snapping.',
+			type = 'group',
+			order = fonts and fonts.order or 1,
+			childGroups = 'tab',
+			args = tabs,
+		}
+		options.EditMode = nil
 	end
 
     return options

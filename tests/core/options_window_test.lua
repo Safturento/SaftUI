@@ -412,7 +412,7 @@ test('the sidebar: commands, Global Settings, Profiles, then the categories in o
 
 	local names = {}
 	for i, item in ipairs(frames().nav) do names[i] = item.group and ('[' .. item.group .. ']') or item.name end
-	eq(table.concat(names, ','), 'Global Settings,Profiles,[Frames],Bags,Chat,Unitframes,[Combat],Auras,[Info],Loot,[Other],Edit mode,Zeta',
+	eq(table.concat(names, ','), 'Global Settings,Profiles,[Frames],Bags,Chat,Unitframes,[Combat],Auras,[Info],Loot,[Other],Zeta',
 		'drawn in order')
 	check(st.Config:GetOptionsTable().topmenu == nil, 'no topmenu group any more')
 	eq(type(st.Config:GetCommands()), 'table', 'the commands, for the sidebar')
@@ -440,6 +440,50 @@ test("a real module's category: Experience is under Info", function()
 		end
 	end
 	check(found, 'Experience has a page')
+end)
+
+test('Global Settings has Fonts and Edit mode tabs, and the sidebar has no Edit mode page', function()
+	local root = st.Config:GetOptionsTable()
+	eq(root.EditMode, nil, 'no EditMode page in the tree')
+	for _, page in ipairs(OM.Pages(root)) do
+		check(page.key ~= 'EditMode', 'no EditMode page')
+	end
+	-- Zeta is the only page left in Other here; with none, there is no heading.
+	for _, entry in ipairs(OW.SidebarEntries(OM.Pages({ Fonts = root.Fonts, profile = root.profile }))) do
+		check(entry.group ~= 'Other', 'no Other heading when nothing is uncategorized')
+	end
+
+	local view = OM.BuildView(root, 'Fonts')
+	eq(view.title, 'Global Settings', 'the page')
+	eq(keys(view.tabs), 'fonts,editmode', 'Fonts then Edit mode')
+	eq(keys(view.tabs, 'name'), 'Fonts,Edit mode', 'tab names')
+
+	view = OM.BuildView(root, 'Fonts', { tab = 'editmode' })
+	eq(view.tab, 'editmode', 'Edit mode selected')
+	eq(#view.subtabs, 0, 'its settings are a section of the tab, not another tab row')
+	local grid
+	for _, section in ipairs(view.sections) do
+		for _, r in ipairs(section.rows) do
+			if r.key == 'grid' then grid = r end
+		end
+	end
+	check(grid ~= nil, 'Show grid is a row')
+	local before = st.EditModeFrames:GetSettings().grid
+	eq(OM.Get(root, grid), before, 'reads the setting')
+	OM.Set(root, grid, not before)
+	eq(st.EditModeFrames:GetSettings().grid, not before, 'setting it changes the edit mode settings')
+	OM.Set(root, grid, before)
+
+	-- The Fonts tab still reads the font settings.
+	view = OM.BuildView(root, 'Fonts', { tab = 'fonts' })
+	local size
+	for _, section in ipairs(view.sections) do
+		for _, r in ipairs(section.rows) do
+			if r.key == 'font_size' and not size then size = r end
+		end
+	end
+	check(size ~= nil, 'a font size row')
+	check(type(OM.Get(root, size)) == 'number', 'reads a number')
 end)
 
 test("Open({'Unitframes','player','general'}) selects the page, the picker value and the tab", function()
