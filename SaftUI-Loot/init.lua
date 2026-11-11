@@ -19,6 +19,14 @@ function LT:OnEnable()
 	self:InitializeLootFeed()
 end
 
+-- A Colors tab change, or a theme recolor or redraw (st:ColorsChanged): the
+-- feed (Feed/feed.lua) and the roll bars (roll.lua) put back the colors they
+-- give their own frames.
+function LT:OnColorsChanged(group)
+	if self.ColorFeed then self:ColorFeed(group) end
+	if self.ColorRollBars then self:ColorRollBars(group) end
+end
+
 -- A profile change: re-applies the rolls' and feed's size, spacing, theme,
 -- font and position, and re-filters the feed with the new profile's filters.
 -- Also ends test mode. Neither is protected, but in combat one becomes

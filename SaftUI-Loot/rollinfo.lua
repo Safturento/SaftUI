@@ -357,9 +357,9 @@ local function OnBarHide(frame)
 end
 
 -- RollOnLoot's roll types, the roll buttons' IDs (GroupLootFrame.xml), by the
--- button each is counted on. Disenchant (3) has no button of its own on these
--- bars; Transmog's is marked DE.
-local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 'Transmog', [4] = 'Transmog' }
+-- button each is counted on. Disenchant (3) has no button on these bars:
+-- LT:HoldRoll lights whichever of Greed and Transmog the bar shows.
+local CHOICE_FOR_ROLL_TYPE = { [0] = 'Pass', [1] = 'Need', [2] = 'Greed', [3] = 'Disenchant', [4] = 'Transmog' }
 
 -- After RollOnLoot (a roll button's OnClick, or an addon): notes your choice on
 -- a roll a skinned bar shows, with the time it has left. A choice the game asks
@@ -389,6 +389,19 @@ local function OnRollChosen(rollID, rollType)
 end
 if type(RollOnLoot) == 'function' then
 	hooksecurefunc('RollOnLoot', OnRollChosen)
+end
+
+-- CANCEL_ALL_LOOT_ROLLS (registered in roll.lua's LT:InitializeRollFrame):
+-- every roll is cancelled, say on leaving the group, so no choice is held and
+-- every held roll goes. Blizzard's frames take themselves away on it too, before
+-- or after this. Before: a frame whose choice was still pending (a confirmation
+-- open, a Need's dice animation) has just been held, and goes here. After:
+-- there's no choice left to hold.
+function LT:OnCancelAllLootRolls()
+	wipe(chosen)
+	local list = {}
+	for _, bar in ipairs(self:GetHeldRolls()) do tinsert(list, bar) end
+	for _, bar in ipairs(list) do self:ReleaseHeldRoll(bar) end
 end
 
 -- Called once per roll frame from SkinRollFrame (roll.lua), after its info

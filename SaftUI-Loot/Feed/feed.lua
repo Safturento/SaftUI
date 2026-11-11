@@ -252,8 +252,8 @@ local function DrawEntry(item, info, config)
 end
 
 -- After a theme recolor (st:RecolorThemed gave every line the theme's colors):
--- the shown mount entries take their yellow back.
-function LT:OnColorsChanged(group)
+-- the shown mount entries take their yellow back. From LT:OnColorsChanged (init.lua).
+function LT:ColorFeed(group)
 	if group ~= 'theme' or not self.feed then return end
 	for _, item in ipairs(self.feed.items) do
 		if item:IsShown() and item.info and item.info.itemSubType == "Mount" then

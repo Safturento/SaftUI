@@ -102,8 +102,10 @@ end
 ------------------------------------------------------------------ Blizzard's roll frames
 
 local BUTTONS = { { 'Need', 1 }, { 'Pass', 0 }, { 'Greed', 2 }, { 'Transmog', 4 } }
+local buttonArt -- [Blizzard roll button] = the texture its art is drawn with
 
 local function blizzard()
+	buttonArt = {}
 	local container = CreateFrame('Frame', 'GroupLootContainer', UIParent)
 	container:SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 150)
 	container:SetWidth(300)
@@ -234,9 +236,11 @@ local function blizzard()
 		self.Timer:SetValue(left)
 	end
 
+	-- MKBGroupLootFrameTemplate: parent UIParent, frameStrata DIALOG.
 	for i = 1, 4 do
 		local name = 'GroupLootFrame' .. i
-		local frame = CreateFrame('Frame', name, container)
+		local frame = CreateFrame('Frame', name, UIParent)
+		frame:SetFrameStrata('DIALOG')
 		frame:Hide()
 		frame:SetSize(243, 84)
 		frame.IconFrame = CreateFrame('Button', nil, frame)
@@ -258,6 +262,13 @@ local function blizzard()
 		for _, def in ipairs(BUTTONS) do
 			local button = CreateFrame('Button', nil, buttons)
 			button:SetID(def[2])
+			-- Its <NormalTexture atlas="lootroll-toast-icon-<choice>-up"/>; the
+			-- stubs have no normal texture slot, so it's a texture of the
+			-- button's, kept in buttonArt.
+			local art = button:CreateTexture(nil, 'ARTWORK')
+			art:SetAllPoints()
+			art:SetAtlas('lootroll-toast-icon-' .. def[1]:lower() .. '-up')
+			buttonArt[button] = art
 			button:SetScript('OnClick', function(self)
 				RollOnLoot(self:GetParent():GetParent().rollID, self:GetID())
 			end)
@@ -411,6 +422,18 @@ local function button_of(bar, choice)
 	end
 end
 
+-- Whether a SaftUI bar's button shows a border: a backdrop drawn on its art
+-- that's shown and has a backdrop (None clears it).
+local function has_border(button)
+	local backdrop = button.Icon.backdrop
+	return backdrop ~= nil and backdrop:IsVisible() and backdrop.backdropInfo ~= nil
+end
+
+-- The atlas a Blizzard roll frame's button for a choice draws.
+local function live_atlas(frame, choice)
+	return buttonArt[frame.LootButtonContainer[choice .. 'Button']]:GetAtlas()
+end
+
 -- Whether any of the tooltip's left texts has needle in it.
 local function tooltip_has(needle)
 	for _, text in pairs(stub.state(GameTooltip).texts or {}) do
@@ -470,22 +493,27 @@ test('choosing on a matched roll holds it in its place, with its item, timer, co
 	check(tooltip_has('Tester'), 'yours among them')
 end)
 
-test('your choice is lit and the others dimmed, a label names it, and it draws as the previews do', function()
+test("your choice is lit and the others dimmed, a label names it, and its buttons are its Blizzard bar's", function()
 	world()
 	local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' } })
 	local roll = start_roll('amulet')
+	local frame = frame_of(roll)
 	choose(roll, 'Greed', drop)
 	local bar = held_bar(roll)
 	check(bar ~= nil, 'held')
 	if not bar then return end
 
+	for _, choice in ipairs({ 'Need', 'Pass', 'Greed' }) do
+		eq(button_of(bar, choice).Icon:GetAtlas(), live_atlas(frame, choice), choice .. ": the art its Blizzard bar showed")
+	end
 	local lit = button_of(bar, 'Greed')
 	eq(lit:GetAlpha(), 1, 'your choice stays bright')
-	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'with a border in Buttons > Blue')
+	check(has_border(lit), 'with a border')
+	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in Buttons > Blue')
 	for _, choice in ipairs({ 'Need', 'Pass' }) do
 		local button = button_of(bar, choice)
 		eq(T.text(button:GetAlpha()), '0.35', choice .. ' is dimmed')
-		check(T.edge_rgb(button.Icon.backdrop) ~= blue(), choice .. "'s border is the theme's")
+		check(not has_border(button), choice .. ' has no border, as on its Blizzard bar')
 	end
 	check(not button_of(bar, 'Transmog'):IsShown(), 'Greed shows, not Transmog, as on its Blizzard bar')
 	check(bar.Choice:IsShown(), 'a label shows')
@@ -493,13 +521,29 @@ test('your choice is lit and the others dimmed, a label names it, and it draws a
 
 	eq(drawn(bar.InfoFrame), 'theme,solid,bar', "the body: the Rolls Theme and Background, as a bar")
 	eq(drawn(bar.IconFrame), 'theme,solid,small', 'the icon, as a small frame')
-	eq(drawn(lit.Icon), 'theme,solid,small', 'each button, as a small frame')
-	eq(T.around(lit.Icon.backdrop, lit), '0,0,0,0', "a button's border lies on its edges, the icon inside it")
+	eq(drawn(lit.Icon), 'theme,solid,small', 'the lit button, as a small frame')
+	eq(T.around(lit.Icon.backdrop, lit), '0,0,0,0', "its border lies on the button's edges, the art inside it")
+	eq(bar:GetFrameStrata(), frame:GetFrameStrata(), "at the strata Blizzard's bar had")
 
 	st:RecolorThemed()
 	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'the lit border stays through a theme recolor')
-	eq(T.edge_rgb(button_of(bar, 'Need').Icon.backdrop), T.text(unpack(st.config.profile.templates.thick.bordercolor, 1, 3)),
-		"and the others keep the theme's")
+	check(not has_border(button_of(bar, 'Need')), 'and the others stay without one')
+	st:RedrawThemed()
+	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'and through a redraw')
+	check(not has_border(button_of(bar, 'Need')), 'the others still without one')
+
+	-- A bar reused for another choice moves the border to it.
+	local sword = add_drop('sword', {})
+	tick(130)
+	eq(#LT:GetHeldRolls(), 0, 'the held roll ran out')
+	local roll2 = start_roll('sword')
+	choose(roll2, 'Pass', sword)
+	local again = held_bar(roll2)
+	check(again == bar, 'the bar is reused')
+	if again ~= bar then return end
+	check(has_border(button_of(bar, 'Pass')), 'Pass now has the border')
+	check(not has_border(button_of(bar, 'Greed')), 'Greed no longer does')
+	eq(button_of(bar, 'Greed'):GetAlpha() < 1, true, 'and is dimmed')
 end)
 
 test("nothing on a held bar takes a click", function()
@@ -648,14 +692,14 @@ test('held and live bars stack together, and a new roll stacks after them', func
 	eq(frame_of(b):GetBottom(), base + step, 'the rolls stack up from the anchor')
 	eq(frame_of(c):GetBottom(), base + 2 * step, 'one above the other')
 
-	-- The middle roll is held where it was; a new roll takes Blizzard's free
-	-- frame and its slot, and stacks after the held bar.
+	-- The middle roll is held where it was. A new roll takes Blizzard's free
+	-- frame and its slot, and goes last: nothing on screen moves.
 	choose(b, 'Greed')
 	eq(held_bar(b):GetBottom(), base + step, 'held in the middle')
 	eq(frame_of(c):GetBottom(), base + 2 * step, 'the roll after it stays')
 	local d = start_roll('ring')
-	eq(frame_of(d):GetBottom(), base + 2 * step, "the new roll, in the held roll's slot, comes after it")
-	eq(frame_of(c):GetBottom(), base + 3 * step, 'and the one after moves up')
+	eq(frame_of(d):GetBottom(), base + 3 * step, 'the new roll, in the held roll\'s old slot, goes last')
+	eq(frame_of(c):GetBottom(), base + 2 * step, 'and the one after the held roll stays put')
 
 	-- Held all the way: a new roll goes after every held bar.
 	choose(a, 'Pass', sword)
@@ -663,8 +707,8 @@ test('held and live bars stack together, and a new roll stacks after them', func
 	choose(d, 'Need')
 	eq(held_bar(a):GetBottom(), base, 'each held bar stays where its roll was')
 	eq(held_bar(b):GetBottom(), base + step, 'each held bar stays where its roll was')
-	eq(held_bar(d):GetBottom(), base + 2 * step, 'each held bar stays where its roll was')
-	eq(held_bar(c):GetBottom(), base + 3 * step, 'each held bar stays where its roll was')
+	eq(held_bar(c):GetBottom(), base + 2 * step, 'each held bar stays where its roll was')
+	eq(held_bar(d):GetBottom(), base + 3 * step, 'each held bar stays where its roll was')
 	local e = start_roll('sword')
 	eq(frame_of(e):GetBottom(), base + 4 * step, 'a new roll stacks after them')
 
@@ -674,6 +718,52 @@ test('held and live bars stack together, and a new roll stacks after them', func
 	eq(held_bar(a), nil, 'the first roll ended')
 	eq(held_bar(b):GetBottom(), base, 'the rest move down into the gap')
 	eq(frame_of(e):GetBottom(), base + 3 * step, 'the live roll too')
+end)
+
+test('a queued roll opens at the end of the stack, and nothing on screen moves', function()
+	world()
+	local config = LT.config.roll
+	local step = config.height + config.spacing
+	local rolls = {}
+	for i, key in ipairs({ 'sword', 'amulet', 'cloth', 'ring', 'amulet' }) do rolls[i] = start_roll(key) end
+	eq(frame_of(rolls[5]), nil, "the fifth roll waits: Blizzard has four frames")
+	local base = frame_of(rolls[1]):GetBottom()
+
+	-- Choosing frees a frame, and Blizzard opens the waiting roll in it, in the
+	-- same slot.
+	choose(rolls[2], 'Greed')
+	check(frame_of(rolls[5]) ~= nil, 'the waiting roll opens')
+	eq(frame_of(rolls[1]):GetBottom(), base, 'the first roll stays')
+	eq(held_bar(rolls[2]):GetBottom(), base + step, 'the held roll stays')
+	eq(frame_of(rolls[3]):GetBottom(), base + 2 * step, 'the third stays')
+	eq(frame_of(rolls[4]):GetBottom(), base + 3 * step, 'the fourth stays')
+	eq(frame_of(rolls[5]):GetBottom(), base + 4 * step, 'the queued roll goes last')
+
+	choose(rolls[4], 'Pass')
+	eq(held_bar(rolls[4]):GetBottom(), base + 3 * step, 'a second held roll stays where it was')
+	eq(frame_of(rolls[5]):GetBottom(), base + 4 * step, 'and so does the roll after it')
+end)
+
+test('grow down stacks held and new rolls the same way, downwards', function()
+	world()
+	LT.config.roll.grow_down = true
+	LT:UpdateGroupLootConfig()
+	local config = LT.config.roll
+	local step = config.height + config.spacing
+	local a = start_roll('sword')
+	local b = start_roll('amulet')
+	local c = start_roll('cloth')
+	local top = frame_of(a):GetTop()
+	eq(frame_of(b):GetTop(), top - step, 'the rolls stack down from the anchor')
+	eq(frame_of(c):GetTop(), top - 2 * step, 'one under the other')
+
+	choose(b, 'Greed')
+	eq(held_bar(b):GetTop(), top - step, 'held where it was')
+	eq(frame_of(c):GetTop(), top - 2 * step, 'the roll under it stays')
+	local d = start_roll('ring')
+	eq(frame_of(d):GetTop(), top - 3 * step, 'a new roll goes last, at the bottom')
+	choose(a, 'Pass')
+	eq(held_bar(a):GetTop(), top, 'the first held roll stays at the top')
 end)
 
 test('Test mode shows one of its preview bars locked', function()
@@ -689,8 +779,13 @@ test('Test mode shows one of its preview bars locked', function()
 		else
 			for _, button in ipairs(bar.buttons) do
 				eq(button:GetAlpha(), 1, 'an unlocked bar has every button bright')
+				check(not has_border(button), 'and no border on any, like a live bar')
 			end
 		end
+		for _, button in ipairs(bar.buttons) do
+			eq(button.Icon:GetAtlas(), live_atlas(GroupLootFrame1, button.choice), button.choice .. ": Blizzard's roll button art")
+		end
+		eq(bar:GetFrameStrata(), GroupLootFrame1:GetFrameStrata(), "at the strata of Blizzard's roll bars")
 	end
 	eq(#lockedBars, 1, 'one preview is locked')
 	local bar = lockedBars[1]
@@ -699,9 +794,13 @@ test('Test mode shows one of its preview bars locked', function()
 	local lit = button_of(bar, choice)
 	check(lit ~= nil and lit:IsShown(), 'its label names a button it shows')
 	eq(lit:GetAlpha(), 1, 'that one bright')
-	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'and lit')
+	check(has_border(lit), 'and lit')
+	eq(T.edge_rgb(lit.Icon.backdrop), blue(), 'in Buttons > Blue')
 	for _, button in ipairs(bar.buttons) do
-		if button ~= lit and button:IsShown() then eq(T.text(button:GetAlpha()), '0.35', 'the others dimmed') end
+		if button ~= lit and button:IsShown() then
+			eq(T.text(button:GetAlpha()), '0.35', 'the others dimmed')
+			check(not has_border(button), 'with no border')
+		end
 	end
 	check(count(bar, choice) ~= nil, 'your choice is counted on it')
 
@@ -712,6 +811,132 @@ test('Test mode shows one of its preview bars locked', function()
 	check(held_bar(roll) ~= nil, 'the roll is held')
 	stub.fire_script(LT.rollPreviewDriver, 'OnUpdate', 0.3) -- the previews' poll
 	check(not previews:IsShown(), 'the previews hide while a roll is held')
+end)
+
+-- Two rolls held, and a click on a third still waiting on the server (a bind
+-- on pickup confirmation still open, say).
+local function held_and_pending()
+	local a = start_roll('amulet')
+	local b = start_roll('sword')
+	local c = start_roll('cloth')
+	tick(10)
+	choose(a, 'Greed')
+	choose(b, 'Need')
+	stub.fire_script(frame_of(c).LootButtonContainer.GreedButton, 'OnClick', 'LeftButton', false)
+	eq(#LT:GetHeldRolls(), 2, 'two rolls held')
+	check(frame_of(c) ~= nil, 'the third still up')
+	return c
+end
+
+test('CANCEL_ALL_LOOT_ROLLS ends every held roll and holds none, whichever hears it first', function()
+	-- SaftUI first: it registered at login, before Blizzard's frames registered
+	-- for their rolls.
+	world()
+	held_and_pending()
+	stub.fire_event('CANCEL_ALL_LOOT_ROLLS')
+	eq(#LT:GetHeldRolls(), 0, 'SaftUI first: no roll held')
+	for i = 1, 4 do check(not _G['GroupLootFrame' .. i]:IsShown(), "Blizzard's bars are gone") end
+
+	-- Blizzard's frames first: each takes itself away (holding the clicked one
+	-- for a moment), then SaftUI hears it.
+	world()
+	held_and_pending()
+	for i = 1, 4 do
+		local frame = _G['GroupLootFrame' .. i]
+		if frame:IsShown() then GroupLootFrame_OnEvent(frame, 'CANCEL_ALL_LOOT_ROLLS') end
+	end
+	stub.fire_event('CANCEL_ALL_LOOT_ROLLS')
+	eq(#LT:GetHeldRolls(), 0, "Blizzard's frames first: no roll held")
+end)
+
+test('a roll with under a second left is not held', function()
+	world()
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	tick(119.5)
+	choose(roll, 'Greed', drop)
+	eq(held_bar(roll), nil, 'half a second left: not held')
+
+	local other = start_roll('sword')
+	tick(118)
+	choose(other, 'Greed')
+	check(held_bar(other) ~= nil, 'two seconds left: held')
+end)
+
+test('a click is held only when Blizzard takes the bar away, not when it hides with UIParent', function()
+	world()
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	tick(10)
+	-- You click; the server hasn't answered yet.
+	stub.fire_script(frame_of(roll).LootButtonContainer.GreedButton, 'OnClick', 'LeftButton', false)
+	UIParent:Hide() -- Alt+Z
+	eq(#LT:GetHeldRolls(), 0, 'hidden with UIParent: not held')
+	UIParent:Show()
+	check(frame_of(roll) ~= nil and frame_of(roll):IsVisible(), "Blizzard's bar is back")
+	eq(#LT:GetHeldRolls(), 0, 'still nothing held')
+	GroupLootContainer:Hide()
+	eq(#LT:GetHeldRolls(), 0, 'the container hidden: not held')
+	GroupLootContainer:Show()
+
+	stub.fire_event('CANCEL_LOOT_ROLL', roll)
+	eq(#LT:GetHeldRolls(), 1, 'the server takes it away: held once')
+	check(held_bar(roll) ~= nil, 'that roll')
+end)
+
+test('a roll that ends without a choice is not held', function()
+	world()
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	tick(119)
+	stub.fire_event('CANCEL_LOOT_ROLL', roll)
+	check(frame_of(roll) == nil, 'its bar went')
+	eq(#LT:GetHeldRolls(), 0, 'nothing held')
+end)
+
+test("a Buttons > Blue change recolors a held roll's lit border and label, and the locked preview's", function()
+	world()
+	LT:SetTestRolls(true)
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if not bar then return end
+	local preview
+	for _, other in ipairs(LT.rollPreview.bars) do
+		if other.Choice:IsShown() then preview = other end
+	end
+
+	local color = st.config.profile.colors.button.blue
+	color.r, color.g, color.b = 0.9, 0.3, 0.1
+	st:ColorsChanged('button')
+	for what, b in pairs({ held = bar, preview = preview }) do
+		eq(T.edge_rgb(button_of(b, b.choice).Icon.backdrop), '0.90,0.30,0.10', what .. ": the lit border takes the new blue")
+		local r, g, bl = b.Choice:GetTextColor()
+		eq(T.text(r, g, bl), '0.90,0.30,0.10', what .. ': and the label')
+	end
+end)
+
+test('a Disenchant choice lights the Greed or Transmog button the bar shows', function()
+	world()
+	local greed = start_roll('amulet') -- Greed shows
+	local transmog = start_roll('ring') -- Transmog shows
+	tick(5)
+	-- An addon rolls Disenchant (3), which has no button on these bars.
+	RollOnLoot(greed, 3)
+	stub.fire_event('CANCEL_LOOT_ROLL', greed)
+	RollOnLoot(transmog, 3)
+	stub.fire_event('CANCEL_LOOT_ROLL', transmog)
+
+	local a, b = held_bar(greed), held_bar(transmog)
+	check(a ~= nil and b ~= nil, 'both held')
+	if not (a and b) then return end
+	eq(a.Choice:GetText(), 'Greed', 'on a Greed bar, Greed')
+	eq(button_of(a, 'Greed'):GetAlpha(), 1, 'lit')
+	check(has_border(button_of(a, 'Greed')), 'with the border')
+	eq(b.Choice:GetText(), 'Transmog', 'on a Transmog bar, Transmog')
+	eq(button_of(b, 'Transmog'):GetAlpha(), 1, 'lit')
 end)
 
 ------------------------------------------------------------------ no fields on Blizzard's frames

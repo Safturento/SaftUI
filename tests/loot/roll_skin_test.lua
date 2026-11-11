@@ -176,6 +176,14 @@ test('the timer hook drives the timer text through the side table', function()
 	r, g, b = timer_text:GetVertexColor()
 	check(math.abs(r - rr) < 1e-6 and math.abs(g - rg) < 1e-6 and math.abs(b - rb) < 1e-6, 'red under 60 seconds')
 
+	-- The game times a roll in milliseconds (START_LOOT_ROLL's rollTime,
+	-- GetLootRollTimeLeft): Blizzard's timer runs from the roll's length in
+	-- them, and the text still reads seconds.
+	frame.Timer:SetMinMaxValues(0, 120000)
+	frame.Timer:SetValue(30000)
+	stub.fire_script(frame.Timer, 'OnUpdate', 0.1)
+	eq(timer_text:GetText(), SaftUI.StringFormat:ToClock(30), 'a roll timed in milliseconds: thirty seconds shown')
+
 	-- A timer SaftUI never skinned is left alone.
 	local other = CreateFrame('StatusBar', nil, UIParent)
 	other:SetMinMaxValues(0, 10)

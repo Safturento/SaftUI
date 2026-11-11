@@ -182,6 +182,7 @@ test('the roll timer bars are under Buttons Blue, not Item quality, and the diff
 	local quality = Section('item_quality').args
 	check(not quality['3'].desc:find('timer', 1, true), 'Item quality names no timer bar')
 	check(Section('button').args.blue.desc:find('loot roll timer bars', 1, true), 'Buttons Blue names the roll timer bars')
+	check(Section('button').args.blue.desc:find("loot roll you've chosen on", 1, true), "and a held roll's lit border and label")
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
 end)

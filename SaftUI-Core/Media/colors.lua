@@ -66,7 +66,7 @@ CO.SECTIONS = {
 			{ 'pushed', 'Pushed', 'A pressed SaftUI button, scroll bar thumb or micro menu button.' },
 			{ 'red', 'Red', "Locked bank slots, and the flash on an action bar or totem button." },
 			{ 'green', 'Green', "The border of an equipped item's action button." },
-			{ 'blue', 'Blue', 'The accent color: hovered and active controls, the options window\'s tabs and slider fill, and loot roll timer bars.' },
+			{ 'blue', 'Blue', 'The accent color: hovered and active controls, the options window\'s tabs and slider fill, loot roll timer bars, and the border and label of a loot roll you\'ve chosen on.' },
 			{ 'yellow', 'Yellow', "A fresh mount's entry in the loot feed: its border and fill." },
 			{ 'grey', 'Grey', "The combined bank's visibility toggle and the edit mode picker's hint line." },
 		}),
