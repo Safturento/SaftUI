@@ -46,8 +46,7 @@ function W.fresh(client)
 	load_saftui('SaftUI-Core/Utilities/utilities.lua') -- slot.lua's module
 	load_saftui('SaftUI-Bags/config.lua')
 	apply_defaults()
-	-- slot.lua post-hooks Blizzard's stack split button at load; it is also where
-	-- the Grays rule's INV:IsProtected lives.
+	-- slot.lua post-hooks Blizzard's stack split button at load.
 	_G.StackSplitFrameOkay_Click = function() end
 	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'categorydefaults', 'categories', 'tooltipscanner', 'category',
 		'slot', 'views' }) do

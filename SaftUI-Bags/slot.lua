@@ -219,47 +219,27 @@ local function UpdateTooltip(self)
 	end
 end
 
-function INV:ShouldAutoVendor(itemID)
-    return INV.config.autoVendorFilter and INV.config.autoVendorFilter[itemID]
-end
-
-function INV:IsProtected(itemID)
-    return INV.config.protectFilter and INV.config.protectFilter[itemID]
-end
-
 local menuItems = {
     autoVendor = {
         text = 'Auto Vendor',
         isChecked = function()
-            return INV.config.autoVendorFilter
-                and INV.SelectedSlot.info
-                and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
+            return INV.SelectedSlot.info and INV:IsAutoVendorMarked(INV.SelectedSlot.info.itemID)
         end,
         setChecked = function(key, menuInputData, menu)
             if not INV.SelectedSlot then return end
-
-            if not INV.config.autoVendorFilter then
-                INV.config.autoVendorFilter = {}
-            end
             local itemID = INV.SelectedSlot.info.itemID
-            INV.config.autoVendorFilter[itemID] = not INV.config.autoVendorFilter[itemID]
-            INV:QueueUpdate()
+            INV:SetAutoVendorMark(itemID, not INV:IsAutoVendorMarked(itemID))
        end,
     },
     protect = {
         text = 'Protected',
-        isChecked = function() return INV.config.protectFilter
-            and INV.SelectedSlot.info
-            and INV.config.protectFilter[INV.SelectedSlot.info.itemID] end,
+        isChecked = function()
+            return INV.SelectedSlot.info and INV:IsProtected(INV.SelectedSlot.info.itemID)
+        end,
         setChecked = function(key, menuInputData, menu)
             if not INV.SelectedSlot then return end
-
-            if not INV.config.protectFilter then
-                INV.config.protectFilter = {}
-            end
             local itemID = INV.SelectedSlot.info.itemID
-            INV.config.protectFilter[itemID] = not INV.config.protectFilter[itemID]
-            INV:QueueUpdate()
+            INV:SetProtected(itemID, not INV:IsProtected(itemID))
         end,
     }
 }

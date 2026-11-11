@@ -364,6 +364,18 @@ function INV:GetSortedInventory(id)
 		end
 	end
 
+	-- In combat a category with no frame (made since the fight began) or no
+	-- button left shows no more than it has buttons, so nothing is made in
+	-- combat; the queued top-up asks for a full update when it ends.
+	if InCombatLockdown() then
+		for categoryName, categoryItems in pairs(inventory) do
+			if categoryName ~= self.EMPTY_SLOTS_CATEGORY then
+				self:FitSlots(id, categoryName, 0, categoryItems)
+				if #categoryItems == 0 then inventory[categoryName] = nil end
+			end
+		end
+	end
+
 	return inventory, numItems, numLoading
 end
 
@@ -392,7 +404,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	header.text = header:CreateFontString(nil, 'OVERLAY')
 	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
 	header.text:SetPoint('BOTTOMLEFT', 2, 2)
-	header.text:SetText(categoryName)
+	header.text:SetText(self:CategoryName(categoryName))
 	categoryFrame.header = header
 
 	local filterCheckbox = st:CreateCheckButton(nil, categoryFrame)
@@ -442,7 +454,7 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	if title then
 		categoryFrame.header.text:SetText(title)
 	elseif title == nil then
-		categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, numShown)
+		categoryFrame.header.text:SetFormattedText("%s (%d)", self:CategoryName(categoryName), numShown)
 	end
 
 	for i, item in pairs(categoryItems) do

@@ -244,8 +244,12 @@ function INV:GetViewSections(id, view)
 		for _, category in ipairs(order) do
 			local items = byCategory[category]
 			table.sort(items, self.CompareItems)
-			local title = ('%s (%d)'):format(category, #items)
-			tinsert(sections, { key = category, title = title, items = self:FitSlots(id, category, 0, items), kind = 'category' })
+			local title = ('%s (%d)'):format(self:CategoryName(category), #items)
+			local fitted = self:FitSlots(id, category, 0, items)
+			-- A category with no frame yet (made in combat) waits for the end of it.
+			if #fitted > 0 then
+				tinsert(sections, { key = category, title = title, items = fitted, kind = 'category' })
+			end
 		end
 		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
 			and self:FitSlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))

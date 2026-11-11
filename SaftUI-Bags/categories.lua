@@ -29,9 +29,26 @@ local INV = st:GetModule('Inventory')
 	                                'rule' | 'misc'), default, sells, edited, place }
 	  INV:GetDefaultCategory(id) -> the shipped entry (categorydefaults.lua)
 	  INV:CategoryName(key), INV:CategoryPlace(key)
-	  INV:CategoriesChanged()    drops the list and the compiled rules, and updates
+	  INV:CategoriesChanged()    drops the list and the compiled rules, makes the
+	                             new categories' frames and updates
 	  INV:GetItemCategory(info)  -> key, why
 	  INV:IsAutoVendorItem(info, key)
+
+	The write side (below) normalizes every edit against the shipped default:
+	a field equal to it is removed, an empty edit is removed. Entries of the
+	list alias the shipped rule and the store's own hide and rule tables, so a
+	setter writes a new table (a copy) and never changes one in place. Every
+	write that changes something ends in INV:CategoriesChanged().
+	  INV:AddUserCategory() -> id        INV:RenameCategory(id, name) -> ok
+	  INV:SetCategoryEnabled(id, on)     INV:SetCategoryRule(id, rule)
+	  INV:MoveCategory(id, place)        INV:RemoveCategory(id)
+	  INV:RestoreCategory(id)            INV:GetDeletedDefaults()
+	  INV:ResetCategory(id)              INV:ResetAllCategories()
+	  INV:GetPin(itemID)                 INV:PinItem(itemID, id)
+	  INV:UnpinItem(itemID)              INV:GetPinnedItems(id)
+	  INV:IsProtected(itemID)            INV:SetProtected(itemID, on)
+	  INV:IsAutoVendorMarked(itemID)     INV:SetAutoVendorMark(itemID, on)
+	  INV:EnsureCategoryFrames()
 ]]
 
 INV.SELL_CATEGORY = 'Grays/Auto Vendor'
@@ -205,7 +222,36 @@ end
 function INV:CategoriesChanged()
 	list = nil
 	compiled = {}
+	self:EnsureCategoryFrames()
 	self:QueueUpdate(true)
+end
+
+--[[
+	Gives every list category but the sets entry a frame in every window made
+	so far (a window that isn't made gets them from InitializeAllCategories),
+	as InitializeAllCategories makes them, so no frame or slot button is made
+	in combat for an item that lands in a category made since. In combat it
+	queues itself for the end of it, and asks for an update then.
+]]
+function INV:EnsureCategoryFrames()
+	if st:QueueAfterCombat('InventoryCategoryFrames', function()
+		INV:EnsureCategoryFrames()
+		INV:QueueUpdate(true)
+	end) then return end
+	local entries = self:GetCategoryList()
+	for id, container in pairs(self.containers) do
+		-- A window that is made: it has its frames and a scroll frame.
+		if type(container) == 'table' and container.categories and container.scrollFrame
+			and type(container.GetName) == 'function' then
+			for _, entry in ipairs(entries) do
+				if entry.kind ~= 'sets' and not container.categories[entry.id] then
+					self:CreateCategory(id, entry.id)
+					self:UpdateCategory(id, entry.id, {})
+					container.categories[entry.id]:Hide()
+				end
+			end
+		end
+	end
 end
 
 local function Compiled(entry)
@@ -293,4 +339,299 @@ function INV:IsAutoVendorItem(info, key)
 	end
 	if EquipmentSet(info) then return false end
 	return true
+end
+
+--------------------------------------------------------------------- writing
+
+-- A deep copy of a rule: its tables only, so the profile never shares one with
+-- a caller, with the shipped default, or with another category.
+local function CopyTree(value)
+	if type(value) ~= 'table' then return value end
+	local copy = {}
+	for k, v in pairs(value) do copy[k] = CopyTree(v) end
+	return copy
+end
+
+local function SameTree(a, b)
+	if type(a) ~= 'table' or type(b) ~= 'table' then return a == b end
+	for k, v in pairs(a) do
+		if not SameTree(v, b[k]) then return false end
+	end
+	for k in pairs(b) do
+		if a[k] == nil then return false end
+	end
+	return true
+end
+
+-- The entry of a list id, or nil.
+local function Entry(self, id)
+	return type(id) == 'string' and self:GetCategoryList().byId[id] or nil
+end
+
+-- A default's edit table, made if it has none. Only fields that differ from
+-- the default stay in it: Normalize removes an edit left empty.
+local function EditOf(store, id)
+	local edit = store.edits[id]
+	if type(edit) ~= 'table' then
+		edit = {}
+		store.edits[id] = edit
+	end
+	return edit
+end
+
+local function Normalize(store, id)
+	local edit = store.edits[id]
+	if type(edit) == 'table' and next(edit) == nil then store.edits[id] = nil end
+end
+
+-- Writes one field of a list category: a default's as an edit (the field
+-- removed when it equals the shipped value), a category of yours in custom.
+-- Returns whether it changed.
+local function SetField(self, id, field, value)
+	local store = self:CategoryStore()
+	local def = self:GetDefaultCategory(id)
+	if def then
+		local shipped = def[field]
+		local edit = EditOf(store, id)
+		local current = edit[field]
+		if SameTree(value, shipped) then value = nil end
+		if SameTree(current, value) then
+			Normalize(store, id)
+			return false
+		end
+		edit[field] = value
+		Normalize(store, id)
+	else
+		local custom = store.custom[id]
+		if SameTree(custom[field], value) then return false end
+		custom[field] = value
+	end
+	return true
+end
+
+-- The order the list has now, as ids.
+local function CurrentOrder(self)
+	local out = {}
+	for i, entry in ipairs(self:GetCategoryList()) do out[i] = entry.id end
+	return out
+end
+
+local function RemovePinsTo(self, wanted)
+	local pins = self.config.categoryPins
+	if type(pins) ~= 'table' then return end
+	for itemID, id in pairs(pins) do
+		if wanted(id) then pins[itemID] = nil end
+	end
+end
+
+local function ListIdsWithout(order, id)
+	local out = {}
+	for _, v in ipairs(order) do
+		if v ~= id then out[#out + 1] = v end
+	end
+	return out
+end
+
+-- A new category of yours, "New category" (or "New category 2", ...), on, shown
+-- in every window, catching nothing, just above Miscellaneous. Returns its id.
+function INV:AddUserCategory()
+	local store = self:CategoryStore()
+	local taken = {}
+	for _, entry in ipairs(self:GetCategoryList()) do taken[entry.name:lower()] = true end
+	local name, n = 'New category', 1
+	while taken[name:lower()] do
+		n = n + 1
+		name = 'New category ' .. n
+	end
+	local id = 'custom:' .. store.nextId
+	store.nextId = store.nextId + 1
+	store.custom[id] = { name = name, enabled = true, hide = {}, rule = { op = 'and', items = {} } }
+	local order = ListIdsWithout(CurrentOrder(self), self.MISC_CATEGORY)
+	order[#order + 1] = id
+	order[#order + 1] = self.MISC_CATEGORY
+	store.order = order
+	self:CategoriesChanged()
+	return id
+end
+
+-- Renames a list category. The name is trimmed; an empty one is refused. Its id
+-- (so its frame, place, held layout, Show in and pins) stays.
+function INV:RenameCategory(id, name)
+	if type(name) ~= 'string' or not Entry(self, id) then return false end
+	name = name:match('^%s*(.-)%s*$')
+	if name == '' then return false end
+	if SetField(self, id, 'name', name) then self:CategoriesChanged() end
+	return true
+end
+
+-- On or off. Miscellaneous can't be turned off.
+function INV:SetCategoryEnabled(id, on)
+	local entry = Entry(self, id)
+	if not entry or entry.kind == 'misc' or type(on) ~= 'boolean' then return false end
+	if SetField(self, id, 'enabled', on) then self:CategoriesChanged() end
+	return true
+end
+
+-- Sets a rule (stored as a copy). Not for the sets entry or Miscellaneous.
+function INV:SetCategoryRule(id, rule)
+	local entry = Entry(self, id)
+	if not entry or entry.kind ~= 'rule' or type(rule) ~= 'table' then return false end
+	if SetField(self, id, 'rule', CopyTree(rule)) then self:CategoriesChanged() end
+	return true
+end
+
+-- Moves a category to a place in the list, 1 to #list - 1: Miscellaneous
+-- can't move and nothing goes below it. Writes the whole order.
+function INV:MoveCategory(id, place)
+	local entry = Entry(self, id)
+	if not entry or entry.kind == 'misc' or type(place) ~= 'number' then return false end
+	local last = #self:GetCategoryList() - 1
+	place = math.max(1, math.min(last, math.floor(place)))
+	local order = ListIdsWithout(CurrentOrder(self), id)
+	order = ListIdsWithout(order, self.MISC_CATEGORY)
+	table.insert(order, place, id)
+	order[#order + 1] = self.MISC_CATEGORY
+	self:CategoryStore().order = order
+	self:CategoriesChanged()
+	return true
+end
+
+-- Removes a category of yours, or sends a default to deleted (its edits
+-- cleared), and removes the pins to it. Not Miscellaneous, Grays/Auto Vendor
+-- or Equipment sets.
+function INV:RemoveCategory(id)
+	local entry = Entry(self, id)
+	if not entry or KEPT[id] then return false end
+	local store = self:CategoryStore()
+	if entry.default then
+		store.deleted[id] = true
+		store.edits[id] = nil
+	else
+		store.custom[id] = nil
+	end
+	-- A restored default goes back to its default place, not its old one.
+	if type(store.order) == 'table' then store.order = ListIdsWithout(store.order, id) end
+	RemovePinsTo(self, function(pinned) return pinned == id end)
+	self:CategoriesChanged()
+	return true
+end
+
+-- Brings a deleted default back at its default place, as shipped.
+function INV:RestoreCategory(id)
+	local store = self:CategoryStore()
+	if type(id) ~= 'string' or not store.deleted[id] or not self:GetDefaultCategory(id) then return false end
+	store.deleted[id] = nil
+	store.edits[id] = nil
+	self:CategoriesChanged()
+	return true
+end
+
+-- The deleted defaults, as shipped, in the default order.
+function INV:GetDeletedDefaults()
+	local store = self:CategoryStore()
+	local out = {}
+	for _, def in ipairs(self.CategoryDefaults.Build()) do
+		if store.deleted[def.id] and not KEPT[def.id] then out[#out + 1] = DefaultEntry(def) end
+	end
+	return out
+end
+
+-- Clears a default's edit: its name, on or off, Show in and rule. Its pins
+-- stay.
+function INV:ResetCategory(id)
+	local entry = Entry(self, id)
+	if not entry or not entry.default then return false end
+	local store = self:CategoryStore()
+	if store.edits[id] ~= nil then
+		store.edits[id] = nil
+		self:CategoriesChanged()
+	end
+	return true
+end
+
+-- Everything as shipped: order, edits, your categories and the deleted
+-- defaults cleared, and the pins to your categories removed. Other pins and
+-- Protected stay. (nextId stays, so an id is never used twice.)
+function INV:ResetAllCategories()
+	local store = self:CategoryStore()
+	store.order = nil
+	store.edits, store.custom, store.deleted = {}, {}, {}
+	RemovePinsTo(self, function(pinned) return type(pinned) == 'string' and pinned:find('^custom:') ~= nil end)
+	self:CategoriesChanged()
+end
+
+------------------------------------------------------------------ pins, marks
+
+local function Pins(self)
+	if type(self.config.categoryPins) ~= 'table' then self.config.categoryPins = {} end
+	return self.config.categoryPins
+end
+
+local function Protect(self, itemID, on)
+	if type(self.config.protectFilter) ~= 'table' then self.config.protectFilter = {} end
+	self.config.protectFilter[itemID] = on and true or nil
+end
+
+-- The id an item is pinned to, or nil.
+function INV:GetPin(itemID)
+	local pins = self.config.categoryPins
+	if type(pins) ~= 'table' or itemID == nil then return nil end
+	return pins[itemID]
+end
+
+-- Pins an item to a list category (one per item; the sets entry takes none).
+-- Pinning to Grays/Auto Vendor clears Protected.
+function INV:PinItem(itemID, id)
+	local entry = Entry(self, id)
+	if itemID == nil or not entry or entry.kind == 'sets' then return false end
+	Pins(self)[itemID] = id
+	if id == self.SELL_CATEGORY then Protect(self, itemID, false) end
+	self:CategoriesChanged()
+	return true
+end
+
+function INV:UnpinItem(itemID)
+	local pins = self.config.categoryPins
+	if type(pins) ~= 'table' or itemID == nil or pins[itemID] == nil then return false end
+	pins[itemID] = nil
+	self:CategoriesChanged()
+	return true
+end
+
+-- The items pinned to a category, by item ID ascending.
+function INV:GetPinnedItems(id)
+	local out = {}
+	for itemID, pinned in pairs(self.config.categoryPins or {}) do
+		if pinned == id then out[#out + 1] = itemID end
+	end
+	table.sort(out)
+	return out
+end
+
+function INV:IsProtected(itemID)
+	local filter = self.config.protectFilter
+	return type(filter) == 'table' and itemID ~= nil and filter[itemID] and true or false
+end
+
+-- Protecting an item clears its pin to Grays/Auto Vendor.
+function INV:SetProtected(itemID, on)
+	if itemID == nil then return false end
+	on = on and true or false
+	Protect(self, itemID, on)
+	if on and self:GetPin(itemID) == self.SELL_CATEGORY then Pins(self)[itemID] = nil end
+	self:CategoriesChanged()
+	return true
+end
+
+function INV:IsAutoVendorMarked(itemID)
+	return self:GetPin(itemID) == self.SELL_CATEGORY
+end
+
+-- Marking pins an item to Grays/Auto Vendor (which clears Protected); unmarking
+-- unpins it from there, and leaves a pin to another category alone.
+function INV:SetAutoVendorMark(itemID, on)
+	if itemID == nil then return false end
+	if on then return self:PinItem(itemID, self.SELL_CATEGORY) end
+	if self:IsAutoVendorMarked(itemID) then return self:UnpinItem(itemID) end
+	return false
 end
