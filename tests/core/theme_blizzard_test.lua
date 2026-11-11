@@ -202,6 +202,7 @@ test("ClassPower names each resource's art", function()
 	eq(art('ARCANE_CHARGES', 2, 'MAGE'), 'UF-Arcane-BG,UF-Arcane-Icon', 'arcane charges')
 	eq(art('ESSENCE', 5, 'EVOKER'), 'UF-Essence-BG,UF-Essence-Icon', 'essence')
 	eq(A.ClassPower('RUNES', 1, 'DEATHKNIGHT'), nil, 'runes have no art')
+	eq(A.ClassPower('HOLY_POWER', nil, 'PALADIN'), nil, 'no point, no art')
 end)
 
 test('no default names Blizzard', function()

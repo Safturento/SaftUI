@@ -4,7 +4,7 @@
 --   - each part of a unit frame draws as its kind: the unit frame and its bars
 --     as bars, the aura buttons as auras, the castbar's icon and the
 --     indicators as controls (bare under Blizzard), and the class power points
---     as small;
+--     as controls;
 --   - a config update draws no backdrop on the aura and class power areas
 --     (their buttons and points are drawn), so nothing of SaftUI's is anchored
 --     to Blizzard's aura container (.agents/taint.md, rule 11);
@@ -231,7 +231,7 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 	eq(drawn(frame.Castbar), 'theme,theme,bar', 'the castbar: a bar')
 	eq(drawn(frame.Castbar.Icon), 'theme,solid,control', "the castbar's icon: a control")
 	for i = 1, 10 do
-		eq(drawn(frame.ClassPower[i]), 'theme,theme,small', 'class power point ' .. i .. ': small')
+		eq(drawn(frame.ClassPower[i]), 'theme,theme,control', 'class power point ' .. i .. ': control')
 	end
 	eq(drawn(frame.ClassPower), nil, 'the class power row itself is not drawn')
 	eq(looks(frame.ClassPower), 'bare', 'and shows nothing')
@@ -345,7 +345,7 @@ test('a config update draws no backdrop on the aura and class power areas, and t
 		eq(drawn(frame.Health), 'theme,theme,bar', 'health: drawn as before')
 		eq(drawn(frame.Power), 'theme,theme,bar', 'power: drawn as before')
 		for i = 1, 10 do
-			eq(drawn(frame.ClassPower[i]), 'theme,theme,small', 'class power point ' .. i .. ': drawn as before')
+			eq(drawn(frame.ClassPower[i]), 'theme,theme,control', 'class power point ' .. i .. ': drawn as before')
 		end
 		local thick = st.config.profile.templates.thick
 		local r, g, b, a = unpack(thick.backdropcolor)

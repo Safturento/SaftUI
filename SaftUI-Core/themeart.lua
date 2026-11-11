@@ -530,7 +530,7 @@ function ThemeArt.ClassPower(powerType, index, class, charged)
 	if art and art.byClass then art = art.byClass[class] end
 	if not art then return nil end
 	if art.runes then
-		if index < 1 or index > art.runes then return nil end
+		if not index or index < 1 or index > art.runes then return nil end
 		return art.empty:format(index), art.filled:format(index)
 	end
 	return art.empty, charged and art.charged or art.filled

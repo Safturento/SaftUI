@@ -1,7 +1,69 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxChanged, powerType)
+-- point -> { empty, filled }: the textures of SaftUI's that draw a point in
+-- Blizzard's art (.agents/taint.md: kept here, never in a field on a frame).
+local pointArt = setmetatable({}, { __mode = 'k' })
+
+-- classPower -> the last { powerType, cur, charged = { [index] = true } } oUF
+-- passed PostUpdate, so a config or theme change can draw the points again
+-- before the next power event.
+local lastState = setmetatable({}, { __mode = 'k' })
+
+local function PointArt(point)
+	local set = pointArt[point]
+	if not set then
+		local empty = point:CreateTexture(nil, 'BACKGROUND')
+		local filled = point:CreateTexture(nil, 'ARTWORK', nil, 1)
+		for _, texture in ipairs({ empty, filled }) do
+			-- Centred, so the point's width (set on every power update) doesn't
+			-- change it.
+			texture:SetPoint('CENTER')
+			texture:Hide()
+		end
+		set = { empty = empty, filled = filled }
+		pointArt[point] = set
+	end
+	return set
+end
+
+-- Draws every point as its Theme says: Blizzard's empty art behind and its
+-- filled art while the point is full (the charged art for a charged point),
+-- the flat fill hidden; the flat bar for Thick, Thin and a power type with no
+-- art.
+local function ApplyArt(classPower)
+	local config = classPower.config
+	local blizzard = st:IsBlizzardLook(config.theme, config.background)
+	local state = lastState[classPower]
+	local powerType = state and state.powerType
+	for i = 1, #classPower do
+		local point = classPower[i]
+		local empty, filled
+		if blizzard and powerType then
+			empty, filled = st.ThemeArt.ClassPower(powerType, i, st.my_class, state.charged[i])
+		end
+		local fill = point:GetStatusBarTexture()
+		if empty then
+			local set = PointArt(point)
+			set.empty:SetAtlas(empty)
+			set.filled:SetAtlas(filled)
+			st:SetSize(set.empty, config.height, config.height)
+			st:SetSize(set.filled, config.height, config.height)
+			set.empty:Show()
+			set.filled:SetShown(state.cur ~= nil and i <= state.cur)
+			if fill then fill:Hide() end
+		else
+			local set = pointArt[point]
+			if set then
+				set.empty:Hide()
+				set.filled:Hide()
+			end
+			if fill then fill:Show() end
+		end
+	end
+end
+
+local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxChanged, powerType, ...)
 	-- oUF passes no max only when the element itself is disabled. When class
 	-- power turns off with the power type (e.g. a druid leaving cat form), oUF
 	-- hides the points itself without calling this; the container has no
@@ -16,6 +78,13 @@ local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxC
 			classPower[i]:Show()
 		end
 	end
+	-- The charged points' indices come after the power type.
+	local charged = {}
+	for n = 1, select('#', ...) do
+		charged[select(n, ...)] = true
+	end
+	lastState[classPower] = { powerType = powerType, cur = cur, charged = charged }
+	ApplyArt(classPower)
 end
 
 local function Constructor(unitframe)
@@ -39,7 +108,8 @@ local function UpdateConfig(unitframe)
 	local prev
 	for i=1, 10 do
 		local point = classPower[i]
-		st:SetBackdrop(point, classPower.config.theme, classPower.config.background, 'small')
+		-- A control: nothing under Blizzard, whose art ApplyArt draws.
+		st:SetBackdrop(point, classPower.config.theme, classPower.config.background, 'control')
 		
 		point:SetStatusBarTexture(st.BLANK_TEX)
 		point:ClearAllPoints()
@@ -51,6 +121,7 @@ local function UpdateConfig(unitframe)
 		point:SetHeight(classPower.config.height)
 		prev = point
 	end
+	ApplyArt(classPower)
 end
 
 local function GetConfigTable(unit)
