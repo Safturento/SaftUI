@@ -995,15 +995,16 @@ end
 -- coordinates; on Forever the Camelot member's). Never from a size read back
 -- from a frame. Where the texture sits and how big it is are its caller's.
 -- Returns true; or false, hiding the texture, when the atlas gives no file
--- (AtlasInfo's file can be nil) or this client hasn't got it.
+-- (AtlasInfo's file can be nil), no texture coordinates or size to cut by,
+-- or this client hasn't got it.
 function ThemeArt.Cut(texture, atlas, rect)
 	local info = C_Texture.GetAtlasInfo(atlas)
-	if not (info and info.file) then
+	local left, right = info and info.leftTexCoord, info and info.rightTexCoord
+	local top, bottom = info and info.topTexCoord, info and info.bottomTexCoord
+	if not (info and info.file and left and right and top and bottom and info.width and info.height) then
 		texture:Hide()
 		return false
 	end
-	local left, right = info.leftTexCoord, info.rightTexCoord
-	local top, bottom = info.topTexCoord, info.bottomTexCoord
 	texture:SetTexture(info.file)
 	texture:SetTexCoord(
 		CutCoord(left, right, rect[1], info.width), CutCoord(left, right, rect[2], info.width),

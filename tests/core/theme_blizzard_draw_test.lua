@@ -1148,7 +1148,7 @@ test('under Blizzard member is the Background fill, inset 0, with no art', funct
 	end
 end)
 
-test('a cut with no atlas file hides its pieces', function()
+test('a cut with no atlas file, or no texture coordinates, hides its pieces', function()
 	for _, client in ipairs(CLIENTS) do
 		local st = blizzard(client)
 		local owner = frame(st)
@@ -1157,12 +1157,15 @@ test('a cut with no atlas file hides its pieces', function()
 			client .. ': an atlas with a file is cut')
 		check(t:IsShown(), client .. ': and shows')
 
-		-- A stand-in for the atlas table: the box's atlases at their sizes and
-		-- with no file, as an AtlasInfo without one reads. T.client makes the
-		-- stub again for the next case.
+		-- A stand-in for the atlas table, put back at the end of the case: the
+		-- box's atlases at their sizes and with no file, as an AtlasInfo
+		-- without one reads.
+		local getAtlasInfo = C_Texture.GetAtlasInfo
 		local standIn = {
 			['UI-HUD-UnitFrame-Player-PortraitOn'] = { width = 198, height = 71 },
 			['UI-HUD-UnitFrame-Target-PortraitOn'] = { width = 194, height = 68 },
+			-- A file but no texture coordinates.
+			['no-coords'] = { width = 64, height = 64, file = 12345 },
 		}
 		C_Texture.GetAtlasInfo = function(name) return standIn[name] end
 
@@ -1172,6 +1175,11 @@ test('a cut with no atlas file hides its pieces', function()
 		local u = owner:CreateTexture(nil, 'BORDER')
 		eq(st.ThemeArt.Cut(u, 'no-such-atlas', { 0, 8, 0, 8 }), false, client .. ': no atlas at all, no cut')
 		check(not u:IsShown(), client .. ': hidden too')
+		local v = owner:CreateTexture(nil, 'BORDER')
+		local ok, cut = pcall(st.ThemeArt.Cut, v, 'no-coords', { 0, 8, 0, 8 })
+		check(ok, client .. ': no texture coordinates: no error: ' .. tostring(cut))
+		eq(cut, false, client .. ': no texture coordinates, no cut')
+		check(not v:IsShown(), client .. ': hidden too')
 
 		local ok, err = pcall(st.SetBackdrop, st, owner, 'theme', 'theme', 'unitframe')
 		check(ok, client .. ': drawn without an error: ' .. tostring(err))
@@ -1182,6 +1190,7 @@ test('a cut with no atlas file hides its pieces', function()
 		st:RedrawThemed()
 		eq(T.art(owner.backdrop), '', client .. ': a color, a recolor and a redraw show none')
 		eq(#take_errors(), 0, client .. ': no errors')
+		C_Texture.GetAtlasInfo = getAtlasInfo
 	end
 end)
 
