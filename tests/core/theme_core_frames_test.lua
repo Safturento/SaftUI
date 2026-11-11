@@ -437,6 +437,38 @@ test('st:SkinActionButton draws config.theme and config.background as its kind',
 	eq(offset(s.backdrop, 'TOPLEFT'), '-1.00,1.00', "the theme's slot moves to Thin's 1px")
 end)
 
+-- The flat hover blends as SetHighlightTexture left it when it was made, as
+-- before the Blizzard theme (forced to BLEND it was an opaque blue square).
+-- Blizzard's state art blends its own way, and the switch back puts the made
+-- blend back. The module re-skins its buttons after a theme switch, as its
+-- UpdateConfig does.
+test("st:SkinActionButton's flat hover keeps the blend its highlight setter gave it, through Thick, Blizzard and Thick", function()
+	local st = fresh()
+	local probe = CreateFrame('Button')
+	local probeTexture = probe:CreateTexture()
+	probe:SetHighlightTexture(probeTexture)
+	local made = probeTexture:GetBlendMode() -- what the setter gives a texture handed with no blend
+
+	local slot = frame(st, 'Button', 'ThemeTestHover')
+	slot:SetSize(36, 36)
+	local config = { theme = 'theme', background = 'theme' }
+	st:SkinActionButton(slot, config, 'slot')
+	eq(slot:GetHighlightTexture(), slot.hover, 'the flat hover is the highlight')
+	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it')
+
+	switch(st, 'blizzard')
+	st:SkinActionButton(slot, config, 'slot')
+	eq(slot.hover:GetBlendMode(), st.ThemeArt.State('slot').highlightBlend, "Blizzard: its state art's blend")
+	-- Someone else's code may set it too (Blizzard's UpdateTextures does on the
+	-- bags bar's slots).
+	slot.hover:SetBlendMode('MOD')
+
+	switch(st, 'thick')
+	st:SkinActionButton(slot, config, 'slot')
+	eq(slot.hover:GetBlendMode(), made, 'Thick again: the blend the setter gave it')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('st:SkinEditBox and st:StyleEditBox take a Theme, a Background and a font', function()
 	local st = fresh()
 	local e = frame(st, 'EditBox', 'ThemeTestEdit')

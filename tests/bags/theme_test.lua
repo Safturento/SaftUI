@@ -333,11 +333,19 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	end
 	local PUSHED, HIGHLIGHT = [[Interface\Buttons\UI-Quickslot-Depress]], [[Interface\Buttons\ButtonHilight-Square]]
 
+	-- The blend SetHighlightTexture gives a texture handed with none, which
+	-- st:SkinActionButton's flat hover keeps: a blue tint, not an opaque square.
+	local probe = CreateFrame('Button')
+	local probeTexture = probe:CreateTexture()
+	probe:SetHighlightTexture(probeTexture)
+	local made = probeTexture:GetBlendMode()
+
 	-- Under Thick: the pushed art is cleared and the hover a flat blue over the icon, as before.
 	local slot = slots[1]
 	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
 	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick: blue')
+	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it when the slot was made')
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()
@@ -364,7 +372,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
 	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick again: blue')
-	eq(slot:GetHighlightTexture():GetBlendMode(), 'BLEND', 'Thick again: the blend it was made with, not Blizzard\'s additive')
+	eq(slot:GetHighlightTexture():GetBlendMode(), made, 'Thick again: the blend the setter gave it when the slot was made')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

@@ -126,6 +126,11 @@ function st:SkinCooldown(button, cooldown)
 	--hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
 end
 
+-- hover -> the blend button:SetHighlightTexture gave the flat hover
+-- st:SkinActionButton made, so it goes back on after Blizzard's state art
+-- (which sets its own). Kept here, not on the texture.
+local hoverBlends = setmetatable({}, { __mode = 'k' })
+
 -- Skins button with config (the profile's buttons by default): its backdrop in
 -- config.theme and config.background, drawn as kind ('action' by default; a
 -- bag slot is a 'slot'), and config.font and config.trueSize.
@@ -239,6 +244,7 @@ function st:SkinActionButton(button, config, kind)
 		hover:SetTexture(st.BLANK_TEX)
 		button.hover = hover
 		button:SetHighlightTexture(hover)
+		hoverBlends[hover] = hover:GetBlendMode()
 	end
 	if button.hover then
 		if hoverArt then
@@ -251,7 +257,12 @@ function st:SkinActionButton(button, config, kind)
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
 			button.hover:SetDrawLayer('OVERLAY', 0)
-			button.hover:SetBlendMode('BLEND') -- as it's made, after Blizzard's additive hover
+			-- The blend the hover was made with (most likely the client's
+			-- additive default), which Blizzard's art changed: a tint over the
+			-- icon, as before the Blizzard theme. BLEND would make it opaque.
+			if hoverBlends[button.hover] then
+				button.hover:SetBlendMode(hoverBlends[button.hover])
+			end
 			button.hover:ClearAllPoints()
 			-- button.hover:SetVertexColor(1, 1, 1, .1)
 			button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())

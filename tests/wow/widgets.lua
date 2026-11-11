@@ -879,9 +879,13 @@ end
 
 -- The texture for each button state: a texture of the button's, or a file
 -- (path or ID), which the button makes a texture for. nil clears it.
+-- SetHighlightTexture also takes a blend mode, which it puts on the texture:
+-- ADD when none is given. Blizzard's API documentation only says the blend is
+-- optional; ADD is most likely the client's default (SaftUI's flat hover, set
+-- with none, shows in game as a tint over the icon, not an opaque square).
 for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = 'ARTWORK', Highlight = 'HIGHLIGHT' }) do
 	local key = state:lower() .. '_texture'
-	Button['Set' .. state .. 'Texture'] = function(self, s, asset)
+	Button['Set' .. state .. 'Texture'] = function(self, s, asset, blend)
 		if asset == nil then
 			s[key] = nil
 		elseif is_widget(asset, 'Texture') then
@@ -892,6 +896,9 @@ for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = '
 			s[key] = texture
 		else
 			usage(s, ('Set%sTexture(): asset must be a texture, a path or a file ID'):format(state))
+		end
+		if state == 'Highlight' and s[key] then
+			states[s[key]].blend_mode = blend or 'ADD'
 		end
 	end
 	Button['Get' .. state .. 'Texture'] = function(self, s) return s[key] end
