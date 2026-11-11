@@ -919,3 +919,90 @@ test('only the default texture, only its own Blizzard look; Thick puts the flat 
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
+
+-- Counts the calls that put art on a bar and its bg: SetStatusBarTexture on
+-- the bar and SetAtlas / SetTexture on the bar's texture and the bg.
+local function art_calls(bar)
+	local n = { count = 0 }
+	local function wrap(object, method)
+		local original = object[method]
+		object[method] = function(...) n.count = n.count + 1; return original(...) end
+	end
+	wrap(bar, 'SetStatusBarTexture')
+	for _, texture in ipairs({ bar:GetStatusBarTexture(), bar.bg }) do
+		wrap(texture, 'SetAtlas')
+		wrap(texture, 'SetTexture')
+	end
+	return n
+end
+
+test('a bar already drawn with a fill is not drawn again; a change redraws it', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		player.Power.text = nil
+		local calls = art_calls(player.Power)
+		player.Power.PostUpdate(player.Power, 'player', 50, 0, 100)
+		UF:SetBarFill(player.Power, player.Power.barFill, player.Power.barFlat)
+		eq(calls.count, 0, client .. ': the same fill again draws nothing')
+		eq(player.Power:GetStatusBarTexture():GetAtlas(), '_RaidFrame-Resource-Fill', client .. ': still drawn')
+
+		st.config.profile.theme.name = 'thick'
+		UF:UpdateUnitFrame(player)
+		check(calls.count > 0, client .. ': a theme switch redraws')
+		flat(player.Power, client .. ': flat under Thick')
+		calls.count = 0
+		player.Power.PostUpdate(player.Power, 'player', 40, 0, 100)
+		eq(calls.count, 0, client .. ': and the flat fill is not drawn again either')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('a power bar with a picked texture keeps it through its own updates', function()
+	for _, theme in ipairs({ 'thick', 'blizzard' }) do
+		world('forever', theme)
+		P.player.theme = 'theme'
+		P.player.power.texture = 'Another'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		local picked = st:GetStatusBarTexture('Another')
+		check(picked ~= st.BLANK_TEX, theme .. ': the test texture is not the flat one')
+		player.Power.text = nil
+		player.Power.PostUpdate(player.Power, 'player', 50, 0, 100)
+		eq(player.Power:GetStatusBarTexture():GetTexture(), picked, theme .. ': kept through PostUpdate')
+		eq(player.Power:GetStatusBarTexture():GetAtlas(), nil, theme .. ': no atlas')
+		eq(#take_errors(), 0, theme .. ': no errors')
+	end
+end)
+
+test('additional power takes the power fill; a group preview keeps the Blizzard fill through its updates', function()
+	world('forever', 'blizzard')
+	P.player.theme = 'theme'
+	local player = make_unit_frame('P', 'player', { 'Health', 'Power', 'AdditionalPower' })
+	P.player.additionalpower.enable = true
+	UF:UpdateUnitFrame(player)
+	eq(player.AdditionalPower:GetStatusBarTexture():GetAtlas(), '_RaidFrame-Resource-Fill', 'additional power fill')
+	eq(player.AdditionalPower.bg:GetAtlas(), '_RaidFrame-Resource-Background', 'additional power bg')
+
+	UF.groups = { party = CreateFrame('Frame', 'SaftUI_Party', UIParent) }
+	UF.groups.party:Hide()
+	UF.holders.party = CreateFrame('Frame', 'SaftUI_PartyHolder', UIParent)
+	UF.holders.party:SetPoint('CENTER')
+	local member = make_unit_frame('SaftUI_PartyUnitButton1', 'party', { 'Health', 'Power', 'Castbar' }, UF.groups.party)
+	member.is_group_unit = true
+	member:SetPoint('CENTER', UIParent)
+	P.party.theme = 'theme'
+	P.party.power.enable = true
+	UF:UpdateUnitFrame(member)
+	UF.testGroups.party = true
+	UF:UpdateGroupPreview('party')
+	local preview = UF.previews.party and UF.previews.party.frames[1]
+	if check(preview ~= nil, 'the party previews show') then
+		eq(preview.Health:GetStatusBarTexture():GetAtlas(), 'RaidFrame-Hp-Fill', 'preview health')
+		eq(preview.Power:GetStatusBarTexture():GetAtlas(), '_RaidFrame-Resource-Fill', 'preview power')
+		eq(preview.Power.bg:GetAtlas(), '_RaidFrame-Resource-Background', 'preview power bg')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)

@@ -83,9 +83,6 @@ end
 local function UpdateConfig(unitframe)
     local additionalPower = unitframe.AdditionalPower
 
-	additionalPower:SetStatusBarTexture(st.BLANK_TEX)
-	additionalPower.bg:SetTexture(st.BLANK_TEX)
-
 	if unitframe.config.additionalpower
 			and unitframe.config.additionalpower.enable
 			and unitframe.config.additionalpower.manaAsPrimary

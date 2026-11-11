@@ -726,7 +726,7 @@ local function FillPreviewFrame(frame, member)
 	if powerConfig.enable then
 		local powerValue = (member.dead or member.offline) and 0 or member.power
 		-- SaftUI's power PostUpdate puts these textures back on every update.
-		UF:SetBarFill(power, power.barFill)
+		UF:RedrawBarFill(power)
 		power:SetMinMaxValues(0, 1)
 		power:SetValue(powerValue)
 

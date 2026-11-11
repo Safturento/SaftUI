@@ -45,7 +45,7 @@ local function PostUpdatePower(power, unit, current, min, max)
 		power:SetValue(1)
 	end
 
-	UF:SetBarFill(power, power.barFill)
+	UF:RedrawBarFill(power)
 end
 
 -- oUF calls this after it recolors the bar (any color flag), so a custom color

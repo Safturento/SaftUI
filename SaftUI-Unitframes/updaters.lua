@@ -239,24 +239,36 @@ end
 
 -- Draws a bar's fill and the background behind it: fill's art, tiled as it
 -- says (a UF.BlizzardFill), or the flat texture (st.BLANK_TEX unless flat is
--- given) with no tiling. element.barFill is what UpdateStatusBarElement last
--- drew, which a bar's own updates (they put the flat texture back) pass again.
+-- given) with no tiling. What was drawn is kept on the element, and a call
+-- that would draw the same does nothing: a bar's own updates (power's every
+-- tick) call this, and setting the art again after oUF's SetValue could
+-- reset the fill's texture coordinates.
 function UF:SetBarFill(element, fill, flat)
-    local bar
-    if fill then
-        bar = element:GetStatusBarTexture()
-        bar:SetAtlas(fill.fill)
-        element.bg:SetAtlas(fill.bg)
-    else
-        element:SetStatusBarTexture(flat or st.BLANK_TEX)
-        bar = element:GetStatusBarTexture()
-        element.bg:SetTexture(st.BLANK_TEX)
-    end
-    local h, v = fill and fill.tileH or false, fill and fill.tileV or false
-    bar:SetHorizTile(h)
-    bar:SetVertTile(v)
-    element.bg:SetHorizTile(h)
-    element.bg:SetVertTile(v)
+	flat = not fill and (flat or st.BLANK_TEX) or nil
+	if element.drawnFill == (fill or false) and element.drawnFlat == flat then return end
+	element.drawnFill, element.drawnFlat = fill or false, flat
+	local bar = element:GetStatusBarTexture()
+	if fill then
+		bar:SetAtlas(fill.fill)
+		if element.bg then element.bg:SetAtlas(fill.bg) end
+	else
+		element:SetStatusBarTexture(flat)
+		bar = element:GetStatusBarTexture()
+		if element.bg then element.bg:SetTexture(st.BLANK_TEX) end
+	end
+	local h, v = fill and fill.tileH or false, fill and fill.tileV or false
+	bar:SetHorizTile(h)
+	bar:SetVertTile(v)
+	if element.bg then
+		element.bg:SetHorizTile(h)
+		element.bg:SetVertTile(v)
+	end
+end
+
+-- Draws again what UpdateStatusBarElement last drew: for a bar's own updates
+-- (power's), which used to put the flat texture back every time.
+function UF:RedrawBarFill(element)
+	UF:SetBarFill(element, element.barFill, element.barFlat)
 end
 
 function UF:UpdateStatusBarElement(element, configOverride)
@@ -267,7 +279,8 @@ function UF:UpdateStatusBarElement(element, configOverride)
     end
 
     element.barFill = UF.BlizzardFill(element, config)
-    UF:SetBarFill(element, element.barFill, st:GetStatusBarTexture(config.texture))
+    element.barFlat = st:GetStatusBarTexture(config.texture)
+    UF:SetBarFill(element, element.barFill, element.barFlat)
     element:SetReverseFill(config.reverse_fill or false)
 	element:SetOrientation(config.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
