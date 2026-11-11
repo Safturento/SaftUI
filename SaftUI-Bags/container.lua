@@ -293,10 +293,32 @@ function INV:GetNumContainerSlots(bagIds)
 	return empty, total
 end
 
+-- The loading bar and the footer's count of used slots.
+local function ShowSlotCounts(self, container, numItems, numLoading)
+	container:SetLoading(numItems - numLoading, numItems)
+
+	if container.UpdateContainerSlots then
+		container:UpdateContainerSlots()
+	else
+		local empty, total = self:GetNumContainerSlots(container.bag_ids)
+			container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
+	end
+end
+
 function INV:UpdateContainer(id, updateLayout)
 	local container = self.containers[id]
 	if not container and container:IsShown() then return end
-	if id == 'bag' then self:EnsureEmptySlotPool() end
+	self:EnsureEmptySlotPool(id)
+
+	-- One bag, Multi bag and Rows lay their sections out on every update.
+	local view = self:GetLaidOutView(container)
+	if view ~= 'compact' then
+		local sections, numItems, numLoading = self:GetViewSections(id, view)
+		self:LayoutSections(container, sections)
+		ShowSlotCounts(self, container, numItems, numLoading)
+		return
+	end
+
 	local sortedInventory, numItems, numLoading = self:GetSortedInventory(id)
 
 	for name, items in pairs(sortedInventory) do
@@ -318,14 +340,7 @@ function INV:UpdateContainer(id, updateLayout)
 	end
 	container.layoutPending = numLoading > 0
 
-	container:SetLoading(numItems - numLoading, numItems)
-
-	if container.UpdateContainerSlots then
-		container:UpdateContainerSlots()
-	else
-		local empty, total = self:GetNumContainerSlots(container.bag_ids)
-			container.footer.slots:SetFormattedText('%d/%d', total-empty, total)
-	end
+	ShowSlotCounts(self, container, numItems, numLoading)
 end
 
 -- The shortest column and its index.
@@ -564,6 +579,12 @@ end
 
 function INV:UpdateContainerLayout(id)
 	local container = self.containers[id]
+	local view = self:GetLaidOutView(container)
+	if view ~= 'compact' then
+		self:LayoutSections(container, (self:GetViewSections(id, view)))
+		return
+	end
+
 	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
 
 	if container.search then
@@ -628,4 +649,111 @@ function INV:UpdateContainerLayout(id)
 	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
 	container:SetWidth(container.scrollFrame:GetWidth() + self.config.padding * 2)
 	self:SyncAnchorSize(id)
+end
+
+--[[
+	One bag, Multi bag and Rows lay a window out in sections (INV:GetViewSections),
+	each a category frame as wide as Compact's columns together (INV:LineSlots;
+	UpdateCategory and UpdateCurrencyCategory size it), stacked top to bottom in
+	the scroll child, spacing apart. Each frame is
+	anchored to the scroll child at its own offset, never to the frame above it
+	(as Compact's columns are, see INV:UpdateConfig). Rows uses the window's
+	category frames, and the Currencies section the bag window's Currencies; One
+	bag's and Multi bag's sections have frames of their own ('view:<key>', made
+	by INV:CreateCategory). The window's other category frames, and Compact's
+	columns, are hidden. The window is the line's width and as tall as Compact
+	would make it for the same content; while it is open it doesn't shrink
+	(container.heldSize), and the items close up within their sections. Closing
+	the window or switching views releases it (INV:ReleaseLayout).
+]]
+function INV:LayoutSections(container, sections)
+	local id = container.id
+	local config, spacing = self.config, self.config.buttonspacing
+	local lineSlots = self:LineSlots(id, self:GetLaidOutView(container))
+	local lineWidth = (self:GetButtonWidth() + spacing) * lineSlots - spacing
+	local child = container.scrollFrame.ScrollChild
+
+	local inSections, y = {}, 0
+	for _, section in ipairs(sections) do
+		local name = self:SectionFrameName(section)
+		if section.kind == 'currencies' then
+			-- Shown or hidden by its own setting (filters.categories.bag.Currencies).
+			self:UpdateCurrencyCategory(container.filterButton:GetChecked(), lineSlots)
+		else
+			self:UpdateCategory(id, name, section.items, section.title, lineSlots)
+		end
+		local frame = container.categories[name]
+		if frame then
+			inSections[frame] = true
+			if frame:IsShown() then
+				frame:ClearAllPoints()
+				frame:SetPoint('TOPLEFT', child, 'TOPLEFT', 0, -y)
+				y = y + frame:GetHeight() + spacing
+			end
+		end
+	end
+	for _, frame in pairs(container.categories) do
+		if not inSections[frame] then self:FlushCategory(frame) end
+	end
+	for _, column in pairs(container.columns) do column:Hide() end
+
+	local height = container.header:GetHeight() + container.footer:GetHeight() + config.padding * 2
+	if container.search then
+		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', config.padding, -config.padding)
+		height = height + container.search:GetHeight()
+	end
+
+	local contentHeight = max(0, y - spacing)
+	local maxRows = config[id].maxRows
+	local visibleHeight = min(contentHeight + config.padding, maxRows * (self:GetButtonHeight() + spacing) - spacing)
+	if container:IsShown() then
+		local held = container.heldSize
+		if held and held.height then visibleHeight = max(visibleHeight, held.height) end
+		container.heldSize = { height = visibleHeight }
+	else
+		container.heldSize = nil
+	end
+
+	container.scrollFrame:SetSize(lineWidth, visibleHeight)
+	container.scrollFrame:SetContentSize(lineWidth, contentHeight)
+	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
+	container:SetWidth(lineWidth + config.padding * 2)
+	self:SyncAnchorSize(id)
+end
+
+-- Every window whose view was switched in combat (see INV:ApplyView).
+local function ApplyPendingViews()
+	for id, container in pairs(INV.containers) do
+		if INV:GetLaidOutView(container) ~= INV:GetView(id) then INV:ApplyView(id) end
+	end
+end
+
+--[[
+	Lays a window out in the view its settings name (config[id].view), after a
+	switch: every slot it has made is anchored again for that view's line
+	(INV:LineSlots), Compact's columns come back for Compact, and the window is
+	laid out afresh, its held layout and size released. Slots are Blizzard's item
+	buttons and the category frames hold them, so in combat nothing is touched:
+	the switch waits for the end of combat (one pending run, for every window
+	switched in the fight), and until then the window's updates keep the view it
+	is laid out in.
+]]
+function INV:ApplyView(id)
+	if st:QueueAfterCombat('InventoryView', ApplyPendingViews) then return end
+	local container = self.containers[id]
+	if not container then return end
+
+	local view = self:GetView(id)
+	container.view = view
+	self:ReleaseLayout(container)
+	local lineSlots = self:LineSlots(id, view)
+	for _, category in pairs(container.categories) do
+		for _, slot in ipairs(category.slots) do
+			self:SetSlotPosition(slot, category, container, lineSlots)
+		end
+	end
+	if view == 'compact' then
+		for _, column in ipairs(container.columns) do column:Show() end
+	end
+	self:UpdateContainer(id, true)
 end

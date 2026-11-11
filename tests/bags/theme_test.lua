@@ -15,8 +15,8 @@
 -- edit mode (core/config_helpers.lua), so st:ThemeChanged runs the real
 -- Config:UpdateConfig and so the bags' INV:UpdateConfig; Core's Utilities
 -- module; the bags' config.lua, inventory.lua, currencies.lua, category.lua,
--- container.lua, containers/warbandbank.lua, slot.lua, movers.lua and
--- options.lua. Each case starts from a fresh world, since cases change the
+-- views.lua, container.lua, containers/warbandbank.lua, slot.lua, movers.lua
+-- and options.lua. Each case starts from a fresh world, since cases change the
 -- theme.
 --
 -- Made by hand, for Blizzard templates and API the stubs don't have:
@@ -54,7 +54,7 @@ local function fresh()
 	_G.StackSplitFrameOkay_Click = function() end
 	Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
-	for _, file in ipairs({ 'inventory', 'currencies', 'category', 'container',
+	for _, file in ipairs({ 'inventory', 'currencies', 'category', 'views', 'container',
 		'containers/warbandbank', 'slot', 'movers', 'options' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end

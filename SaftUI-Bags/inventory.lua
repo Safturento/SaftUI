@@ -153,8 +153,11 @@ function INV:UpdateConfig(id)
 	end
 
 	local container = self.containers[id]
-	-- New settings re-pack the window (container.lua, HoldLayout).
+	-- New settings re-pack the window (container.lua, HoldLayout), in the view
+	-- they name. Out of combat (the profile update waits for its end), so the
+	-- slots restyled after this are anchored for that view's line.
 	self:ReleaseLayout(container)
+	container.view = self:GetView(id)
 
 	-- The window is anchored to its mover's anchor frame (see movers.lua).
 	self:ApplyPosition(id)

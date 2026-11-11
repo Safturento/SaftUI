@@ -2,16 +2,22 @@ local st = SaftUI
 local INV = st:GetModule('Inventory')
 local Util = st:GetModule('Utilities')
 
-function INV:SetSlotPosition(slot, categoryFrame, container)
-	local slotID = slot.id
+-- Anchors a slot in its category frame, in lines of lineSlots slots (by
+-- default the line of the view the window is laid out in, INV:LineSlots): the
+-- first under the frame's title (at its top when it has none), the first of
+-- each line under the one above, the rest after the one before.
+function INV:SetSlotPosition(slot, categoryFrame, container, lineSlots)
+	lineSlots = lineSlots or self:LineSlots(container.id, self:GetLaidOutView(container))
+	local spacing = self.config.buttonspacing
 
 	slot:ClearAllPoints()
 	if slot.id == 1 then
-		slot:SetPoint('TOPLEFT', categoryFrame, 0, -(self.config.categoryTitleHeight + self.config.buttonspacing))
-	elseif slot.id % self.config[container.id].perrow == 1 then
-		slot:SetPoint('TOP', categoryFrame.slots[slot.id-self.config[container.id].perrow], 'BOTTOM', 0, -self.config.buttonspacing)
+		local top = categoryFrame.untitled and 0 or self.config.categoryTitleHeight + spacing
+		slot:SetPoint('TOPLEFT', categoryFrame, 0, -top)
+	elseif (slot.id - 1) % lineSlots == 0 then
+		slot:SetPoint('TOP', categoryFrame.slots[slot.id - lineSlots], 'BOTTOM', 0, -spacing)
 	else
-		slot:SetPoint('LEFT', categoryFrame.slots[slot.id-1], 'RIGHT', self.config.buttonspacing, 0)
+		slot:SetPoint('LEFT', categoryFrame.slots[slot.id - 1], 'RIGHT', spacing, 0)
 	end
 end
 
@@ -288,7 +294,9 @@ function INV:CreateSlot(container, categoryName)
     assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 
     local bagName = container:GetName()
-    slotName = bagName..'_'..(gsub(categoryName, '(%A)', ''))..'_Slot'..slotID
+    -- Letters and digits: One bag's and Multi bag's frames differ by bag ID
+    -- ('view:bag1', 'view:bag2'), and slot names must not repeat.
+    slotName = bagName..'_'..(gsub(categoryName, '(%W)', ''))..'_Slot'..slotID
     slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
     if not slot.icon then st:Error(slotName.." is missing an icon") end
 

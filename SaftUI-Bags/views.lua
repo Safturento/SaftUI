@@ -6,6 +6,52 @@ local INV = st:GetModule('Inventory')
 -- ordered sections each view lays out. Nothing here draws. Compact keeps
 -- INV:GetSortedInventory.
 
+local VIEWS = { onebag = true, multibag = true, compact = true, rows = true }
+
+-- The view a window's settings name; Compact for anything else.
+function INV:GetView(id)
+	local view = self.config[id] and self.config[id].view
+	return VIEWS[view] and view or 'compact'
+end
+
+-- The view a window is laid out in. It follows its settings (INV:ApplyView),
+-- except while a switch made in combat waits for the end of combat.
+function INV:GetLaidOutView(container)
+	return container.view or self:GetView(container.id)
+end
+
+-- How many slots a line of a window's view holds: a Compact column's perrow,
+-- or the whole width of Compact's columns (perrow * maxColumns) in the other
+-- views, so a window is as wide in every view.
+function INV:LineSlots(id, view)
+	local config = self.config[id]
+	if view == 'compact' then return config.perrow end
+	return config.perrow * config.maxColumns
+end
+
+-- The name of the category frame a section is laid out in: Rows' categories
+-- and the Currencies section have the window's category frames of their name;
+-- One bag's and Multi bag's sections have frames of their own, 'view:<key>'.
+function INV:SectionFrameName(section)
+	if section.kind == 'category' or section.kind == 'currencies' then return section.key end
+	return 'view:' .. section.key
+end
+
+-- In combat no slot button can be made (INV:CreateSlot), so with Every slot
+-- ('all') a section shows no more free slots than its frame has buttons for
+-- after its numItems items, as Compact does (INV:GetSortedInventory), and the
+-- rest show once combat ends (INV:QueueEmptySlotTopUp). Trims empties in place.
+local function FitEmptySlots(self, id, name, numItems, empties)
+	if self:GetEmptySlotMode(id) ~= 'all' or not InCombatLockdown() then return empties end
+	local frame = self.containers[id].categories[name]
+	local room = max(0, (frame and #frame.slots or 0) - numItems)
+	if #empties > room then
+		for i = #empties, room + 1, -1 do empties[i] = nil end
+		self:QueueEmptySlotTopUp()
+	end
+	return empties
+end
+
 -- The order categories run in, as a number. Sets come first, then
 -- INV.filters.categories in their order, then the names no rule has (the
 -- reagent bank's subclasses, "Other"), then Miscellaneous, then Empty Slots.
@@ -115,9 +161,11 @@ end
 
 -- A section of a bag window: its items in priority order, then its empty slots.
 local function BagSection(self, id, key, title, kind, bags, categoryOf, mode)
-	local items = self:SortByPriority(ItemsOf(bags), categoryOf)
-	for _, info in ipairs(self:GetEmptySlots(id, bags, mode)) do tinsert(items, info) end
-	return { key = key, title = title, items = items, kind = kind }
+	local section = { key = key, title = title, items = self:SortByPriority(ItemsOf(bags), categoryOf), kind = kind }
+	local empties = FitEmptySlots(self, id, self:SectionFrameName(section), #section.items,
+		self:GetEmptySlots(id, bags, mode))
+	for _, info in ipairs(empties) do tinsert(section.items, info) end
+	return section
 end
 
 -- The sections of a window in a view, in the order they are laid out, and how
@@ -126,6 +174,8 @@ end
 -- 'currencies', and title is false for no heading. Reads the same items as
 -- INV:GetSortedInventory, with the window's stackItems and Empty slots
 -- settings. The view is 'onebag', 'multibag' or 'rows'; Compact has no sections.
+-- Rows leaves out the categories hidden in the profile (filters.categories[id]),
+-- as Compact does; One bag and Multi bag show every item.
 function INV:GetViewSections(id, view)
 	local container = self.containers[id]
 	local mode = self:GetEmptySlotMode(id)
@@ -144,16 +194,21 @@ function INV:GetViewSections(id, view)
 			byCategory[category] = byCategory[category] or {}
 			tinsert(byCategory[category], item)
 		end
+		local filters = self.config.filters
+		local hidden = filters and filters.categories and filters.categories[id] or {}
 		local order = {}
-		for category in pairs(byCategory) do tinsert(order, category) end
+		for category in pairs(byCategory) do
+			if not hidden[category] then tinsert(order, category) end
+		end
 		table.sort(order, function(a, b) return self:CategoryBefore(a, b) end)
 		for _, category in ipairs(order) do
 			local items = byCategory[category]
 			table.sort(items, self.CompareItems)
 			tinsert(sections, { key = category, title = ('%s (%d)'):format(category, #items), items = items, kind = 'category' })
 		end
-		local empties = self:GetEmptySlotsByKind(id, bags, mode)
-		if #empties > 0 then
+		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
+			and FitEmptySlots(self, id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
+		if empties and #empties > 0 then
 			local shown = 0
 			for _, info in ipairs(empties) do shown = shown + (info.count or 1) end
 			tinsert(sections, {

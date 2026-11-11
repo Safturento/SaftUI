@@ -184,29 +184,49 @@ function INV:GetEmptySlotMode(id)
 	if mode == 'grouped' or mode == 'all' then return mode end
 end
 
--- Makes sure the Empty Slots category has a button for every bag slot when the
--- setting is 'all' (Every slot). Buttons made in combat are flagged as broken (see
--- CreateSlot), and a fight can free any number of slots, so they are all made
--- ahead of time, out of combat. Runs on every bag update, so a bigger bag
--- being equipped is covered too.
-function INV:EnsureEmptySlotPool()
-	local container = self.containers.bag
-	if not container or self.config.bag.emptySlots ~= 'all' then return end
+-- In combat: once combat ends, makes the empty slot buttons that are missing
+-- and updates the windows again (one pending run). Returns true then; out of
+-- combat it does nothing and returns false.
+function INV:QueueEmptySlotTopUp()
+	return st:QueueAfterCombat('InventoryEmptySlotPool', function()
+		INV:EnsureEmptySlotPool()
+		INV:QueueUpdate(true)
+	end)
+end
+
+-- Makes sure a window's Empty Slots category (every window's, with no id) has
+-- a button for every bag slot when its setting is 'all' (Every slot) and its
+-- view shows that category (Compact and Rows). Buttons made in combat are
+-- flagged as broken (see CreateSlot), and a fight can free any number of
+-- slots, so they are all made ahead of time, out of combat. Runs on every bag
+-- update, so a bigger bag being equipped is covered too. One bag's and Multi
+-- bag's sections hold their free slots with their items, which a fight only
+-- swaps, so the buttons UpdateCategory makes out of combat cover them.
+function INV:EnsureEmptySlotPool(id)
+	if not id then
+		for windowId in pairs(self.containers) do self:EnsureEmptySlotPool(windowId) end
+		return
+	end
+	local container = self.containers[id]
+	if not container or self:GetEmptySlotMode(id) ~= 'all' then return end
+	local view = self:GetLaidOutView(container)
+	if view ~= 'compact' and view ~= 'rows' then return end
 
 	local category = container.categories[self.EMPTY_SLOTS_CATEGORY]
-	if not category then return end
-
 	local total = 0
 	for _, bagID in pairs(container.bag_ids) do
 		total = total + C_Container.GetContainerNumSlots(bagID)
 	end
-	if #category.slots >= total then return end
+	if (category and #category.slots or 0) >= total then return end
 
-	if st:QueueAfterCombat('InventoryEmptySlotPool', function()
-		INV:EnsureEmptySlotPool()
-		INV:QueueUpdate(true)
-	end) then return end
+	if self:QueueEmptySlotTopUp() then return end
 
+	-- The bag window makes its category at login (InitializeAllCategories); the
+	-- bank windows here. Hidden until an update has free slots for it.
+	if not category then
+		category = self:CreateCategory(id, self.EMPTY_SLOTS_CATEGORY)
+		category:Hide()
+	end
 	for _ = #category.slots + 1, total do
 		self:CreateSlot(container, self.EMPTY_SLOTS_CATEGORY)
 	end
@@ -330,11 +350,12 @@ function INV:GetSortedInventory(id)
 	local mode = self:GetEmptySlotMode(id)
 	if mode then
 		local empties = self:GetEmptySlotsByKind(id, bags, mode)
-		-- In combat no button can be made, so show only as many as exist; the
-		-- queued pool top-up asks for a full update when combat ends.
-		local made = mode == 'all' and self.containers[id].categories[self.EMPTY_SLOTS_CATEGORY]
-		if made and InCombatLockdown() then
-			for i = #empties, #made.slots + 1, -1 do empties[i] = nil end
+		-- In combat no button can be made, so show only as many as exist (none
+		-- before the category is made); the queued pool top-up asks for a full
+		-- update when combat ends.
+		if mode == 'all' and InCombatLockdown() then
+			local made = self.containers[id].categories[self.EMPTY_SLOTS_CATEGORY]
+			for i = #empties, (made and #made.slots or 0) + 1, -1 do empties[i] = nil end
 		end
 		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
 	end
@@ -393,11 +414,21 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	return categoryFrame
 end
 
-function INV:UpdateCategory(id, categoryName, categoryItems)
+-- Fills a category frame with its items (made if it isn't), shows it and sizes
+-- it. title is its header's text: by default its name and how many it holds
+-- ("Armor (3)"), and false for none, the header hidden and taking no height.
+-- lineSlots is how many slots a line holds, by default the line of the view
+-- the window is laid out in (INV:LineSlots).
+function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	local container = self.containers[id]
+	lineSlots = lineSlots or self:LineSlots(id, self:GetLaidOutView(container))
 
 	local categoryFrame = container.categories[categoryName] or self:CreateCategory(id, categoryName)
 	categoryFrame:Show()
+	-- Set before any slot is made: INV:SetSlotPosition puts the first slot of
+	-- an untitled frame at its top.
+	categoryFrame.untitled = title == false
+	categoryFrame.header:SetShown(title ~= false)
 
 	-- Hide any visible icons that are no longer in use
 	for i = #categoryItems + 1, #categoryFrame.slots do
@@ -410,7 +441,11 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 		numShown = 0
 		for _, item in pairs(categoryItems) do numShown = numShown + (item.count or 1) end
 	end
-	categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, numShown)
+	if title then
+		categoryFrame.header.text:SetText(title)
+	elseif title == nil then
+		categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, numShown)
+	end
 
 	for i, item in pairs(categoryItems) do
 		local slot = categoryFrame.slots[i] or self:CreateSlot(container, categoryName)
@@ -425,10 +460,16 @@ function INV:UpdateCategory(id, categoryName, categoryItems)
 		end
 	end
 
-	local numRows = math.ceil(#categoryItems/self.config[id].perrow)
+	local spacing = self.config.buttonspacing
+	local numRows = math.ceil(#categoryItems / lineSlots)
 	categoryFrame.numRows = numRows
-	categoryFrame:SetHeight((self:GetButtonHeight() + self.config.buttonspacing) * numRows + self.config.categoryTitleHeight)
-	categoryFrame:SetWidth((self:GetButtonWidth() + self.config.buttonspacing) * self.config[id].perrow - self.config.buttonspacing)
+	local rowsHeight = (self:GetButtonHeight() + spacing) * numRows
+	if title == false then
+		categoryFrame:SetHeight(max(0, rowsHeight - spacing))
+	else
+		categoryFrame:SetHeight(rowsHeight + self.config.categoryTitleHeight)
+	end
+	categoryFrame:SetWidth((self:GetButtonWidth() + spacing) * lineSlots - spacing)
 end
 
 function INV:FlushCategory(category)

@@ -234,10 +234,15 @@ function INV:UpdateCurrencyBorders()
     end
 end
 
-function INV:UpdateCurrencyCategory(forceShow)
+-- Fills the bag window's Currencies category, in lines of lineSlots slots, and
+-- sizes it to them: by default the line of the view the bag window is laid out
+-- in (INV:LineSlots), whichever window's update calls it.
+function INV:UpdateCurrencyCategory(forceShow, lineSlots)
     --C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
-    local category = self.containers.bag.categories.Currencies
+    local bag = self.containers.bag
+    local category = bag.categories.Currencies
     if not category then return end
+    lineSlots = lineSlots or self:LineSlots('bag', self:GetLaidOutView(bag))
 
     category:SetShown(forceShow or not INV.config.filters.categories.bag.Currencies)
     --TODO: We can definitely be smarter about updating but this is fine for now
@@ -265,7 +270,7 @@ function INV:UpdateCurrencyCategory(forceShow)
 
         self:SetCurrencyBorder(slot)
 
-        if i % self.config.bag.perrow == 1 then
+        if (i - 1) % lineSlots == 0 then
             slot:SetPoint('TOPLEFT', prevRow, 'BOTTOMLEFT', 0, -self.config.buttonspacing)
             prevRow = slot
         else
@@ -274,8 +279,9 @@ function INV:UpdateCurrencyCategory(forceShow)
         prev = slot
     end
 
-    category.numRows = math.ceil(#currencyItems/self.config.bag.perrow)
+    category.numRows = math.ceil(#currencyItems / lineSlots)
     category:SetHeight(
             (self:GetButtonHeight() + self.config.buttonspacing) * category.numRows + self.config.categoryTitleHeight
     )
+    category:SetWidth((self:GetButtonWidth() + self.config.buttonspacing) * lineSlots - self.config.buttonspacing)
 end
