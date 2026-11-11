@@ -4,7 +4,8 @@ local INV = st:GetModule('Inventory')
 
 -- The title bar's view buttons: the gap left visible between two neighbouring
 -- borders (see INV:ViewButtonGaps), and how far in from the header's right
--- edge the close button sits (st:CreateHeader).
+-- edge the close button sits (st:CreateHeader), or the view buttons while the
+-- close button is in the metal's socket (st:CloseButtonInSocket).
 local VISIBLE_GAP, CLOSE_INSET = 3, 10
 
 function INV:GetContainer(containerName)
@@ -845,18 +846,23 @@ function INV:ViewButtonGaps()
 end
 
 -- Puts the view buttons (and the Edit check button before them) the
--- INV:ViewButtonGaps apart. A theme switch changes the inset, so
--- INV:UpdateConfig(id) runs it again.
+-- INV:ViewButtonGaps apart, lined up from the close button, or from the
+-- header's right edge, CLOSE_INSET in, while the close button sits in the
+-- metal's socket above the header (st:CloseButtonInSocket). A theme switch
+-- changes the inset and the socket, so INV:UpdateConfig(id) runs it again.
 function INV:SpaceViewButtons(container)
 	local close = st:GetCloseButton(container)
 	if not (container.viewButtons and close) then return end
 	local buttonGap, closeGap = self:ViewButtonGaps()
-	local right, gap = close, closeGap
+	local right, side, gap = close, 'LEFT', closeGap
+	if st:CloseButtonInSocket(container) then
+		right, side, gap = container.header, 'RIGHT', CLOSE_INSET
+	end
 	for i = #self.viewIds, 1, -1 do
 		local button = container.viewButtons[self.viewIds[i]]
 		button:ClearAllPoints()
-		button:SetPoint('RIGHT', right, 'LEFT', -gap, 0)
-		right, gap = button, buttonGap
+		button:SetPoint('RIGHT', right, side, -gap, 0)
+		right, side, gap = button, 'LEFT', buttonGap
 	end
 	local filterButton = container.header and container.header.filterButton
 	if filterButton then
@@ -945,13 +951,18 @@ end)
 
 -- The narrowest a window can be with its title between the view buttons and
 -- the window's left edge: the title is centered, so the room the buttons and
--- the close button take on the right is also kept clear on the left.
+-- the close button take on the right is also kept clear on the left. While
+-- the close button sits in the metal's socket above the header, it and its
+-- gap take none (INV:SpaceViewButtons).
 function INV:HeaderMinWidth(container)
 	local close = st:GetCloseButton(container)
 	if not (container.viewButtons and close and container.title) then return 0 end
 	local count = #self.viewIds
 	local size = container.header:GetHeight() - 8
 	local buttonGap, closeGap = self:ViewButtonGaps()
-	local extent = CLOSE_INSET + close:GetWidth() + closeGap + count * size + (count - 1) * buttonGap
+	local extent = CLOSE_INSET + count * size + (count - 1) * buttonGap
+	if not st:CloseButtonInSocket(container) then
+		extent = extent + close:GetWidth() + closeGap
+	end
 	return 2 * (extent + closeGap) + container.title:GetStringWidth()
 end

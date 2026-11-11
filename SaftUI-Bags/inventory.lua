@@ -85,7 +85,7 @@ function INV:SelectBankCategory(clickedHeader)
                 st:SetBorderColor(container.backdrop, st.config.profile.colors.button.blue:GetRGB())
             end
         else
-            st:SetBackdrop(container, self.config.theme, self.config.background, 'panel')
+            st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
         end
     end
 end
@@ -159,7 +159,6 @@ function INV:UpdateConfig(id)
 	self:ReleaseLayout(container)
 	container.view = self:GetView(id)
 	self:UpdateViewButtons(id) -- a profile switch changes the view
-	self:SpaceViewButtons(container) -- and a theme switch the border's width
 
 	-- The window is anchored to its mover's anchor frame (see movers.lua).
 	self:ApplyPosition(id)
@@ -209,7 +208,13 @@ function INV:UpdateConfig(id)
 		st:StyleEditBox(container.search, self.config.theme, self.config.background, self.config.fonts.titles)
 	end
 
-	st:SetBackdrop(container, self.config.theme, self.config.background, 'panel')
+	st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
+	-- The bags' own Theme can put the window in Blizzard's metal or take it
+	-- out with no theme redraw, so the close button follows it into the
+	-- socket or out here; then the view buttons follow the close button, and
+	-- a theme switch the border's width.
+	st:UpdateCloseButton(container)
+	self:SpaceViewButtons(container)
 	self:SyncAnchorSize(id)
 
 	-- A window placed relative to this one (typed in its Position) can only

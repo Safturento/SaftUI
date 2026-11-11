@@ -88,7 +88,7 @@ test("window headers and footers follow SaftUI's theme, not their window's", fun
 
 	-- st:CreatePanel: panels.theme and panels.background, as a window.
 	local p = st:CreatePanel('Theme test', 200, 100)
-	eq(drawn(p), 'theme,theme,panel', "a panel is drawn with panels.theme and panels.background, as a window")
+	eq(drawn(p), 'theme,theme,window', "a panel is drawn with panels.theme and panels.background, as a window")
 	eq(fill(p.backdrop), '0.12,0.12,0.12,0.90', "SaftUI's theme: Thick's background at the opacity")
 	eq(offset(p.backdrop, 'TOPLEFT'), '-2.00,2.00', "Thick's 2px out")
 

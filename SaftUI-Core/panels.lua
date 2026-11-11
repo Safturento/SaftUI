@@ -4,10 +4,65 @@ local st = SaftUI
 st.headers = {}
 local closeButtons = setmetatable({}, { __mode = 'k' }) -- the buttons st:CreateCloseButton made
 local closeOf = setmetatable({}, { __mode = 'k' }) -- frame -> its button (nothing is written onto the frame: it may be Blizzard's)
+local closeDraws = setmetatable({}, { __mode = 'k' }) -- button -> its Draw (st:CreateCloseButton)
+local windowOf = setmetatable({}, { __mode = 'k' }) -- button -> the window whose header it sits in (st:CreateHeader)
+local inSocket = setmetatable({}, { __mode = 'k' }) -- button -> whether it sits in its window's metal socket
+local headerOf = setmetatable({}, { __mode = 'k' }) -- window -> the header st:CreateHeader made it; only a key
+
+-- How far in from the header's right edge SaftUI's close button sits.
+local CLOSE_INSET = 10
 
 -- The close button st:CreateCloseButton made for frame, or nil.
 function st:GetCloseButton(frame)
 	return closeOf[frame]
+end
+
+-- Whether frame's close button (st:CreateCloseButton) sits in the socket of
+-- the metal frame drew, rather than in its header: frame is a window
+-- (st:CreateHeader made it a header) drawn in Blizzard's metal (st:DrawnKind
+-- window, st:DrawnTheme blizzard), and SaftUI's theme gives close buttons
+-- Blizzard's look. Under SaftUI's Thick or Thin the button stays in the header
+-- whatever the window's own Theme: close buttons follow SaftUI's theme, as
+-- header strips do.
+function st:CloseButtonInSocket(frame)
+	local button = closeOf[frame]
+	return button ~= nil and inSocket[button] == true
+end
+
+-- Whether a window's close button belongs in its metal's socket now.
+local function WantsSocket(window)
+	return st:IsBlizzardLook('theme', 'theme') and st:DrawnKind(window) == 'window'
+		and st:DrawnTheme(window) == 'blizzard'
+end
+
+-- Puts a close button that sits in a window's header in the metal's socket,
+-- at Blizzard's spot from TOPRIGHT of the window's drawn frame
+-- (st.ThemeArt.Close), or back at the header's right, when that changed. A
+-- button in no header (the /sui window's, an item tooltip's) stays where its
+-- caller put it.
+local function PlaceCloseButton(button)
+	local window = windowOf[button]
+	if not window then return end
+	local socket = WantsSocket(window) == true
+	if socket == inSocket[button] then return end
+	button:ClearAllPoints()
+	if socket then
+		local close = st.ThemeArt.Close()
+		button:SetPoint('TOPRIGHT', st:DrawnFrame(window), 'TOPRIGHT', close.x, close.y)
+	else
+		button:SetPoint('RIGHT', headerOf[window], 'RIGHT', -CLOSE_INSET, 0)
+	end
+	inSocket[button] = socket
+end
+
+-- Gives frame's close button (st:CreateCloseButton) SaftUI's theme's look, and
+-- on a window puts it in the metal's socket or back in the header
+-- (st:CloseButtonInSocket). Every recolor and redraw does this for every close
+-- button (st:KeepOwnColors), a profile switch among them. A module that draws
+-- its window again with a Theme of its own (the bags' Theme) calls it after.
+function st:UpdateCloseButton(frame)
+	local button = closeOf[frame]
+	if button then closeDraws[button](button) end
 end
 
 local headerTitles = {} -- header -> the title st:CreateHeader put on it
@@ -53,16 +108,20 @@ function st:CreateHeader(frame, title, close_button)
 		headerTitles[header] = frame.title
 	end
 
+	headerOf[frame] = header
+
 	-- A button from st:CreateCloseButton is taken without being asked.
 	if not close_button and closeOf[frame] then close_button = closeOf[frame] end
 	if close_button then frame.close_button = close_button end
 	if frame.close_button and closeButtons[frame.close_button] then
-		-- SaftUI's own button already has its look; it only sits in the header.
+		-- SaftUI's own button already has its look; it sits in the header, or
+		-- in the socket of the metal frame wears (st:CloseButtonInSocket).
 		local button = frame.close_button
 		button:ClearAllPoints()
 		button:SetFrameLevel(header:GetFrameLevel()+4)
-		button:SetPoint('RIGHT', header, 'RIGHT', -10, 0)
-		button:SetSize(unpack(st.CLOSE_X_BUTTON_SIZE))
+		button:SetPoint('RIGHT', header, 'RIGHT', -CLOSE_INSET, 0)
+		windowOf[button], inSocket[button] = frame, false
+		closeDraws[button](button)
 	elseif frame.close_button then
 		-- A button that isn't SaftUI's (Blizzard's) keeps the look it has always had.
 		st:StripTextures(frame.close_button)
@@ -112,16 +171,52 @@ function st:CreateFooter(frame)
 	table.insert(st.footers, footer)
 end
 
+-- Blizzard's close button's textures (st.ThemeArt.Close), made the first time
+-- a close button takes Blizzard's look and kept as its state textures: button
+-- -> { normal, pushed, highlight, disabled }. Under SaftUI's own look they
+-- show nothing.
+local closeArt = setmetatable({}, { __mode = 'k' })
+
+local CLOSE_STATES = {
+	{ key = 'normal', set = 'SetNormalTexture', layer = 'ARTWORK' },
+	{ key = 'pushed', set = 'SetPushedTexture', layer = 'ARTWORK' },
+	{ key = 'highlight', set = 'SetHighlightTexture', layer = 'HIGHLIGHT' },
+	{ key = 'disabled', set = 'SetDisabledTexture', layer = 'ARTWORK' },
+}
+
+local function CloseArt(button)
+	local art = closeArt[button]
+	if not art then
+		art = {}
+		for _, state in ipairs(CLOSE_STATES) do
+			local texture = button:CreateTexture(nil, state.layer)
+			texture:SetAllPoints(button)
+			button[state.set](button, texture)
+			art[state.key] = texture
+		end
+		closeArt[button] = art
+	end
+	return art
+end
+
 -- The close button: 24x24, the field color with a 1px edge border (and a dark
 -- line outside it) and a grey pixel X. Hovering turns the border and X red
 -- over a faint red fill, and while pressed the X sits 1px lower. A click hides
 -- frame. st:GetCloseButton(frame) finds it again (nothing is written onto frame).
+--
+-- Its look follows SaftUI's theme, as the close kind always has. Under
+-- Blizzard it is Blizzard's red close button (UIPanelCloseButton): its four
+-- textures at the client's size (st.ThemeArt.Close), with its own backdrop,
+-- dark line and X hidden. Every recolor and redraw switches it
+-- (st:KeepOwnColors), and on a window moves it into the metal's socket or
+-- back (st:UpdateCloseButton).
 function st:CreateCloseButton(frame)
 	local close = st:CreateFrame('Button', nil, frame)
 	closeButtons[close] = true
 	close:SetPoint('TOPRIGHT', 0, 0)
 	close:SetSize(unpack(self.CLOSE_X_BUTTON_SIZE))
-	close:SetBackdrop({ bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
+	local backdrop = { bgFile = self.BLANK_TEX, edgeFile = self.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } }
+	close:SetBackdrop(backdrop)
 
 	-- The dark line outside the border.
 	local outline = st:CreateFrame('Frame', nil, close)
@@ -139,7 +234,12 @@ function st:CreateCloseButton(frame)
 	x:SetPoint('CENTER', 0, 0)
 	close.icon = x
 
+	-- Whether it wears Blizzard's look, whose own textures show the hover and
+	-- the press.
+	local blizzard = false
+
 	local function Look(hover)
+		if blizzard then return end
 		local colors = self.config.profile.colors
 		if hover then
 			close:SetBackdropColor(0.5, 0.1, 0.1, 0.4)
@@ -161,6 +261,39 @@ function st:CreateCloseButton(frame)
 	close:SetScript('OnMouseDown', function() x:SetPoint('CENTER', 0, -1) end)
 	close:SetScript('OnMouseUp', function() x:SetPoint('CENTER', 0, 0) end)
 	close:SetScript('OnClick', function() frame:Hide() end)
+
+	-- Switches between its own look and Blizzard's when SaftUI's theme
+	-- changed between them, then places it (PlaceCloseButton).
+	local function Draw()
+		local want = st:IsBlizzardLook('theme', 'theme')
+		if want ~= blizzard then
+			blizzard = want
+			if want then
+				local look = st.ThemeArt.Close()
+				local art = CloseArt(close)
+				for _, state in ipairs(CLOSE_STATES) do
+					art[state.key]:SetAtlas(look[state.key])
+				end
+				art.highlight:SetBlendMode(look.highlightBlend)
+				close:SetBackdrop(nil)
+				outline:Hide()
+				x:Hide()
+				close:SetSize(look.size, look.size)
+			else
+				for _, texture in pairs(closeArt[close]) do texture:SetTexture(nil) end
+				close:SetBackdrop(backdrop)
+				outline:Show()
+				x:Show()
+				x:SetPoint('CENTER', 0, 0)
+				close:SetSize(unpack(st.CLOSE_X_BUTTON_SIZE))
+				Look(false)
+			end
+		end
+		PlaceCloseButton(close)
+	end
+	closeDraws[close] = Draw
+	st:KeepOwnColors(close, Draw)
+	Draw()
 
 	closeOf[frame] = close
 	return close
@@ -251,7 +384,7 @@ end
 function st:CreatePanel(name, width, height)
 	local panel = st:CreateFrame('Frame', 'SaftUI_Panel_'..name:gsub(' ', '_'), UIParent)
 	local panels = st.config.profile.panels
-	st:SetBackdrop(panel, panels.theme, panels.background, 'panel')
+	st:SetBackdrop(panel, panels.theme, panels.background, 'window')
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
 	if width then st:SetWidth(panel, width) end
 	if height then st:SetHeight(panel, height) end

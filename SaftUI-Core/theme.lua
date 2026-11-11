@@ -201,13 +201,13 @@ end
 --- Drawing ------------------------
 ------------------------------------
 
--- frame -> { theme, background, kind, inset, owner, backdrops, placed }: the
--- arguments each drawn frame was last drawn with, and the inset of the look it
--- was drawn in (0 for None). For a backdrop made by st:SetBackdrop or
--- st:SetBackdropIn, owner is the frame it sits behind, backdrops the caller's
--- table st:SetBackdropIn keeps it in, and placed where outside owner it was
--- last put ({ side, top }: a window's top differs under Blizzard), so a
--- redraw can tell whether it still sits there.
+-- frame -> { theme, background, kind, inset, look, owner, backdrops, placed }:
+-- the arguments each drawn frame was last drawn with, and the inset and name
+-- of the look it was drawn in (0 and nil for None). For a backdrop made by
+-- st:SetBackdrop or st:SetBackdropIn, owner is the frame it sits behind,
+-- backdrops the caller's table st:SetBackdropIn keeps it in, and placed where
+-- outside owner it was last put ({ side, top }: a window's top differs under
+-- Blizzard), so a redraw can tell whether it still sits there.
 local drawn = setmetatable({}, { __mode = 'k' })
 
 -- owner -> the backdrop last drawn behind it with st:SetBackdrop or
@@ -221,7 +221,7 @@ local function Record(frame, theme, background, kind, look, owner, backdrops)
 		drawn[frame] = entry
 	end
 	entry.theme, entry.background, entry.kind = theme, background, kind
-	entry.inset = look and look.inset or 0
+	entry.inset, entry.look = look and look.inset or 0, look and look.name
 	-- A backdrop drawn again with st:SetTemplate (to reset a border a module
 	-- tinted) still belongs to its frame.
 	if owner then
@@ -252,6 +252,23 @@ end
 function st:DrawnKind(frame)
 	local entry = DrawnEntry(frame)
 	return entry and entry.kind
+end
+
+-- The theme frame was last drawn in, by the same lookup: 'thick', 'thin' or
+-- 'blizzard'; nil for a frame never drawn, or drawn None. Whether a window
+-- wears the metal (a close button's socket, panels.lua).
+function st:DrawnTheme(frame)
+	local entry = DrawnEntry(frame)
+	return entry and entry.look
+end
+
+-- The frame frame's look is drawn on: frame itself (st:SetTemplate), or the
+-- backdrop last drawn behind it (st:SetBackdrop, st:SetBackdropIn); nil for
+-- a frame never drawn. What sits on the look anchors to it: a window's close
+-- button in the metal's socket.
+function st:DrawnFrame(frame)
+	if drawn[frame] then return frame end
+	return owners[frame]
 end
 
 -- Header and footer strips and the close button: SaftUI's theme's fill, no lines.
@@ -590,7 +607,7 @@ local function Redraw(frame, entry)
 	else
 		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
 		Paint(frame, look, kind)
-		entry.inset = look and look.inset or 0
+		entry.inset, entry.look = look and look.inset or 0, look and look.name
 	end
 end
 

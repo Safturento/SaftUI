@@ -198,7 +198,7 @@ end)
 
 test('a theme switch with the bags open moves every slot and window backdrop to the new inset', function()
 	local container, slots = bags()
-	eq(drawn(container), 'theme,theme,panel', "the window: the bags' Theme and Background, as a panel")
+	eq(drawn(container), 'theme,theme,window', "the window: the bags' Theme and Background, as a window")
 	for i, slot in ipairs(slots) do
 		eq(drawn(slot), 'theme,theme,slot', 'slot ' .. i .. ': the Slot theme and background, as a slot')
 	end
@@ -551,5 +551,192 @@ test("under Blizzard, a bank bag-slot button's ring is over its icon", function(
 		return LAYERS[layer] * 100 + (sublevel or 0)
 	end
 	check(ring and depth(ring) > depth(slot.icon), 'the ring draws over the icon')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ windows under Blizzard
+
+-- The metal's shown pieces, as T.art lists them.
+local METAL = table.concat({
+	'BottomEdge=_UI-Frame-Metal-EdgeBottom',
+	'BottomLeftCorner=UI-Frame-Metal-CornerBottomLeft',
+	'BottomRightCorner=UI-Frame-Metal-CornerBottomRight',
+	'LeftEdge=!UI-Frame-Metal-EdgeLeft',
+	'RightEdge=!UI-Frame-Metal-EdgeRight',
+	'TopEdge=_UI-Frame-Metal-EdgeTop',
+	'TopLeftCorner=UI-Frame-Metal-CornerTopLeft',
+	'TopRightCorner=UI-Frame-Metal-CornerTopRight',
+}, ',')
+
+-- container.lua's CLOSE_INSET: how far in from the header's right edge the
+-- close button sits, and the view buttons while it's in the metal's socket.
+local CLOSE_INSET = 10
+
+-- Thick's header strip: its border color at 0.4.
+local THICK_STRIP = '0.30,0.30,0.30,0.40'
+
+-- A region's first anchor as text, 'POINT relative RELPOINT x,y', with a
+-- window's header, close button and drawn frame (its backdrop) named.
+local function anchor(region, container)
+	local names = { [container.header] = 'header', [st:GetCloseButton(container)] = 'close', [container.backdrop] = 'backdrop' }
+	local point, rel, relPoint, x, y = region:GetPoint(1)
+	return ('%s %s %s %s'):format(tostring(point), names[rel] or tostring(rel), tostring(relPoint), T.text(x, y))
+end
+
+-- Where the close button sits in the metal's socket on this client: TOPRIGHT
+-- of the window's drawn frame, at Blizzard's spot (st.ThemeArt.Close).
+local function socket()
+	local close = st.ThemeArt.Close()
+	return 'TOPRIGHT backdrop TOPRIGHT ' .. T.text(close.x, close.y)
+end
+
+-- Checks the view buttons line up from the close button (the gap INV:ViewButtonGaps
+-- gives), or from the header's right edge while the close button is in the socket.
+local function check_view_buttons(container, socketed, label)
+	local rows = container.viewButtons.rows
+	local _, closeGap = INV:ViewButtonGaps()
+	if socketed then
+		eq(anchor(rows, container), 'RIGHT header RIGHT ' .. T.text(-CLOSE_INSET, 0),
+			label .. ": the last view button lines up from the header's right edge")
+		eq(T.text(rows:GetRight()), T.text(container.header:GetRight() - CLOSE_INSET), label .. ': CLOSE_INSET in')
+	else
+		eq(anchor(rows, container), 'RIGHT close LEFT ' .. T.text(-closeGap, 0),
+			label .. ": the last view button lines up from the close button's left")
+	end
+	-- The least width keeps the room the buttons really take on the right clear
+	-- on the left, the title between.
+	local span = container.header:GetRight() - container.viewButtons.onebag:GetLeft()
+	eq(T.text(INV:HeaderMinWidth(container)), T.text(2 * (span + closeGap) + container.title:GetStringWidth()),
+		label .. ': HeaderMinWidth follows the real anchors')
+end
+
+-- A slot's white icon border: 'file r,g,b,a' while shown, 'off' otherwise.
+local function white_border(slot)
+	local art = st.ThemeArt.Get(slot.backdrop)
+	local own = art and art.own
+	if not (own and own:IsShown()) then return 'off' end
+	return tostring(own:GetTexture()) .. ' ' .. T.text(own:GetVertexColor())
+end
+
+test('the bag and bank windows are windows', function()
+	local bag = bags()
+	local bank = CreateFrame('Frame', 'SaftUIThemeTestBank', UIParent)
+	bank.id = 'bank'
+	bank.slots, bank.categories, bank.columns = {}, {}, {}
+	INV.containers.bank = bank
+	local scrollFrame = CreateFrame('ScrollFrame', nil, bank)
+	scrollFrame.ScrollChild = CreateFrame('Frame', nil, scrollFrame)
+	scrollFrame:SetScrollChild(scrollFrame.ScrollChild)
+	bank.scrollFrame = scrollFrame
+	st:CreateCloseButton(bank)
+	st:CreateHeader(bank, 'Bank')
+	st:CreateFooter(bank)
+	bank:Show()
+	INV:UpdateConfig()
+	eq(drawn(bag), 'theme,theme,window', "the bag window: the bags' Theme and Background, as a window")
+	eq(drawn(bank), 'theme,theme,window', 'the bank window too')
+
+	-- Picking a bank window draws the other one again, as a window.
+	local kinds = {}
+	local draw = st.SetBackdrop
+	st.SetBackdrop = function(self, frame, theme, background, kind)
+		kinds[#kinds + 1] = (frame == bank and 'bank' or tostring(frame)) .. ':' .. tostring(kind)
+		return draw(self, frame, theme, background, kind)
+	end
+	INV:SelectBankCategory(bag.header)
+	st.SetBackdrop = draw
+	eq(table.concat(kinds, ','), 'bank:window', 'the window not picked is drawn again as a window')
+
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	eq(T.art(bag.backdrop), METAL, 'under Blizzard the bag window wears the metal')
+	eq(T.art(bank.backdrop), METAL, 'the bank window too')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- Review Focus 1.
+test('Thick, Blizzard, Thick with a bag window open', function()
+	local container, slots = bags()
+	INV:CreateViewButtons(container)
+	INV:UpdateConfig('bag')
+	local filled = slots[1]
+	filled.info = { quality = 4 } -- an Epic item, as INV:AssignSlot fills it
+	INV:SetSlotQualityBorder(filled)
+	local close = st:GetCloseButton(container)
+	local epicBorder = [[Interface\Common\WhiteIconFrame]] .. ' ' .. epic() .. ',1.00'
+
+	local function expect(name)
+		local blizzard = name == 'Blizzard'
+		if blizzard then
+			eq(white_border(filled), epicBorder, name .. ": the Epic item's slot: the white icon border in the Epic color")
+			eq(T.art(container.backdrop), METAL, name .. ': the window wears the metal')
+			eq(st:CloseButtonInSocket(container), true, name .. ": the close button in the metal's socket")
+			eq(anchor(close, container), socket(), name .. ": at TOPRIGHT of the window's drawn frame, at Blizzard's spot")
+		else
+			eq(T.edge_rgb(filled.backdrop), epic(), name .. ": the Epic item's slot: its border in the Epic color")
+			eq(white_border(filled), 'off', name .. ': no white icon border')
+			eq(T.art(container.backdrop), '', name .. ': no metal')
+			eq(st:CloseButtonInSocket(container), false, name .. ': the close button out of the socket')
+			eq(anchor(close, container), 'RIGHT header RIGHT -10.00,0.00', name .. ': at the right of the header')
+		end
+		check_view_buttons(container, blizzard, name)
+	end
+
+	expect('Thick')
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	expect('Blizzard')
+	st.config.profile.theme.name = 'thick'
+	st:ThemeChanged()
+	expect('Thick again')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- Review Focus 3. Strips and close buttons follow SaftUI's theme, not their
+-- window's Theme.
+test("a window overridden to Blizzard under SaftUI's Thick: metal, Thick's strip, SaftUI's close button where it was", function()
+	local container = bags()
+	INV:CreateViewButtons(container)
+	INV:UpdateConfig('bag')
+	local look = INV:GetConfigTable().args.look
+	look.set({ 'theme' }, 'blizzard') -- Bags > Look > Theme
+	local close = st:GetCloseButton(container)
+	eq(T.art(container.backdrop), METAL, "the bags' Theme Blizzard: the window wears the metal")
+	eq(T.fill(container.header), THICK_STRIP, "the header keeps SaftUI's theme's strip, Thick's")
+	eq(T.text(close:GetSize()), '24.00,24.00', 'the close button keeps its own look: 24 square')
+	check(close.icon:IsShown(), 'with its X')
+	eq(close:GetNormalTexture(), nil, 'and no Blizzard art')
+	eq(st:CloseButtonInSocket(container), false, 'not in the socket')
+	eq(anchor(close, container), 'RIGHT header RIGHT -10.00,0.00', 'where it was, at the right of the header')
+	check_view_buttons(container, false, 'overridden to Blizzard')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The other way round: a window's own Theme changes with no theme redraw, and
+-- its close button follows into the socket and out at once.
+test("a window overridden to Thick under SaftUI's Blizzard: no metal, Blizzard's close button back in the header, and into the socket again", function()
+	local container = bags()
+	INV:CreateViewButtons(container)
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	local close = st:GetCloseButton(container)
+	eq(st:CloseButtonInSocket(container), true, "SaftUI's theme Blizzard: in the socket")
+	check_view_buttons(container, true, 'Blizzard')
+
+	local look = INV:GetConfigTable().args.look
+	look.set({ 'theme' }, 'thick') -- Bags > Look > Theme
+	eq(T.art(container.backdrop), '', "the bags' Theme Thick: no metal")
+	eq(st:CloseButtonInSocket(container), false, 'the close button out of the socket at once')
+	eq(close:GetNumPoints(), 1, 'one point')
+	eq(anchor(close, container), 'RIGHT header RIGHT -10.00,0.00', 'back at the right of the header')
+	eq(close:GetNormalTexture() and close:GetNormalTexture():GetAtlas(), 'RedButton-Exit',
+		"in SaftUI's theme's look, Blizzard's")
+	check_view_buttons(container, false, 'overridden to Thick')
+
+	look.set({ 'theme' }, 'theme')
+	eq(T.art(container.backdrop), METAL, "Use SaftUI's theme again: the metal")
+	eq(st:CloseButtonInSocket(container), true, 'back in the socket')
+	eq(anchor(close, container), socket(), "at TOPRIGHT of the window's drawn frame, at Blizzard's spot")
+	check_view_buttons(container, true, "Use SaftUI's theme again")
 	eq(#take_errors(), 0, 'no errors')
 end)

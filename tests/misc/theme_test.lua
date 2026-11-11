@@ -310,3 +310,82 @@ test("the totem bar's element borders survive a recolor", function()
 	profile.templates.thick.bordercolor = saved
 	st:RecolorThemed()
 end)
+
+------------------------------------------------------------------ a skinned Blizzard panel
+
+-- The metal's shown pieces, as T.art lists them.
+local METAL = table.concat({
+	'BottomEdge=_UI-Frame-Metal-EdgeBottom',
+	'BottomLeftCorner=UI-Frame-Metal-CornerBottomLeft',
+	'BottomRightCorner=UI-Frame-Metal-CornerBottomRight',
+	'LeftEdge=!UI-Frame-Metal-EdgeLeft',
+	'RightEdge=!UI-Frame-Metal-EdgeRight',
+	'TopEdge=_UI-Frame-Metal-EdgeTop',
+	'TopLeftCorner=UI-Frame-Metal-CornerTopLeft',
+	'TopRightCorner=UI-Frame-Metal-CornerTopRight',
+}, ',')
+
+-- Blizzard's panel as far as SK:SkinBlizzardPanel reads it: named (the skin
+-- finds its parts by name), 400 by 500, with its close button. Not locked:
+-- the skin's st:CreateHeader still writes its header onto it
+-- (docs/followups.md, "st:CreateHeader writes fields onto the frame it's given").
+local function blizzard_panel(name)
+	local panel = CreateFrame('Frame', name, UIParent)
+	panel:SetSize(400, 500)
+	panel:SetPoint('CENTER')
+	CreateFrame('Button', name .. 'CloseButton', panel)
+	return panel
+end
+
+-- Skins panel, and returns the frame its window was drawn behind.
+local function skin_panel(panel, options)
+	local windows = {}
+	local draw = st.SetBackdrop
+	st.SetBackdrop = function(self, frame, theme, background, kind)
+		if kind == 'window' then windows[#windows + 1] = frame end
+		return draw(self, frame, theme, background, kind)
+	end
+	SK:SkinBlizzardPanel(panel, options)
+	st.SetBackdrop = draw
+	eq(#windows, 1, 'one window drawn')
+	return windows[1]
+end
+
+-- SK:SkinBlizzardPanel draws a window. With fix_padding the window is the
+-- panel's padded area, a frame of SaftUI's the engine places the window's
+-- backdrop around, so the metal's title bar lies above the panel's header
+-- and its fill starts at the header, as on every window. Nothing calls the
+-- skin today.
+test("a skinned Blizzard panel is a window; with fix_padding the metal's title bar sits above its header", function()
+	local plain = blizzard_panel('SaftUIThemeTestPlainPanel')
+	local window = skin_panel(plain, { title = 'Plain' })
+	eq(window, plain, 'without fix_padding the window is drawn behind the panel')
+	eq(drawn(plain), 'theme,theme,window', 'panels.theme and panels.background, as a window')
+	eq(T.around(plain.backdrop, plain), '-2,2,2,-2', "Thick: the backdrop 2px outside the panel")
+
+	local padded = blizzard_panel('SaftUIThemeTestPaddedPanel')
+	local area = skin_panel(padded, { fix_padding = true, title = 'Padded' })
+	check(area ~= nil and area ~= padded, "with fix_padding the window is drawn behind a frame of SaftUI's")
+	if not area then return end
+	eq(drawn(area), 'theme,theme,window', 'as a window')
+	local backdrop, header = area.backdrop, padded.header
+	eq(T.around(backdrop, padded), '10,-10,-30,74', 'Thick: the backdrop where fix_padding put it before')
+	eq(T.around(header, padded):match('^(%-?%d+,%-?%d+,%-?%d+)'), '12,-12,-32', 'the header 2px inside it')
+
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	local title = st.ThemeArt.TitleHeight()
+	eq(T.art(backdrop), METAL, 'Blizzard: the metal')
+	eq(T.around(backdrop, padded), '10,' .. (title - 12) .. ',-30,74', "Blizzard: the title bar's height above the padded area")
+	local insets = backdrop.backdropInfo and backdrop.backdropInfo.insets or {}
+	eq(T.text(backdrop:GetTop() - (insets.top or 0)), T.text(header:GetTop()), 'the fill starts at the top of the header')
+	eq(T.text(backdrop:GetTop() - title), T.text(header:GetTop()), "the title bar lies above the header, over none of it")
+	eq(T.art(plain.backdrop), METAL, 'the plain panel wears the metal too')
+	eq(T.around(plain.backdrop, plain), '-2,' .. title .. ',2,-2', "its title bar above it")
+
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(T.around(backdrop, padded), '10,-10,-30,74', 'Thick again: where it was')
+	eq(T.art(backdrop), '', 'Thick again: no art')
+	eq(#take_errors(), 0, 'no errors')
+end)

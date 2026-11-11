@@ -60,6 +60,18 @@ function SK:GetConfigTable()
 	}
 end
 
+-- panel -> the frame of SaftUI's over a fix_padding panel's padded area, which
+-- its window is drawn behind (SK:SkinBlizzardPanel). Nothing is written onto
+-- the panel for it.
+local paddedAreas = setmetatable({}, { __mode = 'k' })
+
+-- Skins one of Blizzard's panels as a window with SaftUI's title bar: in the
+-- metal under Blizzard, as every window. The engine places the window's
+-- backdrop around the frame it's drawn behind, with the metal's title bar
+-- above it and the fill under that. With fix_padding (Blizzard's panel art
+-- left padding round the content) that frame is a frame of SaftUI's over the
+-- padded area, so the title bar sits above the header there, not over it.
+-- Nothing calls it today.
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
 	if not options then options = {} end
 	-- if not panel then return end
@@ -81,13 +93,19 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 
 	st:CreateHeader(panel, title, close)
 	local panels = st.config.profile.panels
-	st:SetBackdrop(panel, panels.theme, panels.background, 'panel')
+	local window = panel
 
 	if options.fix_padding then
-		panel.backdrop:ClearAllPoints()
-
-		panel.backdrop:SetPoint('TOPLEFT', 10, -10)
-		panel.backdrop:SetPoint('BOTTOMRIGHT', -30, 74)
+		-- The padded area, where Thick's backdrop was put by hand before:
+		-- 10, 10, 30 and 74 in, plus Thick's 2.
+		window = paddedAreas[panel]
+		if not window then
+			window = st:CreateFrame('Frame', nil, panel)
+			window:SetFrameLevel(panel:GetFrameLevel()) -- its backdrop goes one level under the panel
+			paddedAreas[panel] = window
+		end
+		window:SetPoint('TOPLEFT', 12, -12)
+		window:SetPoint('BOTTOMRIGHT', -32, 76)
 
 		panel.header:SetPoint('TOPLEFT', 12, -12)
 		panel.header:SetPoint('TOPRIGHT', -32, -12)
@@ -98,6 +116,7 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 			panel.footer:SetPoint('BOTTOMRIGHT', -32, 74)
 		end
 	end
+	st:SetBackdrop(window, panels.theme, panels.background, 'window')
 
 	local i = 1
 	local tab = _G[name..'Tab'..i]
@@ -108,7 +127,7 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 
 		tab:ClearAllPoints()
 		if i == 1 then
-			tab:SetPoint('TOPLEFT', panel.backdrop, 'BOTTOMLEFT', 2, -5)
+			tab:SetPoint('TOPLEFT', window.backdrop, 'BOTTOMLEFT', 2, -5)
 		else
 			tab:SetPoint('LEFT', prev, 'RIGHT', 7, 0)
 		end
