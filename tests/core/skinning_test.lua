@@ -83,3 +83,36 @@ test('SkinIcon: an icon whose size is secret is cut square, as before', function
 	issecretvalue = real
 	eq(text(texture:GetTexCoord()), corners(0.1, 0.9, 0.1, 0.9), 'trim off each edge, not cut to a shape')
 end)
+
+test('SkinIcon: a crop the game resets is put back, with Icon zoom at 0 too, and nothing is written onto the icon', function()
+	-- Blizzard's SetItemButtonTexture resets an icon to full tex coords each
+	-- time it sets a texture; SaftUI's hook puts its crop back.
+	local texture = icon(36, 36)
+	st:SkinIcon(texture, 0.1)
+	texture:SetTexCoord(0, 1, 0, 1)
+	eq(text(texture:GetTexCoord()), corners(0.1, 0.9, 0.1, 0.9), 'the crop is put back after a reset')
+	texture:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+	eq(text(texture:GetTexCoord()), corners(0.2, 0.8, 0.2, 0.8), 'any other tex coords are left alone')
+
+	-- Icon zoom 0: the crop is the full texture. Skinning again (a theme
+	-- switch restyles every icon) and a reset must not re-enter the hook
+	-- forever (2026-11-11 in game: "C stack overflow" in the hook).
+	local full = icon(36, 36)
+	local ok, err = pcall(function()
+		st:SkinIcon(full, 0)
+		st:SkinIcon(full, 0)
+		full:SetTexCoord(0, 1, 0, 1)
+	end)
+	check(ok, 'no stack overflow at zoom 0: ' .. tostring(err))
+	eq(text(full:GetTexCoord()), corners(0, 1, 0, 1), 'the full texture')
+
+	-- A zoom change after the hook is in reaches it.
+	st:SkinIcon(full, 0.15)
+	full:SetTexCoord(0, 1, 0, 1)
+	eq(text(full:GetTexCoord()), corners(0.15, 0.85, 0.15, 0.85), 'the new zoom is put back after a reset')
+
+	-- What the hook needs is kept in SaftUI's own table, not on the icon,
+	-- which is often Blizzard's (.agents/taint.md).
+	eq(rawget(texture, '__stTexCoord'), nil, 'no crop written onto the icon')
+	eq(rawget(texture, '__stTexCoordHooked'), nil, 'no hooked flag written onto the icon')
+end)

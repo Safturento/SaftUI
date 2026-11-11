@@ -49,6 +49,12 @@ function st:IconTexCoords(trim, width, height)
 	return trim, 1 - trim, trim, 1 - trim
 end
 
+-- icon -> { left, right, top, bottom }, the crop st:SkinIcon last gave it,
+-- and icon -> true once its SetTexCoord is hooked to keep that crop. Kept
+-- here, not on the icon, which is often Blizzard's (.agents/taint.md).
+local iconCrops = setmetatable({}, { __mode = 'k' })
+local hookedIcons = setmetatable({}, { __mode = 'k' })
+
 function st:SkinIcon(icon, customTrim, anchorFrame)
 	if anchorFrame then
 		icon:SetAllPoints(anchorFrame)
@@ -75,17 +81,26 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 			left, right, top, bottom = st:IconTexCoords(trim, w, h)
 		end
 
+		-- Recorded before the set: the hook below reads it.
+		local crop = iconCrops[icon]
+		if not crop then
+			crop = {}
+			iconCrops[icon] = crop
+		end
+		crop[1], crop[2], crop[3], crop[4] = left, right, top, bottom
 		icon:SetTexCoord(left, right, top, bottom)
 
 		-- Blizzard's SetItemButtonTexture resets icons to full tex coords (0, 1, 0, 1)
 		-- every time it assigns a texture, which would undo our trim. Put it back.
-		icon.__stTexCoord = { left, right, top, bottom }
-		if not icon.__stTexCoordHooked then
-			icon.__stTexCoordHooked = true
+		-- Not when the crop is the full texture itself (Icon zoom 0): putting it
+		-- back would set (0, 1, 0, 1) again and run this hook forever.
+		if not hookedIcons[icon] then
+			hookedIcons[icon] = true
 			hooksecurefunc(icon, 'SetTexCoord', function(self, l, r, t, b, ...)
-				local c = self.__stTexCoord
-				if issecretvalue(l) then return end
-				if c and select('#', ...) == 0 and l == 0 and r == 1 and t == 0 and b == 1 then
+				local c = iconCrops[self]
+				if not c or issecretvalue(l) or select('#', ...) ~= 0 then return end
+				if l == 0 and r == 1 and t == 0 and b == 1
+					and not (c[1] == 0 and c[2] == 1 and c[3] == 0 and c[4] == 1) then
 					self:SetTexCoord(c[1], c[2], c[3], c[4])
 				end
 			end)
