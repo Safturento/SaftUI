@@ -154,8 +154,21 @@ function UnitName(unit)
 	local other = OtherUnit(unit)
 	if other then return other.name, nil end
 end
+-- Each class token's English name and class ID, from wago.tools' ChrClasses
+-- at 12.1.5.70783 (Forever 1.60.1.70888 has the nine classic classes, with
+-- the same names and IDs).
+local CLASSES = {
+	WARRIOR = { 'Warrior', 1 }, PALADIN = { 'Paladin', 2 }, HUNTER = { 'Hunter', 3 }, ROGUE = { 'Rogue', 4 },
+	PRIEST = { 'Priest', 5 }, DEATHKNIGHT = { 'Death Knight', 6 }, SHAMAN = { 'Shaman', 7 }, MAGE = { 'Mage', 8 },
+	WARLOCK = { 'Warlock', 9 }, MONK = { 'Monk', 10 }, DRUID = { 'Druid', 11 }, DEMONHUNTER = { 'Demon Hunter', 12 },
+	EVOKER = { 'Evoker', 13 },
+}
 function UnitClass(unit)
-	if unit == 'player' then return 'Warrior', 'WARRIOR', 1 end
+	-- The player's class is stub.class's (see the end of this file).
+	if unit == 'player' then
+		local info = CLASSES[stub.class] or error(('UnitClass: stub.class %s is not a class token'):format(tostring(stub.class)), 2)
+		return info[1], stub.class, info[2]
+	end
 	-- Another unit's class token stands for its name too.
 	local other = OtherUnit(unit)
 	if other then return other.class, other.class end
@@ -340,3 +353,28 @@ end
 
 StaticPopupDialogs = {}
 SlashCmdList = {}
+
+-- The player's class and spellbooks.
+--   class: UnitClass('player')'s token, which also gives its name and ID.
+--   known_spells, known_pet_spells: the spell IDs C_SpellBook.IsSpellKnown
+--     calls known in the player's spellbook and the pet's, as sets, e.g.
+--     stub.known_spells[370] = true. A pet's spells are known only while it's
+--     out, so a test of no pet leaves known_pet_spells empty.
+stub.class = 'WARRIOR'
+stub.known_spells = {}
+stub.known_pet_spells = {}
+
+-- C_SpellBook.IsSpellKnown(spellID[, spellBank]) (SpellBookDocumentation.lua,
+-- the same on both clients): spellID a number, spellBank an
+-- Enum.SpellBookSpellBank (Player, the default, or Pet). Its answer is a plain
+-- boolean, never secret. A spellID that isn't a number, or a bank that isn't
+-- one, errors as the game's argument check does.
+C_SpellBook = C_SpellBook or {}
+function C_SpellBook.IsSpellKnown(spellID, spellBank)
+	if type(spellID) ~= 'number' then
+		error('Usage: local isKnown = C_SpellBook.IsSpellKnown(spellID [, spellBank])', 2)
+	end
+	if spellBank == nil or spellBank == 0 then return stub.known_spells[spellID] == true end
+	if spellBank == 1 then return stub.known_pet_spells[spellID] == true end
+	error('Usage: local isKnown = C_SpellBook.IsSpellKnown(spellID [, spellBank])', 2)
+end

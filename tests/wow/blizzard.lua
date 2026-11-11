@@ -482,3 +482,7 @@ do
 	-- picker opened without opacity reads.
 	function stub.set_color_picker_alpha(a) color.a = a end
 end
+
+-- Enum.SpellBookSpellBank (SpellBookConstantsDocumentation.lua, the same on
+-- both clients): the bank C_SpellBook.IsSpellKnown looks in.
+Enum.SpellBookSpellBank = { Player = 0, Pet = 1 }

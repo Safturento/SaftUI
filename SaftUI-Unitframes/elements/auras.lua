@@ -5,21 +5,18 @@ local UF = st:GetModule('Unitframes')
 	Buffs and Debuffs are built on oUF's Auras meta element, which wraps Blizzard's
 	AuraContainer. Aura data is no longer exposed to Lua (secret values), so the old
 	Lua-side filters (whitelist/blacklist/time) and per-aura styling can't be applied.
-	Filtering is done with the aura filter string (plus a candidate filter for Only
-	mine, see AddGroup), and dispel/stealable coloring with the container's
-	built-in dispel textures.
+	Filtering is done with the aura filter string and candidate filters
+	(UF.AuraFilter, purge.lua: Only mine, Only buffs I can purge, a nameplate's
+	debuffs), and dispel/stealable coloring with the container's built-in
+	dispel textures.
 
-	Group options (filter, max count, button size, which borders to show, whether
+	Group options (max count, button size, which borders to show, whether
 	buttons get a cooldown) are baked in when the group is created on the first config
-	update, so changing them requires a /reload, and their /sui options say so. Layout
-	(anchor, growth, spacing, wrapping) and button styling (theme, count font and
-	spot, cooldown look and timer) update live, profile changes included.
+	update, so changing them requires a /reload, and their /sui options say so. The
+	filter, layout (anchor, growth, spacing, wrapping) and button styling (theme,
+	count font and spot, cooldown look and timer) update live, profile changes
+	included.
 ]]
-
-local AURA_FILTERS = {
-	Buffs = 'HELPFUL',
-	Debuffs = 'HARMFUL',
-}
 
 local function getButtonSize(unitframe, config)
 	return config.relative_size
@@ -168,15 +165,11 @@ end
 local function AddGroup(unitframe, auras, aura_type)
 	local config = auras.config
 
-	-- Only mine: Forever leaves sourceUnit nil on other players' auras, and its
-	-- PLAYER filter keeps every one of them. The isFromPlayerOrPlayerPet
-	-- candidate filter checks each aura's own flag instead; on retail the two agree.
-	local filter = AURA_FILTERS[aura_type]
-	local candidateFilters
-	if config.onlyShowPlayer then
-		filter = filter .. '|PLAYER'
-		candidateFilters = { isFromPlayerOrPlayerPet = true }
-	end
+	-- Noted as the group's filter, so UF:ApplyAuraFilter changes it only when
+	-- the config or the spells the player knows change it.
+	local filter, candidateFilters = UF.AuraFilter(unitframe, aura_type, config)
+	auras.groupFilter = filter
+	auras.groupCandidateFilters = candidateFilters
 
 	auras.groupKey = auras:AddGroup(filter, {
 		candidateFilters = candidateFilters,
@@ -226,6 +219,8 @@ local function UpdateConfig(unitframe, aura_type)
 			elementSpacing = config.spacing,
 			lineSpacing = config.spacing,
 		})
+		-- Only mine and Only buffs I can purge, without a reload.
+		UF:ApplyAuraFilter(auras)
 	end
 
 	for _, button in ipairs(buttonsByElement[auras] or {}) do
@@ -374,7 +369,9 @@ local function GetConfigTable(unit, aura_type)
 					size = NeedsReload(generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels.")),
 					relative_size = NeedsReload(generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small')),
 					max = NeedsReload(generators.range(5, 'Max', 1, 40, 1, ('The most %s shown.'):format(noun))),
-					onlyShowPlayer = NeedsReload(generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small')),
+					-- The filter applies without a reload (UF:ApplyAuraFilter).
+					onlyShowPlayer = generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small'),
+					purgeable = aura_type == 'Buffs' and generators.toggle(6.5, 'Only buffs I can purge', "Shows only buffs you can take off the unit with a spell you know: a purge, a dispel or a steal. If you know none, no buffs show.", 'small') or nil,
 					border = NeedsReload(border),
 				},
 			},
