@@ -628,5 +628,12 @@ function UF:OnEnable()
 	UF:SetupBlizzardRaidFrames()
 	-- The nameplates last, once every other unit is placed and the colors are
 	-- set (nameplates.lua). They get no mover: the game places each plate.
-	UF:SpawnNameplates()
+	-- SaftUI's plates set the game's nameplate settings; with Nameplates off
+	-- the ones SaftUI changed go back as they were. Another nameplate addon's
+	-- plates leave them all to it (nameplates/cvars.lua).
+	if UF:SpawnNameplates() then
+		UF:ApplyNameplateCVars()
+	elseif not UF:NameplateAddon() then
+		UF:RestoreNameplateCVars()
+	end
 end
