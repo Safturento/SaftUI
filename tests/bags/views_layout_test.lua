@@ -100,6 +100,41 @@ test('rows: each category full width, stacked in priority order, wrapping at per
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+------------------------------------------------------------------ the scroll bar
+
+-- Blizzard's scroll bar sits 6 right of the scroll frame and is 8 wide, so a
+-- window that scrolls needs 14 more than the content and its padding.
+local BAR_ROOM = 6 + 8
+
+test('a scrolling window is wider by the scroll bar, which then lies inside its right edge', function()
+	for _, view in ipairs({ 'compact', 'rows', 'onebag', 'multibag' }) do
+		local plain = world(view)
+		local scrolls = plain.scrollFrame.ScrollChild:GetHeight() > plain.scrollFrame:GetHeight()
+		check(not scrolls, view .. ': the default window shows everything (the test means something)')
+		local width = plain:GetWidth()
+		eq(width, plain.scrollFrame:GetWidth() + padding * 2, view .. ': a window that does not scroll is as it was')
+
+		local c = world(view, function() INV.config.bag.maxRows = 1 end)
+		check(c.scrollFrame.ScrollChild:GetHeight() > c.scrollFrame:GetHeight(), view .. ': one row of the window scrolls')
+		eq(c.scrollFrame:GetWidth(), plain.scrollFrame:GetWidth(), view .. ': the content is as wide')
+		eq(c:GetWidth(), width + BAR_ROOM, view .. ': wider by the bar and its offset')
+		local bar = c.scrollFrame.ScrollBar
+		check(bar:GetRight() <= c:GetRight(), view .. ': the bar is inside the window')
+		eq(c:GetRight() - bar:GetRight(), padding, view .. ': with the same padding as the left')
+		eq(c.scrollFrame:GetLeft() - c:GetLeft(), padding, view .. ': (the left padding)')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a window that stops scrolling goes back to its width without the bar', function()
+	local c = world('compact', function() INV.config.bag.maxRows = 1 end)
+	local scrolling = c:GetWidth()
+	INV.config.bag.maxRows = 15
+	INV:UpdateContainer('bag', true)
+	eq(c:GetWidth(), scrolling - BAR_ROOM, 'no bar room once everything fits')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('rows: the window is as wide as Compact with every column in use', function()
 	local c = world('compact')
 	check(#c.columns[3].categories > 0, 'Compact uses all three columns (the test means something)')

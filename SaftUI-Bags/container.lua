@@ -609,8 +609,12 @@ local function SizeWindow(self, container, contentWidth, contentHeight, visibleH
 	container.scrollFrame:SetContentSize(contentWidth, contentHeight)
 
 	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
+	-- A window that scrolls has its scroll bar just outside the scroll frame
+	-- (st:ScrollBarRoom), which the window leaves room for, with the padding
+	-- after it as on the left. One that doesn't has no bar (it hides itself).
+	local barRoom = contentHeight > visibleHeight and st:ScrollBarRoom(container.scrollFrame) or 0
 	-- Wide enough for the title between the view buttons and the left edge.
-	container:SetWidth(max(container.scrollFrame:GetWidth() + config.padding * 2, self:HeaderMinWidth(container)))
+	container:SetWidth(max(container.scrollFrame:GetWidth() + barRoom + config.padding * 2, self:HeaderMinWidth(container)))
 	self:SyncAnchorSize(container.id)
 end
 

@@ -29,6 +29,7 @@ function H.fresh()
 	load_saftui('SaftUI-Bags/category.lua')
 	load_saftui('SaftUI-Bags/views.lua')
 	load_saftui('SaftUI-Bags/movers.lua')
+	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
 	local INV = SaftUI:GetModule('Inventory')
 	H.INV = INV
@@ -66,9 +67,11 @@ end
 --
 -- The scroll frame stands in for st:CreateScrollFrame (SaftUI-Core/Widgets/
 -- scrollframe.lua), which needs Blizzard's ScrollFrameTemplate and the
--- scroll bar skin. The layout only reaches it through SetContentSize, which
+-- scroll bar skin. The layout reaches it through SetContentSize, which
 -- there sizes the scroll child; so does this one (the real one also calls
--- UpdateScrollChildRect, which the stubs don't have).
+-- UpdateScrollChildRect, which the stubs don't have), and through its
+-- ScrollBar (st:ScrollBarRoom), which has the anchors and width Blizzard's
+-- template gives it.
 function H.container(categories, k, name)
 	local container = CreateFrame('Frame', name, UIParent)
 	container:SetSize(0, 0)
@@ -82,6 +85,14 @@ function H.container(categories, k, name)
 	scrollFrame:SetScrollChild(content)
 	scrollFrame.ScrollChild = content
 	scrollFrame.SetContentSize = function(self, width, height) content:SetSize(width, height) end
+	-- Blizzard's template puts a MinimalScrollBar just outside the scroll
+	-- frame's right edge (ScrollFrame_OnLoad: SCROLL_FRAME_SCROLL_BAR_OFFSET_LEFT 6, _TOP 2,
+	-- _BOTTOM 5; the bar is 8 wide).
+	local bar = CreateFrame('Frame', nil, scrollFrame)
+	bar:SetWidth(8)
+	bar:SetPoint('TOPLEFT', scrollFrame, 'TOPRIGHT', 6, -2)
+	bar:SetPoint('BOTTOMLEFT', scrollFrame, 'BOTTOMRIGHT', 6, 5)
+	scrollFrame.ScrollBar = bar
 	container.scrollFrame = scrollFrame
 
 	for i = 1, k or 3 do
@@ -245,6 +256,7 @@ function H.views_world(client)
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 	load_saftui('SaftUI-Bags/currencies.lua')
 	load_saftui('SaftUI-Bags/movers.lua')
+	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
 	H.INV = INV
 	stand_in_templates()
