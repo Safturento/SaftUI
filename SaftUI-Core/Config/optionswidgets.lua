@@ -1488,6 +1488,27 @@ local function Caret(parent)
 	return carets
 end
 
+-- Whether a select's row is a font list (LibSharedMedia's LSM30_Font):
+-- name -> file, each name drawn in the file's face.
+local function IsFontList(row)
+	return row.option.dialogControl == 'LSM30_Font'
+end
+
+-- The entries for a row's values: { {key, label, font} }. A font list is
+-- labeled by the name and drawn in the file's face.
+local function ListEntries(root, row)
+	local fontMode = IsFontList(row)
+	local entries = {}
+	for i, value in ipairs(OM.Values(root, row)) do
+		if fontMode then
+			entries[i] = { key = value.key, label = tostring(value.key), font = value.name }
+		else
+			entries[i] = { key = value.key, label = tostring(value.name) }
+		end
+	end
+	return entries, fontMode
+end
+
 --[[
 	Under Blizzard a select whose choices fit has Blizzard's steppers
 	(DropdownWithSteppersTemplate): back over its left end and next over its
@@ -1498,7 +1519,9 @@ end
 	disabled, so nothing wraps. The choices fit when the longest's label, in
 	the face's font, is at most W.StepperRoom() wide; else the face spans the
 	whole select and there are none. That's read at each bind, so they come
-	and go as the choices change. Under Thick and Thin there are none.
+	and go as the choices change. A font list never has them: measuring its
+	names, each in its own face, would load every font file there is, at
+	every render. Under Thick and Thin there are none.
 ]]
 
 -- Where a stepper's icon sits from its top left (WowStyle2IconButtonTemplate).
@@ -1596,11 +1619,12 @@ local function PlaceStepper(stepper, button, side, look)
 end
 
 -- While the steppers show: each enabled when there's a choice to step to
--- that way and the select isn't disabled, and painted.
-local function EnableSteppers(w)
+-- that way and the select isn't disabled, and painted. entries are the
+-- choices when the caller has them (StepTargets).
+local function EnableSteppers(w, entries)
 	if not w.stepped then return end
 	local back, nextKey
-	if not w.disabled then back, nextKey = w:StepTargets() end
+	if not w.disabled then back, nextKey = w:StepTargets(entries) end
 	w.back:SetEnabled(back ~= nil)
 	w.next:SetEnabled(nextKey ~= nil)
 	PaintStepper(w.back)
@@ -1610,11 +1634,13 @@ end
 -- The select's look: under Blizzard the steppers either side of the face
 -- when its choices fit (StepsFit), the face between them, else the face
 -- across it all; then its dropdown's (LookDropdown). Only the face takes
--- the mouse for the list, as only it lights.
+-- the mouse for the list, as only it lights. The choices are read once, for
+-- the fit and the steppers' states; a font list's not at all.
 local function LookSelect(w, blizzard)
 	local button = w.frame
 	local look = blizzard and st.ThemeArt.Control('dropdown')
-	w.stepped = blizzard and w:StepsFit() or false
+	local entries = blizzard and not IsFontList(w.row) and ListEntries(w.root, w.row) or nil
+	w.stepped = entries ~= nil and w:StepsFit(entries)
 	if w.stepped then
 		local steps = look.stepper
 		button.faceLeft, button.faceRight = steps.width + steps.backGap, steps.width + steps.nextGap
@@ -1627,7 +1653,7 @@ local function LookSelect(w, blizzard)
 	w.next:SetShown(w.stepped)
 	button:SetHitRectInsets(button.faceLeft, button.faceRight, 0, 0)
 	LookDropdown(button, blizzard)
-	EnableSteppers(w)
+	EnableSteppers(w, entries)
 end
 
 builders.select = function(w)
@@ -1653,53 +1679,38 @@ builders.select = function(w)
 	w.measure:Hide()
 end
 
--- The entries for a row's values: { {key, label, font} }. LibSharedMedia's
--- font lists give name -> file, so a font list is labeled by the name and
--- drawn in the file's face.
-local function ListEntries(root, row)
-	local fontMode = row.option.dialogControl == 'LSM30_Font'
-	local entries = {}
-	for i, value in ipairs(OM.Values(root, row)) do
-		if fontMode then
-			entries[i] = { key = value.key, label = tostring(value.key), font = value.name }
-		else
-			entries[i] = { key = value.key, label = tostring(value.name) }
-		end
-	end
-	return entries, fontMode
-end
-
 define('select', {
 	-- The look after the row: whether the steppers fit reads its choices.
+	-- Until then they're left be (Refresh and OnDisabled skip them), so
+	-- the choices are read once for them (LookSelect).
 	Bind = function(self, ...)
+		self.stepped = false
 		Base.Bind(self, ...)
 		LookSelect(self, BlizzardLook())
 		return self
 	end,
 
-	-- Whether every choice's label fits the stepped face (W.StepperRoom),
-	-- measured in the font the face draws it in (a font list's in its own
-	-- face). True with no choices.
-	StepsFit = function(self)
+	-- Whether every choice's label (entries, else the row's now) fits the
+	-- stepped face (W.StepperRoom), measured in the face's font. True with
+	-- no choices; never for a font list, whose names aren't measured.
+	StepsFit = function(self, entries)
+		if IsFontList(self.row) then return false end
 		local room, measure = W.StepperRoom(), self.measure
-		for _, entry in ipairs((ListEntries(self.root, self.row))) do
-			if entry.font then
-				SetFieldFont(measure, entry.font, FIELD_FONT_SIZE, '')
-			else
-				SetFieldFont(measure)
-			end
+		SetFieldFont(measure)
+		for _, entry in ipairs(entries or ListEntries(self.root, self.row)) do
 			measure:SetText(entry.label)
 			if ceil(measure:GetUnboundedStringWidth()) > room then return false end
 		end
 		return true
 	end,
 
-	-- The keys a step back and a step forward pick, in the list's order as
-	-- it is now; nil past an end. A value not among the choices has none
-	-- back, and the first next.
-	StepTargets = function(self)
+	-- The keys a step back and a step forward pick, in the list's order
+	-- (entries, else the row's now); nil past an end. A value not among the
+	-- choices has none back, and the first next.
+	StepTargets = function(self, entries)
 		if not self.row then return nil, nil end
-		local entries, value = ListEntries(self.root, self.row), self:Value()
+		local value = self:Value()
+		entries = entries or ListEntries(self.root, self.row)
 		for i, entry in ipairs(entries) do
 			if entry.key == value then
 				local back, forward = entries[i - 1], entries[i + 1]
@@ -1723,7 +1734,7 @@ define('select', {
 	Refresh = function(self)
 		self.value = self:Value()
 		local values = OM.Member(self.root, self.row, 'values')
-		local fontMode = self.row.option.dialogControl == 'LSM30_Font'
+		local fontMode = IsFontList(self.row)
 		local label, font = '', nil
 		if type(values) == 'table' and self.value ~= nil and values[self.value] ~= nil then
 			if fontMode then
@@ -1756,6 +1767,7 @@ define('select', {
 	end,
 
 	OnRelease = function(self)
+		self.stepped = false
 		if W.ListOwner() == self.frame then W.CloseList() end
 	end,
 })

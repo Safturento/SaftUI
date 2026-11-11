@@ -2379,16 +2379,52 @@ test('a select gets steppers only when its longest choice fits the stepped face;
 	check(w:StepsFit(), 'no choices: nothing to cut')
 	w:Release()
 
-	-- A font list's choices are measured as the face draws them: each name in its own face.
+	-- A font list (LSM30_Font) never has steppers, decided without measuring:
+	-- each name would be set in its own face, loading every font file there is.
 	local fonts = { ['Alpha'] = [[Interface\AddOns\X\Alpha.ttf]], ['Beta'] = [[Interface\AddOns\X\Beta.ttf]] }
+	local reads = 0
+	theme('thick')
 	local f = bind('select', 'font', opt('select', 'Font', {
-		dialogControl = 'LSM30_Font', values = function() return fonts end,
+		dialogControl = 'LSM30_Font', values = function() reads = reads + 1; return fonts end,
 		get = function() return 'Beta' end, set = function() end,
 	}))
-	check(f.back:IsShown(), 'short font names fit')
-	fonts[fits .. 'm'] = [[Interface\AddOns\X\Long.ttf]]; rebind(f)
-	check(not f.back:IsShown(), 'a long font name does not')
+	f:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(reads, 1, "Thick: the values read once, for the face's label (a pooled select keeps no steppers)")
+	local labelReads = reads
+	local measured = 0
+	f.measure.SetFont = function(fs, ...) measured = measured + 1; return getmetatable(fs).__index.SetFont(fs, ...) end
+	f.measure.SetText = function(fs, ...) measured = measured + 1; return getmetatable(fs).__index.SetText(fs, ...) end
+	reads = 0
+	theme('blizzard'); rebind(f)
+	check(not f.back:IsShown() and not f.next:IsShown(), 'short font names: still no steppers')
+	eq(around(face_of(f), f.frame), '-7,7,7,-7', 'the face at the full 170')
+	eq(measured, 0, 'no name set in its face, nothing measured')
+	eq(reads, labelReads, 'the choices not read for the steppers')
+	check(not f:StepsFit(), "asked, a font list's choices don't fit")
+	eq(measured, 0, 'still nothing measured')
+	f.measure.SetFont, f.measure.SetText = nil, nil
 	f:Release()
+	theme('thick')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a select reads its choices once a bind for its steppers, and a released one forgets them", function()
+	theme('thick')
+	local reads = 0
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() reads = reads + 1; return { a = 'A', b = 'B', c = 'C' } end,
+		get = function() return 'b' end, set = function() end,
+	}))
+	reads = 0; rebind(w)
+	local labelReads = reads -- Thick: the face's label only
+	theme('blizzard'); rebind(w)
+	check(w.back:IsShown(), 'steppers')
+	reads = 0; rebind(w)
+	eq(reads, labelReads + 1, 'bound again with its steppers shown: the label, and the choices once')
+	w:SetDisabled(true); w:SetDisabled(false)
+	check(w.back:IsEnabled() and w.next:IsEnabled(), 'enabled again at b')
+	w:Release()
+	check(not w.stepped, 'released: no steppers remembered')
 	theme('thick')
 	eq(#take_errors(), 0, 'no errors')
 end)
