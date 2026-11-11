@@ -128,6 +128,59 @@ test('an NPC tooltip takes the profile reaction color', function()
 	check(tr == c.r and tg == c.g and tb == c.b, "the name line is the profile's reaction color")
 end)
 
+-- The game can make a unit's class or reaction a secret value (a world-cursor
+-- unit on Forever: BugGrabber, tooltip.lua:71, "attempted to index a table
+-- that cannot be indexed with secret keys"). The stubs have no secret values,
+-- so one is stood in for: a key issecretvalue reports, which SaftUI's own
+-- color tables refuse as the game's do. Blizzard's C_ClassColor.GetClassColor
+-- takes a secret class.
+local SECRET = setmetatable({}, { __tostring = function() return '<secret>' end })
+local function with_secrets(fn)
+	local was_secret, was_classcolor = _G.issecretvalue, _G.C_ClassColor
+	local colors = st.config.profile.colors
+	local refuse = { __index = function(_, key)
+		if key == SECRET then error('attempted to index a table that cannot be indexed with secret keys', 2) end
+	end }
+	local class_mt, reaction_mt = getmetatable(colors.class), getmetatable(colors.reaction)
+	setmetatable(colors.class, refuse)
+	setmetatable(colors.reaction, refuse)
+	_G.issecretvalue = function(v) return v == SECRET end
+	local ok, err = pcall(fn)
+	_G.issecretvalue, _G.C_ClassColor = was_secret, was_classcolor
+	setmetatable(colors.class, class_mt)
+	setmetatable(colors.reaction, reaction_mt)
+	if not ok then error(err, 0) end
+end
+
+test("a player whose class is secret takes Blizzard's class color, with no error", function()
+	with_secrets(function()
+		local blizzard = { r = 0.7, g = 0.6, b = 0.5 }
+		_G.UnitName = function() return 'Someone' end
+		_G.UnitPlayerControlled = function() return true end
+		_G.UnitClass = function() return 'Mage', SECRET end
+		_G.C_ClassColor = { GetClassColor = function(class) return class == SECRET and blizzard or nil end }
+		TT:GameTooltip_OnTooltipSetUnit(tooltips.GameTooltip)
+		for _, frame in ipairs({ tooltips.GameTooltip, bar }) do
+			local r, g, b = backdrop_of(frame):GetBackdropBorderColor()
+			check(r == blizzard.r and g == blizzard.g and b == blizzard.b, frame:GetName() .. " border is Blizzard's class color")
+		end
+		local tr, tg, tb = left1:GetTextColor()
+		check(tr == blizzard.r and tg == blizzard.g and tb == blizzard.b, "the name line is Blizzard's class color")
+	end)
+end)
+
+test('a unit whose reaction is secret is left uncolored, with no error', function()
+	with_secrets(function()
+		left1:SetTextColor(0.11, 0.22, 0.33)
+		_G.UnitName = function() return 'Someone' end
+		_G.UnitPlayerControlled = function() return false end
+		_G.UnitReaction = function() return SECRET end
+		TT:GameTooltip_OnTooltipSetUnit(tooltips.GameTooltip)
+		local tr, tg, tb = left1:GetTextColor()
+		check(tr == 0.11 and tg == 0.22 and tb == 0.33, 'the name line keeps the color it had')
+	end)
+end)
+
 test('UpdateConfig finds the same backdrops and re-colors them for a new Theme and Background', function()
 	local backdrop = backdrop_of(tooltips.ShoppingTooltip1)
 	st.config.profile.templates.thick.bordercolor = { 0.9, 0.8, 0.7, 1 }

@@ -61,16 +61,33 @@ function TT:UpdateTooltipFonts(tooltip)
 	end
 end
 
+-- A unit's class or reaction can be a secret value (a world-cursor unit on
+-- Forever), and SaftUI's color tables can't be indexed with one. A secret class
+-- takes Blizzard's own class color (C_ClassColor.GetClassColor takes a secret,
+-- and its color goes straight into the setters), as oUF's health bar does; a
+-- secret reaction leaves the tooltip uncolored.
+local function ClassColor(class)
+	if issecretvalue(class) then
+		return C_ClassColor and C_ClassColor.GetClassColor(class)
+	end
+	return st.config.profile.colors.class[class]
+end
+
+local function ReactionColor(reaction)
+	if issecretvalue(reaction) then return end
+	return st.config.profile.colors.reaction[reaction]
+end
+
 function TT:GameTooltip_OnTooltipSetUnit(tooltip)
 	--self:UpdateTooltipDisplay(tooltip)
 
 	local c
 	if (select(1, UnitName('mouseover')) == nil) and UnitPlayerControlled('mouseover') then
-		c = st.config.profile.colors.class[st.my_class]
+		c = ClassColor(st.my_class)
 	elseif UnitPlayerControlled('mouseover') then
-		c = st.config.profile.colors.class[select(2, UnitClass('mouseover'))]
+		c = ClassColor(select(2, UnitClass('mouseover')))
 	else
-		c = st.config.profile.colors.reaction[UnitReaction('player', 'mouseover')]
+		c = ReactionColor(UnitReaction('player', 'mouseover'))
 	end
 
 	if c then

@@ -43,6 +43,7 @@ On retail (and some Forever paths), protected data such as some unit, aura, powe
 - Guard with `issecretvalue(v)`. A shim in `SaftUI-Core/utilities.lua` makes it safe on clients without it.
 - When a value is secret, skip the math. Either pass it through unchanged, or fold the operation into something widget-side. For example, a power background multiplier becomes an alpha multiplier.
 - Sizes and positions read from Blizzard frames can be secret. Guard them before any math.
+- A unit's class or reaction can be secret (a world-cursor unit's tooltip on Forever), and SaftUI's color tables can't be indexed with a secret key ("attempted to index a table that cannot be indexed with secret keys"). A secret class takes Blizzard's color from `C_ClassColor.GetClassColor(class)`, which takes a secret, so the user's class colors can't apply to it; a secret reaction gets no color (`SaftUI-Misc/tooltip.lua`'s `ClassColor` and `ReactionColor`, and oUF's health element).
 
 ## Reference sources
 
