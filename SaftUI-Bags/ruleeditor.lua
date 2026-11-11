@@ -9,8 +9,12 @@ local INV = st:GetModule('Inventory')
 	  { type = 'bagrule', size = 'wide', name, desc,
 	    get = function(info) -> rule end, set = function(info, rule) end }
 
-	It's a bare type (W.Define): no label, the body's width. Each row is 26
-	high and each level of nesting indents 34. A group's rows hang off its
+	It's a bare, titled type (W.Define): its name over it, the body's width.
+	Each row is 26 high and each level of nesting indents 34. A row whose
+	fields don't fit before the X goes on in lines of 26 under it, each
+	starting under its label (its handle, NOT, label and X stay on the
+	first line), so a narrow editor (the Categories tab's 540) never runs a
+	field under the X. A group's rows hang off its
 	line (2 wide, at its indent plus 12; AND blue, OR orange), with its AND or
 	OR badge on the line's middle (a click flips it) and an 18 connector from
 	the line to each row. Rows:
@@ -37,10 +41,11 @@ local INV = st:GetModule('Inventory')
 	and the ghost.
 
 	  widget:SetHighlight(path | nil)  tints the row at path orange (Caught now)
-	  widget.rows[i] = { frame, path, kind, depth, node, op, handle, notBox,
-	    remove, label, tint, connector, badge (on a group's add row: every
-	    group has one, the root too; badge.line is its line), captions,
-	    fields = { [name] = control } }
+	  widget.rows[i] = { frame, path, kind, depth, node, op, top, height,
+	    handle, notBox, remove, label, tint, connector, badge (on a group's
+	    add row: every group has one, the root too; badge.line is its line),
+	    captions, fields = { [name] = control } }
+	top is the row's from the editor's top, and height its lines times 26.
 	fields are named for the params they set: text and word; class and
 	subclasses; qualities, slots, states and expansions; mode, min and max;
 	value; ids and id; levels, expansion and share; note; and an add row's
@@ -427,14 +432,27 @@ end
 
 ------------------------------------------------------------------ laying a row out
 
--- Places a row's controls left to right from x.
+-- Places a row's controls left to right from x, on lines of ROW_HEIGHT: a
+-- control that would pass limit (the X, or the row's end) starts the next
+-- line at wrapX, unless it is already the first on its line.
 local Lay = {}
 Lay.__index = Lay
+
+-- Where a control width wide goes: its x is self.x after this, and the
+-- line's top (0 for the first) is returned.
+function Lay:Fit(width)
+	if self.x > self.wrapX and self.x + width > self.limit then
+		self.line = self.line + 1
+		self.x = self.wrapX
+	end
+	return self.line * ROW_HEIGHT
+end
 
 function Lay:Box(name, width, shown, commit)
 	local box = Take(self.f, 'box', MakeBox)
 	box:SetWidth(width)
-	box:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -2)
+	local top = self:Fit(width)
+	box:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(top + 2))
 	box:SetJustifyH(width > NUMBER_BOX and 'LEFT' or 'CENTER')
 	box.w, box.shown, box.commit = self.w, shown, commit
 	box:SetText(shown)
@@ -462,7 +480,8 @@ end
 function Lay:Field(name, width, text, open)
 	local field = Take(self.f, 'field', MakeField)
 	field:SetSize(width, FIELD_HEIGHT)
-	field:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -2)
+	local top = self:Fit(width)
+	field:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(top + 2))
 	field.w, field.open = self.w, open
 	field.text:SetText(text)
 	self.record.fields[name] = field
@@ -472,28 +491,33 @@ end
 
 function Lay:Check(name, caption, checked, toggle)
 	local check = Take(self.f, 'check', MakeCheck)
-	check:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(ROW_HEIGHT - CHECK_SIZE) / 2)
 	check.w, check.toggle = self.w, toggle
 	check:SetChecked(checked)
 	check.mark:SetColorTexture(Colors().button.blue:GetRGB())
 	check.mark:SetShown(checked)
 	check.caption:SetText(caption)
 	check.caption:SetTextColor(Grey())
+	-- The box and its caption go together.
+	local width = CHECK_SIZE + 6 + TextWidth(check.caption)
+	local top = self:Fit(width)
+	check:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(top + (ROW_HEIGHT - CHECK_SIZE) / 2))
 	self.record.fields[name] = check
-	self.x = self.x + CHECK_SIZE + 6 + TextWidth(check.caption) + GAP
+	self.x = self.x + width + GAP
 	return check
 end
 
 -- Grey words between the controls (a field of the row's when named).
 function Lay:Caption(text, name)
 	local caption = Take(self.f, 'caption', MakeCaption)
-	caption:SetPoint('LEFT', self.f, 'LEFT', self.x, 0)
 	caption:SetText(text)
 	caption:SetTextColor(Grey())
+	local width = TextWidth(caption)
+	local top = self:Fit(width)
+	caption:SetPoint('LEFT', self.f, 'TOPLEFT', self.x, -(top + ROW_HEIGHT / 2))
 	local captions = self.record.captions
 	captions[#captions + 1] = caption
 	if name then self.record.fields[name] = caption end
-	self.x = self.x + TextWidth(caption) + GAP
+	self.x = self.x + width + GAP
 	return caption
 end
 
@@ -505,7 +529,8 @@ function Lay:Add(name, text, run)
 	add.text:SetAlpha(1)
 	local width = TextWidth(add.text)
 	add:SetSize(width, FIELD_HEIGHT)
-	add:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -2)
+	local top = self:Fit(width)
+	add:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(top + 2))
 	self.record.fields[name] = add
 	self.x = self.x + width + 12
 	return add
@@ -699,14 +724,13 @@ end
 
 local StartDrag, EndDrag
 
--- Row frame i: made once, used for the outline's row i on every layout.
+-- Row frame i: made once, used for the outline's row i on every layout,
+-- which places it (rows above it may take more than one line).
 local function RowFrame(w, i)
 	local f = w.rowFrames[i]
 	if f then return f end
 	f = CreateFrame('Button', nil, w.frame)
 	f:SetHeight(ROW_HEIGHT)
-	f:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', 0, -(i - 1) * ROW_HEIGHT)
-	f:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -(i - 1) * ROW_HEIGHT)
 	f:RegisterForClicks('LeftButtonUp')
 	f:SetScript('OnClick', function() TakeCursorItem(w, i) end)
 	f:SetScript('OnReceiveDrag', function() TakeCursorItem(w, i) end)
@@ -755,7 +779,7 @@ local function RowFrame(w, i)
 
 	local remove = CreateFrame('Button', nil, f)
 	remove:SetSize(REMOVE_SIZE, REMOVE_SIZE)
-	remove:SetPoint('RIGHT', f, 'RIGHT', 0, 0)
+	remove:SetPoint('RIGHT', f, 'TOPRIGHT', 0, -ROW_HEIGHT / 2) -- on the first line
 	remove.icon = remove:CreateTexture(nil, 'OVERLAY')
 	remove.icon:SetTexture(st.textures.close)
 	remove.icon:SetTexCoord(unpack(st.CLOSE_X_COORDS))
@@ -779,14 +803,19 @@ local function HideRow(f)
 	f:Hide()
 end
 
-local function LayRow(w, i, row)
+-- Lays outline row i out top down from the editor's top, and returns its
+-- height (its lines of ROW_HEIGHT).
+local function LayRow(w, i, row, top)
 	local f = RowFrame(w, i)
 	local level = w.frame:GetFrameLevel()
 	f:SetFrameLevel(level + 1)
+	f:ClearAllPoints()
+	f:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', 0, -top)
+	f:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -top)
 	f:Show()
 	wipe(f.used)
 	local record = {
-		frame = f, path = row.path, kind = row.kind, depth = row.depth, node = row.node, op = row.op,
+		frame = f, path = row.path, kind = row.kind, depth = row.depth, node = row.node, op = row.op, top = top,
 		handle = f.handle, notBox = f.notBox, remove = f.remove, label = f.label, tint = f.tint,
 		connector = f.connector, captions = {}, fields = {},
 	}
@@ -819,6 +848,10 @@ local function LayRow(w, i, row)
 		NotLook(f.notBox, type(row.node) == 'table' and row.node.negate == true)
 		x = x + NOT_WIDTH + GAP
 	end
+	-- A field that doesn't fit before the X (or, on an add row, the end) goes
+	-- on a line under the first, starting under the label.
+	local wrapX = x
+	local limit = w.frame:GetWidth() - (row.kind ~= 'add' and REMOVE_SIZE + GAP or 0)
 	if row.kind ~= 'add' then
 		local label = 'Unknown block'
 		if row.kind == 'group' then
@@ -829,11 +862,14 @@ local function LayRow(w, i, row)
 		f.label:SetText(label)
 		f.label:SetTextColor(Grey())
 		f.label:ClearAllPoints()
-		f.label:SetPoint('LEFT', f, 'LEFT', x, 0)
+		f.label:SetPoint('LEFT', f, 'TOPLEFT', x, -ROW_HEIGHT / 2)
 		x = x + TextWidth(f.label) + 8
 	end
 
-	local lay = setmetatable({ w = w, f = f, record = record, x = x, path = row.path, node = row.node }, Lay)
+	local lay = setmetatable({
+		w = w, f = f, record = record, x = x, path = row.path, node = row.node,
+		line = 0, wrapX = wrapX, limit = limit,
+	}, Lay)
 	if row.kind == 'add' then
 		local path = row.path
 		lay:Add('addBlock', '+ Block', function(button)
@@ -856,6 +892,9 @@ local function LayRow(w, i, row)
 		end
 	end
 	HideUnused(f)
+	record.height = (lay.line + 1) * ROW_HEIGHT
+	f:SetHeight(record.height)
+	return record.height
 end
 
 -- Each group's line and badge, on its add row: the line from its first
@@ -891,8 +930,8 @@ local function LayGroups(w)
 			g = g + 1
 			local parts = GroupParts(w, g)
 			local first = #record.path == 0 and 1 or (titles[PathKey(record.path)] + 1)
-			local top = (first - 1) * ROW_HEIGHT
-			local bottom = (i - 1) * ROW_HEIGHT + ROW_HEIGHT / 2
+			local top = w.rows[first].top
+			local bottom = record.top + ROW_HEIGHT / 2
 			local lineX = record.depth * INDENT + LINE_X
 			local r, gr, b = OpColor(record.op)
 
@@ -937,11 +976,12 @@ local function Layout(w)
 	local rows = R.Outline(Current(w))
 	w.outline = rows
 	wipe(w.rows)
-	for i, row in ipairs(rows) do LayRow(w, i, row) end
+	local top = 0
+	for i, row in ipairs(rows) do top = top + LayRow(w, i, row, top) end
 	for i = #rows + 1, #w.rowFrames do HideRow(w.rowFrames[i]) end
 	LayGroups(w)
 	w.over:SetFrameLevel(w.frame:GetFrameLevel() + 6)
-	w.frame:SetHeight(max(1, #rows) * ROW_HEIGHT)
+	w.frame:SetHeight(max(ROW_HEIGHT, top))
 	ApplyHighlight(w)
 end
 
@@ -980,8 +1020,8 @@ local function DrawDrag(w)
 	ghost:SetPoint('LEFT', UIParent, 'BOTTOMLEFT', floor(x / scale) + 12, floor(y / scale))
 	local i, lower, parentPath = DropSpot(w)
 	if not i then return w.insert:Hide() end
-	local top = (i - 1) * ROW_HEIGHT
-	if lower and w.rows[i].kind ~= 'add' then top = top + ROW_HEIGHT end
+	local top = w.rows[i].top
+	if lower and w.rows[i].kind ~= 'add' then top = top + w.rows[i].height end
 	local left = #parentPath * INDENT + LINE_X + CONTENT_X - 4
 	w.insert:ClearAllPoints()
 	w.insert:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', left, -(top - 1))
@@ -1039,6 +1079,7 @@ end
 
 W.Define('bagrule', {
 	bare = true,
+	titled = true,
 	build = function(w)
 		local frame = CreateFrame('Frame', nil, UIParent)
 		frame:SetSize(1, ROW_HEIGHT)
@@ -1056,8 +1097,13 @@ W.Define('bagrule', {
 	methods = {
 		Refresh = function(w) Layout(w) end,
 
-		-- The body's width (a bare row).
-		SetWidth = function(w, width) w.frame:SetWidth(width) end,
+		-- The body's width (a bare row). Rows wrap at the width, so a new one
+		-- lays them out again.
+		SetWidth = function(w, width)
+			if width == w.frame:GetWidth() then return end
+			w.frame:SetWidth(width)
+			if w.row then Layout(w) end
+		end,
 
 		-- Tints the row at path (a block or a group's title), or none for nil.
 		SetHighlight = function(w, path)

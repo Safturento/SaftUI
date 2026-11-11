@@ -95,8 +95,9 @@ end
 
 -- Bags' section in the /sui tree: General (the settings for every window), the
 -- windows' Look and Icons, then one subsection per window that can be placed
--- with a mover (this client's windows, for the bank layout in use). With the
--- bags turned off, only General, with the Enable toggle that turns them back on.
+-- with a mover (this client's windows, for the bank layout in use), then
+-- Categories. With the bags turned off, only General, with the Enable toggle
+-- that turns them back on.
 function INV:GetConfigTable()
 	if not self.config then return end
 
@@ -217,6 +218,21 @@ function INV:GetConfigTable()
 			args[id] = BuildWindow(id, order + 2) -- after General, Look and Icons
 		end
 	end
+	-- The category list and the selected category's editor, after the windows:
+	-- one row, the bagcategories widget (categoriestab.lua).
+	args.categories = {
+		name = 'Categories',
+		type = 'group',
+		order = #self.windowIds + 3,
+		args = {
+			categories = {
+				type = 'bagcategories',
+				size = 'wide',
+				name = 'Categories',
+				desc = 'Every bag category in the order they claim items: an item goes to the first one that catches it. Drag a category by its handle to move it, and select one to edit it.',
+			},
+		},
+	}
 	return {
 		name = 'Bags',
 		type = 'group',

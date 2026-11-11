@@ -255,6 +255,48 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 	w:Release()
 end)
 
+test('a row too wide for the editor wraps its fields onto more lines, clear of the X', function()
+	local ed = editor(grp('and', { blk('oldgear', { levels = 10, expansion = 9, share = 0.9 }), t('a') }))
+	local w = ed.w
+	w:SetWidth(900)
+	eq(w.rows[1].frame:GetHeight(), 26, 'at 900 Old gear fits one line')
+	w:SetWidth(400)
+	local old, after, add = w.rows[1], w.rows[2], w.rows[3]
+	local height = old.frame:GetHeight()
+	check(height > 26 and height % 26 == 0, 'at 400 it takes more lines of 26')
+	local top = w.frame:GetTop()
+	eq(top - after.frame:GetTop(), height, 'the next row starts under it')
+	eq(w:GetHeight(), height + after.frame:GetHeight() + 26, 'the editor is as tall as its rows')
+	local limit = old.remove:GetLeft()
+	local lines = {}
+	for name, control in pairs(old.fields) do
+		check(control:GetRight() <= limit, name .. ' ends before the X')
+		lines[old.frame:GetTop() - control:GetTop()] = true
+	end
+	for _, caption in ipairs(old.captions) do
+		check(caption:GetLeft() + caption:GetUnboundedStringWidth() <= limit, caption:GetText() .. ' ends before the X')
+	end
+	check(lines[2] and lines[2 + 26], 'boxes on the first line and the next, 2 down in each')
+	-- The handle, NOT, label and X stay on the first line; a wrapped line starts under the label.
+	eq(old.frame:GetTop() - old.remove:GetTop(), 5, 'the X in the middle of the first line')
+	eq(old.frame:GetTop() - old.handle:GetTop(), 2, 'the handle on the first line')
+	local _, labelMiddle = old.label:GetCenter()
+	eq(old.frame:GetTop() - labelMiddle, 13, 'the label on the first line')
+	local under = math.huge
+	for _, control in pairs(old.fields) do
+		if old.frame:GetTop() - control:GetTop() > 26 then under = math.min(under, control:GetLeft()) end
+	end
+	eq(under, old.label:GetLeft(), 'the next line starts under the label')
+	-- The root's line runs to its add row's middle, under the taller row.
+	eq(top - add.badge.line:GetBottom(), height + after.frame:GetHeight() + 13, "the root's line ends at its add row's middle")
+	-- Room again: one line.
+	w:SetWidth(900)
+	eq(old.frame:GetHeight(), 26, 'wider: one line again')
+	eq(w:GetHeight(), 3 * 26, 'and the editor three rows')
+	eq(#take_errors(), 0, 'no errors')
+	w:Release()
+end)
+
 test('+ Block lists every block type in order; a pick adds it at the group\'s end', function()
 	local ed = editor(grp('and', { t('a'), grp('or', { t('b') }) }))
 	local w = ed.w

@@ -305,6 +305,10 @@ function INV:UpdateHandler(_, elapsed)
 		self:UpdateVisibleContainers(updateLayout)
 	end, geterrorhandler())
 	self.IS_UPDATING = false
+	-- An open Categories tab in /sui shows counts and Caught now from the bags:
+	-- it is drawn again on the next frame, or once a drag in it ends
+	-- (categoriestab.lua).
+	if self.categoriesTabShown then st.Config:Refresh() end
 end
 
 function INV:QueueUpdate(updateLayout)

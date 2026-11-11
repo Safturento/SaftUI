@@ -25,3 +25,4 @@ autovendor.lua
 movers.lua
 options.lua
 ruleeditor.lua
+categoriestab.lua

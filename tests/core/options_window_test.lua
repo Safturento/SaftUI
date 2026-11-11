@@ -1384,3 +1384,84 @@ test("a bare row: no label, the body's width, at the cell's top left, its widget
 	module.GetConfigTable = nil
 	close_all()
 end)
+
+test("a titled bare row: its name above the widget, the desc its name's tooltip, the widget 28 down, its height plus 34", function()
+	W.Define('windowtitled', {
+		bare = true,
+		titled = true,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = {
+			SetWidth = function(self, width)
+				self.frame:SetWidth(width)
+				self.frame:SetHeight(40)
+			end,
+			Refresh = function() end,
+		},
+	})
+	eq(W.CUSTOM.windowtitled.bare, true, 'W.CUSTOM marks it bare')
+	eq(W.CUSTOM.windowtitled.titled, true, 'and titled')
+	local module = st:NewModule('TitledRows')
+	function module:GetConfigTable()
+		local function toggle(name, order)
+			return { type = 'toggle', name = name, desc = name, order = order, get = function() return true end, set = function() end }
+		end
+		return {
+			name = 'Titled rows', type = 'group', category = 'Frames',
+			args = {
+				before = toggle('Before', 1),
+				titled = { type = 'windowtitled', name = 'Titled', desc = 'A titled row.', size = 'wide', order = 2 },
+				after = toggle('After', 3),
+			},
+		}
+	end
+
+	st.Config:Open('TitledRows')
+	eq(drawn(), 'before,titled,after', 'the titled row between normal rows')
+	local c = cell('titled')
+	check(c.label:IsShown(), 'its name shows')
+	eq(c.label:GetText(), 'Titled', 'its name')
+	local point, rel, relPoint, x, y = c.label:GetPoint(1)
+	eq(point .. relPoint, 'TOPLEFTTOPLEFT', "at the cell's top left")
+	check(rel == c.frame, 'in its cell')
+	eq(x, 0)
+	eq(y, -6, '6 down')
+	eq(c.widget.frame:GetWidth(), 774, "the widget has the body's width")
+	point, rel, relPoint, x, y = c.widget.frame:GetPoint(1)
+	eq(point .. relPoint, 'TOPLEFTTOPLEFT', "the widget at the cell's left")
+	check(rel == c.frame, 'in its cell')
+	eq(x, 0)
+	eq(y, -28, '28 down, under its name')
+	eq(c.height, 40 + 34, "its widget's height plus 34")
+	eq(cell('after').y, c.y + c.height, 'the next row under it')
+	check(not c.frame:IsMouseEnabled(), 'its row takes no mouse')
+
+	-- The desc is its name's tooltip.
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	local tip = c.frame.titleTip
+	check(tip ~= nil and tip:IsShown() and tip:IsMouseEnabled(), 'its name takes the mouse')
+	point, rel, relPoint, x, y = tip:GetPoint(1)
+	check(point == 'TOPLEFT' and rel == c.label and relPoint == 'TOPLEFT' and x == 0 and y == 0, 'over the name')
+	eq(tip:GetWidth(), math.ceil(c.label:GetUnboundedStringWidth()), 'as wide as the name')
+	eq(tip:GetHeight(), 16, 'and as tall')
+	stub.fire_script(tip, 'OnEnter')
+	check(GameTooltip:IsOwned(c.frame) and GameTooltip:IsShown(), 'a tooltip')
+	eq(stub.state(GameTooltip).texts[1], 'Titled', 'its name')
+	eq(stub.state(GameTooltip).texts[2], 'A titled row.', 'and its desc')
+	stub.fire_script(tip, 'OnLeave')
+	check(not GameTooltip:IsShown(), 'gone when the mouse leaves')
+
+	-- Row frames are pooled: drawn again for a normal row, the name's hit frame goes.
+	local titledFrame = c.frame
+	OW:Navigate('Inventory')
+	for _, other in ipairs(OW.GetDrawnRows()) do
+		if other.frame == titledFrame then
+			check(not titledFrame.titleTip:IsShown(), "a normal row has no name's hit frame")
+		end
+	end
+
+	module.GetConfigTable = nil
+	close_all()
+end)

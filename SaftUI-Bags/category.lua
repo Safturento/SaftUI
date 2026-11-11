@@ -331,12 +331,15 @@ function INV:GetEmptySlotsByKind(id, bags, mode)
 	return empties
 end
 
+-- The group a bag merges stacks in for Compact and Rows (ReadBags' groupOf):
+-- the reagent bag is its own kind of bag, so the same item in it and in a
+-- normal bag stays two slots when stacks are merged.
+function INV:StackGroup(bagID)
+	return self:IsReagentBag(bagID) and 'reagent' or 'bag'
+end
+
 function INV:GetSortedInventory(id)
-	local bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
-		-- The reagent bag is its own kind of bag: the same item in it and in a
-		-- normal bag stays two slots when stacks are merged.
-		return self:IsReagentBag(bagID) and 'reagent' or 'bag'
-	end)
+	local bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID) return self:StackGroup(bagID) end)
 
 	local inventory = {}
 	for _, bag in ipairs(bags) do

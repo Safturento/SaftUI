@@ -1683,16 +1683,18 @@ define('position', {
 ------------------------------------------------------------------ custom types
 
 -- The types other files define (the bags' Categories tab): W.CUSTOM[rowType]
--- is { bare = true | false } for each. The body draws a bare type's row with
--- no label, the widget across the whole line (optionsbody.lua).
+-- is { bare = true | false, titled = true | false } for each. The body draws
+-- a bare type's row with no label, the widget across the whole line, and a
+-- titled bare type's with its name above the widget (optionsbody.lua).
 W.CUSTOM = {}
 
 -- The types above, which W.Define can't replace.
 local BUILT_IN = {}
 for rowType in pairs(builders) do BUILT_IN[rowType] = true end
 
--- W.Define(rowType, { width = n, bare = bool, build = function(w) end,
+-- W.Define(rowType, { width = n, bare = bool, titled = bool, build = function(w) end,
 -- methods = { Refresh = ..., OnRelease = ..., ... } }) makes a widget type.
+-- titled is for a bare type only: its row shows its name over the widget.
 -- build makes w.frame, and whatever else the type keeps, once per widget.
 -- The methods are copied onto each widget as define copies a built-in
 -- type's, so Bind, Refresh (nothing after a release), Commit, SetDisabled
@@ -1712,7 +1714,7 @@ function W.Define(rowType, spec)
 	define(rowType, spec.methods or {})
 	pools[rowType] = {}
 	W.WIDTH[rowType] = spec.width or 0
-	W.CUSTOM[rowType] = { bare = spec.bare and true or false }
+	W.CUSTOM[rowType] = { bare = spec.bare and true or false, titled = (spec.bare and spec.titled) and true or false }
 end
 
 ------------------------------------------------------------------ the check list

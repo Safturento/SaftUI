@@ -1076,6 +1076,17 @@ function GameTooltip.SetHyperlink(self, s, link)
 	if type(link) ~= 'string' then usage(s, 'SetHyperlink(): link must be a string') end
 	s.lines, s.texts, s.rights = 1, { link }, {}
 end
+-- An item in a bag slot, and an item by its ID: the tooltip starts over with
+-- one line naming it, 'bag item <bag> <slot>' and 'item <id>', as SetHyperlink
+-- makes one line of its link.
+function GameTooltip.SetBagItem(self, s, bag, slot)
+	if type(bag) ~= 'number' or type(slot) ~= 'number' then usage(s, 'SetBagItem(): bag and slot must be numbers') end
+	s.lines, s.texts, s.rights = 1, { ('bag item %d %d'):format(bag, slot) }, {}
+end
+function GameTooltip.SetItemByID(self, s, itemID)
+	if type(itemID) ~= 'number' then usage(s, 'SetItemByID(): itemID must be a number') end
+	s.lines, s.texts, s.rights = 1, { ('item %d'):format(itemID) }, {}
+end
 -- The tooltip's unit: name and unit token, or nothing (nil, nil) when it isn't
 -- showing a unit. Nothing in the stubs sets one yet.
 function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
