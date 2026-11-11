@@ -723,10 +723,15 @@ test('the scroll bar works: drag the thumb, click an arrow, click the track; the
 	stub.fire_script(bar.track, 'OnMouseDown', 'LeftButton')
 	eq(scroll(), math.max(0, math.min(range, view) - view), 'above it: a view up')
 
-	-- The wheel, as before.
+	-- The wheel, as before; over the bar, outside the body, too.
 	stub.fire_script(F.body, 'OnMouseWheel', -1)
 	eq(scroll(), 68, 'a turn of the wheel: 68')
 	eq(bar.thumb:GetTop(), bar.track:GetTop() - math.floor(room * 68 / range), 'the thumb follows the wheel')
+	check(bar.frame:IsMouseWheelEnabled(), 'the bar takes the wheel')
+	stub.fire_script(bar.frame, 'OnMouseWheel', -1)
+	eq(scroll(), 136, 'a turn over the bar: 68 more')
+	stub.fire_script(bar.frame, 'OnMouseWheel', 1)
+	eq(scroll(), 68, 'and back')
 	stub.cursor_x, stub.cursor_y = 0, 0
 	st.Config:Close()
 	eq(#take_errors(), 0, 'no errors')

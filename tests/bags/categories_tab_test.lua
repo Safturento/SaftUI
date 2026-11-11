@@ -1106,6 +1106,12 @@ test("under Blizzard the list and the editor scroll on Blizzard's minimal scroll
 		eq(w.listScroll:GetVerticalScroll(), 66, client .. ': the list stays')
 		wheel(w.listScroll, -1)
 		eq(w.listScroll:GetVerticalScroll(), 132, client .. ': the wheel as before')
+		-- The wheel over a bar (outside its pane) scrolls that pane too.
+		check(list.frame:IsMouseWheelEnabled() and editor.frame:IsMouseWheelEnabled(), client .. ': the bars take the wheel')
+		wheel(list.frame, -1)
+		eq(w.listScroll:GetVerticalScroll(), 198, client .. ": the wheel over the list's bar: three rows")
+		wheel(editor.frame, -1)
+		eq(w.editorScroll:GetVerticalScroll(), 136, client .. ": over the editor's: two of the body's rows")
 
 		-- Under Thick: the 3px bars, as before.
 		st.config.profile.theme.name = 'thick'
@@ -1120,6 +1126,57 @@ test("under Blizzard the list and the editor scroll on Blizzard's minimal scroll
 		eq(#take_errors(), 0, client .. ': no errors')
 		st.Config:Close()
 	end
+end)
+
+test('a bag update waits while a scroll thumb is held, and draws once it is let go or its button is found up', function()
+	world()
+	tall_rule('Toys', 25)
+	INV.categoryEditor.selected = 'Toys'
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	open()
+	local w = tab()
+	local bar = st.OptionsBody.Companion(w.editorBar)
+	check(bar.frame:IsShown(), "the editor's bar")
+	eq(row_of(w, 'Consumables').count:GetText(), '1', 'one in Consumables')
+
+	-- Held: the render waits, and the tab isn't drawn again under the drag.
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	check(W.ScrollBarHeld(), 'a thumb is held')
+	local renders = OW.GetRenderCount()
+	B.put(0, 7, B.item(102, 'Elixir', 'Consumable', 30))
+	INV:QueueUpdate(true)
+	INV:UpdateHandler()
+	tick()
+	tick()
+	eq(OW.GetRenderCount(), renders, 'a bag update waits for the thumb')
+	check(tab() == w and bar.frame:IsShown(), 'the tab not drawn again')
+	check(W.ScrollBarHeld(), 'the thumb still held')
+	eq(row_of(w, 'Consumables').count:GetText(), '1', 'the count waits too')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	check(not W.ScrollBarHeld(), 'let go')
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'let go: drawn')
+	w = tab()
+	eq(row_of(w, 'Consumables').count:GetText(), '2', 'the new count')
+
+	-- A thumb whose mouse up never came: its button found up, the render runs.
+	bar = st.OptionsBody.Companion(w.editorBar)
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	renders = OW.GetRenderCount()
+	INV:QueueUpdate(true)
+	INV:UpdateHandler()
+	tick()
+	eq(OW.GetRenderCount(), renders, 'held: waits')
+	stub.mouse_buttons.LeftButton = nil
+	check(not W.ScrollBarHeld(), 'the button up: no thumb held')
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'drawn')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
 end)
 
 test("under Blizzard the category list is the Settings category list; its handles, counts, markers and drop line stay", function()

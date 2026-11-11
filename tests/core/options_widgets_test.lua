@@ -2676,6 +2676,24 @@ test("a long list scrolls on Blizzard's narrow scroll bar inside it, in place of
 	eq(bar.track:GetTop(), bar.up:GetTop() - 9, 'the track 9 in')
 	check(inside(bar.frame, list.frame), 'inside the list frame')
 	check(bar.frame:GetFrameLevel() > list.rows[1]:GetFrameLevel(), 'over the rows, so it takes the mouse')
+	-- Between each narrow arrow and the track, the column itself takes the
+	-- click, which would otherwise pick the first or last row under it.
+	check(bar.frame:IsMouseEnabled(), 'the column takes the mouse')
+	local scale = bar.frame:GetEffectiveScale()
+	local cx = bar.track:GetCenter()
+	for _, at in ipairs({ { bar.up:GetBottom() - 2, list.rows[1], 'under the up arrow' }, { bar.down:GetTop() + 2, list.rows[12], 'over the down arrow' } }) do
+		check(at[1] < bar.up:GetBottom() + 1 and at[1] > bar.track:GetTop() or at[1] > bar.down:GetTop() - 1 and at[1] < bar.track:GetBottom(), at[3] .. ': between the arrow and the track')
+		stub.cursor_x, stub.cursor_y = cx * scale, at[1] * scale
+		check(at[2]:IsMouseOver(), at[3] .. ': over a row')
+		check(bar.frame:IsMouseMotionFocus(), at[3] .. ': the column has the mouse, not the row under it')
+	end
+	stub.cursor_x, stub.cursor_y = 0, 0
+	-- The wheel over the bar: three rows, as over the list.
+	check(bar.frame:IsMouseWheelEnabled(), 'the bar takes the wheel')
+	stub.fire_script(bar.frame, 'OnMouseWheel', -1)
+	eq(entries_of(list)[1], 'Entry 4', 'the wheel over the bar: three rows')
+	stub.fire_script(bar.frame, 'OnMouseWheel', 1)
+	eq(entries_of(list)[1], 'Entry 1', 'and back')
 	local track = bar.track:GetHeight()
 	eq(bar.thumb:GetHeight(), math.max(23, math.floor(track * 12 / 20)), "the thumb the share of rows shown")
 	eq(entries_of(list)[1], 'Entry 1', 'from the top')
@@ -2711,6 +2729,64 @@ test("a long list scrolls on Blizzard's narrow scroll bar inside it, in place of
 	check(not bar.frame:IsShown(), 'Thick: no Blizzard bar')
 	W.CloseList()
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('W.BlizzardBar: the column takes the mouse and the wheel; a held thumb asks only when the cursor moves; W.ScrollBarHeld', function()
+	local host = CreateFrame('Frame', nil, UIParent)
+	host:SetSize(100, 300)
+	host:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	local asked = {}
+	local bar = W.BlizzardBar(host, function(offset) asked[#asked + 1] = offset end, { step = 10 })
+	bar:Set(host, 50, 0, 300, 300, 900, 0)
+	check(bar.frame:IsShown(), 'shown')
+	check(bar.frame:IsMouseEnabled(), 'the column takes the mouse')
+
+	-- The wheel: a step a turn, unclamped (the caller clamps).
+	stub.fire_script(bar.frame, 'OnMouseWheel', -1)
+	eq(asked[#asked], 10, 'down a turn: a step')
+	stub.fire_script(bar.frame, 'OnMouseWheel', 1)
+	eq(asked[#asked], -10, 'up a turn: a step up')
+	local turns = W.BlizzardBar(host, function(offset) asked[#asked + 1] = offset end, { step = 1, wheel = 3 })
+	turns:Set(host, 70, 0, 300, 12, 20, 0)
+	stub.fire_script(turns.frame, 'OnMouseWheel', -1)
+	eq(asked[#asked], 3, 'opts.wheel: its own turn')
+
+	-- A held thumb asks only when the cursor has moved.
+	asked = {}
+	check(not W.ScrollBarHeld(), 'nothing held')
+	local scale = bar.frame:GetEffectiveScale()
+	local _, y = bar.thumb:GetCenter()
+	stub.cursor_x, stub.cursor_y = 0, y * scale
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	check(W.ScrollBarHeld(), 'held')
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 0, 'the cursor still: nothing asked')
+	stub.cursor_y = (y - 10) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 1, 'moved: asked')
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 1, 'still again: not again')
+	stub.cursor_y = (y - 20) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 2, 'moved again: asked again')
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	stub.mouse_buttons.LeftButton = nil
+	check(not W.ScrollBarHeld(), 'let go')
+
+	-- A thumb whose mouse up never came isn't held once its button is up.
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	check(W.ScrollBarHeld(), 'held again')
+	stub.mouse_buttons.LeftButton = nil
+	check(not W.ScrollBarHeld(), 'its button up: not held')
+	asked = {}
+	stub.cursor_y = (y - 50) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 0, 'and no longer dragging')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	host:Hide()
 	eq(#take_errors(), 0, 'no errors')
 end)
 

@@ -65,6 +65,7 @@ W.WIDTH = {
 local TRACK_WIDTH, VALUE_WIDTH, GAP = 116, 46, 6
 local FIELD_HEIGHT = 24
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
+local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
 -- Above the options window (FULLSCREEN_DIALOG, like edit mode's outlines), so
 -- the list and the confirm dialog show over it and catch the clicks around them.
 local LIST_STRATA = 'TOOLTIP'
@@ -762,8 +763,12 @@ end
 	                   while the thumb is held
 	  an arrow click   opts.step up or down
 	  a track click    a view up or down, above or below the thumb
+	  a turn of the    opts.wheel (opts.step when nil) up or down, anywhere
+	  mouse wheel      on the column, which takes the mouse and the wheel
+	                   all down its length (so a click between a narrow
+	                   arrow and the track never reaches what lies under it)
 
-	  local bar = W.BlizzardBar(parent, onScroll, opts)   opts { narrow, step }
+	  local bar = W.BlizzardBar(parent, onScroll, opts)   opts { narrow, step, wheel }
 	  bar:Set(anchor, x, y, length, view, total, offset)
 	        the track's left x right of anchor's left, the column's top (the
 	        up arrow's) y below anchor's top, length tall with the arrows.
@@ -774,6 +779,8 @@ end
 	  bar:Hide()
 	  bar.width        the track's width
 	  bar.frame, bar.track, bar.thumb, bar.up, bar.down   for tests
+	  W.ScrollBarHeld() whether a bar's thumb is held now, its button down:
+	                   the options window waits to render until it's let go
 
 	A wide bar's arrows are 17x11, from 4 left of the 8 wide track, which
 	starts 19 in from the column's ends; a narrow one's (the sidebar's, a
@@ -786,6 +793,9 @@ BlizzardBar.__index = BlizzardBar
 -- The column's level over its parent's: over what it scrolls, which the
 -- select list's bar lies across.
 local BAR_LEVEL = 2
+
+-- The bar whose thumb is held, or nil.
+local heldBar
 
 -- set's top and bottom (atlases, at their own size) and its middle between
 -- them, textures of frame's: { top, middle, bottom }. The middle is tiled
@@ -840,7 +850,8 @@ function W.BlizzardBar(parent, onScroll, opts)
 	local look = st.ThemeArt.Control('scrollbar')
 	local arrow = opts.narrow and look.narrowArrow or look.arrow
 	local bar = setmetatable({
-		parent = parent, onScroll = onScroll, step = opts.step or 1, look = look, width = look.width,
+		parent = parent, onScroll = onScroll, step = opts.step or 1, wheel = opts.wheel or opts.step or 1,
+		look = look, width = look.width,
 		arrowWidth = arrow[1], arrowHeight = arrow[2],
 		arrowLeft = floor((arrow[1] - look.width) / 2), -- how far left of the track the arrows start
 		inset = opts.narrow and look.narrowInset or look.inset,
@@ -850,6 +861,9 @@ function W.BlizzardBar(parent, onScroll, opts)
 
 	local frame = CreateFrame('Frame', nil, parent)
 	frame:SetWidth(arrow[1])
+	frame:EnableMouse(true)
+	frame:EnableMouseWheel(true)
+	frame:SetScript('OnMouseWheel', function(_, delta) bar:Scroll(bar.offset - delta * bar.wheel) end)
 	frame:Hide()
 	bar.frame = frame
 	bar.onUpdate = function() bar:Drag() end
@@ -913,9 +927,13 @@ function BlizzardBar:Scroll(offset)
 end
 
 -- The thumb held: the drag reads the cursor on the column's OnUpdate.
+-- asked is the offset last asked for (none yet: the one it started at).
 function BlizzardBar:StartDrag()
+	if heldBar and heldBar ~= self then heldBar:StopDrag() end
 	local _, y = GetCursorPosition()
 	self.held, self.dragFrom, self.dragY = true, self.offset, y / self.frame:GetEffectiveScale()
+	self.asked = self.offset
+	heldBar = self
 	self.frame:SetScript('OnUpdate', self.onUpdate)
 	PaintThumb(self)
 end
@@ -925,19 +943,32 @@ function BlizzardBar:StopDrag()
 		self.held = false
 		self.frame:SetScript('OnUpdate', nil)
 	end
+	if heldBar == self then heldBar = nil end
 	PaintThumb(self)
 end
 
--- The offset the cursor's travel since the press asks for. A drag whose
--- mouse up never came (the button let go over another frame that was then
--- hidden) ends when the button is found up.
+-- The offset the cursor's travel since the press asks for, asked only when
+-- it changed: a still cursor asks nothing (a font list draws its rows on
+-- each ask). A drag whose mouse up never came (the button let go over
+-- another frame that was then hidden) ends when the button is found up.
 function BlizzardBar:Drag()
 	if not IsMouseButtonDown('LeftButton') then return self:StopDrag() end
 	local room = self.trackLength - self.thumbLength
 	if room <= 0 then return end
 	local _, y = GetCursorPosition()
 	y = y / self.frame:GetEffectiveScale()
-	self:Scroll(self.dragFrom + (self.dragY - y) * (self.total - self.view) / room)
+	local offset = self.dragFrom + (self.dragY - y) * (self.total - self.view) / room
+	if offset == self.asked then return end
+	self.asked = offset
+	self:Scroll(offset)
+end
+
+-- Whether a bar's thumb is held: one whose button is found up (its mouse
+-- up never came) is let go, so a lost mouse up never holds the window's
+-- renders off.
+function W.ScrollBarHeld()
+	if heldBar and not IsMouseButtonDown('LeftButton') then heldBar:StopDrag() end
+	return heldBar ~= nil
 end
 
 function BlizzardBar:Set(anchor, x, y, length, view, total, offset)
@@ -1123,7 +1154,7 @@ local function BuildList()
 	bar:Hide()
 
 	list = { catcher = catcher, frame = frame, bar = bar, rows = {}, offset = 0, insets = LIST_INSETS }
-	list.blizzardBar = W.BlizzardBar(frame, ScrollList, { narrow = true, step = 1 })
+	list.blizzardBar = W.BlizzardBar(frame, ScrollList, { narrow = true, step = 1, wheel = LIST_WHEEL_ROWS })
 
 	for i = 1, LIST_MAX_ROWS do
 		local row = CreateFrame('Button', nil, frame)
@@ -1152,7 +1183,7 @@ local function BuildList()
 	frame:SetScript('OnMouseWheel', function(_, delta)
 		local over = #list.entries - LIST_MAX_ROWS
 		if over <= 0 then return end
-		list.offset = max(0, min(over, list.offset - delta * 3))
+		list.offset = max(0, min(over, list.offset - delta * LIST_WHEEL_ROWS))
 		ListFill()
 	end)
 	catcher:SetScript('OnMouseDown', W.CloseList)

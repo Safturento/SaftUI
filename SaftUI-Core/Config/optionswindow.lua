@@ -427,9 +427,9 @@ end
 -- Whether the user is in the middle of something a render would break.
 local function Busy()
 	-- A drag ends when the button comes up, even if the slider's OnMouseUp
-	-- never arrived.
+	-- never arrived; so does a scroll bar's held thumb (W.ScrollBarHeld).
 	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
-	if dragging or sizing or W.ListOwner() or W.ConfirmText() then return true end
+	if dragging or sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
 	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
 	return focus ~= nil and focus ~= F.search and Inside(focus, F.window)
