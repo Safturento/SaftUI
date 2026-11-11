@@ -10,74 +10,15 @@ function INV:IsReagentBag(bagID)
 	return Enum.BagIndex ~= nil and Enum.BagIndex.ReagentBag ~= nil and bagID == Enum.BagIndex.ReagentBag
 end
 
-local upgradeQualities = {
-	Adventurer = 1,
-	Veteran = 2,
-	Champion = 3,
-	Hero = 4,
-	Myth = 5,
-}
-
---tests an item against all categories and returns the first one that meets the criteria.
---itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText
-function INV:GetItemCategory(info)
-	if st.retail and (info.class == 'Armor' or info.class == 'Weapon') then
-		local isItemInSet, itemSetList = C_Container.GetContainerItemEquipmentSetInfo(info.bagID, info.slotID)
-		if isItemInSet then
-			return 'Set: ' .. select(1, strsplit(',', itemSetList))
-		end
-	end
-
-	 --Reagent bag gets special categories
-	if info.bagID == REAGENTBANK_CONTAINER then
-		return info.subclass or "Other"
-	end
-
-	for i, category in ipairs(self.filters.categories) do
-		if category.func(info) then
-			return category.name
-		end
-	end
-
-	-- not all items will fit a category, place those items in Miscellaneous
-	return "Miscellaneous"
-end
-
---function INV:UpdateItemRackCategories()
---	if not ItemRackUser then return end
---	local categories = {}
---
---	for set_name, set_items in pairs(ItemRackUser.Sets) do
---		if not (set_name:sub(1,1) == '~') then
---			local category = {
---				name = 'ItemRack: '..set_name,
---				items = {},
---			}
---
---			for slot_id, item_link in pairs(set_items.equip) do
---				category.items['item:'..item_link] = true
---			end
---
---			category.func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
---				local item_string = string.match(link, "item[%-?%d:]+")
---				return category.items[item_string]
---			end
---
---			tinsert(categories, category)
---		end
---	end
---
---	self.filters.itemrack = categories
---
---	self:QueueUpdate()
---end
-
-function INV:GetInventoryItemInfo(bagID, slotID, containerId)
+-- peek: a read only to show the bags, which counts no tooltip try (ScanBagItem).
+function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
-		local tooltipText = self:ScanBagItem(bagID, slotID)
+		local tooltipText, tooltipRaw, tooltipReady, tooltipMissing = self:ScanBagItem(bagID, slotID, peek)
+		if not tooltipReady then return { loading = true, tooltip = true } end
 		local name, _, quality, _, reqLevel, class, subclass, _, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
+		local equipLoc = equipSlot
 		local itemLevel = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
 			local itemString = select(3, strfind(item.hyperlink, "|H(.+)|h"))
@@ -91,6 +32,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 				name = item.itemName
 				class = 'Key'
+				itemClassID = (Enum.ItemClass and Enum.ItemClass.Key) or 13
 				vendorPrice = 0
 				texture = item.iconFileID
 				item.stackCount = tonumber(keyLevel)
@@ -103,6 +45,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 				name = item.itemName
 				class='Battle Pet'
+				itemClassID = (Enum.ItemClass and Enum.ItemClass.Battlepet) or 17
 				item.stackCount = tonumber(petLevel)
 				vendorPrice = 0
 				quality = item.quality
@@ -115,6 +58,8 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 			return {
 				name = name,
+				nameLower = strlower(name),
+				nameStripped = strlower(string.unmagic(name)),
 				ilvl = itemLevel,
 				reqLevel = reqLevel,
 				isWarbound = (C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(itemLocation) and not C_Item.IsBound(itemLocation))
@@ -136,6 +81,11 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 				subclass = subclass,
 				maxStack = C_Item.GetItemMaxStackSize(itemLocation) or 1,
 				equipSlot = _G[equipSlot],
+				equipLoc = equipLoc,
+				classID = itemClassID,
+				subclassID = itemSubClassID,
+				bindType = bindType,
+				isCraftingReagent = isCraftingReagent,
 				expacID = expacID,
 				vendorPrice = vendorPrice,
 				texture = texture or item.iconFileId,
@@ -144,6 +94,10 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 				bagID = bagID,
 				slotID = slotID,
 				tooltipText = tooltipText,
+				tooltipLower = strlower(tooltipRaw),
+				tooltipStripped = strlower(tooltipText),
+				-- Filed without its tooltip, which never arrived (ScanBagItem).
+				tooltipMissing = tooltipMissing or nil,
 				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
 			}
 		else
@@ -279,13 +233,16 @@ end
 --     item infos in slot order, after stacks are merged) and `free` (the free
 --     slot IDs, in order);
 --   numItems, numLoading;
---   categoryOf: item info -> its category name.
+--   categoryOf: item info -> its category key (INV:GetItemCategory), also
+--     on the info as `category`, with `categoryWhy`.
 -- groupOf(bagID) names the group a bag merges stacks in (when stackItems is
 -- on): the same item in two groups stays two slots. A stack merges into the
 -- first slot of its item in the group, which stays where it was. noMerge
 -- reads every stack as its own item, whatever stackItems says (auto vendor
--- sells slot by slot).
-function INV:ReadBags(id, groupOf, noMerge)
+-- sells slot by slot). peek is a read only to show the bags (the Categories
+-- tab's): an item waiting for its tooltip counts no try and queues no retry,
+-- which the bag updates' own reads do.
+function INV:ReadBags(id, groupOf, noMerge, peek)
 	local container = self.containers[id]
 	if not container then
 		st:Error('container with id ', id, 'not found')
@@ -300,19 +257,20 @@ function INV:ReadBags(id, groupOf, noMerge)
 		local bag = { id = bagID, items = {}, free = {} }
 		tinsert(bags, bag)
 		for slotID = 1, C_Container.GetContainerNumSlots(bagID) do
-			local item = self:GetInventoryItemInfo(bagID, slotID, id)
+			local item = self:GetInventoryItemInfo(bagID, slotID, id, peek)
 			if item then
 				numItems = numItems + 1
 				if item.loading then
 					numLoading = numLoading + 1
+					if item.tooltip and not peek then self:QueueTooltipRetry() end
 				else
 					local mergeKey = tostring(item.itemID) .. ':' .. group
 					if merge and merged[mergeKey] and item.maxStack > 1 then
 						merged[mergeKey].count = merged[mergeKey].count + item.count
 					else
-						categoryOf[item] = self:GetItemCategory(item)
+						categoryOf[item], item.categoryWhy = self:GetItemCategory(item)
 						-- For the slot's junk coin (INV:IsAutoVendorItem), so it needn't
-						-- categorize again.
+						-- categorize again; categoryWhy says why it is there.
 						item.category = categoryOf[item]
 						tinsert(bag.items, item)
 						if merge and item.maxStack > 1 then
@@ -376,12 +334,15 @@ function INV:GetEmptySlotsByKind(id, bags, mode)
 	return empties
 end
 
+-- The group a bag merges stacks in for Compact and Rows (ReadBags' groupOf):
+-- the reagent bag is its own kind of bag, so the same item in it and in a
+-- normal bag stays two slots when stacks are merged.
+function INV:StackGroup(bagID)
+	return self:IsReagentBag(bagID) and 'reagent' or 'bag'
+end
+
 function INV:GetSortedInventory(id)
-	local bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
-		-- The reagent bag is its own kind of bag: the same item in it and in a
-		-- normal bag stays two slots when stacks are merged.
-		return self:IsReagentBag(bagID) and 'reagent' or 'bag'
-	end)
+	local bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID) return self:StackGroup(bagID) end)
 
 	local inventory = {}
 	for _, bag in ipairs(bags) do
@@ -406,6 +367,18 @@ function INV:GetSortedInventory(id)
 	for categoryName,categoryItems in pairs(inventory) do
 		if #categoryItems > 1 and categoryName ~= self.EMPTY_SLOTS_CATEGORY then
 			table.sort(categoryItems, sortCategory)
+		end
+	end
+
+	-- In combat a category with no frame (made since the fight began) or no
+	-- button left shows no more than it has buttons, so nothing is made in
+	-- combat; the queued top-up asks for a full update when it ends.
+	if InCombatLockdown() then
+		for categoryName, categoryItems in pairs(inventory) do
+			if categoryName ~= self.EMPTY_SLOTS_CATEGORY then
+				self:FitSlots(id, categoryName, 0, categoryItems)
+				if #categoryItems == 0 then inventory[categoryName] = nil end
+			end
 		end
 	end
 
@@ -437,7 +410,7 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	header.text = header:CreateFontString(nil, 'OVERLAY')
 	header.text:SetFontObject(st:GetFont(st.config.profile.inventory.fonts.titles))
 	header.text:SetPoint('BOTTOMLEFT', 2, 2)
-	header.text:SetText(categoryName)
+	header.text:SetText(self:CategoryName(categoryName))
 	categoryFrame.header = header
 
 	local filterCheckbox = st:CreateCheckButton(nil, categoryFrame)
@@ -446,10 +419,10 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
     filterCheckbox:SetPoint('BOTTOM', header, 'BOTTOM', 0, 4)
     filterCheckbox:SetPoint('LEFT', header.text, 'RIGHT', 8, 0)
     filterCheckbox:HookScript('OnClick', function(self)
-        INV.config.filters.categories[id][categoryName] = self:GetChecked() or nil
+        INV:SetCategoryHidden(id, categoryName, self:GetChecked())
 		INV:UpdateContainerLayout(id)
     end)
-	filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
+	filterCheckbox:SetChecked(INV:IsCategoryHidden(id, categoryName))
 	categoryFrame.filterCheckbox = filterCheckbox
 
 	container.categories[categoryName] = categoryFrame
@@ -487,7 +460,7 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	if title then
 		categoryFrame.header.text:SetText(title)
 	elseif title == nil then
-		categoryFrame.header.text:SetFormattedText("%s (%d)", categoryName, numShown)
+		categoryFrame.header.text:SetFormattedText("%s (%d)", self:CategoryName(categoryName), numShown)
 	end
 
 	for i, item in pairs(categoryItems) do
@@ -533,10 +506,15 @@ function INV:FlushCategories(container, sorted_inv)
 	end
 end
 
+-- Makes a window's category frames, out of combat: one per list category
+-- (INV:GetCategoryList; the sets entry's 'Set: ...' frames are made when an
+-- item first needs one), and the bag window's Empty Slots and Currencies.
 function INV:InitializeAllCategories(containerName)
-	for _,category in pairs(self.filters.categories) do
-		self:CreateCategory(containerName, category.name)
-		self:UpdateCategory(containerName, category.name, {})
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if entry.kind ~= 'sets' then
+			self:CreateCategory(containerName, entry.id)
+			self:UpdateCategory(containerName, entry.id, {})
+		end
 	end
 	if containerName == 'bag' then
 		-- Made now, out of combat, with its slot pool, even while the setting is

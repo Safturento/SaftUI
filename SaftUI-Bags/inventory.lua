@@ -90,8 +90,9 @@ function INV:SelectBankCategory(clickedHeader)
     end
 end
 
--- The filter tables bag updates index, which a new or reset profile doesn't
--- have yet. Plain table writes, so it's safe in combat.
+-- The filter tables bag updates index, and the category store and pins
+-- (categories.lua), which a new or reset profile doesn't have yet. Plain
+-- table writes, so it's safe in combat.
 function INV:EnsureConfigTables()
 	local filters = self.config.filters or {}
 	self.config.filters = filters
@@ -100,6 +101,8 @@ function INV:EnsureConfigTables()
 	for id in pairs(self.containers) do
 		filters.categories[id] = filters.categories[id] or {}
 	end
+	self:CategoryStore()
+	if type(self.config.categoryPins) ~= 'table' then self.config.categoryPins = {} end
 end
 
 -- Applies a changed icon size or spacing: re-lays out every window, restyles
@@ -128,6 +131,9 @@ function INV:UpdateConfig(id)
 	if not id then
 		if not self.containers.bag then return end -- not enabled
 		self:EnsureConfigTables()
+		-- A profile saved before the category list is migrated, before anything
+		-- reads its categories. Table writes only, so safe in combat.
+		self:MigrateCategories()
 		-- Saved positions of an older shape, and a bank layout the new profile
 		-- uses, before anything is placed. Windows not made yet only have their
 		-- anchor to resize; the made ones resize in UpdateConfig(id).
@@ -148,7 +154,9 @@ function INV:UpdateConfig(id)
 		end
 		self:StyleCurrencySlots()
 		self:UpdateBagSlotBars()
-		self:QueueUpdate(true)
+		-- The profile's categories, edits and pins, read again: the frames of
+		-- its own categories, and an update that lays the bags out.
+		self:CategoriesChanged()
 		return
 	end
 
@@ -302,19 +310,16 @@ function INV:UpdateHandler(_, elapsed)
 		self:UpdateVisibleContainers(updateLayout)
 	end, geterrorhandler())
 	self.IS_UPDATING = false
+	-- An open Categories tab in /sui shows counts and Caught now from the bags:
+	-- it is drawn again on the next frame, or once a drag in it ends
+	-- (categoriestab.lua).
+	if self.categoriesTabShown then st.Config:Refresh() end
 end
 
 function INV:QueueUpdate(updateLayout)
 	self.NEED_UPDATE = true
 	if updateLayout then
 		self.UPDATE_LAYOUT = true
-	end
-end
-
-function INV:ADDON_LOADED(event, addon)
-	if addon == 'ItemRackOptions' then
-		self:SecureHook(ItemRackOpt, 'SaveSet', 'UpdateItemRackCategories')
-		self:SecureHook(ItemRackOpt, 'DeleteSet', 'UpdateItemRackCategories')
 	end
 end
 
@@ -346,9 +351,12 @@ function INV:OnEnable()
 	if self.config.enable == false then return end
 
 	self:EnsureConfigTables()
+	self:MigrateCategories()
+	self:CategoriesChanged()
 	self:MigratePositions()
 
 	self:InitializeTooltipScanner()
+	self:HookSlotTooltips()
 	self:InitializePlayerBags()
 	self:RegisterMovers()
 
@@ -377,17 +385,11 @@ function INV:OnEnable()
 		ContainerFrameCombinedBags:RegisterEvent('BAG_CONTAINER_UPDATE')
 	end
 
-
-	if ItemRack then
-		self:UpdateItemRackCategories()
-	end
-
 	-- Make sure the slots are all created immediately intead of on first open
 	-- We do this to avoid tainting all of the slots when the bag is first opened
 	-- while in combat
 	self:UpdateContainer('bag')
 
-	self:RegisterEvent("ADDON_LOADED")
 	self:RegisterEvent('PLAYER_MONEY', 'UpdateGold')
 	self:RegisterEvent('MERCHANT_SHOW', 'HandleMerchant')
 

@@ -7,7 +7,9 @@
 -- The layout (INV:UpdateContainerLayout) is the real one. So are the rest of
 -- the module's files it calls into: inventory.lua (GetButtonHeight), movers.lua
 -- (SyncAnchorSize, which sizes the window's edit mode anchor), category.lua
--- (FlushCategory) and views.lua (the window's view), and the module's defaults
+-- (FlushCategory), categories.lua and categorydefaults.lua (the category
+-- store EnsureConfigTables makes) and views.lua (the window's view), and the
+-- module's defaults
 -- (config.lua). What the tests make
 -- by hand is what the real code builds around the layout: the container's
 -- frames, the column frames and the category frames.
@@ -26,6 +28,10 @@ function H.fresh()
 	load_saftui('SaftUI-Bags/config.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Bags/inventory.lua')
+	load_saftui('SaftUI-Bags/itemclasses.lua')
+	load_saftui('SaftUI-Bags/rules.lua')
+	load_saftui('SaftUI-Bags/categorydefaults.lua')
+	load_saftui('SaftUI-Bags/categories.lua')
 	load_saftui('SaftUI-Bags/category.lua')
 	load_saftui('SaftUI-Bags/views.lua')
 	load_saftui('SaftUI-Bags/movers.lua')
@@ -247,9 +253,9 @@ end
 
 -- A fresh views world on client ('forever', the default, or 'retail'; see
 -- bag_world.lua). Returns the module and bag_world's W, to fill the bags.
-function H.views_world(client)
+function H.views_world(client, core)
 	local W = load_test_file('bags/bag_world.lua')
-	local INV = W.fresh(client)
+	local INV = W.fresh(client, core)
 	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
 	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
 	load_saftui('SaftUI-Core/Utilities/itemupgrades.lua')

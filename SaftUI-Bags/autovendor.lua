@@ -45,48 +45,6 @@ function INV:AutoVendor()
 	end)
 end
 
-function INV:VendorCategory(categoryKey)
-	local category = self.containers.bag.categories[categoryKey]
-	if not category.vendorHandler then
-		category.vendorHandler = CreateFrame('frame')
-	end
-    if category then
-
-        vendorHandler.profit = 0
-        vendorHandler.firstLoop = true
-
-        vendorHandler:SetScript('OnUpdate', function(self, elapsed)
-
-            self.timeLeft = (self.timeLeft or 0) - elapsed
-            if self.timeLeft > 0 then return end
-            self.timeLeft = 2
-
-            ids = {}
-            for _,item in pairs(category.slots) do
-                if item.info and not item.info.empty then
-                    tinsert(ids, { bagID = item.info.bagID, slotID = item.info.slotID })
-                end
-            end
-            self.ids = ids
-
-            if #self.ids == 0 or not MerchantFrame:IsShown() then
-                self:SetScript('OnUpdate', nil)
-                return
-            end
-
-            for _,item in pairs(ids) do
-                C_Container.UseContainerItem(item.bagID, item.slotID)
-            end
-        end)
-
-        for _,item in pairs(INV.containers.bag.categories[categoryKey].slots) do
-            if item.info and not item.info.empty then
-                vendorHandler.profit = vendorHandler.profit + item.info.vendorPrice
-            end
-        end
-    end
-end
-
 function INV:HandleMerchant()
 	-- Vendor greys and other selected items
 	if UnitAffectingCombat('player') then

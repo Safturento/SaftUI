@@ -20,11 +20,17 @@ stub = {
 	cursor_x = 0, -- GetCursorPosition, in screen units (UIParent's units times its scale)
 	cursor_y = 0,
 	time = 0, -- GetTime, in seconds
+	-- C_Timer.After's pending callbacks, { due, fn } in the order made.
+	-- stub.run_timers() runs the ones due by stub.time.
+	timers = {},
 	epoch = 1800000000, -- time(), in seconds since 1970
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
 	mouse_buttons = {}, -- IsMouseButtonDown: a set, e.g. stub.mouse_buttons.LeftButton = true
+	-- What the cursor holds, for GetCursorInfo: nil for nothing, or an item
+	-- picked up from a bag, { id, link }. ClearCursor drops it.
+	cursor_item = nil,
 	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
 	-- The player's experience: GetMaxPlayerLevel, UnitLevel('player'), UnitXP,
 	-- UnitXPMax and GetXPExhaustion (rested experience; nil for none).
@@ -78,7 +84,40 @@ function GetPhysicalScreenSize() return stub.screen_width, stub.screen_height en
 function InCombatLockdown() return stub.in_combat end
 function IsMouseButtonDown(button) return stub.mouse_buttons[button or 'LeftButton'] == true end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
+-- 'item', itemID, itemLink while the cursor holds an item; nothing otherwise.
+function GetCursorInfo()
+	local item = stub.cursor_item
+	if item then return 'item', item[1], item[2] end
+end
+function ClearCursor() stub.cursor_item = nil end
 function GetTime() return stub.time end
+-- C_Timer.After keeps its callback until stub.run_timers() runs it, once
+-- stub.time has reached its delay. Nothing runs by itself.
+C_Timer = {
+	After = function(delay, fn)
+		if type(delay) ~= 'number' or type(fn) ~= 'function' then
+			error('Usage: C_Timer.After(seconds, callback)', 2)
+		end
+		table.insert(stub.timers, { due = stub.time + delay, fn = fn })
+	end,
+}
+-- Runs, in the order they were made, the timers due by stub.time (callbacks
+-- they make that are due run too). Returns how many ran.
+function stub.run_timers()
+	local ran = 0
+	local i = 1
+	while i <= #stub.timers do
+		local timer = stub.timers[i]
+		if timer.due <= stub.time then
+			table.remove(stub.timers, i)
+			ran = ran + 1
+			timer.fn()
+		else
+			i = i + 1
+		end
+	end
+	return ran
+end
 -- WoW's time(): the clock, as seconds since 1970. Only the no-argument form
 -- exists here; the table form (a date to seconds) errors until a test needs it.
 function time(date)

@@ -14,7 +14,8 @@
 -- Real: Core's Config/config.lua on a real AceDB-3.0 with Core's helpers and
 -- edit mode (core/config_helpers.lua), so st:ThemeChanged runs the real
 -- Config:UpdateConfig and so the bags' INV:UpdateConfig; Core's Utilities
--- module; the bags' config.lua, inventory.lua, currencies.lua, category.lua,
+-- module; the bags' config.lua, inventory.lua, itemclasses.lua, rules.lua,
+-- currencies.lua, categorydefaults.lua, categories.lua, category.lua,
 -- views.lua, container.lua, containers/warbandbank.lua, slot.lua, movers.lua
 -- and options.lua. Each case starts from a fresh world, since cases change the
 -- theme.
@@ -54,12 +55,15 @@ local function fresh()
 	_G.StackSplitFrameOkay_Click = function() end
 	Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
-	for _, file in ipairs({ 'inventory', 'currencies', 'category', 'views', 'container',
+	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'categorydefaults', 'categories', 'category', 'views', 'container',
 		'containers/warbandbank', 'slot', 'movers', 'options' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	INV = st:GetModule('Inventory')
 	st:BindModuleConfig(INV, 'inventory')
+	-- The windows here are made by hand, with the categories this test wants:
+	-- INV:UpdateConfig() isn't to make the rest (their frames are bags/'s).
+	function INV:EnsureCategoryFrames() end
 	-- Every currency's quality, by id.
 	_G.C_CurrencyInfo = { GetBasicCurrencyInfo = function(id) return { quality = id == 1 and 4 or 2 } end }
 end

@@ -1,18 +1,28 @@
+-- Today's categories, as the oracle the default categories are checked against
+-- (category_defaults_test.lua). A copy of SaftUI-Bags/filters.lua at 8dc348c:
+-- its constants, matchesAny, isLegacyGear and the 33 filters, verbatim; and
+-- category.lua's equipment set test there (lines 24-29). INV:AddFilter
+-- collects into a local list, and INV:IsProtected and INV:ShouldAutoVendor
+-- read this oracle's own protected and autoVendor sets. Not a test (no _test
+-- suffix): load it with load_test_file('bags/fixtures/old_filters.lua'); each
+-- load is a fresh oracle.
+--
+-- OLD.categorize(info) -> today's category name, for an info built by
+-- INV:GetInventoryItemInfo, whose class, subclass and tooltipText are today's.
+-- OLD.names: the filters' names, in today's order.
 local st = SaftUI
-local INV = st:GetModule('Inventory')
 
+local OLD = { protected = {}, autoVendor = {}, names = {} }
+local filters = {}
+local INV = {}
 
-local expacAbbreviations = {
-	[0] = 'Classic',
-	[1] = 'BC',
-	[2] = 'WotLK',
-	[3] = 'Cata',
-	[4] = 'MoP',
-	[5] = 'WoD',
-	[6] = 'Legion',
-	[7] = 'BfA',
-	[8] = 'SL',
-}
+function INV:IsProtected(itemID) return OLD.protected[itemID] end
+function INV:ShouldAutoVendor(itemID) return OLD.autoVendor[itemID] end
+
+function INV:AddFilter(name, func, options)
+	tinsert(filters, { name = name, func = func })
+	tinsert(OLD.names, name)
+end
 
 local customItemLists = {
 	['Archaeology'] = {
@@ -60,8 +70,6 @@ local customItemLists = {
 		[183835] = 'crate-of-zandalari-archaeology-fragments',
 	}
 }
-
-INV.AUTO_VENDOR_CATEGORIES = {}
 
 local CONDUIT_TEXT = 'Add this Conduit to your collection'
 local ANIMA_TEXT = 'stored Anima into your covenant\'s Reservoir'
@@ -125,36 +133,6 @@ local function isLegacyGear(item)
 	then return false end
 
 	return true
-end
-
-INV.filters = {
-	itemrack = {},
-	categories = {},
-	currency = {},
-}
-
-function INV:AddFilter(name, func, options)
-	if not options then options = {} end
-	tinsert(self.filters.categories, options['index'] or #self.filters.categories+1, { name = name, func = func })
-
-	if options['autoVendor'] then
-		tinsert(INV.AUTO_VENDOR_CATEGORIES, name)
-	end
-end
-
--- Whether auto vendor sells an item: its category is one of the auto vendor
--- ones, it has a vendor price, and it isn't protected. The slot's junk coin and
--- INV:GetVendorItems both ask this, so they never disagree. category is the
--- item's category, when the caller has it already; else info.category (set by
--- INV:ReadBags), else INV:GetItemCategory.
-function INV:IsAutoVendorItem(info, category)
-	if not info or info.empty or not (info.vendorPrice and info.vendorPrice > 0) then return false end
-	if self:IsProtected(info.itemID) then return false end
-	category = category or info.category or self:GetItemCategory(info)
-	for _, name in ipairs(self.AUTO_VENDOR_CATEGORIES) do
-		if name == category then return true end
-	end
-	return false
 end
 
 INV:AddFilter('Grays/Auto Vendor', function(item)
@@ -327,3 +305,22 @@ end)
 INV:AddFilter('Miscellaneous', function(item)
 	return true
 end)
+-- category.lua's GetItemCategory at 8dc348c, less its dead reagent bank branch.
+function OLD.categorize(info)
+	if st.retail and (info.class == 'Armor' or info.class == 'Weapon') then
+		local isItemInSet, itemSetList = C_Container.GetContainerItemEquipmentSetInfo(info.bagID, info.slotID)
+		if isItemInSet then
+			return 'Set: ' .. select(1, strsplit(',', itemSetList))
+		end
+	end
+
+	for i, category in ipairs(filters) do
+		if category.func(info) then
+			return category.name
+		end
+	end
+
+	return "Miscellaneous"
+end
+
+return OLD

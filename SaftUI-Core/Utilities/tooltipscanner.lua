@@ -11,6 +11,9 @@ function Util:ScanItemLink(itemLink)
     end
 
     local data = C_TooltipInfo.GetHyperlink(itemLink)
+    -- The tooltip may not have arrived (an item filed after its tooltip never
+    -- came): no text, and nothing cached, so a later scan can fill it in.
+    if not (data and data.lines) then return "" end
     local text = ""
     for _,lines in pairs(data.lines) do
         if lines.leftText then

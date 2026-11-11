@@ -302,7 +302,7 @@ end)
 
 test('onebag and multibag show items of categories hidden in the profile', function()
 	local c = world('rows')
-	INV.config.filters.categories.bag.Weapons = true
+	INV:SetCategoryHidden('bag', 'Weapons', true)
 	INV:UpdateContainer('bag', true)
 	check(not c.categories.Weapons:IsShown(), 'Rows hides Weapons (the test means something)')
 	switch('onebag')

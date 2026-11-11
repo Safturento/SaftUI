@@ -30,7 +30,14 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	A toggle's check box and a color's swatch sit just after their label's
 	text; a small input's box is OB.SMALL_INPUT_WIDTH wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
-	plus 12, and shows the row's desc when the mouse is anywhere on it.
+	plus 12, and shows the row's desc when the mouse is anywhere on it. A
+	bare row (a type W.Define marks bare; its option sets size = 'wide') has
+	no label either: its widget is given the body's width (SetWidth, when it
+	has one) before its height is read, and sits at the cell's top left, 6
+	down, in a cell as tall as the widget plus 12. Its row takes no mouse,
+	so the widget's own parts get it. A titled bare row (W.Define's titled)
+	shows its name as a label 6 down, with its desc as the name's tooltip,
+	and its widget 28 down, in a cell as tall as the widget plus 34.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools), as this file loads first.
@@ -266,6 +273,35 @@ local function HideTip(frame)
 	if GameTooltip:IsOwned(frame) then GameTooltip:Hide() end
 end
 
+-- A custom type W.Define marked bare: no label, the widget across the line.
+local function IsBare(rowType)
+	local custom = W.CUSTOM[rowType]
+	return custom ~= nil and custom.bare
+end
+
+-- A bare type marked titled too: its name over the widget.
+local function IsTitled(rowType)
+	local custom = W.CUSTOM[rowType]
+	return custom ~= nil and custom.bare and custom.titled
+end
+
+-- Where a titled bare row's widget starts: its name 6 down, 16 high, and 6 under it.
+local BARE_TITLE = 28
+
+-- A titled bare row's name takes the mouse through a frame over it (the
+-- row takes none), which shows the row's desc.
+local function TitleTip(frame)
+	local tip = frame.titleTip
+	if not tip then
+		tip = CreateFrame('Frame', nil, frame)
+		tip:EnableMouse(true)
+		tip:SetScript('OnEnter', function(self) ShowTip(self:GetParent()) end)
+		tip:SetScript('OnLeave', function(self) HideTip(self:GetParent()) end)
+		frame.titleTip = tip
+	end
+	return tip
+end
+
 -- A row's place in its cell: the label on the left, the control on the
 -- right. A description is text across the row, and a button stands alone.
 local function PlaceRow(cell, x, y, width)
@@ -280,6 +316,21 @@ local function PlaceRow(cell, x, y, width)
 		label:Hide()
 		widget:SetPoint('LEFT', frame, 'LEFT', 0, 0)
 	elseif row.type == 'position' then
+		label:Hide()
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
+	elseif IsTitled(row.type) then
+		label:SetText(row.name)
+		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
+		label:SetWidth(width)
+		label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
+		label:Show()
+		local tip = TitleTip(frame)
+		tip:ClearAllPoints()
+		tip:SetPoint('TOPLEFT', label, 'TOPLEFT', 0, 0)
+		tip:SetSize(max(1, ceil(label:GetUnboundedStringWidth())), 16)
+		tip:Show()
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -BARE_TITLE)
+	elseif IsBare(row.type) then
 		label:Hide()
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 	else
@@ -324,7 +375,6 @@ function OB.New(content, root, onChanged, width)
 	body.pools = {
 		row = Pool(function()
 			local frame = CreateFrame('Frame', nil, content)
-			frame:EnableMouse(true)
 			frame.label = Text(frame, 'label')
 			frame:SetScript('OnEnter', ShowTip)
 			frame:SetScript('OnLeave', HideTip)
@@ -386,6 +436,10 @@ function Body:RowCell(row)
 	if not W.WIDTH[row.type] then return nil end -- not a type the widgets draw
 	local frame = Acquire(self.pools.row)
 	frame.row = row
+	-- Set as each row is acquired: a pooled frame may last have been a bare row's.
+	local bare = IsBare(row.type)
+	frame:EnableMouse(not bare)
+	if frame.titleTip then frame.titleTip:Hide() end -- a titled bare row's (PlaceRow)
 	local widget = W.Create(frame, row.type)
 	widget:Bind(self.root, row, self.onChanged)
 	if row.type == 'input' then -- a reused box is sized again: small or not
@@ -403,6 +457,10 @@ function Body:RowCell(row)
 		widget.onTip = function(on)
 			if on then ShowTip(frame) else HideTip(frame) end
 		end
+	elseif bare then
+		-- The width first: a bare widget's height can follow it.
+		if widget.SetWidth then widget:SetWidth(self.width) end
+		cell.height = ceil(widget:GetHeight()) + (IsTitled(row.type) and BARE_TITLE + 6 or 12)
 	end
 	self.cells[#self.cells + 1] = cell
 	return cell

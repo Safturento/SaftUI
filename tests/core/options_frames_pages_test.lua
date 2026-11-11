@@ -176,6 +176,20 @@ test('Bags: the new settings read and write their profile keys and apply the way
 		, 'General: the toggles in pairs, then Scroll speed')
 	local view = OM.BuildView(root, 'Inventory', { tab = 'bag' })
 	eq(view.sections[#view.sections].title, 'Position', "the bag window's Position is its last section")
+
+	-- The Categories tab, after the windows: one wide row, the tab widget, with a desc.
+	local categories = tree.args.categories
+	check(categories ~= nil and categories.type == 'group', 'a Categories tab')
+	eq(categories.name, 'Categories', 'named Categories')
+	check(categories.order > tree.args.bag.order and categories.order > tree.args.bank.order, 'after the windows')
+	view = OM.BuildView(root, 'Inventory', { tab = 'categories' })
+	eq(view.tabs[#view.tabs].key, 'categories', 'the last tab')
+	eq(#view.sections, 1, 'one section')
+	eq(#view.sections[1].rows, 1, 'of one row')
+	local row = view.sections[1].rows[1]
+	eq(row.key .. ':' .. row.type .. ':' .. row.size, 'categories:bagcategories:wide', 'the tab widget, wide')
+	eq(row.name, 'Categories', 'named Categories')
+	check(type(row.desc) == 'string' and row.desc ~= '', 'with a desc')
 end)
 
 test('Bags: turned off, the page is General with the Enable toggle alone', function()

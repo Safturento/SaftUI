@@ -192,6 +192,102 @@ hooksecurefunc(stackSplitButtonClick, function()
 	end
 end)
 
+-- SaftUI's own item slots, by slot (weak): what INV:HookSlotTooltips checks a
+-- tooltip's owner against. Filled by INV:CreateSlot. Nothing is written onto
+-- a Blizzard frame to tell its slots apart.
+INV.itemSlots = INV.itemSlots or setmetatable({}, { __mode = 'k' })
+
+-- 1 -> '1st', 2 -> '2nd', 3 -> '3rd', 4 -> '4th', 11 to 13 -> '11th' to
+-- '13th', 21 -> '21st'.
+function INV.Ordinal(n)
+	local lastTwo, last = n % 100, n % 10
+	local suffix = 'th'
+	if lastTwo < 11 or lastTwo > 13 then
+		if last == 1 then suffix = 'st' elseif last == 2 then suffix = 'nd' elseif last == 3 then suffix = 'rd' end
+	end
+	return n .. suffix
+end
+
+-- '|cffrrggbb' for a profile color.
+local function ColorEscape(c)
+	local function byte(v) return math.floor(v * 255 + 0.5) end
+	return ('|cff%02x%02x%02x'):format(byte(c.r), byte(c.g), byte(c.b))
+end
+
+--[[
+	The "why is this here" lines for an item's tooltip, { { text, r, g, b }, ... }:
+	  Category: <name> (<nth>)       the category in blue, its place in the list in grey;
+	  Caught by: <what>              "Caught by: " in yellow, then the block of the
+	                                 rule that caught it (INV.Rules.Describe), "pinned
+	                                 to this category", "an equipment set" or "no
+	                                 category above it".
+	None for a free slot, an item still loading, or an info with no category.
+	Reads info.category and info.categoryWhy, which INV:ReadBags sets.
+]]
+function INV:CategoryTooltipLines(info)
+	if type(info) ~= 'table' or info.empty or info.loading or info.category == nil then return {} end
+	local key = info.category
+	local colors = st.config.profile.colors.text
+	local name = tostring(self:CategoryName(key)):gsub('|', '||')
+	local place = self:CategoryPlace(key)
+	local first = 'Category: ' .. name
+	if place then first = first .. ' ' .. ColorEscape(colors.grey) .. '(' .. self.Ordinal(place) .. ')|r' end
+	local lines = { { text = first, r = colors.blue.r, g = colors.blue.g, b = colors.blue.b } }
+
+	local why, words = info.categoryWhy, nil
+	if why then
+		if why.kind == 'pin' then
+			words = 'pinned to this category'
+		elseif why.kind == 'set' then
+			words = 'an equipment set'
+		elseif why.kind == 'misc' then
+			words = 'no category above it'
+		elseif why.kind == 'rule' then
+			local entry = self:GetCategoryList().byId[key]
+			words = entry and self.Rules.Describe(entry.rule, why.path)
+			if words == '' then words = nil end
+		end
+	end
+	if words then
+		-- The words hold the user's typed text: a | in it is shown, not read as an escape.
+		words = words:gsub('|', '||')
+		lines[2] = { text = ColorEscape(colors.yellow) .. 'Caught by: |r' .. words, r = 1, g = 1, b = 1 }
+	end
+	return lines
+end
+
+function INV:AddCategoryTooltipLines(tooltip, info)
+	for _, line in ipairs(self:CategoryTooltipLines(info)) do
+		tooltip:AddLine(line.text, line.r, line.g, line.b)
+	end
+end
+
+--[[
+	Puts the lines on GameTooltip when it shows an item of one of SaftUI's own
+	slots, from a TooltipDataProcessor post-call for items: only to GameTooltip,
+	only while its owner is one of INV.itemSlots with an item, and nothing is
+	written onto Blizzard's tooltip but the lines. Registers once. Returns
+	whether it is registered; without TooltipDataProcessor (or its item type)
+	it does nothing and returns false, and the slot's own UpdateTooltip adds
+	the lines after Blizzard's item tooltip instead.
+]]
+function INV:HookSlotTooltips()
+	if self.tooltipPostCall then return true end
+	if not (TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall
+			and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) then
+		return false
+	end
+	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip)
+		if tooltip ~= GameTooltip then return end
+		local owner = tooltip:GetOwner()
+		if not (owner and INV.itemSlots[owner]) then return end
+		local info = owner.info
+		if info and not info.empty then INV:AddCategoryTooltipLines(tooltip, info) end
+	end)
+	self.tooltipPostCall = true
+	return true
+end
+
 local function UpdateTooltip(self)
 	local info = self.info
 	if not info then return end
@@ -218,81 +314,81 @@ local function UpdateTooltip(self)
 	else
 		ContainerFrameItemButton_OnEnter(self)
 	end
+
+	-- No TooltipDataProcessor on this client: the lines are added here.
+	if not INV.tooltipPostCall then
+		INV:AddCategoryTooltipLines(GameTooltip, info)
+		GameTooltip:Show()
+	end
 end
 
-function INV:ShouldAutoVendor(itemID)
-    return INV.config.autoVendorFilter and INV.config.autoVendorFilter[itemID]
+--[[
+	The slot menu for an item, as entries (INV:OpenSlotMenu turns them into
+	Blizzard's menu): { kind = 'button' | 'checkbox' | 'radio' | 'submenu',
+	text, checked = fn, onClick = fn, entries }.
+	  Edit this category        /sui at the item's category;
+	  Add to category...        a radio for None (follow the rules), then one for
+	                            every category that is on but Equipment sets, in
+	                            list order, the current pin checked;
+	  Auto Vendor, Protected    checkboxes; each clears the other.
+]]
+function INV:SlotMenuEntries(info)
+	local itemID = info.itemID
+	local key = info.category
+	if key == nil then key = self:GetItemCategory(info) end
+
+	local pins = {
+		{ kind = 'radio', text = 'None (follow the rules)',
+			checked = function() return self:GetPin(itemID) == nil end,
+			onClick = function() self:UnpinItem(itemID) end },
+	}
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if entry.enabled and entry.kind ~= 'sets' then
+			local id = entry.id
+			pins[#pins + 1] = { kind = 'radio', text = entry.name,
+				checked = function() return self:GetPin(itemID) == id end,
+				onClick = function() self:PinItem(itemID, id) end }
+		end
+	end
+
+	return {
+		{ kind = 'button', text = 'Edit this category', onClick = function() self:EditCategory(key) end },
+		{ kind = 'submenu', text = 'Add to category…', entries = pins },
+		{ kind = 'checkbox', text = 'Auto Vendor',
+			checked = function() return self:IsAutoVendorMarked(itemID) end,
+			onClick = function() self:SetAutoVendorMark(itemID, not self:IsAutoVendorMarked(itemID)) end },
+		{ kind = 'checkbox', text = 'Protected',
+			checked = function() return self:IsProtected(itemID) end,
+			onClick = function() self:SetProtected(itemID, not self:IsProtected(itemID)) end },
+	}
 end
 
-function INV:IsProtected(itemID)
-    return INV.config.protectFilter and INV.config.protectFilter[itemID]
+local function AddMenuEntry(parent, entry)
+	if entry.kind == 'button' then
+		parent:CreateButton(entry.text, entry.onClick)
+	elseif entry.kind == 'checkbox' then
+		parent:CreateCheckbox(entry.text, entry.checked, entry.onClick)
+	elseif entry.kind == 'radio' then
+		parent:CreateRadio(entry.text, entry.checked, entry.onClick)
+	elseif entry.kind == 'submenu' then
+		local sub = parent:CreateButton(entry.text)
+		for _, child in ipairs(entry.entries) do AddMenuEntry(sub, child) end
+	end
 end
 
-local menuItems = {
-    autoVendor = {
-        text = 'Auto Vendor',
-        isChecked = function()
-            return INV.config.autoVendorFilter
-                and INV.SelectedSlot.info
-                and INV.config.autoVendorFilter[INV.SelectedSlot.info.itemID]
-        end,
-        setChecked = function(key, menuInputData, menu)
-            if not INV.SelectedSlot then return end
-
-            if not INV.config.autoVendorFilter then
-                INV.config.autoVendorFilter = {}
-            end
-            local itemID = INV.SelectedSlot.info.itemID
-            INV.config.autoVendorFilter[itemID] = not INV.config.autoVendorFilter[itemID]
-            INV:QueueUpdate()
-       end,
-    },
-    protect = {
-        text = 'Protected',
-        isChecked = function() return INV.config.protectFilter
-            and INV.SelectedSlot.info
-            and INV.config.protectFilter[INV.SelectedSlot.info.itemID] end,
-        setChecked = function(key, menuInputData, menu)
-            if not INV.SelectedSlot then return end
-
-            if not INV.config.protectFilter then
-                INV.config.protectFilter = {}
-            end
-            local itemID = INV.SelectedSlot.info.itemID
-            INV.config.protectFilter[itemID] = not INV.config.protectFilter[itemID]
-            INV:QueueUpdate()
-        end,
-    }
-}
-
-local function isChecked(key)
-    return menuItems[key].isChecked()
+-- Opens the slot menu on a slot with Blizzard's MenuUtil (both clients have
+-- it). A free slot has no item, so nothing opens; without MenuUtil nothing does.
+function INV:OpenSlotMenu(slot)
+	local info = slot.info
+	if not info or info.empty or not MenuUtil or not MenuUtil.CreateContextMenu then return end
+	local entries = self:SlotMenuEntries(info)
+	MenuUtil.CreateContextMenu(slot, function(_, root)
+		for _, entry in ipairs(entries) do AddMenuEntry(root, entry) end
+	end)
 end
 
-local function setChecked(key, menuInputData, menu)
-   menuItems[key].setChecked(key, menuInputData, menu)
-   menu:Close()
-end
-
-local function CreateSlotDropdown()
-    if INV.SlotDropDown then return end
-
-    INV.SlotDropDown = st:CreateCheckboxDropdown("SaftUISlotOptionsMenu", UIParent, {
-        autoVendor = { text = 'Auto Vendor'},
-        protect = { text = 'Protected'}
-    }, isChecked, setChecked)
-end
-
-local function OpenSlotOptions(slot, button, down)
-    -- A free slot has no item to mark.
-    if slot.info and slot.info.empty then return end
-    INV.SelectedSlot = slot
-    if not INV.SlotDropDown then CreateSlotDropdown() end
-
-    if IsControlKeyDown() and button == 'RightButton' then
-        INV.SlotDropDown:Open()
---         ToggleDropDownMenu(1, nil, INV.SlotDropDown, "cursor",5, -5)
-    end
+local function OpenSlotOptions(slot, button)
+	if IsControlKeyDown() and button == 'RightButton' then INV:OpenSlotMenu(slot) end
 end
 
 function INV:CreateSlot(container, categoryName)
@@ -330,6 +426,7 @@ function INV:CreateSlot(container, categoryName)
     slot.cooldown = _G[slot:GetName() .. "Cooldown"]
 
     slot.container = container
+    self.itemSlots[slot] = true
     slot.id = slotID
     slot.type = container.id
     slot.tainted = InCombatLockdown()

@@ -42,19 +42,15 @@ function INV:SectionFrameName(section)
 	return 'view:' .. section.key
 end
 
--- The order categories run in, as a number. Sets come first, then
--- INV.filters.categories in their order, then the names no rule has (the
--- reagent bank's subclasses, "Other"), then Miscellaneous, then Empty Slots.
--- Names that share a rank (sets, unknown names) go by name; see CategoryBefore.
-function INV:CategoryRank(name)
-	local rules = self.filters.categories
-	if name == self.EMPTY_SLOTS_CATEGORY then return #rules + 2 end
-	if name == 'Miscellaneous' then return #rules + 1 end
-	if name:sub(1, 5) == 'Set: ' then return 0 end
-	for i, category in ipairs(rules) do
-		if category.name == name then return i end
-	end
-	return #rules + 0.5
+-- The order categories run in, as a number: a key's place in the category
+-- list (INV:GetCategoryList), where a 'Set: ...' key is the sets entry's
+-- place. Any other key (a deleted category still on screen) runs just before
+-- Miscellaneous, and Empty Slots after the list. Keys that share a rank
+-- (sets, unknown keys) go by key; see CategoryBefore.
+function INV:CategoryRank(key)
+	local list = self:GetCategoryList()
+	if key == self.EMPTY_SLOTS_CATEGORY then return #list + 1 end
+	return self:CategoryPlace(key) or (list.byId[self.MISC_CATEGORY].place - 0.5)
 end
 
 -- Whether category a comes before category b: by rank, then by name.
@@ -218,7 +214,7 @@ end
 -- 'currencies', and title is false for no heading. Reads the same items as
 -- INV:GetSortedInventory, with the window's stackItems and Empty slots
 -- settings. The view is 'onebag', 'multibag' or 'rows'; Compact has no sections.
--- Rows leaves out the categories hidden in the profile (filters.categories[id]),
+-- Rows leaves out the categories hidden in the profile (their Show in, INV:IsCategoryHidden),
 -- as Compact does; One bag and Multi bag show every item.
 function INV:GetViewSections(id, view)
 	local container = self.containers[id]
@@ -238,20 +234,22 @@ function INV:GetViewSections(id, view)
 			byCategory[category] = byCategory[category] or {}
 			tinsert(byCategory[category], item)
 		end
-		local filters = self.config.filters
-		local hidden = filters and filters.categories and filters.categories[id] or {}
 		local order = {}
 		for category in pairs(byCategory) do
-			if not hidden[category] then tinsert(order, category) end
+			if not self:IsCategoryHidden(id, category) then tinsert(order, category) end
 		end
 		table.sort(order, function(a, b) return self:CategoryBefore(a, b) end)
 		for _, category in ipairs(order) do
 			local items = byCategory[category]
 			table.sort(items, self.CompareItems)
-			local title = ('%s (%d)'):format(category, #items)
-			tinsert(sections, { key = category, title = title, items = self:FitSlots(id, category, 0, items), kind = 'category' })
+			local title = ('%s (%d)'):format(self:CategoryName(category), #items)
+			local fitted = self:FitSlots(id, category, 0, items)
+			-- A category with no frame yet (made in combat) waits for the end of it.
+			if #fitted > 0 then
+				tinsert(sections, { key = category, title = title, items = fitted, kind = 'category' })
+			end
 		end
-		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
+		local empties = not self:IsCategoryHidden(id, self.EMPTY_SLOTS_CATEGORY)
 			and self:FitSlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
 		if empties and #empties > 0 then
 			local shown = 0
