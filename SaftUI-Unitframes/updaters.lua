@@ -132,16 +132,32 @@ function UF:UpdateElement(element, configOverride)
     return true
 end
 
--- Shows or hides an element by its config. It only shows or hides: oUF
--- enables every element a frame has when it builds the frame, before the
--- frame's first update (UF.InitUnit, UF:ApplyConfig). DisableElement isn't
--- used for these units, because oUF's castbar Disable gives Blizzard's player
+-- Whether an element shows: its config's Enable, except that a friendly
+-- unit's plate never shows the parts only an enemy's does
+-- (UF.PLATE_ENEMY_ONLY, nameplates.lua; frame.friendly is set on each add).
+function UF:ElementWanted(element)
+    if not element.config.enable then return false end
+    local frame = element.unitframe
+    if frame and frame.isNamePlate and frame.friendly and UF.PLATE_ENEMY_ONLY[element.name] then
+        return false
+    end
+    return true
+end
+
+-- Shows or hides an element (UF:ElementWanted), and returns its config's
+-- Enable, which UF:UpdateElement goes on to place and size it by: a part a
+-- friendly plate hides is still laid out, ready for the plate's next enemy.
+-- It only shows or hides: oUF enables every element a frame has when it
+-- builds the frame, before the frame's first update (UF.InitUnit,
+-- UF:ApplyConfig). DisableElement is used only on plates, by their kind
+-- (nameplates.lua), because oUF's castbar Disable gives Blizzard's player
 -- and pet castbars their events back (Libraries/oUF/elements/castbar.lua,
 -- Disable), which the player castbar's option promises not to do. An element
 -- oUF shows on its own updates hides itself again while it's off (power's
--- PostUpdate, the castbar's ShouldShow, the indicators' PostUpdate).
+-- PostUpdate; power isn't on plates) or not wanted (the castbar's ShouldShow,
+-- the indicators' PostUpdate).
 function UF:SetElementEnabled(element)
-    element:SetShown(element.config.enable)
+    element:SetShown(self:ElementWanted(element))
     return element.config.enable
 end
 

@@ -973,6 +973,12 @@ do
 		updateDriver(self)
 	end
 
+	-- SaftUI: the player's own plate (the personal resource display), found by
+	-- frame. It's left to Blizzard, who anchors its class bars to its UnitFrame.
+	local function isPlayerPlate(nameplate)
+		return nameplate == C_NamePlate.GetNamePlateForUnit('player')
+	end
+
 	local function driverEventHandler(self, event, unit)
 		if(event == 'PLAYER_LOGIN') then
 			updateDriver(self)
@@ -980,6 +986,7 @@ do
 			local nameplate = C_NamePlate.GetNamePlateForUnit('target')
 			if(not nameplate or not nameplate.unitFrame) then return end
 			if(UnitNameplateShowsWidgetsOnly('target') or UnitIsGameObject('target')) then return end
+			if(isPlayerPlate(nameplate)) then return end -- SaftUI
 
 			if(self.targetCallback) then
 				self.targetCallback(nameplate.unitFrame, event, 'target')
@@ -991,6 +998,20 @@ do
 		elseif(event == 'NAME_PLATE_UNIT_ADDED') then
 			local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
 			if(not nameplate) then return end
+
+			-- SaftUI: the player's own plate stays Blizzard's. Its UnitFrame isn't
+			-- blocked, and one blocked on another plate is unblocked (Blizzard hands
+			-- every plate a UnitFrame from one pool); oUF's frame, if the plate has
+			-- one from an earlier unit, is paused and hidden as for a widget-only
+			-- plate, and the remove below resumes it.
+			if(isPlayerPlate(nameplate)) then
+				if(nameplate.UnitFrame) then nameplate.UnitFrame:SetRolesets(nil) end
+				if(nameplate.unitFrame) then
+					nameplate.unitFrame:PauseAllElements()
+					nameplate.unitFrame:Hide()
+				end
+				return
+			end
 
 			-- we need to disable blizzard's handling on every spawn because they keep
 			-- initializing stuff on nameplates

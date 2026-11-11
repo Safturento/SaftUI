@@ -112,8 +112,9 @@ for _, config in pairs(indicators) do
             end
 
             -- oUF shows the indicator by its own rules on every update, so
-            -- UF:SetElementEnabled only hid a disabled one until now.
-            if not indicator.config.enable then
+            -- UF:SetElementEnabled only hid one that isn't wanted (off, or
+            -- the quest icon on a friendly plate) until now.
+            if not UF:ElementWanted(indicator) then
                 indicator:Hide()
             end
 

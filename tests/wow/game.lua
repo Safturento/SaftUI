@@ -631,3 +631,50 @@ do
 		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
 	end
 end
+
+-- UnitIsFriend(unit, otherUnit) and UnitCanAttack(unit, otherUnit)
+-- (UnitDocumentation.lua, the same on both clients: two unit tokens, a plain
+-- boolean back): between the player and a stub.units unit, either way round,
+-- its friend and attackable fields (false where unset). A test can put a
+-- secret value (tests/lib/secrets.lua) in either, as restricted content could
+-- hand one. A unit that isn't there gives false, as the game does for a unit
+-- that doesn't exist; no other pair is stubbed, so it errors rather than guess.
+do
+	local function between(name, field)
+		return function(unit, otherUnit)
+			if type(unit) ~= 'string' or type(otherUnit) ~= 'string' then
+				error(('Usage: local result = %s(unit, target)'):format(name), 2)
+			end
+			local other = (otherUnit == 'player' and OtherUnit(unit)) or (unit == 'player' and OtherUnit(otherUnit))
+			if other then
+				local value = other[field]
+				if value == nil then return false end
+				return value
+			end
+			if not (OtherUnit(unit) or unit == 'player') or not (OtherUnit(otherUnit) or otherUnit == 'player') then return false end
+			error(('%s(%s, %s) is not stubbed: only a stub.units unit and the player'):format(name, unit, otherUnit), 2)
+		end
+	end
+	UnitIsFriend = between('UnitIsFriend', 'friend')
+	UnitCanAttack = between('UnitCanAttack', 'attackable')
+end
+
+-- The player's own plate, the personal resource display (on when the game's
+-- nameplateShowSelf is): Blizzard's driver finds it with
+-- C_NamePlate.GetNamePlateForUnit('player') (NamePlateDriverMixin:
+-- SetupClassNameplateBars, both clients). stub.nameplate_player is the unit
+-- token whose plate it is (one stub.add_nameplate showed), nil for none.
+stub.nameplate_player = nil
+do
+	local getPlate = C_NamePlate.GetNamePlateForUnit
+	function C_NamePlate.GetNamePlateForUnit(unit, includeForbidden)
+		if type(unit) ~= 'string' then
+			error('Usage: local nameplate = C_NamePlate.GetNamePlateForUnit(unitToken [, includeForbidden])', 2)
+		end
+		if unit:lower() == 'player' then
+			if not stub.nameplate_player then return nil end
+			return getPlate(stub.nameplate_player, includeForbidden)
+		end
+		return getPlate(unit, includeForbidden)
+	end
+end
