@@ -1,10 +1,14 @@
 # SaftUI options, project 3b-2: the Blizzard theme
 
-Date: 2026-11-10. Status: the user answered the draft's five questions (2026-11-10, "The user's answers" below). Three new questions come from answer 5. The calls marked "My call" are mine, not the user's. The user's own decisions, from the Themes brainstorm and from the answers, are binding.
+Date: 2026-11-10. Status: no open questions. The user answered the draft's five questions ("The user's answers" below), and the controller ruled on the three that answer 5 raised ("The controller's rulings"). The calls marked "My call" are mine, not the user's. The user's decisions and the controller's rulings are binding.
 
 **Revised 2026-11-10, after the user's answers:**
 - Windows take their own background color, Blizzard's dark grey panel color (answer 2).
 - Small frames that have Blizzard art draw it, in place of the 1px line the draft gave every small frame (answer 5). They become a new kind, `control` (below).
+
+**Revised 2026-11-10, after the controller's rulings:**
+- `/sui`'s other controls take Blizzard's Settings art too (ruling 2).
+- Every check box takes Blizzard's Settings box (ruling 3).
 
 Project 3b-1, Themes (`docs/superpowers/specs/2026-11-10-saftui-themes-design.md`, shipped), made SaftUI's look a choice: Thick or Thin, editable colors, a Transparent background toggle and Opacity, a Theme and Background override on every module, and a kind of frame named in every draw call. This spec adds the theme Themes promised next: Blizzard.
 
@@ -165,6 +169,26 @@ Checked on both branches. Where a file and its forever and live copies differ, t
   - Forever loads only the combo point bars: its `Blizzard_UnitFrame.toc` excludes the paladin, warlock, monk, mage, evoker and death knight bars for `camelot`. Its Camelot `RogueComboPointBar.xml` and `DruidComboPointBar.xml` use the same point templates.
   - Every atlas above exists on both clients.
   - Death knight runes (`UF-DKRunes-*`) are Blizzard's too, but SaftUI shows no runes (its class power element is oUF's ClassPower, which has none).
+- **Blizzard's Settings panel's controls** (`Blizzard_Settings_Shared`, `Blizzard_Menu`, `Blizzard_SharedXML`). They're the same on both branches unless named. Every atlas here exists on both clients, most with Camelot versions on Forever.
+  - **Dropdown** (`WowStyle1DropdownTemplate`, `Blizzard_Menu/Mainline/MenuTemplates.xml`; Forever loads the `[Family]` copy).
+    - Behind the text is `common-dropdown-textholder` (54×41).
+    - The arrow is `common-dropdown-a-button` (27×27), which Blizzard's code swaps to `-hover`, `-pressed`, `-open` and `-disabled`.
+    - Its menu is drawn on `common-dropdown-bg` (68×68) at alpha 0.925 (`MenuStyle1Mixin`).
+  - **Slider** (`MinimalSliderTemplate`, `Blizzard_SharedXML/Shared/Slider/MinimalSlider.xml`).
+    - The track is `Minimal_SliderBar_Left` (11×17), `_Minimal_SliderBar_Middle` (tiled) and `Minimal_SliderBar_Right`.
+    - The thumb is `Minimal_SliderBar_Button` (20×19).
+    - `MinimalSliderWithSteppersTemplate` adds `Minimal_SliderBar_Button_Left` and `_Right` steppers.
+  - **Check box** (`SettingsCheckboxTemplate`, `Blizzard_Settings_Shared/Blizzard_SettingControls.xml`): `checkbox-minimal`, with checked `checkmark-minimal`, the same as `MinimalCheckboxArtTemplate` (above).
+  - **Color swatch** (`SettingsColorSwatchTemplate`, which inherits `ColorSwatchTemplate`, `Blizzard_SharedXMLBase/ColorSwatch.xml`). These are plain textures: a white square (`HIGHLIGHT_FONT_COLOR`), a black one inside it, and the color inside that.
+  - **Tabs** (`MinimalTabTemplate`, `Blizzard_SharedXML/Shared/Tabs/MinimalTab.xml`, the Settings panel's Game and AddOns tabs).
+    - A tab is `Options_Tab_Left` (7×23), `Options_Tab_Middle` and `Options_Tab_Right`.
+    - The picked one is `Options_Tab_Active_Left` (7×26), `-Middle` and `-Right`.
+  - **Category list** (`SettingsCategoryListButtonTemplate`, `Blizzard_CategoryList.lua`): the current category is drawn on `Options_List_Active` (187×21), and one under the mouse on `Options_List_Hover`.
+  - **Key binding button** (`KeyBindingFrameBindingButtonTemplate`, which inherits `UIMenuButtonStretchTemplate`, `SharedUIPanelTemplates.xml`).
+    - Nine pieces of `Interface\Buttons\UI-Silver-Button-Up` (383587) at the template's texture coordinates, with `-Down` (383585) and `-Highlight` (383586).
+    - `Interface\Buttons\UI-Silver-Button-Select` (921208) while it waits for a key.
+  - **Search box and text boxes**: `SearchBoxTemplate` and `InputBoxTemplate` (above). The Settings panel's buttons are `UIPanelButtonTemplate`.
+  - **Up and down nudges**: `MinimalScrollBar`'s steppers, `minimal-scrollbar-arrow-top` and `-bottom` (17×11), with `-over` and `-down`.
 - **The totem flyout** (`MultiCastFlyoutFrame`, `Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml`, Forever). Its `top` and `middle` textures are `Interface\Buttons\UI-TotemBar` (310727), which SaftUI's totem skin fades with `SetAlpha(0)`.
 
 ### Colors
@@ -221,7 +245,8 @@ Under Thick and Thin, a window draws exactly as a panel, and a control as a smal
 - **small: one 1px line,** in the Blizzard theme's Border, around its Background (Thin's drawing in Blizzard's colors). It's only for the small frames with no Blizzard art:
   - **a chosen roll's lit button** on a locked loot roll bar (`SaftUI-Loot/roll.lua`). Blizzard hides its roll frame once you choose, so it has no art for a chosen roll;
   - **the micro menu bar's other items' panels**: the zone text, clock, latency, framerate, addon compartment, tracking, expansion, mail, instance difficulty and queue eye items (`SaftUI-Minimap/micromenu.lua`). Blizzard draws these as round minimap buttons with no panel, a shape SaftUI's bar doesn't have. Their skins stay as today;
-  - **a skinned Blizzard panel's tabs** (`SK:SkinTab`, reached only from `SK:SkinBlizzardPanel`, which nothing calls).
+  - **a skinned Blizzard panel's tabs** (`SK:SkinTab`, reached only from `SK:SkinBlizzardPanel`, which nothing calls);
+  - **`/sui`'s multiselect box and the position block's point dots** (below).
 
   Two small frames are drawn Thin by name, whatever the theme, and stay so: the zone text's flourishes and the RestedXP timer boxes.
 
@@ -233,22 +258,56 @@ Every row is my call, from the element's Blizzard source (above), on the user's 
 | ------- | ----------- | -------------- | ------------------------ |
 | **SaftUI's buttons** (`st:CreateButton`, `st:SkinButton`): the bags' view buttons and Warband Bank, Deposit, Withdraw and Buy buttons, the loot feed's filter and scroll-reset buttons, edit mode's footer buttons, the key binding mode's Done | SaftUI's | the panel button: `Left`, `Middle` and `Right` of SaftUI's own, with `UI-Panel-Button-Up` swapped to `-Down` on a mouse down and `-Disabled` when disabled, and the additive highlight. The ends keep Blizzard's 12:22 share of the button's height. Today's flat hover, pushed and disabled textures are hidden | the three textures hidden, the flat ones shown |
 | **A Blizzard button given to `st:SkinButton`** (retail's bank deposit button) | Blizzard's | its own textures shown again (`SetAlpha(1)` on what `st:SkinButton` faded); SaftUI's flat textures hidden | faded again |
-| **Check boxes** (`st:CreateCheckButton`, made from `UICheckButtonTemplate`): the bags' category filter boxes | SaftUI's | the template's own art set back (`UI-CheckBox-Up`, `-Down`, `-Highlight`, `-Check`, `-Check-Disabled`), with the box sized so its art's box is SaftUI's 12px | SaftUI's box again |
+| **Check boxes** (`st:CreateCheckButton`, made from `UICheckButtonTemplate`): the bags' category filter boxes | SaftUI's | Blizzard's Settings box (`checkbox-minimal`, checked `checkmark-minimal`, disabled `checkmark-minimal-disabled`), the one look for every check box (ruling 3). It's sized so the art's box is SaftUI's 12px. The template's own `UI-CheckBox` art stays unused | SaftUI's box again |
 | **Check buttons used as buttons**: the bags' Edit toggle and the currencies' funnel | SaftUI's | the panel button, shown pressed (`-Down`) while checked | SaftUI's look again |
 | **`/sui`'s buttons** (execute) | SaftUI's | the panel button, as SaftUI's buttons | the window's own look |
-| **`/sui`'s toggles** | SaftUI's | Blizzard's Settings check box: `checkbox-minimal`, checked `checkmark-minimal`, disabled `checkmark-minimal-disabled` (question 3) | the window's own look |
+| **`/sui`'s toggles** | SaftUI's | Blizzard's Settings check box, as every check box (ruling 3) | the window's own look |
 | **Radio groups** (`st:CreateRadioGroup`: retail's combined bank's Bank and Warband selector) | SaftUI's | Blizzard's top tabs: the picked button `uiframe-activetab-*`, the others `uiframe-tab-*`; no blue border | SaftUI's buttons and blue border again |
 | **Scroll bars** (`st:SkinScrollBar` on a `MinimalScrollBar`: SaftUI's own, and chat's) | both | the thumb's, track's and steppers' layers turned on again (`EnableDrawLayer`), so `MinimalScrollBar`'s own art shows; no SaftUI thumb backdrop or thumb colors | layers off again, SaftUI's thumb back |
 | **Edit boxes** (`st:SkinEditBox`: the bags' search box, `st:CreateEditBox`, chat's edit boxes) | both | the template's own border textures shown again, and chat's focus textures; no SaftUI backdrop and no white focus border. `st:SkinEditBox` conceals them with `SetAlpha(0)`, not `st:Kill`, so this works and writes nothing onto Blizzard's | concealed again, SaftUI's backdrop and focus border back |
 | **The micro buttons** (`SaftUI-Minimap/microbuttons.lua`) | Blizzard's | `Background`, `Shadow`, `PushedShadow` and the performance bar shown again; `PushedBackground` and `FlashBorder` given Blizzard's atlases back by name; the highlight left as Blizzard's code sets it (`UI-HUD-MicroMenu-<textureName>-Mouseover`, set back by SaftUI after a switch); no SaftUI panel. The icons keep SaftUI's size and place | today's fades and flat colors |
 | **Edit Mode's outlines** (`SaftUI-Core/EditMode/mover.lua`) | SaftUI's | Blizzard's Edit Mode selection, drawn by SaftUI on the outline: the `editmode-actionbar-highlight` kit, and `editmode-actionbar-selected` on the selected mover in place of SaftUI's blue | SaftUI's line and blue again |
-| **Class power points** (`SaftUI-Unitframes/elements/classpower.lua`) | SaftUI's | each point the empty art of the player's resource, and the filled art while full (the table above; per point for holy power; the blue icon for a rogue's charged point). Each point's art is square at the row's height, centred in its slot (question 1) | flat bars again |
+| **Class power points** (`SaftUI-Unitframes/elements/classpower.lua`) | SaftUI's | each point the empty art of the player's resource, and the filled art while full (the table above; per point for holy power; the blue icon for a rogue's charged point). Each point's art is square at the row's height, centred in its slot (ruling 1) | flat bars again |
 | **The castbar's icon and the unit frame indicators** | SaftUI's | bare: Blizzard draws its castbar icons and unit frame indicators with no frame | as today |
 | **The totem flyout** (`SaftUI-Misc/totemskin.lua`) | Blizzard's | its `top` and `middle` art shown again (`SetAlpha(1)`); no SaftUI panel | faded again |
 
 Re-tagged, not controls, because their Blizzard look is another kind's (under Thick and Thin these draw as before):
 - **Item icons drawn as small** become `slot`, the item button's art: the loot roll icon (`SaftUI-Loot/roll.lua`, the icon box and a held bar's icon frame), the loot feed's icons (`SaftUI-Loot/Feed/feed.lua`) and the character frame's gem slots (`SaftUI-Misc/Skinning/characterframe/gems.lua`).
 - **Edit Mode's frame picker** (`SaftUI-Core/EditMode/picker.lua`) becomes `tooltip`: it's a tooltip of the frames under the cursor.
+
+### `/sui`'s controls under Blizzard
+
+The controller's ruling 2: `/sui`'s dropdowns, sliders, text boxes, tabs, and every other control with a Blizzard Settings equivalent take that art under Blizzard. The buttons and toggles are in the table above.
+
+`/sui`'s window draws its controls itself (`SaftUI-Core/Config/optionswidgets.lua`, `optionswindow.lua`), all through one look, `Box`, which the theme never drew. Under SaftUI's theme Blizzard, each control swaps `Box` for its Blizzard art, drawn by SaftUI on SaftUI's own frames. Each control reads the look when it's drawn: the window re-renders after a theme change (`Config:UpdateConfig`, step 7).
+
+| `/sui` control | Under Blizzard |
+| -------------- | -------------- |
+| select (and the position block's frame dropdown, and the picker row's) | the dropdown: `common-dropdown-textholder` behind the text, and the arrow `common-dropdown-a-button`, with `-hover`, `-pressed`, `-open` and `-disabled` |
+| the select's list (`W.OpenList`) | Blizzard's menu: `common-dropdown-bg` behind the rows, at 0.925 |
+| range | the slider: `Minimal_SliderBar_Left`, `_Minimal_SliderBar_Middle` and `Minimal_SliderBar_Right` as the track, `Minimal_SliderBar_Button` as the thumb. Its value box is a text box |
+| input, the range's value box, the position block's name, X and Y boxes, and `W.Prompt`'s box | `InputBoxTemplate`'s art: `auctionhouse-ui-inputfield-left`, `-middle` and `-right` |
+| the search box | `SearchBoxTemplate`'s art: `common-search-border-left`, `-middle` and `-right`, with `common-search-magnifyingglass` |
+| color | Blizzard's swatch (`ColorSwatchTemplate`): a white square, a black one inside, the color inside that |
+| keybinding | Blizzard's binding button: nine pieces of `UI-Silver-Button-Up`, `-Down` while pressed, `-Highlight`, and `UI-Silver-Button-Select` while it waits for a key |
+| the position block's up and down nudges | `minimal-scrollbar-arrow-top` and `-bottom`, with `-over` and `-down` |
+| the tabs and subtabs | Blizzard's Settings tabs: `Options_Tab_*`, the picked one `Options_Tab_Active_*`, in place of the blue underline |
+| the sidebar's entries | the Settings category list: the open page on `Options_List_Active`, one under the mouse on `Options_List_Hover` |
+| the footer's Reload UI and Close, and `W.Confirm`'s buttons | the panel button |
+| `W.Confirm`'s and `W.Prompt`'s boxes, and the list's frame | drawn as the `/sui` window is (the tooltip border) |
+
+**No Blizzard equivalent**, so they keep a 1px line in the Blizzard theme's Border, around its Background:
+- **the multiselect's box.** Blizzard's Settings panel has no list of check boxes in a box; its rows' check boxes take the Settings box;
+- **the position block's point dots** (the nine dots for a point and a relative point). Blizzard has no point picker.
+
+**Under Thick and Thin `/sui` doesn't change.** Its controls keep `Box`. The whole-pixel layout rules in `.agents/edit-mode.md` hold under every theme:
+- every cell starts and ends on a whole pixel (`body:CellRect`);
+- widgets keep their widths (`W.WIDTH`) and heights;
+- no 1px border sits between two pixels.
+
+Blizzard's art is drawn inside each control's own rect, so nothing moves.
+
+`/sui`'s section titles, the 1px section lines and the column dividers are the window's layout, not controls. They stay as they are.
 
 ### How the Blizzard look fits the engine
 
@@ -395,7 +454,6 @@ The tables hold:
 
 ## Non-goals
 
-- **`/sui`'s other controls** (dropdowns, sliders, text boxes, color swatches, key binding buttons, tabs and sidebar), until the user answers question 2.
 - **Pieces of Blizzard's windows SaftUI's don't have:** the portrait socket, the minimize button, the rock background, the title streaks.
 - **Blizzard's minimap button art on the micro menu bar's other items.**
 - **Class power animations:** the fills, glows, flipbooks and smoke Blizzard plays as a point fills or empties. Points show the empty or the filled art.
@@ -441,6 +499,7 @@ The tables hold:
   - re-tagged frames draw as their new kind.
 
   Under Thick each is today's look again.
+- **`/sui`'s controls under Blizzard,** one test per row of their table, and the two without an equivalent drawn as a line. Under Thick and Thin, each control's frames and every cell rect are exactly as before the change.
 - **Switches.** A frame of every kind goes Thick → Blizzard → Thin → Blizzard:
   - art only under Blizzard, and Thick's lines only under Thick;
   - each backdrop at its kind's inset;
@@ -485,8 +544,14 @@ The tables hold:
 4. **The tooltip border's size on bars:** "Default is fine." Blizzard's size.
 5. **Small frames:** "Blizzard has art for buttons, checkboxes, power points, and micro menu buttons - and probably for almost anything else - use their art that saftui currently hides in most of those places." This replaced my 1px line with the `control` kind and its table.
 
+## The controller's rulings (2026-11-10)
+
+The user handed these three questions, raised by answer 5, to the controller. These are the controller's rulings, not the user's words.
+
+1. **Class power point shape:** my call stands. Each point draws Blizzard's art square at the row's height, centred in its slot, so the row keeps its size.
+2. **`/sui`'s other controls are in, not a followup.** The ruling leans on the user's "probably for almost anything else - use their art". Under Blizzard, `/sui`'s dropdowns, sliders, text boxes, tabs and every other control with a Blizzard Settings equivalent take that art. Those with none keep the 1px line and are named above. The work is its own plan task, after Core's controls, so it can be parked if it causes trouble. It mustn't change the options window under Thick or Thin, where the whole-pixel layout rules of `.agents/edit-mode.md` still apply.
+3. **One check box look everywhere:** Blizzard's Settings box (`checkbox-minimal`, which has a Camelot version on Forever), for SaftUI's own toggles and the bags' template check boxes alike.
+
 ## Questions for the user
 
-1. **Class power point shape.** Blizzard's class power art is round, but SaftUI's points fill the row: by default 201px wide, so five points are about 35×20. My call: each point draws Blizzard's art square at the row's height, centred in its slot, so the row keeps its size. Or should the row shrink to the round points, or the art stretch to fill each slot?
-2. **`/sui`'s other controls.** You named `/sui`'s buttons and check boxes. Blizzard also has art for its dropdowns, sliders, text boxes, tabs and the rest of its Settings panel, which `/sui`'s window draws in a look of its own today. My call: buttons and check boxes in this project, the rest as a followup. Or all of `/sui` now?
-3. **Two check box looks.** The bags' check boxes are made from Blizzard's classic check box template, so they get its art (`UI-CheckBox`). `/sui`'s toggles have no template, so I gave them Blizzard's Settings panel box (`checkbox-minimal`), the one Blizzard's own options use. Or one look for both, and which?
+None open.
