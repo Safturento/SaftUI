@@ -124,9 +124,17 @@ local function PromptImportProfile()
 end
 
 -- One spawned frame of a config unit, for its options to look at: the unit's
--- frame, boss (or arena) 1, or a party or raid group's first button. nil while
--- a group has no buttons.
+-- frame, boss (or arena) 1, a party or raid group's first button, or the
+-- frame on the plate with the lowest number (nameplates/nameplates.lua). nil
+-- while a group has no buttons, or no plate has had a unit yet.
 function UF:GetConfigFrame(unit)
+	if unit == 'nameplate' then
+		local lowest
+		for id in pairs(self.nameplates or {}) do
+			if not lowest or id < lowest then lowest = id end
+		end
+		return lowest and self.nameplates[lowest] or nil
+	end
 	local frame = self.units and self.units[unit]
 	if frame then
 		-- boss and arena are a list of five frames.
@@ -182,10 +190,11 @@ function UF.GenerateRelativeSizeConfigGroup(order)
 end
 
 -- What each config unit's frames show, for the options that only work on
--- some kinds of unit. Player shows you, pet your pet, boss frames bosses, and
+-- some kinds of unit. Player shows you, pet your pet, boss frames bosses,
 -- party and raid frames players (party AI followers count as players, as oUF
--- counts them). Any other unit (target, focus and their targets, the pet's
--- target) can show anything. The kinds:
+-- counts them), and nameplates any unit but an offline player (the game shows
+-- no plate for one). Any other unit (target, focus and their targets, the
+-- pet's target) can show anything. The kinds:
 --   players  a player (oUF's UnitIsPlayer or UnitInPartyIsAI)
 --   npcs     anything that isn't a player, pets too
 --   pets     a unit a player controls that isn't a player
@@ -198,6 +207,7 @@ local UNIT_SHOWS = {
 	party = { players = true, offline = true },
 	raid10 = { players = true, offline = true },
 	raid40 = { players = true, offline = true },
+	nameplate = { players = true, npcs = true, pets = true, mobs = true },
 }
 
 -- Whether unit's frames can ever show a unit of kind (above).
@@ -292,6 +302,10 @@ end
 -- current unit frame profile) onto unit, after asking. SaftUI's options window
 -- draws it as a small dialog (st.OptionsWindow:OpenDialog). The table is made
 -- anew each time, so nothing carries over from the last unit.
+-- The nameplates are left out both ways (their page has no Copy from, and
+-- they're never offered here): the game places each plate and gives every
+-- plate one size, Nameplates and Friendly plates change the game's settings
+-- and need a reload, and a unit frame's layout doesn't fit a plate's bar.
 function UF:OpenCopyTable(unit)
 	local copy = { from = nil, settings = {} }
 	local settingArgs = {}
@@ -317,7 +331,7 @@ function UF:OpenCopyTable(unit)
 					local units = {}
 					-- The current profile's, in case the profile changed since opening
 					for key in pairs(UF:GetProfileConfig()) do
-						if key ~= unit then
+						if key ~= unit and key ~= 'nameplate' then
 							units[key] = key
 						end
 					end
@@ -467,15 +481,92 @@ local function GetGroupLayoutConfig(unit, order)
 end
 
 
--- The units' order in /sui's unit picker (their keys are UF.unit_strings' and
--- UF.group_strings'); the page opens on the first. A unit not listed sorts
--- after these, and the Profile group (a negative order) after everything.
+-- The units' order in /sui's unit picker (their keys are UF.unit_strings',
+-- UF.group_strings' and the nameplates'); the page opens on the first. A unit
+-- not listed sorts after these, and the Profile group (a negative order)
+-- after everything.
 local UNIT_ORDER = {}
 for i, unit in ipairs({
 	'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
-	'party', 'raid10', 'raid40',
+	'party', 'raid10', 'raid40', 'nameplate',
 }) do
 	UNIT_ORDER[unit] = i
+end
+
+--[[
+	The Nameplates page's General tab (the nameplate unit, nameplates/): the
+	plates' own settings, read from the profile at call time. There's no
+	Position, Layout or Range: the game places each plate and gives every plate
+	one size (UF:ApplyPlateSize), which Width and Height set. Nameplates and
+	Friendly plates also change the game's own nameplate settings
+	(nameplates/cvars.lua). Nameplates is read once, at login (oUF makes its
+	nameplate driver only once), so a change to it asks for a reload.
+]]
+local function NameplateGeneral()
+	local G = st.Config.generators
+	local function Config() return UF:GetProfileConfig().nameplate end
+
+	local enable = G.toggle(1, 'Nameplates',
+		"Draws nameplates in SaftUI's look: enemies and neutral units, and friendly ones outside instances. Changes after a reload.", 'small')
+	enable.set = function(_, value)
+		Config().enable = value
+		-- SaftUI's plates stay up until the reload: off, the game's settings go
+		-- back now; on again, they're SaftUI's again (nothing until the plates
+		-- are spawned, at the reload, when they were off at login).
+		if value then
+			UF:ApplyNameplateCVars()
+		else
+			UF:RestoreNameplateCVars()
+		end
+		st.OptionsWidgets.Confirm('Nameplates change after a reload. Reload now?', ReloadUI)
+	end
+
+	local friendly = G.toggle(2, 'Friendly plates',
+		"Shows nameplates over friendly players and NPCs: SaftUI's outside instances, Blizzard's inside them. Off, friendly units have none.", 'small')
+	friendly.set = function(_, value)
+		Config().friendly = value
+		UF:ApplyNameplateCVars()
+	end
+
+	return {
+		order = 0,
+		name = 'General',
+		type = 'group',
+		get = function(info) return Config()[info[#info]] end,
+		set = function(info, value)
+			Config()[info[#info]] = value
+			-- Re-applies every plate, and their size (UF:ApplyConfig).
+			UF:UpdateConfig('nameplate')
+		end,
+		args = {
+			enable = enable,
+			friendly = friendly,
+			threat_solo = G.toggle(3, 'Threat when solo',
+				"Tints enemy health bars by your threat while you're on your own too. In a party or raid they're always tinted.", 'small'),
+			theme = G.theme(4, "How the border and background around each whole nameplate are drawn. Its bars have their own, on their tabs."),
+			background = G.background(4.5),
+			width = G.width(5, "Every nameplate's width: its health bar and the area you click."),
+			height = G.height(6, "Every nameplate's height: its health bar and the area you click."),
+		},
+	}
+end
+
+-- While another nameplate addon draws the plates (UF:NameplateAddon), the
+-- Nameplates page says which, and every option on it is disabled. The line
+-- sits on the page above the tabs, not in General: every tab is disabled then,
+-- and the window chooses a disabled tab only when it was the tab chosen
+-- already (st.OptionsModel), so a line in General would mostly not show.
+local function StandDown(config_table)
+	local addon = UF:NameplateAddon()
+	config_table.disabled = function() return UF:NameplateAddon() ~= nil end
+	if not addon then return end
+	config_table.args.drawn_by = {
+		order = 0,
+		name = ("Nameplates are drawn by %s. Turn it off to use SaftUI's."):format(addon),
+		type = 'description',
+		-- Read at full strength while everything under it is dimmed.
+		disabled = false,
+	}
 end
 
 -- An alpha option under its own name.
@@ -678,6 +769,16 @@ function UF:GetConfigTable()
 			config_table.args.general.args.enable.desc = "While either raid group is on, Blizzard's raid frames are hidden. Blizzard's raid manager tab at the left edge of the screen stays. Turning both raid groups off brings Blizzard's raid frames back. In a raid, hiding them waits until you leave the raid, and bringing them back waits until you leave it or /reload."
 		end
 
+		-- The nameplates (nameplates/): their own General, no Copy from (see
+		-- UF:OpenCopyTable), and everything disabled while another nameplate
+		-- addon draws the plates.
+		if unit == 'nameplate' then
+			config_table.name = 'Nameplates'
+			config_table.args.copy = nil
+			config_table.args.general = NameplateGeneral()
+			StandDown(config_table)
+		end
+
 		-- One tab per element the unit has (ValidUnit, as in UF.ConstructUnit).
 		for element_name, element in pairs(UF.elements) do
 			if element.GetConfigTable and (not element.ValidUnit or element.ValidUnit(unit)) then
@@ -696,6 +797,10 @@ function UF:GetConfigTable()
 	for unit in pairs(self.groups or {}) do
 		config.args[unit] = GetUnitConfig(unit)
 	end
+
+	-- Always there, whether SaftUI draws the plates or not: its page turns
+	-- them on, or says which addon draws them.
+	config.args.nameplate = GetUnitConfig('nameplate')
 
 	return config
 end

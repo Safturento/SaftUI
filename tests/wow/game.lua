@@ -631,3 +631,42 @@ do
 		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
 	end
 end
+
+-- C_CVar (CVarDocumentation.lua, the same on both clients): the game's
+-- settings, by name, each a string.
+--
+--   stub.cvars: name -> value, a string. A name not there is a setting this
+--     client doesn't have. The defaults are the nameplate settings SaftUI
+--     changes, at the game's defaults as far as we know them (friendly plates
+--     off; the source doesn't say, so this is inferred).
+--   C_CVar.GetCVar(name): stub.cvars[name], or nil for a setting the client
+--     lacks (the documentation marks its return Nilable).
+--   C_CVar.SetCVar(name, value): sets the string and returns true. An unknown
+--     name returns false (RequiresValidAndPublicCVar). The game protects some
+--     nameplate settings in combat (the documentation's RequiresNonSecureCVar,
+--     and addons setting friendly plates in combat get blocked), so in combat
+--     the stub refuses every setting, the strict side: noted in stub.blocked as
+--     { C_CVar, name }, it returns false and changes nothing. A nil value
+--     (the documentation allows one) errors: what the game makes of it isn't
+--     known, and SaftUI never passes one.
+stub.cvars = {
+	nameplateShowFriendlyPlayers = '0',
+	nameplateShowFriendlyNpcs = '0',
+}
+
+C_CVar = {}
+function C_CVar.GetCVar(name)
+	if type(name) ~= 'string' then error('Usage: local value = C_CVar.GetCVar(name)', 2) end
+	return stub.cvars[name]
+end
+function C_CVar.SetCVar(name, value)
+	if type(name) ~= 'string' then error('Usage: local success = C_CVar.SetCVar(name [, value])', 2) end
+	if value == nil then error('C_CVar.SetCVar: a nil value is not stubbed', 2) end
+	if stub.cvars[name] == nil then return false end
+	if InCombatLockdown() then
+		stub.blocked[#stub.blocked + 1] = { C_CVar, name }
+		return false
+	end
+	stub.cvars[name] = tostring(value)
+	return true
+end
