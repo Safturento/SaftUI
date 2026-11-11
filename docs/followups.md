@@ -1376,7 +1376,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Shape of work:** A few lines in health.lua and power.lua, and an in-game check: tag a target with a debuff from another player and watch it go grey.
 
-**Resolved 2026-11-11:** In the nameplates plan's Task 3. Health's and power's `UpdateConfig` set the two flags through `UF.SetFactionColorFlags` (`SaftUI-Unitframes/updaters.lua`): `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` once oUF has given the bar its setters, plain fields before that. Group buttons no longer update inside the style function: `UF.InitUnit`, oUF's init callback (registered first in `UF:OnEnable`), updates them after oUF has enabled their elements, so every unit's first update goes through the setters (and a group button's range fade table is made in `UF.ConstructUnit`, so oUF still enables it). Tested in `tests/unitframes/unit_init_test.lua` against an oUF stand-in (`tests/unitframes/fixtures/ouf.lua`); the in-game check (tag a target with another player and watch it go grey) stays.
+**Resolved 2026-11-11:** Health and power set the two flags through oUF's setters once the bar has them (`UF.SetFactionColorFlags`), and group buttons now get their first update from oUF's init callback (`UF.InitUnit`), after oUF's Enable; tested in `tests/unitframes/unit_init_test.lua`, the in-game check above still to do.
 
 ### 2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar
 

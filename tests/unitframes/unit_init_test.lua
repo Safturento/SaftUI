@@ -53,13 +53,19 @@ UF.units = {}
 UF.allUnits = {}
 UF:UpdateColors()
 
--- Runs fn with UF:UpdateUnitFrame watched: returns, for each call, whether oUF
--- had made the frame's active elements by then.
+-- Runs fn with UF:UpdateUnitFrame watched: returns, for each call, the frame
+-- and what it was then: whether oUF had made its active elements (init) and
+-- enabled its health bar (health), and its unit.
 local function watch_updates(fn)
 	local seen = {}
 	local real = UF.UpdateUnitFrame
 	UF.UpdateUnitFrame = function(self, frame, ...)
-		seen[#seen + 1] = ouf.IsInitialized(frame)
+		seen[#seen + 1] = {
+			frame = frame,
+			init = ouf.IsInitialized(frame),
+			health = frame:IsElementEnabled('Health'),
+			unit = frame.__unit,
+		}
 		return real(self, frame, ...)
 	end
 	local ok, err = pcall(fn)
@@ -68,7 +74,10 @@ local function watch_updates(fn)
 	return seen
 end
 
+-- A party header, as far as oUF and UF.ConstructUnit read its attributes:
+-- showParty, from which oUF guesses its buttons' unit, and base_unit.
 local header = CreateFrame('Frame', 'SaftUI_Party', UIParent)
+header:SetAttribute('showParty', true)
 header:SetAttribute('base_unit', 'party')
 
 local count = 0
@@ -80,7 +89,27 @@ end
 test('a party button is updated once, after oUF has made its active elements', function()
 	local seen = watch_updates(party_button)
 	eq(#seen, 1, 'once')
-	eq(seen[1], true, 'after init')
+	local first = seen[1] or {}
+	eq(first.init, true, 'after init')
+	eq(first.health, true, 'with its health bar enabled')
+	eq(first.unit, 'party', "the unit oUF guessed from the header's attributes")
+	eq(first.frame and first.frame.__unit, 'party1', 'its own unit arrives through its unit attribute')
+end)
+
+test('a party button made in combat is updated again once combat ends, and sized then', function()
+	local reference = party_button()
+	check(reference:GetWidth() > 0, 'a button made out of combat is sized')
+	local button
+	stub.in_combat = true
+	local seen = watch_updates(function() button = party_button() end)
+	eq(#seen, 1, 'updated at once, in combat')
+	check(button:GetWidth() ~= reference:GetWidth(), 'but not sized: a unit frame is secure')
+	stub.in_combat = false
+	seen = watch_updates(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(#seen, 1, 'updated again when combat ends')
+	eq(seen[1] and seen[1].frame, button, 'that button')
+	eq(button:GetWidth(), reference:GetWidth(), 'sized then')
+	eq(button:GetHeight(), reference:GetHeight(), 'height too')
 end)
 
 test('OnEnable registers UF.InitUnit before it spawns anything', function()
@@ -92,6 +121,12 @@ end)
 test('a single unit is not updated by the init callback: OnEnable places it', function()
 	local seen = watch_updates(function() ouf:Spawn('player', 'SaftUI_Player') end)
 	eq(#seen, 0, 'no update')
+	stub.in_combat = true
+	seen = watch_updates(function() ouf:Spawn('pettarget', 'SaftUI_PetTarget') end)
+	stub.in_combat = false
+	eq(#seen, 0, 'nor one spawned in combat')
+	seen = watch_updates(function() stub.fire_event('PLAYER_REGEN_ENABLED') end)
+	eq(#seen, 0, 'nor after combat')
 end)
 
 test("the stand-in's EnableElement errors before init, as oUF's does", function()
@@ -115,8 +150,9 @@ end)
 test("a party button's aura areas follow their config after oUF turns them on", function()
 	local enable = P.party.buffs.enable
 	P.party.buffs.enable = false
-	local button = party_button()
+	local ok, button = pcall(party_button)
 	P.party.buffs.enable = enable
+	assert(ok, button)
 	eq(button:IsElementEnabled('Auras'), true, 'the aura element is enabled')
 	eq(button.Buffs.enabled, false, 'buffs off, as configured')
 	eq(button.Debuffs.enabled, P.party.debuffs.enable and true or false, 'debuffs as configured')
@@ -169,8 +205,9 @@ test('a unit frame registers UNIT_FACTION from its first update, and drops it wi
 	local health, power = P.focus.health, P.focus.power
 	local ht, hr, pt, pr = health.colorTapping, health.colorReaction, power.colorTapping, power.colorReaction
 	health.colorTapping, health.colorReaction, power.colorTapping, power.colorReaction = false, false, false, false
-	UF:UpdateUnitFrame(frame)
+	local ok, err = pcall(UF.UpdateUnitFrame, UF, frame)
 	health.colorTapping, health.colorReaction, power.colorTapping, power.colorReaction = ht, hr, pt, pr
+	assert(ok, err)
 	eq(frame:IsEventRegistered('UNIT_FACTION'), false, 'dropped with every flag off')
 	eq(frame.Health.colorTapping, false, 'the flag itself follows')
 end)

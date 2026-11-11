@@ -388,8 +388,13 @@ end
 -- Single units are spawned in OnEnable, which places and updates them all
 -- (UF:ApplyConfig).
 function UF.InitUnit(object)
-	if object.is_group_unit then
-		SafeUpdateUnitFrame(object)
+	if not object.is_group_unit then return end
+	SafeUpdateUnitFrame(object)
+	-- A header can still make a button in combat (a member joins), and then the
+	-- update can't size it: a unit frame is secure (UF:UpdateUnitFrame skips
+	-- UF:PlaceUnitFrame in combat). So it's updated again once combat ends.
+	if InCombatLockdown() then
+		st:QueueAfterCombat('uf_init_' .. object:GetName(), function() SafeUpdateUnitFrame(object) end)
 	end
 end
 

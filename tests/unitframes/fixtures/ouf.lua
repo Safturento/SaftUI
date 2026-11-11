@@ -13,7 +13,13 @@
 --   ouf:Spawn(unit, name)       a single unit's frame: a Button on UIParent.
 --   ouf:SpawnGroupButton(header, unit, name)
 --                               a group header's unit button: a Button child
---                               of header, as the header makes one.
+--                               of header, as the header makes one. The style
+--                               function and the Enables get the unit oUF
+--                               guesses from the header's showRaid or
+--                               showParty ('raid', 'party'); unit (e.g.
+--                               'party1') arrives after init, through the
+--                               button's unit attribute, as the header lays
+--                               the member out.
 --   ouf.IsInitialized(frame)    whether oUF has made the frame's active
 --                               elements (the end of initObject's setup).
 --   ouf.calls                   every EnableElement and DisableElement call,
@@ -41,10 +47,10 @@
 --   * Spawn makes a SecureUnitButtonTemplate button, sets its rolesets and
 --     click attributes, hides Blizzard's frame for the unit, watches the unit,
 --     and evaluates vehicles and pets; SpawnHeader makes a SecureGroupHeader,
---     which makes its buttons as members appear and hands oUF the unit it
---     guesses from its attributes ('party', 'raid'), setting each button's
---     unit attribute as it lays a member out. Here a button gets its unit
---     straight away.
+--     which makes its buttons as members appear. A unit attribute set on a
+--     frame becomes its active unit only if that unit exists, after vehicle
+--     and pet mapping (updateActiveUnit), and runs a full update; here it
+--     becomes the active unit as it is, with no update.
 --   * The elements register their events and update from the unit's data
 --     (UpdateAllElements runs them, only for a unit that exists); here
 --     nothing updates. Some Enables also check the unit (the castbar not on a
@@ -227,17 +233,33 @@ function M.new()
 		return container
 	end
 
+	-- oUF's onAttributeChanged, which initObject hooks: a unit set on the frame
+	-- becomes its active unit.
+	local function OnAttributeChanged(object, name, value)
+		if name == 'unit' and value then object.__unit = value end
+	end
+
 	-- oUF's initObject, for one object.
 	local function Init(object, unit, header)
 		object.__unit = unit
 		object.style = activeStyle
 		for name, fn in pairs(methods) do object[name] = fn end
 		styles[activeStyle](object, unit, not header)
+		object:HookScript('OnAttributeChanged', OnAttributeChanged)
 		active[object] = {}
 		for _, name in ipairs(ELEMENTS) do
 			object:EnableElement(name, unit)
 		end
 		for _, fn in ipairs(callbacks) do fn(object) end
+	end
+
+	-- The unit the header's oUF-initialConfigFunction guesses for a button it
+	-- makes, from the header's attributes (ouf.lua 668-690, without the main
+	-- tank and assist filters and the unit suffixes, which SaftUI's headers
+	-- don't set).
+	local function GuessUnit(header)
+		if header:GetAttribute('showRaid') then return 'raid' end
+		if header:GetAttribute('showParty') then return 'party' end
 	end
 
 	function ouf:RegisterStyle(name, fn)
@@ -260,7 +282,10 @@ function M.new()
 	end
 	function ouf:SpawnGroupButton(header, unit, name)
 		local object = CreateFrame('Button', name, header)
-		Init(object, unit, header)
+		local guess = GuessUnit(header)
+		assert(guess, 'SpawnGroupButton: the header shows neither party nor raid (showParty, showRaid)')
+		object:SetAttribute('oUF-guessUnit', guess)
+		Init(object, guess, header)
 		object:SetAttribute('unit', unit)
 		return object
 	end
