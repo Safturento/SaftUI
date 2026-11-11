@@ -1043,7 +1043,9 @@ function StatusBar.SetStatusBarTexture(self, s, asset)
 		s.bar_texture = asset
 	elseif type(asset) == 'string' or type(asset) == 'number' then
 		s.bar_texture = s.bar_texture or create_region(self, s, 'Texture', nil, 'ARTWORK')
-		states[s.bar_texture].texture, states[s.bar_texture].color_texture = asset, nil
+		-- In game this sets the bar's texture region to that file, which shows
+		-- no atlas any more.
+		states[s.bar_texture].texture, states[s.bar_texture].color_texture, states[s.bar_texture].atlas = asset, nil, nil
 	else
 		usage(s, 'SetStatusBarTexture(): asset must be a texture, a path or a file ID')
 	end

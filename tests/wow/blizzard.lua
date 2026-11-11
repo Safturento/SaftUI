@@ -225,9 +225,16 @@ end
 -- C_Texture.GetAtlasInfo, for the atlases tests/wow/atlases.lua lists (the
 -- ones the Blizzard theme names), as the client stub.interface stands for has
 -- them: { width, height, tilesHorizontally, tilesVertically }, or nil for a
--- name that client hasn't got. Like the game it ignores the name's case. Not
--- mimicked: the rest of the game's AtlasInfo (its file and texture
--- coordinates), and every atlas the theme doesn't name, which reads as missing.
+-- name that client hasn't got. Like the game it ignores the name's case. The
+-- game's AtlasInfo also carries the atlas's file (a file ID) and where its
+-- member lies in that file (leftTexCoord, rightTexCoord, topTexCoord,
+-- bottomTexCoord): given here only for the atlases SaftUI cuts by texture
+-- coordinates (an entry with file and coords, from the clients' UiTextureAtlas
+-- and UiTextureAtlasMember tables). The game's file may be nil (AtlasInfo's
+-- documentation, TextureUtilsDocumentation.lua, has it nilable). Not mimicked:
+-- the rest of AtlasInfo (elementName, rawSize, filename, sliceData), the file
+-- and coordinates of the other atlases, and every atlas the theme doesn't
+-- name, which reads as missing.
 C_Texture = {}
 
 do
@@ -247,11 +254,17 @@ do
 		local info = byClient[stub.interface == 16001 and 'forever' or 'retail'][name:lower()]
 		if not info then return nil end
 		local tiles = info[3] or ''
+		local coords = info.coords or {}
 		return {
 			width = info[1],
 			height = info[2],
 			tilesHorizontally = tiles:find('h', 1, true) ~= nil,
 			tilesVertically = tiles:find('v', 1, true) ~= nil,
+			file = info.file,
+			leftTexCoord = coords[1],
+			rightTexCoord = coords[2],
+			topTexCoord = coords[3],
+			bottomTexCoord = coords[4],
 		}
 	end
 end

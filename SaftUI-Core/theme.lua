@@ -14,9 +14,10 @@ local st = SaftUI
 	Every draw call (st:SetTemplate, st:SetBackdrop, st:SetBackdropIn) names the
 	kind of frame it draws (st.THEME_KINDS), last. Under Thick and Thin only the
 	header strips and the close button draw differently (a window draws as a
-	panel, a control as a small frame). Blizzard draws each kind in Blizzard's
-	own art for it, which themeart.lua describes and draws (st.ThemeArt), and
-	its inset depends on the kind. A call with no kind is an error, unless
+	panel, a control as a small frame, a unit frame and a party or raid member
+	as a bar). Blizzard draws each kind in Blizzard's own art for it, which
+	themeart.lua describes and draws (st.ThemeArt), and its inset depends on
+	the kind. A call with no kind is an error, unless
 	its theme is 'none', which only clears (tests/core/theme_kinds_test.lua
 	scans every SaftUI file for calls without one).
 
@@ -41,7 +42,7 @@ local st = SaftUI
 st.THEME_KINDS = {
 	panel = true,   -- a background: chat, the minimap, the options window, the loot feed
 	window = true,  -- a window with SaftUI's title bar (st:CreateHeader): the bags, the bank, st:CreatePanel
-	bar = true,     -- a unit frame or one of its bars, cast bars, experience and roll bars, swing timers
+	bar = true,     -- a status bar outside the unit frames: experience and roll bars, swing timers
 	action = true,  -- an action button
 	slot = true,    -- bag, bank and currency slots
 	aura = true,    -- buffs and debuffs
@@ -50,6 +51,8 @@ st.THEME_KINDS = {
 	close = true,   -- the close button
 	control = true, -- a small frame Blizzard draws with art of its own: buttons, check boxes, tabs, edit boxes
 	small = true,   -- everything else: indicators, the micro menu's items
+	unitframe = true, -- a unit frame or one of its bars
+	member = true,    -- a party or raid member's frame or bar
 }
 
 -- The themes this version has. A saved name that isn't one reads as FALLBACK.

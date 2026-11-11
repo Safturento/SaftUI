@@ -323,12 +323,12 @@ test('every override combination resolves by the rule', function()
 	end
 end)
 
-test('THEME_KINDS has the eleven kinds, and a draw with another kind errors', function()
+test('THEME_KINDS has the thirteen kinds, and a draw with another kind errors', function()
 	local st = fresh()
 	local kinds = {}
 	for kind in pairs(st.THEME_KINDS) do kinds[#kinds + 1] = kind end
 	table.sort(kinds)
-	eq(table.concat(kinds, ','), 'action,aura,bar,close,control,header,panel,slot,small,tooltip,window', 'the kinds')
+	eq(table.concat(kinds, ','), 'action,aura,bar,close,control,header,member,panel,slot,small,tooltip,unitframe,window', 'the kinds')
 	local ok = pcall(st.SetTemplate, st, frame(st), 'theme', 'theme', 'button')
 	eq(ok, false, 'an unknown kind errors')
 end)
