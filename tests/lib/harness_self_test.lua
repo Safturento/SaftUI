@@ -332,6 +332,27 @@ test('a frame marked protected has its moves, sizes and shows blocked in combat,
 	eq(#stub.blocked, 4, 'nothing more noted')
 end)
 
+test('SetAttribute runs OnAttributeChanged on every call, an unchanged value too, and is blocked in combat on a protected frame', function()
+	reset_world()
+	local frame = CreateFrame('Frame', nil, UIParent)
+	eq(frame:GetAttribute('unit'), nil, 'nil until set')
+	local seen = {}
+	frame:SetScript('OnAttributeChanged', function(_, name, value) seen[#seen + 1] = name .. '=' .. tostring(value) end)
+	frame:SetAttribute('unit', 'party1')
+	frame:SetAttribute('unit', 'party1')
+	frame:SetAttribute('unit', nil)
+	eq(table.concat(seen, ','), 'unit=party1,unit=party1,unit=nil', 'the handler ran for each call')
+	eq(frame:GetAttribute('unit'), nil, 'cleared')
+
+	function frame:IsProtected() return true, true end
+	stub.in_combat = true
+	frame:SetAttribute('unit', 'party2')
+	stub.in_combat = false
+	eq(frame:GetAttribute('unit'), nil, 'blocked in combat')
+	eq(#seen, 3, 'and no handler ran')
+	check(stub.blocked[1] and stub.blocked[1][2] == 'SetAttribute', 'the blocked call is noted')
+end)
+
 test('reset_world rebuilds the stubs and the shell, and keeps the test file\'s locals', function()
 	local before = SaftUI
 	local keep = 'kept'

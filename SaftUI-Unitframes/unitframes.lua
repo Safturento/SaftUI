@@ -124,8 +124,13 @@ function UF.ConstructUnit(self, unit)
 		end
 	end
 
+	-- oUF enables the elements whose widgets a frame has once this returns,
+	-- before any config is applied (UF.InitUnit updates a group button after
+	-- that). So a group button's range fade table is made here: its alphas come
+	-- from that update (UF:UpdateUnitFrame). Other units get no range fade
+	-- (config.lua's Range options are for groups only).
 	if self.is_group_unit then
-		UF:UpdateUnitFrame(self)
+		self.Range = {}
 	else
 		UF.allUnits[unit] = self
 	end
@@ -374,6 +379,25 @@ local function SafeUpdateUnitFrame(frame, element_name)
 	xpcall(function() UF:UpdateUnitFrame(frame, element_name) end, geterrorhandler())
 end
 
+-- oUF's init callback (UF:OnEnable registers it): runs for every frame oUF
+-- builds, after the style function (UF.ConstructUnit) and after oUF has
+-- enabled its elements. A group header makes its buttons when it first lays
+-- members out (UF:ApplyGroupLayout, or a member joining), so a group button
+-- gets its first update here: after oUF's own Enables (which turn every aura
+-- area on, for one), and with its bars' setters there (UF.SetFactionColorFlags).
+-- Single units are spawned in OnEnable, which places and updates them all
+-- (UF:ApplyConfig).
+function UF.InitUnit(object)
+	if not object.is_group_unit then return end
+	SafeUpdateUnitFrame(object)
+	-- A header can still make a button in combat (a member joins), and then the
+	-- update can't size it: a unit frame is secure (UF:UpdateUnitFrame skips
+	-- UF:PlaceUnitFrame in combat). So it's updated again once combat ends.
+	if InCombatLockdown() then
+		st:QueueAfterCombat('uf_init_' .. object:GetName(), function() SafeUpdateUnitFrame(object) end)
+	end
+end
+
 -- Clears the points of every frame ApplyConfig places: the single and
 -- numbered unit frames, the boss/arena, party and raid holders, and the group
 -- headers (their children are placed by the header). Returns each frame's old points, for
@@ -537,6 +561,9 @@ function UF:RegisterMovers()
 end
 
 function UF:OnEnable()
+	-- Before anything is spawned, so every frame gets it. Here rather than when
+	-- the file loads, where the tests' stand-in oUF has only its colors table.
+	self.oUF:RegisterInitCallback(UF.InitUnit)
 	self.oUF:RegisterStyle('SaftUI', UF.ConstructUnit)
 	self.oUF:SetActiveStyle('SaftUI')
 

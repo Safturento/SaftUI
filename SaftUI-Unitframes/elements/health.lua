@@ -102,13 +102,14 @@ local function UpdateConfig(unitframe)
 
     local config = health.config
 
-	health.colorTapping		 = config.colorTapping
+	-- colorTapping and colorReaction through oUF's setters, so their event
+	-- follows them (UF.SetFactionColorFlags).
+	UF.SetFactionColorFlags(health, config)
 	health.colorDisconnected = config.colorDisconnected
 	health.colorHealth		 = config.colorHealth
 	health.colorClass		 = config.colorClass
 	health.colorClassNPC	 = config.colorClassNPC
 	health.colorClassPet	 = config.colorClassPet
-	health.colorReaction	 = config.colorReaction
 	health.colorSmooth		 = config.colorSmooth
 	health.colorCustom		 = config.colorCustom
 	health.customColor 		 = config.customColor
