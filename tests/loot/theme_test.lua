@@ -346,6 +346,12 @@ test("the loot window's buttons are marked as Blizzard's before they're drawn as
 	button.icon = button:CreateTexture(nil, 'BACKGROUND')
 	button.Count = button:CreateFontString(nil, 'OVERLAY')
 	_G.LootButton1Text = button:CreateFontString(nil, 'OVERLAY')
+	-- Locked, so any field the skin writes fails. popup.lua:38 writes button.nametext
+	-- (a known write; the popup is disabled, init.lua:17), so that one key is
+	-- given a placeholder first, which a lock lets be assigned.
+	button.nametext = false
+	local locked = load_test_file('misc/fixtures/locked_widget.lua')
+	locked(button, 'Blizzard loot button')
 	LT:SkinLootButton(button)
 	st.MarkForeign, st.SkinActionButton = mark, skin
 	eq(table.concat(order, ','), 'mark,skin:slot', 'marked, then drawn as a slot')

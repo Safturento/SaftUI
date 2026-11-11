@@ -192,7 +192,16 @@ test("under Blizzard a micro button shows Blizzard's own art, and today's look a
 	MicroMenu:UpdateButtons()
 	eq(fades(), '1,1,1,1', "Blizzard: the background, shadows and performance bar show again")
 	eq(button.PushedBackground:GetAtlas(), 'UI-HUD-MicroMenu-ButtonBG-Down', "the pushed background is Blizzard's")
-	eq(T.offset(button.PushedBackground, 'CENTER'), '0.00,0.00', "at Blizzard's anchor, centered")
+	-- Every piece of Blizzard's art is the icons' size, centered on the button,
+	-- so none overlaps the next button.
+	for name, region in pairs({ Background = button.Background, Shadow = button.Shadow,
+			PushedShadow = button.PushedShadow, PushedBackground = button.PushedBackground,
+			highlight = button:GetHighlightTexture() }) do
+		eq(T.text(region:GetSize()), '22.00,28.00', name .. ' is the size of the icons')
+		local point, rel = region:GetPoint(1)
+		eq(point .. ',' .. tostring(rel == button) .. ',' .. region:GetNumPoints() .. ',' .. T.offset(region, 'CENTER'),
+			'CENTER,true,1,0.00,0.00', name .. ' is centered on the button')
+	end
 	eq(button.FlashBorder:GetAtlas(), 'UI-HUD-MicroMenu-Highlightalert', "the alert is Blizzard's")
 	eq(select(1, button.FlashBorder:GetDrawLayer()), 'OVERLAY', "in Blizzard's layer")
 	eq(button:GetHighlightTexture():GetAtlas(), 'UI-HUD-MicroMenu-Questlog-Mouseover', "the highlight is the button's own mouseover art")
@@ -213,5 +222,6 @@ test("under Blizzard a micro button shows Blizzard's own art, and today's look a
 	eq(button.FlashBorder:GetAtlas(), nil, 'and the flat alert')
 	eq(select(1, button.FlashBorder:GetDrawLayer()), 'BACKGROUND', 'behind the icon')
 	eq(button:GetHighlightTexture():GetAtlas(), nil, 'and the tint on the highlight')
+	eq(button:GetHighlightTexture():GetNumPoints(), 2, 'the highlight covers the button again')
 	eq(T.inset(panel), 2, 'the panel is a small frame again')
 end)

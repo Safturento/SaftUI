@@ -297,6 +297,25 @@ test("the castbar's icon and the indicators are controls, bare under Blizzard", 
 	player.grouproleindicator.enable, player.grouproleindicator.theme = false, 'none'
 end)
 
+test("a new aura button is marked as Blizzard's before it's drawn: no art on the button itself under Blizzard", function()
+	local frame = make_unit_frame('SaftUI_PlayerAuraArt', 'player', { 'Health', 'Power' })
+	UF:UpdateUnitFrame(frame)
+	local debuffs = UF.elements.Debuffs.Constructor(frame, 'Debuffs')
+	st.config.profile.theme.name = 'blizzard'
+	local button = make_aura_button(debuffs)
+	-- The aura's own border color (the dispel type's) is its white icon border
+	-- tinted: a texture of SaftUI's, not of Blizzard's button.
+	st:SetBorderColor(button.backdrop, 1, 0, 0, 1)
+	local art = st.ThemeArt.Get(button.backdrop)
+	check(art ~= nil and art.own ~= nil and art.own:IsShown(), 'the colored border shows')
+	check(art.own:GetParent() ~= button, "and isn't a texture of Blizzard's button")
+	for key, piece in pairs(art.over) do
+		check(piece:GetParent() ~= button, key .. " isn't a texture of Blizzard's button")
+	end
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+end)
+
 ------------------------------------------------------------------ aura and class power areas
 
 -- The aura areas and the class power row are drawn through their buttons and

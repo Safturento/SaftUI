@@ -83,6 +83,13 @@ end
 -- Blizzard only shows, hides and fades these regions and re-sets the
 -- highlight, so this runs when the look changes, from StyleTextures (every
 -- layout and so every theme switch passes it), not on every call.
+-- Centers a template region on the button at the icons' size.
+local function PlaceArt(region, button)
+    region:ClearAllPoints()
+    region:SetPoint('CENTER', button, 'CENTER')
+    region:SetSize(ICON_WIDTH, ICON_HEIGHT)
+end
+
 local function StyleArt(button)
     local blizzard = st:IsBlizzardLook(THEME, BACKGROUND)
     if arts[button] == blizzard then return end
@@ -93,6 +100,15 @@ local function StyleArt(button)
     for _, region in pairs({ button.Background, button.Shadow, button.PushedShadow, button.MainMenuBarPerformanceBar }) do
         region:SetAlpha(blizzard and 1 or 0)
     end
+    -- Blizzard draws these at the atlas's size (~32x41), centered on its 32x40
+    -- button. On the bar's button they take the icons' size and place
+    -- (PlaceIcon: the same 0.69 scale), so they don't overlap the neighbors.
+    -- Faded under Thick and Thin, so nothing to put back there.
+    if blizzard then
+        for _, region in pairs({ button.Background, button.Shadow, button.PushedShadow }) do
+            PlaceArt(region, button)
+        end
+    end
 
     -- Blizzard shows this while the button's frame is open. The template
     -- centers it at the atlas's size (MainMenuBarMicroButtons.xml); flat, it's
@@ -101,8 +117,8 @@ local function StyleArt(button)
     if pushed then
         pushed:ClearAllPoints()
         if blizzard then
-            pushed:SetAtlas(micro.pushedBackground, true)
-            pushed:SetPoint('CENTER')
+            pushed:SetAtlas(micro.pushedBackground, false)
+            PlaceArt(pushed, button)
         else
             local r, g, b = st.config.profile.colors.button.pushed:GetRGB()
             pushed:SetColorTexture(r, g, b, PUSHED_ALPHA)
@@ -153,7 +169,13 @@ local function StyleTextures(button)
     PlaceIcon(button:GetDisabledTexture(), button, width)
     PlaceIcon(button.FlashContent, button, width)
 
-    -- Under Blizzard the highlight is Blizzard's, as it sets it.
+    -- Under Blizzard the highlight is Blizzard's art, as it sets it, at the
+    -- icons' size and place. Blizzard's atlas swaps may reset them, so this is
+    -- every pass.
+    if blizzard then
+        local blizzardHighlight = button:GetHighlightTexture()
+        if blizzardHighlight then PlaceArt(blizzardHighlight, button) end
+    end
     local highlight = not blizzard and button:GetHighlightTexture()
     if highlight then
         local r, g, b = st.config.profile.colors.button.hover:GetRGB()

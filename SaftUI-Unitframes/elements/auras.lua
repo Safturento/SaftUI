@@ -125,6 +125,9 @@ local function StyleButton(auras, button)
 end
 
 local function PostCreateButton(auras, button)
+	-- Blizzard's AuraContainer made the button: the Blizzard theme puts none of its
+	-- art on it, but on a holder of SaftUI's. Before its first draw.
+	st:MarkForeign(button)
 	st:SkinIcon(button.Icon)
 
 	local cooldown = button.Cooldown
