@@ -140,7 +140,7 @@ end
 local MIN_FILL = 2
 local function BarHeight(onBar)
 	local look = st.config.profile.buttons
-	local border = 2 * st:ThemeInset(look.theme, look.background)
+	local border = 2 * st:ThemeInset(look.theme, look.background, 'bar')
 	local height = math.max(TB.config.timer_bar_height, border + MIN_FILL)
 	if onBar then
 		height = math.max(height, TextHeight() + border)
@@ -556,7 +556,7 @@ function TB:ApplyTimerLayout()
 	local showBar, showText = config.timer_bar, config.timer_text
 	local onBar = showBar and showText and config.timer_text_position == 'on'
 	local look = st.config.profile.buttons
-	local inset = st:ThemeInset(look.theme, look.background)
+	local inset = st:ThemeInset(look.theme, look.background, 'bar')
 	local font = TimerFont()
 	local height = math.max(1, self:GetTimerAreaHeight() - TIMER_GAP)
 	local barHeight = BarHeight(onBar)

@@ -840,7 +840,7 @@ end
 -- so the frames are that far apart plus VISIBLE_GAP of clear room between the
 -- borders, in every theme.
 function INV:ViewButtonGaps()
-	local inset = st:ThemeInset('theme', 'theme')
+	local inset = st:ThemeInset('theme', 'theme', 'small')
 	return 2 * inset + VISIBLE_GAP, inset + 1 + VISIBLE_GAP
 end
 

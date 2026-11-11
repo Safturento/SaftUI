@@ -45,7 +45,7 @@ local function UpdateBackdrop(theme, background)
 	end
 
 	st:SetTemplate(backdrop, theme, background, 'panel')
-	local offset = st:ThemeInset(theme, background)
+	local offset = st:ThemeInset(theme, background, 'panel')
 	backdrop:ClearAllPoints()
 	backdrop:SetPoint('TOPLEFT', Minimap, 'TOPLEFT', -offset, offset)
 	backdrop:SetPoint('BOTTOMRIGHT', Minimap, 'BOTTOMRIGHT', offset, -offset)

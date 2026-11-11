@@ -119,6 +119,7 @@ local DRAWS = {
 	{ name = 'SetTemplate', count = 4, theme = 2 },
 	{ name = 'SetBackdrop', count = 4, theme = 2 },
 	{ name = 'SetBackdropIn', count = 5, theme = 3 },
+	{ name = 'ThemeInset', count = 3, theme = 1 },
 }
 
 local function IsNone(arg) return arg == "'none'" or arg == '"none"' end
@@ -325,9 +326,11 @@ test('the scanner: argument counts, the none exemption, definitions, comments, s
 		"x = st:ResolveLegacyTemplate('thin')",                                  -- 17
 		"st:SetTemplate(f, \"a, b\", 'c)', 'small')",                            -- 18 commas in strings
 		"local draw = st.SetBackdropIn",                                         -- 19 an alias
+	"st:ThemeInset('theme', 'theme')",                                       -- 20 no kind
+	"st:ThemeInset('none', 'theme')",                                        -- 21 none needs none
 	}, '\n')
 	local calls, problems = Scan('sample.lua', SAMPLE)
-	eq(#calls, 8, 'the st: calls outside comments and strings, definitions aside')
+	eq(#calls, 10, 'the st: calls outside comments and strings, definitions aside')
 	eq(table.concat(problems, '\n'), table.concat({
 		"sample.lua:3: st:SetTemplate with 2 arguments: it needs 4, the kind last (f, 'thick')",
 		"sample.lua:6: st:SetBackdropIn with 4 arguments: it needs 5, the kind last (t, f, 'theme', 'theme')",
@@ -335,6 +338,7 @@ test('the scanner: argument counts, the none exemption, definitions, comments, s
 		"sample.lua:14: SaftUI's SetBackdrop called other than as st:SetBackdrop(...)",
 		'sample.lua:17: reads an old template name (st:ResolveLegacyTemplate) outside theme.lua',
 		'sample.lua:19: SetBackdropIn used other than as st:SetBackdropIn(...)',
+		"sample.lua:20: st:ThemeInset with 2 arguments: it needs 3, the kind last ('theme', 'theme')",
 	}, '\n'), 'what the scan finds in the sample')
 	local _, ok = Scan('SaftUI-Core/theme.lua', "local look = st:ResolveLegacyTemplate(name)")
 	eq(#ok, 0, 'theme.lua may read the old names')
@@ -389,19 +393,33 @@ test('the scan reads every SaftUI Lua file through the TOCs', function()
 	check(#files > 140, 'every file, not a few: ' .. #files)
 end)
 
-test('every draw call passes a kind', function()
-	local files = LoadedFiles()
-	local all, total = {}, 0
-	for _, path in ipairs(files) do
+-- Every loaded file's problems, split by whether they are about an st:ThemeInset
+-- call: the draws are one test, the insets another.
+local function LoadedProblems()
+	local draws, insets, total = {}, {}, 0
+	for _, path in ipairs((LoadedFiles())) do
 		local source, err = read_saftui_source(path)
 		if check(source ~= nil, path .. ' can be read: ' .. tostring(err)) then
 			local calls, problems = Scan(path, source)
 			total = total + #calls
-			for _, p in ipairs(problems) do all[#all + 1] = p end
+			for _, p in ipairs(problems) do
+				local list = p:find('st:ThemeInset with', 1, true) and insets or draws
+				list[#list + 1] = p
+			end
 		end
 	end
-	eq(table.concat(all, '\n'), '', 'every st:SetTemplate, st:SetBackdrop and st:SetBackdropIn names its kind')
+	return draws, insets, total
+end
+
+test('every draw call passes a kind', function()
+	local draws, _, total = LoadedProblems()
+	eq(table.concat(draws, '\n'), '', 'every st:SetTemplate, st:SetBackdrop and st:SetBackdropIn names its kind')
 	check(total > 60, 'the scan found the draw calls: ' .. total)
+end)
+
+test('every st:ThemeInset call names its kind', function()
+	local _, insets = LoadedProblems()
+	eq(table.concat(insets, '\n'), '', 'every st:ThemeInset passes its Theme, Background and kind')
 end)
 
 test("no module sets a drawn backdrop's border color itself", function()

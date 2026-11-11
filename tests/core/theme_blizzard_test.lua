@@ -101,7 +101,6 @@ test("each kind's inset under Blizzard, on Forever and on retail", function()
 			eq(st.ThemeArt.Inset(kind), want, client .. ': ThemeArt.Inset ' .. kind)
 			eq(st:ThemeInset('none', 'theme', kind), 0, client .. ': None, ' .. kind)
 		end
-		eq(st:ThemeInset('blizzard', 'theme'), 3, client .. ": no kind reads as a panel's, until every call names one")
 
 		local forever = client == 'forever'
 		eq(st.ThemeArt.TitleHeight(), forever and 20 or 21, client .. ": the metal's title bar")
@@ -120,8 +119,18 @@ test('Thick and Thin insets ignore the kind', function()
 		eq(st:ThemeInset('thick', 'theme', kind), 2, 'Thick, ' .. kind)
 		eq(st:ThemeInset('thin', 'theme', kind), 1, 'Thin, ' .. kind)
 	end
-	eq(st:ThemeInset('thick', 'theme'), 2, 'Thick with no kind')
-	eq(st:ThemeInset('thin', 'theme'), 1, 'Thin with no kind')
+end)
+
+test('st:ThemeInset with no kind is an error', function()
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		local st = T.client('forever')
+		st.config.profile.theme.name = name
+		check(not pcall(st.ThemeInset, st, 'theme', 'theme'), name .. ': no kind is an error')
+		check(not pcall(st.ThemeInset, st, name), name .. ': named, no kind, is an error')
+		check(not pcall(st.ThemeInset, st, 'theme', 'theme', 'nonsense'), name .. ': not a kind is an error')
+		eq(st:ThemeInset('none', 'theme'), 0, name .. ': None needs no kind')
+		eq(st:ThemeInset('none'), 0, name .. ': None with no Background')
+	end
 end)
 
 test('a window draws as a panel, and a control as a small frame, under Thick and Thin', function()

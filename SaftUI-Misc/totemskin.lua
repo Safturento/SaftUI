@@ -225,7 +225,7 @@ local function StyleButton(button, skin, theme, background)
 
 	local icon = button.icon
 	icon:ClearAllPoints()
-	st:SetInside(icon, st:ThemeInset(theme, background))
+	st:SetInside(icon, st:ThemeInset(theme, background, 'action'))
 	CropIcon(icon)
 
 	skin.hover:SetVertexColor(colors.button.blue:GetRGB())

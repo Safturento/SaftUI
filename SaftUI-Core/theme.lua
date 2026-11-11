@@ -136,10 +136,17 @@ end
 -- How far in from a frame's edge its border reaches, drawn as kind: where
 -- content sits inside a frame drawn with this Theme and Background. 2 for
 -- Thick and 1 for Thin whatever the kind, the kind's under Blizzard, 0 for
--- None. A call that names no kind reads as a panel's, until every call names
--- one.
+-- None. The kind is required, as a draw call's is: only a call whose Theme is
+-- None may leave it out. Errors at the caller.
 function st:ThemeInset(theme, background, kind)
-	local look = st:ResolveTheme(theme, background, kind or 'panel')
+	if kind == nil then
+		if theme ~= 'none' then
+			error(('st:ThemeInset with Theme %s names no kind of frame (st.THEME_KINDS)'):format(tostring(theme)), 2)
+		end
+	elseif not st.THEME_KINDS[kind] then
+		error(tostring(kind) .. ' is not a kind of frame', 2)
+	end
+	local look = st:ResolveTheme(theme, background, kind)
 	return look and look.inset or 0
 end
 

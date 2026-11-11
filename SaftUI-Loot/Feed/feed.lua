@@ -708,7 +708,7 @@ function LT:UpdateLootFeedConfig()
 		-- the icon's border, which st:SetBackdrop draws outside the icon (2px for
 		-- Thick, 1px for Thin, none for None), so start right after it and run to
 		-- the entry's right edge.
-		local iconBorder = st:ThemeInset(config.theme, config.background)
+		local iconBorder = st:ThemeInset(config.theme, config.background, 'small')
 		item.progressBar:ClearAllPoints()
 		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', iconBorder, 0)
 		item.progressBar:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 0, 0)

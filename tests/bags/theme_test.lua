@@ -467,7 +467,7 @@ local VISIBLE_GAP = 3
 local VIEWS = { 'onebag', 'multibag', 'compact', 'rows' }
 
 local function check_spacing(container, label)
-	local inset = st:ThemeInset('theme', 'theme')
+	local inset = st:ThemeInset('theme', 'theme', 'small')
 	local close = st:GetCloseButton(container)
 	for i = 2, #VIEWS do
 		local a, b = container.viewButtons[VIEWS[i - 1]], container.viewButtons[VIEWS[i]]
@@ -482,13 +482,13 @@ test("the view buttons' borders never overlap, under Thick or Thin, and a theme 
 	local container = bags()
 	INV:CreateViewButtons(container)
 	INV:UpdateConfig('bag')
-	eq(st:ThemeInset('theme', 'theme'), 2, 'Thick is the default')
+	eq(st:ThemeInset('theme', 'theme', 'small'), 2, 'Thick is the default')
 	check_spacing(container, 'Thick')
 	local thickMin = INV:HeaderMinWidth(container)
 
 	st.config.profile.theme.name = 'thin'
 	st:ThemeChanged()
-	eq(st:ThemeInset('theme', 'theme'), 1, 'Thin')
+	eq(st:ThemeInset('theme', 'theme', 'small'), 1, 'Thin')
 	check_spacing(container, 'Thin')
 
 	-- The least width keeps clear, on the left, the room the buttons really
@@ -504,6 +504,14 @@ test("the view buttons' borders never overlap, under Thick or Thin, and a theme 
 	check_spacing(container, 'Thick again')
 	eq(INV:HeaderMinWidth(container), thickMin, 'back to Thick: the same least width')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('under Blizzard the view buttons keep a visible gap', function()
+	fresh()
+	st.config.profile.theme.name = 'blizzard'
+	local between, closeGap = INV:ViewButtonGaps()
+	eq(between, 2 * 1 + 3, "a small frame's inset is 1: the buttons' frames are 2 apart plus the clear room")
+	eq(closeGap, 1 + 1 + 3, "the close button's outline is the inset plus 1 from the first")
 end)
 
 ------------------------------------------------------------------ the bank's bag slots

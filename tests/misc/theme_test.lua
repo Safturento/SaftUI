@@ -211,6 +211,18 @@ test('a None Skinning theme draws no backdrop, and Use SaftUI\'s theme brings it
 	eq(T.offset(icon_backdrop(buff), 'TOPLEFT'), '-2.00,2.00', 'outside the icon')
 end)
 
+test('under Blizzard the buff duration clears the icon by the aura inset and one', function()
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	SK:UpdateConfig()
+	eq(st:ThemeInset('blizzard', 'theme', 'aura'), 0, "Blizzard's aura has no inset")
+	eq(duration_y(buff), -1, "the duration clears an aura's no inset by the one")
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	SK:UpdateConfig()
+	eq(duration_y(buff), -3, "and Thick's border again")
+end)
+
 ------------------------------------ the swing timer skin
 
 -- One of Forever's swing timer bars (Blizzard_SwingTimer) as far as the skin reads it.

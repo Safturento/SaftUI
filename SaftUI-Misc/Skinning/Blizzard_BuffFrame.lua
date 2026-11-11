@@ -183,7 +183,8 @@ local function SkinDuration(button)
 			local offset = DURATION_OFFSETS[point]
 			if offset then
 				-- Past the backdrop's border, whose width follows the theme
-				local gap = st:ThemeInset(SkinningLook()) + 1
+				local theme, background = SkinningLook()
+				local gap = st:ThemeInset(theme, background, 'aura') + 1
 				duration:SetPoint(point, relativeTo, relativePoint, offset[1] * gap, offset[2] * gap)
 			end
 		end

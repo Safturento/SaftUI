@@ -366,7 +366,7 @@ local function ApplyBarConfig(bar, config)
 		end
 
 		local lit = bar.choice ~= nil and button.choice == bar.choice
-		local inset = lit and st:ThemeInset(config.theme, config.background) or 0
+		local inset = lit and st:ThemeInset(config.theme, config.background, 'small') or 0
 		button.Icon:ClearAllPoints()
 		button.Icon:SetPoint('TOPLEFT', button, 'TOPLEFT', inset, -inset)
 		button.Icon:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -inset, inset)

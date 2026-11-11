@@ -300,7 +300,7 @@ function AB:StyleButton(button, config, theme, background)
 	skin.theme, skin.background = theme, background
 	skin.equipped = nil -- the backdrop's border was just reset
 
-	local inset = st:ThemeInset(theme, background)
+	local inset = st:ThemeInset(theme, background, 'action')
 	local icon = button.icon
 	icon:ClearAllPoints()
 	st:SetInside(icon, inset)

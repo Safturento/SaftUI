@@ -1264,7 +1264,7 @@ define('description', {
 	Fit = function(self)
 		local imageWidth, imageHeight = 0, 0
 		if self.image:IsShown() then
-			local border = st:ThemeInset('theme', 'theme')
+			local border = st:ThemeInset('theme', 'theme', 'action')
 			self.image:ClearAllPoints()
 			self.image:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', border, -border)
 			imageWidth = self.image:GetWidth() + 2 * border

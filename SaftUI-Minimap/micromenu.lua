@@ -103,7 +103,7 @@ local function UpdateBackdrop(button, item)
     end
 
     st:SetTemplate(backdrop, theme, background, 'small')
-    local offset = st:ThemeInset(theme, background)
+    local offset = st:ThemeInset(theme, background, 'small')
     backdrop:ClearAllPoints()
     backdrop:SetPoint('TOPLEFT', button, 'TOPLEFT', -offset, offset)
     backdrop:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', offset, -offset)

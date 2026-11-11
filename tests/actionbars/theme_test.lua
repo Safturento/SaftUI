@@ -123,6 +123,18 @@ test('the buttons are drawn with the action bars\' Theme and Background, the ico
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("under Blizzard a 45px action button's icon sits inside the action inset", function()
+	fresh()
+	st.config.profile.theme.name = 'blizzard'
+	local b = bar(button('ThemeTestBlizzInset'))
+	eq(st:ThemeInset('theme', 'theme', 'action'), 3, "Blizzard's action inset")
+	eq(T.offset(b.icon, 'TOPLEFT'), '3.00,-3.00', 'the icon sits 3px in from the corner')
+	-- TOPRIGHT x_off -3 on 45px: the right-aligned text has 42 - 3 room, which is
+	-- the inside width at inset 3 (Thick's 2 would give 40).
+	eq(b.HotKey:GetWidth(), 39, "the hotkey's width is TextWidth's at inset 3")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test("under Blizzard an equipped item shows Blizzard's equipped border in the green, through a recolor", function()
 	fresh()
 	st.config.profile.theme.name = 'blizzard'

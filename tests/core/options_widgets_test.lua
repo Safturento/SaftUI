@@ -1030,7 +1030,7 @@ test('description: an image sits at its left inside its border, the text to its 
 	-- The image's border (SaftUI's theme, Thick here) lies outside it, so the
 	-- image sits the border's width in from the row's corner: the row's edge
 	-- is the scroll area's, which would cut a border drawn past it.
-	local border = SaftUI:ThemeInset('theme', 'theme')
+	local border = SaftUI:ThemeInset('theme', 'theme', 'action')
 	eq(border, 2, "Thick's 2px border")
 	local box = 36 + 2 * border
 	check(w.image:IsShown(), 'the image shows')

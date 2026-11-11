@@ -68,7 +68,7 @@ EM.GetRectInUI = GetRectInUI
 -- also where a SaftUI frame's own border line sits. Snapping measures this
 -- line, so the borders you see land on the grid lines and on each other.
 function EM.OutlineOutset()
-	return st:ThemeInset('theme', 'solid')
+	return st:ThemeInset('theme', 'solid', 'small')
 end
 
 -- A mover's outline (the line its overlay draws) in UIParent units, or nil.
