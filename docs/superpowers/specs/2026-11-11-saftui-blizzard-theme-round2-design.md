@@ -1,6 +1,6 @@
 # SaftUI options, project 3b-3: the Blizzard theme, round 2 — the Settings window and unit frame borders
 
-Date: 2026-11-11. Status: no open questions. The user's answers are binding; the calls marked "My call" are the controller's, for the user to check. Revised later on 2026-11-11: steppers only where the choices fit, `/sui` resizes vertically, and the Categories editor's fixed footer (goals 2 and 3); the micro menu bar is to follow. Revised after the builder check (2026-11-11): the window may grow under Blizzard, the footer spans the window, the dropdown list takes the Settings list art, one group border per group header, and which Theme turns each piece on ("The builder check's answers" below).
+Date: 2026-11-11. Status: no open questions. The user's answers are binding; the calls marked "My call" are the controller's, for the user to check. Revised later on 2026-11-11: steppers only where the choices fit, `/sui` resizes vertically, and the Categories editor's fixed footer (goals 2 and 3), and the micro menu bar (goal 5). Revised after the builder check (2026-11-11): the window may grow under Blizzard, the footer spans the window, the dropdown list takes the Settings list art, one group border per group header, and which Theme turns each piece on ("The builder check's answers" below).
 
 Project 3b-2, the Blizzard theme (`docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`, shipped 2026-11-11), made Blizzard a third theme beside Thick and Thin. The user checked it in game the morning after and asked for more of Blizzard's own look in two places. This spec covers those two. Four smaller fixes from the same feedback are being built separately and are assumed done here (see "Today").
 
@@ -190,6 +190,23 @@ Under Thick and Thin unit frames are exactly as today.
 - **Which Theme** (my call): each bar's own resolved Theme. Health set to None while SaftUI's theme is Blizzard resolves to None, so it keeps the flat fill.
 - Under Thick and Thin the fills are today's.
 
+### 5. The micro menu bar under the Blizzard theme
+
+The user, 2026-11-11, with a screenshot of SaftUI's micro menu bar under Blizzard (flat boxes for the zone text, clock, latency, FPS, the addon count and search): "Can we also get the micromenu items skinned under blizzard's UI? The blizzard micromenu has a background texture that looks nice, we can re-add it for those micromenu components and see if you can expand on it for the other components with a similar looking texture". Their screenshot of 2026-11-07 shows Blizzard's own micro menu on Forever, on a bronze-rimmed bar.
+
+**Blizzard's art** (researched 2026-11-11; the controller's scratchpad, `report-research-micromenu-art.md`):
+- **The micro menu's background is Forever's only:** Camelot's `MicroMenu` (`Blizzard_MicroMenu/Camelot/MainMenuBarMicroMenu.xml`) draws `UI-HUD-ActionBar-Frame` (55x55, engine slice data: Forever L16 T20 R16 B20, tiled; a bronze rim with chamfered ends and a dark middle; the Camelot member) 8 outside the menu, and `UI-HUD-ActionBar-IconFrame-Background` (46x45, a translucent dark fill) under it. The same frame is Blizzard's main action bar's and bag bar's. Retail's micro menu has no background. SaftUI hides both of Blizzard's textures today (`SkinBlizzardMicroMenu`, alpha 0), in every theme.
+- **The matching art for the other items** is Forever's Camelot minimap chrome: `ui-hud-minimap-header-button` (152x23, a 3-slice, L44 R44 stretched; what Camelot draws behind its zone text), `ui-hud-minimap-addon-indicator` (23x22, an empty bronze square), `ui-hud-minimap-tracking-button` (23x23, the magnifier drawn in). **These three exist on Forever only.** Retail's equivalent is the grey `ui-hud-minimap-button-nineslice-*` kit (corners 6–7, edges 16, centre `ui-hud-minimap-button` 20x18), on both clients.
+
+**Under Blizzard** (my calls; the user judges in game):
+- **The micro buttons stand on one bronze strip:** `UI-HUD-ActionBar-Frame` behind the run of shown micro-button holders, first to last, about 4 outside them (tuned in game; Blizzard's is 8 around 40px buttons), with `UI-HUD-ActionBar-IconFrame-Background` under it. It's taller than the row (about 33 on 25), reaching above and below the other boxes, as Blizzard's bar does. It follows the run as Blizzard shows and hides buttons. The buttons' own art (their bronze squares, B8) stays on top. Blizzard's own `BorderArt` and `BackgroundArt` stay hidden: the strip is SaftUI's own texture on SaftUI's own frame, so nothing of `MicroMenu`'s (which holds protected buttons) is re-shown or moved.
+- **The zone text, clock, latency and FPS boxes** take `ui-hud-minimap-header-button`, cut as its 3-slice to each box's width (200, 60, 48, 48), drawn at its own height (23) centred on the 25 row.
+- **The square items** (the addon compartment's count, expansion, mail, difficulty, queue) take `ui-hud-minimap-addon-indicator`, centred.
+- **The search (tracking) button** takes Blizzard's `ui-hud-minimap-tracking-button`, magnifier and all; SaftUI's own magnifier is hidden under Blizzard.
+- **Retail:** no strip behind the micro buttons (Blizzard has none there); the boxes take the grey `ui-hud-minimap-button-nineslice-*` kit.
+- Hover stays SaftUI's flat hover in `ThemeArt.HOVER_LAYER`. Under Thick and Thin the bar is exactly as today.
+- If the engine's slicing of an atlas set on SaftUI's own texture doesn't behave (the margins' units are inferred), the builder cuts the pieces by texture coordinates as `ART.metal` is laid out.
+
 ## Combat and taint
 
 - Every piece is a texture on a SaftUI frame. Nothing is written onto a Blizzard frame, no Blizzard setter runs for the theme, no `NineSliceUtil`.
@@ -252,6 +269,7 @@ Every atlas above exists on both, same sizes. Forever draws the Camelot members 
 5. Dropdown steppers where the text gets cut: "Arrows where choices fit (Recommended)".
 6. Resizing: vertical only (the user's own words, above, after a question on resizing in both directions).
 7. Caught now and Pinned items: a fixed footer on the editor (the user's own words, above).
+8. The micro menu bar: Blizzard's micro menu background, and a similar texture for the other items (the user's own words, goal 5); the art picked by the controller from the research.
 
 ## The builder check's answers (2026-11-11, the controller's)
 
