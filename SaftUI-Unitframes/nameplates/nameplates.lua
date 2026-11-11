@@ -30,6 +30,9 @@ UF.NAMEPLATE_ADDONS = {
 	{ addon = 'Kui_Nameplates', label = 'KuiNameplates' },
 	{ addon = 'TidyPlates_ThreatPlates', label = 'Threat Plates' },
 	{ addon = 'NeatPlates', label = 'NeatPlates' },
+	-- Platynator (plusmouse's): its folder name is to be confirmed, since no
+	-- public source of it was found to check its TOC against.
+	{ addon = 'Platynator', label = 'Platynator' },
 	{
 		addon = 'ElvUI',
 		label = 'ElvUI',
@@ -146,7 +149,9 @@ function UF:SpawnNameplates()
 		UF:RunPlateCallbacks('removed', frame, unit)
 	end)
 
-	self:ApplyPlateSize()
+	-- The hook first, so a size oUF refuses (its SetSize checks its
+	-- arguments) is reported without leaving Blizzard's size in place later.
 	hooksecurefunc(NamePlateDriverFrame, 'UpdateNamePlateSize', function() UF:ApplyPlateSize() end)
+	xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
 	return true
 end

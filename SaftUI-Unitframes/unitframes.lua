@@ -93,17 +93,22 @@ function UF.ConstructUnit(self, unit)
 	if UF.unit_strings[self.base_unit] then
 		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
 	end
-	-- RegisterForClicks is protected on a secure button in combat. Group
-	-- buttons are all made out of combat (UF:ApplyGroupLayout), but one the
-	-- header still makes in combat gets right-click once combat ends.
-	if InCombatLockdown() then
-		st:QueueAfterCombat('uf_clicks_' .. self:GetName(), function() self:RegisterForClicks('AnyUp') end)
-	else
-		self:RegisterForClicks('AnyUp')
+	-- A plate's frame takes no mouse (oUF turned it off), so the mouse stays
+	-- the game's: a click on the plate targets its unit. So it gets no clicks
+	-- and no hover scripts, which could take the mouse over the plate.
+	if not self.isNamePlate then
+		-- RegisterForClicks is protected on a secure button in combat. Group
+		-- buttons are all made out of combat (UF:ApplyGroupLayout), but one the
+		-- header still makes in combat gets right-click once combat ends.
+		if InCombatLockdown() then
+			st:QueueAfterCombat('uf_clicks_' .. self:GetName(), function() self:RegisterForClicks('AnyUp') end)
+		else
+			self:RegisterForClicks('AnyUp')
+		end
+		self:SetScript('OnEnter', UF.OnEnter)
+		self:SetScript('OnLeave', UnitFrame_OnLeave)
 	end
-	self:SetScript('OnEnter', UF.OnEnter)
-	self:SetScript('OnLeave', UnitFrame_OnLeave)
-	
+
 	-- Used as a parent to text objects to ensure they're always above status bars
 	local textoverlay = CreateFrame('frame', nil, self)
 	textoverlay:SetFrameLevel(99)

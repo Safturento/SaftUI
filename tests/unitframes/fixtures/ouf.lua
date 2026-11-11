@@ -36,11 +36,12 @@
 --
 -- Every object gets EnableElement, DisableElement, IsElementEnabled,
 -- IsElementPaused, UpdateAllElements (counted in frame.__updates), UpdateTags,
--- Tag, PauseAllElements, ResumeAllElements and CreateAuras. Pausing and
--- resuming are oUF's (ouf.lua 164-327): a pause runs each active element's
--- Disable and keeps it enabled, a resume runs its Enable again, and
--- EnableElement leaves a paused element paused (it's still enabled), while
--- DisableElement on one only drops it, with no Disable.
+-- Tag, PauseAllElements, ResumeAllElements and CreateAuras. IsElementEnabled
+-- and IsElementPaused error on a name that isn't a string, as oUF's argcheck
+-- does. Pausing and resuming are oUF's (ouf.lua 164-327): a pause runs each
+-- active element's Disable and keeps it enabled, a resume runs its Enable
+-- again, and EnableElement leaves a paused element paused (it's still
+-- enabled), while DisableElement on one only drops it, with no Disable.
 --
 -- The nameplate driver, ouf:SpawnNamePlates(prefix), returns a frame with
 -- SetSize(width[, height]) (C_NamePlate.SetNamePlateSize, height defaulting to
@@ -236,12 +237,21 @@ function M.new()
 		end
 		Disable(self, name)
 	end
+	-- oUF's argcheck (private.lua 5-15): an argument of the wrong type errors,
+	-- naming the method.
+	local function NameCheck(name, method)
+		if type(name) ~= 'string' then
+			error(("Bad argument #2 to '%s' (string expected, got %s)"):format(method, type(name)), 3)
+		end
+	end
 	function methods.IsElementEnabled(self, name)
+		NameCheck(name, 'IsElementEnabled')
 		if not KNOWN[name] then return end
 		local enabled = active[self]
 		return enabled and enabled[name]
 	end
 	function methods.IsElementPaused(self, name)
+		NameCheck(name, 'IsElementPaused')
 		if not KNOWN[name] then return end
 		local list = paused[self]
 		return list and list[name]
