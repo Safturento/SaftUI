@@ -414,6 +414,7 @@ function UnitIsDead(unit)
 	if unit == 'player' then return stub.dead == true end
 	local other = OtherUnit(unit)
 	return other ~= nil and other.dead == true
+end
 
 -- The player's class and spellbooks.
 --   class: UnitClass('player')'s token, which also gives its name and ID.
