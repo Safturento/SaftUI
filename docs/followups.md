@@ -263,7 +263,7 @@ On retail:
 
 **Why noticed:** The bag views branch's final-review fix wave (2026-11-10), which made `ApplyView` re-apply the search and left the eye toggle as it was.
 
-**Anchors:** `SaftUI-Bags/inventory.lua` (`INV:UpdateContainerBagIds`), `SaftUI-Bags/container.lua` (`INV:ApplyView`, `INV:UpdateSearchFilter`).
+**Anchors:** `SaftUI-Bags/containers/combinedbank.lua` (`INV:UpdateContainerBagIds`, called from the eye buttons), `SaftUI-Bags/container.lua` (`INV:ApplyView`, `INV:UpdateSearchFilter`).
 
 **Shape of work:** One line (call `INV:UpdateSearchFilter` after the toggle's layout) and a test.
 
