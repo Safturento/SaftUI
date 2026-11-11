@@ -795,3 +795,123 @@ test('each scroll area has its bar where there is room: the nav, the dialog', fu
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
+
+------------------------------------------------------------------ growing taller
+
+-- Drags handle dy units down (up when negative): the button down, one frame, the button up.
+local function resize(handle, dy)
+	local scale = OW.GetFrames().window:GetEffectiveScale()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = (500 - dy) * scale
+	stub.fire_script(handle, 'OnUpdate', 0.016)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(handle, 'OnMouseUp', 'LeftButton')
+end
+
+-- A frame's clamp insets as 'left,right,top,bottom'.
+local function clamp_insets(frame)
+	local out = { frame:GetClampRectInsets() }
+	for i, v in ipairs(out) do out[i] = ('%d'):format(v) end
+	return table.concat(out, ',')
+end
+
+test('under Blizzard /sui grows taller from 728; the inner frame and the sidebar stretch; the grip is Blizzard\'s', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		eq(at(F.window), '0,0 1110x728', client)
+		eq(F.grip:GetNormalTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]], client)
+		eq(F.grip:GetHighlightTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]], client)
+		eq(F.grip:GetPushedTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]], client)
+		eq(at(F.grip), '1094,712 16x16', client .. ': in the corner, as PanelResizeButtonTemplate is 16')
+		resize(F.grip, 100)
+		eq(at(F.inner), '17,28 1076x754', client); eq(at(F.side), '17,28 242x754', client); eq(at(F.body), '287,139 781x639', client)
+		eq(at(F.footer), '0,782 1110x46', client)
+		switch('thick'); eq(at(F.window), '0,0 1040x828', client .. ': the dragged height under Thick too')
+		eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr, client)
+		local hover = st.config.profile.colors.button.hover
+		eq(('%.2f'):format((F.grip:GetHighlightTexture():GetVertexColor())), ('%.2f'):format((hover:GetRGB())), client .. ': Thick: the hover tint')
+		st.config.global.optionsWindow.height = 700; switch('blizzard'); eq(F.window:GetHeight(), 728, client .. ": a height under Blizzard's least")
+		eq(table.concat({ F.grip:GetHighlightTexture():GetVertexColor() }, ','), '1,1,1,1', client .. ": Blizzard's highlight untinted")
+		eq(F.grip:GetHighlightTexture():GetBlendMode(), 'ADD', client .. ": and added, as a HighlightTexture's default")
+		st.config.global.optionsWindow = nil; st.Config:Close(); st.Config:Open('Loot')
+		stub.fire_script(F.titleBar, 'OnDragStart'); stub.fire_script(F.titleBar, 'OnDragStop') -- a move at 728
+		eq(st.config.global.optionsWindow.height, nil, client .. ': a move saves no height')
+		switch('thick'); eq(F.window:GetHeight(), 700, client .. ": so Thick keeps today's 700")
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test("under Blizzard the metal stays inside the screen edge margin: the clamp, the most height, a resize's stop", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		local inset = st.config.profile.misc.clamp_inset
+		local left, right, above, below = st.ThemeArt.MetalReach()
+		eq(('%d,%d,%d,%d'):format(left, right, above, below), client == 'forever' and '8,2,16,8' or '8,4,16,3',
+			client .. ": how far the metal reaches past the window: its corners' offsets")
+		switch('thick'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		eq(clamp_insets(F.window), ('%d,%d,%d,%d'):format(-inset, inset, inset, -inset), client .. ': Thick: the window kept in the margin')
+		switch('blizzard')
+		eq(clamp_insets(F.window), ('%d,%d,%d,%d'):format(-inset - left, inset + right, inset + above, -inset - below),
+			client .. ': Blizzard: the metal kept in it, so a move to the top keeps the title bar on screen')
+		eq(OW.MaxHeight(), 2 * math.floor((1080 - 2 * inset - above - below) / 2), client .. ': the most height leaves room for the metal')
+		local top = F.window:GetTop()
+		resize(F.grip, 5000)
+		eq(F.window:GetHeight(), 2 * math.floor((top - inset - below) / 2), client .. ': grown until the metal meets the margin')
+		eq(F.window:GetTop(), top, client .. ': its top stays')
+		local bottom = F.window:GetBottom() - below
+		check(bottom >= inset and bottom < inset + 2, client .. ': the grip, and the metal under it, inside the margin')
+		st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = 5000 }
+		st.Config:Close(); st.Config:Open('Loot')
+		eq(F.window:GetHeight(), OW.MaxHeight(), client .. ': a saved height too tall: the most')
+		check(F.window:GetHeight() + above + below + 2 * inset <= UIParent:GetHeight(), client .. ': the window and its metal fit inside the margin')
+		switch('thick')
+		eq(clamp_insets(F.window), ('%d,%d,%d,%d'):format(-inset, inset, inset, -inset), client .. ': Thick again')
+		eq(F.window:GetHeight(), 1080 - 2 * inset, client .. ": Thick's most: no metal")
+
+		-- A margin below 0 lets the window past the screen's edges, but never
+		-- grows it past them: its grip stays on screen.
+		st.config.global.optionsWindow = nil
+		st.Config:Close(); st.Config:Open('Loot')
+		st.config.profile.misc.clamp_inset = -30
+		st:UpdateScreenMargin()
+		eq(clamp_insets(F.window), '30,-30,-30,30', client .. ': Thick: 30 past the edges')
+		eq(OW.MaxHeight(), 1080, client .. ': no taller than the screen')
+		resize(F.grip, 5000)
+		eq(F.window:GetBottom(), 0, client .. ': its bottom on the screen edge')
+		switch('blizzard')
+		eq(clamp_insets(F.window), ('%d,%d,%d,%d'):format(30 - left, -30 + right, -30 + above, 30 - below), client .. ': Blizzard: the metal 30 past them')
+		st.config.profile.misc.clamp_inset = inset
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('a resize under Blizzard moves the scroll bars with the body and the sidebar', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		for i = 1, 40 do SmallModule('Page' .. i, ('Page %02d'):format(i), 'Frames') end
+		switch('blizzard'); st.Config:Open('Long')
+		local F = OW.GetFrames()
+		local body, nav = st.OptionsBody.Companion(F.bar), st.OptionsBody.Companion(F.navBar)
+		for _ = 1, 50 do stub.fire_script(F.body, 'OnMouseWheel', -1) end
+		for _ = 1, 100 do stub.fire_script(F.navFrame, 'OnMouseWheel', -1) end
+		local renders = OW.GetRenderCount()
+		resize(F.sizer, 100)
+		tick()
+		eq(OW.GetRenderCount(), renders, client .. ': no render')
+		eq(F.body:GetHeight(), 639, client .. ': the body 100 taller')
+		eq(body.down:GetBottom(), F.body:GetBottom(), client .. ": the body's bar down to its new bottom")
+		eq(body.thumb:GetBottom(), body.track:GetBottom(), client .. ': the thumb still at the end')
+		eq(F.body:GetVerticalScroll(), F.content:GetHeight() - 639, client .. ': the offset in the new range')
+		eq(nav.down:GetBottom(), F.navFrame:GetBottom(), client .. ": the sidebar's bar too")
+		eq(F.navFrame:GetVerticalScroll(), F.navContent:GetHeight() - F.navFrame:GetHeight(), client .. ': the nav in its new range')
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)

@@ -31,9 +31,11 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	The window (drawn as a window in SaftUI's theme with a solid background,
 	FULLSCREEN_DIALOG, so edit mode's outlines draw under it), laid out in one
 	of two layouts (OW.LAYOUT, below): the mockup's under Thick and Thin
-	(1040x700), and under Blizzard Blizzard's Settings window (1110x728: the
-	metal and its title bar, the inner frame over the sidebar and the main
-	column, the footer under it across the window):
+	(1040 wide, at least 700 tall), and under Blizzard Blizzard's Settings
+	window (1110 wide, at least 728 tall: the metal and its title bar, the inner
+	frame over the sidebar and the main column, the footer under it across the
+	window). It grows taller by its grip (the bottom right corner) or its bottom
+	edge ("growing taller", below), in either layout:
 	  - the sidebar: Edit mode and the st.Config:AddCommand buttons, then Global
 	    Settings and Profiles, then the module pages under their category
 	    (Frames, Combat, Info, any other, then Other; OW.SidebarEntries);
@@ -41,7 +43,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    (st:CreateCloseButton; under Blizzard in the metal's socket). Dragging
 	    it, the sidebar's title (under Thick and Thin) or the title bar (under
 	    Blizzard) moves the window, and where it was left is kept in
-	    st.config.global.optionsWindow;
+	    st.config.global.optionsWindow, with the height it was dragged to;
 	  - the tab row, with the search box at its right; a second row for
 	    subtabs; the picker row; the body, a scroll frame of sections
 	    (OB.LayoutSections) of rows in quarters, halves and whole lines
@@ -59,8 +61,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  - on AceConfigRegistry's ConfigTableChange for st.name (st.Config:Refresh),
 	    on the next frame, several in one frame coalesced. Never during a render
 	    (a get may notify, as UF's profile select's does), and not while the user
-	    is busy: a list or confirm dialog open, a drag, the color picker, typing in
-	    one of the window's boxes. It waits for that to end.
+	    is busy: a list or confirm dialog open, a drag, a resize, the color
+	    picker, typing in one of the window's boxes. It waits for that to end.
 
 	Search waits for typing to pause (SEARCH_DELAY), then shows OM.Search's
 	results as a page of sections (page > tabs, then the section); clicking one
@@ -101,7 +103,9 @@ local format = string.format
 	            window is wider and taller than the mockup's, so the body keeps
 	            its 774 and its height.
 
-	  width, height          the window
+	  width                  the window's
+	  height                 its least height, and its height with none saved
+	                         (OW.WindowHeight)
 	  sideX, sideTop, sideBottom, sideWidth
 	                         the sidebar, from the window's left, top and bottom
 	  navWidth               the sidebar's rows
@@ -242,6 +246,7 @@ local shown = {} -- what the last render drew: page, tab, subtab, pick
 local results -- the current search's results
 local pageBody -- the body (OB.New) the page is drawn in: its cells are the drawn rows
 local rendering, pending, dragging = false, false, false
+local sizing -- the resize under way (StartResize), or nil
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
 local scrollOffset, contentHeight, navOffset, navHeight = 0, 0, 0, 0
@@ -312,7 +317,55 @@ local function Inside(frame, ancestor)
 	return false
 end
 
------------------------------------------------------------------- position
+------------------------------------------------------------------ position and height
+
+--[[
+	st.config.global.optionsWindow = { point = 'CENTER', x, y, height }: where
+	the user left the window, its centre's offset from the screen's, and the
+	height they dragged it to (nil until they do). A move keeps the height saved
+	as it was, and only a resize writes it: a height saved by a move under
+	Blizzard (728) would open Thick's window 728 tall.
+
+	The window keeps its art inside the screen edge margin (misc.clamp_inset):
+	under Blizzard the metal reaches past its edges (st.ThemeArt.MetalReach:
+	16 above, 8 to the left), so the game's clamp (st:KeepInScreenMargin)
+	keeps the metal in, and a resize leaves room for it. It never grows past
+	the screen, whatever the margin, so its grip and title bar stay on it.
+]]
+
+-- How far the window's art reaches past its edges in layout L: left, right,
+-- top and bottom. Under Blizzard the metal does; under Thick and Thin nothing.
+local function ArtReach(L)
+	if L == OW.LAYOUT.blizzard then return st.ThemeArt.MetalReach() end
+	return 0, 0, 0, 0
+end
+
+-- How far in from the screen's top and bottom the window's edges keep in
+-- layout L: the screen edge margin (none below 0, so the window never grows
+-- past the screen) and the art past the window there.
+local function Margins(L)
+	local margin = max(0, st.config.profile.misc.clamp_inset)
+	local _, _, above, below = ArtReach(L)
+	return margin + above, margin + below
+end
+
+-- The most height the window takes in layout L (the one it's in when nil):
+-- the screen less what it keeps at its top and bottom (Margins), even.
+function OW.MaxHeight(L)
+	local above, below = Margins(L or layout)
+	return 2 * floor((UIParent:GetHeight() - above - below) / 2)
+end
+
+-- The window's height in layout L: the saved height (a number) made even (the
+-- window is centred, so its edges stay on whole pixels), at most
+-- OW.MaxHeight(L) and at least L's least height, which wins on a screen too
+-- small for it; L's least height with none saved.
+function OW.WindowHeight(L)
+	local saved = st.config.global.optionsWindow
+	local height = type(saved) == 'table' and saved.height
+	if type(height) ~= 'number' then return L.height end
+	return max(L.height, min(OW.MaxHeight(L), 2 * floor(height / 2 + 0.5)))
+end
 
 local function SavedPosition()
 	local saved = st.config.global.optionsWindow
@@ -324,17 +377,20 @@ end
 
 local function RestorePosition()
 	local point, x, y = SavedPosition()
+	F.window:SetHeight(OW.WindowHeight(F.layout or OW.LAYOUT.own))
 	F.window:ClearAllPoints()
 	F.window:SetPoint(point, UIParent, point, x, y)
 end
 
 -- Where the user left the window, as its center's offset from the screen's,
--- in whole units (pixels, at SaftUI's scale).
+-- in whole units (pixels, at SaftUI's scale). The saved height stays.
 local function SavePosition()
 	local cx, cy = F.window:GetCenter()
 	local ux, uy = UIParent:GetCenter()
 	if not (cx and ux) then return end
-	st.config.global.optionsWindow = { point = 'CENTER', x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5) }
+	local saved = st.config.global.optionsWindow
+	local height = type(saved) == 'table' and type(saved.height) == 'number' and saved.height or nil
+	st.config.global.optionsWindow = { point = 'CENTER', x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5), height = height }
 	RestorePosition()
 end
 
@@ -373,7 +429,7 @@ local function Busy()
 	-- A drag ends when the button comes up, even if the slider's OnMouseUp
 	-- never arrived.
 	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
-	if dragging or W.ListOwner() or W.ConfirmText() then return true end
+	if dragging or sizing or W.ListOwner() or W.ConfirmText() then return true end
 	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
 	return focus ~= nil and focus ~= F.search and Inside(focus, F.window)
@@ -406,6 +462,148 @@ local function Changed(ok, err, isDragging, widget)
 		Schedule()
 	else
 		OW:Render()
+	end
+end
+
+------------------------------------------------------------------ growing taller
+
+--[[
+	The window grows taller by its grip (F.grip, the bottom right corner:
+	Blizzard's PanelResizeButtonTemplate under Blizzard, st:EnableResizing's
+	corner under Thick and Thin) or its bottom edge (F.sizer, the strip left of
+	the grip). Its width and top stay; the sidebar, the main column, the inner
+	frame and the body take the height (their anchors), the footer staying at
+	the bottom. Its height stays even, from the layout's least to the most
+	(OW.MaxHeight), and stops where its bottom, or under Blizzard the metal
+	under it, meets the screen edge margin (Margins).
+
+	A press of the left button on either starts a resize; while it's held, the
+	pressed handle's OnUpdate follows the cursor. Each new height re-places the
+	body's and the sidebar's scroll bars (their offsets clamp to the new
+	range); nothing renders while the button is held (Busy), and a fill page
+	(the Categories tab) draws its fill row again once it's let go. It ends on
+	the button's release (OnMouseUp, or the handle's next frame finding it up)
+	or the window hiding, and a height it changed is saved, then the position.
+]]
+local GRIP_SIZE = 16 -- st:EnableResizing's, and PanelResizeButtonTemplate's
+local EDGE_HEIGHT = 6
+local HANDLE_LEVEL = 10 -- the grip and the edge, over the window's own frames
+
+local function StopResize()
+	if not sizing then return end
+	local resize = sizing
+	sizing = nil
+	resize.handle:SetScript('OnUpdate', nil)
+	if resize.at == resize.height then return end
+	local saved = st.config.global.optionsWindow
+	if type(saved) ~= 'table' then
+		saved = {}
+		st.config.global.optionsWindow = saved
+	end
+	saved.height = resize.at
+	SavePosition()
+end
+
+local function UpdateResize()
+	if not IsMouseButtonDown('LeftButton') then return StopResize() end
+	local window = F.window
+	local _, y = GetCursorPosition()
+	local _, below = Margins(layout)
+	local most = min(OW.MaxHeight(), 2 * floor((sizing.top - below) / 2))
+	local height = sizing.height + sizing.cursor - y / window:GetEffectiveScale()
+	height = max(layout.height, min(most, 2 * floor(height / 2 + 0.5)))
+	if height == sizing.at then return end
+	sizing.at = height
+	-- Centred, so it moves down by half the change (a whole number: the
+	-- change is even) and its top stays.
+	window:SetHeight(height)
+	window:ClearAllPoints()
+	window:SetPoint('CENTER', UIParent, 'CENTER', sizing.x, sizing.y - (height - sizing.height) / 2)
+	SetScroll(scrollOffset)
+	SetNavScroll(navOffset)
+	-- In game the body's OnSizeChanged schedules this too.
+	if filledTo then Schedule() end
+end
+
+-- From where the window shows (the game's clamp may have moved it from its
+-- anchor): the cursor's y, the window's height, its centre's offset from the
+-- screen's and its top.
+local function StartResize(handle, button)
+	if button ~= 'LeftButton' or sizing then return end
+	local window = F.window
+	local cx, cy = window:GetCenter()
+	local ux, uy = UIParent:GetCenter()
+	if not (cx and ux) then return end
+	local _, y = GetCursorPosition()
+	local height = floor(window:GetHeight() + 0.5)
+	-- cursor and height at the press, at the height now, x and y the centre's
+	-- offset at the press.
+	sizing = {
+		handle = handle,
+		cursor = y / window:GetEffectiveScale(),
+		height = height, at = height,
+		x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5),
+		top = window:GetTop(),
+	}
+	handle:SetScript('OnUpdate', UpdateResize)
+end
+
+local function EndResize(_, button)
+	if button == 'LeftButton' then StopResize() end
+end
+
+-- The grip and the edge, at the window's bottom, over its frames. The grip's
+-- textures are dressed for the look by LookGrip.
+local function BuildResize(window)
+	local level = window:GetFrameLevel() + HANDLE_LEVEL
+	local grip = CreateFrame('Button', nil, window)
+	grip:SetSize(GRIP_SIZE, GRIP_SIZE)
+	grip:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 0)
+	grip:SetFrameLevel(level)
+	grip.normal = grip:CreateTexture(nil, 'ARTWORK')
+	grip.highlight = grip:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)
+	grip.pushed = grip:CreateTexture(nil, 'ARTWORK')
+	for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetAllPoints(grip) end
+	grip:SetNormalTexture(grip.normal)
+	grip:SetHighlightTexture(grip.highlight)
+	grip:SetPushedTexture(grip.pushed)
+
+	local sizer = CreateFrame('Frame', nil, window)
+	sizer:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, 0)
+	sizer:SetPoint('BOTTOMRIGHT', grip, 'BOTTOMLEFT', 0, 0)
+	sizer:SetHeight(EDGE_HEIGHT)
+	sizer:SetFrameLevel(level)
+
+	for _, handle in ipairs({ grip, sizer }) do
+		handle:EnableMouse(true)
+		handle:SetScript('OnMouseDown', StartResize)
+		handle:SetScript('OnMouseUp', EndResize)
+	end
+	F.grip, F.sizer = grip, sizer
+end
+
+-- The grip in the look: Blizzard's PanelResizeButtonTemplate
+-- (st.ThemeArt.Control('resizegrip')), or st:EnableResizing's corner, its
+-- highlight and pushed tinted the buttons' hover color, the highlight blended.
+local function LookGrip()
+	local grip = F.grip
+	local look = blizzard and st.ThemeArt.Control('resizegrip')
+	grip.normal:SetVertexColor(1, 1, 1, 1)
+	if look then
+		grip:SetSize(look.size, look.size)
+		grip.normal:SetTexture(look.normal)
+		grip.highlight:SetTexture(look.highlight)
+		grip.pushed:SetTexture(look.pushed)
+		grip.highlight:SetVertexColor(1, 1, 1, 1)
+		grip.pushed:SetVertexColor(1, 1, 1, 1)
+		grip.highlight:SetBlendMode(look.highlightBlend)
+	else
+		local r, g, b = Colors().button.hover:GetRGB()
+		grip:SetSize(GRIP_SIZE, GRIP_SIZE)
+		for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetTexture(st.textures.cornerbr) end
+		grip.highlight:SetVertexColor(r, g, b, 1)
+		grip.pushed:SetVertexColor(r, g, b, 1)
+		grip.highlight:SetBlendMode('BLEND')
 	end
 end
 
@@ -879,18 +1077,21 @@ local function DrawSearch(pages)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
--- The window's own controls in the look: the footer's buttons and the
--- search box (its text and hint start clear of Blizzard's magnifying glass).
+-- The window's own controls in the look: the footer's buttons, the search
+-- box (its text and hint start clear of Blizzard's magnifying glass) and the
+-- resize grip.
 local function LookControls()
 	W.LookButton(F.reloadButton, blizzard, st.BOX_COLORS.bg)
 	W.LookButton(F.closeButton, blizzard, st.BOX_COLORS.bg)
 	local left = W.LookSearch(F.search, blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
 	F.search:SetTextInsets(left, SEARCH_TEXT_INSET, 0, 0)
 	F.search.hint:SetPoint('LEFT', F.search, 'LEFT', left, 0)
+	LookGrip()
 end
 
 -- Lays the window out for a look (settings: Blizzard's), in its layout
--- (OW.LAYOUT): its size, its look drawn again (the metal under Blizzard; a
+-- (OW.LAYOUT): its size (the saved height, OW.WindowHeight), its look drawn
+-- again (the metal under Blizzard; a
 -- render can come before the redraw that follows a theme change), the close
 -- X, the title bar, the inner frame, the sidebar, the main column, the footer
 -- and the search box. Inside the main column everything keeps its place.
@@ -899,8 +1100,11 @@ local function Relayout(settings)
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
 	layout, F.layout = L, L
 	local window = F.window
-	window:SetSize(L.width, L.height)
+	window:SetSize(L.width, OW.WindowHeight(L))
 	st:SetTemplate(window, 'theme', 'solid', 'window')
+	-- The screen edge margin again, now the art reaches as far as the look's
+	-- (the metal under Blizzard).
+	st:KeepInScreenMargin(window)
 
 	-- The close X: Blizzard's in the metal's socket, at its spot from the
 	-- window's top right corner (st.ThemeArt.Close), or the mockup's at its own.
@@ -1029,6 +1233,7 @@ end
 
 local function OnHide()
 	F.window:StopMovingOrSizing()
+	StopResize()
 	F.keys:EnableKeyboard(false)
 	F.keys:Hide()
 	pending, dragging = false, false
@@ -1233,7 +1438,8 @@ local function Build()
 	window:SetFrameLevel(100)
 	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	window:SetMovable(true)
-	st:KeepInScreenMargin(window) -- dragged by its header, so it keeps to the margin too
+	-- Dragged by its header, so it keeps to the margin too, with its art.
+	st:KeepInScreenMargin(window, function() return ArtReach(layout) end)
 	window:EnableMouse(true)
 	window:Hide()
 	F.window = window
@@ -1243,6 +1449,7 @@ local function Build()
 	BuildMain(window)
 	BuildFooter()
 	BuildTitleBar(window)
+	BuildResize(window)
 
 	-- Esc, only while the window is shown.
 	local keys = CreateFrame('Frame', nil, window)

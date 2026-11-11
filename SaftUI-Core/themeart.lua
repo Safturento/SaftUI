@@ -491,6 +491,18 @@ ThemeArt.ART = {
 		groupLabel = { x = 20, y = -1 },
 	},
 
+	-- /sui's resize grip, as Blizzard's (PanelResizeButtonTemplate,
+	-- Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml, the same on both
+	-- clients): size square, its normal, highlight and pushed files, the
+	-- highlight additive (a HighlightTexture's default).
+	resizegrip = {
+		normal = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]],
+		highlight = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]],
+		pushed = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]],
+		highlightBlend = 'ADD',
+		size = 16,
+	},
+
 	-- Blizzard's micro buttons' own art, given back by name: the pushed
 	-- background, the alert border, and the highlight Blizzard's code sets,
 	-- named from the button's textureName (a format of it, %s, so it isn't
@@ -548,7 +560,7 @@ local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
-	optionswindow = true,
+	optionswindow = true, resizegrip = true,
 }
 
 ------------------------------------
@@ -586,6 +598,19 @@ end
 function ThemeArt.MetalAbove()
 	local metal = ThemeArt.ART.metal
 	return math.max(ForClient(metal.TopLeftCorner.y), ForClient(metal.TopRightCorner.y))
+end
+
+-- How far the metal's art reaches past its drawn frame on this client: left,
+-- right, top and bottom, each as far as the corners on that side sit out (the
+-- top is MetalAbove). What keeps a window on screen keeps this on it too.
+function ThemeArt.MetalReach()
+	local metal = ThemeArt.ART.metal
+	local function x(key) return ForClient(metal[key].x) end
+	local function y(key) return ForClient(metal[key].y) end
+	return math.max(-x('TopLeftCorner'), -x('BottomLeftCorner')),
+		math.max(x('TopRightCorner'), x('BottomRightCorner')),
+		ThemeArt.MetalAbove(),
+		math.max(-y('BottomLeftCorner'), -y('BottomRightCorner'))
 end
 
 -- How far a kind's art reaches down from the drawn frame's top under
