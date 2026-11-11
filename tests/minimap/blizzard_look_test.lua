@@ -92,6 +92,7 @@ test("Forever under Blizzard: the zone, clock, latency and FPS boxes on the head
 	eq(drawn(panel(zone)), 'theme,theme,control')
 	eq(T.inset(panel(zone)), 2); eq(T.offset(panel(zone), 'TOPLEFT'), '-2.00,2.00', "today's small frame")
 	eq(select(4, panel(zone):GetBackdropColor()), 0.9, "SaftUI's transparent background, as today")
+	theme('thin'); check(not z:IsShown() and not t:IsShown() and magnifier:IsShown() and T.inset(panel(zone)) == 1, "Thin: today's 1px small frame, no Blizzard art")
 	theme('blizzard')
 	check(z:IsShown() and t:IsShown(), 'and back'); check(not magnifier:IsShown())
 end)
@@ -152,6 +153,7 @@ test('the micro buttons stand on one bronze strip from the first shown holder to
 	b:Hide(); c:Hide(); check(not strip:IsShown(), 'none shown: no strip')
 	a:Show(); check(strip:IsShown(), 'back with one')
 	theme('thick'); check(not strip:IsShown())
+	theme('thin'); check(not strip:IsShown(), 'nor under Thin')
 end)
 
 ------------------------------------ Blizzard's micro menu

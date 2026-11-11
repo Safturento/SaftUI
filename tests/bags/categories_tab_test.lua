@@ -1479,6 +1479,11 @@ test("under Blizzard the category list is the Settings category list; its handle
 		eq(color(sel.name), '1.00,1.00,1.00', client .. ': the picked name is white')
 		eq(color(other.name), '1.00,0.82,0.00', client .. ': the others are gold')
 		check(not other.tint:IsShown(), client .. ': not tinted')
+		local tinted = {}
+		for _, row in ipairs(w.rows) do
+			if row.frame:IsShown() and row.tint:IsShown() then tinted[#tinted + 1] = row.id end
+		end
+		eq(table.concat(tinted, ','), 'Consumables', client .. ': only the picked row on the active art')
 		stub.fire_script(other.frame, 'OnEnter')
 		eq(other.frame.hover:GetAtlas(), 'Options_List_Hover', client .. ': the hover art')
 		check(other.frame.hover:IsShown(), client .. ': shown')
@@ -1511,8 +1516,16 @@ test("under Blizzard the category list is the Settings category list; its handle
 		check(sel.tint:IsShown() and sel.bar:IsShown(), client .. ': Thick: the blue tint and bar')
 		check(same_rgb({ sel.name:GetTextColor() }, rgb('text', 'normal')), client .. ': Thick: the normal text color')
 		check(same_rgb(stub.state(sel.bar).color_texture, rgb('button', 'blue')), client .. ': Thick: blue')
+		local hover = row_of(w, SETS).frame.hover
 		stub.fire_script(row_of(w, SETS).frame, 'OnEnter')
-		eq(row_of(w, SETS).frame.hover:GetAtlas(), nil, client .. ': Thick: no hover art')
+		eq(hover:GetAtlas(), nil, client .. ': Thick: no hover art')
+		check(hover:IsShown(), client .. ': Thick: the hover shows')
+		local c = stub.state(hover).color_texture
+		check(same_rgb(c, rgb('button', 'blue')), client .. ': Thick: a blue hover')
+		eq(c[4], 0.1, client .. ': at 0.1, fainter than the 0.25 tint')
+		eq(hover:GetAlpha(), 1, client .. ': its alpha in its color')
+		stub.fire_script(row_of(w, SETS).frame, 'OnLeave')
+		check(not hover:IsShown(), client .. ': Thick: gone when the mouse leaves')
 		eq(#take_errors(), 0, client .. ': no errors')
 		st.Config:Close()
 	end

@@ -689,6 +689,10 @@ test('under Blizzard a scroll area shows MinimalScrollBar only with something to
 		st.Config:Open('Loot')
 		check(not bar.frame:IsShown(), client .. ': nothing to scroll: no bar')
 		check(not F.bar:IsShown(), client .. ': nor the 3px one')
+		-- The nav's few pages fit it: no bar there either.
+		check(F.navContent:GetHeight() <= F.navFrame:GetHeight(), client .. ': the nav has nothing to scroll')
+		check(not st.OptionsBody.Companion(F.navBar).frame:IsShown(), client .. ': the nav: no bar')
+		check(not F.navBar:IsShown(), client .. ': nor a 3px one')
 		switch('thick'); st.Config:Open('Long')
 		check(F.bar:IsShown(), client .. ": Thick: the 3px bar, as today")
 		eq(F.bar:GetLeft() - F.content:GetLeft(), 774 + 10, client .. ': Thick: 10 right of the content')
@@ -786,6 +790,52 @@ test('the scroll bar works: drag the thumb, click an arrow, click the track; the
 	eq(scroll(), 68, 'and back')
 	stub.cursor_x, stub.cursor_y = 0, 0
 	st.Config:Close()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a held thumb: a theme switch waits for it; the window closing mid-drag (combat) lets it go', function()
+	world('forever')
+	switch('blizzard'); st.Config:Open('Long')
+	local F = OW.GetFrames()
+	local bar = st.OptionsBody.Companion(F.bar)
+	local scale = bar.frame:GetEffectiveScale()
+	local function hold()
+		local _, y = bar.thumb:GetCenter()
+		stub.cursor_x, stub.cursor_y = 0, y * scale
+		stub.mouse_buttons.LeftButton = true
+		stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+		return y
+	end
+
+	-- A switch to Thick mid-drag: the render, and with it the 3px bar, waits
+	-- until the thumb is let go.
+	hold()
+	check(W.ScrollBarHeld(), 'held')
+	local renders = OW.GetRenderCount()
+	switch('thick')
+	eq(OW.GetRenderCount(), renders, 'no render while the thumb is held')
+	check(bar.frame:IsShown() and bar.held, "Blizzard's bar still there, still held")
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'let go: the render')
+	check(not bar.frame:IsShown() and F.bar:IsShown(), "Thick's 3px bar in place of Blizzard's")
+
+	-- Combat closes /sui mid-drag: the thumb hides with the window and lets go,
+	-- though the button is still down, so nothing is held for the next open.
+	switch('blizzard'); st.Config:Open('Long')
+	local y = hold()
+	check(W.ScrollBarHeld(), 'held again')
+	st.Config:PLAYER_REGEN_DISABLED()
+	check(not OW:IsShown(), 'combat: the window closed')
+	check(not bar.held, 'the drag ended with it')
+	check(stub.mouse_buttons.LeftButton and not W.ScrollBarHeld(), 'nothing held, the button still down')
+	local offset = F.body:GetVerticalScroll()
+	stub.cursor_y = (y - 40) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(F.body:GetVerticalScroll(), offset, 'the cursor scrolls nothing')
+	stub.mouse_buttons.LeftButton = nil
+	stub.cursor_x, stub.cursor_y = 0, 0
 	eq(#take_errors(), 0, 'no errors')
 end)
 

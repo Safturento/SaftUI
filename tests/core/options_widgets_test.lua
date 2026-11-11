@@ -2132,28 +2132,48 @@ test('W.CheckArtSize: the largest whole size up to 30x29, in proportion, within 
 end)
 
 test("under Blizzard a toggle's box is drawn 30x29, a multiselect's and a check list's rows 23x22; no box or row changes size", function()
+	local checked = true
 	local t = bind('toggle', 'on', opt('toggle', 'On', {
-		get = function() return true end, set = function() end,
+		get = function() return checked end, set = function() end,
 	}))
+	-- a checked, b not.
 	local m = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
-		values = { a = 'A', b = 'B' }, get = function() return true end, set = function() end,
+		values = { a = 'A', b = 'B' }, get = function(_, key) return key == 'a' end, set = function() end,
 	}))
 	parent:SetSize(800, 600)
 	parent:SetPoint('CENTER')
 	t:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -50)
 	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -150)
 	theme('blizzard'); rebind(t); rebind(m)
-	check(#shown_textures(t.frame) > 0, 'the toggle is drawn')
-	for _, region in ipairs(shown_textures(t.frame)) do
-		eq(size_of(region), '30x29'); eq(around(region, t.frame), '-12,5,0,-6', 'its right on the box, 5 above')
+	-- Checked, unchecked, and each disabled: the art the same size, in the same place.
+	for _, state in ipairs({ { true, false }, { false, false }, { false, true }, { true, true } }) do
+		checked = state[1]; rebind(t); t:SetDisabled(state[2])
+		local name = (checked and 'checked' or 'unchecked') .. (state[2] and ', disabled' or '')
+		eq(t.frame:GetChecked(), checked, name)
+		check(#shown_textures(t.frame) > 0, name .. ': the toggle is drawn')
+		for _, region in ipairs(shown_textures(t.frame)) do
+			eq(size_of(region), '30x29', name); eq(around(region, t.frame), '-12,5,0,-6', name .. ': its right on the box, 5 above')
+		end
+		eq(size_of(t.frame), '18x18', name); eq(t:GetWidth(), 18, name)
+		eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '-12,0,-5,-6', name .. ': a click on the art reaches the box')
 	end
-	eq(size_of(t.frame), '18x18'); eq(t:GetWidth(), 18)
-	eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '-12,0,-5,-6', 'a click on the art reaches the box')
-	check(#shown_textures(m.rows[1].box) > 0, 'a row is drawn')
-	for _, region in ipairs(shown_textures(m.rows[1].box)) do
-		eq(size_of(region), '23x22'); eq(around(region, m.rows[1].box), '0,2,5,-2')
+	checked = true; t:SetDisabled(false); rebind(t)
+	for i, row in ipairs(m.rows) do
+		local name = i == 1 and 'the checked row' or 'the unchecked row'
+		eq(row.box:GetChecked(), i == 1, name)
+		check(#shown_textures(row.box) > 0, name .. ' is drawn')
+		for _, region in ipairs(shown_textures(row.box)) do
+			eq(size_of(region), '23x22', name); eq(around(region, row.box), '0,2,5,-2', name)
+		end
+		eq(size_of(row.box), '18x18', name); eq(row:GetHeight(), 22, name)
 	end
-	eq(size_of(m.rows[1].box), '18x18'); eq(m.rows[1]:GetHeight(), 22)
+	-- The row's hover, a texture of its box's own the row's OnEnter shows: the box's art's size.
+	local row = m.rows[2]
+	stub.fire_script(row, 'OnEnter')
+	check(row.hover:IsShown(), 'the hover shows under the mouse')
+	eq(size_of(row.hover), '23x22', 'the hover the art size'); eq(around(row.hover, row.box), '0,2,5,-2', 'over the art')
+	stub.fire_script(row, 'OnLeave')
+	check(not row.hover:IsShown(), 'and goes with it')
 	-- W.OpenCheckList's rows: the same 23x22 on an 18 box.
 	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
 	owner:SetSize(170, 24)
@@ -2736,6 +2756,38 @@ test("a long list scrolls on Blizzard's narrow scroll bar inside it, in place of
 	local last = entries_of(list)
 	eq(last[#last], 'Entry 20', 'no further than the end')
 	eq(bar.thumb:GetBottom(), bar.track:GetBottom(), 'the thumb at the bottom')
+
+	-- The thumb dragged in rows: as far through the 8 the list scrolls as the
+	-- thumb through its room, to the nearest row.
+	for _ = 1, 10 do stub.fire_script(bar.up, 'OnClick', 'LeftButton') end
+	eq(entries_of(list)[1], 'Entry 1', 'back at the top')
+	local room = bar.track:GetHeight() - bar.thumb:GetHeight()
+	local _, y = bar.thumb:GetCenter()
+	stub.cursor_x, stub.cursor_y = cx * scale, y * scale
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = (y - room / 2) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(entries_of(list)[1], 'Entry 5', 'half its room: 4 of the 8 rows')
+	stub.cursor_y = (y - room * 5 / 16) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(entries_of(list)[1], 'Entry 4', '2.5 rows: rounded to 3')
+	stub.cursor_y = (y - room - 50) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(entries_of(list)[1], 'Entry 9', 'past its room: the last 12')
+	eq(bar.thumb:GetBottom(), bar.track:GetBottom(), 'the thumb at the bottom')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	-- A click on the track: a view (12 rows) toward the click, within the 8.
+	stub.cursor_y = (bar.thumb:GetTop() + 2) * scale
+	check(bar.thumb:GetTop() + 2 < bar.track:GetTop(), 'room above the thumb')
+	stub.fire_script(bar.track, 'OnMouseDown', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 1', 'above the thumb: a view up, at most to the top')
+	stub.cursor_y = (bar.thumb:GetBottom() - 2) * scale
+	check(bar.thumb:GetBottom() - 2 > bar.track:GetBottom(), 'room below it')
+	stub.fire_script(bar.track, 'OnMouseDown', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 9', 'below it: a view down, at most to the end')
+	stub.cursor_x, stub.cursor_y = 0, 0
 	W.CloseList()
 
 	-- Ten entries fit: no bar.
@@ -2937,6 +2989,34 @@ test('slider arrow edge cases', function()
 	local n = range({ value = nil, min = 0, max = 10, step = 1 })
 	check(not n.backArrow:IsEnabled() and n.forwardArrow:IsEnabled())
 	n:Release()
+	-- A bigStep and no step: an arrow moves by bigStep.
+	local g, _, _, gget = range({ value = 10, min = 0, max = 100, bigStep = 10 })
+	click(g.forwardArrow); eq(gget(), 20, 'bigStep only: forward by bigStep')
+	click(g.backArrow); click(g.backArrow); eq(gget(), 0, 'and back')
+	g:Release()
+	-- 0.1 ten times from 0: each step on the grid, landing exactly on 1.
+	local d, _, _, dget = range({ value = 0, min = 0, max = 1, step = 0.1 })
+	for i = 1, 10 do
+		click(d.forwardArrow)
+		eq(dget(), tonumber(('%.1f'):format(i / 10)), 'step ' .. i .. ': no float drift')
+	end
+	check(dget() == 1, 'exactly 1')
+	check(not d.forwardArrow:IsEnabled(), 'at the top: forward off')
+	d:Release()
+	-- A validate that fails: the step sets nothing, the window is told why,
+	-- and the box still shows the value.
+	local value, sets = 5, 0
+	local v, told = bind('range', 'amount', opt('range', 'Amount', {
+		min = 0, max = 10, step = 1,
+		get = function() return value end,
+		set = function(_, x) sets = sets + 1; value = x end,
+		validate = function() return 'Not that' end,
+	}))
+	click(v.forwardArrow)
+	eq(value, 5, 'a failed validate blocks the step'); eq(sets, 0)
+	eq(told.n, 1); eq(told.ok, false); eq(told.err, 'Not that', 'onChanged(false, message)')
+	eq(v.edit:GetText(), '5', 'the box still shows 5')
+	v:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
