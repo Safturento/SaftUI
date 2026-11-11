@@ -1,11 +1,34 @@
 local st = SaftUI
 
 -- The thumb's fill: the pushed color while it's pressed, the hover color under
--- the mouse, else the button color. Kept through a theme recolor.
+-- the mouse, else the button color. None under the Blizzard theme, where the
+-- thumb is a control with no backdrop of SaftUI's, and MinimalScrollBar's own
+-- art shows.
 local function ColorThumb(thumb)
+    if st:DrawnTheme(thumb) == 'blizzard' then return end
     local colors = st.config.profile.colors.button
     local color = thumb.pressed and colors.pushed or thumb.entered and colors.hover or colors.normal
     thumb.backdrop:SetBackdropColor(color:GetRGB())
+end
+
+-- thumb -> the layers of its scroll bar that hold MinimalScrollBar's own art,
+-- { frame, layer } each: the thumb's, the track's and the steppers'.
+local barLayers = setmetatable({}, { __mode = 'k' })
+
+-- Turns MinimalScrollBar's own art on under the Blizzard theme
+-- (EnableDrawLayer) and off under the others, as the thumb is drawn, then
+-- colors the thumb. Runs again after every recolor and redraw
+-- (st:KeepOwnColors). Widget methods only: chat's scroll bar is Blizzard's.
+local function DrawScrollBar(thumb)
+    local blizzard = st:DrawnTheme(thumb) == 'blizzard'
+    for _, entry in ipairs(barLayers[thumb]) do
+        if blizzard then
+            entry[1]:EnableDrawLayer(entry[2])
+        else
+            entry[1]:DisableDrawLayer(entry[2])
+        end
+    end
+    ColorThumb(thumb)
 end
 
 local function thumbOnEnter(self)
@@ -32,29 +55,24 @@ function st:SkinNewScrollBar(scrollBar)
     if not scrollBar.GetThumb then return end
 
     local thumb = scrollBar:GetThumb()
-    thumb:DisableDrawLayer('BACKGROUND')
-    thumb:DisableDrawLayer('ARTWORK')
-    st:SetBackdrop(thumb, 'theme', 'solid', 'small')
-    ColorThumb(thumb)
-    st:KeepOwnColors(thumb, ColorThumb)
+    local track = scrollBar:GetTrack()
+    barLayers[thumb] = {
+        { thumb, 'BACKGROUND' }, { thumb, 'ARTWORK' }, { track, 'ARTWORK' },
+        { scrollBar:GetForwardStepper(), 'BACKGROUND' }, { scrollBar:GetBackStepper(), 'BACKGROUND' },
+    }
+    st:SetBackdrop(thumb, 'theme', 'solid', 'control')
+    DrawScrollBar(thumb)
+    st:KeepOwnColors(thumb, DrawScrollBar)
 
     thumb:HookScript('OnEnter', thumbOnEnter)
     thumb:HookScript('OnLeave', thumbOnLeave)
     thumb:HookScript('OnMouseDown', thumbOnMouseDown)
     thumb:HookScript('OnMouseUp', thumbOnMouseUp)
 
-    local track = scrollBar:GetTrack()
-    track:DisableDrawLayer('ARTWORK')
     scrollBar:SetAlpha(1)
     track:ClearAllPoints()
     track:SetPoint('TOP', 0, -2)
     track:SetPoint('BOTTOM', 0, 2)
-
-    local forward = scrollBar:GetForwardStepper()
-    forward:DisableDrawLayer('BACKGROUND')
-
-    local backward = scrollBar:GetBackStepper()
-    backward:DisableDrawLayer('BACKGROUND')
 end
 
 function st:SkinScrollBar(scrollBar)

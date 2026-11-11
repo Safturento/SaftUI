@@ -740,11 +740,20 @@ function Frame.GetChildren(self, s) return unpack(s.children) end
 function Frame.GetNumChildren(self, s) return #s.children end
 function Frame.GetRegions(self, s) return unpack(s.regions) end
 function Frame.GetNumRegions(self, s) return #s.regions end
--- Nothing is drawn here, so a disabled layer is only remembered.
+-- Nothing is drawn here, so a layer turned off or on is only remembered.
+-- Every layer is on until turned off.
 function Frame.DisableDrawLayer(self, s, layer)
 	if not DRAW_LAYERS[layer] then usage(s, 'DisableDrawLayer(): invalid layer ' .. tostring(layer)) end
 	s.disabled_layers = s.disabled_layers or {}
 	s.disabled_layers[layer] = true
+end
+function Frame.EnableDrawLayer(self, s, layer)
+	if not DRAW_LAYERS[layer] then usage(s, 'EnableDrawLayer(): invalid layer ' .. tostring(layer)) end
+	if s.disabled_layers then s.disabled_layers[layer] = nil end
+end
+function Frame.IsDrawLayerEnabled(self, s, layer)
+	if not DRAW_LAYERS[layer] then usage(s, 'IsDrawLayerEnabled(): invalid layer ' .. tostring(layer)) end
+	return not (s.disabled_layers and s.disabled_layers[layer])
 end
 
 -- A frame's ID (0 until set), which Blizzard's buttons use for their slot or index.

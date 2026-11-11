@@ -299,29 +299,66 @@ end
 -- draws it again. Kept here, not on the box: chat's is Blizzard's.
 local editBoxLooks = setmetatable({}, { __mode = 'k' })
 
--- A focused box's white border. Kept through a theme recolor.
+-- editbox -> the backdrop of SaftUI's drawn behind it (st:SetBackdropIn):
+-- nothing is written onto the box, as chat's is Blizzard's.
+local editBoxBackdrops = setmetatable({}, { __mode = 'k' })
+
+-- editbox -> its own border textures: an input box's Left, Middle and Right
+-- (InputBoxTemplate, SearchBoxTemplate), chat's Left, Mid and Right and its
+-- focus textures (ChatFrameEditBoxTemplate).
+local editBoxBorders = setmetatable({}, { __mode = 'k' })
+local BORDER_KEYS = { 'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid' }
+
+-- A focused box's white border, kept through a theme recolor. A box drawn
+-- with None has no backdrop to color, and a control's border under the
+-- Blizzard theme is left alone (st:SetBorderColor), so none there.
 local function ColorFocused(editbox)
-	if editbox:HasFocus() and editbox.backdrop then
-		st:SetBorderColor(editbox.backdrop, 1, 1, 1, 1)
+	local backdrop = editBoxBackdrops[editbox]
+	if editbox:HasFocus() and backdrop then
+		st:SetBorderColor(backdrop, 1, 1, 1, 1)
+	end
+end
+
+-- Shows the box's own border textures while it's drawn in the Blizzard
+-- theme, and conceals them (alpha 0) in any other look. Alpha alone hides
+-- them: Blizzard never sets these regions' alpha (InputBoxTemplates and
+-- ChatFrameEditBox, on both clients; chat shows and hides its focus textures
+-- and sets the box's own alpha), and nothing is written onto them.
+local function ShowBorders(editbox)
+	local alpha = st:DrawnTheme(editbox) == 'blizzard' and 1 or 0
+	for _, region in ipairs(editBoxBorders[editbox]) do
+		region:SetAlpha(alpha)
 	end
 end
 
 local function DrawEditBox(editbox, look)
-	st:SetBackdrop(editbox, look[1], look[2], 'small')
+	st:SetBackdropIn(editBoxBackdrops, editbox, look[1], look[2], 'control')
+	ShowBorders(editbox)
 end
 
--- Skins an edit box: Blizzard's art killed, SaftUI's backdrop in theme and
--- background (Use SaftUI's theme and Solid by default), font for its text, and
--- a white border while it has focus.
+-- After a recolor or redraw: the borders for the look the box is drawn in
+-- now, and its focus color.
+local function RedrawEditBox(editbox)
+	ShowBorders(editbox)
+	ColorFocused(editbox)
+end
+
+-- Skins an edit box: its own border textures concealed, SaftUI's backdrop in
+-- theme and background (Use SaftUI's theme and Solid by default), drawn as a
+-- control, font for its text, and a white border while it has focus. Under
+-- the Blizzard theme the box's own border textures show instead, and there's
+-- no backdrop of SaftUI's.
 function st:SkinEditBox(editbox, theme, background, font)
 	local name = editbox:GetName()
 
-	for _,region_name in pairs({'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid'}) do
-		local region = _G[name..region_name] or editbox[region_name]
+	local borders = {}
+	for _,region_name in pairs(BORDER_KEYS) do
+		local region = name and _G[name..region_name] or editbox[region_name]
 		if region then
-			st:Kill(region)
+			table.insert(borders, region)
 		end
 	end
+	editBoxBorders[editbox] = borders
 
 
 	if editbox.searchIcon then
@@ -336,9 +373,8 @@ function st:SkinEditBox(editbox, theme, background, font)
 
 	st:StyleEditBox(editbox, theme, background, font)
 
-	-- A box drawn with None has no backdrop to color.
 	editbox:HookScript('OnEditFocusGained', ColorFocused)
-	st:KeepOwnColors(editbox, ColorFocused)
+	st:KeepOwnColors(editbox, RedrawEditBox)
 
 	-- Restore the look the box has now (st:StyleEditBox may have changed it
 	-- since), not the one it was skinned with.

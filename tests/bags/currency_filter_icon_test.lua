@@ -5,14 +5,18 @@
 load_core_helpers()
 local st = SaftUI
 -- st:CreateCheckButton's contract (SaftUI-Core/Widgets/checkbutton.lua): a check
--- button with a .text label and SetFont/SetText. The widget's own skinning
--- isn't what's under test.
-function st:CreateCheckButton(name, parent)
+-- button with a .text label and SetFont/SetText, in the style asked for (nil
+-- a check box, 'button' Blizzard's panel button under the Blizzard theme,
+-- 'bare' no box), which is noted here. The widget's own skinning isn't what's
+-- under test (tests/core/theme_blizzard_controls_test.lua tests it).
+local styles = {}
+function st:CreateCheckButton(name, parent, style)
 	local button = CreateFrame('CheckButton', name, parent)
 	button.text = button:CreateFontString(nil, 'OVERLAY')
 	button.text:SetFontObject(GameFontNormal)
 	button.SetFont = function() end
 	button.SetText = function(_, value) button.text:SetText(value) end
+	styles[button] = style or 'check box'
 	return button
 end
 local INV = st:NewModule('Inventory')
@@ -60,6 +64,10 @@ test('the Filter button shows the funnel icon, not the word', function()
 	check(st.textures.filter ~= nil, 'st.textures.filter is defined')
 	check(icon() ~= nil, 'a texture with the funnel')
 	eq(button.text:GetText() or '', '', 'no "Filter" text')
+end)
+
+test("the Filter button is a check button styled as a button", function()
+	eq(styles[button], 'button', "st:CreateCheckButton's style 'button': Blizzard's panel button under the Blizzard theme")
 end)
 
 test('the Filter button is a square the header can hold', function()

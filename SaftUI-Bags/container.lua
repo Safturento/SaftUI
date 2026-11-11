@@ -52,7 +52,7 @@ function INV:CreateContainer(id, name, isBankContainer)
 
 	self:CreateViewButtons(container)
 
-	local filterButton = st:CreateCheckButton(nil, container.header)
+	local filterButton = st:CreateCheckButton(nil, container.header, 'button')
     container.header.filterButton = filterButton
     -- Hidden, but anchored clear of the view buttons.
     self:SpaceViewButtons(container)
@@ -836,12 +836,13 @@ function INV:SizeViewButtons(container)
 end
 
 -- The distance between the view buttons' frames, and between the first of them
--- and the close button: each button draws its border the theme's inset outside
--- itself (2 Thick, 1 Thin) and the close button a 1px outline outside itself,
+-- and the close button: each button draws its border the theme's inset for a
+-- control outside itself (2 Thick, 1 Thin, none under Blizzard, whose panel
+-- button lies inside it) and the close button a 1px outline outside itself,
 -- so the frames are that far apart plus VISIBLE_GAP of clear room between the
 -- borders, in every theme.
 function INV:ViewButtonGaps()
-	local inset = st:ThemeInset('theme', 'theme', 'small')
+	local inset = st:ThemeInset('theme', 'theme', 'control')
 	return 2 * inset + VISIBLE_GAP, inset + 1 + VISIBLE_GAP
 end
 
@@ -914,7 +915,7 @@ function INV:UpdateViewButtons(id)
 				st:KeepOwnColors(button, ColorLit)
 			else
 				st:KeepOwnColors(button, nil)
-				st:SetBackdrop(button, 'theme', 'theme', 'small')
+				st:SetBackdrop(button, 'theme', 'theme', 'control')
 			end
 		end
 	end

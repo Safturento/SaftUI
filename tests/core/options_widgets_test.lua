@@ -1609,3 +1609,141 @@ test('position: disabled dims the block and ignores clicks and nudges', function
 	eq(sets[#sets], 'x_off=1', 'enabled again')
 	w:Release()
 end)
+
+------------------------------------------------------------------ under the Blizzard theme
+
+-- The textures shown on a frame (shown and not see-through).
+local function shown_textures(frame)
+	local out = {}
+	for _, region in ipairs({ frame:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAlpha() > 0 then
+			out[#out + 1] = region
+		end
+	end
+	return out
+end
+
+-- The panel button's pieces shown on a button, as 'Left=Up,Middle=Up,Right=Up'
+-- (each piece by its left texture coordinate and the state its file is), and
+-- the pieces by name ('' and none for no panel button).
+local PIECE_BY_LEFT = { ['0.00000'] = 'Left', ['0.09375'] = 'Middle', ['0.53125'] = 'Right' }
+local function panel_of(button)
+	local out, pieces = {}, {}
+	for _, region in ipairs(shown_textures(button)) do
+		local file = region:GetTexture()
+		local state = type(file) == 'string' and file:match('^Interface\\Buttons\\UI%-Panel%-Button%-(%a+)$')
+		if state and state ~= 'Highlight' then
+			local key = PIECE_BY_LEFT[('%.5f'):format((region:GetTexCoord()))] or '?'
+			pieces[key] = region
+			out[#out + 1] = key .. '=' .. state
+		end
+	end
+	table.sort(out)
+	return table.concat(out, ','), pieces
+end
+
+-- The atlases shown on a frame, sorted and comma-joined.
+local function atlases_of(frame)
+	local out = {}
+	for _, region in ipairs(shown_textures(frame)) do
+		if region:GetAtlas() then out[#out + 1] = region:GetAtlas() end
+	end
+	table.sort(out)
+	return table.concat(out, ',')
+end
+
+-- Where a region's edges sit from another's, 'left,top,right,bottom', in whole pixels.
+local function around(outer, inner)
+	local function px(a, b) return string.format('%d', math.floor(a - b + 0.5)) end
+	return table.concat({ px(outer:GetLeft(), inner:GetLeft()), px(outer:GetTop(), inner:GetTop()),
+		px(outer:GetRight(), inner:GetRight()), px(outer:GetBottom(), inner:GetBottom()) }, ',')
+end
+
+local function rgba(...) return string.format('%.2f,%.2f,%.2f,%.2f', ...) end
+
+test("/sui's execute button and toggle take Blizzard's art under Blizzard, their own under Thick", function()
+	local checked = true
+	local selected = { a = true }
+	local e = bind('execute', 'go', opt('execute', 'Go', { func = function() end }))
+	local t = bind('toggle', 'on', opt('toggle', 'On', {
+		get = function() return checked end, set = function(_, v) checked = v end,
+	}))
+	local m = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
+		values = { a = 'A', b = 'B' },
+		get = function(_, key) return selected[key] end, set = function(_, key, v) selected[key] = v end,
+	}))
+	-- Placed as the window places them, so their edges can be read.
+	parent:SetSize(800, 600)
+	parent:SetPoint('CENTER')
+	e:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	t:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -50)
+	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -90)
+	local function rebind(w) w:Bind(w.root, w.row, w.onChanged) end
+	local function boxes() return { toggle = t.frame, rowA = m.rows[1].box, rowB = m.rows[2].box } end
+	local FIELD, EDGE = rgba(unpack(st.BOX_COLORS.field)), rgba(unpack(st.BOX_COLORS.edge))
+
+	-- Under Thick: the window's own look, as before.
+	eq(panel_of(e.frame), '', 'Thick: the execute button is no panel button')
+	check(e.frame.backdropInfo ~= nil, "Thick: the execute button's own box")
+	eq(atlases_of(t.frame), '', 'Thick: the toggle has no Blizzard art')
+
+	st.config.profile.theme.name = 'blizzard'
+	for _, w in ipairs({ e, t, m }) do rebind(w) end -- the window re-renders after a theme change
+
+	-- The execute button: Blizzard's panel button, inside its own rect.
+	local button = e.frame
+	local states, pieces = panel_of(button)
+	eq(states, 'Left=Up,Middle=Up,Right=Up', "Blizzard: the execute button is Blizzard's panel button")
+	eq(button.backdropInfo, nil, 'its own box off')
+	check(not button.outline:IsShown(), 'and its dark line')
+	eq(button:GetHeight(), 26, 'it keeps its height')
+	eq(e:GetWidth(), button:GetWidth(), 'and its width')
+	eq(pieces.Left and around(pieces.Left, button):match('^0,0,'), '0,0,', 'the left end on its left edge, its full height')
+	eq(pieces.Right and around(pieces.Right, button):match(',0,0,0$'), ',0,0,0', 'the right end on its right edge')
+	eq(pieces.Left and pieces.Left:GetWidth(), 14, "the ends 12/22 of its 26")
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq((panel_of(button)), 'Left=Down,Middle=Down,Right=Down', 'pressed: -Down')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	eq((panel_of(button)), 'Left=Up,Middle=Up,Right=Up', 'let go: -Up')
+
+	-- The toggle and the multiselect's rows: the Settings panel's check box,
+	-- inside the box's own 18 square.
+	for name, box in pairs(boxes()) do
+		eq(box.backdropInfo, nil, name .. ': its own box off')
+		check(not box.outline:IsShown(), name .. ': and its dark line')
+		check(not box.mark:IsShown(), name .. ': no blue mark')
+		eq(box:GetWidth() .. 'x' .. box:GetHeight(), '18x18', name .. ': it keeps its size')
+		for _, region in ipairs(shown_textures(box)) do
+			eq(around(region, box), '0,0,0,0', name .. ': ' .. tostring(region:GetAtlas()) .. ' inside its rect')
+		end
+	end
+	eq(atlases_of(t.frame), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'the toggle, checked: the box, its highlight and the check')
+	eq(atlases_of(m.rows[1].box), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'a checked row too')
+	eq(atlases_of(m.rows[2].box), 'checkbox-minimal,checkbox-minimal', 'an unchecked row: no check')
+	stub.fire_script(t.frame, 'OnClick')
+	eq(checked, false, 'a click still sets')
+	eq(atlases_of(t.frame), 'checkbox-minimal,checkbox-minimal', 'and the check goes')
+	t:SetDisabled(true)
+	checked = true
+	t:Refresh()
+	eq(atlases_of(t.frame), 'checkbox-minimal,checkbox-minimal,checkmark-minimal-disabled', 'disabled and checked: the grey check')
+	t:SetDisabled(false)
+
+	-- Thick again: the window's own look.
+	st.config.profile.theme.name = 'thick'
+	for _, w in ipairs({ e, t, m }) do rebind(w) end
+	eq(panel_of(button), '', 'Thick: no panel button')
+	check(button.outline:IsShown(), 'Thick: its dark line again')
+	eq(rgba(button:GetBackdropColor()), rgba(unpack(st.BOX_COLORS.bg)), "Thick: the execute button's own fill")
+	for name, box in pairs(boxes()) do
+		eq(atlases_of(box), '', name .. ': no Blizzard art')
+		eq(rgba(box:GetBackdropColor()), FIELD, name .. ': its own box again')
+		eq(rgba(box:GetBackdropBorderColor()), EDGE, name .. ': its own edge')
+		check(box.outline:IsShown(), name .. ': its dark line')
+	end
+	check(t.frame.mark:IsShown(), 'the checked toggle shows its blue mark')
+	check(m.rows[1].box.mark:IsShown(), 'and the checked row')
+	check(not m.rows[2].box.mark:IsShown(), 'not the unchecked row')
+	for _, w in ipairs({ e, t, m }) do w:Release() end
+	eq(#take_errors(), 0, 'no errors')
+end)

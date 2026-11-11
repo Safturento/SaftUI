@@ -619,6 +619,14 @@ end
 
 ------------------------------------------------------------------ a check box (toggle, multiselect)
 
+-- Whether the execute button and the check boxes wear Blizzard's art: under
+-- SaftUI's theme Blizzard, read when a widget is bound (the window renders
+-- again after a theme change). Under Thick and Thin they keep the window's
+-- own look (Box). Blizzard's art is drawn inside the widget's own rect.
+local function BlizzardLook()
+	return st:IsBlizzardLook('theme', 'theme')
+end
+
 -- A box of size with a blue square inside when checked: box.mark.
 local function CheckBox(parent, size)
 	local box = Box(st:CreateFrame('CheckButton', nil, parent))
@@ -631,10 +639,48 @@ local function CheckBox(parent, size)
 	return box
 end
 
-local function SetCheck(box, checked)
+-- Puts a check box's look on, when it changed: the window's own (Box and the
+-- blue mark), or under Blizzard the Settings panel's check box
+-- (st.ThemeArt.Control('checkbox'), box.look) filling the box: box.art, its
+-- box, check and highlight, made the first time.
+local function LookCheckBox(box, blizzard)
+	if (box.blizzard or false) == blizzard then return end
+	box.blizzard = blizzard
+	if blizzard then
+		local look = st.ThemeArt.Control('checkbox')
+		box.look = look
+		if not box.art then
+			box.art = {
+				normal = box:CreateTexture(nil, 'ARTWORK'),
+				check = box:CreateTexture(nil, 'OVERLAY'),
+				highlight = box:CreateTexture(nil, 'HIGHLIGHT'), -- shown by the game under the mouse
+			}
+			for _, texture in pairs(box.art) do texture:SetAllPoints(box) end
+		end
+		box.art.normal:SetAtlas(look.normal)
+		box.art.highlight:SetAtlas(look.highlight)
+		box.art.highlight:SetBlendMode(look.highlightBlend)
+		box.art.normal:Show()
+		box.art.highlight:Show()
+		box:SetBackdrop(nil)
+		box.outline:Hide()
+	else
+		Box(box)
+		box.outline:Show()
+		for _, texture in pairs(box.art) do texture:Hide() end
+	end
+end
+
+local function SetCheck(box, checked, disabled)
 	checked = checked and true or false
 	box:SetChecked(checked)
-	box.mark:SetShown(checked)
+	box.mark:SetShown(checked and not box.blizzard)
+	if box.art then
+		box.art.check:SetShown(checked and box.blizzard or false)
+		if box.blizzard then
+			box.art.check:SetAtlas(disabled and box.look.disabledChecked or box.look.checked)
+		end
+	end
 end
 
 ------------------------------------------------------------------ toggle
@@ -667,9 +713,18 @@ local function define(rowType, methods)
 end
 
 define('toggle', {
+	Bind = function(self, ...)
+		LookCheckBox(self.frame, BlizzardLook())
+		return Base.Bind(self, ...)
+	end,
+
 	Refresh = function(self)
 		self.value = self:Value() and true or false
-		SetCheck(self.frame, self.value)
+		SetCheck(self.frame, self.value, self.disabled)
+	end,
+
+	OnDisabled = function(self, disabled)
+		SetCheck(self.frame, self.frame:GetChecked(), disabled)
 	end,
 })
 
@@ -933,6 +988,7 @@ local function MultiRow(w, i)
 	row:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', 0, -(i - 1) * MULTI_ROW)
 	row:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -(i - 1) * MULTI_ROW)
 	row.box = CheckBox(row, 18)
+	LookCheckBox(row.box, w.blizzard or false)
 	row.box:SetPoint('LEFT', row, 'LEFT', 0, 0)
 	row.box:EnableMouse(false)
 	row.label = NewText(row, 'LEFT')
@@ -949,13 +1005,23 @@ local function MultiRow(w, i)
 end
 
 define('multiselect', {
+	Bind = function(self, ...)
+		self.blizzard = BlizzardLook()
+		for _, row in ipairs(self.rows) do LookCheckBox(row.box, self.blizzard) end
+		return Base.Bind(self, ...)
+	end,
+
+	OnDisabled = function(self, disabled)
+		for _, row in ipairs(self.rows) do SetCheck(row.box, row.checked, disabled) end
+	end,
+
 	Refresh = function(self)
 		local values = OM.Values(self.root, self.row)
 		for i, value in ipairs(values) do
 			local row = MultiRow(self, i)
 			row.key = value.key
 			row.checked = self:Value(value.key) and true or false
-			SetCheck(row.box, row.checked)
+			SetCheck(row.box, row.checked, self.disabled)
 			row.label:SetText(tostring(value.name))
 			row:Show()
 		end
@@ -1105,7 +1171,28 @@ builders.execute = function(w)
 	button:SetScript('OnClick', function() w:Run() end)
 end
 
+-- The execute button's look, when it changed: the window's own (Box), or
+-- under Blizzard Blizzard's panel button (st:ShowPanelButton).
+local function LookExecute(w, blizzard)
+	if (w.blizzard or false) == blizzard then return end
+	w.blizzard = blizzard
+	local button = w.frame
+	if blizzard then
+		button:SetBackdrop(nil)
+		button.outline:Hide()
+	else
+		Box(button, BG)
+		button.outline:Show()
+	end
+	st:ShowPanelButton(button, blizzard)
+end
+
 define('execute', {
+	Bind = function(self, ...)
+		LookExecute(self, BlizzardLook())
+		return Base.Bind(self, ...)
+	end,
+
 	Refresh = function(self)
 		self.text:SetText(self.row.name or '')
 		self.width = max(W.WIDTH.execute, ceil(self.text:GetStringWidth()) + 28)

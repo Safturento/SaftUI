@@ -179,7 +179,7 @@ test("the bags' buttons with a hard-coded look follow the theme as their window 
 	local withdraw = INV:InitializeWithdrawButton(container)
 	local thick = st:ResolveLegacyTemplate('thick')
 	for name, button in pairs({ Deposit = deposit, Withdraw = withdraw }) do
-		eq(drawn(button), 'theme,solid,small', name .. ": Use SaftUI's theme and Solid, as a small frame")
+		eq(drawn(button), 'theme,solid,control', name .. ": Use SaftUI's theme and Solid, as a control")
 		eq(T.inset(button.backdrop), thick.inset, name .. ': the inset thick drew')
 		eq(T.text(select(4, button.backdrop:GetBackdropColor())), T.text(thick.alpha), name .. ': the alpha thick drew')
 	end
@@ -206,7 +206,7 @@ test('a theme switch with the bags open moves every slot and window backdrop to 
 	-- Thick, SaftUI's default: each border 2px around what it frames. A slot's
 	-- backdrop fills the slot, with the icon inside its border.
 	eq(T.around(container.backdrop, container), '-2,2,2,-2', 'the window: Thick, 2px out')
-	eq(T.around(container.search.backdrop, container.search), '-2,2,2,-2', 'its search box too')
+	eq(T.around(st:DrawnFrame(container.search), container.search), '-2,2,2,-2', 'its search box too')
 	for i, slot in ipairs(slots) do
 		eq(T.around(slot.backdrop, slot.icon), '-2,2,2,-2', 'slot ' .. i .. ': Thick, 2px around the icon')
 		eq(T.around(slot.backdrop, slot), '0,0,0,0', 'slot ' .. i .. ': the backdrop fills the slot')
@@ -216,7 +216,7 @@ test('a theme switch with the bags open moves every slot and window backdrop to 
 	st:ThemeChanged()
 	eq(T.around(container.backdrop, container), '-1,1,1,-1', "the window: Thin's 1px, no gap")
 	eq(T.inset(container.backdrop), 1, "drawn with Thin's one line")
-	eq(T.around(container.search.backdrop, container.search), '-1,1,1,-1', 'its search box too')
+	eq(T.around(st:DrawnFrame(container.search), container.search), '-1,1,1,-1', 'its search box too')
 	for i, slot in ipairs(slots) do
 		eq(T.around(slot.backdrop, slot.icon), '-1,1,1,-1', 'slot ' .. i .. ": Thin's 1px around the icon, no gap or overlap")
 		eq(T.around(slot.backdrop, slot), '0,0,0,0', 'slot ' .. i .. ': the backdrop still fills the slot')
@@ -511,7 +511,7 @@ local VISIBLE_GAP = 3
 local VIEWS = { 'onebag', 'multibag', 'compact', 'rows' }
 
 local function check_spacing(container, label)
-	local inset = st:ThemeInset('theme', 'theme', 'small')
+	local inset = st:ThemeInset('theme', 'theme', 'control')
 	local close = st:GetCloseButton(container)
 	for i = 2, #VIEWS do
 		local a, b = container.viewButtons[VIEWS[i - 1]], container.viewButtons[VIEWS[i]]
@@ -526,13 +526,13 @@ test("the view buttons' borders never overlap, under Thick or Thin, and a theme 
 	local container = bags()
 	INV:CreateViewButtons(container)
 	INV:UpdateConfig('bag')
-	eq(st:ThemeInset('theme', 'theme', 'small'), 2, 'Thick is the default')
+	eq(st:ThemeInset('theme', 'theme', 'control'), 2, 'Thick is the default')
 	check_spacing(container, 'Thick')
 	local thickMin = INV:HeaderMinWidth(container)
 
 	st.config.profile.theme.name = 'thin'
 	st:ThemeChanged()
-	eq(st:ThemeInset('theme', 'theme', 'small'), 1, 'Thin')
+	eq(st:ThemeInset('theme', 'theme', 'control'), 1, 'Thin')
 	check_spacing(container, 'Thin')
 
 	-- The least width keeps clear, on the left, the room the buttons really
@@ -550,12 +550,86 @@ test("the view buttons' borders never overlap, under Thick or Thin, and a theme 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('under Blizzard the view buttons keep a visible gap', function()
-	fresh()
+test('the view buttons are controls, and their gaps are 3 and 4 under Blizzard', function()
+	local container = bags()
+	INV:CreateViewButtons(container)
+	INV:UpdateConfig('bag')
+	for _, view in ipairs(VIEWS) do
+		eq(drawn(container.viewButtons[view]), 'theme,theme,control', view .. "'s button draws as a control")
+	end
 	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
 	local between, closeGap = INV:ViewButtonGaps()
-	eq(between, 2 * 1 + 3, "a small frame's inset is 1: the buttons' frames are 2 apart plus the clear room")
-	eq(closeGap, 1 + 1 + 3, "the close button's outline is the inset plus 1 from the first")
+	eq(between, 3, "a control's inset is 0 under Blizzard: the buttons' frames are the clear room apart")
+	eq(closeGap, 4, "the close button's outline 1 more from the first")
+	for _, view in ipairs(VIEWS) do
+		eq(container.viewButtons[view].backdrop.backdropInfo, nil, view .. ': no backdrop of SaftUI\'s under Blizzard')
+	end
+	for i = 2, #VIEWS do
+		local a, b = container.viewButtons[VIEWS[i - 1]], container.viewButtons[VIEWS[i]]
+		eq(b:GetLeft() - a:GetRight(), 3, VIEWS[i - 1] .. ' and ' .. VIEWS[i] .. ' are 3 apart')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The panel button's pieces shown on a button, as 'Left=Up,Middle=Up,Right=Up'
+-- (each piece by its left texture coordinate and the state its file is).
+local PIECE_BY_LEFT = { ['0.00000'] = 'Left', ['0.09375'] = 'Middle', ['0.53125'] = 'Right' }
+local function panel(button)
+	local out = {}
+	for _, region in ipairs({ button:GetRegions() }) do
+		local file = region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAlpha() > 0 and region:GetTexture()
+		local state = type(file) == 'string' and file:match('^Interface\\Buttons\\UI%-Panel%-Button%-(%a+)$')
+		if state and state ~= 'Highlight' then
+			out[#out + 1] = (PIECE_BY_LEFT[('%.5f'):format((region:GetTexCoord()))] or '?') .. '=' .. state
+		end
+	end
+	table.sort(out)
+	return table.concat(out, ',')
+end
+
+test('the Edit toggle is a panel button, pressed while checked', function()
+	-- INV:CreateContainer makes it (container.lua), from Blizzard templates the
+	-- stubs lack, so its call is read from the source and made here the same
+	-- way, on the bag window's header. UICheckButtonTemplate stands in as a
+	-- check button with its Text.
+	local source = read_saftui_source('SaftUI-Bags/container.lua')
+	check(source:find("local filterButton = st:CreateCheckButton(nil, container.header, 'button')", 1, true) ~= nil,
+		"container.lua makes the Edit toggle styled 'button'")
+	local container = bags()
+	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
+	local createFrame = CreateFrame
+	_G.CreateFrame = function(frameType, name, parent, template, ...)
+		local rest = tostring(template or ''):gsub(',?UICheckButtonTemplate', '')
+		local frame = createFrame(frameType, name, parent, rest ~= '' and rest or nil, ...)
+		if template and template:find('UICheckButtonTemplate', 1, true) then
+			frame.Text = frame:CreateFontString(name and name .. 'Text', 'ARTWORK')
+		end
+		return frame
+	end
+	local edit = st:CreateCheckButton(nil, container.header, 'button')
+	_G.CreateFrame = createFrame
+	edit:SetSize(40, 20)
+	edit.text:SetAllPoints(edit)
+	edit:SetFont('pixel')
+	edit:SetText('Edit')
+
+	eq(panel(edit), '', 'Thick: no panel button')
+	eq(edit:GetCheckedTexture():GetAlpha(), 1, "Thick: SaftUI's flat check")
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	stub.fire_script(edit, 'OnSizeChanged', 40, 20)
+	eq(panel(edit), 'Left=Up,Middle=Up,Right=Up', "Blizzard: Blizzard's panel button")
+	eq(edit:GetCheckedTexture():GetAlpha(), 0, 'its flat check hidden')
+	edit:SetChecked(true)
+	eq(panel(edit), 'Left=Down,Middle=Down,Right=Down', 'checked: pressed')
+	edit:SetChecked(false)
+	eq(panel(edit), 'Left=Up,Middle=Up,Right=Up', 'unchecked: up')
+	st.config.profile.theme.name = 'thick'
+	st:ThemeChanged()
+	eq(panel(edit), '', 'Thick again: no panel button')
+	eq(edit:GetCheckedTexture():GetAlpha(), 1, 'its flat check again')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ the bank's bag slots

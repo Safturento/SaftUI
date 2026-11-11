@@ -55,8 +55,7 @@ function INV.CreateCurrencySlot(category)
     slot.CountBG:SetAlpha(0.6)
     slot.CountBG:SetVertexColor(0,0,0)
 
-    slot.filterCheckbox = st:CreateCheckButton(nil, slot)
-    st:SetBackdrop(slot.filterCheckbox, 'none', 'theme', 'small')
+    slot.filterCheckbox = st:CreateCheckButton(nil, slot, 'bare')
     slot.filterCheckbox:Hide()
     slot.filterCheckbox:SetAllPoints(slot)
     slot.filterCheckbox:GetCheckedTexture():SetVertexColor(0, 0, 0, .6)
@@ -159,7 +158,7 @@ function INV:InitializeCurrencyCategory()
         self.config.filters.currencies = {}
     end
 
-    local filterButton = st:CreateCheckButton(nil, category.header)
+    local filterButton = st:CreateCheckButton(nil, category.header, 'button')
     category.header.filterButton = filterButton
     filterButton:SetPoint('BOTTOMRIGHT')
     local size = min(20, category.header:GetHeight())

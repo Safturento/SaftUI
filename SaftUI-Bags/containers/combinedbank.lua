@@ -33,8 +33,7 @@ function INV:InitializeBankCategorySelection()
 		background = self.config.background,
 		onClick = function(button) BankFrame:SetTab(button.config.bankId) end,
 		postCreate = function(button)
-			local visibility = st:CreateCheckButton(button:GetName()..'VisibilityCheckbox', button)
-			st:SetBackdrop(visibility, 'none', 'theme', 'small')
+			local visibility = st:CreateCheckButton(button:GetName()..'VisibilityCheckbox', button, 'bare')
 			visibility:SetPoint('RIGHT', button, 'RIGHT', -6, 0)
 			visibility:SetSize(16, 8)
 			visibility:SetChecked(true)

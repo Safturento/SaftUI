@@ -156,7 +156,7 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 ### 2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames
 
 **What:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`) writes Lua fields onto Blizzard's chat frames and replaces their scripts, which `.agents/taint.md` rules 1 and 2 forbid:
-- `st:SetBackdrop` on each `ChatFrameN` (~73, ~128), and `st:SkinEditBox` / `st:StyleEditBox` on its edit box (~103, ~156), write `.backdrop` and `.thick` onto both.
+- `st:SetBackdrop` on each `ChatFrameN` (~73, ~128) writes `.backdrop` and `.thick` onto it. Its edit box no longer gets them: since the Blizzard theme's Task 8 (2026-11-11), `st:SkinEditBox` / `st:StyleEditBox` draw through `st:SetBackdropIn` with a table of their own, and conceal the box's border textures by alpha instead of `st:Kill`.
 - `frame.EditBox`, `frame.EditBox.Header` and `.HeaderSuffix` (~96-98), `frame.Tab` (~113), and `frame.Tab.SetAlpha = UIFrameFadeRemoveFrame` (~121, when tab fading is off) are written onto Blizzard's frames.
 - `frame:SetScript('OnMouseWheel', onMouseScroll)` on `ChatFrameN` (~85), and `SetScript('OnShow')` / `SetScript('OnHide')` on its edit box (~107-108, hiding and showing `GeneralDockManager`), replace Blizzard's handlers.
 
@@ -168,7 +168,7 @@ Since Themes there's also a new trigger for one of these writes. `st:RedrawTheme
 
 **What's been considered:**
 - Draw the chat frames and edit boxes with `st:SetBackdropIn(backdrops, frame, ...)`, and keep the backdrop, edit box, header and tab references in weak side tables keyed by the chat frame. Everything that reads `frame.backdrop` (the retail scroll bar's anchors, the edit box's anchors, `UpdateChatFrameDisplay`'s padding) reads the side table instead.
-- `st:SkinEditBox` writes `.backdrop` through `st:SetBackdrop`. Blizzard's boxes need a form that draws through `st:SetBackdropIn` (a caller-supplied table); the bags' search boxes are SaftUI's and can keep the field.
+- Done for the edit boxes (2026-11-11): `st:SkinEditBox` draws through `st:SetBackdropIn`, for every box.
 - Replace the `SetScript`s with post-hooks (native `HookScript`). Check whether `onMouseScroll` (Ctrl to the bottom, Shift a page, Alt a line, else several lines) can run after Blizzard's own wheel handler without scrolling twice. Replace the `Tab.SetAlpha` override with a post-hook that puts alpha 1 back after Blizzard's fade.
 - The aura buttons are the same pattern on Blizzard's frames, but `.agents/taint.md` rule 11 limits what can be anchored there, so they're a separate step.
 
@@ -195,7 +195,7 @@ Each new Hekili button or WeakAuras icon then errors. The error comes before `sk
 ### 2026-11-10 — Edit box focus borders lost on a theme switch, and two ways of keeping colors
 
 **What:**
-- A focused chat or bag search box loses its white focus border on a theme switch, and on a profile switch, copy or reset. `Config:UpdateConfig` runs `st:RedrawThemed`, whose last step puts the colors kept with `st:KeepOwnColors` back on (the box's white, `ColorFocused`). Then it runs every module's `UpdateConfig`, and Chat and Bags restyle their boxes (`st:StyleEditBox`, which draws with `st:SetBackdrop`), painting the theme's border over the white. Nothing puts it back: `st:ColorsChanged('theme')`, which ends the update, calls modules' `OnColorsChanged` but not the kept colors.
+- A focused chat or bag search box loses its white focus border on a theme switch, and on a profile switch, copy or reset. `Config:UpdateConfig` runs `st:RedrawThemed`, whose last step puts the colors kept with `st:KeepOwnColors` back on (the box's white, `ColorFocused`). Then it runs every module's `UpdateConfig`, and Chat and Bags restyle their boxes (`st:StyleEditBox`, which draws the box's backdrop again), painting the theme's border over the white. Nothing puts it back: `st:ColorsChanged('theme')`, which ends the update, calls modules' `OnColorsChanged` but not the kept colors.
 - Colors a frame's own code puts on its backdrop are kept two ways. Modules use `OnColorsChanged('theme')`: edit mode's movers (`EM:OnColorsChanged`), and Bags, ActionBars, Loot's feed, Tooltip, the totem bar and Skinning's skins. Core's widgets and the unit frames' aura buttons register with `st:KeepOwnColors`. They run at different points of a profile update, which is what lets the first problem through. Unify them.
 
 **Why noticed:** The Themes project's reviews (2026-11-10). Task 3's review found the focused box losing its border (deferred as minor), and the final review asked for the two mechanisms to become one. `st:KeepOwnColors` came out of ruling R8, which had Core's widgets keep their own colors "as the movers do", without a module to hang `OnColorsChanged` on.

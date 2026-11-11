@@ -248,11 +248,16 @@ ThemeArt.ART = {
 	},
 
 	-- Every check box, as the Settings panel's (MinimalCheckboxArtTemplate): the
-	-- box, the check while checked, and the check while checked and disabled.
+	-- box, the check while checked, the check while checked and disabled, and
+	-- the highlight, the box's own art again, additive. The box is 26 of the
+	-- art's 30 wide and 25 of its 29 tall, with 2 clear all round, so the art
+	-- drawn 1px outside SaftUI's 12px check box shows its box at 12.
 	checkbox = {
 		normal = Atlas('checkbox-minimal'),
 		checked = Atlas('checkmark-minimal'),
 		disabledChecked = Atlas('checkmark-minimal-disabled'),
+		highlight = Atlas('checkbox-minimal'),
+		highlightBlend = 'ADD',
 	},
 
 	-- A radio group's buttons, as Blizzard's top tabs (PanelTabButtonTemplate):

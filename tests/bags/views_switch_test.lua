@@ -100,14 +100,14 @@ test('each window has the four view buttons in order left of the close button, w
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a button draws its icon from plain textures and its border in the theme as a small kind', function()
+test('a button draws its icon from plain textures and its border in the theme as a control', function()
 	local container = world()
 	local drawn = T.watch()
 	-- A new window is drawn through the same call.
 	local fresh = window('bank')
 	for _, view in ipairs(VIEWS) do
 		local button = fresh.viewButtons[view]
-		eq(drawn(button), 'theme,theme,small', view .. ': SetBackdrop(button, theme, theme, small)')
+		eq(drawn(button), 'theme,theme,control', view .. ': SetBackdrop(button, theme, theme, control)')
 		check(button.backdrop ~= nil, view .. ': bordered')
 		local textures = 0
 		for _, region in ipairs({ button:GetRegions() }) do

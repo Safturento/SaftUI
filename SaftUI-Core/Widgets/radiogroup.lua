@@ -16,7 +16,13 @@ local st = SaftUI
         ]
     }
 ]]--
--- The picked button's blue border. Kept through a theme recolor.
+-- The buttons draw as controls. Under the Blizzard theme they're Blizzard's
+-- top tabs (st:SetButtonTab), the picked one active, with no border of
+-- SaftUI's to color; under Thick and Thin, SaftUI's buttons, the picked one
+-- with a blue border.
+
+-- The picked button's blue border. Kept through a theme recolor; a control's
+-- border under Blizzard is left alone (st:SetBorderColor).
 local function ColorPicked(button)
     st:SetBorderColor(button.backdrop, st.config.profile.colors.button.blue:GetRGB())
 end
@@ -34,14 +40,17 @@ function st:CreateRadioGroup(name, parent, options)
     for i, item in pairs(options.items) do
         local button = st:CreateButton(name..'Button'..i, parent, item.label, options.theme, options.background)
         button:SetSize(options.buttonWidth, options.buttonHeight)
+        st:SetButtonTab(button, false)
         button.config = item --store button config for use in callbacks
         button:SetScript('OnClick', function(self, mouseButton, down)
             for _, _button in pairs(radioGroup.buttons) do
-				st:SetBackdrop(_button, options.theme or 'theme', options.background or 'solid', 'small')
+				st:SetBackdrop(_button, options.theme or 'theme', options.background or 'solid', 'control')
 				st:KeepOwnColors(_button, nil)
+				st:SetButtonTab(_button, false)
 			end
 			ColorPicked(self)
 			st:KeepOwnColors(self, ColorPicked)
+			st:SetButtonTab(self, true)
 
             -- global click handler
             if options.onClick then
