@@ -255,6 +255,10 @@ test("the line takes the place of Blizzard's PvP line, which stays unseen", func
 	check(line and line.rel == ZoneTextString and line.relPoint == 'BOTTOM', 'the line sits where it was, under the zone name')
 	local sub = H.pt(SubZoneTextString, 'TOP')
 	check(sub and sub.rel == ZT.ZoneLineString and sub.relPoint == 'BOTTOM', 'the subzone name goes under the line')
+	-- The line and the subzone name are both subtitle text, whose height leaves
+	-- them touching: a gap parts them, as the zone name's taller font parts it
+	-- from the line above.
+	eq(sub.x .. ',' .. sub.y, '0,-6', '6 below it')
 	eq(SubZoneTextString:GetNumPoints(), 1, 'with one anchor')
 	eq(ZT.ZoneLineString:GetParent(), ZoneTextFrame, 'the line fades with the zone name')
 end)
@@ -264,6 +268,7 @@ test('with no line, or no zone name shown, the subzone name goes under the zone 
 	H.enter('The Stockade', 'Cell Block')
 	local sub = H.pt(SubZoneTextString, 'TOP')
 	check(sub and sub.rel == ZoneTextString and sub.relPoint == 'BOTTOM', 'an empty line leaves no gap')
+	eq(sub.x .. ',' .. sub.y, '0,0', 'right under the zone name, as Blizzard has it')
 
 	place(1434, 'contested')
 	H.enter('Stranglethorn Vale')
@@ -273,6 +278,7 @@ test('with no line, or no zone name shown, the subzone name goes under the zone 
 	eq(SubZoneTextString:GetText(), 'Booty Bay', 'the subzone shows alone')
 	sub = H.pt(SubZoneTextString, 'TOP')
 	check(sub and sub.rel == ZoneTextString and sub.relPoint == 'BOTTOM', 'under the zone name, as Blizzard has it')
+	eq(sub.x .. ',' .. sub.y, '0,0', 'with no gap')
 	eq(ZT.DifficultyTextString:GetText(), '', 'and no difficulty outside an instance')
 end)
 

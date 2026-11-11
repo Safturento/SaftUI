@@ -161,15 +161,22 @@ function ZT:ZoneLine()
 	return levels or faction or ''
 end
 
--- Sets the line, and puts the subzone name under it while the zone name shows.
--- Blizzard puts the subzone name under its own PvP line, which SaftUI's
--- replaces, or under the zone name; this runs after it, each time.
+-- The line and the subzone name are both subtitle text, whose height leaves
+-- them touching; the zone name's taller font leaves room above the line.
+local LINE_GAP = 6
+
+-- Sets the line, and puts the subzone name under it, LINE_GAP below, while
+-- the zone name shows. Blizzard puts the subzone name under its own PvP line,
+-- which SaftUI's replaces, or under the zone name; this runs after it, each time.
 function ZT:UpdateZoneLine()
 	local line = self:ZoneLine()
 	self.ZoneLineString:SetTextColor(st.config.profile.colors.text.normal:GetRGB())
 	self.ZoneLineString:SetText(line)
-	local above = (line ~= '' and ZoneTextFrame:IsShown()) and self.ZoneLineString or ZoneTextString
-	SubZoneTextString:SetPoint('TOP', above, 'BOTTOM', 0, 0)
+	if line ~= '' and ZoneTextFrame:IsShown() then
+		SubZoneTextString:SetPoint('TOP', self.ZoneLineString, 'BOTTOM', 0, -LINE_GAP)
+	else
+		SubZoneTextString:SetPoint('TOP', ZoneTextString, 'BOTTOM', 0, 0)
+	end
 end
 
 -- The lines either side of the zone name show only while it has a name to
