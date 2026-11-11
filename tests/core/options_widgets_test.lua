@@ -2196,7 +2196,7 @@ test("a select is the Settings dropdown: its face follows the mouse, a press and
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	local button = w.frame
 	eq(button.text, w.text, "the text is the button's")
-	-- The text's left and right, in from the face (the button's rect: no steppers).
+	-- The text's left and right, from the button's sides.
 	local function insets_of_text()
 		return px(w.text:GetLeft() - button:GetLeft()) .. ',' .. px(button:GetRight() - w.text:GetRight())
 	end
@@ -2212,9 +2212,10 @@ test("a select is the Settings dropdown: its face follows the mouse, a press and
 	eq(atlases_of(button), 'common-dropdown-c-button', 'the face; no caret, no hover arrow yet')
 	local face = atlas_exact(button, 'common-dropdown-c-button')
 	eq(face:GetDrawLayer(), 'BACKGROUND', 'under the text')
-	eq(around(face, button), '-7,7,7,-7', 'a 7px glow round the button')
+	-- Its choices fit the stepped face (W.StepperRoom), so the face sits between the steppers.
+	eq(around(face, button), '24,7,-23,-7', 'a 7px glow round the face, from 31 to 140')
 	eq(w.text:GetJustifyH(), 'CENTER', 'the text centred')
-	eq(insets_of_text(), '13,13', 'in 13 from the face')
+	eq(insets_of_text(), '44,43', 'in 13 from the face')
 	local x0, y0 = w.text:GetCenter()
 	local function text_offset()
 		local x, y = w.text:GetCenter()
@@ -2266,6 +2267,304 @@ test("a select is the Settings dropdown: its face follows the mouse, a press and
 	eq(insets_of_text(), '8,22', 'Thick again: the text where it was')
 	eq(w.text:GetJustifyH(), 'LEFT', 'Thick again: from the left')
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A stepper's texture in layer: its Background (BACKGROUND) or its Icon (ARTWORK).
+local function stepper_piece(stepper, layer)
+	for _, region in ipairs({ stepper:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:GetDrawLayer() == layer then return region end
+	end
+end
+local function background(stepper) return stepper_piece(stepper, 'BACKGROUND') end
+local function icon(stepper) return stepper_piece(stepper, 'ARTWORK') end
+local function icon_of(stepper) return icon(stepper):GetAtlas() end
+
+-- A select's face, and its hover arrow's left from the button's (shown or not).
+local function face_of(w) return atlas_piece(w.frame, 'common-dropdown-c-button') end
+local function arrow_left(w)
+	for _, region in ipairs({ w.frame:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:GetAtlas() == 'common-dropdown-c-button-hover-arrow' then
+			return tonumber(px(region:GetLeft() - w.frame:GetLeft()))
+		end
+	end
+end
+
+-- The text's left and right, from the select's sides.
+local function text_insets(w)
+	return px(w.text:GetLeft() - w.frame:GetLeft()) .. ',' .. px(w.frame:GetRight() - w.text:GetRight())
+end
+
+local function hit_rect(frame) return table.concat({ frame:GetHitRectInsets() }, ',') end
+
+test('under Blizzard a select whose choices fit has steppers inside its 170, the face between them', function()
+	theme('thick')
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, get = function() return 'b' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	local names = { [button] = 'frame', [w.back] = 'back', [w.next] = 'next' }
+	eq(w.back:GetObjectType() .. ',' .. w.next:GetObjectType(), 'Button,Button')
+	check(w.back:GetParent() == button and w.next:GetParent() == button, "the steppers are the select's own")
+	check(not w.back:IsShown() and not w.next:IsShown(), 'Thick: no steppers')
+	eq(hit_rect(button), '0,0,0,0', 'Thick: the whole box opens the list')
+
+	theme('blizzard'); rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'its choices fit: steppers')
+	eq(size_of(button), '170x24', 'the select keeps its size'); eq(w:GetWidth(), 170)
+	eq(size_of(w.back), '26x24'); eq(anchor(w.back, names), 'LEFT frame LEFT 0,0')
+	eq(size_of(w.next), '26x24'); eq(anchor(w.next, names), 'RIGHT frame RIGHT 0,0')
+	local face = face_of(w)
+	eq(around(face, button), '24,7,-23,-7', 'the face from 31 to 140')
+	eq(arrow_left(w), 79, 'the hover arrow under the face, centred')
+	eq(text_insets(w), '44,43', 'the text 13 in from the face')
+	eq(hit_rect(button), '31,30,0,0', 'only the face opens the list, as only it lights')
+	for _, stepper in ipairs({ w.back, w.next }) do
+		local name = names[stepper]
+		eq(background(stepper):GetAtlas(), 'common-dropdown-c-button', name .. ': the button art')
+		eq(around(background(stepper), stepper), '-7,7,7,-7', name .. ': its glow round it')
+		eq(size_of(icon(stepper)), '17x17', name .. ': the icon')
+		eq(anchor(icon(stepper), names), 'TOPLEFT ' .. name .. ' TOPLEFT 4,-3', name .. ': the icon at 4,-3')
+		check(stepper:IsEnabled(), name .. ': at b, both have a choice to step to')
+	end
+	eq(icon_of(w.back), 'common-dropdown-icon-back')
+	eq(icon_of(w.next), 'common-dropdown-icon-next')
+
+	-- Its states follow the mouse, as the face's do.
+	stub.fire_script(w.next, 'OnEnter')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-hover-2', 'under the mouse')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the face stays unlit')
+	stub.fire_script(w.next, 'OnMouseDown', 'LeftButton')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-pressedhover-2', 'pressed under the mouse')
+	eq(anchor(icon(w.next), names), 'TOPLEFT next TOPLEFT 6,-4', 'the icon pressed in 2,-1')
+	stub.fire_script(w.next, 'OnLeave')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-pressed-2', 'held, the mouse gone')
+	stub.fire_script(w.next, 'OnMouseUp', 'LeftButton')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'let go')
+	eq(anchor(icon(w.next), names), 'TOPLEFT next TOPLEFT 4,-3', 'the icon back')
+
+	theme('thick'); rebind(w)
+	check(not w.back:IsShown() and not w.next:IsShown(), 'Thick again: no steppers')
+	eq(hit_rect(button), '0,0,0,0', 'Thick again: the whole box')
+	eq(text_insets(w), '8,22', 'Thick again: the text where it was')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a select gets steppers only when its longest choice fits the stepped face; otherwise the Settings face at the full 170', function()
+	eq(W.StepperRoom(), 83, '170 less the steppers and their gaps (31 and 30), less the text insets (13 each)')
+	theme('thick')
+	local values = { a = 'A', b = 'B' }
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() return values end, get = function() return 'b' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	local char = select(2, W.GetFont():GetFont()) / 2 -- the stub's character: half the font's size wide
+	local fits = string.rep('m', math.floor(83 / char))
+	values = { a = fits, b = 'B' }; theme('blizzard'); rebind(w)
+	check(w:StepsFit(), 'fits')
+	check(w.back:IsShown() and w.next:IsShown(), 'the longest choice fits: steppers')
+	values = { a = fits .. 'm', b = 'B' }; rebind(w)
+	check(not w:StepsFit(), "doesn't fit")
+	check(not w.back:IsShown() and not w.next:IsShown(), 'one character more: none')
+	eq(around(face_of(w), button), '-7,7,7,-7', 'the face at the full 170')
+	eq(arrow_left(w), 79, 'the hover arrow centred on it')
+	eq(text_insets(w), '13,13', 'the text 13 in from the full face')
+	eq(hit_rect(button), '0,0,0,0', 'the whole face opens the list')
+	values = { theme = "Use SaftUI's theme", thick = 'Thick', blizzard = 'Blizzard' }; rebind(w)
+	check(not w.back:IsShown(), "a Theme select's choices don't fit")
+	values = {}; rebind(w)
+	check(w:StepsFit(), 'no choices: nothing to cut')
+	w:Release()
+
+	-- A font list's choices are measured as the face draws them: each name in its own face.
+	local fonts = { ['Alpha'] = [[Interface\AddOns\X\Alpha.ttf]], ['Beta'] = [[Interface\AddOns\X\Beta.ttf]] }
+	local f = bind('select', 'font', opt('select', 'Font', {
+		dialogControl = 'LSM30_Font', values = function() return fonts end,
+		get = function() return 'Beta' end, set = function() end,
+	}))
+	check(f.back:IsShown(), 'short font names fit')
+	fonts[fits .. 'm'] = [[Interface\AddOns\X\Long.ttf]]; rebind(f)
+	check(not f.back:IsShown(), 'a long font name does not')
+	f:Release()
+	theme('thick')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a stepper picks the next or previous choice through the same path as a pick, and stops at the ends', function()
+	theme('blizzard')
+	local stored, validated, sets = 'b', 0, 0
+	local valid, asks = true, false
+	local w, told = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' },
+		get = function() return stored end,
+		validate = function() validated = validated + 1; return valid or 'Not that one' end,
+		confirm = function() return asks and 'Sure?' or false end,
+		set = function(_, v) sets = sets + 1; stored = v end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+
+	-- A pick from the list, for the path a step takes.
+	click(w.frame)
+	click(W.GetListFrames().rows[3])
+	eq(stored, 'c', 'the list picks c')
+	local pick = { validated = validated, sets = sets, told = told.n }
+	stored, validated, sets, told.n = 'b', 0, 0, 0
+	rebind(w)
+
+	click(w.next)
+	eq(stored, 'c', 'next picks the next choice'); eq(sets, 1, 'set once')
+	eq(validated, pick.validated, 'validated as a pick is')
+	eq(told.n, pick.told, 'the window told as for a pick'); eq(told.ok, true)
+	eq(text_of(w.text), 'C', 'and the face shows it')
+	check(not w.next:IsEnabled(), 'at the last choice, next is disabled')
+	eq(icon_of(w.next), 'common-dropdown-icon-next-disabled')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-disabled')
+	check(w.back:IsEnabled(), 'back is not')
+	w:Step(1) -- the game sends a disabled button no click; a step past the end does nothing
+	eq(stored, 'c', 'no wrap past the end'); eq(sets, 1)
+	click(w.back); click(w.back)
+	eq(stored, 'a', 'back twice: a')
+	check(not w.back:IsEnabled(), 'at the first choice, back is disabled')
+	eq(icon_of(w.back), 'common-dropdown-icon-back-disabled')
+	eq(background(w.back):GetAtlas(), 'common-dropdown-c-button-disabled')
+	check(w.next:IsEnabled(), 'next is enabled again'); eq(icon_of(w.next), 'common-dropdown-icon-next')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'and unlit')
+	w:Step(-1)
+	eq(stored, 'a', 'no wrap past the start')
+
+	-- A validate that fails: nothing set, the window told why.
+	valid, sets, told.n = false, 0, 0
+	click(w.next)
+	eq(stored, 'a', 'a failed validate sets nothing'); eq(sets, 0)
+	eq(told.n, 1); eq(told.ok, false); eq(told.err, 'Not that one', 'onChanged(false, message)')
+	eq(text_of(w.text), 'A', 'the face still shows A')
+	valid = true
+
+	-- A confirm asks first: No sets nothing, Yes sets.
+	asks = true
+	click(w.next)
+	eq(W.ConfirmText(), 'Sure?', 'W.Confirm asks first')
+	eq(stored, 'a', 'nothing set while it asks')
+	no()
+	eq(stored, 'a', 'No sets nothing'); eq(sets, 0)
+	click(w.next)
+	yes()
+	eq(stored, 'b', 'Yes sets the next choice')
+	asks = false
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('stepper edge cases', function()
+	theme('blizzard')
+	local stored = 'gone'
+	local function store(_, v) stored = v end
+
+	-- A stored value not among the values: back disabled, next picks the first.
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return stored end, set = store,
+	}))
+	check(w.back:IsShown(), 'steppers')
+	check(not w.back:IsEnabled(), 'no choice: back disabled')
+	check(w.next:IsEnabled(), 'no choice: next enabled')
+	local back, nextKey = w:StepTargets()
+	eq(back, nil, 'no choice to step back to'); eq(nextKey, 'a', 'the first is next')
+	click(w.next)
+	eq(stored, 'a', 'next picks the first')
+	w:Release()
+
+	-- One value: both disabled.
+	stored = 'only'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { only = 'Only' }, get = function() return stored end, set = store,
+	}))
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'one value: both disabled')
+	w:Step(-1); w:Step(1)
+	eq(stored, 'only', 'nothing to step to')
+	w:Release()
+
+	-- No values: both disabled.
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = {}, get = function() return nil end, set = store,
+	}))
+	check(w.back:IsShown(), 'no choices: steppers')
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'no choices: both disabled')
+	w:Release()
+
+	-- Disabled: both disabled; enabled again, as the value says.
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, get = function() return stored end, set = store,
+	}))
+	w:SetDisabled(true)
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'a disabled select: both disabled')
+	eq(icon_of(w.back), 'common-dropdown-icon-back-disabled'); eq(icon_of(w.next), 'common-dropdown-icon-next-disabled')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-disabled')
+	w:Step(1)
+	eq(stored, 'b', 'a disabled select does not step')
+	w:SetDisabled(false)
+	check(w.back:IsEnabled() and w.next:IsEnabled(), 'enabled again: at b both')
+	eq(icon_of(w.next), 'common-dropdown-icon-next')
+	stored = 'c'; rebind(w)
+	check(w.back:IsEnabled() and not w.next:IsEnabled(), 'at c: back only')
+	w:Release()
+
+	-- A disabled row: both disabled from the bind.
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, disabled = true, get = function() return stored end, set = store,
+	}))
+	check(w:IsDisabled(), 'the row is disabled')
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'a disabled row: both disabled')
+	w:Release()
+
+	-- A values function that changes between clicks: the order read at the click.
+	local values = { a = 'A', b = 'B', c = 'C' }
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() return values end, get = function() return stored end, set = store,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	values = { b = 'B', z = 'Z' }
+	click(w.next)
+	eq(stored, 'z', "next is b's next in the order read at the click")
+	values = { b = 'B', m = 'M', z = 'Z' }
+	click(w.back)
+	eq(stored, 'm', 'and back')
+
+	-- A values function whose longest label grows past the room: steppers at
+	-- one bind, none at the next, and back when it shrinks.
+	local long = string.rep('m', math.floor(W.StepperRoom() / (select(2, W.GetFont():GetFont()) / 2)) + 1)
+	values = { a = 'A', m = 'M' }; rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'short: steppers')
+	values = { a = 'A', m = long }; rebind(w)
+	check(not w.back:IsShown() and not w.next:IsShown(), 'grown past the room: none')
+	eq(around(face_of(w), w.frame), '-7,7,7,-7', 'the face at the full width')
+	values = { a = 'A', m = 'M' }; rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'shrunk again: steppers')
+	eq(around(face_of(w), w.frame), '24,7,-23,-7', 'the face between them')
+
+	-- A stepper disabled under the mouse hears no OnLeave (the game sends a
+	-- disabled button none): enabled again, it's lit only if the mouse is on it.
+	stub.cursor_x, stub.cursor_y = 0, 0
+	stored = 'a'; rebind(w)
+	stub.fire_script(w.next, 'OnEnter')
+	click(w.next)
+	eq(stored, 'm'); check(not w.next:IsEnabled(), 'next disabled under the mouse')
+	stored = 'a'; rebind(w)
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'enabled again with the mouse elsewhere: unlit')
+	local x, y = w.next:GetCenter()
+	local scale = UIParent:GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = x * scale, y * scale
+	stored = 'm'; rebind(w)
+	stored = 'a'; rebind(w)
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-hover-2', 'enabled again under the mouse: lit')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	w:Release()
+	theme('thick')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

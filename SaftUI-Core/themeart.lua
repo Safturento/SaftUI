@@ -296,7 +296,10 @@ ThemeArt.ART = {
 	-- down. Its list (MenuStyle2Mixin): c-bg, its border and shadow, at
 	-- listOutsets round the list (TOPLEFT x, y, BOTTOMRIGHT x, y), the rows
 	-- listInsets in from it (left, top, right, bottom), a row under the mouse
-	-- on rowHover.
+	-- on rowHover. Its steppers (DropdownWithSteppersTemplate's, on
+	-- WowStyle2IconButtonTemplate's art): each width wide, back backGap left of
+	-- the face and next nextGap right of it, a background in each state and
+	-- the back or next icon (its disabled one while disabled), icon square.
 	dropdown = {
 		face = {
 			normal = Atlas('common-dropdown-c-button'),
@@ -313,6 +316,19 @@ ThemeArt.ART = {
 		listOutsets = { -17, 12, 17, -22 },
 		listInsets = { 3, 6, 3, 7 },
 		rowHover = Atlas('common-dropdown-customize-mouseover'),
+		stepper = {
+			width = 26, backGap = 5, nextGap = 4,
+			background = {
+				normal = Atlas('common-dropdown-c-button'),
+				hover = Atlas('common-dropdown-c-button-hover-2'),
+				pressed = Atlas('common-dropdown-c-button-pressed-2'),
+				pressedhover = Atlas('common-dropdown-c-button-pressedhover-2'),
+				disabled = Atlas('common-dropdown-c-button-disabled'),
+			},
+			back = Atlas('common-dropdown-icon-back'), backDisabled = Atlas('common-dropdown-icon-back-disabled'),
+			next = Atlas('common-dropdown-icon-next'), nextDisabled = Atlas('common-dropdown-icon-next-disabled'),
+			icon = 17,
+		},
 	},
 
 	-- The slider (MinimalSliderTemplate): the track's ends and its middle,

@@ -163,7 +163,9 @@ W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 	    (WowStyle2), its face following the button (under the mouse,
 	    pressed, its list open, disabled), its glow spilling 7 outside the
 	    button (4 on the position block's, a compact one); the list on the
-	    Settings menu's own border and background (c-bg), in place of Box;
+	    Settings menu's own border and background (c-bg), in place of Box. A
+	    select has Blizzard's steppers either side of its face where its
+	    choices fit (the select's section); the compact ones have none;
 	  - a range: Blizzard's minimal slider. Its value box, an input, the
 	    position block's boxes and W.Prompt's box: InputBoxTemplate's art;
 	  - a color: Blizzard's swatch. A keybinding: Blizzard's binding button,
@@ -178,8 +180,9 @@ W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 	Background, as the theme draws a small frame. Under Thick and Thin every
 	control keeps Box, exactly as before. Every piece is a texture of SaftUI's
 	on a frame of SaftUI's, drawn inside the control's own rect (but the
-	dropdown's glow, and the list's c-bg round the list), so no cell or
-	widget moves or changes size. Each look is put on only when it changed.
+	dropdown's glow and its steppers', which reach no further, and the list's
+	c-bg round the list), so no cell or widget moves or changes size. Each
+	look is put on only when it changed.
 	A custom type (W.Define) draws its own frames and keeps the look it gives
 	them (the bags' Categories list and the rule editor's boxes keep Box under
 	Blizzard too); only what it borrows from here follows the theme: the list
@@ -1418,6 +1421,148 @@ local function Caret(parent)
 	return carets
 end
 
+--[[
+	Under Blizzard a select whose choices fit has Blizzard's steppers
+	(DropdownWithSteppersTemplate): back over its left end and next over its
+	right, the face between them (button.faceLeft and faceRight, the steppers
+	and their gaps), so the select keeps its 170. A click on one picks the
+	previous or next choice in the list's order, as a pick from the list does
+	(Commit); one with no choice that way (an end, or a disabled select) is
+	disabled, so nothing wraps. The choices fit when the longest's label, in
+	the face's font, is at most W.StepperRoom() wide; else the face spans the
+	whole select and there are none. That's read at each bind, so they come
+	and go as the choices change. Under Thick and Thin there are none.
+]]
+
+-- Where a stepper's icon sits from its top left (WowStyle2IconButtonTemplate).
+local STEPPER_ICON_X, STEPPER_ICON_Y = 4, -3
+
+-- The stepped face's room for its text: the select less the steppers and
+-- their gaps, less the text's inset at each side.
+function W.StepperRoom()
+	local look = st.ThemeArt.Control('dropdown')
+	local steps = look.stepper
+	return W.WIDTH.select - (steps.width + steps.backGap) - (steps.width + steps.nextGap) - 2 * look.textInset
+end
+
+-- A stepper's art in its state, as the face's (PaintFace): disabled, held
+-- down under the mouse (pressedhover), under the mouse, held down off it,
+-- else normal. Its icon is the disabled one while disabled, and sits
+-- pressedOffset further while an enabled one is held down. Nothing until its
+-- select first wears the steppers (PlaceStepper).
+local function PaintStepper(stepper)
+	local art = arts[stepper]
+	local look = art.look
+	if not look then return end
+	local steps, enabled = look.stepper, stepper:IsEnabled()
+	local state = 'normal'
+	if not enabled then
+		state = 'disabled'
+	elseif art.down and art.over then
+		state = 'pressedhover'
+	elseif art.over then
+		state = 'hover'
+	elseif art.down then
+		state = 'pressed'
+	end
+	art.pieces.Background:SetAtlas(steps.background[state])
+	local icon = art.pieces.Icon
+	if art.direction < 0 then
+		icon:SetAtlas(enabled and steps.back or steps.backDisabled)
+	else
+		icon:SetAtlas(enabled and steps.next or steps.nextDisabled)
+	end
+	local x, y = STEPPER_ICON_X, STEPPER_ICON_Y
+	if enabled and art.down then x, y = x + look.pressedOffset[1], y + look.pressedOffset[2] end
+	icon:ClearAllPoints()
+	icon:SetPoint('TOPLEFT', stepper, 'TOPLEFT', x, y)
+end
+
+-- One of a select's steppers, back (direction -1) or next (1): a button of
+-- the select's own, hidden until it wears them, with the button art round it
+-- (Background) and its arrow (Icon). Its state follows the mouse. The game
+-- sends a disabled button no OnEnter or OnLeave, so a stepper enabled again
+-- reads whether the mouse is on it now.
+local function Stepper(w, button, direction)
+	local stepper = CreateFrame('Button', nil, button)
+	stepper:Hide()
+	local art = Art(stepper)
+	art.direction = direction
+	art.pieces.Background = stepper:CreateTexture(nil, 'BACKGROUND')
+	art.pieces.Icon = stepper:CreateTexture(nil, 'ARTWORK')
+	local function State(field, value)
+		return function(self)
+			art[field] = value
+			PaintStepper(self)
+		end
+	end
+	stepper:SetScript('OnEnter', State('over', true))
+	stepper:SetScript('OnLeave', State('over', false))
+	stepper:SetScript('OnMouseDown', State('down', true))
+	stepper:SetScript('OnMouseUp', State('down', false))
+	stepper:SetScript('OnDisable', State('down', false))
+	stepper:SetScript('OnEnable', function(self)
+		art.over = self:IsMouseOver()
+		PaintStepper(self)
+	end)
+	-- A pooled select hidden mid-press or under the mouse starts afresh.
+	stepper:SetScript('OnHide', function()
+		art.over, art.down = false, false
+	end)
+	stepper:SetScript('OnClick', function() w:Step(direction) end)
+	return stepper
+end
+
+-- A stepper over side ('LEFT' or 'RIGHT') of button, in look (the dropdown's
+-- art): as tall as the button, its art outset round it as the face's is.
+local function PlaceStepper(stepper, button, side, look)
+	local steps, art = look.stepper, Art(stepper)
+	art.look = look
+	stepper:SetSize(steps.width, button:GetHeight())
+	stepper:ClearAllPoints()
+	stepper:SetPoint(side, button, side, 0, 0)
+	local background = art.pieces.Background
+	background:ClearAllPoints()
+	background:SetPoint('TOPLEFT', stepper, 'TOPLEFT', -look.outset, look.outset)
+	background:SetPoint('BOTTOMRIGHT', stepper, 'BOTTOMRIGHT', look.outset, -look.outset)
+	art.pieces.Icon:SetSize(steps.icon, steps.icon)
+end
+
+-- While the steppers show: each enabled when there's a choice to step to
+-- that way and the select isn't disabled, and painted.
+local function EnableSteppers(w)
+	if not w.stepped then return end
+	local back, nextKey
+	if not w.disabled then back, nextKey = w:StepTargets() end
+	w.back:SetEnabled(back ~= nil)
+	w.next:SetEnabled(nextKey ~= nil)
+	PaintStepper(w.back)
+	PaintStepper(w.next)
+end
+
+-- The select's look: under Blizzard the steppers either side of the face
+-- when its choices fit (StepsFit), the face between them, else the face
+-- across it all; then its dropdown's (LookDropdown). Only the face takes
+-- the mouse for the list, as only it lights.
+local function LookSelect(w, blizzard)
+	local button = w.frame
+	local look = blizzard and st.ThemeArt.Control('dropdown')
+	w.stepped = blizzard and w:StepsFit() or false
+	if w.stepped then
+		local steps = look.stepper
+		button.faceLeft, button.faceRight = steps.width + steps.backGap, steps.width + steps.nextGap
+		PlaceStepper(w.back, button, 'LEFT', look)
+		PlaceStepper(w.next, button, 'RIGHT', look)
+	else
+		button.faceLeft, button.faceRight = 0, 0
+	end
+	w.back:SetShown(w.stepped)
+	w.next:SetShown(w.stepped)
+	button:SetHitRectInsets(button.faceLeft, button.faceRight, 0, 0)
+	LookDropdown(button, blizzard)
+	EnableSteppers(w)
+end
+
 builders.select = function(w)
 	local button = Box(st:CreateFrame('Button', nil, UIParent))
 	button:SetSize(W.WIDTH.select, FIELD_HEIGHT)
@@ -1433,6 +1578,12 @@ builders.select = function(w)
 		if W.ListOwner() == button then W.CloseList() end
 	end)
 	DropdownStates(button, function() return w.disabled end)
+	w.back = Stepper(w, button, -1)
+	w.next = Stepper(w, button, 1)
+	-- The choices' labels are measured on this (StepsFit), never shown.
+	w.measure = NewText(button, 'LEFT')
+	w.measure:SetWordWrap(false)
+	w.measure:Hide()
 end
 
 -- The entries for a row's values: { {key, label, font} }. LibSharedMedia's
@@ -1452,9 +1603,53 @@ local function ListEntries(root, row)
 end
 
 define('select', {
+	-- The look after the row: whether the steppers fit reads its choices.
 	Bind = function(self, ...)
-		LookDropdown(self.frame, BlizzardLook())
-		return Base.Bind(self, ...)
+		Base.Bind(self, ...)
+		LookSelect(self, BlizzardLook())
+		return self
+	end,
+
+	-- Whether every choice's label fits the stepped face (W.StepperRoom),
+	-- measured in the font the face draws it in (a font list's in its own
+	-- face). True with no choices.
+	StepsFit = function(self)
+		local room, measure = W.StepperRoom(), self.measure
+		for _, entry in ipairs((ListEntries(self.root, self.row))) do
+			if entry.font then
+				SetFieldFont(measure, entry.font, FIELD_FONT_SIZE, '')
+			else
+				SetFieldFont(measure)
+			end
+			measure:SetText(entry.label)
+			if ceil(measure:GetUnboundedStringWidth()) > room then return false end
+		end
+		return true
+	end,
+
+	-- The keys a step back and a step forward pick, in the list's order as
+	-- it is now; nil past an end. A value not among the choices has none
+	-- back, and the first next.
+	StepTargets = function(self)
+		if not self.row then return nil, nil end
+		local entries, value = ListEntries(self.root, self.row), self:Value()
+		for i, entry in ipairs(entries) do
+			if entry.key == value then
+				local back, forward = entries[i - 1], entries[i + 1]
+				return back and back.key, forward and forward.key
+			end
+		end
+		return nil, entries[1] and entries[1].key
+	end,
+
+	-- Picks the choice a step back (-1) or forward (1), as a pick from the
+	-- list does. Nothing past an end, or while disabled.
+	Step = function(self, direction)
+		if self.disabled then return end
+		local back, forward = self:StepTargets()
+		local key
+		if direction < 0 then key = back else key = forward end
+		if key ~= nil then self:Commit(key) end
 	end,
 
 	-- Only the chosen key's label is resolved here; the list is built when it opens.
@@ -1476,6 +1671,7 @@ define('select', {
 			SetFieldFont(self.text)
 		end
 		self.text:SetText(label)
+		EnableSteppers(self)
 	end,
 
 	-- The list is built from the values as they are now: a function can
@@ -1489,6 +1685,7 @@ define('select', {
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
 		PaintFace(self.frame)
+		EnableSteppers(self)
 	end,
 
 	OnRelease = function(self)

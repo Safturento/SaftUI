@@ -516,3 +516,75 @@ test('the dressing comes off under Thick', function()
 	st.Config:Close()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ the dropdowns' steppers
+
+-- A dropdown button's face: its shown common-dropdown-c-button texture.
+local function face_of(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAtlas() == 'common-dropdown-c-button' then return region end
+	end
+end
+
+-- Every atlas shown on frame and the shown frames under it.
+local function all_atlases(frame, out)
+	out = out or {}
+	for _, region in ipairs({ frame:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAtlas() then out[#out + 1] = region:GetAtlas() end
+	end
+	for _, child in ipairs({ frame:GetChildren() }) do
+		if child:IsShown() then all_atlases(child, out) end
+	end
+	return out
+end
+
+test("the picker row's select has steppers when its choices fit; the position block's dropdown has none", function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		-- A page with a picker of short names, each with a position block whose target is a select.
+		local store = { point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0, frame = 'PlayerFrame', relative_to = 'Health' }
+		local function unit(name, order)
+			return { order = order, name = name, type = 'group', args = {
+				pos = {
+					order = 1, type = 'position', name = 'Position', target = 'select',
+					values = { Health = 'Health', Power = 'Power' },
+					get = function(_, part) return store[part] end,
+					set = function(_, part, value) store[part] = value end,
+				},
+			} }
+		end
+		local picker = st:NewModule('Picker')
+		function picker:GetConfigTable()
+			return { name = 'Picker', type = 'group', category = 'Frames', childGroups = 'select',
+				args = { one = unit('One', 1), two = unit('Two', 2), three = unit('Three', 3) } }
+		end
+
+		switch('blizzard'); st.Config:Open('Picker', 'one')
+		local F = OW.GetFrames()
+		local w = F.picker
+		check(w.frame:IsShown(), client .. ': the picker shows')
+		check(w.back:IsShown() and w.next:IsShown(), client .. ': its short names fit: steppers')
+		eq(size_of(w.frame), '170x24', client .. ': the picker keeps its size')
+		eq(around(face_of(w.frame), w.frame), '24,7,-23,-7', client .. ': the face between them')
+		check(not w.back:IsEnabled() and w.next:IsEnabled(), client .. ': at the first unit, only next')
+
+		local block = cell('pos').widget
+		check(block.select:IsShown(), client .. ": the block's dropdown shows")
+		eq(around(face_of(block.select), block.select), '-4,4,4,-4', client .. ': compact, across its whole width')
+		for _, atlas in ipairs(all_atlases(block.frame)) do
+			check(not atlas:find('^common%-dropdown%-icon'), client .. ': no stepper in the block: ' .. atlas)
+		end
+
+		-- A step picks the next unit, as a pick from the list does.
+		stub.fire_script(w.next, 'OnClick', 'LeftButton')
+		tick()
+		eq(OW:GetState().pick, 'two', client .. ': next picks the next unit')
+		eq(w.text:GetText(), 'Two', client .. ': and the picker shows it')
+		check(w.back:IsEnabled() and w.next:IsEnabled(), client .. ': in the middle, both')
+
+		switch('thick')
+		check(not w.back:IsShown() and not w.next:IsShown(), client .. ': Thick: no steppers')
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
