@@ -7,17 +7,15 @@
 **Architecture:**
 - **The data and the drawing.** A new Core file, `SaftUI-Core/themeart.lua`, holds the Blizzard theme's tables (art pieces, insets, the title bar, the close button and button state art, per client) and the code that draws them. The engine (`SaftUI-Core/theme.lua`) resolves the theme and calls it for a Blizzard look. Thick and Thin keep today's code path.
 - **Two engine calls learn the kind.** `st:ThemeInset` takes the kind, and a new `st:SetBorderColor` replaces modules' own `SetBackdropBorderColor` calls on drawn frames, so a module's colors reach art.
-- **A new kind,** `window`, marks the frames with SaftUI's title bar.
+- **Two new kinds.** `window` marks the frames with SaftUI's title bar. `control` marks small frames that Blizzard draws with art of their own (buttons, check boxes, tabs, scroll bars, edit boxes, micro buttons, Edit Mode's outlines, class power points). Under Blizzard the engine draws nothing on a control, and the control's own code shows its Blizzard art, re-applied where it already re-runs on a theme switch.
 - **Close buttons and window headers** follow SaftUI's theme.
 
 **Tech Stack:** Lua 5.1 (WoW), Ace3 (AceDB-3.0, AceConfig-style option tables), SaftUI's own options window. Tests run on lupa's Lua 5.1 through `tests/run`.
 
-**Spec:** `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`. Read it first. Its "My call"s are binding here, and so are the user's answers to its "Questions for the user". Run this plan only after the user has answered them. Where an answer differs from my call, change what that question names before the task starts:
-- Q1 changes the window's placement (Task 2) and the title, close button and header buttons (Task 6);
-- Q2 the Blizzard Background default (Task 1);
-- Q3 the `panel` kind's art (Task 1);
-- Q4 the bar art's scale (Tasks 1 and 2);
-- Q5 the `small` kind (Tasks 1 and 2).
+**Spec:** `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`. Read it first. Its "My call"s are binding here, and so are "The user's answers (2026-11-10)", which this plan already follows. Three new questions came from answer 5. Run Tasks 8 and 10 only after the user has answered them. Where an answer differs from my call, change what that question names before the task starts:
+- Q1 (class power point shape) changes Task 10's point layout;
+- Q2 (`/sui`'s other controls) adds `/sui`'s dropdowns, sliders, text boxes, swatches, key binding buttons, tabs and sidebar to Task 8, or leaves them as a followup in Task 11;
+- Q3 (two check box looks) changes the check box art in Task 8.
 
 **Starting point:** `modular` at 57575d0 or later, in the worktree `.claude/worktrees/blizzardtheme` (branch `blizzardtheme`).
 
@@ -37,24 +35,28 @@
 - **The Blizzard theme's colors** (`st.defaults.templates.blizzard`):
   - `bordercolor = { 0.5, 0.5, 0.5, 1 }`;
   - `altbordercolor = { 0, 0, 0, 0 }`;
-  - `backdropcolor = { 0.09, 0.09, 0.19, 1 }`.
+  - `backdropcolor = { 0.09, 0.09, 0.19, 1 }`, the fill of panel, bar, tooltip and small;
+  - `windowcolor = { 0.12, 0.12, 0.13, 1 }`, the fill of windows.
+
+  `windowcolor` is Blizzard's only. Under Thick and Thin windows take `backdropcolor`, as today. Dark grey everywhere, which the user expects may come, must stay a one-value change: `backdropcolor`'s default. Nothing else may hard-code either color.
 - **Option values, in this order:**
   - Theme tab: `thick` = "Thick", `thin` = "Thin", `blizzard` = "Blizzard".
   - Override Theme: `theme` = "Use SaftUI's theme", `thick` = "Thick", `thin` = "Thin", `blizzard` = "Blizzard", `none` = "None".
   - Background is unchanged.
-- **Kinds:** `panel`, `window` (new), `bar`, `action`, `slot`, `aura`, `tooltip`, `header`, `close`, `small`.
+- **Kinds:** `panel`, `window` (new), `bar`, `action`, `slot`, `aura`, `tooltip`, `header`, `close`, `control` (new), `small`. Under Thick and Thin a window draws as a panel and a control as a small frame.
 - **The Blizzard look of each kind,** with its starting inset (the same on both clients until the builder measures them in game):
 
   | Kind | Art on the drawn frame | Art over the icon's edge | Fill | Inset |
   | ---- | ---------------------- | ------------------------ | ---- | ----- |
-  | `window` | metal | none | Background | 2 |
-  | `panel`, `bar`, `tooltip` | tooltip | none | Background | 3 |
+  | `window` | metal | none | Window background (`windowcolor`) | 2 |
+  | `panel`, `bar`, `tooltip` | tooltip | none | Background (`backdropcolor`) | 3 |
   | `action` | `UI-HUD-ActionBar-IconFrame-Background`, `UI-HUD-ActionBar-IconFrame-Slot` | `UI-HUD-ActionBar-IconFrame` | (slot art) | 3 |
   | `slot` | `bags-item-slot64` | `Interface\Buttons\UI-Quickslot2` (Blizzard's 37-in-64 fit) | (slot art) | 3 |
   | `aura` | none | none | none | 0 |
   | `small` | none: one 1px line in Border | none | Background | 1 |
   | `header` | none: clear | none | none | 0 |
   | `close` | none | none | none | 0 |
+  | `control` | none: clear (the control's own code shows its art) | none | none | 0 |
 
 - **Tooltip art,** piece keys `TopLeftCorner`, `TopRightCorner`, `BottomLeftCorner`, `BottomRightCorner`, `TopEdge`, `BottomEdge`, `LeftEdge` and `RightEdge`:
   - atlases `Tooltip-NineSlice-CornerTopLeft`, `Tooltip-NineSlice-CornerTopRight`, `Tooltip-NineSlice-CornerBottomLeft`, `Tooltip-NineSlice-CornerBottomRight`, `_Tooltip-NineSlice-EdgeTop`, `_Tooltip-NineSlice-EdgeBottom`, `!Tooltip-NineSlice-EdgeLeft` and `!Tooltip-NineSlice-EdgeRight`;
@@ -86,6 +88,40 @@
 - **Button state art** (SaftUI's theme Blizzard, where SaftUI makes the state textures):
   - `action`: hover `UI-HUD-ActionBar-IconFrame-Mouseover`, pushed `UI-HUD-ActionBar-IconFrame-Down`, checked `UI-HUD-ActionBar-IconFrame-Mouseover` (ADD on Forever, BLEND on retail) and flash `UI-HUD-ActionBar-IconFrame-Flash`, over the ring's footprint;
   - `slot`: pushed `Interface\Buttons\UI-Quickslot-Depress`, highlight `Interface\Buttons\ButtonHilight-Square` (ADD).
+- **Control art** (`st.ThemeArt.Control(name)`, Task 1). The values are copied from the spec's "Controls" section:
+  - `button`, the panel button:
+    - `Interface\Buttons\UI-Panel-Button-Up`, `-Down` and `-Disabled`, texture coordinates left `0, 0.09375`, middle `0.09375, 0.53125` and right `0.53125, 0.625`, all `0, 0.6875` down;
+    - the ends 12/22 of the button's height;
+    - highlight `Interface\Buttons\UI-Panel-Button-Highlight`, ADD.
+  - `checkbox`, the template's: normal `Interface\Buttons\UI-CheckBox-Up`, pushed `-Down`, highlight `-Highlight` (ADD), checked `-Check`, disabled checked `-Check-Disabled`.
+  - `settingscheckbox`, for `/sui`: `checkbox-minimal`, checked `checkmark-minimal`, disabled `checkmark-minimal-disabled`.
+  - `tab`: picked `uiframe-activetab-left`, `_uiframe-activetab-center` and `uiframe-activetab-right`; the others `uiframe-tab-left`, `_uiframe-tab-center` and `uiframe-tab-right`.
+  - `micro`: `PushedBackground` `UI-HUD-MicroMenu-ButtonBG-Down`, `FlashBorder` `UI-HUD-MicroMenu-Highlightalert`, and the highlight `UI-HUD-MicroMenu-%s-Mouseover` (the button's `textureName`, BLEND).
+  - `mover`: kits `editmode-actionbar-highlight` and `editmode-actionbar-selected`, laid out as `EditModeSystemSelectionLayout`:
+    - corners `<kit>-NineSlice-Corner`, mirrored, at ±8;
+    - edges `_<kit>-NineSlice-EdgeTop`, `_<kit>-NineSlice-EdgeBottom`, `!<kit>-NineSlice-EdgeLeft` and `!<kit>-NineSlice-EdgeRight`;
+    - fill `<kit>-NineSlice-Center`, at ±8.
+  - `classpower`, by oUF power type, each point an empty and a filled atlas:
+    - `COMBO_POINTS`: a rogue's `uf-roguecp-bg` and `uf-roguecp-icon-red` (charged `uf-roguecp-icon-blue`); a druid's `UF-DruidCP-BG-Active` and `UF-DruidCP-Icon`;
+    - `HOLY_POWER`: `uf-holypower-rune<n>` and `uf-holypower-rune<n>-active`, n being the point, 1 to 5;
+    - `SOUL_SHARDS`: `UF-SoulShard-Holder` and `UF-SoulShard-Icon`;
+    - `CHI`: `uf-chi-bg` and `uf-chi-icon`;
+    - `ARCANE_CHARGES`: `UF-Arcane-BG` and `UF-Arcane-Icon`;
+    - `ESSENCE`: `UF-Essence-BG` and `UF-Essence-Icon`.
+- **Re-tagged call sites** (no change under Thick and Thin):
+  - to `slot`: `SaftUI-Loot/roll.lua:147,347`, `SaftUI-Loot/Feed/feed.lua:250,653` and `SaftUI-Misc/Skinning/characterframe/gems.lua:21`;
+  - to `tooltip`: `SaftUI-Core/EditMode/picker.lua:198`;
+  - to `control`:
+    - the draws in `SaftUI-Core/Widgets/button.lua`, `checkbutton.lua`, `radiogroup.lua` and `scrollbar.lua`, and in `SaftUI-Core/skinning.lua` (`DrawEditBox`);
+    - `SaftUI-Core/EditMode/mover.lua:192`;
+    - `SaftUI-Bags/container.lua:911`;
+    - `SaftUI-Loot/Feed/feed.lua:730,733` (the feed's filter and scroll-reset buttons, which the feed draws again in its own Theme);
+    - `SaftUI-Minimap/microbuttons.lua:163`;
+    - `SaftUI-Misc/totemskin.lua:277`;
+    - `SaftUI-Unitframes/elements/classpower.lua:42`;
+    - `ElementKind`'s non-bar elements in `SaftUI-Unitframes/updaters.lua`.
+
+  Every other `small` draw stays `small`.
 - **Words the user sees:** "Blizzard" joins the Themes words. No atlas or file name, and no "Template", "Highlight" or "Close Button", is ever shown.
 - **Every option has a desc and no Ace `width`.**
 - **Files:** keep each file's line endings (check with `file`), and never `sed -i` a CRLF file. Stage by explicit path only.
@@ -111,18 +147,19 @@
 - Task 4 after 2.
 - Task 5 after 4. Both convert call sites in the same module files.
 - Tasks 6 and 7 in parallel after 5. They touch disjoint files, and both only read the tables Task 1 made.
-- Task 8 last. The docs wait for it, so parallel tasks never conflict in `.agents/`.
+- Tasks 8, 9 and 10 in parallel after 6 and 7, once the user has answered the spec's three new questions (8 and 10 depend on them). Their files are disjoint: Core's widgets and the bags' toggles (8); the micro menu, the totem flyout, Edit Mode and the re-tagged icons (9); class power (10). Any of them adding to `tests/lib/theme_helpers.lua`: keep both sides.
+- Task 11 last. The docs wait for it, so parallel tasks never conflict in `.agents/`.
 
 ---
 
-### Task 1: The Blizzard theme's looks: tables, resolution, insets and the window kind
+### Task 1: The Blizzard theme's looks: tables, resolution, insets, the window and control kinds
 
 **Files:**
-- Create: `SaftUI-Core/themeart.lua`, holding the Blizzard tables in the Global Constraints. Load it right after `theme.lua` in `SaftUI-Core/SaftUI-Core_Forever.toc` and `SaftUI-Core_Mainline.toc`, and in `load_core_helpers` (`tests/lib/shell.lua`, after `theme.lua`).
+- Create: `SaftUI-Core/themeart.lua`, holding the Blizzard tables in the Global Constraints, the control art among them. Load it right after `theme.lua` in `SaftUI-Core/SaftUI-Core_Forever.toc` and `SaftUI-Core_Mainline.toc`, and in `load_core_helpers` (`tests/lib/shell.lua`, after `theme.lua`).
 - Modify:
-  - `SaftUI-Core/theme.lua`: the known themes add `blizzard`, `st.THEME_KINDS` adds `window`, and `st:ResolveTheme` and `st:ThemeInset` take a kind;
-  - `SaftUI-Core/Config/defaults.lua`: `templates.blizzard`.
-- Create: `tests/wow/atlases.lua`, every atlas `st:ThemeAtlases()` returns, with each client's size and tiling from the spec's tables. Load it with the other stubs.
+  - `SaftUI-Core/theme.lua`: the known themes add `blizzard`; `st.THEME_KINDS` adds `window` and `control`; `st:ResolveTheme` and `st:ThemeInset` take a kind; and `st:IsBlizzardLook`;
+  - `SaftUI-Core/Config/defaults.lua`: `templates.blizzard`, with `windowcolor`.
+- Create: `tests/wow/atlases.lua`, every atlas `st:ThemeAtlases()` returns, with each client's size and tiling. They come from the spec's tables, and for the rest from the clients' atlas tables on wago.tools (`.agents/clients.md`), at the builds the spec names. Load it with the other stubs.
 - Modify:
   - `tests/wow/blizzard.lua`: `C_Texture.GetAtlasInfo(name)` answers from `atlases.lua` for `stub.interface`'s client: `{ width, height, tilesHorizontally, tilesVertically }`, or nil for any other name;
   - `tests/lib/theme_helpers.lua`: `T.client(name)`, with name `'forever'` or `'retail'`. It does `reset_world()`, sets `stub.interface`, reloads `constants.lua`, runs `load_core_helpers()` and `apply_defaults()`, as `tests/bags/bag_world.lua`'s `W.fresh` does;
@@ -131,7 +168,8 @@
 
 **Interfaces:**
 - Produces:
-  - `st.THEME_KINDS.window = true`.
+  - `st.THEME_KINDS.window = true` and `st.THEME_KINDS.control = true`.
+  - `st:IsBlizzardLook(theme, background) -> boolean`: whether `theme` and `background` resolve to Blizzard. That's SaftUI's theme for `'theme'`. False for None.
   - `st:ResolveTheme(theme, background, kind) -> look | nil`:
     - `look = { name = 'thick'|'thin'|'blizzard', inset = number|nil, alpha = number, colors = st.config.profile.templates[name], kind = kind }`;
     - under Blizzard `inset` is `st.ThemeArt.Inset(kind)`, and nil with no kind;
@@ -143,8 +181,10 @@
     - `.TitleHeight() -> 21|20`;
     - `.Close() -> { size, x, y, normal, pushed, highlight, disabled }`;
     - `.State(kind) -> { hover, pushed, checked, checkedBlend, flash, highlight } | nil` (keys per the Global Constraints);
+    - `.Control(name) -> table`, for `name` in `button`, `checkbox`, `settingscheckbox`, `tab`, `micro`, `mover` and `classpower`. The fields are the builder's, holding the Global Constraints' values;
+    - `.ClassPower(powerType, index, class, charged) -> emptyAtlas, filledAtlas | nil`: nil for a power type with no art;
     - `.KINDS[kind]` and `.ART[name]`, the tables, in the shape the builder picks.
-  - `st:ThemeAtlases() -> { [atlasName] = true }`: every atlas the tables name (not files).
+  - `st:ThemeAtlases() -> { [atlasName] = true }`: every atlas the tables name, the controls' too (not files). The mover's are spelled out for both kits, and holy power's for runes 1 to 5.
   - `T.client(name)` in `tests/lib/theme_helpers.lua`.
 
 - [ ] **Step 1: Write the failing tests** in `tests/core/theme_blizzard_test.lua`:
@@ -159,26 +199,34 @@
     eq(st:ResolveTheme('blizzard', 'theme', 'window').inset, 2) -- an override that names Blizzard
     ```
   - `"each kind's inset under Blizzard, on Forever and on retail"`:
-    - for each client (`T.client`), `st:ThemeInset('blizzard', 'theme', kind)` equals the Global Constraints' inset for all ten kinds;
+    - for each client (`T.client`), `st:ThemeInset('blizzard', 'theme', kind)` equals the Global Constraints' inset for all eleven kinds;
     - `st.ThemeArt.TitleHeight()` is 20 on Forever and 21 on retail;
     - `st.ThemeArt.Close().size` is 28 on Forever and 24 on retail.
   - `'Thick and Thin insets ignore the kind'`: for every kind, `st:ThemeInset('thick', 'theme', kind) == 2` and `('thin', ...) == 1`.
-  - `'a window draws as a panel under Thick and Thin'`: for each of Thick and Thin, `st:SetBackdrop(a, 'theme', 'theme', 'window')` and `st:SetBackdrop(b, 'theme', 'theme', 'panel')` give equal `T.fill`, `T.edge`, `T.inset` and `T.offset(…, 'TOPLEFT')`.
-  - `"the Blizzard theme's default colors"`: `templates.blizzard` equals the Global Constraints' arrays.
+  - `'a window draws as a panel, and a control as a small frame, under Thick and Thin'`. For each of Thick and Thin:
+    - `st:SetBackdrop(a, 'theme', 'theme', 'window')` and `st:SetBackdrop(b, 'theme', 'theme', 'panel')` give equal `T.fill`, `T.edge`, `T.inset` and `T.offset(…, 'TOPLEFT')`;
+    - so do `'control'` and `'small'`.
+  - `"the Blizzard theme's default colors"`: `templates.blizzard` equals the Global Constraints' arrays, `windowcolor` among them. `templates.thick` and `.thin` have no `windowcolor`.
+  - `'IsBlizzardLook'`: true for `('theme', 'theme')` under SaftUI's Blizzard and for `('blizzard', 'solid')` under Thick. False for `('none', 'theme')` and for `('theme', 'theme')` under Thick.
+  - `'ClassPower names each resource's art'`:
+    - `('COMBO_POINTS', 2, 'ROGUE')` gives `uf-roguecp-bg, uf-roguecp-icon-red`, and with `charged` the blue icon;
+    - `('COMBO_POINTS', 1, 'DRUID')` gives `UF-DruidCP-BG-Active, UF-DruidCP-Icon`;
+    - `('HOLY_POWER', 3, 'PALADIN')` gives `uf-holypower-rune3, uf-holypower-rune3-active`;
+    - `('RUNES', 1, 'DEATHKNIGHT')` gives nil.
   - `'no default names Blizzard'`: `st.defaults.theme.name == 'thick'`, and a walk of `st.defaults` finds no string value `'blizzard'`.
-  - `'every atlas the theme names exists on both clients'`: for each client, every name in `st:ThemeAtlases()` gives a `C_Texture.GetAtlasInfo`, and there are at least 30 names.
+  - `'every atlas the theme names exists on both clients'`: for each client, every name in `st:ThemeAtlases()` gives a `C_Texture.GetAtlasInfo`, and there are at least 80 names.
   - `'an unknown saved theme still reads as Thick, and Blizzard is known'`: name `'later'` resolves as `thick`, and `'blizzard'` as `blizzard`.
 - [ ] **Step 2: Run them; they fail.** `tests/run tests/core/theme_blizzard_test.lua` fails: `st:ThemeAtlases` is nil.
 - [ ] **Step 3: Implement** `themeart.lua`'s tables and accessors, and the `theme.lua` and defaults changes. Change `tests/core/theme_test.lua`'s unknown-name case to `'later'`. Its behavior is unchanged: only the stand-in name moves, because `'blizzard'` is now known.
 - [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
-- [ ] **Step 5: Commit.** `core: the Blizzard theme's looks: art tables per client, insets by kind, the window kind`
+- [ ] **Step 5: Commit.** `core: the Blizzard theme's looks: art tables per client, insets by kind, the window and control kinds`
 
 ### Task 2: Drawing the Blizzard looks
 
 **Files:**
 - Modify:
   - `SaftUI-Core/themeart.lua`: paint, color and clear a Blizzard look;
-  - `SaftUI-Core/theme.lua`: `Paint`, `Color`, `DrawBackdrop` and `Redraw` hand a Blizzard look to `st.ThemeArt`. Each draw records its inset. Under Blizzard the backdrop has a fill and no edge, Thick's lines are hidden, `header` is cleared and `small` is Thin's drawing in Blizzard's colors. Under Thick and Thin any art the frame has is hidden;
+  - `SaftUI-Core/theme.lua`: `Paint`, `Color`, `DrawBackdrop` and `Redraw` hand a Blizzard look to `st.ThemeArt`. Each draw records its inset. Under Blizzard the backdrop has a fill and no edge, a window's fill is `windowcolor`, Thick's lines are hidden, `header` and `control` are cleared (their record kept), and `small` is Thin's drawing in Blizzard's colors. Under Thick and Thin any art the frame has is hidden;
   - `SaftUI-Core/api.lua`: `st:CalculateSpacing` reads `st:DrawnInset` for `frame` and `anchorFrame` in place of `.thick`. A frame that was never drawn counts as 0, as today;
   - `tests/lib/theme_helpers.lua`: `T.art(frame)` and `T.over(frame)`.
 - Test: `tests/core/theme_blizzard_draw_test.lua` (new).
@@ -203,7 +251,10 @@
     - `T.fill(backdrop) == '0.09,0.09,0.19,0.9'`;
     - the backdrop has no `edgeFile`;
     - Thick's lines are hidden.
-  - `'bars and panels wear the tooltip border, a window the metal'`: `T.art` for `bar` and `panel` is the tooltip's, and for `window` the metal's.
+  - `'bars and panels wear the tooltip border, a window the metal'`:
+    - `T.art` for `bar` and `panel` is the tooltip's, and for `window` the metal's;
+    - a window's `T.fill` is `'0.12,0.12,0.13,0.9'` and a panel's `'0.09,0.09,0.19,0.9'`;
+    - after `templates.blizzard.backdropcolor` is set to the window's grey and `st:RecolorThemed()` runs, both are grey.
   - `"the metal's corners sit at each client's offsets"`: `T.offset` of `TopRightCorner` and `BottomLeftCorner` is `4,16` and `-8,-3` on retail, `2,16` and `-8,-8` on Forever.
   - `"an action button: the ring over the icon's edge, the slot art behind"`:
     - `T.over(backdrop) == 'Ring=UI-HUD-ActionBar-IconFrame'`;
@@ -211,7 +262,10 @@
     - the slot art's alpha is 0.9;
     - the fill is clear.
   - `"a slot: the item ring and the empty slot's art"`.
-  - `'an aura has no art; small is one line in Border; a header draws nothing'`: for `small`, `T.edge == '0.5,0.5,0.5,1'` and `T.inset == 1`; for a header strip, nothing at all.
+  - `'an aura has no art; small is one line in Border; a header and a control draw nothing'`:
+    - for `small`, `T.edge == '0.5,0.5,0.5,1'` and `T.inset == 1`;
+    - a header strip and a control draw nothing at all under Blizzard;
+    - after a switch to Thick, the control is drawn as a small frame again, from its record.
   - `"Thick, Blizzard, Thin, Blizzard: art only under Blizzard, Thick's lines only under Thick, each backdrop at its kind's inset"`. A tooltip, a window, an action button and a small frame, each drawn with `st:SetBackdrop`, go through the switches by `st:RedrawThemed()`. `T.offset(backdrop, 'TOPLEFT')` is:
     - `-2,2` under Thick;
     - under Blizzard: `-3,3` (tooltip), `-2,20` (window, Forever), `-3,3` (action) and `-1,1` (small);
@@ -239,7 +293,12 @@
 
 **Files:**
 - Modify:
-  - `SaftUI-Core/Media/theme.lua`: the Theme select offers Thick, Thin and Blizzard in that order (a sort list, as `OrderedSelect` makes). Under Blizzard, Border's and Background's descs say what they color there: Border is the small frames' line, the art keeps Blizzard's colors, and Background is the fill. Outer border stays hidden (it only shows for Thick). Reset's confirm reads "Reset the Blizzard theme to SaftUI's defaults?";
+  - `SaftUI-Core/Media/theme.lua`:
+    - The Theme select offers Thick, Thin and Blizzard in that order (a sort list, as `OrderedSelect` makes).
+    - A Window background color row, for `windowcolor`, shows only under Blizzard, between Border and Background.
+    - Under Blizzard, Border's, Window background's and Background's descs say what each colors there: Border is the line of the small frames with no Blizzard art, and the art keeps Blizzard's colors; Window background fills windows; Background fills everything else.
+    - Outer border stays hidden (it only shows for Thick).
+    - Reset restores every color the chosen theme has (`windowcolor` too under Blizzard; Thick and Thin have none). Its confirm reads "Reset the Blizzard theme to SaftUI's defaults?";
   - `SaftUI-Core/Config/widgets.lua`: `THEME_VALUES` adds `{ 'blizzard', 'Blizzard' }` before None;
   - `tests/lib/theme_helpers.lua`: `T.check_options` expects Blizzard in the Theme choices;
   - `tests/core/theme_tab_test.lua`: the unknown-name case uses `'later'`.
@@ -251,9 +310,12 @@
 
 - [ ] **Step 1: Write the failing tests:**
   - `'the Theme tab offers Thick, Thin and Blizzard, in that order'`.
-  - `"under Blizzard, Border and Background say what they color there, and Outer border hides"`: the descs differ from Thick's, and both mention Blizzard's art.
+  - `"under Blizzard, Window background shows and Outer border hides, and the color rows say what they color there"`:
+    - Window background is hidden under Thick and Thin;
+    - its set writes `templates.blizzard.windowcolor` and recolors, with no config update;
+    - the three descs differ from Thick's.
   - `'each theme keeps its own colors, Blizzard too'`: set Thick's Border, switch to Blizzard, set Blizzard's Border, switch back. Thick's is still the one set, and `templates.blizzard.bordercolor` holds Blizzard's.
-  - `"Reset under Blizzard restores Blizzard's colors and the transparency"`.
+  - `"Reset under Blizzard restores Blizzard's colors, windowcolor among them, and the transparency"`, and `'Reset under Thick still works'` (Thick has no `windowcolor`).
   - In `config_generators_test.lua`: `"the Theme builder offers Use SaftUI's theme, Thick, Thin, Blizzard and None, in that order"`.
   - Every module page test that runs `T.check_options` now expects Blizzard.
 - [ ] **Step 2: Run them; they fail.** `tests/run tests/core/theme_tab_test.lua tests/core/config_generators_test.lua`.
@@ -283,12 +345,13 @@
   - With no `r` it puts the look's own border back.
   - Under Thick, Thin and `small` it is `SetBackdropBorderColor`, with the look's border color when no color is given.
   - Under Blizzard art it is the own-color behavior in the Global Constraints.
-  - A frame that was never drawn, or is drawn None, is left alone.
+  - A control under Blizzard, a frame that was never drawn, and a frame drawn None are left alone. A control shows its state in its own art (Tasks 8 and 9).
 
 - [ ] **Step 1: Write the failing tests:**
   - In `theme_blizzard_draw_test.lua`:
     - `'SetBorderColor under Thick and Thin is the border color, and no color is the theme's'`.
     - `"SetBorderColor under Blizzard: tooltip and metal pieces tinted, the action's equipped border, the slot's and aura's white icon border, no color takes it off"`: check vertex colors and the shown `own` piece's file or atlas.
+    - `'SetBorderColor leaves a control alone under Blizzard'`: nothing is drawn or shown on it.
   - In `theme_kinds_test.lua`, `"no module sets a drawn backdrop's border color itself"`. A scan of every loaded file except `SaftUI-Core/theme.lua` and `themeart.lua` finds no `:SetBackdropBorderColor(` whose receiver ends in `backdrop` or is indexed from a table named `backdrops`. Check it on a sample first, as the draw-call scanner is:
     - `item.backdrop:SetBackdropBorderColor(1,0,0)` is found;
     - `backdrops[t]:SetBackdropBorderColor(1,0,0)` is found;
@@ -413,27 +476,167 @@
 - [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
 - [ ] **Step 5: Commit.** `actionbars, bags, misc: Blizzard's button state art and buff borders under the Blizzard theme`
 
-### Task 8: Docs, followups and the in-game list
+### Task 8: Core's controls: buttons, check boxes, tabs, scroll bars, edit boxes, and `/sui`'s buttons and toggles
 
 **Files:**
 - Modify:
-  - `.agents/architecture.md` (Themes): Blizzard, `themeart.lua`, the `window` kind and its title bar above the window, `st:ThemeInset`'s kind, `st:SetBorderColor`, `st:DrawnInset` and `st:DrawnKind`, close buttons following the theme, and `st:CloseButtonInSocket`.
-  - `.agents/taint.md`: art lives on SaftUI's frames, `NineSliceUtil` is never called, and the buff skin shows Blizzard's two borders.
+  - `SaftUI-Core/Widgets/button.lua` (`st:SkinButton`). It draws kind `control`, and registers its look with `st:KeepOwnColors`. Under `st:IsBlizzardLook(theme, background)`:
+    - a button with the panel button template's own `Left`, `Middle` and `Right` (retail's bank deposit button) shows them again with `SetAlpha(1)`;
+    - any other button gets three textures of SaftUI's, from `Control('button')`. A mouse down swaps them to `-Down`, a mouse up back to `-Up`, and a disable to `-Disabled`, from scripts SaftUI hooks on its own button.
+
+    The flat hover, pushed and disabled textures are hidden. Under Thick and Thin it's today's look.
+  - `SaftUI-Core/Widgets/checkbutton.lua`: `st:CreateCheckButton(name, parent, style)` and `st:SkinCheckButton(button, style)`. They draw kind `control`, with the look kept as above. Under Blizzard:
+    - with no style, the box takes the template's art again (`Control('checkbox')`), sized so the art's box is SaftUI's 12px;
+    - with style `'button'`, the panel button shows, pressed (`-Down`) while checked.
+  - `SaftUI-Core/Widgets/radiogroup.lua`: the buttons draw kind `control`. Under Blizzard they're tabs (`Control('tab')`): the picked one active, no blue border.
+  - `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`): the thumb draws kind `control`. Under Blizzard the thumb's, track's and steppers' layers are turned back on (`EnableDrawLayer`), and SaftUI's thumb colors are skipped; under Thick and Thin they're turned off again.
+  - `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `DrawEditBox`): it conceals the border textures with `SetAlpha(0)` in place of `st:Kill`, and draws kind `control`. Under Blizzard the textures show (`SetAlpha(1)`), and there's no white focus border. Before relying on it, check in Blizzard's source for both clients that nothing of Blizzard's sets those regions' alpha (`ChatFrameEditBox` and `InputBoxTemplates`).
+  - `SaftUI-Core/Config/optionswidgets.lua`: under `st:IsBlizzardLook('theme', 'theme')`, read when a widget is bound (the window re-renders after a theme change):
+    - the execute widget takes the panel button;
+    - the toggle takes `Control('settingscheckbox')` (question 3).
+
+    Otherwise their own look.
+  - `SaftUI-Bags/container.lua`: the Edit toggle (`:54`) takes style `'button'`; the view buttons (`:911`) draw kind `control`; `INV:ViewButtonGaps` (`:843`) reads the `control` inset.
+  - `SaftUI-Bags/currencies.lua:162`: the funnel takes style `'button'`.
+- Test:
+  - `tests/core/theme_blizzard_controls_test.lua` (new);
+  - `tests/core/options_widgets_test.lua`;
+  - `tests/bags/theme_test.lua`;
+  - `tests/bags/currency_filter_icon_test.lua`, whose stand-in `st:CreateCheckButton` takes the new style argument.
+
+**Interfaces:**
+- Consumes:
+  - Task 1's `st:IsBlizzardLook` and `st.ThemeArt.Control`;
+  - Task 2's clear `control`;
+  - `st:KeepOwnColors`.
+- Produces: `st:CreateCheckButton(name, parent, style)` and `st:SkinCheckButton(button, style)`, with `style` nil (a check box) or `'button'`.
+
+- [ ] **Step 1: Write the failing tests** in `tests/core/theme_blizzard_controls_test.lua`, under SaftUI's Blizzard unless named:
+  - `"a SaftUI button: Blizzard's panel button, swapped by its states, and its own look again under Thick"`:
+    - `Left`, `Middle` and `Right` have `UI-Panel-Button-Up` at the Global Constraints' coordinates;
+    - `stub.fire_script(button, 'OnMouseDown')` gives `-Down`, and `button:Disable()` gives `-Disabled`;
+    - the flat textures are hidden, and the backdrop draws nothing;
+    - after a switch to Thick the three are hidden and the flat ones shown.
+  - `"a 31-tall button's ends are 17 wide"` (12/22 of 31, rounded).
+  - `"a Blizzard panel button given to st:SkinButton shows its own Left, Middle and Right again"`: alpha 1, and nothing is written onto it on either switch (the locked fixture).
+  - `"a check box takes the template's art, and SaftUI's box under Thick"`.
+  - `"a check button styled 'button' is a panel button, pressed while checked"`.
+  - `"a radio group shows Blizzard's tabs, the picked one active"`: with no blue border, and SaftUI's buttons and blue border again under Thick.
+  - `"a scroll bar's layers come back on under Blizzard and go off under Thick"`: `IsDrawLayerEnabled` on the thumb, track and steppers, and no SaftUI thumb backdrop under Blizzard.
+  - `"an edit box's border textures show under Blizzard and hide under Thick"`:
+    - by alpha;
+    - `st:SkinEditBox` writes nothing onto a locked Blizzard edit box;
+    - no `st:Kill` call is left in `SaftUI-Core/skinning.lua` (`read_saftui_source`).
+  - In `options_widgets_test.lua`, `"/sui's execute button and toggle take Blizzard's art under Blizzard, their own under Thick"`.
+  - In `tests/bags/theme_test.lua`:
+    - `"the view buttons are controls, and their gaps are 3 and 4 under Blizzard"`;
+    - `"the Edit toggle is a panel button, pressed while checked"`.
+- [ ] **Step 2: Run them; they fail.** `tests/run tests/core/theme_blizzard_controls_test.lua tests/core/options_widgets_test.lua tests/bags`.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
+- [ ] **Step 5: Commit.** `core, bags: Blizzard's own buttons, check boxes, tabs, scroll bars and edit boxes under the Blizzard theme`
+
+### Task 9: Blizzard's own frames shown again, Edit Mode's outlines, and the re-tagged frames
+
+**Files:**
+- Modify:
+  - `SaftUI-Minimap/microbuttons.lua`. The button's panel draws kind `control`. In `SkinButton` and `StyleTextures`, under `st:IsBlizzardLook(THEME, BACKGROUND)`:
+    - `Background`, `Shadow`, `PushedShadow` and `MainMenuBarPerformanceBar` show again (`SetAlpha(1)`);
+    - `PushedBackground` and `FlashBorder` get `Control('micro')`'s atlases, with Blizzard's anchors and layers from `MainMenuBarMicroButtons.xml`;
+    - the highlight is left as Blizzard sets it. After a switch, SaftUI sets it once with `SetHighlightAtlas(Control('micro').highlight:format(button.textureName), 'BLEND')`.
+
+    Under Thick and Thin it's today's fades and flat colors. Nothing is written onto the buttons, and no Blizzard micro button function is called.
+  - `SaftUI-Misc/totemskin.lua` (`:277`, `:389-390`): the flyout's panel draws kind `control`. Under Blizzard `flyout.top` and `flyout.middle` show (`SetAlpha(1)`); under Thick and Thin they're faded again.
+  - `SaftUI-Core/EditMode/mover.lua`. The overlay draws kind `control`. Under Blizzard, SaftUI draws `Control('mover')`'s pieces on the overlay, in edit mode's own table: the highlight kit, and the selected kit while selected. `SetBorderColor(mover, selected)` swaps the kit. `EM.OutlineOutset` is unchanged.
+  - `SaftUI-Core/EditMode/picker.lua:198`: kind `tooltip`.
+  - Kind `slot`: `SaftUI-Loot/roll.lua:147,347`, `SaftUI-Loot/Feed/feed.lua:250,653` and `SaftUI-Misc/Skinning/characterframe/gems.lua:21`.
+  - Kind `control`: `SaftUI-Loot/Feed/feed.lua:730,733`. Those buttons come from `st:CreateButton`, so Task 8's `st:SkinButton` gives them their art.
+  - `SaftUI-Unitframes/updaters.lua` (`ElementKind`): non-bars are `control`.
+- Test:
+  - `tests/minimap/theme_test.lua`, with a micro button stand-in that has the template's regions and `textureName`;
+  - `tests/misc/theme_test.lua`;
+  - `tests/core/theme_blizzard_editmode_test.lua` (new);
+  - `tests/loot/theme_test.lua`;
+  - `tests/unitframes/theme_test.lua`.
+
+**Interfaces:**
+- Consumes: Task 1's `st:IsBlizzardLook` and `st.ThemeArt.Control('micro'|'mover')`; Task 2's clear `control`.
+
+- [ ] **Step 1: Write the failing tests:**
+  - `"under Blizzard a micro button shows Blizzard's own art, and today's look again under Thick"`:
+    - `Background`, `Shadow` and `PushedShadow` at alpha 1;
+    - `PushedBackground:GetAtlas() == 'UI-HUD-MicroMenu-ButtonBG-Down'` and `FlashBorder`'s `'UI-HUD-MicroMenu-Highlightalert'`;
+    - the highlight's atlas is `'UI-HUD-MicroMenu-Questlog-Mouseover'` for a button whose `textureName` is `Questlog`;
+    - no SaftUI panel is drawn;
+    - nothing is written onto the button either way (locked).
+  - `"under Blizzard the totem flyout's art shows, and is faded again under Thick"`.
+  - `"under Blizzard a mover shows Blizzard's highlight kit, and the selected kit while selected"`. Under Thick, SaftUI's line and blue again.
+  - `'the picker list is drawn as a tooltip'` (`T.watch`).
+  - `'loot roll, feed and gem icons are drawn as slots'`, and `"the feed's filter and reset buttons as controls"`. Update `tests/loot/theme_test.lua`'s kinds check for them.
+  - `"the castbar's icon and the indicators are controls, bare under Blizzard"`.
+- [ ] **Step 2: Run them; they fail.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
+- [ ] **Step 5: Commit.** `minimap, misc, core, loot, unitframes: Blizzard's micro buttons, totem flyout and Edit Mode selection under the Blizzard theme; icons as slots`
+
+### Task 10: Class power points in Blizzard's art
+
+**Files:**
+- Modify: `SaftUI-Unitframes/elements/classpower.lua`. The points draw kind `control`. Under `st:IsBlizzardLook(config.theme, config.background)` each point gets two textures of SaftUI's:
+  - the empty art, behind;
+  - the filled art, shown while the point is full;
+  - both from `st.ThemeArt.ClassPower(powerType, i, class, charged)`, where the class is the player's;
+  - each `config.height` square, centred in the point's slot (question 1).
+
+  The flat fill is hidden. A power type with no art keeps the flat bar. `PostUpdateClassPower` re-applies them, since oUF passes the power type and the charged points there. Under Thick and Thin the points are flat bars again.
+- Test: `tests/unitframes/classpower_blizzard_test.lua` (new), on the unit frame stand-in `tests/unitframes/theme_test.lua` uses.
+
+**Interfaces:**
+- Consumes: Task 1's `st:IsBlizzardLook` and `st.ThemeArt.ClassPower`; Task 2's clear `control`.
+
+- [ ] **Step 1: Write the failing tests:**
+  - `"on Forever a rogue's points show uf-roguecp-bg, and uf-roguecp-icon-red while full, each 20 square and centred in its slot"`, with three of five points full.
+  - `"a charged rogue point shows the blue icon"`.
+  - `"a druid's combo points take the druid art"`.
+  - `"on retail a paladin's third point is rune 3, and rune3-active while full"`.
+  - `'a power type with no art keeps the flat bar'`.
+  - `'under Thick the points are flat bars again, the art hidden'`.
+- [ ] **Step 2: Run them; they fail.** `tests/run tests/unitframes/classpower_blizzard_test.lua`.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run all tests.** `tests/run`: everything passes.
+- [ ] **Step 5: Commit.** `unitframes: class power points in Blizzard's art under the Blizzard theme`
+
+### Task 11: Docs, followups and the in-game list
+
+**Files:**
+- Modify:
+  - `.agents/architecture.md` (Themes): Blizzard, `themeart.lua`, the `window` and `control` kinds, the window's title bar above it, the two backgrounds, `st:ThemeInset`'s kind, `st:SetBorderColor`, `st:IsBlizzardLook`, `st:DrawnInset` and `st:DrawnKind`, close buttons following the theme, `st:CloseButtonInSocket`, and how controls follow a switch.
+  - `.agents/taint.md`: art lives on SaftUI's frames, and `NineSliceUtil` is never called. Blizzard's own frames are shown again only through widget methods: the buff skin's two borders, the micro buttons, chat's edit boxes and scroll bars, the totem flyout and the deposit button. `st:SkinEditBox` conceals with `SetAlpha(0)`, not `st:Kill`.
   - `.agents/clients.md`:
     - Forever's Camelot (`-c60`) art under the same atlas names;
     - the metal and close button differences;
+    - Forever's class power, combo points only;
     - the clients' atlas tables on wago.tools (`UiTextureAtlasElement`, `UiTextureAtlasMember`, `UiTextureAtlas`, `GlobalColor`).
   - `.agents/edit-mode.md`: the Theme tab under Blizzard, and Blizzard in the overrides.
   - `.agents/testing.md`: `tests/wow/atlases.lua`, `C_Texture.GetAtlasInfo`, `T.client`, `T.art` and `T.over`, and the new test files.
-  - `README.md`: Global Settings → Theme offers Blizzard.
+  - `README.md`: Global Settings → Theme offers Blizzard, with its two backgrounds.
   - `docs/followups.md`, new Active entries in the user-level template:
-    - "Blizzard theme: in-game checks": the measured insets and offsets on both clients, the ring's layer, the item ring's fit, texel snapping on the metal, and a theme switch in and out of combat;
-    - "Per-dispel-type debuff art on SaftUI's own aura buttons";
-    - "Icons drawn as small could be slots under Blizzard".
+    - "Blizzard theme: in-game checks". These cover:
+      - the measured insets and offsets on both clients;
+      - the ring's layer and the item ring's fit;
+      - texel snapping on the metal;
+      - the size of check boxes and panel buttons;
+      - class power art at the row's height;
+      - the edit box alpha check;
+      - a theme switch in and out of combat;
+    - "Blizzard theme: dark grey everywhere". The user, on the backgrounds: "potentially we'll end up with dark grey everywhere". It's one default to change (`templates.blizzard.backdropcolor`); a profile that never set it follows the new default;
+    - "`/sui`'s other controls in Blizzard's Settings art", unless the user's answer to the spec's question 2 put them in Task 8;
+    - "Edit Mode snapping under Blizzard measures the frames' borders, not the selection art";
+    - "Per-dispel-type debuff art on SaftUI's own aura buttons".
   - The Themes spec's project 2 line: point it at the new spec.
 
 - [ ] **Step 1: Update the docs.**
 - [ ] **Step 2: Run all tests.** `tests/run`: everything passes.
 - [ ] **Step 3: Run the doc checks.** `agents-doc-parity-check` and `readme-freshness-check`; fix what they find.
-- [ ] **Step 4: Write the in-game checklist** for the user in the task's report: each kind under Blizzard on Forever and retail, and the five Review Focus cases.
+- [ ] **Step 4: Write the in-game checklist** for the user in the task's report: each kind and each control under Blizzard on Forever and retail, and the five Review Focus cases.
 - [ ] **Step 5: Commit.** `docs: the Blizzard theme in the agent docs, README and followups`
