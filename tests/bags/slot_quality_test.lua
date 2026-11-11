@@ -16,14 +16,16 @@ Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 	or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
 load_saftui('SaftUI-Bags/currencies.lua')
 
--- A slot with a backdrop that records the border colors it's given.
+-- A slot with a backdrop that records the border colors st:SetBorderColor is
+-- given for it. The engine's own coloring is tested with real drawn frames
+-- (core/theme_blizzard_draw_test.lua, bags/theme_test.lua); this file is about
+-- which color the bags choose.
 local function make_slot(info)
 	local slot = { info = info, calls = {} }
-	slot.backdrop = {
-		SetBackdropBorderColor = function(_, r, g, b) slot.calls[#slot.calls + 1] = { r, g, b } end,
-	}
+	slot.backdrop = { record = function(r, g, b) slot.calls[#slot.calls + 1] = { r, g, b } end }
 	return slot
 end
+function st:SetBorderColor(frame, r, g, b) frame.record(r, g, b) end
 
 local function last(slot)
 	local c = slot.calls[#slot.calls]

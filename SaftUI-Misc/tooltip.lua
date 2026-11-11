@@ -20,9 +20,9 @@ end
 -- A unit tooltip's border, and the status bar's, in the unit's color.
 local function ColorUnitBorders(tooltip, c)
 	local backdrop = backdrops[tooltip]
-	if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
+	if backdrop then st:SetBorderColor(backdrop, c.r, c.g, c.b) end
 	backdrop = backdrops[GameTooltipStatusBar]
-	if backdrop then backdrop:SetBackdropBorderColor(c.r, c.g, c.b) end
+	if backdrop then st:SetBorderColor(backdrop, c.r, c.g, c.b) end
 end
 
 function TT:UpdateTooltipDisplay(tooltip)

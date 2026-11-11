@@ -642,7 +642,12 @@ end
 -- the item button's count, in ARTWORK at 0. As a region of the button it's
 -- under every child frame too (the cooldown, the glows, the action button's
 -- hotkey and count).
-local RING_LAYER, RING_SUBLEVEL = 'ARTWORK', -1
+local RING_LAYER, RING_SUBLEVEL = 'ARTWORK', -2
+
+-- A frame's own border color's piece (the white icon border, the action
+-- button's equipped border) draws just over the ring and still under the
+-- texts.
+local OWN_SUBLEVEL = -1
 
 -- A button's art on frame (the action or item button's): the art behind its
 -- icon, filling frame, and the ring over the icon's edge, covering frame. The
@@ -725,6 +730,48 @@ function ThemeArt.Color(frame, look, kind)
 	end
 	for _, key in ipairs(BEHIND) do
 		if art.pieces[key] then art.pieces[key]:SetAlpha(look.alpha) end
+	end
+	-- The theme's colors are back: a frame's own border color is off.
+	if art.own then art.own:Hide() end
+end
+
+-- Puts a frame's own border color on a Blizzard look drawn on frame as kind
+-- (st:SetBorderColor): a border's pieces are tinted; a button's or an aura's
+-- own-color piece (its equipped or quality border, white art) is shown in the
+-- color, over the icon's edge, on host as the ring is (Paint); a small frame's
+-- line takes it. No color puts the theme's back: white pieces, the own-color
+-- piece hidden, the line in the Border. A kind that draws nothing (a control,
+-- a strip) is left alone. Moves nothing.
+function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
+	local blizzard = Kind(kind)
+	if not Draws(blizzard) then return end
+	a = a or 1
+
+	if blizzard.line then
+		if r then
+			frame:SetBackdropBorderColor(r, g, b, a)
+		else
+			frame:SetBackdropBorderColor(unpack(look.colors.bordercolor))
+		end
+		return
+	end
+
+	local art = Art(frame)
+	local style = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
+	if not style then return end
+	if style.TopLeftCorner then
+		for _, piece in pairs(art.pieces) do
+			if r then piece:SetVertexColor(r, g, b, a) else piece:SetVertexColor(1, 1, 1, 1) end
+		end
+	elseif style.border then
+		if not r then
+			if art.own then art.own:Hide() end
+			return
+		end
+		local own = Piece(art, host or Holder(frame), 'own', style.border, RING_LAYER, OWN_SUBLEVEL)
+		own:ClearAllPoints()
+		own:SetAllPoints(frame)
+		own:SetVertexColor(r, g, b, a)
 	end
 end
 

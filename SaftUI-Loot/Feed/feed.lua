@@ -232,11 +232,11 @@ end
 local function ColorMount(item)
 	local r, g, b = st.config.profile.colors.button.yellow:GetRGB()
 	if item.backdrop then
-		item.backdrop:SetBackdropBorderColor(r, g, b, 1)
+		st:SetBorderColor(item.backdrop, r, g, b, 1)
 		item.backdrop:SetBackdropColor(r, g, b, .6)
 	end
 	if item.icon.backdrop then
-		item.icon.backdrop:SetBackdropBorderColor(r, g, b, 1)
+		st:SetBorderColor(item.icon.backdrop, r, g, b, 1)
 	end
 end
 

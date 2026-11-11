@@ -364,7 +364,7 @@ end
 
 -- An equipped item's border.
 local function ColorEquipped(backdrop)
-	backdrop:SetBackdropBorderColor(st.config.profile.colors.button.green:GetRGB())
+	st:SetBorderColor(backdrop, st.config.profile.colors.button.green:GetRGB())
 end
 
 -- A green border while the button holds an equipped item, the theme's border
@@ -384,7 +384,7 @@ function AB:UpdateEquippedBorder(button)
 	if equipped then
 		ColorEquipped(backdrop)
 	else
-		st:SetTemplate(backdrop, skin.theme, skin.background, 'action')
+		st:SetBorderColor(backdrop)
 	end
 end
 

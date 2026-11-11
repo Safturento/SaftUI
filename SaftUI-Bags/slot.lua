@@ -65,20 +65,16 @@ end
 -- quality, keeps the border it has. A slot drawn with None has none to color.
 function INV:SetSlotQualityBorder(slot)
 	if slot.backdrop and not slot.info.locked and slot.info.quality then
-		slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(slot.info.quality))
+		st:SetBorderColor(slot.backdrop, self:QualityBorderColor(slot.info.quality))
 	end
 end
 
 -- The border of a slot with no item's quality on it (a free slot, which may
--- have shown an item's): its Slot theme's border, none for None.
+-- have shown an item's): its Slot theme's border (under Blizzard none: the
+-- white icon border is off), none for None.
 function INV:SetSlotThemeBorder(slot)
 	if not slot.backdrop then return end
-	local look = st:ResolveTheme(self.config.buttontheme, self.config.buttonbackground)
-	if look then
-		slot.backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
-	else
-		slot.backdrop:SetBackdropBorderColor(0, 0, 0, 0)
-	end
+	st:SetBorderColor(slot.backdrop)
 end
 
 -- Skins an item or currency slot (st:SkinActionButton) with the Slot theme and

@@ -123,6 +123,43 @@ test('the buttons are drawn with the action bars\' Theme and Background, the ico
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("under Blizzard an equipped item shows Blizzard's equipped border in the green, through a recolor", function()
+	fresh()
+	st.config.profile.theme.name = 'blizzard'
+	local worn, other = bar(button('ThemeTestBlizzWorn', true), button('ThemeTestBlizzOther', false))
+	local function border(b)
+		local own = st.ThemeArt.Get(b.backdrop).own
+		if not (own and own:IsShown()) then return 'off' end
+		return tostring(own:GetAtlas()) .. ' ' .. T.text(own:GetVertexColor())
+	end
+	local GREEN = 'UI-HUD-ActionBar-IconFrame-Border ' .. green() .. ',1.00'
+	eq(border(worn), GREEN, "an equipped item: Blizzard's equipped border, in the green")
+	eq(border(other), 'off', 'another: none')
+	eq(T.over(worn.backdrop), 'Ring=UI-HUD-ActionBar-IconFrame', 'the ring stays')
+
+	-- The Border color picker dragged: a recolor on every move.
+	for move = 1, 3 do
+		st.config.profile.templates.blizzard.bordercolor = { 0.1 * move, 0.5, 0.5, 1 }
+		st:RecolorThemed()
+		st:ColorsChanged('theme')
+		eq(border(worn), GREEN, 'move ' .. move .. ': the equipped item stays green')
+		eq(border(other), 'off', 'move ' .. move .. ': the other stays bare')
+	end
+
+	-- A switch away and back (every button is styled again, which draws it again).
+	switch('thick')
+	eq(T.edge_rgb(worn.backdrop), green(), 'under Thick: the green line')
+	eq(border(worn), 'off', 'and no Blizzard border')
+	switch('blizzard')
+	eq(border(worn), GREEN, 'back under Blizzard: green again')
+
+	-- Taken off: the border goes.
+	worn.equipped = false
+	LAB.callbacks:Fire('OnButtonUpdate', worn)
+	eq(border(worn), 'off', 'taken off: no border')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the equipped border survives a recolor', function()
 	fresh()
 	local worn, other = bar(button('ThemeTestWorn', true), button('ThemeTestOther', false))
@@ -148,7 +185,7 @@ test('the equipped border survives a recolor', function()
 	LAB.callbacks:Fire('OnButtonUpdate', worn)
 	local thin = T.text(unpack(st.config.profile.templates.thin.bordercolor))
 	eq(T.edge(worn.backdrop), thin, "taken off: the theme's border")
-	eq(drawn(worn.backdrop), 'theme,theme,action', 'drawn again with the Theme and Background, as an action button')
+	eq(drawn(worn), 'theme,theme,action', 'still drawn with the Theme and Background, as an action button')
 	st:RecolorThemed()
 	eq(T.edge(worn.backdrop), thin, 'and a recolor leaves it so')
 	worn.equipped = true

@@ -526,6 +526,31 @@ function st:SetBackdropIn(backdrops, frame, theme, background, kind)
 	end
 end
 
+-- Puts a frame's own border color on a drawn frame (the frame the caller
+-- holds: x.backdrop, backdrops[x], or one drawn with st:SetTemplate), or with
+-- no r puts the look's own border back. Under Thick and Thin that is the
+-- backdrop's border (a strip's none); under Blizzard it is the look's own
+-- (st.ThemeArt.SetBorder): the border art tinted, the white icon border or the
+-- equipped border shown in the color, or a small frame's line. A control, a
+-- frame never drawn and one drawn None are left alone: a control shows its
+-- state in art of its own. A recolor or redraw takes the color off again, so
+-- the module that set it sets it on OnColorsChanged('theme') too.
+function st:SetBorderColor(frame, r, g, b, a)
+	local entry = drawn[frame]
+	if not entry then return end
+	local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
+	if not look then return end
+	if look.name == 'blizzard' then
+		st.ThemeArt.SetBorder(frame, look, kind, Host(entry), r, g, b, a)
+	elseif r then
+		frame:SetBackdropBorderColor(r, g, b, a or 1)
+	elseif IsStrip(kind) then
+		frame:SetBackdropBorderColor(0, 0, 0, 0)
+	else
+		frame:SetBackdropBorderColor(unpack(look.colors.bordercolor))
+	end
+end
+
 -- frame -> color(frame), which puts back the colors frame's own code gives its
 -- backdrop (st:KeepOwnColors).
 local ownColors = setmetatable({}, { __mode = 'k' })

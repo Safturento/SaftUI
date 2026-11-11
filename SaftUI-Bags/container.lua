@@ -806,7 +806,7 @@ local GLYPHS = {
 
 -- The lit button's border: Buttons -> Blue.
 local function ColorLit(button)
-	button.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+	st:SetBorderColor(button.backdrop, st.config.profile.colors.button.blue:GetRGB())
 end
 
 -- A button's glyph is drawn in Colors -> Text -> Normal.

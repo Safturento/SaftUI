@@ -175,10 +175,10 @@ end
 -- backdrop).
 local function SetBorderColor(skin, r, g, b)
 	if r then
-		skin.backdrop:SetBackdropBorderColor(r, g, b)
+		st:SetBorderColor(skin.backdrop, r, g, b)
 		skin.tinted = true
 	elseif skin.tinted then
-		st:SetTemplate(skin.backdrop, skin.theme, skin.background, 'action')
+		st:SetBorderColor(skin.backdrop)
 		skin.tinted = false
 	end
 end

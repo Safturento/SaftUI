@@ -312,7 +312,7 @@ end
 -- backdrop. Kept through a theme recolor or redraw (st:KeepOwnColors).
 local function ColorLit(icon)
 	if icon.backdrop then
-		icon.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+		st:SetBorderColor(icon.backdrop, st.config.profile.colors.button.blue:GetRGB())
 	end
 end
 

@@ -22,7 +22,7 @@ local function SetBorderColor(mover, selected)
 	else
 		backdrop:SetBackdropColor(0, 0, 0, 0.3)
 	end
-	backdrop:SetBackdropBorderColor(r, g, b, 1)
+	st:SetBorderColor(backdrop, r, g, b, 1)
 end
 
 -- The anchor the mover's frame is positioned with, taken from its stored position.

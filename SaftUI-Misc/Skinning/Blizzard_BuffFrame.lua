@@ -113,16 +113,11 @@ local function UpdateBorderColor(button, debuffColor)
 	local backdrop = backdrops[button.Icon]
 
 	if button.TempEnchantBorder and button.TempEnchantBorder:IsShown() then
-		backdrop:SetBackdropBorderColor(unpack(TEMP_ENCHANT_COLOR))
+		st:SetBorderColor(backdrop, unpack(TEMP_ENCHANT_COLOR))
 	elseif button.DebuffBorder and button.DebuffBorder:IsShown() and debuffColor then
-		backdrop:SetBackdropBorderColor(debuffColor:GetRGB())
+		st:SetBorderColor(backdrop, debuffColor:GetRGB())
 	else
-		local look = st:ResolveTheme(SkinningLook())
-		if look then
-			backdrop:SetBackdropBorderColor(unpack(look.colors.bordercolor))
-		else
-			backdrop:SetBackdropBorderColor(0, 0, 0, 0)
-		end
+		st:SetBorderColor(backdrop)
 	end
 end
 

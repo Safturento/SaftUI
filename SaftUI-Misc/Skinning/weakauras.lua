@@ -7,6 +7,9 @@ local skinnedRegions = {} -- every region given a backdrop, for UpdateConfig
 
 function WA:SkinIcon(parent, region, data)
 	if not region.skinned then
+		-- WeakAuras' region isn't SaftUI's: the Blizzard theme's art goes on a
+		-- frame of SaftUI's, not on it.
+		st:MarkForeign(region)
 		st:SetBackdrop(region, SK.config.theme, SK.config.background, 'aura')
 		region.backdrop:SetFrameLevel(region:GetFrameLevel()-4)
 

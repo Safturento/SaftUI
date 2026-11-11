@@ -268,7 +268,7 @@ local editBoxLooks = setmetatable({}, { __mode = 'k' })
 -- A focused box's white border. Kept through a theme recolor.
 local function ColorFocused(editbox)
 	if editbox:HasFocus() and editbox.backdrop then
-		editbox.backdrop:SetBackdropBorderColor(1, 1, 1, 1)
+		st:SetBorderColor(editbox.backdrop, 1, 1, 1, 1)
 	end
 end
 

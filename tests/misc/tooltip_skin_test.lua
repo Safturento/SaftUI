@@ -205,6 +205,56 @@ test('a None theme clears the backdrop and writes nothing', function()
 	eq(backdrop_of(tooltips.GameTooltip).backdropInfo, nil, 'backdrop cleared')
 end)
 
+test("under Blizzard a unit tooltip's border pieces take the class color, and lose it on the next show", function()
+	st.config.profile.theme.name = 'blizzard'
+	TT.config.theme, TT.config.background = 'theme', 'theme'
+	TT:UpdateConfig()
+	local tip = tooltips.GameTooltip
+	local c = { r = 0.1, g = 0.2, b = 0.3 }
+	_G.UnitName = function() return 'Someone' end
+	_G.UnitPlayerControlled = function() return true end
+	_G.UnitClass = function() return 'Mage', 'MAGE' end
+	st.config.profile.colors.class.MAGE = c
+	local function tinted(frame)
+		local art = st.ThemeArt.Get(backdrop_of(frame))
+		local colors, n = {}, 0
+		for _, piece in pairs(art.pieces) do
+			colors[T.text(piece:GetVertexColor())] = true
+			n = n + 1
+		end
+		local list = {}
+		for color in pairs(colors) do list[#list + 1] = color end
+		table.sort(list)
+		return n .. ' pieces: ' .. table.concat(list, ' | ')
+	end
+	eq(tinted(tip), '8 pieces: 1.00,1.00,1.00,1.00', 'the tooltip border is white to begin with')
+
+	tip:Show()
+	TT:GameTooltip_OnTooltipSetUnit(tip)
+	eq(tinted(tip), '8 pieces: 0.10,0.20,0.30,1.00', "all eight border pieces take the class color")
+	eq(tinted(bar), '8 pieces: 0.10,0.20,0.30,1.00', "the status bar's too")
+	eq(tinted(tooltips.ShoppingTooltip1), '8 pieces: 1.00,1.00,1.00,1.00', 'another tooltip stays white')
+
+	-- A theme recolor takes the tint off, as the theme's colors go back on, and
+	-- the module colors the unit's again (OnColorsChanged('theme')).
+	for _ = 1, 3 do
+		st.config.profile.templates.blizzard.bordercolor = { 0.7, 0.1, 0.1, 1 }
+		st:RecolorThemed()
+	end
+	eq(tinted(tip), '8 pieces: 0.10,0.20,0.30,1.00', 'the class color survives a recolor')
+	eq(tinted(bar), '8 pieces: 0.10,0.20,0.30,1.00', "and the status bar's")
+
+	-- Shown again for something else (an item): drawn again, so white.
+	tip:Hide()
+	tip:Show()
+	TT:UpdateTooltipDisplay(tip)
+	eq(tinted(tip), '8 pieces: 1.00,1.00,1.00,1.00', 'on the next show the tooltip is white again')
+	st:RecolorThemed()
+	eq(tinted(tip), '8 pieces: 1.00,1.00,1.00,1.00', 'and a recolor leaves it so')
+	st.config.profile.theme.name = 'thick'
+	TT:UpdateConfig()
+end)
+
 test("a unit tooltip's class border survives a theme recolor, until the tooltip shows something else", function()
 	TT.config.theme, TT.config.background = 'theme', 'theme'
 	TT:UpdateConfig()

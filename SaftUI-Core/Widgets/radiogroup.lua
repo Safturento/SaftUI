@@ -18,7 +18,7 @@ local st = SaftUI
 ]]--
 -- The picked button's blue border. Kept through a theme recolor.
 local function ColorPicked(button)
-    button.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+    st:SetBorderColor(button.backdrop, st.config.profile.colors.button.blue:GetRGB())
 end
 
 function st:CreateRadioGroup(name, parent, options)

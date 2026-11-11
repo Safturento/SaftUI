@@ -268,6 +268,58 @@ test('quality borders survive a recolor', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("under Blizzard an Epic item's slot shows the white icon border in the Epic color, through three recolors and a redraw", function()
+	local _, slots, currency = bags()
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	local filled, free = slots[1], slots[2]
+	local WHITE = [[Interface\Common\WhiteIconFrame]]
+	local function border(slot)
+		local own = st.ThemeArt.Get(slot.backdrop).own
+		if not (own and own:IsShown()) then return 'off' end
+		return tostring(own:GetTexture()) .. ' ' .. T.text(own:GetVertexColor())
+	end
+	local epicBorder = WHITE .. ' ' .. epic() .. ',1.00'
+
+	filled.info = { quality = 4 } -- an Epic item, as INV:AssignSlot fills it
+	INV:SetSlotQualityBorder(filled)
+	free.info = { empty = true }
+	INV:SetSlotThemeBorder(free) -- as INV:AssignEmptySlot
+	INV:SetCurrencyBorder(currency)
+	eq(border(filled), epicBorder, "the item's slot: the white icon border, in the Epic color")
+	eq(border(currency), epicBorder, "the currency's slot too")
+	eq(border(free), 'off', "a free slot's border is off")
+	eq(filled.backdrop.backdropInfo and filled.backdrop.backdropInfo.edgeFile, nil, 'no edge line under it')
+
+	-- The Border color picker dragged: a recolor on every move. A recolor takes
+	-- the color off; the bags color the slots again, as on any theme recolor.
+	local blizzardColors = st.config.profile.templates.blizzard
+	for move = 1, 3 do
+		blizzardColors.bordercolor = { 0.1 * move, 0.5, 0.5, 1 }
+		st:RecolorThemed()
+		eq(border(filled), epicBorder, 'move ' .. move .. ": the item keeps the Epic color")
+		eq(border(currency), epicBorder, 'move ' .. move .. ": the currency keeps it")
+		eq(border(free), 'off', 'move ' .. move .. ": the free slot stays off")
+	end
+
+	-- A redraw: a switch away and back.
+	st.config.profile.theme.name = 'thin'
+	st:ThemeChanged()
+	eq(border(filled), 'off', 'under Thin the piece is off (the line is the border)')
+	eq(T.edge_rgb(filled.backdrop), epic(), 'and the line is Epic')
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	eq(border(filled), epicBorder, 'back under Blizzard: Epic again')
+	eq(border(currency), epicBorder, 'the currency too')
+	eq(border(free), 'off', 'the free slot still off')
+
+	-- Epic changes to a free slot's: the border goes.
+	filled.info = { empty = true }
+	INV:SetSlotThemeBorder(filled)
+	eq(border(filled), 'off', 'emptied: off')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ Slot theme
 
 test("a free slot takes its Slot theme's border", function()

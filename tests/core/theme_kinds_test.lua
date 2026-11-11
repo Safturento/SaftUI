@@ -8,6 +8,9 @@
 --     SaftUI-style self:SetBackdrop, st.SetTemplate), which the scan couldn't
 --     see; and nothing outside SaftUI-Core/theme.lua reads an old template name
 --     (st:ResolveLegacyTemplate). The scanner is checked on a sample first.
+--   - no module sets a drawn backdrop's border color itself: the same scan
+--     finds every :SetBackdropBorderColor( on x.backdrop or backdrops[x]
+--     outside theme.lua and themeart.lua, which st:SetBorderColor is for.
 --   - the /sui tree built from Core's real config.lua offers no Template,
 --     Highlight or Close Button and no old template name, the old picker
 --     (generators.template, st.Config:GetFrameTemplates) is gone, and no SaftUI
@@ -199,6 +202,48 @@ local function Scan(path, source)
 	return calls, problems
 end
 
+-- The receiver of the call whose ':' is at colon: the dotted and indexed name
+-- just before it (item.icon.backdrop, backdrops[frame]), its brackets
+-- balanced, read backwards from the colon.
+local function Receiver(mask, colon)
+	local i, depth = colon - 1, 0
+	while i >= 1 do
+		local c = mask:sub(i, i)
+		if c == ']' then
+			depth = depth + 1
+		elseif c == '[' then
+			if depth == 0 then break end
+			depth = depth - 1
+		elseif depth == 0 and not c:find('[%w_%.]') then
+			break
+		end
+		i = i - 1
+	end
+	return mask:sub(i + 1, colon - 1)
+end
+
+-- The :SetBackdropBorderColor( calls on a drawn backdrop in source (path names
+-- it in what's found): a receiver that ends in 'backdrop' or is indexed from a
+-- table named backdrops. Their frames are the engine's to color, through
+-- st:SetBorderColor, so a module's color reaches Blizzard's art. theme.lua and
+-- themeart.lua are the engine and may.
+local function ScanBorderColors(path, source)
+	if path == 'SaftUI-Core/theme.lua' or path == 'SaftUI-Core/themeart.lua' then return {} end
+	local _, mask = Lex(source)
+	local found, from = {}, 1
+	while true do
+		local s, e = mask:find(':SetBackdropBorderColor%s*%(', from)
+		if not s then break end
+		from = e + 1
+		local receiver = Receiver(mask, s)
+		if receiver:find('backdrop$') or receiver:find('backdrops%[.*%]$') then
+			found[#found + 1] = ('%s:%d: %s:SetBackdropBorderColor( on a drawn backdrop: use st:SetBorderColor'):format(
+				path, LineAt(mask, s), receiver)
+		end
+	end
+	return found
+end
+
 ------------------------------------------------------------------ the files
 
 -- SaftUI's addons. A new addon goes here.
@@ -295,6 +340,27 @@ test('the scanner: argument counts, the none exemption, definitions, comments, s
 	eq(#ok, 0, 'theme.lua may read the old names')
 end)
 
+test("the border color scanner: a drawn backdrop's receivers are found, others aren't", function()
+	local SAMPLE = table.concat({
+		"item.backdrop:SetBackdropBorderColor(1,0,0)",                   -- 1 found
+		"backdrops[t]:SetBackdropBorderColor(1,0,0)",                    -- 2 found
+		"close:SetBackdropBorderColor(1,0,0)",                           -- 3 not
+		"local backdrop = x.backdrop; backdrop:SetBackdropBorderColor()", -- 4 found
+		"self.items[i].icon.backdrop:SetBackdropBorderColor(a, b)",      -- 5 found
+		"backdrops[f[1]]:SetBackdropBorderColor(1)",                     -- 6 found, brackets inside
+		"-- x.backdrop:SetBackdropBorderColor(1,0,0)",                   -- 7 a comment
+		"local s = 'x.backdrop:SetBackdropBorderColor(1)'",              -- 8 a string
+		"frame.outline:SetBackdropBorderColor(unpack(ALT))",             -- 9 not
+		"st:SetBorderColor(item.backdrop, 1, 0, 0)",                     -- 10 the engine's
+	}, '\n')
+	local found = ScanBorderColors('sample.lua', SAMPLE)
+	local lines = {}
+	for i, f in ipairs(found) do lines[i] = f:match('^sample%.lua:(%d+):') end
+	eq(table.concat(lines, ','), '1,2,4,5,6', 'the lines found')
+	eq(#ScanBorderColors('SaftUI-Core/theme.lua', SAMPLE), 0, 'theme.lua may')
+	eq(#ScanBorderColors('SaftUI-Core/themeart.lua', SAMPLE), 0, 'themeart.lua may')
+end)
+
 test('the scan reads every SaftUI Lua file through the TOCs', function()
 	local files, tocs, missing = LoadedFiles()
 	eq(table.concat(missing, ', '), '', 'every XML a TOC or XML names can be read')
@@ -336,6 +402,19 @@ test('every draw call passes a kind', function()
 	end
 	eq(table.concat(all, '\n'), '', 'every st:SetTemplate, st:SetBackdrop and st:SetBackdropIn names its kind')
 	check(total > 60, 'the scan found the draw calls: ' .. total)
+end)
+
+test("no module sets a drawn backdrop's border color itself", function()
+	local all, scanned = {}, 0
+	for _, path in ipairs((LoadedFiles())) do
+		local source = read_saftui_source(path)
+		if source then
+			scanned = scanned + 1
+			for _, problem in ipairs(ScanBorderColors(path, source)) do all[#all + 1] = problem end
+		end
+	end
+	check(scanned > 140, 'the scan read the files: ' .. scanned)
+	eq(table.concat(all, '\n'), '', "every module's border color goes through st:SetBorderColor")
 end)
 
 -- Labels the old picker showed, assigned anywhere in SaftUI's source (a name

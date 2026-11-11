@@ -220,7 +220,7 @@ end
 function INV:SetCurrencyBorder(slot)
     if not slot.backdrop then return end
     local quality = C_CurrencyInfo.GetBasicCurrencyInfo(slot.elementData.id).quality
-    slot.backdrop:SetBackdropBorderColor(self:QualityBorderColor(quality))
+    st:SetBorderColor(slot.backdrop, self:QualityBorderColor(quality))
 end
 
 -- A quality color changed in the options, or a theme recolor put the theme's

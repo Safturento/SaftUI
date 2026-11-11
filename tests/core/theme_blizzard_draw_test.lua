@@ -9,6 +9,9 @@
 --     the Opacity, no edge line and no Thick lines;
 --   - switches between Thick, Blizzard and Thin, a recolor under Blizzard, and
 --     None clearing the art;
+--   - a frame's own border color (st:SetBorderColor): the border and line under
+--     Thick and Thin, the tinted border art, the equipped and quality borders
+--     and a small frame's line under Blizzard, and a control left alone;
 --   - st:DrawnInset, st:DrawnKind and st:CalculateSpacing following the inset
 --     each frame was drawn at;
 --   - a frame first drawn in combat, nothing written onto a frame that isn't
@@ -677,6 +680,242 @@ test("drawing under Blizzard writes nothing onto a frame that isn't SaftUI's", f
 	eq(#errors, 0, 'nothing written through a recolor and two switches: ' .. tostring(errors[1]))
 	eq(T.art(backdrops[frames.tooltip]), TOOLTIP, 'the tooltip border is drawn')
 	eq(T.over(backdrops[frames.slot]), SLOT_RING, "a slot's ring is drawn")
+end)
+
+------------------------------------------------------------------ a frame's own border color
+
+-- The own-color piece of a drawn frame (shown or not), or nil.
+local function own(st, f)
+	local art = st.ThemeArt.Get(f)
+	return art and art.own
+end
+
+-- The own-color piece as text: 'file-or-atlas r,g,b,a' while shown, 'off' otherwise.
+local function ownText(st, f)
+	local p = own(st, f)
+	if not (p and p:IsShown()) then return 'off' end
+	return tostring(p:GetAtlas() or p:GetTexture()) .. ' ' .. text(p:GetVertexColor())
+end
+
+-- The vertex colors of every piece of a border, one text if they're the same.
+local function tint(st, f)
+	local colors = {}
+	for _, p in pairs(st.ThemeArt.Get(f).pieces) do colors[text(p:GetVertexColor())] = true end
+	local list = {}
+	for c in pairs(colors) do list[#list + 1] = c end
+	table.sort(list)
+	return table.concat(list, ' | ')
+end
+
+test("SetBorderColor under Thick and Thin is the border color, and no color is the theme's", function()
+	local st = T.client('forever')
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		st.config.profile.theme.name = name
+		local theme = T.text(unpack(st.config.profile.templates[name].bordercolor))
+		for _, kind in ipairs({ 'panel', 'window', 'action', 'slot', 'aura', 'small', 'control' }) do
+			local f = frame(st)
+			st:SetBackdrop(f, 'theme', 'theme', kind)
+			st:SetBorderColor(f.backdrop, 1, 0, 0, 0.5)
+			eq(edge(f.backdrop), '1.00,0.00,0.00,0.50', name .. ' ' .. kind .. ': the border color')
+			st:SetBorderColor(f.backdrop, 0, 1, 0)
+			eq(edge(f.backdrop), '0.00,1.00,0.00,1.00', name .. ' ' .. kind .. ': no alpha is opaque')
+			st:SetBorderColor(f.backdrop)
+			eq(edge(f.backdrop), theme, name .. ' ' .. kind .. ": no color: the theme's")
+			eq(T.art(f.backdrop) .. T.over(f.backdrop), '', name .. ' ' .. kind .. ': no Blizzard art')
+		end
+		-- A strip's border is none: no color puts that back.
+		local h = frame(st)
+		st:SetBackdrop(h, 'theme', 'theme', 'header')
+		st:SetBorderColor(h.backdrop, 1, 0, 0)
+		st:SetBorderColor(h.backdrop)
+		eq(edge(h.backdrop), '0.00,0.00,0.00,0.00', name .. ' header: no border')
+	end
+
+	-- A frame drawn on itself (st:SetTemplate), and a frame never drawn or drawn None.
+	local f = frame(st)
+	st:SetTemplate(f, 'theme', 'theme', 'panel')
+	st:SetBorderColor(f, 0, 0, 1)
+	eq(edge(f), '0.00,0.00,1.00,1.00', 'a frame drawn with st:SetTemplate')
+	local never = frame(st)
+	st:SetBorderColor(never, 1, 0, 0)
+	st:SetBorderColor(never)
+	local none = frame(st)
+	st:SetBackdrop(none, 'theme', 'theme', 'panel')
+	st:SetBackdrop(none, 'none')
+	st:SetBorderColor(none.backdrop, 1, 0, 0)
+	eq(#take_errors(), 0, 'a frame never drawn or drawn None is left alone, with no error')
+	eq(none.backdrop.backdropInfo, nil, 'drawn None stays bare')
+end)
+
+test("SetBorderColor under Blizzard: tooltip and metal pieces tinted, the action's equipped border, the slot's and aura's white icon border, no color takes it off", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st = blizzard(client)
+
+		-- The tooltip and metal borders: every piece tinted, white again with no color.
+		for _, kind in ipairs({ 'tooltip', 'panel', 'bar', 'window' }) do
+			local f = frame(st)
+			st:SetBackdrop(f, 'theme', 'theme', kind)
+			local b = f.backdrop
+			st:SetBorderColor(b, 1, 0, 0, 0.5)
+			eq(tint(st, b), '1.00,0.00,0.00,0.50', client .. ' ' .. kind .. ': every piece tinted')
+			eq(own(st, b), nil, client .. ' ' .. kind .. ': no own-color piece')
+			st:SetBorderColor(b)
+			eq(tint(st, b), '1.00,1.00,1.00,1.00', client .. ' ' .. kind .. ': no color: white')
+		end
+
+		-- An action button: Blizzard's equipped border in the color, over the ring.
+		local a = button(st, 'BACKGROUND', 'OVERLAY')
+		st:SetBackdrop(a, 'theme', 'theme', 'action')
+		eq(ownText(st, a.backdrop), 'off', client .. ' action: no border until one is given')
+		st:SetBorderColor(a.backdrop, 0, 1, 0)
+		eq(ownText(st, a.backdrop), 'UI-HUD-ActionBar-IconFrame-Border 0.00,1.00,0.00,1.00', client .. " action: the equipped border, in the green")
+		eq(T.over(a.backdrop), ACTION_RING, client .. ' action: the ring stays')
+		eq(T.art(a.backdrop), ACTION_ART, client .. ' action: so does the slot art')
+		eq(text(piece(st, a.backdrop, 'SlotArt'):GetVertexColor()), '1.00,1.00,1.00,1.00', client .. ' action: the slot art is untinted')
+		local o = own(st, a.backdrop)
+		eq(o:GetParent(), a, client .. " action: a texture of the button's own, as the ring is")
+		eq(T.around(o, a.backdrop), '0,0,0,0', client .. ' action: it covers the drawn frame')
+		local ring = piece(st, a.backdrop, 'Ring', 'over')
+		check(depth(o) > depth(ring), client .. ' action: over the ring')
+		check(depth(o) > depth(a.icon), client .. ' action: over the icon')
+		check(depth(o) < depth(a.text), client .. ' action: under its font strings')
+		st:SetBorderColor(a.backdrop, 0, 0, 1)
+		eq(ownText(st, a.backdrop), 'UI-HUD-ActionBar-IconFrame-Border 0.00,0.00,1.00,1.00', client .. ' action: recolored')
+		st:SetBorderColor(a.backdrop)
+		eq(ownText(st, a.backdrop), 'off', client .. ' action: no color takes it off')
+		eq(T.over(a.backdrop), ACTION_RING, client .. ' action: the ring stays')
+
+		-- A slot and an aura: the white icon border in the color.
+		local WHITE = [[Interface\Common\WhiteIconFrame]]
+		local slot = button(st, 'BORDER', 'ARTWORK')
+		st:SetBackdrop(slot, 'theme', 'theme', 'slot')
+		st:SetBorderColor(slot.backdrop, 0.64, 0.21, 0.93)
+		eq(ownText(st, slot.backdrop), WHITE .. ' 0.64,0.21,0.93,1.00', client .. " slot: the white icon border in the quality's color")
+		eq(T.over(slot.backdrop), SLOT_RING, client .. ' slot: the ring stays')
+		eq(own(st, slot.backdrop):GetParent(), slot, client .. " slot: a texture of the button's own")
+		check(depth(own(st, slot.backdrop)) > depth(slot.icon), client .. ' slot: over the icon')
+		check(depth(own(st, slot.backdrop)) < depth(slot.text), client .. ' slot: under its count')
+		st:SetBorderColor(slot.backdrop)
+		eq(ownText(st, slot.backdrop), 'off', client .. ' slot: no color: off (a free slot)')
+
+		local aura = frame(st)
+		st:SetBackdrop(aura, 'theme', 'theme', 'aura')
+		eq(ownText(st, aura.backdrop), 'off', client .. ' aura: bare')
+		st:SetBorderColor(aura.backdrop, 1, 0.5, 0, 1)
+		eq(ownText(st, aura.backdrop), WHITE .. ' 1.00,0.50,0.00,1.00', client .. ' aura: the white icon border, tinted')
+		st:SetBorderColor(aura.backdrop)
+		eq(ownText(st, aura.backdrop), 'off', client .. ' aura: off with no color')
+
+		-- A small frame: its line.
+		local small = frame(st)
+		st:SetBackdrop(small, 'theme', 'theme', 'small')
+		st:SetBorderColor(small.backdrop, 1, 1, 0, 1)
+		eq(edge(small.backdrop), '1.00,1.00,0.00,1.00', client .. " small: the line's color")
+		st:SetBorderColor(small.backdrop)
+		eq(edge(small.backdrop), '0.50,0.50,0.50,1.00', client .. " small: no color: Blizzard's Border")
+
+		-- The theme's colors back (a recolor) take every own color off, as they
+		-- take it off a backdrop: the module sets it again on OnColorsChanged.
+		st:SetBorderColor(a.backdrop, 0, 1, 0)
+		st:SetBorderColor(slot.backdrop, 1, 0, 0)
+		local tip = frame(st)
+		st:SetBackdrop(tip, 'theme', 'theme', 'tooltip')
+		st:SetBorderColor(tip.backdrop, 1, 0, 0)
+		st:RecolorThemed()
+		eq(ownText(st, a.backdrop), 'off', client .. ': a recolor takes the equipped border off')
+		eq(ownText(st, slot.backdrop), 'off', client .. ': and the quality border')
+		eq(tint(st, tip.backdrop), '1.00,1.00,1.00,1.00', client .. ': and a tint')
+
+		-- A redraw (a theme switch and back) leaves no own color either, and the
+		-- piece is shown again by the next color.
+		st:SetBorderColor(a.backdrop, 0, 1, 0)
+		st.config.profile.theme.name = 'thick'
+		st:RedrawThemed()
+		eq(ownText(st, a.backdrop), 'off', client .. ': under Thick, no own-color piece shows')
+		local thick = st.config.profile.templates.thick.bordercolor
+		eq(T.edge_rgb(a.backdrop), T.text(thick[1], thick[2], thick[3]), client .. ": Thick's border, not the green")
+		st:SetBorderColor(a.backdrop, 0, 1, 0)
+		eq(T.edge_rgb(a.backdrop), '0.00,1.00,0.00', client .. ': Thick: the green line')
+		eq(ownText(st, a.backdrop), 'off', client .. ': and still no piece')
+		st.config.profile.theme.name = 'blizzard'
+		st:RedrawThemed()
+		st:SetBorderColor(a.backdrop, 0, 1, 0)
+		eq(ownText(st, a.backdrop), 'UI-HUD-ActionBar-IconFrame-Border 0.00,1.00,0.00,1.00', client .. ': back under Blizzard: the border shows')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test("a foreign owner given SetBorderColor under Blizzard gets no texture made on it", function()
+	local st = blizzard()
+	-- Someone else's buttons a module still draws on (Hekili's, the bags bar's
+	-- Blizzard slots, WeakAuras' regions): every texture made on the frame is
+	-- recorded, and none may be the own-color piece's.
+	local function foreign()
+		local f = button(st, 'BACKGROUND', 'OVERLAY')
+		f.made = 0
+		local create = f.CreateTexture
+		f.CreateTexture = function(self, ...)
+			self.made = self.made + 1
+			return create(self, ...)
+		end
+		st:MarkForeign(f)
+		return f
+	end
+	for _, kind in ipairs({ 'action', 'slot', 'aura' }) do
+		local f = foreign()
+		st:SetBackdrop(f, 'theme', 'theme', kind)
+		local before = f.made
+		st:SetBorderColor(f.backdrop, 1, 0, 0)
+		eq(f.made, before, kind .. ': no texture is made on the frame')
+		local o = own(st, f.backdrop)
+		check(o ~= nil and o:IsShown(), kind .. ": the border is drawn all the same")
+		check(o and o:GetParent() ~= f, kind .. ": on a frame of SaftUI's, not the frame")
+		eq(o and o:GetParent():GetParent(), f.backdrop, kind .. ': a child of the backdrop')
+		st:SetBorderColor(f.backdrop)
+		st:SetBorderColor(f.backdrop, 0, 1, 0)
+		eq(f.made, before, kind .. ': nor on a second color')
+	end
+
+	-- Blizzard's own frames, drawn behind with st:SetBackdropIn: the same.
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	for _, kind in ipairs({ 'action', 'slot', 'aura' }) do
+		local owner = CreateFrame('CheckButton', nil, UIParent)
+		owner:SetSize(36, 36)
+		owner:SetPoint('CENTER')
+		locked(owner, 'Blizzard')
+		local b = st:SetBackdropIn(backdrops, owner, 'theme', 'theme', kind)
+		local ok, err = pcall(st.SetBorderColor, st, b, 1, 0, 0)
+		check(ok, kind .. ' (SetBackdropIn): written nothing onto the frame: ' .. tostring(err))
+		local o = own(st, b)
+		eq(o and o:GetParent():GetParent(), b, kind .. ' (SetBackdropIn): on a child of the backdrop')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('SetBorderColor leaves a control alone under Blizzard', function()
+	local st = blizzard()
+	local c = frame(st)
+	st:SetBackdrop(c, 'theme', 'theme', 'control')
+	st:SetBorderColor(c.backdrop, 1, 0, 0)
+	check(bare(c.backdrop), 'a control draws nothing, with a color')
+	eq(own(st, c.backdrop), nil, 'and has no own-color piece')
+	st:SetBorderColor(c.backdrop)
+	check(bare(c.backdrop), 'nor with none')
+	-- Under Thick the same frame is a small frame and takes the color.
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	st:SetBorderColor(c.backdrop, 1, 0, 0)
+	eq(edge(c.backdrop), '1.00,0.00,0.00,1.00', 'under Thick it is a small frame, and takes it')
+	-- Headers and the close button, which draw nothing under Blizzard, too.
+	st.config.profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	for _, kind in ipairs({ 'header', 'close' }) do
+		local f = frame(st)
+		st:SetBackdrop(f, 'theme', 'theme', kind)
+		st:SetBorderColor(f.backdrop, 1, 0, 0)
+		check(bare(f.backdrop), kind .. ' draws nothing, with a color')
+	end
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('no SaftUI file names NineSliceUtil', function()
