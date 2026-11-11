@@ -18,7 +18,12 @@ local INV = st:GetModule('Inventory')
 	sets once. Evaluating reads the item's facts (see INV:GetInventoryItemInfo)
 	and strips nothing. A block of an unknown type, with missing or wrongly typed
 	params, a group of an unknown op or with no items table, or a rule that isn't
-	a table, matches nothing, negated or not, and never errors.
+	a table is UNREADABLE: it matches nothing, negated or not, and never errors.
+	A group with no readable child (empty, or all unreadable) is unreadable too.
+	A parent skips its unreadable children when it decides, so OR(unreadable, X)
+	and AND(unreadable, X) are X, and NOT never turns "can't read" into "matches
+	everything" (an editor mid-edit makes these: a new NOT group, a block before
+	its text is typed). At the root, unreadable matches nothing.
 ]]
 local R = {}
 INV.Rules = R
@@ -153,7 +158,7 @@ local compilers = {}
 -- Each describer takes the node and returns its words.
 local describers = {}
 
-local function text_block(label, strippedField, lowerField)
+local function text_block(strippedField, lowerField)
 	return function(node)
 		local text = node.text
 		if type(text) ~= 'string' then return nil end
@@ -170,8 +175,8 @@ local function text_block(label, strippedField, lowerField)
 	end
 end
 
-compilers.tooltip = text_block('Tooltip', 'tooltipStripped', 'tooltipLower')
-compilers.name = text_block('Name', 'nameStripped', 'nameLower')
+compilers.tooltip = text_block('tooltipStripped', 'tooltipLower')
+compilers.name = text_block('nameStripped', 'nameLower')
 
 local function contains(label)
 	return function(node)
@@ -377,62 +382,68 @@ end
 
 local compile_node
 
+-- Returns fn, readable. An unreadable node (see the header) is never() and
+-- its parent skips it.
 local function compile_group(node)
 	local op = node.op
 	local items = node.items
-	if (op ~= 'and' and op ~= 'or') or type(items) ~= 'table' then return never end
-	local n = #items
-	local fns = {}
-	local firstPlain -- AND: the first child that isn't negated
-	for i = 1, n do
-		fns[i] = compile_node(items[i])
-		if not firstPlain and not (type(items[i]) == 'table' and items[i].negate == true) then firstPlain = i end
+	if (op ~= 'and' and op ~= 'or') or type(items) ~= 'table' then return never, false end
+	local fns, index = {}, {} -- the readable children, and where each sits in items
+	local firstPlain -- AND: the first readable child that isn't negated
+	for i = 1, #items do
+		local fn, readable = compile_node(items[i])
+		if readable then
+			fns[#fns + 1], index[#fns + 1] = fn, i
+			if not firstPlain and items[i].negate ~= true then firstPlain = #fns end
+		end
 	end
+	local n = #fns
+	if n == 0 then return never, false end
 	local negate = node.negate == true
 	local isOr = op == 'or'
 	return function(info)
 		local matched, path = false, nil
 		if isOr then
-			for i = 1, n do
-				local m, p = fns[i](info)
-				if m then matched, path = true, prefix(i, p); break end
+			for k = 1, n do
+				local m, p = fns[k](info)
+				if m then matched, path = true, prefix(index[k], p); break end
 			end
-		elseif n > 0 then
+		else
 			matched = true
 			local decided
-			for i = 1, n do
-				local m, p = fns[i](info)
+			for k = 1, n do
+				local m, p = fns[k](info)
 				if not m then matched = false; break end
-				if i == firstPlain then decided = p end
+				if k == firstPlain then decided = p end
 			end
-			if matched then path = firstPlain and prefix(firstPlain, decided) or {} end
+			if matched then path = firstPlain and prefix(index[firstPlain], decided) or {} end
 		end
 		if negate then
 			if matched then return false, nil end
 			return true, {}
 		end
 		return matched, path
-	end
+	end, true
 end
 
 local function compile_block(node)
 	local type_ = node.block
 	local compiler = type(type_) == 'string' and compilers[type_]
 	local matcher = compiler and compiler(node)
-	if not matcher then return never end
+	if not matcher then return never, false end
 	local negate = node.negate == true
 	return function(info)
 		local m = matcher(info) and true or false
 		if negate then m = not m end
 		return m, m and {} or nil
-	end
+	end, true
 end
 
 function compile_node(node)
-	if type(node) ~= 'table' then return never end
+	if type(node) ~= 'table' then return never, false end
 	if node.op ~= nil then return compile_group(node) end
 	if node.block ~= nil then return compile_block(node) end
-	return never
+	return never, false
 end
 
 function R.Compile(rule)

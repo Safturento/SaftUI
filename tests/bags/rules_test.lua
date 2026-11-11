@@ -71,15 +71,39 @@ test('nested groups: x AND (y OR z)', function()
 	eq(match(rule, info({ quality = 1, classID = 4 })), false, 'y only')
 end)
 
-test('an empty group matches nothing, and NOT of one matches everything', function()
+test('unreadable groups match nothing, and a NOT never flips them', function()
 	world()
-	eq(match(grp('and', {}), info()), false, 'empty AND')
-	eq(match(grp('or', {}), info()), false, 'empty OR')
-	eq(match(grp('and', {}, true), info()), true, 'NOT empty AND')
-	eq(match(grp('or', {}, true), info()), true, 'NOT empty OR')
-	local m, path = match(grp('or', { grp('and', {}, true) }), info())
-	eq(m, true, 'NOT empty inside an OR'); eq(p(path), '{1}', 'and it decides itself')
-	eq(match(grp('or', { grp('or', {}) }), info()), false, 'an empty child')
+	local real = blk('class', { class = 4 })
+	local i, other = info({ classID = 4 }), info({ classID = 2 })
+	eq(match(grp('and', {}), i), false, 'empty AND')
+	eq(match(grp('or', {}), i), false, 'empty OR')
+	eq(match(grp('and', {}, true), i), false, 'NOT empty AND')
+	eq(match(grp('or', {}, true), i), false, 'NOT empty OR')
+	eq(match(grp('or', { blk('tooltip', { text = '' }) }, true), i), false, 'NOT OR(empty tooltip)')
+	eq(match(grp('or', { { block = 'future' } }, true), i), false, 'NOT OR(future block)')
+	eq(match(grp('and', { { block = 'future' } }, true), i), false, 'NOT AND(future block)')
+	eq(match(grp('or', { grp('and', {}, true) }, true), i), false, 'NOT of a group of unreadable groups')
+	-- Unreadable children are skipped.
+	local junk = blk('tooltip', { text = '' })
+	local m, path = match(grp('or', { junk, real }), i)
+	eq(m, true, 'OR(unreadable, X) is X'); eq(p(path), '{2}', 'with the real index')
+	eq(match(grp('or', { junk, real }), other), false, 'OR(unreadable, X) false when X is')
+	m, path = match(grp('and', { junk, real }), i)
+	eq(m, true, 'AND(unreadable, X) is X'); eq(p(path), '{2}', 'with the real index')
+	eq(match(grp('and', { junk, real }), other), false, 'AND(unreadable, X) false when X is')
+	-- A NOT group of nothing readable inside an OR, beside a real block.
+	local notEmpty = grp('or', { junk }, true)
+	m, path = match(grp('or', { notEmpty, real }), i)
+	eq(m, true, 'NOT group inside an OR next to a real block'); eq(p(path), '{2}', 'the real block decides')
+	eq(match(grp('or', { notEmpty, real }), other), false, 'and does not catch what the real block does not')
+	eq(match(grp('or', { notEmpty }), i), false, 'alone it catches nothing')
+	-- The Grays shape: real AND NOT(empty tooltip block).
+	local grays = grp('and', { real, grp('or', { junk }, true) })
+	eq(match(grays, i), true, 'Grays-shaped: catches what the real block catches')
+	eq(match(grays, other), false, 'Grays-shaped: and nothing else')
+	-- A readable NOT group still flips.
+	eq(match(grp('and', { real, grp('or', { blk('class', { class = 2 }) }, true) }), i), true, 'a readable NOT group flips')
+	eq(match(grp('and', { real, grp('or', { blk('class', { class = 4 }) }, true) }), i), false, 'and excludes')
 end)
 
 test('tooltip and name: plain, case-insensitive, and whole word', function()
@@ -295,6 +319,7 @@ test("the deciding node: OR's first match, AND's first non-negated child, nested
 	local m, pa = match(grp('or', { f }), i)
 	eq(m, false, 'no match'); eq(pa, nil, 'and no path')
 	eq(path(grp('and', { f }, true)), '{}', 'a negated root that matched decides itself')
+	eq(path(grp('or', { grp('or', {}), t })), '{2}', 'an unreadable child is skipped in the path')
 end)
 
 test('Describe: every block type, NOT, and the group path', function()
@@ -420,7 +445,7 @@ test('unknown block types and malformed params match nothing and never error', f
 	end
 	-- Unknown beside known blocks doesn't spoil them.
 	eq(match(grp('or', { { block = 'future' }, blk('class', { class = 4 }) }), i), true, 'OR still finds the good one')
-	eq(match(grp('and', { { block = 'future' }, blk('class', { class = 4 }) }), i), false, 'AND fails on the unknown one')
+	eq(match(grp('and', { { block = 'future' }, blk('class', { class = 4 }) }), i), true, 'AND skips the unknown one')
 	-- Rules that aren't rules.
 	for _, rule in ipairs({ 'x', 5, true, false }) do
 		eq(R.Compile(rule)(i) and true or false, false, 'a ' .. type(rule) .. ' as a rule')
@@ -443,10 +468,15 @@ test('evaluating strips no text', function()
 	local rule = grp('or', blocks)
 	local i = info({ name = 'Something Plain', tooltip = 'A tooltip with 100% nothing' })
 	local calls = 0
+	-- rules.lua captures strlower when it loads, so the wrapper goes in first
+	-- and the file loads again over it.
 	local unmagic, lower = string.unmagic, _G.strlower
 	string.unmagic = function(...) calls = calls + 1; return unmagic(...) end
 	_G.strlower = function(...) calls = calls + 1; return lower(...) end
+	load_saftui('SaftUI-Bags/rules.lua')
+	R = INV.Rules
 	local fn = R.Compile(rule) -- compiling may strip the needles
+	check(calls > 0, 'the wrapper sees compile-time strips')
 	calls = 0
 	for _ = 1, 3 do fn(i) end
 	eq(calls, 0, 'no strips while evaluating')
