@@ -471,6 +471,10 @@ function UF:ApplyConfig(unit, element_name)
 				end
 			end
 
+			-- The group border follows the members' Theme (groups.lua). It
+			-- touches only SaftUI's own border, so in combat too.
+			xpcall(function() self:UpdateGroupBorder(unit) end, geterrorhandler())
+
 			-- After the buttons are resized, so the header measures them anew.
 			if layout then
 				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())

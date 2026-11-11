@@ -22,7 +22,9 @@ local st = SaftUI
 	               unit frame's bronze box (cut from Blizzard's unit frame art
 	               by texture coordinates, ThemeArt.Cut), the action and item
 	               buttons', the aura's, the close button's, and each
-	               control's (CONTROLS), which st.ThemeArt.Control reads.
+	               control's (CONTROLS), which st.ThemeArt.Control reads;
+	               the party and raid group border is one of those, a cut
+	               drawn by ThemeArt.PaintCut.
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
@@ -153,6 +155,9 @@ ThemeArt.KINDS = {
 local UF_PLAYER = Atlas('UI-HUD-UnitFrame-Player-PortraitOn')
 local UF_TARGET = Atlas('UI-HUD-UnitFrame-Target-PortraitOn')
 
+-- Blizzard's raid group border, which the group border is cut from.
+local GROUP_BORDER = Atlas('options_frame_child')
+
 ThemeArt.ART = {
 	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
 	-- bars and tooltips. Its art is white, and a frame's own border color tints
@@ -237,6 +242,34 @@ ThemeArt.ART = {
 			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 24, 32 } },
 			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
 		}),
+	},
+
+	-- The party and raid group border, a cut, around each group header's
+	-- members (SaftUI-Unitframes/groups.lua, UF:GroupBorder), read as a control
+	-- and drawn with ThemeArt.PaintCut on a frame of SaftUI's that is only
+	-- the border. Blizzard's raid frames draw it around each group with Edit
+	-- Mode's Display Border on (CompactRaidGroupTemplate's borderFrame), the
+	-- whole atlas stretched; cut at 6px it stays crisp at any size: a 2-3px
+	-- rim with rounded corners (bronze on Forever's Camelot member, which has
+	-- a faint dark middle; retail's middle is clear). No middle is drawn: the
+	-- members draw over the pieces' inner part. offsets put the border from
+	-- the group's top left (left x, top y) to its bottom right (right x, bottom
+	-- y), as CompactRaidGroup_UpdateBorder puts it around its first and last
+	-- member. The same rectangles on both clients.
+	groupborder = {
+		layer = 'BORDER',
+		size = 6,
+		offsets = { -2, 2, 2, -3 },
+		pieces = {
+			TopLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 0, 6 } },
+			TopRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 0, 6 } },
+			BottomLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 20, 26 } },
+			BottomRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 20, 26 } },
+			TopEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 0, 6 } },
+			BottomEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 20, 26 } },
+			LeftEdge = { atlas = GROUP_BORDER, rect = { 0, 6, 6, 20 } },
+			RightEdge = { atlas = GROUP_BORDER, rect = { 22, 28, 6, 20 } },
+		},
 	},
 
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
@@ -513,6 +546,7 @@ local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
+	groupborder = true,
 }
 
 ------------------------------------
@@ -790,11 +824,12 @@ function ThemeArt.Cut(texture, atlas, rect)
 	return true
 end
 
--- A cut (the unit frame's bronze box) on frame: each piece cut from its
--- atlas (ThemeArt.Cut, which hides one it can't cut), the corners size by
--- size at the drawn frame's own corners, the edges between them, size thick
--- and stretched, every piece in the cut's layer. Pixel snapping is on, the
--- game's default, so a piece once drawn as the metal doesn't keep it off.
+-- A cut (the unit frame's bronze box, the group border) on frame: each piece
+-- cut from its atlas (ThemeArt.Cut, which hides one it can't cut), the
+-- corners size by size at the drawn frame's own corners, the edges between
+-- them, size thick and stretched, every piece in the cut's layer. Pixel
+-- snapping is on, the game's default, so a piece once drawn as the metal
+-- doesn't keep it off.
 local function LayCut(art, frame, cut)
 	local size = cut.size
 	local function Lay(key)
@@ -977,6 +1012,17 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		own:SetAllPoints(frame)
 		own:SetVertexColor(r, g, b, a)
 	end
+end
+
+-- Lays and shows the cut ART[name] (the group border) on frame, a frame of
+-- SaftUI's that is only that art, not a backdrop: its pieces at frame's
+-- corners and along its edges (LayCut), white, kept as frame's art
+-- (ThemeArt.Get). No fill, no kind and no colors: ThemeArt.Clear hides them.
+-- Moves only the pieces.
+function ThemeArt.PaintCut(frame, name)
+	local cut = ThemeArt.ART[name]
+	if not (cut and IsCut(cut)) then error(tostring(name) .. ' is not a cut', 2) end
+	LayCut(Art(frame), frame, ForClient(cut))
 end
 
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
