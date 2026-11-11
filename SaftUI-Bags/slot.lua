@@ -101,6 +101,7 @@ end
 -- theme's border back on every slot (group 'theme'): redraw the borders of the
 -- filled slots and the shown currencies.
 function INV:OnColorsChanged(group)
+	if group == 'button' then self:ColorViewButtons() end -- Buttons -> Blue lights the view buttons
 	if group ~= 'item_quality' and group ~= 'theme' then return end
 	for _, container in pairs(self.containers) do
 		for _, category in pairs(container.categories) do

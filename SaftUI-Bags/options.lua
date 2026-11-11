@@ -26,19 +26,31 @@ local function BuildWindow(id, order)
 			INV:GetAnchor(id)
 		),
 	}
-	-- Free bag slots as a category: the bag window only, the banks have none.
 	-- There is no select generator; sorting keeps the dropdown in this order.
-	-- Changing it goes through the group's set, which re-lays the bags out.
-	if id == 'bag' then
-		general.emptySlots = {
-			name = 'Empty slots',
-			desc = 'Show free bag slots as an Empty Slots category. Grouped shows one slot for the bags and one for the reagent bag, each with its free count; Every slot shows each free slot.',
-			type = 'select',
-			order = 4,
-			values = { off = 'Off', grouped = 'Grouped', all = 'Every slot' },
-			sorting = { 'off', 'grouped', 'all' },
-		}
-	end
+	-- The view, the same choice as the title bar's buttons; INV:SetView saves
+	-- it and lays the window out, and does nothing for the view it has.
+	general.view = {
+		name = 'View',
+		desc = "How this window lays its items out: One bag (every bag's items in one grid, special bags and Currencies under it), Multi bag (a section per bag), Compact (categories in columns) or Rows (a row per category). The same as the buttons in the window's title bar.",
+		type = 'select',
+		order = 4,
+		values = INV.viewLabels,
+		sorting = INV.viewIds,
+		set = function(_, value) INV:SetView(id, value) end,
+	}
+	-- Free bag slots as a category.
+	general.emptySlots = {
+		name = 'Empty slots',
+		desc = 'Show free bag slots as an Empty Slots category. Grouped shows one slot per kind of bag (per section in One bag and Multi bag), each with its free count; Every slot shows each free slot.',
+		type = 'select',
+		order = 5,
+		values = { off = 'Off', grouped = 'Grouped', all = 'Every slot' },
+		sorting = { 'off', 'grouped', 'all' },
+		set = function(_, value)
+			INV.config[id].emptySlots = value
+			INV:QueueUpdate(true) -- lays the windows out again
+		end,
+	}
 
 	return {
 		name = INV.windowLabels[id],

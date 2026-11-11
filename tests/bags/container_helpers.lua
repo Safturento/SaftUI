@@ -268,6 +268,7 @@ function H.window(id)
 	-- Core's real header and footer, which INV:CreateContainer makes, in place
 	-- of H.container's plain frames: the layout places the scroll frame under
 	-- the header.
+	SaftUI:CreateCloseButton(container)
 	SaftUI:CreateHeader(container, id)
 	SaftUI:CreateFooter(container)
 	-- The game puts a scroll frame's child at its top left (less the scroll,
@@ -284,6 +285,7 @@ function H.window(id)
 	container.footer.slots = container.footer:CreateFontString(nil, 'OVERLAY')
 	container.footer.slots:SetFontObject(SaftUI:GetFont(SaftUI.config.profile.headers.font))
 	INV.containers[id] = container
+	INV:CreateViewButtons(container) -- in the title bar, as INV:CreateContainer makes them
 	INV:EnsureConfigTables()
 	INV:InitializeLoadingOverlay(container)
 	INV:UpdateConfig(id)

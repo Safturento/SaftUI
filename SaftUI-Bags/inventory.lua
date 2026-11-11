@@ -158,6 +158,7 @@ function INV:UpdateConfig(id)
 	-- slots restyled after this are anchored for that view's line.
 	self:ReleaseLayout(container)
 	container.view = self:GetView(id)
+	self:UpdateViewButtons(id) -- a profile switch changes the view
 
 	-- The window is anchored to its mover's anchor frame (see movers.lua).
 	self:ApplyPosition(id)

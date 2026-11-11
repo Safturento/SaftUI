@@ -8,6 +8,11 @@ local INV = st:GetModule('Inventory')
 
 local VIEWS = { onebag = true, multibag = true, compact = true, rows = true }
 
+-- The views in the order the title bar's buttons and /sui's View select list
+-- them, and how each is worded there.
+INV.viewIds = { 'onebag', 'multibag', 'compact', 'rows' }
+INV.viewLabels = { onebag = 'One bag', multibag = 'Multi bag', compact = 'Compact', rows = 'Rows' }
+
 -- The view a window's settings name; Compact for anything else.
 function INV:GetView(id)
 	local view = self.config[id] and self.config[id].view

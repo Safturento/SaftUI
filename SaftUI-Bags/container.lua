@@ -2,6 +2,11 @@ local st = SaftUI
 local INV = st:GetModule('Inventory')
 
 
+-- The title bar's view buttons: the gap between two, and between the first
+-- and the close button, and how far in from the header's right edge the close
+-- button sits (st:CreateHeader).
+local BUTTON_GAP, CLOSE_GAP, CLOSE_INSET = 3, 6, 10
+
 function INV:GetContainer(containerName)
 	return self.containers[containerName]
 end
@@ -44,9 +49,12 @@ function INV:CreateContainer(id, name, isBankContainer)
 		INV.config.filters.categories[id] = {}
 	end
 
+	self:CreateViewButtons(container)
+
 	local filterButton = st:CreateCheckButton(nil, container.header)
     container.header.filterButton = filterButton
-    filterButton:SetPoint('TOPRIGHT', -30, -5)
+    -- Hidden, but anchored clear of the view buttons.
+    filterButton:SetPoint('RIGHT', container.viewButtons[self.viewIds[1]], 'LEFT', -CLOSE_GAP, 0)
     filterButton:SetSize(40, 20)
 
     filterButton.text:SetAllPoints(filterButton)
@@ -601,7 +609,8 @@ local function SizeWindow(self, container, contentWidth, contentHeight, visibleH
 	container.scrollFrame:SetContentSize(contentWidth, contentHeight)
 
 	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
-	container:SetWidth(container.scrollFrame:GetWidth() + config.padding * 2)
+	-- Wide enough for the title between the view buttons and the left edge.
+	container:SetWidth(max(container.scrollFrame:GetWidth() + config.padding * 2, self:HeaderMinWidth(container)))
 	self:SyncAnchorSize(container.id)
 end
 
@@ -761,4 +770,142 @@ function INV:ApplyView(id)
 		for _, column in ipairs(container.columns) do column:Show() end
 	end
 	self:UpdateContainer(id, true)
+end
+
+------------------------------------------------------------------ the view buttons
+
+--[[
+	Each window's title bar has a small square button per view (INV.viewIds),
+	left of the close button in the order One bag, Multi bag, Compact, Rows
+	(container.viewButtons, by view). Their icons are plain colored textures,
+	the same on both clients: a square, four squares, a dot grid and lines,
+	drawn on a 12 by 12 grid (GLYPHS: x, y, width, height of each piece) whose
+	unit is a whole number of pixels, so the pieces stay sharp at any title bar
+	height. The button for the window's view is lit with Buttons -> Blue, kept
+	with st:KeepOwnColors so a theme recolor and redraw don't take it away.
+	The buttons are SaftUI's own plain buttons, so lighting one is fine in
+	combat; the layout is what waits (INV:SetView, INV:ApplyView).
+]]
+local GLYPHS = {
+	onebag = { { 0, 0, 12, 12 } },
+	multibag = { { 0, 0, 5, 5 }, { 7, 0, 5, 5 }, { 0, 7, 5, 5 }, { 7, 7, 5, 5 } },
+	compact = {
+		{ 0, 0, 2, 2 }, { 5, 0, 2, 2 }, { 10, 0, 2, 2 },
+		{ 0, 5, 2, 2 }, { 5, 5, 2, 2 }, { 10, 5, 2, 2 },
+		{ 0, 10, 2, 2 }, { 5, 10, 2, 2 }, { 10, 10, 2, 2 },
+	},
+	rows = { { 0, 1, 12, 2 }, { 0, 5, 12, 2 }, { 0, 9, 12, 2 } },
+}
+
+-- The lit button's border: Buttons -> Blue.
+local function ColorLit(button)
+	button.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
+end
+
+-- A button is the title bar's height less 8 square, and its glyph is drawn at
+-- the largest whole pixel unit that fits inside with room to spare.
+local function SizeViewButton(button)
+	local size = button:GetParent():GetHeight() - 8
+	button:SetSize(size, size)
+	local unit = max(1, floor((size - 8) / 12))
+	for i, piece in ipairs(button.glyph) do
+		local x, y, w, h = unpack(GLYPHS[button.view][i])
+		piece:ClearAllPoints()
+		piece:SetPoint('TOPLEFT', button, 'CENTER', (x - 6) * unit, (6 - y) * unit)
+		piece:SetSize(w * unit, h * unit)
+	end
+end
+
+function INV:SizeViewButtons(container)
+	for _, button in pairs(container.viewButtons or {}) do SizeViewButton(button) end
+end
+
+function INV:CreateViewButtons(container)
+	local close = st:GetCloseButton(container)
+	local header = container.header
+	container.viewButtons = {}
+	local right, gap = close, CLOSE_GAP
+	for i = #self.viewIds, 1, -1 do
+		local view = self.viewIds[i]
+		local button = st:CreateButton(nil, header, nil, 'theme', 'theme')
+		button:SetFrameLevel(header:GetFrameLevel() + 4)
+		button:SetPoint('RIGHT', right, 'LEFT', -gap, 0)
+		button.view, button.viewLit, button.glyph = view, false, {}
+		for p = 1, #GLYPHS[view] do
+			local piece = button:CreateTexture(nil, 'OVERLAY')
+			piece:SetColorTexture(st.config.profile.colors.text.normal:GetRGB())
+			button.glyph[p] = piece
+		end
+		SizeViewButton(button)
+
+		button:SetScript('OnClick', function() INV:SetView(container.id, view) end)
+		button:SetScript('OnEnter', function(self)
+			GameTooltip:SetOwner(self, 'ANCHOR_TOP')
+			GameTooltip:SetText(INV.viewLabels[view])
+			GameTooltip:Show()
+		end)
+		button:SetScript('OnLeave', st.HideGameTooltip)
+
+		container.viewButtons[view] = button
+		right, gap = button, BUTTON_GAP
+	end
+	self:UpdateViewButtons(container.id)
+end
+
+-- Lights the window's view's button and puts the others back to the theme's
+-- border, when that changed (a button that kept its look isn't drawn again).
+function INV:UpdateViewButtons(id)
+	local container = self.containers[id]
+	if not (container and container.viewButtons) then return end
+	local current = self:GetView(id)
+	for view, button in pairs(container.viewButtons) do
+		local on = view == current
+		if on ~= button.viewLit then
+			button.viewLit = on
+			if on then
+				ColorLit(button)
+				st:KeepOwnColors(button, ColorLit)
+			else
+				st:KeepOwnColors(button, nil)
+				st:SetBackdrop(button, 'theme', 'theme', 'small')
+			end
+		end
+	end
+end
+
+-- Buttons -> Blue changed: the lit buttons take the new color.
+function INV:ColorViewButtons()
+	for _, container in pairs(self.containers) do
+		for _, button in pairs(container.viewButtons or {}) do
+			if button.viewLit then ColorLit(button) end
+		end
+	end
+end
+
+-- Switches a window's view: saves it, lights its button and lays the window
+-- out (INV:ApplyView, which waits for the end of combat). The window's own
+-- view does nothing: the layout is only touched for a reason.
+function INV:SetView(id, view)
+	if not self.viewLabels[view] or self:GetView(id) == view then return end
+	self.config[id].view = view
+	self:UpdateViewButtons(id)
+	self:ApplyView(id)
+end
+
+-- The title bar's height follows Global Settings (st:UpdateHeader), and so
+-- do the buttons in it.
+hooksecurefunc(st, 'UpdateHeader', function()
+	for _, container in pairs(INV.containers or {}) do INV:SizeViewButtons(container) end
+end)
+
+-- The narrowest a window can be with its title between the view buttons and
+-- the window's left edge: the title is centered, so the room the buttons and
+-- the close button take on the right is also kept clear on the left.
+function INV:HeaderMinWidth(container)
+	local close = st:GetCloseButton(container)
+	if not (container.viewButtons and close and container.title) then return 0 end
+	local count = #self.viewIds
+	local size = container.header:GetHeight() - 8
+	local extent = CLOSE_INSET + close:GetWidth() + CLOSE_GAP + count * size + (count - 1) * BUTTON_GAP
+	return 2 * (extent + CLOSE_GAP) + container.title:GetStringWidth()
 end

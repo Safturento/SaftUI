@@ -88,6 +88,9 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	INV.SyncAnchorSize = count('SyncAnchorSize')
 	INV.ApplyPosition = count('ApplyPosition')
 	function INV:GetAnchor() return CreateFrame('Frame', nil, UIParent) end
+	-- The views' order and words, which the View select lists; the switch is a counter.
+	load_saftui('SaftUI-Bags/views.lua')
+	INV.SetView = function(_, id, view) calls[#calls + 1] = 'SetView:' .. id .. ':' .. view end
 	load_saftui('SaftUI-Bags/options.lua')
 
 	local tree = INV:GetConfigTable()
@@ -149,6 +152,23 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	eq(config.fonts.titles, 'pixel', 'Title font writes inventory.fonts.titles')
 	set(look, 'icons', 'normal')
 	eq(config.fonts.icons, 'normal', 'Icon font writes inventory.fonts.icons')
+
+	-- Each window's View and Empty slots: the same keys in the bag and the bank.
+	for _, id in ipairs({ 'bag', 'bank' }) do
+		local window = tree.args[id].args.general
+		eq(window.get(info_for('view')), 'compact', id .. ': View reads the default, Compact')
+		eq(table.concat(window.args.view.sorting, ','), 'onebag,multibag,compact,rows', id .. ': View lists the views in order')
+		eq(window.args.view.values.multibag, 'Multi bag', id .. ': in words')
+		calls = {}
+		window.args.view.set(info_for('view'), 'rows')
+		eq(table.concat(calls, ','), 'SetView:' .. id .. ':rows', id .. ': View goes through INV:SetView')
+		eq(window.get(info_for('emptySlots')), 'off', id .. ': Empty slots reads the default, off')
+		calls = {}
+		window.args.emptySlots.set(info_for('emptySlots'), 'all')
+		eq(table.concat(calls, ','), 'QueueUpdate', id .. ': Empty slots lays the windows out again')
+		eq(config[id].emptySlots, 'all', id .. ': and writes inventory.' .. id .. '.emptySlots')
+		config[id].emptySlots = 'off'
+	end
 
 	-- Toggles pair up in quarters; each window's General ends with Position.
 	local root = { Inventory = tree }
