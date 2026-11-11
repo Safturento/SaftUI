@@ -1314,7 +1314,20 @@ local function SetDialogScroll(offset)
 	D.offset = ScrollTo(D.scroll, D.bar, offset, D.height)
 end
 
+-- The dialog's scroll frame reaches past its content as the window's body
+-- does in the look it's drawn in (OW.LAYOUT's bodyReach: under Blizzard the
+-- dropdown's glow, so a select at the content's right edge isn't clipped).
+-- Set when the look changed.
+local function PlaceDialogScroll()
+	local blizzard = W.BlizzardLook()
+	if blizzard == D.laidOut then return end
+	local reach = (blizzard and OW.LAYOUT.blizzard or OW.LAYOUT.own).bodyReach
+	D.scroll:SetPoint('BOTTOMRIGHT', D.frame, 'BOTTOMRIGHT', -(DIALOG_PAD - reach), DIALOG_FOOT)
+	D.laidOut = blizzard
+end
+
 local function DrawDialog()
+	PlaceDialogScroll()
 	D.body:Release()
 	local title = D.titleSource
 	if type(title) == 'function' then title = title() end

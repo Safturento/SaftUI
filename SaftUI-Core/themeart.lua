@@ -289,20 +289,30 @@ ThemeArt.ART = {
 		},
 	},
 
-	-- The dropdown (WowStyle1DropdownTemplate): the holder behind its text, the
-	-- arrow in each state, and its list's background at listAlpha
-	-- (MenuStyle1Mixin).
+	-- The Settings dropdown (WowStyle2DropdownTemplate): one face in each
+	-- state, outset round the button (its glow; compactOutset on a dropdown
+	-- with no room for 7), the arrow hanging under it while the mouse is over,
+	-- its text inset from the face's sides and pressedOffset while it's held
+	-- down. Its list (MenuStyle2Mixin): c-bg, its border and shadow, at
+	-- listOutsets round the list (TOPLEFT x, y, BOTTOMRIGHT x, y), the rows
+	-- listInsets in from it (left, top, right, bottom), a row under the mouse
+	-- on rowHover.
 	dropdown = {
-		text = Atlas('common-dropdown-textholder'),
-		arrow = {
-			normal = Atlas('common-dropdown-a-button'),
-			hover = Atlas('common-dropdown-a-button-hover'),
-			pressed = Atlas('common-dropdown-a-button-pressed'),
-			open = Atlas('common-dropdown-a-button-open'),
-			disabled = Atlas('common-dropdown-a-button-disabled'),
+		face = {
+			normal = Atlas('common-dropdown-c-button'),
+			hover = Atlas('common-dropdown-c-button-hover-1'),
+			pressed = Atlas('common-dropdown-c-button-pressed-1'),
+			pressedhover = Atlas('common-dropdown-c-button-pressedhover-1'),
+			open = Atlas('common-dropdown-c-button-open'),
+			disabled = Atlas('common-dropdown-c-button-disabled'),
 		},
-		list = Atlas('common-dropdown-bg'),
-		listAlpha = 0.925,
+		hoverArrow = Atlas('common-dropdown-c-button-hover-arrow'),
+		outset = 7, compactOutset = 4,
+		textInset = 13, pressedOffset = { 2, -1 },
+		list = Atlas('common-dropdown-c-bg'),
+		listOutsets = { -17, 12, 17, -22 },
+		listInsets = { 3, 6, 3, 7 },
+		rowHover = Atlas('common-dropdown-customize-mouseover'),
 	},
 
 	-- The slider (MinimalSliderTemplate): the track's ends and its middle,

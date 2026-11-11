@@ -2173,60 +2173,103 @@ test("under Blizzard a toggle's box is drawn 30x29, a multiselect's and a check 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('a select is a Blizzard dropdown, its arrow open while its list shows', function()
+-- The shown texture of frame showing exactly atlas.
+local function atlas_exact(frame, atlas)
+	for _, region in ipairs(shown_textures(frame)) do
+		if region:GetAtlas() == atlas then return region end
+	end
+end
+
+-- A region's first anchor, 'POINT to POINT x,y', its frame named by names.
+local function anchor(region, names)
+	local point, rel, relPoint, x, y = region:GetPoint(1)
+	return string.format('%s %s %s %d,%d', point, names[rel] or tostring(rel), relPoint, x, y)
+end
+
+local function px(a) return string.format('%d', math.floor(a + 0.5)) end
+
+test("a select is the Settings dropdown: its face follows the mouse, a press and its list", function()
 	theme('thick')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
 	}))
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	local button = w.frame
+	eq(button.text, w.text, "the text is the button's")
+	-- The text's left and right, in from the face (the button's rect: no steppers).
+	local function insets_of_text()
+		return px(w.text:GetLeft() - button:GetLeft()) .. ',' .. px(button:GetRight() - w.text:GetRight())
+	end
 	eq(atlases_of(button), '', 'Thick: no Blizzard art')
 	check_box(button, 'Thick')
 	local caret = #shown_textures(button)
 	check(caret > 0, 'Thick: the caret')
+	eq(insets_of_text(), '8,22', 'Thick: the text clear of the caret')
+	eq(w.text:GetJustifyH(), 'LEFT', 'Thick: from the left')
 
-	theme('blizzard')
-	rebind(w)
-	check_no_box(button, 'Blizzard')
-	eq(atlases_of(button), 'common-dropdown-a-button,common-dropdown-textholder', 'the text holder and the arrow')
-	for _, region in ipairs(shown_textures(button)) do
-		check(region:GetAtlas() ~= nil, 'no caret: only the art shows')
+	theme('blizzard'); rebind(w)
+	check_no_box(button, 'Blizzard'); eq(size_of(button), '170x24', 'it keeps its size')
+	eq(atlases_of(button), 'common-dropdown-c-button', 'the face; no caret, no hover arrow yet')
+	local face = atlas_exact(button, 'common-dropdown-c-button')
+	eq(face:GetDrawLayer(), 'BACKGROUND', 'under the text')
+	eq(around(face, button), '-7,7,7,-7', 'a 7px glow round the button')
+	eq(w.text:GetJustifyH(), 'CENTER', 'the text centred')
+	eq(insets_of_text(), '13,13', 'in 13 from the face')
+	local x0, y0 = w.text:GetCenter()
+	local function text_offset()
+		local x, y = w.text:GetCenter()
+		return px(x - x0) .. ',' .. px(y - y0)
 	end
-	eq(size_of(button), '170x24', 'it keeps its size')
-	art_inside(button, 'the select')
-	eq(insets(atlas_piece(button, 'common-dropdown-textholder'), button), '0,0,0,0', 'the holder fills it')
-	local arrow = atlas_piece(button, 'common-dropdown-a-button')
-	eq(insets(arrow, button), '146,0,0,0', 'the arrow a square at its right')
-	local function state() return arrow:GetAtlas() end
 
 	stub.fire_script(button, 'OnEnter')
-	eq(state(), 'common-dropdown-a-button-hover', 'under the mouse')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	local arrow = atlas_exact(button, 'common-dropdown-c-button-hover-arrow')
+	check(arrow ~= nil and arrow:IsShown(), 'the hover arrow shows')
+	eq(size_of(arrow), '12x5', 'at its atlas size')
+	eq(arrow:GetDrawLayer(), 'OVERLAY')
+	eq(around(arrow, button):match(',(-?%d+)$'), '-5', 'hanging under the face')
+	eq(around(arrow, button), '79,-24,-79,-5', 'centred under it, its left on a whole pixel')
 	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
-	eq(state(), 'common-dropdown-a-button-pressed', 'pressed')
-	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
-	eq(state(), 'common-dropdown-a-button-hover', 'let go')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-pressedhover-1', 'pressed under the mouse')
+	eq(text_offset(), '2,-1', 'the text pressed in')
 	stub.fire_script(button, 'OnLeave')
-	eq(state(), 'common-dropdown-a-button', 'the mouse gone')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-pressed-1', 'held, the mouse gone')
+	check(not arrow:IsShown(), 'no arrow off the button')
+	eq(text_offset(), '2,-1', 'still pressed in')
+	stub.fire_script(button, 'OnEnter')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'let go')
+	eq(text_offset(), '0,0', 'the text back')
+	stub.fire_script(button, 'OnLeave')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the mouse gone'); check(not arrow:IsShown(), 'and the arrow')
 	click(button)
 	check(W.ListOwner() == button, 'the list opened')
-	eq(state(), 'common-dropdown-a-button-open', 'open while its list shows')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-open', 'open while its list shows')
 	W.CloseList()
-	eq(state(), 'common-dropdown-a-button', 'closed again')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'closed again')
 	w:SetDisabled(true)
-	eq(state(), 'common-dropdown-a-button-disabled', 'disabled')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-disabled', 'disabled')
+	stub.fire_script(button, 'OnEnter')
+	check(not arrow:IsShown(), 'disabled: no arrow under the mouse')
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-disabled', 'disabled: not pressed')
+	eq(text_offset(), '0,0', 'disabled: the text not pressed in')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(button, 'OnLeave')
 	w:SetDisabled(false)
-	eq(state(), 'common-dropdown-a-button', 'enabled again')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'enabled again')
 
-	theme('thick')
-	rebind(w)
+	theme('thick'); rebind(w)
 	eq(atlases_of(button), '', 'Thick again: no Blizzard art')
 	check_box(button, 'Thick again')
 	eq(#shown_textures(button), caret, 'Thick again: the caret')
+	eq(insets_of_text(), '8,22', 'Thick again: the text where it was')
+	eq(w.text:GetJustifyH(), 'LEFT', 'Thick again: from the left')
 	w:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("the list's rows sit on common-dropdown-bg", function()
+test("the list sits on common-dropdown-c-bg, in place of the tooltip border", function()
 	theme('blizzard')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
@@ -2234,26 +2277,42 @@ test("the list's rows sit on common-dropdown-bg", function()
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	click(w.frame)
 	local list = W.GetListFrames()
+	local names = { [list.frame] = 'frame' }
 	check_no_box(list.frame, 'Blizzard: the list')
-	local skin = list.skin
-	check(skin ~= nil and skin:IsShown(), 'the list is drawn as the window is')
-	eq(st:DrawnTheme(skin), 'blizzard', "in SaftUI's theme")
-	eq(st:DrawnKind(skin), 'panel', 'as a panel')
-	check(atlases_of(skin):find('Tooltip-NineSlice-CornerTopLeft', 1, true) ~= nil, 'in the tooltip border')
-	eq(insets(skin, list.frame), '0,0,0,0', 'over the list frame')
-	check(skin:GetFrameLevel() < list.frame:GetFrameLevel(), 'under it and its rows')
-	local menu = atlas_piece(skin, 'common-dropdown-bg')
-	check(menu ~= nil, "Blizzard's menu background")
-	eq(string.format('%.3f', menu:GetAlpha()), '0.925', 'at 0.925')
-	eq(insets(menu, list.frame), '1,1,1,1', 'behind the rows')
-	for i = 1, 2 do check(inside(list.rows[i], menu), 'row ' .. i .. ' on it') end
+	check(list.skin ~= nil and list.skin:IsShown(), 'its skin shows')
+	eq(st:DrawnKind(list.skin), nil, 'the theme draws nothing there: c-bg is its border')
+	eq(atlases_of(list.skin), 'common-dropdown-c-bg', 'only c-bg')
+	local menu = atlas_exact(list.skin, 'common-dropdown-c-bg')
+	eq(around(menu, list.frame), '-17,12,17,-22', "Blizzard's outsets round the list")
+	eq(menu:GetAlpha(), 1, 'whole')
+	check(list.skin:GetFrameLevel() < list.frame:GetFrameLevel(), 'under the list and its rows')
+	eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 3,-6', 'the rows 3 in and 6 down')
+	eq(anchor(list.rows[2], names), 'TOPLEFT frame TOPLEFT 3,-28')
+	eq(around(list.rows[1], list.frame):match(',(-?%d+),[^,]+$'), '-3', '3 in from the right')
+	eq(list.frame:GetHeight(), 2 * 22 + 13, 'two rows, 6 above and 7 below')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	local hover = list.rows[1].hover
+	check(hover:IsShown(), 'a row lights under the mouse')
+	eq(hover:GetAtlas(), 'common-dropdown-customize-mouseover', "on the menu's mouseover")
+	eq(hover:GetAlpha(), 1, 'whole')
+	eq(around(hover, list.rows[1]), '0,0,0,0', 'across the row')
+	stub.fire_script(list.rows[1], 'OnLeave')
+	check(not hover:IsShown(), 'and goes dark again')
 	W.CloseList()
 
-	theme('thick')
-	rebind(w)
+	theme('thick'); rebind(w)
 	click(w.frame)
 	check_box(list.frame, 'Thick: the list', BG_RGBA)
-	check(not skin:IsShown(), 'Thick: not drawn as the window')
+	check(not list.skin:IsShown(), 'Thick: no c-bg')
+	eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 1,-1', 'Thick: the rows 1 in')
+	eq(anchor(list.rows[2], names), 'TOPLEFT frame TOPLEFT 1,-23')
+	eq(list.frame:GetHeight(), 2 * 22 + 2, 'Thick: two rows and the edge')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	eq(hover:GetAtlas(), nil, 'Thick: no atlas')
+	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
+	eq(rgba(unpack(stub.state(hover).color_texture)), rgba(r, g, b, 1), 'Thick: the blue')
+	eq(string.format('%.2f', hover:GetAlpha()), '0.25', 'Thick: at 0.25')
+	stub.fire_script(list.rows[1], 'OnLeave')
 	W.CloseList()
 	w:Release()
 	eq(#take_errors(), 0, 'no errors')
@@ -2435,8 +2494,16 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	end
 	check(w.name:IsShown(), 'the name box shows')
 	check_no_box(w.select, 'the dropdown')
-	eq(atlases_of(w.select), 'common-dropdown-a-button,common-dropdown-textholder', 'the dropdown is a dropdown')
-	art_inside(w.select, 'the dropdown')
+	eq(atlases_of(w.select), 'common-dropdown-c-button', 'the dropdown is the Settings face')
+	local face = atlas_exact(w.select, 'common-dropdown-c-button')
+	eq(around(face, w.select), '-4,4,4,-4', 'compact: a 4px glow, clear of the name box under it')
+	for _, row in ipairs(w.select.caret) do check(not row:IsShown(), 'no caret') end
+	eq(w.select.text:GetJustifyH(), 'CENTER', 'its text centred')
+	stub.fire_script(w.select, 'OnEnter')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	eq(atlases_of(w.select), 'common-dropdown-c-button-hover-1', 'compact: no hover arrow')
+	stub.fire_script(w.select, 'OnLeave')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the mouse gone')
 	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top', 'up is the top arrow')
 	eq(atlases_of(w.xDown), 'minimal-scrollbar-arrow-bottom', 'down the bottom one')
 	for name, nudge in pairs(nudges) do
@@ -2468,6 +2535,8 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	end
 	check_box(w.select, 'Thick again: the dropdown')
 	eq(atlases_of(w.select), '', 'Thick again: the dropdown has no art')
+	for _, row in ipairs(w.select.caret) do check(row:IsShown(), 'Thick again: the caret') end
+	eq(w.select.text:GetJustifyH(), 'LEFT', 'Thick again: the text from the left')
 	for name, nudge in pairs(nudges) do
 		eq(atlases_of(nudge), '', 'Thick again: ' .. name .. ' has no art')
 		for _, row in ipairs(nudge.arrows) do check(row:IsShown(), 'Thick again: ' .. name .. "'s flat arrow") end
@@ -2566,8 +2635,15 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 
 	theme('blizzard')
 	open()
-	check(list.skin ~= nil and list.skin:IsShown(), 'drawn as the window is, as the select list')
-	check(atlas_piece(list.skin, 'common-dropdown-bg') ~= nil, "its rows on Blizzard's menu background")
+	-- Drawn as the select list is: on c-bg, the rows 3 in and 6 down, lit on the mouseover.
+	check_no_box(list.frame, 'Blizzard: the list')
+	check(list.skin ~= nil and list.skin:IsShown(), 'its skin shows')
+	eq(atlases_of(list.skin), 'common-dropdown-c-bg', 'on c-bg')
+	eq(around(atlas_exact(list.skin, 'common-dropdown-c-bg'), list.frame), '-17,12,17,-22', "at Blizzard's outsets")
+	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 3,-6', 'the rows 3 in and 6 down')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	eq(list.rows[1].hover:GetAtlas(), 'common-dropdown-customize-mouseover', 'a row lights on the mouseover')
+	stub.fire_script(list.rows[1], 'OnLeave')
 	for i = 1, 2 do
 		local box = list.rows[i].box
 		check_no_box(box, 'Blizzard: row ' .. i .. "'s box")
@@ -2583,7 +2659,9 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 
 	theme('thick')
 	open()
-	check(not list.skin:IsShown(), 'Thick: not drawn as the window')
+	check(not list.skin:IsShown(), 'Thick: no c-bg')
+	check_box(list.frame, 'Thick: the list', BG_RGBA)
+	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 1,-1', 'Thick: the rows 1 in')
 	for i = 1, 2 do
 		local box = list.rows[i].box
 		check_box(box, 'Thick: row ' .. i .. "'s box", nil, true)

@@ -159,10 +159,11 @@ W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 	Under SaftUI's theme Blizzard each control wears Blizzard's Settings art in
 	place of Box (st.ThemeArt.Control), read when the control is drawn or bound,
 	so a theme change reaches it when the window renders again:
-	  - a select and the position block's dropdown: Blizzard's dropdown, its
-	    arrow following the button (under the mouse, pressed, its list open,
-	    disabled); the list drawn as the window is (SaftUI's theme, Solid, a
-	    panel), its rows on Blizzard's menu background;
+	  - a select and the position block's dropdown: the Settings dropdown
+	    (WowStyle2), its face following the button (under the mouse,
+	    pressed, its list open, disabled), its glow spilling 7 outside the
+	    button (4 on the position block's, a compact one); the list on the
+	    Settings menu's own border and background (c-bg), in place of Box;
 	  - a range: Blizzard's minimal slider. Its value box, an input, the
 	    position block's boxes and W.Prompt's box: InputBoxTemplate's art;
 	  - a color: Blizzard's swatch. A keybinding: Blizzard's binding button,
@@ -176,13 +177,15 @@ W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 	equivalent: a 1px line in the Blizzard theme's Border around its
 	Background, as the theme draws a small frame. Under Thick and Thin every
 	control keeps Box, exactly as before. Every piece is a texture of SaftUI's
-	on a frame of SaftUI's, drawn inside the control's own rect, so no cell or
+	on a frame of SaftUI's, drawn inside the control's own rect (but the
+	dropdown's glow, and the list's c-bg round the list), so no cell or
 	widget moves or changes size. Each look is put on only when it changed.
 	A custom type (W.Define) draws its own frames and keeps the look it gives
-	them (the bags' rule editor and Categories list keep Box under Blizzard
-	too); only what it borrows from here follows the theme: the list and the
-	check list, W.Confirm and W.Prompt, and the built-in rows of a body of
-	its own.
+	them (the bags' Categories list and the rule editor's boxes keep Box under
+	Blizzard too); only what it borrows from here follows the theme: the list
+	and the check list, W.Confirm and W.Prompt, the built-in rows of a body of
+	its own, and the dropdown's look (W.LookDropdown and W.DropdownStates,
+	which the rule editor's fields take).
 ]]
 
 -- Whether the controls wear Blizzard's art: under SaftUI's theme Blizzard.
@@ -361,11 +364,11 @@ local function LookLine(frame, blizzard)
 	end
 end
 
--- The list's and the confirm dialog's frame in its look, when it changed: Box
--- with fill, or drawn as the options window is (SaftUI's theme, Solid, a
--- panel) by a frame of SaftUI's just under it, the skin, a child of holder
--- (the frame's catcher) so it shows with it. Returns the skin (nil until the
--- first Blizzard look).
+-- The confirm dialog's frame in its look, when it changed: Box with fill, or
+-- drawn as the options window is (SaftUI's theme, Solid, a panel) by a frame
+-- of SaftUI's just under it, the skin, a child of holder (the frame's
+-- catcher) so it shows with it. Returns the skin (nil until the first
+-- Blizzard look). The select list has its own (LookList).
 local function LookWindow(frame, holder, blizzard, fill)
 	local art = Art(frame)
 	if Changes(art, blizzard) then
@@ -383,26 +386,84 @@ local function LookWindow(frame, holder, blizzard, fill)
 	return art.skin
 end
 
--- A dropdown's arrow in its button's state: disabled, pressed, under the
--- mouse, its list open, else normal (Blizzard's order, which has no art for
--- pressed and under the mouse at once).
-local function PaintArrow(button)
+-- region's anchors, { { point, relativeTo, relativePoint, x, y } } as
+-- region:GetPoint gives them, and putting them back.
+local function SavePoints(region)
+	local points = {}
+	for i = 1, region:GetNumPoints() do points[i] = { region:GetPoint(i) } end
+	return points
+end
+
+local function RestorePoints(region, points)
+	region:ClearAllPoints()
+	for _, point in ipairs(points) do region:SetPoint(unpack(point)) end
+end
+
+-- The Settings dropdown's face (st.ThemeArt.Control('dropdown')) on a
+-- button: the face spans the button from button.faceLeft to button.faceRight
+-- in from its sides (0 for none; the steppers' room), its art outset round
+-- that (the glow; compactOutset on a compact one). The hover arrow (none on
+-- a compact one) hangs under the face's middle, its left edge on a whole
+-- pixel, at its atlas's size.
+local function PlaceFace(button, art)
+	local look = art.look
+	local left, right = button.faceLeft or 0, button.faceRight or 0
+	local outset = art.compact and look.compactOutset or look.outset
+	local face = art.pieces.Face
+	face:ClearAllPoints()
+	face:SetPoint('TOPLEFT', button, 'TOPLEFT', left - outset, outset)
+	face:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -right + outset, -outset)
+	local arrow = art.pieces.HoverArrow
+	if arrow then
+		arrow:SetAtlas(look.hoverArrow)
+		local width, height = AtlasSize(look.hoverArrow)
+		if width then
+			arrow:SetSize(width, height)
+			arrow:ClearAllPoints()
+			arrow:SetPoint('TOPLEFT', button, 'BOTTOMLEFT', left + floor((button:GetWidth() - left - right - width) / 2), 0)
+		end
+	end
+end
+
+-- The text across the face, textInset in from its sides, pressedOffset
+-- further when pressed.
+local function PlaceText(button, art, pressed)
+	local look, text = art.look, button.text
+	local x, y = 0, 0
+	if pressed then x, y = look.pressedOffset[1], look.pressedOffset[2] end
+	text:ClearAllPoints()
+	text:SetPoint('LEFT', button, 'LEFT', (button.faceLeft or 0) + look.textInset + x, y)
+	text:SetPoint('RIGHT', button, 'RIGHT', -((button.faceRight or 0) + look.textInset) + x, y)
+end
+
+-- A dropdown's face in its button's state, under Blizzard: disabled; held
+-- down under the mouse (pressedhover); under the mouse; held down off it;
+-- its list open; else normal. The hover arrow shows while the mouse is over
+-- an enabled one, and the text sits pressed in while an enabled one is held
+-- down. Nothing for a frame that isn't a dropdown under Blizzard (a list's
+-- owner can be any frame).
+local function PaintFace(button)
 	local art = arts[button]
-	if not (art and art.blizzard) then return end
+	if not (art and art.blizzard and art.pieces.Face) then return end
+	local disabled = art.isDisabled ~= nil and art.isDisabled()
 	local state = 'normal'
-	if art.isDisabled() then
+	if disabled then
 		state = 'disabled'
-	elseif art.down then
-		state = 'pressed'
+	elseif art.down and art.over then
+		state = 'pressedhover'
 	elseif art.over then
 		state = 'hover'
+	elseif art.down then
+		state = 'pressed'
 	elseif W.ListOwner() == button then
 		state = 'open'
 	end
-	art.pieces.Arrow:SetAtlas(art.arrows[state])
+	art.pieces.Face:SetAtlas(art.look.face[state])
+	if art.pieces.HoverArrow then art.pieces.HoverArrow:SetShown(art.over and not disabled) end
+	PlaceText(button, art, art.down and not disabled)
 end
 
--- Keeps a dropdown's arrow following the mouse: hooked once its button's own
+-- Keeps a dropdown's face following the mouse: hooked once its button's own
 -- scripts are set. isDisabled() says whether its widget is disabled.
 local function DropdownStates(button, isDisabled)
 	local art = Art(button)
@@ -410,7 +471,7 @@ local function DropdownStates(button, isDisabled)
 	local function Hook(script, field, value)
 		button:HookScript(script, function(self)
 			art[field] = value
-			PaintArrow(self)
+			PaintFace(self)
 		end)
 	end
 	Hook('OnEnter', 'over', true)
@@ -418,37 +479,45 @@ local function DropdownStates(button, isDisabled)
 	Hook('OnMouseDown', 'down', true)
 	Hook('OnMouseUp', 'down', false)
 	-- A pooled widget hidden mid-press or under the mouse starts afresh.
-	button:HookScript('OnHide', function()
+	button:HookScript('OnHide', function(self)
 		art.over, art.down = false, false
+		PaintFace(self)
 	end)
 end
+W.DropdownStates = DropdownStates
 
--- A dropdown's look, when it changed: Box and its caret (button.caret), or
--- Blizzard's dropdown (st.ThemeArt.Control('dropdown')): the text holder
--- filling the button, and the arrow square at its right, height (the
--- button's height, which SaftUI set) wide.
-local function LookDropdown(button, blizzard, height)
+-- A dropdown's look (button.caret its caret's rows, button.text its text):
+-- Box, the caret and the text where the button's own code put it; or the
+-- Settings dropdown's face (PlaceFace), the text centred on it. compact for a
+-- dropdown with no room for the full glow or the hover arrow (the position
+-- block's, the rule editor's). The look is put on when it changed; under
+-- Blizzard the face is placed and painted on every call, so a caller that
+-- moves button.faceLeft or button.faceRight calls it again.
+local function LookDropdown(button, blizzard, compact)
 	local art = Art(button)
-	if not Changes(art, blizzard) then return end
-	ShowBox(button, not blizzard)
-	for _, row in ipairs(button.caret) do row:SetShown(not blizzard) end
+	art.compact = compact and true or false
+	if Changes(art, blizzard) then
+		local text = button.text
+		ShowBox(button, not blizzard)
+		for _, row in ipairs(button.caret) do row:SetShown(not blizzard) end
+		if blizzard then
+			art.ownText = { justify = text:GetJustifyH(), points = SavePoints(text) }
+			text:SetJustifyH('CENTER')
+			Piece(art, button, 'Face', 'BACKGROUND')
+			if not compact then Piece(art, button, 'HoverArrow', 'OVERLAY') end
+		else
+			HidePieces(art)
+			text:SetJustifyH(art.ownText.justify)
+			RestorePoints(text, art.ownText.points)
+		end
+	end
 	if blizzard then
-		local look = st.ThemeArt.Control('dropdown')
-		local holder = Piece(art, button, 'Holder', 'BACKGROUND')
-		holder:SetAtlas(look.text)
-		holder:ClearAllPoints()
-		holder:SetAllPoints(button)
-		local arrow = Piece(art, button, 'Arrow', 'ARTWORK')
-		arrow:ClearAllPoints()
-		arrow:SetPoint('TOPRIGHT', button, 'TOPRIGHT')
-		arrow:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT')
-		arrow:SetWidth(height)
-		art.arrows = look.arrow
-		PaintArrow(button)
-	else
-		HidePieces(art)
+		art.look = st.ThemeArt.Control('dropdown')
+		PlaceFace(button, art)
+		PaintFace(button)
 	end
 end
+W.LookDropdown = LookDropdown
 
 ------------------------------------------------------------------ numbers
 
@@ -682,6 +751,11 @@ end
 -- list of entries, closed by a choice, a click outside or Esc.
 local list
 
+-- Where the rows sit in from the list's edges (left, top, right, bottom)
+-- under Thick and Thin: inside Box's edge. Under Blizzard the dropdown's
+-- listInsets.
+local LIST_INSETS = { 1, 1, 1, 1 }
+
 -- The check list's (below): a row laid out for the list that's open, and a
 -- click on a check list's row.
 local LayCheckRow, ToggleCheck
@@ -715,39 +789,73 @@ local function ListFill()
 		local track = shown * LIST_ROW_HEIGHT
 		list.bar:SetHeight(max(10, track * shown / total))
 		list.bar:ClearAllPoints()
-		list.bar:SetPoint('TOPRIGHT', list.frame, 'TOPRIGHT', -2, -1 - (track - list.bar:GetHeight()) * offset / (total - shown))
+		list.bar:SetPoint('TOPRIGHT', list.frame, 'TOPRIGHT', -2, -list.insets[2] - (track - list.bar:GetHeight()) * offset / (total - shown))
 		list.bar:Show()
 	else
 		list.bar:Hide()
 	end
 end
 
--- The list's owner's dropdown arrow is open while the list shows.
+-- The list's owner's dropdown face is open while the list shows.
 function W.CloseList()
 	if list then
 		local owner = list.owner
 		list.owner, list.onPick, list.entries = nil, nil, nil
 		list.isChecked, list.onToggle = nil, nil
 		list.catcher:Hide()
-		if owner then PaintArrow(owner) end
+		if owner then PaintFace(owner) end
 	end
 end
 
--- The list in SaftUI's theme now: Box, or under Blizzard drawn as the
--- options window is, its rows on Blizzard's menu background
--- (st.ThemeArt.Control('dropdown')'s list, at its alpha), over the rows' part
--- of the frame. list.blizzard is the look, for a check list's boxes
--- (LayCheckRow).
+-- Row i of the list, list.insets in from the list's sides and top.
+local function PlaceListRow(row, i)
+	local insets = list.insets
+	local y = -insets[2] - (i - 1) * LIST_ROW_HEIGHT
+	row:ClearAllPoints()
+	row:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', insets[1], y)
+	row:SetPoint('TOPRIGHT', list.frame, 'TOPRIGHT', -insets[3], y)
+end
+
+-- The list in SaftUI's theme now, when it changed. Box, the rows inside its
+-- edge (LIST_INSETS), a row under the mouse lit blue at 0.25. Or under
+-- Blizzard the Settings menu's (st.ThemeArt.Control('dropdown')): no Box;
+-- c-bg, the menu's own border and shadow, on list.skin, a plain frame of
+-- SaftUI's just under the list (the theme draws nothing on it, so there's no
+-- second border), at listOutsets round the list; the rows listInsets in; a
+-- row under the mouse on rowHover. list.blizzard is the look, for a check
+-- list's boxes (LayCheckRow); list.insets where the rows sit (OpenList,
+-- ListFill).
 local function LookList()
 	local blizzard = BlizzardLook()
 	list.blizzard = blizzard
-	list.skin = LookWindow(list.frame, list.catcher, blizzard, BG)
-	if not blizzard then return end
-	local look = st.ThemeArt.Control('dropdown')
-	local menu = Piece(Art(list.frame), list.skin, 'Menu', 'BACKGROUND', 7)
-	menu:SetAtlas(look.list)
-	menu:SetAlpha(look.listAlpha)
-	Inset(menu, list.frame, 1)
+	if not Changes(Art(list.frame), blizzard) then return end
+	ShowBox(list.frame, not blizzard, BG)
+	local look = blizzard and st.ThemeArt.Control('dropdown')
+	if blizzard and not list.skin then
+		list.skin = CreateFrame('Frame', nil, list.catcher)
+		list.skin:SetAllPoints(list.frame)
+		list.menu = list.skin:CreateTexture(nil, 'BACKGROUND')
+	end
+	if list.skin then list.skin:SetShown(blizzard) end
+	if blizzard then
+		local outsets = look.listOutsets
+		list.skin:SetFrameLevel(max(0, list.frame:GetFrameLevel() - 1))
+		list.menu:SetAtlas(look.list)
+		list.menu:ClearAllPoints()
+		list.menu:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', outsets[1], outsets[2])
+		list.menu:SetPoint('BOTTOMRIGHT', list.frame, 'BOTTOMRIGHT', outsets[3], outsets[4])
+	end
+	list.insets = blizzard and look.listInsets or LIST_INSETS
+	for i, row in ipairs(list.rows) do
+		PlaceListRow(row, i)
+		if blizzard then
+			row.hover:SetAtlas(look.rowHover)
+			row.hover:SetAlpha(1)
+		else
+			row.hover:SetColorTexture(Colors().button.blue:GetRGB())
+			row.hover:SetAlpha(0.25)
+		end
+	end
 end
 
 local function BuildList()
@@ -768,13 +876,12 @@ local function BuildList()
 	bar:SetWidth(3)
 	bar:Hide()
 
-	list = { catcher = catcher, frame = frame, bar = bar, rows = {}, offset = 0 }
+	list = { catcher = catcher, frame = frame, bar = bar, rows = {}, offset = 0, insets = LIST_INSETS }
 
 	for i = 1, LIST_MAX_ROWS do
 		local row = CreateFrame('Button', nil, frame)
 		row:SetHeight(LIST_ROW_HEIGHT)
-		row:SetPoint('TOPLEFT', frame, 'TOPLEFT', 1, -1 - (i - 1) * LIST_ROW_HEIGHT)
-		row:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -1, -1 - (i - 1) * LIST_ROW_HEIGHT)
+		PlaceListRow(row, i)
 		row:SetFrameLevel(frame:GetFrameLevel() + 1)
 		row.hover = row:CreateTexture(nil, 'BACKGROUND')
 		row.hover:SetAllPoints()
@@ -823,7 +930,7 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	LookList()
 
 	local rows = min(#entries, LIST_MAX_ROWS)
-	local height = rows * LIST_ROW_HEIGHT + 2
+	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4]
 	list.frame:SetSize(max(owner:GetWidth(), W.WIDTH.select), height)
 	list.frame:SetScale(owner:GetEffectiveScale() / UIParent:GetEffectiveScale())
 	list.frame:ClearAllPoints()
@@ -843,12 +950,13 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	end
 	ListFill()
 	list.catcher:Show()
-	PaintArrow(owner)
+	PaintFace(owner)
 end
 
--- The list's frames { catcher, frame, rows, skin, ... } (nil until first opened),
--- and the confirm dialog's { catcher, frame, text, yes, no, box, skin } (nil
--- until first asked); skin is what draws them as the window is under Blizzard.
+-- The list's frames { catcher, frame, rows, skin, menu, insets, ... } (nil
+-- until first opened; skin and menu, c-bg, from the first Blizzard look), and
+-- the confirm dialog's { catcher, frame, text, yes, no, box, skin } (nil
+-- until first asked; skin is what draws it as the window is under Blizzard).
 -- For tests.
 function W.GetListFrames() return list end
 function W.GetDialogFrames() return dialog end
@@ -1317,6 +1425,7 @@ builders.select = function(w)
 	w.text = NewText(button, 'LEFT')
 	w.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
 	w.text:SetPoint('RIGHT', button, 'RIGHT', -22, 0)
+	button.text = w.text
 	button.caret = Caret(button)
 	HoverEdge(button, function() return w.disabled end)
 	button:SetScript('OnClick', function() w:Open() end)
@@ -1344,7 +1453,7 @@ end
 
 define('select', {
 	Bind = function(self, ...)
-		LookDropdown(self.frame, BlizzardLook(), FIELD_HEIGHT)
+		LookDropdown(self.frame, BlizzardLook())
 		return Base.Bind(self, ...)
 	end,
 
@@ -1379,7 +1488,7 @@ define('select', {
 
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
-		PaintArrow(self.frame)
+		PaintFace(self.frame)
 	end,
 
 	OnRelease = function(self)
@@ -2275,7 +2384,7 @@ define('position', {
 		LookInput(self.name, blizzard, POS_NAME_HEIGHT)
 		LookInput(self.x, blizzard, POS_BOX)
 		LookInput(self.y, blizzard, POS_BOX)
-		LookDropdown(self.select, blizzard, POS_BOX)
+		LookDropdown(self.select, blizzard, true)
 		LookNudges(self, blizzard)
 		return Base.Bind(self, ...)
 	end,
@@ -2394,7 +2503,7 @@ define('position', {
 		for _, control in ipairs({ self.select, self.xUp, self.xDown, self.yUp, self.yDown }) do
 			control:EnableMouse(not disabled)
 		end
-		PaintArrow(self.select)
+		PaintFace(self.select)
 		for _, edit in ipairs({ self.name, self.x, self.y }) do
 			edit:EnableMouse(not disabled)
 			if disabled then edit:ClearFocus() end
