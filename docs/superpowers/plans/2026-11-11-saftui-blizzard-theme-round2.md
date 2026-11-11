@@ -2,35 +2,37 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Under the Blizzard theme, `/sui` becomes Blizzard's Settings window (metal, title bar, inner frame, banners, Settings controls, steppers, minimal scroll bars), and unit frames wear Blizzard's unit frame box and raid group border with Blizzard's bar fills. Nothing changes under Thick or Thin.
+**Goal:** Under the Blizzard theme, `/sui` becomes Blizzard's Settings window (metal, title bar, inner frame, banners, Settings controls, steppers where the choices fit, minimal scroll bars), unit frames wear Blizzard's unit frame box and raid group border with Blizzard's bar fills, and the micro menu bar stands on Blizzard's micro menu and minimap art. In every theme, `/sui` grows taller by its bottom edge, and the Categories editor keeps Caught now and Pinned items in a fixed footer. Nothing else changes under Thick or Thin.
 
 **Architecture:**
-- **Part A, `/sui`** (Tasks 1 to 9). The window keeps one code path with two layouts, `OW.LAYOUT.own` (today's numbers, Thick and Thin) and `OW.LAYOUT.blizzard`, chosen on every render by `W.BlizzardLook()` and applied only when the look changed. The new art is tables in `SaftUI-Core/themeart.lua`, read through `st.ThemeArt.Control(name)`. The controls stay `optionswidgets.lua`'s, each drawn inside its own rect apart from the dropdown face's glow. A Blizzard scroll bar is a companion of today's 3px bar, so every call site and Thick test keeps working.
-- **Part B, unit frames** (Tasks 10 to 13). Two new kinds: `unitframe` (the bronze box cut from Blizzard's player and target art) and `member` (a party or raid member: the Background fill, no art). Under Thick and Thin both draw exactly as `bar`. The group border is a frame of SaftUI's, a child of each group header, anchored to it. Blizzard's bar fills go on through `UF:UpdateStatusBarElement`.
-- Part B shares only `themeart.lua`, `tests/wow/atlases.lua` and `tests/wow/` stubs with Part A, in separate table entries. It can run after Part A, or beside it in another worktree, without needing anything Part A makes.
+- **Part A, `/sui`** (Tasks 1 to 11). The window keeps one code path with two layouts, `OW.LAYOUT.own` (today's numbers, Thick and Thin) and `OW.LAYOUT.blizzard`, chosen on every render by `W.BlizzardLook()` and applied only when the look changed. The new art is tables in `SaftUI-Core/themeart.lua`, read through `st.ThemeArt.Control(name)`. The controls stay `optionswidgets.lua`'s, each drawn inside its own rect apart from the dropdown face's glow. A Blizzard scroll bar is a companion of today's 3px bar, so every call site and Thick test keeps working. Task 10 lets the window grow taller in every look: SaftUI's own drag on a bottom edge and a corner grip, the height an even number from the layout's height up to the screen's, saved in SaftUI's global settings. Task 11 splits the Categories editor into its scrolling rows and a fixed footer, a second options body in the same tab.
+- **Part B, unit frames** (Tasks 12 to 15). Two new kinds: `unitframe` (the bronze box cut from Blizzard's player and target art) and `member` (a party or raid member: the Background fill, no art). Under Thick and Thin both draw exactly as `bar`. The group border is a frame of SaftUI's, a child of each group header, anchored to it. Blizzard's bar fills go on through `UF:UpdateStatusBarElement`.
+- **Part C, the micro menu bar** (Tasks 16 and 17). No new kind: the bar items' panels draw as `control` (a small frame under Thick and Thin, as today; clear under Blizzard, as the micro buttons' own panels are), and the micro menu draws its art itself from `st.ThemeArt.Control('microbar')`: one texture per atlas, sliced by the engine from the atlas's own slice data, or retail's minimap button kit laid by `ThemeArt.LayBorder`. The bronze strip behind the micro buttons is a frame of SaftUI's anchored to the first and last shown holder. An atlas one client lacks is marked for the client that has it (`Atlas(name, 'forever')`), and the atlas test checks each on its own clients.
+- Parts B and C share only `themeart.lua`, `tests/wow/atlases.lua`, `tests/core/theme_blizzard_test.lua`, `tests/core/theme_blizzard_draw_test.lua` and the `tests/wow/` stubs with Part A and with each other, in separate entries. Each can run after Part A, or beside it in its own worktree, without needing anything another part makes.
 
 **Tech Stack:** Lua 5.1 (WoW Forever 16001 and retail 120000), oUF, SaftUI's own options window (no AceGUI), tests on lupa's Lua 5.1 through `tests/run`.
 
-**Spec:** `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`. Read it first. Its "My call"s, "The user's answers" and "The builder check's answers" are binding. The research behind it (atlas names, sizes, Blizzard's layouts) is summarised in the spec's "Blizzard's art". This plan adds the numbers the spec leaves to the builder (below).
+**Spec:** `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`. Read it first. Its "My call"s, "The user's answers" and "The builder check's answers" are binding. Commits 3e2f594 and 8cc0287 revised it after this plan's first version: goals 2, 3 and 5, and the user's answers 5 to 8. The research behind it (atlas names, sizes, Blizzard's layouts) is summarised in the spec's "Blizzard's art" and goal 5's. This plan adds the numbers the spec leaves to the builder (below).
 
-**Starting point:** `modular` at `e5b12f3` ("Merge the Categories tab fixes…"): the four fixes the spec's "Today" assumes, plus their review fixes (`a6f1a32`: headers and footers wait out combat, `st:ArtAboveHeader`, `st.ThemeArt.MetalAbove`, and stub widgets a test marks protected, whose moves in combat are blocked and noted in `stub.blocked`; `4596ad5`: the Categories tab's reveal and edge band).
+**Starting point:** `modular` at `8cc0287`. Its code is `28c0448`: `e5b12f3` ("Merge the Categories tab fixes…", the four fixes the spec's "Today" assumes, plus their review fixes: `a6f1a32`, headers and footers wait out combat, `st:ArtAboveHeader`, `st.ThemeArt.MetalAbove`, and stub widgets a test marks protected, whose moves in combat are blocked and noted in `stub.blocked`; `4596ad5`, the Categories tab's reveal and edge band), with `st:SkinIcon`'s crop hook keeping its state in weak tables of `skinning.lua`'s (`iconCrops`, `hookedIcons`), not on the icon. Nothing in this plan reads that state. `tests/run` passes there (78 files).
 
 ## Global Constraints
 
-- **Clients:** Forever (16001) and retail (120000). Read per-client values at call time through `st.ThemeArt` (`ThemeArt.Client()`), never at file load. Tests switch clients with `T.client(name)`, or for `/sui` with the `world(client)` helper Task 2 defines.
+- **Clients:** Forever (16001) and retail (120000). Read per-client values at call time through `st.ThemeArt` (`ThemeArt.Client()`), never at file load. Tests switch clients with `T.client(name)`, or for `/sui` with the `world(client)` helper Task 2 defines. An atlas only one client has is named only in that client's art (Task 16).
 - **`.agents/taint.md`:**
   - every new piece of art is a texture of a frame of SaftUI's, kept in a weak table or on SaftUI's own frame;
-  - nothing is written onto a frame that isn't SaftUI's (the group headers' new border is kept in a side table);
+  - nothing is written onto a frame that isn't SaftUI's (the group headers' new border is kept in a side table; the micro menu's art is kept in its items' entries, never on Blizzard's bar items);
   - no `NineSliceUtil`, no Blizzard setter, no protected call to draw, size or move a unit frame's border (tests mark a secure frame protected with an `IsProtected` of its own, set with `rawset` on a locked frame, and check `stub.blocked` stays empty);
+  - Blizzard's micro menu art (`MicroMenu.BorderArt`, `BackgroundArt`) stays hidden and unmoved: the strip is SaftUI's own;
   - no math on a frame level that `issecretvalue` says is secret;
   - the hover stays in the HIGHLIGHT layer (`st.ThemeArt.HOVER_LAYER`).
-- **Thick and Thin draw exactly as today.** Task 1 pins `/sui`'s frames at absolute positions, and every existing Thick or Thin assertion keeps passing unchanged. The only existing assertions this plan changes are Blizzard ones, plus the kind names drawn (`'bar'` → `'unitframe'`/`'member'` in `SaftUI-Unitframes`, `'panel'` → `'window'` for `/sui`'s window), which change nothing visible under Thick and Thin. Each task names the ones it changes.
-- **Whole pixels** (`.agents/edit-mode.md`): every frame and texture starts and ends on a whole pixel under every look. A frame anchored by its centre has even sides: `/sui`'s window is 1040 × 700 or 1110 × 728.
+- **Thick and Thin draw exactly as today**, but for the two changes the spec makes in every theme: `/sui` grows taller (Task 10) and the Categories editor's footer (Task 11). Task 1 pins `/sui`'s frames at absolute positions, and every existing Thick or Thin assertion keeps passing unchanged. The only existing assertions this plan changes are Blizzard ones, the Categories editor's height (Task 11), and the kind names drawn (`'bar'` → `'unitframe'`/`'member'` in `SaftUI-Unitframes`, `'panel'` → `'window'` for `/sui`'s window, `'small'` → `'control'` for the micro menu bar's items), which change nothing visible under Thick and Thin. Each task names the ones it changes.
+- **Whole pixels** (`.agents/edit-mode.md`): every frame and texture starts and ends on a whole pixel under every look. A frame anchored by its centre has even sides: `/sui`'s window is 1040 or 1110 wide and an even height, at least 700 or 728 (Task 10).
 - **No row height or cell rect changes under Blizzard** (`body:CellRect`, `W.WIDTH`, every widget's frame size). Art may spill outside a control only where a task says so (the dropdown's glow), and then never into a neighbouring control or past a scroll frame's clip.
 - **Fonts:** no font changes. Only the text colors the spec names change: gold `{ 1, 0.82, 0 }` (Blizzard's `NORMAL_FONT_COLOR`) and white `{ 1, 1, 1 }`.
 - **Words the user sees:** the title bar reads `SaftUI Options`. No atlas or file name is shown anywhere.
-- **Saved profiles keep working:** no new saved key, no migration.
-- **The bronze box and group border cut atlases by texture coordinates**, from `C_Texture.GetAtlasInfo`'s file and coordinates, never from a size read back from a frame.
+- **Saved profiles keep working:** no new profile key, no migration. One new optional field in SaftUI's global settings, `optionsWindow.height` (Task 10); a saved table without it, or with anything but a number there, reads as no height.
+- **The bronze box and group border cut atlases by texture coordinates**, from `C_Texture.GetAtlasInfo`'s file and coordinates, never from a size read back from a frame. The micro menu bar's art is set whole (`SetAtlas`), the engine slicing it by the atlas's own slice data.
 - **Files:** keep each file's line endings (all files touched here are LF today; check with `file` before editing). Never `sed -i` a CRLF file. Stage by explicit path. Never `git stash`.
 - **`tests/run` passes at the end of every task.**
 - **Commits:** `<area>[, <area>]: <plain sentence>`, a body saying what and why, ending with exactly:
@@ -59,41 +61,53 @@ All in UI units (pixels at SaftUI's scale). "Window" coordinates are from `/sui`
 | Check box art | toggle 30 × 29, its right on the box's right, 5 above its top; a multiselect's or check list's row 23 × 22, its left on the box's left, 2 above | the largest whole size up to 30 × 29, in proportion, within the row (34 and 22 tall); the 18 box stays | 4 |
 | Dropdown face | glow (outset) 7 on an option row's select, 4 on a compact one; text insets 13, centred; pressed text (2, −1); hover arrow 12 × 5 hanging under the face | `WowStyle2DropdownTemplate`; compact dropdowns have 4 between them and the next control (the rule editor's 22-tall fields in 26-tall rows; the position block's dropdown and name box) | 5 |
 | Dropdown list | `common-dropdown-c-bg` from (−17, 12) to (17, −22) around the list; rows inset 3, 6, 3, 7 | `MenuStyle2Mixin` | 5 |
-| Steppers | each 26 × 24, back at the select's left, next at its right; the face from 31 to 140 (109 wide); icon 17 × 17 at (4, −3) | `DropdownWithSteppersTemplate`: back 5 left of the dropdown, next 4 right of it | 6 |
+| Steppers | each 26 × 24, back at the select's left, next at its right; the face from 31 to 140 (109 wide); icon 17 × 17 at (4, −3); only on a select whose longest choice fits `W.StepperRoom()`, 83 (109 less two insets of 13) | `DropdownWithSteppersTemplate`: back 5 left of the dropdown, next 4 right of it; the user's answer 5 | 6 |
 | Slider arrows | back 11 × 19 at (0, −2); the slider 88 wide from 15; forward 9 × 18 at (107, −3) | `MinimalSliderWithSteppersTemplate`: arrows 4 from the track, inside the slider's 116 | 7 |
 | Scroll bar | track 8 wide, `OB.BLIZZARD_GAP` 12 right of the content (callers' own gaps kept); wide: arrows 17 × 11 starting 4 left of the track, track inset 19; narrow: arrows 8 × 5, inset 9; thumb at least 23 | `MinimalScrollBar` | 8 |
-| Bronze box | inset 2; 8 × 8 pieces; rectangles per client (Task 10's table) | the decoded art: each piece's outer 2px is the dark outline and the bronze (or grey) rim | 10 |
-| Group border | `options_frame_child` cut at 6px; (−2, 2) and (2, −3) around the header | `CompactRaidGroup_UpdateBorder` | 12 |
+| `/sui`'s height | even, from the layout's `height` (700, 728) to `OW.MaxHeight()`; a drag also stops where the bottom meets the screen edge margin | the spec's goal 2 | 10 |
+| Resize grip and edge | grip 16 × 16 at the window's BOTTOMRIGHT; the edge 6 tall along the bottom, left of the grip; both 10 levels over the window | `PanelResizeButtonTemplate`'s 16 | 10 |
+| Categories footer | its top edge 1 tall; as tall as its body's drawn height plus that edge, at most half the tab's height (floor) | the spec's goal 3 | 11 |
+| Bronze box | inset 2; 8 × 8 pieces; rectangles per client (Task 12's table) | the decoded art: each piece's outer 2px is the dark outline and the bronze (or grey) rim | 12 |
+| Group border | `options_frame_child` cut at 6px; (−2, 2) and (2, −3) around the header | `CompactRaidGroup_UpdateBorder` | 14 |
+| Micro menu strip (Forever) | 4 outside the first and last shown micro holder (33 tall on the 25 row); its background 2 inside it | the spec's "about 4 outside them"; Blizzard's background overhangs its frame by 13, which here would reach the box beside it | 17 |
+| Micro menu boxes | Forever: the header art 23 tall from 1 below the box's top, the box's width; a square 23 × 22 and the tracking button 23 × 23 at TOPLEFT (1, −1). Retail: the kit on the box's rect | the spec's "drawn at its own height, centred"; centred on whole pixels in the 25 row | 17 |
 
 ## Review Focus
 
-1. **A select with no current choice among its values, one value, or disabled.** The steppers mustn't wrap, error or pick past the ends: no choice means back disabled and next picks the first; one value means both disabled; a disabled select means both disabled (Task 6 test `'stepper edge cases'`).
-2. **A theme or profile switch with `/sui` open, scrolled down or on a fill page (Categories).** The page, the scroll and the fill row's height survive, and the window re-lays out with no reload (Task 2 test `'a switch with /sui scrolled or on a fill page'`).
-3. **A range with isPercent, no step, or a stored value outside its slider's ends.** The arrows step a sensible amount, clamp, and never set a value outside the range (Task 7 test `'slider arrow edge cases'`).
-4. **A unit frame whose health doesn't quite fill it** (resized, offset, anchored to another element), with the frame's own Theme on under Blizzard. Both boxes show; only an exact fill hides health's (Task 11 test `'one box per edge'`).
-5. **A party or raid with mixed Themes while SaftUI's theme is Blizzard** (frame None and health Thick; frame Thick). No group border shows, and the members keep their Thick borders (Task 12 test `'which Theme turns the group border on'`).
+1. **A theme or profile switch with `/sui` open: scrolled down, on a fill page (Categories), or at a height the user dragged it to.** The page, the scroll, the fill row's height and the dragged height survive (a height under the new look's least takes the least), and the window re-lays out with no reload (Task 2 test `'a switch with /sui scrolled or on a fill page'`, Task 10 test `'under Blizzard /sui grows taller from 728…'`).
+2. **A saved `/sui` height the screen no longer fits (a smaller resolution, a larger UI scale), one under the look's least, or one that isn't a number.** `/sui` opens at a height from the look's least to the screen's most, and never runs past the screen edge margin where the screen has room (Task 10 test `'a saved height the screen no longer fits, or under the least'`).
+3. **A select with no current choice among its values, one value, disabled, or whose choices grow longer between renders.** The steppers mustn't wrap, error or pick past the ends: no choice means back disabled and next picks the first; one value means both disabled; a disabled select means both disabled; and they come and go with the fit at each render (Task 6 test `'stepper edge cases'`).
+4. **A unit frame whose health doesn't quite fill it** (resized, offset, anchored to another element), with the frame's own Theme on under Blizzard. Both boxes show; only an exact fill hides health's (Task 13 test `'one box per edge'`).
+5. **Blizzard showing and hiding micro buttons and bar items under Blizzard** (a button the game hides at a level or in a region, mail and the queue eye coming and going, in combat). The strip follows the shown run and goes when none shows, an item's art goes with the item, and nothing of Blizzard's is shown, moved or written onto (Task 17 test `'the micro buttons stand on one bronze strip…'`).
 
 ## Order and parallelism
 
-- **Part A, in order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Each touches `optionswidgets.lua` or `optionswindow.lua`, and 6 builds on 5's face.
-- **Part B, in order:** 10 → 11 → 12 → 13, after Part A, or in parallel with it in its own worktree. The two parts share `themeart.lua`, `tests/wow/atlases.lua` and `tests/wow/widgets.lua` in different entries: keep both sides on a merge.
-- **Task 14 (docs) last**, after both parts, so `.agents/` never conflicts.
+- **Part A, in order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9, then 10 and 11 in either order. Each of 1 to 9 touches `optionswidgets.lua` or `optionswindow.lua`, and 6 builds on 5's face. Task 10 (`optionswindow.lua`) needs 2's layouts and 8's bars; Task 11 (`categoriestab.lua`) needs 3's divider, 8's bars and 9's list. 10 and 11 touch different files, so in one worktree they run one after the other, and either may go first.
+- **Part B, in order:** 12 → 13 → 14 → 15, after Part A, or in parallel with it in its own worktree.
+- **Part C, in order:** 16 → 17, after Parts A and B, or in parallel with them in its own worktree. It needs nothing they make.
+- **Shared files across parts:** `themeart.lua` (ART and CONTROLS entries; Part C also `LayBorder` and the atlas marking, Part B `Paint`), `tests/wow/atlases.lua` (entries; Task 5 removes WowStyle1's, Task 12 adds the file and coordinates format), `tests/wow/widgets.lua`, `tests/core/theme_blizzard_test.lua` (Task 12's kind insets, Task 16's atlas test) and `tests/core/theme_blizzard_draw_test.lua` (Task 12's and Task 16's new cases). Keep both sides on a merge, then run `tests/run`: the atlas test then checks every part's atlases.
+- **Task 18 (docs) last**, after all three parts, so `.agents/` never conflicts.
 
 ## Files
 
 | File | Tasks | What changes |
 | ---- | ----- | ------------ |
-| `SaftUI-Core/Config/optionswindow.lua` | 1–3, 5, 6, 8 | the two layouts; the title bar; the inner frame; the sidebar's dressing; the bars' owners |
+| `SaftUI-Core/Config/optionswindow.lua` | 1–3, 5, 6, 8, 10 | the two layouts; the title bar; the inner frame; the sidebar's dressing; the bars' owners; growing taller |
 | `SaftUI-Core/Config/optionsbody.lua` | 3, 8 | no section rules under Blizzard; the scroll bar's companion |
-| `SaftUI-Core/Config/optionswidgets.lua` | 3–8 | the glass; check box size; the dropdown face, list, steppers; slider arrows; the Blizzard scroll bar |
-| `SaftUI-Core/themeart.lua` | 2, 3, 5–8, 10, 12, 13 | new art tables, the cut layout, the two kinds |
-| `SaftUI-Core/theme.lua` | 10 | `THEME_KINDS` gains `unitframe` and `member` |
+| `SaftUI-Core/Config/optionswidgets.lua` | 3–8 | the glass; check box size; the dropdown face, list, steppers where the choices fit; slider arrows; the Blizzard scroll bar |
+| `SaftUI-Core/themeart.lua` | 2, 3, 5–8, 10, 12, 14–16 | new art tables, the cut layout, the two kinds, the resize grip, the micro bar's art, atlases one client has, `ThemeArt.LayBorder` |
+| `SaftUI-Core/theme.lua` | 12 | `THEME_KINDS` gains `unitframe` and `member` |
 | `SaftUI-Bags/ruleeditor.lua` | 5 | its fields take the dropdown face |
-| `SaftUI-Bags/categoriestab.lua` | 8, 9 | its bars' owners; the list in the nav rows' look |
-| `SaftUI-Unitframes/unitframes.lua`, `updaters.lua`, `groups.lua` | 11–13 | kinds, one box per edge, the group border, fills |
-| `tests/wow/atlases.lua`, `tests/wow/blizzard.lua`, `tests/wow/widgets.lua` | 2–8, 10, 12, 13 | new atlases; atlas files and coordinates; hit rects; a bar texture's atlas |
-| `tests/core/options_settings_test.lua` (new) | 2, 3, 6, 8 | `/sui` under Blizzard on both clients |
-| `tests/unitframes/blizzard_look_test.lua` (new) | 11–13 | unit frames under Blizzard on both clients |
+| `SaftUI-Bags/categoriestab.lua` | 8, 9, 11 | its bars' owners; the list in the nav rows' look; the editor's fixed footer |
+| `SaftUI-Unitframes/unitframes.lua`, `updaters.lua`, `groups.lua` | 13–15 | kinds, one box per edge, the group border, fills |
+| `SaftUI-Minimap/micromenu.lua`, `microbuttons.lua`, `zonetextbutton.lua`, `clockbutton.lua`, `stats.lua` | 17 | the items' art, the strip |
+| `tests/wow/atlases.lua`, `tests/wow/blizzard.lua`, `tests/wow/widgets.lua` | 2–8, 12, 14–16 | new atlases (Forever's only ones in Forever's table alone); atlas files and coordinates; hit rects; a bar texture's atlas |
+| `tests/core/theme_blizzard_test.lua`, `tests/core/theme_blizzard_draw_test.lua` | 12, 16 | the kinds' insets; atlases one client has; the cut and `ThemeArt.LayBorder` |
+| `tests/core/options_window_test.lua`, `tests/core/options_widgets_test.lua` | 1–8, 10 | Thick pins; Blizzard controls; growing taller |
+| `tests/core/options_settings_test.lua` (new) | 2, 3, 6, 8, 10 | `/sui` under Blizzard on both clients |
+| `tests/bags/categories_tab_test.lua`, `tests/bags/rule_editor_test.lua` | 5, 8, 9, 11 | the rule editor's faces; the bars; the list's look; the footer |
+| `tests/unitframes/blizzard_look_test.lua` (new) | 13–15 | unit frames under Blizzard on both clients |
+| `tests/minimap/blizzard_look_test.lua` (new), `tests/minimap/theme_test.lua` | 17 | the micro menu bar under Blizzard on both clients |
 
 ---
 
@@ -167,7 +181,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 
     | Field | own | blizzard |
     | ----- | --- | -------- |
-    | `width`, `height` | 1040, 700 | 1110, 728 |
+    | `width`, `height` (`height`: the window's height with none saved, and from Task 10 its least) | 1040, 700 | 1110, 728 |
     | `sideX`, `sideTop`, `sideBottom`, `sideWidth` | 2, 2, 2, 208 | 17, 28, 46, 242 |
     | `navWidth` | 207 | 226 |
     | `mainLeft`, `mainTop`, `mainRight`, `mainBottom` | 210, 2, 2, 2 | 259, 28, 17, 46 |
@@ -247,7 +261,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
     eq(b.height - b.innerTop - b.footer - 111 - b.bodyBottom, 700 - 4 - 46 - 111, 'the body as tall as today')
     ```
   - `'Thick to Blizzard to Thick, and a profile switch, re-lay /sui out'` (Forever): open at Thick, `switch('blizzard')`, `switch('thick')`. Every Task 1 value comes back, and `F.inner`, `F.titleBar` are hidden, `F.brand` shown, `T.art(F.window) == ''`, the close at `TOPRIGHT window TOPRIGHT -16,-14`. Then with `SaftUI_DB.profiles.Blue = { theme = { name = 'blizzard' } }`: `st.config:SetProfile('Blue')`, `tick()` → the Blizzard layout; back to the first profile, `tick()` → Task 1's values.
-  - `'a switch with /sui scrolled or on a fill page'` (Review Focus 2): on `Long`, wheel the body down 3 turns; `switch('blizzard')`: the same page, `F.body:GetVerticalScroll()` unchanged, the body still 539 tall; `switch('thick')`: unchanged again. On `Fill`: the fill row's `SetHeight` gets the body's visible height less 12 under each look, and `F.body:GetRight() - F.content:GetRight()` is 25 under Blizzard and 13 under Thick.
+  - `'a switch with /sui scrolled or on a fill page'` (Review Focus 1): on `Long`, wheel the body down 3 turns; `switch('blizzard')`: the same page, `F.body:GetVerticalScroll()` unchanged, the body still 539 tall; `switch('thick')`: unchanged again. On `Fill`: the fill row's `SetHeight` gets the body's visible height less 12 under each look, and `F.body:GetRight() - F.content:GetRight()` is 25 under Blizzard and 13 under Thick.
   - Changes to existing tests (the spec's new behavior):
     - `tests/core/theme_core_frames_test.lua`, `"the /sui window takes the theme's border and stays solid"`: the window is drawn `'theme,solid,window'` (the dialog stays `'theme,solid,panel'`). Its Thick and Thin edge, alpha and inset assertions stay as they are.
     - `tests/core/theme_blizzard_windows_test.lua`, `"the /sui window's close button keeps its place under Blizzard"` becomes `"the /sui window's close button sits in the metal's socket under Blizzard, and back under Thick"`: `st:DrawnKind(window) == 'window'`; under Blizzard `'TOPRIGHT window TOPRIGHT 0.00,3.00'` and 28 (Forever); under Thick again `'TOPRIGHT window TOPRIGHT -16.00,-14.00'` and its own look.
@@ -447,7 +461,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - [ ] **Step 4: Run all tests.** `tests/run`: passes.
 - [ ] **Step 5: Commit.** `core, bags: /sui's dropdowns are the Settings dropdown, its list on Blizzard's menu art`
 
-### Task 6: Steppers on an option row's dropdown
+### Task 6: Steppers on an option row's dropdown, where its choices fit
 
 **Files:**
 - Modify: `SaftUI-Core/Config/optionswidgets.lua` (the select builder and methods).
@@ -456,7 +470,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - Test: `tests/core/options_widgets_test.lua`, `tests/core/options_settings_test.lua` (the picker).
 
 **Interfaces:**
-- Consumes: Task 5's `W.LookDropdown`, `button.faceLeft`, `button.faceRight`.
+- Consumes: Task 5's `W.LookDropdown`, `button.faceLeft`, `button.faceRight`, `Control('dropdown').textInset`.
 - Produces:
   - `Control('dropdown').stepper`:
     ```
@@ -466,10 +480,11 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
       back = 'common-dropdown-icon-back', backDisabled = '…-back-disabled',
       next = 'common-dropdown-icon-next', nextDisabled = '…-next-disabled', icon = 17 }
     ```
-  - On a select widget: `w.back` and `w.next` (Buttons, children of `w.frame`, 26 × 24); `w:StepTargets() -> backKey | nil, nextKey | nil` in the list's order (`ListEntries`); `w:Step(direction)`, −1 or 1, which does `w:Commit(key)`.
+  - `W.StepperRoom() -> number`: the stepped face's room for its text, `W.WIDTH.select − (width + backGap) − (width + nextGap) − 2 × textInset`: 83.
+  - On a select widget: `w.back` and `w.next` (Buttons, children of `w.frame`, 26 × 24); `w:StepsFit() -> boolean`: the longest choice's label (`ListEntries`, read when asked), measured in the font the face draws it in (a hidden font string of the widget's, through `SetFieldFont`; a font list's entry in its own face), is at most `W.StepperRoom()` wide (`ceil(GetUnboundedStringWidth())`), and true with no choices; `w:StepTargets() -> backKey | nil, nextKey | nil` in the list's order (`ListEntries`); `w:Step(direction)`, −1 or 1, which does `w:Commit(key)`.
 
 - [ ] **Step 1: Write the failing tests.**
-  - `'under Blizzard a select has steppers inside its 170, the face between them'`:
+  - `'under Blizzard a select whose choices fit has steppers inside its 170, the face between them'` (values `A`, `B`, `C`):
     ```lua
     eq(size_of(w.back), '26x24'); eq(anchor(w.back), 'LEFT frame LEFT 0,0')
     eq(size_of(w.next), '26x24'); eq(anchor(w.next), 'RIGHT frame RIGHT 0,0')
@@ -480,7 +495,20 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
     stub.fire_script(w.next, 'OnEnter'); eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-hover-2')
     theme('thick'); rebind(w); check(not w.back:IsShown() and not w.next:IsShown())
     ```
-    `icon(b)` and `background(b)` are a stepper's two textures, `icon_of(b)` the icon's atlas, and `arrow_left()` the hover arrow's left from the button's. Task 5's select test changes with this: its face sits at `'24,7,-23,-7'`.
+    `icon(b)` and `background(b)` are a stepper's two textures, `icon_of(b)` the icon's atlas, and `arrow_left()` the hover arrow's left from the button's. Task 5's select test (its values fit) changes with this: its face sits at `'24,7,-23,-7'`.
+  - `'a select gets steppers only when its longest choice fits the stepped face; otherwise the Settings face at the full 170'` (the user's answer 5):
+    ```lua
+    eq(W.StepperRoom(), 83)
+    local char = select(2, W.GetFont():GetFont()) / 2 -- the stub's character: half the font's size wide
+    local fits = string.rep('m', math.floor(83 / char))
+    values = { a = fits, b = 'B' }; theme('blizzard'); rebind(w)
+    check(w.back:IsShown() and w.next:IsShown(), 'the longest choice fits: steppers')
+    values = { a = fits .. 'm', b = 'B' }; rebind(w)
+    check(not w.back:IsShown() and not w.next:IsShown(), 'one character more: none')
+    eq(around(face, button), '-7,7,7,-7', 'the face at the full 170'); eq(arrow_left(), 79, 'the hover arrow centred on it')
+    values = { theme = "Use SaftUI's theme", thick = 'Thick', blizzard = 'Blizzard' }; rebind(w)
+    check(not w.back:IsShown(), "a Theme select's choices don't fit")
+    ```
   - `'a stepper picks the next or previous choice through the same path as a pick, and stops at the ends'`: values `{ a = 'A', b = 'B', c = 'C' }` at `b`, with counters on validate, set and onChanged:
     ```lua
     click(w.next); eq(stored, 'c'); eq(validated, 1); eq(changed, 1)
@@ -489,20 +517,21 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
     click(w.back); click(w.back); eq(stored, 'a'); check(not w.back:IsEnabled())
     -- a validate that fails: nothing set, onChanged(false, message); a confirm: W.Confirm asks first, No sets nothing
     ```
-  - `'stepper edge cases'` (Review Focus 1):
+  - `'stepper edge cases'` (Review Focus 3):
     - a stored value not among the values: back disabled, next picks the first;
     - one value: both disabled;
     - `w:SetDisabled(true)`: both disabled; enabled again: as the value says;
-    - a `values` function that changes between clicks: the order read at the click.
-  - `options_settings_test.lua`, `"the picker row's select has steppers; the position block's dropdown has none"`.
+    - a `values` function that changes between clicks: the order read at the click;
+    - a `values` function whose longest label grows past `W.StepperRoom()`: steppers at one bind, none at the next, and back when it shrinks.
+  - `options_settings_test.lua`, `"the picker row's select has steppers when its choices fit; the position block's dropdown has none"` (a picker of short names).
 - [ ] **Step 2: Run them; they fail** (no `w.back`).
 - [ ] **Step 3: Implement.**
   - The builder makes `w.back` and `w.next`, hidden, each with a `Background` texture at (−7, 7) to (7, −7) around it and an `Icon` at (4, −3).
-  - The select's `Bind` sets `button.faceLeft` and `faceRight` to 31 and 30 under Blizzard (0 under own) before `W.LookDropdown`, and shows the steppers only under Blizzard.
+  - The select's `Bind`: under Blizzard, when `w:StepsFit()`, `button.faceLeft` and `faceRight` are 31 and 30 and the steppers show; else both 0 (the full-width face) and the steppers hide. Under own both 0 and hidden. Then `W.LookDropdown`. The fit is read at each bind, so a render follows a change in the choices.
   - Their states follow the mouse as the face does (disabled, pressedhover, hover, pressed, normal), and the icon moves (2, −1) while pressed. `Refresh` and `OnDisabled` enable each by `w:StepTargets()` and `w.disabled`.
   - A click runs `w:Step(±1)`.
 - [ ] **Step 4: Run all tests.** `tests/run`: passes.
-- [ ] **Step 5: Commit.** `core: under Blizzard an option row's dropdown has Blizzard's steppers`
+- [ ] **Step 5: Commit.** `core: under Blizzard an option row's dropdown has Blizzard's steppers where its choices fit`
 
 ### Task 7: The slider's end arrows
 
@@ -533,7 +562,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
     w:SetDisabled(true); check(not w.forwardArrow:IsEnabled() and not w.backArrow:IsEnabled())
     ```
     A disabled arrow's texture is desaturated.
-  - `'slider arrow edge cases'` (Review Focus 3):
+  - `'slider arrow edge cases'`:
     - isPercent with step 0.05 at 0.5: forward stores 0.55 and the box shows `55%`;
     - no step and no bigStep, slider 0 to 200: forward from 100 stores 102;
     - softMax 10 and max 100 with a stored 50: forward disabled, back stores 10;
@@ -655,11 +684,149 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - [ ] **Step 4: Run all tests.** `tests/run`: passes.
 - [ ] **Step 5: Commit.** `bags: under Blizzard the Categories tab's list is the Settings category list`
 
+### Task 10: `/sui` grows taller (every theme)
+
+**Files:**
+- Modify: `SaftUI-Core/Config/optionswindow.lua`: the grip and the bottom edge, the drag, `OW.MaxHeight`, `OW.WindowHeight`, the saved height; `Relayout` and `RestorePosition` size the window by it; `Busy` while resizing.
+- Modify: `SaftUI-Core/themeart.lua`: `ART.resizegrip`, `CONTROLS.resizegrip`.
+- Test: `tests/core/options_window_test.lua` (Thick), `tests/core/options_settings_test.lua` (Blizzard).
+
+**Interfaces:**
+- Consumes: Task 2's `OW.LAYOUT`, `F.layout`, `Relayout`, `F.inner`, `F.footer`; Task 8's `OB.ScrollTo` (the companion follows the body's height).
+- Produces:
+  - `Control('resizegrip') = { normal = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]], highlight = [[…-Highlight]], pushed = [[…-Down]], size = 16 }`: Blizzard's `PanelResizeButtonTemplate` (`Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml`, the same on both clients). Files, so not among `st:ThemeAtlases()`.
+  - `OW.LAYOUT.own.height` and `.blizzard.height` are each look's least height, and its height with none saved.
+  - `OW.MaxHeight() -> number`: `2 × floor((UIParent:GetHeight() − 2 × st.config.profile.misc.clamp_inset) / 2)`: the screen less the screen edge margin at its top and its bottom, even.
+  - `OW.WindowHeight(layout) -> number`: the saved `st.config.global.optionsWindow.height` when it's a number, made even (`2 × floor(h / 2 + 0.5)`), at most `OW.MaxHeight()`, and at least `layout.height` (which wins on a screen too small for it); `layout.height` with none saved.
+  - New `OW.GetFrames()` fields: `grip` (a Button) and `sizer` (the bottom edge, a Frame).
+  - `st.config.global.optionsWindow = { point = 'CENTER', x, y, height }`: a move (`SavePosition`) keeps the height saved there as it was, and only a resize writes it. A move must not save the window's height: a window moved under Blizzard (728) would then open 728 tall under Thick.
+
+- [ ] **Step 1: Write the failing tests.**
+  - In `options_window_test.lua`, a helper as the mouse drags a handle:
+    ```lua
+    -- Drags handle dy units down (up when negative): the button down, one frame, the button up.
+    local function resize(handle, dy)
+    	local scale = frames().window:GetEffectiveScale()
+    	stub.mouse_buttons.LeftButton = true
+    	stub.cursor_y = 500 * scale
+    	stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
+    	stub.cursor_y = (500 - dy) * scale
+    	stub.fire_script(handle, 'OnUpdate', 0.016)
+    	stub.mouse_buttons.LeftButton = nil
+    	stub.fire_script(handle, 'OnMouseUp', 'LeftButton')
+    end
+    ```
+  - `'/sui grows taller by its bottom edge or its grip: its width and top stay, the body takes the height, and it remembers it'` (Thick, on `Loot`):
+    ```lua
+    local F = frames(); local w = F.window; local top = w:GetTop()
+    eq(at(F.grip), '1024,684 16x16'); eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr)
+    eq(at(F.sizer), '0,694 1024x6')
+    resize(F.grip, 100)
+    eq(at(w), '0,0 1040x800'); eq(w:GetTop(), top, 'its top stays')
+    eq(at(F.side), '2,2 208x796'); eq(at(F.navFrame), '2,120 207x647'); eq(at(F.body), '238,113 774x639')
+    eq(at(F.reloadButton:GetParent()), '210,752 828x46', 'the footer at the bottom')
+    eq(st.config.global.optionsWindow.height, 800, "saved in SaftUI's global settings")
+    resize(F.sizer, -300); eq(w:GetHeight(), 700, 'no shorter than its default')
+    resize(F.sizer, 51); eq(w:GetHeight(), 752, 'an even height: centred on whole pixels')
+    st.Config:Close(); st.Config:Open('Loot'); eq(w:GetHeight(), 752, 'restored when it opens'); eq(w:GetTop(), top)
+    resize(F.grip, 5000)
+    local inset = st.config.profile.misc.clamp_inset
+    check(w:GetBottom() >= inset and w:GetBottom() < inset + 2, 'it stops at the screen edge margin')
+    ```
+  - `'a resize renders nothing; a fill page draws its fill row once, when the mouse is let go'`, with the fill row test's `FillRows` module: the button down on the grip, OnUpdates at 30, 60 and 100 down, each followed by `tick()`: `OW.GetRenderCount()` and the fill row's height unchanged; the button up and `tick()`: one render, the fill row 100 taller, `F.content:GetHeight() == F.body:GetHeight()`. On a page that scrolls, scrolled to its bottom: a resize 100 taller renders nothing, the offset clamps to the new range, and `F.bar`'s height is `max(20, floor(view × view / total))` for the new view.
+  - `'a saved height the screen no longer fits, or under the least'` (Review Focus 2): with `optionsWindow = { point = 'CENTER', x = 0, y = 0, height = h }` before each open:
+    - `h = 5000`: `OW.MaxHeight()` tall, its top and bottom inside the screen edge margin;
+    - `h = 600`: 700; `h = 'tall'`: 700; `h = 751`: 752;
+    - `stub.screen_height = 500` (a screen shorter than 700 plus the margin): 700, the least winning; the screen height back after.
+  - `options_settings_test.lua`, with the `resize` helper (copied), for each client, `'under Blizzard /sui grows taller from 728; the inner frame and the sidebar stretch; the grip is Blizzard's'` (Review Focus 1):
+    ```lua
+    switch('blizzard'); st.Config:Open('Loot')
+    eq(at(F.window), '0,0 1110x728')
+    eq(F.grip:GetNormalTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]])
+    eq(F.grip:GetHighlightTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]])
+    eq(F.grip:GetPushedTexture():GetTexture(), [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]])
+    resize(F.grip, 100)
+    eq(at(F.inner), '17,28 1076x754'); eq(at(F.side), '17,28 242x754'); eq(at(F.body), '287,139 781x639')
+    eq(at(F.footer), '0,782 1110x46')
+    switch('thick'); eq(at(F.window), '0,0 1040x828', 'the dragged height under Thick too')
+    eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr)
+    st.config.global.optionsWindow.height = 700; switch('blizzard'); eq(F.window:GetHeight(), 728, "a height under Blizzard's least")
+    st.config.global.optionsWindow = nil; st.Config:Close(); st.Config:Open('Loot')
+    stub.fire_script(F.titleBar, 'OnDragStart'); stub.fire_script(F.titleBar, 'OnDragStop') -- a move at 728
+    eq(st.config.global.optionsWindow.height, nil, 'a move saves no height')
+    switch('thick'); eq(F.window:GetHeight(), 700, "so Thick keeps today's 700")
+    ```
+- [ ] **Step 2: Run them; they fail** (`F.grip` is nil).
+- [ ] **Step 3: Implement.**
+  - `F.grip`: a Button of the window's, 16 × 16 at its BOTTOMRIGHT (0, 0), 10 levels over the window. Its normal, highlight and pushed textures, set on each relayout: under Blizzard `Control('resizegrip')`'s files; under own `st.textures.cornerbr`, the highlight and pushed tinted the button hover color, as `st:EnableResizing` (`skinning.lua`) draws its grip. `F.sizer`: a Frame 6 tall from the window's BOTTOMLEFT to the grip's BOTTOMLEFT, at the grip's level. Both take the left button.
+  - OnMouseDown (LeftButton) on either starts a resize: the cursor's y over the window's effective scale, the window's height, its centre offset and its top. While it's held, the pressed handle's OnUpdate sets the height to the start's plus the cursor's travel down, made even as `OW.WindowHeight` makes it, at least `F.layout.height`, at most `min(OW.MaxHeight(), 2 × floor((top − clamp_inset) / 2))`, and moves the CENTER offset down by half the change, so the top stays (whole units: the change is even). Only a changed height is set. After each change: `SetScroll(scrollOffset)`, `SetNavScroll(navOffset)`, and on a fill page `Schedule()` (the body's own OnSizeChanged does the same in game).
+  - The resize ends on OnMouseUp, on OnHide, or when its OnUpdate finds the button up: the window's height into `optionsWindow.height`, then `SavePosition()`.
+  - `Busy()` is true while a resize is held, so a scheduled render waits for its end.
+  - `Relayout` sizes the window `layout.width × OW.WindowHeight(layout)`; `RestorePosition` sets the height too, `OW.WindowHeight(F.layout or OW.LAYOUT.own)`.
+  - Update the file's header comment: the window's size, the grip and the edge, the saved height.
+- [ ] **Step 4: Run all tests.** `tests/run`: passes.
+- [ ] **Step 5: Commit.** `core: /sui grows taller by its bottom edge or a grip, in every theme, and remembers its height`
+
+### Task 11: The Categories editor's fixed footer (every theme)
+
+**Files:**
+- Modify: `SaftUI-Bags/categoriestab.lua`: the editor pane's footer (`w.footer`, its edge, scroll frame, body and bar), `SplitFooter`, `Layout`, `Fit`, `ScrollFooter`, `EditorCell`, `OnRelease`, and the header comment.
+- Test: `tests/bags/categories_tab_test.lua`.
+
+**Interfaces:**
+- Consumes: Task 8's `OB.ScrollBar(parent, onScroll, opts)`, `OB.ScrollTo` and `OB.Companion`; Task 3's `Control('optionswindow').rule`; `W.BlizzardLook()`.
+- Produces:
+  - On a `bagcategories` widget: `w.footer` (a Frame in the editor's column, at the tab's bottom), `w.footerLine` (its top edge, a texture), `w.footerScroll` (a ScrollFrame under the edge) with its scroll child `w.footerPane`, `w.footerBody` (an `OB.New` body, 540 wide), `w.footerBar` (an `OB.ScrollBar`), `w.footerContent` (the footer body's drawn height).
+  - `w:EditorCell(key)` finds a row in the editor's body, then the footer's, so `'caught'` and `'pins'` are found where they now are.
+  - `INV.categoryEditor.footerOffset`: the footer's scroll, for the session; 0 for another category, as the editor's.
+  - `INV:CategoryEditorOptions` is unchanged. The tab splits its group: `SplitFooter(group) -> editorGroup, footerGroup` moves the args named in `FOOTER_KEYS = { 'caught', 'pins' }` into a group of their own, each given its place in that list as its order (Caught now above Pinned items).
+
+- [ ] **Step 1: Write the failing tests.**
+  - `"the editor's footer: Caught now above Pinned items at the pane's bottom, as tall as they need, the rest scrolling above it"` (Thick; `INV:PinItem(301, 'Consumables')`, Consumables selected):
+    ```lua
+    local w = tab(); local height = w.frame:GetHeight()
+    local caught, pins = w:EditorCell('caught'), w:EditorCell('pins')
+    check(inside(caught.frame, w.footer) and inside(pins.frame, w.footer), 'both in the footer')
+    check(caught.frame:GetTop() > pins.frame:GetTop(), 'Caught now above Pinned items')
+    eq(caught.widget.frame:GetWidth(), 540, "the pane's full width")
+    eq(w.footer:GetLeft() - w.frame:GetLeft(), 234); eq(w.footer:GetWidth(), 540)
+    eq(w.footer:GetBottom(), w.frame:GetBottom(), "at the pane's bottom")
+    eq(w.footer:GetHeight(), w.footerContent + 1, 'as tall as its strips and its edge')
+    eq(w.editorScroll:GetHeight(), height - w.footer:GetHeight()); eq(w.editorScroll:GetBottom(), w.footer:GetTop())
+    eq(editor_keys(w), 'name,enabled,show,rule,reset,delete', 'the rest in the editor, Reset and Delete at its end')
+    eq(w.footerLine:GetTop(), w.footer:GetTop()); eq(w.footerLine:GetWidth(), 540); eq(w.footerLine:GetHeight(), 1)
+    check(same_rgb(stub.state(w.footerLine).color_texture, { unpack(OB.LINE) }), "Thick: the body's line color")
+    check(not w.footerBar:IsShown(), 'nothing to scroll')
+    INV:UnpinItem(301); OW:Render(); eq(tab():EditorCell('pins'), nil, 'no pins: Caught now alone, as today')
+    ```
+    `editor_keys(w)` lists `w.body.cells`' row keys in order; `inside` as `options_window_test.lua`'s.
+  - `'a footer taller than half the pane scrolls on its own, with the same bar as the other areas'`: 80 pins not in the bags (item IDs 2000 to 2079) on Consumables:
+    ```lua
+    eq(w.footer:GetHeight(), math.floor(height / 2), 'half the pane')
+    check(w.footerBar:IsShown()); eq(w.footerBar:GetWidth(), 3)
+    eq(w.footerBar:GetLeft() - w.footerScroll:GetRight(), 10); check(w.footerBar:GetRight() <= F.body:GetRight())
+    wheel(w.footerScroll, -1); eq(w.footerScroll:GetVerticalScroll(), 68); eq(w.editorScroll:GetVerticalScroll(), 0, 'the editor stays')
+    OW:Render(); eq(tab().footerScroll:GetVerticalScroll(), 68, 'kept when the tab is drawn again')
+    -- the X on a pin scrolled into view unpins it
+    INV.categoryEditor.selected = 'Trade Goods'; OW:Render(); eq(tab().footerScroll:GetVerticalScroll(), 0, "another category's starts at its top")
+    ```
+  - `'with the footer fixed, a long rule and the items it catches are in view at once'` (the spec's reason): Grays/Auto Vendor, whose rule is taller than the editor's view: wheel the editor to its end; the gray cloth's icon (502) lies inside the tab's rect; OnEnter on it tints `block{1,1}`, and its tooltip opens beside the window (as `"an item's tooltip opens beside the window…"` places it).
+  - `"under Blizzard the footer's edge is the Settings divider and its bar Blizzard's"`: `w.footerLine:GetAtlas() == 'Options_HorizontalDivider'`; with the 80 pins `OB.Companion(w.footerBar).frame:IsShown()` and its track 12 right of the footer's pane; under Thick again the color line with no atlas.
+  - Change `"the tab fills the body's view…"`: the editor's view is the tab less the footer: `w.editorScroll:GetHeight() == height - w.footer:GetHeight()` (was `height`); Equipment sets' editor fits that view and Toys' doesn't; the wheel stops at `w.pane:GetHeight() - w.editorScroll:GetHeight()`. Its list, divider and bar-place assertions stay.
+- [ ] **Step 2: Run them; they fail** (`w.footer` is nil).
+- [ ] **Step 3: Implement.**
+  - `build`: `w.footer`, a Frame of the tab's frame, 540 wide; `w.footerLine`, an ARTWORK texture across its top, 1 tall; `w.footerScroll` from 1 under the footer's top to its bottom, with `w.footerPane`; `w.footerBody = OB.New(w.footerPane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)`; `w.footerBar = OB.ScrollBar(frame, function(offset) ScrollFooter(w, offset) end, { step = OB.SCROLL_STEP })`; the wheel over the footer runs `ScrollFooter`.
+  - `Layout`: `local editor, footer = SplitFooter(INV:CategoryEditorOptions(selected, w, items))`. The editor's body draws `{ category = editor }` as today. `w.footerBody` releases and draws `{ footer = footer }` (`OM.BuildView(root, 'footer')`); `w.footerContent` is what it drew and `w.footerPane` that tall. The footer's levels are the editor's. Another category resets the footer's offset with the editor's. The edge, by `W.BlizzardLook()`: Blizzard `SetAtlas(Control('optionswindow').rule)`, white; own `SetColorTexture(unpack(OB.LINE))`.
+  - `Fit`: the footer `min(w.footerContent + 1, floor(height / 2))` tall at TOPLEFT frame (EDITOR_X, −(height − footer)); the editor's scroll `height − footer` tall; the footer's scroll `footer − 1` tall, scrolled with `OB.ScrollTo(w.footerScroll, w.footerBar, offset, w.footerContent)` from where Layout found it, as the editor's is.
+  - `OnRelease` releases `w.footerBody` too. `EditorCell` searches `w.body.cells`, then `w.footerBody.cells`. `HighlightWhy`, the tooltip and the X need nothing: they find the rule through `EditorCell('rule')` and the window through the icon's ancestors.
+- [ ] **Step 4: Run all tests.** `tests/run`: passes.
+- [ ] **Step 5: Commit.** `bags: the Categories editor keeps Caught now and Pinned items in a fixed footer`
+
 ---
 
 ## Part B: unit frame borders
 
-### Task 10: The `unitframe` and `member` kinds: the bronze box and a bare fill
+### Task 12: The `unitframe` and `member` kinds: the bronze box and a bare fill
 
 **Files:**
 - Modify: `SaftUI-Core/theme.lua`: `st.THEME_KINDS.unitframe` (a unit frame or one of its bars) and `.member` (a party or raid member's frame or bar).
@@ -696,7 +863,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 
     The spec's bottom rectangles (BottomLeft 50–58, BottomRight and BottomEdge 52–60) put the bottom rim two rows and one row further in than the top's. These put the rim on the second row in from the edge on every side, which also aligns BottomLeft with BottomRight as the spec asked (see "Spec conflicts and gaps").
   - `st.ThemeArt.Cut(texture, atlas, rect) -> boolean`: sets the texture to the atlas's file at texture coordinates `left + (right − left) × x / width` (and the same down). It returns false, hiding the texture, when `GetAtlasInfo` gives no file.
-  - The cut layout: corners `size` × `size` at the drawn frame's corners (offset 0); edges between their corners, stretched (no tiling); every piece in `layer`. Shared by Task 12's group border.
+  - The cut layout: corners `size` × `size` at the drawn frame's corners (offset 0); edges between their corners, stretched (no tiling); every piece in `layer`. Shared by Task 14's group border.
 
 - [ ] **Step 1: Write the failing tests** in `theme_blizzard_draw_test.lua`:
   - `'unitframe and member draw as bar under Thick and Thin'`: for Thick and Thin, `st:SetBackdrop` of `unitframe`, `member` and `bar` on three frames give equal `T.fill`, `T.edge`, `T.inset`, `T.offset(…, 'TOPLEFT')` and Thick's outer lines.
@@ -728,7 +895,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - [ ] **Step 4: Run all tests.** `tests/run`: passes (the kind-name lists updated in the two tests above).
 - [ ] **Step 5: Commit.** `core: the unitframe and member kinds: under Blizzard the bronze box, and a bare fill`
 
-### Task 11: Unit frames draw as `unitframe` or `member`, one box per edge
+### Task 13: Unit frames draw as `unitframe` or `member`, one box per edge
 
 **Files:**
 - Modify: `SaftUI-Unitframes/unitframes.lua`: `UF.UnitKind`; the frame's draw.
@@ -738,7 +905,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - Modify: `tests/unitframes/theme_test.lua`: the drawn kinds (`'bar'` → `'unitframe'`, and `'member'` for party and raid previews).
 
 **Interfaces:**
-- Consumes: Task 10's kinds.
+- Consumes: Task 12's kinds.
 - Produces:
   - `UF.UnitKind(unit) -> 'member' | 'unitframe'`: `member` for `party`, `raid10`, `raid40`.
   - `UF:ElementKind(element) -> kind`: a status bar takes its unit frame's `UF.UnitKind(frame.base_unit)`; anything else `'control'`.
@@ -775,7 +942,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - [ ] **Step 4: Run all tests.** `tests/run`: passes.
 - [ ] **Step 5: Commit.** `unitframes: frames and bars draw as unitframe, party and raid as member, one box per edge`
 
-### Task 12: The group border
+### Task 14: The group border
 
 **Files:**
 - Modify: `SaftUI-Unitframes/groups.lua`: `UF:GroupBorder`, `UF.GroupBorderShown`, `UF:UpdateGroupBorder`, called from `UF:CreateGroupHeaders` and `UF:UpdateGroupPreview`.
@@ -787,7 +954,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - Test: `tests/unitframes/blizzard_look_test.lua`.
 
 **Interfaces:**
-- Consumes: Task 10's cut layout and `ThemeArt.Cut`; Task 11's `UF.UnitKind`.
+- Consumes: Task 12's cut layout and `ThemeArt.Cut`; Task 13's `UF.UnitKind`.
 - Produces:
   - `ART.groupborder = { layer = 'BORDER', size = 6, offsets = { -2, 2, 2, -3 }, pieces = … }` from `Atlas('options_frame_child')`, the same rectangles on both clients:
     - corners 0–6 × 0–6, 22–28 × 0–6, 0–6 × 20–26, 22–28 × 20–26;
@@ -812,7 +979,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
     eq(coords(pieces.TopLeftCorner), client == 'forever' and px(901, 907, 1, 7, 1024, 1024) or px(616, 622, 24, 30, 1024, 1024))
     eq(border:GetFrameLevel(), header:GetFrameLevel())
     ```
-  - `'which Theme turns the group border on'` (Review Focus 5), under SaftUI's Blizzard:
+  - `'which Theme turns the group border on'`, under SaftUI's Blizzard:
     - party at its defaults (frame None, health Use SaftUI's theme): shown;
     - the frame `'thick'`: hidden, and a party member's frame draws Thick (`T.inset == 2`, Thick's lines);
     - the frame None and health `'thick'`: hidden, and the member's health draws Thick;
@@ -842,7 +1009,7 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 - [ ] **Step 4: Run all tests.** `tests/run`: passes.
 - [ ] **Step 5: Commit.** `unitframes: under Blizzard each party and raid header has Blizzard's raid group border`
 
-### Task 13: Blizzard's bar fills
+### Task 15: Blizzard's bar fills
 
 **Files:**
 - Modify: `SaftUI-Unitframes/updaters.lua` (`UF:UpdateStatusBarElement`, `UF.BlizzardFill`).
@@ -879,29 +1046,179 @@ Today's tests compare Thick with Thin and with Thick after a Blizzard round trip
 
 ---
 
-### Task 14: Docs, followups, README and the in-game list
+## Part C: the micro menu bar
+
+### Task 16: The micro menu bar's art, and atlases one client has
+
+**Files:**
+- Modify: `SaftUI-Core/themeart.lua`:
+  - `Atlas(name, client)`, and `st:ThemeAtlases()` giving each atlas's clients (the header comment's account of the tables too);
+  - `ART.microbar`, `CONTROLS.microbar`;
+  - the local `LayBorder` lays a `Center` piece when the border has one; `ThemeArt.LayBorder(pieces, frame, border)` and `ThemeArt.HidePieces(pieces)`.
+- Modify: `tests/wow/atlases.lua`: the header's rule (an atlas one client lacks is in the other's table only) and these entries:
+
+  | Atlas | Forever | Retail |
+  | ----- | ------- | ------ |
+  | `UI-HUD-ActionBar-Frame` | 55 × 55 (its `-c60-2x` member, 110 × 110) | 55 × 55 (`-2x`) |
+  | `ui-hud-minimap-header-button` | 152 × 23 (`-c60`) | none |
+  | `ui-hud-minimap-addon-indicator` | 23 × 22 (`-c60`) | none |
+  | `ui-hud-minimap-tracking-button` | 23 × 23 (`-c60`) | none |
+  | `ui-hud-minimap-button-NineSlice-CornerTopLeft`, `-CornerTopRight`, `-CornerBottomLeft`, `-CornerBottomRight` | 6 × 6, 7 × 6, 6 × 7, 7 × 7 | the same |
+  | `_ui-hud-minimap-button-NineSlice-EdgeTop`, `_…-EdgeBottom` | 16 × 6, 16 × 7, `'h'` | the same |
+  | `!ui-hud-minimap-button-NineSlice-EdgeLeft`, `!…-EdgeRight` | 6 × 16, 7 × 16, `'v'` | the same |
+  | `ui-hud-minimap-button-NineSlice-Center` | 16 × 16 | the same |
+
+  From the clients' `UiTextureAtlasMember` tables at the builds the file names (the research's `report-research-micromenu-art.md`); `UI-HUD-ActionBar-IconFrame-Background` is there already.
+- Modify: `tests/core/theme_blizzard_test.lua`: `'every atlas the theme names exists on both clients'`.
+- Test: `tests/core/theme_blizzard_test.lua`, `tests/core/theme_blizzard_draw_test.lua`.
+
+**Interfaces:**
+- Produces:
+  - `Atlas(name, client)`: `client` nil for an atlas both clients have, `'forever'` or `'live'` for one only that client has; it marks `ATLASES[name]` `true` or the client.
+  - `st:ThemeAtlases() -> { [name] = true | 'forever' | 'live' }`.
+  - `Control('microbar')`, by client:
+    ```
+    forever: { strip = { frame = 'UI-HUD-ActionBar-Frame', background = 'UI-HUD-ActionBar-IconFrame-Background', pad = 4, backgroundInset = 2 },
+               header = { atlas = 'ui-hud-minimap-header-button', height = 23 },
+               square = { atlas = 'ui-hud-minimap-addon-indicator', width = 23, height = 22 },
+               tracking = { atlas = 'ui-hud-minimap-tracking-button', width = 23, height = 23, icon = true } }
+    live:    { strip = false, header = { kit = KIT }, square = { kit = KIT }, tracking = { kit = KIT } }
+    ```
+    `KIT = { layer = 'BACKGROUND', TopLeftCorner = { atlas = 'ui-hud-minimap-button-NineSlice-CornerTopLeft' }, …, Center = { atlas = 'ui-hud-minimap-button-NineSlice-Center' } }`: Blizzard's `UniqueCornersLayout` with the `ui-hud-minimap-button` kit, as retail's minimap header draws it (`Blizzard_Minimap/Mainline/Minimap.xml`, `BorderTop`). The three Camelot atlases are marked `Atlas(name, 'forever')`; the rest `Atlas(name)`. `icon = true`: the art has the item's icon drawn in.
+  - `ThemeArt.LayBorder(pieces, frame, border)`: lays `border` (a border table as `Control` gives it) on `frame` as the tooltip border is laid (corners at the frame's corners, edges between them, tiled across or down), and its `Center` when it has one, from the top left corner's BOTTOMRIGHT to the bottom right corner's TOPLEFT (Blizzard's NineSlice default). The textures are `frame`'s, kept by key in the caller's `pieces` table (never `ThemeArt.Get`'s, which a redraw clears), shown and white. `ThemeArt.HidePieces(pieces)` hides them. The tooltip border and the metal have no Center, so they lay as before.
+
+- [ ] **Step 1: Write the failing tests.**
+  - `theme_blizzard_test.lua`: `'every atlas the theme names exists on both clients'` becomes `'every atlas the theme names exists on the clients it is for'`, for each client:
+    ```lua
+    local st = T.client(client)
+    local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
+    for name, value in pairs(names) do
+    	if value ~= true and value ~= 'forever' and value ~= 'live' then odd[#odd + 1] = name .. ' is marked ' .. tostring(value) end
+    	local here = value == true or value == mine
+    	if here and not C_Texture.GetAtlasInfo(name) then missing[#missing + 1] = name end
+    	if not here and C_Texture.GetAtlasInfo(name) then odd[#odd + 1] = name .. " is marked one client's, but " .. client .. ' has it' end
+    end
+    -- today's checks: no file or format, at least 100 names, the named ones listed
+    eq(names['ui-hud-minimap-header-button'], 'forever', "Forever's Camelot chrome is Forever's only")
+    eq(names['ui-hud-minimap-button-NineSlice-Center'], true, 'the minimap button kit is on both')
+    ```
+  - `"a client's micro bar art names only atlases that client has"`, for each client: every string in `Control('microbar')` (walked) that `st:ThemeAtlases()` names is `true` or this client's; on Forever each item's art has an `atlas` and the strip its two; on retail `strip == false` and each item's art a `kit`.
+  - `theme_blizzard_draw_test.lua`, `"ThemeArt.LayBorder lays a kit with its Center on a frame, in the caller's own table"` (retail):
+    ```lua
+    local owner, pieces = frame(st), {}
+    st.ThemeArt.LayBorder(pieces, owner, st.ThemeArt.Control('microbar').header.kit)
+    eq(count(pieces), 9)
+    eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft'); eq(size_of(pieces.TopLeftCorner), '6x6')
+    eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '0,0', 'at the corner')
+    eq(T.around(pieces.Center, owner), '6,-6,-7,7', 'between the corners')
+    check(pieces.TopEdge:GetHorizTile() and pieces.LeftEdge:GetVertTile(), 'the edges tiled')
+    eq(pieces.Center:GetParent(), owner); eq(st.ThemeArt.Get(owner), nil, "kept in the caller's table")
+    st.ThemeArt.HidePieces(pieces); check(not pieces.Center:IsShown())
+    ```
+    The tooltip border's draw tests stay as they are (eight pieces, no Center).
+- [ ] **Step 2: Run them; they fail** (`Control('microbar')` errors: not a control).
+- [ ] **Step 3: Implement** as the Interfaces say, and add the entries to `atlases.lua` (Forever's three in its table only).
+- [ ] **Step 4: Run all tests.** `tests/run`: passes.
+- [ ] **Step 5: Commit.** `core: the micro menu bar's Blizzard art, and atlases one client has`
+
+### Task 17: The micro menu bar under Blizzard
+
+**Files:**
+- Modify: `SaftUI-Minimap/micromenu.lua`: `UpdateBackdrop` draws kind `control`; each item's art (`UpdateArt`); the strip (`UpdateStrip`, at the end of `UpdateButtons`); `SkinTrackingButton`'s options; `MicroMenu:GetItemArt`, `MicroMenu:GetStrip`; the header comment.
+- Modify: `SaftUI-Minimap/zonetextbutton.lua`, `clockbutton.lua`, `stats.lua` (latency and FPS): `art = 'header'` in the options they return.
+- Modify: `SaftUI-Minimap/microbuttons.lua`: each holder is added with `micro = true`.
+- Create: `tests/minimap/blizzard_look_test.lua`.
+- Modify: `tests/minimap/theme_test.lua`: `"a micro menu item's panel is a small frame…"` reads `'theme,theme,control'` (Thick's inset, offset and fill unchanged; its name says a control, a small frame under Thick).
+
+**Interfaces:**
+- Consumes: Task 16's `Control('microbar')`, `ThemeArt.LayBorder`, `ThemeArt.HidePieces`.
+- Produces:
+  - `MicroMenu:AddButton(button, options)`: options gain `art` (`'header'`, `'square'` (the default) or `'tracking'`: a key of `Control('microbar')`), `icon` (a texture of SaftUI's on the item, hidden while its art has an icon drawn in) and `micro` (true for a micro button's holder).
+  - `MicroMenu:GetItemArt(button) -> texture | nil, pieces | nil`: the item's art texture and its kit pieces (each made the first time it's needed), for tests.
+  - `MicroMenu:GetStrip() -> frame | nil, frameTexture, backgroundTexture`: the strip, a frame of SaftUI's, child of `MicroMenu.Container`, made the first time it's shown.
+
+- [ ] **Step 1: Write the failing tests** in the new `tests/minimap/blizzard_look_test.lua`. Its `world(client)`: `T.client(client)`, `drawn = T.watch()`, Blizzard's minimap (`CreateFrame('Frame', 'Minimap', UIParent)`), the minimap's `minimap.lua` and `config.lua`, `apply_defaults()`, `micromenu.lua` and `microbuttons.lua`, with `MM.Container` a frame at UIParent's TOPLEFT as `theme_test.lua` makes it. `theme(name)` sets the profile's theme, runs `st:RedrawThemed()` and `MM:UpdateButtons()`, as a switch runs them; `item(options)` adds a Button of UIParent's with `MM:AddButton`; `panel(button)` is its child the theme drew.
+  - `"Forever under Blizzard: the zone, clock, latency and FPS boxes on the header button, the square items on the addon indicator, search on Blizzard's tracking button; Thick puts today's boxes back"`:
+    ```lua
+    local zone, fps = item({ width = 200, art = 'header' }), item({ width = 48, art = 'header' })
+    local square, search = item(), CreateFrame('Button', nil, UIParent)
+    local magnifier = search:CreateTexture(); MM:AddButton(search, { art = 'tracking', icon = magnifier })
+    MM:SkinBarButton(zone) -- its flat hover
+    theme('blizzard')
+    local z = MM:GetItemArt(zone)
+    eq(z:GetAtlas(), 'ui-hud-minimap-header-button'); eq(T.around(z, zone), '0,-1,0,1', 'its 23 centred on the 25 row, the box wide')
+    eq(T.around(MM:GetItemArt(fps), fps), '0,-1,0,1')
+    local s = MM:GetItemArt(square); eq(s:GetAtlas(), 'ui-hud-minimap-addon-indicator'); eq(T.around(s, square), '1,-1,-1,2')
+    local t = MM:GetItemArt(search); eq(t:GetAtlas(), 'ui-hud-minimap-tracking-button'); eq(T.around(t, search), '1,-1,-1,1')
+    check(not magnifier:IsShown(), "SaftUI's magnifier hidden: Blizzard's is drawn in")
+    eq(drawn(panel(zone)), 'theme,theme,control'); eq(panel(zone).backdropInfo, nil, 'no flat box, no line')
+    eq(z:GetParent(), panel(zone), "on the item's panel, under the item's own art")
+    eq(zone:GetHighlightTexture():GetDrawLayer(), 'HIGHLIGHT', 'the flat hover stays')
+    theme('thick')
+    check(not z:IsShown() and not s:IsShown() and not t:IsShown()); check(magnifier:IsShown())
+    eq(T.inset(panel(zone)), 2); eq(T.offset(panel(zone), 'TOPLEFT'), '-2.00,2.00', "today's small frame")
+    ```
+  - `'retail under Blizzard: every box takes the grey minimap button kit, and there is no strip'`: the zone, a square and search each show nine kit pieces on their panel (`select(2, MM:GetItemArt(x))`), the top left corner at the box's corner and the Center between the corners; the magnifier stays (the kit draws no icon); a run of `micro` holders has no strip (`MM:GetStrip()` nil or hidden); under Thick no piece shows.
+  - `'the micro buttons stand on one bronze strip from the first shown holder to the last, and it follows Blizzard showing and hiding them'` (Review Focus 5), Forever:
+    ```lua
+    local before = item({ width = 48, art = 'header' })
+    local a, b, c = item({ width = 20, theme = 'none', micro = true }), item({ width = 20, theme = 'none', micro = true }), item({ width = 20, theme = 'none', micro = true })
+    local mail = item()
+    theme('blizzard')
+    local strip, frameArt, background = MM:GetStrip()
+    check(strip:IsShown()); eq(frameArt:GetAtlas(), 'UI-HUD-ActionBar-Frame'); eq(T.around(frameArt, strip), '0,0,0,0')
+    eq(background:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Background'); eq(T.around(background, strip), '2,-2,-2,2')
+    eq(T.around(strip, a):match('^%-?%d+,%-?%d+'), '-4,4'); eq(T.around(strip, c):match('%-?%d+,%-?%d+$'), '4,-4')
+    eq(strip:GetHeight(), 33); check(strip:GetLeft() > before:GetRight(), 'clear of the box before it')
+    c:Hide(); eq(strip:GetRight(), b:GetRight() + 4, 'it ends at the last one shown')
+    mail:Hide(); check(not MM:GetItemArt(mail):IsVisible(), "an item's art goes with it")
+    stub.in_combat = true; c:Show(); eq(strip:GetRight(), c:GetRight() + 4); eq(#stub.blocked, 0); stub.in_combat = false
+    a:Hide(); b:Hide(); c:Hide(); check(not strip:IsShown(), 'none shown: no strip')
+    a:Show(); theme('thick'); check(not strip:IsShown())
+    ```
+  - `"nothing of Blizzard's micro menu is shown, moved or written onto"`: with `theme_test.lua`'s `micro_button` (copied) on a `MicroMenu` that has `BorderArt` and `BackgroundArt` textures and is locked after it's set up, `MM:SkinBlizzardMicroMenu()` then `theme('blizzard')`: both textures at alpha 0 with their points unchanged, the strip around the button's holder, the strip's parent `MM.Container`, and no error from the locked frames.
+- [ ] **Step 2: Run them; they fail** (`MM.GetItemArt` is nil).
+- [ ] **Step 3: Implement.**
+  - `UpdateBackdrop` draws and insets the item's panel as kind `control` (`st:SetTemplate(…, 'control')`, `st:ThemeInset(…, 'control')`), then `UpdateArt(button, item)`.
+  - `UpdateArt`: under `st:IsBlizzardLook(item.theme or 'theme', item.background or 'theme')`, `local art = st.ThemeArt.Control('microbar')[item.art or 'square']`. An `atlas` art: one ARTWORK texture of the panel's (kept in the item's entry), `SetAtlas(art.atlas)`; with `width`, `width × height` at TOPLEFT panel (`floor((w − width) / 2)`, `−floor((25 − height) / 2)`); without, from TOPLEFT (0, −`floor((25 − height) / 2)`) to TOPRIGHT, `height` tall. A `kit` art: `ThemeArt.LayBorder(entry.pieces, panel, art.kit)`. The other of the two is hidden. Under another look both are hidden. `item.icon` shows unless the art drawn has `icon`.
+  - `UpdateStrip`, after the items are placed: under SaftUI's Blizzard look with a `strip` (Forever), and with a shown `micro` item, the strip shows, its frame texture (BORDER) over it all and its background (BACKGROUND) `backgroundInset` in; it's anchored through `st:SafeReposition(strip, 'MicroMenu_strip', fn)` from the first shown micro item's TOPLEFT (−pad, pad) to the last's BOTTOMRIGHT (pad, −pad). Otherwise it hides. Its frame level: the Container's, so it lies under the holders and under Blizzard's buttons (level 51 in `MicroMenu`). Blizzard's `BorderArt` and `BackgroundArt` stay as `SkinBlizzardMicroMenu` leaves them.
+  - `SkinTrackingButton` returns its button with `{ art = 'tracking', icon = <SaftUI's magnifier> }` (no icon on live, where Blizzard's own shows). The zone, clock, latency and FPS builders add `art = 'header'`; `SkinBlizzardMicroMenu` adds each holder with `micro = true`.
+- [ ] **Step 4: Run all tests.** `tests/run`: passes.
+- [ ] **Step 5: Commit.** `minimap: under Blizzard the micro menu bar stands on Blizzard's micro menu and minimap art`
+
+---
+
+### Task 18: Docs, followups, README and the in-game list
 
 **Files:**
 - Modify: `.agents/edit-mode.md` (`last_updated: 2026-11-11`):
-  - the options window: the two layouts, the title bar, the inner frame, the footer across the window, banners and gold names, the page divider, no section rules under Blizzard;
-  - the widgets: the check box art size, the WowStyle2 face and compact faces, steppers, the c-bg list, slider arrows, the Blizzard bar and `OB.ScrollBar`'s new arguments;
-  - the Categories list's look.
-- Modify: `.agents/architecture.md`: Themes (the thirteen kinds, `unitframe` and `member`, the cut art, `ThemeArt.Cut` and `PaintCut`) and Unit frames (`UF.UnitKind`, one box per edge, the group border, the fills).
-- Modify: `.agents/taint.md`: rule 6 or 12, the group border, a frame of SaftUI's that is a child of a secure header and anchored to it, following it in combat with no SaftUI code.
-- Modify: `.agents/testing.md`: the two new test files and what they cover, and the stubs' new behaviour (atlas files and coordinates, hit rects, a bar texture's atlas).
-- Modify: `README.md` line 25, the Theme bullet: under Blizzard `/sui` looks like Blizzard's Settings window, and unit frames wear Blizzard's unit frame box, party and raid frames Blizzard's raid group border, with Blizzard's bar fills.
-- Modify: `docs/followups.md`:
+  - the options window: the two layouts, the title bar, the inner frame, the footer across the window, banners and gold names, the page divider, no section rules under Blizzard; growing taller (the grip and the edge, `OW.MaxHeight`, `OW.WindowHeight`, the height in `optionsWindow`, one render on release for a fill page);
+  - the widgets: the check box art size, the WowStyle2 face and compact faces, steppers only where the choices fit (`W.StepperRoom`, `w:StepsFit`), the c-bg list, slider arrows, the Blizzard bar and `OB.ScrollBar`'s new arguments;
+  - the Categories list's look and the editor's fixed footer.
+- Modify: `.agents/architecture.md`: Themes (the thirteen kinds, `unitframe` and `member`, the cut art, `ThemeArt.Cut` and `PaintCut`, `ThemeArt.LayBorder` with a Center, `Atlas(name, client)` and what `st:ThemeAtlases()` gives, `Control('resizegrip')` and `Control('microbar')`), Unit frames (`UF.UnitKind`, one box per edge, the group border, the fills) and the micro menu bar (its items' panels drawn as `control` with the bar's own art, the strip).
+- Modify: `.agents/clients.md`, the Blizzard theme art bullet: most atlases exist on both clients; Forever's Camelot minimap art (`ui-hud-minimap-header-button`, `-addon-indicator`, `-tracking-button`) is Forever's only, marked `Atlas(name, 'forever')` and named only in Forever's art, and the atlas test checks each atlas on its own clients.
+- Modify: `.agents/taint.md`:
+  - rule 6 or 12: the group border, a frame of SaftUI's that is a child of a secure header and anchored to it, following it in combat with no SaftUI code;
+  - the micro menu's strip and art are SaftUI's own frames and textures; Blizzard's `BorderArt` and `BackgroundArt` stay hidden;
+  - the skinning helpers' line: `st:SkinIcon` keeps its crop and its hooked flag in weak tables of `skinning.lua`'s since 28c0448, so it writes nothing onto the icon but its hook.
+- Modify: `.agents/testing.md`: the three new test files (`tests/core/options_settings_test.lua`, `tests/unitframes/blizzard_look_test.lua`, `tests/minimap/blizzard_look_test.lua`) and what they cover; the stubs' new behaviour (atlas files and coordinates, hit rects, a bar texture's atlas, an atlas in one client's table only); the atlas test's rule for one client's atlases.
+- Modify: `README.md`:
+  - the `/sui` bullet: drag its bottom edge, or the grip at its bottom right corner, to make it taller; it remembers its height;
+  - the Theme bullet: under Blizzard `/sui` looks like Blizzard's Settings window, unit frames wear Blizzard's unit frame box, party and raid frames Blizzard's raid group border, with Blizzard's bar fills, and the micro menu bar Blizzard's micro menu and minimap art (on retail, Blizzard's grey minimap buttons);
+  - the Bags → Categories bullet: the items it catches now and the items pinned to it stay in a footer at the editor's bottom while the rest scrolls.
+- Modify: `docs/followups.md`, each change with its ToC line:
   - a new entry for the in-game list below ("Blizzard theme round 2: in-game checks");
   - a new entry for a border per real raid group (the spec's "a followup if wanted": a secure header per group);
-  - a new entry: a stepped dropdown's face leaves 83 for its text (109 less two insets of 13), so a long choice label ("Use SaftUI's theme") is cut, the whole label still in the list; to weigh after the in-game check: smaller insets, or no steppers on a select whose labels are long;
-  - revise "Blizzard theme: the bags' rule editor and Categories list keep the options window's own look": the fields and the list now follow; the boxes, the "whole word" check, the NOT toggles and the AND/OR badges still don't. Update its ToC line.
+  - revise "Blizzard theme: the bags' rule editor and Categories list keep the options window's own look": the fields and the list now follow; the boxes, the "whole word" check, the NOT toggles and the AND/OR badges still don't;
+  - revise "Categories tab: the scrolled editor's two gaps": with the footer, Caught now stays in view under the rule; a lit block can still be out of the editor's view when the rule is taller than it;
+  - revise "st:Kill and st:SkinIcon still write onto Blizzard pieces": `st:SkinIcon` no longer writes its crop onto the icon (28c0448), only its hook; `st:Kill` still writes.
 
-- [ ] **Step 1:** Make the doc edits above. Every doc whose `covers:` matches a changed file is reviewed (`git diff --name-only e5b12f3...HEAD`), and its `last_updated` bumped where it changed.
+- [ ] **Step 1:** Make the doc edits above. Every doc whose `covers:` matches a changed file is reviewed (`git diff --name-only 8cc0287...HEAD`), and its `last_updated` bumped where it changed.
 - [ ] **Step 2:** Run the `agents-doc-parity-check` and `readme-freshness-check` skills; fix what they find.
 - [ ] **Step 3:** `tests/run`: passes.
 - [ ] **Step 4: Commit.** `docs: the Blizzard theme round 2 in the agent docs, README and followups`
 
-## In-game check list (for the user, after Task 14)
+## In-game check list (for the user, after Task 18)
 
 Each under the Blizzard theme on both clients, then Thick to check nothing moved.
 
@@ -917,24 +1234,49 @@ Each under the Blizzard theme on both clients, then Thick to check nothing moved
    - on the Categories tab, the editor's bar inside the body's clip;
    - the rule editor's dropdown faces not cut at the editor's edges;
    - a dropdown in the body's right column with its glow whole at the body's right edge.
-4. **The dropdown face at 109 (stepped) and the compact widths:** the c-button art's rounded ends stretch cleanly. A long choice label is cut, with the whole label still in the list. The list's c-bg sits right under the button.
+4. **The dropdown faces:** a select whose choices fit has the steppers and the face at 109; one with a long choice (a Theme select's "Use SaftUI's theme") has the face at the full 170 and no steppers; the compact faces in the rule editor and the position block. The c-button art's rounded ends stretch cleanly at each width, and the list's c-bg sits right under the button.
 5. **Check boxes at 30 × 29:** lined up with their labels; the 23 × 22 rows in a multiselect and a check list.
 6. **Slider arrows:** inside the slider, each a step.
 7. **Scroll bars:** dragging the thumb, the arrows, the track and the wheel; the narrow bars in the sidebar, the Categories list and a long dropdown list.
-8. **The bronze box seams on Forever and retail:**
-   - at the player's 301 × 34, a 120-wide pet or target of target, and the player's 299 × 20 power bar;
-   - corners meet the edges with no step or gap;
-   - Forever shows bronze (its Camelot member's file), retail grey and gold.
-9. **The group border** around party and raid10 and raid40 (57 × 30, 3 apart). It follows someone joining or leaving in combat. Members show no border of their own.
-10. **Bar fills:** class colors on `RaidFrame-Hp-Fill` read as class colors, not muddy; the resource fill on power.
+8. **Growing taller, in each theme:**
+   - the bottom edge and the grip both drag; the top stays put; it stops at 700 (728 under Blizzard) and with its bottom at the screen edge margin;
+   - the height comes back after a `/reload`, and after a theme switch;
+   - under Blizzard the inner frame stretched taller (its vignette and rim) looks right, and Blizzard's grip in the metal's bottom right corner shows, takes the mouse and stays clear of Close;
+   - the Categories tab redraws once when the mouse is let go, its list and editor taller.
+9. **The Categories footer:** Caught now above Pinned items at the editor's bottom, the rule above in view at once; a category with many items: the footer at half the pane, scrolling on its own; its top edge (a line, or Blizzard's divider); a pin's X and an item's tooltip as before.
+10. **The bronze box seams on Forever and retail:**
+    - at the player's 301 × 34, a 120-wide pet or target of target, and the player's 299 × 20 power bar;
+    - corners meet the edges with no step or gap;
+    - Forever shows bronze (its Camelot member's file), retail grey and gold.
+11. **The group border** around party and raid10 and raid40 (57 × 30, 3 apart). It follows someone joining or leaving in combat. Members show no border of their own.
+12. **Bar fills:** class colors on `RaidFrame-Hp-Fill` read as class colors, not muddy; the resource fill on power.
+13. **The micro menu bar, Forever:**
+    - the bronze strip behind the micro buttons, 33 tall on the 25 row, 4 above and below the boxes; the engine's slicing of `UI-HUD-ActionBar-Frame` on SaftUI's own texture: a crisp rim, chamfered ends not squashed (its slice margins, 16 and 20, are taken to be the `-2x` member's texels, 8 and 10 UI units; if the ends look squeezed, cut the pieces by texture coordinates instead, as the spec allows);
+    - the strip under Blizzard's buttons, their own bronze squares on top, and its background 2 inside its rim;
+    - the header button's art at 200, 60, 48 and 48 wide (at 48 its two ends leave 4 between them if the margins are halved), the addon indicator and the tracking button centred, the flat hover over each;
+    - in a vehicle and a pet battle, where Blizzard moves its buttons out of the bar but the holders stay: whether an empty strip there looks wrong.
+14. **The micro menu bar, retail:** the grey minimap button kit on every box and no strip; the instance difficulty button's own purple fill covers its box (left as it is).
 
 ## Spec conflicts and gaps, and how this plan handles them
 
 - **The search glass:** the spec's "Today" says the glass is drawn 24 wide. The code (`W.LookSearch`) already draws it 10 × 10 at LEFT 6, which is Blizzard's LEFT 1 measured from where SaftUI's border starts. Task 3 only adds Blizzard's y of −1.
-- **One kind for every unit frame draw:** the spec has no look for a party or raid member under Blizzard (the Background fill, no border) that the bronze-box kind can give. Task 10 adds a second kind, `member` (a bar under Thick and Thin); Task 11 uses it for party, raid10 and raid40.
-- **The bronze rectangles:** BottomLeft moves from the spec's 50–58 to 48–56, and BottomRight and the bottom edge from 52–60 to 51–59, so each piece's outer two pixels are the outline and the rim on every side, and BottomLeft meets BottomRight as the spec asked. Retail's are measured from retail's members (Task 10's table). All are starting values for the in-game pass.
+- **One kind for every unit frame draw:** the spec has no look for a party or raid member under Blizzard (the Background fill, no border) that the bronze-box kind can give. Task 12 adds a second kind, `member` (a bar under Thick and Thin); Task 13 uses it for party, raid10 and raid40.
+- **The bronze rectangles:** BottomLeft moves from the spec's 50–58 to 48–56, and BottomRight and the bottom edge from 52–60 to 51–59, so each piece's outer two pixels are the outline and the rim on every side, and BottomLeft meets BottomRight as the spec asked. Retail's are measured from retail's members (Task 12's table). All are starting values for the in-game pass.
 - **The sidebar width:** the spec estimated 225–235. With the body kept at 774 and Blizzard's right-hand room (the glow, the minimal scroll bar), the divider rule gives 242 in a 1110 window.
 - **The dropdown's glow vs compact rows:** the rule editor's fields and the position block's dropdown have 4 to their neighbours, so their face's outset is 4, not 7. Their hover arrow is left off, as it would hang into the next row.
 - **"In place of the tab row's 1px line":** the subtab row's line takes the divider too. "No rules between sections" applies to every options body (window, dialog, the Categories editor). The vertical dividers between halves stay.
 - **`W.Prompt` and `W.Confirm` never scroll** (they size to their text), so the spec's "if they scroll" adds nothing there.
 - **An existing test contradicts the spec:** `"the /sui window's close button keeps its place under Blizzard"` (`theme_blizzard_windows_test.lua`) asserted round one's behaviour. Task 2 rewrites it to the socket.
+- **Steppers where the choices fit:** the spec's "about 83" is this plan's `W.StepperRoom()`, 83 exactly. A choice is measured in the font the face draws it in, so a font list's entry is measured in its own face. The followup this plan used to plan for cut labels is dropped: a select whose choices don't fit has no steppers, and its 144 for text (170 less the two insets) cuts only what today's dropdown cuts.
+- **"The most is the screen's height less the screen edge margin":** read as less the margin at the top and at the bottom, so the window fits inside the margin. A drag also stops where the window's bottom meets the margin, so it never pushes the window up; to grow further, move it up first.
+- **The grip's look:** the spec names none. Under Blizzard it's Blizzard's own resize grip (`PanelResizeButtonTemplate`'s three files, on both clients); under Thick and Thin SaftUI's corner arrow, as `st:EnableResizing` draws it.
+- **"Resizing redraws only what the height changes":** a page with no fill row isn't drawn again at all (its scroll, bars and nav re-clamp); a fill page's fill row is drawn once, when the mouse is let go, by the window's existing render scheduling, which waits while the drag is held.
+- **A new saved value:** the plan's earlier "no new saved key" gives way to the spec's saved height: one optional field in SaftUI's global settings, never in a profile, so no profile migrates.
+- **The footer's split:** `INV:CategoryEditorOptions` keeps every row (its tests and order unchanged); the tab moves Caught now and Pinned items into the footer, Caught now first, as the spec orders them.
+- **"Dragging an item from the bags onto the Pinned items strip … work as today":** today nothing takes an item dropped on the Pinned items strip (pins come from the slot menu, and a dragged item drops onto the rule editor's "Item is one of" block, which stays in the editor). The plan keeps both as they are and adds no drop.
+- **"A strip with no items shows its title and its empty line as today":** today Pinned items is hidden when there are none, and Caught now shows its title with nothing under it. The footer keeps both.
+- **The micro menu's background:** Blizzard's `BackgroundArt` reaches 13 and 14 past the frame on the sides, which on SaftUI's bar would lie over the box beside the strip (8 away). It sits 2 inside the strip instead.
+- **No new kind for the micro menu:** the items' panels draw as `control`, which Thick and Thin draw exactly as `small` and Blizzard leaves clear, as the micro buttons' own panels already do; the art is the bar's own. This keeps Part C off `theme.lua` and the kind lists Part B changes.
+- **Retail's kit has a Center:** Blizzard's `UniqueCornersLayout` draws one, which `LayBorder` didn't lay; Task 16 teaches it, and the tooltip border and the metal, which have none, lay as before.
+- **The engine's slicing:** Part C sets each atlas whole on a texture of SaftUI's and relies on the atlas's own slice data, as Blizzard's XML does. If it misbehaves in game, the spec's fallback (cutting by texture coordinates) needs each atlas's file and coordinates (Task 12's format) and is a follow-on change.
+- **`st:SkinIcon`'s state (28c0448):** nothing in the plan reads or writes `__stTexCoord`. The bronze box, the group border and the Categories icons set texture coordinates on SaftUI's own textures directly. Task 18 corrects `.agents/taint.md` and the followup that still describe the old fields.
