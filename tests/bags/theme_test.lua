@@ -453,3 +453,43 @@ test("the view buttons' borders never overlap, under Thick or Thin, and a theme 
 	eq(INV:HeaderMinWidth(container), thickMin, 'back to Thick: the same least width')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ the bank's bag slots
+
+-- Forever's bank bar: its bag-slot buttons are SaftUI's own, made by the real
+-- INV:UpdateBankBagSlots (containers/bank.lua). The bar is made by hand, since
+-- INV:InitializeBankBagSlots makes its buy button from Blizzard's
+-- BankPanelPurchaseButtonScriptTemplate, which the stubs lack. C_Bank,
+-- ItemLocation and C_Item.DoesItemExist stand in as far as the update reads
+-- them: one bought bag tab, holding no bag, so the buy button stays hidden.
+test("under Blizzard, a bank bag-slot button's ring is over its icon", function()
+	fresh()
+	load_saftui('SaftUI-Bags/containers/bank.lua')
+	_G.C_Bank = {
+		FetchMaxNumBankTabs = function() return 2 end,
+		FetchNumPurchasedBankTabs = function() return 2 end,
+		FetchPurchasedBankTabData = function() return { [1] = {}, [2] = {} } end,
+	}
+	Enum.BankType = { Character = 0, Account = 2 }
+	_G.ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { bag = bag, slot = slot } end }
+	_G.C_Item = { DoesItemExist = function() return false end }
+	st.config.profile.theme.name = 'blizzard'
+
+	local bar = st:CreateFrame('Frame', 'SaftUIThemeTestBankBagBar', UIParent)
+	bar.slots, bar.purchaseButton = {}, CreateFrame('Button', nil, bar)
+	INV:UpdateBankBagSlots(bar)
+	local slot = bar.slots[2]
+	check(slot ~= nil, 'the bag tab has its button')
+	if not slot then return end
+
+	local art = st.ThemeArt.Get(slot.backdrop)
+	local ring = art and art.over.Ring
+	eq(ring and ring:GetParent(), slot, "the ring is a texture of the button's own")
+	local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+	local function depth(region)
+		local layer, sublevel = region:GetDrawLayer()
+		return LAYERS[layer] * 100 + (sublevel or 0)
+	end
+	check(ring and depth(ring) > depth(slot.icon), 'the ring draws over the icon')
+	eq(#take_errors(), 0, 'no errors')
+end)

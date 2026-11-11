@@ -595,6 +595,9 @@ function Texture.GetVertTile(self, s) return s.vert_tile == true end
 function Texture.SetSnapToPixelGrid(self, s, snap) s.snap_to_pixel_grid = snap and true or false end
 function Texture.IsSnappingToPixelGrid(self, s) return s.snap_to_pixel_grid ~= false end
 function Texture.SetTexelSnappingBias(self, s, bias) s.texel_snapping_bias = number_arg(s, bias, 'bias') end
+-- Drawn in grey: off until set. Only remembered.
+function Texture.SetDesaturated(self, s, desaturated) s.desaturated = desaturated and true or false end
+function Texture.IsDesaturated(self, s) return s.desaturated == true end
 function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
 function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
 

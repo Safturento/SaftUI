@@ -45,7 +45,9 @@ local function CreateBankBagSlot(bar, tab)
 	slot:SetSize(INV:GetButtonWidth(), INV:GetButtonHeight())
 	slot.tab = tab
 
-	slot.icon = slot:CreateTexture(nil, 'ARTWORK')
+	-- In BORDER, as Blizzard's item button has it, so the Blizzard theme's ring
+	-- (ARTWORK, below its font strings) draws over it.
+	slot.icon = slot:CreateTexture(nil, 'BORDER')
 	slot.icon:SetAllPoints()
 
 	-- Tints a slot that hasn't been bought yet
