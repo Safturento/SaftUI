@@ -51,6 +51,14 @@ local function slot_of(container, name)
 	end
 end
 
+-- INV:VendorCategory sold every slot of a category frame with none of
+-- INV:IsAutoVendorItem's checks. Nothing called it.
+test('auto vendor sells only through GetVendorItems: VendorCategory is gone', function()
+	world('compact')
+	check(INV.VendorCategory == nil, 'VendorCategory is gone')
+	check(type(INV.AutoVendor) == 'function' and type(INV.GetVendorItems) == 'function', 'AutoVendor and GetVendorItems stay')
+end)
+
 for _, view in ipairs(VIEWS) do
 	for _, merge in ipairs({ false, true }) do
 		test(view .. (merge and ', merged stacks' or '') .. ': GetVendorItems gives every stack of every sellable item', function()

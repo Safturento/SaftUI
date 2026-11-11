@@ -24,11 +24,18 @@ local INV = st:GetModule('Inventory')
 	and strips nothing. A block of an unknown type, with missing or wrongly typed
 	params, a group of an unknown op or with no items table, or a rule that isn't
 	a table is UNREADABLE: it matches nothing, negated or not, and never errors.
-	A group with no readable child (empty, or all unreadable) is unreadable too.
-	A parent skips its unreadable children when it decides, so OR(unreadable, X)
-	and AND(unreadable, X) are X, and NOT never turns "can't read" into "matches
-	everything" (an editor mid-edit makes these: a new NOT group, a block before
-	its text is typed). At the root, unreadable matches nothing.
+	So is a block with nothing set yet: a list block (quality, slot, binding,
+	expansion, items, subclass) with nothing picked, a level block with no
+	number, a yes/no block with neither. A new block of those types starts that
+	way (R.BLOCKS' new), so no block matches everything as it is made.
+	An OR skips its unreadable children: OR(unreadable, X) is X, and an OR with
+	no readable child (empty, or all unreadable) is unreadable. An AND with any
+	unreadable child is unreadable: AND(unreadable, X) matches nothing, however
+	X matches. NOT never turns "can't read" into "matches everything". An editor
+	mid-edit makes these (an emptied group, a new NOT group, a block before its
+	text is typed or its list ticked), and every edit is saved as it stands, so
+	a half-built rule catches less, never more: in Grays/Auto Vendor, a flood
+	would sell the bag. At the root, unreadable matches nothing.
 ]]
 local R = {}
 INV.Rules = R
@@ -141,13 +148,15 @@ end
 
 ------------------------------------------------------------------- blocks
 
--- The numbers (or strings) of an array, as a set; nil when it isn't an array.
+-- The numbers (or strings) of an array, as a set; nil when it isn't an array
+-- or holds none, so a list block with nothing picked can't be read.
 local function set_of(list, kind)
 	if type(list) ~= 'table' then return nil end
 	local set = {}
 	for _, v in ipairs(list) do
 		if type(v) == kind and v == v then set[v] = true end
 	end
+	if next(set) == nil then return nil end
 	return set
 end
 
@@ -361,13 +370,15 @@ R.BLOCKS = {
 	{ id = 'class', label = 'Class is', new = function() return {} end },
 	{ id = 'subclass', label = 'Subclass is', new = function() return { subclasses = {} } end },
 	{ id = 'quality', label = 'Quality is', new = function() return { qualities = {} } end },
-	{ id = 'ilvl', label = 'Item level', new = function() return { min = 0 } end },
-	{ id = 'reqlevel', label = 'Required level', new = function() return { min = 0 } end },
+	-- These four start with nothing set (unreadable): as "at least 0" and
+	-- "yes", they caught everything the moment they were added.
+	{ id = 'ilvl', label = 'Item level', new = function() return {} end },
+	{ id = 'reqlevel', label = 'Required level', new = function() return {} end },
 	{ id = 'slot', label = 'Equip slot is', new = function() return { slots = {} } end },
 	{ id = 'binding', label = 'Binding is', new = function() return { states = {} } end },
 	{ id = 'expansion', label = 'Expansion is', new = function() return { expansions = {} } end },
-	{ id = 'reagent', label = 'Crafting reagent', new = function() return { value = true } end },
-	{ id = 'vendorprice', label = 'Has vendor price', new = function() return { value = true } end },
+	{ id = 'reagent', label = 'Crafting reagent', new = function() return {} end },
+	{ id = 'vendorprice', label = 'Has vendor price', new = function() return {} end },
 	{ id = 'items', label = 'Item is one of', new = function() return { ids = {} } end },
 	{ id = 'oldgear', label = 'Old gear for my level',
 		new = function() return { levels = 10, expansion = 9, share = 0.9 } end },
@@ -393,19 +404,21 @@ end
 
 local compile_node
 
--- Returns fn, readable. An unreadable node (see the header) is never() and
--- its parent skips it.
+-- Returns fn, readable. An unreadable node (see the header) is never(): an
+-- OR skips it, and an AND with one is unreadable itself.
 local function compile_group(node)
 	local op = node.op
 	local items = node.items
 	if (op ~= 'and' and op ~= 'or') or type(items) ~= 'table' then return never, false end
 	local fns, index = {}, {} -- the readable children, and where each sits in items
-	local firstPlain -- AND: the first readable child that isn't negated
+	local firstPlain -- AND: the first child that isn't negated
 	for i = 1, #items do
 		local fn, readable = compile_node(items[i])
 		if readable then
 			fns[#fns + 1], index[#fns + 1] = fn, i
 			if not firstPlain and items[i].negate ~= true then firstPlain = #fns end
+		elseif op == 'and' then
+			return never, false
 		end
 	end
 	local n = #fns

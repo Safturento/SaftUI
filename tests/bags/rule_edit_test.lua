@@ -103,8 +103,11 @@ test('NewGroup takes the other operator; NewBlock gives each type its new params
 	check(R.Equal(R.NewBlock('tooltip'), { block = 'tooltip', text = '' }), 'tooltip: empty text')
 	check(R.Equal(R.NewBlock('class'), { block = 'class' }), 'class: none picked')
 	check(R.Equal(R.NewBlock('subclass'), { block = 'subclass', subclasses = {} }), 'subclass: none picked')
-	check(R.Equal(R.NewBlock('ilvl'), { block = 'ilvl', min = 0 }), 'ilvl: at least 0')
-	check(R.Equal(R.NewBlock('reagent'), { block = 'reagent', value = true }), 'reagent: yes')
+	-- These four matched everything as made; now nothing is set until the user sets it.
+	check(R.Equal(R.NewBlock('ilvl'), { block = 'ilvl' }), 'ilvl: no number yet')
+	check(R.Equal(R.NewBlock('reqlevel'), { block = 'reqlevel' }), 'reqlevel: no number yet')
+	check(R.Equal(R.NewBlock('reagent'), { block = 'reagent' }), 'reagent: neither yes nor no yet')
+	check(R.Equal(R.NewBlock('vendorprice'), { block = 'vendorprice' }), 'vendorprice: neither yes nor no yet')
 	check(R.Equal(R.NewBlock('oldgear'), { block = 'oldgear', levels = 10, expansion = 9, share = 0.9 }),
 		"oldgear: today's thresholds")
 	check(R.Equal(R.NewBlock('protected'), { block = 'protected' }), 'protected: no params')

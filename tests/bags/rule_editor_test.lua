@@ -558,6 +558,38 @@ test("each block type's fields set its params", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set, and a mode picked with no number writes no 0', function()
+	for _, id in ipairs({ 'ilvl', 'reqlevel' }) do
+		local ed = editor(grp('or', { R.NewBlock(id) }))
+		local f = ed.w.rows[1].fields
+		eq(f.mode.text:GetText(), 'at least', id .. ': at least')
+		eq(f.min:GetText(), '', id .. ': an empty box')
+		for _, mode in ipairs({ 'at most', 'between', 'at least' }) do
+			click(ed.w.rows[1].fields.mode)
+			pick(mode)
+			eq(#ed.sets, 0, id .. ': ' .. mode .. ' with no number sets nothing')
+			check(R.Equal(ed.stored.items[1], { block = id }), id .. ': ' .. mode .. ': still no number')
+		end
+		enter(ed.w.rows[1].fields.min, '5')
+		check(R.Equal(ed.stored.items[1], { block = id, min = 5 }), id .. ': a number typed sets it')
+		click(ed.w.rows[1].fields.mode)
+		pick('at most')
+		check(R.Equal(ed.stored.items[1], { block = id, max = 5 }), id .. ': and a mode picked then moves it')
+		W.CloseList()
+		ed.w:Release()
+	end
+	for _, id in ipairs({ 'reagent', 'vendorprice' }) do
+		local ed = editor(grp('or', { R.NewBlock(id) }))
+		eq(ed.w.rows[1].fields.value.text:GetText(), '', id .. ': neither Yes nor No')
+		click(ed.w.rows[1].fields.value)
+		pick('Yes')
+		eq(ed.stored.items[1].value, true, id .. ': Yes picked is set')
+		W.CloseList()
+		ed.w:Release()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('a text box commits on Enter only', function()
 	local ed = editor(grp('or', { t('Curio') }))
 	local box = ed.w.rows[1].fields.text
@@ -590,6 +622,28 @@ test('a text box commits on Enter only', function()
 	eq(box:GetText(), '10', 'the stored number back')
 	enter(box, '20')
 	eq(ed.stored.items[1].min, 20, 'a number sets')
+	ed.w:Release()
+end)
+
+-- tonumber reads these, and none can go into the profile: a NaN or an
+-- infinity may not survive SavedVariables.
+test('the number boxes and the ID box refuse inf, nan and numbers too big to hold', function()
+	local ed = editor(grp('or', { blk('ilvl', { min = 10 }), R.NewBlock('oldgear'), blk('items', { ids = {} }) }))
+	for _, text in ipairs({ 'inf', '-inf', 'nan', '-nan', 'infinity', '1e999', '-1e999' }) do
+		enter(ed.w.rows[1].fields.min, text)
+		enter(ed.w.rows[2].fields.levels, text)
+		enter(ed.w.rows[2].fields.share, text)
+		enter(ed.w.rows[3].fields.id, text)
+		eq(#ed.sets, 0, text .. ': sets nothing')
+	end
+	eq(ed.w.rows[1].fields.min:GetText(), '10', 'the stored number back')
+	eq(ed.w.rows[2].fields.share:GetText(), '90', 'the stored share back')
+	eq(#ed.stored.items[3].ids, 0, 'no item joins')
+	enter(ed.w.rows[1].fields.min, '1e3')
+	eq(ed.stored.items[1].min, 1000, 'a number with an exponent still sets')
+	enter(ed.w.rows[3].fields.id, '6948')
+	eq(table.concat(ed.stored.items[3].ids, ','), '6948', 'and an ID still joins')
+	eq(#take_errors(), 0, 'no errors')
 	ed.w:Release()
 end)
 

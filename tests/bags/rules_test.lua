@@ -83,27 +83,76 @@ test('unreadable groups match nothing, and a NOT never flips them', function()
 	eq(match(grp('or', { { block = 'future' } }, true), i), false, 'NOT OR(future block)')
 	eq(match(grp('and', { { block = 'future' } }, true), i), false, 'NOT AND(future block)')
 	eq(match(grp('or', { grp('and', {}, true) }, true), i), false, 'NOT of a group of unreadable groups')
-	-- Unreadable children are skipped.
+	-- An OR skips its unreadable children; an AND with one can't be read either.
 	local junk = blk('tooltip', { text = '' })
 	local m, path = match(grp('or', { junk, real }), i)
 	eq(m, true, 'OR(unreadable, X) is X'); eq(p(path), '{2}', 'with the real index')
 	eq(match(grp('or', { junk, real }), other), false, 'OR(unreadable, X) false when X is')
 	m, path = match(grp('and', { junk, real }), i)
-	eq(m, true, 'AND(unreadable, X) is X'); eq(p(path), '{2}', 'with the real index')
-	eq(match(grp('and', { junk, real }), other), false, 'AND(unreadable, X) false when X is')
+	eq(m, false, 'AND(unreadable, X) is unreadable: it matches nothing'); eq(path, nil, 'and has no path')
+	eq(match(grp('and', { real, junk }), i), false, 'AND(X, unreadable) too')
+	eq(match(grp('and', { junk, real }, true), other), false, 'NOT AND(unreadable, X) never flips')
+	m, path = match(grp('or', { grp('and', { real, junk }), real }), i)
+	eq(m, true, 'an OR skips an AND it cannot read'); eq(p(path), '{2}', 'and the real block decides')
+	eq(match(grp('or', { grp('and', { real, junk }, true) }), other), false, 'NOT of an unreadable AND in an OR catches nothing')
+	eq(match(grp('and', { real, grp('and', { real, junk }) }), i), false, 'an unreadable AND inside an AND spoils it')
+	eq(match(grp('and', { real, grp('or', {}) }), i), false, 'and so does an empty group')
 	-- A NOT group of nothing readable inside an OR, beside a real block.
 	local notEmpty = grp('or', { junk }, true)
 	m, path = match(grp('or', { notEmpty, real }), i)
 	eq(m, true, 'NOT group inside an OR next to a real block'); eq(p(path), '{2}', 'the real block decides')
 	eq(match(grp('or', { notEmpty, real }), other), false, 'and does not catch what the real block does not')
 	eq(match(grp('or', { notEmpty }), i), false, 'alone it catches nothing')
-	-- The Grays shape: real AND NOT(empty tooltip block).
+	-- The Grays shape: real AND NOT(empty tooltip block) catches nothing until
+	-- the block has its text, and so does Grays with its inner OR emptied.
 	local grays = grp('and', { real, grp('or', { junk }, true) })
-	eq(match(grays, i), true, 'Grays-shaped: catches what the real block catches')
-	eq(match(grays, other), false, 'Grays-shaped: and nothing else')
+	eq(match(grays, i), false, 'Grays-shaped: catches nothing until it is complete')
+	eq(match(grays, other), false, 'Grays-shaped: nor anything else')
+	local emptied = grp('and', { grp('or', {}), grp('or', { blk('class', { class = 2 }) }, true), real })
+	eq(match(emptied, i), false, 'Grays with its inner OR emptied catches nothing')
 	-- A readable NOT group still flips.
 	eq(match(grp('and', { real, grp('or', { blk('class', { class = 2 }) }, true) }), i), true, 'a readable NOT group flips')
 	eq(match(grp('and', { real, grp('or', { blk('class', { class = 4 }) }, true) }), i), false, 'and excludes')
+end)
+
+test('a list block with nothing picked, and a level or yes/no block with nothing set, cannot be read', function()
+	world()
+	stub.level = 80
+	_G.GetAverageItemLevel = function() return 300 end
+	local all = info({ name = 'Thing', tooltip = 'Some text', classID = 4, subclassID = 1, quality = 0, ilvl = 10,
+		isCraftingReagent = true, itemID = 5, equipLoc = 'INVTYPE_HEAD', expacID = 1, reqLevel = 5, vendorPrice = 3,
+		isSoulbound = true })
+	local real = blk('class', { class = 4 })
+	local unset = {
+		blk('quality', { qualities = {} }), blk('slot', { slots = {} }), blk('binding', { states = {} }),
+		blk('expansion', { expansions = {} }), blk('items', { ids = {} }),
+		blk('subclass', { class = 4, subclasses = {} }),
+		blk('quality', { qualities = { 'x' } }), -- nothing of the right kind is nothing
+		blk('ilvl', {}), blk('reqlevel', {}), blk('reagent', {}), blk('vendorprice', {}),
+	}
+	for n, b in ipairs(unset) do
+		local name = n .. ' (' .. b.block .. ')'
+		eq(one(b, all), false, name .. ': matches nothing')
+		local negated = R.Copy(b)
+		negated.negate = true
+		eq(one(negated, all), false, name .. ': NOT never flips it')
+		eq(match(grp('and', { real, b }), all), false, name .. ': an AND with it catches nothing')
+		eq(match(grp('and', { real, negated }), all), false, name .. ': nor with it negated')
+		local m, path = match(grp('or', { negated, real }), all)
+		eq(m, true, name .. ': an OR skips it'); eq(p(path), '{2}', name .. ': and the real block decides')
+	end
+	-- A new block can't be read until it is set, but for Old gear (today's
+	-- thresholds) and Protected (no params): a block that can be read matches
+	-- an item either plain or negated.
+	local readable = {}
+	for _, t in ipairs(R.BLOCKS) do
+		local plain, negated = R.NewBlock(t.id), R.NewBlock(t.id)
+		negated.negate = true
+		for _, item in ipairs({ all, info() }) do
+			if one(plain, item) or one(negated, item) then readable[#readable + 1] = t.id; break end
+		end
+	end
+	eq(table.concat(readable, ','), 'oldgear,protected', 'the new blocks that can be read as made')
 end)
 
 test('tooltip and name: plain, case-insensitive, and whole word', function()
@@ -445,7 +494,8 @@ test('unknown block types and malformed params match nothing and never error', f
 	end
 	-- Unknown beside known blocks doesn't spoil them.
 	eq(match(grp('or', { { block = 'future' }, blk('class', { class = 4 }) }), i), true, 'OR still finds the good one')
-	eq(match(grp('and', { { block = 'future' }, blk('class', { class = 4 }) }), i), true, 'AND skips the unknown one')
+	eq(match(grp('and', { { block = 'future' }, blk('class', { class = 4 }) }), i), false,
+		'an AND with an unknown one matches nothing')
 	-- Rules that aren't rules.
 	for _, rule in ipairs({ 'x', 5, true, false }) do
 		eq(R.Compile(rule)(i) and true or false, false, 'a ' .. type(rule) .. ' as a rule')

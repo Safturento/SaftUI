@@ -221,9 +221,18 @@ end
 
 local function Tidy(v) return tonumber(format('%.10g', v)) end
 
+-- Not NaN and not an infinity: tonumber reads 'inf', 'nan' and '1e999', and
+-- none of them may go into the profile (SavedVariables may not read them back).
+local function is_finite(v)
+	return is_num(v) and v ~= math.huge and v ~= -math.huge
+end
+
+-- The number typed in a box, or nil.
 local function Typed(text)
 	text = tostring(text or ''):gsub('%%', ''):gsub('^%s+', ''):gsub('%s+$', '')
-	return tonumber(text)
+	local n = tonumber(text)
+	if is_finite(n) then return n end
+	return nil
 end
 
 local function Has(list, key)
@@ -389,7 +398,7 @@ local function EditNode(w, path, fn, quiet)
 end
 
 local function AddItem(w, path, id)
-	if not is_num(id) or id < 1 or id ~= floor(id) then return end
+	if not is_finite(id) or id < 1 or id ~= floor(id) then return end
 	EditNode(w, path, function(node)
 		if Has(node.ids, id) then return false end
 		local ids = Ids(node.ids)
@@ -714,6 +723,9 @@ local function LevelMode(node)
 	return 'atleast'
 end
 
+-- A mode picked moves the number typed to the bound it needs. With no number
+-- yet there is nothing to move, and nothing is invented: a block with no
+-- number can't be read (rules.lua), where "at least 0" would catch everything.
 local function LevelFields(lay, node)
 	local w, path = lay.w, lay.path
 	local mode = LevelMode(node)
@@ -723,12 +735,13 @@ local function LevelFields(lay, node)
 				if LevelMode(n) == key then return false end
 				local min = is_num(n.min) and n.min or nil
 				local max_ = is_num(n.max) and n.max or nil
+				if not min and not max_ then return false end
 				if key == 'atleast' then
-					n.min, n.max = min or max_ or 0, nil
+					n.min, n.max = min or max_, nil
 				elseif key == 'atmost' then
-					n.min, n.max = nil, max_ or min or 0
+					n.min, n.max = nil, max_ or min
 				else
-					local low = min or max_ or 0
+					local low = min or max_
 					n.min, n.max = low, max_ or low
 				end
 			end)

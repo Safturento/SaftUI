@@ -634,6 +634,76 @@ test('Grays/Auto Vendor renamed and moved still sells; turned off, nothing is so
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- Every edit the editor makes commits at once, so a rule left mid-edit is the
+-- rule auto vendor follows at the next merchant. Each edit here starts from
+-- the shipped rule and is reset after.
+test('a half-edited Grays/Auto Vendor rule never sells more than the shipped one', function()
+	world('compact')
+	update()
+	local R = INV.Rules
+	eq(sold(), 'Gray Cloth', 'as shipped: the gray')
+	local shipped = INV:GetCategoryList().byId[SELL].rule
+	eq(shipped.op, 'and', 'the root is an AND')
+	eq(shipped.items[1].op, 'or', 'its first child is the inner OR')
+	eq(#shipped.items[1].items, 3, 'of three')
+
+	local function edited(fn)
+		local rule = R.Copy(INV:GetCategoryList().byId[SELL].rule)
+		fn(rule)
+		INV:SetCategoryRule(SELL, rule)
+		update()
+		local names = sold()
+		INV:ResetCategory(SELL)
+		update()
+		return names
+	end
+	local function safe(names, what)
+		check(names == 'Gray Cloth' or names == '', what .. ': sells only the gray, or nothing, not ' .. names)
+	end
+
+	-- The X on the inner OR's blocks, one after another, from the first and from the last.
+	for k = 1, 3 do
+		safe(edited(function(r) for _ = 1, k do R.Remove(r, { 1, 1 }) end end), k .. ' removed from the first')
+		safe(edited(function(r) for j = 3, 4 - k, -1 do R.Remove(r, { 1, j }) end end), k .. ' removed from the last')
+	end
+	eq(edited(function(r) for _ = 1, 3 do R.Remove(r, { 1, 1 }) end end), '', 'the inner OR emptied: nothing is sold')
+
+	-- + Block of every type into the inner OR and into the root, plain and NOT.
+	-- Old gear and Protected are complete as made (today's thresholds, no
+	-- params), so NOT on one in the inner OR is a finished rule that says
+	-- "everything but": auto vendor follows it, as it follows any rule.
+	local COMPLETE = { oldgear = true, protected = true }
+	for _, t in ipairs(R.BLOCKS) do
+		eq(edited(function(r) R.Insert(r, { 1 }, nil, R.NewBlock(t.id)) end), 'Gray Cloth', t.id .. ' in the inner OR')
+		if not COMPLETE[t.id] then
+			eq(edited(function(r)
+				R.Insert(r, { 1 }, nil, R.NewBlock(t.id))
+				R.ToggleNot(r, { 1, 4 })
+			end), 'Gray Cloth', 'NOT ' .. t.id .. ' in the inner OR')
+		end
+		safe(edited(function(r) R.Insert(r, {}, nil, R.NewBlock(t.id)) end), t.id .. ' in the root')
+		safe(edited(function(r)
+			R.Insert(r, {}, nil, R.NewBlock(t.id))
+			R.ToggleNot(r, { #r.items })
+		end), 'NOT ' .. t.id .. ' in the root')
+	end
+
+	-- + Group, in the inner OR and in the root, plain and NOT.
+	eq(edited(function(r) R.Insert(r, { 1 }, nil, R.NewGroup('or')) end), 'Gray Cloth', 'a new group in the inner OR')
+	eq(edited(function(r)
+		R.Insert(r, { 1 }, nil, R.NewGroup('or'))
+		R.ToggleNot(r, { 1, 4 })
+	end), 'Gray Cloth', 'a new NOT group in the inner OR')
+	eq(edited(function(r) R.Insert(r, {}, nil, R.NewGroup('and')) end), '', 'a new group in the root: nothing until it has blocks')
+	eq(edited(function(r)
+		R.Insert(r, {}, nil, R.NewGroup('and'))
+		R.ToggleNot(r, { #r.items })
+	end), '', 'a new NOT group in the root: nothing either')
+
+	eq(sold(), 'Gray Cloth', 'reset: the gray again')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ combat
 
 test('a category made out of combat has its frames; pinning to it in combat makes no frame or slot, and the item shows there after the update', function()

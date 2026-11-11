@@ -134,6 +134,20 @@ test('tooltip lines: the category, its place and the block that caught it; a nes
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a | in the words that caught it shows as typed, not as an escape', function()
+	local container = world()
+	local id = INV:AddUserCategory()
+	INV:SetCategoryRule(id, { op = 'or', items = { { block = 'name', text = '|cffff2020Classes:', negate = true } } })
+	INV:MoveCategory(id, 1)
+	INV:UpdateContainer('bag', true)
+	local info = slot_of(container, 301).info
+	eq(info.category, id, 'the NOT block caught the plank')
+	local text = INV:CategoryTooltipLines(info)[2].text
+	check(text:find('NOT Name contains "||cffff2020Classes:"', 1, true), 'the | is doubled: ' .. text)
+	check(not text:find('[^|]|cffff2020'), 'and no single | is left before it')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the place is written 1st, 2nd, 3rd, 4th, 11th to 13th, 21st, 22nd, 101st, 111th', function()
 	world()
 	local want = { [1] = '1st', [2] = '2nd', [3] = '3rd', [4] = '4th', [10] = '10th', [11] = '11th', [12] = '12th',

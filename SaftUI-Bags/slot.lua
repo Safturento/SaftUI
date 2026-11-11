@@ -248,6 +248,8 @@ function INV:CategoryTooltipLines(info)
 		end
 	end
 	if words then
+		-- The words hold the user's typed text: a | in it is shown, not read as an escape.
+		words = words:gsub('|', '||')
 		lines[2] = { text = ColorEscape(colors.yellow) .. 'Caught by: |r' .. words, r = 1, g = 1, b = 1 }
 	end
 	return lines

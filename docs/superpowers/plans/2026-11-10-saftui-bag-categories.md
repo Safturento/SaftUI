@@ -85,16 +85,18 @@ block = { block = '<type id>', negate = true | nil, ...params }
 | `class` | Class is | `class` number | `{}` | `info.classID == class` |
 | `subclass` | Subclass is | `class` number, `subclasses` array of numbers | `{ subclasses = {} }` | `classID == class` and `subclassID` is in `subclasses` |
 | `quality` | Quality is | `qualities` array of 0-7 | `{ qualities = {} }` | `info.quality` is in it |
-| `ilvl` | Item level | `min`, `max` (numbers, either or both) | `{ min = 0 }` | `info.ilvl or 0` is at least `min` and at most `max`, where each is set |
-| `reqlevel` | Required level | `min`, `max` | `{ min = 0 }` | the same, on `info.reqLevel or 0` |
+| `ilvl` | Item level | `min`, `max` (numbers, either or both) | `{}` | `info.ilvl or 0` is at least `min` and at most `max`, where each is set |
+| `reqlevel` | Required level | `min`, `max` | `{}` | the same, on `info.reqLevel or 0` |
 | `slot` | Equip slot is | `slots` array of `INVTYPE_*` tokens | `{ slots = {} }` | `info.equipLoc` is in it |
 | `binding` | Binding is | `states` array of `'soulbound'`, `'boe'`, `'warbound'`, `'none'` | `{ states = {} }` | any listed state holds: `isSoulbound`, `isBoE`, `isWarbound`, or none of the three |
 | `expansion` | Expansion is | `expansions` array of numbers | `{ expansions = {} }` | `info.expacID` is in it |
-| `reagent` | Crafting reagent | `value` bool | `{ value = true }` | `(info.isCraftingReagent and true or false) == value` |
-| `vendorprice` | Has vendor price | `value` bool | `{ value = true }` | `((info.vendorPrice or 0) > 0) == value` |
+| `reagent` | Crafting reagent | `value` bool | `{}` | `(info.isCraftingReagent and true or false) == value` |
+| `vendorprice` | Has vendor price | `value` bool | `{}` | `((info.vendorPrice or 0) > 0) == value` |
 | `items` | Item is one of | `ids` array of item IDs | `{ ids = {} }` | `info.itemID` is in it |
 | `oldgear` | Old gear for my level | `levels` (10), `expansion` (9), `share` (0.9) | those values | today's `isLegacyGear`, below |
 | `protected` | Protected | none | `{}` | `INV:IsProtected(info.itemID)` |
+
+A new `ilvl`, `reqlevel`, `reagent` or `vendorprice` block has nothing set, and a list block with nothing picked is the same: it can't be read until the user sets it, so it matches nothing, NOT doesn't flip it, and an AND that holds it matches nothing. (The final review's C-1: as `{ min = 0 }` and `{ value = true }`, a new block caught everything, and in Grays/Auto Vendor's rule that sold the bag.)
 
 Old gear, as `isLegacyGear` at `filters.lua:98-128`, with the thresholds taken from the block:
 - the item is Armor or Weapon (`INV.ItemClasses.IsGear(info)`) and not `isWarbound`;
