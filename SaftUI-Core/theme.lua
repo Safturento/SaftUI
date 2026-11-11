@@ -3,17 +3,20 @@ local st = SaftUI
 --[[
 	SaftUI's theme engine.
 
-	The profile's theme (st.config.profile.theme) is Thick or Thin, with a
-	Transparent background toggle and the Opacity it uses. Each theme keeps its
-	own colors in st.config.profile.templates[name]. A module can override the
-	theme with a Theme ('theme', 'thick', 'thin' or 'none') and a Background
-	('theme', 'solid' or 'transparent'); 'theme', or nil, follows the profile's.
-	st:ResolveTheme turns the pair into the look a frame is drawn with.
+	The profile's theme (st.config.profile.theme) is Thick, Thin or Blizzard,
+	with a Transparent background toggle and the Opacity it uses. Each theme
+	keeps its own colors in st.config.profile.templates[name]. A module can
+	override the theme with a Theme ('theme', 'thick', 'thin', 'blizzard' or
+	'none') and a Background ('theme', 'solid' or 'transparent'); 'theme', or
+	nil, follows the profile's. st:ResolveTheme turns the pair into the look a
+	frame is drawn with.
 
 	Every draw call (st:SetTemplate, st:SetBackdrop, st:SetBackdropIn) names the
 	kind of frame it draws (st.THEME_KINDS), last. Under Thick and Thin only the
-	header strips and the close button draw differently; the kinds are there so
-	a theme can draw each its own way. A call with no kind is an error, unless
+	header strips and the close button draw differently (a window draws as a
+	panel, a control as a small frame). Blizzard draws each kind in Blizzard's
+	own art for it, which themeart.lua describes (st.ThemeArt), and its inset
+	depends on the kind. A call with no kind is an error, unless
 	its theme is 'none', which only clears (tests/core/theme_kinds_test.lua
 	scans every SaftUI file for calls without one).
 
@@ -36,7 +39,8 @@ local st = SaftUI
 
 -- The kinds of frame a draw call names.
 st.THEME_KINDS = {
-	panel = true,   -- a window: bags, bank, chat, the options window, the loot feed
+	panel = true,   -- a background: chat, the minimap, the options window, the loot feed
+	window = true,  -- a window with SaftUI's title bar (st:CreateHeader): the bags, the bank, st:CreatePanel
 	bar = true,     -- a unit frame or one of its bars, cast bars, experience and roll bars, swing timers
 	action = true,  -- an action button
 	slot = true,    -- bag, bank and currency slots
@@ -44,11 +48,16 @@ st.THEME_KINDS = {
 	tooltip = true,
 	header = true,  -- header and footer strips
 	close = true,   -- the close button
-	small = true,   -- everything else: indicators, class power points, micro menu buttons
+	control = true, -- a small frame Blizzard draws with art of its own: buttons, check boxes, tabs, edit boxes
+	small = true,   -- everything else: indicators, the micro menu's items
 }
 
--- How far in a theme's border reaches: Thick draws a dark line, its border and
--- another dark line, Thin one line.
+-- The themes this version has. A saved name that isn't one reads as FALLBACK.
+local THEMES = { thick = true, thin = true, blizzard = true }
+
+-- How far in Thick's and Thin's border reaches, whatever the kind: Thick draws
+-- a dark line, its border and another dark line, Thin one line. Blizzard's is
+-- each kind's own (st.ThemeArt.Inset).
 local INSETS = { thick = 2, thin = 1 }
 
 -- A header or footer strip is the theme's border color at this alpha.
@@ -66,19 +75,26 @@ local LEGACY = {
 	close = {},
 }
 
--- The theme a profile saved that this version doesn't have (a later version's,
--- such as the Blizzard theme) reads as this one, so every frame still draws.
+-- The theme a profile saved that this version doesn't have (a later version's)
+-- reads as this one, so every frame still draws.
 local FALLBACK = 'thick'
 
--- The look for a Theme and Background override: { name, inset, alpha, colors },
--- or nil for None. A transparent background is see-through at the profile's
--- Opacity, even one asked for while the Transparent background toggle is off.
--- An unknown saved theme reads as FALLBACK; the saved name stays.
-function st:ResolveTheme(theme, background)
+-- The look for a Theme and Background override, drawn as kind:
+-- { name, inset, alpha, colors, kind }, or nil for None. A transparent
+-- background is see-through at the profile's Opacity, even one asked for while
+-- the Transparent background toggle is off. The inset is Thick's or Thin's
+-- whatever the kind; Blizzard's is the kind's (st.ThemeArt.Inset), and nil
+-- with no kind. An unknown saved theme reads as FALLBACK; the saved name stays.
+function st:ResolveTheme(theme, background, kind)
 	if theme == 'none' then return nil end
 	local profile = st.config.profile
-	local name = INSETS[theme] and theme or profile.theme.name
-	if not INSETS[name] then name = FALLBACK end
+	local name = THEMES[theme] and theme or profile.theme.name
+	if not THEMES[name] then name = FALLBACK end
+
+	local inset = INSETS[name]
+	if name == 'blizzard' then
+		inset = kind and st.ThemeArt.Inset(kind) or nil
+	end
 
 	local transparent
 	if background == 'transparent' then
@@ -91,10 +107,19 @@ function st:ResolveTheme(theme, background)
 
 	return {
 		name = name,
-		inset = INSETS[name],
+		inset = inset,
 		alpha = transparent and profile.theme.opacity or 1,
 		colors = profile.templates[name],
+		kind = kind,
 	}
+end
+
+-- Whether a Theme and Background draw in Blizzard's art: an override to
+-- Blizzard, or SaftUI's theme Blizzard for 'theme'. False for None. A
+-- control's own code asks this to show its Blizzard art or its own look.
+function st:IsBlizzardLook(theme, background)
+	local look = st:ResolveTheme(theme, background)
+	return look ~= nil and look.name == 'blizzard'
 end
 
 -- The look an old template name drew: nil for none, and for no name, which drew
@@ -108,10 +133,13 @@ function st:ResolveLegacyTemplate(name)
 	return st:ResolveTheme(name)
 end
 
--- How far in from a frame's edge its border reaches (2, 1, or 0 for None): where
--- content sits inside a frame drawn with this Theme and Background.
-function st:ThemeInset(theme, background)
-	local look = st:ResolveTheme(theme, background)
+-- How far in from a frame's edge its border reaches, drawn as kind: where
+-- content sits inside a frame drawn with this Theme and Background. 2 for
+-- Thick and 1 for Thin whatever the kind, the kind's under Blizzard, 0 for
+-- None. A call that names no kind reads as a panel's, until every call names
+-- one.
+function st:ThemeInset(theme, background, kind)
+	local look = st:ResolveTheme(theme, background, kind or 'panel')
 	return look and look.inset or 0
 end
 
@@ -212,9 +240,9 @@ end
 local function DrawLook(theme, background, kind)
 	if kind == nil then return nil end
 	if IsStrip(kind) then
-		return st:ResolveTheme(), kind
+		return st:ResolveTheme(nil, nil, kind), kind
 	end
-	return st:ResolveTheme(theme, background), kind
+	return st:ResolveTheme(theme, background, kind), kind
 end
 
 -- Thick's dark lines: 3px wide strips under the frame's 1px border, one pixel

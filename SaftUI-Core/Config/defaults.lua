@@ -78,7 +78,7 @@ st.defaults.experience = {
 	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
 }
 
--- SaftUI's theme (SaftUI-Core/theme.lua): Thick or Thin, and whether
+-- SaftUI's theme (SaftUI-Core/theme.lua): Thick, Thin or Blizzard, and whether
 -- backgrounds are see-through, at opacity, where a module doesn't say.
 st.defaults.theme = {
 	name = 'thick',
@@ -87,10 +87,20 @@ st.defaults.theme = {
 }
 
 -- Each theme's colors, by its name, and the close button's fill. Thick draws
--- its border between two lines of altbordercolor.
+-- its border between two lines of altbordercolor. Blizzard's art keeps its own
+-- colors: its bordercolor is only the line of the few small frames with no art,
+-- and it has two fills, windowcolor for windows (Blizzard's dark grey panel
+-- color) and backdropcolor for the rest (Blizzard's tooltip navy). Thick's and
+-- Thin's windows take their backdropcolor.
 st.defaults.templates = {
 	close = {
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
+	},
+	blizzard = {
+		bordercolor = { 0.5, 0.5, 0.5, 1 },
+		altbordercolor = { 0, 0, 0, 0 },
+		backdropcolor = { 0.09, 0.09, 0.19, 1 },
+		windowcolor = { 0.12, 0.12, 0.13, 1 },
 	},
 	thin = {
 		bordercolor = { 0, 0, 0, 1.0 },

@@ -1,5 +1,6 @@
 -- What the theme tests of SaftUI's addons share (tests/<area>/theme_test.lua and
--- Core's theme tests): watching the Theme, Background and kind SaftUI's draw
+-- Core's theme tests): a fresh world on either client (T.client); watching the
+-- Theme, Background and kind SaftUI's draw
 -- calls pass; reading a drawn frame back (its colors, inset and where its border
 -- sits), as text rounded so float drift doesn't decide a check; checking a module
 -- default against the old template name it replaced; and checking options for a
@@ -9,6 +10,30 @@
 -- (or core/config_helpers.lua); it makes no globals, and its functions read SaftUI
 -- when they run.
 local T = {}
+
+------------------------------------------------------------------ clients
+
+local INTERFACE = { forever = 16001, retail = 120000 }
+
+-- A fresh world on one client, 'forever' or 'retail': the world a test file
+-- starts in after load_core_helpers(), with stub.interface set to the
+-- client's and Core's constants.lua run again for it (it reads the interface
+-- when it loads, so st.forever follows). Everything else is as fresh as
+-- reset_world() leaves it, so a file can switch clients between cases.
+-- Returns SaftUI. Load anything else the case needs, and call T.watch(),
+-- after it.
+function T.client(name)
+	local interface = INTERFACE[name]
+	if not interface then
+		error(("T.client: no client '%s' (forever or retail)"):format(tostring(name)), 2)
+	end
+	reset_world()
+	stub.interface = interface
+	load_saftui('SaftUI-Core/constants.lua')
+	load_core_helpers()
+	apply_defaults()
+	return SaftUI
+end
 
 ------------------------------------------------------------------ draws
 

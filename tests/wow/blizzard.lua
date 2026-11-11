@@ -1,6 +1,7 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
-	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin, PixelUtil, the
+	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin,
+	C_Texture.GetAtlasInfo (from tests/wow/atlases.lua), PixelUtil, the
 	Enum tables, FadingFrame, GameFontNormal and GameFontWhiteSmall, the zone text and world
 	map fonts, and ColorPickerFrame. Each follows its source in Gethe/wow-ui-source (forever
 	branch), trimmed to what tests use.
@@ -217,6 +218,42 @@ end
 function BackdropTemplateMixin:SetBackdropBorderColor(r, g, b, a)
 	if not self.backdropInfo then return end
 	stub.state(self).backdrop_border_color = { r, g, b, a or 1 }
+end
+
+------------------------------------------------------------------ atlases
+
+-- C_Texture.GetAtlasInfo, for the atlases tests/wow/atlases.lua lists (the
+-- ones the Blizzard theme names), as the client stub.interface stands for has
+-- them: { width, height, tilesHorizontally, tilesVertically }, or nil for a
+-- name that client hasn't got. Like the game it ignores the name's case. Not
+-- mimicked: the rest of the game's AtlasInfo (its file and texture
+-- coordinates), and every atlas the theme doesn't name, which reads as missing.
+C_Texture = {}
+
+do
+	local atlases = load_test_file('wow/atlases.lua')
+	local byClient = {}
+	for client, list in pairs(atlases) do
+		byClient[client] = {}
+		for name, info in pairs(list) do
+			byClient[client][name:lower()] = info
+		end
+	end
+
+	function C_Texture.GetAtlasInfo(name)
+		if type(name) ~= 'string' then
+			error('Usage: local info = C_Texture.GetAtlasInfo(atlas)', 2)
+		end
+		local info = byClient[stub.interface == 16001 and 'forever' or 'retail'][name:lower()]
+		if not info then return nil end
+		local tiles = info[3] or ''
+		return {
+			width = info[1],
+			height = info[2],
+			tilesHorizontally = tiles:find('h', 1, true) ~= nil,
+			tilesVertically = tiles:find('v', 1, true) ~= nil,
+		}
+	end
 end
 
 ------------------------------------------------------------------ pixels

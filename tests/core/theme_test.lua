@@ -323,12 +323,12 @@ test('every override combination resolves by the rule', function()
 	end
 end)
 
-test('THEME_KINDS has the nine kinds, and a draw with another kind errors', function()
+test('THEME_KINDS has the eleven kinds, and a draw with another kind errors', function()
 	local st = fresh()
 	local kinds = {}
 	for kind in pairs(st.THEME_KINDS) do kinds[#kinds + 1] = kind end
 	table.sort(kinds)
-	eq(table.concat(kinds, ','), 'action,aura,bar,close,header,panel,slot,small,tooltip', 'the kinds')
+	eq(table.concat(kinds, ','), 'action,aura,bar,close,control,header,panel,slot,small,tooltip,window', 'the kinds')
 	local ok = pcall(st.SetTemplate, st, frame(st), 'theme', 'theme', 'button')
 	eq(ok, false, 'an unknown kind errors')
 end)
@@ -535,12 +535,12 @@ test('a frame that errors while drawn stops neither a recolor nor a redraw of th
 	st:KeepOwnColors(good[1], nil)
 end)
 
--- A profile a later version saved can name a theme this one doesn't have (the
--- Blizzard theme, project 2). It reads as Thick, so every frame still draws.
+-- A profile a later version saved can name a theme this one doesn't have
+-- ('later' stands for one). It reads as Thick, so every frame still draws.
 test("a saved theme name this version doesn't know reads as Thick, and draws", function()
 	local st = fresh()
 	local profile = st.config.profile
-	profile.theme.name = 'blizzard'
+	profile.theme.name = 'later'
 
 	local look = st:ResolveTheme('theme', 'theme')
 	eq(look and look.name, 'thick', 'the theme reads as Thick')
@@ -572,5 +572,5 @@ test("a saved theme name this version doesn't know reads as Thick, and draws", f
 	check(ok, 'a recolor and a redraw raise nothing: ' .. tostring(err))
 	eq(#take_errors(), 0, 'and report nothing')
 	eq(inset(f), 2, "still Thick's border after a redraw")
-	eq(profile.theme.name, 'blizzard', 'the saved name is kept, for the version that knows it')
+	eq(profile.theme.name, 'later', 'the saved name is kept, for the version that knows it')
 end)

@@ -234,13 +234,13 @@ test('after a profile switch the rows reach the new profile', function()
 	eq(Get('opacity'), 0.33)
 end)
 
--- A profile a later version saved can name a theme this one doesn't have (the
--- Blizzard theme, project 2): the engine draws it as Thick
+-- A profile a later version saved can name a theme this one doesn't have
+-- ('later' stands for one): the engine draws it as Thick
 -- (tests/core/theme_test.lua), and the tab shows and edits Thick's rows.
 test("a saved theme this version doesn't know shows as Thick, and its rows read, set and reset Thick's", function()
 	local theme = st.config.profile.theme
 	local thick = st.config.profile.templates.thick
-	theme.name = 'blizzard'
+	theme.name = 'later'
 	local ok, err = pcall(function()
 		eq(Get('theme'), 'thick', 'Theme shows Thick, what frames are drawn in')
 		eq(Rgb({ Get('border') }), Rgb(thick.bordercolor), "Border reads Thick's")
@@ -254,7 +254,7 @@ test("a saved theme this version doesn't know shows as Thick, and its rows read,
 	end)
 	check(ok, 'the rows raise nothing: ' .. tostring(err))
 	eq(#take_errors(), 0, 'and report nothing')
-	eq(theme.name, 'blizzard', 'the saved name stays until the user picks a theme')
+	eq(theme.name, 'later', 'the saved name stays until the user picks a theme')
 	Set('theme', 'thin')
 	eq(theme.name, 'thin', 'picking one saves it')
 	Set('theme', 'thick')
