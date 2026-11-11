@@ -620,7 +620,9 @@ end
 -- drawn frame's child, over all of it, so it shows and hides with it. It sits
 -- one level above the frame the art is for, the drawn frame or the frame it
 -- sits behind (its parent), whichever is higher, so the pieces lie over that
--- frame's icon, and over its texts too.
+-- frame's icon, and over its texts too. A level can be secret (the parent may
+-- be Blizzard's): a secret parent's is left out, and with the frame's own
+-- secret the holder stays where it was made, one level over it.
 local function Holder(frame)
 	local holder = holders[frame]
 	if not holder then
@@ -629,8 +631,10 @@ local function Holder(frame)
 		holders[frame] = holder
 	end
 	local level = frame:GetFrameLevel()
+	if issecretvalue(level) then return holder end
 	local parent = frame:GetParent()
-	if parent then level = math.max(level, parent:GetFrameLevel()) end
+	local parentLevel = parent and parent:GetFrameLevel()
+	if parentLevel and not issecretvalue(parentLevel) then level = math.max(level, parentLevel) end
 	holder:SetFrameLevel(level + 1)
 	return holder
 end

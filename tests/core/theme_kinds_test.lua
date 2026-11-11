@@ -251,61 +251,9 @@ end
 
 ------------------------------------------------------------------ the files
 
--- SaftUI's addons. A new addon goes here.
-local ADDONS = {
-	'SaftUI-Core', 'SaftUI-ActionBars', 'SaftUI-Bags', 'SaftUI-Chat',
-	'SaftUI-Loot', 'SaftUI-Minimap', 'SaftUI-Misc', 'SaftUI-Unitframes',
-}
--- The TOC names the game reads: <addon>.toc and the per-client ones.
-local TOC_SUFFIXES = { '', '_Mainline', '_Forever', '_Classic', '_Vanilla', '_TBC', '_Wrath', '_Cata', '_Mists' }
-
--- Every SaftUI Lua file the game loads, by path from the repo root, in load
--- order and once each; the TOCs read; and the files a TOC or XML names that
--- can't be read. Third-party libraries (an addon's Libraries folder) are left
--- out: they aren't SaftUI's.
-local function LoadedFiles()
-	local files, seen, tocs, missing = {}, {}, {}, {}
-	local function add(path)
-		if not seen[path] then
-			seen[path] = true
-			files[#files + 1] = path
-		end
-	end
-	local function entry(dir, name, from)
-		name = Trim(name):gsub('\\', '/')
-		local path = dir .. '/' .. name
-		if path:find('^SaftUI%-[^/]+/Libraries/') then return end
-		if path:find('%.lua$') then
-			add(path)
-		elseif path:find('%.xml$') then
-			local xml = read_saftui_source(path)
-			if not xml then
-				missing[#missing + 1] = path .. ' (from ' .. from .. ')'
-				return
-			end
-			xml = xml:gsub('<!%-%-.-%-%->', '')
-			local xmlDir = path:match('^(.*)/[^/]*$')
-			for _, file in xml:gmatch('<(%a+)%s+file%s*=%s*"([^"]+)"') do
-				entry(xmlDir, file, path)
-			end
-		end
-	end
-	for _, addon in ipairs(ADDONS) do
-		for _, suffix in ipairs(TOC_SUFFIXES) do
-			local toc = addon .. '/' .. addon .. suffix .. '.toc'
-			local text = read_saftui_source(toc)
-			if text then
-				tocs[#tocs + 1] = toc
-				for line in (text .. '\n'):gmatch('(.-)\r?\n') do
-					if Trim(line) ~= '' and not line:find('^%s*#') then
-						entry(addon, line, toc)
-					end
-				end
-			end
-		end
-	end
-	return files, tocs, missing
-end
+-- Every SaftUI Lua file the game loads, through the TOCs (T.saftui_files), and
+-- SaftUI's addons.
+local ADDONS, LoadedFiles = T.ADDONS, T.saftui_files
 
 ------------------------------------------------------------------ tests
 

@@ -1,6 +1,7 @@
 -- SaftUI-Loot/roll.lua's skin of Blizzard's GroupLootFrames: it must write no
 -- field onto them (.agents/taint.md rule 1), keep its pieces in its own tables,
--- and still drive the skin from those. Loads the real roll.lua and rollinfo.lua.
+-- and still drive the skin from those, and it does no math on the icon frame's
+-- level, which can be secret. Loads the real roll.lua and rollinfo.lua.
 -- The stub roll frame mirrors Blizzard's GroupLootFrameTemplate on Forever: the
 -- buttons sit in a LootButtonContainer child.
 --
@@ -233,4 +234,32 @@ test('a roll of an item whose quality has no color does not error', function()
 	LT:SkinRollFrame(frame)
 	LT:GroupLootFrame_OnShow(frame)
 	check(true, 'OnShow returned')
+end)
+
+-- The icon frame is Blizzard's, and a frame level can be secret
+-- (.agents/clients.md), so the skin does no math on it: its box and the box's
+-- backdrop stay at the levels they were made at. A secret value is a newproxy
+-- here, which issecretvalue is told to recognise.
+test("an icon frame whose level is secret is skinned without math on it", function()
+	local LT = world()
+	local frame = blizzard_roll_frame()
+	local level = frame.IconFrame:GetFrameLevel()
+	local secret = newproxy(false)
+	local real = issecretvalue
+	issecretvalue = function(v) return v == secret or real(v) end
+	frame.IconFrame.GetFrameLevel = function() return secret end
+	local ok, err = pcall(LT.SkinRollFrame, LT, frame)
+	check(ok, 'skinned: ' .. tostring(err))
+	ok, err = pcall(LT.UpdateRollFrame, LT, frame)
+	check(ok, 'and updated again: ' .. tostring(err))
+	issecretvalue = real
+
+	local box
+	for _, child in ipairs({ frame.IconFrame:GetChildren() }) do
+		if child.backdrop then box = child end
+	end
+	if check(box ~= nil, 'the icon box is made') then
+		eq(box:GetFrameLevel(), level + 1, "the box where it was made, one over the icon frame")
+	end
+	eq(#take_errors(), 0, 'no errors')
 end)

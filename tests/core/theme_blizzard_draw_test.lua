@@ -15,10 +15,11 @@
 --   - st:DrawnInset, st:DrawnKind and st:CalculateSpacing following the inset
 --     each frame was drawn at;
 --   - a frame first drawn in combat, nothing written onto a frame that isn't
---     SaftUI's, and no NineSliceUtil.
+--     SaftUI's, a ring's holder placed with no math on a secret frame level,
+--     and no SaftUI Lua file the game loads naming NineSliceUtil.
 --
 -- Real: theme.lua and themeart.lua, with Core's helpers (load_core_helpers)
--- and the profile's defaults. Each case starts from a fresh world on a client
+-- and the profile's defaults; every SaftUI Lua file's source, for the scan. Each case starts from a fresh world on a client
 -- (T.client), on Forever unless it names retail, with SaftUI's theme Blizzard.
 local T = load_test_file('lib/theme_helpers.lua')
 local locked = load_test_file('misc/fixtures/locked_widget.lua')
@@ -389,6 +390,48 @@ test("a frame marked as not SaftUI's gets none of the art made on it: its ring i
 	st:RedrawThemed()
 	checkHolder(hekili, 'through st:SetBackdrop, after a switch')
 	checkHolder(slot, 'through st:SkinActionButton, after a switch')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A frame level can be secret (a frame of Blizzard's in a restricted layout,
+-- .agents/clients.md), so the holder does no math on one: one level over the
+-- frame's own when only its parent's is secret, and left where it was made
+-- (its frame's child, one over it) when the frame's own is. A secret value is
+-- a newproxy here, which issecretvalue is told to recognise.
+test("a ring's holder over a frame whose parent's level, or its own, is secret: placed without math on it", function()
+	local st = blizzard()
+	local secret = newproxy(false)
+	local real = issecretvalue
+	issecretvalue = function(v) return v == secret or real(v) end
+
+	local parent = CreateFrame('Frame', nil, UIParent)
+	parent:SetSize(36, 36)
+	parent:SetPoint('CENTER')
+	parent:SetFrameLevel(10)
+	local f = st:CreateFrame('Frame', nil, parent)
+	f:SetAllPoints(parent)
+	f:SetFrameLevel(4)
+	parent.GetFrameLevel = function() return secret end
+	local ok, err = pcall(st.SetTemplate, st, f, 'theme', 'theme', 'slot')
+	check(ok, "its parent's level secret: drawn: " .. tostring(err))
+	local ring = piece(st, f, 'Ring', 'over')
+	if check(ring ~= nil, "its parent's level secret: its ring is drawn") then
+		eq(ring:GetParent():GetFrameLevel(), 5, "on a holder one over the frame's own level")
+	end
+
+	local g = st:CreateFrame('Frame', nil, UIParent)
+	g:SetSize(36, 36)
+	g:SetPoint('CENTER')
+	g:SetFrameLevel(7)
+	g.GetFrameLevel = function() return secret end
+	ok, err = pcall(st.SetTemplate, st, g, 'theme', 'theme', 'slot')
+	check(ok, 'its own level secret: drawn: ' .. tostring(err))
+	ring = piece(st, g, 'Ring', 'over')
+	if check(ring ~= nil, 'its own level secret: its ring is drawn') then
+		eq(ring:GetParent():GetFrameLevel(), 8, 'on a holder where it was made, one over the frame')
+	end
+
+	issecretvalue = real
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -871,7 +914,11 @@ test("a foreign owner given SetBorderColor under Blizzard gets no texture made o
 		check(o ~= nil and o:IsShown(), kind .. ": the border is drawn all the same")
 		check(o and o:GetParent() ~= f, kind .. ": on a frame of SaftUI's, not the frame")
 		local ring = piece(st, f.backdrop, 'Ring', 'over')
-		if ring then check(depth(o) > depth(ring), kind .. ': the border is over the ring on a holder too') end
+		if kind == 'aura' then
+			eq(ring, nil, kind .. ': bare, with no ring')
+		elseif check(ring ~= nil and ring:IsShown(), kind .. ': its ring is drawn') then
+			check(depth(o) > depth(ring), kind .. ': the border is over the ring on a holder too')
+		end
 		eq(o and o:GetParent():GetParent(), f.backdrop, kind .. ': a child of the backdrop')
 		st:SetBorderColor(f.backdrop)
 		st:SetBorderColor(f.backdrop, 0, 1, 0)
@@ -902,6 +949,7 @@ test("an action button drawn with st:SetTemplate: its own-color piece is on a ho
 		st:SetBorderColor(f, 0, 1, 0)
 		local o, ring = own(st, f), piece(st, f, 'Ring', 'over')
 		check(o ~= nil and o:IsShown(), kind .. ': the border shows')
+		check(ring ~= nil and ring:IsShown(), kind .. ': its ring is drawn')
 		if o and ring then
 			eq(o:GetParent(), ring:GetParent(), kind .. ': on the ring\'s holder')
 			check(o:GetParent() ~= f, kind .. ': a frame of SaftUI\'s over the drawn frame')
@@ -937,10 +985,18 @@ test('SetBorderColor leaves a control alone under Blizzard', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- Every SaftUI Lua file the game loads, outside the bundled libraries
+-- (T.saftui_files, the walk tests/core/theme_kinds_test.lua checks), as
+-- .agents/taint.md rule 12 says.
 test('no SaftUI file names NineSliceUtil', function()
-	for _, path in ipairs({ 'SaftUI-Core/theme.lua', 'SaftUI-Core/themeart.lua' }) do
+	local files = T.saftui_files()
+	check(#files > 140, 'every SaftUI file, not a few: ' .. #files)
+	local found = {}
+	for _, path in ipairs(files) do
 		local source = read_saftui_source(path)
-		check(source ~= nil, path .. ' is read')
-		check(source and not source:find('NineSliceUtil', 1, true), path .. ' never names NineSliceUtil')
+		if check(source ~= nil, path .. ' is read') and source:find('NineSliceUtil', 1, true) then
+			found[#found + 1] = path
+		end
 	end
+	eq(table.concat(found, ', '), '', 'no SaftUI file names NineSliceUtil')
 end)

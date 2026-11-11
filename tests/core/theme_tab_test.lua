@@ -1,5 +1,7 @@
 -- The Theme tab of Global Settings (SaftUI-Core/Media/theme.lua): Theme, the
--- chosen theme's three colors, Transparent background, Opacity and Reset. A
+-- chosen theme's colors (Border, Outer border and Background; under Blizzard
+-- Window background in place of Outer border), Transparent background,
+-- Opacity and Reset. A
 -- color or the opacity recolors every drawn frame (st:RecolorThemed); the
 -- theme and the toggle also move borders, so they run st:ThemeChanged
 -- (redraw, then every module's UpdateConfig, then ColorsChanged('theme')).

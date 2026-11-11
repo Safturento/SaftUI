@@ -9,9 +9,6 @@ local windowOf = setmetatable({}, { __mode = 'k' }) -- button -> the window whos
 local inSocket = setmetatable({}, { __mode = 'k' }) -- button -> whether it sits in its window's metal socket
 local headerOf = setmetatable({}, { __mode = 'k' }) -- window -> the header st:CreateHeader made it; only a key
 
--- How far in from the header's right edge SaftUI's close button sits.
-local CLOSE_INSET = 10
-
 -- The close button st:CreateCloseButton made for frame, or nil.
 function st:GetCloseButton(frame)
 	return closeOf[frame]
@@ -50,7 +47,7 @@ local function PlaceCloseButton(button)
 		local close = st.ThemeArt.Close()
 		button:SetPoint('TOPRIGHT', st:DrawnFrame(window), 'TOPRIGHT', close.x, close.y)
 	else
-		button:SetPoint('RIGHT', headerOf[window], 'RIGHT', -CLOSE_INSET, 0)
+		button:SetPoint('RIGHT', headerOf[window], 'RIGHT', -st.CLOSE_INSET, 0)
 	end
 	inSocket[button] = socket
 end
@@ -119,7 +116,7 @@ function st:CreateHeader(frame, title, close_button)
 		local button = frame.close_button
 		button:ClearAllPoints()
 		button:SetFrameLevel(header:GetFrameLevel()+4)
-		button:SetPoint('RIGHT', header, 'RIGHT', -CLOSE_INSET, 0)
+		button:SetPoint('RIGHT', header, 'RIGHT', -st.CLOSE_INSET, 0)
 		windowOf[button], inSocket[button] = frame, false
 		closeDraws[button](button)
 	elseif frame.close_button then

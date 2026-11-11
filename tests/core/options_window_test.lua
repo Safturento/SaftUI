@@ -1372,8 +1372,10 @@ test("a bare row: no label, the body's width, at the cell's top left, its widget
 	check(cell('before').frame:IsMouseEnabled() and cell('after').frame:IsMouseEnabled(), 'a normal row does')
 
 	-- Row frames are pooled: the bare row's, drawn again for a normal row, takes the mouse again.
+	-- Inventory's General tab, named: the window remembers each page's tab,
+	-- and its other tabs may have too few rows to reuse the frame.
 	local bareFrame = c.frame
-	OW:Navigate('Inventory')
+	OW:Navigate('Inventory', { tab = 'general' })
 	local reused
 	for _, other in ipairs(OW.GetDrawnRows()) do
 		if other.frame == bareFrame then reused = other end
@@ -1454,13 +1456,15 @@ test("a titled bare row: its name above the widget, the desc its name's tooltip,
 	check(not GameTooltip:IsShown(), 'gone when the mouse leaves')
 
 	-- Row frames are pooled: drawn again for a normal row, the name's hit frame goes.
+	-- Inventory's General tab, named, as above.
 	local titledFrame = c.frame
-	OW:Navigate('Inventory')
+	OW:Navigate('Inventory', { tab = 'general' })
+	local reused
 	for _, other in ipairs(OW.GetDrawnRows()) do
-		if other.frame == titledFrame then
-			check(not titledFrame.titleTip:IsShown(), "a normal row has no name's hit frame")
-		end
+		if other.frame == titledFrame then reused = other end
 	end
+	check(reused ~= nil, "the titled row's frame was drawn again")
+	check(not titledFrame.titleTip:IsShown(), "a normal row has no name's hit frame")
 
 	module.GetConfigTable = nil
 	close_all()

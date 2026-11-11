@@ -419,6 +419,7 @@ The tables hold:
 
 - **Nothing is drawn on Blizzard's frames.**
   - Every piece of art is a texture on a frame of SaftUI's (a backdrop, or the frame that holds a ring), kept in SaftUI's tables.
+  - One exception: the totem bar's slot, summon and recall buttons are Blizzard's secure buttons, and their ring and own-color piece are textures made on the button, between its icon and its texts (`st:SetTemplate` with the button as host, `SaftUI-Misc/totemskin.lua`). No field is written onto the button, and the first draw is out of combat. An element changed in combat can make the own-color piece then, which the user checks in game.
   - A frame that isn't SaftUI's gets nothing written onto it, as `st:SetBackdropIn` promises (`.agents/taint.md` rule 1).
   - The tooltip skin keeps Blizzard's `NineSlice` hidden, and SaftUI's backdrop draws the tooltip border.
   - No Blizzard code runs for the theme: no `NineSliceUtil`, and no Blizzard setter (rule 3).
@@ -520,7 +521,8 @@ The tables hold:
 - **Taint:**
   - drawing under Blizzard writes nothing onto a frame that isn't SaftUI's (the locked frame fixture);
   - the micro buttons, chat's edit boxes and scroll bars, and the totem flyout get nothing written onto them on a switch either way (locked);
-  - `theme.lua` never names `NineSliceUtil`.
+  - no SaftUI Lua file the game loads (outside the bundled libraries) names `NineSliceUtil`;
+  - a frame level that's secret gets no math: the ring's holder and the loot roll's icon box.
 - **Scans:** every `st:ThemeInset` call names a kind, and no module sets a drawn backdrop's border color itself.
 - **Atlases:** every atlas the theme names exists on both clients. The test stub's atlas list is taken from the clients' atlas tables (above).
 

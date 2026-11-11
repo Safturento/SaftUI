@@ -142,15 +142,18 @@ function LT:UpdateRollFrame(frame)
 	-- Blizzard theme draws as a texture of the box lies over the icon, where
 	-- at the same level their order would be undefined. (The frame's count,
 	-- which the ring would otherwise cover, is killed above.) The backdrop
-	-- sits one below the icon frame, as before, under the icon.
+	-- sits one below the icon frame, as before, under the icon. The icon
+	-- frame is Blizzard's, so its level can be secret: then both stay at the
+	-- levels they were made at (the box its child, one over it).
 	local iconLevel = frame.IconFrame:GetFrameLevel()
+	if issecretvalue(iconLevel) then iconLevel = nil end
 	if not skin.iconBox then
 		skin.iconBox = st:CreateFrame('frame', nil, frame.IconFrame)
 		skin.iconBox:SetAllPoints(frame.IconFrame)
-		skin.iconBox:SetFrameLevel(iconLevel + 1)
+		if iconLevel then skin.iconBox:SetFrameLevel(iconLevel + 1) end
 	end
 	st:SetBackdrop(skin.iconBox, config.theme, config.background, 'slot')
-	if skin.iconBox.backdrop then
+	if skin.iconBox.backdrop and iconLevel then
 		skin.iconBox.backdrop:SetFrameLevel(max(0, iconLevel - 1))
 	end
 	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))

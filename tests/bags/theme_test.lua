@@ -745,10 +745,6 @@ local METAL = table.concat({
 	'TopRightCorner=UI-Frame-Metal-CornerTopRight',
 }, ',')
 
--- container.lua's CLOSE_INSET: how far in from the header's right edge the
--- close button sits, and the view buttons while it's in the metal's socket.
-local CLOSE_INSET = 10
-
 -- Thick's header strip: its border color at 0.4.
 local THICK_STRIP = '0.30,0.30,0.30,0.40'
 
@@ -768,14 +764,16 @@ local function socket()
 end
 
 -- Checks the view buttons line up from the close button (the gap INV:ViewButtonGaps
--- gives), or from the header's right edge while the close button is in the socket.
+-- gives), or from the header's right edge while the close button is in the socket:
+-- st.CLOSE_INSET in, where the close button sits in the header (Core's constant,
+-- which panels.lua and container.lua share).
 local function check_view_buttons(container, socketed, label)
 	local rows = container.viewButtons.rows
 	local _, closeGap = INV:ViewButtonGaps()
 	if socketed then
-		eq(anchor(rows, container), 'RIGHT header RIGHT ' .. T.text(-CLOSE_INSET, 0),
+		eq(anchor(rows, container), 'RIGHT header RIGHT ' .. T.text(-st.CLOSE_INSET, 0),
 			label .. ": the last view button lines up from the header's right edge")
-		eq(T.text(rows:GetRight()), T.text(container.header:GetRight() - CLOSE_INSET), label .. ': CLOSE_INSET in')
+		eq(T.text(rows:GetRight()), T.text(container.header:GetRight() - st.CLOSE_INSET), label .. ': CLOSE_INSET in')
 	else
 		eq(anchor(rows, container), 'RIGHT close LEFT ' .. T.text(-closeGap, 0),
 			label .. ": the last view button lines up from the close button's left")

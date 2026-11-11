@@ -4,8 +4,10 @@
 -- calls pass; reading a drawn frame back (its colors, inset, where its border
 -- sits and its Blizzard art), as text rounded so float drift doesn't decide a
 -- check; checking a module
--- default against the old template name it replaced; and checking options for a
--- Theme and Background and for the old template names. Not a test (no _test
+-- default against the old template name it replaced; checking options for a
+-- Theme and Background and for the old template names; and listing every SaftUI
+-- Lua file the game loads (T.saftui_files), for tests that scan SaftUI's source.
+-- Not a test (no _test
 -- suffix), so the runner doesn't run it. Load it with
 -- `local T = load_test_file('lib/theme_helpers.lua')`, after load_core_helpers()
 -- (or core/config_helpers.lua); it makes no globals, and its functions read SaftUI
@@ -239,6 +241,68 @@ end
 -- core/options_walk.lua loaded.
 function T.check_no_old_names(tree, where)
 	eq(table.concat(T.old_names(tree), '; '), '', where .. ': no Template, Highlight, Close Button or old template name')
+end
+
+------------------------------------------------------------------ SaftUI's files
+
+-- SaftUI's addons. A new addon goes here.
+T.ADDONS = {
+	'SaftUI-Core', 'SaftUI-ActionBars', 'SaftUI-Bags', 'SaftUI-Chat',
+	'SaftUI-Loot', 'SaftUI-Minimap', 'SaftUI-Misc', 'SaftUI-Unitframes',
+}
+-- The TOC names the game reads: <addon>.toc and the per-client ones.
+local TOC_SUFFIXES = { '', '_Mainline', '_Forever', '_Classic', '_Vanilla', '_TBC', '_Wrath', '_Cata', '_Mists' }
+
+local function Trim(text) return (text:gsub('^%s+', ''):gsub('%s+$', '')) end
+
+-- Every SaftUI Lua file the game loads, by path from the repo root, in load
+-- order and once each; the TOCs read; and the files a TOC or XML names that
+-- can't be read. Third-party libraries (an addon's Libraries folder) are left
+-- out: they aren't SaftUI's. For tests that scan SaftUI's source with
+-- read_saftui_source (tests/core/theme_kinds_test.lua, which checks the walk
+-- itself, and theme_blizzard_draw_test.lua).
+function T.saftui_files()
+	local files, seen, tocs, missing = {}, {}, {}, {}
+	local function add(path)
+		if not seen[path] then
+			seen[path] = true
+			files[#files + 1] = path
+		end
+	end
+	local function entry(dir, name, from)
+		name = Trim(name):gsub('\\', '/')
+		local path = dir .. '/' .. name
+		if path:find('^SaftUI%-[^/]+/Libraries/') then return end
+		if path:find('%.lua$') then
+			add(path)
+		elseif path:find('%.xml$') then
+			local xml = read_saftui_source(path)
+			if not xml then
+				missing[#missing + 1] = path .. ' (from ' .. from .. ')'
+				return
+			end
+			xml = xml:gsub('<!%-%-.-%-%->', '')
+			local xmlDir = path:match('^(.*)/[^/]*$')
+			for _, file in xml:gmatch('<(%a+)%s+file%s*=%s*"([^"]+)"') do
+				entry(xmlDir, file, path)
+			end
+		end
+	end
+	for _, addon in ipairs(T.ADDONS) do
+		for _, suffix in ipairs(TOC_SUFFIXES) do
+			local toc = addon .. '/' .. addon .. suffix .. '.toc'
+			local text = read_saftui_source(toc)
+			if text then
+				tocs[#tocs + 1] = toc
+				for line in (text .. '\n'):gmatch('(.-)\r?\n') do
+					if Trim(line) ~= '' and not line:find('^%s*#') then
+						entry(addon, line, toc)
+					end
+				end
+			end
+		end
+	end
+	return files, tocs, missing
 end
 
 return T

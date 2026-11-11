@@ -3,10 +3,11 @@ local INV = st:GetModule('Inventory')
 
 
 -- The title bar's view buttons: the gap left visible between two neighbouring
--- borders (see INV:ViewButtonGaps), and how far in from the header's right
--- edge the close button sits (st:CreateHeader), or the view buttons while the
--- close button is in the metal's socket (st:CloseButtonInSocket).
-local VISIBLE_GAP, CLOSE_INSET = 3, 10
+-- borders (see INV:ViewButtonGaps). How far in from the header's right edge
+-- the close button sits (st:CreateHeader), and so the view buttons while the
+-- close button is in the metal's socket (st:CloseButtonInSocket), is Core's
+-- st.CLOSE_INSET.
+local VISIBLE_GAP = 3
 
 function INV:GetContainer(containerName)
 	return self.containers[containerName]
@@ -855,7 +856,7 @@ end
 
 -- Puts the view buttons (and the Edit check button before them) the
 -- INV:ViewButtonGaps apart, lined up from the close button, or from the
--- header's right edge, CLOSE_INSET in, while the close button sits in the
+-- header's right edge, st.CLOSE_INSET in, while the close button sits in the
 -- metal's socket above the header (st:CloseButtonInSocket). A theme switch
 -- changes the inset and the socket, so INV:UpdateConfig(id) runs it again.
 function INV:SpaceViewButtons(container)
@@ -864,7 +865,7 @@ function INV:SpaceViewButtons(container)
 	local buttonGap, closeGap = self:ViewButtonGaps()
 	local right, side, gap = close, 'LEFT', closeGap
 	if st:CloseButtonInSocket(container) then
-		right, side, gap = container.header, 'RIGHT', CLOSE_INSET
+		right, side, gap = container.header, 'RIGHT', st.CLOSE_INSET
 	end
 	for i = #self.viewIds, 1, -1 do
 		local button = container.viewButtons[self.viewIds[i]]
@@ -971,7 +972,7 @@ function INV:HeaderMinWidth(container)
 	local count = #self.viewIds
 	local size = container.header:GetHeight() - 8
 	local buttonGap, closeGap = self:ViewButtonGaps()
-	local extent = CLOSE_INSET + count * size + (count - 1) * buttonGap
+	local extent = st.CLOSE_INSET + count * size + (count - 1) * buttonGap
 	if not st:CloseButtonInSocket(container) then
 		extent = extent + close:GetWidth() + closeGap
 	end
