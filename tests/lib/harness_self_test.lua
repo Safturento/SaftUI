@@ -491,7 +491,7 @@ test('where the player is: maps, PvP status, instances and zone names follow stu
 	check(not pcall(C_Map.GetMapInfoAtPosition, 1415), 'a position is required')
 
 	local pvpType, subzone, faction = C_PvP.GetZonePVPInfo()
-	check(pvpType == nil and subzone == false and faction == nil, 'no PvP status by default')
+	check(pvpType == '' and subzone == false and faction == nil, "no PvP status by default: '', as the game gives")
 	stub.pvp = { type = 'friendly', faction = 'Alliance' }
 	pvpType, subzone, faction = C_PvP.GetZonePVPInfo()
 	check(pvpType == 'friendly' and subzone == false and faction == 'Alliance', 'the PvP status')

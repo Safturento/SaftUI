@@ -19,7 +19,9 @@ end
 ------------------------------------------------------------------ zone text
 
 -- Blizzard_FrameXML/Mainline/ZoneText.lua and .xml (forever; live is the
--- same), trimmed: ZoneText_OnEvent's check for a toast playing
+-- same), with ZoneText_Clear, which a banner playing over the zone text calls
+-- (the bonus objective and world quest banner, the PvP objective banner);
+-- trimmed: ZoneText_OnEvent's check for a toast playing
 -- (EventToastManagerFrame) is left out, since none plays here, and the
 -- frames' OnUpdate (FadingFrame_OnUpdate) never runs in the stubs.
 function H.make_zone_text()
@@ -157,6 +159,13 @@ function H.make_zone_text()
 			SetZoneText(showZoneText)
 			FadingFrame_Show(SubZoneTextFrame)
 		end
+	end
+
+	-- clear the zone text if we put other UI in the center area.
+	function ZoneText_Clear()
+		ZoneTextString:SetText('')
+		SubZoneTextString:SetText('')
+		PVPInfoTextString:SetText('')
 	end
 
 	function SubZoneText_OnLoad(self)

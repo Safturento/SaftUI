@@ -53,15 +53,16 @@ stub = {
 	--   player_map: C_Map.GetBestMapForUnit('player'); nil for none, as during
 	--     a loading screen;
 	--   pvp: C_PvP.GetZonePVPInfo's pvpType ('friendly', 'hostile', 'contested',
-	--     'sanctuary', 'arena', 'combat'; nil for none), isSubZonePvP and
-	--     factionName;
+	--     'sanctuary', 'arena', 'combat'; '' for none, as the game gives: the
+	--     API marks it not nilable), isSubZonePvP and factionName. A test can
+	--     make it nil, as when the API returns nothing at all (MayReturnNothing);
 	--   instance: nil outside an instance, else { name, type ('party', 'raid',
 	--     'pvp', 'arena', 'scenario'), difficulty_id, difficulty_name,
 	--     max_players };
 	--   zone_text, subzone_text: GetZoneText and GetSubZoneText.
 	maps = {},
 	player_map = nil,
-	pvp = { type = nil, subzone = false, faction = nil },
+	pvp = { type = '', subzone = false, faction = nil },
 	instance = nil,
 	zone_text = '',
 	subzone_text = '',

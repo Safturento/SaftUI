@@ -5,7 +5,8 @@
 --   - the level range: a range, a single level, none;
 --   - the line under the zone name, e.g. "Level 10-20 . Alliance", in place of
 --     Blizzard's PvP line, with the subzone name under it; in an instance, the
---     level only, and the difficulty line;
+--     level only (never an outdoor zone's), and the difficulty line; both
+--     cleared when a banner clears Blizzard's zone text;
 --   - the hooks: Blizzard's OnEvent handler stays and runs first, nothing is
 --     written onto Blizzard's frames or into its globals, and SaftUI's fade
 --     times still apply.
@@ -23,9 +24,16 @@ local DASH = '\226\128\147' -- an en dash, U+2013
 local DOT = '\194\183' -- a middle dot, U+00B7
 
 -- The maps the player can be on (stub.maps): Eastern Kingdoms, two zones in
--- it, a cave in one, a dungeon and an orphan map hung off the continent.
+-- it, a cave in one, a dungeon with a second floor, an orphan map hung off the
+-- continent and one in a zone (a garrison), and Kalimdor's The Barrens with
+-- Warsong Gulch, a battleground the game files as an orphan map under it.
 local function set_maps()
 	stub.maps = {
+		[1414] = { name = 'Kalimdor', mapType = Enum.UIMapType.Continent },
+		[1413] = { name = 'The Barrens', mapType = Enum.UIMapType.Zone, parentMapID = 1414, levels = { 10, 25 } },
+		[1460] = { name = 'Warsong Gulch', mapType = Enum.UIMapType.Orphan, parentMapID = 1413 },
+		[9202] = { name = 'The Deadmines, the Mast Room', mapType = Enum.UIMapType.Micro, parentMapID = 9200 },
+		[9301] = { name = 'Lunarfall', mapType = Enum.UIMapType.Orphan, parentMapID = 1429 },
 		[1415] = { name = 'Eastern Kingdoms', mapType = Enum.UIMapType.Continent, levels = { 1, 60 } },
 		[1429] = { name = 'Elwynn Forest', mapType = Enum.UIMapType.Zone, parentMapID = 1415, levels = { 1, 10 } },
 		[1434] = { name = 'Stranglethorn Vale', mapType = Enum.UIMapType.Zone, parentMapID = 1415, levels = { 30, 30 } },
@@ -101,13 +109,23 @@ test("a faction name in another language is told apart by the player's own facti
 	_G.UnitFactionGroup = factionGroup
 end)
 
-test("LiveFaction reads the game's PvP status where the player stands", function()
+test("LiveFaction reads the game's PvP status where the player stands, and nil when it gives none", function()
 	place(1429, 'hostile', 'Horde')
 	eq(ZT:LiveFaction(), 'Horde', 'hostile, Horde')
 	place(1429, 'sanctuary')
 	eq(ZT:LiveFaction(), 'Neutral', 'a sanctuary')
+	place(1429, '')
+	eq(ZT:LiveFaction(), nil, "no status: the game's ''")
 	stub.pvp = {}
-	eq(ZT:LiveFaction(), 'Neutral', 'no status at all (the API may return nothing)')
+	eq(ZT:LiveFaction(), nil, 'no status at all (the API may return nothing)')
+end)
+
+test("LiveFaction hands the game's faction name on", function()
+	local factionGroup = UnitFactionGroup
+	_G.UnitFactionGroup = function() return 'Neutral', 'Neutral' end -- an unaligned pandaren
+	place(1429, 'friendly', 'Alliance')
+	eq(ZT:LiveFaction(), 'Alliance', 'friendly, Alliance: from the name, not the player')
+	_G.UnitFactionGroup = factionGroup
 end)
 
 test("each word takes its Colors tab text color: Alliance blue, Horde red, Neutral yellow", function()
@@ -160,6 +178,12 @@ test('the line: the level range and the colored faction', function()
 	place(9100, 'hostile', 'Horde')
 	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Horde', 'red'),
 		"in a cave: the zone's levels, the live faction")
+	place(1429, '')
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Neutral', 'yellow'),
+		'no PvP status: Neutral, as anything but friendly or hostile is')
+	place(9301, 'friendly', 'Alliance')
+	eq(line_after_entering('Elwynn Forest'), 'Level 1' .. DASH .. '10 ' .. DOT .. ' ' .. H.colored('Alliance', 'blue'),
+		"outside an instance, an orphan map in a zone (a garrison): the zone's levels")
 end)
 
 test("in an instance: the level if the game gives one, no faction, and the difficulty line", function()
@@ -171,6 +195,34 @@ test("in an instance: the level if the game gives one, no faction, and the diffi
 	eq(line_after_entering('The Stockade'), '', 'no level: an empty line')
 	place(9201, 'pvp', nil, { name = 'Warsong Gulch', type = 'pvp', max_players = 10 })
 	eq(line_after_entering('Warsong Gulch'), '', 'a battleground is an instance too')
+	place(9202, 'sanctuary', nil, DEADMINES)
+	eq(line_after_entering('The Deadmines', 'The Mast Room'), 'Level 15' .. DASH .. '21', "a dungeon's second floor: the dungeon's level")
+end)
+
+test("in an instance filed as an orphan map under a zone, nothing of the zone outside", function()
+	-- Warsong Gulch (Forever 1460) is an orphan map under The Barrens, with no levels of its own.
+	place(1460, 'combat', nil, { name = 'Warsong Gulch', type = 'pvp', max_players = 10 })
+	eq(line_after_entering('Warsong Gulch'), '', "no level: not The Barrens'")
+	eq(ZT:IsPlayerIn(1413), false, 'nor is the player in The Barrens')
+	eq(ZT:MapFaction(1413), 'Horde', "so The Barrens on the map is the table's Horde, not the battleground's status")
+	eq(ZT:IsPlayerIn(1460), true, 'the player is in Warsong Gulch itself')
+end)
+
+test("a banner clearing Blizzard's zone text clears SaftUI's line and the difficulty line too", function()
+	place(1429, 'friendly', 'Alliance')
+	H.enter('Elwynn Forest', 'Goldshire')
+	check(ZT.ZoneLineString:GetText() ~= '', 'the line is up')
+	ZoneText_Clear() -- what the world quest and PvP objective banners call
+	eq(ZoneTextString:GetText(), '', "Blizzard's zone name is cleared")
+	eq(ZoneTextFrame:IsShown(), true, 'while its frame keeps fading')
+	eq(ZT.ZoneLineString:GetText(), '', "and SaftUI's line with it")
+
+	place(9200, 'sanctuary', nil, DEADMINES)
+	H.enter('The Deadmines')
+	check((ZT.DifficultyTextString:GetText() or '') ~= '', 'the difficulty line is up')
+	ZoneText_Clear()
+	eq(ZT.DifficultyTextString:GetText(), '', 'and goes too')
+	eq(#take_errors(), 0, 'nothing written onto the locked frames')
 end)
 
 test("the line takes the place of Blizzard's PvP line, which stays unseen", function()

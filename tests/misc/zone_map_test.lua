@@ -36,7 +36,7 @@ local function set_maps()
 		[9100] = { name = 'Jasperlode Mine', mapType = Enum.UIMapType.Micro, parentMapID = 1429 },
 	}
 	stub.player_map = nil
-	stub.pvp = {}
+	stub.pvp = { type = '' }
 end
 set_maps()
 
@@ -138,6 +138,18 @@ test("for the zone you're in, the game's live PvP status wins over the table", f
 	eq(line(), H.colored('Alliance', 'blue'), 'and for a zone the table lacks')
 end)
 
+test("for the zone you're in with no live status, the table decides", function()
+	set_maps()
+	stub.player_map, stub.pvp = 1429, { type = '' }
+	H.enter('Elwynn Forest')
+	hover(ELWYNN)
+	eq(line(), H.colored('Alliance', 'blue'), "Elwynn Forest, the game giving '': the table's Alliance")
+	stub.player_map, stub.pvp = 9001, { type = '' }
+	H.enter('Testlands')
+	hover(TESTLANDS)
+	eq(line(), nil, 'a zone the table lacks: no line')
+end)
+
 test('MapFaction: the live status for your zone, the table for the rest, nil for neither', function()
 	set_maps()
 	stub.player_map, stub.pvp = 1429, { type = 'sanctuary' }
@@ -147,6 +159,8 @@ test('MapFaction: the live status for your zone, the table for the rest, nil for
 	eq(ZT:MapFaction(nil), nil, 'no zone')
 	stub.player_map = nil
 	eq(ZT:MapFaction(1429), 'Alliance', 'no player map: the table')
+	stub.player_map, stub.pvp = 1429, { type = '' }
+	eq(ZT:MapFaction(1429), 'Alliance', 'your zone with no live status: the table')
 end)
 
 test('a zone under the cursor that is not the one the label names gets no line', function()

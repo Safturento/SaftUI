@@ -8,6 +8,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 - [Active](#active)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
+  - [2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map](#2026-11-10--zone-faction-line-edge-cases-a-pvp-subzones-status-same-named-zones-on-the-map)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
   - [2026-11-10 — The zone faction table is a snapshot of two builds](#2026-11-10--the-zone-faction-table-is-a-snapshot-of-two-builds)
   - [2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames](#2026-11-10--chat-writes-fields-and-scripts-onto-blizzards-chat-frames)
@@ -72,10 +73,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **What:** The zone text's new line under the zone name (level range and faction, e.g. "Level 10–20 · Alliance") and the world map's faction line under a hovered zone's name were built from Blizzard's source and checked only in `tests/`. To check in game, Forever first:
 - **PvP status on Forever.** `C_PvP.GetZonePVPInfo()` gives `friendly` or `hostile` with the holder's name in starting zones and cities (Elwynn Forest, Durotar, Stormwind), `contested` in Stranglethorn Vale and `sanctuary` on Zephras Isle, so the line shows Alliance in blue, Horde in red and Neutral in yellow. Whether Forever reports these on a PvE realm, or with the PvP flag off, is unconfirmed.
-- **Level ranges.** `C_Map.GetMapLevels` gives Forever's zones their ranges (Elwynn Forest 1–10), and a cave its zone's. A city with none shows only the faction. In a dungeon: the level if the game gives one, no faction, and the difficulty line, which now shows while the zone name is up (see the resolved "Zone text replaces Blizzard's OnEvent script" entry).
+- **Level ranges.** `C_Map.GetMapLevels` gives Forever's zones their ranges (Elwynn Forest 1–10), and a cave its zone's. Forever's DB2 tables can't tell: its UiMap and AreaTable carry no level data (ContentTuningID 0 on every row). The quickest check is whether Blizzard's own world map label on Forever reads "Elwynn Forest (1-10)" when you hover it; if not, the zone text will never show a level on Forever. A city with none shows only the faction. In a dungeon: the level if the game gives one, no faction, and the difficulty line, which now shows while the zone name is up (see the resolved "Zone text replaces Blizzard's OnEvent script" entry). In a battleground (an orphan map under the zone outside, such as Warsong Gulch under The Barrens): no level, not the outdoor zone's.
 - **Glyphs.** The en dash and the middle dot draw in SaftUI's subtitle font, not as boxes.
-- **Blizzard's PvP line hidden.** No "(Contested Territory)" under the zone name. The subzone name sits right under SaftUI's line when you enter a zone, and where Blizzard puts it when only the subzone changes, with no gap either way. Free-for-all and combat zone text (`PVPArenaTextString`, under the subzone name) still shows. The flourishes take the new zone name's color.
-- **Map label.** On a continent map, the faction word shows under Blizzard's "Zone (10-20)" label, 10 units below, in the label's description font (`SubZoneTextFont`) at its scale; on retail, under the wild battle pet levels line when that shows. Nothing over a point of interest, the map's own areas or a zone not in the table. The zone you stand in follows the live status. With the gamepad UI on the line may never show: SaftUI finds the hovered zone by the mouse cursor and shows nothing when that isn't the zone the label names.
+- **Blizzard's PvP line hidden.** No "(Contested Territory)" under the zone name. The subzone name sits right under SaftUI's line when you enter a zone, and where Blizzard puts it when only the subzone changes, with no gap either way. Free-for-all and combat zone text (`PVPArenaTextString`, under the subzone name) still shows. The flourishes take the new zone name's color. When a world quest's or PvP objective's banner plays over the zone text (Blizzard's `ZoneText_Clear`), SaftUI's line and the difficulty line clear with Blizzard's (the flourishes stay, as before).
+- **Map label.** On a continent map, the faction word shows under Blizzard's "Zone (10-20)" label, 10 units below, in the label's description font (`SubZoneTextFont`) at its scale; on retail, under the wild battle pet levels line when that shows. Nothing over a point of interest, the map's own areas or a zone not in the table. The zone you stand in follows the live status, or the table when the game gives no status (an empty pvpType). With the gamepad UI on the line may never show: SaftUI finds the hovered zone by the mouse cursor and shows nothing when that isn't the zone the label names.
 - **No taint.** Open the world map in combat and through a loading screen: no `ADDON_ACTION_BLOCKED` and no Lua errors. Use `/console taintLog 1` (`.agents/taint.md`) if anything is off.
 
 **Why noticed:** The zone level and faction feature (2026-11-10). The stubs run no OnUpdate, layout pass or fonts, and stand in for the game's map and PvP answers, so placement, glyphs and the live API are in-game checks.
@@ -83,6 +84,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:ZoneLine`, `ZT:UpdateZoneLine`, `ZT:UpdateMapLine`, `ZT:HookWorldMap`), `SaftUI-Misc/Skinning/ZoneFactions.lua`; Blizzard's `Blizzard_FrameXML/Mainline/ZoneText.lua` and `Blizzard_SharedMapDataProviders/AreaLabelDataProvider.lua`; `tests/misc/zone_text_test.lua`, `tests/misc/zone_map_test.lua` and `tests/misc/zone_helpers.lua`.
 
 **Shape of work:** An in-game pass. Fixes, if any, are likely offsets or a font.
+
+### 2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map
+
+**What:** Two narrow cases where the faction word can be off:
+- **A PvP subzone's status.** When `C_PvP.GetZonePVPInfo()` says `isSubZonePvP`, its status is the subzone's (Blizzard shows it on `PVPArenaTextString`, under the subzone name), but SaftUI takes it for the zone's. Entering a faction's zone while standing in a free-for-all or sanctuary subzone, the zone text says Neutral, and so does the map for that zone. Most such subzones are in contested zones, where Neutral is right anyway.
+- **Same-named zones on the map.** The map line is worked out again only when the label's text changes (or on a zone event or a color change). Retail has same-named copies of a zone with different factions (Eversong Woods 94 is Horde, 2395 and 2567 Neutral; Silvermoon City 110 Horde, 2393 Neutral). Switching between maps that show both, with the cursor never leaving the zone and the label's text identical, keeps the first answer.
+
+**Why noticed:** The review of the zone level and faction feature (2026-11-10, minors 4 and 6), left as they are.
+
+**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:LiveFaction`, `ZT:MapFaction`, `ZT:UpdateMapLine`'s `mapLineFor`); `tests/misc/zone_map_test.lua`.
+
+**What's been considered:** For the subzone: when `isSubZonePvP`, use the table's word for the zone, at least on the map. For the map: key the cache on the map's ID and the label text (`map:GetMapID() .. name`), which costs nothing.
+
+**Shape of work:** Small: a few lines each, with a test each.
 
 ### 2026-11-10 — Zone text's fade times are written onto Blizzard's frames
 
@@ -92,7 +107,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`FADE_IN`, `HOLD`, `FADE_OUT`, `ZT:OnEnable`); Blizzard's `Blizzard_FrameXMLUtil/FadingFrame.lua`; `.agents/taint.md` rules 1 and 3.
 
-**What's been considered:** The fields' only reader is the frames' own OnUpdate, `FadingFrame_OnUpdate`, which turns tainted at the first read and then only sets the frames' alpha and hides them. Nothing protected hangs off either frame, so no blocked action is expected. There's no way to change the timing that writes nothing onto them. The choices: keep it, and name it in `.agents/taint.md` as a known exception; drop the setters for Blizzard's shorter timing; or have SaftUI show zone text frames of its own instead of Blizzard's (a bigger change).
+**What's been considered:** The fields' only reader is the frames' own OnUpdate, `FadingFrame_OnUpdate`, which turns tainted at the first read and then only sets the frames' alpha and hides them. Nothing protected hangs off either frame, so no blocked action is expected. The one way it could: another addon anchoring a protected frame to either one, which would make the tainted `Hide` a blocked action in combat, blamed on SaftUI. There's no way to change the timing that writes nothing onto them. The choices: keep it, and name it in `.agents/taint.md` as a known exception; drop the setters for Blizzard's shorter timing; or have SaftUI show zone text frames of its own instead of Blizzard's (a bigger change).
 
 **Shape of work:** A decision, then a few lines, or a design pass for SaftUI's own frames.
 
@@ -106,7 +121,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Anchors:** the file's header, which gives the method; wago.tools' DB2 exports (`https://wago.tools/db2/<Table>/csv?build=<version>`, the builds at `https://wago.tools/api/builds`, where Forever is product `wowf`) of the UiMap, UiMapAssignment and AreaTable tables.
 
-**What's been considered:** The table came from a throwaway Python script over those exports, following the header's rules (zone maps with a parent, minus test maps; AreaTable's FactionGroupMask 2 Alliance and 4 Horde, the sanctuary flag 0x800 or mask 6 Neutral, mask 0 taking the parent area's; then the named capitals and starting zones). Committing the script would make a refresh one command, but the repo has no tooling folder. Not covered: Forever's Darkspear Islands (2524, an orphan map the game marks contested), retail's Dalaran maps (dungeon maps) and the housing districts (sanctuaries, so Neutral, though each is one faction's).
+**What's been considered:** The table came from a throwaway Python script over those exports, following the header's rules (zone maps with a parent, minus test maps; AreaTable's FactionGroupMask 2 Alliance and 4 Horde, the sanctuary flag 0x800 or mask 6 Neutral, mask 0 taking the parent area's; then the named capitals and starting zones). Committing the script would make a refresh one command, but the repo has no tooling folder. Not covered: Forever's Darkspear Islands (2524, an orphan map the game marks contested), and retail's dungeon-type maps, among them Broken Isles Dalaran (627, a sanctuary) and Oribos (1670, which has no UiMapAssignment row, so it would need a named entry like the capitals). Those two are hoverable on their continents' maps and among the most visited places there; adding dungeon-type maps whose parent is a continent would cover them. The housing districts are in, as Neutral (sanctuaries), though each is one faction's.
 
 **Shape of work:** Small: rerun against the new builds, diff, review the named overrides.
 

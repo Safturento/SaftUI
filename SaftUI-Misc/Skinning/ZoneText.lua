@@ -72,10 +72,13 @@ function ZT.FactionFromPvP(pvpType, factionName)
 	return pvpType == 'friendly' and mine or OTHER_FACTION[mine]
 end
 
--- Who holds the zone the player stands in, by the game's live PvP status.
--- Both clients have it as C_PvP's (neither has a global GetZonePVPInfo).
+-- Who holds the zone the player stands in, by the game's live PvP status; nil
+-- when the game gives none (an empty pvpType, or nothing at all). Both clients
+-- have it as C_PvP's (neither has a global GetZonePVPInfo).
 function ZT:LiveFaction()
-	return ZT.FactionFromPvP(C_PvP.GetZonePVPInfo())
+	local pvpType, _, factionName = C_PvP.GetZonePVPInfo()
+	if pvpType == nil or pvpType == '' then return nil end
+	return ZT.FactionFromPvP(pvpType, factionName)
 end
 
 local function Byte(value)
@@ -90,21 +93,26 @@ end
 
 ------------------------------------------------------------------ where the player is
 
--- Map types the player's map is climbed out of to reach the zone it's in: a
--- cave or building (Micro), or a map outside the usual tree (Orphan).
-local CLIMB = { [Enum.UIMapType.Micro] = true, [Enum.UIMapType.Orphan] = true }
+-- Whether the player's map is climbed out of to reach the map it's in: always
+-- out of a cave, building or dungeon floor (Micro); out of a map outside the
+-- usual tree (Orphan, such as a garrison) only outside an instance, since the
+-- game files many instances (battlegrounds, some dungeons and raids) as orphan
+-- maps under the zone outside them.
+local function Climbs(mapType, inInstance)
+	return mapType == Enum.UIMapType.Micro or (mapType == Enum.UIMapType.Orphan and not inInstance)
+end
 
 -- The maps the player stands in, from the game's best map for them up to the
--- zone it's in: through caves and orphan maps, never up to a continent. A
--- dungeon is a map of its own.
+-- zone it's in, never up to a continent. A dungeon is a map of its own.
 local function PlayerMaps()
 	local maps = {}
+	local inInstance = IsInInstance()
 	local mapID = C_Map.GetBestMapForUnit('player')
 	while mapID do
 		local info = C_Map.GetMapInfo(mapID)
 		if not info or info.mapType < Enum.UIMapType.Zone then break end
 		maps[#maps + 1] = mapID
-		if not CLIMB[info.mapType] then break end
+		if not Climbs(info.mapType, inInstance) then break end
 		mapID = info.parentMapID
 	end
 	return maps
@@ -141,11 +149,12 @@ end
 
 -- The line under the zone name: the zone's level range and who holds it, e.g.
 -- 'Level 10-20 . Alliance' (an en dash, a middle dot), or either part alone.
--- In an instance there's no faction: the difficulty line under the subzone
--- says what kind it is. '' when there's neither.
+-- With no PvP status the faction is Neutral. In an instance there's no
+-- faction: the difficulty line under the subzone says what kind it is. ''
+-- when there's neither.
 function ZT:ZoneLine()
 	local levels = ZT.FormatLevels(self:PlayerZoneLevels())
-	local faction = not IsInInstance() and self:ColorFaction(self:LiveFaction()) or nil
+	local faction = not IsInInstance() and self:ColorFaction(self:LiveFaction() or 'Neutral') or nil
 	if levels and faction then
 		return levels .. ' ' .. MIDDLE_DOT .. ' ' .. faction
 	end
@@ -198,12 +207,11 @@ function ZT:HoveredZone(labelName)
 end
 
 -- Who holds a zone on the map: for the zone the player is in, the game's live
--- PvP status; for any other, ZoneFactions.lua's table. nil for a zone the table
--- doesn't list.
+-- PvP status when it gives one; otherwise ZoneFactions.lua's table. nil for a
+-- zone the table doesn't list.
 function ZT:MapFaction(mapID)
 	if not mapID then return nil end
-	if self:IsPlayerIn(mapID) then return self:LiveFaction() end
-	return self:GetZoneFaction(mapID)
+	return self:IsPlayerIn(mapID) and self:LiveFaction() or self:GetZoneFaction(mapID)
 end
 
 -- After the zone label's OnUpdate, each frame: while it shows a zone's name
@@ -299,6 +307,16 @@ function ZT:OnEnable()
 	self.ZoneLineString:SetPoint('TOP', ZoneTextString, 'BOTTOM')
 	self.DifficultyTextString = st:CreateFontString(SubZoneTextFrame, 'subtitle', 'test')
 	self.DifficultyTextString:SetPoint('TOP', SubZoneTextString, 'BOTTOM', 0, -7)
+	-- A banner played over the zone text (a world quest's, a PvP objective's)
+	-- clears Blizzard's strings with ZoneText_Clear while the frames fade on.
+	-- SaftUI's lines go with them. A post-hook: the banner's call stays
+	-- Blizzard's, and only SaftUI's own font strings are written.
+	if ZoneText_Clear then
+		hooksecurefunc('ZoneText_Clear', function()
+			self.ZoneLineString:SetText('')
+			self.DifficultyTextString:SetText('')
+		end)
+	end
 
 	-- SaftUI's fade times. Blizzard keeps them in fields on the two frames, set
 	-- through its FadingFrame setters; its ZoneFadeInDuration and the other
