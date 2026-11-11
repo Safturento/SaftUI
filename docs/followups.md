@@ -114,7 +114,7 @@ Buttons and controls (both clients):
 - `InputBoxTemplate`'s left end sits 5px outside the bags' search box;
 - `/sui`'s range slider under Blizzard: its track and thumb are centred on half pixels (`LookRange`, `SaftUI-Core/Config/optionswidgets.lua`), so check them for blur.
 
-Slots under Thick and Thin (both clients): the hover on a bag, bank, currency or bags bar slot is a blue tint over the icon, not an opaque blue square. `st:SkinActionButton` (`SaftUI-Core/skinning.lua`) now puts back the blend `SetHighlightTexture` gave the hover when it was made, which the stubs take to be ADD (the final review found it forced to BLEND); check that's the client's default too.
+Slots under Thick and Thin (both clients): the hover on a bag, bank, currency or bags bar slot is a blue tint over the icon, not an opaque blue square. `st:SkinActionButton` (`SaftUI-Core/skinning.lua`) now puts back the blend `SetHighlightTexture` gave the hover when it was made, which the stubs take to be ADD (the final review found it forced to BLEND); check that's the client's default too. 2026-11-11: in game every slot and action button showed the blue all the time, not just under the mouse, because the theme work had moved the hover out of the HIGHLIGHT layer (fixed in 8b4ef2f, every look); recheck the tint under the mouse after that fix.
 
 Bags, Forever:
 - the 28px socketed close button may overlap the view buttons by 1-2px, its ADD highlight, and whether it draws and clicks above the metal;
