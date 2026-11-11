@@ -7,14 +7,94 @@ local NUDGE = {
 }
 local LIVE_INTERVAL = 0.1 -- seconds between settings refreshes while dragging
 
+-- Under Blizzard the overlay is Edit Mode's own selection art (Blizzard's
+-- EditModeSystemSelectionLayout, st.ThemeArt.Control('mover')): the highlight
+-- kit on every mover, and in its place the selected kit on the one selected.
+-- The pieces are textures of the overlay, which is SaftUI's, kept here keyed by
+-- it, and placed by anchors: a corner's atlas mirrored into the four corners 8px
+-- outside the overlay, each edge between its two corners, tiled, and the fill
+-- from the top left corner's inner point to the bottom right's.
+local kits = setmetatable({}, { __mode = 'k' }) -- overlay -> { [kit] = { [key] = texture } }
+
+-- How each corner's atlas is flipped (SetTexCoord's left, right, top, bottom), and
+-- where each edge sits between its corners (themeart.lua's border layout).
+local CORNERS = {
+	TopLeftCorner = { 'TOPLEFT', 0, 1, 0, 1 }, TopRightCorner = { 'TOPRIGHT', 1, 0, 0, 1 },
+	BottomLeftCorner = { 'BOTTOMLEFT', 0, 1, 1, 0 }, BottomRightCorner = { 'BOTTOMRIGHT', 1, 0, 1, 0 },
+}
+local EDGES = {
+	TopEdge = { 'TOPLEFT', 'TOPRIGHT', 'TopLeftCorner', 'TopRightCorner', true },
+	BottomEdge = { 'BOTTOMLEFT', 'BOTTOMRIGHT', 'BottomLeftCorner', 'BottomRightCorner', true },
+	LeftEdge = { 'TOPLEFT', 'BOTTOMLEFT', 'TopLeftCorner', 'BottomLeftCorner', false },
+	RightEdge = { 'TOPRIGHT', 'BOTTOMRIGHT', 'TopRightCorner', 'BottomRightCorner', false },
+}
+
+-- The pieces of one kit on the overlay, made and laid out the first time.
+local function KitPieces(overlay, art, kit)
+	local sets = kits[overlay]
+	if not sets then
+		sets = {}
+		kits[overlay] = sets
+	end
+	local set = sets[kit]
+	if set then return set end
+	set = {}
+	sets[kit] = set
+	local function Make(key, sublevel)
+		local texture = overlay:CreateTexture(nil, art.layer, nil, sublevel)
+		texture:SetAtlas(art[key].atlas:format(art.kits[kit]), true)
+		set[key] = texture
+		return texture
+	end
+	for key, corner in pairs(CORNERS) do
+		local texture = Make(key, 1)
+		texture:SetPoint(corner[1], overlay, corner[1], art[key].x, art[key].y)
+		texture:SetTexCoord(corner[2], corner[3], corner[4], corner[5])
+	end
+	for key, edge in pairs(EDGES) do
+		local texture = Make(key, 1)
+		texture:SetPoint(edge[1], set[edge[3]], edge[2])
+		texture:SetPoint(edge[2], set[edge[4]], edge[1])
+		texture:SetHorizTile(edge[5])
+		texture:SetVertTile(not edge[5])
+	end
+	local center = art.Center
+	local texture = Make('Center', -1)
+	texture:SetPoint('TOPLEFT', set.TopLeftCorner, 'BOTTOMRIGHT', center.x, center.y)
+	texture:SetPoint('BOTTOMRIGHT', set.BottomRightCorner, 'TOPLEFT', center.x1, center.y1)
+	return set
+end
+
+-- Shows the overlay's kit (a key of Control('mover').kits) and hides the other;
+-- nil hides both.
+local function ShowKit(overlay, shown)
+	if not shown and not kits[overlay] then return end
+	local art = st.ThemeArt.Control('mover')
+	for kit in pairs(art.kits) do
+		if kit == shown then
+			for _, texture in pairs(KitPieces(overlay, art, kit)) do texture:Show() end
+		elseif kits[overlay] and kits[overlay][kit] then
+			for _, texture in pairs(kits[overlay][kit]) do texture:Hide() end
+		end
+	end
+end
+
 -- The overlay has SaftUI's theme's border: a 1px line EM.OutlineOutset()
 -- outside the frame (under Thick 2px, between two dark lines). Only that line
 -- takes the highlight color, so the outline sits exactly where a SaftUI
 -- frame's own border line is, and gaps between frames look the same in edit
 -- mode as out of it. The fill stays see-through so the frame shows; the
 -- selected frame's is tinted blue, since a 1px line alone is easy to miss.
+-- The overlay is a control, so under Blizzard SaftUI draws no line or fill and
+-- the selection art above shows instead, the kit for selected or not.
 local function SetBorderColor(mover, selected)
-	local backdrop = mover.overlay.backdrop
+	local overlay = mover.overlay
+	if st:IsBlizzardLook('theme', 'solid') then
+		ShowKit(overlay, selected and 'selected' or 'highlight')
+		return
+	end
+	ShowKit(overlay, nil)
+	local backdrop = overlay.backdrop
 	local r, g, b = 1, 1, 1
 	if selected then
 		r, g, b = st.config.profile.colors.button.blue:GetRGB()
@@ -189,7 +269,7 @@ function EM:CreateMover(key, def)
 	overlay:RegisterForClicks('LeftButtonUp')
 	overlay:RegisterForDrag('LeftButton')
 	overlay:Hide()
-	st:SetBackdrop(overlay, 'theme', 'solid', 'small') -- colored by SetBorderColor
+	st:SetBackdrop(overlay, 'theme', 'solid', 'control') -- colored by SetBorderColor
 
 	local label = overlay:CreateFontString(nil, 'OVERLAY')
 	label:SetFontObject(st:GetFont('pixel'))

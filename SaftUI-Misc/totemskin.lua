@@ -350,8 +350,14 @@ local function StyleSlotButton(button, skin, theme, background)
 	ColorSlotButton(button)
 end
 
+-- The flyout's panel is a control: a small frame under Thick and Thin, nothing
+-- under Blizzard, where the flyout's own art (its top and middle, which
+-- Blizzard only shows and hides) shows again, and is faded under the others.
 local function StyleFlyout(flyout, skin, theme, background)
-	st:SetTemplate(skin.panel, theme, background, 'small')
+	st:SetTemplate(skin.panel, theme, background, 'control')
+	local alpha = st:IsBlizzardLook(theme, background) and 1 or 0
+	if flyout.top then flyout.top:SetAlpha(alpha) end
+	if flyout.middle then flyout.middle:SetAlpha(alpha) end
 end
 
 -- An arrow in the colour of the element in slot, or the text colour for none (the
@@ -458,13 +464,12 @@ local function SkinSlotButton(button)
 	skin.backdrop = CreateBackdrop(button)
 end
 
--- The flyout's own art is faded, and a SaftUI panel goes behind its column of choices,
--- under their backdrops. It's anchored to the choices on each opening.
+-- A SaftUI panel goes behind the flyout's column of choices, under their backdrops. It's
+-- anchored to the choices on each opening. The flyout's own art is faded or shown by
+-- StyleFlyout, with the panel's look.
 local function SkinFlyout(flyout)
 	local skin = { style = StyleFlyout }
 	skins[flyout] = skin
-	Fade(flyout.top)
-	Fade(flyout.middle)
 	skin.panel = st:CreateFrame('Frame', nil, flyout)
 	skin.panel:SetFrameLevel(math.max(0, flyout:GetFrameLevel() - 1))
 	skin.panel:Hide()

@@ -381,6 +381,14 @@ for i = 1, 4 do
 	slots[i] = locked(button, 'Blizzard totem slot')
 end
 
+-- The flyout that opens above a button, as far as the skin reads it: its art,
+-- the top and the middle (MultiCastFlyoutFrame, locked). Its choices are made on
+-- an opening, so it has none here.
+local flyout = CreateFrame('Frame', 'MultiCastFlyoutFrame', UIParent)
+flyout.top = flyout:CreateTexture(nil, 'ARTWORK')
+flyout.middle = flyout:CreateTexture(nil, 'ARTWORK')
+locked(flyout, 'Blizzard totem flyout')
+
 -- The summon button and the first action button, as the totem bar's templates
 -- make them as far as the skin reads them: the icon in BACKGROUND, and the
 -- texts where Blizzard's templates put them (the count in ARTWORK, the hotkey
@@ -546,6 +554,82 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	eq(select(4, summon.Flash:GetVertexColor()) ~= nil, true, 'the flat flash')
 	eq(art.over.Ring:IsShown(), false, 'Thick: no ring')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("under Blizzard the totem flyout's art shows, and is faded again under Thick", function()
+	local TB = st:GetModule('TotemBar')
+	local function panel()
+		for _, child in ipairs({ flyout:GetChildren() }) do
+			if drawn(child) then return child end
+		end
+	end
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	local backdrop = panel()
+	check(backdrop ~= nil, "the flyout has SaftUI's panel behind its choices")
+	eq(drawn(backdrop), 'theme,theme,control', 'the panel is a control')
+	eq(T.inset(backdrop), 2, 'Thick: drawn as a small frame')
+	eq(flyout.top:GetAlpha() .. ',' .. flyout.middle:GetAlpha(), '0,0', "Thick: Blizzard's art faded")
+
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	eq(flyout.top:GetAlpha() .. ',' .. flyout.middle:GetAlpha(), '1,1', "Blizzard: the flyout's own art shows")
+	eq(backdrop.backdropInfo, nil, "and the panel draws nothing over it")
+
+	profile.theme.name = 'thin'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	eq(flyout.top:GetAlpha() .. ',' .. flyout.middle:GetAlpha(), '0,0', "Thin: faded again")
+	eq(T.inset(backdrop), 1, 'Thin: the panel is a small frame')
+
+	-- The buttons' own Theme decides, not SaftUI's.
+	profile.buttons.theme = 'blizzard'
+	TB:ApplySkin()
+	eq(flyout.top:GetAlpha() .. ',' .. flyout.middle:GetAlpha(), '1,1', "the bar's buttons' Theme Blizzard shows it")
+	profile.buttons.theme = 'theme'
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	eq(flyout.top:GetAlpha() .. ',' .. flyout.middle:GetAlpha(), '0,0', "and back under Thick")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------ the character frame's gem sockets
+
+-- Where a region draws among its frame's, as one number: the layer, then the
+-- sublevel.
+local function draw_depth(region)
+	local layer, sublevel = region:GetDrawLayer()
+	return ({ BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 })[layer] * 100 + (sublevel or 0)
+end
+
+test('gem icons are drawn as slots, their icon under the ring', function()
+	local CF = SK:NewModule('CharacterFrame')
+	load_saftui('SaftUI-Misc/Skinning/characterframe/gems.lua')
+	local equipSlot = CreateFrame('Button', nil, UIParent)
+	equipSlot:SetSize(40, 40)
+	equipSlot:SetPoint('CENTER')
+	local gems = CF:CreateSlotGems(equipSlot, 'LEFT')
+	local socket = gems[1]
+	eq(drawn(socket), 'theme,solid,slot', "a socket is drawn as a slot, in SaftUI's theme")
+
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(T.over(socket.backdrop), '', 'Thick: no ring')
+	eq(T.art(socket.backdrop), '', 'and no art')
+	check(socket.icon:GetObjectType() == 'Texture', 'the icon is a texture')
+	eq(T.inset(socket.backdrop), 2, "Thick's border, as before")
+
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	local ring = st.ThemeArt.Get(socket.backdrop).over.Ring
+	check(ring ~= nil and ring:IsShown(), 'Blizzard: the ring shows')
+	eq(ring:GetParent(), socket, "a texture of the socket, as a button's")
+	check(draw_depth(ring) > draw_depth(socket.icon), 'over the icon, not under it')
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
 end)
 
 ------------------------------------------------------------------ a skinned Blizzard panel

@@ -2,9 +2,13 @@
 --   - the roll bars', the feed's and the loot window's defaults look as their old
 --     template names did;
 --   - the Rolls and Feed pages offer Theme and Background, not Template;
---   - a roll bar draws its body as a bar and its icon as a small frame, and the
---     feed its entries as panels, their icons and its buttons as small frames, in
---     the page's Theme and Background;
+--   - a roll bar draws its body as a bar and its icon as a slot, and the feed
+--     its entries as panels, their icons as slots and its buttons as controls,
+--     in the page's Theme and Background;
+--   - under Blizzard the ring over each icon lies over the icon and under what
+--     the icon carries (the feed's count; Blizzard's roll count is killed);
+--   - the disabled loot window's buttons are marked as Blizzard's before they're
+--     drawn;
 --   - a shown mount entry keeps its yellow border and fill through a theme recolor.
 --
 -- Real: SaftUI-Loot's config.lua, init.lua, options.lua, roll.lua, rollinfo.lua,
@@ -20,6 +24,7 @@ apply_defaults()
 load_saftui('SaftUI-Loot/init.lua')
 load_saftui('SaftUI-Loot/options.lua')
 load_saftui('SaftUI-Loot/roll.lua')
+load_saftui('SaftUI-Loot/popup.lua')
 load_saftui('SaftUI-Loot/rollinfo.lua')
 load_saftui('SaftUI-Loot/Feed/history.lua')
 load_saftui('SaftUI-Loot/Feed/feed.lua')
@@ -102,7 +107,7 @@ local function roll_frame()
 	return frame
 end
 
-test('a roll bar draws its body as a bar and its icon as a small frame, in the Rolls theme', function()
+test('a roll bar draws its body as a bar and its icon as a slot, in the Rolls theme', function()
 	local frame = roll_frame()
 	LT:SkinRollFrame(frame)
 	local info = LT:GetRollInfoFrame(frame)
@@ -111,13 +116,13 @@ test('a roll bar draws its body as a bar and its icon as a small frame, in the R
 		if child.backdrop then iconBox = child end
 	end
 	eq(drawn(info), 'theme,solid,bar', 'the body: the Rolls Theme and Background, as a bar')
-	eq(drawn(iconBox), 'theme,solid,small', 'the icon: the same, as a small frame')
+	eq(drawn(iconBox), 'theme,solid,slot', 'the icon: the same, as a slot')
 	eq(T.inset(info.backdrop), 2, "Thick's border by default")
 
 	profile.loot.roll.theme, profile.loot.roll.background = 'thin', 'transparent'
 	LT:UpdateRollFrame(frame)
 	eq(drawn(info), 'thin,transparent,bar', 'a new Theme and Background reach the body')
-	eq(drawn(iconBox), 'thin,transparent,small', 'and the icon')
+	eq(drawn(iconBox), 'thin,transparent,slot', 'and the icon')
 	eq(T.inset(info.backdrop), 1, "Thin's border")
 	eq(T.offset(info.backdrop, 'TOPLEFT'), '-1.00,1.00', '1px outside the body')
 	profile.loot.roll.theme, profile.loot.roll.background = 'theme', 'solid'
@@ -140,13 +145,13 @@ local function make_feed()
 	return feed
 end
 
-test("the feed draws its entries as panels, their icons and its buttons as small frames, in the Feed theme", function()
+test("the feed draws its entries as panels, their icons as slots and its buttons as controls, in the Feed theme", function()
 	local feed = make_feed()
 	local item = feed.items[1]
 	eq(drawn(item), 'theme,solid,panel', 'an entry: the Feed Theme and Background, as a panel')
-	eq(drawn(item.icon), 'theme,solid,small', 'its icon, as a small frame')
-	eq(drawn(feed.filterButton), 'theme,solid,small', 'the Filter button')
-	eq(drawn(feed.reset_button), 'theme,solid,small', 'the scroll reset button')
+	eq(drawn(item.icon), 'theme,solid,slot', 'its icon, as a slot')
+	eq(drawn(feed.filterButton), 'theme,solid,control', 'the Filter button, as a control')
+	eq(drawn(feed.reset_button), 'theme,solid,control', 'the scroll reset button')
 	eq(T.offset(item.progressBar, 'BOTTOMLEFT'), '2.00,0.00', "the progress bar starts past the icon's Thick border")
 
 	profile.loot.feed.theme = 'thin'
@@ -196,4 +201,154 @@ test("a shown mount entry keeps its yellow border, fill and icon border through 
 	mount:Hide()
 	st:RecolorThemed()
 	eq(T.edge(mount.backdrop), THICK_EDGE, "a hidden entry keeps the theme's border")
+end)
+
+------------------------------------------------------------------ Blizzard's art on the icons and buttons
+
+-- Where a region draws among its frame's, as one number: the layer, then the
+-- sublevel.
+local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+local function depth(region)
+	local layer, sublevel = region:GetDrawLayer()
+	return LAYERS[layer] * 100 + (sublevel or 0)
+end
+
+test("under Blizzard a roll bar's icon ring lies over the icon frame's own icon, and its backdrop under it as before", function()
+	local frame = roll_frame()
+	LT:SkinRollFrame(frame)
+	local iconBox
+	for _, child in ipairs({ frame.IconFrame:GetChildren() }) do
+		if child.backdrop then iconBox = child end
+	end
+	local level = frame.IconFrame:GetFrameLevel()
+	check(iconBox:GetFrameLevel() > level, "the icon box is over Blizzard's icon frame, which holds the icon")
+	check(iconBox.backdrop:GetFrameLevel() < level, 'its backdrop is under it, as before')
+	eq(T.over(iconBox.backdrop), '', 'Thick: no ring')
+	check(not frame.IconFrame.Count:IsShown(), "Blizzard's own count is killed by the skin, so nothing of it lies under the ring")
+
+	profile.loot.roll.theme = 'blizzard'
+	LT:UpdateRollFrame(frame)
+	local art = st.ThemeArt.Get(iconBox.backdrop)
+	check(art ~= nil and art.over.Ring ~= nil and art.over.Ring:IsShown(), 'Blizzard: the ring shows')
+	eq(art.over.Ring:GetParent(), iconBox, "it's a texture of SaftUI's icon box")
+	check(art.over.Ring:GetParent():GetFrameLevel() > frame.IconFrame.Icon:GetParent():GetFrameLevel(), "on a frame over the icon's")
+	check(T.art(iconBox.backdrop) ~= '', 'and the slot art behind')
+	eq(drawn(iconBox), 'blizzard,solid,slot', 'drawn as a slot')
+	check(iconBox.backdrop:GetFrameLevel() < level, 'the backdrop stays under the icon frame')
+
+	profile.loot.roll.theme = 'none'
+	LT:UpdateRollFrame(frame)
+	profile.loot.roll.theme = 'thin'
+	LT:UpdateRollFrame(frame)
+	check(iconBox.backdrop:GetFrameLevel() < level, 'a backdrop made after a None is under it too')
+	profile.loot.roll.theme = 'theme'
+	LT:UpdateRollFrame(frame)
+end)
+
+test("a preview roll bar's icon is a slot, its icon under the ring", function()
+	LT.rollAnchor = CreateFrame('Frame', nil, UIParent)
+	LT.rollPreview = nil
+	C_Item = C_Item or { GetItemInfo = function() end, GetItemIconByID = function() return 134400 end }
+	-- Feed/rolls.lua's states, which the preview's sample choices name.
+	LT.ROLL_STATE = LT.ROLL_STATE or setmetatable({}, { __index = function() return 4 end })
+	local container = LT:CreateRollPreviews()
+	LT.testRolls = true
+	LT:UpdateRollPreviews()
+	local bar = container.bars[1]
+	eq(drawn(bar.IconFrame), 'theme,solid,slot', "the icon is drawn as a slot, in the Rolls theme")
+	eq(T.over(bar.IconFrame.backdrop), '', 'Thick: no ring')
+
+	profile.loot.roll.theme = 'blizzard'
+	LT:UpdateRollPreviews()
+	local ring = st.ThemeArt.Get(bar.IconFrame.backdrop).over.Ring
+	check(ring:IsShown(), 'Blizzard: the ring shows')
+	eq(ring:GetParent(), bar.IconFrame, "a texture of the icon's frame")
+	check(depth(ring) > depth(bar.Icon), 'over the icon')
+	profile.loot.roll.theme = 'theme'
+	LT.testRolls, LT.rollAnchor = nil, nil
+end)
+
+test("the feed's icon ring lies over the icon and under its count", function()
+	profile.loot.feed.theme = 'theme'
+	local feed = make_feed()
+	local item = feed.items[1]
+	eq(T.over(item.icon.backdrop), '', 'Thick: no ring')
+
+	-- SaftUI's theme switched, as the Theme tab does it.
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	eq(drawn(item.icon), 'theme,solid,slot', "the icon is drawn as a slot")
+	local art = st.ThemeArt.Get(item.icon.backdrop)
+	local ring = art.over.Ring
+	check(ring ~= nil and ring:IsShown(), 'Blizzard: the ring shows')
+	-- The icon is a texture, so its ring is on a frame of SaftUI's over the entry,
+	-- over the icon; the count is on a frame over that one.
+	local holder, counter = ring:GetParent(), item.count:GetParent()
+	check(holder ~= item and holder:GetFrameLevel() > item:GetFrameLevel(), 'the ring is on a frame over the entry, and its icon')
+	check(counter ~= item and counter:GetParent() == item, "the count is on a frame of the entry's own")
+	check(counter:GetFrameLevel() > holder:GetFrameLevel(), 'which is over the ring')
+	eq(item.count:GetDrawLayer(), 'OVERLAY', 'the count is still OVERLAY')
+	eq(T.offset(item.count, 'BOTTOMRIGHT'), '0.00,2.00', 'and still at the icon\'s corner')
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(T.over(item.icon.backdrop), '', 'Thick again: no ring')
+end)
+
+-- The panel button's pieces shown on a button of SaftUI's, by file: whether
+-- any.
+local function panel_art(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		local file = region:GetObjectType() == 'Texture' and region:GetTexture()
+		if type(file) == 'string' and file:find('UI%-Panel%-Button%-Up') and region:IsShown() then return true end
+	end
+	return false
+end
+
+test("the feed's filter and reset buttons are drawn again in the Feed theme, and are Blizzard's panel buttons under Blizzard", function()
+	profile.loot.feed.theme = 'theme'
+	local feed = make_feed()
+	for name, button in pairs({ filter = feed.filterButton, reset = feed.reset_button }) do
+		check(not panel_art(button), name .. ': Thick: no panel button')
+	end
+
+	profile.loot.feed.theme = 'blizzard'
+	LT:UpdateLootFeedConfig()
+	for name, button in pairs({ filter = feed.filterButton, reset = feed.reset_button }) do
+		eq(drawn(button), 'blizzard,solid,control', name .. ': a control, in the Feed theme')
+		check(panel_art(button), name .. ": Blizzard's panel button, though SaftUI's theme is Thick")
+	end
+
+	profile.loot.feed.theme = 'thin'
+	LT:UpdateLootFeedConfig()
+	for name, button in pairs({ filter = feed.filterButton, reset = feed.reset_button }) do
+		eq(drawn(button), 'thin,solid,control', name .. ': Thin')
+		check(not panel_art(button), name .. ': no panel button again')
+	end
+	profile.loot.feed.theme = 'theme'
+	LT:UpdateLootFeedConfig()
+end)
+
+test("the loot window's buttons are marked as Blizzard's before they're drawn as slots", function()
+	local order = {}
+	local mark, skin = st.MarkForeign, st.SkinActionButton
+	local marked, skinned
+	st.MarkForeign = function(self, frame)
+		order[#order + 1] = 'mark'
+		marked = frame
+		return mark(self, frame)
+	end
+	st.SkinActionButton = function(self, button, config, kind)
+		order[#order + 1] = 'skin:' .. tostring(kind)
+		skinned = button
+	end
+	local button = CreateFrame('Button', 'LootButton1', UIParent)
+	button:SetID(1)
+	button.icon = button:CreateTexture(nil, 'BACKGROUND')
+	button.Count = button:CreateFontString(nil, 'OVERLAY')
+	_G.LootButton1Text = button:CreateFontString(nil, 'OVERLAY')
+	LT:SkinLootButton(button)
+	st.MarkForeign, st.SkinActionButton = mark, skin
+	eq(table.concat(order, ','), 'mark,skin:slot', 'marked, then drawn as a slot')
+	eq(marked, button, 'the button is the one marked')
+	eq(skinned, button, 'and drawn')
 end)

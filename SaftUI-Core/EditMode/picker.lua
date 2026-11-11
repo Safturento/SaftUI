@@ -195,7 +195,7 @@ end)
 
 EM:On('Enabled', function()
 	-- Styled here, not at file load: the theme and fonts come from the profile.
-	st:SetBackdrop(list, 'theme', 'solid', 'small')
+	st:SetBackdrop(list, 'theme', 'solid', 'tooltip')
 	text:SetFontObject(st:GetFont('pixel'))
 	elapsed = SCAN_INTERVAL
 	driver:RegisterEvent('MODIFIER_STATE_CHANGED')

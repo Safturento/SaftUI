@@ -22,10 +22,11 @@ end
 
 -- The kind of frame (st.THEME_KINDS) an element's Theme draws it as. Its bars
 -- (health, power, additional power, the castbar) are bars, like the unit frame
--- itself; everything else (the castbar's icon, the indicators) is small.
+-- itself; everything else (the castbar's icon, the indicators) is a control,
+-- which Thick and Thin draw as a small frame and Blizzard draws bare.
 local function ElementKind(element)
 	if element:IsObjectType('StatusBar') then return 'bar' end
-	return 'small'
+	return 'control'
 end
 
 -- Elements whose Theme draws their buttons or points, not the element: the

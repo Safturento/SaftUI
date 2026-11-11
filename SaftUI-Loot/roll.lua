@@ -137,14 +137,22 @@ function LT:UpdateRollFrame(frame)
 	frame.Name:SetPoint('RIGHT', skin.timerText, 'LEFT', -5, 0)
 
 	-- st:SetBackdrop writes onto the frame it's given, so the icon's backdrop
-	-- hangs off a SaftUI frame laid over the icon frame instead. Same frame
-	-- level as the icon frame, so the backdrop sits one below it, as before.
+	-- hangs off a SaftUI frame laid over the icon frame instead. The box is one
+	-- level over the icon frame, which holds Blizzard's icon, so the ring the
+	-- Blizzard theme draws as a texture of the box lies over the icon, where
+	-- at the same level their order would be undefined. (The frame's count,
+	-- which the ring would otherwise cover, is killed above.) The backdrop
+	-- sits one below the icon frame, as before, under the icon.
+	local iconLevel = frame.IconFrame:GetFrameLevel()
 	if not skin.iconBox then
 		skin.iconBox = st:CreateFrame('frame', nil, frame.IconFrame)
 		skin.iconBox:SetAllPoints(frame.IconFrame)
-		skin.iconBox:SetFrameLevel(frame.IconFrame:GetFrameLevel())
+		skin.iconBox:SetFrameLevel(iconLevel + 1)
 	end
-	st:SetBackdrop(skin.iconBox, config.theme, config.background, 'small')
+	st:SetBackdrop(skin.iconBox, config.theme, config.background, 'slot')
+	if skin.iconBox.backdrop then
+		skin.iconBox.backdrop:SetFrameLevel(max(0, iconLevel - 1))
+	end
 	frame.IconFrame.Count:SetFontObject(st:GetFont(config.font))
 	frame.IconFrame:SetSize(config.height, config.height)
 
@@ -255,7 +263,9 @@ local function CreateBar(parent)
 
 	bar.IconFrame = st:CreateFrame('frame', nil, bar)
 	bar.IconFrame:SetPoint('LEFT', bar)
-	bar.Icon = bar.IconFrame:CreateTexture(nil, 'ARTWORK')
+	-- In BORDER, under the ring the Blizzard theme draws over it (a texture of
+	-- the frame, in ARTWORK).
+	bar.Icon = bar.IconFrame:CreateTexture(nil, 'BORDER')
 	st:SkinIcon(bar.Icon, nil, bar.IconFrame)
 
 	bar.InfoFrame = st:CreateFrame('frame', nil, bar)
@@ -344,7 +354,7 @@ local function ApplyBarConfig(bar, config)
 
 	bar:SetSize(config.width, config.height)
 	bar.IconFrame:SetSize(config.height, config.height)
-	st:SetBackdrop(bar.IconFrame, config.theme, config.background, 'small')
+	st:SetBackdrop(bar.IconFrame, config.theme, config.background, 'slot')
 	st:SetBackdrop(bar.InfoFrame, config.theme, config.background, 'bar')
 
 	bar.Timer:ClearAllPoints()

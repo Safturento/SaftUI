@@ -5,7 +5,8 @@
 --     place, with its item, timer, counts and tooltip;
 --   - your choice's button is lit (Buttons > Blue) and the others dimmed, a
 --     label names it, and the bar is drawn as the previews are (body as a bar,
---     icon and buttons as small frames), its lit border kept through a recolor;
+--     icon as a slot, the lit button as a small frame), its lit border kept
+--     through a recolor;
 --   - nothing on a held bar takes a click;
 --   - its counts follow loot history updates, and a main spec Need held after
 --     its dice animation keeps its drop and its time;
@@ -520,7 +521,7 @@ test("your choice is lit and the others dimmed, a label names it, and its button
 	eq(bar.Choice:GetText(), 'Greed', 'naming your choice')
 
 	eq(drawn(bar.InfoFrame), 'theme,solid,bar', "the body: the Rolls Theme and Background, as a bar")
-	eq(drawn(bar.IconFrame), 'theme,solid,small', 'the icon, as a small frame')
+	eq(drawn(bar.IconFrame), 'theme,solid,slot', 'the icon, as a slot')
 	eq(drawn(lit.Icon), 'theme,solid,small', 'the lit button, as a small frame')
 	eq(T.around(lit.Icon.backdrop, lit), '0,0,0,0', "its border lies on the button's edges, the art inside it")
 	eq(bar:GetFrameStrata(), frame:GetFrameStrata(), "at the strata Blizzard's bar had")

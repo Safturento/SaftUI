@@ -2,8 +2,9 @@
 --   - every unit's and element's Theme and Background default draws exactly
 --     what its template default drew before themes;
 --   - each part of a unit frame draws as its kind: the unit frame and its bars
---     as bars, the aura buttons as auras, and the castbar's icon, the class
---     power points and the indicators as small;
+--     as bars, the aura buttons as auras, the castbar's icon and the
+--     indicators as controls (bare under Blizzard), and the class power points
+--     as small;
 --   - a config update draws no backdrop on the aura and class power areas
 --     (their buttons and points are drawn), so nothing of SaftUI's is anchored
 --     to Blizzard's aura container (.agents/taint.md, rule 11);
@@ -212,7 +213,7 @@ end)
 
 ------------------------------------------------------------------ kinds
 
-test('each part of a unit frame draws as its kind: the frame and its bars as bars, aura buttons as auras, the rest small', function()
+test('each part of a unit frame draws as its kind: the frame and its bars as bars, aura buttons as auras, the rest controls or small', function()
 	local player = P.player
 	player.additionalpower.enable = true
 	player.castbar.icon.enable = true
@@ -228,14 +229,14 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 	eq(drawn(frame.Power), 'theme,theme,bar', 'power: a bar')
 	eq(drawn(frame.AdditionalPower), 'theme,solid,bar', 'additional power: a bar')
 	eq(drawn(frame.Castbar), 'theme,theme,bar', 'the castbar: a bar')
-	eq(drawn(frame.Castbar.Icon), 'theme,solid,small', "the castbar's icon: small")
+	eq(drawn(frame.Castbar.Icon), 'theme,solid,control', "the castbar's icon: a control")
 	for i = 1, 10 do
 		eq(drawn(frame.ClassPower[i]), 'theme,theme,small', 'class power point ' .. i .. ': small')
 	end
 	eq(drawn(frame.ClassPower), nil, 'the class power row itself is not drawn')
 	eq(looks(frame.ClassPower), 'bare', 'and shows nothing')
-	eq(drawn(frame.GroupRoleIndicator), 'thin,theme,small', 'an indicator: small')
-	eq(drawn(frame.RaidRoleIndicator), 'none,theme,small', 'another, None by default')
+	eq(drawn(frame.GroupRoleIndicator), 'thin,theme,control', 'an indicator: a control')
+	eq(drawn(frame.RaidRoleIndicator), 'none,theme,control', 'another, None by default')
 
 	-- Drawn as SaftUI's theme draws them.
 	local thick = st.config.profile.templates.thick
@@ -254,6 +255,45 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 	eq(drawn(button), 'theme,solid,aura', 'an aura button: an aura')
 
 	player.additionalpower.enable, player.castbar.icon.enable = false, false
+	player.grouproleindicator.enable, player.grouproleindicator.theme = false, 'none'
+end)
+
+test("the castbar's icon and the indicators are controls, bare under Blizzard", function()
+	local player = P.player
+	player.castbar.icon.enable = true
+	player.grouproleindicator.enable = true
+	player.grouproleindicator.theme = 'theme'
+	local frame = make_unit_frame('SaftUI_PlayerControls', 'player', { 'Health', 'Castbar', 'GroupRoleIndicator' })
+	UF:UpdateUnitFrame(frame)
+	local parts = { icon = frame.Castbar.Icon, indicator = frame.GroupRoleIndicator }
+
+	for name, part in pairs(parts) do
+		eq(drawn(part):match('[^,]*$'), 'control', name .. ': a control')
+		check(looks(part) ~= 'bare', name .. ': drawn as a small frame under Thick, as before')
+	end
+
+	st.config.profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	for name, part in pairs(parts) do
+		eq(looks(part), 'bare', name .. ': bare under Blizzard')
+		local art = st.ThemeArt.Get(part.backdrop)
+		local pieces = 0
+		for _, set in ipairs({ art and art.pieces or {}, art and art.over or {} }) do
+			for _, piece in pairs(set) do
+				if piece:IsShown() then pieces = pieces + 1 end
+			end
+		end
+		eq(pieces, 0, name .. ': no art shown')
+	end
+	-- Its bars still draw as bars.
+	eq(drawn(frame.Health), 'theme,theme,bar', 'health: still a bar')
+
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	for name, part in pairs(parts) do
+		check(looks(part) ~= 'bare', name .. ': drawn again under Thick')
+	end
+	player.castbar.icon.enable = false
 	player.grouproleindicator.enable, player.grouproleindicator.theme = false, 'none'
 end)
 
@@ -326,7 +366,7 @@ local function override(unit)
 end
 
 local EXPECTED_DRAWS = {
-	frame = 'thin,transparent,bar', Health = 'thick,solid,bar', Power = 'thin,theme,bar', GroupRoleIndicator = 'thick,transparent,small',
+	frame = 'thin,transparent,bar', Health = 'thick,solid,bar', Power = 'thin,theme,bar', GroupRoleIndicator = 'thick,transparent,control',
 }
 
 test('a boss or party preview draws like its real frame', function()

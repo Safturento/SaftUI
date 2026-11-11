@@ -129,7 +129,7 @@ test('the pieces come from the side table', function()
 		if child.backdrop then found = child end
 	end
 	check(found, 'a SaftUI child of the icon frame holds the backdrop')
-	eq(found:GetFrameLevel(), frame.IconFrame:GetFrameLevel(), 'same level as the icon frame')
+	eq(found:GetFrameLevel(), frame.IconFrame:GetFrameLevel() + 1, "one level over the icon frame, so the Blizzard theme's ring lies over the icon")
 	eq(found.backdrop:GetFrameLevel(), frame.IconFrame:GetFrameLevel() - 1, 'backdrop one below the icon frame')
 
 	local config = LT.config.roll

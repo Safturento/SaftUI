@@ -368,7 +368,7 @@ test('a mover keeps its color through a recolor', function()
 	end
 	local plain, picked = register('theme_plain'), register('theme_picked')
 	EM:Select(picked)
-	eq(drawn(plain.overlay), 'theme,solid,small', "the overlay: SaftUI's theme, Solid")
+	eq(drawn(plain.overlay), 'theme,solid,control', "the overlay: SaftUI's theme, Solid, a control")
 	local blue = text(st.config.profile.colors.button.blue:GetRGB())
 
 	local function check_colors(when)

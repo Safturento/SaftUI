@@ -24,6 +24,8 @@ function LT:SkinLootButton(button)
 	button.icon:ClearAllPoints()
 	button.icon:SetPoint('LEFT')
 	button.icon:SetSize(self.config.popup.button_height, self.config.popup.button_height)
+	-- Blizzard's button: the Blizzard theme makes none of its art on it.
+	st:MarkForeign(button)
 	st:SkinActionButton(button, self.config.popup, 'slot')
 
 	if _G[button:GetName()..'IconQuestTexture'] then

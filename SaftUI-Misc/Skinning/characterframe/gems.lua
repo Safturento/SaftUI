@@ -18,11 +18,13 @@ function CF:CreateSlotGems(equipSlot, position)
 	for i=1, 4 do
 		local gemSlot = st:CreateFrame('frame', nil, gems)
 		gems[i] = gemSlot
-		st:SetBackdrop(gemSlot, 'theme', 'solid', 'small')
+		st:SetBackdrop(gemSlot, 'theme', 'solid', 'slot')
 		gemSlot:SetSize(20, 20)
 		gemSlot:Hide()
 
-		gemSlot.icon = gemSlot:CreateTexture(nil, 'OVERLAY')
+		-- In BORDER, as an item button's icon is: the Blizzard theme's ring is a
+		-- texture of the socket in ARTWORK, over it.
+		gemSlot.icon = gemSlot:CreateTexture(nil, 'BORDER')
 		st:SkinIcon(gemSlot.icon)
 		gemSlot.icon:SetAllPoints()
 

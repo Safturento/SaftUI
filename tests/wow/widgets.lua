@@ -773,6 +773,9 @@ end
 
 function Frame.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
 function Frame.GetAlpha(self, s) return s.alpha end
+-- Ignoring the parent's alpha: off until set. Only remembered.
+function Frame.SetIgnoreParentAlpha(self, s, ignore) s.ignore_parent_alpha = ignore and true or false end
+function Frame.IsIgnoringParentAlpha(self, s) return s.ignore_parent_alpha == true end
 function Frame.GetEffectiveAlpha(self, s)
 	local alpha, parent = s.alpha, s.parent
 	while parent do

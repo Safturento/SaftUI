@@ -51,6 +51,7 @@ local PUSHED_ALPHA = 0.6
 local ALERT_ALPHA = 0.5
 
 local buttons = {} -- Blizzard's micro buttons, in Blizzard's order
+local arts = setmetatable({}, { __mode = 'k' }) -- button -> whether its art is Blizzard's (StyleArt)
 local skins = setmetatable({}, { __mode = 'k' }) -- button -> SaftUI backdrop
 local holders = setmetatable({}, { __mode = 'k' }) -- button -> SaftUI holder in the bar
 
@@ -74,10 +75,76 @@ local function PlaceIcon(texture, button, width)
     texture:SetSize(ICON_WIDTH, ICON_HEIGHT)
 end
 
+-- Puts a button's art in the look it's drawn in: under Blizzard, the template's
+-- own (Blizzard's art shown again, the pushed background and the alert in its
+-- atlases, the highlight its mouseover art), and under Thick and Thin today's
+-- fades and flat colors. Only widget methods on the template's regions, so
+-- nothing is written onto the button, and no Blizzard function is called.
+-- Blizzard only shows, hides and fades these regions and re-sets the
+-- highlight, so this runs when the look changes, from StyleTextures (every
+-- layout and so every theme switch passes it), not on every call.
+local function StyleArt(button)
+    local blizzard = st:IsBlizzardLook(THEME, BACKGROUND)
+    if arts[button] == blizzard then return end
+    arts[button] = blizzard
+    local micro = st.ThemeArt.Control('micro')
+
+    -- Blizzard only Show/Hides these, so alpha sticks
+    for _, region in pairs({ button.Background, button.Shadow, button.PushedShadow, button.MainMenuBarPerformanceBar }) do
+        region:SetAlpha(blizzard and 1 or 0)
+    end
+
+    -- Blizzard shows this while the button's frame is open. The template
+    -- centers it at the atlas's size (MainMenuBarMicroButtons.xml); flat, it's
+    -- a fill over the button.
+    local pushed = button.PushedBackground
+    if pushed then
+        pushed:ClearAllPoints()
+        if blizzard then
+            pushed:SetAtlas(micro.pushedBackground, true)
+            pushed:SetPoint('CENTER')
+        else
+            local r, g, b = st.config.profile.colors.button.pushed:GetRGB()
+            pushed:SetColorTexture(r, g, b, PUSHED_ALPHA)
+            pushed:SetAllPoints(button)
+        end
+    end
+
+    -- The alert pulse (UIFrameFlash) and the journal's new-content notice only
+    -- show/hide and fade this, so what it shows sticks. The template has it
+    -- over the button's art (OVERLAY). Flat, behind the icon it lights up the
+    -- panel; over the portrait it has to stay on top to be seen.
+    local flash = button.FlashBorder
+    if flash then
+        if blizzard then
+            flash:SetAtlas(micro.flashBorder)
+            flash:SetDrawLayer('OVERLAY', 0)
+        else
+            local r, g, b = st.config.profile.colors.text.yellow:GetRGB()
+            flash:SetColorTexture(r, g, b, ALERT_ALPHA)
+            if not button.Portrait then
+                flash:SetDrawLayer('BACKGROUND', 1)
+            end
+        end
+    end
+
+    -- Blizzard sets the highlight itself (LoadMicroButtonTextures) and its
+    -- atlas swaps leave it be under Blizzard. After a switch to Blizzard it's
+    -- set once, to the mouseover art Blizzard gives it: a tint set under
+    -- Thick or Thin is still on it, and the character button has none of its
+    -- own. The call ends in the SetHighlightAtlas hook, which finds the look
+    -- already set.
+    if blizzard and button.textureName then
+        button:SetHighlightAtlas(micro.highlight:format(button.textureName), micro.highlightBlend)
+    end
+end
+
 -- Re-applies everything Blizzard resets: icon anchors (SetNormalAtlas and
 -- friends), the highlight (SetNormal/SetPushed swap its atlas, blend and
 -- alpha), and the portrait (Character's SetNormal/SetPushed re-anchor it).
 local function StyleTextures(button)
+    StyleArt(button)
+    local blizzard = st:IsBlizzardLook(THEME, BACKGROUND)
     local holder = holders[button]
     local width = holder and holder.width or BUTTON_HEIGHT
 
@@ -86,7 +153,8 @@ local function StyleTextures(button)
     PlaceIcon(button:GetDisabledTexture(), button, width)
     PlaceIcon(button.FlashContent, button, width)
 
-    local highlight = button:GetHighlightTexture()
+    -- Under Blizzard the highlight is Blizzard's, as it sets it.
+    local highlight = not blizzard and button:GetHighlightTexture()
     if highlight then
         local r, g, b = st.config.profile.colors.button.hover:GetRGB()
         highlight:SetColorTexture(r, g, b, HOVER_ALPHA)
@@ -152,39 +220,17 @@ end
 local function SkinButton(button)
     CreateHolder(button)
 
-    -- The button's panel, a small frame: made here, where its level is read
-    -- safely (UpdateSkinLevel), and drawn with st:SetBackdropIn, which keeps it
-    -- the theme's border outside the button through a theme switch.
+    -- The button's panel, a control: a small frame under Thick and Thin, and
+    -- nothing under Blizzard, whose micro button art (StyleArt) is the
+    -- button's own. Made here, where its level is read safely
+    -- (UpdateSkinLevel), and drawn with st:SetBackdropIn, which keeps it the
+    -- theme's border outside the button through a theme switch.
     local skin = st:CreateFrame('Frame', nil, button)
     -- Blizzard halves a disabled button's alpha; dim the icon, not the panel
     skin:SetIgnoreParentAlpha(true)
     skins[button] = skin
     UpdateSkinLevel(button)
-    st:SetBackdropIn(skins, button, THEME, BACKGROUND, 'small')
-
-    -- Blizzard only Show/Hides these, so alpha 0 sticks
-    for _, region in pairs({ button.Background, button.Shadow, button.PushedShadow, button.MainMenuBarPerformanceBar }) do
-        region:SetAlpha(0)
-    end
-
-    -- Blizzard shows this while the button's frame is open; reuse it as a flat fill
-    if button.PushedBackground then
-        local r, g, b = st.config.profile.colors.button.pushed:GetRGB()
-        button.PushedBackground:SetColorTexture(r, g, b, PUSHED_ALPHA)
-        button.PushedBackground:ClearAllPoints()
-        button.PushedBackground:SetAllPoints(button)
-    end
-
-    -- The alert pulse (UIFrameFlash) and the journal's new-content notice only
-    -- show/hide and fade this, so a flat color sticks. Behind the icon it lights
-    -- up the panel; over the portrait it has to stay on top to be seen.
-    if button.FlashBorder then
-        local r, g, b = st.config.profile.colors.text.yellow:GetRGB()
-        button.FlashBorder:SetColorTexture(r, g, b, ALERT_ALPHA)
-        if not button.Portrait then
-            button.FlashBorder:SetDrawLayer('BACKGROUND', 1)
-        end
-    end
+    st:SetBackdropIn(skins, button, THEME, BACKGROUND, 'control')
 
     -- Notification pip, a badge on the top right corner instead of a 21px
     -- diamond over the top edge
@@ -216,8 +262,10 @@ local function SkinButton(button)
     hooksecurefunc(button, 'SetHighlightAtlas', StyleTextures)
 
     -- Blizzard hides the icon on hover because its mouseover art redraws it;
-    -- our highlight is a tint, so keep the icon.
+    -- our highlight is a tint, so keep the icon (Blizzard's own art stays so
+    -- under Blizzard).
     button:HookScript('OnEnter', function(self)
+        if st:IsBlizzardLook(THEME, BACKGROUND) then return end
         local normal = self:GetNormalTexture()
         if normal then normal:SetAlpha(1) end
     end)

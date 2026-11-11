@@ -247,7 +247,7 @@ local function DrawEntry(item, info, config)
 		ColorMount(item)
 	else
 		st:SetBackdrop(item, config.theme, config.background, 'panel')
-		st:SetBackdrop(item.icon, config.theme, config.background, 'small')
+		st:SetBackdrop(item.icon, config.theme, config.background, 'slot')
 	end
 end
 
@@ -643,14 +643,20 @@ function LT:UpdateLootFeedConfig()
 		item.text = item:CreateFontString(nil, 'OVERLAY')
 		item.rightText = item:CreateFontString(nil, 'OVERLAY')
 		item.icon = item:CreateTexture(nil, 'OVERLAY', nil, 1)
-		item.count = item:CreateFontString(nil, 'OVERLAY')
+		-- The icon is a texture, so the Blizzard theme draws its ring on a frame
+		-- one level over the entry, over the icon. The count goes on a frame
+		-- over that one, so the ring lies under it.
+		local over = CreateFrame('Frame', nil, item)
+		over:SetAllPoints(item)
+		over:SetFrameLevel(item:GetFrameLevel() + 2)
+		item.count = over:CreateFontString(nil, 'OVERLAY')
 
 		-- XP and reputation progress, styled like the roll frame's timer bar.
 		item.progressBar = CreateFrame('StatusBar', nil, item)
 		item.progressBar:SetStatusBarTexture(st.BLANK_TEX)
 		item.progressBar:Hide()
 
-		st:SetBackdrop(item.icon, config.theme, config.background, 'small')
+		st:SetBackdrop(item.icon, config.theme, config.background, 'slot')
 
 		item.UpdateTooltip = BuildTooltip
 		item:SetScript("OnEnter", ShowTooltip)
@@ -708,7 +714,7 @@ function LT:UpdateLootFeedConfig()
 		-- the icon's border, which st:SetBackdrop draws outside the icon (2px for
 		-- Thick, 1px for Thin, none for None), so start right after it and run to
 		-- the entry's right edge.
-		local iconBorder = st:ThemeInset(config.theme, config.background, 'small')
+		local iconBorder = st:ThemeInset(config.theme, config.background, 'slot')
 		item.progressBar:ClearAllPoints()
 		item.progressBar:SetPoint('BOTTOMLEFT', item.icon, 'BOTTOMRIGHT', iconBorder, 0)
 		item.progressBar:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 0, 0)
@@ -727,10 +733,10 @@ function LT:UpdateLootFeedConfig()
 	end
 
 	self.feed.filterButton.text:SetFontObject(font_obj)
-	st:SetBackdrop(self.feed.filterButton, config.theme, config.background, 'small')
+	st:SkinButton(self.feed.filterButton, config.theme, config.background)
 
 	self.feed.reset_button.text:SetFontObject(font_obj)
-	st:SetBackdrop(self.feed.reset_button, config.theme, config.background, 'small')
+	st:SkinButton(self.feed.reset_button, config.theme, config.background)
 	self.feed.reset_button:ClearAllPoints()
 	self.feed.reset_button:SetPoint('BOTTOM', self.feed.filterButton, 'TOP', 0, config.spacing)
 end
