@@ -899,11 +899,34 @@ function Frame.RegisterEvent(self, s, event)
 		eventFrames[event] = eventFrames[event] or {}
 		table.insert(eventFrames[event], self)
 	end
+	-- Registered for every unit again: warcraft.wiki.gg's Frame:RegisterUnitEvent
+	-- has RegisterEvent on the same event drop its units (not checked in game;
+	-- nothing in SaftUI relies on it).
+	if s.unit_events then s.unit_events[event] = nil end
+	return true
+end
+-- RegisterUnitEvent(event, unit, ...) (SimpleFrameAPIDocumentation.lua, both
+-- clients: the units a stride of unit tokens, at least one): the frame hears
+-- the event only when its first payload argument is one of them (the unit
+-- the event is about).
+function Frame.RegisterUnitEvent(self, s, event, ...)
+	if type(event) ~= 'string' then usage(s, 'RegisterUnitEvent(): event must be a string') end
+	local units = {}
+	for i = 1, select('#', ...) do
+		local unit = select(i, ...)
+		if type(unit) ~= 'string' then usage(s, 'RegisterUnitEvent(): each unit must be a string') end
+		units[unit] = true
+	end
+	if next(units) == nil then usage(s, 'RegisterUnitEvent(): at least one unit') end
+	Frame.RegisterEvent(self, s, event)
+	s.unit_events = s.unit_events or {}
+	s.unit_events[event] = units
 	return true
 end
 function Frame.UnregisterEvent(self, s, event)
 	if not s.events[event] then return end
 	s.events[event] = nil
+	if s.unit_events then s.unit_events[event] = nil end
 	for i, frame in ipairs(eventFrames[event]) do
 		if frame == self then table.remove(eventFrames[event], i) break end
 	end
@@ -1324,12 +1347,17 @@ function stub.fire_script(widget, script, ...)
 end
 
 -- Fires a game event: every frame registered for it gets OnEvent(event, ...),
--- in registration order. Shell modules hear it through the shell's AceEvent.
+-- in registration order; a frame registered for it with RegisterUnitEvent
+-- only when the first argument is one of its units. Shell modules hear it
+-- through the shell's AceEvent.
 function stub.fire_event(event, ...)
 	local frames = {}
 	for i, frame in ipairs(eventFrames[event] or {}) do frames[i] = frame end
+	local unit = ...
 	for _, frame in ipairs(frames) do
-		if states[frame].events[event] then
+		local s = states[frame]
+		local units = s.unit_events and s.unit_events[event]
+		if s.events[event] and (not units or units[unit]) then
 			run_script(frame, 'OnEvent', event, ...)
 		end
 	end

@@ -331,6 +331,8 @@ local auras = {
 local buffs = st.tablemerge(auras, {
     enable = false,
     onlyShowPlayer = false,
+    -- Only buffs I can purge (purge.lua).
+    purgeable = false,
     enemy = {
         colorStealable = true,
     },

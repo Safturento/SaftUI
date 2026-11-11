@@ -13,4 +13,5 @@ config\load.xml
 constructors.lua
 updaters.lua
 tags.lua
+purge.lua
 elements\elements.xml
