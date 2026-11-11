@@ -827,6 +827,52 @@ test("an item's tooltip opens beside the window, out of it, level with the icon'
 	stub.fire_script(icon, 'OnEnter')
 	eq(GameTooltip:GetLeft(), window:GetRight() + 4, 'neither fits: the right, which has more room (the game keeps it on the screen)')
 	stub.fire_script(icon, 'OnLeave')
+
+	-- A tooltip at a scale of its own (a tooltip addon's): its edges, in
+	-- UIParent's units, land in the same places, and its width on the screen
+	-- is its scaled one. Whole tooltip units: within half of one.
+	GameTooltip:SetScale(0.8)
+	local function ui(v) return v * GameTooltip:GetEffectiveScale() / UIParent:GetEffectiveScale() end
+	local function near(got, want, what)
+		check(math.abs(got - want) <= 0.5, what .. ': expected ' .. tostring(want) .. ', got ' .. tostring(got))
+	end
+	GameTooltip:SetSize(300, 200)
+	window:ClearAllPoints()
+	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	stub.fire_script(icon, 'OnEnter')
+	near(ui(GameTooltip:GetLeft()), window:GetRight() + 4, 'scaled, on the right: 4 right of the window')
+	near(ui(GameTooltip:GetTop()), icon:GetTop(), "scaled: level with the icon's top")
+	stub.fire_script(icon, 'OnLeave')
+	window:ClearAllPoints()
+	window:SetPoint('RIGHT', UIParent, 'RIGHT', -20, 0)
+	stub.fire_script(icon, 'OnEnter')
+	near(ui(GameTooltip:GetRight()), window:GetLeft() - 4, 'scaled, on the left: 4 left of the window')
+	near(ui(GameTooltip:GetTop()), icon:GetTop(), "scaled: level with the icon's top")
+	stub.fire_script(icon, 'OnLeave')
+	-- 340 wide at 0.8 is 272 on the screen: it fits a room of 300 on the
+	-- right, though 340 wouldn't and the left has more room.
+	GameTooltip:SetSize(340, 200)
+	window:ClearAllPoints()
+	window:SetPoint('RIGHT', UIParent, 'RIGHT', -300, 0)
+	check(window:GetLeft() > 300, 'more room on the left')
+	stub.fire_script(icon, 'OnEnter')
+	near(ui(GameTooltip:GetLeft()), window:GetRight() + 4, 'its scaled width fits on the right')
+	stub.fire_script(icon, 'OnLeave')
+	GameTooltip:SetScale(1)
+
+	-- A width it can't read (a secret value): beside the icon, not wherever
+	-- the last tooltip was. Driven by hand: GetWidth on this one tooltip, and
+	-- issecretvalue, give a stand-in secret.
+	local secret = newproxy(true)
+	local realSecret = issecretvalue
+	issecretvalue = function(v) return v == secret end
+	GameTooltip.GetWidth = function() return secret end
+	stub.fire_script(icon, 'OnEnter')
+	GameTooltip.GetWidth, issecretvalue = nil, realSecret
+	eq(GameTooltip:GetNumPoints(), 1, 'one anchor')
+	local point, rel, relPoint, x, y = GameTooltip:GetPoint(1)
+	check(point == 'TOPLEFT' and rel == icon and relPoint == 'TOPRIGHT' and x == 4 and y == 0, "at the icon's top right, 4 out")
+	stub.fire_script(icon, 'OnLeave')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
@@ -1088,25 +1134,63 @@ test('each pane keeps its scroll when the tab is drawn again; another category\'
 	w = tab()
 	eq(INV.categoryEditor.selected, 'Consumables', 'restored and selected')
 	check(in_view(w, row_of(w, 'Consumables')), 'its row shows')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
 
-	-- A drag that moves the selected row out of view brings it back: the list
-	-- scrolled so Toys is its top row, the row above it dropped below it.
-	click(row_of(w, 'Toys').frame)
-	w = tab()
+test("another row dragged past the selected one leaves the list where it was dropped; the selected row's own drag, and Reset all, bring it into view", function()
+	world()
+	local selected = INV:GetCategoryList()[25].id
+	INV.categoryEditor.selected = selected
+	open()
+	local w = tab()
+	check(in_view(w, row_of(w, selected)), 'opened with the selected row, 25, in view')
+
+	-- From the list's bottom, a row under the selected one is dragged to the
+	-- top (the wheel takes the list there mid-drag) and dropped on row 2.
+	wheel(w.listScroll, -1, 50)
+	local moving = w.rows[#w.rows - 2]
+	check(in_view(w, moving), 'a row near the bottom shows')
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(moving.handle, 'OnMouseDown', 'LeftButton')
 	wheel(w.listScroll, 1, 50)
-	local place = INV:GetCategoryList().byId.Toys.place
-	-- Two turns down at most, then by hand to Toys' row exactly.
-	INV.categoryEditor.listOffset = (place - 1) * 22
-	OW:Render()
+	eq(w.listScroll:GetVerticalScroll(), 0, 'the list at its top')
+	cursor_on(w.rows[2].frame, false)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(moving.handle, 'OnMouseUp', 'LeftButton')
+	eq(INV:GetCategoryList().byId[moving.id].place, 2, 'dropped at row 2')
+	eq(INV:GetCategoryList().byId[selected].place, 26, 'the selected one moved down a place')
 	w = tab()
-	eq(row_of(w, 'Toys').frame:GetTop(), w.listScroll:GetTop(), 'Toys is the top row in view')
-	local above = w.rows[place - 1]
-	check(not in_view(w, above), 'the row above it is out of view')
-	drag(above.handle, row_of(w, 'Toys').frame, true)
-	eq(INV:GetCategoryList().byId.Toys.place, place - 1, 'Toys moved up a place')
+	eq(w.listScroll:GetVerticalScroll(), 0, 'the list stays where the drop was')
+	check(in_view(w, row_of(w, moving.id)), 'the dropped row stays in view')
+	check(not in_view(w, row_of(w, selected)), 'the selected row is left out of view')
+
+	-- The selected row's own drag, dropped on the last whole row's lower
+	-- half: it takes the next place, cut off at the view's bottom, and is
+	-- brought into view by the least.
+	local last
+	for _, row in ipairs(w.rows) do
+		if in_view(w, row) then last = row end
+	end
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(row_of(w, selected).handle, 'OnMouseDown', 'LeftButton')
+	cursor_on(last.frame, true)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(row_of(w, selected).handle, 'OnMouseUp', 'LeftButton')
+	local place = INV:GetCategoryList().byId[selected].place
+	eq(w.rows[place - 1].id, last.id, 'just under the row it was dropped on')
 	w = tab()
-	check(in_view(w, row_of(w, 'Toys')), 'and is brought back into view')
-	eq(row_of(w, 'Toys').frame:GetTop(), w.listScroll:GetTop(), 'scrolled the least: one row up')
+	check(in_view(w, row_of(w, selected)), 'and shown whole')
+	eq(row_of(w, selected).frame:GetBottom(), w.listScroll:GetBottom(), 'scrolled the least: at the bottom of the view')
+
+	-- Reset all: the selected default back in its shipped place, shown.
+	wheel(w.listScroll, 1, 50)
+	check(not in_view(w, row_of(w, selected)), 'scrolled away from it: cut off at the bottom')
+	click(w.resetButton)
+	yes()
+	w = tab()
+	eq(INV.categoryEditor.selected, selected, 'still selected')
+	check(in_view(w, row_of(w, selected)), 'Reset all shows the selected row')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
@@ -1142,34 +1226,44 @@ test('a drag with the list scrolled: the line and the drop follow the scroll, th
 	eq(w.insert:GetTop(), target.frame:GetTop() + 1, "the line on the row now under the cursor")
 
 	-- Held near the bottom edge it scrolls down, near the top up; not between.
-	-- 264 (12 rows) a second: 33 in an eighth, 16.5 in a sixteenth.
+	-- The band is 6 inside the edge and a row (22) outside it, so resting on
+	-- the first or last row in view doesn't scroll. 264 (12 rows) a second:
+	-- 33 in an eighth, 16.5 in a sixteenth.
 	local scroll = w.listScroll
 	local scale = scroll:GetEffectiveScale()
 	local function cursor_at(x, y) stub.cursor_x, stub.cursor_y = x * scale, y * scale end
 	local x = scroll:GetLeft() + 50
-	cursor_at(x, scroll:GetBottom() + 5)
+	for _, inside in ipairs({ 7, 11, 16 }) do
+		cursor_at(x, scroll:GetBottom() + inside)
+		drag_frame(w, 0.125)
+		eq(scroll:GetVerticalScroll(), 132, 'on the last row in view, ' .. inside .. ' above the edge: still')
+		cursor_at(x, scroll:GetTop() - inside)
+		drag_frame(w, 0.125)
+		eq(scroll:GetVerticalScroll(), 132, 'on the first row in view, ' .. inside .. ' under the edge: still')
+	end
+	cursor_at(x, scroll:GetBottom() + 3)
 	drag_frame(w, 0.125)
 	eq(scroll:GetVerticalScroll(), 132 + 33, 'near the bottom: down, 33 in an eighth of a second')
 	drag_frame(w, 0.0625)
 	eq(scroll:GetVerticalScroll(), 132 + 33 + 16, 'a sixteenth: 16, in whole units')
 	drag_frame(w, 0.0625)
 	eq(scroll:GetVerticalScroll(), 132 + 66, 'and the half left over goes into the next')
-	cursor_at(x, scroll:GetBottom() - 10)
+	cursor_at(x, scroll:GetBottom() - 20)
 	drag_frame(w, 0.125)
-	eq(scroll:GetVerticalScroll(), 132 + 99, 'a little past the edge too')
+	eq(scroll:GetVerticalScroll(), 132 + 99, 'up to a row past the edge too')
 	check(not w.insert:IsShown(), 'out of the view: no line')
-	cursor_at(x, scroll:GetTop() - 5)
+	cursor_at(x, scroll:GetTop() - 3)
 	drag_frame(w, 0.125)
 	eq(scroll:GetVerticalScroll(), 132 + 66, 'near the top: up')
 	cursor_at(x, (scroll:GetTop() + scroll:GetBottom()) / 2)
 	drag_frame(w, 0.125)
 	eq(scroll:GetVerticalScroll(), 132 + 66, 'in the middle: still')
-	cursor_at(scroll:GetRight() + 40, scroll:GetBottom() + 5)
+	cursor_at(scroll:GetRight() + 40, scroll:GetBottom() + 3)
 	drag_frame(w, 0.125)
 	eq(scroll:GetVerticalScroll(), 132 + 66, 'beside the list: still')
-	cursor_at(x, scroll:GetTop() + 40)
+	cursor_at(x, scroll:GetTop() + 25)
 	drag_frame(w, 0.125)
-	eq(scroll:GetVerticalScroll(), 132 + 66, 'well above it: still')
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'more than a row above it: still')
 
 	-- A row scrolled out of view isn't under the cursor where it would be.
 	local hidden = w.rows[2]

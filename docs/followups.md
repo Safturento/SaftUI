@@ -334,7 +334,8 @@ What the plan's list doesn't cover:
 9. **A placeholder tooltip.** A tooltip that says "Retrieving item information" would be cached as the item's real text, and the item filed by it for good. Confirm what `C_TooltipInfo.GetBagItem` returns for an item that isn't cached yet (nil, an empty `lines`, or placeholder lines), on both clients, and that the scanner treats it as not arrived.
 10. **The Categories tab:**
     - the drag ghost and the insertion line, in the list and in the rule editor;
-    - dragging in the list with it scrolled (it and the editor scroll on their own since 2026-11-11): the wheel scrolls it mid-drag, holding the row near its top or bottom edge scrolls it, and the line and the drop land on the row under the cursor;
+    - dragging in the list with it scrolled (it and the editor scroll on their own since 2026-11-11): the wheel scrolls it mid-drag, holding the row near its top or bottom edge scrolls it (resting on the first or last row in view doesn't), and the line and the drop land on the row under the cursor;
+    - with Shift held, or `alwaysCompareItems` on, hovering an equippable item in Pinned items or Caught now (legacy gear in Grays/Auto Vendor): Blizzard's comparison tooltips open on the side of the item tooltip with more screen room (`TooltipComparisonManager:AnchorShoppingTooltips`), which for a centred `/sui` is over the window, covering the editor. SaftUI only places GameTooltip itself; the comparison tooltips are Blizzard's and the public API can't move them, so note how much they cover and whether it matters;
     - icon borders under the item art in Pinned items and Caught now;
     - text at real font sizes: nothing clipped or overlapping in the rows or the editor (the tests lay it out at the default size only).
 11. **`SetBagItem` and `SetItemByID`** on both clients: the tooltip the tab's icons show (item tooltips are `GameTooltip`'s), and the slot's own hover.

@@ -44,8 +44,9 @@ local INV = st:GetModule('Inventory')
 	footer, so + New category and Reset all stay under it, right under the
 	last row when every row fits. Each keeps its scroll while the tab is drawn
 	again; the editor starts at its top for another category, and the list
-	brings the selected row into view when it changes (another selected, or
-	the one selected moved: + New category, Restore a default, a drag).
+	brings the selected row into view when another is selected (a click, +
+	New category, Restore a default), the selected one is dragged, or after
+	Reset all; never when another row dragged past it moves it.
 
 	  INV.categoryEditor.selected       the selected id, for the session. One
 	                                    that is gone (a delete, a profile
@@ -105,8 +106,11 @@ local FOOTER_HEIGHT = FOOTER_GAP + ROW_HEIGHT -- + New category and Reset all, u
 local LIST_BAR_GAP = 4 -- the list's scroll bar, between it and the divider
 local LIST_STEP = 3 * ROW_HEIGHT -- a turn of the wheel over the list
 local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows and the footer
-local EDGE = ROW_HEIGHT -- a drag held this near the list's top or bottom edge scrolls it,
-local EDGE_SPEED = 12 * ROW_HEIGHT -- this far a second
+-- A drag held near the list's top or bottom edge scrolls it: this far inside
+-- the edge (so resting on the first or last row in view doesn't), or up to a
+-- row outside it, this far a second.
+local EDGE_INSIDE, EDGE_OUTSIDE = 6, ROW_HEIGHT
+local EDGE_SPEED = 12 * ROW_HEIGHT
 local TIP_GAP = 4 -- an item tooltip from the window's edge
 local TINT_ALPHA, HOVER_ALPHA = 0.25, 0.1
 local ICON_SIZE, ICON_GAP = 30, 6
@@ -531,6 +535,7 @@ local function ResetAll(w)
 	if not w.row or w.drag then return end
 	W.Confirm("Reset all categories to SaftUI's defaults? Your own categories are deleted. Pinned and Protected items are kept.", function()
 		INV:ResetAllCategories()
+		INV.categoryEditor.reveal = true -- the selected row may be in another place now
 		Changed(w)
 	end)
 end
@@ -587,9 +592,10 @@ end
 
 ------------------------------------------------------------------ the tab: dragging a row
 
--- While a drag is held near the list's top or bottom edge (EDGE inside or
--- outside it, over the list's width), the list scrolls that way, EDGE_SPEED
--- a second, in whole units: carry keeps the part of a unit a short frame left.
+-- While a drag is held near the list's top or bottom edge (EDGE_INSIDE
+-- inside it, EDGE_OUTSIDE outside it, over the list's width), the list
+-- scrolls that way, EDGE_SPEED a second, in whole units: carry keeps the part
+-- of a unit a short frame left.
 local function EdgeScroll(w, elapsed)
 	local scroll = w.listScroll
 	local left, right, bottom, top = scroll:GetLeft(), scroll:GetRight(), scroll:GetBottom(), scroll:GetTop()
@@ -599,9 +605,9 @@ local function EdgeScroll(w, elapsed)
 		local scale = scroll:GetEffectiveScale()
 		x, y = x / scale, y / scale
 		if x >= left and x <= right then
-			if y > top - EDGE and y < top + EDGE then
+			if y > top - EDGE_INSIDE and y < top + EDGE_OUTSIDE then
 				direction = -1
-			elseif y < bottom + EDGE and y > bottom - EDGE then
+			elseif y < bottom + EDGE_INSIDE and y > bottom - EDGE_OUTSIDE then
 				direction = 1
 			end
 		end
@@ -659,12 +665,18 @@ function StartDrag(w, i)
 	if w.onChanged then w.onChanged(true, nil, true, w) end
 end
 
+-- The drop. A move of the selected category brings its row into view; a
+-- move of another, which may push the selected row out of view, leaves the
+-- list where the drop was.
 function EndDrag(w)
 	if not w.drag then return end
 	local id = w.drag.id
 	local place = DropSpot(w)
 	StopDrag(w)
-	if place and INV:MoveCategory(id, place) then Changed(w) end
+	if place and INV:MoveCategory(id, place) then
+		if id == INV.categoryEditor.selected then INV.categoryEditor.reveal = true end
+		Changed(w)
+	end
 end
 
 ------------------------------------------------------------------ the tab: laying it out
@@ -706,13 +718,14 @@ local function Layout(w)
 		x = x + button:GetWidth() + 12
 	end
 
-	-- The list brings the selected row into view when it changed: another
-	-- selected, or the selected one moved (or EditCategory asked for it).
-	-- A draw that changed neither (a bag update) leaves the list where it is.
+	-- The list brings the selected row into view when another is selected,
+	-- or when asked (state.reveal): the selected one dragged, Reset all,
+	-- EditCategory. A draw that did neither leaves the list where it is: a
+	-- bag update, or another row dragged past the selected one.
 	local state = INV.categoryEditor
 	w.reveal = nil
-	if state.reveal or state.shownId ~= selected or state.shownPlace ~= place then w.reveal = place end
-	state.reveal, state.shownId, state.shownPlace = false, selected, place
+	if state.reveal or state.shownId ~= selected then w.reveal = place end
+	state.reveal, state.shownId = false, selected
 	w.listBase = state.listOffset
 
 	w.body:Release()
@@ -851,16 +864,22 @@ end
 -- for it on the right (and the left has more). Placed in screen pixels from
 -- UIParent's corner, as the drag's ghost is, so the tooltip's own scale
 -- doesn't matter. Read once it's shown, when its size is its content's.
+-- When an edge or the width can't be read (a secret width), it goes at the
+-- icon's top right instead: an ANCHOR_NONE tooltip left unplaced would show
+-- at the last tooltip's anchors, anywhere.
 local function PlaceTip(icon)
 	local window = WindowOf(icon)
 	local left, right, top = window:GetLeft(), window:GetRight(), icon:GetTop()
 	local width, screen = GameTooltip:GetWidth(), UIParent:GetRight()
-	if not (left and right and top and screen) or issecretvalue(width) then return end
+	GameTooltip:ClearAllPoints()
+	if not (left and right and top and screen) or issecretvalue(width) then
+		GameTooltip:SetPoint('TOPLEFT', icon, 'TOPRIGHT', TIP_GAP, 0)
+		return
+	end
 	local ws, ts = window:GetEffectiveScale(), GameTooltip:GetEffectiveScale()
 	left, right, top, screen = left * ws, right * ws, top * icon:GetEffectiveScale(), screen * UIParent:GetEffectiveScale()
 	width = (width or 0) * ts
 	local gap = TIP_GAP * ws
-	GameTooltip:ClearAllPoints()
 	if right + gap + width <= screen or screen - right >= left then
 		GameTooltip:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', floor((right + gap) / ts + 0.5), floor(top / ts + 0.5))
 	else
