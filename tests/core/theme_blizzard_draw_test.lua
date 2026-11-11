@@ -102,6 +102,44 @@ local function nine(prefix)
 end
 local TOOLTIP, METAL = nine('Tooltip-NineSlice'), nine('UI-Frame-Metal')
 
+-- A button of SaftUI's laid out as Blizzard's templates lay one out (the same
+-- on both clients): its icon (the action button's in BACKGROUND, the item
+-- button's in BORDER), a font string (the action button's name in OVERLAY,
+-- the item button's count in ARTWORK at 0), and a cooldown, a child frame at
+-- the button's own level (the templates' useParentLevel).
+local function button(st, iconLayer, textLayer)
+	local b = st:CreateFrame('CheckButton', nil, UIParent)
+	b:SetSize(36, 36)
+	b:SetPoint('CENTER')
+	b.icon = b:CreateTexture(nil, iconLayer)
+	b.text = b:CreateFontString(nil, textLayer)
+	b.cooldown = CreateFrame('Frame', nil, b)
+	b.cooldown:SetFrameLevel(b:GetFrameLevel())
+	return b
+end
+
+-- Where a region draws among its frame's regions: its layer, then its sublevel.
+local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+local function depth(region)
+	local layer, sublevel = region:GetDrawLayer()
+	return LAYERS[layer] * 100 + (sublevel or 0)
+end
+
+-- Checks that a button of SaftUI's drawn as kind has its ring over its icon's
+-- edge and under its texts, cooldown and glows: a texture of the button's own,
+-- above the icon and below the font string, and no frame of the art's over the
+-- button, where it would sit at or above the cooldown.
+local function checkRingOnButton(st, owner, label)
+	local b = owner.backdrop
+	local ring = piece(st, b, 'Ring', 'over')
+	eq(ring and ring:GetParent(), owner, label .. ": the ring is a texture of the button's own")
+	if not ring then return end
+	check(depth(ring) > depth(owner.icon), label .. ': above the icon')
+	check(depth(ring) < depth(owner.text), label .. ': below its font strings')
+	eq(b:GetNumChildren(), 0, label .. ": no frame of the art's sits at or above the cooldown's level")
+	eq(T.around(ring, b), '0,0,0,0', label .. ': the ring covers the drawn frame')
+end
+
 local ACTION_ART = 'SlotArt=UI-HUD-ActionBar-IconFrame-Slot,SlotBackground=UI-HUD-ActionBar-IconFrame-Background'
 local ACTION_RING = 'Ring=UI-HUD-ActionBar-IconFrame'
 local SLOT_ART = 'SlotArt=bags-item-slot64'
@@ -110,8 +148,11 @@ local SLOT_RING = [[Ring=Interface\Buttons\UI-Quickslot2]]
 test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background at the Opacity', function()
 	local st = blizzard()
 	local f = frame(st)
-	st:SetBackdrop(f, 'theme', 'theme', 'tooltip')
+	-- Drawn Thick first, so it has Thick's lines for Blizzard to hide.
+	st:SetBackdrop(f, 'thick', 'theme', 'tooltip')
 	local b = f.backdrop
+	check(outerShown(b), "drawn Thick: Thick's lines show")
+	st:SetBackdrop(f, 'theme', 'theme', 'tooltip')
 
 	eq(T.art(b), TOOLTIP, 'the eight tooltip pieces')
 	eq(T.over(b), '', 'nothing over an icon')
@@ -179,6 +220,18 @@ test('bars and panels wear the tooltip border, a window the metal', function()
 	eq(fill(drawn.panel), '0.12,0.12,0.13,0.90', 'the panel turns grey')
 end)
 
+test("a frame drawn as a window, then as a tooltip: the metal's snapping doesn't stay", function()
+	local st = blizzard()
+	local f = frame(st)
+	st:SetBackdrop(f, 'theme', 'theme', 'window')
+	st:SetBackdrop(f, 'theme', 'theme', 'tooltip')
+	eq(T.art(f.backdrop), TOOLTIP, 'the tooltip border, on the same pieces')
+	eachPiece(st, f.backdrop, function(key, p)
+		eq(p:IsSnappingToPixelGrid(), true, key .. ': pixel snapping is back on')
+		eq((p:GetDrawLayer()), 'BORDER', key .. ": in the tooltip border's layer")
+	end)
+end)
+
 test("the metal's corners sit at each client's offsets", function()
 	local want = {
 		retail = { TopLeftCorner = '-8.00,16.00', TopRightCorner = '4.00,16.00', BottomLeftCorner = '-8.00,-3.00', BottomRightCorner = '4.00,-3.00' },
@@ -204,15 +257,13 @@ end)
 
 test("an action button: the ring over the icon's edge, the slot art behind", function()
 	local st = blizzard()
-	local f = frame(st)
+	local f = button(st, 'BACKGROUND', 'OVERLAY')
 	st:SetBackdrop(f, 'theme', 'theme', 'action')
 	local b = f.backdrop
 
 	eq(T.over(b), ACTION_RING, "Blizzard's ring over the icon's edge")
 	eq(T.art(b), ACTION_ART, 'the slot art behind the icon')
-	local ring = piece(st, b, 'Ring', 'over')
-	check(ring:GetParent():GetFrameLevel() > f:GetFrameLevel(), "the ring is above the button's icon")
-	eq(T.around(ring, b), '0,0,0,0', 'the ring covers the drawn frame')
+	checkRingOnButton(st, f, 'an action button')
 	for _, key in ipairs({ 'SlotBackground', 'SlotArt' }) do
 		local p = piece(st, b, key)
 		eq(p:GetParent(), b, key .. ' is on the drawn frame, behind the button')
@@ -228,15 +279,14 @@ end)
 
 test('a slot: the item ring and the empty slot\'s art', function()
 	local st = blizzard()
-	local f = frame(st)
+	local f = button(st, 'BORDER', 'ARTWORK')
 	st:SetBackdrop(f, 'theme', 'theme', 'slot')
 	local b = f.backdrop
 
 	eq(T.over(b), SLOT_RING, "the item button's ring over the icon's edge")
 	eq(T.art(b), SLOT_ART, "the empty slot's art behind it")
+	checkRingOnButton(st, f, 'a slot')
 	local ring = piece(st, b, 'Ring', 'over')
-	check(ring:GetParent():GetFrameLevel() > f:GetFrameLevel(), "the ring is above the button's icon")
-	eq(T.around(ring, b), '0,0,0,0', 'the ring covers the drawn frame')
 	-- Blizzard draws the 64px ring on a 37px button, centred 1px low: the
 	-- button's part of it is cut out, so it fits a slot of any size.
 	local function exact(...)
@@ -248,6 +298,82 @@ test('a slot: the item ring and the empty slot\'s art', function()
 	eq(exact(ring:GetTexCoord()), exact(l, t, l, bottom, r, t, r, bottom), "cut to the 37 of 64 the button covers")
 	eq(text(piece(st, b, 'SlotArt'):GetAlpha()), '0.90', "the slot art takes the look's alpha")
 	eq(fill(b), '0.00,0.00,0.00,0.00', 'the fill is clear')
+end)
+
+test("a ring for a frame that isn't SaftUI's, or a texture, is on a frame of SaftUI's over the drawn frame", function()
+	local st = blizzard()
+	-- Blizzard's button, drawn behind with st:SetBackdropIn: nothing of
+	-- SaftUI's goes on it, so the ring is on a frame of SaftUI's, a child of the
+	-- backdrop one level above the button.
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	for _, kind in ipairs({ 'action', 'slot' }) do
+		local owner = CreateFrame('CheckButton', nil, UIParent)
+		owner:SetSize(36, 36)
+		owner:SetPoint('CENTER')
+		locked(owner, 'Blizzard')
+		local b = st:SetBackdropIn(backdrops, owner, 'theme', 'theme', kind)
+		local ring = piece(st, b, 'Ring', 'over')
+		local holder = ring and ring:GetParent()
+		check(holder ~= nil and holder ~= owner, kind .. ": the ring isn't on Blizzard's button")
+		eq(holder and holder:GetParent(), b, kind .. ': it is on a child of the backdrop')
+		check(holder and holder:GetFrameLevel() > owner:GetFrameLevel(), kind .. ': one level above the button, over its icon')
+		eq(T.around(ring, b), '0,0,0,0', kind .. ': the ring covers the drawn frame')
+	end
+
+	-- An icon that's a texture (the options window's image): the ring follows
+	-- its backdrop, which shows and hides with it.
+	local holderFrame = CreateFrame('Frame', nil, UIParent)
+	holderFrame:SetSize(40, 40)
+	holderFrame:SetPoint('CENTER')
+	local image = holderFrame:CreateTexture(nil, 'ARTWORK')
+	image:SetAllPoints()
+	st:SetBackdrop(image, 'theme', 'theme', 'action')
+	local ring = piece(st, image.backdrop, 'Ring', 'over')
+	eq(ring and ring:GetParent():GetParent(), image.backdrop, "a texture's ring: on a child of its backdrop")
+	image.backdrop:Hide()
+	eq(ring and ring:IsVisible(), false, 'hidden with its backdrop')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a backdrop its caller anchored keeps its anchors through Thick, Blizzard and Thick, with art only under Blizzard', function()
+	local st = T.client('forever')
+	local profile = st.config.profile
+	-- An action button's backdrop, made to fill the button (the action bars),
+	-- and a window's, placed by its own code.
+	local a = button(st, 'BACKGROUND', 'OVERLAY')
+	st:SetBackdrop(a, 'theme', 'theme', 'action')
+	a.backdrop:ClearAllPoints()
+	a.backdrop:SetAllPoints(a)
+	local w = frame(st)
+	st:SetBackdrop(w, 'theme', 'theme', 'window')
+	w.backdrop:ClearAllPoints()
+	w.backdrop:SetPoint('TOPLEFT', w, 'TOPLEFT', -5, 30)
+	w.backdrop:SetPoint('BOTTOMRIGHT', w, 'BOTTOMRIGHT', 5, -5)
+	local before = { [a] = anchors(a.backdrop), [w] = anchors(w.backdrop) }
+
+	local function expect(name)
+		for f, label in pairs({ [a] = 'the action button', [w] = 'the window' }) do
+			local where = name .. ', ' .. label
+			eq(anchors(f.backdrop), before[f], where .. ': the anchors its caller set')
+			local art = T.art(f.backdrop) .. T.over(f.backdrop)
+			if name == 'blizzard' then
+				check(art ~= '', where .. ': its art')
+			else
+				eq(art, '', where .. ': no art')
+			end
+			eq(outerShown(f.backdrop), name == 'thick', where .. ": Thick's lines only under Thick")
+		end
+	end
+	expect('thick')
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	expect('blizzard')
+	eq(T.art(w.backdrop), METAL, 'the window wears the metal where it is')
+	eq(T.over(a.backdrop), ACTION_RING, 'the action button its ring')
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	expect('thick')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('an aura has no art; small is one line in Border; a header and a control draw nothing', function()

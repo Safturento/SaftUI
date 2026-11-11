@@ -526,9 +526,11 @@ end
 -- look. A drawn frame is the frame a look is drawn on: a backdrop behind its
 -- owner (st:SetBackdrop, st:SetBackdropIn), or the frame itself
 -- (st:SetTemplate). Its pieces are textures made once, then shown, hidden and
--- re-pointed by later draws. They're kept here, never on a frame
--- (.agents/taint.md), and placed by anchors and offsets: no size is read back
--- from the game.
+-- re-pointed by later draws. Each is a texture on a frame of SaftUI's: the
+-- drawn frame, a button's ring on the button of SaftUI's it sits behind, or
+-- else on a frame of SaftUI's over the drawn frame (Holder). They're kept
+-- here, never in a field on a frame (.agents/taint.md), and placed by anchors
+-- and offsets: no size is read back from the game.
 
 -- drawn frame -> its art, { pieces, over, own } (ThemeArt.Get).
 local drawnArt = setmetatable({}, { __mode = 'k' })
@@ -585,10 +587,12 @@ local function Piece(set, parent, key, name, layer, sublevel)
 	return piece
 end
 
--- The frame of SaftUI's a drawn frame's over pieces are on, made the first
--- time as its child, over all of it. It sits one level above the frame the
--- art is for, the drawn frame or the frame it sits behind (its parent),
--- whichever is higher, so the pieces lie over that frame's icon.
+-- The frame of SaftUI's a drawn frame's over pieces are on when no button of
+-- SaftUI's takes them (ThemeArt.Paint's host): made the first time as the
+-- drawn frame's child, over all of it, so it shows and hides with it. It sits
+-- one level above the frame the art is for, the drawn frame or the frame it
+-- sits behind (its parent), whichever is higher, so the pieces lie over that
+-- frame's icon, and over its texts too.
 local function Holder(frame)
 	local holder = holders[frame]
 	if not holder then
@@ -604,15 +608,17 @@ local function Holder(frame)
 end
 
 -- A border (the tooltip's or the metal) on frame: its corners, then its edges
--- between them, in its layer, with texel snapping off where it says so.
+-- between them, in its layer. Pixel snapping is off where the border says so,
+-- with the texel snapping bias at 0, as Blizzard's nine-slice code turns
+-- sharpening off; for any other border it's on, the game's default, so a piece
+-- once drawn as the metal doesn't keep it off. The bias stays: Blizzard's code
+-- never sets it back, and nothing gives its default.
 local function LayBorder(art, frame, border)
 	local function Lay(key)
 		local piece = Piece(art.pieces, frame, key, border[key].atlas, border.layer)
 		piece:ClearAllPoints()
-		if border.snap == false then
-			piece:SetTexelSnappingBias(0)
-			piece:SetSnapToPixelGrid(false)
-		end
+		if border.snap == false then piece:SetTexelSnappingBias(0) end
+		piece:SetSnapToPixelGrid(border.snap ~= false)
 		return piece
 	end
 	for key, point in pairs(CORNERS) do
@@ -630,11 +636,21 @@ local function LayBorder(art, frame, border)
 	end
 end
 
+-- Where a ring on a button of SaftUI's draws among the button's own regions:
+-- over the icon, which Blizzard's action and item button templates put in
+-- BACKGROUND and BORDER, and under their font strings, the lowest of which is
+-- the item button's count, in ARTWORK at 0. As a region of the button it's
+-- under every child frame too (the cooldown, the glows, the action button's
+-- hotkey and count).
+local RING_LAYER, RING_SUBLEVEL = 'ARTWORK', -1
+
 -- A button's art on frame (the action or item button's): the art behind its
--- icon, filling frame, and the ring over the icon's edge, on frame's holder.
--- A ring Blizzard draws ringSize on a buttonSize button, centred ringY low, is
--- cut to the button's part, so it fits a button of any size.
-local function LayButton(art, frame, button)
+-- icon, filling frame, and the ring over the icon's edge, covering frame. The
+-- ring is a texture of host's, the button of SaftUI's frame sits behind, or
+-- with no host on frame's holder. A ring Blizzard draws ringSize on a
+-- buttonSize button, centred ringY low, is cut to the button's part, so it fits
+-- a button of any size.
+local function LayButton(art, frame, button, host)
 	for sublevel, key in ipairs(BEHIND) do
 		local name = button.behind[key]
 		if name then
@@ -643,10 +659,14 @@ local function LayButton(art, frame, button)
 			piece:SetAllPoints(frame)
 		end
 	end
-	local holder = Holder(frame)
-	local ring = Piece(art.over, holder, 'Ring', button.ring, 'ARTWORK')
+	local ring
+	if host then
+		ring = Piece(art.over, host, 'Ring', button.ring, RING_LAYER, RING_SUBLEVEL)
+	else
+		ring = Piece(art.over, Holder(frame), 'Ring', button.ring, RING_LAYER)
+	end
 	ring:ClearAllPoints()
-	ring:SetAllPoints(holder)
+	ring:SetAllPoints(frame)
 	if button.ringSize then
 		local size, half, y = button.ringSize, button.buttonSize / 2, button.ringY
 		ring:SetTexCoord((size / 2 - half) / size, (size / 2 + half) / size,
@@ -661,7 +681,8 @@ local function Draws(look)
 end
 
 -- A drawn frame's art: { pieces = { [key] = texture } on the drawn frame,
--- over = { [key] = texture } over the icon's edge, own = texture|nil, the
+-- over = { [key] = texture } over the icon's edge (on the button, or the
+-- drawn frame's holder), own = texture|nil, the
 -- piece a frame's own border color shows }; nil for a frame never drawn under
 -- Blizzard.
 function ThemeArt.Get(frame)
@@ -710,8 +731,10 @@ end
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
 -- fills it the kind's inset in (a window's from under its title bar), with no
 -- edge but a small frame's line, and the kind's art; the frame's other pieces
--- are hidden. A kind that draws nothing is cleared. Then colors it.
-function ThemeArt.Paint(frame, look, kind)
+-- are hidden. A kind that draws nothing is cleared. Then colors it. host is
+-- the button of SaftUI's frame sits behind, whose ring is a texture of its own
+-- (LayButton), or nil.
+function ThemeArt.Paint(frame, look, kind, host)
 	local blizzard = Kind(kind)
 	ThemeArt.Clear(frame)
 	if not Draws(blizzard) then
@@ -734,7 +757,7 @@ function ThemeArt.Paint(frame, look, kind)
 	if art and art.TopLeftCorner then
 		LayBorder(Art(frame), frame, art)
 	elseif art and art.ring then
-		LayButton(Art(frame), frame, art)
+		LayButton(Art(frame), frame, art, host)
 	end
 	ThemeArt.Color(frame, look, kind)
 end

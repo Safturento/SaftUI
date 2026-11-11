@@ -332,17 +332,28 @@ local function Color(frame, look, kind)
 	end
 end
 
+-- The frame of SaftUI's a drawn frame's ring goes on, under the button's texts
+-- and cooldown: the frame a backdrop of st:SetBackdrop's sits behind (entry,
+-- the drawn frame's record). nil for any other, which st.ThemeArt gives a
+-- frame of SaftUI's over the drawn frame: st:SetBackdropIn's frame isn't
+-- SaftUI's, a texture holds no textures, and a frame drawn on itself may be a
+-- module's backdrop under someone else's button (the totem bar's).
+local function Host(entry)
+	local owner = entry and entry.owner
+	if owner and not entry.backdrops and owner:IsObjectType('Frame') then return owner end
+end
+
 -- Draws a look on frame as kind: Thick's dark lines, the 1px border and the
 -- background inside it, or a strip's fill with no lines. A Blizzard look is
--- st.ThemeArt's to draw, with Thick's lines hidden; any other hides the
--- frame's Blizzard art. No look clears it.
-local function Paint(frame, look, kind)
+-- st.ThemeArt's to draw, with Thick's lines hidden, and a button's ring on
+-- host (Host); any other hides the frame's Blizzard art. No look clears it.
+local function Paint(frame, look, kind, host)
 	if not look or look.name == 'blizzard' then
 		if frame.altborder then
 			for _, line in pairs(frame.altborder) do line:Hide() end
 		end
 		if look then
-			st.ThemeArt.Paint(frame, look, kind)
+			st.ThemeArt.Paint(frame, look, kind, host)
 		else
 			frame:SetBackdrop(nil)
 			st.ThemeArt.Clear(frame)
@@ -430,7 +441,7 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 			owner.thick = look.name == 'thick'
 		end
 	end
-	Paint(backdrop, look, drawKind)
+	Paint(backdrop, look, drawKind, Host(entry))
 	return look
 end
 
@@ -438,7 +449,7 @@ end
 function st:SetTemplate(frame, theme, background, kind)
 	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
-	Paint(frame, look, drawKind)
+	Paint(frame, look, drawKind, Host(drawn[frame]))
 	Record(frame, theme, background, kind, look)
 end
 
