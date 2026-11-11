@@ -1747,3 +1747,60 @@ test("/sui's execute button and toggle take Blizzard's art under Blizzard, their
 	for _, w in ipairs({ e, t, m }) do w:Release() end
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("/sui under Blizzard: a disabled execute button is -Disabled, and a multiselect row lights its box under the mouse", function()
+	local e = bind('execute', 'go', opt('execute', 'Go', { func = function() end }))
+	local m = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
+		values = { a = 'A' }, get = function() return false end, set = function() end,
+	}))
+	e:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -90)
+	local function rebind(w) w:Bind(w.root, w.row, w.onChanged) end
+	-- What the row draws in its own HIGHLIGHT layer (which the game shows
+	-- under the mouse), as 'atlas blend', '' for nothing.
+	local function row_highlight(row)
+		local out = {}
+		for _, region in ipairs(shown_textures(row)) do
+			if select(1, region:GetDrawLayer()) == 'HIGHLIGHT' then
+				out[#out + 1] = tostring(region:GetAtlas()) .. ' ' .. region:GetBlendMode()
+				eq(around(region, row.box), '0,0,0,0', 'the highlight lies over the box')
+			end
+		end
+		return table.concat(out, ',')
+	end
+
+	-- Under Thick: as before, dimmed with its own box, and a row whose scripts light the box's edge.
+	e:SetDisabled(true)
+	eq(e.frame:GetAlpha(), 0.4, 'Thick: a disabled execute button is dimmed')
+	eq((panel_of(e.frame)), '', 'Thick: no panel button')
+	check(e.frame.backdropInfo ~= nil, 'Thick: its own box')
+	e:SetDisabled(false)
+	eq(row_highlight(m.rows[1]), '', 'Thick: the row draws no highlight of its own')
+	stub.fire_script(m.rows[1], 'OnEnter')
+	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), rgba(st.config.profile.colors.button.blue.r, st.config.profile.colors.button.blue.g, st.config.profile.colors.button.blue.b, 1), 'Thick: hovering the row lights the box blue')
+	stub.fire_script(m.rows[1], 'OnLeave')
+
+	st.config.profile.theme.name = 'blizzard'
+	rebind(e)
+	rebind(m)
+	eq((panel_of(e.frame)), 'Left=Up,Middle=Up,Right=Up', 'Blizzard: enabled, -Up')
+	e:SetDisabled(true)
+	eq((panel_of(e.frame)), 'Left=Disabled,Middle=Disabled,Right=Disabled', 'Blizzard: disabled, -Disabled')
+	e:SetDisabled(false)
+	eq((panel_of(e.frame)), 'Left=Up,Middle=Up,Right=Up', 'Blizzard: enabled again, -Up')
+	-- Bound disabled: the window binds a disabled row's widget so.
+	e.row.disabled = true
+	rebind(e)
+	eq((panel_of(e.frame)), 'Left=Disabled,Middle=Disabled,Right=Disabled', 'Blizzard: bound disabled, -Disabled')
+	e.row.disabled = nil
+	rebind(e)
+	eq(row_highlight(m.rows[1]), 'checkbox-minimal ADD', "Blizzard: the row draws the box's highlight, additive")
+
+	st.config.profile.theme.name = 'thick'
+	rebind(e)
+	rebind(m)
+	eq((panel_of(e.frame)), '', 'Thick again: no panel button')
+	eq(row_highlight(m.rows[1]), '', 'Thick again: no highlight of the row\'s')
+	for _, w in ipairs({ e, m }) do w:Release() end
+	eq(#take_errors(), 0, 'no errors')
+end)

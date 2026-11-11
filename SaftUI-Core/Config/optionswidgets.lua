@@ -980,6 +980,25 @@ builders.multiselect = function(w)
 	w.rows = {}
 end
 
+-- A row's look: its box's (LookCheckBox), and under Blizzard the box's
+-- highlight drawn in the row's own HIGHLIGHT layer, over the box, which the
+-- game shows under the mouse: the box takes no mouse, the row does. Under
+-- Thick and Thin the row lights the box's edge instead (its scripts).
+local function LookRow(row, blizzard)
+	LookCheckBox(row.box, blizzard)
+	if blizzard and not row.highlight then
+		row.highlight = row:CreateTexture(nil, 'HIGHLIGHT')
+		row.highlight:SetAllPoints(row.box)
+	end
+	if row.highlight then
+		if blizzard then
+			row.highlight:SetAtlas(row.box.look.highlight)
+			row.highlight:SetBlendMode(row.box.look.highlightBlend)
+		end
+		row.highlight:SetShown(blizzard)
+	end
+end
+
 local function MultiRow(w, i)
 	local row = w.rows[i]
 	if row then return row end
@@ -988,8 +1007,8 @@ local function MultiRow(w, i)
 	row:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', 0, -(i - 1) * MULTI_ROW)
 	row:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -(i - 1) * MULTI_ROW)
 	row.box = CheckBox(row, 18)
-	LookCheckBox(row.box, w.blizzard or false)
 	row.box:SetPoint('LEFT', row, 'LEFT', 0, 0)
+	LookRow(row, w.blizzard or false)
 	row.box:EnableMouse(false)
 	row.label = NewText(row, 'LEFT')
 	row.label:SetPoint('LEFT', row.box, 'RIGHT', 8, 0)
@@ -1007,7 +1026,7 @@ end
 define('multiselect', {
 	Bind = function(self, ...)
 		self.blizzard = BlizzardLook()
-		for _, row in ipairs(self.rows) do LookCheckBox(row.box, self.blizzard) end
+		for _, row in ipairs(self.rows) do LookRow(row, self.blizzard) end
 		return Base.Bind(self, ...)
 	end,
 
@@ -1172,7 +1191,9 @@ builders.execute = function(w)
 end
 
 -- The execute button's look, when it changed: the window's own (Box), or
--- under Blizzard Blizzard's panel button (st:ShowPanelButton).
+-- under Blizzard Blizzard's panel button (st:ShowPanelButton), -Disabled
+-- while the widget is (the window dims it and stops its mouse; its button
+-- stays enabled).
 local function LookExecute(w, blizzard)
 	if (w.blizzard or false) == blizzard then return end
 	w.blizzard = blizzard
@@ -1184,7 +1205,8 @@ local function LookExecute(w, blizzard)
 		Box(button, BG)
 		button.outline:Show()
 	end
-	st:ShowPanelButton(button, blizzard)
+	w.showsDisabled = w.showsDisabled or function() return w.disabled end
+	st:ShowPanelButton(button, blizzard, nil, w.showsDisabled)
 end
 
 define('execute', {
@@ -1214,6 +1236,7 @@ define('execute', {
 
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
+		if self.blizzard then st:ShowPanelButton(self.frame, true, nil, self.showsDisabled) end
 	end,
 })
 

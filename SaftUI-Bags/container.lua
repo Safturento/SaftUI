@@ -790,7 +790,8 @@ end
 	drawn on a 12 by 12 grid (GLYPHS: x, y, width, height of each piece) whose
 	unit is a whole number of pixels, so the pieces stay sharp at any title bar
 	height. The button for the window's view is lit with Buttons -> Blue, kept
-	with st:KeepOwnColors so a theme recolor and redraw don't take it away.
+	with st:KeepOwnColors so a theme recolor and redraw don't take it away;
+	under the Blizzard theme, whose panel buttons they are, it's pressed.
 	The buttons are SaftUI's own plain buttons, so lighting one is fine in
 	combat; the layout is what waits (INV:SetView, INV:ApplyView).
 ]]
@@ -902,6 +903,8 @@ end
 
 -- Lights the window's view's button and puts the others back to the theme's
 -- border, when that changed (a button that kept its look isn't drawn again).
+-- Under the Blizzard theme, where a control's border is left alone, the lit
+-- one shows Blizzard's panel button pressed (st:SetButtonPressed).
 function INV:UpdateViewButtons(id)
 	local container = self.containers[id]
 	if not (container and container.viewButtons) then return end
@@ -910,6 +913,7 @@ function INV:UpdateViewButtons(id)
 		local on = view == current
 		if on ~= button.viewLit then
 			button.viewLit = on
+			st:SetButtonPressed(button, on)
 			if on then
 				ColorLit(button)
 				st:KeepOwnColors(button, ColorLit)

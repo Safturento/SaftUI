@@ -352,6 +352,20 @@ test("a radio group shows Blizzard's tabs, the picked one active", function()
 	stub.fire_script(second, 'OnClick', 'LeftButton', false)
 	eq(tabs(second), PICKED, 'the picked one is the active tab')
 	eq(tabs(first), OTHER, 'the other one a tab')
+	-- Each end as wide as its art, its last quarter cut off, at the 30
+	-- height: uiframe-activetab-left is 35x42 and -right 37x42, uiframe-tab-left
+	-- 35x36 and -right 37x36.
+	local function ends(button)
+		local widths = {}
+		for _, region in ipairs(shown(button)) do
+			local atlas = region:GetAtlas() or ''
+			if atlas:find('%-left$') then widths[1] = region:GetWidth() end
+			if atlas:find('%-right$') then widths[2] = region:GetWidth() end
+		end
+		return ('%s,%s'):format(tostring(widths[1]), tostring(widths[2]))
+	end
+	eq(ends(second), '33,35', 'the picked tab: 35 and 37 wide at 42 * 0.75, drawn 30 tall')
+	eq(ends(first), '39,41', 'the other: 35 and 37 wide at 36 * 0.75, drawn 30 tall')
 	eq(second.backdrop.backdropInfo, nil, 'no blue border: no backdrop of SaftUI\'s')
 	stub.fire_script(first, 'OnClick', 'LeftButton', false)
 	eq(tabs(first), PICKED, 'a new pick is active')
@@ -483,4 +497,18 @@ test("an edit box's border textures show under Blizzard and hide under Thick", f
 	end
 	eq(T.inset(backdrop), 2, "SaftUI's backdrop again")
 	eq(#take_errors(), 0, 'nothing written onto the box')
+end)
+
+test('st:StyleEditBox draws a box st:SkinEditBox never skinned, as before', function()
+	local st = fresh()
+	local box = CreateFrame('EditBox', 'ThemeTestUnskinnedEditBox', UIParent)
+	box:SetSize(200, 20)
+	box:SetPoint('CENTER')
+	box:CreateFontString(nil, 'OVERLAY')
+	st:StyleEditBox(box, 'theme', 'theme')
+	eq(drawn(box), 'theme,theme,control', 'drawn as a control')
+	eq(T.inset(st:DrawnFrame(box)), 2, "in Thick's border")
+	switch(st, 'blizzard')
+	switch(st, 'thick')
+	eq(#take_errors(), 0, 'no error: it has no border textures to show or hide')
 end)

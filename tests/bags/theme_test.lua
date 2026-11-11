@@ -588,6 +588,53 @@ local function panel(button)
 	return table.concat(out, ',')
 end
 
+test("the window's view button is pressed under Blizzard, through a recolor, a redraw and a view change, and lit Blue under Thick", function()
+	local container = bags()
+	INV:CreateViewButtons(container)
+	INV:UpdateConfig('bag')
+	local blue = T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00'
+	local function check_lit(label)
+		local current = INV:GetView('bag')
+		for _, view in ipairs(VIEWS) do
+			local button = container.viewButtons[view]
+			if st:IsBlizzardLook('theme', 'theme') then
+				eq(panel(button), view == current and 'Left=Down,Middle=Down,Right=Down' or 'Left=Up,Middle=Up,Right=Up',
+					label .. ': ' .. view .. (view == current and ' (the current view) pressed' or ' up'))
+			else
+				eq(panel(button), '', label .. ': ' .. view .. ' is no panel button')
+				if view == current then
+					eq(T.edge(button.backdrop), blue, label .. ': ' .. view .. ' (the current view) lit Blue')
+				else
+					check(T.edge(button.backdrop) ~= blue, label .. ': ' .. view .. ' not lit')
+				end
+			end
+		end
+	end
+	check_lit('Thick')
+
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	for _, button in pairs(container.viewButtons) do stub.fire_script(button, 'OnSizeChanged', button:GetSize()) end
+	check_lit('Blizzard')
+	st:RecolorThemed()
+	check_lit('Blizzard, after a recolor')
+	st:RedrawThemed()
+	check_lit('Blizzard, after a redraw')
+	-- A view change as INV:SetView makes it, short of laying the window out
+	-- (INV:ApplyView needs the bag world this file doesn't build): the view
+	-- saved, then its buttons lit.
+	local other = INV:GetView('bag') == 'rows' and 'onebag' or 'rows'
+	INV.config.bag.view = other
+	INV:UpdateViewButtons('bag')
+	eq(INV:GetView('bag'), other, 'the view changed')
+	check_lit('Blizzard, after a view change')
+
+	st.config.profile.theme.name = 'thick'
+	st:ThemeChanged()
+	check_lit('Thick again')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the Edit toggle is a panel button, pressed while checked', function()
 	-- INV:CreateContainer makes it (container.lua), from Blizzard templates the
 	-- stubs lack, so its call is read from the source and made here the same

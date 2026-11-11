@@ -308,6 +308,7 @@ local editBoxBackdrops = setmetatable({}, { __mode = 'k' })
 -- focus textures (ChatFrameEditBoxTemplate).
 local editBoxBorders = setmetatable({}, { __mode = 'k' })
 local BORDER_KEYS = { 'Left', 'Right', 'Middle', 'Mid', 'focusLeft', 'focusRight', 'focusMid' }
+local NO_BORDERS = {}
 
 -- A focused box's white border, kept through a theme recolor. A box drawn
 -- with None has no backdrop to color, and a control's border under the
@@ -323,10 +324,11 @@ end
 -- theme, and conceals them (alpha 0) in any other look. Alpha alone hides
 -- them: Blizzard never sets these regions' alpha (InputBoxTemplates and
 -- ChatFrameEditBox, on both clients; chat shows and hides its focus textures
--- and sets the box's own alpha), and nothing is written onto them.
+-- and sets the box's own alpha), and nothing is written onto them. A box
+-- st:StyleEditBox draws that st:SkinEditBox never skinned has none.
 local function ShowBorders(editbox)
 	local alpha = st:DrawnTheme(editbox) == 'blizzard' and 1 or 0
-	for _, region in ipairs(editBoxBorders[editbox]) do
+	for _, region in ipairs(editBoxBorders[editbox] or NO_BORDERS) do
 		region:SetAlpha(alpha)
 	end
 end

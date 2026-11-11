@@ -21,9 +21,11 @@ end
 	    -Down on a mouse down (and while pressed says so), -Disabled while
 	    disabled, the ends 12/22 of its height, and the additive highlight
 	    under the mouse;
-	  - st:SkinButton draws it on the buttons it skins, or Blizzard's top tabs
-	    on a radio group's (st:SetButtonTab); a button of Blizzard's panel
-	    button template shows its own Left, Middle and Right again instead.
+	  - st:SkinButton draws it on the buttons it skins, pressed while
+	    st:SetButtonPressed says so (the bags' current view), or Blizzard's
+	    top tabs on a radio group's (st:SetButtonTab); a button of Blizzard's
+	    panel button template shows its own Left, Middle and Right again
+	    instead.
 	Every piece is a texture of SaftUI's on a button of SaftUI's, inside the
 	button's own rect, kept in this file's tables, never in a field
 	(.agents/taint.md). It's made the first time the button shows it, so a
@@ -31,24 +33,28 @@ end
 ]]
 
 -- button -> its art: { Left, Middle, Right, Highlight, mode, look, picked,
--- pressed, down }. mode is 'button' (the panel button), 'tab', or nil while
--- hidden; look is st.ThemeArt.Control(mode), read when the mode changes.
+-- pressed, disabled, down }. mode is 'button' (the panel button), 'tab', or
+-- nil while hidden; look is st.ThemeArt.Control(mode), read when the mode
+-- changes.
 local arts = setmetatable({}, { __mode = 'k' })
 
 local PIECES = { 'Left', 'Middle', 'Right' }
+local ENDS = { 'Left', 'Right' }
 
 -- A tab's art as Blizzard's top tabs draw it (PanelTopTabButtonMixin): upside
 -- down, the art's last quarter, which would lie over the window, cut off.
 local TAB_COORDS, TAB_SHARE = { 0, 1, 1, 0.25 }, 0.75
 
--- How wide an end piece is on a button width by height: the panel's endShare
--- of its height (Blizzard's 12 on 22), a tab's as wide as its cut art is at
--- that height, and at most half the width, so a narrow button's middle isn't
--- turned inside out.
-local function EndWidth(art, piece, width, height)
+-- How wide an end piece (key, Left or Right) is on a button width by height:
+-- the panel's endShare of its height (Blizzard's 12 on 22), a tab's as wide
+-- as its cut art (the picked or the other, from the look) is at that height,
+-- and at most half the width, so a narrow button's middle isn't turned
+-- inside out.
+local function EndWidth(art, key, width, height)
 	local share = art.look.endShare
 	if art.mode == 'tab' then
-		local info = C_Texture.GetAtlasInfo(piece:GetAtlas())
+		local set = art.picked and art.look.picked or art.look.other
+		local info = C_Texture.GetAtlasInfo(set[key:lower()])
 		share = info and info.width / (info.height * TAB_SHARE) or 1
 	end
 	return math.min(math.floor(height * share + 0.5), math.floor(width / 2))
@@ -60,13 +66,14 @@ local function SizeEnds(button, art)
 	if not art.mode then return end
 	local width, height = button:GetSize()
 	if issecretvalue(width) or issecretvalue(height) then return end
-	for _, key in ipairs({ 'Left', 'Right' }) do
-		art[key]:SetWidth(EndWidth(art, art[key], width, height))
+	for _, key in ipairs(ENDS) do
+		art[key]:SetWidth(EndWidth(art, key, width, height))
 	end
 end
 
 -- Puts the art for the button's state on its pieces: a tab picked or not,
--- the panel button up, down (under the mouse, or pressed) or disabled.
+-- the panel button up, down (under the mouse, or pressed) or disabled (its
+-- button disabled, or disabled says so).
 local function Paint(button, art)
 	local look = art.look
 	if art.mode == 'tab' then
@@ -77,7 +84,7 @@ local function Paint(button, art)
 		end
 	elseif art.mode == 'button' then
 		local file = look.up
-		if not button:IsEnabled() then
+		if not button:IsEnabled() or (art.disabled and art.disabled(button)) then
 			file = look.disabled
 		elseif art.down or (art.pressed and art.pressed(button)) then
 			file = look.down
@@ -126,8 +133,9 @@ local function MakeArt(button)
 end
 
 -- Shows mode's art on a button of SaftUI's ('button' or 'tab', picked or not;
--- pressed as st:ShowPanelButton takes it), or hides it (mode nil).
-local function ShowArt(button, mode, picked, pressed)
+-- pressed and disabled as st:ShowPanelButton takes them), or hides it (mode
+-- nil).
+local function ShowArt(button, mode, picked, pressed, disabled)
 	local art = arts[button]
 	if not mode then
 		if art and art.mode then
@@ -152,23 +160,30 @@ local function ShowArt(button, mode, picked, pressed)
 			art.Highlight:Hide()
 		end
 	end
-	art.picked, art.pressed = picked, pressed
+	art.picked, art.pressed, art.disabled = picked, pressed, disabled
 	Paint(button, art)
 	SizeEnds(button, art)
 end
 
 -- Shows Blizzard's panel button on a button of SaftUI's (shown true), or
 -- hides it. pressed, a function(button), says when it shows pressed besides
--- under the mouse: a check button styled 'button' while checked. Call it
--- again to show a change pressed hears of no other way.
-function st:ShowPanelButton(button, shown, pressed)
-	ShowArt(button, shown and 'button' or nil, nil, pressed)
+-- under the mouse: a check button styled 'button' while checked. disabled,
+-- one too, says when it shows disabled besides while its button is: a /sui
+-- widget, which the window dims instead. Call it again to show a change they
+-- hear of no other way.
+function st:ShowPanelButton(button, shown, pressed, disabled)
+	ShowArt(button, shown and 'button' or nil, nil, pressed, disabled)
+end
+
+local function Pressed()
+	return true
 end
 
 -- button -> how st:SkinButton keeps it: { button, theme, background, flat,
--- own, tab, blizzard }. flat is SaftUI's flat state textures, own the Left,
--- Middle and Right of a button of Blizzard's panel button template, tab nil
--- or whether it's the picked tab (st:SetButtonTab), blizzard the look it
+-- own, tab, pressed, blizzard }. flat is SaftUI's flat state textures, own
+-- the Left, Middle and Right of a button of Blizzard's panel button template,
+-- tab nil or whether it's the picked tab (st:SetButtonTab), pressed whether
+-- its panel button shows pressed (st:SetButtonPressed), blizzard the look it
 -- wears now.
 local skins = setmetatable({}, { __mode = 'k' })
 
@@ -187,7 +202,7 @@ local function Draw(skin)
 	end
 	if not skin.own then
 		local mode = blizzard and (skin.tab == nil and 'button' or 'tab') or nil
-		ShowArt(skin.button, mode, skin.tab)
+		ShowArt(skin.button, mode, skin.tab, skin.pressed and Pressed or nil)
 	end
 end
 
@@ -281,5 +296,18 @@ function st:SetButtonTab(button, picked)
 	local skin = skins[button]
 	if not skin then return end
 	skin.tab = picked and true or false
+	Draw(skin)
+end
+
+-- Shows a button st:SkinButton skinned pressed (-Down) under the Blizzard
+-- theme while pressed is true, as its own state, kept through every recolor
+-- and redraw: the bags' view button for the window's view, which Thick and
+-- Thin light with a border of the bags' own (a control's border under
+-- Blizzard is left alone, st:SetBorderColor). Under Thick and Thin it changes
+-- nothing.
+function st:SetButtonPressed(button, pressed)
+	local skin = skins[button]
+	if not skin then return end
+	skin.pressed = pressed and true or false
 	Draw(skin)
 end
