@@ -10,6 +10,9 @@
 --   - C_Container: bags of slots holding items, a bag name, a free count and a
 --     bag family (W.bag, W.item below);
 --   - GetAverageItemLevel (the Grays rule reads it for armor and weapons);
+--   - the bag items bags are made of, as far as the special bags' titles read
+--     them (W.bag_item below): C_Container.ContainerIDToInventoryID,
+--     GetInventoryItemID and C_Item.GetItemInfoInstant's subtype;
 --   - C_Item and ItemLocation, as far as INV:GetInventoryItemInfo reads them
 --     (an item's name, class and quality, never its tooltip).
 -- An item is a table of the fields INV:GetInventoryItemInfo and the category
@@ -53,6 +56,14 @@ function W.bag(bagID, slots, name, family, items)
 	W.bags[bagID] = { slots = slots, name = name, family = family or 0, items = items or {} }
 end
 
+-- The item a bag slot of the player holds (the bag itself, as the title bar's
+-- slots show it): its item subtype, as GetItemInfoInstant answers it, localized
+-- ("Reagent Bag", "Herb Bag"), or nil for an item that gives none. A bag with
+-- no bag item (the default) has no item in its slot at all.
+function W.bag_item(bagID, subtype, itemID)
+	W.bags[bagID].bagItem = { itemID = itemID or 9000 + bagID, subtype = subtype }
+end
+
 -- An item as a bag slot holds it. Name and class are what the category rules
 -- read; ilvl sorts it (the existing item sort is by the sort string).
 function W.item(itemID, name, class, ilvl, extra)
@@ -84,6 +95,11 @@ function W.stub_api()
 			return bag.slots - used, bag.family
 		end,
 		GetBagName = function(bagID) return W.bags[bagID] and W.bags[bagID].name end,
+		-- The backpack has no inventory slot; every other bag has one, 500 + its id here.
+		ContainerIDToInventoryID = function(bagID)
+			if bagID == Enum.BagIndex.Backpack then error('no inventory slot for the backpack') end
+			return 500 + bagID
+		end,
 		GetContainerItemLink = function() return nil end,
 		GetContainerItemEquipmentSetInfo = function(bagID, slot)
 			local item = W.bags[bagID].items[slot]
@@ -100,6 +116,15 @@ function W.stub_api()
 			}
 		end,
 	}
+	_G.GetInventoryItemID = function(unit, invID)
+		local bag = unit == 'player' and W.bags[invID - 500]
+		return bag and bag.bagItem and bag.bagItem.itemID
+	end
+	local function bagItemByID(itemID)
+		for _, bag in pairs(W.bags) do
+			if bag.bagItem and bag.bagItem.itemID == itemID then return bag.bagItem end
+		end
+	end
 	local function itemByLink(link)
 		local id = tonumber(link:match('item:(%d+)'))
 		for _, bag in pairs(W.bags) do
@@ -122,6 +147,12 @@ function W.stub_api()
 			return item and item.ilvl
 		end,
 		IsBound = function() return false end,
+		-- itemID, type, subtype, equipLoc, icon, classID, subclassID
+		GetItemInfoInstant = function(itemID)
+			local bagItem = bagItemByID(itemID)
+			if not bagItem then return nil end
+			return itemID, 'Container', bagItem.subtype, 'INVTYPE_BAG', 1, 1, 0
+		end,
 		GetItemMaxStackSize = function() return 1 end,
 	}
 	-- GetItemMaxStackSize takes the item's location, which carries its bag and slot.

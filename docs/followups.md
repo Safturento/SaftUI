@@ -280,6 +280,7 @@ On both clients:
 - switching views in combat: the button lights and the view saves at once, and the window lays out when combat ends;
 - the scroll position across a view switch, and across a switch back;
 - Forever's bags: a profession bag or a quiver in One bag (under the main grid) and in Multi bag (its own section), and a profession bag in a bank bag slot in the bank's One bag;
+- a special bag's title with its type in grey (`Name · Reagent Bag (n / m)`; Forever's herb bag, quiver and ammo pouch; a profession bag in a bank bag slot): the type is the client's localized item subtype, and a bag whose item gives none shows no type;
 - a bag or bank tab the client gives no name (`C_Container.GetBagName` answers `''`, never nil): its Multi bag title is the fallback (Backpack, Bank tab N, Bag N), not blank;
 - a long fight's loot in One bag and Multi bag: every item shows at once on a button made beforehand, with no "is tainted" error in chat.
 

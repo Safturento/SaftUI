@@ -188,6 +188,81 @@ test('Forever bank in One bag: a herb bag in a bank bag slot has its own section
 	eq(names(one[2].items), 'Mageroyal,<empty x11>', "the herb bag's, in its section")
 end)
 
+-- The grey a special bag's type is drawn in (the Colors tab's Text -> Grey), as
+-- the color code in its title.
+local function grey()
+	local r, g, b = SaftUI.config.profile.colors.text.grey:GetRGB()
+	return ('|cff%02x%02x%02x'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+end
+
+test("a Forever herb bag's section names its type after its name, in grey", function()
+	world('forever')
+	W.bag(2, 12, 'Mantid Satchel', 32, { [1] = W.item(8, 'Sunblossom', 'Trade Goods', 19), [2] = W.item(9, 'Peacebloom', 'Trade Goods', 18) })
+	W.bag_item(2, 'Herb Bag')
+	W.bag_item(1, 'Bag') -- a normal bag's item has a subtype too: it is no special bag
+	local expected = 'Mantid Satchel ' .. grey() .. '\194\183 Herb Bag|r (2 / 12)'
+	eq(INV:GetBagInfo(2).special, true, 'the herb bag is special')
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | ' .. expected .. ' | Currencies', 'Multi bag: only the special bag has a type')
+	eq(titles(INV:GetViewSections('bag', 'onebag')), '- | ' .. expected .. ' | Currencies', 'One bag: under the main grid')
+	eq(titles(INV:GetViewSections('bag', 'rows')):find('Herb Bag', 1, true), nil, "Rows' sections are categories: no bag title")
+end)
+
+test("the retail reagent bag's section names its type", function()
+	world('retail')
+	W.bags[5].name = "Shipwright's Satchel"
+	W.bag_item(5, 'Reagent Bag')
+	local expected = "Shipwright's Satchel " .. grey() .. '\194\183 Reagent Bag|r (2 / 36)'
+	eq(titles(INV:GetViewSections('bag', 'onebag')), '- | ' .. expected .. ' | Currencies', 'One bag')
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | ' .. expected .. ' | Currencies', 'Multi bag')
+end)
+
+test('no type for a normal bag, the backpack, a bag whose item gives no subtype, or a type that is the name', function()
+	world('forever')
+	W.bag_item(1, 'Bag')
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Herb Bag (2 / 12) | Currencies',
+		'a normal bag, the backpack, and a herb bag with no bag item: no type')
+	W.bag_item(2, nil) -- the item answers no subtype
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Herb Bag (2 / 12) | Currencies', 'no subtype: no type')
+	W.bag_item(2, '')
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Herb Bag (2 / 12) | Currencies', 'an empty subtype: no type')
+	W.bag_item(2, 'Herb Bag') -- named as its type: said once
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Herb Bag (2 / 12) | Currencies', 'a name that is the type: not said twice')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a client without C_Item.GetItemInfoInstant uses the global one', function()
+	world('forever')
+	W.bag_item(2, 'Herb Bag')
+	local instant = C_Item.GetItemInfoInstant
+	C_Item.GetItemInfoInstant = nil
+	_G.GetItemInfoInstant = instant
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Herb Bag (2 / 12) | Currencies', 'named as its type: said once')
+	W.bags[2].name = 'Mantid Satchel'
+	eq(titles(INV:GetViewSections('bag', 'multibag')),
+		'Backpack (5 / 20) | Bag (2 / 10) | Mantid Satchel ' .. grey() .. '\194\183 Herb Bag|r (2 / 12) | Currencies', 'the global answers')
+end)
+
+test("a Forever bank bag slot's herb bag names its type in the bank's sections", function()
+	world('forever')
+	local base, slot2 = INV.bagIds.bank[1], INV.bagIds.bank[2]
+	W.bag(base, 28, 'Bank')
+	W.bag(slot2, 12, 'Bank Satchel', 32)
+	W.bag_item(slot2, 'Herb Bag')
+	W.put(slot2, 1, W.item(31, 'Mageroyal', 'Trade Goods', 20))
+	W.container('bank')
+	eq(titles(INV:GetViewSections('bank', 'onebag')), '- | Bank Satchel ' .. grey() .. '\194\183 Herb Bag|r (1 / 12)', 'One bag')
+	eq(INV:GetBagInfo(base).special, false, 'the base bank is no special bag')
+	check(titles(INV:GetViewSections('bank', 'multibag')):find('Bank Satchel ' .. grey() .. '\194\183 Herb Bag|r (1 / 12)', 1, true),
+		'Multi bag: its section too')
+end)
+
 test('Forever: no reagent bag; a profession bag is special', function()
 	world('forever')
 	eq(INV:IsReagentBag(5), false, 'no reagent bag')

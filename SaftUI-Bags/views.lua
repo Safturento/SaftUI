@@ -167,8 +167,30 @@ function INV:GetSectionPools(id, view)
 	return pools
 end
 
+-- The item subtype of the bag in a bag slot of the player's ("Reagent Bag",
+-- "Herb Bag", "Quiver": localized by the client), or nil when any step of
+-- finding it gives nothing.
+local function BagTypeName(bagID)
+	local toInventoryID = C_Container.ContainerIDToInventoryID
+	local invID = toInventoryID and toInventoryID(bagID)
+	local itemID = invID and GetInventoryItemID('player', invID)
+	local itemInfoInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+	if not (itemID and itemInfoInstant) then return end
+	local subtype = select(3, itemInfoInstant(itemID))
+	if type(subtype) == 'string' and subtype ~= '' then return subtype end
+end
+
+-- A bag's section title: its name, a special bag's type after it in grey (so
+-- a bag named "Shipwright's Satchel" says it is a reagent bag), and how full
+-- it is. The type is left out when the name already says it.
 local function BagTitle(info)
-	return ('%s (%d / %d)'):format(info.name, info.total - info.free, info.total)
+	local typeName = info.special and BagTypeName(info.id)
+	local named = ''
+	if typeName and typeName ~= info.name then
+		local r, g, b = st.config.profile.colors.text.grey:GetRGB()
+		named = (' |cff%02x%02x%02x\194\183 %s|r'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), typeName)
+	end
+	return ('%s%s (%d / %d)'):format(info.name, named, info.total - info.free, info.total)
 end
 
 -- The items of some bag records, in bag order.
