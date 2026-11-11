@@ -94,8 +94,14 @@ local TINT_ALPHA = 0.15
 	  HANDLE_WIDTH, Handle(parent, height)
 	                                  a drag handle: 6 grey dots, two across
 	                                  and three down, 2 apart
+	  InView(frame)                   the cursor is inside every scroll frame
+	                                  frame is drawn in (the window's body, the
+	                                  Categories tab's list and editor)
 	  UnderCursor(rows) -> i, lower   the row (a record with .frame) under the
-	                                  cursor, and whether it's in its lower half
+	                                  cursor, and whether it's in its lower
+	                                  half; none while the cursor is out of the
+	                                  rows' view, where a row scrolled out of
+	                                  it would still be under it by IsMouseOver
 	  ShowGhost(w, label, height)     shows w.ghost (made once, drawn in
 	                                  SaftUI's theme) with label, colors
 	                                  w.insert blue and runs w.drawDrag on
@@ -146,7 +152,20 @@ function D.Handle(parent, height)
 	return handle
 end
 
+-- IsMouseOver is a rectangle test: it doesn't know a scroll frame cuts off
+-- what's scrolled out of it.
+function D.InView(frame)
+	local parent = frame:GetParent()
+	while parent do
+		if parent:IsObjectType('ScrollFrame') and not parent:IsMouseOver() then return false end
+		parent = parent:GetParent()
+	end
+	return true
+end
+
+-- The rows share their scroll frames, so the first one's view is theirs.
 function D.UnderCursor(rows)
+	if not (rows[1] and D.InView(rows[1].frame)) then return end
 	for i, record in ipairs(rows) do
 		local f = record.frame
 		if f:IsMouseOver() then

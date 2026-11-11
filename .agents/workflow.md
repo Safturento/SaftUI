@@ -1,7 +1,7 @@
 ---
 name: workflow
 description: Followups, specs/plans, branching and how subagents work in SaftUI (no Jira)
-last_updated: 2026-11-09
+last_updated: 2026-11-11
 covers:
   - 'docs/followups.md'
   - 'docs/superpowers/**'

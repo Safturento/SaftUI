@@ -98,7 +98,10 @@ local SEARCH_WIDTH, SEARCH_DELAY = 190, 0.25
 local SEARCH_TEXT_INSET = 8 -- the search box's text, in from its edges, and its hint
 local PICKER_GAP = 12
 
-local SCROLL_STEP = ROW_HEIGHT * 2
+local SCROLL_STEP = OB.SCROLL_STEP
+-- How far past the content a fill page's body reaches: over its own scroll
+-- bar's place, which a fill page leaves to the row's own bars.
+local FILL_REACH = OB.BAR_GAP + OB.BAR_WIDTH
 
 -- The sidebar.
 local BRAND_HEIGHT = 73
@@ -171,6 +174,7 @@ local rendering, pending, dragging = false, false, false
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
 local scrollOffset, contentHeight, navOffset, navHeight = 0, 0, 0, 0
+local filledTo -- the view height the last page's fill rows were drawn to, or nil
 local renders = 0
 -- Whether the window draws its controls in Blizzard's Settings art: under
 -- SaftUI's theme Blizzard (W.BlizzardLook), read once a render, so a theme
@@ -272,24 +276,8 @@ end
 
 ------------------------------------------------------------------ scrolling
 
--- Scrolls frame (a scroll frame) to offset, within the height of what it
--- holds, and places its bar 10 to its right. Returns the offset it took.
-local function ScrollTo(frame, bar, offset, height)
-	local view = frame:GetHeight() or 0
-	local range = max(0, height - view)
-	offset = max(0, min(range, floor(offset + 0.5)))
-	frame:SetVerticalScroll(offset)
-	if range > 0 and view > 0 then
-		local size = max(20, floor(view * view / height))
-		bar:SetHeight(size)
-		bar:ClearAllPoints()
-		bar:SetPoint('TOPLEFT', frame, 'TOPRIGHT', 10, -floor((view - size) * offset / range))
-		bar:Show()
-	else
-		bar:Hide()
-	end
-	return offset
-end
+-- A scroll frame's offset and its bar, 10 to the right of what it holds (optionsbody.lua).
+local ScrollTo = OB.ScrollTo
 
 local function SetScroll(offset)
 	scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
@@ -652,10 +640,13 @@ local function ReleaseBody()
 	F.placeholder:Hide()
 end
 
-local function PlaceBody(top)
+-- The body from top down to the footer. A page with a fill row has nothing
+-- to scroll, so its body reaches over its own bar's place (filled), where
+-- the row draws bars of its own: the Categories tab's editor.
+local function PlaceBody(top, filled)
 	F.body:ClearAllPoints()
 	F.body:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
-	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -RIGHT_PAD, FOOTER_HEIGHT)
+	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(filled and RIGHT_PAD - FILL_REACH or RIGHT_PAD), FOOTER_HEIGHT)
 end
 
 local function SamePath(a, b)
@@ -721,7 +712,13 @@ local function DrawPage()
 		HidePicker()
 	end
 	PlaceBody(bottom)
-	contentHeight = pageBody:Draw(view.sections)
+	-- A fill row stretches to what the body shows.
+	local visible = F.body:GetHeight() or 0
+	contentHeight = pageBody:Draw(view.sections, visible)
+	if pageBody.filled then
+		filledTo = visible
+		PlaceBody(bottom, true)
+	end
 	if #pageBody.cells == 0 then Placeholder('Nothing to set here.') end
 	BringIntoView()
 end
@@ -768,7 +765,7 @@ local function Draw()
 	blizzard = W.BlizzardLook()
 	LookControls()
 	ReleaseBody()
-	contentHeight = 0
+	contentHeight, filledTo = 0, nil
 	pageBody:SetRoot(root)
 	local pages = OM.Pages(root)
 	local entries = OW.SidebarEntries(pages)
@@ -950,12 +947,13 @@ local function BuildMain(window)
 	body:SetScrollChild(content)
 	body:EnableMouseWheel(true)
 	body:SetScript('OnMouseWheel', function(_, delta) SetScroll(scrollOffset - delta * SCROLL_STEP) end)
+	-- A fill row follows the body's height: drawn again once it changes.
+	body:SetScript('OnSizeChanged', function(_, _, height)
+		if filledTo and floor((height or 0) + 0.5) ~= floor(filledTo + 0.5) then Schedule() end
+	end)
 	F.body, F.content = body, content
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
-	F.bar = main:CreateTexture(nil, 'OVERLAY')
-	F.bar:SetColorTexture(unpack(st.BOX_COLORS.edge))
-	F.bar:SetWidth(3)
-	F.bar:Hide()
+	F.bar = OB.ScrollBar(main)
 	F.placeholder = Text(content, 'label')
 	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -OB.TOP)
 	F.placeholder:SetTextColor(Grey())
@@ -1137,10 +1135,7 @@ local function BuildDialog()
 	scroll:EnableMouseWheel(true)
 	scroll:SetScript('OnMouseWheel', function(_, delta) SetDialogScroll(D.offset - delta * SCROLL_STEP) end)
 	D.scroll, D.content = scroll, content
-	D.bar = frame:CreateTexture(nil, 'OVERLAY')
-	D.bar:SetColorTexture(unpack(st.BOX_COLORS.edge))
-	D.bar:SetWidth(3)
-	D.bar:Hide()
+	D.bar = OB.ScrollBar(frame)
 	D.body = OB.New(content, nil, DialogChanged, DIALOG_CONTENT)
 
 	D.status = Text(frame, 'field')

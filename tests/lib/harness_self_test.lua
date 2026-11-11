@@ -379,6 +379,29 @@ test('a status bar, slider, scroll frame and check button have their own methods
 	eq(scroll:GetScrollChild(), child, 'the scroll child')
 	check(not pcall(scroll.SetScrollChild, scroll, 'child'), 'a scroll child must be a frame')
 
+	-- The scroll child sits at the scroll frame's top left, moved up by the
+	-- vertical scroll, at its own size; what is anchored to it moves with it.
+	scroll:SetSize(100, 50)
+	scroll:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 10, -20)
+	child:SetSize(80, 300)
+	local row = CreateFrame('Frame', nil, child)
+	row:SetSize(80, 20)
+	row:SetPoint('TOPLEFT', child, 'TOPLEFT', 0, -40)
+	local top = UIParent:GetTop() - 20
+	check(child:GetLeft() == 10 and child:GetTop() == top, 'at the scroll frame\'s top left')
+	check(child:GetWidth() == 80 and child:GetHeight() == 300, 'its own size')
+	eq(row:GetTop(), top - 40, 'a region anchored to it')
+	scroll:SetVerticalScroll(30)
+	eq(child:GetTop(), top + 30, 'scrolled 30: 30 higher')
+	eq(row:GetTop(), top - 10, 'and what is anchored to it too')
+	child:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 500, -500)
+	eq(child:GetLeft(), 10, "its own anchors don't place it")
+	local other = CreateFrame('Frame', nil, scroll)
+	other:SetSize(80, 10)
+	scroll:SetScrollChild(other)
+	eq(child:GetLeft(), 500, 'no longer the scroll child: its anchors place it again')
+	eq(other:GetTop(), top + 30, 'the new one is placed instead')
+
 	local check_button = CreateFrame('CheckButton', nil, UIParent)
 	check_button:SetChecked(true)
 	eq(check_button:GetChecked(), true, 'checked')

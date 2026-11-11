@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Categories tab: the scrolled editor's two gaps](#2026-11-11--categories-tab-the-scrolled-editors-two-gaps)
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
   - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
@@ -93,6 +94,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Categories tab: the scrolled editor's two gaps
+
+**What:** Since the Categories tab's list and editor scroll on their own, two things in the editor were left as they were. The rule editor's block drag has no edge scroll: the list scrolls while a dragged category is held near its top or bottom edge, but a dragged block held near the editor's edge doesn't (the wheel does scroll the editor mid-drag). And hovering a Caught now icon lights the block that caught it without scrolling the editor to it (on purpose: a scroll on hover would move the icon away from the mouse), so the lit block can be out of view.
+
+**Why noticed:** The 2026-11-11 change that gave the tab its two scroll areas (user feedback, screenshot 112: scrolling the list down to Quest scrolled Quest's editor out of view). The brief asked for the list's edge scroll only, and for the hover not to scroll. Measured on the shipped categories at the default window size: the tab is 483 high; only Grays/Auto Vendor (653 on Forever, 697 on retail) and Container (523, 567) need the editor to scroll, and every shipped rule plus the Caught now strip spans at most 457 (Grays), so both fit in view together, but only with the editor scrolled to show both. Scrolled to its bottom, Grays' first rule row sits about 32 above the view. A Pinned items strip (about 70 more) or a longer rule of the user's makes the lit block go out of view more often.
+
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`EdgeScroll`, `DrawDrag`, `ScrollEditor`, `HighlightWhy`); `SaftUI-Bags/ruleeditor.lua` (`DrawDrag`, `StartDrag`, the `bagrule` type); `tests/bags/categories_tab_test.lua` (the scrolling tests).
+
+**What's been considered:** The edge scroll could be the tab's: while `EditorDragging(w)`, an OnUpdate on the tab's frame runs the same band test against `w.editorScroll` and calls `ScrollEditor`; the rule editor's own `DrawDrag` already redraws its line from the rows each frame, so the line follows. For the hover, an arrow or a mark at the editor's top or bottom edge when the lit block is out of view would say where it is without moving anything.
+
+**Shape of work:** A small change in `categoriestab.lua` for the edge scroll, with a test like the list's. The hover marker is a small design question first.
+
+**Open questions:** Does the user want the hover to show anything when the lit block is out of view?
 
 ### 2026-11-11 — Blizzard theme: in-game checks
 
@@ -304,7 +319,8 @@ What the plan's list doesn't cover:
 9. **A placeholder tooltip.** A tooltip that says "Retrieving item information" would be cached as the item's real text, and the item filed by it for good. Confirm what `C_TooltipInfo.GetBagItem` returns for an item that isn't cached yet (nil, an empty `lines`, or placeholder lines), on both clients, and that the scanner treats it as not arrived.
 10. **The Categories tab:**
     - the drag ghost and the insertion line, in the list and in the rule editor;
-    - dragging in a list taller than the window body: does the wheel scroll mid-drag?
+    - dragging in the list with it scrolled (it and the editor scroll on their own since 2026-11-11): the wheel scrolls it mid-drag, holding the row near its top or bottom edge scrolls it (resting on the first or last row in view doesn't), and the line and the drop land on the row under the cursor;
+    - with Shift held, or `alwaysCompareItems` on, hovering an equippable item in Pinned items or Caught now (legacy gear in Grays/Auto Vendor): Blizzard's comparison tooltips open on the side of the item tooltip with more screen room (`TooltipComparisonManager:AnchorShoppingTooltips`), which for a centred `/sui` is over the window, covering the editor. SaftUI only places GameTooltip itself; the comparison tooltips are Blizzard's and the public API can't move them, so note how much they cover and whether it matters;
     - icon borders under the item art in Pinned items and Caught now;
     - text at real font sizes: nothing clipped or overlapping in the rows or the editor (the tests lay it out at the default size only).
 11. **`SetBagItem` and `SetItemByID`** on both clients: the tooltip the tab's icons show (item tooltips are `GameTooltip`'s), and the slot's own hover.

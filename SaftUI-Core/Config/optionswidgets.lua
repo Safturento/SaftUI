@@ -2375,18 +2375,25 @@ define('position', {
 ------------------------------------------------------------------ custom types
 
 -- The types other files define (the bags' Categories tab): W.CUSTOM[rowType]
--- is { bare = true | false, titled = true | false } for each. The body draws
--- a bare type's row with no label, the widget across the whole line, and a
--- titled bare type's with its name above the widget (optionsbody.lua).
+-- is { bare = true | false, titled = true | false, fill = true | false,
+-- minHeight = n | nil } for each. The body draws a bare type's row with no
+-- label, the widget across the whole line, and a titled bare type's with its
+-- name above the widget; a fill type's row takes the height the body's view
+-- has left, minHeight at least (optionsbody.lua).
 W.CUSTOM = {}
 
 -- The types above, which W.Define can't replace.
 local BUILT_IN = {}
 for rowType in pairs(builders) do BUILT_IN[rowType] = true end
 
--- W.Define(rowType, { width = n, bare = bool, titled = bool, build = function(w) end,
--- methods = { Refresh = ..., OnRelease = ..., ... } }) makes a widget type.
+-- W.Define(rowType, { width = n, bare = bool, titled = bool, fill = bool,
+-- minHeight = n, build = function(w) end, methods = { Refresh = ...,
+-- OnRelease = ..., ... } }) makes a widget type.
 -- titled is for a bare type only: its row shows its name over the widget.
+-- fill is for a bare type only too: its row stretches down to the bottom of
+-- the body's view, so a page of it has nothing to scroll (the Categories tab,
+-- whose list and editor scroll on their own); the body gives the widget its
+-- height with w:SetHeight(h), never less than minHeight (34 when nil).
 -- build makes w.frame, and whatever else the type keeps, once per widget.
 -- The methods are copied onto each widget as define copies a built-in
 -- type's, so Bind, Refresh (nothing after a release), Commit, SetDisabled
@@ -2406,7 +2413,13 @@ function W.Define(rowType, spec)
 	define(rowType, spec.methods or {})
 	pools[rowType] = {}
 	W.WIDTH[rowType] = spec.width or 0
-	W.CUSTOM[rowType] = { bare = spec.bare and true or false, titled = (spec.bare and spec.titled) and true or false }
+	local fill = (spec.bare and spec.fill) and true or false
+	W.CUSTOM[rowType] = {
+		bare = spec.bare and true or false,
+		titled = (spec.bare and spec.titled) and true or false,
+		fill = fill,
+		minHeight = fill and (spec.minHeight or 34) or nil,
+	}
 end
 
 ------------------------------------------------------------------ the check list
