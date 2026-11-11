@@ -184,6 +184,49 @@ test('the purge table: each spell has an ID and what it removes, by class, on ea
 	end
 end)
 
+-- Every spell verified against wago.tools at Forever 1.60.1.70888 and retail
+-- 12.1.5.70783 (purge.lua's comment): 'CLASS id removes[ pet]', what it
+-- removes sorted.
+local VERIFIED = {
+	forever = {
+		'HUNTER 19801 Enrage',
+		'PRIEST 527 Magic', 'PRIEST 988 Magic',
+		'SHAMAN 370 Magic', 'SHAMAN 8012 Magic',
+		'WARLOCK 19505 Magic pet', 'WARLOCK 19731 Magic pet', 'WARLOCK 19734 Magic pet', 'WARLOCK 19736 Magic pet',
+		'WARRIOR 23922 Magic', 'WARRIOR 23923 Magic', 'WARRIOR 23924 Magic', 'WARRIOR 23925 Magic',
+	},
+	live = {
+		'DEMONHUNTER 278326 Magic',
+		'DRUID 2908 Enrage',
+		'HUNTER 19801 Enrage,Magic',
+		'MAGE 30449 stealable',
+		'PRIEST 528 Magic',
+		'ROGUE 5938 Enrage',
+		'SHAMAN 370 Magic', 'SHAMAN 378773 Magic',
+		'WARLOCK 19505 Magic pet',
+	},
+}
+
+test('the purge table is exactly the verified spells, each removing what its effects remove', function()
+	world('forever')
+	for client, expected in pairs(VERIFIED) do
+		local actual = {}
+		for class, spells in pairs(UF.PURGE_SPELLS[client]) do
+			for _, s in ipairs(spells) do
+				local removes = {}
+				for i, r in ipairs(s.removes) do removes[i] = r end
+				table.sort(removes)
+				actual[#actual + 1] = ('%s %s %s%s'):format(class, tostring(s.id), table.concat(removes, ','), s.pet and ' pet' or '')
+			end
+		end
+		table.sort(actual)
+		local sorted = {}
+		for i, line in ipairs(expected) do sorted[i] = line end
+		table.sort(sorted)
+		eq(table.concat(actual, '; '), table.concat(sorted, '; '), client)
+	end
+end)
+
 ------------------------------------------------------------------ the spells the player knows
 
 for _, client in ipairs({ 'forever', 'retail' }) do
@@ -206,18 +249,32 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL; includeDispelTypes={}', "a warrior knowing a shaman's spell")
 	end)
 
+	-- An enrage (dispel type 9, Frenzy on Forever) is matched as 'Enrage' and
+	-- as '', on both clients: the type had no internal name on either until
+	-- retail's 12.1, and an aura with such a type most likely reports '' as its
+	-- dispelName (purge.lua).
 	test(client .. ": a hunter's Tranquilizing Shot", function()
 		world(client)
 		local frame = make_unit_frame('SaftUI_PurgeHunter', 'target', { 'Buffs' })
 		player('HUNTER', { 19801 })
 		if forever then
-			-- Forever's Tranquilizing Shot removes a Frenzy (dispel type 9),
-			-- which retail calls Enrage. Forever's dispel type has no internal
-			-- name, so the client names its auras' dispel type '' (purge.lua):
-			-- both names are in.
 			eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"","Enrage"}', 'Forever: enrages only')
 		else
-			eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"Enrage","Magic"}', 'retail: magic and enrages')
+			eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"","Enrage","Magic"}', 'retail: magic and enrages')
+		end
+		eq(filters(UF.PurgeFilter({ Enrage = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"","Enrage"}', 'PurgeFilter: enrages by both names')
+	end)
+
+	test(client .. ": a protection warrior's Shield Slam takes off a magic buff on Forever only", function()
+		world(client)
+		local frame = make_unit_frame('SaftUI_PurgeWarrior', 'target', { 'Buffs' })
+		for _, id in ipairs({ 23922, 23923, 23924, 23925 }) do
+			player('WARRIOR', { id })
+			if forever then
+				eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"Magic"}', 'Forever: Shield Slam ' .. id)
+			else
+				eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL; includeDispelTypes={}', "retail's Shield Slam dispels nothing: " .. id)
+			end
 		end
 	end)
 
@@ -274,6 +331,15 @@ test('a mage who knows only Spellsteal sees stealable buffs', function()
 	frame = make_unit_frame('SaftUI_PurgeMageForever', 'target', { 'Buffs' })
 	player('MAGE', { 30449 })
 	eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL; includeDispelTypes={}', 'Forever: no Spellsteal')
+end)
+
+test("retail: a druid's Soothe and a rogue's Shiv see enrages, by both names", function()
+	world('retail')
+	local frame = make_unit_frame('SaftUI_PurgeEnrage', 'target', { 'Buffs' })
+	player('DRUID', { 2908 })
+	eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"","Enrage"}', 'Soothe')
+	player('ROGUE', { 5938 })
+	eq(filters(UF.AuraFilter(frame, 'Buffs', { purgeable = true })), 'HELPFUL|RAID_PLAYER_DISPELLABLE; includeDispelTypes={"","Enrage"}', 'Shiv')
 end)
 
 test('a player who knows no such spell sees no buffs while the toggle is on', function()

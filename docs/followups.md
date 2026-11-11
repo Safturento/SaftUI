@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Purge filters: in-game checks](#2026-11-11--purge-filters-in-game-checks)
+  - [2026-11-11 — Purge table: retail gaps](#2026-11-11--purge-table-retail-gaps)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
   - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
@@ -100,6 +102,37 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Purge filters: in-game checks
+
+**What:** "Only buffs I can purge" (a toggle on every unit's Buffs, on by default for nameplates) builds Blizzard's aura container filters from facts the stubs can't confirm: which dispel name an enrage reports on each client, whether `RAID_PLAYER_DISPELLABLE` lets a Frenzy through for a Forever hunter, and whether the pet's spellbook is ready when the filters are first built at login.
+
+**Why noticed:** Task 10 of the nameplates plan (branch `np-10`) and its review. Blizzard's candidate filter matches `includeDispelTypes[auraData.dispelName]`, and an aura's dispel name is its type's internal name in `SpellDispelType`. Type 9 (an enrage; "Frenzy" on Forever) has no internal name on Forever 1.60.1.70888, and had none on retail before 12.1 (empty at 12.0.7.68974 and 11.2.7.64978, "Enrage" at 12.1.5.70783, wago.tools). Blizzard's own `Blizzard_PrivateAurasUI.lua` checks `dispelName ~= ""` on both clients, so an empty name most likely reports `''`. `purge.lua` therefore matches an enrage as both `'Enrage'` and `''`, on both clients. If a client reports `nil` instead, no candidate filter can pick enrages out, and a player whose only remover is an enrage one (a Forever hunter's Tranquilizing Shot, a retail druid's Soothe, a rogue's Shiv) sees no buffs with the toggle on.
+
+**Anchors:** `SaftUI-Unitframes/purge.lua` (`DispelNames`, `UF.PurgeFilter`, `UF:KnownRemovals`, `UF:RefreshPurgeFilters` and its event frame), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`, `UpdateConfig`), `tests/unitframes/purge_test.lua`; `.superpowers/sdd/2026-11-11-saftui-nameplates/task-10-report.md` (not versioned).
+
+**What's been considered:** Matching `''` too costs nothing: `RAID_PLAYER_DISPELLABLE` keeps only auras someone in the group can dispel, so `''` can't let in a buff with no dispel type. If a client reports `nil`, the choice is between dropping the dispel type filter for players who remove only enrages (showing everything `RAID_PLAYER_DISPELLABLE` lets through, which in a group includes other classes' magic dispels) or showing them nothing.
+
+**Shape of work:** A pass by the user, out of combat (aura data is secret in combat), then a small fix in `purge.lua` if a check fails:
+1. Forever, as a hunter with Tranquilizing Shot, Target's Buffs with Only buffs I can purge on: target a mob with a Frenzy buff (Molten Core's Magmadar or Flamegor, or a beast that frenzies). Does the buff show? `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`?
+2. If it doesn't show: `/dump C_UnitAuras.IsAuraFilteredOutByInstanceID('target', <its auraInstanceID>, 'HELPFUL|RAID_PLAYER_DISPELLABLE')` (false means the filter string lets it through, so the dispel name is what blocks it).
+3. Retail, as a druid with Soothe or a rogue with Shiv: the same two checks on an enrage (most dungeon enrages).
+4. Either client, as a warlock with the felhunter out: `/reload` with the toggle on, and the target's magic buffs show right after login. Dismiss the felhunter and summon it again: they go and come back.
+5. Forever, a protection warrior with Shield Slam: magic buffs show.
+
+**Open questions:** If Forever reports `nil` for a Frenzy, should a Forever hunter see every buff the group can dispel, or none?
+
+### 2026-11-11 — Purge table: retail gaps
+
+**What:** Retail class spells that take a buff off an enemy but aren't in `UF.PURGE_SPELLS`: the monk's Paralysis 115078 (its effect #2 dispels an Enrage; a talent) and the priest's Mass Dispel 32375 (a talent; its dispel effect, Magic, is aimed at an area, `ImplicitTarget` 31, so whether it reaches enemies directly or through another spell needs a look). Mass Dispel matters only for a priest without Dispel Magic. Racials (the Blood Elves' Arcane Torrent, an area Magic dispel) are out of scope: the table is by class.
+
+**Why noticed:** The review of Task 10 of the nameplates plan (branch `np-10`) swept wago.tools' `SpellEffect` at 12.1.5.70783 for every dispel or steal effect on a spell with a class skill line or a talent, beyond the spec's list. Neither spell exists on Forever 1.60.1.70888.
+
+**Anchors:** `SaftUI-Unitframes/purge.lua` (`UF.PURGE_SPELLS.live`, and the comment above it on how each spell was checked), `tests/unitframes/purge_test.lua` (`VERIFIED`, which pins the table: a new spell goes in both).
+
+**Shape of work:** Small: check each spell's effects (and Mass Dispel's triggered spells) at the current build, add `MONK = { { id = 115078, removes = { 'Enrage' } } }` and Mass Dispel to `PRIEST` if it dispels enemies, and add them to `VERIFIED`.
+
+**Open questions:** Should Paralysis count? It's a crowd control that happens to remove an enrage, not a purge a monk would think of.
 
 ### 2026-11-11 — Blizzard theme round 2: in-game checks
 
@@ -1369,6 +1402,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 - Duration filtering may be expressible through the container's processing `policy` (`CustomAuraContainerAuraProcessingPolicy`).
 - Live updates to group options would need either an AuraContainer API to remove or clear groups, or recreating the container on config change.
 - Found 2026-11-07 (review of the unit frame element options): groups can't be removed, but `CustomAuraContainerSharedMixin` (`Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua`, on `live` and `forever`) has `SetAuraGroupMaxFrameCount(key, n)`, `SetAuraGroupFilterString(key, filter)` and `SetAuraGroupLayout(key, layout)`. `elements/auras.lua` now keeps the key oUF's `AddGroup` returns as `auras.groupKey` and re-applies the spacing with `SetAuraGroupLayout` (`af25f66`). `max` and `onlyShowPlayer` could go live the same way and lose their "Reload to apply". Size, borders and cooldown are button options, set when a button is made, so they still need a reload.
+- Update 2026-11-11: the filter string and candidate filters now go live (`UF:ApplyAuraFilter`, `SaftUI-Unitframes/purge.lua`, nameplates Task 10), so `onlyShowPlayer` lost its "Reload to apply". `max` still needs a reload.
 
 **Shape of work:** A research pass on the AuraContainer API (group options, policies, removing groups), then a small change in `elements/auras.lua` that maps config to options. It may also need a config-schema cleanup to drop options that can't be supported.
 

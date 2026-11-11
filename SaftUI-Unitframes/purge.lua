@@ -27,23 +27,24 @@ local UF = st:GetModule('Unitframes')
 	dispels (Effect 38, the dispel type its EffectMiscValue_0) or steals a buff
 	(Effect 126). What each removes is read from those effects.
 
-	forever: every ID named Purge, Dispel Magic, Devour Magic or Tranquilizing
-	Shot with such an effect and a SkillLineAbility row on its class's skill
-	line, the ranks a player learns: Purge 370 and 8012 (Elemental Combat),
-	Dispel Magic 527 and 988 (Discipline), the felhunter's Devour Magic 19505,
-	19731, 19734 and 19736 (Pet - Felhunter), and Tranquilizing Shot 19801
-	(Beast Mastery), which removes dispel type 9, there named Frenzy. The other
-	IDs with those names are on no skill line (NPCs' and items' spells).
-	Forever has no Greater Purge, Consume Magic or Spellsteal, and its Soothe
-	(2908 is Soothe Animal) and Shivs (5938, 424799, 424800) remove nothing,
-	so it has no entry for the demon hunter, mage, druid or rogue.
+	forever: every spell with such an effect on an enemy and a
+	SkillLineAbility row on its class's skill line, the ranks a player
+	learns: Purge 370 and 8012 (Elemental Combat), Dispel Magic 527 and 988
+	(Discipline), the felhunter's Devour Magic 19505, 19731, 19734 and 19736
+	(Pet - Felhunter), Tranquilizing Shot 19801 (Beast Mastery), which removes
+	dispel type 9, there named Frenzy, and Shield Slam 23922, 23923, 23924 and
+	23925 (Protection), which also dispels a magic effect. The other IDs with
+	those names are on no skill line (NPCs' and items' spells). Forever has no
+	Greater Purge, Consume Magic or Spellsteal, and its Soothe (2908 is Soothe
+	Animal) and Shivs (5938, 424799, 424800) remove nothing, so it has no entry
+	for the demon hunter, mage, druid or rogue.
 
 	live: Purge 370, Greater Purge 378773, Dispel Magic 528 (527 is Purify
 	there), Consume Magic 278326, Tranquilizing Shot 19801 (Enrage and Magic),
 	Spellsteal 30449, Soothe 2908 and Shiv 5938, each a talent
 	(TraitDefinition), and the felhunter's Devour Magic 19505 (Pet -
 	Felhunter). Forever's other ranks (8012, 988, 19731, 19734, 19736) don't
-	exist there.
+	exist there, and retail's Shield Slam 23922 dispels nothing.
 ]]
 UF.PURGE_SPELLS = {
 	forever = {
@@ -63,6 +64,12 @@ UF.PURGE_SPELLS = {
 			{ id = 19731, removes = { 'Magic' }, pet = true }, -- Devour Magic (Rank 2)
 			{ id = 19734, removes = { 'Magic' }, pet = true }, -- Devour Magic (Rank 3)
 			{ id = 19736, removes = { 'Magic' }, pet = true }, -- Devour Magic (Rank 4)
+		},
+		WARRIOR = {
+			{ id = 23922, removes = { 'Magic' } }, -- Shield Slam (Rank 1)
+			{ id = 23923, removes = { 'Magic' } }, -- Shield Slam (Rank 2)
+			{ id = 23924, removes = { 'Magic' } }, -- Shield Slam (Rank 3)
+			{ id = 23925, removes = { 'Magic' } }, -- Shield Slam (Rank 4)
 		},
 	},
 	live = {
@@ -96,13 +103,17 @@ UF.PURGE_SPELLS = {
 
 -- The names Blizzard's candidate filters match an aura's dispelName against
 -- (includeDispelTypes) for a removal. An aura's dispelName is its dispel
--- type's internal name in SpellDispelType: Magic on both clients, and type 9
--- is Enrage on retail. On Forever type 9 is Frenzy with no internal name, and
--- Blizzard's code allows for a dispelName of '' (Blizzard_PrivateAurasUI.lua
--- checks dispelName ~= '' on both clients), which is most likely what Forever
--- gives a Frenzy; that's unconfirmed in game, so Forever matches both names.
+-- type's internal name in SpellDispelType: Magic on both clients. Type 9 (an
+-- enrage; Frenzy on Forever) had no internal name on Forever 1.60.1.70888,
+-- nor on retail before 12.1 (empty at 12.0.7.68974 and 11.2.7.64978, Enrage at
+-- 12.1.5.70783), and Blizzard's code allows for a dispelName of ''
+-- (Blizzard_PrivateAurasUI.lua checks dispelName ~= '' on both clients),
+-- which is most likely what such a type gives. Which one a client reports is
+-- unconfirmed in game, so an enrage matches both names, on both clients. ''
+-- can't let in an aura with no dispel type: RAID_PLAYER_DISPELLABLE keeps only
+-- auras someone can dispel.
 local function DispelNames(removal)
-	if removal == 'Enrage' and st.forever then return { 'Enrage', '' } end
+	if removal == 'Enrage' then return { 'Enrage', '' } end
 	return { removal }
 end
 
@@ -221,13 +232,11 @@ end
 
 -- What changes the spells the player knows, on both clients: learning or
 -- unlearning a spell (SPELLS_CHANGED), talents (PLAYER_TALENT_UPDATE,
--- TRAIT_CONFIG_UPDATED), and the player's pet coming or going (UNIT_PET; a
--- pet's spells are known only while it's out).
+-- TRAIT_CONFIG_UPDATED), and the player's pet coming or going (UNIT_PET for
+-- the player; a pet's spells are known only while it's out).
 local events = CreateFrame('Frame')
-for _, event in ipairs({ 'SPELLS_CHANGED', 'PLAYER_TALENT_UPDATE', 'TRAIT_CONFIG_UPDATED', 'UNIT_PET' }) do
+for _, event in ipairs({ 'SPELLS_CHANGED', 'PLAYER_TALENT_UPDATE', 'TRAIT_CONFIG_UPDATED' }) do
 	events:RegisterEvent(event)
 end
-events:SetScript('OnEvent', function(_, event, unit)
-	if event == 'UNIT_PET' and unit ~= 'player' then return end
-	UF:RefreshPurgeFilters()
-end)
+events:RegisterUnitEvent('UNIT_PET', 'player')
+events:SetScript('OnEvent', function() UF:RefreshPurgeFilters() end)
