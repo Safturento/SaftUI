@@ -1565,6 +1565,54 @@ test("a fill row stretches to the body's visible height, so the body has nothing
 	close_all()
 end)
 
+------------------------------------------------------------------ /sui's frames, pinned
+
+test("/sui's frames where they sit today, under Thick and Thin", function()
+	-- Where a frame sits in the window: x and y from its top left, and its size.
+	local function at(f)
+		local w = frames().window
+		return ('%d,%d %dx%d'):format(f:GetLeft() - w:GetLeft(), w:GetTop() - f:GetTop(), f:GetWidth(), f:GetHeight())
+	end
+	-- The flat colors a frame shows, as 'r,g,b,a x,y WxH', sorted.
+	local function fills(frame)
+		local out = {}
+		for _, region in ipairs({ frame:GetRegions() }) do
+			local color = region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture
+			if color then
+				out[#out + 1] = ('%.2f,%.2f,%.2f,%.2f %s'):format(color[1], color[2], color[3], color[4], at(region))
+			end
+		end
+		table.sort(out)
+		return table.concat(out, '\n')
+	end
+
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		st.config.profile.theme.name = name
+		st:RedrawThemed() -- the window drawn once already takes the theme, as a switch does
+		st.Config:Open('Loot') -- one tab: no tab row
+		local F = frames()
+		local side = F.navFrame:GetParent()
+		local brand = select(2, F.actionsFrame:GetPoint(1))
+		eq(at(F.window), '0,0 1040x700', name)
+		eq(F.window.backdropInfo.insets.left, name == 'thick' and 2 or 1, name .. ': the border')
+		eq(at(side), '2,2 208x696', name)
+		eq(at(brand), '2,2 207x73', name)
+		eq(at(F.actionsFrame), '2,75 207x44', name)
+		eq(at(F.navFrame), '2,120 207x547', name)
+		eq(at(F.profile:GetParent()), '2,668 207x30', name)
+		eq(at(F.main), '210,2 828x696', name)
+		eq(at(F.title):match('^%d+,%d+'), '238,22', name)
+		eq(at(F.close), '1000,14 24x24', name)
+		eq(at(F.search), '822,83 190x24', name)
+		eq(at(F.tabLine), '210,113 828x1', name)
+		eq(at(F.body), '238,113 774x539', name)
+		eq(at(F.reloadButton:GetParent()), '210,652 828x46', name)
+		eq(fills(side), '0.09,0.09,0.09,1.00 2,2 208x696\n0.18,0.18,0.18,1.00 209,2 1x696', name .. ': the fill and edge')
+		st.Config:Close()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ under the Blizzard theme
 
 local function theme(name)
