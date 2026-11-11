@@ -87,15 +87,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map
 
-**What:** Two narrow cases where the faction word can be off:
+**What:** Three narrow cases where the zone line can be off:
 - **A PvP subzone's status.** When `C_PvP.GetZonePVPInfo()` says `isSubZonePvP`, its status is the subzone's (Blizzard shows it on `PVPArenaTextString`, under the subzone name), but SaftUI takes it for the zone's. Entering a faction's zone while standing in a free-for-all or sanctuary subzone, the zone text says Neutral, and so does the map for that zone. Most such subzones are in contested zones, where Neutral is right anyway.
+- **A subzone during a cleared banner.** After a world quest or PvP objective banner clears the zone name (`ZoneText_Clear`), crossing into a subzone during the same fade brings SaftUI's level and faction line and the difficulty line back under the blank name, while the flourishes stay hidden. Blizzard's own PvP line, which this line replaces, does the same in the default UI.
 - **Same-named zones on the map.** The map line is worked out again only when the label's text changes (or on a zone event or a color change). Retail has same-named copies of a zone with different factions (Eversong Woods 94 is Horde, 2395 and 2567 Neutral; Silvermoon City 110 Horde, 2393 Neutral). Switching between maps that show both, with the cursor never leaving the zone and the label's text identical, keeps the first answer.
 
-**Why noticed:** The review of the zone level and faction feature (2026-11-10, minors 4 and 6), left as they are.
+**Why noticed:** The review of the zone level and faction feature (2026-11-10, minors 4 and 6), left as they are; the subzone case from its re-review (N1), left as it is because Blizzard's own PvP line behaves the same.
 
 **Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:LiveFaction`, `ZT:MapFaction`, `ZT:UpdateMapLine`'s `mapLineFor`); `tests/misc/zone_map_test.lua`.
 
-**What's been considered:** For the subzone: when `isSubZonePvP`, use the table's word for the zone, at least on the map. For the map: key the cache on the map's ID and the label text (`map:GetMapID() .. name`), which costs nothing.
+**What's been considered:** For the subzone: when `isSubZonePvP`, use the table's word for the zone, at least on the map. For a cleared banner: `ZT:UpdateZoneLine` and `ZT:SetZoneDifficultyText` also require a non-blank `ZoneTextString`. For the map: key the cache on the map's ID and the label text (`map:GetMapID() .. name`), which costs nothing.
 
 **Shape of work:** Small: a few lines each, with a test each.
 
