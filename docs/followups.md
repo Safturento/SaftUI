@@ -7,6 +7,12 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
+  - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
+  - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
+  - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
+  - [2026-11-11 — Screen edge margin: art reach only for /sui, and /sui's height not re-applied on a margin change](#2026-11-11--screen-edge-margin-art-reach-only-for-sui-and-suis-height-not-re-applied-on-a-margin-change)
+  - [2026-11-11 — Blizzard theme round 2: test gaps and small items parked in review](#2026-11-11--blizzard-theme-round-2-test-gaps-and-small-items-parked-in-review)
   - [2026-11-11 — Categories tab: the scrolled editor's two gaps](#2026-11-11--categories-tab-the-scrolled-editors-two-gaps)
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
   - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
@@ -95,13 +101,162 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-11 — Blizzard theme round 2: in-game checks
+
+**What:** Round 2 of the Blizzard theme (`/sui` as Blizzard's Settings window, unit frame borders, the micro menu bar) was built and tested on stubs, which model neither the game's layout, frame levels, draw order, texel snapping, slicing, the cursor nor combat protection. These steps need a look in game. Run each under Blizzard on Forever (the user's client) and, where marked, on retail, then under Thick to check nothing moved. Fix what is found; every value named here is a starting value from the plan or the spec, tuned in game.
+
+**Why noticed:** The plan's "In-game check list" and every task's report and review (`.superpowers/sdd/2026-11-11-saftui-blizzard-theme-round2/`, task-N-report.md and progress.md, not versioned) named what the stubs can't show. This entry merges them, grouped by area, so the user can run them in one pass.
+
+**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-blizzard-theme-round2.md` (the check list at its end), `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`, branch `round2`; `SaftUI-Core/themeart.lua` (the art tables, `ART.unitframe`, `ART.groupborder`, `ART.unitbars`, `ART.microbar`, `ART.resizegrip`), `SaftUI-Core/Config/optionswindow.lua` (`OW.LAYOUT`), `SaftUI-Core/Config/optionswidgets.lua`, `SaftUI-Core/Config/optionsbody.lua`, `SaftUI-Bags/categoriestab.lua`, `SaftUI-Unitframes/groups.lua`, `SaftUI-Unitframes/updaters.lua`, `SaftUI-Minimap/micromenu.lua`.
+
+**What's been considered:** Where a check fails the fix is usually a number in the art tables or the layout (offsets, slice margins, outsets), or one of the fallbacks the spec names: cutting the micro menu strip's pieces by texture coordinates as the bronze box is, cutting the scroll thumb's middle instead of stretching it, offsetting the select list by the c-bg's outset.
+
+**Shape of work:** A pass by the user, then one small fix task per area that fails. The steps:
+
+*`/sui`'s frame (both clients)*
+1. Switch to Blizzard with `/sui` open: it grows to 1110 x 728 without a reload; the metal's frame has "SaftUI Options" centred in its title bar in the window-title font, and the red close button sits in the socket and closes the window on a click (not a drag). The socket spot is right on Forever (0, 3 from the window's top right) and on retail (1, 0).
+2. The inner frame's bronze rim and dark edge run from under the title bar to just above the Reload UI / Close row over the sidebar and the settings; its drawn divider is on the sidebar's right edge (242 wide) and its vignette isn't over any text. Reload UI and Close are 16 in from the window's bottom corners, clear of the metal's bottom, and the footer's buttons are clear too.
+3. The window fits your screen inside the edge margin, and dragged to the screen's top, the metal's top (16 above the window) isn't cut off: it stops at the margin. Set Global Settings > General > Screen edge margin to 0 and try again: the metal's rim still stays on screen.
+4. Drag the window by its title bar, close it and reopen it: it opens where you left it. Under Thick, drag by the brand: the same.
+5. Under Blizzard: no "SAFTUI / Options" brand; Edit mode and Keybind mode buttons at the sidebar's top; the profile's name at the sidebar's bottom inside the inner frame.
+6. Scroll a long page (Unitframes > Player) part way and switch Thick to Blizzard and back: the same page at the same scroll. On Bags > Categories, switch: the editor still fills the tab. Switch to a profile whose theme is Blizzard and back with `/sui` open: it lays out again each time.
+7. Thick: exactly as before: 1040 x 700, the brand top left, the close X top right, the footer under the main column.
+
+*The sidebar*
+8. FRAMES, COMBAT and INFO are on the Settings banners (cycling 1, 2, 3); each banner's art hangs below the header without covering the first entry's text (the banner is 144 tall).
+9. Entry names are gold; the open page's and the one under the mouse are white; the open page is on the active art and the hovered one on the hover art. A disabled entry doesn't light white.
+10. Under Blizzard there is no section rule in any page, no footer line and no sidebar fill; the tab row's line is Blizzard's divider; the vertical dividers between halves stay. Under Thick the fill, the lines and the grey 29-tall headers are back.
+11. Make the sidebar overflow (raise the UI scale): a narrow scroll bar sits left of the divider, its arrows scroll two rows. Under Thick it has none.
+
+*Controls*
+12. Nested clipping on Bags > Categories: the editor's bar is inside the body's clip; the rule editor's dropdown faces aren't cut at the editor's edges; a dropdown in the body's right column shows its glow whole at the body's right edge (a select's 7px glow may be clipped 2px at the body's or a dialog's first and last row and on the left at x = 0: say if it shows).
+13. Dropdown faces: a select (Global Settings > Theme > the Theme select is the long one) shows the bronze Settings button, text centred; hover lights the face and shows the small arrow under it; press shows the pressed face and nudges the text; the face looks open while its list shows. The face's rounded ends stretch cleanly at 109 and 170 wide. A compact dropdown (Unitframes > Player > Health > Text > TO, and the rule editor's fields in Bags > Categories) has the smaller glow, no hover arrow and clears the box under it.
+14. Open a select's list: it sits on Blizzard's menu art (bronze border and shadow) with no tooltip border; rows light on hover. The c-bg reaches 12 above the list, over the button's bottom (22 when the list opens upward): if the opaque part covers the button, the list should sit lower under Blizzard.
+15. Steppers: a select with short choices has the bronze back and next steppers at its ends with the face between at 109; hover, press (the triangle nudges 2 right, 1 down) and let go look right; the face doesn't light while the mouse is on a stepper or in the 4 to 5px gap beside it. Click next until the last choice: the setting changes each click exactly as picking it does, next greys at the end, back works the same, nothing wraps. A disabled select has both steppers grey and clicks do nothing.
+16. The Theme select ("Use SaftUI's theme") has no steppers and its face is the full 170. Unitframes' unit picker (longest name "TargetTarget") and Action Bars' extras ("Zone ability"): say whether they came out with or without steppers, and whether that's what you expect (83 of room for the text). Global Settings > Fonts: every font select has no steppers and opening the page doesn't hitch.
+17. Check boxes at 30 x 29: lined up with their labels, spilling left and up past the 18 box as Settings' do; a click on the box's left edge toggles it; the multiselect's and check list's rows are 23 x 22 with their hover. The 12px spill overlaps the label's last 2px only on a full-width label (say if it shows).
+18. Slider arrows: each arrow steps the value and the box updates; greyed at the ends; both greyed on a disabled slider; under Thick no arrows and the track runs full width.
+19. Scroll bars: on a long page (Unit Frames) a gold-rimmed minimal bar 12 right of the rows, its arrows at the body's top and bottom, clear of the inner frame's right rim. Drag the thumb; click both arrows (two rows each); click the track above and below the thumb (a page each); the wheel scrolls two rows, also over the bar. Hover and press the thumb and arrows. The thumb's middle (an 8 x 715 stretch) doesn't look squashed when tall. The arrows and track don't repeat while held (Blizzard's do): say if it matters. A page with nothing to scroll shows no bar. The narrow bars: the sidebar's, the Categories list's and a long dropdown list's (a font list: an arrow moves a row, a drag scrolls it). The 3px bars are back under Thick.
+
+*Growing taller (every theme)*
+20. The bottom edge (the 6px strip left of the corner) and the grip both drag; the top stays put; it stops at 700 (728 under Blizzard) and with its bottom at the edge margin. Hover the grip under Thick: the corner arrow takes the hover color.
+21. The height comes back after `/reload`, and after a theme switch. A move alone saves no height: with none saved (`/run SaftUI.config.global.optionsWindow = nil`), move /sui under Blizzard and switch to Thick: it is 700 tall, not 728.
+22. Under Blizzard the inner frame stretched taller (its vignette and rim) looks right; Blizzard's grip in the metal's bottom right corner shows, takes the mouse, lights on hover, darkens when pressed and stays clear of Close.
+23. On a long page the scroll bar follows the drag (and the sidebar's); on the Categories tab nothing redraws while the mouse is held, then once on release with the list and editor taller.
+24. A product call: under Blizzard the most height leaves room for the metal (1016 on Forever and 1020 on retail, against 1040 for the window alone) and `/sui` stops 16 further from the screen's top. Say if that is acceptable. A centred window at its most height may be pushed 4 down by the game's clamp.
+25. A lower resolution or a raised UI scale, then `/reload`: `/sui` opens no taller than the screen allows and never under its least.
+
+*Bags > Categories*
+26. The list: the picked row has the gold-bordered active art and a white name, the others are gold and show the hover art, an off category is grey and struck, the drag line shows when dragging, and Thick brings back the blue bar and tint. Its handles and counts are as before.
+27. The footer: pick Grays/Auto Vendor. The editor ends at Reset; a line across the editor's column (a 1px line, or Blizzard's divider under Blizzard) with Caught now above Pinned items under it at the tab's bottom. Scroll the rule with the wheel: the footer stays put and the lit block and the icon are in view together. Hover a gray: its rule block lights and its tooltip opens beside the window. A pin's X unpins it and the footer shrinks.
+28. A category that catches many items (or 80 pins): the footer stops at half the tab with its own bar and the wheel over it scrolls only it; another category starts at the top. Under Blizzard the footer's bar is Blizzard's minimal bar ending at the footer's bottom and the editor's ends at the footer's top line. The icon ring and X on the footer's icons draw over the icons (see "Blizzard theme: in-game checks"), and nothing in the footer is clipped at its edge.
+29. A bag update while the Categories tab is open and a scroll thumb is held doesn't end the drag.
+
+*Unit frames (both clients)*
+30. The bronze box: the player's frame at 301 x 34, a 120-wide pet or target of target, and the player's 299 x 20 power bar: the corners meet the edges with no step or gap, no blur or seam on the top and bottom edges, the dark Background inside. Forever shows bronze (its Camelot member's file), retail grey and gold. Resize a frame: the corners stay 8 x 8 and the edges stretch. If a seam shows, the rectangles in `ART.unitframe` are the values to tune.
+31. One box per edge: the player frame with its own Theme set to "Use SaftUI's theme" has one bronze box and no doubled rim where health sits in it. Player > Health: Height -4 (Relative on) shows a second box inside the frame's; back to 0 and one box again; the same with Y offset -1.
+32. A bar under 12 on a side draws a thin 1px line with a dark fill and no bronze corners (the 5-tall power bar, Target > Power with Enable on); at 12 or more it becomes the bronze box. Say whether the thin bar looks wrong beside its boxed neighbours.
+33. The separate power bar and the castbar have their own box; the target's castbar has a box; the boss castbars (Thin) show a 1px line. Boss test mode: the previews have boxes like the real frames.
+34. The group border around party, raid10 and raid40 (57 x 30 members, 3 apart): a thin rounded border about 2px outside at the left, top and right and 3 below, and members show no border of their own. Someone joining or leaving in combat moves the border with the frames and BugGrabber shows no `ADDON_ACTION_BLOCKED`. Check the corners and edges are crisp with no seam and no stray dark band inside the frames (Forever's dark inner 4px in the party's gaps); tune `ART.groupborder`'s offsets and 6px slice if the rim reads too far in or out. Raid40 with a partial last column.
+35. Which Theme turns the border on: Party > General > Theme: Thick removes it and each member shows Thick's border; back to None, then Health > Theme: Thick removes it; Health back to "Use SaftUI's theme" brings it back. Party test mode out of a group sits in the same border; Thick and Thin show none.
+36. With the Party's Show player off, invite someone and leave the invite pending: no bronze strip where the party frames go; once they join the border shows around their frame.
+37. Bar fills: class colors on `RaidFrame-Hp-Fill` read as class colors and not muddy (and by reaction on a target); the resource fill on power; a picked health texture stays; health Theme None is flat; under Thick every bar is flat with a flat, untiled background; the castbar is unchanged; power stays filled while ticking; party and raid power too. After a Blizzard to Thick switch the background is flat.
+
+*The micro menu bar*
+38. Forever: the zone, clock, latency and FPS boxes each show the bronze header button, 23 tall and centred in the row, with the text readable on it; the tight cases are the 48-wide latency and FPS boxes (its two ends leave 4 between them if the margins are halved) and the header's art at 200, 60 and 48 wide.
+39. Forever: the addon compartment ("18"), expansion, mail, difficulty and queue eye stand on the bronze square (mail's icon fills its whole box today and may cover the square: say if it should shrink). Search shows Blizzard's tracking button with its magnifier drawn in and no second one; the flat hover shows over each box.
+40. Forever: the bronze strip behind the micro buttons is 33 tall on the 25 row, 4 above and below the boxes, with a crisp rim and chamfered ends not squashed (its slice margins, 16 and 20, are taken to be the `-2x` member's texels, 8 and 10 UI units: if the ends look squeezed, cut the pieces by texture coordinates instead, as the spec allows), its background 2 inside the rim, under Blizzard's buttons with their own bronze squares on top, and clear of the FPS box and the square after it.
+41. Hide a micro button (change level or region): the strip shrinks to the shown run. Mail and the queue eye coming and going close the bar up and their boxes go with them. In combat, a mail or queue pop: the strip and boxes follow with no `ADDON_ACTION_BLOCKED`.
+42. In a vehicle and in a pet battle, where Blizzard moves its buttons out of the bar but the holders stay: nothing of Blizzard's frame art shows, and say whether an empty strip there looks wrong.
+43. Switch to Thick and back with `/reload` first: Thick brings back today's small frames and removes the strip; Blizzard brings everything back with no reload.
+44. Retail: the grey minimap button kit on every box and no strip; the tracking icon is Blizzard's own; the instance difficulty button's own purple fill covers its box (left as it is).
+
+*Thick and Thin, last*
+45. Switch to Thick, then Thin: `/sui`, every unit frame, the group frames and the micro menu bar look exactly as they did before round 2 (the 5-tall power bar's drawn kind is now `small`, which looks as a bar).
+
+**Open questions:** Items 14, 16, 24, 32 and 39 ask the user for a call, not only a pass or a fail.
+
+### 2026-11-11 — Blizzard theme: a border per real raid group, not per header
+
+**What:** Under Blizzard the group border is one frame around each secure header: one around the party, one around the whole raid (raid10 or raid40). A border around each real raid group (the five players of group 1, of group 2, ...) as Blizzard's raid frames draw with Keep Groups Together on isn't there. A raid header fills rows of five in group order, so a row is only a real raid group while every earlier group is full.
+
+**Why noticed:** The round 2 spec's "My call: one group border per group header" (`docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`, Party and raid frames), which names a border per real raid group as "a followup if wanted". Task 14 built the one-per-header border.
+
+**Anchors:** `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md` (Party and raid frames); `SaftUI-Unitframes/groups.lua` (`UF:CreateGroupHeaders`, `UF:GroupBorder`, `UF:UpdateGroupBorder`, `UF.GroupBorderShown`); `SaftUI-Core/themeart.lua` (`ART.groupborder`, `ThemeArt.PaintCut`); `.agents/architecture.md` (Unit frames).
+
+**What's been considered:** A border per real group needs a secure header per group (a header with `groupFilter` set to one group, for eight headers in raid40), which is a rework of how the raid frames are made, laid out and moved in edit mode (`UF:ApplyGroupLayout`, the group's holder and mover), not a change to the border.
+
+**Shape of work:** A design pass first (eight headers or one with its rows split, the layout sums, the holder and the mover), then a task for the headers and one for the border per header, which would reuse `UF:GroupBorder` unchanged.
+
+**Open questions:** Does the user want the border per real raid group at all, given a single border around the raid already reads as Blizzard's with Keep Groups Together off?
+
+### 2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)
+
+**What:** `UF:UpdateElement` calls `self:UpdateElementPosition(element, configOverride)`, but the signature is `UF:UpdateElementPosition(element, unitframe, configOverride)`. The override lands in the `unitframe` slot, which is then overwritten, so an element is always placed by its own config. With Mana as primary, power and additional power are sized by each other's config (`UF:UpdateElementSize`) but placed by their own. Commit f0dda64 meant the override to place the element too.
+
+**Why noticed:** The Blizzard theme round 2's Task 13 gave `UF:ElementKind` and `UF:ElementTheme` a `configOverride` so a bar's kind follows the size it is drawn at, and `UF.FillsFrame(configOverride or config)` then checks the override's position while the bar is placed by its own. That only matters if a user makes the player's power fill the unit frame and also turns Mana as primary on. Pre-existing; found in review, not caused by round 2.
+
+**Anchors:** `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`, `UF:UpdateElementSize`, `UF:ElementKind`, `UF:ElementTheme`, `UF.FillsFrame`); commit f0dda64; `SaftUI-Unitframes/elements/name.lua` (passes the string `'Name'` as its override).
+
+**What's been considered:** Fixing the call changes where those two bars sit (they would take the other bar's position) and would break `name.lua`, which passes a string as its override, so it needs its own look at which callers mean what. Not fixed in round 2 for that reason.
+
+**Shape of work:** Small: audit the callers of `UpdateElementPosition` and of the override, fix the argument, and pin the result with a test in `tests/unitframes/`.
+
+**Open questions:** Should the other bar's config place the element with Mana as primary, as f0dda64 intended, or does each bar keep its own spot?
+
+### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
+
+**What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
+
+**Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
+
+**Anchors:** `SaftUI-Core/Config/optionswindow.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/api.lua` (`st:EnableResizing`, which also sets none).
+
+**What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
+
+**Shape of work:** A few lines in `optionswindow.lua`, a `SetCursor` stub in `tests/wow/widgets.lua` or `game.lua`, and one test.
+
+**Open questions:** Do the in-game checks show the edge needs a cue at all?
+
+### 2026-11-11 — Screen edge margin: art reach only for /sui, and /sui's height not re-applied on a margin change
+
+**What:** Two loose ends in how `/sui` meets the screen edge margin. (1) `st:KeepInScreenMargin(frame, reach)` can keep a frame's art, not just its rect, inside the margin, but only `/sui`'s window passes a `reach` (the metal's, under Blizzard). The bag, bank and combined bank windows, whose header sits in the metal's title bar above the window, still clamp their rect only, so at a margin under 20 their title bar can go off the top of the screen. (2) A margin change while `/sui` is open at its most height doesn't shrink it until the next open or change of look: `Draw` doesn't re-apply `OW.WindowHeight`, and `st:UpdateScreenMargin` doesn't tell the window.
+
+**Why noticed:** Round 2's Task 2 carried (1) to Task 10, which fixed it for `/sui` only (the window's resize also stops where the metal meets the margin) and found (2) as ruling 12; its review parked "hook `st:UpdateScreenMargin` to re-apply `WindowHeight`".
+
+**Anchors:** `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:UpdateScreenMargin`); `SaftUI-Core/Config/optionswindow.lua` (`ArtReach`, `Margins`, `OW.MaxHeight`, `OW.WindowHeight`, `Relayout`); `SaftUI-Core/panels.lua` (`st:CreateHeader`, `st:HeaderInTitleBar`); `SaftUI-Core/themeart.lua` (`ThemeArt.MetalReach`); `tests/core/screen_margin_test.lua`; "Blizzard theme: in-game checks" (the bags' margin item).
+
+**What's been considered:** For (1), `st:CreateHeader`'s windows could pass `ThemeArt.MetalReach` while the header is in the title bar and re-apply on a theme change, which also needs the bags' mover anchor and edit mode's outline to agree (the existing in-game-checks entry names that). For (2), `st:UpdateScreenMargin` could end by asking the window to re-apply its height, or the window could re-read the margin when it draws.
+
+**Shape of work:** (2) is small: a hook and a test. (1) is a small change in `panels.lua` plus the bags' anchors, with an in-game look.
+
+**Open questions:** Does a margin under 20 matter to the user enough to do (1)?
+
+### 2026-11-11 — Blizzard theme round 2: test gaps and small items parked in review
+
+**What:** Small items the round 2 reviews found and parked for a final fix wave. Strike the ones the wave took.
+- `ThemeArt.Cut` (`SaftUI-Core/themeart.lua`) guards a missing file but not nil texture coordinates in the atlas info: it should hide the texture, not error. The test "a cut with no atlas file hides its pieces" should restore `C_Texture.GetAtlasInfo` itself.
+- Micro menu: `tests/minimap/blizzard_look_test.lua` has no Thin check (one line), and `micromenu.lua` should say in a comment that the strip is deliberately unprotected (SaftUI's own frame, never protected, so the `SafeReposition` function always runs at once).
+- Check boxes: the sizes test (`tests/core/options_widgets_test.lua`) lacks an unchecked and a disabled toggle pass and the multiselect's unchecked row, and doesn't pin the hover's size at 23 x 22.
+- Dropdown: a comment on `LookDropdown` that the compact face and `HoverArrow` are created once per look change.
+- Slider arrows: tests for a failing validator blocking a step, 0.1 x 10 landing on 1, a `bigStep`-only option, and an off-grid value stepping to the next grid point by direction.
+- Scroll bars: tests for a rows-unit drag, `OnHide` mid-drag and the nav with nothing to scroll; the pressed arrow's 1, -1 displacement (`ButtonStateBehaviorMixin`) isn't drawn, and a track click pages once per press where Blizzard's repeats while held.
+- Categories list: a test pinning one tinted row only, and the Thick hover's color and alpha plus `OnLeave`.
+- `/sui` resize: skip `SetScroll` mid-drag on a fill page (`filledTo`); a test that `OnHide` ends a resize; `tests/core/options_window_test.lua` near line 2059 should stand alone and `tests/core/options_settings_test.lua` near line 889 calls `st:UpdateScreenMargin()` for its own setup.
+
+**Why noticed:** The reviews of Tasks 4, 5, 7, 8, 9, 10, 12 and 17 of the round 2 plan (`docs/superpowers/plans/2026-11-11-saftui-blizzard-theme-round2.md`), each Approved with these left for the final fix wave. The review notes live in the plan's ledger (`.superpowers/sdd/2026-11-11-saftui-blizzard-theme-round2/progress.md`, not versioned), so they are recorded here.
+
+**Anchors:** the files named above; `tests/core/theme_blizzard_draw_test.lua`, `tests/minimap/blizzard_look_test.lua`, `tests/core/options_widgets_test.lua`, `tests/bags/categories_tab_test.lua`.
+
+**Shape of work:** One small test-and-comment task.
+
 ### 2026-11-11 — Categories tab: the scrolled editor's two gaps
 
-**What:** Since the Categories tab's list and editor scroll on their own, two things in the editor were left as they were. The rule editor's block drag has no edge scroll: the list scrolls while a dragged category is held near its top or bottom edge, but a dragged block held near the editor's edge doesn't (the wheel does scroll the editor mid-drag). And hovering a Caught now icon lights the block that caught it without scrolling the editor to it (on purpose: a scroll on hover would move the icon away from the mouse), so the lit block can be out of view.
+**What:** Since the Categories tab's list and editor scroll on their own, two things in the editor were left as they were. The rule editor's block drag has no edge scroll: the list scrolls while a dragged category is held near its top or bottom edge, but a dragged block held near the editor's edge doesn't (the wheel does scroll the editor mid-drag). And hovering a Caught now icon lights the block that caught it without scrolling the editor to it (on purpose: a scroll on hover would move the icon away from the mouse), so the lit block can be out of view. *Update 2026-11-11 (Blizzard theme round 2, Task 11):* Caught now and Pinned items now sit in a fixed footer at the editor's bottom, so Caught now stays in view under the rule and the icon no longer scrolls with the editor; with the editor scrolled to the block, the block and the icon are in view together. What is left of the second gap: a lit block can still be out of the editor's view when the rule is taller than the editor's view (the tab less the footer), and the wheel over the icon scrolls the footer, not the editor.
 
-**Why noticed:** The 2026-11-11 change that gave the tab its two scroll areas (user feedback, screenshot 112: scrolling the list down to Quest scrolled Quest's editor out of view). The brief asked for the list's edge scroll only, and for the hover not to scroll. Measured on the shipped categories at the default window size: the tab is 483 high; only Grays/Auto Vendor (653 on Forever, 697 on retail) and Container (523, 567) need the editor to scroll, and every shipped rule plus the Caught now strip spans at most 457 (Grays), so both fit in view together, but only with the editor scrolled to show both. Scrolled to its bottom, Grays' first rule row sits about 32 above the view. A Pinned items strip (about 70 more) or a longer rule of the user's makes the lit block go out of view more often.
+**Why noticed:** The 2026-11-11 change that gave the tab its two scroll areas (user feedback, screenshot 112: scrolling the list down to Quest scrolled Quest's editor out of view). The brief asked for the list's edge scroll only, and for the hover not to scroll. Measured then, on the shipped categories at the default window size: the tab is 483 high; only Grays/Auto Vendor (653 on Forever, 697 on retail) and Container (523, 567) need the editor to scroll, and every shipped rule plus the Caught now strip spans at most 457 (Grays), so both fit in view together, but only with the editor scrolled to show both. Those figures are out of date since the footer (the editor's view is the tab less the footer, at most half the tab). A longer rule of the user's still makes the lit block go out of view.
 
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`EdgeScroll`, `DrawDrag`, `ScrollEditor`, `HighlightWhy`); `SaftUI-Bags/ruleeditor.lua` (`DrawDrag`, `StartDrag`, the `bagrule` type); `tests/bags/categories_tab_test.lua` (the scrolling tests).
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`EdgeScroll`, `DrawDrag`, `ScrollEditor`, `ScrollFooter`, `SplitFooter`, `HighlightWhy`); `SaftUI-Bags/ruleeditor.lua` (`DrawDrag`, `StartDrag`, the `bagrule` type); `tests/bags/categories_tab_test.lua` (the scrolling tests).
 
 **What's been considered:** The edge scroll could be the tab's: while `EditorDragging(w)`, an OnUpdate on the tab's frame runs the same band test against `w.editorScroll` and calls `ScrollEditor`; the rule editor's own `DrawDrag` already redraws its line from the rows each frame, so the line follows. For the hover, an arrow or a mark at the editor's top or bottom edge when the lit block is out of view would say where it is without moving anything.
 
@@ -144,7 +299,7 @@ Window headers in the metal's title bar (both clients; `st:HeaderInTitleBar`, `S
 
 Bags, Forever:
 - the close button in its socket: its ADD highlight, and whether it draws and clicks above the metal and the header now in the title bar;
-- the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen"). Since 2026-11-11 the window's header (its title, buttons and drag handle) sits in that title bar too, so at a margin under 20 it goes off the top of the screen with the bar; if that bites, the margin could count the title bar while the header is in it (`st:HeaderInTitleBar`), which would also need the bags' mover anchor and edit mode's outline to agree;
+- the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen"). Since 2026-11-11 the window's header (its title, buttons and drag handle) sits in that title bar too, so at a margin under 20 it goes off the top of the screen with the bar; if that bites, the margin could count the title bar while the header is in it (`st:HeaderInTitleBar`), which would also need the bags' mover anchor and edit mode's outline to agree (round 2 did this for `/sui` alone: see "Screen edge margin: art reach only for /sui, and /sui's height not re-applied on a margin change");
 - the ring on the Pinned items and Caught now icons in `/sui` → Bags → Categories: `LayItems` (`SaftUI-Bags/categoriestab.lua`) re-levels each icon and its border's frame on every draw, so the ring may end up level with the icon.
 
 Unit frames (both clients): under Blizzard a debuff shows its dispel type as Blizzard's white icon border over the icon's edge, which the aura container tints (`StyleButton`, `SaftUI-Unitframes/elements/auras.lua`). Check it shows in the dispel type's color, sits over the icon, against the cooldown swipe, and isn't there for a debuff with no dispel type.
@@ -250,7 +405,7 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 ### 2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look
 
-**What:** Under SaftUI's theme Blizzard, `/sui` → Bags → Categories is only partly in Blizzard's Settings art. What it borrows from Core takes the Blizzard look: the editor's ordinary rows (Name, On, Show in, Reset, Delete), the lists and check lists its pickers open, the Reset all confirm, and the item strips' icon borders (kind `action`). The bags' own custom widgets keep the options window's `Box` look and flat blue hovers: the rule editor's text and number boxes, its value fields with their caret, the "whole word" check box, the NOT toggles and the AND/OR badges (`bagrule`), and the category list's rows, drag handles, + New category and Reset all (`bagcategories`).
+**What:** Under SaftUI's theme Blizzard, `/sui` → Bags → Categories is only partly in Blizzard's Settings art. What it borrows from Core takes the Blizzard look: the editor's ordinary rows (Name, On, Show in, Reset, Delete), the lists and check lists its pickers open, the Reset all confirm, and the item strips' icon borders (kind `action`). *Update 2026-11-11 (Blizzard theme round 2, Tasks 5 and 9):* the rule editor's value fields now follow too (the compact Settings dropdown, `W.LookDropdown(field, blizzard, true)`), and the category list's rows are the Settings category list (`Options_List_Active` and `Options_List_Hover`, gold names, white when picked). Still in the options window's `Box` look: the rule editor's text and number boxes, the "whole word" check box, the NOT toggles and the AND/OR badges (`bagrule`); the list's drag handles keep their look.
 
 **Why noticed:** Merging `modular` (the bag categories project) into `blizzardtheme` (2026-11-11). Both were built from modular 8dc348c in parallel: the Blizzard theme gave `/sui`'s built-in widgets Blizzard's Settings art (its spec's ruling 2), while the bag categories added three custom widget types (`W.Define`) that draw their own frames with `W.Box`. The merge brief said to leave them as they were, apart from what follows from the shared helpers, and to note the gap. The merge did give the check list's boxes the Settings check box, since the check list is Core's (`W.OpenCheckList`) and the spec's ruling 3 is one check box look everywhere.
 
@@ -258,9 +413,9 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 **What's been considered:** Most of Core's look helpers are locals of `optionswidgets.lua`. Exporting them on `W` (as `W.LookButton` and `W.LookSearch` already are) would let the bags' widgets call them when they bind: a box as `LookInput`, a field as `LookDropdown` (which wants `button.caret` and `DropdownStates`), the check box as `LookCheckBox`, and the selected category row as the sidebar's `Options_List_Active` with `Options_List_Hover` under the mouse. The NOT toggle and the AND/OR badge have no Blizzard equivalent, so they would take the 1px line the multiselect's box takes.
 
-**Shape of work:** One small task: export the helpers, call them from the two bags files at bind, and add a Blizzard-and-back test per control to `tests/bags/rule_editor_test.lua` and `tests/bags/categories_tab_test.lua`, with every cell's rect unchanged under Thick and Thin.
+**Shape of work:** One small task for what is left: the boxes as `LookInput` (exported on `W` as `LookDropdown` was), the check box as `LookCheckBox`, and the NOT toggle and AND/OR badge as the multiselect's 1px line, called from `ruleeditor.lua` at bind, with a Blizzard-and-back test per control in `tests/bags/rule_editor_test.lua` and every cell's rect unchanged under Thick and Thin.
 
-**Open questions:** Should the AND/OR badges keep their blue and orange under Blizzard, since the colors carry the operator, and the selected category its blue bar?
+**Open questions:** Should the AND/OR badges keep their blue and orange under Blizzard, since the colors carry the operator?
 
 Also check in game, under Blizzard: the item strips' (Pinned items, Caught now) action ring sits over each icon. `LayItems` (`categoriestab.lua`) moves each icon and its border's frame to new levels on every draw, and the ring's holder is a child of that border frame (`themeart.lua`, `Holder`), so it may end up level with the icon rather than above it. The stubs don't model frame level stacking.
 
@@ -708,7 +863,7 @@ On retail:
 
 **What:** Two Core helpers write fields onto the frames they're given:
 - `st:Kill` writes `Show`, `_Show` and `SetAtlas`;
-- `st:SkinIcon` writes `__stTexCoord`, plus a hook.
+- `st:SkinIcon` wrote `__stTexCoord`, plus a hook. *Update 2026-11-11 (commit 28c0448):* it keeps its crop and its hooked flag in weak tables of `skinning.lua`'s, so it now writes nothing onto the icon but its hook. `st:Kill` still writes.
 
 The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconFrame.Border`, `Timer.Background`, `NameFrame`, `Corner`, `IconFrame.Count`, `IconFrame.Icon`. That breaks `.agents/taint.md` rule 1. Other skins likely do the same. Separately, `SaftUI-Loot/popup.lua` writes `LootFrame.skinned`, but that file isn't loaded; it goes away with the loot window reskin.
 
@@ -718,9 +873,9 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **What's been considered:**
 - For art: hide with `SetAlpha(0)` or `Hide()` plus a post-hook, instead of replacing `Show` (taint rule 4 and the totem skin's pattern).
-- For icons: keep the tex-coord state in a weak table, keyed by the texture.
+- For icons: keep the tex-coord state in a weak table, keyed by the texture (done for `st:SkinIcon` in 28c0448; what is left of it is the hook it puts on the icon).
 
-**Shape of work:** An audit of the callers, then a side-table version of each helper for Blizzard targets.
+**Shape of work:** An audit of the callers, then a side-table version of `st:Kill` for Blizzard targets (and a look at `st:SkinIcon`'s hook).
 
 ### 2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset
 
