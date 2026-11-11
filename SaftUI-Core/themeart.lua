@@ -398,6 +398,9 @@ ThemeArt.ART = {
 	optionslist = {
 		picked = Atlas('Options_List_Active'),
 		hover = Atlas('Options_List_Hover'),
+		-- A page's name: gold, white when it's open or under the mouse
+		-- (the Settings panel's NORMAL_FONT_COLOR and HIGHLIGHT_FONT_COLOR).
+		text = { normal = { 1, 0.82, 0 }, picked = { 1, 1, 1 } },
 	},
 
 	-- The Settings panel's inner frame (SettingsFrameTemplate): one bitmap,
@@ -409,6 +412,13 @@ ThemeArt.ART = {
 		inner = Atlas('Options_InnerFrame'),
 		width = 886,
 		divider = 199,
+		-- The category list's group banners, in turn (the Settings panel's
+		-- SettingsCategoryListHeaderTemplate), the line under the tab rows,
+		-- and a group header's height and label place.
+		banners = { Atlas('Options_CategoryHeader_1'), Atlas('Options_CategoryHeader_2'), Atlas('Options_CategoryHeader_3') },
+		rule = Atlas('Options_HorizontalDivider'),
+		groupHeight = 30,
+		groupLabel = { x = 20, y = -1 },
 	},
 
 	-- Blizzard's micro buttons' own art, given back by name: the pushed

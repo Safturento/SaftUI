@@ -106,6 +106,10 @@ return {
 		['Options_List_Hover'] = { 187, 21 },
 		-- Controls: the Settings panel's inner frame
 		['Options_InnerFrame'] = { 886, 618 },
+		['Options_CategoryHeader_1'] = { 199, 144 },
+		['Options_CategoryHeader_2'] = { 199, 144 },
+		['Options_CategoryHeader_3'] = { 199, 144 },
+		['Options_HorizontalDivider'] = { 630, 1 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },
@@ -233,6 +237,10 @@ return {
 		['Options_List_Hover'] = { 187, 21 },
 		-- Controls: the Settings panel's inner frame
 		['Options_InnerFrame'] = { 886, 618 },
+		['Options_CategoryHeader_1'] = { 199, 144 },
+		['Options_CategoryHeader_2'] = { 199, 144 },
+		['Options_CategoryHeader_3'] = { 199, 144 },
+		['Options_HorizontalDivider'] = { 630, 1 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },

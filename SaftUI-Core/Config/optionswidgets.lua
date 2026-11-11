@@ -313,6 +313,7 @@ end
 -- where its text starts under Blizzard, clear of the glass; nil under Thick
 -- and Thin.
 local SEARCH_GLASS, SEARCH_GLASS_LEFT, SEARCH_GLASS_GAP = 10, 6, 4
+local SEARCH_GLASS_Y = -1 -- SearchBoxTemplate's glass sits 1 below the box's middle
 function W.LookSearch(box, blizzard, height)
 	local art = Art(box)
 	if Changes(art, blizzard) then
@@ -323,7 +324,7 @@ function W.LookSearch(box, blizzard, height)
 			local glass = Piece(art, box, 'Glass', 'ARTWORK')
 			glass:SetAtlas(look.icon)
 			glass:ClearAllPoints()
-			glass:SetPoint('LEFT', box, 'LEFT', SEARCH_GLASS_LEFT, 0)
+			glass:SetPoint('LEFT', box, 'LEFT', SEARCH_GLASS_LEFT, SEARCH_GLASS_Y)
 			glass:SetSize(SEARCH_GLASS, SEARCH_GLASS)
 		else
 			HidePieces(art)

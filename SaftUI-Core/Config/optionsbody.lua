@@ -575,7 +575,8 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	self.filled = #fills > 0
 	local pools, content = self.pools, self.content
 	for _, entry in ipairs(laid) do
-		if entry.lineY then
+		-- Under Blizzard the sections have no line between them; the gap stays.
+		if entry.lineY and not self.blizzard then
 			local line = Acquire(pools.line)
 			line:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.lineY)
 			line:SetSize(self.width, 1)
@@ -613,10 +614,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 end
 
 function Body:Draw(sections, fillHeight)
+	self.blizzard = W.BlizzardLook()
 	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)
+	self.blizzard = W.BlizzardLook()
 	-- A result is a half, whatever size its setting is.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
 		function() return 'normal' end)

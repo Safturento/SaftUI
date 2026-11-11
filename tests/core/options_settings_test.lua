@@ -388,3 +388,117 @@ test('a switch with /sui scrolled or on a fill page', function()
 	st.Config:Close()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ the dressing
+
+-- The group headers' texts with their banners' atlases, in order.
+local function banners()
+	local out = {}
+	for _, entry in ipairs(OW.GetFrames().nav) do
+		if entry.group then out[#out + 1] = entry.text:GetText() .. '=' .. tostring(entry.banner:IsShown() and entry.banner:GetAtlas()) end
+	end
+	return table.concat(out, ',')
+end
+
+-- The first sidebar header, and the entry for a page.
+local function first_header()
+	for _, entry in ipairs(OW.GetFrames().nav) do
+		if entry.group then return entry end
+	end
+end
+local function entry_of(key)
+	for _, entry in ipairs(OW.GetFrames().nav) do
+		if entry.key == key then return entry end
+	end
+end
+
+-- The body's shown line textures as wide as the body's content and 1 tall,
+-- and those 1 wide (the halves' dividers).
+local function lines(wide)
+	local F, n = OW.GetFrames(), 0
+	for _, region in ipairs({ F.content:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture then
+			if wide and region:GetWidth() == F.content:GetWidth() and region:GetHeight() == 1 then n = n + 1 end
+			if not wide and region:GetWidth() == 1 then n = n + 1 end
+		end
+	end
+	return n
+end
+
+test('the sidebar under Blizzard: no fill or lines, banners by index, gold and white names', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Chat')
+		local F = OW.GetFrames()
+		check(not F.sideFill:IsShown(), client .. ': no sidebar fill')
+		for _, l in ipairs(F.sideLines) do check(not l:IsShown(), client .. ': no sidebar line') end
+		eq(banners(), 'Frames=Options_CategoryHeader_1,Combat=Options_CategoryHeader_2,Info=Options_CategoryHeader_3,Other=Options_CategoryHeader_1', client)
+		eq(OW.BannerAtlas(5), 'Options_CategoryHeader_2', client .. ': the fifth wraps to the second')
+		local header, active, other = first_header(), entry_of('Chat'), entry_of('Auras')
+		eq(header:GetHeight(), 30, client)
+		eq(insets(header.banner, header):match('^0,0'), '0,0', client)
+		eq(size_of(header.banner), '199x144', client)
+		eq(anchor(header.text, { [header] = 'header' }), 'LEFT header LEFT 20,-1', client)
+		eq(rgb(header.text), '1.00,1.00,1.00', client)
+		eq(rgb(active.text), '1.00,1.00,1.00', client .. ': the open page white')
+		eq(rgb(other.text), '1.00,0.82,0.00', client .. ': the others gold')
+		stub.fire_script(other, 'OnEnter'); eq(rgb(other.text), '1.00,1.00,1.00', client .. ': white under the mouse')
+		stub.fire_script(other, 'OnLeave'); eq(rgb(other.text), '1.00,0.82,0.00', client)
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('the main column under Blizzard: the page divider, no section rules, no footer line, the glass', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		eq(F.tabLine:GetAtlas(), 'Options_HorizontalDivider', client)
+		eq(at(F.tabLine), '259,139 834x1', client)
+		st.Config:Open('Tabs')
+		eq(F.subLine:GetAtlas(), 'Options_HorizontalDivider', client .. ": the subtab row's line too")
+		st.Config:Open('Long') -- three titled sections
+		eq(lines(true), 0, client .. ': no 1px line across the body')
+		check(not F.footerLine:IsShown(), client .. ': no footer line')
+		local glass
+		for _, region in ipairs({ F.search:GetRegions() }) do
+			if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAtlas() == st.ThemeArt.Control('search').icon then glass = region end
+		end
+		check(glass, client .. ': the glass')
+		eq(size_of(glass), '10x10', client)
+		eq(anchor(glass), 'LEFT search LEFT 6,-1', client)
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('the dressing comes off under Thick', function()
+	world('forever')
+	switch('blizzard'); st.Config:Open('Long')
+	switch('thick')
+	local F = OW.GetFrames()
+	local r, g, b, a = unpack(stub.state(F.sideFill).color_texture)
+	eq(('%.2f,%.2f,%.2f,%.2f'):format(r, g, b, a), '0.09,0.09,0.09,1.00', 'the sidebar fill back')
+	check(F.sideFill:IsShown(), 'shown')
+	for _, l in ipairs(F.sideLines) do check(l:IsShown(), 'every side line shown') end
+	local header = first_header()
+	eq(header:GetHeight(), 29)
+	eq(anchor(header.text, { [header] = 'header' }), 'TOPLEFT header TOPLEFT 18,-12')
+	check(not header.banner:IsShown(), 'no banner')
+	eq(rgb(header.text), ('%.2f,%.2f,%.2f'):format(st.config.profile.colors.text.grey:GetRGB()), 'grey')
+	local normal = ('%.2f,%.2f,%.2f'):format(st.config.profile.colors.text.normal:GetRGB())
+	eq(rgb(entry_of('Long').text), normal, 'the open page in the normal text color')
+	eq(rgb(entry_of('Chat').text), normal, 'the others too')
+	eq(F.tabLine:GetAtlas(), nil, 'the tab line has no atlas')
+	eq(stub.state(F.tabLine).color_texture[1], 0.18, 'and the lines color')
+	eq(lines(true), 2, 'a line between each pair of the three sections')
+	check(F.footerLine:IsShown(), 'the footer line back')
+	local glass = false
+	for _, region in ipairs({ F.search:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAtlas() then glass = true end
+	end
+	check(not glass, "the glass back to Thick's (none)")
+	st.Config:Close()
+	eq(#take_errors(), 0, 'no errors')
+end)

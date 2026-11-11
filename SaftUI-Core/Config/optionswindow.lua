@@ -485,12 +485,25 @@ local function DrawActions()
 	UpdateEditModeButton()
 end
 
+-- The banner a group header wears: the Settings panel's three, in turn.
+function OW.BannerAtlas(n)
+	local banners = st.ThemeArt.Control('optionswindow').banners
+	return banners[((n - 1) % #banners) + 1]
+end
+
 -- A sidebar entry's look: the open page's blue fill and bar, or under
 -- Blizzard (item.blizzard) the Settings panel's category list, the open page
--- on its picked art (item.listPicked); the one under the mouse is lit by
--- OnEnter (item.listHover).
+-- on its picked art (item.listPicked) with its name white and the others
+-- gold; the one under the mouse is lit by OnEnter (item.listHover). Under
+-- Thick and Thin the name keeps the profile's text color.
 local function StyleNavItem(item)
 	item.listHover:Hide()
+	if item.blizzard then
+		local text = st.ThemeArt.Control('optionslist').text
+		item.text:SetTextColor(unpack(item.active and text.picked or text.normal))
+	else
+		item.text:SetTextColor(Normal())
+	end
 	item.listPicked:SetShown(item.blizzard and item.active or false)
 	if item.active and not item.blizzard then
 		local r, g, b = Blue()
@@ -527,6 +540,7 @@ local function MakeNavItem()
 		if self.active then return end
 		if self.blizzard then
 			self.listHover:Show()
+			self.text:SetTextColor(unpack(st.ThemeArt.Control('optionslist').text.picked))
 			return
 		end
 		self.bg:SetColorTexture(unpack(HOVER))
@@ -542,9 +556,12 @@ end
 local function MakeNavGroup()
 	local header = CreateFrame('Frame', nil, F.navContent)
 	header:SetHeight(NAV_GROUP) -- as wide as the layout's rows (DrawSidebar)
+	-- Under Blizzard its banner (DrawSidebar sets its art), hanging from the
+	-- header's top left at its own size.
+	header.banner = header:CreateTexture(nil, 'BACKGROUND')
+	header.banner:SetPoint('TOPLEFT', header, 'TOPLEFT', 0, 0)
+	header.banner:Hide()
 	header.text = Text(header, 'group')
-	header.text:SetPoint('TOPLEFT', header, 'TOPLEFT', 18, -12)
-	header.text:SetTextColor(Grey())
 	return header
 end
 
@@ -554,13 +571,31 @@ local function DrawSidebar(entries)
 	ReleaseAll(pools.group)
 	wipe(F.nav)
 	local look = blizzard and st.ThemeArt.Control('optionslist')
-	local y = NAV_TOP
+	local art = blizzard and st.ThemeArt.Control('optionswindow')
+	local y, groups = NAV_TOP, 0
 	for _, entry in ipairs(entries) do
 		local frame
 		if entry.group then
 			frame = Acquire(pools.group)
 			frame.group = entry.group
 			frame.text:SetText(entry.group)
+			frame.text:ClearAllPoints()
+			if art then
+				groups = groups + 1
+				local atlas = OW.BannerAtlas(groups)
+				local info = C_Texture.GetAtlasInfo(atlas)
+				frame.banner:SetAtlas(atlas)
+				frame.banner:SetSize(info.width, info.height)
+				frame.banner:Show()
+				frame:SetHeight(art.groupHeight)
+				frame.text:SetPoint('LEFT', frame, 'LEFT', art.groupLabel.x, art.groupLabel.y)
+				frame.text:SetTextColor(unpack(st.ThemeArt.Control('optionslist').text.picked))
+			else
+				frame.banner:Hide()
+				frame:SetHeight(NAV_GROUP)
+				frame.text:SetPoint('TOPLEFT', frame, 'TOPLEFT', 18, -12)
+				frame.text:SetTextColor(Grey())
+			end
 		else
 			frame = Acquire(pools.nav)
 			frame.key, frame.name, frame.disabled = entry.key, entry.name, entry.disabled
@@ -665,7 +700,14 @@ local function DrawTabRow(pool, list, active, top, slot)
 	return y + TAB_HEIGHT
 end
 
+-- A line across the main column: Blizzard's divider under Blizzard, a 1px
+-- line in OB.LINE's color otherwise.
 local function PlaceLine(line, y)
+	if blizzard then
+		line:SetAtlas(st.ThemeArt.Control('optionswindow').rule)
+	else
+		line:SetColorTexture(unpack(OB.LINE))
+	end
 	line:ClearAllPoints()
 	line:SetPoint('TOPLEFT', F.main, 'TOPLEFT', 0, -y)
 	line:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', 0, -y)
@@ -889,6 +931,11 @@ local function Relayout(settings)
 	F.side:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', L.sideX, L.sideBottom)
 	F.side:SetWidth(L.sideWidth)
 	F.brand:SetShown(not settings)
+	-- Under Blizzard the inner frame is the sidebar's ground and edge: its
+	-- fill and lines go.
+	F.sideFill:SetShown(not settings)
+	for _, line in ipairs(F.sideLines) do line:SetShown(not settings) end
+	F.footerLine:SetShown(not settings)
 	F.actionsFrame:ClearAllPoints()
 	if settings then
 		F.actionsFrame:SetPoint('TOPLEFT', F.side, 'TOPLEFT', 0, 0)
@@ -992,7 +1039,9 @@ local function BuildSidebar(window)
 	local bg = side:CreateTexture(nil, 'BACKGROUND')
 	bg:SetAllPoints(side)
 	bg:SetColorTexture(unpack(SIDEBAR_BG))
+	F.sideFill, F.sideLines = bg, {}
 	local edge = Line(side)
+	F.sideLines[#F.sideLines + 1] = edge
 	edge:SetPoint('TOPRIGHT', side, 'TOPRIGHT', 0, 0)
 	edge:SetPoint('BOTTOMRIGHT', side, 'BOTTOMRIGHT', 0, 0)
 	edge:SetWidth(1)
@@ -1010,12 +1059,12 @@ local function BuildSidebar(window)
 	sub:SetPoint('TOPLEFT', name, 'BOTTOMLEFT', 0, -2)
 	sub:SetTextColor(Grey())
 	sub:SetText('Options')
-	EdgeLine(brand, 'BOTTOM')
+	F.sideLines[#F.sideLines + 1] = EdgeLine(brand, 'BOTTOM')
 	F.brand = brand
 
 	local actions = CreateFrame('Frame', nil, side)
 	actions:SetHeight(ACTION_PAD * 2 + ACTION_HEIGHT)
-	EdgeLine(actions, 'BOTTOM')
+	F.sideLines[#F.sideLines + 1] = EdgeLine(actions, 'BOTTOM')
 	F.actionsFrame, F.actions = actions, {}
 
 	-- The profile's name at the bottom.
@@ -1023,7 +1072,7 @@ local function BuildSidebar(window)
 	foot:SetPoint('BOTTOMLEFT', side, 'BOTTOMLEFT', 0, 0)
 	foot:SetPoint('BOTTOMRIGHT', side, 'BOTTOMRIGHT', -1, 0)
 	foot:SetHeight(FOOT_HEIGHT)
-	EdgeLine(foot, 'TOP')
+	F.sideLines[#F.sideLines + 1] = EdgeLine(foot, 'TOP')
 	F.profile = Text(foot, 'small')
 	F.profile:SetPoint('LEFT', foot, 'LEFT', 18, 0)
 	F.profile:SetTextColor(Grey())
@@ -1127,7 +1176,7 @@ end
 
 local function BuildFooter()
 	local footer = CreateFrame('Frame', nil, F.main)
-	EdgeLine(footer, 'TOP')
+	F.footerLine = EdgeLine(footer, 'TOP')
 	F.footer = footer
 
 	F.reloadButton = Button(footer, 'Reload UI', function() ReloadUI() end)

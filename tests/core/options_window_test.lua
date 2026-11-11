@@ -1608,6 +1608,9 @@ test("/sui's frames where they sit today, under Thick and Thin", function()
 		eq(at(F.body), '238,113 774x539', name)
 		eq(at(F.reloadButton:GetParent()), '210,652 828x46', name)
 		eq(fills(side), '0.09,0.09,0.09,1.00 2,2 208x696\n0.18,0.18,0.18,1.00 209,2 1x696', name .. ': the fill and edge')
+		eq(fills(F.footer):match('^[^\n]*'), '0.18,0.18,0.18,1.00 210,652 828x1', name .. ': the footer line')
+		eq(F.tabLine:GetAtlas(), nil, name .. ': the tab line is a color')
+		eq(stub.state(F.tabLine).color_texture[1], 0.18, name .. ': the tab line in the lines color')
 		-- A group header's rect and where its text sits in it.
 		local header
 		for _, entry in ipairs(F.nav) do
