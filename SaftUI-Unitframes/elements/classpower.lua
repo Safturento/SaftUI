@@ -50,15 +50,19 @@ local function ApplyArt(classPower)
 			st:SetSize(set.empty, config.height, config.height)
 			st:SetSize(set.filled, config.height, config.height)
 			set.empty:Show()
+			-- Every power type with art gives an integer cur; only demon hunter
+			-- soul fragments are fractional, and they have no art, so they keep
+			-- the flat bar with its partial fill.
 			set.filled:SetShown(state.cur ~= nil and i <= state.cur)
-			if fill then fill:Hide() end
+			-- Alpha, not Hide: the StatusBar owns its fill's shown state.
+			if fill then fill:SetAlpha(0) end
 		else
 			local set = pointArt[point]
 			if set then
 				set.empty:Hide()
 				set.filled:Hide()
 			end
-			if fill then fill:Show() end
+			if fill then fill:SetAlpha(1) end
 		end
 	end
 end

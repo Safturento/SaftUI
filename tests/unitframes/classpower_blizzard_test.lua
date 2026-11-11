@@ -116,7 +116,7 @@ test("on Forever a rogue's points show uf-roguecp-bg, and uf-roguecp-icon-red wh
 			eq(region:GetWidth() .. 'x' .. region:GetHeight(), '20x20', atlas .. ' is 20 square')
 			eq(T.offset(region, 'CENTER'), '0.00,0.00', atlas .. ' is centred on its point')
 		end
-		eq(point:GetStatusBarTexture():IsShown(), false, 'point ' .. i .. "'s flat fill is hidden")
+		eq(point:GetStatusBarTexture():GetAlpha(), 0, 'point ' .. i .. "'s flat fill is hidden")
 	end
 	eq(frame.ClassPower[1]:GetWidth() ~= frame.ClassPower[1]:GetHeight(), true, 'the slot is not square, so the art is sized by the height')
 	eq(drawn(frame.ClassPower[1]), 'theme,theme,control', 'each point draws as a control')
@@ -167,7 +167,7 @@ test('a power type with no art keeps the flat bar', function()
 	power(frame, 'ICICLES', 3, 5)
 	for i = 1, 5 do
 		local point = frame.ClassPower[i]
-		eq(point:GetStatusBarTexture():IsShown(), true, 'point ' .. i .. ' keeps its flat fill')
+		eq(point:GetStatusBarTexture():GetAlpha(), 1, 'point ' .. i .. ' keeps its flat fill')
 		eq(next(atlases(point)), nil, 'point ' .. i .. ' has no art showing')
 		for _, region in ipairs({ point:GetRegions() }) do eq(region.GetAtlas and region:GetAtlas() and region:IsShown(), nil, 'no atlas shown') end
 	end
@@ -184,7 +184,7 @@ test('under Thick the points are flat bars again, the art hidden', function()
 	UF:UpdateUnitFrame(frame)
 	for i = 1, 5 do
 		local point = frame.ClassPower[i]
-		eq(point:GetStatusBarTexture():IsShown(), true, 'point ' .. i .. ' has its flat fill')
+		eq(point:GetStatusBarTexture():GetAlpha(), 1, 'point ' .. i .. ' has its flat fill')
 		eq(shown(point, 'uf-roguecp-bg') or shown(point, 'uf-roguecp-icon-red'), false, 'point ' .. i .. ' has no art')
 	end
 	-- A power event under Thick leaves it so, and back to Blizzard shows it again.
@@ -193,6 +193,33 @@ test('under Thick the points are flat bars again, the art hidden', function()
 	st.config.profile.theme.name = 'blizzard'
 	UF:UpdateUnitFrame(frame)
 	eq(shown(frame.ClassPower[4], 'uf-roguecp-icon-red'), true, 'back to Blizzard: the art is back')
-	eq(frame.ClassPower[1]:GetStatusBarTexture():IsShown(), false, 'and the fill hidden')
+	eq(frame.ClassPower[1]:GetStatusBarTexture():GetAlpha(), 0, 'and the fill hidden')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a later SetValue and SetStatusBarColor leave a full point's fill at alpha 0", function()
+	fresh('forever', 'ROGUE')
+	local frame = player_frame('blizzard')
+	power(frame, 'COMBO_POINTS', 3, 5)
+	local point = frame.ClassPower[1]
+	point:SetValue(1)
+	point:SetStatusBarColor(1, 0, 0, 1)
+	eq(point:GetStatusBarTexture():GetAlpha(), 0, "the fill's alpha stays 0")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('points a shrinking max hides draw nothing', function()
+	fresh('forever', 'ROGUE')
+	local frame = player_frame('blizzard')
+	power(frame, 'COMBO_POINTS', 5, 5)
+	-- oUF hides the points past max itself.
+	for i = 4, 5 do frame.ClassPower[i]:Hide() end
+	frame.ClassPower:PostUpdate(3, 3, true, true, 'COMBO_POINTS')
+	for i = 4, 5 do
+		local point = frame.ClassPower[i]
+		eq(point:IsShown(), false, 'point ' .. i .. ' is hidden')
+		eq(point:IsVisible(), false, 'so its art is not visible')
+	end
+	eq(shown(frame.ClassPower[3], 'uf-roguecp-icon-red'), true, 'point 3 still draws')
 	eq(#take_errors(), 0, 'no errors')
 end)
