@@ -201,4 +201,9 @@ local function GetConfigTable(unit)
 	}
 end
 
-UF:RegisterElement('Power', Constructor, UpdateConfig, GetConfigTable)
+-- Nameplates show no power bar.
+local function ValidUnit(unit)
+	return unit ~= 'nameplate'
+end
+
+UF:RegisterElement('Power', Constructor, UpdateConfig, GetConfigTable, ValidUnit)

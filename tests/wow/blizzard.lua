@@ -486,3 +486,18 @@ end
 -- Enum.SpellBookSpellBank (SpellBookConstantsDocumentation.lua, the same on
 -- both clients): the bank C_SpellBook.IsSpellKnown looks in.
 Enum.SpellBookSpellBank = { Player = 0, Pet = 1 }
+
+-- Blizzard_NamePlates.lua (both clients): NamePlateDriverFrame, the frame that
+-- runs Blizzard's nameplates, as far as SaftUI touches it. Its mixin's methods
+-- are copied onto the frame itself, so a hook goes on the frame.
+-- UpdateNamePlateSize(namePlateStyle, namePlateScale) works the plates' size
+-- out of the player's options and sets it with C_NamePlate.SetNamePlateSize
+-- (lines 630-636); Blizzard runs it from its own event handlers (the options
+-- loading, a display size change, a nameplate option changing), in combat too,
+-- where its untainted call goes through. Here it sets 230 x 45, a stand-in for
+-- whatever the options give, through stub.set_nameplate_size_secure (game.lua).
+-- Its events, pools and plates are game.lua's stub.add_nameplate.
+NamePlateDriverFrame = CreateFrame('Frame', 'NamePlateDriverFrame')
+function NamePlateDriverFrame:UpdateNamePlateSize()
+	stub.set_nameplate_size_secure(230, 45)
+end

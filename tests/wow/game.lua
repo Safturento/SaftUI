@@ -440,3 +440,194 @@ function C_SpellBook.IsSpellKnown(spellID, spellBank)
 	if spellBank == 1 then return stub.known_pet_spells[spellID] == true end
 	error('Usage: local isKnown = C_SpellBook.IsSpellKnown(spellID [, spellBank])', 2)
 end
+
+-- Nameplates: C_NamePlate (NamePlateDocumentation.lua, the same on both
+-- clients), the unit API oUF's nameplate driver reads, and stub controls that
+-- play the game's part.
+--
+-- The game makes the plate frames itself (NamePlate1, NamePlate2, ..., on the
+-- WorldFrame, placed and sized by the client) and reuses them: a plate one
+-- unit leaves is handed to another. On every add Blizzard's
+-- NamePlateDriverFrame gives the plate a UnitFrame from its pool, and on the
+-- remove takes it back (NamePlateBaseMixin:AcquireUnitFrame and
+-- ReleaseUnitFrame, Blizzard_NamePlateBase.lua, both clients: the plate's
+-- UnitFrame field is set, then nil). Blizzard's driver registered for the
+-- events when the UI loaded, before any addon's frame, so it acquires before
+-- an addon hears of the add and releases before an addon hears of the remove;
+-- the unit's plate is found until every frame has heard of the remove.
+--
+--   stub.nameplate_size: { width, height }, the size C_NamePlate.SetNamePlateSize
+--     last set (every plate takes it), nil until one is set.
+--   stub.nameplate_target: the unit token whose plate is the target's
+--     (C_NamePlate.GetNamePlateForUnit('target')), nil for none.
+--   stub.add_nameplate(unit, opts) -> plate: the game shows unit ('nameplateN')
+--     on a plate and fires NAME_PLATE_UNIT_ADDED. The plate is a new one,
+--     numbered after the last, unless opts.plate = n hands it NamePlate<n>
+--     again (which must be free). opts.forbidden makes it a forbidden plate,
+--     which C_NamePlate gives addon code only when it asks for forbidden ones
+--     (it can't: Blizzard's own driver passes issecure()); whether the game
+--     fires NAME_PLATE_UNIT_ADDED to addons for a forbidden plate isn't known,
+--     so the stub fires it, the stricter case. opts.widgets_only and
+--     opts.game_object are UnitNameplateShowsWidgetsOnly's and
+--     UnitIsGameObject's answers for the unit (a capture bar, a quest object).
+--     Each add hands the plate a new pooled Blizzard UnitFrame (a Button) with
+--     its WidgetContainer (hidden) and SoftTargetFrame children, set with
+--     rawset as Blizzard's pool and template do.
+--   stub.remove_nameplate(unit): the game takes the unit's plate away:
+--     Blizzard's driver takes its UnitFrame back (hidden, its points cleared,
+--     as a frame pool resets one), NAME_PLATE_UNIT_REMOVED fires, and the
+--     plate hides and is free.
+--   stub.set_nameplate_size_secure(width, height): sets the size even in
+--     combat, as Blizzard's untainted code can (NamePlateDriverFrame's
+--     UpdateNamePlateSize, blizzard.lua).
+--   stub.on_nameplate_frame: nil, or a function the stub calls with each
+--     Blizzard frame it makes for the plates (a plate, and each pooled
+--     UnitFrame with its WidgetContainer and SoftTargetFrame) once it is set
+--     up, so a test can lock them as Blizzard's (misc/fixtures/locked_widget.lua).
+-- Not mimicked: script nameplates, the personal resource display, plates the
+-- game makes before an add (NAME_PLATE_CREATED), FORBIDDEN_NAME_PLATE_UNIT_ADDED
+-- and its remove, a plate's place on screen (each sits at the WorldFrame's
+-- centre), and units other than nameplateN and the target.
+stub.nameplate_size = nil
+stub.nameplate_target = nil
+stub.on_nameplate_frame = nil
+
+do
+	local plates = {}  -- by number: { frame, unit, forbidden, widgets_only, game_object }
+	local byUnit = {}  -- the plate showing each unit token
+
+	-- The plate record for a unit token: 'target' is stub.nameplate_target's.
+	local function record_for(unit)
+		unit = unit:lower()
+		if unit == 'target' then
+			unit = stub.nameplate_target
+			if not unit then return nil end
+		end
+		return byUnit[unit]
+	end
+
+	local function made(frame)
+		if stub.on_nameplate_frame then stub.on_nameplate_frame(frame) end
+	end
+
+	local function set_size(width, height)
+		stub.nameplate_size = { width, height }
+		for _, plate in pairs(plates) do plate.frame:SetSize(width, height) end
+	end
+
+	C_NamePlate = {}
+	-- C_NamePlate.GetNamePlateForUnit(unitToken[, includeForbidden]): the
+	-- plate showing the unit, nil for none (the documentation marks it not
+	-- nilable, but the game gives nil for a unit with no plate, which addons
+	-- and oUF check). A forbidden plate only with includeForbidden.
+	function C_NamePlate.GetNamePlateForUnit(unit, includeForbidden)
+		if type(unit) ~= 'string' then
+			error('Usage: local nameplate = C_NamePlate.GetNamePlateForUnit(unitToken [, includeForbidden])', 2)
+		end
+		local record = record_for(unit)
+		if not record or (record.forbidden and not includeForbidden) then return nil end
+		return record.frame
+	end
+	-- C_NamePlate.GetNamePlates(): the plates showing a unit, by plate number;
+	-- forbidden ones only with includeForbidden, as Blizzard's driver passes it.
+	function C_NamePlate.GetNamePlates(includeForbidden)
+		local list = {}
+		for n = 1, #plates do
+			local record = plates[n]
+			if record.unit and (includeForbidden or not record.forbidden) then
+				list[#list + 1] = record.frame
+			end
+		end
+		return list
+	end
+	-- C_NamePlate.SetNamePlateSize(width, height): one size for every plate.
+	-- The documentation marks it HasRestrictions: in combat addon code is
+	-- refused (noted in stub.blocked as { C_NamePlate, 'SetNamePlateSize' },
+	-- as a protected frame's calls are).
+	function C_NamePlate.SetNamePlateSize(width, height)
+		if type(width) ~= 'number' or type(height) ~= 'number' then
+			error('Usage: C_NamePlate.SetNamePlateSize(width, height)', 2)
+		end
+		if InCombatLockdown() then
+			stub.blocked[#stub.blocked + 1] = { C_NamePlate, 'SetNamePlateSize' }
+			return
+		end
+		set_size(width, height)
+	end
+
+	-- UnitNameplateShowsWidgetsOnly(unit) and UnitIsGameObject(unit)
+	-- (UnitDocumentation.lua): plain booleans, from the add's opts; false for a
+	-- unit with no plate.
+	function UnitNameplateShowsWidgetsOnly(unit)
+		if type(unit) ~= 'string' then error('Usage: UnitNameplateShowsWidgetsOnly(unit)', 2) end
+		local record = record_for(unit)
+		return record ~= nil and record.widgets_only == true
+	end
+	function UnitIsGameObject(unit)
+		local record = type(unit) == 'string' and record_for(unit) or nil
+		return record ~= nil and record.game_object == true
+	end
+
+	function stub.set_nameplate_size_secure(width, height)
+		set_size(width, height)
+	end
+
+	function stub.add_nameplate(unit, opts)
+		opts = opts or {}
+		assert(type(unit) == 'string' and unit:match('^nameplate%d+$'), 'add_nameplate: a nameplateN unit, got ' .. tostring(unit))
+		assert(not byUnit[unit], 'add_nameplate: ' .. unit .. ' already has a plate')
+		local n = opts.plate or #plates + 1
+		local record = plates[n]
+		if record then
+			assert(not record.unit, ('add_nameplate: NamePlate%d shows %s'):format(n, tostring(record.unit)))
+		else
+			assert(n == #plates + 1, 'add_nameplate: the game numbers its plates in order')
+			local frame = CreateFrame('Frame', 'NamePlate' .. n, WorldFrame)
+			frame:SetPoint('CENTER', WorldFrame, 'CENTER')
+			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
+			frame:Hide()
+			record = { frame = frame }
+			plates[n] = record
+			made(frame)
+		end
+		record.unit = unit
+		record.forbidden = opts.forbidden == true
+		record.widgets_only = opts.widgets_only == true
+		record.game_object = opts.game_object == true
+		byUnit[unit] = record
+
+		-- Blizzard's driver: a UnitFrame from its pool, on the plate.
+		local plate = record.frame
+		local unitFrame = CreateFrame('Button', nil, plate)
+		unitFrame:SetAllPoints(plate)
+		local widgets = CreateFrame('Frame', nil, unitFrame)
+		widgets:Hide()
+		local softTarget = CreateFrame('Frame', nil, unitFrame)
+		rawset(unitFrame, 'WidgetContainer', widgets)
+		rawset(unitFrame, 'SoftTargetFrame', softTarget)
+		rawset(plate, 'UnitFrame', unitFrame)
+		made(unitFrame)
+		made(widgets)
+		made(softTarget)
+
+		plate:Show()
+		stub.fire_event('NAME_PLATE_UNIT_ADDED', unit)
+		return plate
+	end
+
+	function stub.remove_nameplate(unit)
+		local record = byUnit[unit]
+		assert(record, 'remove_nameplate: ' .. tostring(unit) .. ' has no plate')
+		local plate = record.frame
+		-- Blizzard's driver gives the UnitFrame back to its pool.
+		local unitFrame = rawget(plate, 'UnitFrame')
+		rawset(plate, 'UnitFrame', nil)
+		unitFrame:Hide()
+		unitFrame:ClearAllPoints()
+
+		stub.fire_event('NAME_PLATE_UNIT_REMOVED', unit)
+		plate:Hide()
+		byUnit[unit] = nil
+		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
+	end
+end
