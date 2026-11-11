@@ -155,6 +155,7 @@ local health = {
         hide_full = false,
         deficit = false,
         percent = false,
+        short = false,
         boss_percent = true,
         font = 'normal',
         position = {
