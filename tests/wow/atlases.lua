@@ -211,6 +211,9 @@ return {
 		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
 		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
 		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
+		-- The current target's nameplate border (nameplatetarget): its Camelot
+		-- member, -c60, 132x16 (the -c60-2x member, 264x32, halves to the same)
+		['UI-HUD-CoolDownManager-Selected-yellow'] = { 132, 16 },
 	},
 	retail = {
 		-- The tooltip border (panel, bar, tooltip)
@@ -392,5 +395,7 @@ return {
 		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
 		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
 		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
+		-- The current target's nameplate border (nameplatetarget)
+		['UI-HUD-Nameplates-Selected'] = { 216, 18 },
 	},
 }
