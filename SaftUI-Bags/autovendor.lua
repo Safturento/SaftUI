@@ -3,15 +3,19 @@ local INV = st:GetModule('Inventory')
 
 local vendorHandler = CreateFrame('frame')
 
+-- What auto vendor sells, from the bags themselves, so it is the same in every
+-- view (One bag and Multi bag keep no Grays/Auto Vendor frame): one info per
+-- slot, never merged stacks, with the profit of them all.
 function INV:GetVendorItems()
 	local items = {}
 	local profit = 0
 
-	for _,categoryName in pairs(INV.AUTO_VENDOR_CATEGORIES) do
-		local category = self.containers.bag.categories[categoryName]
-		for _,slot in pairs(category.slots) do
-			local info = slot and slot.info
-			if info and not info.empty and info.vendorPrice > 0 then
+	local bags, _, _, categoryOf = self:ReadBags('bag', function(bagID)
+		return self:IsReagentBag(bagID) and 'reagent' or 'bag'
+	end, true)
+	for _, bag in ipairs(bags) do
+		for _, info in ipairs(bag.items) do
+			if self:IsAutoVendorItem(info, categoryOf[info]) then
 				tinsert(items, info)
 				profit = profit + info.stackPrice
 			end

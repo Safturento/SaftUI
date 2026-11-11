@@ -142,6 +142,20 @@ function INV:AddFilter(name, func, options)
 	end
 end
 
+-- Whether auto vendor sells an item: its category is one of the auto vendor
+-- ones, it has a vendor price, and it isn't protected. The slot's junk coin and
+-- INV:GetVendorItems both ask this, so they never disagree. category is the
+-- item's INV:GetItemCategory, when the caller has it already.
+function INV:IsAutoVendorItem(info, category)
+	if not info or info.empty or not (info.vendorPrice and info.vendorPrice > 0) then return false end
+	if self:IsProtected(info.itemID) then return false end
+	category = category or self:GetItemCategory(info)
+	for _, name in ipairs(self.AUTO_VENDOR_CATEGORIES) do
+		if name == category then return true end
+	end
+	return false
+end
+
 INV:AddFilter('Grays/Auto Vendor', function(item)
     if INV:IsProtected(item.itemID) then return false end
 

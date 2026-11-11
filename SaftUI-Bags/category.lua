@@ -282,8 +282,10 @@ end
 --   categoryOf: item info -> its category name.
 -- groupOf(bagID) names the group a bag merges stacks in (when stackItems is
 -- on): the same item in two groups stays two slots. A stack merges into the
--- first slot of its item in the group, which stays where it was.
-function INV:ReadBags(id, groupOf)
+-- first slot of its item in the group, which stays where it was. noMerge
+-- reads every stack as its own item, whatever stackItems says (auto vendor
+-- sells slot by slot).
+function INV:ReadBags(id, groupOf, noMerge)
 	local container = self.containers[id]
 	if not container then
 		st:Error('container with id ', id, 'not found')
@@ -291,6 +293,7 @@ function INV:ReadBags(id, groupOf)
 
 	local bags, categoryOf = {}, {}
 	local merged = {}
+	local merge = self.config.stackItems and not noMerge
 	local numItems, numLoading = 0, 0
 	for _, bagID in pairs(container.bag_ids) do
 		local group = groupOf(bagID)
@@ -304,12 +307,12 @@ function INV:ReadBags(id, groupOf)
 					numLoading = numLoading + 1
 				else
 					local mergeKey = tostring(item.itemID) .. ':' .. group
-					if self.config.stackItems and merged[mergeKey] and item.maxStack > 1 then
+					if merge and merged[mergeKey] and item.maxStack > 1 then
 						merged[mergeKey].count = merged[mergeKey].count + item.count
 					else
 						categoryOf[item] = self:GetItemCategory(item)
 						tinsert(bag.items, item)
-						if self.config.stackItems and item.maxStack > 1 then
+						if merge and item.maxStack > 1 then
 							merged[mergeKey] = item
 						end
 					end
