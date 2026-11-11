@@ -689,6 +689,10 @@ test('which Theme turns the group border on', function()
 	st.config.profile.theme.name = 'thick'
 	eq(shown('party'), false, "SaftUI's Thick: the party's hidden")
 	eq(shown('raid10'), false, "SaftUI's Thick: raid10's hidden")
+	-- A group whose frame Theme is Blizzard's own draws its members in
+	-- Blizzard's look under any theme of SaftUI's: its border shows.
+	P.raid10.theme = 'blizzard'
+	eq(shown('raid10'), true, "SaftUI's Thick, raid10's frame Theme Blizzard: shown")
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -725,6 +729,74 @@ test("it follows a member joining in combat, with nothing of SaftUI's running, n
 	eq(calls, 0, "no code of SaftUI's ran")
 	UF.UpdateGroupBorder = real
 	stub.in_combat = false
+	eq(#stub.blocked, 0, 'nothing protected called')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- With the party's showPlayer off (its default), an invite makes a group of
+-- one at once, so [group:party] holds and the header shows with no member to
+-- show, for every pending invite and briefly while a group disbands. It sizes
+-- itself to a sliver then (configureChildren in SecureGroupHeaders.lua:
+-- minWidth by minHeight, at least 0.1; 200 by 0.1 for the party growing
+-- down), where the border would be a bronze strip. So the border's art is
+-- hidden (its alpha 0) while either side is under two of its pieces (12),
+-- from the border's own OnSizeChanged, which the stub fires as the game's
+-- layout pass does.
+test("a header with no member to show (a pending invite) shows no bronze strip: the border's art waits until two pieces fit, in combat too", function()
+	world('forever', 'blizzard')
+	local header = header_of('SaftUI_Party', 4)
+	UF.groups = { party = header }
+	local border = UF:GroupBorder(header)
+	UF:UpdateGroupBorder('party')
+	eq(border:GetAlpha(), 1, 'four members: its art shows')
+
+	-- The header is protected, as a secure group header is, and in combat it
+	-- lays itself out: not addon code, so the game doesn't block it. That
+	-- resizes the border by its anchors, and the game fires its OnSizeChanged.
+	local protected = true
+	rawset(header, 'IsProtected', function() return protected, protected end)
+	stub.in_combat = true
+	local function layout(width, height)
+		protected = false; header:SetSize(width, height); protected = true
+		check(stub.fire_script(border, 'OnSizeChanged', border:GetSize()), ('%sx%s: its OnSizeChanged ran'):format(width, height))
+	end
+	layout(200, 0.1)
+	check(border:IsShown(), 'no member to show: still shown')
+	eq(border:GetAlpha(), 0, 'but its art hidden: no bronze strip')
+	layout(200, 34)
+	eq(border:GetAlpha(), 1, 'one member: its art shows again')
+	layout(200, 6)
+	eq(border:GetAlpha(), 0, 'the border 11 tall: under two pieces, hidden')
+	layout(200, 7)
+	eq(border:GetAlpha(), 1, 'the border 12 tall: two pieces fit, shown')
+	layout(0.1, 34)
+	eq(border:GetAlpha(), 0, 'a header growing sideways with no member, 0.1 wide: hidden')
+	layout(7, 34)
+	eq(border:GetAlpha(), 0, 'the border 11 wide: hidden')
+	layout(8, 34)
+	eq(border:GetAlpha(), 1, 'the border 12 wide: shown')
+	eq(#stub.blocked, 0, 'nothing protected called')
+
+	-- A secret size (.agents/clients.md): no math on it, and the art stays as it
+	-- was. A secret value is a newproxy here, which issecretvalue is told to recognise.
+	local secret = newproxy(false)
+	local real = issecretvalue
+	issecretvalue = function(v) return v == secret or real(v) end
+	stub.fire_script(border, 'OnSizeChanged', secret, secret)
+	issecretvalue = real
+	eq(border:GetAlpha(), 1, 'a secret size: left as it was')
+	stub.in_combat = false
+	eq(#take_errors(), 0, 'no errors')
+
+	-- An update that finds the header a sliver (a /reload with an invite
+	-- pending, an option changed then) hides the art too.
+	header:SetSize(200, 0.1)
+	UF:UpdateGroupBorder('party')
+	check(border:IsShown(), 'an update with no member to show: shown')
+	eq(border:GetAlpha(), 0, 'its art hidden')
+	header:SetSize(200, 34)
+	UF:UpdateGroupBorder('party')
+	eq(border:GetAlpha(), 1, 'an update with one member: its art shows')
 	eq(#stub.blocked, 0, 'nothing protected called')
 	eq(#take_errors(), 0, 'no errors')
 end)

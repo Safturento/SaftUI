@@ -303,19 +303,36 @@ end
 	written onto the header: the border is kept in a weak table keyed by it
 	(.agents/taint.md).
 
-	A header with no member to show sizes itself to a sliver (its minWidth
-	and minHeight, SecureGroupHeaders.lua), but it shows only in a group,
-	which always has a member for it.
+	A header can show with no member to show: the party's, with showPlayer
+	off (its default), for every pending invite (an invite makes a group of
+	one at once, so [group:party] holds) and briefly while a group disbands.
+	It sizes itself to a sliver then (minWidth by minHeight, at least 0.1:
+	configureChildren in SecureGroupHeaders.lua), about 200 by 0.1 for the
+	party, where the border would be a bronze strip. So the border's art is
+	hidden (its alpha 0) while either side is under two of its pieces, and
+	shown again once they fit, from the border's own OnSizeChanged. That's
+	code of SaftUI's running in combat, but only on its own border, calling
+	nothing protected (alpha isn't).
 ]]
 
 -- owner (a group header or a preview container) -> its border.
 local groupBorders = setmetatable({}, { __mode = 'k' })
 
+-- Shows a border's art while two of its pieces fit on each side, and hides
+-- it (alpha 0) on anything smaller: a header with no member to show (above).
+-- Only the border's alpha, so in combat too; a secret size leaves it as it is.
+local function FitBorder(border, width, height)
+	if issecretvalue(width) or issecretvalue(height) then return end
+	local least = 2 * st.ThemeArt.ART.groupborder.size
+	border:SetAlpha((width < least or height < least) and 0 or 1)
+end
+
 -- The border of owner, a group header or a test mode preview container: made
 -- the first time, as owner's child at owner's frame level, so the members
 -- (owner's children, one level up) draw over its inner part; left at the
 -- level it was made at when owner's level is secret. Anchored around owner at
--- the group border's offsets. It starts hidden; UF:UpdateGroupBorder shows it.
+-- the group border's offsets, its art shown only while it fits (FitBorder).
+-- It starts hidden; UF:UpdateGroupBorder shows it.
 function UF:GroupBorder(owner)
 	local border = groupBorders[owner]
 	if border then return border end
@@ -325,6 +342,7 @@ function UF:GroupBorder(owner)
 	local left, top, right, bottom = unpack(st.ThemeArt.Control('groupborder').offsets)
 	border:SetPoint('TOPLEFT', owner, 'TOPLEFT', left, top)
 	border:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', right, bottom)
+	border:SetScript('OnSizeChanged', FitBorder)
 	border:Hide()
 	groupBorders[owner] = border
 	return border
@@ -345,6 +363,7 @@ local function UpdateBorder(owner, config)
 	local border = UF:GroupBorder(owner)
 	if UF.GroupBorderShown(config) then
 		st.ThemeArt.PaintCut(border, 'groupborder')
+		FitBorder(border, border:GetSize())
 		border:Show()
 	else
 		st.ThemeArt.Clear(border)
