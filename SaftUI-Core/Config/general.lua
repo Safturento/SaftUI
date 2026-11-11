@@ -72,7 +72,7 @@ function GN:GetConfigTable()
 				desc = WINDOWS_NOTE,
 				args = {
 					header_height = Setting(1, 'Title bar height', 20, 60, 1,
-						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom. Under the Blizzard theme the title sits in the window's metal title bar, which keeps Blizzard's height, so this sets only the bottom strip.",
+						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom. Under the Blizzard theme a window in Blizzard's metal holds its title in the metal's own title bar, which keeps Blizzard's height.",
 						'headers', 'height', UpdateHeaders),
 					clamp_inset = Setting(2, 'Screen edge margin', -50, 50, 1,
 						"How close to the screen's edges frames can go.",

@@ -7,7 +7,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
   - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
@@ -69,6 +68,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
   - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
   - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
@@ -93,18 +93,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
-
-### 2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar
-
-**What:** Under the Blizzard theme the bag window's bag slot bar (Bag Slots: `INV.containers.bag.bagSlotContainer`, `SaftUI-Bags/containers/bag.lua`) and the bank's (`SaftUI-Bags/containers/bank.lua`) are anchored by their BOTTOMLEFT to the window's TOPLEFT, `buttonspacing` up. The metal's title bar reaches 20 (retail 21) above the window and its top corners 16 more, so a shown bar lies over the title bar, which now holds the window's title, view buttons and Bag Slots itself. The bar is a child of the window, one level over it and one under the header, so where it overlaps the title bar it hides the metal there, and the title and the header's buttons draw over it.
-
-**Why noticed:** Moving the window headers into the metal's title bar (2026-11-11, the user's in-game feedback on the Blizzard theme: "Can we put these header items on the actual title bar on the blizzard theme?"). Before that the title bar was empty but for the close button, and the bar already covered it; it wasn't in scope to move the bars.
-
-**Anchors:** `SaftUI-Bags/containers/bag.lua` (`bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)`), `SaftUI-Bags/containers/bank.lua` (the same for the bank's bar), `INV:UpdateBagSlotBars` (`SaftUI-Bags/inventory.lua`); `st:DrawnFrame(window)` (the window's backdrop, whose top is the metal's), `st.ThemeArt.ART.metal` (the top corners' y, 16).
-
-**What's been considered:** Anchor each bar to the window's drawn frame (`st:DrawnFrame`) under Blizzard, above the metal's top corners (16 over its top), and to the window under Thick and Thin, re-anchored where the bags already follow a theme switch (`INV:UpdateConfig(id)`). Whether 16 is where the metal's art visibly ends needs a look in game.
-
-**Shape of work:** Small: one anchor per bar and its re-anchoring on a theme switch, a test in `tests/bags/theme_test.lua`, and an in-game look on both clients.
 
 ### 2026-11-11 — Blizzard theme: in-game checks
 
@@ -135,7 +123,9 @@ Window headers in the metal's title bar (both clients; `st:HeaderInTitleBar`, `S
 - the view buttons end 4px short of the close button in its socket (26px in from the window's right edge on Forever, 21 on retail, `st:SocketReach`), and the title doesn't run into them at the window's narrowest;
 - the window's content (the search box, the slots) starts right under the title bar, with no empty strip, and nothing of it hides under the metal's lip;
 - a theme switch Thick, Blizzard, Thick and a profile switch between a Blizzard and a Thick profile put it all back with no `/reload`, Bag Slots included, and dragging the window by its title bar works;
-- the bags' own Theme (Bags > Look) set to Thick under SaftUI's Blizzard puts the header back in the window at once, and to Blizzard under SaftUI's Thick leaves it in the window, under the metal's empty title bar.
+- the bags' own Theme (Bags > Look) set to Thick under SaftUI's Blizzard puts the header back in the window at once, and to Blizzard under SaftUI's Thick leaves it in the window, under the metal's empty title bar;
+- Bag Slots' bar (and the bank's) sits above the title bar, 3 over the metal's top as its art's table gives it (16 over the drawn frame, `st.ThemeArt.MetalAbove()`). In the user's Forever screenshot the metal's visible rim reaches only about 6 over the drawn frame, so the bar may float about 10px above the rim: if that looks too far, lower the clearance to the visible rim (`st:ArtAboveHeader`, `SaftUI-Core/panels.lua`). It should cover none of the title bar, and its slots should take their own clicks;
+- a profile switch from a Blizzard profile to a Thick one in combat with the bags open: nothing blocked (`/console taintLog 1`, BugGrabber), the header stays in the title bar until combat ends and then drops back into the window at the Thick profile's height. The stubs block a protected frame's moves only for frames a test marks protected, so whether a bag window's header and footer really are protected in combat (its scroll frame, holding Blizzard's item buttons, is anchored under the header, and the search box anchored to the header is the footer's child) is what this checks.
 
 Bags, Forever:
 - the close button in its socket: its ADD highlight, and whether it draws and clicks above the metal and the header now in the title bar;
@@ -1204,6 +1194,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar
+
+**What:** Under the Blizzard theme the bag window's bag slot bar (Bag Slots: `INV.containers.bag.bagSlotContainer`, `SaftUI-Bags/containers/bag.lua`) and the bank's (`SaftUI-Bags/containers/bank.lua`) are anchored by their BOTTOMLEFT to the window's TOPLEFT, `buttonspacing` up. The metal's title bar reaches 20 (retail 21) above the window and its top corners 16 more, so a shown bar lies over the title bar, which now holds the window's title, view buttons and Bag Slots itself. The bar is a child of the window, one level over it and one under the header, so where it overlaps the title bar it hides the metal there, and the title and the header's buttons draw over it.
+
+**Why noticed:** Moving the window headers into the metal's title bar (2026-11-11, the user's in-game feedback on the Blizzard theme: "Can we put these header items on the actual title bar on the blizzard theme?"). Before that the title bar was empty but for the close button, and the bar already covered it; it wasn't in scope to move the bars.
+
+**Anchors:** `SaftUI-Bags/containers/bag.lua` (`bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)`), `SaftUI-Bags/containers/bank.lua` (the same for the bank's bar), `INV:UpdateBagSlotBars` (`SaftUI-Bags/inventory.lua`); `st:DrawnFrame(window)` (the window's backdrop, whose top is the metal's), `st.ThemeArt.ART.metal` (the top corners' y, 16).
+
+**What's been considered:** Anchor each bar to the window's drawn frame (`st:DrawnFrame`) under Blizzard, above the metal's top corners (16 over its top), and to the window under Thick and Thin, re-anchored where the bags already follow a theme switch (`INV:UpdateConfig(id)`). Whether 16 is where the metal's art visibly ends needs a look in game.
+
+**Shape of work:** Small: one anchor per bar and its re-anchoring on a theme switch, a test in `tests/bags/theme_test.lua`, and an in-game look on both clients.
+
+**Resolved 2026-11-11:** In the title bar work's first review fix round. Each bar is placed by `INV:PlaceBagSlotBar` (`SaftUI-Bags/inventory.lua`), when made (`containers/bag.lua`, `containers/bank.lua`) and on every `INV:UpdateBagSlotBars`: its bottom left on the window's header's top left, `buttonspacing` up, plus `st:ArtAboveHeader` (`SaftUI-Core/panels.lua`), how far the metal reaches above the header: `st.ThemeArt.MetalAbove()` (16, the top corners' y) over the drawn frame, whose top is the title bar's. Under Thick and Thin the header's top is the window's and the extra is 0, so nothing moved; under Blizzard the bar sits 3 over the metal's top whether the header is in the title bar or, under the bags' own Blizzard and SaftUI's Thick, in the window. `UpdateBagSlotBars` runs only out of combat (`INV:UpdateConfig` waits for it), and the header the bar hangs from waits for the end of combat to move. Tested on both clients in `tests/bags/theme_test.lua`. Whether 16 leaves too wide a gap over the metal's visible rim is an in-game check ("Blizzard theme: in-game checks").
 
 ### 2026-11-11 — Blizzard theme: test gaps left after the final review
 

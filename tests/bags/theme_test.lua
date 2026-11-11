@@ -14,7 +14,8 @@
 --     socket and its header in the metal's title bar (st:HeaderInTitleBar),
 --     with every button in it (the view buttons, Bag Slots, the Edit toggle)
 --     sized to the strip and stopping short of the socket, on both clients,
---     switched to or first drawn under Blizzard, and back under Thick.
+--     switched to or first drawn under Blizzard, and back under Thick; the
+--     bag slot bars sit above the title bar, clear of the metal.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 with Core's helpers and
 -- edit mode (core/config_helpers.lua), so st:ThemeChanged runs the real
@@ -981,6 +982,82 @@ test('a bag window first drawn under Blizzard: the metal, its header in the titl
 		st:ThemeChanged()
 		check_header(container, false, client .. ', then Thick')
 		check_view_buttons(container, false, client .. ', then Thick')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+-- The bag window's and the bank's bag slot bars, which Bag Slots shows, sit
+-- above the window's title bar: on its header's top, buttonspacing (3) up,
+-- placed by INV:PlaceBagSlotBar when made and by INV:UpdateBagSlotBars on
+-- every update. Under Thick that's the window's top, as before; under
+-- Blizzard, above the strip in the metal's title bar and clear of the metal,
+-- whose top corners and edge reach 16 over its drawn frame's top
+-- (st.ThemeArt.MetalAbove), however the header sits. The bars are stand-ins
+-- made as the real code makes them (containers/bag.lua and bank.lua): the
+-- real ones hold Blizzard's bag slots, and the bank's a purchase button of a
+-- Blizzard template the stubs lack; here they hold none.
+test('the bag slot bars sit above the title bar: on the window under Thick, clear of the metal under Blizzard', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local bag = bags(nil, client)
+		load_saftui('SaftUI-Bags/containers/bag.lua') -- INV:MovePlayerBagSlots
+		local bank = CreateFrame('Frame', 'SaftUIThemeTestBank', UIParent)
+		bank.id = 'bank'
+		bank.slots, bank.categories, bank.columns = {}, {}, {}
+		INV.containers.bank = bank
+		bank.scrollFrame = CreateFrame('ScrollFrame', nil, bank)
+		bank.scrollFrame.ScrollChild = CreateFrame('Frame', nil, bank.scrollFrame)
+		bank.scrollFrame:SetScrollChild(bank.scrollFrame.ScrollChild)
+		st:CreateCloseButton(bank)
+		st:CreateHeader(bank, 'Bank')
+		st:CreateFooter(bank)
+		bank:Show()
+		INV:UpdateConfig()
+		local bars = {}
+		for _, container in ipairs({ bag, bank }) do
+			local bar = st:CreateFrame('frame', nil, container)
+			bar:Hide()
+			st:SetBackdrop(bar, 'theme', 'solid', 'panel')
+			bar.slots, bar.purchaseButton = {}, CreateFrame('Button', nil, bar)
+			INV:PlaceBagSlotBar(container, bar)
+			container.bagSlotContainer = bar
+			bars[container] = bar
+		end
+		INV:UpdateConfig() -- INV:UpdateBagSlotBars places them again
+		local function rect(f) return T.text(f:GetLeft(), f:GetBottom(), f:GetRight(), f:GetTop()) end
+		local before = {}
+		for container, bar in pairs(bars) do
+			local label = client .. ' ' .. container.id .. ', Thick'
+			eq(T.text(bar:GetLeft(), bar:GetBottom()), T.text(container:GetLeft(), container:GetTop() + 3),
+				label .. ": its bottom left 3 over the window's top left, as before")
+			before[container] = rect(bar)
+		end
+
+		local function clear(label)
+			for container, bar in pairs(bars) do
+				local where = client .. ' ' .. container.id .. ', ' .. label
+				check(bar:GetBottom() >= container.header:GetTop(), where .. ': above the header')
+				eq(T.text(bar:GetBottom() - container.backdrop:GetTop()), T.text(st.ThemeArt.MetalAbove() + 3),
+					where .. ": 3 over the metal's top, 16 above its drawn frame")
+				eq(T.text(bar:GetLeft()), T.text(container:GetLeft()), where .. ": at the window's left")
+			end
+		end
+		st.config.profile.theme.name = 'blizzard'
+		st:ThemeChanged()
+		eq(st:HeaderInTitleBar(bag), true, client .. ': Blizzard, the header in the title bar')
+		clear('Blizzard')
+
+		-- SaftUI's Thick with the bags' own Theme Blizzard: the metal, with the
+		-- header in the window under it; the bars still clear the metal.
+		st.config.profile.theme.name = 'thick'
+		st:ThemeChanged()
+		INV:GetConfigTable().args.look.set({ 'theme' }, 'blizzard')
+		eq(st:HeaderInTitleBar(bag), false, client .. ": the bags' Blizzard under SaftUI's Thick: the header in the window")
+		clear("the bags' Blizzard under SaftUI's Thick")
+
+		INV:GetConfigTable().args.look.set({ 'theme' }, 'theme')
+		for container, bar in pairs(bars) do
+			eq(rect(bar), before[container], client .. ' ' .. container.id .. ', Thick again: where it was')
+		end
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)

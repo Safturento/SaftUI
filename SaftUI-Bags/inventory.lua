@@ -251,8 +251,21 @@ function INV:StyleContainerContents(container)
 	end
 end
 
+-- Puts a window's bag slot bar (Bag Slots shows it) above its title bar: its
+-- bottom left on the header's top left, buttonspacing up. Under Thick and
+-- Thin the header's top is the window's, as it always was; under Blizzard
+-- the bar sits higher, clear of the metal (st:ArtAboveHeader), above the
+-- title bar's strip where the header is now. Made with the bar (the bag
+-- window's and the bank's), and again on every update (INV:UpdateBagSlotBars),
+-- which a theme switch and the bags' own Theme run out of combat.
+function INV:PlaceBagSlotBar(container, bar)
+	bar:ClearAllPoints()
+	bar:SetPoint('BOTTOMLEFT', container.header, 'TOPLEFT', 0, self.config.buttonspacing + st:ArtAboveHeader(container))
+end
+
 -- Re-sizes the bag slot bars to the profile's button size, spacing and
--- padding: the bags' bar (Blizzard's bag slots) and the bank's own.
+-- padding, and places them (INV:PlaceBagSlotBar): the bags' bar (Blizzard's
+-- bag slots) and the bank's own.
 function INV:UpdateBagSlotBars()
 	local width, height = self:GetButtonWidth(), self:GetButtonHeight()
 	local spacing, padding = self.config.buttonspacing, self.config.padding
@@ -262,8 +275,7 @@ function INV:UpdateBagSlotBars()
 	if bar then
 		local numSlots = #bar.slots
 		bar:SetSize(width * numSlots + spacing * (numSlots - 1) + padding * 2, height + padding * 2)
-		bar:ClearAllPoints()
-		bar:SetPoint('BOTTOMLEFT', bag, 'TOPLEFT', 0, spacing)
+		self:PlaceBagSlotBar(bag, bar)
 		for _, slot in pairs(bar.slots) do
 			slot:SetSize(width, height)
 		end
@@ -274,8 +286,7 @@ function INV:UpdateBagSlotBars()
 		local container = self.containers[id]
 		local bankBar = container and container.bagSlotContainer
 		if bankBar then
-			bankBar:ClearAllPoints()
-			bankBar:SetPoint('BOTTOMLEFT', container, 'TOPLEFT', 0, spacing)
+			self:PlaceBagSlotBar(container, bankBar)
 			for _, slot in pairs(bankBar.slots) do
 				slot:SetSize(width, height)
 			end

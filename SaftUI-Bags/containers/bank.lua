@@ -179,7 +179,7 @@ function INV:InitializeBankBagSlots(container)
 	local bar = st:CreateFrame('frame', container:GetName() .. 'BagSlotFrame', container)
 	bar:Hide()
 	st:SetBackdrop(bar, 'theme', 'solid', 'panel')
-	bar:SetPoint('BOTTOMLEFT', container, 'TOPLEFT', 0, self.config.buttonspacing)
+	self:PlaceBagSlotBar(container, bar)
 	bar.slots = {}
 	bar.purchaseButton = CreateBankBagPurchaseButton(bar)
 

@@ -298,6 +298,40 @@ test('stub frames are laid out from their anchors', function()
 	check(not pcall(CreateFrame, 'Frame', nil, UIParent, 'NoSuchTemplate'), 'an unknown template errors')
 end)
 
+test('a frame marked protected has its moves, sizes and shows blocked in combat, and noted', function()
+	reset_world()
+	local guarded, free = CreateFrame('Frame', nil, UIParent), CreateFrame('Frame', nil, UIParent)
+	for _, f in ipairs({ guarded, free }) do
+		f:SetSize(100, 40)
+		f:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 10, -20)
+	end
+	function guarded:IsProtected() return true, true end
+	eq(#stub.blocked, 0, 'nothing blocked out of combat')
+
+	stub.in_combat = true
+	guarded:ClearAllPoints()
+	guarded:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 50, -50)
+	guarded:SetHeight(80)
+	guarded:Hide()
+	free:SetHeight(80)
+	free:Hide()
+	local names = {}
+	for i, call in ipairs(stub.blocked) do
+		check(call[1] == guarded, 'blocked call ' .. i .. ' was on the protected frame')
+		names[i] = call[2]
+	end
+	eq(table.concat(names, ','), 'ClearAllPoints,SetPoint,SetHeight,Hide', 'each blocked call noted, in order')
+	eq(guarded:GetLeft() .. ',' .. guarded:GetHeight(), '10,40', 'the protected frame kept its place and size')
+	check(guarded:IsShown(), 'and stayed shown')
+	eq(free:GetHeight(), 80, 'a frame not protected changes in combat')
+	check(not free:IsShown(), 'and hides')
+
+	stub.in_combat = false
+	guarded:SetHeight(80)
+	eq(guarded:GetHeight(), 80, 'out of combat the protected frame changes')
+	eq(#stub.blocked, 4, 'nothing more noted')
+end)
+
 test('reset_world rebuilds the stubs and the shell, and keeps the test file\'s locals', function()
 	local before = SaftUI
 	local keep = 'kept'

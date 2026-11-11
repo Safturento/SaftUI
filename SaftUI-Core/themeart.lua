@@ -487,6 +487,15 @@ function ThemeArt.TitleStrip()
 	return ForClient(ThemeArt.ART.metal.titleStrip)
 end
 
+-- How far the metal's art reaches above its drawn frame's top on this client:
+-- its top corners sit that far up (their y), and the top edge between them,
+-- as Blizzard's nine-slice layout puts them. Its top rows are the frame's rim
+-- and shadow. What sits above a window clears the metal by this.
+function ThemeArt.MetalAbove()
+	local metal = ThemeArt.ART.metal
+	return math.max(ForClient(metal.TopLeftCorner.y), ForClient(metal.TopRightCorner.y))
+end
+
 -- How far a kind's art reaches down from the drawn frame's top under
 -- Blizzard, on this client: for art with a title bar (a window's metal) the
 -- title bar, which a backdrop reaches that far above its window; for the rest

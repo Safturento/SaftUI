@@ -55,6 +55,22 @@ function st:HeaderRoom(frame)
 	return header:GetHeight()
 end
 
+-- How far the art frame is drawn in reaches above the top of its header
+-- (st:CreateHeader): in Blizzard's metal (a window drawn as one, st:DrawnKind
+-- window and st:DrawnTheme blizzard) the metal's top (st.ThemeArt.MetalAbove
+-- over its drawn frame, whose top is the title bar's, st.ThemeArt.TitleHeight
+-- over the window), less how far the header sits above the window: the strip
+-- while it's in the title bar (st:HeaderInTitleBar), none while it's in the
+-- window. 0 in any other look, where what sits above the window keeps the
+-- place it had before themes. What a window places above its header (the
+-- bags' bag slot bars) sits this much higher, clear of the art.
+function st:ArtAboveHeader(frame)
+	if st:DrawnKind(frame) ~= 'window' or st:DrawnTheme(frame) ~= 'blizzard' then return 0 end
+	local art = st.ThemeArt.TitleHeight() + st.ThemeArt.MetalAbove()
+	local header = st:HeaderInTitleBar(frame) and st.ThemeArt.TitleStrip() or 0
+	return math.max(0, art - header)
+end
+
 -- A header in the title bar is the bar's strip (st.ThemeArt.TitleStrip) and
 -- its buttons are that less TITLE_BAR_CLEAR, so 2px of the strip shows above
 -- and below them; a header in its window is the profile's Title bar height and
@@ -80,14 +96,28 @@ function st:SocketReach(frame)
 	return close.size - close.x - (st:DrawnInset(frame) or 0)
 end
 
+-- A header or footer that's protected in combat (a bag window's: Blizzard's
+-- item buttons hang from the scroll frame anchored under its header, and the
+-- search box anchored to it is its footer's child) can't be moved or sized
+-- until combat ends, when every header and footer is updated once.
+local function UpdateHeadersAfterCombat()
+	st:QueueAfterCombat('UpdateHeaders', function() st:UpdateHeader() end)
+end
+
 -- Puts a window's header in the metal's title bar, or back at the window's
 -- top, when that changed (WantsSocket), and sizes it: in the title bar the
 -- strip, its bottom on the window's top and as wide as the window; in the
 -- window the profile's height. Every window is drawn behind (st:SetBackdrop),
 -- so its metal's title bar is above it, its bottom on the window's top
 -- (theme.lua's Placement). A header whose window placed it itself (a skinned
--- Blizzard panel's) keeps its points while it stays in the window.
+-- Blizzard panel's) keeps its points while it stays in the window. A header
+-- that's protected in combat waits for the end of it, still recorded where it
+-- is, so the update then moves it.
 local function PlaceHeader(header)
+	if not st:CanMoveNow(header) then
+		UpdateHeadersAfterCombat()
+		return
+	end
 	local window = windowOfHeader[header]
 	local bar = window ~= nil and WantsSocket(window) == true
 	if bar ~= st:HeaderInTitleBar(window) then
@@ -231,7 +261,11 @@ function st:UpdateHeader(header)
 			self:UpdateHeader(h)
 		end
 		for _, footer in ipairs(self.footers) do
-			footer:SetHeight(st.config.profile.headers.height)
+			if st:CanMoveNow(footer) then
+				footer:SetHeight(st.config.profile.headers.height)
+			else
+				UpdateHeadersAfterCombat()
+			end
 		end
 		return
 	end

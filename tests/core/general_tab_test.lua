@@ -24,9 +24,10 @@ local PREVIEW_ICON = 'Interface\\Icons\\Spell_Nature_Lightning'
 -- The bags' Bag Slots button follows the title bar's height (INV:SizeHeaderButtons),
 -- so the note no longer says it waits for a reload.
 local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the screen's edges, not just the bags and bank; the minimap, which is Blizzard's, only when you drag it. Title bars and the margin change at once."
--- Under the Blizzard theme a window's title bar is the metal's, so the row says
--- what it sets there.
-local TITLE_BAR_DESC = "The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom. Under the Blizzard theme the title sits in the window's metal title bar, which keeps Blizzard's height, so this sets only the bottom strip."
+-- Under the Blizzard theme a window drawn in Blizzard's metal has the metal's
+-- title bar, so the row says what it doesn't set there. A window whose own
+-- Theme isn't Blizzard keeps its title bar at this height.
+local TITLE_BAR_DESC = "The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom. Under the Blizzard theme a window in Blizzard's metal holds its title in the metal's own title bar, which keeps Blizzard's height."
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.general end
 
@@ -102,7 +103,7 @@ test('General: an Icons section, then Layout, each with a note; ranges with tool
 		end
 	end
 	eq(tab.args.windows.args.clamp_inset.desc, "How close to the screen's edges frames can go.", "the margin's tooltip, in the user's words")
-	eq(tab.args.windows.args.header_height.desc, TITLE_BAR_DESC, "Title bar height's tooltip says what it sets under Blizzard")
+	eq(tab.args.windows.args.header_height.desc, TITLE_BAR_DESC, "Title bar height's tooltip says what it doesn't set under Blizzard")
 end)
 
 test("Icon zoom is a percent of each edge, and its value is the profile's fraction", function()

@@ -119,7 +119,7 @@ function INV:InitializePlayerBagSlots()
 		self:GetButtonWidth() * #BagSlots + self.config.buttonspacing * (#BagSlots - 1) + self.config.padding * 2,
 		self:GetButtonHeight() + self.config.padding * 2)
 	st:SetBackdrop(bagSlotContainer, 'theme', 'solid', 'panel')
-	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
+	self:PlaceBagSlotBar(self.containers.bag, bagSlotContainer)
 
 	bagSlotContainer.slots = BagSlots
 	self:CreateSlotToggle(self.containers.bag, bagSlotContainer, 'BagSlotToggle')

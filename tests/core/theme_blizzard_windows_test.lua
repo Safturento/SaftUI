@@ -20,7 +20,10 @@
 --     place;
 --   - a profile switch from a Blizzard profile to a Thick one (Review Focus 5)
 --     takes the art off and gives the close button its own look, with no
---     reload;
+--     reload; in combat, on a window whose frame, header and footer are
+--     protected (as a bag window's are), the switch and Title bar height
+--     touch none of them (stub.blocked) and the header moves when combat
+--     ends;
 --   - a close button made for a frame that isn't SaftUI's writes nothing onto
 --     it through a switch.
 --
@@ -446,5 +449,51 @@ test('a profile switch from a Blizzard profile to a Thick one', function()
 	eq(st:CloseButtonInSocket(p), false, 'Thick profile: out of the socket')
 	eq(anchor(close, { [p.header] = 'header' }), 'RIGHT header RIGHT -10.00,0.00', 'Thick profile: back at the right of the header')
 	ownLook(st, close, 'Thick profile')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The calls the game blocked (stub.blocked), as 'method,method'.
+local function blocked()
+	local out = {}
+	for i, call in ipairs(stub.blocked) do out[i] = call[2] end
+	return table.concat(out, ',')
+end
+
+-- A bag window is protected in combat: Blizzard's item buttons hang from its
+-- scroll frame, which is anchored under its header, and the search box,
+-- anchored to the header too, is its footer's child, so the window, its
+-- header and its footer are all protected (.agents/taint.md, rule 6). A
+-- profile switch in combat runs st:UpdateHeader at once (Config:UpdateConfig,
+-- step 4), and so does Title bar height: neither may touch them until combat
+-- ends, nor forget that the header has yet to move.
+test("in combat a protected window's header and footer wait for the end of combat: a profile switch and Title bar height", function()
+	local st = configWorld()
+	local thick = st.config:GetCurrentProfile()
+	SaftUI_DB.profiles.WindowsTestCombat = { theme = { name = 'blizzard' } }
+	st.config:SetProfile('WindowsTestCombat')
+	local p = panel(st, 'Combat test')
+	st:CreateFooter(p)
+	inTitleBar(st, p, 'forever', 'Blizzard profile')
+	for _, frame in ipairs({ p, p.header, p.footer }) do
+		function frame:IsProtected() return true, true end
+	end
+	local header = rect(p.header)
+
+	stub.in_combat = true
+	st.config:SetProfile(thick)
+	eq(blocked(), '', 'a profile switch in combat: no call on the window blocked')
+	eq(st:HeaderInTitleBar(p), true, 'the header still in the title bar, where it is')
+	eq(rect(p.header), header, 'not moved')
+	st.config.profile.headers.height = 40
+	st:UpdateHeader() -- as General -> Title bar height does
+	eq(blocked(), '', 'Title bar height in combat: none blocked')
+	eq(p.footer:GetHeight(), 31, 'the footer waits too')
+
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(blocked(), '', 'none blocked after combat')
+	inWindow(st, p, 40, 'when combat ends, the Thick profile at 40')
+	eq(p.footer:GetHeight(), 40, 'the footer takes 40')
+	eq(st:CloseButtonInSocket(p), false, 'the close button out of the socket')
 	eq(#take_errors(), 0, 'no errors')
 end)
