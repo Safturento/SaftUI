@@ -148,6 +148,296 @@ end
 -- For the options window's own boxes and buttons (the search box, Reload UI).
 W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 
+------------------------------------------------------------------ Blizzard's art
+
+--[[
+	Under SaftUI's theme Blizzard each control wears Blizzard's Settings art in
+	place of Box (st.ThemeArt.Control), read when the control is drawn or bound,
+	so a theme change reaches it when the window renders again:
+	  - a select and the position block's dropdown: Blizzard's dropdown, its
+	    arrow following the button (under the mouse, pressed, its list open,
+	    disabled); the list drawn as the window is (SaftUI's theme, Solid, a
+	    panel), its rows on Blizzard's menu background;
+	  - a range: Blizzard's minimal slider. Its value box, an input, the
+	    position block's boxes and W.Prompt's box: InputBoxTemplate's art;
+	  - a color: Blizzard's swatch. A keybinding: Blizzard's binding button,
+	    its select piece while it waits for a key;
+	  - the position block's nudges: MinimalScrollBar's steppers;
+	  - the execute button, W.Confirm's buttons and the window's own: Blizzard's
+	    panel button (st:ShowPanelButton). The toggle and the multiselect's
+	    rows: the Settings check box.
+	The multiselect's box and the position block's dots have no Blizzard
+	equivalent: a 1px line in the Blizzard theme's Border around its
+	Background, as the theme draws a small frame. Under Thick and Thin every
+	control keeps Box, exactly as before. Every piece is a texture of SaftUI's
+	on a frame of SaftUI's, drawn inside the control's own rect, so no cell or
+	widget moves or changes size. Each look is put on only when it changed.
+]]
+
+-- Whether the controls wear Blizzard's art: under SaftUI's theme Blizzard.
+local function BlizzardLook()
+	return st:IsBlizzardLook('theme', 'theme')
+end
+W.BlizzardLook = BlizzardLook
+
+-- frame -> its Blizzard art: { blizzard, pieces = { [key] = texture }, and
+-- what its states need }, made the first time it's asked for. blizzard is
+-- whether frame wears it now.
+local arts = setmetatable({}, { __mode = 'k' })
+
+local function Art(frame)
+	local art = arts[frame]
+	if not art then
+		art = { pieces = {} }
+		arts[frame] = art
+	end
+	return art
+end
+
+-- Records the look frame's art is for; false when it wears it already.
+local function Changes(art, blizzard)
+	if (art.blizzard or false) == blizzard then return false end
+	art.blizzard = blizzard
+	return true
+end
+
+-- art's piece key: a texture of parent's in layer (at sublevel), made the
+-- first time, shown.
+local function Piece(art, parent, key, layer, sublevel)
+	local piece = art.pieces[key]
+	if not piece then
+		piece = parent:CreateTexture(nil, layer, nil, sublevel)
+		art.pieces[key] = piece
+	end
+	piece:Show()
+	return piece
+end
+
+local function HidePieces(art)
+	for _, piece in pairs(art.pieces) do piece:Hide() end
+end
+
+-- An atlas's width and height, as the client has them; nil for none.
+local function AtlasSize(atlas)
+	local info = C_Texture.GetAtlasInfo(atlas)
+	if info then return info.width, info.height end
+end
+
+-- Lays set's left end, middle and right end (atlases) across frame, art's
+-- textures in layer, each height tall: the ends as wide as their atlas is at
+-- that height, on whole pixels, and the middle between them. along is where
+-- they lie: 'BOTTOM' along frame's bottom, '' across its middle, or nil from
+-- its top to its bottom (height then the frame's own, which SaftUI set).
+local function LayThree(art, frame, set, layer, height, along)
+	local left = Piece(art, frame, 'Left', layer)
+	local middle = Piece(art, frame, 'Middle', layer)
+	local right = Piece(art, frame, 'Right', layer)
+	middle:SetAtlas(set.middle)
+	for side, piece in pairs({ LEFT = left, RIGHT = right }) do
+		local atlas = side == 'LEFT' and set.left or set.right
+		piece:SetAtlas(atlas)
+		piece:ClearAllPoints()
+		if along then
+			piece:SetPoint(along .. side, frame, along .. side)
+			piece:SetHeight(height)
+		else
+			piece:SetPoint('TOP' .. side, frame, 'TOP' .. side)
+			piece:SetPoint('BOTTOM' .. side, frame, 'BOTTOM' .. side)
+		end
+		local width, atlasHeight = AtlasSize(atlas)
+		piece:SetWidth(width and floor(width * height / atlasHeight + 0.5) or height)
+	end
+	middle:ClearAllPoints()
+	middle:SetPoint('TOPLEFT', left, 'TOPRIGHT')
+	middle:SetPoint('BOTTOMRIGHT', right, 'BOTTOMLEFT')
+	local info = C_Texture.GetAtlasInfo(set.middle)
+	middle:SetHorizTile(info and info.tilesHorizontally or false)
+end
+
+-- For the options window's tabs (optionswindow.lua).
+W.AtlasSize = AtlasSize
+function W.LayThree(frame, set, layer, height, along)
+	LayThree(Art(frame), frame, set, layer, height, along)
+end
+function W.HideArt(frame)
+	if arts[frame] then HidePieces(arts[frame]) end
+end
+
+-- Takes a box's own look off for Blizzard's art (shown false), or puts it
+-- back: Box with fill (the field's by default) and the dark line outside.
+local function ShowBox(frame, shown, fill)
+	if shown then
+		Box(frame, fill)
+		frame.outline:Show()
+	else
+		frame:SetBackdrop(nil)
+		frame.outline:Hide()
+	end
+end
+
+-- texture inset in from frame's edges on every side, on whole pixels.
+local function Inset(texture, frame, inset)
+	texture:ClearAllPoints()
+	texture:SetPoint('TOPLEFT', frame, 'TOPLEFT', inset, -inset)
+	texture:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -inset, inset)
+end
+
+-- An edit box's look, when it changed: Box, or InputBoxTemplate's art
+-- (st.ThemeArt.Control('input')) across it, its ends at their share of
+-- height (the box's height, which SaftUI set).
+local function LookInput(edit, blizzard, height)
+	local art = Art(edit)
+	if not Changes(art, blizzard) then return end
+	ShowBox(edit, not blizzard)
+	if blizzard then
+		LayThree(art, edit, st.ThemeArt.Control('input'), 'BACKGROUND', height)
+	else
+		HidePieces(art)
+	end
+end
+
+-- The search box's look (optionswindow.lua), when it changed: Box, or
+-- SearchBoxTemplate's art (st.ThemeArt.Control('search')) across it, its ends
+-- at their share of height, and the magnifying glass at its left. Returns
+-- where its text starts under Blizzard, clear of the glass; nil under Thick
+-- and Thin.
+local SEARCH_GLASS, SEARCH_GLASS_LEFT, SEARCH_GLASS_GAP = 10, 6, 4
+function W.LookSearch(box, blizzard, height)
+	local art = Art(box)
+	if Changes(art, blizzard) then
+		ShowBox(box, not blizzard)
+		if blizzard then
+			local look = st.ThemeArt.Control('search')
+			LayThree(art, box, look, 'BACKGROUND', height)
+			local glass = Piece(art, box, 'Glass', 'ARTWORK')
+			glass:SetAtlas(look.icon)
+			glass:ClearAllPoints()
+			glass:SetPoint('LEFT', box, 'LEFT', SEARCH_GLASS_LEFT, 0)
+			glass:SetSize(SEARCH_GLASS, SEARCH_GLASS)
+		else
+			HidePieces(art)
+		end
+	end
+	if blizzard then return SEARCH_GLASS_LEFT + SEARCH_GLASS + SEARCH_GLASS_GAP end
+end
+
+-- A button's look, when it changed: Box with fill, or Blizzard's panel button
+-- (st:ShowPanelButton). W.Confirm's buttons, and the window's own.
+local function LookButton(button, blizzard, fill)
+	if not Changes(Art(button), blizzard) then return end
+	ShowBox(button, not blizzard, fill)
+	st:ShowPanelButton(button, blizzard)
+end
+W.LookButton = LookButton
+
+-- The look of a box with no Blizzard equivalent (the multiselect's, the
+-- position block's dots): Box (a frame that has none keeps none), or a 1px
+-- line in the Blizzard theme's Border around its Background, as the theme
+-- draws a small frame, in its colors now.
+local LINE = { bgFile = st.BLANK_TEX, edgeFile = st.BLANK_TEX, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } }
+local function LookLine(frame, blizzard)
+	if Changes(Art(frame), blizzard) and not blizzard then
+		if frame.outline then ShowBox(frame, true) else frame:SetBackdrop(nil) end
+	end
+	if blizzard then
+		local look = st:ResolveTheme('theme', 'solid', 'small')
+		local r, g, b, a = unpack(look.colors.backdropcolor)
+		frame:SetBackdrop(LINE)
+		frame:SetBackdropColor(r, g, b, a * look.alpha)
+		frame:SetBackdropBorderColor(unpack(look.colors.bordercolor))
+		if frame.outline then frame.outline:Hide() end
+	end
+end
+
+-- The list's and the confirm dialog's frame in its look, when it changed: Box
+-- with fill, or drawn as the options window is (SaftUI's theme, Solid, a
+-- panel) by a frame of SaftUI's just under it, the skin, a child of holder
+-- (the frame's catcher) so it shows with it. Returns the skin (nil until the
+-- first Blizzard look).
+local function LookWindow(frame, holder, blizzard, fill)
+	local art = Art(frame)
+	if Changes(art, blizzard) then
+		ShowBox(frame, not blizzard, fill)
+		if blizzard and not art.skin then
+			art.skin = st:CreateFrame('Frame', nil, holder)
+			art.skin:SetAllPoints(frame)
+		end
+		if art.skin then art.skin:SetShown(blizzard) end
+	end
+	if blizzard then
+		art.skin:SetFrameLevel(max(0, frame:GetFrameLevel() - 1))
+		st:SetTemplate(art.skin, 'theme', 'solid', 'panel')
+	end
+	return art.skin
+end
+
+-- A dropdown's arrow in its button's state: disabled, pressed, under the
+-- mouse, its list open, else normal (Blizzard's order, which has no art for
+-- pressed and under the mouse at once).
+local function PaintArrow(button)
+	local art = arts[button]
+	if not (art and art.blizzard) then return end
+	local state = 'normal'
+	if art.isDisabled() then
+		state = 'disabled'
+	elseif art.down then
+		state = 'pressed'
+	elseif art.over then
+		state = 'hover'
+	elseif W.ListOwner() == button then
+		state = 'open'
+	end
+	art.pieces.Arrow:SetAtlas(art.arrows[state])
+end
+
+-- Keeps a dropdown's arrow following the mouse: hooked once its button's own
+-- scripts are set. isDisabled() says whether its widget is disabled.
+local function DropdownStates(button, isDisabled)
+	local art = Art(button)
+	art.isDisabled = isDisabled
+	local function Hook(script, field, value)
+		button:HookScript(script, function(self)
+			art[field] = value
+			PaintArrow(self)
+		end)
+	end
+	Hook('OnEnter', 'over', true)
+	Hook('OnLeave', 'over', false)
+	Hook('OnMouseDown', 'down', true)
+	Hook('OnMouseUp', 'down', false)
+	-- A pooled widget hidden mid-press or under the mouse starts afresh.
+	button:HookScript('OnHide', function()
+		art.over, art.down = false, false
+	end)
+end
+
+-- A dropdown's look, when it changed: Box and its caret (button.caret), or
+-- Blizzard's dropdown (st.ThemeArt.Control('dropdown')): the text holder
+-- filling the button, and the arrow square at its right, height (the
+-- button's height, which SaftUI set) wide.
+local function LookDropdown(button, blizzard, height)
+	local art = Art(button)
+	if not Changes(art, blizzard) then return end
+	ShowBox(button, not blizzard)
+	for _, row in ipairs(button.caret) do row:SetShown(not blizzard) end
+	if blizzard then
+		local look = st.ThemeArt.Control('dropdown')
+		local holder = Piece(art, button, 'Holder', 'BACKGROUND')
+		holder:SetAtlas(look.text)
+		holder:ClearAllPoints()
+		holder:SetAllPoints(button)
+		local arrow = Piece(art, button, 'Arrow', 'ARTWORK')
+		arrow:ClearAllPoints()
+		arrow:SetPoint('TOPRIGHT', button, 'TOPRIGHT')
+		arrow:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT')
+		arrow:SetWidth(height)
+		art.arrows = look.arrow
+		PaintArrow(button)
+	else
+		HidePieces(art)
+	end
+end
+
 ------------------------------------------------------------------ numbers
 
 -- Strips float drift (0.1 * 3 is 0.30000000000000004).
@@ -286,12 +576,23 @@ function W.SetDialogAnchor(frame)
 	W.dialogAnchor = frame
 end
 
+-- The dialog in SaftUI's theme now: Box, or under Blizzard drawn as the
+-- options window is, with Blizzard's panel buttons and a text box.
+local function LookDialog()
+	local blizzard = BlizzardLook()
+	dialog.skin = LookWindow(dialog.frame, dialog.catcher, blizzard, BG)
+	LookButton(dialog.yes, blizzard)
+	LookButton(dialog.no, blizzard)
+	LookInput(dialog.box, blizzard, FIELD_HEIGHT)
+end
+
 -- One modal at a time, for Confirm and Prompt: the dialog is built once, and
 -- opening either answers an open one No first. Sets the text, the buttons and
 -- the height, and shows the dialog (a prompt's box is placed and shown here).
 local function OpenDialog(text, onYes, onNo, prompt, yesLabel, noLabel)
 	if not dialog then BuildDialog() end
 	if dialog.catcher:IsShown() then Answer(false) end
+	LookDialog()
 	dialog.onYes, dialog.onNo = onYes, onNo
 	dialog.prompt = prompt and true or nil
 	text = tostring(text)
@@ -404,11 +705,29 @@ local function ListFill()
 	end
 end
 
+-- The list's owner's dropdown arrow is open while the list shows.
 function W.CloseList()
 	if list then
+		local owner = list.owner
 		list.owner, list.onPick, list.entries = nil, nil, nil
 		list.catcher:Hide()
+		if owner then PaintArrow(owner) end
 	end
+end
+
+-- The list in SaftUI's theme now: Box, or under Blizzard drawn as the
+-- options window is, its rows on Blizzard's menu background
+-- (st.ThemeArt.Control('dropdown')'s list, at its alpha), over the rows' part
+-- of the frame.
+local function LookList()
+	local blizzard = BlizzardLook()
+	list.skin = LookWindow(list.frame, list.catcher, blizzard, BG)
+	if not blizzard then return end
+	local look = st.ThemeArt.Control('dropdown')
+	local menu = Piece(Art(list.frame), list.skin, 'Menu', 'BACKGROUND', 7)
+	menu:SetAtlas(look.list)
+	menu:SetAlpha(look.listAlpha)
+	Inset(menu, list.frame, 1)
 end
 
 local function BuildList()
@@ -480,6 +799,7 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	W.CloseList()
 	if #entries == 0 then return end
 	list.owner, list.entries, list.selected, list.onPick, list.fontMode = owner, entries, selected, onPick, fontMode
+	LookList()
 
 	local rows = min(#entries, LIST_MAX_ROWS)
 	local height = rows * LIST_ROW_HEIGHT + 2
@@ -502,10 +822,12 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	end
 	ListFill()
 	list.catcher:Show()
+	PaintArrow(owner)
 end
 
--- The list's frames { catcher, frame, rows, ... } (nil until first opened), and the
--- confirm dialog's { catcher, frame, text, yes, no } (nil until first asked).
+-- The list's frames { catcher, frame, rows, skin, ... } (nil until first opened),
+-- and the confirm dialog's { catcher, frame, text, yes, no, box, skin } (nil
+-- until first asked); skin is what draws them as the window is under Blizzard.
 -- For tests.
 function W.GetListFrames() return list end
 function W.GetDialogFrames() return dialog end
@@ -619,14 +941,6 @@ end
 
 ------------------------------------------------------------------ a check box (toggle, multiselect)
 
--- Whether the execute button and the check boxes wear Blizzard's art: under
--- SaftUI's theme Blizzard, read when a widget is bound (the window renders
--- again after a theme change). Under Thick and Thin they keep the window's
--- own look (Box). Blizzard's art is drawn inside the widget's own rect.
-local function BlizzardLook()
-	return st:IsBlizzardLook('theme', 'theme')
-end
-
 -- A box of size with a blue square inside when checked: box.mark.
 local function CheckBox(parent, size)
 	local box = Box(st:CreateFrame('CheckButton', nil, parent))
@@ -730,6 +1044,37 @@ define('toggle', {
 
 ------------------------------------------------------------------ range
 
+local KNOB_WIDTH, KNOB_HEIGHT = 6, 14
+
+-- The range's look, when it changed: its flat track and knob, or Blizzard's
+-- minimal slider (st.ThemeArt.Control('slider')): the track's ends and
+-- middle at their atlas's height across the slider's middle, and the thumb
+-- at its atlas's size, under which the slider centres it. Its value box is
+-- a text box (LookInput).
+local function LookRange(w, blizzard)
+	local art = Art(w.slider)
+	if Changes(art, blizzard) then
+		for _, texture in ipairs(w.flat) do texture:SetShown(not blizzard) end
+		local knob = w.slider:GetThumbTexture()
+		if blizzard then
+			local look = st.ThemeArt.Control('slider')
+			local _, height = AtlasSize(look.middle)
+			LayThree(art, w.slider, look, 'BACKGROUND', height or FIELD_HEIGHT, '')
+			knob:SetAtlas(look.thumb)
+			local width, thumbHeight = AtlasSize(look.thumb)
+			if width then knob:SetSize(width, thumbHeight) end
+			knob:SetVertexColor(1, 1, 1, 1)
+		else
+			HidePieces(art)
+			knob:SetTexture(st.BLANK_TEX)
+			knob:SetTexCoord(0, 1, 0, 1)
+			knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
+			knob:SetVertexColor(Colors().text.normal:GetRGB())
+		end
+	end
+	LookInput(w.edit, blizzard, FIELD_HEIGHT)
+end
+
 builders.range = function(w)
 	local frame = CreateFrame('Frame', nil, UIParent)
 	frame:SetSize(TRACK_WIDTH + GAP + VALUE_WIDTH, FIELD_HEIGHT)
@@ -767,10 +1112,13 @@ builders.range = function(w)
 	fill:SetWidth(1)
 	w.fill = fill
 
+	-- The flat track, hidden under Blizzard (LookRange).
+	w.flat = { outline, track, inside, fill }
+
 	slider:SetThumbTexture(st.BLANK_TEX)
 	local knob = slider:GetThumbTexture()
 	knob:SetDrawLayer('OVERLAY')
-	knob:SetSize(6, 14)
+	knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
 	knob:SetVertexColor(Colors().text.normal:GetRGB())
 
 	local edit = Box(st:CreateFrame('EditBox', nil, frame))
@@ -819,6 +1167,11 @@ builders.range = function(w)
 end
 
 define('range', {
+	Bind = function(self, ...)
+		LookRange(self, BlizzardLook())
+		return Base.Bind(self, ...)
+	end,
+
 	-- The slider's ends (softMin and softMax, else min and max, as
 	-- AceConfigDialog gives them), and the hard limits typed numbers get cut to.
 	Limits = function(self)
@@ -887,7 +1240,7 @@ define('range', {
 -- A box that shows its choice and opens the list. The caret is four rows of
 -- pixels, 7, 5, 3 and 1 wide, each placed by its left edge on a whole pixel
 -- around one centre: placed by their centre, the odd widths would start half a
--- pixel off and blur.
+-- pixel off and blur. Returns the rows (hidden under Blizzard, LookDropdown).
 local function Caret(parent)
 	local carets = {}
 	for i, width in ipairs({ 7, 5, 3, 1 }) do
@@ -897,6 +1250,7 @@ local function Caret(parent)
 		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
 		carets[i] = t
 	end
+	return carets
 end
 
 builders.select = function(w)
@@ -906,12 +1260,13 @@ builders.select = function(w)
 	w.text = NewText(button, 'LEFT')
 	w.text:SetPoint('LEFT', button, 'LEFT', 8, 0)
 	w.text:SetPoint('RIGHT', button, 'RIGHT', -22, 0)
-	Caret(button)
+	button.caret = Caret(button)
 	HoverEdge(button, function() return w.disabled end)
 	button:SetScript('OnClick', function() w:Open() end)
 	button:SetScript('OnHide', function()
 		if W.ListOwner() == button then W.CloseList() end
 	end)
+	DropdownStates(button, function() return w.disabled end)
 end
 
 -- The entries for a row's values: { {key, label, font} }. LibSharedMedia's
@@ -931,6 +1286,11 @@ local function ListEntries(root, row)
 end
 
 define('select', {
+	Bind = function(self, ...)
+		LookDropdown(self.frame, BlizzardLook(), FIELD_HEIGHT)
+		return Base.Bind(self, ...)
+	end,
+
 	-- Only the chosen key's label is resolved here; the list is built when it opens.
 	Refresh = function(self)
 		self.value = self:Value()
@@ -962,6 +1322,7 @@ define('select', {
 
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
+		PaintArrow(self.frame)
 	end,
 
 	OnRelease = function(self)
@@ -972,31 +1333,42 @@ define('select', {
 ------------------------------------------------------------------ multiselect
 
 local MULTI_ROW = 22
+-- Under Blizzard the box is a line at the multiselect's edge, so its rows sit
+-- this far in from it on the left and right, as their boxes are above and below.
+local MULTI_INSET = 2
 
 builders.multiselect = function(w)
-	local frame = CreateFrame('Frame', nil, UIParent)
+	local frame = st:CreateFrame('Frame', nil, UIParent) -- no box under Thick and Thin
 	frame:SetSize(W.WIDTH.multiselect, MULTI_ROW)
 	w.frame = frame
 	w.rows = {}
 end
 
 -- A row's look: its box's (LookCheckBox), and under Blizzard the box's
--- highlight drawn in the row's own HIGHLIGHT layer, over the box, which the
--- game shows under the mouse: the box takes no mouse, the row does. Under
--- Thick and Thin the row lights the box's edge instead (its scripts).
+-- highlight drawn over it, a texture of the box's own in its OVERLAY layer
+-- (row.hover), which the row's OnEnter shows and OnLeave hides: the box takes
+-- no mouse, so its own HIGHLIGHT layer never shows, and a texture of the
+-- row's would lie under the box's art (a frame's regions draw under its
+-- children). Under Thick and Thin the row lights the box's edge instead.
+-- Under Blizzard the row's box and label sit MULTI_INSET in, clear of the
+-- multiselect's line.
 local function LookRow(row, blizzard)
 	LookCheckBox(row.box, blizzard)
-	if blizzard and not row.highlight then
-		row.highlight = row:CreateTexture(nil, 'HIGHLIGHT')
-		row.highlight:SetAllPoints(row.box)
+	row.blizzard = blizzard
+	if blizzard and not row.hover then
+		row.hover = row.box:CreateTexture(nil, 'OVERLAY', nil, 1)
+		row.hover:SetAllPoints(row.box)
 	end
-	if row.highlight then
+	if row.hover then
 		if blizzard then
-			row.highlight:SetAtlas(row.box.look.highlight)
-			row.highlight:SetBlendMode(row.box.look.highlightBlend)
+			row.hover:SetAtlas(row.box.look.highlight)
+			row.hover:SetBlendMode(row.box.look.highlightBlend)
 		end
-		row.highlight:SetShown(blizzard)
+		row.hover:Hide()
 	end
+	local inset = blizzard and MULTI_INSET or 0
+	row.box:SetPoint('LEFT', row, 'LEFT', inset, 0)
+	row.label:SetPoint('RIGHT', row, 'RIGHT', -inset, 0)
 end
 
 local function MultiRow(w, i)
@@ -1008,13 +1380,19 @@ local function MultiRow(w, i)
 	row:SetPoint('TOPRIGHT', w.frame, 'TOPRIGHT', 0, -(i - 1) * MULTI_ROW)
 	row.box = CheckBox(row, 18)
 	row.box:SetPoint('LEFT', row, 'LEFT', 0, 0)
-	LookRow(row, w.blizzard or false)
 	row.box:EnableMouse(false)
 	row.label = NewText(row, 'LEFT')
 	row.label:SetPoint('LEFT', row.box, 'RIGHT', 8, 0)
 	row.label:SetPoint('RIGHT', row, 'RIGHT', 0, 0)
-	row:SetScript('OnEnter', function(self) Edge(self.box, true) end)
-	row:SetScript('OnLeave', function(self) Edge(self.box, false) end)
+	LookRow(row, w.blizzard or false)
+	row:SetScript('OnEnter', function(self)
+		Edge(self.box, true)
+		if self.blizzard then self.hover:Show() end
+	end)
+	row:SetScript('OnLeave', function(self)
+		Edge(self.box, false)
+		if self.hover then self.hover:Hide() end
+	end)
 	row:SetScript('OnClick', function(self)
 		if w.disabled or self.key == nil then return end
 		w:Commit(self.key, not self.checked)
@@ -1026,6 +1404,7 @@ end
 define('multiselect', {
 	Bind = function(self, ...)
 		self.blizzard = BlizzardLook()
+		LookLine(self.frame, self.blizzard)
 		for _, row in ipairs(self.rows) do LookRow(row, self.blizzard) end
 		return Base.Bind(self, ...)
 	end,
@@ -1081,6 +1460,13 @@ builders.input = function(w)
 end
 
 define('input', {
+	-- A small input is narrower (the window sets its width after binding);
+	-- the art spans whatever width the box has.
+	Bind = function(self, ...)
+		LookInput(self.frame, BlizzardLook(), FIELD_HEIGHT)
+		return Base.Bind(self, ...)
+	end,
+
 	Refresh = function(self)
 		local value = self:Value()
 		self.value = value
@@ -1112,23 +1498,55 @@ local function OpenPicker(info, swatch)
 	end
 end
 
+-- The black line and the color inside the swatch's border, in from its edges.
+local SWATCH_INNER, SWATCH_COLOR = 1, 2
+
 builders.color = function(w)
 	local button = Box(st:CreateFrame('Button', nil, UIParent))
 	button:SetSize(W.WIDTH.color, W.WIDTH.color)
 	w.frame = button
 	-- The black 1px line inside the border, then the color.
-	local inner = button:CreateTexture(nil, 'ARTWORK')
-	inner:SetColorTexture(0, 0, 0, 1)
-	inner:SetPoint('TOPLEFT', button, 'TOPLEFT', 1, -1)
-	inner:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -1, 1)
+	w.inner = button:CreateTexture(nil, 'ARTWORK')
+	w.inner:SetColorTexture(0, 0, 0, 1)
+	Inset(w.inner, button, SWATCH_INNER)
 	w.swatch = button:CreateTexture(nil, 'OVERLAY')
-	w.swatch:SetPoint('TOPLEFT', button, 'TOPLEFT', 2, -2)
-	w.swatch:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -2, 2)
+	Inset(w.swatch, button, SWATCH_COLOR)
 	HoverEdge(button, function() return w.disabled end)
 	button:SetScript('OnClick', function() w:Pick() end)
 end
 
+-- The swatch's look, when it changed: Box, the black line and the color, or
+-- Blizzard's swatch (ColorSwatchTemplate, st.ThemeArt.Control('swatch')): a
+-- white square, a black one inside it and the color inside that, at the
+-- template's sizes, centred in the swatch's own square.
+local function LookColor(w, blizzard)
+	local button = w.frame
+	local art = Art(button)
+	if not Changes(art, blizzard) then return end
+	ShowBox(button, not blizzard)
+	if blizzard then
+		local look = st.ThemeArt.Control('swatch')
+		local function Centred(size) return floor((W.WIDTH.color - size) / 2) end
+		local white = Piece(art, button, 'White', 'BACKGROUND')
+		white:SetColorTexture(unpack(look.whiteColor))
+		Inset(white, button, Centred(look.white))
+		w.inner:SetColorTexture(unpack(look.blackColor))
+		Inset(w.inner, button, Centred(look.black))
+		Inset(w.swatch, button, Centred(look.color))
+	else
+		HidePieces(art)
+		w.inner:SetColorTexture(0, 0, 0, 1)
+		Inset(w.inner, button, SWATCH_INNER)
+		Inset(w.swatch, button, SWATCH_COLOR)
+	end
+end
+
 define('color', {
+	Bind = function(self, ...)
+		LookColor(self, BlizzardLook())
+		return Base.Bind(self, ...)
+	end,
+
 	Refresh = function(self)
 		local r, g, b, a = self:Value()
 		self.r, self.g, self.b, self.a = r or 0, g or 0, b or 0, a or 1
@@ -1248,6 +1666,73 @@ local IGNORED_KEYS = {
 }
 local MOUSE_BUTTONS = { MiddleButton = 'BUTTON3', Button4 = 'BUTTON4', Button5 = 'BUTTON5' }
 
+-- The binding button's nine pieces (UIMenuButtonStretchTemplate's): its
+-- corners, the edges between them and the middle.
+local BINDING_PIECES = {
+	'TopLeft', 'TopMiddle', 'TopRight', 'MiddleLeft', 'MiddleMiddle', 'MiddleRight',
+	'BottomLeft', 'BottomMiddle', 'BottomRight',
+}
+
+-- The binding button's state: its pieces -Down while pressed, else -Up, and
+-- the select piece while it waits for a key.
+local function PaintBinding(w)
+	local art = arts[w.frame]
+	if not (art and art.blizzard) then return end
+	local file = art.down and art.look.down or art.look.up
+	for _, key in ipairs(BINDING_PIECES) do
+		art.pieces[key]:SetTexture(file)
+		art.pieces[key]:SetTexCoord(unpack(art.look.pieces[key]))
+	end
+	art.pieces.Select:SetShown(w.waiting and true or false)
+end
+
+-- The keybinding's look, when it changed: Box, or Blizzard's binding button
+-- (KeyBindingFrameBindingButtonTemplate, st.ThemeArt.Control('binding')):
+-- nine pieces of one file filling the button, its corners cornerWidth by
+-- cornerHeight; the highlight under the mouse; and the select piece while it
+-- waits for a key.
+local function LookBinding(w, blizzard)
+	local button = w.frame
+	local art = Art(button)
+	if not Changes(art, blizzard) then return end
+	ShowBox(button, not blizzard)
+	if not blizzard then
+		HidePieces(art)
+		return
+	end
+	local look = st.ThemeArt.Control('binding')
+	art.look = look
+	local p = {}
+	for _, key in ipairs(BINDING_PIECES) do
+		p[key] = Piece(art, button, key, 'BACKGROUND')
+		p[key]:ClearAllPoints()
+	end
+	for key, point in pairs({ TopLeft = 'TOPLEFT', TopRight = 'TOPRIGHT', BottomLeft = 'BOTTOMLEFT', BottomRight = 'BOTTOMRIGHT' }) do
+		p[key]:SetPoint(point, button, point)
+		p[key]:SetSize(look.cornerWidth, look.cornerHeight)
+	end
+	local function Between(key, from, fromPoint, to, toPoint)
+		p[key]:SetPoint('TOPLEFT', p[from], fromPoint)
+		p[key]:SetPoint('BOTTOMRIGHT', p[to], toPoint)
+	end
+	Between('TopMiddle', 'TopLeft', 'TOPRIGHT', 'TopRight', 'BOTTOMLEFT')
+	Between('BottomMiddle', 'BottomLeft', 'TOPRIGHT', 'BottomRight', 'BOTTOMLEFT')
+	Between('MiddleLeft', 'TopLeft', 'BOTTOMLEFT', 'BottomLeft', 'TOPRIGHT')
+	Between('MiddleRight', 'TopRight', 'BOTTOMLEFT', 'BottomRight', 'TOPRIGHT')
+	Between('MiddleMiddle', 'TopLeft', 'BOTTOMRIGHT', 'BottomRight', 'TOPLEFT')
+	-- In the HIGHLIGHT layer, which the game shows only under the mouse.
+	local highlight = Piece(art, button, 'Highlight', 'HIGHLIGHT')
+	highlight:SetTexture(look.highlight)
+	highlight:SetTexCoord(unpack(look.highlightCoords))
+	highlight:SetBlendMode(look.highlightBlend)
+	highlight:SetAllPoints(button)
+	local waiting = Piece(art, button, 'Select', 'ARTWORK')
+	waiting:SetTexture(look.select)
+	waiting:SetBlendMode(look.selectBlend)
+	waiting:SetAllPoints(button)
+	PaintBinding(w)
+end
+
 builders.keybinding = function(w)
 	local button = Box(st:CreateFrame('Button', nil, UIParent))
 	button:SetSize(W.WIDTH.keybinding, FIELD_HEIGHT)
@@ -1287,9 +1772,25 @@ builders.keybinding = function(w)
 		if w.waiting then w:StopWaiting() else w:StartWaiting() end
 	end)
 	button:SetScript('OnHide', function() w:StopWaiting() end)
+	-- Under Blizzard its pieces are -Down while pressed.
+	local art = Art(button)
+	button:HookScript('OnMouseDown', function()
+		art.down = true
+		PaintBinding(w)
+	end)
+	button:HookScript('OnMouseUp', function()
+		art.down = false
+		PaintBinding(w)
+	end)
+	button:HookScript('OnHide', function() art.down = false end)
 end
 
 define('keybinding', {
+	Bind = function(self, ...)
+		LookBinding(self, BlizzardLook())
+		return Base.Bind(self, ...)
+	end,
+
 	Refresh = function(self)
 		local key = self:Value()
 		self.value = key
@@ -1311,6 +1812,7 @@ define('keybinding', {
 		self.frame:EnableKeyboard(true)
 		self.frame:EnableMouseWheel(true)
 		Edge(self.frame, true)
+		PaintBinding(self)
 		self:Refresh()
 	end,
 
@@ -1320,6 +1822,7 @@ define('keybinding', {
 		self.frame:EnableKeyboard(false)
 		self.frame:EnableMouseWheel(false)
 		Edge(self.frame, false)
+		PaintBinding(self)
 		if self.row then self:Refresh() end
 	end,
 
@@ -1501,6 +2004,15 @@ local function DotSquare(w, parent, onPick)
 	return square
 end
 
+-- A nudge's stepper art under Blizzard, in its state: pressed, under the
+-- mouse, else normal.
+local function PaintNudge(button)
+	local art = arts[button]
+	if not (art and art.blizzard) then return end
+	local state = art.down and 'pressed' or art.over and 'hover' or 'normal'
+	art.pieces.Arrow:SetAtlas(art.arrows[state])
+end
+
 -- One half of the nudge pair: a 14x11 button (a clickable region of the
 -- pair's box) with a three-row arrow, 2/4/6 wide, in whole pixels. Up sits in
 -- the box's rows 1-9 (the arrow in rows 4-6, from the button's TOP); down in rows
@@ -1530,6 +2042,21 @@ local function NudgeButton(w, parent, up, onClick)
 		for _, t in ipairs(self.arrows) do t:SetColorTexture(Colors().text.grey:GetRGB()) end
 		w:Tip(false)
 	end)
+	-- Under Blizzard its stepper art follows the mouse (PaintNudge).
+	local art = Art(button)
+	local function Hook(script, field, value)
+		button:HookScript(script, function(self)
+			art[field] = value
+			PaintNudge(self)
+		end)
+	end
+	Hook('OnEnter', 'over', true)
+	Hook('OnLeave', 'over', false)
+	Hook('OnMouseDown', 'down', true)
+	Hook('OnMouseUp', 'down', false)
+	button:HookScript('OnHide', function()
+		art.over, art.down = false, false
+	end)
 	return button
 end
 
@@ -1546,7 +2073,36 @@ local function NudgePair(w, parent, onUp, onDown)
 	up:SetPoint('TOPLEFT', pair, 'TOPLEFT', 0, 0)
 	local down = NudgeButton(w, pair, false, onDown)
 	down:SetPoint('BOTTOMLEFT', pair, 'BOTTOMLEFT', 0, 0)
+	pair.divider, pair.up, pair.down = divider, up, down
 	return pair, up, down
+end
+
+-- The nudge pairs' look, when it changed: their box, divider and arrows, or
+-- MinimalScrollBar's steppers (st.ThemeArt.Control('nudge')), each filling
+-- its half of the pair.
+local function LookNudges(w, blizzard)
+	local look
+	for _, pair in ipairs(w.nudgePairs) do
+		if Changes(Art(pair), blizzard) then
+			ShowBox(pair, not blizzard)
+			pair.divider:SetShown(not blizzard)
+			look = look or (blizzard and st.ThemeArt.Control('nudge'))
+			for _, button in ipairs({ pair.up, pair.down }) do
+				local art = Art(button)
+				art.blizzard = blizzard
+				for _, row in ipairs(button.arrows) do row:SetShown(not blizzard) end
+				if blizzard then
+					local arrow = Piece(art, button, 'Arrow', 'ARTWORK')
+					arrow:ClearAllPoints()
+					arrow:SetAllPoints(button)
+					art.arrows = button == pair.up and look.up or look.down
+					PaintNudge(button)
+				else
+					HidePieces(art)
+				end
+			end
+		end
+	end
 end
 
 -- An edit box of the block. onEnter(text) runs on Enter, after focus is dropped.
@@ -1599,7 +2155,7 @@ builders.position = function(w)
 	w.select.text = NewText(w.select, 'LEFT')
 	w.select.text:SetPoint('LEFT', w.select, 'LEFT', 8, 0)
 	w.select.text:SetPoint('RIGHT', w.select, 'RIGHT', -22, 0)
-	Caret(w.select)
+	w.select.caret = Caret(w.select)
 	w.select:SetScript('OnClick', function() w:Open() end)
 	w.select:SetScript('OnEnter', function(self)
 		if not w.disabled then Edge(self, true) end
@@ -1609,6 +2165,7 @@ builders.position = function(w)
 	w.select:SetScript('OnHide', function(self)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
+	DropdownStates(w.select, function() return w.disabled end)
 
 	-- X and Y: label, box, then the nudge pair, overlapping the box's right edge by 1.
 	local function Axis(label, part, errName)
@@ -1627,8 +2184,10 @@ builders.position = function(w)
 		box:SetSize(46, POS_BOX)
 		local pair, up, down = NudgePair(w, frame, function() w:Nudge(part, 1) end, function() w:Nudge(part, -1) end)
 		pair:SetPoint('TOPLEFT', box, 'TOPRIGHT', -1, 0)
+		w.nudgePairs[#w.nudgePairs + 1] = pair
 		return axis, box, up, down
 	end
+	w.nudgePairs = {}
 	w.xLabel, w.x, w.xUp, w.xDown = Axis('X', 'x_off', 'X')
 	w.yLabel, w.y, w.yUp, w.yDown = Axis('Y', 'y_off', 'Y')
 
@@ -1650,6 +2209,20 @@ builders.position = function(w)
 end
 
 define('position', {
+	-- Its parts' looks: the dots a line (no Blizzard equivalent), the name,
+	-- X and Y boxes text boxes, the dropdown Blizzard's, the nudges steppers.
+	Bind = function(self, ...)
+		local blizzard = BlizzardLook()
+		LookLine(self.thisSquare, blizzard)
+		LookLine(self.atSquare, blizzard)
+		LookInput(self.name, blizzard, POS_NAME_HEIGHT)
+		LookInput(self.x, blizzard, POS_BOX)
+		LookInput(self.y, blizzard, POS_BOX)
+		LookDropdown(self.select, blizzard, POS_BOX)
+		LookNudges(self, blizzard)
+		return Base.Bind(self, ...)
+	end,
+
 	-- A block's parts are laid out for the row's target; nothing of a previous
 	-- bind is left (the dropdown, the name box, the TO caption, the widths).
 	Refresh = function(self)
@@ -1764,6 +2337,7 @@ define('position', {
 		for _, control in ipairs({ self.select, self.xUp, self.xDown, self.yUp, self.yDown }) do
 			control:EnableMouse(not disabled)
 		end
+		PaintArrow(self.select)
 		for _, edit in ipairs({ self.name, self.x, self.y }) do
 			edit:EnableMouse(not disabled)
 			if disabled then edit:ClearFocus() end

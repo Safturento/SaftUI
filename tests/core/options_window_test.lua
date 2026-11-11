@@ -1317,3 +1317,336 @@ test('the dialog closes with the window and on entering combat, and refuses to o
 	check(not OW:IsDialogShown(), 'not shown')
 	close_all()
 end)
+
+------------------------------------------------------------------ under the Blizzard theme
+
+local function theme(name)
+	st.config.profile.theme.name = name
+	OW:Render() -- the window renders again after a theme change
+end
+
+local function rgba(...) return string.format('%.2f,%.2f,%.2f,%.2f', ...) end
+
+-- The textures shown on a frame (shown and not see-through).
+local function shown_textures(frame)
+	local out = {}
+	for _, region in ipairs({ frame:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:IsShown() and region:GetAlpha() > 0 then
+			out[#out + 1] = region
+		end
+	end
+	return out
+end
+
+-- The atlases shown on a frame, sorted and comma-joined.
+local function atlases_of(frame)
+	local out = {}
+	for _, region in ipairs(shown_textures(frame)) do
+		if region:GetAtlas() then out[#out + 1] = region:GetAtlas() end
+	end
+	table.sort(out)
+	return table.concat(out, ',')
+end
+
+-- Whether region lies inside frame's rect on screen.
+local function within(region, frame)
+	local e = 0.001
+	return region:GetLeft() >= frame:GetLeft() - e and region:GetRight() <= frame:GetRight() + e
+		and region:GetBottom() >= frame:GetBottom() - e and region:GetTop() <= frame:GetTop() + e
+end
+
+local function art_inside(frame, name)
+	for _, region in ipairs(shown_textures(frame)) do
+		check(within(region, frame), name .. ': ' .. tostring(region:GetAtlas() or region:GetTexture()) .. ' inside its rect')
+	end
+end
+
+local function size_of(frame) return frame:GetWidth() .. 'x' .. frame:GetHeight() end
+
+-- Every texture shown on frame is anchored to fill it exactly: for the
+-- sidebar's entries, which sit in a scroll child the stubs don't place.
+local function art_fills(frame, name)
+	for _, region in ipairs(shown_textures(frame)) do
+		local points = {}
+		for i = 1, region:GetNumPoints() do
+			local point, rel, relPoint, x, y = region:GetPoint(i)
+			check(rel == frame and point == relPoint and x == 0 and y == 0, name .. ': ' .. tostring(region:GetAtlas()) .. ' on its edges')
+			points[#points + 1] = point
+		end
+		table.sort(points)
+		eq(table.concat(points, ','), 'BOTTOMRIGHT,TOPLEFT', name .. ': ' .. tostring(region:GetAtlas()) .. ' fills it')
+	end
+end
+
+local BOX = { fill = rgba(unpack(st.BOX_COLORS.field)), bg = rgba(unpack(st.BOX_COLORS.bg)), edge = rgba(unpack(st.BOX_COLORS.edge)) }
+
+test("the tabs are Blizzard's Settings tabs, the active one picked, with no underline", function()
+	theme('thick')
+	st.Config:Open('Inventory', 'bag', 'text')
+	local rows = { tab = frames().tabs, subtab = frames().subtabs }
+	local sizes = {}
+	for slot, tabs in pairs(rows) do
+		check(#tabs > 1, 'a row of ' .. slot .. 's')
+		for i, tab in ipairs(tabs) do
+			eq(atlases_of(tab), '', 'Thick: ' .. slot .. ' ' .. i .. ' has no Blizzard art')
+			eq(tab.underline:IsShown(), tab.active, 'Thick: only the active ' .. slot .. ' is underlined')
+			sizes[slot .. i] = size_of(tab)
+		end
+	end
+
+	theme('blizzard')
+	rows = { tab = frames().tabs, subtab = frames().subtabs }
+	for slot, tabs in pairs(rows) do
+		local picked = 0
+		for i, tab in ipairs(tabs) do
+			local name = slot .. ' ' .. i
+			check(not tab.underline:IsShown(), name .. ': no underline')
+			if tab.active then
+				picked = picked + 1
+				eq(atlases_of(tab), 'Options_Tab_Active_Left,Options_Tab_Active_Middle,Options_Tab_Active_Right', name .. ': picked')
+			else
+				eq(atlases_of(tab), 'Options_Tab_Left,Options_Tab_Middle,Options_Tab_Right', name .. ': a tab')
+			end
+			art_inside(tab, name)
+			eq(size_of(tab), sizes[slot .. i], name .. ' keeps its size')
+		end
+		eq(picked, 1, 'one ' .. slot .. ' picked')
+	end
+	-- Another tab picked: the art follows.
+	click(frames().subtabs[1])
+	for _, tab in ipairs(frames().subtabs) do
+		eq(atlases_of(tab):find('Active', 1, true) ~= nil, tab.active, 'the picked subtab follows the pick')
+	end
+
+	theme('thick')
+	for slot, tabs in pairs({ tab = frames().tabs, subtab = frames().subtabs }) do
+		for i, tab in ipairs(tabs) do
+			eq(atlases_of(tab), '', 'Thick again: ' .. slot .. ' ' .. i .. ' has no Blizzard art')
+			eq(tab.underline:IsShown(), tab.active, 'Thick again: the active ' .. slot .. ' underlined')
+		end
+	end
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the sidebar's open page sits on Options_List_Active", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	local function items()
+		local active, other
+		for _, item in ipairs(frames().nav) do
+			if item.key and item.active then active = item elseif item.key and not other then other = item end
+		end
+		return active, other
+	end
+	local active, other = items()
+	check(active.bar:IsShown() and active.bg:IsShown(), "Thick: the open page's blue bar and fill")
+	eq(atlases_of(active), '', 'Thick: no Blizzard art')
+	stub.fire_script(other, 'OnEnter')
+	check(other.bg:IsShown(), 'Thick: the hover fill')
+	eq(atlases_of(other), '', 'Thick: no hover art')
+	stub.fire_script(other, 'OnLeave')
+
+	theme('blizzard')
+	active, other = items()
+	eq(atlases_of(active), 'Options_List_Active', 'the open page on Options_List_Active')
+	check(not active.bar:IsShown() and not active.bg:IsShown(), 'no blue bar or fill')
+	art_fills(active, 'the open page')
+	eq(atlases_of(other), '', 'another page: no art')
+	stub.fire_script(other, 'OnEnter')
+	eq(atlases_of(other), 'Options_List_Hover', 'under the mouse: Options_List_Hover')
+	check(not other.bg:IsShown(), 'and no flat hover')
+	art_fills(other, 'the page under the mouse')
+	stub.fire_script(other, 'OnLeave')
+	eq(atlases_of(other), '', 'the mouse gone')
+	eq(size_of(active), '207x26', 'an entry keeps its size')
+
+	theme('thick')
+	active, other = items()
+	check(active.bar:IsShown() and active.bg:IsShown(), "Thick again: the open page's blue bar and fill")
+	eq(atlases_of(active), '', 'Thick again: no Blizzard art')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the search box carries SearchBoxTemplate's art", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	local box = frames().search
+	local _, _, _, hintX = box.hint:GetPoint(1)
+	eq(hintX, 8, 'Thick: the hint 8 in')
+	eq(atlases_of(box), '', 'Thick: no Blizzard art')
+	check(box.backdropInfo ~= nil and box.outline:IsShown(), 'Thick: its own box')
+
+	theme('blizzard')
+	eq(box.backdropInfo, nil, 'its own box off')
+	check(not box.outline:IsShown(), 'and its dark line')
+	eq(atlases_of(box), 'common-search-border-left,common-search-border-middle,common-search-border-right,common-search-magnifyingglass',
+		"SearchBoxTemplate's border and magnifying glass")
+	art_inside(box, 'the search box')
+	eq(size_of(box), '190x24', 'it keeps its size')
+	local glass
+	for _, region in ipairs(shown_textures(box)) do
+		if region:GetAtlas() == 'common-search-magnifyingglass' then glass = region end
+	end
+	local _, _, _, glassX = box.hint:GetPoint(1)
+	check(glassX >= glass:GetRight() - box:GetLeft(), 'the hint clear of the glass')
+	local left = box:GetTextInsets()
+	eq(left, glassX, 'and the text starts where the hint does')
+
+	theme('thick')
+	eq(atlases_of(box), '', 'Thick again: no Blizzard art')
+	check(box.backdropInfo ~= nil and box.outline:IsShown(), 'Thick again: its own box')
+	eq(rgba(box:GetBackdropColor()), BOX.fill, 'Thick again: its fill')
+	_, _, _, hintX = box.hint:GetPoint(1)
+	eq(hintX, 8, 'Thick again: the hint 8 in')
+	eq((box:GetTextInsets()), 8, 'Thick again: the text 8 in')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the footer's and the sidebar's buttons are panel buttons", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	local f = frames()
+	local buttons = { reload = f.reloadButton, close = f.closeButton, editmode = f.actions[1] }
+	local function panel(button)
+		local n = 0
+		for _, region in ipairs(shown_textures(button)) do
+			local file = region:GetTexture()
+			if type(file) == 'string' and file:find('UI-Panel-Button-Up', 1, true) then n = n + 1 end
+		end
+		return n
+	end
+	local sizes = {}
+	for name, button in pairs(buttons) do
+		eq(panel(button), 0, 'Thick: ' .. name .. ' is no panel button')
+		eq(rgba(button:GetBackdropColor()), BOX.bg, 'Thick: ' .. name .. "'s own fill")
+		sizes[name] = size_of(button)
+	end
+
+	theme('blizzard')
+	for name, button in pairs(buttons) do
+		eq(panel(button), 3, name .. " is Blizzard's panel button")
+		eq(button.backdropInfo, nil, name .. ': its own box off')
+		check(not button.outline:IsShown(), name .. ': and its dark line')
+		art_inside(button, name)
+		eq(size_of(button), sizes[name], name .. ' keeps its size')
+	end
+
+	theme('thick')
+	for name, button in pairs(buttons) do
+		eq(panel(button), 0, 'Thick again: ' .. name .. ' is no panel button')
+		eq(rgba(button:GetBackdropColor()), BOX.bg, 'Thick again: ' .. name .. "'s own fill")
+		eq(rgba(button:GetBackdropBorderColor()), BOX.edge, 'Thick again: ' .. name .. "'s own edge")
+		check(button.outline:IsShown(), 'Thick again: ' .. name .. "'s dark line")
+	end
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('under Thick and Thin /sui is unchanged', function()
+	-- A page with a row of every type, on two tabs so the tabs draw.
+	local store = {
+		toggle = true, range = 3, select = 'a', input = 'text', color = { 1, 0, 0, 1 }, keybinding = 'K',
+		multiselect = { a = true },
+		position = { point = 'TOP', rel_point = 'TOP', x_off = 1, y_off = 2, frame = 'UIParent' },
+	}
+	local EVERY = st:NewModule('EveryType')
+	function EVERY:GetConfigTable()
+		local function o(t, order, fields)
+			local option = { type = t, name = 'A ' .. t, order = order }
+			for k, v in pairs(fields or {}) do option[k] = v end
+			return option
+		end
+		return {
+			name = 'Every type', type = 'group', category = 'Info', childGroups = 'tab',
+			args = {
+				one = {
+					order = 1, name = 'One', type = 'group',
+					get = function(info, part)
+						local v = store[info[#info]]
+						if info[#info] == 'position' or info[#info] == 'multiselect' then return v[part] end
+						if type(v) == 'table' then return unpack(v) end
+						return v
+					end,
+					set = function() end,
+					args = {
+						toggle = o('toggle', 1),
+						small = o('toggle', 2, { size = 'small' }),
+						range = o('range', 3, { min = 0, max = 10, step = 1 }),
+						select = o('select', 4, { values = { a = 'A', b = 'B' } }),
+						multiselect = o('multiselect', 5, { values = { a = 'A', b = 'B' } }),
+						input = o('input', 6),
+						smallinput = o('input', 7, { size = 'small', get = function() return 'x' end }),
+						color = o('color', 8),
+						execute = o('execute', 9, { func = function() end }),
+						keybinding = o('keybinding', 10),
+						description = o('description', 11),
+						position = o('position', 12, { target = 'name' }),
+					},
+				},
+				two = { order = 2, name = 'Two', type = 'group', args = {
+					on = { type = 'toggle', name = 'On', get = function() return true end, set = function() end },
+				} },
+			},
+		}
+	end
+
+	-- What /sui draws: each cell's rect, each widget's frame size, the colors
+	-- of every box shown in it (Box: fill, edge and the dark line), and the
+	-- window's own boxes and buttons and tabs. sizesOnly leaves the colors out.
+	local function whole(v) return v == math.floor(v) end
+	local function drawn(sizesOnly)
+		local out = {}
+		local function add(s) out[#out + 1] = s end
+		local function rect(name, frame)
+			local l, t, r, b = frame:GetLeft(), frame:GetTop(), frame:GetRight(), frame:GetBottom()
+			for _, v in ipairs({ l, t, r, b }) do check(whole(v), name .. ' on whole pixels') end
+			add(name .. ' ' .. size_of(frame))
+		end
+		local function boxes(frame, name)
+			if not frame:IsShown() or sizesOnly then return end
+			if frame.backdropInfo then
+				add(name .. ' fill ' .. rgba(frame:GetBackdropColor()) .. ' edge ' .. rgba(frame:GetBackdropBorderColor()))
+			end
+			for i, child in ipairs({ frame:GetChildren() }) do boxes(child, name .. '.' .. i) end
+		end
+		for _, cell in ipairs(OW.GetDrawnRows()) do
+			local key = cell.row.key
+			local _, _, _, x, y = cell.frame:GetPoint(1)
+			check(whole(x) and whole(y), key .. ': its cell on whole pixels')
+			add(key .. ' cell ' .. x .. ',' .. y .. ' ' .. size_of(cell.frame))
+			rect(key .. ' widget', cell.widget.frame)
+			boxes(cell.widget.frame, key)
+		end
+		local f = frames()
+		for _, name in ipairs({ 'search', 'reloadButton', 'closeButton' }) do
+			rect(name, f[name])
+			boxes(f[name], name)
+		end
+		for i, button in ipairs(f.actions) do
+			rect('action ' .. i, button)
+			boxes(button, 'action ' .. i)
+		end
+		for i, tab in ipairs(f.tabs) do
+			rect('tab ' .. i, tab)
+			if not sizesOnly then add('tab ' .. i .. ' underline ' .. tostring(tab.underline:IsShown())) end
+		end
+		check(#OW.GetDrawnRows() >= 12, 'a row of every type')
+		return table.concat(out, '\n')
+	end
+
+	theme('thick')
+	st.Config:Open('EveryType')
+	local thick = drawn()
+	local sizes = drawn(true)
+	theme('blizzard')
+	eq(drawn(true), sizes, 'Blizzard: every cell and widget keeps its rect')
+	theme('thin')
+	eq(drawn(), thick, 'Thin: as under Thick before Blizzard')
+	theme('thick')
+	eq(drawn(), thick, 'Thick again: as before Blizzard')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)

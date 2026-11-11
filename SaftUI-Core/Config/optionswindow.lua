@@ -95,6 +95,7 @@ local HEAD_TOP = 20 -- the title's top, in the main column
 local TABS_TOP = 87 -- the first tab line's top
 local TAB_HEIGHT, TAB_GAP, TAB_WRAP_GAP, SUBTAB_GAP = 24, 22, 6, 10
 local SEARCH_WIDTH, SEARCH_DELAY = 190, 0.25
+local SEARCH_TEXT_INSET = 8 -- the search box's text, in from its edges, and its hint
 local PICKER_GAP = 12
 
 local SCROLL_STEP = ROW_HEIGHT * 2
@@ -171,6 +172,11 @@ local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
 local scrollOffset, contentHeight, navOffset, navHeight = 0, 0, 0, 0
 local renders = 0
+-- Whether the window draws its controls in Blizzard's Settings art: under
+-- SaftUI's theme Blizzard (W.BlizzardLook), read once a render, so a theme
+-- change reaches them when the window renders again. Under Thick and Thin
+-- they keep the mockup's look.
+local blizzard = false
 
 local function Colors() return st.config.profile.colors end
 local function Normal() return Colors().text.normal:GetRGB() end
@@ -202,7 +208,8 @@ local function EdgeLine(frame, side)
 end
 
 -- The mockup's button: the window's fill, a 1px border (blue on hover) and
--- the dark line outside it.
+-- the dark line outside it. Under Blizzard it's Blizzard's panel button
+-- (W.LookButton, put on as it's drawn).
 local function Button(parent, label, onClick)
 	local button = W.Box(st:CreateFrame('Button', nil, parent), st.BOX_COLORS.bg)
 	button.label = label
@@ -405,6 +412,7 @@ local function DrawActions()
 		button.label, button.func = command.label, command.func
 		button.text:SetText(command.label)
 		button:SetSize(ACTION_WIDTH, ACTION_HEIGHT)
+		W.LookButton(button, blizzard, st.BOX_COLORS.bg)
 		button:ClearAllPoints()
 		button:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT',
 			12 + ((i - 1) % 2) * (ACTION_WIDTH + ACTION_GAP),
@@ -415,8 +423,14 @@ local function DrawActions()
 	UpdateEditModeButton()
 end
 
+-- A sidebar entry's look: the open page's blue fill and bar, or under
+-- Blizzard (item.blizzard) the Settings panel's category list, the open page
+-- on its picked art (item.listPicked); the one under the mouse is lit by
+-- OnEnter (item.listHover).
 local function StyleNavItem(item)
-	if item.active then
+	item.listHover:Hide()
+	item.listPicked:SetShown(item.blizzard and item.active or false)
+	if item.active and not item.blizzard then
 		local r, g, b = Blue()
 		item.bg:SetColorTexture(r, g, b, 0.25)
 		item.bg:Show()
@@ -438,10 +452,22 @@ local function MakeNavItem()
 	item.bar:SetPoint('TOPLEFT', item, 'TOPLEFT', 0, 0)
 	item.bar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
 	item.bar:SetWidth(2)
+	-- Under Blizzard, the Settings panel's category list: the open page's
+	-- art, and the art under the mouse (their atlases set as it's drawn).
+	item.listPicked = item:CreateTexture(nil, 'BACKGROUND')
+	item.listPicked:SetAllPoints(item)
+	item.listPicked:Hide()
+	item.listHover = item:CreateTexture(nil, 'BACKGROUND')
+	item.listHover:SetAllPoints(item)
+	item.listHover:Hide()
 	item.text = Text(item, 'label')
 	item.text:SetWidth(SIDEBAR_WIDTH - 3 - 22 - 8)
 	item:SetScript('OnEnter', function(self)
 		if self.active then return end
+		if self.blizzard then
+			self.listHover:Show()
+			return
+		end
 		self.bg:SetColorTexture(unpack(HOVER))
 		self.bg:Show()
 	end)
@@ -466,6 +492,7 @@ local function DrawSidebar(entries)
 	ReleaseAll(pools.nav)
 	ReleaseAll(pools.group)
 	wipe(F.nav)
+	local look = blizzard and st.ThemeArt.Control('optionslist')
 	local y = NAV_TOP
 	for _, entry in ipairs(entries) do
 		local frame
@@ -480,6 +507,11 @@ local function DrawSidebar(entries)
 			frame.text:ClearAllPoints()
 			frame.text:SetPoint('LEFT', frame, 'LEFT', entry.special and 18 or 22, 0)
 			frame.text:SetText(entry.name)
+			frame.blizzard = look and true or false
+			if look then
+				frame.listPicked:SetAtlas(look.picked)
+				frame.listHover:SetAtlas(look.hover)
+			end
 			StyleNavItem(frame)
 		end
 		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
@@ -529,10 +561,25 @@ local function MakeTab()
 	return tab
 end
 
+-- A tab's art under Blizzard: the Settings panel's tab (look,
+-- st.ThemeArt.Control('optionstab')), the picked one for the active tab, at
+-- its art's height (at most the tab's) along the tab's bottom, in place of
+-- the blue underline. None under Thick and Thin (look nil).
+local function LookTab(tab, look)
+	if not look then
+		W.HideArt(tab)
+		return
+	end
+	local set = tab.active and look.picked or look.other
+	local _, height = W.AtlasSize(set.left)
+	W.LayThree(tab, set, 'BACKGROUND', min(height or TAB_HEIGHT, TAB_HEIGHT), 'BOTTOM')
+end
+
 -- A row of tabs from top, wrapping onto more lines when they don't fit (the
 -- first line stops short of the search box). Returns its bottom.
 local function DrawTabRow(pool, list, active, top, slot)
 	ReleaseAll(pool)
+	local look = blizzard and st.ThemeArt.Control('optionstab')
 	local x, y = 0, top
 	local limit = slot == 'tab' and (CONTENT_WIDTH - SEARCH_WIDTH - TAB_GAP) or CONTENT_WIDTH
 	for _, entry in ipairs(list) do
@@ -547,7 +594,8 @@ local function DrawTabRow(pool, list, active, top, slot)
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
 		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
-		tab.underline:SetShown(tab.active)
+		tab.underline:SetShown(tab.active and not blizzard)
+		LookTab(tab, look)
 		tab:SetAlpha(entry.disabled and 0.4 or 1)
 		x = x + width + TAB_GAP
 	end
@@ -706,7 +754,19 @@ local function DrawSearch(pages)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
+-- The window's own controls in the look: the footer's buttons and the
+-- search box (its text and hint start clear of Blizzard's magnifying glass).
+local function LookControls()
+	W.LookButton(F.reloadButton, blizzard, st.BOX_COLORS.bg)
+	W.LookButton(F.closeButton, blizzard, st.BOX_COLORS.bg)
+	local left = W.LookSearch(F.search, blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
+	F.search:SetTextInsets(left, SEARCH_TEXT_INSET, 0, 0)
+	F.search.hint:SetPoint('LEFT', F.search, 'LEFT', left, 0)
+end
+
 local function Draw()
+	blizzard = W.BlizzardLook()
+	LookControls()
 	ReleaseBody()
 	contentHeight = 0
 	pageBody:SetRoot(root)
@@ -852,10 +912,10 @@ local function BuildMain(window)
 	search:SetSize(SEARCH_WIDTH, FIELD_HEIGHT)
 	search:SetPoint('TOPRIGHT', main, 'TOPRIGHT', -RIGHT_PAD, -(TABS_TOP + TAB_HEIGHT - 6 - FIELD_HEIGHT))
 	search:SetFontObject(W.GetFont())
-	search:SetTextInsets(8, 8, 0, 0)
+	search:SetTextInsets(SEARCH_TEXT_INSET, SEARCH_TEXT_INSET, 0, 0)
 	search:SetAutoFocus(false)
 	search.hint = Text(search, 'field')
-	search.hint:SetPoint('LEFT', search, 'LEFT', 8, 0)
+	search.hint:SetPoint('LEFT', search, 'LEFT', SEARCH_TEXT_INSET, 0)
 	search.hint:SetTextColor(Grey())
 	search.hint:SetText('Search settings...')
 	search:SetScript('OnEnter', function(self) W.Edge(self, true) end)

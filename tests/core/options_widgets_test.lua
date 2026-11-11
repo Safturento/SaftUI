@@ -1756,15 +1756,28 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	e:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -90)
 	local function rebind(w) w:Bind(w.root, w.row, w.onChanged) end
-	-- What the row draws in its own HIGHLIGHT layer (which the game shows
-	-- under the mouse), as 'atlas blend', '' for nothing.
+	-- What the row draws over its box while the mouse is on the row, as
+	-- 'atlas blend', '' for nothing: a texture of the box's own, in its
+	-- OVERLAY layer, which the row's OnEnter shows (the row takes the mouse,
+	-- the box doesn't, so the box's own HIGHLIGHT layer never shows). The
+	-- game draws a frame's regions under its children's, so a texture of the
+	-- row's would lie under the box's art.
 	local function row_highlight(row)
 		local out = {}
-		for _, region in ipairs(shown_textures(row)) do
-			if select(1, region:GetDrawLayer()) == 'HIGHLIGHT' then
+		stub.fire_script(row, 'OnEnter')
+		for _, region in ipairs(shown_textures(row.box)) do
+			if select(1, region:GetDrawLayer()) == 'OVERLAY' and region:GetBlendMode() == 'ADD' then
 				out[#out + 1] = tostring(region:GetAtlas()) .. ' ' .. region:GetBlendMode()
-				eq(around(region, row.box), '0,0,0,0', 'the highlight lies over the box')
+				check(region:GetParent() == row.box, 'the hover is a texture of the box')
+				eq(around(region, row.box), '0,0,0,0', 'the hover lies over the box')
 			end
+		end
+		for _, region in ipairs(shown_textures(row)) do
+			check(select(1, region:GetDrawLayer()) ~= 'HIGHLIGHT', 'and none of the row\'s own')
+		end
+		stub.fire_script(row, 'OnLeave')
+		for _, region in ipairs(shown_textures(row.box)) do
+			check(region:GetBlendMode() ~= 'ADD' or select(1, region:GetDrawLayer()) ~= 'OVERLAY', 'OnLeave hides it')
 		end
 		return table.concat(out, ',')
 	end
@@ -1775,7 +1788,7 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	eq((panel_of(e.frame)), '', 'Thick: no panel button')
 	check(e.frame.backdropInfo ~= nil, 'Thick: its own box')
 	e:SetDisabled(false)
-	eq(row_highlight(m.rows[1]), '', 'Thick: the row draws no highlight of its own')
+	eq(row_highlight(m.rows[1]), '', 'Thick: the row draws no hover art')
 	stub.fire_script(m.rows[1], 'OnEnter')
 	eq(rgba(m.rows[1].box:GetBackdropBorderColor()), rgba(st.config.profile.colors.button.blue.r, st.config.profile.colors.button.blue.g, st.config.profile.colors.button.blue.b, 1), 'Thick: hovering the row lights the box blue')
 	stub.fire_script(m.rows[1], 'OnLeave')
@@ -1794,13 +1807,456 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 	eq((panel_of(e.frame)), 'Left=Disabled,Middle=Disabled,Right=Disabled', 'Blizzard: bound disabled, -Disabled')
 	e.row.disabled = nil
 	rebind(e)
-	eq(row_highlight(m.rows[1]), 'checkbox-minimal ADD', "Blizzard: the row draws the box's highlight, additive")
+	eq(row_highlight(m.rows[1]), 'checkbox-minimal ADD', "Blizzard: the row's hover draws the box's highlight over it, additive")
 
 	st.config.profile.theme.name = 'thick'
 	rebind(e)
 	rebind(m)
 	eq((panel_of(e.frame)), '', 'Thick again: no panel button')
-	eq(row_highlight(m.rows[1]), '', 'Thick again: no highlight of the row\'s')
+	eq(row_highlight(m.rows[1]), '', 'Thick again: no hover art')
 	for _, w in ipairs({ e, m }) do w:Release() end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ /sui's other controls under the Blizzard theme
+
+local function theme(name) st.config.profile.theme.name = name end
+local function rebind(w) w:Bind(w.root, w.row, w.onChanged) end
+local FIELD_RGBA, EDGE_RGBA, BG_RGBA = rgba(unpack(st.BOX_COLORS.field)), rgba(unpack(st.BOX_COLORS.edge)), rgba(unpack(st.BOX_COLORS.bg))
+local INPUT_ART = 'auctionhouse-ui-inputfield-left,auctionhouse-ui-inputfield-middle,auctionhouse-ui-inputfield-right'
+
+-- Whether region lies inside frame's rect on screen.
+local function inside(region, frame)
+	local e = 0.001
+	return region:GetLeft() >= frame:GetLeft() - e and region:GetRight() <= frame:GetRight() + e
+		and region:GetBottom() >= frame:GetBottom() - e and region:GetTop() <= frame:GetTop() + e
+end
+
+-- Every texture shown on frame lies inside its rect: Blizzard's art is drawn
+-- inside each control's own rect.
+local function art_inside(frame, name)
+	for _, region in ipairs(shown_textures(frame)) do
+		check(inside(region, frame), name .. ': ' .. tostring(region:GetAtlas() or region:GetTexture()) .. ' inside its rect')
+	end
+end
+
+-- How far in from frame's edges a region sits, 'left,top,right,bottom'.
+local function insets(region, frame)
+	local function px(a) return string.format('%d', math.floor(a + 0.5)) end
+	return table.concat({ px(region:GetLeft() - frame:GetLeft()), px(frame:GetTop() - region:GetTop()),
+		px(frame:GetRight() - region:GetRight()), px(region:GetBottom() - frame:GetBottom()) }, ',')
+end
+
+-- The shown texture of frame whose atlas starts with prefix.
+local function atlas_piece(frame, prefix)
+	for _, region in ipairs(shown_textures(frame)) do
+		local atlas = region:GetAtlas()
+		if atlas and atlas:sub(1, #prefix) == prefix then return region end
+	end
+end
+
+-- frame wears Box: the field's fill (or fill), the edge, and the dark line.
+-- anyEdge for a box whose edge may be lit (focused, or left lit by an
+-- earlier case's pooled widget).
+local function check_box(frame, name, fill, anyEdge)
+	check(frame.backdropInfo ~= nil, name .. ': its own box')
+	eq(rgba(frame:GetBackdropColor()), fill or FIELD_RGBA, name .. ': its own fill')
+	if not anyEdge then eq(rgba(frame:GetBackdropBorderColor()), EDGE_RGBA, name .. ': its own edge') end
+	check(frame.outline:IsShown(), name .. ': its dark line')
+end
+
+-- frame's Box is off, for Blizzard's art.
+local function check_no_box(frame, name)
+	eq(frame.backdropInfo, nil, name .. ': its own box off')
+	check(not frame.outline:IsShown(), name .. ': and its dark line')
+end
+
+-- frame is a 1px line in the Blizzard theme's Border around its Background.
+local function check_line(frame, name)
+	local colors = st.config.profile.templates.blizzard
+	check(frame.backdropInfo ~= nil, name .. ': a backdrop')
+	eq(frame.backdropInfo and frame.backdropInfo.edgeSize, 1, name .. ': a 1px line')
+	eq(frame.backdropInfo and frame.backdropInfo.insets.left, 1, name .. ': the fill inside it')
+	eq(rgba(frame:GetBackdropBorderColor()), rgba(unpack(colors.bordercolor)), name .. ": in the Blizzard theme's Border")
+	eq(rgba(frame:GetBackdropColor()), rgba(unpack(colors.backdropcolor)), name .. ': around its Background')
+	if frame.outline then check(not frame.outline:IsShown(), name .. ': no dark line') end
+end
+
+local function size_of(frame) return frame:GetWidth() .. 'x' .. frame:GetHeight() end
+
+test('a select is a Blizzard dropdown, its arrow open while its list shows', function()
+	theme('thick')
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	eq(atlases_of(button), '', 'Thick: no Blizzard art')
+	check_box(button, 'Thick')
+	local caret = #shown_textures(button)
+	check(caret > 0, 'Thick: the caret')
+
+	theme('blizzard')
+	rebind(w)
+	check_no_box(button, 'Blizzard')
+	eq(atlases_of(button), 'common-dropdown-a-button,common-dropdown-textholder', 'the text holder and the arrow')
+	for _, region in ipairs(shown_textures(button)) do
+		check(region:GetAtlas() ~= nil, 'no caret: only the art shows')
+	end
+	eq(size_of(button), '170x24', 'it keeps its size')
+	art_inside(button, 'the select')
+	eq(insets(atlas_piece(button, 'common-dropdown-textholder'), button), '0,0,0,0', 'the holder fills it')
+	local arrow = atlas_piece(button, 'common-dropdown-a-button')
+	eq(insets(arrow, button), '146,0,0,0', 'the arrow a square at its right')
+	local function state() return arrow:GetAtlas() end
+
+	stub.fire_script(button, 'OnEnter')
+	eq(state(), 'common-dropdown-a-button-hover', 'under the mouse')
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq(state(), 'common-dropdown-a-button-pressed', 'pressed')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	eq(state(), 'common-dropdown-a-button-hover', 'let go')
+	stub.fire_script(button, 'OnLeave')
+	eq(state(), 'common-dropdown-a-button', 'the mouse gone')
+	click(button)
+	check(W.ListOwner() == button, 'the list opened')
+	eq(state(), 'common-dropdown-a-button-open', 'open while its list shows')
+	W.CloseList()
+	eq(state(), 'common-dropdown-a-button', 'closed again')
+	w:SetDisabled(true)
+	eq(state(), 'common-dropdown-a-button-disabled', 'disabled')
+	w:SetDisabled(false)
+	eq(state(), 'common-dropdown-a-button', 'enabled again')
+
+	theme('thick')
+	rebind(w)
+	eq(atlases_of(button), '', 'Thick again: no Blizzard art')
+	check_box(button, 'Thick again')
+	eq(#shown_textures(button), caret, 'Thick again: the caret')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the list's rows sit on common-dropdown-bg", function()
+	theme('blizzard')
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	click(w.frame)
+	local list = W.GetListFrames()
+	check_no_box(list.frame, 'Blizzard: the list')
+	local skin = list.skin
+	check(skin ~= nil and skin:IsShown(), 'the list is drawn as the window is')
+	eq(st:DrawnTheme(skin), 'blizzard', "in SaftUI's theme")
+	eq(st:DrawnKind(skin), 'panel', 'as a panel')
+	check(atlases_of(skin):find('Tooltip-NineSlice-CornerTopLeft', 1, true) ~= nil, 'in the tooltip border')
+	eq(insets(skin, list.frame), '0,0,0,0', 'over the list frame')
+	check(skin:GetFrameLevel() < list.frame:GetFrameLevel(), 'under it and its rows')
+	local menu = atlas_piece(skin, 'common-dropdown-bg')
+	check(menu ~= nil, "Blizzard's menu background")
+	eq(string.format('%.3f', menu:GetAlpha()), '0.925', 'at 0.925')
+	eq(insets(menu, list.frame), '1,1,1,1', 'behind the rows')
+	for i = 1, 2 do check(inside(list.rows[i], menu), 'row ' .. i .. ' on it') end
+	W.CloseList()
+
+	theme('thick')
+	rebind(w)
+	click(w.frame)
+	check_box(list.frame, 'Thick: the list', BG_RGBA)
+	check(not skin:IsShown(), 'Thick: not drawn as the window')
+	W.CloseList()
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a range is a minimal slider with an input-art value box', function()
+	theme('thick')
+	local w = bind('range', 'size', opt('range', 'Size', {
+		min = 0, max = 10, step = 1, get = function() return 5 end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local knob = w.slider:GetThumbTexture()
+	eq(atlases_of(w.slider), '', 'Thick: no Blizzard art')
+	eq(knob:GetTexture(), st.BLANK_TEX, 'Thick: the flat knob')
+	eq(size_of(knob), '6x14', 'Thick: 6x14')
+	local flat = #shown_textures(w.slider)
+	check_box(w.edit, 'Thick: the value box')
+
+	theme('blizzard')
+	rebind(w)
+	eq(atlases_of(w.slider), 'Minimal_SliderBar_Button,Minimal_SliderBar_Left,Minimal_SliderBar_Right,_Minimal_SliderBar_Middle',
+		'the track and the thumb, and nothing flat')
+	eq(knob:GetAtlas(), 'Minimal_SliderBar_Button', 'the thumb')
+	eq(size_of(knob), '20x19', "at the atlas's size")
+	check(not w.track:IsShown(), 'the flat track hidden')
+	for _, region in ipairs(shown_textures(w.slider)) do
+		if region ~= knob then check(inside(region, w.slider), tostring(region:GetAtlas()) .. ' inside the slider') end
+	end
+	eq(size_of(w.frame), '168x24', 'the range keeps its size')
+	eq(size_of(w.slider), '116x24', 'and its slider')
+	check_no_box(w.edit, 'the value box')
+	eq(atlases_of(w.edit), INPUT_ART, 'the value box is a text box')
+	art_inside(w.edit, 'the value box')
+	eq(size_of(w.edit), '46x24', 'it keeps its size')
+
+	theme('thick')
+	rebind(w)
+	eq(atlases_of(w.slider), '', 'Thick again: no Blizzard art')
+	eq(knob:GetTexture(), st.BLANK_TEX, 'Thick again: the flat knob')
+	eq(size_of(knob), '6x14', 'Thick again: 6x14')
+	eq(#shown_textures(w.slider), flat, 'Thick again: the flat track')
+	check_box(w.edit, 'Thick again: the value box')
+	eq(atlases_of(w.edit), '', 'Thick again: no art on the value box')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("an input carries InputBoxTemplate's art", function()
+	theme('blizzard')
+	local w = bind('input', 'name', opt('input', 'Name', { get = function() return 'x' end, set = function() end }))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local edit = w.frame
+	check_no_box(edit, 'Blizzard')
+	eq(atlases_of(edit), INPUT_ART, "InputBoxTemplate's left, middle and right")
+	art_inside(edit, 'the input')
+	eq(size_of(edit), '170x24', 'it keeps its size')
+	local left, right = atlas_piece(edit, 'auctionhouse-ui-inputfield-left'), atlas_piece(edit, 'auctionhouse-ui-inputfield-right')
+	eq(insets(left, edit):match('^0,0,%d+,0$') ~= nil, true, 'the left end on its left edge, its full height')
+	eq(insets(right, edit):match('^%d+,0,0,0$') ~= nil, true, 'the right end on its right edge')
+	eq(left:GetWidth(), math.floor(left:GetWidth()), 'an end is whole pixels wide')
+	-- A small input: the window sets its width after binding it.
+	edit:SetWidth(60)
+	art_inside(edit, 'a small input')
+	eq(insets(atlas_piece(edit, 'auctionhouse-ui-inputfield-right'), edit):match(',0,0,0$') ~= nil, true, 'the right end follows')
+	edit:SetWidth(170)
+
+	theme('thick')
+	rebind(w)
+	eq(atlases_of(edit), '', 'Thick: no Blizzard art')
+	check_box(edit, 'Thick')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a color is Blizzard's swatch", function()
+	theme('blizzard')
+	local w = bind('color', 'tint', opt('color', 'Tint', { get = function() return 1, 0.5, 0, 1 end, set = function() end }))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	-- Each shown square, as 'insets=r,g,b' (the stub keeps a color texture's color).
+	local function squares()
+		local out = {}
+		for _, region in ipairs(shown_textures(button)) do
+			local c = stub.state(region).color_texture
+			if c then
+				out[#out + 1] = insets(region, button) .. '=' .. string.format('%.1f,%.1f,%.1f', c[1], c[2], c[3])
+			end
+		end
+		table.sort(out)
+		return table.concat(out, ' ')
+	end
+	check_no_box(button, 'Blizzard')
+	eq(squares(), '4,4,4,4=1.0,1.0,1.0 5,5,5,5=0.0,0.0,0.0 6,6,6,6=1.0,0.5,0.0',
+		'white 14, black 12 inside it and the color 10 inside that, centred')
+	eq(size_of(button), '22x22', 'it keeps its size')
+
+	theme('thick')
+	rebind(w)
+	check_box(button, 'Thick')
+	eq(squares(), '1,1,1,1=0.0,0.0,0.0 2,2,2,2=1.0,0.5,0.0', 'Thick: the black line and the color, as before')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a keybinding is Blizzard's binding button, its select piece shown while it waits for a key", function()
+	theme('blizzard')
+	local key
+	local w = bind('keybinding', 'kb', opt('keybinding', 'Key', {
+		get = function() return key end, set = function(_, v) key = v end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	-- The shown pieces by file, as 'file=count', and the HIGHLIGHT layer's.
+	local function files(layer)
+		local count, out = {}, {}
+		for _, region in ipairs(shown_textures(button)) do
+			local file = region:GetTexture()
+			local inLayer = select(1, region:GetDrawLayer()) == 'HIGHLIGHT'
+			if type(file) == 'string' and (layer == 'HIGHLIGHT') == inLayer then
+				local name = file:match('UI%-Silver%-Button%-(%a+)$') or file
+				if layer == 'HIGHLIGHT' then name = name .. ' ' .. region:GetBlendMode() end
+				count[name] = (count[name] or 0) + 1
+			end
+		end
+		for name, n in pairs(count) do out[#out + 1] = name .. '=' .. n end
+		table.sort(out)
+		return table.concat(out, ',')
+	end
+	check_no_box(button, 'Blizzard')
+	eq(files(), 'Up=9', 'nine pieces of UI-Silver-Button-Up')
+	eq(files('HIGHLIGHT'), 'Highlight ADD=1', 'the highlight, additive, under the mouse')
+	art_inside(button, 'the binding button')
+	eq(size_of(button), '170x24', 'it keeps its size')
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq(files(), 'Down=9', 'pressed: -Down')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	eq(files(), 'Up=9', 'let go: -Up')
+	click(button, 'LeftButton')
+	check(w.waiting, 'waiting for a key')
+	eq(files(), 'Select=1,Up=9', 'the select piece while it waits')
+	stub.fire_script(button, 'OnKeyDown', 'K')
+	eq(key, 'K', 'the key is set')
+	eq(files(), 'Up=9', 'and the select piece goes')
+
+	theme('thick')
+	rebind(w)
+	eq(files(), '', 'Thick: no Blizzard art')
+	check_box(button, 'Thick')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the position block's boxes, dropdown and nudges take their art, and its dots a 1px line", function()
+	theme('thick')
+	local store = { point = 'TOP', rel_point = 'TOP', x_off = 0, y_off = 0, frame = 'PlayerFrame', relative_to = '__global' }
+	local w = bind_position({
+		target = 'select', nameKey = '__global', values = { Health = 'Health', __global = 'Global frame' },
+	}, store)
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local thickSize = size_of(w.frame)
+	local squares = { this = w.thisSquare, at = w.atSquare }
+	local boxes = { name = w.name, x = w.x, y = w.y }
+	local nudges = { xUp = w.xUp, xDown = w.xDown, yUp = w.yUp, yDown = w.yDown }
+	for name, square in pairs(squares) do check_box(square, 'Thick: the ' .. name .. ' dots') end
+	for name, box in pairs(boxes) do check_box(box, 'Thick: ' .. name, nil, true) end
+	check_box(w.select, 'Thick: the dropdown')
+	for name, nudge in pairs(nudges) do
+		eq(atlases_of(nudge), '', 'Thick: ' .. name .. ' has no art')
+		check_box(nudge:GetParent(), 'Thick: ' .. name .. "'s box")
+	end
+
+	theme('blizzard')
+	rebind(w)
+	for name, square in pairs(squares) do check_line(square, 'the ' .. name .. ' dots') end
+	for name, box in pairs(boxes) do
+		check_no_box(box, name)
+		eq(atlases_of(box), INPUT_ART, name .. ' is a text box')
+		art_inside(box, name)
+	end
+	check(w.name:IsShown(), 'the name box shows')
+	check_no_box(w.select, 'the dropdown')
+	eq(atlases_of(w.select), 'common-dropdown-a-button,common-dropdown-textholder', 'the dropdown is a dropdown')
+	art_inside(w.select, 'the dropdown')
+	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top', 'up is the top arrow')
+	eq(atlases_of(w.xDown), 'minimal-scrollbar-arrow-bottom', 'down the bottom one')
+	for name, nudge in pairs(nudges) do
+		art_inside(nudge, name)
+		for _, row in ipairs(nudge.arrows) do check(not row:IsShown(), name .. ': no flat arrow') end
+		check_no_box(nudge:GetParent(), name .. "'s box")
+	end
+	for _, region in ipairs(shown_textures(w.xUp:GetParent())) do
+		check(false, 'the pair draws nothing of its own: ' .. tostring(region:GetTexture()))
+	end
+	stub.fire_script(w.xUp, 'OnEnter')
+	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top-over', 'under the mouse')
+	stub.fire_script(w.xUp, 'OnMouseDown', 'LeftButton')
+	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top-down', 'pressed')
+	stub.fire_script(w.xUp, 'OnMouseUp', 'LeftButton')
+	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top-over', 'let go')
+	stub.fire_script(w.xUp, 'OnLeave')
+	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top', 'the mouse gone')
+	click(w.yDown)
+	eq(store.y_off, -1, 'a nudge still nudges')
+	eq(size_of(w.frame), thickSize, 'the block keeps its size')
+
+	theme('thick')
+	rebind(w)
+	for name, square in pairs(squares) do check_box(square, 'Thick again: the ' .. name .. ' dots') end
+	for name, box in pairs(boxes) do
+		check_box(box, 'Thick again: ' .. name)
+		eq(atlases_of(box), '', 'Thick again: ' .. name .. ' has no art')
+	end
+	check_box(w.select, 'Thick again: the dropdown')
+	eq(atlases_of(w.select), '', 'Thick again: the dropdown has no art')
+	for name, nudge in pairs(nudges) do
+		eq(atlases_of(nudge), '', 'Thick again: ' .. name .. ' has no art')
+		for _, row in ipairs(nudge.arrows) do check(row:IsShown(), 'Thick again: ' .. name .. "'s flat arrow") end
+		check_box(nudge:GetParent(), 'Thick again: ' .. name .. "'s box")
+	end
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a multiselect's box is a 1px line, and its rows are Settings boxes", function()
+	theme('thick')
+	local w = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function(_, key) return key == 'a' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(w.frame.backdropInfo, nil, 'Thick: no box, as before')
+	local thickSize = size_of(w.frame)
+
+	theme('blizzard')
+	rebind(w)
+	check_line(w.frame, 'Blizzard: the box')
+	eq(size_of(w.frame), thickSize, 'it keeps its size')
+	for i, row in ipairs({ w.rows[1], w.rows[2] }) do
+		eq(atlases_of(row.box):match('checkbox%-minimal') ~= nil, true, 'row ' .. i .. ' is a Settings box')
+		check(inside(row.box, w.frame), 'row ' .. i .. "'s box inside the box")
+		check(row.box:GetLeft() > w.frame:GetLeft(), "row " .. i .. "'s box clear of the line")
+	end
+	stub.fire_script(w.rows[2], 'OnEnter')
+	local hover = atlas_piece(w.rows[2].box, 'checkbox-minimal')
+	local shownHover
+	for _, region in ipairs(shown_textures(w.rows[2].box)) do
+		if select(1, region:GetDrawLayer()) == 'OVERLAY' and region:GetBlendMode() == 'ADD' then shownHover = region end
+	end
+	check(shownHover ~= nil and shownHover:GetParent() == w.rows[2].box, "the row's hover is a texture of its box")
+	stub.fire_script(w.rows[2], 'OnLeave')
+	check(not shownHover:IsShown(), 'and goes with the mouse')
+	check(hover ~= nil, 'the box art')
+
+	theme('thick')
+	rebind(w)
+	eq(w.frame.backdropInfo, nil, 'Thick again: no box')
+	eq(size_of(w.frame), thickSize, 'its size')
+	eq(insets(w.rows[1].box, w.frame):match('^0,') ~= nil, true, "Thick again: the rows' boxes at its left, as before")
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the confirm dialog's buttons are panel buttons", function()
+	theme('blizzard')
+	W.Confirm('Sure?', function() end)
+	local d = W.GetDialogFrames()
+	for name, button in pairs({ yes = d.yes, no = d.no }) do
+		eq((panel_of(button)), 'Left=Up,Middle=Up,Right=Up', name .. " is Blizzard's panel button")
+		check_no_box(button, name)
+		eq(size_of(button), '80x24', name .. ' keeps its size')
+	end
+	check_no_box(d.frame, 'the dialog')
+	check(d.skin ~= nil and d.skin:IsShown(), 'the dialog is drawn as the window is')
+	eq(st:DrawnTheme(d.skin), 'blizzard', "in SaftUI's theme")
+	eq(st:DrawnKind(d.skin), 'panel', 'as a panel')
+	eq(insets(d.skin, d.frame), '0,0,0,0', 'over the dialog frame')
+	check(d.skin:GetFrameLevel() < d.frame:GetFrameLevel(), 'under it')
+	no()
+	W.Prompt('Name?', 'x', function() end)
+	check_no_box(d.box, "the prompt's box")
+	eq(atlases_of(d.box), INPUT_ART, "the prompt's box is a text box")
+	no()
+
+	theme('thick')
+	W.Prompt('Name?', 'x', function() end)
+	for name, button in pairs({ yes = d.yes, no = d.no }) do
+		eq((panel_of(button)), '', 'Thick: ' .. name .. ' is no panel button')
+		check_box(button, 'Thick: ' .. name)
+	end
+	check_box(d.frame, 'Thick: the dialog', BG_RGBA)
+	check(not d.skin:IsShown(), 'Thick: not drawn as the window')
+	check_box(d.box, "Thick: the prompt's box", nil, true) -- focused, so lit
+	eq(atlases_of(d.box), '', "Thick: no art on the prompt's box")
+	no()
 	eq(#take_errors(), 0, 'no errors')
 end)
