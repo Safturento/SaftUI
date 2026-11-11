@@ -5,7 +5,7 @@ Date: 2026-11-10. Status: approved by the user (2026-11-10), after a builder che
 Project 3 of the options redesign (asked for on 2026-11-09) is Global Settings with editable fonts, colors and templates. Fonts and Colors (3a, `docs/superpowers/specs/2026-11-10-saftui-colors-tab-design.md`) are done. Templates turned into three projects, agreed with the user on 2026-11-10, in this order:
 
 1. **Themes (this spec):** the Theme tab, Thick and Thin as themes, editable theme colors and transparency, every module's template option becoming a Theme override that follows the theme by default, and every frame tagged with its kind so a theme can draw each kind its own way.
-2. **The Blizzard theme** (its own spec, after this one): panels in the character frame's metal border with Blizzard's close button, Blizzard's own art on action buttons, bag slots and buffs, and the tooltip border on bars. It builds on this spec's kinds of frames.
+2. **The Blizzard theme** (its own spec, `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`, built after this one): panels in the character frame's metal border with Blizzard's close button, Blizzard's own art on action buttons, bag slots and buffs, and the tooltip border on bars. It builds on this spec's kinds of frames.
 3. **Core's leftover settings** (its own small design): font shadow and spacing, the header, button and panel fonts, `misc.icon_trim` and the rest of the followups' "Core" list.
 
 ## Intent
@@ -41,7 +41,7 @@ So: one theme for everything, set in Global Settings, that any module can overri
 
 - **Global Settings' tabs become Fonts | Colors | Theme | Edit mode.**
 - **What the tab holds:**
-  - **Theme:** Thick or Thin. Blizzard joins in project 2; until then it isn't offered.
+  - **Theme:** Thick or Thin. Blizzard joined in project 2 (`docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`); this project offers only Thick and Thin.
   - **The chosen theme's colors:** Border, Outer border (the dark lines; Thick only) and Background.
   - **Transparent background:** a toggle.
   - **Opacity:** a slider for how see-through the background is while Transparent background is on. It's disabled while the toggle is off.

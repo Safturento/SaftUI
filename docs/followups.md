@@ -7,6 +7,14 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
+  - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
+  - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
+  - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
+  - [2026-11-11 — Blizzard bag-bar slots and the Hekili skin write onto frames that aren't SaftUI's](#2026-11-11--blizzard-bag-bar-slots-and-the-hekili-skin-write-onto-frames-that-arent-saftuis)
+  - [2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring](#2026-11-11--loot-feed-retail-item-quality-text-and-profession-overlay-sit-under-the-blizzard-ring)
+  - [2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton](#2026-11-11--the-disabled-loot-popup-writes-nametext-onto-blizzards-lootbutton)
+  - [2026-11-11 — Class power types with no Blizzard art draw a borderless flat bar under Blizzard](#2026-11-11--class-power-types-with-no-blizzard-art-draw-a-borderless-flat-bar-under-blizzard)
   - [2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look](#2026-11-11--blizzard-theme-the-bags-rule-editor-and-categories-list-keep-the-options-windows-own-look)
   - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
   - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
@@ -82,6 +90,131 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Blizzard theme: in-game checks
+
+**What:** The Blizzard theme (branch `blizzardtheme`, spec `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`, plan `docs/superpowers/plans/2026-11-10-saftui-blizzard-theme.md`) was built and tested on stubs (`tests/run`), which model neither the game's layout, frame levels, draw order, texel snapping nor combat protection. These need a look in game, and a fix for what's found. The user plays Forever, so the retail items need a retail session.
+
+Both clients, measured values the spec left to the builder (`SaftUI-Core/themeart.lua`, `KINDS` and `ART`, read per client at call time):
+- each kind's inset (window 2, panel, bar, tooltip, action and slot 3, aura 0, small 1) and the metal's corner offsets and title bar (20 on Forever, 21 on retail): the art should meet the content with no gap and no overlap;
+- the ring's layer: on a button of SaftUI's it's a texture in ARTWORK below 0, so it should lie over the icon's edge and under the count, texts and cooldown; the item ring is cropped to Blizzard's 37-in-64 fit, so check it on every slot size the bags can have;
+- texel snapping is off on the metal (Blizzard's `disableSharpening`): the pieces should show no seams and no shimmer at the user's UI scale;
+- the size of SaftUI's check boxes and panel buttons (the Settings box 1px outside the 12px button, the panel button's ends 12/22 of its height): Blizzard's art should fit the space SaftUI's look had;
+- class power art at the row's height (`config.height`): the empty and filled art; with a point full, no flat bar over the art, at value 0, and after a color change (the flat fill is hidden by alpha, `ApplyArt` in `SaftUI-Unitframes/elements/classpower.lua`);
+- the edit box alpha check: chat's edit box and an input box show their own border under Blizzard and none under Thick and Thin, with `SetAlpha` only (`st:SkinEditBox`), and the focus textures chat shows and hides still behave;
+- a theme switch in and out of combat: switching Theme, or a profile switch to another theme, with a bag open, chat shown and unit frames up, both out of combat and in it (it waits for the end of combat and runs once); nothing errors and no `ADDON_ACTION_BLOCKED` blames SaftUI (`/console taintLog 1`).
+
+Buttons and controls (both clients):
+- the HIGHLIGHT and Pushed texture layers on SaftUI's buttons and the panel button's `PostClick` on real clicks;
+- the radio group's flipped tab art at 140x30;
+- `GetAtlas` after `SetTexCoord` on a piece that has been cropped;
+- the scroll track against its steppers (anchored TOP -2 and BOTTOM 2);
+- `InputBoxTemplate`'s left end sits 5px outside the bags' search box.
+
+Bags, Forever:
+- the 28px socketed close button may overlap the view buttons by 1-2px, its ADD highlight, and whether it draws and clicks above the metal;
+- the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen");
+- the ring on the Pinned items and Caught now icons in `/sui` → Bags → Categories: `LayItems` (`SaftUI-Bags/categoriestab.lua`) re-levels each icon and its border's frame on every draw, so the ring may end up level with the icon.
+
+Totem bar (Forever): the doubled slot art behind a totem element (the slot button's and the action button's ring) may look too opaque.
+
+Micro menu: Blizzard's micro button art is 22x28, centred on SaftUI's 20x25 buttons (the icons' scale), so check it's neither too big nor too small, and that the performance bar (`MainMenuBarPerformanceBar`, left at its template anchors) sits on the button.
+
+Hekili (if installed): SaftUI's backdrop strata is set LOW after the first draw (`SaftUI-Misc/Skinning/hekili.lua`). If Hekili's buttons sit higher, the ring draws under their icon.
+
+Loot feed, retail: the item's `n/m` quality text and the profession overlay under the ring (see "Loot feed: retail item quality text and profession overlay sit under the Blizzard ring").
+
+`/sui`, an open question for the user: under Blizzard the multiselect's box is a 1px line and its rows sit 2px in from it (the theme's `small` look, as there's no Blizzard equivalent). Does it look right?
+
+### 2026-11-11 — Blizzard theme: dark grey everywhere
+
+**What:** Under the Blizzard theme SaftUI's windows take Blizzard's dark grey (`templates.blizzard.windowcolor`, `{ 0.12, 0.12, 0.13, 1 }`) and everything else (panels, bars, tooltips, small frames) its navy (`templates.blizzard.backdropcolor`, `{ 0.09, 0.09, 0.19, 1 }`). The user may later want dark grey everywhere.
+
+**Why noticed:** The user, choosing the Blizzard theme's backgrounds in the brainstorm (2026-11-10): "Lets go with alternative, potentially we'll end up with dark grey everywhere." The spec records it as ruling 2 of "The user's answers".
+
+**Anchors:** `SaftUI-Core/Config/defaults.lua` (`st.defaults.templates.blizzard`); `SaftUI-Core/themeart.lua` (`KINDS`, each kind's `fill`: `windowcolor` or `backdropcolor`); `SaftUI-Core/Media/theme.lua` (the Theme tab's Window background and Background rows); the spec's "The user's answers".
+
+**What's been considered:** It's one default to change: `templates.blizzard.backdropcolor`. A profile that never set it follows the new default, since AceDB only saves a value that differs from the default; a profile that picked its own Background color keeps it, and Reset on the Theme tab puts the defaults back. Nothing else hard-codes either color, by design.
+
+**Shape of work:** One value in `defaults.lua`, plus the tests that name the default (`tests/core/theme_blizzard_test.lua`). If windows and the rest should then be one color, the Window background row and `windowcolor` could go, or stay as an override.
+
+**Open questions:** Whether to change the default, and whether to keep the Window background row once the two match.
+
+### 2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art
+
+**What:** Under the Blizzard theme a mover shows Blizzard's Edit Mode selection art (`editmode-actionbar-highlight` and `-selected` kits) around a frame, which sits about 8px outside it. Snapping (`EM.GetOutlineRect`, `EM.OutlineOutset`, `SaftUI-Core/EditMode/snap.lua`) still measures the frame's own border line, so two frames snapped to touch show their selection art overlapping by up to 16px, and a frame snapped to a grid line has its art, not its edge, off it.
+
+**Why noticed:** The Blizzard theme's spec left it to the builder: "Whether Edit Mode's snapping should measure Blizzard's selection, which sits 8px outside a frame, under Blizzard. Today it measures the frames' own borders." The builder kept today's behavior (`EM.OutlineOutset()` is unchanged under Blizzard, and `tests/core/theme_blizzard_editmode_test.lua` locks that) because snapping to the border keeps frames that are placed edge to edge in game flush, which is what the user sees outside edit mode.
+
+**Anchors:** `SaftUI-Core/EditMode/snap.lua` (`EM.OutlineOutset`, `EM.GetOutlineRect`, `EM.GetSnapLines`); `SaftUI-Core/EditMode/mover.lua` (the overlay's art, `st.ThemeArt.Control('mover')`); `tests/core/theme_blizzard_editmode_test.lua`; `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md` ("Left to the builder").
+
+**What's been considered:** Measuring the selection art (outset 8) under Blizzard would line the art up and leave frames 16px apart in the real UI, so it fights what the user wants outside edit mode. Keeping the border is the safe call, and costs only edit mode's looks.
+
+**Shape of work:** Small: look at it in game under Blizzard and decide. If the overlap bothers, give `EM.OutlineOutset` the art's reach for the picker only, or draw the art inside the border.
+
+**Open questions:** Does the overlap look wrong in game?
+
+### 2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons
+
+**What:** Blizzard's buff frame skin shows Blizzard's own `DebuffBorder` (a border by dispel type: `ui-debuff-border-magic-noicon`, `-curse-`, `-disease-`, `-poison-`, `-bleed-` and `-default-`) and `TempEnchantBorder` under the Blizzard theme. SaftUI's own aura buttons (the unit frames' buffs and debuffs, WeakAuras) don't get that art: under Blizzard they take the white icon border (`Interface\Common\WhiteIconFrame`) in SaftUI's dispel color.
+
+**Why noticed:** The Blizzard theme's spec listed it as out of scope ("Per-dispel-type debuff art on SaftUI's own aura buttons (unit frames, WeakAuras). They take the white icon border in SaftUI's colors."), to keep the first version to one art per kind.
+
+**Anchors:** `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` (`ShowBorder`, `UpdateBorderColor`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, the dispel border fill and `ColorInnerLine`); `SaftUI-Misc/Skinning/weakauras.lua`; `SaftUI-Core/themeart.lua` (the `aura` art); `.agents/taint.md` rule 11 (what can be done to the unit frame aura buttons).
+
+**What's been considered:** The unit frame aura buttons are Blizzard's (`AuraContainer`), so rule 11 limits it: a texture handed to a button for the dispel border gets secret alpha, vertex color and shown aspects, and the container's own `SetAtlas` calls are what pick the dispel type's art. WeakAuras' icons are SaftUI's to draw on but know a dispel type only if the aura has one.
+
+**Shape of work:** Needs a design pass on the unit frames (what the container exposes), then a small change for WeakAuras.
+
+**Open questions:** Is the white border in the dispel color enough?
+
+### 2026-11-11 — Blizzard bag-bar slots and the Hekili skin write onto frames that aren't SaftUI's
+
+**What:** `SaftUI-Bags/containers/bag.lua` (the bags bar's Blizzard bag slots) writes `.backdrop`, `.thick` and a hover texture onto them through `st:SetBackdrop` and `st:SkinActionButton`, and `SaftUI-Misc/Skinning/hekili.lua` does the same to Hekili's buttons (`st:SetBackdrop`, `button.backdrop:SetFrameStrata('LOW')`, `button.skinned`). That breaks `.agents/taint.md` rule 1 for Blizzard's slots, and writes onto another addon's frames for Hekili. Both are `st:MarkForeign` now, so the Blizzard theme puts none of its art on them, but the old field writes are still there.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11). Task 3 had to mark both foreign so the ring went on a frame of SaftUI's, and carried the writes forward as pre-existing.
+
+**Anchors:** `SaftUI-Bags/containers/bag.lua` (`RestyleBagSlot`, the `st:MarkForeign(slot)` and `st:SkinActionButton` lines); `SaftUI-Misc/Skinning/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`); `SaftUI-Core/theme.lua` (`st:MarkForeign`, `st:SetBackdropIn`); `.agents/taint.md` rule 1.
+
+**What's been considered:** Move both to `st:SetBackdropIn(backdrops, frame, ...)` with a weak table of their own, keep the hover and pushed textures as `st:SkinActionButton` makes them but in a side table, and read `backdrops[button]` where `button.backdrop` is read now (Hekili's strata line).
+
+**Shape of work:** One small task, two files, with a locked-frame test for each as `tests/misc/fixtures/locked_widget.lua` gives.
+
+### 2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring
+
+**What:** Under the Blizzard theme, `Util:SetItemQualityLevelText` (`SaftUI-Core/Utilities/itemupgrades.lua`) and the crafting quality overlay are regions of the feed entry. The ring's holder is a child frame at the entry's frame level + 1, so the ring clips the outer 1-3px of the `n/m` text and the pip at the entry icon's top-right corner. Retail only, Blizzard theme only.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11), reading `SaftUI-Loot/Feed/feed.lua`: the count already sits on a frame at level + 2 (`over:SetFrameLevel(item:GetFrameLevel() + 2)`), the quality text doesn't. Not checked in game: the user plays Forever, which has no upgrade tracks or crafting quality.
+
+**Anchors:** `SaftUI-Core/Utilities/itemupgrades.lua` (`Util:SetItemQualityLevelText`, `Util:SetItemQuality`); `SaftUI-Loot/Feed/feed.lua` (`Util:SetItemQuality(item, ...)`, the `over` frame); `SaftUI-Bags/slot.lua` (the other caller); `SaftUI-Core/themeart.lua` (`Holder`, the ring's frame).
+
+**What's been considered:** Move the quality text and the overlay to the +2 frame the count uses. `Util:SetItemQualityLevelText` is shared with the bag slots, so the change is wider than the feed: it needs the host frame passed in, and the bag slots' own layering checked.
+
+**Shape of work:** Small, one helper and its two callers; an in-game check on retail.
+
+### 2026-11-11 — The disabled loot popup writes nametext onto Blizzard's LootButton
+
+**What:** `SaftUI-Loot/popup.lua` (~38) sets `button.nametext = _G['LootButton'..ID..'Text']` on Blizzard's loot buttons, and elsewhere `st:Kill`s their `IconBorder` and `IconOverlay`. That writes a field onto a Blizzard frame (`.agents/taint.md` rule 1). The popup is disabled (`SaftUI-Loot/init.lua`, `-- self:InitializeLootFrame()` is commented out), so it never runs today.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11): the popup's draw calls were re-tagged and a scan of Loot for writes onto Blizzard frames found it. Related to the older "SaftUI-Loot writes onto Blizzard frames and globals" entry in Resolved.
+
+**Anchors:** `SaftUI-Loot/popup.lua`; `SaftUI-Loot/init.lua` (~17); `.agents/taint.md` rule 1.
+
+**What's been considered:** Keep the font strings in a weak table keyed by the button, and replace `st:Kill` with `SetAlpha(0)` where Blizzard never sets the alpha.
+
+**Shape of work:** Fix it before re-enabling the popup; no work while it stays off.
+
+### 2026-11-11 — Class power types with no Blizzard art draw a borderless flat bar under Blizzard
+
+**What:** Each class power point is drawn as kind `control`, which is bare under Blizzard (`SaftUI-Unitframes/elements/classpower.lua`, the `st:SetBackdrop(point, ..., 'control')` line). A power type with no Blizzard art (retail's demon hunter soul fragments, icicles and tip of the spear; the art exists for combo points, holy power, soul shards, chi, arcane charges and essence) draws only its flat status bar, with no border. Before, kind `small` gave them a 1px line. Forever has combo points only, which have art, so the user's client isn't affected.
+
+**Why noticed:** The Blizzard theme's reviews (2026-11-11), reading Task 11's class power change: `ApplyArt` falls back to the flat bar for a type with no art, but the point's backdrop kind is fixed at `control`.
+
+**Anchors:** `SaftUI-Unitframes/elements/classpower.lua` (`ApplyArt`, the draw call); `SaftUI-Core/themeart.lua` (`ThemeArt.ClassPower`, `KINDS.control`); `tests/unitframes/classpower_blizzard_test.lua`.
+
+**What's been considered:** Pick the kind by whether art exists (`ThemeArt.ClassPower(powerType, ...)` returns nil for a type with none): `small` then, `control` otherwise, drawn again on every power type change (the art is chosen per power type there already).
+
+**Shape of work:** Small, in the one element, with a test per kind.
 
 ### 2026-11-11 — Blizzard theme: the bags' rule editor and Categories list keep the options window's own look
 
@@ -319,12 +452,13 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 - `st:SetBackdrop` on each `ChatFrameN` (~73, ~128) writes `.backdrop` and `.thick` onto it. Its edit box no longer gets them: since the Blizzard theme's Task 8 (2026-11-11), `st:SkinEditBox` / `st:StyleEditBox` draw through `st:SetBackdropIn` with a table of their own, and conceal the box's border textures by alpha instead of `st:Kill`.
 - `frame.EditBox`, `frame.EditBox.Header` and `.HeaderSuffix` (~96-98), `frame.Tab` (~113), and `frame.Tab.SetAlpha = UIFrameFadeRemoveFrame` (~121, when tab fading is off) are written onto Blizzard's frames.
 - `frame:SetScript('OnMouseWheel', onMouseScroll)` on `ChatFrameN` (~85), and `SetScript('OnShow')` / `SetScript('OnHide')` on its edit box (~107-108, hiding and showing `GeneralDockManager`), replace Blizzard's handlers.
+- On retail, `st:SkinScrollBar(frame.ScrollBar)` (~79) skins Blizzard's `MinimalScrollBar` through `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`), which still writes `.backdrop` and `.thick` (`st:SetBackdrop(thumb, ...)`, ~64) and `.entered` and `.pressed` (the thumb's hover and press state, ~35-50, read by `ColorThumb`) onto the bar's thumb, and `HookScript`s four of its scripts. Under the Blizzard theme the thumb is a control, so SaftUI draws nothing on it and shows MinimalScrollBar's own layers (`DrawScrollBar`), but the writes are unchanged. Core's own scroll bars (`st:CreateScrollBar`) are SaftUI's frames, where the writes are fine.
 
 Since Themes there's also a new trigger for one of these writes. `st:RedrawThemed` (`SaftUI-Core/theme.lua`, `DrawBackdrop`, the `owner.thick = ...` line, ~349) runs the `owner.thick` write again on every theme change and every profile switch, copy or reset (ruling R13), for each `st:SetBackdrop` owner that isn't SaftUI's: `ChatFrame1` and the other chat frames, the chat edit boxes, and the unit frames' aura buttons (Blizzard's, `SaftUI-Unitframes/elements/auras.lua`, `StyleButton`). It's the same write the module's own `UpdateConfig` already made; only the trigger is new.
 
 **Why noticed:** The Themes project's reviews (2026-11-10). Task 6, which converted chat's draw calls to Theme and Background, carried the chat writes forward as pre-existing; the final review (`008527b..8250a53`) confirmed them and traced the new `owner.thick` trigger to R13's redraw on every profile change. None of the writes was introduced by Themes, which only changed the draw calls' arguments.
 
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`, `onMouseScroll`, `CHT:UpdateFootprint`); `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `st:StyleEditBox`, `DrawEditBox`, `ColorFocused`); `SaftUI-Core/theme.lua` (`DrawBackdrop`, `st:SetBackdropIn`, `st:RedrawThemed`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, `ColorInnerLine`); `.agents/taint.md` rules 1, 2 and 11; `tests/chat/theme_test.lua`. The tooltip and roll bar skins already moved to side tables (see Resolved), and `tests/misc/fixtures/locked_widget.lua` locks a frame so a skin that writes onto it fails.
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`, `onMouseScroll`, `CHT:UpdateFootprint`); `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `st:StyleEditBox`, `DrawEditBox`, `ColorFocused`); `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`, `ColorThumb`, `thumbOnEnter`, `thumbOnMouseDown`); `SaftUI-Core/theme.lua` (`DrawBackdrop`, `st:SetBackdropIn`, `st:RedrawThemed`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, `ColorInnerLine`); `.agents/taint.md` rules 1, 2 and 11; `tests/chat/theme_test.lua`. The tooltip and roll bar skins already moved to side tables (see Resolved), and `tests/misc/fixtures/locked_widget.lua` locks a frame so a skin that writes onto it fails.
 
 **What's been considered:**
 - Draw the chat frames and edit boxes with `st:SetBackdropIn(backdrops, frame, ...)`, and keep the backdrop, edit box, header and tab references in weak side tables keyed by the chat frame. Everything that reads `frame.backdrop` (the retail scroll bar's anchors, the edit box's anchors, `UpdateChatFrameDisplay`'s padding) reads the side table instead.
