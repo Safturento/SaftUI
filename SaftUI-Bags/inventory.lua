@@ -159,6 +159,7 @@ function INV:UpdateConfig(id)
 	self:ReleaseLayout(container)
 	container.view = self:GetView(id)
 	self:UpdateViewButtons(id) -- a profile switch changes the view
+	self:SpaceViewButtons(container) -- and a theme switch the border's width
 
 	-- The window is anchored to its mover's anchor frame (see movers.lua).
 	self:ApplyPosition(id)

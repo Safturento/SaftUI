@@ -405,3 +405,51 @@ test('each column is placed on the scroll child by its own offset, never on the 
 		eq(y, 0, 'column ' .. i)
 	end
 end)
+
+------------------------------------------------------------------ the view buttons' spacing
+
+-- The visible gap left between two neighbouring borders, in pixels. Each view
+-- button draws its border the theme's inset outside itself (2 Thick, 1 Thin),
+-- and the close button draws a 1px outline outside itself.
+local VISIBLE_GAP = 3
+local VIEWS = { 'onebag', 'multibag', 'compact', 'rows' }
+
+local function check_spacing(container, label)
+	local inset = st:ThemeInset('theme', 'theme')
+	local close = st:GetCloseButton(container)
+	for i = 2, #VIEWS do
+		local a, b = container.viewButtons[VIEWS[i - 1]], container.viewButtons[VIEWS[i]]
+		eq(b:GetLeft() - a:GetRight() - 2 * inset, VISIBLE_GAP,
+			label .. ': ' .. VIEWS[i - 1] .. "'s and " .. VIEWS[i] .. "'s borders are the same visible gap apart")
+	end
+	eq(close:GetLeft() - container.viewButtons.rows:GetRight() - inset - 1, VISIBLE_GAP,
+		label .. ": the close button's outline is the same visible gap from Rows' border")
+end
+
+test("the view buttons' borders never overlap, under Thick or Thin, and a theme switch re-spaces them", function()
+	local container = bags()
+	INV:CreateViewButtons(container)
+	INV:UpdateConfig('bag')
+	eq(st:ThemeInset('theme', 'theme'), 2, 'Thick is the default')
+	check_spacing(container, 'Thick')
+	local thickMin = INV:HeaderMinWidth(container)
+
+	st.config.profile.theme.name = 'thin'
+	st:ThemeChanged()
+	eq(st:ThemeInset('theme', 'theme'), 1, 'Thin')
+	check_spacing(container, 'Thin')
+
+	-- The least width keeps clear, on the left, the room the buttons really
+	-- take on the right (the title sits between).
+	local span = container.header:GetRight() - container.viewButtons.onebag:GetLeft()
+	local closeGap = st:GetCloseButton(container):GetLeft() - container.viewButtons.rows:GetRight()
+	eq(INV:HeaderMinWidth(container), 2 * (span + closeGap) + container.title:GetStringWidth(),
+		'Thin: HeaderMinWidth follows the real anchors')
+	check(INV:HeaderMinWidth(container) < thickMin, "Thin's tighter spacing needs less header")
+
+	st.config.profile.theme.name = 'thick'
+	st:ThemeChanged()
+	check_spacing(container, 'Thick again')
+	eq(INV:HeaderMinWidth(container), thickMin, 'back to Thick: the same least width')
+	eq(#take_errors(), 0, 'no errors')
+end)

@@ -2,10 +2,10 @@ local st = SaftUI
 local INV = st:GetModule('Inventory')
 
 
--- The title bar's view buttons: the gap between two, and between the first
--- and the close button, and how far in from the header's right edge the close
--- button sits (st:CreateHeader).
-local BUTTON_GAP, CLOSE_GAP, CLOSE_INSET = 3, 6, 10
+-- The title bar's view buttons: the gap left visible between two neighbouring
+-- borders (see INV:ViewButtonGaps), and how far in from the header's right
+-- edge the close button sits (st:CreateHeader).
+local VISIBLE_GAP, CLOSE_INSET = 3, 10
 
 function INV:GetContainer(containerName)
 	return self.containers[containerName]
@@ -54,7 +54,7 @@ function INV:CreateContainer(id, name, isBankContainer)
 	local filterButton = st:CreateCheckButton(nil, container.header)
     container.header.filterButton = filterButton
     -- Hidden, but anchored clear of the view buttons.
-    filterButton:SetPoint('RIGHT', container.viewButtons[self.viewIds[1]], 'LEFT', -CLOSE_GAP, 0)
+    self:SpaceViewButtons(container)
     filterButton:SetSize(40, 20)
 
     filterButton.text:SetAllPoints(filterButton)
@@ -830,16 +830,44 @@ function INV:SizeViewButtons(container)
 	for _, button in pairs(container.viewButtons or {}) do SizeViewButton(button) end
 end
 
-function INV:CreateViewButtons(container)
+-- The distance between the view buttons' frames, and between the first of them
+-- and the close button: each button draws its border the theme's inset outside
+-- itself (2 Thick, 1 Thin) and the close button a 1px outline outside itself,
+-- so the frames are that far apart plus VISIBLE_GAP of clear room between the
+-- borders, in every theme.
+function INV:ViewButtonGaps()
+	local inset = st:ThemeInset('theme', 'theme')
+	return 2 * inset + VISIBLE_GAP, inset + 1 + VISIBLE_GAP
+end
+
+-- Puts the view buttons (and the Edit check button before them) the
+-- INV:ViewButtonGaps apart. A theme switch changes the inset, so
+-- INV:UpdateConfig(id) runs it again.
+function INV:SpaceViewButtons(container)
 	local close = st:GetCloseButton(container)
+	if not (container.viewButtons and close) then return end
+	local buttonGap, closeGap = self:ViewButtonGaps()
+	local right, gap = close, closeGap
+	for i = #self.viewIds, 1, -1 do
+		local button = container.viewButtons[self.viewIds[i]]
+		button:ClearAllPoints()
+		button:SetPoint('RIGHT', right, 'LEFT', -gap, 0)
+		right, gap = button, buttonGap
+	end
+	local filterButton = container.header and container.header.filterButton
+	if filterButton then
+		filterButton:ClearAllPoints()
+		filterButton:SetPoint('RIGHT', container.viewButtons[self.viewIds[1]], 'LEFT', -closeGap, 0)
+	end
+end
+
+function INV:CreateViewButtons(container)
 	local header = container.header
 	container.viewButtons = {}
-	local right, gap = close, CLOSE_GAP
 	for i = #self.viewIds, 1, -1 do
 		local view = self.viewIds[i]
 		local button = st:CreateButton(nil, header, nil, 'theme', 'theme')
 		button:SetFrameLevel(header:GetFrameLevel() + 4)
-		button:SetPoint('RIGHT', right, 'LEFT', -gap, 0)
 		button.view, button.viewLit, button.glyph = view, false, {}
 		for p = 1, #GLYPHS[view] do
 			button.glyph[p] = button:CreateTexture(nil, 'OVERLAY')
@@ -856,8 +884,8 @@ function INV:CreateViewButtons(container)
 		button:SetScript('OnLeave', st.HideGameTooltip)
 
 		container.viewButtons[view] = button
-		right, gap = button, BUTTON_GAP
 	end
+	self:SpaceViewButtons(container)
 	self:UpdateViewButtons(container.id)
 end
 
@@ -919,6 +947,7 @@ function INV:HeaderMinWidth(container)
 	if not (container.viewButtons and close and container.title) then return 0 end
 	local count = #self.viewIds
 	local size = container.header:GetHeight() - 8
-	local extent = CLOSE_INSET + close:GetWidth() + CLOSE_GAP + count * size + (count - 1) * BUTTON_GAP
-	return 2 * (extent + CLOSE_GAP) + container.title:GetStringWidth()
+	local buttonGap, closeGap = self:ViewButtonGaps()
+	local extent = CLOSE_INSET + close:GetWidth() + closeGap + count * size + (count - 1) * buttonGap
+	return 2 * (extent + closeGap) + container.title:GetStringWidth()
 end

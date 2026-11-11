@@ -273,7 +273,7 @@ On retail:
 
 On both clients:
 - the four view buttons' icon art at title-bar size: legible, centered, not cropped, at the default Title bar height and at the extremes;
-- the header fit in all four windows (bags, bank, warband bank, combined bank), including a one-column window that widened so its centered title clears the buttons;
+- the header fit in all four windows (bags, bank, warband bank, combined bank), with a 3px gap showing between the view buttons' borders, and to the close button's outline, under Thick and Thin, including a one-column window that widened so its centered title clears the buttons;
 - the lit button in Buttons → Blue against Thick and Thin borders, and after a theme or color change;
 - the secure item buttons in each view, in and out of combat: left and right click, use, shift-click, drag, and the tooltip;
 - switching views in combat: the button lights and the view saves at once, and the window lays out when combat ends;
