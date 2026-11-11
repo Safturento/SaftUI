@@ -5,8 +5,9 @@
 -- INV:LineSlots, the window as wide as Compact's with every column in use and
 -- not shrinking while open, Compact back exactly after a switch, the Rows
 -- view's hidden categories, and a switch in combat waiting for the end of it.
--- Free slots in Every slot mode get their buttons out of combat, and in combat
--- show no more than there are buttons.
+-- Free slots get their buttons out of combat (a bank window's Empty Slots
+-- category too, in Grouped and Every slot mode), and in combat show no more
+-- than there are buttons.
 --
 -- bags/container_helpers.lua's views world: bag_world.lua's stubbed bags under
 -- the module's real files (container.lua, category.lua, slot.lua, views.lua,
@@ -345,6 +346,60 @@ test('Every slot, any window: buttons made out of combat, and in combat no more 
 	INV:UpdateContainer('bag', true)
 	eq(empty_slots(main), 61, 'after combat, all 61')
 	eq(made_in_combat(c), 0, 'still no broken slot')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Grouped, a bank window: no frame or slot made in combat when a slot frees', function()
+	for _, view in ipairs({ 'compact', 'rows' }) do
+		-- A full bank tab, laid out out of combat: no free slot to show.
+		world('compact')
+		local tab = INV.bagIds.bank[1]
+		W.bag(tab, 4, 'Bank')
+		for slot = 1, 4 do W.put(tab, slot, W.item(400 + slot, 'Bar ' .. slot, 'Trade Goods', 30 - slot)) end
+		INV.config.bank.view = view
+		INV.config.bank.emptySlots = 'grouped'
+		local bank = H.window('bank')
+		INV:UpdateContainer('bank', true)
+		local empties = bank.categories['Empty Slots']
+		check(not (empties and empties:IsShown()), view .. ': no free slot, no Empty Slots')
+
+		-- A bar sold in the fight: shown at once, on a button made beforehand.
+		stub.in_combat = true
+		W.bags[tab].items[2] = nil
+		local made = H.frames_made()
+		INV:UpdateContainer('bank', true)
+		eq(H.frames_made(), made, view .. ': no frame made in combat')
+		eq(made_in_combat(bank), 0, view .. ': no broken slot')
+		empties = bank.categories['Empty Slots']
+		check(empties and empties:IsShown(), view .. ': Empty Slots shown at once')
+		eq(empties and empty_slots(empties), 1, view .. ': the one grouped slot')
+		eq(empties and empties.slots[1].info.count, 1, view .. ': with its count')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+
+		-- A bank window whose first layout is in the fight: nothing is made
+		-- for its free slot until combat ends.
+		world('compact')
+		W.bag(tab, 4, 'Bank')
+		INV.config.bank.view = view
+		INV.config.bank.emptySlots = 'grouped'
+		stub.in_combat = true
+		bank = H.window('bank')
+		made = H.frames_made()
+		INV:UpdateContainer('bank', true)
+		eq(H.frames_made(), made, view .. ', first layout in combat: no frame made')
+		empties = bank.categories['Empty Slots']
+		check(not (empties and empties:IsShown()), view .. ': no Empty Slots yet')
+		stub.in_combat = false
+		INV.NEED_UPDATE = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+		check(INV.NEED_UPDATE, view .. ': after combat an update is asked for')
+		INV:UpdateContainer('bank', true)
+		empties = bank.categories['Empty Slots']
+		check(empties and empties:IsShown(), view .. ': then Empty Slots shows')
+		eq(empties and empty_slots(empties), 1, view .. ': its grouped slot')
+		eq(made_in_combat(bank), 0, view .. ': no broken slot')
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)
 

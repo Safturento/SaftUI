@@ -577,19 +577,40 @@ function INV:PlaceHeldCategories(container)
 	end
 end
 
+-- How much of a window's content, contentHeight tall, its scroll frame shows:
+-- all of it and the padding under it, up to maxRows rows, past which it scrolls.
+local function VisibleHeight(self, id, contentHeight)
+	local config = self.config
+	return min(contentHeight + config.padding,
+		config[id].maxRows * (self:GetButtonHeight() + config.buttonspacing) - config.buttonspacing)
+end
+
+-- Sizes a window around its scroll frame, contentWidth wide and visibleHeight
+-- tall over contentHeight of content: the header, the search box under it, the
+-- footer and the padding, at least 200 tall. Every view sizes its window here,
+-- so a window is the same size for the same content in every view.
+local function SizeWindow(self, container, contentWidth, contentHeight, visibleHeight)
+	local config = self.config
+	local height = container.header:GetHeight() + container.footer:GetHeight() + config.padding * 2
+	if container.search then
+		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', config.padding, -config.padding)
+		height = height + container.search:GetHeight()
+	end
+
+	container.scrollFrame:SetSize(contentWidth, visibleHeight)
+	container.scrollFrame:SetContentSize(contentWidth, contentHeight)
+
+	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
+	container:SetWidth(container.scrollFrame:GetWidth() + config.padding * 2)
+	self:SyncAnchorSize(container.id)
+end
+
 function INV:UpdateContainerLayout(id)
 	local container = self.containers[id]
 	local view = self:GetLaidOutView(container)
 	if view ~= 'compact' then
 		self:LayoutSections(container, (self:GetViewSections(id, view)))
 		return
-	end
-
-	local height = container.header:GetHeight() + container.footer:GetHeight() + self.config.padding * 2
-
-	if container.search then
-		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
-		height = height + container.search:GetHeight()
 	end
 
 	local totalRows = 0
@@ -629,7 +650,7 @@ function INV:UpdateContainerLayout(id)
 
     local numUsedColumns = getNumUsedColumns(container.columns)
     local tallestColumn = getTallestColumn(container.columns)
-    local visibleHeight = min(tallestColumn:GetHeight() + self.config.padding, containerConfig.maxRows * (self:GetButtonHeight() + self.config.buttonspacing) - self.config.buttonspacing)
+    local visibleHeight = VisibleHeight(self, id, tallestColumn:GetHeight())
 
 	-- A held layout's window keeps the size it had, and grows if it must.
 	if container.heldLayout then
@@ -643,32 +664,27 @@ function INV:UpdateContainerLayout(id)
 
     local scrollFrameWidth = numUsedColumns * (container.columns[1]:GetWidth() + self.config.buttonspacing) - self.config.buttonspacing
 
-    container.scrollFrame:SetSize(scrollFrameWidth, visibleHeight)
-    container.scrollFrame:SetContentSize(scrollFrameWidth, tallestColumn:GetHeight())
-
-	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
-	container:SetWidth(container.scrollFrame:GetWidth() + self.config.padding * 2)
-	self:SyncAnchorSize(id)
+	SizeWindow(self, container, scrollFrameWidth, tallestColumn:GetHeight(), visibleHeight)
 end
 
 --[[
 	One bag, Multi bag and Rows lay a window out in sections (INV:GetViewSections),
 	each a category frame as wide as Compact's columns together (INV:LineSlots;
 	UpdateCategory and UpdateCurrencyCategory size it), stacked top to bottom in
-	the scroll child, spacing apart. Each frame is
-	anchored to the scroll child at its own offset, never to the frame above it
-	(as Compact's columns are, see INV:UpdateConfig). Rows uses the window's
-	category frames, and the Currencies section the bag window's Currencies; One
-	bag's and Multi bag's sections have frames of their own ('view:<key>', made
-	by INV:CreateCategory). The window's other category frames, and Compact's
-	columns, are hidden. The window is the line's width and as tall as Compact
-	would make it for the same content; while it is open it doesn't shrink
+	the scroll child, spacing apart. Each frame is anchored to the scroll child
+	at its own offset, never to the frame above it (as Compact's columns are,
+	see INV:UpdateConfig). Rows uses the window's category frames, and the
+	Currencies section the bag window's Currencies; One bag's and Multi bag's
+	sections have frames of their own ('view:<key>', made by
+	INV:CreateCategory). The window's other category frames, and Compact's
+	columns, are hidden. The window is the line's width, sized as Compact sizes
+	it (VisibleHeight, SizeWindow); while it is open it doesn't shrink
 	(container.heldSize), and the items close up within their sections. Closing
 	the window or switching views releases it (INV:ReleaseLayout).
 ]]
 function INV:LayoutSections(container, sections)
 	local id = container.id
-	local config, spacing = self.config, self.config.buttonspacing
+	local spacing = self.config.buttonspacing
 	local lineSlots = self:LineSlots(id, self:GetLaidOutView(container))
 	local lineWidth = (self:GetButtonWidth() + spacing) * lineSlots - spacing
 	local child = container.scrollFrame.ScrollChild
@@ -697,15 +713,8 @@ function INV:LayoutSections(container, sections)
 	end
 	for _, column in pairs(container.columns) do column:Hide() end
 
-	local height = container.header:GetHeight() + container.footer:GetHeight() + config.padding * 2
-	if container.search then
-		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', config.padding, -config.padding)
-		height = height + container.search:GetHeight()
-	end
-
 	local contentHeight = max(0, y - spacing)
-	local maxRows = config[id].maxRows
-	local visibleHeight = min(contentHeight + config.padding, maxRows * (self:GetButtonHeight() + spacing) - spacing)
+	local visibleHeight = VisibleHeight(self, id, contentHeight)
 	if container:IsShown() then
 		local held = container.heldSize
 		if held and held.height then visibleHeight = max(visibleHeight, held.height) end
@@ -714,11 +723,7 @@ function INV:LayoutSections(container, sections)
 		container.heldSize = nil
 	end
 
-	container.scrollFrame:SetSize(lineWidth, visibleHeight)
-	container.scrollFrame:SetContentSize(lineWidth, contentHeight)
-	container:SetHeight(max(200, height + container.scrollFrame:GetHeight()))
-	container:SetWidth(lineWidth + config.padding * 2)
-	self:SyncAnchorSize(id)
+	SizeWindow(self, container, lineWidth, contentHeight, visibleHeight)
 end
 
 -- Every window whose view was switched in combat (see INV:ApplyView).

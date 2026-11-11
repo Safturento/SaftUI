@@ -194,37 +194,62 @@ function INV:QueueEmptySlotTopUp()
 	end)
 end
 
--- Makes sure a window's Empty Slots category (every window's, with no id) has
--- a button for every bag slot when its setting is 'all' (Every slot) and its
--- view shows that category (Compact and Rows). Buttons made in combat are
--- flagged as broken (see CreateSlot), and a fight can free any number of
--- slots, so they are all made ahead of time, out of combat. Runs on every bag
--- update, so a bigger bag being equipped is covered too. One bag's and Multi
--- bag's sections hold their free slots with their items, which a fight only
--- swaps, so the buttons UpdateCategory makes out of combat cover them.
+-- In combat no slot button can be made (see CreateSlot), so a window shows no
+-- more free slots in a category frame (by name) than the frame has buttons
+-- left after its numItems items, none before the frame is made, and the rest
+-- once combat ends (QueueEmptySlotTopUp). Compact's Empty Slots and every
+-- view's sections go through it. Trims empties in place and returns it.
+function INV:FitEmptySlots(id, name, numItems, empties)
+	if not InCombatLockdown() then return empties end
+	local frame = self.containers[id].categories[name]
+	local room = max(0, (frame and #frame.slots or 0) - numItems)
+	if #empties > room then
+		for i = #empties, room + 1, -1 do empties[i] = nil end
+		self:QueueEmptySlotTopUp()
+	end
+	return empties
+end
+
+-- Makes sure a window's Empty Slots category (every window's, with no id) is
+-- made, with its buttons, whenever its Empty slots setting shows free slots
+-- and its view shows that category (Compact and Rows). Buttons made in combat
+-- are flagged as broken (see CreateSlot), so this happens out of combat:
+--   - the category itself, with UpdateCategory's spare buttons (enough for
+--     'grouped', one slot per kind of bag), before any free slot needs it: the
+--     bag window's is made at login (InitializeAllCategories), the bank
+--     windows' here;
+--   - with 'all' (Every slot), a button for every bag slot, since a fight can
+--     free any number of them. Runs on every bag update, so a bigger bag being
+--     equipped is covered too.
+-- One bag's and Multi bag's sections hold their free slots with their items,
+-- which a fight only swaps, so the buttons UpdateCategory makes out of combat
+-- cover them.
 function INV:EnsureEmptySlotPool(id)
 	if not id then
 		for windowId in pairs(self.containers) do self:EnsureEmptySlotPool(windowId) end
 		return
 	end
 	local container = self.containers[id]
-	if not container or self:GetEmptySlotMode(id) ~= 'all' then return end
+	local mode = self:GetEmptySlotMode(id)
+	if not container or not mode then return end
 	local view = self:GetLaidOutView(container)
 	if view ~= 'compact' and view ~= 'rows' then return end
 
 	local category = container.categories[self.EMPTY_SLOTS_CATEGORY]
 	local total = 0
-	for _, bagID in pairs(container.bag_ids) do
-		total = total + C_Container.GetContainerNumSlots(bagID)
+	if mode == 'all' then
+		for _, bagID in pairs(container.bag_ids) do
+			total = total + C_Container.GetContainerNumSlots(bagID)
+		end
 	end
-	if (category and #category.slots or 0) >= total then return end
+	if category and #category.slots >= total then return end
 
 	if self:QueueEmptySlotTopUp() then return end
 
-	-- The bag window makes its category at login (InitializeAllCategories); the
-	-- bank windows here. Hidden until an update has free slots for it.
 	if not category then
-		category = self:CreateCategory(id, self.EMPTY_SLOTS_CATEGORY)
+		-- Hidden until an update has free slots for it.
+		self:UpdateCategory(id, self.EMPTY_SLOTS_CATEGORY, {})
+		category = container.categories[self.EMPTY_SLOTS_CATEGORY]
 		category:Hide()
 	end
 	for _ = #category.slots + 1, total do
@@ -349,14 +374,9 @@ function INV:GetSortedInventory(id)
 	-- its first free slot, so an item dropped on it lands there.
 	local mode = self:GetEmptySlotMode(id)
 	if mode then
-		local empties = self:GetEmptySlotsByKind(id, bags, mode)
-		-- In combat no button can be made, so show only as many as exist (none
-		-- before the category is made); the queued pool top-up asks for a full
-		-- update when combat ends.
-		if mode == 'all' and InCombatLockdown() then
-			local made = self.containers[id].categories[self.EMPTY_SLOTS_CATEGORY]
-			for i = #empties, (made and #made.slots or 0) + 1, -1 do empties[i] = nil end
-		end
+		-- In combat no button can be made, so show only as many as exist; the
+		-- queued pool top-up asks for a full update when combat ends.
+		local empties = self:FitEmptySlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
 		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
 	end
 

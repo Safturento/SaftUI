@@ -37,21 +37,6 @@ function INV:SectionFrameName(section)
 	return 'view:' .. section.key
 end
 
--- In combat no slot button can be made (INV:CreateSlot), so with Every slot
--- ('all') a section shows no more free slots than its frame has buttons for
--- after its numItems items, as Compact does (INV:GetSortedInventory), and the
--- rest show once combat ends (INV:QueueEmptySlotTopUp). Trims empties in place.
-local function FitEmptySlots(self, id, name, numItems, empties)
-	if self:GetEmptySlotMode(id) ~= 'all' or not InCombatLockdown() then return empties end
-	local frame = self.containers[id].categories[name]
-	local room = max(0, (frame and #frame.slots or 0) - numItems)
-	if #empties > room then
-		for i = #empties, room + 1, -1 do empties[i] = nil end
-		self:QueueEmptySlotTopUp()
-	end
-	return empties
-end
-
 -- The order categories run in, as a number. Sets come first, then
 -- INV.filters.categories in their order, then the names no rule has (the
 -- reagent bank's subclasses, "Other"), then Miscellaneous, then Empty Slots.
@@ -162,7 +147,7 @@ end
 -- A section of a bag window: its items in priority order, then its empty slots.
 local function BagSection(self, id, key, title, kind, bags, categoryOf, mode)
 	local section = { key = key, title = title, items = self:SortByPriority(ItemsOf(bags), categoryOf), kind = kind }
-	local empties = FitEmptySlots(self, id, self:SectionFrameName(section), #section.items,
+	local empties = self:FitEmptySlots(id, self:SectionFrameName(section), #section.items,
 		self:GetEmptySlots(id, bags, mode))
 	for _, info in ipairs(empties) do tinsert(section.items, info) end
 	return section
@@ -207,7 +192,7 @@ function INV:GetViewSections(id, view)
 			tinsert(sections, { key = category, title = ('%s (%d)'):format(category, #items), items = items, kind = 'category' })
 		end
 		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
-			and FitEmptySlots(self, id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
+			and self:FitEmptySlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
 		if empties and #empties > 0 then
 			local shown = 0
 			for _, info in ipairs(empties) do shown = shown + (info.count or 1) end
