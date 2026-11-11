@@ -225,6 +225,27 @@ test("a banner clearing Blizzard's zone text clears SaftUI's line and the diffic
 	eq(#take_errors(), 0, 'nothing written onto the locked frames')
 end)
 
+test('the lines either side of the zone name go with it when a banner clears it, and come back with the next zone', function()
+	local function shown()
+		return ZT.flourishes.Left:IsShown() and ZT.flourishes.Right:IsShown()
+	end
+	local function hidden()
+		return not ZT.flourishes.Left:IsShown() and not ZT.flourishes.Right:IsShown()
+	end
+	place(1429, 'friendly', 'Alliance')
+	H.enter('Elwynn Forest', 'Goldshire')
+	check(shown(), 'shown with the zone name')
+	ZoneText_Clear()
+	check(hidden(), 'hidden once a banner clears the name')
+	H.enter('Elwynn Forest', 'Northshire Valley', 'ZONE_CHANGED')
+	eq(ZoneTextString:GetText(), '', 'a subzone change in the same fade leaves the zone name blank')
+	check(hidden(), 'so the lines stay hidden')
+	place(1436, 'friendly', 'Alliance')
+	H.enter('Westfall')
+	check(shown(), 'the next zone shows them again')
+	eq(#take_errors(), 0, 'nothing written onto the locked frames')
+end)
+
 test("the line takes the place of Blizzard's PvP line, which stays unseen", function()
 	place(1434, 'contested')
 	H.enter('Stranglethorn Vale', 'Booty Bay')

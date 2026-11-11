@@ -172,6 +172,14 @@ function ZT:UpdateZoneLine()
 	SubZoneTextString:SetPoint('TOP', above, 'BOTTOM', 0, 0)
 end
 
+-- The lines either side of the zone name show only while it has a name to
+-- flank: a banner can clear it (ZoneText_Clear) while its frame fades on.
+function ZT:SetFlourishesShown(shown)
+	for _, flourish in pairs(self.flourishes) do
+		flourish:SetShown(shown)
+	end
+end
+
 -- The lines either side of the zone name take its color.
 function ZT:ColorFlourishes()
 	local zoneTextColor = { ZoneTextString:GetTextColor() }
@@ -185,6 +193,7 @@ end
 -- the live status of the zone the map's cursor is on, so the map's line is
 -- worked out again too.
 function ZT:OnEvent(frame, event, ...)
+	self:SetFlourishesShown((ZoneTextString:GetText() or '') ~= '')
 	self:ColorFlourishes()
 	self:SetZoneDifficultyText()
 	self:UpdateZoneLine()
@@ -309,12 +318,14 @@ function ZT:OnEnable()
 	self.DifficultyTextString:SetPoint('TOP', SubZoneTextString, 'BOTTOM', 0, -7)
 	-- A banner played over the zone text (a world quest's, a PvP objective's)
 	-- clears Blizzard's strings with ZoneText_Clear while the frames fade on.
-	-- SaftUI's lines go with them. A post-hook: the banner's call stays
-	-- Blizzard's, and only SaftUI's own font strings are written.
+	-- SaftUI's lines go with them, and its flourishes hide until a zone change
+	-- shows a zone name again (ZT:OnEvent). A post-hook: the banner's call
+	-- stays Blizzard's, and only SaftUI's own font strings and frames change.
 	if ZoneText_Clear then
 		hooksecurefunc('ZoneText_Clear', function()
 			self.ZoneLineString:SetText('')
 			self.DifficultyTextString:SetText('')
+			self:SetFlourishesShown(false)
 		end)
 	end
 
