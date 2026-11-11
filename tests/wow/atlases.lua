@@ -159,6 +159,12 @@ return {
 		-- file 8086468, 1024 by 1024
 		['options_frame_child'] = { 28, 26,
 			file = 8086468, coords = { 901 / 1024, 929 / 1024, 1 / 1024, 27 / 1024 } },
+		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
+		-- tiles them
+		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
+		['raidframe-hp-bg-white'] = { 32, 32 },
+		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
+		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
 	},
 	retail = {
 		-- The tooltip border (panel, bar, tooltip)
@@ -293,5 +299,11 @@ return {
 		-- The raid group border (groupborder), in file 1318750, 1024 by 1024
 		['options_frame_child'] = { 28, 26,
 			file = 1318750, coords = { 616 / 1024, 644 / 1024, 24 / 1024, 50 / 1024 } },
+		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
+		-- tiles them
+		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
+		['raidframe-hp-bg-white'] = { 32, 32 },
+		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
+		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
 	},
 }

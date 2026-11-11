@@ -829,3 +829,93 @@ test('test mode previews get the same border', function()
 		eq(#take_errors(), 0, theme .. ': no errors')
 	end
 end)
+
+------------------------------------------------------------------ the bar fills
+
+-- Under Blizzard the health and power bars fill with Blizzard's raid bar art
+-- (RaidFrame-Hp-Fill over raidframe-hp-bg-white, the resource fill over its
+-- background), tiled as CompactUnitFrame.xml tiles them, and still tinted by
+-- the bar's color. Only where the element's texture is the default (SaftUI
+-- Flat) and its own resolved Theme is Blizzard's; Thick and Thin keep today's
+-- flat fill.
+local function flat(bar, where)
+	eq(bar:GetStatusBarTexture():GetTexture(), st.BLANK_TEX, where .. ': the flat fill')
+	eq(bar:GetStatusBarTexture():GetAtlas(), nil, where .. ': with no atlas')
+	check(not bar:GetStatusBarTexture():GetHorizTile() and not bar:GetStatusBarTexture():GetVertTile(), where .. ': not tiled')
+end
+
+test('under Blizzard health fills with RaidFrame-Hp-Fill over raidframe-hp-bg-white, power with the resource fill, still tinted', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power' })
+		UF:UpdateUnitFrame(player)
+		local fill = player.Health:GetStatusBarTexture()
+		eq(fill:GetAtlas(), 'RaidFrame-Hp-Fill', client .. ': health fill')
+		check(fill:GetHorizTile() and fill:GetVertTile(), client .. ': health fill tiles both ways')
+		eq(player.Health.bg:GetAtlas(), 'raidframe-hp-bg-white', client .. ': health bg')
+		check(player.Health.bg:GetHorizTile() and player.Health.bg:GetVertTile(), client .. ': health bg tiles both ways')
+		eq(player.Power:GetStatusBarTexture():GetAtlas(), '_RaidFrame-Resource-Fill', client .. ': power fill')
+		check(player.Power:GetStatusBarTexture():GetHorizTile() and not player.Power:GetStatusBarTexture():GetVertTile(),
+			client .. ': power fill tiles across only')
+		eq(player.Power.bg:GetAtlas(), '_RaidFrame-Resource-Background', client .. ': power bg')
+		check(player.Power.bg:GetHorizTile() and not player.Power.bg:GetVertTile(), client .. ': power bg tiles across only')
+
+		player.Health:SetStatusBarColor(0.2, 0.4, 0.6) -- as oUF's class color does
+		eq(T.text(player.Health:GetStatusBarColor()), '0.20,0.40,0.60,1.00', client .. ': the class color still tints it')
+
+		-- A custom color lands after an update, on the Blizzard fill.
+		P.player.health.colorCustom, P.player.health.customColor = true, { 0.9, 0.1, 0.1 }
+		UF:UpdateUnitFrame(player)
+		eq(player.Health:GetStatusBarTexture():GetAtlas(), 'RaidFrame-Hp-Fill', client .. ': still the Blizzard fill')
+		eq(T.text(player.Health:GetStatusBarColor()), '0.90,0.10,0.10,1.00', client .. ': the custom color')
+
+		-- Power's PostUpdate used to put the flat texture back on every update.
+		player.Power.text = nil
+		player.Power.PostUpdate(player.Power, 'player', 50, 0, 100)
+		eq(player.Power:GetStatusBarTexture():GetAtlas(), '_RaidFrame-Resource-Fill', client .. ': power keeps it through an update')
+		eq(player.Power.bg:GetAtlas(), '_RaidFrame-Resource-Background', client .. ': and its bg')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('only the default texture, only its own Blizzard look; Thick puts the flat fill back', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client, 'blizzard')
+		P.player.theme = 'theme'
+		local player = make_unit_frame('P', 'player', { 'Health', 'Power', 'Castbar' })
+		UF:UpdateUnitFrame(player)
+		eq(player.Health:GetStatusBarTexture():GetAtlas(), 'RaidFrame-Hp-Fill', client .. ': the default')
+		check(player.Castbar:GetStatusBarTexture():GetAtlas() == nil, client .. ': the castbar keeps its texture')
+
+		-- A texture the user picked stays.
+		P.player.health.texture = 'Another'
+		UF:UpdateUnitFrame(player)
+		eq(player.Health:GetStatusBarTexture():GetAtlas(), nil, client .. ': a picked texture, no atlas')
+		eq(player.Health:GetStatusBarTexture():GetTexture(), st:GetStatusBarTexture('Another'), client .. ': the picked texture')
+		eq(player.Health.bg:GetAtlas(), nil, client .. ': and the bg is flat')
+		check(not player.Health.bg:GetHorizTile(), client .. ': untiled')
+		P.player.health.texture = 'SaftUI Flat'
+
+		-- Health set to None while SaftUI's theme is Blizzard: not a Blizzard
+		-- Theme of its own, so the flat fill.
+		P.player.health.theme = 'none'
+		UF:UpdateUnitFrame(player)
+		flat(player.Health, client .. ': health with Theme None')
+		eq(player.Health.bg:GetAtlas(), nil, client .. ': its bg too')
+		P.player.health.theme = 'theme'
+
+		UF:UpdateUnitFrame(player)
+		eq(player.Health:GetStatusBarTexture():GetAtlas(), 'RaidFrame-Hp-Fill', client .. ': back')
+
+		st.config.profile.theme.name = 'thick'
+		UF:UpdateUnitFrame(player)
+		for _, bar in ipairs({ player.Health, player.Power }) do
+			flat(bar, client .. ': Thick, ' .. bar.name)
+			eq(bar.bg:GetTexture(), st.BLANK_TEX, client .. ': ' .. bar.name .. ' bg flat')
+			eq(bar.bg:GetAtlas(), nil, client .. ': ' .. bar.name .. ' bg no atlas')
+			check(not bar.bg:GetHorizTile() and not bar.bg:GetVertTile(), client .. ': ' .. bar.name .. ' bg untiled')
+		end
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)

@@ -272,6 +272,16 @@ ThemeArt.ART = {
 		},
 	},
 
+	-- The unit frames' bar fills (SaftUI-Unitframes/updaters.lua,
+	-- UF.BlizzardFill), by bar: the raid frames' health and resource bars'
+	-- fill art and the background behind it, and how each tiles, as
+	-- CompactUnitFrame.xml's wrap modes tile them. The same atlases on both
+	-- clients. The fills are neutral grey, so a bar's color tints them.
+	unitbars = {
+		health = { fill = Atlas('RaidFrame-Hp-Fill'), bg = Atlas('raidframe-hp-bg-white'), tileH = true, tileV = true },
+		power = { fill = Atlas('_RaidFrame-Resource-Fill'), bg = Atlas('_RaidFrame-Resource-Background'), tileH = true, tileV = false },
+	},
+
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
 	-- fills the button, by its piece's key (BEHIND); the ring over the icon's
 	-- edge; the equipped border, shown in a frame's own border color; and the
@@ -546,7 +556,7 @@ local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
-	groupborder = true,
+	groupborder = true, unitbars = true,
 }
 
 ------------------------------------

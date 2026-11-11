@@ -45,8 +45,7 @@ local function PostUpdatePower(power, unit, current, min, max)
 		power:SetValue(1)
 	end
 
-	power:SetStatusBarTexture(st.BLANK_TEX)
-	power.bg:SetTexture(st.BLANK_TEX)
+	UF:SetBarFill(power, power.barFill)
 end
 
 -- oUF calls this after it recolors the bar (any color flag), so a custom color

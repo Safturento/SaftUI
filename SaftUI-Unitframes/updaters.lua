@@ -219,6 +219,46 @@ function UF.SetPowerBackgroundColor(power, r, g, b)
 	end
 end
 
+-- Where the Blizzard fills apply, by element name: the key of
+-- st.ThemeArt.Control('unitbars').
+local FILL_KEYS = { Health = 'health', Power = 'power', AdditionalPower = 'power' }
+
+-- The Blizzard fill (a Control('unitbars') entry) an element's bar draws with,
+-- or nil for the flat one: only health and the power bars, only where the
+-- element's texture is the default (SaftUI Flat; a texture the user picked
+-- stays), and only under the element's own resolved Theme being Blizzard's
+-- (health set to None under SaftUI's Blizzard theme keeps the flat fill). The
+-- castbar keeps its texture.
+function UF.BlizzardFill(element, config)
+	local key = FILL_KEYS[element.name]
+	if not key then return nil end
+	if config.texture ~= nil and config.texture ~= 'SaftUI Flat' then return nil end
+	if not st:IsBlizzardLook(config.theme, config.background) then return nil end
+	return st.ThemeArt.Control('unitbars')[key]
+end
+
+-- Draws a bar's fill and the background behind it: fill's art, tiled as it
+-- says (a UF.BlizzardFill), or the flat texture (st.BLANK_TEX unless flat is
+-- given) with no tiling. element.barFill is what UpdateStatusBarElement last
+-- drew, which a bar's own updates (they put the flat texture back) pass again.
+function UF:SetBarFill(element, fill, flat)
+    local bar
+    if fill then
+        bar = element:GetStatusBarTexture()
+        bar:SetAtlas(fill.fill)
+        element.bg:SetAtlas(fill.bg)
+    else
+        element:SetStatusBarTexture(flat or st.BLANK_TEX)
+        bar = element:GetStatusBarTexture()
+        element.bg:SetTexture(st.BLANK_TEX)
+    end
+    local h, v = fill and fill.tileH or false, fill and fill.tileV or false
+    bar:SetHorizTile(h)
+    bar:SetVertTile(v)
+    element.bg:SetHorizTile(h)
+    element.bg:SetVertTile(v)
+end
+
 function UF:UpdateStatusBarElement(element, configOverride)
     local config = configOverride or element.config
 
@@ -226,7 +266,8 @@ function UF:UpdateStatusBarElement(element, configOverride)
         return st:Error(element:GetName(), 'is not a status bar')
     end
 
-    element:SetStatusBarTexture(st:GetStatusBarTexture(config.texture))
+    element.barFill = UF.BlizzardFill(element, config)
+    UF:SetBarFill(element, element.barFill, st:GetStatusBarTexture(config.texture))
     element:SetReverseFill(config.reverse_fill or false)
 	element:SetOrientation(config.vertical_fill and "VERTICAL" or "HORIZONTAL")
 
