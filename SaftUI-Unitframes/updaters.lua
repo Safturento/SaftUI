@@ -45,16 +45,23 @@ function UF.FillsFrame(config)
 	return point == relativePoint and tonumber(x) == 0 and tonumber(y) == 0
 end
 
+-- The kinds a bar draws with a border of its own under Blizzard: the bronze
+-- box, or a small frame's line where the box doesn't fit (UF.SizedKind).
+local BORDERED = { unitframe = true, small = true }
+
 -- The Theme and Background an element draws with: its config's, but None for
--- a bar drawn in the bronze box that lies exactly over its unit frame
--- (UF.FillsFrame) while both its own Theme and its frame's draw in Blizzard's
--- art, so the frame's box and the bar's never show on the same edges (health
--- fills the frame by default). A bar that doesn't quite fill its frame
--- (resized, moved, anchored to another element) keeps its own box, as does
--- one over a frame drawn in another look; under Thick and Thin every element
--- draws its own pair, as before. configOverride as for UF:ElementKind.
+-- a bar drawn with a border (the bronze box, or a small frame's line) that
+-- lies exactly over its unit frame (UF.FillsFrame) while both its own Theme
+-- and its frame's draw in Blizzard's art. Filling the frame, it has the
+-- frame's size and so its kind, and the frame's border alone shows on those
+-- edges (health fills the frame by default). A bar that doesn't quite fill its
+-- frame (resized, moved, anchored to another element) keeps its own border,
+-- as does one over a frame drawn in another look; under Thick and Thin every
+-- element draws its own pair, as before. configOverride as for
+-- UF:ElementKind: the config the bar is sized by, where config is the one its
+-- Theme comes from (UF:UpdateElement).
 function UF:ElementTheme(element, config, configOverride)
-	if self:ElementKind(element, configOverride) == 'unitframe'
+	if BORDERED[self:ElementKind(element, configOverride)]
 			and UF.FillsFrame(configOverride or config)
 			and st:IsBlizzardLook(config.theme, config.background) then
 		local frame = element.unitframe.config

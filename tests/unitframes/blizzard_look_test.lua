@@ -400,12 +400,20 @@ test('a bar or frame too small for the bronze box draws as a small frame, decide
 		eq(drawn(target.Health), 'theme,theme,small', client .. ': health 10 tall (34 - 24)')
 		P.target.health.height = 0
 
-		-- The unit frame itself, 10 tall, with its own Theme.
+		-- The unit frame itself, 10 tall, with its own Theme: it draws the line,
+		-- and its health, filling it, draws None, so one line shows on its edges.
 		P.target.theme, P.target.height = 'theme', 10
 		UF:UpdateUnitFrame(target)
 		eq(drawn(target), 'theme,theme,small', client .. ': a unit frame 10 tall')
 		eq(blizzard(target), 'small', client .. ': a line and the fill')
-		eq(drawn(target.Health), 'theme,theme,small', client .. ': its health, filling it, is small too')
+		eq(drawn(target.Health), 'none,theme,small', client .. ': its health, filling it, draws None')
+		eq(looks(target.Health), 'bare', client .. ': and shows nothing: no second line on the same edges')
+		-- Health 2 shorter: both lines, the frame's and its own.
+		P.target.health.height = -2
+		UF:UpdateUnitFrame(target, 'Health')
+		eq(drawn(target.Health), 'theme,theme,small', client .. ': health 8 tall in the 10-tall frame draws its own Theme')
+		eq(blizzard(target.Health), 'small', client .. ': its own line and fill')
+		P.target.health.height = 0
 		P.target.height = 34
 		UF:UpdateUnitFrame(target)
 		eq(blizzard(target), 'box', client .. ': 34 tall: the box')
