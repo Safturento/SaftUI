@@ -10,6 +10,7 @@ currencies.lua
 filters.lua
 tooltipscanner.lua
 category.lua
+views.lua
 container.lua
 containers\bag.lua
 containers\combinedbank.lua

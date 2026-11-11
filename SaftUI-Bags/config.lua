@@ -33,9 +33,11 @@ st.defaults.inventory = {
 		perrow = 3,
 		maxRows = 15,
 		maxColumns = 3,
-		-- Free bag slots shown as an 'Empty Slots' category: 'off', 'grouped' (one
-		-- slot for the bags and one for the reagent bag, each with its free count)
-		-- or 'all' (one slot per free slot). Bag window only.
+		-- The view: 'onebag', 'multibag', 'compact' (the original) or 'rows'.
+		view = 'compact',
+		-- Free bag slots shown as empty slots: 'off', 'grouped' (one slot with its
+		-- free count: per kind of bag in Compact and Rows, per section in One bag
+		-- and Multi bag) or 'all' (one slot per free slot). Every window has its own.
 		emptySlots = 'off',
 	},
 	bank = {
@@ -48,7 +50,9 @@ st.defaults.inventory = {
 		},
 		perrow = 4,
 		maxRows = 20,
-		maxColumns = 3
+		maxColumns = 3,
+		view = 'compact',
+		emptySlots = 'off',
 	},
 	reagent = {
 		position = {
@@ -72,7 +76,9 @@ st.defaults.inventory = {
 		},
 		perrow = 4,
 		maxRows = 20,
-		maxColumns = 3
+		maxColumns = 3,
+		view = 'compact',
+		emptySlots = 'off',
 	},
 	combinedbank = {
 		position = {
@@ -84,6 +90,8 @@ st.defaults.inventory = {
 		},
 		perrow = 4,
 		maxRows = 20,
-		maxColumns = 5
+		maxColumns = 5,
+		view = 'compact',
+		emptySlots = 'off',
 	}
 }

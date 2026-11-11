@@ -1,0 +1,200 @@
+local st = SaftUI
+local INV = st:GetModule('Inventory')
+
+-- The data behind the bag views (config `view`: 'onebag', 'multibag', 'compact'
+-- or 'rows'): the category order every view shares, what a bag is, and the
+-- ordered sections each view lays out. Nothing here draws. Compact keeps
+-- INV:GetSortedInventory.
+
+-- The order categories run in, as a number. Sets come first, then
+-- INV.filters.categories in their order, then the names no rule has (the
+-- reagent bank's subclasses, "Other"), then Miscellaneous, then Empty Slots.
+-- Names that share a rank (sets, unknown names) go by name; see CategoryBefore.
+function INV:CategoryRank(name)
+	local rules = self.filters.categories
+	if name == self.EMPTY_SLOTS_CATEGORY then return #rules + 2 end
+	if name == 'Miscellaneous' then return #rules + 1 end
+	if name:sub(1, 5) == 'Set: ' then return 0 end
+	for i, category in ipairs(rules) do
+		if category.name == name then return i end
+	end
+	return #rules + 0.5
+end
+
+-- Whether category a comes before category b: by rank, then by name.
+function INV:CategoryBefore(a, b)
+	local rankA, rankB = self:CategoryRank(a), self:CategoryRank(b)
+	if rankA ~= rankB then return rankA < rankB end
+	return a < b
+end
+
+-- Sorts item infos in place: by category order, then SaftUI's item sort within
+-- a category. Free slot infos go last. categoryOf (info -> category name) is
+-- for a caller that has the categories already.
+function INV:SortByPriority(items, categoryOf)
+	local categories, ranks = {}, {}
+	for _, info in ipairs(items) do
+		local category = info.empty and self.EMPTY_SLOTS_CATEGORY
+			or categoryOf and categoryOf[info] or self:GetItemCategory(info)
+		categories[info] = category
+		if not ranks[category] then ranks[category] = self:CategoryRank(category) end
+	end
+	table.sort(items, function(a, b)
+		local categoryA, categoryB = categories[a], categories[b]
+		if categoryA ~= categoryB then
+			if ranks[categoryA] ~= ranks[categoryB] then return ranks[categoryA] < ranks[categoryB] end
+			return categoryA < categoryB
+		end
+		return self.CompareItems(a, b)
+	end)
+	return items
+end
+
+-- The name of a bank tab where the client gives one (retail's bank tabs are
+-- named by the player), by its bag ID.
+local function GetTabName(bagID)
+	if not (C_Bank and C_Bank.FetchPurchasedBankTabData and Enum.BankType) then return end
+	for _, bankType in pairs(Enum.BankType) do
+		for _, tab in ipairs(C_Bank.FetchPurchasedBankTabData(bankType) or {}) do
+			if tab.ID == bagID and tab.name and tab.name ~= '' then return tab.name end
+		end
+	end
+end
+
+-- Where a bag ID is in a list of bag IDs, or nil.
+local function IndexOf(list, value)
+	for i, v in ipairs(list or {}) do
+		if v == value then return i end
+	end
+end
+
+-- What a bag is: its id, name, number of slots, free slots, and whether it is a
+-- special bag (a reagent bag, or one that holds only some kinds of item, like a
+-- herb bag). The backpack and the bank tabs are never special.
+function INV:GetBagInfo(bagID)
+	local total = C_Container.GetContainerNumSlots(bagID)
+	local free, family = C_Container.GetContainerNumFreeSlots(bagID)
+	local bankTab = IndexOf(self.bagIds.bank, bagID)
+	local warbandTab = IndexOf(self.bagIds.warband, bagID)
+
+	local name = C_Container.GetBagName(bagID) or GetTabName(bagID)
+	if not name then
+		if bagID == Enum.BagIndex.Backpack then
+			name = BAG_NAME_BACKPACK or 'Backpack'
+		elseif bankTab then
+			name = 'Bank tab ' .. bankTab
+		elseif warbandTab then
+			name = 'Warband tab ' .. warbandTab
+		elseif self:IsReagentBag(bagID) then
+			name = 'Reagent bag'
+		else
+			name = 'Bag ' .. bagID
+		end
+	end
+
+	local special = false
+	if bagID ~= Enum.BagIndex.Backpack and not bankTab and not warbandTab then
+		special = self:IsReagentBag(bagID) or (family or 0) ~= 0
+	end
+
+	return { id = bagID, name = name, total = total, free = free or 0, special = special }
+end
+
+local function BagTitle(info)
+	return ('%s (%d / %d)'):format(info.name, info.total - info.free, info.total)
+end
+
+-- The items of some bag records, in bag order.
+local function ItemsOf(bags)
+	local items = {}
+	for _, bag in ipairs(bags) do
+		for _, item in ipairs(bag.items) do tinsert(items, item) end
+	end
+	return items
+end
+
+-- A section of a bag window: its items in priority order, then its empty slots.
+local function BagSection(self, id, key, title, kind, bags, categoryOf, mode)
+	local items = self:SortByPriority(ItemsOf(bags), categoryOf)
+	for _, info in ipairs(self:GetEmptySlots(id, bags, mode)) do tinsert(items, info) end
+	return { key = key, title = title, items = items, kind = kind }
+end
+
+-- The sections of a window in a view, in the order they are laid out, and how
+-- many item slots there are and how many of those are still loading. A section
+-- is { key, title, items, kind }: kind is 'main', 'bag', 'category' or
+-- 'currencies', and title is false for no heading. Reads the same items as
+-- INV:GetSortedInventory, with the window's stackItems and Empty slots
+-- settings. The view is 'onebag', 'multibag' or 'rows'; Compact has no sections.
+function INV:GetViewSections(id, view)
+	local container = self.containers[id]
+	local mode = self:GetEmptySlotMode(id)
+	local sections = {}
+	local infos = {}
+	for _, bagID in pairs(container.bag_ids) do infos[bagID] = self:GetBagInfo(bagID) end
+
+	local bags, numItems, numLoading, categoryOf
+	if view == 'rows' then
+		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
+			return self:IsReagentBag(bagID) and 'reagent' or 'bag'
+		end)
+		local byCategory = {}
+		for _, item in ipairs(ItemsOf(bags)) do
+			local category = categoryOf[item]
+			byCategory[category] = byCategory[category] or {}
+			tinsert(byCategory[category], item)
+		end
+		local order = {}
+		for category in pairs(byCategory) do tinsert(order, category) end
+		table.sort(order, function(a, b) return self:CategoryBefore(a, b) end)
+		for _, category in ipairs(order) do
+			local items = byCategory[category]
+			table.sort(items, self.CompareItems)
+			tinsert(sections, { key = category, title = ('%s (%d)'):format(category, #items), items = items, kind = 'category' })
+		end
+		local empties = self:GetEmptySlotsByKind(id, bags, mode)
+		if #empties > 0 then
+			local shown = 0
+			for _, info in ipairs(empties) do shown = shown + (info.count or 1) end
+			tinsert(sections, {
+				key = self.EMPTY_SLOTS_CATEGORY,
+				title = ('%s (%d)'):format(self.EMPTY_SLOTS_CATEGORY, shown),
+				items = empties,
+				kind = 'category',
+			})
+		end
+	else
+		-- One bag merges stacks within the main group or a special bag; Multi bag
+		-- within a bag.
+		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
+			if view == 'onebag' and not infos[bagID].special then return 'main' end
+			return tostring(bagID)
+		end)
+		-- A bag that isn't there (an empty bag slot) has no section.
+		local present = {}
+		for _, bag in ipairs(bags) do
+			if infos[bag.id].total > 0 then tinsert(present, bag) end
+		end
+		if view == 'onebag' then
+			local normal, special = {}, {}
+			for _, bag in ipairs(present) do
+				tinsert(infos[bag.id].special and special or normal, bag)
+			end
+			tinsert(sections, BagSection(self, id, 'main', false, 'main', normal, categoryOf, mode))
+			for _, bag in ipairs(special) do
+				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf, mode))
+			end
+		else
+			for _, bag in ipairs(present) do
+				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf, mode))
+			end
+		end
+	end
+
+	-- Only the bag window has currencies, once its category is made.
+	if id == 'bag' and container.categories and container.categories.Currencies then
+		tinsert(sections, { key = 'Currencies', title = 'Currencies', items = {}, kind = 'currencies' })
+	end
+
+	return sections, numItems, numLoading
+end

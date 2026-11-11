@@ -156,6 +156,7 @@ end
 
 
 local function sortCategory(a,b) return a.sortString > b.sortString end
+INV.CompareItems = sortCategory
 
 -- The info for a free bag slot. It carries the fields the readers of slot.info
 -- use (vendor price, name, tooltip text) as harmless blanks, and `empty` so
@@ -173,6 +174,14 @@ local function GetEmptySlotInfo(bagID, slotID, containerId)
 		bagID = bagID,
 		slotID = slotID,
 	}
+end
+
+-- A window's Empty slots setting, 'grouped' or 'all'; nil for 'off' (and for a
+-- window with no such setting).
+function INV:GetEmptySlotMode(id)
+	local config = self.config[id]
+	local mode = config and config.emptySlots
+	if mode == 'grouped' or mode == 'all' then return mode end
 end
 
 -- Makes sure the Empty Slots category has a button for every bag slot when the
@@ -203,89 +212,129 @@ function INV:EnsureEmptySlotPool()
 	end
 end
 
-function INV:GetSortedInventory(id)
+-- Reads a window's bags once, for GetSortedInventory and the views. Returns:
+--   bags: one record per bag ID, in the window's bag order: `id`, `items` (the
+--     item infos in slot order, after stacks are merged) and `free` (the free
+--     slot IDs, in order);
+--   numItems, numLoading;
+--   categoryOf: item info -> its category name.
+-- groupOf(bagID) names the group a bag merges stacks in (when stackItems is
+-- on): the same item in two groups stays two slots. A stack merges into the
+-- first slot of its item in the group, which stays where it was.
+function INV:ReadBags(id, groupOf)
 	local container = self.containers[id]
-	if not container then 
+	if not container then
 		st:Error('container with id ', id, 'not found')
 	end
 
-    local cachedItems = {}
-
-	-- Free slots only show in the bag window, and only when asked for.
-	local emptyMode = id == 'bag' and self.config.bag.emptySlots
-	if emptyMode ~= 'grouped' and emptyMode ~= 'all' then emptyMode = nil end
-	local emptyNormal, emptyReagent = {}, {}
-	local numFreeNormal, numFreeReagent = 0, 0
-
-	local inventory = {}
-	local numItems = 0
-	local numLoading = 0
-	for _,bagID in pairs(container.bag_ids) do
-		-- The reagent bag is its own kind of bag: the same item in it and in a
-		-- normal bag stays two slots when stacks are merged.
-		local isReagent = self:IsReagentBag(bagID)
-		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
+	local bags, categoryOf = {}, {}
+	local merged = {}
+	local numItems, numLoading = 0, 0
+	for _, bagID in pairs(container.bag_ids) do
+		local group = groupOf(bagID)
+		local bag = { id = bagID, items = {}, free = {} }
+		tinsert(bags, bag)
+		for slotID = 1, C_Container.GetContainerNumSlots(bagID) do
 			local item = self:GetInventoryItemInfo(bagID, slotID, id)
 			if item then
 				numItems = numItems + 1
 				if item.loading then
 					numLoading = numLoading + 1
 				else
-					local categoryName = self:GetItemCategory(item)
-
-					if not inventory[categoryName] then inventory[categoryName] = {} end
-					local mergeKey = tostring(item.itemID) .. (isReagent and ':reagent' or ':bag')
-					if self.config.stackItems and cachedItems[mergeKey] and item.maxStack > 1 then
-                        local cachedItem = cachedItems[mergeKey]
-                        inventory[categoryName][cachedItem.index].count
-                            = inventory[categoryName][cachedItem.index].count + item.count
+					local mergeKey = tostring(item.itemID) .. ':' .. group
+					if self.config.stackItems and merged[mergeKey] and item.maxStack > 1 then
+						merged[mergeKey].count = merged[mergeKey].count + item.count
 					else
-                        tinsert(inventory[categoryName], item)
-                        if self.config.stackItems and not cachedItems[mergeKey] and item.maxStack > 1 then
-                            cachedItems[mergeKey] = {
-                                index = #inventory[categoryName],
-                            }
-                        end
-                    end
+						categoryOf[item] = self:GetItemCategory(item)
+						tinsert(bag.items, item)
+						if self.config.stackItems and item.maxStack > 1 then
+							merged[mergeKey] = item
+						end
+					end
 				end
-			elseif emptyMode then
-				-- Grouped only needs the first free slot of each kind; every
-				-- slot needs them all.
-				if isReagent then
-					numFreeReagent = numFreeReagent + 1
-				else
-					numFreeNormal = numFreeNormal + 1
-				end
-				local list = isReagent and emptyReagent or emptyNormal
-				if emptyMode == 'all' or #list == 0 then
-					tinsert(list, GetEmptySlotInfo(bagID, slotID, id))
-				end
+			else
+				tinsert(bag.free, slotID)
 			end
+		end
+	end
+	return bags, numItems, numLoading, categoryOf
+end
+
+-- The empty slot infos for a list of bag records (see ReadBags), by mode:
+-- 'all' is one per free slot, in order; 'grouped' is one pointing at the first
+-- free slot, with `count` the number of free slots, or none if there are none.
+function INV:GetEmptySlots(id, bags, mode)
+	local empties = {}
+	if mode ~= 'all' and mode ~= 'grouped' then return empties end
+	local first, count = nil, 0
+	for _, bag in ipairs(bags) do
+		for _, slotID in ipairs(bag.free) do
+			count = count + 1
+			if mode == 'all' then
+				tinsert(empties, GetEmptySlotInfo(bag.id, slotID, id))
+			elseif not first then
+				first = GetEmptySlotInfo(bag.id, slotID, id)
+			end
+		end
+	end
+	if first then
+		first.count = count
+		empties[1] = first
+	end
+	return empties
+end
+
+-- The kind of bag a free slot is in, for the views that don't show bags apart
+-- (Compact and Rows): 2 for the reagent bag, and in the combined bank for the
+-- warband bank; 1 for the rest.
+local function EmptySlotKind(INV, id, bagID)
+	if INV:IsReagentBag(bagID) then return 2 end
+	if id == 'combinedbank' then
+		for _, warbandID in ipairs(INV.bagIds.warband or {}) do
+			if warbandID == bagID then return 2 end
+		end
+	end
+	return 1
+end
+
+-- The empty slot infos of every kind of bag, the first kind's first.
+function INV:GetEmptySlotsByKind(id, bags, mode)
+	local kinds = { {}, {} }
+	for _, bag in ipairs(bags) do
+		tinsert(kinds[EmptySlotKind(self, id, bag.id)], bag)
+	end
+	local empties = self:GetEmptySlots(id, kinds[1], mode)
+	for _, info in ipairs(self:GetEmptySlots(id, kinds[2], mode)) do tinsert(empties, info) end
+	return empties
+end
+
+function INV:GetSortedInventory(id)
+	local bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
+		-- The reagent bag is its own kind of bag: the same item in it and in a
+		-- normal bag stays two slots when stacks are merged.
+		return self:IsReagentBag(bagID) and 'reagent' or 'bag'
+	end)
+
+	local inventory = {}
+	for _, bag in ipairs(bags) do
+		for _, item in ipairs(bag.items) do
+			local categoryName = categoryOf[item]
+			if not inventory[categoryName] then inventory[categoryName] = {} end
+			tinsert(inventory[categoryName], item)
 		end
 	end
 
 	-- Normal bags first, then the reagent bag. This category isn't sorted below,
-	-- so it keeps that order.
-	if emptyMode == 'all' then
-		local empties = {}
-		for _, info in ipairs(emptyNormal) do tinsert(empties, info) end
-		for _, info in ipairs(emptyReagent) do tinsert(empties, info) end
+	-- so it keeps that order. Grouped is one slot per kind of bag, pointing at
+	-- its first free slot, so an item dropped on it lands there.
+	local mode = self:GetEmptySlotMode(id)
+	if mode then
+		local empties = self:GetEmptySlotsByKind(id, bags, mode)
 		-- In combat no button can be made, so show only as many as exist; the
 		-- queued pool top-up asks for a full update when combat ends.
-		local made = container.categories[self.EMPTY_SLOTS_CATEGORY]
+		local made = mode == 'all' and self.containers[id].categories[self.EMPTY_SLOTS_CATEGORY]
 		if made and InCombatLockdown() then
 			for i = #empties, #made.slots + 1, -1 do empties[i] = nil end
-		end
-		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
-	elseif emptyMode == 'grouped' then
-		-- One slot per kind of bag, pointing at its first free slot, so an item
-		-- dropped on it lands there. A kind with no free slots has no slot.
-		local empties = {}
-		for kind, list in ipairs({ emptyNormal, emptyReagent }) do
-			if #list > 0 then
-				list[1].count = kind == 1 and numFreeNormal or numFreeReagent
-				tinsert(empties, list[1])
-			end
 		end
 		if #empties > 0 then inventory[self.EMPTY_SLOTS_CATEGORY] = empties end
 	end

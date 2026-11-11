@@ -1,6 +1,6 @@
 --[[
 	WoW's additions to Lua 5.1: the short global names for math, string and
-	table functions, wipe, strtrim, xpcall's arguments and the bit library.
+	table functions, wipe, strtrim, strsplit, xpcall's arguments and the bit library.
 	Add more here when SaftUI code needs them, with the game's behavior.
 ]]
 
@@ -38,6 +38,25 @@ function strtrim(str, chars)
 	local set = chars and ('[' .. chars:gsub('[%]%%%^%-]', '%%%0') .. ']') or '%s'
 	return (str:gsub('^' .. set .. '+', ''):gsub(set .. '+$', ''))
 end
+
+-- Splits str at every character of delimiter (a set of characters, not a
+-- pattern) and returns the pieces, at most `pieces` of them, the last holding
+-- the rest. Also string.split(delimiter, str).
+function strsplit(delimiter, str, pieces)
+	local out, start = {}, 1
+	while not pieces or #out < pieces - 1 do
+		local at
+		for i = start, #str do
+			if delimiter:find(str:sub(i, i), 1, true) then at = i break end
+		end
+		if not at then break end
+		out[#out + 1] = str:sub(start, at - 1)
+		start = at + 1
+	end
+	out[#out + 1] = str:sub(start)
+	return unpack(out)
+end
+string.split = strsplit
 
 -- WoW's bit library is LuaBitOp: 32-bit operations with signed results. Only
 -- band so far (LibSharedMedia uses it).
