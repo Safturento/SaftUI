@@ -1,6 +1,6 @@
 # SaftUI options, project 3b-3: the Blizzard theme, round 2 — the Settings window and unit frame borders
 
-Date: 2026-11-11. Status: no open questions. The user's answers are binding; the calls marked "My call" are the controller's, for the user to check. Revised after the builder check (2026-11-11): the window may grow under Blizzard, the footer spans the window, the dropdown list takes the Settings list art, one group border per group header, and which Theme turns each piece on ("The builder check's answers" below).
+Date: 2026-11-11. Status: no open questions. The user's answers are binding; the calls marked "My call" are the controller's, for the user to check. Revised later on 2026-11-11: steppers only where the choices fit, `/sui` resizes vertically, and the Categories editor's fixed footer (goals 2 and 3); the micro menu bar is to follow. Revised after the builder check (2026-11-11): the window may grow under Blizzard, the footer spans the window, the dropdown list takes the Settings list art, one group border per group header, and which Theme turns each piece on ("The builder check's answers" below).
 
 Project 3b-2, the Blizzard theme (`docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`, shipped 2026-11-11), made Blizzard a third theme beside Thick and Thin. The user checked it in game the morning after and asked for more of Blizzard's own look in two places. This spec covers those two. Four smaller fixes from the same feedback are being built separately and are assumed done here (see "Today").
 
@@ -127,6 +127,7 @@ Under Thick and Thin `/sui` is exactly as today: every frame, size and cell rect
 - **Dropdowns** (every `select` in `/sui`: option rows, the picker row, the position block's frame dropdown, the Categories tab's rule editor): the WowStyle2 button (`common-dropdown-c-button` and its states, the hover arrow), text centred, its list on `common-dropdown-c-bg` with Blizzard's outsets, **in place of the list's tooltip-border frame** (c-bg is the list's own border and shadow, as Blizzard's menu has; no double border), its rows hovering on `common-dropdown-customize-mouseover`. The list is a top-level frame, so its outsets are never clipped.
   - The button's 7px glow may spill outside the control's rect, as Blizzard's does, but must never be clipped by a scroll frame or overlap the neighbouring cell's control.
 - **Steppers:** a `select` in an option row (the widget a page's option draws, and the picker row's) gets Blizzard's ◀ ▶ steppers (`WowStyle2IconButtonTemplate`'s art) either side of the button, inside the widget's current width (the button narrows; no cell moves).
+  - **Only where the choices fit** (the user's answer 5): a select gets steppers only when its longest choice's text fits the narrowed button (about 83 wide in the plan's layout). One whose longest choice doesn't fit shows the Settings button without steppers, at the full width.
   - A click picks the previous or next choice in the list's order straight away, exactly as picking it from the list does (validate, set, the window re-renders).
   - At the first or last choice the arrow at that end is disabled (no wrap, as Blizzard's); a disabled select's arrows are disabled.
   - **My call:** the compact dropdowns (the position block's frame dropdown, the rule editor's) take the button art without steppers, since they have no room.
@@ -142,7 +143,26 @@ Under Thick and Thin `/sui` is exactly as today: every frame, size and cell rect
 
 **Switching:** a theme switch Thick → Blizzard → Thick (and a profile switch) with `/sui` open re-lays it out with no /reload, as the theme does elsewhere, and nothing of one look is left in the other.
 
-### 2. Unit frame borders under the Blizzard theme
+### 2. `/sui` grows taller (every theme)
+
+The user, 2026-11-11: "instead of making the whole window resize and increasing the structural complexity, why won't we only allow the window to grow vertically".
+
+- The `/sui` window resizes **vertically only**, in every theme: drag its bottom edge, or a grip at its bottom-right corner. Its width never changes (today's under Thick and Thin; the Blizzard layout's under Blizzard).
+- **My calls:** the least height is the window's default height (today's, or the Blizzard layout's); the most is the screen's height less the screen edge margin. The height is saved (SaftUI's global settings, not the profile: it's the window's, not a look) and restored when `/sui` opens. It keeps to the screen edge margin like a dragged window.
+- The body gets the extra height: a page with a fill row (`W.Define`'s `fill`, the Categories tab) grows it; every other page shows more and scrolls less. Nothing reflows sideways.
+- Under Blizzard the inner frame stretches with the window (one bitmap; its vignette and rim stretch vertically).
+- Resizing redraws only what the height changes (the body and its fill rows); a drag doesn't re-render every frame (the window's existing render scheduling).
+
+### 3. The Categories editor's fixed footer (every theme)
+
+The user, 2026-11-11: "if the filter mechanism is long and complex it's hard to see what catches an item because you can't get the caught list in frame with the full filter … maybe we can setup a fixed footer on the category filter editor that contains the pinned items and caught now items".
+
+- The Categories tab's editor pane (right of the category list) splits in two: **the editor** (the name, Show in, the rule, Reset to default and Delete), scrolling on its own as today, and **a fixed footer** at the bottom of the pane holding **Caught now** above **Pinned items**, each at the pane's full width.
+- **My calls:** the footer is as tall as its two strips need (their titles and icon rows), up to half the pane's height; past that it scrolls on its own, with the same scroll bar as the other areas. A strip with no items shows its title and its empty line as today. The footer's top edge is a 1px line under Thick and Thin and `Options_HorizontalDivider` under Blizzard. Reset to default and Delete stay at the end of the editor.
+- Hovering a footer icon still lights the rule's path that caught it (`HighlightWhy`), and its tooltip still opens beside `/sui`. With the footer fixed, the rule above it is in view while the icons are.
+- Dragging an item from the bags onto the Pinned items strip, its X, and its tooltip work as today.
+
+### 4. Unit frame borders under the Blizzard theme
 
 Under Thick and Thin unit frames are exactly as today.
 
@@ -229,6 +249,9 @@ Every atlas above exists on both, same sizes. Forever draws the Camelot members 
 2. Dropdowns: "Settings style + arrows (Recommended)".
 3. Single unit frames: "Bronze frame box (Recommended)".
 4. Party and raid frames: "Group border (Recommended)".
+5. Dropdown steppers where the text gets cut: "Arrows where choices fit (Recommended)".
+6. Resizing: vertical only (the user's own words, above, after a question on resizing in both directions).
+7. Caught now and Pinned items: a fixed footer on the editor (the user's own words, above).
 
 ## The builder check's answers (2026-11-11, the controller's)
 
