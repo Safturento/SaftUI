@@ -1,6 +1,6 @@
 # SaftUI bags: categories you can see and edit in game
 
-Date: 2026-11-10. Status: draft for the user's approval, after a builder check. Calls marked "my call" are mine, not the user's.
+Date: 2026-11-10. Status: approved by the user (2026-11-10: "you can go ahead and write the plan and start the work"), after a builder check. Calls marked "my call" are mine, not the user's.
 
 ## Intent
 
