@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant](#2026-11-11--graysauto-vendor-a-finished-edit-that-broadens-its-rule-sells-at-the-next-merchant)
+  - [2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing](#2026-11-11--rule-editor-a-level-mode-picked-before-a-number-is-typed-does-nothing)
   - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
   - [2026-11-11 — Bag settings: the reagent section nothing reads](#2026-11-11--bag-settings-the-reagent-section-nothing-reads)
   - [2026-11-11 — ItemRack is still an optional dependency, and nothing reads it](#2026-11-11--itemrack-is-still-an-optional-dependency-and-nothing-reads-it)
@@ -79,6 +81,37 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Grays/Auto Vendor: a finished edit that broadens its rule sells at the next merchant
+
+**What:** Auto vendor sells whatever Grays/Auto Vendor's rule catches, and every editor change saves at once. A half-built rule can no longer widen it (an AND holding a block or group that isn't filled in catches nothing), but a finished edit that says "everything but" does, at the next merchant: NOT on an Old gear or Protected block in its inner OR (both are complete the moment they're added), flipping its root AND to OR (one click on the badge), removing its inner OR group with the X, or "Has vendor price: yes" in the inner OR. Each sells every priced item that `INV:IsAutoVendorItem` doesn't refuse (Protected, Cosmetic, fishing, account-bound, in a set, tooltip missing). Selling can't be undone, and buyback holds 12 items.
+
+**Why noticed:** The bag categories final review (2026-11-11), under "Declined to judge": these are deliberate edits, and the spec says auto vendor follows the rule, but the reviewer called a confirm on the selling category's root flip or group removal "a cheap product decision for the user". The fix for the review's C-1 (half-built rules) left them as they are, and `tests/bags/category_store_test.lua` ("a half-edited Grays/Auto Vendor rule never sells more than the shipped one") skips NOT Old gear and NOT Protected in the inner OR for this reason.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (the badge's flip, the X, NOT, `Edit`); `SaftUI-Bags/categories.lua` (`INV:IsAutoVendorItem`); `SaftUI-Bags/autovendor.lua` (`INV:AutoVendor`); the slot's junk coin and the tab's Caught now, which already show what would sell before a merchant is opened.
+
+**What's been considered:** A confirm in the editor before an edit widens the selling category's rule (the root flip, removing a group, NOT); a cap on what one merchant visit sells, with a prompt above it; or nothing, since the coins show the change first.
+
+**Shape of work:** A product decision first, then a small change in the editor or in auto vendor, with tests.
+
+**Open questions:** Which of these, if any?
+
+### 2026-11-11 — Rule editor: a level mode picked before a number is typed does nothing
+
+**What:** A new Item level or Required level block has no number, so it can't be read and catches nothing until it has one. Its mode list (at least, at most, between) moves the number typed to the bound the mode needs. With no number yet there's nothing to move, so picking "at most" or "between" on a new block changes nothing, and it still shows "at least". The user has to type a number first, then pick the mode.
+
+**Why noticed:** The fix for the bag categories final review's C-1 (2026-11-11). New level blocks used to start as `{ min = 0 }`, "at least 0", which caught every item the moment the block was added; in Grays/Auto Vendor's inner OR that sold every priced item at the next merchant. They now start as `{}`, and the mode switch no longer invents a 0 for a block with no number, so it has nothing to carry over.
+
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`LevelMode`, `LevelFields`); `SaftUI-Bags/rules.lua` (`R.BLOCKS`' `new`, `level_block`); `tests/bags/rule_editor_test.lua` ("a new Item level, Required level, Crafting reagent or Has vendor price block shows nothing set ...").
+
+**What's been considered:**
+- Writing 0 again: that is what made a new block catch everything.
+- Keeping the picked mode in the saved block (a `mode` key, or `false` in the bound it means): new data in the profile for something only the editor shows.
+- Keeping it in the editor only, by the row's path, until a number is typed: no data change, but a row's path shifts when rows are added or moved above it, so it has to be dropped on any other edit.
+
+**Shape of work:** Small: the editor-only option in `LevelFields`, and a test.
+
+**Open questions:** Is it worth doing, or is "type the number, then pick the mode" fine?
 
 ### 2026-11-11 — Bag categories: in-game checks
 
@@ -173,15 +206,15 @@ What the plan's list doesn't cover:
 
 ### 2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets
 
-**What:** The old Auto Vendor list wasn't a filter: a listed item still had to get past Grays/Auto Vendor's exclusions, and equipment sets came before it. As a pin, the same entry beats both. A listed item that is Cosmetic, has the "Fishing" or account-bound text, or is in an equipment set now goes to Grays/Auto Vendor; `INV:IsAutoVendorItem` still never sells a Cosmetic, an equipment set item or an item whose tooltip never arrived, and an item with no vendor price goes there but isn't sold.
+**What:** The old Auto Vendor list wasn't a filter: a listed item still had to get past Grays/Auto Vendor's exclusions, and equipment sets came before it. As a pin, the same entry beats both, so a listed item that is Cosmetic, has the "Fishing" or "Blizzard Account Bound" text, or is in an equipment set now shows in Grays/Auto Vendor rather than in the category it showed in before. Only where it shows changed, not what is sold: whatever an item's pin or rule says, `INV:IsAutoVendorItem` never sells an item that is Cosmetic, has the "Fishing" or "Blizzard Account Bound" text, is in an equipment set, or whose tooltip never arrived (so those words can't be read), nor one that is Protected or has no vendor price.
 
 **Why noticed:** The bag categories project's plan (`docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, "What can't be written exactly in blocks", item 7), when the Auto Vendor list became pins.
 
 **Anchors:** `SaftUI-Bags/categories.lua` (`INV:MigrateCategories`, `INV:GetItemCategory`'s pin branch, `INV:IsAutoVendorItem`); `tests/bags/category_migration_test.lua`.
 
-**Shape of work:** Only if the user wants the old guarantee back: have a pin to the selling category lose to the exclusions that used to apply (a rule check in the pin branch, or in the migration), and a test.
+**Shape of work:** Only if the user wants such items shown where they were before: have a pin to the selling category lose to the exclusions that used to apply (a rule check in the pin branch, or in the migration), and a test. Selling needs no change.
 
-**Open questions:** Is a listed item in an equipment set or with account-bound text something the user would want sold? The old behavior kept them.
+**Open questions:** Does the user mind a listed Cosmetic, fishing, account-bound or equipment set item showing, unsold, in Grays/Auto Vendor rather than in its old category?
 
 ### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
 
