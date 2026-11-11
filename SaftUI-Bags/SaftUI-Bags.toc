@@ -24,3 +24,4 @@ utilities.lua
 autovendor.lua
 movers.lua
 options.lua
+ruleeditor.lua

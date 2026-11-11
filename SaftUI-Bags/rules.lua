@@ -11,8 +11,13 @@ local INV = st:GetModule('Inventory')
 	  R.Describe(rule, path) -> string
 	  R.BLOCKS, R.BlockType(id)
 	  R.Strip(s), R.HasWord(lowerSubject, lowerWord)
-	  R.Copy, R.Equal, R.NodeAt
+	  R.Copy, R.Equal, R.NodeAt, R.IsGroup(node)
 	  R.QUALITY_LABELS, R.BINDING_STATES, R.SLOTS, R.ExpansionLabel(n)
+
+	The outline editor's side (ruleeditor.lua), at the end:
+	  R.NewBlock(typeId), R.NewGroup(parentOp)
+	  R.Insert, R.Remove, R.Move, R.Flip, R.ToggleNot   edits in place, by path
+	  R.Outline(rule) -> rows, R.DropAt(rows, i, lower) -> parentPath, index
 
 	Compiling turns the tree into closures, strips the needles and builds the
 	sets once. Evaluating reads the item's facts (see INV:GetInventoryItemInfo)
@@ -126,6 +131,12 @@ function R.NodeAt(rule, path)
 		if type(node) ~= 'table' then return nil end
 	end
 	return node
+end
+
+-- A group this version can read: an AND or OR with an items table.
+function R.IsGroup(node)
+	return type(node) == 'table' and node.block == nil and (node.op == 'and' or node.op == 'or')
+		and type(node.items) == 'table'
 end
 
 ------------------------------------------------------------------- blocks
@@ -484,4 +495,162 @@ function R.Describe(rule, path)
 	if depth == 0 then return negated .. 'its rule as a whole' end
 	local op = type(node.op) == 'string' and node.op:upper() or '?'
 	return negated .. op .. ' #' .. tostring(path[depth]) .. groups_suffix(rule, path, depth)
+end
+
+------------------------------------------------------------------- editing
+
+--[[
+	What the outline editor (ruleeditor.lua) works through. The edits change
+	the rule they're given, in place: the editor hands them a copy (R.Copy) of
+	the stored rule and sets the copy, since the stored rule can be the shipped
+	default's own table. Each returns whether it changed anything (Remove the
+	node it took out), and a refused edit changes nothing.
+]]
+
+local tinsert, tremove = table.insert, table.remove
+
+local function copy_path(path)
+	local out = {}
+	for i = 1, #path do out[i] = path[i] end
+	return out
+end
+
+-- The path's parent's path and its index there.
+local function split(path)
+	local parent = copy_path(path)
+	local index = tremove(parent)
+	return parent, index
+end
+
+-- Whether path starts with (or is) prefix.
+local function starts_with(path, prefix)
+	if #path < #prefix then return false end
+	for i = 1, #prefix do
+		if path[i] ~= prefix[i] then return false end
+	end
+	return true
+end
+
+-- A new block of the type: { block = typeId, <its new params> }, or nil.
+function R.NewBlock(typeId)
+	local type_ = by_id[typeId]
+	if not type_ then return nil end
+	local node = type_.new()
+	node.block = typeId
+	return node
+end
+
+-- A new empty group under a parent of parentOp: the other operator, as a
+-- group of the same one would change nothing.
+function R.NewGroup(parentOp)
+	return { op = parentOp == 'and' and 'or' or 'and', items = {} }
+end
+
+-- node into the group at parentPath, at index (its end when nil).
+function R.Insert(rule, parentPath, index, node)
+	local parent = R.NodeAt(rule, parentPath)
+	if not R.IsGroup(parent) or node == nil then return false end
+	local n = #parent.items
+	if index == nil then index = n + 1 end
+	if type(index) ~= 'number' or index < 1 or index > n + 1 then return false end
+	tinsert(parent.items, index, node)
+	return true
+end
+
+-- Takes the node at path out of its group and returns it; never the root.
+function R.Remove(rule, path)
+	if type(path) ~= 'table' or #path == 0 then return nil end
+	local parentPath, index = split(path)
+	local parent = R.NodeAt(rule, parentPath)
+	if not R.IsGroup(parent) or type(index) ~= 'number' or index < 1 or index > #parent.items then return nil end
+	return tremove(parent.items, index)
+end
+
+-- Moves the node at fromPath to index in the group at toParentPath, both
+-- read before the move (so a drop spot from R.DropAt works as it is). Refused
+-- for the root, a move into the node itself or its own subtree, and a move
+-- to where it already is (just before or just after itself).
+function R.Move(rule, fromPath, toParentPath, toIndex)
+	if type(fromPath) ~= 'table' or #fromPath == 0 or type(toParentPath) ~= 'table' then return false end
+	local fromParentPath, fromIndex = split(fromPath)
+	local fromParent = R.NodeAt(rule, fromParentPath)
+	if not R.IsGroup(fromParent) or type(fromIndex) ~= 'number' or fromIndex < 1 or fromIndex > #fromParent.items then
+		return false
+	end
+	if starts_with(toParentPath, fromPath) then return false end
+	local toParent = R.NodeAt(rule, toParentPath)
+	if not R.IsGroup(toParent) then return false end
+	if type(toIndex) ~= 'number' or toIndex < 1 or toIndex > #toParent.items + 1 then return false end
+	if toParent == fromParent and (toIndex == fromIndex or toIndex == fromIndex + 1) then return false end
+	-- The groups are held as tables, so taking the node out first can't shift them.
+	local node = tremove(fromParent.items, fromIndex)
+	if toParent == fromParent and toIndex > fromIndex then toIndex = toIndex - 1 end
+	tinsert(toParent.items, toIndex, node)
+	return true
+end
+
+-- AND to OR and back, for the group at path.
+function R.Flip(rule, path)
+	local node = R.NodeAt(rule, path)
+	if not R.IsGroup(node) then return false end
+	node.op = node.op == 'and' and 'or' or 'and'
+	return true
+end
+
+-- NOT on and off (negate true or nil) for the node at path; never the root.
+function R.ToggleNot(rule, path)
+	if type(path) ~= 'table' or #path == 0 then return false end
+	local node = R.NodeAt(rule, path)
+	if type(node) ~= 'table' then return false end
+	node.negate = node.negate ~= true or nil
+	return true
+end
+
+--[[
+	The outline: the rows the editor draws, in order. Each is
+	  { kind = 'block' | 'group' | 'add', path, depth, node, op }
+	A group inside the root has a title row (kind 'group', its path), then its
+	rows; every group, the root too, ends with an add row (its path, its node
+	the group). depth counts the groups between the root and the row (the
+	root's own rows are 0), and op is the operator of the group whose line the
+	row hangs off: the parent's for a block or a title, the group's own for an
+	add row. A node that isn't a readable group (R.IsGroup) is a block row
+	whatever it holds, so data this version can't read is a row the editor
+	can show and remove. A rule that isn't a readable group has no rows.
+]]
+function R.Outline(rule)
+	local rows = {}
+	if not R.IsGroup(rule) then return rows end
+	local function walk(group, path, depth)
+		for i = 1, #group.items do
+			local node = group.items[i]
+			local nodePath = copy_path(path)
+			nodePath[#nodePath + 1] = i
+			if R.IsGroup(node) then
+				rows[#rows + 1] = { kind = 'group', path = nodePath, depth = depth, node = node, op = group.op }
+				walk(node, nodePath, depth + 1)
+			else
+				rows[#rows + 1] = { kind = 'block', path = nodePath, depth = depth, node = node, op = group.op }
+			end
+		end
+		rows[#rows + 1] = { kind = 'add', path = copy_path(path), depth = depth, node = group, op = group.op }
+	end
+	walk(rule, {}, 0)
+	return rows
+end
+
+-- Where a node dropped over rows[i] goes: the group's path and the index in
+-- it (as R.Move takes them), or nil. lower is the row's lower half.
+--   - the upper half of a block or group title row: before it;
+--   - the lower half of a block row: after it;
+--   - the lower half of a group title row: first in that group;
+--   - an add row: at its group's end.
+function R.DropAt(rows, i, lower)
+	local row = rows[i]
+	if not row then return nil end
+	if row.kind == 'add' then return copy_path(row.path), #row.node.items + 1 end
+	if row.kind == 'group' and lower then return copy_path(row.path), 1 end
+	local parentPath, index = split(row.path)
+	if lower then index = index + 1 end
+	return parentPath, index
 end

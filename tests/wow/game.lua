@@ -28,6 +28,9 @@ stub = {
 	ctrl_down = false, -- IsControlKeyDown
 	alt_down = false, -- IsAltKeyDown
 	mouse_buttons = {}, -- IsMouseButtonDown: a set, e.g. stub.mouse_buttons.LeftButton = true
+	-- What the cursor holds, for GetCursorInfo: nil for nothing, or an item
+	-- picked up from a bag, { id, link }. ClearCursor drops it.
+	cursor_item = nil,
 	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
 	-- The player's experience: GetMaxPlayerLevel, UnitLevel('player'), UnitXP,
 	-- UnitXPMax and GetXPExhaustion (rested experience; nil for none).
@@ -81,6 +84,12 @@ function GetPhysicalScreenSize() return stub.screen_width, stub.screen_height en
 function InCombatLockdown() return stub.in_combat end
 function IsMouseButtonDown(button) return stub.mouse_buttons[button or 'LeftButton'] == true end
 function GetCursorPosition() return stub.cursor_x, stub.cursor_y end
+-- 'item', itemID, itemLink while the cursor holds an item; nothing otherwise.
+function GetCursorInfo()
+	local item = stub.cursor_item
+	if item then return 'item', item[1], item[2] end
+end
+function ClearCursor() stub.cursor_item = nil end
 function GetTime() return stub.time end
 -- C_Timer.After keeps its callback until stub.run_timers() runs it, once
 -- stub.time has reached its delay. Nothing runs by itself.
