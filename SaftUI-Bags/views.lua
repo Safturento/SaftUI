@@ -42,19 +42,15 @@ function INV:SectionFrameName(section)
 	return 'view:' .. section.key
 end
 
--- The order categories run in, as a number. Sets come first, then
--- INV.filters.categories in their order, then the names no rule has (the
--- reagent bank's subclasses, "Other"), then Miscellaneous, then Empty Slots.
--- Names that share a rank (sets, unknown names) go by name; see CategoryBefore.
-function INV:CategoryRank(name)
-	local rules = self.filters.categories
-	if name == self.EMPTY_SLOTS_CATEGORY then return #rules + 2 end
-	if name == 'Miscellaneous' then return #rules + 1 end
-	if name:sub(1, 5) == 'Set: ' then return 0 end
-	for i, category in ipairs(rules) do
-		if category.name == name then return i end
-	end
-	return #rules + 0.5
+-- The order categories run in, as a number: a key's place in the category
+-- list (INV:GetCategoryList), where a 'Set: ...' key is the sets entry's
+-- place. Any other key (a deleted category still on screen) runs just before
+-- Miscellaneous, and Empty Slots after the list. Keys that share a rank
+-- (sets, unknown keys) go by key; see CategoryBefore.
+function INV:CategoryRank(key)
+	local list = self:GetCategoryList()
+	if key == self.EMPTY_SLOTS_CATEGORY then return #list + 1 end
+	return self:CategoryPlace(key) or (list.byId[self.MISC_CATEGORY].place - 0.5)
 end
 
 -- Whether category a comes before category b: by rank, then by name.

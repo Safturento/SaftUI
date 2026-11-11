@@ -10,68 +10,6 @@ function INV:IsReagentBag(bagID)
 	return Enum.BagIndex ~= nil and Enum.BagIndex.ReagentBag ~= nil and bagID == Enum.BagIndex.ReagentBag
 end
 
-local upgradeQualities = {
-	Adventurer = 1,
-	Veteran = 2,
-	Champion = 3,
-	Hero = 4,
-	Myth = 5,
-}
-
---tests an item against all categories and returns the first one that meets the criteria.
---itemID,name,link,quality,ilvl,reqLevel,class,subclass,equipSlot,expacID,tooltipText
-function INV:GetItemCategory(info)
-	if st.retail and (info.class == 'Armor' or info.class == 'Weapon') then
-		local isItemInSet, itemSetList = C_Container.GetContainerItemEquipmentSetInfo(info.bagID, info.slotID)
-		if isItemInSet then
-			return 'Set: ' .. select(1, strsplit(',', itemSetList))
-		end
-	end
-
-	 --Reagent bag gets special categories
-	if info.bagID == REAGENTBANK_CONTAINER then
-		return info.subclass or "Other"
-	end
-
-	for i, category in ipairs(self.filters.categories) do
-		if category.func(info) then
-			return category.name
-		end
-	end
-
-	-- not all items will fit a category, place those items in Miscellaneous
-	return "Miscellaneous"
-end
-
---function INV:UpdateItemRackCategories()
---	if not ItemRackUser then return end
---	local categories = {}
---
---	for set_name, set_items in pairs(ItemRackUser.Sets) do
---		if not (set_name:sub(1,1) == '~') then
---			local category = {
---				name = 'ItemRack: '..set_name,
---				items = {},
---			}
---
---			for slot_id, item_link in pairs(set_items.equip) do
---				category.items['item:'..item_link] = true
---			end
---
---			category.func = function(itemID, name,link,quality,ilvl,reqLevel,class,subclass,equipSlot)
---				local item_string = string.match(link, "item[%-?%d:]+")
---				return category.items[item_string]
---			end
---
---			tinsert(categories, category)
---		end
---	end
---
---	self.filters.itemrack = categories
---
---	self:QueueUpdate()
---end
-
 function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
@@ -292,7 +230,8 @@ end
 --     item infos in slot order, after stacks are merged) and `free` (the free
 --     slot IDs, in order);
 --   numItems, numLoading;
---   categoryOf: item info -> its category name.
+--   categoryOf: item info -> its category key (INV:GetItemCategory), also
+--     on the info as `category`, with `categoryWhy`.
 -- groupOf(bagID) names the group a bag merges stacks in (when stackItems is
 -- on): the same item in two groups stays two slots. A stack merges into the
 -- first slot of its item in the group, which stays where it was. noMerge
@@ -324,9 +263,9 @@ function INV:ReadBags(id, groupOf, noMerge)
 					if merge and merged[mergeKey] and item.maxStack > 1 then
 						merged[mergeKey].count = merged[mergeKey].count + item.count
 					else
-						categoryOf[item] = self:GetItemCategory(item)
+						categoryOf[item], item.categoryWhy = self:GetItemCategory(item)
 						-- For the slot's junk coin (INV:IsAutoVendorItem), so it needn't
-						-- categorize again.
+						-- categorize again; categoryWhy says why it is there.
 						item.category = categoryOf[item]
 						tinsert(bag.items, item)
 						if merge and item.maxStack > 1 then
@@ -547,10 +486,15 @@ function INV:FlushCategories(container, sorted_inv)
 	end
 end
 
+-- Makes a window's category frames, out of combat: one per list category
+-- (INV:GetCategoryList; the sets entry's 'Set: ...' frames are made when an
+-- item first needs one), and the bag window's Empty Slots and Currencies.
 function INV:InitializeAllCategories(containerName)
-	for _,category in pairs(self.filters.categories) do
-		self:CreateCategory(containerName, category.name)
-		self:UpdateCategory(containerName, category.name, {})
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if entry.kind ~= 'sets' then
+			self:CreateCategory(containerName, entry.id)
+			self:UpdateCategory(containerName, entry.id, {})
+		end
 	end
 	if containerName == 'bag' then
 		-- Made now, out of combat, with its slot pool, even while the setting is

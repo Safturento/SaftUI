@@ -70,28 +70,44 @@ end
 
 -- Free slots in that world: backpack 15, bag 1 8; herb bag 10 or reagent bag 34.
 
-test('CategoryRank: sets, then the rules in order, then unknown names, Miscellaneous, then Empty Slots', function()
+test('CategoryRank follows the list: sets, then the list, then an unknown key, then Miscellaneous, then Empty Slots', function()
 	world()
-	local rules = INV.filters.categories
-	local n = #rules
-	local function place(name) for i, r in ipairs(rules) do if r.name == name then return i end end end
-	eq(INV:CategoryRank('Set: Alpha'), 0, 'a set')
-	eq(INV:CategoryRank('Set: Zed'), 0, 'every set shares rank 0')
-	eq(INV:CategoryRank(rules[1].name), 1, 'the first rule')
-	eq(INV:CategoryRank('Weapons'), place('Weapons'), 'a rule is its place in the rules')
-	eq(INV:CategoryRank('Herb'), n + 0.5, 'a name the rules lack (a reagent bank subclass)')
-	eq(INV:CategoryRank('Other'), n + 0.5, 'Other likewise')
-	eq(INV:CategoryRank('Miscellaneous'), n + 1, 'Miscellaneous')
-	eq(INV:CategoryRank(INV.EMPTY_SLOTS_CATEGORY), n + 2, 'Empty Slots')
+	local list = INV:GetCategoryList()
+	local n = #list
+	eq(list[1].id, 'Equipment sets', 'the sets entry is first by default')
+	eq(INV:CategoryRank('Set: Alpha'), 1, "a set ranks as the sets entry")
+	eq(INV:CategoryRank('Set: Zed'), 1, 'every set shares its rank')
+	eq(INV:CategoryRank('Grays/Auto Vendor'), 2, 'the first rule')
+	eq(INV:CategoryRank('Weapons'), list.byId.Weapons.place, 'a category is its place in the list')
+	eq(INV:CategoryRank('Miscellaneous'), n, 'Miscellaneous, last')
+	eq(INV:CategoryRank('Herb'), n - 0.5, 'a key the list lacks (a deleted category still on screen): before Miscellaneous')
+	eq(INV:CategoryRank('Other'), n - 0.5, 'Other likewise')
+	eq(INV:CategoryRank(INV.EMPTY_SLOTS_CATEGORY), n + 1, 'Empty Slots, after the list')
 
-	local function order(list)
-		table.sort(list, function(a, b) return INV:CategoryBefore(a, b) end)
-		return table.concat(list, ' | ')
+	local function order(keys)
+		table.sort(keys, function(a, b) return INV:CategoryBefore(a, b) end)
+		return table.concat(keys, ' | ')
 	end
 	eq(order({ 'Empty Slots', 'Miscellaneous', 'Herb', 'Weapons', 'Set: Zed', 'Consumables', 'Set: Alpha', 'Armor' }),
 		'Set: Alpha | Set: Zed | Consumables | Armor | Weapons | Herb | Miscellaneous | Empty Slots',
-		'sets by name, the rules in order, unknown names, Miscellaneous, Empty Slots')
-	eq(order({ 'Other', 'Herb' }), 'Herb | Other', 'unknown names by name')
+		'sets by name, the list in order, unknown keys, Miscellaneous, Empty Slots')
+	eq(order({ 'Other', 'Herb' }), 'Herb | Other', 'unknown keys by name')
+
+	-- A saved order: Weapons first, the sets entry after Armor. Ranks follow it.
+	local ids = {}
+	for _, entry in ipairs(list) do
+		if entry.id ~= 'Weapons' and entry.id ~= 'Equipment sets' then ids[#ids + 1] = entry.id end
+		if entry.id == 'Armor' then ids[#ids + 1] = 'Equipment sets' end
+	end
+	table.insert(ids, 1, 'Weapons')
+	INV:CategoryStore().order = ids
+	INV:CategoryStore().edits.Armor = { name = 'Gear' }
+	INV:CategoriesChanged()
+	eq(INV:CategoryRank('Weapons'), 1, 'moved first, Weapons ranks first')
+	eq(INV:CategoryRank('Set: Alpha'), INV:CategoryRank('Armor') + 1, 'a set ranks where the sets entry is now')
+	eq(order({ 'Set: Alpha', 'Armor', 'Weapons', 'Consumables', 'Miscellaneous' }),
+		'Weapons | Consumables | Armor | Set: Alpha | Miscellaneous', 'the order follows')
+	eq(INV:CategoryRank('Armor'), INV:GetCategoryList().byId.Armor.place, 'a renamed category keeps its key and rank')
 end)
 
 test('SortByPriority: category priority, then the item sort, empty slots last', function()

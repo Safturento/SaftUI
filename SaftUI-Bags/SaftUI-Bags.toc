@@ -9,7 +9,8 @@ inventory.lua
 itemclasses.lua
 rules.lua
 currencies.lua
-filters.lua
+categorydefaults.lua
+categories.lua
 tooltipscanner.lua
 category.lua
 views.lua

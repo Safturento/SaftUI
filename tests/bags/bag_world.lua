@@ -2,8 +2,9 @@
 -- the module's real files. Not a test (no _test suffix), so the runner doesn't
 -- run it; load it with load_test_file('bags/bag_world.lua').
 --
--- Real: SaftUI-Bags' config.lua, inventory.lua, filters.lua (the category
--- rules), category.lua, slot.lua, views.lua and tooltipscanner.lua.
+-- Real: SaftUI-Bags' config.lua, inventory.lua, itemclasses.lua, rules.lua,
+-- categorydefaults.lua and categories.lua (the categories and their rules),
+-- tooltipscanner.lua, category.lua, slot.lua and views.lua.
 --
 -- Made by hand, for Blizzard API the stubs don't have, each as far as the real
 -- code under test reads it:
@@ -48,7 +49,8 @@ function W.fresh(client)
 	-- slot.lua post-hooks Blizzard's stack split button at load; it is also where
 	-- the Grays rule's INV:IsProtected lives.
 	_G.StackSplitFrameOkay_Click = function() end
-	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'tooltipscanner', 'filters', 'category', 'slot', 'views' }) do
+	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'categorydefaults', 'categories', 'tooltipscanner', 'category',
+		'slot', 'views' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	local INV = SaftUI:GetModule('Inventory')
