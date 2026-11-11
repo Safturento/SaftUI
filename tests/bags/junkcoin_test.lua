@@ -64,3 +64,19 @@ for _, view in ipairs(VIEWS) do
 		eq(#take_errors(), 0, 'no errors')
 	end)
 end
+
+-- The coin reads the category the data step already worked out (info.category,
+-- set by INV:ReadBags), so a full update categorizes each item once.
+for _, view in ipairs({ 'compact', 'multibag' }) do
+	test(view .. ': one full layout asks for each item\'s category once', function()
+		world(view)
+		INV.config.stackItems = false
+		local calls = 0
+		local real = INV.GetItemCategory
+		INV.GetItemCategory = function(self, info) calls = calls + 1 return real(self, info) end
+		INV:UpdateContainer('bag', true)
+		INV.GetItemCategory = real
+		eq(calls, 6, 'once for each of the six items in the bags')
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end

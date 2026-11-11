@@ -311,6 +311,9 @@ function INV:ReadBags(id, groupOf, noMerge)
 						merged[mergeKey].count = merged[mergeKey].count + item.count
 					else
 						categoryOf[item] = self:GetItemCategory(item)
+						-- For the slot's junk coin (INV:IsAutoVendorItem), so it needn't
+						-- categorize again.
+						item.category = categoryOf[item]
 						tinsert(bag.items, item)
 						if merge and item.maxStack > 1 then
 							merged[mergeKey] = item

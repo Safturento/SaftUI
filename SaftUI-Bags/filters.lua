@@ -145,11 +145,12 @@ end
 -- Whether auto vendor sells an item: its category is one of the auto vendor
 -- ones, it has a vendor price, and it isn't protected. The slot's junk coin and
 -- INV:GetVendorItems both ask this, so they never disagree. category is the
--- item's INV:GetItemCategory, when the caller has it already.
+-- item's category, when the caller has it already; else info.category (set by
+-- INV:ReadBags), else INV:GetItemCategory.
 function INV:IsAutoVendorItem(info, category)
 	if not info or info.empty or not (info.vendorPrice and info.vendorPrice > 0) then return false end
 	if self:IsProtected(info.itemID) then return false end
-	category = category or self:GetItemCategory(info)
+	category = category or info.category or self:GetItemCategory(info)
 	for _, name in ipairs(self.AUTO_VENDOR_CATEGORIES) do
 		if name == category then return true end
 	end
