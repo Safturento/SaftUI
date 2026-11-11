@@ -87,6 +87,8 @@ return {
 		['_Minimal_SliderBar_Middle'] = { 1, 17, 'h' },
 		['Minimal_SliderBar_Right'] = { 11, 17 },
 		['Minimal_SliderBar_Button'] = { 20, 19 },
+		['Minimal_SliderBar_Button_Left'] = { 11, 19 },
+		['Minimal_SliderBar_Button_Right'] = { 9, 18 },
 		-- Controls: the text box
 		['auctionhouse-ui-inputfield-left'] = { 8, 33 },
 		['auctionhouse-ui-inputfield-middle'] = { 178, 33 },
@@ -227,6 +229,8 @@ return {
 		['_Minimal_SliderBar_Middle'] = { 1, 17, 'h' },
 		['Minimal_SliderBar_Right'] = { 11, 17 },
 		['Minimal_SliderBar_Button'] = { 20, 19 },
+		['Minimal_SliderBar_Button_Left'] = { 11, 19 },
+		['Minimal_SliderBar_Button_Right'] = { 9, 18 },
 		-- Controls: the text box
 		['auctionhouse-ui-inputfield-left'] = { 8, 33 },
 		['auctionhouse-ui-inputfield-middle'] = { 178, 33 },

@@ -331,13 +331,17 @@ ThemeArt.ART = {
 		},
 	},
 
-	-- The slider (MinimalSliderTemplate): the track's ends and its middle,
-	-- tiled across, and the thumb.
+	-- The slider (MinimalSliderWithSteppersTemplate): the track's ends and its
+	-- middle, tiled across, the thumb, and the end arrows (back and forward),
+	-- each arrowGap from the track.
 	slider = {
 		left = Atlas('Minimal_SliderBar_Left'),
 		middle = Atlas('_Minimal_SliderBar_Middle'),
 		right = Atlas('Minimal_SliderBar_Right'),
 		thumb = Atlas('Minimal_SliderBar_Button'),
+		back = Atlas('Minimal_SliderBar_Button_Left'),
+		forward = Atlas('Minimal_SliderBar_Button_Right'),
+		arrowGap = 4,
 	},
 
 	-- A text box (InputBoxTemplate).

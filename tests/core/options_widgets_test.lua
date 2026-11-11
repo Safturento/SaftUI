@@ -2641,7 +2641,7 @@ test('a range is a minimal slider with an input-art value box', function()
 		if region ~= knob then check(inside(region, w.slider), tostring(region:GetAtlas()) .. ' inside the slider') end
 	end
 	eq(size_of(w.frame), '168x24', 'the range keeps its size')
-	eq(size_of(w.slider), '116x24', 'and its slider')
+	eq(size_of(w.slider), '88x24', 'and its slider, narrowed for the arrows')
 	check_no_box(w.edit, 'the value box')
 	eq(atlases_of(w.edit), INPUT_ART, 'the value box is a text box')
 	art_inside(w.edit, 'the value box')
@@ -2656,6 +2656,86 @@ test('a range is a minimal slider with an input-art value box', function()
 	check_box(w.edit, 'Thick again: the value box')
 	eq(atlases_of(w.edit), '', 'Thick again: no art on the value box')
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A button's first texture's atlas, and whether it's desaturated.
+local function arrow_texture(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' then return region end
+	end
+end
+local function atlas_of(button) return arrow_texture(button):GetAtlas() end
+
+test("under Blizzard a range has the minimal slider's end arrows inside its 116", function()
+	theme('thick')
+	local w = bind('range', 'size', opt('range', 'Size', {
+		min = 0, max = 10, step = 1, get = function() return 5 end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local names = { [w.frame] = 'frame', [w.slider] = 'slider' }
+	check(not w.backArrow:IsShown() and not w.forwardArrow:IsShown(), 'Thick: no arrows')
+	eq(w.backArrow:GetParent(), w.frame); eq(w.forwardArrow:GetParent(), w.frame)
+	theme('blizzard'); rebind(w)
+	check(w.backArrow:IsShown() and w.forwardArrow:IsShown())
+	eq(atlas_of(w.backArrow), 'Minimal_SliderBar_Button_Left'); eq(size_of(w.backArrow), '11x19'); eq(anchor(w.backArrow, names), 'TOPLEFT frame TOPLEFT 0,-2')
+	eq(anchor(w.slider, names), 'LEFT frame LEFT 15,0'); eq(size_of(w.slider), '88x24')
+	eq(atlas_of(w.forwardArrow), 'Minimal_SliderBar_Button_Right'); eq(size_of(w.forwardArrow), '9x18'); eq(anchor(w.forwardArrow, names), 'TOPLEFT frame TOPLEFT 107,-3')
+	eq(size_of(w.frame), '168x24'); eq(size_of(w.edit), '46x24')
+	theme('thick'); rebind(w)
+	check(not w.backArrow:IsShown() and not w.forwardArrow:IsShown(), 'Thick again: no arrows')
+	eq(size_of(w.slider), '116x24'); eq(anchor(w.slider, names), 'LEFT frame LEFT 0,0')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a slider arrow steps by the option's step through the same path as a drag, clamped, disabled at the ends", function()
+	theme('blizzard')
+	local w, told, sets, get = range({ value = 5, min = 0, max = 10, step = 1 })
+	click(w.forwardArrow)
+	eq(get(), 6); eq(#sets, 1); eq(told.n, 1, 'the window is told once, as a drag is')
+	click(w.backArrow); eq(get(), 5)
+	check(w.forwardArrow:IsEnabled() and w.backArrow:IsEnabled())
+	check(not arrow_texture(w.backArrow):IsDesaturated(), 'enabled: in colour')
+	type_into(w.edit, '10')
+	check(not w.forwardArrow:IsEnabled(), 'at the top, forward is disabled'); check(w.backArrow:IsEnabled())
+	check(arrow_texture(w.forwardArrow):IsDesaturated(), 'a disabled arrow is desaturated')
+	check(not arrow_texture(w.backArrow):IsDesaturated())
+	click(w.forwardArrow); eq(get(), 10, 'no step past the end')
+	type_into(w.edit, '0')
+	check(not w.backArrow:IsEnabled(), 'at the bottom, back is disabled'); check(w.forwardArrow:IsEnabled())
+	check(not arrow_texture(w.forwardArrow):IsDesaturated(), 'enabled again: in colour')
+	w:SetDisabled(true)
+	check(not w.forwardArrow:IsEnabled() and not w.backArrow:IsEnabled(), 'a disabled range has both off')
+	w:SetDisabled(false)
+	check(w.forwardArrow:IsEnabled() and not w.backArrow:IsEnabled())
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('slider arrow edge cases', function()
+	theme('blizzard')
+	-- A percent: 0.5 and 0.05 make 0.55, shown as 55%.
+	local p, _, _, pget = range({ value = 0.5, min = 0, max = 1, step = 0.05, isPercent = true })
+	click(p.forwardArrow); eq(pget(), 0.55); eq(p.edit:GetText(), '55%')
+	p:Release()
+	-- No step and no bigStep: a hundredth of the span.
+	local h, _, _, hget = range({ value = 100, softMin = 0, softMax = 200 })
+	click(h.forwardArrow); eq(hget(), 102)
+	h:Release()
+	-- A soft max under the hard one: forward is off past it, back lands on it.
+	local s, _, _, sget = range({ value = 50, min = 0, max = 100, softMax = 10, step = 1 })
+	check(not s.forwardArrow:IsEnabled(), 'at or past the slider end')
+	click(s.backArrow); eq(sget(), 10)
+	s:Release()
+	-- A bigStep is for the drag; an arrow moves by step.
+	local b, _, _, bget = range({ value = 5, min = 0, max = 10, step = 1, bigStep = 5 })
+	click(b.forwardArrow); eq(bget(), 6)
+	b:Release()
+	-- No value: the arrows read from the slider's low end.
+	local n = range({ value = nil, min = 0, max = 10, step = 1 })
+	check(not n.backArrow:IsEnabled() and n.forwardArrow:IsEnabled())
+	n:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
 

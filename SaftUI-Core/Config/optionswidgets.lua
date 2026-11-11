@@ -1240,6 +1240,31 @@ local function LookRange(w, blizzard)
 			knob:SetVertexColor(Colors().text.normal:GetRGB())
 		end
 	end
+	-- The slider between the arrows (Blizzard), else across the whole 116.
+	local look = blizzard and st.ThemeArt.Control('slider')
+	w.slider:ClearAllPoints()
+	if blizzard then
+		local backWidth, backHeight = AtlasSize(look.back)
+		local forwardWidth, forwardHeight = AtlasSize(look.forward)
+		local left = (backWidth or 0) + look.arrowGap
+		local width = TRACK_WIDTH - left - look.arrowGap - (forwardWidth or 0)
+		w.slider:SetPoint('LEFT', w.frame, 'LEFT', left, 0)
+		w.slider:SetSize(width, FIELD_HEIGHT)
+		for _, arrow in ipairs({ { w.backArrow, look.back, 0 }, { w.forwardArrow, look.forward, left + width + look.arrowGap } }) do
+			local button, atlas, x = arrow[1], arrow[2], arrow[3]
+			local aw, ah = AtlasSize(atlas)
+			button:SetSize(aw or 0, ah or 0)
+			button:ClearAllPoints()
+			-- Each arrow's top is centred in the row, rounded down on whole pixels.
+			button:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', x, -floor((FIELD_HEIGHT - (ah or 0)) / 2))
+			button.texture:SetAtlas(atlas)
+		end
+	else
+		w.slider:SetPoint('LEFT', w.frame, 'LEFT', 0, 0)
+		w.slider:SetSize(TRACK_WIDTH, FIELD_HEIGHT)
+	end
+	w.backArrow:SetShown(blizzard)
+	w.forwardArrow:SetShown(blizzard)
 	LookInput(w.edit, blizzard, FIELD_HEIGHT)
 end
 
@@ -1289,6 +1314,18 @@ builders.range = function(w)
 	knob:SetSize(KNOB_WIDTH, KNOB_HEIGHT)
 	knob:SetVertexColor(Colors().text.normal:GetRGB())
 
+	-- The end arrows, hidden until Blizzard's look (LookRange): each a button
+	-- of the frame's with its art as a texture, in colour while it can step
+	-- and desaturated while it can't (RangeArrows).
+	for key, direction in pairs({ backArrow = -1, forwardArrow = 1 }) do
+		local arrow = CreateFrame('Button', nil, frame)
+		arrow.texture = arrow:CreateTexture(nil, 'ARTWORK')
+		arrow.texture:SetAllPoints(arrow)
+		arrow:Hide()
+		arrow:SetScript('OnClick', function() w:StepBy(direction) end)
+		w[key] = arrow
+	end
+
 	local edit = Box(st:CreateFrame('EditBox', nil, frame))
 	edit:SetSize(VALUE_WIDTH, FIELD_HEIGHT)
 	edit:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
@@ -1334,6 +1371,20 @@ builders.range = function(w)
 	end)
 end
 
+-- Enables the end arrows: each while there's room to step that way from the
+-- shown value (the value, else the slider's low end) and the range isn't
+-- disabled; a disabled one is desaturated.
+local function RangeArrows(w)
+	if not w.softMin then return end
+	local shown = w.value or w.softMin
+	local back = not w.disabled and shown > w.softMin
+	local forward = not w.disabled and shown < w.softMax
+	w.backArrow:SetEnabled(back)
+	w.forwardArrow:SetEnabled(forward)
+	w.backArrow.texture:SetDesaturated(not back)
+	w.forwardArrow.texture:SetDesaturated(not forward)
+end
+
 define('range', {
 	Bind = function(self, ...)
 		LookRange(self, BlizzardLook())
@@ -1370,6 +1421,20 @@ define('range', {
 		self:Commit(value)
 	end,
 
+	-- An arrow's click: a step back (-1) or forward (1) from the shown value,
+	-- by step, else bigStep, else a hundredth of the span, snapped on
+	-- softMin's grid of that step, held to the slider's ends, then cut to min
+	-- and max. It commits as a drag does, and only a changed value.
+	StepBy = function(self, direction)
+		if not self.row or self.disabled then return end
+		local by = self.step > 0 and self.step or self.dragStep > 0 and self.dragStep or (self.softMax - self.softMin) / 100
+		if by <= 0 then return end
+		local value = Snap((self.value or self.softMin) + direction * by, self.softMin, by)
+		value = self:Cut(max(self.softMin, min(self.softMax, value)))
+		if value == self.value then return end
+		self:Commit(value)
+	end,
+
 	-- A number typed in the box: cut to the slider's ends first, then snapped
 	-- to step and cut to min and max.
 	Typed = function(self, number)
@@ -1394,9 +1459,11 @@ define('range', {
 		local fraction = span > 0 and max(0, min(1, (shown - self.softMin) / span)) or 0
 		self.fill:SetWidth(max(1, (TRACK_WIDTH - 2) * fraction))
 		self.edit:SetText(self.value and (Shown(self.value, self.percent) .. (self.percent and '%' or '')) or '')
+		RangeArrows(self)
 	end,
 
 	OnDisabled = function(self, disabled)
+		RangeArrows(self)
 		self.slider:EnableMouse(not disabled)
 		self.edit:EnableMouse(not disabled)
 		if disabled then self.edit:ClearFocus() end
