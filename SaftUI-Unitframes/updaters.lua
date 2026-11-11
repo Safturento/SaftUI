@@ -147,18 +147,20 @@ end
 
 -- Sets a bar's colorTapping and colorReaction (health and power) from its
 -- config. oUF registers their recolor event (UNIT_FACTION) in the bar's Enable,
--- and only if a flag is on then. Once oUF has enabled the bar it has given it
--- setters, which set the flag and, forced, register or unregister the event to
--- match. Before that they're plain fields, which Enable reads.
+-- and only if a flag is on then. While oUF has the bar enabled and running it
+-- has given it setters, which set the flag and, forced, register or unregister
+-- the event to match. Otherwise they're plain fields, which the next Enable
+-- reads: before oUF enables the bar, and while it's disabled or paused (a plate
+-- showing only widgets, nameplates.lua), where a setter would register the
+-- event on a bar that's off.
 function UF.SetFactionColorFlags(bar, config)
-    if bar.SetColorTapping then
+    local owner = bar.__owner
+    if owner and bar.SetColorTapping and bar.SetColorReaction
+            and owner:IsElementEnabled(bar.name) and not owner:IsElementPaused(bar.name) then
         bar:SetColorTapping(config.colorTapping, true)
-    else
-        bar.colorTapping = config.colorTapping
-    end
-    if bar.SetColorReaction then
         bar:SetColorReaction(config.colorReaction, true)
     else
+        bar.colorTapping = config.colorTapping
         bar.colorReaction = config.colorReaction
     end
 end

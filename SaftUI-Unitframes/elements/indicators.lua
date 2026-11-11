@@ -49,7 +49,11 @@ local indicators = {
        end,
        debug = function(self)
            self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
-       end
+       end,
+       -- A role means nothing on a nameplate.
+       validUnit = function(unit)
+           return unit ~= 'nameplate'
+       end,
     },
     {
         configKey = 'raidroleindicator',
@@ -57,6 +61,10 @@ local indicators = {
         label = 'Raid role',
         order = 10,
         desc = 'The main tank or main assist icon, in a raid.',
+        -- Not on nameplates, as the group role isn't.
+        validUnit = function(unit)
+            return unit ~= 'nameplate'
+        end,
         debug = function(self)
             self:SetTexture([[Interface\GROUPFRAME\UI-GROUP-MAINASSISTICON]])
         end
