@@ -1608,6 +1608,15 @@ test("/sui's frames where they sit today, under Thick and Thin", function()
 		eq(at(F.body), '238,113 774x539', name)
 		eq(at(F.reloadButton:GetParent()), '210,652 828x46', name)
 		eq(fills(side), '0.09,0.09,0.09,1.00 2,2 208x696\n0.18,0.18,0.18,1.00 209,2 1x696', name .. ': the fill and edge')
+		-- A group header's rect and where its text sits in it.
+		local header
+		for _, entry in ipairs(F.nav) do
+			if entry.group then header = entry break end
+		end
+		check(header, name .. ': a group header')
+		eq(('%dx%d'):format(header:GetWidth(), header:GetHeight()), '207x29', name .. ': a group header')
+		local _, _, _, tx, ty = header.text:GetPoint(1)
+		eq(('%d,%d'):format(tx, ty), '18,-12', name .. ': a group header text')
 		st.Config:Close()
 	end
 	eq(#take_errors(), 0, 'no errors')
