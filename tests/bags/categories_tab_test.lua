@@ -898,6 +898,43 @@ test("an item's tooltip opens beside the window, out of it, level with the icon'
 	st.Config:Close()
 end)
 
+test("under Blizzard an item's tooltip sits 4 out from the metal, which reaches past the window's edges", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		world(client)
+		INV.categoryEditor.selected = SELL
+		st.config.profile.theme.name = 'blizzard'
+		st:ThemeChanged()
+		open()
+		local window = OW.GetFrames().window
+		local reachLeft, reachRight = st.ThemeArt.MetalReach()
+		eq(reachLeft .. ',' .. reachRight, client == 'forever' and '8,2' or '8,4', client .. ': the metal past the left and right edges')
+		GameTooltip:SetSize(300, 200)
+		local icon = icons(tab():EditorCell('caught').widget)[1]
+		stub.fire_script(icon, 'OnEnter')
+		eq(GameTooltip:GetLeft(), window:GetRight() + reachRight + 4, client .. ": on the right: 4 right of the metal's edge")
+		eq(GameTooltip:GetTop(), icon:GetTop(), client .. ": level with the icon's top")
+		stub.fire_script(icon, 'OnLeave')
+		window:ClearAllPoints()
+		window:SetPoint('RIGHT', UIParent, 'RIGHT', -20, 0)
+		stub.fire_script(icon, 'OnEnter')
+		eq(GameTooltip:GetRight(), window:GetLeft() - reachLeft - 4, client .. ": on the left: 4 left of the metal's edge")
+		stub.fire_script(icon, 'OnLeave')
+
+		-- Under Thick, 4 from the window's own edges again.
+		st.config.profile.theme.name = 'thick'
+		st:ThemeChanged()
+		tick()
+		window:ClearAllPoints()
+		window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+		icon = icons(tab():EditorCell('caught').widget)[1]
+		stub.fire_script(icon, 'OnEnter')
+		eq(GameTooltip:GetLeft(), window:GetRight() + 4, client .. ': Thick: 4 right of the window')
+		stub.fire_script(icon, 'OnLeave')
+		eq(#take_errors(), 0, client .. ': no errors')
+		st.Config:Close()
+	end
+end)
+
 test('pinned items show, and the X unpins one', function()
 	world()
 	INV:PinItem(301, 'Consumables') -- the plank, in the bags

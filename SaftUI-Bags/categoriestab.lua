@@ -990,9 +990,18 @@ local function WindowOf(frame)
 	return frame
 end
 
--- The tooltip beside icon's window, out of it, its top level with the
--- icon's: on the window's right, or on its left when the screen has no room
--- for it on the right (and the left has more). Placed in screen pixels from
+-- How far an item tooltip sits out from the window's left and right edges:
+-- TIP_GAP, and under Blizzard past the metal too, which reaches out past
+-- the window's edges (ThemeArt.MetalReach).
+local function TipGaps()
+	if not W.BlizzardLook() then return TIP_GAP, TIP_GAP end
+	local left, right = st.ThemeArt.MetalReach()
+	return TIP_GAP + left, TIP_GAP + right
+end
+
+-- The tooltip beside icon's window, out of it (TipGaps), its top level with
+-- the icon's: on the window's right, or on its left when the screen has no
+-- room for it on the right (and the left has more). Placed in screen pixels from
 -- UIParent's corner, as the drag's ghost is, so the tooltip's own scale
 -- doesn't matter. Read once it's shown, when its size is its content's.
 -- When an edge or the width can't be read (a secret width), it goes at the
@@ -1010,11 +1019,12 @@ local function PlaceTip(icon)
 	local ws, ts = window:GetEffectiveScale(), GameTooltip:GetEffectiveScale()
 	left, right, top, screen = left * ws, right * ws, top * icon:GetEffectiveScale(), screen * UIParent:GetEffectiveScale()
 	width = (width or 0) * ts
-	local gap = TIP_GAP * ws
-	if right + gap + width <= screen or screen - right >= left then
-		GameTooltip:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', floor((right + gap) / ts + 0.5), floor(top / ts + 0.5))
+	local leftGap, rightGap = TipGaps()
+	leftGap, rightGap = leftGap * ws, rightGap * ws
+	if right + rightGap + width <= screen or screen - right >= left then
+		GameTooltip:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', floor((right + rightGap) / ts + 0.5), floor(top / ts + 0.5))
 	else
-		GameTooltip:SetPoint('TOPRIGHT', UIParent, 'BOTTOMLEFT', floor((left - gap) / ts + 0.5), floor(top / ts + 0.5))
+		GameTooltip:SetPoint('TOPRIGHT', UIParent, 'BOTTOMLEFT', floor((left - leftGap) / ts + 0.5), floor(top / ts + 0.5))
 	end
 end
 
