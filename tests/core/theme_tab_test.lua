@@ -66,21 +66,97 @@ test('its rows, in order, with descs', function()
 	local names, types = {}, {}
 	for i, r in ipairs(rows) do
 		names[i], types[i] = r.v.name, r.v.type
-		check(type(r.v.desc) == 'string' and r.v.desc ~= '', r.v.name .. ' has a desc')
+		local desc = type(r.v.desc) == 'function' and r.v.desc() or r.v.desc
+		check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc')
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Background,Transparent background,Opacity,Reset')
-	eq(table.concat(types, ','), 'select,color,color,color,toggle,range,execute')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Transparent background,Opacity,Reset')
+	eq(table.concat(types, ','), 'select,color,color,color,color,toggle,range,execute')
 
-	local theme, opacity, reset = rows[1].v, rows[6].v, rows[7].v
+	local theme, opacity, reset = rows[1].v, rows[7].v, rows[8].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')
+	eq(theme.values.blizzard, 'Blizzard')
 	eq(theme.values.none, nil, 'None is a module override, not a theme to choose')
 	check(opacity.isPercent, 'Opacity shows as a percent')
 	eq(opacity.min, 0); eq(opacity.max, 1)
 	check(reset.confirm, 'Reset asks first')
-	for i = 2, 4 do
+	for i = 2, 5 do
 		eq(rows[i].v.hasAlpha, nil, rows[i].v.name .. ' has no opacity slider')
 	end
+end)
+
+test('the Theme tab offers Thick, Thin and Blizzard, in that order', function()
+	local theme = Tab().args.theme
+	eq(table.concat(theme.sorting, ','), 'thick,thin,blizzard')
+	eq(theme.values.thick .. theme.values.thin .. theme.values.blizzard, 'ThickThinBlizzard')
+end)
+
+test("under Blizzard, Window background shows and Outer border hides, and the color rows say what they color there", function()
+	local function Descs()
+		local _, border = Row('border')
+		local _, back = Row('background')
+		local _, window = Row('windowcolor')
+		return border.desc, back.desc, window and window.desc
+	end
+	st.config.profile.theme.name = 'thick'
+	eq(Row('windowcolor'), nil, 'hidden for Thick')
+	local thickBorder, thickBack = Descs()
+	st.config.profile.theme.name = 'thin'
+	eq(Row('windowcolor'), nil, 'hidden for Thin')
+
+	Set('theme', 'blizzard')
+	check(Row('windowcolor'), 'shown for Blizzard')
+	eq(Row('outer'), nil, 'Outer border hidden')
+	check(Row('border') and Row('background'), 'Border and Background stay')
+	local border, back, window = Descs()
+	check(border ~= thickBorder, "Border's desc differs from Thick's")
+	check(back ~= thickBack, "Background's desc differs from Thick's")
+	check(window and window ~= back, "Window background has its own desc")
+
+	local log, restore = {}, {}
+	restore[1] = Spy(st, 'RecolorThemed', log)
+	restore[2] = Spy(st.Config, 'UpdateConfig', log)
+	local arr = st.config.profile.templates.blizzard.windowcolor
+	local alpha = arr[4]
+	Set('windowcolor', 0.2, 0.3, 0.4)
+	for _, r in ipairs(restore) do r() end
+	eq(table.concat(log, ','), 'RecolorThemed', 'recolors, no config update')
+	check(st.config.profile.templates.blizzard.windowcolor == arr, 'the same array')
+	eq(Rgb(arr), '0.2,0.3,0.4'); eq(arr[4], alpha, 'its alpha stays')
+	eq(table.concat({ Get('windowcolor') }, ','), '0.2,0.3,0.4')
+	Set('theme', 'thick')
+end)
+
+test('each theme keeps its own colors, Blizzard too', function()
+	Set('theme', 'thick')
+	Set('border', 0.61, 0.62, 0.63)
+	Set('theme', 'blizzard')
+	Set('border', 0.71, 0.72, 0.73)
+	eq(Rgb(st.config.profile.templates.blizzard.bordercolor), '0.71,0.72,0.73')
+	Set('theme', 'thick')
+	eq(Rgb({ Get('border') }), '0.61,0.62,0.63', "Thick's is the one set")
+	eq(Rgb(st.config.profile.templates.thick.bordercolor), '0.61,0.62,0.63')
+	Set('theme', 'blizzard')
+	eq(Rgb({ Get('border') }), '0.71,0.72,0.73', "and Blizzard's is its own")
+	Set('theme', 'thick')
+end)
+
+test("Reset under Blizzard restores Blizzard's colors, windowcolor among them, and the transparency", function()
+	Set('theme', 'blizzard')
+	for _, key in ipairs({ 'border', 'windowcolor', 'background' }) do Set(key, 0.9, 0.9, 0.9) end
+	Set('transparent', false)
+	Set('opacity', 0.2)
+	local root, row = Row('reset')
+	eq(OM.Confirm(root, row), "Reset the Blizzard theme to SaftUI's defaults?")
+	OM.Set(root, row)
+	local d, p = st.defaults.templates.blizzard, st.config.profile.templates.blizzard
+	for _, key in ipairs({ 'bordercolor', 'altbordercolor', 'backdropcolor', 'windowcolor' }) do
+		eq(table.concat(p[key], ','), table.concat(d[key], ','), 'Blizzard ' .. key)
+	end
+	eq(st.config.profile.theme.transparent, st.defaults.theme.transparent)
+	eq(st.config.profile.theme.opacity, st.defaults.theme.opacity)
+	eq(st.config.profile.theme.name, 'blizzard', 'the theme itself stays')
+	Set('theme', 'thick')
 end)
 
 test('Outer border shows only for Thick', function()

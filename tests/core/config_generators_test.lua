@@ -194,3 +194,11 @@ test('the other generators take desc and size, and carry no Ace width', function
 		eq(option.width, nil, name .. ' has no Ace width')
 	end
 end)
+
+test("the Theme builder offers Use SaftUI's theme, Thick, Thin, Blizzard and None, in that order", function()
+	local o = generators.theme(3, 'Which frames.')
+	eq(table.concat(o.sorting, ','), 'theme,thick,thin,blizzard,none')
+	eq(o.values.blizzard, 'Blizzard')
+	eq(o.values.theme, "Use SaftUI's theme")
+	eq(o.values.none, 'None')
+end)

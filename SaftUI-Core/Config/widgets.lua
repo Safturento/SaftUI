@@ -322,7 +322,7 @@ end
 -- the frames the option governs. A profile key of either holds the value; its
 -- default is 'theme', which follows SaftUI's.
 local THEME_VALUES = {
-	{ 'theme', "Use SaftUI's theme" }, { 'thick', 'Thick' }, { 'thin', 'Thin' }, { 'none', 'None' },
+	{ 'theme', "Use SaftUI's theme" }, { 'thick', 'Thick' }, { 'thin', 'Thin' }, { 'blizzard', 'Blizzard' }, { 'none', 'None' },
 }
 local BACKGROUND_VALUES = {
 	{ 'theme', "Use SaftUI's theme" }, { 'solid', 'Solid' }, { 'transparent', 'Transparent' },

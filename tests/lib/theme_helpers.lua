@@ -173,7 +173,7 @@ function T.check_options(group, where)
 	if not (theme and background) then return end
 	eq(theme.type .. ':' .. theme.name, "select:Theme", where .. ': Theme is a select')
 	eq(background.type .. ':' .. background.name, 'select:Background', where .. ': Background is a select')
-	eq(Values(theme), "theme:Use SaftUI's theme,thick:Thick,thin:Thin,none:None", where .. ": Theme's choices")
+	eq(Values(theme), "theme:Use SaftUI's theme,thick:Thick,thin:Thin,blizzard:Blizzard,none:None", where .. ": Theme's choices")
 	eq(Values(background), "theme:Use SaftUI's theme,solid:Solid,transparent:Transparent", where .. ": Background's choices")
 	check(background.order > theme.order, where .. ': Background follows Theme')
 	for _, option in ipairs({ theme, background }) do

@@ -1,13 +1,14 @@
 local st = SaftUI
 
--- The Theme tab of Global Settings: Thick or Thin, the chosen theme's colors,
+-- The Theme tab of Global Settings: Thick, Thin or Blizzard, the chosen theme's colors,
 -- Transparent background and Opacity (the engine is SaftUI-Core/theme.lua).
 -- Each row reads st.config.profile at call time, so a profile switch reaches
 -- the new profile's tables.
 local TH = st:NewModule('Theme')
 
-local NAMES = { thick = 'Thick', thin = 'Thin' }
-local COLORS = { 'bordercolor', 'altbordercolor', 'backdropcolor' }
+local NAMES = { thick = 'Thick', thin = 'Thin', blizzard = 'Blizzard' }
+local SORTING = { 'thick', 'thin', 'blizzard' }
+local COLORS = { 'bordercolor', 'altbordercolor', 'backdropcolor', 'windowcolor' }
 
 -- After the theme or the Transparent background toggle changed: the profile
 -- update a profile switch runs (Config:UpdateConfig), which draws every themed
@@ -33,7 +34,7 @@ local function Theme() return st.config.profile.theme end
 local function Name() return st:ResolveTheme().name end
 local function Colors() return st.config.profile.templates[Name()] end
 
--- A color row for one of the chosen theme's three colors. It's written into
+-- A color row for one of the chosen theme's colors. It's written into
 -- the theme's array in place, with the array's own alpha left alone.
 local function ColorRow(order, name, key, desc, hidden)
 	return {
@@ -56,6 +57,13 @@ local function ColorRow(order, name, key, desc, hidden)
 end
 
 local function NotThick() return Name() ~= 'thick' end
+local function NotBlizzard() return Name() ~= 'blizzard' end
+
+-- A desc that says what the row colors in the chosen theme: Blizzard's rows
+-- color different things than Thick's and Thin's.
+local function ByTheme(blizzard, other)
+	return function() return Name() == 'blizzard' and blizzard or other end
+end
 
 function TH:GetConfigTable()
 	return {
@@ -67,8 +75,9 @@ function TH:GetConfigTable()
 				type = 'select',
 				order = 1,
 				name = 'Theme',
-				desc = "How SaftUI's frames are drawn: Thick has a dark line on each side of its border, Thin just the border. A module can use another theme or none in its own settings. Each theme keeps its own colors.",
+				desc = "How SaftUI's frames are drawn: Thick has a dark line on each side of its border, Thin just the border. Blizzard draws them in Blizzard's own art. A module can use another theme or none in its own settings. Each theme keeps its own colors.",
 				values = NAMES,
+				sorting = SORTING,
 				get = function() return Name() end,
 				set = function(_, value)
 					Theme().name = value
@@ -76,15 +85,20 @@ function TH:GetConfigTable()
 				end,
 			},
 			border = ColorRow(2, 'Border', 'bordercolor',
-				"The line around SaftUI's frames, and the fill of the title and bottom bars of windows, in the chosen theme."),
+				ByTheme("The line around the few small frames that have no Blizzard art. The art keeps Blizzard's own colors.",
+					"The line around SaftUI's frames, and the fill of the title and bottom bars of windows, in the chosen theme.")),
 			outer = ColorRow(3, 'Outer border', 'altbordercolor',
 				"The dark lines on either side of a Thick frame's border.", NotThick),
-			background = ColorRow(4, 'Background', 'backdropcolor',
-				"The fill of SaftUI's frames in the chosen theme. How see-through it is is set by Transparent background and Opacity."),
+			windowcolor = ColorRow(4, 'Window background', 'windowcolor',
+				"The fill of SaftUI's windows in Blizzard's theme. How see-through it is is set by Transparent background and Opacity.",
+				NotBlizzard),
+			background = ColorRow(5, 'Background', 'backdropcolor',
+				ByTheme("The fill of everything that isn't a window in Blizzard's theme. How see-through it is is set by Transparent background and Opacity.",
+					"The fill of SaftUI's frames in the chosen theme. How see-through it is is set by Transparent background and Opacity.")),
 			transparent = {
 				type = 'toggle',
 				size = 'small',
-				order = 5,
+				order = 6,
 				name = 'Transparent background',
 				desc = "Makes the background of SaftUI's frames see-through, at the Opacity below. A module can set its own background.",
 				get = function() return Theme().transparent end,
@@ -95,7 +109,7 @@ function TH:GetConfigTable()
 			},
 			opacity = {
 				type = 'range',
-				order = 6,
+				order = 7,
 				name = 'Opacity',
 				desc = 'How solid the background is while Transparent background is on: 0% shows everything behind it, 100% none of it.',
 				min = 0, max = 1, step = 0.05,
@@ -110,7 +124,7 @@ function TH:GetConfigTable()
 			reset = {
 				type = 'execute',
 				size = 'small',
-				order = 7,
+				order = 8,
 				name = 'Reset',
 				desc = "Puts the chosen theme's colors, Transparent background and Opacity back to SaftUI's default.",
 				confirm = function()
@@ -120,7 +134,10 @@ function TH:GetConfigTable()
 					local name = Name()
 					local from, to = st.defaults.templates[name], Colors()
 					for _, key in ipairs(COLORS) do
-						for i, v in ipairs(from[key]) do to[key][i] = v end
+						-- Thick and Thin have no windowcolor.
+						if from[key] then
+							for i, v in ipairs(from[key]) do to[key][i] = v end
+						end
 					end
 					Theme().transparent = st.defaults.theme.transparent
 					Theme().opacity = st.defaults.theme.opacity

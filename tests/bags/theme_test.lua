@@ -322,7 +322,7 @@ end)
 
 ------------------------------------------------------------------ options
 
-local THEME_VALUES = { 'theme', 'thick', 'thin', 'none' }
+local THEME_VALUES = { 'theme', 'thick', 'thin', 'blizzard', 'none' }
 local BACKGROUND_VALUES = { 'theme', 'solid', 'transparent' }
 
 test('Bags Look offers Theme, Background, Slot theme and Slot background, with descs', function()

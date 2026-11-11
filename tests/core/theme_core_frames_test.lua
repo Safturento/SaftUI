@@ -650,7 +650,7 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(theme.name, 'Theme', 'named Theme')
 	eq(theme.order, 3, 'its order')
 	eq(theme.width, nil, 'no Ace width')
-	eq(listed(theme), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;none=None", 'its values, in order')
+	eq(listed(theme), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;blizzard=Blizzard;none=None", 'its values, in order')
 	eq(theme.desc, "The bags and bank windows. Use SaftUI's theme follows Global Settings > Theme; None draws no border or background.",
 		"the caller's desc, then what the choices do")
 
