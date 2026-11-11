@@ -94,13 +94,14 @@ local function UpdateConfig(unitframe)
 		UF:UpdateElement(power)
 	end
 
-	power.colorTapping		= power.config.colorTapping
+	-- colorTapping and colorReaction through oUF's setters, so their event
+	-- follows them (UF.SetFactionColorFlags).
+	UF.SetFactionColorFlags(power, power.config)
 	power.colorDisconnected	= power.config.colorDisconnected
 	power.colorPower		= power.config.colorPower
 	power.colorClass		= power.config.colorClass
 	power.colorClassNPC		= power.config.colorClassNPC
 	power.colorClassPet		= power.config.colorClassPet
-	power.colorReaction		= power.config.colorReaction
 	-- oUF calls it colorPowerSmooth; it needs colorPower on as well.
 	power.colorPowerSmooth	= power.config.colorSmooth
 	power.colorCustom		= power.config.colorCustom

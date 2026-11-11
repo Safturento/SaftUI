@@ -798,6 +798,25 @@ end
 function Frame.SetID(self, s, id) s.id = number_arg(s, id, 'id') end
 function Frame.GetID(self, s) return s.id or 0 end
 
+-- Attributes: named values on a frame, nil until set (SimpleFrameAPI's
+-- SetAttribute and GetAttribute), which secure templates and oUF read. Setting
+-- one runs the frame's OnAttributeChanged(name, value): the API documents
+-- SetAttributeNoHandler as the way to set one without it, and Blizzard's
+-- secure headers and oUF's frames react through that script. Here only a
+-- changed value runs it. Whether the game also runs it for the value an
+-- attribute already has isn't confirmed (Blizzard's state driver checks for a
+-- change itself before it sets one: SecureStateDriver.lua).
+function Frame.SetAttribute(self, s, name, value)
+	if type(name) ~= 'string' then usage(s, 'SetAttribute(): name must be a string') end
+	s.attributes = s.attributes or {}
+	if s.attributes[name] == value then return end
+	s.attributes[name] = value
+	run_script(self, 'OnAttributeChanged', name, value)
+end
+function Frame.GetAttribute(self, s, name)
+	return s.attributes and s.attributes[name]
+end
+
 -- How far the client widens (negative) or narrows (positive) where a frame
 -- takes the mouse, past its edges. Only remembered: clicks by position aren't modelled.
 function Frame.SetHitRectInsets(self, s, left, right, top, bottom)
@@ -1194,9 +1213,10 @@ function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
 
 --[[
 	Protected frames in combat. While InCombatLockdown(), the game refuses
-	addon code that moves, sizes, shows, hides or reparents a protected frame:
-	the call does nothing and the game fires ADDON_ACTION_BLOCKED ("AddOn
-	'SaftUI' tried to call the protected function 'X:SetPoint()'";
+	addon code that moves, sizes, shows, hides or reparents a protected frame,
+	or sets its attributes: the call does nothing and the game fires
+	ADDON_ACTION_BLOCKED ("AddOn 'SaftUI' tried to call the protected function
+	'X:SetPoint()'";
 	.agents/taint.md, rule 6 and its past incidents). A frame is protected when
 	it's secure, or a protected frame is its child or anchored to it; the stubs
 	can't tell, so a stub widget is protected only when a test gives it an
@@ -1207,6 +1227,7 @@ local PROTECTED_IN_COMBAT = {
 	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
 	SetSize = true, SetWidth = true, SetHeight = true,
 	Show = true, Hide = true, SetShown = true, SetParent = true,
+	SetAttribute = true,
 }
 
 -- Wraps a method so it checks its self, then gets the widget's state.

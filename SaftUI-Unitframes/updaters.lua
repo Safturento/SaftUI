@@ -132,24 +132,35 @@ function UF:UpdateElement(element, configOverride)
     return true
 end
 
+-- Shows or hides an element by its config. It only shows or hides: oUF
+-- enables every element a frame has when it builds the frame, before the
+-- frame's first update (UF.InitUnit, UF:ApplyConfig). DisableElement isn't
+-- used for these units, because oUF's castbar Disable gives Blizzard's player
+-- and pet castbars their events back (Libraries/oUF/elements/castbar.lua,
+-- Disable), which the player castbar's option promises not to do. An element
+-- oUF shows on its own updates hides itself again while it's off (power's
+-- PostUpdate, the castbar's ShouldShow, the indicators' PostUpdate).
 function UF:SetElementEnabled(element)
-        element:SetShown(element.config.enable)
-
--- TODO: Figure out why EnableElement is breaking on nameplates
-
---     if hideOnly then
---         element:SetShown(element.config.enable)
---     else
---         local unitframe = element.__owner or element:GetParent()
---
---         if element.config.enable then
---             unitframe:EnableElement(element.name)
---         else
---             unitframe:DisableElement(element.name)
---         end
---     end
-
+    element:SetShown(element.config.enable)
     return element.config.enable
+end
+
+-- Sets a bar's colorTapping and colorReaction (health and power) from its
+-- config. oUF registers their recolor event (UNIT_FACTION) in the bar's Enable,
+-- and only if a flag is on then. Once oUF has enabled the bar it has given it
+-- setters, which set the flag and, forced, register or unregister the event to
+-- match. Before that they're plain fields, which Enable reads.
+function UF.SetFactionColorFlags(bar, config)
+    if bar.SetColorTapping then
+        bar:SetColorTapping(config.colorTapping, true)
+    else
+        bar.colorTapping = config.colorTapping
+    end
+    if bar.SetColorReaction then
+        bar:SetColorReaction(config.colorReaction, true)
+    else
+        bar.colorReaction = config.colorReaction
+    end
 end
 
 -- The width and height an element's config gives it: its size on both sides,
