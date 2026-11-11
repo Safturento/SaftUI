@@ -139,6 +139,21 @@ ThemeArt.KINDS = {
 --- The art ------------------------
 ------------------------------------
 
+-- MinimalScrollBar's up and down arrows (its steppers), each normal, under
+-- the mouse (hover) and pressed: the nudges' and the scroll bar's.
+local MINIMAL_ARROWS = {
+	up = {
+		normal = Atlas('minimal-scrollbar-arrow-top'),
+		hover = Atlas('minimal-scrollbar-arrow-top-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	},
+	down = {
+		normal = Atlas('minimal-scrollbar-arrow-bottom'),
+		hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+	},
+}
+
 -- A border is Blizzard's nine-slice pieces, by their names, laid out as
 -- Blizzard's nine-slice code lays them: each corner at the drawn frame's own corner,
 -- offset by its x and y; the top and bottom edges between their corners, tiled
@@ -406,29 +421,59 @@ ThemeArt.ART = {
 		},
 	},
 
-	-- The dropdown (WowStyle1DropdownTemplate): the holder behind its text, the
-	-- arrow in each state, and its list's background at listAlpha
-	-- (MenuStyle1Mixin).
+	-- The Settings dropdown (WowStyle2DropdownTemplate): one face in each
+	-- state, outset round the button (its glow; compactOutset on a dropdown
+	-- with no room for 7), the arrow hanging under it while the mouse is over,
+	-- its text inset from the face's sides and pressedOffset while it's held
+	-- down. Its list (MenuStyle2Mixin): c-bg, its border and shadow, at
+	-- listOutsets round the list (TOPLEFT x, y, BOTTOMRIGHT x, y), the rows
+	-- listInsets in from it (left, top, right, bottom), a row under the mouse
+	-- on rowHover. Its steppers (DropdownWithSteppersTemplate's, on
+	-- WowStyle2IconButtonTemplate's art): each width wide, back backGap left of
+	-- the face and next nextGap right of it, a background in each state and
+	-- the back or next icon (its disabled one while disabled), icon square.
 	dropdown = {
-		text = Atlas('common-dropdown-textholder'),
-		arrow = {
-			normal = Atlas('common-dropdown-a-button'),
-			hover = Atlas('common-dropdown-a-button-hover'),
-			pressed = Atlas('common-dropdown-a-button-pressed'),
-			open = Atlas('common-dropdown-a-button-open'),
-			disabled = Atlas('common-dropdown-a-button-disabled'),
+		face = {
+			normal = Atlas('common-dropdown-c-button'),
+			hover = Atlas('common-dropdown-c-button-hover-1'),
+			pressed = Atlas('common-dropdown-c-button-pressed-1'),
+			pressedhover = Atlas('common-dropdown-c-button-pressedhover-1'),
+			open = Atlas('common-dropdown-c-button-open'),
+			disabled = Atlas('common-dropdown-c-button-disabled'),
 		},
-		list = Atlas('common-dropdown-bg'),
-		listAlpha = 0.925,
+		hoverArrow = Atlas('common-dropdown-c-button-hover-arrow'),
+		outset = 7, compactOutset = 4,
+		textInset = 13, pressedOffset = { 2, -1 },
+		list = Atlas('common-dropdown-c-bg'),
+		listOutsets = { -17, 12, 17, -22 },
+		listInsets = { 3, 6, 3, 7 },
+		rowHover = Atlas('common-dropdown-customize-mouseover'),
+		stepper = {
+			width = 26, backGap = 5, nextGap = 4,
+			background = {
+				normal = Atlas('common-dropdown-c-button'),
+				hover = Atlas('common-dropdown-c-button-hover-2'),
+				pressed = Atlas('common-dropdown-c-button-pressed-2'),
+				pressedhover = Atlas('common-dropdown-c-button-pressedhover-2'),
+				disabled = Atlas('common-dropdown-c-button-disabled'),
+			},
+			back = Atlas('common-dropdown-icon-back'), backDisabled = Atlas('common-dropdown-icon-back-disabled'),
+			next = Atlas('common-dropdown-icon-next'), nextDisabled = Atlas('common-dropdown-icon-next-disabled'),
+			icon = 17,
+		},
 	},
 
-	-- The slider (MinimalSliderTemplate): the track's ends and its middle,
-	-- tiled across, and the thumb.
+	-- The slider (MinimalSliderWithSteppersTemplate): the track's ends and its
+	-- middle, tiled across, the thumb, and the end arrows (back and forward),
+	-- each arrowGap from the track.
 	slider = {
 		left = Atlas('Minimal_SliderBar_Left'),
 		middle = Atlas('_Minimal_SliderBar_Middle'),
 		right = Atlas('Minimal_SliderBar_Right'),
 		thumb = Atlas('Minimal_SliderBar_Button'),
+		back = Atlas('Minimal_SliderBar_Button_Left'),
+		forward = Atlas('Minimal_SliderBar_Button_Right'),
+		arrowGap = 4,
 	},
 
 	-- A text box (InputBoxTemplate).
@@ -483,17 +528,42 @@ ThemeArt.ART = {
 	},
 
 	-- The up and down nudges, as MinimalScrollBar's steppers.
-	nudge = {
-		up = {
-			normal = Atlas('minimal-scrollbar-arrow-top'),
-			hover = Atlas('minimal-scrollbar-arrow-top-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	nudge = { up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down },
+
+	-- The scroll bar (MinimalScrollBar): the track's top and bottom ends and
+	-- its middle, tiled down; the thumb's (its small thumb's) top, middle and
+	-- bottom in each state, under the mouse (over) and held (down); and the
+	-- up and down arrows, the nudges' own. The track is width wide; a wide
+	-- bar's arrows are arrow (width, height) and the track starts inset in
+	-- from the column's ends, a narrow bar's (the sidebar's, a dialog's, a
+	-- list's) narrowArrow and narrowInset. The thumb is never shorter than
+	-- minThumb (MinimalScrollBar's minThumbExtent).
+	scrollbar = {
+		track = {
+			top = Atlas('minimal-scrollbar-track-top'),
+			middle = Atlas('!minimal-scrollbar-track-middle'),
+			bottom = Atlas('minimal-scrollbar-track-bottom'),
 		},
-		down = {
-			normal = Atlas('minimal-scrollbar-arrow-bottom'),
-			hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+		thumb = {
+			normal = {
+				top = Atlas('minimal-scrollbar-small-thumb-top'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom'),
+			},
+			over = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-over'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-over'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-over'),
+			},
+			down = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-down'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-down'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-down'),
+			},
 		},
+		up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down,
+		width = 8, arrow = { 17, 11 }, narrowArrow = { 8, 5 },
+		inset = 19, narrowInset = 9, minThumb = 23,
 	},
 
 	-- The Settings panel's tabs (MinimalTabTemplate): the picked one and the
@@ -515,6 +585,39 @@ ThemeArt.ART = {
 	optionslist = {
 		picked = Atlas('Options_List_Active'),
 		hover = Atlas('Options_List_Hover'),
+		-- A page's name: gold, white when it's open or under the mouse
+		-- (the Settings panel's NORMAL_FONT_COLOR and HIGHLIGHT_FONT_COLOR).
+		text = { normal = { 1, 0.82, 0 }, picked = { 1, 1, 1 } },
+	},
+
+	-- The Settings panel's inner frame (SettingsFrameTemplate): one bitmap,
+	-- width wide at its own size, with its dark edge, its bronze rim and the
+	-- line between the category list and the settings drawn in, at divider
+	-- across. /sui stretches it over its sidebar and main column and puts the
+	-- sidebar's right edge on that line (OptionsWindow.SidebarWidth).
+	optionswindow = {
+		inner = Atlas('Options_InnerFrame'),
+		width = 886,
+		divider = 199,
+		-- The category list's group banners, in turn (the Settings panel's
+		-- SettingsCategoryListHeaderTemplate), the line under the tab rows,
+		-- and a group header's height and label place.
+		banners = { Atlas('Options_CategoryHeader_1'), Atlas('Options_CategoryHeader_2'), Atlas('Options_CategoryHeader_3') },
+		rule = Atlas('Options_HorizontalDivider'),
+		groupHeight = 30,
+		groupLabel = { x = 20, y = -1 },
+	},
+
+	-- /sui's resize grip, as Blizzard's (PanelResizeButtonTemplate,
+	-- Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml, the same on both
+	-- clients): size square, its normal, highlight and pushed files, the
+	-- highlight additive (a HighlightTexture's default).
+	resizegrip = {
+		normal = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]],
+		highlight = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]],
+		pushed = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]],
+		highlightBlend = 'ADD',
+		size = 16,
 	},
 
 	-- Blizzard's micro buttons' own art, given back by name: the pushed
@@ -592,9 +695,9 @@ ThemeArt.ART = {
 -- The names in ART that are controls (st.ThemeArt.Control).
 local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
-	input = true, search = true, swatch = true, binding = true, nudge = true,
+	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
-	groupborder = true, unitbars = true,
+	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
 }
 
 ------------------------------------
@@ -632,6 +735,19 @@ end
 function ThemeArt.MetalAbove()
 	local metal = ThemeArt.ART.metal
 	return math.max(ForClient(metal.TopLeftCorner.y), ForClient(metal.TopRightCorner.y))
+end
+
+-- How far the metal's art reaches past its drawn frame on this client: left,
+-- right, top and bottom, each as far as the corners on that side sit out (the
+-- top is MetalAbove). What keeps a window on screen keeps this on it too.
+function ThemeArt.MetalReach()
+	local metal = ThemeArt.ART.metal
+	local function x(key) return ForClient(metal[key].x) end
+	local function y(key) return ForClient(metal[key].y) end
+	return math.max(-x('TopLeftCorner'), -x('BottomLeftCorner')),
+		math.max(x('TopRightCorner'), x('BottomRightCorner')),
+		ThemeArt.MetalAbove(),
+		math.max(-y('BottomLeftCorner'), -y('BottomRightCorner'))
 end
 
 -- How far a kind's art reaches down from the drawn frame's top under

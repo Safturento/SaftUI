@@ -31,27 +31,40 @@ local INV = st:GetModule('Inventory')
 	editor's (INV.DragParts, ruleeditor.lua), with its text helpers.
 
 	The editor, from x 234 and 540 wide, is an options body of its own drawing
-	INV:CategoryEditorOptions(selected). Its widgets' onChanged goes on to the
-	tab's own, with the tab as the dragged widget while one drags (the rule
-	editor's handles), so the window refreshes nothing in the tab until the
-	mouse is let go; and the tab lays nothing out again while either drags.
+	INV:CategoryEditorOptions(selected), less Caught now and Pinned items
+	(SplitFooter, FOOTER_KEYS): those two are its footer's, a body of its own
+	at the bottom of the editor's column, Caught now above Pinned items, under
+	an edge across its top (the body's 1px line; under Blizzard the Settings
+	panel's divider). So a rule taller than the editor's view scrolls above
+	the items it catches, which stay in view with the block a hovered one
+	lights up. The footer is as tall as its strips and its edge, but at most
+	half the tab; the editor's view is the rest. The bodies' widgets'
+	onChanged goes on to the tab's own, with the tab as the dragged widget
+	while one drags (the rule editor's handles), so the window refreshes
+	nothing in the tab until the mouse is let go; and the tab lays nothing out
+	again while either drags.
 
-	The list and the editor each scroll on their own, the mouse wheel over one
-	scrolling that one, each with the window's 3px bar (OB.ScrollTo) shown
-	only when it has something to scroll: the list's 4 to its right, short of
-	the divider, the editor's 10 to its right, where the body's own would be
-	(a fill page's body reaches over it). The list's view stops short of its
-	footer, so + New category and Reset all stay under it, right under the
-	last row when every row fits. Each keeps its scroll while the tab is drawn
-	again; the editor starts at its top for another category, and the list
-	brings the selected row into view when another is selected (a click, +
-	New category, Restore a default), the selected one is dragged, or after
-	Reset all; never when another row dragged past it moves it.
+	The list, the editor and its footer each scroll on their own, the mouse
+	wheel over one scrolling that one, each with the window's 3px bar
+	(OB.ScrollTo) shown only when it has something to scroll: the list's 4 to
+	its right, short of the divider, the editor's and the footer's 10 to their
+	right, where the body's own would be (a fill page's body reaches over
+	it). Under Blizzard each is Blizzard's minimal scroll bar instead, whose
+	arrows, track and thumb scroll it too: the list's narrow, 4 to its right,
+	the editor's and the footer's 12 to their right, inside the body's clip.
+	The list's view stops short of its footer, so + New category and Reset
+	all stay under it, right under the last row when every row fits. Each
+	keeps its scroll while the tab is drawn again, and when the tab grows or
+	shrinks (SetHeight); the editor and its footer start at their top for
+	another category, and the list brings the selected row into view when
+	another is selected (a click, + New category, Restore a default), the
+	selected one is dragged, or after Reset all; never when another row
+	dragged past it moves it.
 
 	  INV.categoryEditor.selected       the selected id, for the session. One
 	                                    that is gone (a delete, a profile
 	                                    switch) gives way to the first category.
-	  INV.categoryEditor.listOffset, editorOffset
+	  INV.categoryEditor.listOffset, editorOffset, footerOffset
 	                                    each pane's scroll, for the session
 	  INV.categoriesTabShown            true while a bagcategories widget is
 	                                    bound: a bag update then refreshes /sui
@@ -68,7 +81,11 @@ local INV = st:GetModule('Inventory')
 	  widget.addButton, widget.resetButton (each with .text), widget.list
 	  (the rows, the scroll child of widget.listScroll), widget.listBar,
 	  widget.pane (the editor's rows, the scroll child of widget.editorScroll),
-	  widget.editorBar, widget.body (the editor's body), widget:EditorCell(key)
+	  widget.editorBar, widget.body (the editor's body), widget.footer (its
+	  footer: widget.footerLine, its edge; widget.footerPane, the scroll child
+	  of widget.footerScroll; widget.footerBody; widget.footerBar;
+	  widget.footerContent, the footer body's drawn height),
+	  widget:EditorCell(key) (a row of the editor's, or of its footer's)
 	  bagitems: widget.icons[i] = a button { texture, remove (.icon), entry }
 
 	An icon's item tooltip opens beside the window it's in (/sui), out of it,
@@ -89,7 +106,7 @@ local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWi
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
 
-INV.categoryEditor = { selected = nil, listOffset = 0, editorOffset = 0 }
+INV.categoryEditor = { selected = nil, listOffset = 0, editorOffset = 0, footerOffset = 0 }
 INV.categoriesTabShown = false
 
 ------------------------------------------------------------------ the look
@@ -116,6 +133,9 @@ local TINT_ALPHA, HOVER_ALPHA = 0.25, 0.1
 local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
 local QUESTION_MARK = 134400 -- Interface\Icons\INV_Misc_QuestionMark
+-- The editor's rows its footer draws, in this order, top down.
+local FOOTER_KEYS = { 'caught', 'pins' }
+local FOOTER_EDGE = 1 -- the line across the footer's top
 
 local function Normal() return Colors().text.normal:GetRGB() end
 
@@ -380,6 +400,22 @@ local function Forward(w, ok, err, isDragging)
 	return w.onChanged(ok, err)
 end
 
+-- The editor's group (INV:CategoryEditorOptions', built for this draw) and
+-- its footer's: the rows FOOTER_KEYS names move to a group of their own, each
+-- ordered by its place in that list; the rest stay in the editor's.
+local function SplitFooter(group)
+	local args, footer = group.args, {}
+	for order, key in ipairs(FOOTER_KEYS) do
+		local option = args[key]
+		if option then
+			args[key] = nil
+			option.order = order
+			footer[key] = option
+		end
+	end
+	return group, { type = 'group', name = '', args = footer }
+end
+
 -- Whether a widget in the editor is being dragged (the rule editor's handle).
 local function EditorDragging(w)
 	for _, cell in ipairs(w.body.cells) do
@@ -465,12 +501,24 @@ local function LayListRow(w, i, entry, count, selected)
 	f:SetFrameLevel(w.list:GetFrameLevel() + 1)
 	f.handle:SetFrameLevel(f:GetFrameLevel() + 1)
 	f:Show()
-	local r, g, b = Colors().button.blue:GetRGB()
-	f.hover:SetColorTexture(r, g, b, HOVER_ALPHA)
-	f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
-	f.bar:SetColorTexture(r, g, b)
+	-- Under Blizzard the Settings category list: the hover and the picked
+	-- row on its art, no blue bar, the name gold (white when picked). Else the
+	-- blue tint and bar. Read on each layout, so a theme switch shows at once.
+	local look = W.BlizzardLook() and st.ThemeArt.Control('optionslist')
+	if look then
+		f.hover:SetAtlas(look.hover)
+		f.hover:SetAlpha(1)
+		f.tint:SetAtlas(look.picked)
+		f.tint:SetAlpha(1)
+		f.bar:Hide()
+	else
+		local r, g, b = Colors().button.blue:GetRGB()
+		f.hover:SetColorTexture(r, g, b, HOVER_ALPHA)
+		f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
+		f.bar:SetColorTexture(r, g, b)
+		f.bar:SetShown(selected)
+	end
 	f.tint:SetShown(selected)
-	f.bar:SetShown(selected)
 	f.handle:SetShown(entry.kind ~= 'misc')
 
 	local x, right = PAD + D.HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
@@ -485,7 +533,13 @@ local function LayListRow(w, i, entry, count, selected)
 	if marker then right = right - TextWidth(f.marker) - GAP end
 
 	f.name:SetText(entry.name)
-	if entry.enabled then f.name:SetTextColor(Normal()) else f.name:SetTextColor(Grey()) end
+	if not entry.enabled then
+		f.name:SetTextColor(Grey())
+	elseif look then
+		f.name:SetTextColor(unpack(look.text[selected and 'picked' or 'normal']))
+	else
+		f.name:SetTextColor(Normal())
+	end
 	local nameWidth = max(1, min(TextWidth(f.name), right - x))
 	f.name:SetWidth(nameWidth)
 	f.name:ClearAllPoints()
@@ -567,13 +621,22 @@ local function ScrollEditor(w, offset)
 	w.editorBase = state.editorOffset
 end
 
+local function ScrollFooter(w, offset)
+	local state = INV.categoryEditor
+	state.footerOffset = OB.ScrollTo(w.footerScroll, w.footerBar, offset, w.footerContent or 0)
+	w.footerBase = state.footerOffset
+end
+
 --[[
 	The panes in the tab's height: the list's view down to its footer, and no
 	taller than its rows, so the footer sits right under the last row when
-	they all fit; the editor's the whole height. Each is scrolled from where
-	Layout found it (w.listBase, w.editorBase), the list to the selected row
+	they all fit. The editor's column: its footer at the bottom, as tall as
+	its strips and its edge but at most half the tab, and the editor's view
+	the rest above it. Each is scrolled from where Layout found it
+	(w.listBase, w.editorBase, w.footerBase), the list to the selected row
 	when Layout says so (w.reveal), so running this again (the body gives the
-	tab its height after Layout) lands on the same spot for the new height.
+	tab its height after Layout, and again when /sui grows) lands on the same
+	spot for the new height.
 ]]
 local function Fit(w)
 	local height = max(1, w.frame:GetHeight())
@@ -584,7 +647,19 @@ local function Fit(w)
 	local offset = w.listBase or state.listOffset
 	if w.reveal then offset = Reveal(offset, (w.reveal - 1) * ROW_HEIGHT, w.listScroll:GetHeight()) end
 	state.listOffset = OB.ScrollTo(w.listScroll, w.listBar, offset, rows, LIST_BAR_GAP)
-	w.editorScroll:SetHeight(height)
+
+	-- Nothing in the footer (an editor with no rows): no footer.
+	local content = w.footerContent or 0
+	local footer = content > 0 and min(content + FOOTER_EDGE, floor(height / 2)) or 0
+	w.footer:ClearAllPoints()
+	w.footer:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', EDITOR_X, -(height - footer))
+	w.footer:SetHeight(max(1, footer))
+	w.footer:SetShown(footer > 0)
+	w.footerScroll:SetHeight(max(1, footer - FOOTER_EDGE))
+	w.footerScroll:UpdateScrollChildRect()
+	state.footerOffset = OB.ScrollTo(w.footerScroll, w.footerBar, w.footerBase or state.footerOffset, footer > 0 and content or 0)
+
+	w.editorScroll:SetHeight(height - footer)
 	w.editorScroll:UpdateScrollChildRect()
 	state.editorOffset = OB.ScrollTo(w.editorScroll, w.editorBar, w.editorBase or state.editorOffset, w.editorHeight or 0)
 	w.divider:SetHeight(height)
@@ -728,17 +803,40 @@ local function Layout(w)
 	state.reveal, state.shownId = false, selected
 	w.listBase = state.listOffset
 
+	-- The editor's options, less Caught now and Pinned items, which its
+	-- footer draws, under it.
+	local editor, footer = SplitFooter(INV:CategoryEditorOptions(selected, w, items))
 	w.body:Release()
-	local root = { category = INV:CategoryEditorOptions(selected, w, items) }
+	local root = { category = editor }
 	w.body:SetRoot(root)
 	local view = OM.BuildView(root, 'category')
 	w.editorScroll:SetFrameLevel(level + 1)
 	w.pane:SetFrameLevel(level + 2)
 	w.editorHeight = view and w.body:Draw(view.sections) or 0
 	w.pane:SetHeight(max(1, w.editorHeight))
-	-- Another category's editor starts at its top.
-	if state.editorFor ~= selected then state.editorFor, state.editorOffset = selected, 0 end
-	w.editorBase = state.editorOffset
+
+	w.footerBody:Release()
+	local footerRoot = { footer = footer }
+	w.footerBody:SetRoot(footerRoot)
+	local footerView = OM.BuildView(footerRoot, 'footer')
+	w.footer:SetFrameLevel(level + 1)
+	w.footerScroll:SetFrameLevel(level + 1)
+	w.footerPane:SetFrameLevel(level + 2)
+	w.footerContent = footerView and w.footerBody:Draw(footerView.sections) or 0
+	w.footerPane:SetHeight(max(1, w.footerContent))
+	-- Its edge: under Blizzard the Settings panel's divider, else the body's line.
+	if W.BlizzardLook() then
+		w.footerLine:SetAtlas(st.ThemeArt.Control('optionswindow').rule)
+		w.footerLine:SetVertexColor(1, 1, 1)
+	else
+		w.footerLine:SetColorTexture(unpack(OB.LINE))
+	end
+
+	-- Another category's editor, and its footer, start at their top.
+	if state.editorFor ~= selected then
+		state.editorFor, state.editorOffset, state.footerOffset = selected, 0, 0
+	end
+	w.editorBase, w.footerBase = state.editorOffset, state.footerOffset
 
 	Fit(w)
 end
@@ -768,7 +866,9 @@ W.Define('bagcategories', {
 		w.listScroll:SetScript('OnMouseWheel', function(_, delta)
 			if w.row then ScrollList(w, INV.categoryEditor.listOffset - delta * LIST_STEP) end
 		end)
-		w.listBar = OB.ScrollBar(w.listPane)
+		w.listBar = OB.ScrollBar(w.listPane, function(offset)
+			if w.row then ScrollList(w, offset) end
+		end, { narrow = true, step = LIST_STEP })
 		w.addButton = Action(w.listPane, '+ New category', function(button) NewCategory(w, button) end)
 		w.resetButton = Action(w.listPane, 'Reset all', function() ResetAll(w) end)
 
@@ -788,8 +888,35 @@ W.Define('bagcategories', {
 		w.editorScroll:SetScript('OnMouseWheel', function(_, delta)
 			if w.row then ScrollEditor(w, INV.categoryEditor.editorOffset - delta * OB.SCROLL_STEP) end
 		end)
-		w.editorBar = OB.ScrollBar(frame)
+		w.editorBar = OB.ScrollBar(frame, function(offset)
+			if w.row then ScrollEditor(w, offset) end
+		end, { step = OB.SCROLL_STEP })
 		w.body = OB.New(w.pane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)
+
+		-- The editor's footer, under it (Fit places and sizes it): an edge
+		-- across its top, then its own body, in w.footerPane, which scrolls
+		-- in w.footerScroll.
+		w.footer = CreateFrame('Frame', nil, frame)
+		w.footer:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
+		w.footer:SetPoint('TOPLEFT', frame, 'TOPLEFT', EDITOR_X, 0)
+		w.footerLine = w.footer:CreateTexture(nil, 'ARTWORK')
+		w.footerLine:SetPoint('TOPLEFT', w.footer, 'TOPLEFT', 0, 0)
+		w.footerLine:SetPoint('TOPRIGHT', w.footer, 'TOPRIGHT', 0, 0)
+		w.footerLine:SetHeight(FOOTER_EDGE)
+		w.footerScroll = CreateFrame('ScrollFrame', nil, w.footer)
+		w.footerScroll:SetPoint('TOPLEFT', w.footer, 'TOPLEFT', 0, -FOOTER_EDGE)
+		w.footerScroll:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
+		w.footerPane = CreateFrame('Frame', nil, w.footerScroll)
+		w.footerPane:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
+		w.footerScroll:SetScrollChild(w.footerPane)
+		w.footerScroll:EnableMouseWheel(true)
+		w.footerScroll:SetScript('OnMouseWheel', function(_, delta)
+			if w.row then ScrollFooter(w, INV.categoryEditor.footerOffset - delta * OB.SCROLL_STEP) end
+		end)
+		w.footerBar = OB.ScrollBar(frame, function(offset)
+			if w.row then ScrollFooter(w, offset) end
+		end, { step = OB.SCROLL_STEP })
+		w.footerBody = OB.New(w.footerPane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)
 
 		w.rows, w.rowFrames = {}, {}
 		-- Over the rows: the line a drag draws where the category would go.
@@ -812,10 +939,13 @@ W.Define('bagcategories', {
 			if w.row then Fit(w) end
 		end,
 
-		-- The editor's drawn row of an option key, or nil.
+		-- The editor's drawn row of an option key, in the editor or its
+		-- footer, or nil.
 		EditorCell = function(w, key)
-			for _, cell in ipairs(w.body.cells) do
-				if cell.row.key == key then return cell end
+			for _, body in ipairs({ w.body, w.footerBody }) do
+				for _, cell in ipairs(body.cells) do
+					if cell.row.key == key then return cell end
+				end
 			end
 		end,
 
@@ -833,9 +963,10 @@ W.Define('bagcategories', {
 			local owner = W.ListOwner()
 			if owner and Inside(owner, w.frame) then W.CloseList() end
 			w.body:Release()
+			w.footerBody:Release()
 			for _, f in ipairs(w.rowFrames) do f:Hide() end
 			wipe(w.rows)
-			w.reveal, w.listBase, w.editorBase = nil, nil, nil
+			w.reveal, w.listBase, w.editorBase, w.footerBase = nil, nil, nil, nil
 			INV.categoriesTabShown = false
 		end,
 	},

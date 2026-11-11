@@ -49,8 +49,9 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	SetHeight. Without fillHeight (a dialog, search results) it's minHeight.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
-	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar
-	and OB.ScrollTo), as this file loads first.
+	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar,
+	OB.ScrollTo, and under Blizzard its companion, OB.Companion), as this file
+	loads first.
 
 	Every frame and texture here is SaftUI's. GameTooltip shows a row's desc
 	through its public API.
@@ -165,37 +166,65 @@ local Text, Line, Pool, Acquire, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.Acqu
 ------------------------------------------------------------------ scrolling
 
 -- A scroll bar: 3 wide, 10 to the right of what it scrolls; a turn of the
--- mouse wheel moves two rows.
+-- mouse wheel moves two rows. Under Blizzard Blizzard's minimal scroll bar
+-- (W.BlizzardBar), OB.BLIZZARD_GAP to the right of what it scrolls unless
+-- the caller gives its own gap.
 OB.BAR_WIDTH, OB.BAR_GAP = 3, 10
+OB.BLIZZARD_GAP = 12
 OB.SCROLL_STEP = ROW_HEIGHT * 2
 
+-- A scroll bar's texture -> { bar = its W.BlizzardBar, flat = whether the
+-- texture shows under Thick and Thin }.
+local companions = setmetatable({}, { __mode = 'k' })
+
 -- The window's scroll bar: a 3px bar in the boxes' edge color, hidden until
--- OB.ScrollTo shows it.
-function OB.ScrollBar(parent)
+-- OB.ScrollTo shows it, with its companion, Blizzard's minimal scroll bar
+-- (W.BlizzardBar(parent, onScroll, opts)), which OB.ScrollTo shows in its
+-- place under Blizzard. onScroll(offset) is the caller's own scroll, which
+-- the companion's thumb, arrows (opts.step a click) and track ask an offset
+-- of; opts.narrow is a narrow bar. opts.flat == false draws no 3px bar under
+-- Thick and Thin (the sidebar's, which has none there).
+function OB.ScrollBar(parent, onScroll, opts)
+	opts = opts or {}
 	local bar = parent:CreateTexture(nil, 'OVERLAY')
 	bar:SetColorTexture(unpack(st.BOX_COLORS.edge))
 	bar:SetWidth(OB.BAR_WIDTH)
 	bar:Hide()
+	companions[bar] = { bar = W.BlizzardBar(parent, onScroll, opts), flat = opts.flat ~= false }
 	return bar
+end
+
+-- The W.BlizzardBar made with an OB.ScrollBar's texture.
+function OB.Companion(bar)
+	local companion = companions[bar]
+	return companion and companion.bar
 end
 
 -- Scrolls frame (a scroll frame) to offset, within the height of what it
 -- holds, in whole units. Its bar shows only when there is something to
 -- scroll, gap (OB.BAR_GAP when nil) to the right of the scroll child, as
--- tall as the share of it in view and as far down as the offset. Returns the
--- offset it took.
+-- tall as the share of it in view and as far down as the offset. Under
+-- Blizzard the bar's companion shows in its place, from the scroll frame's
+-- top to its bottom, gap (OB.BLIZZARD_GAP when nil) to the right of the
+-- scroll child. Returns the offset it took.
 function OB.ScrollTo(frame, bar, offset, height, gap)
 	local view = frame:GetHeight() or 0
 	local range = max(0, height - view)
 	offset = max(0, min(range, floor(offset + 0.5)))
 	frame:SetVerticalScroll(offset)
-	if range > 0 and view > 0 then
+	local child = frame:GetScrollChild()
+	local width = child and child:GetWidth() or frame:GetWidth()
+	local companion = companions[bar]
+	local blizzard = companion and W.BlizzardLook()
+	if companion and not blizzard then companion.bar:Hide() end
+	if blizzard then
+		bar:Hide()
+		companion.bar:Set(frame, width + (gap or OB.BLIZZARD_GAP), 0, floor(view + 0.5), view, height, offset)
+	elseif range > 0 and view > 0 and (not companion or companion.flat) then
 		local size = max(20, floor(view * view / height))
-		local child = frame:GetScrollChild()
-		local x = (child and child:GetWidth() or frame:GetWidth()) + (gap or OB.BAR_GAP)
 		bar:SetHeight(size)
 		bar:ClearAllPoints()
-		bar:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, -floor((view - size) * offset / range))
+		bar:SetPoint('TOPLEFT', frame, 'TOPLEFT', width + (gap or OB.BAR_GAP), -floor((view - size) * offset / range))
 		bar:Show()
 	else
 		bar:Hide()
@@ -575,7 +604,8 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	self.filled = #fills > 0
 	local pools, content = self.pools, self.content
 	for _, entry in ipairs(laid) do
-		if entry.lineY then
+		-- Under Blizzard the sections have no line between them; the gap stays.
+		if entry.lineY and not self.blizzard then
 			local line = Acquire(pools.line)
 			line:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.lineY)
 			line:SetSize(self.width, 1)
@@ -613,10 +643,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 end
 
 function Body:Draw(sections, fillHeight)
+	self.blizzard = W.BlizzardLook()
 	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)
+	self.blizzard = W.BlizzardLook()
 	-- A result is a half, whatever size its setting is.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
 		function() return 'normal' end)

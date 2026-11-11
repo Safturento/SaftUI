@@ -1954,9 +1954,8 @@ test("/sui's execute button and toggle take Blizzard's art under Blizzard, their
 		check(not box.outline:IsShown(), name .. ': and its dark line')
 		check(not box.mark:IsShown(), name .. ': no blue mark')
 		eq(box:GetWidth() .. 'x' .. box:GetHeight(), '18x18', name .. ': it keeps its size')
-		for _, region in ipairs(shown_textures(box)) do
-			eq(around(region, box), '0,0,0,0', name .. ': ' .. tostring(region:GetAtlas()) .. ' inside its rect')
-		end
+		-- The art's own size and place are pinned by the test of the check boxes' size.
+		check(#shown_textures(box) > 0, name .. ': it is drawn')
 	end
 	eq(atlases_of(t.frame), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'the toggle, checked: the box, its highlight and the check')
 	eq(atlases_of(m.rows[1].box), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'a checked row too')
@@ -2010,7 +2009,7 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 			if select(1, region:GetDrawLayer()) == 'OVERLAY' and region:GetBlendMode() == 'ADD' then
 				out[#out + 1] = tostring(region:GetAtlas()) .. ' ' .. region:GetBlendMode()
 				check(region:GetParent() == row.box, 'the hover is a texture of the box')
-				eq(around(region, row.box), '0,0,0,0', 'the hover lies over the box')
+				eq(around(region, row.box), '0,2,5,-2', 'the hover lies over the box, at the art\'s size')
 			end
 		end
 		for _, region in ipairs(shown_textures(row)) do
@@ -2125,60 +2124,487 @@ end
 
 local function size_of(frame) return frame:GetWidth() .. 'x' .. frame:GetHeight() end
 
-test('a select is a Blizzard dropdown, its arrow open while its list shows', function()
+test('W.CheckArtSize: the largest whole size up to 30x29, in proportion, within the row', function()
+	eq(table.concat({ W.CheckArtSize(34) }, 'x'), '30x29')
+	eq(table.concat({ W.CheckArtSize(29) }, 'x'), '30x29')
+	eq(table.concat({ W.CheckArtSize(22) }, 'x'), '23x22')
+	eq(table.concat({ W.CheckArtSize(18) }, 'x'), '19x18')
+end)
+
+test("under Blizzard a toggle's box is drawn 30x29, a multiselect's and a check list's rows 23x22; no box or row changes size", function()
+	local t = bind('toggle', 'on', opt('toggle', 'On', {
+		get = function() return true end, set = function() end,
+	}))
+	local m = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return true end, set = function() end,
+	}))
+	parent:SetSize(800, 600)
+	parent:SetPoint('CENTER')
+	t:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -50)
+	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -150)
+	theme('blizzard'); rebind(t); rebind(m)
+	check(#shown_textures(t.frame) > 0, 'the toggle is drawn')
+	for _, region in ipairs(shown_textures(t.frame)) do
+		eq(size_of(region), '30x29'); eq(around(region, t.frame), '-12,5,0,-6', 'its right on the box, 5 above')
+	end
+	eq(size_of(t.frame), '18x18'); eq(t:GetWidth(), 18)
+	eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '-12,0,-5,-6', 'a click on the art reaches the box')
+	check(#shown_textures(m.rows[1].box) > 0, 'a row is drawn')
+	for _, region in ipairs(shown_textures(m.rows[1].box)) do
+		eq(size_of(region), '23x22'); eq(around(region, m.rows[1].box), '0,2,5,-2')
+	end
+	eq(size_of(m.rows[1].box), '18x18'); eq(m.rows[1]:GetHeight(), 22)
+	-- W.OpenCheckList's rows: the same 23x22 on an 18 box.
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(170, 24)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	W.OpenCheckList(owner, { { key = 'a', label = 'Alpha' } }, function() return true end, function() end)
+	local box = W.GetListFrames().rows[1].box
+	check(#shown_textures(box) > 0, 'a check list row is drawn')
+	for _, region in ipairs(shown_textures(box)) do
+		eq(size_of(region), '23x22'); eq(around(region, box), '0,2,5,-2')
+	end
+	eq(size_of(box), '18x18')
+	W.CloseList()
+	theme('thick'); rebind(t); rebind(m)
+	eq(atlases_of(t.frame), '', 'Thick: no art')
+	eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '0,0,0,0')
+	t:Release(); m:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The shown texture of frame showing exactly atlas.
+local function atlas_exact(frame, atlas)
+	for _, region in ipairs(shown_textures(frame)) do
+		if region:GetAtlas() == atlas then return region end
+	end
+end
+
+-- A region's first anchor, 'POINT to POINT x,y', its frame named by names.
+local function anchor(region, names)
+	local point, rel, relPoint, x, y = region:GetPoint(1)
+	return string.format('%s %s %s %d,%d', point, names[rel] or tostring(rel), relPoint, x, y)
+end
+
+local function px(a) return string.format('%d', math.floor(a + 0.5)) end
+
+test("a select is the Settings dropdown: its face follows the mouse, a press and its list", function()
 	theme('thick')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
 	}))
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	local button = w.frame
+	eq(button.text, w.text, "the text is the button's")
+	-- The text's left and right, from the button's sides.
+	local function insets_of_text()
+		return px(w.text:GetLeft() - button:GetLeft()) .. ',' .. px(button:GetRight() - w.text:GetRight())
+	end
 	eq(atlases_of(button), '', 'Thick: no Blizzard art')
 	check_box(button, 'Thick')
 	local caret = #shown_textures(button)
 	check(caret > 0, 'Thick: the caret')
+	eq(insets_of_text(), '8,22', 'Thick: the text clear of the caret')
+	eq(w.text:GetJustifyH(), 'LEFT', 'Thick: from the left')
 
-	theme('blizzard')
-	rebind(w)
-	check_no_box(button, 'Blizzard')
-	eq(atlases_of(button), 'common-dropdown-a-button,common-dropdown-textholder', 'the text holder and the arrow')
-	for _, region in ipairs(shown_textures(button)) do
-		check(region:GetAtlas() ~= nil, 'no caret: only the art shows')
+	theme('blizzard'); rebind(w)
+	check_no_box(button, 'Blizzard'); eq(size_of(button), '170x24', 'it keeps its size')
+	eq(atlases_of(button), 'common-dropdown-c-button', 'the face; no caret, no hover arrow yet')
+	local face = atlas_exact(button, 'common-dropdown-c-button')
+	eq(face:GetDrawLayer(), 'BACKGROUND', 'under the text')
+	-- Its choices fit the stepped face (W.StepperRoom), so the face sits between the steppers.
+	eq(around(face, button), '24,7,-23,-7', 'a 7px glow round the face, from 31 to 140')
+	eq(w.text:GetJustifyH(), 'CENTER', 'the text centred')
+	eq(insets_of_text(), '44,43', 'in 13 from the face')
+	local x0, y0 = w.text:GetCenter()
+	local function text_offset()
+		local x, y = w.text:GetCenter()
+		return px(x - x0) .. ',' .. px(y - y0)
 	end
-	eq(size_of(button), '170x24', 'it keeps its size')
-	art_inside(button, 'the select')
-	eq(insets(atlas_piece(button, 'common-dropdown-textholder'), button), '0,0,0,0', 'the holder fills it')
-	local arrow = atlas_piece(button, 'common-dropdown-a-button')
-	eq(insets(arrow, button), '146,0,0,0', 'the arrow a square at its right')
-	local function state() return arrow:GetAtlas() end
 
 	stub.fire_script(button, 'OnEnter')
-	eq(state(), 'common-dropdown-a-button-hover', 'under the mouse')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	local arrow = atlas_exact(button, 'common-dropdown-c-button-hover-arrow')
+	check(arrow ~= nil and arrow:IsShown(), 'the hover arrow shows')
+	eq(size_of(arrow), '12x5', 'at its atlas size')
+	eq(arrow:GetDrawLayer(), 'OVERLAY')
+	eq(around(arrow, button):match(',(-?%d+)$'), '-5', 'hanging under the face')
+	eq(around(arrow, button), '79,-24,-79,-5', 'centred under it, its left on a whole pixel')
 	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
-	eq(state(), 'common-dropdown-a-button-pressed', 'pressed')
-	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
-	eq(state(), 'common-dropdown-a-button-hover', 'let go')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-pressedhover-1', 'pressed under the mouse')
+	eq(text_offset(), '2,-1', 'the text pressed in')
 	stub.fire_script(button, 'OnLeave')
-	eq(state(), 'common-dropdown-a-button', 'the mouse gone')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-pressed-1', 'held, the mouse gone')
+	check(not arrow:IsShown(), 'no arrow off the button')
+	eq(text_offset(), '2,-1', 'still pressed in')
+	stub.fire_script(button, 'OnEnter')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'let go')
+	eq(text_offset(), '0,0', 'the text back')
+	stub.fire_script(button, 'OnLeave')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the mouse gone'); check(not arrow:IsShown(), 'and the arrow')
 	click(button)
 	check(W.ListOwner() == button, 'the list opened')
-	eq(state(), 'common-dropdown-a-button-open', 'open while its list shows')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-open', 'open while its list shows')
 	W.CloseList()
-	eq(state(), 'common-dropdown-a-button', 'closed again')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'closed again')
 	w:SetDisabled(true)
-	eq(state(), 'common-dropdown-a-button-disabled', 'disabled')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-disabled', 'disabled')
+	stub.fire_script(button, 'OnEnter')
+	check(not arrow:IsShown(), 'disabled: no arrow under the mouse')
+	stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-disabled', 'disabled: not pressed')
+	eq(text_offset(), '0,0', 'disabled: the text not pressed in')
+	stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(button, 'OnLeave')
 	w:SetDisabled(false)
-	eq(state(), 'common-dropdown-a-button', 'enabled again')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'enabled again')
 
-	theme('thick')
-	rebind(w)
+	theme('thick'); rebind(w)
 	eq(atlases_of(button), '', 'Thick again: no Blizzard art')
 	check_box(button, 'Thick again')
 	eq(#shown_textures(button), caret, 'Thick again: the caret')
+	eq(insets_of_text(), '8,22', 'Thick again: the text where it was')
+	eq(w.text:GetJustifyH(), 'LEFT', 'Thick again: from the left')
 	w:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("the list's rows sit on common-dropdown-bg", function()
+-- A stepper's texture in layer: its Background (BACKGROUND) or its Icon (ARTWORK).
+local function stepper_piece(stepper, layer)
+	for _, region in ipairs({ stepper:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:GetDrawLayer() == layer then return region end
+	end
+end
+local function background(stepper) return stepper_piece(stepper, 'BACKGROUND') end
+local function icon(stepper) return stepper_piece(stepper, 'ARTWORK') end
+local function icon_of(stepper) return icon(stepper):GetAtlas() end
+
+-- A select's face, and its hover arrow's left from the button's (shown or not).
+local function face_of(w) return atlas_piece(w.frame, 'common-dropdown-c-button') end
+local function arrow_left(w)
+	for _, region in ipairs({ w.frame:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' and region:GetAtlas() == 'common-dropdown-c-button-hover-arrow' then
+			return tonumber(px(region:GetLeft() - w.frame:GetLeft()))
+		end
+	end
+end
+
+-- The text's left and right, from the select's sides.
+local function text_insets(w)
+	return px(w.text:GetLeft() - w.frame:GetLeft()) .. ',' .. px(w.frame:GetRight() - w.text:GetRight())
+end
+
+local function hit_rect(frame) return table.concat({ frame:GetHitRectInsets() }, ',') end
+
+test('under Blizzard a select whose choices fit has steppers inside its 170, the face between them', function()
+	theme('thick')
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, get = function() return 'b' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	local names = { [button] = 'frame', [w.back] = 'back', [w.next] = 'next' }
+	eq(w.back:GetObjectType() .. ',' .. w.next:GetObjectType(), 'Button,Button')
+	check(w.back:GetParent() == button and w.next:GetParent() == button, "the steppers are the select's own")
+	check(not w.back:IsShown() and not w.next:IsShown(), 'Thick: no steppers')
+	eq(hit_rect(button), '0,0,0,0', 'Thick: the whole box opens the list')
+
+	theme('blizzard'); rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'its choices fit: steppers')
+	eq(size_of(button), '170x24', 'the select keeps its size'); eq(w:GetWidth(), 170)
+	eq(size_of(w.back), '26x24'); eq(anchor(w.back, names), 'LEFT frame LEFT 0,0')
+	eq(size_of(w.next), '26x24'); eq(anchor(w.next, names), 'RIGHT frame RIGHT 0,0')
+	local face = face_of(w)
+	eq(around(face, button), '24,7,-23,-7', 'the face from 31 to 140')
+	eq(arrow_left(w), 79, 'the hover arrow under the face, centred')
+	eq(text_insets(w), '44,43', 'the text 13 in from the face')
+	eq(hit_rect(button), '31,30,0,0', 'only the face opens the list, as only it lights')
+	for _, stepper in ipairs({ w.back, w.next }) do
+		local name = names[stepper]
+		eq(background(stepper):GetAtlas(), 'common-dropdown-c-button', name .. ': the button art')
+		eq(around(background(stepper), stepper), '-7,7,7,-7', name .. ': its glow round it')
+		eq(size_of(icon(stepper)), '17x17', name .. ': the icon')
+		eq(anchor(icon(stepper), names), 'TOPLEFT ' .. name .. ' TOPLEFT 4,-3', name .. ': the icon at 4,-3')
+		check(stepper:IsEnabled(), name .. ': at b, both have a choice to step to')
+	end
+	eq(icon_of(w.back), 'common-dropdown-icon-back')
+	eq(icon_of(w.next), 'common-dropdown-icon-next')
+
+	-- Its states follow the mouse, as the face's do.
+	stub.fire_script(w.next, 'OnEnter')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-hover-2', 'under the mouse')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the face stays unlit')
+	stub.fire_script(w.next, 'OnMouseDown', 'LeftButton')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-pressedhover-2', 'pressed under the mouse')
+	eq(anchor(icon(w.next), names), 'TOPLEFT next TOPLEFT 6,-4', 'the icon pressed in 2,-1')
+	stub.fire_script(w.next, 'OnLeave')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-pressed-2', 'held, the mouse gone')
+	stub.fire_script(w.next, 'OnMouseUp', 'LeftButton')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'let go')
+	eq(anchor(icon(w.next), names), 'TOPLEFT next TOPLEFT 4,-3', 'the icon back')
+
+	theme('thick'); rebind(w)
+	check(not w.back:IsShown() and not w.next:IsShown(), 'Thick again: no steppers')
+	eq(hit_rect(button), '0,0,0,0', 'Thick again: the whole box')
+	eq(text_insets(w), '8,22', 'Thick again: the text where it was')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a select gets steppers only when its longest choice fits the stepped face; otherwise the Settings face at the full 170', function()
+	eq(W.StepperRoom(), 83, '170 less the steppers and their gaps (31 and 30), less the text insets (13 each)')
+	theme('thick')
+	local values = { a = 'A', b = 'B' }
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() return values end, get = function() return 'b' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local button = w.frame
+	local char = select(2, W.GetFont():GetFont()) / 2 -- the stub's character: half the font's size wide
+	local fits = string.rep('m', math.floor(83 / char))
+	values = { a = fits, b = 'B' }; theme('blizzard'); rebind(w)
+	check(w:StepsFit(), 'fits')
+	check(w.back:IsShown() and w.next:IsShown(), 'the longest choice fits: steppers')
+	values = { a = fits .. 'm', b = 'B' }; rebind(w)
+	check(not w:StepsFit(), "doesn't fit")
+	check(not w.back:IsShown() and not w.next:IsShown(), 'one character more: none')
+	eq(around(face_of(w), button), '-7,7,7,-7', 'the face at the full 170')
+	eq(arrow_left(w), 79, 'the hover arrow centred on it')
+	eq(text_insets(w), '13,13', 'the text 13 in from the full face')
+	eq(hit_rect(button), '0,0,0,0', 'the whole face opens the list')
+	values = { theme = "Use SaftUI's theme", thick = 'Thick', blizzard = 'Blizzard' }; rebind(w)
+	check(not w.back:IsShown(), "a Theme select's choices don't fit")
+	values = {}; rebind(w)
+	check(w:StepsFit(), 'no choices: nothing to cut')
+	w:Release()
+
+	-- A font list (LSM30_Font) never has steppers, decided without measuring:
+	-- each name would be set in its own face, loading every font file there is.
+	local fonts = { ['Alpha'] = [[Interface\AddOns\X\Alpha.ttf]], ['Beta'] = [[Interface\AddOns\X\Beta.ttf]] }
+	local reads = 0
+	theme('thick')
+	local f = bind('select', 'font', opt('select', 'Font', {
+		dialogControl = 'LSM30_Font', values = function() reads = reads + 1; return fonts end,
+		get = function() return 'Beta' end, set = function() end,
+	}))
+	f:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(reads, 1, "Thick: the values read once, for the face's label (a pooled select keeps no steppers)")
+	local labelReads = reads
+	local measured = 0
+	f.measure.SetFont = function(fs, ...) measured = measured + 1; return getmetatable(fs).__index.SetFont(fs, ...) end
+	f.measure.SetText = function(fs, ...) measured = measured + 1; return getmetatable(fs).__index.SetText(fs, ...) end
+	reads = 0
+	theme('blizzard'); rebind(f)
+	check(not f.back:IsShown() and not f.next:IsShown(), 'short font names: still no steppers')
+	eq(around(face_of(f), f.frame), '-7,7,7,-7', 'the face at the full 170')
+	eq(measured, 0, 'no name set in its face, nothing measured')
+	eq(reads, labelReads, 'the choices not read for the steppers')
+	check(not f:StepsFit(), "asked, a font list's choices don't fit")
+	eq(measured, 0, 'still nothing measured')
+	f.measure.SetFont, f.measure.SetText = nil, nil
+	f:Release()
+	theme('thick')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a select reads its choices once a bind for its steppers, and a released one forgets them", function()
+	theme('thick')
+	local reads = 0
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() reads = reads + 1; return { a = 'A', b = 'B', c = 'C' } end,
+		get = function() return 'b' end, set = function() end,
+	}))
+	reads = 0; rebind(w)
+	local labelReads = reads -- Thick: the face's label only
+	theme('blizzard'); rebind(w)
+	check(w.back:IsShown(), 'steppers')
+	reads = 0; rebind(w)
+	eq(reads, labelReads + 1, 'bound again with its steppers shown: the label, and the choices once')
+	w:SetDisabled(true); w:SetDisabled(false)
+	check(w.back:IsEnabled() and w.next:IsEnabled(), 'enabled again at b')
+	w:Release()
+	check(not w.stepped, 'released: no steppers remembered')
+	theme('thick')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a stepper picks the next or previous choice through the same path as a pick, and stops at the ends', function()
+	theme('blizzard')
+	local stored, validated, sets = 'b', 0, 0
+	local valid, asks = true, false
+	local w, told = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' },
+		get = function() return stored end,
+		validate = function() validated = validated + 1; return valid or 'Not that one' end,
+		confirm = function() return asks and 'Sure?' or false end,
+		set = function(_, v) sets = sets + 1; stored = v end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+
+	-- A pick from the list, for the path a step takes.
+	click(w.frame)
+	click(W.GetListFrames().rows[3])
+	eq(stored, 'c', 'the list picks c')
+	local pick = { validated = validated, sets = sets, told = told.n }
+	stored, validated, sets, told.n = 'b', 0, 0, 0
+	rebind(w)
+
+	click(w.next)
+	eq(stored, 'c', 'next picks the next choice'); eq(sets, 1, 'set once')
+	eq(validated, pick.validated, 'validated as a pick is')
+	eq(told.n, pick.told, 'the window told as for a pick'); eq(told.ok, true)
+	eq(text_of(w.text), 'C', 'and the face shows it')
+	check(not w.next:IsEnabled(), 'at the last choice, next is disabled')
+	eq(icon_of(w.next), 'common-dropdown-icon-next-disabled')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-disabled')
+	check(w.back:IsEnabled(), 'back is not')
+	w:Step(1) -- the game sends a disabled button no click; a step past the end does nothing
+	eq(stored, 'c', 'no wrap past the end'); eq(sets, 1)
+	click(w.back); click(w.back)
+	eq(stored, 'a', 'back twice: a')
+	check(not w.back:IsEnabled(), 'at the first choice, back is disabled')
+	eq(icon_of(w.back), 'common-dropdown-icon-back-disabled')
+	eq(background(w.back):GetAtlas(), 'common-dropdown-c-button-disabled')
+	check(w.next:IsEnabled(), 'next is enabled again'); eq(icon_of(w.next), 'common-dropdown-icon-next')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'and unlit')
+	w:Step(-1)
+	eq(stored, 'a', 'no wrap past the start')
+
+	-- A validate that fails: nothing set, the window told why.
+	valid, sets, told.n = false, 0, 0
+	click(w.next)
+	eq(stored, 'a', 'a failed validate sets nothing'); eq(sets, 0)
+	eq(told.n, 1); eq(told.ok, false); eq(told.err, 'Not that one', 'onChanged(false, message)')
+	eq(text_of(w.text), 'A', 'the face still shows A')
+	valid = true
+
+	-- A confirm asks first: No sets nothing, Yes sets.
+	asks = true
+	click(w.next)
+	eq(W.ConfirmText(), 'Sure?', 'W.Confirm asks first')
+	eq(stored, 'a', 'nothing set while it asks')
+	no()
+	eq(stored, 'a', 'No sets nothing'); eq(sets, 0)
+	click(w.next)
+	yes()
+	eq(stored, 'b', 'Yes sets the next choice')
+	asks = false
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('stepper edge cases', function()
+	theme('blizzard')
+	local stored = 'gone'
+	local function store(_, v) stored = v end
+
+	-- A stored value not among the values: back disabled, next picks the first.
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return stored end, set = store,
+	}))
+	check(w.back:IsShown(), 'steppers')
+	check(not w.back:IsEnabled(), 'no choice: back disabled')
+	check(w.next:IsEnabled(), 'no choice: next enabled')
+	local back, nextKey = w:StepTargets()
+	eq(back, nil, 'no choice to step back to'); eq(nextKey, 'a', 'the first is next')
+	click(w.next)
+	eq(stored, 'a', 'next picks the first')
+	w:Release()
+
+	-- One value: both disabled.
+	stored = 'only'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { only = 'Only' }, get = function() return stored end, set = store,
+	}))
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'one value: both disabled')
+	w:Step(-1); w:Step(1)
+	eq(stored, 'only', 'nothing to step to')
+	w:Release()
+
+	-- No values: both disabled.
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = {}, get = function() return nil end, set = store,
+	}))
+	check(w.back:IsShown(), 'no choices: steppers')
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'no choices: both disabled')
+	w:Release()
+
+	-- Disabled: both disabled; enabled again, as the value says.
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, get = function() return stored end, set = store,
+	}))
+	w:SetDisabled(true)
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'a disabled select: both disabled')
+	eq(icon_of(w.back), 'common-dropdown-icon-back-disabled'); eq(icon_of(w.next), 'common-dropdown-icon-next-disabled')
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-disabled')
+	w:Step(1)
+	eq(stored, 'b', 'a disabled select does not step')
+	w:SetDisabled(false)
+	check(w.back:IsEnabled() and w.next:IsEnabled(), 'enabled again: at b both')
+	eq(icon_of(w.next), 'common-dropdown-icon-next')
+	stored = 'c'; rebind(w)
+	check(w.back:IsEnabled() and not w.next:IsEnabled(), 'at c: back only')
+	w:Release()
+
+	-- A disabled row: both disabled from the bind.
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B', c = 'C' }, disabled = true, get = function() return stored end, set = store,
+	}))
+	check(w:IsDisabled(), 'the row is disabled')
+	check(not w.back:IsEnabled() and not w.next:IsEnabled(), 'a disabled row: both disabled')
+	w:Release()
+
+	-- A values function that changes between clicks: the order read at the click.
+	local values = { a = 'A', b = 'B', c = 'C' }
+	stored = 'b'
+	w = bind('select', 'pick', opt('select', 'Pick', {
+		values = function() return values end, get = function() return stored end, set = store,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	values = { b = 'B', z = 'Z' }
+	click(w.next)
+	eq(stored, 'z', "next is b's next in the order read at the click")
+	values = { b = 'B', m = 'M', z = 'Z' }
+	click(w.back)
+	eq(stored, 'm', 'and back')
+
+	-- A values function whose longest label grows past the room: steppers at
+	-- one bind, none at the next, and back when it shrinks.
+	local long = string.rep('m', math.floor(W.StepperRoom() / (select(2, W.GetFont():GetFont()) / 2)) + 1)
+	values = { a = 'A', m = 'M' }; rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'short: steppers')
+	values = { a = 'A', m = long }; rebind(w)
+	check(not w.back:IsShown() and not w.next:IsShown(), 'grown past the room: none')
+	eq(around(face_of(w), w.frame), '-7,7,7,-7', 'the face at the full width')
+	values = { a = 'A', m = 'M' }; rebind(w)
+	check(w.back:IsShown() and w.next:IsShown(), 'shrunk again: steppers')
+	eq(around(face_of(w), w.frame), '24,7,-23,-7', 'the face between them')
+
+	-- A stepper disabled under the mouse hears no OnLeave (the game sends a
+	-- disabled button none): enabled again, it's lit only if the mouse is on it.
+	stub.cursor_x, stub.cursor_y = 0, 0
+	stored = 'a'; rebind(w)
+	stub.fire_script(w.next, 'OnEnter')
+	click(w.next)
+	eq(stored, 'm'); check(not w.next:IsEnabled(), 'next disabled under the mouse')
+	stored = 'a'; rebind(w)
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button', 'enabled again with the mouse elsewhere: unlit')
+	local x, y = w.next:GetCenter()
+	local scale = UIParent:GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = x * scale, y * scale
+	stored = 'm'; rebind(w)
+	stored = 'a'; rebind(w)
+	eq(background(w.next):GetAtlas(), 'common-dropdown-c-button-hover-2', 'enabled again under the mouse: lit')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	w:Release()
+	theme('thick')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the list sits on common-dropdown-c-bg, in place of the tooltip border", function()
 	theme('blizzard')
 	local w = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B' }, get = function() return 'a' end, set = function() end,
@@ -2186,28 +2612,181 @@ test("the list's rows sit on common-dropdown-bg", function()
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	click(w.frame)
 	local list = W.GetListFrames()
+	local names = { [list.frame] = 'frame' }
 	check_no_box(list.frame, 'Blizzard: the list')
-	local skin = list.skin
-	check(skin ~= nil and skin:IsShown(), 'the list is drawn as the window is')
-	eq(st:DrawnTheme(skin), 'blizzard', "in SaftUI's theme")
-	eq(st:DrawnKind(skin), 'panel', 'as a panel')
-	check(atlases_of(skin):find('Tooltip-NineSlice-CornerTopLeft', 1, true) ~= nil, 'in the tooltip border')
-	eq(insets(skin, list.frame), '0,0,0,0', 'over the list frame')
-	check(skin:GetFrameLevel() < list.frame:GetFrameLevel(), 'under it and its rows')
-	local menu = atlas_piece(skin, 'common-dropdown-bg')
-	check(menu ~= nil, "Blizzard's menu background")
-	eq(string.format('%.3f', menu:GetAlpha()), '0.925', 'at 0.925')
-	eq(insets(menu, list.frame), '1,1,1,1', 'behind the rows')
-	for i = 1, 2 do check(inside(list.rows[i], menu), 'row ' .. i .. ' on it') end
+	check(list.skin ~= nil and list.skin:IsShown(), 'its skin shows')
+	eq(st:DrawnKind(list.skin), nil, 'the theme draws nothing there: c-bg is its border')
+	eq(atlases_of(list.skin), 'common-dropdown-c-bg', 'only c-bg')
+	local menu = atlas_exact(list.skin, 'common-dropdown-c-bg')
+	eq(around(menu, list.frame), '-17,12,17,-22', "Blizzard's outsets round the list")
+	eq(menu:GetAlpha(), 1, 'whole')
+	check(list.skin:GetFrameLevel() < list.frame:GetFrameLevel(), 'under the list and its rows')
+	eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 3,-6', 'the rows 3 in and 6 down')
+	eq(anchor(list.rows[2], names), 'TOPLEFT frame TOPLEFT 3,-28')
+	eq(around(list.rows[1], list.frame):match(',(-?%d+),[^,]+$'), '-3', '3 in from the right')
+	eq(list.frame:GetHeight(), 2 * 22 + 13, 'two rows, 6 above and 7 below')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	local hover = list.rows[1].hover
+	check(hover:IsShown(), 'a row lights under the mouse')
+	eq(hover:GetAtlas(), 'common-dropdown-customize-mouseover', "on the menu's mouseover")
+	eq(hover:GetAlpha(), 1, 'whole')
+	eq(around(hover, list.rows[1]), '0,0,0,0', 'across the row')
+	stub.fire_script(list.rows[1], 'OnLeave')
+	check(not hover:IsShown(), 'and goes dark again')
 	W.CloseList()
 
-	theme('thick')
-	rebind(w)
+	theme('thick'); rebind(w)
 	click(w.frame)
 	check_box(list.frame, 'Thick: the list', BG_RGBA)
-	check(not skin:IsShown(), 'Thick: not drawn as the window')
+	check(not list.skin:IsShown(), 'Thick: no c-bg')
+	eq(anchor(list.rows[1], names), 'TOPLEFT frame TOPLEFT 1,-1', 'Thick: the rows 1 in')
+	eq(anchor(list.rows[2], names), 'TOPLEFT frame TOPLEFT 1,-23')
+	eq(list.frame:GetHeight(), 2 * 22 + 2, 'Thick: two rows and the edge')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	eq(hover:GetAtlas(), nil, 'Thick: no atlas')
+	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
+	eq(rgba(unpack(stub.state(hover).color_texture)), rgba(r, g, b, 1), 'Thick: the blue')
+	eq(string.format('%.2f', hover:GetAlpha()), '0.25', 'Thick: at 0.25')
+	stub.fire_script(list.rows[1], 'OnLeave')
 	W.CloseList()
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a long list scrolls on Blizzard's narrow scroll bar inside it, in place of the 3px bar", function()
+	theme('blizzard')
+	local values = {}
+	for i = 1, 20 do values[string.format('k%02d', i)] = 'Entry ' .. i end
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = values, get = function() return 'k01' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	click(w.frame)
+	local list = W.GetListFrames()
+	local bar = list.blizzardBar
+	check(bar.frame:IsShown(), 'Blizzard: the list has a bar')
+	check(not list.bar:IsShown(), 'not the 3px bar')
+	eq(size_of(bar.up), '8x5', 'narrow arrows')
+	eq(size_of(bar.down), '8x5')
+	eq(bar.track:GetWidth(), 8, 'an 8 wide track')
+	eq(list.frame:GetRight() - bar.track:GetRight(), 3, 'on its right, 3 in')
+	eq(bar.up:GetLeft(), bar.track:GetLeft(), 'the arrows over the track')
+	eq(list.frame:GetTop() - bar.up:GetTop(), 6, 'from the top of the rows, 6 down')
+	eq(bar.down:GetBottom() - list.frame:GetBottom(), 7, 'to their bottom, 7 up')
+	eq(bar.track:GetTop(), bar.up:GetTop() - 9, 'the track 9 in')
+	check(inside(bar.frame, list.frame), 'inside the list frame')
+	check(bar.frame:GetFrameLevel() > list.rows[1]:GetFrameLevel(), 'over the rows, so it takes the mouse')
+	-- Between each narrow arrow and the track, the column itself takes the
+	-- click, which would otherwise pick the first or last row under it.
+	check(bar.frame:IsMouseEnabled(), 'the column takes the mouse')
+	local scale = bar.frame:GetEffectiveScale()
+	local cx = bar.track:GetCenter()
+	for _, at in ipairs({ { bar.up:GetBottom() - 2, list.rows[1], 'under the up arrow' }, { bar.down:GetTop() + 2, list.rows[12], 'over the down arrow' } }) do
+		check(at[1] < bar.up:GetBottom() + 1 and at[1] > bar.track:GetTop() or at[1] > bar.down:GetTop() - 1 and at[1] < bar.track:GetBottom(), at[3] .. ': between the arrow and the track')
+		stub.cursor_x, stub.cursor_y = cx * scale, at[1] * scale
+		check(at[2]:IsMouseOver(), at[3] .. ': over a row')
+		check(bar.frame:IsMouseMotionFocus(), at[3] .. ': the column has the mouse, not the row under it')
+	end
+	stub.cursor_x, stub.cursor_y = 0, 0
+	-- The wheel over the bar: three rows, as over the list.
+	check(bar.frame:IsMouseWheelEnabled(), 'the bar takes the wheel')
+	stub.fire_script(bar.frame, 'OnMouseWheel', -1)
+	eq(entries_of(list)[1], 'Entry 4', 'the wheel over the bar: three rows')
+	stub.fire_script(bar.frame, 'OnMouseWheel', 1)
+	eq(entries_of(list)[1], 'Entry 1', 'and back')
+	local track = bar.track:GetHeight()
+	eq(bar.thumb:GetHeight(), math.max(23, math.floor(track * 12 / 20)), "the thumb the share of rows shown")
+	eq(entries_of(list)[1], 'Entry 1', 'from the top')
+	stub.fire_script(bar.down, 'OnClick', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 2', 'the down arrow: a row')
+	stub.fire_script(bar.up, 'OnClick', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 1', 'the up arrow: back')
+	stub.fire_script(list.frame, 'OnMouseWheel', -1)
+	eq(entries_of(list)[1], 'Entry 4', 'the wheel: three rows, as before')
+	eq(bar.thumb:GetTop(), bar.track:GetTop() - math.floor((track - bar.thumb:GetHeight()) * 3 / 8), 'the thumb follows')
+	for _ = 1, 10 do stub.fire_script(bar.down, 'OnClick', 'LeftButton') end
+	local last = entries_of(list)
+	eq(last[#last], 'Entry 20', 'no further than the end')
+	eq(bar.thumb:GetBottom(), bar.track:GetBottom(), 'the thumb at the bottom')
+	W.CloseList()
+
+	-- Ten entries fit: no bar.
+	local few = {}
+	for i = 1, 10 do few[string.format('k%02d', i)] = 'Entry ' .. i end
+	local short = bind('select', 'few', opt('select', 'Few', {
+		values = few, get = function() return 'k01' end, set = function() end,
+	}))
+	short:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -50)
+	click(short.frame)
+	check(not bar.frame:IsShown(), 'nothing to scroll: no bar')
+	check(not list.bar:IsShown(), 'nor a 3px one')
+	W.CloseList()
+	short:Release()
+
+	theme('thick'); rebind(w)
+	click(w.frame)
+	check(list.bar:IsShown(), 'Thick: the 3px bar, as before')
+	check(not bar.frame:IsShown(), 'Thick: no Blizzard bar')
+	W.CloseList()
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('W.BlizzardBar: the column takes the mouse and the wheel; a held thumb asks only when the cursor moves; W.ScrollBarHeld', function()
+	local host = CreateFrame('Frame', nil, UIParent)
+	host:SetSize(100, 300)
+	host:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	local asked = {}
+	local bar = W.BlizzardBar(host, function(offset) asked[#asked + 1] = offset end, { step = 10 })
+	bar:Set(host, 50, 0, 300, 300, 900, 0)
+	check(bar.frame:IsShown(), 'shown')
+	check(bar.frame:IsMouseEnabled(), 'the column takes the mouse')
+
+	-- The wheel: a step a turn, unclamped (the caller clamps).
+	stub.fire_script(bar.frame, 'OnMouseWheel', -1)
+	eq(asked[#asked], 10, 'down a turn: a step')
+	stub.fire_script(bar.frame, 'OnMouseWheel', 1)
+	eq(asked[#asked], -10, 'up a turn: a step up')
+	local turns = W.BlizzardBar(host, function(offset) asked[#asked + 1] = offset end, { step = 1, wheel = 3 })
+	turns:Set(host, 70, 0, 300, 12, 20, 0)
+	stub.fire_script(turns.frame, 'OnMouseWheel', -1)
+	eq(asked[#asked], 3, 'opts.wheel: its own turn')
+
+	-- A held thumb asks only when the cursor has moved.
+	asked = {}
+	check(not W.ScrollBarHeld(), 'nothing held')
+	local scale = bar.frame:GetEffectiveScale()
+	local _, y = bar.thumb:GetCenter()
+	stub.cursor_x, stub.cursor_y = 0, y * scale
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	check(W.ScrollBarHeld(), 'held')
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 0, 'the cursor still: nothing asked')
+	stub.cursor_y = (y - 10) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 1, 'moved: asked')
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 1, 'still again: not again')
+	stub.cursor_y = (y - 20) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 2, 'moved again: asked again')
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	stub.mouse_buttons.LeftButton = nil
+	check(not W.ScrollBarHeld(), 'let go')
+
+	-- A thumb whose mouse up never came isn't held once its button is up.
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	check(W.ScrollBarHeld(), 'held again')
+	stub.mouse_buttons.LeftButton = nil
+	check(not W.ScrollBarHeld(), 'its button up: not held')
+	asked = {}
+	stub.cursor_y = (y - 50) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(#asked, 0, 'and no longer dragging')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	host:Hide()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -2235,7 +2814,7 @@ test('a range is a minimal slider with an input-art value box', function()
 		if region ~= knob then check(inside(region, w.slider), tostring(region:GetAtlas()) .. ' inside the slider') end
 	end
 	eq(size_of(w.frame), '168x24', 'the range keeps its size')
-	eq(size_of(w.slider), '116x24', 'and its slider')
+	eq(size_of(w.slider), '88x24', 'and its slider, narrowed for the arrows')
 	check_no_box(w.edit, 'the value box')
 	eq(atlases_of(w.edit), INPUT_ART, 'the value box is a text box')
 	art_inside(w.edit, 'the value box')
@@ -2250,6 +2829,86 @@ test('a range is a minimal slider with an input-art value box', function()
 	check_box(w.edit, 'Thick again: the value box')
 	eq(atlases_of(w.edit), '', 'Thick again: no art on the value box')
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A button's first texture's atlas, and whether it's desaturated.
+local function arrow_texture(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:GetObjectType() == 'Texture' then return region end
+	end
+end
+local function atlas_of(button) return arrow_texture(button):GetAtlas() end
+
+test("under Blizzard a range has the minimal slider's end arrows inside its 116", function()
+	theme('thick')
+	local w = bind('range', 'size', opt('range', 'Size', {
+		min = 0, max = 10, step = 1, get = function() return 5 end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local names = { [w.frame] = 'frame', [w.slider] = 'slider' }
+	check(not w.backArrow:IsShown() and not w.forwardArrow:IsShown(), 'Thick: no arrows')
+	eq(w.backArrow:GetParent(), w.frame); eq(w.forwardArrow:GetParent(), w.frame)
+	theme('blizzard'); rebind(w)
+	check(w.backArrow:IsShown() and w.forwardArrow:IsShown())
+	eq(atlas_of(w.backArrow), 'Minimal_SliderBar_Button_Left'); eq(size_of(w.backArrow), '11x19'); eq(anchor(w.backArrow, names), 'TOPLEFT frame TOPLEFT 0,-2')
+	eq(anchor(w.slider, names), 'LEFT frame LEFT 15,0'); eq(size_of(w.slider), '88x24')
+	eq(atlas_of(w.forwardArrow), 'Minimal_SliderBar_Button_Right'); eq(size_of(w.forwardArrow), '9x18'); eq(anchor(w.forwardArrow, names), 'TOPLEFT frame TOPLEFT 107,-3')
+	eq(size_of(w.frame), '168x24'); eq(size_of(w.edit), '46x24')
+	theme('thick'); rebind(w)
+	check(not w.backArrow:IsShown() and not w.forwardArrow:IsShown(), 'Thick again: no arrows')
+	eq(size_of(w.slider), '116x24'); eq(anchor(w.slider, names), 'LEFT frame LEFT 0,0')
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a slider arrow steps by the option's step through the same path as a drag, clamped, disabled at the ends", function()
+	theme('blizzard')
+	local w, told, sets, get = range({ value = 5, min = 0, max = 10, step = 1 })
+	click(w.forwardArrow)
+	eq(get(), 6); eq(#sets, 1); eq(told.n, 1, 'the window is told once, as a drag is')
+	click(w.backArrow); eq(get(), 5)
+	check(w.forwardArrow:IsEnabled() and w.backArrow:IsEnabled())
+	check(not arrow_texture(w.backArrow):IsDesaturated(), 'enabled: in colour')
+	type_into(w.edit, '10')
+	check(not w.forwardArrow:IsEnabled(), 'at the top, forward is disabled'); check(w.backArrow:IsEnabled())
+	check(arrow_texture(w.forwardArrow):IsDesaturated(), 'a disabled arrow is desaturated')
+	check(not arrow_texture(w.backArrow):IsDesaturated())
+	click(w.forwardArrow); eq(get(), 10, 'no step past the end')
+	type_into(w.edit, '0')
+	check(not w.backArrow:IsEnabled(), 'at the bottom, back is disabled'); check(w.forwardArrow:IsEnabled())
+	check(not arrow_texture(w.forwardArrow):IsDesaturated(), 'enabled again: in colour')
+	w:SetDisabled(true)
+	check(not w.forwardArrow:IsEnabled() and not w.backArrow:IsEnabled(), 'a disabled range has both off')
+	w:SetDisabled(false)
+	check(w.forwardArrow:IsEnabled() and not w.backArrow:IsEnabled())
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('slider arrow edge cases', function()
+	theme('blizzard')
+	-- A percent: 0.5 and 0.05 make 0.55, shown as 55%.
+	local p, _, _, pget = range({ value = 0.5, min = 0, max = 1, step = 0.05, isPercent = true })
+	click(p.forwardArrow); eq(pget(), 0.55); eq(p.edit:GetText(), '55%')
+	p:Release()
+	-- No step and no bigStep: a hundredth of the span.
+	local h, _, _, hget = range({ value = 100, softMin = 0, softMax = 200 })
+	click(h.forwardArrow); eq(hget(), 102)
+	h:Release()
+	-- A soft max under the hard one: forward is off past it, back lands on it.
+	local s, _, _, sget = range({ value = 50, min = 0, max = 100, softMax = 10, step = 1 })
+	check(not s.forwardArrow:IsEnabled(), 'at or past the slider end')
+	click(s.backArrow); eq(sget(), 10)
+	s:Release()
+	-- A bigStep is for the drag; an arrow moves by step.
+	local b, _, _, bget = range({ value = 5, min = 0, max = 10, step = 1, bigStep = 5 })
+	click(b.forwardArrow); eq(bget(), 6)
+	b:Release()
+	-- No value: the arrows read from the slider's low end.
+	local n = range({ value = nil, min = 0, max = 10, step = 1 })
+	check(not n.backArrow:IsEnabled() and n.forwardArrow:IsEnabled())
+	n:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -2387,8 +3046,16 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	end
 	check(w.name:IsShown(), 'the name box shows')
 	check_no_box(w.select, 'the dropdown')
-	eq(atlases_of(w.select), 'common-dropdown-a-button,common-dropdown-textholder', 'the dropdown is a dropdown')
-	art_inside(w.select, 'the dropdown')
+	eq(atlases_of(w.select), 'common-dropdown-c-button', 'the dropdown is the Settings face')
+	local face = atlas_exact(w.select, 'common-dropdown-c-button')
+	eq(around(face, w.select), '-4,4,4,-4', 'compact: a 4px glow, clear of the name box under it')
+	for _, row in ipairs(w.select.caret) do check(not row:IsShown(), 'no caret') end
+	eq(w.select.text:GetJustifyH(), 'CENTER', 'its text centred')
+	stub.fire_script(w.select, 'OnEnter')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	eq(atlases_of(w.select), 'common-dropdown-c-button-hover-1', 'compact: no hover arrow')
+	stub.fire_script(w.select, 'OnLeave')
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'the mouse gone')
 	eq(atlases_of(w.xUp), 'minimal-scrollbar-arrow-top', 'up is the top arrow')
 	eq(atlases_of(w.xDown), 'minimal-scrollbar-arrow-bottom', 'down the bottom one')
 	for name, nudge in pairs(nudges) do
@@ -2420,6 +3087,8 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	end
 	check_box(w.select, 'Thick again: the dropdown')
 	eq(atlases_of(w.select), '', 'Thick again: the dropdown has no art')
+	for _, row in ipairs(w.select.caret) do check(row:IsShown(), 'Thick again: the caret') end
+	eq(w.select.text:GetJustifyH(), 'LEFT', 'Thick again: the text from the left')
 	for name, nudge in pairs(nudges) do
 		eq(atlases_of(nudge), '', 'Thick again: ' .. name .. ' has no art')
 		for _, row in ipairs(nudge.arrows) do check(row:IsShown(), 'Thick again: ' .. name .. "'s flat arrow") end
@@ -2518,8 +3187,15 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 
 	theme('blizzard')
 	open()
-	check(list.skin ~= nil and list.skin:IsShown(), 'drawn as the window is, as the select list')
-	check(atlas_piece(list.skin, 'common-dropdown-bg') ~= nil, "its rows on Blizzard's menu background")
+	-- Drawn as the select list is: on c-bg, the rows 3 in and 6 down, lit on the mouseover.
+	check_no_box(list.frame, 'Blizzard: the list')
+	check(list.skin ~= nil and list.skin:IsShown(), 'its skin shows')
+	eq(atlases_of(list.skin), 'common-dropdown-c-bg', 'on c-bg')
+	eq(around(atlas_exact(list.skin, 'common-dropdown-c-bg'), list.frame), '-17,12,17,-22', "at Blizzard's outsets")
+	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 3,-6', 'the rows 3 in and 6 down')
+	stub.fire_script(list.rows[1], 'OnEnter')
+	eq(list.rows[1].hover:GetAtlas(), 'common-dropdown-customize-mouseover', 'a row lights on the mouseover')
+	stub.fire_script(list.rows[1], 'OnLeave')
 	for i = 1, 2 do
 		local box = list.rows[i].box
 		check_no_box(box, 'Blizzard: row ' .. i .. "'s box")
@@ -2535,7 +3211,9 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 
 	theme('thick')
 	open()
-	check(not list.skin:IsShown(), 'Thick: not drawn as the window')
+	check(not list.skin:IsShown(), 'Thick: no c-bg')
+	check_box(list.frame, 'Thick: the list', BG_RGBA)
+	eq(anchor(list.rows[1], { [list.frame] = 'frame' }), 'TOPLEFT frame TOPLEFT 1,-1', 'Thick: the rows 1 in')
 	for i = 1, 2 do
 		local box = list.rows[i].box
 		check_box(box, 'Thick: row ' .. i .. "'s box", nil, true)

@@ -112,7 +112,8 @@ test("the /sui window takes the theme's border and stays solid", function()
 	local dialog = OW.GetDialogFrames().frame
 
 	for name, f in pairs({ window = window, dialog = dialog }) do
-		eq(drawn(f), 'theme,solid,panel', name .. ": SaftUI's theme, Solid, as a window")
+		-- The window is a window (the metal under Blizzard); the dialog a panel.
+		eq(drawn(f), name == 'window' and 'theme,solid,window' or 'theme,solid,panel', name .. ": SaftUI's theme, Solid")
 		eq(edge(f), THICK_EDGE, name .. ": Thick's border")
 		eq(alpha(f), '1.00', name .. ': solid, though the theme is transparent')
 		eq(inset(f), 2, name .. ": Thick's 2px border")

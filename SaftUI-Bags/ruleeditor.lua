@@ -218,14 +218,18 @@ local function OpColor(op)
 	return Colors().button.blue:GetRGB()
 end
 
--- A select's caret: rows of 7, 5, 3 and 1 pixels, each placed by its left edge.
+-- A select's caret: rows of 7, 5, 3 and 1 pixels, each placed by its left
+-- edge. Returns the rows.
 local function Caret(parent)
+	local rows = {}
 	for i, width in ipairs({ 7, 5, 3, 1 }) do
 		local t = parent:CreateTexture(nil, 'OVERLAY')
 		t:SetColorTexture(Grey())
 		t:SetSize(width, 1)
 		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
+		rows[i] = t
 	end
+	return rows
 end
 
 ------------------------------------------------------------------ values
@@ -471,20 +475,25 @@ local function MakeBox(f)
 	return box
 end
 
--- A field that opens a list (field.open), showing its value (field.text).
+-- A field that opens a list (field.open), showing its value (field.text),
+-- with a caret (field.caret). Under Blizzard it's a compact Settings dropdown
+-- (W.LookDropdown, put on as its row is laid out), its face following the
+-- mouse, a press and its list.
 local function MakeField(f)
 	local field = W.Box(st:CreateFrame('Button', nil, f))
 	field.text = Text(field)
 	field.text:SetPoint('LEFT', field, 'LEFT', 6, 0)
 	field.text:SetPoint('RIGHT', field, 'RIGHT', -20, 0)
-	Caret(field)
-	W.HoverEdge(field, function() return field.w == nil or field.w.disabled end)
+	field.caret = Caret(field)
+	local function IsDisabled() return field.w == nil or field.w.disabled end
+	W.HoverEdge(field, IsDisabled)
 	field:SetScript('OnClick', function(self)
 		if self.w and not self.w.disabled and self.w.row and self.open then self.open(self) end
 	end)
 	field:SetScript('OnHide', function(self)
 		if W.ListOwner() == self then W.CloseList() end
 	end)
+	W.DropdownStates(field, IsDisabled)
 	return field
 end
 
@@ -602,6 +611,7 @@ function Lay:Field(name, width, text, open)
 	local top = self:Fit(width)
 	field:SetPoint('TOPLEFT', self.f, 'TOPLEFT', self.x, -(top + 2))
 	field.w, field.open = self.w, open
+	W.LookDropdown(field, W.BlizzardLook(), true)
 	field.text:SetText(text)
 	self.record.fields[name] = field
 	self.x = self.x + width + GAP
