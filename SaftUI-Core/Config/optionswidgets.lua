@@ -976,11 +976,38 @@ local function CheckBox(parent, size)
 	return box
 end
 
+-- The size the Settings check box's art is drawn at in a row rowHeight tall:
+-- the largest whole size up to Blizzard's 30 x 29, in proportion, that fits
+-- the row.
+function W.CheckArtSize(rowHeight)
+	local height = math.min(29, rowHeight)
+	return math.min(30, math.floor(height * 30 / 29 + 0.5)), height
+end
+
+-- Lays a texture of a check box over the art's rect: box.artSize wide and
+-- tall, by whole pixels, on the box's right (the toggle) or left (a row),
+-- floor((height - 18) / 2) above its top.
+local function PlaceCheckArt(box, texture)
+	local width, height = unpack(box.artSize)
+	local top = math.floor((height - 18) / 2)
+	texture:ClearAllPoints()
+	texture:SetSize(width, height)
+	if box.artAlign == 'RIGHT' then
+		texture:SetPoint('TOPRIGHT', box, 'TOPRIGHT', 0, top)
+	else
+		texture:SetPoint('TOPLEFT', box, 'TOPLEFT', 0, top)
+	end
+end
+
 -- Puts a check box's look on, when it changed: the window's own (Box and the
 -- blue mark), or under Blizzard the Settings panel's check box
--- (st.ThemeArt.Control('checkbox'), box.look) filling the box: box.art, its
--- box, check and highlight, made the first time.
-local function LookCheckBox(box, blizzard)
+-- (st.ThemeArt.Control('checkbox'), box.look): box.art, its box, check and
+-- highlight, made the first time, each W.CheckArtSize(rowHeight) in size,
+-- on the box's right (align 'RIGHT', the toggle) or left ('LEFT', a row),
+-- spilling past the 18 square. The toggle's hit rect grows to take the art
+-- (the game widens or narrows where a frame takes the mouse), a row's box
+-- takes no mouse.
+local function LookCheckBox(box, blizzard, rowHeight, align)
 	if (box.blizzard or false) == blizzard then return end
 	box.blizzard = blizzard
 	if blizzard then
@@ -992,7 +1019,13 @@ local function LookCheckBox(box, blizzard)
 				check = box:CreateTexture(nil, 'OVERLAY'),
 				highlight = box:CreateTexture(nil, 'HIGHLIGHT'), -- shown by the game under the mouse
 			}
-			for _, texture in pairs(box.art) do texture:SetAllPoints(box) end
+		end
+		local width, height = W.CheckArtSize(rowHeight)
+		box.artSize, box.artAlign = { width, height }, align
+		for _, texture in pairs(box.art) do PlaceCheckArt(box, texture) end
+		if align == 'RIGHT' then
+			local top = math.floor((height - 18) / 2)
+			box:SetHitRectInsets(-(width - 18), 0, -top, -(height - 18 - top))
 		end
 		box.art.normal:SetAtlas(look.normal)
 		box.art.highlight:SetAtlas(look.highlight)
@@ -1002,6 +1035,7 @@ local function LookCheckBox(box, blizzard)
 		box:SetBackdrop(nil)
 		box.outline:Hide()
 	else
+		box:SetHitRectInsets(0, 0, 0, 0)
 		Box(box)
 		box.outline:Show()
 		for _, texture in pairs(box.art) do texture:Hide() end
@@ -1051,7 +1085,7 @@ end
 
 define('toggle', {
 	Bind = function(self, ...)
-		LookCheckBox(self.frame, BlizzardLook())
+		LookCheckBox(self.frame, BlizzardLook(), 34, 'RIGHT') -- 34: the body's row height (OB.ROW_HEIGHT, loaded after this file)
 		return Base.Bind(self, ...)
 	end,
 
@@ -1376,14 +1410,14 @@ end
 -- Under Blizzard the row's box and label sit MULTI_INSET in, clear of the
 -- multiselect's line.
 local function LookRow(row, blizzard)
-	LookCheckBox(row.box, blizzard)
+	LookCheckBox(row.box, blizzard, MULTI_ROW, 'LEFT')
 	row.blizzard = blizzard
 	if blizzard and not row.hover then
 		row.hover = row.box:CreateTexture(nil, 'OVERLAY', nil, 1)
-		row.hover:SetAllPoints(row.box)
 	end
 	if row.hover then
 		if blizzard then
+			PlaceCheckArt(row.box, row.hover)
 			row.hover:SetAtlas(row.box.look.highlight)
 			row.hover:SetBlendMode(row.box.look.highlightBlend)
 		end
@@ -2440,7 +2474,7 @@ function LayCheckRow(row, entry)
 	if row.box then
 		row.box:SetShown(checking)
 		if checking then
-			LookCheckBox(row.box, list.blizzard or false)
+			LookCheckBox(row.box, list.blizzard or false, LIST_ROW_HEIGHT, 'LEFT')
 			SetCheck(row.box, list.isChecked(entry.key))
 		end
 	end

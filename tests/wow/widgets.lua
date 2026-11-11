@@ -792,6 +792,20 @@ end
 function Frame.SetID(self, s, id) s.id = number_arg(s, id, 'id') end
 function Frame.GetID(self, s) return s.id or 0 end
 
+-- How far the client widens (negative) or narrows (positive) where a frame
+-- takes the mouse, past its edges. Only remembered: clicks by position aren't modelled.
+function Frame.SetHitRectInsets(self, s, left, right, top, bottom)
+	s.hit_insets = {
+		number_arg(s, left, 'left'), number_arg(s, right, 'right'),
+		number_arg(s, top, 'top'), number_arg(s, bottom, 'bottom'),
+	}
+end
+function Frame.GetHitRectInsets(self, s)
+	local i = s.hit_insets
+	if not i then return 0, 0, 0, 0 end
+	return i[1], i[2], i[3], i[4]
+end
+
 function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
 function Frame.GetFrameLevel(self, s) return s.level end
 function Frame.SetFrameStrata(self, s, strata)

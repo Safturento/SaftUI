@@ -1954,9 +1954,8 @@ test("/sui's execute button and toggle take Blizzard's art under Blizzard, their
 		check(not box.outline:IsShown(), name .. ': and its dark line')
 		check(not box.mark:IsShown(), name .. ': no blue mark')
 		eq(box:GetWidth() .. 'x' .. box:GetHeight(), '18x18', name .. ': it keeps its size')
-		for _, region in ipairs(shown_textures(box)) do
-			eq(around(region, box), '0,0,0,0', name .. ': ' .. tostring(region:GetAtlas()) .. ' inside its rect')
-		end
+		-- The art's own size and place are pinned by the test of the check boxes' size.
+		check(#shown_textures(box) > 0, name .. ': it is drawn')
 	end
 	eq(atlases_of(t.frame), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'the toggle, checked: the box, its highlight and the check')
 	eq(atlases_of(m.rows[1].box), 'checkbox-minimal,checkbox-minimal,checkmark-minimal', 'a checked row too')
@@ -2010,7 +2009,7 @@ test("/sui under Blizzard: a disabled execute button is -Disabled, and a multise
 			if select(1, region:GetDrawLayer()) == 'OVERLAY' and region:GetBlendMode() == 'ADD' then
 				out[#out + 1] = tostring(region:GetAtlas()) .. ' ' .. region:GetBlendMode()
 				check(region:GetParent() == row.box, 'the hover is a texture of the box')
-				eq(around(region, row.box), '0,0,0,0', 'the hover lies over the box')
+				eq(around(region, row.box), '0,2,5,-2', 'the hover lies over the box, at the art\'s size')
 			end
 		end
 		for _, region in ipairs(shown_textures(row)) do
@@ -2124,6 +2123,55 @@ local function check_line(frame, name)
 end
 
 local function size_of(frame) return frame:GetWidth() .. 'x' .. frame:GetHeight() end
+
+test('W.CheckArtSize: the largest whole size up to 30x29, in proportion, within the row', function()
+	eq(table.concat({ W.CheckArtSize(34) }, 'x'), '30x29')
+	eq(table.concat({ W.CheckArtSize(29) }, 'x'), '30x29')
+	eq(table.concat({ W.CheckArtSize(22) }, 'x'), '23x22')
+	eq(table.concat({ W.CheckArtSize(18) }, 'x'), '19x18')
+end)
+
+test("under Blizzard a toggle's box is drawn 30x29, a multiselect's and a check list's rows 23x22; no box or row changes size", function()
+	local t = bind('toggle', 'on', opt('toggle', 'On', {
+		get = function() return true end, set = function() end,
+	}))
+	local m = bind('multiselect', 'pick', opt('multiselect', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return true end, set = function() end,
+	}))
+	parent:SetSize(800, 600)
+	parent:SetPoint('CENTER')
+	t:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -50)
+	m:SetPoint('TOPLEFT', parent, 'TOPLEFT', 40, -150)
+	theme('blizzard'); rebind(t); rebind(m)
+	check(#shown_textures(t.frame) > 0, 'the toggle is drawn')
+	for _, region in ipairs(shown_textures(t.frame)) do
+		eq(size_of(region), '30x29'); eq(around(region, t.frame), '-12,5,0,-6', 'its right on the box, 5 above')
+	end
+	eq(size_of(t.frame), '18x18'); eq(t:GetWidth(), 18)
+	eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '-12,0,-5,-6', 'a click on the art reaches the box')
+	check(#shown_textures(m.rows[1].box) > 0, 'a row is drawn')
+	for _, region in ipairs(shown_textures(m.rows[1].box)) do
+		eq(size_of(region), '23x22'); eq(around(region, m.rows[1].box), '0,2,5,-2')
+	end
+	eq(size_of(m.rows[1].box), '18x18'); eq(m.rows[1]:GetHeight(), 22)
+	-- W.OpenCheckList's rows: the same 23x22 on an 18 box.
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(170, 24)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	W.OpenCheckList(owner, { { key = 'a', label = 'Alpha' } }, function() return true end, function() end)
+	local box = W.GetListFrames().rows[1].box
+	check(#shown_textures(box) > 0, 'a check list row is drawn')
+	for _, region in ipairs(shown_textures(box)) do
+		eq(size_of(region), '23x22'); eq(around(region, box), '0,2,5,-2')
+	end
+	eq(size_of(box), '18x18')
+	W.CloseList()
+	theme('thick'); rebind(t); rebind(m)
+	eq(atlases_of(t.frame), '', 'Thick: no art')
+	eq(table.concat({ t.frame:GetHitRectInsets() }, ','), '0,0,0,0')
+	t:Release(); m:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
 
 test('a select is a Blizzard dropdown, its arrow open while its list shows', function()
 	theme('thick')
