@@ -12,8 +12,6 @@
 --   * UF:UpdateConfig is unitframes.lua's (it needs oUF). It counts its calls.
 --   * UF.units and the rest of what its OnEnable makes: empty, enough for
 --     UF:GetConfigTable, whose Profiles group holds the buttons pressed here.
---     Its Nameplates page is always there, and reads UF:NameplateAddon
---     (nameplates/nameplates.lua, real).
 --   * st.Config:Export and Import are SaftUI-Core/Config/config.lua's, which
 --     needs AceDB, AceConfigRegistry and others. The real ones turn the data
 --     into text and back (Base64 of compressed AceSerializer text); these
@@ -46,7 +44,6 @@ function st.Config:Import(text)
 end
 
 load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 
 -- st:Print goes to print. Count what it prints.
 local printed = {}

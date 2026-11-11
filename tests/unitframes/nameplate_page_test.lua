@@ -7,9 +7,11 @@
 --     unit's (by ValidUnit), and it has no Copy from;
 --   - turning Nameplates off puts the game's settings back and asks for a
 --     reload; Friendly plates sets the game's friendly plates, out of combat;
---   - the user's own settings are recorded once, the first time SaftUI changes
---     them, put back when Nameplates is turned off, and recorded anew the next
---     time;
+--   - the user's own settings are recorded once per character, the first time
+--     SaftUI changes them, put back when Nameplates is turned off (a value the
+--     game refuses stays recorded), and recorded anew the next time; with
+--     Nameplates off nothing is set, even while SaftUI's plates are still up
+--     before the reload;
 --   - OnEnable sets them for SaftUI's plates, puts them back with Nameplates
 --     off, and touches nothing while another nameplate addon draws the plates,
 --     whose name the page then shows over its options, all disabled.
@@ -19,7 +21,8 @@
 -- as config_test.lua loads them, so the page is read through
 -- UF:GetConfigTable() and st.OptionsWidgets.Confirm draws its dialog.
 -- ReloadUI is a recorder. The game's settings are tests/wow/game.lua's
--- stub.cvars.
+-- stub.cvars. st.config.char is AceDB's per-character table, which the shell
+-- doesn't have: {} for each world, as for a new character.
 local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs'
@@ -33,6 +36,7 @@ local function world(client)
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_saftui('SaftUI-Core/Config/optionswindow.lua')
 	load_test_file('core/options_walk.lua')
+	st.config.char = {}
 	reloads = 0
 	ReloadUI = function() reloads = reloads + 1 end
 	return st, UF
@@ -83,7 +87,7 @@ end
 local function click(frame) stub.fire_script(frame, 'OnClick') end
 
 local function record(st)
-	return st.config.global.nameplateCVars
+	return st.config.char.nameplateCVars
 end
 
 -- UF:OnEnable, with what it does before the nameplates left out: spawning
@@ -346,15 +350,15 @@ test('a second on/off cycle records anew', function()
 	eq(record(st), nil, 'nothing recorded')
 
 	-- The user changes the game's setting, then turns SaftUI's plates on again
-	-- and reloads. The account's saved variables and the game's settings
+	-- and reloads. The character's saved variables and the game's settings
 	-- outlive the reload.
 	stub.cvars[PLAYERS] = '0'
 	UF:GetProfileConfig().nameplate.enable = true
-	local global, cvars = st.config.global, stub.cvars
+	local char, cvars = st.config.char, stub.cvars
 	local profile = UF:GetProfileConfig().nameplate
 
 	st, UF = world('forever')
-	st.config.global, stub.cvars = global, cvars
+	st.config.char, stub.cvars = char, cvars
 	for key, value in pairs(profile) do UF:GetProfileConfig().nameplate[key] = value end
 	enable(UF)
 	eq(record(st)[PLAYERS] .. record(st)[NPCS], '00', 'second session: what was set then')
@@ -395,6 +399,92 @@ test('putting the settings back waits for the end of combat', function()
 	eq(record(st), nil, 'and the record cleared')
 end)
 
+test('each character records and puts back its own settings', function()
+	-- A login on character, with the game's settings cvars, keeping the
+	-- account's saved variables (global) and the character's (char).
+	local global = {}
+	local function login(char, cvars)
+		local st, UF = world('forever')
+		st.config.global, st.config.char, stub.cvars = global, char, cvars
+		enable(UF)
+		return st, UF
+	end
+	local alice, bob = {}, {}
+	local aliceCVars = { [PLAYERS] = '1', [NPCS] = '0' }
+	local bobCVars = { [PLAYERS] = '0', [NPCS] = '1' }
+
+	login(alice, aliceCVars)
+	eq(alice.nameplateCVars[PLAYERS] .. alice.nameplateCVars[NPCS], '10', "the first character's, recorded")
+	local st, UF = login(bob, bobCVars)
+	eq(bob.nameplateCVars[PLAYERS] .. bob.nameplateCVars[NPCS], '01', "the second's, its own")
+	eq(alice.nameplateCVars[PLAYERS] .. alice.nameplateCVars[NPCS], '10', "the first's untouched")
+	eq(global.nameplateCVars, nil, 'nothing account-wide')
+
+	set(UF, 'enable', false)
+	eq(bobCVars[PLAYERS] .. bobCVars[NPCS], '01', 'the second character turns it off: its own back')
+	eq(bob.nameplateCVars, nil, 'its record cleared')
+	eq(alice.nameplateCVars[PLAYERS] .. alice.nameplateCVars[NPCS], '10', "the first's kept")
+
+	st, UF = login(alice, aliceCVars)
+	eq(aliceCVars[PLAYERS] .. aliceCVars[NPCS], '11', "the first still has SaftUI's")
+	set(UF, 'enable', false)
+	eq(aliceCVars[PLAYERS] .. aliceCVars[NPCS], '10', 'the first turns it off: its own back')
+	eq(alice.nameplateCVars, nil, 'its record cleared')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test('a setting the game refuses to put back stays recorded', function()
+	local st, UF = world('forever')
+	stub.cvars[PLAYERS], stub.cvars[NPCS] = '1', '0'
+	UF:SpawnNameplates()
+	UF:ApplyNameplateCVars()
+	local real = C_CVar.SetCVar
+	C_CVar.SetCVar = function(name, value)
+		if name == NPCS then return false end
+		return real(name, value)
+	end
+	UF:RestoreNameplateCVars()
+	eq(stub.cvars[PLAYERS], '1', 'the one it took is back')
+	eq(record(st) and record(st)[PLAYERS], nil, 'and no longer recorded')
+	eq(record(st) and record(st)[NPCS], '0', 'the refused one is still recorded')
+	C_CVar.SetCVar = real
+	UF:RestoreNameplateCVars()
+	eq(stub.cvars[NPCS], '0', 'put back next time')
+	eq(record(st), nil, 'the record cleared')
+end)
+
+test('Nameplates off before the reload: Friendly plates sets nothing, and a restore waiting out combat stands', function()
+	local st, UF = world('forever')
+	stub.cvars[PLAYERS], stub.cvars[NPCS] = '1', '0'
+	UF:SpawnNameplates()
+	UF:ApplyNameplateCVars()
+	set(UF, 'enable', false)
+	click(st.OptionsWidgets.GetDialogFrames().no)
+	check(UF.plateDriver ~= nil, "the reload declined: SaftUI's plates still up")
+	eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '10', "the user's settings back")
+	local calls = watch_sets()
+	set(UF, 'friendly', false)
+	set(UF, 'friendly', true)
+	UF:ApplyNameplateCVars()
+	eq(#calls, 0, 'Friendly plates and applying set nothing')
+	eq(record(st), nil, 'and record nothing')
+
+	-- In combat: Nameplates goes off (the restore waits), then something
+	-- applies (Friendly plates, in game). The restore still runs.
+	st, UF = world('forever')
+	stub.cvars[PLAYERS], stub.cvars[NPCS] = '1', '0'
+	UF:SpawnNameplates()
+	UF:ApplyNameplateCVars()
+	stub.in_combat = true
+	UF:GetProfileConfig().nameplate.enable = false
+	UF:RestoreNameplateCVars()
+	UF:ApplyNameplateCVars()
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(stub.cvars[PLAYERS] .. stub.cvars[NPCS], '10', 'put back once combat ends')
+	eq(record(st), nil, 'the record cleared')
+end)
+
 ------------------------------------------------------------------ at login
 
 test('Nameplates on at login: OnEnable spawns the plates and sets the game settings', function()
@@ -418,7 +508,7 @@ end)
 test('Nameplates off at login with a record: it is put back. Stood down: nothing set or restored', function()
 	local st, UF = world('forever')
 	UF:GetProfileConfig().nameplate.enable = false
-	st.config.global.nameplateCVars = { [PLAYERS] = '1' }
+	st.config.char.nameplateCVars = { [PLAYERS] = '1' }
 	stub.cvars[PLAYERS] = '0'
 	enable(UF)
 	eq(UF.plateDriver, nil, 'no plates')
@@ -437,7 +527,7 @@ test('Nameplates off at login with a record: it is put back. Stood down: nothing
 		st, UF = world('forever')
 		stub.loaded_addons.Plater = true
 		UF:GetProfileConfig().nameplate.enable = on
-		st.config.global.nameplateCVars = { [PLAYERS] = '1' }
+		st.config.char.nameplateCVars = { [PLAYERS] = '1' }
 		stub.cvars[PLAYERS] = '0'
 		calls = watch_sets()
 		enable(UF)

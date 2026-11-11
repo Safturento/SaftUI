@@ -556,9 +556,17 @@ end
 -- sits on the page above the tabs, not in General: every tab is disabled then,
 -- and the window chooses a disabled tab only when it was the tab chosen
 -- already (st.OptionsModel), so a line in General would mostly not show.
+
+-- The nameplate addon drawing the plates, or nil: UF:NameplateAddon
+-- (nameplates/nameplates.lua), and nil where that isn't loaded, so the page
+-- builds without it.
+local function OtherNameplateAddon()
+	return UF.NameplateAddon and UF:NameplateAddon() or nil
+end
+
 local function StandDown(config_table)
-	local addon = UF:NameplateAddon()
-	config_table.disabled = function() return UF:NameplateAddon() ~= nil end
+	local addon = OtherNameplateAddon()
+	config_table.disabled = function() return OtherNameplateAddon() ~= nil end
 	if not addon then return end
 	config_table.args.drawn_by = {
 		order = 0,

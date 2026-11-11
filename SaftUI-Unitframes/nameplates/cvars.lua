@@ -6,10 +6,12 @@ local UF = st:GetModule('Unitframes')
 	are drawn, and puts back when Nameplates is turned off.
 
 	The first time SaftUI changes a setting, the user's own value is recorded
-	in st.config.global.nameplateCVars (account-wide, like the game's settings,
-	and outside any profile). Turning Nameplates off, or logging in with it off,
-	sets each recorded value back and clears the record, so the next time
-	SaftUI's plates are on it records whatever is set then.
+	in st.config.char.nameplateCVars: per character (each character puts back
+	its own, whether the game keeps a setting per character or per account)
+	and outside any profile. Turning Nameplates off, or logging in with it off,
+	sets each recorded value back and clears it from the record, so the next
+	time SaftUI's plates are on it records whatever is set then. A value the
+	game refuses to take back stays recorded, to be put back next time.
 
 	The game refuses some of these from addon code in combat, so every change
 	waits for the end of combat. While another nameplate addon draws the plates
@@ -31,18 +33,23 @@ UF.NAMEPLATE_CVARS = {
 function UF:SetNameplateCVar(name, value)
 	local current = C_CVar.GetCVar(name)
 	if current == nil then return end
-	local global = st.config.global
-	global.nameplateCVars = global.nameplateCVars or {}
-	if global.nameplateCVars[name] == nil then
-		global.nameplateCVars[name] = current
+	local char = st.config.char
+	char.nameplateCVars = char.nameplateCVars or {}
+	if char.nameplateCVars[name] == nil then
+		char.nameplateCVars[name] = current
 	end
 	C_CVar.SetCVar(name, value)
 end
 
 -- Sets every UF.NAMEPLATE_CVARS setting from the nameplate config, while
--- SaftUI's plates are drawn (there's a driver: UF:SpawnNameplates).
+-- SaftUI's plates are drawn (there's a driver: UF:SpawnNameplates) and
+-- Nameplates is on. Turned off with the reload declined, the plates stay up
+-- until the next one, but the game's settings are the user's again, so
+-- nothing is set; checked before waiting out combat too, so it never takes
+-- the place of a restore that waits under the same key.
 function UF:ApplyNameplateCVars()
 	if not self.plateDriver then return end
+	if not self:GetProfileConfig().nameplate.enable then return end
 	if st:QueueAfterCombat('NameplateCVars', function() UF:ApplyNameplateCVars() end) then return end
 	local config = self:GetProfileConfig().nameplate
 	for name, value in pairs(UF.NAMEPLATE_CVARS) do
@@ -50,13 +57,18 @@ function UF:ApplyNameplateCVars()
 	end
 end
 
--- Puts back every setting SaftUI recorded, then clears the record.
+-- Puts back every setting SaftUI recorded, clearing each the game takes. One
+-- it refuses (C_CVar.SetCVar gives false) stays recorded, so the user's value
+-- isn't lost; the record goes once it's empty.
 function UF:RestoreNameplateCVars()
 	if st:QueueAfterCombat('NameplateCVars', function() UF:RestoreNameplateCVars() end) then return end
-	local record = st.config.global.nameplateCVars
+	local record = st.config.char.nameplateCVars
 	if not record then return end
+	local kept = {}
 	for name, value in pairs(record) do
-		C_CVar.SetCVar(name, value)
+		if not C_CVar.SetCVar(name, value) then
+			kept[name] = value
+		end
 	end
-	st.config.global.nameplateCVars = nil
+	st.config.char.nameplateCVars = next(kept) and kept or nil
 end

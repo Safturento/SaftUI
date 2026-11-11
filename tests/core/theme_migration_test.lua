@@ -20,9 +20,7 @@
 -- stay out); the unit frames' config/config.lua, for its Import prompt, with the
 -- stand-ins tests/unitframes/profiles_test.lua has for unitframes.lua (it needs
 -- oUF): UF:UpdateConfig counts its calls, and UF.units and the rest of what
--- its OnEnable makes are empty, enough for UF:GetConfigTable's Profiles group;
--- and nameplates/nameplates.lua, whose UF:NameplateAddon the table's
--- Nameplates page reads.
+-- its OnEnable makes are empty, enough for UF:GetConfigTable's Profiles group.
 
 local st
 
@@ -264,7 +262,6 @@ test('an imported old profile string migrates', function()
 	UF.unit_strings, UF.group_strings = {}, {}
 	function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 	load_saftui('SaftUI-Unitframes/config/config.lua')
-	load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 
 	UF:GetConfigTable().args.profile.args.import.func()
 	local W = st.OptionsWidgets

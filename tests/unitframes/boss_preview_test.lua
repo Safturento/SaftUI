@@ -9,10 +9,9 @@
 -- too), filled the way AceDB fills them; unitframes.lua (UF:PlaceUnitFrame,
 -- UF:PlaceHolder, UF:ApplyConfig, UF:UpdateConfig, UF:OnColorsChanged);
 -- groups.lua; config/config.lua (UF:GetProfileConfig and the boss page, whose
--- General set is the Layout options' set) and nameplates/nameplates.lua
--- (UF:NameplateAddon, which the table's Nameplates page reads);
--- constructors.lua and updaters.lua, which build and style the previews' bars
--- and texts; LibStringFormat-1.0, which init.lua makes st.StringFormat.
+-- General set is the Layout options' set); constructors.lua and updaters.lua,
+-- which build and style the previews' bars and texts; LibStringFormat-1.0,
+-- which init.lua makes st.StringFormat.
 --
 -- Stand-ins, for what needs oUF:
 --   * UF.oUF, as far as unitframes.lua and the previews use it: its colors
@@ -44,7 +43,6 @@ addon_namespace('SaftUI-Unitframes').oUF = {
 load_saftui('SaftUI-Unitframes/unitframes.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
