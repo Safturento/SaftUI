@@ -51,6 +51,17 @@ test("the stand-in's second SpawnNamePlates reports oUF's error", function()
 	check(tostring(errors[1]):find('oUF nameplate driver has already been initialized.', 1, true), tostring(errors[1]))
 end)
 
+test("the stand-in's IsElementEnabled and IsElementPaused want an element name, as oUF's argcheck does", function()
+	local st, UF = NP.world('forever')
+	UF:SpawnNameplates()
+	local frame = NP.add('nameplate1')
+	for _, method in ipairs({ 'IsElementEnabled', 'IsElementPaused' }) do
+		local ok, err = pcall(frame[method], frame, nil)
+		eq(ok, false, method .. ': no name errors')
+		check(tostring(err):find("Bad argument #2 to '" .. method .. "' (string expected, got nil)", 1, true), tostring(err))
+	end
+end)
+
 test('OnEnable spawns nameplates after the other units', function()
 	local src = read_saftui_source('SaftUI-Unitframes/unitframes.lua')
 	local body = src:match('function UF:OnEnable%(%)(.-)\nend')
@@ -88,7 +99,7 @@ test('another nameplate addon loaded: SaftUI stands down and touches nothing', f
 	for _, a in ipairs({
 		{ 'Plater', 'Plater' }, { 'EllesmereUINameplates', 'EllesmereUI Nameplates' },
 		{ 'Kui_Nameplates', 'KuiNameplates' }, { 'TidyPlates_ThreatPlates', 'Threat Plates' },
-		{ 'NeatPlates', 'NeatPlates' },
+		{ 'NeatPlates', 'NeatPlates' }, { 'Platynator', 'Platynator' },
 	}) do
 		local st, UF = NP.world('forever')
 		eq(UF:NameplateAddon(), nil, a[1] .. ': none before it loads')
@@ -162,6 +173,32 @@ test('a plate has health, name, castbar, buffs, debuffs, quest and raid target i
 		eq(frame.GroupRoleIndicator, nil, client .. ': no group role')
 		eq(frame.RaidRoleIndicator, nil, client .. ': no raid role')
 	end
+end)
+
+-- Whether the game turns a frame's mouse on when it gets an OnEnter or
+-- OnLeave script isn't modelled by the stubs (nor known): a plate's frame
+-- simply gets neither, so it can't take the mouse over Blizzard's plate,
+-- where a click targets the unit.
+test("a plate's frame takes no mouse: no clicks registered, no OnEnter or OnLeave, in or out of combat", function()
+	local st, UF = NP.world('forever')
+	UF:SpawnNameplates()
+	local frames = { NP.add('nameplate1') }
+	stub.in_combat = true
+	frames[2] = NP.add('nameplate2')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	for i, frame in ipairs(frames) do
+		local what = i == 1 and 'out of combat' or 'made in combat'
+		eq(frame:GetScript('OnEnter'), nil, what .. ': no OnEnter')
+		eq(frame:GetScript('OnLeave'), nil, what .. ': no OnLeave')
+		eq(stub.state(frame).click_buttons, nil, what .. ': no clicks registered')
+		eq(frame:IsMouseEnabled(), false, what .. ': the mouse off, as oUF left it')
+	end
+
+	-- Other units still get them.
+	local target = NP.ouf:Spawn('target', 'SaftUI_Target')
+	eq(target:GetScript('OnEnter'), UF.OnEnter, "a unit frame's OnEnter")
+	eq(stub.state(target).click_buttons and stub.state(target).click_buttons[1], 'AnyUp', "a unit frame's clicks")
 end)
 
 test('Power, Group role and Raid role are for every unit but the plates', function()
@@ -310,6 +347,19 @@ test('the plate size is set again after Blizzard sets its own, and waits for the
 	stub.fire_event('PLAYER_REGEN_ENABLED')
 	eq(size_set(), size, "SaftUI's once combat ends")
 	eq(#take_errors(), 0, 'no error')
+end)
+
+test('a size oUF refuses at spawn is reported, and the hook still goes in', function()
+	local st, UF = NP.world('forever')
+	local P = UF:GetProfileConfig().nameplate
+	P.width = 'wide' -- not a number: oUF's SetSize argument check raises
+	local before = rawget(NamePlateDriverFrame, 'UpdateNamePlateSize')
+	check(UF:SpawnNameplates(), 'spawned')
+	eq(#take_errors(), 1, 'the size error reported')
+	check(rawget(NamePlateDriverFrame, 'UpdateNamePlateSize') ~= before, 'hooked')
+	P.width = 200
+	NamePlateDriverFrame:UpdateNamePlateSize()
+	eq(size_set(), driver_size(UF, 200, 20), "SaftUI's size after Blizzard's, once the config is right")
 end)
 
 test("a size change reaches the plates through the nameplate's config update", function()
