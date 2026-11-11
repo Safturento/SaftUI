@@ -62,7 +62,7 @@ local function world(client)
 		local args = {}
 		for s = 1, 3 do
 			local section = { order = s, type = 'group', inline = true, name = 'Section ' .. s, args = {} }
-			for i = 1, 10 do section.args['t' .. i] = toggle('Toggle ' .. i, i, 'wide') end
+			for i = 1, 10 do section.args['t' .. i] = toggle('Toggle ' .. i, i, i <= 8 and 'wide' or nil) end
 			args['s' .. s] = section
 		end
 		return { name = 'Long', type = 'group', category = 'Frames', args = args }
@@ -212,6 +212,9 @@ local function check_own(where)
 	eq(at(F.tabLine), '210,113 828x1', where .. ': the tab line')
 	eq(at(F.body), '238,113 774x539', where .. ': the body')
 	eq(at(F.footer), '210,652 828x46', where .. ': the footer')
+	eq(table.concat(stub.state(F.sideFill).color_texture, ','), '0.09,0.09,0.09,1', where .. ': the sidebar fill')
+	for _, l in ipairs(F.sideLines) do check(l:IsShown(), where .. ': a sidebar line shown') end
+	eq(F.window.backdropInfo.insets.left, 2, where .. ': the border inset')
 	for _, item in ipairs(F.nav) do
 		if item.key then eq(item:GetWidth(), 207, where .. ': a nav entry') end
 	end
@@ -375,14 +378,18 @@ test('a switch with /sui scrolled or on a fill page', function()
 	eq(F.content:GetHeight(), F.body:GetHeight(), 'Thick: the drawn height is the view')
 	eq(F.body:GetRight() - F.content:GetRight(), 13, 'Thick: 13 past the content')
 
+	local count = #fillHeights
 	switch('blizzard')
+	check(#fillHeights > count, 'Blizzard: the fill row was told its height again')
 	eq(OW:GetState().page, 'Fill', 'Blizzard: the same page')
 	eq(fillHeights[#fillHeights], thick, 'Blizzard: as tall, the body as tall')
 	eq(fillHeights[#fillHeights], cell('fill').height - 12, 'Blizzard: its cell less 12')
 	eq(F.content:GetHeight(), F.body:GetHeight(), 'Blizzard: the drawn height is the view')
 	eq(F.body:GetRight() - F.content:GetRight(), 25, 'Blizzard: 25 past the content')
 
+	count = #fillHeights
 	switch('thick')
+	check(#fillHeights > count, 'Thick again: the fill row was told its height again')
 	eq(fillHeights[#fillHeights], thick, 'Thick again: as tall')
 	eq(F.body:GetRight() - F.content:GetRight(), 13, 'Thick again: 13 past the content')
 	st.Config:Close()
@@ -444,6 +451,9 @@ test('the sidebar under Blizzard: no fill or lines, banners by index, gold and w
 		eq(rgb(other.text), '1.00,0.82,0.00', client .. ': the others gold')
 		stub.fire_script(other, 'OnEnter'); eq(rgb(other.text), '1.00,1.00,1.00', client .. ': white under the mouse')
 		stub.fire_script(other, 'OnLeave'); eq(rgb(other.text), '1.00,0.82,0.00', client)
+		other.disabled = true -- a disabled entry keeps its gold under the mouse
+		stub.fire_script(other, 'OnEnter'); eq(rgb(other.text), '1.00,0.82,0.00', client .. ': disabled stays gold')
+		stub.fire_script(other, 'OnLeave'); other.disabled = nil
 		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
@@ -460,6 +470,7 @@ test('the main column under Blizzard: the page divider, no section rules, no foo
 		eq(F.subLine:GetAtlas(), 'Options_HorizontalDivider', client .. ": the subtab row's line too")
 		st.Config:Open('Long') -- three titled sections
 		eq(lines(true), 0, client .. ': no 1px line across the body')
+		check(lines(false) > 0, client .. ": the halves' dividers stay")
 		check(not F.footerLine:IsShown(), client .. ': no footer line')
 		local glass
 		for _, region in ipairs({ F.search:GetRegions() }) do
@@ -491,7 +502,10 @@ test('the dressing comes off under Thick', function()
 	eq(rgb(entry_of('Long').text), normal, 'the open page in the normal text color')
 	eq(rgb(entry_of('Chat').text), normal, 'the others too')
 	eq(F.tabLine:GetAtlas(), nil, 'the tab line has no atlas')
-	eq(stub.state(F.tabLine).color_texture[1], 0.18, 'and the lines color')
+	for _, line in ipairs({ F.tabLine, F.subLine }) do
+		eq(line:GetAtlas(), nil, 'no atlas on a tab row line')
+		eq(table.concat(stub.state(line).color_texture, ','), table.concat(st.OptionsBody.LINE, ','), 'the lines color')
+	end
 	eq(lines(true), 2, 'a line between each pair of the three sections')
 	check(F.footerLine:IsShown(), 'the footer line back')
 	local glass = false

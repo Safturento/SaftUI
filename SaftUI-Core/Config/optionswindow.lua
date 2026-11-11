@@ -491,6 +491,11 @@ function OW.BannerAtlas(n)
 	return banners[((n - 1) % #banners) + 1]
 end
 
+-- A sidebar name's white: the open page's, and the one under the mouse.
+local function PickedText()
+	return unpack(st.ThemeArt.Control('optionslist').text.picked)
+end
+
 -- A sidebar entry's look: the open page's blue fill and bar, or under
 -- Blizzard (item.blizzard) the Settings panel's category list, the open page
 -- on its picked art (item.listPicked) with its name white and the others
@@ -500,7 +505,7 @@ local function StyleNavItem(item)
 	item.listHover:Hide()
 	if item.blizzard then
 		local text = st.ThemeArt.Control('optionslist').text
-		item.text:SetTextColor(unpack(item.active and text.picked or text.normal))
+		if item.active then item.text:SetTextColor(PickedText()) else item.text:SetTextColor(unpack(text.normal)) end
 	else
 		item.text:SetTextColor(Normal())
 	end
@@ -540,7 +545,7 @@ local function MakeNavItem()
 		if self.active then return end
 		if self.blizzard then
 			self.listHover:Show()
-			self.text:SetTextColor(unpack(st.ThemeArt.Control('optionslist').text.picked))
+			if not self.disabled then self.text:SetTextColor(PickedText()) end
 			return
 		end
 		self.bg:SetColorTexture(unpack(HOVER))
@@ -589,7 +594,7 @@ local function DrawSidebar(entries)
 				frame.banner:Show()
 				frame:SetHeight(art.groupHeight)
 				frame.text:SetPoint('LEFT', frame, 'LEFT', art.groupLabel.x, art.groupLabel.y)
-				frame.text:SetTextColor(unpack(st.ThemeArt.Control('optionslist').text.picked))
+				frame.text:SetTextColor(PickedText())
 			else
 				frame.banner:Hide()
 				frame:SetHeight(NAV_GROUP)
@@ -889,7 +894,7 @@ end
 -- Build runs it, and Draw again when the look changed.
 local function Relayout(settings)
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
-	layout, laidOut, F.layout = L, settings, L
+	layout, F.layout = L, L
 	local window = F.window
 	window:SetSize(L.width, L.height)
 	st:SetTemplate(window, 'theme', 'solid', 'window')
@@ -974,6 +979,7 @@ local function Relayout(settings)
 	-- The search box, its right rightPad in from the main column's.
 	F.search:ClearAllPoints()
 	F.search:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', -L.rightPad, -(TABS_TOP + TAB_HEIGHT - 6 - FIELD_HEIGHT))
+	laidOut = settings -- last, so a Relayout that errors is tried again
 end
 
 local function Draw()
