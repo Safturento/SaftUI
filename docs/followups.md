@@ -287,6 +287,8 @@ On both clients:
 On retail:
 - the bank tabs' names (`C_Bank` tab names) as Multi bag section titles, in the bank and the warband bank, including a tab the player has renamed.
 
+**Confirmed in game (Forever, 2026-11-10):** the four view buttons' icon art and their spacing (a visible gap between borders, after the polish fix), the lit Blue border under Thick, Multi bag's sections in the bag window, the scroll bar inside the window's right edge when it scrolls, and a special bag's title naming its type ("Shipwright's Satchel · Reagent Bag", the middle dot drawn). Still open: the rest of the list above.
+
 **Why noticed:** The bag views project's final task (2026-11-10). Its tests run on stubbed bags and frames (`tests/bags/bag_world.lua`, `container_helpers.lua`), so the icon art, real widths, secure buttons, combat lockdown and retail's tab names were only compile-checked and read through. The user plays Forever, so the retail item needs a retail session.
 
 **Anchors:** `SaftUI-Bags/views.lua` (`INV:GetBagInfo`, the tab names), `SaftUI-Bags/container.lua` (`INV:LayoutSections`, `INV:ApplyView`, `INV:SetView`, `INV:HeaderMinWidth`, the view buttons), `SaftUI-Bags/category.lua` (`INV:EnsureSlotPools`, `INV:FitSlots`: the buttons made before a fight, and what shows in one), `SaftUI-Bags/slot.lua`; `tests/bags/views_switch_test.lua`, `views_layout_test.lua`, `views_onebag_multibag_test.lua`, `views_data_test.lua`; `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`.
