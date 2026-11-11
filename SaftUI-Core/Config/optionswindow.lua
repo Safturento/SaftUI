@@ -502,9 +502,9 @@ local function FollowHeight()
 	SetNavScroll(navOffset)
 end
 
--- The window's height again (OW.WindowHeight), at its centre, while it shows
--- and isn't being resized: for a change of the screen edge margin, which
--- moves OW.MaxHeight.
+-- The window's height again (OW.WindowHeight), from its current anchor, while
+-- it shows and isn't being resized: for a change of the screen edge margin,
+-- which moves OW.MaxHeight.
 local function ApplyHeight()
 	if not (F.window and F.window:IsShown()) or sizing then return end
 	local height = OW.WindowHeight(layout)
