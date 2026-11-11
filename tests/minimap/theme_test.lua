@@ -4,8 +4,9 @@
 --   - the minimap's panel is drawn as a panel in its Theme and Background, the
 --     theme's border outside the map, moved to a new theme's border by the
 --     profile update that follows a theme switch, and None draws none;
---   - each micro menu item's panel is a small frame in SaftUI's theme, and an
---     item added with Theme None has none.
+--   - each micro menu item's panel is a control in SaftUI's theme (a small
+--     frame under Thick and Thin), and an item added with Theme None has none.
+--     Its Blizzard art is blizzard_look_test.lua's.
 --
 -- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
@@ -86,7 +87,7 @@ test("the minimap's panel is a panel in its Theme and Background, the theme's bo
 	eq(T.inset(backdrop), 2, 'and back')
 end)
 
-test("a micro menu item's panel is a small frame in SaftUI's theme, and Theme None has none", function()
+test("a micro menu item's panel is a control in SaftUI's theme, a small frame under Thick, and Theme None has none", function()
 	local MicroMenu = st:GetModule('MicroMenu')
 	MicroMenu.Container = CreateFrame('Frame', nil, UIParent) -- made by OnEnable
 	MicroMenu.Container:SetPoint('TOPLEFT')
@@ -101,7 +102,7 @@ test("a micro menu item's panel is a small frame in SaftUI's theme, and Theme No
 		if drawn(child) then backdrop = child end
 	end
 	check(backdrop ~= nil, 'the item has a panel')
-	eq(drawn(backdrop), 'theme,theme,small', "SaftUI's theme, as a small frame")
+	eq(drawn(backdrop), 'theme,theme,control', "SaftUI's theme, as a control: a small frame under Thick")
 	eq(T.inset(backdrop), 2, "Thick's border")
 	eq(T.offset(backdrop, 'TOPLEFT'), '-2.00,2.00', '2px outside the item')
 	eq(select(4, backdrop:GetBackdropColor()), 0.9, "SaftUI's transparent background")

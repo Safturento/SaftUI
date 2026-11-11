@@ -5,5 +5,6 @@ function MicroMenu:SkinZoneTextButton()
     local button = st.retail and MinimapCluster.ZoneTextButton or MinimapZoneTextButton
 
     self:SkinBarButton(button)
-    return button, { width = 200, text = MinimapZoneText }
+    -- Under Blizzard it stands on Blizzard's header button (MicroMenu:AddButton)
+    return button, { width = 200, text = MinimapZoneText, art = 'header' }
 end

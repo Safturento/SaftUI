@@ -231,6 +231,8 @@ end
 
 -- The bar item that takes the button's slot. The button's own panel (below)
 -- draws under its art, so the holder has no backdrop and only reserves space.
+-- Under Blizzard on Forever the run of shown holders stands on the bar's strip
+-- (micromenu.lua's UpdateStrip), as Blizzard's buttons stand on its frame art.
 local function CreateHolder(button)
     local holder = CreateFrame('Frame', nil, MicroMenu.Container)
     holder.width = st:RoundToPixel(BUTTON_HEIGHT * BUTTON_RATIO, MicroMenu.Container)
@@ -316,14 +318,16 @@ function MicroMenu:SkinBlizzardMicroMenu()
     table.sort(buttons, function(a, b) return a.layoutIndex < b.layoutIndex end)
     if #buttons == 0 then return end
 
-    -- Forever's frame art around the whole menu
+    -- Forever's frame art around the whole menu, faded in every look. Under
+    -- Blizzard the bar draws a strip of its own under the holders instead
+    -- (micromenu.lua's UpdateStrip), so this stays where Blizzard put it.
     if menu.BorderArt then menu.BorderArt:SetAlpha(0) end
     if menu.BackgroundArt then menu.BackgroundArt:SetAlpha(0) end
 
     for _, button in ipairs(buttons) do
         SkinButton(button)
         local holder = holders[button]
-        self:AddButton(holder, { width = holder.width, theme = 'none' })
+        self:AddButton(holder, { width = holder.width, theme = 'none', micro = true })
     end
 
     -- Layout re-anchors the buttons into Blizzard's grid; UpdateScale follows

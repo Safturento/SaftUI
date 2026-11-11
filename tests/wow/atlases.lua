@@ -22,7 +22,9 @@
 	    AtlasWidth, CommittedTop and CommittedBottom over AtlasHeight).
 	Forever draws the Camelot member (-c60) of an atlas where there is one, so
 	its entries are those members'. When the theme names a new atlas, add it to
-	both clients from the same tables.
+	both clients from the same tables. An atlas one client lacks (Forever's
+	Camelot chrome, which retail doesn't have) is in the other's table only, and
+	the theme marks it Atlas(name, 'forever') (or 'live').
 ]]
 return {
 	forever = {
@@ -165,6 +167,20 @@ return {
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
+		-- The micro menu bar (microbar): the strip frame, then Camelot's header, square and tracking button
+		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
+		['ui-hud-minimap-header-button'] = { 152, 23 },
+		['ui-hud-minimap-addon-indicator'] = { 23, 22 },
+		['ui-hud-minimap-tracking-button'] = { 23, 23 },
+		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomRight'] = { 7, 7 },
+		['_ui-hud-minimap-button-NineSlice-EdgeTop'] = { 16, 6, 'h' },
+		['_ui-hud-minimap-button-NineSlice-EdgeBottom'] = { 16, 7, 'h' },
+		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
+		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
+		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
 	},
 	retail = {
 		-- The tooltip border (panel, bar, tooltip)
@@ -305,5 +321,16 @@ return {
 		['raidframe-hp-bg-white'] = { 32, 32 },
 		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
 		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
+		-- The micro menu bar (microbar): the strip frame and the minimap button kit
+		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
+		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomRight'] = { 7, 7 },
+		['_ui-hud-minimap-button-NineSlice-EdgeTop'] = { 16, 6, 'h' },
+		['_ui-hud-minimap-button-NineSlice-EdgeBottom'] = { 16, 7, 'h' },
+		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
+		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
+		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
 	},
 }

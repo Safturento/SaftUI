@@ -228,19 +228,22 @@ test('no default names Blizzard', function()
 	eq(table.concat(found, ', '), '', "no default's value is 'blizzard'")
 end)
 
-test('every atlas the theme names exists on both clients', function()
+test('every atlas the theme names exists on the clients it is for', function()
 	for _, client in ipairs(CLIENTS) do
 		local st = T.client(client)
-		local names = st:ThemeAtlases()
+		local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
 		local count, missing, odd = 0, {}, {}
 		for name, value in pairs(names) do
 			count = count + 1
-			if value ~= true then odd[#odd + 1] = name .. ' is not true' end
+			if value ~= true and value ~= 'forever' and value ~= 'live' then odd[#odd + 1] = name .. ' is marked ' .. tostring(value) end
 			if name:find('\\', 1, true) then odd[#odd + 1] = name .. ' is a file' end
 			if name:find('%', 1, true) then odd[#odd + 1] = name .. ' is a format' end
-			if not C_Texture.GetAtlasInfo(name) then missing[#missing + 1] = name end
+			local here = value == true or value == mine
+			if here and not C_Texture.GetAtlasInfo(name) then missing[#missing + 1] = name end
+			if not here and C_Texture.GetAtlasInfo(name) then odd[#odd + 1] = name .. " is marked one client's, but " .. client .. ' has it' end
 		end
 		table.sort(missing)
+		table.sort(odd)
 		eq(table.concat(missing, ', '), '', client .. ': every atlas exists')
 		eq(table.concat(odd, ', '), '', client .. ': names only, of atlases')
 		check(count >= 100, client .. ': at least 100 names, got ' .. count)
@@ -251,6 +254,40 @@ test('every atlas the theme names exists on both clients', function()
 			'checkbox-minimal', 'RedButton-Exit-Disabled', '!UI-Frame-Metal-EdgeRight',
 		}) do
 			check(names[name], client .. ': names ' .. name)
+		end
+		eq(names['ui-hud-minimap-header-button'], 'forever', "Forever's Camelot chrome is Forever's only")
+		eq(names['ui-hud-minimap-button-NineSlice-Center'], true, 'the minimap button kit is on both')
+	end
+end)
+
+test("a client's micro bar art names only atlases that client has", function()
+	for _, client in ipairs(CLIENTS) do
+		local st = T.client(client)
+		local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
+		local art = st.ThemeArt.Control('microbar')
+		local bad = {}
+		local function walk(t, path)
+			for key, value in pairs(t) do
+				local here = path .. '.' .. tostring(key)
+				if type(value) == 'string' and names[value] ~= nil then
+					if names[value] ~= true and names[value] ~= mine then bad[#bad + 1] = here .. ' names ' .. value end
+				elseif type(value) == 'table' then
+					walk(value, here)
+				end
+			end
+		end
+		walk(art, 'microbar')
+		eq(table.concat(bad, ', '), '', client .. ": only this client's atlases")
+		if client == 'forever' then
+			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
+				check(art[item].atlas, client .. ': ' .. item .. ' has an atlas')
+			end
+			check(art.strip.frame and art.strip.background, client .. ': the strip has its two')
+		else
+			eq(art.strip, false, 'retail has no strip')
+			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
+				check(art[item].kit, client .. ': ' .. item .. ' has a kit')
+			end
 		end
 	end
 end)

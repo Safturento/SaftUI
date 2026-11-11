@@ -203,6 +203,21 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 	check(not outerShown(b), "Thick's lines are hidden")
 end)
 
+test("ThemeArt.LayBorder lays a kit with its Center on a frame, in the caller's own table", function()
+	local st = blizzard('retail')
+	local owner, pieces = frame(st), {}
+	local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+	local function size_of(r) return text(r:GetWidth(), r:GetHeight()):gsub('%.00', ''):gsub(',', 'x') end
+	st.ThemeArt.LayBorder(pieces, owner, st.ThemeArt.Control('microbar').header.kit)
+	eq(count(pieces), 9)
+	eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft'); eq(size_of(pieces.TopLeftCorner), '6x6')
+	eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '0,0', 'at the corner')
+	eq(T.around(pieces.Center, owner), '6,-6,-7,7', 'between the corners')
+	check(pieces.TopEdge:GetHorizTile() and pieces.LeftEdge:GetVertTile(), 'the edges tiled')
+	eq(pieces.Center:GetParent(), owner); eq(st.ThemeArt.Get(owner), nil, "kept in the caller's table")
+	st.ThemeArt.HidePieces(pieces); check(not pieces.Center:IsShown())
+end)
+
 test('bars and panels wear the tooltip border, a window the metal', function()
 	local st = blizzard()
 	local drawn = {}
