@@ -16,8 +16,8 @@
 --     look again under Thick;
 --   - on a window it sits in the metal's socket (st:CloseButtonInSocket), at
 --     the client's spot from the window's drawn frame, and goes back to the
---     header under Thick; the /sui window's, which isn't a window, keeps its
---     place;
+--     header under Thick; the /sui window, a window in no header, places its
+--     own in the socket under Blizzard and back under Thick;
 --   - a profile switch from a Blizzard profile to a Thick one (Review Focus 5)
 --     takes the art off and gives the close button its own look, with no
 --     reload; in combat, on a window whose frame, header and footer are
@@ -397,7 +397,7 @@ local function configWorld()
 	return SaftUI
 end
 
-test("the /sui window's close button keeps its place under Blizzard", function()
+test("the /sui window's close button sits in the metal's socket under Blizzard, and back under Thick", function()
 	local st = configWorld()
 	st.Config:Open()
 	local window = OW.GetFrames().window
@@ -405,18 +405,22 @@ test("the /sui window's close button keeps its place under Blizzard", function()
 	local names = { [window] = 'window' }
 	local place = 'TOPRIGHT window TOPRIGHT -16.00,-14.00'
 	eq(anchor(close, names), place, 'Thick: its place')
+	-- The window lays itself out again on its next frame after a theme change.
+	local function tick() stub.fire_script(OW.GetFrames().ticker, 'OnUpdate', 0.01) end
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()
+	tick()
 	close = st:GetCloseButton(window)
-	eq(st:DrawnKind(window), 'panel', 'the /sui window is a panel, not a window')
+	eq(st:DrawnKind(window), 'window', 'the /sui window is a window')
 	eq(close:GetNumPoints(), 1, 'Blizzard: one point')
-	eq(anchor(close, names), place, 'Blizzard: its place kept')
-	eq(st:CloseButtonInSocket(window), false, 'Blizzard: not in a socket')
+	eq(anchor(close, names), 'TOPRIGHT window TOPRIGHT 0.00,3.00', "Blizzard: in the metal's socket")
 	blizzardLook(close, 28, 'Blizzard')
 
 	st.config.profile.theme.name = 'thick'
 	st:ThemeChanged()
+	tick()
+	eq(close:GetNumPoints(), 1, 'Thick again: one point')
 	eq(anchor(close, names), place, 'Thick again: its place')
 	ownLook(st, close, 'Thick again')
 	st.Config:Close()

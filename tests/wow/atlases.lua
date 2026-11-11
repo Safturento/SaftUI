@@ -104,6 +104,8 @@ return {
 		-- Controls: the Settings panel's category list
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
+		-- Controls: the Settings panel's inner frame
+		['Options_InnerFrame'] = { 886, 618 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },
@@ -229,6 +231,8 @@ return {
 		-- Controls: the Settings panel's category list
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
+		-- Controls: the Settings panel's inner frame
+		['Options_InnerFrame'] = { 886, 618 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },

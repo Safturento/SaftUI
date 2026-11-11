@@ -28,14 +28,20 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	                        a small dialog over the window for an option table
 	                        of its own (UF's Copy from; "a small dialog" below)
 
-	The window (1040x700, SaftUI's theme with a solid background,
-	FULLSCREEN_DIALOG, so edit mode's outlines draw under it):
+	The window (drawn as a window in SaftUI's theme with a solid background,
+	FULLSCREEN_DIALOG, so edit mode's outlines draw under it), laid out in one
+	of two layouts (OW.LAYOUT, below): the mockup's under Thick and Thin
+	(1040x700), and under Blizzard Blizzard's Settings window (1110x728: the
+	metal and its title bar, the inner frame over the sidebar and the main
+	column, the footer under it across the window):
 	  - the sidebar: Edit mode and the st.Config:AddCommand buttons, then Global
 	    Settings and Profiles, then the module pages under their category
 	    (Frames, Combat, Info, any other, then Other; OW.SidebarEntries);
 	  - the header: the page's title and description, and the close X
-	    (st:CreateCloseButton). Dragging it (or the sidebar's title) moves the
-	    window, and where it was left is kept in st.config.global.optionsWindow;
+	    (st:CreateCloseButton; under Blizzard in the metal's socket). Dragging
+	    it, the sidebar's title (under Thick and Thin) or the title bar (under
+	    Blizzard) moves the window, and where it was left is kept in
+	    st.config.global.optionsWindow;
 	  - the tab row, with the search box at its right; a second row for
 	    subtabs; the picker row; the body, a scroll frame of sections
 	    (OB.LayoutSections) of rows in quarters, halves and whole lines
@@ -78,15 +84,82 @@ st.OptionsWindow = OW
 local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local format = string.format
 
+------------------------------------------------------------------ the two layouts
+
+--[[
+	Where the window's parts sit, from its edges, in each look: chosen on
+	every render by W.BlizzardLook() and applied only when the look changed
+	(Relayout). Inside the main column the parts keep their places from its
+	top left under both (the constants below).
+	  own       the mockup's, under Thick and Thin: the sidebar and the main
+	            column 2 in from the window's border, the footer along the
+	            main column's bottom.
+	  blizzard  Blizzard's Settings window: the inner frame (st.ThemeArt.
+	            Control('optionswindow')) innerX in from the metal's sides and
+	            innerTop down, the sidebar on the divider drawn into it
+	            (OW.SidebarWidth), the footer across the window under it. The
+	            window is wider and taller than the mockup's, so the body keeps
+	            its 774 and its height.
+
+	  width, height          the window
+	  sideX, sideTop, sideBottom, sideWidth
+	                         the sidebar, from the window's left, top and bottom
+	  navWidth               the sidebar's rows
+	  mainLeft, mainTop, mainRight, mainBottom
+	                         the main column, from the window's edges
+	  rightPad               the main column right of the content: the search
+	                         box's right and, under own, Close's
+	  bodyBottom             the body's bottom, up from the main column's
+	  bodyReach, fillReach   how far the body's scroll frame reaches past the
+	                         content, and on a fill page (PlaceBody)
+	  footer                 the footer's height: in the main column under own,
+	                         across the window under Blizzard
+	  innerX, innerTop       the inner frame, from the window's sides and top
+	                         (Blizzard); it ends footer up from the bottom
+	  footerX, footerY       Reload UI and Close, from the window's bottom
+	                         corners (Blizzard; under own they sit in the footer)
+]]
+OW.LAYOUT = {
+	own = {
+		width = 1040, height = 700,
+		sideX = 2, sideTop = 2, sideBottom = 2, sideWidth = 208,
+		navWidth = 207,
+		mainLeft = 210, mainTop = 2, mainRight = 2, mainBottom = 2,
+		rightPad = 26, -- the main column's 828 less PAD and the content
+		bodyBottom = 46, -- over the footer
+		bodyReach = 0,
+		fillReach = 13, -- over the body's own 3px bar, 10 past the content (OB.BAR_GAP + OB.BAR_WIDTH)
+		footer = 46,
+	},
+	blizzard = {
+		width = 1110, height = 728, -- 17 + 1076 + 17 by 28 + 654 + 46, both even (it's centred)
+		sideX = 17, sideTop = 28, sideBottom = 46,
+		sideWidth = 242, -- OW.SidebarWidth(1076): its right edge on the divider
+		navWidth = 226, -- the sidebar less 16: the nav's narrow bar 4 from the rows and 4 from the divider
+		mainLeft = 259, mainTop = 28, mainRight = 17, mainBottom = 46,
+		-- The dropdown's glow 7, the scroll bar's gap 12 and its 17-wide
+		-- arrows less 4 (25 past the content), the inner frame's 2px rim and 5 clear.
+		rightPad = 32,
+		bodyBottom = 4, -- the inner frame's 2px rim and 2 clear
+		bodyReach = 7, -- the dropdown's glow
+		fillReach = 25, -- where the Blizzard scroll bar's arrows end
+		footer = 46,
+		innerX = 17, innerTop = 28, -- Settings' inner frame 17 in; its tabs 27 down, +1 for an even height
+		footerX = 16, footerY = 16, -- SettingsPanel's Close: BOTTOMRIGHT -16, 16
+	},
+}
+
+-- The sidebar's width for an inner frame innerWidth wide: its right edge on
+-- the divider drawn into Options_InnerFrame, which is stretched to that width.
+function OW.SidebarWidth(innerWidth)
+	local look = st.ThemeArt.Control('optionswindow')
+	return floor(look.divider * innerWidth / look.width + 0.5)
+end
+
 ------------------------------------------------------------------ the mockup's numbers
 
-local WIDTH, HEIGHT = 1040, 700
-local SIDEBAR_WIDTH = 210
-local MAIN_WIDTH = WIDTH - SIDEBAR_WIDTH - 2 -- inside the window's border
-local FOOTER_HEIGHT = 46
 local PAD = 28 -- the main column's left padding
 local CONTENT_WIDTH = OB.WIDTH -- the body: two columns of 367 with a gap of 40
-local RIGHT_PAD = MAIN_WIDTH - PAD - CONTENT_WIDTH
 local ROW_HEIGHT = OB.ROW_HEIGHT
 local LABEL_GAP = OB.LABEL_GAP
 local FIELD_HEIGHT = 24
@@ -99,14 +172,12 @@ local SEARCH_TEXT_INSET = 8 -- the search box's text, in from its edges, and its
 local PICKER_GAP = 12
 
 local SCROLL_STEP = OB.SCROLL_STEP
--- How far past the content a fill page's body reaches: over its own scroll
--- bar's place, which a fill page leaves to the row's own bars.
-local FILL_REACH = OB.BAR_GAP + OB.BAR_WIDTH
 
 -- The sidebar.
 local BRAND_HEIGHT = 73
 local ACTION_PAD, ACTION_GAP, ACTION_HEIGHT = 10, 6, 24
-local ACTION_WIDTH = floor((SIDEBAR_WIDTH - 3 - 24 - ACTION_GAP) / 2)
+-- Two to a line in the mockup's sidebar; the same size in either layout.
+local ACTION_WIDTH = floor((OW.LAYOUT.own.navWidth - 24 - ACTION_GAP) / 2)
 local NAV_ITEM, NAV_GROUP, NAV_TOP = 26, 29, 6
 local FOOT_HEIGHT = 30
 
@@ -181,6 +252,9 @@ local renders = 0
 -- change reaches them when the window renders again. Under Thick and Thin
 -- they keep the mockup's look.
 local blizzard = false
+-- The layout the window is in (OW.LAYOUT), and the look it was laid out for
+-- (Relayout): nil until the window is built.
+local layout, laidOut = OW.LAYOUT.own, nil
 
 local function Colors() return st.config.profile.colors end
 local function Normal() return Colors().text.normal:GetRGB() end
@@ -432,7 +506,7 @@ end
 
 local function MakeNavItem()
 	local item = CreateFrame('Button', nil, F.navContent)
-	item:SetSize(SIDEBAR_WIDTH - 3, NAV_ITEM)
+	item:SetHeight(NAV_ITEM) -- as wide as the layout's rows (DrawSidebar)
 	item.bg = item:CreateTexture(nil, 'BACKGROUND')
 	item.bg:SetAllPoints(item)
 	item.bar = item:CreateTexture(nil, 'ARTWORK')
@@ -449,7 +523,6 @@ local function MakeNavItem()
 	item.listHover:SetAllPoints(item)
 	item.listHover:Hide()
 	item.text = Text(item, 'label')
-	item.text:SetWidth(SIDEBAR_WIDTH - 3 - 22 - 8)
 	item:SetScript('OnEnter', function(self)
 		if self.active then return end
 		if self.blizzard then
@@ -468,7 +541,7 @@ end
 
 local function MakeNavGroup()
 	local header = CreateFrame('Frame', nil, F.navContent)
-	header:SetSize(SIDEBAR_WIDTH - 3, NAV_GROUP)
+	header:SetHeight(NAV_GROUP) -- as wide as the layout's rows (DrawSidebar)
 	header.text = Text(header, 'group')
 	header.text:SetPoint('TOPLEFT', header, 'TOPLEFT', 18, -12)
 	header.text:SetTextColor(Grey())
@@ -495,6 +568,7 @@ local function DrawSidebar(entries)
 			frame.text:ClearAllPoints()
 			frame.text:SetPoint('LEFT', frame, 'LEFT', entry.special and 18 or 22, 0)
 			frame.text:SetText(entry.name)
+			frame.text:SetWidth(layout.navWidth - 30)
 			frame.blizzard = look and true or false
 			if look then
 				frame.listPicked:SetAtlas(look.picked)
@@ -502,6 +576,7 @@ local function DrawSidebar(entries)
 			end
 			StyleNavItem(frame)
 		end
+		frame:SetWidth(layout.navWidth)
 		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
 		y = y + frame:GetHeight()
 		F.nav[#F.nav + 1] = frame
@@ -640,13 +715,16 @@ local function ReleaseBody()
 	F.placeholder:Hide()
 end
 
--- The body from top down to the footer. A page with a fill row has nothing
--- to scroll, so its body reaches over its own bar's place (filled), where
--- the row draws bars of its own: the Categories tab's editor.
+-- The body from top down to the layout's bottom (the footer under Thick and
+-- Thin, the inner frame's rim under Blizzard), its scroll frame reaching
+-- bodyReach past the content. A page with a fill row has nothing to scroll,
+-- so its body reaches over its own bar's place (filled, fillReach), where the
+-- row draws bars of its own: the Categories tab's editor.
 local function PlaceBody(top, filled)
+	local reach = filled and layout.fillReach or layout.bodyReach
 	F.body:ClearAllPoints()
 	F.body:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
-	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(filled and RIGHT_PAD - FILL_REACH or RIGHT_PAD), FOOTER_HEIGHT)
+	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(layout.rightPad - reach), layout.bodyBottom)
 end
 
 local function SamePath(a, b)
@@ -761,8 +839,102 @@ local function LookControls()
 	F.search.hint:SetPoint('LEFT', F.search, 'LEFT', left, 0)
 end
 
+-- Lays the window out for a look (settings: Blizzard's), in its layout
+-- (OW.LAYOUT): its size, its look drawn again (the metal under Blizzard; a
+-- render can come before the redraw that follows a theme change), the close
+-- X, the title bar, the inner frame, the sidebar, the main column, the footer
+-- and the search box. Inside the main column everything keeps its place.
+-- Build runs it, and Draw again when the look changed.
+local function Relayout(settings)
+	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
+	layout, laidOut, F.layout = L, settings, L
+	local window = F.window
+	window:SetSize(L.width, L.height)
+	st:SetTemplate(window, 'theme', 'solid', 'window')
+
+	-- The close X: Blizzard's in the metal's socket, at its spot from the
+	-- window's top right corner (st.ThemeArt.Close), or the mockup's at its own.
+	st:UpdateCloseButton(window)
+	F.close:ClearAllPoints()
+	if settings then
+		local close = st.ThemeArt.Close()
+		F.close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', close.x, close.y)
+	else
+		F.close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', -16, -14)
+	end
+
+	-- The metal's title bar, the window's drag strip under Blizzard, with the
+	-- window's name centred on its title strip (the strip's bottom on the
+	-- title bar's).
+	F.titleBar:SetHeight(st.ThemeArt.TitleHeight())
+	F.titleText:ClearAllPoints()
+	F.titleText:SetPoint('CENTER', F.titleBar, 'BOTTOM', 0, st.ThemeArt.TitleStrip() / 2)
+	F.titleBar:SetShown(settings)
+	F.titleText:SetShown(settings)
+
+	-- The inner frame, stretched over the sidebar and the main column, from
+	-- under the title bar down to the footer.
+	if settings then
+		F.inner:SetAtlas(st.ThemeArt.Control('optionswindow').inner)
+		F.inner:ClearAllPoints()
+		F.inner:SetPoint('TOPLEFT', window, 'TOPLEFT', L.innerX, -L.innerTop)
+		F.inner:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', -L.innerX, L.footer)
+	end
+	F.inner:SetShown(settings)
+
+	-- The sidebar: the brand at its top and the actions under it, or under
+	-- Blizzard (the title bar names the window) no brand, the actions at its top.
+	F.side:ClearAllPoints()
+	F.side:SetPoint('TOPLEFT', window, 'TOPLEFT', L.sideX, -L.sideTop)
+	F.side:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', L.sideX, L.sideBottom)
+	F.side:SetWidth(L.sideWidth)
+	F.brand:SetShown(not settings)
+	F.actionsFrame:ClearAllPoints()
+	if settings then
+		F.actionsFrame:SetPoint('TOPLEFT', F.side, 'TOPLEFT', 0, 0)
+		F.actionsFrame:SetPoint('TOPRIGHT', F.side, 'TOPRIGHT', -1, 0)
+	else
+		F.actionsFrame:SetPoint('TOPLEFT', F.brand, 'BOTTOMLEFT', 0, 0)
+		F.actionsFrame:SetPoint('TOPRIGHT', F.brand, 'BOTTOMRIGHT', 0, 0)
+	end
+	F.navContent:SetWidth(L.navWidth)
+	F.profile:SetWidth(L.sideWidth - 1 - 36) -- the foot's width, 18 clear each side
+
+	F.main:ClearAllPoints()
+	F.main:SetPoint('TOPLEFT', window, 'TOPLEFT', L.mainLeft, -L.mainTop)
+	F.main:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', -L.mainRight, L.mainBottom)
+
+	-- The footer: along the main column's bottom, Reload UI PAD in and Close
+	-- rightPad in; under Blizzard across the window under the inner frame,
+	-- the two footerX and footerY from its bottom corners.
+	local footer = F.footer
+	footer:ClearAllPoints()
+	F.reloadButton:ClearAllPoints()
+	F.closeButton:ClearAllPoints()
+	if settings then
+		footer:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, 0)
+		footer:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 0)
+		F.reloadButton:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', L.footerX, L.footerY)
+		F.closeButton:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', -L.footerX, L.footerY)
+	else
+		footer:SetPoint('BOTTOMLEFT', F.main, 'BOTTOMLEFT', 0, 0)
+		footer:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', 0, 0)
+		F.reloadButton:SetPoint('LEFT', footer, 'LEFT', PAD, 0)
+		F.closeButton:SetPoint('RIGHT', footer, 'RIGHT', -L.rightPad, 0)
+	end
+	footer:SetHeight(L.footer)
+
+	-- The search box, its right rightPad in from the main column's.
+	F.search:ClearAllPoints()
+	F.search:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', -L.rightPad, -(TABS_TOP + TAB_HEIGHT - 6 - FIELD_HEIGHT))
+end
+
 local function Draw()
 	blizzard = W.BlizzardLook()
+	if blizzard ~= laidOut then Relayout(blizzard) end
+	-- The window's name in the profile's font for window titles, which the
+	-- Fonts tab can change.
+	F.titleText:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	LookControls()
 	ReleaseBody()
 	contentHeight, filledTo = 0, nil
@@ -813,11 +985,10 @@ local function OnHide()
 	if st.EditModeFrames then st.EditModeFrames:UpdateFooter() end
 end
 
+-- The parts whose place or size the layout gives are placed by Relayout.
 local function BuildSidebar(window)
 	local side = CreateFrame('Frame', nil, window)
-	side:SetPoint('TOPLEFT', window, 'TOPLEFT', 2, -2)
-	side:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 2, 2)
-	side:SetWidth(SIDEBAR_WIDTH - 2)
+	F.side = side
 	local bg = side:CreateTexture(nil, 'BACKGROUND')
 	bg:SetAllPoints(side)
 	bg:SetColorTexture(unpack(SIDEBAR_BG))
@@ -840,10 +1011,9 @@ local function BuildSidebar(window)
 	sub:SetTextColor(Grey())
 	sub:SetText('Options')
 	EdgeLine(brand, 'BOTTOM')
+	F.brand = brand
 
 	local actions = CreateFrame('Frame', nil, side)
-	actions:SetPoint('TOPLEFT', brand, 'BOTTOMLEFT', 0, 0)
-	actions:SetPoint('TOPRIGHT', brand, 'BOTTOMRIGHT', 0, 0)
 	actions:SetHeight(ACTION_PAD * 2 + ACTION_HEIGHT)
 	EdgeLine(actions, 'BOTTOM')
 	F.actionsFrame, F.actions = actions, {}
@@ -856,14 +1026,14 @@ local function BuildSidebar(window)
 	EdgeLine(foot, 'TOP')
 	F.profile = Text(foot, 'small')
 	F.profile:SetPoint('LEFT', foot, 'LEFT', 18, 0)
-	F.profile:SetWidth(SIDEBAR_WIDTH - 3 - 36)
 	F.profile:SetTextColor(Grey())
+	F.foot = foot
 
 	local nav = CreateFrame('ScrollFrame', nil, side)
 	nav:SetPoint('TOPLEFT', actions, 'BOTTOMLEFT', 0, -1)
 	nav:SetPoint('BOTTOMRIGHT', foot, 'TOPRIGHT', 0, 1)
 	local content = CreateFrame('Frame', nil, nav)
-	content:SetSize(SIDEBAR_WIDTH - 3, 1)
+	content:SetHeight(1)
 	nav:SetScrollChild(content)
 	nav:EnableMouseWheel(true)
 	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(navOffset - delta * NAV_ITEM * 2) end)
@@ -874,8 +1044,6 @@ end
 
 local function BuildMain(window)
 	local main = CreateFrame('Frame', nil, window)
-	main:SetPoint('TOPLEFT', window, 'TOPLEFT', SIDEBAR_WIDTH, -2)
-	main:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', -2, 2)
 	F.main = main
 
 	-- The title area moves the window. It stops short of the close X.
@@ -893,10 +1061,7 @@ local function BuildMain(window)
 	F.desc:SetWidth(CONTENT_WIDTH)
 	F.desc:SetTextColor(Grey())
 
-	local close = st:CreateCloseButton(window)
-	close:ClearAllPoints()
-	close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', -16, -14)
-	F.close = close
+	F.close = st:CreateCloseButton(window)
 
 	F.tabLine, F.subLine = Line(main), Line(main)
 	F.tabLine:SetHeight(1)
@@ -907,7 +1072,6 @@ local function BuildMain(window)
 	-- The search box, at the right of the first tab line.
 	local search = W.Box(st:CreateFrame('EditBox', nil, main))
 	search:SetSize(SEARCH_WIDTH, FIELD_HEIGHT)
-	search:SetPoint('TOPRIGHT', main, 'TOPRIGHT', -RIGHT_PAD, -(TABS_TOP + TAB_HEIGHT - 6 - FIELD_HEIGHT))
 	search:SetFontObject(W.GetFont())
 	search:SetTextInsets(SEARCH_TEXT_INSET, SEARCH_TEXT_INSET, 0, 0)
 	search:SetAutoFocus(false)
@@ -952,7 +1116,6 @@ local function BuildMain(window)
 		if filledTo and floor((height or 0) + 0.5) ~= floor(filledTo + 0.5) then Schedule() end
 	end)
 	F.body, F.content = body, content
-	PlaceBody(TABS_TOP + TAB_HEIGHT)
 	F.bar = OB.ScrollBar(main)
 	F.placeholder = Text(content, 'label')
 	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -OB.TOP)
@@ -964,15 +1127,11 @@ end
 
 local function BuildFooter()
 	local footer = CreateFrame('Frame', nil, F.main)
-	footer:SetPoint('BOTTOMLEFT', F.main, 'BOTTOMLEFT', 0, 0)
-	footer:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', 0, 0)
-	footer:SetHeight(FOOTER_HEIGHT)
 	EdgeLine(footer, 'TOP')
+	F.footer = footer
 
 	F.reloadButton = Button(footer, 'Reload UI', function() ReloadUI() end)
-	F.reloadButton:SetPoint('LEFT', footer, 'LEFT', PAD, 0)
 	F.closeButton = Button(footer, 'Close', function() OW:Close() end)
-	F.closeButton:SetPoint('RIGHT', footer, 'RIGHT', -RIGHT_PAD, 0)
 
 	-- Edit mode's controls go here (from the left); the status line shows
 	-- validate errors (from the right).
@@ -987,23 +1146,44 @@ local function BuildFooter()
 	F.status:SetTextColor(Colors().text.red:GetRGB())
 end
 
+-- Under Blizzard: the metal's title bar, the window's drag strip, with the
+-- window's name ("SaftUI Options") on it; and the inner frame
+-- (Options_InnerFrame), a texture of the window between its fill and the
+-- metal. Shown only under Blizzard (Relayout).
+local function BuildTitleBar(window)
+	local bar = CreateFrame('Frame', nil, window)
+	bar:SetPoint('TOPLEFT', window, 'TOPLEFT', 0, 0)
+	bar:SetPoint('TOPRIGHT', window, 'TOPRIGHT', 0, 0)
+	bar:Hide()
+	Draggable(bar)
+	-- The close X sits over the bar's right end, in the metal's socket: over
+	-- the bar, so a click on it is the button's.
+	F.close:SetFrameLevel(bar:GetFrameLevel() + 1)
+	local text = bar:CreateFontString(nil, 'OVERLAY')
+	text:SetFontObject(st:GetFont(st.config.profile.headers.font))
+	text:SetText(format('%s Options', st.name))
+	F.titleBar, F.titleText = bar, text
+
+	F.inner = window:CreateTexture(nil, 'ARTWORK')
+	F.inner:Hide()
+end
+
 local function Build()
 	local window = st:CreateFrame('Frame', nil, UIParent)
 	window:SetFrameStrata('FULLSCREEN_DIALOG')
 	window:SetFrameLevel(100)
-	window:SetSize(WIDTH, HEIGHT)
 	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	window:SetMovable(true)
 	st:KeepInScreenMargin(window) -- dragged by its header, so it keeps to the margin too
 	window:EnableMouse(true)
 	window:Hide()
-	st:SetTemplate(window, 'theme', 'solid', 'panel')
 	F.window = window
 	W.SetDialogAnchor(window)
 
 	BuildSidebar(window)
 	BuildMain(window)
 	BuildFooter()
+	BuildTitleBar(window)
 
 	-- Esc, only while the window is shown.
 	local keys = CreateFrame('Frame', nil, window)
@@ -1043,6 +1223,11 @@ local function Build()
 		EM:On('Enabled', UpdateEditModeButton)
 		EM:On('Disabled', UpdateEditModeButton)
 	end
+
+	-- Its size, its look (st:SetTemplate) and its parts' places, in the
+	-- layout of the look now.
+	Relayout(W.BlizzardLook())
+	PlaceBody(TABS_TOP + TAB_HEIGHT)
 end
 
 ------------------------------------------------------------------ a small dialog

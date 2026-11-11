@@ -1754,7 +1754,7 @@ test("the sidebar's open page sits on Options_List_Active", function()
 	art_fills(other, 'the page under the mouse')
 	stub.fire_script(other, 'OnLeave')
 	eq(atlases_of(other), '', 'the mouse gone')
-	eq(size_of(active), '207x26', 'an entry keeps its size')
+	eq(size_of(active), '226x26', "an entry: the Blizzard layout's nav width, its height kept")
 
 	theme('thick')
 	active, other = items()

@@ -400,6 +400,17 @@ ThemeArt.ART = {
 		hover = Atlas('Options_List_Hover'),
 	},
 
+	-- The Settings panel's inner frame (SettingsFrameTemplate): one bitmap,
+	-- width wide at its own size, with its dark edge, its bronze rim and the
+	-- line between the category list and the settings drawn in, at divider
+	-- across. /sui stretches it over its sidebar and main column and puts the
+	-- sidebar's right edge on that line (OptionsWindow.SidebarWidth).
+	optionswindow = {
+		inner = Atlas('Options_InnerFrame'),
+		width = 886,
+		divider = 199,
+	},
+
 	-- Blizzard's micro buttons' own art, given back by name: the pushed
 	-- background, the alert border, and the highlight Blizzard's code sets,
 	-- named from the button's textureName (a format of it, %s, so it isn't
@@ -457,6 +468,7 @@ local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
+	optionswindow = true,
 }
 
 ------------------------------------
