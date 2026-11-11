@@ -228,28 +228,6 @@ Each new Hekili button or WeakAuras icon then errors. The error comes before `sk
 
 **Shape of work:** Small, three pieces, with tests where the stubs reach (the radio group is tested; the bank windows need retail's `BankFrame`), and a retail in-game check.
 
-## Resolved
-
-### 2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)
-
-**What:** When a module takes its own color off a border (an item's quality off an emptied bag slot, the green off an action button that no longer holds an equipped item), it puts the theme's border back in one of two ways:
-- Bags set it by hand. `INV:SetSlotThemeBorder` (`SaftUI-Bags/slot.lua:~68-76`) resolves the Slot theme and calls `SetBackdropBorderColor(unpack(look.colors.bordercolor))`, or a clear border for None.
-- Action bars draw the button again: `st:SetTemplate(backdrop, skin.theme, skin.background, 'action')` (`SaftUI-ActionBars/skin.lua:~387`, in `AB:UpdateEquippedBorder`).
-
-Both give the same border today, since under Thick and Thin a border is just `bordercolor`. Once the Blizzard theme (project 2) draws each kind its own way, the by-hand path will show the wrong border. Unify them before project 2.
-
-**Why noticed:** The Themes project's review of Task 5 (Bags, 2026-11-10), deferred as minor, and the final review, which asked for this entry.
-
-**Anchors:** `SaftUI-Bags/slot.lua` (`INV:SetSlotThemeBorder`, `INV:SetSlotQualityBorder`, `INV:AssignEmptySlot`); `SaftUI-ActionBars/skin.lua` (`AB:UpdateEquippedBorder`, `ColorEquipped`, `AB:OnColorsChanged`); `SaftUI-Core/theme.lua` (`Color`, `Paint`, the drawn-frame record); `docs/superpowers/specs/2026-11-10-saftui-themes-design.md` (project 2).
-
-**What's been considered:**
-- An engine call that puts a recorded frame's theme colors back, moving nothing (for example `st:ResetThemeColors(frame)`, running `Color` with the frame's recorded arguments), used by both modules. That suits a slot whose quality just went.
-- Or Bags redraw with `st:SetTemplate` as the action bars do, which costs a full draw per slot on bag updates.
-
-**Shape of work:** Small: one engine call and two call sites, with the Review Focus 2 and equipped-border tests as the guard (`tests/bags/theme_test.lua`, `tests/actionbars/theme_test.lua`).
-
-**Open questions:** Should the engine call put back only the border, or the fill and alpha too?
-
 ### 2026-11-10 — Themes: in-game checks for what was only compile-checked
 
 **What:** Parts of the Themes project can't be loaded by `tests/run` (they need Blizzard frames, globals or other addons the stubs lack), so they were only compile-checked and read through. Check them in game, and fix what's found.
@@ -928,6 +906,28 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Shape of work:** A research pass on the AuraContainer API (group options, policies, removing groups), then a small change in `elements/auras.lua` that maps config to options. It may also need a config-schema cleanup to drop options that can't be supported.
 
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
+
+## Resolved
+
+### 2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)
+
+**What:** When a module takes its own color off a border (an item's quality off an emptied bag slot, the green off an action button that no longer holds an equipped item), it puts the theme's border back in one of two ways:
+- Bags set it by hand. `INV:SetSlotThemeBorder` (`SaftUI-Bags/slot.lua:~68-76`) resolves the Slot theme and calls `SetBackdropBorderColor(unpack(look.colors.bordercolor))`, or a clear border for None.
+- Action bars draw the button again: `st:SetTemplate(backdrop, skin.theme, skin.background, 'action')` (`SaftUI-ActionBars/skin.lua:~387`, in `AB:UpdateEquippedBorder`).
+
+Both give the same border today, since under Thick and Thin a border is just `bordercolor`. Once the Blizzard theme (project 2) draws each kind its own way, the by-hand path will show the wrong border. Unify them before project 2.
+
+**Why noticed:** The Themes project's review of Task 5 (Bags, 2026-11-10), deferred as minor, and the final review, which asked for this entry.
+
+**Anchors:** `SaftUI-Bags/slot.lua` (`INV:SetSlotThemeBorder`, `INV:SetSlotQualityBorder`, `INV:AssignEmptySlot`); `SaftUI-ActionBars/skin.lua` (`AB:UpdateEquippedBorder`, `ColorEquipped`, `AB:OnColorsChanged`); `SaftUI-Core/theme.lua` (`Color`, `Paint`, the drawn-frame record); `docs/superpowers/specs/2026-11-10-saftui-themes-design.md` (project 2).
+
+**What's been considered:**
+- An engine call that puts a recorded frame's theme colors back, moving nothing (for example `st:ResetThemeColors(frame)`, running `Color` with the frame's recorded arguments), used by both modules. That suits a slot whose quality just went.
+- Or Bags redraw with `st:SetTemplate` as the action bars do, which costs a full draw per slot on bag updates.
+
+**Shape of work:** Small: one engine call and two call sites, with the Review Focus 2 and equipped-border tests as the guard (`tests/bags/theme_test.lua`, `tests/actionbars/theme_test.lua`).
+
+**Open questions:** Should the engine call put back only the border, or the fill and alpha too?
 
 **Resolved 2026-11-11:** `st:SetBorderColor(frame, r, g, b, a)` (`SaftUI-Core/theme.lua`) is the one call a module colors a drawn frame's border with, and with no color it puts the look's own border back. Under Thick and Thin it is the backdrop's border (the theme's `bordercolor` with no color); under Blizzard it is the look's own (`st.ThemeArt.SetBorder`): the tooltip and metal pieces tinted, the action button's equipped border or the slot's and aura's white icon border shown in the color, a small frame's line, and nothing for a control. It puts the border back without a draw, so the action bars no longer redraw with `st:SetTemplate` and the bags no longer resolve the Slot theme by hand (`INV:SetSlotThemeBorder` is `st:SetBorderColor(slot.backdrop)`). Every module call that colored a drawn backdrop's border moved to it, and `tests/core/theme_kinds_test.lua` scans every loaded file so a new `:SetBackdropBorderColor(` on a drawn backdrop fails. The open question was answered: it puts back only the border, since a recolor or redraw already puts the fill back.
 

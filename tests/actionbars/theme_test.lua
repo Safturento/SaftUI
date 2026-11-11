@@ -186,6 +186,7 @@ test('the equipped border survives a recolor', function()
 	local thin = T.text(unpack(st.config.profile.templates.thin.bordercolor))
 	eq(T.edge(worn.backdrop), thin, "taken off: the theme's border")
 	eq(drawn(worn), 'theme,theme,action', 'still drawn with the Theme and Background, as an action button')
+	eq(drawn(worn.backdrop), nil, 'and not drawn again: the border is put back without a redraw')
 	st:RecolorThemed()
 	eq(T.edge(worn.backdrop), thin, 'and a recolor leaves it so')
 	worn.equipped = true

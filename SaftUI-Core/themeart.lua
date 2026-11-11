@@ -668,7 +668,7 @@ local function LayButton(art, frame, button, host)
 	if host then
 		ring = Piece(art.over, host, 'Ring', button.ring, RING_LAYER, RING_SUBLEVEL)
 	else
-		ring = Piece(art.over, Holder(frame), 'Ring', button.ring, RING_LAYER)
+		ring = Piece(art.over, Holder(frame), 'Ring', button.ring, RING_LAYER, RING_SUBLEVEL)
 	end
 	ring:ClearAllPoints()
 	ring:SetAllPoints(frame)
@@ -757,7 +757,9 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	end
 
 	local art = Art(frame)
-	local style = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
+	-- The raw table: the pieces and border aren't per client, and this runs on
+	-- every bag slot update.
+	local style = blizzard.art and ThemeArt.ART[blizzard.art]
 	if not style then return end
 	if style.TopLeftCorner then
 		for _, piece in pairs(art.pieces) do

@@ -870,6 +870,8 @@ test("a foreign owner given SetBorderColor under Blizzard gets no texture made o
 		local o = own(st, f.backdrop)
 		check(o ~= nil and o:IsShown(), kind .. ": the border is drawn all the same")
 		check(o and o:GetParent() ~= f, kind .. ": on a frame of SaftUI's, not the frame")
+		local ring = piece(st, f.backdrop, 'Ring', 'over')
+		if ring then check(depth(o) > depth(ring), kind .. ': the border is over the ring on a holder too') end
 		eq(o and o:GetParent():GetParent(), f.backdrop, kind .. ': a child of the backdrop')
 		st:SetBorderColor(f.backdrop)
 		st:SetBorderColor(f.backdrop, 0, 1, 0)
@@ -888,6 +890,23 @@ test("a foreign owner given SetBorderColor under Blizzard gets no texture made o
 		check(ok, kind .. ' (SetBackdropIn): written nothing onto the frame: ' .. tostring(err))
 		local o = own(st, b)
 		eq(o and o:GetParent():GetParent(), b, kind .. ' (SetBackdropIn): on a child of the backdrop')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("an action button drawn with st:SetTemplate: its own-color piece is on a holder, over the ring", function()
+	local st = blizzard()
+	for _, kind in ipairs({ 'action', 'slot' }) do
+		local f = frame(st)
+		st:SetTemplate(f, 'theme', 'theme', kind)
+		st:SetBorderColor(f, 0, 1, 0)
+		local o, ring = own(st, f), piece(st, f, 'Ring', 'over')
+		check(o ~= nil and o:IsShown(), kind .. ': the border shows')
+		if o and ring then
+			eq(o:GetParent(), ring:GetParent(), kind .. ': on the ring\'s holder')
+			check(o:GetParent() ~= f, kind .. ': a frame of SaftUI\'s over the drawn frame')
+			check(depth(o) > depth(ring), kind .. ': over the ring')
+		end
 	end
 	eq(#take_errors(), 0, 'no errors')
 end)
