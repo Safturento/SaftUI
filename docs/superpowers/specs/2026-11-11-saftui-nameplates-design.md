@@ -22,6 +22,7 @@ So: SaftUI draws enemy, neutral and (outside instances) friendly nameplates in i
 6. Layout: **the bar with text inside** (2023's plate: name inside left, health % inside right, castbar under, debuffs above, purgeable buffs right, quest icon left, raid mark above).
 7. Target: **a bright border** on the current target's plate.
 8. Another nameplate addon loaded (the user has Plater on all their Forever characters, EllesmereUI Nameplates on two): **"Stand down if one is loaded"**.
+9. The bar's right-hand text (2026-11-11, building): **"for the health lets put the actual health value, short format. for threat use a percentage"**.
 
 ## Today
 
@@ -64,14 +65,16 @@ The full report: the controller's scratchpad, `report-research-nameplates.md`. B
 ```
         [D][D][D]          <- the player's debuffs
    +---------------------+
-   | Kobold Miner   72%  | [B][B]  <- buffs the player can purge
+   |                 85% |          <- threat % (when on its list)
+   | Kobold Miner  12.5k  | [B][B]  <- buffs the player can purge
    +---------------------+
    [i]|=====cast=====|      <- castbar + icon
 ```
 
 - **Health bar:** 200 by 20 (**my call**, adjustable), reaction coloured (hostile red, neutral yellow, friendly green, players by class), with the threat tint (goal 4) over it. Blizzard's raid bar fill under the Blizzard theme, as unit frames get in round 2.
 - **Name:** inside on the left, in the unit frames' font; hostile names coloured as today's `color_hostile`; truncated to fit. Built secret-safe (`C_StringUtil.WrapString` or plain `SetText` of the name, no `..` on a secret).
-- **Health %:** inside on the right.
+- **Health value:** inside on the right, the unit's current health in short format (e.g. 12.5k, 1.2M), secret-safe (the game's abbreviation that accepts secret numbers, or `SetFormattedText`; the builder verifies which works with a secret health on both clients) — the user's answer 9.
+- **Threat %:** a small text above the bar's right end: the player's threat on the mob as a percentage (`UnitDetailedThreatSituation`'s scaled percent, 100% when the mob is attacking the player), coloured as the threat tint (goal 4), shown only when the tint would show (in a group, or solo with Threat when solo on) and the player is on the mob's threat list; hidden on friendly plates. Secret-safe (`SetFormattedText` with a secret percent is fine; a secret state hides it). **My call** for the place; the user's answer 9 for the percentage.
 - **Castbar:** under the bar, 12 tall (**my call**), the full width less its icon (12x12, left); interruptible casts in the castbar colour, uninterruptible in a grey (the bundled oUF's `notInterruptible` argument, fixed for every unit's castbar); the spell name inside.
 - **Debuffs:** above the bar, the player's own (`isFromPlayerOrPlayerPet`), up to 6, 20px (**my call**), growing right from the left edge.
 - **Purgeable buffs:** to the right of the bar, up to 4, 20px, from the "Only buffs I can purge" toggle (goal 5), with a highlight on stealable ones (oUF's stealable border).
