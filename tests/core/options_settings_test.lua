@@ -944,6 +944,7 @@ test("under Blizzard the metal stays inside the screen edge margin: the clamp, t
 		switch('blizzard')
 		eq(clamp_insets(F.window), ('%d,%d,%d,%d'):format(30 - left, -30 + right, -30 + above, 30 - below), client .. ': Blizzard: the metal 30 past them')
 		st.config.profile.misc.clamp_inset = inset
+		st:UpdateScreenMargin()
 		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')
 	end

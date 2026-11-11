@@ -1486,28 +1486,37 @@ local function FillRowsTable()
 	}
 end
 
+-- The windowfill type, a bare fill row at least 100 tall, each height it's
+-- told noted in heights when given; and the FillRows module, whose page has
+-- one (its GetConfigTable left to the test). Each made once.
+local function FillRowsModule(heights)
+	if not W.CUSTOM.windowfill then
+		W.Define('windowfill', {
+			bare = true,
+			fill = true,
+			minHeight = 100,
+			build = function(w)
+				w.frame = CreateFrame('Frame', nil, UIParent)
+				w.frame:SetSize(10, 10)
+			end,
+			methods = {
+				SetWidth = function(self, width) self.frame:SetWidth(width) end,
+				SetHeight = function(self, height)
+					self.frame:SetHeight(height)
+					if heights then heights[#heights + 1] = height end
+				end,
+				Refresh = function() end,
+			},
+		})
+	end
+	return st:GetModule('FillRows', true) or st:NewModule('FillRows')
+end
+
 test("a fill row stretches to the body's visible height, so the body has nothing to scroll; it follows the window's size, and other pages are as they were", function()
 	local heights = {}
-	W.Define('windowfill', {
-		bare = true,
-		fill = true,
-		minHeight = 100,
-		build = function(w)
-			w.frame = CreateFrame('Frame', nil, UIParent)
-			w.frame:SetSize(10, 10)
-		end,
-		methods = {
-			SetWidth = function(self, width) self.frame:SetWidth(width) end,
-			SetHeight = function(self, height)
-				self.frame:SetHeight(height)
-				heights[#heights + 1] = height
-			end,
-			Refresh = function() end,
-		},
-	})
+	local module = FillRowsModule(heights)
 	eq(W.CUSTOM.windowfill.fill, true, 'W.CUSTOM marks it fill')
 	eq(W.CUSTOM.windowfill.minHeight, 100, 'with its least height')
-	local module = st:NewModule('FillRows')
 	module.GetConfigTable = FillRowsTable
 
 	-- Another page first: its height and the body's edges, to compare.
@@ -2056,7 +2065,7 @@ end)
 test('a resize renders nothing; a fill page draws its fill row once, when the mouse is let go', function()
 	theme('thick')
 	st.config.global.optionsWindow = nil
-	local module = st:GetModule('FillRows')
+	local module = FillRowsModule()
 	module.GetConfigTable = FillRowsTable
 	st.Config:Open('FillRows')
 	local F = frames()
@@ -2082,20 +2091,39 @@ test('a resize renders nothing; a fill page draws its fill row once, when the mo
 	eq(F.content:GetHeight(), F.body:GetHeight(), 'the drawn height is the view')
 	tick()
 	eq(OW.GetRenderCount(), renders + 1, 'and only the one')
+
+	-- Shorter mid-drag, the fill row drawn to the old height is taller than
+	-- the view, but the body's bar doesn't show over the page until the render.
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = 560 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	tick()
+	eq(F.body:GetHeight(), view + 40, '60 up: the body follows')
+	check(F.content:GetHeight() > F.body:GetHeight(), 'the fill row drawn taller than the view')
+	check(not F.bar:IsShown(), "no body bar over the fill page while the mouse is held")
+	eq(F.body:GetVerticalScroll(), 0, 'nor a scroll')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
+	tick()
+	eq(F.content:GetHeight(), F.body:GetHeight(), 'let go: drawn to the view')
+	check(not F.bar:IsShown(), 'and still no bar')
 	module.GetConfigTable = nil
 
 	-- A button let go away from the handle (its mouse up lost) ends the resize
 	-- on the handle's next frame.
+	eq(F.window:GetHeight(), 740, '100 down and 60 up')
 	stub.mouse_buttons.LeftButton = true
 	stub.cursor_y = 500 * scale
 	stub.fire_script(F.sizer, 'OnMouseDown', 'LeftButton')
 	stub.mouse_buttons.LeftButton = nil
 	stub.cursor_y = 480 * scale
 	stub.fire_script(F.sizer, 'OnUpdate', 0.016)
-	eq(F.window:GetHeight(), 800, 'the button up: no resize')
+	eq(F.window:GetHeight(), 740, 'the button up: no resize')
 	stub.mouse_buttons.LeftButton = true
 	stub.fire_script(F.sizer, 'OnUpdate', 0.016)
-	eq(F.window:GetHeight(), 800, 'and none after')
+	eq(F.window:GetHeight(), 740, 'and none after')
 	stub.mouse_buttons.LeftButton = nil
 
 	-- A page that scrolls, scrolled to its bottom.
@@ -2120,6 +2148,78 @@ test('a resize renders nothing; a fill page draws its fill row once, when the mo
 	local size = math.max(20, math.floor(639 * 639 / total))
 	eq(F.bar:GetHeight(), size, 'the bar its share of the new view')
 	eq(F.body:GetTop() - F.bar:GetTop(), 639 - size, 'at the bottom of it')
+	tall.GetConfigTable = nil
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the window hiding mid-resize ends it: the height is saved, and the renders it held off run", function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames()
+	local scale = F.window:GetEffectiveScale()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = 440 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 760, 'mid-resize: 60 taller')
+	eq(st.config.global.optionsWindow, nil, 'nothing saved while the mouse is held')
+	st.Config:Close() -- Esc, or /sui again, with the button still down
+	eq(st.config.global.optionsWindow and st.config.global.optionsWindow.height, 760, 'hidden: the height saved')
+	stub.cursor_y = 400 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 760, 'the resize is over: the cursor moves nothing')
+	stub.mouse_buttons.LeftButton = nil
+	st.Config:Open('Loot')
+	eq(F.window:GetHeight(), 760, 'opened again at the saved height')
+	local renders = OW.GetRenderCount()
+	st.Config:Refresh()
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'a scheduled render runs: no resize holds it off')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a screen edge margin change while /sui is open takes its height in at once, with the scroll bar following', function()
+	theme('thick')
+	local inset = st.config.profile.misc.clamp_inset
+	local tall = st:GetModule('MarginPage', true) or st:NewModule('MarginPage')
+	function tall:GetConfigTable()
+		local args = {}
+		for i = 1, 30 do
+			args['t' .. i] = { type = 'toggle', name = 'Toggle ' .. i, order = i, size = 'wide', get = function() return true end, set = function() end }
+		end
+		return { name = 'Margin page', type = 'group', category = 'Frames', args = args }
+	end
+	-- The bar's height: its share of the view.
+	local function share(F)
+		local view = F.body:GetHeight()
+		return math.max(20, math.floor(view * view / F.content:GetHeight()))
+	end
+	st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = 5000 }
+	st.Config:Close(); st.Config:Open('MarginPage')
+	local F = frames()
+	eq(F.window:GetHeight(), 1080 - 2 * inset, 'at its most')
+
+	st.config.profile.misc.clamp_inset = inset + 50
+	st:UpdateScreenMargin()
+	eq(F.window:GetHeight(), 1080 - 2 * (inset + 50), 'a wider margin: shorter at once, no reopen')
+	eq(F.window:GetHeight(), OW.MaxHeight(), 'its new most')
+	eq(F.bar:GetHeight(), share(F), 'the bar its share of the shorter view')
+	eq(st.config.global.optionsWindow.height, 5000, 'the saved height kept')
+	for _ = 1, 100 do stub.fire_script(F.body, 'OnMouseWheel', -1) end
+	eq(F.body:GetVerticalScroll(), F.content:GetHeight() - F.body:GetHeight(), 'scrolled to its bottom')
+
+	st.config.profile.misc.clamp_inset = inset
+	st:UpdateScreenMargin()
+	eq(F.window:GetHeight(), 1080 - 2 * inset, 'back: its most again')
+	eq(F.body:GetVerticalScroll(), F.content:GetHeight() - F.body:GetHeight(), 'the offset clamped to the new range')
+	eq(F.bar:GetHeight(), share(F), 'the bar its share of the taller view')
+	eq(F.body:GetTop() - F.bar:GetTop(), F.body:GetHeight() - F.bar:GetHeight(), 'at the bottom of it')
 	tall.GetConfigTable = nil
 	st.config.global.optionsWindow = nil
 	close_all()

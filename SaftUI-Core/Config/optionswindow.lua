@@ -480,14 +480,38 @@ end
 	A press of the left button on either starts a resize; while it's held, the
 	pressed handle's OnUpdate follows the cursor. Each new height re-places the
 	body's and the sidebar's scroll bars (their offsets clamp to the new
-	range); nothing renders while the button is held (Busy), and a fill page
-	(the Categories tab) draws its fill row again once it's let go. It ends on
-	the button's release (OnMouseUp, or the handle's next frame finding it up)
-	or the window hiding, and a height it changed is saved, then the position.
+	range; FollowHeight); nothing renders while the button is held (Busy), and
+	a fill page (the Categories tab) draws its fill row again once it's let
+	go. It ends on the button's release (OnMouseUp, or the handle's next frame
+	finding it up) or the window hiding, and a height it changed is saved,
+	then the position. A change of the screen edge margin moves the most
+	height, so the window takes its height again then (st:UpdateScreenMargin,
+	hooked in Build; ApplyHeight).
 ]]
 local GRIP_SIZE = 16 -- st:EnableResizing's, and PanelResizeButtonTemplate's
 local EDGE_HEIGHT = 6
 local HANDLE_LEVEL = 10 -- the grip and the edge, over the window's own frames
+
+-- After the window's height changed: the sidebar's bar re-placed in its new
+-- range, and the body's, except on a fill page, whose fill row was drawn to
+-- the old height: re-placed now, the body's bar would show over the page's
+-- own bars until the render that draws the row again (Schedule; in game the
+-- body's OnSizeChanged schedules it too), which places it.
+local function FollowHeight()
+	if filledTo then Schedule() else SetScroll(scrollOffset) end
+	SetNavScroll(navOffset)
+end
+
+-- The window's height again (OW.WindowHeight), at its centre, while it shows
+-- and isn't being resized: for a change of the screen edge margin, which
+-- moves OW.MaxHeight.
+local function ApplyHeight()
+	if not (F.window and F.window:IsShown()) or sizing then return end
+	local height = OW.WindowHeight(layout)
+	if F.window:GetHeight() == height then return end
+	F.window:SetHeight(height)
+	FollowHeight()
+end
 
 local function StopResize()
 	if not sizing then return end
@@ -519,10 +543,7 @@ local function UpdateResize()
 	window:SetHeight(height)
 	window:ClearAllPoints()
 	window:SetPoint('CENTER', UIParent, 'CENTER', sizing.x, sizing.y - (height - sizing.height) / 2)
-	SetScroll(scrollOffset)
-	SetNavScroll(navOffset)
-	-- In game the body's OnSizeChanged schedules this too.
-	if filledTo then Schedule() end
+	FollowHeight()
 end
 
 -- From where the window shows (the game's clamp may have moved it from its
@@ -1440,6 +1461,9 @@ local function Build()
 	window:SetMovable(true)
 	-- Dragged by its header, so it keeps to the margin too, with its art.
 	st:KeepInScreenMargin(window, function() return ArtReach(layout) end)
+	-- A margin change takes its height in at once, as chat and the totem bar
+	-- take their places in.
+	hooksecurefunc(st, 'UpdateScreenMargin', ApplyHeight)
 	window:EnableMouse(true)
 	window:Hide()
 	F.window = window
