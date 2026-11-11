@@ -1,8 +1,9 @@
 -- What the theme tests of SaftUI's addons share (tests/<area>/theme_test.lua and
 -- Core's theme tests): a fresh world on either client (T.client); watching the
 -- Theme, Background and kind SaftUI's draw
--- calls pass; reading a drawn frame back (its colors, inset and where its border
--- sits), as text rounded so float drift doesn't decide a check; checking a module
+-- calls pass; reading a drawn frame back (its colors, inset, where its border
+-- sits and its Blizzard art), as text rounded so float drift doesn't decide a
+-- check; checking a module
 -- default against the old template name it replaced; and checking options for a
 -- Theme and Background and for the old template names. Not a test (no _test
 -- suffix), so the runner doesn't run it. Load it with
@@ -96,6 +97,29 @@ function T.offset(f, point)
 		local p, _, _, x, y = f:GetPoint(i)
 		if p == point then return T.text(x, y) end
 	end
+end
+
+-- One set of a drawn frame's Blizzard art (st.ThemeArt.Get) as text: each
+-- shown piece as 'key=atlas-or-file', sorted and comma-joined; '' for none.
+local function Pieces(set)
+	local out = {}
+	for key, piece in pairs(set or {}) do
+		if piece:IsShown() then out[#out + 1] = key .. '=' .. tostring(piece:GetAtlas() or piece:GetTexture()) end
+	end
+	table.sort(out)
+	return table.concat(out, ',')
+end
+
+-- The Blizzard art shown on a drawn frame itself (T.art) and over its icon's
+-- edge (T.over), as Pieces gives it: '' for a frame with none, or never drawn
+-- under Blizzard.
+function T.art(f)
+	local art = SaftUI.ThemeArt.Get(f)
+	return Pieces(art and art.pieces)
+end
+function T.over(f)
+	local art = SaftUI.ThemeArt.Get(f)
+	return Pieces(art and art.over)
 end
 
 -- Where outer's edges sit from inner's on screen: 'left,top,right,bottom',

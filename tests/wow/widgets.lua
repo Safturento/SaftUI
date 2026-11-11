@@ -582,6 +582,19 @@ function Texture.SetAtlas(self, s, atlas, useAtlasSize, filterMode, resetTexCoor
 	return true
 end
 function Texture.GetAtlas(self, s) return s.atlas end
+-- Tiling across (SetHorizTile) and down (SetVertTile): off until set. Nothing
+-- is drawn here, so they're only remembered.
+function Texture.SetHorizTile(self, s, tiling) s.horiz_tile = tiling and true or false end
+function Texture.GetHorizTile(self, s) return s.horiz_tile == true end
+function Texture.SetVertTile(self, s, tiling) s.vert_tile = tiling and true or false end
+function Texture.GetVertTile(self, s) return s.vert_tile == true end
+-- Snapping to the pixel grid: on until turned off, which is why Blizzard's
+-- nine-slice code turns it off (with the texel snapping bias at 0) for art
+-- drawn without sharpening. Only remembered; the bias is read with
+-- stub.state(texture).texel_snapping_bias.
+function Texture.SetSnapToPixelGrid(self, s, snap) s.snap_to_pixel_grid = snap and true or false end
+function Texture.IsSnappingToPixelGrid(self, s) return s.snap_to_pixel_grid ~= false end
+function Texture.SetTexelSnappingBias(self, s, bias) s.texel_snapping_bias = number_arg(s, bias, 'bias') end
 function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
 function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
 

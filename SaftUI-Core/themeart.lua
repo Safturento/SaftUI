@@ -9,9 +9,10 @@ local st = SaftUI
 	Blizzard's nine-slice code, whose layouts are for Blizzard's windows and
 	which writes onto the frame it draws on (.agents/taint.md).
 
-	theme.lua resolves a look (st:ResolveTheme) and reads a Blizzard look's
-	inset here. Everything is read at call time, through ThemeArt.Client(), as
-	the client decides some values.
+	theme.lua resolves a look (st:ResolveTheme), reads a Blizzard look's inset
+	here, and hands a Blizzard look here to be drawn (Drawing, at the end).
+	Everything is read at call time, through ThemeArt.Client(), as the client
+	decides some values.
 
 	The tables, st.ThemeArt.KINDS and st.ThemeArt.ART:
 	  KINDS[kind]  each kind of frame (st.THEME_KINDS) under Blizzard: its inset
@@ -170,12 +171,16 @@ ThemeArt.ART = {
 	},
 
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
-	-- fills the button; the ring over the icon's edge; the equipped border,
-	-- shown in a frame's own border color; and the state art, where SaftUI makes
-	-- the state textures, over the ring's footprint. The checked art is additive
-	-- on Forever and plain on retail, the one line the two templates differ by.
+	-- fills the button, by its piece's key (BEHIND); the ring over the icon's
+	-- edge; the equipped border, shown in a frame's own border color; and the
+	-- state art, where SaftUI makes the state textures, over the ring's
+	-- footprint. The checked art is additive on Forever and plain on retail, the
+	-- one line the two templates differ by.
 	action = {
-		behind = { Atlas('UI-HUD-ActionBar-IconFrame-Background'), Atlas('UI-HUD-ActionBar-IconFrame-Slot') },
+		behind = {
+			SlotBackground = Atlas('UI-HUD-ActionBar-IconFrame-Background'),
+			SlotArt = Atlas('UI-HUD-ActionBar-IconFrame-Slot'),
+		},
 		ring = Atlas('UI-HUD-ActionBar-IconFrame'),
 		border = Atlas('UI-HUD-ActionBar-IconFrame-Border'),
 		states = {
@@ -192,7 +197,7 @@ ThemeArt.ART = {
 	-- buttonSize button, centred ringY low; the quality frame, shown in a
 	-- frame's own border color; and the pushed and highlight art.
 	slot = {
-		behind = { Atlas('bags-item-slot64') },
+		behind = { SlotArt = Atlas('bags-item-slot64') },
 		ring = [[Interface\Buttons\UI-Quickslot2]],
 		ringSize = 64, buttonSize = 37, ringY = -1,
 		border = [[Interface\Common\WhiteIconFrame]],
@@ -458,6 +463,16 @@ function ThemeArt.TitleHeight()
 	return ForClient(ThemeArt.ART.metal.titleHeight)
 end
 
+-- How far a kind's art reaches down from the drawn frame's top under
+-- Blizzard, on this client: for art with a title bar (a window's metal) the
+-- title bar, which a backdrop reaches that far above its window; for the rest
+-- the kind's inset, as on its other sides.
+function ThemeArt.Top(kind)
+	local look = Kind(kind)
+	local art = ThemeArt.ART[look.art]
+	return ForClient(art and art.titleHeight or look.inset)
+end
+
 -- Blizzard's close button on this client: { size, x, y, normal, pushed,
 -- highlight, highlightBlend, disabled }.
 function ThemeArt.Close()
@@ -500,4 +515,226 @@ function st:ThemeAtlases()
 	local names = {}
 	for name in pairs(ATLASES) do names[name] = true end
 	return names
+end
+
+------------------------------------
+--- Drawing ------------------------
+------------------------------------
+
+-- theme.lua hands a Blizzard look here: ThemeArt.Paint draws it, ThemeArt.Color
+-- recolors it, and ThemeArt.Clear hides the art of a frame drawn in another
+-- look. A drawn frame is the frame a look is drawn on: a backdrop behind its
+-- owner (st:SetBackdrop, st:SetBackdropIn), or the frame itself
+-- (st:SetTemplate). Its pieces are textures made once, then shown, hidden and
+-- re-pointed by later draws. They're kept here, never on a frame
+-- (.agents/taint.md), and placed by anchors and offsets: no size is read back
+-- from the game.
+
+-- drawn frame -> its art, { pieces, over, own } (ThemeArt.Get).
+local drawnArt = setmetatable({}, { __mode = 'k' })
+
+-- drawn frame -> the frame of SaftUI's its over pieces are on (Holder).
+local holders = setmetatable({}, { __mode = 'k' })
+
+-- The pieces behind a button's icon, bottom first: the keys of its art's behind.
+local BEHIND = { 'SlotBackground', 'SlotArt' }
+
+-- A border's corners, each at the drawn frame's own corner, offset by its x and y.
+local CORNERS = {
+	TopLeftCorner = 'TOPLEFT', TopRightCorner = 'TOPRIGHT',
+	BottomLeftCorner = 'BOTTOMLEFT', BottomRightCorner = 'BOTTOMRIGHT',
+}
+
+-- A border's edges, as Blizzard's nine-slice code lays them: point at the first
+-- corner's to, and to at the last corner's point. The top and bottom tile
+-- across, the sides down.
+local EDGES = {
+	TopEdge = { point = 'TOPLEFT', to = 'TOPRIGHT', first = 'TopLeftCorner', last = 'TopRightCorner', across = true },
+	BottomEdge = { point = 'BOTTOMLEFT', to = 'BOTTOMRIGHT', first = 'BottomLeftCorner', last = 'BottomRightCorner', across = true },
+	LeftEdge = { point = 'TOPLEFT', to = 'BOTTOMLEFT', first = 'TopLeftCorner', last = 'BottomLeftCorner', across = false },
+	RightEdge = { point = 'TOPRIGHT', to = 'BOTTOMRIGHT', first = 'TopRightCorner', last = 'BottomRightCorner', across = false },
+}
+
+-- A drawn frame's art (Get), made the first time.
+local function Art(frame)
+	local art = drawnArt[frame]
+	if not art then
+		art = { pieces = {}, over = {} }
+		drawnArt[frame] = art
+	end
+	return art
+end
+
+-- set's piece by key: a texture on parent, made the first time, now in layer
+-- at sublevel, showing name (a file, or else an atlas at its own size), white
+-- and shown.
+local function Piece(set, parent, key, name, layer, sublevel)
+	local piece = set[key]
+	if not piece then
+		piece = parent:CreateTexture(nil, layer)
+		set[key] = piece
+	end
+	piece:SetDrawLayer(layer, sublevel or 0)
+	if name:find([[Interface\]], 1, true) == 1 then
+		piece:SetTexture(name)
+	else
+		piece:SetAtlas(name, true)
+	end
+	piece:SetVertexColor(1, 1, 1, 1)
+	piece:Show()
+	return piece
+end
+
+-- The frame of SaftUI's a drawn frame's over pieces are on, made the first
+-- time as its child, over all of it. It sits one level above the frame the
+-- art is for, the drawn frame or the frame it sits behind (its parent),
+-- whichever is higher, so the pieces lie over that frame's icon.
+local function Holder(frame)
+	local holder = holders[frame]
+	if not holder then
+		holder = CreateFrame('Frame', nil, frame)
+		holder:SetAllPoints(frame)
+		holders[frame] = holder
+	end
+	local level = frame:GetFrameLevel()
+	local parent = frame:GetParent()
+	if parent then level = math.max(level, parent:GetFrameLevel()) end
+	holder:SetFrameLevel(level + 1)
+	return holder
+end
+
+-- A border (the tooltip's or the metal) on frame: its corners, then its edges
+-- between them, in its layer, with texel snapping off where it says so.
+local function LayBorder(art, frame, border)
+	local function Lay(key)
+		local piece = Piece(art.pieces, frame, key, border[key].atlas, border.layer)
+		piece:ClearAllPoints()
+		if border.snap == false then
+			piece:SetTexelSnappingBias(0)
+			piece:SetSnapToPixelGrid(false)
+		end
+		return piece
+	end
+	for key, point in pairs(CORNERS) do
+		local piece = Lay(key)
+		piece:SetPoint(point, frame, point, border[key].x or 0, border[key].y or 0)
+		piece:SetHorizTile(false)
+		piece:SetVertTile(false)
+	end
+	for key, edge in pairs(EDGES) do
+		local piece = Lay(key)
+		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		piece:SetHorizTile(edge.across)
+		piece:SetVertTile(not edge.across)
+	end
+end
+
+-- A button's art on frame (the action or item button's): the art behind its
+-- icon, filling frame, and the ring over the icon's edge, on frame's holder.
+-- A ring Blizzard draws ringSize on a buttonSize button, centred ringY low, is
+-- cut to the button's part, so it fits a button of any size.
+local function LayButton(art, frame, button)
+	for sublevel, key in ipairs(BEHIND) do
+		local name = button.behind[key]
+		if name then
+			local piece = Piece(art.pieces, frame, key, name, 'BACKGROUND', sublevel)
+			piece:ClearAllPoints()
+			piece:SetAllPoints(frame)
+		end
+	end
+	local holder = Holder(frame)
+	local ring = Piece(art.over, holder, 'Ring', button.ring, 'ARTWORK')
+	ring:ClearAllPoints()
+	ring:SetAllPoints(holder)
+	if button.ringSize then
+		local size, half, y = button.ringSize, button.buttonSize / 2, button.ringY
+		ring:SetTexCoord((size / 2 - half) / size, (size / 2 + half) / size,
+			(size / 2 - half + y) / size, (size / 2 + half + y) / size)
+	end
+end
+
+-- Whether a kind draws anything under Blizzard. header, close and control
+-- don't: they're cleared, and each control shows art of its own.
+local function Draws(look)
+	return look.art or look.fill or look.line
+end
+
+-- A drawn frame's art: { pieces = { [key] = texture } on the drawn frame,
+-- over = { [key] = texture } over the icon's edge, own = texture|nil, the
+-- piece a frame's own border color shows }; nil for a frame never drawn under
+-- Blizzard.
+function ThemeArt.Get(frame)
+	return drawnArt[frame]
+end
+
+-- Hides every piece of frame's art: for a frame drawn in another look, or None.
+function ThemeArt.Clear(frame)
+	local art = drawnArt[frame]
+	if not art then return end
+	for _, set in ipairs({ art.pieces, art.over }) do
+		for _, piece in pairs(set) do piece:Hide() end
+	end
+	if art.own then art.own:Hide() end
+end
+
+-- Puts a Blizzard look's colors and alpha on frame, drawn as kind: the fill
+-- in the kind's color at the look's alpha (clear for a kind with none), a
+-- small frame's line in the Border, the art behind a button's icon at the
+-- look's alpha, and every piece white, which takes a frame's own color off.
+-- Moves nothing.
+function ThemeArt.Color(frame, look, kind)
+	local blizzard = Kind(kind)
+	if not Draws(blizzard) then return end
+	local colors = look.colors
+	if blizzard.fill then
+		local r, g, b, a = unpack(colors[blizzard.fill])
+		frame:SetBackdropColor(r, g, b, a * look.alpha)
+	else
+		frame:SetBackdropColor(0, 0, 0, 0)
+	end
+	if blizzard.line then
+		frame:SetBackdropBorderColor(unpack(colors.bordercolor))
+	end
+
+	local art = drawnArt[frame]
+	if not art then return end
+	for _, set in ipairs({ art.pieces, art.over }) do
+		for _, piece in pairs(set) do piece:SetVertexColor(1, 1, 1, 1) end
+	end
+	for _, key in ipairs(BEHIND) do
+		if art.pieces[key] then art.pieces[key]:SetAlpha(look.alpha) end
+	end
+end
+
+-- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
+-- fills it the kind's inset in (a window's from under its title bar), with no
+-- edge but a small frame's line, and the kind's art; the frame's other pieces
+-- are hidden. A kind that draws nothing is cleared. Then colors it.
+function ThemeArt.Paint(frame, look, kind)
+	local blizzard = Kind(kind)
+	ThemeArt.Clear(frame)
+	if not Draws(blizzard) then
+		if frame.SetBackdrop then frame:SetBackdrop(nil) end
+		return
+	end
+
+	if frame.SetBackdrop then
+		local inset = look.inset
+		frame:SetBackdrop({
+			bgFile = st.BLANK_TEX,
+			edgeFile = blizzard.line and st.BLANK_TEX or nil,
+			edgeSize = 1,
+			tile = false, tileSize = 0,
+			insets = { left = inset, right = inset, top = ThemeArt.Top(kind), bottom = inset },
+		})
+	end
+
+	local art = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
+	if art and art.TopLeftCorner then
+		LayBorder(Art(frame), frame, art)
+	elseif art and art.ring then
+		LayButton(Art(frame), frame, art)
+	end
+	ThemeArt.Color(frame, look, kind)
 end

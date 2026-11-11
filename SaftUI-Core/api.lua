@@ -109,8 +109,10 @@ function st:SetSize(frame, width, height)
 	frame:SetSize(width, height or width)
 end
 
+-- spacing, plus how far frame's border reaches in and anchorFrame's, each as
+-- it was last drawn (st:DrawnInset, theme.lua). A frame never drawn adds 0.
 function st:CalculateSpacing(frame, anchorFrame, spacing)
-	return (spacing or 0) + (frame.thick and 2 or frame.thick == false and 1 or 0) + (anchorFrame and anchorFrame.thick and 2 or 0)
+	return (spacing or 0) + (st:DrawnInset(frame) or 0) + (anchorFrame and st:DrawnInset(anchorFrame) or 0)
 end
 
 function st:SetInside(frame, inset)

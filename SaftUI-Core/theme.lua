@@ -15,8 +15,8 @@ local st = SaftUI
 	kind of frame it draws (st.THEME_KINDS), last. Under Thick and Thin only the
 	header strips and the close button draw differently (a window draws as a
 	panel, a control as a small frame). Blizzard draws each kind in Blizzard's
-	own art for it, which themeart.lua describes (st.ThemeArt), and its inset
-	depends on the kind. A call with no kind is an error, unless
+	own art for it, which themeart.lua describes and draws (st.ThemeArt), and
+	its inset depends on the kind. A call with no kind is an error, unless
 	its theme is 'none', which only clears (tests/core/theme_kinds_test.lua
 	scans every SaftUI file for calls without one).
 
@@ -194,27 +194,57 @@ end
 --- Drawing ------------------------
 ------------------------------------
 
--- frame -> { theme, background, kind, owner, backdrops, placed }: the
--- arguments each drawn frame was last drawn with. For a backdrop made by
--- st:SetBackdrop or st:SetBackdropIn, owner is the frame it sits behind,
--- backdrops the caller's table st:SetBackdropIn keeps it in, and placed the
--- offset outside owner it was last put at, so a redraw can tell whether it
--- still sits there.
+-- frame -> { theme, background, kind, inset, owner, backdrops, placed }: the
+-- arguments each drawn frame was last drawn with, and the inset of the look it
+-- was drawn in (0 for None). For a backdrop made by st:SetBackdrop or
+-- st:SetBackdropIn, owner is the frame it sits behind, backdrops the caller's
+-- table st:SetBackdropIn keeps it in, and placed where outside owner it was
+-- last put ({ side, top }: a window's top differs under Blizzard), so a
+-- redraw can tell whether it still sits there.
 local drawn = setmetatable({}, { __mode = 'k' })
 
-local function Record(frame, theme, background, kind, owner, backdrops)
+-- owner -> the backdrop last drawn behind it with st:SetBackdrop or
+-- st:SetBackdropIn, for st:DrawnInset. owner may be Blizzard's: it's only a key.
+local owners = setmetatable({}, { __mode = 'k' })
+
+local function Record(frame, theme, background, kind, look, owner, backdrops)
 	local entry = drawn[frame]
 	if not entry then
 		entry = {}
 		drawn[frame] = entry
 	end
 	entry.theme, entry.background, entry.kind = theme, background, kind
+	entry.inset = look and look.inset or 0
 	-- A backdrop drawn again with st:SetTemplate (to reset a border a module
 	-- tinted) still belongs to its frame.
 	if owner then
 		entry.owner, entry.backdrops = owner, backdrops
 	end
 	return entry
+end
+
+-- The record of frame, a drawn frame, or of the backdrop last drawn behind it.
+local function DrawnEntry(frame)
+	local entry = drawn[frame]
+	if entry then return entry end
+	local backdrop = owners[frame]
+	return backdrop and drawn[backdrop]
+end
+
+-- The inset frame was last drawn at: how far in from its edge its border
+-- reaches, as st:ThemeInset gives it for the look it was drawn in, and 0 for
+-- None. frame is a drawn frame or the owner of a backdrop the engine drew; nil
+-- for a frame never drawn.
+function st:DrawnInset(frame)
+	local entry = DrawnEntry(frame)
+	return entry and entry.inset
+end
+
+-- The kind frame was last drawn as, by the same lookup as st:DrawnInset; nil
+-- for a frame never drawn, or drawn None with no kind.
+function st:DrawnKind(frame)
+	local entry = DrawnEntry(frame)
+	return entry and entry.kind
 end
 
 -- Header and footer strips and the close button: SaftUI's theme's fill, no lines.
@@ -278,9 +308,12 @@ local function CreateAltBorder(frame)
 	frame.altborder.BOTTOM:SetTexture(st.BLANK_TEX)
 end
 
--- Puts a look's colors and alpha on a drawn frame. Moves nothing.
+-- Puts a look's colors and alpha on a drawn frame. Moves nothing. A Blizzard
+-- look is st.ThemeArt's to color.
 local function Color(frame, look, kind)
-	if kind == 'header' then
+	if look.name == 'blizzard' then
+		st.ThemeArt.Color(frame, look, kind)
+	elseif kind == 'header' then
 		frame:SetBackdropColor(st:ThemeHeaderColor())
 		frame:SetBackdropBorderColor(0, 0, 0, 0)
 	elseif kind == 'close' then
@@ -300,16 +333,24 @@ local function Color(frame, look, kind)
 end
 
 -- Draws a look on frame as kind: Thick's dark lines, the 1px border and the
--- background inside it, or a strip's fill with no lines. No look clears it.
+-- background inside it, or a strip's fill with no lines. A Blizzard look is
+-- st.ThemeArt's to draw, with Thick's lines hidden; any other hides the
+-- frame's Blizzard art. No look clears it.
 local function Paint(frame, look, kind)
-	if not look then
-		frame:SetBackdrop(nil)
+	if not look or look.name == 'blizzard' then
 		if frame.altborder then
 			for _, line in pairs(frame.altborder) do line:Hide() end
+		end
+		if look then
+			st.ThemeArt.Paint(frame, look, kind)
+		else
+			frame:SetBackdrop(nil)
+			st.ThemeArt.Clear(frame)
 		end
 		return
 	end
 
+	st.ThemeArt.Clear(frame)
 	if not frame.altborder then
 		CreateAltBorder(frame)
 	end
@@ -337,12 +378,22 @@ local function Paint(frame, look, kind)
 	Color(frame, look, kind)
 end
 
--- Whether a backdrop still sits offset outside owner, where DrawBackdrop put
--- it. Many callers anchor their backdrop themselves after drawing it (an action
--- button's fills the button), and a redraw must leave those anchors alone.
-local function IsPlaced(backdrop, owner, offset)
-	if not offset or backdrop:GetNumPoints() ~= 2 then return false end
-	local want = { TOPLEFT = { -offset, offset }, BOTTOMRIGHT = { offset, -offset } }
+-- Where a look's backdrop sits outside its owner, drawn as kind: { side, top },
+-- its inset on the sides and the bottom, and above the owner the same, or
+-- under Blizzard how far the kind's art reaches down (a window's title bar).
+local function Placement(look, kind)
+	local top = look.name == 'blizzard' and st.ThemeArt.Top(kind) or look.inset
+	return { side = look.inset, top = top }
+end
+
+-- Whether a backdrop still sits outside owner where DrawBackdrop put it
+-- (placed, a Placement). Many callers anchor their backdrop themselves after
+-- drawing it (an action button's fills the button), and a redraw must leave
+-- those anchors alone.
+local function IsPlaced(backdrop, owner, placed)
+	if not placed or backdrop:GetNumPoints() ~= 2 then return false end
+	local side = placed.side
+	local want = { TOPLEFT = { -side, placed.top }, BOTTOMRIGHT = { side, -side } }
 	for i = 1, 2 do
 		local point, relativeTo, relativePoint, x, y = backdrop:GetPoint(i)
 		if issecretvalue(relativeTo) or issecretvalue(x) or issecretvalue(y) then return false end
@@ -356,21 +407,23 @@ local function IsPlaced(backdrop, owner, offset)
 end
 
 -- Draws a backdrop frame of SaftUI's behind owner, records it, and places it the
--- look's inset outside owner. A redraw places it only while it still sits where
+-- look's inset outside owner (a Placement: a window's reaches its title bar
+-- above it under Blizzard). A redraw places it only while it still sits where
 -- the last draw put it; one its caller anchored is repainted where it is, and
 -- the caller's UpdateConfig anchors it again. Sets owner.thick for
 -- st:SetBackdrop (not for st:SetBackdropIn, whose frames aren't SaftUI's).
 -- Returns the look, nil for None (which only clears it).
 local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind, redraw)
 	local look, drawKind = DrawLook(theme, background, kind)
-	local entry = Record(backdrop, theme, background, kind, owner, backdrops)
+	local entry = Record(backdrop, theme, background, kind, look, owner, backdrops)
+	if not redraw then owners[owner] = backdrop end
 	if look then
 		if not redraw or IsPlaced(backdrop, owner, entry.placed) then
-			local offset = look.inset
+			local place = Placement(look, drawKind)
 			backdrop:ClearAllPoints()
-			backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -offset, offset)
-			backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', offset, -offset)
-			entry.placed = offset
+			backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -place.side, place.top)
+			backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', place.side, -place.side)
+			entry.placed = place
 		end
 		if not backdrops then
 			-- true or false, so thick is only nil on a frame never given a backdrop
@@ -386,12 +439,12 @@ function st:SetTemplate(frame, theme, background, kind)
 	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
 	Paint(frame, look, drawKind)
-	Record(frame, theme, background, kind)
+	Record(frame, theme, background, kind, look)
 end
 
 -- Draws theme and background on a frame of SaftUI's (frame.backdrop), made the
 -- first time, one level below frame and the theme's border outside it, so frame's
--- own content isn't covered. Sets frame.thick for st:CalculateSpacing. For a
+-- own content isn't covered. Sets frame.thick, whether it's drawn Thick. For a
 -- frame that isn't SaftUI's use st:SetBackdropIn, which writes nothing onto it.
 function st:SetBackdrop(frame, theme, background, kind)
 	CheckKind(theme, kind)
@@ -470,12 +523,15 @@ local function Recolor(frame, entry)
 	if look then Color(frame, look, kind) end
 end
 
--- Draws one recorded frame again with the arguments it was drawn with.
+-- Draws one recorded frame again with the arguments it was drawn with, and
+-- records the inset it's now drawn at.
 local function Redraw(frame, entry)
 	if entry.owner then
 		DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
 	else
-		Paint(frame, DrawLook(entry.theme, entry.background, entry.kind))
+		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
+		Paint(frame, look, kind)
+		entry.inset = look and look.inset or 0
 	end
 end
 
