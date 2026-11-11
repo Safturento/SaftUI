@@ -122,11 +122,7 @@ function INV:InitializePlayerBagSlots()
 	bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)
 
 	bagSlotContainer.slots = BagSlots
-	local slotToggle = st:CreateButton('BagSlotToggle', self.containers.bag.header, 'Bag Slots', 'none', 'theme')
-	slotToggle:SetPoint('LEFT', 8, 0)
-	slotToggle:SetSize(64, st.config.profile.headers.height - 8)
-	slotToggle:SetScript('OnClick', function() bagSlotContainer:SetShown(not bagSlotContainer:IsShown()) end)
-	self.containers.bag.header.slotToggle = slotToggle
+	self:CreateSlotToggle(self.containers.bag, bagSlotContainer, 'BagSlotToggle')
 
 
 	for _,slot in pairs(BagSlots) do

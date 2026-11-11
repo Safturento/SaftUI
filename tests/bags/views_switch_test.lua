@@ -9,9 +9,15 @@
 -- switch in combat lighting the button and saving the view at once while the
 -- layout follows after combat, no slot or category frame moved in the fight.
 -- The /sui options: View and Empty slots for every window, with a desc, a size
--- and no Ace width, and Empty slots re-packing an open Compact window.
+-- and no Ace width, and Empty slots re-packing an open Compact window. Under
+-- the Blizzard theme, where the title bar is the metal's (st:HeaderInTitleBar):
+-- the window shorter by the header it no longer holds, its content right
+-- under the title bar, and no button overlapping at its narrowest, on both
+-- clients.
 --
--- bags/container_helpers.lua's views world, with the module's real options.lua.
+-- bags/container_helpers.lua's views world, with the module's real options.lua
+-- (and for the Blizzard cases Core's real Config/config.lua, so a theme switch
+-- is the real profile update).
 local H = load_test_file('bags/container_helpers.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 
@@ -21,9 +27,10 @@ local VIEWS = { 'onebag', 'multibag', 'compact', 'rows' }
 local LABELS = { onebag = 'One bag', multibag = 'Multi bag', compact = 'Compact', rows = 'Rows' }
 
 -- A world with the real /sui page of Bags, and the bag window in Compact with
--- a few items. client is 'forever' (the default) or 'retail'.
-local function world(client)
-	INV, W = H.views_world(client or 'forever')
+-- a few items. client is 'forever' (the default) or 'retail'; core, if given,
+-- loads Core in place of the shell's helpers (H.views_world).
+local function world(client, core)
+	INV, W = H.views_world(client or 'forever', core)
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 	W.bag(0, 20, 'Backpack')
 	W.bag(1, 16, 'Bag')
@@ -145,14 +152,94 @@ test('no view button overlaps the title, the close button or another button, in 
 	end
 end)
 
+-- Under the Blizzard theme a window's header sits in the metal's title bar
+-- (st:HeaderInTitleBar), so the window no longer holds it: the same content
+-- makes a window shorter by the header, with the content right under the
+-- title bar. In Core's real config world, so the switch is the real profile
+-- update (st:ThemeChanged).
+local function configWorld(client)
+	return world(client, function() load_test_file('core/config_helpers.lua') end)
+end
+
+local function switchTheme(name)
+	SaftUI.config.profile.theme.name = name
+	SaftUI:ThemeChanged()
+end
+
+test("under Blizzard the window doesn't hold its header: shorter by it, its content right under the title bar, and back under Thick", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local container = configWorld(client)
+		-- Enough items for a window taller than the least height (200).
+		for i = 1, 16 do W.put(1, i, W.item(400 + i, 'Blade ' .. i, 'Weapon', 60 + i)) end
+		INV:UpdateContainer('bag', true)
+		local padding = INV.config.padding
+		local function measure()
+			INV:UpdateContainer('bag', true)
+			return container:GetHeight(), container:GetTop() - container.scrollFrame:GetTop()
+		end
+		local height, top = measure()
+		eq(top, 31 + padding, client .. ', Thick: the content under the 31 header and the padding')
+		check(height - 31 > 200, client .. ': a window taller than the least height without its header (' .. height .. ')')
+
+		switchTheme('blizzard')
+		eq(SaftUI:HeaderInTitleBar(container), true, client .. ', Blizzard: the header in the title bar')
+		local bHeight, bTop = measure()
+		eq(bTop, padding, client .. ', Blizzard: the content right under the title bar, the padding down')
+		eq(bHeight, height - 31, client .. ', Blizzard: the window shorter by the header it no longer holds')
+
+		switchTheme('thick')
+		local tHeight, tTop = measure()
+		eq(tTop, top, client .. ', Thick again: the content where it was')
+		eq(tHeight, height, client .. ', Thick again: the height it was')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('under Blizzard no header button overlaps the title, the close button or another, in a window at its narrowest', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		configWorld(client)
+		switchTheme('blizzard')
+		W.bags = {}
+		W.bag(0, 20, 'Backpack')
+		for _, id in ipairs({ 'bag', 'bank' }) do
+			local c = INV.containers[id] or window(id)
+			c.title:SetText(id == 'bag' and 'Bags' or 'Bank')
+			INV:UpdateContainer(id, true)
+			local label = client .. ' ' .. id
+			eq(SaftUI:HeaderInTitleBar(c), true, label .. ': the header in the title bar')
+			eq(c:GetWidth(), math.max(c:GetWidth(), INV:HeaderMinWidth(c)), label .. ': at least HeaderMinWidth wide')
+			local titleWidth = c.title:GetStringWidth()
+			local center = (c:GetLeft() + c:GetRight()) / 2
+			local close = SaftUI:GetCloseButton(c)
+			check(center + titleWidth / 2 <= c.viewButtons.onebag:GetLeft(), label .. ': the title ends before the first button')
+			check(c.viewButtons.rows:GetRight() <= close:GetLeft(), label .. ': the buttons before the close button in its socket')
+			for i = 2, #VIEWS do
+				check(c.viewButtons[VIEWS[i - 1]]:GetRight() <= c.viewButtons[VIEWS[i]]:GetLeft(),
+					label .. ': ' .. VIEWS[i - 1] .. ' before ' .. VIEWS[i])
+			end
+			for _, view in ipairs(VIEWS) do
+				local button = c.viewButtons[view]
+				eq(button:GetHeight(), 16, label .. ' ' .. view .. ": the title bar's strip less 4")
+				check(button:GetTop() <= c.header:GetTop() and button:GetBottom() >= c.header:GetBottom(),
+					label .. ' ' .. view .. ': inside the strip')
+			end
+		end
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
 test("the buttons follow the title bar's height", function()
 	local container = world()
+	-- Bag Slots, as the bag window's bag slot bar makes it.
+	local slots = INV:CreateSlotToggle(container, CreateFrame('Frame', nil, container))
+	eq(slots:GetHeight(), 23, 'Bag Slots: the header less 8')
 	SaftUI.config.profile.headers.height = 40
 	SaftUI:UpdateHeader()
 	for _, view in ipairs(VIEWS) do
 		eq(container.viewButtons[view]:GetWidth(), 32, view .. ': the new height less 8 wide')
 		eq(container.viewButtons[view]:GetHeight(), 32, view .. ': and tall')
 	end
+	eq(T.text(slots:GetSize()), '64.00,32.00', 'Bag Slots: 64 wide and the new height less 8, with no reload')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

@@ -22,8 +22,9 @@ st.mult = 1
 st.CLOSE_BUTTON_SIZE = {20, 10} -- a Blizzard close button handed to st:CreateHeader
 st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
 -- How far in from a header's right edge SaftUI's close button sits
--- (st:CreateHeader), and where the bags' view buttons line up from while it
--- sits in the metal's socket (SaftUI-Bags/container.lua), so the two match.
+-- (st:CreateHeader), which the bags count in a window's least width
+-- (SaftUI-Bags/container.lua). In the metal's socket it reaches
+-- st:SocketReach in instead.
 st.CLOSE_INSET = 10
 -- The options window's box colors, shared by its widgets and the close button.
 st.BOX_COLORS = {

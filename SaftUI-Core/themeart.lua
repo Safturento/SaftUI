@@ -156,10 +156,23 @@ ThemeArt.ART = {
 	-- socket. Texel snapping is off, as Blizzard's disableSharpening has it. The
 	-- top edge is the title bar, titleHeight down from the drawn frame's top;
 	-- the close button sits in the top right corner's socket.
+	--
+	-- titleStrip is the part of the title bar a window's header sits in under
+	-- Blizzard (panels.lua, st:HeaderInTitleBar): titleStrip tall, its bottom
+	-- on the title bar's bottom, the window's top. It's Blizzard's own title
+	-- strip, the TitleContainer its windows put their title in: 20 tall from 1
+	-- below the frame's top (DefaultPanelBaseTemplate, SharedUIPanelTemplates.xml,
+	-- the same on both branches), which on retail ends on the title bar's
+	-- bottom, 21 down. Forever's title bar is 20 and the strip all of it: in
+	-- the user's screenshot of a bag window (2026-11-11) its dark band runs
+	-- from about 1 to 18 below the drawn frame's top and its lip from 19, so
+	-- the strip is centred on the band. Even on both clients, so what's
+	-- centred on it sits on whole pixels.
 	metal = {
 		layer = 'OVERLAY',
 		snap = false,
 		titleHeight = ByClient(20, 21),
+		titleStrip = 20,
 		TopLeftCorner = { atlas = Atlas('UI-Frame-Metal-CornerTopLeft'), x = -8, y = 16 },
 		TopRightCorner = { atlas = Atlas('UI-Frame-Metal-CornerTopRight'), x = ByClient(2, 4), y = 16 },
 		BottomLeftCorner = { atlas = Atlas('UI-Frame-Metal-CornerBottomLeft'), x = -8, y = ByClient(-8, -3) },
@@ -466,6 +479,12 @@ end
 -- top, on this client.
 function ThemeArt.TitleHeight()
 	return ForClient(ThemeArt.ART.metal.titleHeight)
+end
+
+-- How tall the strip of the metal's title bar a window's header sits in is,
+-- its bottom on the window's top, on this client (the metal's titleStrip).
+function ThemeArt.TitleStrip()
+	return ForClient(ThemeArt.ART.metal.titleStrip)
 end
 
 -- How far a kind's art reaches down from the drawn frame's top under

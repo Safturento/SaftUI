@@ -1,8 +1,16 @@
 -- Windows and close buttons under the Blizzard theme (SaftUI-Core/panels.lua,
--- with theme.lua and themeart.lua):
---   - st:CreatePanel draws a window (the metal under Blizzard), whose header
---     and footer keep the profile's header height under every theme, with no
---     strip under Blizzard and their strips again under Thick;
+-- with theme.lua and themeart.lua), on both clients:
+--   - st:CreatePanel draws a window (the metal under Blizzard);
+--   - under Blizzard a window's header sits in the metal's title bar
+--     (st:HeaderInTitleBar): the title bar's strip, its bottom on the
+--     window's top, with no strip of its own, the title centred on it and the
+--     window's content starting right under it; its buttons are the strip
+--     less 4 (st:HeaderButtonSize). Under Thick it's back at the window's top
+--     at the profile's height, with its strip. A window made under Blizzard
+--     has it there at once; Title bar height reaches the footer and, under
+--     Thick, the header again. The rule is Core's: a window with no close
+--     button follows it, and a window or SaftUI's theme in another look than
+--     Blizzard keeps its header in the window;
 --   - SaftUI's close button (st:CreateCloseButton) wears Blizzard's four
 --     textures at the client's size under SaftUI's theme Blizzard, and its own
 --     look again under Thick;
@@ -99,6 +107,48 @@ local function panel(st, name)
 	return p
 end
 
+-- A region's rect on screen, 'left,top,right,bottom'.
+local function rect(f) return text(f:GetLeft(), f:GetTop(), f:GetRight(), f:GetBottom()) end
+
+-- A region's vertical centre on screen.
+local function middle(f) return (f:GetTop() + f:GetBottom()) / 2 end
+
+-- The title bar's strip a window's header sits in under Blizzard, as
+-- themeart.lua gives it: 20 on both clients (Blizzard's TitleContainer).
+local STRIP = 20
+
+-- Checks a window's header sits in its metal's title bar: STRIP tall, its
+-- bottom on the window's top and as wide as the window, inside the drawn
+-- frame's top (on retail 1 below it, where Blizzard's TitleContainer starts;
+-- on Forever at it), drawn over the metal, with no strip, and the title
+-- centred on it.
+local function inTitleBar(st, p, client, where)
+	eq(st:HeaderInTitleBar(p), true, where .. ': the header is in the title bar')
+	eq(p.header:GetHeight(), STRIP, where .. ": the title bar's strip tall")
+	eq(T.around(p.header, p), ('0,%d,0,%d'):format(STRIP, p:GetHeight()),
+		where .. ": its bottom on the window's top, as wide as the window")
+	local rim = client == 'retail' and 1 or 0
+	eq(text(p.backdrop:GetTop() - p.header:GetTop()), text(rim), where .. ": its top at the drawn frame's top, less retail's 1px rim")
+	eq(text(st.ThemeArt.TitleHeight() - rim), text(STRIP), where .. ': so it fills the title bar below the rim')
+	check(p.header:GetFrameLevel() > p.backdrop:GetFrameLevel(), where .. ': over the metal')
+	eq(p.header.backdropInfo, nil, where .. ': no strip')
+	eq(T.art(p.header), '', where .. ': no art on it')
+	if p.title then
+		eq(text(middle(p.title)), text(middle(p.header)), where .. ': the title centred on it')
+	end
+	eq(st:HeaderButtonSize(p), STRIP - 4, where .. ': its buttons the strip less 4')
+end
+
+-- Checks a window's header is back at the window's top at height, with
+-- Thick's strip.
+local function inWindow(st, p, height, where)
+	eq(st:HeaderInTitleBar(p), false, where .. ': the header is in the window')
+	eq(p.header:GetHeight(), height, where .. ": the profile's height")
+	eq(T.around(p.header, p), ('0,0,0,%d'):format(p:GetHeight() - height), where .. ": at the window's top")
+	eq(fill(p.header), THICK_STRIP, where .. ': with its strip')
+	eq(st:HeaderButtonSize(p), height - 8, where .. ': its buttons its height less 8')
+end
+
 ------------------------------------------------------------------ windows
 
 test('st:CreatePanel draws a window', function()
@@ -111,38 +161,115 @@ test('st:CreatePanel draws a window', function()
 	eq(T.art(p.backdrop), METAL, 'under Blizzard it wears the metal')
 end)
 
-test("under Blizzard a window's header keeps its height and draws nothing; under Thick it has its strip again", function()
-	local st = T.client('forever')
-	local p = panel(st, 'Header test')
-	st:CreateFooter(p)
-	local content = st:CreateFrame('Frame', nil, p)
-	content:SetPoint('TOPLEFT', p.header, 'BOTTOMLEFT', 5, -5)
-	content:SetPoint('BOTTOMRIGHT', p, 'BOTTOMRIGHT', -5, 5)
-	local function rect(f) return text(f:GetLeft(), f:GetTop(), f:GetRight(), f:GetBottom()) end
-	local window, inside, header = rect(p), rect(content), rect(p.header)
+test("under Blizzard a window's header sits in the metal's title bar, with no strip; under Thick it goes back with its strip", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st = T.client(client)
+		local p = panel(st, 'Header test')
+		st:CreateFooter(p)
+		-- The window's content, as a window places it: under its header.
+		local content = st:CreateFrame('Frame', nil, p)
+		content:SetPoint('TOPLEFT', p.header, 'BOTTOMLEFT', 5, -5)
+		content:SetPoint('BOTTOMRIGHT', p, 'BOTTOMRIGHT', -5, 5)
+		local window, header, footer, inside = rect(p), rect(p.header), rect(p.footer), rect(content)
 
-	local function expect(name, strip)
-		eq(p.header:GetHeight(), 31, name .. ": the header is the profile's 31 tall")
-		eq(p.footer:GetHeight(), 31, name .. ': the footer too')
-		eq(rect(p), window, name .. ': the window keeps its place and size')
-		eq(rect(p.header), header, name .. ': the header keeps its points')
-		eq(rect(content), inside, name .. ": the window's content keeps its points")
-		if strip then
-			eq(fill(p.header), strip, name .. ': the header strip')
-			eq(fill(p.footer), strip, name .. ': the footer strip')
-		else
-			eq(p.header.backdropInfo, nil, name .. ': no strip')
-			eq(p.footer.backdropInfo, nil, name .. ': none on the footer')
-			eq(T.art(p.header), '', name .. ': no art on the header')
+		local function thick(name)
+			inWindow(st, p, 31, name)
+			eq(rect(p.header), header, name .. ': the header where it was')
+			eq(rect(content), inside, name .. ': the content under it, where it was')
+			eq(text(p:GetTop() - content:GetTop()), '36.00', name .. ': 31 and 5 under the window top')
+			eq(fill(p.footer), THICK_STRIP, name .. ': the footer strip')
 		end
+
+		thick(client .. ', Thick')
+		switch(st, 'blizzard')
+		local name = client .. ', Blizzard'
+		eq(T.art(p.backdrop), METAL, name .. ': the window wears the metal')
+		inTitleBar(st, p, client, name)
+		eq(text(p:GetTop() - content:GetTop()), '5.00', name .. ": the content starts right under the title bar")
+		eq(rect(p), window, name .. ': the window keeps its place and size')
+		eq(rect(p.footer), footer, name .. ': the footer keeps its place and height')
+		eq(p.footer.backdropInfo, nil, name .. ': no strip on the footer')
+		st:RecolorThemed()
+		inTitleBar(st, p, client, name .. ', after a recolor')
+		st:RedrawThemed()
+		inTitleBar(st, p, client, name .. ', after a redraw')
+
+		switch(st, 'thick')
+		thick(client .. ', Thick again')
+		eq(T.art(p.backdrop), '', client .. ', Thick again: no art')
+		eq(rect(p), window, client .. ', Thick again: the window where it was')
+
+		switch(st, 'thin')
+		eq(st:HeaderInTitleBar(p), false, client .. ', Thin: the header in the window')
+		eq(rect(p.header), header, client .. ', Thin: where it was')
+		eq(#take_errors(), 0, client .. ': no errors')
 	end
-	expect('Thick', THICK_STRIP)
+end)
+
+test('a window made under Blizzard has its header in the title bar at once', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st = T.client(client)
+		switch(st, 'blizzard')
+		local p = panel(st, 'Made under Blizzard')
+		inTitleBar(st, p, client, client)
+		switch(st, 'thick')
+		inWindow(st, p, 31, client .. ', Thick')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test("Title bar height reaches the footer under Blizzard, where the header keeps the strip's height, and both again under Thick", function()
+	local st = T.client('forever')
+	local p = panel(st, 'Height test')
+	st:CreateFooter(p)
 	switch(st, 'blizzard')
-	expect('Blizzard', nil)
-	eq(T.art(p.backdrop), METAL, 'Blizzard: the window wears the metal')
+	st.config.profile.headers.height = 40
+	st:UpdateHeader() -- as General -> Title bar height does
+	inTitleBar(st, p, 'forever', 'Blizzard, 40')
+	eq(p.footer:GetHeight(), 40, 'Blizzard: the footer takes it')
 	switch(st, 'thick')
-	expect('Thick again', THICK_STRIP)
-	eq(T.art(p.backdrop), '', 'Thick again: no art')
+	inWindow(st, p, 40, 'Thick, 40')
+	eq(p.footer:GetHeight(), 40, 'Thick: the footer too')
+	st.config.profile.headers.height = 31
+	st:UpdateHeader()
+	inWindow(st, p, 31, 'Thick, 31')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the rule is Core's: a window with no close button follows it, and a window not in the metal keeps its header", function()
+	local st = T.client('retail')
+	-- A window of SaftUI's with a header and no close button.
+	local bare = st:CreateFrame('Frame', 'SaftUIBareWindow', UIParent)
+	bare:SetSize(200, 100)
+	bare:SetPoint('CENTER')
+	st:SetBackdrop(bare, 'theme', 'theme', 'window')
+	st:CreateHeader(bare, 'Bare')
+	eq(st:GetCloseButton(bare), nil, 'it has no close button')
+	inWindow(st, bare, 31, 'Thick')
+	switch(st, 'blizzard')
+	inTitleBar(st, bare, 'retail', 'Blizzard')
+
+	-- A window drawn in a look of its own, as a module's Theme draws it, then
+	-- its header updated (st:UpdateHeader), as the bags do after drawing it.
+	st:SetBackdrop(bare, 'thick', 'theme', 'window')
+	st:UpdateHeader(bare.header)
+	eq(T.art(bare.backdrop), '', "its own Thick under SaftUI's Blizzard: no metal")
+	eq(st:HeaderInTitleBar(bare), false, 'so the header goes back into the window')
+	eq(T.around(bare.header, bare), '0,0,0,69', "at the window's top")
+	eq(bare.header.backdropInfo, nil, "with SaftUI's theme's strip: none under Blizzard")
+
+	-- Its own Blizzard under SaftUI's Thick: the metal, and the header and
+	-- its strip stay with SaftUI's theme, in the window.
+	switch(st, 'thick')
+	st:SetBackdrop(bare, 'blizzard', 'theme', 'window')
+	st:UpdateHeader(bare.header)
+	eq(T.art(bare.backdrop), METAL, "its own Blizzard under SaftUI's Thick: the metal")
+	inWindow(st, bare, 31, "its own Blizzard under SaftUI's Thick")
+
+	-- Its own theme followed again, SaftUI's Blizzard: into the title bar.
+	st:SetBackdrop(bare, 'theme', 'theme', 'window')
+	switch(st, 'blizzard')
+	inTitleBar(st, bare, 'retail', "SaftUI's Blizzard again")
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -203,8 +330,14 @@ test('on a window the close button sits in the socket, and goes back', function(
 		eq(anchor(close, names), 'TOPRIGHT backdrop TOPRIGHT ' .. text(x, y),
 			client .. ", Blizzard: at TOPRIGHT of the window's drawn frame, in the metal's socket")
 		eq(st:CloseButtonInSocket(p), true, client .. ', Blizzard: in the socket')
-		check(close:GetBottom() > p.header:GetBottom(), client .. ': above the header row, on the title bar')
 		check(close:GetFrameLevel() > p.backdrop:GetFrameLevel(), client .. ': over the metal')
+		-- The header is in the title bar with it (st:HeaderInTitleBar): the
+		-- button sits at its right end, over it, reaching st:SocketReach in.
+		check(close:GetFrameLevel() > p.header:GetFrameLevel(), client .. ': over the header in the title bar')
+		check(close:GetTop() >= p.header:GetTop() and close:GetRight() >= p.header:GetRight(),
+			client .. ": at the title bar's right end")
+		eq(st:SocketReach(p), client == 'forever' and 26 or 21, client .. ': 28 - 0 - 2 on Forever, 24 - 1 - 2 on retail')
+		eq(text(p.header:GetRight() - close:GetLeft()), text(st:SocketReach(p)), client .. ": that far in from the header's right edge")
 
 		st:RecolorThemed()
 		eq(anchor(close, names), 'TOPRIGHT backdrop TOPRIGHT ' .. text(x, y), client .. ': a recolor leaves it in the socket')
@@ -302,16 +435,14 @@ test('a profile switch from a Blizzard profile to a Thick one', function()
 	local close = st:GetCloseButton(p)
 	eq(T.art(p.backdrop), METAL, 'Blizzard profile: the window wears the metal')
 	eq(T.art(tip.backdrop), TOOLTIP, 'Blizzard profile: the tooltip its border')
-	eq(p.header:GetHeight(), 31, 'Blizzard profile: the header is 31 tall')
-	eq(p.header.backdropInfo, nil, 'Blizzard profile: no strip')
+	inTitleBar(st, p, 'forever', 'Blizzard profile')
 	eq(st:CloseButtonInSocket(p), true, "Blizzard profile: the close button in the metal's socket")
 	blizzardLook(close, 28, 'Blizzard profile')
 
 	st.config:SetProfile(thick)
 	eq(T.art(p.backdrop), '', 'Thick profile: no art on the window')
 	eq(T.art(tip.backdrop), '', 'Thick profile: none on the tooltip')
-	eq(p.header:GetHeight(), 31, 'Thick profile: the header is 31 tall')
-	eq(fill(p.header), THICK_STRIP, 'Thick profile: with its strip')
+	inWindow(st, p, 31, 'Thick profile')
 	eq(st:CloseButtonInSocket(p), false, 'Thick profile: out of the socket')
 	eq(anchor(close, { [p.header] = 'header' }), 'RIGHT header RIGHT -10.00,0.00', 'Thick profile: back at the right of the header')
 	ownLook(st, close, 'Thick profile')

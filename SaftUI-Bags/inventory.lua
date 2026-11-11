@@ -219,9 +219,12 @@ function INV:UpdateConfig(id)
 	st:SetBackdrop(container, self.config.theme, self.config.background, 'window')
 	-- The bags' own Theme can put the window in Blizzard's metal or take it
 	-- out with no theme redraw, so the close button follows it into the
-	-- socket or out here; then the view buttons follow the close button, and
-	-- a theme switch the border's width.
+	-- socket or out here, and the header into the metal's title bar or out
+	-- (st:UpdateHeader); then the buttons in the header take its size and
+	-- follow the close button, and a theme switch the border's width.
 	st:UpdateCloseButton(container)
+	st:UpdateHeader(container.header)
+	self:SizeHeaderButtons(container)
 	self:SpaceViewButtons(container)
 	self:SyncAnchorSize(id)
 

@@ -193,11 +193,7 @@ function INV:InitializeBankBagSlots(container)
 	bar:SetScript('OnHide', bar.UnregisterAllEvents)
 	bar:SetScript('OnEvent', function(bar) INV:UpdateBankBagSlots(bar) end)
 
-	local slotToggle = st:CreateButton(nil, container.header, 'Bag Slots', 'none', 'theme')
-	slotToggle:SetPoint('LEFT', 8, 0)
-	slotToggle:SetSize(64, st.config.profile.headers.height - 8)
-	slotToggle:SetScript('OnClick', function() bar:SetShown(not bar:IsShown()) end)
-	container.header.slotToggle = slotToggle
+	self:CreateSlotToggle(container, bar)
 
 	container.bagSlotContainer = bar
 end

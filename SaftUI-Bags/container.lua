@@ -4,9 +4,9 @@ local INV = st:GetModule('Inventory')
 
 -- The title bar's view buttons: the gap left visible between two neighbouring
 -- borders (see INV:ViewButtonGaps). How far in from the header's right edge
--- the close button sits (st:CreateHeader), and so the view buttons while the
--- close button is in the metal's socket (st:CloseButtonInSocket), is Core's
--- st.CLOSE_INSET.
+-- the close button sits in the header (st:CreateHeader) is Core's
+-- st.CLOSE_INSET; while it sits in the metal's socket, with the header in the
+-- metal's title bar, how far in it reaches is st:SocketReach.
 local VISIBLE_GAP = 3
 
 function INV:GetContainer(containerName)
@@ -52,24 +52,7 @@ function INV:CreateContainer(id, name, isBankContainer)
 	end
 
 	self:CreateViewButtons(container)
-
-	local filterButton = st:CreateCheckButton(nil, container.header, 'button')
-    container.header.filterButton = filterButton
-    -- Hidden, but anchored clear of the view buttons.
-    self:SpaceViewButtons(container)
-    filterButton:SetSize(40, 20)
-
-    filterButton.text:SetAllPoints(filterButton)
-    filterButton:SetFont('pixel')
-    filterButton:SetText('Edit')
-    filterButton:SetScript('OnClick', function()
-        -- Showing or hiding the hidden categories re-packs the window.
-        INV:ReleaseLayout(container)
-        INV:UpdateContainer(id, true)
-        INV:ShowFilterCheckboxes(container, filterButton:GetChecked())
-    end)
-	filterButton:Hide()
-    container.filterButton = filterButton
+	self:CreateEditToggle(container)
 
 	container.bags = {}
 	for _, bag_id in pairs(container.bag_ids) do
@@ -603,11 +586,13 @@ end
 
 -- Sizes a window around its scroll frame, contentWidth wide and visibleHeight
 -- tall over contentHeight of content: the header, the search box under it, the
--- footer and the padding, at least 200 tall. Every view sizes its window here,
--- so a window is the same size for the same content in every view.
+-- footer and the padding, at least 200 tall. Under the Blizzard theme the
+-- header sits in the metal's title bar above the window, which then holds none
+-- of it (st:HeaderRoom). Every view sizes its window here, so a window is the
+-- same size for the same content in every view.
 local function SizeWindow(self, container, contentWidth, contentHeight, visibleHeight)
 	local config = self.config
-	local height = container.header:GetHeight() + container.footer:GetHeight() + config.padding * 2
+	local height = st:HeaderRoom(container) + container.footer:GetHeight() + config.padding * 2
 	if container.search then
 		container.search:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', config.padding, -config.padding)
 		height = height + container.search:GetHeight()
@@ -801,6 +786,13 @@ end
 	under the Blizzard theme, whose panel buttons they are, it's pressed.
 	The buttons are SaftUI's own plain buttons, so lighting one is fine in
 	combat; the layout is what waits (INV:SetView, INV:ApplyView).
+
+	The title bar is the window's header (st:CreateHeader): under the
+	Blizzard theme it sits in the metal's title bar above the window
+	(st:HeaderInTitleBar), and every button in it (the view buttons, the Edit
+	toggle, Bag Slots) is sized to it (st:HeaderButtonSize,
+	INV:SizeHeaderButtons) and stops short of the close button in the metal's
+	socket (INV:SpaceViewButtons).
 ]]
 local GLYPHS = {
 	onebag = { { 0, 0, 12, 12 } },
@@ -825,10 +817,11 @@ local function ColorGlyph(button)
 	end
 end
 
--- A button is the title bar's height less 8 square, and its glyph is drawn at
--- the largest whole pixel unit that fits inside with room to spare.
-local function SizeViewButton(button)
-	local size = button:GetParent():GetHeight() - 8
+-- A button is size square (the title bar's st:HeaderButtonSize: its height
+-- less 8, or the metal's title bar strip less 4), and its glyph is drawn at
+-- the largest whole pixel unit that fits inside with room to spare, at least
+-- 1 (12px, inside the title bar's 16px buttons).
+local function SizeViewButton(button, size)
 	button:SetSize(size, size)
 	local unit = max(1, floor((size - 8) / 12))
 	for i, piece in ipairs(button.glyph) do
@@ -839,8 +832,24 @@ local function SizeViewButton(button)
 	end
 end
 
-function INV:SizeViewButtons(container)
-	for _, button in pairs(container.viewButtons or {}) do SizeViewButton(button) end
+-- The Edit toggle is 40 by 20, and never taller than the title bar's other
+-- buttons.
+local EDIT_WIDTH, EDIT_HEIGHT = 40, 20
+-- Bag Slots is 64 wide, 8 in from the title bar's left.
+local SLOTS_WIDTH, SLOTS_INSET = 64, 8
+
+-- Sizes every button in a window's title bar to it (st:HeaderButtonSize): the
+-- view buttons square, Bag Slots 64 wide, the Edit toggle 40 wide and no
+-- taller than 20. Runs whenever the title bar's height can change: Title bar
+-- height (st:UpdateHeader), and a theme switch or the window's own Theme
+-- putting it in the metal's title bar or back (INV:UpdateConfig).
+function INV:SizeHeaderButtons(container)
+	local header = container.header
+	if not header then return end
+	local size = st:HeaderButtonSize(container)
+	for _, button in pairs(container.viewButtons or {}) do SizeViewButton(button, size) end
+	if header.slotToggle then header.slotToggle:SetSize(SLOTS_WIDTH, size) end
+	if header.filterButton then header.filterButton:SetSize(EDIT_WIDTH, min(EDIT_HEIGHT, size)) end
 end
 
 -- The distance between the view buttons' frames, and between the first of them
@@ -855,17 +864,20 @@ function INV:ViewButtonGaps()
 end
 
 -- Puts the view buttons (and the Edit check button before them) the
--- INV:ViewButtonGaps apart, lined up from the close button, or from the
--- header's right edge, st.CLOSE_INSET in, while the close button sits in the
--- metal's socket above the header (st:CloseButtonInSocket). A theme switch
--- changes the inset and the socket, so INV:UpdateConfig(id) runs it again.
+-- INV:ViewButtonGaps apart, lined up from the close button. While the header
+-- sits in the metal's title bar (st:HeaderInTitleBar) the close button is in
+-- the metal's socket at its right end, which isn't centred on the title bar's
+-- strip, so they line up from the header's right edge instead, as far in as
+-- the close button reaches (st:SocketReach) and the gap: they stop short of
+-- it and stay centred on the strip. A theme switch changes the inset and the
+-- title bar, so INV:UpdateConfig(id) runs it again.
 function INV:SpaceViewButtons(container)
 	local close = st:GetCloseButton(container)
 	if not (container.viewButtons and close) then return end
 	local buttonGap, closeGap = self:ViewButtonGaps()
 	local right, side, gap = close, 'LEFT', closeGap
-	if st:CloseButtonInSocket(container) then
-		right, side, gap = container.header, 'RIGHT', st.CLOSE_INSET
+	if st:HeaderInTitleBar(container) then
+		right, side, gap = container.header, 'RIGHT', st:SocketReach(container) + closeGap
 	end
 	for i = #self.viewIds, 1, -1 do
 		local button = container.viewButtons[self.viewIds[i]]
@@ -892,7 +904,7 @@ function INV:CreateViewButtons(container)
 			button.glyph[p] = button:CreateTexture(nil, 'OVERLAY')
 		end
 		ColorGlyph(button)
-		SizeViewButton(button)
+		SizeViewButton(button, st:HeaderButtonSize(container))
 
 		button:SetScript('OnClick', function() INV:SetView(container.id, view) end)
 		button:SetScript('OnEnter', function(self)
@@ -906,6 +918,43 @@ function INV:CreateViewButtons(container)
 	end
 	self:SpaceViewButtons(container)
 	self:UpdateViewButtons(container.id)
+end
+
+-- The Edit toggle (container.filterButton, and the header's filterButton): a
+-- check button styled 'button', left of the view buttons in the title bar,
+-- that shows or hides the categories the window hides, re-packing it. It's
+-- made hidden; nothing shows it today. Made by INV:CreateContainer.
+function INV:CreateEditToggle(container)
+	local filterButton = st:CreateCheckButton(nil, container.header, 'button')
+	container.header.filterButton = filterButton
+	filterButton.text:SetAllPoints(filterButton)
+	filterButton:SetFont('pixel')
+	filterButton:SetText('Edit')
+	filterButton:SetScript('OnClick', function()
+		-- Showing or hiding the hidden categories re-packs the window.
+		INV:ReleaseLayout(container)
+		INV:UpdateContainer(container.id, true)
+		INV:ShowFilterCheckboxes(container, filterButton:GetChecked())
+	end)
+	filterButton:Hide()
+	container.filterButton = filterButton
+	-- Hidden, but sized and anchored clear of the view buttons.
+	self:SizeHeaderButtons(container)
+	self:SpaceViewButtons(container)
+	return filterButton
+end
+
+-- The Bag Slots button at the left of a window's title bar (the header's
+-- slotToggle), which shows and hides bar, the window's bag slot bar. name, if
+-- given, names it (st:CreateButton). The bag window's (containers/bag.lua) and
+-- the bank's (containers/bank.lua) make it.
+function INV:CreateSlotToggle(container, bar, name)
+	local slotToggle = st:CreateButton(name, container.header, 'Bag Slots', 'none', 'theme')
+	slotToggle:SetPoint('LEFT', SLOTS_INSET, 0)
+	slotToggle:SetScript('OnClick', function() bar:SetShown(not bar:IsShown()) end)
+	container.header.slotToggle = slotToggle
+	self:SizeHeaderButtons(container)
+	return slotToggle
 end
 
 -- Lights the window's view's button and puts the others back to the theme's
@@ -956,25 +1005,29 @@ function INV:SetView(id, view)
 end
 
 -- The title bar's height follows Global Settings (st:UpdateHeader), and so
--- do the buttons in it.
+-- do the buttons in it. st:UpdateHeader also puts a header in the metal's
+-- title bar or back, so this sizes them for that too.
 hooksecurefunc(st, 'UpdateHeader', function()
-	for _, container in pairs(INV.containers or {}) do INV:SizeViewButtons(container) end
+	for _, container in pairs(INV.containers or {}) do INV:SizeHeaderButtons(container) end
 end)
 
 -- The narrowest a window can be with its title between the view buttons and
 -- the window's left edge: the title is centered, so the room the buttons and
--- the close button take on the right is also kept clear on the left. While
--- the close button sits in the metal's socket above the header, it and its
--- gap take none (INV:SpaceViewButtons).
+-- the close button take on the right is also kept clear on the left. With the
+-- header in the metal's title bar the close button takes how far in it
+-- reaches from the socket (st:SocketReach), as INV:SpaceViewButtons lines the
+-- buttons up.
 function INV:HeaderMinWidth(container)
 	local close = st:GetCloseButton(container)
 	if not (container.viewButtons and close and container.title) then return 0 end
 	local count = #self.viewIds
-	local size = container.header:GetHeight() - 8
+	local size = st:HeaderButtonSize(container)
 	local buttonGap, closeGap = self:ViewButtonGaps()
-	local extent = st.CLOSE_INSET + count * size + (count - 1) * buttonGap
-	if not st:CloseButtonInSocket(container) then
-		extent = extent + close:GetWidth() + closeGap
+	local extent = count * size + (count - 1) * buttonGap + closeGap
+	if st:HeaderInTitleBar(container) then
+		extent = extent + st:SocketReach(container)
+	else
+		extent = extent + st.CLOSE_INSET + close:GetWidth()
 	end
 	return 2 * (extent + closeGap) + container.title:GetStringWidth()
 end

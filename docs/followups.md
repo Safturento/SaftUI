@@ -7,8 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
-  - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
   - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
@@ -69,6 +69,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
   - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
@@ -93,6 +94,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar
+
+**What:** Under the Blizzard theme the bag window's bag slot bar (Bag Slots: `INV.containers.bag.bagSlotContainer`, `SaftUI-Bags/containers/bag.lua`) and the bank's (`SaftUI-Bags/containers/bank.lua`) are anchored by their BOTTOMLEFT to the window's TOPLEFT, `buttonspacing` up. The metal's title bar reaches 20 (retail 21) above the window and its top corners 16 more, so a shown bar lies over the title bar, which now holds the window's title, view buttons and Bag Slots itself. The bar is a child of the window, one level over it and one under the header, so where it overlaps the title bar it hides the metal there, and the title and the header's buttons draw over it.
+
+**Why noticed:** Moving the window headers into the metal's title bar (2026-11-11, the user's in-game feedback on the Blizzard theme: "Can we put these header items on the actual title bar on the blizzard theme?"). Before that the title bar was empty but for the close button, and the bar already covered it; it wasn't in scope to move the bars.
+
+**Anchors:** `SaftUI-Bags/containers/bag.lua` (`bagSlotContainer:SetPoint('BOTTOMLEFT', self.containers.bag, 'TOPLEFT', 0, self.config.buttonspacing)`), `SaftUI-Bags/containers/bank.lua` (the same for the bank's bar), `INV:UpdateBagSlotBars` (`SaftUI-Bags/inventory.lua`); `st:DrawnFrame(window)` (the window's backdrop, whose top is the metal's), `st.ThemeArt.ART.metal` (the top corners' y, 16).
+
+**What's been considered:** Anchor each bar to the window's drawn frame (`st:DrawnFrame`) under Blizzard, above the metal's top corners (16 over its top), and to the window under Thick and Thin, re-anchored where the bags already follow a theme switch (`INV:UpdateConfig(id)`). Whether 16 is where the metal's art visibly ends needs a look in game.
+
+**Shape of work:** Small: one anchor per bar and its re-anchoring on a theme switch, a test in `tests/bags/theme_test.lua`, and an in-game look on both clients.
+
 ### 2026-11-11 — Blizzard theme: in-game checks
 
 **What:** The Blizzard theme (branch `blizzardtheme`, spec `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md`, plan `docs/superpowers/plans/2026-11-10-saftui-blizzard-theme.md`) was built and tested on stubs (`tests/run`), which model neither the game's layout, frame levels, draw order, texel snapping nor combat protection. These need a look in game, and a fix for what's found. The user plays Forever, so the retail items need a retail session.
@@ -116,9 +129,17 @@ Buttons and controls (both clients):
 
 Slots under Thick and Thin (both clients): the hover on a bag, bank, currency or bags bar slot is a blue tint over the icon, not an opaque blue square. `st:SkinActionButton` (`SaftUI-Core/skinning.lua`) now puts back the blend `SetHighlightTexture` gave the hover when it was made, which the stubs take to be ADD (the final review found it forced to BLEND); check that's the client's default too. 2026-11-11: in game every slot and action button showed the blue all the time, not just under the mouse, because the theme work had moved the hover out of the HIGHLIGHT layer (fixed in 8b4ef2f, every look); recheck the tint under the mouse after that fix.
 
+Window headers in the metal's title bar (both clients; `st:HeaderInTitleBar`, `SaftUI-Core/panels.lua`, and `INV:SizeHeaderButtons` / `INV:SpaceViewButtons`, `SaftUI-Bags/container.lua`; 2026-11-11). Open the bags, the bank and the combined bank under Blizzard:
+- the header is the title bar's strip, 20 tall with its bottom on the window's top (`st.ThemeArt.TitleStrip()`): on Forever the whole title bar, centred on its dark band (measured in a screenshot: the band runs 1 to 18 below the drawn frame's top, the lip from 19); on retail its bottom 20, under a 1px rim, where Blizzard's TitleContainer sits. The title and every button should look centred on the band, clear of the rim and the lip;
+- the view buttons, Bag Slots and the Edit toggle are 16 tall (the strip less 4), the view buttons' 12px glyphs sharp in their 16px panel buttons, and "Bag Slots" readable at 16;
+- the view buttons end 4px short of the close button in its socket (26px in from the window's right edge on Forever, 21 on retail, `st:SocketReach`), and the title doesn't run into them at the window's narrowest;
+- the window's content (the search box, the slots) starts right under the title bar, with no empty strip, and nothing of it hides under the metal's lip;
+- a theme switch Thick, Blizzard, Thick and a profile switch between a Blizzard and a Thick profile put it all back with no `/reload`, Bag Slots included, and dragging the window by its title bar works;
+- the bags' own Theme (Bags > Look) set to Thick under SaftUI's Blizzard puts the header back in the window at once, and to Blizzard under SaftUI's Thick leaves it in the window, under the metal's empty title bar.
+
 Bags, Forever:
-- the 28px socketed close button may overlap the view buttons by 1-2px, its ADD highlight, and whether it draws and clicks above the metal;
-- the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen");
+- the close button in its socket: its ADD highlight, and whether it draws and clicks above the metal and the header now in the title bar;
+- the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen"). Since 2026-11-11 the window's header (its title, buttons and drag handle) sits in that title bar too, so at a margin under 20 it goes off the top of the screen with the bar; if that bites, the margin could count the title bar while the header is in it (`st:HeaderInTitleBar`), which would also need the bags' mover anchor and edit mode's outline to agree;
 - the ring on the Pinned items and Caught now icons in `/sui` → Bags → Categories: `LayItems` (`SaftUI-Bags/categoriestab.lua`) re-levels each icon and its border's frame on every draw, so the ring may end up level with the icon.
 
 Unit frames (both clients): under Blizzard a debuff shows its dispel type as Blizzard's white icon border over the icon's edge, which the aura container tints (`StyleButton`, `SaftUI-Unitframes/elements/auras.lua`). Check it shows in the dispel type's color, sits over the icon, against the cooldown swipe, and isn't there for a debuff with no dispel type.
@@ -135,18 +156,6 @@ Hekili (if installed): SaftUI's backdrop strata is set LOW after the first draw 
 Loot feed, retail: the item's `n/m` quality text and the profession overlay under the ring (see "Loot feed: retail item quality text and profession overlay sit under the Blizzard ring").
 
 `/sui`, an open question for the user: under Blizzard the multiselect's box is a 1px line and its rows sit 2px in from it (the theme's `small` look, as there's no Blizzard equivalent). Does it look right?
-
-### 2026-11-11 — Blizzard theme: test gaps left after the final review
-
-**What:** Two gaps in the Blizzard theme's tests, left by the whole-branch review's fix wave (2026-11-11). No bags test draws a bag window for the first time under Blizzard: every case in `tests/bags/theme_test.lua` that builds a window builds it under Thick and then switches (the bank's bag-slot buttons are the only part drawn first under Blizzard). And one test checks the bags' Edit toggle by reading a line of source rather than by what it does.
-
-**Why noticed:** The final review of branch `blizzardtheme` (`4254164..023b2b8`) listed both as test gaps; the fix wave left them here rather than widen its scope. A window first drawn under Blizzard takes a different path from one switched to it (the first draw of the metal, the close button's socket and the slots' rings, rather than a redraw of each), and it's how a user who picked Blizzard sees the bags after every `/reload`.
-
-**Anchors:** `tests/bags/theme_test.lua`: its `fresh()` and `bags()` helpers, which start under Thick, and the case "the Edit toggle is a panel button, pressed while checked" (Task 8), which asserts `container.lua` contains the exact line `local filterButton = st:CreateCheckButton(nil, container.header, 'button')` and then builds its own check button the same way; `SaftUI-Bags/container.lua` (`INV:CreateContainer`, the Edit toggle, `container.header.filterButton`); `tests/bags/container_helpers.lua` (`H.window`, which builds a window as `INV:CreateContainer` does, as far as the layout reads it).
-
-**What's been considered:** The Edit toggle test reads source because `INV:CreateContainer` needs Blizzard templates the stubs lack (`UICheckButtonTemplate` among them), and the bags' tests build their windows by hand (`bags()` here, `H.window` in the views world) rather than through it. As it stands, rewording the line (or renaming the local) fails the test with no change in behaviour, and the button it checks is one it made, not the window's. To make it behavioural, either run `INV:CreateContainer` in a world with stand-ins for its templates (the views world already stands in for `UICheckButtonTemplate` and the slot templates), or move the toggle's making out of `INV:CreateContainer` into a function the test can call on its window. Then check the window's own toggle (`container.header.filterButton`): styled `'button'`, Blizzard's panel button under Blizzard, pressed while checked.
-
-**Shape of work:** Small, tests only. A case that sets SaftUI's theme to Blizzard before the bag window is built, then checks the metal, the close button in its socket, the view buttons from the header's right edge, the slots' rings and the window's fill, as the Thick, Blizzard, Thick case does after its switch. And the Edit toggle case rewritten to take the real window's toggle.
 
 ### 2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's
 
@@ -1195,6 +1204,20 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Blizzard theme: test gaps left after the final review
+
+**What:** Two gaps in the Blizzard theme's tests, left by the whole-branch review's fix wave (2026-11-11). No bags test draws a bag window for the first time under Blizzard: every case in `tests/bags/theme_test.lua` that builds a window builds it under Thick and then switches (the bank's bag-slot buttons are the only part drawn first under Blizzard). And one test checks the bags' Edit toggle by reading a line of source rather than by what it does.
+
+**Why noticed:** The final review of branch `blizzardtheme` (`4254164..023b2b8`) listed both as test gaps; the fix wave left them here rather than widen its scope. A window first drawn under Blizzard takes a different path from one switched to it (the first draw of the metal, the close button's socket and the slots' rings, rather than a redraw of each), and it's how a user who picked Blizzard sees the bags after every `/reload`.
+
+**Anchors:** `tests/bags/theme_test.lua`: its `fresh()` and `bags()` helpers, which start under Thick, and the case "the Edit toggle is a panel button, pressed while checked" (Task 8), which asserts `container.lua` contains the exact line `local filterButton = st:CreateCheckButton(nil, container.header, 'button')` and then builds its own check button the same way; `SaftUI-Bags/container.lua` (`INV:CreateContainer`, the Edit toggle, `container.header.filterButton`); `tests/bags/container_helpers.lua` (`H.window`, which builds a window as `INV:CreateContainer` does, as far as the layout reads it).
+
+**What's been considered:** The Edit toggle test reads source because `INV:CreateContainer` needs Blizzard templates the stubs lack (`UICheckButtonTemplate` among them), and the bags' tests build their windows by hand (`bags()` here, `H.window` in the views world) rather than through it. As it stands, rewording the line (or renaming the local) fails the test with no change in behaviour, and the button it checks is one it made, not the window's. To make it behavioural, either run `INV:CreateContainer` in a world with stand-ins for its templates (the views world already stands in for `UICheckButtonTemplate` and the slot templates), or move the toggle's making out of `INV:CreateContainer` into a function the test can call on its window. Then check the window's own toggle (`container.header.filterButton`): styled `'button'`, Blizzard's panel button under Blizzard, pressed while checked.
+
+**Shape of work:** Small, tests only. A case that sets SaftUI's theme to Blizzard before the bag window is built, then checks the metal, the close button in its socket, the view buttons from the header's right edge, the slots' rings and the window's fill, as the Thick, Blizzard, Thick case does after its switch. And the Edit toggle case rewritten to take the real window's toggle.
+
+**Resolved 2026-11-11:** Both, with the Blizzard theme's title bar work (window headers in the metal's title bar). `tests/bags/theme_test.lua`'s `bags()` takes a theme and a client, and "a bag window first drawn under Blizzard" builds the window under Blizzard on both clients and checks the metal, its fill, the close button in its socket, the header and its buttons in the title bar, the slots' rings and the art behind them, and an Epic item's white icon border, then a switch to Thick. The Edit toggle is made by `INV:CreateEditToggle(container)` (`SaftUI-Bags/container.lua`), which `INV:CreateContainer` calls, and the test takes the window's own toggle from it (with `UICheckButtonTemplate` stood in), no source read.
 
 ### 2026-11-11 — Blizzard theme: dark grey everywhere
 
