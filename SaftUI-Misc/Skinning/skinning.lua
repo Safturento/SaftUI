@@ -68,10 +68,12 @@ local paddedAreas = setmetatable({}, { __mode = 'k' })
 -- Skins one of Blizzard's panels as a window with SaftUI's title bar: in the
 -- metal under Blizzard, as every window. The engine places the window's
 -- backdrop around the frame it's drawn behind, with the metal's title bar
--- above it and the fill under that. With fix_padding (Blizzard's panel art
--- left padding round the content) that frame is a frame of SaftUI's over the
--- padded area, so the title bar sits above the header there, not over it.
--- Nothing calls it today.
+-- above it and the fill under that, and the header goes into the title bar
+-- (st:HeaderInTitleBar). With fix_padding (Blizzard's panel art left padding
+-- round the content) that frame is a frame of SaftUI's over the padded area,
+-- which isn't the panel the header is on, so the header stays where the skin
+-- puts it and the title bar sits above it there, not over it. Nothing calls
+-- it today.
 function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portrait)
 	if not options then options = {} end
 	-- if not panel then return end
@@ -117,6 +119,9 @@ function SK:SkinBlizzardPanel(panel, options) --fix_padding, title, close, portr
 		end
 	end
 	st:SetBackdrop(window, panels.theme, panels.background, 'window')
+	-- The header was made before the window was drawn: into the metal's title
+	-- bar now, if it goes there.
+	st:UpdateHeader(panel.header)
 
 	local i = 1
 	local tab = _G[name..'Tab'..i]

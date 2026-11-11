@@ -8,7 +8,10 @@
 --     border survive a theme recolor and switch;
 --   - the swing timer skin draws its bars as bars, follows a theme switch and the
 --     Skinning page at once, and writes nothing onto Blizzard's bars;
---   - the totem bar's element borders survive a theme recolor.
+--   - the totem bar's element borders survive a theme recolor;
+--   - SK:SkinBlizzardPanel draws a window: under Blizzard a plain panel's
+--     header goes into the metal's title bar, and a fix_padding panel's stays
+--     where the skin put it, under it.
 --
 -- Real: SaftUI-Misc's config.lua, tooltip.lua, tooltipposition.lua,
 -- experience.lua, totembar.lua, totemskin.lua and Skinning/skinning.lua,
@@ -712,10 +715,25 @@ test("a skinned Blizzard panel is a window; with fix_padding the metal's title b
 	eq(T.text(backdrop:GetTop() - title), T.text(header:GetTop()), "the title bar lies above the header, over none of it")
 	eq(T.art(plain.backdrop), METAL, 'the plain panel wears the metal too')
 	eq(T.around(plain.backdrop, plain), '-2,' .. title .. ',2,-2', "its title bar above it")
+	-- Its header goes into the title bar, as every window's does; the padded
+	-- panel's stays where the skin put it, under the title bar.
+	eq(st:HeaderInTitleBar(plain), true, "the plain panel's header in the title bar")
+	eq(T.around(plain.header, plain), '0,' .. st.ThemeArt.TitleStrip() .. ',0,500', "its bottom on the panel's top")
+	eq(st:HeaderInTitleBar(padded), false, "the padded panel's header stays")
+	eq(T.around(header, padded):match('^(%-?%d+,%-?%d+,%-?%d+)'), '12,-12,-32', 'where the skin put it')
+
+	-- A panel skinned while the theme is Blizzard has its header in the title
+	-- bar at once.
+	local made = blizzard_panel('SaftUIThemeTestMadePanel')
+	skin_panel(made, { title = 'Made' })
+	eq(st:HeaderInTitleBar(made), true, "skinned under Blizzard: the header in the title bar at once")
 
 	profile.theme.name = 'thick'
 	st:RedrawThemed()
 	eq(T.around(backdrop, padded), '10,-10,-30,74', 'Thick again: where it was')
 	eq(T.art(backdrop), '', 'Thick again: no art')
+	eq(st:HeaderInTitleBar(plain), false, "Thick again: the plain panel's header back in it")
+	eq(T.around(plain.header, plain), '0,0,0,' .. (500 - 31), "at its top")
+	eq(T.around(header, padded):match('^(%-?%d+,%-?%d+,%-?%d+)'), '12,-12,-32', "the padded panel's where the skin put it")
 	eq(#take_errors(), 0, 'no errors')
 end)

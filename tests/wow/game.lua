@@ -17,6 +17,10 @@ stub = {
 	screen_width = 1920,
 	screen_height = 1080,
 	in_combat = false, -- InCombatLockdown
+	-- The calls the game blocked on a protected frame in combat (widgets.lua,
+	-- "Protected frames in combat"), in order: { widget, method name }. The
+	-- game fires ADDON_ACTION_BLOCKED for each.
+	blocked = {},
 	cursor_x = 0, -- GetCursorPosition, in screen units (UIParent's units times its scale)
 	cursor_y = 0,
 	time = 0, -- GetTime, in seconds

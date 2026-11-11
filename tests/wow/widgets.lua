@@ -24,8 +24,10 @@
 
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
 	itself (fire it with stub.fire_script); text wrapping (a font string is one
-	line); OnUpdate; a backdrop's border textures; secret values; taint and
-	protected frames; RegisterEvent takes any event name (the game errors
+	line); OnUpdate; a backdrop's border textures; secret values; taint, and
+	which frames are protected (a frame a test marks protected has its moves
+	blocked in combat: see "Protected frames in combat"); RegisterEvent takes
+	any event name (the game errors
 	"Attempt to register unknown event"); SetFont and SetTexture always
 	succeed (in game a file that doesn't exist fails the call, or draws
 	nothing).
@@ -1134,12 +1136,34 @@ function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
 
 ------------------------------------------------------------------ method tables
 
+--[[
+	Protected frames in combat. While InCombatLockdown(), the game refuses
+	addon code that moves, sizes, shows, hides or reparents a protected frame:
+	the call does nothing and the game fires ADDON_ACTION_BLOCKED ("AddOn
+	'SaftUI' tried to call the protected function 'X:SetPoint()'";
+	.agents/taint.md, rule 6 and its past incidents). A frame is protected when
+	it's secure, or a protected frame is its child or anchored to it; the stubs
+	can't tell, so a stub widget is protected only when a test gives it an
+	IsProtected of its own. Such a call is noted in stub.blocked and does
+	nothing.
+]]
+local PROTECTED_IN_COMBAT = {
+	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
+	SetSize = true, SetWidth = true, SetHeight = true,
+	Show = true, Hide = true, SetShown = true, SetParent = true,
+}
+
 -- Wraps a method so it checks its self, then gets the widget's state.
 local function method(group, name, impl)
+	local guarded = PROTECTED_IN_COMBAT[name]
 	return function(self, ...)
 		local s = states[self]
 		if not (s and s.groups[group]) then
 			error(('Wrong object type for function %s:%s (called on %s)'):format(group, name, describe(self)), 2)
+		end
+		if guarded and stub.in_combat and self:IsProtected() then
+			stub.blocked[#stub.blocked + 1] = { self, name }
+			return
 		end
 		return impl(self, s, ...)
 	end

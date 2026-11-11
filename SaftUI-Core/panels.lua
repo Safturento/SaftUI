@@ -8,6 +8,8 @@ local closeDraws = setmetatable({}, { __mode = 'k' }) -- button -> its Draw (st:
 local windowOf = setmetatable({}, { __mode = 'k' }) -- button -> the window whose header it sits in (st:CreateHeader)
 local inSocket = setmetatable({}, { __mode = 'k' }) -- button -> whether it sits in its window's metal socket
 local headerOf = setmetatable({}, { __mode = 'k' }) -- window -> the header st:CreateHeader made it; only a key
+local windowOfHeader = setmetatable({}, { __mode = 'k' }) -- header -> its window
+local inTitleBar = setmetatable({}, { __mode = 'k' }) -- window -> whether its header sits in its metal's title bar
 
 -- The close button st:CreateCloseButton made for frame, or nil.
 function st:GetCloseButton(frame)
@@ -26,10 +28,110 @@ function st:CloseButtonInSocket(frame)
 	return button ~= nil and inSocket[button] == true
 end
 
--- Whether a window's close button belongs in its metal's socket now.
+-- Whether a window's close button belongs in its metal's socket now, and its
+-- header in the metal's title bar.
 local function WantsSocket(window)
 	return st:IsBlizzardLook('theme', 'theme') and st:DrawnKind(window) == 'window'
 		and st:DrawnTheme(window) == 'blizzard'
+end
+
+-- Whether frame's header (st:CreateHeader) sits in the title bar of the metal
+-- frame drew, as Blizzard's own windows put their title there, rather than
+-- at frame's top: when its close button would sit in the metal's socket
+-- (st:CloseButtonInSocket), with or without one. Its title, the buttons its
+-- window put in it and the close button are then all on the title bar, and
+-- the window's content, placed under the header, starts right under it.
+function st:HeaderInTitleBar(frame)
+	return inTitleBar[frame] == true
+end
+
+-- How much of frame's height its header (st:CreateHeader) takes at its top:
+-- the header's height, or none while it sits in the metal's title bar above
+-- frame (st:HeaderInTitleBar). A window sized around its content counts this
+-- rather than the header's height (the bags' SizeWindow).
+function st:HeaderRoom(frame)
+	local header = headerOf[frame]
+	if not header or st:HeaderInTitleBar(frame) then return 0 end
+	return header:GetHeight()
+end
+
+-- How far the art frame is drawn in reaches above the top of its header
+-- (st:CreateHeader): in Blizzard's metal (a window drawn as one, st:DrawnKind
+-- window and st:DrawnTheme blizzard) the metal's top (st.ThemeArt.MetalAbove
+-- over its drawn frame, whose top is the title bar's, st.ThemeArt.TitleHeight
+-- over the window), less how far the header sits above the window: the strip
+-- while it's in the title bar (st:HeaderInTitleBar), none while it's in the
+-- window. 0 in any other look, where what sits above the window keeps the
+-- place it had before themes. What a window places above its header (the
+-- bags' bag slot bars) sits this much higher, clear of the art.
+function st:ArtAboveHeader(frame)
+	if st:DrawnKind(frame) ~= 'window' or st:DrawnTheme(frame) ~= 'blizzard' then return 0 end
+	local art = st.ThemeArt.TitleHeight() + st.ThemeArt.MetalAbove()
+	local header = st:HeaderInTitleBar(frame) and st.ThemeArt.TitleStrip() or 0
+	return math.max(0, art - header)
+end
+
+-- A header in the title bar is the bar's strip (st.ThemeArt.TitleStrip) and
+-- its buttons are that less TITLE_BAR_CLEAR, so 2px of the strip shows above
+-- and below them; a header in its window is the profile's Title bar height and
+-- its buttons that less 8.
+local TITLE_BAR_CLEAR = 4
+
+-- How tall a button in frame's header is: the header's height less 8, or in
+-- the metal's title bar (st:HeaderInTitleBar) the strip's less 4. An even
+-- strip and an even clearance keep a button centred on it on whole pixels.
+function st:HeaderButtonSize(frame)
+	local header = headerOf[frame]
+	local height = header and header:GetHeight() or st.config.profile.headers.height
+	return height - (st:HeaderInTitleBar(frame) and TITLE_BAR_CLEAR or 8)
+end
+
+-- How far in from frame's right edge its close button reaches while it sits
+-- in the metal's socket (st:CloseButtonInSocket): Blizzard's close button's
+-- size (st.ThemeArt.Close), less how far out from the drawn frame's right
+-- edge the socket puts it and how far that edge sits outside frame (the
+-- inset frame was drawn at). The header's own buttons stop short of it.
+function st:SocketReach(frame)
+	local close = st.ThemeArt.Close()
+	return close.size - close.x - (st:DrawnInset(frame) or 0)
+end
+
+-- A header or footer that's protected in combat (a bag window's: Blizzard's
+-- item buttons hang from the scroll frame anchored under its header, and the
+-- search box anchored to it is its footer's child) can't be moved or sized
+-- until combat ends, when every header and footer is updated once.
+local function UpdateHeadersAfterCombat()
+	st:QueueAfterCombat('UpdateHeaders', function() st:UpdateHeader() end)
+end
+
+-- Puts a window's header in the metal's title bar, or back at the window's
+-- top, when that changed (WantsSocket), and sizes it: in the title bar the
+-- strip, its bottom on the window's top and as wide as the window; in the
+-- window the profile's height. Every window is drawn behind (st:SetBackdrop),
+-- so its metal's title bar is above it, its bottom on the window's top
+-- (theme.lua's Placement). A header whose window placed it itself (a skinned
+-- Blizzard panel's) keeps its points while it stays in the window. A header
+-- that's protected in combat waits for the end of it, still recorded where it
+-- is, so the update then moves it.
+local function PlaceHeader(header)
+	if not st:CanMoveNow(header) then
+		UpdateHeadersAfterCombat()
+		return
+	end
+	local window = windowOfHeader[header]
+	local bar = window ~= nil and WantsSocket(window) == true
+	if bar ~= st:HeaderInTitleBar(window) then
+		header:ClearAllPoints()
+		if bar then
+			header:SetPoint('BOTTOMLEFT', window, 'TOPLEFT')
+			header:SetPoint('BOTTOMRIGHT', window, 'TOPRIGHT')
+		else
+			header:SetPoint('TOPLEFT')
+			header:SetPoint('TOPRIGHT')
+		end
+		inTitleBar[window] = bar
+	end
+	header:SetHeight(bar and st.ThemeArt.TitleStrip() or st.config.profile.headers.height)
 end
 
 -- Puts a close button that sits in a window's header in the metal's socket,
@@ -67,6 +169,9 @@ local headerTitles = {} -- header -> the title st:CreateHeader put on it
 -- The frame can be dragged by its header, and is kept inside the screen edge
 -- margin (st:KeepInScreenMargin), which waits for the end of combat on a
 -- protected frame (a bag window can be one: it holds Blizzard's item buttons).
+-- The header is a strip along frame's top, or under the Blizzard theme the
+-- strip of the metal's title bar above it (st:HeaderInTitleBar): what frame
+-- places under the header starts right under the title bar.
 function st:CreateHeader(frame, title, close_button)
 	frame:SetMovable(true)
 	st:KeepInScreenMargin(frame)
@@ -105,7 +210,13 @@ function st:CreateHeader(frame, title, close_button)
 		headerTitles[header] = frame.title
 	end
 
-	headerOf[frame] = header
+	headerOf[frame], windowOfHeader[header] = header, frame
+	-- Every recolor and redraw (a theme switch, a profile switch) puts it in
+	-- the metal's title bar or back, as the close button goes into the socket
+	-- or back, close button or none. Only its place: the profile update that
+	-- follows a redraw runs st:UpdateHeader, which the bags size their title
+	-- bar's buttons after.
+	st:KeepOwnColors(header, PlaceHeader)
 
 	-- A button from st:CreateCloseButton is taken without being asked.
 	if not close_button and closeOf[frame] then close_button = closeOf[frame] end
@@ -137,20 +248,29 @@ function st:CreateHeader(frame, title, close_button)
 end
 
 -- Applies the profile's header height and font to a header made by
--- st:CreateHeader. With no header, updates every header and footer. A profile
--- change and the General and Fonts tabs of Global Settings call it.
+-- st:CreateHeader, and puts it in its window's metal title bar or back at the
+-- window's top (st:HeaderInTitleBar; in the title bar it's the bar's strip,
+-- whatever the profile's height). With no header, updates every header and
+-- footer. A profile change and the General and Fonts tabs of Global Settings
+-- call it, and a module that draws its window again with a Theme of its own
+-- (the bags' Theme) calls it after, as it does st:UpdateCloseButton. Every
+-- recolor and redraw puts each header in its place (PlaceHeader) on its own.
 function st:UpdateHeader(header)
 	if not header then
 		for _, h in ipairs(self.headers) do
 			self:UpdateHeader(h)
 		end
 		for _, footer in ipairs(self.footers) do
-			footer:SetHeight(st.config.profile.headers.height)
+			if st:CanMoveNow(footer) then
+				footer:SetHeight(st.config.profile.headers.height)
+			else
+				UpdateHeadersAfterCombat()
+			end
 		end
 		return
 	end
 
-	header:SetHeight(st.config.profile.headers.height)
+	PlaceHeader(header)
 	local title = headerTitles[header]
 	if title then
 		title:SetFontObject(st:GetFont(st.config.profile.headers.font))

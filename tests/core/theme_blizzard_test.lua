@@ -164,8 +164,12 @@ test("the Blizzard theme's default colors", function()
 	local function rgba(c) return c and text(unpack(c)) end
 	eq(rgba(blizzard.bordercolor), '0.50,0.50,0.50,1.00', 'Border')
 	eq(rgba(blizzard.altbordercolor), '0.00,0.00,0.00,0.00', 'Outer border, unused')
-	eq(rgba(blizzard.backdropcolor), '0.09,0.09,0.19,1.00', "Background: Blizzard's tooltip navy")
+	-- Dark grey everywhere (the user, 2026-11-11): both fills start as
+	-- Blizzard's dark grey panel color, and stay two settings.
+	eq(rgba(blizzard.backdropcolor), '0.12,0.12,0.13,1.00', "Background: Blizzard's dark grey")
 	eq(rgba(blizzard.windowcolor), '0.12,0.12,0.13,1.00', "Window background: Blizzard's dark grey")
+	check(blizzard.backdropcolor ~= blizzard.windowcolor, 'two arrays, so either can be set alone')
+	eq(rgba(st.config.profile.templates.blizzard.backdropcolor), '0.12,0.12,0.13,1.00', 'the profile has the grey Background')
 	local keys = {}
 	for key in pairs(blizzard) do keys[#keys + 1] = key end
 	table.sort(keys)

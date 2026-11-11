@@ -9,7 +9,7 @@ local GN = st:NewModule('General')
 local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
 -- Icon zoom's preview: any spell's icon would do.
 local PREVIEW_ICON, PREVIEW_SIZE = 'Interface\\Icons\\Spell_Nature_Lightning', 36
-local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the screen's edges, not just the bags and bank; the minimap, which is Blizzard's, only when you drag it. Title bars and the margin change at once. The bags' Bag Slots button keeps its old height until you reload (Reload UI, bottom left)."
+local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the screen's edges, not just the bags and bank; the minimap, which is Blizzard's, only when you drag it. Title bars and the margin change at once."
 
 -- A range bound to st.config.profile[group][key]. apply, if given, runs after
 -- a set, for a setting that can be re-applied to what's already built.
@@ -72,7 +72,7 @@ function GN:GetConfigTable()
 				desc = WINDOWS_NOTE,
 				args = {
 					header_height = Setting(1, 'Title bar height', 20, 60, 1,
-						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom.",
+						"The height of the strip along the top of SaftUI's windows (the bags and bank) that holds the title and the close button, and of the strip along their bottom. Under the Blizzard theme a window in Blizzard's metal holds its title in the metal's own title bar, which keeps Blizzard's height.",
 						'headers', 'height', UpdateHeaders),
 					clamp_inset = Setting(2, 'Screen edge margin', -50, 50, 1,
 						"How close to the screen's edges frames can go.",
