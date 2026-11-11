@@ -67,8 +67,10 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		-- The bronze box is not turned white.
 		local border = UF.PlateBorderFrame(two)
 		local before = T.art(border)
-		check(before ~= nil, 'the box is there')
+		check(before ~= '', 'the box is there')
 		target('nameplate1')
+		eq(T.art(border), before, 'the box keeps its art through the target change')
+		eq(T.art(UF.PlateBorderFrame(one)), before, "and the other plate's box is the same")
 		eq(art:IsShown(), false, 'hidden once the target moves')
 		eq(other:IsShown(), true, 'and shown on the new target')
 	end)
@@ -103,9 +105,11 @@ end)
 test('the target is found by its plate frame: UnitIsUnit is never read', function()
 	local st, UF = setup('forever', 'thick')
 	local one = NP.add('nameplate1')
+	local realUnitIsUnit = UnitIsUnit
 	UnitIsUnit = function() error('UnitIsUnit read') end
 	target('nameplate1')
 	UF:UpdatePlateTarget(one)
+	UnitIsUnit = realUnitIsUnit
 	eq(T.edge_rgb(UF.PlateBorderFrame(one)), WHITE, 'white')
 	eq(#take_errors(), 0, 'no error')
 	eq(UF:IsPlateTarget(one), true, 'is the target')
@@ -156,3 +160,26 @@ test("health drawn None: the white goes on the plate frame's border when that is
 	eq(UF.PlateBorderFrame(two), nil, 'no border frame')
 	eq(UF:PlateTargetArt(two):IsShown(), false, 'no art')
 end)
+
+-- The game reuses a plate's frame for unit after unit.
+for _, theme in ipairs({ 'thick', 'blizzard' }) do
+	test('a reused plate frame: ' .. theme .. ': the border follows the unit it now shows', function()
+		local st, UF = setup('forever', theme)
+		local function marked(frame)
+			if theme == 'blizzard' then return UF:PlateTargetArt(frame):IsShown() end
+			return T.edge_rgb(UF.PlateBorderFrame(frame)) == WHITE
+		end
+		local one = NP.add('nameplate1')
+		target('nameplate1')
+		eq(marked(one), true, 'the target is marked')
+		NP.remove('nameplate1')
+		stub.nameplate_target = nil
+		local again = NP.add('nameplate2', { plate = 1 })
+		eq(again, one, 'the same plate frame')
+		eq(marked(again), false, 'a non-target unit on it: not marked')
+		NP.remove('nameplate2')
+		stub.nameplate_target = 'nameplate3'
+		again = NP.add('nameplate3', { plate = 1 })
+		eq(marked(again), true, 'the target on it again: marked')
+	end)
+end
