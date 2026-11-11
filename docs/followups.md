@@ -21,7 +21,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Bag views: the bank windows build a full button pool per view](#2026-11-10--bag-views-the-bank-windows-build-a-full-button-pool-per-view)
   - [2026-11-10 — Bank eye toggle doesn't re-apply the bag search](#2026-11-10--bank-eye-toggle-doesnt-re-apply-the-bag-search)
   - [2026-11-10 — Bag views: in-game checks for what the stubs can't show](#2026-11-10--bag-views-in-game-checks-for-what-the-stubs-cant-show)
-  - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
+  - [2026-11-10 — Bag item sort compares item levels as text, and should be built from blocks](#2026-11-10--bag-item-sort-compares-item-levels-as-text-and-should-be-built-from-blocks)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
@@ -320,7 +320,7 @@ On retail:
 
 **Shape of work:** An in-game pass on Forever through the list, a retail pass for the tab names, then a small fix for each problem found, with a test where the stubs allow.
 
-### 2026-11-10 — Bag item sort compares item levels as text
+### 2026-11-10 — Bag item sort compares item levels as text, and should be built from blocks
 
 **What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`SaftUI-Bags/category.lua:147`, `sortCategory` at ~158). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
 
@@ -328,7 +328,13 @@ On retail:
 
 **Anchors:** `SaftUI-Bags/category.lua` (`GetInventoryItemInfo`'s `sortString`, `sortCategory`); `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`, whose views all use this sort.
 
-**Shape of work:** Small: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string, with a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
+**Also, from the user (2026-11-10):** while designing configurable bag categories (filter blocks combined with AND, OR and groups, edited in game), the user agreed the within-category sort stays as it is for that project, and said: "great point about sorting - we should tackle that later and do some work on the sort string to build it from blocks as well". So the sort itself should become configurable the same way: an ordered list of sort keys (item level, quality, name, expansion, stack count, …), each ascending or descending, edited in game like the category rules, with today's order as the default.
+
+**Research already done:** the bag categories research (2026-11-10) found that `sortString`'s last two parts are always 0 because of field-name typos (`itemCount`, `itemId`), besides the item-level-as-text bug. It was a scratchpad report, not committed; its findings on the sort are summarized here.
+
+**Shape of work:**
+- Small now: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string, and fix the typos. Add a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
+- Later: sort keys as blocks, on top of the configurable categories project's data model and editor. It needs a brainstorm and a spec after that project lands.
 
 ### 2026-11-10 — Bag categories: make the category rules configurable in /sui
 
