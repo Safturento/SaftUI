@@ -468,12 +468,24 @@ local function LayListRow(w, i, entry, count, selected)
 	f:SetFrameLevel(w.list:GetFrameLevel() + 1)
 	f.handle:SetFrameLevel(f:GetFrameLevel() + 1)
 	f:Show()
-	local r, g, b = Colors().button.blue:GetRGB()
-	f.hover:SetColorTexture(r, g, b, HOVER_ALPHA)
-	f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
-	f.bar:SetColorTexture(r, g, b)
+	-- Under Blizzard the Settings category list: the hover and the picked
+	-- row on its art, no blue bar, the name gold (white when picked). Else the
+	-- blue tint and bar. Read on each layout, so a theme switch shows at once.
+	local look = W.BlizzardLook() and st.ThemeArt.Control('optionslist')
+	if look then
+		f.hover:SetAtlas(look.hover)
+		f.hover:SetAlpha(1)
+		f.tint:SetAtlas(look.picked)
+		f.tint:SetAlpha(1)
+		f.bar:Hide()
+	else
+		local r, g, b = Colors().button.blue:GetRGB()
+		f.hover:SetColorTexture(r, g, b, HOVER_ALPHA)
+		f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
+		f.bar:SetColorTexture(r, g, b)
+		f.bar:SetShown(selected)
+	end
 	f.tint:SetShown(selected)
-	f.bar:SetShown(selected)
 	f.handle:SetShown(entry.kind ~= 'misc')
 
 	local x, right = PAD + D.HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
@@ -488,7 +500,13 @@ local function LayListRow(w, i, entry, count, selected)
 	if marker then right = right - TextWidth(f.marker) - GAP end
 
 	f.name:SetText(entry.name)
-	if entry.enabled then f.name:SetTextColor(Normal()) else f.name:SetTextColor(Grey()) end
+	if not entry.enabled then
+		f.name:SetTextColor(Grey())
+	elseif look then
+		f.name:SetTextColor(unpack(look.text[selected and 'picked' or 'normal']))
+	else
+		f.name:SetTextColor(Normal())
+	end
 	local nameWidth = max(1, min(TextWidth(f.name), right - x))
 	f.name:SetWidth(nameWidth)
 	f.name:ClearAllPoints()

@@ -1122,6 +1122,68 @@ test("under Blizzard the list and the editor scroll on Blizzard's minimal scroll
 	end
 end)
 
+test("under Blizzard the category list is the Settings category list; its handles, counts, markers and drop line stay", function()
+	local function px(a, b) return string.format('%d', math.floor(a - b + 0.5)) end
+	local function around(outer, inner)
+		return table.concat({ px(outer:GetLeft(), inner:GetLeft()), px(outer:GetTop(), inner:GetTop()),
+			px(outer:GetRight(), inner:GetRight()), px(outer:GetBottom(), inner:GetBottom()) }, ',')
+	end
+	local function color(fs) return string.format('%.2f,%.2f,%.2f', fs:GetTextColor()) end
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		world(client)
+		INV:SetCategoryEnabled('Quest', false)
+		INV.categoryEditor.selected = 'Consumables'
+		st.config.profile.theme.name = 'blizzard'
+		st:ThemeChanged()
+		open()
+		local w = tab()
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB())
+		local sel, other, off = row_of(w, 'Consumables'), row_of(w, SETS), row_of(w, 'Quest')
+		eq(sel.tint:GetAtlas(), 'Options_List_Active', client .. ': the picked row on the active art')
+		eq(around(sel.tint, sel.frame), '0,0,0,0', client .. ': filling the row')
+		check(not sel.bar:IsShown(), client .. ': no blue bar')
+		eq(color(sel.name), '1.00,1.00,1.00', client .. ': the picked name is white')
+		eq(color(other.name), '1.00,0.82,0.00', client .. ': the others are gold')
+		check(not other.tint:IsShown(), client .. ': not tinted')
+		stub.fire_script(other.frame, 'OnEnter')
+		eq(other.frame.hover:GetAtlas(), 'Options_List_Hover', client .. ': the hover art')
+		check(other.frame.hover:IsShown(), client .. ': shown')
+		stub.fire_script(other.frame, 'OnLeave')
+		eq(color(off.name), grey, client .. ': an off category is grey')
+		check(off.strike:IsShown(), client .. ': and struck through')
+		check(sel.handle:IsShown(), client .. ': the handle stays')
+		eq(color(sel.count), grey, client .. ': counts stay grey')
+		eq(sel.frame:GetWidth() .. 'x' .. sel.frame:GetHeight(), '210x22', client .. ': the row is the same size')
+
+		-- A drag still draws the drop line.
+		local handle = row_of(w, 'Armor').handle
+		stub.mouse_buttons.LeftButton = true
+		stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
+		cursor_on(sel.frame, true)
+		drag_frame(w)
+		check(w.insert:IsShown(), client .. ': the drop line')
+		stub.mouse_buttons.LeftButton = nil
+		stub.fire_script(handle, 'OnMouseUp', 'LeftButton')
+		INV.categoryEditor.selected = 'Consumables'
+		OW:Render()
+
+		-- Thick: as before.
+		st.config.profile.theme.name = 'thick'
+		st:ThemeChanged()
+		OW:Render()
+		w = tab()
+		sel = row_of(w, 'Consumables')
+		eq(sel.tint:GetAtlas(), nil, client .. ': Thick: a color tint')
+		check(sel.tint:IsShown() and sel.bar:IsShown(), client .. ': Thick: the blue tint and bar')
+		check(same_rgb({ sel.name:GetTextColor() }, rgb('text', 'normal')), client .. ': Thick: the normal text color')
+		check(same_rgb(stub.state(sel.bar).color_texture, rgb('button', 'blue')), client .. ': Thick: blue')
+		stub.fire_script(row_of(w, SETS).frame, 'OnEnter')
+		eq(row_of(w, SETS).frame.hover:GetAtlas(), nil, client .. ': Thick: no hover art')
+		eq(#take_errors(), 0, client .. ': no errors')
+		st.Config:Close()
+	end
+end)
+
 test('each pane keeps its scroll when the tab is drawn again; another category\'s editor starts at its top; the list brings the selected row into view when it changes', function()
 	world()
 	local list = INV:GetCategoryList()
