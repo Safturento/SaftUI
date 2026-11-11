@@ -611,7 +611,7 @@ test('Health: Texture on every unit, its text options, and Boss percent only whe
 				unit .. ': the status bar textures SaftUI registers')
 		end
 		reads_and_writes(config, unit, 'Health', { 'texture' }, health, 'texture', 'SaftUI Gloss')
-		for _, key in ipairs({ 'enable', 'hide_full', 'deficit', 'percent' }) do
+		for _, key in ipairs({ 'enable', 'hide_full', 'deficit', 'percent', 'short' }) do
 			reads_and_writes(config, unit, 'Health', { 'text', key }, health.text, key, not health.text[key])
 		end
 		eq(type(health.text.deficit), 'boolean', unit .. ' has a Deficit default')

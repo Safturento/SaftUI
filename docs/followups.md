@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Health text's Boss percent and Hide full with a secret health](#2026-11-11--health-texts-boss-percent-and-hide-full-with-a-secret-health)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
   - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
@@ -100,6 +101,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Health text's Boss percent and Hide full with a secret health
+
+**What:** Two of the health text's paths still read a secret health as a plain number, and error when the game hands them one (enemy nameplates and other units in restricted content). Boss percent (`boss_percent`, on by default for the units that can show a skull-level unit) compares `UnitLevel(unit)`, which can be secret, with `-1`, then `format`s the health (or its Short form) and the percent, both secret, into "1234567 | 45.6" (`getHealthPercentText`'s `format` and `floor`). Hide full (`hide_full`, on by default for raid10 and raid40) compares the game's secret deficit string (`C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit))`) with `0`; that string is `''` at full health, so even where the comparison doesn't error it never hides the text.
+
+**Why noticed:** The nameplates plan's Task 2 (`docs/superpowers/plans/2026-11-11-saftui-nameplates.md`) made the health text's Percent and value paths take a secret health: Percent draws the game's `UnitHealthPercent(unit, true, CurveConstants.ScaleTo100)` through `SetFormattedText('%.0f', ...)`, as `UF:SetPowerPercentText` does; the value is passed to `SetText` as it is, or shortened by the game's `AbbreviateNumbers` with Short on. Plates show the value in short form (the user's answer 9 in the spec) with Boss percent and Hide full off, so they never reach these two paths, which were left out of scope. Before Task 2 the value path was safe without Boss percent, and the Percent path errored on `floor`.
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua` (`PostUpdateHealth`, `getHealthPercentText`, `SHORT`); `SaftUI-Unitframes/updaters.lua` (`UF:SetPowerPercentText`, the pattern); `tests/unitframes/secret_texts_test.lua`; `tests/lib/secrets.lua`; `SaftUI-Unitframes/config/units/raid10.lua` and `raid40.lua` (`hide_full = true`).
+
+**What's been considered:** Boss percent could join the parts in the game: `SetFormattedText('%s | %.1f', text, UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))`, with the skull check made only on a plain level (or on `UnitClassification(unit) == 'worldboss'`, whose documentation marks no secret return on either client, though a boss frame's unit may still differ in game). Hide full has no game function that answers "is this secret zero" to an addon; a step curve through `UnitHealthPercent` into the text's alpha might, if the alpha setter takes a secret from an addon.
+
+**Shape of work:** Small: two branches of `PostUpdateHealth` and cases in `tests/unitframes/secret_texts_test.lua`, after checking in game which unit values are secret on a boss frame and a raid frame on each client.
+
+**Open questions:** Is a boss's level secret on the boss frames in restricted content, on Forever and on retail? Does any text setter take a secret alpha or shown state from an addon, for Hide full?
 
 ### 2026-11-11 — Blizzard theme round 2: in-game checks
 

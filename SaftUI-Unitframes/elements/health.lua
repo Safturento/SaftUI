@@ -9,16 +9,37 @@ local function getHealthPercentText(perc, precision)
 	return floor(perc)
 end
 
-local function PostUpdateHealth(health, unit, current, max)
-	local deficit = issecretvalue(current) and C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit)) or max - current
-	local percent = issecretvalue(current) and UnitHealthPercent(unit) or current / max * 100
+-- Short's form of the health: 12.5K, 1.2M, 1.2B, one decimal from a thousand
+-- up, as LibStringFormat's ShortFormat writes it. The game's AbbreviateNumbers
+-- writes it: it takes a secret number from an addon (SecretArguments
+-- AllowedWhenTainted in LocalizationDocumentation.lua, on both clients) and
+-- gives back a secret string, which SetText shows. The letters are written as
+-- they are, not looked up as the game's strings.
+local SHORT = {
+	breakpointData = {
+		{ breakpoint = 1e9, abbreviation = 'B', significandDivisor = 1e8, fractionDivisor = 10, abbreviationIsGlobal = false },
+		{ breakpoint = 1e6, abbreviation = 'M', significandDivisor = 1e5, fractionDivisor = 10, abbreviationIsGlobal = false },
+		{ breakpoint = 1e3, abbreviation = 'K', significandDivisor = 1e2, fractionDivisor = 10, abbreviationIsGlobal = false },
+	},
+}
 
+-- A secret health (enemy nameplates in restricted content) can't be
+-- subtracted, divided or compared here: the game works out what the text
+-- shows, and only the text that's shown is worked out.
+local function PostUpdateHealth(health, unit, current, max)
 	if health.text then
-		if health.config.text.hide_full and deficit == 0 then
+		local config = health.config.text
+		local secret = issecretvalue(current) or issecretvalue(max)
+		local deficit
+		if config.hide_full or config.deficit then
+			deficit = secret and C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit)) or max - current
+		end
+
+		if config.hide_full and deficit == 0 then
 			health.text:SetText('')
 		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
-		elseif health.config.text.deficit then
+		elseif config.deficit then
 			if st.retail then
 				health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
 			else
@@ -28,13 +49,20 @@ local function PostUpdateHealth(health, unit, current, max)
 					health.text:SetText('-' .. st.StringFormat:ShortFormat(deficit))
 				end
 			end
-		elseif health.config.text.percent then
-			health.text:SetText(getHealthPercentText(percent))
+		elseif config.percent then
+			if secret then
+				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
+			else
+				health.text:SetText(getHealthPercentText(current / max * 100))
+			end
 		else
-			local text
-			text = current
+			local text = current
+			if config.short then
+				text = AbbreviateNumbers(current, SHORT)
+			end
 
-			if health.config.text.boss_percent and UnitLevel(unit) == -1 then
+			if config.boss_percent and UnitLevel(unit) == -1 then
+				local percent = secret and UnitHealthPercent(unit) or current / max * 100
 				text = ("%s | %s"):format(text, getHealthPercentText(percent, 1))
 			end
 
@@ -111,6 +139,7 @@ local function GetConfigTable(unit)
 		font = G.font(2, "The health text's font."),
 		deficit = G.toggle(3, 'Deficit', 'Shows how much health is missing, as -1234, instead of the health.', 'small'),
 		percent = G.toggle(4, 'Percent', 'Shows the health as a percent instead. Deficit wins when both are on.', 'small'),
+		short = G.toggle(4.5, 'Short', 'Shortens the health, as 12.5K or 1.2M. Not with Deficit or Percent on.', 'small'),
 		-- Last in Text.
 		position = G.uf_element_position(1000,
 			function(index) return UnitConfig().health.text.position[index] end,

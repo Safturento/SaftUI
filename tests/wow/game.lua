@@ -340,3 +340,65 @@ end
 
 StaticPopupDialogs = {}
 SlashCmdList = {}
+
+-- Text the game builds from values an addon may hold but not read (secret
+-- values, .agents/clients.md): C_StringUtil.WrapString and AbbreviateNumbers
+-- take a secret from an addon (SecretArguments AllowedWhenTainted in their
+-- documentation on both clients) and give back a secret string. The stubs
+-- can't make one, so for a value the global issecretvalue calls secret they
+-- give a table holding what they were handed, which a test can read.
+--
+-- C_StringUtil.WrapString(infix, prefix, suffix) (StringUtilDocumentation.lua):
+-- prefix .. infix .. suffix, or '' when infix is '' (its documentation: "joined
+-- to 'infix' iif 'infix' is not an empty string"). A nil prefix or suffix is ''.
+-- A secret infix gives { wrapped = infix, prefix = prefix, suffix = suffix }.
+C_StringUtil = C_StringUtil or {}
+function C_StringUtil.WrapString(infix, prefix, suffix)
+	if issecretvalue and issecretvalue(infix) then
+		return { wrapped = infix, prefix = prefix, suffix = suffix }
+	end
+	if type(infix) ~= 'string' and type(infix) ~= 'number' then
+		error('Usage: C_StringUtil.WrapString(infix [, prefix, suffix])', 2)
+	end
+	if infix == '' then return '' end
+	return (prefix or '') .. infix .. (suffix or '')
+end
+-- AbbreviateNumbers(number, options) (LocalizationDocumentation.lua; the
+-- breakpoint fields in LocalizationSharedDocumentation.lua): at the first of
+-- options.breakpointData's breakpoints (largest first) the number reaches, the
+-- number divided by significandDivisor and rounded down, then divided by
+-- fractionDivisor, and the abbreviation after it (the global string of that
+-- name, or the abbreviation itself when abbreviationIsGlobal is false). Its
+-- documentation's example: a breakpoint at 1,000 dividing by 100 then 10 makes
+-- 1234 '1.2k'. Below every breakpoint, the number as it is. The number is
+-- written as Lua's tostring writes it (1.0 as 1); that the client writes it
+-- the same, and rounds down rather than to nearest, is for checking in game.
+-- A secret number gives { abbreviated = number, options = options }. With no
+-- breakpointData the game uses its own for the client's language, which its
+-- Lua doesn't hold, so that errors here rather than guess.
+function AbbreviateNumbers(number, options)
+	if issecretvalue and issecretvalue(number) then
+		return { abbreviated = number, options = options }
+	end
+	if type(number) ~= 'number' then error('Usage: AbbreviateNumbers(number [, options])', 2) end
+	local breakpoints = options and options.breakpointData
+	if not breakpoints then
+		error("AbbreviateNumbers without options.breakpointData is not stubbed: the game's own breakpoints aren't in its Lua", 2)
+	end
+	for _, b in ipairs(breakpoints) do
+		if number >= b.breakpoint then
+			local abbreviation = b.abbreviation
+			if b.abbreviationIsGlobal ~= false then abbreviation = _G[abbreviation] end
+			return tostring(math.floor(number / b.significandDivisor) / b.fractionDivisor) .. abbreviation
+		end
+	end
+	return tostring(number)
+end
+-- UnitIsDead(unit) (UnitDocumentation.lua): the player's is stub.dead, another
+-- unit's its stub.units dead; false for a unit that isn't there, as the game
+-- gives.
+function UnitIsDead(unit)
+	if unit == 'player' then return stub.dead == true end
+	local other = OtherUnit(unit)
+	return other ~= nil and other.dead == true
+end
