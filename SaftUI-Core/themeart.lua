@@ -24,8 +24,8 @@ local st = SaftUI
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
-	st:ThemeAtlases can list them all (the tests check each exists on both
-	clients).
+	st:ThemeAtlases can list them all with the clients that have each (the tests
+	check each exists on those clients).
 ]]
 
 local ThemeArt = {}
@@ -35,11 +35,13 @@ st.ThemeArt = ThemeArt
 --- Building the tables ------------
 ------------------------------------
 
--- Every atlas the tables name, marked as they're built.
+-- Every atlas the tables name, marked as they're built: true for one both
+-- clients have, or the client ('forever' or 'live') for one only that client
+-- has, which only that client's art names.
 local ATLASES = {}
 
-local function Atlas(name)
-	ATLASES[name] = true
+local function Atlas(name, client)
+	ATLASES[name] = client or true
 	return name
 end
 
@@ -134,6 +136,22 @@ ThemeArt.KINDS = {
 -- offset by its x and y; the top and bottom edges between their corners, tiled
 -- across; the side edges between theirs, tiled down. Every piece is in the
 -- art's layer.
+-- Blizzard's UniqueCornersLayout with the ui-hud-minimap-button kit, as retail's
+-- minimap header draws it (Blizzard_Minimap/Mainline/Minimap.xml, BorderTop):
+-- the corners are different sizes, so each edge runs between its own two.
+local MINIMAP_BUTTON_KIT = {
+	layer = 'BACKGROUND',
+	TopLeftCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerTopLeft') },
+	TopRightCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerTopRight') },
+	BottomLeftCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerBottomLeft') },
+	BottomRightCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerBottomRight') },
+	TopEdge = { atlas = Atlas('_ui-hud-minimap-button-NineSlice-EdgeTop') },
+	BottomEdge = { atlas = Atlas('_ui-hud-minimap-button-NineSlice-EdgeBottom') },
+	LeftEdge = { atlas = Atlas('!ui-hud-minimap-button-NineSlice-EdgeLeft') },
+	RightEdge = { atlas = Atlas('!ui-hud-minimap-button-NineSlice-EdgeRight') },
+	Center = { atlas = Atlas('ui-hud-minimap-button-NineSlice-Center') },
+}
+
 ThemeArt.ART = {
 	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
 	-- bars and tooltips. Its art is white, and a frame's own border color tints
@@ -411,6 +429,26 @@ ThemeArt.ART = {
 		highlightBlend = 'BLEND',
 	},
 
+	-- The micro menu bar's art under Blizzard (Control('microbar')). Forever
+	-- draws Camelot's: the action bar's frame as the strip under the micro
+	-- buttons, with its icon background inside it, and each box (the header,
+	-- the addon indicator square, the tracking button) as one atlas. Retail has
+	-- no strip, and draws each box as the ui-hud-minimap-button kit, as its
+	-- minimap header does. pad and backgroundInset are how far the strip and its
+	-- background reach outside the buttons and in from the strip.
+	microbar = ByClient({
+		strip = { frame = Atlas('UI-HUD-ActionBar-Frame'), background = Atlas('UI-HUD-ActionBar-IconFrame-Background'), pad = 4, backgroundInset = 2 },
+		header = { atlas = Atlas('ui-hud-minimap-header-button', 'forever'), height = 23 },
+		square = { atlas = Atlas('ui-hud-minimap-addon-indicator', 'forever'), width = 23, height = 22 },
+		-- icon: the art has the item's icon drawn in.
+		tracking = { atlas = Atlas('ui-hud-minimap-tracking-button', 'forever'), width = 23, height = 23, icon = true },
+	}, {
+		strip = false,
+		header = { kit = MINIMAP_BUTTON_KIT },
+		square = { kit = MINIMAP_BUTTON_KIT },
+		tracking = { kit = MINIMAP_BUTTON_KIT },
+	}),
+
 	-- Edit Mode's selection (EditModeSystemSelectionLayout), drawn on a mover's
 	-- outline: the highlight kit on every mover, the selected kit on the one
 	-- being moved. Each atlas is a format of the kit (%s). The corners are one
@@ -456,7 +494,7 @@ ThemeArt.ART = {
 local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
 	input = true, search = true, swatch = true, binding = true, nudge = true,
-	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
+	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
 }
 
 ------------------------------------
@@ -567,12 +605,13 @@ function ThemeArt.ClassPower(powerType, index, class, charged)
 	return art.empty, charged and art.charged or art.filled
 end
 
--- Every atlas the Blizzard theme's tables name, as { [name] = true }: the
--- controls' too, a mover's for both kits and holy power's for each rune, but
--- no file. The tests check each exists on both clients.
+-- Every atlas the Blizzard theme's tables name, as { [name] = true | 'forever'
+-- | 'live' }: true for one both clients have, the client for one only that
+-- client has. The controls' too, a mover's for both kits and holy power's for
+-- each rune, but no file. The tests check each exists on the clients it's for.
 function st:ThemeAtlases()
 	local names = {}
-	for name in pairs(ATLASES) do names[name] = true end
+	for name, clients in pairs(ATLASES) do names[name] = clients end
 	return names
 end
 
@@ -670,15 +709,16 @@ local function Holder(frame)
 	return holder
 end
 
--- A border (the tooltip's or the metal) on frame: its corners, then its edges
--- between them, in its layer. Pixel snapping is off where the border says so,
+-- A border (the tooltip's, the metal's or a kit) on frame, its textures kept in
+-- pieces by key: its corners, then its edges between them, then its Center
+-- when it has one, in its layer. Pixel snapping is off where the border says so,
 -- with the texel snapping bias at 0, as Blizzard's nine-slice code turns
 -- sharpening off; for any other border it's on, the game's default, so a piece
 -- once drawn as the metal doesn't keep it off. The bias stays: Blizzard's code
 -- never sets it back, and nothing gives its default.
-local function LayBorder(art, frame, border)
+local function LayBorder(pieces, frame, border)
 	local function Lay(key)
-		local piece = Piece(art.pieces, frame, key, border[key].atlas, border.layer)
+		local piece = Piece(pieces, frame, key, border[key].atlas, border.layer)
 		piece:ClearAllPoints()
 		if border.snap == false then piece:SetTexelSnappingBias(0) end
 		piece:SetSnapToPixelGrid(border.snap ~= false)
@@ -692,11 +732,33 @@ local function LayBorder(art, frame, border)
 	end
 	for key, edge in pairs(EDGES) do
 		local piece = Lay(key)
-		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
-		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		piece:SetPoint(edge.point, pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, pieces[edge.last], edge.point)
 		piece:SetHorizTile(edge.across)
 		piece:SetVertTile(not edge.across)
 	end
+	if border.Center then
+		-- Blizzard's NineSlice default: from the top left corner's inner point to
+		-- the bottom right's.
+		local piece = Lay('Center')
+		piece:SetPoint('TOPLEFT', pieces.TopLeftCorner, 'BOTTOMRIGHT')
+		piece:SetPoint('BOTTOMRIGHT', pieces.BottomRightCorner, 'TOPLEFT')
+		piece:SetHorizTile(false)
+		piece:SetVertTile(false)
+	end
+end
+
+-- Lays border (a border table as Control gives it) on frame: the tooltip
+-- border's way, and its Center too when it has one. The textures are frame's,
+-- kept by key in the caller's pieces (not in Get's art, which a redraw clears).
+-- Shown and white; HidePieces hides them.
+function ThemeArt.LayBorder(pieces, frame, border)
+	LayBorder(pieces, frame, border)
+end
+
+-- Hides every texture in pieces (what LayBorder laid).
+function ThemeArt.HidePieces(pieces)
+	for _, piece in pairs(pieces) do piece:Hide() end
 end
 
 -- Where a ring on a button of SaftUI's draws among the button's own regions:
@@ -885,7 +947,7 @@ function ThemeArt.Paint(frame, look, kind, host)
 
 	local art = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
 	if art and art.TopLeftCorner then
-		LayBorder(Art(frame), frame, art)
+		LayBorder(Art(frame).pieces, frame, art)
 	elseif art and art.ring then
 		LayButton(Art(frame), frame, art, host)
 	end

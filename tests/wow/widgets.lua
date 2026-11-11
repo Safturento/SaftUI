@@ -607,10 +607,16 @@ function Texture.GetTexCoord(self, s)
 	return c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]
 end
 -- An atlas by name, in place of a texture or color; nil clears it. Not
--- mimicked: the atlas's file and size (any name is taken).
+-- mimicked: the atlas's file (any name is taken). With useAtlasSize the
+-- texture takes the atlas's size, as the client does, when the atlas tables
+-- (C_Texture.GetAtlasInfo) have it.
 function Texture.SetAtlas(self, s, atlas, useAtlasSize, filterMode, resetTexCoords)
 	if atlas ~= nil and type(atlas) ~= 'string' then usage(s, 'SetAtlas(): atlas must be a name') end
 	s.atlas, s.texture, s.color_texture = atlas, nil, nil
+	if atlas and useAtlasSize and C_Texture and C_Texture.GetAtlasInfo then
+		local info = C_Texture.GetAtlasInfo(atlas)
+		if info then s.width, s.height = info.width, info.height end
+	end
 	return true
 end
 function Texture.GetAtlas(self, s) return s.atlas end
