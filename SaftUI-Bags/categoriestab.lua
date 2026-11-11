@@ -70,9 +70,14 @@ local INV = st:GetModule('Inventory')
 	  widget.editorBar, widget.body (the editor's body), widget:EditorCell(key)
 	  bagitems: widget.icons[i] = a button { texture, remove (.icon), entry }
 
+	An icon's item tooltip opens beside the window it's in (/sui), out of it,
+	its top level with the icon's: on the window's right, or on its left when
+	the screen has no room for it on the right. So it never covers the rule
+	whose path a Caught now icon lights up.
+
 	Every change goes through the store's setters (categories.lua), which copy
 	what they keep. Every frame here is SaftUI's; item tooltips are
-	GameTooltip's, through its public API.
+	GameTooltip's, through its public API (SetOwner, ClearAllPoints, SetPoint).
 ]]
 
 local W, OB, OM = st.OptionsWidgets, st.OptionsBody, st.OptionsModel
@@ -102,6 +107,7 @@ local LIST_STEP = 3 * ROW_HEIGHT -- a turn of the wheel over the list
 local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows and the footer
 local EDGE = ROW_HEIGHT -- a drag held this near the list's top or bottom edge scrolls it,
 local EDGE_SPEED = 12 * ROW_HEIGHT -- this far a second
+local TIP_GAP = 4 -- an item tooltip from the window's edge
 local TINT_ALPHA, HOVER_ALPHA = 0.25, 0.1
 local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
@@ -831,11 +837,43 @@ local function ItemTexture(entry)
 	return icon or QUESTION_MARK
 end
 
--- The item's tooltip: its bag slot's when it is in the bags, else its ID's.
+-- The window frame is in: its farthest ancestor under UIParent (/sui's).
+local function WindowOf(frame)
+	local parent = frame:GetParent()
+	while parent and parent ~= UIParent do
+		frame, parent = parent, parent:GetParent()
+	end
+	return frame
+end
+
+-- The tooltip beside icon's window, out of it, its top level with the
+-- icon's: on the window's right, or on its left when the screen has no room
+-- for it on the right (and the left has more). Placed in screen pixels from
+-- UIParent's corner, as the drag's ghost is, so the tooltip's own scale
+-- doesn't matter. Read once it's shown, when its size is its content's.
+local function PlaceTip(icon)
+	local window = WindowOf(icon)
+	local left, right, top = window:GetLeft(), window:GetRight(), icon:GetTop()
+	local width, screen = GameTooltip:GetWidth(), UIParent:GetRight()
+	if not (left and right and top and screen) or issecretvalue(width) then return end
+	local ws, ts = window:GetEffectiveScale(), GameTooltip:GetEffectiveScale()
+	left, right, top, screen = left * ws, right * ws, top * icon:GetEffectiveScale(), screen * UIParent:GetEffectiveScale()
+	width = (width or 0) * ts
+	local gap = TIP_GAP * ws
+	GameTooltip:ClearAllPoints()
+	if right + gap + width <= screen or screen - right >= left then
+		GameTooltip:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', floor((right + gap) / ts + 0.5), floor(top / ts + 0.5))
+	else
+		GameTooltip:SetPoint('TOPRIGHT', UIParent, 'BOTTOMLEFT', floor((left - gap) / ts + 0.5), floor(top / ts + 0.5))
+	end
+end
+
+-- The item's tooltip: its bag slot's when it is in the bags, else its ID's,
+-- beside the window so it covers nothing in it.
 local function ShowItem(w, icon)
 	local entry = icon.entry
 	if not (w.row and entry) then return end
-	GameTooltip:SetOwner(icon, 'ANCHOR_RIGHT')
+	GameTooltip:SetOwner(icon, 'ANCHOR_NONE')
 	local info = entry.info
 	if info and info.bagID and info.slotID then
 		GameTooltip:SetBagItem(info.bagID, info.slotID)
@@ -843,6 +881,7 @@ local function ShowItem(w, icon)
 		GameTooltip:SetItemByID(entry.itemID)
 	end
 	GameTooltip:Show()
+	PlaceTip(icon)
 	local onHover = w.row.option.onHover
 	if type(onHover) == 'function' then onHover(entry) end
 end

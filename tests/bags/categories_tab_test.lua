@@ -3,8 +3,9 @@
 -- counts and markers, + New category and Reset all, and the selected
 -- category's editor on the right, filling the body's view and each scrolling
 -- on its own), INV:CategoryEditorOptions, the bagitems widget (Pinned items,
--- Caught now), INV:CountCategories, INV:EditCategory, and the open tab
--- following bag updates and a profile switch.
+-- Caught now, their tooltips beside the window), INV:CountCategories,
+-- INV:EditCategory, and the open tab following bag updates and a profile
+-- switch.
 --
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
 -- under the module's real files) on Core's real config.lua and AceDB
@@ -776,6 +777,56 @@ test('Caught now shows the items the category catches now; hovering one highligh
 	eq(counts['Trade Goods'], 2, 'counts by key')
 	eq(counts['Set: Heal'], 1, "a set's key")
 	eq(byKey[SELL][1].itemID, 502, 'and the items')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test("an item's tooltip opens beside the window, out of it, level with the icon's top: on its right, or its left when the right has no room", function()
+	world()
+	INV:PinItem(301, SELL) -- the plank: Grays/Auto Vendor has pins and catches the gray cloth
+	INV.categoryEditor.selected = SELL
+	open()
+	local F = OW.GetFrames()
+	local window = F.window
+	local function tip_rect() return GameTooltip:GetLeft(), GameTooltip:GetRight(), GameTooltip:GetTop() end
+	-- The game sizes the tooltip to its lines when it's shown; the stub's keeps
+	-- the size it's given, so this one is given a tooltip's size by hand.
+	GameTooltip:SetSize(300, 200)
+	-- Grays/Auto Vendor's editor is taller than the tab: the strips are at its bottom.
+	local scroll = tab().editorScroll
+	wheel(scroll, -1, 50)
+
+	for _, key in ipairs({ 'caught', 'pins' }) do
+		local icon = icons(tab():EditorCell(key).widget)[1]
+		check(icon:GetTop() <= scroll:GetTop() and icon:GetBottom() >= scroll:GetBottom(), key .. ': the icon shows')
+		stub.fire_script(icon, 'OnEnter')
+		check(GameTooltip:IsOwned(icon), key .. ': its tooltip')
+		eq(stub.state(GameTooltip).anchor, 'ANCHOR_NONE', key .. ': placed by hand, not by an anchor of the owner')
+		local left, _, top = tip_rect()
+		eq(left, window:GetRight() + 4, key .. ": 4 right of the window's edge")
+		eq(top, icon:GetTop(), key .. ": its top level with the icon's")
+		check(left > window:GetRight(), key .. ': out of the window, covering nothing in it')
+		stub.fire_script(icon, 'OnLeave')
+		check(not GameTooltip:IsShown(), key .. ': gone when the mouse leaves')
+	end
+
+	-- The window at the screen's right edge: no room there, so on its left.
+	window:ClearAllPoints()
+	window:SetPoint('RIGHT', UIParent, 'RIGHT', -20, 0)
+	local icon = icons(tab():EditorCell('caught').widget)[1]
+	stub.fire_script(icon, 'OnEnter')
+	local _, right, top = tip_rect()
+	eq(right, window:GetLeft() - 4, "on the left: 4 left of the window's edge")
+	eq(top, icon:GetTop(), "its top level with the icon's")
+	stub.fire_script(icon, 'OnLeave')
+
+	-- Room for it on neither side: the side with more.
+	window:ClearAllPoints()
+	window:SetPoint('LEFT', UIParent, 'LEFT', 100, 0)
+	GameTooltip:SetSize(1000, 200)
+	stub.fire_script(icon, 'OnEnter')
+	eq(GameTooltip:GetLeft(), window:GetRight() + 4, 'neither fits: the right, which has more room (the game keeps it on the screen)')
+	stub.fire_script(icon, 'OnLeave')
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)
