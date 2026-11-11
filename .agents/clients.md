@@ -1,7 +1,7 @@
 ---
 name: clients
 description: WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 covers:
   - 'SaftUI-Core/constants.lua'
   - 'SaftUI-Core/utilities.lua'
@@ -36,6 +36,7 @@ covers:
   - **Zone PvP status.** Both clients have `C_PvP.GetZonePVPInfo()` (pvpType, isSubZonePvP, factionName) and no global `GetZonePVPInfo`. With no status pvpType is `''` (the API marks it not nilable), and it may return nothing at all. factionName is the client's own word for the faction. What it returns on Forever is not yet confirmed in game (`docs/followups.md`, "Zone level and faction line: in-game checks").
   - **Bank.** It's built from bank tabs holding bags (`Enum.BagIndex.CharacterBankTab_*`). There's no `BankPanel.AutoDepositFrame` and no reagent bank, and the warband bank isn't used.
 - Neither client has a reagent bank anymore.
+- **Item classes and subclasses** differ by client and are read from the game, not written in the code (`SaftUI-Bags/itemclasses.lua`, over `GetItemClassInfo` and `GetItemSubClassInfo`). Forever has no Gem class and retail has no Devices subclass; Trade Goods (Forever) and Tradeskill (retail) are both class 7. A category block names a class or subclass in English, and `INV.ItemClasses` resolves the name to this client's IDs, so a name a client lacks matches nothing. That Forever's Devices subclass resolves through `GetItemSubClassInfo`, and what `C_TooltipInfo.GetBagItem` returns for an item not yet cached, are not yet confirmed in game (see the followup "Bag categories: in-game checks").
 
 ## Secret values
 

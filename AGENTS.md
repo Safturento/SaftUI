@@ -23,7 +23,7 @@ code, and by the user checking them in game.
 | ---- | ---------- |
 | `SaftUI-Core/` | Shared core every module depends on: addon object, constants, API helpers (`api.lua`), frames and panels (`panels.lua`), the theme engine that draws every backdrop (`theme.lua`), fonts, colors and the theme's settings (`Media/`), config (AceDB profile, `/sui` and SaftUI's options window), and the edit mode framework (`EditMode/`). Bundles Ace3 and other libraries. Has per-client TOCs. |
 | `SaftUI-Unitframes/` | Unit frames built on a bundled oUF (`Libraries/oUF`, oUF master). Elements in `elements/`, config in `config/`. Per-client TOCs. |
-| `SaftUI-Bags/` | Bag, bank and combined bank windows, filters, categories, bag slot bars. |
+| `SaftUI-Bags/` | Bag, bank and combined bank windows, bag slot bars, and the bag categories: an ordered list in the profile, each with a block rule (`rules.lua` evaluates them, `categorydefaults.lua` holds today's filters as the defaults, `categories.lua` is the list, its edits, pins and migration and says where an item goes, `itemclasses.lua` gives item class names their IDs), the Categories tab in `/sui` (`categoriestab.lua`, `ruleeditor.lua`), and the tooltip lines and slot menu entries that name an item's category. |
 | `SaftUI-Chat/` | Chat frame placement, size and skin. |
 | `SaftUI-Loot/` | Loot roll frames, loot feed (`Feed/`), loot window popup. |
 | `SaftUI-Minimap/` | Minimap, SaftUI's micro menu bar and the pieces it hosts, Blizzard micro buttons inline, addon compartment. |

@@ -7,6 +7,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Bag categories: in-game checks](#2026-11-11--bag-categories-in-game-checks)
+  - [2026-11-11 — Bag settings: the reagent section nothing reads](#2026-11-11--bag-settings-the-reagent-section-nothing-reads)
+  - [2026-11-11 — ItemRack is still an optional dependency, and nothing reads it](#2026-11-11--itemrack-is-still-an-optional-dependency-and-nothing-reads-it)
+  - [2026-11-11 — Bag categories: a default added in a later version can duplicate a user category's name](#2026-11-11--bag-categories-a-default-added-in-a-later-version-can-duplicate-a-user-categorys-name)
+  - [2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window](#2026-11-11--bag-categories-a-set-checkbox-is-dead-while-the-equipment-sets-entry-hides-the-window)
+  - [2026-11-11 — Old gear's tabard and shirt exclusion never matched](#2026-11-11--old-gears-tabard-and-shirt-exclusion-never-matched)
+  - [2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets](#2026-11-11--auto-vendor-pins-now-beat-grays-exclusions-and-equipment-sets)
   - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map](#2026-11-10--zone-faction-line-edge-cases-a-pvp-subzones-status-same-named-zones-on-the-map)
@@ -22,7 +29,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Bank eye toggle doesn't re-apply the bag search](#2026-11-10--bank-eye-toggle-doesnt-re-apply-the-bag-search)
   - [2026-11-10 — Bag views: in-game checks for what the stubs can't show](#2026-11-10--bag-views-in-game-checks-for-what-the-stubs-cant-show)
   - [2026-11-10 — Bag item sort compares item levels as text, and should be built from blocks](#2026-11-10--bag-item-sort-compares-item-levels-as-text-and-should-be-built-from-blocks)
-  - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
@@ -52,6 +58,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
   - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
@@ -72,6 +79,109 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-11 — Bag categories: in-game checks
+
+**What:** What the bag categories project could only be compile-checked and stub-tested for, to confirm in game on Forever and retail, and what to do with each answer. The first eight are the plan's own list (`docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, "In-game checks"); the rest are what the reviews and tests couldn't settle.
+
+**Why noticed:** The bag categories project (branch `bagcategories`, 2026-11-11) tests everything outside the game against stubs (`tests/bags/bag_world.lua`), and its design notes name several client behaviors it assumed rather than saw. The user plays Forever, so the check is theirs.
+
+**Anchors:** `docs/superpowers/specs/2026-11-10-saftui-bag-categories-design.md`; `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md` ("In-game checks"); `SaftUI-Bags/tooltipscanner.lua` (`INV.TOOLTIP_TRIES`, `INV.TOOLTIP_RETRY`), `SaftUI-Bags/itemclasses.lua`, `SaftUI-Bags/categories.lua` (`EquipmentSet`, `INV:IsAutoVendorItem`), `SaftUI-Bags/categoriestab.lua`, `SaftUI-Bags/ruleeditor.lua`, `SaftUI-Bags/slot.lua` (the slot menu and the tooltip lines); `.agents/clients.md` (item classes).
+
+**Shape of work:** One sitting in game, a note per check. A wrong answer becomes a small fix or its own followup.
+
+The plan's list:
+1. **Forever, cold login:** after `/reload` with the bags open, every item lands where it did before this change, and the loading bar clears.
+2. **Forever device:** `/run print(C_Item.GetItemSubClassInfo(0, 14))` prints `Devices`, and a device item's subclass in `GetItemInfo` is `Devices`. Forever's Devices subclass resolves through `GetItemSubClassInfo`, which is how the Devices category finds it.
+3. **Delves:** a "Curious ..." item is no longer in Delves, and a Combat Curio still is.
+4. **Equipment sets on Forever:** an item in a set shows as `Set: <name>`, or the Equipment sets entry does nothing there. Note which.
+5. **The tab:** reorder by drag; add a category with `Subclass is Tradeskill: Herb, Metal & Stone` and move it above Trade Goods; rename it; turn it off; delete it; restore a default; Reset all.
+6. **The tooltip** of a bag item shows `Category: ... (nth)` and `Caught by: ...`, and the lines stay after the tooltip refreshes (hold Shift).
+7. **The slot menu:** Ctrl + right click, Add to category... moves the item; Auto Vendor and Protected clear each other; Edit this category opens the tab.
+8. **At a vendor,** with Grays/Auto Vendor renamed and moved, the junk sells; turned off, nothing sells.
+
+What the plan's list doesn't cover:
+9. **A placeholder tooltip.** A tooltip that says "Retrieving item information" would be cached as the item's real text, and the item filed by it for good. Confirm what `C_TooltipInfo.GetBagItem` returns for an item that isn't cached yet (nil, an empty `lines`, or placeholder lines), on both clients, and that the scanner treats it as not arrived.
+10. **The Categories tab:**
+    - the drag ghost and the insertion line, in the list and in the rule editor;
+    - dragging in a list taller than the window body: does the wheel scroll mid-drag?
+    - icon borders under the item art in Pinned items and Caught now;
+    - text at real font sizes: nothing clipped or overlapping in the rows or the editor (the tests lay it out at the default size only).
+11. **`SetBagItem` and `SetItemByID`** on both clients: the tooltip the tab's icons show (item tooltips are `GameTooltip`'s), and the slot's own hover.
+12. **The tooltip's `Category` and `Caught by` lines' placement:** where they land in the tooltip on both clients (after the item's own lines, before an addon's?), and that they aren't added twice.
+13. **The slot menu's look:** how the menu and its `...` entry look on both clients, and whether it closes after a checkbox click (Auto Vendor, Protected) or stays open.
+14. **An item whose tooltip never arrives:** it waits about 5 seconds, then it's filed (marked `tooltipMissing`), and it's never sold until its text arrives. Hard to provoke; an item link from another realm's character may do it.
+15. **Auto vendor after a rename, a move or turning off:** it still sells, and the junk coin follows it (`INV:IsAutoVendorItem` finds the seller by its `sells` flag, not its name), after Grays/Auto Vendor is renamed or moved; turned off, nothing sells and no coin shows.
+
+**Open questions:** None until the answers come in.
+
+### 2026-11-11 — Bag settings: the reagent section nothing reads
+
+**What:** `SaftUI-Bags/config.lua:58` still defines a `reagent` section (a position anchored to the bank's anchor, and its settings), but no reagent window exists any more. `SaftUI-Bags/movers.lua` lists the windows that can have a position as `bag`, `bank`, `combinedbank` and `warband` (`WINDOW_IDS`, line 16), and still calls `self:MigratePosition('reagent')` (line 97) "no window yet, but it has a config entry". Neither client has a reagent bank any more (`.agents/clients.md`).
+
+**Why noticed:** The bag categories project's doc pass (2026-11-11), reading the bags' config for a stale `filters.lua` reference.
+
+**Anchors:** `SaftUI-Bags/config.lua` (`reagent`), `SaftUI-Bags/movers.lua` (`WINDOW_IDS`, `MigratePosition('reagent')`); the followup "Settings with no /sui option, settings nothing reads, and frames with no edit mode mover" is the same kind of cleanup.
+
+**Shape of work:** Small: remove the section and the migration call, after checking nothing else reads `config.reagent` (grep for `.reagent`), and that a saved profile with the key is harmless. Leave the bag family `'reagent'` kinds in `category.lua` and `autovendor.lua` alone: they are about the reagent bag, not this window.
+
+### 2026-11-11 — ItemRack is still an optional dependency, and nothing reads it
+
+**What:** Core's TOCs, `SaftUI-Core/SaftUI-Core_Forever.toc` and `SaftUI-Core/SaftUI-Core_Mainline.toc`, still say `## OptionalDeps: RealMobHealth, ItemRack, WoWUnit, WeakAuras`, but no SaftUI Lua reads ItemRack. The bags' equipment set categories used to read it; they read the client's own equipment sets now (`C_Container.GetContainerItemEquipmentSetInfo`).
+
+**Why noticed:** The bag categories project's doc pass (2026-11-11), while checking what the old set lookup depended on.
+
+**Anchors:** the two Core TOCs; `grep -rn ItemRack SaftUI-*` (Libraries aside); `SaftUI-Bags/categories.lua` (`EquipmentSet`).
+
+**Shape of work:** One line in each of two TOCs. Check first that no other addon or WeakAuras-side code relies on ItemRack loading before SaftUI (OptionalDeps only orders the load).
+
+### 2026-11-11 — Bag categories: a default added in a later version can duplicate a user category's name
+
+**What:** A default category added in a later SaftUI version, whose name a user category already has, makes two categories with one name. `INV:RestoreCategory` and `INV:ResetCategory` number the name (`Toys (2)`), but the list build (`INV:GetCategoryList`) doesn't number a default it finds new.
+
+**Why noticed:** The bag categories project's final review (2026-11-11). Category frames, ranks and hide flags go by id, and a default's id is the name it shipped with, so the ids stay apart but two categories show one header, and a user can't tell them apart in the list or the tooltip lines.
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:GetCategoryList`, the numbering in `RestoreCategory` and `ResetCategory`); `SaftUI-Bags/categorydefaults.lua`; `tests/bags/category_store_test.lua` (the `Toys (2)` cases).
+
+**What's been considered:** Numbering the default in the list build (`UniqueName`), as Restore and Reset do, is the obvious fix. A user category's id is `custom:<n>`, so ids never clash and it's only the name. Renaming the user's category instead would change their data.
+
+**Shape of work:** Small: the same numbering in the list build, plus a test with a profile that has a custom category named like a default the version adds. Matters only when a later version ships a new default.
+
+### 2026-11-11 — Bag categories: a Set checkbox is dead while the Equipment sets entry hides the window
+
+**What:** In the Edit view's Show in checkboxes, a `Set: <name>` checkbox unchecked while the Equipment sets entry already hides that window changes nothing. `INV:IsCategoryHidden` returns true for a `Set: ...` key as soon as the sets entry's `hide[windowId]` is set, before it looks at the set's own flag (`filters.categories[windowId]`), so the box is a dead control.
+
+**Why noticed:** The bag categories project's review of Show in (2026-11-11).
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:IsCategoryHidden` and `INV:SetCategoryHidden`, the "Show in" section, `IsSetKey`); the Edit view's checkbox in `SaftUI-Bags/category.lua` (~422-425).
+
+**What's been considered:** Disable or hide the set's checkbox while the entry hides the window, or let a set's own flag win. The first changes less.
+
+**Shape of work:** Small, with a test in `tests/bags/category_migration_test.lua` next to the Equipment sets entry's Show in cases.
+
+### 2026-11-11 — Old gear's tabard and shirt exclusion never matched
+
+**What:** The old Old gear filter meant to leave tabards and shirts out. It compared the localized slot name with an `INVTYPE_` token, so the test never matched and every tabard and shirt that met the other tests was caught. The category blocks leave the test out, so nothing changes for the user.
+
+**Why noticed:** The bag categories project's plan (Global Constraints and "What can't be written exactly in blocks", item 5, `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`), reading `filters.lua` at `8dc348c`.
+
+**Anchors:** `git show 8dc348c:SaftUI-Bags/filters.lua` (`isLegacyGear`); `SaftUI-Bags/categorydefaults.lua` (Old gear); `tests/bags/fixtures/old_filters.lua` (the oracle, which keeps the old behavior).
+
+**Shape of work:** Only if the user wants tabards and shirts kept out of Old gear: a block on the item's equipment slot (an `INVTYPE_` token compared with `GetItemInfoInstant`'s equip slot), and a fixture.
+
+**Open questions:** Does the user want that exclusion at all? It has never worked, so nobody has missed it.
+
+### 2026-11-11 — Auto Vendor pins now beat Grays' exclusions and equipment sets
+
+**What:** The old Auto Vendor list wasn't a filter: a listed item still had to get past Grays/Auto Vendor's exclusions, and equipment sets came before it. As a pin, the same entry beats both. A listed item that is Cosmetic, has the "Fishing" or account-bound text, or is in an equipment set now goes to Grays/Auto Vendor; `INV:IsAutoVendorItem` still never sells a Cosmetic, an equipment set item or an item whose tooltip never arrived, and an item with no vendor price goes there but isn't sold.
+
+**Why noticed:** The bag categories project's plan (`docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, "What can't be written exactly in blocks", item 7), when the Auto Vendor list became pins.
+
+**Anchors:** `SaftUI-Bags/categories.lua` (`INV:MigrateCategories`, `INV:GetItemCategory`'s pin branch, `INV:IsAutoVendorItem`); `tests/bags/category_migration_test.lua`.
+
+**Shape of work:** Only if the user wants the old guarantee back: have a pin to the selling category lose to the exclusions that used to apply (a rule check in the pin branch, or in the migration), and a test.
+
+**Open questions:** Is a listed item in an equipment set or with account-bound text something the user would want sold? The old behavior kept them.
 
 ### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
 
@@ -322,7 +432,7 @@ On retail:
 
 ### 2026-11-10 — Bag item sort compares item levels as text, and should be built from blocks
 
-**What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`SaftUI-Bags/category.lua:147`, `sortCategory` at ~158). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
+**What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`GetInventoryItemInfo` and `sortCategory` in `SaftUI-Bags/category.lua`). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
 
 **Why noticed:** The builder check of the bag views design (2026-11-10) pointed it out while asking how Multi bag should order a whole bag. Within one category of similar items it rarely shows. On retail, where item levels run into the hundreds, gear of mixed levels in one category can come out in a surprising order.
 
@@ -335,31 +445,6 @@ On retail:
 **Shape of work:**
 - Small now: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string, and fix the typos. Add a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
 - Later: sort keys as blocks, on top of the configurable categories project's data model and editor. It needs a brainstorm and a spec after that project lands.
-
-### 2026-11-10 — Bag categories: make the category rules configurable in /sui
-
-**What:** The bag categories (which items go where, and in what order) are hard-coded Lua. The user wants them exposed in `/sui`, so categories can be added, removed, reordered and given their own rules there.
-
-**Why noticed:** The user, 2026-11-10, while asking for new bag views: "I'd like to expose the category configurations in the config, we have a lot of complexity to the filters right now and it's hard coded, we should do some analysis on the different mechanisms for sorting and build a UI that allows this customization to extend to the config. This will need some research and design passes and should be worked separately from the other views."
-
-For prior art they shared Ellesmere's bag window. Its left sidebar lists the categories, some nested (The Armory → Weapons / Trinkets and Armor; Adventure Prep → Consumables and Camp Items), with counts and an "Add Category" entry. They noted that sidebar "takes up quite a bit of room with all of the text".
-
-**Anchors:**
-- **The category rules:** `SaftUI-Bags/filters.lua`. `INV:AddFilter(name, func, options)` builds `INV.filters.categories` in order, and the first matching filter wins. The filters include Grays/Auto Vendor (`autoVendor`, with protection and legacy-gear rules), class-tier token groups matched on tooltip text, Secrets of Azeroth, and `customItemLists`.
-- **How an item gets its category:** `SaftUI-Bags/category.lua`, `INV:GetItemCategory`. Retail equipment-set items go to `Set: <name>`, reagent bag items go by subclass, then the filters run in order, and anything left falls back to Miscellaneous. Also `INV:GetSortedInventory`, and `sortCategory` (by `sortString`).
-- **Per-container toggles:** `filters.categories[id]` (`SaftUI-Bags/inventory.lua` ~line 96).
-- **Auto vendor:** `SaftUI-Bags/autovendor.lua` and `INV.AUTO_VENDOR_CATEGORIES`.
-- **Related:** the bag views (One bag, Multi bag, Compact, Rows) have shipped (`docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`). Every view orders its categories through the shared `INV:CategoryRank` and `INV:CategoryBefore` in `SaftUI-Bags/views.lua` (the filters' order, Miscellaneous and Empty Slots last, sets first), which this project will make configurable: a user-defined order should replace what `CategoryRank` reads. `tests/bags/views_data_test.lua` covers that order.
-
-**What's been considered:** Nothing yet. The user asked for an analysis of the current mechanisms (first-match filter order, tooltip-text matching, item lists, equipment sets, reagent subclasses, auto vendor, the sort keys) before any UI design.
-
-**Shape of work:** A research pass that maps every mechanism and what a configurable form of each would need. Then a design pass for the `/sui` UI (and maybe an in-bag sidebar or editor). Then a spec and a plan. Probably more than one project: a data model and migration for saved categories, then the UI.
-
-**Open questions:**
-- Which mechanisms stay code-only (e.g. tooltip scanning)?
-- Do nested categories (Ellesmere-style groups) come in?
-- How do user categories interact with SaftUI's built-in ones and their order?
-- Where does the UI live: `/sui`, the bag window, or both?
 
 ### 2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode
 
@@ -928,6 +1013,33 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-10 — Bag categories: make the category rules configurable in /sui
+
+**What:** The bag categories (which items go where, and in what order) are hard-coded Lua. The user wants them exposed in `/sui`, so categories can be added, removed, reordered and given their own rules there.
+
+**Why noticed:** The user, 2026-11-10, while asking for new bag views: "I'd like to expose the category configurations in the config, we have a lot of complexity to the filters right now and it's hard coded, we should do some analysis on the different mechanisms for sorting and build a UI that allows this customization to extend to the config. This will need some research and design passes and should be worked separately from the other views."
+
+For prior art they shared Ellesmere's bag window. Its left sidebar lists the categories, some nested (The Armory → Weapons / Trinkets and Armor; Adventure Prep → Consumables and Camp Items), with counts and an "Add Category" entry. They noted that sidebar "takes up quite a bit of room with all of the text".
+
+**Anchors:**
+- **The category rules:** `SaftUI-Bags/filters.lua`. `INV:AddFilter(name, func, options)` builds `INV.filters.categories` in order, and the first matching filter wins. The filters include Grays/Auto Vendor (`autoVendor`, with protection and legacy-gear rules), class-tier token groups matched on tooltip text, Secrets of Azeroth, and `customItemLists`.
+- **How an item gets its category:** `SaftUI-Bags/category.lua`, `INV:GetItemCategory`. Retail equipment-set items go to `Set: <name>`, reagent bag items go by subclass, then the filters run in order, and anything left falls back to Miscellaneous. Also `INV:GetSortedInventory`, and `sortCategory` (by `sortString`).
+- **Per-container toggles:** `filters.categories[id]` (`SaftUI-Bags/inventory.lua` ~line 96).
+- **Auto vendor:** `SaftUI-Bags/autovendor.lua` and `INV.AUTO_VENDOR_CATEGORIES`.
+- **Related:** the bag views (One bag, Multi bag, Compact, Rows) have shipped (`docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`). Every view orders its categories through the shared `INV:CategoryRank` and `INV:CategoryBefore` in `SaftUI-Bags/views.lua` (the filters' order, Miscellaneous and Empty Slots last, sets first), which this project will make configurable: a user-defined order should replace what `CategoryRank` reads. `tests/bags/views_data_test.lua` covers that order.
+
+**What's been considered:** Nothing yet. The user asked for an analysis of the current mechanisms (first-match filter order, tooltip-text matching, item lists, equipment sets, reagent subclasses, auto vendor, the sort keys) before any UI design.
+
+**Shape of work:** A research pass that maps every mechanism and what a configurable form of each would need. Then a design pass for the `/sui` UI (and maybe an in-bag sidebar or editor). Then a spec and a plan. Probably more than one project: a data model and migration for saved categories, then the UI.
+
+**Open questions:**
+- Which mechanisms stay code-only (e.g. tooltip scanning)?
+- Do nested categories (Ellesmere-style groups) come in?
+- How do user categories interact with SaftUI's built-in ones and their order?
+- Where does the UI live: `/sui`, the bag window, or both?
+
+**Resolved 2026-11-11:** The category rules are data in the profile, edited in `/sui` -> Bags -> Categories (add, rename, reorder, turn off, delete, restore, reset, block rules, pins), with today's filters as the defaults and old profiles migrated. Spec `docs/superpowers/specs/2026-11-10-saftui-bag-categories-design.md`, plan `docs/superpowers/plans/2026-11-10-saftui-bag-categories.md`, branch `bagcategories`. The in-game checks are in the followup "Bag categories: in-game checks".
 
 ### 2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript
 
