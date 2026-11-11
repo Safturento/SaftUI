@@ -883,6 +883,10 @@ end
 -- ADD when none is given. Blizzard's API documentation only says the blend is
 -- optional; ADD is most likely the client's default (SaftUI's flat hover, set
 -- with none, shows in game as a tint over the icon, not an opaque square).
+-- It also puts the texture in the HIGHLIGHT layer, which the client shows only
+-- under the mouse: a hover made in OVERLAY and handed to it shows only on
+-- hover in game, and one moved back out of HIGHLIGHT shows all the time
+-- (2026-11-11, every slot and action button washed blue).
 for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = 'ARTWORK', Highlight = 'HIGHLIGHT' }) do
 	local key = state:lower() .. '_texture'
 	Button['Set' .. state .. 'Texture'] = function(self, s, asset, blend)
@@ -898,7 +902,9 @@ for state, layer in pairs({ Normal = 'ARTWORK', Pushed = 'ARTWORK', Disabled = '
 			usage(s, ('Set%sTexture(): asset must be a texture, a path or a file ID'):format(state))
 		end
 		if state == 'Highlight' and s[key] then
-			states[s[key]].blend_mode = blend or 'ADD'
+			local rs = states[s[key]]
+			rs.blend_mode = blend or 'ADD'
+			rs.draw_layer, rs.sublevel = 'HIGHLIGHT', 0
 		end
 	end
 	Button['Get' .. state .. 'Texture'] = function(self, s) return s[key] end

@@ -495,11 +495,12 @@ end
 
 -- Puts Blizzard's state art (name, an atlas or a file from State) on texture,
 -- one of a button's state textures of SaftUI's (the hover, pushed or checked
--- texture; the flash too, with layer false): over the button's whole
--- footprint, white, with no tint, in the state layer above the ring, and
--- blending as blend says (the button's own call sets the highlight's). A flat
--- state texture is put back by its own code (StyleButton in the action bars'
--- skin, st:SkinActionButton, the totem skin), not here.
+-- texture; the flash too): over the button's whole footprint, white, with no
+-- tint, blending as blend says (the button's own call sets the highlight's),
+-- and drawn in layer: the state layer above the ring when it's nil, the layer
+-- it has when it's false (the flash), or the layer named (the hover:
+-- HOVER_LAYER). A flat state texture is put back by its own code (StyleButton
+-- in the action bars' skin, st:SkinActionButton, the totem skin), not here.
 function ThemeArt.StyleState(texture, name, button, blend, layer)
 	if name:find([[Interface\]], 1, true) == 1 then
 		texture:SetTexture(name)
@@ -507,8 +508,10 @@ function ThemeArt.StyleState(texture, name, button, blend, layer)
 	else
 		texture:SetAtlas(name)
 	end
-	if layer ~= false then
+	if layer == nil then
 		texture:SetDrawLayer(ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL)
+	elseif layer then
+		texture:SetDrawLayer(layer, 0)
 	end
 	texture:SetVertexColor(1, 1, 1, 1)
 	if blend then texture:SetBlendMode(blend) end
@@ -681,14 +684,23 @@ local RING_LAYER, RING_SUBLEVEL = 'ARTWORK', -2
 -- texts.
 local OWN_SUBLEVEL = -1
 
--- Where a button's state art draws (hover, pushed, checked: StyleState): the
--- same layer as the ring and just over it, level with the own-color piece, so
--- it covers the ring's whole footprint, over the icon and under the texts,
+-- Where a button's state art draws (pushed, checked: StyleState; the hover
+-- has its own, HOVER_LAYER): the same layer as the ring and just over it,
+-- level with the own-color piece, so it covers the ring's whole footprint,
+-- over the icon and under the texts,
 -- which Blizzard's action and item button templates put in OVERLAY (the item
 -- button's count, its name) or in a frame over the button (the action
 -- button's hotkey and count, at level 500). Blizzard's own ring is its normal
 -- texture, ARTWORK 0, and the state art is drawn over it.
 ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL = 'ARTWORK', -1
+
+-- Where a button's hover draws, in every look: HIGHLIGHT, where
+-- SetHighlightTexture puts it. The client shows that layer only under the
+-- mouse, so a hover moved out of it shows all the time (2026-11-11: every
+-- slot and action button washed blue). It draws over the button's own
+-- regions, the count of an item button too, as Blizzard's own highlight does;
+-- an action button's texts are in a frame over the button, so they stay over it.
+ThemeArt.HOVER_LAYER = 'HIGHLIGHT'
 
 -- A button's art on frame (the action or item button's): the art behind its
 -- icon, filling frame, and the ring over the icon's edge, covering frame. The

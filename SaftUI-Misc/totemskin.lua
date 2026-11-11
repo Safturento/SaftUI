@@ -200,11 +200,11 @@ local function CreateStateTexture(button)
 end
 
 -- A state texture back to SaftUI's flat one over the icon, as it's made, after
--- it showed Blizzard's art.
-local function FlatStateTexture(texture, icon)
+-- it showed Blizzard's art: in OVERLAY, or layer (the hover's, HOVER_LAYER).
+local function FlatStateTexture(texture, icon, layer)
 	texture:SetTexture(st.BLANK_TEX)
 	texture:SetTexCoord(0, 1, 0, 1)
-	texture:SetDrawLayer('OVERLAY', 0)
+	texture:SetDrawLayer(layer or 'OVERLAY', 0)
 	texture:ClearAllPoints()
 	texture:SetAllPoints(icon)
 end
@@ -287,7 +287,9 @@ local function StyleButton(button, skin, theme, background)
 	local state = look and look.name == 'blizzard' and st.ThemeArt.State('action') or nil
 	if skin.ring then StyleRing(button, skin, state ~= nil, theme, background) end
 	if state then
-		st.ThemeArt.StyleState(skin.hover, state.hover, button)
+		-- The hover stays in its layer, where the client shows it only under
+		-- the mouse (HOVER_LAYER).
+		st.ThemeArt.StyleState(skin.hover, state.hover, button, nil, st.ThemeArt.HOVER_LAYER)
 		st.ThemeArt.StyleState(skin.pushed, state.pushed, button)
 		if skin.checked then
 			st.ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
@@ -297,7 +299,7 @@ local function StyleButton(button, skin, theme, background)
 			st.ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
 		end
 	else
-		FlatStateTexture(skin.hover, icon)
+		FlatStateTexture(skin.hover, icon, st.ThemeArt.HOVER_LAYER)
 		FlatStateTexture(skin.pushed, icon)
 		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)

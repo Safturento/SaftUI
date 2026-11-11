@@ -329,7 +329,9 @@ function AB:StyleButton(button, config, theme, background)
 	local state = self:BlizzardState(theme, background)
 	if state then
 		local ThemeArt = st.ThemeArt
-		ThemeArt.StyleState(skin.hover, state.hover, button)
+		-- The hover stays in its layer, where the client shows it only under
+		-- the mouse (HOVER_LAYER).
+		ThemeArt.StyleState(skin.hover, state.hover, button, nil, ThemeArt.HOVER_LAYER)
 		ThemeArt.StyleState(skin.pushed, state.pushed, button)
 		ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
 		-- The flash keeps the template's layer, over the state art.
@@ -342,6 +344,8 @@ function AB:StyleButton(button, config, theme, background)
 			region:ClearAllPoints()
 			region:SetAllPoints(icon)
 		end
+		-- Shown only under the mouse in this layer; moved out, all the time.
+		skin.hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
 		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
 		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
 		skin.checked:SetVertexColor(1, 1, 1, 0.3)

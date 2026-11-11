@@ -462,6 +462,9 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	eq(hover:GetTexture(), flat, 'Thick: the flat hover')
 	eq(T.around(hover, summon.icon), '0,0,0,0', 'Thick: over the icon')
 	eq(depth(pushed), 400, 'Thick: pushed in OVERLAY, as before')
+	-- The client shows a button's highlight only in the HIGHLIGHT layer, under
+	-- the mouse; moved out of it, it shows all the time.
+	eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', 'Thick: the hover shows only under the mouse')
 
 	profile.theme.name = 'blizzard'
 	st:RedrawThemed()
@@ -494,10 +497,15 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	for name, region in pairs({ hover = hover, pushed = pushed, checked = checked }) do
 		check(depth(region) > depth(ring), name .. ' draws over the ring')
 		check(depth(region) > depth(summon.icon), name .. ' draws over the icon')
+	end
+	for name, region in pairs({ pushed = pushed, checked = checked }) do
 		for _, text in ipairs({ summon.Count, summon.HotKey, summon.Name }) do
 			check(depth(region) < depth(text), name .. ' draws under the texts')
 		end
 	end
+	-- The hover stays in HIGHLIGHT, shown only under the mouse, as Blizzard's
+	-- own buttons' highlight is.
+	eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', 'the hover shows only under the mouse')
 	check(depth(summon.Flash) > depth(ring), 'the flash draws over the ring')
 	check(depth(summon.Flash) < depth(summon.Name), 'and under the texts')
 
@@ -550,6 +558,7 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	eq(hover:GetAtlas(), nil, 'no atlas')
 	eq(T.around(hover, summon.icon), '0,0,0,0', 'over the icon')
 	eq(T.text(hover:GetVertexColor()), T.text(profile.colors.button.blue:GetRGB()) .. ',1.00', 'blue')
+	eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', 'Thick again: the hover shows only under the mouse')
 	eq(summon.Flash:GetAtlas(), nil, 'Thick: no flash atlas')
 	eq(select(4, summon.Flash:GetVertexColor()) ~= nil, true, 'the flat flash')
 	eq(art.over.Ring:IsShown(), false, 'Thick: no ring')

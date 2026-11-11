@@ -249,14 +249,15 @@ function st:SkinActionButton(button, config, kind)
 	if button.hover then
 		if hoverArt then
 			local blend = state.highlightBlend or 'ADD'
-			-- The setter first: the client may put a texture it's handed in its
-			-- state's own layer, so the art's layer is set after it.
+			-- The setter first, then the art, kept in the hover's layer, where
+			-- the client shows it only under the mouse (HOVER_LAYER).
 			button:SetHighlightTexture(button.hover, blend)
-			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend)
+			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend, st.ThemeArt.HOVER_LAYER)
 		else
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
-			button.hover:SetDrawLayer('OVERLAY', 0)
+			-- Shown only under the mouse in this layer; moved out, all the time.
+			button.hover:SetDrawLayer(st.ThemeArt.HOVER_LAYER, 0)
 			-- The blend the hover was made with (most likely the client's
 			-- additive default), which Blizzard's art changed: a tint over the
 			-- icon, as before the Blizzard theme. BLEND would make it opaque.

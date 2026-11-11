@@ -346,6 +346,9 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
 	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick: blue')
 	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it when the slot was made')
+	-- The client shows a button's highlight only in the HIGHLIGHT layer, under
+	-- the mouse; moved out of it, it shows all the time.
+	eq(select(1, slot.hover:GetDrawLayer()), 'HIGHLIGHT', 'Thick: the hover shows only under the mouse')
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()
@@ -361,8 +364,11 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 			local ring = st.ThemeArt.Get(button.backdrop).over.Ring
 			check(depth(region) > depth(ring), name .. ' ' .. what .. ' draws over the ring')
 			check(depth(region) > depth(button.icon), name .. ' ' .. what .. ' draws over the icon')
-			check(depth(region) < depth(button.Count), name .. ' ' .. what .. ' draws under the count')
 		end
+		check(depth(pushed) < depth(button.Count), name .. ' pushed draws under the count')
+		-- The highlight stays in HIGHLIGHT, shown only under the mouse: over the
+		-- count, as Blizzard's own item buttons' highlight is.
+		eq(select(1, highlight:GetDrawLayer()), 'HIGHLIGHT', name .. ': the highlight shows only under the mouse')
 	end
 
 	-- Back to Thick: the flat hover again, over the icon inside the border, and the pushed art cleared.
@@ -373,6 +379,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
 	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick again: blue')
 	eq(slot:GetHighlightTexture():GetBlendMode(), made, 'Thick again: the blend the setter gave it when the slot was made')
+	eq(select(1, slot:GetHighlightTexture():GetDrawLayer()), 'HIGHLIGHT', 'Thick again: the hover shows only under the mouse')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

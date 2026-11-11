@@ -243,10 +243,17 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 			eq(T.around(region, b), '0,0,0,0', where .. name .. ' covers the button')
 		end
 
+		-- The hover is the button's highlight, which the client shows only in
+		-- the HIGHLIGHT layer, under the mouse: moved out of it, it shows all
+		-- the time. That layer is over the ring and the icon, and the
+		-- template's texts are in a frame over the button (TextOverlayContainer,
+		-- level 500), so in game it still draws under them.
+		eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', where .. 'hover shows only under the mouse')
+
 		-- Above the ring and the own-color piece, under the texts.
 		local ring = st.ThemeArt.Get(b.backdrop).over.Ring
 		eq(ring:GetParent(), b, where .. "the ring is a texture of the button's own")
-		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked }) do
+		for name, region in pairs({ pushed = pushed, checked = checked }) do
 			check(depth(region) >= depth(ring) + 1, where .. name .. ' draws over the ring')
 			check(depth(region) >= LAYERS.ARTWORK * 100 - 1, where .. name .. ' draws over the icon')
 			for _, text in ipairs({ b.HotKey, b.Count, b.Name }) do
@@ -272,13 +279,14 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
 			eq(T.around(region, b.icon), '0,0,0,0', 'Thick: ' .. name .. ' covers the icon')
 		end
-		eq(select(1, hover:GetDrawLayer()), 'OVERLAY', 'Thick: hover is over the icon, as it was')
+		eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', 'Thick: hover shows only under the mouse, as it did')
 		eq(select(1, pushed:GetDrawLayer()), 'OVERLAY', 'Thick: pushed too')
 		eq(select(1, checked:GetDrawLayer()), 'OVERLAY', 'Thick: checked too')
 
 		-- And back.
 		switch('blizzard')
 		eq(hover:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', where .. 'back under Blizzard: hover')
+		eq(select(1, hover:GetDrawLayer()), 'HIGHLIGHT', where .. 'back under Blizzard: hover only under the mouse')
 		eq(checked:GetBlendMode(), checkedBlend, where .. 'checked blend again')
 		eq(b.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', where .. 'the flash again')
 		eq(T.around(pushed, b), '0,0,0,0', where .. 'pushed covers the button again')
