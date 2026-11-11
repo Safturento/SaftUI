@@ -185,6 +185,21 @@ test("a profile switch gives every frame the new profile's margin", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a frame whose art reaches past its edges keeps the art inside the margin, read each time it is applied', function()
+	local frame = Frame()
+	local reach = { 8, 2, 16, 4 } -- left, right, top, bottom, as /sui's metal under Blizzard
+	st:KeepInScreenMargin(frame, function() return unpack(reach) end)
+	eq(Insets(frame), '-28,22,36,-24', 'the margin plus the reach on each side')
+	Set(-10)
+	eq(Insets(frame), '2,-8,6,6', "a new margin: the art that far past the screen's edges")
+	reach = { 0, 0, 0, 0 }
+	st:KeepInScreenMargin(frame)
+	eq(Insets(frame), Margin(-10), 'given again: the reach read again')
+	Set(20)
+	eq(Insets(frame), Margin(20))
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('in combat a protected frame keeps its margin until combat ends; one re-apply then does them all', function()
 	-- Stub frames are never protected; these say they are, as a secure unit
 	-- frame or action bar, or a holder one is anchored to, is in game.

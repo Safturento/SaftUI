@@ -607,10 +607,16 @@ function Texture.GetTexCoord(self, s)
 	return c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]
 end
 -- An atlas by name, in place of a texture or color; nil clears it. Not
--- mimicked: the atlas's file and size (any name is taken).
+-- mimicked: the atlas's file (any name is taken). With useAtlasSize the
+-- texture takes the atlas's size, as the client does, when the atlas tables
+-- (C_Texture.GetAtlasInfo) have it.
 function Texture.SetAtlas(self, s, atlas, useAtlasSize, filterMode, resetTexCoords)
 	if atlas ~= nil and type(atlas) ~= 'string' then usage(s, 'SetAtlas(): atlas must be a name') end
 	s.atlas, s.texture, s.color_texture = atlas, nil, nil
+	if atlas and useAtlasSize and C_Texture and C_Texture.GetAtlasInfo then
+		local info = C_Texture.GetAtlasInfo(atlas)
+		if info then s.width, s.height = info.width, info.height end
+	end
 	return true
 end
 function Texture.GetAtlas(self, s) return s.atlas end
@@ -791,6 +797,20 @@ end
 -- A frame's ID (0 until set), which Blizzard's buttons use for their slot or index.
 function Frame.SetID(self, s, id) s.id = number_arg(s, id, 'id') end
 function Frame.GetID(self, s) return s.id or 0 end
+
+-- How far the client widens (negative) or narrows (positive) where a frame
+-- takes the mouse, past its edges. Only remembered: clicks by position aren't modelled.
+function Frame.SetHitRectInsets(self, s, left, right, top, bottom)
+	s.hit_insets = {
+		number_arg(s, left, 'left'), number_arg(s, right, 'right'),
+		number_arg(s, top, 'top'), number_arg(s, bottom, 'bottom'),
+	}
+end
+function Frame.GetHitRectInsets(self, s)
+	local i = s.hit_insets
+	if not i then return 0, 0, 0, 0 end
+	return i[1], i[2], i[3], i[4]
+end
 
 function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
 function Frame.GetFrameLevel(self, s) return s.level end
@@ -1043,7 +1063,9 @@ function StatusBar.SetStatusBarTexture(self, s, asset)
 		s.bar_texture = asset
 	elseif type(asset) == 'string' or type(asset) == 'number' then
 		s.bar_texture = s.bar_texture or create_region(self, s, 'Texture', nil, 'ARTWORK')
-		states[s.bar_texture].texture, states[s.bar_texture].color_texture = asset, nil
+		-- In game this sets the bar's texture region to that file, which shows
+		-- no atlas any more.
+		states[s.bar_texture].texture, states[s.bar_texture].color_texture, states[s.bar_texture].atlas = asset, nil, nil
 	else
 		usage(s, 'SetStatusBarTexture(): asset must be a texture, a path or a file ID')
 	end

@@ -382,9 +382,12 @@ end
 	the frame's own units, which for SaftUI's frames are UIParent's (physical
 	pixels at SaftUI's scale).
 
-	st:KeepInScreenMargin(frame) clamps frame with the margin now and remembers it,
-	and st:UpdateScreenMargin() re-applies the margin to every frame it remembers:
-	the General tab's row and a profile switch run that. Edit mode's movers
+	st:KeepInScreenMargin(frame, reach) clamps frame with the margin now and
+	remembers it, and st:UpdateScreenMargin() re-applies the margin to every frame
+	it remembers: the General tab's row and a profile switch run that. reach, for
+	a frame whose art reaches past its edges (/sui's window under Blizzard, its
+	metal), says how far: the clamp then keeps the art inside the margin, not just
+	the frame. Edit mode's movers
 	(st:RegisterMover), windows with a header (st:CreateHeader) and /sui's window
 	and dialog are given to it. So are the holders of the Blizzard frames SaftUI
 	moves, which follow their holder.
@@ -400,13 +403,17 @@ end
 ]]
 local marginFrames = {} -- every frame st:KeepInScreenMargin was given, in order
 local inMargin = {} -- frame -> true for those
+local reachOf = {} -- frame -> its reach, for a frame whose art reaches past it
 
--- Clamps frame with the profile's margin. False if it can't be now (combat).
+-- Clamps frame with the profile's margin, its rect grown by how far its art
+-- reaches past it. False if it can't be now (combat).
 local function ApplyScreenMargin(frame)
 	if not st:CanMoveNow(frame) then return false end
 	local inset = st.config.profile.misc.clamp_inset
+	local left, right, top, bottom = 0, 0, 0, 0
+	if reachOf[frame] then left, right, top, bottom = reachOf[frame]() end
 	frame:SetClampedToScreen(true)
-	frame:SetClampRectInsets(-inset, inset, inset, -inset)
+	frame:SetClampRectInsets(-inset - left, inset + right, inset + top, -inset - bottom)
 	return true
 end
 
@@ -415,12 +422,16 @@ local function UpdateScreenMarginAfterCombat()
 end
 
 -- Keeps frame, one of SaftUI's own the user can move, inside the screen edge
--- margin, now and whenever the margin changes. Safe to call again for a frame.
-function st:KeepInScreenMargin(frame)
+-- margin, now and whenever the margin changes. Safe to call again for a frame:
+-- a frame whose reach changed is given again to apply it. reach (optional, kept
+-- once given) is a function giving how far the frame's art reaches past its
+-- left, right, top and bottom edges, read each time the margin is applied.
+function st:KeepInScreenMargin(frame, reach)
 	if not inMargin[frame] then
 		inMargin[frame] = true
 		marginFrames[#marginFrames + 1] = frame
 	end
+	if reach then reachOf[frame] = reach end
 	if not ApplyScreenMargin(frame) then UpdateScreenMarginAfterCombat() end
 end
 

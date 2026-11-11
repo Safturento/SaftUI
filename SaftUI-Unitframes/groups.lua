@@ -21,6 +21,9 @@ local UF = st:GetModule('Unitframes')
 	While either raid group is enabled, Blizzard's raid frames are hidden
 	(the section before test mode).
 
+	Under the Blizzard theme each header sits in Blizzard's raid group border
+	(the section after the headers').
+
 	Test mode (bottom of the file) fills the holder with SaftUI-owned preview
 	frames for made-up members, and the boss holder with made-up bosses.
 ]]
@@ -190,6 +193,8 @@ function UF:CreateGroupHeaders()
 
 		local header = self.oUF:SpawnHeader('SaftUI_' .. info.name, nil, attributes)
 		header.config = config
+		-- Made now, out of combat: in combat it only shows, hides and redraws.
+		self:GroupBorder(header)
 		-- Test mode previews make way for the real frames, and come back.
 		-- HookScript runs after the header's own (secure) handlers.
 		header:HookScript('OnShow', function() UF:UpdateGroupPreview(group) end)
@@ -272,6 +277,111 @@ function UF:ApplyGroupPosition(group)
 	st:SafeReposition(self.holders[group], 'uf_holder_' .. group, function() self:PlaceGroupHolder(group) end)
 	st:SafeReposition(self.groups[group], 'uf_' .. group, function() self:AnchorGroupHeader(group) end)
 	self:UpdateGroupPreview(group)
+end
+
+------------------------------------
+---- The group border --------------
+------------------------------------
+--[[
+	Under the Blizzard theme a group's members sit in one thin rounded border,
+	as Blizzard's raid frames draw a group with Edit Mode's Display Border on
+	(CompactRaidGroupTemplate's borderFrame): options_frame_child cut at 6px,
+	with no middle (st.ThemeArt.ART.groupborder), Blizzard's offsets from the
+	group's top left (-2, 2) to its bottom right (2, -3). One around each
+	header's shown members (the party; a whole raid, not each raid group), and
+	one around a party or raid group's test mode previews. The members draw
+	no border of their own under Blizzard (they're drawn as members).
+
+	The header is secure, and lays itself out (shows, places and sizes its
+	members, and sizes itself to them) when someone joins or leaves, in
+	combat too. So the border is a plain frame of SaftUI's, the header's
+	child, anchored to it: it follows the header's size by its anchors, with
+	no code of SaftUI's running. It isn't protected (protection spreads from a
+	protected frame to its parents and to the frames it's anchored to, not to
+	its children or to frames anchored to it), so showing, hiding and drawing
+	it is fine in combat too, and nothing protected is called. Nothing is
+	written onto the header: the border is kept in a weak table keyed by it
+	(.agents/taint.md).
+
+	A header can show with no member to show: the party's, with showPlayer
+	off (its default), for every pending invite (an invite makes a group of
+	one at once, so [group:party] holds) and briefly while a group disbands.
+	It sizes itself to a sliver then (minWidth by minHeight, at least 0.1:
+	configureChildren in SecureGroupHeaders.lua), about 200 by 0.1 for the
+	party, where the border would be a bronze strip. So the border's art is
+	hidden (its alpha 0) while either side is under two of its pieces, and
+	shown again once they fit, from the border's own OnSizeChanged. That's
+	code of SaftUI's running in combat, but only on its own border, calling
+	nothing protected (alpha isn't).
+]]
+
+-- owner (a group header or a preview container) -> its border.
+local groupBorders = setmetatable({}, { __mode = 'k' })
+
+-- Shows a border's art while two of its pieces fit on each side, and hides
+-- it (alpha 0) on anything smaller: a header with no member to show (above).
+-- Only the border's alpha, so in combat too; a secret size leaves it as it is.
+local function FitBorder(border, width, height)
+	if issecretvalue(width) or issecretvalue(height) then return end
+	local least = 2 * st.ThemeArt.ART.groupborder.size
+	border:SetAlpha((width < least or height < least) and 0 or 1)
+end
+
+-- The border of owner, a group header or a test mode preview container: made
+-- the first time, as owner's child at owner's frame level, so the members
+-- (owner's children, one level up) draw over its inner part; left at the
+-- level it was made at when owner's level is secret. Anchored around owner at
+-- the group border's offsets, its art shown only while it fits (FitBorder).
+-- It starts hidden; UF:UpdateGroupBorder shows it.
+function UF:GroupBorder(owner)
+	local border = groupBorders[owner]
+	if border then return border end
+	border = CreateFrame('Frame', nil, owner)
+	local level = owner:GetFrameLevel()
+	if not issecretvalue(level) then border:SetFrameLevel(level) end
+	local left, top, right, bottom = unpack(st.ThemeArt.Control('groupborder').offsets)
+	border:SetPoint('TOPLEFT', owner, 'TOPLEFT', left, top)
+	border:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', right, bottom)
+	border:SetScript('OnSizeChanged', FitBorder)
+	border:Hide()
+	groupBorders[owner] = border
+	return border
+end
+
+-- Whether a group's config draws its members in Blizzard's look, so the group
+-- border shows: the frame's Theme and Background, or, where the frame's
+-- Theme is None (the party's default), its health's.
+function UF.GroupBorderShown(config)
+	if config.theme == 'none' then
+		return st:IsBlizzardLook(config.health.theme, config.health.background)
+	end
+	return st:IsBlizzardLook(config.theme, config.background)
+end
+
+-- Draws and shows owner's border, or clears and hides it, by the group's config.
+local function UpdateBorder(owner, config)
+	local border = UF:GroupBorder(owner)
+	if UF.GroupBorderShown(config) then
+		st.ThemeArt.PaintCut(border, 'groupborder')
+		FitBorder(border, border:GetSize())
+		border:Show()
+	else
+		st.ThemeArt.Clear(border)
+		border:Hide()
+	end
+end
+
+-- The group border of a party or raid group, on its header and on its preview
+-- container, each when it exists, from the current profile. Touches only
+-- SaftUI's borders, so it runs in and out of combat (UF:ApplyConfig). Boss has
+-- no header: its frames are unit frames, in boxes of their own.
+function UF:UpdateGroupBorder(group)
+	if not GROUP_HEADERS[group] then return end
+	local config = self:GetProfileConfig()[group]
+	local header = self.groups and self.groups[group]
+	if header then UpdateBorder(header, config) end
+	local container = self.previews[group]
+	if container then UpdateBorder(container, config) end
 end
 
 ------------------------------------
@@ -562,7 +672,7 @@ local function StylePreviewFrame(frame)
 	local config = frame:GetConfig()
 	frame.config = config
 	st:SetSize(frame, config.width, config.height)
-	st:SetBackdrop(frame, config.theme, config.background, 'bar')
+	st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
 	for _, element in ipairs(frame.previewElements) do
 		UF:UpdateElement(element)
 	end
@@ -635,8 +745,7 @@ local function FillPreviewFrame(frame, member)
 	if powerConfig.enable then
 		local powerValue = (member.dead or member.offline) and 0 or member.power
 		-- SaftUI's power PostUpdate puts these textures back on every update.
-		power:SetStatusBarTexture(st.BLANK_TEX)
-		power.bg:SetTexture(st.BLANK_TEX)
+		UF:RedrawBarFill(power)
 		power:SetMinMaxValues(0, 1)
 		power:SetValue(powerValue)
 
@@ -818,6 +927,8 @@ function UF:UpdateGroupPreview(group)
 		container.frames[i]:Hide()
 	end
 	ArrangeLikeHeader(container, container.frames, count, layout, unitsPerColumn, numColumns)
+	-- A party or raid group's previews sit in the group border, as its members do.
+	if GROUP_HEADERS[group] then UpdateBorder(container, config) end
 
 	container:Show()
 end

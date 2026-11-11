@@ -1470,41 +1470,54 @@ test("a titled bare row: its name above the widget, the desc its name's tooltip,
 	close_all()
 end)
 
+-- The FillRows module's page: a fill row (the windowfill type, defined in the
+-- test below) between two toggles.
+local function FillRowsTable()
+	local function toggle(name, order)
+		return { type = 'toggle', name = name, desc = name, order = order, get = function() return true end, set = function() end }
+	end
+	return {
+		name = 'Fill rows', type = 'group', category = 'Frames',
+		args = {
+			before = toggle('Before', 1),
+			fill = { type = 'windowfill', name = 'Fill', desc = 'A fill row.', size = 'wide', order = 2 },
+			after = toggle('After', 3),
+		},
+	}
+end
+
+-- The windowfill type, a bare fill row at least 100 tall, each height it's
+-- told noted in heights when given; and the FillRows module, whose page has
+-- one (its GetConfigTable left to the test). Each made once.
+local function FillRowsModule(heights)
+	if not W.CUSTOM.windowfill then
+		W.Define('windowfill', {
+			bare = true,
+			fill = true,
+			minHeight = 100,
+			build = function(w)
+				w.frame = CreateFrame('Frame', nil, UIParent)
+				w.frame:SetSize(10, 10)
+			end,
+			methods = {
+				SetWidth = function(self, width) self.frame:SetWidth(width) end,
+				SetHeight = function(self, height)
+					self.frame:SetHeight(height)
+					if heights then heights[#heights + 1] = height end
+				end,
+				Refresh = function() end,
+			},
+		})
+	end
+	return st:GetModule('FillRows', true) or st:NewModule('FillRows')
+end
+
 test("a fill row stretches to the body's visible height, so the body has nothing to scroll; it follows the window's size, and other pages are as they were", function()
 	local heights = {}
-	W.Define('windowfill', {
-		bare = true,
-		fill = true,
-		minHeight = 100,
-		build = function(w)
-			w.frame = CreateFrame('Frame', nil, UIParent)
-			w.frame:SetSize(10, 10)
-		end,
-		methods = {
-			SetWidth = function(self, width) self.frame:SetWidth(width) end,
-			SetHeight = function(self, height)
-				self.frame:SetHeight(height)
-				heights[#heights + 1] = height
-			end,
-			Refresh = function() end,
-		},
-	})
+	local module = FillRowsModule(heights)
 	eq(W.CUSTOM.windowfill.fill, true, 'W.CUSTOM marks it fill')
 	eq(W.CUSTOM.windowfill.minHeight, 100, 'with its least height')
-	local module = st:NewModule('FillRows')
-	function module:GetConfigTable()
-		local function toggle(name, order)
-			return { type = 'toggle', name = name, desc = name, order = order, get = function() return true end, set = function() end }
-		end
-		return {
-			name = 'Fill rows', type = 'group', category = 'Frames',
-			args = {
-				before = toggle('Before', 1),
-				fill = { type = 'windowfill', name = 'Fill', desc = 'A fill row.', size = 'wide', order = 2 },
-				after = toggle('After', 3),
-			},
-		}
-	end
+	module.GetConfigTable = FillRowsTable
 
 	-- Another page first: its height and the body's edges, to compare.
 	OW:Navigate('Inventory', { tab = 'general' })
@@ -1563,6 +1576,66 @@ test("a fill row stretches to the body's visible height, so the body has nothing
 
 	module.GetConfigTable = nil
 	close_all()
+end)
+
+------------------------------------------------------------------ /sui's frames, pinned
+
+test("/sui's frames where they sit today, under Thick and Thin", function()
+	-- Where a frame sits in the window: x and y from its top left, and its size.
+	local function at(f)
+		local w = frames().window
+		return ('%d,%d %dx%d'):format(f:GetLeft() - w:GetLeft(), w:GetTop() - f:GetTop(), f:GetWidth(), f:GetHeight())
+	end
+	-- The flat colors a frame shows, as 'r,g,b,a x,y WxH', sorted.
+	local function fills(frame)
+		local out = {}
+		for _, region in ipairs({ frame:GetRegions() }) do
+			local color = region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture
+			if color then
+				out[#out + 1] = ('%.2f,%.2f,%.2f,%.2f %s'):format(color[1], color[2], color[3], color[4], at(region))
+			end
+		end
+		table.sort(out)
+		return table.concat(out, '\n')
+	end
+
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		st.config.profile.theme.name = name
+		st:RedrawThemed() -- the window drawn once already takes the theme, as a switch does
+		st.Config:Open('Loot') -- one tab: no tab row
+		local F = frames()
+		local side = F.navFrame:GetParent()
+		local brand = select(2, F.actionsFrame:GetPoint(1))
+		eq(at(F.window), '0,0 1040x700', name)
+		eq(F.window.backdropInfo.insets.left, name == 'thick' and 2 or 1, name .. ': the border')
+		eq(at(side), '2,2 208x696', name)
+		eq(at(brand), '2,2 207x73', name)
+		eq(at(F.actionsFrame), '2,75 207x44', name)
+		eq(at(F.navFrame), '2,120 207x547', name)
+		eq(at(F.profile:GetParent()), '2,668 207x30', name)
+		eq(at(F.main), '210,2 828x696', name)
+		eq(at(F.title):match('^%d+,%d+'), '238,22', name)
+		eq(at(F.close), '1000,14 24x24', name)
+		eq(at(F.search), '822,83 190x24', name)
+		eq(at(F.tabLine), '210,113 828x1', name)
+		eq(at(F.body), '238,113 774x539', name)
+		eq(at(F.reloadButton:GetParent()), '210,652 828x46', name)
+		eq(fills(side), '0.09,0.09,0.09,1.00 2,2 208x696\n0.18,0.18,0.18,1.00 209,2 1x696', name .. ': the fill and edge')
+		eq(fills(F.footer):match('^[^\n]*'), '0.18,0.18,0.18,1.00 210,652 828x1', name .. ': the footer line')
+		eq(F.tabLine:GetAtlas(), nil, name .. ': the tab line is a color')
+		eq(stub.state(F.tabLine).color_texture[1], 0.18, name .. ': the tab line in the lines color')
+		-- A group header's rect and where its text sits in it.
+		local header
+		for _, entry in ipairs(F.nav) do
+			if entry.group then header = entry break end
+		end
+		check(header, name .. ': a group header')
+		eq(('%dx%d'):format(header:GetWidth(), header:GetHeight()), '207x29', name .. ': a group header')
+		local _, _, _, tx, ty = header.text:GetPoint(1)
+		eq(('%d,%d'):format(tx, ty), '18,-12', name .. ': a group header text')
+		st.Config:Close()
+	end
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ under the Blizzard theme
@@ -1706,7 +1779,7 @@ test("the sidebar's open page sits on Options_List_Active", function()
 	art_fills(other, 'the page under the mouse')
 	stub.fire_script(other, 'OnLeave')
 	eq(atlases_of(other), '', 'the mouse gone')
-	eq(size_of(active), '207x26', 'an entry keeps its size')
+	eq(size_of(active), '226x26', "an entry: the Blizzard layout's nav width, its height kept")
 
 	theme('thick')
 	active, other = items()
@@ -1894,6 +1967,293 @@ test('under Thick and Thin /sui is unchanged', function()
 	eq(drawn(), thick, 'Thin: as under Thick before Blizzard')
 	theme('thick')
 	eq(drawn(), thick, 'Thick again: as before Blizzard')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the dialog's scroll reaches 7 past its content under Blizzard", function()
+	-- So a dropdown's 7px glow at the content's right edge isn't clipped.
+	theme('blizzard')
+	OW:OpenDialog('Glow', DialogTable())
+	local d = OW.GetDialogFrames()
+	eq(d.scroll:GetWidth(), 527, 'Blizzard: 7 past the 520 content')
+	eq(d.content:GetWidth(), 520, 'the content keeps its width')
+	OW:CloseDialog()
+	theme('thick')
+	OW:OpenDialog('Glow', DialogTable())
+	eq(d.scroll:GetWidth(), 520, 'Thick: the content, as before')
+	-- Drawn again with the other look while open.
+	theme('blizzard')
+	OW:OpenDialog('Glow', DialogTable())
+	eq(d.scroll:GetWidth(), 527, 'Blizzard again')
+	OW:CloseDialog()
+	theme('thick')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ /sui grows taller
+
+-- Where a region sits in the window: x and y from its top left, and its size.
+local function at(f)
+	local w = frames().window
+	return ('%d,%d %dx%d'):format(f:GetLeft() - w:GetLeft(), w:GetTop() - f:GetTop(), f:GetWidth(), f:GetHeight())
+end
+
+-- Drags handle dy units down (up when negative): the button down, one frame, the button up.
+local function resize(handle, dy)
+	local scale = frames().window:GetEffectiveScale()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = (500 - dy) * scale
+	stub.fire_script(handle, 'OnUpdate', 0.016)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(handle, 'OnMouseUp', 'LeftButton')
+end
+
+test('/sui grows taller by its bottom edge or its grip: its width and top stay, the body takes the height, and it remembers it', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames(); local w = F.window; local top = w:GetTop()
+	eq(at(F.grip), '1024,684 16x16', 'the grip in the bottom right corner')
+	eq(F.grip:GetNormalTexture():GetTexture(), st.textures.cornerbr, "st:EnableResizing's corner")
+	local r, g, b = st.config.profile.colors.button.hover:GetRGB()
+	local hover = rgba(r, g, b, 1)
+	for _, state in ipairs({ 'Highlight', 'Pushed' }) do
+		local texture = F.grip['Get' .. state .. 'Texture'](F.grip)
+		eq(texture:GetTexture(), st.textures.cornerbr, state .. ': the corner')
+		eq(rgba(texture:GetVertexColor()), hover, state .. ": tinted the buttons' hover color")
+	end
+	eq(F.grip:GetHighlightTexture():GetBlendMode(), 'BLEND', 'the highlight blends, as st:EnableResizing has it')
+	eq(F.grip:GetHighlightTexture():GetDrawLayer(), st.ThemeArt.HOVER_LAYER, 'in the highlight layer')
+	eq(at(F.sizer), '0,694 1024x6', 'the bottom edge, up to the grip')
+	eq(F.grip:GetFrameLevel(), w:GetFrameLevel() + 10, 'the grip over the window')
+	eq(F.sizer:GetFrameLevel(), F.grip:GetFrameLevel(), 'the edge at its level')
+	check(F.grip:IsMouseEnabled() and F.sizer:IsMouseEnabled(), 'both take the mouse')
+
+	resize(F.grip, 100)
+	eq(at(w), '0,0 1040x800')
+	eq(w:GetTop(), top, 'its top stays')
+	eq(at(F.side), '2,2 208x796'); eq(at(F.navFrame), '2,120 207x647'); eq(at(F.body), '238,113 774x639')
+	eq(at(F.reloadButton:GetParent()), '210,752 828x46', 'the footer at the bottom')
+	eq(at(F.grip), '1024,784 16x16', 'the grip with it')
+	eq(st.config.global.optionsWindow.height, 800, "saved in SaftUI's global settings")
+	resize(F.sizer, -300); eq(w:GetHeight(), 700, 'no shorter than its default')
+	resize(F.sizer, 51); eq(w:GetHeight(), 752, 'an even height: centred on whole pixels')
+	eq(w:GetTop(), top, 'the top still where it was')
+	st.Config:Close(); st.Config:Open('Loot'); eq(w:GetHeight(), 752, 'restored when it opens'); eq(w:GetTop(), top)
+	resize(F.grip, 5000)
+	local inset = st.config.profile.misc.clamp_inset
+	check(w:GetBottom() >= inset and w:GetBottom() < inset + 2, 'it stops at the screen edge margin')
+	eq(w:GetTop(), top, 'its top stays')
+
+	-- A press with no travel saves nothing; a move keeps the height saved.
+	st.config.global.optionsWindow = nil
+	st.Config:Close(); st.Config:Open('Loot')
+	resize(F.grip, 0)
+	eq(st.config.global.optionsWindow, nil, 'a click on the grip saves nothing')
+	resize(F.grip, 40)
+	stub.fire_script(F.header, 'OnDragStart'); stub.fire_script(F.header, 'OnDragStop')
+	eq(st.config.global.optionsWindow.height, 740, 'a move keeps the height')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a resize renders nothing; a fill page draws its fill row once, when the mouse is let go', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	local module = FillRowsModule()
+	module.GetConfigTable = FillRowsTable
+	st.Config:Open('FillRows')
+	local F = frames()
+	local scale = F.window:GetEffectiveScale()
+	local renders, view = OW.GetRenderCount(), F.body:GetHeight()
+	local fill = cell('fill').widget.frame:GetHeight()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	for _, dy in ipairs({ 30, 60, 100 }) do
+		stub.cursor_y = (500 - dy) * scale
+		stub.fire_script(F.grip, 'OnUpdate', 0.016)
+		tick()
+		eq(F.body:GetHeight(), view + dy, dy .. ' down: the body follows')
+		eq(OW.GetRenderCount(), renders, dy .. ' down: no render while the mouse is held')
+		eq(cell('fill').widget.frame:GetHeight(), fill, dy .. ' down: the fill row waits')
+	end
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'one render once let go')
+	eq(cell('fill').widget.frame:GetHeight(), fill + 100, 'the fill row 100 taller')
+	eq(F.content:GetHeight(), F.body:GetHeight(), 'the drawn height is the view')
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'and only the one')
+
+	-- Shorter mid-drag, the fill row drawn to the old height is taller than
+	-- the view, but the body's bar doesn't show over the page until the render.
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = 560 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	tick()
+	eq(F.body:GetHeight(), view + 40, '60 up: the body follows')
+	check(F.content:GetHeight() > F.body:GetHeight(), 'the fill row drawn taller than the view')
+	check(not F.bar:IsShown(), "no body bar over the fill page while the mouse is held")
+	eq(F.body:GetVerticalScroll(), 0, 'nor a scroll')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(F.grip, 'OnMouseUp', 'LeftButton')
+	tick()
+	eq(F.content:GetHeight(), F.body:GetHeight(), 'let go: drawn to the view')
+	check(not F.bar:IsShown(), 'and still no bar')
+	module.GetConfigTable = nil
+
+	-- A button let go away from the handle (its mouse up lost) ends the resize
+	-- on the handle's next frame.
+	eq(F.window:GetHeight(), 740, '100 down and 60 up')
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.sizer, 'OnMouseDown', 'LeftButton')
+	stub.mouse_buttons.LeftButton = nil
+	stub.cursor_y = 480 * scale
+	stub.fire_script(F.sizer, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 740, 'the button up: no resize')
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(F.sizer, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 740, 'and none after')
+	stub.mouse_buttons.LeftButton = nil
+
+	-- A page that scrolls, scrolled to its bottom.
+	local tall = st:NewModule('TallPage')
+	function tall:GetConfigTable()
+		local args = {}
+		for i = 1, 30 do
+			args['t' .. i] = { type = 'toggle', name = 'Toggle ' .. i, order = i, size = 'wide', get = function() return true end, set = function() end }
+		end
+		return { name = 'Tall page', type = 'group', category = 'Frames', args = args }
+	end
+	st.config.global.optionsWindow = nil
+	st.Config:Close(); st.Config:Open('TallPage')
+	for _ = 1, 50 do stub.fire_script(F.body, 'OnMouseWheel', -1) end
+	local total = F.content:GetHeight()
+	eq(F.body:GetVerticalScroll(), total - 539, 'scrolled to its bottom')
+	renders = OW.GetRenderCount()
+	resize(F.grip, 100)
+	tick()
+	eq(OW.GetRenderCount(), renders, 'a resize renders nothing')
+	eq(F.body:GetVerticalScroll(), total - 639, 'the offset clamps to the new range')
+	local size = math.max(20, math.floor(639 * 639 / total))
+	eq(F.bar:GetHeight(), size, 'the bar its share of the new view')
+	eq(F.body:GetTop() - F.bar:GetTop(), 639 - size, 'at the bottom of it')
+	tall.GetConfigTable = nil
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the window hiding mid-resize ends it: the height is saved, and the renders it held off run", function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Loot')
+	local F = frames()
+	local scale = F.window:GetEffectiveScale()
+	stub.mouse_buttons.LeftButton = true
+	stub.cursor_y = 500 * scale
+	stub.fire_script(F.grip, 'OnMouseDown', 'LeftButton')
+	stub.cursor_y = 440 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 760, 'mid-resize: 60 taller')
+	eq(st.config.global.optionsWindow, nil, 'nothing saved while the mouse is held')
+	st.Config:Close() -- Esc, or /sui again, with the button still down
+	eq(st.config.global.optionsWindow and st.config.global.optionsWindow.height, 760, 'hidden: the height saved')
+	stub.cursor_y = 400 * scale
+	stub.fire_script(F.grip, 'OnUpdate', 0.016)
+	eq(F.window:GetHeight(), 760, 'the resize is over: the cursor moves nothing')
+	stub.mouse_buttons.LeftButton = nil
+	st.Config:Open('Loot')
+	eq(F.window:GetHeight(), 760, 'opened again at the saved height')
+	local renders = OW.GetRenderCount()
+	st.Config:Refresh()
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'a scheduled render runs: no resize holds it off')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a screen edge margin change while /sui is open takes its height in at once, with the scroll bar following', function()
+	theme('thick')
+	local inset = st.config.profile.misc.clamp_inset
+	local tall = st:GetModule('MarginPage', true) or st:NewModule('MarginPage')
+	function tall:GetConfigTable()
+		local args = {}
+		for i = 1, 30 do
+			args['t' .. i] = { type = 'toggle', name = 'Toggle ' .. i, order = i, size = 'wide', get = function() return true end, set = function() end }
+		end
+		return { name = 'Margin page', type = 'group', category = 'Frames', args = args }
+	end
+	-- The bar's height: its share of the view.
+	local function share(F)
+		local view = F.body:GetHeight()
+		return math.max(20, math.floor(view * view / F.content:GetHeight()))
+	end
+	st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = 5000 }
+	st.Config:Close(); st.Config:Open('MarginPage')
+	local F = frames()
+	eq(F.window:GetHeight(), 1080 - 2 * inset, 'at its most')
+
+	st.config.profile.misc.clamp_inset = inset + 50
+	st:UpdateScreenMargin()
+	eq(F.window:GetHeight(), 1080 - 2 * (inset + 50), 'a wider margin: shorter at once, no reopen')
+	eq(F.window:GetHeight(), OW.MaxHeight(), 'its new most')
+	eq(F.bar:GetHeight(), share(F), 'the bar its share of the shorter view')
+	eq(st.config.global.optionsWindow.height, 5000, 'the saved height kept')
+	for _ = 1, 100 do stub.fire_script(F.body, 'OnMouseWheel', -1) end
+	eq(F.body:GetVerticalScroll(), F.content:GetHeight() - F.body:GetHeight(), 'scrolled to its bottom')
+
+	st.config.profile.misc.clamp_inset = inset
+	st:UpdateScreenMargin()
+	eq(F.window:GetHeight(), 1080 - 2 * inset, 'back: its most again')
+	eq(F.body:GetVerticalScroll(), F.content:GetHeight() - F.body:GetHeight(), 'the offset clamped to the new range')
+	eq(F.bar:GetHeight(), share(F), 'the bar its share of the taller view')
+	eq(F.body:GetTop() - F.bar:GetTop(), F.body:GetHeight() - F.bar:GetHeight(), 'at the bottom of it')
+	tall.GetConfigTable = nil
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a saved height the screen no longer fits, or under the least', function()
+	theme('thick')
+	local inset = st.config.profile.misc.clamp_inset
+	local function open(height)
+		st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = height }
+		st.Config:Close(); st.Config:Open('Loot')
+		return frames().window
+	end
+	local w = open(5000)
+	eq(w:GetHeight(), OW.MaxHeight(), 'too tall: as tall as the screen allows')
+	eq(OW.MaxHeight(), 1080 - 2 * inset, 'the screen less the margin at its top and bottom')
+	check(w:GetTop() <= UIParent:GetHeight() - inset and w:GetBottom() >= inset, 'inside the screen edge margin')
+	eq(open(600):GetHeight(), 700, "under the least: Thick's 700")
+	eq(open('tall'):GetHeight(), 700, 'not a number: no height')
+	eq(open(751):GetHeight(), 752, 'made even')
+
+	-- A screen shorter than 700 and the margin, at SaftUI's scale for it.
+	stub.screen_height = 500
+	UIParent:SetScale(768 / 500)
+	eq(OW.MaxHeight(), 500 - 2 * inset, 'the screen less the margin')
+	eq(open(5000):GetHeight(), 700, 'the least wins')
+	eq(open(nil):GetHeight(), 700, 'none saved: the least')
+	stub.screen_height = 1080
+	UIParent:SetScale(st.scale)
+	eq(OW.WindowHeight(OW.LAYOUT.blizzard), 728, "none saved under Blizzard: its 728")
+	st.config.global.optionsWindow = { point = 'CENTER', x = 0, y = 0, height = 900 }
+	eq(OW.WindowHeight(OW.LAYOUT.blizzard), 900, 'the saved height in either look')
+	st.config.global.optionsWindow = nil
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

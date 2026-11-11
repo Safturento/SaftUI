@@ -19,13 +19,17 @@ local st = SaftUI
 	               on each client, the art it's drawn in (a name in ART), its
 	               fill (one of the theme's colors) and whether it's a 1px line.
 	  ART[name]    each piece of art: the tooltip border and the metal, the
-	               action and item buttons', the aura's, the close button's, and
-	               each control's (CONTROLS), which st.ThemeArt.Control reads.
+	               unit frame's bronze box (cut from Blizzard's unit frame art
+	               by texture coordinates, ThemeArt.Cut), the action and item
+	               buttons', the aura's, the close button's, and each
+	               control's (CONTROLS), which st.ThemeArt.Control reads;
+	               the party and raid group border is one of those, a cut
+	               drawn by ThemeArt.PaintCut.
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
-	st:ThemeAtlases can list them all (the tests check each exists on both
-	clients).
+	st:ThemeAtlases can list them all with the clients that have each (the tests
+	check each exists on those clients).
 ]]
 
 local ThemeArt = {}
@@ -35,11 +39,13 @@ st.ThemeArt = ThemeArt
 --- Building the tables ------------
 ------------------------------------
 
--- Every atlas the tables name, marked as they're built.
+-- Every atlas the tables name, marked as they're built: true for one both
+-- clients have, or the client ('forever' or 'live') for one only that client
+-- has, which only that client's art names.
 local ATLASES = {}
 
-local function Atlas(name)
-	ATLASES[name] = true
+local function Atlas(name, client)
+	ATLASES[name] = client or true
 	return name
 end
 
@@ -101,7 +107,9 @@ end
 --          the tooltip border's corners are 7px, with Blizzard's fill starting
 --          4px inside them (3); a window's background starts 2px in; the
 --          action and item rings have no layout to measure them by (3); an
---          aura has no border; a small frame is one line; and the rest draw
+--          aura has no border; a small frame is one line; a unit frame's
+--          bronze box is 2, its pieces' outer 2px being the dark outline and
+--          the rim; a party or raid member is a bare fill; and the rest draw
 --          nothing, a control placing its own content.
 --   art    the name in ART of the art it's drawn in; none draws no art.
 --   fill   the theme's color its backdrop is filled with: windowcolor for a
@@ -123,17 +131,66 @@ ThemeArt.KINDS = {
 	header = { inset = ByClient(0, 0) },
 	close = { inset = ByClient(0, 0) },
 	control = { inset = ByClient(0, 0) },
+	unitframe = { inset = ByClient(2, 2), art = 'unitframe', fill = 'backdropcolor' },
+	member = { inset = ByClient(0, 0), fill = 'backdropcolor' },
 }
 
 ------------------------------------
 --- The art ------------------------
 ------------------------------------
 
+-- MinimalScrollBar's up and down arrows (its steppers), each normal, under
+-- the mouse (hover) and pressed: the nudges' and the scroll bar's.
+local MINIMAL_ARROWS = {
+	up = {
+		normal = Atlas('minimal-scrollbar-arrow-top'),
+		hover = Atlas('minimal-scrollbar-arrow-top-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	},
+	down = {
+		normal = Atlas('minimal-scrollbar-arrow-bottom'),
+		hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+	},
+}
+
 -- A border is Blizzard's nine-slice pieces, by their names, laid out as
 -- Blizzard's nine-slice code lays them: each corner at the drawn frame's own corner,
 -- offset by its x and y; the top and bottom edges between their corners, tiled
 -- across; the side edges between theirs, tiled down. Every piece is in the
 -- art's layer.
+--
+-- A cut is a border's eight pieces cut out of larger art by texture
+-- coordinates (ThemeArt.Cut), for art Blizzard draws whole: pieces, by the
+-- same keys, each { atlas, rect }, rect being { x0, x1, y0, y1 } in the
+-- atlas's own pixels, ends exclusive; laid out by size (LayCut): each corner
+-- size by size at the drawn frame's own corner, the edges between them, size
+-- thick and stretched, every piece in the art's layer.
+
+-- Blizzard's player and target frames (Blizzard_UnitFrame), which the unit
+-- frame's box is cut from.
+local UF_PLAYER = Atlas('UI-HUD-UnitFrame-Player-PortraitOn')
+local UF_TARGET = Atlas('UI-HUD-UnitFrame-Target-PortraitOn')
+
+-- Blizzard's raid group border, which the group border is cut from.
+local GROUP_BORDER = Atlas('options_frame_child')
+
+-- Blizzard's UniqueCornersLayout with the ui-hud-minimap-button kit, as retail's
+-- minimap header draws it (Blizzard_Minimap/Mainline/Minimap.xml, BorderTop):
+-- the corners are different sizes, so each edge runs between its own two.
+local MINIMAP_BUTTON_KIT = {
+	layer = 'BACKGROUND',
+	TopLeftCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerTopLeft') },
+	TopRightCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerTopRight') },
+	BottomLeftCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerBottomLeft') },
+	BottomRightCorner = { atlas = Atlas('ui-hud-minimap-button-NineSlice-CornerBottomRight') },
+	TopEdge = { atlas = Atlas('_ui-hud-minimap-button-NineSlice-EdgeTop') },
+	BottomEdge = { atlas = Atlas('_ui-hud-minimap-button-NineSlice-EdgeBottom') },
+	LeftEdge = { atlas = Atlas('!ui-hud-minimap-button-NineSlice-EdgeLeft') },
+	RightEdge = { atlas = Atlas('!ui-hud-minimap-button-NineSlice-EdgeRight') },
+	Center = { atlas = Atlas('ui-hud-minimap-button-NineSlice-Center') },
+}
+
 ThemeArt.ART = {
 	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
 	-- bars and tooltips. Its art is white, and a frame's own border color tints
@@ -181,6 +238,81 @@ ThemeArt.ART = {
 		BottomEdge = { atlas = Atlas('_UI-Frame-Metal-EdgeBottom') },
 		LeftEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeLeft') },
 		RightEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeRight') },
+	},
+
+	-- The unit frame's bronze box, a cut, on unit frames and their bars.
+	-- Blizzard's player and target frames are each one shaped texture at a
+	-- fixed size, the portrait ring and bar wells drawn in, which can't wrap a
+	-- frame of any other size; their square ends can. The left corners and
+	-- edge are cut from the target frame's left end, the right ones from the
+	-- player frame's right end, and the top and bottom edges are a 1px column
+	-- of the player frame's top and bottom, stretched across. Each
+	-- rectangle puts the art's dark outline on a piece's outer pixel and its
+	-- rim (bronze on Forever's Camelot members, grey on retail's) on the next
+	-- one in, on every side: starting values, measured on the decoded art, to
+	-- be tuned in game. Retail's art is its own drawing, so its rectangles are
+	-- its own. A frame's own border color tints the pieces. The fill is the
+	-- drawn frame's backdrop, in the theme's Background.
+	unitframe = {
+		layer = 'BORDER',
+		size = 8,
+		pieces = ByClient({
+			TopLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 8, 16 } },
+			BottomLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 48, 56 } },
+			LeftEdge = { atlas = UF_TARGET, rect = { 2, 10, 30, 40 } },
+			TopRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 11, 19 } },
+			BottomRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 51, 59 } },
+			RightEdge = { atlas = UF_PLAYER, rect = { 187, 195, 34, 42 } },
+			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 11, 19 } },
+			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
+		}, {
+			TopLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 21, 29 } },
+			BottomLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 48, 56 } },
+			LeftEdge = { atlas = UF_TARGET, rect = { 1, 9, 30, 40 } },
+			TopRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 24, 32 } },
+			BottomRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 51, 59 } },
+			RightEdge = { atlas = UF_PLAYER, rect = { 186, 194, 34, 42 } },
+			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 24, 32 } },
+			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
+		}),
+	},
+
+	-- The party and raid group border, a cut, around each group header's
+	-- members (SaftUI-Unitframes/groups.lua, UF:GroupBorder), read as a control
+	-- and drawn with ThemeArt.PaintCut on a frame of SaftUI's that is only
+	-- the border. Blizzard's raid frames draw it around each group with Edit
+	-- Mode's Display Border on (CompactRaidGroupTemplate's borderFrame), the
+	-- whole atlas stretched; cut at 6px it stays crisp at any size: a 2-3px
+	-- rim with rounded corners (bronze on Forever's Camelot member, which has
+	-- a faint dark middle; retail's middle is clear). No middle is drawn: the
+	-- members draw over the pieces' inner part. offsets put the border from
+	-- the group's top left (left x, top y) to its bottom right (right x, bottom
+	-- y), as CompactRaidGroup_UpdateBorder puts it around its first and last
+	-- member. The same rectangles on both clients.
+	groupborder = {
+		layer = 'BORDER',
+		size = 6,
+		offsets = { -2, 2, 2, -3 },
+		pieces = {
+			TopLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 0, 6 } },
+			TopRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 0, 6 } },
+			BottomLeftCorner = { atlas = GROUP_BORDER, rect = { 0, 6, 20, 26 } },
+			BottomRightCorner = { atlas = GROUP_BORDER, rect = { 22, 28, 20, 26 } },
+			TopEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 0, 6 } },
+			BottomEdge = { atlas = GROUP_BORDER, rect = { 6, 22, 20, 26 } },
+			LeftEdge = { atlas = GROUP_BORDER, rect = { 0, 6, 6, 20 } },
+			RightEdge = { atlas = GROUP_BORDER, rect = { 22, 28, 6, 20 } },
+		},
+	},
+
+	-- The unit frames' bar fills (SaftUI-Unitframes/updaters.lua,
+	-- UF.BlizzardFill), by bar: the raid frames' health and resource bars'
+	-- fill art and the background behind it, and how each tiles, as
+	-- CompactUnitFrame.xml's wrap modes tile them. The same atlases on both
+	-- clients. The fills are neutral grey, so a bar's color tints them.
+	unitbars = {
+		health = { fill = Atlas('RaidFrame-Hp-Fill'), bg = Atlas('raidframe-hp-bg-white'), tileH = true, tileV = true },
+		power = { fill = Atlas('_RaidFrame-Resource-Fill'), bg = Atlas('_RaidFrame-Resource-Background'), tileH = true, tileV = false },
 	},
 
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
@@ -289,29 +421,59 @@ ThemeArt.ART = {
 		},
 	},
 
-	-- The dropdown (WowStyle1DropdownTemplate): the holder behind its text, the
-	-- arrow in each state, and its list's background at listAlpha
-	-- (MenuStyle1Mixin).
+	-- The Settings dropdown (WowStyle2DropdownTemplate): one face in each
+	-- state, outset round the button (its glow; compactOutset on a dropdown
+	-- with no room for 7), the arrow hanging under it while the mouse is over,
+	-- its text inset from the face's sides and pressedOffset while it's held
+	-- down. Its list (MenuStyle2Mixin): c-bg, its border and shadow, at
+	-- listOutsets round the list (TOPLEFT x, y, BOTTOMRIGHT x, y), the rows
+	-- listInsets in from it (left, top, right, bottom), a row under the mouse
+	-- on rowHover. Its steppers (DropdownWithSteppersTemplate's, on
+	-- WowStyle2IconButtonTemplate's art): each width wide, back backGap left of
+	-- the face and next nextGap right of it, a background in each state and
+	-- the back or next icon (its disabled one while disabled), icon square.
 	dropdown = {
-		text = Atlas('common-dropdown-textholder'),
-		arrow = {
-			normal = Atlas('common-dropdown-a-button'),
-			hover = Atlas('common-dropdown-a-button-hover'),
-			pressed = Atlas('common-dropdown-a-button-pressed'),
-			open = Atlas('common-dropdown-a-button-open'),
-			disabled = Atlas('common-dropdown-a-button-disabled'),
+		face = {
+			normal = Atlas('common-dropdown-c-button'),
+			hover = Atlas('common-dropdown-c-button-hover-1'),
+			pressed = Atlas('common-dropdown-c-button-pressed-1'),
+			pressedhover = Atlas('common-dropdown-c-button-pressedhover-1'),
+			open = Atlas('common-dropdown-c-button-open'),
+			disabled = Atlas('common-dropdown-c-button-disabled'),
 		},
-		list = Atlas('common-dropdown-bg'),
-		listAlpha = 0.925,
+		hoverArrow = Atlas('common-dropdown-c-button-hover-arrow'),
+		outset = 7, compactOutset = 4,
+		textInset = 13, pressedOffset = { 2, -1 },
+		list = Atlas('common-dropdown-c-bg'),
+		listOutsets = { -17, 12, 17, -22 },
+		listInsets = { 3, 6, 3, 7 },
+		rowHover = Atlas('common-dropdown-customize-mouseover'),
+		stepper = {
+			width = 26, backGap = 5, nextGap = 4,
+			background = {
+				normal = Atlas('common-dropdown-c-button'),
+				hover = Atlas('common-dropdown-c-button-hover-2'),
+				pressed = Atlas('common-dropdown-c-button-pressed-2'),
+				pressedhover = Atlas('common-dropdown-c-button-pressedhover-2'),
+				disabled = Atlas('common-dropdown-c-button-disabled'),
+			},
+			back = Atlas('common-dropdown-icon-back'), backDisabled = Atlas('common-dropdown-icon-back-disabled'),
+			next = Atlas('common-dropdown-icon-next'), nextDisabled = Atlas('common-dropdown-icon-next-disabled'),
+			icon = 17,
+		},
 	},
 
-	-- The slider (MinimalSliderTemplate): the track's ends and its middle,
-	-- tiled across, and the thumb.
+	-- The slider (MinimalSliderWithSteppersTemplate): the track's ends and its
+	-- middle, tiled across, the thumb, and the end arrows (back and forward),
+	-- each arrowGap from the track.
 	slider = {
 		left = Atlas('Minimal_SliderBar_Left'),
 		middle = Atlas('_Minimal_SliderBar_Middle'),
 		right = Atlas('Minimal_SliderBar_Right'),
 		thumb = Atlas('Minimal_SliderBar_Button'),
+		back = Atlas('Minimal_SliderBar_Button_Left'),
+		forward = Atlas('Minimal_SliderBar_Button_Right'),
+		arrowGap = 4,
 	},
 
 	-- A text box (InputBoxTemplate).
@@ -366,17 +528,42 @@ ThemeArt.ART = {
 	},
 
 	-- The up and down nudges, as MinimalScrollBar's steppers.
-	nudge = {
-		up = {
-			normal = Atlas('minimal-scrollbar-arrow-top'),
-			hover = Atlas('minimal-scrollbar-arrow-top-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	nudge = { up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down },
+
+	-- The scroll bar (MinimalScrollBar): the track's top and bottom ends and
+	-- its middle, tiled down; the thumb's (its small thumb's) top, middle and
+	-- bottom in each state, under the mouse (over) and held (down); and the
+	-- up and down arrows, the nudges' own. The track is width wide; a wide
+	-- bar's arrows are arrow (width, height) and the track starts inset in
+	-- from the column's ends, a narrow bar's (the sidebar's, a dialog's, a
+	-- list's) narrowArrow and narrowInset. The thumb is never shorter than
+	-- minThumb (MinimalScrollBar's minThumbExtent).
+	scrollbar = {
+		track = {
+			top = Atlas('minimal-scrollbar-track-top'),
+			middle = Atlas('!minimal-scrollbar-track-middle'),
+			bottom = Atlas('minimal-scrollbar-track-bottom'),
 		},
-		down = {
-			normal = Atlas('minimal-scrollbar-arrow-bottom'),
-			hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+		thumb = {
+			normal = {
+				top = Atlas('minimal-scrollbar-small-thumb-top'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom'),
+			},
+			over = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-over'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-over'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-over'),
+			},
+			down = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-down'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-down'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-down'),
+			},
 		},
+		up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down,
+		width = 8, arrow = { 17, 11 }, narrowArrow = { 8, 5 },
+		inset = 19, narrowInset = 9, minThumb = 23,
 	},
 
 	-- The Settings panel's tabs (MinimalTabTemplate): the picked one and the
@@ -398,6 +585,39 @@ ThemeArt.ART = {
 	optionslist = {
 		picked = Atlas('Options_List_Active'),
 		hover = Atlas('Options_List_Hover'),
+		-- A page's name: gold, white when it's open or under the mouse
+		-- (the Settings panel's NORMAL_FONT_COLOR and HIGHLIGHT_FONT_COLOR).
+		text = { normal = { 1, 0.82, 0 }, picked = { 1, 1, 1 } },
+	},
+
+	-- The Settings panel's inner frame (SettingsFrameTemplate): one bitmap,
+	-- width wide at its own size, with its dark edge, its bronze rim and the
+	-- line between the category list and the settings drawn in, at divider
+	-- across. /sui stretches it over its sidebar and main column and puts the
+	-- sidebar's right edge on that line (OptionsWindow.SidebarWidth).
+	optionswindow = {
+		inner = Atlas('Options_InnerFrame'),
+		width = 886,
+		divider = 199,
+		-- The category list's group banners, in turn (the Settings panel's
+		-- SettingsCategoryListHeaderTemplate), the line under the tab rows,
+		-- and a group header's height and label place.
+		banners = { Atlas('Options_CategoryHeader_1'), Atlas('Options_CategoryHeader_2'), Atlas('Options_CategoryHeader_3') },
+		rule = Atlas('Options_HorizontalDivider'),
+		groupHeight = 30,
+		groupLabel = { x = 20, y = -1 },
+	},
+
+	-- /sui's resize grip, as Blizzard's (PanelResizeButtonTemplate,
+	-- Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml, the same on both
+	-- clients): size square, its normal, highlight and pushed files, the
+	-- highlight additive (a HighlightTexture's default).
+	resizegrip = {
+		normal = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up]],
+		highlight = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight]],
+		pushed = [[Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down]],
+		highlightBlend = 'ADD',
+		size = 16,
 	},
 
 	-- Blizzard's micro buttons' own art, given back by name: the pushed
@@ -410,6 +630,26 @@ ThemeArt.ART = {
 		highlight = 'UI-HUD-MicroMenu-%s-Mouseover',
 		highlightBlend = 'BLEND',
 	},
+
+	-- The micro menu bar's art under Blizzard (Control('microbar')). Forever
+	-- draws Camelot's: the action bar's frame as the strip under the micro
+	-- buttons, with its icon background inside it, and each box (the header,
+	-- the addon indicator square, the tracking button) as one atlas. Retail has
+	-- no strip, and draws each box as the ui-hud-minimap-button kit, as its
+	-- minimap header does. pad and backgroundInset are how far the strip and its
+	-- background reach outside the buttons and in from the strip.
+	microbar = ByClient({
+		strip = { frame = Atlas('UI-HUD-ActionBar-Frame'), background = Atlas('UI-HUD-ActionBar-IconFrame-Background'), pad = 4, backgroundInset = 2 },
+		header = { atlas = Atlas('ui-hud-minimap-header-button', 'forever'), height = 23 },
+		square = { atlas = Atlas('ui-hud-minimap-addon-indicator', 'forever'), width = 23, height = 22 },
+		-- icon: the art has the item's icon drawn in.
+		tracking = { atlas = Atlas('ui-hud-minimap-tracking-button', 'forever'), width = 23, height = 23, icon = true },
+	}, {
+		strip = false,
+		header = { kit = MINIMAP_BUTTON_KIT },
+		square = { kit = MINIMAP_BUTTON_KIT },
+		tracking = { kit = MINIMAP_BUTTON_KIT },
+	}),
 
 	-- Edit Mode's selection (EditModeSystemSelectionLayout), drawn on a mover's
 	-- outline: the highlight kit on every mover, the selected kit on the one
@@ -455,8 +695,9 @@ ThemeArt.ART = {
 -- The names in ART that are controls (st.ThemeArt.Control).
 local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
-	input = true, search = true, swatch = true, binding = true, nudge = true,
-	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
+	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
+	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
+	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
 }
 
 ------------------------------------
@@ -494,6 +735,19 @@ end
 function ThemeArt.MetalAbove()
 	local metal = ThemeArt.ART.metal
 	return math.max(ForClient(metal.TopLeftCorner.y), ForClient(metal.TopRightCorner.y))
+end
+
+-- How far the metal's art reaches past its drawn frame on this client: left,
+-- right, top and bottom, each as far as the corners on that side sit out (the
+-- top is MetalAbove). What keeps a window on screen keeps this on it too.
+function ThemeArt.MetalReach()
+	local metal = ThemeArt.ART.metal
+	local function x(key) return ForClient(metal[key].x) end
+	local function y(key) return ForClient(metal[key].y) end
+	return math.max(-x('TopLeftCorner'), -x('BottomLeftCorner')),
+		math.max(x('TopRightCorner'), x('BottomRightCorner')),
+		ThemeArt.MetalAbove(),
+		math.max(-y('BottomLeftCorner'), -y('BottomRightCorner'))
 end
 
 -- How far a kind's art reaches down from the drawn frame's top under
@@ -567,12 +821,13 @@ function ThemeArt.ClassPower(powerType, index, class, charged)
 	return art.empty, charged and art.charged or art.filled
 end
 
--- Every atlas the Blizzard theme's tables name, as { [name] = true }: the
--- controls' too, a mover's for both kits and holy power's for each rune, but
--- no file. The tests check each exists on both clients.
+-- Every atlas the Blizzard theme's tables name, as { [name] = true | 'forever'
+-- | 'live' }: true for one both clients have, the client for one only that
+-- client has. The controls' too, a mover's for both kits and holy power's for
+-- each rune, but no file. The tests check each exists on the clients it's for.
 function st:ThemeAtlases()
 	local names = {}
-	for name in pairs(ATLASES) do names[name] = true end
+	for name, clients in pairs(ATLASES) do names[name] = clients end
 	return names
 end
 
@@ -627,8 +882,8 @@ local function Art(frame)
 end
 
 -- set's piece by key: a texture on parent, made the first time, now in layer
--- at sublevel, showing name (a file, or else an atlas at its own size), white
--- and shown.
+-- at sublevel, showing name (a file, or else an atlas at its own size; with
+-- no name, what it shows is its caller's: a cut's piece), white and shown.
 local function Piece(set, parent, key, name, layer, sublevel)
 	local piece = set[key]
 	if not piece then
@@ -636,9 +891,9 @@ local function Piece(set, parent, key, name, layer, sublevel)
 		set[key] = piece
 	end
 	piece:SetDrawLayer(layer, sublevel or 0)
-	if name:find([[Interface\]], 1, true) == 1 then
+	if name and name:find([[Interface\]], 1, true) == 1 then
 		piece:SetTexture(name)
-	else
+	elseif name then
 		piece:SetAtlas(name, true)
 	end
 	piece:SetVertexColor(1, 1, 1, 1)
@@ -670,15 +925,16 @@ local function Holder(frame)
 	return holder
 end
 
--- A border (the tooltip's or the metal) on frame: its corners, then its edges
--- between them, in its layer. Pixel snapping is off where the border says so,
+-- A border (the tooltip's, the metal's or a kit) on frame, its textures kept in
+-- pieces by key: its corners, then its edges between them, then its Center
+-- when it has one, in its layer. Pixel snapping is off where the border says so,
 -- with the texel snapping bias at 0, as Blizzard's nine-slice code turns
 -- sharpening off; for any other border it's on, the game's default, so a piece
 -- once drawn as the metal doesn't keep it off. The bias stays: Blizzard's code
 -- never sets it back, and nothing gives its default.
-local function LayBorder(art, frame, border)
+local function LayBorder(pieces, frame, border)
 	local function Lay(key)
-		local piece = Piece(art.pieces, frame, key, border[key].atlas, border.layer)
+		local piece = Piece(pieces, frame, key, border[key].atlas, border.layer)
 		piece:ClearAllPoints()
 		if border.snap == false then piece:SetTexelSnappingBias(0) end
 		piece:SetSnapToPixelGrid(border.snap ~= false)
@@ -692,10 +948,98 @@ local function LayBorder(art, frame, border)
 	end
 	for key, edge in pairs(EDGES) do
 		local piece = Lay(key)
-		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
-		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		piece:SetPoint(edge.point, pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, pieces[edge.last], edge.point)
 		piece:SetHorizTile(edge.across)
 		piece:SetVertTile(not edge.across)
+	end
+	if border.Center then
+		-- Blizzard's NineSlice default: from the top left corner's inner point to
+		-- the bottom right's.
+		local piece = Lay('Center')
+		piece:SetPoint('TOPLEFT', pieces.TopLeftCorner, 'BOTTOMRIGHT')
+		piece:SetPoint('BOTTOMRIGHT', pieces.BottomRightCorner, 'TOPLEFT')
+		piece:SetHorizTile(false)
+		piece:SetVertTile(false)
+	end
+end
+
+-- Lays border (a border table as Control gives it) on frame: the tooltip
+-- border's way, and its Center too when it has one. The textures are frame's,
+-- kept by key in the caller's pieces (not in Get's art, which a redraw clears).
+-- Shown and white; HidePieces hides them.
+function ThemeArt.LayBorder(pieces, frame, border)
+	LayBorder(pieces, frame, border)
+end
+
+-- Hides every texture in pieces (what LayBorder laid).
+function ThemeArt.HidePieces(pieces)
+	for _, piece in pairs(pieces) do piece:Hide() end
+end
+
+-- Whether a piece of art is a cut (LayCut) rather than a border.
+local function IsCut(art)
+	return art.pieces ~= nil and art.size ~= nil
+end
+
+-- One coordinate of a cut: n pixels into an atlas size pixels long, whose
+-- member runs from from to to in its file.
+local function CutCoord(from, to, n, size)
+	return from + (to - from) * n / size
+end
+
+-- Cuts rect, { x0, x1, y0, y1 } in atlas's own pixels with exclusive ends,
+-- out of atlas onto texture and shows it: the atlas's file, at the texture
+-- coordinates of rect within the atlas's member there, both from
+-- C_Texture.GetAtlasInfo (its file and its left, right, top and bottom
+-- coordinates; on Forever the Camelot member's). Never from a size read back
+-- from a frame. Where the texture sits and how big it is are its caller's.
+-- Returns true; or false, hiding the texture, when the atlas gives no file
+-- (AtlasInfo's file can be nil), no texture coordinates or size to cut by,
+-- or this client hasn't got it.
+function ThemeArt.Cut(texture, atlas, rect)
+	local info = C_Texture.GetAtlasInfo(atlas)
+	local left, right = info and info.leftTexCoord, info and info.rightTexCoord
+	local top, bottom = info and info.topTexCoord, info and info.bottomTexCoord
+	if not (info and info.file and left and right and top and bottom and info.width and info.height) then
+		texture:Hide()
+		return false
+	end
+	texture:SetTexture(info.file)
+	texture:SetTexCoord(
+		CutCoord(left, right, rect[1], info.width), CutCoord(left, right, rect[2], info.width),
+		CutCoord(top, bottom, rect[3], info.height), CutCoord(top, bottom, rect[4], info.height))
+	texture:Show()
+	return true
+end
+
+-- A cut (the unit frame's bronze box, the group border) on frame: each piece
+-- cut from its atlas (ThemeArt.Cut, which hides one it can't cut), the
+-- corners size by size at the drawn frame's own corners, the edges between
+-- them, size thick and stretched, every piece in the cut's layer. Pixel
+-- snapping is on, the game's default, so a piece once drawn as the metal
+-- doesn't keep it off.
+local function LayCut(art, frame, cut)
+	local size = cut.size
+	local function Lay(key)
+		local piece = Piece(art.pieces, frame, key, nil, cut.layer)
+		piece:ClearAllPoints()
+		piece:SetSnapToPixelGrid(true)
+		piece:SetHorizTile(false)
+		piece:SetVertTile(false)
+		ThemeArt.Cut(piece, cut.pieces[key].atlas, cut.pieces[key].rect)
+		return piece
+	end
+	for key, point in pairs(CORNERS) do
+		local piece = Lay(key)
+		piece:SetPoint(point, frame, point, 0, 0)
+		piece:SetSize(size, size)
+	end
+	for key, edge in pairs(EDGES) do
+		local piece = Lay(key)
+		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		if edge.across then piece:SetHeight(size) else piece:SetWidth(size) end
 	end
 end
 
@@ -817,12 +1161,13 @@ function ThemeArt.Color(frame, look, kind)
 end
 
 -- Puts a frame's own border color on a Blizzard look drawn on frame as kind
--- (st:SetBorderColor): a border's pieces are tinted; a button's or an aura's
--- own-color piece (its equipped or quality border, white art) is shown in the
--- color, over the icon's edge, on host as the ring is (Paint); a small frame's
--- line takes it. No color puts the theme's back: white pieces, the own-color
--- piece hidden, the line in the Border. A kind that draws nothing (a control,
--- a strip) is left alone. Moves nothing.
+-- (st:SetBorderColor): a border's or a cut's pieces are tinted; a button's or
+-- an aura's own-color piece (its equipped or quality border, white art) is
+-- shown in the color, over the icon's edge, on host as the ring is (Paint); a
+-- small frame's line takes it. No color puts the theme's back: white pieces,
+-- the own-color piece hidden, the line in the Border. A kind that draws
+-- nothing (a control, a strip) or only a fill (a member) is left alone. Moves
+-- nothing.
 function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	local blizzard = Kind(kind)
 	if not Draws(blizzard) then return end
@@ -842,7 +1187,7 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	-- every bag slot update.
 	local style = blizzard.art and ThemeArt.ART[blizzard.art]
 	if not style then return end
-	if style.TopLeftCorner then
+	if style.TopLeftCorner or IsCut(style) then
 		for _, piece in pairs(art.pieces) do
 			if r then piece:SetVertexColor(r, g, b, a) else piece:SetVertexColor(1, 1, 1, 1) end
 		end
@@ -856,6 +1201,17 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 		own:SetAllPoints(frame)
 		own:SetVertexColor(r, g, b, a)
 	end
+end
+
+-- Lays and shows the cut ART[name] (the group border) on frame, a frame of
+-- SaftUI's that is only that art, not a backdrop: its pieces at frame's
+-- corners and along its edges (LayCut), white, kept as frame's art
+-- (ThemeArt.Get). No fill, no kind and no colors: ThemeArt.Clear hides them.
+-- Moves only the pieces.
+function ThemeArt.PaintCut(frame, name)
+	local cut = ThemeArt.ART[name]
+	if not (cut and IsCut(cut)) then error(tostring(name) .. ' is not a cut', 2) end
+	LayCut(Art(frame), frame, ForClient(cut))
 end
 
 -- Draws a Blizzard look (st:ResolveTheme) on frame as kind: a backdrop that
@@ -885,7 +1241,9 @@ function ThemeArt.Paint(frame, look, kind, host)
 
 	local art = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
 	if art and art.TopLeftCorner then
-		LayBorder(Art(frame), frame, art)
+		LayBorder(Art(frame).pieces, frame, art)
+	elseif art and IsCut(art) then
+		LayCut(Art(frame), frame, art)
 	elseif art and art.ring then
 		LayButton(Art(frame), frame, art, host)
 	end

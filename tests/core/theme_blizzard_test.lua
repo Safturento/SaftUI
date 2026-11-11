@@ -9,7 +9,8 @@
 --   - the Blizzard theme's default colors, and no default naming Blizzard;
 --   - st:IsBlizzardLook, st.ThemeArt.ClassPower, and every atlas the theme
 --     names existing on both clients (C_Texture.GetAtlasInfo answers from
---     tests/wow/atlases.lua, the clients' atlas tables);
+--     tests/wow/atlases.lua, the clients' atlas tables, with the file and
+--     coordinates of the atlases SaftUI cuts);
 --   - a saved theme this version doesn't know still reading as Thick.
 --
 -- Real: theme.lua and themeart.lua, with Core's helpers (load_core_helpers)
@@ -23,6 +24,7 @@ local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offse
 local BLIZZARD_INSETS = {
 	panel = 3, window = 2, bar = 3, action = 3, slot = 3, aura = 0,
 	tooltip = 3, header = 0, close = 0, control = 0, small = 1,
+	unitframe = 2, member = 0,
 }
 
 local CLIENTS = { 'forever', 'retail' }
@@ -93,9 +95,9 @@ test("each kind's inset under Blizzard, on Forever and on retail", function()
 		local count = 0
 		for kind in pairs(st.THEME_KINDS) do
 			count = count + 1
-			check(BLIZZARD_INSETS[kind] ~= nil, client .. ': ' .. kind .. ' is one of the eleven kinds')
+			check(BLIZZARD_INSETS[kind] ~= nil, client .. ': ' .. kind .. ' is one of the thirteen kinds')
 		end
-		eq(count, 11, client .. ': eleven kinds')
+		eq(count, 13, client .. ': thirteen kinds')
 		for kind, want in pairs(BLIZZARD_INSETS) do
 			eq(st:ThemeInset('blizzard', 'theme', kind), want, client .. ': ' .. kind)
 			eq(st.ThemeArt.Inset(kind), want, client .. ': ThemeArt.Inset ' .. kind)
@@ -226,19 +228,22 @@ test('no default names Blizzard', function()
 	eq(table.concat(found, ', '), '', "no default's value is 'blizzard'")
 end)
 
-test('every atlas the theme names exists on both clients', function()
+test('every atlas the theme names exists on the clients it is for', function()
 	for _, client in ipairs(CLIENTS) do
 		local st = T.client(client)
-		local names = st:ThemeAtlases()
+		local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
 		local count, missing, odd = 0, {}, {}
 		for name, value in pairs(names) do
 			count = count + 1
-			if value ~= true then odd[#odd + 1] = name .. ' is not true' end
+			if value ~= true and value ~= 'forever' and value ~= 'live' then odd[#odd + 1] = name .. ' is marked ' .. tostring(value) end
 			if name:find('\\', 1, true) then odd[#odd + 1] = name .. ' is a file' end
 			if name:find('%', 1, true) then odd[#odd + 1] = name .. ' is a format' end
-			if not C_Texture.GetAtlasInfo(name) then missing[#missing + 1] = name end
+			local here = value == true or value == mine
+			if here and not C_Texture.GetAtlasInfo(name) then missing[#missing + 1] = name end
+			if not here and C_Texture.GetAtlasInfo(name) then odd[#odd + 1] = name .. " is marked one client's, but " .. client .. ' has it' end
 		end
 		table.sort(missing)
+		table.sort(odd)
 		eq(table.concat(missing, ', '), '', client .. ': every atlas exists')
 		eq(table.concat(odd, ', '), '', client .. ': names only, of atlases')
 		check(count >= 100, client .. ': at least 100 names, got ' .. count)
@@ -249,6 +254,40 @@ test('every atlas the theme names exists on both clients', function()
 			'checkbox-minimal', 'RedButton-Exit-Disabled', '!UI-Frame-Metal-EdgeRight',
 		}) do
 			check(names[name], client .. ': names ' .. name)
+		end
+		eq(names['ui-hud-minimap-header-button'], 'forever', "Forever's Camelot chrome is Forever's only")
+		eq(names['ui-hud-minimap-button-NineSlice-Center'], true, 'the minimap button kit is on both')
+	end
+end)
+
+test("a client's micro bar art names only atlases that client has", function()
+	for _, client in ipairs(CLIENTS) do
+		local st = T.client(client)
+		local mine, names = st.ThemeArt.Client(), st:ThemeAtlases()
+		local art = st.ThemeArt.Control('microbar')
+		local bad = {}
+		local function walk(t, path)
+			for key, value in pairs(t) do
+				local here = path .. '.' .. tostring(key)
+				if type(value) == 'string' and names[value] ~= nil then
+					if names[value] ~= true and names[value] ~= mine then bad[#bad + 1] = here .. ' names ' .. value end
+				elseif type(value) == 'table' then
+					walk(value, here)
+				end
+			end
+		end
+		walk(art, 'microbar')
+		eq(table.concat(bad, ', '), '', client .. ": only this client's atlases")
+		if client == 'forever' then
+			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
+				check(art[item].atlas, client .. ': ' .. item .. ' has an atlas')
+			end
+			check(art.strip.frame and art.strip.background, client .. ': the strip has its two')
+		else
+			eq(art.strip, false, 'retail has no strip')
+			for _, item in ipairs({ 'header', 'square', 'tracking' }) do
+				check(art[item].kit, client .. ': ' .. item .. ' has a kit')
+			end
 		end
 	end
 end)
@@ -263,11 +302,34 @@ test("the atlas stub answers each client's table, ignoring case", function()
 	check(info ~= nil, "a name in another case (the atlas table's own)")
 	eq(C_Texture.GetAtlasInfo('no-such-atlas'), nil, 'an unknown name')
 
+	-- An atlas SaftUI cuts gives its file and its member's place in it, in
+	-- the file's 1024 by 512 pixels here; the rest give neither.
+	local function place(i)
+		return text(i.leftTexCoord * 1024, i.rightTexCoord * 1024, i.topTexCoord * 512, i.bottomTexCoord * 512)
+	end
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Player-PortraitOn')
+	eq(info and info.file, 8036204, "Forever's player frame: the Camelot member's file")
+	eq(info and place(info), '605.00,803.00,1.00,72.00', 'and its place in it')
+	eq(info and text(info.width, info.height), '198.00,71.00', 'at its size')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Target-PortraitOn')
+	eq(info and place(info), '201.00,395.00,87.00,155.00', "Forever's target frame")
+	eq(info and text(info.width, info.height), '194.00,68.00', 'at its size')
+	info = C_Texture.GetAtlasInfo('UI-Frame-Metal-CornerTopLeft')
+	eq(info.file, nil, 'an atlas SaftUI does not cut: no file')
+	eq(info.leftTexCoord, nil, 'nor coordinates')
+
 	st = T.client('retail')
 	info = C_Texture.GetAtlasInfo('UI-Frame-Metal-CornerTopLeft')
 	eq(info and text(info.width, info.height), '75.00,75.00', "retail's metal corner")
 	info = C_Texture.GetAtlasInfo('!Tooltip-NineSlice-EdgeLeft')
 	check(info and info.tilesVertically and not info.tilesHorizontally, 'a side edge tiles down')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Player-PortraitOn')
+	eq(info and info.file, 4631591, "retail's player frame: its file")
+	eq(info and place(info), '1.00,199.00,87.00,158.00', 'and its place in it')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Target-PortraitOn')
+	eq(info and info.file, 4631591, "retail's target frame: the same file")
+	eq(info and place(info), '1.00,193.00,229.00,296.00', 'its place in it')
+	eq(info and text(info.width, info.height), '192.00,67.00', 'at its size')
 end)
 
 -- A profile a later version saved can name a theme this one doesn't have. It

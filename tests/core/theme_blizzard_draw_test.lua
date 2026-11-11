@@ -5,6 +5,11 @@
 --     its title bar above the window), the action and item buttons' rings over
 --     the icon's edge with their slot art behind it, a bare aura, small as one
 --     line in Border, and header and control clear;
+--   - the unit frame kinds: unitframe and member drawn as bar under Thick and
+--     Thin; under Blizzard unitframe the bronze box, eight pieces cut by
+--     texture coordinates from the player and target art on each client
+--     (st.ThemeArt.Cut), hidden where the atlas gives no file, and tinted by
+--     a frame's own border color; member a bare fill;
 --   - the fill in the theme's Background (Window background for a window) at
 --     the Opacity, no edge line and no Thick lines;
 --   - switches between Thick, Blizzard and Thin, a recolor under Blizzard, and
@@ -196,6 +201,21 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 	eq(inset(b), 3, "the fill sits the tooltip's inset in")
 	eq(b.backdropInfo and b.backdropInfo.edgeFile, nil, 'no edge line')
 	check(not outerShown(b), "Thick's lines are hidden")
+end)
+
+test("ThemeArt.LayBorder lays a kit with its Center on a frame, in the caller's own table", function()
+	local st = blizzard('retail')
+	local owner, pieces = frame(st), {}
+	local function count(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end
+	local function size_of(r) return text(r:GetWidth(), r:GetHeight()):gsub('%.00', ''):gsub(',', 'x') end
+	st.ThemeArt.LayBorder(pieces, owner, st.ThemeArt.Control('microbar').header.kit)
+	eq(count(pieces), 9)
+	eq(pieces.TopLeftCorner:GetAtlas(), 'ui-hud-minimap-button-NineSlice-CornerTopLeft'); eq(size_of(pieces.TopLeftCorner), '6x6')
+	eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '0,0', 'at the corner')
+	eq(T.around(pieces.Center, owner), '6,-6,-7,7', 'between the corners')
+	check(pieces.TopEdge:GetHorizTile() and pieces.LeftEdge:GetVertTile(), 'the edges tiled')
+	eq(pieces.Center:GetParent(), owner); eq(st.ThemeArt.Get(owner), nil, "kept in the caller's table")
+	st.ThemeArt.HidePieces(pieces); check(not pieces.Center:IsShown())
 end)
 
 test('bars and panels wear the tooltip border, a window the metal', function()
@@ -986,6 +1006,225 @@ test('SetBorderColor leaves a control alone under Blizzard', function()
 		check(bare(f.backdrop), kind .. ' draws nothing, with a color')
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ the unit frame kinds
+
+local CLIENTS = { 'forever', 'retail' }
+
+-- The Background (dark grey) at the profile's Opacity: the fill of every kind
+-- but a window.
+local backdropcolor = '0.12,0.12,0.13,0.90'
+
+-- A texture's coordinates in its file, 'left,right,top,bottom', to 6 places.
+local function coords(texture)
+	local left, top, _, bottom, right = texture:GetTexCoord()
+	return ('%.6f,%.6f,%.6f,%.6f'):format(left, right, top, bottom)
+end
+
+-- A rectangle of a w by h file, in its pixels, as coords gives it.
+local function px(l, r, t, b, w, h)
+	return ('%.6f,%.6f,%.6f,%.6f'):format(l / w, r / w, t / h, b / h)
+end
+
+-- A region's size as 'WxH', in whole pixels.
+local function size_of(region)
+	local w, h = region:GetSize()
+	return ('%dx%d'):format(math.floor(w + 0.5), math.floor(h + 0.5))
+end
+
+-- The bronze box's eight pieces as T.art lists them, each cut from file.
+local function box(file)
+	local keys = {
+		'BottomEdge', 'BottomLeftCorner', 'BottomRightCorner', 'LeftEdge',
+		'RightEdge', 'TopEdge', 'TopLeftCorner', 'TopRightCorner',
+	}
+	for i, key in ipairs(keys) do keys[i] = key .. '=' .. file end
+	return table.concat(keys, ',')
+end
+
+test('unitframe and member draw as bar under Thick and Thin', function()
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		local st = T.client('forever')
+		st.config.profile.theme.name = name
+		local drawn = {}
+		for _, kind in ipairs({ 'bar', 'unitframe', 'member' }) do
+			local f = frame(st)
+			st:SetBackdrop(f, 'theme', 'theme', kind)
+			drawn[kind] = f.backdrop
+		end
+		local bar = drawn.bar
+		eq(outerShown(bar), name == 'thick', name .. ": a bar's outer lines only under Thick")
+		for _, kind in ipairs({ 'unitframe', 'member' }) do
+			local b, where = drawn[kind], name .. ' ' .. kind
+			eq(fill(b), fill(bar), where .. ": the bar's fill")
+			eq(edge(b), edge(bar), where .. ': its border')
+			eq(inset(b), inset(bar), where .. ': its inset')
+			eq(offset(b, 'TOPLEFT'), offset(bar, 'TOPLEFT'), where .. ': as far outside the frame')
+			eq(offset(b, 'BOTTOMRIGHT'), offset(bar, 'BOTTOMRIGHT'), where .. ': on every side')
+			eq(outerShown(b), outerShown(bar), where .. ": Thick's outer lines as a bar has them")
+			eq(T.art(b) .. T.over(b), '', where .. ': no Blizzard art')
+		end
+	end
+end)
+
+test('under Blizzard unitframe is the bronze box: eight pieces cut from the player and target art, on each client', function()
+	for _, client in ipairs(CLIENTS) do
+		local st = T.client(client); st.config.profile.theme.name = 'blizzard'
+		local owner = frame(st); st:SetBackdrop(owner, 'theme', 'theme', 'unitframe')
+		local pieces = st.ThemeArt.Get(owner.backdrop).pieces
+		local forever = client == 'forever'
+		eq(pieces.TopLeftCorner:GetTexture(), forever and 8036204 or 4631591)
+		eq(coords(pieces.TopLeftCorner), forever and px(203, 211, 95, 103, 1024, 512) or px(2, 10, 250, 258, 1024, 512))
+		eq(coords(pieces.BottomRightCorner), forever and px(792, 800, 52, 60, 1024, 512) or px(187, 195, 138, 146, 1024, 512))
+		eq(size_of(pieces.TopLeftCorner), '8x8')
+		eq(T.around(pieces.TopLeftCorner, owner):match('^%-?%d+,%-?%d+'), '-2,2', 'its corner 2 outside the frame')
+		eq(T.around(pieces.TopEdge, owner):match('^%-?%d+,%-?%d+'), '6,2', 'the top edge from the corner')
+		eq(T.around(pieces.BottomRightCorner, owner):match('%-?%d+,%-?%d+$'), '2,-2')
+		check(not pieces.TopEdge:GetHorizTile(), 'stretched, not tiled')
+		eq(pieces.LeftEdge:GetDrawLayer(), 'BORDER')
+		eq(T.inset(owner.backdrop), 2); eq(T.fill(owner.backdrop), backdropcolor)
+
+		-- Every piece, in file pixels: the member's left or top plus the
+		-- piece's rectangle (Forever's target member starts at 201, 87, its
+		-- player at 605, 1; retail's at 1, 229 and 1, 87). Both files are
+		-- 1024 by 512.
+		local want = forever and {
+			TopLeftCorner = { 203, 211, 95, 103 }, BottomLeftCorner = { 203, 211, 135, 143 },
+			LeftEdge = { 203, 211, 117, 127 },
+			TopRightCorner = { 792, 800, 12, 20 }, BottomRightCorner = { 792, 800, 52, 60 },
+			RightEdge = { 792, 800, 35, 43 },
+			TopEdge = { 725, 726, 12, 20 }, BottomEdge = { 725, 726, 52, 60 },
+		} or {
+			TopLeftCorner = { 2, 10, 250, 258 }, BottomLeftCorner = { 2, 10, 277, 285 },
+			LeftEdge = { 2, 10, 259, 269 },
+			TopRightCorner = { 187, 195, 111, 119 }, BottomRightCorner = { 187, 195, 138, 146 },
+			RightEdge = { 187, 195, 121, 129 },
+			TopEdge = { 121, 122, 111, 119 }, BottomEdge = { 121, 122, 138, 146 },
+		}
+		local file = forever and 8036204 or 4631591
+		eq(T.art(owner.backdrop), box(file), client .. ': the eight pieces, from the one file')
+		eq(T.over(owner.backdrop), '', client .. ': nothing over an icon')
+		for key, r in pairs(want) do
+			local p = pieces[key]
+			eq(coords(p), px(r[1], r[2], r[3], r[4], 1024, 512), client .. ': ' .. key .. "'s rectangle")
+			eq(p:GetParent(), owner.backdrop, client .. ': ' .. key .. ' is on the drawn frame')
+			eq((p:GetDrawLayer()), 'BORDER', client .. ': ' .. key .. " in the box's layer")
+			check(not p:GetHorizTile() and not p:GetVertTile(), client .. ': ' .. key .. ' is stretched, not tiled')
+			eq(text(p:GetVertexColor()), '1.00,1.00,1.00,1.00', client .. ': ' .. key .. ' untinted')
+		end
+		-- The corners at the drawn frame's corners, 8 by 8; the edges between
+		-- them, 8 thick. The drawn frame is the 100 by 50 frame and 2 outside
+		-- it: 104 by 54.
+		local b = owner.backdrop
+		eq(T.around(pieces.TopLeftCorner, b), '0,0,-96,46', client .. ': the top left corner')
+		eq(T.around(pieces.TopRightCorner, b), '96,0,0,46', client .. ': the top right corner')
+		eq(T.around(pieces.BottomLeftCorner, b), '0,-46,-96,0', client .. ': the bottom left corner')
+		eq(T.around(pieces.BottomRightCorner, b), '96,-46,0,0', client .. ': the bottom right corner')
+		eq(T.around(pieces.TopEdge, b), '8,0,-8,46', client .. ': the top edge')
+		eq(T.around(pieces.BottomEdge, b), '8,-46,-8,0', client .. ': the bottom edge')
+		eq(T.around(pieces.LeftEdge, b), '0,-8,-96,8', client .. ': the left edge')
+		eq(T.around(pieces.RightEdge, b), '96,-8,0,8', client .. ': the right edge')
+		eq(b.backdropInfo and b.backdropInfo.edgeFile, nil, client .. ': no edge line')
+		check(not outerShown(b), client .. ": no Thick lines")
+		eq(st:DrawnInset(owner), 2, client .. ': drawn at the inset 2')
+	end
+end)
+
+test('under Blizzard member is the Background fill, inset 0, with no art', function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		local owner = frame(st)
+		st:SetBackdrop(owner, 'theme', 'theme', 'member')
+		local b = owner.backdrop
+		eq(T.art(b), '', client .. ': no art')
+		eq(T.over(b), '', client .. ': nothing over an icon')
+		eq(inset(b), 0, client .. ': the fill reaches the edge')
+		eq(fill(b), backdropcolor, client .. ': the Background')
+		eq(b.backdropInfo and b.backdropInfo.edgeFile, nil, client .. ': no line')
+		eq(T.around(b, owner), '0,0,0,0', client .. ': on the frame, on every side')
+		check(not outerShown(b), client .. ': no Thick lines')
+		eq(st:DrawnInset(owner), 0, client .. ': drawn at the inset 0')
+	end
+end)
+
+test('a cut with no atlas file, or no texture coordinates, hides its pieces', function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		local owner = frame(st)
+		local t = owner:CreateTexture(nil, 'BORDER')
+		eq(st.ThemeArt.Cut(t, 'UI-HUD-UnitFrame-Player-PortraitOn', { 0, 8, 0, 8 }), true,
+			client .. ': an atlas with a file is cut')
+		check(t:IsShown(), client .. ': and shows')
+
+		-- A stand-in for the atlas table, put back at the end of the case: the
+		-- box's atlases at their sizes and with no file, as an AtlasInfo
+		-- without one reads.
+		local getAtlasInfo = C_Texture.GetAtlasInfo
+		local standIn = {
+			['UI-HUD-UnitFrame-Player-PortraitOn'] = { width = 198, height = 71 },
+			['UI-HUD-UnitFrame-Target-PortraitOn'] = { width = 194, height = 68 },
+			-- A file but no texture coordinates.
+			['no-coords'] = { width = 64, height = 64, file = 12345 },
+		}
+		C_Texture.GetAtlasInfo = function(name) return standIn[name] end
+
+		eq(st.ThemeArt.Cut(t, 'UI-HUD-UnitFrame-Player-PortraitOn', { 0, 8, 0, 8 }), false,
+			client .. ': no file, no cut')
+		check(not t:IsShown(), client .. ': and the texture is hidden')
+		local u = owner:CreateTexture(nil, 'BORDER')
+		eq(st.ThemeArt.Cut(u, 'no-such-atlas', { 0, 8, 0, 8 }), false, client .. ': no atlas at all, no cut')
+		check(not u:IsShown(), client .. ': hidden too')
+		local v = owner:CreateTexture(nil, 'BORDER')
+		local ok, cut = pcall(st.ThemeArt.Cut, v, 'no-coords', { 0, 8, 0, 8 })
+		check(ok, client .. ': no texture coordinates: no error: ' .. tostring(cut))
+		eq(cut, false, client .. ': no texture coordinates, no cut')
+		check(not v:IsShown(), client .. ': hidden too')
+
+		local ok, err = pcall(st.SetBackdrop, st, owner, 'theme', 'theme', 'unitframe')
+		check(ok, client .. ': drawn without an error: ' .. tostring(err))
+		eq(T.art(owner.backdrop), '', client .. ': no piece shows')
+		eq(fill(owner.backdrop), backdropcolor, client .. ': the fill is still drawn')
+		st:SetBorderColor(owner.backdrop, 1, 0, 0)
+		st:RecolorThemed()
+		st:RedrawThemed()
+		eq(T.art(owner.backdrop), '', client .. ': a color, a recolor and a redraw show none')
+		eq(#take_errors(), 0, client .. ': no errors')
+		C_Texture.GetAtlasInfo = getAtlasInfo
+	end
+end)
+
+test("a frame's own border color tints the box's pieces", function()
+	for _, client in ipairs(CLIENTS) do
+		local st = blizzard(client)
+		local owner = frame(st)
+		st:SetBackdrop(owner, 'theme', 'theme', 'unitframe')
+		local b = owner.backdrop
+		local art = T.art(b)
+		st:SetBorderColor(b, 1, 0, 0)
+		eq(tint(st, b), '1.00,0.00,0.00,1.00', client .. ': every piece in the color')
+		eq(own(st, b), nil, client .. ': no own-color piece')
+		eq(T.art(b), art, client .. ': the same eight pieces')
+		eq(fill(b), backdropcolor, client .. ': the fill stays')
+		st:SetBorderColor(b, 0, 1, 0, 0.5)
+		eq(tint(st, b), '0.00,1.00,0.00,0.50', client .. ': recolored, with its alpha')
+		st:SetBorderColor(b)
+		eq(tint(st, b), '1.00,1.00,1.00,1.00', client .. ': no color: white again')
+
+		-- A recolor takes the color off, as it does a border's.
+		st:SetBorderColor(b, 1, 0, 0)
+		st:RecolorThemed()
+		eq(tint(st, b), '1.00,1.00,1.00,1.00', client .. ': a recolor: white')
+
+		-- A member has no border to tint: a color leaves it bare.
+		local m = frame(st)
+		st:SetBackdrop(m, 'theme', 'theme', 'member')
+		st:SetBorderColor(m.backdrop, 1, 0, 0)
+		eq(T.art(m.backdrop) .. T.over(m.backdrop), '', client .. ': a member stays bare')
+		eq(own(st, m.backdrop), nil, client .. ': with no own-color piece')
+		eq(fill(m.backdrop), backdropcolor, client .. ': and its fill')
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
 end)
 
 -- Every SaftUI Lua file the game loads, outside the bundled libraries

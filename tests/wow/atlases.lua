@@ -9,15 +9,22 @@
 	the game looks atlases up ignoring case (the tables spell the Edit Mode and
 	class power ones in other cases), and so does the stub.
 
-	Each entry is { width, height, tiles }:
+	Each entry is { width, height, tiles }, and for some file and coords too:
 	  - width and height in UI units: the member's override size where it has
 	    one, else its texture size, halved for art that exists only at double
 	    resolution (a -2x member);
 	  - tiles is 'h' (tiled across), 'v' (tiled down), 'hv' (both) or nil, from
-	    the member's flags (0x4 across, 0x2 down).
+	    the member's flags (0x4 across, 0x2 down);
+	  - file and coords only for an atlas SaftUI cuts by texture coordinates
+	    (st.ThemeArt.Cut): the file ID of the member's atlas (UiTextureAtlas's
+	    FileDataID) and the member's pixel rectangle over that file's size,
+	    { left, right, top, bottom } (its CommittedLeft and CommittedRight over
+	    AtlasWidth, CommittedTop and CommittedBottom over AtlasHeight).
 	Forever draws the Camelot member (-c60) of an atlas where there is one, so
 	its entries are those members'. When the theme names a new atlas, add it to
-	both clients from the same tables.
+	both clients from the same tables. An atlas one client lacks (Forever's
+	Camelot chrome, which retail doesn't have) is in the other's table only, and
+	the theme marks it Atlas(name, 'forever') (or 'live').
 ]]
 return {
 	forever = {
@@ -65,19 +72,30 @@ return {
 		['uiframe-tab-left'] = { 35, 36 },
 		['_uiframe-tab-center'] = { 1, 36, 'h' },
 		['uiframe-tab-right'] = { 37, 36 },
-		-- Controls: the dropdown and its list
-		['common-dropdown-textholder'] = { 54, 41 },
-		['common-dropdown-a-button'] = { 27, 27 },
-		['common-dropdown-a-button-hover'] = { 27, 27 },
-		['common-dropdown-a-button-pressed'] = { 27, 27 },
-		['common-dropdown-a-button-open'] = { 27, 27 },
-		['common-dropdown-a-button-disabled'] = { 27, 27 },
-		['common-dropdown-bg'] = { 68, 68 },
+		-- Controls: the dropdown (WowStyle2) and its list
+		['common-dropdown-c-button'] = { 39, 39 },
+		['common-dropdown-c-button-hover-1'] = { 39, 39 },
+		['common-dropdown-c-button-pressed-1'] = { 39, 39 },
+		['common-dropdown-c-button-pressedhover-1'] = { 39, 39 },
+		['common-dropdown-c-button-open'] = { 39, 39 },
+		['common-dropdown-c-button-disabled'] = { 39, 39 },
+		['common-dropdown-c-button-hover-arrow'] = { 12, 5 },
+		['common-dropdown-c-button-hover-2'] = { 39, 39 },
+		['common-dropdown-c-button-pressed-2'] = { 39, 39 },
+		['common-dropdown-c-button-pressedhover-2'] = { 39, 39 },
+		['common-dropdown-icon-back'] = { 17, 17 },
+		['common-dropdown-icon-back-disabled'] = { 17, 17 },
+		['common-dropdown-icon-next'] = { 17, 17 },
+		['common-dropdown-icon-next-disabled'] = { 17, 17 },
+		['common-dropdown-c-bg'] = { 90, 90 },
+		['common-dropdown-customize-mouseover'] = { 20, 20 },
 		-- Controls: the slider
 		['Minimal_SliderBar_Left'] = { 11, 17 },
 		['_Minimal_SliderBar_Middle'] = { 1, 17, 'h' },
 		['Minimal_SliderBar_Right'] = { 11, 17 },
 		['Minimal_SliderBar_Button'] = { 20, 19 },
+		['Minimal_SliderBar_Button_Left'] = { 11, 19 },
+		['Minimal_SliderBar_Button_Right'] = { 9, 18 },
 		-- Controls: the text box
 		['auctionhouse-ui-inputfield-left'] = { 8, 33 },
 		['auctionhouse-ui-inputfield-middle'] = { 178, 33 },
@@ -94,6 +112,19 @@ return {
 		['minimal-scrollbar-arrow-bottom'] = { 17, 11 },
 		['minimal-scrollbar-arrow-bottom-over'] = { 17, 11 },
 		['minimal-scrollbar-arrow-bottom-down'] = { 17, 11 },
+		-- Controls: the scroll bar (its arrows are the nudges')
+		['minimal-scrollbar-track-top'] = { 8, 8 },
+		['minimal-scrollbar-track-bottom'] = { 8, 8 },
+		['!minimal-scrollbar-track-middle'] = { 8, 1, 'v' },
+		['minimal-scrollbar-small-thumb-top'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-top-over'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle-over'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom-over'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-top-down'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle-down'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom-down'] = { 8, 8 },
 		-- Controls: the Settings panel's tabs
 		['Options_Tab_Left'] = { 7, 23 },
 		['Options_Tab_Middle'] = { 1, 23 },
@@ -104,6 +135,12 @@ return {
 		-- Controls: the Settings panel's category list
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
+		-- Controls: the Settings panel's inner frame
+		['Options_InnerFrame'] = { 886, 618 },
+		['Options_CategoryHeader_1'] = { 199, 144 },
+		['Options_CategoryHeader_2'] = { 199, 144 },
+		['Options_CategoryHeader_3'] = { 199, 144 },
+		['Options_HorizontalDivider'] = { 630, 1 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },
@@ -144,6 +181,36 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
+		-- The unit frame's bronze box (unitframe), cut from the player and
+		-- target frames' Camelot members (-c60), both in file 8036204, 1024 by 512
+		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
+			file = 8036204, coords = { 605 / 1024, 803 / 1024, 1 / 512, 72 / 512 } },
+		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 194, 68,
+			file = 8036204, coords = { 201 / 1024, 395 / 1024, 87 / 512, 155 / 512 } },
+		-- The raid group border (groupborder), its Camelot member (-c60), in
+		-- file 8086468, 1024 by 1024
+		['options_frame_child'] = { 28, 26,
+			file = 8086468, coords = { 901 / 1024, 929 / 1024, 1 / 1024, 27 / 1024 } },
+		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
+		-- tiles them
+		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
+		['raidframe-hp-bg-white'] = { 32, 32 },
+		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
+		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
+		-- The micro menu bar (microbar): the strip frame, then Camelot's header, square and tracking button
+		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
+		['ui-hud-minimap-header-button'] = { 152, 23 },
+		['ui-hud-minimap-addon-indicator'] = { 23, 22 },
+		['ui-hud-minimap-tracking-button'] = { 23, 23 },
+		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomRight'] = { 7, 7 },
+		['_ui-hud-minimap-button-NineSlice-EdgeTop'] = { 16, 6, 'h' },
+		['_ui-hud-minimap-button-NineSlice-EdgeBottom'] = { 16, 7, 'h' },
+		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
+		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
+		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
 	},
 	retail = {
 		-- The tooltip border (panel, bar, tooltip)
@@ -190,19 +257,30 @@ return {
 		['uiframe-tab-left'] = { 35, 36 },
 		['_uiframe-tab-center'] = { 1, 36, 'h' },
 		['uiframe-tab-right'] = { 37, 36 },
-		-- Controls: the dropdown and its list
-		['common-dropdown-textholder'] = { 54, 41 },
-		['common-dropdown-a-button'] = { 27, 27 },
-		['common-dropdown-a-button-hover'] = { 27, 27 },
-		['common-dropdown-a-button-pressed'] = { 27, 27 },
-		['common-dropdown-a-button-open'] = { 27, 27 },
-		['common-dropdown-a-button-disabled'] = { 27, 27 },
-		['common-dropdown-bg'] = { 68, 68 },
+		-- Controls: the dropdown (WowStyle2) and its list
+		['common-dropdown-c-button'] = { 39, 39 },
+		['common-dropdown-c-button-hover-1'] = { 39, 39 },
+		['common-dropdown-c-button-pressed-1'] = { 39, 39 },
+		['common-dropdown-c-button-pressedhover-1'] = { 39, 39 },
+		['common-dropdown-c-button-open'] = { 39, 39 },
+		['common-dropdown-c-button-disabled'] = { 39, 39 },
+		['common-dropdown-c-button-hover-arrow'] = { 12, 5 },
+		['common-dropdown-c-button-hover-2'] = { 39, 39 },
+		['common-dropdown-c-button-pressed-2'] = { 39, 39 },
+		['common-dropdown-c-button-pressedhover-2'] = { 39, 39 },
+		['common-dropdown-icon-back'] = { 17, 17 },
+		['common-dropdown-icon-back-disabled'] = { 17, 17 },
+		['common-dropdown-icon-next'] = { 17, 17 },
+		['common-dropdown-icon-next-disabled'] = { 17, 17 },
+		['common-dropdown-c-bg'] = { 90, 90 },
+		['common-dropdown-customize-mouseover'] = { 20, 20 },
 		-- Controls: the slider
 		['Minimal_SliderBar_Left'] = { 11, 17 },
 		['_Minimal_SliderBar_Middle'] = { 1, 17, 'h' },
 		['Minimal_SliderBar_Right'] = { 11, 17 },
 		['Minimal_SliderBar_Button'] = { 20, 19 },
+		['Minimal_SliderBar_Button_Left'] = { 11, 19 },
+		['Minimal_SliderBar_Button_Right'] = { 9, 18 },
 		-- Controls: the text box
 		['auctionhouse-ui-inputfield-left'] = { 8, 33 },
 		['auctionhouse-ui-inputfield-middle'] = { 178, 33 },
@@ -219,6 +297,19 @@ return {
 		['minimal-scrollbar-arrow-bottom'] = { 17, 11 },
 		['minimal-scrollbar-arrow-bottom-over'] = { 17, 11 },
 		['minimal-scrollbar-arrow-bottom-down'] = { 17, 11 },
+		-- Controls: the scroll bar (its arrows are the nudges')
+		['minimal-scrollbar-track-top'] = { 8, 8 },
+		['minimal-scrollbar-track-bottom'] = { 8, 8 },
+		['!minimal-scrollbar-track-middle'] = { 8, 1, 'v' },
+		['minimal-scrollbar-small-thumb-top'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-top-over'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle-over'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom-over'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-top-down'] = { 8, 8 },
+		['minimal-scrollbar-small-thumb-middle-down'] = { 8, 715 },
+		['minimal-scrollbar-small-thumb-bottom-down'] = { 8, 8 },
 		-- Controls: the Settings panel's tabs
 		['Options_Tab_Left'] = { 7, 23 },
 		['Options_Tab_Middle'] = { 1, 23 },
@@ -229,6 +320,12 @@ return {
 		-- Controls: the Settings panel's category list
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
+		-- Controls: the Settings panel's inner frame
+		['Options_InnerFrame'] = { 886, 618 },
+		['Options_CategoryHeader_1'] = { 199, 144 },
+		['Options_CategoryHeader_2'] = { 199, 144 },
+		['Options_CategoryHeader_3'] = { 199, 144 },
+		['Options_HorizontalDivider'] = { 630, 1 },
 		-- Controls: the micro buttons
 		['UI-HUD-MicroMenu-ButtonBG-Down'] = { 32, 41 },
 		['UI-HUD-MicroMenu-Highlightalert'] = { 32, 41 },
@@ -269,5 +366,31 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
+		-- The unit frame's box (unitframe), cut from the player and target
+		-- frames, both in file 4631591, 1024 by 512
+		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
+			file = 4631591, coords = { 1 / 1024, 199 / 1024, 87 / 512, 158 / 512 } },
+		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 192, 67,
+			file = 4631591, coords = { 1 / 1024, 193 / 1024, 229 / 512, 296 / 512 } },
+		-- The raid group border (groupborder), in file 1318750, 1024 by 1024
+		['options_frame_child'] = { 28, 26,
+			file = 1318750, coords = { 616 / 1024, 644 / 1024, 24 / 1024, 50 / 1024 } },
+		-- The raid frames' bar fills (unitbars), tiled as CompactUnitFrame.xml
+		-- tiles them
+		['RaidFrame-Hp-Fill'] = { 32, 32, 'hv' },
+		['raidframe-hp-bg-white'] = { 32, 32 },
+		['_RaidFrame-Resource-Fill'] = { 16, 6, 'h' },
+		['_RaidFrame-Resource-Background'] = { 16, 6, 'h' },
+		-- The micro menu bar (microbar): the strip frame and the minimap button kit
+		['UI-HUD-ActionBar-Frame'] = { 55, 55 },
+		['ui-hud-minimap-button-NineSlice-CornerTopLeft'] = { 6, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerTopRight'] = { 7, 6 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomLeft'] = { 6, 7 },
+		['ui-hud-minimap-button-NineSlice-CornerBottomRight'] = { 7, 7 },
+		['_ui-hud-minimap-button-NineSlice-EdgeTop'] = { 16, 6, 'h' },
+		['_ui-hud-minimap-button-NineSlice-EdgeBottom'] = { 16, 7, 'h' },
+		['!ui-hud-minimap-button-NineSlice-EdgeLeft'] = { 6, 16, 'v' },
+		['!ui-hud-minimap-button-NineSlice-EdgeRight'] = { 7, 16, 'v' },
+		['ui-hud-minimap-button-NineSlice-Center'] = { 16, 16 },
 	},
 }

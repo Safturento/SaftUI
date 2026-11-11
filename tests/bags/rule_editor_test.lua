@@ -869,3 +869,80 @@ test('a released editor closes the list it owns and stops its drag', function()
 	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ under the Blizzard theme
+
+test("under Blizzard a rule's value fields are compact Settings dropdowns; under Thick their own box", function()
+	local themeWas = st.config.profile.theme.name
+	local function theme(name) st.config.profile.theme.name = name end
+	local function shown(region) return region:IsShown() and region:GetAlpha() > 0 end
+	-- The atlases shown on a frame, sorted and comma-joined.
+	local function atlases_of(frame)
+		local out = {}
+		for _, region in ipairs({ frame:GetRegions() }) do
+			if region:GetObjectType() == 'Texture' and shown(region) and region:GetAtlas() then out[#out + 1] = region:GetAtlas() end
+		end
+		table.sort(out)
+		return table.concat(out, ',')
+	end
+	local function face_of(frame)
+		for _, region in ipairs({ frame:GetRegions() }) do
+			if region:GetObjectType() == 'Texture' and shown(region) and (region:GetAtlas() or ''):find('^common%-dropdown%-c%-button') then
+				return region
+			end
+		end
+	end
+	local function around(outer, inner)
+		local function px(a, b) return string.format('%d', math.floor(a - b + 0.5)) end
+		return table.concat({ px(outer:GetLeft(), inner:GetLeft()), px(outer:GetTop(), inner:GetTop()),
+			px(outer:GetRight(), inner:GetRight()), px(outer:GetBottom(), inner:GetBottom()) }, ',')
+	end
+	local function size(frame) return frame:GetWidth() .. 'x' .. frame:GetHeight() end
+	local function text_insets(field)
+		return string.format('%d,%d', field.text:GetLeft() - field:GetLeft(), field:GetRight() - field.text:GetRight())
+	end
+
+	theme('thick')
+	local ed = editor(grp('or', { blk('class') }))
+	local field = ed.w.rows[1].fields.class
+	local thickSize = size(field)
+	check(field.backdropInfo ~= nil and field.outline:IsShown(), "Thick: W.Box's backdrop")
+	eq(#field.caret, 4, 'its caret rows are kept')
+	for _, row in ipairs(field.caret) do check(row:IsShown(), 'Thick: the caret') end
+	eq(atlases_of(field), '', 'Thick: no Blizzard art')
+	eq(text_insets(field), '6,20', 'Thick: its text clear of the caret')
+
+	theme('blizzard')
+	ed.w:Refresh()
+	eq(ed.w.rows[1].fields.class, field, 'the same field, laid out again')
+	eq(field.backdropInfo, nil, 'Blizzard: no box')
+	check(not field.outline:IsShown(), 'Blizzard: no dark line')
+	for _, row in ipairs(field.caret) do check(not row:IsShown(), 'Blizzard: its caret hidden') end
+	eq(atlases_of(field), 'common-dropdown-c-button', 'the Settings face')
+	local face = face_of(field)
+	eq(around(face, field), '-4,4,4,-4', 'compact: a 4px glow')
+	eq(field.text:GetJustifyH(), 'CENTER', 'its text centred')
+	eq(text_insets(field), '13,13', 'in 13 from the face')
+	stub.fire_script(field, 'OnEnter')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	eq(atlases_of(field), 'common-dropdown-c-button-hover-1', 'compact: no hover arrow')
+	stub.fire_script(field, 'OnLeave')
+	click(field)
+	eq(W.ListOwner(), field, 'its list opens')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-open', 'open while its list shows')
+	W.CloseList()
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'closed again')
+	eq(size(field), thickSize, 'its size unchanged')
+
+	theme('thick')
+	ed.w:Refresh()
+	check(field.backdropInfo ~= nil and field.outline:IsShown(), "Thick again: W.Box's backdrop")
+	for _, row in ipairs(field.caret) do check(row:IsShown(), 'Thick again: the caret') end
+	eq(atlases_of(field), '', 'Thick again: no Blizzard art')
+	eq(text_insets(field), '6,20', 'Thick again: its text where it was')
+	eq(field.text:GetJustifyH(), 'LEFT', 'Thick again: from the left')
+	eq(size(field), thickSize, 'Thick again: its size unchanged')
+	ed.w:Release()
+	theme(themeWas)
+	eq(#take_errors(), 0, 'no errors')
+end)
