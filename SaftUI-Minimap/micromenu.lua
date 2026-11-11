@@ -193,9 +193,10 @@ local strip, stripFrame, stripBackground
 -- overhangs the frame far enough to reach the boxes beside the buttons, and
 -- MicroMenu holds Blizzard's buttons. The strip is a child of the bar's
 -- Container at the Container's level, so it lies under the holders and under
--- Blizzard's buttons over them. Nothing secure is anchored to it or in it, so
--- it follows the buttons in combat too; the move still goes through
--- st:SafeReposition, as the bar's moves do.
+-- Blizzard's buttons over them. It is deliberately left unprotected: nothing
+-- secure is anchored to it or in it, so the game never protects it, and the
+-- move, which still goes through st:SafeReposition as the bar's moves do,
+-- always runs at once, so the strip follows the buttons in combat too.
 local function UpdateStrip(container, first, last, art)
     if not (art and first and st:IsBlizzardLook('theme', 'theme')) then
         if strip then strip:Hide() end

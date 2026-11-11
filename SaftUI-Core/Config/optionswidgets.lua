@@ -496,7 +496,10 @@ W.DropdownStates = DropdownStates
 -- dropdown with no room for the full glow or the hover arrow (the position
 -- block's, the rule editor's). The look is put on when it changed; under
 -- Blizzard the face is placed and painted on every call, so a caller that
--- moves button.faceLeft or button.faceRight calls it again.
+-- moves button.faceLeft or button.faceRight calls it again. compact is the
+-- button's for life: the HoverArrow piece is made (or left out for a compact
+-- one) only when the look changes, so a button passes the same compact on
+-- every call, and a pooled one is never reused the other way.
 local function LookDropdown(button, blizzard, compact)
 	local art = Art(button)
 	art.compact = compact and true or false
