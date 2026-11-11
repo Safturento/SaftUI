@@ -351,6 +351,7 @@ function INV:OnEnable()
 	self:MigratePositions()
 
 	self:InitializeTooltipScanner()
+	self:HookSlotTooltips()
 	self:InitializePlayerBags()
 	self:RegisterMovers()
 
