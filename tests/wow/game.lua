@@ -43,6 +43,28 @@ stub = {
 	--   and party_ai (true for a party follower, UnitInPartyIsAI).
 	-- A unit not listed doesn't exist, so the API gives nil for it.
 	units = {},
+	-- Where the player is, for the map and zone API below (C_Map, C_PvP,
+	-- IsInInstance, GetInstanceInfo, GetDifficultyInfo, GetZoneText):
+	--   maps: the game's maps by uiMapID, each { name, mapType (an
+	--     Enum.UIMapType), parentMapID, levels = { min, max } (a map without
+	--     them gives the game's 0s), area = { left, top, right, bottom }: where
+	--     it sits on its parent map, in the parent's 0-1 coordinates (a map
+	--     without one is never found by position) };
+	--   player_map: C_Map.GetBestMapForUnit('player'); nil for none, as during
+	--     a loading screen;
+	--   pvp: C_PvP.GetZonePVPInfo's pvpType ('friendly', 'hostile', 'contested',
+	--     'sanctuary', 'arena', 'combat'; nil for none), isSubZonePvP and
+	--     factionName;
+	--   instance: nil outside an instance, else { name, type ('party', 'raid',
+	--     'pvp', 'arena', 'scenario'), difficulty_id, difficulty_name,
+	--     max_players };
+	--   zone_text, subzone_text: GetZoneText and GetSubZoneText.
+	maps = {},
+	player_map = nil,
+	pvp = { type = nil, subzone = false, faction = nil },
+	instance = nil,
+	zone_text = '',
+	subzone_text = '',
 }
 
 -- Only the interface number means anything here.
@@ -154,6 +176,88 @@ function GetXPExhaustion() return stub.rested_xp end
 C_Reputation = {
 	GetWatchedFactionData = function() return nil end,
 }
+
+-- Maps (MapDocumentation.lua), from stub.maps. Each call gives a new
+-- UiMapDetails table, as the game's does. A map ID that isn't a number errors.
+local function check_map_id(uiMapID, fn)
+	if type(uiMapID) ~= 'number' then error(('Usage: C_Map.%s(uiMapID)'):format(fn), 3) end
+end
+local function map_details(uiMapID)
+	local m = stub.maps[uiMapID]
+	if not m then return nil end
+	return { mapID = uiMapID, name = m.name, mapType = m.mapType, parentMapID = m.parentMapID or 0, flags = 0 }
+end
+C_Map = {
+	-- Only the player is stubbed (the game also answers for party members).
+	GetBestMapForUnit = function(unit)
+		if type(unit) ~= 'string' then error('Usage: C_Map.GetBestMapForUnit(unitToken)', 2) end
+		if unit == 'player' then return stub.player_map end
+	end,
+	GetMapInfo = function(uiMapID)
+		check_map_id(uiMapID, 'GetMapInfo')
+		return map_details(uiMapID)
+	end,
+	-- playerMinLevel, playerMaxLevel, petMinLevel, petMaxLevel: 0s for a map
+	-- the game has no levels for. No pet levels are stubbed.
+	GetMapLevels = function(uiMapID)
+		check_map_id(uiMapID, 'GetMapLevels')
+		local m = stub.maps[uiMapID]
+		local levels = m and m.levels
+		if levels then return levels[1], levels[2], 0, 0 end
+		return 0, 0, 0, 0
+	end,
+	-- The child map of uiMapID whose area holds (x, y), in uiMapID's 0-1
+	-- coordinates; else uiMapID itself.
+	GetMapInfoAtPosition = function(uiMapID, x, y)
+		check_map_id(uiMapID, 'GetMapInfoAtPosition')
+		if type(x) ~= 'number' or type(y) ~= 'number' then
+			error('Usage: C_Map.GetMapInfoAtPosition(uiMapID, x, y)', 2)
+		end
+		for id, m in pairs(stub.maps) do
+			local a = m.area
+			if m.parentMapID == uiMapID and a and x >= a[1] and x <= a[3] and y >= a[2] and y <= a[4] then
+				return map_details(id)
+			end
+		end
+		return map_details(uiMapID)
+	end,
+}
+
+-- The PvP status where the player stands (PvpInfoDocumentation.lua): pvpType,
+-- isSubZonePvP and factionName, from stub.pvp.
+C_PvP = {
+	GetZonePVPInfo = function()
+		return stub.pvp.type, stub.pvp.subzone == true, stub.pvp.faction
+	end,
+}
+
+-- Instances (InstanceDocumentation.lua), from stub.instance.
+function IsInInstance()
+	local instance = stub.instance
+	return instance ~= nil, instance and instance.type or 'none'
+end
+-- name, instanceType, difficultyID, difficultyName, maxPlayers,
+-- dynamicDifficulty, isDynamic, instanceID, instanceGroupSize, lfgDungeonID.
+-- Outside an instance the game names the continent and gives 0s; here the
+-- name is the zone's.
+function GetInstanceInfo()
+	local i = stub.instance
+	if not i then return stub.zone_text, 'none', 0, '', 0, 0, false, 0, 0, nil end
+	local maxPlayers = i.max_players or 5
+	return i.name, i.type, i.difficulty_id or 1, i.difficulty_name or 'Normal', maxPlayers, 0, false, 0, maxPlayers, nil
+end
+-- name, groupType, isHeroic, isChallengeMode, displayHeroic, displayMythic,
+-- toggleDifficultyID, isLFR, minPlayers, maxPlayers: for the instance's own
+-- difficulty only, as a plain (not heroic, mythic or LFR) one. Nothing for
+-- any other ID.
+function GetDifficultyInfo(difficultyID)
+	local i = stub.instance
+	if i and difficultyID == (i.difficulty_id or 1) then
+		return i.difficulty_name or 'Normal', i.type, false, false, false, false, nil, false, 1, i.max_players or 5
+	end
+end
+function GetZoneText() return stub.zone_text end
+function GetSubZoneText() return stub.subzone_text end
 
 -- The game shows an error passed to its handler and carries on. The default
 -- handler here hands it to the harness (report_error), which fails the

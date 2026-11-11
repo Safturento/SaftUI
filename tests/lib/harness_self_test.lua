@@ -469,6 +469,63 @@ test('an edit box, SetFormattedText, the Enums, GameFontNormal and debugprofiles
 	check(type(debugprofilestop) == 'function', 'and survives reset_world')
 end)
 
+test('where the player is: maps, PvP status, instances and zone names follow stub', function()
+	reset_world()
+	stub.maps[1415] = { name = 'Eastern Kingdoms', mapType = Enum.UIMapType.Continent }
+	stub.maps[1429] = { name = 'Elwynn Forest', mapType = Enum.UIMapType.Zone, parentMapID = 1415,
+		levels = { 1, 10 }, area = { 0.4, 0.7, 0.5, 0.8 } }
+	eq(C_Map.GetBestMapForUnit('player'), nil, 'no map until the test gives one')
+	stub.player_map = 1429
+	eq(C_Map.GetBestMapForUnit('player'), 1429, 'the player map')
+	local info = C_Map.GetMapInfo(1429)
+	check(info.mapID == 1429 and info.name == 'Elwynn Forest' and info.mapType == 3 and info.parentMapID == 1415, 'GetMapInfo')
+	check(C_Map.GetMapInfo(1429) ~= info, 'a new table each call')
+	eq(C_Map.GetMapInfo(1415).parentMapID, 0, 'a map with no parent has 0')
+	eq(C_Map.GetMapInfo(42), nil, 'an unknown map gives nothing')
+	check(not pcall(C_Map.GetMapInfo, '1429'), 'a map ID must be a number')
+	local min, max, petMin, petMax = C_Map.GetMapLevels(1429)
+	check(min == 1 and max == 10 and petMin == 0 and petMax == 0, 'GetMapLevels')
+	eq(select(2, C_Map.GetMapLevels(1415)), 0, 'a map without levels gives 0s')
+	eq(C_Map.GetMapInfoAtPosition(1415, 0.45, 0.75).mapID, 1429, 'the child map under a position')
+	eq(C_Map.GetMapInfoAtPosition(1415, 0.1, 0.1).mapID, 1415, 'else the map itself')
+	check(not pcall(C_Map.GetMapInfoAtPosition, 1415), 'a position is required')
+
+	local pvpType, subzone, faction = C_PvP.GetZonePVPInfo()
+	check(pvpType == nil and subzone == false and faction == nil, 'no PvP status by default')
+	stub.pvp = { type = 'friendly', faction = 'Alliance' }
+	pvpType, subzone, faction = C_PvP.GetZonePVPInfo()
+	check(pvpType == 'friendly' and subzone == false and faction == 'Alliance', 'the PvP status')
+
+	local inInstance, instanceType = IsInInstance()
+	check(inInstance == false and instanceType == 'none', 'outside an instance')
+	eq(select(5, GetInstanceInfo()), 0, 'no players outside one')
+	stub.instance = { name = 'The Deadmines', type = 'party', difficulty_id = 1, difficulty_name = 'Normal', max_players = 5 }
+	inInstance, instanceType = IsInInstance()
+	check(inInstance == true and instanceType == 'party', 'in a dungeon')
+	local name, _, difficultyID, difficultyName, maxPlayers = GetInstanceInfo()
+	check(name == 'The Deadmines' and difficultyID == 1 and difficultyName == 'Normal' and maxPlayers == 5, 'GetInstanceInfo')
+	eq(GetDifficultyInfo(1), 'Normal', 'its difficulty')
+	eq(GetDifficultyInfo(2), nil, 'no other')
+
+	stub.zone_text, stub.subzone_text = 'Elwynn Forest', 'Goldshire'
+	check(GetZoneText() == 'Elwynn Forest' and GetSubZoneText() == 'Goldshire', 'zone names')
+end)
+
+test("FadingFrame keeps a frame's times in its own fields, as Blizzard's does", function()
+	reset_world()
+	local frame = CreateFrame('Frame', nil, UIParent)
+	FadingFrame_OnLoad(frame)
+	check(frame.fadeInTime == 0 and frame.holdTime == 0 and frame.fadeOutTime == 0, 'OnLoad zeroes the times')
+	eq(frame:IsShown(), false, 'and hides it')
+	FadingFrame_SetFadeInTime(frame, 1); FadingFrame_SetHoldTime(frame, 2); FadingFrame_SetFadeOutTime(frame, 3)
+	check(frame.fadeInTime == 1 and frame.holdTime == 2 and frame.fadeOutTime == 3, 'the setters')
+	stub.time = 7
+	FadingFrame_Show(frame)
+	check(frame:IsShown() and frame.startTime == 7, 'Show starts it now')
+	eq(select(2, SubZoneTextFont:GetFont()), 26, "Blizzard's zone fonts are there")
+	eq(Enum.UIMapType.Orphan, 6, 'Enum.UIMapType')
+end)
+
 test("LibStub is the real one: a library nobody registered errors, and a fixture's has only its methods", function()
 	reset_world()
 	load_saftui('SaftUI-Core/Libraries/LibStub/LibStub.lua')

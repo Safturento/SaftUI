@@ -7,9 +7,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
+  - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
+  - [2026-11-10 — The zone faction table is a snapshot of two builds](#2026-11-10--the-zone-faction-table-is-a-snapshot-of-two-builds)
   - [2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames](#2026-11-10--chat-writes-fields-and-scripts-onto-blizzards-chat-frames)
   - [2026-11-10 — The Hekili and WeakAuras skins error when Skinning's Theme is None](#2026-11-10--the-hekili-and-weakauras-skins-error-when-skinnings-theme-is-none)
-  - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
   - [2026-11-10 — Edit box focus borders lost on a theme switch, and two ways of keeping colors](#2026-11-10--edit-box-focus-borders-lost-on-a-theme-switch-and-two-ways-of-keeping-colors)
   - [2026-11-10 — Retail bank leftovers after Themes: category selector, selected window's border, radio group under None](#2026-11-10--retail-bank-leftovers-after-themes-category-selector-selected-windows-border-radio-group-under-none)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
@@ -45,6 +47,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
   - [2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)](#2026-11-10--loot-rolls-stay-shown-locked-after-you-choose-approved-queued-after-themes)
   - [2026-11-09 — st:SetBackdropIn duplicates st:SetBackdrop](#2026-11-09--stsetbackdropin-duplicates-stsetbackdrop)
   - [2026-11-08 — TemplateInset is duplicated between SaftUI-ActionBars and SaftUI-Misc](#2026-11-08--templateinset-is-duplicated-between-saftui-actionbars-and-saftui-misc)
@@ -64,6 +67,48 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Zone level and faction line: in-game checks
+
+**What:** The zone text's new line under the zone name (level range and faction, e.g. "Level 10–20 · Alliance") and the world map's faction line under a hovered zone's name were built from Blizzard's source and checked only in `tests/`. To check in game, Forever first:
+- **PvP status on Forever.** `C_PvP.GetZonePVPInfo()` gives `friendly` or `hostile` with the holder's name in starting zones and cities (Elwynn Forest, Durotar, Stormwind), `contested` in Stranglethorn Vale and `sanctuary` on Zephras Isle, so the line shows Alliance in blue, Horde in red and Neutral in yellow. Whether Forever reports these on a PvE realm, or with the PvP flag off, is unconfirmed.
+- **Level ranges.** `C_Map.GetMapLevels` gives Forever's zones their ranges (Elwynn Forest 1–10), and a cave its zone's. A city with none shows only the faction. In a dungeon: the level if the game gives one, no faction, and the difficulty line, which now shows while the zone name is up (see the resolved "Zone text replaces Blizzard's OnEvent script" entry).
+- **Glyphs.** The en dash and the middle dot draw in SaftUI's subtitle font, not as boxes.
+- **Blizzard's PvP line hidden.** No "(Contested Territory)" under the zone name. The subzone name sits right under SaftUI's line when you enter a zone, and where Blizzard puts it when only the subzone changes, with no gap either way. Free-for-all and combat zone text (`PVPArenaTextString`, under the subzone name) still shows. The flourishes take the new zone name's color.
+- **Map label.** On a continent map, the faction word shows under Blizzard's "Zone (10-20)" label, 10 units below, in the label's description font (`SubZoneTextFont`) at its scale; on retail, under the wild battle pet levels line when that shows. Nothing over a point of interest, the map's own areas or a zone not in the table. The zone you stand in follows the live status. With the gamepad UI on the line may never show: SaftUI finds the hovered zone by the mouse cursor and shows nothing when that isn't the zone the label names.
+- **No taint.** Open the world map in combat and through a loading screen: no `ADDON_ACTION_BLOCKED` and no Lua errors. Use `/console taintLog 1` (`.agents/taint.md`) if anything is off.
+
+**Why noticed:** The zone level and faction feature (2026-11-10). The stubs run no OnUpdate, layout pass or fonts, and stand in for the game's map and PvP answers, so placement, glyphs and the live API are in-game checks.
+
+**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:ZoneLine`, `ZT:UpdateZoneLine`, `ZT:UpdateMapLine`, `ZT:HookWorldMap`), `SaftUI-Misc/Skinning/ZoneFactions.lua`; Blizzard's `Blizzard_FrameXML/Mainline/ZoneText.lua` and `Blizzard_SharedMapDataProviders/AreaLabelDataProvider.lua`; `tests/misc/zone_text_test.lua`, `tests/misc/zone_map_test.lua` and `tests/misc/zone_helpers.lua`.
+
+**Shape of work:** An in-game pass. Fixes, if any, are likely offsets or a font.
+
+### 2026-11-10 — Zone text's fade times are written onto Blizzard's frames
+
+**What:** `ZT:OnEnable` gives the zone text SaftUI's timing (fade in over 1s, hold 2s, fade out over 2s; Blizzard's is 0.5, 1 and 2) through Blizzard's `FadingFrame_SetFadeInTime`, `FadingFrame_SetHoldTime` and `FadingFrame_SetFadeOutTime` on `ZoneTextFrame` and `SubZoneTextFrame`. The setters write `fadeInTime`, `holdTime` and `fadeOutTime` onto Blizzard's frames from SaftUI's code, which `.agents/taint.md` rules 1 and 3 ask against.
+
+**Why noticed:** Resolving "Zone text replaces Blizzard's OnEvent script with AceHook's HookScript" (2026-11-10, see Resolved). That entry asked about the `ZoneFadeInDuration` globals, which are now left alone; the setters behind them are the write that's left. They stay for now because dropping them changes what the user sees: the zone text would leave sooner.
+
+**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`FADE_IN`, `HOLD`, `FADE_OUT`, `ZT:OnEnable`); Blizzard's `Blizzard_FrameXMLUtil/FadingFrame.lua`; `.agents/taint.md` rules 1 and 3.
+
+**What's been considered:** The fields' only reader is the frames' own OnUpdate, `FadingFrame_OnUpdate`, which turns tainted at the first read and then only sets the frames' alpha and hides them. Nothing protected hangs off either frame, so no blocked action is expected. There's no way to change the timing that writes nothing onto them. The choices: keep it, and name it in `.agents/taint.md` as a known exception; drop the setters for Blizzard's shorter timing; or have SaftUI show zone text frames of its own instead of Blizzard's (a bigger change).
+
+**Shape of work:** A decision, then a few lines, or a design pass for SaftUI's own frames.
+
+**Open questions:** Is SaftUI's longer timing worth the exception?
+
+### 2026-11-10 — The zone faction table is a snapshot of two builds
+
+**What:** `SaftUI-Misc/Skinning/ZoneFactions.lua` lists each client's zones by uiMapID as of Forever build 1.60.1.70888 and retail build 12.1.5.70783. A zone a later build adds gets no faction line on the world map (unless you stand in it) until the table is made again. Forever adds zones of its own: Riverglades, Shen'dralas and Zephras Isle are in this one.
+
+**Why noticed:** Building the table (2026-11-10).
+
+**Anchors:** the file's header, which gives the method; wago.tools' DB2 exports (`https://wago.tools/db2/<Table>/csv?build=<version>`, the builds at `https://wago.tools/api/builds`, where Forever is product `wowf`) of the UiMap, UiMapAssignment and AreaTable tables.
+
+**What's been considered:** The table came from a throwaway Python script over those exports, following the header's rules (zone maps with a parent, minus test maps; AreaTable's FactionGroupMask 2 Alliance and 4 Horde, the sanctuary flag 0x800 or mask 6 Neutral, mask 0 taking the parent area's; then the named capitals and starting zones). Committing the script would make a refresh one command, but the repo has no tooling folder. Not covered: Forever's Darkspear Islands (2524, an orphan map the game marks contested), retail's Dalaran maps (dungeon maps) and the housing districts (sanctuaries, so Neutral, though each is one faction's).
+
+**Shape of work:** Small: rerun against the new builds, diff, review the named overrides.
 
 ### 2026-11-10 — Chat writes fields and scripts onto Blizzard's chat frames
 
@@ -103,16 +148,6 @@ Each new Hekili button or WeakAuras icon then errors. The error comes before `sk
 **What's been considered:** Guard each `.backdrop` use, and still mark the frame skinned and record it, so `UpdateConfig` draws it once the theme isn't None. The strata and level then need setting after every draw, in `UpdateConfig` too, or a backdrop first made there sits at the default level. Both skins also write `.skinned` and `.backdrop` onto another addon's frames. Rule 1 doesn't bind third-party frames, but `.agents/taint.md` asks for side tables there anyway, and the same pass could move them.
 
 **Shape of work:** Small: guards and a strata and level step after each draw in both files, with a test per skin over minimal Hekili and WeakAuras fixtures.
-
-### 2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript
-
-**What:** `ZT:OnEnable` (`SaftUI-Misc/Skinning/ZoneText.lua:63`) hooks `ZoneTextFrame`'s `OnEvent` with AceHook's `ZT:HookScript(ZoneTextFrame, 'OnEvent')`. AceHook's `HookScript` installs its closure with `SetScript`, replacing Blizzard's handler on a Blizzard frame, which `.agents/taint.md` rule 2 forbids. Use the native post-hook, `ZoneTextFrame:HookScript('OnEvent', function(frame, event, ...) ZT:OnEvent(frame, event, ...) end)`, or AceHook's `SecureHookScript`.
-
-**Why noticed:** The Themes project's reviews (2026-11-10). Task 6 moved the zone text's flourish lines off `ZoneTextFrame` into `ZT.flourishes` and gave them a Theme; its review, reading the same file, found the hook and deferred it to a followup. It predates Themes.
-
-**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:OnEnable`, `ZT:OnEvent`, `ZT:ColorFlourishes`, `ZT:OnColorsChanged`); `.agents/taint.md` rules 2 and 9. The same `OnEnable` also registers `PLAYER_ENTERING_WORLD` on `ZoneTextFrame`, calls its `SetPoint`, and assigns `ZoneFadeInDuration`, `ZoneHoldDuration` and `ZoneFadeOutDuration`, which look like Blizzard's own globals (rule 9). That's not yet checked against Blizzard's source.
-
-**Shape of work:** A one-line hook change, and a look at the other writes in the same function. Then an in-game check that the flourishes still take the zone name's color and the difficulty text still updates on entering a zone.
 
 ### 2026-11-10 — Edit box focus borders lost on a theme switch, and two ways of keeping colors
 
@@ -793,6 +828,23 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript
+
+**What:** `ZT:OnEnable` (`SaftUI-Misc/Skinning/ZoneText.lua:63`) hooks `ZoneTextFrame`'s `OnEvent` with AceHook's `ZT:HookScript(ZoneTextFrame, 'OnEvent')`. AceHook's `HookScript` installs its closure with `SetScript`, replacing Blizzard's handler on a Blizzard frame, which `.agents/taint.md` rule 2 forbids. Use the native post-hook, `ZoneTextFrame:HookScript('OnEvent', function(frame, event, ...) ZT:OnEvent(frame, event, ...) end)`, or AceHook's `SecureHookScript`.
+
+**Why noticed:** The Themes project's reviews (2026-11-10). Task 6 moved the zone text's flourish lines off `ZoneTextFrame` into `ZT.flourishes` and gave them a Theme; its review, reading the same file, found the hook and deferred it to a followup. It predates Themes.
+
+**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:OnEnable`, `ZT:OnEvent`, `ZT:ColorFlourishes`, `ZT:OnColorsChanged`); `.agents/taint.md` rules 2 and 9. The same `OnEnable` also registers `PLAYER_ENTERING_WORLD` on `ZoneTextFrame`, calls its `SetPoint`, and assigns `ZoneFadeInDuration`, `ZoneHoldDuration` and `ZoneFadeOutDuration`, which look like Blizzard's own globals (rule 9). That's not yet checked against Blizzard's source.
+
+**Shape of work:** A one-line hook change, and a look at the other writes in the same function. Then an in-game check that the flourishes still take the zone name's color and the difficulty text still updates on entering a zone.
+
+**Resolved 2026-11-10:** `ZT:OnEnable` hooks `ZoneTextFrame`'s `OnEvent` with the native `ZoneTextFrame:HookScript`, so Blizzard's `ZoneText_OnEvent` stays the frame's script and runs first, untainted. Checked against Blizzard's `Blizzard_FrameXML/Mainline/ZoneText.lua` (forever and live are the same):
+- `ZoneFadeInDuration`, `ZoneHoldDuration` and `ZoneFadeOutDuration` are Blizzard's globals, read only in the two frames' OnLoad, before SaftUI loads. SaftUI's assignments changed nothing but broke rule 9, so they're gone, and SaftUI passes its own times to the FadingFrame setters. Those setters still write the frames' fade fields from SaftUI's code: that's [its own followup](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames), since dropping them shortens the zone text.
+- `ZoneTextFrame:RegisterEvent('PLAYER_ENTERING_WORLD')` and `ZoneTextFrame:SetPoint` are widget calls that write no Lua: the game still runs Blizzard's handler itself on the event, and the frame is a plain one (no Edit Mode system) that Blizzard places only in its XML. Neither breaks a rule; both stay.
+- AceHook's hook had run SaftUI's handler before Blizzard's. Two things relied on that: the difficulty line compared `GetZoneText()` with the frame's `zoneText` before Blizzard updated it, and now shows while the zone name is up; and the flourishes took the zone name's color before Blizzard set it (the previous zone's), and now take the new zone's.
+
+Done with the zone level and faction line, in `SaftUI-Misc/Skinning/ZoneText.lua`. `tests/misc/zone_text_test.lua` locks Blizzard's zone text frames (a `SetScript` or a new field fails) and checks the globals keep Blizzard's values. The in-game checks are under "[Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)".
 
 ### 2026-11-10 — Loot rolls stay shown, locked, after you choose (approved, queued after Themes)
 

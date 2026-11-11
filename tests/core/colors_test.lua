@@ -185,4 +185,7 @@ test('the roll timer bars are under Buttons Blue, not Item quality, and the diff
 	check(Section('button').args.blue.desc:find("loot roll you've chosen on", 1, true), "and a held roll's lit border and label")
 	check(quality['1'].desc:find('normal instances', 1, true), 'the badge is shown in raids too')
 	check(Section('text').args.normal.desc:find('summon button', 1, true), "Text names the totem bar summon button's arrow")
+	for key, word in pairs({ blue = 'Alliance', red = 'Horde', yellow = 'Neutral' }) do
+		check(Section('text').args[key].desc:find(word .. ' on the zone text', 1, true), 'Text ' .. key .. ' names ' .. word .. ' on the zone text')
+	end
 end)

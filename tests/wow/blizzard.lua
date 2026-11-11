@@ -1,8 +1,9 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
 	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin, PixelUtil, the
-	Enum tables, GameFontNormal and GameFontWhiteSmall, and ColorPickerFrame. Each follows its
-	source in Gethe/wow-ui-source (forever branch), trimmed to what tests use.
+	Enum tables, FadingFrame, GameFontNormal and GameFontWhiteSmall, the zone text and world
+	map fonts, and ColorPickerFrame. Each follows its source in Gethe/wow-ui-source (forever
+	branch), trimmed to what tests use.
 ]]
 
 local function pack(...)
@@ -289,12 +290,13 @@ end
 
 -- Blizzard_APIDocumentationGenerated (forever branch), the enums SaftUI
 -- reads: BagIndexConstants, SimpleStatusBarConstants, PowerTypeConstants
--- (PowerType trimmed to Mana) and AuraContainerSharedDocumentation
--- (CustomAuraButtonDispelTypeTextureStyle). A trimmed table errors on a name
+-- (PowerType trimmed to Mana), AuraContainerSharedDocumentation
+-- (CustomAuraButtonDispelTypeTextureStyle) and MapConstantsDocumentation
+-- (UIMapType). A trimmed table errors on a name
 -- that isn't stubbed ("Enum.PowerType.Rage is not stubbed") instead of
 -- reading nil, which would pass a test where the game has a value. Add the
--- name when a test needs it. BagIndex, StatusBarInterpolation and
--- CustomAuraButtonDispelTypeTextureStyle are complete, and SaftUI's
+-- name when a test needs it. BagIndex, StatusBarInterpolation,
+-- CustomAuraButtonDispelTypeTextureStyle and UIMapType are complete, and SaftUI's
 -- inventory.lua probes BagIndex past its last tab on purpose, so an absent
 -- name there stays nil, as in game.
 Enum = {
@@ -311,6 +313,7 @@ Enum = {
 	StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
 	PowerType = { Mana = 0 },
 	CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
+	UIMapType = { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 },
 }
 setmetatable(Enum.PowerType, { __index = function(_, name)
 	error(('Enum.PowerType.%s is not stubbed'):format(tostring(name)), 2)
@@ -320,7 +323,7 @@ end })
 
 -- GameFontNormal: Blizzard_Fonts_Shared/Shared/FontStyles.xml gives it
 -- SystemFont_Shadow_Med1 (Fonts.xml: FRIZQT__.TTF at 12, shadow offset 1, -1)
--- and NORMAL_FONT_COLOR (1, 0.82, 0). The other game fonts aren't stubbed.
+-- and NORMAL_FONT_COLOR (1, 0.82, 0). Game fonts not below aren't stubbed.
 GameFontNormal = CreateFont('GameFontNormal')
 GameFontNormal:SetFont('Fonts\\FRIZQT__.TTF', 12, '')
 GameFontNormal:SetShadowOffset(1, -1)
@@ -332,6 +335,37 @@ GameFontWhiteSmall = CreateFont('GameFontWhiteSmall')
 GameFontWhiteSmall:SetFont('Fonts\\FRIZQT__.TTF', 10, '')
 GameFontWhiteSmall:SetShadowOffset(1, -1)
 GameFontWhiteSmall:SetTextColor(1, 1, 1)
+
+-- The zone text's and the world map's area label's fonts
+-- (Blizzard_Fonts_Shared/Shared/GameFontStyles.xml, from GameFonts.xml's
+-- thick-outlined FRIZQT__.TTF families): ZoneTextFont and WorldMapTextFont
+-- at 32 in a pale gold, SubZoneTextFont at 26 and PVPInfoTextFont at 22.
+for name, size in pairs({ ZoneTextFont = 32, WorldMapTextFont = 32, SubZoneTextFont = 26, PVPInfoTextFont = 22 }) do
+	local font = CreateFont(name)
+	font:SetFont('Fonts\\FRIZQT__.TTF', size, 'THICKOUTLINE')
+	if size == 32 then font:SetTextColor(1.0, 0.9294, 0.7607) end
+end
+
+------------------------------------------------------------------ FadingFrame
+
+-- Blizzard_FrameXMLUtil/FadingFrame.lua: a frame that fades in, holds and
+-- fades out, its times kept in its own fields. FadingFrame_OnUpdate isn't
+-- here: the stubs run no OnUpdate.
+function FadingFrame_SetFadeInTime(fadingFrame, time) fadingFrame.fadeInTime = time end
+function FadingFrame_SetHoldTime(fadingFrame, time) fadingFrame.holdTime = time end
+function FadingFrame_SetFadeOutTime(fadingFrame, time) fadingFrame.fadeOutTime = time end
+function FadingFrame_OnLoad(fadingFrame)
+	assert(fadingFrame)
+	fadingFrame.fadeInTime = 0
+	fadingFrame.holdTime = 0
+	fadingFrame.fadeOutTime = 0
+	fadingFrame:Hide()
+end
+function FadingFrame_Show(fadingFrame)
+	assert(fadingFrame)
+	fadingFrame.startTime = GetTime()
+	fadingFrame:Show()
+end
 
 ------------------------------------------------------------------ ColorPickerFrame
 

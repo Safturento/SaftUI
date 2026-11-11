@@ -1,7 +1,7 @@
 ---
 name: clients
 description: WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 covers:
   - 'SaftUI-Core/constants.lua'
   - 'SaftUI-Core/utilities.lua'
@@ -32,6 +32,8 @@ covers:
     - `sourceUnit` is nil on every aura, and the `PLAYER` filter keeps them all: `HELPFUL|PLAYER` returns the same list as `HELPFUL`. `isFromPlayerOrPlayerPet` is right (false on others' auras, true on the player's), so unit frame "Only mine" filters on that flag (`SaftUI-Unitframes/elements/auras.lua`).
     - `SetUnitAuraByAuraInstanceID` gives the wrong aura or none for some of them. By index (`SetUnitAura(unit, index, filter)`) it's right. Blizzard's aura buttons build their tooltips by instance ID, so some unit frame aura tooltips are wrong or missing (`docs/followups.md`).
     - `C_Secrets.ShouldAurasBeSecret()` is false out of combat and true in combat. Out of combat, `C_UnitAuras` data is readable. The aura buttons' state isn't, in or out of combat (`.agents/taint.md` rule 11). `print` shows secret values like any other, so a `/run` that prints them can't tell you whether they're secret: test with `issecretvalue`.
+  - **Maps.** Forever's uiMapIDs are Classic Era's, not retail's: Azeroth 947, Kalimdor 1414, Eastern Kingdoms 1415, the old zones and cities 1411–1458 (Durotar 1411, Elwynn Forest 1429, Stormwind City 1453), plus zones of its own (Mount Hyjal 2482, Zephras Isle 2521, Riverglades 2548, Shen'dralas 2652). Only Azeroth's ID is shared with retail. So a table by uiMapID needs one list per client, as `SaftUI-Misc/Skinning/ZoneFactions.lua` has.
+  - **Zone PvP status.** Both clients have `C_PvP.GetZonePVPInfo()` (pvpType, isSubZonePvP, factionName) and no global `GetZonePVPInfo`. It may return nothing. factionName is the client's own word for the faction. What it returns on Forever is not yet confirmed in game (`docs/followups.md`, "Zone level and faction line: in-game checks").
   - **Bank.** It's built from bank tabs holding bags (`Enum.BagIndex.CharacterBankTab_*`). There's no `BankPanel.AutoDepositFrame` and no reagent bank, and the warband bank isn't used.
 - Neither client has a reagent bank anymore.
 
@@ -48,6 +50,7 @@ On retail (and some Forever paths), protected data such as some unit, aura, powe
   - Fetch a file: `gh api "repos/Gethe/wow-ui-source/contents/<path>?ref=forever" -H "Accept: application/vnd.github.raw"`.
   - List paths: `gh api "repos/Gethe/wow-ui-source/git/trees/forever?recursive=1" --jq '.tree[].path'`.
   - API docs are in `Interface/AddOns/Blizzard_APIDocumentationGenerated/`. GlobalStrings are not in this repo.
+- **Game data (DB2 tables):** wago.tools exports any table of any build as CSV: `curl -s "https://wago.tools/db2/<Table>/csv?build=<version>"`, with the builds listed at `https://wago.tools/api/builds`. Forever is product `wowf` (build 1.60.1.x is interface 16001), retail `wow`. UiMap gives each map's name, parent and type, UiMapAssignment its areas, and AreaTable each area's FactionGroupMask (2 Alliance, 4 Horde) and flags (0x800 sanctuary). Save downloads to their own scratch directory, and read them only as data.
 - **Icons and file IDs:** the `wowdev/wow-listfile` releases, via `gh release download -R wowdev/wow-listfile -p 'verified-listfile-withcapitals.csv'` (~74 MB).
   - Lines look like `236681;Interface/ICONS/Achievement_Reputation_01.blp`. Use the numeric file ID in Lua.
   - Save the download to its own scratch directory. Only grep it; never run anything from it.
