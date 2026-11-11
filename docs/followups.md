@@ -10,7 +10,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
   - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
   - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
-  - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
   - [2026-11-11 — Blizzard bag-bar slots and the Hekili skin write onto frames that aren't SaftUI's](#2026-11-11--blizzard-bag-bar-slots-and-the-hekili-skin-write-onto-frames-that-arent-saftuis)
@@ -70,6 +69,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — Zone text replaces Blizzard's OnEvent script with AceHook's HookScript](#2026-11-10--zone-text-replaces-blizzards-onevent-script-with-acehooks-hookscript)
@@ -157,20 +157,6 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 **Anchors:** `SaftUI-Core/theme.lua` (`st:SetBackdrop`, `st:SetBackdropIn`: the two `SetFrameLevel(max(0, ...GetFrameLevel() - 1))` lines); the guarded reads in `themeart.lua` `Holder` and `SaftUI-Loot/roll.lua`, and their tests, which pass a `newproxy` secret; `.agents/clients.md` (secret values).
 
 **Shape of work:** Small. Add an `issecretvalue` guard to both lines (on a secret level, leave the backdrop at the level it was made with), plus a test per function using the existing secret stand-in.
-
-### 2026-11-11 — Blizzard theme: dark grey everywhere
-
-**What:** Under the Blizzard theme SaftUI's windows take Blizzard's dark grey (`templates.blizzard.windowcolor`, `{ 0.12, 0.12, 0.13, 1 }`) and everything else (panels, bars, tooltips, small frames) its navy (`templates.blizzard.backdropcolor`, `{ 0.09, 0.09, 0.19, 1 }`). The user may later want dark grey everywhere.
-
-**Why noticed:** The user, choosing the Blizzard theme's backgrounds in the brainstorm (2026-11-10): "Lets go with alternative, potentially we'll end up with dark grey everywhere." The spec records it as ruling 2 of "The user's answers".
-
-**Anchors:** `SaftUI-Core/Config/defaults.lua` (`st.defaults.templates.blizzard`); `SaftUI-Core/themeart.lua` (`KINDS`, each kind's `fill`: `windowcolor` or `backdropcolor`); `SaftUI-Core/Media/theme.lua` (the Theme tab's Window background and Background rows); the spec's "The user's answers".
-
-**What's been considered:** It's one default to change: `templates.blizzard.backdropcolor`. A profile that never set it follows the new default, since AceDB only saves a value that differs from the default; a profile that picked its own Background color keeps it, and Reset on the Theme tab puts the defaults back. Nothing else hard-codes either color, by design.
-
-**Shape of work:** One value in `defaults.lua`, plus the tests that name the default (`tests/core/theme_blizzard_test.lua`). If windows and the rest should then be one color, the Window background row and `windowcolor` could go, or stay as an override.
-
-**Open questions:** Whether to change the default, and whether to keep the Window background row once the two match.
 
 ### 2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art
 
@@ -1209,6 +1195,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — Blizzard theme: dark grey everywhere
+
+**What:** Under the Blizzard theme SaftUI's windows take Blizzard's dark grey (`templates.blizzard.windowcolor`, `{ 0.12, 0.12, 0.13, 1 }`) and everything else (panels, bars, tooltips, small frames) its navy (`templates.blizzard.backdropcolor`, `{ 0.09, 0.09, 0.19, 1 }`). The user may later want dark grey everywhere.
+
+**Why noticed:** The user, choosing the Blizzard theme's backgrounds in the brainstorm (2026-11-10): "Lets go with alternative, potentially we'll end up with dark grey everywhere." The spec records it as ruling 2 of "The user's answers".
+
+**Anchors:** `SaftUI-Core/Config/defaults.lua` (`st.defaults.templates.blizzard`); `SaftUI-Core/themeart.lua` (`KINDS`, each kind's `fill`: `windowcolor` or `backdropcolor`); `SaftUI-Core/Media/theme.lua` (the Theme tab's Window background and Background rows); the spec's "The user's answers".
+
+**What's been considered:** It's one default to change: `templates.blizzard.backdropcolor`. A profile that never set it follows the new default, since AceDB only saves a value that differs from the default; a profile that picked its own Background color keeps it, and Reset on the Theme tab puts the defaults back. Nothing else hard-codes either color, by design.
+
+**Shape of work:** One value in `defaults.lua`, plus the tests that name the default (`tests/core/theme_blizzard_test.lua`). If windows and the rest should then be one color, the Window background row and `windowcolor` could go, or stay as an override.
+
+**Open questions:** Whether to change the default, and whether to keep the Window background row once the two match.
+
+**Resolved 2026-11-11:** The user, after checking the theme in game: "The navy background is pretty ugly, lets go with dark gray everywhere." `templates.blizzard.backdropcolor` now defaults to the window's dark grey, `{ 0.12, 0.12, 0.13, 1 }`. Both settings stay (Window background and Background on the Theme tab), each still coloring its own frames, so the user can set them apart again; the tests that named the navy now check the grey default and the two set apart.
 
 ### 2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)
 

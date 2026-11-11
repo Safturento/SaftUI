@@ -89,9 +89,11 @@ st.defaults.theme = {
 -- Each theme's colors, by its name, and the close button's fill. Thick draws
 -- its border between two lines of altbordercolor. Blizzard's art keeps its own
 -- colors: its bordercolor is only the line of the few small frames with no art,
--- and it has two fills, windowcolor for windows (Blizzard's dark grey panel
--- color) and backdropcolor for the rest (Blizzard's tooltip navy). Thick's and
--- Thin's windows take their backdropcolor.
+-- and it has two fills, windowcolor for windows and backdropcolor for the rest
+-- (tooltips, bars, panels). Both start as Blizzard's dark grey panel color, so
+-- the theme is dark grey everywhere (the user's choice, 2026-11-11), and each
+-- can be set alone on the Theme tab. Thick's and Thin's windows take their
+-- backdropcolor.
 st.defaults.templates = {
 	close = {
 		backdropcolor = { 0.5, 0.1, 0.1, 0.4 },
@@ -99,7 +101,7 @@ st.defaults.templates = {
 	blizzard = {
 		bordercolor = { 0.5, 0.5, 0.5, 1 },
 		altbordercolor = { 0, 0, 0, 0 },
-		backdropcolor = { 0.09, 0.09, 0.19, 1 },
+		backdropcolor = { 0.12, 0.12, 0.13, 1 },
 		windowcolor = { 0.12, 0.12, 0.13, 1 },
 	},
 	thin = {

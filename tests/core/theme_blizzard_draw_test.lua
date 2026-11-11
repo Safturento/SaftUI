@@ -192,7 +192,7 @@ test('a tooltip: the eight tooltip pieces, edges tiled, no line, the Background 
 		eq(text(p:GetVertexColor()), '1.00,1.00,1.00,1.00', key .. ' untinted')
 	end)
 
-	eq(fill(b), '0.09,0.09,0.19,0.90', "the Background at the profile's Opacity")
+	eq(fill(b), '0.12,0.12,0.13,0.90', "the Background (dark grey) at the profile's Opacity")
 	eq(inset(b), 3, "the fill sits the tooltip's inset in")
 	eq(b.backdropInfo and b.backdropInfo.edgeFile, nil, 'no edge line')
 	check(not outerShown(b), "Thick's lines are hidden")
@@ -215,15 +215,18 @@ test('bars and panels wear the tooltip border, a window the metal', function()
 		eq(stub.state(p).texel_snapping_bias, 0, key .. ': no texel snapping bias')
 	end)
 
-	eq(fill(drawn.window), '0.12,0.12,0.13,0.90', "a window's fill: the Window background")
-	eq(fill(drawn.panel), '0.09,0.09,0.19,0.90', "a panel's: the Background")
-	eq(fill(drawn.bar), '0.09,0.09,0.19,0.90', "a bar's: the Background")
+	-- Dark grey everywhere by default, from two settings.
+	eq(fill(drawn.window), '0.12,0.12,0.13,0.90', "a window's fill: the Window background, dark grey")
+	eq(fill(drawn.panel), '0.12,0.12,0.13,0.90', "a panel's: the Background, the same dark grey")
+	eq(fill(drawn.bar), '0.12,0.12,0.13,0.90', "a bar's: the Background")
 
-	-- Dark grey everywhere is one value.
-	st.config.profile.templates.blizzard.backdropcolor = { 0.12, 0.12, 0.13, 1 }
+	-- The two can still be set apart: the Background reaches everything but
+	-- the window.
+	st.config.profile.templates.blizzard.backdropcolor = { 0.09, 0.09, 0.19, 1 }
 	st:RecolorThemed()
 	eq(fill(drawn.window), '0.12,0.12,0.13,0.90', 'the window stays grey')
-	eq(fill(drawn.panel), '0.12,0.12,0.13,0.90', 'the panel turns grey')
+	eq(fill(drawn.panel), '0.09,0.09,0.19,0.90', 'the panel takes the Background set on its own')
+	eq(fill(drawn.bar), '0.09,0.09,0.19,0.90', 'the bar too')
 end)
 
 test("a frame drawn as a window, then as a tooltip: the metal's snapping doesn't stay", function()
@@ -489,7 +492,7 @@ test('an aura has no art; small is one line in Border; a header and a control dr
 	st:SetBackdrop(s, 'theme', 'theme', 'small')
 	eq(edge(s.backdrop), '0.50,0.50,0.50,1.00', 'small: one line in Border')
 	eq(inset(s.backdrop), 1, 'small: one line wide')
-	eq(fill(s.backdrop), '0.09,0.09,0.19,0.90', 'small: the Background inside it')
+	eq(fill(s.backdrop), '0.12,0.12,0.13,0.90', 'small: the Background inside it')
 	eq(T.art(s.backdrop) .. T.over(s.backdrop), '', 'small: no art')
 	check(not outerShown(s.backdrop), "small: no Thick lines")
 
