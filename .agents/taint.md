@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-10
+last_updated: 2026-11-11
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
@@ -39,7 +39,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
 
    Keep SaftUI's per-frame data in a local weak table (`setmetatable({}, { __mode = 'k' })`) or on a SaftUI-owned frame. Writing fields onto frames SaftUI created (including oUF frames it spawned) is fine.
 
-   The skinning helpers write fields too: `st:SetBackdrop` (`frame.backdrop`, `frame.thick`), `st:SkinActionButton` (that, plus `button.hover` and the like) and `st:SkinIcon` (`icon.__stTexCoord`, plus a hook on the icon). Use them on SaftUI's own buttons only. To skin one of Blizzard's buttons, as `SaftUI-Misc/totemskin.lua` does for the totem bar's secure buttons:
+   The skinning helpers write fields too: `st:SetBackdrop` (`frame.backdrop`, `frame.thick`), `st:SkinActionButton` (that, plus `button.hover` and the like) and `st:SkinIcon` (`icon.__stTexCoord`, plus a hook on the icon). Use them on SaftUI's own buttons only. Under the Blizzard theme `st:SetBackdrop` also makes a button's ring as a texture of the frame it draws behind, so a caller that still draws on someone else's frame with `st:SetBackdrop` or `st:SkinActionButton` marks it first with `st:MarkForeign(frame)` (`SaftUI-Core/theme.lua`), which writes nothing onto it and keeps the ring on a frame of SaftUI's: the bags bar's Blizzard bag slots (`SaftUI-Bags/containers/bag.lua`) and Hekili's buttons (`SaftUI-Misc/Skinning/hekili.lua`), which also still take those fields. To skin one of Blizzard's buttons, as `SaftUI-Misc/totemskin.lua` does for the totem bar's secure buttons:
    - Keep SaftUI's pieces in the weak table, keyed by Blizzard's button.
    - The backdrop is a frame of SaftUI's (`st:CreateFrame` + `st:SetTemplate`), made as the button's child one frame level below it.
    - Flat hover, pushed and checked textures are made on the button and set with `SetHighlightTexture`/`SetPushedTexture`/`SetCheckedTexture`, out of combat.

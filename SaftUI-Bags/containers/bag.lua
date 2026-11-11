@@ -133,6 +133,8 @@ function INV:InitializePlayerBagSlots()
 		slot.IconBorder:SetAlpha(0)
 		slot:SetParent(bagSlotContainer)
 		slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
+		-- Blizzard's button: the Blizzard theme makes none of its art on it.
+		st:MarkForeign(slot)
 		st:SkinActionButton(slot, st.config.profile.buttons, 'slot')
 
 		st:Kill(slot.AnimIcon)

@@ -113,8 +113,10 @@ local function button(st, iconLayer, textLayer)
 	b:SetPoint('CENTER')
 	b.icon = b:CreateTexture(nil, iconLayer)
 	b.text = b:CreateFontString(nil, textLayer)
-	b.cooldown = CreateFrame('Frame', nil, b)
-	b.cooldown:SetFrameLevel(b:GetFrameLevel())
+	-- Kept in no field: st:SkinActionButton would skin a field named cooldown
+	-- as Blizzard's Cooldown, which the stubs don't have.
+	local cooldown = CreateFrame('Frame', nil, b)
+	cooldown:SetFrameLevel(b:GetFrameLevel())
 	return b
 end
 
@@ -332,6 +334,58 @@ test("a ring for a frame that isn't SaftUI's, or a texture, is on a frame of Saf
 	eq(ring and ring:GetParent():GetParent(), image.backdrop, "a texture's ring: on a child of its backdrop")
 	image.backdrop:Hide()
 	eq(ring and ring:IsVisible(), false, 'hidden with its backdrop')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a frame marked as not SaftUI's gets none of the art made on it: its ring is on a frame of SaftUI's", function()
+	local st = blizzard()
+	-- Someone else's buttons that a module still draws on with st:SetBackdrop
+	-- (Hekili's) or st:SkinActionButton (the bags bar's Blizzard bag slots).
+	-- Both still write .backdrop and .thick onto them, and st:SkinActionButton
+	-- its own state textures, so the frame records each texture made on it
+	-- rather than being locked: none may be the art's.
+	local function owner()
+		local f = button(st, 'BACKGROUND', 'OVERLAY')
+		f.made = {}
+		local create = f.CreateTexture
+		f.CreateTexture = function(self, ...)
+			local texture = create(self, ...)
+			self.made[texture] = true
+			return texture
+		end
+		st:MarkForeign(f)
+		return f
+	end
+	local function checkHolder(f, label)
+		local art = st.ThemeArt.Get(f.backdrop)
+		local ring = art and art.over.Ring
+		check(ring ~= nil, label .. ': its ring is drawn')
+		if not ring then return end
+		check(ring:GetParent() ~= f, label .. ": the ring isn't on the frame")
+		eq(ring:GetParent():GetParent(), f.backdrop, label .. ': it is on a child of the backdrop')
+		check(ring:GetParent():GetFrameLevel() > f:GetFrameLevel(), label .. ': over its icon')
+		local mine = {}
+		for _, set in ipairs({ art.pieces, art.over }) do
+			for key, region in pairs(set) do
+				if f.made[region] then mine[#mine + 1] = key end
+			end
+		end
+		eq(table.concat(mine, ','), '', label .. ': no texture of the art is made on the frame')
+	end
+
+	local hekili = owner()
+	st:SetBackdrop(hekili, 'theme', 'theme', 'action')
+	checkHolder(hekili, 'through st:SetBackdrop')
+	local slot = owner()
+	st:SkinActionButton(slot, st.config.profile.buttons, 'slot')
+	checkHolder(slot, 'through st:SkinActionButton')
+
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	st.config.profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	checkHolder(hekili, 'through st:SetBackdrop, after a switch')
+	checkHolder(slot, 'through st:SkinActionButton, after a switch')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

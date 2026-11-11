@@ -10,6 +10,8 @@ function HK:SkinIcon(_, dispID, id)
 	if not button then return end
 
 	if not button.skinned then
+		-- Hekili's button: the Blizzard theme makes none of its art on it.
+		st:MarkForeign(button)
 		st:SetBackdrop(button, SK.config.theme, SK.config.background, 'action')
 
 		-- Make sure the backdrop always stay below the icons..

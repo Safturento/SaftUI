@@ -332,15 +332,31 @@ local function Color(frame, look, kind)
 	end
 end
 
+-- Frames that aren't SaftUI's but are still drawn behind with st:SetBackdrop
+-- (st:MarkForeign). Only keys.
+local foreign = setmetatable({}, { __mode = 'k' })
+
+-- Marks frame as not SaftUI's, for a caller that draws behind it with
+-- st:SetBackdrop or st:SkinActionButton all the same (the bags bar's Blizzard
+-- bag slots, Hekili's buttons): the Blizzard theme makes none of its art on
+-- it, as for st:SetBackdropIn's frames. Mark it before its first draw. Writes
+-- nothing onto frame.
+function st:MarkForeign(frame)
+	foreign[frame] = true
+end
+
 -- The frame of SaftUI's a drawn frame's ring goes on, under the button's texts
 -- and cooldown: the frame a backdrop of st:SetBackdrop's sits behind (entry,
 -- the drawn frame's record). nil for any other, which st.ThemeArt gives a
--- frame of SaftUI's over the drawn frame: st:SetBackdropIn's frame isn't
--- SaftUI's, a texture holds no textures, and a frame drawn on itself may be a
--- module's backdrop under someone else's button (the totem bar's).
+-- frame of SaftUI's over the drawn frame: st:SetBackdropIn's frame and a
+-- marked one (st:MarkForeign) aren't SaftUI's, a texture holds no textures,
+-- and a frame drawn on itself may be a module's backdrop under someone else's
+-- button (the totem bar's).
 local function Host(entry)
 	local owner = entry and entry.owner
-	if owner and not entry.backdrops and owner:IsObjectType('Frame') then return owner end
+	if owner and not entry.backdrops and not foreign[owner] and owner:IsObjectType('Frame') then
+		return owner
+	end
 end
 
 -- Draws a look on frame as kind: Thick's dark lines, the 1px border and the
