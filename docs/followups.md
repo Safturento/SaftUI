@@ -17,6 +17,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Retail bank leftovers after Themes: category selector, selected window's border, radio group under None](#2026-11-10--retail-bank-leftovers-after-themes-category-selector-selected-windows-border-radio-group-under-none)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
   - [2026-11-10 — Themes: in-game checks for what was only compile-checked](#2026-11-10--themes-in-game-checks-for-what-was-only-compile-checked)
+  - [2026-11-10 — Bag views: the bank windows build a full button pool per view](#2026-11-10--bag-views-the-bank-windows-build-a-full-button-pool-per-view)
+  - [2026-11-10 — Bank eye toggle doesn't re-apply the bag search](#2026-11-10--bank-eye-toggle-doesnt-re-apply-the-bag-search)
   - [2026-11-10 — Bag views: in-game checks for what the stubs can't show](#2026-11-10--bag-views-in-game-checks-for-what-the-stubs-cant-show)
   - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
@@ -242,6 +244,28 @@ On retail:
 **Anchors:** per item above; `tests/minimap/theme_test.lua`, `tests/misc/theme_test.lua`, `tests/loot/theme_test.lua`, `tests/unitframes/theme_test.lua` and `tests/actionbars/theme_test.lua` cover what the stubs reach.
 
 **Shape of work:** An in-game pass on each client through the list, then a small fix for each problem found, with a test where the stubs allow.
+
+### 2026-11-10 — Bag views: the bank windows build a full button pool per view
+
+**What:** One bag and Multi bag give each section an item button for every slot of its bags, made out of combat (`INV:EnsureSlotPools`, `SaftUI-Bags/category.lua`), so a section never needs a new button in combat. That's right for the bag window, where loot lands mid-fight. The bank windows get the same full pools, though nothing lands in a bank in combat: a full retail combined bank is about 1,078 buttons per view, made in one burst the first time it's laid out in that view. In combat, `INV:FitSlots` already shows a section no more items than it has buttons, so smaller bank pools would still never make a button in combat.
+
+**Why noticed:** The bag views branch's final review (2026-11-10), judging the fix for its I3 (One bag and Multi bag made item buttons in combat): fine for the bag window, a possible hitch for the banks.
+
+**Anchors:** `SaftUI-Bags/category.lua` (`INV:EnsureSlotPools`, `INV:FitSlots`, `INV:QueueSlotTopUp`); `SaftUI-Bags/views.lua`; `tests/bags/views_layout_test.lua`, `tests/bags/views_onebag_multibag_test.lua`.
+
+**What's been considered:** Sharing one pool across section frames would re-anchor item buttons between frames in combat, which Compact never does: rejected. Filling full pools only for the bag window and letting the bank windows' sections grow as Compact's categories do (`FitSlots` capping them in combat) keeps the guarantee.
+
+**Shape of work:** Small: limit the full fill to `bag`, with a test; then an in-game look at opening a full combined bank in One bag or Multi bag for a hitch.
+
+### 2026-11-10 — Bank eye toggle doesn't re-apply the bag search
+
+**What:** In the combined bank, toggling a bank's eye (showing or hiding the bank or the warband bank, `INV:UpdateContainerBagIds`) lays the window out again but doesn't re-apply the bag window's search, so items can be lit or dimmed against a stale search until the next search change. It predates the bag views; a view switch now re-applies it (`INV:ApplyView`).
+
+**Why noticed:** The bag views branch's final-review fix wave (2026-11-10), which made `ApplyView` re-apply the search and left the eye toggle as it was.
+
+**Anchors:** `SaftUI-Bags/inventory.lua` (`INV:UpdateContainerBagIds`), `SaftUI-Bags/container.lua` (`INV:ApplyView`, `INV:UpdateSearchFilter`).
+
+**Shape of work:** One line (call `INV:UpdateSearchFilter` after the toggle's layout) and a test.
 
 ### 2026-11-10 — Bag views: in-game checks for what the stubs can't show
 
