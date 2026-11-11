@@ -65,25 +65,38 @@ local function StyleButton(auras, button)
 
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
 	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
-	-- instead of Blizzard's border art we make it a flat fill behind the icon that
-	-- covers our backdrop, recoloring the SaftUI border by dispel type.
+	-- SaftUI only restyles and moves it, and never reads its color.
 	if button.Border then
-		button.Border:SetTexture(st.BLANK_TEX)
-		button.Border:SetDrawLayer('BACKGROUND')
-		button.Border:ClearAllPoints()
-		button.Border:SetAllPoints(button.backdrop)
+		if st:IsBlizzardLook(config.theme, config.background) then
+			-- Under Blizzard an aura's inset is 0, so a fill behind the icon would
+			-- never show: the color goes on Blizzard's white icon border instead,
+			-- over the icon's edge on the whole button, as Blizzard shows an
+			-- item's quality. The dark line has nothing to sit on.
+			button.Border:SetTexture(st.ThemeArt.ART.aura.border)
+			button.Border:SetDrawLayer('OVERLAY')
+			button.Border:ClearAllPoints()
+			button.Border:SetAllPoints(button)
+		else
+			-- A flat fill behind the icon that covers our backdrop, so the gap
+			-- between the icon and the backdrop's edge shows the dispel color.
+			button.Border:SetTexture(st.BLANK_TEX)
+			button.Border:SetDrawLayer('BACKGROUND')
+			button.Border:ClearAllPoints()
+			button.Border:SetAllPoints(button.backdrop)
 
-		-- The fill shows in the whole gap between the icon and the backdrop's edge.
-		-- Thick's gap is 2px, its border line and then a dark line, so the color
-		-- would be 2px wide. This dark fill over it, 1px in from the edge and
-		-- under the icon (BORDER layer), puts the dark line back on top.
-		if not innerLines[button] and button.backdrop then
-			local inner = button:CreateTexture(nil, 'BACKGROUND', nil, 1)
-			inner:SetTexture(st.BLANK_TEX)
-			inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
-			inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
-			innerLines[button] = inner
+			-- The fill shows in the whole gap between the icon and the backdrop's edge.
+			-- Thick's gap is 2px, its border line and then a dark line, so the color
+			-- would be 2px wide. This dark fill over it, 1px in from the edge and
+			-- under the icon (BORDER layer), puts the dark line back on top.
+			if not innerLines[button] and button.backdrop then
+				local inner = button:CreateTexture(nil, 'BACKGROUND', nil, 1)
+				inner:SetTexture(st.BLANK_TEX)
+				inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
+				inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
+				innerLines[button] = inner
+			end
 		end
+		-- Shown only under Thick, so hidden under Blizzard.
 		ColorInnerLine(button)
 	end
 

@@ -11,7 +11,11 @@
 --   - a boss or party test mode preview draws like its real frame (groups.lua);
 --   - an aura button's dispel type fill keeps its color through a theme
 --     recolor and redraw, and the dark line SaftUI draws over it follows the
---     theme (elements/auras.lua).
+--     theme (elements/auras.lua);
+--   - under Blizzard an aura button's dispel texture is Blizzard's white icon
+--     border over the whole button, with no dark line and nothing of the
+--     theme's on Blizzard's button, and a switch to Thick puts the fill back
+--     behind the icon (and back again).
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults (every
 -- unit's), filled the way AceDB fills them; unitframes.lua (UF:UpdateUnitFrame,
@@ -297,23 +301,91 @@ test("the castbar's icon and the indicators are controls, bare under Blizzard", 
 	player.grouproleindicator.enable, player.grouproleindicator.theme = false, 'none'
 end)
 
-test("a new aura button is marked as Blizzard's before it's drawn: no art on the button itself under Blizzard", function()
+------------------------------------------------------------------ aura borders
+
+-- The dark line auras.lua draws over a button's dispel type fill: the button's
+-- texture on the BACKGROUND layer, sublevel 1.
+local function inner_line(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		local layer, sublevel = region:GetDrawLayer()
+		if layer == 'BACKGROUND' and sublevel == 1 then return region end
+	end
+end
+
+-- Whether the dispel fill covers the button's backdrop exactly.
+local function covers_backdrop(button)
+	local border, backdrop = button.Border, button.backdrop
+	return border:GetLeft() == backdrop:GetLeft() and border:GetRight() == backdrop:GetRight()
+		and border:GetTop() == backdrop:GetTop() and border:GetBottom() == backdrop:GetBottom()
+end
+
+-- A button's dispel texture (Border, the one oUF hands the aura container) as
+-- 'texture, layer, anchors', each anchor 'POINT relative RELPOINT x,y' with the
+-- button and its backdrop named.
+local function dispel(button)
+	local border = button.Border
+	local names = { [button] = 'button', [button.backdrop] = 'backdrop' }
+	local points = {}
+	for i = 1, border:GetNumPoints() do
+		local point, rel, relPoint, x, y = border:GetPoint(i)
+		points[i] = ('%s %s %s %d,%d'):format(point, names[rel] or tostring(rel), relPoint, x, y)
+	end
+	table.sort(points)
+	return ('%s, %s, %s'):format(tostring(border:GetTexture()), (border:GetDrawLayer()), table.concat(points, '; '))
+end
+
+-- Under Blizzard an aura's inset is 0, so a fill behind the icon would never
+-- show: the dispel color goes on the button's dispel texture, which the
+-- container tints (a secret color in game, which SaftUI never reads), as
+-- Blizzard's white icon border over the icon's edge. A theme switch re-runs
+-- StyleButton through the element's UpdateConfig (after the redraw, as the
+-- profile update orders them).
+local WHITE = [[Interface\Common\WhiteIconFrame]]
+test("under Blizzard an aura button's dispel texture is the white icon border over the whole button, nothing of the theme's is on Blizzard's button, and Thick puts the fill back", function()
 	local frame = make_unit_frame('SaftUI_PlayerAuraArt', 'player', { 'Health', 'Power' })
 	UF:UpdateUnitFrame(frame)
 	local debuffs = UF.elements.Debuffs.Constructor(frame, 'Debuffs')
-	st.config.profile.theme.name = 'blizzard'
+	local theme = st.config.profile.theme
+	theme.name = 'blizzard'
 	local button = make_aura_button(debuffs)
-	-- The aura's own border color (the dispel type's) is its white icon border
-	-- tinted: a texture of SaftUI's, not of Blizzard's button.
-	st:SetBorderColor(button.backdrop, 1, 0, 0, 1)
-	local art = st.ThemeArt.Get(button.backdrop)
-	check(art ~= nil and art.own ~= nil and art.own:IsShown(), 'the colored border shows')
-	check(art.own:GetParent() ~= button, "and isn't a texture of Blizzard's button")
-	for key, piece in pairs(art.over) do
-		check(piece:GetParent() ~= button, key .. " isn't a texture of Blizzard's button")
+	-- The container tints it by the debuff's dispel type.
+	button.Border:SetVertexColor(0.8, 0.1, 0.9, 1)
+	local tint = rgba(0.8, 0.1, 0.9, 1)
+
+	local function switch(name)
+		theme.name = name
+		st:RedrawThemed()
+		UF:UpdateUnitFrame(frame, 'Debuffs')
 	end
-	st.config.profile.theme.name = 'thick'
-	st:RedrawThemed()
+	local function blizzard(where)
+		eq(dispel(button), WHITE .. ', OVERLAY, BOTTOMRIGHT button BOTTOMRIGHT 0,0; TOPLEFT button TOPLEFT 0,0',
+			where .. ": the white icon border, over the icon, on the whole button")
+		eq(rgba(button.Border:GetVertexColor()), tint, where .. ": in the container's tint, untouched")
+		local line = inner_line(button)
+		check(not (line and line:IsShown()), where .. ': no dark line')
+		local art = st.ThemeArt.Get(button.backdrop)
+		for _, set in ipairs({ art and art.pieces or {}, art and art.over or {} }) do
+			for key, piece in pairs(set) do
+				check(piece:GetParent() ~= button, where .. ': ' .. key .. " isn't a texture of Blizzard's button")
+			end
+		end
+	end
+
+	blizzard('made under Blizzard')
+
+	switch('thick')
+	eq(dispel(button), st.BLANK_TEX .. ', BACKGROUND, BOTTOMRIGHT backdrop BOTTOMRIGHT 0,0; TOPLEFT backdrop TOPLEFT 0,0',
+		'Thick: the flat fill behind the icon, on the backdrop')
+	check(covers_backdrop(button), 'Thick: covering it')
+	local line = inner_line(button)
+	check(line ~= nil and line:IsShown(), 'Thick: the dark line over it')
+	eq(rgba(button.Border:GetVertexColor()), tint, "Thick: in the container's tint, untouched")
+
+	switch('blizzard')
+	blizzard('Blizzard again')
+
+	switch('thick')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ aura and class power areas
@@ -443,23 +515,7 @@ test('a boss or party preview draws like its real frame', function()
 	UF.testGroups.boss, UF.testGroups.party = nil, nil
 end)
 
------------------------------------------------------------------- aura borders
-
--- The dark line auras.lua draws over a button's dispel type fill: the button's
--- texture on the BACKGROUND layer, sublevel 1.
-local function inner_line(button)
-	for _, region in ipairs({ button:GetRegions() }) do
-		local layer, sublevel = region:GetDrawLayer()
-		if layer == 'BACKGROUND' and sublevel == 1 then return region end
-	end
-end
-
--- Whether the dispel fill covers the button's backdrop exactly.
-local function covers_backdrop(button)
-	local border, backdrop = button.Border, button.backdrop
-	return border:GetLeft() == backdrop:GetLeft() and border:GetRight() == backdrop:GetRight()
-		and border:GetTop() == backdrop:GetTop() and border:GetBottom() == backdrop:GetBottom()
-end
+------------------------------------------------------------------ aura borders under Thick and Thin
 
 test("an aura button's dispel type fill keeps its color through a theme recolor and redraw, and the dark line over it follows the theme", function()
 	local frame = make_unit_frame('SaftUI_Focus', 'focus', {})

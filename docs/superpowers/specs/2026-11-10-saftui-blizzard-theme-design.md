@@ -234,6 +234,7 @@ Under Thick and Thin, a window draws exactly as a panel, and a control as a smal
 - **aura: the bare icon,** as Blizzard draws a buff: no ring and no fill.
   - On Blizzard's own buff buttons (the buff skin), Blizzard's own `DebuffBorder` and `TempEnchantBorder` show, sized to SaftUI's icon (40 to 30, 32 to 30). SaftUI draws none of its own there. My call: that is Blizzard's art for each dispel type.
   - SaftUI's own aura buttons (the unit frames, WeakAuras) take a colored border as below.
+  - The unit frames' debuffs carry their color on their own dispel texture (`button.Border`), which Blizzard's aura container tints by dispel type with a secret color. Under Blizzard SaftUI makes it the white icon border (`Interface\Common\WhiteIconFrame`) over the whole button, and under Thick and Thin a fill behind the icon. It never reads the color (`.agents/taint.md` rule 11).
 - **header: nothing.** Header and footer strips draw no fill and no lines, so they're rows on the window's Background. My call: Blizzard's windows have no strips, and the metal's title bar already marks the top.
   - Strips still follow SaftUI's theme, not their window's override, as the Themes spec decided. So a window overridden to Blizzard while SaftUI's theme is Thick keeps Thick's strips inside its metal. My call: that keeps one rule for strips, for a rare case.
 - **close: Blizzard's red close button.** The user: "the panels should also use blizzard's close button styling (CharacterFrame is a good example)".

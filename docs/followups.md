@@ -116,6 +116,8 @@ Bags, Forever:
 - the screen edge margin clamps the window, not the metal above it, so at the top screen edge the socket's top may sit 1-3px off screen (the spec's "whether the title bar above a window needs keeping on screen");
 - the ring on the Pinned items and Caught now icons in `/sui` → Bags → Categories: `LayItems` (`SaftUI-Bags/categoriestab.lua`) re-levels each icon and its border's frame on every draw, so the ring may end up level with the icon.
 
+Unit frames (both clients): under Blizzard a debuff shows its dispel type as Blizzard's white icon border over the icon's edge, which the aura container tints (`StyleButton`, `SaftUI-Unitframes/elements/auras.lua`). Check it shows in the dispel type's color, sits over the icon, against the cooldown swipe, and isn't there for a debuff with no dispel type.
+
 Totem bar (Forever): the doubled slot art behind a totem element (the slot button's and the action button's ring) may look too opaque.
 
 Micro menu: Blizzard's micro button art is 22x28, centred on SaftUI's 20x25 buttons (the icons' scale), so check it's neither too big nor too small, and that the performance bar (`MainMenuBarPerformanceBar`, left at its template anchors) sits on the button.
@@ -156,9 +158,9 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 ### 2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons
 
-**What:** Blizzard's buff frame skin shows Blizzard's own `DebuffBorder` (a border by dispel type: `ui-debuff-border-magic-noicon`, `-curse-`, `-disease-`, `-poison-`, `-bleed-` and `-default-`) and `TempEnchantBorder` under the Blizzard theme. SaftUI's own aura buttons (the unit frames' buffs and debuffs, WeakAuras) don't get that art: under Blizzard they take the white icon border (`Interface\Common\WhiteIconFrame`) in SaftUI's dispel color.
+**What:** Blizzard's buff frame skin shows Blizzard's own `DebuffBorder` (a border by dispel type: `ui-debuff-border-magic-noicon`, `-curse-`, `-disease-`, `-poison-`, `-bleed-` and `-default-`) and `TempEnchantBorder` under the Blizzard theme. SaftUI's own aura buttons (the unit frames' buffs and debuffs, WeakAuras) don't get that art. The unit frames' debuffs show their dispel type on `button.Border`, the texture oUF hands the aura container, which tints it by dispel type (oUF's dispel colors, built from Blizzard's `AuraUtil.GetDebuffDisplayInfoTable`) with a secret color and shows and hides it itself. SaftUI only restyles it (`StyleButton`): under Blizzard it's the white icon border (`Interface\Common\WhiteIconFrame`) in OVERLAY over the whole button, so the color rings the icon's edge; under Thick and Thin it's a flat fill behind the icon, showing in the gap around it. SaftUI never reads the color. WeakAuras' icons show no dispel color in any theme.
 
-**Why noticed:** The Blizzard theme's spec listed it as out of scope ("Per-dispel-type debuff art on SaftUI's own aura buttons (unit frames, WeakAuras). They take the white icon border in SaftUI's colors."), to keep the first version to one art per kind.
+**Why noticed:** The Blizzard theme's spec listed it as out of scope ("Per-dispel-type debuff art on SaftUI's own aura buttons (unit frames, WeakAuras). They take the white icon border in SaftUI's colors."), to keep the first version to one art per kind. The final branch review (2026-11-11) found that wasn't so for the unit frames: under Blizzard an aura's inset is 0, so the flat fill sat wholly behind the icon and debuffs lost their dispel color; `StyleButton` now draws the white border instead.
 
 **Anchors:** `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` (`ShowBorder`, `UpdateBorderColor`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, the dispel border fill and `ColorInnerLine`); `SaftUI-Misc/Skinning/weakauras.lua`; `SaftUI-Core/themeart.lua` (the `aura` art); `.agents/taint.md` rule 11 (what can be done to the unit frame aura buttons).
 
