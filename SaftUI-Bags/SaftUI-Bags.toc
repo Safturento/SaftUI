@@ -6,6 +6,7 @@
 
 config.lua
 inventory.lua
+itemclasses.lua
 currencies.lua
 filters.lua
 tooltipscanner.lua

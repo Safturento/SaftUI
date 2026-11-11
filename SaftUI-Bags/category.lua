@@ -75,9 +75,11 @@ end
 function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
-		local tooltipText = self:ScanBagItem(bagID, slotID)
+		local tooltipText, tooltipRaw, tooltipReady = self:ScanBagItem(bagID, slotID)
+		if not tooltipReady then return { loading = true, tooltip = true } end
 		local name, _, quality, _, reqLevel, class, subclass, _, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
+		local equipLoc = equipSlot
 		local itemLevel = C_Item.GetDetailedItemLevelInfo(item.hyperlink)
 		if not name then
 			local itemString = select(3, strfind(item.hyperlink, "|H(.+)|h"))
@@ -91,6 +93,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 				name = item.itemName
 				class = 'Key'
+				itemClassID = (Enum.ItemClass and Enum.ItemClass.Key) or 13
 				vendorPrice = 0
 				texture = item.iconFileID
 				item.stackCount = tonumber(keyLevel)
@@ -103,6 +106,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 				name = item.itemName
 				class='Battle Pet'
+				itemClassID = (Enum.ItemClass and Enum.ItemClass.Battlepet) or 17
 				item.stackCount = tonumber(petLevel)
 				vendorPrice = 0
 				quality = item.quality
@@ -115,6 +119,8 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 
 			return {
 				name = name,
+				nameLower = strlower(name),
+				nameStripped = strlower(string.unmagic(name)),
 				ilvl = itemLevel,
 				reqLevel = reqLevel,
 				isWarbound = (C_Item.IsBoundToAccountUntilEquip and C_Item.IsBoundToAccountUntilEquip(itemLocation) and not C_Item.IsBound(itemLocation))
@@ -136,6 +142,11 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 				subclass = subclass,
 				maxStack = C_Item.GetItemMaxStackSize(itemLocation) or 1,
 				equipSlot = _G[equipSlot],
+				equipLoc = equipLoc,
+				classID = itemClassID,
+				subclassID = itemSubClassID,
+				bindType = bindType,
+				isCraftingReagent = isCraftingReagent,
 				expacID = expacID,
 				vendorPrice = vendorPrice,
 				texture = texture or item.iconFileId,
@@ -144,6 +155,8 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 				bagID = bagID,
 				slotID = slotID,
 				tooltipText = tooltipText,
+				tooltipLower = strlower(tooltipRaw),
+				tooltipStripped = strlower(tooltipText),
 				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
 			}
 		else
@@ -305,6 +318,7 @@ function INV:ReadBags(id, groupOf, noMerge)
 				numItems = numItems + 1
 				if item.loading then
 					numLoading = numLoading + 1
+					if item.tooltip then self:QueueTooltipRetry() end
 				else
 					local mergeKey = tostring(item.itemID) .. ':' .. group
 					if merge and merged[mergeKey] and item.maxStack > 1 then

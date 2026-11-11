@@ -14,9 +14,17 @@
 --     them (W.bag_item below): C_Container.ContainerIDToInventoryID,
 --     GetInventoryItemID and C_Item.GetItemInfoInstant's subtype;
 --   - C_Item and ItemLocation, as far as INV:GetInventoryItemInfo reads them
---     (an item's name, class and quality, never its tooltip).
+--     (GetItemInfo's 17 values, the item classes of the world's client, and
+--     whether an item is bound);
+--   - C_TooltipInfo.GetBagItem: an item's tooltip lines, by item.tooltip.
 -- An item is a table of the fields INV:GetInventoryItemInfo and the category
--- rules read; W.item fills in the rest.
+-- rules read; W.item fills in the rest. Fields beyond name, class and ilvl:
+--   link (else |Hitem:<id>|h[<name>]|h; tooltips are cached by link, so items
+--   with different tooltips need different ids), tooltip (a list of strings
+--   or { left, right } pairs), tooltipLoading (GetBagItem gives nothing),
+--   subclass, classID, subclassID (the names and ids a client's item classes
+--   give; either may be set), quality, reqLevel, equipLoc, vendorPrice (10),
+--   bindType, expacID, isCraftingReagent, isBound, accountUntilEquip, set.
 
 local W = {}
 
@@ -24,6 +32,7 @@ local W = {}
 -- (the reagent bag, bag 5 in the stubbed enum). Returns the Inventory module.
 function W.fresh(client)
 	client = client or 'forever'
+	W.client = client
 	reset_world()
 	stub.interface = client == 'retail' and 120000 or 16001
 	-- constants.lua reads the interface when it loads, so load it again.
@@ -39,7 +48,7 @@ function W.fresh(client)
 	-- slot.lua post-hooks Blizzard's stack split button at load; it is also where
 	-- the Grays rule's INV:IsProtected lives.
 	_G.StackSplitFrameOkay_Click = function() end
-	for _, file in ipairs({ 'inventory', 'tooltipscanner', 'filters', 'category', 'slot', 'views' }) do
+	for _, file in ipairs({ 'inventory', 'itemclasses', 'tooltipscanner', 'filters', 'category', 'slot', 'views' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
 	local INV = SaftUI:GetModule('Inventory')
@@ -73,6 +82,11 @@ function W.item(itemID, name, class, ilvl, extra)
 	return item
 end
 
+-- An item's link: its own, else the item link of its id and name.
+function W.link(item)
+	return item.link or ('|Hitem:' .. item.itemID .. '|h[' .. item.name .. ']|h')
+end
+
 -- Puts an item in a slot.
 function W.put(bagID, slot, item) W.bags[bagID].items[slot] = item end
 
@@ -81,6 +95,29 @@ function W.container(id)
 	local INV = W.INV
 	INV.containers[id] = { bag_ids = INV.bagIds[id], categories = {}, id = id }
 	return INV.containers[id]
+end
+
+-- The item classes of the world's client, and of the other one.
+local CLASSES = load_test_file('bags/fixtures/item_classes.lua')
+
+local function other_client() return W.client == 'retail' and 'forever' or 'retail' end
+
+-- The id of a class or subclass name in the world's client, else in the other
+-- one (so W.item(id, name, 'Trade Goods') still works in a retail world).
+local function class_id_by_name(name)
+	for _, client in ipairs({ W.client, other_client() }) do
+		for id, n in pairs(CLASSES[client].classes) do
+			if n == name then return id end
+		end
+	end
+end
+
+local function subclass_id_by_name(classID, name)
+	for _, client in ipairs({ W.client, other_client() }) do
+		for id, n in pairs(CLASSES[client].subclasses[classID] or {}) do
+			if n == name then return id end
+		end
+	end
 end
 
 function W.stub_api()
@@ -100,7 +137,10 @@ function W.stub_api()
 			if bagID == Enum.BagIndex.Backpack then error('no inventory slot for the backpack') end
 			return 500 + bagID
 		end,
-		GetContainerItemLink = function() return nil end,
+		GetContainerItemLink = function(bagID, slot)
+			local item = W.bags[bagID] and W.bags[bagID].items[slot]
+			return item and W.link(item)
+		end,
 		GetContainerItemEquipmentSetInfo = function(bagID, slot)
 			local item = W.bags[bagID].items[slot]
 			if item and item.set then return true, item.set .. ',' end
@@ -110,8 +150,8 @@ function W.stub_api()
 			local item = W.bags[bagID] and W.bags[bagID].items[slot]
 			if not item then return nil end
 			return {
-				hyperlink = '|Hitem:' .. item.itemID .. '|h[' .. item.name .. ']|h',
-				stackCount = item.count, isBound = false, itemID = item.itemID,
+				hyperlink = W.link(item),
+				stackCount = item.count, isBound = item.isBound or false, itemID = item.itemID,
 				quality = item.quality, locked = false, iconFileID = 1, itemName = item.name,
 			}
 		end,
@@ -126,27 +166,70 @@ function W.stub_api()
 		end
 	end
 	local function itemByLink(link)
-		local id = tonumber(link:match('item:(%d+)'))
 		for _, bag in pairs(W.bags) do
 			for _, item in pairs(bag.items) do
-				if item.itemID == id then return item end
+				if W.link(item) == link then return item end
 			end
 		end
 	end
+	local function tooltipData(item)
+		if not item or item.tooltipLoading then return nil end
+		local lines = {}
+		for _, line in ipairs(item.tooltip or {}) do
+			if type(line) == 'table' then
+				lines[#lines + 1] = { leftText = line[1], rightText = line[2] }
+			else
+				lines[#lines + 1] = { leftText = line }
+			end
+		end
+		return { lines = lines }
+	end
+	-- { lines = { { leftText, rightText } } }, or nothing while the item's
+	-- tooltip is loading (item.tooltipLoading). GetHyperlink is what Core's
+	-- Utilities:ScanItemLink reads (the upgrade level on a slot).
+	_G.C_TooltipInfo = {
+		GetBagItem = function(bagID, slot)
+			return tooltipData(W.bags[bagID] and W.bags[bagID].items[slot])
+		end,
+		GetHyperlink = function(link) return tooltipData(itemByLink(link)) end,
+	}
+	local function itemAt(location) return W.bags[location.bagID].items[location.slot] end
 	_G.C_Item = {
 		GetItemInfo = function(link)
+			-- Keystones and caged pets are not items to the client: no info.
+			if not link:find('^|Hitem:') then return nil end
 			local item = itemByLink(link)
 			if not item or item.loading then return nil end
+			-- Given ids, the names come from the world's client; given names, the
+			-- ids come from the tables (this client's, else the other's).
+			local classID, subclassID = item.classID, item.subclassID
+			local class, subclass = item.class, item.subclass
+			if classID == nil then classID = class_id_by_name(class) end
+			if class == nil or item.classID ~= nil then class = CLASSES[W.client].classes[classID] end
+			if subclassID == nil then
+				subclassID = subclass and subclass_id_by_name(classID, subclass) or 0
+			end
+			if subclass == nil or item.subclassID ~= nil then
+				subclass = (CLASSES[W.client].subclasses[classID] or {})[subclassID]
+			end
 			-- name, link, quality, ilvl, reqLevel, class, subclass, stackCount,
-			-- equipSlot, texture, vendorPrice, classID, subclassID, bindType, expacID
-			return item.name, link, item.quality, 0, 0, item.class, item.subclass, 1,
-				nil, 1, 10, 0, 0, 0, 0
+			-- equipLoc, texture, vendorPrice, classID, subclassID, bindType,
+			-- expacID, setID, isCraftingReagent
+			return item.name, link, item.quality, 0, item.reqLevel or 0, class, subclass, 1,
+				item.equipLoc, 1, item.vendorPrice == nil and 10 or item.vendorPrice,
+				classID or 0, subclassID, item.bindType or 0, item.expacID or 0, nil,
+				item.isCraftingReagent
+		end,
+		GetItemClassInfo = function(classID) return CLASSES[W.client].classes[classID] end,
+		GetItemSubClassInfo = function(classID, subclassID)
+			return (CLASSES[W.client].subclasses[classID] or {})[subclassID]
 		end,
 		GetDetailedItemLevelInfo = function(link)
 			local item = itemByLink(link)
 			return item and item.ilvl
 		end,
-		IsBound = function() return false end,
+		IsBound = function(location) return itemAt(location).isBound or false end,
+		IsBoundToAccountUntilEquip = function(location) return itemAt(location).accountUntilEquip or false end,
 		-- itemID, type, subtype, equipLoc, icon, classID, subclassID
 		GetItemInfoInstant = function(itemID)
 			local bagItem = bagItemByID(itemID)
