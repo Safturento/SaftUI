@@ -488,6 +488,29 @@ function ThemeArt.State(kind)
 	return art and art.states and ForClient(art.states) or nil
 end
 
+-- Puts Blizzard's state art (name, an atlas or a file from State) on texture,
+-- one of a button's state textures of SaftUI's (the hover, pushed or checked
+-- texture; the flash too, with layer false): over the button's whole
+-- footprint, white, with no tint, in the state layer above the ring, and
+-- blending as blend says (the button's own call sets the highlight's). A flat
+-- state texture is put back by its own code (StyleButton in the action bars'
+-- skin, st:SkinActionButton, the totem skin), not here.
+function ThemeArt.StyleState(texture, name, button, blend, layer)
+	if name:find([[Interface\]], 1, true) == 1 then
+		texture:SetTexture(name)
+		texture:SetTexCoord(0, 1, 0, 1)
+	else
+		texture:SetAtlas(name)
+	end
+	if layer ~= false then
+		texture:SetDrawLayer(ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL)
+	end
+	texture:SetVertexColor(1, 1, 1, 1)
+	if blend then texture:SetBlendMode(blend) end
+	texture:ClearAllPoints()
+	texture:SetAllPoints(button)
+end
+
 -- A control's art on this client (CONTROLS; the fields are ART[name]'s).
 function ThemeArt.Control(name)
 	if not CONTROLS[name] then error(tostring(name) .. ' is not a control', 2) end
@@ -648,6 +671,15 @@ local RING_LAYER, RING_SUBLEVEL = 'ARTWORK', -2
 -- button's equipped border) draws just over the ring and still under the
 -- texts.
 local OWN_SUBLEVEL = -1
+
+-- Where a button's state art draws (hover, pushed, checked: StyleState): the
+-- same layer as the ring and just over it, level with the own-color piece, so
+-- it covers the ring's whole footprint, over the icon and under the texts,
+-- which Blizzard's action and item button templates put in OVERLAY (the item
+-- button's count, its name) or in a frame over the button (the action
+-- button's hotkey and count, at level 500). Blizzard's own ring is its normal
+-- texture, ARTWORK 0, and the state art is drawn over it.
+ThemeArt.STATE_LAYER, ThemeArt.STATE_SUBLEVEL = 'ARTWORK', -1
 
 -- A button's art on frame (the action or item button's): the art behind its
 -- icon, filling frame, and the ring over the icon's edge, covering frame. The

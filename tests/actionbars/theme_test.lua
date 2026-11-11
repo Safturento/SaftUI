@@ -27,9 +27,14 @@ local T = load_test_file('lib/theme_helpers.lua')
 
 local st, AB, LAB, drawn
 
-local function fresh()
-	reset_world()
-	load_core_helpers()
+-- A fresh world, on Forever unless it names retail.
+local function fresh(client)
+	if client then
+		T.client(client)
+	else
+		reset_world()
+		load_core_helpers()
+	end
 	st = SaftUI
 	drawn = T.watch()
 	LAB = load_test_file('actionbars/fixtures/libactionbutton.lua')
@@ -206,4 +211,77 @@ test('the equipped border survives a recolor', function()
 	st:RecolorThemed()
 	eq(T.edge_rgb(worn.backdrop), green(), 'put on again: green, through a recolor')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- Where a region draws among its button's regions, as one number: the layer,
+-- then the sublevel.
+local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+local function depth(region)
+	local layer, sublevel = region:GetDrawLayer()
+	return LAYERS[layer] * 100 + (sublevel or 0)
+end
+
+test("under Blizzard an action button's hover, pushed, checked and flash are Blizzard's atlases over the ring", function()
+	for _, case in ipairs({ { 'forever', 'ADD' }, { 'retail', 'BLEND' } }) do
+		local client, checkedBlend = case[1], case[2]
+		fresh(client)
+		st.config.profile.theme.name = 'blizzard'
+		local b = bar(button('ThemeTestState' .. client))
+		local where = client .. ': '
+		local hover, pushed, checked = b:GetHighlightTexture(), b:GetPushedTexture(), b:GetCheckedTexture()
+		eq(hover:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', where .. "hover is Blizzard's")
+		eq(pushed:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Down', where .. "pushed is Blizzard's")
+		eq(checked:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', where .. "checked is Blizzard's")
+		eq(b.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', where .. "flash is Blizzard's")
+		eq(checked:GetBlendMode(), checkedBlend, where .. 'checked blends as the template does')
+		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
+			eq(T.text(region:GetVertexColor()), '1.00,1.00,1.00,1.00', where .. name .. ' has no tint')
+		end
+
+		-- Over the ring's footprint, the whole button, not the icon inside it.
+		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
+			eq(T.around(region, b), '0,0,0,0', where .. name .. ' covers the button')
+		end
+
+		-- Above the ring and the own-color piece, under the texts.
+		local ring = st.ThemeArt.Get(b.backdrop).over.Ring
+		eq(ring:GetParent(), b, where .. "the ring is a texture of the button's own")
+		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked }) do
+			check(depth(region) >= depth(ring) + 1, where .. name .. ' draws over the ring')
+			check(depth(region) >= LAYERS.ARTWORK * 100 - 1, where .. name .. ' draws over the icon')
+			for _, text in ipairs({ b.HotKey, b.Count, b.Name }) do
+				check(depth(region) < depth(text), where .. name .. ' draws under the texts')
+			end
+		end
+		check(depth(b.Flash) > depth(ring), where .. 'the flash draws over the ring')
+		for _, text in ipairs({ b.HotKey, b.Count, b.Name }) do
+			check(depth(b.Flash) < depth(text), where .. 'the flash draws under the texts')
+		end
+
+		-- Under Thick: SaftUI's flat textures over the icon, exactly as before.
+		switch('thick')
+		local colors = st.config.profile.colors.button
+		eq(hover:GetAtlas(), nil, 'Thick: hover is no atlas')
+		eq(hover:GetTexture(), st.BLANK_TEX, 'Thick: hover is the flat texture')
+		eq(T.text(hover:GetVertexColor()), T.text(colors.blue:GetRGB()) .. ',1.00', 'Thick: hover is blue')
+		eq(T.text(pushed:GetVertexColor()), '0.00,0.00,0.00,0.10', 'Thick: pushed is the dark tint')
+		eq(T.text(checked:GetVertexColor()), '1.00,1.00,1.00,0.30', 'Thick: checked is the white tint')
+		eq(checked:GetBlendMode(), 'ADD', 'Thick: checked is additive')
+		eq(b.Flash:GetAtlas(), nil, 'Thick: the flash is no atlas')
+		eq(T.text(select(4, b.Flash:GetVertexColor())), '1.00', 'Thick: the flash')
+		for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = b.Flash }) do
+			eq(T.around(region, b.icon), '0,0,0,0', 'Thick: ' .. name .. ' covers the icon')
+		end
+		eq(select(1, hover:GetDrawLayer()), 'OVERLAY', 'Thick: hover is over the icon, as it was')
+		eq(select(1, pushed:GetDrawLayer()), 'OVERLAY', 'Thick: pushed too')
+		eq(select(1, checked:GetDrawLayer()), 'OVERLAY', 'Thick: checked too')
+
+		-- And back.
+		switch('blizzard')
+		eq(hover:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', where .. 'back under Blizzard: hover')
+		eq(checked:GetBlendMode(), checkedBlend, where .. 'checked blend again')
+		eq(b.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', where .. 'the flash again')
+		eq(T.around(pushed, b), '0,0,0,0', where .. 'pushed covers the button again')
+		eq(#take_errors(), 0, where .. 'no errors')
+	end
 end)

@@ -51,9 +51,9 @@ function T.watch()
 	local draws = setmetatable({}, { __mode = 'k' })
 	for _, name in ipairs({ 'SetTemplate', 'SetBackdrop' }) do
 		local real = st[name]
-		st[name] = function(self, frame, theme, background, kind)
+		st[name] = function(self, frame, theme, background, kind, ...)
 			draws[frame] = { theme, background, kind }
-			return real(self, frame, theme, background, kind)
+			return real(self, frame, theme, background, kind, ...)
 		end
 	end
 	local realIn = st.SetBackdropIn

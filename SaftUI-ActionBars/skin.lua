@@ -285,6 +285,15 @@ function AB:SkinButton(button)
 	ShortenHotkey(button.HotKey, button.HotKey:GetText())
 end
 
+-- Blizzard's state art for a button drawn with theme and background (see
+-- st.ThemeArt.State), or nil when it isn't drawn in Blizzard's art.
+function AB:BlizzardState(theme, background)
+	local look = st:ResolveTheme(theme, background, 'action')
+	if look and look.name == 'blizzard' then
+		return st.ThemeArt.State('action')
+	end
+end
+
 -- Applies the action bars' Theme and Background and the bar's size to a
 -- skinned button. Safe to run again: it makes nothing new.
 function AB:StyleButton(button, config, theme, background)
@@ -306,10 +315,6 @@ function AB:StyleButton(button, config, theme, background)
 	st:SetInside(icon, inset)
 	st:SkinIcon(icon)
 
-	for _, region in ipairs({ skin.hover, skin.pushed, skin.checked }) do
-		region:ClearAllPoints()
-		region:SetAllPoints(icon)
-	end
 	for _, key in ipairs(OVER_ICON) do
 		local region = button[key]
 		if region then
@@ -318,11 +323,32 @@ function AB:StyleButton(button, config, theme, background)
 		end
 	end
 
-	skin.hover:SetVertexColor(colors.button.blue:GetRGB())
-	skin.pushed:SetVertexColor(0, 0, 0, 0.1)
-	skin.checked:SetVertexColor(1, 1, 1, 0.3)
-	local r, g, b = colors.button.red:GetRGB()
-	button.Flash:SetColorTexture(r, g, b, 0.4)
+	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
+	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
+	-- textures over the icon.
+	local state = self:BlizzardState(theme, background)
+	if state then
+		local ThemeArt = st.ThemeArt
+		ThemeArt.StyleState(skin.hover, state.hover, button)
+		ThemeArt.StyleState(skin.pushed, state.pushed, button)
+		ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
+		-- The flash keeps the template's layer, over the state art.
+		ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
+	else
+		for _, region in ipairs({ skin.hover, skin.pushed, skin.checked }) do
+			region:SetTexture(st.BLANK_TEX)
+			region:SetTexCoord(0, 1, 0, 1)
+			region:SetDrawLayer('OVERLAY', 0)
+			region:ClearAllPoints()
+			region:SetAllPoints(icon)
+		end
+		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
+		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
+		skin.checked:SetVertexColor(1, 1, 1, 0.3)
+		skin.checked:SetBlendMode('ADD')
+		local r, g, b = colors.button.red:GetRGB()
+		button.Flash:SetColorTexture(r, g, b, 0.4)
+	end
 
 	-- LibActionButton set the fonts, anchors and the hotkey's and macro name's
 	-- showing from the bar's text settings (GetButtonConfig). SaftUI's pixel fonts

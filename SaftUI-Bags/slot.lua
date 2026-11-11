@@ -80,7 +80,8 @@ end
 -- Skins an item or currency slot (st:SkinActionButton) with the Slot theme and
 -- background, as a slot, and the icon font. Its backdrop fills the slot and its
 -- icon sits inside the border (trueSize); None has no backdrop, so the icon
--- fills the slot. Safe to run again.
+-- fills the slot. Under Blizzard its pushed and highlight art are Blizzard's.
+-- Safe to run again.
 function INV:SkinSlot(slot)
 	local theme, background = self.config.buttontheme, self.config.buttonbackground
 	st:SkinActionButton(slot, {
@@ -90,7 +91,11 @@ function INV:SkinSlot(slot)
 		trueSize = theme ~= 'none',
 	}, 'slot')
 	slot:SetNormalTexture("")
-	slot:SetPushedTexture("")
+	-- Under Thick and Thin the pushed art is cleared; under Blizzard
+	-- st:SkinActionButton gave it Blizzard's (Quickslot-Depress).
+	if not st:IsBlizzardLook(theme, background) then
+		slot:SetPushedTexture("")
+	end
 end
 
 -- A quality color changed in the options, or a theme recolor or redraw put the

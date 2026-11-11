@@ -320,6 +320,49 @@ test("under Blizzard an Epic item's slot shows the white icon border in the Epic
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", function()
+	local _, slots, currency = bags()
+	local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+	local function depth(region)
+		local layer, sublevel = region:GetDrawLayer()
+		return LAYERS[layer] * 100 + (sublevel or 0)
+	end
+	local PUSHED, HIGHLIGHT = [[Interface\Buttons\UI-Quickslot-Depress]], [[Interface\Buttons\ButtonHilight-Square]]
+
+	-- Under Thick: the pushed art is cleared and the hover a flat blue over the icon, as before.
+	local slot = slots[1]
+	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick: the pushed art is cleared')
+	eq(slot.hover:GetTexture(), st.BLANK_TEX, 'Thick: the hover is the flat texture')
+	eq(T.text(slot.hover:GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick: blue')
+
+	st.config.profile.theme.name = 'blizzard'
+	st:ThemeChanged()
+	INV:SkinSlot(currency) -- the module's own list of currency slots has none here
+	for name, button in pairs({ slot = slot, currency = currency }) do
+		local pushed, highlight = button:GetPushedTexture(), button:GetHighlightTexture()
+		eq(pushed:GetTexture(), PUSHED, name .. ": pushed is Blizzard's file")
+		eq(highlight:GetTexture(), HIGHLIGHT, name .. ": the highlight is Blizzard's file")
+		eq(highlight:GetBlendMode(), 'ADD', name .. ': the highlight is additive')
+		for what, region in pairs({ pushed = pushed, highlight = highlight }) do
+			eq(T.text(region:GetVertexColor()), '1.00,1.00,1.00,1.00', name .. ' ' .. what .. ' has no tint')
+			eq(T.around(region, button), '0,0,0,0', name .. ' ' .. what .. ' covers the button, the ring\'s footprint')
+			local ring = st.ThemeArt.Get(button.backdrop).over.Ring
+			check(depth(region) > depth(ring), name .. ' ' .. what .. ' draws over the ring')
+			check(depth(region) > depth(button.icon), name .. ' ' .. what .. ' draws over the icon')
+			check(depth(region) < depth(button.Count), name .. ' ' .. what .. ' draws under the count')
+		end
+	end
+
+	-- Back to Thick: the flat hover again, over the icon inside the border, and the pushed art cleared.
+	st.config.profile.theme.name = 'thick'
+	st:ThemeChanged()
+	eq(slot:GetPushedTexture():GetTexture(), '', 'Thick again: the pushed art is cleared')
+	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
+	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
+	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick again: blue')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ Slot theme
 
 test("a free slot takes its Slot theme's border", function()

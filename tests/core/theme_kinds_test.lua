@@ -114,9 +114,10 @@ local function Arguments(code, mask, open)
 end
 
 -- The draw calls, the argument count each needs (the kind is the last), and
--- which argument is the theme.
+-- which argument is the theme. optional is how many more arguments follow the
+-- kind: st:SetTemplate takes the button its ring is a texture of after it.
 local DRAWS = {
-	{ name = 'SetTemplate', count = 4, theme = 2 },
+	{ name = 'SetTemplate', count = 4, theme = 2, optional = 1 },
 	{ name = 'SetBackdrop', count = 4, theme = 2 },
 	{ name = 'SetBackdropIn', count = 5, theme = 3 },
 	{ name = 'ThemeInset', count = 3, theme = 1 },
@@ -151,7 +152,7 @@ local function Scan(path, source)
 				if not mask:sub(lineStart, s - 1):find('function%s+$') then
 					local args = Arguments(code, mask, e)
 					calls[#calls + 1] = { name = name, args = args }
-					if #args ~= rule.count and not IsNone(args[rule.theme]) then
+					if #args ~= rule.count and #args ~= rule.count + (rule.optional or 0) and not IsNone(args[rule.theme]) then
 						problem(s, ('st:%s with %d arguments: it needs %d, the kind last (%s)'):format(
 							name, #args, rule.count, table.concat(args, ', ')))
 					end

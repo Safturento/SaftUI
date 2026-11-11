@@ -28,7 +28,13 @@ load_saftui('SaftUI-Misc/experience.lua')
 load_saftui('SaftUI-Misc/totembar.lua')
 load_saftui('SaftUI-Misc/totemskin.lua')
 load_saftui('SaftUI-Misc/Skinning/skinning.lua')
+-- The skin treats this atlas as a secret value (the stubs can't make one, and
+-- SetAtlas takes only a name): read when the skin loads.
+local SECRET_ATLAS = 'a-secret-atlas'
+local real_issecretvalue = issecretvalue
+function issecretvalue(v) return v == SECRET_ATLAS or (real_issecretvalue and real_issecretvalue(v)) or false end
 load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua')
+load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua')
 load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua')
 
 local st = SaftUI
@@ -130,8 +136,15 @@ BuffFrame = CreateFrame('Frame', 'BuffFrame', UIParent)
 DebuffFrame = CreateFrame('Frame', 'DebuffFrame', UIParent)
 local buff, enchant = aura_button(BuffFrame), aura_button(BuffFrame, 'enchant')
 local debuff = aura_button(DebuffFrame, 'debuff')
-BuffFrame.auraFrames = { buff, enchant }
-DebuffFrame.auraFrames = { debuff }
+-- BuffFrame's and DebuffFrame's own buttons are parented to their aura
+-- containers, which is how the Auras module knows whose icon size a button has
+-- (and gives it its text settings: these are for the border sizes only).
+BuffFrame.AuraContainer = CreateFrame('Frame', nil, BuffFrame)
+DebuffFrame.AuraContainer = CreateFrame('Frame', nil, DebuffFrame)
+local owned_enchant = aura_button(BuffFrame.AuraContainer, 'enchant')
+local owned_debuff = aura_button(DebuffFrame.AuraContainer, 'debuff')
+BuffFrame.auraFrames = { buff, enchant, owned_enchant }
+DebuffFrame.auraFrames = { debuff, owned_debuff }
 local BF = SK:GetModule('Blizzard_BuffFrame')
 
 -- The SaftUI backdrop behind a button's icon: the button's child with a backdrop.
@@ -223,6 +236,84 @@ test('under Blizzard the buff duration clears the icon by the aura inset and one
 	eq(duration_y(buff), -3, "and Thick's border again")
 end)
 
+test("under Blizzard the buff skin shows Blizzard's debuff and enchant borders around the icon and colors nothing", function()
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	SK:UpdateConfig()
+	st:ColorsChanged('theme')
+	for _, button in ipairs({ debuff, owned_debuff }) do
+		button.DebuffBorder:SetAtlas('ui-debuff-border-magic-noicon')
+		button.DebuffBorder:Show()
+	end
+	enchant.TempEnchantBorder:Show()
+	owned_enchant.TempEnchantBorder:Show()
+
+	local function placed(border, button)
+		local point, relativeTo = border:GetPoint(1)
+		return border:GetNumPoints() == 1 and point == 'CENTER' and relativeTo == button.Icon
+	end
+	local function size(border) return T.text(border:GetSize()) end
+	local debuffBorder, enchantBorder = owned_debuff.DebuffBorder, owned_enchant.TempEnchantBorder
+	for _, border in ipairs({ debuffBorder, enchantBorder, debuff.DebuffBorder, enchant.TempEnchantBorder }) do
+		eq(border:GetAlpha(), 1, 'a border shows, at alpha 1')
+	end
+	check(placed(debuffBorder, owned_debuff), "the debuff's border is centred on the icon")
+	check(placed(enchantBorder, owned_enchant), "the enchant's border is centred on the icon")
+	check(placed(debuff.DebuffBorder, debuff), "a button the Auras settings don't size: centred too")
+	eq(size(debuff.DebuffBorder), '0.00,0.00', "and left at the size Blizzard gave it")
+	eq(size(debuffBorder), '40.00,40.00', "the debuff's border is 4/3 of a 30 icon")
+	eq(size(enchantBorder), '32.00,32.00', "the enchant's border is 16/15 of a 30 icon")
+	eq(select(1, debuffBorder:GetDrawLayer()), 'OVERLAY', "Blizzard's layer, over the icon")
+
+	-- Nothing of SaftUI's colors a border: no own-color piece, a debuff or not.
+	for _, button in ipairs({ debuff, enchant, buff, owned_debuff, owned_enchant }) do
+		local art = st.ThemeArt.Get(icon_backdrop(button))
+		check(not (art and art.own and art.own:IsShown()), 'no own-color piece on the backdrop')
+	end
+
+	-- The Auras settings' icon size: 4/3 and 16/15 of it.
+	profile.auras.debuffs.size = 45
+	profile.auras.buffs.size = 45
+	BF:UpdateText()
+	eq(size(debuffBorder), '60.00,60.00', 'a 45 icon: 60')
+	eq(size(enchantBorder), '48.00,48.00', 'a 45 icon: 48')
+	profile.auras.debuffs.size, profile.auras.buffs.size = 30, 30
+	BF:UpdateText()
+
+	-- A secret atlas shows Blizzard's border all the same.
+	debuffBorder:SetAtlas(SECRET_ATLAS)
+	eq(debuffBorder:GetAlpha(), 1, 'a secret atlas: the border shows')
+	check(placed(debuffBorder, owned_debuff), 'and is centred on the icon')
+
+	-- A recolor and a redraw change none of it.
+	st:RecolorThemed()
+	st:RedrawThemed()
+	SK:UpdateConfig()
+	eq(debuffBorder:GetAlpha(), 1, 'after a redraw: still shown')
+	eq(size(debuffBorder), '40.00,40.00', 'and still 40')
+	local art = st.ThemeArt.Get(icon_backdrop(owned_debuff))
+	check(not (art and art.own and art.own:IsShown()), 'and the backdrop still shows no own-color piece')
+
+	-- Under Thick the borders are hidden again and the border color comes back.
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	SK:UpdateConfig()
+	st:ColorsChanged('theme')
+	debuffBorder:SetAtlas('ui-debuff-border-magic-noicon')
+	eq(debuffBorder:GetAlpha(), 0, "Thick: the debuff's border is hidden")
+	eq(enchantBorder:GetAlpha(), 0, "Thick: the enchant's border is hidden")
+	eq(T.edge(icon_backdrop(owned_debuff)), T.text(MAGIC[1], MAGIC[2], MAGIC[3], 1), "Thick: the debuff's type color is back")
+	eq(T.edge(icon_backdrop(owned_enchant)), ENCHANT, 'Thick: and the enchant purple')
+	debuffBorder:SetAtlas(SECRET_ATLAS)
+	eq(debuffBorder:GetAlpha(), 1, "Thick: a secret atlas still falls back on Blizzard's border")
+	debuffBorder:SetAtlas('ui-debuff-border-magic-noicon')
+	eq(debuffBorder:GetAlpha(), 0, 'Thick: and a known one hides it again')
+	for _, button in ipairs({ debuff, owned_debuff }) do button.DebuffBorder:Hide() end
+	enchant.TempEnchantBorder:Hide()
+	owned_enchant.TempEnchantBorder:Hide()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------ the swing timer skin
 
 -- One of Forever's swing timer bars (Blizzard_SwingTimer) as far as the skin reads it.
@@ -290,6 +381,27 @@ for i = 1, 4 do
 	slots[i] = locked(button, 'Blizzard totem slot')
 end
 
+-- The summon button and the first action button, as the totem bar's templates
+-- make them as far as the skin reads them: the icon in BACKGROUND, and the
+-- texts where Blizzard's templates put them (the count in ARTWORK, the hotkey
+-- and the name in OVERLAY), then the template's flash. The skin writes nothing
+-- onto them, so a field it adds fails. The summon and recall buttons get
+-- backdrops (and so a ring); the action buttons, on top of the slot buttons,
+-- don't.
+local function totem_button(name)
+	local button = CreateFrame('CheckButton', name, UIParent)
+	button:SetSize(30, 30)
+	button:SetPoint('CENTER')
+	button.icon = button:CreateTexture(nil, 'BACKGROUND')
+	button.Flash = button:CreateTexture(nil, 'ARTWORK', nil, 1)
+	button.Count = button:CreateFontString(nil, 'ARTWORK')
+	button.HotKey = button:CreateFontString(nil, 'OVERLAY')
+	button.Name = button:CreateFontString(nil, 'OVERLAY')
+	return locked(button, 'Blizzard totem button')
+end
+local summon = totem_button('MultiCastSummonSpellButton')
+local action = totem_button('MultiCastActionButton1')
+
 test("the totem bar's element borders survive a recolor", function()
 	local TB = st:GetModule('TotemBar')
 	st:BindModuleConfig(TB, 'totembar')
@@ -309,6 +421,86 @@ test("the totem bar's element borders survive a recolor", function()
 	end
 	profile.templates.thick.bordercolor = saved
 	st:RecolorThemed()
+end)
+
+-- Where a region draws among its button's regions, as one number: the layer,
+-- then the sublevel.
+local LAYERS = { BACKGROUND = 1, BORDER = 2, ARTWORK = 3, OVERLAY = 4, HIGHLIGHT = 5 }
+local function depth(region)
+	local layer, sublevel = region:GetDrawLayer()
+	return LAYERS[layer] * 100 + (sublevel or 0)
+end
+
+test("under Blizzard the totem buttons take Blizzard's state art", function()
+	local TB = st:GetModule('TotemBar')
+	local flat = st.BLANK_TEX
+	-- Out of the earlier cases' state: Thick, the look the bar's buttons have.
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	local hover, pushed, checked = summon:GetHighlightTexture(), summon:GetPushedTexture(), summon:GetCheckedTexture()
+	eq(hover:GetTexture(), flat, 'Thick: the flat hover')
+	eq(T.around(hover, summon.icon), '0,0,0,0', 'Thick: over the icon')
+	eq(depth(pushed), 400, 'Thick: pushed in OVERLAY, as before')
+
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	local backdrop = icon_backdrop(summon)
+	eq(hover:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', "hover is Blizzard's")
+	eq(pushed:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Down', "pushed is Blizzard's")
+	eq(checked:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', "checked is Blizzard's")
+	eq(checked:GetBlendMode(), st.forever and 'ADD' or 'BLEND', 'checked blends as the template does on this client')
+	eq(summon.Flash:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Flash', "the flash is Blizzard's")
+	for name, region in pairs({ hover = hover, pushed = pushed, checked = checked, flash = summon.Flash }) do
+		eq(T.text(region:GetVertexColor()), '1.00,1.00,1.00,1.00', name .. ' has no tint')
+		eq(T.around(region, summon), '0,0,0,0', name .. " covers the button, the ring's footprint")
+	end
+
+	-- The ring and the own-color piece are textures of the button, over the icon,
+	-- so the texts, which a frame over the button would cover, stay readable.
+	st:SetBorderColor(backdrop, 1, 0, 0)
+	local art = st.ThemeArt.Get(backdrop)
+	local ring, own = art.over.Ring, art.own
+	eq(ring:GetParent(), summon, "the ring is a texture of the button's own")
+	eq(own:GetParent(), summon, "so is the own-color piece")
+	check(own:IsShown(), 'the own-color piece shows')
+	check(depth(ring) > depth(summon.icon), 'the ring draws over the icon')
+	check(depth(own) > depth(ring), 'the own-color piece draws over the ring')
+	for _, text in ipairs({ summon.Count, summon.HotKey, summon.Name }) do
+		check(depth(text) > depth(ring), 'a font string draws over the ring')
+		check(depth(text) > depth(own), 'a font string draws over the own-color piece')
+	end
+	for name, region in pairs({ hover = hover, pushed = pushed, checked = checked }) do
+		check(depth(region) > depth(ring), name .. ' draws over the ring')
+		check(depth(region) > depth(summon.icon), name .. ' draws over the icon')
+		for _, text in ipairs({ summon.Count, summon.HotKey, summon.Name }) do
+			check(depth(region) < depth(text), name .. ' draws under the texts')
+		end
+	end
+	check(depth(summon.Flash) > depth(ring), 'the flash draws over the ring')
+	check(depth(summon.Flash) < depth(summon.Name), 'and under the texts')
+
+	-- A button with no backdrop of its own takes the state art too.
+	eq(action:GetHighlightTexture():GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', "an action button's hover")
+	eq(action:GetPushedTexture():GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Down', "an action button's pushed")
+
+	-- Set out of combat, as before: a profile change in combat waits.
+	stub.in_combat = true
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	eq(hover:GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', 'in combat the state art is left as it is')
+	stub.in_combat = false
+	TB:ApplySkin()
+	eq(hover:GetTexture(), flat, 'out of combat: the flat hover again')
+	eq(hover:GetAtlas(), nil, 'no atlas')
+	eq(T.around(hover, summon.icon), '0,0,0,0', 'over the icon')
+	eq(T.text(hover:GetVertexColor()), T.text(profile.colors.button.blue:GetRGB()) .. ',1.00', 'blue')
+	eq(summon.Flash:GetAtlas(), nil, 'Thick: no flash atlas')
+	eq(select(4, summon.Flash:GetVertexColor()) ~= nil, true, 'the flat flash')
+	eq(art.over.Ring:IsShown(), false, 'Thick: no ring')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ a skinned Blizzard panel

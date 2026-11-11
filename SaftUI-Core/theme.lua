@@ -375,8 +375,9 @@ end
 -- frame of SaftUI's over the drawn frame: st:SetBackdropIn's frame and a
 -- marked one (st:MarkForeign) aren't SaftUI's, a texture holds no textures,
 -- and a frame drawn on itself may be a module's backdrop under someone else's
--- button (the totem bar's).
+-- button (the totem bar's), which names the button as host in st:SetTemplate.
 local function Host(entry)
+	if entry and entry.host then return entry.host end
 	local owner = entry and entry.owner
 	if owner and not entry.backdrops and not foreign[owner] and owner:IsObjectType('Frame') then
 		return owner
@@ -486,11 +487,16 @@ local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind,
 end
 
 -- Draws theme and background on frame as kind (see the top of this file).
-function st:SetTemplate(frame, theme, background, kind)
+-- host, for a frame drawn on itself behind a button that holds its own icon
+-- and texts (the totem bar's, which is Blizzard's and so isn't marked as an
+-- owner), is that button: under Blizzard the frame's ring and own-color piece
+-- are textures of it, between its icon and its texts, where a holder frame
+-- over it would cover them. It's remembered for a redraw.
+function st:SetTemplate(frame, theme, background, kind, host)
 	CheckKind(theme, kind)
 	local look, drawKind = DrawLook(theme, background, kind)
-	Paint(frame, look, drawKind, Host(drawn[frame]))
-	Record(frame, theme, background, kind, look)
+	Paint(frame, look, drawKind, host or Host(drawn[frame]))
+	Record(frame, theme, background, kind, look).host = host
 end
 
 -- Draws theme and background on a frame of SaftUI's (frame.backdrop), made the
@@ -606,7 +612,7 @@ local function Redraw(frame, entry)
 		DrawBackdrop(frame, entry.owner, entry.backdrops, entry.theme, entry.background, entry.kind, true)
 	else
 		local look, kind = DrawLook(entry.theme, entry.background, entry.kind)
-		Paint(frame, look, kind)
+		Paint(frame, look, kind, Host(entry))
 		entry.inset, entry.look = look and look.inset or 0, look and look.name
 	end
 end

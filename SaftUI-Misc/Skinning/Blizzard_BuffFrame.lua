@@ -23,6 +23,14 @@ local BF = SK:NewModule('Blizzard_BuffFrame')
 	Aura data isn't read here. Debuff borders take their color from the atlas Blizzard
 	assigns to the button's DebuffBorder for its dispel type. If that atlas ever comes
 	through as a secret value, Blizzard's border art is shown behind the icon instead.
+
+	Under the Blizzard theme (the Skinning page's Theme resolves to it) SaftUI colors no
+	border: Blizzard's own DebuffBorder and TempEnchantBorder show at full alpha, centred
+	on the icon as Blizzard's template has them, over the icon (OVERLAY) and sized from the
+	Auras settings' icon size, 4/3 of it for the debuff border and 16/15 for the enchant
+	border (Blizzard's 40 and 32 for its 30 icon). A button the Auras settings don't size
+	keeps Blizzard's size. The backdrop shows no own-color piece, whatever the atlas, and
+	a secret atlas changes nothing.
 ]]
 
 local issecretvalue = issecretvalue or function() return false end
@@ -41,6 +49,7 @@ local DURATION_OFFSETS = {
 local skinned = {}
 local backdrops = setmetatable({}, { __mode = 'k' }) -- button's Icon -> SaftUI's backdrop behind it
 local borderUpdaters = {} -- button -> re-applies its border color
+local borderPlacers = {} -- button -> shows, places and sizes Blizzard's border art, or hides it
 local durationAnchorers = {} -- button -> re-applies its duration text's anchor
 local atlasColors = {}
 local noneColor
@@ -109,10 +118,37 @@ local function BuildAtlasColors()
 	noneColor = displayInfo.None and displayInfo.None.color or DEBUFF_TYPE_NONE_COLOR
 end
 
+-- Whether the Skinning page draws in Blizzard's art, where Blizzard's own aura borders
+-- show and SaftUI colors none.
+local function IsBlizzardLook()
+	local theme, background = SkinningLook()
+	return st:IsBlizzardLook(theme, background)
+end
+
+-- How far Blizzard's borders reach out of the icon, as a fraction of its size
+-- (BuffFrameTemplates.xml: 40 and 32 around a 30 icon).
+local DEBUFF_BORDER, ENCHANT_BORDER = 4 / 3, 16 / 15
+
+-- Blizzard's border art on button's icon: centred on it, in the layer Blizzard puts it
+-- in, at full alpha, and sized from the Auras settings' icon size (not for a button they
+-- don't size). Only the art's own regions are touched.
+local function ShowBorder(border, button, ratio)
+	local auras = st:GetModule('Auras', true)
+	local size = auras and auras.GetIconSize and auras:GetIconSize(button)
+	border:ClearAllPoints()
+	border:SetPoint('CENTER', button.Icon, 'CENTER')
+	border:SetDrawLayer('OVERLAY', 0)
+	if size then border:SetSize(size * ratio, size * ratio) end
+	border:SetAlpha(1)
+end
+
 local function UpdateBorderColor(button, debuffColor)
 	local backdrop = backdrops[button.Icon]
 
-	if button.TempEnchantBorder and button.TempEnchantBorder:IsShown() then
+	if IsBlizzardLook() then
+		-- Blizzard's own borders show instead: SaftUI colors none.
+		st:SetBorderColor(backdrop)
+	elseif button.TempEnchantBorder and button.TempEnchantBorder:IsShown() then
 		st:SetBorderColor(backdrop, unpack(TEMP_ENCHANT_COLOR))
 	elseif button.DebuffBorder and button.DebuffBorder:IsShown() and debuffColor then
 		st:SetBorderColor(backdrop, debuffColor:GetRGB())
@@ -123,6 +159,28 @@ end
 
 local function SkinBorders(button)
 	local debuffColor
+	local secret -- whether the debuff border's atlas came through as a secret value
+
+	-- Blizzard's art under the Blizzard theme; otherwise hidden: the weapon enchant's
+	-- border by alpha, the debuff's as a fallback only (see note at top), a fill behind
+	-- the icon that covers our backdrop, so its edge reads as the border, and shown only
+	-- for a secret atlas.
+	local function Place()
+		local enchant, border = button.TempEnchantBorder, button.DebuffBorder
+		if IsBlizzardLook() then
+			if enchant then ShowBorder(enchant, button, ENCHANT_BORDER) end
+			if border then ShowBorder(border, button, DEBUFF_BORDER) end
+			return
+		end
+		if enchant then enchant:SetAlpha(0) end
+		if border then
+			border:ClearAllPoints()
+			border:SetAllPoints(backdrops[button.Icon])
+			border:SetDrawLayer('BACKGROUND', -1)
+			border:SetAlpha(secret and 1 or 0)
+		end
+	end
+	borderPlacers[button] = Place
 
 	local function Update()
 		UpdateBorderColor(button, debuffColor)
@@ -130,27 +188,23 @@ local function SkinBorders(button)
 	borderUpdaters[button] = Update
 
 	if button.TempEnchantBorder then
-		button.TempEnchantBorder:SetAlpha(0)
 		hooksecurefunc(button.TempEnchantBorder, 'Show', Update)
 		hooksecurefunc(button.TempEnchantBorder, 'Hide', Update)
 	end
 
 	local border = button.DebuffBorder
 	if border then
-		-- Only visible as a fallback (see note at top): a fill behind the icon that
-		-- covers our backdrop, so its edge reads as the border.
-		border:SetAlpha(0)
-		border:ClearAllPoints()
-		border:SetAllPoints(backdrops[button.Icon])
-		border:SetDrawLayer('BACKGROUND', -1)
-
 		hooksecurefunc(border, 'SetAtlas', function(self, atlas)
 			if issecretvalue(atlas) then
-				debuffColor = nil
-				self:SetAlpha(1)
+				debuffColor, secret = nil, true
 			else
-				debuffColor = atlasColors[atlas] or noneColor
-				self:SetAlpha(0)
+				debuffColor, secret = atlasColors[atlas] or noneColor, false
+			end
+			if IsBlizzardLook() then
+				-- Blizzard's art may be set at its own size again with the atlas.
+				Place()
+			else
+				self:SetAlpha(secret and 1 or 0)
 			end
 			Update()
 		end)
@@ -158,6 +212,7 @@ local function SkinBorders(button)
 		hooksecurefunc(border, 'Hide', Update)
 	end
 
+	Place()
 	Update()
 end
 
@@ -271,6 +326,8 @@ end
 -- Auras module calls this when its text settings change. Only font strings are
 -- touched, the same as the hooks above, which already run in combat.
 function BF:UpdateText()
+	-- The icon size the borders are sized from is one of those settings.
+	for _, place in pairs(borderPlacers) do place() end
 	for button in pairs(skinned) do
 		if button.Duration then
 			button.Duration:SetFontObject(DurationFont(button))
@@ -290,7 +347,9 @@ function BF:UpdateConfig()
 
 	for button in pairs(skinned) do
 		DrawBackdrop(button)
-		-- Drawing reset the border to the theme's color
+		-- Blizzard's border art shows or hides with the theme, and drawing reset
+		-- the backdrop's border to the theme's color
+		if borderPlacers[button] then borderPlacers[button]() end
 		if borderUpdaters[button] then borderUpdaters[button]() end
 
 		if button.Symbol then

@@ -533,6 +533,14 @@ function AP:GetTextStyle(button, kind)
 	return self:GetFont(key, kind), self:GetTextAnchor(key, kind)
 end
 
+-- For the aura skin: the icon size the Auras settings give a button of BuffFrame or
+-- DebuffFrame, which it sizes Blizzard's border art from (under the Blizzard theme); nil
+-- for any other aura button.
+function AP:GetIconSize(button)
+	local key = self:GetButtonKey(button)
+	return key and st.config.profile.auras[key].size or nil
+end
+
 -- Re-applies the duration and count text: the skin restyles its buttons, and the private
 -- aura anchors' duration follows.
 function AP:UpdateText()

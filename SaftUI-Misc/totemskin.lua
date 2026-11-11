@@ -199,6 +199,16 @@ local function CreateStateTexture(button)
 	return texture
 end
 
+-- A state texture back to SaftUI's flat one over the icon, as it's made, after
+-- it showed Blizzard's art.
+local function FlatStateTexture(texture, icon)
+	texture:SetTexture(st.BLANK_TEX)
+	texture:SetTexCoord(0, 1, 0, 1)
+	texture:SetDrawLayer('OVERLAY', 0)
+	texture:ClearAllPoints()
+	texture:SetAllPoints(icon)
+end
+
 -- hooksecurefunc on one of Blizzard's global functions, if this client has it. On TB
 -- for totemtimers.lua too.
 function TB.PostHook(name, hook)
@@ -218,7 +228,9 @@ local function StyleButton(button, skin, theme, background)
 	local colors = st.config.profile.colors
 
 	if skin.backdrop then
-		st:SetTemplate(skin.backdrop, theme, background, 'action')
+		-- The button is the ring's host: under Blizzard the ring is a texture of
+		-- it, between its icon and its texts, not a frame over them.
+		st:SetTemplate(skin.backdrop, theme, background, 'action', button)
 		skin.theme, skin.background = theme, background
 		skin.tinted = false
 	end
@@ -228,14 +240,39 @@ local function StyleButton(button, skin, theme, background)
 	st:SetInside(icon, st:ThemeInset(theme, background, 'action'))
 	CropIcon(icon)
 
-	skin.hover:SetVertexColor(colors.button.blue:GetRGB())
-	skin.pushed:SetVertexColor(0, 0, 0, 0.1)
-	if skin.checked then
-		skin.checked:SetVertexColor(1, 1, 1, 0.3)
-	end
-	if button.Flash then
-		local r, g, b = colors.button.red:GetRGB()
-		button.Flash:SetColorTexture(r, g, b, 0.4)
+	-- Hover, pushed, checked and the flash: under Blizzard its own art over the
+	-- ring's footprint, the whole button, with no tint; otherwise SaftUI's flat
+	-- textures over the icon. Only textures of SaftUI's and the button's flash
+	-- change, so this holds in combat too (the first set of the state textures,
+	-- in SkinButton, is out of combat).
+	local look = st:ResolveTheme(theme, background, 'action')
+	local state = look and look.name == 'blizzard' and st.ThemeArt.State('action') or nil
+	if state then
+		st.ThemeArt.StyleState(skin.hover, state.hover, button)
+		st.ThemeArt.StyleState(skin.pushed, state.pushed, button)
+		if skin.checked then
+			st.ThemeArt.StyleState(skin.checked, state.checked, button, state.checkedBlend)
+		end
+		if button.Flash then
+			-- The flash keeps the template's layer, over the state art.
+			st.ThemeArt.StyleState(button.Flash, state.flash, button, nil, false)
+		end
+	else
+		FlatStateTexture(skin.hover, icon)
+		FlatStateTexture(skin.pushed, icon)
+		skin.hover:SetVertexColor(colors.button.blue:GetRGB())
+		skin.pushed:SetVertexColor(0, 0, 0, 0.1)
+		if skin.checked then
+			FlatStateTexture(skin.checked, icon)
+			skin.checked:SetVertexColor(1, 1, 1, 0.3)
+			skin.checked:SetBlendMode('ADD')
+		end
+		if button.Flash then
+			local r, g, b = colors.button.red:GetRGB()
+			button.Flash:SetColorTexture(r, g, b, 0.4)
+			button.Flash:ClearAllPoints()
+			button.Flash:SetAllPoints(icon)
+		end
 	end
 
 	-- SaftUI's pixel fonts are drawn without a shadow.
@@ -267,7 +304,7 @@ local function ColorSlotButton(button)
 end
 
 local function StyleSlotButton(button, skin, theme, background)
-	st:SetTemplate(skin.backdrop, theme, background, 'action')
+	st:SetTemplate(skin.backdrop, theme, background, 'action', button)
 	skin.theme, skin.background = theme, background
 	skin.tinted = false
 	ColorSlotButton(button)

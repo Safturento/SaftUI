@@ -225,7 +225,15 @@ function st:SkinActionButton(button, config, kind)
 	end
 
 	-- These are made once; skinning again (e.g. on a profile change) only
-	-- re-applies their color and inset, which follow the theme.
+	-- re-applies their color and inset, which follow the theme. Under Blizzard
+	-- the pushed and highlight textures are Blizzard's state art for the kind
+	-- (st.ThemeArt.State), over the ring's footprint, the whole button, with no
+	-- tint; otherwise SaftUI's flat textures over the icon.
+	kind = kind or 'action'
+	local look = st:ResolveTheme(config.theme, config.background, kind)
+	local state = look and look.name == 'blizzard' and st.ThemeArt.State(kind) or nil
+	local hoverArt = state and (state.hover or state.highlight)
+
 	if button.SetHighlightTexture and not button.hover then
 		local hover = button:CreateTexture(nil, 'OVERLAY')
 		hover:SetTexture(st.BLANK_TEX)
@@ -233,9 +241,19 @@ function st:SkinActionButton(button, config, kind)
 		button:SetHighlightTexture(hover)
 	end
 	if button.hover then
-		-- button.hover:SetVertexColor(1, 1, 1, .1)
-		button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
-		st:SetInside(button.hover, inset)
+		if hoverArt then
+			local blend = state.highlightBlend or 'ADD'
+			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend)
+			button:SetHighlightTexture(button.hover, blend)
+		else
+			button.hover:SetTexture(st.BLANK_TEX)
+			button.hover:SetTexCoord(0, 1, 0, 1)
+			button.hover:SetDrawLayer('OVERLAY', 0)
+			button.hover:ClearAllPoints()
+			-- button.hover:SetVertexColor(1, 1, 1, .1)
+			button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
+			st:SetInside(button.hover, inset)
+		end
 	end
 
 	if button.SetPushedTexture and not button.pushed then
@@ -246,7 +264,19 @@ function st:SkinActionButton(button, config, kind)
 		button:SetPushedTexture(pushed)
 	end
 	if button.pushed then
-		st:SetInside(button.pushed, inset)
+		if state and state.pushed then
+			st.ThemeArt.StyleState(button.pushed, state.pushed, button)
+			-- A caller may have cleared the pushed texture under Thick
+			-- (the bags' slots do): it's Blizzard's art again.
+			button:SetPushedTexture(button.pushed)
+		else
+			button.pushed:SetTexture(st.BLANK_TEX)
+			button.pushed:SetTexCoord(0, 1, 0, 1)
+			button.pushed:SetDrawLayer('OVERLAY', 0)
+			button.pushed:SetVertexColor(0, 0, 0, .1)
+			button.pushed:ClearAllPoints()
+			st:SetInside(button.pushed, inset)
+		end
 	end
 
 	if button.SetDisabledTexture and not button.disabled then
