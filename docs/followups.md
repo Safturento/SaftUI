@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects](#2026-11-10--fonts-separate-the-fonts-users-pick-per-kind-of-text-from-saftuis-internal-font-objects)
   - [2026-11-10 — Zone level and faction line: in-game checks](#2026-11-10--zone-level-and-faction-line-in-game-checks)
   - [2026-11-10 — Zone faction line edge cases: a PvP subzone's status, same-named zones on the map](#2026-11-10--zone-faction-line-edge-cases-a-pvp-subzones-status-same-named-zones-on-the-map)
   - [2026-11-10 — Zone text's fade times are written onto Blizzard's frames](#2026-11-10--zone-texts-fade-times-are-written-onto-blizzards-frames)
@@ -71,6 +72,29 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Abandoned](#abandoned)
 
 ## Active
+
+### 2026-11-10 — Fonts: separate the fonts users pick per kind of text from SaftUI's internal font objects
+
+**What:** SaftUI's fonts are a handful of named font objects (Pixel, Pixel Med, Pixel Huge, Normal, Normal Med, Title (Colus), Subtitle), each a face, size, outline, shadow and spacing together. Code picks an object by key, and the user's options pick objects too. So restyling one kind of text means changing an object every other user of it shares. The user wants it split the way the template strings became Theme: what the user chooses per kind of text, apart from SaftUI's internal font objects.
+
+**Why noticed:** The user, 2026-11-10: "I'd also like to queue up another piece of work restructuring how fonts are managed, similar to template I'd like to separate internal font usage from user facing font usage - a good example of why I want this is I'd like to change my bag category labels to Colus but don't currently have a good way of doing that without also changing the font of my unit frames as well as anything else that uses the "Normal" font object. we can explore that subject deeper after but that's some starter context."
+
+Today the bag category titles already have a font choice (`inventory.fonts.titles`, `SaftUI-Bags/options.lua`), but it picks a whole object: choosing Title gives Colus at the title's size, and the only way to get Colus at label size is to change Normal's face, which every unit frame and anything else on Normal shares.
+
+**Anchors:**
+- `SaftUI-Core/Media/fonts.lua`: `FN:UpdateFontConfig` (a font object per `st.config.profile.fonts` entry, `SaftUI_<name>Font`), `st:GetFont(key)`, the Fonts tab (a Kinds of text section: `headers.font`, `buttons.font`, `panels.font`; then a section per font object).
+- `SaftUI-Core/Config/defaults.lua`: `st.defaults.fonts` (the objects and their derived sizes).
+- Per-module font keys: e.g. `inventory.fonts.titles` (`SaftUI-Bags/category.lua:432`, `inventory.lua:209,228`), and every `st:GetFont(...)` and `st:CreateFontString(parent, '<key>')` across the modules.
+- The precedent: the Themes project (`docs/superpowers/specs/2026-11-10-saftui-themes-design.md`): internal names hidden, a global choice that every module inherits, per-module overrides only.
+
+**What's been considered:** Nothing yet beyond the user's framing. The Themes precedent suggests a global font that kinds of text inherit by default, with per-kind overrides (face, size, outline) that don't touch the shared objects.
+
+**Shape of work:** A brainstorm (which kinds of text the user sees, what a choice holds: face only, or face, size and outline; inherit and override, as Themes), then a spec and a plan. Probably one project: a font-choice layer over the objects, a migration for saved font keys, and the options.
+
+**Open questions:**
+- What does a per-kind choice hold: a face only, or face, size and outline?
+- Which kinds of text get their own choice, and how are they grouped in `/sui`?
+- Do the named objects stay user-visible at all, or become internal like the template strings?
 
 ### 2026-11-10 — Zone level and faction line: in-game checks
 
