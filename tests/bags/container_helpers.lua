@@ -142,7 +142,8 @@ end
 	  - ContainerFrameItemButtonTemplate: a check button (on retail too, where
 	    it is an ItemButton) with the regions the template names: its
 	    IconTexture, Count and NormalTexture, and a Cooldown (a frame with the
-	    one cooldown method st:SkinCooldown calls, a no-op). Blizzard's also
+	    one cooldown method st:SkinCooldown calls, a no-op) and its JunkIcon,
+	    the hidden junk coin texture. Blizzard's also
 	    gives it the item button's mixins and scripts, which the layout
 	    never runs;
 	  - TokenEntryTemplate (a currency slot): a check button with its icon,
@@ -175,6 +176,8 @@ local TEMPLATE_STAND_INS = {
 		slot.icon = slot:CreateTexture(name .. 'IconTexture', 'BORDER')
 		slot:CreateFontString(name .. 'Count', 'ARTWORK'):SetFontObject(GameFontWhiteSmall)
 		slot:CreateTexture(name .. 'NormalTexture', 'ARTWORK')
+		slot.JunkIcon = slot:CreateTexture(nil, 'OVERLAY')
+		slot.JunkIcon:Hide()
 		-- A Cooldown, which the stubs don't have: a frame with the one cooldown
 		-- method st:SkinCooldown calls.
 		local cooldown = CreateFrame('Frame', name .. 'Cooldown', slot)

@@ -306,7 +306,8 @@ On both clients:
 - Forever's bags: a profession bag or a quiver in One bag (under the main grid) and in Multi bag (its own section), and a profession bag in a bank bag slot in the bank's One bag;
 - a special bag's title with its type in grey (`Name · Reagent Bag (n / m)`; Forever's herb bag, quiver and ammo pouch; a profession bag in a bank bag slot): the type is the client's localized item subtype, and a bag whose item gives none shows no type;
 - a bag or bank tab the client gives no name (`C_Container.GetBagName` answers `''`, never nil): its Multi bag title is the fallback (Backpack, Bank tab N, Bag N), not blank;
-- a long fight's loot in One bag and Multi bag: every item shows at once on a button made beforehand, with no "is tainted" error in chat.
+- a long fight's loot in One bag and Multi bag: every item shows at once on a button made beforehand, with no "is tainted" error in chat;
+- the junk coin (`bags-junkcoin`, Blizzard's `JunkIcon` on the item button) on auto vendor items: in the top left of the icon, inside the border, a gray, legacy gear or an item marked Auto Vendor showing it in all four views at and away from a merchant, a Protected item not, the coin not covering the item level or the crafting quality pip, it following the slot menu's Protected and Auto Vendor marks on the next update, and on retail that the template has the key (a missing one is skipped, so the coin just never shows); and at a merchant, Auto sell junk selling every stack in One bag and Multi bag, with the footer's Vendor profit line matching what was sold.
 
 On retail:
 - the bank tabs' names (`C_Bank` tab names) as Multi bag section titles, in the bank and the warband bank, including a tab the player has renamed.

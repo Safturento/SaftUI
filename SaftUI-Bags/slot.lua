@@ -163,6 +163,12 @@ function INV:AssignSlot(container, slot, slotInfo)
 
 	self:SetSlotQualityBorder(slot)
 
+	-- Blizzard's junk coin, on every item auto vendor will sell (see
+	-- INV:IsAutoVendorItem), at a merchant or not. Showing a texture is safe in
+	-- combat. The next update after the Protected or Auto Vendor mark changes
+	-- redoes it.
+	if slot.JunkIcon then slot.JunkIcon:SetShown(self:IsAutoVendorItem(slotInfo)) end
+
 	self:SetSlotCooldown(slot)
 
 	--SetItemCraftingQualityOverlay(slot, slot.info.link)
@@ -341,6 +347,15 @@ function INV:CreateSlot(container, categoryName)
 
 	st:Kill(slot.BattlepayItemTexture)
 
+	-- The template's junk coin (atlas bags-junkcoin, in both clients' templates),
+	-- in the top left of the icon, inside the border, where Blizzard's is on its
+	-- button. Shown by key; never written to the button.
+	if slot.JunkIcon then
+		slot.JunkIcon:ClearAllPoints()
+		slot.JunkIcon:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 1, 0)
+		slot.JunkIcon:Hide()
+	end
+
 	st:SkinIcon(slot.icon, nil, slot)
 
 	slot.Count:ClearAllPoints()
@@ -425,6 +440,7 @@ end
 function INV:ClearSlot(slot)
 	slot:Hide()
 	if slot.reagentMarker then slot.reagentMarker:Hide() end
+	if slot.JunkIcon then slot.JunkIcon:Hide() end
 	slot.minDisplayCount = nil
 	if slot.Reset then slot:Reset() end
 	if slot.info then
