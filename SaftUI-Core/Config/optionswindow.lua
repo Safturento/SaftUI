@@ -350,17 +350,20 @@ end
 
 ------------------------------------------------------------------ scrolling
 
--- A scroll frame's offset and its bar, 10 to the right of what it holds (optionsbody.lua).
+-- A scroll frame's offset and its bar, 10 to the right of what it holds, or
+-- under Blizzard Blizzard's minimal scroll bar, 12 to its right (optionsbody.lua).
 local ScrollTo = OB.ScrollTo
 
 local function SetScroll(offset)
 	scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
 end
 
+-- The sidebar's nav: no bar under Thick and Thin; under Blizzard a narrow
+-- one, 4 right of its rows.
+local NAV_BAR_GAP = 4
+
 local function SetNavScroll(offset)
-	local range = max(0, navHeight - (F.navFrame:GetHeight() or 0))
-	navOffset = max(0, min(range, floor(offset + 0.5)))
-	F.navFrame:SetVerticalScroll(navOffset)
+	navOffset = ScrollTo(F.navFrame, F.navBar, offset, navHeight, NAV_BAR_GAP)
 end
 
 ------------------------------------------------------------------ re-rendering
@@ -1093,6 +1096,7 @@ local function BuildSidebar(window)
 	nav:EnableMouseWheel(true)
 	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(navOffset - delta * NAV_ITEM * 2) end)
 	F.navFrame, F.navContent, F.nav = nav, content, {}
+	F.navBar = OB.ScrollBar(side, SetNavScroll, { narrow = true, step = NAV_ITEM * 2, flat = false })
 	pools.nav = Pool(MakeNavItem)
 	pools.group = Pool(MakeNavGroup)
 end
@@ -1171,7 +1175,7 @@ local function BuildMain(window)
 		if filledTo and floor((height or 0) + 0.5) ~= floor(filledTo + 0.5) then Schedule() end
 	end)
 	F.body, F.content = body, content
-	F.bar = OB.ScrollBar(main)
+	F.bar = OB.ScrollBar(main, SetScroll, { step = SCROLL_STEP })
 	F.placeholder = Text(content, 'label')
 	F.placeholder:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -OB.TOP)
 	F.placeholder:SetTextColor(Grey())
@@ -1388,7 +1392,7 @@ local function BuildDialog()
 	scroll:EnableMouseWheel(true)
 	scroll:SetScript('OnMouseWheel', function(_, delta) SetDialogScroll(D.offset - delta * SCROLL_STEP) end)
 	D.scroll, D.content = scroll, content
-	D.bar = OB.ScrollBar(frame)
+	D.bar = OB.ScrollBar(frame, SetDialogScroll, { narrow = true, step = SCROLL_STEP })
 	D.body = OB.New(content, nil, DialogChanged, DIALOG_CONTENT)
 
 	D.status = Text(frame, 'field')

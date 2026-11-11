@@ -588,3 +588,210 @@ test("the picker row's select has steppers when its choices fit; the position bl
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
+
+------------------------------------------------------------------ the scroll bars
+
+-- The thumb's three atlases in a state ('' normal, '-over', '-down'), sorted
+-- as atlases_of lists them.
+local function thumb_art(state)
+	return ('minimal-scrollbar-small-thumb-bottom%s,minimal-scrollbar-small-thumb-middle%s,minimal-scrollbar-small-thumb-top%s'):format(state, state, state)
+end
+
+test('under Blizzard a scroll area shows MinimalScrollBar only with something to scroll', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		switch('blizzard'); st.Config:Open('Long')
+		local F = OW.GetFrames()
+		local bar = st.OptionsBody.Companion(F.bar)
+		check(bar.frame:IsShown(), client .. ': the body has a bar')
+		check(not F.bar:IsShown(), client .. ': not the 3px bar')
+		eq(atlases_of(bar.track), '!minimal-scrollbar-track-middle,minimal-scrollbar-track-bottom,minimal-scrollbar-track-top', client .. ': the track')
+		eq(bar.track:GetLeft() - F.content:GetLeft(), 774 + 12, client .. ': 12 right of the content')
+		eq(bar.track:GetWidth(), 8, client .. ': 8 wide')
+		eq(size_of(bar.up), '17x11', client .. ': the up arrow')
+		eq(size_of(bar.down), '17x11', client .. ': the down arrow')
+		eq(atlases_of(bar.up), 'minimal-scrollbar-arrow-top', client)
+		eq(atlases_of(bar.down), 'minimal-scrollbar-arrow-bottom', client)
+		eq(bar.up:GetLeft(), bar.track:GetLeft() - 4, client .. ': the arrows from 4 left of the track')
+		eq(bar.down:GetLeft(), bar.track:GetLeft() - 4, client)
+		eq(bar.up:GetTop(), F.body:GetTop(), client .. ": the up arrow at the body's top")
+		eq(bar.down:GetBottom(), F.body:GetBottom(), client .. ': the down arrow at its bottom')
+		eq(bar.track:GetTop(), F.body:GetTop() - 19, client .. ': the track 19 in from the top')
+		eq(bar.track:GetBottom(), F.body:GetBottom() + 19, client .. ': and from the bottom')
+		local track_len, view, total = bar.track:GetHeight(), F.body:GetHeight(), F.content:GetHeight()
+		eq(bar.thumb:GetHeight(), math.max(23, math.floor(track_len * view / total)), client .. ': the thumb its share of the track')
+		eq(bar.thumb:GetWidth(), 8, client)
+		eq(bar.thumb:GetTop(), bar.track:GetTop(), client .. ': at the top')
+		eq(atlases_of(bar.thumb), thumb_art(''), client .. ': the small thumb')
+		eq(table.concat({ bar.thumb:GetHitRectInsets() }, ','), '-4,-4,-4,-4', client .. ": it takes the mouse 4 past its edges, as MinimalScrollBar's")
+		for _, region in ipairs({ bar.track:GetRegions() }) do
+			if region:GetAtlas() == '!minimal-scrollbar-track-middle' then
+				check(region:GetVertTile(), client .. ": the track's middle tiles down")
+				eq(region:GetTop() .. ',' .. region:GetBottom(), (bar.track:GetTop() - 8) .. ',' .. (bar.track:GetBottom() + 8), client .. ': between its 8 tall ends')
+			end
+		end
+		check(bar.down:GetRight() <= F.main:GetRight() - 7, 'clear of the inner frame')
+		for _ = 1, 50 do stub.fire_script(F.body, 'OnMouseWheel', -1) end
+		eq(bar.thumb:GetBottom(), bar.track:GetBottom(), client .. ': scrolled to the end, the thumb at the bottom')
+
+		st.Config:Open('Loot')
+		check(not bar.frame:IsShown(), client .. ': nothing to scroll: no bar')
+		check(not F.bar:IsShown(), client .. ': nor the 3px one')
+		switch('thick'); st.Config:Open('Long')
+		check(F.bar:IsShown(), client .. ": Thick: the 3px bar, as today")
+		eq(F.bar:GetLeft() - F.content:GetLeft(), 774 + 10, client .. ': Thick: 10 right of the content')
+		check(not bar.frame:IsShown(), client .. ': Thick: no Blizzard bar')
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test('the scroll bar works: drag the thumb, click an arrow, click the track; the wheel as before', function()
+	world('forever')
+	switch('blizzard'); st.Config:Open('Long')
+	local F = OW.GetFrames()
+	local bar = st.OptionsBody.Companion(F.bar)
+	local function scroll() return F.body:GetVerticalScroll() end
+	local view = F.body:GetHeight()
+	local range = F.content:GetHeight() - view
+	local room = bar.track:GetHeight() - bar.thumb:GetHeight()
+	local scale = bar.frame:GetEffectiveScale()
+	check(range > 0 and room > 0, 'something to scroll, and room for the thumb to move')
+	eq(scroll(), 0, 'at the top')
+
+	-- The thumb: lit under the mouse, pressed while held, dragged.
+	stub.fire_script(bar.thumb, 'OnEnter')
+	eq(atlases_of(bar.thumb), thumb_art('-over'), 'the thumb under the mouse')
+	local _, y = bar.thumb:GetCenter()
+	stub.cursor_x, stub.cursor_y = 0, y * scale
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	eq(atlases_of(bar.thumb), thumb_art('-down'), 'held')
+	eq(scroll(), 0, 'a press alone scrolls nothing')
+	stub.cursor_y = (y - 40) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(scroll(), math.floor(40 * range / room + 0.5), 'the cursor 40 down: the body as far through its range as the thumb through its room')
+	check(math.abs(bar.track:GetTop() - bar.thumb:GetTop() - 40) <= 1, 'the thumb follows the cursor')
+	stub.cursor_y = (y - 2000) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(scroll(), range, 'past the end: at the end')
+	eq(bar.thumb:GetBottom(), bar.track:GetBottom(), 'the thumb at the bottom')
+	stub.cursor_y = (y + 2000) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(scroll(), 0, 'past the top: at the top')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(bar.thumb, 'OnMouseUp', 'LeftButton')
+	eq(atlases_of(bar.thumb), thumb_art('-over'), 'let go, still under the mouse')
+	stub.cursor_y = (y - 100) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(scroll(), 0, 'let go: the cursor no longer drags')
+	stub.fire_script(bar.thumb, 'OnLeave')
+	eq(atlases_of(bar.thumb), thumb_art(''), 'the mouse gone')
+
+	-- A thumb let go without its mouse up (the button came up elsewhere) stops too.
+	stub.cursor_y = y * scale
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(bar.thumb, 'OnMouseDown', 'LeftButton')
+	stub.mouse_buttons.LeftButton = nil
+	stub.cursor_y = (y - 40) * scale
+	stub.fire_script(bar.frame, 'OnUpdate', 0.01)
+	eq(scroll(), 0, 'the button up: no drag')
+	eq(atlases_of(bar.thumb), thumb_art(''), 'and not held')
+
+	-- The arrows: a step each, lit and pressed as the nudges are.
+	stub.fire_script(bar.down, 'OnClick', 'LeftButton')
+	eq(scroll(), 68, 'the down arrow: a step down')
+	stub.fire_script(bar.up, 'OnClick', 'LeftButton')
+	eq(scroll(), 0, 'the up arrow: back')
+	stub.fire_script(bar.up, 'OnClick', 'LeftButton')
+	eq(scroll(), 0, 'no further than the top')
+	stub.fire_script(bar.down, 'OnEnter')
+	eq(atlases_of(bar.down), 'minimal-scrollbar-arrow-bottom-over', 'an arrow under the mouse')
+	stub.fire_script(bar.down, 'OnMouseDown', 'LeftButton')
+	eq(atlases_of(bar.down), 'minimal-scrollbar-arrow-bottom-down', 'pressed')
+	stub.fire_script(bar.down, 'OnMouseUp', 'LeftButton')
+	eq(atlases_of(bar.down), 'minimal-scrollbar-arrow-bottom-over', 'let go')
+	stub.fire_script(bar.down, 'OnLeave')
+	eq(atlases_of(bar.down), 'minimal-scrollbar-arrow-bottom', 'the mouse gone')
+
+	-- The track: a view at a time, toward the click.
+	stub.cursor_y = (bar.thumb:GetBottom() - 5) * scale
+	stub.fire_script(bar.track, 'OnMouseDown', 'LeftButton')
+	eq(scroll(), math.min(range, view), 'below the thumb: a view down')
+	stub.cursor_y = (bar.thumb:GetTop() + 2) * scale
+	check(bar.thumb:GetTop() + 2 < bar.track:GetTop(), 'room above the thumb to click')
+	stub.fire_script(bar.track, 'OnMouseDown', 'LeftButton')
+	eq(scroll(), math.max(0, math.min(range, view) - view), 'above it: a view up')
+
+	-- The wheel, as before.
+	stub.fire_script(F.body, 'OnMouseWheel', -1)
+	eq(scroll(), 68, 'a turn of the wheel: 68')
+	eq(bar.thumb:GetTop(), bar.track:GetTop() - math.floor(room * 68 / range), 'the thumb follows the wheel')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	st.Config:Close()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- A group of n wide toggles, for a dialog taller than it shows.
+local function tall_group(n)
+	local args = {}
+	for i = 1, n do args['t' .. i] = toggle('Toggle ' .. i, i, 'wide') end
+	return { type = 'group', name = 'Tall', args = args }
+end
+
+test('each scroll area has its bar where there is room: the nav, the dialog', function()
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		for i = 1, 40 do SmallModule('Page' .. i, ('Page %02d'):format(i), 'Frames') end
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+
+		-- The nav: narrow, 4 right of its rows and 4 short of the divider.
+		local nav = st.OptionsBody.Companion(F.navBar)
+		check(nav.frame:IsShown(), client .. ': the nav has a bar')
+		check(not F.navBar:IsShown(), client .. ': not a 3px one')
+		eq(size_of(nav.up), '8x5', client .. ': narrow arrows')
+		eq(size_of(nav.down), '8x5', client)
+		eq(nav.up:GetLeft(), nav.track:GetLeft(), client .. ': over the track')
+		eq(nav.track:GetLeft() - F.side:GetLeft(), 226 + 4, client .. ': 4 right of the rows')
+		eq(nav.up:GetTop(), F.navFrame:GetTop(), client .. ': from the top of the nav')
+		eq(nav.down:GetBottom(), F.navFrame:GetBottom(), client .. ': to its bottom')
+		eq(nav.track:GetTop(), F.navFrame:GetTop() - 9, client .. ': the track 9 in')
+		eq(nav.track:GetBottom(), F.navFrame:GetBottom() + 9, client)
+		eq(F.side:GetRight() - nav.track:GetRight(), 4, client .. ': 4 short of the divider')
+		check(nav.frame:GetLeft() >= F.side:GetLeft() and nav.frame:GetRight() <= F.side:GetRight(), client .. ': inside the sidebar')
+		stub.fire_script(nav.down, 'OnClick', 'LeftButton')
+		eq(F.navFrame:GetVerticalScroll(), 52, client .. ': an arrow: two rows')
+		stub.fire_script(F.navFrame, 'OnMouseWheel', 1)
+		eq(F.navFrame:GetVerticalScroll(), 0, client .. ': the wheel, as before')
+		for _ = 1, 100 do stub.fire_script(F.navFrame, 'OnMouseWheel', -1) end
+		eq(F.navFrame:GetVerticalScroll(), F.navContent:GetHeight() - F.navFrame:GetHeight(), client .. ': no further than its end')
+
+		-- The dialog: narrow, 12 right of its content.
+		OW:OpenDialog('Tall', tall_group(24))
+		local d = OW.GetDialogFrames()
+		local dialog = st.OptionsBody.Companion(d.bar)
+		check(dialog.frame:IsShown(), client .. ': the dialog has a bar')
+		check(not d.bar:IsShown(), client .. ': not a 3px one')
+		eq(size_of(dialog.up), '8x5', client .. ': narrow')
+		eq(dialog.track:GetLeft() - d.content:GetLeft(), 520 + 12, client .. ': 12 right of its content')
+		eq(dialog.up:GetTop(), d.scroll:GetTop(), client .. ': from the top of its scroll')
+		eq(dialog.down:GetBottom(), d.scroll:GetBottom(), client .. ': to its bottom')
+		check(dialog.frame:GetRight() <= d.frame:GetRight() - st.ThemeArt.Inset('panel'), client .. ': inside the dialog')
+		stub.fire_script(dialog.down, 'OnClick', 'LeftButton')
+		eq(d.scroll:GetVerticalScroll(), 68, client .. ': an arrow: a step')
+		OW:CloseDialog()
+
+		-- Under Thick: the nav has none, the dialog its 3px bar as today.
+		switch('thick')
+		check(not nav.frame:IsShown(), client .. ': Thick: the nav has no bar')
+		check(not F.navBar:IsShown(), client .. ': not even a 3px one')
+		OW:OpenDialog('Tall', tall_group(24))
+		check(d.bar:IsShown(), client .. ': Thick: the dialog its 3px bar')
+		eq(d.bar:GetLeft() - d.content:GetLeft(), 520 + 10, client .. ': 10 right of its content')
+		check(not dialog.frame:IsShown(), client .. ': no Blizzard bar')
+		OW:CloseDialog()
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)

@@ -129,6 +129,21 @@ ThemeArt.KINDS = {
 --- The art ------------------------
 ------------------------------------
 
+-- MinimalScrollBar's up and down arrows (its steppers), each normal, under
+-- the mouse (hover) and pressed: the nudges' and the scroll bar's.
+local MINIMAL_ARROWS = {
+	up = {
+		normal = Atlas('minimal-scrollbar-arrow-top'),
+		hover = Atlas('minimal-scrollbar-arrow-top-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	},
+	down = {
+		normal = Atlas('minimal-scrollbar-arrow-bottom'),
+		hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
+		pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+	},
+}
+
 -- A border is Blizzard's nine-slice pieces, by their names, laid out as
 -- Blizzard's nine-slice code lays them: each corner at the drawn frame's own corner,
 -- offset by its x and y; the top and bottom edges between their corners, tiled
@@ -396,17 +411,42 @@ ThemeArt.ART = {
 	},
 
 	-- The up and down nudges, as MinimalScrollBar's steppers.
-	nudge = {
-		up = {
-			normal = Atlas('minimal-scrollbar-arrow-top'),
-			hover = Atlas('minimal-scrollbar-arrow-top-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-top-down'),
+	nudge = { up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down },
+
+	-- The scroll bar (MinimalScrollBar): the track's top and bottom ends and
+	-- its middle, tiled down; the thumb's (its small thumb's) top, middle and
+	-- bottom in each state, under the mouse (over) and held (down); and the
+	-- up and down arrows, the nudges' own. The track is width wide; a wide
+	-- bar's arrows are arrow (width, height) and the track starts inset in
+	-- from the column's ends, a narrow bar's (the sidebar's, a dialog's, a
+	-- list's) narrowArrow and narrowInset. The thumb is never shorter than
+	-- minThumb (MinimalScrollBar's minThumbExtent).
+	scrollbar = {
+		track = {
+			top = Atlas('minimal-scrollbar-track-top'),
+			middle = Atlas('!minimal-scrollbar-track-middle'),
+			bottom = Atlas('minimal-scrollbar-track-bottom'),
 		},
-		down = {
-			normal = Atlas('minimal-scrollbar-arrow-bottom'),
-			hover = Atlas('minimal-scrollbar-arrow-bottom-over'),
-			pressed = Atlas('minimal-scrollbar-arrow-bottom-down'),
+		thumb = {
+			normal = {
+				top = Atlas('minimal-scrollbar-small-thumb-top'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom'),
+			},
+			over = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-over'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-over'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-over'),
+			},
+			down = {
+				top = Atlas('minimal-scrollbar-small-thumb-top-down'),
+				middle = Atlas('minimal-scrollbar-small-thumb-middle-down'),
+				bottom = Atlas('minimal-scrollbar-small-thumb-bottom-down'),
+			},
 		},
+		up = MINIMAL_ARROWS.up, down = MINIMAL_ARROWS.down,
+		width = 8, arrow = { 17, 11 }, narrowArrow = { 8, 5 },
+		inset = 19, narrowInset = 9, minThumb = 23,
 	},
 
 	-- The Settings panel's tabs (MinimalTabTemplate): the picked one and the
@@ -506,7 +546,7 @@ ThemeArt.ART = {
 -- The names in ART that are controls (st.ThemeArt.Control).
 local CONTROLS = {
 	button = true, checkbox = true, tab = true, dropdown = true, slider = true,
-	input = true, search = true, swatch = true, binding = true, nudge = true,
+	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, mover = true, classpower = true,
 	optionswindow = true,
 }

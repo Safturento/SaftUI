@@ -40,13 +40,16 @@ local INV = st:GetModule('Inventory')
 	scrolling that one, each with the window's 3px bar (OB.ScrollTo) shown
 	only when it has something to scroll: the list's 4 to its right, short of
 	the divider, the editor's 10 to its right, where the body's own would be
-	(a fill page's body reaches over it). The list's view stops short of its
-	footer, so + New category and Reset all stay under it, right under the
-	last row when every row fits. Each keeps its scroll while the tab is drawn
-	again; the editor starts at its top for another category, and the list
-	brings the selected row into view when another is selected (a click, +
-	New category, Restore a default), the selected one is dragged, or after
-	Reset all; never when another row dragged past it moves it.
+	(a fill page's body reaches over it). Under Blizzard each is Blizzard's
+	minimal scroll bar instead, whose arrows, track and thumb scroll it too:
+	the list's narrow, 4 to its right, the editor's 12 to its right, inside
+	the body's clip. The list's view stops short of its footer, so + New
+	category and Reset all stay under it, right under the last row when every
+	row fits. Each keeps its scroll while the tab is drawn again; the editor
+	starts at its top for another category, and the list brings the selected
+	row into view when another is selected (a click, + New category, Restore
+	a default), the selected one is dragged, or after Reset all; never when
+	another row dragged past it moves it.
 
 	  INV.categoryEditor.selected       the selected id, for the session. One
 	                                    that is gone (a delete, a profile
@@ -768,7 +771,9 @@ W.Define('bagcategories', {
 		w.listScroll:SetScript('OnMouseWheel', function(_, delta)
 			if w.row then ScrollList(w, INV.categoryEditor.listOffset - delta * LIST_STEP) end
 		end)
-		w.listBar = OB.ScrollBar(w.listPane)
+		w.listBar = OB.ScrollBar(w.listPane, function(offset)
+			if w.row then ScrollList(w, offset) end
+		end, { narrow = true, step = LIST_STEP })
 		w.addButton = Action(w.listPane, '+ New category', function(button) NewCategory(w, button) end)
 		w.resetButton = Action(w.listPane, 'Reset all', function() ResetAll(w) end)
 
@@ -788,7 +793,9 @@ W.Define('bagcategories', {
 		w.editorScroll:SetScript('OnMouseWheel', function(_, delta)
 			if w.row then ScrollEditor(w, INV.categoryEditor.editorOffset - delta * OB.SCROLL_STEP) end
 		end)
-		w.editorBar = OB.ScrollBar(frame)
+		w.editorBar = OB.ScrollBar(frame, function(offset)
+			if w.row then ScrollEditor(w, offset) end
+		end, { step = OB.SCROLL_STEP })
 		w.body = OB.New(w.pane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)
 
 		w.rows, w.rowFrames = {}, {}

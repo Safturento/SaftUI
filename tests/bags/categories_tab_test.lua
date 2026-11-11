@@ -1061,6 +1061,67 @@ test("the tab fills the body's view: the list and the editor each scroll on thei
 	st.Config:Close()
 end)
 
+test("under Blizzard the list and the editor scroll on Blizzard's minimal scroll bar, each where there is room", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		world(client)
+		tall_rule('Toys', 25)
+		INV.categoryEditor.selected = 'Toys'
+		st.config.profile.theme.name = 'blizzard'
+		st:ThemeChanged()
+		open()
+		local F = OW.GetFrames()
+		local w = tab()
+		local top = w.frame:GetTop()
+		check(#w.rows * 22 > w.listScroll:GetHeight(), client .. ': the list has more than it shows')
+		check(w.pane:GetHeight() > w.editorScroll:GetHeight(), client .. ': and the editor')
+
+		-- The list's: narrow, 4 right of the list, short of the divider.
+		local list = st.OptionsBody.Companion(w.listBar)
+		check(list.frame:IsShown(), client .. ': the list has a bar')
+		check(not w.listBar:IsShown(), client .. ': not the 3px one')
+		eq(list.up:GetWidth() .. 'x' .. list.up:GetHeight(), '8x5', client .. ': narrow')
+		eq(list.track:GetLeft() - w.listScroll:GetRight(), 4, client .. ': 4 right of the list')
+		check(list.frame:GetRight() <= w.divider:GetLeft(), client .. ': at or before the divider')
+		eq(list.up:GetTop(), top, client .. ': from the top')
+		eq(list.down:GetBottom(), w.listScroll:GetBottom(), client .. ": to the list's bottom")
+
+		-- The editor's: wide, 12 right of the editor, inside the body's clip.
+		local editor = st.OptionsBody.Companion(w.editorBar)
+		check(editor.frame:IsShown(), client .. ': the editor has a bar')
+		check(not w.editorBar:IsShown(), client .. ': not the 3px one')
+		eq(editor.up:GetWidth() .. 'x' .. editor.up:GetHeight(), '17x11', client .. ': wide')
+		eq(editor.track:GetLeft() - w.editorScroll:GetRight(), 12, client .. ': 12 right of the editor')
+		check(editor.down:GetRight() <= F.body:GetRight(), client .. ": inside the body's clip")
+		eq(editor.up:GetTop(), top, client .. ': from the top')
+		eq(editor.down:GetBottom(), w.editorScroll:GetBottom(), client .. ': to the bottom')
+
+		-- Each scrolls its own pane.
+		stub.fire_script(list.down, 'OnClick', 'LeftButton')
+		eq(w.listScroll:GetVerticalScroll(), 66, client .. ": the list's arrow: three rows")
+		eq(INV.categoryEditor.listOffset, 66, client .. ': kept')
+		eq(w.editorScroll:GetVerticalScroll(), 0, client .. ': the editor stays')
+		stub.fire_script(editor.down, 'OnClick', 'LeftButton')
+		eq(w.editorScroll:GetVerticalScroll(), 68, client .. ": the editor's arrow: two of the body's rows")
+		eq(INV.categoryEditor.editorOffset, 68, client .. ': kept')
+		eq(w.listScroll:GetVerticalScroll(), 66, client .. ': the list stays')
+		wheel(w.listScroll, -1)
+		eq(w.listScroll:GetVerticalScroll(), 132, client .. ': the wheel as before')
+
+		-- Under Thick: the 3px bars, as before.
+		st.config.profile.theme.name = 'thick'
+		st:ThemeChanged()
+		OW:Render()
+		w = tab()
+		list, editor = st.OptionsBody.Companion(w.listBar), st.OptionsBody.Companion(w.editorBar)
+		check(w.listBar:IsShown() and w.editorBar:IsShown(), client .. ': Thick: the 3px bars')
+		check(not list.frame:IsShown() and not editor.frame:IsShown(), client .. ': Thick: no Blizzard bars')
+		eq(w.listBar:GetLeft() - w.listScroll:GetRight(), 4, client .. ': Thick: 4 right of the list')
+		eq(w.editorBar:GetLeft() - w.editorScroll:GetRight(), 10, client .. ': Thick: 10 right of the editor')
+		eq(#take_errors(), 0, client .. ': no errors')
+		st.Config:Close()
+	end
+end)
+
 test('each pane keeps its scroll when the tab is drawn again; another category\'s editor starts at its top; the list brings the selected row into view when it changes', function()
 	world()
 	local list = INV:GetCategoryList()

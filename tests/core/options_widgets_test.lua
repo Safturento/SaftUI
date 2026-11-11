@@ -2653,6 +2653,67 @@ test("the list sits on common-dropdown-c-bg, in place of the tooltip border", fu
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a long list scrolls on Blizzard's narrow scroll bar inside it, in place of the 3px bar", function()
+	theme('blizzard')
+	local values = {}
+	for i = 1, 20 do values[string.format('k%02d', i)] = 'Entry ' .. i end
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = values, get = function() return 'k01' end, set = function() end,
+	}))
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	click(w.frame)
+	local list = W.GetListFrames()
+	local bar = list.blizzardBar
+	check(bar.frame:IsShown(), 'Blizzard: the list has a bar')
+	check(not list.bar:IsShown(), 'not the 3px bar')
+	eq(size_of(bar.up), '8x5', 'narrow arrows')
+	eq(size_of(bar.down), '8x5')
+	eq(bar.track:GetWidth(), 8, 'an 8 wide track')
+	eq(list.frame:GetRight() - bar.track:GetRight(), 3, 'on its right, 3 in')
+	eq(bar.up:GetLeft(), bar.track:GetLeft(), 'the arrows over the track')
+	eq(list.frame:GetTop() - bar.up:GetTop(), 6, 'from the top of the rows, 6 down')
+	eq(bar.down:GetBottom() - list.frame:GetBottom(), 7, 'to their bottom, 7 up')
+	eq(bar.track:GetTop(), bar.up:GetTop() - 9, 'the track 9 in')
+	check(inside(bar.frame, list.frame), 'inside the list frame')
+	check(bar.frame:GetFrameLevel() > list.rows[1]:GetFrameLevel(), 'over the rows, so it takes the mouse')
+	local track = bar.track:GetHeight()
+	eq(bar.thumb:GetHeight(), math.max(23, math.floor(track * 12 / 20)), "the thumb the share of rows shown")
+	eq(entries_of(list)[1], 'Entry 1', 'from the top')
+	stub.fire_script(bar.down, 'OnClick', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 2', 'the down arrow: a row')
+	stub.fire_script(bar.up, 'OnClick', 'LeftButton')
+	eq(entries_of(list)[1], 'Entry 1', 'the up arrow: back')
+	stub.fire_script(list.frame, 'OnMouseWheel', -1)
+	eq(entries_of(list)[1], 'Entry 4', 'the wheel: three rows, as before')
+	eq(bar.thumb:GetTop(), bar.track:GetTop() - math.floor((track - bar.thumb:GetHeight()) * 3 / 8), 'the thumb follows')
+	for _ = 1, 10 do stub.fire_script(bar.down, 'OnClick', 'LeftButton') end
+	local last = entries_of(list)
+	eq(last[#last], 'Entry 20', 'no further than the end')
+	eq(bar.thumb:GetBottom(), bar.track:GetBottom(), 'the thumb at the bottom')
+	W.CloseList()
+
+	-- Ten entries fit: no bar.
+	local few = {}
+	for i = 1, 10 do few[string.format('k%02d', i)] = 'Entry ' .. i end
+	local short = bind('select', 'few', opt('select', 'Few', {
+		values = few, get = function() return 'k01' end, set = function() end,
+	}))
+	short:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -50)
+	click(short.frame)
+	check(not bar.frame:IsShown(), 'nothing to scroll: no bar')
+	check(not list.bar:IsShown(), 'nor a 3px one')
+	W.CloseList()
+	short:Release()
+
+	theme('thick'); rebind(w)
+	click(w.frame)
+	check(list.bar:IsShown(), 'Thick: the 3px bar, as before')
+	check(not bar.frame:IsShown(), 'Thick: no Blizzard bar')
+	W.CloseList()
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('a range is a minimal slider with an input-art value box', function()
 	theme('thick')
 	local w = bind('range', 'size', opt('range', 'Size', {
