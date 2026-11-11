@@ -21,12 +21,48 @@ function UF:SetPowerPercentText(text, unit, current, max, powerType)
 end
 
 -- The kind of frame (st.THEME_KINDS) an element's Theme draws it as. Its bars
--- (health, power, additional power, the castbar) are bars, like the unit frame
--- itself; everything else (the castbar's icon, the indicators) is a control,
--- which Thick and Thin draw as a small frame and Blizzard draws bare.
-local function ElementKind(element)
-	if element:IsObjectType('StatusBar') then return 'bar' end
-	return 'control'
+-- (health, power, additional power, the castbar) draw as their unit frame's
+-- unit does, at their own size (UF.SizedKind): a unit frame, a party or raid
+-- member, or a small frame where the bronze box doesn't fit. Everything else
+-- (the castbar's icon, the indicators) is a control, which Thick and Thin draw
+-- as a small frame and Blizzard draws bare. configOverride is the one
+-- UF:UpdateElement was handed, which UF:UpdateElementSize sizes it by.
+function UF:ElementKind(element, configOverride)
+	if not element:IsObjectType('StatusBar') then return 'control' end
+	return UF.SizedKind(element.unitframe.base_unit, self:ElementSize(element, configOverride))
+end
+
+-- Whether an element's config puts it exactly over its unit frame: as wide and
+-- as tall as the frame (Relative, 0), anchored to the frame itself (no element
+-- or frame named) at the same point, with no offset (read as st:UnpackPoint
+-- reads them: no relative point is the point, no offset 0).
+function UF.FillsFrame(config)
+	local position = config.position
+	if not (position and config.relative_width and config.relative_height) then return false end
+	if tonumber(config.width) ~= 0 or tonumber(config.height) ~= 0 then return false end
+	if position.element or position.frame then return false end
+	local point, _, relativePoint, x, y = st:UnpackPoint(position)
+	return point == relativePoint and tonumber(x) == 0 and tonumber(y) == 0
+end
+
+-- The Theme and Background an element draws with: its config's, but None for
+-- a bar drawn in the bronze box that lies exactly over its unit frame
+-- (UF.FillsFrame) while both its own Theme and its frame's draw in Blizzard's
+-- art, so the frame's box and the bar's never show on the same edges (health
+-- fills the frame by default). A bar that doesn't quite fill its frame
+-- (resized, moved, anchored to another element) keeps its own box, as does
+-- one over a frame drawn in another look; under Thick and Thin every element
+-- draws its own pair, as before. configOverride as for UF:ElementKind.
+function UF:ElementTheme(element, config, configOverride)
+	if self:ElementKind(element, configOverride) == 'unitframe'
+			and UF.FillsFrame(configOverride or config)
+			and st:IsBlizzardLook(config.theme, config.background) then
+		local frame = element.unitframe.config
+		if st:IsBlizzardLook(frame.theme, frame.background) then
+			return 'none', config.background
+		end
+	end
+	return config.theme, config.background
 end
 
 -- Elements whose Theme draws their buttons or points, not the element: the
@@ -56,7 +92,9 @@ function UF:UpdateElement(element, configOverride)
     end
 
     if config.theme and not BARE_ELEMENTS[element.name] then
-        st:SetBackdrop(element, config.theme, config.background, ElementKind(element))
+        -- Taken first: a call inside an argument list gives only its first return.
+        local theme, background = self:ElementTheme(element, config, configOverride)
+        st:SetBackdrop(element, theme, background, self:ElementKind(element, configOverride))
     end
 
     element:SetAlpha(config.alpha or 1)
@@ -107,34 +145,33 @@ function UF:SetElementEnabled(element)
     return element.config.enable
 end
 
-function UF:UpdateElementSize(element, configOverride)
+-- The width and height an element's config gives it: its size on both sides,
+-- then its own width and height, each added to its unit frame's with Relative
+-- on. nil for a side the config doesn't set, and both for an element that
+-- isn't sized (noSize). configOverride, when given, is the config it's sized by.
+function UF:ElementSize(element, configOverride)
     if element.noSize then return end
     local config = configOverride or element.config
-
     local unitframe = element.unitframe or element:GetParent()
+    local width, height
 
     if config.size then
-        local size = config.relative_size
-                        and unitframe.config.height + config.size
-                        or config.size
-        st:SetSize(element, size)
+        width = config.relative_size and unitframe.config.height + config.size or config.size
+        height = width
     end
-
     if config.height then
-        if config.relative_height then
-            st:SetHeight(element, unitframe.config.height + config.height)
-        else
-            st:SetHeight(element, config.height)
-        end
+        height = config.relative_height and unitframe.config.height + config.height or config.height
     end
-
     if config.width then
-        if config.relative_width then
-            st:SetWidth(element, unitframe.config.width + config.width)
-        else
-            st:SetWidth(element, config.width)
-        end
+        width = config.relative_width and unitframe.config.width + config.width or config.width
     end
+    return width, height
+end
+
+function UF:UpdateElementSize(element, configOverride)
+    local width, height = self:ElementSize(element, configOverride)
+    if width then st:SetWidth(element, width) end
+    if height then st:SetHeight(element, height) end
 end
 
 function UF:UpdateElementPosition(element, unitframe, configOverride)

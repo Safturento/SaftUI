@@ -33,6 +33,38 @@ UF.group_strings = {
 	['raid40'] = 'Raid 40',
 }
 
+-- The kind of frame (st.THEME_KINDS) a unit's frames and their bars draw as:
+-- a party or raid member's (a group header's, UF.group_strings) as a member,
+-- which Blizzard draws as a bare fill; every other unit's (player, target,
+-- boss, ...) as a unit frame, which Blizzard draws in the bronze box. Under
+-- Thick and Thin both draw as a bar.
+function UF.UnitKind(unit)
+	return UF.group_strings[unit] and 'member' or 'unitframe'
+end
+
+-- Whether the bronze box fits a unit frame or bar of this size (width and
+-- height from its config; nil for a side it doesn't set). The box is drawn
+-- its inset outside the frame, and that drawn frame must hold the box's two
+-- corners (st.ThemeArt.ART.unitframe) on each side, which would overlap on a
+-- smaller one: at least 16 for 8px corners, so a bar at least 12 for an inset
+-- of 2. Read from the config, so it's known before the frame is sized and
+-- nothing is read back off a unit frame.
+function UF.BoxFits(width, height)
+	local least = 2 * st.ThemeArt.ART.unitframe.size - 2 * st.ThemeArt.Inset('unitframe')
+	width, height = tonumber(width), tonumber(height)
+	return not ((width and width < least) or (height and height < least))
+end
+
+-- The kind a unit frame or one of its bars draws as at its size: its unit's
+-- (UF.UnitKind), but a small frame (a line and the fill) where the bronze box
+-- doesn't fit (UF.BoxFits), such as a 5-tall power bar. Under Thick and Thin
+-- a small frame draws as a bar does.
+function UF.SizedKind(unit, width, height)
+	local kind = UF.UnitKind(unit)
+	if kind == 'unitframe' and not UF.BoxFits(width, height) then return 'small' end
+	return kind
+end
+
 function UF:GetFrame(unitframe, configPosition)
 	--print(configPosition.element)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
@@ -290,7 +322,8 @@ function UF:UpdateUnitFrame(frame, element_name)
 			return -- disabled, and moved off screen
 		end
 
-		st:SetBackdrop(frame, frame.config.theme, frame.config.background, 'bar')
+		local config = frame.config
+		st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
 
 		-- Updated in place: oUF's range element keeps its state on this table.
 		frame.Range = frame.Range or {}

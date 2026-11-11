@@ -562,7 +562,7 @@ local function StylePreviewFrame(frame)
 	local config = frame:GetConfig()
 	frame.config = config
 	st:SetSize(frame, config.width, config.height)
-	st:SetBackdrop(frame, config.theme, config.background, 'bar')
+	st:SetBackdrop(frame, config.theme, config.background, UF.SizedKind(frame.base_unit, config.width, config.height))
 	for _, element in ipairs(frame.previewElements) do
 		UF:UpdateElement(element)
 	end

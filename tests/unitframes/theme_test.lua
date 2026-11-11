@@ -2,9 +2,10 @@
 --   - every unit's and element's Theme and Background default draws exactly
 --     what its template default drew before themes;
 --   - each part of a unit frame draws as its kind: the unit frame and its bars
---     as bars, the aura buttons as auras, the castbar's icon and the
---     indicators as controls (bare under Blizzard), and the class power points
---     as controls;
+--     as unit frames (a party or raid member's as members, a bar too small for
+--     the bronze box as a small frame: tests/unitframes/blizzard_look_test.lua),
+--     the aura buttons as auras, the castbar's icon and the indicators as
+--     controls (bare under Blizzard), and the class power points as controls;
 --   - a config update draws no backdrop on the aura and class power areas
 --     (their buttons and points are drawn), so nothing of SaftUI's is anchored
 --     to Blizzard's aura container (.agents/taint.md, rule 11);
@@ -217,7 +218,7 @@ end)
 
 ------------------------------------------------------------------ kinds
 
-test('each part of a unit frame draws as its kind: the frame and its bars as bars, aura buttons as auras, the rest controls or small', function()
+test('each part of a unit frame draws as its kind: the frame and its bars as unit frames, aura buttons as auras, the rest controls or small', function()
 	local player = P.player
 	player.additionalpower.enable = true
 	player.castbar.icon.enable = true
@@ -227,12 +228,12 @@ test('each part of a unit frame draws as its kind: the frame and its bars as bar
 		{ 'Health', 'Power', 'AdditionalPower', 'Castbar', 'ClassPower', 'GroupRoleIndicator', 'RaidRoleIndicator' })
 	UF:UpdateUnitFrame(frame)
 
-	eq(drawn(frame), 'none,theme,bar', 'the unit frame: a bar, None by default')
+	eq(drawn(frame), 'none,theme,unitframe', 'the unit frame: a unit frame, None by default')
 	eq(looks(frame), 'bare', 'the unit frame draws nothing')
-	eq(drawn(frame.Health), 'theme,theme,bar', 'health: a bar')
-	eq(drawn(frame.Power), 'theme,theme,bar', 'power: a bar')
-	eq(drawn(frame.AdditionalPower), 'theme,solid,bar', 'additional power: a bar')
-	eq(drawn(frame.Castbar), 'theme,theme,bar', 'the castbar: a bar')
+	eq(drawn(frame.Health), 'theme,theme,unitframe', 'health: a unit frame')
+	eq(drawn(frame.Power), 'theme,theme,unitframe', 'power: a unit frame')
+	eq(drawn(frame.AdditionalPower), 'theme,solid,unitframe', 'additional power: a unit frame')
+	eq(drawn(frame.Castbar), 'theme,theme,unitframe', 'the castbar: a unit frame')
 	eq(drawn(frame.Castbar.Icon), 'theme,solid,control', "the castbar's icon: a control")
 	for i = 1, 10 do
 		eq(drawn(frame.ClassPower[i]), 'theme,theme,control', 'class power point ' .. i .. ': control')
@@ -289,8 +290,8 @@ test("the castbar's icon and the indicators are controls, bare under Blizzard", 
 		end
 		eq(pieces, 0, name .. ': no art shown')
 	end
-	-- Its bars still draw as bars.
-	eq(drawn(frame.Health), 'theme,theme,bar', 'health: still a bar')
+	-- Its bars still draw as unit frames.
+	eq(drawn(frame.Health), 'theme,theme,unitframe', 'health: still a unit frame')
 
 	st.config.profile.theme.name = 'thick'
 	st:RedrawThemed()
@@ -414,8 +415,8 @@ test('a config update draws no backdrop on the aura and class power areas, and t
 		eq(frame.Debuffs:GetNumChildren(), 0, ('update %d: nor on the debuffs container'):format(pass))
 		eq(frame.ClassPower:GetNumChildren(), 10, ('update %d: the class power row holds only its ten points'):format(pass))
 
-		eq(drawn(frame.Health), 'theme,theme,bar', 'health: drawn as before')
-		eq(drawn(frame.Power), 'theme,theme,bar', 'power: drawn as before')
+		eq(drawn(frame.Health), 'theme,theme,unitframe', 'health: drawn as before')
+		eq(drawn(frame.Power), 'theme,theme,unitframe', 'power: drawn as before')
 		for i = 1, 10 do
 			eq(drawn(frame.ClassPower[i]), 'theme,theme,control', 'class power point ' .. i .. ': drawn as before')
 		end
@@ -456,8 +457,18 @@ local function override(unit)
 	config.grouproleindicator.theme, config.grouproleindicator.background = 'thick', 'transparent'
 end
 
+-- How each part is drawn, by group: a boss's as unit frames, its 5-tall power
+-- bar as a small frame (too small for the bronze box), a party member's as
+-- members.
 local EXPECTED_DRAWS = {
-	frame = 'thin,transparent,bar', Health = 'thick,solid,bar', Power = 'thin,theme,bar', GroupRoleIndicator = 'thick,transparent,control',
+	boss = {
+		frame = 'thin,transparent,unitframe', Health = 'thick,solid,unitframe', Power = 'thin,theme,small',
+		GroupRoleIndicator = 'thick,transparent,control',
+	},
+	party = {
+		frame = 'thin,transparent,member', Health = 'thick,solid,member', Power = 'thin,theme,member',
+		GroupRoleIndicator = 'thick,transparent,control',
+	},
 }
 
 test('a boss or party preview draws like its real frame', function()
@@ -484,7 +495,7 @@ test('a boss or party preview draws like its real frame', function()
 	for i, preview in ipairs(previews) do
 		local real = UF.units.boss[i]
 		eq(picture(preview), picture(real), 'boss preview ' .. i .. ' draws like boss frame ' .. i)
-		for part, expected in pairs(EXPECTED_DRAWS) do
+		for part, expected in pairs(EXPECTED_DRAWS.boss) do
 			eq(drawn(part == 'frame' and preview or preview[part]), expected, 'boss preview ' .. i .. "'s " .. part)
 		end
 	end
@@ -508,7 +519,7 @@ test('a boss or party preview draws like its real frame', function()
 	local preview = UF.previews.party and UF.previews.party.frames[1]
 	if check(preview ~= nil, 'the party previews show') then
 		eq(picture(preview), picture(member), 'a party preview draws like a party member')
-		for part, expected in pairs(EXPECTED_DRAWS) do
+		for part, expected in pairs(EXPECTED_DRAWS.party) do
 			eq(drawn(part == 'frame' and preview or preview[part]), expected, "party preview's " .. part)
 		end
 	end
