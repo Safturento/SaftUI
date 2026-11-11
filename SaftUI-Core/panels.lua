@@ -126,7 +126,7 @@ function st:CreateHeader(frame, title, close_button)
 		frame.close_button.backdrop:SetAllPoints()
 		frame.close_button:ClearAllPoints()
 		frame.close_button:SetFrameLevel(header:GetFrameLevel()+4)
-		frame.close_button:SetPoint('TOPRIGHT', header, -10, 0)
+		frame.close_button:SetPoint('TOPRIGHT', header, -st.CLOSE_INSET, 0)
 		frame.close_button:SetSize(unpack(st.CLOSE_BUTTON_SIZE))
 	end
 

@@ -9,6 +9,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Active](#active)
   - [2026-11-11 — Blizzard theme: in-game checks](#2026-11-11--blizzard-theme-in-game-checks)
   - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
+  - [2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's](#2026-11-11--stsetbackdrop-and-stsetbackdropin-do-arithmetic-on-frame-levels-that-can-be-blizzards)
   - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
   - [2026-11-11 — Edit Mode snapping under Blizzard measures the frames' borders, not the selection art](#2026-11-11--edit-mode-snapping-under-blizzard-measures-the-frames-borders-not-the-selection-art)
   - [2026-11-11 — Per-dispel-type debuff art on SaftUI's own aura buttons](#2026-11-11--per-dispel-type-debuff-art-on-saftuis-own-aura-buttons)
@@ -146,6 +147,16 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 **What's been considered:** The Edit toggle test reads source because `INV:CreateContainer` needs Blizzard templates the stubs lack (`UICheckButtonTemplate` among them), and the bags' tests build their windows by hand (`bags()` here, `H.window` in the views world) rather than through it. As it stands, rewording the line (or renaming the local) fails the test with no change in behaviour, and the button it checks is one it made, not the window's. To make it behavioural, either run `INV:CreateContainer` in a world with stand-ins for its templates (the views world already stands in for `UICheckButtonTemplate` and the slot templates), or move the toggle's making out of `INV:CreateContainer` into a function the test can call on its window. Then check the window's own toggle (`container.header.filterButton`): styled `'button'`, Blizzard's panel button under Blizzard, pressed while checked.
 
 **Shape of work:** Small, tests only. A case that sets SaftUI's theme to Blizzard before the bag window is built, then checks the metal, the close button in its socket, the view buttons from the header's right edge, the slots' rings and the window's fill, as the Thick, Blizzard, Thick case does after its switch. And the Edit toggle case rewritten to take the real window's toggle.
+
+### 2026-11-11 — st:SetBackdrop and st:SetBackdropIn do arithmetic on frame levels that can be Blizzard's
+
+**What:** `SaftUI-Core/theme.lua` levels each backdrop one below the frame it sits behind with `max(0, parent:GetFrameLevel() - 1)` (`st:SetBackdrop`) and `max(0, frame:GetFrameLevel() - 1)` (`st:SetBackdropIn`). Both frames can be Blizzard's: tooltips, the bags bar's slots, Hekili's buttons, the aura container's buttons. If retail ever hands back a secret frame level for one of them, the subtraction errors on every draw.
+
+**Why noticed:** The Blizzard theme's final fix wave (2026-11-11) guarded the same read in the code the branch added: `Holder` in `SaftUI-Core/themeart.lua` and the roll icon's level in `SaftUI-Loot/roll.lua`. Both now skip the re-level when the level is secret, following `SaftUI-Minimap/microbuttons.lua`. The reviewer and the implementer both noted that `theme.lua`'s two reads are older than the branch and stay unguarded. No live path is known to give a secret level today, so this is hardening.
+
+**Anchors:** `SaftUI-Core/theme.lua` (`st:SetBackdrop`, `st:SetBackdropIn`: the two `SetFrameLevel(max(0, ...GetFrameLevel() - 1))` lines); the guarded reads in `themeart.lua` `Holder` and `SaftUI-Loot/roll.lua`, and their tests, which pass a `newproxy` secret; `.agents/clients.md` (secret values).
+
+**Shape of work:** Small. Add an `issecretvalue` guard to both lines (on a secret level, leave the backdrop at the level it was made with), plus a test per function using the existing secret stand-in.
 
 ### 2026-11-11 — Blizzard theme: dark grey everywhere
 
