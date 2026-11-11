@@ -19,8 +19,10 @@ local st = SaftUI
 	               on each client, the art it's drawn in (a name in ART), its
 	               fill (one of the theme's colors) and whether it's a 1px line.
 	  ART[name]    each piece of art: the tooltip border and the metal, the
-	               action and item buttons', the aura's, the close button's, and
-	               each control's (CONTROLS), which st.ThemeArt.Control reads.
+	               unit frame's bronze box (cut from Blizzard's unit frame art
+	               by texture coordinates, ThemeArt.Cut), the action and item
+	               buttons', the aura's, the close button's, and each
+	               control's (CONTROLS), which st.ThemeArt.Control reads.
 	A value that differs by client is ByClient(forever, live); the accessors
 	give this client's. An art name that starts with Interface\ is a file;
 	every other is an atlas, and is marked Atlas() where the tables name it, so
@@ -101,7 +103,9 @@ end
 --          the tooltip border's corners are 7px, with Blizzard's fill starting
 --          4px inside them (3); a window's background starts 2px in; the
 --          action and item rings have no layout to measure them by (3); an
---          aura has no border; a small frame is one line; and the rest draw
+--          aura has no border; a small frame is one line; a unit frame's
+--          bronze box is 2, its pieces' outer 2px being the dark outline and
+--          the rim; a party or raid member is a bare fill; and the rest draw
 --          nothing, a control placing its own content.
 --   art    the name in ART of the art it's drawn in; none draws no art.
 --   fill   the theme's color its backdrop is filled with: windowcolor for a
@@ -123,6 +127,8 @@ ThemeArt.KINDS = {
 	header = { inset = ByClient(0, 0) },
 	close = { inset = ByClient(0, 0) },
 	control = { inset = ByClient(0, 0) },
+	unitframe = { inset = ByClient(2, 2), art = 'unitframe', fill = 'backdropcolor' },
+	member = { inset = ByClient(0, 0), fill = 'backdropcolor' },
 }
 
 ------------------------------------
@@ -134,6 +140,19 @@ ThemeArt.KINDS = {
 -- offset by its x and y; the top and bottom edges between their corners, tiled
 -- across; the side edges between theirs, tiled down. Every piece is in the
 -- art's layer.
+--
+-- A cut is a border's eight pieces cut out of larger art by texture
+-- coordinates (ThemeArt.Cut), for art Blizzard draws whole: pieces, by the
+-- same keys, each { atlas, rect }, rect being { x0, x1, y0, y1 } in the
+-- atlas's own pixels, ends exclusive; laid out by size (LayCut): each corner
+-- size by size at the drawn frame's own corner, the edges between them, size
+-- thick and stretched, every piece in the art's layer.
+
+-- Blizzard's player and target frames (Blizzard_UnitFrame), which the unit
+-- frame's box is cut from.
+local UF_PLAYER = Atlas('UI-HUD-UnitFrame-Player-PortraitOn')
+local UF_TARGET = Atlas('UI-HUD-UnitFrame-Target-PortraitOn')
+
 ThemeArt.ART = {
 	-- The tooltip border (NineSliceLayouts.TooltipDefaultLayout), on panels,
 	-- bars and tooltips. Its art is white, and a frame's own border color tints
@@ -181,6 +200,43 @@ ThemeArt.ART = {
 		BottomEdge = { atlas = Atlas('_UI-Frame-Metal-EdgeBottom') },
 		LeftEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeLeft') },
 		RightEdge = { atlas = Atlas('!UI-Frame-Metal-EdgeRight') },
+	},
+
+	-- The unit frame's bronze box, a cut, on unit frames and their bars.
+	-- Blizzard's player and target frames are each one shaped texture at a
+	-- fixed size, the portrait ring and bar wells drawn in, which can't wrap a
+	-- frame of any other size; their square ends can. The left corners and
+	-- edge are cut from the target frame's left end, the right ones from the
+	-- player frame's right end, and the top and bottom edges are a 1px column
+	-- of the player frame's top and bottom, stretched across. Each
+	-- rectangle puts the art's dark outline on a piece's outer pixel and its
+	-- rim (bronze on Forever's Camelot members, grey on retail's) on the next
+	-- one in, on every side: starting values, measured on the decoded art, to
+	-- be tuned in game. Retail's art is its own drawing, so its rectangles are
+	-- its own. A frame's own border color tints the pieces. The fill is the
+	-- drawn frame's backdrop, in the theme's Background.
+	unitframe = {
+		layer = 'BORDER',
+		size = 8,
+		pieces = ByClient({
+			TopLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 8, 16 } },
+			BottomLeftCorner = { atlas = UF_TARGET, rect = { 2, 10, 48, 56 } },
+			LeftEdge = { atlas = UF_TARGET, rect = { 2, 10, 30, 40 } },
+			TopRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 11, 19 } },
+			BottomRightCorner = { atlas = UF_PLAYER, rect = { 187, 195, 51, 59 } },
+			RightEdge = { atlas = UF_PLAYER, rect = { 187, 195, 34, 42 } },
+			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 11, 19 } },
+			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
+		}, {
+			TopLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 21, 29 } },
+			BottomLeftCorner = { atlas = UF_TARGET, rect = { 1, 9, 48, 56 } },
+			LeftEdge = { atlas = UF_TARGET, rect = { 1, 9, 30, 40 } },
+			TopRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 24, 32 } },
+			BottomRightCorner = { atlas = UF_PLAYER, rect = { 186, 194, 51, 59 } },
+			RightEdge = { atlas = UF_PLAYER, rect = { 186, 194, 34, 42 } },
+			TopEdge = { atlas = UF_PLAYER, rect = { 120, 121, 24, 32 } },
+			BottomEdge = { atlas = UF_PLAYER, rect = { 120, 121, 51, 59 } },
+		}),
 	},
 
 	-- The action button (ActionButtonTemplate): the art behind the icon, which
@@ -627,8 +683,8 @@ local function Art(frame)
 end
 
 -- set's piece by key: a texture on parent, made the first time, now in layer
--- at sublevel, showing name (a file, or else an atlas at its own size), white
--- and shown.
+-- at sublevel, showing name (a file, or else an atlas at its own size; with
+-- no name, what it shows is its caller's: a cut's piece), white and shown.
 local function Piece(set, parent, key, name, layer, sublevel)
 	local piece = set[key]
 	if not piece then
@@ -636,9 +692,9 @@ local function Piece(set, parent, key, name, layer, sublevel)
 		set[key] = piece
 	end
 	piece:SetDrawLayer(layer, sublevel or 0)
-	if name:find([[Interface\]], 1, true) == 1 then
+	if name and name:find([[Interface\]], 1, true) == 1 then
 		piece:SetTexture(name)
-	else
+	elseif name then
 		piece:SetAtlas(name, true)
 	end
 	piece:SetVertexColor(1, 1, 1, 1)
@@ -696,6 +752,70 @@ local function LayBorder(art, frame, border)
 		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
 		piece:SetHorizTile(edge.across)
 		piece:SetVertTile(not edge.across)
+	end
+end
+
+-- Whether a piece of art is a cut (LayCut) rather than a border.
+local function IsCut(art)
+	return art.pieces ~= nil and art.size ~= nil
+end
+
+-- One coordinate of a cut: n pixels into an atlas size pixels long, whose
+-- member runs from from to to in its file.
+local function CutCoord(from, to, n, size)
+	return from + (to - from) * n / size
+end
+
+-- Cuts rect, { x0, x1, y0, y1 } in atlas's own pixels with exclusive ends,
+-- out of atlas onto texture and shows it: the atlas's file, at the texture
+-- coordinates of rect within the atlas's member there, both from
+-- C_Texture.GetAtlasInfo (its file and its left, right, top and bottom
+-- coordinates; on Forever the Camelot member's). Never from a size read back
+-- from a frame. Where the texture sits and how big it is are its caller's.
+-- Returns true; or false, hiding the texture, when the atlas gives no file
+-- (AtlasInfo's file can be nil) or this client hasn't got it.
+function ThemeArt.Cut(texture, atlas, rect)
+	local info = C_Texture.GetAtlasInfo(atlas)
+	if not (info and info.file) then
+		texture:Hide()
+		return false
+	end
+	local left, right = info.leftTexCoord, info.rightTexCoord
+	local top, bottom = info.topTexCoord, info.bottomTexCoord
+	texture:SetTexture(info.file)
+	texture:SetTexCoord(
+		CutCoord(left, right, rect[1], info.width), CutCoord(left, right, rect[2], info.width),
+		CutCoord(top, bottom, rect[3], info.height), CutCoord(top, bottom, rect[4], info.height))
+	texture:Show()
+	return true
+end
+
+-- A cut (the unit frame's bronze box) on frame: each piece cut from its
+-- atlas (ThemeArt.Cut, which hides one it can't cut), the corners size by
+-- size at the drawn frame's own corners, the edges between them, size thick
+-- and stretched, every piece in the cut's layer. Pixel snapping is on, the
+-- game's default, so a piece once drawn as the metal doesn't keep it off.
+local function LayCut(art, frame, cut)
+	local size = cut.size
+	local function Lay(key)
+		local piece = Piece(art.pieces, frame, key, nil, cut.layer)
+		piece:ClearAllPoints()
+		piece:SetSnapToPixelGrid(true)
+		piece:SetHorizTile(false)
+		piece:SetVertTile(false)
+		ThemeArt.Cut(piece, cut.pieces[key].atlas, cut.pieces[key].rect)
+		return piece
+	end
+	for key, point in pairs(CORNERS) do
+		local piece = Lay(key)
+		piece:SetPoint(point, frame, point, 0, 0)
+		piece:SetSize(size, size)
+	end
+	for key, edge in pairs(EDGES) do
+		local piece = Lay(key)
+		piece:SetPoint(edge.point, art.pieces[edge.first], edge.to)
+		piece:SetPoint(edge.to, art.pieces[edge.last], edge.point)
+		if edge.across then piece:SetHeight(size) else piece:SetWidth(size) end
 	end
 end
 
@@ -817,12 +937,13 @@ function ThemeArt.Color(frame, look, kind)
 end
 
 -- Puts a frame's own border color on a Blizzard look drawn on frame as kind
--- (st:SetBorderColor): a border's pieces are tinted; a button's or an aura's
--- own-color piece (its equipped or quality border, white art) is shown in the
--- color, over the icon's edge, on host as the ring is (Paint); a small frame's
--- line takes it. No color puts the theme's back: white pieces, the own-color
--- piece hidden, the line in the Border. A kind that draws nothing (a control,
--- a strip) is left alone. Moves nothing.
+-- (st:SetBorderColor): a border's or a cut's pieces are tinted; a button's or
+-- an aura's own-color piece (its equipped or quality border, white art) is
+-- shown in the color, over the icon's edge, on host as the ring is (Paint); a
+-- small frame's line takes it. No color puts the theme's back: white pieces,
+-- the own-color piece hidden, the line in the Border. A kind that draws
+-- nothing (a control, a strip) or only a fill (a member) is left alone. Moves
+-- nothing.
 function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	local blizzard = Kind(kind)
 	if not Draws(blizzard) then return end
@@ -842,7 +963,7 @@ function ThemeArt.SetBorder(frame, look, kind, host, r, g, b, a)
 	-- every bag slot update.
 	local style = blizzard.art and ThemeArt.ART[blizzard.art]
 	if not style then return end
-	if style.TopLeftCorner then
+	if style.TopLeftCorner or IsCut(style) then
 		for _, piece in pairs(art.pieces) do
 			if r then piece:SetVertexColor(r, g, b, a) else piece:SetVertexColor(1, 1, 1, 1) end
 		end
@@ -886,6 +1007,8 @@ function ThemeArt.Paint(frame, look, kind, host)
 	local art = blizzard.art and ForClient(ThemeArt.ART[blizzard.art])
 	if art and art.TopLeftCorner then
 		LayBorder(Art(frame), frame, art)
+	elseif art and IsCut(art) then
+		LayCut(Art(frame), frame, art)
 	elseif art and art.ring then
 		LayButton(Art(frame), frame, art, host)
 	end

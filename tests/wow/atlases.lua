@@ -9,12 +9,17 @@
 	the game looks atlases up ignoring case (the tables spell the Edit Mode and
 	class power ones in other cases), and so does the stub.
 
-	Each entry is { width, height, tiles }:
+	Each entry is { width, height, tiles }, and for some file and coords too:
 	  - width and height in UI units: the member's override size where it has
 	    one, else its texture size, halved for art that exists only at double
 	    resolution (a -2x member);
 	  - tiles is 'h' (tiled across), 'v' (tiled down), 'hv' (both) or nil, from
-	    the member's flags (0x4 across, 0x2 down).
+	    the member's flags (0x4 across, 0x2 down);
+	  - file and coords only for an atlas SaftUI cuts by texture coordinates
+	    (st.ThemeArt.Cut): the file ID of the member's atlas (UiTextureAtlas's
+	    FileDataID) and the member's pixel rectangle over that file's size,
+	    { left, right, top, bottom } (its CommittedLeft and CommittedRight over
+	    AtlasWidth, CommittedTop and CommittedBottom over AtlasHeight).
 	Forever draws the Camelot member (-c60) of an atlas where there is one, so
 	its entries are those members'. When the theme names a new atlas, add it to
 	both clients from the same tables.
@@ -144,6 +149,12 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
+		-- The unit frame's bronze box (unitframe), cut from the player and
+		-- target frames' Camelot members (-c60), both in file 8036204, 1024 by 512
+		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
+			file = 8036204, coords = { 605 / 1024, 803 / 1024, 1 / 512, 72 / 512 } },
+		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 194, 68,
+			file = 8036204, coords = { 201 / 1024, 395 / 1024, 87 / 512, 155 / 512 } },
 	},
 	retail = {
 		-- The tooltip border (panel, bar, tooltip)
@@ -269,5 +280,11 @@ return {
 		['UF-Arcane-Icon'] = { 19, 19 },
 		['UF-Essence-BG'] = { 24, 24 },
 		['UF-Essence-Icon'] = { 24, 24 },
+		-- The unit frame's box (unitframe), cut from the player and target
+		-- frames, both in file 4631591, 1024 by 512
+		['UI-HUD-UnitFrame-Player-PortraitOn'] = { 198, 71,
+			file = 4631591, coords = { 1 / 1024, 199 / 1024, 87 / 512, 158 / 512 } },
+		['UI-HUD-UnitFrame-Target-PortraitOn'] = { 192, 67,
+			file = 4631591, coords = { 1 / 1024, 193 / 1024, 229 / 512, 296 / 512 } },
 	},
 }

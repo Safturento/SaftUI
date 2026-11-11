@@ -9,7 +9,8 @@
 --   - the Blizzard theme's default colors, and no default naming Blizzard;
 --   - st:IsBlizzardLook, st.ThemeArt.ClassPower, and every atlas the theme
 --     names existing on both clients (C_Texture.GetAtlasInfo answers from
---     tests/wow/atlases.lua, the clients' atlas tables);
+--     tests/wow/atlases.lua, the clients' atlas tables, with the file and
+--     coordinates of the atlases SaftUI cuts);
 --   - a saved theme this version doesn't know still reading as Thick.
 --
 -- Real: theme.lua and themeart.lua, with Core's helpers (load_core_helpers)
@@ -23,6 +24,7 @@ local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offse
 local BLIZZARD_INSETS = {
 	panel = 3, window = 2, bar = 3, action = 3, slot = 3, aura = 0,
 	tooltip = 3, header = 0, close = 0, control = 0, small = 1,
+	unitframe = 2, member = 0,
 }
 
 local CLIENTS = { 'forever', 'retail' }
@@ -93,9 +95,9 @@ test("each kind's inset under Blizzard, on Forever and on retail", function()
 		local count = 0
 		for kind in pairs(st.THEME_KINDS) do
 			count = count + 1
-			check(BLIZZARD_INSETS[kind] ~= nil, client .. ': ' .. kind .. ' is one of the eleven kinds')
+			check(BLIZZARD_INSETS[kind] ~= nil, client .. ': ' .. kind .. ' is one of the thirteen kinds')
 		end
-		eq(count, 11, client .. ': eleven kinds')
+		eq(count, 13, client .. ': thirteen kinds')
 		for kind, want in pairs(BLIZZARD_INSETS) do
 			eq(st:ThemeInset('blizzard', 'theme', kind), want, client .. ': ' .. kind)
 			eq(st.ThemeArt.Inset(kind), want, client .. ': ThemeArt.Inset ' .. kind)
@@ -263,11 +265,34 @@ test("the atlas stub answers each client's table, ignoring case", function()
 	check(info ~= nil, "a name in another case (the atlas table's own)")
 	eq(C_Texture.GetAtlasInfo('no-such-atlas'), nil, 'an unknown name')
 
+	-- An atlas SaftUI cuts gives its file and its member's place in it, in
+	-- the file's 1024 by 512 pixels here; the rest give neither.
+	local function place(i)
+		return text(i.leftTexCoord * 1024, i.rightTexCoord * 1024, i.topTexCoord * 512, i.bottomTexCoord * 512)
+	end
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Player-PortraitOn')
+	eq(info and info.file, 8036204, "Forever's player frame: the Camelot member's file")
+	eq(info and place(info), '605.00,803.00,1.00,72.00', 'and its place in it')
+	eq(info and text(info.width, info.height), '198.00,71.00', 'at its size')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Target-PortraitOn')
+	eq(info and place(info), '201.00,395.00,87.00,155.00', "Forever's target frame")
+	eq(info and text(info.width, info.height), '194.00,68.00', 'at its size')
+	info = C_Texture.GetAtlasInfo('UI-Frame-Metal-CornerTopLeft')
+	eq(info.file, nil, 'an atlas SaftUI does not cut: no file')
+	eq(info.leftTexCoord, nil, 'nor coordinates')
+
 	st = T.client('retail')
 	info = C_Texture.GetAtlasInfo('UI-Frame-Metal-CornerTopLeft')
 	eq(info and text(info.width, info.height), '75.00,75.00', "retail's metal corner")
 	info = C_Texture.GetAtlasInfo('!Tooltip-NineSlice-EdgeLeft')
 	check(info and info.tilesVertically and not info.tilesHorizontally, 'a side edge tiles down')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Player-PortraitOn')
+	eq(info and info.file, 4631591, "retail's player frame: its file")
+	eq(info and place(info), '1.00,199.00,87.00,158.00', 'and its place in it')
+	info = C_Texture.GetAtlasInfo('UI-HUD-UnitFrame-Target-PortraitOn')
+	eq(info and info.file, 4631591, "retail's target frame: the same file")
+	eq(info and place(info), '1.00,193.00,229.00,296.00', 'its place in it')
+	eq(info and text(info.width, info.height), '192.00,67.00', 'at its size')
 end)
 
 -- A profile a later version saved can name a theme this one doesn't have. It
