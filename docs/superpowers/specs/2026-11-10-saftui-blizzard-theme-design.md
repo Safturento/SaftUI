@@ -1,6 +1,10 @@
 # SaftUI options, project 3b-2: the Blizzard theme
 
-Date: 2026-11-10. Status: a draft for the user's review. The calls marked "My call" are mine, not the user's. The user's own decisions, from the Themes brainstorm, are quoted under Intent and are binding.
+Date: 2026-11-10. Status: the user answered the draft's five questions (2026-11-10, "The user's answers" below). Three new questions come from answer 5. The calls marked "My call" are mine, not the user's. The user's own decisions, from the Themes brainstorm and from the answers, are binding.
+
+**Revised 2026-11-10, after the user's answers:**
+- Windows take their own background color, Blizzard's dark grey panel color (answer 2).
+- Small frames that have Blizzard art draw it, in place of the 1px line the draft gave every small frame (answer 5). They become a new kind, `control` (below).
 
 Project 3b-1, Themes (`docs/superpowers/specs/2026-11-10-saftui-themes-design.md`, shipped), made SaftUI's look a choice: Thick or Thin, editable colors, a Transparent background toggle and Opacity, a Theme and Background override on every module, and a kind of frame named in every draw call. This spec adds the theme Themes promised next: Blizzard.
 
@@ -14,7 +18,9 @@ The user, in the Themes brainstorm (2026-11-10):
 - "if we're using blizzard themes the panels should also use blizzard's close button styling (CharacterFrame is a good example)".
 - "I think we should have all of those options default to inherit from the base theme and that dropdown becomes an override option only." Blizzard joins the same Theme choice and the same per-module overrides as Thick and Thin.
 
-So Blizzard is a third theme. Picking it draws each kind of frame in Blizzard's own art for that kind. Nothing changes for anyone who doesn't pick it.
+On small frames, answering this spec's draft (2026-11-10): "Blizzard has art for buttons, checkboxes, power points, and micro menu buttons - and probably for almost anything else - use their art that saftui currently hides in most of those places."
+
+So Blizzard is a third theme. Picking it draws each kind of frame in Blizzard's own art for that kind, down to buttons and check boxes. Nothing changes for anyone who doesn't pick it.
 
 ## Today
 
@@ -25,6 +31,15 @@ So Blizzard is a third theme. Picking it draws each kind of frame in Blizzard's 
 - **SaftUI's close button** (`st:CreateCloseButton`) has a look of its own, which the theme never draws. The `close` kind only reaches a Blizzard close button handed to `st:CreateHeader`.
 - **The tooltip skin** keeps Blizzard's tooltip `NineSlice` at alpha 0, and draws SaftUI's backdrop through `st:SetBackdropIn`. **The buff skin** keeps Blizzard's `DebuffBorder` and `TempEnchantBorder` at alpha 0, and colors SaftUI's border from the atlas Blizzard gives the debuff.
 - **The `panel` kind covers two different things.** One is windows with SaftUI's title bar (`st:CreateHeader`): the bags, the bank, `st:CreatePanel`. The other is plain backgrounds: chat, the minimap, loot feed entries, the `/sui` window, the bag slot bars.
+- **SaftUI hides Blizzard's art on many small frames**, and draws its own `small` backdrop in its place:
+  - `st:SkinButton` fades a button's textures (`SetAlpha(0)`), clears its normal texture and adds flat hover, pushed and disabled textures;
+  - `st:SkinCheckButton` strips a `UICheckButtonTemplate` box (`st:StripTextures`);
+  - `st:SkinScrollBar` turns off a `MinimalScrollBar`'s thumb, track and stepper layers (`DisableDrawLayer`);
+  - `st:SkinEditBox` kills an edit box's border textures (`st:Kill`, which also writes `Show` onto them);
+  - the micro menu fades Blizzard's micro buttons' backgrounds and shadows, and paints over their pushed background, alert border and highlight with flat colors (`SaftUI-Minimap/microbuttons.lua`);
+  - the totem skin fades the totem flyout's art (`SaftUI-Misc/totemskin.lua`);
+  - the class power points are flat bars.
+- **The `/sui` window's own controls aren't themed at all.** `SaftUI-Core/Config/optionswidgets.lua` draws its buttons, toggles, dropdowns, sliders, text boxes and swatches in a fixed look of its own (`Box`).
 
 ## Blizzard's art
 
@@ -104,6 +119,54 @@ From `AuraButtonArtTemplate` (`Blizzard_BuffFrame/BuffFrameTemplates.xml`). The 
 - **A debuff** has `DebuffBorder`: 40×40, centred on the icon. Its atlas is by dispel type, from `AuraUtil.SetAuraBorderAtlas`: `ui-debuff-border-magic-noicon`, `-curse-`, `-disease-`, `-poison-`, `-bleed-` and `ui-debuff-border-default-noicon`, all 40×40.
 - **A temporary enchant** has `TempEnchantBorder`, `Interface\Buttons\UI-TempEnchant-Border` (130870): 32×32.
 
+### Controls
+
+Checked on both branches. Where a file and its forever and live copies differ, the art named here is in both.
+
+- **The panel button** (`UIPanelButtonNoTooltipTemplate`, `Blizzard_SharedXML/SecureUIPanelTemplates.xml`, and its scripts in `SecureUIPanelTemplates.lua`).
+  - Three textures, `Left`, `Middle` and `Right`, all from `Interface\Buttons\UI-Panel-Button-Up` (130828). Their texture coordinates are left 0 to 0.09375, middle 0.09375 to 0.53125 and right 0.53125 to 0.625, each from 0 to 0.6875 down. The ends are 12 wide on a 22-tall button.
+  - Blizzard's scripts swap all three to `UI-Panel-Button-Down` (130825) on a mouse down, back to `-Up` on a mouse up, and to `-Disabled` (130824) when disabled.
+  - The highlight is `Interface\Buttons\UI-Panel-Button-Highlight` (130826), additive (`UIPanelButtonHighlightTexture`).
+- **The check box** (`UICheckButtonArtTemplate`, `Blizzard_SharedXML/Shared/Button/CheckButtonTemplates.xml`). `UICheckButtonTemplate` inherits it, and `st:CreateCheckButton` makes its boxes from that.
+  - Normal `Interface\Buttons\UI-CheckBox-Up` (130755), pushed `-Down` (130752), highlight `-Highlight` (130753, additive), checked `-Check` (130751) and disabled-checked `-Check-Disabled` (130750).
+  - The same file's `MinimalCheckboxArtTemplate` is the Settings panel's box: `checkbox-minimal` (30×29, with a Camelot version on Forever), checked `checkmark-minimal`, disabled `checkmark-minimal-disabled`.
+- **The tab** (`PanelTabButtonTemplate`, and `PanelTopTabButtonTemplate`, which inherits it; `Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml`).
+  - A picked tab is `uiframe-activetab-left` (35×42), `_uiframe-activetab-center` (tiled) and `uiframe-activetab-right` (37×42).
+  - Another tab is `uiframe-tab-left` (35×36), `_uiframe-tab-center` and `uiframe-tab-right` (37×36). Forever has Camelot versions of these three.
+- **The scroll bar** (`MinimalScrollBar`, `Blizzard_SharedXML/Shared/Scroll/MinimalScrollBar.xml`).
+  - The thumb is `minimal-scrollbar-small-thumb-top`, `-middle` and `-bottom`, with `-over` and `-down` versions that the thumb's own scripts swap in.
+  - The track is `minimal-scrollbar-track-top`, `!minimal-scrollbar-track-middle` and `minimal-scrollbar-track-bottom`.
+  - Forever has Camelot versions of all of them. SaftUI turns their layers off, so turning them on again shows them.
+- **Edit boxes** (`Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.xml`, and `Blizzard_ChatFrameBase/Mainline/ChatFrameEditBox.xml`, which is the same on both branches):
+  - `InputBoxTemplate`: `Left`, `Middle` and `Right`, from `auctionhouse-ui-inputfield-left`, `-middle` and `-right`;
+  - `SearchBoxTemplate` (the bags' search box): `common-search-border-left`, `-middle` and `-right` (Camelot versions on Forever), with the magnifying glass `common-search-magnifyingglass`;
+  - the chat edit box: `Interface\ChatFrame\UI-ChatInputBorder-Left2`, `-Right2` and `-Mid2` (375507, 375508, 389190), and the focus textures `UI-ChatInputBorderFocus-Left`, `-Right` and `-Mid` (374197, 374199, 374198).
+- **The micro buttons** (`Blizzard_MicroMenu/Mainline/MainMenuBarMicroButtons.xml` and `.lua`). They differ by branch only in buttons, not in art.
+  - `Background` is `UI-HUD-MicroMenu-ButtonBG-Up` and `PushedBackground` is `UI-HUD-MicroMenu-ButtonBG-Down` (32×41, Camelot versions on Forever).
+  - The character button's portrait has `Shadow` (`UI-HUD-MicroMenu-Portrait-Shadow`) and `PushedShadow` (`UI-HUD-MicroMenu-Portrait-Down`).
+  - `FlashBorder` is `UI-HUD-MicroMenu-Highlightalert` (a Camelot version on Forever).
+  - The highlight is set by Blizzard's code to `UI-HUD-MicroMenu-<the button's textureName>-Mouseover` (BLEND).
+  - The game menu button has a `MainMenuBarPerformanceBar` (`Interface\MainMenuBar\UI-MainMenuBar-PerformanceBar`).
+- **Edit Mode's selection** (`EditModeSystemSelectionLayout`, `Blizzard_EditMode/Shared/EditModeSystemTemplates.lua`).
+  - Corners `<kit>-NineSlice-Corner` (16×16, one atlas mirrored), 8px outside the frame, edges `_<kit>-NineSlice-EdgeTop`, `-EdgeBottom`, `!<kit>-NineSlice-EdgeLeft` and `-EdgeRight`, and a fill `<kit>-NineSlice-Center`.
+  - The kit is `editmode-actionbar-highlight` (Blizzard's blue outline on every frame) or `editmode-actionbar-selected` (the yellow one on the frame being moved). They're the same on both clients.
+- **Class resources** (`Blizzard_UnitFrame`). Each point has an empty art and a filled one:
+
+  | Resource | Client | Empty | Filled |
+  | -------- | ------ | ----- | ------ |
+  | Combo points, rogue | both | `uf-roguecp-bg` (20×20; 22×22 Camelot on Forever) | `uf-roguecp-icon-red`; a charged point `uf-roguecp-icon-blue` |
+  | Combo points, druid (cat form) | both | `UF-DruidCP-BG-Active` (22×22) | `UF-DruidCP-Icon` |
+  | Holy power | retail | `uf-holypower-rune1` to `-rune5`, a different rune for each point | `uf-holypower-rune1-active` to `-rune5-active` |
+  | Soul shards | retail | `UF-SoulShard-Holder` (23×30) | `UF-SoulShard-Icon` |
+  | Chi | retail | `uf-chi-bg` (25×25) | `uf-chi-icon` |
+  | Arcane charges | retail | `UF-Arcane-BG` (21×21) | `UF-Arcane-Icon` |
+  | Essence | retail | `UF-Essence-BG` (24×24) | `UF-Essence-Icon` |
+
+  - Forever loads only the combo point bars: its `Blizzard_UnitFrame.toc` excludes the paladin, warlock, monk, mage, evoker and death knight bars for `camelot`. Its Camelot `RogueComboPointBar.xml` and `DruidComboPointBar.xml` use the same point templates.
+  - Every atlas above exists on both clients.
+  - Death knight runes (`UF-DKRunes-*`) are Blizzard's too, but SaftUI shows no runes (its class power element is oUF's ClassPower, which has none).
+- **The totem flyout** (`MultiCastFlyoutFrame`, `Blizzard_ActionBar/Shared/MultiCastActionBarFrame.xml`, Forever). Its `top` and `middle` textures are `Interface\Buttons\UI-TotemBar` (310727), which SaftUI's totem skin fades with `SetAlpha(0)`.
+
 ### Colors
 
 From the clients' `GlobalColor` tables. They're the same on both.
@@ -121,18 +184,22 @@ From the clients' `GlobalColor` tables. They're the same on both.
 
 ### Each kind under Blizzard
 
-The Themes spec's kinds, plus one: **`window`, a window with SaftUI's title bar** (`st:CreateHeader`): the bags, the bank, `st:CreatePanel` and skinned Blizzard panels. `panel` keeps every other background. Under Thick and Thin a window draws exactly as a panel. My call. The metal has the title bar built in (above), which only fits a frame that has one, and only the call site knows whether it does. A test of whether the frame has a header would depend on which ran first, the draw or `st:CreateHeader`.
+The Themes spec's kinds, plus two:
+- **`window`: a window with SaftUI's title bar** (`st:CreateHeader`): the bags, the bank, `st:CreatePanel` and skinned Blizzard panels. `panel` keeps every other background. My call. The metal has the title bar built in (above), which only fits a frame that has one, and only the call site knows whether it does. A test of whether the frame has a header would depend on which ran first, the draw or `st:CreateHeader`.
+- **`control`: a small frame that Blizzard draws with art of its own, or draws bare.** Buttons, check boxes, radio tabs, scroll bar thumbs, edit boxes, the micro buttons, Edit Mode's outlines, class power points, the castbar's icon, the unit frame indicators and the totem flyout. The engine draws nothing on a control under Blizzard, and the control's own code shows its Blizzard art (the table below). My call. That art differs for every control, and some of it belongs to Blizzard's own frames; one kind lets the engine keep each control's recorded look while its own code does the rest.
+
+Under Thick and Thin, a window draws exactly as a panel, and a control as a small frame.
 
 - **window: the character frame's metal.** The user: "for actual panels we'd use the same borders are the character frame border."
   - These are the eight pieces above, without the portrait socket: SaftUI's windows have no portrait. My call.
-  - The fill is the theme's Background.
+  - The fill is the theme's Window background: Blizzard's dark grey panel color by default (answer 2).
   - The metal's title bar sits on top of the window, above SaftUI's header, so the art reaches up from the window and nothing inside it moves. The close button sits in its socket on the title bar. The title and the header's buttons stay in the header row, which keeps its height (General → Header height).
-  - My call, and question 1 below. SaftUI's headers are 31px by default and the bag windows' view buttons are sized from them. The title bar is about 20px. Shrinking the header into it would shrink those buttons to about 10px, and the title bar can't stretch.
+  - The user's decision (answer 1): "Default is fine, we can adjust if needed." SaftUI's headers are 31px by default and the bag windows' view buttons are sized from them. The title bar is about 20px, and shrinking the header into it would shrink those buttons to about 10px.
 - **panel: the tooltip border.** The tooltip border, with the theme's Background as the fill.
-  - My call. Chat, the minimap, loot feed entries, the `/sui` window and the bag slot bars are backgrounds, not windows with SaftUI's title bar. The metal would put an empty title bar on each, and around a feed entry it would be bigger than the entry.
+  - The user's decision (answer 3): "Default for now, adjust if necessary." Chat, the minimap, loot feed entries, the `/sui` window and the bag slot bars are backgrounds, not windows with SaftUI's title bar. The metal would put an empty title bar on each, and around a feed entry it would be bigger than the entry.
   - The user liked the tooltip border on bars, and rejected the other metals: "the rest look really bad".
   - The `/sui` window's own layout stays as it is.
-- **bar: the tooltip border.** The user's decision. The fill is the theme's Background.
+- **bar: the tooltip border,** at Blizzard's size (7px corners). The user's decision, and answer 4: "Default is fine." The fill is the theme's Background.
 - **tooltip: the tooltip border.** The fill is the theme's Background. My call: it is Blizzard's own tooltip border.
 - **action: the action button's art.** The user: "the blizzard template".
   - The ring sits over the icon's edge, and the slot art (`-Background` and `-Slot`) behind the icon.
@@ -150,9 +217,38 @@ The Themes spec's kinds, plus one: **`window`, a window with SaftUI's title bar*
   - On a window it sits where Blizzard puts it on its own windows, in the metal's socket. Elsewhere (the `/sui` window and its dialog, item tooltips) it stays where SaftUI puts it today.
   - While a bag window's close button is in the socket, the header's buttons, which line up from the close button today, line up from the header's right edge.
   - Close buttons follow SaftUI's theme, as the `close` kind always has. Under Thick and Thin they keep today's look. My call.
-- **small: one 1px line,** in the Blizzard theme's Border, around its Background. That is Thin's drawing in Blizzard's colors. My call.
-  - The smallest of Blizzard's art, the tooltip's corners, is 7px. Class power points, indicators, check boxes, edit mode's outlines and scroll bar thumbs are about that size or smaller.
-  - Blizzard has a different art for each kind of widget, which the kinds don't tell apart.
+- **control: Blizzard's own art for that control,** or bare where Blizzard draws it bare. The user's decision (answer 5): "use their art that saftui currently hides in most of those places." The next section names each.
+- **small: one 1px line,** in the Blizzard theme's Border, around its Background (Thin's drawing in Blizzard's colors). It's only for the small frames with no Blizzard art:
+  - **a chosen roll's lit button** on a locked loot roll bar (`SaftUI-Loot/roll.lua`). Blizzard hides its roll frame once you choose, so it has no art for a chosen roll;
+  - **the micro menu bar's other items' panels**: the zone text, clock, latency, framerate, addon compartment, tracking, expansion, mail, instance difficulty and queue eye items (`SaftUI-Minimap/micromenu.lua`). Blizzard draws these as round minimap buttons with no panel, a shape SaftUI's bar doesn't have. Their skins stay as today;
+  - **a skinned Blizzard panel's tabs** (`SK:SkinTab`, reached only from `SK:SkinBlizzardPanel`, which nothing calls).
+
+  Two small frames are drawn Thin by name, whatever the theme, and stay so: the zone text's flourishes and the RestedXP timer boxes.
+
+### Each control under Blizzard
+
+Every row is my call, from the element's Blizzard source (above), on the user's answer 5. "SaftUI's frame" means SaftUI made it, even from a Blizzard template, so its regions are SaftUI's to set. "Blizzard's frame" means SaftUI only skins it, so the art is shown again through the frame's own regions, by widget methods, with no field written. Every row goes back to today's look under Thick and Thin.
+
+| Control | Whose frame | Under Blizzard | Back under Thick or Thin |
+| ------- | ----------- | -------------- | ------------------------ |
+| **SaftUI's buttons** (`st:CreateButton`, `st:SkinButton`): the bags' view buttons and Warband Bank, Deposit, Withdraw and Buy buttons, the loot feed's filter and scroll-reset buttons, edit mode's footer buttons, the key binding mode's Done | SaftUI's | the panel button: `Left`, `Middle` and `Right` of SaftUI's own, with `UI-Panel-Button-Up` swapped to `-Down` on a mouse down and `-Disabled` when disabled, and the additive highlight. The ends keep Blizzard's 12:22 share of the button's height. Today's flat hover, pushed and disabled textures are hidden | the three textures hidden, the flat ones shown |
+| **A Blizzard button given to `st:SkinButton`** (retail's bank deposit button) | Blizzard's | its own textures shown again (`SetAlpha(1)` on what `st:SkinButton` faded); SaftUI's flat textures hidden | faded again |
+| **Check boxes** (`st:CreateCheckButton`, made from `UICheckButtonTemplate`): the bags' category filter boxes | SaftUI's | the template's own art set back (`UI-CheckBox-Up`, `-Down`, `-Highlight`, `-Check`, `-Check-Disabled`), with the box sized so its art's box is SaftUI's 12px | SaftUI's box again |
+| **Check buttons used as buttons**: the bags' Edit toggle and the currencies' funnel | SaftUI's | the panel button, shown pressed (`-Down`) while checked | SaftUI's look again |
+| **`/sui`'s buttons** (execute) | SaftUI's | the panel button, as SaftUI's buttons | the window's own look |
+| **`/sui`'s toggles** | SaftUI's | Blizzard's Settings check box: `checkbox-minimal`, checked `checkmark-minimal`, disabled `checkmark-minimal-disabled` (question 3) | the window's own look |
+| **Radio groups** (`st:CreateRadioGroup`: retail's combined bank's Bank and Warband selector) | SaftUI's | Blizzard's top tabs: the picked button `uiframe-activetab-*`, the others `uiframe-tab-*`; no blue border | SaftUI's buttons and blue border again |
+| **Scroll bars** (`st:SkinScrollBar` on a `MinimalScrollBar`: SaftUI's own, and chat's) | both | the thumb's, track's and steppers' layers turned on again (`EnableDrawLayer`), so `MinimalScrollBar`'s own art shows; no SaftUI thumb backdrop or thumb colors | layers off again, SaftUI's thumb back |
+| **Edit boxes** (`st:SkinEditBox`: the bags' search box, `st:CreateEditBox`, chat's edit boxes) | both | the template's own border textures shown again, and chat's focus textures; no SaftUI backdrop and no white focus border. `st:SkinEditBox` conceals them with `SetAlpha(0)`, not `st:Kill`, so this works and writes nothing onto Blizzard's | concealed again, SaftUI's backdrop and focus border back |
+| **The micro buttons** (`SaftUI-Minimap/microbuttons.lua`) | Blizzard's | `Background`, `Shadow`, `PushedShadow` and the performance bar shown again; `PushedBackground` and `FlashBorder` given Blizzard's atlases back by name; the highlight left as Blizzard's code sets it (`UI-HUD-MicroMenu-<textureName>-Mouseover`, set back by SaftUI after a switch); no SaftUI panel. The icons keep SaftUI's size and place | today's fades and flat colors |
+| **Edit Mode's outlines** (`SaftUI-Core/EditMode/mover.lua`) | SaftUI's | Blizzard's Edit Mode selection, drawn by SaftUI on the outline: the `editmode-actionbar-highlight` kit, and `editmode-actionbar-selected` on the selected mover in place of SaftUI's blue | SaftUI's line and blue again |
+| **Class power points** (`SaftUI-Unitframes/elements/classpower.lua`) | SaftUI's | each point the empty art of the player's resource, and the filled art while full (the table above; per point for holy power; the blue icon for a rogue's charged point). Each point's art is square at the row's height, centred in its slot (question 1) | flat bars again |
+| **The castbar's icon and the unit frame indicators** | SaftUI's | bare: Blizzard draws its castbar icons and unit frame indicators with no frame | as today |
+| **The totem flyout** (`SaftUI-Misc/totemskin.lua`) | Blizzard's | its `top` and `middle` art shown again (`SetAlpha(1)`); no SaftUI panel | faded again |
+
+Re-tagged, not controls, because their Blizzard look is another kind's (under Thick and Thin these draw as before):
+- **Item icons drawn as small** become `slot`, the item button's art: the loot roll icon (`SaftUI-Loot/roll.lua`, the icon box and a held bar's icon frame), the loot feed's icons (`SaftUI-Loot/Feed/feed.lua`) and the character frame's gem slots (`SaftUI-Misc/Skinning/characterframe/gems.lua`).
+- **Edit Mode's frame picker** (`SaftUI-Core/EditMode/picker.lua`) becomes `tooltip`: it's a tooltip of the frames under the cursor.
 
 ### How the Blizzard look fits the engine
 
@@ -176,6 +272,8 @@ The tables hold:
 - **The drawn frame** holds it for window, panel, bar, tooltip and small. That is the backdrop behind the owner (`st:SetBackdrop`, `st:SetBackdropIn`), or the frame itself (`st:SetTemplate`).
 - **Over the icon's edge** for action, slot and aura: the ring, and a colored border. They sit under the button's texts, cooldown and glows, as Blizzard's ring does.
 - **Behind the icon** for action and slot: the slot art, on the drawn frame.
+- **On the control itself** for a control: the engine draws nothing, and the control's code shows its art. SaftUI's own controls get textures of SaftUI's; Blizzard's get their own regions shown again.
+- **A control follows a switch** where its code already re-runs: a module's `UpdateConfig` or `OnColorsChanged('theme')`, and, for Core's widgets, which have no module, `st:KeepOwnColors`, as the close button does. Each asks the engine whether its look is Blizzard (`st:IsBlizzardLook`).
 
 **What `st:ThemeInset` gives.**
 - It names the kind: `st:ThemeInset(theme, background, kind)`. Under Thick and Thin the kind changes nothing (2 or 1). Under Blizzard it's how far the kind's art reaches in from the drawn frame's edge on its sides, for the client: where content starts to stay uncovered.
@@ -189,7 +287,7 @@ The tables hold:
 | action, slot | 3 | measured; no layout in Blizzard's source gives the rings' width |
 | aura | 0 | Blizzard's buffs have no border |
 | small | 1 | one line |
-| header, close | 0 | |
+| header, close, control | 0 | a control places its own content, as Blizzard's art needs |
 
 - **The window's title bar** is 21px on retail and 20px on Forever, from the metal's frame. A window's backdrop reaches that far above the window (and its inset on the other sides), so the title bar covers nothing of the window.
 
@@ -201,11 +299,12 @@ The tables hold:
 - **A window keeps its header and its size.** The metal reaches above it by the title bar's height. The screen edge margin holds the window, not the art above it.
 
 **What the Theme tab's settings mean under Blizzard.**
-- **Background** is the fill of every Blizzard look that has one: window, panel, bar, tooltip and small. Its default is Blizzard's tooltip fill, 0.09, 0.09, 0.19.
-  - My call: one Background covers the theme, as with Thick and Thin.
-  - The tooltip border is on tooltips, bars and every panel, and Blizzard fills it with that color.
-  - Question 2 below.
-- **Border** is the small frames' line, default 0.5, 0.5, 0.5. Blizzard's art keeps its own colors: no setting tints it. My call.
+- **Two backgrounds.** The user's decision (answer 2): "Lets go with alternative, potentially we'll end up with dark grey everywhere."
+  - **Window background** is the fill of windows. Its default is Blizzard's dark grey panel color, 0.12, 0.12, 0.13.
+  - **Background** is the fill of every other Blizzard look that has one: panel, bar, tooltip and small. Its default is Blizzard's tooltip navy, 0.09, 0.09, 0.19.
+  - They're two of the Blizzard theme's own colors (`templates.blizzard.windowcolor` and `.backdropcolor`), each with its row on the Theme tab. Dark grey everywhere, which the user expects may come, is then one default to change: `backdropcolor` to the window's grey. `docs/followups.md` gets an entry for it.
+  - Under Thick and Thin there is no Window background row: their windows take their Background, as today.
+- **Border** is the line of the few small frames with no Blizzard art, default 0.5, 0.5, 0.5. Blizzard's art keeps its own colors: no setting tints it. My call.
 - **Outer border** is hidden, as it is under Thin.
 - **Transparent background and Opacity** work as today, on fills. The action and slot art behind the icon takes the same alpha. Borders stay opaque.
 - **Reset** puts Blizzard's defaults back.
@@ -215,14 +314,15 @@ The tables hold:
 - **Under Blizzard art:**
   - the tooltip border and the metal tint their pieces, as Blizzard's `NineSlice:SetBorderColor` does (a unit tooltip's class color);
   - an action button shows Blizzard's equipped border (`UI-HUD-ActionBar-IconFrame-Border`) in the color;
-  - a slot or an aura shows Blizzard's `WhiteIconFrame` in the color, as Blizzard shows an item's quality.
+  - a slot or an aura shows Blizzard's `WhiteIconFrame` in the color, as Blizzard shows an item's quality;
+  - a control is left alone: it shows its state in its own art (a picked tab, a selected mover's kit, a focused edit box's focus textures).
 
   No color takes it off.
 - My call: one call takes a module's color on and off in every theme. A plain border color can't reach art, and this also ends the followup's "two ways to reset a border". A source scan keeps modules off `SetBackdropBorderColor` on a drawn backdrop.
 - A recolor or redraw takes own colors off. Modules put them back as today (`OnColorsChanged('theme')`, `st:KeepOwnColors`).
 
 **Recolor and redraw.** These work for Blizzard as for the others.
-- A recolor puts the Background, the alpha and the small lines back, and moves nothing.
+- A recolor puts the two backgrounds, the alpha and the small lines back, and moves nothing.
 - A redraw draws each recorded frame's look again: it shows or hides the art, and moves each backdrop to its kind's inset.
 - A frame that resolves to None is cleared, art included.
 
@@ -237,9 +337,13 @@ The tables hold:
   - bag slots in the item button's frame;
   - buffs bare, with Blizzard's debuff borders;
   - chat, the minimap and the `/sui` window in the tooltip border;
-  - small things in a thin grey line.
+  - Blizzard's red panel buttons, check boxes, tabs, scroll bars and edit boxes, in `/sui` too (its buttons and toggles);
+  - the micro menu in Blizzard's own micro buttons;
+  - class power points in Blizzard's combo point, holy power, soul shard, chi, arcane charge or essence art;
+  - Edit Mode's outlines in Blizzard's Edit Mode selection;
+  - the few small things with no Blizzard art in a thin grey line.
 - **On every module page:** the Theme override has Blizzard, so one module can use Blizzard while the rest stay Thick, or the reverse.
-- **On the Theme tab, under Blizzard:** Border and Background, which say what they color, then Transparent background, Opacity and Reset. Outer border is hidden.
+- **On the Theme tab, under Blizzard:** Border, Window background and Background, which say what they color, then Transparent background, Opacity and Reset. Outer border is hidden.
 - **No reload,** and nothing left in the old look.
 
 ### SaftUI looks exactly as today until the user picks Blizzard
@@ -258,9 +362,13 @@ The tables hold:
   - A frame that isn't SaftUI's gets nothing written onto it, as `st:SetBackdropIn` promises (`.agents/taint.md` rule 1).
   - The tooltip skin keeps Blizzard's `NineSlice` hidden, and SaftUI's backdrop draws the tooltip border.
   - No Blizzard code runs for the theme: no `NineSliceUtil`, and no Blizzard setter (rule 3).
-- **Blizzard's own regions** are touched only where a skin already touches them:
+- **Blizzard's own regions** are touched only where a skin already touches them, and only through widget methods, with nothing written onto them:
   - the buff skin shows `DebuffBorder` and `TempEnchantBorder` under Blizzard, with `SetAlpha` and points. It sets them today, and Blizzard never sets their alpha;
-  - the totem bar's state textures stay out of combat, as today (rule 1).
+  - the totem bar's state textures stay out of combat, as today (rule 1);
+  - the micro buttons' own textures are shown with `SetAlpha(1)` and given their atlases back with `SetAtlas` and `SetHighlightAtlas`, by the names in Blizzard's source. SaftUI reads the button's `textureName` for the highlight's name. It calls none of Blizzard's micro button functions (rule 3), and its post-hooks keep following Blizzard's own updates. The micro buttons aren't protected;
+  - chat's scroll bar layers are turned back on with `EnableDrawLayer`, and chat's edit box textures shown with `SetAlpha(1)`. That's possible because `st:SkinEditBox` stops using `st:Kill` (which writes `Show` onto each region) and conceals with `SetAlpha(0)`. It conceals only regions whose alpha Blizzard never sets, which the builder checks in Blizzard's chat code;
+  - the totem flyout's art, and the art `st:SkinButton` faded on retail's bank deposit button, are shown with `SetAlpha(1)`. `st:SkinButton` still writes its fields onto that button, as today (`docs/followups.md`, "st:Kill and st:SkinIcon still write onto Blizzard pieces").
+- **Nothing a control does is protected.** A theme switch runs after combat. In combat, Blizzard's own scripts keep swapping their own art (the micro buttons' highlight, `MinimalScrollBar`'s thumb), and SaftUI's own buttons swap their textures from SaftUI's scripts on SaftUI's frames.
 - **A redraw never runs in combat.** A theme switch, and a profile switch, copy or reset, wait for the end of combat (`st:ThemeChanged`, `Config:UpdateConfig`).
 - **Drawing in combat is safe.** Frames drawn for the first time in combat keep working under Blizzard, as today: a bag opened mid-fight, a tooltip, an aura. Art is textures (`SetAtlas`, `SetTexture`, points, vertex color, show and hide) on frames of SaftUI's. A frame of SaftUI's that's a child of a secure button, or anchored to one, isn't protected (rule 6). None of it is a protected call.
 - **No art is sized from a frame's size read back from the game.** Aura buttons' sizes can be secret (rule 11). Pieces are placed by anchors and offsets, or by sizes from SaftUI's config.
@@ -275,6 +383,7 @@ The tables hold:
   - the checked texture's blend;
   - each kind's measured inset.
 - **Picking the client:** the tables are read through `st.forever` at draw time. Tests switch with `stub.interface`.
+- **Class power by client:** Forever shows combo points only (rogues and druids). Retail adds holy power, soul shards, chi, arcane charges and essence. SaftUI shows whatever oUF's ClassPower gives on the client, and draws its art.
 - **Names that exist on one client only aren't used,** such as retail's `tooltip-nineslice-bottomarrow` and Forever's `common-framedivider` or `bags-item-slot-blank`.
 
 ## Constraints
@@ -286,10 +395,12 @@ The tables hold:
 
 ## Non-goals
 
-- **Blizzard's art for each kind of widget** (buttons, check boxes, sliders, dropdowns, scroll bars, edit boxes). Small frames take a line.
+- **`/sui`'s other controls** (dropdowns, sliders, text boxes, color swatches, key binding buttons, tabs and sidebar), until the user answers question 2.
 - **Pieces of Blizzard's windows SaftUI's don't have:** the portrait socket, the minimize button, the rock background, the title streaks.
+- **Blizzard's minimap button art on the micro menu bar's other items.**
+- **Class power animations:** the fills, glows, flipbooks and smoke Blizzard plays as a point fills or empties. Points show the empty or the filled art.
+- **Death knight runes,** which SaftUI doesn't show.
 - **Per-dispel-type debuff art on SaftUI's own aura buttons** (unit frames, WeakAuras). They take the white icon border in SaftUI's colors.
-- **Re-tagging icons drawn as small as slots,** such as the castbar icon, loot icons and feed icons.
 - **Round icon masks.**
 - **Showing Blizzard's own tooltip `NineSlice`** in place of SaftUI's copy.
 - **Unifying `st:KeepOwnColors` and `OnColorsChanged('theme')`** (`docs/followups.md`).
@@ -313,10 +424,23 @@ The tables hold:
 - **Each kind under Blizzard, on each client:**
   - the right atlases and files, anchors and offsets, layers and tiling;
   - no SaftUI edge line and no Thick lines;
-  - the fill in the Background at the right alpha;
+  - the fill in the right background (Window background for a window) at the right alpha;
   - small is one line in Border;
-  - header is clear;
+  - header and control are clear;
   - aura has no art.
+- **Controls under Blizzard, and back,** one test per row of the controls table:
+  - SaftUI's buttons swap `-Up`, `-Down` and `-Disabled`;
+  - check boxes carry the template's art;
+  - radio groups show the picked tab;
+  - scroll bar layers are on;
+  - edit boxes' textures are shown;
+  - the micro buttons' atlases are Blizzard's;
+  - movers show the highlight or the selected kit;
+  - class power points show each resource's empty and filled art on the client that has it;
+  - the castbar icon is bare, and the totem flyout's art is shown;
+  - re-tagged frames draw as their new kind.
+
+  Under Thick each is today's look again.
 - **Switches.** A frame of every kind goes Thick → Blizzard → Thin → Blizzard:
   - art only under Blizzard, and Thick's lines only under Thick;
   - each backdrop at its kind's inset;
@@ -330,11 +454,12 @@ The tables hold:
 - **Windows:** under Blizzard the metal reaches the title bar's height above the window, the header keeps its height with no strip, and the bag header's buttons line up from its right edge. Under Thick everything is as before.
 - **Buttons:** Blizzard's hover, pushed and checked art on action buttons and slots, and the buff skin showing Blizzard's debuff and enchant borders.
 - **Options:**
-  - the Theme tab offers Blizzard, hides Outer border under it, and resets it to Blizzard's defaults;
+  - the Theme tab offers Blizzard, shows Window background and hides Outer border under it, and resets it to Blizzard's defaults;
   - every Theme override offers Blizzard, in order, with descs.
 - **Defaults:** no default names Blizzard, and every existing theme test passes.
 - **Taint:**
   - drawing under Blizzard writes nothing onto a frame that isn't SaftUI's (the locked frame fixture);
+  - the micro buttons, chat's edit boxes and scroll bars, and the totem flyout get nothing written onto them on a switch either way (locked);
   - `theme.lua` never names `NineSliceUtil`.
 - **Scans:** every `st:ThemeInset` call names a kind, and no module sets a drawn backdrop's border color itself.
 - **Atlases:** every atlas the theme names exists on both clients. The test stub's atlas list is taken from the clients' atlas tables (above).
@@ -348,11 +473,20 @@ The tables hold:
 - **Texel snapping** on the metal (Blizzard's `disableSharpening`).
 - **Whether the title bar above a window needs keeping on screen,** given that the screen edge margin holds only the window.
 - **Where the tables live and their shapes, and the descs.**
+- **The size SaftUI's check boxes and panel buttons take** so Blizzard's art fits the space SaftUI's look had.
+- **How a class power point shows its filled art:** the status bar's texture, or a texture shown while the point is full.
+- **Whether Edit Mode's snapping should measure Blizzard's selection,** which sits 8px outside a frame, under Blizzard. Today it measures the frames' own borders.
+
+## The user's answers (2026-11-10)
+
+1. **Window title bars:** "Default is fine, we can adjust if needed." The metal's title bar sits above the header, holding only the close button.
+2. **Background color:** "Lets go with alternative, potentially we'll end up with dark grey everywhere." Windows take Blizzard's dark grey panel color, and tooltips and bars stay navy, as two of the theme's colors (above).
+3. **Backgrounds that aren't windows:** "Default for now, adjust if necessary." The tooltip border.
+4. **The tooltip border's size on bars:** "Default is fine." Blizzard's size.
+5. **Small frames:** "Blizzard has art for buttons, checkboxes, power points, and micro menu buttons - and probably for almost anything else - use their art that saftui currently hides in most of those places." This replaced my 1px line with the `control` kind and its table.
 
 ## Questions for the user
 
-1. **Window title bars.** Blizzard's metal has a title bar about 20px tall, and SaftUI's window headers are 31px (General → Header height). My call: the title bar sits on top of each window, above its header, holding only the close button in its socket. The title and the bag windows' view buttons stay in the header, so nothing inside a window moves. Or should the title move up onto the title bar? Or should the header shrink into the title bar, which would make the view buttons about 10px?
-2. **One background color.** My call: one Background for the whole theme, by default Blizzard's tooltip navy (0.09, 0.09, 0.19), windows included. Or should windows take Blizzard's dark grey panel color (0.12, 0.12, 0.13), with tooltips and bars staying navy?
-3. **Backgrounds that aren't windows** have no title bar for the metal: chat, the minimap, loot feed entries, the `/sui` window and the bag slot bars. My call: the tooltip border, like bars. Or the metal anyway, or something else?
-4. **The tooltip border's size on bars.** Your `/suistyles` spike showed it at Blizzard's size and at half size. My call: Blizzard's size (7px corners), the size of its tooltips. Or half?
-5. **Small frames** are too small for Blizzard's art: buttons and check boxes in `/sui`, indicators, class power points, micro menu buttons, edit mode's outlines. My call: a 1px line in the Blizzard theme's colors, like Thin. Or something else?
+1. **Class power point shape.** Blizzard's class power art is round, but SaftUI's points fill the row: by default 201px wide, so five points are about 35×20. My call: each point draws Blizzard's art square at the row's height, centred in its slot, so the row keeps its size. Or should the row shrink to the round points, or the art stretch to fill each slot?
+2. **`/sui`'s other controls.** You named `/sui`'s buttons and check boxes. Blizzard also has art for its dropdowns, sliders, text boxes, tabs and the rest of its Settings panel, which `/sui`'s window draws in a look of its own today. My call: buttons and check boxes in this project, the rest as a followup. Or all of `/sui` now?
+3. **Two check box looks.** The bags' check boxes are made from Blizzard's classic check box template, so they get its art (`UI-CheckBox`). `/sui`'s toggles have no template, so I gave them Blizzard's Settings panel box (`checkbox-minimal`), the one Blizzard's own options use. Or one look for both, and which?
