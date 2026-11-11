@@ -54,7 +54,7 @@ local function fresh()
 	_G.StackSplitFrameOkay_Click = function() end
 	Enum.AccountCurrencyTransferResult = Enum.AccountCurrencyTransferResult
 		or { MaxQuantity = 1, NoValidSourceCharacter = 2, CannotUseCurrency = 3 }
-	for _, file in ipairs({ 'inventory', 'itemclasses', 'currencies', 'category', 'views', 'container',
+	for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'currencies', 'category', 'views', 'container',
 		'containers/warbandbank', 'slot', 'movers', 'options' }) do
 		load_saftui('SaftUI-Bags/' .. file .. '.lua')
 	end
