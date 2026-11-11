@@ -1,15 +1,19 @@
 -- SaftUI-Core/Config/optionswidgets.lua, the widgets SaftUI's options window
 -- draws rows with (toggle, range, select, multiselect, input, color, execute,
--- keybinding, description, position, the confirm dialog), and the close button of
--- SaftUI-Core/panels.lua (st:CreateCloseButton, st:CreateHeader).
+-- keybinding, description, position, the confirm dialog, custom types made with
+-- W.Define, the check list), the close button of SaftUI-Core/panels.lua
+-- (st:CreateCloseButton, st:CreateHeader), and ace_ready
+-- (tests/core/options_walk.lua) leaving SaftUI's own types out.
 --
 -- Real: the model (optionsmodel.lua) the widgets read and write through, the
--- widgets, panels.lua and the helpers it needs (config_helpers.lua). Synthetic
--- AceConfig option tables stand for the options. The mouse and the keyboard are
--- played by firing the frames' scripts (stub.fire_script), and the color picker
--- by stub.pick_color and friends (tests/wow/blizzard.lua).
+-- widgets, panels.lua and the helpers it needs (config_helpers.lua, with a real
+-- AceConfigRegistry-3.0). Synthetic AceConfig option tables stand for the
+-- options. The mouse and the keyboard are played by firing the frames' scripts
+-- (stub.fire_script), and the color picker by stub.pick_color and friends
+-- (tests/wow/blizzard.lua).
 
 load_test_file('core/config_helpers.lua')
+load_test_file('core/options_walk.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua') -- st:StripTextures, which a header uses on a button that isn't SaftUI's
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
@@ -1608,4 +1612,241 @@ test('position: disabled dims the block and ignores clicks and nudges', function
 	click(w.xUp)
 	eq(sets[#sets], 'x_off=1', 'enabled again')
 	w:Release()
+end)
+
+------------------------------------------------------------------ custom types
+
+test('W.Define: W.Create gives the type from its pool, and Bind, Refresh and Release run its methods', function()
+	local log = {}
+	W.Define('testcustom', {
+		width = 120,
+		bare = true,
+		build = function(w)
+			log[#log + 1] = 'build'
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(120, 40)
+			w.text = w.frame:CreateFontString(nil, 'OVERLAY')
+			w.text:SetFontObject(W.GetFont())
+		end,
+		methods = {
+			Refresh = function(self)
+				log[#log + 1] = 'refresh ' .. tostring(self:Value())
+				self.text:SetText(tostring(self:Value()))
+			end,
+			OnRelease = function(self) log[#log + 1] = 'release ' .. tostring(self.row and self.row.key) end,
+			Shout = function(self) return 'shout ' .. self.row.key end,
+		},
+	})
+	eq(W.WIDTH.testcustom, 120, 'W.WIDTH has its width')
+	eq(W.CUSTOM.testcustom.bare, true, 'W.CUSTOM marks it bare')
+
+	local value = 'one'
+	local w, told = bind('testcustom', 'mine', opt('testcustom', 'Mine', {
+		get = function() return value end,
+		set = function(_, v) value = v end,
+	}))
+	eq(table.concat(log, ','), 'build,refresh one', 'built once, then Bind ran its Refresh')
+	eq(w.type, 'testcustom', 'its type')
+	eq(w:GetWidth(), 120, 'its width')
+	eq(w.frame:GetParent(), parent, 'under the parent W.Create was given')
+	check(w.frame:IsShown(), 'shown')
+	eq(w:Shout(), 'shout mine', 'its own methods are on the widget')
+
+	value = 'two'
+	w:Refresh()
+	eq(text_of(w.text), 'two', 'Refresh reads the row again')
+	w:Commit('three')
+	eq(value, 'three', 'a change sets through the model')
+	eq(told.ok, true, 'and tells the window')
+
+	w:Release()
+	eq(log[#log], 'release mine', 'Release runs its OnRelease, before the row is dropped')
+	check(not w.frame:IsShown(), 'hidden')
+	eq(w.frame:GetParent(), nil, 'detached')
+	eq(w.row, nil, 'the row is dropped')
+	local count = #log
+	w:Refresh()
+	eq(#log, count, 'a Refresh after the release does nothing')
+	eq(W.Pooled('testcustom'), 1, 'in its pool')
+
+	local again = W.Create(parent, 'testcustom')
+	check(again == w, 'W.Create gives it back from the pool')
+	eq(#log, count, 'not built again')
+	check(again.frame:IsShown(), 'shown again')
+	check(again.Shout ~= nil, 'with its methods')
+	again:Release()
+
+	-- A custom type may be defined again: new widgets are the new
+	-- definition's, and a widget of the old one never joins the new pool.
+	local old = W.Create(parent, 'testcustom')
+	W.Define('testcustom', {
+		width = 90,
+		build = function(nw)
+			nw.frame = CreateFrame('Frame', nil, UIParent)
+			nw.second = true
+		end,
+	})
+	eq(W.WIDTH.testcustom, 90, 'the new width')
+	eq(W.CUSTOM.testcustom.bare, false, 'no longer bare')
+	local fresh = W.Create(parent, 'testcustom')
+	check(fresh ~= old and fresh.second, "the new definition's widget")
+	eq(fresh:GetWidth(), 90, 'with the new width')
+	old:Release()
+	eq(W.Pooled('testcustom'), 0, "the old widget isn't pooled with the new ones")
+	fresh:Release()
+	check(W.Create(parent, 'testcustom') == fresh, 'the new one is')
+
+	local ok = pcall(W.Define, 'nobuild', { width = 10 })
+	check(not ok, 'a type with no build function is an error')
+	eq(W.WIDTH.nobuild, nil, 'and is not defined')
+end)
+
+test('redefining a built-in type is an error', function()
+	for _, rowType in ipairs({ 'toggle', 'range', 'select', 'multiselect', 'input', 'color', 'execute', 'keybinding', 'description', 'position' }) do
+		local width = W.WIDTH[rowType]
+		local ok, err = pcall(W.Define, rowType, {
+			width = 1, bare = true,
+			build = function(w) w.frame = CreateFrame('Frame', nil, UIParent) end,
+		})
+		check(not ok and tostring(err):find(rowType, 1, true) ~= nil, rowType .. ': an error naming it: ' .. tostring(err))
+		eq(W.WIDTH[rowType], width, rowType .. ' keeps its width')
+		eq(W.CUSTOM[rowType], nil, rowType .. ' is not a custom type')
+	end
+	local w = W.Create(parent, 'toggle')
+	check(w.frame.mark ~= nil, 'a toggle still builds as one')
+	w:Release()
+end)
+
+------------------------------------------------------------------ the check list
+
+test('W.OpenCheckList: rows show their marks; a click toggles one and the list stays open; Esc and a click outside close it; ListOwner reports it', function()
+	local catcher = W.GetListFrames().catcher -- the select list's, opened above
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(170, 24)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	local checked, toggled = { b = true }, {}
+	local entries = { { key = 'a', label = 'Alpha' }, { key = 'b', label = 'Bravo' }, { key = 'c', label = 'Charlie' } }
+	local function open()
+		W.OpenCheckList(owner, entries, function(key) return checked[key] end, function(key)
+			toggled[#toggled + 1] = key
+			checked[key] = not checked[key]
+		end)
+	end
+	local list = W.GetListFrames()
+	local function marks()
+		local out = {}
+		for i = 1, #entries do
+			local box = list.rows[i].box
+			out[i] = not (box and box:IsShown()) and '?' or box.mark:IsShown() and 'x' or '-'
+		end
+		return table.concat(out)
+	end
+
+	open()
+	check(list.catcher == catcher, "it reuses the select list's frames")
+	check(list.catcher:IsShown(), 'it opens')
+	eq(W.ListOwner(), owner, 'ListOwner reports it')
+	eq(table.concat(entries_of(list), ','), 'Alpha,Bravo,Charlie', 'a row per entry, by its label')
+	eq(marks(), '-x-', 'each row shows its mark')
+	eq(list.rows[2].box:GetChecked(), true, 'its box is checked')
+	local _, rel, relPoint = list.rows[1].text:GetPoint(1)
+	check(rel == list.rows[1].box and relPoint == 'RIGHT', 'the label comes after the box')
+
+	click(list.rows[1])
+	eq(table.concat(toggled, ','), 'a', 'a click calls onToggle with its key')
+	eq(marks(), 'xx-', 'and the marks are drawn again')
+	check(list.catcher:IsShown(), 'the list stays open')
+	eq(W.ListOwner(), owner, 'still its owner')
+	click(list.rows[2])
+	eq(marks(), 'x--', 'another click, another toggle')
+
+	stub.fire_script(list.catcher, 'OnKeyDown', 'ESCAPE')
+	check(not list.catcher:IsShown(), 'Esc closes it')
+	eq(W.ListOwner(), nil, 'and ListOwner says so')
+	click(list.rows[1])
+	eq(#toggled, 2, "a closed list's row toggles nothing")
+
+	open()
+	stub.fire_script(list.catcher, 'OnMouseDown')
+	check(not list.catcher:IsShown(), 'a click outside closes it')
+	eq(W.ListOwner(), nil, 'nor is it reported')
+
+	open()
+	W.CloseList()
+	check(not list.catcher:IsShown(), 'and so does W.CloseList')
+
+	-- onToggle that closes the list leaves it closed.
+	W.OpenCheckList(owner, entries, function() return false end, function() W.CloseList() end)
+	click(list.rows[1])
+	check(not list.catcher:IsShown(), 'an onToggle that closes it leaves it closed')
+
+	-- A select list opened after it has no boxes, and a choice still closes it.
+	local value = 'a'
+	local w = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A', b = 'B' }, get = function() return value end, set = function(_, v) value = v end,
+	}))
+	click(w.frame)
+	check(not list.rows[1].box:IsShown(), "a select's rows have no box")
+	local point, relTo, _, x = list.rows[1].text:GetPoint(1)
+	check(point == 'LEFT' and relTo == list.rows[1] and x == 8, "and their label is at the row's left again")
+	eq(text_of(list.rows[1].text), 'A', 'its own entries')
+	click(list.rows[2])
+	eq(value, 'b', 'a choice sets')
+	check(not list.catcher:IsShown(), 'and closes it')
+	w:Release()
+
+	W.OpenCheckList(owner, {}, function() return false end, function() end)
+	eq(W.ListOwner(), nil, "an empty check list doesn't open")
+end)
+
+------------------------------------------------------------------ ace_ready
+
+test("ace_ready leaves out SaftUI's own types", function()
+	local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
+	local names = {}
+	for rowType in pairs(SAFTUI_TYPES) do names[#names + 1] = rowType end
+	table.sort(names)
+	eq(table.concat(names, ','), 'bagcategories,bagitems,bagrule,position', 'SAFTUI_TYPES')
+
+	local function Validate(page)
+		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
+			{ name = st.name, type = 'group', args = { Page = page } }, st.name)
+	end
+	local function Page()
+		return { type = 'group', name = 'Page', args = {
+			on = { type = 'toggle', name = 'On' },
+			items = { type = 'bagitems', name = 'Items' },
+			pos = st.Config.generators.position(1, true, {}),
+			inner = { type = 'group', name = 'Inner', args = {
+				list = { type = 'bagcategories', name = 'Categories' },
+				rule = { type = 'bagrule', name = 'Rule' },
+				keep = { type = 'toggle', name = 'Keep' },
+			} },
+		} }
+	end
+	local function keys(args)
+		local out = {}
+		for key in pairs(args) do out[#out + 1] = key end
+		table.sort(out)
+		return table.concat(out, ',')
+	end
+
+	local page = Page()
+	local ready = ace_ready(page)
+	eq(keys(ready.args), 'inner,on', 'left out at the top')
+	eq(keys(ready.args.inner.args), 'keep', 'and inside a group')
+	eq(keys(page.args), 'inner,items,on,pos', 'the original keeps them')
+	eq(keys(page.args.inner.args), 'keep,list,rule', 'all the way down')
+	check(Validate(ace_ready(Page())), 'AceConfigRegistry passes the copy')
+
+	-- Why: AceConfig has no widget for any of them.
+	for _, rowType in ipairs(names) do
+		local one = { type = 'group', name = 'Page', args = {
+			on = { type = 'toggle', name = 'On' },
+			mine = rowType == 'position' and st.Config.generators.position(1, true, {}) or { type = rowType, name = 'Mine' },
+		} }
+		local ok, err = Validate(one)
+		check(not ok and tostring(err):find(rowType, 1, true) ~= nil, rowType .. ' is unknown to it: ' .. tostring(err))
+		check(Validate(ace_ready(one)), rowType .. ': passes once left out')
+	end
 end)

@@ -1317,3 +1317,70 @@ test('the dialog closes with the window and on entering combat, and refuses to o
 	check(not OW:IsDialogShown(), 'not shown')
 	close_all()
 end)
+
+------------------------------------------------------------------ a custom type's bare row
+
+test("a bare row: no label, the body's width, at the cell's top left, its widget's height plus 12, and no mouse on its row", function()
+	W.Define('windowbare', {
+		bare = true,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = {
+			-- Its height follows its width, so the cell's height shows the width came first.
+			SetWidth = function(self, width)
+				self.frame:SetWidth(width)
+				self.frame:SetHeight(width / 7)
+			end,
+			Refresh = function() end,
+		},
+	})
+	local module = st:NewModule('BareRows')
+	function module:GetConfigTable()
+		local function toggle(name, order)
+			return { type = 'toggle', name = name, desc = name, order = order, get = function() return true end, set = function() end }
+		end
+		return {
+			name = 'Bare rows', type = 'group', category = 'Frames',
+			args = {
+				before = toggle('Before', 1),
+				beside = toggle('Beside', 2),
+				bare = { type = 'windowbare', name = 'Bare', desc = 'A bare row.', size = 'wide', order = 3 },
+				after = toggle('After', 4),
+			},
+		}
+	end
+
+	st.Config:Open('BareRows')
+	eq(drawn(), 'before,beside,bare,after', 'the bare row between normal rows')
+	local c = cell('bare')
+	check(not c.label:IsShown(), 'no label')
+	check(cell('before').label:IsShown(), 'a normal row has one')
+	eq(c.widget.frame:GetWidth(), 774, "the widget has the body's width")
+	eq(c.frame:GetWidth(), 774, 'and the cell is the whole line')
+	local point, rel, relPoint, x, y = c.widget.frame:GetPoint(1)
+	eq(point, 'TOPLEFT', "at the cell's top left")
+	check(rel == c.frame, 'in its cell')
+	eq(relPoint, 'TOPLEFT')
+	eq(x, 0)
+	eq(y, -6, '6 down')
+	eq(c.height, math.ceil(774 / 7) + 12, "the widget's height, at the body's width, rounded up, plus 12")
+	eq(c.y, cell('before').y + 34, 'on the line after the normal rows')
+	eq(cell('after').y, c.y + c.height, 'and the next row under it')
+	check(not c.frame:IsMouseEnabled(), 'its row takes no mouse')
+	check(cell('before').frame:IsMouseEnabled() and cell('after').frame:IsMouseEnabled(), 'a normal row does')
+
+	-- Row frames are pooled: the bare row's, drawn again for a normal row, takes the mouse again.
+	local bareFrame = c.frame
+	OW:Navigate('Inventory')
+	local reused
+	for _, other in ipairs(OW.GetDrawnRows()) do
+		if other.frame == bareFrame then reused = other end
+	end
+	check(reused ~= nil, "the bare row's frame was drawn again")
+	check(reused and reused.frame:IsMouseEnabled(), 'and takes the mouse as a normal row')
+
+	module.GetConfigTable = nil
+	close_all()
+end)

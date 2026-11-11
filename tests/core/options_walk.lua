@@ -9,15 +9,20 @@
 --   ace_ready(tree)        a copy of tree that AceConfigRegistry-3.0's
 --                          validator can check: SaftUI's own fields
 --                          (category, size, target, nameKey, pickerLabel) are left off
---                          every option, and the options of SaftUI's own type,
---                          position, are left out. AceConfig knows neither, so
+--                          every option, and the options of SaftUI's own types
+--                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
 --                          tree is AceConfig's, so it checks the rest. The
 --                          copy is of the options and their args, all the way
 --                          down; other members (values, handlers, functions)
 --                          are shared, and tree itself is untouched.
+--   SAFTUI_TYPES           SaftUI's own option types, which only its options
+--                          window draws: position, and the types the bags
+--                          define with W.Define (optionswidgets.lua).
 
 local SAFTUI_FIELDS = { category = true, size = true, target = true, nameKey = true, pickerLabel = true }
+
+SAFTUI_TYPES = { position = true, bagcategories = true, bagrule = true, bagitems = true }
 
 local function SortedKeys(args)
 	local keys = {}
@@ -54,7 +59,7 @@ function ace_ready(tree)
 		for key, option in pairs(tree.args) do
 			if type(option) ~= 'table' then
 				copy.args[key] = option -- malformed: left for the validator to report
-			elseif option.type ~= 'position' then
+			elseif not SAFTUI_TYPES[option.type] then
 				copy.args[key] = ace_ready(option)
 			end
 		end

@@ -44,6 +44,11 @@ local OM = st.OptionsModel
 	covers both. It has a border in SaftUI's theme, as an icon SaftUI skins
 	does. Refresh reads them all again (the window refreshes the other
 	rows while a slider is dragged, so a preview can follow it).
+
+	Other files add types of their own with W.Define (custom types, at the
+	end), each with its own pool. W.CUSTOM marks them, and the body draws a
+	bare one's row with no label, across the line. W.OpenCheckList opens
+	the select list's frames as a list of check boxes.
 ]]
 
 local W = {}
@@ -369,6 +374,10 @@ end
 -- list of entries, closed by a choice, a click outside or Esc.
 local list
 
+-- The check list's (below): a row laid out for the list that's open, and a
+-- click on a check list's row.
+local LayCheckRow, ToggleCheck
+
 local function ListFill()
 	local entries, offset = list.entries, list.offset
 	for i, row in ipairs(list.rows) do
@@ -386,6 +395,7 @@ local function ListFill()
 			else
 				row.text:SetTextColor(Colors().text.normal:GetRGB())
 			end
+			LayCheckRow(row, entry)
 			row:Show()
 		else
 			row.entry = nil
@@ -407,6 +417,7 @@ end
 function W.CloseList()
 	if list then
 		list.owner, list.onPick, list.entries = nil, nil, nil
+		list.isChecked, list.onToggle = nil, nil
 		list.catcher:Hide()
 	end
 end
@@ -448,6 +459,7 @@ local function BuildList()
 		row:SetScript('OnEnter', function(self) self.hover:Show() end)
 		row:SetScript('OnLeave', function(self) self.hover:Hide() end)
 		row:SetScript('OnClick', function(self)
+			if list.onToggle then return ToggleCheck(self) end
 			local entry, onPick = self.entry, list.onPick
 			W.CloseList()
 			if entry and onPick then onPick(entry.key) end
@@ -592,7 +604,7 @@ function Base:Release()
 	self.frame:SetParent(nil)
 	self.frame:SetAlpha(1)
 	self.disabled = false
-	tinsert(pools[self.type], self)
+	tinsert(self.pool, self)
 end
 
 -- The widget for rowType, from the pool when one was released.
@@ -602,7 +614,9 @@ function W.Create(parent, rowType)
 	pools[rowType] = pools[rowType] or {}
 	local widget = tremove(pools[rowType])
 	if not widget then
-		widget = setmetatable({ type = rowType, width = W.WIDTH[rowType] }, Base)
+		-- Its pool is the one it was built for: a custom type defined again
+		-- starts a new one (W.Define).
+		widget = setmetatable({ type = rowType, width = W.WIDTH[rowType], pool = pools[rowType] }, Base)
 		build(widget)
 	end
 	widget.released = false
@@ -1665,3 +1679,89 @@ define('position', {
 		if W.ListOwner() == self.select then W.CloseList() end
 	end,
 })
+
+------------------------------------------------------------------ custom types
+
+-- The types other files define (the bags' Categories tab): W.CUSTOM[rowType]
+-- is { bare = true | false } for each. The body draws a bare type's row with
+-- no label, the widget across the whole line (optionsbody.lua).
+W.CUSTOM = {}
+
+-- The types above, which W.Define can't replace.
+local BUILT_IN = {}
+for rowType in pairs(builders) do BUILT_IN[rowType] = true end
+
+-- W.Define(rowType, { width = n, bare = bool, build = function(w) end,
+-- methods = { Refresh = ..., OnRelease = ..., ... } }) makes a widget type.
+-- build makes w.frame, and whatever else the type keeps, once per widget.
+-- The methods are copied onto each widget as define copies a built-in
+-- type's, so Bind, Refresh (nothing after a release), Commit, SetDisabled
+-- (OnDisabled) and Release (OnRelease) work as for the built-in types.
+-- width is W.WIDTH[rowType] and the widget's GetWidth (0 when nil). A custom
+-- type may be defined again (its file loaded again): widgets are then built
+-- from the new definition, in a new pool, so the old ones never come back.
+-- Redefining a built-in type is an error.
+function W.Define(rowType, spec)
+	if BUILT_IN[rowType] then
+		error(format('SaftUI options: %q is a built-in widget type', tostring(rowType)), 2)
+	end
+	if type(rowType) ~= 'string' or type(spec) ~= 'table' or type(spec.build) ~= 'function' then
+		error(format('SaftUI options: W.Define(%q) needs a type name and a build function', tostring(rowType)), 2)
+	end
+	builders[rowType] = spec.build
+	define(rowType, spec.methods or {})
+	pools[rowType] = {}
+	W.WIDTH[rowType] = spec.width or 0
+	W.CUSTOM[rowType] = { bare = spec.bare and true or false }
+end
+
+------------------------------------------------------------------ the check list
+
+-- A row of the open list: a check list's has a check box at its left, marked
+-- by isChecked(key), and its label after it; a select's has no box and its
+-- label 8 in, as BuildList made it. Rows are shared by both, so each fill
+-- lays them out for the list that's open.
+function LayCheckRow(row, entry)
+	local checking = list.isChecked ~= nil
+	if checking and not row.box then
+		row.box = CheckBox(row, 18)
+		row.box:SetPoint('LEFT', row, 'LEFT', 6, 0)
+		row.box:EnableMouse(false)
+	end
+	if row.box then
+		row.box:SetShown(checking)
+		if checking then SetCheck(row.box, list.isChecked(entry.key)) end
+	end
+	if (row.checking or false) ~= checking then
+		row.checking = checking
+		row.text:ClearAllPoints()
+		if checking then
+			row.text:SetPoint('LEFT', row.box, 'RIGHT', 8, 0)
+		else
+			row.text:SetPoint('LEFT', row, 'LEFT', 8, 0)
+		end
+		row.text:SetPoint('RIGHT', row, 'RIGHT', -10, 0)
+	end
+end
+
+-- A click on a check list's row: onToggle(key), then the marks again while
+-- the list is still this one (onToggle may close it, or open another).
+function ToggleCheck(row)
+	local entry, onToggle = row.entry, list.onToggle
+	if not entry then return end
+	onToggle(entry.key)
+	if list.onToggle == onToggle and list.catcher:IsShown() then ListFill() end
+end
+
+-- Opens the select list's frames under owner as a check list: entries are
+-- { {key, label} }, each row a check box marked by isChecked(key). A click on
+-- a row calls onToggle(key) and draws the marks again, leaving the list
+-- open. A click outside, Esc and W.CloseList close it, and W.ListOwner()
+-- reports owner while it's open, so the options window waits to re-render.
+-- An empty list doesn't open.
+function W.OpenCheckList(owner, entries, isChecked, onToggle)
+	W.OpenList(owner, entries, nil, nil)
+	if W.ListOwner() ~= owner then return end
+	list.isChecked, list.onToggle = isChecked, onToggle
+	ListFill()
+end
