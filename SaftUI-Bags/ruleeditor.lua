@@ -81,24 +81,123 @@ local TEXT_BOX, NUMBER_BOX, SMALL_BOX = 150, 50, 40
 local FIELD_WIDTH, MODE_WIDTH, YES_NO_WIDTH, COUNT_WIDTH = 150, 80, 60, 90
 local TINT_ALPHA = 0.15
 
-local function Colors() return st.config.profile.colors end
-local function Grey() return Colors().text.grey:GetRGB() end
+------------------------------------------------------------------ shared with the Categories tab
+
+--[[
+	INV.DragParts: what the rule editor and the Categories tab
+	(categoriestab.lua, which loads after this file) both draw and drag with.
+	  Colors(), Grey()                the profile's colors; grey text's r, g, b
+	  Text(parent, font, justify)     a font string that doesn't wrap (the
+	                                  options window's field font by default)
+	  TextWidth(fs)                   its whole text's width, rounded up
+	  Inside(frame, ancestor)         frame is ancestor or inside it
+	  HANDLE_WIDTH, Handle(parent, height)
+	                                  a drag handle: 6 grey dots, two across
+	                                  and three down, 2 apart
+	  UnderCursor(rows) -> i, lower   the row (a record with .frame) under the
+	                                  cursor, and whether it's in its lower half
+	  ShowGhost(w, label, height)     shows w.ghost (made once, drawn in
+	                                  SaftUI's theme) with label, colors
+	                                  w.insert blue and runs w.drawDrag on
+	                                  w.frame's OnUpdate
+	  PlaceGhost(ghost)               the ghost by the cursor
+	  StopDrag(w)                     no w.drag, no OnUpdate, the ghost and
+	                                  w.insert hidden
+	A widget that drags has w.frame, w.insert (its insertion line), w.drawDrag
+	and w.drag while it drags.
+]]
+local D = {}
+INV.DragParts = D
+
+function D.Colors() return st.config.profile.colors end
+function D.Grey() return D.Colors().text.grey:GetRGB() end
+
+function D.Text(parent, font, justify)
+	local fs = parent:CreateFontString(nil, 'OVERLAY')
+	fs:SetFontObject(font or W.GetFont())
+	fs:SetJustifyH(justify or 'LEFT')
+	fs:SetWordWrap(false)
+	return fs
+end
+
+function D.TextWidth(fs) return ceil(fs:GetUnboundedStringWidth()) end
+
+function D.Inside(frame, ancestor)
+	while frame do
+		if frame == ancestor then return true end
+		frame = frame:GetParent()
+	end
+	return false
+end
+
+D.HANDLE_WIDTH = HANDLE_WIDTH
+
+function D.Handle(parent, height)
+	local handle = CreateFrame('Button', nil, parent)
+	handle:SetSize(D.HANDLE_WIDTH, height)
+	for row = 0, 2 do
+		for col = 0, 1 do
+			local dot = handle:CreateTexture(nil, 'OVERLAY')
+			dot:SetColorTexture(D.Grey())
+			dot:SetSize(2, 2)
+			dot:SetPoint('TOPLEFT', handle, 'TOPLEFT', 2 + col * 4, -(6 + row * 4))
+		end
+	end
+	return handle
+end
+
+function D.UnderCursor(rows)
+	for i, record in ipairs(rows) do
+		local f = record.frame
+		if f:IsMouseOver() then
+			local _, y = GetCursorPosition()
+			local _, middle = f:GetCenter()
+			return i, y / f:GetEffectiveScale() < middle
+		end
+	end
+end
+
+function D.ShowGhost(w, label, height)
+	local ghost = w.ghost
+	if not ghost then
+		ghost = st:CreateFrame('Frame', nil, w.frame)
+		ghost:SetFrameStrata('TOOLTIP')
+		ghost:SetHeight(height)
+		ghost:EnableMouse(false)
+		ghost.text = D.Text(ghost)
+		ghost.text:SetPoint('LEFT', ghost, 'LEFT', 8, 0)
+		w.ghost = ghost
+	end
+	st:SetBackdrop(ghost, 'theme', 'solid', 'small')
+	ghost.text:SetText(label)
+	ghost:SetWidth(D.TextWidth(ghost.text) + 16)
+	ghost:Show()
+	w.insert:SetColorTexture(D.Colors().button.blue:GetRGB())
+	w.frame:SetScript('OnUpdate', w.drawDrag)
+	return ghost
+end
+
+function D.PlaceGhost(ghost)
+	local x, y = GetCursorPosition()
+	local scale = ghost:GetEffectiveScale()
+	ghost:ClearAllPoints()
+	ghost:SetPoint('LEFT', UIParent, 'BOTTOMLEFT', floor(x / scale) + 12, floor(y / scale))
+end
+
+function D.StopDrag(w)
+	w.drag = nil
+	w.frame:SetScript('OnUpdate', nil)
+	if w.ghost then w.ghost:Hide() end
+	w.insert:Hide()
+end
+
+local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
 
 -- A group's color: AND blue, OR orange.
 local function OpColor(op)
 	if op == 'or' then return Colors().text.orange:GetRGB() end
 	return Colors().button.blue:GetRGB()
 end
-
-local function Text(parent, font)
-	local fs = parent:CreateFontString(nil, 'OVERLAY')
-	fs:SetFontObject(font or W.GetFont())
-	fs:SetJustifyH('LEFT')
-	fs:SetWordWrap(false)
-	return fs
-end
-
-local function TextWidth(fs) return ceil(fs:GetUnboundedStringWidth()) end
 
 -- A select's caret: rows of 7, 5, 3 and 1 pixels, each placed by its left edge.
 local function Caret(parent)
@@ -108,14 +207,6 @@ local function Caret(parent)
 		t:SetSize(width, 1)
 		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
 	end
-end
-
-local function Inside(frame, ancestor)
-	while frame do
-		if frame == ancestor then return true end
-		frame = frame:GetParent()
-	end
-	return false
 end
 
 ------------------------------------------------------------------ values
@@ -743,17 +834,7 @@ local function RowFrame(w, i)
 	f.connector = f:CreateTexture(nil, 'ARTWORK')
 	f.connector:SetSize(CONNECTOR, LINE_WIDTH)
 
-	-- The handle: 6 dots, two across and three down, 2 apart.
-	local handle = CreateFrame('Button', nil, f)
-	handle:SetSize(HANDLE_WIDTH, FIELD_HEIGHT)
-	for row = 0, 2 do
-		for col = 0, 1 do
-			local dot = handle:CreateTexture(nil, 'OVERLAY')
-			dot:SetColorTexture(Grey())
-			dot:SetSize(2, 2)
-			dot:SetPoint('TOPLEFT', handle, 'TOPLEFT', 2 + col * 4, -(6 + row * 4))
-		end
-	end
+	local handle = D.Handle(f, FIELD_HEIGHT)
 	handle:SetScript('OnMouseDown', function(_, button)
 		if button == nil or button == 'LeftButton' then StartDrag(w, i) end
 	end)
@@ -987,22 +1068,10 @@ end
 
 ------------------------------------------------------------------ dragging
 
--- The row under the cursor, and whether the cursor is in its lower half.
-local function RowUnderCursor(w)
-	for i, record in ipairs(w.rows) do
-		local f = record.frame
-		if f:IsMouseOver() then
-			local _, y = GetCursorPosition()
-			local _, middle = f:GetCenter()
-			return i, y / f:GetEffectiveScale() < middle
-		end
-	end
-end
-
 -- The drop spot under the cursor, when the drag would move something there.
 local function DropSpot(w)
 	local drag = w.drag
-	local i, lower = RowUnderCursor(w)
+	local i, lower = D.UnderCursor(w.rows)
 	if not (drag and i) then return nil end
 	local parentPath, index = R.DropAt(w.outline, i, lower)
 	if not parentPath or not R.Move(R.Copy(Current(w)), drag.path, parentPath, index) then return nil end
@@ -1013,11 +1082,7 @@ end
 -- node would go. Only drawing: the drop is worked out again on the mouse up.
 local function DrawDrag(w)
 	if not w.drag or not w.row then return end
-	local ghost = w.ghost
-	local x, y = GetCursorPosition()
-	local scale = ghost:GetEffectiveScale()
-	ghost:ClearAllPoints()
-	ghost:SetPoint('LEFT', UIParent, 'BOTTOMLEFT', floor(x / scale) + 12, floor(y / scale))
+	D.PlaceGhost(w.ghost)
 	local i, lower, parentPath = DropSpot(w)
 	if not i then return w.insert:Hide() end
 	local top = w.rows[i].top
@@ -1029,38 +1094,13 @@ local function DrawDrag(w)
 	w.insert:Show()
 end
 
-local function Ghost(w)
-	local ghost = w.ghost
-	if not ghost then
-		ghost = st:CreateFrame('Frame', nil, w.frame)
-		ghost:SetFrameStrata('TOOLTIP')
-		ghost:SetHeight(FIELD_HEIGHT)
-		ghost:EnableMouse(false)
-		ghost.text = Text(ghost)
-		ghost.text:SetPoint('LEFT', ghost, 'LEFT', 8, 0)
-		w.ghost = ghost
-	end
-	st:SetBackdrop(ghost, 'theme', 'solid', 'small')
-	return ghost
-end
-
-local function StopDrag(w)
-	w.drag = nil
-	w.frame:SetScript('OnUpdate', nil)
-	if w.ghost then w.ghost:Hide() end
-	w.insert:Hide()
-end
+local StopDrag = D.StopDrag
 
 function StartDrag(w, i)
 	local record = w.rows[i]
 	if w.disabled or not w.row or not record or (record.kind ~= 'block' and record.kind ~= 'group') then return end
 	w.drag = { path = record.path }
-	local ghost = Ghost(w)
-	ghost.text:SetText(record.label:GetText() or '')
-	ghost:SetWidth(TextWidth(ghost.text) + 16)
-	ghost:Show()
-	w.insert:SetColorTexture(Colors().button.blue:GetRGB())
-	w.frame:SetScript('OnUpdate', w.drawDrag)
+	D.ShowGhost(w, record.label:GetText() or '', FIELD_HEIGHT)
 	DrawDrag(w)
 	-- The window waits to draw again until the mouse is let go.
 	if w.onChanged then w.onChanged(true, nil, true, w) end

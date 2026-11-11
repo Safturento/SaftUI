@@ -25,6 +25,8 @@ local INV = st:GetModule('Inventory')
 	cursor, or below it from its lower half, but never below Miscellaneous;
 	the drag holds the window's render as the rule editor's does, and the drop
 	is worked out on the mouse up (OnUpdate only draws the ghost and the line).
+	The handle, the ghost and the row under the cursor are the rule editor's
+	(INV.DragParts, ruleeditor.lua), with its text helpers.
 
 	The editor, from x 234 and 540 wide, is an options body of its own drawing
 	INV:CategoryEditorOptions(selected). Its widgets' onChanged goes on to the
@@ -57,6 +59,9 @@ local INV = st:GetModule('Inventory')
 ]]
 
 local W, OB, OM = st.OptionsWidgets, st.OptionsBody, st.OptionsModel
+-- The rule editor's (ruleeditor.lua): its text helpers and how it drags.
+local D = INV.DragParts
+local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
 
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
@@ -71,7 +76,6 @@ local EDITOR_X, EDITOR_WIDTH = 234, 540
 local DIVIDER_X = 222 -- in the middle of the gap between the panes
 local ROW_HEIGHT = 22
 local PAD = 8 -- a row's contents from its edges
-local HANDLE_WIDTH = 10
 local GAP = 6
 local BAR_WIDTH = 3
 local FOOTER_GAP = 8
@@ -80,27 +84,7 @@ local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
 local QUESTION_MARK = 134400 -- Interface\Icons\INV_Misc_QuestionMark
 
-local function Colors() return st.config.profile.colors end
-local function Grey() return Colors().text.grey:GetRGB() end
 local function Normal() return Colors().text.normal:GetRGB() end
-
-local function Text(parent, font, justify)
-	local fs = parent:CreateFontString(nil, 'OVERLAY')
-	fs:SetFontObject(font)
-	fs:SetJustifyH(justify or 'LEFT')
-	fs:SetWordWrap(false)
-	return fs
-end
-
-local function TextWidth(fs) return ceil(fs:GetUnboundedStringWidth()) end
-
-local function Inside(frame, ancestor)
-	while frame do
-		if frame == ancestor then return true end
-		frame = frame:GetParent()
-	end
-	return false
-end
 
 local function IsSetKey(key)
 	return type(key) == 'string' and key:sub(1, 5) == 'Set: '
@@ -371,21 +355,6 @@ local function Selected(list)
 	return id
 end
 
--- 6 dots, two across and three down, 2 apart.
-local function Handle(parent)
-	local handle = CreateFrame('Button', nil, parent)
-	handle:SetSize(HANDLE_WIDTH, ROW_HEIGHT)
-	for row = 0, 2 do
-		for col = 0, 1 do
-			local dot = handle:CreateTexture(nil, 'OVERLAY')
-			dot:SetColorTexture(Grey())
-			dot:SetSize(2, 2)
-			dot:SetPoint('TOPLEFT', handle, 'TOPLEFT', 2 + col * 4, -(6 + row * 4))
-		end
-	end
-	return handle
-end
-
 -- + New category and Reset all: blue text that runs run(button).
 local function Action(parent, text, run)
 	local button = CreateFrame('Button', nil, parent)
@@ -429,7 +398,7 @@ local function ListRow(w, i)
 	f.bar:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, 0)
 	f.bar:SetPoint('BOTTOMLEFT', f, 'BOTTOMLEFT', 0, 0)
 	f.bar:SetWidth(BAR_WIDTH)
-	f.handle = Handle(f)
+	f.handle = D.Handle(f, ROW_HEIGHT)
 	f.handle:SetPoint('TOPLEFT', f, 'TOPLEFT', PAD, 0)
 	f.handle:SetScript('OnMouseDown', function(_, button)
 		if button == nil or button == 'LeftButton' then StartDrag(w, i) end
@@ -461,7 +430,7 @@ local function LayListRow(w, i, entry, count, selected)
 	f.bar:SetShown(selected)
 	f.handle:SetShown(entry.kind ~= 'misc')
 
-	local x, right = PAD + HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
+	local x, right = PAD + D.HANDLE_WIDTH + GAP, LIST_WIDTH - PAD
 	f.count:SetText(count > 0 and tostring(count) or '')
 	f.count:SetTextColor(Grey())
 	f.count:SetShown(count > 0)
@@ -534,29 +503,18 @@ end
 -- cursor, below it from its lower half, never below Miscellaneous (last).
 local function DropSpot(w)
 	local drag = w.drag
-	if not drag then return end
-	local n = #w.rows
-	for i, record in ipairs(w.rows) do
-		local f = record.frame
-		if f:IsMouseOver() then
-			local _, y = GetCursorPosition()
-			local _, middle = f:GetCenter()
-			local before = min(y / f:GetEffectiveScale() < middle and i + 1 or i, n)
-			local place = before > drag.from and before - 1 or before
-			if place == drag.from then return end
-			return place, before
-		end
-	end
+	local i, lower = D.UnderCursor(w.rows)
+	if not (drag and i) then return end
+	local before = min(lower and i + 1 or i, #w.rows)
+	local place = before > drag.from and before - 1 or before
+	if place == drag.from then return end
+	return place, before
 end
 
 -- Draws the drag: the ghost by the cursor, the line where it would go.
 local function DrawDrag(w)
 	if not w.drag or not w.row then return end
-	local ghost = w.ghost
-	local x, y = GetCursorPosition()
-	local scale = ghost:GetEffectiveScale()
-	ghost:ClearAllPoints()
-	ghost:SetPoint('LEFT', UIParent, 'BOTTOMLEFT', floor(x / scale) + 12, floor(y / scale))
+	D.PlaceGhost(w.ghost)
 	local place, before = DropSpot(w)
 	if not place then return w.insert:Hide() end
 	local top = (before - 1) * ROW_HEIGHT
@@ -566,38 +524,13 @@ local function DrawDrag(w)
 	w.insert:Show()
 end
 
-local function Ghost(w)
-	local ghost = w.ghost
-	if not ghost then
-		ghost = st:CreateFrame('Frame', nil, w.frame)
-		ghost:SetFrameStrata('TOOLTIP')
-		ghost:SetHeight(ROW_HEIGHT)
-		ghost:EnableMouse(false)
-		ghost.text = Text(ghost, W.GetFont())
-		ghost.text:SetPoint('LEFT', ghost, 'LEFT', 8, 0)
-		w.ghost = ghost
-	end
-	st:SetBackdrop(ghost, 'theme', 'solid', 'small')
-	return ghost
-end
-
-local function StopDrag(w)
-	w.drag = nil
-	w.frame:SetScript('OnUpdate', nil)
-	if w.ghost then w.ghost:Hide() end
-	w.insert:Hide()
-end
+local StopDrag = D.StopDrag
 
 function StartDrag(w, i)
 	local record = w.rows[i]
 	if not (w.row and record) or w.drag or record.entry.kind == 'misc' then return end
 	w.drag = { id = record.id, from = i }
-	local ghost = Ghost(w)
-	ghost.text:SetText(record.entry.name)
-	ghost:SetWidth(TextWidth(ghost.text) + 16)
-	ghost:Show()
-	w.insert:SetColorTexture(Colors().button.blue:GetRGB())
-	w.frame:SetScript('OnUpdate', w.drawDrag)
+	D.ShowGhost(w, record.entry.name, ROW_HEIGHT)
 	DrawDrag(w)
 	-- The window waits to draw again until the mouse is let go.
 	if w.onChanged then w.onChanged(true, nil, true, w) end
