@@ -17,6 +17,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — Retail bank leftovers after Themes: category selector, selected window's border, radio group under None](#2026-11-10--retail-bank-leftovers-after-themes-category-selector-selected-windows-border-radio-group-under-none)
   - [2026-11-10 — Two ways to reset a border to the theme's (bag slots and action buttons)](#2026-11-10--two-ways-to-reset-a-border-to-the-themes-bag-slots-and-action-buttons)
   - [2026-11-10 — Themes: in-game checks for what was only compile-checked](#2026-11-10--themes-in-game-checks-for-what-was-only-compile-checked)
+  - [2026-11-10 — Bag views: in-game checks for what the stubs can't show](#2026-11-10--bag-views-in-game-checks-for-what-the-stubs-cant-show)
   - [2026-11-10 — Bag item sort compares item levels as text](#2026-11-10--bag-item-sort-compares-item-levels-as-text)
   - [2026-11-10 — Bag categories: make the category rules configurable in /sui](#2026-11-10--bag-categories-make-the-category-rules-configurable-in-sui)
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
@@ -242,6 +243,28 @@ On retail:
 
 **Shape of work:** An in-game pass on each client through the list, then a small fix for each problem found, with a test where the stubs allow.
 
+### 2026-11-10 — Bag views: in-game checks for what the stubs can't show
+
+**What:** The bag views (One bag, Multi bag, Compact, Rows, the title-bar switch, and View and Empty slots in `/sui`) were checked by `tests/run` and by reading the code. Some of it needs the real client. Check it in game and fix what's found.
+
+On both clients:
+- the four view buttons' icon art at title-bar size: legible, centered, not cropped, at the default Title bar height and at the extremes;
+- the header fit in all four windows (bags, bank, warband bank, combined bank), including a one-column window that widened so its centered title clears the buttons;
+- the lit button in Buttons → Blue against Thick and Thin borders, and after a theme or color change;
+- the secure item buttons in each view, in and out of combat: left and right click, use, shift-click, drag, and the tooltip;
+- switching views in combat: the button lights and the view saves at once, and the window lays out when combat ends;
+- the scroll position across a view switch, and across a switch back;
+- Forever's bags: a profession bag or a quiver in One bag (under the main grid) and in Multi bag (its own section).
+
+On retail:
+- the bank tabs' names (`C_Bank` tab names) as Multi bag section titles, in the bank and the warband bank, including a tab the player has renamed.
+
+**Why noticed:** The bag views project's final task (2026-11-10). Its tests run on stubbed bags and frames (`tests/bags/bag_world.lua`, `container_helpers.lua`), so the icon art, real widths, secure buttons, combat lockdown and retail's tab names were only compile-checked and read through. The user plays Forever, so the retail item needs a retail session.
+
+**Anchors:** `SaftUI-Bags/views.lua` (`INV:GetBagInfo`, the tab names), `SaftUI-Bags/container.lua` (`INV:ApplyView`, `INV:SetView`, `INV:HeaderMinWidth`, the view buttons), `SaftUI-Bags/category.lua` (`INV:LayoutSections`), `SaftUI-Bags/slot.lua`; `tests/bags/views_switch_test.lua`, `views_layout_test.lua`, `views_onebag_multibag_test.lua`, `views_data_test.lua`; `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`.
+
+**Shape of work:** An in-game pass on Forever through the list, a retail pass for the tab names, then a small fix for each problem found, with a test where the stubs allow.
+
 ### 2026-11-10 — Bag item sort compares item levels as text
 
 **What:** SaftUI's item sort within a bag category builds a `sortString` that starts with the item level glued onto the name as text, then sorts it in descending text order (`SaftUI-Bags/category.lua:147`, `sortCategory` at ~158). So item level 80 sorts before 600, which sorts before 1: by first digit, not by number.
@@ -265,7 +288,7 @@ For prior art they shared Ellesmere's bag window. Its left sidebar lists the cat
 - **How an item gets its category:** `SaftUI-Bags/category.lua`, `INV:GetItemCategory`. Retail equipment-set items go to `Set: <name>`, reagent bag items go by subclass, then the filters run in order, and anything left falls back to Miscellaneous. Also `INV:GetSortedInventory`, and `sortCategory` (by `sortString`).
 - **Per-container toggles:** `filters.categories[id]` (`SaftUI-Bags/inventory.lua` ~line 96).
 - **Auto vendor:** `SaftUI-Bags/autovendor.lua` and `INV.AUTO_VENDOR_CATEGORIES`.
-- **Related:** the bag views work (one bag, multi bag, compact, rows) is being designed separately, the same day. Its row view relies on a consistent category order, which this work would make configurable.
+- **Related:** the bag views (One bag, Multi bag, Compact, Rows) have shipped (`docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`). Every view orders its categories through the shared `INV:CategoryRank` and `INV:CategoryBefore` in `SaftUI-Bags/views.lua` (the filters' order, Miscellaneous and Empty Slots last, sets first), which this project will make configurable: a user-defined order should replace what `CategoryRank` reads. `tests/bags/views_data_test.lua` covers that order.
 
 **What's been considered:** Nothing yet. The user asked for an analysis of the current mechanisms (first-match filter order, tooltip-text matching, item lists, equipment sets, reagent subclasses, auto vendor, the sort keys) before any UI design.
 
