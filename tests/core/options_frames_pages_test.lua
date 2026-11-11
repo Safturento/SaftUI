@@ -163,9 +163,8 @@ test('Bags: the new settings read and write their profile keys and apply the way
 		window.args.view.set(info_for('view'), 'rows')
 		eq(table.concat(calls, ','), 'SetView:' .. id .. ':rows', id .. ': View goes through INV:SetView')
 		eq(window.get(info_for('emptySlots')), 'off', id .. ': Empty slots reads the default, off')
-		calls = {}
-		window.args.emptySlots.set(info_for('emptySlots'), 'all')
-		eq(table.concat(calls, ','), 'QueueUpdate', id .. ': Empty slots lays the windows out again')
+		eq(set(window, 'emptySlots', 'all'), 'UpdateConfig,SyncAnchorSize',
+			id .. ": Empty slots goes through the window's General set, which re-packs every window (UpdateConfig)")
 		eq(config[id].emptySlots, 'all', id .. ': and writes inventory.' .. id .. '.emptySlots')
 		config[id].emptySlots = 'off'
 	end

@@ -36,8 +36,9 @@ st.defaults.inventory = {
 		-- The view: 'onebag', 'multibag', 'compact' (the original) or 'rows'.
 		view = 'compact',
 		-- Free bag slots shown as empty slots: 'off', 'grouped' (one slot with its
-		-- free count: per kind of bag in Compact and Rows, per section in One bag
-		-- and Multi bag) or 'all' (one slot per free slot). Every window has its own.
+		-- free count: per kind of bag in Compact, Rows and One bag's main grid, and
+		-- per bag with a section of its own) or 'all' (one slot per free slot).
+		-- Every window has its own.
 		emptySlots = 'off',
 	},
 	bank = {

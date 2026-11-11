@@ -3,12 +3,13 @@
 -- buttons in each window's title bar, left of the close button, in the order
 -- One bag, Multi bag, Compact, Rows, with a tooltip naming the view; the
 -- current one lit with Buttons -> Blue, kept through a theme recolor and
--- redraw and relit when Blue changes; a click, or the /sui View select, saves
--- the window's own view and lays it out, a view that is already the window's
--- changing nothing; and a switch in combat lighting the button and saving the
--- view at once while the layout follows after combat, no slot or category frame
--- moved in the fight. The /sui options: View and Empty slots for every window,
--- with a desc, a size and no Ace width.
+-- redraw and relit when Blue changes, the icons in Text -> Normal; a click,
+-- or the /sui View select, saves the window's own view, refreshes an open /sui
+-- and lays it out, a view that is already the window's changing nothing; and a
+-- switch in combat lighting the button and saving the view at once while the
+-- layout follows after combat, no slot or category frame moved in the fight.
+-- The /sui options: View and Empty slots for every window, with a desc, a size
+-- and no Ace width, and Empty slots re-packing an open Compact window.
 --
 -- bags/container_helpers.lua's views world, with the module's real options.lua.
 local H = load_test_file('bags/container_helpers.lua')
@@ -208,6 +209,36 @@ test('the /sui View select and the buttons stay in step', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a switch refreshes an open /sui, so its View select shows the new view', function()
+	local container = world()
+	-- st.Config:Refresh is AceConfigRegistry's NotifyChange in game, which
+	-- re-renders an open /sui (and does nothing with it closed); the shell's
+	-- is a no-op, so count the calls.
+	local refreshes = 0
+	local refresh = SaftUI.Config.Refresh
+	SaftUI.Config.Refresh = function(...)
+		refreshes = refreshes + 1
+		return refresh(...)
+	end
+	local view = INV:GetConfigTable().args.bag.args.general.args.view
+	click(container.viewButtons.rows)
+	eq(refreshes, 1, 'a click refreshes /sui')
+	eq(INV.config.bag.view, 'rows', 'after saving the view, which its select reads')
+	click(container.viewButtons.rows)
+	view.set({ 'view' }, 'rows')
+	eq(refreshes, 1, "the window's own view: no refresh")
+	view.set({ 'view' }, 'onebag')
+	eq(refreshes, 2, 'the select itself refreshes the page too')
+	stub.in_combat = true
+	click(container.viewButtons.multibag)
+	eq(refreshes, 3, 'in combat, at once, as the view saves')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(refreshes, 3, 'and not again when the layout follows')
+	SaftUI.Config.Refresh = refresh
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('a view the window already has changes nothing: no re-layout, nothing moved', function()
 	local container = world()
 	local tree = INV:GetConfigTable()
@@ -285,6 +316,35 @@ test('the lit button keeps its blue through a recolor and a redraw, and the old 
 	SaftUI:RecolorThemed()
 	eq(border(compact), T.text(0.1, 0.8, 0.8), 'a recolor leaves it the theme\'s, not blue')
 	eq(border(rows), blue(), 'and Rows blue')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the icons take Colors -> Text -> Normal at once, in every window', function()
+	local container = world()
+	local bank = window('bank')
+	local normal = SaftUI.config.profile.colors.text.normal
+	-- The color of every glyph piece of a window's buttons, as 'r,g,b' text, if they're all one.
+	local function glyphs(c)
+		local colors = {}
+		for _, view in ipairs(VIEWS) do
+			for _, piece in ipairs(c.viewButtons[view].glyph) do
+				local rgba = stub.state(piece).color_texture
+				colors[T.text(rgba[1], rgba[2], rgba[3])] = true
+			end
+		end
+		local out = {}
+		for color in pairs(colors) do out[#out + 1] = color end
+		return table.concat(out, ' | ')
+	end
+	eq(glyphs(container), T.text(normal:GetRGB()), "the icons start in Text -> Normal")
+
+	-- A Text -> Normal change, as the Colors tab sends it.
+	normal.r, normal.g, normal.b = 0.2, 0.6, 0.4
+	SaftUI:ColorsChanged('text')
+	eq(glyphs(container), T.text(0.2, 0.6, 0.4), 'the bags: in the new color')
+	eq(glyphs(bank), T.text(0.2, 0.6, 0.4), 'the bank: too')
+	eq(border(container.viewButtons.compact), blue(), 'the lit border stays Blue')
+	eq(glyphs(window('warband')), T.text(0.2, 0.6, 0.4), 'a window made after: in the new color')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -390,6 +450,50 @@ test('every window offers Empty slots; the bank windows default to off', functio
 	eq(INV.config.bank.emptySlots, 'grouped', 'Empty slots saves in the bank window')
 	eq(INV.config.bag.emptySlots, 'off', 'not the bag window')
 	eq(table.concat(queued, ','), 'true', 'and updates the windows')
+end)
+
+test('Empty slots re-packs an open Compact window: Off, Every slot, then Off again, as on 1081e68', function()
+	local container = world()
+	container:Show()
+	H.search(container) -- the bag window's, which INV:UpdateVisibleContainers reads
+	-- A third category, packed afresh as the window opens.
+	W.put(1, 2, W.item(301, 'Plank', 'Trade Goods', 15))
+	INV:ReleaseLayout(container)
+	INV:UpdateContainer('bag', true)
+	local where, height, width = H.where(container), container:GetHeight(), container:GetWidth()
+	local general = INV:GetConfigTable().args.bag.args.general
+	-- Sets Empty slots as /sui does, then runs the update it queued, as the
+	-- module's updater does on the next frame.
+	local function set(mode)
+		local option = general.args.emptySlots
+		if option.set then option.set({ 'emptySlots' }, mode) else general.set({ 'emptySlots' }, mode) end
+		check(INV.NEED_UPDATE, mode .. ': an update is queued')
+		INV.NEED_UPDATE = false
+		local layout = INV.UPDATE_LAYOUT
+		INV.UPDATE_LAYOUT = false
+		INV:UpdateVisibleContainers(layout)
+	end
+	-- Where the categories are and how big the window is.
+	local function packing()
+		local out = {}
+		for name, place in pairs(H.where(container)) do out[#out + 1] = name .. '=' .. place end
+		table.sort(out)
+		return table.concat(out, ' ') .. ' ' .. container:GetWidth() .. 'x' .. container:GetHeight()
+	end
+
+	set('all')
+	check(container.categories['Empty Slots']:IsShown(), 'Every slot: Empty Slots shown')
+	local shown = packing()
+	INV:ReleaseLayout(container)
+	INV:UpdateContainer('bag', true)
+	eq(shown, packing(), 'Every slot: packed as a window opened with it')
+
+	set('off')
+	check(not container.categories['Empty Slots']:IsShown(), 'Off: Empty Slots gone')
+	check(H.same(H.where(container), where), 'Off: every category back where it was')
+	eq(container:GetHeight(), height, 'Off: the window as tall as before')
+	eq(container:GetWidth(), width, 'Off: and as wide')
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 test('View and Empty slots have descs, the size a select takes, and no width', function()

@@ -104,16 +104,31 @@ local function IndexOf(list, value)
 	end
 end
 
+-- Whether a bag is special: a reagent bag, or one that holds only some kinds
+-- of item (a bag family, like a herb bag's). The backpack never is, nor a
+-- bank tab, except on Forever, where the bank's tabs after the first (the
+-- base bank) are bag slots and their bags can be herb bags.
+function INV:IsSpecialBag(bagID)
+	if bagID == Enum.BagIndex.Backpack or IndexOf(self.bagIds.warband, bagID) then return false end
+	local bankTab = IndexOf(self.bagIds.bank, bagID)
+	if bankTab and (not st.forever or bankTab == 1) then return false end
+	if self:IsReagentBag(bagID) then return true end
+	local _, family = C_Container.GetContainerNumFreeSlots(bagID)
+	return (family or 0) ~= 0
+end
+
 -- What a bag is: its id, name, number of slots, free slots, and whether it is a
--- special bag (a reagent bag, or one that holds only some kinds of item, like a
--- herb bag). The backpack and the bank tabs are never special.
+-- special bag (INV:IsSpecialBag).
 function INV:GetBagInfo(bagID)
 	local total = C_Container.GetContainerNumSlots(bagID)
-	local free, family = C_Container.GetContainerNumFreeSlots(bagID)
+	local free = C_Container.GetContainerNumFreeSlots(bagID)
 	local bankTab = IndexOf(self.bagIds.bank, bagID)
 	local warbandTab = IndexOf(self.bagIds.warband, bagID)
 
-	local name = C_Container.GetBagName(bagID) or GetTabName(bagID)
+	-- The client never answers nil (its name isn't nilable): '' is no name.
+	local name = C_Container.GetBagName(bagID)
+	if name == '' then name = nil end
+	name = name or GetTabName(bagID)
 	if not name then
 		if bagID == Enum.BagIndex.Backpack then
 			name = BAG_NAME_BACKPACK or 'Backpack'
@@ -128,12 +143,28 @@ function INV:GetBagInfo(bagID)
 		end
 	end
 
-	local special = false
-	if bagID ~= Enum.BagIndex.Backpack and not bankTab and not warbandTab then
-		special = self:IsReagentBag(bagID) or (family or 0) ~= 0
-	end
+	return { id = bagID, name = name, total = total, free = free or 0, special = self:IsSpecialBag(bagID) }
+end
 
-	return { id = bagID, name = name, total = total, free = free or 0, special = special }
+-- The frames One bag's or Multi bag's sections of a window are laid out in, by
+-- name, each with `slots`, how many slots its bags have, and `untitled` (One
+-- bag's main grid). A section's items and free slots can't outnumber its
+-- bags' slots, so that many buttons always hold it. Read from the bags alone,
+-- with no item read, for INV:EnsureSlotPools; grouped as GetViewSections
+-- groups the bags.
+function INV:GetSectionPools(id, view)
+	local pools = {}
+	for _, bagID in pairs(self.containers[id].bag_ids) do
+		local slots = C_Container.GetContainerNumSlots(bagID)
+		if slots > 0 then
+			local main = view == 'onebag' and not self:IsSpecialBag(bagID)
+			local name = self:SectionFrameName({ key = main and 'main' or 'bag' .. bagID, kind = main and 'main' or 'bag' })
+			local pool = pools[name] or { slots = 0, untitled = main }
+			pool.slots = pool.slots + slots
+			pools[name] = pool
+		end
+	end
+	return pools
 end
 
 local function BagTitle(info)
@@ -149,12 +180,13 @@ local function ItemsOf(bags)
 	return items
 end
 
--- A section of a bag window: its items in priority order, then its empty slots.
-local function BagSection(self, id, key, title, kind, bags, categoryOf, mode)
+-- A section of a bag window: its items in priority order, then its empty slots
+-- (empties). In combat, no more of them than its frame has buttons (FitSlots).
+local function BagSection(self, id, key, title, kind, bags, categoryOf, empties)
 	local section = { key = key, title = title, items = self:SortByPriority(ItemsOf(bags), categoryOf), kind = kind }
-	local empties = self:FitEmptySlots(id, self:SectionFrameName(section), #section.items,
-		self:GetEmptySlots(id, bags, mode))
-	for _, info in ipairs(empties) do tinsert(section.items, info) end
+	local name = self:SectionFrameName(section)
+	self:FitSlots(id, name, 0, section.items)
+	for _, info in ipairs(self:FitSlots(id, name, #section.items, empties)) do tinsert(section.items, info) end
 	return section
 end
 
@@ -194,10 +226,11 @@ function INV:GetViewSections(id, view)
 		for _, category in ipairs(order) do
 			local items = byCategory[category]
 			table.sort(items, self.CompareItems)
-			tinsert(sections, { key = category, title = ('%s (%d)'):format(category, #items), items = items, kind = 'category' })
+			local title = ('%s (%d)'):format(category, #items)
+			tinsert(sections, { key = category, title = title, items = self:FitSlots(id, category, 0, items), kind = 'category' })
 		end
 		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
-			and self:FitEmptySlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
+			and self:FitSlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
 		if empties and #empties > 0 then
 			local shown = 0
 			for _, info in ipairs(empties) do shown = shown + (info.count or 1) end
@@ -225,13 +258,18 @@ function INV:GetViewSections(id, view)
 			for _, bag in ipairs(present) do
 				tinsert(infos[bag.id].special and special or normal, bag)
 			end
-			tinsert(sections, BagSection(self, id, 'main', false, 'main', normal, categoryOf, mode))
+			-- Grouped is one free slot per kind of bag: in the combined bank, one
+			-- for the bank and one for the warband bank.
+			tinsert(sections, BagSection(self, id, 'main', false, 'main', normal, categoryOf,
+				self:GetEmptySlotsByKind(id, normal, mode)))
 			for _, bag in ipairs(special) do
-				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf, mode))
+				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf,
+					self:GetEmptySlots(id, { bag }, mode)))
 			end
 		else
 			for _, bag in ipairs(present) do
-				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf, mode))
+				tinsert(sections, BagSection(self, id, 'bag' .. bag.id, BagTitle(infos[bag.id]), 'bag', { bag }, categoryOf,
+					self:GetEmptySlots(id, { bag }, mode)))
 			end
 		end
 	end

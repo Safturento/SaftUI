@@ -86,11 +86,12 @@ function INV:UpdateContainerBagIds(bagType, filter)
 
 	container.filter[bagType] = filter
 
+	-- The bank's tabs, then the warband bank's, in their order: Multi bag
+	-- shows a section per tab in this order.
 	local bagIds = {}
-
-	for bagId, enabled in pairs(container.filter) do
-		if enabled then
-			for _, bagId in pairs(self.bagIds[bagId]) do
+	for _, shownType in ipairs({ 'bank', 'warband' }) do
+		if container.filter[shownType] then
+			for _, bagId in ipairs(self.bagIds[shownType]) do
 				tinsert(bagIds, bagId)
 			end
 		end

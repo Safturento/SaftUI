@@ -1,14 +1,16 @@
 -- The One bag and Multi bag views laid out (SaftUI-Bags/views.lua's sections
 -- through INV:LayoutSections and INV:ApplyView): One bag's untitled main grid
 -- with the special bags and Currencies titled under it, Multi bag's titled
--- section per bag or bank tab (a combined bank's bank, then its warband bank),
--- an empty bag keeping its title, search dimming in every section, Currencies
--- last in every view with its Filter button on its header, the profile's hidden
--- categories not applying, the window as wide as Rows, and the carried review
--- items: no frame changing between titled and untitled across views, free
--- slots in combat in a Multi bag section, and One bag <-> Multi bag <-> Compact
--- round trips. bags/bag_world.lua's bags under bags/container_helpers.lua's
--- views world.
+-- section per bag or bank tab (a combined bank's bank, then its warband bank,
+-- whichever eye was toggled), an empty bag keeping its title, search dimming in
+-- every section and a view switch applying it again, Currencies last in every
+-- view with its Filter button on its header, the profile's hidden categories
+-- not applying, the window as wide as Rows, and the carried review items: no
+-- frame changing between titled and untitled across views, free slots in
+-- combat in a Multi bag section, One bag <-> Multi bag <-> Compact round trips,
+-- and a fight's loot never making a button (each section has one per slot of
+-- its bags, and in combat shows no more than it has). bags/bag_world.lua's
+-- bags under bags/container_helpers.lua's views world.
 local H = load_test_file('bags/container_helpers.lua')
 
 local INV, W
@@ -172,6 +174,28 @@ test("combined bank multibag: the bank's sections, then the warband bank's", fun
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("combined bank multibag: the bank's sections stay first after the bank selector's eyes are toggled", function()
+	INV, W = H.views_world('retail')
+	load_saftui('SaftUI-Bags/containers/combinedbank.lua') -- INV:UpdateContainerBagIds, the eyes' click
+	local bankTab, bankTab2, warbandTab = INV.bagIds.bank[1], INV.bagIds.bank[2], INV.bagIds.warband[1]
+	W.bag(bankTab, 10, 'Bank 1'); W.bag(bankTab2, 10, 'Bank 2'); W.bag(warbandTab, 20, 'Warband 1')
+	INV.config.stackItems = false
+	INV.config.combinedbank.view = 'multibag'
+	local c = H.window('combinedbank')
+	INV:UpdateContainer('combinedbank', true)
+	local both = ('view:bag%d | view:bag%d | view:bag%d'):format(bankTab, bankTab2, warbandTab)
+	eq(stack(c), both, 'the bank, then the warband bank')
+	INV:UpdateContainerBagIds('warband', false)
+	eq(stack(c), ('view:bag%d | view:bag%d'):format(bankTab, bankTab2), 'the warband eye closed: the bank alone')
+	INV:UpdateContainerBagIds('warband', true)
+	eq(stack(c), both, 'opened again: the bank, then the warband bank')
+	INV:UpdateContainerBagIds('bank', false)
+	eq(stack(c), 'view:bag' .. warbandTab, 'the bank eye closed: the warband bank alone')
+	INV:UpdateContainerBagIds('bank', true)
+	eq(stack(c), both, 'opened again: the bank still first')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ every view
 
 test('search dims non-matching items in every section', function()
@@ -202,6 +226,43 @@ test('search dims non-matching items in every section', function()
 			end
 		end
 	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- How many of a window's shown item slots are lit and dimmed: 'lit/dimmed'.
+local function lit_dimmed(container)
+	local lit, dim = 0, 0
+	for _, frame in pairs(container.categories) do
+		for _, slot in ipairs(frame.slots) do
+			if slot:IsShown() then
+				if slot:GetAlpha() == 1 then lit = lit + 1 else dim = dim + 1 end
+			end
+		end
+	end
+	return lit .. '/' .. dim
+end
+
+test('a view switch dims the new view as the search says, and a search cleared in another view lights it again', function()
+	local c = world('compact')
+	c:Show()
+	local search = H.search(c)
+	INV:UpdateContainer('bag', true)
+	search:SetText('axe')
+	eq(lit_dimmed(c), '1/17', 'Compact: only the Axe lit')
+	for _, view in ipairs({ 'onebag', 'multibag', 'rows', 'compact' }) do
+		switch(view)
+		eq(lit_dimmed(c), '1/17', view .. ': the search still dims all but the Axe')
+	end
+
+	-- Typed in One bag, cleared in Compact: One bag comes back with no search.
+	switch('onebag')
+	search:SetText('rock')
+	eq(lit_dimmed(c), '1/17', 'One bag: only the Rock lit')
+	switch('compact')
+	search:SetText('')
+	eq(lit_dimmed(c), '18/0', 'Compact: no search, all lit')
+	switch('onebag')
+	eq(lit_dimmed(c), '18/0', 'One bag: no search, all lit')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -357,5 +418,96 @@ test('compact -> onebag -> multibag -> compact restores Compact exactly, with no
 	switch('compact')
 	eq(H.frames_made(), before, 'no new frames on the second round')
 	check(H.same(H.snapshot(c), snap), 'and Compact as it was')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ buttons in combat
+
+-- Slots made in combat are broken (INV:CreateSlot flags and reports them).
+local function made_in_combat(container)
+	local n = 0
+	for _, frame in pairs(container.categories) do
+		for _, slot in ipairs(frame.slots) do if slot.tainted then n = n + 1 end end
+	end
+	return n
+end
+
+-- How many shown slots of a window hold an item whose name starts with prefix.
+local function shown_named(container, prefix)
+	local n = 0
+	for _, frame in pairs(container.categories) do
+		for _, slot in ipairs(frame.slots) do
+			if slot:IsShown() and slot.info and not slot.info.empty and slot.info.name:sub(1, #prefix) == prefix then n = n + 1 end
+		end
+	end
+	return n
+end
+
+test('One bag and Multi bag: eleven new items looted in one fight make no button, in the bag and the bank window', function()
+	for _, view in ipairs({ 'onebag', 'multibag' }) do
+		-- The bag window: loot fills bag 1 (13 free slots) first.
+		local c = world(view)
+		stub.in_combat = true
+		for i = 1, 11 do W.put(1, 3 + i, W.item(700 + i, 'Loot ' .. i, 'Trade Goods', 10 + i)) end
+		local made = H.frames_made()
+		INV:UpdateContainer('bag', true)
+		eq(H.frames_made(), made, view .. ', bags: no frame made in combat')
+		eq(made_in_combat(c), 0, view .. ', bags: no broken slot')
+		eq(shown_named(c, 'Loot '), 11, view .. ', bags: every new item shows at once')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+
+		-- The bank window: Forever's base bank tab, 28 slots, one bar in it.
+		local tab = INV.bagIds.bank[1]
+		W.bag(tab, 28, 'Bank')
+		W.put(tab, 1, W.item(501, 'Gold Bar', 'Trade Goods', 30))
+		INV.config.bank.view = view
+		local bank = H.window('bank')
+		INV:UpdateContainer('bank', true)
+		stub.in_combat = true
+		for i = 1, 11 do W.put(tab, 1 + i, W.item(800 + i, 'Bar ' .. i, 'Trade Goods', 10 + i)) end
+		made = H.frames_made()
+		INV:UpdateContainer('bank', true)
+		eq(H.frames_made(), made, view .. ', bank: no frame made in combat')
+		eq(made_in_combat(bank), 0, view .. ', bank: no broken slot')
+		eq(shown_named(bank, 'Bar '), 11, view .. ', bank: every new bar shows at once')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('in combat a section shows no more items than it has buttons, and the rest once combat ends', function()
+	-- Multi bag: a bag that turns up in the fight with items in it has no
+	-- buttons yet.
+	local c = world('multibag')
+	stub.in_combat = true
+	W.bag(3, 8, 'New Bag')
+	for i = 1, 5 do W.put(3, i, W.item(900 + i, 'Ore ' .. i, 'Trade Goods', 5)) end
+	INV:UpdateContainer('bag', true)
+	eq(made_in_combat(c), 0, 'Multi bag: no broken slot')
+	eq(shown_named(c, 'Ore '), 0, "Multi bag: the new bag's items wait for the end of combat")
+	stub.in_combat = false
+	INV.NEED_UPDATE = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	check(INV.NEED_UPDATE, 'Multi bag: after combat an update is asked for')
+	INV:UpdateContainer('bag', true)
+	eq(shown_named(c, 'Ore '), 5, 'Multi bag: then they show')
+	eq(made_in_combat(c), 0, 'Multi bag: still no broken slot')
+
+	-- Rows: a category given more new items in the fight than its spare buttons.
+	c = world('rows')
+	local goods = c.categories['Trade Goods']
+	local buttons = #goods.slots
+	stub.in_combat = true
+	for i = 1, buttons do W.put(1, 3 + i, W.item(950 + i, 'Ingot ' .. i, 'Trade Goods', 5)) end
+	INV:UpdateContainer('bag', true)
+	eq(#goods.slots, buttons, 'Rows: no button made in combat')
+	eq(shown_slots(goods), buttons, 'Rows: as many items as there are buttons')
+	eq(made_in_combat(c), 0, 'Rows: no broken slot')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	INV:UpdateContainer('bag', true)
+	eq(shown_slots(goods), buttons + 3, 'Rows: after combat, all of them')
 	eq(#take_errors(), 0, 'no errors')
 end)

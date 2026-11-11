@@ -316,7 +316,7 @@ end
 function INV:UpdateContainer(id, updateLayout)
 	local container = self.containers[id]
 	if not container and container:IsShown() then return end
-	self:EnsureEmptySlotPool(id)
+	self:EnsureSlotPools(id)
 
 	-- One bag, Multi bag and Rows lay their sections out on every update.
 	local view = self:GetLaidOutView(container)
@@ -750,7 +750,8 @@ end
 	buttons and the category frames hold them, so in combat nothing is touched:
 	the switch waits for the end of combat (one pending run, for every window
 	switched in the fight), and until then the window's updates keep the view it
-	is laid out in.
+	is laid out in. The bag window's search is applied again afterwards: the
+	new view's slots kept the alpha of the search they last saw.
 ]]
 function INV:ApplyView(id)
 	if st:QueueAfterCombat('InventoryView', ApplyPendingViews) then return end
@@ -770,6 +771,8 @@ function INV:ApplyView(id)
 		for _, column in ipairs(container.columns) do column:Show() end
 	end
 	self:UpdateContainer(id, true)
+	local search = self.containers.bag and self.containers.bag.search
+	if search then self:UpdateSearchFilter(search) end
 end
 
 ------------------------------------------------------------------ the view buttons
@@ -802,6 +805,13 @@ local function ColorLit(button)
 	button.backdrop:SetBackdropBorderColor(st.config.profile.colors.button.blue:GetRGB())
 end
 
+-- A button's glyph is drawn in Colors -> Text -> Normal.
+local function ColorGlyph(button)
+	for _, piece in ipairs(button.glyph) do
+		piece:SetColorTexture(st.config.profile.colors.text.normal:GetRGB())
+	end
+end
+
 -- A button is the title bar's height less 8 square, and its glyph is drawn at
 -- the largest whole pixel unit that fits inside with room to spare.
 local function SizeViewButton(button)
@@ -832,10 +842,9 @@ function INV:CreateViewButtons(container)
 		button:SetPoint('RIGHT', right, 'LEFT', -gap, 0)
 		button.view, button.viewLit, button.glyph = view, false, {}
 		for p = 1, #GLYPHS[view] do
-			local piece = button:CreateTexture(nil, 'OVERLAY')
-			piece:SetColorTexture(st.config.profile.colors.text.normal:GetRGB())
-			button.glyph[p] = piece
+			button.glyph[p] = button:CreateTexture(nil, 'OVERLAY')
 		end
+		ColorGlyph(button)
 		SizeViewButton(button)
 
 		button:SetScript('OnClick', function() INV:SetView(container.id, view) end)
@@ -873,22 +882,26 @@ function INV:UpdateViewButtons(id)
 	end
 end
 
--- Buttons -> Blue changed: the lit buttons take the new color.
-function INV:ColorViewButtons()
+-- A color the view buttons are drawn in changed (st:ColorsChanged's group):
+-- Buttons -> Blue lights the lit buttons, Text -> Normal draws every glyph.
+function INV:ColorViewButtons(group)
 	for _, container in pairs(self.containers) do
 		for _, button in pairs(container.viewButtons or {}) do
-			if button.viewLit then ColorLit(button) end
+			if group == 'button' and button.viewLit then ColorLit(button) end
+			if group == 'text' then ColorGlyph(button) end
 		end
 	end
 end
 
--- Switches a window's view: saves it, lights its button and lays the window
--- out (INV:ApplyView, which waits for the end of combat). The window's own
--- view does nothing: the layout is only touched for a reason.
+-- Switches a window's view: saves it, lights its button, shows it in an open
+-- /sui's View select (st.Config:Refresh) and lays the window out
+-- (INV:ApplyView, which waits for the end of combat). The window's own view
+-- does nothing: the layout is only touched for a reason.
 function INV:SetView(id, view)
 	if not self.viewLabels[view] or self:GetView(id) == view then return end
 	self.config[id].view = view
 	self:UpdateViewButtons(id)
+	st.Config:Refresh()
 	self:ApplyView(id)
 end
 

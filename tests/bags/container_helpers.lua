@@ -153,7 +153,7 @@ end
 	    gives every category (only the currencies use theirs): Acquire,
 	    ReleaseAll and EnumerateActive.
 	H.frames_made() counts the frames CreateFrame has made since the world
-	was made.
+	was made. H.search(container) gives a window the bag window's search box.
 ]]
 
 local made = 0
@@ -260,7 +260,7 @@ end
 -- window also gets every category as INV:InitializePlayerBags makes them
 -- (INV:InitializeAllCategories: the rules' categories, Empty Slots, and
 -- Currencies where C_CurrencyInfo can give them). Open, with no items laid
--- out yet.
+-- out yet. H.search gives it the bag window's search box.
 function H.window(id)
 	local INV = H.INV
 	local container = H.container({}, 0, 'SaftUITest_' .. id)
@@ -291,6 +291,21 @@ function H.window(id)
 	INV:UpdateConfig(id)
 	if id == 'bag' then INV:InitializeAllCategories('bag') end
 	return container
+end
+
+-- Gives a window the search box INV:InitializeSearch gives the bag window, so
+-- the layout sizes the window around it and INV:UpdateVisibleContainers reads
+-- it: an edit box with the text region st:StyleEditBox sets the font of (a
+-- plain one, for Blizzard's SearchBoxTemplate), skinned and hooked as there,
+-- so setting its text runs INV:UpdateSearchFilter.
+function H.search(container)
+	local search = CreateFrame('EditBox', container:GetName() .. 'Search', container.footer)
+	search:CreateFontString(nil, 'OVERLAY')
+	SaftUI:SkinEditBox(search, 'theme', 'theme')
+	search:SetHeight(20)
+	H.INV:HookScript(search, 'OnTextChanged', 'UpdateSearchFilter')
+	container.search = search
+	return search
 end
 
 -- Where every shown category frame and slot of a window is, and the window's

@@ -1,8 +1,8 @@
 -- The data behind the bag views (SaftUI-Bags/views.lua and the empty slot
--- building in category.lua): the category order every view shares, bag info,
--- the section lists of One bag, Multi bag and Rows, empty slots by mode for
--- every window, and Compact's inventory staying what it was. Nothing here
--- draws. bags/bag_world.lua loads the real files over a stubbed bag world.
+-- building in category.lua): the category order every view shares, bag info
+-- and which bags are special, the section lists of One bag, Multi bag and
+-- Rows, empty slots by mode for every window, and Compact's inventory staying
+-- what it was. Nothing here draws. bags/bag_world.lua loads the real files over a stubbed bag world.
 local W = load_test_file('bags/bag_world.lua')
 
 local INV
@@ -106,7 +106,7 @@ test('SortByPriority: category priority, then the item sort, empty slots last', 
 		'consumables, armor, weapons (the axe first: higher item level), trade goods, quest, then the empty slot')
 end)
 
-test('GetBagInfo: id, name, total, free and special; the backpack and bank tabs are never special', function()
+test('GetBagInfo: id, name, total, free and special; the backpack is never special', function()
 	world()
 	local pack = INV:GetBagInfo(0)
 	eq(pack.id, 0, 'id'); eq(pack.name, 'Backpack', 'name from the client'); eq(pack.total, 20, 'total')
@@ -136,7 +136,56 @@ test('GetBagInfo: a name the client lacks falls back to a tab name, then Backpac
 	Enum.BankType = { Character = 0, Account = 2 }
 	eq(INV:GetBagInfo(tab2).name, 'Potions', 'a tab name the client has')
 	eq(INV:GetBagInfo(tab1).name, 'Bank tab 1', 'a tab it has no name for')
-	eq(INV:GetBagInfo(tab2).special, false, 'bank tabs are not special, whatever their family')
+end)
+
+test("GetBagInfo: a blank name from the client ('') is no name, so the fallbacks name the bag", function()
+	world()
+	-- C_Container.GetBagName never returns nil (Nilable = false on both clients).
+	W.bags[0].name, W.bags[1].name = '', ''
+	eq(INV:GetBagInfo(0).name, 'Backpack', 'the backpack')
+	eq(INV:GetBagInfo(1).name, 'Bag 1', 'a bag')
+	local tab1, tab2 = INV.bagIds.bank[1], INV.bagIds.bank[2]
+	W.bag(tab1, 98, ''); W.bag(tab2, 98, '')
+	eq(INV:GetBagInfo(tab1).name, 'Bank tab 1', 'a bank tab')
+	_G.C_Bank = { FetchPurchasedBankTabData = function(bankType)
+		return bankType == 0 and { { ID = tab2, name = 'Potions' } } or {}
+	end }
+	Enum.BankType = { Character = 0, Account = 2 }
+	eq(INV:GetBagInfo(tab2).name, 'Potions', 'a tab the player named')
+	eq(INV:GetBagInfo(tab1).name, 'Bank tab 1', 'and one they did not')
+end)
+
+test("special bags in the bank: Forever's bank bags by their family, never its base bank or retail's tabs", function()
+	world('forever')
+	local base, slot2, slot3 = INV.bagIds.bank[1], INV.bagIds.bank[2], INV.bagIds.bank[3]
+	-- Forever: tab 1 is the base bank, each later tab a bag slot.
+	W.bag(base, 28, 'Bank', 32)
+	W.bag(slot2, 12, 'Herb Bag', 32)
+	W.bag(slot3, 16, 'Bag')
+	eq(INV:GetBagInfo(base).special, false, 'Forever: the base bank never, whatever its family')
+	eq(INV:GetBagInfo(slot2).special, true, 'Forever: a herb bag in a bank bag slot is')
+	eq(INV:GetBagInfo(slot3).special, false, 'Forever: a normal bag in one is not')
+
+	world('retail')
+	local tab2, warband2 = INV.bagIds.bank[2], INV.bagIds.warband[2]
+	W.bag(tab2, 98, 'Tab', 32); W.bag(warband2, 98, 'Warband tab', 32)
+	eq(INV:GetBagInfo(tab2).special, false, "retail: a bank tab never, whatever its family")
+	eq(INV:GetBagInfo(warband2).special, false, 'retail: nor a warband tab')
+end)
+
+test('Forever bank in One bag: a herb bag in a bank bag slot has its own section, its items and free slots apart', function()
+	world('forever')
+	local base, slot2 = INV.bagIds.bank[1], INV.bagIds.bank[2]
+	W.bag(base, 28, 'Bank')
+	W.bag(slot2, 12, 'Herb Bag', 32)
+	W.put(base, 1, W.item(30, 'Gold Bar', 'Trade Goods', 30))
+	W.put(slot2, 1, W.item(31, 'Mageroyal', 'Trade Goods', 20))
+	W.container('bank')
+	INV.config.bank.emptySlots = 'grouped'
+	local one = INV:GetViewSections('bank', 'onebag')
+	eq(titles(one), '- | Herb Bag (1 / 12)', 'the main grid, then the herb bag, titled')
+	eq(names(one[1].items), 'Gold Bar,<empty x27>', "main: the bank's items, and its free slots alone")
+	eq(names(one[2].items), 'Mageroyal,<empty x11>', "the herb bag's, in its section")
 end)
 
 test('Forever: no reagent bag; a profession bag is special', function()
@@ -308,6 +357,13 @@ test('empty slots per mode, per view: the combined bank has one for the bank and
 	eq(names(section(INV:GetViewSections('combinedbank', 'rows'), 'Empty Slots').items), '<empty x9>,<empty x20>', 'rows')
 	eq(names(INV:GetSortedInventory('combinedbank')['Empty Slots']), '<empty x9>,<empty x20>', 'Compact')
 	eq(titles(INV:GetViewSections('combinedbank', 'multibag')), 'Bank 1 (1 / 10) | Warband 1 (0 / 20)', 'multibag')
+	local one = INV:GetViewSections('combinedbank', 'onebag')
+	eq(names(one[1].items), 'Gold Bar,<empty x9>,<empty x20>', 'onebag: the bank, then the warband bank')
+	eq(one[1].items[2].bagID .. ':' .. one[1].items[3].bagID, bankTab .. ':' .. warbandTab, 'each in its own bank')
+	INV.config.combinedbank.emptySlots = 'all'
+	one = INV:GetViewSections('combinedbank', 'onebag')
+	eq(#one[1].items, 30, 'onebag, all: the item and every free slot')
+	eq(one[1].items[10].bagID .. ':' .. one[1].items[11].bagID, bankTab .. ':' .. warbandTab, "the bank's, then the warband bank's")
 end)
 
 test('views: stacks merge, and a loading item is counted but not shown', function()

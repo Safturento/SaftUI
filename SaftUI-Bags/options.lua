@@ -38,18 +38,15 @@ local function BuildWindow(id, order)
 		sorting = INV.viewIds,
 		set = function(_, value) INV:SetView(id, value) end,
 	}
-	-- Free bag slots as a category.
+	-- Free bag slots as a category. Changing it goes through the group's set,
+	-- which packs every window afresh, as any layout setting does (HoldLayout).
 	general.emptySlots = {
 		name = 'Empty slots',
-		desc = 'Show free bag slots as an Empty Slots category. Grouped shows one slot per kind of bag (per section in One bag and Multi bag), each with its free count; Every slot shows each free slot.',
+		desc = 'Show free bag slots as an Empty Slots category. Grouped shows one slot for each kind of bag (your bags, the reagent bag, the bank, the warband bank) and for each bag with its own section in One bag and Multi bag, each with its free count; Every slot shows each free slot.',
 		type = 'select',
 		order = 5,
 		values = { off = 'Off', grouped = 'Grouped', all = 'Every slot' },
 		sorting = { 'off', 'grouped', 'all' },
-		set = function(_, value)
-			INV.config[id].emptySlots = value
-			INV:QueueUpdate(true) -- lays the windows out again
-		end,
 	}
 
 	return {
