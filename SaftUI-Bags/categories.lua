@@ -43,6 +43,8 @@ local INV = st:GetModule('Inventory')
 	  INV:SetCategoryEnabled(id, on)     INV:SetCategoryRule(id, rule)
 	  INV:MoveCategory(id, place)        INV:RemoveCategory(id)
 	  INV:RestoreCategory(id)            INV:GetDeletedDefaults()
+	  (a default restored or reset beside a category with its name is
+	  numbered, "Toys (2)", so no two categories share a name)
 	  INV:ResetCategory(id)              INV:ResetAllCategories()
 	  INV:GetPin(itemID)                 INV:PinItem(itemID, id)
 	  INV:UnpinItem(itemID)              INV:GetPinnedItems(id)
@@ -435,6 +437,31 @@ local function ListIdsWithout(order, id)
 	return out
 end
 
+-- A name no list category but id has, ignoring case: name, else "name (2)",
+-- "name (3)", ... A default restored or reset when another category (one of
+-- yours, or a renamed default) has its shipped name gets one, so no two
+-- categories share a name.
+local function UniqueName(self, id, name)
+	local taken = {}
+	for _, entry in ipairs(self:GetCategoryList()) do
+		if entry.id ~= id then taken[entry.name:lower()] = true end
+	end
+	local unique, n = name, 1
+	while taken[unique:lower()] do
+		n = n + 1
+		unique = string.format('%s (%d)', name, n)
+	end
+	return unique
+end
+
+-- A default's edit as it is restored or reset: none, or a name when its
+-- shipped one is taken (UniqueName).
+local function ShippedEdit(self, id)
+	local shipped = self:GetDefaultCategory(id).name
+	local name = UniqueName(self, id, shipped)
+	if name ~= shipped then return { name = name } end
+end
+
 -- A new category of yours, "New category" (or "New category 2", ...), on, shown
 -- in every window, catching nothing, just above Miscellaneous. Returns its id.
 function INV:AddUserCategory()
@@ -519,12 +546,13 @@ function INV:RemoveCategory(id)
 	return true
 end
 
--- Brings a deleted default back at its default place, as shipped.
+-- Brings a deleted default back at its default place, as shipped (its name
+-- numbered when another category has it: UniqueName).
 function INV:RestoreCategory(id)
 	local store = self:CategoryStore()
 	if type(id) ~= 'string' or not store.deleted[id] or not self:GetDefaultCategory(id) then return false end
 	store.deleted[id] = nil
-	store.edits[id] = nil
+	store.edits[id] = ShippedEdit(self, id)
 	self:CategoriesChanged()
 	return true
 end
@@ -539,14 +567,16 @@ function INV:GetDeletedDefaults()
 	return out
 end
 
--- Clears a default's edit: its name, on or off, Show in and rule. Its pins
+-- Clears a default's edit: its name, on or off, Show in and rule (its name
+-- numbered when another category has the shipped one: UniqueName). Its pins
 -- stay.
 function INV:ResetCategory(id)
 	local entry = Entry(self, id)
 	if not entry or not entry.default then return false end
 	local store = self:CategoryStore()
-	if store.edits[id] ~= nil then
-		store.edits[id] = nil
+	local edit = ShippedEdit(self, id)
+	if not SameTree(store.edits[id], edit) then
+		store.edits[id] = edit
 		self:CategoriesChanged()
 	end
 	return true

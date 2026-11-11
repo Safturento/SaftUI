@@ -472,6 +472,48 @@ test('ResetCategory and ResetAllCategories: as shipped; your categories and thei
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a default restored or reset when another category has its name gets a number after it, so no two share a name', function()
+	world('compact')
+	local function names_unique()
+		local seen = {}
+		for _, entry in ipairs(INV:GetCategoryList()) do
+			local name = entry.name:lower()
+			if seen[name] then return false end
+			seen[name] = true
+		end
+		return true
+	end
+	-- Delete Toys, call Pets "toys", bring Toys back.
+	INV:RemoveCategory('Toys')
+	INV:RenameCategory('Pets', 'toys')
+	eq(INV:RestoreCategory('Toys'), true, 'restored')
+	local list = INV:GetCategoryList()
+	eq(list.byId.Toys.name, 'Toys (2)', 'its name is taken, in any case: numbered')
+	eq(list.byId.Toys.edited, true, 'an edit, as it is not the shipped name')
+	eq(list.byId.Pets.name, 'toys', 'the other keeps its name')
+	check(names_unique(), 'no two share a name')
+
+	-- Reset beside one of yours with its name, and a numbered one too.
+	local mine, other = INV:AddUserCategory(), INV:AddUserCategory()
+	INV:RenameCategory('Armor', 'Plate')
+	INV:RenameCategory(mine, 'Armor')
+	INV:RenameCategory(other, 'ARMOR (2)')
+	INV:PinItem(201, 'Armor')
+	eq(INV:ResetCategory('Armor'), true, 'reset')
+	eq(INV:CategoryName('Armor'), 'Armor (3)', 'numbered past the names taken')
+	eq(INV:CategoryStore().edits.Armor, { name = 'Armor (3)' }, 'only the name is left in its edit')
+	eq(INV:GetPin(201), 'Armor', 'its pins stay')
+	check(names_unique(), 'no two share a name')
+
+	-- With the name free again, a reset gives the shipped name back.
+	INV:RenameCategory(mine, 'Mine')
+	eq(INV:ResetCategory('Armor'), true, 'reset again')
+	eq(INV:CategoryName('Armor'), 'Armor', 'the shipped name')
+	eq(INV:CategoryStore().edits.Armor, nil, 'and no edit')
+	eq(INV:CategoryName('Weapons'), 'Weapons', 'a default no other name clashes with is as shipped')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ pins
 
 test('pins: one category per item; pinning again moves it; unpinning returns it to the rules', function()
