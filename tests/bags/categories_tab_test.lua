@@ -849,6 +849,36 @@ test('a bag update while the tab is open refreshes its counts', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a draw of the tab reads the bags once, and uses up none of an item's tooltip tries", function()
+	world()
+	local slow = B.item(701, 'Slow Scroll', 'Consumable', 1, { tooltipLoading = true })
+	B.put(0, 8, slow)
+	INV:UpdateContainer('bag', true)
+	local link = B.link(slow)
+	local tries = INV.tooltipTries[link]
+	check(tries ~= nil and tries >= 1, "the bag window's read counts a try while the tooltip loads")
+	INV:PinItem(301, 'Consumables')
+	INV.categoryEditor.selected = 'Consumables'
+	local reads = 0
+	local read = INV.ReadBags
+	INV.ReadBags = function(...)
+		reads = reads + 1
+		return read(...)
+	end
+	open()
+	eq(reads, 1, 'one read of the bags for a draw: the counts, Pinned items and Caught now')
+	check(tab():EditorCell('pins') ~= nil and tab():EditorCell('caught') ~= nil, 'with both item strips drawn')
+	OW:Render()
+	OW:Render()
+	eq(reads, 3, 'and one for each draw after')
+	INV.ReadBags = read
+	eq(INV.tooltipTries[link], tries, 'no try used up by the draws')
+	INV:UpdateContainer('bag', true)
+	eq(INV.tooltipTries[link], tries + 1, "the bag window's own read still counts one")
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
 test('EditCategory opens the tab with the category selected, the sets entry for a set', function()
 	world()
 	INV:EditCategory('Consumables')

@@ -42,9 +42,10 @@ local INV = st:GetModule('Inventory')
 	                                    bound: a bag update then refreshes /sui
 	                                    (inventory.lua's UpdateHandler).
 	  INV:CountCategories(windowId) -> counts, items   by key, read as Compact
-	                                    reads the window
-	  INV:CategoryEditorOptions(id, tab) -> the editor's group (tab, the
-	                                    widget, gets Caught now's hover)
+	                                    reads the window, counting no tooltip tries
+	  INV:CategoryEditorOptions(id, tab, items) -> the editor's group (tab,
+	                                    the widget, gets Caught now's hover;
+	                                    items, the bags as the tab read them)
 	  INV:EditCategory(key)             /sui at this tab, key's category
 	                                    selected ('Set: ...' selects the sets entry)
 
@@ -96,11 +97,13 @@ end
 -- (stacks merged as INV:GetSortedInventory merges them), so a count is what
 -- the window's header shows: counts[key] and items[key], the item infos in
 -- bag order (each with its category and categoryWhy). Empty for a window
--- that isn't made.
+-- that isn't made. A read only to show them (ReadBags' peek): an item
+-- waiting for its tooltip uses up none of its tries, however often the tab
+-- is drawn.
 function INV:CountCategories(windowId)
 	local counts, items = {}, {}
 	if not self.containers[windowId] then return counts, items end
-	local bags, _, _, categoryOf = self:ReadBags(windowId, function(bagID) return self:StackGroup(bagID) end)
+	local bags, _, _, categoryOf = self:ReadBags(windowId, function(bagID) return self:StackGroup(bagID) end, nil, true)
 	for _, bag in ipairs(bags) do
 		for _, info in ipairs(bag.items) do
 			local key = categoryOf[info]
@@ -159,9 +162,8 @@ local function ValidName(id, value)
 	return true
 end
 
--- The bag window's item infos by item ID, for the pins in the bags.
-local function BagInfos()
-	local _, items = INV:CountCategories('bag')
+-- The item infos by item ID (of CountCategories' items), for the pins in the bags.
+local function BagInfos(items)
 	local byItem = {}
 	for _, list in pairs(items) do
 		for _, info in ipairs(list) do
@@ -177,12 +179,18 @@ end
 	rows), each reading the store at call time and writing through its setters.
 	Which rows there are follows the category as it is now: the tab builds it
 	again on every draw. tab, when given, is the bagcategories widget whose
-	rule editor a Caught now hover highlights in.
+	rule editor a Caught now hover highlights in, and items the bag window's
+	items by key (INV:CountCategories) that the tab read for this draw; without
+	them, Pinned items and Caught now read the bags once, when first drawn.
 ]]
-function INV:CategoryEditorOptions(id, tab)
+function INV:CategoryEditorOptions(id, tab, items)
 	local function Entry() return INV:GetCategoryList().byId[id] end
 	local entry = Entry()
 	if not entry then return { type = 'group', name = '', args = {} } end
+	local function Items()
+		if not items then items = select(2, INV:CountCategories('bag')) end
+		return items
+	end
 
 	local windows, sorting = { bag = WINDOW_NAMES.bag, bank = WINDOW_NAMES.bank }, { 'bag', 'bank' }
 	if self:HasWarbandBank() then
@@ -218,7 +226,7 @@ function INV:CategoryEditorOptions(id, tab)
 			desc = 'Items you added to this category from the slot menu (Ctrl + right click an item). They go here whatever the rules say. Click the X on one to unpin it.',
 			hidden = function() return #INV:GetPinnedItems(id) == 0 end,
 			items = function()
-				local byItem, out = BagInfos(), {}
+				local byItem, out = BagInfos(Items()), {}
 				for i, itemID in ipairs(INV:GetPinnedItems(id)) do out[i] = { itemID = itemID, info = byItem[itemID] } end
 				return out
 			end,
@@ -233,8 +241,7 @@ function INV:CategoryEditorOptions(id, tab)
 			items = function()
 				local e, out = Entry(), {}
 				if not e then return out end
-				local _, items = INV:CountCategories('bag')
-				for i, info in ipairs(EntryItems(items, e)) do out[i] = { itemID = info.itemID, info = info } end
+				for i, info in ipairs(EntryItems(Items(), e)) do out[i] = { itemID = info.itemID, info = info } end
 				return out
 			end,
 			onHover = function(item)
@@ -555,7 +562,8 @@ local function Layout(w)
 
 	local list = INV:GetCategoryList()
 	local selected = Selected(list)
-	local counts = INV:CountCategories('bag')
+	-- The bags, read once for the counts and the editor's item strips.
+	local counts, items = INV:CountCategories('bag')
 	wipe(w.rows)
 	for i, entry in ipairs(list) do LayListRow(w, i, entry, EntryCount(counts, entry), entry.id == selected) end
 	for i = #list + 1, #w.rowFrames do w.rowFrames[i]:Hide() end
@@ -576,7 +584,7 @@ local function Layout(w)
 	w.list:SetHeight(listHeight)
 
 	w.body:Release()
-	local root = { category = INV:CategoryEditorOptions(selected, w) }
+	local root = { category = INV:CategoryEditorOptions(selected, w, items) }
 	w.body:SetRoot(root)
 	local view = OM.BuildView(root, 'category')
 	local editorHeight = view and w.body:Draw(view.sections) or 0

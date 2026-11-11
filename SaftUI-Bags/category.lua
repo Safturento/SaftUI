@@ -10,10 +10,11 @@ function INV:IsReagentBag(bagID)
 	return Enum.BagIndex ~= nil and Enum.BagIndex.ReagentBag ~= nil and bagID == Enum.BagIndex.ReagentBag
 end
 
-function INV:GetInventoryItemInfo(bagID, slotID, containerId)
+-- peek: a read only to show the bags, which counts no tooltip try (ScanBagItem).
+function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
-		local tooltipText, tooltipRaw, tooltipReady, tooltipMissing = self:ScanBagItem(bagID, slotID)
+		local tooltipText, tooltipRaw, tooltipReady, tooltipMissing = self:ScanBagItem(bagID, slotID, peek)
 		if not tooltipReady then return { loading = true, tooltip = true } end
 		local name, _, quality, _, reqLevel, class, subclass, _, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
@@ -238,8 +239,10 @@ end
 -- on): the same item in two groups stays two slots. A stack merges into the
 -- first slot of its item in the group, which stays where it was. noMerge
 -- reads every stack as its own item, whatever stackItems says (auto vendor
--- sells slot by slot).
-function INV:ReadBags(id, groupOf, noMerge)
+-- sells slot by slot). peek is a read only to show the bags (the Categories
+-- tab's): an item waiting for its tooltip counts no try and queues no retry,
+-- which the bag updates' own reads do.
+function INV:ReadBags(id, groupOf, noMerge, peek)
 	local container = self.containers[id]
 	if not container then
 		st:Error('container with id ', id, 'not found')
@@ -254,12 +257,12 @@ function INV:ReadBags(id, groupOf, noMerge)
 		local bag = { id = bagID, items = {}, free = {} }
 		tinsert(bags, bag)
 		for slotID = 1, C_Container.GetContainerNumSlots(bagID) do
-			local item = self:GetInventoryItemInfo(bagID, slotID, id)
+			local item = self:GetInventoryItemInfo(bagID, slotID, id, peek)
 			if item then
 				numItems = numItems + 1
 				if item.loading then
 					numLoading = numLoading + 1
-					if item.tooltip then self:QueueTooltipRetry() end
+					if item.tooltip and not peek then self:QueueTooltipRetry() end
 				else
 					local mergeKey = tostring(item.itemID) .. ':' .. group
 					if merge and merged[mergeKey] and item.maxStack > 1 then

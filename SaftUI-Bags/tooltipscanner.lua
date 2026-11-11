@@ -20,9 +20,11 @@ end
 	one link that weren't ready it is true with '', and a fourth value,
 	`missing`, true (the item's text never arrived, so auto vendor won't sell
 	it), still uncached, so a later read can fill it in. With no C_TooltipInfo,
-	or no link: '', '', true.
+	or no link: '', '', true. peek reads without counting a try (a read only to
+	show the bags, as the Categories tab's), so it never brings the give-up
+	nearer.
 ]]
-function INV:ScanBagItem(bagID, slotID)
+function INV:ScanBagItem(bagID, slotID, peek)
     if not C_TooltipInfo then return '', '', true end
     local itemLink = C_Container.GetContainerItemLink(bagID, slotID)
     if not itemLink then return '', '', true end
@@ -35,7 +37,7 @@ function INV:ScanBagItem(bagID, slotID)
     if not (data and data.lines) then
         local tries = self.tooltipTries[itemLink] or 0
         if tries >= self.TOOLTIP_TRIES then return '', '', true, true end
-        self.tooltipTries[itemLink] = tries + 1
+        if not peek then self.tooltipTries[itemLink] = tries + 1 end
         return '', '', false
     end
     local raw = ""
