@@ -17,8 +17,10 @@ end
 	them. Both are cached per link. `ready` is false while the tooltip hasn't
 	arrived (C_TooltipInfo exists, the slot has a link, and GetBagItem gives no
 	data or no lines); nothing is cached then. After INV.TOOLTIP_TRIES reads of
-	one link that weren't ready it is true with '', still uncached, so a later
-	read can fill it in. With no C_TooltipInfo, or no link: '', '', true.
+	one link that weren't ready it is true with '', and a fourth value,
+	`missing`, true (the item's text never arrived, so auto vendor won't sell
+	it), still uncached, so a later read can fill it in. With no C_TooltipInfo,
+	or no link: '', '', true.
 ]]
 function INV:ScanBagItem(bagID, slotID)
     if not C_TooltipInfo then return '', '', true end
@@ -32,7 +34,7 @@ function INV:ScanBagItem(bagID, slotID)
     local data = C_TooltipInfo.GetBagItem(bagID, slotID)
     if not (data and data.lines) then
         local tries = self.tooltipTries[itemLink] or 0
-        if tries >= self.TOOLTIP_TRIES then return '', '', true end
+        if tries >= self.TOOLTIP_TRIES then return '', '', true, true end
         self.tooltipTries[itemLink] = tries + 1
         return '', '', false
     end

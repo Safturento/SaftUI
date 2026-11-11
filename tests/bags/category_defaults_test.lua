@@ -311,6 +311,16 @@ test('Reputation: catches every "Use: Grants N reputation", and a "Use: Grants" 
 	eq(old, 'Miscellaneous', 'no "Use:": not today'); eq(new, 'Miscellaneous', 'nor now')
 end)
 
+test('Pets: a retail item of class 17 goes by the class ID; today it went by the name "Battle Pet"', function()
+	world('retail')
+	local cage = put(fixture('a retail item of class 17 ("Battle Pets") with an item link').item)
+	eq(cage.class, 'Battle Pets', 'retail names class 17 "Battle Pets"')
+	eq(OLD.categorize(cage), 'Miscellaneous', 'today it was not Pets')
+	eq((INV:GetItemCategory(cage)), 'Pets', 'now it is (ruling C3)')
+	local caged = put(fixture('a caged pet').item)
+	eq(OLD.categorize(caged) .. ' -> ' .. INV:GetItemCategory(caged), 'Pets -> Pets', 'a caged pet, as it was')
+end)
+
 test("today's overlaps keep their order", function()
 	world('retail')
 	eq(key(fixture('a retail gem (class 3)').item), 'Gems/Enchants', 'a retail gem: Gems/Enchants, not Trade Goods')
@@ -519,6 +529,67 @@ test('IsAutoVendorItem sells only from the selling category, and never a Protect
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('IsAutoVendorItem never sells Cosmetic on a client that names it in another language', function()
+	world('forever')
+	-- A German client: armor subclass 5 is "Kosmetisch". The default Grays rule's
+	-- NOT Cosmetic resolves to nothing there (as today's English name test
+	-- matched nothing), so a grey cosmetic is in Grays/Auto Vendor.
+	local english = C_Item.GetItemSubClassInfo
+	C_Item.GetItemSubClassInfo = function(classID, subclassID)
+		if classID == 4 and subclassID == 5 then return 'Kosmetisch' end
+		return english(classID, subclassID)
+	end
+	INV.ItemClasses.Reset()
+	INV.CategoryDefaults.Reset()
+	INV:CategoriesChanged()
+	eq(INV.ItemClasses.SubclassName(4, 5), 'Kosmetisch', 'the client names it in German')
+	local hat = put({ itemID = 7001, name = 'Partyhut', classID = 4, subclassID = 5, equipLoc = 'INVTYPE_HEAD',
+		quality = 0 })
+	eq((INV:GetItemCategory(hat)), 'Grays/Auto Vendor', 'a grey cosmetic is in Grays/Auto Vendor')
+	eq(INV:IsAutoVendorItem(hat), false, 'and never sold: Cosmetic is armor subclass 5, whatever its name')
+	local fang = put({ itemID = 7002, name = 'Zahn', classID = 15, subclassID = 0, quality = 0 })
+	eq(INV:IsAutoVendorItem(fang), true, 'another grey still sells')
+end)
+
+test('IsAutoVendorItem never sells an item whose tooltip never arrived, and sells it once its text does', function()
+	world('forever')
+	W.bags[0] = nil
+	W.bag(0, 4, 'Backpack')
+	local bone = W.item(7101, 'Old Bone', nil, 1, { classID = 15, subclassID = 0, quality = 0,
+		tooltip = { 'Old Bone' }, tooltipLoading = true })
+	W.put(0, 1, bone)
+	local function read()
+		local bags, _, numLoading, categoryOf = INV:ReadBags('bag', function() return 'bag' end)
+		local info = bags[1].items[1]
+		return info, numLoading, info and categoryOf[info]
+	end
+	for _ = 1, INV.TOOLTIP_TRIES do read() end
+	local info, numLoading, k = read()
+	eq(numLoading, 0, 'after the tries, it is filed')
+	eq(info.tooltipText, '', 'with no tooltip text')
+	eq(info.tooltipMissing, true, 'marked as missing its tooltip')
+	eq(k, 'Grays/Auto Vendor', 'a grey, in Grays/Auto Vendor')
+	eq(INV:IsAutoVendorItem(info), false, 'never sold: its text could say Fishing')
+	bone.tooltipLoading = nil
+	info, numLoading, k = read()
+	eq(info.tooltipMissing, nil, 'the mark is gone once the text arrives')
+	eq(info.tooltipLower, ' old bone', 'with its text')
+	eq(k, 'Grays/Auto Vendor', 'still in Grays/Auto Vendor')
+	eq(INV:IsAutoVendorItem(info), true, 'and sold: its text has no exclusion')
+	-- A tooltip that arrives with an exclusion text is not.
+	local bobber = W.item(7102, 'Old Bobber', nil, 1, { classID = 15, subclassID = 0, quality = 0,
+		tooltip = { 'Fishing' }, tooltipLoading = true })
+	W.bags[0].items[1] = bobber
+	for _ = 1, INV.TOOLTIP_TRIES do read() end
+	info = read()
+	eq(INV:IsAutoVendorItem(info), false, 'a grey bobber with no text yet: not sold')
+	bobber.tooltipLoading = nil
+	info = read()
+	eq(info.tooltipMissing, nil, 'its text arrives')
+	eq(INV:IsAutoVendorItem(info), false, 'and says Fishing: not sold')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('the list reads the store', function()
 	world('forever')
 	local defaults = ids(INV.CategoryDefaults.Build())
@@ -625,7 +696,7 @@ test('filters.lua is gone, and nothing reads INV.filters', function()
 		check(source ~= nil, file .. ' exists')
 		if source then
 			for _, word in ipairs({ 'INV.filters', 'self.filters', 'AddFilter', 'AUTO_VENDOR_CATEGORIES',
-				'ItemRack', 'upgradeQualities', 'REAGENTBANK_CONTAINER' }) do
+				'ItemRack', 'upgradeQualities', 'REAGENTBANK_CONTAINER', 'customItemLists', 'expacAbbreviations' }) do
 				check(not source:find(word, 1, true), file .. ' has no ' .. word)
 			end
 		end

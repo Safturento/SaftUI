@@ -260,15 +260,19 @@ function INV:GetItemCategory(info)
 	end
 end
 
--- Never sold, whatever an item's pin or category says.
+-- Never sold, whatever an item's pin or category says: Cosmetic (Armor,
+-- subclass 5, on both clients), and these words in its tooltip.
+local COSMETIC_CLASS, COSMETIC_SUBCLASS = 4, 5
 local NEVER_SOLD_TEXT = { 'fishing', 'blizzard account bound' }
 
 --[[
 	Whether auto vendor sells an item: it is in the category that sells
 	(Grays/Auto Vendor), turned on, has a vendor price, and isn't protected.
 	Whatever its pin or that category's rule says, an item is never sold when
-	it is in an equipment set, Cosmetic, or its tooltip says "Fishing" or
-	"Blizzard Account Bound" (selling can't be undone). The slot's junk coin and
+	it is in an equipment set, Cosmetic (armor subclass 5 on both clients, by
+	ID, so a client in another language is covered), its tooltip says
+	"Fishing" or "Blizzard Account Bound", or its tooltip never arrived, so
+	those words can't be read (selling can't be undone). The slot's junk coin and
 	INV:GetVendorItems both ask this, so they never disagree. key is the item's
 	category, when the caller has it already; else info.category (set by
 	INV:ReadBags), else INV:GetItemCategory.
@@ -279,7 +283,8 @@ function INV:IsAutoVendorItem(info, key)
 	key = key or info.category or self:GetItemCategory(info)
 	local entry = self:GetCategoryList().byId[key]
 	if not (entry and entry.sells and entry.enabled) then return false end
-	if IC.SubclassName(info.classID, info.subclassID) == 'Cosmetic' then return false end
+	if info.tooltipMissing then return false end
+	if info.classID == COSMETIC_CLASS and info.subclassID == COSMETIC_SUBCLASS then return false end
 	local tooltip = info.tooltipStripped
 	if type(tooltip) == 'string' then
 		for _, text in ipairs(NEVER_SOLD_TEXT) do

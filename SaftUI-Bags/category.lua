@@ -13,7 +13,7 @@ end
 function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 	local item = C_Container.GetContainerItemInfo(bagID, slotID)
 	if item then
-		local tooltipText, tooltipRaw, tooltipReady = self:ScanBagItem(bagID, slotID)
+		local tooltipText, tooltipRaw, tooltipReady, tooltipMissing = self:ScanBagItem(bagID, slotID)
 		if not tooltipReady then return { loading = true, tooltip = true } end
 		local name, _, quality, _, reqLevel, class, subclass, _, equipSlot, texture, vendorPrice,
 			itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = C_Item.GetItemInfo(item.hyperlink)
@@ -95,6 +95,8 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId)
 				tooltipText = tooltipText,
 				tooltipLower = strlower(tooltipRaw),
 				tooltipStripped = strlower(tooltipText),
+				-- Filed without its tooltip, which never arrived (ScanBagItem).
+				tooltipMissing = tooltipMissing or nil,
 				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
 			}
 		else

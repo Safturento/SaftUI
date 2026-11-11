@@ -144,6 +144,11 @@ return {
 		classID = 15, subclassID = 2 }, expect = 'Pets' },
 	{ 'a Forever Pet item (15/2 is "Pet" there)', client = 'forever', item = { itemID = 1705,
 		name = 'Squirrel in a Crate', classID = 15, subclassID = 2 }, expect = 'Miscellaneous' },
+	-- Today's filter compared the class name "Battle Pet", which only a caged
+	-- pet's info has; retail names class 17 "Battle Pets". The defaults go by
+	-- the class ID (ruling C3).
+	{ 'a retail item of class 17 ("Battle Pets") with an item link', client = 'retail', item = { itemID = 1706,
+		name = 'Pet Cage', classID = 17, subclassID = 0 }, expect = 'Pets', changed = true },
 
 	{ 'a housing item (class 20)', client = 'retail', item = { itemID = 1801, name = 'Wooden Chair', classID = 20,
 		subclassID = 0 }, expect = 'Housing' },

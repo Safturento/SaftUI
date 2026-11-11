@@ -142,12 +142,14 @@ test('a tooltip that never loads holds its item for 10 reads, then it is filed w
 	eq(numLoading, 0, 'the next read files it')
 	local info = bags[1].items[1]
 	eq(info.tooltipText, '', 'with no text')
+	eq(info.tooltipMissing, true, 'marked as missing its tooltip')
 	eq(categoryOf[info], 'Grays/Auto Vendor', 'a gray, by what its info says (no Fishing text to keep it from selling)')
 	-- Not cached: the text arriving later is read.
 	item.tooltipLoading = nil
 	bags, _, numLoading, categoryOf = read()
 	eq(numLoading, 0, 'still not loading')
 	eq(bags[1].items[1].tooltipLower, ' fishing', 'the text is there now')
+	eq(bags[1].items[1].tooltipMissing, nil, 'and no longer missing')
 	check(categoryOf[bags[1].items[1]] ~= 'Grays/Auto Vendor', 'and the item moves out of Grays: its text says Fishing')
 end)
 
