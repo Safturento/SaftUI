@@ -147,9 +147,9 @@ test('rows: the window is as wide as Compact with every column in use', function
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('rows: categories hidden in the profile (filters.categories[id]) stay hidden', function()
+test('rows: categories hidden in the profile (Show in) stay hidden', function()
 	local c = world('rows')
-	INV.config.filters.categories.bag.Weapons = true
+	INV:SetCategoryHidden('bag', 'Weapons', true)
 	INV:UpdateContainer('bag', true)
 	check(not c.categories.Weapons:IsShown(), 'Weapons hidden')
 	eq(c.categories['Trade Goods']:GetTop(), c.categories.Consumables:GetBottom() - sp, 'Trade Goods closes up under Consumables')

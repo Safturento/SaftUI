@@ -31,7 +31,10 @@ local W = {}
 
 -- A fresh world. client is 'forever' (the default; no reagent bag) or 'retail'
 -- (the reagent bag, bag 5 in the stubbed enum). Returns the Inventory module.
-function W.fresh(client)
+-- core, if given, loads Core's helpers in place of load_core_helpers (a test
+-- that wants the real AceDB world, tests/core/config_helpers.lua, which loads
+-- them itself).
+function W.fresh(client, core)
 	client = client or 'forever'
 	W.client = client
 	reset_world()
@@ -42,7 +45,7 @@ function W.fresh(client)
 		-- Forever has no reagent bag. (The stubbed enum is retail's.)
 		Enum.BagIndex.ReagentBag = nil
 	end
-	load_core_helpers()
+	if core then core() else load_core_helpers() end
 	load_saftui('SaftUI-Core/Utilities/utilities.lua') -- slot.lua's module
 	load_saftui('SaftUI-Bags/config.lua')
 	apply_defaults()

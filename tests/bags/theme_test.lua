@@ -61,6 +61,9 @@ local function fresh()
 	end
 	INV = st:GetModule('Inventory')
 	st:BindModuleConfig(INV, 'inventory')
+	-- The windows here are made by hand, with the categories this test wants:
+	-- INV:UpdateConfig() isn't to make the rest (their frames are bags/'s).
+	function INV:EnsureCategoryFrames() end
 	-- Every currency's quality, by id.
 	_G.C_CurrencyInfo = { GetBasicCurrencyInfo = function(id) return { quality = id == 1 and 4 or 2 } end }
 end

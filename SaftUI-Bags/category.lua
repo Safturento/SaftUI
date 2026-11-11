@@ -413,10 +413,10 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
     filterCheckbox:SetPoint('BOTTOM', header, 'BOTTOM', 0, 4)
     filterCheckbox:SetPoint('LEFT', header.text, 'RIGHT', 8, 0)
     filterCheckbox:HookScript('OnClick', function(self)
-        INV.config.filters.categories[id][categoryName] = self:GetChecked() or nil
+        INV:SetCategoryHidden(id, categoryName, self:GetChecked())
 		INV:UpdateContainerLayout(id)
     end)
-	filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
+	filterCheckbox:SetChecked(INV:IsCategoryHidden(id, categoryName))
 	categoryFrame.filterCheckbox = filterCheckbox
 
 	container.categories[categoryName] = categoryFrame

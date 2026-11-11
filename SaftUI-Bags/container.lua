@@ -64,10 +64,7 @@ function INV:CreateContainer(id, name, isBankContainer)
         -- Showing or hiding the hidden categories re-packs the window.
         INV:ReleaseLayout(container)
         INV:UpdateContainer(id, true)
-        for categoryName, category in pairs(container.categories) do
-            category.filterCheckbox:SetShown(filterButton:GetChecked())
-            category.filterCheckbox:SetChecked(INV.config.filters.categories[id][categoryName])
-        end
+        INV:ShowFilterCheckboxes(container, filterButton:GetChecked())
     end)
 	filterButton:Hide()
     container.filterButton = filterButton
@@ -404,9 +401,18 @@ local function addToColumn(column, category, spacing)
     column:SetHeight(column:GetHeight() + category:GetHeight() + spacing)
 end
 
--- A category the player hid (the Edit view's checkboxes) is hidden outside that view.
+-- The Edit view's checkboxes (Show in, off when checked), shown or hidden, and
+-- set from what the profile says.
+function INV:ShowFilterCheckboxes(container, shown)
+	for categoryName, category in pairs(container.categories) do
+		category.filterCheckbox:SetShown(shown)
+		category.filterCheckbox:SetChecked(self:IsCategoryHidden(container.id, categoryName))
+	end
+end
+
+-- A category the player hid (Show in, in the Edit view's checkboxes) is hidden outside that view.
 function INV:FlushIfFiltered(container, category)
-	if not container.filterButton:GetChecked() and self.config.filters.categories[container.id][category.name] then
+	if not container.filterButton:GetChecked() and self:IsCategoryHidden(container.id, category.name) then
 		self:FlushCategory(category)
 	end
 end

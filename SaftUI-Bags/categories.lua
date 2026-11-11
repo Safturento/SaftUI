@@ -49,6 +49,9 @@ local INV = st:GetModule('Inventory')
 	  INV:IsProtected(itemID)            INV:SetProtected(itemID, on)
 	  INV:IsAutoVendorMarked(itemID)     INV:SetAutoVendorMark(itemID, on)
 	  INV:EnsureCategoryFrames()
+	  INV:MigrateCategories()    an old profile's hide flags and Auto Vendor list
+	  INV:IsCategoryHidden(windowId, key)
+	  INV:SetCategoryHidden(windowId, key, hidden)    (Show in, below)
 ]]
 
 INV.SELL_CATEGORY = 'Grays/Auto Vendor'
@@ -634,4 +637,112 @@ function INV:SetAutoVendorMark(itemID, on)
 	if on then return self:PinItem(itemID, self.SELL_CATEGORY) end
 	if self:IsAutoVendorMarked(itemID) then return self:UnpinItem(itemID) end
 	return false
+end
+
+------------------------------------------------------------------- old profiles
+
+local MIGRATED_WINDOWS = { 'bag', 'bank', 'warband', 'combinedbank' }
+
+--[[
+	A profile saved before the category list (no categories.version) sees
+	today's categories: every hide flag filters.categories[window][name] that
+	names a default category becomes that default's hide[window] (its Show in)
+	and is removed from the flags ('Empty Slots', 'Currencies' and 'Set: ...'
+	stay there); every item on autoVendorFilter is pinned to Grays/Auto Vendor,
+	unless it is Protected (it stays Protected, with no pin), and the list is
+	removed. The Protected list is untouched. Runs once (it sets version), writes
+	the store as it is (no setter, so no frame is made here), and returns whether
+	it ran; the caller then calls INV:CategoriesChanged().
+]]
+function INV:MigrateCategories()
+	local store = self:CategoryStore()
+	if store.version then return false end
+	local flags = type(self.config.filters) == 'table' and self.config.filters.categories
+	if type(flags) == 'table' then
+		for _, window in ipairs(MIGRATED_WINDOWS) do
+			local byName = flags[window]
+			if type(byName) == 'table' then
+				for _, def in ipairs(self.CategoryDefaults.Build()) do
+					if byName[def.id] then
+						local edit = EditOf(store, def.id)
+						if type(edit.hide) ~= 'table' then edit.hide = {} end
+						edit.hide[window] = true
+						byName[def.id] = nil
+					end
+				end
+			end
+		end
+	end
+	local marked = self.config.autoVendorFilter
+	if type(marked) == 'table' then
+		local pins = Pins(self)
+		for itemID, on in pairs(marked) do
+			if on and not self:IsProtected(itemID) and pins[itemID] == nil then
+				pins[itemID] = self.SELL_CATEGORY
+			end
+		end
+	end
+	self.config.autoVendorFilter = nil
+	store.version = 1
+	return true
+end
+
+------------------------------------------------------------------------ Show in
+
+local function IsSetKey(key)
+	return type(key) == 'string' and key:sub(1, 5) == 'Set: '
+end
+
+-- The old per-window flag of a key: Empty Slots, Currencies, a 'Set: ...' key,
+-- or any key that isn't a list category.
+local function Flags(self, windowId)
+	local filters = self.config.filters
+	local flags = type(filters) == 'table' and filters.categories
+	return type(flags) == 'table' and flags[windowId] or nil
+end
+
+--[[
+	Whether a window leaves a category out (its Show in is off):
+	  - a list id: its hide[windowId];
+	  - a 'Set: ...' key: the sets entry's hide[windowId], or its old flag;
+	  - any other key (Empty Slots, Currencies): its flag in
+	    filters.categories[windowId].
+]]
+function INV:IsCategoryHidden(windowId, key)
+	local byId = self:GetCategoryList().byId
+	local entry = byId[key]
+	if entry then return entry.hide[windowId] and true or false end
+	if IsSetKey(key) then
+		local sets = byId[self.SETS_ENTRY]
+		if sets and sets.hide[windowId] then return true end
+	end
+	local flags = Flags(self, windowId)
+	return flags ~= nil and flags[key] and true or false
+end
+
+--[[
+	Turns a category's Show in off (hidden) or on for a window. A list id is an
+	edit like any other (a default's hide equal to the shipped one, none, is no
+	edit; a copy is written, never the table an entry holds); every other key,
+	'Set: ...' included, writes its flag in filters.categories[windowId], where
+	the Edit view's checkbox of a set has always put it.
+]]
+function INV:SetCategoryHidden(windowId, key, hidden)
+	if windowId == nil or key == nil then return false end
+	hidden = hidden and true or false
+	local entry = Entry(self, key)
+	if entry then
+		local hide = {}
+		for window, off in pairs(entry.hide) do hide[window] = off end
+		hide[windowId] = hidden or nil
+		if next(hide) == nil and entry.default then hide = nil end
+		if SetField(self, key, 'hide', hide) then self:CategoriesChanged() end
+		return true
+	end
+	if type(self.config.filters) ~= 'table' then self.config.filters = {} end
+	local filters = self.config.filters
+	if type(filters.categories) ~= 'table' then filters.categories = {} end
+	if type(filters.categories[windowId]) ~= 'table' then filters.categories[windowId] = {} end
+	filters.categories[windowId][key] = hidden or nil
+	return true
 end

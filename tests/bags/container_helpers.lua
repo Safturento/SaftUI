@@ -253,9 +253,9 @@ end
 
 -- A fresh views world on client ('forever', the default, or 'retail'; see
 -- bag_world.lua). Returns the module and bag_world's W, to fill the bags.
-function H.views_world(client)
+function H.views_world(client, core)
 	local W = load_test_file('bags/bag_world.lua')
-	local INV = W.fresh(client)
+	local INV = W.fresh(client, core)
 	load_saftui('SaftUI-Core/Widgets/checkbutton.lua')
 	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
 	load_saftui('SaftUI-Core/Utilities/itemupgrades.lua')

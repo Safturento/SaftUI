@@ -214,7 +214,7 @@ end
 -- 'currencies', and title is false for no heading. Reads the same items as
 -- INV:GetSortedInventory, with the window's stackItems and Empty slots
 -- settings. The view is 'onebag', 'multibag' or 'rows'; Compact has no sections.
--- Rows leaves out the categories hidden in the profile (filters.categories[id]),
+-- Rows leaves out the categories hidden in the profile (their Show in, INV:IsCategoryHidden),
 -- as Compact does; One bag and Multi bag show every item.
 function INV:GetViewSections(id, view)
 	local container = self.containers[id]
@@ -234,11 +234,9 @@ function INV:GetViewSections(id, view)
 			byCategory[category] = byCategory[category] or {}
 			tinsert(byCategory[category], item)
 		end
-		local filters = self.config.filters
-		local hidden = filters and filters.categories and filters.categories[id] or {}
 		local order = {}
 		for category in pairs(byCategory) do
-			if not hidden[category] then tinsert(order, category) end
+			if not self:IsCategoryHidden(id, category) then tinsert(order, category) end
 		end
 		table.sort(order, function(a, b) return self:CategoryBefore(a, b) end)
 		for _, category in ipairs(order) do
@@ -251,7 +249,7 @@ function INV:GetViewSections(id, view)
 				tinsert(sections, { key = category, title = title, items = fitted, kind = 'category' })
 			end
 		end
-		local empties = not hidden[self.EMPTY_SLOTS_CATEGORY]
+		local empties = not self:IsCategoryHidden(id, self.EMPTY_SLOTS_CATEGORY)
 			and self:FitSlots(id, self.EMPTY_SLOTS_CATEGORY, 0, self:GetEmptySlotsByKind(id, bags, mode))
 		if empties and #empties > 0 then
 			local shown = 0

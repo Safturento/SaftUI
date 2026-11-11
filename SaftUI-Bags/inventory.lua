@@ -131,6 +131,9 @@ function INV:UpdateConfig(id)
 	if not id then
 		if not self.containers.bag then return end -- not enabled
 		self:EnsureConfigTables()
+		-- A profile saved before the category list is migrated, before anything
+		-- reads its categories. Table writes only, so safe in combat.
+		self:MigrateCategories()
 		-- Saved positions of an older shape, and a bank layout the new profile
 		-- uses, before anything is placed. Windows not made yet only have their
 		-- anchor to resize; the made ones resize in UpdateConfig(id).
@@ -151,7 +154,9 @@ function INV:UpdateConfig(id)
 		end
 		self:StyleCurrencySlots()
 		self:UpdateBagSlotBars()
-		self:QueueUpdate(true)
+		-- The profile's categories, edits and pins, read again: the frames of
+		-- its own categories, and an update that lays the bags out.
+		self:CategoriesChanged()
 		return
 	end
 
@@ -337,6 +342,8 @@ function INV:OnEnable()
 	if self.config.enable == false then return end
 
 	self:EnsureConfigTables()
+	self:MigrateCategories()
+	self:CategoriesChanged()
 	self:MigratePositions()
 
 	self:InitializeTooltipScanner()
