@@ -138,9 +138,9 @@ local function BuildInfo(option, options, path)
 	return info, handler
 end
 
--- AceConfigDialog's GetOptionsMemberValue: the member's value, calling it
--- with info (and ...) when it's a function, or a handler method's name.
-local function GetMember(membername, option, options, path, ...)
+-- The member as the option tree holds it, uncalled: the option's own, or
+-- for an inherited member the nearest one on the path that isn't nil.
+local function RawMember(membername, option, options, path)
 	local member
 	if isInherited[membername] then
 		local group = options
@@ -152,7 +152,13 @@ local function GetMember(membername, option, options, path, ...)
 	else
 		member = option[membername]
 	end
+	return member
+end
 
+-- AceConfigDialog's GetOptionsMemberValue: the member's value, calling it
+-- with info (and ...) when it's a function, or a handler method's name.
+local function GetMember(membername, option, options, path, ...)
+	local member = RawMember(membername, option, options, path)
 	if not allIsLiteral[membername]
 			and (type(member) == 'function' or (not stringIsLiteral[membername] and type(member) == 'string')) then
 		local info, handler = BuildInfo(option, options, path)
@@ -529,6 +535,15 @@ end
 -- up the tree. For the widgets (hasAlpha, image, fontSize, ...).
 function OM.Member(root, row, membername, ...)
 	return GetMember(membername, row.option, Options(root), row.path, ...)
+end
+
+-- Whether the row's option has the member (its own, or inherited as
+-- OM.Member looks it up) set to anything but nil or false, without calling
+-- it: a confirm function counts whatever it would answer, and get = false
+-- (AceDBOptions' Copy From and Delete, which show no value) doesn't.
+function OM.Has(root, row, membername)
+	local member = RawMember(membername, row.option, Options(root), row.path)
+	return member ~= nil and member ~= false
 end
 
 -- Whether the row's option is disabled now, checked as when the view was

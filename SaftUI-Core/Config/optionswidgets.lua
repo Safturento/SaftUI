@@ -1796,7 +1796,11 @@ end
 	whole select and there are none. That's read at each bind, so they come
 	and go as the choices change. A font list never has them: measuring its
 	names, each in its own face, would load every font file there is, at
-	every render. Under Thick and Thin there are none.
+	every render. Nor does an action select (Steppable): one with no value to
+	step from (get = false or no get, as AceDBOptions' Copy From and Delete),
+	whose next would pick its first choice and run the action in one click,
+	or one that confirms, which would ask at every step. Under Thick and Thin
+	there are none.
 ]]
 
 -- Where a stepper's icon sits from its top left (WowStyle2IconButtonTemplate).
@@ -1906,15 +1910,23 @@ local function EnableSteppers(w, entries)
 	PaintStepper(w.next)
 end
 
+-- Whether a select may have steppers: not a font list, and not an action:
+-- it shows a value to step from (a get that isn't false) and sets it with
+-- no confirm.
+local function Steppable(w)
+	return not IsFontList(w.row) and OM.Has(w.root, w.row, 'get') and not OM.Has(w.root, w.row, 'confirm')
+end
+
 -- The select's look: under Blizzard the steppers either side of the face
--- when its choices fit (StepsFit), the face between them, else the face
--- across it all; then its dropdown's (LookDropdown). Only the face takes
--- the mouse for the list, as only it lights. The choices are read once, for
--- the fit and the steppers' states; a font list's not at all.
+-- when it may have them (Steppable) and its choices fit (StepsFit), the
+-- face between them, else the face across it all; then its dropdown's
+-- (LookDropdown). Only the face takes the mouse for the list, as only it
+-- lights. The choices are read once, for the fit and the steppers' states;
+-- not at all for a select that may have none.
 local function LookSelect(w, blizzard)
 	local button = w.frame
 	local look = blizzard and st.ThemeArt.Control('dropdown')
-	local entries = blizzard and not IsFontList(w.row) and ListEntries(w.root, w.row) or nil
+	local entries = blizzard and Steppable(w) and ListEntries(w.root, w.row) or nil
 	w.stepped = entries ~= nil and w:StepsFit(entries)
 	if w.stepped then
 		local steps = look.stepper
@@ -1996,9 +2008,9 @@ define('select', {
 	end,
 
 	-- Picks the choice a step back (-1) or forward (1), as a pick from the
-	-- list does. Nothing past an end, or while disabled.
+	-- list does. Nothing past an end, while disabled, or without steppers.
 	Step = function(self, direction)
-		if self.disabled then return end
+		if self.disabled or not self.stepped then return end
 		local back, forward = self:StepTargets()
 		local key
 		if direction < 0 then key = back else key = forward end

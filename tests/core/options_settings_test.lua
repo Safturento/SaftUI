@@ -40,9 +40,11 @@ end
 -- A fresh world on client, 'forever' or 'retail', with /sui's pages: a small
 -- page in each of Frames, Combat, Info and none; Long, three titled sections
 -- of ten toggles, each on a line of its own, so it scrolls well past a view;
--- Tabs, two tabs, the first with two subtabs; Fill, a fill row.
-local function world(client)
+-- Tabs, two tabs, the first with two subtabs; Fill, a fill row. setup, if
+-- given, runs on the fresh stubs before Core's config loads.
+local function world(client, setup)
 	reset_world()
+	if setup then setup() end
 	stub.interface = client == 'forever' and 16001 or 120000
 	load_saftui('SaftUI-Core/constants.lua')
 	load_test_file('core/config_helpers.lua')
@@ -584,6 +586,56 @@ test("the picker row's select has steppers when its choices fit; the position bl
 
 		switch('thick')
 		check(not w.back:IsShown() and not w.next:IsShown(), client .. ': Thick: no steppers')
+		st.Config:Close()
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
+test("the Profiles page: Copy From and Delete have no steppers, the current profile's select keeps its own", function()
+	for _, client in ipairs(CLIENTS) do
+		-- A short character and realm name, so every profile name AceDBOptions
+		-- lists (the character's, the realm's, the class's and Default) fits
+		-- the stepped face. AceDB reads them when it loads.
+		world(client, function()
+			local unitName = UnitName
+			UnitName = function(unit)
+				if unit == 'player' then return 'Al', nil end
+				return unitName(unit)
+			end
+			GetRealmName = function() return 'Rx' end
+		end)
+		local current = st.config:GetCurrentProfile()
+		eq(current, 'Al - Rx', client .. ': the current profile')
+		-- A second profile, its own Screen edge margin, for Copy From and Delete to offer.
+		st.config:SetProfile('Alt')
+		st.config.profile.misc.clamp_inset = 37
+		st.config:SetProfile(current)
+		local inset = st.config.profile.misc.clamp_inset
+		check(inset ~= 37, client .. ': the current profile its own margin')
+
+		switch('blizzard'); st.Config:Open('profile')
+		local choose, copy, delete = cell('choose').widget, cell('copyfrom').widget, cell('delete').widget
+		check(choose.stepped and choose.back:IsShown() and choose.next:IsShown(), client .. ': Choose: steppers')
+		eq(around(face_of(choose.frame), choose.frame), '24,7,-23,-7', client .. ': Choose: the face between them')
+		for name, w in pairs({ ['Copy From'] = copy, Delete = delete }) do
+			check(not w.disabled, client .. ': ' .. name .. ' offers Alt')
+			check(w:StepsFit(), client .. ': ' .. name .. ": its choices would fit")
+			check(not w.stepped and not w.back:IsShown() and not w.next:IsShown(), client .. ': ' .. name .. ': no steppers')
+			eq(around(face_of(w.frame), w.frame), '-7,7,7,-7', client .. ': ' .. name .. ': the face at the full 170')
+			-- A click can't reach CopyProfile or DeleteProfile: no stepper shows, and a step does nothing.
+			w:Step(1); w:Step(-1)
+			tick()
+			eq(st.config.profile.misc.clamp_inset, inset, client .. ': ' .. name .. ': nothing copied')
+			eq(W.ConfirmText(), nil, client .. ': ' .. name .. ': nothing asked')
+		end
+		local profiles = st.config:GetProfiles()
+		check(#profiles == 2, client .. ': nothing deleted')
+
+		-- Choose steps through the profiles as a pick does.
+		local _, nextKey = choose:StepTargets()
+		stub.fire_script(choose.next, 'OnClick', 'LeftButton')
+		tick()
+		eq(st.config:GetCurrentProfile(), nextKey, client .. ": Choose's next switches to the next profile")
 		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')
 	end

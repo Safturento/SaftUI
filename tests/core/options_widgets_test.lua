@@ -2432,12 +2432,11 @@ end)
 test('a stepper picks the next or previous choice through the same path as a pick, and stops at the ends', function()
 	theme('blizzard')
 	local stored, validated, sets = 'b', 0, 0
-	local valid, asks = true, false
+	local valid = true
 	local w, told = bind('select', 'pick', opt('select', 'Pick', {
 		values = { a = 'A', b = 'B', c = 'C' },
 		get = function() return stored end,
 		validate = function() validated = validated + 1; return valid or 'Not that one' end,
-		confirm = function() return asks and 'Sure?' or false end,
 		set = function(_, v) sets = sets + 1; stored = v end,
 	}))
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
@@ -2478,19 +2477,48 @@ test('a stepper picks the next or previous choice through the same path as a pic
 	eq(told.n, 1); eq(told.ok, false); eq(told.err, 'Not that one', 'onChanged(false, message)')
 	eq(text_of(w.text), 'A', 'the face still shows A')
 	valid = true
-
-	-- A confirm asks first: No sets nothing, Yes sets.
-	asks = true
-	click(w.next)
-	eq(W.ConfirmText(), 'Sure?', 'W.Confirm asks first')
-	eq(stored, 'a', 'nothing set while it asks')
-	no()
-	eq(stored, 'a', 'No sets nothing'); eq(sets, 0)
-	click(w.next)
-	yes()
-	eq(stored, 'b', 'Yes sets the next choice')
-	asks = false
 	w:Release()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('an action select (get = false, or no get) and one that confirms have no steppers', function()
+	theme('blizzard')
+	local sets = 0
+	local function set() sets = sets + 1 end
+	local values = { a = 'A', b = 'B' }
+	local cases = {
+		-- AceDBOptions' Copy From: no value to show, its set copies a profile.
+		{ 'get = false', { values = values, get = false, set = set } },
+		{ 'no get', { values = values, set = set } },
+		{ 'confirm = true', { values = values, get = function() return 'a' end, set = set, confirm = true } },
+		{ 'a confirm function', { values = values, get = function() return 'a' end, set = set, confirm = function() return false end } },
+		{ 'a confirm method', { values = values, get = function() return 'a' end, set = set, confirm = 'Ask' },
+			{ handler = { Ask = function() return false end } } },
+	}
+	for _, case in ipairs(cases) do
+		local name, fields, groupFields = case[1], case[2], case[3]
+		local w = bind('select', 'pick', opt('select', 'Pick', fields), groupFields)
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		check(not w.stepped, name .. ': no steppers')
+		check(not w.back:IsShown() and not w.next:IsShown(), name .. ': none shown')
+		eq(around(face_of(w), w.frame), '-7,7,7,-7', name .. ': the face at the full 170')
+		eq(hit_rect(w.frame), '0,0,0,0', name .. ': the whole face opens the list')
+		w:Step(1); w:Step(-1)
+		eq(sets, 0, name .. ': a step sets nothing')
+		eq(W.ConfirmText(), nil, name .. ': nor asks')
+		w:Release()
+	end
+
+	-- A confirm inherited from the group counts too.
+	local w = bind('select', 'pick', opt('select', 'Pick', { values = values, get = function() return 'a' end, set = set }),
+		{ confirm = true })
+	check(not w.back:IsShown(), 'an inherited confirm: no steppers')
+	w:Release()
+	-- A get from the group is a value to step from.
+	w = bind('select', 'pick', opt('select', 'Pick', { values = values, set = set }), { get = function() return 'a' end })
+	check(w.back:IsShown() and w.next:IsShown(), 'an inherited get: steppers')
+	w:Release()
+	theme('thick')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
