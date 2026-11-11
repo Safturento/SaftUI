@@ -12,7 +12,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	      onChanged   the widgets' onChanged(ok, err, isDragging)
 	      width       the content's width (OB.WIDTH, the window's, when nil)
 	  body:SetRoot(root)               a new tree (a profile change rebuilt it)
-	  body:Draw(sections)  -> height   option rows, each with its widget
+	  body:Draw(sections, fillHeight) -> height
+	                                   option rows, each with its widget;
+	                                   fillHeight is the view's height, which
+	                                   fill rows stretch the drawn height to
+	                                   (body.filled: one was drawn)
 	  body:DrawResults(sections, onPick) -> height
 	                                   search results: a button per row,
 	                                   onPick(row) on a click
@@ -37,10 +41,16 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	down, in a cell as tall as the widget plus 12. Its row takes no mouse,
 	so the widget's own parts get it. A titled bare row (W.Define's titled)
 	shows its name as a label 6 down, with its desc as the name's tooltip,
-	and its widget 28 down, in a cell as tall as the widget plus 34.
+	and its widget 28 down, in a cell as tall as the widget plus 34. A fill
+	row (W.Define's fill, a bare type) takes the height the view has left
+	once the other rows are laid out (fillHeight less the drawn height), so
+	the drawn height is the view's and the page has nothing to scroll; never
+	less than its type's minHeight, and the widget is told its height with
+	SetHeight. Without fillHeight (a dialog, search results) it's minHeight.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
-	pieces both use (OB.Text, OB.Line, the pools), as this file loads first.
+	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar
+	and OB.ScrollTo), as this file loads first.
 
 	Every frame and texture here is SaftUI's. GameTooltip shows a row's desc
 	through its public API.
@@ -49,7 +59,7 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 local OB = {}
 st.OptionsBody = OB
 
-local floor, max, ceil = math.floor, math.max, math.ceil
+local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local tremove = table.remove
 
 ------------------------------------------------------------------ the mockup's numbers
@@ -151,6 +161,47 @@ function OB.ReleaseAll(pool)
 end
 
 local Text, Line, Pool, Acquire, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.Acquire, OB.ReleaseAll
+
+------------------------------------------------------------------ scrolling
+
+-- A scroll bar: 3 wide, 10 to the right of what it scrolls; a turn of the
+-- mouse wheel moves two rows.
+OB.BAR_WIDTH, OB.BAR_GAP = 3, 10
+OB.SCROLL_STEP = ROW_HEIGHT * 2
+
+-- The window's scroll bar: a 3px bar in the boxes' edge color, hidden until
+-- OB.ScrollTo shows it.
+function OB.ScrollBar(parent)
+	local bar = parent:CreateTexture(nil, 'OVERLAY')
+	bar:SetColorTexture(unpack(st.BOX_COLORS.edge))
+	bar:SetWidth(OB.BAR_WIDTH)
+	bar:Hide()
+	return bar
+end
+
+-- Scrolls frame (a scroll frame) to offset, within the height of what it
+-- holds, in whole units. Its bar shows only when there is something to
+-- scroll, gap (OB.BAR_GAP when nil) to the right of the scroll child, as
+-- tall as the share of it in view and as far down as the offset. Returns the
+-- offset it took.
+function OB.ScrollTo(frame, bar, offset, height, gap)
+	local view = frame:GetHeight() or 0
+	local range = max(0, height - view)
+	offset = max(0, min(range, floor(offset + 0.5)))
+	frame:SetVerticalScroll(offset)
+	if range > 0 and view > 0 then
+		local size = max(20, floor(view * view / height))
+		local child = frame:GetScrollChild()
+		local x = (child and child:GetWidth() or frame:GetWidth()) + (gap or OB.BAR_GAP)
+		bar:SetHeight(size)
+		bar:ClearAllPoints()
+		bar:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, -floor((view - size) * offset / range))
+		bar:Show()
+	else
+		bar:Hide()
+	end
+	return offset
+end
 
 ------------------------------------------------------------------ the pure layout
 
@@ -283,6 +334,12 @@ end
 local function IsTitled(rowType)
 	local custom = W.CUSTOM[rowType]
 	return custom ~= nil and custom.bare and custom.titled
+end
+
+-- A bare type marked fill: its row stretches down the view. Its least height, or nil.
+local function FillMin(rowType)
+	local custom = W.CUSTOM[rowType]
+	return custom ~= nil and custom.fill and custom.minHeight or nil
 end
 
 -- Where a titled bare row's widget starts: its name 6 down, 16 high, and 6 under it.
@@ -460,7 +517,14 @@ function Body:RowCell(row)
 	elseif bare then
 		-- The width first: a bare widget's height can follow it.
 		if widget.SetWidth then widget:SetWidth(self.width) end
-		cell.height = ceil(widget:GetHeight()) + (IsTitled(row.type) and BARE_TITLE + 6 or 12)
+		local pad = IsTitled(row.type) and BARE_TITLE + 6 or 12
+		local least = FillMin(row.type)
+		if least then
+			-- Its least for now: DrawSections gives it what the view leaves.
+			cell.fill, cell.pad, cell.height = true, pad, ceil(least) + pad
+		else
+			cell.height = ceil(widget:GetHeight()) + pad
+		end
 	end
 	self.cells[#self.cells + 1] = cell
 	return cell
@@ -478,10 +542,11 @@ end
 
 -- Draws sections of rows with makeCell (rows it draws nothing for are left
 -- out, and so are sections left empty), with OB.Dividers' lines between
--- their cells. sizeOf(row) overrides the rows' sizes in the layout. Returns
--- the height drawn.
-function Body:DrawSections(sections, makeCell, sizeOf)
-	local byRow, kept = {}, {}
+-- their cells. sizeOf(row) overrides the rows' sizes in the layout. Fill
+-- rows share what fillHeight (the view's height) leaves, in whole units, the
+-- first taking any remainder. Returns the height drawn.
+function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
+	local byRow, kept, fills = {}, {}, {}
 	for _, section in ipairs(sections) do
 		local rows = {}
 		for _, row in ipairs(section.rows) do
@@ -489,12 +554,25 @@ function Body:DrawSections(sections, makeCell, sizeOf)
 			if cell then
 				byRow[row] = cell
 				rows[#rows + 1] = row
+				if cell.fill then fills[#fills + 1] = cell end
 			end
 		end
 		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
 	end
 	local function heightOf(row) return byRow[row].height end
 	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf)
+	local extra = fillHeight and #fills > 0 and floor(fillHeight - height) or 0
+	if extra > 0 then
+		local share = floor(extra / #fills)
+		for i, cell in ipairs(fills) do
+			cell.height = cell.height + share + (i == 1 and extra - share * #fills or 0)
+		end
+		laid, height = OB.LayoutSections(kept, heightOf, sizeOf)
+	end
+	for _, cell in ipairs(fills) do
+		if cell.widget.SetHeight then cell.widget:SetHeight(cell.height - cell.pad) end
+	end
+	self.filled = #fills > 0
 	local pools, content = self.pools, self.content
 	for _, entry in ipairs(laid) do
 		if entry.lineY then
@@ -534,8 +612,8 @@ function Body:DrawSections(sections, makeCell, sizeOf)
 	return #kept > 0 and height or 0
 end
 
-function Body:Draw(sections)
-	return self:DrawSections(sections, function(row) return self:RowCell(row) end)
+function Body:Draw(sections, fillHeight)
+	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)
@@ -572,5 +650,6 @@ function Body:Release()
 		if cell.widget then cell.widget:Release() end
 	end
 	wipe(self.cells)
+	self.filled = false
 	for _, key in ipairs({ 'row', 'result', 'title', 'note', 'line' }) do ReleaseAll(self.pools[key]) end
 end

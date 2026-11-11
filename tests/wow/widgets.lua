@@ -227,14 +227,44 @@ local function effective_scale(s)
 	return scale
 end
 
+local rect_of
+
+-- A scroll frame's scroll child (ScrollFrame.SetScrollChild) is placed by the
+-- scroll frame, not by anchors of its own: its top left at the scroll frame's,
+-- moved up by the vertical scroll, at its own size (SetSize). That's how the
+-- game shows one: Blizzard's scroll children (a ScrollFrameTemplate's
+-- <ScrollChild> in its XML) have a size and no anchors and show at the frame's
+-- top left, and SetVerticalScroll(offset) shows the child from offset down
+-- (ScrollFrame_OnVerticalScroll puts the scroll bar's value at the offset).
+-- The offset is in the scroll frame's units; SaftUI's scroll children share
+-- its scale. Not mimicked: the horizontal scroll, and the clipping (a part of
+-- the child outside the frame is still drawn, and IsMouseOver stays the
+-- rectangle test, which the game's is too).
+local function scroll_child_rect(s, visiting)
+	local frame = s.scroll_frame
+	local fs = states[frame]
+	local l, _, _, t = rect_of(frame, visiting)
+	if not l then return nil end
+	local k = effective_scale(fs) / effective_scale(s) -- its units to the child's
+	local left, top = l * k, (t + (fs.vertical_scroll or 0)) * k
+	return left, left + (s.width or 0), top - (s.height or 0), top
+end
+
 -- widget's left, right, bottom and top in its own units, or nil if it can't
 -- be placed (no anchors, or anchored to something that can't be).
-local function rect_of(widget, visiting)
+function rect_of(widget, visiting)
 	local s = states[widget]
 	if s.fills_screen then
 		-- One physical pixel in this widget's units, times the screen's pixels.
 		local pixel = (768 / stub.screen_height) / effective_scale(s)
 		return 0, stub.screen_width * pixel, 0, stub.screen_height * pixel
+	end
+	if s.scroll_frame then
+		if visiting[widget] then return nil end
+		visiting[widget] = true
+		local l, r, b, t = scroll_child_rect(s, visiting)
+		visiting[widget] = nil
+		return l, r, b, t
 	end
 	if #s.points == 0 or visiting[widget] then return nil end
 	visiting[widget] = true
@@ -937,13 +967,17 @@ end
 
 ------------------------------------------------------------------ ScrollFrame
 
+-- The child is placed by the scroll frame from now on (rect_of); one it
+-- replaces goes back to its own anchors.
 function ScrollFrame.SetScrollChild(self, s, child)
 	if not is_widget(child, 'Frame') then usage(s, 'SetScrollChild(): child must be a frame') end
+	if s.scroll_child then states[s.scroll_child].scroll_frame = nil end
 	s.scroll_child = child
+	states[child].scroll_frame = self
 end
 function ScrollFrame.GetScrollChild(self, s) return s.scroll_child end
--- The vertical scroll offset, remembered. Not mimicked: the scroll child is
--- drawn where its own anchors put it, not shifted up by the offset.
+-- The vertical scroll offset: the scroll child shows from it down, moved up by
+-- it (rect_of).
 function ScrollFrame.SetVerticalScroll(self, s, offset) s.vertical_scroll = number_arg(s, offset, 'offset') end
 function ScrollFrame.GetVerticalScroll(self, s) return s.vertical_scroll or 0 end
 -- The game re-reads the scroll child's size only when told to; the stub reads

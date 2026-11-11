@@ -1470,6 +1470,101 @@ test("a titled bare row: its name above the widget, the desc its name's tooltip,
 	close_all()
 end)
 
+test("a fill row stretches to the body's visible height, so the body has nothing to scroll; it follows the window's size, and other pages are as they were", function()
+	local heights = {}
+	W.Define('windowfill', {
+		bare = true,
+		fill = true,
+		minHeight = 100,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = {
+			SetWidth = function(self, width) self.frame:SetWidth(width) end,
+			SetHeight = function(self, height)
+				self.frame:SetHeight(height)
+				heights[#heights + 1] = height
+			end,
+			Refresh = function() end,
+		},
+	})
+	eq(W.CUSTOM.windowfill.fill, true, 'W.CUSTOM marks it fill')
+	eq(W.CUSTOM.windowfill.minHeight, 100, 'with its least height')
+	local module = st:NewModule('FillRows')
+	function module:GetConfigTable()
+		local function toggle(name, order)
+			return { type = 'toggle', name = name, desc = name, order = order, get = function() return true end, set = function() end }
+		end
+		return {
+			name = 'Fill rows', type = 'group', category = 'Frames',
+			args = {
+				before = toggle('Before', 1),
+				fill = { type = 'windowfill', name = 'Fill', desc = 'A fill row.', size = 'wide', order = 2 },
+				after = toggle('After', 3),
+			},
+		}
+	end
+
+	-- Another page first: its height and the body's edges, to compare.
+	OW:Navigate('Inventory', { tab = 'general' })
+	local F = frames()
+	local bodyRight = F.body:GetRight()
+	eq(bodyRight, F.content:GetRight(), "a page's body clips at its content's right edge")
+	local generalHeight = F.content:GetHeight()
+	check(generalHeight < F.body:GetHeight(), 'a short page')
+
+	st.Config:Open('FillRows')
+	eq(drawn(), 'before,fill,after', 'the fill row between normal rows')
+	local view = F.body:GetHeight()
+	local c = cell('fill')
+	eq(c.y + c.height + 34 + 24, view, 'the fill row takes what the rows around it leave (the row after it, the bottom padding)')
+	eq(c.widget.frame:GetHeight(), c.height - 12, 'its widget is told its height: the cell less its padding')
+	eq(heights[#heights], c.height - 12, 'through SetHeight')
+	eq(c.widget.frame:GetWidth(), 774, "the body's width, as a bare row")
+	eq(cell('after').y, c.y + c.height, 'the next row under it')
+	eq(F.content:GetHeight(), view, 'the drawn height is the visible height')
+	check(not F.bar:IsShown(), 'nothing to scroll: no bar')
+	eq(F.body:GetRight() - F.content:GetRight(), 13, "the body's clip reaches over its own bar's place, 13 past the content, for the row's own bars")
+
+	-- The window grows: the row follows once the body's size changes.
+	local renders = OW.GetRenderCount()
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), view)
+	tick()
+	eq(OW.GetRenderCount(), renders, 'the same height: no render')
+	F.window:SetHeight(800)
+	eq(F.body:GetHeight(), view + 100, 'a taller window, a taller body')
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), view + 100)
+	tick()
+	eq(OW.GetRenderCount(), renders + 1, 'drawn again')
+	c = cell('fill')
+	eq(c.widget.frame:GetHeight(), heights[#heights - 1] + 100, 'the fill row is 100 taller')
+	eq(F.content:GetHeight(), view + 100, 'and the drawn height the new visible height')
+
+	-- Too small a window: the row keeps its least height, and the body scrolls.
+	F.window:SetHeight(250)
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), F.body:GetHeight())
+	tick()
+	c = cell('fill')
+	eq(c.widget.frame:GetHeight(), 100, 'its least height')
+	check(F.content:GetHeight() > F.body:GetHeight(), 'more than the body shows')
+	check(F.bar:IsShown(), 'the body has a bar')
+	eq(F.bar:GetLeft() - F.content:GetLeft(), 774 + 10, 'still 10 to the right of the content')
+	F.window:SetHeight(700)
+
+	-- Other pages: drawn as before, the body back to its own edges.
+	OW:Navigate('Inventory', { tab = 'general' })
+	eq(F.body:GetRight(), bodyRight, "the body's edge as before")
+	eq(F.content:GetHeight(), generalHeight, 'the page as tall as before')
+	local before = #heights
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), F.body:GetHeight() + 50)
+	tick()
+	eq(#heights, before, 'no fill row: a size change draws nothing')
+
+	module.GetConfigTable = nil
+	close_all()
+end)
+
 ------------------------------------------------------------------ under the Blizzard theme
 
 local function theme(name)

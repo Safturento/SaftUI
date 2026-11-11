@@ -1,9 +1,10 @@
 -- The Categories tab in /sui > Bags (SaftUI-Bags/categoriestab.lua): the
 -- bagcategories widget (the category list on the left, with its handles,
 -- counts and markers, + New category and Reset all, and the selected
--- category's editor on the right), INV:CategoryEditorOptions, the bagitems
--- widget (Pinned items, Caught now), INV:CountCategories, INV:EditCategory,
--- and the open tab following bag updates and a profile switch.
+-- category's editor on the right, filling the body's view and each scrolling
+-- on its own), INV:CategoryEditorOptions, the bagitems widget (Pinned items,
+-- Caught now), INV:CountCategories, INV:EditCategory, and the open tab
+-- following bag updates and a profile switch.
 --
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
 -- under the module's real files) on Core's real config.lua and AceDB
@@ -14,8 +15,8 @@
 -- reads the player's money with GetMoney and formats it with
 -- LibStringFormat-1.0, neither loaded here). The mouse, the keyboard and the
 -- frame clock are played by firing scripts: the window renders on its
--- ticker's OnUpdate, which the stubs never run by themselves, and a held
--- mouse button is stub.mouse_buttons.LeftButton.
+-- ticker's OnUpdate, and a drag draws on its frame's, which the stubs never
+-- run by themselves; a held mouse button is stub.mouse_buttons.LeftButton.
 local H = load_test_file('bags/container_helpers.lua')
 
 local st, INV, B, OW, OM, W, R
@@ -61,11 +62,6 @@ end
 
 local function open()
 	st.Config:Open('Inventory', 'categories')
-	-- The game puts a scroll frame's child at its top left (less the scroll,
-	-- none here); the stubbed scroll frame doesn't place it, so the rows'
-	-- edges (and IsMouseOver, for a drag) can be read.
-	local F = OW.GetFrames()
-	if F.content:GetNumPoints() == 0 then F.content:SetPoint('TOPLEFT', F.body, 'TOPLEFT') end
 end
 
 local function cell(key)
@@ -116,6 +112,19 @@ local function cursor_on(frame, lower)
 	stub.cursor_x = (l + width / 2) * scale
 	stub.cursor_y = (b + (lower and 0.25 or 0.75) * h) * scale
 end
+
+-- Turns of the mouse wheel over frame: 1 scrolls up, -1 down.
+local function wheel(frame, delta, times)
+	for _ = 1, times or 1 do stub.fire_script(frame, 'OnMouseWheel', delta) end
+end
+
+-- Whether a list row's whole frame shows in the list's view.
+local function in_view(w, row)
+	return row.frame:GetTop() <= w.listScroll:GetTop() and row.frame:GetBottom() >= w.listScroll:GetBottom()
+end
+
+-- A frame of a drag: its frame's OnUpdate, as the game runs it each frame.
+local function drag_frame(w, elapsed) stub.fire_script(w.frame, 'OnUpdate', elapsed or 0.01) end
 
 -- A handle dragged onto a frame's upper or lower half, the mouse held between.
 local function drag(handle, onto, lower)
@@ -219,7 +228,8 @@ test('the list: every category in order, counts from the bag window, the edited 
 	local w = tab()
 	local list = INV:GetCategoryList()
 	eq(#w.rows, #list, 'a row per category')
-	local top, left = w.frame:GetTop(), w.frame:GetLeft()
+	-- The rows are laid in the list's scroll child, from its top.
+	local top, left = w.list:GetTop(), w.frame:GetLeft()
 	for i, entry in ipairs(list) do
 		local row = w.rows[i]
 		eq(row.id, entry.id, 'row ' .. i .. ' in list order')
@@ -285,20 +295,18 @@ test('the list: every category in order, counts from the bag window, the edited 
 		eq(row.handle:IsShown(), row.id ~= MISC, row.id .. ': a handle unless Miscellaneous')
 	end
 
-	-- Under the list: + New category and Reset all, in blue.
+	-- Under the list: + New category and Reset all, in blue, under its view
+	-- (the shipped list is longer than it shows; see the scrolling tests).
 	eq(w.addButton.text:GetText(), '+ New category', '+ New category')
 	eq(w.resetButton.text:GetText(), 'Reset all', 'Reset all')
 	check(same_rgb({ w.addButton.text:GetTextColor() }, rgb('text', 'blue')), 'in blue')
 	check(same_rgb({ w.resetButton.text:GetTextColor() }, rgb('text', 'blue')), 'both')
-	local last = w.rows[#w.rows].frame
-	eq(last:GetBottom() - w.addButton:GetTop(), 8, 'under the last row')
+	eq(w.listScroll:GetBottom() - w.addButton:GetTop(), 8, "8 under the list's view")
 	check(w.resetButton:GetLeft() > w.addButton:GetRight(), 'side by side')
 
-	-- The editor pane: from 234, 540 wide; the tab as tall as its taller pane.
+	-- The editor pane: from 234, 540 wide.
 	eq(w.pane:GetLeft() - left, 234, 'the editor starts at 234')
 	eq(w.pane:GetWidth(), 540, 'and is 540 wide')
-	local listHeight = top - w.addButton:GetBottom()
-	eq(w.frame:GetHeight(), math.max(listHeight, w.pane:GetHeight()), 'as tall as the taller pane')
 	eq(w:EditorCell('name').widget.frame:GetText(), 'Consumables', "the editor shows the selected category's")
 
 	-- A click selects a row.
@@ -339,8 +347,12 @@ test("dragging a row's handle reorders the list; Miscellaneous stays last", func
 	drag(row_of(w, 'Quest').handle, row_of(w, SETS).frame, true)
 	eq(INV:GetCategoryList()[2].id, 'Quest', 'Quest just below Equipment sets')
 
-	-- Onto Miscellaneous's lower half: just above it, which stays last.
+	-- Onto Miscellaneous's lower half: just above it, which stays last. It's
+	-- at the bottom of the list, below its view: scrolled to first.
 	w = tab()
+	check(not in_view(w, row_of(w, MISC)), 'Miscellaneous is out of view')
+	wheel(w.listScroll, -1, 50)
+	check(in_view(w, row_of(w, MISC)), 'scrolled to')
 	drag(row_of(w, 'Armor').handle, row_of(w, MISC).frame, true)
 	list = INV:GetCategoryList()
 	eq(list[#list].id, MISC, 'Miscellaneous is last')
@@ -349,8 +361,10 @@ test("dragging a row's handle reorders the list; Miscellaneous stays last", func
 	check(not row_of(w, MISC).handle:IsShown(), 'Miscellaneous has no handle')
 
 	-- Dropped where it is, or off the list: nothing moves.
+	wheel(w.listScroll, 1, 50)
 	local order = ids()
 	local toys = row_of(w, 'Toys')
+	check(in_view(w, toys), 'Toys shows')
 	drag(toys.handle, toys.frame, false)
 	drag(toys.handle, toys.frame, true)
 	drag(toys.handle, nil)
@@ -375,7 +389,8 @@ test('a drag in the tab holds the window: neither the list nor the rule editor i
 		return real(...)
 	end
 
-	-- The list's drag.
+	-- The list's drag (its top in view: Consumables, selected, is lower down).
+	wheel(w.listScroll, 1, 50)
 	local handle = row_of(w, 'Quest').handle
 	stub.mouse_buttons.LeftButton = true
 	stub.fire_script(handle, 'OnMouseDown', 'LeftButton')
@@ -841,6 +856,379 @@ test('the rule editor fits its pane: a long row wraps, every field clear of the 
 	end
 	eq(oldGear, 2, 'both Old gear rows were looked at')
 	eq(editor.frame:GetHeight(), top - editor.rows[#editor.rows].frame:GetBottom(), 'the editor is as tall as its rows')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+------------------------------------------------------------------ scrolling
+
+-- A rule of id's with n more Name blocks: an editor taller than the tab.
+local function tall_rule(id, n)
+	local rule = R.Copy(INV:GetCategoryList().byId[id].rule)
+	for i = 1, n do rule.items[#rule.items + 1] = { block = 'name', text = 'Item ' .. i } end
+	INV:SetCategoryRule(id, rule)
+end
+
+test("the tab fills the body's view: the list and the editor each scroll on their own, with a bar only when there's something to scroll", function()
+	world()
+	INV.categoryEditor.selected = SETS -- the first row: the list opens at its top
+	open()
+	local F = OW.GetFrames()
+	local w = tab()
+	local c = cell('categories')
+	local view = F.body:GetHeight()
+	eq(c.y + c.height + 24, view, "the tab reaches down the body's view, less its bottom padding")
+	eq(F.content:GetHeight(), view, 'so the body has nothing to scroll')
+	check(not F.bar:IsShown(), 'and no bar')
+	local height = w.frame:GetHeight()
+	eq(height, c.height - 12, 'the tab is its cell less the padding')
+	local top, left = w.frame:GetTop(), w.frame:GetLeft()
+
+	-- The list: its rows in a view from the tab's top, its footer under it.
+	local rows = #w.rows * 22
+	check(rows > height, 'the shipped list is longer than the tab')
+	eq(w.listScroll:GetScrollChild(), w.list, 'the rows scroll in the list')
+	eq(w.listScroll:GetTop(), top, 'from the top')
+	eq(w.listScroll:GetLeft(), left, 'at the left')
+	eq(w.listScroll:GetWidth(), 210, '210 wide')
+	eq(w.listScroll:GetHeight(), height - 30, 'down to its footer: 8, then a row of 22')
+	eq(w.listScroll:GetBottom() - w.addButton:GetTop(), 8, '+ New category 8 under it')
+	eq(w.addButton:GetBottom(), w.frame:GetBottom(), 'at the bottom of the tab')
+	local bar = w.listBar
+	local shown = w.listScroll:GetHeight()
+	check(bar:IsShown(), 'a bar: the list has more than it shows')
+	eq(bar:GetWidth(), 3, '3 wide')
+	eq(bar:GetLeft() - w.listScroll:GetRight(), 4, '4 to its right')
+	check(bar:GetRight() < w.divider:GetLeft(), 'short of the divider')
+	eq(bar:GetTop(), top, 'at the top')
+	eq(bar:GetHeight(), math.max(20, math.floor(shown * shown / rows)), 'as tall as the share of the list it shows')
+	check(same_rgb(stub.state(bar).color_texture, { unpack(st.BOX_COLORS.edge) }), "in the body's bar's color")
+
+	-- The editor: the tab's height from 234, 540 wide; Equipment sets' fits.
+	eq(w.editorScroll:GetScrollChild(), w.pane, "the editor's rows scroll in it")
+	eq(w.editorScroll:GetLeft() - left, 234, 'from 234')
+	eq(w.editorScroll:GetWidth(), 540, '540 wide')
+	eq(w.editorScroll:GetHeight(), height, 'the tab high')
+	check(w.pane:GetHeight() < height, "Equipment sets' editor fits")
+	check(not w.editorBar:IsShown(), 'no bar')
+	eq(w.divider:GetHeight(), height, 'the divider down the whole tab')
+
+	-- A rule taller than the tab: the editor's bar, 10 to its right, where the
+	-- body's own would be, inside the body's clip.
+	tall_rule('Toys', 25)
+	INV.categoryEditor.selected = 'Toys'
+	OW:Render()
+	w = tab()
+	check(w.pane:GetHeight() > height, "Toys' editor is taller than the tab")
+	bar = w.editorBar
+	check(bar:IsShown(), 'the editor has a bar')
+	eq(bar:GetLeft() - w.editorScroll:GetRight(), 10, '10 to its right')
+	eq(bar:GetLeft() - F.content:GetLeft(), 774 + 10, "where the body's own bar would be")
+	check(bar:GetRight() <= F.body:GetRight(), "inside the body's clip")
+	eq(bar:GetTop(), top, 'at the top')
+
+	-- The wheel over one scrolls that one only.
+	wheel(w.listScroll, 1, 50)
+	eq(w.listScroll:GetVerticalScroll(), 0, 'the list at its top')
+	wheel(w.listScroll, -1)
+	eq(w.listScroll:GetVerticalScroll(), 66, 'the list: three rows a turn')
+	eq(w.list:GetTop(), top + 66, 'its rows move up')
+	check(w.listBar:GetTop() < top, 'its bar down')
+	eq(w.editorScroll:GetVerticalScroll(), 0, 'the editor stays')
+	eq(F.body:GetVerticalScroll(), 0, 'and the body')
+	wheel(w.editorScroll, -1)
+	eq(w.editorScroll:GetVerticalScroll(), 68, 'the editor: two of the body\'s rows a turn')
+	eq(w.pane:GetTop(), top + 68, 'its rows move up')
+	check(w.editorBar:GetTop() < top, 'its bar down')
+	eq(w.listScroll:GetVerticalScroll(), 66, 'the list stays')
+	wheel(w.listScroll, -1, 50)
+	eq(w.listScroll:GetVerticalScroll(), rows - shown, 'no further down than its last row')
+	eq(w.listBar:GetBottom(), w.listScroll:GetBottom(), 'its bar at the bottom')
+	wheel(w.listScroll, 1, 50)
+	eq(w.listScroll:GetVerticalScroll(), 0, 'nor up past its first')
+	wheel(w.editorScroll, -1, 50)
+	eq(w.editorScroll:GetVerticalScroll(), w.pane:GetHeight() - height, "the editor no further than its end")
+
+	-- A list that fits: no bar, and its footer right under the last row.
+	for _, entry in ipairs(INV:GetCategoryList()) do
+		if #INV:GetCategoryList() * 22 + 30 <= height then break end
+		if entry.kind == 'rule' and not entry.sells and entry.id ~= 'Toys' then INV:RemoveCategory(entry.id) end
+	end
+	OW:Render()
+	w = tab()
+	eq(w.listScroll:GetHeight(), #w.rows * 22, 'the view is the rows')
+	check(not w.listBar:IsShown(), 'no bar')
+	eq(w.rows[#w.rows].frame:GetBottom() - w.addButton:GetTop(), 8, '+ New category right under the last row')
+	eq(w.listScroll:GetVerticalScroll(), 0, 'nothing scrolled')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test('each pane keeps its scroll when the tab is drawn again; another category\'s editor starts at its top; the list brings the selected row into view when it changes', function()
+	world()
+	local list = INV:GetCategoryList()
+	local far = list[#list - 1].id -- just above Miscellaneous
+	tall_rule(far, 25)
+	tall_rule('Toys', 25)
+
+	-- Opened on a category far down: its row is brought into view.
+	INV:EditCategory(far)
+	local w = tab()
+	check(in_view(w, row_of(w, far)), 'opened on a category far down the list: its row shows')
+	eq(row_of(w, far).frame:GetBottom(), w.listScroll:GetBottom(), 'scrolled the least: at the bottom of the view')
+
+	-- Scrolled away from it, the list stays put when the tab is drawn again.
+	wheel(w.listScroll, 1, 50)
+	check(not in_view(w, row_of(w, far)), 'scrolled away from it')
+	wheel(w.editorScroll, -1, 2)
+	eq(w.editorScroll:GetVerticalScroll(), 136, 'and the editor down two turns')
+	B.put(0, 7, B.item(102, 'Elixir', 'Consumable', 30))
+	INV:QueueUpdate()
+	INV:UpdateHandler()
+	tick()
+	w = tab()
+	eq(w.listScroll:GetVerticalScroll(), 0, 'a bag update draws the tab again: the list stays at its top')
+	eq(w.editorScroll:GetVerticalScroll(), 136, 'and the editor where it was')
+	click(w:EditorCell('enabled').widget.frame)
+	eq(INV:GetCategoryList().byId[far].enabled, false, 'a change in the editor')
+	w = tab()
+	eq(w.editorScroll:GetVerticalScroll(), 136, 'draws it again where it was')
+	eq(w.listScroll:GetVerticalScroll(), 0, 'and the list too')
+
+	-- Asked for again (the slot menu's Edit this category): its row shows.
+	INV:EditCategory(far)
+	w = tab()
+	check(in_view(w, row_of(w, far)), 'EditCategory brings the selected row back into view')
+
+	-- Another category: its editor from its top; the list stays (its row shows).
+	wheel(w.listScroll, 1, 50)
+	local toys = row_of(w, 'Toys')
+	check(in_view(w, toys), 'Toys shows')
+	wheel(w.listScroll, -1)
+	local offset = w.listScroll:GetVerticalScroll()
+	check(in_view(w, row_of(w, 'Toys')), 'still')
+	click(row_of(w, 'Toys').frame)
+	w = tab()
+	eq(INV.categoryEditor.selected, 'Toys', 'Toys selected')
+	eq(w.editorScroll:GetVerticalScroll(), 0, 'its editor from the top')
+	eq(w.listScroll:GetVerticalScroll(), offset, 'the list where it was')
+	wheel(w.editorScroll, -1)
+	click(row_of(w, far).frame) -- out of view, as a click from before a scroll
+	w = tab()
+	eq(w.editorScroll:GetVerticalScroll(), 0, 'back to the first one: its editor from the top too')
+	check(in_view(w, row_of(w, far)), 'and its row shows')
+
+	-- + New category: one more above Miscellaneous, selected, and shown.
+	wheel(w.listScroll, 1, 50)
+	click(w.addButton)
+	w = tab()
+	local new = INV.categoryEditor.selected
+	eq(INV:GetCategoryList()[#INV:GetCategoryList() - 1].id, new, 'a new category above Miscellaneous')
+	check(in_view(w, row_of(w, new)), 'its row shows')
+
+	-- Restore a default: back in its place, selected, and shown.
+	INV:RemoveCategory('Consumables')
+	OW:Render()
+	w = tab()
+	wheel(w.listScroll, -1, 50)
+	click(w.addButton)
+	pick('Restore a default...')
+	pick('Consumables')
+	w = tab()
+	eq(INV.categoryEditor.selected, 'Consumables', 'restored and selected')
+	check(in_view(w, row_of(w, 'Consumables')), 'its row shows')
+
+	-- A drag that moves the selected row out of view brings it back: the list
+	-- scrolled so Toys is its top row, the row above it dropped below it.
+	click(row_of(w, 'Toys').frame)
+	w = tab()
+	wheel(w.listScroll, 1, 50)
+	local place = INV:GetCategoryList().byId.Toys.place
+	-- Two turns down at most, then by hand to Toys' row exactly.
+	INV.categoryEditor.listOffset = (place - 1) * 22
+	OW:Render()
+	w = tab()
+	eq(row_of(w, 'Toys').frame:GetTop(), w.listScroll:GetTop(), 'Toys is the top row in view')
+	local above = w.rows[place - 1]
+	check(not in_view(w, above), 'the row above it is out of view')
+	drag(above.handle, row_of(w, 'Toys').frame, true)
+	eq(INV:GetCategoryList().byId.Toys.place, place - 1, 'Toys moved up a place')
+	w = tab()
+	check(in_view(w, row_of(w, 'Toys')), 'and is brought back into view')
+	eq(row_of(w, 'Toys').frame:GetTop(), w.listScroll:GetTop(), 'scrolled the least: one row up')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test('a drag with the list scrolled: the line and the drop follow the scroll, the wheel scrolls it mid-drag, and holding near an edge scrolls it', function()
+	world()
+	open()
+	local w = tab()
+	wheel(w.listScroll, -1, 3)
+	eq(w.listScroll:GetVerticalScroll(), 198, 'scrolled nine rows down')
+
+	-- Quest's handle.
+	local quest = row_of(w, 'Quest')
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(quest.handle, 'OnMouseDown', 'LeftButton')
+	check(w.drag ~= nil, 'a drag')
+
+	-- The line on the row under the cursor, where it is now.
+	local target = w.rows[12]
+	check(in_view(w, target), 'row 12 shows')
+	cursor_on(target.frame, false)
+	drag_frame(w)
+	check(w.insert:IsShown(), 'the line shows')
+	eq(w.insert:GetTop(), target.frame:GetTop() + 1, 'at the top of the row under the cursor, scrolled')
+
+	-- The wheel mid-drag: the list scrolls, the drag goes on, the line follows.
+	wheel(w.listScroll, 1)
+	eq(w.listScroll:GetVerticalScroll(), 132, 'the wheel scrolls the list mid-drag')
+	check(w.drag ~= nil, 'the drag goes on')
+	target = w.rows[9]
+	cursor_on(target.frame, false)
+	drag_frame(w)
+	eq(w.insert:GetTop(), target.frame:GetTop() + 1, "the line on the row now under the cursor")
+
+	-- Held near the bottom edge it scrolls down, near the top up; not between.
+	-- 264 (12 rows) a second: 33 in an eighth, 16.5 in a sixteenth.
+	local scroll = w.listScroll
+	local scale = scroll:GetEffectiveScale()
+	local function cursor_at(x, y) stub.cursor_x, stub.cursor_y = x * scale, y * scale end
+	local x = scroll:GetLeft() + 50
+	cursor_at(x, scroll:GetBottom() + 5)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 33, 'near the bottom: down, 33 in an eighth of a second')
+	drag_frame(w, 0.0625)
+	eq(scroll:GetVerticalScroll(), 132 + 33 + 16, 'a sixteenth: 16, in whole units')
+	drag_frame(w, 0.0625)
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'and the half left over goes into the next')
+	cursor_at(x, scroll:GetBottom() - 10)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 99, 'a little past the edge too')
+	check(not w.insert:IsShown(), 'out of the view: no line')
+	cursor_at(x, scroll:GetTop() - 5)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'near the top: up')
+	cursor_at(x, (scroll:GetTop() + scroll:GetBottom()) / 2)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'in the middle: still')
+	cursor_at(scroll:GetRight() + 40, scroll:GetBottom() + 5)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'beside the list: still')
+	cursor_at(x, scroll:GetTop() + 40)
+	drag_frame(w, 0.125)
+	eq(scroll:GetVerticalScroll(), 132 + 66, 'well above it: still')
+
+	-- A row scrolled out of view isn't under the cursor where it would be.
+	local hidden = w.rows[2]
+	check(not in_view(w, hidden), 'row 2 is out of view')
+	cursor_on(hidden.frame, false)
+	drag_frame(w)
+	check(not w.insert:IsShown(), 'no line over a row out of view')
+
+	-- Dropped on a row in view: just above it.
+	target = w.rows[20]
+	check(in_view(w, target), 'row 20 shows')
+	local before = target.id
+	cursor_on(target.frame, false)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(quest.handle, 'OnMouseUp', 'LeftButton')
+	local list = INV:GetCategoryList()
+	eq(list.byId.Quest.place + 1, list.byId[before].place, 'Quest just above the row it was dropped on')
+	check(w.ghost and not w.ghost:IsShown(), 'the drag is over')
+
+	-- Let go over a row out of view: nothing moves.
+	w = tab()
+	local order = ids()
+	wheel(w.listScroll, -1, 50)
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(row_of(w, 'Quest').handle, 'OnMouseDown', 'LeftButton')
+	cursor_on(w.rows[1].frame, false)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(row_of(w, 'Quest').handle, 'OnMouseUp', 'LeftButton')
+	eq(ids(), order, 'nothing moved')
+	eq(#take_errors(), 0, 'no errors')
+	st.Config:Close()
+end)
+
+test("the rule editor's drag and its lists work with the editor scrolled; its lists aren't cut off by it", function()
+	world()
+	tall_rule('Consumables', 25)
+	INV.categoryEditor.selected = 'Consumables'
+	open()
+	local w = tab()
+	local editor = w:EditorCell('rule').widget
+	wheel(w.editorScroll, -1, 3)
+	eq(w.editorScroll:GetVerticalScroll(), 204, 'the editor scrolled three turns')
+	local scroll = w.editorScroll
+	local function shows(row)
+		return row.frame:GetTop() <= scroll:GetTop() and row.frame:GetBottom() >= scroll:GetBottom()
+	end
+
+	-- A block dragged onto another, both in view.
+	local from, onto
+	for i, row in ipairs(editor.rows) do
+		if row.kind == 'block' and shows(row) then
+			if not from then from = i elseif i >= from + 3 then onto = i break end
+		end
+	end
+	check(from and onto, 'two blocks in view')
+	local moving = editor.rows[from].node.text
+	local ontoText = editor.rows[onto].node.text
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(editor.rows[from].handle, 'OnMouseDown', 'LeftButton')
+	cursor_on(editor.rows[onto].frame, false)
+	stub.fire_script(editor.frame, 'OnUpdate', 0.01)
+	check(editor.insert:IsShown(), 'its line shows')
+	eq(editor.insert:GetTop(), editor.rows[onto].frame:GetTop() + 1, 'on the row under the cursor, scrolled')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(editor.rows[from].handle, 'OnMouseUp', 'LeftButton')
+	local items = INV:GetCategoryList().byId.Consumables.rule.items
+	local at = {}
+	for i, node in ipairs(items) do if node.text then at[node.text] = i end end
+	eq(at[moving] + 1, at[ontoText], 'the block went just above the one it was dropped on')
+	w = tab()
+	eq(w.editorScroll:GetVerticalScroll(), 204, 'the editor stays scrolled')
+
+	-- A row scrolled out of the editor's view isn't under the cursor.
+	editor = w:EditorCell('rule').widget
+	scroll = w.editorScroll
+	local rule = INV:GetCategoryList().byId.Consumables.rule
+	local hidden
+	for _, row in ipairs(editor.rows) do
+		if row.kind == 'block' and not shows(row) then hidden = row break end
+	end
+	check(hidden ~= nil, 'a block out of view, above')
+	local last
+	for _, row in ipairs(editor.rows) do
+		if row.kind == 'block' and shows(row) then last = row end
+	end
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(last.handle, 'OnMouseDown', 'LeftButton')
+	cursor_on(hidden.frame, false)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(last.handle, 'OnMouseUp', 'LeftButton')
+	eq(INV:GetCategoryList().byId.Consumables.rule, rule, 'nothing moved')
+
+	-- + Block at the end of the rule, scrolled to: its list opens under it, on
+	-- UIParent, out of every scroll frame.
+	w = tab()
+	wheel(w.editorScroll, -1, 50)
+	editor = w:EditorCell('rule').widget
+	local add = editor.rows[#editor.rows].fields.addBlock
+	click(add)
+	eq(W.ListOwner(), add, 'the list of blocks opens')
+	local frame = W.GetListFrames().frame
+	local parent, cut = frame:GetParent(), false
+	while parent do
+		if parent:IsObjectType('ScrollFrame') then cut = true end
+		parent = parent:GetParent()
+	end
+	check(not cut, 'no scroll frame cuts it off')
+	check(math.abs(frame:GetTop() - (add:GetBottom() - 2)) < 1e-6 or math.abs(frame:GetBottom() - (add:GetTop() + 2)) < 1e-6,
+		'right under (or over) the button, scrolled')
+	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
 	st.Config:Close()
 end)

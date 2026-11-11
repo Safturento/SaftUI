@@ -7,7 +7,8 @@ local INV = st:GetModule('Inventory')
 	category's editor on the right. Two widget types (W.Define):
 
 	  { type = 'bagcategories', size = 'wide', name, desc }
-	      the whole tab: bare, the body's width (774)
+	      the whole tab: bare and fill (W.Define), the body's width (774) and
+	      the height its view leaves, so the body has nothing to scroll
 	  { type = 'bagitems', size = 'wide', name, desc,
 	    items = function(info) -> { { itemID, info } } end,
 	    onRemove = function(itemID) end,     an X on each icon unpins it, or
@@ -24,20 +25,33 @@ local INV = st:GetModule('Inventory')
 	handle moves the category (INV:MoveCategory) above the row under the
 	cursor, or below it from its lower half, but never below Miscellaneous;
 	the drag holds the window's render as the rule editor's does, and the drop
-	is worked out on the mouse up (OnUpdate only draws the ghost and the line).
-	The handle, the ghost and the row under the cursor are the rule editor's
-	(INV.DragParts, ruleeditor.lua), with its text helpers.
+	is worked out on the mouse up (OnUpdate only draws the ghost and the line,
+	and scrolls the list while the cursor is held near its top or bottom
+	edge). The handle, the ghost and the row under the cursor are the rule
+	editor's (INV.DragParts, ruleeditor.lua), with its text helpers.
 
 	The editor, from x 234 and 540 wide, is an options body of its own drawing
 	INV:CategoryEditorOptions(selected). Its widgets' onChanged goes on to the
 	tab's own, with the tab as the dragged widget while one drags (the rule
 	editor's handles), so the window refreshes nothing in the tab until the
 	mouse is let go; and the tab lays nothing out again while either drags.
-	The tab is as tall as its taller pane.
+
+	The list and the editor each scroll on their own, the mouse wheel over one
+	scrolling that one, each with the window's 3px bar (OB.ScrollTo) shown
+	only when it has something to scroll: the list's 4 to its right, short of
+	the divider, the editor's 10 to its right, where the body's own would be
+	(a fill page's body reaches over it). The list's view stops short of its
+	footer, so + New category and Reset all stay under it, right under the
+	last row when every row fits. Each keeps its scroll while the tab is drawn
+	again; the editor starts at its top for another category, and the list
+	brings the selected row into view when it changes (another selected, or
+	the one selected moved: + New category, Restore a default, a drag).
 
 	  INV.categoryEditor.selected       the selected id, for the session. One
 	                                    that is gone (a delete, a profile
 	                                    switch) gives way to the first category.
+	  INV.categoryEditor.listOffset, editorOffset
+	                                    each pane's scroll, for the session
 	  INV.categoriesTabShown            true while a bagcategories widget is
 	                                    bound: a bag update then refreshes /sui
 	                                    (inventory.lua's UpdateHandler).
@@ -50,8 +64,10 @@ local INV = st:GetModule('Inventory')
 	                                    selected ('Set: ...' selects the sets entry)
 
 	  widget.rows[i] = { frame, id, entry, handle, name, marker, count, strike, tint, bar }
-	  widget.addButton, widget.resetButton (each with .text), widget.list,
-	  widget.pane, widget.body (the editor's body), widget:EditorCell(key)
+	  widget.addButton, widget.resetButton (each with .text), widget.list
+	  (the rows, the scroll child of widget.listScroll), widget.listBar,
+	  widget.pane (the editor's rows, the scroll child of widget.editorScroll),
+	  widget.editorBar, widget.body (the editor's body), widget:EditorCell(key)
 	  bagitems: widget.icons[i] = a button { texture, remove (.icon), entry }
 
 	Every change goes through the store's setters (categories.lua), which copy
@@ -67,7 +83,7 @@ local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWi
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
 
-INV.categoryEditor = { selected = nil }
+INV.categoryEditor = { selected = nil, listOffset = 0, editorOffset = 0 }
 INV.categoriesTabShown = false
 
 ------------------------------------------------------------------ the look
@@ -80,6 +96,12 @@ local PAD = 8 -- a row's contents from its edges
 local GAP = 6
 local BAR_WIDTH = 3
 local FOOTER_GAP = 8
+local FOOTER_HEIGHT = FOOTER_GAP + ROW_HEIGHT -- + New category and Reset all, under the list
+local LIST_BAR_GAP = 4 -- the list's scroll bar, between it and the divider
+local LIST_STEP = 3 * ROW_HEIGHT -- a turn of the wheel over the list
+local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows and the footer
+local EDGE = ROW_HEIGHT -- a drag held this near the list's top or bottom edge scrolls it,
+local EDGE_SPEED = 12 * ROW_HEIGHT -- this far a second
 local TINT_ALPHA, HOVER_ALPHA = 0.25, 0.1
 local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
@@ -320,12 +342,16 @@ function INV:CategoryEditorOptions(id, tab, items)
 end
 
 -- /sui at the Categories tab, with key's category selected: a list id, or
--- the sets entry for an equipment set's 'Set: ...' key.
+-- the sets entry for an equipment set's 'Set: ...' key. The list shows its
+-- row, even when it was already the selected one.
 function INV:EditCategory(key)
 	local byId = self:GetCategoryList().byId
 	local entry = byId[key]
 	if not entry and IsSetKey(key) then entry = byId[self.SETS_ENTRY] end
-	if entry then self.categoryEditor.selected = entry.id end
+	if entry then
+		self.categoryEditor.selected = entry.id
+		self.categoryEditor.reveal = true
+	end
 	st.Config:Open('Inventory', 'categories')
 end
 
@@ -503,11 +529,92 @@ local function ResetAll(w)
 	end)
 end
 
+------------------------------------------------------------------ the tab: scrolling
+
+-- The list's rows' height: what it scrolls.
+local function ListHeight(w) return #w.rows * ROW_HEIGHT end
+
+-- offset moved the least that shows the row from top down (ROW_HEIGHT) in a
+-- view view high.
+local function Reveal(offset, top, view)
+	if top < offset then return top end
+	if top + ROW_HEIGHT > offset + view then return top + ROW_HEIGHT - view end
+	return offset
+end
+
+-- The list to offset (the wheel, a drag held near an edge): it stays there,
+-- the selected row no longer brought into view.
+local function ScrollList(w, offset)
+	local state = INV.categoryEditor
+	state.listOffset = OB.ScrollTo(w.listScroll, w.listBar, offset, ListHeight(w), LIST_BAR_GAP)
+	w.listBase, w.reveal = state.listOffset, nil
+end
+
+local function ScrollEditor(w, offset)
+	local state = INV.categoryEditor
+	state.editorOffset = OB.ScrollTo(w.editorScroll, w.editorBar, offset, w.editorHeight or 0)
+	w.editorBase = state.editorOffset
+end
+
+--[[
+	The panes in the tab's height: the list's view down to its footer, and no
+	taller than its rows, so the footer sits right under the last row when
+	they all fit; the editor's the whole height. Each is scrolled from where
+	Layout found it (w.listBase, w.editorBase), the list to the selected row
+	when Layout says so (w.reveal), so running this again (the body gives the
+	tab its height after Layout) lands on the same spot for the new height.
+]]
+local function Fit(w)
+	local height = max(1, w.frame:GetHeight())
+	local state = INV.categoryEditor
+	local rows = ListHeight(w)
+	w.listScroll:SetHeight(max(1, min(rows, height - FOOTER_HEIGHT)))
+	w.listScroll:UpdateScrollChildRect()
+	local offset = w.listBase or state.listOffset
+	if w.reveal then offset = Reveal(offset, (w.reveal - 1) * ROW_HEIGHT, w.listScroll:GetHeight()) end
+	state.listOffset = OB.ScrollTo(w.listScroll, w.listBar, offset, rows, LIST_BAR_GAP)
+	w.editorScroll:SetHeight(height)
+	w.editorScroll:UpdateScrollChildRect()
+	state.editorOffset = OB.ScrollTo(w.editorScroll, w.editorBar, w.editorBase or state.editorOffset, w.editorHeight or 0)
+	w.divider:SetHeight(height)
+end
+
 ------------------------------------------------------------------ the tab: dragging a row
+
+-- While a drag is held near the list's top or bottom edge (EDGE inside or
+-- outside it, over the list's width), the list scrolls that way, EDGE_SPEED
+-- a second, in whole units: carry keeps the part of a unit a short frame left.
+local function EdgeScroll(w, elapsed)
+	local scroll = w.listScroll
+	local left, right, bottom, top = scroll:GetLeft(), scroll:GetRight(), scroll:GetBottom(), scroll:GetTop()
+	local direction
+	if elapsed and left and ListHeight(w) > scroll:GetHeight() then
+		local x, y = GetCursorPosition()
+		local scale = scroll:GetEffectiveScale()
+		x, y = x / scale, y / scale
+		if x >= left and x <= right then
+			if y > top - EDGE and y < top + EDGE then
+				direction = -1
+			elseif y < bottom + EDGE and y > bottom - EDGE then
+				direction = 1
+			end
+		end
+	end
+	if not direction then
+		w.carry = 0
+		return
+	end
+	w.carry = (w.carry or 0) + elapsed * EDGE_SPEED
+	local step = floor(w.carry)
+	if step < 1 then return end
+	w.carry = w.carry - step
+	ScrollList(w, INV.categoryEditor.listOffset + direction * step)
+end
 
 -- The place the dragged category would take on the mouse up, and the row it
 -- would go before, or nil when it wouldn't move: above the row under the
 -- cursor, below it from its lower half, never below Miscellaneous (last).
+-- Only a row in the list's view is under the cursor (D.UnderCursor).
 local function DropSpot(w)
 	local drag = w.drag
 	local i, lower = D.UnderCursor(w.rows)
@@ -518,9 +625,12 @@ local function DropSpot(w)
 	return place, before
 end
 
--- Draws the drag: the ghost by the cursor, the line where it would go.
-local function DrawDrag(w)
+-- Draws the drag: the ghost by the cursor, the line where it would go (on
+-- the rows, so it moves with the list's scroll). Each frame (elapsed, from
+-- OnUpdate) first scrolls the list when the cursor is held near an edge.
+local function DrawDrag(w, elapsed)
 	if not w.drag or not w.row then return end
+	EdgeScroll(w, elapsed)
 	D.PlaceGhost(w.ghost)
 	local place, before = DropSpot(w)
 	if not place then return w.insert:Hide() end
@@ -536,7 +646,7 @@ local StopDrag = D.StopDrag
 function StartDrag(w, i)
 	local record = w.rows[i]
 	if not (w.row and record) or w.drag or record.entry.kind == 'misc' then return end
-	w.drag = { id = record.id, from = i }
+	w.drag, w.carry = { id = record.id, from = i }, 0
 	D.ShowGhost(w, record.entry.name, ROW_HEIGHT)
 	DrawDrag(w)
 	-- The window waits to draw again until the mouse is let go.
@@ -558,18 +668,27 @@ local function Layout(w)
 	if w.drag or EditorDragging(w) then return end
 	INV.categoriesTabShown = true
 	local owner = W.ListOwner()
-	if owner and Inside(owner, w.list) then W.CloseList() end
+	if owner and Inside(owner, w.listPane) then W.CloseList() end
 
 	local list = INV:GetCategoryList()
 	local selected = Selected(list)
 	-- The bags, read once for the counts and the editor's item strips.
 	local counts, items = INV:CountCategories('bag')
+	local level = w.frame:GetFrameLevel()
+	w.listPane:SetFrameLevel(level + 1)
+	w.listScroll:SetFrameLevel(level + 2)
+	w.list:SetFrameLevel(level + 3)
 	wipe(w.rows)
-	for i, entry in ipairs(list) do LayListRow(w, i, entry, EntryCount(counts, entry), entry.id == selected) end
+	local place
+	for i, entry in ipairs(list) do
+		LayListRow(w, i, entry, EntryCount(counts, entry), entry.id == selected)
+		if entry.id == selected then place = i end
+	end
 	for i = #list + 1, #w.rowFrames do w.rowFrames[i]:Hide() end
+	w.list:SetHeight(max(1, ListHeight(w)))
 	w.over:SetFrameLevel(w.list:GetFrameLevel() + 4) -- the drag's line, over the rows
 
-	local top = #list * ROW_HEIGHT + FOOTER_GAP
+	-- Under the list's view (Fit sizes it).
 	local blue = Colors().text.blue
 	local x = PAD
 	for _, button in ipairs({ w.addButton, w.resetButton }) do
@@ -577,57 +696,102 @@ local function Layout(w)
 		button.text:SetAlpha(1)
 		button:SetSize(TextWidth(button.text), ROW_HEIGHT)
 		button:ClearAllPoints()
-		button:SetPoint('TOPLEFT', w.list, 'TOPLEFT', x, -top)
+		button:SetPoint('TOPLEFT', w.listScroll, 'BOTTOMLEFT', x, -FOOTER_GAP)
 		x = x + button:GetWidth() + 12
 	end
-	local listHeight = top + ROW_HEIGHT
-	w.list:SetHeight(listHeight)
+
+	-- The list brings the selected row into view when it changed: another
+	-- selected, or the selected one moved (or EditCategory asked for it).
+	-- A draw that changed neither (a bag update) leaves the list where it is.
+	local state = INV.categoryEditor
+	w.reveal = nil
+	if state.reveal or state.shownId ~= selected or state.shownPlace ~= place then w.reveal = place end
+	state.reveal, state.shownId, state.shownPlace = false, selected, place
+	w.listBase = state.listOffset
 
 	w.body:Release()
 	local root = { category = INV:CategoryEditorOptions(selected, w, items) }
 	w.body:SetRoot(root)
 	local view = OM.BuildView(root, 'category')
-	local editorHeight = view and w.body:Draw(view.sections) or 0
-	w.pane:SetHeight(max(1, editorHeight))
+	w.editorScroll:SetFrameLevel(level + 1)
+	w.pane:SetFrameLevel(level + 2)
+	w.editorHeight = view and w.body:Draw(view.sections) or 0
+	w.pane:SetHeight(max(1, w.editorHeight))
+	-- Another category's editor starts at its top.
+	if state.editorFor ~= selected then state.editorFor, state.editorOffset = selected, 0 end
+	w.editorBase = state.editorOffset
 
-	local height = max(listHeight, editorHeight)
-	w.frame:SetHeight(height)
-	w.divider:SetHeight(height)
+	Fit(w)
 end
 
 W.Define('bagcategories', {
 	bare = true,
+	fill = true,
+	minHeight = MIN_HEIGHT,
 	build = function(w)
 		local frame = CreateFrame('Frame', nil, UIParent)
-		frame:SetSize(OB.WIDTH, ROW_HEIGHT)
+		frame:SetSize(OB.WIDTH, MIN_HEIGHT)
 		w.frame = frame
-		w.list = CreateFrame('Frame', nil, frame)
-		w.list:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+
+		-- The list: its rows (w.list) scroll in w.listScroll, its footer and
+		-- bar under and beside it.
+		w.listPane = CreateFrame('Frame', nil, frame)
+		w.listPane:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+		w.listPane:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 0, 0)
+		w.listPane:SetWidth(LIST_WIDTH)
+		w.listScroll = CreateFrame('ScrollFrame', nil, w.listPane)
+		w.listScroll:SetPoint('TOPLEFT', w.listPane, 'TOPLEFT', 0, 0)
+		w.listScroll:SetSize(LIST_WIDTH, ROW_HEIGHT)
+		w.list = CreateFrame('Frame', nil, w.listScroll)
 		w.list:SetSize(LIST_WIDTH, ROW_HEIGHT)
+		w.listScroll:SetScrollChild(w.list)
+		w.listScroll:EnableMouseWheel(true)
+		w.listScroll:SetScript('OnMouseWheel', function(_, delta)
+			if w.row then ScrollList(w, INV.categoryEditor.listOffset - delta * LIST_STEP) end
+		end)
+		w.listBar = OB.ScrollBar(w.listPane)
+		w.addButton = Action(w.listPane, '+ New category', function(button) NewCategory(w, button) end)
+		w.resetButton = Action(w.listPane, 'Reset all', function() ResetAll(w) end)
+
 		w.divider = frame:CreateTexture(nil, 'ARTWORK')
 		w.divider:SetColorTexture(unpack(OB.LINE))
 		w.divider:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIVIDER_X, 0)
 		w.divider:SetSize(1, ROW_HEIGHT)
-		w.pane = CreateFrame('Frame', nil, frame)
-		w.pane:SetPoint('TOPLEFT', frame, 'TOPLEFT', EDITOR_X, 0)
+
+		-- The editor: its body draws in w.pane, which scrolls in w.editorScroll.
+		w.editorScroll = CreateFrame('ScrollFrame', nil, frame)
+		w.editorScroll:SetPoint('TOPLEFT', frame, 'TOPLEFT', EDITOR_X, 0)
+		w.editorScroll:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
+		w.pane = CreateFrame('Frame', nil, w.editorScroll)
 		w.pane:SetSize(EDITOR_WIDTH, ROW_HEIGHT)
+		w.editorScroll:SetScrollChild(w.pane)
+		w.editorScroll:EnableMouseWheel(true)
+		w.editorScroll:SetScript('OnMouseWheel', function(_, delta)
+			if w.row then ScrollEditor(w, INV.categoryEditor.editorOffset - delta * OB.SCROLL_STEP) end
+		end)
+		w.editorBar = OB.ScrollBar(frame)
 		w.body = OB.New(w.pane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)
+
 		w.rows, w.rowFrames = {}, {}
-		w.addButton = Action(w.list, '+ New category', function(button) NewCategory(w, button) end)
-		w.resetButton = Action(w.list, 'Reset all', function() ResetAll(w) end)
 		-- Over the rows: the line a drag draws where the category would go.
 		w.over = CreateFrame('Frame', nil, w.list)
 		w.over:SetAllPoints(w.list)
 		w.insert = w.over:CreateTexture(nil, 'OVERLAY')
 		w.insert:SetHeight(2)
 		w.insert:Hide()
-		w.drawDrag = function() DrawDrag(w) end
+		w.drawDrag = function(_, elapsed) DrawDrag(w, elapsed) end
 	end,
 	methods = {
 		Refresh = function(w) Layout(w) end,
 
 		-- The body's width (a bare row); the panes' are fixed.
 		SetWidth = function(w, width) w.frame:SetWidth(width) end,
+
+		-- The height the body's view leaves it (a fill row): the panes follow.
+		SetHeight = function(w, height)
+			w.frame:SetHeight(max(1, height))
+			if w.row then Fit(w) end
+		end,
 
 		-- The editor's drawn row of an option key, or nil.
 		EditorCell = function(w, key)
@@ -652,6 +816,7 @@ W.Define('bagcategories', {
 			w.body:Release()
 			for _, f in ipairs(w.rowFrames) do f:Hide() end
 			wipe(w.rows)
+			w.reveal, w.listBase, w.editorBase = nil, nil, nil
 			INV.categoriesTabShown = false
 		end,
 	},
