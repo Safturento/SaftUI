@@ -388,19 +388,31 @@ end
 -- onto them, so a field it adds fails. The summon and recall buttons get
 -- backdrops (and so a ring); the action buttons, on top of the slot buttons,
 -- don't.
-local function totem_button(name)
+-- An action button's hotkey and count are on a frame over it at level 500
+-- (ActionButtonTemplate's TextOverlayContainer: the element buttons inherit it),
+-- which texts = 'container' builds.
+local function totem_button(name, texts)
 	local button = CreateFrame('CheckButton', name, UIParent)
 	button:SetSize(30, 30)
 	button:SetPoint('CENTER')
 	button.icon = button:CreateTexture(nil, 'BACKGROUND')
 	button.Flash = button:CreateTexture(nil, 'ARTWORK', nil, 1)
-	button.Count = button:CreateFontString(nil, 'ARTWORK')
-	button.HotKey = button:CreateFontString(nil, 'OVERLAY')
+	local parent = button
+	if texts == 'container' then
+		button.TextOverlayContainer = CreateFrame('Frame', nil, button)
+		button.TextOverlayContainer:SetFrameLevel(500)
+		parent = button.TextOverlayContainer
+	end
+	button.Count = parent:CreateFontString(nil, texts == 'container' and 'OVERLAY' or 'ARTWORK')
+	button.HotKey = parent:CreateFontString(nil, 'OVERLAY')
 	button.Name = button:CreateFontString(nil, 'OVERLAY')
 	return locked(button, 'Blizzard totem button')
 end
 local summon = totem_button('MultiCastSummonSpellButton')
-local action = totem_button('MultiCastActionButton1')
+-- Stacked on slot button 1 (the first of the four, MultiCastSlotButton1, in the fire slot),
+-- a higher frame, as Blizzard's is.
+local action = totem_button('MultiCastActionButton1', 'container')
+action:SetFrameLevel(slots[1]:GetFrameLevel() + 2)
 
 test("the totem bar's element borders survive a recolor", function()
 	local TB = st:GetModule('TotemBar')
@@ -484,6 +496,39 @@ test("under Blizzard the totem buttons take Blizzard's state art", function()
 	-- A button with no backdrop of its own takes the state art too.
 	eq(action:GetHighlightTexture():GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Mouseover', "an action button's hover")
 	eq(action:GetPushedTexture():GetAtlas(), 'UI-HUD-ActionBar-IconFrame-Down', "an action button's pushed")
+
+	-- The element's ring and colour on the stacked action button: the slot button's
+	-- own, under its opaque icon, show nothing there. Both are on a holder of
+	-- SaftUI's over the action button's icon and under its texts (the frame at
+	-- level 500), and nothing is written onto the locked Blizzard button.
+	TB:OnColorsChanged('theme')
+	local ringFrame = icon_backdrop(action)
+	check(ringFrame ~= nil and ringFrame ~= action.TextOverlayContainer, 'the action button has a ring frame of its own')
+	local elementArt = st.ThemeArt.Get(ringFrame)
+	local elementRing, elementOwn = elementArt.over.Ring, elementArt.own
+	check(elementRing:IsShown(), "the element's ring shows")
+	check(elementOwn ~= nil and elementOwn:IsShown(), "the element's border shows")
+	local fire = profile.totembar.colors.fire
+	eq(T.text(elementOwn:GetVertexColor()), T.text(fire[1], fire[2], fire[3], 1), 'in the fire colour')
+	local holder = elementRing:GetParent()
+	eq(elementOwn:GetParent(), holder, 'on the same holder')
+	check(holder ~= action and holder:GetParent() == ringFrame, "a frame of SaftUI's, not the button")
+	check(holder:GetFrameLevel() > action:GetFrameLevel(), 'the holder is over the action button, and so its icon')
+	check(holder:GetFrameLevel() < action.TextOverlayContainer:GetFrameLevel(), 'and under its texts')
+	check(holder:GetFrameLevel() > slots[1]:GetFrameLevel(), "and over the slot button's own ring")
+	eq(drawn(action), 'theme,theme,action', 'drawn as an action button')
+
+	-- Under Thick the slot button's border is the element's and the action button
+	-- shows nothing of its own.
+	profile.theme.name = 'thick'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	check(not elementRing:IsShown() and not elementOwn:IsShown(), 'Thick: no ring over the action button')
+	eq(ringFrame.backdropInfo, nil, 'Thick: no border on it either')
+	profile.theme.name = 'blizzard'
+	st:RedrawThemed()
+	TB:ApplySkin()
+	check(elementRing:IsShown() and elementOwn:IsShown(), 'Blizzard again: ring and colour are back')
 
 	-- Set out of combat, as before: a profile change in combat waits.
 	stub.in_combat = true

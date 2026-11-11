@@ -360,6 +360,7 @@ test("under Blizzard a bag slot's pushed and highlight are Blizzard's files", fu
 	eq(slot:GetHighlightTexture():GetTexture(), st.BLANK_TEX, 'Thick again: the flat hover')
 	eq(T.around(slot:GetHighlightTexture(), slot.icon), '0,0,0,0', 'Thick again: over the icon')
 	eq(T.text(slot:GetHighlightTexture():GetVertexColor()), T.text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', 'Thick again: blue')
+	eq(slot:GetHighlightTexture():GetBlendMode(), 'BLEND', 'Thick again: the blend it was made with, not Blizzard\'s additive')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

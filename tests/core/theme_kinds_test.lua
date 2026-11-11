@@ -152,6 +152,9 @@ local function Scan(path, source)
 				if not mask:sub(lineStart, s - 1):find('function%s+$') then
 					local args = Arguments(code, mask, e)
 					calls[#calls + 1] = { name = name, args = args }
+					-- A call with the optional extra argument is safe: the kind is
+					-- still where it was, and CheckKind throws at runtime for a
+					-- missing or unknown one.
 					if #args ~= rule.count and #args ~= rule.count + (rule.optional or 0) and not IsNone(args[rule.theme]) then
 						problem(s, ('st:%s with %d arguments: it needs %d, the kind last (%s)'):format(
 							name, #args, rule.count, table.concat(args, ', ')))

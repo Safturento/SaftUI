@@ -243,12 +243,15 @@ function st:SkinActionButton(button, config, kind)
 	if button.hover then
 		if hoverArt then
 			local blend = state.highlightBlend or 'ADD'
-			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend)
+			-- The setter first: the client may put a texture it's handed in its
+			-- state's own layer, so the art's layer is set after it.
 			button:SetHighlightTexture(button.hover, blend)
+			st.ThemeArt.StyleState(button.hover, hoverArt, button, blend)
 		else
 			button.hover:SetTexture(st.BLANK_TEX)
 			button.hover:SetTexCoord(0, 1, 0, 1)
 			button.hover:SetDrawLayer('OVERLAY', 0)
+			button.hover:SetBlendMode('BLEND') -- as it's made, after Blizzard's additive hover
 			button.hover:ClearAllPoints()
 			-- button.hover:SetVertexColor(1, 1, 1, .1)
 			button.hover:SetVertexColor(st.config.profile.colors.button.blue:GetRGB())
@@ -265,10 +268,11 @@ function st:SkinActionButton(button, config, kind)
 	end
 	if button.pushed then
 		if state and state.pushed then
-			st.ThemeArt.StyleState(button.pushed, state.pushed, button)
 			-- A caller may have cleared the pushed texture under Thick
-			-- (the bags' slots do): it's Blizzard's art again.
+			-- (the bags' slots do): it's Blizzard's art again. The setter first,
+			-- then the layer (see the hover's).
 			button:SetPushedTexture(button.pushed)
+			st.ThemeArt.StyleState(button.pushed, state.pushed, button)
 		else
 			button.pushed:SetTexture(st.BLANK_TEX)
 			button.pushed:SetTexCoord(0, 1, 0, 1)

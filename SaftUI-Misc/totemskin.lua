@@ -222,6 +222,44 @@ local PostHook = TB.PostHook
 --- Styles --------------------------
 ------------------------------------
 
+-- Every element action button's ring takes its slot button's element colour. The action
+-- buttons are the ones on top (Blizzard stacks MultiCastActionButton n on slot button
+-- (n - 1) % 4 + 1, one for each page), so the ring and the colour show there. Only
+-- SaftUI's frames are touched, so this runs in combat too.
+local function ColorElements()
+	local perPage = NUM_MULTI_CAST_BUTTONS_PER_PAGE or 4
+	for i = 1, (NUM_MULTI_CAST_PAGES or 3) * perPage do
+		local button = _G['MultiCastActionButton' .. i]
+		local skin = button and skins[button]
+		local slotButton = _G['MultiCastSlotButton' .. ((i - 1) % perPage + 1)]
+		if skin and skin.ring and slotButton then
+			local r, g, b = TB:GetElementColor(slotButton:GetID())
+			if r then
+				st:SetBorderColor(skin.ring, r, g, b)
+				skin.ringTinted = true
+			elseif skin.ringTinted then
+				st:SetBorderColor(skin.ring)
+				skin.ringTinted = false
+			end
+		end
+	end
+end
+
+-- Draws an element action button's ring: under Blizzard, as an action button on the
+-- ring frame of SaftUI's, whose ring and element-coloured border are on a holder one
+-- level over the button, over its icon and under its texts (Blizzard's action button
+-- template holds the hotkey and count in a frame at level 500). The button is Blizzard's
+-- (marked in SetupSkin), so nothing is written onto it. Under Thick and Thin the slot
+-- button's border is the element's, and this draws nothing.
+local function StyleRing(button, skin, blizzard, theme, background)
+	st:SetBackdropIn(skin.ringBackdrops, button, blizzard and theme or 'none', background, 'action')
+	-- st:SetBackdropIn put it outside the button: it sits on it, as the slot's does.
+	skin.ring:ClearAllPoints()
+	skin.ring:SetAllPoints(button)
+	skin.ringTinted = false
+	ColorElements()
+end
+
 -- Places and colours a skinned button's pieces from the profile. Safe to run again: it
 -- makes nothing new.
 local function StyleButton(button, skin, theme, background)
@@ -247,6 +285,7 @@ local function StyleButton(button, skin, theme, background)
 	-- in SkinButton, is out of combat).
 	local look = st:ResolveTheme(theme, background, 'action')
 	local state = look and look.name == 'blizzard' and st.ThemeArt.State('action') or nil
+	if skin.ring then StyleRing(button, skin, state ~= nil, theme, background) end
 	if state then
 		st.ThemeArt.StyleState(skin.hover, state.hover, button)
 		st.ThemeArt.StyleState(skin.pushed, state.pushed, button)
@@ -300,6 +339,7 @@ local function ColorSlotButton(button)
 	local skin = skins[button]
 	if skin then
 		SetBorderColor(skin, TB:GetElementColor(button:GetID()))
+		ColorElements()
 	end
 end
 
@@ -565,7 +605,16 @@ function TB:SetupSkin()
 	end
 	for i = 1, (NUM_MULTI_CAST_PAGES or 3) * perPage do
 		local button = _G['MultiCastActionButton' .. i]
-		if button then SkinButton(button, false, true) end
+		if button then
+			-- The element's ring and colour go on this button, over its slot button's
+			-- backdrop: a frame of SaftUI's, drawn through st:SetBackdropIn.
+			local skin = SkinButton(button, false, true)
+			st:MarkForeign(button)
+			skin.ring = st:CreateFrame('Frame', nil, button)
+			skin.ring:SetFrameLevel(math.max(0, button:GetFrameLevel() - 1))
+			skin.ring:SetAllPoints(button)
+			skin.ringBackdrops = { [button] = skin.ring }
+		end
 	end
 
 	if MultiCastFlyoutFrame then SkinFlyout(MultiCastFlyoutFrame) end

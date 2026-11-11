@@ -538,7 +538,11 @@ end
 -- for any other aura button.
 function AP:GetIconSize(button)
 	local key = self:GetButtonKey(button)
-	return key and st.config.profile.auras[key].size or nil
+	if not key then return end
+	-- The grid's pixel-rounded icon size once it's set up (AP:Setup), the setting
+	-- rounded the same way before.
+	if self.holders then return self:GetGeometry(key).size end
+	return math.max(1, st:RoundToPixel(st.config.profile.auras[key].size))
 end
 
 -- Re-applies the duration and count text: the skin restyles its buttons, and the private
