@@ -1,11 +1,12 @@
 -- Core's two helpers for a movable frame: st:PlaceAtPosition (api.lua, which
--- the addons' tests have without edit mode) clears a frame's points and sets it from a saved position
--- table, as the sites that did it by hand; st:RegisterConfigMover
--- (EditMode/editmode.lua) registers a
--- mover whose position is read from and written to a table in the profile.
+-- the addons' tests have without edit mode) clears a frame's points and sets
+-- it from a saved position table, as the sites that did it by hand;
+-- st:RegisterConfigMover (EditMode/editmode.lua) registers a mover whose
+-- position is read from and written to a table in the profile.
 --
--- Real: Core's edit mode (st:RegisterMover and the movers it makes) on the
--- real AceDB profile (config_helpers.lua). The frames are the stubs'.
+-- Real: Core's edit mode (st:RegisterMover and the movers it makes). The
+-- config the movers read is a hand-made table in `holder`, replaced as a
+-- profile switch replaces the profile's tables. The frames are the stubs'.
 
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
@@ -72,6 +73,27 @@ test('PlaceAtPosition clears the points the frame had', function()
 	eq(#Points(frame), 1, 'placing again leaves one')
 end)
 
+test('PlaceAtPosition anchors to the frame\'s own parent when no frame is named', function()
+	local parent = Frame()
+	local frame = CreateFrame('Frame', nil, parent)
+	st:PlaceAtPosition(frame, { point = 'CENTER' })
+	eq(select(2, frame:GetPoint(1)), parent, 'the parent, not UIParent')
+end)
+
+test('PlaceAtPosition errors for a frame name no frame has, as SetPoint does', function()
+	local frame = Frame()
+	check(not pcall(st.PlaceAtPosition, st, frame, { point = 'CENTER', frame = 'NoSuchFrame' }), 'errors')
+end)
+
+test('PlaceAtPosition hands the offsets to SetPoint as saved, even a string', function()
+	local frame = Frame()
+	local got
+	frame.SetPoint = function(_, ...) got = { ... } end
+	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = '5', y_off = '-3' })
+	eq(got[4], '5', 'x as saved')
+	eq(got[5], '-3', 'y as saved')
+end)
+
 test('PlaceAtPosition does not round the offsets', function()
 	local frame = Frame()
 	st:PlaceAtPosition(frame, { point = 'CENTER', x_off = 0.3, y_off = 0.7 })
@@ -118,11 +140,12 @@ end)
 
 test('setPosition writes the position field of the current config, and only that', function()
 	holder = { config = { position = { point = 'CENTER' }, size = 40 } }
-	local mover = Register('mh_write')
+	local mover, _, calls = Register('mh_write')
 	local old = holder.config
 	local new = { point = 'LEFT', x_off = 3, y_off = 4 }
 	mover.def.setPosition(new)
 	eq(holder.config.position, new, 'the table given is stored')
+	eq(calls.apply, 0, 'setPosition does not apply')
 	local keys = {}
 	for k in pairs(holder.config) do keys[#keys + 1] = k end
 	table.sort(keys)
@@ -146,6 +169,17 @@ test('apply is the one the site gave, and other fields pass through untouched', 
 	eq(mover.def.config, nil, 'config is not part of the def')
 end)
 
+test('RegisterConfigMover leaves the caller\'s spec as it was', function()
+	holder = { config = { position = {} } }
+	local spec = { key = 'mh_spec', config = function() return holder.config end, apply = function() end, label = 'L' }
+	local before = {}
+	for k, v in pairs(spec) do before[k] = v end
+	st:RegisterConfigMover(Frame(), spec)
+	local n = 0
+	for k, v in pairs(spec) do n = n + 1; eq(v, before[k], k) end
+	eq(n, 4, 'no field added, frame included')
+end)
+
 test('RegisterConfigMover needs a key, a config getter and an apply', function()
 	holder = { config = { position = {} } }
 	local frame = Frame()
@@ -163,8 +197,8 @@ test('a dragged position is placed by apply through PlaceAtPosition', function()
 		apply = function() st:PlaceAtPosition(frame, holder.config.position) end,
 	})
 	local mover = st.EditModeFrames.movers.mh_drag
-	mover.def.setPosition({ point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 30, y_off = -40 })
-	mover.def.apply()
+	holder.config.position = { point = 'TOPLEFT', rel_point = 'TOPLEFT', x_off = 0, y_off = 0 }
+	st.EditModeFrames:CommitPosition(mover, 30, -40) -- what a drag's end or a nudge does
 	local p = Points(frame)[1]
 	eq(p[1], 'TOPLEFT', 'placed at the saved point')
 	eq(p[4], 30, 'x')
