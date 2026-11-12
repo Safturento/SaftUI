@@ -78,10 +78,17 @@ local function PostUpdateHealth(health, unit, current, max)
 end
 
 -- oUF's Path runs Update (PostUpdate) and then ColorPath, which recolors the
--- bar for any color flag; PostUpdateColor is the callback after that.
+-- bar for any color flag; PostUpdateColor is the callback after that. An enemy
+-- nameplate's threat tint (nameplates/threat.lua, frame.threatState) comes
+-- last, so it wins over every color each time oUF colors the bar.
 local function PostUpdateColor(health)
 	if health.config.colorCustom then
 		health:SetStatusBarColor(UF.UnpackColor(health.config.customColor))
+	end
+	local state = health.unitframe.threatState
+	if state == 'warning' or state == 'bad' then
+		local color = st.config.profile.colors.threat[state]
+		health:SetStatusBarColor(color.r, color.g, color.b)
 	end
 end
 

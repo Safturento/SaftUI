@@ -184,8 +184,10 @@ end
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
 -- don't use (text, button, item quality, renown) and a module that isn't
--- enabled yet (no UF.units) change nothing.
-local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true }
+-- enabled yet (no UF.units) change nothing. The threat colors are the
+-- nameplates' tint (nameplates/threat.lua), which the health bar's color
+-- callback puts on and the plates' threat text takes again here.
+local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true, threat = true }
 -- ClassPower sets its color only when it checks its visibility, which
 -- ForceUpdate runs.
 local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower', 'ClassPower' }
@@ -196,8 +198,13 @@ function UF:OnColorsChanged(group)
 		-- A frame whose unit doesn't exist (a boss or arena frame out of an
 		-- encounter, an empty party slot) has nothing to draw, and its tags
 		-- error on a nil name; oUF updates it, with the colors merged above,
-		-- when its unit appears.
-		if not (frame.unit and UnitExists(frame.unit)) then return end
+		-- when its unit appears. The unit is oUF's active unit (__unit): .unit
+		-- is set only by UF.OnEnter, so a frame never hovered has none. A
+		-- plate's frame keeps the unit it last showed after the game takes its
+		-- plate away (nameplates.lua), so only a plate showing it now counts.
+		local unit = frame.__unit
+		if not (unit and UnitExists(unit)) then return end
+		if frame.isNamePlate and not self:PlateShowsUnit(frame) then return end
 		for _, name in ipairs(RECOLORED_ELEMENTS) do
 			if frame[name] and frame:IsElementEnabled(name) then
 				frame[name]:ForceUpdate()
@@ -205,6 +212,11 @@ function UF:OnColorsChanged(group)
 		end
 		frame:UpdateTags()
 	end)
+	if group == 'threat' then
+		for _, frame in pairs(self.nameplates or {}) do
+			self:UpdatePlateThreat(frame)
+		end
+	end
 	for testGroup in pairs(self.testGroups or {}) do
 		self:UpdateGroupPreview(testGroup)
 	end

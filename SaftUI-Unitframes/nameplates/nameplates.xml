@@ -2,4 +2,5 @@
 	<Script file="nameplates.lua"/>
 	<Script file="cvars.lua"/>
 	<Script file="target.lua"/>
+	<Script file="threat.lua"/>
 </Ui>

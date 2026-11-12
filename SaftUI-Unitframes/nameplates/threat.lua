@@ -1,0 +1,228 @@
+local st = SaftUI
+local UF = st:GetModule('Unitframes')
+
+--[[
+	Threat on enemy nameplates. The player's threat on each enemy tints its
+	health bar, and a small text above the bar's right end (the Threat
+	element, frame.Threat) gives it as a percent.
+
+	The state is by role (UF.ThreatState): a tank's bad is not holding the
+	mob, unless another of the group's tanks holds it; a damage dealer's or
+	healer's is having it. Warning comes just before bad. Warning and bad
+	replace the bar's colour with the Colors tab's Threat colours while they
+	apply: elements/health.lua's PostUpdateColor puts the tint on each time
+	oUF colours the bar, and good leaves the bar oUF's. The text takes the
+	tint's colour too, and the normal text colour while good.
+
+	Tints show on enemy plates only, in a party or raid, and on your own only
+	with Threat when solo on (the Nameplates page's General). A secret threat
+	state (restricted content) shows nothing: a secret can't become a colour.
+	The player's role is Blizzard's own (PlayerUtil.IsPlayerEffectivelyTank:
+	on Forever an aura that makes a tank first, then the assigned role; on
+	retail the role, else the spec's).
+
+	Only reads the game's threat, group and role API, and writes only onto
+	SaftUI's own frames.
+]]
+
+-- The group's unit tokens: a party's members besides the player, and a
+-- raid's members (the player among them).
+local PARTY, RAID = {}, {}
+for i = 1, 4 do PARTY[i] = 'party' .. i end
+for i = 1, 40 do RAID[i] = 'raid' .. i end
+
+-- The states that tint the bar.
+local TINTED = { warning = true, bad = true }
+
+-- The state of the player's threat on a mob, by role. status is
+-- UnitThreatSituation's: 0 lower threat than the mob's tank, 1 higher but not
+-- tanking, 2 tanking while someone else has more, 3 tanking securely; nil is
+-- not on the mob's threat list, which gives nil.
+--   tank:   3 good, 2 warning, 0 or 1 bad, but good when coTanked (another
+--           of the group's tanks holds the mob);
+--   others: 0 good, 1 warning, 2 or 3 bad.
+function UF.ThreatState(isTank, status, coTanked)
+	if status == nil then return nil end
+	if isTank then
+		if status == 3 then return 'good' end
+		if status == 2 then return 'warning' end
+		return coTanked and 'good' or 'bad'
+	end
+	if status == 0 then return 'good' end
+	if status == 1 then return 'warning' end
+	return 'bad'
+end
+
+-- Whether a group member is one of the group's tanks: given the tank role, or
+-- on Forever with an aura that makes it one (UnitHasEffectivelyTankAura,
+-- which only Forever has). A secret answer is no.
+function UF.IsGroupTank(unit)
+	local role = UnitGroupRolesAssigned(unit)
+	if not issecretvalue(role) and role == 'TANK' then return true end
+	if st.forever then
+		local aura = UnitHasEffectivelyTankAura(unit)
+		if not issecretvalue(aura) and aura then return true end
+	end
+	return false
+end
+
+-- Whether one of the group's tanks holds the mob. The mob's target can't tell
+-- (its token is secret), so each tank's own threat on it is read. A member
+-- whose threat state with the mob is secret is skipped.
+local function CoTanked(mob)
+	local tokens, count = PARTY, GetNumGroupMembers() - 1
+	if IsInRaid() then tokens, count = RAID, GetNumGroupMembers() end
+	for i = 1, math.min(count, #tokens) do
+		local member = tokens[i]
+		if UF.IsGroupTank(member) and not C_Secrets.ShouldUnitThreatStateBeSecret(member, mob) then
+			local isTanking = UnitDetailedThreatSituation(member, mob)
+			if not issecretvalue(isTanking) and isTanking then return true end
+		end
+	end
+	return false
+end
+
+-- The player's threat state on a plate's unit (UF.ThreatState), or nil where
+-- no tint shows: a friendly plate, on your own with Threat when solo off, a
+-- threat state the game makes secret, or a unit whose threat list the player
+-- isn't on. The group's tanks are read only for a tank who doesn't hold the
+-- mob (status 0 or 1).
+function UF:PlateThreat(frame)
+	local unit = frame.__unit
+	if not unit or frame.friendly then return nil end
+	if not IsInGroup() and not self:GetProfileConfig().nameplate.threat_solo then return nil end
+	if C_Secrets.ShouldUnitThreatStateBeSecret('player', unit) then return nil end
+	local status = UnitThreatSituation('player', unit)
+	if issecretvalue(status) or status == nil then return nil end
+	local isTank = PlayerUtil.IsPlayerEffectivelyTank() and true or false
+	local coTanked = isTank and status <= 1 and CoTanked(unit)
+	return UF.ThreatState(isTank, status, coTanked)
+end
+
+-- Writes the threat text for the plate's state: the player's scaled threat
+-- percent, in the tint's colour, or the normal text colour while good. Hidden
+-- with no state, while the text is off or not wanted (a friendly plate), or
+-- with no percent. A secret percent is handed to the game to write: the
+-- font string formats it without Lua reading it.
+local function UpdateThreatText(frame, state)
+	local text = frame.Threat
+	if not text then return end
+	if not state or not UF:ElementWanted(text) then
+		text:Hide()
+		return
+	end
+	local _, _, percent = UnitDetailedThreatSituation('player', frame.__unit)
+	if not issecretvalue(percent) and percent == nil then
+		text:Hide()
+		return
+	end
+	text:SetFormattedText('%.0f%%', percent)
+	local colors = st.config.profile.colors
+	local color = TINTED[state] and colors.threat[state] or colors.text.normal
+	text:SetTextColor(color.r, color.g, color.b)
+	text:Show()
+end
+
+-- Works a plate's threat out again (frame.threatState, which health.lua's
+-- PostUpdateColor reads) and tints its bar now: warning or bad in their
+-- colour; otherwise a bar that had a tint is coloured again by oUF
+-- (Health:ForceUpdate), with none. A plate showing no unit (taken away, or
+-- showing only widgets) keeps no state; oUF colours its bar anew at its next
+-- add.
+function UF:UpdatePlateThreat(frame)
+	local shown = self:PlateShowsUnit(frame)
+	local state = shown and self:PlateThreat(frame) or nil
+	local wasTinted = TINTED[frame.threatState]
+	frame.threatState = state
+	local health = frame.Health
+	if TINTED[state] then
+		local color = st.config.profile.colors.threat[state]
+		health:SetStatusBarColor(color.r, color.g, color.b)
+	elseif wasTinted and shown and health.ForceUpdate then
+		health:ForceUpdate()
+	end
+	UpdateThreatText(frame, state)
+end
+
+local function UpdatePlate(frame) UF:UpdatePlateThreat(frame) end
+
+-- The plate's kind is set on every add and when the unit's faction changes
+-- ('kind'), its config on every update ('updated'), and a plate taken away
+-- drops its state ('removed').
+UF:RegisterPlateCallback('kind', UpdatePlate)
+UF:RegisterPlateCallback('updated', UpdatePlate)
+UF:RegisterPlateCallback('removed', UpdatePlate)
+
+-- A mob's threat list changing retints its plate. The player's or a group
+-- member's threat situation, the group, the roles in it and the player's spec
+-- retint every plate. Every one of these is in both clients' API
+-- documentation.
+local events = CreateFrame('Frame')
+for _, event in ipairs({
+	'UNIT_THREAT_LIST_UPDATE', 'UNIT_THREAT_SITUATION_UPDATE',
+	'GROUP_ROSTER_UPDATE', 'PLAYER_ROLES_ASSIGNED', 'PLAYER_SPECIALIZATION_CHANGED',
+}) do
+	events:RegisterEvent(event)
+end
+events:SetScript('OnEvent', function(_, event, unit)
+	if event == 'UNIT_THREAT_LIST_UPDATE' then
+		local frame = unit and UF:PlateForUnit(unit)
+		if frame then UF:UpdatePlateThreat(frame) end
+	else
+		UF:ForEachPlate(UpdatePlate)
+	end
+end)
+
+--[[
+	The threat text, the Threat element: a font string of the plate's, on the
+	plates only (enemy plates: UF.PLATE_ENEMY_ONLY). Its config is the
+	nameplate unit's threat table (config/units/nameplate.lua): Enable, Font
+	(its size), Alpha and Position.
+]]
+local function Constructor(frame)
+	return UF:AddTextElement(frame, 'Threat')
+end
+
+-- Its font, alpha, place and Enable. What it says, and whether it shows,
+-- follow at the end of the plate's update (the 'updated' callback).
+local function UpdateConfig(frame)
+	UF:UpdateElement(frame.Threat)
+end
+
+local function GetConfigTable(unit)
+	local G = st.Config.generators
+	-- Looked up on every get/set: a profile change replaces these tables.
+	local function Config() return UF:GetProfileConfig()[unit].threat end
+	local function Update() UF:UpdateConfig(unit, 'Threat') end
+
+	return {
+		type = 'group',
+		name = 'Threat',
+		order = 1.5,
+		get = function(info) return Config()[info[#info]] end,
+		set = function(info, value)
+			Config()[info[#info]] = value
+			Update()
+		end,
+		args = {
+			enable = G.toggle(0, 'Enable',
+				"Shows your threat on an enemy as a percent above its health bar: in the bar's threat color while it's tinted, else in the normal text color. Only where the bars are tinted: in a party or raid, or on your own with Threat when solo on.", 'small'),
+			font = G.font(1, "The threat text's font, which sets its size."),
+			alpha = G.alpha(2, 'How solid the threat text is, from see-through to opaque.'),
+			-- Last in the tab.
+			position = G.uf_element_position(1000,
+				function(index) return Config().position[index] end,
+				function(index, value)
+					Config().position[index] = value
+					Update()
+				end,
+				UF:ConfigTarget(unit, 'Threat'),
+				"Where the threat text sits: which of its points goes to which point of what it's attached to, then moved by X and Y."
+			),
+		},
+	}
+end
+
+UF:RegisterElement('Threat', Constructor, UpdateConfig, GetConfigTable, function(unit)
+	return unit == 'nameplate'
+end)

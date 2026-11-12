@@ -501,3 +501,31 @@ NamePlateDriverFrame = CreateFrame('Frame', 'NamePlateDriverFrame')
 function NamePlateDriverFrame:UpdateNamePlateSize()
 	stub.set_nameplate_size_secure(230, 45)
 end
+
+-- Blizzard_SharedXML/UnitUtil.lua's PlayerUtil.IsPlayerEffectivelyTank, which
+-- differs by client:
+--   Forever (lines 109-121): true with UnitHasEffectivelyTankAura('player'),
+--     else the assigned role; with no role, the spec's role only on a client
+--     whose spec system is ChrSpecialization. Forever's is taken to be
+--     another one (it has no specs of retail's kind), so the stub reads only
+--     the role there. That's unconfirmed: a Forever player with no role whose
+--     spec says tank would be a tank in game if it is.
+--   retail (lines 109-117): the assigned role; with none, the role of the
+--     player's spec, stub.spec_role ('TANK', 'HEALER', 'DAMAGER', or nil for
+--     no spec, where the game's gives nil).
+stub.spec_role = nil
+
+PlayerUtil = PlayerUtil or {}
+function PlayerUtil.IsPlayerEffectivelyTank()
+	if stub.interface == 16001 then
+		if UnitHasEffectivelyTankAura('player') then
+			return true
+		end
+		return UnitGroupRolesAssigned('player') == 'TANK'
+	end
+	local assignedRole = UnitGroupRolesAssigned('player')
+	if assignedRole == 'NONE' then
+		return stub.spec_role and stub.spec_role == 'TANK'
+	end
+	return assignedRole == 'TANK'
+end
