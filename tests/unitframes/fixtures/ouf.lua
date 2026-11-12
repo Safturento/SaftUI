@@ -83,7 +83,10 @@
 -- resume too); the castbar's Enable and Disable both hide it, as castbar.lua's
 -- do (oUF shows it for a cast, which nothing here starts). Enabling the aura
 -- containers turns each on (SetEnabled(true)), as the Auras meta element's
--- Enable does.
+-- Enable does. Enabling QuestIndicator gives it ForceUpdate, as its Enable
+-- does (Libraries/oUF/elements/questindicator.lua), which runs oUF's Path
+-- with (frame, 'ForceUpdate', frame.__unit): the element's Override where it
+-- has one; oUF's own update, without one, isn't run here.
 --
 -- What the real oUF does beyond it:
 --   * Spawn makes a SecureUnitButtonTemplate button, sets its rolesets and
@@ -196,6 +199,11 @@ function M.new()
 	local function ForceUpdate(bar)
 		bar.__forceUpdates = (bar.__forceUpdates or 0) + 1
 	end
+	-- The quest icon's ForceUpdate: oUF's Path, as far as an Override.
+	local function QuestForceUpdate(element)
+		local frame = element.__owner
+		if element.Override then return element.Override(frame, 'ForceUpdate', frame.__unit) end
+	end
 
 	local function EnableBar(frame, bar)
 		bar.__owner = frame
@@ -221,6 +229,7 @@ function M.new()
 		if type(widget) == 'table' then widget.__owner = frame end
 		if name == 'Health' then widget:Show() end
 		if name == 'Castbar' then widget:Hide() end
+		if name == 'QuestIndicator' then widget.ForceUpdate = QuestForceUpdate end
 		if name == 'Health' or name == 'Power' then return EnableBar(frame, widget) end
 		return true
 	end
