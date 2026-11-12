@@ -23,6 +23,8 @@
 	  load_core_helpers()     loads Core's frame helpers and what they need
 	  load_options_widgets()  loads the /sui window's widget files (st.OptionsWidgets)
 	                          in the game's order; options_widget_files() lists them
+	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
+	                          in the game's order; options_window_files() lists them
 ]]
 
 local function pack(...)
@@ -420,6 +422,23 @@ end
 -- Loads the widget files in that order. Load Config/optionsmodel.lua first.
 function load_options_widgets()
 	for _, path in ipairs(options_widget_files()) do
+		load_saftui(path)
+	end
+end
+
+-- The /sui window's own files (st.OptionsWindow), by path from the repo root,
+-- in the order the game loads them: right after Config/optionsbody.lua and
+-- before Config/widgets.lua.
+function options_window_files()
+	return {
+		'SaftUI-Core/Config/optionswindow.lua',
+	}
+end
+
+-- Loads the window's files in that order. Load Config/optionsmodel.lua, the
+-- widget files (load_options_widgets) and Config/optionsbody.lua first.
+function load_options_window()
+	for _, path in ipairs(options_window_files()) do
 		load_saftui(path)
 	end
 end

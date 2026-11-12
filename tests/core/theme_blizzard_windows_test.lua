@@ -392,7 +392,7 @@ local function configWorld()
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
-	load_saftui('SaftUI-Core/Config/optionswindow.lua')
+	load_options_window()
 	OW = SaftUI.OptionsWindow
 	return SaftUI
 end

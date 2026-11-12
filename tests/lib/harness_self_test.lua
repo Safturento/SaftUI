@@ -714,18 +714,23 @@ test("remove_shell_config takes the shell's Config module out, so the real confi
 	check(SaftUI.Config ~= nil and SaftUI.Config ~= config, 'reset_world brings the shell\'s back')
 end)
 
-test("load_options_widgets loads the widget files Core's Config/load.xml lists, in its order", function()
+test("load_options_widgets and load_options_window load the files Core's Config/load.xml lists, in its order", function()
 	local xml = assert(read_saftui_source('SaftUI-Core/Config/load.xml')):gsub('<!%-%-.-%-%->', '')
 	local listed, from, to = {}, nil, nil
+	local windowFrom, windowTo
 	for file in xml:gmatch('<Script%s+file%s*=%s*"([^"]+)"') do
 		listed[#listed + 1] = 'SaftUI-Core/Config/' .. file
 		if file == 'optionsmodel.lua' then from = #listed + 1 end
-		if file == 'optionsbody.lua' then to = #listed - 1 end
+		if file == 'optionsbody.lua' then to, windowFrom = #listed - 1, #listed + 1 end
+		if file == 'widgets.lua' then windowTo = #listed - 1 end
 	end
 	if check(from ~= nil and to ~= nil and from <= to, 'load.xml lists widget files between optionsmodel.lua and optionsbody.lua') then
 		eq(table.concat(options_widget_files(), ', '), table.concat(listed, ', ', from, to),
 			"the shell's widget files are load.xml's, in its order")
 	end
+	-- The window's files: after optionsbody.lua and before widgets.lua.
+	eq(table.concat(options_window_files(), ', '), table.concat(listed, ', ', windowFrom or 1, windowTo or #listed),
+		"the shell's window files are load.xml's, in its order")
 end)
 
 test('Show, Hide and SetShown fire OnShow and OnHide only for a visibility that changes, as in game', function()

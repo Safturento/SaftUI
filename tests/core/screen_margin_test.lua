@@ -22,7 +22,7 @@ local EM = st.EditModeFrames
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
-load_saftui('SaftUI-Core/Config/optionswindow.lua')
+load_options_window()
 local OM, OW = st.OptionsModel, st.OptionsWindow
 
 -- A 1000 x 600 screen at the scale SaftUI sets at login: one UIParent unit per

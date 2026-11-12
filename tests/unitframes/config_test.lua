@@ -48,7 +48,7 @@ load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceC
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
-load_saftui('SaftUI-Core/Config/optionswindow.lua')
+load_options_window()
 load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 
