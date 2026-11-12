@@ -650,18 +650,12 @@ function TB:SetupSkinAndTimers()
 	self:SetupSkin()
 end
 
-function TB:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_ActionBar' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function TB:OnEnable()
 	st:BindModuleConfig(self, 'totembar')
 	if _G.MultiCastActionBarFrame then
 		self:Setup()
 	elseif st.forever then
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_ActionBar', function() self:Setup() end)
 	end
 end
 
