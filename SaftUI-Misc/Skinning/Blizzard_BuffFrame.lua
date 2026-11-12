@@ -377,8 +377,6 @@ function BF:ADDON_LOADED(event, addon)
 end
 
 function BF:OnEnable()
-	if not st.retail then return end
-
 	if BuffFrame and BuffFrame.auraFrames then
 		self:SkinFrames()
 	else

@@ -10,7 +10,6 @@
 	<Script file="Blizzard_SwingTimerPosition.lua"/>
 	<Script file="Blizzard_CooldownViewer.lua"/>
 	<Script file="Blizzard_WeeklyRewards.lua"/>
-	<Script file="Blizzard_WatchFrame.lua"/>
 	<Script file="Blizzard_WorldMap.lua"/>
 	<Script file="ZoneText.lua"/>
 	<Script file="ZoneFactions.lua"/>

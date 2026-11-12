@@ -199,15 +199,13 @@ function XP:GetWatchedFactionInfo()
 		maxRep = factionData.nextReactionThreshold
 		value = factionData.currentStanding
 		factionId = factionData.factionID
-	elseif GetWatchedFactionInfo then
-		name, rank, minRep, maxRep, value, factionId = GetWatchedFactionInfo()
 	end
 
 	if not name then return end
 
 	local friendshipInfo = C_GossipInfo.GetFriendshipReputation(factionId)
 
-	if st.retail and C_Reputation.IsMajorFaction(factionId) then
+	if C_Reputation.IsMajorFaction(factionId) then
 		-- https://wowpedia.fandom.com/wiki/API_C_MajorFactions.GetMajorFactionData
 		local factionData = C_MajorFactions.GetMajorFactionData(factionId)
 		return {
@@ -252,15 +250,6 @@ function XP:GetWatchedFactionInfo()
 			max = maxRep - minRep
 		}
 	end
-
-	return {
-		name = name,
-		rank = rank,
-		rankLabel = _G['FACTION_STANDING_LABEL'..rank],
-		color = Colors().reaction[rank],
-		current = value - minRep,
-		max = maxRep - minRep
-	}
 end
 
 function XP:UpdateReputation()
@@ -443,13 +432,10 @@ function XP:OnEnable()
 
 	self:RegisterEvent("QUEST_LOG_UPDATE", 'Update')
 	self:RegisterEvent("UPDATE_FACTION", 'Update')
-	if st.retail then
-		self:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED", 'Update')
-		self:RegisterEvent("MAJOR_FACTION_UNLOCKED", 'Update')
-	end
+	self:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED", 'Update')
+	self:RegisterEvent("MAJOR_FACTION_UNLOCKED", 'Update')
 
 	self:RegisterEvent('CHAT_MSG_COMBAT_FACTION_CHANGE', 'Update')
-	self:RegisterEvent('UPDATE_FACTION', 'Update')
 
 	st:RegisterMover('experience', {
 		frame = self.container,

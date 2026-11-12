@@ -315,13 +315,7 @@ end
 
 function MicroMenu:SkinMailIcon()
 
-    local button = st.retail and MinimapCluster.IndicatorFrame.MailFrame or MiniMapMailFrame
-
-    -- Classic's border and position function; retail and Forever have neither
-    if not st.retail then
-        st:Kill(MiniMapMailBorder)
-        MiniMapMailFrame_UpdatePosition = function() end
-    end
+    local button = MinimapCluster.IndicatorFrame.MailFrame
 
     MiniMapMailIcon:SetTexture(st.textures.mailSquare)
     MiniMapMailIcon:SetAllPoints(button)
@@ -330,64 +324,47 @@ function MicroMenu:SkinMailIcon()
 end
 
 function MicroMenu:SkinTrackingButton()
-    if st.retail then
-        local button = MinimapCluster.TrackingFrame or MinimapCluster.Tracking
-        button.Button:SetAllPoints()
+    local button = MinimapCluster.TrackingFrame or MinimapCluster.Tracking
+    button.Button:SetAllPoints()
 
-        for _,texture in pairs({
-            button.Button:GetNormalTexture(),
-            button.Button:GetPushedTexture(),
-            button.Button:GetHighlightTexture()
-        }) do
-            texture:ClearAllPoints()
-            texture:SetPoint("CENTER")
-            texture:SetSize(16, 16)
-        end
+    for _,texture in pairs({
+        button.Button:GetNormalTexture(),
+        button.Button:GetPushedTexture(),
+        button.Button:GetHighlightTexture()
+    }) do
+        texture:ClearAllPoints()
+        texture:SetPoint("CENTER")
+        texture:SetSize(16, 16)
+    end
 
-        -- Forever draws the icon as a single atlas with a gold ring baked in, and
-        -- re-applies it on every button state change. Hide it and its hover copy,
-        -- and draw a plain magnifier instead.
-        local trackingButton = button.Button
-        local icon
-        if trackingButton.StateTexture then
-            trackingButton.StateTexture:SetAlpha(0)
-            trackingButton.AddTexture:SetAlpha(0)
-            hooksecurefunc(trackingButton, 'OnButtonStateChanged', function(self)
-                self.AddTexture:Hide()
-            end)
+    -- Forever draws the icon as a single atlas with a gold ring baked in, and
+    -- re-applies it on every button state change. Hide it and its hover copy,
+    -- and draw a plain magnifier instead.
+    local trackingButton = button.Button
+    local icon
+    if trackingButton.StateTexture then
+        trackingButton.StateTexture:SetAlpha(0)
+        trackingButton.AddTexture:SetAlpha(0)
+        hooksecurefunc(trackingButton, 'OnButtonStateChanged', function(self)
+            self.AddTexture:Hide()
+        end)
 
-            icon = trackingButton:CreateTexture(nil, 'ARTWORK')
-            icon:SetTexture([[Interface\Minimap\Tracking\None]])
-            icon:SetPoint('CENTER')
-            icon:SetSize(16, 16)
+        icon = trackingButton:CreateTexture(nil, 'ARTWORK')
+        icon:SetTexture([[Interface\Minimap\Tracking\None]])
+        icon:SetPoint('CENTER')
+        icon:SetSize(16, 16)
 
-            local hover = trackingButton:CreateTexture(nil, 'OVERLAY')
-            hover:SetTexture(st.BLANK_TEX)
-            hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
-            hover:SetAllPoints(trackingButton)
-            trackingButton:SetHighlightTexture(hover)
-        end
-
-        -- Under Blizzard it stands on Blizzard's tracking button (UpdateArt).
-        -- Forever's has the magnifier drawn in, so SaftUI's hides there. Live
-        -- has no magnifier of SaftUI's: Blizzard's own icon shows on its box.
-        return button, { art = 'tracking', icon = icon }
-    else
-        local button = MiniMapTracking
-        MiniMapTrackingButton:SetAllPoints(button)
-        st:Kill(MiniMapTrackingButtonBorder)
-        st:Kill(MiniMapTrackingBackground)
-        MiniMapTrackingIcon:ClearAllPoints()
-        MiniMapTrackingIcon:SetAllPoints(button)
-
-        local hover = MiniMapTrackingButton:CreateTexture(nil, 'OVERLAY')
+        local hover = trackingButton:CreateTexture(nil, 'OVERLAY')
         hover:SetTexture(st.BLANK_TEX)
         hover:SetVertexColor(st.config.profile.colors.button.hover:GetRGB())
-        hover:SetAllPoints(MiniMapTrackingButton)
-        MiniMapTrackingButton:SetHighlightTexture(hover)
-
-        return button, { art = 'tracking' }
+        hover:SetAllPoints(trackingButton)
+        trackingButton:SetHighlightTexture(hover)
     end
+
+    -- Under Blizzard it stands on Blizzard's tracking button (UpdateArt).
+    -- Forever's has the magnifier drawn in, so SaftUI's hides there. Live
+    -- has no magnifier of SaftUI's: Blizzard's own icon shows on its box.
+    return button, { art = 'tracking', icon = icon }
 end
 
 -- Places the bar from the profile and lays its buttons out again. Runs on every

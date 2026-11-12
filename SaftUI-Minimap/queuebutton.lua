@@ -27,16 +27,10 @@ end
 
 function MicroMenu:SkinQueueButton()
 
-    local button = st.retail and QueueStatusButton or MiniMapLFGFrame
+    local button = QueueStatusButton
     button:SetHitRectInsets(0,0, 0, 0)
 
-    if st.retail then
-        button.Eye:Hide()
-    else
-        MiniMapLFGFrame:SetParent(Minimap)
-        MiniMapLFGFrameIcon:Hide()
-        MiniMapLFGFrameBorder:Hide()
-    end
+    button.Eye:Hide()
 
     --Setup a static eye texture
     local icon = button:CreateTexture(nil, 'ARTWORK')
@@ -51,9 +45,7 @@ function MicroMenu:SkinQueueButton()
     hover:SetAllPoints(button)
     button:SetHighlightTexture(hover)
 
-    if st.retail then
-        KeepInBar(button)
-    end
+    KeepInBar(button)
 
     return button
 end
