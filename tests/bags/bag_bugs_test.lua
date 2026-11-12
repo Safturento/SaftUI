@@ -96,3 +96,21 @@ test('UpdateContainer: no window returns, a hidden one is not laid out', functio
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('the item sort: bigger stacks first, then the higher item ID', function()
+	world()
+	-- Two stacks of one item, the smaller in the first slot.
+	W.put(0, 1, W.item(501, 'Ore', 'Miscellaneous', 1, { count = 3, maxStack = 20 }))
+	W.put(0, 2, W.item(501, 'Ore', 'Miscellaneous', 1, { count = 5, maxStack = 20 }))
+	INV.config.stackItems = false
+	local sorted = INV:GetSortedInventory('bag')
+	eq(names(sorted.Miscellaneous), 'Ore:5:501 Ore:3:501', 'the 5 stack before the 3 stack')
+
+	-- Two items equal on everything before the count: the ID decides.
+	W.bags[0].items = {}
+	W.put(0, 1, W.item(601, 'Twin', 'Miscellaneous', 1))
+	W.put(0, 2, W.item(602, 'Twin', 'Miscellaneous', 1))
+	sorted = INV:GetSortedInventory('bag')
+	eq(names(sorted.Miscellaneous), 'Twin:1:602 Twin:1:601', 'the higher ID first')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
