@@ -434,6 +434,7 @@ function options_window_files()
 		'SaftUI-Core/Config/optionslayout.lua',
 		'SaftUI-Core/Config/optionswindow.lua',
 		'SaftUI-Core/Config/optionsresize.lua',
+		'SaftUI-Core/Config/optionsnav.lua',
 	}
 end
 

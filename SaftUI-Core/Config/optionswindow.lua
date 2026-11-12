@@ -82,8 +82,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	The window is split by job, its files loading in Config/load.xml's order:
 	optionslayout.lua (OW.LAYOUT, the sidebar's width and entries, the
 	window's height; it makes OW and OW.S), this one, then
-	optionsresize.lua (growing taller). OW.S holds what they share
-	(optionslayout.lua says how).
+	optionsresize.lua (growing taller) and optionsnav.lua (the sidebar, the
+	tabs and the picker). OW.S holds what they share (optionslayout.lua
+	says how).
 ]]
 
 local OW = st.OptionsWindow
@@ -100,12 +101,11 @@ local ArtReach = S.ArtReach
 local PAD = 28 -- the main column's left padding
 local CONTENT_WIDTH = OB.WIDTH -- the body: two columns of 367 with a gap of 40
 local ROW_HEIGHT = OB.ROW_HEIGHT
-local LABEL_GAP = OB.LABEL_GAP
 local FIELD_HEIGHT = 24
 
 local HEAD_TOP = 20 -- the title's top, in the main column
 local TABS_TOP = 87 -- the first tab line's top
-local TAB_HEIGHT, TAB_GAP, TAB_WRAP_GAP, SUBTAB_GAP = 24, 22, 6, 10
+local TAB_HEIGHT, SUBTAB_GAP = 24, 10
 local SEARCH_WIDTH, SEARCH_DELAY = 190, 0.25
 local SEARCH_TEXT_INSET = 8 -- the search box's text, in from its edges, and its hint
 local PICKER_GAP = 12
@@ -114,14 +114,11 @@ local SCROLL_STEP = OB.SCROLL_STEP
 
 -- The sidebar.
 local BRAND_HEIGHT = 73
-local ACTION_PAD, ACTION_GAP, ACTION_HEIGHT = 10, 6, 24
--- Two to a line in the mockup's sidebar; the same size in either layout.
-local ACTION_WIDTH = floor((OW.LAYOUT.own.navWidth - 24 - ACTION_GAP) / 2)
-local NAV_ITEM, NAV_GROUP, NAV_TOP = 26, 29, 6
+local ACTION_PAD, ACTION_HEIGHT = 10, 24
+local NAV_ITEM = 26
 local FOOT_HEIGHT = 30
 
 local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717
-local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
 
 local POINTS = {
 	TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
@@ -364,188 +361,8 @@ local function GoTo(path)
 	OW:Navigate(pageKey, selection)
 end
 
------------------------------------------------------------------- the sidebar
-
-local function UpdateEditModeButton()
-	local button = F.actions and F.actions[1]
-	if not button then return end
-	local EM = st.EditModeFrames
-	local color = (EM and EM.active) and Colors().text.green or Colors().text.normal
-	button.text:SetTextColor(color:GetRGB())
-end
-
--- Edit mode, then every st.Config:AddCommand, two to a line.
-local function DrawActions()
-	local list = { { label = 'Edit mode', func = function() st.EditModeFrames:Toggle() end } }
-	for _, command in ipairs(st.Config:GetCommands()) do list[#list + 1] = command end
-	for i, command in ipairs(list) do
-		local button = F.actions[i]
-		if not button then
-			button = Button(F.actionsFrame, command.label, function(self) self.func() end)
-			F.actions[i] = button
-		end
-		button.label, button.func = command.label, command.func
-		button.text:SetText(command.label)
-		button:SetSize(ACTION_WIDTH, ACTION_HEIGHT)
-		W.LookButton(button, S.blizzard, st.BOX_COLORS.bg)
-		button:ClearAllPoints()
-		button:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT',
-			12 + ((i - 1) % 2) * (ACTION_WIDTH + ACTION_GAP),
-			-(ACTION_PAD + floor((i - 1) / 2) * (ACTION_HEIGHT + ACTION_GAP)))
-	end
-	local lines = ceil(#list / 2)
-	F.actionsFrame:SetHeight(ACTION_PAD * 2 + lines * ACTION_HEIGHT + (lines - 1) * ACTION_GAP)
-	UpdateEditModeButton()
-end
-
--- The banner a group header wears: the Settings panel's three, in turn.
-function OW.BannerAtlas(n)
-	local banners = st.ThemeArt.Control('optionswindow').banners
-	return banners[((n - 1) % #banners) + 1]
-end
-
--- A sidebar name's white: the open page's, and the one under the mouse.
-local function PickedText()
-	return unpack(st.ThemeArt.Control('optionslist').text.picked)
-end
-
--- A sidebar entry's look: the open page's blue fill and bar, or under
--- Blizzard (item.blizzard) the Settings panel's category list, the open page
--- on its picked art (item.listPicked) with its name white and the others
--- gold; the one under the mouse is lit by OnEnter (item.listHover). Under
--- Thick and Thin the name keeps the profile's text color.
-local function StyleNavItem(item)
-	item.listHover:Hide()
-	if item.blizzard then
-		local text = st.ThemeArt.Control('optionslist').text
-		if item.active then item.text:SetTextColor(PickedText()) else item.text:SetTextColor(unpack(text.normal)) end
-	else
-		item.text:SetTextColor(Normal())
-	end
-	item.listPicked:SetShown(item.blizzard and item.active or false)
-	if item.active and not item.blizzard then
-		local r, g, b = Blue()
-		item.bg:SetColorTexture(r, g, b, 0.25)
-		item.bg:Show()
-		item.bar:Show()
-	else
-		item.bg:Hide()
-		item.bar:Hide()
-	end
-	item:SetAlpha(item.disabled and 0.4 or 1)
-end
-
-local function MakeNavItem()
-	local item = CreateFrame('Button', nil, F.navContent)
-	item:SetHeight(NAV_ITEM) -- as wide as the layout's rows (DrawSidebar)
-	item.bg = item:CreateTexture(nil, 'BACKGROUND')
-	item.bg:SetAllPoints(item)
-	item.bar = item:CreateTexture(nil, 'ARTWORK')
-	item.bar:SetColorTexture(Blue())
-	item.bar:SetPoint('TOPLEFT', item, 'TOPLEFT', 0, 0)
-	item.bar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
-	item.bar:SetWidth(2)
-	-- Under Blizzard, the Settings panel's category list: the open page's
-	-- art, and the art under the mouse (their atlases set as it's drawn).
-	item.listPicked = item:CreateTexture(nil, 'BACKGROUND')
-	item.listPicked:SetAllPoints(item)
-	item.listPicked:Hide()
-	item.listHover = item:CreateTexture(nil, 'BACKGROUND')
-	item.listHover:SetAllPoints(item)
-	item.listHover:Hide()
-	item.text = Text(item, 'label')
-	item:SetScript('OnEnter', function(self)
-		if self.active then return end
-		if self.blizzard then
-			self.listHover:Show()
-			if not self.disabled then self.text:SetTextColor(PickedText()) end
-			return
-		end
-		self.bg:SetColorTexture(unpack(HOVER))
-		self.bg:Show()
-	end)
-	item:SetScript('OnLeave', function(self) StyleNavItem(self) end)
-	item:SetScript('OnClick', function(self)
-		if not self.disabled then OW:Navigate(self.key) end
-	end)
-	return item
-end
-
-local function MakeNavGroup()
-	local header = CreateFrame('Frame', nil, F.navContent)
-	header:SetHeight(NAV_GROUP) -- as wide as the layout's rows (DrawSidebar)
-	-- Under Blizzard its banner (DrawSidebar sets its art), hanging from the
-	-- header's top left at its own size.
-	header.banner = header:CreateTexture(nil, 'BACKGROUND')
-	header.banner:SetPoint('TOPLEFT', header, 'TOPLEFT', 0, 0)
-	header.banner:Hide()
-	header.text = Text(header, 'group')
-	return header
-end
-
-local function DrawSidebar(entries)
-	DrawActions()
-	ReleaseAll(pools.nav)
-	ReleaseAll(pools.group)
-	wipe(F.nav)
-	local look = S.blizzard and st.ThemeArt.Control('optionslist')
-	local art = S.blizzard and st.ThemeArt.Control('optionswindow')
-	local y, groups = NAV_TOP, 0
-	for _, entry in ipairs(entries) do
-		local frame
-		if entry.group then
-			frame = Acquire(pools.group)
-			frame.group = entry.group
-			frame.text:SetText(entry.group)
-			frame.text:ClearAllPoints()
-			if art then
-				groups = groups + 1
-				local atlas = OW.BannerAtlas(groups)
-				local info = C_Texture.GetAtlasInfo(atlas)
-				frame.banner:SetAtlas(atlas)
-				frame.banner:SetSize(info.width, info.height)
-				frame.banner:Show()
-				frame:SetHeight(art.groupHeight)
-				frame.text:SetPoint('LEFT', frame, 'LEFT', art.groupLabel.x, art.groupLabel.y)
-				frame.text:SetTextColor(PickedText())
-			else
-				frame.banner:Hide()
-				frame:SetHeight(NAV_GROUP)
-				frame.text:SetPoint('TOPLEFT', frame, 'TOPLEFT', 18, -12)
-				frame.text:SetTextColor(Grey())
-			end
-		else
-			frame = Acquire(pools.nav)
-			frame.key, frame.name, frame.disabled = entry.key, entry.name, entry.disabled
-			frame.active = state.search == '' and entry.key == state.page
-			frame.text:ClearAllPoints()
-			frame.text:SetPoint('LEFT', frame, 'LEFT', entry.special and 18 or 22, 0)
-			frame.text:SetText(entry.name)
-			frame.text:SetWidth(S.layout.navWidth - 30)
-			frame.blizzard = look and true or false
-			if look then
-				frame.listPicked:SetAtlas(look.picked)
-				frame.listHover:SetAtlas(look.hover)
-			end
-			StyleNavItem(frame)
-		end
-		frame:SetWidth(S.layout.navWidth)
-		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
-		y = y + frame:GetHeight()
-		F.nav[#F.nav + 1] = frame
-	end
-	S.navHeight = y + 10
-	F.navContent:SetHeight(S.navHeight)
-	F.navFrame:UpdateScrollChildRect()
-	SetNavScroll(S.navOffset)
-
-	local r, g, b = Normal()
-	F.profile:SetText(format('Profile: |cff%02x%02x%02x%s|r', floor(r * 255), floor(g * 255), floor(b * 255),
-		tostring(st.config:GetCurrentProfile())))
-end
-
------------------------------------------------------------------- tabs and the picker
-
+-- A tab or the picker (optionsnav.lua) chose key for slot ('tab', 'subtab'
+-- or 'pick').
 local function Select(slot, key)
 	local selection = state.selections[state.page] or {}
 	state.selections[state.page] = selection
@@ -554,118 +371,6 @@ local function Select(slot, key)
 	S.scrollOffset = 0
 	OW:SetStatus(nil)
 	OW:Render()
-end
-
-local function MakeTab()
-	local tab = CreateFrame('Button', nil, F.main)
-	tab.text = Text(tab, 'tab')
-	tab.text:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 2, 7)
-	tab.underline = tab:CreateTexture(nil, 'OVERLAY')
-	tab.underline:SetColorTexture(Blue())
-	tab.underline:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 0, -1)
-	tab.underline:SetPoint('BOTTOMRIGHT', tab, 'BOTTOMRIGHT', 0, -1)
-	tab.underline:SetHeight(2)
-	tab:SetScript('OnEnter', function(self)
-		if not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end
-	end)
-	tab:SetScript('OnLeave', function(self)
-		if not self.active then self.text:SetTextColor(Grey()) end
-	end)
-	tab:SetScript('OnClick', function(self)
-		if not self.disabled then Select(self.slot, self.key) end
-	end)
-	return tab
-end
-
--- A tab's art under Blizzard: the Settings panel's tab (look,
--- st.ThemeArt.Control('optionstab')), the picked one for the active tab, at
--- its art's height (at most the tab's) along the tab's bottom, in place of
--- the blue underline. None under Thick and Thin (look nil).
-local function LookTab(tab, look)
-	if not look then
-		W.HideArt(tab)
-		return
-	end
-	local set = tab.active and look.picked or look.other
-	local _, height = W.AtlasSize(set.left)
-	W.LayThree(tab, set, 'BACKGROUND', min(height or TAB_HEIGHT, TAB_HEIGHT), 'BOTTOM')
-end
-
--- A row of tabs from top, wrapping onto more lines when they don't fit (the
--- first line stops short of the search box). Returns its bottom.
-local function DrawTabRow(pool, list, active, top, slot)
-	ReleaseAll(pool)
-	local look = S.blizzard and st.ThemeArt.Control('optionstab')
-	local x, y = 0, top
-	local limit = slot == 'tab' and (CONTENT_WIDTH - SEARCH_WIDTH - TAB_GAP) or CONTENT_WIDTH
-	for _, entry in ipairs(list) do
-		local tab = Acquire(pool)
-		tab.key, tab.slot, tab.disabled = entry.key, slot, entry.disabled
-		tab.active = entry.key == active
-		tab.text:SetText(entry.name)
-		local width = ceil(tab.text:GetStringWidth()) + 4
-		if x > 0 and x + width > limit then
-			x, y, limit = 0, y + TAB_HEIGHT + TAB_WRAP_GAP, CONTENT_WIDTH
-		end
-		tab:SetSize(width, TAB_HEIGHT)
-		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
-		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
-		tab.underline:SetShown(tab.active and not S.blizzard)
-		LookTab(tab, look)
-		tab:SetAlpha(entry.disabled and 0.4 or 1)
-		x = x + width + TAB_GAP
-	end
-	return y + TAB_HEIGHT
-end
-
--- A line across the main column: Blizzard's divider under Blizzard, a 1px
--- line in OB.LINE's color otherwise.
-local function PlaceLine(line, y)
-	if S.blizzard then
-		line:SetAtlas(st.ThemeArt.Control('optionswindow').rule)
-	else
-		line:SetColorTexture(unpack(OB.LINE))
-	end
-	line:ClearAllPoints()
-	line:SetPoint('TOPLEFT', F.main, 'TOPLEFT', 0, -y)
-	line:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', 0, -y)
-	line:Show()
-end
-
--- The picker is a select widget over a one-option tree of its own, so it
--- gets the same list (and the list's Esc and outside click).
-local pickerOption = {
-	type = 'select', name = '',
-	get = function() return S.shown.pick end,
-	set = function(_, key) Select('pick', key) end,
-}
-local pickerRoot = { picker = pickerOption }
-local pickerRow = { key = 'picker', type = 'select', name = '', size = 'normal', path = { 'picker' }, option = pickerOption }
-local function NoChange() end
-
-local function HidePicker()
-	F.pickerLabel:Hide()
-	F.picker.frame:Hide()
-end
-
-local function DrawPicker(picker, top)
-	local values, sorting = {}, {}
-	for i, entry in ipairs(picker.values) do
-		values[entry.key] = entry.name
-		sorting[i] = entry.key
-	end
-	pickerOption.values, pickerOption.sorting = values, sorting
-	local label = F.pickerLabel
-	label:SetText(picker.name)
-	label:Show()
-	local w = F.picker
-	w.frame:ClearAllPoints()
-	w.frame:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + ceil(label:GetStringWidth()) + LABEL_GAP, -top)
-	label:ClearAllPoints()
-	label:SetPoint('RIGHT', w.frame, 'LEFT', -LABEL_GAP, 0)
-	w:Bind(pickerRoot, pickerRow, NoChange)
-	w.frame:Show()
-	return top + FIELD_HEIGHT
 end
 
 ------------------------------------------------------------------ the body
@@ -722,10 +427,10 @@ local function DrawPage()
 	if not view then
 		F.title:SetText(st.name)
 		F.desc:SetText('')
-		PlaceLine(F.tabLine, DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
+		S.PlaceLine(F.tabLine, S.DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
 		ReleaseAll(pools.subtab)
 		F.subLine:Hide()
-		HidePicker()
+		S.HidePicker()
 		PlaceBody(TABS_TOP + TAB_HEIGHT)
 		return
 	end
@@ -735,19 +440,19 @@ local function DrawPage()
 	S.shown.pick = view.picker and view.picker.selected
 
 	-- A single tab is the page itself, so it isn't drawn (as in the mockup).
-	local bottom = DrawTabRow(pools.tab, #view.tabs > 1 and view.tabs or EMPTY, view.tab, TABS_TOP, 'tab')
-	PlaceLine(F.tabLine, bottom)
+	local bottom = S.DrawTabRow(pools.tab, #view.tabs > 1 and view.tabs or EMPTY, view.tab, TABS_TOP, 'tab')
+	S.PlaceLine(F.tabLine, bottom)
 	if #view.subtabs > 1 then
-		bottom = DrawTabRow(pools.subtab, view.subtabs, view.subtab, bottom + SUBTAB_GAP, 'subtab')
-		PlaceLine(F.subLine, bottom)
+		bottom = S.DrawTabRow(pools.subtab, view.subtabs, view.subtab, bottom + SUBTAB_GAP, 'subtab')
+		S.PlaceLine(F.subLine, bottom)
 	else
 		ReleaseAll(pools.subtab)
 		F.subLine:Hide()
 	end
 	if view.picker then
-		bottom = DrawPicker(view.picker, bottom + PICKER_GAP)
+		bottom = S.DrawPicker(view.picker, bottom + PICKER_GAP)
 	else
-		HidePicker()
+		S.HidePicker()
 	end
 	PlaceBody(bottom)
 	-- A fill row stretches to what the body shows.
@@ -767,10 +472,10 @@ local function DrawSearch(pages)
 	local count = #results
 	F.title:SetText('Search')
 	F.desc:SetText(format('%d%s result%s for "%s"', count, count >= 100 and '+' or '', count == 1 and '' or 's', state.search))
-	PlaceLine(F.tabLine, DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
+	S.PlaceLine(F.tabLine, S.DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
 	ReleaseAll(pools.subtab)
 	F.subLine:Hide()
-	HidePicker()
+	S.HidePicker()
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
 
 	local names = {}
@@ -926,7 +631,7 @@ local function Draw()
 			end
 		end
 	end
-	DrawSidebar(entries)
+	S.DrawSidebar(entries)
 	if state.search ~= '' and results then DrawSearch(pages) else DrawPage() end
 	F.content:SetHeight(max(1, contentHeight))
 	F.body:UpdateScrollChildRect()
@@ -1014,8 +719,8 @@ local function BuildSidebar(window)
 	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(S.navOffset - delta * NAV_ITEM * 2) end)
 	F.navFrame, F.navContent, F.nav = nav, content, {}
 	F.navBar = OB.ScrollBar(side, SetNavScroll, { narrow = true, step = NAV_ITEM * 2, flat = false })
-	pools.nav = Pool(MakeNavItem)
-	pools.group = Pool(MakeNavGroup)
+	pools.nav = Pool(S.MakeNavItem)
+	pools.group = Pool(S.MakeNavGroup)
 end
 
 local function BuildMain(window)
@@ -1042,7 +747,7 @@ local function BuildMain(window)
 	F.tabLine, F.subLine = Line(main), Line(main)
 	F.tabLine:SetHeight(1)
 	F.subLine:SetHeight(1)
-	pools.tab, pools.subtab = Pool(MakeTab), Pool(MakeTab)
+	pools.tab, pools.subtab = Pool(S.MakeTab), Pool(S.MakeTab)
 	F.tabs, F.subtabs = pools.tab.used, pools.subtab.used
 
 	-- The search box, at the right of the first tab line.
@@ -1078,7 +783,7 @@ local function BuildMain(window)
 
 	F.pickerLabel = Text(main, 'field')
 	F.picker = W.Create(main, 'select')
-	HidePicker()
+	S.HidePicker()
 
 	-- The body.
 	local body = CreateFrame('ScrollFrame', nil, main)
@@ -1201,8 +906,8 @@ local function Build()
 	window:SetScript('OnHide', OnHide)
 	local EM = st.EditModeFrames
 	if EM then
-		EM:On('Enabled', UpdateEditModeButton)
-		EM:On('Disabled', UpdateEditModeButton)
+		EM:On('Enabled', S.UpdateEditModeButton)
+		EM:On('Disabled', S.UpdateEditModeButton)
 	end
 
 	-- Its size, its look (st:SetTemplate) and its parts' places, in the
@@ -1487,3 +1192,6 @@ end)
 
 S.F, S.Colors, S.Schedule, S.SavePosition = F, Colors, Schedule, SavePosition
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
+S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, Button, Select
+S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT, S.SEARCH_WIDTH = PAD, FIELD_HEIGHT, TAB_HEIGHT, SEARCH_WIDTH
+S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM = ACTION_PAD, ACTION_HEIGHT, NAV_ITEM

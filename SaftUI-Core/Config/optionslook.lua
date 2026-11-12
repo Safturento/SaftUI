@@ -213,7 +213,7 @@ local function LayThree(art, frame, set, layer, height, along)
 	middle:SetHorizTile(info and info.tilesHorizontally or false)
 end
 
--- For the options window's tabs (optionswindow.lua).
+-- For the options window's tabs (optionsnav.lua).
 W.AtlasSize = AtlasSize
 function W.LayThree(frame, set, layer, height, along)
 	LayThree(Art(frame), frame, set, layer, height, along)
