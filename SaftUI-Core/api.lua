@@ -187,6 +187,45 @@ function st:QueueAfterCombat(key, fn)
 	return true
 end
 
+-- Runs fn once the Blizzard addon `name` is loaded: now if C_AddOns.IsAddOnLoaded
+-- says it is (loaded, or loading, as during its own ADDON_LOADED), otherwise
+-- when its ADDON_LOADED fires. fn gets no arguments. Several waits on one addon
+-- run in the order they were made; an error in one goes to the error handler
+-- and doesn't stop the rest. The one event frame is made on the first wait and
+-- listens only while a wait is left. It touches no Blizzard frame.
+-- A wait made from inside a waiting fn is kept (or runs at once, if its addon
+-- is loaded) and is never run twice.
+local addonWaits = {} -- addon name -> the fns waiting for it, in order
+local addonWaitFrame
+
+function st:OnBlizzardAddon(name, fn)
+	if C_AddOns.IsAddOnLoaded(name) then
+		fn()
+		return
+	end
+	if not addonWaitFrame then
+		addonWaitFrame = CreateFrame('Frame')
+		addonWaitFrame:SetScript('OnEvent', function(self, event, loaded)
+			local fns = addonWaits[loaded]
+			if not fns then return end
+			-- Taken off the list before they run, so a wait made by one of them
+			-- starts a new list instead of joining this one.
+			addonWaits[loaded] = nil
+			if not next(addonWaits) then self:UnregisterEvent('ADDON_LOADED') end
+			for _, wait in ipairs(fns) do
+				xpcall(wait, geterrorhandler())
+			end
+		end)
+	end
+	local fns = addonWaits[name]
+	if not fns then
+		fns = {}
+		addonWaits[name] = fns
+	end
+	fns[#fns + 1] = fn
+	addonWaitFrame:RegisterEvent('ADDON_LOADED')
+end
+
 -- The widget API's own ClearAllPoints and SetPoint, called directly so any Lua
 -- replacement on the frame itself is skipped. Blizzard's Edit Mode systems (e.g.
 -- ChatFrame1) get Lua overrides of both (EditModeSystemMixin:OnSystemLoad) that
