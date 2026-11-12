@@ -1,7 +1,7 @@
 ---
 name: clients
 description: WoW Forever vs retail, secret values, Blizzard source and icon lookups, and reading the user's in-game logs
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 covers:
   - 'SaftUI-Core/constants.lua'
   - 'SaftUI-Core/utilities.lua'
@@ -25,6 +25,7 @@ covers:
   - **Extra action button.** Forever has none: `ActionButtonUtil.IsExtraActionButtonDisabled` (`Blizzard_ActionBar/Camelot`) returns true, there's no `EXTRAACTIONBUTTON1` binding, and Edit Mode hides its Extra Abilities option. `ExtraActionBarFrame` and `ExtraAbilityContainer` still exist, and `Blizzard_ZoneAbility` loads (`AllowLoadGameType: mainline`, which takes in Camelot), so test those on retail.
   - **Minimap.** The day/night indicator is `MinimapCluster.DielFrame`, and the player coordinates under the minimap (`minimapShowPlayerCoords`) are `MinimapCluster.MinimapContainer.PlayerCoords`. Retail has neither. SaftUI hides both.
   - **Queue eye.** `QueueStatusButton` is an Edit Mode system.
+  - **Cooldown Manager** (`Blizzard_CooldownViewer`, checked 2026-11-12 against both clients' source at 1.60.1.70888 and 12.1.5.70783). It loads on both, at startup, not on demand: Forever's TOC adds `camelot` to `AllowLoadGameType`, and Forever's Options offer it (`InterfaceOverrides.HasCooldownViewer` is true in `Blizzard_SettingsDefinitions_Frame/Camelot`; it shows while the `cooldownViewerEnabled` setting is on). The four viewers (`EssentialCooldownViewer`, `UtilityCooldownViewer`, `BuffIconCooldownViewer`, `BuffBarCooldownViewer`), the item templates and their frame pools are the same on both. Forever differs in its viewers' `layoutIndex` in the bottom managed container (13, 14 and 12 for Essential, Utility and the buff icons; retail's 10, 11 and 9), its edit mode refresh callback (`EditMode.RefreshCooldownViewer`), its placeholder icons in edit mode, and how an item reads a spell category's cooldown (`CooldownViewerItemData.lua`: Forever can show the cooldown and icon of the item last used from a category). None of it reaches SaftUI's skin (`SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua`), which is the same on both.
   - **Loot rolls.**
     - The roll frame's buttons live under `frame.LootButtonContainer`.
     - `C_LootHistory`'s drop index is `lootListKey` on Forever and `lootListID` on retail (`EncounterLootDropInfo`). Read either.

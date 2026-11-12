@@ -1,8 +1,8 @@
 --[[
-	The game's widget API: frames, buttons, tooltips, textures, font strings
-	and fonts, CreateFrame and CreateFont, UIParent and WorldFrame. Method
-	names and arguments follow Blizzard_APIDocumentationGenerated (Gethe/
-	wow-ui-source, forever branch).
+	The game's widget API: frames, buttons, cooldowns, tooltips, textures and
+	mask textures, font strings and fonts, CreateFrame and CreateFont, UIParent
+	and WorldFrame. Method names and arguments follow
+	Blizzard_APIDocumentationGenerated (Gethe/wow-ui-source, forever branch).
 
 	Strict: a widget answers only the methods defined here. Any other name is
 	nil, so calling it errors with the method's name, as a missing API would.
@@ -53,7 +53,12 @@ local TYPES = {
 	Slider = { 'Object', 'ScriptRegion', 'Frame', 'Slider' },
 	EditBox = { 'Object', 'ScriptRegion', 'Frame', 'FontInstance', 'EditBox' },
 	StatusBar = { 'Object', 'ScriptRegion', 'Frame', 'StatusBar' },
-	Texture = { 'Object', 'ScriptRegion', 'Region', 'Texture' },
+	Cooldown = { 'Object', 'ScriptRegion', 'Frame', 'Cooldown' },
+	-- 'Texture' is the methods every texture has (TextureBase's in the API
+	-- documentation), 'Masked' a texture's masks (SimpleTextureAPI's, which a
+	-- MaskTexture doesn't have).
+	Texture = { 'Object', 'ScriptRegion', 'Region', 'Texture', 'Masked' },
+	MaskTexture = { 'Object', 'ScriptRegion', 'Region', 'Texture', 'MaskTexture' },
 	FontString = { 'Object', 'ScriptRegion', 'Region', 'FontInstance', 'FontString' },
 	Font = { 'Object', 'FontInstance', 'Font' },
 }
@@ -68,6 +73,7 @@ local SCRIPTS = {
 	ScrollFrame = { 'OnScrollRangeChanged', 'OnVerticalScroll', 'OnHorizontalScroll' },
 	Slider = { 'OnValueChanged', 'OnMinMaxChanged' },
 	StatusBar = { 'OnValueChanged', 'OnMinMaxChanged' },
+	Cooldown = { 'OnCooldownDone' },
 	EditBox = { 'OnTextChanged', 'OnEnterPressed', 'OnEscapePressed', 'OnTabPressed', 'OnEditFocusGained', 'OnEditFocusLost' },
 }
 
@@ -97,7 +103,7 @@ local Object, ScriptRegion, Region, Frame, Button, GameTooltip, Texture, FontIns
 	API.Object, API.ScriptRegion, API.Region, API.Frame, API.Button, API.GameTooltip,
 	API.Texture, API.FontInstance, API.FontString
 local CheckButton, ScrollFrame, Slider, StatusBar = API.CheckButton, API.ScrollFrame, API.Slider, API.StatusBar
-local EditBox = API.EditBox
+local EditBox, Cooldown, Masked = API.EditBox, API.Cooldown, API.Masked
 
 ------------------------------------------------------------------ helpers
 
@@ -374,7 +380,15 @@ end
 
 function Object.GetName(self, s) return s.name end
 function Object.GetObjectType(self, s) return s.type end
-function Object.IsObjectType(self, s, typeName) return s.groups[typeName] == true end
+-- The API groups a type has that aren't object types it is: a MaskTexture has
+-- every texture's methods (the 'Texture' group here) but isn't a Texture, as in
+-- the API documentation (SimpleMaskTexture and SimpleTexture both inherit
+-- SimpleTextureBase).
+local NOT_OBJECT_TYPES = { MaskTexture = { Texture = true } }
+function Object.IsObjectType(self, s, typeName)
+	local not_types = NOT_OBJECT_TYPES[s.type]
+	return s.groups[typeName] == true and not (not_types and not_types[typeName])
+end
 -- Forbidden objects (Blizzard's secure-only ones) are never made here.
 function Object.IsForbidden(self, s) return false end
 
@@ -656,6 +670,30 @@ function Texture.IsDesaturated(self, s) return s.desaturated == true end
 function Texture.SetBlendMode(self, s, mode) s.blend_mode = mode end
 function Texture.GetBlendMode(self, s) return s.blend_mode or 'BLEND' end
 
+-- A texture's masks (SimpleTextureAPIDocumentation.lua, both clients): mask
+-- textures (Frame.CreateMaskTexture) that cut what it shows, as Blizzard's
+-- templates cut icons round (<MaskTexture> with <MaskedTextures> in XML).
+-- Only remembered, in the order added; adding one twice keeps one, and
+-- removing one it doesn't have does nothing (neither is checked in game).
+function Masked.AddMaskTexture(self, s, mask)
+	if not is_widget(mask, 'MaskTexture') then usage(s, 'AddMaskTexture(): mask must be a mask texture') end
+	s.masks = s.masks or {}
+	for _, m in ipairs(s.masks) do
+		if m == mask then return end
+	end
+	table.insert(s.masks, mask)
+end
+function Masked.GetNumMaskTextures(self, s) return #(s.masks or {}) end
+function Masked.GetMaskTexture(self, s, index) return (s.masks or {})[number_arg(s, index, 'index')] end
+function Masked.RemoveMaskTexture(self, s, mask)
+	for i, m in ipairs(s.masks or {}) do
+		if m == mask then
+			table.remove(s.masks, i)
+			return
+		end
+	end
+end
+
 ------------------------------------------------------------------ FontInstance (font strings, fonts)
 
 -- The font a font string or font object draws with: its own SetFont, or its
@@ -789,6 +827,15 @@ function Frame.CreateFontString(self, s, name, layer, inherits)
 	local fontString = create_region(self, s, 'FontString', name, layer)
 	states[fontString].font_object = font
 	return fontString
+end
+
+-- A mask texture (Masked.AddMaskTexture), one of the frame's regions as a
+-- texture is. No templates, as for CreateTexture.
+function Frame.CreateMaskTexture(self, s, name, layer, inherits, sublevel)
+	if inherits ~= nil then usage(s, ('CreateMaskTexture(): Couldn\'t find inherited node "%s"'):format(tostring(inherits))) end
+	local mask = create_region(self, s, 'MaskTexture', name, layer)
+	states[mask].sublevel = sublevel or 0
+	return mask
 end
 
 function Frame.GetChildren(self, s) return unpack(s.children) end
@@ -1162,6 +1209,62 @@ function StatusBar.GetStatusBarColor(self, s)
 	return c[1], c[2], c[3], c[4]
 end
 
+------------------------------------------------------------------ Cooldown
+
+--[[
+	A cooldown's swipe, edge and countdown numbers (FrameAPICooldownDocumentation.lua;
+	the same on both clients, but that SetSwipeTexture's texture may be nil on
+	Forever). Nothing is drawn or timed here: what the swipe and edge are drawn
+	with, and whether they and the numbers show, are only remembered, in
+	stub.state(cooldown): swipe_texture, swipe_color, edge_texture,
+	draw_swipe, draw_edge and reverse. The numbers are a font string the
+	cooldown owns (GetCountdownFontString), made the first time it's asked
+	for. It isn't among the cooldown's regions here (GetRegions doesn't give
+	it); whether the game lists it there is unverified. Not mimicked:
+	SetCooldown and the rest of the timing, the color SetSwipeTexture and
+	SetEdgeTexture take after the texture (Blizzard passes the texture alone
+	and keeps the swipe's color: TotemFrame.lua sets only the texture), and the
+	secret values the getters give for a cooldown or a style set from one.
+]]
+local function countdown_string(self, s)
+	if not s.countdown then
+		local text, ts = new_widget('FontString', nil, self)
+		ts.draw_layer, ts.sublevel = 'OVERLAY', 0
+		s.countdown = text
+	end
+	return s.countdown
+end
+-- texture is a file path or file ID (nil too on Forever, whose documentation
+-- has it nilable). The swipe's color (SetSwipeColor) is kept.
+function Cooldown.SetSwipeTexture(self, s, texture)
+	local nilable = stub.interface == 16001
+	if not (type(texture) == 'string' or type(texture) == 'number' or (texture == nil and nilable)) then
+		usage(s, 'SetSwipeTexture(): texture must be a path or a file ID')
+	end
+	s.swipe_texture = texture
+end
+function Cooldown.SetSwipeColor(self, s, r, g, b, a)
+	s.swipe_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
+end
+function Cooldown.SetEdgeTexture(self, s, texture)
+	if type(texture) ~= 'string' and type(texture) ~= 'number' then
+		usage(s, 'SetEdgeTexture(): texture must be a path or a file ID')
+	end
+	s.edge_texture = texture
+end
+function Cooldown.SetDrawSwipe(self, s, draw) s.draw_swipe = draw and true or false end
+function Cooldown.SetDrawEdge(self, s, draw) s.draw_edge = draw and true or false end
+function Cooldown.SetReverse(self, s, reverse) s.reverse = reverse and true or false end
+function Cooldown.SetHideCountdownNumbers(self, s, hide) s.hide_numbers = hide and true or false end
+function Cooldown.GetHideCountdownNumbers(self, s) return s.hide_numbers == true end
+-- The numbers' font, by a font object's global name.
+function Cooldown.SetCountdownFont(self, s, fontName)
+	local font = type(fontName) == 'string' and _G[fontName]
+	if not is_widget(font, 'FontInstance') then usage(s, 'SetCountdownFont(): ' .. tostring(fontName) .. ' is not a font') end
+	states[countdown_string(self, s)].font_object = font
+end
+function Cooldown.GetCountdownFontString(self, s) return countdown_string(self, s) end
+
 ------------------------------------------------------------------ EditBox
 
 -- Setting different text runs OnTextChanged(self, false): the change didn't
@@ -1313,6 +1416,7 @@ end
 local FRAME_TYPES = {
 	frame = 'Frame', button = 'Button', checkbutton = 'CheckButton', gametooltip = 'GameTooltip',
 	scrollframe = 'ScrollFrame', slider = 'Slider', statusbar = 'StatusBar', editbox = 'EditBox',
+	cooldown = 'Cooldown',
 }
 
 -- Templates CreateFrame knows. Each sets up a new frame the way the template

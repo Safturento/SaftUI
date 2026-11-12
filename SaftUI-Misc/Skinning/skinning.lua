@@ -50,10 +50,20 @@ function SK:GetConfigTable()
 				end,
 				args = {
 					theme = generators.theme(1,
-						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, Hekili and WeakAuras."),
+						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, Hekili and WeakAuras."),
 					background = generators.background(1.5),
 					font = generators.font(2,
-						"The font of the text on the frames SaftUI skins: the buff icons and the swing timer bars."),
+						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars and the Cooldown Manager."),
+					cooldown_manager = {
+						order = 3,
+						name = 'Cooldown Manager',
+						type = 'toggle',
+						desc = "Draw Blizzard's Cooldown Manager as SaftUI's action buttons, in this page's Theme, Background and font, and its tracked buff bars as SaftUI's bars. Off, it keeps Blizzard's look. Requires a reload.",
+						set = function(info, value)
+							self.config[info[#info]] = value
+							st:Print('Reload your UI to apply.')
+						end,
+					},
 				},
 			},
 		},
