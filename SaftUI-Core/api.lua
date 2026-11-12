@@ -216,9 +216,9 @@ end
 function st:Debug(module, ...)
 	if not self.DEBUG then return end
 
-	debug = st.StringFormat:ColorString(
+	local label = st.StringFormat:ColorString(
 			'DEBUG', st.config.profile.colors.text.red:GetRGB())
-	st:Print(('<%s:%s>'):format(debug, module), ...)
+	st:Print(('<%s:%s>'):format(label, module), ...)
 end
 
 function st:Kill(frame)
