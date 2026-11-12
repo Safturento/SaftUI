@@ -52,11 +52,15 @@ local function enemy(unit, opts)
 	return NP.add(unit, opts)
 end
 
+-- Aura containers a test names, for a container that doesn't answer to its
+-- type (the stand-in's containerIsIntrinsic).
+local containersByName = setmetatable({}, { __mode = 'k' })
+
 -- region and everything under it, parents first, each as { region, path },
 -- stopping at an aura container (not listed; returned second).
 local function walk(region, path, out, containers)
 	out, containers = out or {}, containers or {}
-	if region:IsObjectType('AuraContainer') then
+	if containersByName[region] or region:IsObjectType('AuraContainer') then
 		containers[#containers + 1] = region
 		return out, containers
 	end
@@ -305,6 +309,113 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			eq(#take_errors(), 0, 'no error')
 		end)
 	end
+end
+
+-- A texture SaftUI made on an aura button: Thick's dark line over the dispel
+-- fill (auras.lua's StyleButton), the button's one texture that isn't its
+-- Icon or Border.
+local function innerLine(button)
+	for _, region in ipairs({ button:GetRegions() }) do
+		if region:IsObjectType('Texture') and region ~= button.Icon and region ~= button.Border then
+			return region
+		end
+	end
+end
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ": an aura container that doesn't answer to its type is still skipped: SaftUI knows its own", function()
+		local st, UF = world(client, 'thick')
+		NP.ouf.containerIsIntrinsic = true
+		local frame = enemy('nameplate1')
+		eq(frame.Buffs:IsObjectType('AuraContainer'), false, 'the container answers as a plain frame')
+		check(UF.auraContainers[frame.Buffs] and UF.auraContainers[frame.Debuffs], 'SaftUI knows both containers')
+		containersByName[frame.Buffs], containersByName[frame.Debuffs] = true, true
+
+		-- With auras secret, the container's buttons refuse an addon's access
+		-- (.agents/taint.md, rule 11): a walk reaching one errors.
+		local buttons = { frame.Buffs:_AddButton(), frame.Debuffs:_AddButton() }
+		for _, button in ipairs(buttons) do
+			for _, region in ipairs({ button, button.Icon, button.Border }) do
+				region.SetRoundLayoutToNearestPixel = function() error('tainted access to an aura button', 2) end
+			end
+		end
+
+		UF:UpdateConfig('nameplate')
+		eq(#take_errors(), 0, 'no error: nothing of the containers was walked')
+		for _, container in ipairs({ frame.Buffs, frame.Debuffs }) do
+			eq(stub.state(container).round_layout, nil, 'the container is not rounded')
+		end
+		for _, button in ipairs(buttons) do
+			eq(stub.state(button).round_layout, nil, 'nor its button')
+			eq(unrounded(button.backdrop), '', "the button's backdrop rounds, from auras.lua")
+		end
+		eq(unrounded(frame), '', 'every other part of the plate rounds')
+	end)
+
+	test(client .. ": a plate's art drawn after its walk (a theme switch's queues run in any order after combat) rounds", function()
+		for _, switch in ipairs({ { 'thick', 'blizzard' }, { 'blizzard', 'thick' } }) do
+			local from, to = switch[1], switch[2]
+			local st, UF = world(client, from)
+			local frame = enemy('nameplate1')
+			local button = frame.Debuffs:_AddButton()
+			local label = client .. ', ' .. from .. ' to ' .. to
+
+			-- Config:UpdateConfig in combat queues the theme's redraw
+			-- (st:RedrawThemed, then ColorsChanged('theme')) and the unit frames'
+			-- update apart, and the end of combat runs its queue in no set order:
+			-- here the update (with its walk) first, then the redraw.
+			-- Blizzard's redraw makes pieces the update's draw didn't (Thick's
+			-- lines are all made by the update itself).
+			st.config.profile.theme.name = to
+			UF:UpdateConfig()
+			st:RedrawThemed()
+			if to == 'blizzard' then
+				check(unrounded(frame) ~= '', label .. ": the redraw's new art isn't rounded yet")
+			end
+			st:ColorsChanged('theme')
+			eq(unrounded(frame), '', label .. ': rounded once the theme has changed')
+			eq(unrounded(button.backdrop), '', label .. ": and the aura button's backdrop")
+
+			-- And in the order Config:UpdateConfig runs them out of combat
+			-- (nameplate_theme_test.lua's theme_changed).
+			st.config.profile.theme.name = from
+			st:RedrawThemed()
+			UF:UpdateConfig()
+			st:ColorsChanged('theme')
+			eq(unrounded(frame) .. unrounded(button.backdrop), '', label .. ': and back again')
+			eq(#take_errors(), 0, label .. ': no error')
+		end
+	end)
+
+	test(client .. ": Thick's inner line on a plate's aura button rounds; on another unit's it doesn't", function()
+		local st, UF = world(client, 'thick')
+		local frame = enemy('nameplate1')
+		local button = frame.Debuffs:_AddButton()
+		local inner = innerLine(button)
+		check(inner ~= nil, 'the line is made')
+		check(rounded(inner), "it rounds, unsnapped: SaftUI made it, though it's on Blizzard's button")
+		eq(stub.state(button).round_layout, nil, 'the button itself is not rounded')
+		eq(stub.state(button.Icon).round_layout, nil, 'nor its icon')
+		eq(stub.state(button.Border).round_layout, nil, 'nor its border')
+
+		-- Made later, by a theme switch to Thick: rounded too.
+		st, UF = world(client, 'blizzard')
+		frame = enemy('nameplate1')
+		button = frame.Debuffs:_AddButton()
+		eq(innerLine(button), nil, 'no line under Blizzard')
+		st.config.profile.theme.name = 'thick'
+		st:RedrawThemed()
+		UF:UpdateConfig()
+		st:ColorsChanged('theme')
+		check(innerLine(button) ~= nil and rounded(innerLine(button)), 'made by the switch, and rounded')
+
+		-- Another unit's: the game's layout.
+		local target = NP.ouf:Spawn('target', 'SaftUI_Target')
+		local other = target.Debuffs:_AddButton()
+		check(innerLine(other) ~= nil, "the target's line is made")
+		eq(stub.state(innerLine(other)).round_layout, nil, "the target's is not rounded")
+		eq(#take_errors(), 0, 'no error')
+	end)
 end
 
 ------------------------------------------------------------------ the scale

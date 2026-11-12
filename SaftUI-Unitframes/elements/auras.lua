@@ -37,6 +37,22 @@ local innerLines = setmetatable({}, { __mode = 'k' })
 -- The element each button belongs to.
 local buttonElements = setmetatable({}, { __mode = 'k' })
 
+-- Every aura container SaftUI has made (Constructor), as keys. A plate's
+-- rounding walk (nameplates/pixels.lua) leaves them alone by this, before it
+-- calls anything on them: AuraContainer is an XML intrinsic, which the game
+-- may not report through IsObjectType.
+UF.auraContainers = UF.auraContainers or setmetatable({}, { __mode = 'k' })
+
+-- Rounds a region SaftUI made on a plate's aura button (its backdrop, Thick's
+-- line) to whole pixels with the rest of the plate (nameplates/pixels.lua),
+-- whose own walk stops at the aura container. Other units' are left as they
+-- are.
+local function RoundOnPlate(auras, region)
+	if region and auras.unitframe and auras.unitframe.isNamePlate and UF.RoundLayout then
+		UF.RoundLayout(region, true)
+	end
+end
+
 -- Shows a button's dark line while its element's Theme draws Thick, in Thick's
 -- outer border color, and hides it otherwise. The line isn't part of the
 -- backdrop the theme engine draws, so the engine runs this again after every
@@ -60,15 +76,11 @@ local function StyleButton(auras, button)
 
 	st:SetBackdrop(button, config.theme, config.background, 'aura')
 
-	-- On a plate the backdrop rounds to whole pixels with the rest of the plate
-	-- (nameplates/pixels.lua), whose own walk stops at the aura container. So
-	-- each button's backdrop, a frame of SaftUI's, is rounded here, where it's
-	-- drawn: when the button is made (PostCreateButton) and after every config
-	-- update, which can draw new art (a theme switch). The button and what
-	-- else is on it are Blizzard's container's, and left alone.
-	if auras.unitframe and auras.unitframe.isNamePlate and UF.RoundLayout and button.backdrop then
-		UF.RoundLayout(button.backdrop, true)
-	end
+	-- On a plate, each button's backdrop, a frame of SaftUI's, is rounded here,
+	-- where it's drawn: when the button is made (PostCreateButton) and after
+	-- every config update, which can draw new art (a theme switch). The button
+	-- and what Blizzard's container puts on it are left alone.
+	RoundOnPlate(auras, button.backdrop)
 
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
 	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
@@ -101,6 +113,8 @@ local function StyleButton(auras, button)
 				inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
 				inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
 				innerLines[button] = inner
+				-- SaftUI's texture, though it's on Blizzard's button.
+				RoundOnPlate(auras, inner)
 			end
 		end
 		-- Shown only under Thick, so hidden under Blizzard.
@@ -242,6 +256,7 @@ end
 
 local function Constructor(unitframe, aura_type)
 	local auras = unitframe:CreateAuras()
+	UF.auraContainers[auras] = true
 
 	auras.config = unitframe.config[string.lower(aura_type)]
 	auras.GetConfig = function() return unitframe:GetConfig()[string.lower(aura_type)] end

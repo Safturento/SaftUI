@@ -123,6 +123,13 @@
 --       frames), and nothing about it is Blizzard's: it isn't locked, as
 --       auras.lua keeps button.backdrop on it (theme_test.lua's stand-in
 --       button allows the same).
+--     The container answers IsObjectType('AuraContainer') with true, unless a
+--     test sets ouf.containerIsIntrinsic before it's made: then it answers as
+--     the plain frame it is. In game AuraContainer is an XML intrinsic
+--     (<Frame name="AuraContainer" intrinsic="true">, Blizzard_AuraContainer.xml),
+--     and Blizzard tells an intrinsic by a key of its own, not IsObjectType
+--     (DropdownButton.lua: frame.intrinsic == "DropdownButton"), so which
+--     answer the game gives isn't known.
 --   * Tag binds a tag string to a font string and updates it on events.
 
 local M = {}
@@ -333,9 +340,11 @@ function M.new()
 		function container:SetFlowLayoutAnchorPoint(point) self.flow.anchor = point end
 		function container:SetFlowLayoutMaximumLineSize(size) self.flow.lineSize = size end
 		function container:SetFlowLayoutGrowthDirection(x, y) self.flow.growthX, self.flow.growthY = x, y end
-		local isObjectType = container.IsObjectType
-		function container:IsObjectType(typeName)
-			return typeName == 'AuraContainer' or isObjectType(self, typeName)
+		if not ouf.containerIsIntrinsic then
+			local isObjectType = container.IsObjectType
+			function container:IsObjectType(typeName)
+				return typeName == 'AuraContainer' or isObjectType(self, typeName)
+			end
 		end
 		-- The container making a button for an aura that shows (see the top).
 		function container:_AddButton()
