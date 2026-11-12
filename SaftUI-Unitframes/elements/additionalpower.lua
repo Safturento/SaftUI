@@ -1,28 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function Update(unitframe, event, unit, powerType)
-	if(unitframe.__unit ~= unit) then return end
-	local additionalPower = unitframe.AdditionalPower
-
-	if(additionalPower.PreUpdate) then
-		additionalPower:PreUpdate(unit)
-	end
-
-	--TODO: Override powertype to maelstrom for ele/enh shamans in ghost wolf
-
-	local cur, max = UnitPower(unit), UnitPowerMax(unit)
-	additionalPower:SetMinMaxValues(0, max)
-	additionalPower:SetValue(cur)
-
-	additionalPower.cur = cur
-	additionalPower.max = max
-
-	if(additionalPower.PostUpdate) then
-		additionalPower:PostUpdate(cur, max)
-	end
-end
-
 -- oUF calls this after it recolors the bar (see power.lua's PostUpdateColor).
 local function PostUpdateColor(power, color, r, g, b)
 	if power.config.colorCustom then

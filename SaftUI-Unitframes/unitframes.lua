@@ -112,9 +112,6 @@ function UF.ConstructUnit(self, unit)
 	end
 
 	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
-	if UF.unit_strings[self.base_unit] then
-		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
-	end
 	-- A plate's frame takes no mouse (oUF turned it off), so the mouse stays
 	-- the game's: a click on the plate targets its unit. So it gets no clicks
 	-- and no hover scripts, which could take the mouse over the plate.
@@ -692,8 +689,6 @@ function UF:OnEnable()
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)
 		end
 	end
-
-	self.RMH = RealMobHealth
 
 	UF:CreateGroupHeaders()
 	UF:ApplyConfig()

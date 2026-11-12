@@ -83,9 +83,9 @@ local BARE_ELEMENTS = { Buffs = true, Debuffs = true, ClassPower = true }
 function UF:UpdateElement(element, configOverride)
     element.config = element:GetConfig()
 
-    local config = element.config or configOverride
+    local config = element.config
 
-    local enabled = self:SetElementEnabled(element, configOverride)
+    local enabled = self:SetElementEnabled(element)
     if not enabled then
         -- An element's texts usually live on the unit frame's TextOverlay, not
         -- on the element, so they don't hide with it. Enabling it again shows

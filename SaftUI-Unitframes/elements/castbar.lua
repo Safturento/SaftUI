@@ -49,12 +49,8 @@ local function ColorCast(castbar, notInterruptible)
 end
 
 -- oUF's callbacks: PostCastStart runs for channels too, and PostCastInterruptible
--- when a cast turns (un)interruptible mid-cast.
-local function PostCastStart(castbar, unit, spellID, notInterruptible)
-	ColorCast(castbar, notInterruptible)
-end
-
-local function PostCastInterruptible(castbar, unit, spellID, notInterruptible)
+-- when a cast turns (un)interruptible mid-cast. Both color the bar the same.
+local function PostCast(castbar, unit, spellID, notInterruptible)
 	ColorCast(castbar, notInterruptible)
 end
 
@@ -85,8 +81,8 @@ local function Constructor(unitframe)
 		notInterruptible = CreateColor(castbar.config.colors.nointerrupt:GetRGB())
 	}
 	castbar.ShouldShow = ShouldShow
-	castbar.PostCastStart = PostCastStart
-	castbar.PostCastInterruptible = PostCastInterruptible
+	castbar.PostCastStart = PostCast
+	castbar.PostCastInterruptible = PostCast
 
 	return castbar
 end

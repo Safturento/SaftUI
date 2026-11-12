@@ -2,8 +2,6 @@ local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
 
-local DEBUG = false
-
 -- A quest question's answer as a plain boolean: a secret one (restricted
 -- content can hand one) counts as no, since it can't be tested.
 local function Yes(answer)
@@ -34,7 +32,7 @@ end
     desc        - what it shows, on its Enable option
     addOptions  - adds its own options to its tab's args (optional)
     validUnit   - the element's ValidUnit (optional)
-    postUpdate, postCreate, debug - optional hooks
+    postUpdate, postCreate - optional hooks
     override    - the element's Override, its update in place of oUF's (optional)
 ]]
 local indicators = {
@@ -70,9 +68,6 @@ local indicators = {
        postCreate = function(self)
            self:SetTexture(st.textures.cornerbr)
        end,
-       debug = function(self)
-           self:SetTexCoord(GetTexCoordsForRoleSmallCircle('HEALER'))
-       end,
        -- A role means nothing on a nameplate.
        validUnit = function(unit)
            return not UF.IsPlateUnit(unit)
@@ -88,9 +83,6 @@ local indicators = {
         validUnit = function(unit)
             return not UF.IsPlateUnit(unit)
         end,
-        debug = function(self)
-            self:SetTexture([[Interface\GROUPFRAME\UI-GROUP-MAINASSISTICON]])
-        end
     },
     {
         configKey = 'questindicator',
@@ -106,9 +98,6 @@ local indicators = {
         label = 'Raid target',
         order = 9,
         desc = 'The raid target marker (star, skull, ...) on the unit.',
-        debug = function(self)
-            SetRaidTargetIconTexture(self, 1)
-        end
     },
     {
         configKey = 'readycheckindicator',
@@ -120,9 +109,6 @@ local indicators = {
         validUnit = function(unit)
             return UF.group_strings[unit] ~= nil
         end,
-        debug = function(self)
-            self:SetTexture(self.waitingTexture)
-        end
     }
 }
 
@@ -140,14 +126,6 @@ for _, config in pairs(indicators) do
             -- its config: a friendly plate's quest icon by default) until now.
             if not UF:ElementWanted(indicator) then
                 indicator:Hide()
-            end
-
-            if DEBUG then
-                if config.debug then
-                    config.debug(...)
-                end
-                indicator:Show()
-                indicator:SetAlpha(1)
             end
         end
 

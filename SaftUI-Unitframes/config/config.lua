@@ -934,7 +934,7 @@ function UF:GetConfigTable()
 		for element_name, element in pairs(UF.elements) do
 			if element.GetConfigTable and (not element.ValidUnit or element.ValidUnit(unit)) then
 				config_table.args[element_name] =
-					element.GetConfigTable(unit, frame_position_get, frame_position_set)
+					element.GetConfigTable(unit)
 			end
 		end
 
