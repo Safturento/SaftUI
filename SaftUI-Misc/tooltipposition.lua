@@ -91,13 +91,9 @@ end
 function TT:ApplyTooltipHolder()
 	local holder = self.tooltipHolder
 	if not holder then return end
-	st:SafeReposition(holder, 'tooltip_holder', function()
-		holder:SetSize(st:RoundToPixel(HOLDER_WIDTH, holder), st:RoundToPixel(HOLDER_HEIGHT, holder))
-		local point, relative, rel_point, x, y = st:UnpackPoint(self.config.position)
-		holder:ClearAllPoints()
-		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
-			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
-	end)
+	st:PlaceHolder(holder, 'tooltip_holder',
+		function() return st:RoundToPixel(HOLDER_WIDTH, holder), st:RoundToPixel(HOLDER_HEIGHT, holder) end,
+		function() return self.config.position end)
 	self:UpdateTooltipAnchor()
 end
 

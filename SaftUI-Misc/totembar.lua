@@ -514,13 +514,9 @@ function TB:ApplyHolder()
 	if not holder then return end
 	self:KeepPlacement()
 
-	st:SafeReposition(holder, 'totembar_holder', function()
-		holder:SetSize(BarSize(self.config, self.bar))
-		local point, relative, rel_point, x, y = st:UnpackPoint(self:GetPosition())
-		holder:ClearAllPoints()
-		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
-			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
-	end)
+	st:PlaceHolder(holder, 'totembar_holder',
+		function() return BarSize(self.config, self.bar) end,
+		function() return self:GetPosition() end)
 
 	local position = self.config.position
 	if not position then return end
