@@ -10,6 +10,7 @@ covers:
   - 'SaftUI-Core/Config/optionsbody.lua'
   - 'SaftUI-Core/Config/optionswindow.lua'
   - 'SaftUI-Core/Config/general.lua'
+  - 'SaftUI-Unitframes/config/config.lua'
   - 'SaftUI-*/options.lua'
   - 'SaftUI-*/movers.lua'
   - 'SaftUI-Misc/Skinning/*Position.lua'
