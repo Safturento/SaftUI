@@ -6,8 +6,6 @@ st.GAME_VERSION = select(4, GetBuildInfo())
 
 st.name = "SaftUI"
 st.forever = st.GAME_VERSION == 16001
--- Forever runs on the mainline client, so it counts as retail
-st.retail = st.GAME_VERSION >= 110000 or st.forever
 
 st.my_name = select(1, UnitName('player'))
 st.my_class = select(2, UnitClass('player'))

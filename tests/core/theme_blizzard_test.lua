@@ -47,13 +47,13 @@ end
 
 test('T.client gives a fresh world on each client, one after the other', function()
 	local st = T.client('retail')
-	check(not st.forever and st.retail, 'retail: st.forever off, st.retail on')
+	check(not st.forever, 'retail: st.forever off')
 	eq(select(4, GetBuildInfo()), 120000, "retail: the game's interface")
 	eq(st.ThemeArt and st.ThemeArt.Client(), 'live', "retail: the theme's client is live")
 	st.config.profile.theme.name = 'thin'
 
 	st = T.client('forever')
-	check(st.forever and st.retail, 'forever: st.forever on (it counts as retail too)')
+	check(st.forever, 'forever: st.forever on')
 	eq(select(4, GetBuildInfo()), 16001, "forever: the game's interface")
 	eq(st.ThemeArt and st.ThemeArt.Client(), 'forever', "forever: the theme's client")
 	eq(st.config.profile.theme.name, 'thick', 'the profile is fresh: the theme is the default again')
@@ -61,6 +61,11 @@ test('T.client gives a fresh world on each client, one after the other', functio
 
 	local ok = pcall(T.client, 'classic')
 	check(not ok, 'a client that is neither is an error')
+end)
+
+test('st.retail is gone on both clients: st.forever is the only client flag', function()
+	eq(T.client('retail').retail, nil, 'retail: st.retail is nil')
+	eq(T.client('forever').retail, nil, 'forever: st.retail is nil')
 end)
 
 test('Blizzard resolves like Thick and Thin', function()

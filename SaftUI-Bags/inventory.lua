@@ -41,7 +41,7 @@ INV.bagIds = BAG_IDS
 -- defines the account tabs and Enum.BankType.Account but has no warband bank
 -- UI here) and with warband tabs to hold items.
 function INV:HasWarbandBank()
-	return st.retail and not st.forever and self.bagIds.warband ~= nil and #self.bagIds.warband > 0
+	return not st.forever and self.bagIds.warband ~= nil and #self.bagIds.warband > 0
 end
 
 INV.containers = {}
@@ -332,7 +332,7 @@ end
 -- each time the bank opens, so a profile change applies from the next visit.
 -- Closing goes to whichever layout was opened.
 function INV:BANKFRAME_OPENED()
-	if st.retail and self.config.combinedBank then
+	if self.config.combinedBank then
 		self.openedBankLayout = 'combined'
 		self:OpenCombinedBank()
 	else

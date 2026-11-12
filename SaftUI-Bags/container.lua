@@ -231,10 +231,8 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
-	if st.retail then
-        self:UpdateWarbandMoney()
-        self:UpdateCombinedBankWarbandMoney()
-    end
+	self:UpdateWarbandMoney()
+	self:UpdateCombinedBankWarbandMoney()
 	st.config.realm.summary[st.my_name].gold = money
 end
 

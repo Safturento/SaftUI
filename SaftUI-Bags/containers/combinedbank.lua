@@ -156,7 +156,7 @@ function INV:InitializeCombinedBank()
 	-- Retail only: the warband money controls (the bank's gold string, its Withdraw
 	-- button and the bags' Deposit button) and the bank category selector. Forever
 	-- has no separate bank and warband tabs worth switching between.
-	if st.retail and not st.forever then
+	if not st.forever then
         self:CreateGoldString(container)
         self:UpdateCombinedBankWarbandMoney()
         self:InitializeWithdrawButton(container)
