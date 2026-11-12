@@ -243,5 +243,23 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	general.set(info_for('font'), 'normal')
 	eq(profile.skinning.font, 'normal', 'Font writes skinning.font')
 	eq(reapplied, 3, 'each change re-applies the skins')
-	eq(layout({ Skinning = tree }, 'Skinning'), 'theme:normal 1, background:normal 2, font:normal 1', 'Theme | Background, Font')
+
+	-- Cooldown Manager turns the Cooldown Manager's skin on or off, after a reload.
+	local toggle = general.args.cooldown_manager
+	eq(toggle.type, 'toggle', 'Cooldown Manager is a toggle')
+	check(toggle.desc:find('Requires a reload', 1, true) ~= nil, 'its tooltip says it needs a reload')
+	eq(general.get(info_for('cooldown_manager')), true, 'on by default')
+	local printed = {}
+	local print_ = st.Print
+	function st:Print(...) printed[#printed + 1] = table.concat({ ... }, ' ') end
+	toggle.set(info_for('cooldown_manager'), false)
+	st.Print = print_
+	eq(profile.skinning.cooldown_manager, false, 'Cooldown Manager writes skinning.cooldown_manager')
+	eq(reapplied, 3, 'and re-applies no skin')
+	eq(printed[1], 'Reload your UI to apply.', 'it says to reload')
+	profile.skinning.cooldown_manager = true
+
+	eq(layout({ Skinning = tree }, 'Skinning'),
+		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2',
+		'Theme | Background, Font | Cooldown Manager')
 end)

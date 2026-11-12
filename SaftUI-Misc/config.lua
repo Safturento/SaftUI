@@ -22,10 +22,13 @@ st.defaults.tooltip = {
 	position = { point = 'BOTTOMRIGHT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = -20, y_off = 20 },
 }
 
+-- cooldown_manager skins Blizzard's Cooldown Manager as SaftUI's action buttons
+-- (Skinning/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
 	background = 'theme',
+	cooldown_manager = true,
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua).
