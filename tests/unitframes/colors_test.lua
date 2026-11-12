@@ -126,6 +126,17 @@ test('a change to colors unit frames do not use recolors nothing', function()
 	eq(total_updates(), 0, 'nothing force-updated')
 end)
 
+test('a threat color change recolors no unit frame: only the plates take it (nameplates/threat.lua)', function()
+	reset()
+	local colored = 0
+	local original = UF.UpdateColors
+	UF.UpdateColors = function() colored = colored + 1 end
+	UF:OnColorsChanged('threat')
+	UF.UpdateColors = original
+	eq(total_updates(), 0, 'nothing force-updated')
+	eq(colored, 1, "oUF's colors still copied")
+end)
+
 test('before unit frames are enabled a change does nothing', function()
 	reset()
 	UF.units = nil

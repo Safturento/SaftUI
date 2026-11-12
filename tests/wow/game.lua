@@ -742,10 +742,14 @@ end
 --     mob's threat list. An entry is the unit's status (0-3, as
 --     UnitThreatSituation gives it: 0 lower threat than the tank, 1 higher
 --     but not tanking, 2 tanking with someone else higher, 3 tanking
---     securely), or { status = n, percent = p } to give its scaled percent.
---     The percent is 100 for a unit tanking (status 2 or 3) and 0 otherwise
---     when not given. A test can put a secret value (tests/lib/secrets.lua)
---     in either, as restricted content hands one.
+--     securely), or { status = n, percent = p, isTanking = t } to give its
+--     scaled percent and UnitDetailedThreatSituation's isTanking. Not given,
+--     the percent is 100 for a unit tanking (status 2 or 3) and 0 otherwise,
+--     and isTanking is status 2 or 3. A test can put a secret value
+--     (tests/lib/secrets.lua) in any of them, as restricted content hands
+--     one: the threat values (UnitDetailedThreatSituation's, which are
+--     SecretWhenUnitThreatValuesRestricted) can be secret while the state
+--     (UnitThreatSituation's, SecretWhenUnitThreatStateRestricted) isn't.
 --   stub.secret_threat: mob token -> true (every unit's threat state with that
 --     mob is secret) or a set of unit tokens (only theirs is), for
 --     C_Secrets.ShouldUnitThreatStateBeSecret. The game's threat functions
@@ -759,6 +763,10 @@ end
 --     or 'NONE' (nil reads as 'NONE'). Another unit's is its stub.units role.
 --   stub.tank_aura: unit token -> true for a unit with an aura that makes it
 --     a tank (UnitHasEffectivelyTankAura, Forever only).
+--   stub.apply_client(): drops the globals stub.interface's client doesn't
+--     have (CLIENT_ONLY below), as T.client (tests/lib/theme_helpers.lua)
+--     does after setting the interface. A world whose interface a test sets
+--     by hand calls it too, if the code it runs looks a global up.
 stub.threat = {}
 stub.secret_threat = {}
 stub.group = nil
@@ -766,8 +774,8 @@ stub.role = nil
 stub.tank_aura = {}
 
 do
-	-- The unit's entry on mob's threat list: status and percent, or nil when
-	-- it isn't on the list.
+	-- The unit's entry on mob's threat list: status, percent and isTanking,
+	-- or nil when it isn't on the list.
 	local function threat_entry(fn, unit, mob)
 		if type(unit) ~= 'string' or type(mob) ~= 'string' then
 			error(('Usage: %s(unit, mobGUID): only the form with a mob is stubbed'):format(fn), 3)
@@ -775,8 +783,8 @@ do
 		local list = stub.threat[mob]
 		local entry = list and list[unit]
 		if entry == nil then return nil end
-		if type(entry) == 'table' then return entry.status, entry.percent end
-		return entry, nil
+		if type(entry) == 'table' then return entry.status, entry.percent, entry.isTanking end
+		return entry, nil, nil
 	end
 
 	-- UnitThreatSituation(unit, mob): the unit's status on the mob's threat
@@ -787,22 +795,24 @@ do
 
 	-- UnitDetailedThreatSituation(unit, mob): isTanking, status,
 	-- scaledPercentage, rawPercentage, rawThreat; nothing when the unit isn't
-	-- on the list (MayReturnNothing). isTanking is status 2 or 3. A secret
-	-- status gives itself as isTanking and as the percent where none is given,
-	-- since nothing can be worked out from it. rawPercentage is the scaled
-	-- percent here and rawThreat 0: SaftUI reads neither.
+	-- on the list (MayReturnNothing). isTanking is status 2 or 3 unless the
+	-- entry gives one. A secret status gives itself as isTanking and as the
+	-- percent where none is given, since nothing can be worked out from it.
+	-- rawPercentage is the scaled percent here and rawThreat 0: SaftUI reads
+	-- neither.
 	function UnitDetailedThreatSituation(unit, mob)
-		local status, percent = threat_entry('UnitDetailedThreatSituation', unit, mob)
+		local status, percent, isTanking = threat_entry('UnitDetailedThreatSituation', unit, mob)
 		if status == nil then return end
-		local isTanking
+		local tanking
 		if issecretvalue and issecretvalue(status) then
-			isTanking = status
+			tanking = status
 			if percent == nil then percent = status end
 		else
-			isTanking = status == 2 or status == 3
-			if percent == nil then percent = isTanking and 100 or 0 end
+			tanking = status == 2 or status == 3
+			if percent == nil then percent = tanking and 100 or 0 end
 		end
-		return isTanking, status, percent, percent, 0
+		if isTanking ~= nil then tanking = isTanking end
+		return tanking, status, percent, percent, 0
 	end
 
 	C_Secrets = C_Secrets or {}
@@ -845,8 +855,9 @@ do
 
 	-- UnitHasEffectivelyTankAura(unit): whether the unit has an aura that
 	-- makes it a tank (a tanking stance or form). Only Forever has it: its
-	-- UnitDocumentation.lua lists it and retail's doesn't, so on retail it
-	-- errors as calling a missing global does.
+	-- UnitDocumentation.lua lists it and retail's doesn't, so a retail world
+	-- has no such global (stub.apply_client), and one that still has it,
+	-- its interface set by hand, errors on a call as a missing global does.
 	function UnitHasEffectivelyTankAura(unit)
 		if stub.interface ~= 16001 then
 			error("attempt to call global 'UnitHasEffectivelyTankAura' (a nil value): retail has no such function", 2)
@@ -854,6 +865,14 @@ do
 		local aura = stub.tank_aura[unit]
 		if aura == nil then return false end
 		return aura
+	end
+
+	-- The globals only one client has, by name: the interface that has it.
+	local CLIENT_ONLY = { UnitHasEffectivelyTankAura = 16001 }
+	function stub.apply_client()
+		for name, interface in pairs(CLIENT_ONLY) do
+			if stub.interface ~= interface then _G[name] = nil end
+		end
 	end
 
 	-- UnitExists(unit): true for the player and the stub.units units, false
