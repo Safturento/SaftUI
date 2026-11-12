@@ -303,17 +303,22 @@ local function RefreshElementConfig(element)
 	end
 end
 
+-- Points a frame's cached config, and every element's, text's and icon's, at
+-- its config unit's (frame.base_unit) in the current profile. Only plain
+-- table writes, so it's safe in combat.
+function UF:RefreshFrameConfig(frame)
+	frame.config = frame:GetConfig()
+	for _, element in pairs(frame.elements or {}) do
+		RefreshElementConfig(element)
+	end
+end
+
 -- Points every frame's and element's cached config at the current profile.
 -- Element callbacks (PostUpdate and friends) read those tables, and after a
 -- profile switch the old ones have lost their defaults. Only plain table
 -- writes, so it's safe in combat.
 function UF:RefreshConfigReferences()
-	self:ForEachUnitFrame(function(frame)
-		frame.config = frame:GetConfig()
-		for _, element in pairs(frame.elements or {}) do
-			RefreshElementConfig(element)
-		end
-	end)
+	self:ForEachUnitFrame(function(frame) self:RefreshFrameConfig(frame) end)
 	for unit, header in pairs(self.groups or {}) do
 		header.config = self:GetProfileConfig()[unit]
 	end
@@ -323,11 +328,15 @@ end
 -- sized: its header places it (and UF:AnchorGroupHeader places the header).
 -- Boss/arena 1 sits at the top of its group's holder and the others chain
 -- below it. A disabled frame goes off screen, and false is returned for it.
--- A plate's frame is left as it is: oUF set it to fill its plate, and the
--- plates' size is the game's (UF:ApplyPlateSize). Unit frames are secure: out
--- of combat only.
+-- A plate's frame is placed on its plate (UF:PlacePlateFrame, nameplates.lua):
+-- the game places the plates, and their size is the game's
+-- (UF:ApplyPlateSize). Unit frames are secure: out of combat only. A plate's
+-- frame isn't, and is placed in combat too (UF:UpdateUnitFrame).
 function UF:PlaceUnitFrame(frame)
-	if frame.isNamePlate then return true end
+	if frame.isNamePlate then
+		self:PlacePlateFrame(frame)
+		return true
+	end
 	local config = frame.config
 	if not frame.is_group_unit then
 		frame:ClearAllPoints()
@@ -392,7 +401,9 @@ function UF:UpdateUnitFrame(frame, element_name)
             self:UpdateElement(frame[element_name])
         end
 	else
-		if not InCombatLockdown() and not self:PlaceUnitFrame(frame) then
+		-- A plate's frame is placed in combat too: its unit's kind, and with
+		-- it the config and size it's drawn at, can change mid-fight.
+		if (frame.isNamePlate or not InCombatLockdown()) and not self:PlaceUnitFrame(frame) then
 			return -- disabled, and moved off screen
 		end
 
@@ -476,7 +487,7 @@ end
 -- Clears the points of every frame ApplyConfig places: the single and
 -- numbered unit frames, the boss/arena, party and raid holders, and the group
 -- headers (their children are placed by the header). The plates' frames keep
--- theirs, which are oUF's (UF:PlaceUnitFrame). Returns each frame's old
+-- theirs, on their plates (UF:PlacePlateFrame). Returns each frame's old
 -- points, for st:RestorePoints. Unit frames are secure: out of combat only.
 local function ClearUnitFramePoints(self)
 	local previous = {}
@@ -584,21 +595,23 @@ function UF:ApplyConfig(unit, element_name)
 			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 		elseif UF.IsPlateUnit(unit) then
 			-- The plates' frames (nameplates.lua), which aren't among the units:
-			-- oUF's nameplate driver makes them. Either page's change, one of the
-			-- boxes among them, can move a plate to the other config unit, so
-			-- each plate's is worked out again first (UF:ApplyPlateConfig): one
-			-- that moved gets a full update from it, the others the update
-			-- asked for. Every plate, whichever page it draws from, since the
-			-- threat text is always the Enemy page's (threat.lua). Their size is
-			-- the plates', set through the driver (none while SaftUI doesn't
-			-- draw the plates).
+			-- oUF's nameplate driver makes them. The plates' size first, set
+			-- through the driver from the enemy look's config (none while
+			-- SaftUI doesn't draw the plates), so each frame is placed, and its
+			-- click area set again, on its plate's new size. Either page's
+			-- change, one of the boxes among them, can move a plate to the other
+			-- config unit, so each plate's is worked out again
+			-- (UF:ApplyPlateConfig): one that moved gets a full update from it,
+			-- the others the update asked for. Every plate, whichever page it
+			-- draws from, since the threat text is always the Enemy page's
+			-- (threat.lua), and a box decides which frames fill their plates.
+			if not element_name and self.plateDriver then
+				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
+			end
 			for _, frame in pairs(self.nameplates or {}) do
 				if not self:ApplyPlateConfig(frame) then
 					SafeUpdateUnitFrame(frame, element_name)
 				end
-			end
-			if not element_name and self.plateDriver then
-				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
 			end
 		end
 	end
