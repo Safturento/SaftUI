@@ -427,7 +427,7 @@ end
 
 ------------------------------------------------------------------ the page's Theme
 
-test("the Nameplates page's Theme draws the plates as every unit's does", function()
+test("the Enemy nameplates page's Theme draws the plates as every unit's does", function()
 	for _, client in ipairs(CLIENTS) do
 		local st, UF, P, drawn = world(client, 'thick')
 		local frame = enemy('nameplate1', 0)

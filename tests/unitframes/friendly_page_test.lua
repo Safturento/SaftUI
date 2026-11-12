@@ -11,7 +11,9 @@
 --     Enemy page, threat; a line under it says where the look comes from;
 --   - while one box is checked the other page's is disabled, with a line
 --     saying the other kind uses that page;
---   - unchecking brings the settings back as they were;
+--   - unchecking brings the settings back as they were, and the tab chosen
+--     before the box was checked, which the window's stored selection kept
+--     while the box hid it;
 --   - a box re-applies the plates (UF:UpdateConfig for a plate key) and their
 --     size (UF:ApplyPlateSize). That a shown plate's base_unit follows is
 --     Task 4's end-to-end test (ruling P1): it needs the plates' code;
@@ -56,6 +58,12 @@ local function page(UF, pick, tab)
 	local view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = pick, tab = tab or 'general' })
 	assert(view.picker.selected == pick, 'no ' .. pick .. ' page')
 	return root, view
+end
+
+-- The unit frames' page as the window builds it from its stored selection
+-- (the pick and the tab last clicked), which building it never changes.
+local function view_of(UF, selection)
+	return SaftUI.OptionsModel.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', selection)
 end
 
 -- The view's rows, in the order the window draws them.
@@ -255,6 +263,10 @@ test('checking a box hides the page: all but the switches, and threat on the Ene
 		eq(tabs(view), 'general', client .. ': every element tab hidden')
 		root, view = page(UF, 'friendlynameplate', 'Health')
 		eq(view.tab, 'general', client .. ': a hidden tab opens General')
+		-- The window's stored selection, which only a click changes: the tab
+		-- chosen before the box was checked.
+		local chosen = { pick = 'friendlynameplate', tab = 'Health' }
+		eq(view_of(UF, chosen).tab, 'general', client .. ': the chosen tab hidden: General')
 		-- Nor are the hidden settings found by the search.
 		for _, result in ipairs(SaftUI.OptionsModel.Search(root, 'Max width')) do
 			check(result.path[2] ~= 'friendlynameplate', client .. ': no hidden setting found: ' .. table.concat(result.path, '.'))
@@ -266,6 +278,8 @@ test('checking a box hides the page: all but the switches, and threat on the Ene
 		eq(keys(view), 'enable,threat_solo,use_friendly,box_note,theme,background,width,height', client .. ': the Enemy page whole')
 		eq(tabs(view), ENEMY_TABS, client .. ': and its tabs')
 		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': unchecked')
+		eq(view_of(UF, chosen).tab, 'Health', client .. ': unchecked: the tab chosen before opens again')
+		eq(chosen.tab, 'Health', client .. ': the stored selection kept')
 
 		-- The Enemy page's box.
 		check(set(UF, 'nameplate', 'use_friendly', true), client .. ': the Enemy box checked')
@@ -276,6 +290,8 @@ test('checking a box hides the page: all but the switches, and threat on the Ene
 		eq(tabs(view), 'general,Threat', client .. ': the Threat tab stays')
 		root, view = page(UF, 'nameplate', 'Threat')
 		eq(view.tab, 'Threat', client .. ': and opens')
+		local enemyChosen = { pick = 'nameplate', tab = 'Castbar' }
+		eq(view_of(UF, enemyChosen).tab, 'general', client .. ': the chosen Castbar tab hidden: General')
 		eq(keys(view), 'enable,font,alpha,position', client .. ': with its settings')
 		for _, row in ipairs(rows(view)) do
 			check(not row.disabled, client .. ': Threat ' .. row.key .. ' is enabled')
@@ -285,6 +301,8 @@ test('checking a box hides the page: all but the switches, and threat on the Ene
 		root, view = page(UF, 'friendlynameplate')
 		eq(keys(view), 'friendly,use_enemy,box_note,theme,background,width,height', client .. ': the Friendly page whole')
 		eq(tabs(view), FRIENDLY_TABS, client .. ': and its tabs')
+		check(set(UF, 'nameplate', 'use_friendly', false), client .. ': the Enemy box unchecked')
+		eq(view_of(UF, enemyChosen).tab, 'Castbar', client .. ': unchecked: the Castbar tab chosen before opens again')
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)

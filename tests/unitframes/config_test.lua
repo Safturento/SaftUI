@@ -215,7 +215,7 @@ test('Copy from leaves the nameplates out: never offered to copy from, and their
 	check(not offered.nameplate, 'the nameplates are not')
 	W.CloseList()
 	OW:CloseDialog()
-	eq(UF:GetConfigTable().args.nameplate.args.copy, nil, 'no Copy from on the Nameplates page')
+	eq(UF:GetConfigTable().args.nameplate.args.copy, nil, 'no Copy from on the Enemy nameplates page')
 	check(UF:GetConfigTable().args.player.args.copy ~= nil, "the player's keeps it")
 end)
 
