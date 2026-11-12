@@ -66,6 +66,18 @@ function NP.world(client)
 	apply_defaults()
 	st.config.global = {}
 
+	-- C_TooltipInfo.GetUnit(unit) (the same on both clients; it can give
+	-- nothing): stub.tooltips[unit], the tooltip data a test sets ({ lines =
+	-- { { type = ..., leftText = ... }, ... } }), nothing by default. Each call
+	-- is counted in stub.tooltip_reads, so a test can show none was made.
+	stub.tooltips, stub.tooltip_reads = {}, 0
+	C_TooltipInfo = {
+		GetUnit = function(unit)
+			stub.tooltip_reads = stub.tooltip_reads + 1
+			return stub.tooltips[unit]
+		end,
+	}
+
 	local ouf = fixture.new()
 	addon_namespace('SaftUI-Unitframes').oUF = ouf
 	load_saftui('SaftUI-Unitframes/unitframes.lua')

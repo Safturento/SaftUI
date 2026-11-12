@@ -11,6 +11,8 @@ local st = SaftUI
 --     with no level or classification. It is anchored to the frame itself
 --     (element = false, the position's "Unit frame"), not to the health bar
 --     that isn't there;
+--   * the subtext, an NPC's title or a player's guild in grey brackets, centred
+--     2 under the name (both on);
 --   * the raid mark 16 square, its bottom 4 above the name's top;
 --   * the castbar, the debuffs, the buffs and the quest icon off, and set as
 --     the enemy plates' are (nameplates.lua's file) for whoever turns them on.
@@ -19,6 +21,20 @@ st.defaults.unitframes.profiles["**"].friendlynameplate = {
     -- Draw enemy plates from this page too: Enemy nameplates' counterpart box
     -- is use_friendly. Never both (the page keeps one off).
     use_enemy = false,
+    -- The subtext under the name (nameplates/subtext.lua): an NPC's title or a
+    -- player's guild, grey, centred 2 under the name. Enable is always true and
+    -- not an option on the page (UF:ElementWanted needs it): the two boxes
+    -- decide what the tag returns.
+    subtext = {
+        enable = true,
+        npc = true,
+        player = true,
+        font = 'normal',
+        color = { r = 0.8, g = 0.8, b = 0.8 },
+        alpha = 1,
+        max_width = 150,
+        position = { point = 'TOP', element = 'Name', rel_point = 'BOTTOM', x_off = 0, y_off = -2 },
+    },
     width = 150,
     height = 16,
     health = {

@@ -28,9 +28,9 @@ local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs'
 -- Each page's tabs, in the order the window shows them: a plate's element
--- tabs, and Threat on the Enemy page only.
-local ENEMY_TABS = 'general,Health,Threat,Name,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
-local FRIENDLY_TABS = 'general,Health,Name,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
+-- tabs (Subtext after Name), and Threat on the Enemy page only.
+local ENEMY_TABS = 'general,Health,Threat,Name,Subtext,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
+local FRIENDLY_TABS = 'general,Health,Name,Subtext,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
 local ENEMY_BOX, FRIENDLY_BOX = "Use friendly nameplates' settings", "Use enemy nameplates' settings"
 local ENEMY_USES_FRIENDLY = "Enemy nameplates use the Friendly nameplates page's settings, all but threat, which stays on this page."
 local FRIENDLY_USES_ENEMY = "Friendly nameplates use the Enemy nameplates page's settings. They never show threat."

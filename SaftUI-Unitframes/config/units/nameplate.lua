@@ -19,6 +19,8 @@ local st = SaftUI
 --     the bar's right end free for the threat text;
 --   * up to 4 buffs the player can purge 6 right of the bar, level with its
 --     top (98 wide);
+--   * the subtext line (an NPC's title or a player's guild) off, and where it
+--     would sit, centred under the castbar's row;
 --   * the quest icon 6 left of the bar, and the raid mark centred 6 above the
 --     debuff row (6 + 20 + 6 = 32 over the bar).
 -- The bar itself, its colours (reaction, class, tapped) and the frame's Theme
@@ -37,6 +39,21 @@ st.defaults.unitframes.profiles["**"].nameplate = {
         enable = true,
         font = 'pixel',
         position = { point = 'BOTTOMRIGHT', element = 'Health', rel_point = 'TOPRIGHT', x_off = 0, y_off = 6 },
+    },
+    -- The subtext under the name (nameplates/subtext.lua): an NPC's title or a
+    -- player's guild, grey, centred under the castbar's row (6 + 12 + 6 under
+    -- the bar). Enable is always true and not an option on the page
+    -- (UF:ElementWanted needs it): the two boxes decide what the tag returns.
+    -- Both off for enemies.
+    subtext = {
+        enable = true,
+        npc = false,
+        player = false,
+        font = 'normal',
+        color = { r = 0.8, g = 0.8, b = 0.8 },
+        alpha = 1,
+        max_width = 200,
+        position = { point = 'TOP', element = 'Health', rel_point = 'BOTTOM', x_off = 0, y_off = -24 },
     },
     width = 200,
     height = 20,
