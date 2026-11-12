@@ -1216,12 +1216,14 @@ end
 	the same on both clients, but that SetSwipeTexture's texture may be nil on
 	Forever). Nothing is drawn or timed here: what the swipe and edge are drawn
 	with, and whether they and the numbers show, are only remembered, in
-	stub.state(cooldown): swipe_texture (and swipe_texture_color, the color
-	SetSwipeTexture was given), swipe_color, edge_texture, draw_swipe,
-	draw_edge and reverse. The numbers are a font string the cooldown owns
-	(GetCountdownFontString), made the first time it's asked for. It isn't
-	among the cooldown's regions here; whether the game lists it there is
-	unverified. Not mimicked: SetCooldown and the rest of the timing, and the
+	stub.state(cooldown): swipe_texture, swipe_color, edge_texture,
+	draw_swipe, draw_edge and reverse. The numbers are a font string the
+	cooldown owns (GetCountdownFontString), made the first time it's asked
+	for. It isn't among the cooldown's regions here (GetRegions doesn't give
+	it); whether the game lists it there is unverified. Not mimicked:
+	SetCooldown and the rest of the timing, the color SetSwipeTexture and
+	SetEdgeTexture take after the texture (Blizzard passes the texture alone
+	and keeps the swipe's color: TotemFrame.lua sets only the texture), and the
 	secret values the getters give for a cooldown or a style set from one.
 ]]
 local function countdown_string(self, s)
@@ -1232,26 +1234,19 @@ local function countdown_string(self, s)
 	end
 	return s.countdown
 end
-local function color_args(s, what, r, g, b, a)
-	return {
-		number_arg(s, r == nil and 1 or r, what .. ' r'), number_arg(s, g == nil and 1 or g, what .. ' g'),
-		number_arg(s, b == nil and 1 or b, what .. ' b'), number_arg(s, a == nil and 1 or a, what .. ' a'),
-	}
-end
 -- texture is a file path or file ID (nil too on Forever, whose documentation
--- has it nilable); Blizzard passes it alone, so the color after it is white
--- unless given.
-function Cooldown.SetSwipeTexture(self, s, texture, r, g, b, a)
+-- has it nilable). The swipe's color (SetSwipeColor) is kept.
+function Cooldown.SetSwipeTexture(self, s, texture)
 	local nilable = stub.interface == 16001
 	if not (type(texture) == 'string' or type(texture) == 'number' or (texture == nil and nilable)) then
 		usage(s, 'SetSwipeTexture(): texture must be a path or a file ID')
 	end
-	s.swipe_texture, s.swipe_texture_color = texture, color_args(s, 'SetSwipeTexture():', r, g, b, a)
+	s.swipe_texture = texture
 end
 function Cooldown.SetSwipeColor(self, s, r, g, b, a)
 	s.swipe_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
 end
-function Cooldown.SetEdgeTexture(self, s, texture, r, g, b, a)
+function Cooldown.SetEdgeTexture(self, s, texture)
 	if type(texture) ~= 'string' and type(texture) ~= 'number' then
 		usage(s, 'SetEdgeTexture(): texture must be a path or a file ID')
 	end
