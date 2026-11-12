@@ -331,6 +331,85 @@ function st:SafeReposition(frame, key, fn)
 end
 
 --[[
+	Taking over a Blizzard Edit Mode frame (.agents/edit-mode.md): a holder of
+	SaftUI's is placed from the profile (st:PlaceHolder), the Blizzard frame
+	follows it (st:HoldFrame), and Blizzard's Edit Mode box for the frame is kept
+	hidden (st:HideEditModeSelection), so Blizzard's Edit Mode can't select or
+	drag it. Nothing is written onto a Blizzard frame or its box: what these keep
+	is in weak tables of their own (.agents/taint.md rule 1), and their hooks are
+	post-hooks (rule 2).
+]]
+
+-- Edit Mode boxes already kept hidden: box -> true.
+local hiddenSelections = setmetatable({}, { __mode = 'k' })
+
+local function HideSelection(box)
+	box:Hide()
+end
+
+-- Keeps a Blizzard Edit Mode system's box (frame.Selection) hidden, so
+-- Blizzard's Edit Mode doesn't offer the frame: a post-hook on the box's OnShow
+-- hides it each time Blizzard shows it (on Edit Mode enter,
+-- EditModeSystemMixin:HighlightSystem). A hook only: a box showing now stays
+-- until it next shows. The box's template (EditModeSystemSelectionBaseTemplate)
+-- has no OnShow or OnHide of its own and isn't protected, so in combat it's
+-- hooked and hidden just the same. Called again for a frame, it adds no second
+-- hook. Does nothing for a nil frame or one without a box.
+function st:HideEditModeSelection(frame)
+	local selection = frame and frame.Selection
+	if not selection or hiddenSelections[selection] then return end
+	hiddenSelections[selection] = true
+	selection:HookScript('OnShow', HideSelection)
+end
+
+-- Blizzard frames st:HoldFrame holds: frame -> { holder, x, y, reanchor }.
+local heldFrames = setmetatable({}, { __mode = 'k' })
+
+-- Anchors a Blizzard Edit Mode frame over holder by its top left and bottom right
+-- corners, x and y (0 if not given) outside the holder on each side, and puts it
+-- back after each of its ClearAllPoints and SetPoint (post-hooks), which
+-- Blizzard's Edit Mode places it through on every layout apply. Those two are
+-- Edit Mode's Lua overrides, so SaftUI moves it with the plain widget methods
+-- (st:ClearAllPointsDirect, st:SetPointDirect), which don't run the hooks. In
+-- combat a protected frame (something secure anchored to it) is left where
+-- Blizzard puts it, and held again once when combat ends. Called again for a
+-- frame, it holds it on the new holder, with no second pair of hooks.
+function st:HoldFrame(frame, holder, x, y)
+	local hold = heldFrames[frame]
+	if not hold then
+		hold = {}
+		heldFrames[frame] = hold
+		function hold.reanchor()
+			if not st:CanMoveNow(frame) and st:QueueAfterCombat(hold, hold.reanchor) then return end
+			local outX, outY = hold.x, hold.y
+			st:ClearAllPointsDirect(frame)
+			st:SetPointDirect(frame, 'TOPLEFT', hold.holder, 'TOPLEFT', 0 - outX, outY)
+			st:SetPointDirect(frame, 'BOTTOMRIGHT', hold.holder, 'BOTTOMRIGHT', outX, 0 - outY)
+		end
+		hooksecurefunc(frame, 'ClearAllPoints', hold.reanchor)
+		hooksecurefunc(frame, 'SetPoint', hold.reanchor)
+	end
+	hold.holder, hold.x, hold.y = holder, x or 0, y or 0
+	hold.reanchor()
+end
+
+-- Sizes and places a holder of SaftUI's: getSize() gives its width and height,
+-- getPosition() the profile's position (point, frame, rel_point, x_off, y_off),
+-- anchored to the frame it names or UIParent, its offsets rounded to whole
+-- pixels. Through st:SafeReposition under key, so in combat a protected holder
+-- waits for the end of combat, and both are read when it's placed. Returns true
+-- if it was placed now.
+function st:PlaceHolder(holder, key, getSize, getPosition)
+	return st:SafeReposition(holder, key, function()
+		holder:SetSize(getSize())
+		local point, relative, rel_point, x, y = st:UnpackPoint(getPosition())
+		holder:ClearAllPoints()
+		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
+			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
+	end)
+end
+
+--[[
 	The screen edge margin (misc.clamp_inset, Global Settings > General): how far
 	in from the screen's edges SaftUI keeps the frames the user can move or, below
 	0, how far past them it lets them go. The game does the keeping: it keeps a
