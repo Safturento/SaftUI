@@ -38,6 +38,7 @@ local ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'cl
 local function world(client)
 	T.client(client)
 	st = SaftUI
+	load_saftui('SaftUI-Unitframes/config/position.lua')
 	load_saftui('SaftUI-Unitframes/config/default.lua')
 	for _, unit in ipairs(UNITS) do
 		load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')

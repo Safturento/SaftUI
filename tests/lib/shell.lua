@@ -377,7 +377,7 @@ end
 -- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
 -- theme they draw) and themeart.lua (the Blizzard theme's art, st.ThemeArt),
 -- the media and fonts (st:GetFont) with the Colors
--- and Theme modules, the profile defaults, Config/widgets.lua (st.Config.generators) and
+-- and Theme modules, the profile defaults, Config/generators.lua (st.Config.generators) and
 -- the General module (Global Settings' General tab). Then the profile is
 -- filled from the defaults and the Fonts module enabled, as at login, so
 -- st:GetFont has font objects.
@@ -395,7 +395,7 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Media/colors.lua')
 	load_saftui('SaftUI-Core/Media/theme.lua')
 	load_saftui('SaftUI-Core/Config/defaults.lua')
-	load_saftui('SaftUI-Core/Config/widgets.lua')
+	load_saftui('SaftUI-Core/Config/generators.lua')
 	load_saftui('SaftUI-Core/Config/general.lua')
 	apply_defaults()
 	st:GetModule('Fonts'):Enable()
@@ -428,7 +428,7 @@ end
 
 -- The /sui window's own files (st.OptionsWindow), by path from the repo root,
 -- in the order the game loads them: right after Config/optionsbody.lua and
--- before Config/widgets.lua.
+-- before Config/generators.lua.
 function options_window_files()
 	return {
 		'SaftUI-Core/Config/optionslayout.lua',
@@ -463,8 +463,8 @@ function st.Config:GetWindow() return nil end
 -- For a test that loads Core's real Config/config.lua instead: it makes the
 -- Config module itself, and NewModule errors on a name that exists (as
 -- AceAddon's does), so this takes the shell's out of st.modules, the enable
--- order and st.Config. Load config.lua before Config/widgets.lua
--- (load_core_helpers), as Core's TOC does: widgets.lua adds to st.Config.
+-- order and st.Config. Load config.lua before Config/generators.lua
+-- (load_core_helpers), as Core's TOC does: generators.lua adds to st.Config.
 -- tests/core/config_helpers.lua does all of it.
 function remove_shell_config()
 	local config = st.modules.Config

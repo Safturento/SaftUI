@@ -7,7 +7,7 @@
 --
 -- Real: LibStub, CallbackHandler, AceDB-3.0, AceDBOptions-3.0 (the profiles
 -- table), AceConfigRegistry-3.0 (Config:Refresh notifies it),
--- Config/config.lua, Core's helpers (load_core_helpers, Config/widgets.lua's
+-- Config/config.lua, Core's helpers (load_core_helpers, Config/generators.lua's
 -- generators among them) and edit mode (EditMode/load.xml's files;
 -- InitializeAceConfig listens to it). Fixtures (fixtures/config_libs.lua): the
 -- libraries config.lua uses only for Export and Import.
@@ -32,7 +32,7 @@ load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceC
 load_test_file('core/fixtures/config_libs.lua')
 
 -- config.lua makes the Config module itself, so the shell's goes first. Then
--- Core's helpers, which come after config.lua in the TOC (Config/widgets.lua
+-- Core's helpers, which come after config.lua in the TOC (Config/generators.lua
 -- adds to st.Config), and edit mode.
 remove_shell_config()
 load_saftui('SaftUI-Core/Config/config.lua')

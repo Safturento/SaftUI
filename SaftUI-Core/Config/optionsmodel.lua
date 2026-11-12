@@ -16,7 +16,7 @@ local st = SaftUI
 	root is the args table Config:GetOptionsTable() returns: one group per page.
 	Every function takes it first. info.options is the table AceConfig had
 	registered around it ({ type = 'group', name = st.name, args = root }),
-	since SaftUI's own option code walks info.options.args (Config/widgets.lua).
+	since SaftUI's own option code walks info.options.args (Config/generators.lua).
 
 	How a page is laid out (the spec's nesting rule):
 	  - Each top-level group is a page. topmenu is left out.

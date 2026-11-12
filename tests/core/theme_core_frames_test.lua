@@ -13,7 +13,7 @@
 --   - edit mode's movers, and Core's widgets that color their own backdrops
 --     (a scroll bar thumb, a radio group's pick, a focused edit box), which
 --     keep their colors through a recolor;
---   - the Theme and Background option builders (Config/widgets.lua), and no
+--   - the Theme and Background option builders (Config/generators.lua), and no
 --     desc with an arrow SaftUI's fonts may not draw.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 with Core's helpers and

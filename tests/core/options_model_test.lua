@@ -565,7 +565,7 @@ test("info: info[#info] is the key, arg passes through, and info.options is AceC
 		and info.options.args == root and info.uiType == 'dialog', 'OM.Info builds the same')
 end)
 
-test("info.options works with SaftUI's own code that walks it (Config/widgets.lua's number inputs)", function()
+test("info.options works with SaftUI's own code that walks it (Config/generators.lua's number inputs)", function()
 	local store = { width = 200 }
 	local root = { Box = group('Box', {
 		width = st.Config.generators.width(1),

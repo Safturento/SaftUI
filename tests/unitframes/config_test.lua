@@ -7,7 +7,7 @@
 -- frames' defaults, filled the way AceDB fills them (apply_defaults), so a
 -- unit's settings are made by reading them, as in game; AceConfigRegistry-3.0
 -- (the options window listens to it); the options model, widgets, body and
--- window; config/config.lua, updaters.lua (UF.UnpackColor) and the element
+-- window; config/position.lua, config/config.lua, updaters.lua (UF.UnpackColor) and the element
 -- files, whose tabs config.lua adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
 -- read; with no other nameplate addon loaded, SaftUI draws the plates) and
@@ -39,6 +39,7 @@
 -- AceConfigRegistry validates ace_ready (tests/core/options_walk.lua) of the
 -- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
+load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
 load_saftui('SaftUI-Unitframes/config/default.lua')
 -- The nameplates' own defaults (enable, friendly, threat_solo, the threat
 -- text, width, height); the other units' come from every unit's.
