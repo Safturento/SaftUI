@@ -339,13 +339,15 @@ function CHT:TakeOverChatFrame()
 	ChatFrame1:HookScript('OnSizeChanged', function() self:HoldSize() end)
 
 	-- Blizzard's Edit Mode box and resize grabber no longer control this frame, so keep
-	-- them hidden. HookScript only; nothing is written onto the frames.
+	-- them hidden, from their next show and now. HookScript only; nothing is written
+	-- onto the frames.
+	st:HideEditModeSelection(ChatFrame1)
+	if ChatFrame1.Selection then ChatFrame1.Selection:Hide() end
 	local function KeepHidden(frame)
 		if not frame then return end
 		frame:HookScript('OnShow', function(self) self:Hide() end)
 		frame:Hide()
 	end
-	KeepHidden(ChatFrame1.Selection)
 	KeepHidden(ChatFrame1.EditModeResizeButton)
 end
 
