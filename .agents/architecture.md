@@ -6,6 +6,7 @@ covers:
   - 'SaftUI-*/*.toc'
   - 'SaftUI-Core/init.lua'
   - 'SaftUI-Core/constants.lua'
+  - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/Config/config.lua'
   - 'SaftUI-Core/Config/defaults.lua'
   - 'SaftUI-*/config.lua'

@@ -4,6 +4,7 @@ description: SaftUI's edit mode (movers), the /sui options tree, and SaftUI's op
 last_updated: 2026-11-12
 covers:
   - 'SaftUI-Core/EditMode/**'
+  - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/Config/widgets.lua'
   - 'SaftUI-Core/Config/optionsmodel.lua'
   - 'SaftUI-Core/Config/optionswidgets.lua'

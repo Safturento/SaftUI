@@ -126,7 +126,7 @@ test('HideEditModeSelection: the box stays hidden each time Blizzard shows it', 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('HideEditModeSelection: a hook only, as AB:HideEditModeSelection was: a box showing now waits for its next show', function()
+test('HideEditModeSelection: a hook only: a box showing now waits for its next show', function()
 	Fresh()
 	local frame = System()
 	local selection = frame.Selection
