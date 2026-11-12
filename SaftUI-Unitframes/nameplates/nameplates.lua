@@ -292,17 +292,27 @@ local plateOfUnit = {}
 -- its unit, or one on which Blizzard's own code changed it
 -- (CanChangeHitTestPoints, FrameAPINamePlateDocumentation.lua, both clients;
 -- the calls error otherwise): so from the options update's post-hook it goes
--- through, and a plate the game refuses waits for the end of combat. A plate
--- the game took away, or one showing only widgets, is left alone.
+-- through, and a plate the game refuses waits for the end of combat. It's
+-- asked again before the second call: the docs don't say the same-tick
+-- exception stays open after SaftUI's first. A plate the game took away, or
+-- one showing only widgets, is left alone.
+local function MayChange(plate)
+	return not plate.CanChangeHitTestPoints or plate:CanChangeHitTestPoints()
+end
+
 function UF:RestorePlateHitTests()
 	local refused = false
 	for frame in pairs(showing) do
 		local plate = frame:GetParent()
-		if plate.CanChangeHitTestPoints and not plate:CanChangeHitTestPoints() then
-			refused = true
-		else
+		if MayChange(plate) then
 			plate:ClearAllHitTestPoints()
-			plate:SetAllHitTestPoints(frame)
+			if MayChange(plate) then
+				plate:SetAllHitTestPoints(frame)
+			else
+				refused = true
+			end
+		else
+			refused = true
 		end
 	end
 	if refused then

@@ -7,7 +7,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
   - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
   - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
@@ -107,20 +106,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Bank leftovers: broken non-combined bank path, Forever gold tooltip, leaked globals](#2026-11-07--bank-leftovers-broken-non-combined-bank-path-forever-gold-tooltip-leaked-globals)
   - [2026-11-07 — SaftUI-Loot writes onto Blizzard frames and globals (taint risk)](#2026-11-07--saftui-loot-writes-onto-blizzard-frames-and-globals-taint-risk)
 - [Abandoned](#abandoned)
+  - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
-
-### 2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice
-
-**What:** When the game hands a plate from a friend to an enemy (or back), `UF:ApplyPlateKind` turns the plate's two aura areas on (or off) in the added callback, and Blizzard's container scans the auras at once on that change, for the unit token it still has from the plate's last unit. oUF's update right after then sets the new unit and scans again. An add of the same kind as the plate's last makes no extra scan: Blizzard's container ignores a `SetEnabled` that changes nothing.
-
-**Why noticed:** The final review of the nameplates build (its M4) took every add to scan twice; the final fix wave found Blizzard's guard (`AuraContainerSharedMixin:SetEnabled`, `Blizzard_AuraContainer.lua`, both clients), so only a kind change does.
-
-**Anchors:** `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateKind`), `SaftUI-Unitframes/Libraries/oUF/elements/auras.lua` (`Update`: `SetUnit`, else `ForceUpdate`), `tests/unitframes/nameplate_kind_test.lua` (the scan-count case), `tests/unitframes/fixtures/ouf.lua` (the container's `__scans`).
-
-**What's been considered:** Setting the container's unit before turning it on doesn't help, since oUF's update then forces a scan anyway. Turning the areas on after oUF's update (from the aura element's `PostUpdate`) would save the first scan, at the cost of a less obvious kind pass. A kind change is much rarer than an add, so the cost is small.
-
-**Shape of work:** Small, only if a profile shows it: move the aura areas' turn-on after oUF's update, with the scan-count test changed to one per area.
 
 ### 2026-11-11 — Nameplates: in-game checks
 
@@ -1923,3 +1911,17 @@ Build it after the Themes branch merges, since Themes also edits `roll.lua`, dra
 ## Abandoned
 
 (items move here when explicitly decided against — note the reason in a one-line addendum so the decision is recoverable)
+
+### 2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice
+
+**What:** When the game hands a plate from a friend to an enemy (or back), `UF:ApplyPlateKind` turns the plate's two aura areas on (or off) in the added callback, and Blizzard's container scans the auras at once on that change, for the unit token it still has from the plate's last unit. oUF's update right after then sets the new unit and scans again. An add of the same kind as the plate's last makes no extra scan: Blizzard's container ignores a `SetEnabled` that changes nothing.
+
+**Why noticed:** The final review of the nameplates build (its M4) took every add to scan twice; the final fix wave found Blizzard's guard (`AuraContainerSharedMixin:SetEnabled`, `Blizzard_AuraContainer.lua`, both clients), so only a kind change does.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateKind`), `SaftUI-Unitframes/Libraries/oUF/elements/auras.lua` (`Update`: `SetUnit`, else `ForceUpdate`), `tests/unitframes/nameplate_kind_test.lua` (the scan-count case), `tests/unitframes/fixtures/ouf.lua` (the container's `__scans`).
+
+**What's been considered:** Setting the container's unit before turning it on doesn't help, since oUF's update then forces a scan anyway. Turning the areas on after oUF's update (from the aura element's `PostUpdate`) would save the first scan, at the cost of a less obvious kind pass. A kind change is much rarer than an add, so the cost is small.
+
+**Shape of work:** Small, only if a profile shows it: move the aura areas' turn-on after oUF's update, with the scan-count test changed to one per area.
+
+**Abandoned 2026-11-11:** There is no second scan to save. oUF's container is Blizzard's managed one, whose full update only marks it dirty (`ManagedAuraContainerSharedMixin:UpdateAllAuras`, `Blizzard_ManagedAuraContainer.lua`, both clients), and the parse runs once on its next frame, so the kind pass's `SetEnabled` and oUF's `SetUnit` in one tick fold into one (the final fix wave's re-review).

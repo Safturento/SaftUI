@@ -340,12 +340,14 @@ test('a plate that showed only widgets gets its kind back when it is reused', fu
 	end
 end)
 
--- oUF's update after every add scans the auras once (its Auras element sets
--- the container's unit, or forces an update). Turning an aura area on or off
--- scans them again, so the kind pass turns an area only where it changes:
--- Blizzard's container itself ignores a SetEnabled that changes nothing
--- (AuraContainerSharedMixin:SetEnabled, both clients), as the stand-in does.
-test("an add of the kind the plate last showed runs no aura scan from the kind; a kind change, one per area", function()
+-- oUF's update after every add asks the auras for a full update once (its
+-- Auras element sets the container's unit, or forces an update). Turning an
+-- aura area on or off asks for another, so the kind pass turns an area only
+-- where it changes: Blizzard's container itself ignores a SetEnabled that
+-- changes nothing (AuraContainerSharedMixin:SetEnabled, both clients), as the
+-- stand-in does. (The game's managed container folds the full updates of one
+-- tick into one parse on its next frame; the stand-in counts the requests.)
+test("an add of the kind the plate last showed asks for no aura update from the kind; a kind change, one per area", function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
 		enemy('nameplate1')

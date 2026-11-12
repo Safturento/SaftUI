@@ -86,8 +86,9 @@
 -- do (oUF shows it for a cast, which nothing here starts). Enabling the aura
 -- containers turns each on (SetEnabled(true)), as the Auras meta element's
 -- Enable does; a container is made on, and a SetEnabled that changes its state
--- counts a full update in container.__scans, as Blizzard's container does
--- (AuraContainerSharedMixin, Blizzard_AuraContainer.lua, both clients).
+-- counts a full update request in container.__scans, as Blizzard's container
+-- asks for one (AuraContainerSharedMixin, Blizzard_AuraContainer.lua, both
+-- clients; the managed container folds a tick's requests into one parse).
 -- Enabling QuestIndicator gives it ForceUpdate, as its Enable
 -- does (Libraries/oUF/elements/questindicator.lua), which runs oUF's Path
 -- with (frame, 'ForceUpdate', frame.__unit): the element's Override where it

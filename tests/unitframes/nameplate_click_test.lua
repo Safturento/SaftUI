@@ -227,3 +227,32 @@ test('a client without the options update, the setting registry or the hit-test 
 	eq(clicks(NamePlate1), one, 'its frame')
 	eq(#take_errors(), 0, 'no error')
 end)
+
+-- The game's same-tick exception for Blizzard's own change isn't documented
+-- to stay open after SaftUI's first call: the second is asked for again, and a
+-- refusal then waits for the end of combat instead of erroring.
+test('in combat, a plate that refuses the second call waits for the end of combat, with no error', function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF, one = world(client)
+		local asked = 0
+		rawset(NamePlate1, 'CanChangeHitTestPoints', function()
+			asked = asked + 1
+			return asked == 1 or not InCombatLockdown()
+		end)
+		local clear = NamePlate1.ClearAllHitTestPoints
+		rawset(NamePlate1, 'ClearAllHitTestPoints', function(self)
+			local was = stub.in_combat
+			stub.in_combat = false
+			clear(self)
+			stub.in_combat = was
+		end)
+		stub.run_timers() -- the next frame: the add's tick is over
+		stub.in_combat = true
+		UF:RestorePlateHitTests()
+		eq(#take_errors(), 0, client .. ': no error')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+		eq(clicks(NamePlate1), one, client .. ': its frame once combat ends')
+		eq(#take_errors(), 0, client .. ': and no error then')
+	end
+end)
