@@ -140,17 +140,6 @@ end
 --- /sui ----------------------------
 ------------------------------------
 
--- The Fonts module's outlines, with None named (Fonts leaves it blank).
-local function OutlineValues()
-	local fonts = st:GetModule('Fonts', true)
-	local values = {}
-	for key, name in pairs(fonts and fonts.outlines or { OUTLINE = 'Outline' }) do
-		values[key] = name
-	end
-	values.NONE = 'None'
-	return values
-end
-
 -- What each text is, for its tooltips.
 -- The titles of the texts' Position sections: the Text tab has one for each.
 local TEXT_POSITION_NAMES = {
@@ -197,7 +186,7 @@ function AB:GetTextOptions(id, kind, name, order)
 				name = 'Outline',
 				desc = 'The outline drawn around ' .. what .. '.',
 				type = 'select',
-				values = OutlineValues(),
+				values = st:GetModule('Fonts').outlines,
 			},
 			position = generators.position(5, false,
 				function(key) return self.config[id].text[kind][key] end,

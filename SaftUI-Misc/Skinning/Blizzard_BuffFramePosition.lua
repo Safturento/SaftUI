@@ -156,13 +156,6 @@ local function IsShown(frame)
 	return shown
 end
 
-local function OutlineFlags(outline)
-	if not outline or outline == 'NONE' then
-		return ''
-	end
-	return outline
-end
-
 -- The grid for one frame, from its profile settings: sizes rounded to whole pixels, the
 -- corner the first icon sits in, the direction each step goes, and the holder's size for
 -- max icons. Cached until the settings change (AP:Invalidate).
@@ -490,7 +483,7 @@ function AP:UpdateFont(key, kind)
 	local font = fonts[key] and fonts[key][kind]
 	if not font then return end
 	local config = st.config.profile.auras[key][kind]
-	font:SetFont(st.LSM:Fetch('font', config.font), config.size, OutlineFlags(config.outline))
+	font:SetFont(st.LSM:Fetch('font', config.font), config.size, st.OutlineFlag(config.outline))
 end
 
 function AP:UpdateFonts()

@@ -146,14 +146,6 @@ local function Justify(point)
 	return 'CENTER'
 end
 
--- SaftUI's outline names, as font flags. 'NONE' is no flags.
-local function OutlineFlags(outline)
-	if not outline or outline == 'NONE' then
-		return ''
-	end
-	return outline
-end
-
 -- A text offset in whole pixels, so the pixel fonts stay sharp. The buttons are
 -- at UIParent's scale.
 local function Offset(value)
@@ -166,7 +158,7 @@ local function TextConfig(text)
 		font = {
 			font = st.LSM:Fetch('font', text.font),
 			size = text.size,
-			flags = OutlineFlags(text.outline),
+			flags = st.OutlineFlag(text.outline),
 		},
 		color = { 1, 1, 1 },
 		position = {

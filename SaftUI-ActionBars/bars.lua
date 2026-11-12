@@ -145,10 +145,6 @@ local function MainBarPages()
 		C_ActionBar.GetTempShapeshiftBarIndex())
 end
 
-local function Clamp(value, low, high)
-	return math.min(math.max(math.floor(value or low), low), high)
-end
-
 -- A bar anchored by its centre on one axis (BOTTOM and TOP centre it across,
 -- LEFT and RIGHT up and down, CENTER both) has its edges half a pixel off the
 -- grid when it's an odd number of pixels long on that axis. Every button is
@@ -342,7 +338,7 @@ function AB:GetNumButtons(id)
 	if not bar then return 0 end
 	local barType = self.barTypes[id]
 	local slots = barType and barType.GetNumSlots and barType.GetNumSlots() or #bar.buttons
-	return Clamp(self.config[id].buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
+	return st.Clamp(self.config[id].buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
 end
 
 -- Sizes bar id, lays out its buttons and places it, from the profile. In combat
@@ -354,7 +350,7 @@ function AB:LayoutBar(id)
 	st:SafeReposition(bar, 'actionbars_layout_' .. id, function()
 		local config = self.config[id]
 		local numButtons = self:GetNumButtons(id)
-		local perRow = Clamp(config.perrow, 1, numButtons)
+		local perRow = st.Clamp(config.perrow, 1, numButtons)
 		local numRows = math.ceil(numButtons / perRow)
 		local size = st:RoundToPixel(config.size, bar)
 		local spacing = st:RoundToPixel(config.spacing, bar)
