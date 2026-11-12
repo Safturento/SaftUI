@@ -352,11 +352,10 @@ function CHT:TakeOverChatFrame()
 end
 
 function CHT:RegisterChatMover()
-	self.mover = st:RegisterMover('chat', {
-		frame = self.holder,
+	self.mover = st:RegisterConfigMover(self.holder, {
+		key = 'chat',
 		label = 'Chat',
-		getPosition = function() return self.config.position end,
-		setPosition = function(position) self.config.position = position end,
+		config = function() return self.config end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'Chat', 'general' },
 	})
