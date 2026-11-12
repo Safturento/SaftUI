@@ -19,28 +19,37 @@ local CD = SK:NewModule('Blizzard_CooldownViewer')
 	copied onto the viewer from its mixin, so the viewer's own is post-hooked
 	(hooksecurefunc): an item is skinned the first time a viewer hands it out, and
 	a reused one is left as it is. Items the viewers made before SaftUI loaded are
-	skinned from their pools (EnumerateActive) when it does.
+	skinned from their pools (EnumerateActive) when it does. The hook runs in the
+	middle of Blizzard's RefreshLayout, before it sets the items' data and lays
+	them out, so each item is skinned in xpcall: an error is reported, Blizzard's
+	layout still completes, and the item is tried again the next time it's
+	handed out.
 
-	Each item, as an action button (SaftUI-ActionBars/skin.lua is the look):
-	  - a backdrop of SaftUI's, drawn as the action kind through st:SetBackdropIn,
-	    filling the item (a bar's: its icon frame), so its size is the button's
-	    whole footprint as Blizzard's item size is;
-	  - the icon inside the backdrop's border, its round mask taken off and
-	    cropped square (st:SkinIcon), and the Cooldown Manager's own frame round
-	    it (UI-HUD-CoolDownManager-IconOverlay, a region with no key, found by
-	    its atlas) faded out;
-	  - the cooldown, its flash and the out of range shadow over the icon, the
-	    swipe a flat square (Blizzard's swipe texture is round) in the colors
-	    Blizzard keeps setting (dark on a cooldown, gold while a buff is up), and
-	    the countdown numbers in Pixel Med on items 36 wide and up, Pixel below, as
-	    on SaftUI's action bars;
+	Each item, as an action button (SaftUI-ActionBars/skin.lua is the look), by
+	.agents/taint.md rule 1's recipe for one of Blizzard's buttons (as the totem
+	bar's skin, SaftUI-Misc/totemskin.lua, does it):
+	  - a backdrop of SaftUI's, the item's child one level under it, 2px inside
+	    the item (a bar's: its icon frame). Blizzard's round icon sat that far
+	    inside, and Blizzard lays the items out Icon Padding less 4 apart so
+	    those icons touch (GetAdditionalPaddingOffset): with the backdrop there,
+	    neighbours are Icon Padding apart, 2px at Blizzard's default. It's drawn
+	    as the action kind with st:SetTemplate naming the item as host, so under
+	    the Blizzard theme the ring is a texture of the item, over the icon and
+	    under Blizzard's frames on it (the cooldown, the count, the debuff
+	    border, the proc and pandemic glows) and a bar's stack count;
+	  - the icon inside the backdrop's border, moved to BACKGROUND (the ring is
+	    in ARTWORK), its round mask taken off and cropped square (st:SkinIcon),
+	    and the Cooldown Manager's own frame round it
+	    (UI-HUD-CoolDownManager-IconOverlay, a region with no key, found by its
+	    atlas) and its round out of range shadow faded out (Blizzard also tints
+	    the icon red out of range, which is how SaftUI's action bars show it);
+	  - the cooldown and its flash over the icon, the swipe a flat square
+	    (Blizzard's swipe texture is round) in the colors Blizzard keeps setting
+	    (dark on a cooldown, gold while a buff is up), and the countdown numbers
+	    in Pixel Med on items 36 wide and up, Pixel below, as on SaftUI's action
+	    bars;
 	  - the charges or stack count in the Skinning font at the icon's bottom
-	    right corner;
-	  - under the Blizzard theme, the action button's ring (on a frame of
-	    SaftUI's one level over the item, as for every frame that isn't
-	    SaftUI's) under the cooldown and the count: Blizzard's frames over the
-	    icon are raised one level over it, and a bar's stack count, a font
-	    string of its icon frame, is moved into a frame of SaftUI's over it.
+	    right corner, a bar's (which Blizzard makes 10 tall) as tall as the font.
 	A bar item's bar is drawn as SaftUI's bars are (the swing timer's skin): a
 	backdrop of SaftUI's drawn as a bar outside it, a flat fill in Blizzard's
 	orange, its background art faded, the pip a flat 2px line at the fill's end,
@@ -51,12 +60,13 @@ local CD = SK:NewModule('Blizzard_CooldownViewer')
 
 	Nothing is written onto Blizzard's frames (.agents/taint.md rule 1): SaftUI's
 	pieces are kept in tables here keyed by Blizzard's frames, and Blizzard's
-	frames and regions only get widget calls. Blizzard never sets the alpha of
-	the regions faded here or the level of the frames raised here, and anchors
-	the ones placed here only in their templates (the pip once, in OnLoad), so
-	the skin holds. The items aren't protected and carry no
-	access restrictions or forbidden aspects (unlike the aura containers', rule
-	11), so everything here is legal in combat. No cooldown value is read.
+	frames and regions only get widget calls; under the Blizzard theme the ring
+	is a texture made on the item, as the totem bar's is (rule 12). Blizzard
+	never sets the alpha of the regions faded here or the icon's draw layer, and
+	anchors the ones placed here only in their templates (the pip once, in
+	OnLoad), so the skin holds. The items aren't protected and carry no access
+	restrictions or forbidden aspects (unlike the aura containers', rule 11), so
+	everything here is legal in combat. No cooldown value is read.
 ]]
 
 local issecretvalue = issecretvalue or function() return false end
@@ -70,6 +80,10 @@ local VIEWERS = {
 -- lowercased: a client may give an atlas name back in another case.
 local OVERLAY_ATLAS = 'ui-hud-cooldownmanager-iconoverlay'
 
+-- How far inside the item (a bar's icon frame) SaftUI's backdrop sits: where
+-- Blizzard's round icon sat (see the top of this file).
+local ITEM_INSET = 2
+
 -- From this item width up the countdown numbers are Pixel Med, below it Pixel
 -- (SaftUI-ActionBars/skin.lua's LARGE_COUNTDOWN_SIZE). The Essential items are
 -- 50 wide, the tracked buffs' 40 and the Utility items 30.
@@ -80,26 +94,16 @@ local BAR_COLOR = { 1, 0.5, 0.25 }
 local PIP_WIDTH = 2
 
 -- The parts Blizzard lays over the whole item, put over the icon instead.
-local OVER_ICON = { 'cooldown', 'flash', 'outOfRange' }
-
--- An icon item's frames over its icon. Under the Blizzard theme the action
--- button's ring is on a frame of SaftUI's one level over the item (ThemeArt's
--- holder), the level these are made at, so they go one level higher: the
--- swipe, the numbers and the count lie over the ring, as on SaftUI's own
--- action buttons, whichever the game draws first at one level.
-local OVER_RING = { 'Cooldown', 'CooldownFlash', 'ChargeCount', 'Applications', 'DebuffBorder' }
+local OVER_ICON = { 'cooldown', 'flash' }
 
 -- item -> its parts the skin styles, { holder, icon, count, cooldown, flash,
 -- outOfRange, bar }, once it's skinned. The holder is the frame the icon fills
 -- (the item, or a bar item's icon frame).
 local skinned = setmetatable({}, { __mode = 'k' })
 
--- A holder or a bar -> SaftUI's backdrop behind it (st:SetBackdropIn).
+-- A holder or a bar -> SaftUI's backdrop behind it: a holder's made here
+-- (Backdrop), a bar's by st:SetBackdropIn.
 local backdrops = setmetatable({}, { __mode = 'k' })
-
--- A bar item's icon frame -> the frame of SaftUI's its stack count is moved
--- into (CountFrame).
-local countFrames = setmetatable({}, { __mode = 'k' })
 
 -- The viewers whose OnAcquireItemFrame is hooked.
 local hooked = setmetatable({}, { __mode = 'k' })
@@ -145,6 +149,21 @@ local function FadeOverlay(frame)
 	end
 end
 
+-- The backdrop behind a holder, made the first time: a frame of SaftUI's, the
+-- holder's child one level under it, ITEM_INSET inside it.
+local function Backdrop(holder)
+	local backdrop = backdrops[holder]
+	if not backdrop then
+		backdrop = st:CreateFrame('Frame', nil, holder)
+		local level = holder:GetFrameLevel()
+		if not issecretvalue(level) then backdrop:SetFrameLevel(math.max(0, level - 1)) end
+		backdrop:SetPoint('TOPLEFT', holder, 'TOPLEFT', ITEM_INSET, -ITEM_INSET)
+		backdrop:SetPoint('BOTTOMRIGHT', holder, 'BOTTOMRIGHT', -ITEM_INSET, ITEM_INSET)
+		backdrops[holder] = backdrop
+	end
+	return backdrop
+end
+
 -- The countdown numbers' font: Pixel Med on a large item, Pixel on a small one,
 -- or Pixel when its width can't be read.
 local function CountdownFont(holder)
@@ -187,17 +206,14 @@ local function Style(item, parts)
 	local font = st:GetFont(st.config.profile.skinning.font)
 	local holder, icon = parts.holder, parts.icon
 
-	-- The backdrop fills the holder, as an action button's fills the button.
-	-- Under None it's cleared, or not made yet.
-	st:SetBackdropIn(backdrops, holder, theme, background, 'action')
-	local backdrop = backdrops[holder]
-	if backdrop then
-		backdrop:ClearAllPoints()
-		backdrop:SetAllPoints(holder)
-	end
+	-- The backdrop is drawn on itself, with the holder as the host of the
+	-- Blizzard theme's ring. Under None it's cleared.
+	st:SetTemplate(Backdrop(holder), theme, background, 'action', holder)
 
-	-- The icon inside the border, cropped once it has its size.
-	local inset = st:ThemeInset(theme, background, 'action')
+	-- The icon inside the border, in BACKGROUND under the ring, cropped once it
+	-- has its size.
+	local inset = ITEM_INSET + st:ThemeInset(theme, background, 'action')
+	icon:SetDrawLayer('BACKGROUND', 0)
 	icon:ClearAllPoints()
 	icon:SetPoint('TOPLEFT', holder, 'TOPLEFT', inset, -inset)
 	icon:SetPoint('BOTTOMRIGHT', holder, 'BOTTOMRIGHT', -inset, inset)
@@ -224,57 +240,39 @@ local function Style(item, parts)
 		if font then count:SetFontObject(font) end
 		count:ClearAllPoints()
 		count:SetPoint('BOTTOMRIGHT', icon, 'BOTTOMRIGHT', -1, 1)
+		-- A bar's count is a fixed 32 by 10 (Blizzard's template), which a
+		-- taller font wouldn't fit: it's made as tall as the font.
+		if parts.bar and font then
+			local _, size = font:GetFont()
+			if size and not issecretvalue(size) then count:SetHeight(size) end
+		end
 	end
 
 	if parts.bar then StyleBar(parts.bar, theme, background, font) end
 end
 
--- Raises an icon item's frames over its icon one level over the ring's holder
--- (OVER_RING). A level that can't be read leaves them where they are.
-local function RaiseOverRing(item)
-	local level = item:GetFrameLevel()
-	if issecretvalue(level) then return end
-	for _, key in ipairs(OVER_RING) do
-		local frame = item[key]
-		if frame and frame.SetFrameLevel then frame:SetFrameLevel(level + 2) end
-	end
-end
-
--- A bar item's stack count is a font string of its icon frame (level 512),
--- which the ring's holder, a frame over that one, would cover under the
--- Blizzard theme. So it's moved into a frame of SaftUI's one level over the
--- holder, a child of the icon frame, so it shows and hides with the icon as
--- Blizzard's bar content setting has it. Blizzard only sets its text.
-local function CountFrame(holder)
-	local frame = countFrames[holder]
-	if not frame then
-		frame = CreateFrame('Frame', nil, holder)
-		frame:SetAllPoints(holder)
-		countFrames[holder] = frame
-		local level = holder:GetFrameLevel()
-		if not issecretvalue(level) then frame:SetFrameLevel(level + 2) end
-	end
-	return frame
-end
-
 -- Skins an item the first time a viewer hands it out; a reused one is left.
+-- It's marked skinned only once it's styled, so one that errored is tried
+-- again (everything here is safe to run twice: Backdrop makes one backdrop).
 local function SkinItem(item)
 	if not item or skinned[item] then return end
 	local parts = Parts(item)
 	if not (parts and parts.holder and parts.icon) then return end
-	skinned[item] = parts
 	FadeOverlay(parts.holder)
-	if parts.holder == item then
-		RaiseOverRing(item)
-	elseif parts.count then
-		parts.count:SetParent(CountFrame(parts.holder))
-	end
+	if parts.outOfRange then parts.outOfRange:SetAlpha(0) end
 	Style(item, parts)
+	skinned[item] = parts
+end
+
+-- Skins an item in xpcall: inside Blizzard's RefreshLayout an error would stop
+-- its layout half done, so it's reported instead (see the top of this file).
+local function TrySkinItem(item)
+	xpcall(SkinItem, geterrorhandler(), item)
 end
 
 -- The viewer's own OnAcquireItemFrame, post-hooked.
 local function OnAcquireItemFrame(viewer, item)
-	SkinItem(item)
+	TrySkinItem(item)
 end
 
 -- Hooks each viewer that exists, once, and skins the items it shows already.
@@ -287,7 +285,7 @@ function CD:SkinViewers()
 			local pool = viewer.itemFramePool
 			if pool then
 				for item in pool:EnumerateActive() do
-					SkinItem(item)
+					TrySkinItem(item)
 				end
 			end
 		end
@@ -295,12 +293,12 @@ function CD:SkinViewers()
 end
 
 -- A profile change or the Skinning page: every skinned item takes the
--- profile's Theme, Background and font. It draws SaftUI's backdrops and makes
--- only widget calls on Blizzard's frames and regions, as the hook does, so it
--- runs in combat too.
+-- profile's Theme, Background and font, each in xpcall so one that errors
+-- leaves the rest. It draws SaftUI's backdrops and makes only widget calls on
+-- Blizzard's frames and regions, as the hook does, so it runs in combat too.
 function CD:UpdateConfig()
 	for item, parts in pairs(skinned) do
-		Style(item, parts)
+		xpcall(Style, geterrorhandler(), item, parts)
 	end
 end
 

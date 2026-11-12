@@ -41,8 +41,16 @@
 	so a skin that writes a field onto one, or SetScripts one, fails. The
 	fixture's own writes (Blizzard's) go through rawset.
 
+	The glows Blizzard puts on an item, made as Blizzard makes them:
+	CV.show_alert(item), the proc glow (ActionButtonSpellAlertManager's
+	GetAlertFrame, Blizzard_ActionBar/Shared/ActionButtonSpellAlerts.lua: a
+	frame of the item's with no level of its own, 1.4 times its size, centred,
+	kept as item.SpellActivationAlert), and CV.show_pandemic(item), the
+	pandemic glow (CooldownViewerMixin:SetupPandemicStateFrameForItem: a frame
+	made in the viewer, then SetParent(item), 6 out round it), each locked.
+
 	Not built: the cooldown data and its refresh (spells, auras, charges,
-	totems), alerts, the pandemic and proc glows, the debuff border's atlas,
+	totems), alerts and the glows' art and animations, the debuff border's atlas,
 	the cooldown's timing (SetUseAuraDisplayTime isn't stubbed), tooltips and
 	mouse, the edit mode system and the settings window.
 ]]
@@ -92,11 +100,13 @@ local function masked_icon(parent, x, y)
 	return icon
 end
 
--- The cooldown filling the item, with the round swipe in the template's color.
+-- The cooldown filling the item, with the round swipe in the template's color
+-- (<SwipeTexture file=...><Color .../></SwipeTexture>).
 local function cooldown(item, r, g, b, a, reverse)
 	local cd = CreateFrame('Cooldown', nil, item)
 	cd:SetAllPoints()
-	cd:SetSwipeTexture(CV.SWIPE, r, g, b, a)
+	cd:SetSwipeTexture(CV.SWIPE)
+	cd:SetSwipeColor(r, g, b, a)
 	cd:SetEdgeTexture(CV.EDGE)
 	if reverse then cd:SetReverse(true) end
 	return cd
@@ -353,6 +363,33 @@ function CV.build()
 		lock(viewer, OWNER)
 		CV[key] = viewer
 	end
+end
+
+-- The proc glow on item, as ActionButtonSpellAlertManager makes it.
+function CV.show_alert(item)
+	local frame = item.SpellActivationAlert
+	if not frame then
+		frame = CreateFrame('Frame', nil, item)
+		local width, height = item:GetSize()
+		frame:SetSize(width * 1.4, height * 1.4)
+		frame:SetPoint('CENTER', item, 'CENTER', 0, 0)
+		rawset(item, 'SpellActivationAlert', frame)
+		lock(frame, OWNER)
+	end
+	frame:Show()
+	return frame
+end
+
+-- The pandemic glow on item, as its viewer's pool hands one out.
+function CV.show_pandemic(item)
+	local frame = CreateFrame('Frame', nil, item.viewerFrame)
+	frame:SetParent(item)
+	frame:SetPoint('TOPLEFT', item, 'TOPLEFT', -6, 6)
+	frame:SetPoint('BOTTOMRIGHT', item, 'BOTTOMRIGHT', 6, -6)
+	rawset(item, 'PandemicIcon', frame)
+	lock(frame, OWNER)
+	frame:Show()
+	return frame
 end
 
 -- The items a viewer shows now, by layoutIndex.
