@@ -83,6 +83,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 local OW = {}
 st.OptionsWindow = OW
 
+-- OW.S: the window's state that more than one of its parts reads or writes
+-- and that is replaced as it changes (the layout, the look, what was drawn,
+-- a resize, the scroll offsets). Always read and written as S.name, never
+-- kept in a local. Not an API.
+local S = {}
+OW.S = S
+
 local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
 local format = string.format
 
@@ -242,24 +249,26 @@ end
 local F = {} -- the window's frames (OW.GetFrames, for tests)
 local root -- the tree drawn: Config:GetOptionsTable()'s args
 local state = { page = nil, selections = {}, search = '' } -- what the user chose
-local shown = {} -- what the last render drew: page, tab, subtab, pick
+S.shown = {} -- what the last render drew: page, tab, subtab, pick
 local results -- the current search's results
 local pageBody -- the body (OB.New) the page is drawn in: its cells are the drawn rows
 local rendering, pending, dragging = false, false, false
-local sizing -- the resize under way (StartResize), or nil
+S.sizing = nil -- the resize under way (StartResize), or nil
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
-local scrollOffset, contentHeight, navOffset, navHeight = 0, 0, 0, 0
-local filledTo -- the view height the last page's fill rows were drawn to, or nil
+local contentHeight = 0
+S.scrollOffset, S.navOffset, S.navHeight = 0, 0, 0
+S.filledTo = nil -- the view height the last page's fill rows were drawn to, or nil
 local renders = 0
 -- Whether the window draws its controls in Blizzard's Settings art: under
 -- SaftUI's theme Blizzard (W.BlizzardLook), read once a render, so a theme
 -- change reaches them when the window renders again. Under Thick and Thin
 -- they keep the mockup's look.
-local blizzard = false
+S.blizzard = false
 -- The layout the window is in (OW.LAYOUT), and the look it was laid out for
 -- (Relayout): nil until the window is built.
-local layout, laidOut = OW.LAYOUT.own, nil
+S.layout = OW.LAYOUT.own
+local laidOut = nil
 
 local function Colors() return st.config.profile.colors end
 local function Normal() return Colors().text.normal:GetRGB() end
@@ -352,7 +361,7 @@ end
 -- The most height the window takes in layout L (the one it's in when nil):
 -- the screen less what it keeps at its top and bottom (Margins), even.
 function OW.MaxHeight(L)
-	local above, below = Margins(L or layout)
+	local above, below = Margins(L or S.layout)
 	return 2 * floor((UIParent:GetHeight() - above - below) / 2)
 end
 
@@ -411,7 +420,7 @@ end
 local ScrollTo = OB.ScrollTo
 
 local function SetScroll(offset)
-	scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
+	S.scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
 end
 
 -- The sidebar's nav: no bar under Thick and Thin; under Blizzard a narrow
@@ -419,7 +428,7 @@ end
 local NAV_BAR_GAP = 4
 
 local function SetNavScroll(offset)
-	navOffset = ScrollTo(F.navFrame, F.navBar, offset, navHeight, NAV_BAR_GAP)
+	S.navOffset = ScrollTo(F.navFrame, F.navBar, offset, S.navHeight, NAV_BAR_GAP)
 end
 
 ------------------------------------------------------------------ re-rendering
@@ -429,7 +438,7 @@ local function Busy()
 	-- A drag ends when the button comes up, even if the slider's OnMouseUp
 	-- never arrived; so does a scroll bar's held thumb (W.ScrollBarHeld).
 	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
-	if dragging or sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
+	if dragging or S.sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
 	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
 	return focus ~= nil and focus ~= F.search and Inside(focus, F.window)
@@ -498,25 +507,25 @@ local HANDLE_LEVEL = 10 -- the grip and the edge, over the window's own frames
 -- own bars until the render that draws the row again (Schedule; in game the
 -- body's OnSizeChanged schedules it too), which places it.
 local function FollowHeight()
-	if filledTo then Schedule() else SetScroll(scrollOffset) end
-	SetNavScroll(navOffset)
+	if S.filledTo then Schedule() else SetScroll(S.scrollOffset) end
+	SetNavScroll(S.navOffset)
 end
 
 -- The window's height again (OW.WindowHeight), from its current anchor, while
 -- it shows and isn't being resized: for a change of the screen edge margin,
 -- which moves OW.MaxHeight.
 local function ApplyHeight()
-	if not (F.window and F.window:IsShown()) or sizing then return end
-	local height = OW.WindowHeight(layout)
+	if not (F.window and F.window:IsShown()) or S.sizing then return end
+	local height = OW.WindowHeight(S.layout)
 	if F.window:GetHeight() == height then return end
 	F.window:SetHeight(height)
 	FollowHeight()
 end
 
 local function StopResize()
-	if not sizing then return end
-	local resize = sizing
-	sizing = nil
+	if not S.sizing then return end
+	local resize = S.sizing
+	S.sizing = nil
 	resize.handle:SetScript('OnUpdate', nil)
 	if resize.at == resize.height then return end
 	local saved = st.config.global.optionsWindow
@@ -532,17 +541,17 @@ local function UpdateResize()
 	if not IsMouseButtonDown('LeftButton') then return StopResize() end
 	local window = F.window
 	local _, y = GetCursorPosition()
-	local _, below = Margins(layout)
-	local most = min(OW.MaxHeight(), 2 * floor((sizing.top - below) / 2))
-	local height = sizing.height + sizing.cursor - y / window:GetEffectiveScale()
-	height = max(layout.height, min(most, 2 * floor(height / 2 + 0.5)))
-	if height == sizing.at then return end
-	sizing.at = height
+	local _, below = Margins(S.layout)
+	local most = min(OW.MaxHeight(), 2 * floor((S.sizing.top - below) / 2))
+	local height = S.sizing.height + S.sizing.cursor - y / window:GetEffectiveScale()
+	height = max(S.layout.height, min(most, 2 * floor(height / 2 + 0.5)))
+	if height == S.sizing.at then return end
+	S.sizing.at = height
 	-- Centred, so it moves down by half the change (a whole number: the
 	-- change is even) and its top stays.
 	window:SetHeight(height)
 	window:ClearAllPoints()
-	window:SetPoint('CENTER', UIParent, 'CENTER', sizing.x, sizing.y - (height - sizing.height) / 2)
+	window:SetPoint('CENTER', UIParent, 'CENTER', S.sizing.x, S.sizing.y - (height - S.sizing.height) / 2)
 	FollowHeight()
 end
 
@@ -550,7 +559,7 @@ end
 -- anchor): the cursor's y, the window's height, its centre's offset from the
 -- screen's and its top.
 local function StartResize(handle, button)
-	if button ~= 'LeftButton' or sizing then return end
+	if button ~= 'LeftButton' or S.sizing then return end
 	local window = F.window
 	local cx, cy = window:GetCenter()
 	local ux, uy = UIParent:GetCenter()
@@ -559,7 +568,7 @@ local function StartResize(handle, button)
 	local height = floor(window:GetHeight() + 0.5)
 	-- cursor and height at the press, at the height now, x and y the centre's
 	-- offset at the press.
-	sizing = {
+	S.sizing = {
 		handle = handle,
 		cursor = y / window:GetEffectiveScale(),
 		height = height, at = height,
@@ -608,7 +617,7 @@ end
 -- highlight and pushed tinted the buttons' hover color, the highlight blended.
 local function LookGrip()
 	local grip = F.grip
-	local look = blizzard and st.ThemeArt.Control('resizegrip')
+	local look = S.blizzard and st.ThemeArt.Control('resizegrip')
 	grip.normal:SetVertexColor(1, 1, 1, 1)
 	if look then
 		grip:SetSize(look.size, look.size)
@@ -645,7 +654,7 @@ local function RunSearch()
 	if text == '' or text == state.search then return end
 	state.search = text
 	results = OM.Search(root, text)
-	scrollOffset = 0
+	S.scrollOffset = 0
 	OW:Render()
 end
 
@@ -657,7 +666,7 @@ local function SearchChanged(box)
 	elseif text == '' then
 		-- Cleared: the page comes back at once.
 		state.search, results, searchDue = '', nil, nil
-		scrollOffset = 0
+		S.scrollOffset = 0
 		OW:Render()
 	else
 		searchDue = SEARCH_DELAY
@@ -696,7 +705,7 @@ local function DrawActions()
 		button.label, button.func = command.label, command.func
 		button.text:SetText(command.label)
 		button:SetSize(ACTION_WIDTH, ACTION_HEIGHT)
-		W.LookButton(button, blizzard, st.BOX_COLORS.bg)
+		W.LookButton(button, S.blizzard, st.BOX_COLORS.bg)
 		button:ClearAllPoints()
 		button:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT',
 			12 + ((i - 1) % 2) * (ACTION_WIDTH + ACTION_GAP),
@@ -797,8 +806,8 @@ local function DrawSidebar(entries)
 	ReleaseAll(pools.nav)
 	ReleaseAll(pools.group)
 	wipe(F.nav)
-	local look = blizzard and st.ThemeArt.Control('optionslist')
-	local art = blizzard and st.ThemeArt.Control('optionswindow')
+	local look = S.blizzard and st.ThemeArt.Control('optionslist')
+	local art = S.blizzard and st.ThemeArt.Control('optionswindow')
 	local y, groups = NAV_TOP, 0
 	for _, entry in ipairs(entries) do
 		local frame
@@ -830,7 +839,7 @@ local function DrawSidebar(entries)
 			frame.text:ClearAllPoints()
 			frame.text:SetPoint('LEFT', frame, 'LEFT', entry.special and 18 or 22, 0)
 			frame.text:SetText(entry.name)
-			frame.text:SetWidth(layout.navWidth - 30)
+			frame.text:SetWidth(S.layout.navWidth - 30)
 			frame.blizzard = look and true or false
 			if look then
 				frame.listPicked:SetAtlas(look.picked)
@@ -838,15 +847,15 @@ local function DrawSidebar(entries)
 			end
 			StyleNavItem(frame)
 		end
-		frame:SetWidth(layout.navWidth)
+		frame:SetWidth(S.layout.navWidth)
 		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
 		y = y + frame:GetHeight()
 		F.nav[#F.nav + 1] = frame
 	end
-	navHeight = y + 10
-	F.navContent:SetHeight(navHeight)
+	S.navHeight = y + 10
+	F.navContent:SetHeight(S.navHeight)
 	F.navFrame:UpdateScrollChildRect()
-	SetNavScroll(navOffset)
+	SetNavScroll(S.navOffset)
 
 	local r, g, b = Normal()
 	F.profile:SetText(format('Profile: |cff%02x%02x%02x%s|r', floor(r * 255), floor(g * 255), floor(b * 255),
@@ -860,7 +869,7 @@ local function Select(slot, key)
 	state.selections[state.page] = selection
 	selection[slot] = key
 	if state.search ~= '' or searchDue then ClearSearch() end
-	scrollOffset = 0
+	S.scrollOffset = 0
 	OW:SetStatus(nil)
 	OW:Render()
 end
@@ -904,7 +913,7 @@ end
 -- first line stops short of the search box). Returns its bottom.
 local function DrawTabRow(pool, list, active, top, slot)
 	ReleaseAll(pool)
-	local look = blizzard and st.ThemeArt.Control('optionstab')
+	local look = S.blizzard and st.ThemeArt.Control('optionstab')
 	local x, y = 0, top
 	local limit = slot == 'tab' and (CONTENT_WIDTH - SEARCH_WIDTH - TAB_GAP) or CONTENT_WIDTH
 	for _, entry in ipairs(list) do
@@ -919,7 +928,7 @@ local function DrawTabRow(pool, list, active, top, slot)
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
 		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
-		tab.underline:SetShown(tab.active and not blizzard)
+		tab.underline:SetShown(tab.active and not S.blizzard)
 		LookTab(tab, look)
 		tab:SetAlpha(entry.disabled and 0.4 or 1)
 		x = x + width + TAB_GAP
@@ -930,7 +939,7 @@ end
 -- A line across the main column: Blizzard's divider under Blizzard, a 1px
 -- line in OB.LINE's color otherwise.
 local function PlaceLine(line, y)
-	if blizzard then
+	if S.blizzard then
 		line:SetAtlas(st.ThemeArt.Control('optionswindow').rule)
 	else
 		line:SetColorTexture(unpack(OB.LINE))
@@ -945,7 +954,7 @@ end
 -- gets the same list (and the list's Esc and outside click).
 local pickerOption = {
 	type = 'select', name = '',
-	get = function() return shown.pick end,
+	get = function() return S.shown.pick end,
 	set = function(_, key) Select('pick', key) end,
 }
 local pickerRoot = { picker = pickerOption }
@@ -990,10 +999,10 @@ end
 -- so its body reaches over its own bar's place (filled, fillReach), where the
 -- row draws bars of its own: the Categories tab's editor.
 local function PlaceBody(top, filled)
-	local reach = filled and layout.fillReach or layout.bodyReach
+	local reach = filled and S.layout.fillReach or S.layout.bodyReach
 	F.body:ClearAllPoints()
 	F.body:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
-	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(layout.rightPad - reach), layout.bodyBottom)
+	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(S.layout.rightPad - reach), S.layout.bodyBottom)
 end
 
 local function SamePath(a, b)
@@ -1011,7 +1020,7 @@ local function BringIntoView()
 	if not path then return end
 	for _, cell in ipairs(pageBody.cells) do
 		if cell.row.path and SamePath(cell.row.path, path) then
-			scrollOffset = max(0, cell.y - ROW_HEIGHT)
+			S.scrollOffset = max(0, cell.y - ROW_HEIGHT)
 			cell.label:SetTextColor(Colors().text.blue:GetRGB())
 			return
 		end
@@ -1026,7 +1035,7 @@ end
 ------------------------------------------------------------------ pages
 
 local function DrawPage()
-	shown = { page = state.page }
+	S.shown = { page = state.page }
 	local view = state.page and OM.BuildView(root, state.page, state.selections[state.page])
 	if not view then
 		F.title:SetText(st.name)
@@ -1040,8 +1049,8 @@ local function DrawPage()
 	end
 	F.title:SetText(view.title)
 	F.desc:SetText(view.desc or '')
-	shown.tab, shown.subtab = view.tab, view.subtab
-	shown.pick = view.picker and view.picker.selected
+	S.shown.tab, S.shown.subtab = view.tab, view.subtab
+	S.shown.pick = view.picker and view.picker.selected
 
 	-- A single tab is the page itself, so it isn't drawn (as in the mockup).
 	local bottom = DrawTabRow(pools.tab, #view.tabs > 1 and view.tabs or EMPTY, view.tab, TABS_TOP, 'tab')
@@ -1063,7 +1072,7 @@ local function DrawPage()
 	local visible = F.body:GetHeight() or 0
 	contentHeight = pageBody:Draw(view.sections, visible)
 	if pageBody.filled then
-		filledTo = visible
+		S.filledTo = visible
 		PlaceBody(bottom, true)
 	end
 	if #pageBody.cells == 0 then Placeholder('Nothing to set here.') end
@@ -1072,7 +1081,7 @@ end
 
 -- The results page: a section per page, tabs and section, in the order found.
 local function DrawSearch(pages)
-	shown = { page = state.page }
+	S.shown = { page = state.page }
 	local count = #results
 	F.title:SetText('Search')
 	F.desc:SetText(format('%d%s result%s for "%s"', count, count >= 100 and '+' or '', count == 1 and '' or 's', state.search))
@@ -1102,9 +1111,9 @@ end
 -- box (its text and hint start clear of Blizzard's magnifying glass) and the
 -- resize grip.
 local function LookControls()
-	W.LookButton(F.reloadButton, blizzard, st.BOX_COLORS.bg)
-	W.LookButton(F.closeButton, blizzard, st.BOX_COLORS.bg)
-	local left = W.LookSearch(F.search, blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
+	W.LookButton(F.reloadButton, S.blizzard, st.BOX_COLORS.bg)
+	W.LookButton(F.closeButton, S.blizzard, st.BOX_COLORS.bg)
+	local left = W.LookSearch(F.search, S.blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
 	F.search:SetTextInsets(left, SEARCH_TEXT_INSET, 0, 0)
 	F.search.hint:SetPoint('LEFT', F.search, 'LEFT', left, 0)
 	LookGrip()
@@ -1119,7 +1128,7 @@ end
 -- Build runs it, and Draw again when the look changed.
 local function Relayout(settings)
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
-	layout, F.layout = L, L
+	S.layout, F.layout = L, L
 	local window = F.window
 	window:SetSize(L.width, OW.WindowHeight(L))
 	st:SetTemplate(window, 'theme', 'solid', 'window')
@@ -1211,14 +1220,14 @@ local function Relayout(settings)
 end
 
 local function Draw()
-	blizzard = W.BlizzardLook()
-	if blizzard ~= laidOut then Relayout(blizzard) end
+	S.blizzard = W.BlizzardLook()
+	if S.blizzard ~= laidOut then Relayout(S.blizzard) end
 	-- The window's name in the profile's font for window titles, which the
 	-- Fonts tab can change.
 	F.titleText:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	LookControls()
 	ReleaseBody()
-	contentHeight, filledTo = 0, nil
+	contentHeight, S.filledTo = 0, nil
 	pageBody:SetRoot(root)
 	local pages = OM.Pages(root)
 	local entries = OW.SidebarEntries(pages)
@@ -1239,7 +1248,7 @@ local function Draw()
 	if state.search ~= '' and results then DrawSearch(pages) else DrawPage() end
 	F.content:SetHeight(max(1, contentHeight))
 	F.body:UpdateScrollChildRect()
-	SetScroll(scrollOffset)
+	SetScroll(S.scrollOffset)
 end
 
 ------------------------------------------------------------------ the frame
@@ -1320,7 +1329,7 @@ local function BuildSidebar(window)
 	content:SetHeight(1)
 	nav:SetScrollChild(content)
 	nav:EnableMouseWheel(true)
-	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(navOffset - delta * NAV_ITEM * 2) end)
+	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(S.navOffset - delta * NAV_ITEM * 2) end)
 	F.navFrame, F.navContent, F.nav = nav, content, {}
 	F.navBar = OB.ScrollBar(side, SetNavScroll, { narrow = true, step = NAV_ITEM * 2, flat = false })
 	pools.nav = Pool(MakeNavItem)
@@ -1395,10 +1404,10 @@ local function BuildMain(window)
 	content:SetSize(CONTENT_WIDTH, 1)
 	body:SetScrollChild(content)
 	body:EnableMouseWheel(true)
-	body:SetScript('OnMouseWheel', function(_, delta) SetScroll(scrollOffset - delta * SCROLL_STEP) end)
+	body:SetScript('OnMouseWheel', function(_, delta) SetScroll(S.scrollOffset - delta * SCROLL_STEP) end)
 	-- A fill row follows the body's height: drawn again once it changes.
 	body:SetScript('OnSizeChanged', function(_, _, height)
-		if filledTo and floor((height or 0) + 0.5) ~= floor(filledTo + 0.5) then Schedule() end
+		if S.filledTo and floor((height or 0) + 0.5) ~= floor(S.filledTo + 0.5) then Schedule() end
 	end)
 	F.body, F.content = body, content
 	F.bar = OB.ScrollBar(main, SetScroll, { step = SCROLL_STEP })
@@ -1460,7 +1469,7 @@ local function Build()
 	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	window:SetMovable(true)
 	-- Dragged by its header, so it keeps to the margin too, with its art.
-	st:KeepInScreenMargin(window, function() return ArtReach(layout) end)
+	st:KeepInScreenMargin(window, function() return ArtReach(S.layout) end)
 	-- A margin change takes its height in at once, as chat and the totem bar
 	-- take their places in.
 	hooksecurefunc(st, 'UpdateScreenMargin', ApplyHeight)
@@ -1692,7 +1701,7 @@ function OW:Open(path, tree)
 		if pageKey then
 			state.page = pageKey
 			state.selections[pageKey] = selection
-			scrollOffset = 0
+			S.scrollOffset = 0
 			if state.search ~= '' or searchDue then ClearSearch() end
 		end
 	end
@@ -1715,7 +1724,7 @@ function OW:Navigate(pageKey, selection)
 	state.page = pageKey
 	if selection then state.selections[pageKey] = Copy(selection) end
 	if state.search ~= '' or searchDue then ClearSearch() end
-	scrollOffset = 0
+	S.scrollOffset = 0
 	self:SetStatus(nil)
 	self:Render()
 end
@@ -1776,7 +1785,7 @@ end
 
 -- What the last render drew: { page, tab, subtab, pick, search }.
 function OW:GetState()
-	return { page = shown.page, tab = shown.tab, subtab = shown.subtab, pick = shown.pick, search = state.search }
+	return { page = S.shown.page, tab = S.shown.tab, subtab = S.shown.subtab, pick = S.shown.pick, search = state.search }
 end
 
 -- For tests: the frames, the drawn body rows, how many renders ran.
