@@ -509,6 +509,11 @@ test("nothing is written onto Blizzard's plate frames", function()
 		stub.nameplate_target = 'nameplate4'
 		stub.fire_event('PLAYER_TARGET_CHANGED')
 		NamePlateDriverFrame:UpdateNamePlateSize()
+		-- Blizzard's options update and a change of the friendly NPC plates
+		-- setting, after which SaftUI puts the click areas back.
+		NamePlateDriverFrame:UpdateNamePlateOptions()
+		stub.set_cvar_secure('nameplateShowFriendlyNpcs', '1')
+		stub.run_timers()
 		UF:UpdateConfig()
 		NP.remove('nameplate2')
 		NP.remove('nameplate3')

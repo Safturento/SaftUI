@@ -1,10 +1,12 @@
 --[[
 	Blizzard's own Lua that SaftUI uses: Mixin and CreateFromMixins, colors
-	(CreateColor, the color codes), EventRegistry, BackdropTemplateMixin,
-	C_Texture.GetAtlasInfo (from tests/wow/atlases.lua), PixelUtil, the
-	Enum tables, FadingFrame, GameFontNormal and GameFontWhiteSmall, the zone text and world
-	map fonts, and ColorPickerFrame. Each follows its source in Gethe/wow-ui-source (forever
-	branch), trimmed to what tests use.
+	(CreateColor, the color codes), EventRegistry and CVarCallbackRegistry,
+	BackdropTemplateMixin, C_Texture.GetAtlasInfo (from tests/wow/atlases.lua),
+	PixelUtil, the Enum tables, FadingFrame, GameFontNormal and
+	GameFontWhiteSmall, the zone text and world map fonts, ColorPickerFrame,
+	NamePlateDriverFrame and NamePlateConstants, and PlayerUtil. Each follows
+	its source in Gethe/wow-ui-source (forever branch), trimmed to what tests
+	use.
 ]]
 
 local function pack(...)
@@ -78,62 +80,82 @@ FONT_COLOR_CODE_CLOSE = '|r'
 
 ------------------------------------------------------------------ EventRegistry
 
--- Blizzard_SharedXMLBase/CallbackRegistry.lua, as EventRegistry uses it
--- (undefined events allowed). An owner has one callback per event. A callback
--- gets (owner, ...), or with extra arguments (owner, extra..., ...).
--- Closures run before plain callbacks, as in game, and errors go to the error
--- handler.
-EventRegistry = {}
-
-local callbacks = {} -- event -> list of { owner, func, extra }
+-- Blizzard_SharedXMLBase/CallbackRegistry.lua, as EventRegistry and
+-- CVarCallbackRegistry use it (undefined events allowed). An owner has one
+-- callback per event; with no owner, one is made up (a number, which only the
+-- registry may use). A callback gets (owner, ...), or with extra arguments
+-- (owner, extra..., ...). Closures run before plain callbacks, as in game, and
+-- errors go to the error handler. Within each, the game runs them over a
+-- table keyed by owner (secureexecuterange), so in no order an addon can
+-- count on; here they run in the order they were registered.
 local nextOwnerID = 0
 
-function EventRegistry:RegisterCallback(event, func, owner, ...)
-	if type(event) ~= 'string' then
-		error("CallbackRegistryMixin::RegisterCallback 'event' requires string type.", 2)
-	elseif type(func) ~= 'function' then
-		error("CallbackRegistryMixin::RegisterCallback 'func' requires function type.", 2)
-	end
-	if owner == nil then
-		nextOwnerID = nextOwnerID + 1
-		owner = nextOwnerID
-	elseif type(owner) == 'number' then
-		error("CallbackRegistryMixin:RegisterCallback 'owner' as number is reserved internally.", 2)
-	end
-	self:UnregisterCallback(event, owner)
-	callbacks[event] = callbacks[event] or {}
-	table.insert(callbacks[event], { owner = owner, func = func, extra = pack(...) })
-	return owner
-end
+local function CallbackRegistry(registry)
+	local callbacks = {} -- event -> list of { owner, func, extra }
 
-function EventRegistry:UnregisterCallback(event, owner)
-	for i, callback in ipairs(callbacks[event] or {}) do
-		if callback.owner == owner then
-			table.remove(callbacks[event], i)
-			return
+	function registry:RegisterCallback(event, func, owner, ...)
+		if type(event) ~= 'string' then
+			error("CallbackRegistryMixin::RegisterCallback 'event' requires string type.", 2)
+		elseif type(func) ~= 'function' then
+			error("CallbackRegistryMixin::RegisterCallback 'func' requires function type.", 2)
+		end
+		if owner == nil then
+			nextOwnerID = nextOwnerID + 1
+			owner = nextOwnerID
+		elseif type(owner) == 'number' then
+			error("CallbackRegistryMixin:RegisterCallback 'owner' as number is reserved internally.", 2)
+		end
+		self:UnregisterCallback(event, owner)
+		callbacks[event] = callbacks[event] or {}
+		table.insert(callbacks[event], { owner = owner, func = func, extra = pack(...) })
+		return owner
+	end
+
+	function registry:UnregisterCallback(event, owner)
+		for i, callback in ipairs(callbacks[event] or {}) do
+			if callback.owner == owner then
+				table.remove(callbacks[event], i)
+				return
+			end
 		end
 	end
-end
 
-function EventRegistry:TriggerEvent(event, ...)
-	if type(event) ~= 'string' then
-		error("CallbackRegistryMixin:TriggerEvent 'event' requires string type.", 2)
-	end
-	local eventArgs = pack(...)
-	local list = {}
-	for _, closures in ipairs({ true, false }) do
-		for _, callback in ipairs(callbacks[event] or {}) do
-			if (callback.extra.n > 0) == closures then list[#list + 1] = callback end
+	function registry:TriggerEvent(event, ...)
+		if type(event) ~= 'string' then
+			error("CallbackRegistryMixin:TriggerEvent 'event' requires string type.", 2)
+		end
+		local eventArgs = pack(...)
+		local list = {}
+		for _, closures in ipairs({ true, false }) do
+			for _, callback in ipairs(callbacks[event] or {}) do
+				if (callback.extra.n > 0) == closures then list[#list + 1] = callback end
+			end
+		end
+		for _, callback in ipairs(list) do
+			local args = { callback.owner }
+			for i = 1, callback.extra.n do args[#args + 1] = callback.extra[i] end
+			local n = #args
+			for i = 1, eventArgs.n do args[n + i] = eventArgs[i] end
+			xpcall(function() callback.func(unpack(args, 1, n + eventArgs.n)) end, geterrorhandler())
 		end
 	end
-	for _, callback in ipairs(list) do
-		local args = { callback.owner }
-		for i = 1, callback.extra.n do args[#args + 1] = callback.extra[i] end
-		local n = #args
-		for i = 1, eventArgs.n do args[n + i] = eventArgs[i] end
-		xpcall(function() callback.func(unpack(args, 1, n + eventArgs.n)) end, geterrorhandler())
-	end
+
+	return registry
 end
+
+EventRegistry = CallbackRegistry({})
+
+-- Blizzard_SharedXMLBase/CvarUtil.lua (the same on both clients):
+-- CVarCallbackRegistry, a frame registered for CVAR_UPDATE when the UI loads
+-- (so before any addon's frame), which triggers the setting's name as an
+-- event with its value: a callback registered on 'nameplateShowFriendlyNpcs'
+-- runs as (owner, value) whenever that setting changes. Its value cache and
+-- getters aren't mimicked.
+CVarCallbackRegistry = CallbackRegistry(CreateFrame('Frame'))
+CVarCallbackRegistry:RegisterEvent('CVAR_UPDATE')
+CVarCallbackRegistry:SetScript('OnEvent', function(self, _, cvar, value)
+	self:TriggerEvent(cvar, value)
+end)
 
 ------------------------------------------------------------------ backdrops
 
@@ -496,11 +518,33 @@ Enum.SpellBookSpellBank = { Player = 0, Pet = 1 }
 -- loading, a display size change, a nameplate option changing), in combat too,
 -- where its untainted call goes through. Here it sets 230 x 45, a stand-in for
 -- whatever the options give, through stub.set_nameplate_size_secure (game.lua).
+-- UpdateNamePlateOptions() (Forever lines 550-628, retail 538-613) is what
+-- those handlers call: it works the options out, runs UpdateNamePlateSize,
+-- then ApplyFrameOptions on every plate showing a unit (ForEachNamePlate, with
+-- C_NamePlate.GetNamePlates(issecure()), forbidden ones included), which sets
+-- each plate's click area again (stub.apply_nameplate_frame_options,
+-- game.lua). Blizzard runs it on DISPLAY_SIZE_CHANGED, VARIABLES_LOADED and a
+-- change to one of its nameplate options (CVAR_UPDATE), and its settings page
+-- calls it; a test calls it for any of those.
 -- Its events, pools and plates are game.lua's stub.add_nameplate.
 NamePlateDriverFrame = CreateFrame('Frame', 'NamePlateDriverFrame')
 function NamePlateDriverFrame:UpdateNamePlateSize()
 	stub.set_nameplate_size_secure(230, 45)
 end
+function NamePlateDriverFrame:UpdateNamePlateOptions()
+	self:UpdateNamePlateSize()
+	for _, plate in ipairs(C_NamePlate.GetNamePlates(true)) do
+		stub.apply_nameplate_frame_options(plate)
+	end
+end
+
+-- Blizzard_NamePlateConstants.lua (Forever's Camelot copy has the same
+-- values): the settings whose CVarCallbackRegistry callbacks change a plate's
+-- click area (game.lua's stub.add_nameplate).
+NamePlateConstants = {
+	SHOW_FRIENDLY_NPCS_CVAR = 'nameplateShowFriendlyNpcs',
+	SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR = 'nameplateShowOnlyNameForFriendlyPlayerUnits',
+}
 
 -- Blizzard_SharedXML/UnitUtil.lua's PlayerUtil.IsPlayerEffectivelyTank, which
 -- differs by client:

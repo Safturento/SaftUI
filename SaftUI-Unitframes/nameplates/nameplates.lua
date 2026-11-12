@@ -259,13 +259,93 @@ end
 -- from SaftUI's own listener, from the add to the remove.
 local plateOfUnit = {}
 
--- Places the widgets of every plate that shows a unit again. Blizzard anchors
--- them again whenever the game's friendly NPC plates setting changes (its
--- UpdateWidgetsOnlyMode is a callback on it), which SaftUI's Friendly plates
--- toggle sets, so this runs after SaftUI sets it.
+--[[
+	The click area. A plate takes the clicks in its hit-test points, and oUF
+	sets them to SaftUI's frame on every add that shows the unit (ouf.lua:
+	ClearAllHitTestPoints, then SetAllHitTestPoints with the frame), so a
+	click on the plate's bar targets its unit. Blizzard's pooled UnitFrame on
+	the plate sets its own again outside the add (UpdateHitTestArea,
+	Blizzard_NamePlateUnitFrame.lua, both clients): round its own hidden bar
+	and name, or none in show-only-name or widgets-only mode. It does so
+	  * when its driver's options update runs ApplyFrameOptions on every plate
+	    (NamePlateDriverFrame:UpdateNamePlateOptions: a window resize, the
+	    options loading, a change to one of Blizzard's nameplate options);
+	  * from its callbacks on the friendly NPC plates setting
+	    (UpdateWidgetsOnlyMode) and on showing only friendly players' names
+	    (UpdateShowOnlyName), which stay registered on the UnitFrame oUF
+	    blocks: its UnregisterAllEvents drops events, not these.
+	So SaftUI runs oUF's two calls again after each, on the plates SaftUI
+	shows (showing; ruling N11): from a post-hook on the options update; at the
+	end of UF:RefreshPlateWidgets, which runs after SaftUI sets the game's
+	plate settings; and on the frame after either setting changes, from
+	CVarCallbackRegistry, since its callbacks run in no set order and
+	Blizzard's UnitFrames' can come after SaftUI's.
+]]
+
+-- Sets the click area of every plate SaftUI shows back to its frame, with
+-- oUF's own two calls on the plate (the frame's parent). The game lets addon
+-- code change a plate's click area in combat only on the tick the plate got
+-- its unit, or one on which Blizzard's own code changed it
+-- (CanChangeHitTestPoints, FrameAPINamePlateDocumentation.lua, both clients;
+-- the calls error otherwise): so from the options update's post-hook it goes
+-- through, and a plate the game refuses waits for the end of combat. A plate
+-- the game took away, or one showing only widgets, is left alone.
+function UF:RestorePlateHitTests()
+	local refused = false
+	for frame in pairs(showing) do
+		local plate = frame:GetParent()
+		if plate.CanChangeHitTestPoints and not plate:CanChangeHitTestPoints() then
+			refused = true
+		else
+			plate:ClearAllHitTestPoints()
+			plate:SetAllHitTestPoints(frame)
+		end
+	end
+	if refused then
+		st:QueueAfterCombat('NameplateHitTest', function() UF:RestorePlateHitTests() end)
+	end
+end
+
+-- Places the widgets of every plate that shows a unit again, then the click
+-- areas. Blizzard anchors the widgets again whenever the game's friendly NPC
+-- plates setting changes (its UpdateWidgetsOnlyMode is a callback on it, and
+-- sets the click area too), which SaftUI's Friendly plates toggle sets, so
+-- this runs after SaftUI sets it, and on the frame after anyone changes it.
 function UF:RefreshPlateWidgets()
 	for unit, plate in pairs(plateOfUnit) do
 		PlaceWidgets(plate, unit)
+	end
+	self:RestorePlateHitTests()
+end
+
+-- The game's settings whose Blizzard callbacks set a plate's click area (and,
+-- for the friendly NPC plates, its widgets) again, by their name in
+-- NamePlateConstants (Blizzard_NamePlateConstants.lua, both clients).
+local CLICK_AREA_CVARS = { 'SHOW_FRIENDLY_NPCS_CVAR', 'SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR' }
+
+-- One of them changed: the widgets and click areas are put back on the next
+-- frame, after every callback on it has run, once however many changed.
+local refreshQueued = false
+local function OnClickAreaCVar()
+	if refreshQueued then return end
+	refreshQueued = true
+	C_Timer.After(0, function()
+		refreshQueued = false
+		UF:RefreshPlateWidgets()
+	end)
+end
+
+-- Hooks what sets the click area outside oUF's add, each where this client
+-- has it: a client without one hooks nothing for it.
+local function WatchClickAreas()
+	if NamePlateDriverFrame and type(NamePlateDriverFrame.UpdateNamePlateOptions) == 'function' then
+		hooksecurefunc(NamePlateDriverFrame, 'UpdateNamePlateOptions', function() UF:RestorePlateHitTests() end)
+	end
+	if type(CVarCallbackRegistry) == 'table' and CVarCallbackRegistry.RegisterCallback and type(NamePlateConstants) == 'table' then
+		for _, key in ipairs(CLICK_AREA_CVARS) do
+			local cvar = NamePlateConstants[key]
+			if cvar then CVarCallbackRegistry:RegisterCallback(cvar, OnClickAreaCVar) end
+		end
 	end
 end
 
@@ -320,7 +400,8 @@ end
 -- change to either needs a /reload, since oUF can make its driver only once.
 -- Blizzard sets the plates' size again whenever its nameplate options change
 -- (NamePlateDriverFrame:UpdateNamePlateSize), so SaftUI's is set again after
--- it, from a post-hook.
+-- it, from a post-hook; and their click areas, which SaftUI puts back too
+-- (WatchClickAreas).
 function UF:SpawnNameplates()
 	if self.plateDriver then return false end
 	if not self:GetProfileConfig().nameplate.enable then return false end
@@ -346,9 +427,10 @@ function UF:SpawnNameplates()
 	events:RegisterEvent('NAME_PLATE_UNIT_REMOVED')
 	events:RegisterEvent('UNIT_FACTION')
 
-	-- The hook first, so a size oUF refuses (its SetSize checks its
+	-- The hooks first, so a size oUF refuses (its SetSize checks its
 	-- arguments) is reported without leaving Blizzard's size in place later.
 	hooksecurefunc(NamePlateDriverFrame, 'UpdateNamePlateSize', function() UF:ApplyPlateSize() end)
+	WatchClickAreas()
 	xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
 	return true
 end

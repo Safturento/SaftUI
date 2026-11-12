@@ -27,6 +27,11 @@ stub = {
 	-- C_Timer.After's pending callbacks, { due, fn } in the order made.
 	-- stub.run_timers() runs the ones due by stub.time.
 	timers = {},
+	-- The game's frame (tick) number. stub.run_timers() starts a new frame
+	-- before it runs the timers due, as C_Timer.After(0) callbacks run on the
+	-- next frame. Only what the game allows once per tick reads it (a
+	-- nameplate's click area, below).
+	tick = 0,
 	epoch = 1800000000, -- time(), in seconds since 1970
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
@@ -105,9 +110,11 @@ C_Timer = {
 		table.insert(stub.timers, { due = stub.time + delay, fn = fn })
 	end,
 }
--- Runs, in the order they were made, the timers due by stub.time (callbacks
--- they make that are due run too). Returns how many ran.
+-- Starts the game's next frame (stub.tick), then runs, in the order they were
+-- made, the timers due by stub.time (callbacks they make that are due run
+-- too). Returns how many ran.
 function stub.run_timers()
+	stub.tick = stub.tick + 1
 	local ran = 0
 	local i = 1
 	while i <= #stub.timers do
@@ -473,14 +480,22 @@ end
 --     Each add hands the plate a new pooled Blizzard UnitFrame (a Button) with
 --     its CastBarsContainer, WidgetContainer (hidden) and SoftTargetFrame
 --     children, set with rawset as Blizzard's pool and template do. Blizzard
---     anchors the WidgetContainer before addons hear of the add, as its
---     UpdateWidgetsOnlyMode does (OnUnitSet, Blizzard_NamePlateUnitFrame.lua,
---     both clients): points cleared, then its BOTTOM on the UnitFrame's BOTTOM
---     for a widget-only unit, else its TOP on the CastBarsContainer's BOTTOM.
+--     runs the UnitFrame's UpdateWidgetsOnlyMode before addons hear of the
+--     add (OnUnitSet, Blizzard_NamePlateUnitFrame.lua, both clients): the
+--     WidgetContainer's points cleared, then its BOTTOM on the UnitFrame's
+--     BOTTOM for a widget-only unit, else its TOP on the CastBarsContainer's
+--     BOTTOM; then its UpdateHitTestArea (below). OnUnitSet also registers
+--     the UnitFrame with CVarCallbackRegistry (blizzard.lua) for the friendly
+--     NPC plates setting (UpdateWidgetsOnlyMode again) and for showing only
+--     the names of friendly players (UpdateShowOnlyName, which runs
+--     UpdateHitTestArea when the plate's show-only-name state changes; here
+--     every change counts as one, the stricter case). The remove unregisters
+--     them (OnUnitCleared). The callbacks stay registered on a UnitFrame oUF
+--     has blocked: oUF's UnregisterAllEvents drops its events, not these.
 --   stub.set_nameplate_widgets_only(unit, value): the unit's plate starts or
---     stops showing only widgets without a new add, and Blizzard anchors its
---     WidgetContainer again, as UpdateWidgetsOnlyMode does when the game's
---     friendly NPC plates setting changes (a CVarCallbackRegistry callback).
+--     stops showing only widgets without a new add, and Blizzard runs its
+--     UpdateWidgetsOnlyMode again, as it does when the game's friendly NPC
+--     plates setting changes.
 --   stub.remove_nameplate(unit): the game takes the unit's plate away:
 --     Blizzard's driver takes its UnitFrame back (hidden, its points cleared,
 --     as a frame pool resets one), NAME_PLATE_UNIT_REMOVED fires, and the
@@ -488,6 +503,30 @@ end
 --   stub.set_nameplate_size_secure(width, height): sets the size even in
 --     combat, as Blizzard's untainted code can (NamePlateDriverFrame's
 --     UpdateNamePlateSize, blizzard.lua).
+--   stub.apply_nameplate_frame_options(plate): Blizzard's
+--     NamePlateBaseMixin:ApplyFrameOptions on a plate showing a unit, which
+--     NamePlateDriverFrame:UpdateNamePlateOptions runs on every plate
+--     (blizzard.lua): its UnitFrame's ApplyFrameOptions, of which only the
+--     UpdateHitTestArea is mimicked.
+--
+-- A plate's click area, its hit-test points (FrameAPINamePlateDocumentation.lua,
+-- the same on both clients): ClearAllHitTestPoints(), SetAllHitTestPoints(region),
+-- SetHitTestPoints(anchors), GetHitTestPoints() and CanChangeHitTestPoints().
+-- GetHitTestPoints gives the anchors as AnchorBinding tables ({ point,
+-- relativeTo, relativePoint, offsetX, offsetY }); SetAllHitTestPoints(region)
+-- is taken to set two, TOPLEFT and BOTTOMRIGHT on region's, "to fully
+-- encompass" it (the documentation's words; the anchors it makes aren't
+-- documented). The three setters are guarded (RequiresCanChangeHitTestPoints,
+-- failure mode Error): "Updates are normally blocked for tainted code during
+-- combat, except on the tick a unit is first assigned or when untainted code
+-- updates hit-test points on the same tick." So out of combat addon code may
+-- always change them; in combat only on the tick (stub.tick) the plate got
+-- its unit or Blizzard's code changed them, and otherwise a setter errors.
+-- Blizzard's UpdateHitTestArea (Blizzard_NamePlateUnitFrame.lua, both
+-- clients) is untainted, so it works in combat and frees the tick: it clears
+-- the points on a widget-only plate, else sets Blizzard's own area, two
+-- anchors round its health bar and name, here relative to the UnitFrame
+-- (which stands in for both).
 --   stub.on_nameplate_frame: nil, or a function the stub calls with each
 --     Blizzard frame it makes for the plates (a plate, and each pooled
 --     UnitFrame with its WidgetContainer and SoftTargetFrame) once it is set
@@ -501,7 +540,10 @@ stub.nameplate_target = nil
 stub.on_nameplate_frame = nil
 
 do
-	local plates = {}  -- by number: { frame, unit, forbidden, widgets_only, game_object }
+	-- by number: { frame, unit, forbidden, widgets_only, game_object,
+	-- hit_points (the click area's anchors), free_tick (the tick addon code may
+	-- change them in combat) }
+	local plates = {}
 	local byUnit = {}  -- the plate showing each unit token
 
 	-- The plate record for a unit token: 'target' is stub.nameplate_target's.
@@ -518,9 +560,25 @@ do
 		if stub.on_nameplate_frame then stub.on_nameplate_frame(frame) end
 	end
 
+	local function anchor(point, relativeTo, offsetX, offsetY)
+		return { point = point, relativeTo = relativeTo, relativePoint = point, offsetX = offsetX, offsetY = offsetY }
+	end
+
+	-- Blizzard's NamePlateUnitFrameMixin:UpdateHitTestArea, untainted: no
+	-- points on a widget-only plate, else Blizzard's area round its UnitFrame.
+	local function blizzard_hit_test(record)
+		local unitFrame = rawget(record.frame, 'UnitFrame')
+		if record.widgets_only then
+			record.hit_points = {}
+		else
+			record.hit_points = { anchor('TOPLEFT', unitFrame, -10, 10), anchor('BOTTOMRIGHT', unitFrame, 10, -10) }
+		end
+		record.free_tick = stub.tick
+	end
+
 	-- Blizzard's NamePlateUnitFrameMixin:UpdateWidgetsOnlyMode, for the
-	-- WidgetContainer of the UnitFrame a plate has.
-	local function anchor_widgets(record)
+	-- WidgetContainer of the UnitFrame a plate has, then its click area.
+	local function widgets_only_mode(record)
 		local unitFrame = rawget(record.frame, 'UnitFrame')
 		local widgets = rawget(unitFrame, 'WidgetContainer')
 		widgets:ClearAllPoints()
@@ -529,6 +587,54 @@ do
 		else
 			widgets:SetPoint('TOP', rawget(unitFrame, 'CastBarsContainer'), 'BOTTOM')
 		end
+		blizzard_hit_test(record)
+	end
+
+	-- The click area's methods, on a plate the game makes.
+	local function hit_test_methods(frame, record)
+		local function guard(method)
+			if InCombatLockdown() and record.free_tick ~= stub.tick then
+				error(('%s: this nameplate does not permit changes to its hit-test points (CanChangeHitTestPoints)'):format(method), 3)
+			end
+		end
+		rawset(frame, 'CanChangeHitTestPoints', function()
+			return not InCombatLockdown() or record.free_tick == stub.tick
+		end)
+		rawset(frame, 'ClearAllHitTestPoints', function()
+			guard('ClearAllHitTestPoints')
+			record.hit_points = {}
+		end)
+		rawset(frame, 'SetAllHitTestPoints', function(_, region)
+			guard('SetAllHitTestPoints')
+			if type(region) ~= 'table' then error('Usage: nameplate:SetAllHitTestPoints(relativeTo)', 2) end
+			record.hit_points = { anchor('TOPLEFT', region, 0, 0), anchor('BOTTOMRIGHT', region, 0, 0) }
+		end)
+		rawset(frame, 'SetHitTestPoints', function(_, anchors)
+			guard('SetHitTestPoints')
+			if type(anchors) ~= 'table' then error('Usage: nameplate:SetHitTestPoints(anchors)', 2) end
+			record.hit_points = {}
+			for i, a in ipairs(anchors) do
+				record.hit_points[i] = anchor(a.point, a.relativeTo, a.offsetX or 0, a.offsetY or 0)
+				record.hit_points[i].relativePoint = a.relativePoint or a.point
+			end
+		end)
+		rawset(frame, 'GetHitTestPoints', function()
+			local copy = {}
+			for i, a in ipairs(record.hit_points or {}) do
+				copy[i] = { point = a.point, relativeTo = a.relativeTo, relativePoint = a.relativePoint, offsetX = a.offsetX, offsetY = a.offsetY }
+			end
+			return copy
+		end)
+	end
+
+	-- The CVarCallbackRegistry callbacks Blizzard's UnitFrame registers in
+	-- OnUnitSet, by setting name (NamePlateConstants, blizzard.lua): the ones
+	-- that change its click area.
+	local function unit_frame_callbacks(record)
+		return {
+			[NamePlateConstants.SHOW_FRIENDLY_NPCS_CVAR] = function() widgets_only_mode(record) end,
+			[NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR] = function() blizzard_hit_test(record) end,
+		}
 	end
 
 	local function set_size(width, height)
@@ -607,7 +713,8 @@ do
 			frame:SetPoint('CENTER', WorldFrame, 'CENTER')
 			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
 			frame:Hide()
-			record = { frame = frame }
+			record = { frame = frame, hit_points = {} }
+			hit_test_methods(frame, record)
 			plates[n] = record
 			made(frame)
 		end
@@ -615,6 +722,9 @@ do
 		record.forbidden = opts.forbidden == true
 		record.widgets_only = opts.widgets_only == true
 		record.game_object = opts.game_object == true
+		-- The tick the unit is assigned on: addon code may change the click
+		-- area then, in combat too.
+		record.free_tick = stub.tick
 		byUnit[unit] = record
 
 		-- Blizzard's driver: a UnitFrame from its pool, on the plate.
@@ -630,7 +740,13 @@ do
 		rawset(unitFrame, 'WidgetContainer', widgets)
 		rawset(unitFrame, 'SoftTargetFrame', softTarget)
 		rawset(plate, 'UnitFrame', unitFrame)
-		anchor_widgets(record)
+		-- OnUnitSet: the setting callbacks (none where a test took the
+		-- registry or the constants away), then UpdateWidgetsOnlyMode.
+		record.callbacks = (CVarCallbackRegistry and NamePlateConstants) and unit_frame_callbacks(record) or {}
+		for cvar, callback in pairs(record.callbacks) do
+			CVarCallbackRegistry:RegisterCallback(cvar, callback, unitFrame)
+		end
+		widgets_only_mode(record)
 		made(unitFrame)
 		made(castBars)
 		made(widgets)
@@ -641,12 +757,23 @@ do
 		return plate
 	end
 
+	function stub.apply_nameplate_frame_options(plate)
+		for _, record in pairs(plates) do
+			if record.frame == plate and record.unit then blizzard_hit_test(record) end
+		end
+	end
+
 	function stub.remove_nameplate(unit)
 		local record = byUnit[unit]
 		assert(record, 'remove_nameplate: ' .. tostring(unit) .. ' has no plate')
 		local plate = record.frame
-		-- Blizzard's driver gives the UnitFrame back to its pool.
+		-- Blizzard's driver clears the unit (OnUnitCleared: the setting
+		-- callbacks go) and gives the UnitFrame back to its pool.
 		local unitFrame = rawget(plate, 'UnitFrame')
+		for cvar in pairs(record.callbacks) do
+			if CVarCallbackRegistry then CVarCallbackRegistry:UnregisterCallback(cvar, unitFrame) end
+		end
+		record.callbacks = nil
 		rawset(plate, 'UnitFrame', nil)
 		unitFrame:Hide()
 		unitFrame:ClearAllPoints()
@@ -661,7 +788,7 @@ do
 		local record = byUnit[unit]
 		assert(record, 'set_nameplate_widgets_only: ' .. tostring(unit) .. ' has no plate')
 		record.widgets_only = value == true
-		anchor_widgets(record)
+		widgets_only_mode(record)
 	end
 end
 
@@ -696,9 +823,11 @@ end
 -- settings, by name, each a string.
 --
 --   stub.cvars: name -> value, a string. A name not there is a setting this
---     client doesn't have. The defaults are the nameplate settings SaftUI
---     changes, at the game's defaults as far as we know them (friendly plates
---     off; the source doesn't say, so this is inferred).
+--     client doesn't have. The defaults are only the two friendly plate
+--     settings, off (the game's defaults as far as we know them; the source
+--     doesn't say, so this is inferred). Every other setting a test needs, it
+--     adds itself (the scale and simplified plate settings, the nameplate
+--     tests' own).
 --   C_CVar.GetCVar(name): stub.cvars[name], or nil for a setting the client
 --     lacks (the documentation marks its return Nilable).
 --   C_CVar.SetCVar(name, value): sets the string and returns true. An unknown
@@ -708,11 +837,24 @@ end
 --     the stub refuses every setting, the strict side: noted in stub.blocked as
 --     { C_CVar, name }, it returns false and changes nothing. A nil value
 --     (the documentation allows one) errors: what the game makes of it isn't
---     known, and SaftUI never passes one.
+--     known, and SaftUI never passes one. A changed value fires CVAR_UPDATE
+--     (name, value) before it returns: ConsoleDocumentation.lua marks the
+--     event SynchronousEvent on both clients. Whether the game fires it for a
+--     value set to what it already was isn't known; here it doesn't.
+--   stub.set_cvar_secure(name, value): sets a setting the client has even in
+--     combat, as Blizzard's untainted code can (its key binding for friendly
+--     plates), firing CVAR_UPDATE for a change as C_CVar.SetCVar does.
 stub.cvars = {
 	nameplateShowFriendlyPlayers = '0',
 	nameplateShowFriendlyNpcs = '0',
 }
+
+local function set_cvar(name, value)
+	value = tostring(value)
+	local changed = stub.cvars[name] ~= value
+	stub.cvars[name] = value
+	if changed then stub.fire_event('CVAR_UPDATE', name, value) end
+end
 
 C_CVar = {}
 function C_CVar.GetCVar(name)
@@ -727,8 +869,12 @@ function C_CVar.SetCVar(name, value)
 		stub.blocked[#stub.blocked + 1] = { C_CVar, name }
 		return false
 	end
-	stub.cvars[name] = tostring(value)
+	set_cvar(name, value)
 	return true
+end
+function stub.set_cvar_secure(name, value)
+	assert(stub.cvars[name] ~= nil, 'set_cvar_secure: this client has no setting ' .. tostring(name))
+	set_cvar(name, value)
 end
 
 -- The quest icon's questions about a unit (the same on both clients: a unit

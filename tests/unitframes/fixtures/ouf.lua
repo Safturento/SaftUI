@@ -63,7 +63,9 @@
 --     exists and differs from the one the frame had runs UpdateAllElements
 --     ('OnAttributeChanged') at once, as oUF's updateActiveUnit does, so a
 --     reused plate updates once with its old unit's elements before the added
---     callback), the added callback runs, then UpdateAllElements.
+--     callback), the plate's click area is set to the frame
+--     (ClearAllHitTestPoints, then SetAllHitTestPoints, ouf.lua 1030-1031),
+--     the added callback runs, then UpdateAllElements.
 --   * NAME_PLATE_UNIT_REMOVED: the unit attribute cleared (oUF's handler
 --     ignores a nil unit, so __unit keeps the unit that left), every paused
 --     element resumed, the frame shown, then the removed callback.
@@ -104,11 +106,11 @@
 --     widget is enough.
 --   * The nameplate driver also disables Blizzard's UnitFrame on every add
 --     (oUF:DisableBlizzard: UnregisterAllEvents and SetRolesets on it and its
---     bars), sets the plate's hit test points, makes its frames from
---     PingableUnitFrameTemplate, and sets the size, the hit test insets and
---     console variables only once logged in (at PLAYER_LOGIN otherwise); a
---     unit attribute set on a plate's frame also runs a full update. Paused
---     elements are also left out of UpdateAllElements.
+--     bars), makes its frames from PingableUnitFrameTemplate, and sets the
+--     size, the hit test insets and console variables only once logged in
+--     (at PLAYER_LOGIN otherwise); a unit attribute set on a plate's frame
+--     also runs a full update. Paused elements are also left out of
+--     UpdateAllElements.
 --   * CreateAuras makes a Blizzard AuraContainer (CustomAuraContainerTemplate),
 --     which makes a button for each aura it shows; here a plain frame that
 --     records what's set on it and makes a button only when a test asks:
@@ -464,6 +466,8 @@ function M.new()
 				object:Hide()
 			else
 				object:SetAttribute('unit', unit)
+				plate:ClearAllHitTestPoints()
+				plate:SetAllHitTestPoints(object)
 				if driver.addedCallback then driver.addedCallback(object, event, unit) end
 				object:UpdateAllElements(event)
 			end
