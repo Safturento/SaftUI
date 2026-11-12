@@ -178,7 +178,9 @@ end
 
 -- Registers a mover for frame whose position lives at config.position in the
 -- profile. spec = { key, config, apply, <anything else st:RegisterMover takes:
--- label, configPath, blizzardFrame, ...> }:
+-- label, configPath, blizzardFrame, ...> }. spec isn't changed; its other fields
+-- go to st:RegisterMover as they are, except frame, getPosition and setPosition,
+-- which the helper's own replace:
 --   key     the mover's key, as st:RegisterMover's first argument.
 --   config  a function returning the table that holds the position, called on
 --           every read and write, not once, since a profile change replaces
