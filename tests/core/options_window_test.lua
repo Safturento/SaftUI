@@ -1,11 +1,12 @@
--- SaftUI-Core/Config/optionswindow.lua, SaftUI's options window (st.OptionsWindow),
--- and its wiring in SaftUI-Core/Config/config.lua (st.Config:Open, Close,
+-- SaftUI-Core/Config/optionswindow.lua and the files load_options_window()
+-- loads with it, SaftUI's options window (st.OptionsWindow), and its wiring
+-- in SaftUI-Core/Config/config.lua (st.Config:Open, Close,
 -- GetWindow, Refresh, the commands, PLAYER_REGEN_DISABLED, the rebuild on a
 -- profile change).
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
--- (load_options_widgets), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
+-- (load_options_widgets), the body (optionsbody.lua), the window (load_options_window), and edit mode. The /sui tree is the real
 -- one Config:GetOptionsTable builds, from the real General, Fonts, Colors, Theme and
 -- EditMode modules, AceDBOptions' profiles table, and synthetic modules registered here: one
 -- shaped like Unitframes (a unit picker, element tabs) and small ones for the

@@ -1,6 +1,6 @@
 -- /sui under the Blizzard theme as Blizzard's Settings window
--- (SaftUI-Core/Config/optionswindow.lua, with themeart.lua's optionswindow
--- art), on both clients: the window drawn as a window (the metal, its title
+-- (SaftUI-Core/Config/optionswindow.lua and the files beside it, with
+-- themeart.lua's optionswindow art), on both clients: the window drawn as a window (the metal, its title
 -- bar reading "SaftUI Options", the close button in the metal's socket), the
 -- inner frame over the sidebar and the main column, the sidebar as wide as
 -- the divider drawn into the inner frame, the footer under it across the

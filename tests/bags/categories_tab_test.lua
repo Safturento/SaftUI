@@ -11,7 +11,7 @@
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
 -- under the module's real files) on Core's real config.lua and AceDB
 -- (core/config_helpers.lua), the options window (optionsmodel.lua, the
--- widget files, optionsbody.lua, optionswindow.lua), and SaftUI-Bags'
+-- widget files, optionsbody.lua, the window's files), and SaftUI-Bags'
 -- options.lua, ruleeditor.lua and categoriestab.lua. Made by hand:
 -- INV:UpdateGold, which INV:UpdateHandler runs first, is a no-op here (it
 -- reads the player's money with GetMoney and formats it with
