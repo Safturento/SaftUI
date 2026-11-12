@@ -38,7 +38,7 @@ local function LevelPart(config, level, playerLevel, classification)
 		elseif config.showSameLevel or level ~= playerLevel then
 			text = tostring(level)
 		end
-		if not config.showMaxLevel and level == (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
+		if not config.showMaxLevel and level == GetMaxLevelForLatestExpansion() then
 			text = ''
 		end
 	end

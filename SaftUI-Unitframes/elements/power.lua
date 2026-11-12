@@ -58,7 +58,6 @@ local function PostUpdateColor(power, unit, color, r, g, b)
 		UF.SetPowerBackgroundColor(power, r, g, b)
 		return
 	end
-	if not st.retail then return end
 	if color then
 		r, g, b = color:GetRGB()
 	end
