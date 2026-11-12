@@ -9,8 +9,8 @@
 -- (the options window listens to it); the options model, widgets, body and
 -- window; config/config.lua, updaters.lua (UF.UnpackColor) and the element
 -- files, whose tabs config.lua adds to each unit that has the element;
--- nameplates/nameplates.lua (UF:NameplateAddon, which the Nameplates page
--- reads; with no other nameplate addon loaded, SaftUI draws the plates) and
+-- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
+-- read; with no other nameplate addon loaded, SaftUI draws the plates) and
 -- nameplates/threat.lua (the plates' Threat element and its tab).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:

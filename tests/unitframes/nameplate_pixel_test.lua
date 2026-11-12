@@ -302,7 +302,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			eq(unrounded(frame), '', "the plate's new parts round")
 			eq(unrounded(button.backdrop), '', "and the aura button's backdrop's")
 
-			-- One element's update (its Theme changed on the Nameplates page).
+			-- One element's update (its Theme changed on the Enemy nameplates page).
 			UF:GetProfileConfig().nameplate.castbar.theme = from
 			UF:UpdateConfig('nameplate', 'Castbar')
 			eq(unrounded(frame), '', 'after an element update too')
