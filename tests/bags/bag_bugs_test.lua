@@ -41,3 +41,20 @@ test('closing the bags clears the new-item glow of every item slot', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('a shift-click on a currency slot links that currency', function()
+	world()
+	local linked = {}
+	-- Blizzard's own: the link goes into the chat box. A recorder.
+	_G.HandleModifiedItemClick = function(link) linked[#linked + 1] = link end
+	-- The default key binding of the chat link click is Shift.
+	_G.IsModifiedClick = function(action) return action == 'CHATLINK' and IsShiftKeyDown() end
+	C_CurrencyInfo.GetCurrencyListLink = function(index) return 'currency-link-' .. index end
+	local slot = { currencyIndex = 7, elementData = { currencyIndex = 7, currencyID = 1000 } }
+	stub.shift_down = true
+	INV:CurrencyOnClick(slot)
+	stub.shift_down = false
+	eq(#linked, 1, 'one link')
+	eq(linked[1], 'currency-link-7', "the slot's currency")
+	eq(#take_errors(), 0, 'no errors')
+end)
+

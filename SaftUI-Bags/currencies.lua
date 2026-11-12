@@ -195,7 +195,7 @@ end
 
 function INV:CurrencyOnClick(slot)
     if IsModifiedClick("CHATLINK") then
-        HandleModifiedItemClick(C_CurrencyInfo.GetCurrencyListLink(self.currencyIndex));
+        HandleModifiedItemClick(C_CurrencyInfo.GetCurrencyListLink(slot.currencyIndex));
         return
     end
 
