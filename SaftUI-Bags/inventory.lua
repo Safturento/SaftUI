@@ -402,7 +402,7 @@ function INV:OnEnable()
 	-- Make sure the slots are all created immediately intead of on first open
 	-- We do this to avoid tainting all of the slots when the bag is first opened
 	-- while in combat
-	self:UpdateContainer('bag')
+	self:UpdateContainer('bag', nil, true)
 
 	self:RegisterEvent('PLAYER_MONEY', 'UpdateGold')
 	self:RegisterEvent('MERCHANT_SHOW', 'HandleMerchant')

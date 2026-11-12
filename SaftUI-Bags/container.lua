@@ -295,9 +295,11 @@ local function ShowSlotCounts(self, container, numItems, numLoading)
 	end
 end
 
-function INV:UpdateContainer(id, updateLayout)
+-- A window that isn't open waits for its next update, unless whileHidden asks
+-- for this one (the first update makes every slot before the window opens).
+function INV:UpdateContainer(id, updateLayout, whileHidden)
 	local container = self.containers[id]
-	if not container and container:IsShown() then return end
+	if not container or not (whileHidden or container:IsShown()) then return end
 	self:EnsureSlotPools(id)
 
 	-- One bag, Multi bag and Rows lay their sections out on every update.

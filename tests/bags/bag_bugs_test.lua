@@ -58,3 +58,41 @@ test('a shift-click on a currency slot links that currency', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('UpdateContainer: no window returns, a hidden one is not laid out', function()
+	local container = world()
+	W.put(0, 1, W.item(101, 'Ore', 'Miscellaneous', 1))
+	INV:UpdateContainer('bag', true)
+	INV.containers.nope = nil
+	INV:UpdateContainer('nope', true)
+	eq(#take_errors(), 0, 'a window that does not exist is no error')
+
+	local layouts = 0
+	local layout = INV.UpdateContainerLayout
+	INV.UpdateContainerLayout = function(...) layouts = layouts + 1 return layout(...) end
+	container:Hide()
+	W.put(0, 2, W.item(102, 'Rock', 'Quest', 5))
+	INV:UpdateContainer('bag', true)
+	eq(layouts, 0, 'a hidden window is not laid out')
+	local sorted = INV:GetSortedInventory('bag')
+	local count = 0
+	for _, items in pairs(sorted) do count = count + #items end
+	eq(count, 2, 'the read itself sees both items')
+	local shown = 0
+	for _, category in pairs(container.categories) do
+		for _, slot in ipairs(category.slots) do
+			if slot:IsShown() and slot.info and slot.info.name == 'Rock' then shown = shown + 1 end
+		end
+	end
+	eq(shown, 0, 'the item that came while it was hidden has no slot yet')
+
+	-- The first update, which makes every slot before the window opens, asks
+	-- for it by name.
+	INV:UpdateContainer('bag', nil, true)
+	check(#container.categories.Quest.slots > 0, 'asked for while hidden, its slots are made')
+	container:Show()
+	INV:UpdateContainer('bag', true)
+	eq(layouts > 0, true, 'a shown window is laid out')
+	INV.UpdateContainerLayout = layout
+	eq(#take_errors(), 0, 'no errors')
+end)
+
