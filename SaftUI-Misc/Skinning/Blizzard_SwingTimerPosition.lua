@@ -241,18 +241,12 @@ function STP:Setup()
 	end
 end
 
-function STP:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_SwingTimer' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function STP:OnEnable()
 	st:BindModuleConfig(self, 'swingtimer')
 	if _G.SwingTimerMainHandFrame then
 		self:Setup()
 	elseif st.forever then
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_SwingTimer', function() self:Setup() end)
 	end
 end
 
