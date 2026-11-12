@@ -53,7 +53,7 @@ local match_replacements = {
 
 local patterns = {}
 
-local function generate_match(match, keys, categories, fuzzy)
+local function generate_match(match, keys, fuzzy)
 	if not match then return end
 
 	--[[
@@ -80,7 +80,6 @@ local function generate_match(match, keys, categories, fuzzy)
 	end
 
 	patterns[patternKey] = {
-		categories = categories,
 		keys = keys
 	}
 
@@ -104,7 +103,6 @@ local function get_match(string)
                 result[keys[i]] = item
             end
 
-			result.categories = details.categories
 			result.pattern = pattern
 
             return result
@@ -112,74 +110,53 @@ local function get_match(string)
 	end
 end
 
-local categories = {
-	LOOT = "LOOT",
-	OTHERS = "OTHERS",
-	EXPERIENCE = "EXPERIENCE",
-	REPUTATION = "REPUTATION",
-	SKILL_UP = "SKILL_UP",
-	HONOR = "HONOR",
-	GOLD = "GOLD",
-	CURRENCY = "CURRENCY",
-}
-
-local SELF_LOOT = {categories.SELF, categories.LOOT}
-local SELF_CURRENCY = {categories.SELF, categories.CURRENCY}
-local SELF_GOLD = { categories.SELF, categories.GOLD }
-local SELF_SKILL_UP = { categories.SELF, categories.SKILL_UP }
-local SELF_HONOR = { categories.SELF, categories.HONOR }
-local SELF_REPUTATION = { categories.SELF, categories.REPUTATION }
-local SELF_EXPERIENCE = { categories.SELF, categories.EXPERIENCE }
-local OTHERS_LOOT = {categories.OTHERS, categories.LOOT}
-
-
 -- self loot
-generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'}, SELF_LOOT)
-generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
-generate_match(LOOT_ITEM_CREATED_SELF, {'link'}, SELF_LOOT)
-generate_match(LOOT_ITEM_CREATED_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
-generate_match(LOOT_ITEM_PUSHED_SELF, {'link'}, SELF_LOOT)
-generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
-generate_match(LOOT_ITEM_REFUND, {'link'}, SELF_LOOT)
-generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'}, SELF_LOOT)
-generate_match(LOOT_ITEM_SELF, {'link'}, SELF_LOOT)
-generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'}, SELF_LOOT)
+generate_match(LOOT_ITEM_BONUS_ROLL_SELF, {'link'})
+generate_match(LOOT_ITEM_BONUS_ROLL_SELF_MULTIPLE, {'link', 'count'})
+generate_match(LOOT_ITEM_CREATED_SELF, {'link'})
+generate_match(LOOT_ITEM_CREATED_SELF_MULTIPLE, {'link', 'count'})
+generate_match(LOOT_ITEM_PUSHED_SELF, {'link'})
+generate_match(LOOT_ITEM_PUSHED_SELF_MULTIPLE, {'link', 'count'})
+generate_match(LOOT_ITEM_REFUND, {'link'})
+generate_match(LOOT_ITEM_REFUND_MULTIPLE, {'link', 'count'})
+generate_match(LOOT_ITEM_SELF, {'link'})
+generate_match(LOOT_ITEM_SELF_MULTIPLE, {'link', 'count'})
 
 --self experience
-generate_match("You gain %d experience", {'experience'}, SELF_EXPERIENCE, true)
-generate_match("you gain %d experience", {'experience'}, SELF_EXPERIENCE, true)
+generate_match("You gain %d experience", {'experience'}, true)
+generate_match("you gain %d experience", {'experience'}, true)
 
 -- self currency
-generate_match(CURRENCY_GAINED, {'currency'}, SELF_CURRENCY)
-generate_match(CURRENCY_GAINED_MULTIPLE, {'currency', 'count'}, SELF_CURRENCY)
-generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'currency', 'count'}, SELF_CURRENCY)
-generate_match(LOOT_CURRENCY_REFUND, {'link', 'count'}, SELF_CURRENCY)
+generate_match(CURRENCY_GAINED, {'currency'})
+generate_match(CURRENCY_GAINED_MULTIPLE, {'currency', 'count'})
+generate_match(CURRENCY_GAINED_MULTIPLE_BONUS, {'currency', 'count'})
+generate_match(LOOT_CURRENCY_REFUND, {'link', 'count'})
 
 -- self gold
-generate_match(YOU_LOOT_MONEY, {'gold'}, SELF_GOLD)
-generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'}, SELF_GOLD)
-generate_match(LOOT_MONEY_SPLIT, {'gold'}, SELF_GOLD)
-generate_match(LOOT_MONEY_SPLIT_GUILD, {'gold', 'bank_gold'}, SELF_GOLD)
+generate_match(YOU_LOOT_MONEY, {'gold'})
+generate_match(YOU_LOOT_MONEY_GUILD, {'gold', 'bank_gold'})
+generate_match(LOOT_MONEY_SPLIT, {'gold'})
+generate_match(LOOT_MONEY_SPLIT_GUILD, {'gold', 'bank_gold'})
 -- TODO: LOOT_MONEY_REFUND and LOOT_ITEM_REFUND are exactly the same, need to find
 -- a different way to tell them apart than simple regex, maybe matching gold string vs item link?
-generate_match(LOOT_MONEY_REFUND, {'link'}, SELF_GOLD)
+generate_match(LOOT_MONEY_REFUND, {'link'})
 
 --self skills
-generate_match(SKILL_RANK_UP, {'skill', 'count'}, SELF_SKILL_UP)
+generate_match(SKILL_RANK_UP, {'skill', 'count'})
 
 -- others loot
-generate_match(LOOT_ITEM, {'player', 'link'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_PUSHED, {'player', 'link'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'link'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
-generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'}, OTHERS_LOOT)
+generate_match(LOOT_ITEM, {'player', 'link'})
+generate_match(LOOT_ITEM_BONUS_ROLL, {'player', 'link'})
+generate_match(LOOT_ITEM_PUSHED, {'player', 'link'})
+generate_match(LOOT_ITEM_WHILE_PLAYER_INELIGIBLE, {'player', 'link'})
+generate_match(LOOT_ITEM_MULTIPLE, {'player','link', 'count'})
+generate_match(LOOT_ITEM_PUSHED_MULTIPLE, {'player','link', 'count'})
+generate_match(LOOT_ITEM_BONUS_ROLL_MULTIPLE, {'player','link', 'count'})
 
 --honor
---generate_match(COMBATLOG_HONORAWARD, {'honor'}, SELF_HONOR)
---generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'}, SELF_HONOR)
---generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'}, SELF_HONOR)
+--generate_match(COMBATLOG_HONORAWARD, {'honor'})
+--generate_match(COMBATLOG_HONORGAIN, {'player', 'rank', 'honor'})
+--generate_match(COMBATLOG_HONORGAIN_NO_RANK, {'player', 'honor'})
 
 --reputation
 local decreasePatterns = {}
@@ -189,7 +166,7 @@ for _, name in ipairs({
 	'FACTION_STANDING_DECREASED',
 	'FACTION_STANDING_DECREASED_ACCOUNT_WIDE',
 }) do
-	local key = generate_match(_G[name], {'faction', 'count'}, SELF_REPUTATION)
+	local key = generate_match(_G[name], {'faction', 'count'})
 	if key and name:find('DECREASED') then decreasePatterns[key] = true end
 end
 
@@ -205,7 +182,7 @@ for _, name in ipairs({
 	local global = _G[name]
 	if type(global) == 'string' then
 		local stripped = global:gsub('%s*%(.-%%%.1f.-%)%s*$', '')
-		local key = generate_match(stripped, {'faction', 'count'}, SELF_REPUTATION, true)
+		local key = generate_match(stripped, {'faction', 'count'}, true)
 		if key and name:find('DECREASED') then decreasePatterns[key] = true end
 	end
 end
