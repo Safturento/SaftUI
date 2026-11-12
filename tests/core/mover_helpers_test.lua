@@ -122,6 +122,10 @@ test('setPosition writes the position field of the current config, and only that
 	local new = { point = 'LEFT', x_off = 3, y_off = 4 }
 	mover.def.setPosition(new)
 	eq(holder.config.position, new, 'the table given is stored')
+	local keys = {}
+	for k in pairs(holder.config) do keys[#keys + 1] = k end
+	table.sort(keys)
+	eq(table.concat(keys, ','), 'position,size', 'no field is added')
 	eq(holder.config.size, 40, 'no other field changes')
 	holder.config = { position = { point = 'TOP' } } -- a profile switch
 	mover.def.setPosition(new)
