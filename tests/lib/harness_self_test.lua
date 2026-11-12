@@ -770,3 +770,19 @@ test('SetPoint still refuses an anchor that makes a loop, through any chain, as 
 	ok, err = pcall(child.SetAllPoints, child, parent)
 	eq(ok, false, 'SetAllPoints too')
 end)
+
+test('SetPoint finds a loop through an anchor that was cleared, and refuses nothing it should allow', function()
+	local x, y = CreateFrame('Frame'), CreateFrame('Frame')
+	y:SetPoint('CENTER', x) -- y depends on x
+	x:ClearAllPoints()
+	-- x has had a region anchored to it, even though nothing is now: x anchored
+	-- to y is still a loop for as long as y is anchored to x
+	local ok, err = pcall(x.SetPoint, x, 'CENTER', y)
+	eq(ok, false, 'a loop through y, still anchored to x')
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+
+	-- and once y lets go of x, the same anchor is fine
+	y:ClearAllPoints()
+	ok = pcall(x.SetPoint, x, 'CENTER', y)
+	eq(ok, true, 'no loop once y is not anchored to x')
+end)
