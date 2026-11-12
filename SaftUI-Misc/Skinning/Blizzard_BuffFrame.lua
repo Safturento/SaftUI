@@ -368,16 +368,10 @@ function BF:OnColorsChanged(group)
 	end
 end
 
-function BF:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_BuffFrame' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:SkinFrames()
-end
-
 function BF:OnEnable()
 	if BuffFrame and BuffFrame.auraFrames then
 		self:SkinFrames()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_BuffFrame', function() self:SkinFrames() end)
 	end
 end

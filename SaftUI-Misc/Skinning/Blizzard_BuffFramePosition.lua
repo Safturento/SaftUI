@@ -619,18 +619,12 @@ function AP:Setup()
 	self:UpdateText()
 end
 
-function AP:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_BuffFrame' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function AP:OnEnable()
 	st:BindModuleConfig(self, 'auras')
 	if _G.BuffFrame and BuffFrame.auraFrames then
 		self:Setup()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_BuffFrame', function() self:Setup() end)
 	end
 end
 
