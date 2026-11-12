@@ -208,3 +208,100 @@ for _, theme in ipairs({ 'thick', 'blizzard' }) do
 		eq(marked(again), true, 'the target on it again: marked')
 	end)
 end
+
+------------------------------------------------------------------ friendly plates
+
+-- A unit the game shows: a friend, whose plate is the friendly config's name
+-- alone by default (its health bar off, the frame's Theme None), or an enemy.
+local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
+local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
+
+-- The two points the target art's texture hangs from: their frames.
+local function art_on(art)
+	local on = {}
+	for i = 1, art.texture:GetNumPoints() do
+		local point, relativeTo = art.texture:GetPoint(i)
+		on[point] = relativeTo
+	end
+	return on.TOPLEFT, on.BOTTOMRIGHT
+end
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ": Blizzard: a targeted friend's name-only plate has no art; an enemy's has, and a friend's with its bar turned on", function()
+		local st, UF = setup(client, 'blizzard')
+		friend('nameplate1')
+		enemy('nameplate2')
+		local ally, foe = NP.add('nameplate1'), NP.add('nameplate2')
+		target('nameplate1')
+		eq(UF.PlateBorderFrame(ally), nil, 'a name-only friend: no border frame (its bar is off, its frame None)')
+		eq(UF:PlateTargetArt(ally):IsShown(), false, 'and no art round its hidden bar')
+		target('nameplate2')
+		eq(UF:PlateTargetArt(foe):IsShown(), true, 'an enemy: the art')
+		eq(UF:PlateTargetArt(ally):IsShown(), false, 'the friend, no longer the target: none')
+
+		UF:GetProfileConfig().friendlynameplate.health.enable = true
+		UF:UpdateConfig('friendlynameplate', 'Health')
+		target('nameplate1')
+		eq(UF:PlateTargetArt(ally):IsShown(), true, 'a friend with its bar turned on: the art')
+		local topLeft, bottomRight = art_on(UF:PlateTargetArt(ally))
+		eq(topLeft, ally.Health, 'round its bar: TOPLEFT')
+		eq(bottomRight, ally.Health, 'round its bar: BOTTOMRIGHT')
+		eq(#take_errors(), 0, 'no error')
+	end)
+
+	test(client .. ': Blizzard: a targeted plate handed from an enemy to a friend loses the art', function()
+		local st, UF = setup(client, 'blizzard')
+		enemy('nameplate1')
+		stub.nameplate_target = 'nameplate1'
+		local frame = NP.add('nameplate1')
+		eq(UF:PlateTargetArt(frame):IsShown(), true, 'the targeted enemy: the art')
+
+		-- The same plate for the next target, a friend.
+		NP.remove('nameplate1')
+		friend('nameplate2')
+		stub.nameplate_target = 'nameplate2'
+		eq(NP.add('nameplate2', { plate = 1 }), frame, 'the same frame')
+		eq(UF:PlateTargetArt(frame):IsShown(), false, 'the targeted friend: none')
+
+		-- And a targeted enemy turning friendly where it stands.
+		NP.remove('nameplate2')
+		enemy('nameplate3')
+		stub.nameplate_target = 'nameplate3'
+		NP.add('nameplate3', { plate = 1 })
+		eq(UF:PlateTargetArt(frame):IsShown(), true, 'a targeted enemy again: the art')
+		friend('nameplate3')
+		stub.fire_event('UNIT_FACTION', 'nameplate3')
+		eq(UF:PlateTargetArt(frame):IsShown(), false, 'turned friendly: none')
+		eq(#take_errors(), 0, 'no error')
+	end)
+
+	test(client .. ": Blizzard: a friend's bar off but its frame drawn: the art goes round the frame", function()
+		local st, UF = setup(client, 'blizzard')
+		UF:GetProfileConfig().friendlynameplate.theme = 'theme'
+		friend('nameplate1')
+		local ally = NP.add('nameplate1')
+		target('nameplate1')
+		eq(UF.PlateBorderFrame(ally), st:DrawnFrame(ally), "the frame's border")
+		eq(UF:PlateTargetArt(ally):IsShown(), true, 'the art')
+		local topLeft, bottomRight = art_on(UF:PlateTargetArt(ally))
+		eq(topLeft, ally, 'round the frame, not its hidden bar: TOPLEFT')
+		eq(bottomRight, ally, 'BOTTOMRIGHT')
+		eq(#take_errors(), 0, 'no error')
+	end)
+end
+
+test("Thick: a targeted friend's name-only plate turns nothing white, its hidden bar included", function()
+	local st, UF = setup('forever', 'thick')
+	enemy('nameplate1')
+	stub.nameplate_target = 'nameplate1'
+	local frame = NP.add('nameplate1')
+	local bar = st:DrawnFrame(frame.Health)
+	eq(T.edge_rgb(bar), WHITE, 'the targeted enemy: its bar white')
+	NP.remove('nameplate1')
+	friend('nameplate2')
+	stub.nameplate_target = 'nameplate2'
+	NP.add('nameplate2', { plate = 1 })
+	eq(UF.PlateBorderFrame(frame), nil, 'the targeted friend: no border frame')
+	check(T.edge_rgb(bar) ~= WHITE, 'its hidden bar not left white')
+	eq(#take_errors(), 0, 'no error')
+end)

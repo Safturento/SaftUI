@@ -10,12 +10,20 @@ local UF = st:GetModule('Unitframes')
 	debuffs), and dispel/stealable coloring with the container's built-in
 	dispel textures.
 
-	Group options (max count, button size, which borders to show, whether
-	buttons get a cooldown) are baked in when the group is created on the first config
-	update, so changing them requires a /reload, and their /sui options say so. The
-	filter, layout (anchor, growth, spacing, wrapping) and button styling (theme,
-	count font and spot, cooldown look and timer) update live, profile changes
-	included.
+	The group is made once, on the first config update with the area on. Which
+	borders its buttons show and whether they get a cooldown are baked into each
+	button as the container makes it, so changing them requires a /reload, and
+	their /sui options say so. Everything else updates live, profile changes
+	included: the filter, the layout (anchor, growth, spacing, wrapping), the
+	button styling (theme, count font and spot, cooldown look and timer), the
+	max count (through the container, SetAuraGroupMaxFrameCount) and the button
+	size (set on each button as it's styled: the container has no call for it).
+	A plate's frame draws from Enemy or Friendly nameplates by its unit's kind
+	(nameplates.lua) but its group is always made from the first, so this is
+	what gives a friend's plate the Friendly page's count and size. In combat
+	the buttons can't be touched, so their size waits for the end of combat
+	(RestyleButtons). The borders and the cooldown a plate's buttons are made
+	with stay the Enemy page's while it has the area on, even after a reload.
 ]]
 
 local function getButtonSize(unitframe, config)
@@ -73,6 +81,12 @@ end
 -- button is made and again on every config update, so it only sets things.
 local function StyleButton(auras, button)
 	local config = auras.config
+
+	-- Its size: oUF's button gets the size its group was made with, which is
+	-- the first config's (a plate's: Enemy nameplates', whatever kind it shows
+	-- now), so it's set from the config in use, as oUF sets it (SetSize).
+	local size = getButtonSize(auras.unitframe, config)
+	button:SetSize(size, size)
 
 	st:SetBackdrop(button, config.theme, config.background, 'aura')
 
@@ -210,22 +224,36 @@ local function AddGroup(unitframe, auras, aura_type)
 	auras.hasGroup = true
 end
 
+-- Asks the container to lay the group's buttons out again, with the config's
+-- spacing (oUF copies the spacing into the group's layout only in AddGroup).
+-- The container lays them out only when something marks its layout dirty, as
+-- this does (CustomAuraContainerSharedMixin:SetAuraGroupLayout, both clients),
+-- never because a button changed size.
+local function LayOutGroup(auras)
+	auras:SetAuraGroupLayout(auras.groupKey, {
+		elementSpacing = auras.config.spacing,
+		lineSpacing = auras.config.spacing,
+	})
+end
+
 -- Styles every button the element has made again, from a config update.
 -- Blizzard's container restricts each button once PostCreateButton has styled
 -- it: while aura data is secret (in combat), addon code can't touch the button
 -- or anything on it, its backdrop included (.agents/taint.md rule 11). So in
--- combat this waits for the end of combat, once per element. A frame made in
--- combat gets its first update then (UF.InitUnit), whose new buttons
--- PostCreateButton has just styled.
-local function RestyleButtons(auras)
+-- combat this waits for the end of combat, once per element, and then has the
+-- group laid out again, since the buttons' size may have changed since the
+-- update laid it out. A frame made in combat gets its first update then
+-- (UF.InitUnit), whose new buttons PostCreateButton has just styled.
+local function RestyleButtons(auras, afterCombat)
 	local secret = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
 	if issecretvalue(secret) or secret or InCombatLockdown() then
-		st:QueueAfterCombat(auras, function() RestyleButtons(auras) end)
+		st:QueueAfterCombat(auras, function() RestyleButtons(auras, true) end)
 		return
 	end
 	for _, button in ipairs(buttonsByElement[auras] or {}) do
 		StyleButton(auras, button)
 	end
+	if afterCombat and auras.hasGroup then LayOutGroup(auras) end
 end
 
 local function UpdateConfig(unitframe, aura_type)
@@ -258,11 +286,11 @@ local function UpdateConfig(unitframe, aura_type)
 	if not auras.hasGroup then
 		AddGroup(unitframe, auras, aura_type)
 	else
-		-- oUF copies the spacing into the group's layout only in AddGroup.
-		auras:SetAuraGroupLayout(auras.groupKey, {
-			elementSpacing = config.spacing,
-			lineSpacing = config.spacing,
-		})
+		LayOutGroup(auras)
+		-- Max, without a reload, and a plate's kind's: the container's own
+		-- call (both clients), which does nothing for the count it has, and
+		-- touches no button, so in combat too.
+		auras:SetAuraGroupMaxFrameCount(auras.groupKey, config.max)
 		-- Only mine and Only buffs I can purge, without a reload.
 		UF:ApplyAuraFilter(auras)
 	end
@@ -409,9 +437,11 @@ local function GetConfigTable(unit, aura_type)
 					theme = generators.theme(1, "Each button's border and background."),
 					background = generators.background(1.5),
 					alpha = generators.alpha(2, ('How solid the %s are, from see-through to opaque.'):format(noun)),
-					size = NeedsReload(generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels.")),
-					relative_size = NeedsReload(generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small')),
-					max = NeedsReload(generators.range(5, 'Max', 1, 40, 1, ('The most %s shown.'):format(noun))),
+					-- Size and Max apply without a reload (StyleButton, the
+					-- container's max count); a size set in combat once it ends.
+					size = generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels."),
+					relative_size = generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small'),
+					max = generators.range(5, 'Max', 1, 40, 1, ('The most %s shown.'):format(noun)),
 					-- The filter applies without a reload (UF:ApplyAuraFilter).
 					onlyShowPlayer = generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small'),
 					purgeable = aura_type == 'Buffs' and generators.toggle(6.5, 'Only buffs I can purge', "Shows only buffs you can take off the unit with a spell you know: a purge, a dispel or a steal. If you know none, no buffs show.", 'small') or nil,

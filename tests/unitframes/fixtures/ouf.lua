@@ -126,7 +126,10 @@
 --   * CreateAuras makes a Blizzard AuraContainer (CustomAuraContainerTemplate),
 --     which makes a button for each aura it shows; here a plain frame that
 --     records what's set on it and makes a button only when a test asks:
---       container.groups[key] = { filter, options, candidateFilters, layout },
+--       container.groups[key] = { filter, options, candidateFilters, layout,
+--         maxFrameCount } (the count AddGroup's options gave, then each
+--         SetAuraGroupMaxFrameCount's, which checks its arguments as
+--         Blizzard_CustomAuraContainer.lua does, both clients),
 --       container.enabled (and IsEnabled), container.__scans,
 --       container.flow = { anchor, lineSize, growthX, growthY },
 --       container:_AddButton() -> button: a Button child of the container, at
@@ -404,13 +407,22 @@ function M.new()
 		function container:AddGroup(filter, options)
 			groupCounts[owner] = (groupCounts[owner] or 0) + 1
 			local key = 'Group' .. groupCounts[owner]
-			self.groups[key] = { filter = filter, options = options, candidateFilters = options and options.candidateFilters }
+			self.groups[key] = { filter = filter, options = options, candidateFilters = options and options.candidateFilters,
+				maxFrameCount = options and options.maxFrameCount }
 			for _ = 1, ouf.batchButtons or 0 do self:_AddButton() end
 			return key
 		end
 		function container:SetAuraGroupFilterString(key, filter) self.groups[key].filter = filter end
 		function container:SetAuraGroupCandidateFilters(key, filters) self.groups[key].candidateFilters = filters end
 		function container:SetAuraGroupLayout(key, layout) self.groups[key].layout = layout end
+		-- Blizzard's (CustomAuraContainerSharedMixin): the group must exist, and
+		-- the count be a non-negative whole number or math.huge.
+		function container:SetAuraGroupMaxFrameCount(key, count)
+			assert(self.groups[key], ("aura group '%s' was not found with this key."):format(tostring(key)))
+			assert(count == math.huge or (type(count) == 'number' and count >= 0 and count == math.floor(count)),
+				'maxFrameCount must be a non-negative integer or infinity.')
+			self.groups[key].maxFrameCount = count
+		end
 		-- Blizzard's AuraContainerSharedMixin (Blizzard_AuraContainer.lua, the
 		-- same on both clients): made enabled (its enabled KeyValue), and a
 		-- SetEnabled that changes the state runs a full update of the auras.

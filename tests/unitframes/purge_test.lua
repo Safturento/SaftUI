@@ -24,8 +24,9 @@
 -- methods auras.lua calls on it. oUF's AddGroup (which gives a group key) and
 -- Blizzard's SetAuraGroupFilterString and SetAuraGroupCandidateFilters
 -- (CustomAuraContainerSharedMixin) are recorded, each with its filter string
--- and candidate filters; the flow layout setters, SetEnabled and
--- SetAuraGroupLayout only take their arguments.
+-- and candidate filters; the flow layout setters, SetEnabled,
+-- SetAuraGroupLayout and SetAuraGroupMaxFrameCount only take their
+-- arguments.
 local T = load_test_file('lib/theme_helpers.lua')
 
 local st, UF, P
@@ -119,6 +120,7 @@ local function make_unit_frame(name, unit, elements)
 		function auras:SetFlowLayoutMaximumLineSize() end
 		function auras:SetFlowLayoutGrowthDirection() end
 		function auras:SetAuraGroupLayout() end
+		function auras:SetAuraGroupMaxFrameCount() end
 		function auras:AddGroup(filter, options)
 			table.insert(calls[self], 'AddGroup: ' .. filters(filter, options.candidateFilters))
 			return 'Group1'
