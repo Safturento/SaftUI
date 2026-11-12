@@ -22,14 +22,20 @@ local UF = st:GetModule('Unitframes')
 -- The pattern the tooltip's level line ("Level 80 Humanoid") matches, from the
 -- game's TOOLTIP_UNIT_LEVEL ("Level %s"): Lua's magic characters escaped, each
 -- %s or %d any text, anchored at the start. Built on first use, and again if
--- the global string ever differs.
+-- the global string ever differs. nil (no text check; the typed UnitLevel line
+-- still covers the real case) when the global isn't a string or has no literal
+-- text besides its %s and %d, which would match every title.
 local levelFormat, levelPattern
 local function LevelPattern()
 	local format = TOOLTIP_UNIT_LEVEL
 	if type(format) ~= 'string' then return nil end
 	if format ~= levelFormat then
 		levelFormat = format
-		levelPattern = '^' .. format:gsub('[%^%$%(%)%%%.%[%]%*%+%-%?]', '%%%0'):gsub('%%%%[sd]', '.+')
+		if format:gsub('%%[sd]', ''):find('%S') then
+			levelPattern = '^' .. format:gsub('[%^%$%(%)%%%.%[%]%*%+%-%?]', '%%%0'):gsub('%%%%[sd]', '.+')
+		else
+			levelPattern = nil
+		end
 	end
 	return levelPattern
 end
@@ -42,16 +48,15 @@ end
 -- a typed (UnitOwner) line, so it's never a title.
 function UF.NpcTitle(unit)
 	local data = C_TooltipInfo and C_TooltipInfo.GetUnit(unit)
-	if type(data) ~= 'table' or issecretvalue(data) then return nil end
+	if issecretvalue(data) or type(data) ~= 'table' then return nil end
 	local lines = data.lines
-	if type(lines) ~= 'table' or issecretvalue(lines) then return nil end
+	if issecretvalue(lines) or type(lines) ~= 'table' then return nil end
 	local line = lines[2]
-	if type(line) ~= 'table' or issecretvalue(line) then return nil end
+	if issecretvalue(line) or type(line) ~= 'table' then return nil end
 
 	local lineType = line.type
-	if lineType ~= nil then
-		if issecretvalue(lineType) or lineType ~= Enum.TooltipDataLineType.None then return nil end
-	end
+	if issecretvalue(lineType) then return nil end
+	if lineType ~= nil and lineType ~= Enum.TooltipDataLineType.None then return nil end
 
 	local text = st.PlainString(line.leftText)
 	if not text or text == '' then return nil end
@@ -83,14 +88,20 @@ function UF.PlateSubtext(unit, config)
 	return '<' .. title .. '>'
 end
 
-UF.oUF.Tags.Events['st:subtext'] = 'UNIT_NAME_UPDATE'
+-- PLAYER_GUILD_UPDATE carries the unit, and oUF treats it as it does
+-- UNIT_NAME_UPDATE: it updates only the font strings of that unit's frame.
+UF.oUF.Tags.Events['st:subtext'] = 'UNIT_NAME_UPDATE PLAYER_GUILD_UPDATE'
 -- The unit's line, read with the settings of the config unit the tag is given
--- (as st:name's): '' for none. A secret result goes back as it is, never
--- tested for truth.
+-- (as st:name's): '' for none, and '' while the tag is still bound to a config
+-- unit the unit's plate no longer draws from (a plate just handed to the other
+-- kind: oUF's update and the 'updated' callbacks run it before it's bound
+-- again below), so nothing is read under the other kind's boxes. A secret
+-- result goes back as it is, never tested for truth.
 UF.oUF.Tags.Methods['st:subtext'] = function(unit, realUnit, baseUnit)
 	local unitConfig = UF:GetProfileConfig()[baseUnit]
 	local config = unitConfig and unitConfig.subtext
 	if not config then return '' end
+	if UF.PlateConfigKey(UF.IsFriendlyPlate(unit)) ~= baseUnit then return '' end
 	local text = UF.PlateSubtext(unit, config)
 	if issecretvalue(text) then return text end
 	return text or ''

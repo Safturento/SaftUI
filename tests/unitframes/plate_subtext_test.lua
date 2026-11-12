@@ -18,7 +18,7 @@
 local NP = load_test_file('unitframes/nameplate_world.lua')
 local S = load_test_file('lib/secrets.lua')
 
-local TYPE = { None = 0, UnitName = 2, UnitOwner = 16, UnitLevel = 17 }
+local TYPE = { None = 0, UnitName = 2, UnitOwner = 16, UnitLevel = 47 }
 
 local restoreSecrets
 local function world(client)
@@ -172,7 +172,7 @@ end)
 test('the st:subtext tag: the line, or an empty string, and a secret one handed back as it is', function()
 	local st, UF = world()
 	local tag = UF.oUF.Tags.Methods['st:subtext']
-	eq(UF.oUF.Tags.Events['st:subtext'], 'UNIT_NAME_UPDATE', 'its event')
+	eq(UF.oUF.Tags.Events['st:subtext'], 'UNIT_NAME_UPDATE PLAYER_GUILD_UPDATE', 'its events')
 	npc('nameplate1', true)
 	titled('nameplate1', 'General Goods Vendor')
 	eq(tag('nameplate1', 'nameplate1', 'friendlynameplate'), '<General Goods Vendor>', 'by the friendly config')
@@ -303,6 +303,92 @@ test("the font string: the config's colour, a width with no word wrap, and its p
 	UF:UpdateConfig('friendlynameplate', 'Subtext')
 	eq(table.concat({ text:GetTextColor() }, ','), '1,0,0,1', 'a new colour')
 	eq(text:CanWordWrap(), true, 'max width 0: wrapping again')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test('UF.NpcTitle: a secret line type is never compared, not even with the enum', function()
+	local st, UF = world()
+	local enum = Enum.TooltipDataLineType
+	Enum.TooltipDataLineType = setmetatable({}, { __index = function(_, k) error('compared a secret type with ' .. k) end })
+	tooltip('nameplate1', { TYPE.UnitName, 'Bob' }, { S.secret('TYPE'), 'General Goods Vendor' })
+	local ok, title = pcall(UF.NpcTitle, 'nameplate1')
+	Enum.TooltipDataLineType = enum
+	eq(ok, true, 'no error')
+	eq(title, nil, 'and no title')
+end)
+
+test("UF.NpcTitle: the level pattern is anchored, and a global string with no text of its own builds none", function()
+	local st, UF = world()
+	tooltip('nameplate1', { TYPE.UnitName, 'Bob' }, { nil, 'Master of Level Design' })
+	eq(UF.NpcTitle('nameplate1'), 'Master of Level Design', 'a title that has "Level" inside it is a title')
+
+	TOOLTIP_UNIT_LEVEL = '%s'
+	tooltip('nameplate1', { TYPE.UnitName, 'Bob' }, { nil, 'General Goods Vendor' })
+	eq(UF.NpcTitle('nameplate1'), 'General Goods Vendor', "a '%s' format matches nothing, so an untyped title still comes back")
+	TOOLTIP_UNIT_LEVEL = nil
+	eq(UF.NpcTitle('nameplate1'), 'General Goods Vendor', 'and with no global string at all')
+	TOOLTIP_UNIT_LEVEL = 'Level %s'
+	tooltip('nameplate1', { TYPE.UnitName, 'Bob' }, { nil, 'Level 80 Humanoid' })
+	eq(UF.NpcTitle('nameplate1'), nil, 'the real format still finds the level line')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test("the tag bound to the other kind's config unit reads nothing: a hand-off's updates before the rebinding", function()
+	local st, UF, P = world()
+	-- An enemy unit, the tag still bound to the Friendly page (npc on there, off on the Enemy page).
+	npc('nameplate1', false)
+	titled('nameplate1', 'General Goods Vendor')
+	local tag = UF.oUF.Tags.Methods['st:subtext']
+	local reads = stub.tooltip_reads
+	eq(tag('nameplate1', 'nameplate1', 'friendlynameplate'), '', "an enemy unit under the Friendly binding: ''")
+	eq(stub.tooltip_reads, reads, 'and no tooltip read')
+	eq(tag('nameplate1', 'nameplate1', 'nameplate'), '', 'under its own binding the Enemy box is off: nothing either')
+	eq(stub.tooltip_reads, reads, 'and no tooltip read')
+
+	-- The mirror: a friendly unit bound to the Enemy page, whose boxes are on and the Friendly ones off.
+	P.nameplate.subtext.npc = true
+	P.friendlynameplate.subtext.npc = false
+	npc('nameplate2', true)
+	titled('nameplate2', 'General Goods Vendor')
+	eq(tag('nameplate2', 'nameplate2', 'nameplate'), '', "a friendly unit under the Enemy binding: ''")
+	eq(stub.tooltip_reads, reads, 'and no tooltip read')
+
+	-- With the boxes' "use the other page" settings the binding that counts follows them.
+	P.friendlynameplate.use_enemy = true
+	eq(tag('nameplate2', 'nameplate2', 'nameplate'), '<General Goods Vendor>', "use_enemy: the friendly unit's plate draws from the Enemy page")
+	eq(tag('nameplate2', 'nameplate2', 'friendlynameplate'), '', 'and the Friendly binding is the stale one')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test('a plate that draws from the other page: an enemy NPC with nameplate.use_friendly shows its title from the Friendly boxes', function()
+	local st, UF, P = world()
+	P.nameplate.use_friendly = true
+	UF:UpdateConfig('nameplate')
+	npc('nameplate1', false)
+	titled('nameplate1', 'General Goods Vendor')
+	local frame = NP.add('nameplate1')
+	eq(frame.base_unit, 'friendlynameplate', 'drawn from the Friendly page')
+	eq(P.nameplate.subtext.npc, false, 'the Enemy box is off')
+	eq(NP.ouf.tags[frame.Subtext], '[st:subtext(friendlynameplate)]', 'bound to the Friendly page')
+	eq(line(UF, frame), '<General Goods Vendor>', 'its title, by the Friendly npc box')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test("a rebind updates the tags at once, with the new binding in place", function()
+	local st, UF, P = world()
+	npc('nameplate1', true)
+	local frame = NP.add('nameplate1')
+	local seen = {}
+	frame.UpdateTags = function(self) seen[#seen + 1] = NP.ouf.tags[self.Subtext] end
+	P.friendlynameplate.use_enemy = true
+	UF:UpdateConfig('nameplate')
+	eq(frame.base_unit, 'nameplate', 'the plate draws from the Enemy page now')
+	eq(seen[#seen], '[st:subtext(nameplate)]', 'the last UpdateTags came after the new binding')
+	local count = #seen
+	UF:UpdateConfig('nameplate')
+	eq(#seen, count, 'and an update that changes nothing rebinds nothing')
 	eq(#take_errors(), 0, 'no error')
 end)
 
