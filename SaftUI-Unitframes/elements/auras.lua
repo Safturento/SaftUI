@@ -210,6 +210,24 @@ local function AddGroup(unitframe, auras, aura_type)
 	auras.hasGroup = true
 end
 
+-- Styles every button the element has made again, from a config update.
+-- Blizzard's container restricts each button once PostCreateButton has styled
+-- it: while aura data is secret (in combat), addon code can't touch the button
+-- or anything on it, its backdrop included (.agents/taint.md rule 11). So in
+-- combat this waits for the end of combat, once per element. A frame made in
+-- combat gets its first update then (UF.InitUnit), whose new buttons
+-- PostCreateButton has just styled.
+local function RestyleButtons(auras)
+	local secret = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
+	if issecretvalue(secret) or secret or InCombatLockdown() then
+		st:QueueAfterCombat(auras, function() RestyleButtons(auras) end)
+		return
+	end
+	for _, button in ipairs(buttonsByElement[auras] or {}) do
+		StyleButton(auras, button)
+	end
+end
+
 local function UpdateConfig(unitframe, aura_type)
 	local auras = unitframe[aura_type]
 	local enabled = UF:UpdateElement(auras)
@@ -249,9 +267,7 @@ local function UpdateConfig(unitframe, aura_type)
 		UF:ApplyAuraFilter(auras)
 	end
 
-	for _, button in ipairs(buttonsByElement[auras] or {}) do
-		StyleButton(auras, button)
-	end
+	RestyleButtons(auras)
 end
 
 local function Constructor(unitframe, aura_type)

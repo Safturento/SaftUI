@@ -130,6 +130,21 @@
 --       frames), and nothing about it is Blizzard's: it isn't locked, as
 --       auras.lua keeps button.backdrop on it (theme_test.lua's stand-in
 --       button allows the same).
+--     Two opt-ins, set on the fixture before a container is made, bring it
+--     closer to Blizzard's (Blizzard_AuraContainerFrameProviders.lua, the
+--     same on both clients):
+--       ouf.batchButtons = n: AddGroup makes n buttons at once, as Blizzard's
+--         container allocates a batch (CustomAuraContainerConstants
+--         .FrameCreationBatchSize, 10) for a group, each handed to
+--         PostCreateButton;
+--       ouf.restrictButtons = true: after PostCreateButton, the button and
+--         every frame and region under it refuse every method call while
+--         C_Secrets.ShouldAurasBeSecret() says aura data is secret, as
+--         AuraContainerUtil.ApplyAccessRestrictions(button,
+--         DenyTaintedAccessWhenAurasAreSecret) does to addon code. In game
+--         the refusal reached SaftUI's backdrop frame on the button ("calling
+--         'ClearAllPoints' on bad self (Attempt to access forbidden object
+--         from code tainted by an AddOn)"), so the children are refused too.
 --     The container answers IsObjectType('AuraContainer') with true, unless a
 --     test sets ouf.containerIsIntrinsic before it's made: then it answers as
 --     the plain frame it is. In game AuraContainer is an XML intrinsic
@@ -328,6 +343,34 @@ function M.new()
 			end
 		end
 	end
+	-- Blizzard's access restriction on an aura button (ouf.restrictButtons):
+	-- widget and everything under it refuse every method call while aura
+	-- data is secret.
+	local function Restrict(widget)
+		if widget.GetChildren then
+			for _, child in ipairs({ widget:GetChildren() }) do Restrict(child) end
+		end
+		if widget.GetRegions then
+			for _, region in ipairs({ widget:GetRegions() }) do Restrict(region) end
+		end
+		local mt = getmetatable(widget)
+		local index = mt.__index
+		local restricted = {}
+		for k, v in pairs(mt) do restricted[k] = v end
+		restricted.__index = function(_, key)
+			local value
+			if type(index) == 'function' then value = index(widget, key) else value = index[key] end
+			if type(value) ~= 'function' then return value end
+			return function(...)
+				if C_Secrets.ShouldAurasBeSecret() then
+					error(("calling '%s' on bad self (Attempt to access forbidden object from code tainted by an AddOn)"):format(key), 2)
+				end
+				return value(...)
+			end
+		end
+		setmetatable(widget, restricted)
+	end
+
 	function methods.CreateAuras(self)
 		local owner = self
 		local container = CreateFrame('Frame', nil, owner)
@@ -338,6 +381,7 @@ function M.new()
 			groupCounts[owner] = (groupCounts[owner] or 0) + 1
 			local key = 'Group' .. groupCounts[owner]
 			self.groups[key] = { filter = filter, options = options, candidateFilters = options and options.candidateFilters }
+			for _ = 1, ouf.batchButtons or 0 do self:_AddButton() end
 			return key
 		end
 		function container:SetAuraGroupFilterString(key, filter) self.groups[key].filter = filter end
@@ -379,6 +423,7 @@ function M.new()
 			border:SetAllPoints()
 			button.Border = border
 			if self.PostCreateButton then self:PostCreateButton(button) end
+			if ouf.restrictButtons then Restrict(button) end
 			return button
 		end
 		containers[owner] = containers[owner] or {}

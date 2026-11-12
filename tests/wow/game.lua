@@ -1011,6 +1011,11 @@ do
 		return type(secret) == 'table' and secret[unit] == true
 	end
 
+	-- C_Secrets.ShouldAurasBeSecret(): "true if queries for aura data will
+	-- generally produce secret values". In game it's false out of combat and
+	-- true in combat (.agents/clients.md), so here it's InCombatLockdown().
+	function C_Secrets.ShouldAurasBeSecret() return InCombatLockdown() == true end
+
 	-- IsInGroup([groupType]) and IsInRaid([groupType]): plain booleans from
 	-- stub.group. The group type (home or instance group) isn't modelled.
 	function IsInGroup() return stub.group ~= nil end
