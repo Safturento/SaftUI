@@ -4,6 +4,7 @@
 	<Script file="optionsmodel.lua"/>
 	<!-- The widget files: optionswidgets.lua first; optionsposition.lua the last of them, as it notes the built-in types. -->
 	<Script file="optionswidgets.lua"/>
+	<Script file="optionsdialog.lua"/>
 	<Script file="optionsbar.lua"/>
 	<Script file="optionslist.lua"/>
 	<Script file="optionstypes.lua"/>
