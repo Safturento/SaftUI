@@ -111,9 +111,18 @@
 --     elements are also left out of UpdateAllElements.
 --   * CreateAuras makes a Blizzard AuraContainer (CustomAuraContainerTemplate),
 --     which makes a button for each aura it shows; here a plain frame that
---     records what's set on it and makes no buttons:
+--     records what's set on it and makes a button only when a test asks:
 --       container.groups[key] = { filter, options, candidateFilters, layout },
---       container.enabled, container.flow = { anchor, lineSize, growthX, growthY }.
+--       container.enabled, container.flow = { anchor, lineSize, growthX, growthY },
+--       container:_AddButton() -> button: a Button child of the container, at
+--       its group's size (oUF's default 16 before any group), built as oUF's
+--       CreateButton builds one (Libraries/oUF/elements/auras.lua): its Icon
+--       (BORDER, over the whole button), Count and Border (OVERLAY, over the
+--       whole button), then handed to the element's PostCreateButton, as
+--       Blizzard's container does. No Cooldown (the stubs have no Cooldown
+--       frames), and nothing about it is Blizzard's: it isn't locked, as
+--       auras.lua keeps button.backdrop on it (theme_test.lua's stand-in
+--       button allows the same).
 --   * Tag binds a tag string to a font string and updates it on events.
 
 local M = {}
@@ -327,6 +336,24 @@ function M.new()
 		local isObjectType = container.IsObjectType
 		function container:IsObjectType(typeName)
 			return typeName == 'AuraContainer' or isObjectType(self, typeName)
+		end
+		-- The container making a button for an aura that shows (see the top).
+		function container:_AddButton()
+			local _, group = next(self.groups)
+			local size = group and group.options and group.options.size or 16
+			local button = CreateFrame('Button', nil, self)
+			button:SetSize(size, size)
+			local icon = button:CreateTexture(nil, 'BORDER')
+			icon:SetAllPoints()
+			button.Icon = icon
+			local count = button:CreateFontString(nil, 'OVERLAY')
+			count:SetPoint('BOTTOMRIGHT', -1, 0)
+			button.Count = count
+			local border = button:CreateTexture(nil, 'OVERLAY')
+			border:SetAllPoints()
+			button.Border = border
+			if self.PostCreateButton then self:PostCreateButton(button) end
+			return button
 		end
 		containers[owner] = containers[owner] or {}
 		table.insert(containers[owner], container)

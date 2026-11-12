@@ -370,7 +370,14 @@ test("a size change reaches the plates through the nameplate's config update", f
 	P.width, P.height = 180, 16
 	UF:UpdateConfig('nameplate')
 	eq(size_set(), driver_size(UF, 180, 16), 'the new size')
-	eq(table.concat({ frame:GetSize() }, 'x'), table.concat({ NamePlate1:GetSize() }, 'x'), "the frame follows its plate's size")
+	-- On screen (a size times its effective scale): the frame keeps UIParent's
+	-- scale and its plate WorldFrame's (pixels.lua), so their own units differ.
+	local function onScreen(region)
+		local width, height = region:GetSize()
+		local scale = region:GetEffectiveScale()
+		return ('%.4fx%.4f'):format(width * scale, height * scale)
+	end
+	eq(onScreen(frame), onScreen(NamePlate1), "the frame follows its plate's size")
 	eq(table.concat({ NamePlate1:GetSize() }, 'x'), size_set(), 'the plate takes the size set')
 	-- An element's update leaves the size alone.
 	stub.set_nameplate_size_secure(230, 45)

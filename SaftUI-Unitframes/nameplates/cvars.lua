@@ -19,12 +19,29 @@ local UF = st:GetModule('Unitframes')
 ]]
 
 -- Each setting SaftUI sets while its plates are on, by name, and its value
--- (a string, as the game keeps them) from the nameplate config.
+-- (a string, as the game keeps them) from the nameplate config and the
+-- setting's value now: value(config, current).
 UF.NAMEPLATE_CVARS = {
 	-- Friendly plates (the page's toggle): the game shows plates over friendly
 	-- players and NPCs only while these are on.
 	nameplateShowFriendlyPlayers = function(config) return config.friendly and '1' or '0' end,
 	nameplateShowFriendlyNpcs = function(config) return config.friendly and '1' or '0' end,
+	-- The plates' scale: the game scales each plate by its distance, and the
+	-- target's up. SaftUI's frame on a plate keeps UIParent's scale
+	-- (pixels.lua) but covers its plate, so a scaled plate would make it
+	-- another size, off whole pixels. At 1 every plate keeps the size SaftUI
+	-- gives it.
+	nameplateMinScale = function() return '1' end,
+	nameplateMaxScale = function() return '1' end,
+	nameplateSelectedScale = function() return '1' end,
+	-- Simplified plates, which the game draws smaller for the types the user
+	-- picks (minions, minor mobs, friendly players and NPCs). The setting is a
+	-- bit array the game keeps as text: a version character, then the bits,
+	-- six to a character (CVarCallbackRegistry:SetCVarBitfieldMask,
+	-- CvarUtil.lua, both clients). Its version character alone has no bit set,
+	-- so it simplifies nothing: what Blizzard's settings write when every type
+	-- is unticked.
+	nameplateSimplifiedTypes = function(_, current) return current:sub(1, 1) end,
 }
 
 -- Sets one of the game's settings, recording the user's value the first time.
@@ -53,7 +70,11 @@ function UF:ApplyNameplateCVars()
 	if st:QueueAfterCombat('NameplateCVars', function() UF:ApplyNameplateCVars() end) then return end
 	local config = self:GetProfileConfig().nameplate
 	for name, value in pairs(UF.NAMEPLATE_CVARS) do
-		self:SetNameplateCVar(name, value(config))
+		-- A setting this client doesn't have is skipped.
+		local current = C_CVar.GetCVar(name)
+		if current ~= nil then
+			self:SetNameplateCVar(name, value(config, current))
+		end
 	end
 	-- Blizzard re-anchors its plates' widgets when the friendly NPC setting
 	-- changes (UpdateWidgetsOnlyMode is a CVar callback): put them back on

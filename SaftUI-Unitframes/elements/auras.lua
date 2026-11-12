@@ -60,6 +60,16 @@ local function StyleButton(auras, button)
 
 	st:SetBackdrop(button, config.theme, config.background, 'aura')
 
+	-- On a plate the backdrop rounds to whole pixels with the rest of the plate
+	-- (nameplates/pixels.lua), whose own walk stops at the aura container. So
+	-- each button's backdrop, a frame of SaftUI's, is rounded here, where it's
+	-- drawn: when the button is made (PostCreateButton) and after every config
+	-- update, which can draw new art (a theme switch). The button and what
+	-- else is on it are Blizzard's container's, and left alone.
+	if auras.unitframe and auras.unitframe.isNamePlate and UF.RoundLayout and button.backdrop then
+		UF.RoundLayout(button.backdrop, true)
+	end
+
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
 	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
 	-- SaftUI only restyles and moves it, and never reads its color.
