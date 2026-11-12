@@ -431,6 +431,7 @@ end
 -- before Config/widgets.lua.
 function options_window_files()
 	return {
+		'SaftUI-Core/Config/optionslayout.lua',
 		'SaftUI-Core/Config/optionswindow.lua',
 	}
 end

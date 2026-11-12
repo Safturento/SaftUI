@@ -14,6 +14,7 @@
 	<Script file="optionskeybinding.lua"/>
 	<Script file="optionsposition.lua"/>
 	<Script file="optionsbody.lua"/>
+	<Script file="optionslayout.lua"/>
 	<Script file="optionswindow.lua"/>
 	<Script file="widgets.lua"/>
 	<Script file="general.lua"/>
