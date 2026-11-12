@@ -406,7 +406,6 @@ function CHT:OnEnable()
 
 	-- self:SecureHook('FCFDock_UpdateTabs')
 	-- self:SecureHook('ChatEdit_UpdateHeader')
-	--self:SecureHook('ChatFrame_OnUpdate')
 	self:SecureHook('FloatingChatFrame_UpdateBackgroundAnchors', 'UpdateChatFrameDisplay')
 	self:SecureHook('FCFDock_UpdateTabs')
 end
