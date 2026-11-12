@@ -5,8 +5,9 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	The navigation of SaftUI's options window (st.OptionsWindow,
 	optionswindow.lua): the sidebar (Edit mode and the command buttons, the
 	pages under their groups, the profile's name) and the tab rows and the
-	picker over the body. It loads after optionswindow.lua (Config/load.xml),
-	which calls it through OW.S.
+	picker over the body. It draws into frames optionswindow.lua builds (F.side
+	and the main column), and loads after it (Config/load.xml); optionswindow.lua
+	calls it through OW.S.
 ]]
 
 local OW = st.OptionsWindow

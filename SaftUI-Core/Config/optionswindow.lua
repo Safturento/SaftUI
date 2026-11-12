@@ -8,7 +8,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	mockup.html). The model (optionsmodel.lua) turns the tree into pages, tabs,
 	a picker, sections and rows; the body (optionsbody.lua) draws the sections
 	and rows, and the widgets (optionswidgets.lua) the rows' controls. This file
-	owns the frame, navigation, search, the footer and the keyboard.
+	owns the frame, search, the footer and the keyboard; the navigation is
+	optionsnav.lua's.
 
 	  OW:Open(path, root)   shows the window (root: the tree, kept for later
 	                        opens), at the page, picker, tab and subtab a path
