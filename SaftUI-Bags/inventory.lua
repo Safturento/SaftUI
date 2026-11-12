@@ -14,34 +14,26 @@ local function GetBankTabBagIds(prefix)
 	return bagIds
 end
 
-local BAG_IDS
-if st.retail then
-	local characterTabs = GetBankTabBagIds('CharacterBankTab_')
-	local accountTabs = GetBankTabBagIds('AccountBankTab_')
+local characterTabs = GetBankTabBagIds('CharacterBankTab_')
+local accountTabs = GetBankTabBagIds('AccountBankTab_')
 
-	local combinedTabs = {}
-	for _, bagId in ipairs(characterTabs) do tinsert(combinedTabs, bagId) end
-	for _, bagId in ipairs(accountTabs) do tinsert(combinedTabs, bagId) end
+local combinedTabs = {}
+for _, bagId in ipairs(characterTabs) do tinsert(combinedTabs, bagId) end
+for _, bagId in ipairs(accountTabs) do tinsert(combinedTabs, bagId) end
 
-	BAG_IDS = {
-		['bag'] = {
-            Enum.BagIndex.Backpack,
-            Enum.BagIndex.Bag_1,
-            Enum.BagIndex.Bag_2,
-            Enum.BagIndex.Bag_3,
-            Enum.BagIndex.Bag_4,
-            Enum.BagIndex.ReagentBag,
-         },
-		['bank'] = characterTabs,
-		['warband'] = accountTabs,
-		['combinedbank'] = combinedTabs,
-	}
-else
-	BAG_IDS = {
-		['bag'] = { 0, 1, 2, 3, 4 },
-		['bank'] = { -1, 5, 6, 7, 8, 9, 10, 11 }
-	}
-end
+local BAG_IDS = {
+	['bag'] = {
+		Enum.BagIndex.Backpack,
+		Enum.BagIndex.Bag_1,
+		Enum.BagIndex.Bag_2,
+		Enum.BagIndex.Bag_3,
+		Enum.BagIndex.Bag_4,
+		Enum.BagIndex.ReagentBag,
+	},
+	['bank'] = characterTabs,
+	['warband'] = accountTabs,
+	['combinedbank'] = combinedTabs,
+}
 
 INV.bagIds = BAG_IDS
 
