@@ -4,6 +4,7 @@
 #   tests/run                  every tests/**/*_test.lua
 #   tests/run PATH...          those files, or the *_test.lua files in those folders
 #   tests/run -v ...           also list every case and show what tests printed
+#   tests/run -jN ...          run N files at once (default: the CPU count; -j1 is serial)
 #
 # Paths are relative to the current directory, or absolute, so this works from
 # any folder. Lua comes from Python's lupa package (lupa.lua51). The first run

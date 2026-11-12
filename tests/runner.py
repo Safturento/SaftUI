@@ -34,6 +34,7 @@ import time
 
 lua51 = LuaError = None  # imported in entry(), so a missing lupa is reported as a crash
 CRASH_IN_RUN_FILE = False  # set by --crash-for-self-check=run_file
+EXIT_BADLY_FOR = None  # set by --crash-for-self-check=worker_exit: a worker running this file exits 3 after sending its result
 KILL_WORKER_FOR = None  # set by --crash-for-self-check=worker_death: a worker running this file dies
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -160,6 +161,9 @@ def worker(path, verbose, conn):
         if KILL_WORKER_FOR == path:
             os._exit(9)
         conn.send(('done', render(path, verbose)))
+        if EXIT_BADLY_FOR == path:
+            conn.close()
+            os._exit(3)
     except Exception:
         import traceback
         conn.send(('crash', traceback.format_exc()))
@@ -201,6 +205,9 @@ def run_parallel(files, verbose, jobs):
                 conn.close()
                 process.join()
                 del running[index]
+                if process.exitcode != 0:  # it sent its result but did not exit cleanly
+                    raise WorkerCrash(f'a worker process exited with status {process.exitcode} after running '
+                                      f'{shown_path(files[index])}')
                 if kind == 'crash':
                     raise WorkerCrash(f'runner crash running {shown_path(files[index])}:\n{payload}')
                 results[index] = payload
@@ -230,6 +237,7 @@ CRASH_FIXTURES = [  # (fixture, flag value, text on stderr, -j flag)
     ('passing.lua', 'run_file', 'runner crash in run_file (self-check)', '-j1'),  # serial, in this process
     ('passing.lua', 'run_file', 'runner crash in run_file (self-check)', '-j2'),  # in a worker process
     ('passing.lua', 'worker_death', 'a worker process died', '-j2'),
+    ('passing.lua', 'worker_exit', 'exited with status 3', '-j2'),
 ]
 TRACEBACK = 'Traceback (most recent call last)'
 
@@ -292,17 +300,22 @@ def self_check():
     # must give the same report and exit status for every fixture, in file order
     paths = [os.path.join(FIXTURES, name) for name in sorted(FIXTURE_EXPECTED)]
     serial = subprocess.run([sys.executable, os.path.abspath(__file__), '-j1', *paths], capture_output=True, text=True)
-    parallel = subprocess.run([sys.executable, os.path.abspath(__file__), *paths], capture_output=True, text=True)
+    parallel = subprocess.run([sys.executable, os.path.abspath(__file__), '-j2', *paths], capture_output=True, text=True)
     same = (serial.stdout, serial.stderr, serial.returncode) == (parallel.stdout, parallel.stderr, parallel.returncode)
-    print(f'{"ok  " if same else "FAIL"}  -j1 and the default (-j{default_jobs()}) give the same report for the fixtures')
+    print(f'{"ok  " if same else "FAIL"}  -j1 and -j2 give the same report for the fixtures')
     if not same:
         bad += 1
         print_lines(['-j1: exit ' + str(serial.returncode)] + serial.stdout.splitlines(), '      ')
-        print_lines([f'-j{default_jobs()}: exit ' + str(parallel.returncode)] + parallel.stdout.splitlines(), '      ')
+        print_lines(['-j2: exit ' + str(parallel.returncode)] + parallel.stdout.splitlines(), '      ')
 
-    # a bad -j value is a bad argument (exit 2), like any other
+    # a bad -j value is a bad argument (exit 2), like any other; so is a
+    # worker crash asked for with no workers
+    done = run(os.path.join(FIXTURES, 'passing.lua'), '--crash-for-self-check=worker_death', '-j1')
+    good = done.returncode == 2 and TRACEBACK not in done.stderr
+    print(f'{"ok  " if good else "FAIL"}  worker_death with -j1: exit {done.returncode}, expected 2')
+    bad += not good
     for value in ('0', 'x', '-3'):
-        done = subprocess.run([sys.executable, os.path.abspath(__file__), f'-j{value}' if value != '-3' else '-j-3',
+        done = subprocess.run([sys.executable, os.path.abspath(__file__), f'-j{value}',
                                os.path.join(FIXTURES, 'passing.lua')], capture_output=True, text=True)
         good = done.returncode == 2 and TRACEBACK not in done.stderr
         print(f'{"ok  " if good else "FAIL"}  -j{value}: exit {done.returncode}, expected 2')
@@ -343,7 +356,7 @@ def main():
     parser.add_argument('--timings', metavar='FILE', help=argparse.SUPPRESS)  # per-file seconds, tab separated, for measuring the run
     parser.add_argument('--self-check', action='store_true',
                         help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
-    parser.add_argument('--crash-for-self-check', nargs='?', const='main', choices=['main', 'run_file', 'worker_death'],
+    parser.add_argument('--crash-for-self-check', nargs='?', const='main', choices=['main', 'run_file', 'worker_death', 'worker_exit'],
                         help=argparse.SUPPRESS)  # only the self-check uses this: a runner crash on demand
     args = parser.parse_args()
     if args.crash_for_self_check == 'main':
@@ -360,10 +373,16 @@ def main():
         print(f'tests/run: {error}', file=sys.stderr)
         return 2
 
-    if args.crash_for_self_check == 'worker_death':
-        global KILL_WORKER_FOR
-        KILL_WORKER_FOR = files[-1]
     jobs = args.jobs or default_jobs()
+    if args.crash_for_self_check in ('worker_death', 'worker_exit'):
+        if jobs == 1:  # -j1 has no workers to crash
+            print(f'tests/run: --crash-for-self-check={args.crash_for_self_check} needs workers (not -j1)', file=sys.stderr)
+            return 2
+        global KILL_WORKER_FOR, EXIT_BADLY_FOR
+        if args.crash_for_self_check == 'worker_death':
+            KILL_WORKER_FOR = files[-1]
+        else:
+            EXIT_BADLY_FOR = files[-1]
     failed_files = total_checks = total_failures = 0
     timings = []
     if jobs == 1:
@@ -371,7 +390,7 @@ def main():
     else:
         results = run_parallel(files, args.verbose, jobs)
     try:
-        for path, (text, passed, checks, failures, seconds) in zip(files, results):
+        for path, (text, passed, checks, failures, seconds) in zip(files, results, strict=True):
             sys.stdout.write(text)
             sys.stdout.flush()
             timings.append((seconds, path))
