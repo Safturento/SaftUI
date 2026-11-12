@@ -448,6 +448,25 @@ test("a bar sized by another's config takes its kind from that size", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- UF:UpdateElement(element, configOverride) places the element by the
+-- override's position too, as it sizes it by the override.
+test("an element given another's config is placed by its position", function()
+	world('forever', 'thick')
+	local player = make_unit_frame('P', 'player', { 'Health', 'Power', 'AdditionalPower' })
+	UF:UpdateUnitFrame(player)
+	local other = {}
+	for key, value in pairs(P.player.power) do other[key] = value end
+	other.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = 17, y_off = -23 }
+	UF:UpdateElement(player.Power, other)
+	local point, relative, rel_point, x, y = player.Power:GetPoint()
+	eq(point, 'TOPLEFT', 'its point')
+	eq(relative, UIParent, 'its frame')
+	eq(rel_point, 'BOTTOMRIGHT', 'its relative point')
+	eq(x, 17, 'its x offset')
+	eq(y, -23, 'its y offset')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ previews
 
 -- Each part a preview has (groups.lua's CreatePreviewFrame) as

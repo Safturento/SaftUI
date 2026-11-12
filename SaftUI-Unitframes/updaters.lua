@@ -226,9 +226,9 @@ function UF:UpdateElementSize(element, configOverride)
     if height then st:SetHeight(element, height) end
 end
 
-function UF:UpdateElementPosition(element, unitframe, configOverride)
+function UF:UpdateElementPosition(element, configOverride)
     local config = configOverride or element.config
-    unitframe = element.unitframe or element:GetParent()
+    local unitframe = element.unitframe or element:GetParent()
 
     local anchor, _, rel_anchor, x_off, y_off = st:UnpackPoint(config.position)
     local frame = self:GetFrame(unitframe, config.position)
