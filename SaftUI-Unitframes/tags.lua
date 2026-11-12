@@ -4,14 +4,6 @@ local UF = st:GetModule('Unitframes')
 -- The classification marks the level part ends with.
 local MARKS = { rare = 'R', rareelite = 'R+', elite = '+', worldboss = 'B' }
 
--- A unit value the tag may compare or look up, or nil for a secret one: the
--- game hands an addon a unit's level, reaction or classification as a secret
--- in restricted content (enemy nameplates above all), and a secret one is
--- left out of the text.
-local function Plain(value)
-	if not issecretvalue(value) then return value end
-end
-
 -- A level's colour, by its difference from the player's.
 local function LevelColor(levelDiff)
 	local colors = st.config.profile.colors.text
@@ -85,9 +77,12 @@ UF.oUF.Tags.Methods['st:name'] = function(unit, realUnit, baseUnit)
 	local config = units[baseUnit].name
 	if not config.enable then return '' end
 
-	local level, playerLevel = Plain(UnitLevel(unit)), Plain(UnitLevel('player'))
-	local reaction = Plain(UnitReaction(unit, 'player'))
-	local classification = Plain(UnitClassification(unit))
+	-- The game hands an addon a unit's level, reaction or classification as a
+	-- secret in restricted content (enemy nameplates above all); a secret one
+	-- is left out of the text.
+	local level, playerLevel = st.Plain(UnitLevel(unit)), st.Plain(UnitLevel('player'))
+	local reaction = st.Plain(UnitReaction(unit, 'player'))
+	local classification = st.Plain(UnitClassification(unit))
 
 	local prefix, suffix = LevelPart(config, level, playerLevel, classification), ''
 	local color = NameColor(config, unit, reaction)

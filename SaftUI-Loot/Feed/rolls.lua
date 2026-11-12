@@ -61,20 +61,13 @@ local entryByKey = setmetatable({}, { __mode = 'v' })
 ---- Plain values ------------------
 ------------------------------------
 
-local function PlainNumber(v)
-	if not issecretvalue(v) and type(v) == 'number' then return v end
-end
-
-local function PlainString(v)
-	if not issecretvalue(v) and type(v) == 'string' then return v end
-end
-
 local function IsTrue(v)
 	return not issecretvalue(v) and v == true
 end
 
--- rollinfo.lua (the live choices on the roll bars) checks what it reads the same way.
-LT.PlainNumber, LT.PlainString = PlainNumber, PlainString
+-- rollinfo.lua (the live choices on the roll bars) takes these from here, and
+-- does nothing until this file has loaded.
+LT.PlainNumber, LT.PlainString = st.PlainNumber, st.PlainString
 
 ------------------------------------
 ---- Drops -------------------------
@@ -83,7 +76,7 @@ LT.PlainNumber, LT.PlainString = PlainNumber, PlainString
 -- A drop's index in its encounter. Forever's EncounterLootDropInfo calls it
 -- lootListKey; retail's still calls it lootListID.
 local function DropIndex(drop)
-	return PlainNumber(drop.lootListKey) or PlainNumber(drop.lootListID)
+	return st.PlainNumber(drop.lootListKey) or st.PlainNumber(drop.lootListID)
 end
 
 -- A link's "item:..." part, or the whole link when it has none.
@@ -97,9 +90,9 @@ LT.ItemString = ItemString
 -- cached can differ in its name or colour from the same drop's link later, and
 -- the whole link would then record the drop twice.
 local function DropKey(encounterID, drop)
-	encounterID = PlainNumber(encounterID)
+	encounterID = st.PlainNumber(encounterID)
 	local index = DropIndex(drop)
-	local link = PlainString(drop.itemHyperlink)
+	local link = st.PlainString(drop.itemHyperlink)
 	if encounterID and index and link then
 		return encounterID .. ':' .. index .. ':' .. ItemString(link)
 	end
@@ -115,7 +108,7 @@ end
 local function SomeoneRolled(drop)
 	if type(drop.rollInfos) ~= 'table' then return false end
 	for _, info in ipairs(drop.rollInfos) do
-		local state = PlainNumber(info.state)
+		local state = st.PlainNumber(info.state)
 		if state and state ~= STATE.NoRoll then return true end
 	end
 	return false
@@ -124,10 +117,10 @@ end
 -- Whether two of the game's roll infos are the same player.
 local function SamePlayer(a, b)
 	if type(a) ~= 'table' or type(b) ~= 'table' then return false end
-	local guidA, guidB = PlainString(a.playerGUID), PlainString(b.playerGUID)
+	local guidA, guidB = st.PlainString(a.playerGUID), st.PlainString(b.playerGUID)
 	if guidA and guidB then return guidA == guidB end
-	local nameA = PlainString(a.playerName)
-	return nameA ~= nil and nameA == PlainString(b.playerName)
+	local nameA = st.PlainString(a.playerName)
+	return nameA ~= nil and nameA == st.PlainString(b.playerName)
 end
 
 -- When the roll of a drop the addon didn't see end started, as a real time,
@@ -135,12 +128,12 @@ end
 -- clock, a drop's startTime and its duration all count milliseconds.
 local function EstimateWhen(drop)
 	local now = time()
-	local historyNow = C_LootHistory.GetLootHistoryTime and PlainNumber(C_LootHistory.GetLootHistoryTime())
-	local start = PlainNumber(drop.startTime)
+	local historyNow = C_LootHistory.GetLootHistoryTime and st.PlainNumber(C_LootHistory.GetLootHistoryTime())
+	local start = st.PlainNumber(drop.startTime)
 	if not (historyNow and start) then return now end
 
 	local when = now - max(0, floor((historyNow - start) / 1000))
-	local duration = PlainNumber(drop.duration)
+	local duration = st.PlainNumber(drop.duration)
 	local ends = duration and duration > 0 and when + floor(duration / 1000) or nil
 	return when, ends
 end
@@ -159,13 +152,13 @@ local function Summarize(drop, ended)
 	local winner, leader = drop.winner, drop.currentLeader
 	if type(drop.rollInfos) == 'table' then
 		for _, info in ipairs(drop.rollInfos) do
-			local name, state = PlainString(info.playerName), PlainNumber(info.state)
+			local name, state = st.PlainString(info.playerName), st.PlainNumber(info.state)
 			if name and state and not (ended and state == STATE.NoRoll) then
 				local line = {
 					name = name,
-					class = PlainString(info.playerClass),
+					class = st.PlainString(info.playerClass),
 					state = state,
-					roll = PlainNumber(info.roll),
+					roll = st.PlainNumber(info.roll),
 					isSelf = IsTrue(info.isSelf) or nil,
 				}
 				tinsert(list, line)
@@ -195,7 +188,7 @@ end
 -- the one Blizzard's Loot Rolls window uses for its timer. False when any of
 -- them isn't plain or the duration isn't positive.
 local function RollTimeOver(now, start, duration)
-	start, duration = PlainNumber(start), PlainNumber(duration)
+	start, duration = st.PlainNumber(start), st.PlainNumber(duration)
 	if not (now and start and duration and duration > 0) then return false end
 	return now - start > duration
 end
@@ -210,25 +203,25 @@ end
 function LT:GetOpenDrops()
 	local open = {}
 	if not C_LootHistory then return open end
-	local now = C_LootHistory.GetLootHistoryTime and PlainNumber(C_LootHistory.GetLootHistoryTime())
+	local now = C_LootHistory.GetLootHistoryTime and st.PlainNumber(C_LootHistory.GetLootHistoryTime())
 	for _, encounter in ipairs(C_LootHistory.GetAllEncounterInfos() or {}) do
 		local encounterID = type(encounter) == 'table'
 			and not RollTimeOver(now, encounter.startTime, encounter.duration)
-			and PlainNumber(encounter.encounterID)
+			and st.PlainNumber(encounter.encounterID)
 		if encounterID then
 			for _, drop in ipairs(C_LootHistory.GetSortedDropsForEncounter(encounterID) or {}) do
 				local index = type(drop) == 'table' and not HasEnded(drop)
 					and not RollTimeOver(now, drop.startTime, drop.duration)
 					and DropIndex(drop)
-				local link = index and PlainString(drop.itemHyperlink)
+				local link = index and st.PlainString(drop.itemHyperlink)
 				if link then
 					tinsert(open, {
 						id = encounterID .. ':' .. index,
 						encounterID = encounterID,
 						index = index,
 						link = link,
-						start = PlainNumber(drop.startTime) or 0,
-						playerState = PlainNumber(drop.playerRollState),
+						start = st.PlainNumber(drop.startTime) or 0,
+						playerState = st.PlainNumber(drop.playerRollState),
 					})
 				end
 			end
@@ -433,7 +426,7 @@ LT.ItemID = ItemID
 -- message's can differ in their trailing context fields, so the item ID
 -- decides when the links aren't identical.
 local function SameItem(a, b)
-	a, b = PlainString(a), PlainString(b)
+	a, b = st.PlainString(a), st.PlainString(b)
 	if not (a and b) then return false end
 	if a == b then return true end
 	local id = ItemID(a)
@@ -450,7 +443,7 @@ end
 local function IsLooterWinner(looter, winner)
 	if not winner then return false end
 	if looter == nil then return winner.isSelf == true end
-	looter = PlainString(looter)
+	looter = st.PlainString(looter)
 	return looter ~= nil and ShortName(looter) == ShortName(winner.name)
 end
 
@@ -558,7 +551,7 @@ local function RecordDrop(encounterID, drop, restored)
 
 	local result = {
 		key = key,
-		link = PlainString(drop.itemHyperlink),
+		link = st.PlainString(drop.itemHyperlink),
 		rolls = Summarize(drop, true),
 		when = time(),
 		restored = restored,
@@ -584,7 +577,7 @@ end
 -- Item data came in: adds the pending results it completes. When the data for
 -- a pending item came but the item still isn't known, it goes in by its link.
 function LT:OnRollItemInfo(event, itemID)
-	itemID = PlainNumber(itemID)
+	itemID = st.PlainNumber(itemID)
 	local i = 1
 	while pending[i] do
 		local result = pending[i]
@@ -606,8 +599,8 @@ end
 -- first): that entry takes the message's count and looter instead.
 function LT:AbsorbLootMessage(match)
 	if self.pushingTest or not openRolls[1] then return false end
-	local link, looter = PlainString(match.link), match.player
-	if not link or (looter ~= nil and not PlainString(looter)) then return false end
+	local link, looter = st.PlainString(match.link), match.player
+	if not link or (looter ~= nil and not st.PlainString(looter)) then return false end
 
 	local now = GetTime()
 	local i = 1
@@ -648,7 +641,7 @@ local function RefreshRollBars()
 end
 
 function LT:OnLootHistoryUpdateDrop(event, encounterID, lootListKey)
-	encounterID, lootListKey = PlainNumber(encounterID), PlainNumber(lootListKey)
+	encounterID, lootListKey = st.PlainNumber(encounterID), st.PlainNumber(lootListKey)
 	if encounterID and lootListKey then
 		RecordDrop(encounterID, C_LootHistory.GetSortedInfoForDrop(encounterID, lootListKey), false)
 	end
@@ -658,7 +651,7 @@ end
 -- An encounter's drops changed (new drops came in): the same per-drop handling,
 -- so nothing depends on a drop update arriving for each one.
 function LT:OnLootHistoryUpdateEncounter(event, encounterID)
-	encounterID = PlainNumber(encounterID)
+	encounterID = st.PlainNumber(encounterID)
 	if encounterID then
 		for _, drop in ipairs(C_LootHistory.GetSortedDropsForEncounter(encounterID) or {}) do
 			RecordDrop(encounterID, drop, false)
@@ -680,14 +673,14 @@ end
 local function CatchUp()
 	local live, liveEncounters, drops = {}, {}, {}
 	for _, encounter in ipairs(C_LootHistory.GetAllEncounterInfos() or {}) do
-		local encounterID = type(encounter) == 'table' and PlainNumber(encounter.encounterID)
+		local encounterID = type(encounter) == 'table' and st.PlainNumber(encounter.encounterID)
 		if encounterID then
 			for _, drop in ipairs(C_LootHistory.GetSortedDropsForEncounter(encounterID) or {}) do
 				local key = type(drop) == 'table' and DropKey(encounterID, drop)
 				if key then
 					live[key] = true
 					liveEncounters[tostring(encounterID)] = true
-					tinsert(drops, { encounterID = encounterID, drop = drop, start = PlainNumber(drop.startTime) or 0 })
+					tinsert(drops, { encounterID = encounterID, drop = drop, start = st.PlainNumber(drop.startTime) or 0 })
 				end
 			end
 		end
