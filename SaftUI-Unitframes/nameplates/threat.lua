@@ -74,8 +74,13 @@ end
 -- up to the one tanking it (status 2 or 3: only the mob's target is). The
 -- state, not UnitDetailedThreatSituation's isTanking: the game keeps the
 -- threat values secret more often than the state (its secret predicates
--- single bosses out), and a member whose state is secret is skipped.
+-- single bosses out), and a member whose state is secret is skipped. A mob
+-- out of combat has no threat list, so nobody tanks it and the group isn't
+-- read: up to 40 reads saved for each idle hostile plate round a raid's tank.
+-- A secret answer can't rule combat out, so the group is read then.
 local function MemberTanking(mob)
+	local inCombat = UnitAffectingCombat(mob)
+	if not issecretvalue(inCombat) and not inCombat then return nil end
 	local tokens, count = PARTY, GetNumGroupMembers() - 1
 	if IsInRaid() then tokens, count = RAID, GetNumGroupMembers() end
 	for i = 1, math.min(count, #tokens) do
@@ -117,28 +122,50 @@ function UF:PlateThreat(frame)
 	return UF.ThreatState(isTank, status, coTanked)
 end
 
+-- What each threat text shows while it's shown: { state, percent, r, g, b },
+-- so an update that would write the same again is skipped (a mob's threat
+-- list changes many times a second in a pull). A secret percent can't be
+-- compared, so none is kept for it and the next update writes again.
+local shownText = setmetatable({}, { __mode = 'k' })
+
 -- Writes the threat text for the plate's state: the player's scaled threat
 -- percent, in the tint's colour, or the normal text colour while good. Hidden
 -- with no state, while the text is off or not wanted (a friendly plate), or
 -- with no percent. A secret percent is handed to the game to write: the
--- font string formats it without Lua reading it.
-local function UpdateThreatText(frame, state)
+-- font string formats it without Lua reading it. Unless force, the same
+-- state, percent and colour as it shows already writes nothing.
+local function UpdateThreatText(frame, state, force)
 	local text = frame.Threat
 	if not text then return end
 	if not state or not UF:ElementWanted(text) then
 		text:Hide()
+		shownText[text] = nil
 		return
 	end
 	local _, _, percent = UnitDetailedThreatSituation('player', frame.__unit)
-	if not issecretvalue(percent) and percent == nil then
+	local secret = issecretvalue(percent)
+	if not secret and percent == nil then
 		text:Hide()
+		shownText[text] = nil
+		return
+	end
+	local colors = st.config.profile.colors
+	local color = TINTED[state] and colors.threat[state] or colors.text.normal
+	local shown = shownText[text]
+	if not force and not secret and shown and shown.state == state and shown.percent == percent
+			and shown.r == color.r and shown.g == color.g and shown.b == color.b then
 		return
 	end
 	text:SetFormattedText('%.0f%%', percent)
-	local colors = st.config.profile.colors
-	local color = TINTED[state] and colors.threat[state] or colors.text.normal
 	text:SetTextColor(color.r, color.g, color.b)
 	text:Show()
+	if secret then
+		shownText[text] = nil
+	else
+		shown = shown or {}
+		shown.state, shown.percent, shown.r, shown.g, shown.b = state, percent, color.r, color.g, color.b
+		shownText[text] = shown
+	end
 end
 
 -- Works a plate's threat out again (frame.threatState, which health.lua's
@@ -146,8 +173,8 @@ end
 -- colour; otherwise a bar that had a tint is coloured again by oUF
 -- (Health:ForceUpdate), with none. A plate showing no unit (taken away, or
 -- showing only widgets) keeps no state; oUF colours its bar anew at its next
--- add.
-function UF:UpdatePlateThreat(frame)
+-- add. force writes the threat text even when what it shows is unchanged.
+function UF:UpdatePlateThreat(frame, force)
 	local shown = self:PlateShowsUnit(frame)
 	local state = shown and self:PlateThreat(frame) or nil
 	local wasTinted = TINTED[frame.threatState]
@@ -159,10 +186,11 @@ function UF:UpdatePlateThreat(frame)
 	elseif wasTinted and shown and health.ForceUpdate then
 		health:ForceUpdate()
 	end
-	UpdateThreatText(frame, state)
+	UpdateThreatText(frame, state, force)
 end
 
 local function UpdatePlate(frame) UF:UpdatePlateThreat(frame) end
+local function ForceUpdatePlate(frame) UF:UpdatePlateThreat(frame, true) end
 
 -- Updates the plate showing unit, for a nameplate token ('nameplate3') only:
 -- the same mob's other tokens (target, focus, boss1, mouseover) and group
@@ -175,9 +203,10 @@ end
 
 -- The plate's kind is set on every add and when the unit's faction changes
 -- ('kind'), its config on every update ('updated'), and a plate taken away
--- drops its state ('removed').
-UF:RegisterPlateCallback('kind', UpdatePlate)
-UF:RegisterPlateCallback('updated', UpdatePlate)
+-- drops its state ('removed'). The first two write the text whatever it
+-- showed: a new unit, or a font, alpha or place just set.
+UF:RegisterPlateCallback('kind', ForceUpdatePlate)
+UF:RegisterPlateCallback('updated', ForceUpdatePlate)
 UF:RegisterPlateCallback('removed', UpdatePlate)
 
 -- A mob's threat list changing retints its plate. A threat situation

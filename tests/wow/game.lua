@@ -932,6 +932,11 @@ end
 --     or 'NONE' (nil reads as 'NONE'). Another unit's is its stub.units role.
 --   stub.tank_aura: unit token -> true for a unit with an aura that makes it
 --     a tank (UnitHasEffectivelyTankAura, Forever only).
+--   UnitAffectingCombat(unit): a plain boolean (no secret annotation on
+--     either client). The player's is stub.in_combat. Another unit's is its
+--     stub.units combat field where a test sets one (a secret value too),
+--     else whether it has a threat list in stub.threat with anyone on it: a
+--     mob has a threat list only while it's in combat.
 --   stub.apply_client(): drops the globals stub.interface's client doesn't
 --     have (CLIENT_ONLY below), as T.client (tests/lib/theme_helpers.lua)
 --     does after setting the interface. A world whose interface a test sets
@@ -982,6 +987,15 @@ do
 		end
 		if isTanking ~= nil then tanking = isTanking end
 		return tanking, status, percent, percent, 0
+	end
+
+	function UnitAffectingCombat(unit)
+		if type(unit) ~= 'string' then error('Usage: local result = UnitAffectingCombat(unit)', 2) end
+		if unit == 'player' then return stub.in_combat end
+		local other = OtherUnit(unit)
+		if other and other.combat ~= nil then return other.combat end
+		local list = stub.threat[unit]
+		return list ~= nil and next(list) ~= nil
 	end
 
 	C_Secrets = C_Secrets or {}

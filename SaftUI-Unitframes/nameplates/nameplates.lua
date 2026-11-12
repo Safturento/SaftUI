@@ -74,13 +74,17 @@ end
 -- nil), so __unit alone would still name the unit that left.
 local showing = setmetatable({}, { __mode = 'k' })
 
--- SaftUI's frame showing a unit ('nameplate4'), by its __unit, or nil when
--- no plate of SaftUI's shows it.
+-- SaftUI's frame showing each unit token, from oUF's added callback to its
+-- removed one, so a unit's plate is found without walking every plate (threat
+-- events come many times a second in a pull).
+local frameOfUnit = {}
+
+-- SaftUI's frame showing a unit ('nameplate4'), or nil when no plate of
+-- SaftUI's shows it.
 function UF:PlateForUnit(unit)
-	for _, frame in pairs(self.nameplates) do
-		if showing[frame] and frame.__unit == unit then
-			return frame
-		end
+	local frame = frameOfUnit[unit]
+	if frame and showing[frame] and frame.__unit == unit then
+		return frame
 	end
 end
 
@@ -413,10 +417,12 @@ function UF:SpawnNameplates()
 
 	driver:SetAddedCallback(function(frame, _, unit)
 		showing[frame] = true
+		frameOfUnit[unit] = frame
 		UF:RunPlateCallbacks('added', frame, unit)
 	end)
 	driver:SetRemovedCallback(function(frame, _, unit)
 		showing[frame] = nil
+		if frameOfUnit[unit] == frame then frameOfUnit[unit] = nil end
 		UF:RunPlateCallbacks('removed', frame, unit)
 	end)
 

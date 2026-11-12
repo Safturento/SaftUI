@@ -236,6 +236,70 @@ test('a raid of 40: the scan reads the threat state of each member until the one
 	eq(auras, 0, "and no member's aura, raid5's role being enough")
 end)
 
+test("a tank reads the group only for a mob in combat: an idle hostile mob costs no member's threat read", function()
+	local st, UF = world()
+	stub.role = 'TANK'
+	local members = {}
+	for i = 1, 40 do members[i] = 'raid' .. i end
+	stub.group = { raid = true, members = members }
+	enemy('nameplate1')
+	stub.threat.nameplate1 = {}
+	local frame = NP.add('nameplate1')
+	local reads = 0
+	local real = UnitThreatSituation
+	UnitThreatSituation = function(unit, mob)
+		if unit ~= 'player' then reads = reads + 1 end
+		return real(unit, mob)
+	end
+	local restore = S.install()
+	local ok, err = pcall(function()
+		eq(UF:PlateThreat(frame), nil, 'out of combat: nothing')
+		eq(reads, 0, 'and no member read')
+		-- In combat with someone outside the group.
+		stub.units.nameplate1.combat = true
+		eq(UF:PlateThreat(frame), nil, 'in combat, nobody in the group tanks it: nothing')
+		eq(reads, 40, 'every member read')
+		-- A secret answer can't rule combat out.
+		reads = 0
+		stub.units.nameplate1.combat = S.secret('COMBAT')
+		eq(UF:PlateThreat(frame), nil, 'a secret answer: nothing')
+		eq(reads, 40, 'the group read, as in combat')
+	end)
+	restore()
+	UnitThreatSituation = real
+	check(ok, tostring(err))
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test("UF:PlateForUnit finds a plate by its unit's token, from the add to the remove, without walking every plate", function()
+	local st, UF = world()
+	local one, two = add_enemy('nameplate1', 0), add_enemy('nameplate2', 0)
+	NP.add('nameplate3', { widgets_only = true })
+	local all = UF.nameplates
+	UF.nameplates = {}
+	local ok, err = pcall(function()
+		eq(UF:PlateForUnit('nameplate1'), one, 'plate 1')
+		eq(UF:PlateForUnit('nameplate2'), two, 'plate 2')
+		eq(UF:PlateForUnit('nameplate3'), nil, 'a plate showing only widgets: none')
+		eq(UF:PlateForUnit('nameplate9'), nil, 'a token no plate shows: none')
+	end)
+	UF.nameplates = all
+	check(ok, tostring(err))
+
+	NP.remove('nameplate1')
+	eq(UF:PlateForUnit('nameplate1'), nil, 'taken away: none, though its frame keeps the unit')
+	-- The game hands the token to another plate, and the plate to another token.
+	NP.remove('nameplate3')
+	enemy('nameplate1')
+	local three = NP.add('nameplate1', { plate = 3 })
+	eq(UF:PlateForUnit('nameplate1'), three, 'the token on plate 3 now')
+	enemy('nameplate4')
+	local again = NP.add('nameplate4', { plate = 1 })
+	eq(again, one, "plate 1's frame")
+	eq(UF:PlateForUnit('nameplate4'), one, 'plate 1 for a new token')
+	eq(#take_errors(), 0, 'no error')
+end)
+
 test('no threat entry shows nothing; a secret threat state shows nothing, with no error', function()
 	local st, UF = world()
 	enemy('nameplate1')
@@ -534,6 +598,80 @@ test('the threat text shows only where the tint would: in a group, or solo with 
 	eq(frame.threatState, 'bad', 'the tint stays: it has no switch of its own')
 end)
 
+test('the threat text is written only when its state, percent or colour changed, and always after a threat colour change, a kind change or a config update', function()
+	local st, UF = world()
+	local frame = add_enemy('nameplate1', { status = 3, percent = 100 })
+	local text = frame.Threat
+	local writes = 0
+	local real = text.SetFormattedText
+	text.SetFormattedText = function(...) writes = writes + 1 return real(...) end
+
+	threat_changed('nameplate1')
+	threat_changed('nameplate1')
+	stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', 'player')
+	eq(writes, 0, 'the same state and percent: not written again')
+	eq(text:IsShown(), true, 'still shown')
+	stub.threat.nameplate1.player = { status = 3, percent = 90 }
+	threat_changed('nameplate1')
+	eq(writes, 1, 'a new percent: written')
+	eq(text:GetText(), '90%', 'the new percent')
+	stub.threat.nameplate1.player = { status = 1, percent = 90 }
+	threat_changed('nameplate1')
+	eq(writes, 2, 'a new state: written')
+	eq(rgb(text:GetTextColor()), color(st.config.profile.colors.threat.warning), "in its tint's colour")
+
+	st:ColorsChanged('threat')
+	eq(writes, 3, "the Colors tab's Threat: written, though nothing it shows changed")
+	UF:RunPlateCallbacks('kind', frame)
+	eq(writes, 4, 'a kind change: written')
+	local before = writes
+	UF:UpdateConfig('nameplate', 'Threat')
+	check(writes > before, 'a config update: written')
+
+	-- Good shows the normal text colour, which the Colors tab's text section
+	-- changes without telling the plates: the next threat event writes it.
+	stub.threat.nameplate1.player = { status = 0, percent = 90 }
+	threat_changed('nameplate1')
+	before = writes
+	local normal = st.config.profile.colors.text.normal
+	local r = normal.r
+	normal.r = r == 0.25 and 0.5 or 0.25
+	threat_changed('nameplate1')
+	eq(writes, before + 1, 'a new normal text colour: written')
+	eq(rgb(text:GetTextColor()), color(normal), 'in it')
+	normal.r = r
+
+	-- Hidden, then shown again with the same state and percent: written.
+	stub.threat.nameplate1 = {}
+	threat_changed('nameplate1')
+	eq(text:IsShown(), false, 'off the list: hidden')
+	before = writes
+	stub.threat.nameplate1 = { player = { status = 0, percent = 90 } }
+	threat_changed('nameplate1')
+	eq(writes, before + 1, 'back on the list: written')
+	eq(text:IsShown(), true, 'and shown')
+
+	-- A tank's mob loose on the healer: bad with no percent of the tank's
+	-- (hidden), then bad again with the tank back on its list at the percent
+	-- shown before: written and shown.
+	stub.role = 'TANK'
+	stub.units.party1.role = 'HEALER'
+	stub.threat.nameplate1 = { player = { status = 0, percent = 50 }, party1 = 3 }
+	threat_changed('nameplate1')
+	eq(frame.threatState .. ' ' .. text:GetText(), 'bad 50%', 'the tank at 50%, the mob on the healer')
+	stub.threat.nameplate1.player = nil
+	threat_changed('nameplate1')
+	eq(frame.threatState, 'bad', 'still bad, the tank off its list')
+	eq(text:IsShown(), false, 'no percent: hidden')
+	before = writes
+	stub.threat.nameplate1.player = { status = 0, percent = 50 }
+	threat_changed('nameplate1')
+	eq(writes, before + 1, 'back at 50%: written')
+	eq(text:IsShown(), true, 'and shown')
+	text.SetFormattedText = real
+	eq(#take_errors(), 0, 'no error')
+end)
+
 test('a secret percent is handed to the game to write, with no error', function()
 	local st, UF = world()
 	local frame = add_enemy('nameplate1', { status = 3, percent = 100 })
@@ -549,6 +687,9 @@ test('a secret percent is handed to the game to write, with no error', function(
 	eq(got and got[1], '%.0f%%', 'as a whole percent')
 	eq(got and got[2], percent, 'the secret itself')
 	eq(frame.Threat:IsShown(), true, 'shown')
+	got = nil
+	threat_changed('nameplate1')
+	check(got ~= nil, "written again: a secret percent can't be compared with the last")
 	eq(#take_errors(), 0, 'no error')
 	restore()
 end)

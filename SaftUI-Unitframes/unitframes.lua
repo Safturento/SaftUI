@@ -214,7 +214,7 @@ function UF:OnColorsChanged(group)
 	self:UpdateColors()
 	if group == 'threat' then
 		for _, frame in pairs(self.nameplates or {}) do
-			self:UpdatePlateThreat(frame)
+			self:UpdatePlateThreat(frame, true)
 		end
 		return
 	end
