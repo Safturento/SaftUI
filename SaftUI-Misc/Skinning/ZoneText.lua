@@ -280,13 +280,6 @@ function ZT:HookWorldMap()
 	label:HookScript('OnUpdate', function(frame) self:UpdateMapLine(frame) end)
 end
 
-function ZT:ADDON_LOADED(event, addon)
-	if addon == 'Blizzard_WorldMap' then
-		self:UnregisterEvent('ADDON_LOADED')
-		self:HookWorldMap()
-	end
-end
-
 -- After a theme recolor (st:RecolorThemed gave the lines Thin's colors): the zone
 -- name's color goes back on. After a text color change, the faction takes its
 -- new color: on the zone text at once, on the map on its next frame. Skinning
@@ -370,6 +363,6 @@ function ZT:OnEnable()
 	if WorldMapFrame then
 		self:HookWorldMap()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_WorldMap', function() self:HookWorldMap() end)
 	end
 end
