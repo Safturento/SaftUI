@@ -38,6 +38,8 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
    - your own `frame.width`
    - adding keys to Blizzard tables
 
+   Waiting for a Blizzard addon to load uses `st:OnBlizzardAddon(name, fn)` (`SaftUI-Core/api.lua`), which writes nothing onto any frame; `fn` is where your hooks and skins go.
+
    Keep SaftUI's per-frame data in a local weak table (`setmetatable({}, { __mode = 'k' })`) or on a SaftUI-owned frame. Writing fields onto frames SaftUI created (including oUF frames it spawned) is fine.
 
    The skinning helpers write fields too: `st:SetBackdrop` (`frame.backdrop`, `frame.thick`), `st:SkinActionButton` (that, plus `button.hover` and the like) and `st:SkinIcon` (a hook on the icon: since `28c0448` it keeps its crop and its hooked flag in weak tables of `skinning.lua`'s, so it writes nothing onto the icon but its hook). Use them on SaftUI's own buttons only. Under the Blizzard theme `st:SetBackdrop` also makes a button's ring as a texture of the frame it draws behind, so a caller that still draws on someone else's frame with `st:SetBackdrop` or `st:SkinActionButton` marks it first with `st:MarkForeign(frame)` (`SaftUI-Core/theme.lua`), which writes nothing onto it and keeps the ring on a frame of SaftUI's: the bags bar's Blizzard bag slots (`SaftUI-Bags/containers/bag.lua`) and Hekili's buttons (`SaftUI-Misc/Skinning/hekili.lua`), which also still take those fields. To skin one of Blizzard's buttons, as `SaftUI-Misc/totemskin.lua` does for the totem bar's secure buttons and `SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua` for the Cooldown Manager's items:
