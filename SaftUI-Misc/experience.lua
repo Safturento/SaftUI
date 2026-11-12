@@ -389,11 +389,7 @@ function XP:HideBlizz()
 				frame:HookScript('OnShow', HideBlizzBar)
 				-- Blizzard's Edit Mode box for the container no longer
 				-- controls anything, so keep it hidden. HookScript only.
-				if frame.Selection then
-					frame.Selection:HookScript('OnShow', function(selection)
-						selection:Hide()
-					end)
-				end
+				st:HideEditModeSelection(frame)
 			end
 			if frame:IsShown() then
 				HideBlizzBar(frame)
