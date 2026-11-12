@@ -49,12 +49,7 @@
 -- width), SetAddedCallback, SetRemovedCallback and SetTargetCallback, each
 -- callback called (unitFrame, event, unit). On the game's events:
 --   * NAME_PLATE_UNIT_ADDED: a plate C_NamePlate won't give (a forbidden one)
---     is skipped. The player's own plate (C_NamePlate.GetNamePlateForUnit
---     ('player'), the personal resource display) is left to Blizzard, as
---     SaftUI's patch to the bundled oUF has it: no frame is made on it, and
---     one from an earlier unit is paused and hidden, with no added callback
---     (the real one also unblocks the plate's UnitFrame, SetRolesets(nil)).
---     A plate's first add makes its frame: a Button named prefix
+--     is skipped. A plate's first add makes its frame: a Button named prefix
 --     .. the plate's name, the plate's child, mouse off, SetAllPoints to the
 --     plate, isNamePlate; the plate's unitFrame and style are set with rawset
 --     (oUF writes them onto Blizzard's plate, its own departure from
@@ -72,8 +67,8 @@
 --     ignores a nil unit, so __unit keeps the unit that left), every paused
 --     element resumed, the frame shown, then the removed callback.
 --   * PLAYER_TARGET_CHANGED: on the target's plate (not one showing only
---     widgets or a game object, nor the player's own), the target callback
---     with 'target', then UpdateAllElements.
+--     widgets or a game object), the target callback with 'target', then
+--     UpdateAllElements.
 -- A second SpawnNamePlates reports 'oUF nameplate driver has already been
 -- initialized.' to the error handler and returns nil, as oUF's nierror does.
 -- Enabling an element gives its widget __owner, the frame, as every element's
@@ -84,8 +79,10 @@
 -- flag is on, and the frame drops it once no bar wants it (oUF's events.lua
 -- keeps one handler per bar). Health's Enable shows the bar and its Disable
 -- hides it, whatever SaftUI's config says, as health.lua's do (a pause and a
--- resume too). Enabling the aura containers turns each on (SetEnabled(true)),
--- as the Auras meta element's Enable does.
+-- resume too); the castbar's Enable and Disable both hide it, as castbar.lua's
+-- do (oUF shows it for a cast, which nothing here starts). Enabling the aura
+-- containers turns each on (SetEnabled(true)), as the Auras meta element's
+-- Enable does.
 --
 -- What the real oUF does beyond it:
 --   * Spawn makes a SecureUnitButtonTemplate button, sets its rolesets and
@@ -222,6 +219,7 @@ function M.new()
 		if widget == nil then return end
 		if type(widget) == 'table' then widget.__owner = frame end
 		if name == 'Health' then widget:Show() end
+		if name == 'Castbar' then widget:Hide() end
 		if name == 'Health' or name == 'Power' then return EnableBar(frame, widget) end
 		return true
 	end
@@ -231,6 +229,8 @@ function M.new()
 		elseif name == 'Health' or name == 'Power' then
 			if name == 'Health' then frame.Health:Hide() end
 			WantFaction(frame[name], false)
+		elseif name == 'Castbar' then
+			frame.Castbar:Hide()
 		end
 	end
 
@@ -387,20 +387,10 @@ function M.new()
 	local function ShowsUnit(unit)
 		return not (UnitNameplateShowsWidgetsOnly(unit) or UnitIsGameObject(unit))
 	end
-	local function IsPlayerPlate(plate)
-		return plate == C_NamePlate.GetNamePlateForUnit('player')
-	end
 	local function DriverEvent(driver, event, unit)
 		if event == 'NAME_PLATE_UNIT_ADDED' then
 			local plate = C_NamePlate.GetNamePlateForUnit(unit)
 			if not plate then return end
-			if IsPlayerPlate(plate) then
-				if plate.unitFrame then
-					plate.unitFrame:PauseAllElements()
-					plate.unitFrame:Hide()
-				end
-				return
-			end
 			local object = plate.unitFrame
 			if not object then
 				rawset(plate, 'style', driver.style)
@@ -432,7 +422,7 @@ function M.new()
 			if driver.removedCallback then driver.removedCallback(object, event, unit) end
 		elseif event == 'PLAYER_TARGET_CHANGED' then
 			local plate = C_NamePlate.GetNamePlateForUnit('target')
-			if not plate or not plate.unitFrame or not ShowsUnit('target') or IsPlayerPlate(plate) then return end
+			if not plate or not plate.unitFrame or not ShowsUnit('target') then return end
 			if driver.targetCallback then driver.targetCallback(plate.unitFrame, event, 'target') end
 			plate.unitFrame:UpdateAllElements(event)
 		end

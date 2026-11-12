@@ -471,8 +471,16 @@ end
 --     opts.game_object are UnitNameplateShowsWidgetsOnly's and
 --     UnitIsGameObject's answers for the unit (a capture bar, a quest object).
 --     Each add hands the plate a new pooled Blizzard UnitFrame (a Button) with
---     its WidgetContainer (hidden) and SoftTargetFrame children, set with
---     rawset as Blizzard's pool and template do.
+--     its CastBarsContainer, WidgetContainer (hidden) and SoftTargetFrame
+--     children, set with rawset as Blizzard's pool and template do. Blizzard
+--     anchors the WidgetContainer before addons hear of the add, as its
+--     UpdateWidgetsOnlyMode does (OnUnitSet, Blizzard_NamePlateUnitFrame.lua,
+--     both clients): points cleared, then its BOTTOM on the UnitFrame's BOTTOM
+--     for a widget-only unit, else its TOP on the CastBarsContainer's BOTTOM.
+--   stub.set_nameplate_widgets_only(unit, value): the unit's plate starts or
+--     stops showing only widgets without a new add, and Blizzard anchors its
+--     WidgetContainer again, as UpdateWidgetsOnlyMode does when the game's
+--     friendly NPC plates setting changes (a CVarCallbackRegistry callback).
 --   stub.remove_nameplate(unit): the game takes the unit's plate away:
 --     Blizzard's driver takes its UnitFrame back (hidden, its points cleared,
 --     as a frame pool resets one), NAME_PLATE_UNIT_REMOVED fires, and the
@@ -508,6 +516,19 @@ do
 
 	local function made(frame)
 		if stub.on_nameplate_frame then stub.on_nameplate_frame(frame) end
+	end
+
+	-- Blizzard's NamePlateUnitFrameMixin:UpdateWidgetsOnlyMode, for the
+	-- WidgetContainer of the UnitFrame a plate has.
+	local function anchor_widgets(record)
+		local unitFrame = rawget(record.frame, 'UnitFrame')
+		local widgets = rawget(unitFrame, 'WidgetContainer')
+		widgets:ClearAllPoints()
+		if record.widgets_only then
+			widgets:SetPoint('BOTTOM', unitFrame, 'BOTTOM')
+		else
+			widgets:SetPoint('TOP', rawget(unitFrame, 'CastBarsContainer'), 'BOTTOM')
+		end
 	end
 
 	local function set_size(width, height)
@@ -600,13 +621,18 @@ do
 		local plate = record.frame
 		local unitFrame = CreateFrame('Button', nil, plate)
 		unitFrame:SetAllPoints(plate)
+		local castBars = CreateFrame('Frame', nil, unitFrame)
+		castBars:SetPoint('TOP', unitFrame, 'BOTTOM')
 		local widgets = CreateFrame('Frame', nil, unitFrame)
 		widgets:Hide()
 		local softTarget = CreateFrame('Frame', nil, unitFrame)
+		rawset(unitFrame, 'CastBarsContainer', castBars)
 		rawset(unitFrame, 'WidgetContainer', widgets)
 		rawset(unitFrame, 'SoftTargetFrame', softTarget)
 		rawset(plate, 'UnitFrame', unitFrame)
+		anchor_widgets(record)
 		made(unitFrame)
+		made(castBars)
 		made(widgets)
 		made(softTarget)
 
@@ -629,6 +655,13 @@ do
 		plate:Hide()
 		byUnit[unit] = nil
 		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
+	end
+
+	function stub.set_nameplate_widgets_only(unit, value)
+		local record = byUnit[unit]
+		assert(record, 'set_nameplate_widgets_only: ' .. tostring(unit) .. ' has no plate')
+		record.widgets_only = value == true
+		anchor_widgets(record)
 	end
 end
 
@@ -657,24 +690,4 @@ do
 	end
 	UnitIsFriend = between('UnitIsFriend', 'friend')
 	UnitCanAttack = between('UnitCanAttack', 'attackable')
-end
-
--- The player's own plate, the personal resource display (on when the game's
--- nameplateShowSelf is): Blizzard's driver finds it with
--- C_NamePlate.GetNamePlateForUnit('player') (NamePlateDriverMixin:
--- SetupClassNameplateBars, both clients). stub.nameplate_player is the unit
--- token whose plate it is (one stub.add_nameplate showed), nil for none.
-stub.nameplate_player = nil
-do
-	local getPlate = C_NamePlate.GetNamePlateForUnit
-	function C_NamePlate.GetNamePlateForUnit(unit, includeForbidden)
-		if type(unit) ~= 'string' then
-			error('Usage: local nameplate = C_NamePlate.GetNamePlateForUnit(unitToken [, includeForbidden])', 2)
-		end
-		if unit:lower() == 'player' then
-			if not stub.nameplate_player then return nil end
-			return getPlate(stub.nameplate_player, includeForbidden)
-		end
-		return getPlate(unit, includeForbidden)
-	end
 end

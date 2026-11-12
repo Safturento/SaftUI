@@ -18,12 +18,6 @@ local UF = st:GetModule('Unitframes')
 	Nothing is written onto Blizzard's plate frames here (.agents/taint.md,
 	rule 1). oUF itself writes its frame and style onto each plate (unitFrame,
 	style) and blocks Blizzard's own UnitFrame on it on every add.
-
-	The player's own plate (the personal resource display) stays Blizzard's:
-	SaftUI's change to the bundled oUF's driver (Libraries/oUF/ouf.lua, marked
-	SaftUI) makes no frame there, pauses and hides one the plate has from an
-	earlier unit, and unblocks the UnitFrame Blizzard handed it, which oUF may
-	have blocked on another plate (they come from one pool).
 ]]
 
 -- The nameplate addons SaftUI stands down for, in the order they're named to
@@ -133,11 +127,12 @@ UF.PLATE_ENEMY_ONLY = { Castbar = true, Buffs = true, Debuffs = true, QuestIndic
 local OUF_ENEMY_ONLY = { Castbar = true, QuestIndicator = true }
 local AURA_AREAS = { Buffs = true, Debuffs = true }
 
--- Whether a plate's unit is a friend: UnitIsFriend and not UnitCanAttack, as
--- Blizzard's own plate tells them (NamePlateUnitFrameMixin:UpdateIsFriend), so
--- an attackable friend (a cross-faction player in your party, outside an
--- instance) counts as an enemy. A secret answer counts as an enemy, so the
--- plate shows everything.
+-- Whether a plate's unit is a friend: UnitIsFriend and not UnitCanAttack.
+-- Broader than Blizzard's own plate on purpose: Blizzard counts only an
+-- attackable party member who's a player as an enemy
+-- (NamePlateUnitFrameMixin:UpdateIsFriend), and SaftUI counts every
+-- attackable friend as one (a duel, free-for-all PvP), since you can fight it.
+-- A secret answer counts as an enemy, so the plate shows everything.
 function UF.IsFriendlyPlate(unit)
 	local friend = UnitIsFriend('player', unit)
 	if issecretvalue(friend) or not friend then return false end
@@ -218,25 +213,55 @@ end)
 -- the plate so they still show: oUF does that on a plate's first add only,
 -- for the UnitFrame the plate had then, so SaftUI does it on every add,
 -- widget-only and game object plates included (oUF runs no added callback for
--- those). The same calls oUF makes; reading the plate's UnitFrame is only a
--- read. A plate C_NamePlate won't give addon code (a forbidden one) is left
--- alone, as is the player's own (the personal resource display), whose
--- UnitFrame Blizzard still draws (SaftUI's change to the bundled oUF's
--- driver, Libraries/oUF/ouf.lua).
-local function MoveWidgets(unit)
-	local plate = C_NamePlate.GetNamePlateForUnit(unit)
-	if not plate or plate == C_NamePlate.GetNamePlateForUnit('player') then return end
+-- those). Reading the plate's UnitFrame is only a read, and the calls are
+-- widget methods on Blizzard's frames, as oUF's are.
+--
+-- Blizzard anchors the widgets itself just before (NamePlateUnitFrameMixin:
+-- UpdateWidgetsOnlyMode): their bottom on its UnitFrame's bottom on a plate
+-- that shows only widgets, their top under its castbar otherwise. Their
+-- points are cleared first, so they hang from the plate's bottom, or sit on it
+-- for a widget-only plate, by one point. A UnitFrame made from a template
+-- without them (a spectator's) is left as it is.
+local function PlaceWidgets(plate, unit)
 	local blizzardFrame = plate.UnitFrame
 	if not blizzardFrame then return end
-	blizzardFrame.WidgetContainer:SetParent(plate)
-	blizzardFrame.WidgetContainer:SetPoint('TOP', plate, 'BOTTOM')
-	blizzardFrame.SoftTargetFrame:SetParent(plate)
+	local widgets = blizzardFrame.WidgetContainer
+	if widgets then
+		widgets:SetParent(plate)
+		widgets:ClearAllPoints()
+		if UnitNameplateShowsWidgetsOnly(unit) then
+			widgets:SetPoint('BOTTOM', plate, 'BOTTOM')
+		else
+			widgets:SetPoint('TOP', plate, 'BOTTOM')
+		end
+	end
+	local softTarget = blizzardFrame.SoftTargetFrame
+	if softTarget then softTarget:SetParent(plate) end
+end
+
+-- The plate each unit is on ('nameplate3' -> NamePlate3), for every plate
+-- C_NamePlate gives addon code (not a forbidden one), widget-only ones too:
+-- from SaftUI's own listener, from the add to the remove.
+local plateOfUnit = {}
+
+-- Places the widgets of every plate that shows a unit again. Blizzard anchors
+-- them again whenever the game's friendly NPC plates setting changes (its
+-- UpdateWidgetsOnlyMode is a callback on it), which SaftUI's Friendly plates
+-- toggle sets, so this runs after SaftUI sets it.
+function UF:RefreshPlateWidgets()
+	for unit, plate in pairs(plateOfUnit) do
+		PlaceWidgets(plate, unit)
+	end
 end
 
 -- SaftUI's own listener, made with the driver (UF:SpawnNameplates).
 local function OnPlateEvent(_, event, unit)
 	if event == 'NAME_PLATE_UNIT_ADDED' then
-		MoveWidgets(unit)
+		local plate = C_NamePlate.GetNamePlateForUnit(unit)
+		plateOfUnit[unit] = plate
+		if plate then PlaceWidgets(plate, unit) end
+	elseif event == 'NAME_PLATE_UNIT_REMOVED' then
+		plateOfUnit[unit] = nil
 	elseif event == 'UNIT_FACTION' then
 		if unit == 'player' then
 			-- The player's own faction (a PvP flag) can change any plate's.
@@ -293,6 +318,7 @@ function UF:SpawnNameplates()
 	local events = CreateFrame('Frame')
 	events:SetScript('OnEvent', OnPlateEvent)
 	events:RegisterEvent('NAME_PLATE_UNIT_ADDED')
+	events:RegisterEvent('NAME_PLATE_UNIT_REMOVED')
 	events:RegisterEvent('UNIT_FACTION')
 
 	self:ApplyPlateSize()

@@ -42,10 +42,15 @@ local function friend(unit) unit_is(unit, true, false) end
 local function enemy(unit) unit_is(unit, false, true) end
 
 -- Checks a plate's frame carries an enemy's parts (enemy true) or a friend's.
+-- The castbar, the quest icon and the raid mark are shown by oUF's own
+-- updates (a cast, a quest unit, a mark), which the stand-in doesn't run; for
+-- those, shown here means SaftUI left them to oUF (UF:SetElementEnabled and
+-- UF:ApplyPlateKind show them, after oUF's castbar Enable hid the bar), and
+-- the oUF update after an add decides. Hidden means SaftUI hid them.
 local function check_kind(frame, enemy, label)
 	for _, name in ipairs({ 'Castbar', 'QuestIndicator' }) do
 		eq(frame:IsElementEnabled(name) == true, enemy, label .. ': ' .. name .. (enemy and ' enabled in oUF' or ' disabled in oUF'))
-		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' shown' or ' hidden'))
+		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' left to oUF' or ' hidden'))
 	end
 	for _, name in ipairs({ 'Buffs', 'Debuffs' }) do
 		eq(frame[name].enabled, enemy, label .. ': ' .. name .. (enemy and ' on' or ' off'))
@@ -54,7 +59,7 @@ local function check_kind(frame, enemy, label)
 	eq(frame.Health:IsShown(), true, label .. ': the bar shown')
 	eq(frame.Name:IsShown(), true, label .. ': the name shown')
 	eq(frame.Health.text:IsShown(), true, label .. ': the health text shown')
-	eq(frame.RaidTargetIndicator:IsShown(), true, label .. ': the raid mark shown')
+	eq(frame.RaidTargetIndicator:IsShown(), true, label .. ': the raid mark left to oUF')
 	eq(frame.friendly, not enemy, label .. ': frame.friendly')
 end
 
@@ -235,7 +240,7 @@ test('a part turned on or off in the options follows on a plate that shows its u
 	P.castbar.enable = true
 	UF:UpdateConfig('nameplate', 'Castbar')
 	eq(frame:IsElementEnabled('Castbar'), true, 'turned on: enabled in oUF')
-	eq(frame.Castbar:IsShown(), true, 'and shown')
+	eq(frame.Castbar:IsShown(), false, "hidden by oUF's Enable: the update after it shows a cast")
 	local enabledAt
 	for i, entry in ipairs(log) do
 		if entry == 'enable Castbar' then enabledAt = i end
@@ -316,7 +321,7 @@ test('a plate that showed only widgets gets its kind back when it is reused', fu
 		NP.add('nameplate5', { plate = 1 })
 		eq(frame.Health:IsShown(), false, client .. ': an enemy: the bar off again')
 		eq(frame:IsElementEnabled('Castbar'), true, client .. ': an enemy: the castbar enabled')
-		eq(frame.Castbar:IsShown(), true, client .. ': and shown')
+		eq(frame.Castbar:IsShown(), true, client .. ": and left to oUF's update")
 		for _, name in ipairs({ 'Buffs', 'Debuffs' }) do
 			eq(frame[name].enabled, true, client .. ': an enemy: ' .. name .. ' on')
 			eq(frame[name]:IsShown(), true, client .. ': an enemy: ' .. name .. ' shown')
@@ -348,13 +353,15 @@ end)
 ------------------------------------------------------------------ Blizzard's widgets
 
 -- Checks the UnitFrame Blizzard gave plate has its widgets and soft target
--- icon on the plate, the widgets hanging from its bottom.
-local function check_widgets(plate, label)
+-- icon on the plate, by one point: the widgets' top on the plate's bottom, or
+-- for a plate that shows only widgets (widgetsOnly) their bottom on it.
+local function check_widgets(plate, label, widgetsOnly)
 	local unitFrame = rawget(plate, 'UnitFrame')
 	local widgets, softTarget = rawget(unitFrame, 'WidgetContainer'), rawget(unitFrame, 'SoftTargetFrame')
 	eq(widgets:GetParent(), plate, label .. ': the widgets on the plate')
+	eq(widgets:GetNumPoints(), 1, label .. ': by one point')
 	local point, relativeTo, relativePoint = widgets:GetPoint(1)
-	eq(point, 'TOP', label .. ': their top')
+	eq(point, widgetsOnly and 'BOTTOM' or 'TOP', label .. (widgetsOnly and ': their bottom' or ': their top'))
 	eq(relativeTo, plate, label .. ': to the plate')
 	eq(relativePoint, 'BOTTOM', label .. ': its bottom')
 	eq(softTarget:GetParent(), plate, label .. ': the soft target icon on the plate')
@@ -376,13 +383,49 @@ test('widgets move to the plate on every add, widget-only plates too', function(
 		eq(added, 2, client .. ': two added callbacks')
 
 		NP.add('nameplate3', { widgets_only = true })
-		check_widgets(NamePlate2, client .. ': a widget-only plate')
+		check_widgets(NamePlate2, client .. ': a widget-only plate', true)
 		NP.add('nameplate4', { game_object = true })
 		check_widgets(NamePlate3, client .. ': a game object')
 		NP.remove('nameplate3')
 		NP.add('nameplate5', { plate = 2, widgets_only = true })
-		check_widgets(NamePlate2, client .. ': a widget-only plate again')
-		eq(added, 2, client .. ': no added callback for those')
+		check_widgets(NamePlate2, client .. ': a widget-only plate again', true)
+		NP.remove('nameplate5')
+		NP.add('nameplate6', { plate = 2 })
+		check_widgets(NamePlate2, client .. ': a widget-only plate reused for an enemy')
+		eq(added, 3, client .. ': no added callback for those')
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+test("a plate's widgets are placed again after Blizzard places them again", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		UF:RefreshPlateWidgets()
+		enemy('nameplate1')
+		NP.add('nameplate1')
+		NP.add('nameplate2', { widgets_only = true })
+		NP.add('nameplate3')
+		NP.remove('nameplate3')
+
+		-- The game's friendly NPC plates setting changed: plate 1 now shows
+		-- only widgets, plate 2 its whole unit, and Blizzard anchored each
+		-- plate's widgets to its own UnitFrame again.
+		stub.set_nameplate_widgets_only('nameplate1', true)
+		stub.set_nameplate_widgets_only('nameplate2', false)
+		local unitFrame = rawget(NamePlate1, 'UnitFrame')
+		eq(select(2, rawget(unitFrame, 'WidgetContainer'):GetPoint(1)), unitFrame, client .. ": Blizzard's anchor")
+
+		UF:RefreshPlateWidgets()
+		check_widgets(NamePlate1, client .. ': plate 1, now widgets only', true)
+		check_widgets(NamePlate2, client .. ': plate 2, now its whole unit')
+		local released = rawget(NamePlate3, 'UnitFrame')
+		eq(released, nil, client .. ': a plate that left has no UnitFrame to place')
+
+		-- A UnitFrame made from a template without widgets or a soft target
+		-- icon (a spectator's) is left as it is.
+		rawset(unitFrame, 'WidgetContainer', nil)
+		rawset(unitFrame, 'SoftTargetFrame', nil)
+		UF:RefreshPlateWidgets()
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
@@ -403,82 +446,6 @@ test('a forbidden plate is left alone', function()
 	NP.remove('nameplate4')
 	eq(#log, 0, 'no callbacks')
 	eq(#take_errors(), 0, 'no error')
-end)
-
------------------------------------------------------------------- the player's own plate
-
-test("the personal resource display stays Blizzard's", function()
-	for _, client in ipairs({ 'forever', 'retail' }) do
-		local st, UF = world(client)
-		local log = {}
-		UF:RegisterPlateCallback('added', function(_, unit) log[#log + 1] = 'added ' .. unit end)
-		UF:RegisterPlateCallback('removed', function(_, unit) log[#log + 1] = 'removed ' .. unit end)
-
-		-- The player's plate first: no frame of SaftUI's is made on it, and its
-		-- widgets stay on Blizzard's UnitFrame.
-		stub.nameplate_player = 'nameplate1'
-		eq(NP.add('nameplate1'), nil, client .. ": no frame of SaftUI's on the player's plate")
-		eq(UF.nameplates[1], nil, client .. ': none kept')
-		local unitFrame = rawget(NamePlate1, 'UnitFrame')
-		eq(rawget(unitFrame, 'WidgetContainer'):GetParent(), unitFrame, client .. ': its widgets left on its UnitFrame')
-		eq(rawget(unitFrame, 'SoftTargetFrame'):GetParent(), unitFrame, client .. ': its soft target icon too')
-		NP.remove('nameplate1')
-		stub.nameplate_player = nil
-
-		-- The plate reused for an enemy gets SaftUI's frame.
-		enemy('nameplate2')
-		local frame = NP.add('nameplate2', { plate = 1 })
-		check(frame ~= nil and frame:IsShown(), client .. ': an enemy on the same plate: SaftUI\'s frame')
-		NP.remove('nameplate2')
-
-		-- Then the player's plate again: SaftUI's frame on it paused and hidden.
-		stub.nameplate_player = 'nameplate3'
-		friend('nameplate3')
-		log = {}
-		NP.add('nameplate3', { plate = 1 })
-		eq(frame:IsShown(), false, client .. ': hidden on the player\'s plate')
-		eq(frame:IsElementPaused('Health'), true, client .. ': its parts paused')
-		eq(UF:PlateForUnit('nameplate3'), nil, client .. ': not a plate of SaftUI\'s for the unit')
-		eq(rawget(rawget(NamePlate1, 'UnitFrame'), 'WidgetContainer'):GetParent(), rawget(NamePlate1, 'UnitFrame'),
-			client .. ': its widgets left on its UnitFrame')
-		local updates = frame.__updates
-		stub.fire_event('UNIT_FACTION', 'nameplate3')
-		stub.fire_event('UNIT_FACTION', 'player')
-		stub.nameplate_target = 'nameplate3'
-		stub.fire_event('PLAYER_TARGET_CHANGED')
-		stub.nameplate_target = nil
-		eq(frame.__updates, updates, client .. ': its faction or being targeted updates nothing')
-		NP.remove('nameplate3')
-		stub.nameplate_player = nil
-		eq(frame:IsElementPaused('Health'), nil, client .. ': resumed when it leaves')
-
-		-- And reused for a friend: the friend's kind.
-		friend('nameplate4')
-		NP.add('nameplate4', { plate = 1 })
-		check_kind(frame, false, client .. ': a friend after the player')
-		eq(table.concat(log, ', '), 'removed nameplate3, added nameplate4', client .. ': no added callback for the player\'s plate')
-		eq(#take_errors(), 0, client .. ': no error')
-	end
-end)
-
-test("the bundled oUF's nameplate driver leaves the player's own plate alone before it blocks Blizzard's UnitFrame", function()
-	local src = read_saftui_source('SaftUI-Unitframes/Libraries/oUF/ouf.lua')
-	local handler = src:match('local function driverEventHandler%(self, event, unit%)(.-)\n\tend\n')
-	check(handler ~= nil, 'the handler found')
-	handler = handler or ''
-	check(src:find("return nameplate == C_NamePlate.GetNamePlateForUnit('player')", 1, true),
-		"the player's plate found by frame, not UnitIsUnit")
-	local added = handler:find("event == 'NAME_PLATE_UNIT_ADDED'", 1, true)
-	local check_at = added and handler:find('if(isPlayerPlate(nameplate)) then', added, true)
-	local unblock = check_at and handler:find('nameplate.UnitFrame:SetRolesets(nil)', check_at, true)
-	local pause = check_at and handler:find('nameplate.unitFrame:PauseAllElements()', check_at, true)
-	local disable = added and handler:find('oUF:DisableBlizzard(unit)', added, true)
-	check(check_at and disable and check_at < disable, "the add checks the player's plate before oUF:DisableBlizzard")
-	check(unblock and disable and unblock < disable, 'and unblocks its UnitFrame there')
-	check(pause and disable and pause < disable, "and pauses oUF's frame there")
-	local target = handler:find("event == 'PLAYER_TARGET_CHANGED'", 1, true)
-	local targetCheck = target and handler:find('if(isPlayerPlate(nameplate)) then return end', target, true)
-	check(targetCheck and targetCheck < added, 'targeting yourself leaves the plate alone too')
 end)
 
 ------------------------------------------------------------------ every other unit
