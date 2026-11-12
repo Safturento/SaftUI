@@ -471,8 +471,16 @@ end
 --     opts.game_object are UnitNameplateShowsWidgetsOnly's and
 --     UnitIsGameObject's answers for the unit (a capture bar, a quest object).
 --     Each add hands the plate a new pooled Blizzard UnitFrame (a Button) with
---     its WidgetContainer (hidden) and SoftTargetFrame children, set with
---     rawset as Blizzard's pool and template do.
+--     its CastBarsContainer, WidgetContainer (hidden) and SoftTargetFrame
+--     children, set with rawset as Blizzard's pool and template do. Blizzard
+--     anchors the WidgetContainer before addons hear of the add, as its
+--     UpdateWidgetsOnlyMode does (OnUnitSet, Blizzard_NamePlateUnitFrame.lua,
+--     both clients): points cleared, then its BOTTOM on the UnitFrame's BOTTOM
+--     for a widget-only unit, else its TOP on the CastBarsContainer's BOTTOM.
+--   stub.set_nameplate_widgets_only(unit, value): the unit's plate starts or
+--     stops showing only widgets without a new add, and Blizzard anchors its
+--     WidgetContainer again, as UpdateWidgetsOnlyMode does when the game's
+--     friendly NPC plates setting changes (a CVarCallbackRegistry callback).
 --   stub.remove_nameplate(unit): the game takes the unit's plate away:
 --     Blizzard's driver takes its UnitFrame back (hidden, its points cleared,
 --     as a frame pool resets one), NAME_PLATE_UNIT_REMOVED fires, and the
@@ -508,6 +516,19 @@ do
 
 	local function made(frame)
 		if stub.on_nameplate_frame then stub.on_nameplate_frame(frame) end
+	end
+
+	-- Blizzard's NamePlateUnitFrameMixin:UpdateWidgetsOnlyMode, for the
+	-- WidgetContainer of the UnitFrame a plate has.
+	local function anchor_widgets(record)
+		local unitFrame = rawget(record.frame, 'UnitFrame')
+		local widgets = rawget(unitFrame, 'WidgetContainer')
+		widgets:ClearAllPoints()
+		if record.widgets_only then
+			widgets:SetPoint('BOTTOM', unitFrame, 'BOTTOM')
+		else
+			widgets:SetPoint('TOP', rawget(unitFrame, 'CastBarsContainer'), 'BOTTOM')
+		end
 	end
 
 	local function set_size(width, height)
@@ -600,13 +621,18 @@ do
 		local plate = record.frame
 		local unitFrame = CreateFrame('Button', nil, plate)
 		unitFrame:SetAllPoints(plate)
+		local castBars = CreateFrame('Frame', nil, unitFrame)
+		castBars:SetPoint('TOP', unitFrame, 'BOTTOM')
 		local widgets = CreateFrame('Frame', nil, unitFrame)
 		widgets:Hide()
 		local softTarget = CreateFrame('Frame', nil, unitFrame)
+		rawset(unitFrame, 'CastBarsContainer', castBars)
 		rawset(unitFrame, 'WidgetContainer', widgets)
 		rawset(unitFrame, 'SoftTargetFrame', softTarget)
 		rawset(plate, 'UnitFrame', unitFrame)
+		anchor_widgets(record)
 		made(unitFrame)
+		made(castBars)
 		made(widgets)
 		made(softTarget)
 
@@ -630,6 +656,40 @@ do
 		byUnit[unit] = nil
 		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
 	end
+
+	function stub.set_nameplate_widgets_only(unit, value)
+		local record = byUnit[unit]
+		assert(record, 'set_nameplate_widgets_only: ' .. tostring(unit) .. ' has no plate')
+		record.widgets_only = value == true
+		anchor_widgets(record)
+	end
+end
+
+-- UnitIsFriend(unit, otherUnit) and UnitCanAttack(unit, otherUnit)
+-- (UnitDocumentation.lua, the same on both clients: two unit tokens, a plain
+-- boolean back): between the player and a stub.units unit, either way round,
+-- its friend and attackable fields (false where unset). A test can put a
+-- secret value (tests/lib/secrets.lua) in either, as restricted content could
+-- hand one. A unit that isn't there gives false, as the game does for a unit
+-- that doesn't exist; no other pair is stubbed, so it errors rather than guess.
+do
+	local function between(name, field)
+		return function(unit, otherUnit)
+			if type(unit) ~= 'string' or type(otherUnit) ~= 'string' then
+				error(('Usage: local result = %s(unit, target)'):format(name), 2)
+			end
+			local other = (otherUnit == 'player' and OtherUnit(unit)) or (unit == 'player' and OtherUnit(otherUnit))
+			if other then
+				local value = other[field]
+				if value == nil then return false end
+				return value
+			end
+			if not (OtherUnit(unit) or unit == 'player') or not (OtherUnit(otherUnit) or otherUnit == 'player') then return false end
+			error(('%s(%s, %s) is not stubbed: only a stub.units unit and the player'):format(name, unit, otherUnit), 2)
+		end
+	end
+	UnitIsFriend = between('UnitIsFriend', 'friend')
+	UnitCanAttack = between('UnitCanAttack', 'attackable')
 end
 
 -- C_CVar (CVarDocumentation.lua, the same on both clients): the game's

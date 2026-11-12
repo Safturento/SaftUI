@@ -297,6 +297,29 @@ test("Friendly plates sets the game's friendly plates for players and NPCs, out 
 	end
 end)
 
+test("setting the game's plates puts Blizzard's widgets back on SaftUI's plates (Blizzard re-anchors them on the friendly NPC setting)", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		UF:SpawnNameplates()
+		local refreshed = 0
+		local real = UF.RefreshPlateWidgets
+		UF.RefreshPlateWidgets = function(self, ...) refreshed = refreshed + 1 return real(self, ...) end
+		local ok, err = pcall(function()
+			UF:ApplyNameplateCVars()
+			eq(refreshed, 1, client .. ': refreshed once after the settings are set')
+			check(set(UF, 'friendly', false), client .. ': Friendly plates off')
+			eq(refreshed, 2, client .. ': and again when Friendly plates changes them')
+			-- Nameplates off (the reload declined): nothing set, nothing refreshed.
+			UF:GetProfileConfig().nameplate.enable = false
+			UF:ApplyNameplateCVars()
+			eq(refreshed, 2, client .. ': nothing with Nameplates off')
+		end)
+		UF.RefreshPlateWidgets = real
+		check(ok, client .. ': ' .. tostring(err))
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
 test('Friendly plates with Nameplates off, or another addon drawing the plates, is only saved', function()
 	local st, UF = world('forever')
 	UF:GetProfileConfig().nameplate.enable = false

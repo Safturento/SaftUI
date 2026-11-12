@@ -108,6 +108,174 @@ function UF:RunPlateCallbacks(event, frame, ...)
 	end
 end
 
+--[[
+	Friendly and enemy plates. A friendly unit's plate carries the health bar,
+	the name, the health text and the raid mark; an enemy's every part. The
+	parts only an enemy's plate shows are UF.PLATE_ENEMY_ONLY, which
+	UF:ElementWanted (updaters.lua) hides on a friendly plate whatever their
+	config says, so every update of a plate keeps them hidden there.
+
+	The game hands each plate to unit after unit, a friend after an enemy
+	(often mid-fight), so the kind is set on every add (UF:ApplyPlateKind, the
+	first 'added' callback, before any other reads frame.friendly), again when
+	the unit's faction changes, and the oUF parts follow a config change.
+]]
+UF.PLATE_ENEMY_ONLY = { Castbar = true, Buffs = true, Debuffs = true, QuestIndicator = true }
+
+-- The enemy-only parts that are oUF elements of their own: a friendly plate
+-- has them disabled in oUF, so they don't run for it. oUF's castbar Disable
+-- gives Blizzard's castbars their events back only for a 'player' frame that
+-- isn't a plate, so disabling it here is safe. The aura areas share oUF's one
+-- Auras element with each other, so they're turned on and off as areas.
+local OUF_ENEMY_ONLY = { Castbar = true, QuestIndicator = true }
+local AURA_AREAS = { Buffs = true, Debuffs = true }
+
+-- Whether a plate's unit is a friend: UnitIsFriend and not UnitCanAttack.
+-- Broader than Blizzard's own plate on purpose: Blizzard counts only an
+-- attackable party member who's a player as an enemy
+-- (NamePlateUnitFrameMixin:UpdateIsFriend), and SaftUI counts every
+-- attackable friend as one (a duel, free-for-all PvP), since you can fight it.
+-- A secret answer counts as an enemy, so the plate shows everything.
+function UF.IsFriendlyPlate(unit)
+	local friend = UnitIsFriend('player', unit)
+	if issecretvalue(friend) or not friend then return false end
+	local attackable = UnitCanAttack('player', unit)
+	if issecretvalue(attackable) then return false end
+	return not attackable
+end
+
+-- Enables or disables in oUF the plate's enemy-only oUF parts, each by
+-- UF:ElementWanted. Returns true when it enabled one, which then needs an
+-- update to show its unit's state (oUF's castbar Enable hides the bar).
+local function EnablePlateParts(frame)
+	local enabled = false
+	for name in pairs(OUF_ENEMY_ONLY) do
+		local element = frame.elements[name]
+		if element then
+			if not UF:ElementWanted(element) then
+				frame:DisableElement(name)
+			elseif not frame:IsElementEnabled(name) then
+				frame:EnableElement(name)
+				enabled = true
+			end
+		end
+	end
+	return enabled
+end
+
+-- Sets a plate's frame up for a friend (friendly true) or an enemy: notes the
+-- kind (frame.friendly), enables or disables its enemy-only oUF parts, turns
+-- its aura areas on or off, and shows or hides each part by
+-- UF:ElementWanted. Every part, not only the enemy-only ones: when a plate
+-- that showed only widgets loses its unit, oUF resumes its parts, which turns
+-- every aura area on and shows the health bar whatever the config says.
+-- Runs on a frame oUF has initialized (EnableElement errors before that):
+-- from the 'added' callback, which comes after oUF's init.
+function UF:ApplyPlateKind(frame, friendly)
+	frame.friendly = friendly and true or false
+	EnablePlateParts(frame)
+	for name, element in pairs(frame.elements) do
+		local wanted = self:ElementWanted(element)
+		element:SetShown(wanted)
+		if AURA_AREAS[name] then
+			element:SetEnabled(wanted)
+		end
+	end
+end
+
+-- The plate's unit changed faction: a friend turned hostile, or back. Updated
+-- only when its kind changed, and then the frame's elements updated too, as
+-- oUF does after an add, so the parts turned on show their unit's state.
+local function UpdatePlateKind(frame)
+	local friendly = UF.IsFriendlyPlate(frame.__unit)
+	if friendly == frame.friendly then return end
+	UF:ApplyPlateKind(frame, friendly)
+	frame:UpdateAllElements('UNIT_FACTION')
+end
+
+-- First of the 'added' callbacks: the others (threat) read frame.friendly.
+UF:RegisterPlateCallback('added', function(frame, unit)
+	UF:ApplyPlateKind(frame, UF.IsFriendlyPlate(unit))
+end)
+
+-- A config change on a plate that shows its unit (UF:UpdateUnitFrame) turns
+-- its enemy-only oUF parts on or off in oUF to match: a castbar or quest icon
+-- turned on in the options while the plate shows an enemy is enabled now, and
+-- the frame updated again, since UF:UpdateUnitFrame's own update came before
+-- it was enabled. A plate that shows only widgets, or no unit, waits for its
+-- next add.
+UF:RegisterPlateCallback('updated', function(frame)
+	if showing[frame] and EnablePlateParts(frame) then
+		frame:UpdateAllElements('OnShow')
+	end
+end)
+
+-- Every add, Blizzard's driver hands the plate a UnitFrame from its pool
+-- (NamePlateBaseMixin:AcquireUnitFrame), which oUF blocks. Its widgets (a
+-- capture bar, a quest object's progress) and soft target icon are moved onto
+-- the plate so they still show: oUF does that on a plate's first add only,
+-- for the UnitFrame the plate had then, so SaftUI does it on every add,
+-- widget-only and game object plates included (oUF runs no added callback for
+-- those). Reading the plate's UnitFrame is only a read, and the calls are
+-- widget methods on Blizzard's frames, as oUF's are.
+--
+-- Blizzard anchors the widgets itself just before (NamePlateUnitFrameMixin:
+-- UpdateWidgetsOnlyMode): their bottom on its UnitFrame's bottom on a plate
+-- that shows only widgets, their top under its castbar otherwise. Their
+-- points are cleared first, so they hang from the plate's bottom, or sit on it
+-- for a widget-only plate, by one point. A UnitFrame made from a template
+-- without them (a spectator's) is left as it is.
+local function PlaceWidgets(plate, unit)
+	local blizzardFrame = plate.UnitFrame
+	if not blizzardFrame then return end
+	local widgets = blizzardFrame.WidgetContainer
+	if widgets then
+		widgets:SetParent(plate)
+		widgets:ClearAllPoints()
+		if UnitNameplateShowsWidgetsOnly(unit) then
+			widgets:SetPoint('BOTTOM', plate, 'BOTTOM')
+		else
+			widgets:SetPoint('TOP', plate, 'BOTTOM')
+		end
+	end
+	local softTarget = blizzardFrame.SoftTargetFrame
+	if softTarget then softTarget:SetParent(plate) end
+end
+
+-- The plate each unit is on ('nameplate3' -> NamePlate3), for every plate
+-- C_NamePlate gives addon code (not a forbidden one), widget-only ones too:
+-- from SaftUI's own listener, from the add to the remove.
+local plateOfUnit = {}
+
+-- Places the widgets of every plate that shows a unit again. Blizzard anchors
+-- them again whenever the game's friendly NPC plates setting changes (its
+-- UpdateWidgetsOnlyMode is a callback on it), which SaftUI's Friendly plates
+-- toggle sets, so this runs after SaftUI sets it.
+function UF:RefreshPlateWidgets()
+	for unit, plate in pairs(plateOfUnit) do
+		PlaceWidgets(plate, unit)
+	end
+end
+
+-- SaftUI's own listener, made with the driver (UF:SpawnNameplates).
+local function OnPlateEvent(_, event, unit)
+	if event == 'NAME_PLATE_UNIT_ADDED' then
+		local plate = C_NamePlate.GetNamePlateForUnit(unit)
+		plateOfUnit[unit] = plate
+		if plate then PlaceWidgets(plate, unit) end
+	elseif event == 'NAME_PLATE_UNIT_REMOVED' then
+		plateOfUnit[unit] = nil
+	elseif event == 'UNIT_FACTION' then
+		if unit == 'player' then
+			-- The player's own faction (a PvP flag) can change any plate's.
+			for frame in pairs(showing) do UpdatePlateKind(frame) end
+		else
+			local frame = UF:PlateForUnit(unit)
+			if frame then UpdatePlateKind(frame) end
+		end
+	end
+end
+
 -- The size handed to oUF's driver for the config's width and height: the
 -- config's, for now.
 function UF.PlateDriverSize(width, height)
@@ -148,6 +316,13 @@ function UF:SpawnNameplates()
 		showing[frame] = nil
 		UF:RunPlateCallbacks('removed', frame, unit)
 	end)
+
+	-- Made after the driver, so oUF hears of each add first.
+	local events = CreateFrame('Frame')
+	events:SetScript('OnEvent', OnPlateEvent)
+	events:RegisterEvent('NAME_PLATE_UNIT_ADDED')
+	events:RegisterEvent('NAME_PLATE_UNIT_REMOVED')
+	events:RegisterEvent('UNIT_FACTION')
 
 	-- The hook first, so a size oUF refuses (its SetSize checks its
 	-- arguments) is reported without leaving Blizzard's size in place later.

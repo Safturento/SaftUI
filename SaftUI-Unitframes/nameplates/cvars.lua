@@ -55,6 +55,10 @@ function UF:ApplyNameplateCVars()
 	for name, value in pairs(UF.NAMEPLATE_CVARS) do
 		self:SetNameplateCVar(name, value(config))
 	end
+	-- Blizzard re-anchors its plates' widgets when the friendly NPC setting
+	-- changes (UpdateWidgetsOnlyMode is a CVar callback): put them back on
+	-- the plates SaftUI shows.
+	self:RefreshPlateWidgets()
 end
 
 -- Puts back every setting SaftUI recorded, clearing each the game takes. One

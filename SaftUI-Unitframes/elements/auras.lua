@@ -190,7 +190,9 @@ local function UpdateConfig(unitframe, aura_type)
 	local auras = unitframe[aura_type]
 	local enabled = UF:UpdateElement(auras)
 
-	auras:SetEnabled(enabled and true or false)
+	-- Off on a friendly plate (UF:ElementWanted), but still laid out below
+	-- while its config has it on, ready for the plate's next enemy.
+	auras:SetEnabled(UF:ElementWanted(auras))
 	if not enabled then return end
 
 	local config = auras.config

@@ -23,7 +23,9 @@
 --   ouf.IsInitialized(frame)    whether oUF has made the frame's active
 --                               elements (the end of initObject's setup).
 --   ouf.calls                   every EnableElement and DisableElement call,
---                               init's own included: { frame, method, element }.
+--                               init's own included: { frame, method, element },
+--                               and every UpdateAllElements: { frame,
+--                               'UpdateAllElements', event }.
 --   ouf:SpawnNamePlates(prefix) oUF's nameplate driver (ouf.lua 866-1097),
 --                               below.
 --
@@ -57,8 +59,11 @@
 --     and SoftTargetFrame are moved onto the plate, on the first add only, as
 --     upstream does. A unit whose plate shows only widgets, or a game object:
 --     every element paused and the frame hidden, with no added callback.
---     Otherwise the unit attribute is set (the frame's __unit), the added
---     callback runs, then UpdateAllElements.
+--     Otherwise the unit attribute is set (the frame's __unit; a unit that
+--     exists and differs from the one the frame had runs UpdateAllElements
+--     ('OnAttributeChanged') at once, as oUF's updateActiveUnit does, so a
+--     reused plate updates once with its old unit's elements before the added
+--     callback), the added callback runs, then UpdateAllElements.
 --   * NAME_PLATE_UNIT_REMOVED: the unit attribute cleared (oUF's handler
 --     ignores a nil unit, so __unit keeps the unit that left), every paused
 --     element resumed, the frame shown, then the removed callback.
@@ -67,22 +72,28 @@
 --     UpdateAllElements.
 -- A second SpawnNamePlates reports 'oUF nameplate driver has already been
 -- initialized.' to the error handler and returns nil, as oUF's nierror does.
--- Enabling Health or Power gives the bar __owner, ForceUpdate (counted in
--- bar.__forceUpdates), SetColorTapping and SetColorReaction, as their Enables
--- do (Libraries/oUF/elements/health.lua and power.lua); the setters, and the
--- Enable, register UNIT_FACTION on the frame while either flag is on, and the
--- frame drops it once no bar wants it (oUF's events.lua keeps one handler per
--- bar). Enabling the aura containers turns each on (SetEnabled(true)), as the
--- Auras meta element's Enable does.
+-- Enabling an element gives its widget __owner, the frame, as every element's
+-- Enable does. Enabling Health or Power also gives the bar ForceUpdate
+-- (counted in bar.__forceUpdates), SetColorTapping and SetColorReaction, as
+-- their Enables do (Libraries/oUF/elements/health.lua and power.lua); the
+-- setters, and the Enable, register UNIT_FACTION on the frame while either
+-- flag is on, and the frame drops it once no bar wants it (oUF's events.lua
+-- keeps one handler per bar). Health's Enable shows the bar and its Disable
+-- hides it, whatever SaftUI's config says, as health.lua's do (a pause and a
+-- resume too); the castbar's Enable and Disable both hide it, as castbar.lua's
+-- do (oUF shows it for a cast, which nothing here starts). Enabling the aura
+-- containers turns each on (SetEnabled(true)), as the Auras meta element's
+-- Enable does.
 --
 -- What the real oUF does beyond it:
 --   * Spawn makes a SecureUnitButtonTemplate button, sets its rolesets and
 --     click attributes, hides Blizzard's frame for the unit, watches the unit,
 --     and evaluates vehicles and pets; SpawnHeader makes a SecureGroupHeader,
 --     which makes its buttons as members appear. A unit attribute set on a
---     frame becomes its active unit only if that unit exists, after vehicle
---     and pet mapping (updateActiveUnit), and runs a full update; here it
---     becomes the active unit as it is, with no update.
+--     frame becomes its active unit only if that unit exists (UnitExists or
+--     UnitIsVisible), after vehicle and pet mapping (updateActiveUnit); here
+--     it becomes the active unit as it is, and runs the full update only for
+--     a unit that exists (the player, or a stub.units unit) and changed.
 --   * The elements register their events and update from the unit's data
 --     (UpdateAllElements runs them, only for a unit that exists); here
 --     nothing updates. Some Enables also check the unit (the castbar not on a
@@ -207,6 +218,9 @@ function M.new()
 		end
 		local widget = frame[name]
 		if widget == nil then return end
+		if type(widget) == 'table' then widget.__owner = frame end
+		if name == 'Health' then widget:Show() end
+		if name == 'Castbar' then widget:Hide() end
 		if name == 'Health' or name == 'Power' then return EnableBar(frame, widget) end
 		return true
 	end
@@ -214,7 +228,10 @@ function M.new()
 		if name == 'Auras' then
 			for _, container in ipairs(containers[frame] or {}) do container:SetEnabled(false) end
 		elseif name == 'Health' or name == 'Power' then
+			if name == 'Health' then frame.Health:Hide() end
 			WantFaction(frame[name], false)
+		elseif name == 'Castbar' then
+			frame.Castbar:Hide()
 		end
 	end
 
@@ -258,6 +275,7 @@ function M.new()
 	end
 	function methods.UpdateAllElements(self, event)
 		assert(type(event) == 'string', "Invalid argument 'event' in UpdateAllElements.")
+		ouf.calls[#ouf.calls + 1] = { self, 'UpdateAllElements', event }
 		self.__updates = (self.__updates or 0) + 1
 	end
 	function methods.UpdateTags() end
@@ -307,9 +325,16 @@ function M.new()
 	end
 
 	-- oUF's onAttributeChanged, which initObject hooks: a unit set on the frame
-	-- becomes its active unit.
+	-- becomes its active unit, and one that exists and changed runs a full
+	-- update (updateActiveUnit).
 	local function OnAttributeChanged(object, name, value)
-		if name == 'unit' and value then object.__unit = value end
+		if name == 'unit' and value then
+			local changed = object.__unit ~= value
+			object.__unit = value
+			if changed and (value == 'player' or stub.units[value] ~= nil) then
+				object:UpdateAllElements('OnAttributeChanged')
+			end
+		end
 	end
 
 	-- oUF's initObject, for one object, with the active style or the one

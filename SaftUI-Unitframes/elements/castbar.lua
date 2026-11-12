@@ -59,12 +59,13 @@ local function PostCastInterruptible(castbar, unit, spellID, notInterruptible)
 end
 
 -- oUF shows the castbar on every cast of the unit, whatever UF:SetElementEnabled
--- did. It skips a cast event while this returns false, so a disabled castbar
--- stays hidden. oUF's own check is just the unit. It skips the stop and fail
--- events too, so a bar mid-cast when it's disabled (a profile switch in combat
+-- did. It skips a cast event while this returns false, so a castbar that isn't
+-- wanted (off in its config, or on a friendly plate: UF:ElementWanted) stays
+-- hidden. oUF's own check is just the unit. It skips the stop and fail events
+-- too, so a bar mid-cast when it's turned off (a profile switch in combat
 -- re-points the config before SetElementEnabled can run) is hidden here.
 local function ShouldShow(castbar, unit)
-	if not castbar.config.enable then
+	if not UF:ElementWanted(castbar) then
 		castbar:Hide()
 		return false
 	end
