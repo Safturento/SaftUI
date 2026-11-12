@@ -32,7 +32,7 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	rows by OB.LayoutRows, both pure: a row is small (a quarter of the line;
 	two make a half), normal (a half) or wide (the whole line), by row.size.
 	A toggle's check box and a color's swatch sit just after their label's
-	text; a small input's box is OB.SMALL_INPUT_WIDTH wide. A position block
+	text; a small input's box is 60 wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
@@ -79,8 +79,7 @@ local TITLE_HEIGHT, TITLE_GAP = 15, 6
 local NOTE_HEIGHT, NOTE_GAP = 13, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 
-OB.ROW_HEIGHT, OB.LABEL_GAP, OB.COLUMN_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, COLUMN_GAP, WIDTH
-OB.QUARTER_GAP, OB.SMALL_INPUT_WIDTH = QUARTER_GAP, SMALL_INPUT_WIDTH
+OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
 OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
