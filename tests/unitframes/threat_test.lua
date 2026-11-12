@@ -697,7 +697,7 @@ end)
 test("the Threat tab: Enable, Font, Alpha and Position, on the plates only; small, above the bar's right end", function()
 	local st, UF, P = world()
 	local tab = UF:GetConfigTable().args.nameplate.args.Threat
-	check(tab ~= nil, 'the Nameplates page has a Threat tab')
+	check(tab ~= nil, 'the Enemy nameplates page has a Threat tab')
 	if not tab then return end
 	eq(tab.name, 'Threat', 'its name')
 	local keys = {}

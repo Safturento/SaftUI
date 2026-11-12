@@ -75,7 +75,7 @@ local indicators = {
        end,
        -- A role means nothing on a nameplate.
        validUnit = function(unit)
-           return unit ~= 'nameplate'
+           return not UF.IsPlateUnit(unit)
        end,
     },
     {
@@ -86,7 +86,7 @@ local indicators = {
         desc = 'The main tank or main assist icon, in a raid.',
         -- Not on nameplates, as the group role isn't.
         validUnit = function(unit)
-            return unit ~= 'nameplate'
+            return not UF.IsPlateUnit(unit)
         end,
         debug = function(self)
             self:SetTexture([[Interface\GROUPFRAME\UI-GROUP-MAINASSISTICON]])
@@ -136,8 +136,8 @@ for _, config in pairs(indicators) do
             end
 
             -- oUF shows the indicator by its own rules on every update, so
-            -- UF:SetElementEnabled only hid one that isn't wanted (off, or
-            -- the quest icon on a friendly plate) until now.
+            -- UF:SetElementEnabled only hid one that isn't wanted (off in
+            -- its config: a friendly plate's quest icon by default) until now.
             if not UF:ElementWanted(indicator) then
                 indicator:Hide()
             end
@@ -219,8 +219,8 @@ end
 -- No unit event says a unit's tie to a quest changed: when the quest log does
 -- (a quest taken, done or handed in), every frame's quest icon asks again.
 -- Only where oUF runs the icon (enabled, and not paused on a plate that shows
--- only widgets) and it's wanted: on in its config, and not on a friend's
--- plate, where it's disabled.
+-- only widgets) and it's wanted: on in its config (a friend's plate draws from
+-- the friendly one, which has it off by default, and disabled then).
 local questLog = CreateFrame('Frame')
 questLog:RegisterEvent('QUEST_LOG_UPDATE')
 questLog:SetScript('OnEvent', function()

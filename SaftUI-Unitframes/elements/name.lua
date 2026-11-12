@@ -41,7 +41,18 @@ local function UpdateConfig(unitframe)
 	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
 	SetMaxWidth(unitframe.Name, unitframe.config.name)
     unitframe.Name.overrideUnit = true
-	unitframe:Tag(unitframe.Name, '[st:name('.. unitframe.base_unit..')]')
+
+	-- The tag names the config unit it reads (tags.lua), so it's bound again
+	-- when the frame's changes: a plate's frame draws from Enemy or Friendly
+	-- nameplates by its unit's kind (nameplates.lua's UF:ApplyPlateConfig).
+	-- oUF's update after this one (UF:UpdateUnitFrame's) writes the name
+	-- from the new config.
+	local name = unitframe.Name
+	if name.taggedUnit ~= unitframe.base_unit then
+		if name.taggedUnit then unitframe:Untag(name) end
+		unitframe:Tag(name, '[st:name(' .. unitframe.base_unit .. ')]')
+		name.taggedUnit = unitframe.base_unit
+	end
 end
 
 local function GetConfigTable(unit)
@@ -78,6 +89,9 @@ local function GetConfigTable(unit)
 	if UF.CanShow(unit, 'mobs') then
 		args.show_classification = G.toggle(6, 'Classification',
 			'Marks rare (R), rare elite (R+), elite (+) and world boss (B) units, after the level and before the name.', 'small')
+	end
+	if UF.CanShow(unit, 'npcs') then
+		args.color_friendly = G.toggle(8.5, 'Color friendly', "Colors friendly units' names in the friendly reaction color.", 'small')
 	end
 	if UF.CanShow(unit, 'players') then
 		args.colorClass = G.toggle(7, 'Class color', "Colors players' names in their class color, over Color hostile.", 'small')

@@ -24,8 +24,15 @@
 --                               elements (the end of initObject's setup).
 --   ouf.calls                   every EnableElement and DisableElement call,
 --                               init's own included: { frame, method, element },
---                               and every UpdateAllElements: { frame,
---                               'UpdateAllElements', event }.
+--                               every UpdateAllElements: { frame,
+--                               'UpdateAllElements', event }, and every Tag
+--                               and Untag: { frame, 'Tag' or 'Untag', the tag
+--                               string bound or dropped }.
+--   ouf.tags                    font string -> the tag string bound to it
+--                               (oUF's tag state): Tag binds one, after
+--                               untagging a font string tagged already, as
+--                               oUF's Tag does (Libraries/oUF/elements/
+--                               tags.lua), and Untag drops it.
 --   ouf:SpawnNamePlates(prefix) oUF's nameplate driver (ouf.lua 866-1097),
 --                               below.
 --
@@ -38,12 +45,13 @@
 --
 -- Every object gets EnableElement, DisableElement, IsElementEnabled,
 -- IsElementPaused, UpdateAllElements (counted in frame.__updates), UpdateTags,
--- Tag, PauseAllElements, ResumeAllElements and CreateAuras. IsElementEnabled
--- and IsElementPaused error on a name that isn't a string, as oUF's argcheck
--- does. Pausing and resuming are oUF's (ouf.lua 164-327): a pause runs each
--- active element's Disable and keeps it enabled, a resume runs its Enable
--- again, and EnableElement leaves a paused element paused (it's still
--- enabled), while DisableElement on one only drops it, with no Disable.
+-- Tag, Untag, PauseAllElements, ResumeAllElements and CreateAuras.
+-- IsElementEnabled and IsElementPaused error on a name that isn't a string, as
+-- oUF's argcheck does. Pausing and resuming are oUF's (ouf.lua 164-327): a
+-- pause runs each active element's Disable and keeps it enabled, a resume
+-- runs its Enable again, and EnableElement leaves a paused element paused
+-- (it's still enabled), while DisableElement on one only drops it, with no
+-- Disable.
 --
 -- The nameplate driver, ouf:SpawnNamePlates(prefix), returns a frame with
 -- SetSize(width[, height]) (C_NamePlate.SetNamePlateSize, height defaulting to
@@ -118,7 +126,10 @@
 --   * CreateAuras makes a Blizzard AuraContainer (CustomAuraContainerTemplate),
 --     which makes a button for each aura it shows; here a plain frame that
 --     records what's set on it and makes a button only when a test asks:
---       container.groups[key] = { filter, options, candidateFilters, layout },
+--       container.groups[key] = { filter, options, candidateFilters, layout,
+--         maxFrameCount } (the count AddGroup's options gave, then each
+--         SetAuraGroupMaxFrameCount's, which checks its arguments as
+--         Blizzard_CustomAuraContainer.lua does, both clients),
 --       container.enabled (and IsEnabled), container.__scans,
 --       container.flow = { anchor, lineSize, growthX, growthY },
 --       container:_AddButton() -> button: a Button child of the container, at
@@ -152,7 +163,9 @@
 --     and Blizzard tells an intrinsic by a key of its own, not IsObjectType
 --     (DropdownButton.lua: frame.intrinsic == "DropdownButton"), so which
 --     answer the game gives isn't known.
---   * Tag binds a tag string to a font string and updates it on events.
+--   * Tag binds a tag string to a font string, which the tag's events then
+--     update, as UpdateAllElements and UpdateTags do; here a tag is only
+--     bound (ouf.tags), and its text never written.
 
 local M = {}
 
@@ -183,6 +196,7 @@ function M.new()
 		},
 		Tags = { Methods = {}, Events = {} },
 		calls = {},
+		tags = setmetatable({}, { __mode = 'k' }),
 	}
 
 	local styles, activeStyle = {}, nil
@@ -326,7 +340,20 @@ function M.new()
 		self.__updates = (self.__updates or 0) + 1
 	end
 	function methods.UpdateTags() end
-	function methods.Tag() end
+	-- oUF's Tag and Untag (Libraries/oUF/elements/tags.lua), as far as which
+	-- tag string a font string is bound to: Tag untags a font string tagged
+	-- already, and ignores a missing font string or tag string.
+	function methods.Tag(self, fs, ts)
+		if not fs or not ts then return end
+		if ouf.tags[fs] then self:Untag(fs) end
+		ouf.calls[#ouf.calls + 1] = { self, 'Tag', ts }
+		ouf.tags[fs] = ts
+	end
+	function methods.Untag(self, fs)
+		if not fs then return end
+		ouf.calls[#ouf.calls + 1] = { self, 'Untag', ouf.tags[fs] }
+		ouf.tags[fs] = nil
+	end
 	function methods.PauseAllElements(self)
 		for name in pairs(active[self]) do
 			if not self:IsElementPaused(name) then
@@ -380,13 +407,22 @@ function M.new()
 		function container:AddGroup(filter, options)
 			groupCounts[owner] = (groupCounts[owner] or 0) + 1
 			local key = 'Group' .. groupCounts[owner]
-			self.groups[key] = { filter = filter, options = options, candidateFilters = options and options.candidateFilters }
+			self.groups[key] = { filter = filter, options = options, candidateFilters = options and options.candidateFilters,
+				maxFrameCount = options and options.maxFrameCount }
 			for _ = 1, ouf.batchButtons or 0 do self:_AddButton() end
 			return key
 		end
 		function container:SetAuraGroupFilterString(key, filter) self.groups[key].filter = filter end
 		function container:SetAuraGroupCandidateFilters(key, filters) self.groups[key].candidateFilters = filters end
 		function container:SetAuraGroupLayout(key, layout) self.groups[key].layout = layout end
+		-- Blizzard's (CustomAuraContainerSharedMixin): the group must exist, and
+		-- the count be a non-negative whole number or math.huge.
+		function container:SetAuraGroupMaxFrameCount(key, count)
+			assert(self.groups[key], ("aura group '%s' was not found with this key."):format(tostring(key)))
+			assert(count == math.huge or (type(count) == 'number' and count >= 0 and count == math.floor(count)),
+				'maxFrameCount must be a non-negative integer or infinity.')
+			self.groups[key].maxFrameCount = count
+		end
 		-- Blizzard's AuraContainerSharedMixin (Blizzard_AuraContainer.lua, the
 		-- same on both clients): made enabled (its enabled KeyValue), and a
 		-- SetEnabled that changes the state runs a full update of the auras.

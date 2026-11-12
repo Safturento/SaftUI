@@ -63,11 +63,14 @@ local function NameColor(config, unit, reaction)
 		local _, class = UnitClass(unit)
 		local classColor = not issecretvalue(class) and class and UF.oUF.colors.class[class]
 		return classColor and '|cff' .. st.StringFormat:ToHex(classColor:GetRGB())
-	elseif config.color_hostile and reaction then
-		if reaction < 3 then
+	elseif reaction then
+		if config.color_hostile and reaction < 3 then
 			return '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.red:GetRGB())
-		elseif reaction < 5 then
+		elseif config.color_hostile and reaction < 5 then
 			return '|cff' .. st.StringFormat:ToHex(st.config.profile.colors.text.yellow:GetRGB())
+		elseif config.color_friendly and reaction >= 5 then
+			local reactionColor = UF.oUF.colors.reaction[reaction]
+			return reactionColor and '|cff' .. st.StringFormat:ToHex(reactionColor:GetRGB())
 		end
 	end
 end

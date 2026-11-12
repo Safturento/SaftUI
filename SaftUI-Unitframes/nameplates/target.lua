@@ -16,10 +16,19 @@ local UF = st:GetModule('Unitframes')
 -- The border's colour on the target under Thick and Thin.
 local WHITE = { 1, 1, 1, 1 }
 
+-- Whether a plate's health bar carries the border: drawn, and shown by its
+-- config. A bar its config has off (a friend's name-only plate, nameplates.lua)
+-- keeps the drawing it had before, since UF:UpdateElement stops at an element
+-- that's off, so its drawn theme alone can't tell.
+local function BarCarriesBorder(frame)
+	return frame.Health ~= nil and UF:ElementWanted(frame.Health) and st:DrawnTheme(frame.Health) ~= nil
+end
+
 -- The frame a plate's border is drawn on: the health bar's while the bar is
--- drawn, else the plate frame's while that is drawn, else nil (both None).
+-- drawn and shown, else the plate frame's while that is drawn, else nil (a
+-- name-only plate: no bar, and the frame None).
 function UF.PlateBorderFrame(frame)
-	if frame.Health and st:DrawnTheme(frame.Health) then
+	if BarCarriesBorder(frame) then
 		return st:DrawnFrame(frame.Health)
 	end
 	if st:DrawnTheme(frame) then
@@ -71,9 +80,10 @@ end
 local candidates = {}
 
 -- Draws or clears the target's border on one plate, by the border frame's
--- drawn theme: Blizzard shows the art round the bar and leaves the box its
--- own colour; Thick and Thin colour their line white on the target and the
--- theme's own on the others; None draws nothing.
+-- drawn theme: Blizzard shows the art round the bar (or round the frame, when
+-- the frame carries the border) and leaves the box its own colour; Thick and
+-- Thin colour their line white on the target and the theme's own on the
+-- others; None, and a name-only plate, draw nothing.
 function UF:UpdatePlateTarget(frame)
 	local art = self:PlateTargetArt(frame)
 	local border = UF.PlateBorderFrame(frame)
@@ -90,7 +100,8 @@ function UF:UpdatePlateTarget(frame)
 		end
 	end
 
-	local source = (frame.Health and st:DrawnTheme(frame.Health)) and frame.Health or frame
+	-- What the border goes round: the bar, or the frame (BarCarriesBorder).
+	local source = BarCarriesBorder(frame) and frame.Health or frame
 	local theme = border and st:DrawnTheme(source)
 	if not theme then
 		art:Hide()
@@ -107,8 +118,8 @@ function UF:UpdatePlateTarget(frame)
 			texture:SetAtlas(control.atlas)
 			texture:SetVertexColor(1, 1, 1, 1)
 			texture:ClearAllPoints()
-			texture:SetPoint('TOPLEFT', frame.Health, 'TOPLEFT', left, top)
-			texture:SetPoint('BOTTOMRIGHT', frame.Health, 'BOTTOMRIGHT', right, bottom)
+			texture:SetPoint('TOPLEFT', source, 'TOPLEFT', left, top)
+			texture:SetPoint('BOTTOMRIGHT', source, 'BOTTOMRIGHT', right, bottom)
 			art:Show()
 		else
 			art:Hide()

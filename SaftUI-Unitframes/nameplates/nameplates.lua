@@ -9,7 +9,8 @@ local UF = st:GetModule('Unitframes')
 	The game makes the plates (NamePlate1, NamePlate2, ...) and reuses each one
 	for unit after unit. The first time a plate gets a unit, oUF builds a frame
 	of SaftUI's on it with SaftUI's style (UF.ConstructUnit), which fills the
-	plate, and UF.InitUnit gives it its first update once oUF has enabled its
+	plate (a friendly look sits smaller on its centre: UF:PlacePlateFrame),
+	and UF.InitUnit gives it its first update once oUF has enabled its
 	elements. The frame stays on its plate for every later unit, so it's kept
 	by the plate's number (UF.nameplates), never by a unit.
 
@@ -122,26 +123,33 @@ function UF:RunPlateCallbacks(event, frame, ...)
 end
 
 --[[
-	Friendly and enemy plates. A friendly unit's plate carries the health bar,
-	the name, the health text and the raid mark; an enemy's every part. The
-	parts only an enemy's plate shows (the castbar, the aura areas, the quest
-	icon and the threat text, threat.lua) are UF.PLATE_ENEMY_ONLY, which
-	UF:ElementWanted (updaters.lua) hides on a friendly plate whatever their
-	config says, so every update of a plate keeps them hidden there.
+	Friendly and enemy plates. Each kind draws from its own config unit: an
+	enemy's plate from Enemy nameplates (nameplate), a friend's from Friendly
+	nameplates (friendlynameplate), or from the other one while its page's box
+	says so (UF.PlateConfigKey). The frame's base_unit names it, which the
+	frame's GetConfig and every element's read (UF:ApplyPlateConfig). So which
+	parts a plate shows is its config's: a friend's name alone by default (the
+	castbar, the aura areas and the quest icon off, and no health bar), an
+	enemy's every part. Only the threat text (threat.lua) is hidden on a friend
+	whatever the config says: UF.PLATE_ENEMY_ONLY, which UF:ElementWanted
+	(updaters.lua) reads. It always draws from Enemy nameplates' threat
+	settings.
 
 	The game hands each plate to unit after unit, a friend after an enemy
-	(often mid-fight), so the kind is set on every add (UF:ApplyPlateKind, the
-	first 'added' callback, before any other reads frame.friendly), again when
-	the unit's faction changes, and the oUF parts follow a config change.
+	(often mid-fight), so the kind, and with it the config, is set on every add
+	(UF:ApplyPlateKind, the first 'added' callback, before any other reads
+	frame.friendly), again when the unit's faction changes, and the oUF parts
+	follow a config change.
 ]]
-UF.PLATE_ENEMY_ONLY = { Castbar = true, Buffs = true, Debuffs = true, QuestIndicator = true, Threat = true }
+UF.PLATE_ENEMY_ONLY = { Threat = true }
 
--- The enemy-only parts that are oUF elements of their own: a friendly plate
--- has them disabled in oUF, so they don't run for it. oUF's castbar Disable
--- gives Blizzard's castbars their events back only for a 'player' frame that
--- isn't a plate, so disabling it here is safe. The aura areas share oUF's one
--- Auras element with each other, so they're turned on and off as areas.
-local OUF_ENEMY_ONLY = { Castbar = true, QuestIndicator = true }
+-- The parts that are oUF elements of their own and that a plate's config can
+-- turn off: one that's off is disabled in oUF, so it doesn't run for the
+-- plate. oUF's castbar Disable gives Blizzard's castbars their events back
+-- only for a 'player' frame that isn't a plate, so disabling it here is safe.
+-- The aura areas share oUF's one Auras element with each other, so they're
+-- turned on and off as areas.
+local OUF_SWITCHED = { Castbar = true, QuestIndicator = true }
 local AURA_AREAS = { Buffs = true, Debuffs = true }
 
 -- Whether a plate's unit is a friend: UnitIsFriend and not UnitCanAttack.
@@ -158,12 +166,12 @@ function UF.IsFriendlyPlate(unit)
 	return not attackable
 end
 
--- Enables or disables in oUF the plate's enemy-only oUF parts, each by
+-- Enables or disables in oUF the plate's switched oUF parts, each by
 -- UF:ElementWanted. Returns true when it enabled one, which then needs an
 -- update to show its unit's state (oUF's castbar Enable hides the bar).
 local function EnablePlateParts(frame)
 	local enabled = false
-	for name in pairs(OUF_ENEMY_ONLY) do
+	for name in pairs(OUF_SWITCHED) do
 		local element = frame.elements[name]
 		if element then
 			if not UF:ElementWanted(element) then
@@ -177,17 +185,72 @@ local function EnablePlateParts(frame)
 	return enabled
 end
 
+-- Clears the points of everything a plate's full update places again
+-- (UF:UpdateElement), so the update anchors each from scratch: every part,
+-- one its config has off too (on a plate that's still placed, updaters.lua),
+-- and the texts and icons that are on in a part that's on. Reads the configs
+-- the frame has cached, so it runs after UF:RefreshFrameConfig. The update
+-- places the parts one by one in pairs() order, each against the others
+-- where they are then, so on a switch to the other config a part placed
+-- against one still where the old config put it can close a loop, which the
+-- game refuses ("Cannot anchor to a region dependent on it"): the Friendly
+-- page hanging the health bar under the name while the Enemy page puts the
+-- name on the bar, or the Enemy page putting the name beside a raid mark
+-- the Friendly page hangs over the name. A text or an icon is never a
+-- part's anchor through UF:GetFrame, but can be by its frame name, typed
+-- into a Position. As ClearUnitFramePoints does for the unit frames
+-- (unitframes.lua), and in combat too, since a plate's parts aren't secure.
+local function ClearPlacedPoints(frame)
+	for _, element in pairs(frame.elements) do
+		element:ClearAllPoints()
+		if element.config.enable then
+			for _, text in pairs(element.textElements or {}) do
+				if text.config and text.config.enable then text:ClearAllPoints() end
+			end
+			for _, icon in pairs(element.icons or {}) do
+				if icon.config and icon.config.enable then icon:ClearAllPoints() end
+			end
+		end
+	end
+end
+
+-- Points a plate's frame at the config unit its kind draws from
+-- (UF.PlateConfigKey of frame.friendly) through its base_unit, which the
+-- frame's GetConfig and every element's read when called. When that changed,
+-- the frame's whole look is applied again from the new config
+-- (UF:UpdateUnitFrame): its parts, their places, fonts and colours, and the
+-- name's tag. Every cached config is pointed at the new config first
+-- (UF:RefreshFrameConfig): the update re-points a part's own, but stops at a
+-- part that's off (UF:UpdateElement) before its texts and icons. Then what
+-- the update places loses its old points (ClearPlacedPoints), so the parts
+-- can be placed in any order. An update that errors is reported, so the
+-- caller still goes on. Returns whether it changed. A plate's frame isn't
+-- secure, so in combat too.
+function UF:ApplyPlateConfig(frame)
+	local key = UF.PlateConfigKey(frame.friendly)
+	if frame.base_unit == key then return false end
+	frame.base_unit = key
+	xpcall(function()
+		self:RefreshFrameConfig(frame)
+		ClearPlacedPoints(frame)
+		self:UpdateUnitFrame(frame)
+	end, geterrorhandler())
+	return true
+end
+
 -- Sets a plate's frame up for a friend (friendly true) or an enemy: notes the
--- kind (frame.friendly), enables or disables its enemy-only oUF parts, turns
--- its aura areas on or off, and shows or hides each part by
--- UF:ElementWanted. Every part, not only the enemy-only ones: when a plate
--- that showed only widgets loses its unit, oUF resumes its parts, which turns
--- every aura area on and shows the health bar whatever the config says.
--- Runs on a frame oUF has initialized (EnableElement errors before that):
--- from the 'added' callback, which comes after oUF's init. Then the 'kind'
--- callbacks run.
+-- kind (frame.friendly), points the frame at that kind's config
+-- (UF:ApplyPlateConfig, a full update when it changed), enables or disables
+-- its switched oUF parts, turns its aura areas on or off, and shows or hides
+-- each part by UF:ElementWanted. Every part, not only the switched ones: when
+-- a plate that showed only widgets loses its unit, oUF resumes its parts,
+-- which turns every aura area on and shows the health bar whatever the config
+-- says. Runs on a frame oUF has initialized (EnableElement errors before
+-- that): from the 'added' callback, which comes after oUF's init. Then the
+-- 'kind' callbacks run.
 function UF:ApplyPlateKind(frame, friendly)
 	frame.friendly = friendly and true or false
+	self:ApplyPlateConfig(frame)
 	EnablePlateParts(frame)
 	for name, element in pairs(frame.elements) do
 		local wanted = self:ElementWanted(element)
@@ -201,7 +264,11 @@ end
 
 -- The plate's unit changed faction: a friend turned hostile, or back. Updated
 -- only when its kind changed, and then the frame's elements updated too, as
--- oUF does after an add, so the parts turned on show their unit's state.
+-- oUF does after an add, so the parts turned on show their unit's state. That
+-- update also draws the name again, in the new kind's colours: the st:name
+-- tag (tags.lua) has no faction event of its own, and its oUF update runs the
+-- tags, the name's bound again to the new config if the kind changed it
+-- (elements/name.lua).
 local function UpdatePlateKind(frame)
 	local friendly = UF.IsFriendlyPlate(frame.__unit)
 	if friendly == frame.friendly then return end
@@ -215,8 +282,8 @@ UF:RegisterPlateCallback('added', function(frame, unit)
 end)
 
 -- A config change on a plate that shows its unit (UF:UpdateUnitFrame) turns
--- its enemy-only oUF parts on or off in oUF to match: a castbar or quest icon
--- turned on in the options while the plate shows an enemy is enabled now, and
+-- its switched oUF parts on or off in oUF to match: a castbar or quest icon
+-- turned on in the options while the plate shows its unit is enabled now, and
 -- the frame updated again, since UF:UpdateUnitFrame's own update came before
 -- it was enabled. A plate that shows only widgets, or no unit, waits for its
 -- next add.
@@ -283,41 +350,61 @@ local plateOfUnit = {}
 	end of UF:RefreshPlateWidgets, which runs after SaftUI sets the game's
 	plate settings; and on the frame after either setting changes, from
 	CVarCallbackRegistry, since its callbacks run in no set order and
-	Blizzard's UnitFrames' can come after SaftUI's.
+	Blizzard's UnitFrames' can come after SaftUI's. And on one plate, after
+	its frame's place or size changed (UF:PlacePlateFrame), and on every
+	plate after the plate size is set (UF:ApplyPlateSize): whether the game's
+	click area follows the frame's rect after the calls, or takes it when
+	they're made, isn't said outright. SetAllHitTestPoints' doc ("Sets the
+	anchor points ... to fully encompass the target region",
+	FrameAPINamePlateDocumentation.lua, both clients) reads as anchors, which
+	would follow; an in-game check.
 ]]
 
--- Sets the click area of every plate SaftUI shows back to its frame, with
--- oUF's own two calls on the plate (the frame's parent). The game lets addon
--- code change a plate's click area in combat only on the tick the plate got
--- its unit, or one on which Blizzard's own code changed it
+-- Sets the click area of a plate SaftUI shows back to its frame, with oUF's
+-- own two calls on the plate (the frame's parent). The game lets addon code
+-- change a plate's click area in combat only on the tick the plate got its
+-- unit, or one on which Blizzard's own code changed it
 -- (CanChangeHitTestPoints, FrameAPINamePlateDocumentation.lua, both clients;
--- the calls error otherwise): so from the options update's post-hook it goes
--- through, and a plate the game refuses waits for the end of combat. It's
--- asked again before the second call: the docs don't say the same-tick
--- exception stays open after SaftUI's first. A plate the game took away, or
--- one showing only widgets, is left alone.
+-- the calls error otherwise): so from the options update's post-hook, or
+-- from the add, it goes through, and a plate the game refuses waits for the
+-- end of combat. It's asked again before the second call: the docs don't say
+-- the same-tick exception stays open after SaftUI's first. A plate the game
+-- took away, or one showing only widgets, is left alone.
 local function MayChange(plate)
 	return not plate.CanChangeHitTestPoints or plate:CanChangeHitTestPoints()
 end
 
+-- oUF's two calls on one frame's plate, each asked first. Returns false when
+-- the game refused one.
+local function RestoreHitTest(frame)
+	local plate = frame:GetParent()
+	if not MayChange(plate) then return false end
+	plate:ClearAllHitTestPoints()
+	if not MayChange(plate) then return false end
+	plate:SetAllHitTestPoints(frame)
+	return true
+end
+
+-- A refused plate waits for the end of combat, when every plate SaftUI shows
+-- then is set again: one wait however many were refused, and a plate handed
+-- to another unit by then gets its frame's area too.
+local function RestoreAfterCombat()
+	st:QueueAfterCombat('NameplateHitTest', function() UF:RestorePlateHitTests() end)
+end
+
+-- Every plate SaftUI shows.
 function UF:RestorePlateHitTests()
 	local refused = false
 	for frame in pairs(showing) do
-		local plate = frame:GetParent()
-		if MayChange(plate) then
-			plate:ClearAllHitTestPoints()
-			if MayChange(plate) then
-				plate:SetAllHitTestPoints(frame)
-			else
-				refused = true
-			end
-		else
-			refused = true
-		end
+		if not RestoreHitTest(frame) then refused = true end
 	end
-	if refused then
-		st:QueueAfterCombat('NameplateHitTest', function() UF:RestorePlateHitTests() end)
-	end
+	if refused then RestoreAfterCombat() end
+end
+
+-- One plate's frame, with the same rules.
+function UF:RestorePlateHitTest(frame)
+	if not showing[frame] then return end
+	if not RestoreHitTest(frame) then RestoreAfterCombat() end
 end
 
 -- Places the widgets of every plate that shows a unit again, then the click
@@ -398,14 +485,55 @@ function UF.PlateDriverSize(width, height)
 	return width * ratio, height * ratio
 end
 
--- Sets every plate's size from the config through oUF's driver. The game has
--- one size for all plates, and refuses it from addon code in combat, so in
--- combat this waits until combat ends. Nothing before the driver is made.
+-- Sets every plate's size through oUF's driver, from the enemy look's config:
+-- Enemy nameplates', or Friendly nameplates' while the Enemy page's box draws
+-- enemies from it (UF.PlateConfigKey of an enemy). The game has one size for
+-- all plates, which also sets how they stack, so a friendly look doesn't
+-- change it: it's drawn smaller on its plate (UF:PlacePlateFrame). The game
+-- refuses the size from addon code in combat, so in combat this waits until
+-- combat ends. Then every plate's click area is set again (the click area,
+-- above), since the frames that fill their plates were resized with them (a
+-- UI scale or display change, Blizzard's own size): out of combat, like the
+-- size. Nothing before the driver is made.
 function UF:ApplyPlateSize()
 	if not self.plateDriver then return end
 	if st:QueueAfterCombat('NameplateSize', function() UF:ApplyPlateSize() end) then return end
-	local config = self:GetProfileConfig().nameplate
+	local config = self:GetProfileConfig()[UF.PlateConfigKey(false)]
 	self.plateDriver:SetSize(UF.PlateDriverSize(config.width, config.height))
+	self:RestorePlateHitTests()
+end
+
+-- How each plate's frame was last placed (UF:PlacePlateFrame): filling its
+-- plate or on its centre, and the config's size then. Weak-keyed by the frame.
+local placedAs = setmetatable({}, { __mode = 'k' })
+
+-- Places a plate's frame on its plate by the config it draws from
+-- (frame.config). A frame drawn from the enemy look's config (UF.PlateConfigKey
+-- of an enemy), whose size the plates are (UF:ApplyPlateSize), fills its
+-- plate, as oUF made it. A frame drawn from the other config (a friend's, by
+-- default) sits on its plate's centre at that config's Width and Height, in
+-- its own units, UIParent's, where one is a pixel (pixels.lua): what's drawn,
+-- and so what's clicked, is a friend's name box, not the plate round it. When
+-- its place or size changed, its click area is set again
+-- (UF:RestorePlateHitTest). A plate's frame isn't secure, so in combat too
+-- (UF:UpdateUnitFrame).
+function UF:PlacePlateFrame(frame)
+	local config = frame.config
+	local fills = frame.base_unit == UF.PlateConfigKey(false)
+	local place = (fills and 'fill ' or 'centre ') .. config.width .. 'x' .. config.height
+	if placedAs[frame] == place then return end
+	local plate = frame:GetParent()
+	frame:ClearAllPoints()
+	if fills then
+		frame:SetAllPoints(plate)
+	else
+		frame:SetPoint('CENTER', plate, 'CENTER')
+		st:SetSize(frame, config.width, config.height)
+	end
+	-- Noted once it's placed, so a place that errored is tried again by the
+	-- next update.
+	placedAs[frame] = place
+	self:RestorePlateHitTest(frame)
 end
 
 -- Makes oUF's nameplate driver, once, so the plates get SaftUI's frames. Does

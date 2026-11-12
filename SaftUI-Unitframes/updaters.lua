@@ -95,6 +95,20 @@ function UF:UpdateElement(element, configOverride)
                 text:Hide()
             end
         end
+        -- On a plate, a part other parts can be anchored to (one UF:GetFrame
+        -- finds on the frame by its name; an element's own texts and icons
+        -- aren't) is still sized and placed by its config. A plate's frame
+        -- takes the other kind's config whenever its unit's kind changes
+        -- (nameplates.lua), and a part left where the other config put it
+        -- would take the parts anchored to it there too: the friendly config
+        -- hangs the castbar, the aura areas and the quest icon off a health
+        -- bar it turns off. Placed by its own config, the hidden bar holds
+        -- them where they'd sit if it were shown.
+        local unitframe = element.unitframe
+        if unitframe and unitframe.isNamePlate and element.name and unitframe[element.name] == element then
+            self:UpdateElementSize(element, configOverride)
+            self:UpdateElementPosition(element, configOverride)
+        end
         return false
     end
 
@@ -132,9 +146,10 @@ function UF:UpdateElement(element, configOverride)
     return true
 end
 
--- Whether an element shows: its config's Enable, except that a friendly
--- unit's plate never shows the parts only an enemy's does
--- (UF.PLATE_ENEMY_ONLY, nameplates.lua; frame.friendly is set on each add).
+-- Whether an element shows: its config's Enable (a plate's config is its
+-- kind's, nameplates.lua), except that a friendly unit's plate never shows
+-- the parts only an enemy's does, the threat text (UF.PLATE_ENEMY_ONLY;
+-- frame.friendly is set on each add).
 function UF:ElementWanted(element)
     if not element.config.enable then return false end
     local frame = element.unitframe
@@ -146,10 +161,11 @@ end
 
 -- Shows or hides an element (UF:ElementWanted), and returns its config's
 -- Enable, which UF:UpdateElement goes on to place and size it by: a part a
--- friendly plate hides is still laid out, ready for the plate's next enemy.
+-- friendly plate hides is still laid out, ready for the plate's next enemy
+-- (and on a plate a part its config turns off is placed and sized too).
 -- It only shows or hides: oUF enables every element a frame has when it
 -- builds the frame, before the frame's first update (UF.InitUnit,
--- UF:ApplyConfig). DisableElement is used only on plates, by their kind
+-- UF:ApplyConfig). DisableElement is used only on plates, by their config
 -- (nameplates.lua), because oUF's castbar Disable gives Blizzard's player
 -- and pet castbars their events back (Libraries/oUF/elements/castbar.lua,
 -- Disable), which the player castbar's option promises not to do. An element
