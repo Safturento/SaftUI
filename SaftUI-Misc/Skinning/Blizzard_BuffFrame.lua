@@ -33,7 +33,6 @@ local BF = SK:NewModule('Blizzard_BuffFrame')
 	a secret atlas changes nothing.
 ]]
 
-
 local TEMP_ENCHANT_COLOR = { 0.6, 0.2, 0.9 }
 
 -- Points Blizzard anchors the duration text by, mapped to the direction that moves the

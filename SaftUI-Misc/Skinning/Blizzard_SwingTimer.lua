@@ -27,7 +27,6 @@ local ST = SK:NewModule('Blizzard_SwingTimer')
 	    opacity, are /sui settings applied by Blizzard_SwingTimerPosition.lua.
 ]]
 
-
 -- Frame globals created by Blizzard_SwingTimer, with the fill color for each swing type.
 local BARS = {
 	{ name = 'SwingTimerMainHandFrame', color = { 0.85, 0.65, 0.20 } },

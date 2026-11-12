@@ -69,7 +69,6 @@ local CD = SK:NewModule('Blizzard_CooldownViewer')
 	everything here is legal in combat. No cooldown value is read.
 ]]
 
-
 local VIEWERS = {
 	'EssentialCooldownViewer', 'UtilityCooldownViewer',
 	'BuffIconCooldownViewer', 'BuffBarCooldownViewer',

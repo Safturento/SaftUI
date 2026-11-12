@@ -104,7 +104,7 @@ local TEXTS = { 'HotKey', 'Count', 'Name' }
 -- below it rather than over it, and the panel is as wide as the element button.
 local PANEL_PADDING = 3
 
--- The size st:CreateArrowButton draws SaftUI's arrows at.
+-- The size SaftUI's arrow art is drawn at.
 local ARROW_SIZE = 16
 
 -- From this button size up, cooldown numbers are in the larger pixel font, as on SaftUI's
