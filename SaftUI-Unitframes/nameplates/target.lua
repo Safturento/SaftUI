@@ -60,11 +60,12 @@ end
 -- redraw (which takes the colour off) puts it back: see st:SetBorderColor.
 local borderOwners = setmetatable({}, { __mode = 'k' })
 
-local function KeepBorder(drawnFrame)
-	st:KeepOwnColors(drawnFrame, function(f)
-		local plate = borderOwners[f]
-		if plate then UF:UpdatePlateTarget(plate) end
-	end)
+-- What the theme engine runs on a drawn frame after a recolor or redraw: the
+-- target check of the plate it belongs to. One function for every frame, so
+-- keeping it again on each update assigns the same value and makes nothing.
+local function RecolorBorder(drawnFrame)
+	local plate = borderOwners[drawnFrame]
+	if plate then UF:UpdatePlateTarget(plate) end
 end
 
 local candidates = {}
@@ -84,7 +85,7 @@ function UF:UpdatePlateTarget(frame)
 		local candidate = candidates[i]
 		if candidate then
 			borderOwners[candidate] = frame
-			KeepBorder(candidate)
+			st:KeepOwnColors(candidate, RecolorBorder)
 			if candidate ~= border then st:SetBorderColor(candidate) end
 		end
 	end

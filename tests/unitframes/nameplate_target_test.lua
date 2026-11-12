@@ -130,6 +130,31 @@ test('no target, or a target with no SaftUI plate: no plate is marked', function
 	eq(UF:PlateTargetArt(one):IsShown(), false, 'no art')
 end)
 
+test("the border keeps its colour through one recolor function, the same for every plate and every update (no new closure each time)", function()
+	local st, UF = setup('forever', 'thick')
+	local kept = {}
+	local real = st.KeepOwnColors
+	st.KeepOwnColors = function(self, frame, color)
+		kept[#kept + 1] = color
+		return real(self, frame, color)
+	end
+	local ok, err = pcall(function()
+		local one, two = NP.add('nameplate1'), NP.add('nameplate2')
+		target('nameplate1')
+		target('nameplate2')
+		UF:UpdateConfig('nameplate')
+	end)
+	st.KeepOwnColors = real
+	check(ok, tostring(err))
+	check(#kept > 4, 'kept on every add, target change and update: ' .. #kept)
+	local same = 0
+	for _, color in ipairs(kept) do
+		if color == kept[1] then same = same + 1 end
+	end
+	eq(same, #kept, 'one function every time')
+	check(type(kept[1]) == 'function', 'a function')
+end)
+
 test('a config update keeps the white border on the target', function()
 	local st, UF = setup('forever', 'thick')
 	local one = NP.add('nameplate1')
