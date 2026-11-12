@@ -58,6 +58,10 @@ st.OptionsModel = OM
 local format, strmatch, tconcat, tsort = string.format, string.match, table.concat, table.sort
 local emptyTbl = {}
 
+-- The profile's colors. Not the model's: the one getter the options files that
+-- draw (widgets, body, window) share, here as the first of them to load.
+function OM.Colors() return st.config.profile.colors end
+
 -- The most results OM.Search gives.
 local MAX_RESULTS = 100
 

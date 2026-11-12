@@ -16,6 +16,21 @@ local FIELD_HEIGHT, LIST_STRATA = Kit.FIELD_HEIGHT, Kit.LIST_STRATA
 local BG, ALT, FIELD_FONT_SIZE, NewText = Kit.BG, Kit.ALT, Kit.FIELD_FONT_SIZE, Kit.NewText
 local LookInput, LookWindow = Kit.LookInput, Kit.LookWindow
 
+------------------------------------------------------------------ the full-screen key catchers
+
+-- The keys of a catcher (the confirm dialog's, the select list's): while it's
+-- shown it takes the keys in consumes ({ KEY = true }) and lets every other
+-- one go on to the game. act(key) runs on each key. Out of combat only, as
+-- SetPropagateKeyboardInput is protected in it.
+function W.CatchKeys(catcher, consumes, act)
+	catcher:SetScript('OnKeyDown', function(self, key)
+		if not InCombatLockdown() then self:SetPropagateKeyboardInput(not consumes[key]) end
+		act(key)
+	end)
+	catcher:SetScript('OnShow', function(self) self:EnableKeyboard(true) end)
+	catcher:SetScript('OnHide', function(self) self:EnableKeyboard(false) end)
+end
+
 ------------------------------------------------------------------ the confirm dialog
 
 -- Lines a text takes in a box avail wide: each line of the text (split on \n)
@@ -117,13 +132,9 @@ local function BuildDialog()
 	no:SetPoint('BOTTOMLEFT', frame, 'BOTTOM', 6, 14)
 
 	catcher:SetScript('OnMouseDown', function() Answer(false) end)
-	catcher:SetScript('OnKeyDown', function(self, key)
-		local consumed = key == 'ESCAPE' or key == 'ENTER'
-		if not InCombatLockdown() then self:SetPropagateKeyboardInput(not consumed) end
+	W.CatchKeys(catcher, { ESCAPE = true, ENTER = true }, function(key)
 		if key == 'ESCAPE' then Answer(false) elseif key == 'ENTER' then Answer(true) end
 	end)
-	catcher:SetScript('OnShow', function(self) self:EnableKeyboard(true) end)
-	catcher:SetScript('OnHide', function(self) self:EnableKeyboard(false) end)
 
 	dialog = { catcher = catcher, frame = frame, text = text, measure = measure, yes = yes, no = no, box = box }
 end

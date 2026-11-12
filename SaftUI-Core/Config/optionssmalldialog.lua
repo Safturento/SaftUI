@@ -19,6 +19,7 @@ local ROW_HEIGHT, SCROLL_STEP = OB.ROW_HEIGHT, OB.SCROLL_STEP
 
 -- From optionswindow.lua.
 local F, Colors, Inside = S.F, S.Colors, S.Inside
+local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 
 ------------------------------------------------------------------ a small dialog
 
@@ -88,7 +89,7 @@ local function DialogChanged(ok, err, isDragging, widget)
 		xpcall(function() D.body:Refresh(widget) end, geterrorhandler())
 		return
 	end
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then return end
+	if ColorPickerShown() then return end
 	RenderDialog()
 end
 
@@ -132,18 +133,7 @@ local function BuildDialog()
 	D.status:SetTextColor(Colors().text.red:GetRGB())
 
 	-- Esc, only while the dialog is shown.
-	local keys = CreateFrame('Frame', nil, frame)
-	keys:Hide()
-	keys:SetScript('OnKeyDown', function(self, key)
-		if InCombatLockdown() then return end
-		if GetCurrentKeyBoardFocus() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
-			self:SetPropagateKeyboardInput(true)
-			return
-		end
-		local escape = key == 'ESCAPE'
-		self:SetPropagateKeyboardInput(not escape)
-		if escape then OW:CloseDialog() end
-	end)
+	local keys = EscapeKeys(frame, function() return false end, function() OW:CloseDialog() end)
 	D.keys = keys
 
 	frame:SetScript('OnShow', function()

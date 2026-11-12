@@ -258,4 +258,5 @@ end
 ------------------------------------------------------------------ for the later widget files
 
 Kit.FIELD_HEIGHT, Kit.LIST_STRATA, Kit.Base, Kit.builders = FIELD_HEIGHT, LIST_STRATA, Base, builders
+W.FIELD_HEIGHT = FIELD_HEIGHT -- the window's files take it from here too
 Kit.define, Kit.BUILT_IN = define, BUILT_IN

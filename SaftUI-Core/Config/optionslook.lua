@@ -16,9 +16,7 @@ local floor, max = math.floor, math.max
 -- The mockup's colors (the thick template's, and the field fill).
 local FIELD, EDGE, ALT, BG = st.BOX_COLORS.field, st.BOX_COLORS.edge, st.BOX_COLORS.alt, st.BOX_COLORS.bg
 
-local function Colors()
-	return st.config.profile.colors
-end
+local Colors = st.OptionsModel.Colors
 
 -- The window's font for fields and lists: the profile's normal face, at 15.
 local fieldFont

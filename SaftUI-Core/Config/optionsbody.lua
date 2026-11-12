@@ -84,10 +84,11 @@ OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 
-local function Colors() return st.config.profile.colors end
+local Colors = OM.Colors
 local function Normal() return Colors().text.normal:GetRGB() end
 local function Grey() return Colors().text.grey:GetRGB() end
 local function Blue() return Colors().button.blue:GetRGB() end
+OB.Colors, OB.Normal, OB.Grey, OB.Blue = Colors, Normal, Grey, Blue -- the window's files take them
 
 ------------------------------------------------------------------ fonts
 

@@ -101,7 +101,7 @@ local ArtReach = S.ArtReach
 local PAD = 28 -- the main column's left padding
 local CONTENT_WIDTH = OB.WIDTH -- the body: two columns of 367 with a gap of 40
 local ROW_HEIGHT = OB.ROW_HEIGHT
-local FIELD_HEIGHT = 24
+local FIELD_HEIGHT = W.FIELD_HEIGHT
 
 local HEAD_TOP = 20 -- the title's top, in the main column
 local TABS_TOP = 87 -- the first tab line's top
@@ -152,10 +152,30 @@ S.blizzard = false
 S.layout = OW.LAYOUT.own
 local laidOut = nil
 
-local function Colors() return st.config.profile.colors end
-local function Normal() return Colors().text.normal:GetRGB() end
-local function Grey() return Colors().text.grey:GetRGB() end
-local function Blue() return Colors().button.blue:GetRGB() end
+local Colors, Normal, Grey, Blue = OB.Colors, OB.Normal, OB.Grey, OB.Blue
+
+-- Whether Blizzard's color picker is open (its keys and its changes are its).
+local function ColorPickerShown() return ColorPickerFrame and ColorPickerFrame:IsShown() end
+
+-- The Esc catcher of the window and of its small dialog: a frame, shown only
+-- with its owner, that closes it on Esc. A box's keys and the owner's own
+-- exceptions (held(), and Blizzard's color picker) go on to the game; nothing
+-- is done in combat (SetPropagateKeyboardInput is protected).
+local function EscapeKeys(parent, held, close)
+	local keys = CreateFrame('Frame', nil, parent)
+	keys:Hide()
+	keys:SetScript('OnKeyDown', function(self, key)
+		if InCombatLockdown() then return end
+		if GetCurrentKeyBoardFocus() or held() or ColorPickerShown() then
+			self:SetPropagateKeyboardInput(true)
+			return
+		end
+		local escape = key == 'ESCAPE'
+		self:SetPropagateKeyboardInput(not escape)
+		if escape then close() end
+	end)
+	return keys
+end
 
 local function Copy(t)
 	local copy = {}
@@ -281,7 +301,7 @@ local function Busy()
 	-- never arrived; so does a scroll bar's held thumb (W.ScrollBarHeld).
 	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
 	if dragging or S.sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
+	if ColorPickerShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
 	return focus ~= nil and focus ~= F.search and Inside(focus, F.window)
 end
@@ -309,7 +329,7 @@ local function Changed(ok, err, isDragging, widget)
 		return
 	end
 	dragging = false
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then
+	if ColorPickerShown() then
 		Schedule()
 	else
 		OW:Render()
@@ -872,21 +892,8 @@ local function Build()
 	S.BuildResize(window)
 
 	-- Esc, only while the window is shown.
-	local keys = CreateFrame('Frame', nil, window)
-	keys:Hide()
-	keys:SetScript('OnKeyDown', function(self, key)
-		if InCombatLockdown() then return end
-		-- A box's keys, the dialog's Esc (its catcher closes it), and Esc while
-		-- Blizzard's color picker is open (it's the picker's).
-		if GetCurrentKeyBoardFocus() or OW:IsDialogShown() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
-			self:SetPropagateKeyboardInput(true)
-			return
-		end
-		local escape = key == 'ESCAPE'
-		self:SetPropagateKeyboardInput(not escape)
-		if escape then OW:Close() end
-	end)
-	F.keys = keys
+	-- The dialog's Esc is its own (its catcher closes it).
+	F.keys = EscapeKeys(window, function() return OW:IsDialogShown() end, function() OW:Close() end)
 
 	-- The frame clock: deferred renders and the search's wait. Shown only
 	-- while one is due.
@@ -1020,6 +1027,7 @@ end)
 ------------------------------------------------------------------ for the later files
 
 S.F, S.Colors, S.Schedule, S.SavePosition, S.Inside = F, Colors, Schedule, SavePosition, Inside
+S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT, S.SEARCH_WIDTH = PAD, FIELD_HEIGHT, TAB_HEIGHT, SEARCH_WIDTH

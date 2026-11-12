@@ -203,13 +203,10 @@ local function BuildList()
 		ListFill()
 	end)
 	catcher:SetScript('OnMouseDown', W.CloseList)
-	catcher:SetScript('OnKeyDown', function(self, key)
-		-- Esc closes the list; every other key goes on to the game.
-		if not InCombatLockdown() then self:SetPropagateKeyboardInput(key ~= 'ESCAPE') end
+	-- Esc closes the list; every other key goes on to the game.
+	W.CatchKeys(catcher, { ESCAPE = true }, function(key)
 		if key == 'ESCAPE' then W.CloseList() end
 	end)
-	catcher:SetScript('OnShow', function(self) self:EnableKeyboard(true) end)
-	catcher:SetScript('OnHide', function(self) self:EnableKeyboard(false) end)
 end
 
 -- Opens the list under owner (a frame; above it when there's no room below).
