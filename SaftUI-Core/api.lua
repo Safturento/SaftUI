@@ -351,7 +351,8 @@ end
 -- Blizzard's Edit Mode doesn't offer the frame: a post-hook on the box's OnShow
 -- hides it each time Blizzard shows it (on Edit Mode enter,
 -- EditModeSystemMixin:HighlightSystem). A hook only: a box showing now stays
--- until it next shows. The box's template (EditModeSystemSelectionBaseTemplate)
+-- until it next shows, so a site that wants it gone at once also calls the
+-- box's Hide. The box's template (EditModeSystemSelectionBaseTemplate)
 -- has no OnShow or OnHide of its own and isn't protected, so in combat it's
 -- hooked and hidden just the same. Called again for a frame, it adds no second
 -- hook. Does nothing for a nil frame or one without a box.
@@ -362,7 +363,9 @@ function st:HideEditModeSelection(frame)
 	selection:HookScript('OnShow', HideSelection)
 end
 
--- Blizzard frames st:HoldFrame holds: frame -> { holder, x, y, reanchor }.
+-- Blizzard frames st:HoldFrame holds: frame -> { holder, x, y, reanchor }. The weak
+-- mode frees nothing in practice (each value's reanchor refers to its frame, and Lua
+-- 5.1 has no ephemerons), which is fine: Blizzard's frames live for the session.
 local heldFrames = setmetatable({}, { __mode = 'k' })
 
 -- Anchors a Blizzard Edit Mode frame over holder by its top left and bottom right
@@ -383,6 +386,7 @@ function st:HoldFrame(frame, holder, x, y)
 			if not st:CanMoveNow(frame) and st:QueueAfterCombat(hold, hold.reanchor) then return end
 			local outX, outY = hold.x, hold.y
 			st:ClearAllPointsDirect(frame)
+			-- 0 - outX rather than -outX, so no outset gives an offset of 0, not -0.
 			st:SetPointDirect(frame, 'TOPLEFT', hold.holder, 'TOPLEFT', 0 - outX, outY)
 			st:SetPointDirect(frame, 'BOTTOMRIGHT', hold.holder, 'BOTTOMRIGHT', outX, 0 - outY)
 		end

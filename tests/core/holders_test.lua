@@ -88,6 +88,24 @@ local function EndCombat()
 	stub.fire_event('PLAYER_REGEN_ENABLED')
 end
 
+-- Runs fn(hooked) with the global hooksecurefunc counted: hooked[name] is how
+-- many times frame's method name was hooked through it. A post-hook has to go
+-- through hooksecurefunc (.agents/taint.md rule 2); a Lua wrapper assigned over
+-- the frame's method would replace Blizzard's Edit Mode override, and the lock
+-- can't see that, as the key is already on the frame. The global is put back
+-- after, even if fn errors.
+local function CountingHooks(frame, fn)
+	local real = hooksecurefunc
+	local hooked = {}
+	hooksecurefunc = function(tbl, name, ...)
+		if tbl == frame then hooked[name] = (hooked[name] or 0) + 1 end
+		return real(tbl, name, ...)
+	end
+	local ok, err = pcall(fn, hooked)
+	hooksecurefunc = real
+	if not ok then error(err, 0) end
+end
+
 ------------------------------------------------------------------ st:HideEditModeSelection
 
 test('HideEditModeSelection: the box stays hidden each time Blizzard shows it', function()
@@ -164,7 +182,11 @@ test('HoldFrame: the frame covers its holder, placed with the plain widget metho
 	Fresh()
 	local frame, calls = System()
 	local holder = Holder(100, 100, 200, 50)
-	st:HoldFrame(frame, holder)
+	CountingHooks(frame, function(hooked)
+		st:HoldFrame(frame, holder)
+		eq(hooked.ClearAllPoints, 1, 'ClearAllPoints post-hooked once, with hooksecurefunc')
+		eq(hooked.SetPoint, 1, 'SetPoint post-hooked once, with hooksecurefunc')
+	end)
 
 	eq(frame:GetNumPoints(), 2, 'two anchors')
 	local point, relative, relPoint, x, y = frame:GetPoint(1)
@@ -196,7 +218,17 @@ test('HoldFrame: put back after each of Blizzard\'s places, and follows the hold
 	local holder = Holder(100, 100, 200, 50)
 	st:HoldFrame(frame, holder)
 
+	-- Blizzard clearing the frame's anchors on its own (a snap break, a layout
+	-- apply that stops there): put back by the ClearAllPoints hook alone.
+	calls.direct = 0
+	frame:ClearAllPoints()
+	eq(calls.direct, 1, 'put back once after Blizzard\'s ClearAllPoints')
+	eq(frame:GetNumPoints(), 2, 'its two anchors again')
+	eq(select(2, frame:GetPoint(1)), holder, 'on the holder')
+	eq(select(2, frame:GetPoint(2)), holder, 'both corners')
+
 	-- Blizzard's Edit Mode applying a layout (ApplySystemAnchor).
+	calls.override = 0
 	frame:ClearAllPoints()
 	frame:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -255, -10)
 	eq(calls.override, 2, 'only Blizzard\'s two calls went through its overrides')
@@ -214,14 +246,20 @@ test('HoldFrame: called again, one set of hooks, held on the holder it was last 
 	Fresh()
 	local frame, calls = System()
 	local holder = Holder(100, 100, 200, 50)
-	st:HoldFrame(frame, holder)
-	st:HoldFrame(frame, holder)
-	calls.direct = 0
-	frame:SetPoint('CENTER', UIParent, 'CENTER', 10, 10)
-	eq(calls.direct, 1, 'one put back for one place by Blizzard')
-
 	local other = Holder(400, 300, 80, 20)
-	st:HoldFrame(frame, other, 2, 2)
+	CountingHooks(frame, function(hooked)
+		st:HoldFrame(frame, holder)
+		st:HoldFrame(frame, holder)
+		eq(hooked.ClearAllPoints, 1, 'ClearAllPoints hooked once after two calls')
+		eq(hooked.SetPoint, 1, 'SetPoint hooked once after two calls')
+		calls.direct = 0
+		frame:SetPoint('CENTER', UIParent, 'CENTER', 10, 10)
+		eq(calls.direct, 1, 'one put back for one place by Blizzard')
+
+		st:HoldFrame(frame, other, 2, 2)
+		eq(hooked.ClearAllPoints, 1, 'still hooked once after a new holder')
+		eq(hooked.SetPoint, 1, 'and SetPoint too')
+	end)
 	eq(select(2, frame:GetPoint(1)), other, 'moved to the new holder')
 	calls.direct = 0
 	frame:SetPoint('CENTER', UIParent, 'CENTER', 10, 10)
