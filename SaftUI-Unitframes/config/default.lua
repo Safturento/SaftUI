@@ -369,6 +369,7 @@ local name = {
     show_classification = true,
     colorClass = false,
     color_hostile = false, -- hostile names red, neutral yellow
+    color_friendly = false, -- friendly names in the friendly reaction color
     font = 'normal',
     position = {
         point = "LEFT",
