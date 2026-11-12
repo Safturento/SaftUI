@@ -47,11 +47,7 @@ function MM:OnEnable()
 
     -- Blizzard's Edit Mode box for the cluster no longer controls our minimap,
     -- so keep it hidden. HookScript only; nothing is written onto the frame.
-    if MinimapCluster.Selection then
-        MinimapCluster.Selection:HookScript('OnShow', function(selection)
-            selection:Hide()
-        end)
-    end
+    st:HideEditModeSelection(MinimapCluster)
 
     -- MinimapCluster is a ResizeLayoutFrame: it grows to cover its children, and
     -- the zone text, tracking and mail buttons now sit in SaftUI's bar across the
