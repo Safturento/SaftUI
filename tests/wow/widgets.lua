@@ -23,11 +23,12 @@
 	  changes. Errors in scripts go to the game's error handler.
 
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
-	itself (fire it with stub.fire_script); text wrapping (a font string is one
-	line); OnUpdate; a backdrop's border textures; secret values; taint, and
-	which frames are protected (a frame a test marks protected has its moves
-	blocked in combat: see "Protected frames in combat"); RegisterEvent takes
-	any event name (the game errors
+	itself (fire it with stub.fire_script), and nothing is placed on whole
+	pixels (SetRoundLayoutToNearestPixel is only remembered); text wrapping
+	(a font string is one line); OnUpdate; a backdrop's border textures; secret
+	values; taint, and which frames are protected (a frame a test marks
+	protected has its moves blocked in combat: see "Protected frames in
+	combat"); RegisterEvent takes any event name (the game errors
 	"Attempt to register unknown event"); SetFont and SetTexture always
 	succeed (in game a file that doesn't exist fails the call, or draws
 	nothing).
@@ -218,13 +219,13 @@ end
 
 ------------------------------------------------------------------ layout
 
+-- A widget's scale times its parents', up to the first that ignores its own
+-- parent's scale (SetIgnoreParentScale), whose own scale is the last taken.
 local function effective_scale(s)
 	local scale = s.scale
-	local parent = s.parent
-	while parent do
-		local ps = states[parent]
-		scale = scale * ps.scale
-		parent = ps.parent
+	while not s.ignore_parent_scale and s.parent do
+		s = states[s.parent]
+		scale = scale * s.scale
 	end
 	return scale
 end
@@ -542,6 +543,19 @@ function ScriptRegion.GetRect(self, s)
 	if l then return l, b, r - l, t - b end
 end
 
+-- Rounding the region's layout to whole pixels (SetRoundLayoutToNearestPixel,
+-- SimpleScriptRegionAPIDocumentation.lua, both clients: one bool, not
+-- nilable): off until set. The client then places the region on the pixel
+-- grid whenever it lays it out. Nothing is laid out by pixels here, so it's
+-- only remembered, in stub.state(region).round_layout. Anything but a boolean
+-- errors, the strict side of the documentation's bool.
+function ScriptRegion.SetRoundLayoutToNearestPixel(self, s, enabled)
+	if type(enabled) ~= 'boolean' then
+		usage(s, 'SetRoundLayoutToNearestPixel(): enabled must be a boolean, got ' .. type(enabled))
+	end
+	s.round_layout = enabled
+end
+
 ------------------------------------------------------------------ Region (textures, font strings)
 
 function Region.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
@@ -557,6 +571,9 @@ end
 function Region.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
 function Region.GetScale(self, s) return s.scale end
 function Region.GetEffectiveScale(self, s) return effective_scale(s) end
+-- Ignoring the parent's scale, as a frame's (Frame.SetIgnoreParentScale).
+function Region.SetIgnoreParentScale(self, s, ignore) s.ignore_parent_scale = ignore and true or false end
+function Region.IsIgnoringParentScale(self, s) return s.ignore_parent_scale == true end
 function Region.SetVertexColor(self, s, r, g, b, a)
 	s.vertex_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
 end
@@ -858,6 +875,14 @@ end
 function Frame.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
 function Frame.GetScale(self, s) return s.scale end
 function Frame.GetEffectiveScale(self, s) return effective_scale(s) end
+-- Ignoring the parent's scale (SetIgnoreParentScale, SimpleFrameAPIDocumentation.lua
+-- and SimpleRegionAPIDocumentation.lua, both clients): off until set. A widget
+-- that ignores it has its own scale as its effective scale, and the widgets
+-- under it build on that (effective_scale): what the API's name says, and what
+-- Inomena's nameplates rely on (its PixelPerfect gives each frame it walks on a
+-- plate SetIgnoreParentScale(true) and SetScale(768 / the screen's height)).
+function Frame.SetIgnoreParentScale(self, s, ignore) s.ignore_parent_scale = ignore and true or false end
+function Frame.IsIgnoringParentScale(self, s) return s.ignore_parent_scale == true end
 
 function Frame.EnableMouseWheel(self, s, enable) s.mouse_wheel_enabled = enable and true or false end
 function Frame.IsMouseWheelEnabled(self, s) return s.mouse_wheel_enabled == true end
@@ -1251,6 +1276,8 @@ local PROTECTED_IN_COMBAT = {
 	SetSize = true, SetWidth = true, SetHeight = true,
 	Show = true, Hide = true, SetShown = true, SetParent = true,
 	SetAttribute = true,
+	-- IsProtectedFunction in their documentation, both clients.
+	SetRoundLayoutToNearestPixel = true, SetIgnoreParentScale = true,
 }
 
 -- Wraps a method so it checks its self, then gets the widget's state.
