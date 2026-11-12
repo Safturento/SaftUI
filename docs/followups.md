@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart](#2026-11-12--nameplates-friendly-players-and-friendly-npcs-configured-apart)
   - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
   - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
   - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
@@ -109,6 +110,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
+
+**What:** Friendly players' plates and friendly NPCs' plates share one config, and one on/off (the game's two friendly settings, `nameplateShowFriendlyPlayers` and `nameplateShowFriendlyNpcs`, set together). The user may want them split later: separate settings, or at least a separate on/off for NPCs.
+
+**Why noticed:** During the 2026-11-12 brainstorm on configuring friendly plates apart from enemy plates, the user found friendly NPC plates everywhere in cities overwhelming. The agreed design gives friendly plates their own page (name only by default, players' names in class color) with a "use enemy nameplates' settings" box. Asked whether players and NPCs should be switchable apart, the user said: "for now lets keep friendly npcs and friendly players in the same config but I might want to split them out later".
+
+**Anchors:** the friendly nameplates spec (`docs/superpowers/specs/2026-11-12-saftui-friendly-nameplates-design.md`, once written), `SaftUI-Unitframes/nameplates/cvars.lua` (`UF.NAMEPLATE_CVARS`: both friendly settings from one toggle), `SaftUI-Unitframes/nameplates/nameplates.lua` (`IsFriendlyPlate`).
+
+**What's been considered:** The game already has a separate setting for each. A split on/off is small. Split looks would be a third plate config, chosen per plate by `UnitIsPlayer`, and the "use the other's settings" boxes would need a rule for three pages.
+
+**Shape of work:** Small for a separate NPC on/off (one more toggle, one more CVar entry). A design pass for split configs.
+
+**Open questions:** Only an on/off for NPCs, or a full third page?
 
 ### 2026-11-11 — Nameplates: in-game checks
 
