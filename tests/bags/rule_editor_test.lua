@@ -19,7 +19,7 @@ load_test_file('core/config_helpers.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 local OM, W = st.OptionsModel, st.OptionsWidgets
 

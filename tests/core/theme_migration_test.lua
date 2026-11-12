@@ -255,7 +255,7 @@ test('an imported old profile string migrates', function()
 	load_saftui('SaftUI-Unitframes/config/default.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+	load_options_widgets()
 	local UF = st:NewModule('Unitframes')
 	function UF:UpdateConfig() end
 	UF.units, UF.groups, UF.holders, UF.elements = {}, {}, {}, {}

@@ -21,6 +21,8 @@
 	  remove_shell_config()   takes that Config module out, for a test that loads the real config.lua
 	  apply_defaults()        fills st.config.profile from st.defaults, with AceDB's wildcard keys
 	  load_core_helpers()     loads Core's frame helpers and what they need
+	  load_options_widgets()  loads the /sui window's widget files (st.OptionsWidgets)
+	                          in the game's order; options_widget_files() lists them
 ]]
 
 local function pack(...)
@@ -395,6 +397,22 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Config/general.lua')
 	apply_defaults()
 	st:GetModule('Fonts'):Enable()
+end
+
+-- The /sui window's widget files (st.OptionsWidgets), by path from the repo
+-- root, in the order the game loads them: right after Config/optionsmodel.lua
+-- and before Config/optionsbody.lua.
+function options_widget_files()
+	return {
+		'SaftUI-Core/Config/optionswidgets.lua',
+	}
+end
+
+-- Loads the widget files in that order. Load Config/optionsmodel.lua first.
+function load_options_widgets()
+	for _, path in ipairs(options_widget_files()) do
+		load_saftui(path)
+	end
 end
 
 -- Core's TOC loads these three in this order (with Widgets, skinning.lua,

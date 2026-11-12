@@ -21,7 +21,7 @@
 --     tested here.
 load_core_helpers()
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Unitframes/config/default.lua')
 apply_defaults()
 

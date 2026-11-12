@@ -20,7 +20,7 @@ load_test_file('core/config_helpers.lua')
 local st = SaftUI
 local EM = st.EditModeFrames
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_saftui('SaftUI-Core/Config/optionswindow.lua')
 local OM, OW = st.OptionsModel, st.OptionsWindow

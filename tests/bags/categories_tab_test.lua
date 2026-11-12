@@ -32,7 +32,7 @@ local function world(client)
 	INV, B = H.views_world(client or 'forever', function() load_test_file('core/config_helpers.lua') end)
 	st = SaftUI
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_saftui('SaftUI-Core/Config/optionswindow.lua')
 	load_saftui('SaftUI-Bags/options.lua')

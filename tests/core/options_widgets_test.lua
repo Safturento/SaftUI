@@ -17,7 +17,7 @@ load_test_file('core/options_walk.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua') -- st:StripTextures, which a header uses on a button that isn't SaftUI's
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua') -- the position block's caption font
 local OM, W = st.OptionsModel, st.OptionsWidgets
 
