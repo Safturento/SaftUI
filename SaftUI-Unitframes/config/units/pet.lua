@@ -11,9 +11,4 @@ st.defaults.unitframes.profiles["**"].pet = {
     name = {
         enable = false,
     },
-    power = {
-        text = {
-            enable = false
-        }
-    },
 }
