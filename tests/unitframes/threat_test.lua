@@ -6,9 +6,13 @@
 --     is having it, and warning comes just before bad;
 --   - the player's role from Blizzard's own check (PlayerUtil, Forever's tank
 --     aura first); a group tank by its role, or on Forever its tank aura;
+--   - a tank's mob that's loose on a group member who isn't a tank is bad,
+--     even off the tank's own threat list; the group is read for who tanks
+--     the mob by threat state, stopping at that member;
 --   - nothing for a friendly plate, solo with Threat when solo off, a unit not
---     on the mob's threat list, or a secret threat state; a co-tank whose
---     state is secret is skipped;
+--     on the mob's threat list (but a tank's loose mob), or a secret threat
+--     state; a member whose state is secret is skipped, one whose values
+--     alone are secret still counts;
 --   - warning and bad replace the bar's colour each time oUF colours it, good
 --     gives oUF's colour back;
 --   - the events that tint the plates again, a change of the unit's kind, and
@@ -113,6 +117,7 @@ test('Forever: a member with the tank aura counts as a group tank; retail reads 
 		local frame = NP.add('nameplate1')
 		eq(UF:PlateThreat(frame), expected, client)
 		eq(UF.IsGroupTank('party1'), client == 'forever', client .. ': IsGroupTank')
+		eq(UnitHasEffectivelyTankAura ~= nil, client == 'forever', client .. ': the aura function is only on Forever')
 		eq(#take_errors(), 0, client .. ": no error (retail has no UnitHasEffectivelyTankAura, and SaftUI doesn't call it there)")
 	end
 
@@ -128,23 +133,107 @@ test('Forever: a member with the tank aura counts as a group tank; retail reads 
 	restore()
 end)
 
-test('a co-tank whose threat is secret is skipped', function()
+test('a co-tank whose threat state is secret is skipped; one whose threat values alone are secret still holds the mob', function()
 	local st, UF = world()
 	stub.role = 'TANK'
 	stub.units.party1.role = 'TANK'
 	enemy('nameplate1')
-	stub.threat.nameplate1 = { player = 0, party1 = 3 }
-	stub.secret_threat.nameplate1 = { party1 = true }
+	stub.threat.nameplate1 = { player = 0 }
 	local frame = NP.add('nameplate1')
-	eq(UF:PlateThreat(frame), 'bad', "the game says party1's threat state with the mob is secret: skipped")
-
-	-- Its threat handed back secret, with the game saying nothing.
 	local restore = S.install()
+	-- The game makes party1's threat state with the mob secret: its state
+	-- comes back secret.
+	stub.secret_threat.nameplate1 = { party1 = true }
+	stub.threat.nameplate1.party1 = S.secret('STATE')
+	eq(UF:PlateThreat(frame), 'bad', 'a secret state: skipped')
+	-- Only its threat values are secret (isTanking, the percents: on a boss
+	-- the values are kept secret where the state isn't). Its state says it
+	-- tanks the mob.
 	stub.secret_threat.nameplate1 = nil
-	stub.threat.nameplate1.party1 = S.secret('PARTY1')
-	eq(UF:PlateThreat(frame), 'bad', 'a secret isTanking: skipped')
+	stub.threat.nameplate1.party1 = { status = 3, isTanking = S.secret('VALUES'), percent = S.secret('PERCENT') }
+	eq(UF:PlateThreat(frame), 'good', 'its state shows it holds the mob: good')
+	stub.threat.nameplate1.party1 = { status = 2, isTanking = S.secret('VALUES') }
+	eq(UF:PlateThreat(frame), 'good', 'status 2 is tanking too')
+	stub.threat.nameplate1.party1 = { status = 1, isTanking = S.secret('VALUES') }
+	eq(UF:PlateThreat(frame), 'bad', 'status 1 is not')
 	eq(#take_errors(), 0, 'no error')
 	restore()
+end)
+
+test("a tank: a mob loose on a group member who isn't a tank is bad, even off the tank's threat list; one nobody tanks shows nothing", function()
+	local st, UF, P = world()
+	stub.role = 'TANK'
+	-- party1, the healer, has the mob; the tank isn't on its threat list.
+	stub.units.party1.role = 'HEALER'
+	enemy('nameplate1')
+	stub.threat.nameplate1 = { party1 = 3 }
+	local frame = NP.add('nameplate1')
+	eq(UF:PlateThreat(frame), 'bad', 'loose on the healer')
+	eq(frame.threatState, 'bad', 'tinted on its add')
+	eq(bar(frame), color(st.config.profile.colors.threat.bad), 'in the bad colour')
+	eq(frame.Threat:IsShown(), false, "no threat text: the tank isn't on its list")
+	stub.threat.nameplate1.party1 = 2
+	eq(UF:PlateThreat(frame), 'bad', 'status 2: still loose')
+	stub.threat.nameplate1.party1 = 1
+	eq(UF:PlateThreat(frame), nil, 'on the healer\'s list but not tanking: nothing')
+
+	-- Nobody in the group tanks it.
+	stub.threat.nameplate1 = {}
+	eq(UF:PlateThreat(frame), nil, 'nobody has it')
+	stub.threat.nameplate1 = { party1 = 0 }
+	eq(UF:PlateThreat(frame), nil, 'nobody tanks it')
+	-- Another tank has it: no tint for the tank who isn't on its list.
+	stub.units.party1.role = 'TANK'
+	stub.threat.nameplate1 = { party1 = 3 }
+	eq(UF:PlateThreat(frame), nil, 'another tank holds it')
+	-- A damage dealer or healer sees nothing for a mob on someone else.
+	stub.units.party1.role = 'HEALER'
+	stub.role = 'DAMAGER'
+	eq(UF:PlateThreat(frame), nil, 'not a tank: nothing')
+	-- A secret state of the member's is skipped.
+	stub.role = 'TANK'
+	local restore = S.install()
+	stub.threat.nameplate1 = { party1 = S.secret('STATE') }
+	eq(UF:PlateThreat(frame), nil, "the healer's state secret: nothing")
+	restore()
+	-- On your own there's nobody else.
+	stub.group = nil
+	P.threat_solo = true
+	stub.threat.nameplate1 = {}
+	eq(UF:PlateThreat(frame), nil, 'solo with Threat when solo: nothing')
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test('a raid of 40: the scan reads the threat state of each member until the one tanking the mob, and asks only that one for its role', function()
+	local st, UF = world()
+	stub.role = 'TANK'
+	local members = {}
+	for i = 1, 40 do members[i] = 'raid' .. i end
+	stub.group = { raid = true, members = members }
+	stub.units.raid5 = { name = 'Offtank', player = true, friend = true, role = 'TANK' }
+	enemy('nameplate1')
+	stub.threat.nameplate1 = { player = 0, raid5 = 3, raid30 = 3 }
+	local frame = NP.add('nameplate1')
+	local reads, roles, auras = {}, {}, 0
+	local realSituation, realRole, realAura = UnitThreatSituation, UnitGroupRolesAssigned, UnitHasEffectivelyTankAura
+	UnitThreatSituation = function(unit, mob)
+		if unit ~= 'player' then reads[#reads + 1] = unit end
+		return realSituation(unit, mob)
+	end
+	UnitGroupRolesAssigned = function(unit)
+		if unit and unit ~= 'player' then roles[#roles + 1] = unit end
+		return realRole(unit)
+	end
+	UnitHasEffectivelyTankAura = function(unit)
+		if unit ~= 'player' then auras = auras + 1 end
+		return realAura(unit)
+	end
+	local state = UF:PlateThreat(frame)
+	UnitThreatSituation, UnitGroupRolesAssigned, UnitHasEffectivelyTankAura = realSituation, realRole, realAura
+	eq(state, 'good', 'raid5, a tank, holds it')
+	eq(table.concat(reads, ','), 'raid1,raid2,raid3,raid4,raid5', 'states read up to raid5, then no more')
+	eq(table.concat(roles, ','), 'raid5', "only raid5's role read")
+	eq(auras, 0, "and no member's aura, raid5's role being enough")
 end)
 
 test('no threat entry shows nothing; a secret threat state shows nothing, with no error', function()
@@ -275,7 +364,7 @@ test('threat, group and role events retint the plates', function()
 	eq(#take_errors(), 0, 'a unit with no plate of SaftUI is ignored')
 
 	local status = 0
-	for _, event in ipairs({ 'UNIT_THREAT_SITUATION_UPDATE', 'GROUP_ROSTER_UPDATE', 'PLAYER_ROLES_ASSIGNED', 'PLAYER_SPECIALIZATION_CHANGED' }) do
+	for _, event in ipairs({ 'UNIT_THREAT_SITUATION_UPDATE', 'GROUP_ROSTER_UPDATE', 'PLAYER_ROLES_ASSIGNED', 'PLAYER_SPECIALIZATION_CHANGED', 'UPDATE_SHAPESHIFT_FORM' }) do
 		status = status == 0 and 3 or 0
 		stub.threat.nameplate1.player, stub.threat.nameplate2.player = status, status
 		local want = status == 3 and 'bad' or 'good'
@@ -291,6 +380,32 @@ test('threat, group and role events retint the plates', function()
 	stub.threat.nameplate2.player = 3
 	stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', 'player')
 	eq(two.threatState, nil, 'a plate showing no unit stays untinted')
+end)
+
+test("a threat situation change retints every plate for the player's, one plate for a plate's unit, and none for a group member's", function()
+	local st, UF = world()
+	local one, two = add_enemy('nameplate1', 3), add_enemy('nameplate2', 3)
+	stub.threat.nameplate1.player, stub.threat.nameplate2.player = 0, 0
+	stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', 'party1')
+	eq(one.threatState .. ',' .. two.threatState, 'bad,bad', "a member's: no plate (the mob's own list update follows)")
+	stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', 'nameplate2')
+	eq(one.threatState .. ',' .. two.threatState, 'bad,good', "a plate's unit: that plate")
+	stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', 'player')
+	eq(one.threatState .. ',' .. two.threatState, 'good,good', "the player's: every plate")
+
+	-- A unit token that's no plate's isn't looked for among the plates.
+	local looked = 0
+	local real = UF.PlateForUnit
+	UF.PlateForUnit = function(...) looked = looked + 1 return real(...) end
+	for _, unit in ipairs({ 'target', 'focus', 'boss1', 'mouseover', 'party1' }) do
+		stub.fire_event('UNIT_THREAT_LIST_UPDATE', unit)
+		stub.fire_event('UNIT_THREAT_SITUATION_UPDATE', unit)
+	end
+	eq(looked, 0, 'no plate looked for')
+	threat_changed('nameplate1')
+	eq(looked, 1, "a plate's unit is")
+	UF.PlateForUnit = real
+	eq(#take_errors(), 0, 'no error')
 end)
 
 test('a unit that turns friendly loses its tint at once, and an enemy again gets it back', function()
@@ -340,15 +455,27 @@ test('the Colors tab: Threat with Warning and Bad at their defaults; a change re
 	local frame = add_enemy('nameplate1', { status = 3, percent = 100 })
 	local hidden = add_enemy('nameplate2', 3)
 	NP.remove('nameplate2')
-	local before = forced(hidden)
+	local before, beforeShown = forced(hidden), forced(frame)
 	section.args.bad.set({}, 0.5, 0, 0.5)
 	eq(bar(frame), '0.50,0.00,0.50', "the tinted plate's bar")
 	eq(rgb(frame.Threat:GetTextColor()), '0.50,0.00,0.50', 'and its threat text')
+	eq(forced(frame) - beforeShown, 0, 'retinted as it is: no oUF update, as the picker sets a colour on every move')
 	ouf_colours(frame)
 	eq(bar(frame), '0.50,0.00,0.50', 'oUF colouring the bar again keeps the new colour')
 	eq(forced(hidden) - before, 0, 'a plate showing no unit is left alone')
 	section.args.reset.func()
 	eq(bar(frame), '1.00,0.10,0.10', 'Reset puts it back')
+end)
+
+test('a reputation colour change recolours the plates showing a unit, never one the game took away', function()
+	local st, UF = world()
+	local shown = add_enemy('nameplate1', 3)
+	local hidden = add_enemy('nameplate2', 3)
+	NP.remove('nameplate2')
+	local beforeShown, beforeHidden = forced(shown), forced(hidden)
+	st:ColorsChanged('reaction')
+	eq(forced(shown) - beforeShown, 1, "a plate showing its unit: oUF colours its bar again")
+	eq(forced(hidden) - beforeHidden, 0, 'a plate that keeps the unit it last showed is left alone')
 end)
 
 ------------------------------------------------------------------ the threat text

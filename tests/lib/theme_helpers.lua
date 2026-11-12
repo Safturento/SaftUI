@@ -21,10 +21,11 @@ local INTERFACE = { forever = 16001, retail = 120000 }
 -- A fresh world on one client, 'forever' or 'retail': the world a test file
 -- starts in after load_core_helpers(), with stub.interface set to the
 -- client's and Core's constants.lua run again for it (it reads the interface
--- when it loads, so st.forever follows). Everything else is as fresh as
--- reset_world() leaves it, so a file can switch clients between cases.
--- Returns SaftUI. Load anything else the case needs, and call T.watch(),
--- after it.
+-- when it loads, so st.forever follows), and the globals that client lacks
+-- dropped (stub.apply_client, tests/wow/game.lua). Everything else is as
+-- fresh as reset_world() leaves it, so a file can switch clients between
+-- cases. Returns SaftUI. Load anything else the case needs, and call
+-- T.watch(), after it.
 function T.client(name)
 	local interface = INTERFACE[name]
 	if not interface then
@@ -32,6 +33,7 @@ function T.client(name)
 	end
 	reset_world()
 	stub.interface = interface
+	stub.apply_client()
 	load_saftui('SaftUI-Core/constants.lua')
 	load_core_helpers()
 	apply_defaults()

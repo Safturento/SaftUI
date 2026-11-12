@@ -184,9 +184,9 @@ end
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
 -- don't use (text, button, item quality, renown) and a module that isn't
--- enabled yet (no UF.units) change nothing. The threat colors are the
--- nameplates' tint (nameplates/threat.lua), which the health bar's color
--- callback puts on and the plates' threat text takes again here.
+-- enabled yet (no UF.units) change nothing. The threat colors are only the
+-- nameplates' tint and threat text (nameplates/threat.lua): the plates are
+-- tinted again, and no other unit frame is updated.
 --
 -- 'theme' comes after a theme recolor or redraw, which takes a frame's own
 -- border color off (st:SetBorderColor): the target's border on its nameplate
@@ -207,6 +207,12 @@ function UF:OnColorsChanged(group)
 	end
 	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end
 	self:UpdateColors()
+	if group == 'threat' then
+		for _, frame in pairs(self.nameplates or {}) do
+			self:UpdatePlateThreat(frame)
+		end
+		return
+	end
 	self:ForEachUnitFrame(function(frame)
 		-- A frame whose unit doesn't exist (a boss or arena frame out of an
 		-- encounter, an empty party slot) has nothing to draw, and its tags
@@ -225,11 +231,6 @@ function UF:OnColorsChanged(group)
 		end
 		frame:UpdateTags()
 	end)
-	if group == 'threat' then
-		for _, frame in pairs(self.nameplates or {}) do
-			self:UpdatePlateThreat(frame)
-		end
-	end
 	for testGroup in pairs(self.testGroups or {}) do
 		self:UpdateGroupPreview(testGroup)
 	end

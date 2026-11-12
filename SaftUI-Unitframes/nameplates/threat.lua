@@ -7,12 +7,14 @@ local UF = st:GetModule('Unitframes')
 	element, frame.Threat) gives it as a percent.
 
 	The state is by role (UF.ThreatState): a tank's bad is not holding the
-	mob, unless another of the group's tanks holds it; a damage dealer's or
-	healer's is having it. Warning comes just before bad. Warning and bad
-	replace the bar's colour with the Colors tab's Threat colours while they
-	apply: elements/health.lua's PostUpdateColor puts the tint on each time
-	oUF colours the bar, and good leaves the bar oUF's. The text takes the
-	tint's colour too, and the normal text colour while good.
+	mob, unless another of the group's tanks holds it, and also a mob loose on
+	a group member who isn't a tank, even one not on the tank's own threat
+	list; a damage dealer's or healer's is having it. Warning comes just
+	before bad. Warning and bad replace the bar's colour with the Colors
+	tab's Threat colours while they apply: elements/health.lua's
+	PostUpdateColor puts the tint on each time oUF colours the bar, and good
+	leaves the bar oUF's. The text takes the tint's colour too, and the
+	normal text colour while good.
 
 	Tints show on enemy plates only, in a party or raid, and on your own only
 	with Threat when solo on (the Nameplates page's General). A secret threat
@@ -54,48 +56,64 @@ function UF.ThreatState(isTank, status, coTanked)
 end
 
 -- Whether a group member is one of the group's tanks: given the tank role, or
--- on Forever with an aura that makes it one (UnitHasEffectivelyTankAura,
--- which only Forever has). A secret answer is no.
+-- with an aura that makes it one, where the client has
+-- UnitHasEffectivelyTankAura (Forever does, retail doesn't). A secret answer
+-- is no.
 function UF.IsGroupTank(unit)
 	local role = UnitGroupRolesAssigned(unit)
 	if not issecretvalue(role) and role == 'TANK' then return true end
-	if st.forever then
+	if UnitHasEffectivelyTankAura then
 		local aura = UnitHasEffectivelyTankAura(unit)
 		if not issecretvalue(aura) and aura then return true end
 	end
 	return false
 end
 
--- Whether one of the group's tanks holds the mob. The mob's target can't tell
--- (its token is secret), so each tank's own threat on it is read. A member
--- whose threat state with the mob is secret is skipped.
-local function CoTanked(mob)
+-- The group member tanking a mob, or nil when none is. The mob's target can't
+-- tell (its token is secret), so each member's threat state on it is read,
+-- up to the one tanking it (status 2 or 3: only the mob's target is). The
+-- state, not UnitDetailedThreatSituation's isTanking: the game keeps the
+-- threat values secret more often than the state (its secret predicates
+-- single bosses out), and a member whose state is secret is skipped.
+local function MemberTanking(mob)
 	local tokens, count = PARTY, GetNumGroupMembers() - 1
 	if IsInRaid() then tokens, count = RAID, GetNumGroupMembers() end
 	for i = 1, math.min(count, #tokens) do
 		local member = tokens[i]
-		if UF.IsGroupTank(member) and not C_Secrets.ShouldUnitThreatStateBeSecret(member, mob) then
-			local isTanking = UnitDetailedThreatSituation(member, mob)
-			if not issecretvalue(isTanking) and isTanking then return true end
+		local status = UnitThreatSituation(member, mob)
+		if not issecretvalue(status) and status ~= nil and status >= 2 then
+			return member
 		end
 	end
-	return false
 end
 
 -- The player's threat state on a plate's unit (UF.ThreatState), or nil where
 -- no tint shows: a friendly plate, on your own with Threat when solo off, a
 -- threat state the game makes secret, or a unit whose threat list the player
--- isn't on. The group's tanks are read only for a tank who doesn't hold the
--- mob (status 0 or 1).
+-- isn't on. A tank who doesn't hold the mob (status 0 or 1, or not on its
+-- list) has the group read for who does: another of the group's tanks makes
+-- it good; a member who isn't a tank makes it bad, the mob loose on them, on
+-- the tank's list or not; nobody tanking it, off the tank's list, shows
+-- nothing.
 function UF:PlateThreat(frame)
 	local unit = frame.__unit
 	if not unit or frame.friendly then return nil end
 	if not IsInGroup() and not self:GetProfileConfig().nameplate.threat_solo then return nil end
 	if C_Secrets.ShouldUnitThreatStateBeSecret('player', unit) then return nil end
 	local status = UnitThreatSituation('player', unit)
-	if issecretvalue(status) or status == nil then return nil end
+	if issecretvalue(status) then return nil end
 	local isTank = PlayerUtil.IsPlayerEffectivelyTank() and true or false
-	local coTanked = isTank and status <= 1 and CoTanked(unit)
+	if status == nil then
+		if not isTank then return nil end
+		local member = MemberTanking(unit)
+		if member and not UF.IsGroupTank(member) then return 'bad' end
+		return nil
+	end
+	local coTanked = false
+	if isTank and status <= 1 then
+		local member = MemberTanking(unit)
+		coTanked = member ~= nil and UF.IsGroupTank(member)
+	end
 	return UF.ThreatState(isTank, status, coTanked)
 end
 
@@ -146,6 +164,15 @@ end
 
 local function UpdatePlate(frame) UF:UpdatePlateThreat(frame) end
 
+-- Updates the plate showing unit, for a nameplate token ('nameplate3') only:
+-- the same mob's other tokens (target, focus, boss1, mouseover) and group
+-- members' aren't looked for among the plates.
+local function UpdateUnitPlate(unit)
+	if type(unit) ~= 'string' or not unit:find('^nameplate%d') then return end
+	local frame = UF:PlateForUnit(unit)
+	if frame then UF:UpdatePlateThreat(frame) end
+end
+
 -- The plate's kind is set on every add and when the unit's faction changes
 -- ('kind'), its config on every update ('updated'), and a plate taken away
 -- drops its state ('removed').
@@ -153,21 +180,26 @@ UF:RegisterPlateCallback('kind', UpdatePlate)
 UF:RegisterPlateCallback('updated', UpdatePlate)
 UF:RegisterPlateCallback('removed', UpdatePlate)
 
--- A mob's threat list changing retints its plate. The player's or a group
--- member's threat situation, the group, the roles in it and the player's spec
--- retint every plate. Every one of these is in both clients' API
--- documentation.
+-- A mob's threat list changing retints its plate. A threat situation
+-- change retints every plate for the player's, and a plate's own for its
+-- unit's; a group member's is left to the mob's threat list update, which
+-- the game fires for the mob too, so a raid's changes don't each run every
+-- plate. The group, the roles in it, the player's spec and the player's form
+-- or stance (a tanking one is a tank aura on Forever) retint every plate.
+-- Every one of these is in both clients' API documentation.
 local events = CreateFrame('Frame')
 for _, event in ipairs({
 	'UNIT_THREAT_LIST_UPDATE', 'UNIT_THREAT_SITUATION_UPDATE',
 	'GROUP_ROSTER_UPDATE', 'PLAYER_ROLES_ASSIGNED', 'PLAYER_SPECIALIZATION_CHANGED',
+	'UPDATE_SHAPESHIFT_FORM',
 }) do
 	events:RegisterEvent(event)
 end
 events:SetScript('OnEvent', function(_, event, unit)
 	if event == 'UNIT_THREAT_LIST_UPDATE' then
-		local frame = unit and UF:PlateForUnit(unit)
-		if frame then UF:UpdatePlateThreat(frame) end
+		UpdateUnitPlate(unit)
+	elseif event == 'UNIT_THREAT_SITUATION_UPDATE' and unit ~= 'player' then
+		UpdateUnitPlate(unit)
 	else
 		UF:ForEachPlate(UpdatePlate)
 	end
