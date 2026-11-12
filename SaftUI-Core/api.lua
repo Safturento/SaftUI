@@ -190,8 +190,9 @@ end
 -- Runs fn once the Blizzard addon `name` is loaded: now if C_AddOns.IsAddOnLoaded
 -- says it is (loaded, or loading, as during its own ADDON_LOADED), otherwise
 -- when its ADDON_LOADED fires. fn gets no arguments. Several waits on one addon
--- run in the order they were made; an error in one goes to the error handler
--- and doesn't stop the rest. The one event frame is made on the first wait and
+-- run in the order they were made; run from the event, an error in one goes to
+-- the error handler and doesn't stop the rest (an fn run at once raises into
+-- its caller). The one event frame is made on the first wait and
 -- listens only while a wait is left. It touches no Blizzard frame.
 -- A wait made from inside a waiting fn is kept (or runs at once, if its addon
 -- is loaded) and is never run twice.

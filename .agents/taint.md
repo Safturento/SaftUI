@@ -38,7 +38,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
    - your own `frame.width`
    - adding keys to Blizzard tables
 
-   Waiting for a Blizzard addon to load uses `st:OnBlizzardAddon(name, fn)` (`SaftUI-Core/api.lua`), which writes nothing onto any frame; `fn` is where your hooks and skins go.
+   Waiting for a Blizzard addon to load uses `st:OnBlizzardAddon(name, fn)` (`SaftUI-Core/api.lua`), which writes nothing onto any Blizzard frame; `fn` is where your hooks and skins go.
 
    Keep SaftUI's per-frame data in a local weak table (`setmetatable({}, { __mode = 'k' })`) or on a SaftUI-owned frame. Writing fields onto frames SaftUI created (including oUF frames it spawned) is fine.
 
