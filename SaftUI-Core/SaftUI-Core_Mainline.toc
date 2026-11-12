@@ -45,14 +45,7 @@ Media\fonts.lua
 Media\colors.lua
 Media\theme.lua
 
-Config\defaults.lua
-Config\config.lua
-Config\optionsmodel.lua
-Config\optionswidgets.lua
-Config\optionsbody.lua
-Config\optionswindow.lua
-Config\widgets.lua
-Config\general.lua
+Config\load.xml
 
 EditMode\load.xml
 

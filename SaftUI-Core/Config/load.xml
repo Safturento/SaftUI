@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="defaults.lua"/>
+	<Script file="config.lua"/>
+	<Script file="optionsmodel.lua"/>
+	<Script file="optionswidgets.lua"/>
+	<Script file="optionsbody.lua"/>
+	<Script file="optionswindow.lua"/>
+	<Script file="widgets.lua"/>
+	<Script file="general.lua"/>
+</Ui>
