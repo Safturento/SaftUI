@@ -88,7 +88,11 @@ test('UpdateContainer: no window returns, a hidden one is not laid out', functio
 	-- The first update, which makes every slot before the window opens, asks
 	-- for it by name.
 	INV:UpdateContainer('bag', nil, true)
-	check(#container.categories.Quest.slots > 0, 'asked for while hidden, its slots are made')
+	local filled = 0
+	for _, slot in ipairs(container.categories.Quest.slots) do
+		if slot.info and slot.info.name == 'Rock' then filled = filled + 1 end
+	end
+	eq(filled, 1, 'asked for while hidden, a Quest slot holds the item')
 	container:Show()
 	INV:UpdateContainer('bag', true)
 	eq(layouts > 0, true, 'a shown window is laid out')
@@ -119,4 +123,22 @@ test('CreateSlot for a category that does not exist says so', function()
 	local ok, err = pcall(INV.CreateSlot, INV, container, 'No Such Category')
 	check(not ok, 'it errors')
 	check(tostring(err):find('Category "No Such Category" does not exist', 1, true), 'with the assert message, got: ' .. tostring(err))
+end)
+
+test('a view switched while the window is closed fills the new view\'s sections', function()
+	local container = world()
+	W.put(0, 1, W.item(101, 'Ore', 'Miscellaneous', 1))
+	INV:UpdateContainer('bag', true)
+	container:Hide()
+	INV:SetView('bag', 'onebag')
+	local filled = 0
+	for name, category in pairs(container.categories) do
+		if tostring(name):find('^view:') then
+			for _, slot in ipairs(category.slots) do
+				if slot.info and slot.info.name == 'Ore' then filled = filled + 1 end
+			end
+		end
+	end
+	eq(filled, 1, "the item has a slot in One bag's section while the window is closed")
+	eq(#take_errors(), 0, 'no errors')
 end)

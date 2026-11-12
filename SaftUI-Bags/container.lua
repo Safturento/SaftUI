@@ -752,7 +752,7 @@ function INV:ApplyView(id)
 	if view == 'compact' then
 		for _, column in ipairs(container.columns) do column:Show() end
 	end
-	self:UpdateContainer(id, true)
+	self:UpdateContainer(id, true, true)
 	local search = self.containers.bag and self.containers.bag.search
 	if search then self:UpdateSearchFilter(search) end
 end
