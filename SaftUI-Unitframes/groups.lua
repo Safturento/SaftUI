@@ -255,8 +255,7 @@ function UF:PlaceGroupHolder(group)
 	local holder = self.holders[group]
 	local config = self:GetProfileConfig()[group]
 	local width, height = UF.GetGroupLayoutSize(UF.GetGroupLayout(config), GetGroupSize(group, config))
-	holder:ClearAllPoints()
-	holder:SetPoint(st:UnpackPoint(config.position))
+	st:PlaceAtPosition(holder, config.position)
 	st:SetSize(holder, width, height)
 end
 
