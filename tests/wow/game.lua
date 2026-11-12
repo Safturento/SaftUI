@@ -193,6 +193,22 @@ end
 function UnitRace(unit)
 	if unit == 'player' then return 'Human', 'Human', 1 end
 end
+-- GetGuildInfo(unit) (an old global, not in the generated API documentation):
+-- the guild's name, its rank name and rank index. A stub.units unit's is its
+-- guild field (nil: no guild, which gives nil as the game does); a test can
+-- make it a secret value. The player has none unless stub.player_guild.
+function GetGuildInfo(unit)
+	local guild
+	if unit == 'player' then
+		guild = stub.player_guild
+	else
+		local other = OtherUnit(unit)
+		guild = other and other.guild
+	end
+	if guild ~= nil then return guild, 'Member', 1 end
+end
+-- Blizzard's global string for the tooltip's level line (GlobalStrings).
+TOOLTIP_UNIT_LEVEL = 'Level %s'
 function UnitFactionGroup(unit)
 	if unit == 'player' then return 'Alliance', 'Alliance' end
 end
