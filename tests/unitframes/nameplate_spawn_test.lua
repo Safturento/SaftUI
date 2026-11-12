@@ -160,7 +160,7 @@ test("a plate's first add builds SaftUI's frame, kept in UF.nameplates by its nu
 	end
 end)
 
-test('a plate has health, name, castbar, buffs, debuffs, quest and raid target icons, the threat text, and nothing else', function()
+test('a plate has health, name, castbar, buffs, debuffs, quest and raid target icons, the threat text, the subtext, and nothing else', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = NP.world(client)
 		UF:SpawnNameplates()
@@ -168,7 +168,7 @@ test('a plate has health, name, castbar, buffs, debuffs, quest and raid target i
 		local names = {}
 		for name in pairs(frame.elements) do names[#names + 1] = name end
 		table.sort(names)
-		eq(table.concat(names, ','), 'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat', client)
+		eq(table.concat(names, ','), 'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Subtext,Threat', client)
 		eq(frame.Power, nil, client .. ': no power bar')
 		eq(frame.GroupRoleIndicator, nil, client .. ': no group role')
 		eq(frame.RaidRoleIndicator, nil, client .. ': no raid role')
