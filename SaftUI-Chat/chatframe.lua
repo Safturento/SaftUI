@@ -38,35 +38,6 @@ local function onMouseScroll(self, delta)
 	end
 end
 
-function CHT:ChatFrame_OnUpdate(frame)
-	local frametop = frame:GetTop()
-
-	local prev
-	for i,region in pairs({frame:GetRegions()}) do
-		if region:GetObjectType() == 'FontString' and not region:GetName() then
-			if not region.handled then
-				region:ClearAllPoints()
-				region:SetSpacing(self.config.linespacing)
-				if prev then 
-					region:SetPoint('BOTTOMLEFT', prev, 'TOPLEFT', 0, self.config.linespacing)
-				else
-					region:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 0, self.config.linespacing)
-				end
-
-				region.handled = true
-			end
-				
-			if region:GetTop() and region:GetTop() > frametop-self.config.linespacing then region:Hide() else region:Show() end
-			prev = region
-
-		end
-	end
-
-	local font, size, outline = st:GetFont(self.config.font):GetFont()
-	frame:SetFont(font, self.config.fontsize, outline)
-	frame:SetShadowOffset(0,0)
-end
-
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
