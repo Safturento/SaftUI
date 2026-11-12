@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-12 — Cooldown Manager skin: in-game checks](#2026-11-12--cooldown-manager-skin-in-game-checks)
+  - [2026-11-12 — Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border](#2026-11-12--cooldown-manager-skin-a-tracked-debuffs-dispel-type-on-saftuis-border)
   - [2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart](#2026-11-12--nameplates-friendly-players-and-friendly-npcs-configured-apart)
   - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
   - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
@@ -110,6 +112,57 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-12 — Cooldown Manager skin: in-game checks
+
+**What:** SaftUI now skins Blizzard's Cooldown Manager (`Blizzard_CooldownViewer`) as SaftUI's action buttons, and its tracked bars as SaftUI's bars (branch `cdm`). It was built from both clients' source and tested on stubs, which model neither the game's drawing and frame order, its pixel grid, Edit Mode's layout, combat protection and taint, nor secret aura data. These steps need a look in game, on Forever first and on retail where marked, with BugSack on.
+
+**Why noticed:** The skin was built straight from the user's ask ("no need for planning, just standard action button skinning"), so this list is the only in-game check it gets. The run's report is `.superpowers/sdd/cooldown-manager-skin/report.md` (not versioned).
+
+**Anchors:** `SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua`, `SaftUI-Misc/Skinning/skinning.lua` (the Skinning page's Cooldown Manager toggle), `SaftUI-Misc/config.lua` (`skinning.cooldown_manager`); `tests/misc/cooldown_viewer_test.lua`, `tests/misc/fixtures/cooldown_viewer.lua`; `.agents/taint.md` (rules 1, 2 and 11), `.agents/clients.md` (Cooldown Manager).
+
+**What's been considered:** The items keep Blizzard's size, and Blizzard's layout puts them Icon Padding less 4 apart (`GetAdditionalPaddingOffset`, made so its round icons touch), so at Blizzard's default padding of 2 neighbouring items overlap by 2px and their borders share a line; an Icon Padding of 7 should give SaftUI's 3px gap. The skin doesn't change the layout: Edit Mode owns it. Icon Size scales each item, and SaftUI's border with it, so at a size other than 100% the border is no longer whole pixels; counter-scaling SaftUI's backdrop was left out until it's seen. The Cooldown Manager's settings window keeps Blizzard's look.
+
+**Shape of work:** A pass by the user, then a small fix per step that fails. The steps:
+
+*Setup, both clients*
+1. Turn the Cooldown Manager on (Blizzard's Options, or `/console cooldownViewerEnabled 1`) and `/reload`. `/dump C_AddOns.IsAddOnLoaded('Blizzard_CooldownViewer')` is true at login. Track a few spells in the Essential and Utility rows (one with charges, one with a range, one that gives you a buff), a few tracked buffs as icons, and one as a bar.
+
+*Under Thick, out of combat*
+2. Each Essential and Utility icon is square, with Thick's border filling its place and no round corners, no Blizzard frame round it and no gap between the border and the icon. Cast a spell with a cooldown: a flat, dark, square swipe over the icon (not round), the countdown in Pixel Med on the Essential row and in Pixel on the Utility row. A spell with charges shows its count in the icon's bottom right corner, 3px in from the border's outer edge, in the Skinning font (Pixel). The GCD flash plays over the icon, not past its border.
+3. Target something out of a ranged spell's range: the icon tints red and Blizzard's out of range shadow covers the icon only. A spell that buffs you: while the buff is up its swipe is Blizzard's gold, flat and square.
+4. Tracked buffs (icons): the same square look; the swipe counts down dark and square; stacks in the icon's corner. A tracked debuff on your target shows Blizzard's dispel-colored border round the icon, over SaftUI's: say how it reads (the followup "Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border").
+5. Tracked bars: the icon as above; the bar a flat orange fill with Thick's border just outside it, no Blizzard bar background or shadow under it, a 2px white line at the fill's end the bar's full height (only while the buff is up), the name and the duration in Pixel. Stacks show in the bar icon's corner. In Edit Mode set Bar Content to Name only: the icon and its stacks hide; Icon only: the name hides.
+6. Proc glows (a spell that lights up) and Blizzard's pandemic glow on a DoT still show round the skinned icons.
+
+*Edit Mode, both clients*
+7. Open Blizzard's Edit Mode: the placeholder icons are skinned too. Icon Padding 2 (Blizzard's default): neighbouring borders share a line; 7: a 3px gap (measure it in a screenshot). Icon Size 50% and 150%: the border scales with the item; say whether it looks soft or uneven (see What's been considered). Vertical orientation, Icon Limit wrapping and Icon Direction keep every icon skinned. Changing these after the viewer was laid out once (Blizzard releases and acquires its items again) gives no doubled borders.
+
+*In combat*
+8. Set a viewer's Visibility to In Combat, and tracked buffs to hide while inactive. Pull: the viewer appears skinned, and a tracked buff that comes up in combat appears skinned, with no ADDON_ACTION_BLOCKED, no "Interface action failed" and no Lua error. `/reload` in combat with the viewers up: still skinned, no errors.
+9. Retail, in content where aura data is secret (Mythic+ or a raid, in combat): tracked buffs and their swipes and stacks keep working, with no Lua error from `Blizzard_CooldownViewer.lua` in SaftUI-Misc or from Blizzard's Cooldown Manager.
+10. `/console taintLog 1`, play a while with the Cooldown Manager (pulls, Edit Mode changes, its settings window, a talent or spec change), then `/reload`: nothing in `Logs/taint.log` blames SaftUI for `Blizzard_CooldownViewer` or the viewers.
+
+*Themes*
+11. `/sui` → Global Settings → Theme → Thin: a 1px border, the icon 1px inside it, the bar's border 1px outside the bar. Blizzard: each icon in Blizzard's action button art (its slot behind the icon and the ring round it), and the swipe, the countdown and the charges over the ring, not under it; a bar's stacks over its icon's ring; the bar in Blizzard's tooltip border. Back to Thick: none of Blizzard's art left. Each switch applies at once, in and out of combat.
+12. `/sui` → Skinning → Theme None: bare icons filling their place and bare bars; Thin overrides the global theme there; Font Normal changes the charges, stacks and the bars' texts at once. Switch to a profile with another theme: the Cooldown Manager follows with no reload.
+
+*The toggle*
+13. `/sui` → Skinning → Cooldown Manager off: chat says "Reload your UI to apply."; after `/reload` the Cooldown Manager is Blizzard's own again (round icons, its frame, its round swipe and fonts, its bar art). On and `/reload`: SaftUI's look is back.
+
+**Open questions:** Should the skin counter-scale SaftUI's border at Icon Sizes other than 100% (step 7)? Should SaftUI set Icon Padding for the user, or only say what gives its gap?
+
+### 2026-11-12 — Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border
+
+**What:** The Cooldown Manager skin leaves Blizzard's debuff border (`DebuffBorder`, `CooldownViewerItemDebuffBorderTemplate`) as Blizzard draws it: 3px round the icon, over SaftUI's border, in the debuff's dispel color. The buff skin instead colors SaftUI's own border by the dispel type under Thick and Thin and shows Blizzard's art only under Blizzard.
+
+**Why noticed:** Out of scope for the Cooldown Manager skin ("standard action button skinning"), noticed while reading `Blizzard_CooldownViewer` for it. Tracked buffs and bars show a debuff border for a harmful aura they track (a DoT you put on your target, read from the player's and the target's auras).
+
+**Anchors:** `SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua`; the buff skin's way, `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` (`SkinBorders`, `BuildAtlasColors`); Blizzard's `CooldownViewerItemDebuffBorderMixin:UpdateFromAuraData` and `AuraUtil.SetAuraBorderAtlasFromAura` (`Blizzard_FrameXMLUtil/AuraUtil.lua`, both clients).
+
+**What's been considered:** The buff skin's way carries over: post-hook the border texture's `SetAtlas` and its frame's `Show` and `Hide`, map the atlas to a color through `AuraUtil.GetDebuffDisplayInfoTable()`, put it on SaftUI's border with `st:SetBorderColor` and again in `OnColorsChanged('theme')`, fade Blizzard's art by alpha under Thick and Thin, and fall back on it for a secret atlas (on retail the aura data, and so the atlas, can be secret in combat).
+
+**Shape of work:** Small: one function and a test on the fixture, after the in-game check (step 4 of "Cooldown Manager skin: in-game checks") says whether Blizzard's border over SaftUI's reads badly.
 
 ### 2026-11-12 — Nameplates: friendly players and friendly NPCs configured apart
 
