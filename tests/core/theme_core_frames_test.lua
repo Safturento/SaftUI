@@ -5,7 +5,7 @@
 --     (panels.lua), and st:CreatePanel's panel, from panels.theme;
 --   - the /sui window and its dialog (Config/optionswindow.lua), and the
 --     border of Icon zoom's preview (a description's image,
---     Config/optionswidgets.lua);
+--     Config/optionstypes.lua);
 --   - the buttons.theme / panels.theme defaults (Config/defaults.lua);
 --   - the wrappers st:SkinActionButton and st:SkinEditBox (skinning.lua) and
 --     Core's widgets (Widgets/button.lua, scrollbar.lua, statusbar.lua,

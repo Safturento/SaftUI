@@ -5,7 +5,7 @@
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
--- (optionswidgets.lua), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
+-- (load_options_widgets), the body (optionsbody.lua), the window, and edit mode. The /sui tree is the real
 -- one Config:GetOptionsTable builds, from the real General, Fonts, Colors, Theme and
 -- EditMode modules, AceDBOptions' profiles table, and synthetic modules registered here: one
 -- shaped like Unitframes (a unit picker, element tabs) and small ones for the

@@ -31,7 +31,7 @@ local POSITION_DESC = "Where this sits: which of its points goes to which point 
 
 --[[
 	The Position option: one option for every SetPoint parameter, drawn by the
-	options window's Position block (type 'position', optionswidgets.lua). Its
+	options window's Position block (type 'position', optionsposition.lua). Its
 	get, set and validate take the part first: 'point', 'rel_point', 'x_off',
 	'y_off', and with global_frame 'frame', the name of the frame it's placed
 	on (the block's TO part, a name box: target = 'name').

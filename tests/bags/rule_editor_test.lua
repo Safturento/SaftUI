@@ -5,8 +5,8 @@
 -- block's ID box and cursor drop, SetHighlight, and rule data this version
 -- can't read.
 --
--- Real: the options window's model, widgets and body (optionsmodel.lua,
--- optionswidgets.lua, optionsbody.lua) on Core's real config.lua
+-- Real: the options window's model, widgets and body (optionsmodel.lua, the
+-- widget files, optionsbody.lua) on Core's real config.lua
 -- (core/config_helpers.lua), as tests/core/options_widgets_test.lua loads
 -- them; SaftUI-Bags' config.lua, inventory.lua (the module), itemclasses.lua,
 -- rules.lua and ruleeditor.lua. Made by hand: C_Item's GetItemClassInfo and
