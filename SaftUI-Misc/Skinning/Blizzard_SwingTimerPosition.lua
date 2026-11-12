@@ -83,13 +83,10 @@ local SetAlpha
 local function TakeOver(bar, holder, getConfig)
 	st:HoldFrame(bar, holder, INSET_X, INSET_Y)
 
-	-- Blizzard's Edit Mode box no longer controls this bar, so keep it hidden.
-	-- HookScript only; nothing is written onto the frame.
-	local selection = bar.Selection
-	if selection then
-		selection:HookScript('OnShow', function(self) self:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box no longer controls this bar, so keep it hidden, from its
+	-- next show and now. HookScript only; nothing is written onto the frame.
+	st:HideEditModeSelection(bar)
+	if bar.Selection then bar.Selection:Hide() end
 
 	-- Title and time text. Blizzard only ever calls SetShown on these regions, so each
 	-- gets a post-hook that puts the SaftUI choice back. Show and Hide are not hooked,

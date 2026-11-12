@@ -434,13 +434,10 @@ function AP:TakeOver(key)
 	-- Mode) makes it protected, and then it's re-anchored at the end of combat.
 	st:HoldFrame(frame, holder)
 
-	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden.
-	-- HookScript only; nothing is written onto the frame.
-	local selection = frame.Selection
-	if selection then
-		selection:HookScript('OnShow', function(self) self:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden, from
+	-- its next show and now. HookScript only; nothing is written onto the frame.
+	st:HideEditModeSelection(frame)
+	if frame.Selection then frame.Selection:Hide() end
 
 	hooksecurefunc(frame, 'UpdateGridLayout', function() self:LayoutButtons(key) end)
 	hooksecurefunc(frame, 'UpdateAuraButtons', function() self:OnButtonsUpdated(key) end)

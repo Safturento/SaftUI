@@ -145,11 +145,9 @@ function TT:SetupTooltipPosition()
 	hooksecurefunc(container, 'ClearAllPoints', update)
 	hooksecurefunc(container, 'SetPoint', update)
 
-	local selection = container.Selection
-	if selection then
-		selection:HookScript('OnShow', function(box) box:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box for the container: hidden from its next show, and now.
+	st:HideEditModeSelection(container)
+	if container.Selection then container.Selection:Hide() end
 
 	-- The bag window and loot feed are built in their own addons' OnEnable, which
 	-- runs before this one (SaftUI-Bags and SaftUI-Loot load before SaftUI-Misc).

@@ -563,12 +563,10 @@ function TB:SetupPosition()
 	hooksecurefunc(bar, 'ClearAllPoints', PutBack)
 	hooksecurefunc(bar, 'SetPoint', PutBack)
 
-	-- Blizzard's Edit Mode box for the bar. Not secure, so hiding it is safe in combat.
-	local selection = bar.Selection
-	if selection then
-		selection:HookScript('OnShow', function(box) box:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box for the bar, hidden from its next show, and now. Not
+	-- secure, so hiding it is safe in combat.
+	st:HideEditModeSelection(bar)
+	if bar.Selection then bar.Selection:Hide() end
 
 	self:DisableBarMouse()
 
