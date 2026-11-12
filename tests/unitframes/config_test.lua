@@ -26,7 +26,9 @@
 --     element Position's dropdown lists every registered element.
 --   * UF.unit_strings, empty: unitframes.lua's name the units (Player,
 --     Target, ...), and without them a unit is named by its key. UF.group_strings
---     is unitframes.lua's, as the Ready check element's ValidUnit reads it.
+--     is unitframes.lua's, as the Ready check element's ValidUnit reads it;
+--     so are UF.PLATE_UNITS and UF.IsPlateUnit, which Power's and the role
+--     indicators' ValidUnit read.
 --   * UF.oUF, as far as tags.lua uses it: oUF's tag tables, where tags.lua
 --     registers its st:name tag (oUF calls the tag with the unit, the real
 --     unit and the tag's argument, the config unit), and the class colors
@@ -67,6 +69,8 @@ for _, group in ipairs({ 'raid40', 'party', 'raid10' }) do
 end
 UF.unit_strings = {}
 UF.group_strings = { party = 'Party', raid10 = 'Raid 10', raid40 = 'Raid 40' }
+UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
+function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
 function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
 	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,

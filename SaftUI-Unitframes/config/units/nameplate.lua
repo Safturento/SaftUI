@@ -27,6 +27,9 @@ local st = SaftUI
 st.defaults.unitframes.profiles["**"].nameplate = {
     enable = true,
     friendly = true,
+    -- Draw enemy plates from the Friendly nameplates page (friendlynameplate.lua).
+    -- Never on together with friendlynameplate.use_enemy.
+    use_friendly = false,
     threat_solo = false,
     -- The threat text (nameplates/threat.lua): your threat on an enemy as a
     -- percent, small, above the bar's right end, level with the debuffs.

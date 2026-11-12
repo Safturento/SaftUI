@@ -203,7 +203,7 @@ end
 
 -- Nameplates show no power bar.
 local function ValidUnit(unit)
-	return unit ~= 'nameplate'
+	return not UF.IsPlateUnit(unit)
 end
 
 UF:RegisterElement('Power', Constructor, UpdateConfig, GetConfigTable, ValidUnit)
