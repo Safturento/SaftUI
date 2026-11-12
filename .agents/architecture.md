@@ -12,6 +12,8 @@ covers:
   - 'SaftUI-*/init.lua'
   - 'SaftUI-Core/theme.lua'
   - 'SaftUI-Core/themeart.lua'
+  - 'SaftUI-Core/utilities.lua'
+  - 'SaftUI-Core/Media/fonts.lua'
   - 'SaftUI-Unitframes/unitframes.lua'
   - 'SaftUI-Unitframes/updaters.lua'
   - 'SaftUI-Unitframes/groups.lua'
@@ -43,7 +45,7 @@ covers:
   - **Half pixels from centred anchors.** SaftUI's UI scale makes one unit one physical pixel, and `st:RoundToPixel` keeps sizes and offsets whole. But a frame anchored by its centre on an axis (TOP/BOTTOM centre it across, LEFT/RIGHT up and down, CENTER both) that's an odd number of pixels long on that axis has its edges half a pixel off the grid. So do its children. The game then rounds each child separately, and children either side of the centre round in opposite directions. Symptom: one gap in a row of buttons is a pixel short, right at the middle (a 12-button bar at 3px spacing is 573px wide). Fix: round the frame up to an even pixel length on each centred axis, so its edges and its centre stay on whole pixels and frames anchored to it line up too. `EvenIfCentred` in `SaftUI-ActionBars/bars.lua` does this, through `AB:PlaceFrame`, which sizes and places both the bars and the extra buttons' holders (`extras.lua`). When another addon needs it, move it into `api.lua`. Where the anchor can change without SaftUI's sizing code seeing it, round up on both axes whatever it is. The totem bar (`SaftUI-Misc/totembar.lua`, `EvenPixels`) is always sized even, with the spare pixel as empty bar at the right and the top: on a shaman SaftUI places it from its holder, whose Position can be anchored by any point and is changed by drags, and on other classes Blizzard's Edit Mode places it.
   - combat-safe moves: `st:CanMoveNow`, `st:SafeReposition`, `st:QueueAfterCombat`, `st:GetPoints`/`st:RestorePoints`
   - moving Blizzard frames whose methods are Lua overrides: `st:SetPointDirect`, `st:ClearAllPointsDirect`, `st:SetSizeDirect`
-- Styling: `st:SetBackdrop`, `st:SetTemplate`, `st:SetBackdropIn` (`theme.lua`, below), `st:CreateFrame` (`panels.lua`), `st:GetFont` (`Media/fonts.lua`), `st:CreateButton`/`st:SkinButton` (`Widgets/`). Colors other than the theme's live in `st.config.profile.colors`.
+- Styling: `st:SetBackdrop`, `st:SetTemplate`, `st:SetBackdropIn` (`theme.lua`, below), `st:CreateFrame` (`panels.lua`), `st:GetFont` and `st.OutlineFlag(outline)` (`Media/fonts.lua`; the font flag for a saved outline key, `'NONE'` giving `''`, so pass it to `SetFont` and never the raw key), `st.Clamp(value, low, high)` (`utilities.lua`; floors, nil is `low`), `st:CreateButton`/`st:SkinButton` (`Widgets/`). Colors other than the theme's live in `st.config.profile.colors`.
 
 ## Themes
 
