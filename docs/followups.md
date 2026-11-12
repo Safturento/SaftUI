@@ -7,7 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config](#2026-11-12--nameplates-a-plate-switching-config-can-trip-an-anchor-loop-in-a-users-config)
+  - [2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors](#2026-11-12--unit-frames-a-profile-switch-places-a-frames-parts-against-the-old-profiles-anchors)
   - [2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons](#2026-11-12--nameplates-the-friendly-pages-aura-borders-and-cooldown-never-reach-plate-buttons)
   - [2026-11-12 — Nameplates: what a kind change costs in oUF updates](#2026-11-12--nameplates-what-a-kind-change-costs-in-ouf-updates)
   - [2026-11-12 — Nameplates: a box toggled in combat leaves shown plates on the old config until combat ends](#2026-11-12--nameplates-a-box-toggled-in-combat-leaves-shown-plates-on-the-old-config-until-combat-ends)
@@ -88,6 +88,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config](#2026-11-12--nameplates-a-plate-switching-config-can-trip-an-anchor-loop-in-a-users-config)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
   - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
@@ -116,19 +117,17 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
-### 2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config
+### 2026-11-12 — Unit frames: a profile switch places a frame's parts against the old profile's anchors
 
-**What:** Since the friendly nameplates build, a plate's part that its own config turns off is still sized and placed by that config on every full update (`UF:UpdateElement`'s off branch, `SaftUI-Unitframes/updaters.lua` 107-111: rulings C1 and C2 of that plan's Task 4), and a plate's frame gets a full update whenever its unit's kind moves it to the other config (`UF:ApplyPlateConfig`). The parts are updated in `pairs()` order, each `SetPoint` made against the others where they are then. So a user's config can trip an anchor loop: part B anchors to part A in the old config, A anchors to B in the new one, and A is off in the new one. If A is updated first, its `SetPoint` onto B (still anchored to A) forms a loop and errors. The `xpcall` in `UF:ApplyPlateConfig` reports it, and the rest of that frame's update is cut short: the parts after it keep the old config's places and look until the plate's next full update. Before the build a part that was off was never placed, so a hidden part couldn't do this. The default configs are loop-free.
+**What:** A full update places a unit frame's parts one by one in `pairs()` order (`UF:UpdateUnitFrame`, `SaftUI-Unitframes/unitframes.lua`), each `SetPoint` made against the others where they are then. So two parts anchored each way round across two profiles (Name on Health in one, Health under Name in the other) close an anchor loop on a profile switch whenever the one placed first is anchored to the other: the game errors "Cannot anchor to a region dependent on it", `SafeUpdateUnitFrame` reports it, and the rest of that frame's update is cut short, its later parts keeping the old profile's look until its next full update. `UF:ApplyConfig` with no unit clears only the frames' points first (`ClearUnitFramePoints`), not their parts'. A plate's parts are cleared before a switch between Enemy and Friendly nameplates (`ClearPlacedPoints` in `nameplates/nameplates.lua`), but not on a profile switch that keeps a plate's config unit. Pre-existing for every unit.
 
-**Why noticed:** The review of Task 4 of the friendly nameplates plan (2026-11-12), passed on by the controller. Task 4's report named the risk too (its concern 2: a hidden part anchored into a loop with a shown one now errors, where before it was silent).
+**Why noticed:** The friendly nameplates' final fix wave (2026-11-12) resolved "Nameplates: a plate switching config can trip an anchor loop in a user's config" (now under Resolved) for a switch between the two plate configs only, as its brief ruled. That entry's open question (clear on a config switch only, or before every full update?) and its note that a profile switch does the same to any unit are what's left, kept here.
 
-**Anchors:** `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateConfig`), `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateUnitFrame`'s element loop; `ClearUnitFramePoints` and `UF:ApplyConfig` with no unit, the same fix for frames), `tests/unitframes/friendly_plate_size_test.lua`.
+**Anchors:** `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateUnitFrame`, `UF:ApplyConfig`, `ClearUnitFramePoints`, `SafeUpdateUnitFrame`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`ClearPlacedPoints`, `UF:ApplyPlateConfig`), `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`), `tests/unitframes/friendly_plate_size_test.lua` (the switch's tests, whose helpers say which parts an update places).
 
-**What's been considered:** Clear a plate's part anchors before placing them again on a config switch, as `ClearUnitFramePoints` clears the unit frames' before a full `UF:ApplyConfig`: a plate's parts aren't secure, so in combat too. Placing the parts in anchor order instead would need an order worked out per config. Two shown parts of any unit can loop the same way across a profile switch, since only frames are cleared first; the plates make it happen without one.
+**What's been considered:** Clear each frame's parts in `UF:ApplyConfig`'s full pass, out of combat where it clears the frames', with `ClearPlacedPoints`' rule for which texts and icons; or clear a plate's parts before every full update of it, which covers the plates alone. Either way a part whose update then fails, and the parts after it, are left with no points (as a plate's are today when a switch's update fails, say on a loop inside one config), where `UF:ApplyConfig` gives a failed frame its old points back (`st:RestorePoints`).
 
-**Shape of work:** Small: clear the plate's parts' points at the start of the update `UF:ApplyPlateConfig` runs, and a test with two parts anchored each way round across the two configs, one of them off in the new one.
-
-**Open questions:** Clear only on a config switch, or before every full update of a plate?
+**Shape of work:** Small: the clearing in the full pass, and a test with two parts anchored each way round across two profiles.
 
 ### 2026-11-12 — Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons
 
@@ -1631,6 +1630,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config
+
+**What:** Since the friendly nameplates build, a plate's part that its own config turns off is still sized and placed by that config on every full update (`UF:UpdateElement`'s branch for a part that's off, `SaftUI-Unitframes/updaters.lua`: rulings C1 and C2 of that plan's Task 4), and a plate's frame gets a full update whenever its unit's kind moves it to the other config (`UF:ApplyPlateConfig`). The parts are updated in `pairs()` order, each `SetPoint` made against the others where they are then. So a user's config can trip an anchor loop: part B anchors to part A in the old config, A anchors to B in the new one, and A is off in the new one. If A is updated first, its `SetPoint` onto B (still anchored to A) forms a loop and errors. The `xpcall` in `UF:ApplyPlateConfig` reports it, and the rest of that frame's update is cut short: the parts after it keep the old config's places and look until the plate's next full update. Before the build a part that was off was never placed, so a hidden part couldn't do this. The default configs are loop-free.
+
+**Why noticed:** The review of Task 4 of the friendly nameplates plan (2026-11-12), passed on by the controller. Task 4's report named the risk too (its concern 2: a hidden part anchored into a loop with a shown one now errors, where before it was silent).
+
+**Anchors:** `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateConfig`), `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateUnitFrame`'s element loop; `ClearUnitFramePoints` and `UF:ApplyConfig` with no unit, the same fix for frames), `tests/unitframes/friendly_plate_size_test.lua`.
+
+**What's been considered:** Clear a plate's part anchors before placing them again on a config switch, as `ClearUnitFramePoints` clears the unit frames' before a full `UF:ApplyConfig`: a plate's parts aren't secure, so in combat too. Placing the parts in anchor order instead would need an order worked out per config. Two shown parts of any unit can loop the same way across a profile switch, since only frames are cleared first; the plates make it happen without one.
+
+**Shape of work:** Small: clear the plate's parts' points at the start of the update `UF:ApplyPlateConfig` runs, and a test with two parts anchored each way round across the two configs, one of them off in the new one.
+
+**Open questions:** Clear only on a config switch, or before every full update of a plate?
+
+**Resolved 2026-11-12:** In the friendly nameplates' final fix wave (its final review's I1). `UF:ApplyPlateConfig` clears the points of everything the switch's update places before it runs (`ClearPlacedPoints` in `nameplates.lua`: every part, and the texts and icons that are on in a part that's on), so the parts can be placed in any order, in combat too. The review found the scope wider than this entry said: no part needs to be off, and an existing enemy layout against the untouched Friendly page reaches it (the name beside a raid mark the Friendly page hangs over the name), erroring on every switch one way, with the plate left half in each look. Tested in `tests/unitframes/friendly_plate_size_test.lua` ("a switch places every part afresh", both ways round, on both clients). The open question went to a switch only: a profile switch is the entry "Unit frames: a profile switch places a frame's parts against the old profile's anchors".
 
 ### 2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered
 

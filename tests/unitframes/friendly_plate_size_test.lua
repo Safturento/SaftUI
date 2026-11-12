@@ -21,6 +21,10 @@
 --     quest icon off its health bar, which is off by default);
 --   - after a kind change every cached config on the frame is the new
 --     kind's, the texts' and icons' of a part that's off too;
+--   - a switch to the other config places every part afresh: what the
+--     update places loses its old points first, so two parts anchored each
+--     way round across the two configs place with no anchor loop, whichever
+--     way the plate switches;
 --   - a box set on its page, out of combat, moves a shown plate: its config,
 --     its frame's size and place, and the plate size (ruling P1).
 --
@@ -492,6 +496,182 @@ test("a box set on its page moves a shown plate: its config, its frame's size an
 		check_plates(client .. ': the friendly box', 'nameplate', 'nameplate', 200, 20, true)
 		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': the friendly box unchecked')
 		check_plates(client .. ': the friendly box off', 'nameplate', 'friendlynameplate', 200, 20, true)
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
+------------------------------------------------------------------ a switch places every part afresh
+
+-- The parts a plate's full update places (UF:UpdateElement), each as
+-- { region, label }: every element, one its config has off too (a plate's
+-- part that's off is still placed, so the parts anchored to it sit right),
+-- and the texts and icons that are on in a part that's on.
+local function placed_parts(frame)
+	local parts = {}
+	for name, element in pairs(frame.elements) do
+		parts[#parts + 1] = { element, name }
+		if element.config.enable then
+			for key, text in pairs(element.textElements or {}) do
+				if text.config.enable then parts[#parts + 1] = { text, name .. '.' .. key } end
+			end
+			for i, icon in ipairs(element.icons or {}) do
+				if icon.config.enable then parts[#parts + 1] = { icon, name .. '.icon' .. i } end
+			end
+		end
+	end
+	return parts
+end
+
+-- The labels of the parts the update places that aren't anchored where the
+-- frame's config puts them, sorted and space-joined: '' when each has one
+-- point, its position's point on what UF:GetFrame finds for it (another part,
+-- a frame by its name, or the plate's frame), at its offsets.
+local function misplaced(st, UF, frame)
+	local wrong = {}
+	for _, part in ipairs(placed_parts(frame)) do
+		local region, position = part[1], part[1].config.position
+		local point, _, relativePoint, x, y = st:UnpackPoint(position)
+		local p, relativeTo, rp, px, py = region:GetPoint(1)
+		if region:GetNumPoints() ~= 1 or p ~= point or relativeTo ~= UF:GetFrame(frame, position)
+				or rp ~= relativePoint or px ~= x or py ~= y then
+			wrong[#wrong + 1] = part[2]
+		end
+	end
+	table.sort(wrong)
+	return table.concat(wrong, ' ')
+end
+
+-- Each part a full update of frame would place that has a point now, sorted
+-- and space-joined.
+local function anchored(frame)
+	local list = {}
+	for _, part in ipairs(placed_parts(frame)) do
+		if part[1]:GetNumPoints() > 0 then list[#list + 1] = part[2] end
+	end
+	table.sort(list)
+	return table.concat(list, ' ')
+end
+
+-- The checks after a switch: no error, the frame's config unit, each part
+-- where that config puts it, and the name's tag bound to it.
+local function check_switched(st, UF, frame, base, label)
+	eq(#take_errors(), 0, label .. ': no error')
+	eq(frame.base_unit, base, label .. ': drawn from ' .. base)
+	eq(misplaced(st, UF, frame), '', label .. ": every part where its config puts it")
+	eq(NP.ouf.tags[frame.Name], '[st:name(' .. base .. ')]', label .. ": the name's tag bound to it")
+end
+
+-- The parts are placed one by one in pairs() order, each against the others
+-- where they are then. Two parts anchored each way round across the two
+-- configs would close a loop on a switch one way or the other, whatever the
+-- order, so each test switches both ways.
+test("a switch places every part afresh: the Friendly page's health bar under the name, the Enemy page's name on the bar", function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF, P = world(client)
+		local F = P.friendlynameplate
+		F.health.enable = true
+		F.health.relative_width, F.health.width = false, 100
+		F.health.relative_height, F.health.height = false, 4
+		F.health.position = { point = 'TOP', element = 'Name', rel_point = 'BOTTOM', x_off = 0, y_off = -2 }
+		eq(P.nameplate.name.position.element, 'Health', client .. ": the Enemy page's name on its bar")
+
+		enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		check_switched(st, UF, frame, 'nameplate', client .. ': an enemy')
+		NP.remove('nameplate1')
+		friend('nameplate2')
+		eq(NP.add('nameplate2', { plate = 1 }), frame, client .. ': the same frame, for a friend')
+		check_switched(st, UF, frame, 'friendlynameplate', client .. ': enemy to friend')
+		eq(select(2, frame.Health:GetPoint(1)), frame.Name, client .. ": the friend's bar under its name")
+		eq(frame.Health:IsShown(), true, client .. ": the friend's bar shown")
+		NP.remove('nameplate2')
+		enemy('nameplate3')
+		NP.add('nameplate3', { plate = 1 })
+		check_switched(st, UF, frame, 'nameplate', client .. ': friend to enemy')
+		eq(select(2, frame.Name:GetPoint(1)), frame.Health, client .. ": the enemy's name on its bar")
+
+		-- In combat, by the unit's faction.
+		stub.in_combat = true
+		friend('nameplate3')
+		stub.fire_event('UNIT_FACTION', 'nameplate3')
+		check_switched(st, UF, frame, 'friendlynameplate', client .. ': turned friendly in combat')
+		enemy('nameplate3')
+		stub.fire_event('UNIT_FACTION', 'nameplate3')
+		check_switched(st, UF, frame, 'nameplate', client .. ': turned hostile in combat')
+		stub.in_combat = false
+	end
+end)
+
+test("a switch places every part afresh: an Enemy page with the name beside the raid mark, the Friendly page as it comes", function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF, P = world(client)
+		-- An enemy layout from before friendly nameplates: the raid mark at
+		-- the bar's left end and the name right of it. The Friendly page's
+		-- default hangs the raid mark over the name.
+		local E = P.nameplate
+		E.raidtargetindicator.position = { point = 'LEFT', element = 'Health', rel_point = 'LEFT', x_off = 2, y_off = 0 }
+		E.name.position = { point = 'LEFT', element = 'RaidTargetIndicator', rel_point = 'RIGHT', x_off = 2, y_off = 0 }
+		eq(P.friendlynameplate.raidtargetindicator.position.element, 'Name', client .. ": the Friendly page's raid mark over the name")
+
+		-- A friend's first add: the frame is built on the Enemy page, then
+		-- switched.
+		friend('nameplate1')
+		local frame = NP.add('nameplate1')
+		check_switched(st, UF, frame, 'friendlynameplate', client .. ": a friend's first add")
+		NP.remove('nameplate1')
+		enemy('nameplate2')
+		NP.add('nameplate2', { plate = 1 })
+		check_switched(st, UF, frame, 'nameplate', client .. ': friend to enemy')
+		eq(frame.Name:IsShown(), true, client .. ": the enemy's name drawn")
+		eq(select(2, frame.Name:GetPoint(1)), frame.RaidTargetIndicator, client .. ": beside the raid mark")
+		NP.remove('nameplate2')
+		friend('nameplate3')
+		NP.add('nameplate3', { plate = 1 })
+		check_switched(st, UF, frame, 'friendlynameplate', client .. ': enemy to friend')
+		eq(select(2, frame.RaidTargetIndicator:GetPoint(1)), frame.Name, client .. ": the friend's raid mark over its name")
+	end
+end)
+
+-- A text or an icon is never another part's anchor by its place in the frame
+-- (UF:GetFrame finds only the frame's own parts), but can be by its frame
+-- name, typed into a Position, so a switch clears theirs too.
+test("a switch's update starts with nothing it places anchored: every part, and the texts and icons it shows", function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF, P = world(client)
+		-- The Friendly page with its bar, the bar's text and its castbar on,
+		-- so texts and an icon are placed on both sides of a switch.
+		local F = P.friendlynameplate
+		F.health.enable, F.health.text.enable, F.castbar.enable = true, true, true
+		-- And the castbar's time on the Enemy page only: a text the update
+		-- hides keeps its points.
+		P.nameplate.castbar.time.enable = true
+		P.nameplate.castbar.time.position = { point = 'RIGHT', element = 'Castbar', rel_point = 'RIGHT', x_off = -4, y_off = 0 }
+		enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		check(frame.Health.text:GetNumPoints() > 0 and frame.Castbar.Text:GetNumPoints() > 0 and frame.Castbar.Icon:GetNumPoints() > 0
+			and frame.Castbar.Time:GetNumPoints() > 0, client .. ': the texts and the icon placed for the enemy')
+
+		local update, atStart = UF.UpdateUnitFrame, nil
+		UF.UpdateUnitFrame = function(self, f, ...)
+			if f == frame and atStart == nil then atStart = anchored(frame) end
+			return update(self, f, ...)
+		end
+		for _, case in ipairs({ { friend, 'friendlynameplate' }, { enemy, 'nameplate' } }) do
+			atStart = nil
+			case[1]('nameplate1')
+			stub.fire_event('UNIT_FACTION', 'nameplate1')
+			eq(frame.base_unit, case[2], client .. ': switched to ' .. case[2])
+			eq(atStart, '', client .. ': to ' .. case[2] .. ': nothing anchored when the update starts')
+			eq(misplaced(st, UF, frame), '', client .. ': to ' .. case[2] .. ': then every part placed')
+			if case[2] == 'friendlynameplate' then
+				eq(frame.Castbar.Time:GetNumPoints(), 1, client .. ": the time the Friendly page has off keeps its place")
+			end
+		end
+		UF.UpdateUnitFrame = update
+
+		-- A part's update with no switch leaves the others where they are.
+		UF:UpdateConfig('nameplate', 'Name')
+		eq(misplaced(st, UF, frame), '', client .. ': an update of one part')
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
