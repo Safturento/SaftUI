@@ -577,6 +577,16 @@ test('IsAddOnLoaded answers from stub.loaded_addons', function()
 	check(not pcall(C_AddOns.IsAddOnLoaded), 'a name is required')
 end)
 
+test('DoesAddOnExist answers from stub.installed_addons and stub.loaded_addons', function()
+	reset_world()
+	eq(C_AddOns.DoesAddOnExist('SomeAddon'), false, 'not there')
+	stub.installed_addons.SomeAddon = true
+	eq(C_AddOns.DoesAddOnExist('SomeAddon'), true, 'there once the test says so')
+	stub.loaded_addons.OtherAddon = true
+	eq(C_AddOns.DoesAddOnExist('OtherAddon'), true, 'a loaded addon exists too')
+	check(not pcall(C_AddOns.DoesAddOnExist), 'a name is required')
+end)
+
 test('SetDefaultModuleLibraries is AceAddon\'s: before any module, and the libraries the shell has', function()
 	reset_world()
 	local M = SaftUI:NewModule('Defaults')
