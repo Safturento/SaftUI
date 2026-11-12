@@ -298,12 +298,6 @@ function CD:UpdateConfig()
 	end
 end
 
-function CD:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_CooldownViewer' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:SkinViewers()
-end
-
 -- Off (Skinning -> Cooldown Manager), nothing is hooked or touched: Blizzard's
 -- look stays until a reload with it on.
 function CD:OnEnable()
@@ -312,6 +306,6 @@ function CD:OnEnable()
 	if _G.EssentialCooldownViewer then
 		self:SkinViewers()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_CooldownViewer', function() self:SkinViewers() end)
 	end
 end
