@@ -16,6 +16,7 @@
 	<Script file="optionsbody.lua"/>
 	<Script file="optionslayout.lua"/>
 	<Script file="optionswindow.lua"/>
+	<Script file="optionsresize.lua"/>
 	<Script file="widgets.lua"/>
 	<Script file="general.lua"/>
 </Ui>
