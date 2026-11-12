@@ -384,6 +384,9 @@ Enum = {
 	},
 	StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
 	PowerType = { Mana = 0 },
+	-- TooltipInfoSharedDocumentation, the lines' types a unit's tooltip has: a
+	-- unit's title is an untyped (None) line.
+	TooltipDataLineType = { None = 0, UnitName = 2, UnitOwner = 16, UnitLevel = 47 },
 	CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
 	UIMapType = { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 },
 }

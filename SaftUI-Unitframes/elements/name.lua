@@ -33,6 +33,8 @@ local function SetMaxWidth(name, config)
 		name.sizedByMaxWidth = nil
 	end
 end
+-- Shared with the nameplates' subtext line (nameplates/subtext.lua).
+UF.SetMaxWidth = SetMaxWidth
 
 local function UpdateConfig(unitframe)
 	UF:UpdateElement(unitframe.Name)
