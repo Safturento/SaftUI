@@ -5,11 +5,41 @@ local function Constructor(unitframe)
 	return UF:AddTextElement(unitframe, 'Name')
 end
 
+-- The justification that keeps a name of a set width where its point puts it:
+-- from its left for a left point, from its right for a right one, else from
+-- its middle. A font string with no width is as wide as its text, so it
+-- doesn't matter there.
+local function Justify(point)
+	if point:find('LEFT') then return 'LEFT' end
+	if point:find('RIGHT') then return 'RIGHT' end
+	return 'CENTER'
+end
+
+-- Max width: the name gets that width on one line, so the game cuts a longer
+-- one, a secret name too, which the tag can't shorten (tags.lua). 0, every
+-- unit's default but the plates', leaves a name that was never sized as it
+-- is, and gives one sized before no width again (0: as wide as its text),
+-- wrapping as a font string does.
+local function SetMaxWidth(name, config)
+	local width = tonumber(config.max_width) or 0
+	if width > 0 then
+		st:SetWidth(name, width)
+		name:SetWordWrap(false)
+		name:SetJustifyH(Justify(st:UnpackPoint(config.position)))
+		name.sizedByMaxWidth = true
+	elseif name.sizedByMaxWidth then
+		st:SetWidth(name, 0)
+		name:SetWordWrap(true)
+		name.sizedByMaxWidth = nil
+	end
+end
+
 local function UpdateConfig(unitframe)
 	unitframe.Name.config = unitframe.config.name
 	UF:UpdateElement(unitframe.Name, 'Name')
 
 	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
+	SetMaxWidth(unitframe.Name, unitframe.config.name)
     unitframe.Name.overrideUnit = true
 	unitframe:Tag(unitframe.Name, '[st:name('.. unitframe.base_unit..')]')
 end
@@ -28,6 +58,7 @@ local function GetConfigTable(unit)
 		showMaxLevel = G.toggle(5, 'Show max level', 'Shows the level even when it is the highest level there is. Needs Show level.', 'small'),
 		color_hostile = G.toggle(8, 'Color hostile', 'Colors the names of hostile units red, and of unfriendly and neutral ones yellow.', 'small'),
 		maxLength = G.range(9, 'Max length', 1, 100, 1, 'Cuts the name to this many letters.'),
+		max_width = G.range(9.5, 'Max width', 0, 600, 1, "Cuts the name at this many pixels, so it can't run under the health text. 0: no limit."),
 		alpha = G.alpha(10, 'How solid the name is, from see-through to opaque.'),
 		-- Last in the tab.
 		position = G.uf_element_position(1000,

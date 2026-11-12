@@ -730,3 +730,26 @@ function C_CVar.SetCVar(name, value)
 	stub.cvars[name] = tostring(value)
 	return true
 end
+
+-- The quest icon's questions about a unit (the same on both clients: a unit
+-- token in, a plain boolean back, its documentation marks it not nilable):
+-- C_QuestLog.UnitIsRelatedToActiveQuest(unit) (QuestLogDocumentation.lua),
+-- whether one of the player's active quests is about the unit, and
+-- UnitIsQuestBoss(unit) (UnitDocumentation.lua). A stub.units unit's quest and
+-- quest_boss fields (false where unset), which a test can make a secret value
+-- (tests/lib/secrets.lua), as restricted content could hand one; false for the
+-- player and for a unit that isn't there. A unit that isn't a string errors,
+-- as the game's argument check does.
+C_QuestLog = C_QuestLog or {}
+do
+	local function ask(usage, field)
+		return function(unit)
+			if type(unit) ~= 'string' then error('Usage: ' .. usage, 2) end
+			local other = OtherUnit(unit)
+			if not other or other[field] == nil then return false end
+			return other[field]
+		end
+	end
+	C_QuestLog.UnitIsRelatedToActiveQuest = ask('local isRelatedToActiveQuest = C_QuestLog.UnitIsRelatedToActiveQuest(unit)', 'quest')
+	UnitIsQuestBoss = ask('local result = UnitIsQuestBoss(unit)', 'quest_boss')
+end

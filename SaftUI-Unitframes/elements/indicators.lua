@@ -4,6 +4,28 @@ local UF = st:GetModule('Unitframes')
 
 local DEBUG = false
 
+-- A quest question's answer as a plain boolean: a secret one (restricted
+-- content can hand one) counts as no, since it can't be tested.
+local function Yes(answer)
+    if issecretvalue(answer) then return false end
+    return answer and true or false
+end
+
+-- The quest icon's update, in place of oUF's, which asks only UnitIsQuestBoss:
+-- shown for a unit one of the player's active quests is about, else for a
+-- quest boss. Then the PostUpdate wrapper below, which hides the icon when
+-- it isn't wanted. An event for another unit is skipped, as oUF's own update
+-- does.
+local function UpdateQuestIndicator(frame, event, unit)
+    if not unit or unit ~= frame.__unit then return end
+    local indicator = frame.QuestIndicator
+    local shown = Yes(C_QuestLog.UnitIsRelatedToActiveQuest(unit)) or Yes(UnitIsQuestBoss(unit))
+    indicator:SetShown(shown)
+    if indicator.PostUpdate then
+        return indicator:PostUpdate(shown)
+    end
+end
+
 --[[
     Each indicator is its own element and /sui tab:
     configKey   - its table in the unit config
@@ -13,6 +35,7 @@ local DEBUG = false
     addOptions  - adds its own options to its tab's args (optional)
     validUnit   - the element's ValidUnit (optional)
     postUpdate, postCreate, debug - optional hooks
+    override    - the element's Override, its update in place of oUF's (optional)
 ]]
 local indicators = {
     {
@@ -74,7 +97,8 @@ local indicators = {
         name = 'QuestIndicator',
         label = 'Quest',
         order = 13,
-        desc = 'A quest icon on quest bosses.',
+        desc = 'A quest icon on units one of your quests is about, and on quest bosses.',
+        override = UpdateQuestIndicator,
     },
     {
         configKey = 'raidtargetindicator',
@@ -130,6 +154,7 @@ for _, config in pairs(indicators) do
         if config.postCreate then
             config.postCreate(indicator)
         end
+        indicator.Override = config.override
 
         return indicator
     end
@@ -190,3 +215,20 @@ for _, config in pairs(indicators) do
 
     UF:RegisterElement(config.name, Constructor, UpdateConfig, GetConfigTable, config.validUnit)
 end
+
+-- No unit event says a unit's tie to a quest changed: when the quest log does
+-- (a quest taken, done or handed in), every frame's quest icon asks again.
+-- Only where oUF runs the icon (enabled, and not paused on a plate that shows
+-- only widgets) and it's wanted: on in its config, and not on a friend's
+-- plate, where it's disabled.
+local questLog = CreateFrame('Frame')
+questLog:RegisterEvent('QUEST_LOG_UPDATE')
+questLog:SetScript('OnEvent', function()
+    UF:ForEachUnitFrame(function(frame)
+        local indicator = frame.QuestIndicator
+        if indicator and frame:IsElementEnabled('QuestIndicator') and not frame:IsElementPaused('QuestIndicator')
+                and UF:ElementWanted(indicator) then
+            indicator:ForceUpdate()
+        end
+    end)
+end)

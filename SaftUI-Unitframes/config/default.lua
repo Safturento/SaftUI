@@ -360,6 +360,8 @@ local debuffs = st.tablemerge(auras, {
 local name = {
     enable = true,
     maxLength = 30,
+    -- In pixels; 0 for no limit (name.lua).
+    max_width = 0,
     showLevel = true,
     allCaps = false,
     showSameLevel = false,
