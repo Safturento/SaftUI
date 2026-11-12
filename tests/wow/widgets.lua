@@ -23,11 +23,12 @@
 	  changes. Errors in scripts go to the game's error handler.
 
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
-	itself (fire it with stub.fire_script); text wrapping (a font string is one
-	line); OnUpdate; a backdrop's border textures; secret values; taint, and
-	which frames are protected (a frame a test marks protected has its moves
-	blocked in combat: see "Protected frames in combat"); RegisterEvent takes
-	any event name (the game errors
+	itself (fire it with stub.fire_script), and nothing is placed on whole
+	pixels (SetRoundLayoutToNearestPixel is only remembered); text wrapping
+	(a font string is one line); OnUpdate; a backdrop's border textures; secret
+	values; taint, and which frames are protected (a frame a test marks
+	protected has its moves blocked in combat: see "Protected frames in
+	combat"); RegisterEvent takes any event name (the game errors
 	"Attempt to register unknown event"); SetFont and SetTexture always
 	succeed (in game a file that doesn't exist fails the call, or draws
 	nothing).
@@ -218,13 +219,13 @@ end
 
 ------------------------------------------------------------------ layout
 
+-- A widget's scale times its parents', up to the first that ignores its own
+-- parent's scale (SetIgnoreParentScale), whose own scale is the last taken.
 local function effective_scale(s)
 	local scale = s.scale
-	local parent = s.parent
-	while parent do
-		local ps = states[parent]
-		scale = scale * ps.scale
-		parent = ps.parent
+	while not s.ignore_parent_scale and s.parent do
+		s = states[s.parent]
+		scale = scale * s.scale
 	end
 	return scale
 end
@@ -542,6 +543,19 @@ function ScriptRegion.GetRect(self, s)
 	if l then return l, b, r - l, t - b end
 end
 
+-- Rounding the region's layout to whole pixels (SetRoundLayoutToNearestPixel,
+-- SimpleScriptRegionAPIDocumentation.lua, both clients: one bool, not
+-- nilable): off until set. The client then places the region on the pixel
+-- grid whenever it lays it out. Nothing is laid out by pixels here, so it's
+-- only remembered, in stub.state(region).round_layout. Anything but a boolean
+-- errors, the strict side of the documentation's bool.
+function ScriptRegion.SetRoundLayoutToNearestPixel(self, s, enabled)
+	if type(enabled) ~= 'boolean' then
+		usage(s, 'SetRoundLayoutToNearestPixel(): enabled must be a boolean, got ' .. type(enabled))
+	end
+	s.round_layout = enabled
+end
+
 ------------------------------------------------------------------ Region (textures, font strings)
 
 function Region.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
@@ -557,6 +571,9 @@ end
 function Region.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
 function Region.GetScale(self, s) return s.scale end
 function Region.GetEffectiveScale(self, s) return effective_scale(s) end
+-- Ignoring the parent's scale, as a frame's (Frame.SetIgnoreParentScale).
+function Region.SetIgnoreParentScale(self, s, ignore) s.ignore_parent_scale = ignore and true or false end
+function Region.IsIgnoringParentScale(self, s) return s.ignore_parent_scale == true end
 function Region.SetVertexColor(self, s, r, g, b, a)
 	s.vertex_color = { number_arg(s, r, 'r'), number_arg(s, g, 'g'), number_arg(s, b, 'b'), a or 1 }
 end
@@ -798,6 +815,25 @@ end
 function Frame.SetID(self, s, id) s.id = number_arg(s, id, 'id') end
 function Frame.GetID(self, s) return s.id or 0 end
 
+-- Attributes: named values on a frame, nil until set (SimpleFrameAPI's
+-- SetAttribute and GetAttribute), which secure templates and oUF read. Every
+-- SetAttribute runs the frame's OnAttributeChanged(name, value), the value it
+-- already has too; the API's SetAttributeNoHandler is the way to set one
+-- without it. We know from Blizzard's state driver: RegisterAttributeDriver
+-- sets the manager's "setframe" and then "setstate" (SecureStateDriver.lua,
+-- forever and live), and the manager registers the driver from its setstate
+-- handler, so two frames registering the same driver one after the other
+-- would otherwise leave the second unregistered.
+function Frame.SetAttribute(self, s, name, value)
+	if type(name) ~= 'string' then usage(s, 'SetAttribute(): name must be a string') end
+	s.attributes = s.attributes or {}
+	s.attributes[name] = value
+	run_script(self, 'OnAttributeChanged', name, value)
+end
+function Frame.GetAttribute(self, s, name)
+	return s.attributes and s.attributes[name]
+end
+
 -- How far the client widens (negative) or narrows (positive) where a frame
 -- takes the mouse, past its edges. Only remembered: clicks by position aren't modelled.
 function Frame.SetHitRectInsets(self, s, left, right, top, bottom)
@@ -839,6 +875,14 @@ end
 function Frame.SetScale(self, s, scale) s.scale = number_arg(s, scale, 'scale') end
 function Frame.GetScale(self, s) return s.scale end
 function Frame.GetEffectiveScale(self, s) return effective_scale(s) end
+-- Ignoring the parent's scale (SetIgnoreParentScale, SimpleFrameAPIDocumentation.lua
+-- and SimpleRegionAPIDocumentation.lua, both clients): off until set. A widget
+-- that ignores it has its own scale as its effective scale, and the widgets
+-- under it build on that (effective_scale): what the API's name says, and what
+-- Inomena's nameplates rely on (its PixelPerfect gives each frame it walks on a
+-- plate SetIgnoreParentScale(true) and SetScale(768 / the screen's height)).
+function Frame.SetIgnoreParentScale(self, s, ignore) s.ignore_parent_scale = ignore and true or false end
+function Frame.IsIgnoringParentScale(self, s) return s.ignore_parent_scale == true end
 
 function Frame.EnableMouseWheel(self, s, enable) s.mouse_wheel_enabled = enable and true or false end
 function Frame.IsMouseWheelEnabled(self, s) return s.mouse_wheel_enabled == true end
@@ -880,11 +924,34 @@ function Frame.RegisterEvent(self, s, event)
 		eventFrames[event] = eventFrames[event] or {}
 		table.insert(eventFrames[event], self)
 	end
+	-- Registered for every unit again: warcraft.wiki.gg's Frame:RegisterUnitEvent
+	-- has RegisterEvent on the same event drop its units (not checked in game;
+	-- nothing in SaftUI relies on it).
+	if s.unit_events then s.unit_events[event] = nil end
+	return true
+end
+-- RegisterUnitEvent(event, unit, ...) (SimpleFrameAPIDocumentation.lua, both
+-- clients: the units a stride of unit tokens, at least one): the frame hears
+-- the event only when its first payload argument is one of them (the unit
+-- the event is about).
+function Frame.RegisterUnitEvent(self, s, event, ...)
+	if type(event) ~= 'string' then usage(s, 'RegisterUnitEvent(): event must be a string') end
+	local units = {}
+	for i = 1, select('#', ...) do
+		local unit = select(i, ...)
+		if type(unit) ~= 'string' then usage(s, 'RegisterUnitEvent(): each unit must be a string') end
+		units[unit] = true
+	end
+	if next(units) == nil then usage(s, 'RegisterUnitEvent(): at least one unit') end
+	Frame.RegisterEvent(self, s, event)
+	s.unit_events = s.unit_events or {}
+	s.unit_events[event] = units
 	return true
 end
 function Frame.UnregisterEvent(self, s, event)
 	if not s.events[event] then return end
 	s.events[event] = nil
+	if s.unit_events then s.unit_events[event] = nil end
 	for i, frame in ipairs(eventFrames[event]) do
 		if frame == self then table.remove(eventFrames[event], i) break end
 	end
@@ -1194,9 +1261,10 @@ function GameTooltip.GetUnit(self, s) return s.unit_name, s.unit_token end
 
 --[[
 	Protected frames in combat. While InCombatLockdown(), the game refuses
-	addon code that moves, sizes, shows, hides or reparents a protected frame:
-	the call does nothing and the game fires ADDON_ACTION_BLOCKED ("AddOn
-	'SaftUI' tried to call the protected function 'X:SetPoint()'";
+	addon code that moves, sizes, shows, hides or reparents a protected frame,
+	or sets its attributes: the call does nothing and the game fires
+	ADDON_ACTION_BLOCKED ("AddOn 'SaftUI' tried to call the protected function
+	'X:SetPoint()'";
 	.agents/taint.md, rule 6 and its past incidents). A frame is protected when
 	it's secure, or a protected frame is its child or anchored to it; the stubs
 	can't tell, so a stub widget is protected only when a test gives it an
@@ -1207,6 +1275,9 @@ local PROTECTED_IN_COMBAT = {
 	SetPoint = true, SetAllPoints = true, ClearAllPoints = true,
 	SetSize = true, SetWidth = true, SetHeight = true,
 	Show = true, Hide = true, SetShown = true, SetParent = true,
+	SetAttribute = true,
+	-- IsProtectedFunction in their documentation, both clients.
+	SetRoundLayoutToNearestPixel = true, SetIgnoreParentScale = true,
 }
 
 -- Wraps a method so it checks its self, then gets the widget's state.
@@ -1303,12 +1374,17 @@ function stub.fire_script(widget, script, ...)
 end
 
 -- Fires a game event: every frame registered for it gets OnEvent(event, ...),
--- in registration order. Shell modules hear it through the shell's AceEvent.
+-- in registration order; a frame registered for it with RegisterUnitEvent
+-- only when the first argument is one of its units. Shell modules hear it
+-- through the shell's AceEvent.
 function stub.fire_event(event, ...)
 	local frames = {}
 	for i, frame in ipairs(eventFrames[event] or {}) do frames[i] = frame end
+	local unit = ...
 	for _, frame in ipairs(frames) do
-		if states[frame].events[event] then
+		local s = states[frame]
+		local units = s.unit_events and s.unit_events[event]
+		if s.events[event] and (not units or units[unit]) then
 			run_script(frame, 'OnEvent', event, ...)
 		end
 	end

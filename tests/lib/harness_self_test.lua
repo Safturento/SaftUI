@@ -268,6 +268,34 @@ test('module events dispatch the way AceEvent does', function()
 	check(not pcall(M.RegisterEvent, M, 'X_EVENT', 'NoSuchMethod'), 'a missing handler method errors')
 end)
 
+test("a frame's unit event hears only its units, until RegisterEvent or UnregisterEvent", function()
+	reset_world()
+	local frame = CreateFrame('Frame')
+	local got = {}
+	frame:SetScript('OnEvent', function(_, event, unit) got[#got + 1] = event .. ':' .. tostring(unit) end)
+	frame:RegisterUnitEvent('UNIT_PET', 'player')
+	frame:RegisterUnitEvent('UNIT_HEALTH', 'target', 'focus')
+	check(frame:IsEventRegistered('UNIT_PET'), 'registered')
+	stub.fire_event('UNIT_PET', 'party1')
+	stub.fire_event('UNIT_PET', 'player')
+	stub.fire_event('UNIT_HEALTH', 'player')
+	stub.fire_event('UNIT_HEALTH', 'focus')
+	stub.fire_event('UNIT_HEALTH', 'target')
+	eq(table.concat(got, ','), 'UNIT_PET:player,UNIT_HEALTH:focus,UNIT_HEALTH:target', 'only the units it was registered for')
+	got = {}
+	frame:RegisterEvent('UNIT_PET')
+	stub.fire_event('UNIT_PET', 'party1')
+	eq(table.concat(got, ','), 'UNIT_PET:party1', 'RegisterEvent hears every unit again')
+	got = {}
+	frame:RegisterUnitEvent('UNIT_PET', 'player')
+	frame:UnregisterEvent('UNIT_PET')
+	check(not frame:IsEventRegistered('UNIT_PET'), 'unregistered')
+	stub.fire_event('UNIT_PET', 'player')
+	eq(table.concat(got, ','), '', 'an unregistered unit event is not heard')
+	check(not pcall(frame.RegisterUnitEvent, frame, 'UNIT_PET'), 'a unit event with no unit errors')
+	check(not pcall(frame.RegisterUnitEvent, frame, 7, 'player'), 'an event that is not a string errors')
+end)
+
 test('errors the game would report go to the error handler, for take_errors', function()
 	xpcall(function() error('boom', 0) end, geterrorhandler())
 	local errors = take_errors()
@@ -330,6 +358,27 @@ test('a frame marked protected has its moves, sizes and shows blocked in combat,
 	guarded:SetHeight(80)
 	eq(guarded:GetHeight(), 80, 'out of combat the protected frame changes')
 	eq(#stub.blocked, 4, 'nothing more noted')
+end)
+
+test('SetAttribute runs OnAttributeChanged on every call, an unchanged value too, and is blocked in combat on a protected frame', function()
+	reset_world()
+	local frame = CreateFrame('Frame', nil, UIParent)
+	eq(frame:GetAttribute('unit'), nil, 'nil until set')
+	local seen = {}
+	frame:SetScript('OnAttributeChanged', function(_, name, value) seen[#seen + 1] = name .. '=' .. tostring(value) end)
+	frame:SetAttribute('unit', 'party1')
+	frame:SetAttribute('unit', 'party1')
+	frame:SetAttribute('unit', nil)
+	eq(table.concat(seen, ','), 'unit=party1,unit=party1,unit=nil', 'the handler ran for each call')
+	eq(frame:GetAttribute('unit'), nil, 'cleared')
+
+	function frame:IsProtected() return true, true end
+	stub.in_combat = true
+	frame:SetAttribute('unit', 'party2')
+	stub.in_combat = false
+	eq(frame:GetAttribute('unit'), nil, 'blocked in combat')
+	eq(#seen, 3, 'and no handler ran')
+	check(stub.blocked[1] and stub.blocked[1][2] == 'SetAttribute', 'the blocked call is noted')
 end)
 
 test('reset_world rebuilds the stubs and the shell, and keeps the test file\'s locals', function()

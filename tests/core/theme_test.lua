@@ -475,6 +475,48 @@ test('colors kept with st:KeepOwnColors go back on after a recolor and a redraw'
 	eq(#take_errors(), 0, 'and nothing runs')
 end)
 
+-- A kept colour's function can keep the colours of a frame drawn for the
+-- first time by that redraw (a plate's border that moved to another frame),
+-- which adds a key to the engine's table of them while it walks it.
+test('a kept colour that keeps a new frame mid-pass: every kept colour runs once, the new ones wait for the next pass', function()
+	local st = fresh()
+	local runs, added = {}, {}
+	local function count(f) runs[f] = (runs[f] or 0) + 1 end
+	local first = {}
+	for i = 1, 8 do
+		local f = frame(st)
+		st:SetBackdrop(f, 'theme', 'theme', 'small')
+		first[i] = f
+		st:KeepOwnColors(f, function(self)
+			count(self)
+			-- Enough new frames that the engine's table grows mid-walk.
+			for _ = 1, 20 do
+				local new = frame(st)
+				added[#added + 1] = new
+				st:KeepOwnColors(new, count)
+			end
+		end)
+	end
+	for _, pass in ipairs({ { 'recolor', st.RecolorThemed }, { 'redraw', st.RedrawThemed } }) do
+		runs, added = {}, {}
+		local ok, err = pcall(pass[2], st)
+		check(ok, pass[1] .. ': raises nothing: ' .. tostring(err))
+		eq(#take_errors(), 0, pass[1] .. ': no error reported')
+		local once = 0
+		for _, f in ipairs(first) do
+			if runs[f] == 1 then once = once + 1 end
+		end
+		eq(once, #first, pass[1] .. ': each kept colour ran once')
+		local early = 0
+		for _, f in ipairs(added) do
+			if runs[f] then early = early + 1 end
+		end
+		eq(early, 0, pass[1] .. ': none kept during the pass ran in it')
+		for _, f in ipairs(added) do st:KeepOwnColors(f, nil) end
+	end
+	for _, f in ipairs(first) do st:KeepOwnColors(f, nil) end
+end)
+
 -- A frame Blizzard or another addon broke (one whose backdrop calls error):
 -- the game shows its error and carries on, so the rest still take the theme.
 test('a frame that errors while drawn stops neither a recolor nor a redraw of the others, and its error is reported', function()

@@ -206,5 +206,11 @@ st.defaults.colors = {
 	status = {
 		disconnected = CreateColor(0.6, 0.6, 0.6),
 		tapped = CreateColor(0.6, 0.6, 0.6),
-	}
+	},
+	-- An enemy nameplate's health bar and threat text while your threat on it
+	-- is a warning or bad (SaftUI-Unitframes/nameplates/threat.lua).
+	threat = {
+		warning = CreateColor(1, 0.6, 0),
+		bad = CreateColor(1, 0.1, 0.1),
+	},
 }

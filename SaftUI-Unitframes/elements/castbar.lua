@@ -26,17 +26,17 @@ local function GetColorFromBoolean(bool, trueColor, falseColor)
 		C_CurveUtil.EvaluateColorValueFromBoolean(bool, trueB, falseB)
 end
 
-local function PostCastStart(castbar, unit)
+-- Colors the bar and its background for a cast. notInterruptible is oUF's
+-- argument, which can be secret; a secret goes to the game's boolean-to-color
+-- helper rather than into a comparison.
+local function ColorCast(castbar, notInterruptible)
 	local r, g, b
 	r, g, b = castbar.config.colors.normal:GetRGB()
-	if issecretvalue(castbar.notInterruptible) then
-		r, g, b = GetColorFromBoolean(castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal)
+	if issecretvalue(notInterruptible) then
+		r, g, b = GetColorFromBoolean(notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal)
 		castbar:SetStatusBarColor(r, g, b)
-		--castbar:SetColorFill(C_CurveUtil.EvaluateColorFromBoolean(
-		--	castbar.notInterruptible, castbar.colors.notInterruptible, castbar.colors.normal):GetRGBA()
-		--)
 	else
-		if castbar.notInterruptible then
+		if notInterruptible then
 			r, g, b = castbar.config.colors.nointerrupt:GetRGB()
 		end
 		castbar:SetColorFill(r, g, b)
@@ -46,24 +46,26 @@ local function PostCastStart(castbar, unit)
 	if castbar.config.bg.enable then
 		UF.SetPowerBackgroundColor(castbar, r, g, b)
 	end
+end
 
-	if castbar.Icon.texture:GetTexture() == [[Interface\ICONS\INV_Misc_QuestionMark]] then
-		local name, _, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellID = CastingInfo(unit)
-		local icon = select(10, C_Item.GetItemInfo(name))
+-- oUF's callbacks: PostCastStart runs for channels too, and PostCastInterruptible
+-- when a cast turns (un)interruptible mid-cast.
+local function PostCastStart(castbar, unit, spellID, notInterruptible)
+	ColorCast(castbar, notInterruptible)
+end
 
-		if icon then
-			castbar.Icon.texture:SetTexture(icon)
-		end
-	end
+local function PostCastInterruptible(castbar, unit, spellID, notInterruptible)
+	ColorCast(castbar, notInterruptible)
 end
 
 -- oUF shows the castbar on every cast of the unit, whatever UF:SetElementEnabled
--- did. It skips a cast event while this returns false, so a disabled castbar
--- stays hidden. oUF's own check is just the unit. It skips the stop and fail
--- events too, so a bar mid-cast when it's disabled (a profile switch in combat
+-- did. It skips a cast event while this returns false, so a castbar that isn't
+-- wanted (off in its config, or on a friendly plate: UF:ElementWanted) stays
+-- hidden. oUF's own check is just the unit. It skips the stop and fail events
+-- too, so a bar mid-cast when it's turned off (a profile switch in combat
 -- re-points the config before SetElementEnabled can run) is hidden here.
 local function ShouldShow(castbar, unit)
-	if not castbar.config.enable then
+	if not UF:ElementWanted(castbar) then
 		castbar:Hide()
 		return false
 	end
@@ -83,7 +85,7 @@ local function Constructor(unitframe)
 	}
 	castbar.ShouldShow = ShouldShow
 	castbar.PostCastStart = PostCastStart
-	castbar.PostChannelStart = PostCastStart
+	castbar.PostCastInterruptible = PostCastInterruptible
 
 	return castbar
 end

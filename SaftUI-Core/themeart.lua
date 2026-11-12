@@ -620,6 +620,24 @@ ThemeArt.ART = {
 		size = 16,
 	},
 
+	-- The current target's nameplate border (SaftUI-Unitframes/nameplates/
+	-- target.lua): Blizzard's selected-plate art, drawn round the health bar.
+	-- offsets are how far its TOPLEFT and BOTTOMRIGHT sit from the bar's
+	-- (left, top, right, bottom), Blizzard's anchors summed: the plate's
+	-- bgTexture round the bar at (-2, 3) and (6, -6)
+	-- (Blizzard_NamePlateUnitFrame.lua), and the selected border round that,
+	-- Camelot's SELECTED_BORDER_OFFSETS on Forever and retail's own. Starting
+	-- values, to check in game.
+	nameplatetarget = ByClient({
+		atlas = Atlas('UI-HUD-CoolDownManager-Selected-yellow', 'forever'),
+		offsets = { -5, 5, 6, -4 },
+		layer = 'OVERLAY',
+	}, {
+		atlas = Atlas('UI-HUD-Nameplates-Selected', 'live'),
+		offsets = { -3, 4, 3, -3 },
+		layer = 'OVERLAY',
+	}),
+
 	-- Blizzard's micro buttons' own art, given back by name: the pushed
 	-- background, the alert border, and the highlight Blizzard's code sets,
 	-- named from the button's textureName (a format of it, %s, so it isn't
@@ -698,6 +716,7 @@ local CONTROLS = {
 	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
 	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
+	nameplatetarget = true,
 }
 
 ------------------------------------

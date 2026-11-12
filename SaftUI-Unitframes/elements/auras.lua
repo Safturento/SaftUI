@@ -5,21 +5,18 @@ local UF = st:GetModule('Unitframes')
 	Buffs and Debuffs are built on oUF's Auras meta element, which wraps Blizzard's
 	AuraContainer. Aura data is no longer exposed to Lua (secret values), so the old
 	Lua-side filters (whitelist/blacklist/time) and per-aura styling can't be applied.
-	Filtering is done with the aura filter string (plus a candidate filter for Only
-	mine, see AddGroup), and dispel/stealable coloring with the container's
-	built-in dispel textures.
+	Filtering is done with the aura filter string and candidate filters
+	(UF.AuraFilter, purge.lua: Only mine, Only buffs I can purge, a nameplate's
+	debuffs), and dispel/stealable coloring with the container's built-in
+	dispel textures.
 
-	Group options (filter, max count, button size, which borders to show, whether
+	Group options (max count, button size, which borders to show, whether
 	buttons get a cooldown) are baked in when the group is created on the first config
-	update, so changing them requires a /reload, and their /sui options say so. Layout
-	(anchor, growth, spacing, wrapping) and button styling (theme, count font and
-	spot, cooldown look and timer) update live, profile changes included.
+	update, so changing them requires a /reload, and their /sui options say so. The
+	filter, layout (anchor, growth, spacing, wrapping) and button styling (theme,
+	count font and spot, cooldown look and timer) update live, profile changes
+	included.
 ]]
-
-local AURA_FILTERS = {
-	Buffs = 'HELPFUL',
-	Debuffs = 'HARMFUL',
-}
 
 local function getButtonSize(unitframe, config)
 	return config.relative_size
@@ -39,6 +36,22 @@ local innerLines = setmetatable({}, { __mode = 'k' })
 
 -- The element each button belongs to.
 local buttonElements = setmetatable({}, { __mode = 'k' })
+
+-- Every aura container SaftUI has made (Constructor), as keys. A plate's
+-- rounding walk (nameplates/pixels.lua) leaves them alone by this, before it
+-- calls anything on them: AuraContainer is an XML intrinsic, which the game
+-- may not report through IsObjectType.
+UF.auraContainers = UF.auraContainers or setmetatable({}, { __mode = 'k' })
+
+-- Rounds a region SaftUI made on a plate's aura button (its backdrop, Thick's
+-- line) to whole pixels with the rest of the plate (nameplates/pixels.lua),
+-- whose own walk stops at the aura container. Other units' are left as they
+-- are.
+local function RoundOnPlate(auras, region)
+	if region and auras.unitframe and auras.unitframe.isNamePlate and UF.RoundLayout then
+		UF.RoundLayout(region, true)
+	end
+end
 
 -- Shows a button's dark line while its element's Theme draws Thick, in Thick's
 -- outer border color, and hides it otherwise. The line isn't part of the
@@ -62,6 +75,12 @@ local function StyleButton(auras, button)
 	local config = auras.config
 
 	st:SetBackdrop(button, config.theme, config.background, 'aura')
+
+	-- On a plate, each button's backdrop, a frame of SaftUI's, is rounded here,
+	-- where it's drawn: when the button is made (PostCreateButton) and after
+	-- every config update, which can draw new art (a theme switch). The button
+	-- and what Blizzard's container puts on it are left alone.
+	RoundOnPlate(auras, button.backdrop)
 
 	-- The dispel border is tinted by the aura container (PreserveAsset style) with a
 	-- secret color, and addons can't read or hook it (.agents/taint.md rule 11), so
@@ -94,6 +113,8 @@ local function StyleButton(auras, button)
 				inner:SetPoint('TOPLEFT', button.backdrop, 'TOPLEFT', 1, -1)
 				inner:SetPoint('BOTTOMRIGHT', button.backdrop, 'BOTTOMRIGHT', -1, 1)
 				innerLines[button] = inner
+				-- SaftUI's texture, though it's on Blizzard's button.
+				RoundOnPlate(auras, inner)
 			end
 		end
 		-- Shown only under Thick, so hidden under Blizzard.
@@ -168,15 +189,11 @@ end
 local function AddGroup(unitframe, auras, aura_type)
 	local config = auras.config
 
-	-- Only mine: Forever leaves sourceUnit nil on other players' auras, and its
-	-- PLAYER filter keeps every one of them. The isFromPlayerOrPlayerPet
-	-- candidate filter checks each aura's own flag instead; on retail the two agree.
-	local filter = AURA_FILTERS[aura_type]
-	local candidateFilters
-	if config.onlyShowPlayer then
-		filter = filter .. '|PLAYER'
-		candidateFilters = { isFromPlayerOrPlayerPet = true }
-	end
+	-- Noted as the group's filter, so UF:ApplyAuraFilter changes it only when
+	-- the config or the spells the player knows change it.
+	local filter, candidateFilters = UF.AuraFilter(unitframe, aura_type, config)
+	auras.groupFilter = filter
+	auras.groupCandidateFilters = candidateFilters
 
 	auras.groupKey = auras:AddGroup(filter, {
 		candidateFilters = candidateFilters,
@@ -197,7 +214,9 @@ local function UpdateConfig(unitframe, aura_type)
 	local auras = unitframe[aura_type]
 	local enabled = UF:UpdateElement(auras)
 
-	auras:SetEnabled(enabled and true or false)
+	-- Off on a friendly plate (UF:ElementWanted), but still laid out below
+	-- while its config has it on, ready for the plate's next enemy.
+	auras:SetEnabled(UF:ElementWanted(auras))
 	if not enabled then return end
 
 	local config = auras.config
@@ -226,6 +245,8 @@ local function UpdateConfig(unitframe, aura_type)
 			elementSpacing = config.spacing,
 			lineSpacing = config.spacing,
 		})
+		-- Only mine and Only buffs I can purge, without a reload.
+		UF:ApplyAuraFilter(auras)
 	end
 
 	for _, button in ipairs(buttonsByElement[auras] or {}) do
@@ -235,6 +256,7 @@ end
 
 local function Constructor(unitframe, aura_type)
 	local auras = unitframe:CreateAuras()
+	UF.auraContainers[auras] = true
 
 	auras.config = unitframe.config[string.lower(aura_type)]
 	auras.GetConfig = function() return unitframe:GetConfig()[string.lower(aura_type)] end
@@ -374,7 +396,9 @@ local function GetConfigTable(unit, aura_type)
 					size = NeedsReload(generators.range(3, 'Size', 4, 80, 1, "Each button's width and height in pixels.")),
 					relative_size = NeedsReload(generators.toggle(4, 'Relative size', "Size is added to the unit frame's height.", 'small')),
 					max = NeedsReload(generators.range(5, 'Max', 1, 40, 1, ('The most %s shown.'):format(noun))),
-					onlyShowPlayer = NeedsReload(generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small')),
+					-- The filter applies without a reload (UF:ApplyAuraFilter).
+					onlyShowPlayer = generators.toggle(6, 'Only mine', 'Only auras you cast.', 'small'),
+					purgeable = aura_type == 'Buffs' and generators.toggle(6.5, 'Only buffs I can purge', "Shows only buffs you can take off the unit with a spell you know: a purge, a dispel or a steal. If you know none, no buffs show.", 'small') or nil,
 					border = NeedsReload(border),
 				},
 			},

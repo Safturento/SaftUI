@@ -2,7 +2,9 @@
 -- color change from the Colors tab recolors every unit frame at once, without
 -- UpdateConfig or ApplyConfig. Loads the real unitframes.lua over a stand-in
 -- oUF (its colors table) and stand-in frames that count their ForceUpdate and
--- UpdateTags calls. UF:UpdateGroupPreview and UF.testGroups live in groups.lua,
+-- UpdateTags calls. Each carries its unit as oUF does, in __unit, and no
+-- .unit, which only UF.OnEnter sets (a frame never hovered has none).
+-- UF:UpdateGroupPreview and UF.testGroups live in groups.lua,
 -- which isn't loaded; the tests stand them in.
 load_core_helpers()
 addon_namespace('SaftUI-Unitframes').oUF = {
@@ -32,7 +34,7 @@ local missing_units = {}
 UnitExists = function(unit) return not missing_units[unit] end
 
 local function make_frame(additional_enabled, unit)
-	local frame = { tags = 0, unit = unit or 'player' }
+	local frame = { tags = 0, __unit = unit or 'player' }
 	for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower', 'ClassPower' }) do
 		local element = { updates = 0 }
 		function element:ForceUpdate() self.updates = self.updates + 1 end
@@ -122,6 +124,17 @@ test('a change to colors unit frames do not use recolors nothing', function()
 		UF:OnColorsChanged(group)
 	end
 	eq(total_updates(), 0, 'nothing force-updated')
+end)
+
+test('a threat color change recolors no unit frame: only the plates take it (nameplates/threat.lua)', function()
+	reset()
+	local colored = 0
+	local original = UF.UpdateColors
+	UF.UpdateColors = function() colored = colored + 1 end
+	UF:OnColorsChanged('threat')
+	UF.UpdateColors = original
+	eq(total_updates(), 0, 'nothing force-updated')
+	eq(colored, 1, "oUF's colors still copied")
 end)
 
 test('before unit frames are enabled a change does nothing', function()

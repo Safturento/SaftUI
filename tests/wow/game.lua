@@ -27,6 +27,11 @@ stub = {
 	-- C_Timer.After's pending callbacks, { due, fn } in the order made.
 	-- stub.run_timers() runs the ones due by stub.time.
 	timers = {},
+	-- The game's frame (tick) number. stub.run_timers() starts a new frame
+	-- before it runs the timers due, as C_Timer.After(0) callbacks run on the
+	-- next frame. Only what the game allows once per tick reads it (a
+	-- nameplate's click area, below).
+	tick = 0,
 	epoch = 1800000000, -- time(), in seconds since 1970
 	shift_down = false, -- IsShiftKeyDown
 	ctrl_down = false, -- IsControlKeyDown
@@ -105,9 +110,11 @@ C_Timer = {
 		table.insert(stub.timers, { due = stub.time + delay, fn = fn })
 	end,
 }
--- Runs, in the order they were made, the timers due by stub.time (callbacks
--- they make that are due run too). Returns how many ran.
+-- Starts the game's next frame (stub.tick), then runs, in the order they were
+-- made, the timers due by stub.time (callbacks they make that are due run
+-- too). Returns how many ran.
 function stub.run_timers()
+	stub.tick = stub.tick + 1
 	local ran = 0
 	local i = 1
 	while i <= #stub.timers do
@@ -154,8 +161,21 @@ function UnitName(unit)
 	local other = OtherUnit(unit)
 	if other then return other.name, nil end
 end
+-- Each class token's English name and class ID, from wago.tools' ChrClasses
+-- at 12.1.5.70783 (Forever 1.60.1.70888 has the nine classic classes, with
+-- the same names and IDs).
+local CLASSES = {
+	WARRIOR = { 'Warrior', 1 }, PALADIN = { 'Paladin', 2 }, HUNTER = { 'Hunter', 3 }, ROGUE = { 'Rogue', 4 },
+	PRIEST = { 'Priest', 5 }, DEATHKNIGHT = { 'Death Knight', 6 }, SHAMAN = { 'Shaman', 7 }, MAGE = { 'Mage', 8 },
+	WARLOCK = { 'Warlock', 9 }, MONK = { 'Monk', 10 }, DRUID = { 'Druid', 11 }, DEMONHUNTER = { 'Demon Hunter', 12 },
+	EVOKER = { 'Evoker', 13 },
+}
 function UnitClass(unit)
-	if unit == 'player' then return 'Warrior', 'WARRIOR', 1 end
+	-- The player's class is stub.class's (see the end of this file).
+	if unit == 'player' then
+		local info = CLASSES[stub.class] or error(('UnitClass: stub.class %s is not a class token'):format(tostring(stub.class)), 2)
+		return info[1], stub.class, info[2]
+	end
 	-- Another unit's class token stands for its name too.
 	local other = OtherUnit(unit)
 	if other then return other.class, other.class end
@@ -340,3 +360,707 @@ end
 
 StaticPopupDialogs = {}
 SlashCmdList = {}
+
+-- Text the game builds from values an addon may hold but not read (secret
+-- values, .agents/clients.md): C_StringUtil.WrapString and AbbreviateNumbers
+-- take a secret from an addon (SecretArguments AllowedWhenTainted in their
+-- documentation on both clients) and give back a secret string. The stubs
+-- can't make one, so for a value the global issecretvalue calls secret they
+-- give a table holding what they were handed, which a test can read.
+--
+-- C_StringUtil.WrapString(infix, prefix, suffix) (StringUtilDocumentation.lua):
+-- prefix .. infix .. suffix, or '' when infix is '' (its documentation: "joined
+-- to 'infix' iif 'infix' is not an empty string"). A nil prefix or suffix is ''.
+-- A secret infix gives { wrapped = infix, prefix = prefix, suffix = suffix }.
+C_StringUtil = C_StringUtil or {}
+function C_StringUtil.WrapString(infix, prefix, suffix)
+	if issecretvalue and issecretvalue(infix) then
+		return { wrapped = infix, prefix = prefix, suffix = suffix }
+	end
+	if type(infix) ~= 'string' and type(infix) ~= 'number' then
+		error('Usage: C_StringUtil.WrapString(infix [, prefix, suffix])', 2)
+	end
+	if infix == '' then return '' end
+	return (prefix or '') .. infix .. (suffix or '')
+end
+-- AbbreviateNumbers(number, options) (LocalizationDocumentation.lua; the
+-- breakpoint fields in LocalizationSharedDocumentation.lua): at the first of
+-- options.breakpointData's breakpoints (largest first) the number reaches, the
+-- number divided by significandDivisor and rounded down, then divided by
+-- fractionDivisor, and the abbreviation after it (the global string of that
+-- name, or the abbreviation itself when abbreviationIsGlobal is false). Its
+-- documentation's example: a breakpoint at 1,000 dividing by 100 then 10 makes
+-- 1234 '1.2k'. Below every breakpoint, the number as it is. The number is
+-- written as Lua's tostring writes it (1.0 as 1); that the client writes it
+-- the same, and rounds down rather than to nearest, is for checking in game.
+-- A secret number gives { abbreviated = number, options = options }. With no
+-- breakpointData the game uses its own for the client's language, which its
+-- Lua doesn't hold, so that errors here rather than guess.
+function AbbreviateNumbers(number, options)
+	if issecretvalue and issecretvalue(number) then
+		return { abbreviated = number, options = options }
+	end
+	if type(number) ~= 'number' then error('Usage: AbbreviateNumbers(number [, options])', 2) end
+	local breakpoints = options and options.breakpointData
+	if not breakpoints then
+		error("AbbreviateNumbers without options.breakpointData is not stubbed: the game's own breakpoints aren't in its Lua", 2)
+	end
+	for _, b in ipairs(breakpoints) do
+		if number >= b.breakpoint then
+			local abbreviation = b.abbreviation
+			if b.abbreviationIsGlobal ~= false then abbreviation = _G[abbreviation] end
+			return tostring(math.floor(number / b.significandDivisor) / b.fractionDivisor) .. abbreviation
+		end
+	end
+	return tostring(number)
+end
+-- UnitIsDead(unit) (UnitDocumentation.lua): the player's is stub.dead, another
+-- unit's its stub.units dead; false for a unit that isn't there, as the game
+-- gives.
+function UnitIsDead(unit)
+	if unit == 'player' then return stub.dead == true end
+	local other = OtherUnit(unit)
+	return other ~= nil and other.dead == true
+end
+
+-- The player's class and spellbooks.
+--   class: UnitClass('player')'s token, which also gives its name and ID.
+--   known_spells, known_pet_spells: the spell IDs C_SpellBook.IsSpellKnown
+--     calls known in the player's spellbook and the pet's, as sets, e.g.
+--     stub.known_spells[370] = true. A pet's spells are known only while it's
+--     out, so a test of no pet leaves known_pet_spells empty.
+stub.class = 'WARRIOR'
+stub.known_spells = {}
+stub.known_pet_spells = {}
+
+-- C_SpellBook.IsSpellKnown(spellID[, spellBank]) (SpellBookDocumentation.lua,
+-- the same on both clients): spellID a number, spellBank an
+-- Enum.SpellBookSpellBank (Player, the default, or Pet). Its answer is a plain
+-- boolean, never secret. A spellID that isn't a number, or a bank that isn't
+-- one, errors as the game's argument check does.
+C_SpellBook = C_SpellBook or {}
+function C_SpellBook.IsSpellKnown(spellID, spellBank)
+	if type(spellID) ~= 'number' then
+		error('Usage: local isKnown = C_SpellBook.IsSpellKnown(spellID [, spellBank])', 2)
+	end
+	if spellBank == nil or spellBank == 0 then return stub.known_spells[spellID] == true end
+	if spellBank == 1 then return stub.known_pet_spells[spellID] == true end
+	error('Usage: local isKnown = C_SpellBook.IsSpellKnown(spellID [, spellBank])', 2)
+end
+
+-- Nameplates: C_NamePlate (NamePlateDocumentation.lua, the same on both
+-- clients), the unit API oUF's nameplate driver reads, and stub controls that
+-- play the game's part.
+--
+-- The game makes the plate frames itself (NamePlate1, NamePlate2, ..., on the
+-- WorldFrame, placed and sized by the client) and reuses them: a plate one
+-- unit leaves is handed to another. On every add Blizzard's
+-- NamePlateDriverFrame gives the plate a UnitFrame from its pool, and on the
+-- remove takes it back (NamePlateBaseMixin:AcquireUnitFrame and
+-- ReleaseUnitFrame, Blizzard_NamePlateBase.lua, both clients: the plate's
+-- UnitFrame field is set, then nil). Blizzard's driver registered for the
+-- events when the UI loaded, before any addon's frame, so it acquires before
+-- an addon hears of the add and releases before an addon hears of the remove;
+-- the unit's plate is found until every frame has heard of the remove.
+--
+--   stub.nameplate_size: { width, height }, the size C_NamePlate.SetNamePlateSize
+--     last set (every plate takes it), nil until one is set.
+--   stub.nameplate_target: the unit token whose plate is the target's
+--     (C_NamePlate.GetNamePlateForUnit('target')), nil for none.
+--   stub.add_nameplate(unit, opts) -> plate: the game shows unit ('nameplateN')
+--     on a plate and fires NAME_PLATE_UNIT_ADDED. The plate is a new one,
+--     numbered after the last, unless opts.plate = n hands it NamePlate<n>
+--     again (which must be free). opts.forbidden makes it a forbidden plate,
+--     which C_NamePlate gives addon code only when it asks for forbidden ones
+--     (it can't: Blizzard's own driver passes issecure()); whether the game
+--     fires NAME_PLATE_UNIT_ADDED to addons for a forbidden plate isn't known,
+--     so the stub fires it, the stricter case. opts.widgets_only and
+--     opts.game_object are UnitNameplateShowsWidgetsOnly's and
+--     UnitIsGameObject's answers for the unit (a capture bar, a quest object).
+--     Each add hands the plate a new pooled Blizzard UnitFrame (a Button) with
+--     its CastBarsContainer, WidgetContainer (hidden) and SoftTargetFrame
+--     children, set with rawset as Blizzard's pool and template do. Blizzard
+--     runs the UnitFrame's UpdateWidgetsOnlyMode before addons hear of the
+--     add (OnUnitSet, Blizzard_NamePlateUnitFrame.lua, both clients): the
+--     WidgetContainer's points cleared, then its BOTTOM on the UnitFrame's
+--     BOTTOM for a widget-only unit, else its TOP on the CastBarsContainer's
+--     BOTTOM; then its UpdateHitTestArea (below). OnUnitSet also registers
+--     the UnitFrame with CVarCallbackRegistry (blizzard.lua) for the friendly
+--     NPC plates setting (UpdateWidgetsOnlyMode again) and for showing only
+--     the names of friendly players (UpdateShowOnlyName, which runs
+--     UpdateHitTestArea when the plate's show-only-name state changes; here
+--     every change counts as one, the stricter case). The remove unregisters
+--     them (OnUnitCleared). The callbacks stay registered on a UnitFrame oUF
+--     has blocked: oUF's UnregisterAllEvents drops its events, not these.
+--   stub.set_nameplate_widgets_only(unit, value): the unit's plate starts or
+--     stops showing only widgets without a new add, and Blizzard runs its
+--     UpdateWidgetsOnlyMode again, as it does when the game's friendly NPC
+--     plates setting changes.
+--   stub.remove_nameplate(unit): the game takes the unit's plate away:
+--     Blizzard's driver takes its UnitFrame back (hidden, its points cleared,
+--     as a frame pool resets one), NAME_PLATE_UNIT_REMOVED fires, and the
+--     plate hides and is free.
+--   stub.set_nameplate_size_secure(width, height): sets the size even in
+--     combat, as Blizzard's untainted code can (NamePlateDriverFrame's
+--     UpdateNamePlateSize, blizzard.lua).
+--   stub.apply_nameplate_frame_options(plate): Blizzard's
+--     NamePlateBaseMixin:ApplyFrameOptions on a plate showing a unit, which
+--     NamePlateDriverFrame:UpdateNamePlateOptions runs on every plate
+--     (blizzard.lua): its UnitFrame's ApplyFrameOptions, of which only the
+--     UpdateHitTestArea is mimicked.
+--
+-- A plate's click area, its hit-test points (FrameAPINamePlateDocumentation.lua,
+-- the same on both clients): ClearAllHitTestPoints(), SetAllHitTestPoints(region),
+-- SetHitTestPoints(anchors), GetHitTestPoints() and CanChangeHitTestPoints().
+-- GetHitTestPoints gives the anchors as AnchorBinding tables ({ point,
+-- relativeTo, relativePoint, offsetX, offsetY }); SetAllHitTestPoints(region)
+-- is taken to set two, TOPLEFT and BOTTOMRIGHT on region's, "to fully
+-- encompass" it (the documentation's words; the anchors it makes aren't
+-- documented). The three setters are guarded (RequiresCanChangeHitTestPoints,
+-- failure mode Error): "Updates are normally blocked for tainted code during
+-- combat, except on the tick a unit is first assigned or when untainted code
+-- updates hit-test points on the same tick." So out of combat addon code may
+-- always change them; in combat only on the tick (stub.tick) the plate got
+-- its unit or Blizzard's code changed them, and otherwise a setter errors.
+-- Blizzard's UpdateHitTestArea (Blizzard_NamePlateUnitFrame.lua, both
+-- clients) is untainted, so it works in combat and frees the tick: it clears
+-- the points on a widget-only plate, else sets Blizzard's own area, two
+-- anchors round its health bar and name, here relative to the UnitFrame
+-- (which stands in for both).
+--   stub.on_nameplate_frame: nil, or a function the stub calls with each
+--     Blizzard frame it makes for the plates (a plate, and each pooled
+--     UnitFrame with its WidgetContainer and SoftTargetFrame) once it is set
+--     up, so a test can lock them as Blizzard's (misc/fixtures/locked_widget.lua).
+-- Not mimicked: script nameplates, the personal resource display, plates the
+-- game makes before an add (NAME_PLATE_CREATED), FORBIDDEN_NAME_PLATE_UNIT_ADDED
+-- and its remove, a plate's place on screen (each sits at the WorldFrame's
+-- centre), and units other than nameplateN and the target.
+stub.nameplate_size = nil
+stub.nameplate_target = nil
+stub.on_nameplate_frame = nil
+
+do
+	-- by number: { frame, unit, forbidden, widgets_only, game_object,
+	-- hit_points (the click area's anchors), free_tick (the tick addon code may
+	-- change them in combat) }
+	local plates = {}
+	local byUnit = {}  -- the plate showing each unit token
+
+	-- The plate record for a unit token: 'target' is stub.nameplate_target's.
+	local function record_for(unit)
+		unit = unit:lower()
+		if unit == 'target' then
+			unit = stub.nameplate_target
+			if not unit then return nil end
+		end
+		return byUnit[unit]
+	end
+
+	local function made(frame)
+		if stub.on_nameplate_frame then stub.on_nameplate_frame(frame) end
+	end
+
+	local function anchor(point, relativeTo, offsetX, offsetY)
+		return { point = point, relativeTo = relativeTo, relativePoint = point, offsetX = offsetX, offsetY = offsetY }
+	end
+
+	-- Blizzard's NamePlateUnitFrameMixin:UpdateHitTestArea, untainted: no
+	-- points on a widget-only plate, else Blizzard's area round its UnitFrame.
+	local function blizzard_hit_test(record)
+		local unitFrame = rawget(record.frame, 'UnitFrame')
+		if record.widgets_only then
+			record.hit_points = {}
+		else
+			record.hit_points = { anchor('TOPLEFT', unitFrame, -10, 10), anchor('BOTTOMRIGHT', unitFrame, 10, -10) }
+		end
+		record.free_tick = stub.tick
+	end
+
+	-- Blizzard's NamePlateUnitFrameMixin:UpdateWidgetsOnlyMode, for the
+	-- WidgetContainer of the UnitFrame a plate has, then its click area.
+	local function widgets_only_mode(record)
+		local unitFrame = rawget(record.frame, 'UnitFrame')
+		local widgets = rawget(unitFrame, 'WidgetContainer')
+		widgets:ClearAllPoints()
+		if record.widgets_only then
+			widgets:SetPoint('BOTTOM', unitFrame, 'BOTTOM')
+		else
+			widgets:SetPoint('TOP', rawget(unitFrame, 'CastBarsContainer'), 'BOTTOM')
+		end
+		blizzard_hit_test(record)
+	end
+
+	-- The click area's methods, on a plate the game makes.
+	local function hit_test_methods(frame, record)
+		local function guard(method)
+			if InCombatLockdown() and record.free_tick ~= stub.tick then
+				error(('%s: this nameplate does not permit changes to its hit-test points (CanChangeHitTestPoints)'):format(method), 3)
+			end
+		end
+		rawset(frame, 'CanChangeHitTestPoints', function()
+			return not InCombatLockdown() or record.free_tick == stub.tick
+		end)
+		rawset(frame, 'ClearAllHitTestPoints', function()
+			guard('ClearAllHitTestPoints')
+			record.hit_points = {}
+		end)
+		rawset(frame, 'SetAllHitTestPoints', function(_, region)
+			guard('SetAllHitTestPoints')
+			if type(region) ~= 'table' then error('Usage: nameplate:SetAllHitTestPoints(relativeTo)', 2) end
+			record.hit_points = { anchor('TOPLEFT', region, 0, 0), anchor('BOTTOMRIGHT', region, 0, 0) }
+		end)
+		rawset(frame, 'SetHitTestPoints', function(_, anchors)
+			guard('SetHitTestPoints')
+			if type(anchors) ~= 'table' then error('Usage: nameplate:SetHitTestPoints(anchors)', 2) end
+			record.hit_points = {}
+			for i, a in ipairs(anchors) do
+				record.hit_points[i] = anchor(a.point, a.relativeTo, a.offsetX or 0, a.offsetY or 0)
+				record.hit_points[i].relativePoint = a.relativePoint or a.point
+			end
+		end)
+		rawset(frame, 'GetHitTestPoints', function()
+			local copy = {}
+			for i, a in ipairs(record.hit_points or {}) do
+				copy[i] = { point = a.point, relativeTo = a.relativeTo, relativePoint = a.relativePoint, offsetX = a.offsetX, offsetY = a.offsetY }
+			end
+			return copy
+		end)
+	end
+
+	-- The CVarCallbackRegistry callbacks Blizzard's UnitFrame registers in
+	-- OnUnitSet, by setting name (NamePlateConstants, blizzard.lua): the ones
+	-- that change its click area.
+	local function unit_frame_callbacks(record)
+		return {
+			[NamePlateConstants.SHOW_FRIENDLY_NPCS_CVAR] = function() widgets_only_mode(record) end,
+			[NamePlateConstants.SHOW_ONLY_NAME_FOR_FRIENDLY_PLAYER_UNITS_CVAR] = function() blizzard_hit_test(record) end,
+		}
+	end
+
+	local function set_size(width, height)
+		stub.nameplate_size = { width, height }
+		for _, plate in pairs(plates) do plate.frame:SetSize(width, height) end
+	end
+
+	C_NamePlate = {}
+	-- C_NamePlate.GetNamePlateForUnit(unitToken[, includeForbidden]): the
+	-- plate showing the unit, nil for none (the documentation marks it not
+	-- nilable, but the game gives nil for a unit with no plate, which addons
+	-- and oUF check). A forbidden plate only with includeForbidden.
+	function C_NamePlate.GetNamePlateForUnit(unit, includeForbidden)
+		if type(unit) ~= 'string' then
+			error('Usage: local nameplate = C_NamePlate.GetNamePlateForUnit(unitToken [, includeForbidden])', 2)
+		end
+		local record = record_for(unit)
+		if not record or (record.forbidden and not includeForbidden) then return nil end
+		return record.frame
+	end
+	-- C_NamePlate.GetNamePlates(): the plates showing a unit, by plate number;
+	-- forbidden ones only with includeForbidden, as Blizzard's driver passes it.
+	function C_NamePlate.GetNamePlates(includeForbidden)
+		local list = {}
+		for n = 1, #plates do
+			local record = plates[n]
+			if record.unit and (includeForbidden or not record.forbidden) then
+				list[#list + 1] = record.frame
+			end
+		end
+		return list
+	end
+	-- C_NamePlate.SetNamePlateSize(width, height): one size for every plate.
+	-- The documentation marks it HasRestrictions: in combat addon code is
+	-- refused (noted in stub.blocked as { C_NamePlate, 'SetNamePlateSize' },
+	-- as a protected frame's calls are).
+	function C_NamePlate.SetNamePlateSize(width, height)
+		if type(width) ~= 'number' or type(height) ~= 'number' then
+			error('Usage: C_NamePlate.SetNamePlateSize(width, height)', 2)
+		end
+		if InCombatLockdown() then
+			stub.blocked[#stub.blocked + 1] = { C_NamePlate, 'SetNamePlateSize' }
+			return
+		end
+		set_size(width, height)
+	end
+
+	-- UnitNameplateShowsWidgetsOnly(unit) and UnitIsGameObject(unit)
+	-- (UnitDocumentation.lua): plain booleans, from the add's opts; false for a
+	-- unit with no plate.
+	function UnitNameplateShowsWidgetsOnly(unit)
+		if type(unit) ~= 'string' then error('Usage: UnitNameplateShowsWidgetsOnly(unit)', 2) end
+		local record = record_for(unit)
+		return record ~= nil and record.widgets_only == true
+	end
+	function UnitIsGameObject(unit)
+		local record = type(unit) == 'string' and record_for(unit) or nil
+		return record ~= nil and record.game_object == true
+	end
+
+	function stub.set_nameplate_size_secure(width, height)
+		set_size(width, height)
+	end
+
+	function stub.add_nameplate(unit, opts)
+		opts = opts or {}
+		assert(type(unit) == 'string' and unit:match('^nameplate%d+$'), 'add_nameplate: a nameplateN unit, got ' .. tostring(unit))
+		assert(not byUnit[unit], 'add_nameplate: ' .. unit .. ' already has a plate')
+		local n = opts.plate or #plates + 1
+		local record = plates[n]
+		if record then
+			assert(not record.unit, ('add_nameplate: NamePlate%d shows %s'):format(n, tostring(record.unit)))
+		else
+			assert(n == #plates + 1, 'add_nameplate: the game numbers its plates in order')
+			local frame = CreateFrame('Frame', 'NamePlate' .. n, WorldFrame)
+			frame:SetPoint('CENTER', WorldFrame, 'CENTER')
+			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
+			frame:Hide()
+			record = { frame = frame, hit_points = {} }
+			hit_test_methods(frame, record)
+			plates[n] = record
+			made(frame)
+		end
+		record.unit = unit
+		record.forbidden = opts.forbidden == true
+		record.widgets_only = opts.widgets_only == true
+		record.game_object = opts.game_object == true
+		-- The tick the unit is assigned on: addon code may change the click
+		-- area then, in combat too.
+		record.free_tick = stub.tick
+		byUnit[unit] = record
+
+		-- Blizzard's driver: a UnitFrame from its pool, on the plate.
+		local plate = record.frame
+		local unitFrame = CreateFrame('Button', nil, plate)
+		unitFrame:SetAllPoints(plate)
+		local castBars = CreateFrame('Frame', nil, unitFrame)
+		castBars:SetPoint('TOP', unitFrame, 'BOTTOM')
+		local widgets = CreateFrame('Frame', nil, unitFrame)
+		widgets:Hide()
+		local softTarget = CreateFrame('Frame', nil, unitFrame)
+		rawset(unitFrame, 'CastBarsContainer', castBars)
+		rawset(unitFrame, 'WidgetContainer', widgets)
+		rawset(unitFrame, 'SoftTargetFrame', softTarget)
+		rawset(plate, 'UnitFrame', unitFrame)
+		-- OnUnitSet: the setting callbacks (none where a test took the
+		-- registry or the constants away), then UpdateWidgetsOnlyMode.
+		record.callbacks = (CVarCallbackRegistry and NamePlateConstants) and unit_frame_callbacks(record) or {}
+		for cvar, callback in pairs(record.callbacks) do
+			CVarCallbackRegistry:RegisterCallback(cvar, callback, unitFrame)
+		end
+		widgets_only_mode(record)
+		made(unitFrame)
+		made(castBars)
+		made(widgets)
+		made(softTarget)
+
+		plate:Show()
+		stub.fire_event('NAME_PLATE_UNIT_ADDED', unit)
+		return plate
+	end
+
+	function stub.apply_nameplate_frame_options(plate)
+		for _, record in pairs(plates) do
+			if record.frame == plate and record.unit then blizzard_hit_test(record) end
+		end
+	end
+
+	function stub.remove_nameplate(unit)
+		local record = byUnit[unit]
+		assert(record, 'remove_nameplate: ' .. tostring(unit) .. ' has no plate')
+		local plate = record.frame
+		-- Blizzard's driver clears the unit (OnUnitCleared: the setting
+		-- callbacks go) and gives the UnitFrame back to its pool.
+		local unitFrame = rawget(plate, 'UnitFrame')
+		for cvar in pairs(record.callbacks) do
+			if CVarCallbackRegistry then CVarCallbackRegistry:UnregisterCallback(cvar, unitFrame) end
+		end
+		record.callbacks = nil
+		rawset(plate, 'UnitFrame', nil)
+		unitFrame:Hide()
+		unitFrame:ClearAllPoints()
+
+		stub.fire_event('NAME_PLATE_UNIT_REMOVED', unit)
+		plate:Hide()
+		byUnit[unit] = nil
+		record.unit, record.forbidden, record.widgets_only, record.game_object = nil, nil, nil, nil
+	end
+
+	function stub.set_nameplate_widgets_only(unit, value)
+		local record = byUnit[unit]
+		assert(record, 'set_nameplate_widgets_only: ' .. tostring(unit) .. ' has no plate')
+		record.widgets_only = value == true
+		widgets_only_mode(record)
+	end
+end
+
+-- UnitIsFriend(unit, otherUnit) and UnitCanAttack(unit, otherUnit)
+-- (UnitDocumentation.lua, the same on both clients: two unit tokens, a plain
+-- boolean back): between the player and a stub.units unit, either way round,
+-- its friend and attackable fields (false where unset). A test can put a
+-- secret value (tests/lib/secrets.lua) in either, as restricted content could
+-- hand one. A unit that isn't there gives false, as the game does for a unit
+-- that doesn't exist; no other pair is stubbed, so it errors rather than guess.
+do
+	local function between(name, field)
+		return function(unit, otherUnit)
+			if type(unit) ~= 'string' or type(otherUnit) ~= 'string' then
+				error(('Usage: local result = %s(unit, target)'):format(name), 2)
+			end
+			local other = (otherUnit == 'player' and OtherUnit(unit)) or (unit == 'player' and OtherUnit(otherUnit))
+			if other then
+				local value = other[field]
+				if value == nil then return false end
+				return value
+			end
+			if not (OtherUnit(unit) or unit == 'player') or not (OtherUnit(otherUnit) or otherUnit == 'player') then return false end
+			error(('%s(%s, %s) is not stubbed: only a stub.units unit and the player'):format(name, unit, otherUnit), 2)
+		end
+	end
+	UnitIsFriend = between('UnitIsFriend', 'friend')
+	UnitCanAttack = between('UnitCanAttack', 'attackable')
+end
+
+-- C_CVar (CVarDocumentation.lua, the same on both clients): the game's
+-- settings, by name, each a string.
+--
+--   stub.cvars: name -> value, a string. A name not there is a setting this
+--     client doesn't have. The defaults are only the two friendly plate
+--     settings, off (the game's defaults as far as we know them; the source
+--     doesn't say, so this is inferred). Every other setting a test needs, it
+--     adds itself (the scale and simplified plate settings, the nameplate
+--     tests' own).
+--   C_CVar.GetCVar(name): stub.cvars[name], or nil for a setting the client
+--     lacks (the documentation marks its return Nilable).
+--   C_CVar.SetCVar(name, value): sets the string and returns true. An unknown
+--     name returns false (RequiresValidAndPublicCVar). The game protects some
+--     nameplate settings in combat (the documentation's RequiresNonSecureCVar,
+--     and addons setting friendly plates in combat get blocked), so in combat
+--     the stub refuses every setting, the strict side: noted in stub.blocked as
+--     { C_CVar, name }, it returns false and changes nothing. A nil value
+--     (the documentation allows one) errors: what the game makes of it isn't
+--     known, and SaftUI never passes one. A changed value fires CVAR_UPDATE
+--     (name, value) before it returns: ConsoleDocumentation.lua marks the
+--     event SynchronousEvent on both clients. Whether the game fires it for a
+--     value set to what it already was isn't known; here it doesn't.
+--   stub.set_cvar_secure(name, value): sets a setting the client has even in
+--     combat, as Blizzard's untainted code can (its key binding for friendly
+--     plates), firing CVAR_UPDATE for a change as C_CVar.SetCVar does.
+stub.cvars = {
+	nameplateShowFriendlyPlayers = '0',
+	nameplateShowFriendlyNpcs = '0',
+}
+
+local function set_cvar(name, value)
+	value = tostring(value)
+	local changed = stub.cvars[name] ~= value
+	stub.cvars[name] = value
+	if changed then stub.fire_event('CVAR_UPDATE', name, value) end
+end
+
+C_CVar = {}
+function C_CVar.GetCVar(name)
+	if type(name) ~= 'string' then error('Usage: local value = C_CVar.GetCVar(name)', 2) end
+	return stub.cvars[name]
+end
+function C_CVar.SetCVar(name, value)
+	if type(name) ~= 'string' then error('Usage: local success = C_CVar.SetCVar(name [, value])', 2) end
+	if value == nil then error('C_CVar.SetCVar: a nil value is not stubbed', 2) end
+	if stub.cvars[name] == nil then return false end
+	if InCombatLockdown() then
+		stub.blocked[#stub.blocked + 1] = { C_CVar, name }
+		return false
+	end
+	set_cvar(name, value)
+	return true
+end
+function stub.set_cvar_secure(name, value)
+	assert(stub.cvars[name] ~= nil, 'set_cvar_secure: this client has no setting ' .. tostring(name))
+	set_cvar(name, value)
+end
+
+-- The quest icon's questions about a unit (the same on both clients: a unit
+-- token in, a plain boolean back, its documentation marks it not nilable):
+-- C_QuestLog.UnitIsRelatedToActiveQuest(unit) (QuestLogDocumentation.lua),
+-- whether one of the player's active quests is about the unit, and
+-- UnitIsQuestBoss(unit) (UnitDocumentation.lua). A stub.units unit's quest and
+-- quest_boss fields (false where unset), which a test can make a secret value
+-- (tests/lib/secrets.lua), as restricted content could hand one; false for the
+-- player and for a unit that isn't there. A unit that isn't a string errors,
+-- as the game's argument check does.
+C_QuestLog = C_QuestLog or {}
+do
+	local function ask(usage, field)
+		return function(unit)
+			if type(unit) ~= 'string' then error('Usage: ' .. usage, 2) end
+			local other = OtherUnit(unit)
+			if not other or other[field] == nil then return false end
+			return other[field]
+		end
+	end
+	C_QuestLog.UnitIsRelatedToActiveQuest = ask('local isRelatedToActiveQuest = C_QuestLog.UnitIsRelatedToActiveQuest(unit)', 'quest')
+	UnitIsQuestBoss = ask('local result = UnitIsQuestBoss(unit)', 'quest_boss')
+end
+
+-- Threat, groups and roles, for the nameplates' threat tint
+-- (SaftUI-Unitframes/nameplates/threat.lua). The functions are in both
+-- clients' UnitDocumentation.lua and SecretPredicateAPIDocumentation.lua,
+-- unless a comment says otherwise; IsInGroup, IsInRaid and
+-- GetNumGroupMembers are the game's long-standing globals, which the
+-- generated documentation doesn't list.
+--
+--   stub.threat: mob token -> { [unit token] = entry }, each unit on that
+--     mob's threat list. An entry is the unit's status (0-3, as
+--     UnitThreatSituation gives it: 0 lower threat than the tank, 1 higher
+--     but not tanking, 2 tanking with someone else higher, 3 tanking
+--     securely), or { status = n, percent = p, isTanking = t } to give its
+--     scaled percent and UnitDetailedThreatSituation's isTanking. Not given,
+--     the percent is 100 for a unit tanking (status 2 or 3) and 0 otherwise,
+--     and isTanking is status 2 or 3. A test can put a secret value
+--     (tests/lib/secrets.lua) in any of them, as restricted content hands
+--     one: the threat values (UnitDetailedThreatSituation's, which are
+--     SecretWhenUnitThreatValuesRestricted) can be secret while the state
+--     (UnitThreatSituation's, SecretWhenUnitThreatStateRestricted) isn't.
+--   stub.secret_threat: mob token -> true (every unit's threat state with that
+--     mob is secret) or a set of unit tokens (only theirs is), for
+--     C_Secrets.ShouldUnitThreatStateBeSecret. The game's threat functions
+--     give secret values then; here they give what stub.threat holds, so a
+--     test of a secret state puts the secret there too where it matters.
+--   stub.group: nil while the player is on their own; else { raid = true or
+--     nil, members = { unit tokens } }: a party's members besides the player
+--     ('party1'..'party4'), or a raid's members, the player's own raid token
+--     among them, as the game numbers a raid ('raid1'..'raid40').
+--   stub.role: UnitGroupRolesAssigned('player'): 'TANK', 'HEALER', 'DAMAGER'
+--     or 'NONE' (nil reads as 'NONE'). Another unit's is its stub.units role.
+--   stub.tank_aura: unit token -> true for a unit with an aura that makes it
+--     a tank (UnitHasEffectivelyTankAura, Forever only).
+--   UnitAffectingCombat(unit): a plain boolean (no secret annotation on
+--     either client). The player's is stub.in_combat. Another unit's is its
+--     stub.units combat field where a test sets one (a secret value too),
+--     else whether it has a threat list in stub.threat with anyone on it: a
+--     mob has a threat list only while it's in combat.
+--   stub.apply_client(): drops the globals stub.interface's client doesn't
+--     have (CLIENT_ONLY below), as T.client (tests/lib/theme_helpers.lua)
+--     does after setting the interface. A world whose interface a test sets
+--     by hand calls it too, if the code it runs looks a global up.
+stub.threat = {}
+stub.secret_threat = {}
+stub.group = nil
+stub.role = nil
+stub.tank_aura = {}
+
+do
+	-- The unit's entry on mob's threat list: status, percent and isTanking,
+	-- or nil when it isn't on the list.
+	local function threat_entry(fn, unit, mob)
+		if type(unit) ~= 'string' or type(mob) ~= 'string' then
+			error(('Usage: %s(unit, mobGUID): only the form with a mob is stubbed'):format(fn), 3)
+		end
+		local list = stub.threat[mob]
+		local entry = list and list[unit]
+		if entry == nil then return nil end
+		if type(entry) == 'table' then return entry.status, entry.percent, entry.isTanking end
+		return entry, nil, nil
+	end
+
+	-- UnitThreatSituation(unit, mob): the unit's status on the mob's threat
+	-- list, nil when it isn't on it (its result is Nilable).
+	function UnitThreatSituation(unit, mob)
+		return (threat_entry('UnitThreatSituation', unit, mob))
+	end
+
+	-- UnitDetailedThreatSituation(unit, mob): isTanking, status,
+	-- scaledPercentage, rawPercentage, rawThreat; nothing when the unit isn't
+	-- on the list (MayReturnNothing). isTanking is status 2 or 3 unless the
+	-- entry gives one. A secret status gives itself as isTanking and as the
+	-- percent where none is given, since nothing can be worked out from it.
+	-- rawPercentage is the scaled percent here and rawThreat 0: SaftUI reads
+	-- neither.
+	function UnitDetailedThreatSituation(unit, mob)
+		local status, percent, isTanking = threat_entry('UnitDetailedThreatSituation', unit, mob)
+		if status == nil then return end
+		local tanking
+		if issecretvalue and issecretvalue(status) then
+			tanking = status
+			if percent == nil then percent = status end
+		else
+			tanking = status == 2 or status == 3
+			if percent == nil then percent = tanking and 100 or 0 end
+		end
+		if isTanking ~= nil then tanking = isTanking end
+		return tanking, status, percent, percent, 0
+	end
+
+	function UnitAffectingCombat(unit)
+		if type(unit) ~= 'string' then error('Usage: local result = UnitAffectingCombat(unit)', 2) end
+		if unit == 'player' then return stub.in_combat end
+		local other = OtherUnit(unit)
+		if other and other.combat ~= nil then return other.combat end
+		local list = stub.threat[unit]
+		return list ~= nil and next(list) ~= nil
+	end
+
+	C_Secrets = C_Secrets or {}
+	-- C_Secrets.ShouldUnitThreatStateBeSecret(unit[, mobUnit]): "true if
+	-- queries for unit threat status will produce secret values". A plain
+	-- boolean.
+	function C_Secrets.ShouldUnitThreatStateBeSecret(unit, mob)
+		if type(unit) ~= 'string' then
+			error('Usage: local isUnitThreatSecret = C_Secrets.ShouldUnitThreatStateBeSecret(unit [, mobUnit])', 2)
+		end
+		local secret = mob and stub.secret_threat[mob]
+		if secret == true then return true end
+		return type(secret) == 'table' and secret[unit] == true
+	end
+
+	-- IsInGroup([groupType]) and IsInRaid([groupType]): plain booleans from
+	-- stub.group. The group type (home or instance group) isn't modelled.
+	function IsInGroup() return stub.group ~= nil end
+	function IsInRaid() return stub.group ~= nil and stub.group.raid == true end
+	-- GetNumGroupMembers(): the group's size, the player counted: 0 on their
+	-- own, a party's members and the player, a raid's members (the player is
+	-- one of them).
+	function GetNumGroupMembers()
+		local group = stub.group
+		if not group then return 0 end
+		local members = #(group.members or {})
+		return group.raid and members or members + 1
+	end
+
+	-- UnitGroupRolesAssigned(unit): the role the unit was given in the group
+	-- ('TANK', 'HEALER', 'DAMAGER'), 'NONE' without one, and for a unit that
+	-- isn't there. A test can make a role secret, as restricted content can
+	-- (SecretWhenUnitIdentityRestricted).
+	function UnitGroupRolesAssigned(unit)
+		unit = unit or 'player'
+		if unit == 'player' then return stub.role or 'NONE' end
+		local other = OtherUnit(unit)
+		return other and other.role or 'NONE'
+	end
+
+	-- UnitHasEffectivelyTankAura(unit): whether the unit has an aura that
+	-- makes it a tank (a tanking stance or form). Only Forever has it: its
+	-- UnitDocumentation.lua lists it and retail's doesn't, so a retail world
+	-- has no such global (stub.apply_client), and one that still has it,
+	-- its interface set by hand, errors on a call as a missing global does.
+	function UnitHasEffectivelyTankAura(unit)
+		if stub.interface ~= 16001 then
+			error("attempt to call global 'UnitHasEffectivelyTankAura' (a nil value): retail has no such function", 2)
+		end
+		local aura = stub.tank_aura[unit]
+		if aura == nil then return false end
+		return aura
+	end
+
+	-- The globals only one client has, by name: the interface that has it.
+	local CLIENT_ONLY = { UnitHasEffectivelyTankAura = 16001 }
+	function stub.apply_client()
+		for name, interface in pairs(CLIENT_ONLY) do
+			if stub.interface ~= interface then _G[name] = nil end
+		end
+	end
+
+	-- UnitExists(unit): true for the player and the stub.units units, false
+	-- for a unit that isn't there.
+	function UnitExists(unit)
+		return unit == 'player' or OtherUnit(unit) ~= nil
+	end
+end

@@ -6,23 +6,23 @@ rules only.
 
 ## What this is
 
-SaftUI is a modular World of Warcraft UI replacement: a set of Lua addons that share
-one core (`SaftUI-Core`) and each own one area of the UI (unit frames, action bars, bags,
-chat, minimap and micro menu, loot, and a grab-bag of skins and small modules). It targets
-two clients at once: **WoW Forever** (interface 16001, a mainline-family client with
-"Camelot" overrides, the one the user plays) and **retail** (Midnight, interface
-120000). It has its own edit mode, where registered frames are dragged and nudged on
-screen and configured in the `/sui` options window, which is built on Ace3. There is
-no build step. Logic that can be checked outside the game has Lua tests in `tests/`,
-which agents run on Lua 5.1 with `tests/run`. Changes are also verified by reading the
-code, and by the user checking them in game.
+SaftUI is a modular World of Warcraft UI replacement: a set of Lua addons that share one
+core (`SaftUI-Core`) and each own one area of the UI (unit frames and nameplates, action
+bars, bags, chat, minimap and micro menu, loot, and a grab-bag of skins and small
+modules). It targets two clients at once: **WoW Forever** (interface 16001, a
+mainline-family client with "Camelot" overrides, the one the user plays) and **retail**
+(Midnight, interface 120000). It has its own edit mode, where registered frames are
+dragged and nudged on screen and configured in the `/sui` options window, which is built
+on Ace3. There is no build step. Logic that can be checked outside the game has Lua
+tests in `tests/`, which agents run on Lua 5.1 with `tests/run`. Changes are also
+verified by reading the code, and by the user checking them in game.
 
 ## Repo layout
 
 | Path | What it is |
 | ---- | ---------- |
 | `SaftUI-Core/` | Shared core every module depends on: addon object, constants, API helpers (`api.lua`), frames and panels (`panels.lua`), the theme engine that draws every backdrop (`theme.lua`), fonts, colors and the theme's settings (`Media/`), config (AceDB profile, `/sui` and SaftUI's options window), and the edit mode framework (`EditMode/`). Bundles Ace3 and other libraries. Has per-client TOCs. |
-| `SaftUI-Unitframes/` | Unit frames built on a bundled oUF (`Libraries/oUF`, oUF master). Elements in `elements/`, config in `config/`. Per-client TOCs. |
+| `SaftUI-Unitframes/` | Unit frames built on a bundled oUF (`Libraries/oUF`, oUF master), and SaftUI's nameplates on oUF's nameplate driver (`nameplates/`: spawning and standing down for another nameplate addon, each plate's kind and Blizzard's widgets, the game's nameplate settings, the target's border, threat, whole-pixel plates). Elements in `elements/`, config in `config/` (the plates' in `config/units/nameplate.lua`), the purge, dispel and steal spells and every aura group's filter in `purge.lua`. Per-client TOCs. |
 | `SaftUI-Bags/` | Bag, bank and combined bank windows, bag slot bars, and the bag categories: an ordered list in the profile, each with a block rule (`rules.lua` evaluates them, `categorydefaults.lua` holds today's filters as the defaults, `categories.lua` is the list, its edits, pins and migration and says where an item goes, `itemclasses.lua` gives item class names their IDs), the Categories tab in `/sui` (`categoriestab.lua`, `ruleeditor.lua`), and the tooltip lines and slot menu entries that name an item's category. |
 | `SaftUI-Chat/` | Chat frame placement, size and skin. |
 | `SaftUI-Loot/` | Loot roll frames, loot feed (`Feed/`), loot window popup. |

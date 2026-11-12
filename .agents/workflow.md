@@ -56,7 +56,7 @@ Repo-specific overlay on the user-level `~/.claude/CLAUDE.md` "Planning workflow
   Workers never dispatch subagents.
 - **Tests.** Workers write their logic tests in `tests/` (`.agents/testing.md`) and run `tests/run`, never a harness of their own in the scratchpad.
 - **Reviews.** Every task gets a reviewer, and fix rounds get a scoped re-review. For changes that touch Blizzard frames, ask the reviewer to check taint against the forever source specifically (see `.agents/taint.md`).
-- **Merge conflicts.** Parallel tasks often conflict where each appends defaults to the end of `SaftUI-Misc/config.lua`, or edits `docs/followups.md`. Keep both sides.
+- **Merge conflicts.** Parallel tasks often conflict where each appends defaults to the end of `SaftUI-Misc/config.lua`, or edits `docs/followups.md`, or appends a stub block to `tests/wow/game.lua`. Keep both sides. In `game.lua`, git's resolution often leaves the two appended blocks sharing one closing `end` (the conflict sits inside the first block's last lines): check each block closes, or the file fails to load and every test errors.
 
 ## Commits and files
 

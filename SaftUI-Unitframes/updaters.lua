@@ -132,24 +132,53 @@ function UF:UpdateElement(element, configOverride)
     return true
 end
 
+-- Whether an element shows: its config's Enable, except that a friendly
+-- unit's plate never shows the parts only an enemy's does
+-- (UF.PLATE_ENEMY_ONLY, nameplates.lua; frame.friendly is set on each add).
+function UF:ElementWanted(element)
+    if not element.config.enable then return false end
+    local frame = element.unitframe
+    if frame and frame.isNamePlate and frame.friendly and UF.PLATE_ENEMY_ONLY[element.name] then
+        return false
+    end
+    return true
+end
+
+-- Shows or hides an element (UF:ElementWanted), and returns its config's
+-- Enable, which UF:UpdateElement goes on to place and size it by: a part a
+-- friendly plate hides is still laid out, ready for the plate's next enemy.
+-- It only shows or hides: oUF enables every element a frame has when it
+-- builds the frame, before the frame's first update (UF.InitUnit,
+-- UF:ApplyConfig). DisableElement is used only on plates, by their kind
+-- (nameplates.lua), because oUF's castbar Disable gives Blizzard's player
+-- and pet castbars their events back (Libraries/oUF/elements/castbar.lua,
+-- Disable), which the player castbar's option promises not to do. An element
+-- oUF shows on its own updates hides itself again while it's off (power's
+-- PostUpdate; power isn't on plates) or not wanted (the castbar's ShouldShow,
+-- the indicators' PostUpdate).
 function UF:SetElementEnabled(element)
-        element:SetShown(element.config.enable)
-
--- TODO: Figure out why EnableElement is breaking on nameplates
-
---     if hideOnly then
---         element:SetShown(element.config.enable)
---     else
---         local unitframe = element.__owner or element:GetParent()
---
---         if element.config.enable then
---             unitframe:EnableElement(element.name)
---         else
---             unitframe:DisableElement(element.name)
---         end
---     end
-
+    element:SetShown(self:ElementWanted(element))
     return element.config.enable
+end
+
+-- Sets a bar's colorTapping and colorReaction (health and power) from its
+-- config. oUF registers their recolor event (UNIT_FACTION) in the bar's Enable,
+-- and only if a flag is on then. While oUF has the bar enabled and running it
+-- has given it setters, which set the flag and, forced, register or unregister
+-- the event to match. Otherwise they're plain fields, which the next Enable
+-- reads: before oUF enables the bar, and while it's disabled or paused (a plate
+-- showing only widgets, nameplates.lua), where a setter would register the
+-- event on a bar that's off.
+function UF.SetFactionColorFlags(bar, config)
+    local owner = bar.__owner
+    if owner and bar.SetColorTapping and bar.SetColorReaction
+            and owner:IsElementEnabled(bar.name) and not owner:IsElementPaused(bar.name) then
+        bar:SetColorTapping(config.colorTapping, true)
+        bar:SetColorReaction(config.colorReaction, true)
+    else
+        bar.colorTapping = config.colorTapping
+        bar.colorReaction = config.colorReaction
+    end
 end
 
 -- The width and height an element's config gives it: its size on both sides,

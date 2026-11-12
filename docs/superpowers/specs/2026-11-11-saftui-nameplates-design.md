@@ -57,7 +57,7 @@ The full report: the controller's scratchpad, `report-research-nameplates.md`. B
 - **What friendly plates carry** (my call): the bar, the name, health % and the raid mark. No castbar, debuffs, purge row, threat or quest icon (the game uses one size for all plates, so the bar is the same 200 by 20).
 - Plates live in their own list (`UF.nameplates`, by NamePlateN), not in `UF.allUnits` (plates are reused); every place that walks unit frames (`ForEachUnitFrame`, `RefreshConfigReferences`, `ApplyConfig`, `OnColorsChanged`, theme redraws) reaches them.
 - Elements are enabled or disabled after oUF's init (the added callback or `oUF:RegisterInitCallback`), never from the style function: this fixes the TODO for plates and for group units.
-- The plate's size is the config's (`driver:SetSize`), applied again after Blizzard's own size updates (a hook on NamePlateDriverFrame's size update, out of combat; in combat it waits). The click area is the plate.
+- The plate's size is the config's (`driver:SetSize`), applied again after Blizzard's own size updates (a hook on NamePlateDriverFrame's size update, out of combat; in combat it waits). The click area is the plate, and stays so after Blizzard sets its own (Combat and taint).
 - Blizzard's widgets and soft-target icon are reparented to the plate on **every** add (in SaftUI's added callback, writing nothing onto Blizzard's frames beyond what oUF already does), so they always show.
 
 ### 2. The plate's layout (the user's answer 6)
@@ -131,7 +131,7 @@ The full report: the controller's scratchpad, `report-research-nameplates.md`. B
 ## Combat and taint
 
 - Nothing is written onto Blizzard's nameplate frames beyond what the bundled oUF does (`nameplate.unitFrame`, `nameplate.style`, blocking the pooled UnitFrame); `NamePlateDriverFrame`'s events are left alone; forbidden plates are untouched.
-- CVars are set out of combat. Size changes wait for the end of combat. Hit-test changes only happen where oUF makes them (on the add).
+- CVars are set out of combat. Size changes wait for the end of combat. Hit-test changes are only oUF's own two calls (`ClearAllHitTestPoints`, then `SetAllHitTestPoints` with SaftUI's frame on the plate), never a new kind of write onto Blizzard's frames: oUF makes them on the add, and SaftUI makes the same two again where Blizzard's pooled UnitFrame sets its own click area outside the add (ruling N11, from the final review): after `NamePlateDriverFrame:UpdateNamePlateOptions` (a post-hook), at the end of `UF:RefreshPlateWidgets`, and on the frame after the friendly NPC plates setting (or showing only friendly players' names) changes, through `CVarCallbackRegistry`. In combat the game lets addon code change a plate's click area only on the tick the plate got its unit or Blizzard's own code changed it (`CanChangeHitTestPoints`), so the post-hook's calls go through and one the game refuses waits for the end of combat.
 - Threat and aura reads are secret-safe: a secret value hides the threat tint or falls back to Blizzard's filters, never errors.
 - Rounding and scale calls go only on SaftUI's own frames on the plate (not protected).
 

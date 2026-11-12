@@ -4,9 +4,9 @@ local CO = st:NewModule('Colors')
 
 -- Tells every module that shows profile colors that a group of them changed
 -- (the Colors tab calls this after an edit). group is 'text', 'button',
--- 'class', 'reaction', 'renown', 'power', 'item_quality' or 'status'. Each
--- module's OnColorsChanged(group) runs in xpcall, so one that errors doesn't
--- stop the rest.
+-- 'class', 'reaction', 'renown', 'power', 'item_quality', 'status' or
+-- 'threat'. Each module's OnColorsChanged(group) runs in xpcall, so one that
+-- errors doesn't stop the rest.
 function st:ColorsChanged(group)
 	for _, module in pairs(st.modules) do
 		if module.OnColorsChanged then
@@ -46,7 +46,7 @@ CO.SECTIONS = {
 	{
 		key = 'text', name = 'Text', note = RELOAD_NOTE,
 		colors = Colors('text', {
-			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, and the flyout arrow on the totem bar's summon button." },
+			{ 'normal', 'Text', "Ordinary text: the options window, totem timers, the flyout arrow on the totem bar's summon button, and an enemy nameplate's threat text while your threat on it is fine." },
 			{ 'grey', 'Grey', "Dimmed text: the options window's hints and disabled controls, and a unit frame's level tag for a far lower level." },
 			{ 'red', 'Red', "Warnings and Pass: loot roll Pass buttons and timers, a unit frame's level tag for a much higher level, DPS role marks, expiring totem timers, and Horde on the zone text and the world map's zone names." },
 			{ 'orange', 'Orange', "A unit frame's level tag for a somewhat higher level, and the poor end of the micro menu's stats." },
@@ -119,6 +119,13 @@ CO.SECTIONS = {
 		colors = Colors('status', {
 			{ 'disconnected', 'Disconnected', 'Unit frame health bars of party and raid members who are offline.' },
 			{ 'tapped', 'Tapped', 'Unit frame health bars of enemies that another player has tagged.' },
+		}),
+	},
+	{
+		key = 'threat', name = 'Threat',
+		colors = Colors('threat', {
+			{ 'warning', 'Warning', "An enemy nameplate's health bar and threat text when you're about to pull it as damage or healing, or about to lose it as a tank." },
+			{ 'bad', 'Bad', "An enemy nameplate's health bar and threat text when it's attacking you as damage or healing, or someone else while you tank." },
 		}),
 	},
 }

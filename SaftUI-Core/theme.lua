@@ -596,9 +596,18 @@ function st:KeepOwnColors(frame, color)
 	ownColors[frame] = color
 end
 
+-- A color(frame) can keep the colors of another frame, one first drawn by
+-- this redraw (a plate's border moving to another frame), which would add a
+-- key while ownColors is walked (undefined for next in Lua 5.1: keys skipped
+-- or seen twice). So the frames are taken first and walked as a copy, each
+-- with the color kept for it when its turn comes; one first kept during the
+-- walk waits for the next.
 local function PutOwnColors()
-	for frame, color in pairs(ownColors) do
-		xpcall(color, geterrorhandler(), frame)
+	local frames = {}
+	for frame in pairs(ownColors) do frames[#frames + 1] = frame end
+	for _, frame in ipairs(frames) do
+		local color = ownColors[frame]
+		if color then xpcall(color, geterrorhandler(), frame) end
 	end
 end
 

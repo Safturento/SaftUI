@@ -93,17 +93,22 @@ function UF.ConstructUnit(self, unit)
 	if UF.unit_strings[self.base_unit] then
 		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
 	end
-	-- RegisterForClicks is protected on a secure button in combat. Group
-	-- buttons are all made out of combat (UF:ApplyGroupLayout), but one the
-	-- header still makes in combat gets right-click once combat ends.
-	if InCombatLockdown() then
-		st:QueueAfterCombat('uf_clicks_' .. self:GetName(), function() self:RegisterForClicks('AnyUp') end)
-	else
-		self:RegisterForClicks('AnyUp')
+	-- A plate's frame takes no mouse (oUF turned it off), so the mouse stays
+	-- the game's: a click on the plate targets its unit. So it gets no clicks
+	-- and no hover scripts, which could take the mouse over the plate.
+	if not self.isNamePlate then
+		-- RegisterForClicks is protected on a secure button in combat. Group
+		-- buttons are all made out of combat (UF:ApplyGroupLayout), but one the
+		-- header still makes in combat gets right-click once combat ends.
+		if InCombatLockdown() then
+			st:QueueAfterCombat('uf_clicks_' .. self:GetName(), function() self:RegisterForClicks('AnyUp') end)
+		else
+			self:RegisterForClicks('AnyUp')
+		end
+		self:SetScript('OnEnter', UF.OnEnter)
+		self:SetScript('OnLeave', UnitFrame_OnLeave)
 	end
-	self:SetScript('OnEnter', UF.OnEnter)
-	self:SetScript('OnLeave', UnitFrame_OnLeave)
-	
+
 	-- Used as a parent to text objects to ensure they're always above status bars
 	local textoverlay = CreateFrame('frame', nil, self)
 	textoverlay:SetFrameLevel(99)
@@ -124,8 +129,17 @@ function UF.ConstructUnit(self, unit)
 		end
 	end
 
+	-- oUF enables the elements whose widgets a frame has once this returns,
+	-- before any config is applied (UF.InitUnit updates a group button after
+	-- that). So a group button's range fade table is made here: its alphas come
+	-- from that update (UF:UpdateUnitFrame). Other units get no range fade
+	-- (config.lua's Range options are for groups only).
 	if self.is_group_unit then
-		UF:UpdateUnitFrame(self)
+		self.Range = {}
+	elseif self.isNamePlate then
+		-- The game hands a plate to unit after unit, so its frame is kept by
+		-- the plate's number (nameplates.lua), not by its first unit.
+		UF.nameplates[self.ID] = self
 	else
 		UF.allUnits[unit] = self
 	end
@@ -170,20 +184,51 @@ end
 -- it copies the colors to oUF, makes the bars and tags read them again, and
 -- draws the test previews again, and rebuilds nothing. Groups the unit frames
 -- don't use (text, button, item quality, renown) and a module that isn't
--- enabled yet (no UF.units) change nothing.
-local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true }
+-- enabled yet (no UF.units) change nothing. The threat colors are only the
+-- nameplates' tint and threat text (nameplates/threat.lua): the plates are
+-- tinted again, and no other unit frame is updated.
+--
+-- 'theme' comes after a theme recolor or redraw, which takes a frame's own
+-- border color off (st:SetBorderColor): the target's border on its nameplate
+-- (nameplates/target.lua: Thick's and Thin's white line, Blizzard's art) is
+-- drawn again on every plate, shown or not, as every module colors its own
+-- borders again then. target.lua also keeps it with st:KeepOwnColors, which
+-- the engine runs first; this puts it back after anything else colored it
+-- off too. The plate is rounded to whole pixels again too (UF.RoundLayout,
+-- nameplates/pixels.lua): in combat the theme's redraw and the unit frames'
+-- update wait apart, and run in no set order once it ends, so the redraw's
+-- new art can come after the update's rounding. Each plate on its own, so one
+-- that errors leaves the rest drawn.
+local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true, threat = true }
 -- ClassPower sets its color only when it checks its visibility, which
 -- ForceUpdate runs.
 local RECOLORED_ELEMENTS = { 'Health', 'Power', 'AdditionalPower', 'ClassPower' }
 function UF:OnColorsChanged(group)
+	if group == 'theme' and self.nameplates then
+		self:ForEachPlate(function(frame)
+			xpcall(self.UpdatePlateTarget, geterrorhandler(), self, frame)
+			xpcall(self.RoundLayout, geterrorhandler(), frame, true)
+		end)
+	end
 	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end
 	self:UpdateColors()
+	if group == 'threat' then
+		for _, frame in pairs(self.nameplates or {}) do
+			self:UpdatePlateThreat(frame, true)
+		end
+		return
+	end
 	self:ForEachUnitFrame(function(frame)
 		-- A frame whose unit doesn't exist (a boss or arena frame out of an
 		-- encounter, an empty party slot) has nothing to draw, and its tags
 		-- error on a nil name; oUF updates it, with the colors merged above,
-		-- when its unit appears.
-		if not (frame.unit and UnitExists(frame.unit)) then return end
+		-- when its unit appears. The unit is oUF's active unit (__unit): .unit
+		-- is set only by UF.OnEnter, so a frame never hovered has none. A
+		-- plate's frame keeps the unit it last showed after the game takes its
+		-- plate away (nameplates.lua), so only a plate showing it now counts.
+		local unit = frame.__unit
+		if not (unit and UnitExists(unit)) then return end
+		if frame.isNamePlate and not self:PlateShowsUnit(frame) then return end
 		for _, name in ipairs(RECOLORED_ELEMENTS) do
 			if frame[name] and frame:IsElementEnabled(name) then
 				frame[name]:ForceUpdate()
@@ -197,7 +242,8 @@ function UF:OnColorsChanged(group)
 end
 
 -- Calls fn(frame) for every spawned unit frame: single units, the numbered
--- boss/arena frames, and group header children.
+-- boss/arena frames, group header children, and the plates' frames
+-- (nameplates.lua), shown or not.
 function UF:ForEachUnitFrame(fn)
 	for unit, frame in pairs(self.units or {}) do
 		if unit == 'boss' or unit == 'arena' then
@@ -215,6 +261,9 @@ function UF:ForEachUnitFrame(fn)
 				fn(child)
 			end
 		end
+	end
+	for _, frame in pairs(self.nameplates or {}) do
+		fn(frame)
 	end
 end
 
@@ -252,8 +301,11 @@ end
 -- sized: its header places it (and UF:AnchorGroupHeader places the header).
 -- Boss/arena 1 sits at the top of its group's holder and the others chain
 -- below it. A disabled frame goes off screen, and false is returned for it.
--- Unit frames are secure: out of combat only.
+-- A plate's frame is left as it is: oUF set it to fill its plate, and the
+-- plates' size is the game's (UF:ApplyPlateSize). Unit frames are secure: out
+-- of combat only.
 function UF:PlaceUnitFrame(frame)
+	if frame.isNamePlate then return true end
 	local config = frame.config
 	if not frame.is_group_unit then
 		frame:ClearAllPoints()
@@ -340,6 +392,10 @@ function UF:UpdateUnitFrame(frame, element_name)
 	end
 
 	frame:UpdateAllElements('OnShow')
+
+	if frame.isNamePlate then
+		self:RunPlateCallbacks('updated', frame)
+	end
 end
 
 --[[
@@ -374,10 +430,32 @@ local function SafeUpdateUnitFrame(frame, element_name)
 	xpcall(function() UF:UpdateUnitFrame(frame, element_name) end, geterrorhandler())
 end
 
+-- oUF's init callback (UF:OnEnable registers it): runs for every frame oUF
+-- builds, after the style function (UF.ConstructUnit) and after oUF has
+-- enabled its elements. A group header makes its buttons when it first lays
+-- members out (UF:ApplyGroupLayout, or a member joining), and oUF's nameplate
+-- driver makes a plate's frame on the plate's first add (nameplates.lua), so
+-- those get their first update here: after oUF's own Enables (which turn every
+-- aura area on, for one), and with their bars' setters there
+-- (UF.SetFactionColorFlags). Single units are spawned in OnEnable, which
+-- places and updates them all (UF:ApplyConfig).
+function UF.InitUnit(object)
+	if not (object.is_group_unit or object.isNamePlate) then return end
+	SafeUpdateUnitFrame(object)
+	-- A header can still make a button in combat (a member joins), and then the
+	-- update can't size it: a unit frame is secure (UF:UpdateUnitFrame skips
+	-- UF:PlaceUnitFrame in combat). So it's updated again once combat ends. A
+	-- plate's frame isn't secure, and its update in combat is whole.
+	if object.is_group_unit and InCombatLockdown() then
+		st:QueueAfterCombat('uf_init_' .. object:GetName(), function() SafeUpdateUnitFrame(object) end)
+	end
+end
+
 -- Clears the points of every frame ApplyConfig places: the single and
 -- numbered unit frames, the boss/arena, party and raid holders, and the group
--- headers (their children are placed by the header). Returns each frame's old points, for
--- st:RestorePoints. Unit frames are secure: out of combat only.
+-- headers (their children are placed by the header). The plates' frames keep
+-- theirs, which are oUF's (UF:PlaceUnitFrame). Returns each frame's old
+-- points, for st:RestorePoints. Unit frames are secure: out of combat only.
 local function ClearUnitFramePoints(self)
 	local previous = {}
 	local function Clear(frame)
@@ -428,6 +506,8 @@ function UF:ApplyConfig(unit, element_name)
 				UF:ApplyConfig(unit, element_name)
 			end
 		end
+
+		UF:ApplyConfig('nameplate', element_name)
 
 		-- A frame whose update failed after its points were cleared gets its
 		-- old ones back, now that every other frame is placed.
@@ -480,6 +560,16 @@ function UF:ApplyConfig(unit, element_name)
 				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())
 			end
 			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
+		elseif unit == 'nameplate' then
+			-- The plates' frames (nameplates.lua), which aren't among the units:
+			-- oUF's nameplate driver makes them. Their size is the plates', set
+			-- through the driver (none while SaftUI doesn't draw the plates).
+			for _, frame in pairs(self.nameplates or {}) do
+				SafeUpdateUnitFrame(frame, element_name)
+			end
+			if not element_name and self.plateDriver then
+				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
+			end
 		end
 	end
 end
@@ -537,6 +627,9 @@ function UF:RegisterMovers()
 end
 
 function UF:OnEnable()
+	-- Before anything is spawned, so every frame gets it. Here rather than when
+	-- the file loads, where the tests' stand-in oUF has only its colors table.
+	self.oUF:RegisterInitCallback(UF.InitUnit)
 	self.oUF:RegisterStyle('SaftUI', UF.ConstructUnit)
 	self.oUF:SetActiveStyle('SaftUI')
 
@@ -564,4 +657,14 @@ function UF:OnEnable()
 	UF:UpdateColors()
 	UF:RegisterMovers()
 	UF:SetupBlizzardRaidFrames()
+	-- The nameplates last, once every other unit is placed and the colors are
+	-- set (nameplates.lua). They get no mover: the game places each plate.
+	-- SaftUI's plates set the game's nameplate settings; with Nameplates off
+	-- the ones SaftUI changed go back as they were. Another nameplate addon's
+	-- plates leave them all to it (nameplates/cvars.lua).
+	if UF:SpawnNameplates() then
+		UF:ApplyNameplateCVars()
+	elseif not UF:NameplateAddon() then
+		UF:RestoreNameplateCVars()
+	end
 end

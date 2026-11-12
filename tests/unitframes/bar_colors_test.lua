@@ -155,8 +155,7 @@ test('castbar: enabling bg shows a colored background with no error', function()
 	castbar.config.enable = true
 	UF:UpdateStatusBarElement(castbar)
 	check(castbar.bg:IsShown(), 'bg shown')
-	castbar.notInterruptible = false
-	castbar.PostCastStart(castbar, 'player')
+	castbar.PostCastStart(castbar, 'player', 1, false)
 	local c = { castbar.bg:GetVertexColor() }
 	local normal, mu = castbar.config.colors.normal, castbar.config.bg.multiplier
 	check(near(c[1], normal.r * mu) and near(c[2], normal.g * mu) and near(c[3], normal.b * mu),
@@ -168,8 +167,7 @@ test("castbar: a cast that can't be interrupted colors the bg from its color", f
 	local castbar = bar('Castbar')
 	castbar.config.bg.enable = true
 	UF:UpdateStatusBarElement(castbar)
-	castbar.notInterruptible = true
-	castbar.PostCastStart(castbar, 'player')
+	castbar.PostCastStart(castbar, 'player', 1, true)
 	local c = { castbar.bg:GetVertexColor() }
 	local color, mu = castbar.config.colors.nointerrupt, castbar.config.bg.multiplier
 	check(near(c[1], color.r * mu) and near(c[2], color.g * mu) and near(c[3], color.b * mu), 'bg is the nointerrupt color times the multiplier')
@@ -183,8 +181,7 @@ test('castbar: a secret color goes to the bg without arithmetic', function()
 	-- The stub's SetVertexColor takes numbers only; a secret goes through in game.
 	castbar.bg.SetVertexColor = function(_, r, g, b, a) got = { r, g, b, a } end
 	castbar.SetStatusBarColor = function() end -- likewise
-	castbar.notInterruptible = secret
-	castbar.PostCastStart(castbar, 'player')
+	castbar.PostCastStart(castbar, 'player', 1, secret)
 	check(got and got[1] == secret and got[4] == castbar.config.bg.alpha * castbar.config.bg.multiplier,
 		'secret channels passed on, multiplier folded into alpha')
 end)
@@ -192,9 +189,49 @@ end)
 test('castbar: no bg coloring while bg is off', function()
 	local castbar = bar('Castbar')
 	UF:UpdateStatusBarElement(castbar)
-	castbar.notInterruptible = false
-	castbar.PostCastStart(castbar, 'player')
+	castbar.PostCastStart(castbar, 'player', 1, false)
 	check(not castbar.bg:IsShown(), 'bg hidden')
+end)
+
+local function fill(castbar) return stub.state(castbar).color_fill end
+test("castbar: oUF's notInterruptible argument picks the bar color", function()
+	local castbar = bar('Castbar'); UF:UpdateStatusBarElement(castbar)
+	local c = castbar.config.colors
+	castbar.PostCastStart(castbar, 'target', 133, true)
+	check(near(fill(castbar)[1], c.nointerrupt.r) and near(fill(castbar)[3], c.nointerrupt.b), "can't interrupt: its color")
+	castbar.PostCastStart(castbar, 'target', 133, false)
+	check(near(fill(castbar)[1], c.normal.r) and near(fill(castbar)[3], c.normal.b), 'interruptible: the castbar color')
+end)
+test('castbar: a cast turning uninterruptible mid-cast recolors', function()
+	local castbar = bar('Castbar'); UF:UpdateStatusBarElement(castbar)
+	castbar.PostCastStart(castbar, 'target', 133, false)
+	castbar.PostCastInterruptible(castbar, 'target', 133, true)
+	check(near(fill(castbar)[1], castbar.config.colors.nointerrupt.r), "now the can't-interrupt color")
+end)
+test('castbar: a secret notInterruptible is handed to EvaluateColorValueFromBoolean', function()
+	local castbar = bar('Castbar'); UF:UpdateStatusBarElement(castbar)
+	local got = {}
+	local original = C_CurveUtil.EvaluateColorValueFromBoolean
+	C_CurveUtil.EvaluateColorValueFromBoolean = function(b, t, f) got[#got + 1] = { b, t, f }; return secret end
+	castbar.SetStatusBarColor = function() end -- the stub's takes numbers only
+	-- Put back even when the call errors, so the cases after it see the real one.
+	local ok, err = pcall(castbar.PostCastStart, castbar, 'target', 133, secret)
+	C_CurveUtil.EvaluateColorValueFromBoolean = original
+	check(ok, 'no error: ' .. tostring(err))
+	eq(#got, 3, 'r, g and b')
+	check(got[1][1] == secret and near(got[1][2], castbar.config.colors.nointerrupt.r) and near(got[1][3], castbar.config.colors.normal.r), 'the secret, then true and false colors')
+end)
+test("castbar: the icon is oUF's; no CastingInfo is read", function()
+	local castbar = bar('Castbar'); UF:UpdateStatusBarElement(castbar)
+	-- Classic-only (Blizzard_DeprecatedUnitScript); Forever and retail lack it,
+	-- so it's taken away for the call and put back after, whatever happens.
+	local castingInfo = CastingInfo
+	CastingInfo = nil
+	castbar.Icon.texture:SetTexture([[Interface\ICONS\INV_Misc_QuestionMark]])
+	local ok, err = pcall(castbar.PostCastStart, castbar, 'target', 133, false)
+	CastingInfo = castingInfo
+	check(ok, 'no error: ' .. tostring(err))
+	eq(castbar.Icon.texture:GetTexture(), [[Interface\ICONS\INV_Misc_QuestionMark]], 'the icon left as oUF set it')
 end)
 
 -- The defaults a newly exposed option would error or do nothing with, as AceDB

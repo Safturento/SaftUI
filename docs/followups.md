@@ -7,6 +7,14 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-11 — Nameplates: in-game checks](#2026-11-11--nameplates-in-game-checks)
+  - [2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates](#2026-11-11--nameplates-a-profile-switch-doesnt-set-the-games-friendly-plates)
+  - [2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change)
+  - [2026-11-11 — Nameplates: a plate that turns widgets-only, or back, without a new add](#2026-11-11--nameplates-a-plate-that-turns-widgets-only-or-back-without-a-new-add)
+  - [2026-11-11 — Nameplates: small items left after the build](#2026-11-11--nameplates-small-items-left-after-the-build)
+  - [2026-11-11 — Health text's Boss percent and Hide full with a secret health](#2026-11-11--health-texts-boss-percent-and-hide-full-with-a-secret-health)
+  - [2026-11-11 — Purge filters: in-game checks](#2026-11-11--purge-filters-in-game-checks)
+  - [2026-11-11 — Purge table: retail gaps](#2026-11-11--purge-table-retail-gaps)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
   - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
@@ -49,7 +57,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode](#2026-11-10--the-minimap-has-no-saftui-holder-so-the-screen-edge-margin-only-holds-it-in-edit-mode)
   - [2026-11-10 — panels.tab_height has no option, because nothing live reads it](#2026-11-10--panelstab_height-has-no-option-because-nothing-live-reads-it)
   - [2026-11-10 — Colors tab: role and rune colors, and a switch for Blizzard's class colors](#2026-11-10--colors-tab-role-and-rune-colors-and-a-switch-for-blizzards-class-colors)
-  - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)](#2026-11-09--stkill-and-stskinicon-still-write-onto-blizzard-pieces-roll-bars-and-elsewhere)
   - [2026-11-09 — Loot feed: a merge while scrolled shifts the scroll offset](#2026-11-09--loot-feed-a-merge-while-scrolled-shifts-the-scroll-offset)
   - [2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins](#2026-11-09--stcreateheader-writes-title-and-close_button-onto-the-blizzard-panels-it-skins)
@@ -75,6 +82,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
   - [2026-11-11 — Blizzard theme: test gaps left after the final review](#2026-11-11--blizzard-theme-test-gaps-left-after-the-final-review)
   - [2026-11-11 — Blizzard theme: dark grey everywhere](#2026-11-11--blizzard-theme-dark-grey-everywhere)
@@ -98,8 +106,161 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Bank leftovers: broken non-combined bank path, Forever gold tooltip, leaked globals](#2026-11-07--bank-leftovers-broken-non-combined-bank-path-forever-gold-tooltip-leaked-globals)
   - [2026-11-07 — SaftUI-Loot writes onto Blizzard frames and globals (taint risk)](#2026-11-07--saftui-loot-writes-onto-blizzard-frames-and-globals-taint-risk)
 - [Abandoned](#abandoned)
+  - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-11 — Nameplates: in-game checks
+
+**What:** SaftUI's nameplates (the nameplates plan, branch `np`) were built and tested on stubs, which model neither the game's plates on screen, its layout and pixel grid, combat protection and taint, secret values in restricted content, nor what the game reports for several settings and auras. These steps need a look in game, on Forever (the user's client) first and on retail where marked, with BugSack on.
+
+**Why noticed:** The plan's in-game check list (its Task 13), every task's report and review, and the run's ledger (`.superpowers/sdd/2026-11-11-saftui-nameplates/`, task-N-report.md and progress.md, not versioned) named what the stubs can't show. This entry merges them, grouped by area, so the user can run them in one pass. The purge filters keep their own entry ("Purge filters: in-game checks"), which step 5 points to.
+
+**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-nameplates.md`, `docs/superpowers/specs/2026-11-11-saftui-nameplates-design.md`; `SaftUI-Unitframes/nameplates/` (`nameplates.lua`, `cvars.lua`, `target.lua`, `threat.lua`, `pixels.lua`), `SaftUI-Unitframes/config/units/nameplate.lua`, `SaftUI-Unitframes/config/config.lua` (the Nameplates page), `SaftUI-Unitframes/purge.lua`, `SaftUI-Unitframes/elements/health.lua` (`SHORT`), `elements/name.lua` (Max width), `elements/indicators.lua` (the quest icon), `SaftUI-Core/themeart.lua` (`ART.nameplatetarget`); `.agents/architecture.md` (Nameplates), `.agents/taint.md` (rule 13), `.agents/clients.md` (Nameplates).
+
+**What's been considered:** Where a check fails the fix is usually small: the target art's offsets in `themeart.lua`, a folder name in `UF.NAMEPLATE_ADDONS`, `AbbreviateNumbers`' options (without SaftUI's breakpoints the game's own give 12K for 12.5K), an event in `threat.lua`. Two have a fallback named already. If the plates' borders still shimmer after a `/reload` (step 2), they could be built from SaftUI's own textures sized in whole pixels instead of the theme engine's backdrop; the plan kept the engine's borders unless this check shows shimmer. If the personal resource display turns out to be a nameplate after all (step 16), SaftUI's frame must stay off the player's own plate, as a patch to the bundled oUF did before it was reverted (ruling N5 in the ledger).
+
+**Shape of work:** A pass by the user, then one small fix per area that fails. The steps:
+
+*The plan's ten, with what the tasks added to each*
+1. Both clients. With a plate up, `/dump NamePlate1:GetParent()==WorldFrame, NamePlate1:GetEffectiveScale(), UIParent:GetEffectiveScale()`: true, WorldFrame's scale, then 768 over your screen's height. Then `/dump SaftUI_NamePlate1:GetParent()==NamePlate1, SaftUI_NamePlate1:GetEffectiveScale()`: true, and UIParent's scale. With the default 200 by 20, a screenshot of a plate's health bar measures 200 by 20 pixels. Clicking just inside the bar's edges targets the unit; clicking just outside doesn't. Then `/reload` standing next to a pack, and as soon as the plates are up click near the edges of plates that sit close together: each click targets the plate under the cursor, never its neighbour (Blizzard's own click area, which SaftUI puts back to the bar after Blizzard sets it, reaches past the bar and up to where its name would be).
+2. Both clients. Strafe and turn past a pack under Thick, Thin and Blizzard: the 1px borders round the health bar, the castbar and its icon, and the debuff and purge buttons stay whole, with no shimmer or doubling, and the name and health text don't jitter against the bar. Under Thick, a debuff's dark inner line stays whole, exactly 1px inside its border, while the plate moves. If Blizzard's UI scale setting or the window's size changed this session, `/reload` first: after a UI scale change the plates may only be fully sharp once you reload (the followup "UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change").
+3. Change Blizzard's Interface → Nameplates size or style with plates up: SaftUI's size comes back at once. Then, in a pack, click near the edges of plates that sit close together, after each of these: a change of a Blizzard nameplate option (size, style, class colors); a resize of the game's window; toggling `/sui` → Unitframes → Nameplates → General → Friendly plates off and on; toggling friendly plates with Blizzard's key binding (or Interface → Nameplates' friendly options); and, with friendly players' plates up, toggling Interface → Nameplates' option to show only friendly players' names. Each time the click targets the plate under the cursor. Do each in combat too: Blizzard's size shows until combat ends, then SaftUI's; the click area is SaftUI's at once after an option change or a resize, and after a friendly plate or show-only-names toggle once combat ends; and none of these, done in combat, gives an ADDON_ACTION_BLOCKED or a Lua error. `/sui` → Unitframes → Nameplates → General → Width and Height resize every plate and its click area.
+4. In a dungeon pull, `/run print(C_Secrets.ShouldUnitThreatStateBeSecret('player','nameplate1'))`, on retail too. As damage or healing: under the tank's threat the bar keeps its color and the percent above its right end is in the normal text color; near pulling both go orange; when the mob attacks you, red. As a tank with the tank role: a mob on you, no tint and 100%; tanking with someone else higher, orange; a mob taken from you, red; a mob another tank in the group holds, no tint (on a boss with two tanks, the off-tank sees no red on the boss the main tank holds); a mob that goes to the healer before you've touched it, red with no percent. On your own there's no tint or percent until General → Threat when solo is on. Friendly plates never show either, and a mob that turns friendly mid-fight loses both at once. Global Settings → Colors → Threat: dragging Bad's picker recolors tinted plates and their percent live, and Reset puts them back. On Forever without a role, a warrior in Defensive Stance or a druid in Bear Form counts as a tank, and so does a party member in one holding the mob; changing stance or form changes the tint at once (`UPDATE_SHAPESHIFT_FORM`). `/dump PlayerUtil.IsPlayerEffectivelyTank()` with no role assigned, in a tank spec: the stubs take it that Forever never falls back to a spec's role. On retail in restricted content (Mythic+ or a raid): no Lua errors; where the threat state is secret, no tint or percent; where only the values are, the percent still shows. Through a long pull the percent keeps following your threat (it's written only when it, its tint or its color changes), and as a raid's tank, idle hostile plates around you stay untinted (their mobs aren't in combat, so the raid isn't read for them).
+5. Purge, on enemy plates (their purge row is on by default): a shaman or priest sees an enemy's magic buff right of the bar, and a Forever hunter with Tranquilizing Shot (or a retail druid with Soothe) an enrage. On Forever, on a mob with a Frenzy, `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`? As a retail character who isn't a mage, see which buffs `isStealable` picks out; a retail mage with only Spellsteal sees only stealable buffs. On Target → Buffs → Buttons, Only buffs I can purge sits after Only mine with no reload note in its tooltip; on, as a warrior with no purge, the target's buffs go, and off they come back without a reload; Only mine on Target → Debuffs applies at once. The rest is the entry "Purge filters: in-game checks".
+6. Under Blizzard, on each client, the target's art sits round the bronze box, lined up (Forever's yellow cooldown-manager selection, retail's nameplate selection; the offsets, (-5, 5, 6, -4) and (-3, 4, 3, -3), are starting values). Blizzard tints its own target art with `NAMEPLATE_BORDER_TARGET_COLOR` and SaftUI's keeps the atlas's own color: compare them, and say if SaftUI's reads wrong. Under Thick and Thin the target's health bar has a white 1px border and the others the theme's; retarget and it moves; clear the target and no white is left. Edit a theme color or Opacity on the Theme tab while targeting: the white stays.
+7. Friendly plates show outside an instance, and inside one they're Blizzard's (forbidden plates), with no errors. Note your Interface → Nameplates friendly players and friendly NPCs settings, then turn Friendly plates off: friendly units lose their plates and both settings show unticked; on, they come back. Turn Nameplates off: the dialog asks "Nameplates change after a reload. Reload now?", and before you answer, Interface → Nameplates shows your own friendly, scale and simplified settings again; Yes reloads with Blizzard's plates. Nameplates on and a reload give SaftUI's plates and settings back. While you're here, judge Friendly plates' default (on, players and NPCs) with real data, and say if any of these should change: (a) outside instances every friendly NPC gets a plate, every vendor and guard in a city among them; (b) inside an instance the game shows its own forbidden friendly plates (Blizzard's look) over every group member, 39 of them in a 40-player raid; (c) the aura icons on enemy plates take the mouse, as Blizzard's own plate auras do: hovering one shows its tooltip, and a click on one doesn't reach the plate under it or the camera.
+8. With Plater loaded (or another listed addon), `/reload`: that addon's plates, no SaftUI frames, no errors, your nameplate settings untouched, and Unitframes → Nameplates shows "Nameplates are drawn by Plater. Turn it off to use SaftUI's." over greyed-out options. With ElvUI loaded and its nameplates off, SaftUI's plates show. If you have Platynator, check its folder in `Interface/AddOns` is named `Platynator` (the code takes that name on trust) and that it stands SaftUI down the same way.
+9. Quest progress widgets and the soft target icon show on plates, also once plates have been reused. A capture bar's or quest object's plate (widgets only) shows its widget at full size, sitting on the plate's bottom, not squashed; an enemy with a widget shows it hanging under its plate. Toggle Friendly plates while a quest object's or a friendly NPC's widget is on screen: the widget stays on its plate, placed right for its kind (and note whether a friendly NPC's plate switches between widgets only and whole in place: the followup "Nameplates: a plate that turns widgets-only, or back, without a new add").
+10. Target a caster: an interruptible cast is the castbar's normal color, one that can't be interrupted grey, and the icon shows. The quest icon shows left of the bar on mobs your quests need (on Forever too) and on quest bosses, and goes at once when the quest is done or handed in.
+
+*Spawning, combat and the game's settings*
+11. `/reload` in the middle of a fight with plates up: no "Interface action failed" or ADDON_ACTION_BLOCKED (oUF sets the plates' size and their click area's insets itself when it makes its driver, without waiting for the end of combat as SaftUI's own size call does), and the friendly and scale settings change once the fight ends.
+12. Pull a pack so new plates appear in combat: no ADDON_ACTION_BLOCKED for `SetIgnoreParentScale`, `SetScale` or `SetRoundLayoutToNearestPixel`, and the new plates are sharp at once.
+13. Both clients. A boss's or an elite's plate, and the target's, are the same size as any other, near and far, and `/dump NamePlate1:GetScale()` is 1. With SaftUI's plates on, Interface → Nameplates shows no simplified types ticked. `/dump C_CVar.GetCVar('nameplateSimplifiedTypes')` before turning Nameplates on, and again after turning it off and reloading, shows the same text.
+14. With plates up, change Blizzard's UI scale setting (or the window's size): the plates keep their size and their click area matches it. In combat they're pinned to the new scale at once and their size settles once combat ends. Their right and bottom edges may flicker by a pixel until a `/reload` (the UIParent scale followup).
+15. `/dump C_CVar.GetCVarInfo('nameplateShowFriendlyPlayers')`, and the same for `'nameplateShowFriendlyNpcs'`: report the 3rd to 6th returns (isStoredServerAccount, isStoredServerCharacter, isLockedFromUser, isSecure). If they're kept per account, a second character that logs in while SaftUI's plates are on records SaftUI's values as its own, and turning Nameplates off there puts back SaftUI's values, not yours. Check both settings exist on both clients (neither `/dump C_CVar.GetCVar(...)` is nil), and whether Blizzard sets them again by itself at login, or on entering or leaving an instance (Friendly plates and the game would then disagree until the next toggle).
+16. With Interface → Nameplates → Personal Resource Display on (on Forever, if the game allows it), `/dump C_NamePlate.GetNamePlateForUnit('player')` prints nil (ruling N5: the display is `PersonalResourceDisplayFrame`, not a plate), the display shows as usual with SaftUI's plates on, and targeting yourself adds nothing. If it finds a plate, the personal display needs looking at again.
+17. `/dump SaftUI_NamePlate1Auras1:GetObjectType(), SaftUI_NamePlate1Auras1:IsObjectType('AuraContainer')`, and the same for `SaftUI_NamePlate1Auras2` (a plate's two aura rows, buffs and debuffs in either order): note what the game says. The rounding walk skips SaftUI's own containers by identity, so this only says whether its `IsObjectType` fallback would work.
+18. `/console taintLog 1`, play a while with plates (pulls, a dungeon, Friendly plates toggled), then `/reload`: nothing in `Logs/taint.log` blamed on SaftUI from the plates, the widget moves, the size and options hooks, the click area calls or the setting callbacks.
+
+*The page*
+19. `/sui` → Unitframes: Nameplates is listed after Raid 40. Its General has Nameplates, Friendly plates and Threat when solo on one line, then Theme and Background, then Width and Height; there's no Position section and no Copy from button, and Player's Copy from lists no nameplate. With a plate on screen, an element tab's Position (Health's, say) lists the plate's elements and takes a typed frame.
+
+*Layout and texts*
+20. An enemy's plate: the bar 200 by 20, the name inside on the left, the health inside on the right as a short value (`12.5K`, no percent), the castbar under it with its icon at the left, the icon's left edge on the bar's; up to 6 of your debuffs above the bar from its left, growing right; purgeable buffs right of the bar; the raid mark centred above the debuff row; the threat percent above the bar's right end, clear of the debuffs, the raid mark and, under Blizzard, the bronze box (if it touches the box, raise its Position's Y). A friendly plate shows only the bar, name, health and raid mark, and a friendly NPC casting shows no castbar. Pull a group with friendly NPCs on screen and turn the camera so plates are reused: enemy plates show their castbar, debuffs and purgeable buffs, in place, and no friendly plate shows an enemy's part. An NPC that turns hostile (a quest mob going aggressive) gains the castbar and auras at once, with no empty castbar. In `/sui`, turning the castbar or quest icon off and on follows at once on enemy plates and stays off on friendly ones.
+21. A mob with a long name, and one with a long health value (a boss's `1.2M`): the name is cut before the health text and doesn't run under it, and a short name sits at the bar's left, not centred. Does the cut end in an ellipsis or just clip? Either is fine; say which. `/sui` → Unitframes → Target → Name → Max width 100 with a long-named target cuts it; 0 gives the whole name back, as before (the code takes `SetWidth(0)` to mean as wide as its text).
+22. Short with a secret health: on retail, in content where enemy health is secret (Mythic+, in combat), the plates still show a short value, with no Lua error from `elements/health.lua` (an "AbbreviationDataError" or "invalid breakpoint" error would mean the game refuses SaftUI's own breakpoints for a secret). On Forever, with Target → Health → Text → Short on, mobs of about 999, 1,500, 12,500 and over a million health show `999`, `1.5K`, `12.5K` and `1.2M`; note whether 12,490 shows `12.4K` (rounded down) or `12.5K`. On retail, a target frame with Percent on shows a whole number such as `72` in restricted content.
+23. Names: a hostile mob's name is red and a neutral one's yellow; in restricted content, where names, levels or reactions are secret, the name still shows, with no level part or color, and nothing errors from `tags.lua`; no `<` follows the target's name on any frame.
+
+*Themes*
+24. Switch Thick, Thin, Blizzard and back to Thick with the same target. Under Blizzard each plate's health bar and castbar sit in the bronze box, health on Blizzard's raid bar fill in reaction colors, the cast icon with no border of its own, and the debuff and purgeable buff icons in Blizzard's aura art. Back under Thick no bronze piece, raid fill or target art is left, and the target's white line is back. With a tinted plate (step 4) the tint stays through each switch, on the raid fill under Blizzard, and the bar goes back to its plain reaction color on the same fill when the threat is good. Optional: Nameplates → General → Theme Blizzard, with SaftUI's theme Blizzard, gives each plate one bronze box, the plate's, with the target's art still round it.
+
+*Other unit frames this build changed*
+25. A hostile mob tagged by a player outside your group turns your target frame's health bar the tapped grey at once. Party and raid frames build as before after a `/reload` in a group, and when someone joins: size, backdrop, bars, texts, raid mark and role corners, with no errors, and out-of-range members fade to Range → Outside range. A party Buffs area turned off stays off after a `/reload`. A party member's castbar shows only while they cast, and not empty after a `/reload`. Blizzard's player castbar stays hidden whether SaftUI's player castbar is on or off.
+
+**Open questions:** Are the friendly plate settings kept per account (step 15)? If the borders still shimmer after a reload (step 2), are borders built from SaftUI's own textures worth it?
+
+### 2026-11-11 — Nameplates: a profile switch doesn't set the game's friendly plates
+
+**What:** Friendly plates (`/sui` → Unitframes → Nameplates → General, `nameplate.friendly`) is a unit frame profile setting, but the game's two friendly plate settings it drives (`nameplateShowFriendlyPlayers`, `nameplateShowFriendlyNpcs`) are set only at login (`UF:OnEnable` runs `UF:ApplyNameplateCVars`) and when the toggle is clicked. Switching to a profile (a SaftUI profile or a unit frame profile) whose Friendly plates differs leaves the game's friendly plates as they were until the toggle is clicked or the UI reloads. Nameplates itself changes only at a reload anyway, since oUF makes its nameplate driver once. A related gap: Blizzard's own friendly plate options (Interface → Nameplates) and its key binding for them change the same settings without SaftUI's toggle following, and the next login or toggle sets them back to the toggle.
+
+**Why noticed:** Task 6 of the nameplates plan (branch `np-6`), its concerns 2 and 3. Its brief named only the toggle and login as the places to set them, and Task 11 was changing the same part of `UF:ApplyConfig` at the time, so the profile switch was left out.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s `nameplate` branch, which sets the plates' size again when no element is named; `UF:OnEnable`), `SaftUI-Unitframes/config/config.lua` (`NameplateGeneral`, Friendly plates' `set`), `tests/unitframes/nameplate_page_test.lua`.
+
+**What's been considered:** One `UF:ApplyNameplateCVars()` in `UF:ApplyConfig`'s `nameplate` branch with no element, beside `UF:ApplyPlateSize()`, makes it follow every profile switch, copy and reset (`UF:UpdateConfig()` runs `UF:ApplyConfig()`, which includes the plates). It does nothing without SaftUI's driver or with Nameplates off, and waits out combat. For Blizzard's own toggle: leave it (SaftUI's toggle wins at the next login), or have SaftUI's toggle follow the game's setting (a `CVAR_UPDATE` listener writing the profile), which would make a key press change the profile.
+
+**Shape of work:** Small: one call, and a profile switch case in `nameplate_page_test.lua`.
+
+**Open questions:** Should Blizzard's friendly plate key binding change SaftUI's Friendly plates, or be undone at the next login?
+
+### 2026-11-11 — UIParent's scale is set once, at login, so plates leave whole pixels after a UI scale or display change
+
+**What:** Core works out `st.scale` once, as 768 over the screen's physical height when `SaftUI-Core/constants.lua` loads (`GetPhysicalScreenSize`), and sets it on UIParent once, in `SaftUI:OnEnable` (`SaftUI-Core/init.lua`), so that one UIParent unit is one pixel. Nothing sets it again. After Blizzard's UI scale setting changes, or the display does (a resolution or window size change), UIParent may no longer be at 768 over the screen's height. The nameplates pin each plate's frame to UIParent's effective scale, and pin every plate again on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (`SaftUI-Unitframes/nameplates/pixels.lua`), so they follow UIParent; but then a plate isn't a whole number of pixels wide or tall, and its right and bottom edges can flicker by a pixel either way as it moves, until a `/reload` sets SaftUI's scale again. Everything else of SaftUI's, laid out with one unit to a pixel, is off the grid the same way until then, so the README's "ignores Blizzard's UI Scale setting" holds only from one login to the next.
+
+**Why noticed:** The review of Task 11 of the nameplates plan (whole-pixel plates, branch `np-11`). Its test for a UI scale change re-pins the plates, which keeps them on UIParent's scale, but whole pixels need UIParent itself at 768 over the screen's height.
+
+**Anchors:** `SaftUI-Core/constants.lua` (`st.screenWidth`, `st.screenHeight`, `st.scale`), `SaftUI-Core/init.lua` (`SaftUI:OnEnable`), `SaftUI-Unitframes/nameplates/pixels.lua` (`UF:PinPlateScale` and its event frame), `UF.PlateDriverSize` (`SaftUI-Unitframes/nameplates/nameplates.lua`), `tests/unitframes/nameplate_pixel_test.lua` ("a UI scale change re-pins every plate and re-applies the size"), the README's Installation section.
+
+**What's been considered:** Re-pinning the plates can't fix it alone: they follow UIParent, whatever its scale. The fix belongs in Core: on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED`, work `st.scale` out again from `GetPhysicalScreenSize()` and set it on UIParent, then pin the plates again after it. Two frames' handlers for one event run in no set order, so the plates must be pinned after Core's handler (Core could call `UF:PinPlateScale` through the unit frames, or the plates could pin on the next frame). Whether Blizzard's own handling of its UI scale setting sets UIParent's scale after SaftUI's, and whether `UIParent:SetScale` is allowed in combat, decide the details.
+
+**Shape of work:** Small, in Core: one event frame that re-applies `st.scale` on `UI_SCALE_CHANGED` and `DISPLAY_SIZE_CHANGED` (waiting out combat if it must), the plates pinned after it, a test with the stubbed screen size, and an in-game check (step 14 of "Nameplates: in-game checks").
+
+**Open questions:** Does a change to Blizzard's UI scale setting set UIParent's scale over SaftUI's, on each client? Is `UIParent:SetScale` refused in combat?
+
+### 2026-11-11 — Nameplates: a plate that turns widgets-only, or back, without a new add
+
+**What:** oUF hides SaftUI's frame on a plate and pauses its elements only at an add, for a unit whose plate shows only widgets (`UnitNameplateShowsWidgetsOnly`) or a game object. When the game's friendly NPC plates setting changes (SaftUI's Friendly plates sets it), Blizzard runs `UpdateWidgetsOnlyMode` again on the plates already up, so a plate may switch to showing only widgets, or back, with no remove and add. oUF then leaves SaftUI's frame shown over a plate that shows only widgets, or hidden on one that's whole again, until the plate's next add; `UF:RefreshPlateWidgets`, which now also runs on the frame after anyone changes that setting, only places the widgets again and puts SaftUI's click area back on the plates SaftUI still shows (so a plate turned widgets-only in place takes clicks over SaftUI's frame, which still shows, where Blizzard's would take none). Separately, a config update while a plate shows only widgets runs each aura area's `SetEnabled(UF:ElementWanted(...))` on its paused container with the previous unit's kind (`frame.friendly`). That frame is hidden and the next add sets it right, and it was so before the nameplates too (it was `config.enable`).
+
+**Why noticed:** Task 5 of the nameplates plan (branch `np-5`), its report's followups (a) and (c), after its review asked for `UF:RefreshPlateWidgets` and the stubs modelled the switch (`stub.set_nameplate_widgets_only`).
+
+**Anchors:** `SaftUI-Unitframes/nameplates/nameplates.lua` (`PlaceWidgets`, `UF:RefreshPlateWidgets`, `OnPlateEvent`), `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/elements/auras.lua` (`UpdateConfig`'s `SetEnabled`), `SaftUI-Unitframes/Libraries/oUF/ouf.lua` (the nameplate driver's widgets-only branch of `NAME_PLATE_UNIT_ADDED`), `tests/unitframes/nameplate_kind_test.lua`, `tests/wow/game.lua` (`stub.set_nameplate_widgets_only`).
+
+**What's been considered:** `UF:RefreshPlateWidgets` could also pause and hide SaftUI's frame on a plate that turned widgets-only, and resume, show and re-apply the kind on one that turned whole, as oUF's add does, through oUF's own `PauseAllElements` and `ResumeAllElements`. Worth it only if the game really switches plates in place.
+
+**Shape of work:** Small, after the in-game check (step 9 of "Nameplates: in-game checks").
+
+**Open questions:** Does a friendly NPC's plate switch modes in place when friendly NPC plates is turned on or off, or does the game remove it and add it again?
+
+### 2026-11-11 — Nameplates: small items left after the build
+
+**What:** Small things the nameplates build noticed and left:
+- `st:name`'s tag events (`SaftUI-Unitframes/tags.lua`) still list `PLAYER_TARGET_CHANGED`, which was there for the old nameplate target mark, now gone (the target's border replaces it). oUF's target frame updates its own tags on a target change (`Libraries/oUF/units.lua`), so the event now only makes every `st:name`, up to 40 plates' among them, run again on each target change. Task 2's ruling 10 left it; dropping it is one word.
+- Every unit's castbar default (`SaftUI-Unitframes/config/default.lua`) has string offsets (`x_off = "0"`), which the game takes but the strict stubbed `SetPoint` refuses, so tests convert them (`blizzard_look_test.lua`'s `number_offsets`, the world in `nameplate_kind_test.lua`). The plates' defaults replace them. Worth making them numbers for every unit.
+- Threat when solo's desc (the Nameplates page's General) says it tints the bars, but it also turns on the threat percent; the text's own Enable says so (Task 9's ruling 12). Its exact wording is tested in `nameplate_page_test.lua`.
+- Copy from leaves the nameplates out both ways (Task 6's ruling 3): the game places every plate and gives them one size, and Nameplates and Friendly plates change the game's settings and need a reload, so a copy of General would be wrong, and a unit frame's layout doesn't fit a 200 by 20 bar. A user who wants the target's Health look on the plates sets it by hand. A Copy from limited to the element tabs, without their positions, could be added.
+
+**Why noticed:** The reports of Tasks 2, 5, 6 and 9 of the nameplates plan (`.superpowers/sdd/2026-11-11-saftui-nameplates/`, not versioned).
+
+**Anchors:** as each item names.
+
+**Shape of work:** Each is small and stands alone: the first three a line or two with a test, the fourth a design question first.
+
+### 2026-11-11 — Health text's Boss percent and Hide full with a secret health
+
+**What:** Two of the health text's paths still read a secret health as a plain number, and error when the game hands them one (enemy nameplates and other units in restricted content). Boss percent (`boss_percent`, on by default for the units that can show a skull-level unit) compares `UnitLevel(unit)`, which can be secret, with `-1`, then `format`s the health (or its Short form) and the percent, both secret, into "1234567 | 45.6" (`getHealthPercentText`'s `format` and `floor`). Hide full (`hide_full`, on by default for raid10 and raid40) compares the game's secret deficit string (`C_StringUtil.TruncateWhenZero(UnitHealthMissing(unit))`) with `0`; that string is `''` at full health, so even where the comparison doesn't error it never hides the text.
+
+**Why noticed:** The nameplates plan's Task 2 (`docs/superpowers/plans/2026-11-11-saftui-nameplates.md`) made the health text's Percent and value paths take a secret health: Percent draws the game's `UnitHealthPercent(unit, true, CurveConstants.ScaleTo100)` through `SetFormattedText('%.0f', ...)`, as `UF:SetPowerPercentText` does; the value is passed to `SetText` as it is, or shortened by the game's `AbbreviateNumbers` with Short on. Plates show the value in short form (the user's answer 9 in the spec) with Boss percent and Hide full off, so they never reach these two paths, which were left out of scope. Before Task 2 the value path was safe without Boss percent, and the Percent path errored on `floor`.
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua` (`PostUpdateHealth`, `getHealthPercentText`, `SHORT`); `SaftUI-Unitframes/updaters.lua` (`UF:SetPowerPercentText`, the pattern); `tests/unitframes/secret_texts_test.lua`; `tests/lib/secrets.lua`; `SaftUI-Unitframes/config/units/raid10.lua` and `raid40.lua` (`hide_full = true`).
+
+**What's been considered:** Boss percent could join the parts in the game: `SetFormattedText('%s | %.1f', text, UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))`, with the skull check made only on a plain level (or on `UnitClassification(unit) == 'worldboss'`, whose documentation marks no secret return on either client, though a boss frame's unit may still differ in game). Hide full has no game function that answers "is this secret zero" to an addon; a step curve through `UnitHealthPercent` into the text's alpha might, if the alpha setter takes a secret from an addon.
+
+**Shape of work:** Small: two branches of `PostUpdateHealth` and cases in `tests/unitframes/secret_texts_test.lua`, after checking in game which unit values are secret on a boss frame and a raid frame on each client.
+
+**Open questions:** Is a boss's level secret on the boss frames in restricted content, on Forever and on retail? Does any text setter take a secret alpha or shown state from an addon, for Hide full?
+
+### 2026-11-11 — Purge filters: in-game checks
+
+**What:** "Only buffs I can purge" (a toggle on every unit's Buffs, on by default for nameplates) builds Blizzard's aura container filters from facts the stubs can't confirm: which dispel name an enrage reports on each client, whether `RAID_PLAYER_DISPELLABLE` lets a Frenzy through for a Forever hunter, and whether the pet's spellbook is ready when the filters are first built at login.
+
+**Why noticed:** Task 10 of the nameplates plan (branch `np-10`) and its review. Blizzard's candidate filter matches `includeDispelTypes[auraData.dispelName]`, and an aura's dispel name is its type's internal name in `SpellDispelType`. Type 9 (an enrage; "Frenzy" on Forever) has no internal name on Forever 1.60.1.70888, and had none on retail before 12.1 (empty at 12.0.7.68974 and 11.2.7.64978, "Enrage" at 12.1.5.70783, wago.tools). Blizzard's own `Blizzard_PrivateAurasUI.lua` checks `dispelName ~= ""` on both clients, so an empty name most likely reports `''`. `purge.lua` therefore matches an enrage as both `'Enrage'` and `''`, on both clients. If a client reports `nil` instead, no candidate filter can pick enrages out, and a player whose only remover is an enrage one (a Forever hunter's Tranquilizing Shot, a retail druid's Soothe, a rogue's Shiv) sees no buffs with the toggle on.
+
+**Anchors:** `SaftUI-Unitframes/purge.lua` (`DispelNames`, `UF.PurgeFilter`, `UF:KnownRemovals`, `UF:RefreshPurgeFilters` and its event frame), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`, `UpdateConfig`), `tests/unitframes/purge_test.lua`; `.superpowers/sdd/2026-11-11-saftui-nameplates/task-10-report.md` (not versioned).
+
+**What's been considered:** Matching `''` too costs nothing: `RAID_PLAYER_DISPELLABLE` keeps only auras someone in the group can dispel, so `''` can't let in a buff with no dispel type. If a client reports `nil`, the choice is between dropping the dispel type filter for players who remove only enrages (showing everything `RAID_PLAYER_DISPELLABLE` lets through, which in a group includes other classes' magic dispels) or showing them nothing.
+
+**Shape of work:** A pass by the user, out of combat (aura data is secret in combat), then a small fix in `purge.lua` if a check fails:
+1. Forever, as a hunter with Tranquilizing Shot, Target's Buffs with Only buffs I can purge on: target a mob with a Frenzy buff (Molten Core's Magmadar or Flamegor, or a beast that frenzies). Does the buff show? `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`?
+2. If it doesn't show: `/dump C_UnitAuras.IsAuraFilteredOutByInstanceID('target', <its auraInstanceID>, 'HELPFUL|RAID_PLAYER_DISPELLABLE')` (false means the filter string lets it through, so the dispel name is what blocks it).
+3. Retail, as a druid with Soothe or a rogue with Shiv: the same two checks on an enrage (most dungeon enrages).
+4. Either client, as a warlock with the felhunter out: `/reload` with the toggle on, and the target's magic buffs show right after login. Dismiss the felhunter and summon it again: they go and come back.
+5. Forever, a protection warrior with Shield Slam: magic buffs show.
+
+**Open questions:** If Forever reports `nil` for a Frenzy, should a Forever hunter see every buff the group can dispel, or none?
+
+### 2026-11-11 — Purge table: retail gaps
+
+**What:** Retail class spells that take a buff off an enemy but aren't in `UF.PURGE_SPELLS`: the monk's Paralysis 115078 (its effect #2 dispels an Enrage; a talent) and the priest's Mass Dispel 32375 (a talent; its dispel effect, Magic, is aimed at an area, `ImplicitTarget` 31, so whether it reaches enemies directly or through another spell needs a look). Mass Dispel matters only for a priest without Dispel Magic. Racials (the Blood Elves' Arcane Torrent, an area Magic dispel) are out of scope: the table is by class.
+
+**Why noticed:** The review of Task 10 of the nameplates plan (branch `np-10`) swept wago.tools' `SpellEffect` at 12.1.5.70783 for every dispel or steal effect on a spell with a class skill line or a talent, beyond the spec's list. Neither spell exists on Forever 1.60.1.70888.
+
+**Anchors:** `SaftUI-Unitframes/purge.lua` (`UF.PURGE_SPELLS.live`, and the comment above it on how each spell was checked), `tests/unitframes/purge_test.lua` (`VERIFIED`, which pins the table: a new spell goes in both).
+
+**Shape of work:** Small: check each spell's effects (and Mass Dispel's triggered spells) at the current build, add `MONK = { { id = 115078, removes = { 'Enrage' } } }` and Mass Dispel to `PRIEST` if it dispels enemies, and add them to `VERIFIED`.
+
+**Open questions:** Should Paralysis count? It's a crowd control that happens to remove an enrage, not a purge a monk would think of.
 
 ### 2026-11-11 — Blizzard theme round 2: in-game checks
 
@@ -857,18 +1018,6 @@ On retail:
 
 **Open questions:** Whether the Blizzard switch also covers reaction colors (Blizzard's `FACTION_BAR_COLORS`).
 
-### 2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered
-
-**What:** oUF's Health and Power register `UNIT_FACTION` (for `colorTapping` and `colorReaction`), `UNIT_FLAGS` (`colorSelection`) and `UNIT_THREAT_LIST_UPDATE` (`colorThreat`) in their `Enable`, and only if the flag is already on then; turning a flag on later is meant to go through the element's `SetColorTapping` / `SetColorReaction` / ..., which register the event. SaftUI assigns the flags straight onto the element in each element's `UpdateConfig` (`elements/health.lua`, `elements/power.lua`). For single units (player, target, focus, ...) that first runs in `UF:ApplyConfig`, after `oUF:Spawn` has enabled the elements, so the flags were nil at `Enable` and those events are never registered, even for the defaults (Health's `colorTapping` and `colorReaction` are on). Group buttons are fine: `UF.ConstructUnit` updates them inside the style function, before `Enable`.
-
-**Why noticed:** Task 9 of the options layout project (2026-11-09) exposed the color flags in `/sui` and checked that oUF re-reads them. It does, on every health or power update (`Path` runs `ColorPath`), and SaftUI's option set ends in `UpdateAllElements`, so each option works at once. What's missed is a recolor between updates: a target someone else tags without damaging it (no `UNIT_HEALTH`) stays its old color until its next health or power change, or until it's targeted again.
-
-**Anchors:** `SaftUI-Unitframes/elements/health.lua` and `power.lua` (`UpdateConfig`); `SaftUI-Unitframes/Libraries/oUF/elements/health.lua` and `power.lua` (`Enable`, `SetColorTapping`, `SetColorReaction`); `SaftUI-Unitframes/Libraries/oUF/ouf.lua` (`initObject`: the style function, then `EnableElement`); `UF.ConstructUnit`, `UF:ApplyConfig` (`unitframes.lua`).
-
-**What's been considered:** Call `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` in `UpdateConfig` instead of assigning those two (the forced call registers or unregisters the event to match). Plain table writes stay fine in combat; registering an event on a unit frame is too. **A guard is needed (Task 9's review, 2026-11-09):** `SetColorTapping` and `SetColorReaction` only exist after oUF's `Enable`, and group buttons run `UpdateConfig` inside the style function, before `Enable`, so calling them unguarded errors on party and raid frames. Check for a nil `element.SetColorTapping`: when it's nil, assign the flag directly (as now), and `Enable` registers the event itself.
-
-**Shape of work:** A few lines in health.lua and power.lua, and an in-game check: tag a target with a debuff from another player and watch it go grey.
-
 ### 2026-11-09 — st:Kill and st:SkinIcon still write onto Blizzard pieces (roll bars and elsewhere)
 
 **What:** Two Core helpers write fields onto the frames they're given:
@@ -1038,7 +1187,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
     - bags' `compact`;
     - chat's `fadetabs` and `tabs.height`;
     - unit frames' `config_unit`, `config_element`, `health.text.tags`, `health.absorbColor` and additional power's `colorClass`;
-    - the nameplate table (the user: "almost everyone just uses plater").
+    - the nameplate table (the user: "almost everyone just uses plater"). *2026-11-11: the nameplates plan brought SaftUI's plates back, as a `nameplate` unit (`SaftUI-Unitframes/config/units/nameplate.lua`, `nameplates/`).*
   - Hooked up:
     - bags' `buttontemplate`, now the item and currency slots' template;
     - `Smooth` on health, power and additional power, mapped to oUF's `smoothing`, on by default;
@@ -1369,12 +1518,27 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 - Duration filtering may be expressible through the container's processing `policy` (`CustomAuraContainerAuraProcessingPolicy`).
 - Live updates to group options would need either an AuraContainer API to remove or clear groups, or recreating the container on config change.
 - Found 2026-11-07 (review of the unit frame element options): groups can't be removed, but `CustomAuraContainerSharedMixin` (`Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua`, on `live` and `forever`) has `SetAuraGroupMaxFrameCount(key, n)`, `SetAuraGroupFilterString(key, filter)` and `SetAuraGroupLayout(key, layout)`. `elements/auras.lua` now keeps the key oUF's `AddGroup` returns as `auras.groupKey` and re-applies the spacing with `SetAuraGroupLayout` (`af25f66`). `max` and `onlyShowPlayer` could go live the same way and lose their "Reload to apply". Size, borders and cooldown are button options, set when a button is made, so they still need a reload.
+- Update 2026-11-11: the filter string and candidate filters now go live (`UF:ApplyAuraFilter`, `SaftUI-Unitframes/purge.lua`, nameplates Task 10), so `onlyShowPlayer` lost its "Reload to apply". `max` still needs a reload.
 
 **Shape of work:** A research pass on the AuraContainer API (group options, policies, removing groups), then a small change in `elements/auras.lua` that maps config to options. It may also need a config-schema cleanup to drop options that can't be supported.
 
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered
+
+**What:** oUF's Health and Power register `UNIT_FACTION` (for `colorTapping` and `colorReaction`), `UNIT_FLAGS` (`colorSelection`) and `UNIT_THREAT_LIST_UPDATE` (`colorThreat`) in their `Enable`, and only if the flag is already on then; turning a flag on later is meant to go through the element's `SetColorTapping` / `SetColorReaction` / ..., which register the event. SaftUI assigns the flags straight onto the element in each element's `UpdateConfig` (`elements/health.lua`, `elements/power.lua`). For single units (player, target, focus, ...) that first runs in `UF:ApplyConfig`, after `oUF:Spawn` has enabled the elements, so the flags were nil at `Enable` and those events are never registered, even for the defaults (Health's `colorTapping` and `colorReaction` are on). Group buttons are fine: `UF.ConstructUnit` updates them inside the style function, before `Enable`.
+
+**Why noticed:** Task 9 of the options layout project (2026-11-09) exposed the color flags in `/sui` and checked that oUF re-reads them. It does, on every health or power update (`Path` runs `ColorPath`), and SaftUI's option set ends in `UpdateAllElements`, so each option works at once. What's missed is a recolor between updates: a target someone else tags without damaging it (no `UNIT_HEALTH`) stays its old color until its next health or power change, or until it's targeted again.
+
+**Anchors:** `SaftUI-Unitframes/elements/health.lua` and `power.lua` (`UpdateConfig`); `SaftUI-Unitframes/Libraries/oUF/elements/health.lua` and `power.lua` (`Enable`, `SetColorTapping`, `SetColorReaction`); `SaftUI-Unitframes/Libraries/oUF/ouf.lua` (`initObject`: the style function, then `EnableElement`); `UF.ConstructUnit`, `UF:ApplyConfig` (`unitframes.lua`).
+
+**What's been considered:** Call `element:SetColorTapping(config.colorTapping, true)` and `SetColorReaction` in `UpdateConfig` instead of assigning those two (the forced call registers or unregisters the event to match). Plain table writes stay fine in combat; registering an event on a unit frame is too. **A guard is needed (Task 9's review, 2026-11-09):** `SetColorTapping` and `SetColorReaction` only exist after oUF's `Enable`, and group buttons run `UpdateConfig` inside the style function, before `Enable`, so calling them unguarded errors on party and raid frames. Check for a nil `element.SetColorTapping`: when it's nil, assign the flag directly (as now), and `Enable` registers the event itself.
+
+**Shape of work:** A few lines in health.lua and power.lua, and an in-game check: tag a target with a debuff from another player and watch it go grey.
+
+**Resolved 2026-11-11:** Health and power set the two flags through oUF's setters once the bar has them (`UF.SetFactionColorFlags`), and group buttons now get their first update from oUF's init callback (`UF.InitUnit`), after oUF's Enable; tested in `tests/unitframes/unit_init_test.lua`, the in-game check above still to do.
 
 ### 2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar
 
@@ -1747,3 +1911,17 @@ Build it after the Themes branch merges, since Themes also edits `roll.lua`, dra
 ## Abandoned
 
 (items move here when explicitly decided against — note the reason in a one-line addendum so the decision is recoverable)
+
+### 2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice
+
+**What:** When the game hands a plate from a friend to an enemy (or back), `UF:ApplyPlateKind` turns the plate's two aura areas on (or off) in the added callback, and Blizzard's container scans the auras at once on that change, for the unit token it still has from the plate's last unit. oUF's update right after then sets the new unit and scans again. An add of the same kind as the plate's last makes no extra scan: Blizzard's container ignores a `SetEnabled` that changes nothing.
+
+**Why noticed:** The final review of the nameplates build (its M4) took every add to scan twice; the final fix wave found Blizzard's guard (`AuraContainerSharedMixin:SetEnabled`, `Blizzard_AuraContainer.lua`, both clients), so only a kind change does.
+
+**Anchors:** `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateKind`), `SaftUI-Unitframes/Libraries/oUF/elements/auras.lua` (`Update`: `SetUnit`, else `ForceUpdate`), `tests/unitframes/nameplate_kind_test.lua` (the scan-count case), `tests/unitframes/fixtures/ouf.lua` (the container's `__scans`).
+
+**What's been considered:** Setting the container's unit before turning it on doesn't help, since oUF's update then forces a scan anyway. Turning the areas on after oUF's update (from the aura element's `PostUpdate`) would save the first scan, at the cost of a less obvious kind pass. A kind change is much rarer than an add, so the cost is small.
+
+**Shape of work:** Small, only if a profile shows it: move the aura areas' turn-on after oUF's update, with the scan-count test changed to one per area.
+
+**Abandoned 2026-11-11:** There is no second scan to save. oUF's container is Blizzard's managed one, whose full update only marks it dirty (`ManagedAuraContainerSharedMixin:UpdateAllAuras`, `Blizzard_ManagedAuraContainer.lua`, both clients), and the parse runs once on its next frame, so the kind pass's `SetEnabled` and oUF's `SetUnit` in one tick fold into one (the final fix wave's re-review).

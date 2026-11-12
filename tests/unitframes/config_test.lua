@@ -8,7 +8,10 @@
 -- unit's settings are made by reading them, as in game; AceConfigRegistry-3.0
 -- (the options window listens to it); the options model, widgets, body and
 -- window; config/config.lua, updaters.lua (UF.UnpackColor) and the element
--- files, whose tabs config.lua adds to each unit that has the element.
+-- files, whose tabs config.lua adds to each unit that has the element;
+-- nameplates/nameplates.lua (UF:NameplateAddon, which the Nameplates page
+-- reads; with no other nameplate addon loaded, SaftUI draws the plates) and
+-- nameplates/threat.lua (the plates' Threat element and its tab).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:
 --   * UF:UpdateConfig counts its calls. The real one re-applies every unit
@@ -35,6 +38,9 @@
 -- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
+-- The nameplates' own defaults (enable, friendly, threat_solo, the threat
+-- text, width, height); the other units' come from every unit's.
+load_saftui('SaftUI-Unitframes/config/units/nameplate.lua')
 apply_defaults()
 load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
@@ -69,6 +75,8 @@ end
 
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
+load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
+load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
 -- elements/elements.xml's order; aurawatch.lua and portrait.lua register nothing.
 for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
@@ -187,6 +195,26 @@ test('closing the Copy from dialog cancels a prompt or confirm open over it', fu
 	eq(W.PromptBox(), nil, 'and closed it')
 end)
 
+-- A plate is no unit frame: the game places it and sizes every plate alike,
+-- Nameplates needs a reload and puts the game's settings back, and its
+-- elements are laid out for a thin bar. So the nameplates are left out of
+-- Copy from both ways.
+test('Copy from leaves the nameplates out: never offered to copy from, and their page has no Copy from', function()
+	check(UF:GetProfileConfig().nameplate ~= nil, 'the profile has the nameplates')
+	UF:OpenCopyTable('player')
+	click(cell('copy_from').widget.frame)
+	local offered = {}
+	for _, row in ipairs(W.GetListFrames().rows) do
+		if row:IsShown() then offered[row.text:GetText()] = true end
+	end
+	check(offered.target, 'target is offered')
+	check(not offered.nameplate, 'the nameplates are not')
+	W.CloseList()
+	OW:CloseDialog()
+	eq(UF:GetConfigTable().args.nameplate.args.copy, nil, 'no Copy from on the Nameplates page')
+	check(UF:GetConfigTable().args.player.args.copy ~= nil, "the player's keeps it")
+end)
+
 test("Copy from lists a migrated profile's Theme and Background, not its old template", function()
 	local P = UF:GetProfileConfig()
 	local player, health = P.player, P.player.health
@@ -213,8 +241,8 @@ test('the unit picker lists the units in a fixed order, Player first, and Profil
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
 	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
-	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,profile',
-		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, then Profile')
+	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,profile',
+		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Nameplates, then Profile')
 	eq(view.picker.selected, 'player', 'the page opens on Player')
 end)
 
@@ -316,7 +344,7 @@ end)
 
 ------------------------------------------------------------------ the element tabs
 
-local UNITS = { 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'party', 'raid10', 'raid40' }
+local UNITS = { 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'party', 'raid10', 'raid40', 'nameplate' }
 local NO_DESC = { group = true, header = true, description = true }
 
 -- A unit's element tabs: every group of its section but General.
@@ -397,9 +425,10 @@ end
 -- oUF's health and power UpdateColor test the unit: offline units
 -- (Disconnected), mobs someone else tagged (Tapped), players (Class), units that
 -- aren't players (NPC class), and units a player controls that aren't players
--- (Pet class). Player shows you, pet your pet, boss frames bosses, and party and
--- raid frames players; the others can show anything. The flags not listed
--- (Reaction, Gradient, Health color, Power type) can color any unit.
+-- (Pet class). Player shows you, pet your pet, boss frames bosses, party and
+-- raid frames players, and nameplates any unit but an offline player; the
+-- others can show anything. The flags not listed (Reaction, Gradient, Health
+-- color, Power type) can color any unit.
 local ANY = { 'target', 'targettarget', 'focus', 'focustarget', 'pettarget' }
 local function any_and(...)
 	local set = {}
@@ -409,13 +438,13 @@ local function any_and(...)
 end
 local FLAG_UNITS = {
 	colorDisconnected = any_and('party', 'raid10', 'raid40'),
-	colorTapping = any_and('boss'),
-	colorClass = any_and('player', 'party', 'raid10', 'raid40'),
-	colorClassNPC = any_and('pet', 'boss'),
-	colorClassPet = any_and('pet'),
+	colorTapping = any_and('boss', 'nameplate'),
+	colorClass = any_and('player', 'party', 'raid10', 'raid40', 'nameplate'),
+	colorClassNPC = any_and('pet', 'boss', 'nameplate'),
+	colorClassPet = any_and('pet', 'nameplate'),
 }
 -- Mobs: what Tapped needs, and a rare, elite or boss-level (skull) unit too.
-local MOB_UNITS = any_and('boss')
+local MOB_UNITS = any_and('boss', 'nameplate')
 
 test('each unit has a tab for each element it has', function()
 	local config = UF:GetConfigTable()
@@ -430,6 +459,9 @@ test('each unit has a tab for each element it has', function()
 	eq(sorted_keys(element_tabs(config, 'party')),
 		'Buffs,Castbar,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator,ReadyCheckIndicator',
 		'party has the ready check')
+	eq(sorted_keys(element_tabs(config, 'nameplate')),
+		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat',
+		'nameplates have no power, role or ready check, and have the threat text')
 end)
 
 test('every element tab: a tooltip on every option, no Ace width, and each Position a block last in its group', function()
@@ -504,7 +536,10 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 		for tab, flags in pairs(FLAGS) do
 			local where = unit .. '.' .. tab
 			local colors = option_at(config, unit, tab, 'colors')
-			if check(colors and colors.type == 'group' and colors.inline and colors.name == 'Colors', where .. ' has a Colors section') then
+			if unit == 'nameplate' and tab == 'Power' then
+				-- Nameplates have no power bar (the tabs case above).
+				eq(option_at(config, unit, tab), nil, where .. ' has no tab')
+			elseif check(colors and colors.type == 'group' and colors.inline and colors.name == 'Colors', where .. ' has a Colors section') then
 				local expected = {}
 				for _, flag in ipairs(flags) do
 					if not FLAG_UNITS[flag] or FLAG_UNITS[flag][unit] then expected[#expected + 1] = flag end
@@ -535,6 +570,10 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 		"the player's power colors")
 	eq(layout(config, 'player', 'Power', 'Colors', true), 'colorCustom:small 1/1, customColor:small 1/2',
 		'Custom and its color on the next line, untitled, whatever the count above')
+	eq(layout(config, 'nameplate', 'Health', 'Colors'),
+		'colorTapping:small 1/1, colorClass:small 1/2, colorClassNPC:small 2/1, colorClassPet:small 2/2, '
+		.. 'colorReaction:small 1/1, colorSmooth:small 1/2, colorHealth:small 2/1',
+		"the nameplates' health colors: every one but Disconnected")
 end)
 
 test('Health, Power and Additional power: Custom and its color, kept in the shape the profile holds it', function()
@@ -611,7 +650,7 @@ test('Health: Texture on every unit, its text options, and Boss percent only whe
 				unit .. ': the status bar textures SaftUI registers')
 		end
 		reads_and_writes(config, unit, 'Health', { 'texture' }, health, 'texture', 'SaftUI Gloss')
-		for _, key in ipairs({ 'enable', 'hide_full', 'deficit', 'percent' }) do
+		for _, key in ipairs({ 'enable', 'hide_full', 'deficit', 'percent', 'short' }) do
 			reads_and_writes(config, unit, 'Health', { 'text', key }, health.text, key, not health.text[key])
 		end
 		eq(type(health.text.deficit), 'boolean', unit .. ' has a Deficit default')
@@ -645,7 +684,9 @@ end)
 -- The parts of a unit's section with a Theme and a Background: { tab, the
 -- keys of the section they sit in under the tab, the profile table they
 -- write }. The unit frame's own are in General; the castbar has the bar's and
--- the icon's; the aura tabs have them in Buttons. Name has none: it's a text.
+-- the icon's; the aura tabs have them in Buttons. Name and the nameplates'
+-- threat text have none: they're texts.
+local TEXTS = { Name = true, Threat = true }
 local function themed_parts(config, P, unit)
 	local parts = { { 'general', {}, P[unit] } }
 	for tab in pairs(element_tabs(config, unit)) do
@@ -655,7 +696,7 @@ local function themed_parts(config, P, unit)
 			parts[#parts + 1] = { tab, { 'icon' }, store.icon }
 		elseif tab == 'Buffs' or tab == 'Debuffs' then
 			parts[#parts + 1] = { tab, { 'buttons' }, store }
-		elseif tab ~= 'Name' then
+		elseif not TEXTS[tab] then
 			parts[#parts + 1] = { tab, {}, store }
 		end
 	end
@@ -709,11 +750,13 @@ test('each element tab offers Theme and Background, with descs, and no template'
 		end
 		eq(option_at(config, unit, 'Name', 'theme'), nil, unit .. "'s Name, a text, has no Theme")
 	end
-	-- General, Health, Power, Buffs, Debuffs and four indicators on every unit;
-	-- the castbar's bar and icon where there's a castbar (all but the targets
-	-- of targets); the ready check on the groups; additional and class power on
-	-- the player.
-	eq(seen, 11 * 9 + 8 * 2 + 3 + 2, 'every part with a Theme')
+	eq(option_at(config, 'nameplate', 'Threat', 'theme'), nil, "the nameplates' threat text, a text, has no Theme")
+	-- General, Health, Power, Buffs, Debuffs and four indicators on every unit
+	-- frame; the castbar's bar and icon where there's a castbar (all but the
+	-- targets of targets); the ready check on the groups; additional and class
+	-- power on the player; and the nameplates' General, Health, Buffs,
+	-- Debuffs, castbar bar and icon, and quest and raid mark icons.
+	eq(seen, 11 * 9 + 8 * 2 + 3 + 2 + 8, 'every part with a Theme')
 
 	-- Nothing in the unit frames' pages is a Template, or offers an old
 	-- template, Highlight or Close Button.
@@ -747,8 +790,9 @@ test('no element tab shows two settings named Background: the bar\'s own empty-p
 			end
 		end
 	end
-	-- Health and Power on every unit, Additional power on the player.
-	eq(bars, 11 * 2 + 1, 'every bar with a fill of its own')
+	-- Health and Power on every unit frame, Additional power on the player,
+	-- and the nameplates' Health.
+	eq(bars, 11 * 2 + 1 + 1, 'every bar with a fill of its own')
 end)
 
 test("Health's first section: the toggles four to a line, then the settings two to a line", function()
