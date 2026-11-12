@@ -320,7 +320,7 @@ end
 
 local RELOAD = 'Reload to apply (/reload): aura groups are built once, when the unit frame is set up.'
 
--- The note an aura area's Border and Cooldown -> Show end with on unit's
+-- The note an aura area's Border and Cooldown -> Show end with on a unit's
 -- page. On the two nameplate pages a plate's group is made on the frame's
 -- first update with the area on, and that first update is always from Enemy
 -- nameplates, whatever the plate's unit (nameplates.lua). So while the Enemy
