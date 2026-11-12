@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-12 — Codebase cleanup: the items waiting on a decision](#2026-11-12--codebase-cleanup-the-items-waiting-on-a-decision)
   - [2026-11-12 — Cooldown Manager skin: in-game checks](#2026-11-12--cooldown-manager-skin-in-game-checks)
   - [2026-11-12 — Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border](#2026-11-12--cooldown-manager-skin-a-tracked-debuffs-dispel-type-on-saftuis-border)
   - [2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number](#2026-11-12--nameplates-a-plate-pages-position-editor-checks-anchors-against-whichever-plate-has-the-lowest-number)
@@ -119,6 +120,41 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-12 — Codebase cleanup: the items waiting on a decision
+
+**What:** The cleanup report (`docs/reports/2026-11-12-codebase-cleanup-analysis.md`) found bugs, dead code and refactors. Everything with a clear fix is being done under `docs/superpowers/plans/2026-11-12-saftui-cleanup.md`. The items below were left untouched, because each needs the user's choice or an in-game check first.
+
+**Why noticed:** The user asked for an analysis of the code base (dead code, organization), then said: "Lets work on all the items with subagents that have clear fixes, as for the ones that need my decison for now lets leave them and take a look at them later". This entry is the "later" list.
+
+**Anchors:** the report's sections in brackets.
+
+- **Possible bugs, need an in-game check:**
+  - Bags: `INV:SelectBankCategory` (`SaftUI-Bags/inventory.lua`) sets the Character bank type for the `warband` container and Account for `bank`. They look swapped. [1, bug 6]
+  - Bags: the `combinedbank` window is offered only when `HasWarbandBank()` is true (`categoriestab.lua`). Intended? [1, bug 7]
+  - Core: `TaintFix:OnInitalize` (`SaftUI-Core/taintfix.lua`) is misspelled and never runs. Fixing the spelling alone would error at login (`ClickBindingFrame` is load-on-demand). Fix it properly, or delete the file? [1, bug 11]
+- **Writes onto Blizzard frames (taint rule 1), not traced:** `Blizzard_WeeklyRewards.lua`'s `ShouldShowOverlay`, `st:EnableResizing` on `WorldMapFrame`, `st:Kill`'s other callers (see also "st:Kill and st:SkinIcon still write onto Blizzard pieces"), the totem bar's setup on classes with no totems. [1]
+- **Migrations that may be finished** (delete once every profile has passed through them): Bags `categories.lua` and `movers.lua`, `CHT:MigratePosition`, `st:ResolveLegacyTemplate` with its seven "defaults look as they did" tests and `T.old_names`. [2.3, 6.3]
+- **Features that look unused, keep or delete:**
+  - the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);
+  - the honor feed;
+  - the keybinding widget in `optionswidgets.lua`;
+  - the old bag Edit view;
+  - time played in Core's `init.lua`;
+  - Unitframes' `arena` unit, Portrait and AuraWatch;
+  - the aura `filter`, whitelist, blacklist and `spellIds` default tables (tied to "Unit frame defaults that nothing reads").
+
+  [3]
+- **Packaging:** unused Ace libraries' TOC lines, `OptionalDeps`, unused media files, one Core TOC where there are two (needs a load check in game). [5]
+- **Two widget sets:** Bags' `ruleeditor.lua` and `categoriestab.lua` draw their own controls beside Core's options widgets. Moving them over is a design choice. [4.5]
+- **Renames with no obvious target:** the two `theme.lua` and two `skinning.lua` files, the Media options tabs; regrouping `OW.Seam` and `W.Seam`. [4, 6.6]
+- **Test stubs:** more `CLIENT_ONLY` entries, getters that return secrets, `IsForbidden` answering true. [6.5]
+
+**What's been considered:** Each item's detail, with file and line, is in the report. The report labels each finding Certain, Likely or Decide; these are the Decide ones plus the Likely ones whose right fix depends on what the game does.
+
+**Shape of work:** A sitting with the user to go down the list (keep, delete, fix), then one small plan for what they choose. Most answers are a deletion of 50 to 400 lines.
+
+**Open questions:** Each bullet is one.
 
 ### 2026-11-12 — Cooldown Manager skin: in-game checks
 
