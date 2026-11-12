@@ -176,19 +176,6 @@ function st:RegisterMover(key, def)
 	return mover
 end
 
--- Clears frame's points and sets it from a saved position table (point, frame,
--- rel_point, x_off, y_off), as st:UnpackPoint reads one. Nothing else: the
--- offsets go as saved, not rounded or made numbers, and the frame is whatever
--- the position holds (a name is the game's to resolve, none is the frame's
--- parent). A site that rounds, resolves with st:ResolveFrame and falls back to
--- UIParent, or has work between the clear and the set, keeps its own. A frame
--- that can't move now (protected, in combat) is the caller's to queue
--- (st:SafeReposition); this moves it.
-function st:PlaceAtPosition(frame, position)
-	frame:ClearAllPoints()
-	frame:SetPoint(st:UnpackPoint(position))
-end
-
 -- Registers a mover for frame whose position lives at config.position in the
 -- profile. spec = { key, config, apply, <anything else st:RegisterMover takes:
 -- label, configPath, blizzardFrame, ...> }:

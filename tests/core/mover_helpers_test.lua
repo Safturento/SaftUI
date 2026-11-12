@@ -1,6 +1,7 @@
--- Core's two helpers for a movable frame (SaftUI-Core/EditMode/editmode.lua):
--- st:PlaceAtPosition clears a frame's points and sets it from a saved position
--- table, as the sites that did it by hand; st:RegisterConfigMover registers a
+-- Core's two helpers for a movable frame: st:PlaceAtPosition (api.lua, which
+-- the addons' tests have without edit mode) clears a frame's points and sets it from a saved position
+-- table, as the sites that did it by hand; st:RegisterConfigMover
+-- (EditMode/editmode.lua) registers a
 -- mover whose position is read from and written to a table in the profile.
 --
 -- Real: Core's edit mode (st:RegisterMover and the movers it makes) on the
