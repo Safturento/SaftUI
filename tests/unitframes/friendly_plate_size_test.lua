@@ -10,10 +10,13 @@
 --   - the plate size, one for every plate, is the enemy look's: Enemy
 --     nameplates', or Friendly nameplates' while the enemy box is checked;
 --   - a kind change resizes the frame, in combat too;
+--   - a place that errored isn't noted as made, so the next update places
+--     the frame;
 --   - the click area follows the frame: oUF's two hit-test calls run again
 --     once the frame's place or size changed, at once where the game allows
 --     it (out of combat, or on the add's tick in combat), else when combat
---     ends;
+--     ends; and on every plate once the plate size alone is set (out of
+--     combat, as the size);
 --   - the rounding walk and Blizzard's widgets after a resize;
 --   - a part the plate's config turns off is still sized and placed by that
 --     config, so the parts anchored to it sit where they would if it were
@@ -174,6 +177,28 @@ test('an enemy plate fills its plate', function()
 	end
 end)
 
+test("a place that fails isn't taken as made: the next update places the frame", function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF = world(client)
+		enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		check_fills(frame, NamePlate1, 200, 20, client .. ': an enemy')
+
+		-- The plate handed to a friend, its frame's SetPoint failing once.
+		rawset(frame, 'SetPoint', function() rawset(frame, 'SetPoint', nil) error('refused') end)
+		friend('nameplate1')
+		stub.fire_event('UNIT_FACTION', 'nameplate1')
+		eq(#take_errors(), 1, client .. ': the failure reported')
+		eq(frame.base_unit, 'friendlynameplate', client .. ': drawn from Friendly nameplates')
+
+		-- Its next full update places it.
+		UF:UpdateConfig('friendlynameplate')
+		check_centred(frame, NamePlate1, 150, 16, client .. ': placed by the next update')
+		eq(clicks(NamePlate1), frame, client .. ': its click area the frame')
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
 ------------------------------------------------------------------ the plate size
 
 test('the plate size follows the enemy look', function()
@@ -287,6 +312,41 @@ for _, client in ipairs(CLIENTS) do
 		eq(#take_errors(), 0, 'no error')
 	end)
 end
+
+test('a plate size set on its own sets every click area again: out of combat, and once combat ends', function()
+	for _, client in ipairs(CLIENTS) do
+		local st, UF, P = world(client)
+		enemy('nameplate1')
+		local foe = NP.add('nameplate1')
+		friend('nameplate2')
+		local ally = NP.add('nameplate2')
+		local logs = { watch_clicks(NamePlate1, foe), watch_clicks(NamePlate2, ally) }
+		local function joined(log) return table.concat(log, ', ') end
+		local function reset() for _, log in ipairs(logs) do for i = #log, 1, -1 do log[i] = nil end end end
+
+		-- The size alone, as after a UI scale change or Blizzard's own size
+		-- (UF:ApplyPlateSize, with no frame placed again).
+		P.nameplate.width, P.nameplate.height = 240, 24
+		UF:ApplyPlateSize()
+		eq(plate_size(), driver(UF, 240, 24), client .. ': the plates 240 by 24')
+		eq(joined(logs[1]), 'Clear, Set frame 240x24', client .. ": the enemy's click area set again at its plate's new size")
+		eq(joined(logs[2]), 'Clear, Set frame 150x16', client .. ": the friend's too")
+		eq(clicks(NamePlate1), foe, client .. ": the enemy's click area the frame")
+
+		-- In combat the size waits, and so do the click areas.
+		reset()
+		stub.in_combat = true
+		P.nameplate.width, P.nameplate.height = 200, 20
+		UF:ApplyPlateSize()
+		eq(joined(logs[1]) .. joined(logs[2]), '', client .. ': in combat: nothing yet')
+		stub.in_combat = false
+		stub.fire_event('PLAYER_REGEN_ENABLED')
+		eq(plate_size(), driver(UF, 200, 20), client .. ': combat over: the plates 200 by 20')
+		eq(joined(logs[1]), 'Clear, Set frame 200x20', client .. ": combat over: the enemy's click area at the new size")
+		eq(joined(logs[2]), 'Clear, Set frame 150x16', client .. ": combat over: the friend's")
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
 
 ------------------------------------------------------------------ the rounding and the widgets
 

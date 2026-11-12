@@ -351,9 +351,13 @@ local plateOfUnit = {}
 	plate settings; and on the frame after either setting changes, from
 	CVarCallbackRegistry, since its callbacks run in no set order and
 	Blizzard's UnitFrames' can come after SaftUI's. And on one plate, after
-	its frame's place or size changed (UF:PlacePlateFrame): whether the
-	game's click area follows the frame's rect after the calls, or takes it
-	when they're made, isn't documented.
+	its frame's place or size changed (UF:PlacePlateFrame), and on every
+	plate after the plate size is set (UF:ApplyPlateSize): whether the game's
+	click area follows the frame's rect after the calls, or takes it when
+	they're made, isn't said outright. SetAllHitTestPoints' doc ("Sets the
+	anchor points ... to fully encompass the target region",
+	FrameAPINamePlateDocumentation.lua, both clients) reads as anchors, which
+	would follow; an in-game check.
 ]]
 
 -- Sets the click area of a plate SaftUI shows back to its frame, with oUF's
@@ -487,12 +491,16 @@ end
 -- all plates, which also sets how they stack, so a friendly look doesn't
 -- change it: it's drawn smaller on its plate (UF:PlacePlateFrame). The game
 -- refuses the size from addon code in combat, so in combat this waits until
--- combat ends. Nothing before the driver is made.
+-- combat ends. Then every plate's click area is set again (the click area,
+-- above), since the frames that fill their plates were resized with them (a
+-- UI scale or display change, Blizzard's own size): out of combat, like the
+-- size. Nothing before the driver is made.
 function UF:ApplyPlateSize()
 	if not self.plateDriver then return end
 	if st:QueueAfterCombat('NameplateSize', function() UF:ApplyPlateSize() end) then return end
 	local config = self:GetProfileConfig()[UF.PlateConfigKey(false)]
 	self.plateDriver:SetSize(UF.PlateDriverSize(config.width, config.height))
+	self:RestorePlateHitTests()
 end
 
 -- How each plate's frame was last placed (UF:PlacePlateFrame): filling its
@@ -514,7 +522,6 @@ function UF:PlacePlateFrame(frame)
 	local fills = frame.base_unit == UF.PlateConfigKey(false)
 	local place = (fills and 'fill ' or 'centre ') .. config.width .. 'x' .. config.height
 	if placedAs[frame] == place then return end
-	placedAs[frame] = place
 	local plate = frame:GetParent()
 	frame:ClearAllPoints()
 	if fills then
@@ -523,6 +530,9 @@ function UF:PlacePlateFrame(frame)
 		frame:SetPoint('CENTER', plate, 'CENTER')
 		st:SetSize(frame, config.width, config.height)
 	end
+	-- Noted once it's placed, so a place that errored is tried again by the
+	-- next update.
+	placedAs[frame] = place
 	self:RestorePlateHitTest(frame)
 end
 
