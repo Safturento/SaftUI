@@ -713,3 +713,60 @@ test("remove_shell_config takes the shell's Config module out, so the real confi
 	reset_world()
 	check(SaftUI.Config ~= nil and SaftUI.Config ~= config, 'reset_world brings the shell\'s back')
 end)
+
+test('Show, Hide and SetShown fire OnShow and OnHide only for a visibility that changes, as in game', function()
+	local parent = CreateFrame('Frame')
+	local child = CreateFrame('Frame', nil, parent)
+	local fired = {}
+	for name, frame in pairs({ parent = parent, child = child }) do
+		frame:SetScript('OnShow', function() fired[#fired + 1] = name .. ' shown' end)
+		frame:SetScript('OnHide', function() fired[#fired + 1] = name .. ' hidden' end)
+	end
+	local function took(action)
+		fired = {}
+		action()
+		table.sort(fired)
+		return table.concat(fired, ',')
+	end
+
+	eq(took(function() parent:Show() end), '', 'Show on a shown frame fires nothing, nor under it')
+	eq(took(function() parent:SetShown(true) end), '', 'SetShown(true) on a shown frame fires nothing')
+	eq(took(function() parent:SetShown(1) end), '', 'SetShown(1) is shown too')
+	eq(took(function() parent:Hide() end), 'child hidden,parent hidden', 'Hide on a shown frame fires OnHide on it and what it hides')
+	eq(took(function() parent:Hide() end), '', 'Hide on a hidden frame fires nothing')
+	eq(took(function() parent:SetShown(false) end), '', 'SetShown(false) on a hidden frame fires nothing')
+	eq(took(function() parent:SetShown(nil) end), '', 'SetShown(nil) is hidden too')
+	eq(took(function() child:Hide() end), '', 'a child hidden under a hidden parent was not visible, so it fires nothing')
+	eq(took(function() parent:Show() end), 'parent shown', 'Show shows the parent and not the child that was hidden itself')
+	eq(took(function() child:Show() end), 'child shown', 'and showing the child fires its OnShow')
+	check(parent:IsShown() and child:IsShown() and child:IsVisible(), 'both end up shown')
+end)
+
+test('SetPoint still refuses an anchor that makes a loop, through any chain, as in game', function()
+	local a, b, c = CreateFrame('Frame'), CreateFrame('Frame'), CreateFrame('Frame')
+	local parent = CreateFrame('Frame')
+	local child = CreateFrame('Frame', nil, parent)
+
+	local ok, err = pcall(a.SetPoint, a, 'CENTER', a)
+	eq(ok, false, 'a region anchored to itself')
+	check(tostring(err):find('Cannot anchor to itself', 1, true), tostring(err))
+
+	b:SetPoint('CENTER', a) -- b depends on a
+	ok, err = pcall(a.SetPoint, a, 'CENTER', b)
+	eq(ok, false, 'a anchored to b, which depends on a')
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+
+	c:SetPoint('CENTER', b)
+	ok, err = pcall(a.SetPoint, a, 'TOPLEFT', c)
+	eq(ok, false, 'through two links')
+	ok = pcall(c.SetPoint, c, 'TOPLEFT', a)
+	eq(ok, true, 'an anchor that makes no loop is fine')
+
+	-- a parent anchored to its own child can't have the child anchored back to it
+	parent:SetPoint('CENTER', child)
+	ok, err = pcall(child.SetPoint, child, 'CENTER', parent)
+	eq(ok, false, "a child anchored to its parent, which is anchored to the child")
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+	ok, err = pcall(child.SetAllPoints, child, parent)
+	eq(ok, false, 'SetAllPoints too')
+end)
