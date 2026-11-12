@@ -557,11 +557,10 @@ end
 
 function AP:RegisterAuraMover(info)
 	local key = info.key
-	st:RegisterMover('auras_' .. key, {
-		frame = self.holders[key],
+	st:RegisterConfigMover(self.holders[key], {
+		key = 'auras_' .. key,
 		label = info.label,
-		getPosition = function() return self.config[key].position end,
-		setPosition = function(pos) self.config[key].position = pos end,
+		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'Auras', key, 'general' },
 	})

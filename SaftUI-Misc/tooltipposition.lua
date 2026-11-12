@@ -158,11 +158,10 @@ function TT:SetupTooltipPosition()
 		self:UpdateTooltipAnchor()
 	end)
 
-	st:RegisterMover('tooltip', {
-		frame = self.tooltipHolder,
+	st:RegisterConfigMover(self.tooltipHolder, {
+		key = 'tooltip',
 		label = 'Tooltip',
-		getPosition = function() return self.config.position end,
-		setPosition = function(pos) self.config.position = pos end,
+		config = function() return self.config end,
 		apply = function() self:ApplyTooltipHolder() end,
 		configPath = { 'Tooltip', 'general' },
 	})

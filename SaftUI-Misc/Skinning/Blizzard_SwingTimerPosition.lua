@@ -173,11 +173,10 @@ end
 
 function STP:RegisterBarMover(info)
 	local key = info.key
-	self.movers[key] = st:RegisterMover('swingtimer_' .. key, {
-		frame = self.holders[key],
+	self.movers[key] = st:RegisterConfigMover(self.holders[key], {
+		key = 'swingtimer_' .. key,
 		label = info.label .. ' Swing',
-		getPosition = function() return self.config[key].position end,
-		setPosition = function(pos) self.config[key].position = pos end,
+		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'SwingTimer', key, 'general' },
 	})
