@@ -222,3 +222,27 @@ test('after a profile switch, the rows reach the new profile, and the font objec
 	Set('kinds', 'button_text', 'pixel')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("the outline values name None as None, and spell Monochrome Thick Outline", function()
+	local values = Tab().args.pixel.args.font_outline.values
+	eq(values.NONE, 'None')
+	eq(values.MONOCHROMETHICKOUTLINE, 'Monochrome Thick Outline')
+end)
+
+test("a font saved with the outline NONE reaches SetFont with no flags", function()
+	local font = st:GetFont('pixel')
+	local saved = st.config.profile.fonts.pixel.font_outline
+	local flags = {}
+	local real = font.SetFont
+	font.SetFont = function(self, path, s, f)
+		flags[#flags + 1] = f
+		return real(self, path, s, f)
+	end
+	st.config.profile.fonts.pixel.font_outline = 'NONE'
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	font.SetFont = real
+	st.config.profile.fonts.pixel.font_outline = saved
+	st:GetModule('Fonts'):UpdateFontConfig('pixel')
+	check(#flags > 0, 'SetFont ran')
+	for i, f in ipairs(flags) do eq(f, '', 'SetFont call ' .. i) end
+end)

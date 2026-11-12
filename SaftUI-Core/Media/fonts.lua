@@ -5,12 +5,12 @@ local FN = st:NewModule('Fonts')
 FN.font_objects = {}
 
 FN.outlines = {
-	NONE = st.retail and '' or 'NONE',
+	NONE = 'None',
 	OUTLINE = 'Outline',
 	THICKOUTLINE = 'Thick Outline',
 	MONOCHROME = 'Monochrome',
 	MONOCHROMEOUTLINE = 'Monochrome Outline',
-	MONOCHROMETHICKOUTLINE = 'Monochrome Thick Outine',
+	MONOCHROMETHICKOUTLINE = 'Monochrome Thick Outline',
 }
 
 function FN:OnEnable()
@@ -41,10 +41,14 @@ function FN:UpdateFontConfig(font_name)
 		self.font_objects[font_name] = font
 	end
 
+	-- The saved key NONE is no flags at all; SetFont takes '' for that.
+	local outline = config.font_outline
+	if outline == 'NONE' then outline = '' end
+
 	font:SetFont(
 		st.LSM:Fetch('font', config.font_name),
 		config.font_size,
-		config.font_outline
+		outline
 	)
 	-- Opaque black, so a shadow offset shows: a font object's own shadow color
 	-- may be clear. At offset 0, 0 the shadow sits behind the letters, unseen.
@@ -56,8 +60,8 @@ function FN:UpdateFontConfig(font_name)
 	-- right cut their last letters off until a reload. A size change does, so
 	-- the size goes up by one and straight back (checked in game: no flicker).
 	local path = st.LSM:Fetch('font', config.font_name)
-	font:SetFont(path, config.font_size + 1, config.font_outline)
-	font:SetFont(path, config.font_size, config.font_outline)
+	font:SetFont(path, config.font_size + 1, outline)
+	font:SetFont(path, config.font_size, outline)
 end
 
 function st:GetFont(font_name)
