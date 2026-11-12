@@ -1,10 +1,12 @@
--- The Nameplates page in /sui (SaftUI-Unitframes/config/config.lua) and the
--- game's nameplate settings SaftUI sets while its plates are drawn
+-- The Enemy nameplates page in /sui (SaftUI-Unitframes/config/config.lua) and
+-- the game's nameplate settings SaftUI sets while its plates are drawn
 -- (SaftUI-Unitframes/nameplates/cvars.lua):
 --   - the page follows Raid 40 in the unit picker; its General tab has
---     Nameplates, Friendly plates, Threat when solo, Theme, Background, Width
---     and Height, and no Position, Layout or Range; its element tabs are every
---     unit's (by ValidUnit), and it has no Copy from;
+--     Nameplates, Threat when solo, its box, Theme, Background, Width and
+--     Height, and no Position, Layout or Range; its element tabs are every
+--     unit's (by ValidUnit), and it has no Copy from. Friendly plates is on the
+--     Friendly nameplates page (friendly_page_test.lua has that page and the
+--     boxes);
 --   - turning Nameplates off puts the game's settings back and asks for a
 --     reload; Friendly plates sets the game's friendly plates, out of combat;
 --   - the user's own settings are recorded once per character, the first time
@@ -65,9 +67,10 @@ local function row_for(view, key)
 end
 
 -- Sets General's key as the window does (the row's set, inherited where it
--- has none of its own). Returns what OM.Set does.
+-- has none of its own). Returns what OM.Set does. Friendly plates is on the
+-- Friendly nameplates page (friendly_page_test.lua), the rest on the Enemy one.
 local function set(UF, key, value)
-	local root, view = page(UF)
+	local root, view = page(UF, { pick = key == 'friendly' and 'friendlynameplate' or 'nameplate', tab = 'general' })
 	local row = row_for(view, key)
 	assert(row, 'no General row ' .. key)
 	return SaftUI.OptionsModel.Set(root, row, value)
@@ -123,7 +126,10 @@ end)
 
 ------------------------------------------------------------------ the page
 
-test('the Nameplates page follows Raid 40; General has Nameplates, Friendly plates, Threat when solo, Theme, Background, Width and Height, and no Position', function()
+-- The page is Enemy nameplates, and Friendly plates is on the Friendly
+-- nameplates page, with the box in its place here (friendly_page_test.lua
+-- tests both pages and the boxes).
+test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat when solo, its box, Theme, Background, Width and Height, and no Position', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
 		-- Two units for the picker to put it after.
@@ -134,32 +140,32 @@ test('the Nameplates page follows Raid 40; General has Nameplates, Friendly plat
 		local root, view = page(UF, { pick = 'nameplate' })
 		local picked = {}
 		for i, entry in ipairs(view.picker.values) do picked[i] = entry.key end
-		eq(table.concat(picked, ','), 'player,raid40,nameplate,profile', client .. ': Nameplates follows Raid 40')
+		eq(table.concat(picked, ','), 'player,raid40,nameplate,friendlynameplate,profile', client .. ': Enemy nameplates follows Raid 40, Friendly nameplates it')
 		eq(view.picker.selected, 'nameplate', client .. ': picked')
 		local config = root.Unitframes.args.nameplate
-		eq(config.name, 'Nameplates', client .. ': its name')
+		eq(config.name, 'Enemy nameplates', client .. ': its name')
 
 		local general = config.args.general
 		local keys = {}
 		for key in pairs(general.args) do keys[#keys + 1] = key end
 		table.sort(keys)
-		eq(table.concat(keys, ','), 'background,enable,friendly,height,theme,threat_solo,width', client .. ": General's rows")
-		for key, name in pairs({ enable = 'Nameplates', friendly = 'Friendly plates', threat_solo = 'Threat when solo',
+		eq(table.concat(keys, ','), 'background,box_note,enable,height,theme,threat_solo,use_friendly,width', client .. ": General's rows")
+		for key, name in pairs({ enable = 'Nameplates', threat_solo = 'Threat when solo', use_friendly = "Use friendly nameplates' settings",
 				theme = 'Theme', background = 'Background', width = 'Width', height = 'Height' }) do
 			eq(general.args[key].name, name, client .. ': ' .. key .. ' is ' .. name)
 		end
 		eq(general.args.enable.desc, "Draws nameplates in SaftUI's look: enemies and neutral units, and friendly ones outside instances. Changes after a reload.", client .. ": Nameplates' desc")
-		eq(general.args.friendly.desc, "Shows nameplates over friendly players and NPCs: SaftUI's outside instances, Blizzard's inside them. Off, friendly units have none.", client .. ": Friendly plates' desc")
 		eq(general.args.threat_solo.desc, "Tints enemy health bars by your threat while you're on your own too. In a party or raid they're always tinted.", client .. ": Threat when solo's desc")
-		eq(general.args.width.desc, "Every nameplate's width: its health bar and the area you click.", client .. ": Width's desc")
-		eq(general.args.height.desc, "Every nameplate's height: its health bar and the area you click.", client .. ": Height's desc")
+		eq(general.args.width.desc, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size.", client .. ": Width's desc")
+		eq(general.args.height.desc, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size.", client .. ": Height's desc")
 		check(general.args.theme.desc:find('nameplate', 1, true) ~= nil, client .. ": Theme says it's the plates': " .. general.args.theme.desc)
 		eq(general.args.background.order, general.args.theme.order + 0.5, client .. ': Background right after Theme')
 
-		-- In the order the window draws them: the three toggles on a line.
+		-- In the order the window draws them: the two toggles and the box on a
+		-- line. The box's line shows only while a box is checked.
 		local drawn = {}
 		for i, row in ipairs(rows(view)) do drawn[i] = row.key end
-		eq(table.concat(drawn, ','), 'enable,friendly,threat_solo,theme,background,width,height', client .. ': in order')
+		eq(table.concat(drawn, ','), 'enable,threat_solo,use_friendly,theme,background,width,height', client .. ': in order')
 		for _, row in ipairs(rows(view)) do
 			check(not row.disabled, client .. ': ' .. row.key .. ' is enabled with no other nameplate addon')
 		end
