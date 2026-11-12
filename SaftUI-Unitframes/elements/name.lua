@@ -79,6 +79,9 @@ local function GetConfigTable(unit)
 		args.show_classification = G.toggle(6, 'Classification',
 			'Marks rare (R), rare elite (R+), elite (+) and world boss (B) units, after the level and before the name.', 'small')
 	end
+	if UF.CanShow(unit, 'npcs') then
+		args.color_friendly = G.toggle(8.5, 'Color friendly', "Colors friendly units' names in the friendly reaction color.", 'small')
+	end
 	if UF.CanShow(unit, 'players') then
 		args.colorClass = G.toggle(7, 'Class color', "Colors players' names in their class color, over Color hostile.", 'small')
 	end
