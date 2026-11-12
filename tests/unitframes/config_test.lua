@@ -245,8 +245,8 @@ test('the unit picker lists the units in a fixed order, Player first, and Profil
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
 	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
-	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,profile',
-		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Nameplates, then Profile')
+	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,friendlynameplate,profile',
+		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates, then Profile')
 	eq(view.picker.selected, 'player', 'the page opens on Player')
 end)
 
