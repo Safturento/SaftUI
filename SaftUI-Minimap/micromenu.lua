@@ -374,8 +374,7 @@ function MicroMenu:UpdateConfig()
     if not self.Container then return end
     if st:QueueAfterCombat('MicroMenu', function() MicroMenu:UpdateConfig() end) then return end
 
-    self.Container:ClearAllPoints()
-    self.Container:SetPoint(st:UnpackPoint(self.config.position))
+    st:PlaceAtPosition(self.Container, self.config.position)
     self:UpdateButtons()
 end
 
@@ -421,7 +420,7 @@ end
 function MicroMenu:OnEnable()
     st:BindModuleConfig(self, 'micromenu')
     self.Container = CreateFrame('Frame', 'SaftUI_MicroMenu', UIParent)
-    self.Container:SetPoint(st:UnpackPoint(self.config.position))
+    st:PlaceAtPosition(self.Container, self.config.position)
     -- Sized to the bar by UpdateButtons
     self.Container:SetSize(BUTTON_SIZE, BUTTON_SIZE)
     -- No-op to ignore Layout calls for buttons like mail icon
@@ -453,11 +452,10 @@ function MicroMenu:OnEnable()
     self:UpdateButtons()
     self:SetupMinimapButtons()
 
-    st:RegisterMover('micromenu', {
-        frame = self.Container,
+    st:RegisterConfigMover(self.Container, {
+        key = 'micromenu',
         label = 'Micro Menu',
-        getPosition = function() return self.config.position end,
-        setPosition = function(pos) self.config.position = pos end,
+        config = function() return self.config end,
         apply = function() MicroMenu:UpdateConfig() end,
         configPath = { 'MicroMenu', 'general' },
     })

@@ -75,12 +75,11 @@ function MM:OnEnable()
 
     -- Minimap is Blizzard's, moved with no SaftUI holder, so SaftUI doesn't clamp
     -- it: only edit mode drags and nudges keep it inside the screen edge margin.
-    st:RegisterMover('minimap', {
-        frame = Minimap,
+    st:RegisterConfigMover(Minimap, {
+        key = 'minimap',
         blizzardFrame = true,
         label = 'Minimap',
-        getPosition = function() return self.config.position end,
-        setPosition = function(pos) self.config.position = pos end,
+        config = function() return self.config end,
         apply = function() MM:UpdateConfig() end,
         configPath = { 'Minimap', 'general' },
     })
