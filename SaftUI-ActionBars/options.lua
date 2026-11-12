@@ -108,12 +108,11 @@ end
 function AB:RegisterBarMover(id)
 	local bar = self.bars[id]
 	if not bar or self.movers[id] then return end
-	self.movers[id] = st:RegisterMover('ab_' .. id, {
-		frame = bar,
+	self.movers[id] = st:RegisterConfigMover(bar, {
+		key = 'ab_' .. id,
 		label = self:GetBarLabel(id),
 		-- Read through self.config on every call: a profile change replaces it.
-		getPosition = function() return self.config[id].position end,
-		setPosition = function(position) self.config[id].position = position end,
+		config = function() return self.config[id] end,
 		apply = function() self:LayoutBar(id) end,
 		configPath = { 'ActionBars', id, 'general' },
 	})
@@ -125,12 +124,11 @@ end
 function AB:RegisterExtraMover(id)
 	local holder = self.extras[id]
 	if not holder or self.movers[id] then return end
-	self.movers[id] = st:RegisterMover('ab_' .. id, {
-		frame = holder,
+	self.movers[id] = st:RegisterConfigMover(holder, {
+		key = 'ab_' .. id,
 		label = self.EXTRA_LABELS[id] .. '\n' .. EXTRA_NOTES[id],
 		-- Read through self.config on every call: a profile change replaces it.
-		getPosition = function() return self.config[id].position end,
-		setPosition = function(position) self.config[id].position = position end,
+		config = function() return self.config[id] end,
 		apply = function() self:LayoutExtra(id) end,
 		configPath = { 'ActionBars', id, 'general' },
 	})
