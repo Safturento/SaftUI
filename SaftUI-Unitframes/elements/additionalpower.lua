@@ -72,7 +72,6 @@ local function UpdateConfig(unitframe)
 	-- Read after UpdateElement, which points it at the current profile.
 	local config = additionalPower.config
 
-	--additionalPower.Override       = config.manaAsPrimary and Update or nil
 	additionalPower.colorPower     = config.colorPower
 	additionalPower.colorCustom    = config.colorCustom
 	additionalPower.customColor    = config.customColor
