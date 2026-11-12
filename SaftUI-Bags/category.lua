@@ -73,7 +73,6 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 				count = item.stackCount,
 				--upgradeInfo = upgradeInfo,
 				itemID = item.itemID,
-				unitPrice = vendorPrice,
 				stackPrice = vendorPrice * item.stackCount,
 				link = item.hyperlink,
 				quality = quality or 0,

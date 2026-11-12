@@ -42,7 +42,6 @@ function INV:CreateContainer(id, name, isBankContainer)
         container.scrollFrame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
     end
 
-	container.slots = {}
 	container.categories = {}
 	container.columns = {}
 	container.bag_ids = self.bagIds[id]
@@ -620,22 +619,6 @@ function INV:UpdateContainerLayout(id)
 		self:LayoutSections(container, (self:GetViewSections(id, view)))
 		return
 	end
-
-	local totalRows = 0
-	for _, category in pairs(container.categories) do
-		if category:IsShown() then
-			totalRows = totalRows + category.numRows + 1
-		end
-	end
-
-    local columns = container.columns
-    local containerConfig = self.config[container.id]
-
-    local maxHeight = self:GetButtonHeight() * containerConfig.maxRows
-                    + self.config.buttonspacing * (containerConfig.maxRows - 1)
-
-    local maxWidth = self:GetButtonHeight() * containerConfig.maxColumns
-                    + self.config.buttonspacing * (containerConfig.maxColumns - 1)
 
 	for _, column in pairs(container.columns) do
 		column:SetHeight(0)

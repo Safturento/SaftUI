@@ -45,7 +45,6 @@ function INV:HasWarbandBank()
 end
 
 INV.containers = {}
-INV.OnUseItems = {}
 
 -- Item buttons are not square: 60 wide by 50 tall by default, with the icon
 -- cropped to fit (st:SkinIcon). One setting, iconsize, is the height, and the

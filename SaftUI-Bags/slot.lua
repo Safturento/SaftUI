@@ -423,7 +423,6 @@ function INV:CreateSlot(container, categoryName)
     slot.container = container
     self.itemSlots[slot] = true
     slot.id = slotID
-    slot.type = container.id
     slot.tainted = InCombatLockdown()
 
     slot.GetInventorySlot = ButtonInventorySlot
@@ -486,7 +485,6 @@ function INV:CreateSlot(container, categoryName)
 	slot:Hide()
 
 	-- tinsert(self.AllSlots, slot)
-	-- container.slots[slotID] = slot
 	categoryFrame.slots[slotID] = slot
 
 	if slot.tainted then

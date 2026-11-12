@@ -71,23 +71,3 @@ function INV:HandleMerchant()
 
 	end
 end
-
-function INV:GetAutoVendorProfit()
-	local profit = 0
-	for _,bagID in pairs(self.containers.bag.bag_ids) do
-		for slotID=1, C_Container.GetContainerNumSlots(bagID) do
-			local link = C_Container.GetContainerItemLink(bagID, slotID)
-			if link and select(11, C_Item.GetItemInfo(link)) then
-				local _,_,quality,_,_,_,_,_,_,_,price = C_Item.GetItemInfo(link)
-				local itemInfo = C_Container.GetContainerItemInfo(bagID, slotID)
-				local stackPrice = price * itemInfo.stackCount
-
-				if quality == 0 and stackPrice > 0 then
-					profit = profit + stackPrice
-				end
-			end
-		end
-	end
-
-	return profit
-end
