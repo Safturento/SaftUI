@@ -24,6 +24,21 @@ function st.PlainString(value)
 	if not issecretvalue(value) and type(value) == 'string' then return value end
 end
 
+-- A tooltip's lines (C_TooltipInfo's data.lines) as one string: each line's
+-- leftText then rightText, with a space before each.
+function st.TooltipLinesText(lines)
+	local text = ""
+	for _, line in pairs(lines) do
+		if line.leftText then
+			text = text .. " " .. line.leftText
+		end
+		if line.rightText then
+			text = text .. " " .. line.rightText
+		end
+	end
+	return text
+end
+
 -- A whole number from `value` (nil or false counts as `low`) held between low and high; with
 -- low above high, high. Errors on a string or a secret value, as math.floor does.
 function st.Clamp(value, low, high)

@@ -77,3 +77,10 @@ test('OutlineFlag: nil is no flags, an unknown key passes through', function()
 	eq(st.OutlineFlag(nil), '', 'nil')
 	eq(st.OutlineFlag('SOMETHING'), 'SOMETHING', 'unknown key')
 end)
+
+test('TooltipLinesText joins each line, left then right, with a space before each', function()
+	eq(st.TooltipLinesText({ { leftText = 'Sword', rightText = 'Rare' }, { leftText = '5 Armor' }, {}, { rightText = 'x' } }),
+		' Sword Rare 5 Armor x', 'both sides, one side, none')
+	eq(st.TooltipLinesText({}), '', 'no lines')
+	eq(st.TooltipLinesText({ { leftText = '' } }), ' ', 'an empty text still adds its space')
+end)

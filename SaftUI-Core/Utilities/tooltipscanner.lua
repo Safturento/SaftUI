@@ -14,16 +14,7 @@ function Util:ScanItemLink(itemLink)
     -- The tooltip may not have arrived (an item filed after its tooltip never
     -- came): no text, and nothing cached, so a later scan can fill it in.
     if not (data and data.lines) then return "" end
-    local text = ""
-    for _,lines in pairs(data.lines) do
-        if lines.leftText then
-            text = text .. " " .. lines.leftText
-        end
-        if lines.rightText then
-            text = text .. " " .. lines.rightText
-        end
-    end
-    text = string.unmagic(text)
+    local text = string.unmagic(st.TooltipLinesText(data.lines))
     self.TooltipCache[itemLink] = text
     return text
 end

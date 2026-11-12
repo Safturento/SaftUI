@@ -40,15 +40,7 @@ function INV:ScanBagItem(bagID, slotID, peek)
         if not peek then self.tooltipTries[itemLink] = tries + 1 end
         return '', '', false
     end
-    local raw = ""
-    for _,lines in pairs(data.lines) do
-        if lines.leftText then
-            raw = raw .. " " .. lines.leftText
-        end
-        if lines.rightText then
-            raw = raw .. " " .. lines.rightText
-        end
-    end
+    local raw = st.TooltipLinesText(data.lines)
     local text = string.unmagic(raw)
     self.cache[itemLink] = { text = text, raw = raw }
     self.tooltipTries[itemLink] = nil
