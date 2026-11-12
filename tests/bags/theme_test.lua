@@ -117,7 +117,7 @@ local function bags(theme, client)
 	if theme then st.config.profile.theme.name = theme end
 	local container = CreateFrame('Frame', 'SaftUIThemeTestBag', UIParent)
 	container.id = 'bag'
-	container.slots, container.categories, container.columns = {}, {}, {}
+	container.categories, container.columns = {}, {}
 	INV.containers.bag = container
 
 	local scrollFrame = CreateFrame('ScrollFrame', nil, container)
@@ -854,7 +854,7 @@ test('the bag and bank windows are windows', function()
 	local bag = bags()
 	local bank = CreateFrame('Frame', 'SaftUIThemeTestBank', UIParent)
 	bank.id = 'bank'
-	bank.slots, bank.categories, bank.columns = {}, {}, {}
+	bank.categories, bank.columns = {}, {}
 	INV.containers.bank = bank
 	local scrollFrame = CreateFrame('ScrollFrame', nil, bank)
 	scrollFrame.ScrollChild = CreateFrame('Frame', nil, scrollFrame)
@@ -1002,7 +1002,7 @@ test('the bag slot bars sit above the title bar: on the window under Thick, clea
 		load_saftui('SaftUI-Bags/containers/bag.lua') -- INV:MovePlayerBagSlots
 		local bank = CreateFrame('Frame', 'SaftUIThemeTestBank', UIParent)
 		bank.id = 'bank'
-		bank.slots, bank.categories, bank.columns = {}, {}, {}
+		bank.categories, bank.columns = {}, {}
 		INV.containers.bank = bank
 		bank.scrollFrame = CreateFrame('ScrollFrame', nil, bank)
 		bank.scrollFrame.ScrollChild = CreateFrame('Frame', nil, bank.scrollFrame)
