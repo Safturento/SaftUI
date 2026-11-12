@@ -13,6 +13,13 @@ FN.outlines = {
 	MONOCHROMETHICKOUTLINE = 'Monochrome Thick Outline',
 }
 
+-- The font flag for a saved outline key (an FN.outlines key): 'NONE' and nil
+-- are no flags, so SetFont takes the result; any other key is its own flag.
+function st.OutlineFlag(outline)
+	if not outline or outline == 'NONE' then return '' end
+	return outline
+end
+
 function FN:OnEnable()
 	self:UpdateFontConfig()
 end

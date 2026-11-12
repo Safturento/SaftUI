@@ -7,6 +7,29 @@ if not issecretvalue then
 	function issecretvalue() return false end
 end
 
+-- Values the game may hand an addon as secrets (.agents/clients.md): a secret
+-- can't be compared, looked up or typed, so these give nil for one.
+-- A value that isn't secret, else nil.
+function st.Plain(value)
+	if not issecretvalue(value) then return value end
+end
+
+-- A value that is a plain number, else nil.
+function st.PlainNumber(value)
+	if not issecretvalue(value) and type(value) == 'number' then return value end
+end
+
+-- A value that is a plain string, else nil.
+function st.PlainString(value)
+	if not issecretvalue(value) and type(value) == 'string' then return value end
+end
+
+-- A whole number from `value` (nil or false counts as `low`) held between low and high; with
+-- low above high, high. Errors on a string or a secret value, as math.floor does.
+function st.Clamp(value, low, high)
+	return math.min(math.max(math.floor(value or low), low), high)
+end
+
 local function removeMagicChars(x)
    return (x:gsub('%%', ' ')
             :gsub('^%^', '')
