@@ -13,8 +13,8 @@
 --     fill and on Blizzard's, and comes off Blizzard's fill cleanly;
 --   - a theme switch both ways with plates showing leaves nothing of one look
 --     in the other;
---   - the Nameplates page's Theme draws the plate frame as every unit's frame
---     is drawn.
+--   - the Enemy nameplates page's Theme draws the plate frame as every unit's
+--     frame is drawn.
 --
 -- The world is nameplate_world.lua's (see its top): real unit frame files over
 -- oUF's stand-in (fixtures/ouf.lua), whose elements don't update from the
