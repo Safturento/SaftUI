@@ -590,8 +590,7 @@ function LT:ApplyRollAnchor()
 	local anchor = self:CreateRollAnchor()
 
 	anchor:SetSize(st:RoundToPixel(config.width, anchor), st:RoundToPixel(config.height, anchor))
-	anchor:ClearAllPoints()
-	anchor:SetPoint(st:UnpackPoint(config.position))
+	st:PlaceAtPosition(anchor, config.position)
 end
 
 -- Stacks Blizzard's roll frames and the held rolls from the anchor, with no
@@ -696,11 +695,10 @@ function LT:InitializeRollFrame()
 end
 
 function LT:RegisterRollMover()
-	st:RegisterMover('lootroll', {
-		frame = self.rollAnchor,
+	st:RegisterConfigMover(self.rollAnchor, {
+		key = 'lootroll',
 		label = 'Loot Rolls',
-		getPosition = function() return self.config.roll.position end,
-		setPosition = function(pos) self.config.roll.position = pos end,
+		config = function() return self.config.roll end,
 		apply = function() self:UpdateGroupLootConfig() end,
 		configPath = { 'Loot', 'roll', 'general' },
 	})

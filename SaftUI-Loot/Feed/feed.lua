@@ -597,8 +597,7 @@ end
 
 -- Places the feed from loot.feed.position. Also used by the edit mode mover.
 function LT:ApplyFeedPosition()
-	self.feed:ClearAllPoints()
-	self.feed:SetPoint(st:UnpackPoint(self.config.feed.position))
+	st:PlaceAtPosition(self.feed, self.config.feed.position)
 end
 
 -- Safe in combat lockdown: the feed and its items are not protected.
@@ -761,7 +760,7 @@ function LT:InitializeLootFeed()
 	local config = self.config.feed
 	local feed = CreateFrame('frame', st.name ..'LootFeed', UIParent)
 	feed:SetSize(config.width, 20)
-	feed:SetPoint(st:UnpackPoint(config.position))
+	st:PlaceAtPosition(feed, config.position)
 	feed.items = {}
 	feed.offset = 0
 	feed.overlay = CreateFrame('frame', feed:GetName()..'ScrollOverlay', feed)
@@ -815,11 +814,10 @@ function LT:InitializeLootFeed()
 
 	self:UpdateLootFeedConfig()
 
-	st:RegisterMover('lootfeed', {
-		frame = feed,
+	st:RegisterConfigMover(feed, {
+		key = 'lootfeed',
 		label = 'Loot Feed',
-		getPosition = function() return self.config.feed.position end,
-		setPosition = function(pos) self.config.feed.position = pos end,
+		config = function() return self.config.feed end,
 		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
 		configPath = { 'Loot', 'feed', 'general' },
 	})
