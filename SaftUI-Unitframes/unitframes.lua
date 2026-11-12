@@ -42,6 +42,28 @@ function UF.UnitKind(unit)
 	return UF.group_strings[unit] and 'member' or 'unitframe'
 end
 
+-- The config units a nameplate draws from: Enemy nameplates' and Friendly
+-- nameplates' (config/units/nameplate.lua, friendlynameplate.lua).
+UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
+
+function UF.IsPlateUnit(unit)
+	return UF.PLATE_UNITS[unit] == true
+end
+
+-- The config unit a plate draws from: an enemy's plate from nameplate, or from
+-- friendlynameplate while nameplate.use_friendly; a friend's plate from
+-- friendlynameplate, or from nameplate while friendlynameplate.use_enemy. The
+-- page keeps the two boxes from being on together; if both are, an enemy is
+-- drawn from the Friendly page and a friend from the Enemy page, so nothing
+-- depends on the other answer.
+function UF.PlateConfigKey(friendly)
+	local profile = UF:GetProfileConfig()
+	if friendly then
+		return profile.friendlynameplate.use_enemy and 'nameplate' or 'friendlynameplate'
+	end
+	return profile.nameplate.use_friendly and 'friendlynameplate' or 'nameplate'
+end
+
 -- Whether the bronze box fits a unit frame or bar of this size (width and
 -- height from its config; nil for a side it doesn't set). The box is drawn
 -- its inset outside the frame, and that drawn frame must hold the box's two

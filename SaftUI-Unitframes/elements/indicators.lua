@@ -75,7 +75,7 @@ local indicators = {
        end,
        -- A role means nothing on a nameplate.
        validUnit = function(unit)
-           return unit ~= 'nameplate'
+           return not UF.IsPlateUnit(unit)
        end,
     },
     {
@@ -86,7 +86,7 @@ local indicators = {
         desc = 'The main tank or main assist icon, in a raid.',
         -- Not on nameplates, as the group role isn't.
         validUnit = function(unit)
-            return unit ~= 'nameplate'
+            return not UF.IsPlateUnit(unit)
         end,
         debug = function(self)
             self:SetTexture([[Interface\GROUPFRAME\UI-GROUP-MAINASSISTICON]])
