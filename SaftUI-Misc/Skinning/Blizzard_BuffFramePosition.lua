@@ -40,7 +40,8 @@ local AP = st:NewModule('Auras')
 	    and placed from the profile. The mover and the /sui section work on the holder.
 	  - The Blizzard frame is anchored over its holder (two corners, so Blizzard's SetSize has
 	    no effect), and post-hooks on its ClearAllPoints and SetPoint put it back whenever
-	    Blizzard places it again (ApplySystemAnchor, StatusTrayManager, snapping).
+	    Blizzard places it again (ApplySystemAnchor, StatusTrayManager, snapping): Core's
+	    st:HoldFrame.
 	  - A post-hook on each frame's UpdateGridLayout re-lays every button out by SaftUI's
 	    settings: scale 1, size x size, the Icon filling the button, anchored to the holder
 	    by the grid's first corner. Blizzard's order (frame.auraFrames) is kept. Buffs keep
@@ -429,20 +430,9 @@ end
 function AP:TakeOver(key)
 	local frame, holder = self.frames[key], self.holders[key]
 
-	local function Reanchor()
-		-- A protected frame anchored to the frame (e.g. snapped to it in Blizzard's Edit
-		-- Mode) makes it protected, and it can't be re-anchored in combat.
-		if InCombatLockdown() and frame:IsProtected()
-			and st:QueueAfterCombat('auras_anchor_' .. key, Reanchor) then
-			return
-		end
-		st:ClearAllPointsDirect(frame)
-		st:SetPointDirect(frame, 'TOPLEFT', holder, 'TOPLEFT')
-		st:SetPointDirect(frame, 'BOTTOMRIGHT', holder, 'BOTTOMRIGHT')
-	end
-	hooksecurefunc(frame, 'ClearAllPoints', Reanchor)
-	hooksecurefunc(frame, 'SetPoint', Reanchor)
-	Reanchor()
+	-- A protected frame anchored to the frame (e.g. snapped to it in Blizzard's Edit
+	-- Mode) makes it protected, and then it's re-anchored at the end of combat.
+	st:HoldFrame(frame, holder)
 
 	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden.
 	-- HookScript only; nothing is written onto the frame.
