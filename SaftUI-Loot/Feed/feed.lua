@@ -43,10 +43,8 @@ local feed_stack = {}
 ------------------------------------
 
 local match_replacements = {
-	link = st.retail and '(\124cnIQ%d:\124H[^:]*:[^\124]*\124h.*\124h)%D*'
-	                  or '(\124c%x%x%x%x%x%x%x%x\124H[^:]*:[^\124]*\124h.*\124h)%D*',
-	currency = st.retail and '(\124cnIQ%d:\124Hcurrency[%-?%d:]+%D*)'
-	                      or '(\124c%x%x%x%x%x%x%x%x\124Hcurrency[%-?%d:]+%D*)',
+	link = '(\124cnIQ%d:\124H[^:]*:[^\124]*\124h.*\124h)%D*',
+	currency = '(\124cnIQ%d:\124Hcurrency[%-?%d:]+%D*)',
 	count =  '(%d+)',
 	honor = '(%d+)',
 	experience = '(%d+)',

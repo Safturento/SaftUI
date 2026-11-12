@@ -75,12 +75,10 @@ function CHT:SkinChatFrame(frame)
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
-	if st.retail then
-		st:SkinScrollBar(frame.ScrollBar)
-		frame.ScrollBar:ClearAllPoints()
-		frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
-		frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
-	end
+	st:SkinScrollBar(frame.ScrollBar)
+	frame.ScrollBar:ClearAllPoints()
+	frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
+	frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
