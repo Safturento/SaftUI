@@ -462,5 +462,5 @@ test('every other unit shows its parts by its config alone', function()
 	local keys = {}
 	for name in pairs(UF.PLATE_ENEMY_ONLY) do keys[#keys + 1] = name end
 	table.sort(keys)
-	eq(table.concat(keys, ','), 'Buffs,Castbar,Debuffs,QuestIndicator', 'the enemy-only parts')
+	eq(table.concat(keys, ','), 'Buffs,Castbar,Debuffs,QuestIndicator,Threat', 'the enemy-only parts')
 end)

@@ -176,7 +176,7 @@ test('the Nameplates page follows Raid 40; General has Nameplates, Friendly plat
 			if key ~= 'general' and option.type == 'group' then tabs[#tabs + 1] = key end
 		end
 		table.sort(tabs)
-		eq(table.concat(tabs, ','), 'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator', client .. ': its element tabs')
+		eq(table.concat(tabs, ','), 'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat', client .. ': its element tabs')
 
 		-- A plate shows any unit but an offline player, so Health's colors
 		-- have every flag but Disconnected.

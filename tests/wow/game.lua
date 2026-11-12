@@ -730,3 +730,135 @@ function C_CVar.SetCVar(name, value)
 	stub.cvars[name] = tostring(value)
 	return true
 end
+
+-- Threat, groups and roles, for the nameplates' threat tint
+-- (SaftUI-Unitframes/nameplates/threat.lua). The functions are in both
+-- clients' UnitDocumentation.lua and SecretPredicateAPIDocumentation.lua,
+-- unless a comment says otherwise; IsInGroup, IsInRaid and
+-- GetNumGroupMembers are the game's long-standing globals, which the
+-- generated documentation doesn't list.
+--
+--   stub.threat: mob token -> { [unit token] = entry }, each unit on that
+--     mob's threat list. An entry is the unit's status (0-3, as
+--     UnitThreatSituation gives it: 0 lower threat than the tank, 1 higher
+--     but not tanking, 2 tanking with someone else higher, 3 tanking
+--     securely), or { status = n, percent = p } to give its scaled percent.
+--     The percent is 100 for a unit tanking (status 2 or 3) and 0 otherwise
+--     when not given. A test can put a secret value (tests/lib/secrets.lua)
+--     in either, as restricted content hands one.
+--   stub.secret_threat: mob token -> true (every unit's threat state with that
+--     mob is secret) or a set of unit tokens (only theirs is), for
+--     C_Secrets.ShouldUnitThreatStateBeSecret. The game's threat functions
+--     give secret values then; here they give what stub.threat holds, so a
+--     test of a secret state puts the secret there too where it matters.
+--   stub.group: nil while the player is on their own; else { raid = true or
+--     nil, members = { unit tokens } }: a party's members besides the player
+--     ('party1'..'party4'), or a raid's members, the player's own raid token
+--     among them, as the game numbers a raid ('raid1'..'raid40').
+--   stub.role: UnitGroupRolesAssigned('player'): 'TANK', 'HEALER', 'DAMAGER'
+--     or 'NONE' (nil reads as 'NONE'). Another unit's is its stub.units role.
+--   stub.tank_aura: unit token -> true for a unit with an aura that makes it
+--     a tank (UnitHasEffectivelyTankAura, Forever only).
+stub.threat = {}
+stub.secret_threat = {}
+stub.group = nil
+stub.role = nil
+stub.tank_aura = {}
+
+do
+	-- The unit's entry on mob's threat list: status and percent, or nil when
+	-- it isn't on the list.
+	local function threat_entry(fn, unit, mob)
+		if type(unit) ~= 'string' or type(mob) ~= 'string' then
+			error(('Usage: %s(unit, mobGUID): only the form with a mob is stubbed'):format(fn), 3)
+		end
+		local list = stub.threat[mob]
+		local entry = list and list[unit]
+		if entry == nil then return nil end
+		if type(entry) == 'table' then return entry.status, entry.percent end
+		return entry, nil
+	end
+
+	-- UnitThreatSituation(unit, mob): the unit's status on the mob's threat
+	-- list, nil when it isn't on it (its result is Nilable).
+	function UnitThreatSituation(unit, mob)
+		return (threat_entry('UnitThreatSituation', unit, mob))
+	end
+
+	-- UnitDetailedThreatSituation(unit, mob): isTanking, status,
+	-- scaledPercentage, rawPercentage, rawThreat; nothing when the unit isn't
+	-- on the list (MayReturnNothing). isTanking is status 2 or 3. A secret
+	-- status gives itself as isTanking and as the percent where none is given,
+	-- since nothing can be worked out from it. rawPercentage is the scaled
+	-- percent here and rawThreat 0: SaftUI reads neither.
+	function UnitDetailedThreatSituation(unit, mob)
+		local status, percent = threat_entry('UnitDetailedThreatSituation', unit, mob)
+		if status == nil then return end
+		local isTanking
+		if issecretvalue and issecretvalue(status) then
+			isTanking = status
+			if percent == nil then percent = status end
+		else
+			isTanking = status == 2 or status == 3
+			if percent == nil then percent = isTanking and 100 or 0 end
+		end
+		return isTanking, status, percent, percent, 0
+	end
+
+	C_Secrets = C_Secrets or {}
+	-- C_Secrets.ShouldUnitThreatStateBeSecret(unit[, mobUnit]): "true if
+	-- queries for unit threat status will produce secret values". A plain
+	-- boolean.
+	function C_Secrets.ShouldUnitThreatStateBeSecret(unit, mob)
+		if type(unit) ~= 'string' then
+			error('Usage: local isUnitThreatSecret = C_Secrets.ShouldUnitThreatStateBeSecret(unit [, mobUnit])', 2)
+		end
+		local secret = mob and stub.secret_threat[mob]
+		if secret == true then return true end
+		return type(secret) == 'table' and secret[unit] == true
+	end
+
+	-- IsInGroup([groupType]) and IsInRaid([groupType]): plain booleans from
+	-- stub.group. The group type (home or instance group) isn't modelled.
+	function IsInGroup() return stub.group ~= nil end
+	function IsInRaid() return stub.group ~= nil and stub.group.raid == true end
+	-- GetNumGroupMembers(): the group's size, the player counted: 0 on their
+	-- own, a party's members and the player, a raid's members (the player is
+	-- one of them).
+	function GetNumGroupMembers()
+		local group = stub.group
+		if not group then return 0 end
+		local members = #(group.members or {})
+		return group.raid and members or members + 1
+	end
+
+	-- UnitGroupRolesAssigned(unit): the role the unit was given in the group
+	-- ('TANK', 'HEALER', 'DAMAGER'), 'NONE' without one, and for a unit that
+	-- isn't there. A test can make a role secret, as restricted content can
+	-- (SecretWhenUnitIdentityRestricted).
+	function UnitGroupRolesAssigned(unit)
+		unit = unit or 'player'
+		if unit == 'player' then return stub.role or 'NONE' end
+		local other = OtherUnit(unit)
+		return other and other.role or 'NONE'
+	end
+
+	-- UnitHasEffectivelyTankAura(unit): whether the unit has an aura that
+	-- makes it a tank (a tanking stance or form). Only Forever has it: its
+	-- UnitDocumentation.lua lists it and retail's doesn't, so on retail it
+	-- errors as calling a missing global does.
+	function UnitHasEffectivelyTankAura(unit)
+		if stub.interface ~= 16001 then
+			error("attempt to call global 'UnitHasEffectivelyTankAura' (a nil value): retail has no such function", 2)
+		end
+		local aura = stub.tank_aura[unit]
+		if aura == nil then return false end
+		return aura
+	end
+
+	-- UnitExists(unit): true for the player and the stub.units units, false
+	-- for a unit that isn't there.
+	function UnitExists(unit)
+		return unit == 'player' or OtherUnit(unit) ~= nil
+	end
+end

@@ -54,7 +54,7 @@ local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Relo
 test('the sections and their colors, in order, as small color swatches with tooltips', function()
 	local sections, names = ByOrder(Tab().args), {}
 	for i, s in ipairs(sections) do names[i] = s.v.name end
-	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status')
+	eq(table.concat(names, ','), 'Text,Buttons,Class,Reputation,Power,Item quality,Status,Threat')
 
 	local expected = {
 		text = 'Text,Grey,Red,Orange,Yellow,Green,Blue,Purple,Cyan,White',
@@ -64,6 +64,7 @@ test('the sections and their colors, in order, as small color swatches with tool
 		power = 'Mana,Rage,Focus,Energy,Runic power,Combo points,Holy power,Chi,Soul shards,Astral power,Insanity,Maelstrom,Fury,Pain,Arcane charges,Ammo,Fuel,Steam,Pyrite',
 		item_quality = 'Poor,Common,Uncommon,Rare,Epic,Legendary,Artifact,Heirloom,WoW Token',
 		status = 'Disconnected,Tapped',
+		threat = 'Warning,Bad',
 	}
 	for _, s in ipairs(sections) do
 		local rows, rowNames = ByOrder(s.v.args), {}
@@ -86,7 +87,7 @@ end)
 test('Text and Buttons say a change shows after a reload; the others have no note', function()
 	eq(Section('text').desc, NOTE)
 	eq(Section('button').desc, NOTE)
-	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status' }) do
+	for _, key in ipairs({ 'class', 'reaction', 'power', 'item_quality', 'status', 'threat' }) do
 		eq(Section(key).desc, nil, key)
 	end
 end)

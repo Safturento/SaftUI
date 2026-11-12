@@ -2,7 +2,9 @@
 -- color change from the Colors tab recolors every unit frame at once, without
 -- UpdateConfig or ApplyConfig. Loads the real unitframes.lua over a stand-in
 -- oUF (its colors table) and stand-in frames that count their ForceUpdate and
--- UpdateTags calls. UF:UpdateGroupPreview and UF.testGroups live in groups.lua,
+-- UpdateTags calls. Each carries its unit as oUF does, in __unit, and no
+-- .unit, which only UF.OnEnter sets (a frame never hovered has none).
+-- UF:UpdateGroupPreview and UF.testGroups live in groups.lua,
 -- which isn't loaded; the tests stand them in.
 load_core_helpers()
 addon_namespace('SaftUI-Unitframes').oUF = {
@@ -32,7 +34,7 @@ local missing_units = {}
 UnitExists = function(unit) return not missing_units[unit] end
 
 local function make_frame(additional_enabled, unit)
-	local frame = { tags = 0, unit = unit or 'player' }
+	local frame = { tags = 0, __unit = unit or 'player' }
 	for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower', 'ClassPower' }) do
 		local element = { updates = 0 }
 		function element:ForceUpdate() self.updates = self.updates + 1 end

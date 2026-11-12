@@ -10,7 +10,8 @@
 -- window; config/config.lua, updaters.lua (UF.UnpackColor) and the element
 -- files, whose tabs config.lua adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the Nameplates page
--- reads; with no other nameplate addon loaded, SaftUI draws the plates).
+-- reads; with no other nameplate addon loaded, SaftUI draws the plates) and
+-- nameplates/threat.lua (the plates' Threat element and its tab).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:
 --   * UF:UpdateConfig counts its calls. The real one re-applies every unit
@@ -37,8 +38,8 @@
 -- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
--- The nameplates' own defaults (enable, friendly, threat_solo, width,
--- height); the other units' come from every unit's.
+-- The nameplates' own defaults (enable, friendly, threat_solo, the threat
+-- text, width, height); the other units' come from every unit's.
 load_saftui('SaftUI-Unitframes/config/units/nameplate.lua')
 apply_defaults()
 load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
@@ -75,6 +76,7 @@ end
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
+load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
 -- elements/elements.xml's order; aurawatch.lua and portrait.lua register nothing.
 for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
@@ -458,8 +460,8 @@ test('each unit has a tab for each element it has', function()
 		'Buffs,Castbar,Debuffs,GroupRoleIndicator,Health,Name,Power,QuestIndicator,RaidRoleIndicator,RaidTargetIndicator,ReadyCheckIndicator',
 		'party has the ready check')
 	eq(sorted_keys(element_tabs(config, 'nameplate')),
-		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator',
-		'nameplates have no power, role or ready check')
+		'Buffs,Castbar,Debuffs,Health,Name,QuestIndicator,RaidTargetIndicator,Threat',
+		'nameplates have no power, role or ready check, and have the threat text')
 end)
 
 test('every element tab: a tooltip on every option, no Ace width, and each Position a block last in its group', function()
@@ -682,7 +684,9 @@ end)
 -- The parts of a unit's section with a Theme and a Background: { tab, the
 -- keys of the section they sit in under the tab, the profile table they
 -- write }. The unit frame's own are in General; the castbar has the bar's and
--- the icon's; the aura tabs have them in Buttons. Name has none: it's a text.
+-- the icon's; the aura tabs have them in Buttons. Name and the nameplates'
+-- threat text have none: they're texts.
+local TEXTS = { Name = true, Threat = true }
 local function themed_parts(config, P, unit)
 	local parts = { { 'general', {}, P[unit] } }
 	for tab in pairs(element_tabs(config, unit)) do
@@ -692,7 +696,7 @@ local function themed_parts(config, P, unit)
 			parts[#parts + 1] = { tab, { 'icon' }, store.icon }
 		elseif tab == 'Buffs' or tab == 'Debuffs' then
 			parts[#parts + 1] = { tab, { 'buttons' }, store }
-		elseif tab ~= 'Name' then
+		elseif not TEXTS[tab] then
 			parts[#parts + 1] = { tab, {}, store }
 		end
 	end
@@ -746,6 +750,7 @@ test('each element tab offers Theme and Background, with descs, and no template'
 		end
 		eq(option_at(config, unit, 'Name', 'theme'), nil, unit .. "'s Name, a text, has no Theme")
 	end
+	eq(option_at(config, 'nameplate', 'Threat', 'theme'), nil, "the nameplates' threat text, a text, has no Theme")
 	-- General, Health, Power, Buffs, Debuffs and four indicators on every unit
 	-- frame; the castbar's bar and icon where there's a castbar (all but the
 	-- targets of targets); the ready check on the groups; additional and class
