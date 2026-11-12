@@ -405,6 +405,7 @@ end
 function options_widget_files()
 	return {
 		'SaftUI-Core/Config/optionswidgets.lua',
+		'SaftUI-Core/Config/optionsrange.lua',
 		'SaftUI-Core/Config/optionsselect.lua',
 		'SaftUI-Core/Config/optionskeybinding.lua',
 		'SaftUI-Core/Config/optionsposition.lua',
