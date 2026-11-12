@@ -194,7 +194,11 @@ end
 -- drawn again on every plate, shown or not, as every module colors its own
 -- borders again then. target.lua also keeps it with st:KeepOwnColors, which
 -- the engine runs first; this puts it back after anything else colored it
--- off too. Each plate on its own, so one that errors leaves the rest drawn.
+-- off too. The plate is rounded to whole pixels again too (UF.RoundLayout,
+-- nameplates/pixels.lua): in combat the theme's redraw and the unit frames'
+-- update wait apart, and run in no set order once it ends, so the redraw's
+-- new art can come after the update's rounding. Each plate on its own, so one
+-- that errors leaves the rest drawn.
 local UNIT_FRAME_COLOR_GROUPS = { class = true, reaction = true, power = true, status = true, threat = true }
 -- ClassPower sets its color only when it checks its visibility, which
 -- ForceUpdate runs.
@@ -203,6 +207,7 @@ function UF:OnColorsChanged(group)
 	if group == 'theme' and self.nameplates then
 		self:ForEachPlate(function(frame)
 			xpcall(self.UpdatePlateTarget, geterrorhandler(), self, frame)
+			xpcall(self.RoundLayout, geterrorhandler(), frame, true)
 		end)
 	end
 	if not self.units or not UNIT_FRAME_COLOR_GROUPS[group] then return end

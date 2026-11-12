@@ -24,19 +24,25 @@ local UF = st:GetModule('Unitframes')
 	The rounding is SaftUI's own walk (UF.RoundLayout), never PixelUtil's
 	recursive helper, and never on Blizzard's frames: the plate (NamePlateN),
 	its UnitFrame and widgets are left alone. The walk stops at Blizzard's aura
-	containers (.agents/taint.md, rule 11) and at forbidden frames, so each aura
-	button's backdrop, SaftUI's frame on the container's button, is rounded
-	where it's drawn (elements/auras.lua).
+	containers (.agents/taint.md, rule 11) and at forbidden frames, so what
+	SaftUI makes on the container's buttons (each one's backdrop, Thick's
+	line) is rounded where it's made (elements/auras.lua). It runs after every
+	plate update, and again after a theme change (UF:OnColorsChanged('theme'),
+	unitframes.lua), whose redraw can come after the update once combat ends.
 
 	The borders themselves stay the theme engine's (the backdrop's edges, Thick's
 	lines, Blizzard's art), rounded with everything else.
 ]]
 
--- Whether the walk leaves region, and everything under it, alone: a forbidden
--- object, which addon code can only ask whether it is, or Blizzard's aura
--- container, whose buttons refuse an addon's access while auras are secret.
+-- Whether the walk leaves region, and everything under it, alone: Blizzard's
+-- aura container, whose buttons refuse an addon's access while auras are
+-- secret, or a forbidden object, which addon code can only ask whether it is.
+-- A container is known first by identity (UF.auraContainers, every one SaftUI
+-- made: elements/auras.lua), before any method is called on it: AuraContainer
+-- is an XML intrinsic, which the game may not report through IsObjectType.
+-- IsObjectType('AuraContainer') is still asked last, for one SaftUI didn't make.
 local function Skipped(region)
-	return region:IsForbidden() or region:IsObjectType('AuraContainer')
+	return UF.auraContainers[region] or region:IsForbidden() or region:IsObjectType('AuraContainer')
 end
 
 local function RoundEach(...)
