@@ -122,26 +122,33 @@ function UF:RunPlateCallbacks(event, frame, ...)
 end
 
 --[[
-	Friendly and enemy plates. A friendly unit's plate carries the health bar,
-	the name, the health text and the raid mark; an enemy's every part. The
-	parts only an enemy's plate shows (the castbar, the aura areas, the quest
-	icon and the threat text, threat.lua) are UF.PLATE_ENEMY_ONLY, which
-	UF:ElementWanted (updaters.lua) hides on a friendly plate whatever their
-	config says, so every update of a plate keeps them hidden there.
+	Friendly and enemy plates. Each kind draws from its own config unit: an
+	enemy's plate from Enemy nameplates (nameplate), a friend's from Friendly
+	nameplates (friendlynameplate), or from the other one while its page's box
+	says so (UF.PlateConfigKey). The frame's base_unit names it, which the
+	frame's GetConfig and every element's read (UF:ApplyPlateConfig). So which
+	parts a plate shows is its config's: a friend's name alone by default (the
+	castbar, the aura areas and the quest icon off, and no health bar), an
+	enemy's every part. Only the threat text (threat.lua) is hidden on a friend
+	whatever the config says: UF.PLATE_ENEMY_ONLY, which UF:ElementWanted
+	(updaters.lua) reads. It always draws from Enemy nameplates' threat
+	settings.
 
 	The game hands each plate to unit after unit, a friend after an enemy
-	(often mid-fight), so the kind is set on every add (UF:ApplyPlateKind, the
-	first 'added' callback, before any other reads frame.friendly), again when
-	the unit's faction changes, and the oUF parts follow a config change.
+	(often mid-fight), so the kind, and with it the config, is set on every add
+	(UF:ApplyPlateKind, the first 'added' callback, before any other reads
+	frame.friendly), again when the unit's faction changes, and the oUF parts
+	follow a config change.
 ]]
-UF.PLATE_ENEMY_ONLY = { Castbar = true, Buffs = true, Debuffs = true, QuestIndicator = true, Threat = true }
+UF.PLATE_ENEMY_ONLY = { Threat = true }
 
--- The enemy-only parts that are oUF elements of their own: a friendly plate
--- has them disabled in oUF, so they don't run for it. oUF's castbar Disable
--- gives Blizzard's castbars their events back only for a 'player' frame that
--- isn't a plate, so disabling it here is safe. The aura areas share oUF's one
--- Auras element with each other, so they're turned on and off as areas.
-local OUF_ENEMY_ONLY = { Castbar = true, QuestIndicator = true }
+-- The parts that are oUF elements of their own and that a plate's config can
+-- turn off: one that's off is disabled in oUF, so it doesn't run for the
+-- plate. oUF's castbar Disable gives Blizzard's castbars their events back
+-- only for a 'player' frame that isn't a plate, so disabling it here is safe.
+-- The aura areas share oUF's one Auras element with each other, so they're
+-- turned on and off as areas.
+local OUF_SWITCHED = { Castbar = true, QuestIndicator = true }
 local AURA_AREAS = { Buffs = true, Debuffs = true }
 
 -- Whether a plate's unit is a friend: UnitIsFriend and not UnitCanAttack.
@@ -158,12 +165,12 @@ function UF.IsFriendlyPlate(unit)
 	return not attackable
 end
 
--- Enables or disables in oUF the plate's enemy-only oUF parts, each by
+-- Enables or disables in oUF the plate's switched oUF parts, each by
 -- UF:ElementWanted. Returns true when it enabled one, which then needs an
 -- update to show its unit's state (oUF's castbar Enable hides the bar).
 local function EnablePlateParts(frame)
 	local enabled = false
-	for name in pairs(OUF_ENEMY_ONLY) do
+	for name in pairs(OUF_SWITCHED) do
 		local element = frame.elements[name]
 		if element then
 			if not UF:ElementWanted(element) then
@@ -177,17 +184,34 @@ local function EnablePlateParts(frame)
 	return enabled
 end
 
+-- Points a plate's frame at the config unit its kind draws from
+-- (UF.PlateConfigKey of frame.friendly) through its base_unit, which the
+-- frame's GetConfig and every element's read when called. When that changed,
+-- the frame's whole look is applied again from the new config
+-- (UF:UpdateUnitFrame): its parts, their places, fonts and colours, and the
+-- name's tag. An update that errors is reported, so the caller still goes on.
+-- Returns whether it changed. A plate's frame isn't secure, so in combat too.
+function UF:ApplyPlateConfig(frame)
+	local key = UF.PlateConfigKey(frame.friendly)
+	if frame.base_unit == key then return false end
+	frame.base_unit = key
+	xpcall(function() self:UpdateUnitFrame(frame) end, geterrorhandler())
+	return true
+end
+
 -- Sets a plate's frame up for a friend (friendly true) or an enemy: notes the
--- kind (frame.friendly), enables or disables its enemy-only oUF parts, turns
--- its aura areas on or off, and shows or hides each part by
--- UF:ElementWanted. Every part, not only the enemy-only ones: when a plate
--- that showed only widgets loses its unit, oUF resumes its parts, which turns
--- every aura area on and shows the health bar whatever the config says.
--- Runs on a frame oUF has initialized (EnableElement errors before that):
--- from the 'added' callback, which comes after oUF's init. Then the 'kind'
--- callbacks run.
+-- kind (frame.friendly), points the frame at that kind's config
+-- (UF:ApplyPlateConfig, a full update when it changed), enables or disables
+-- its switched oUF parts, turns its aura areas on or off, and shows or hides
+-- each part by UF:ElementWanted. Every part, not only the switched ones: when
+-- a plate that showed only widgets loses its unit, oUF resumes its parts,
+-- which turns every aura area on and shows the health bar whatever the config
+-- says. Runs on a frame oUF has initialized (EnableElement errors before
+-- that): from the 'added' callback, which comes after oUF's init. Then the
+-- 'kind' callbacks run.
 function UF:ApplyPlateKind(frame, friendly)
 	frame.friendly = friendly and true or false
+	self:ApplyPlateConfig(frame)
 	EnablePlateParts(frame)
 	for name, element in pairs(frame.elements) do
 		local wanted = self:ElementWanted(element)
@@ -201,7 +225,11 @@ end
 
 -- The plate's unit changed faction: a friend turned hostile, or back. Updated
 -- only when its kind changed, and then the frame's elements updated too, as
--- oUF does after an add, so the parts turned on show their unit's state.
+-- oUF does after an add, so the parts turned on show their unit's state. That
+-- update also draws the name again, in the new kind's colours: the st:name
+-- tag (tags.lua) has no faction event of its own, and its oUF update runs the
+-- tags, the name's bound again to the new config if the kind changed it
+-- (elements/name.lua).
 local function UpdatePlateKind(frame)
 	local friendly = UF.IsFriendlyPlate(frame.__unit)
 	if friendly == frame.friendly then return end
@@ -215,8 +243,8 @@ UF:RegisterPlateCallback('added', function(frame, unit)
 end)
 
 -- A config change on a plate that shows its unit (UF:UpdateUnitFrame) turns
--- its enemy-only oUF parts on or off in oUF to match: a castbar or quest icon
--- turned on in the options while the plate shows an enemy is enabled now, and
+-- its switched oUF parts on or off in oUF to match: a castbar or quest icon
+-- turned on in the options while the plate shows its unit is enabled now, and
 -- the frame updated again, since UF:UpdateUnitFrame's own update came before
 -- it was enabled. A plate that shows only widgets, or no unit, waits for its
 -- next add.

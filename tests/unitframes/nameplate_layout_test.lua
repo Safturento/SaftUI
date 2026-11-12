@@ -269,8 +269,8 @@ test('a finished quest hides the icon at the next quest log update', function()
 	eq(quest:IsShown(), true, 'and shown for the next one')
 
 	-- Only where oUF runs the icon and the config wants it: not on a friend's
-	-- plate (disabled in oUF), nor on a plate that shows only widgets (paused
-	-- in oUF), nor with the icon off.
+	-- plate (off in the friendly config: disabled in oUF), nor on a plate that
+	-- shows only widgets (paused in oUF), nor with the icon off.
 	stub.units.nameplate2 = { name = 'Guard', friend = true, attackable = false }
 	local ally = NP.add('nameplate2')
 	stub.units.nameplate3 = { name = 'Flag', quest = true, friend = false, attackable = true }
