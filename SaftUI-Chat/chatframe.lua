@@ -407,8 +407,8 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 		else
 			frame.Tab:ClearAllPoints()
 			frame.Tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
-			prev = frame.Tab
 		end
+		prev = frame.Tab
 	end
 end
 
