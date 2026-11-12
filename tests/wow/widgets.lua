@@ -369,7 +369,9 @@ local function resolve_relative(self, s, relativeTo, method)
 	-- any region is, and never cleared) can't be what relativeTo depends on, so
 	-- the search for a loop through the anchor graph is skipped for it. This is
 	-- the usual case: a frame is placed on its parent before it has anything of
-	-- its own anchored to it.
+	-- its own anchored to it. This relies on every relativeTo written into
+	-- s.points having come through here, so a stub method that writes points
+	-- some other way must set anchor_target on its relativeTo too.
 	if s.anchor_target and depends_on(relativeTo, self, {}) then
 		usage(s, method .. '(): Cannot anchor to a region dependent on it')
 	end
