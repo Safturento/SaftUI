@@ -134,10 +134,6 @@ AB.EXTRA_LABELS = {
 -- client has Blizzard's frames for. The leave vehicle button's is its header.
 AB.extras = {}
 
--- Blizzard's extra action and zone ability buttons at scale 1
--- (ExtraActionButtonTemplate, ZoneAbilityFrameSpellButtonTemplate).
-local BLIZZARD_SIZE = 52
-
 -- The leave art of Blizzard's button, cropped to the inside of its round frame.
 local LEAVE_TEXTURE = [[Interface\Vehicles\UI-Vehicles-Button-Exit-Up]]
 local LEAVE_CROP_MIN, LEAVE_CROP_MAX = 0.22, 0.78
@@ -230,7 +226,7 @@ function layouts.extra(self, holder, config)
 	st:ClearAllPointsDirect(button)
 	st:SetPointDirect(button, 'CENTER', holder, 'CENTER')
 
-	local size = st:RoundToPixel(BLIZZARD_SIZE * scale, holder)
+	local size = st:RoundToPixel(st.BLIZZARD_SIZE * scale, holder)
 	self:PlaceFrame(holder, size, size, config.position)
 end
 
@@ -246,7 +242,7 @@ function layouts.zone(self, holder, config)
 		st:SetPointDirect(zone.Style, 'CENTER', buttons, 'CENTER')
 	end
 
-	local size = st:RoundToPixel(BLIZZARD_SIZE * scale, holder)
+	local size = st:RoundToPixel(st.BLIZZARD_SIZE * scale, holder)
 	self:PlaceFrame(holder, size, size, config.position)
 end
 

@@ -66,15 +66,12 @@ local SPACING = 3
 -- The pet and stance buttons, and the leave vehicle button.
 local SMALL_SIZE = 30
 
--- Blizzard's extra action and zone ability buttons at scale 1.
-local BLIZZARD_SIZE = 52
-
 -- How far above bar 3's top the extra action and zone ability sit: past the
 -- pet and stance row, and the 38px of Blizzard's art below the buttons.
 local EXTRA_Y = SPACING + SMALL_SIZE + 38
 
 -- How far from the centre their inner edges are: centres 226px apart.
-local EXTRA_X = 113 - BLIZZARD_SIZE / 2
+local EXTRA_X = 113 - st.BLIZZARD_SIZE / 2
 
 local function Position(point, frame, rel_point, x_off, y_off)
 	return { point = point, frame = frame, rel_point = rel_point, x_off = x_off, y_off = y_off }
@@ -148,6 +145,6 @@ st.defaults.actionbars = {
 	},
 	vehicleleave = {
 		size = SMALL_SIZE,
-		position = Position('BOTTOM', 'SaftUI_ActionBar3', 'TOP', 0, EXTRA_Y + (BLIZZARD_SIZE - SMALL_SIZE) / 2),
+		position = Position('BOTTOM', 'SaftUI_ActionBar3', 'TOP', 0, EXTRA_Y + (st.BLIZZARD_SIZE - SMALL_SIZE) / 2),
 	},
 }

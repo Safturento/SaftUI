@@ -16,6 +16,13 @@ st.scale = 768/st.screenHeight
 
 st.CLOSE_BUTTON_SIZE = {20, 10} -- a Blizzard close button handed to st:CreateHeader
 st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
+-- Blizzard's extra action and zone ability buttons at scale 1
+-- (ExtraActionButtonTemplate, ZoneAbilityFrameSpellButtonTemplate).
+st.BLIZZARD_SIZE = 52
+-- From this button (or icon) size up, cooldown numbers are in the larger pixel
+-- font (Pixel Med, 18px by default); smaller ones get Pixel (10px), so the
+-- numbers fit inside a 28px button.
+st.LARGE_COUNTDOWN_SIZE = 36
 -- How far in from a header's right edge SaftUI's close button sits
 -- (st:CreateHeader), which the bags count in a window's least width
 -- (SaftUI-Bags/container.lua). In the metal's socket it reaches

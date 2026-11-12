@@ -82,11 +82,9 @@ local OVERLAY_ATLAS = 'ui-hud-cooldownmanager-iconoverlay'
 -- Blizzard's round icon sat (see the top of this file).
 local ITEM_INSET = 2
 
--- From this item width up the countdown numbers are Pixel Med, below it Pixel
--- (SaftUI-ActionBars/skin.lua's LARGE_COUNTDOWN_SIZE). The Essential items are
--- 50 wide, the tracked buffs' 40 and the Utility items 30.
-local LARGE_COUNTDOWN_SIZE = 36
-
+-- From st.LARGE_COUNTDOWN_SIZE wide up the countdown numbers are Pixel Med,
+-- below it Pixel. The Essential items are 50 wide, the tracked buffs' 40 and
+-- the Utility items 30.
 -- The bar's fill: Blizzard's own orange (its BarTexture's color), flat.
 local BAR_COLOR = { 1, 0.5, 0.25 }
 local PIP_WIDTH = 2
@@ -166,7 +164,7 @@ end
 -- or Pixel when its width can't be read.
 local function CountdownFont(holder)
 	local width = holder:GetWidth()
-	local large = not issecretvalue(width) and width >= LARGE_COUNTDOWN_SIZE
+	local large = not issecretvalue(width) and width >= st.LARGE_COUNTDOWN_SIZE
 	return st:GetFont(large and 'pixel_med' or 'pixel')
 end
 

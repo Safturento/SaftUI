@@ -65,11 +65,6 @@ local OVER_ICON = {
 	'AutoCastOverlay',
 }
 
--- Buttons at least this big get the bigger cooldown numbers (Pixel Med, 18px by
--- default). Smaller ones get Pixel (10px), so the numbers fit inside a 28px
--- button.
-local LARGE_COUNTDOWN_SIZE = 36
-
 ------------------------------------
 --- Hotkeys -------------------------
 ------------------------------------
@@ -362,7 +357,7 @@ function AB:StyleButton(button, config, theme, background)
 	end
 	button.Count:SetShown(config.text.count.show)
 
-	local countdownFont = st:GetFont(config.size >= LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
+	local countdownFont = st:GetFont(config.size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
 	if countdownFont then
 		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end
