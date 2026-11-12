@@ -103,7 +103,7 @@ local fontObjects = {}
 local function ApplyFont(key)
 	local face, size = FONTS[key][1], FONTS[key][2]
 	local config = st.config.profile.fonts[face]
-	fontObjects[key]:SetFont(st.LSM:Fetch('font', config.font_name), size, config.font_outline)
+	fontObjects[key]:SetFont(st.LSM:Fetch('font', config.font_name), size, st.OutlineFlag(config.font_outline))
 	fontObjects[key]:SetTextColor(Normal())
 end
 

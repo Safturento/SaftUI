@@ -94,7 +94,7 @@ end
 function W.UpdateFonts()
 	if not fieldFont then return end
 	local config = st.config.profile.fonts.normal
-	fieldFont:SetFont(st.LSM:Fetch('font', config.font_name), FIELD_FONT_SIZE, config.font_outline)
+	fieldFont:SetFont(st.LSM:Fetch('font', config.font_name), FIELD_FONT_SIZE, st.OutlineFlag(config.font_outline))
 	fieldFont:SetTextColor(Colors().text.normal:GetRGB())
 end
 
