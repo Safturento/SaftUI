@@ -44,7 +44,7 @@ local AB = st:GetModule('ActionBars')
 	frames stay in Blizzard's layout, empty and invisible. ExtraActionBarFrame,
 	the only one that takes the mouse, is made click-through, so it can't catch
 	clicks meant for SaftUI's bars under it (AB:DisableMouse, hideblizzard.lua).
-	The container's Edit Mode box is kept hidden (AB:HideEditModeSelection). Its
+	The container's Edit Mode box is kept hidden (st:HideEditModeSelection). Its
 	Edit Mode system has no settings but its position, which the holders take
 	over.
 	  - Size: a Scale setting, the widgets' own SetScale on ExtraActionButton1
@@ -419,7 +419,7 @@ function AB:SetupExtras()
 	end
 
 	-- Blizzard's Edit Mode box for the container, which shows nothing now.
-	self:HideEditModeSelection(_G.ExtraAbilityContainer)
+	st:HideEditModeSelection(_G.ExtraAbilityContainer)
 
 	self.extras.vehicleleave = CreateLeaveButton(self)
 

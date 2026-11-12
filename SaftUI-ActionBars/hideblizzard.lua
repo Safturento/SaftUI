@@ -57,8 +57,9 @@ local AB = st:GetModule('ActionBars')
 	     so it stays invisible, can't be clicked and does nothing.
 	       - Its Edit Mode box (Selection) ignores its parent's alpha
 	         (ignoreParentAlpha in EditModeSystemTemplates.xml), so it's kept
-	         hidden instead, with taint.md rule 5's HookScript. Blizzard's Edit
-	         Mode then doesn't offer the bar.
+	         hidden instead, with taint.md rule 5's HookScript
+	         (st:HideEditModeSelection). Blizzard's Edit Mode then doesn't offer
+	         the bar.
 	     A bar that was concealed stays concealed. It goes on taking its place in
 	     Blizzard's bottom bar stack, so whatever Blizzard stacks above it (the
 	     totem bar, the extra abilities container) stays where Blizzard put it
@@ -155,18 +156,6 @@ function AB:DisableMouse(frame)
 	end
 end
 
--- Keeps a Blizzard Edit Mode system's box (its Selection) hidden, so Blizzard's
--- Edit Mode doesn't offer the frame. A HookScript, as .agents/taint.md rule 5
--- has it; nothing is written onto the frame. extras.lua uses it too.
-function AB:HideEditModeSelection(frame)
-	local selection = frame and frame.Selection
-	if selection then
-		selection:HookScript('OnShow', function(box)
-			box:Hide()
-		end)
-	end
-end
-
 local function Conceal(frame)
 	getmetatable(frame).__index.SetAlpha(frame, 0)
 	AB:DisableMouse(frame)
@@ -183,7 +172,7 @@ local function Conceal(frame)
 		AB:DisableMouse(pageNumber.DownButton)
 	end
 
-	AB:HideEditModeSelection(frame)
+	st:HideEditModeSelection(frame)
 end
 
 local function HideBar(info)
