@@ -1,7 +1,6 @@
 local st = SaftUI
 local LT = st:NewModule('Loot')
 st.Loot = LT
-LT.DEBUG = false
 
 function LT:OnEnable()
 	st:BindModuleConfig(self, 'loot')

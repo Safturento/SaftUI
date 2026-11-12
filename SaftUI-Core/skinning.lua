@@ -105,25 +105,9 @@ function st:SkinIcon(icon, customTrim, anchorFrame)
 				end
 			end)
 		end
-	else
-		print('function SetTexCoord does not exist for', icon:GetName() or icon)
 	end
 end
 
-local function OnSetCooldown(self, start, duration, modRate)
-	self.startTime = start
-	self.duration = duration
-	self.endTime = start + duration
-end
-
-local function OnUpdateCooldown(self)
-	local remaining = self.endTime and (self.endTime - GetTime()) or 0
-	if remaining <= 0 then
-		self.text:SetText('')
-	else
-		self.text:SetText(st.StringFormat:ToTime(remaining))
-	end
-end
 -- Cooldowns st:SkinCooldown has done, so skinning a button again (e.g. on a
 -- profile change) doesn't add another text. Weak keys: nothing is written onto
 -- the (often Blizzard) cooldown to remember it.
@@ -137,8 +121,6 @@ function st:SkinCooldown(button, cooldown)
 	text:SetFontObject(st:GetFont('pixel'))
 	text:SetAllPoints(cooldown)
 	cooldown.text = text
-	--cooldown:SetScript('OnUpdate', OnUpdateCooldown)
-	--hooksecurefunc(cooldown, 'SetCooldown', OnSetCooldown)
 end
 
 -- hover -> the blend button:SetHighlightTexture gave the flat hover
@@ -431,11 +413,6 @@ function st:StyleEditBox(editbox, theme, background, font)
 		-- 	header:SetFontObject(fontObject)
 		-- end
 	end
-end
-
-function st:EnableHorizontalResizing(frame, ...)
-	st:EnableResizing(frame, ...)
-	frame.ResizeButton:SetScript()
 end
 
 function st:EnableResizing(frame, resizeButton, callback)

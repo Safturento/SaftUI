@@ -41,6 +41,9 @@ stub = {
 	-- picked up from a bag, { id, link }. ClearCursor drops it.
 	cursor_item = nil,
 	loaded_addons = {}, -- C_AddOns.IsAddOnLoaded: a set, e.g. stub.loaded_addons.RXPGuides = true
+	-- C_AddOns.DoesAddOnExist: a set of the addons the client has, loaded or not
+	-- (a loaded one exists too), e.g. stub.installed_addons.Blizzard_SwingTimer = true
+	installed_addons = {},
 	-- The player's experience: GetMaxPlayerLevel, UnitLevel('player'), UnitXP,
 	-- UnitXPMax and GetXPExhaustion (rested experience; nil for none).
 	max_level = 80,
@@ -147,6 +150,13 @@ C_AddOns = {
 		end
 		local loaded = stub.loaded_addons[name] == true
 		return loaded, loaded
+	end,
+	-- True for an addon the client has, whether or not it is loaded.
+	DoesAddOnExist = function(name)
+		if type(name) ~= 'string' and type(name) ~= 'number' then
+			error('Usage: C_AddOns.DoesAddOnExist(name)', 2)
+		end
+		return stub.installed_addons[name] == true or stub.loaded_addons[name] == true
 	end,
 }
 

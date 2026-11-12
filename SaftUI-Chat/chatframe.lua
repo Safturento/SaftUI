@@ -38,35 +38,6 @@ local function onMouseScroll(self, delta)
 	end
 end
 
-function CHT:ChatFrame_OnUpdate(frame)
-	local frametop = frame:GetTop()
-
-	local prev
-	for i,region in pairs({frame:GetRegions()}) do
-		if region:GetObjectType() == 'FontString' and not region:GetName() then
-			if not region.handled then
-				region:ClearAllPoints()
-				region:SetSpacing(self.config.linespacing)
-				if prev then 
-					region:SetPoint('BOTTOMLEFT', prev, 'TOPLEFT', 0, self.config.linespacing)
-				else
-					region:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 0, self.config.linespacing)
-				end
-
-				region.handled = true
-			end
-				
-			if region:GetTop() and region:GetTop() > frametop-self.config.linespacing then region:Hide() else region:Show() end
-			prev = region
-
-		end
-	end
-
-	local font, size, outline = st:GetFont(self.config.font):GetFont()
-	frame:SetFont(font, self.config.fontsize, outline)
-	frame:SetShadowOffset(0,0)
-end
-
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
@@ -75,12 +46,10 @@ function CHT:SkinChatFrame(frame)
 	st:Kill(_G[frame:GetName()..'Background'])
 	st:Kill(_G[frame:GetName()..'RightTexture'])
 
-	if st.retail then
-		st:SkinScrollBar(frame.ScrollBar)
-		frame.ScrollBar:ClearAllPoints()
-		frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
-		frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
-	end
+	st:SkinScrollBar(frame.ScrollBar)
+	frame.ScrollBar:ClearAllPoints()
+	frame.ScrollBar:SetPoint('TOPLEFT', frame.backdrop, 'TOPRIGHT', 5, 0)
+	frame.ScrollBar:SetPoint('BOTTOMLEFT', frame.backdrop, 'BOTTOMRIGHT', 5, 0)
 
 	frame:SetScript('OnMouseWheel', onMouseScroll)
 	
@@ -407,8 +376,8 @@ function CHT:FCFDock_UpdateTabs(dock, forceUpdate)
 		else
 			frame.Tab:ClearAllPoints()
 			frame.Tab:SetPoint('BOTTOMLEFT', frame, 'TOPLEFT', 0, 10)
-			prev = frame.Tab
 		end
+		prev = frame.Tab
 	end
 end
 
@@ -437,7 +406,6 @@ function CHT:OnEnable()
 
 	-- self:SecureHook('FCFDock_UpdateTabs')
 	-- self:SecureHook('ChatEdit_UpdateHeader')
-	--self:SecureHook('ChatFrame_OnUpdate')
 	self:SecureHook('FloatingChatFrame_UpdateBackgroundAnchors', 'UpdateChatFrameDisplay')
 	self:SecureHook('FCFDock_UpdateTabs')
 end

@@ -1,28 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
-local function Update(unitframe, event, unit, powerType)
-	if(unitframe.__unit ~= unit) then return end
-	local additionalPower = unitframe.AdditionalPower
-
-	if(additionalPower.PreUpdate) then
-		additionalPower:PreUpdate(unit)
-	end
-
-	--TODO: Override powertype to maelstrom for ele/enh shamans in ghost wolf
-
-	local cur, max = UnitPower(unit), UnitPowerMax(unit)
-	additionalPower:SetMinMaxValues(0, max)
-	additionalPower:SetValue(cur)
-
-	additionalPower.cur = cur
-	additionalPower.max = max
-
-	if(additionalPower.PostUpdate) then
-		additionalPower:PostUpdate(cur, max)
-	end
-end
-
 -- oUF calls this after it recolors the bar (see power.lua's PostUpdateColor).
 local function PostUpdateColor(power, color, r, g, b)
 	if power.config.colorCustom then
@@ -31,7 +9,6 @@ local function PostUpdateColor(power, color, r, g, b)
 		UF.SetPowerBackgroundColor(power, r, g, b)
 		return
 	end
-	if not st.retail then return end
 	if color then
 		r, g, b = color:GetRGB()
 	end
@@ -95,7 +72,6 @@ local function UpdateConfig(unitframe)
 	-- Read after UpdateElement, which points it at the current profile.
 	local config = additionalPower.config
 
-	--additionalPower.Override       = config.manaAsPrimary and Update or nil
 	additionalPower.colorPower     = config.colorPower
 	additionalPower.colorCustom    = config.colorCustom
 	additionalPower.customColor    = config.customColor
@@ -193,6 +169,4 @@ local function ValidUnit(unit)
 	return unit == 'player'
 end
 
-if st.retail then
-	UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig, GetConfigTable, ValidUnit)
-end
+UF:RegisterElement('AdditionalPower', Constructor, UpdateConfig, GetConfigTable, ValidUnit)

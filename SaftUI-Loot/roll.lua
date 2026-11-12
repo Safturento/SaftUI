@@ -88,8 +88,7 @@ function LT:SkinRollFrame(frame)
 	-- How many have picked each choice (LT:CreateRollCounts). rollinfo.lua
 	-- keeps this table, so the counts add no fields to the buttons.
 	local counts = {}
-	local prev
-	for i, info in ipairs(roll_buttons) do
+	for _, info in ipairs(roll_buttons) do
 		local button = GetRollButton(frame, info.name)
 		if button then
 			local text = button:CreateFontString(nil, 'OVERLAY')
@@ -98,8 +97,6 @@ function LT:SkinRollFrame(frame)
 			text:SetPoint('CENTER', 1, 0)
 			text:SetVertexColor(st.config.profile.colors.text[info.color]:GetRGB())
 			self:CreateRollCounts(counts, button, info.name)
-
-			prev = button
 		end
 	end
 
@@ -116,7 +113,6 @@ end
 
 function LT:UpdateRollFrame(frame)
 	local config = self.config.roll
-	local font_obj = st:GetFont(config.font)
 	local skin = skins[frame]
 
 	frame:SetSize(config.width, config.height)

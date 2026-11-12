@@ -165,7 +165,7 @@ end
 -- bank. Reagents have a config entry but no window, so no mover.
 function INV:GetMoverIds()
 	local ids = { 'bag' }
-	if st.retail and self.config.combinedBank then
+	if self.config.combinedBank then
 		tinsert(ids, 'combinedbank')
 	else
 		tinsert(ids, 'bank')

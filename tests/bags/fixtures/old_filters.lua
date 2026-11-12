@@ -113,7 +113,7 @@ local function isLegacyGear(item)
 	local requiredLevelDifference = UnitLevel('player') - item.reqLevel
 	if requiredLevelDifference < 10 then return false end
 
--- 	if UnitLevel('player') ~= (st.retail and GetMaxLevelForLatestExpansion() or GetMaxPlayerLevel()) then
+-- 	if UnitLevel('player') ~= GetMaxLevelForLatestExpansion() then
 -- 		return false
 -- 	end
 
@@ -143,7 +143,6 @@ INV:AddFilter('Grays/Auto Vendor', function(item)
 	-- A lot of special holiday stuff falls into these categories and we should never auto vendor them
 	if item.subclass == 'Cosmetic' then return false end
 
-	--if (not st.retail and item.ilvl and item.ilvl <= 4) or string.matchnocase(item.tooltipText, 'Fishing')
 	if string.matchnocase(item.tooltipText, 'Fishing')
 	or string.matchnocase(item.tooltipText, 'Blizzard Account Bound') then
 		return false
@@ -307,7 +306,7 @@ INV:AddFilter('Miscellaneous', function(item)
 end)
 -- category.lua's GetItemCategory at 8dc348c, less its dead reagent bank branch.
 function OLD.categorize(info)
-	if st.retail and (info.class == 'Armor' or info.class == 'Weapon') then
+	if (info.class == 'Armor' or info.class == 'Weapon') then
 		local isItemInSet, itemSetList = C_Container.GetContainerItemEquipmentSetInfo(info.bagID, info.slotID)
 		if isItemInSet then
 			return 'Set: ' .. select(1, strsplit(',', itemSetList))

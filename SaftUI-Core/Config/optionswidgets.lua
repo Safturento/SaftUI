@@ -55,7 +55,7 @@ local W = {}
 st.OptionsWidgets = W
 
 local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
-local format, tconcat, tinsert, tremove = string.format, table.concat, table.insert, table.remove
+local format, tinsert, tremove = string.format, table.insert, table.remove
 
 W.WIDTH = {
 	toggle = 18, range = 168, select = 170, multiselect = 170, input = 170,

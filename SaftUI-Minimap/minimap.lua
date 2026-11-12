@@ -23,27 +23,13 @@ function MM:OnEnable()
     -- st:SetBackdrop(MinimapCluster, 'theme', 'solid', 'panel')
 	function GetMinimapShape() return "SQUARE" end
 
-    if st.retail then
-        self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
-        self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')
-        if GarrisonMinimap_ShowCovenantCallingsNotification then
-            self:SecureHook('GarrisonMinimap_ShowCovenantCallingsNotification')
-        end
-        Minimap:SetArchBlobRingScalar(0)
-        Minimap:SetQuestBlobRingScalar(0)
-    else
-        MiniMapLFGFrame:ClearAllPoints()
-        MiniMapLFGFrame:SetPoint("BOTTOMLEFT", Minimap, 'BOTTOMLEFT', 10, 10)
-        st:Kill(MinimapBorder)
-        st:Kill(MinimapZoomIn)
-        st:Kill(MinimapZoomOut)
-
-        hooksecurefunc('BuffFrame_UpdateAllBuffAnchors', function()
-            BuffFrame:ClearAllPoints();
-            BuffFrame:SetPoint('TOPRIGHT', Minimap, 'TOPLEFT', -10, 0)
-        end)
-
+    self:SecureHook('MiniMapIndicatorFrame_UpdatePosition')
+    self:SecureHook(MinimapCluster, 'SetHeaderUnderneath', 'MiniMapIndicatorFrame_UpdatePosition')
+    if GarrisonMinimap_ShowCovenantCallingsNotification then
+        self:SecureHook('GarrisonMinimap_ShowCovenantCallingsNotification')
     end
+    Minimap:SetArchBlobRingScalar(0)
+    Minimap:SetQuestBlobRingScalar(0)
 
     -- Forever's day/night indicator is pinned to Blizzard's minimap container,
     -- so it floats once our minimap is moved. Nothing re-shows it after load.

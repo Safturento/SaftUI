@@ -42,7 +42,7 @@ local currencySlots = {} -- every currency slot made, for INV:StyleCurrencySlots
 function INV.CreateCurrencySlot(category)
     poolSize = poolSize + 1
     local slotName = 'SaftUI_Bag_Currencies_Slot'..poolSize
-    local slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, category, 'TokenEntryTemplate')
+    local slot = CreateFrame('ItemButton', slotName, category, 'TokenEntryTemplate')
     slot.NormalTexture = _G[slotName..'NormalTexture']
     slot.Count:SetDrawLayer('OVERLAY', 7)
     slot.Count:Show()
@@ -195,7 +195,7 @@ end
 
 function INV:CurrencyOnClick(slot)
     if IsModifiedClick("CHATLINK") then
-        HandleModifiedItemClick(C_CurrencyInfo.GetCurrencyListLink(self.currencyIndex));
+        HandleModifiedItemClick(C_CurrencyInfo.GetCurrencyListLink(slot.currencyIndex));
         return
     end
 

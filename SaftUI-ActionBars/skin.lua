@@ -47,7 +47,7 @@ local LAB = LibStub('LibActionButton-1.0')
 ]]
 
 -- SaftUI's pieces of each skinned button: button -> { hover, pushed, checked,
--- theme, background, equipped }. Kept here so no key on the button can clash
+-- equipped }. Kept here so no key on the button can clash
 -- with LibActionButton's or the template's.
 local skins = {}
 
@@ -306,7 +306,6 @@ function AB:StyleButton(button, config, theme, background)
 		button.backdrop:ClearAllPoints()
 		button.backdrop:SetAllPoints(button)
 	end
-	skin.theme, skin.background = theme, background
 	skin.equipped = nil -- the backdrop's border was just reset
 
 	local inset = st:ThemeInset(theme, background, 'action')

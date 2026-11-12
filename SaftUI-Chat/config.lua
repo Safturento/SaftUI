@@ -15,7 +15,6 @@ st.defaults.chat = {
 	font = 'normal',
 	padding = 10,
 	fontsize = 16,
-	linespacing = 5,
 	tabs = {
 		fade = false,
 	},

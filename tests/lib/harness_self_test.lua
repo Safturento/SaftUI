@@ -57,23 +57,6 @@ test('a FontString with no font refuses text, as in game', function()
 	check(tostring(err):find('^tests/lib/harness_self_test%.lua:%d+: '), 'the error starts with the caller\'s file:line: ' .. tostring(err))
 end)
 
-test("the real st:CreateButton's SetText alias errors, as in game", function()
-	-- SaftUI-Core/Widgets/button.lua sets button.SetText = button.text.SetText,
-	-- so button:SetText passes the button as the FontString. That's the bug
-	-- behind the 2026-11-09 footer error. load_core_helpers loads button.lua
-	-- through load_saftui, with the real panels.lua and fonts it needs.
-	load_core_helpers()
-	local button = SaftUI:CreateButton(nil, UIParent, 'x')
-	eq(button.text:GetText(), 'x', 'the button was built, with its label')
-
-	local ok, err = pcall(function() button:SetText('y') end)
-	eq(ok, false, 'button:SetText errors')
-	check(tostring(err):find('Wrong object type', 1, true), "WoW's wrong-object error: " .. tostring(err))
-
-	button.text:SetText('y')
-	eq(button.text:GetText(), 'y', 'setting the label through button.text works')
-end)
-
 test('load_saftui passes the addon folder name and its namespace as ...', function()
 	reset_world()
 	-- constants.lua (loaded by the shell) builds its media paths from the addon
@@ -594,6 +577,16 @@ test('IsAddOnLoaded answers from stub.loaded_addons', function()
 	check(not pcall(C_AddOns.IsAddOnLoaded), 'a name is required')
 end)
 
+test('DoesAddOnExist answers from stub.installed_addons and stub.loaded_addons', function()
+	reset_world()
+	eq(C_AddOns.DoesAddOnExist('SomeAddon'), false, 'not there')
+	stub.installed_addons.SomeAddon = true
+	eq(C_AddOns.DoesAddOnExist('SomeAddon'), true, 'there once the test says so')
+	stub.loaded_addons.OtherAddon = true
+	eq(C_AddOns.DoesAddOnExist('OtherAddon'), true, 'a loaded addon exists too')
+	check(not pcall(C_AddOns.DoesAddOnExist), 'a name is required')
+end)
+
 test('SetDefaultModuleLibraries is AceAddon\'s: before any module, and the libraries the shell has', function()
 	reset_world()
 	local M = SaftUI:NewModule('Defaults')
@@ -719,4 +712,77 @@ test("remove_shell_config takes the shell's Config module out, so the real confi
 	eq(SaftUI:GetModule('Config'), config, 'so NewModule can make it again')
 	reset_world()
 	check(SaftUI.Config ~= nil and SaftUI.Config ~= config, 'reset_world brings the shell\'s back')
+end)
+
+test('Show, Hide and SetShown fire OnShow and OnHide only for a visibility that changes, as in game', function()
+	local parent = CreateFrame('Frame')
+	local child = CreateFrame('Frame', nil, parent)
+	local fired = {}
+	for name, frame in pairs({ parent = parent, child = child }) do
+		frame:SetScript('OnShow', function() fired[#fired + 1] = name .. ' shown' end)
+		frame:SetScript('OnHide', function() fired[#fired + 1] = name .. ' hidden' end)
+	end
+	local function took(action)
+		fired = {}
+		action()
+		table.sort(fired)
+		return table.concat(fired, ',')
+	end
+
+	eq(took(function() parent:Show() end), '', 'Show on a shown frame fires nothing, nor under it')
+	eq(took(function() parent:SetShown(true) end), '', 'SetShown(true) on a shown frame fires nothing')
+	eq(took(function() parent:SetShown(1) end), '', 'SetShown(1) is shown too')
+	eq(took(function() parent:Hide() end), 'child hidden,parent hidden', 'Hide on a shown frame fires OnHide on it and what it hides')
+	eq(took(function() parent:Hide() end), '', 'Hide on a hidden frame fires nothing')
+	eq(took(function() parent:SetShown(false) end), '', 'SetShown(false) on a hidden frame fires nothing')
+	eq(took(function() parent:SetShown(nil) end), '', 'SetShown(nil) is hidden too')
+	eq(took(function() child:Hide() end), '', 'a child hidden under a hidden parent was not visible, so it fires nothing')
+	eq(took(function() parent:Show() end), 'parent shown', 'Show shows the parent and not the child that was hidden itself')
+	eq(took(function() child:Show() end), 'child shown', 'and showing the child fires its OnShow')
+	check(parent:IsShown() and child:IsShown() and child:IsVisible(), 'both end up shown')
+end)
+
+test('SetPoint still refuses an anchor that makes a loop, through any chain, as in game', function()
+	local a, b, c = CreateFrame('Frame'), CreateFrame('Frame'), CreateFrame('Frame')
+	local parent = CreateFrame('Frame')
+	local child = CreateFrame('Frame', nil, parent)
+
+	local ok, err = pcall(a.SetPoint, a, 'CENTER', a)
+	eq(ok, false, 'a region anchored to itself')
+	check(tostring(err):find('Cannot anchor to itself', 1, true), tostring(err))
+
+	b:SetPoint('CENTER', a) -- b depends on a
+	ok, err = pcall(a.SetPoint, a, 'CENTER', b)
+	eq(ok, false, 'a anchored to b, which depends on a')
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+
+	c:SetPoint('CENTER', b)
+	ok, err = pcall(a.SetPoint, a, 'TOPLEFT', c)
+	eq(ok, false, 'through two links')
+	ok = pcall(c.SetPoint, c, 'TOPLEFT', a)
+	eq(ok, true, 'an anchor that makes no loop is fine')
+
+	-- a parent anchored to its own child can't have the child anchored back to it
+	parent:SetPoint('CENTER', child)
+	ok, err = pcall(child.SetPoint, child, 'CENTER', parent)
+	eq(ok, false, "a child anchored to its parent, which is anchored to the child")
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+	ok, err = pcall(child.SetAllPoints, child, parent)
+	eq(ok, false, 'SetAllPoints too')
+end)
+
+test('SetPoint finds a loop through an anchor that was cleared, and refuses nothing it should allow', function()
+	local x, y = CreateFrame('Frame'), CreateFrame('Frame')
+	y:SetPoint('CENTER', x) -- y depends on x
+	x:ClearAllPoints()
+	-- x has had a region anchored to it, even though nothing is now: x anchored
+	-- to y is still a loop for as long as y is anchored to x
+	local ok, err = pcall(x.SetPoint, x, 'CENTER', y)
+	eq(ok, false, 'a loop through y, still anchored to x')
+	check(tostring(err):find('dependent on it', 1, true), tostring(err))
+
+	-- and once y lets go of x, the same anchor is fine
+	y:ClearAllPoints()
+	ok = pcall(x.SetPoint, x, 'CENTER', y)
+	eq(ok, true, 'no loop once y is not anchored to x')
 end)

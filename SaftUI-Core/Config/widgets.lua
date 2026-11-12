@@ -1,13 +1,5 @@
 local st = SaftUI
 
-st.Config.options = {
-	type = 'group',
-	name = st.name,
-	inline = true,
-	args = {
-	},
-}
-
 function st.Config:GetFontObjects()
 	local font_objects = {}
 	for k,v in pairs(st.config.profile.fonts) do

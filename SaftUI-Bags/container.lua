@@ -42,7 +42,6 @@ function INV:CreateContainer(id, name, isBankContainer)
         container.scrollFrame:SetPoint('TOPLEFT', container.header, 'BOTTOMLEFT', self.config.padding, -self.config.padding)
     end
 
-	container.slots = {}
 	container.categories = {}
 	container.columns = {}
 	container.bag_ids = self.bagIds[id]
@@ -232,10 +231,8 @@ end
 function INV:UpdateGold()
 	local money = GetMoney()
 	self:GetContainer('bag').footer.gold.text:SetText(st.StringFormat:GoldFormat(money))
-	if st.retail then
-        self:UpdateWarbandMoney()
-        self:UpdateCombinedBankWarbandMoney()
-    end
+	self:UpdateWarbandMoney()
+	self:UpdateCombinedBankWarbandMoney()
 	st.config.realm.summary[st.my_name].gold = money
 end
 
@@ -295,9 +292,11 @@ local function ShowSlotCounts(self, container, numItems, numLoading)
 	end
 end
 
-function INV:UpdateContainer(id, updateLayout)
+-- A window that isn't open waits for its next update, unless whileHidden asks
+-- for this one (the first update makes every slot before the window opens).
+function INV:UpdateContainer(id, updateLayout, whileHidden)
 	local container = self.containers[id]
-	if not container and container:IsShown() then return end
+	if not container or not (whileHidden or container:IsShown()) then return end
 	self:EnsureSlotPools(id)
 
 	-- One bag, Multi bag and Rows lay their sections out on every update.
@@ -619,22 +618,6 @@ function INV:UpdateContainerLayout(id)
 		return
 	end
 
-	local totalRows = 0
-	for _, category in pairs(container.categories) do
-		if category:IsShown() then
-			totalRows = totalRows + category.numRows + 1
-		end
-	end
-
-    local columns = container.columns
-    local containerConfig = self.config[container.id]
-
-    local maxHeight = self:GetButtonHeight() * containerConfig.maxRows
-                    + self.config.buttonspacing * (containerConfig.maxRows - 1)
-
-    local maxWidth = self:GetButtonHeight() * containerConfig.maxColumns
-                    + self.config.buttonspacing * (containerConfig.maxColumns - 1)
-
 	for _, column in pairs(container.columns) do
 		column:SetHeight(0)
 		column.categories = {}
@@ -767,7 +750,7 @@ function INV:ApplyView(id)
 	if view == 'compact' then
 		for _, column in ipairs(container.columns) do column:Show() end
 	end
-	self:UpdateContainer(id, true)
+	self:UpdateContainer(id, true, true)
 	local search = self.containers.bag and self.containers.bag.search
 	if search then self:UpdateSearchFilter(search) end
 end

@@ -20,14 +20,8 @@ function MicroMenu:KillBlizz()
     --self:HideBagSlots()
     -- Blizzard's micro menu isn't hidden; microbuttons.lua restyles it into SaftUI's bar.
 
-    if st.retail then
-        if MinimapCluster.BorderTop then
-            MinimapCluster.BorderTop:Hide()
-        end
-    else
-        st:Kill(MiniMapWorldMapButton)
-        st:Kill(MinimapBorderTop)
-        --st:Kill(MinimapBackdrop)
+    if MinimapCluster.BorderTop then
+        MinimapCluster.BorderTop:Hide()
     end
 
     -- Blizzard's clock is hidden by KillBlizzard_TimeManager (clockbutton.lua)

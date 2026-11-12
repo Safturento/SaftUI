@@ -5,9 +5,6 @@ function st:CreateStatusBar(name, parent, text, theme, background)
 	statusbar.text = self:CreateFontString(statusbar, 'pixel', text)
 	statusbar.text:SetAllPoints()
 
-	statusbar.SetFont = function(font) statusbar.text:SetFontObject(st:GetFont(font)) end
-	statusbar.SetText = statusbar.text.SetText
-
     statusbar:SetStatusBarTexture(st.BLANK_TEX)
     self:SkinStatusBar(statusbar, theme, background, font)
 

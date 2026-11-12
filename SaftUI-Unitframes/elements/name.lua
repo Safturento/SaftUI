@@ -35,8 +35,7 @@ local function SetMaxWidth(name, config)
 end
 
 local function UpdateConfig(unitframe)
-	unitframe.Name.config = unitframe.config.name
-	UF:UpdateElement(unitframe.Name, 'Name')
+	UF:UpdateElement(unitframe.Name)
 
 	unitframe.Name:SetFontObject(st:GetFont(unitframe.config.name.font))
 	SetMaxWidth(unitframe.Name, unitframe.config.name)

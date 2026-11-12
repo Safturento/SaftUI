@@ -5,9 +5,6 @@ function st:CreateButton(name, parent, text, theme, background)
 	button.text = self:CreateFontString(button, 'pixel', text)
 	button.text:SetAllPoints()
 
-	button.SetFont = function(font) button.text:SetFontObject(st:GetFont(font)) end
-	button.SetText = button.text.SetText
-
     self:SkinButton(button, theme, background)
 
 	return button

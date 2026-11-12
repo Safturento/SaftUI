@@ -77,8 +77,6 @@ local AP = st:NewModule('Auras')
 	buttons or tables; their methods are only followed with hooksecurefunc and HookScript.
 ]]
 
-local issecretvalue = issecretvalue or function() return false end
-
 local FRAMES = {
 	{ key = 'buffs',   frame = 'BuffFrame',   holder = st.name .. 'Buffs',   label = 'Buffs',   fallbackMax = 32 },
 	{ key = 'debuffs', frame = 'DebuffFrame', holder = st.name .. 'Debuffs', label = 'Debuffs', fallbackMax = 16 },

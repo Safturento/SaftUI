@@ -62,6 +62,7 @@ function NP.world(client)
 			load_saftui(file)
 		end
 	end
+	-- Not a repeat of T.client's: the files above added the unit frames' defaults.
 	apply_defaults()
 	st.config.global = {}
 

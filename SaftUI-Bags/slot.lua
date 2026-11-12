@@ -143,20 +143,16 @@ function INV:AssignSlot(container, slot, slotInfo)
 		slot.itemLevel:SetFormattedText('%s',slot.info.ilvl)
 		slot.itemLevelBG:Show()
 
-		if st.retail then
-			Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID, slot.icon)
-            if slot.ProfessionQualityOverlay then
-                slot.ProfessionQualityOverlay:ClearAllPoints()
-                slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
-            end
+		Util:SetItemUpgradeQualityForBagSlot(slot, slotInfo.bagID, slotInfo.slotID, slot.icon)
+		if slot.ProfessionQualityOverlay then
+			slot.ProfessionQualityOverlay:ClearAllPoints()
+			slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
 		end
 	else
-		if st.retail then
-			SetItemCraftingQualityOverlay(slot, slot.info.link)
-			if slot.ProfessionQualityOverlay then
-                slot.ProfessionQualityOverlay:ClearAllPoints()
-                slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
-            end
+		SetItemCraftingQualityOverlay(slot, slot.info.link)
+		if slot.ProfessionQualityOverlay then
+			slot.ProfessionQualityOverlay:ClearAllPoints()
+			slot.ProfessionQualityOverlay:SetPoint('TOPLEFT', slot.icon, 'TOPLEFT', 0, 0)
 		end
 		slot.itemLevel:SetText('')
 		slot.itemLevelBG:Hide()
@@ -393,16 +389,15 @@ end
 
 function INV:CreateSlot(container, categoryName)
 	local categoryFrame = container.categories[categoryName]
+	assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 	local slotID = #categoryFrame.slots + 1
 	local slot, slotName
-
-    assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 
     local bagName = container:GetName()
     -- Letters and digits: One bag's and Multi bag's frames differ by bag ID
     -- ('view:bag1', 'view:bag2'), and slot names must not repeat.
     slotName = bagName..'_'..(gsub(categoryName, '(%W)', ''))..'_Slot'..slotID
-    slot = CreateFrame(st.retail and 'ItemButton' or 'CheckButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
+    slot = CreateFrame('ItemButton', slotName, categoryFrame, 'ContainerFrameItemButtonTemplate')
     if not slot.icon then st:Error(slotName.." is missing an icon") end
 
     if slot.IconOverlay then
@@ -428,7 +423,6 @@ function INV:CreateSlot(container, categoryName)
     slot.container = container
     self.itemSlots[slot] = true
     slot.id = slotID
-    slot.type = container.id
     slot.tainted = InCombatLockdown()
 
     slot.GetInventorySlot = ButtonInventorySlot
@@ -491,7 +485,6 @@ function INV:CreateSlot(container, categoryName)
 	slot:Hide()
 
 	-- tinsert(self.AllSlots, slot)
-	-- container.slots[slotID] = slot
 	categoryFrame.slots[slotID] = slot
 
 	if slot.tainted then

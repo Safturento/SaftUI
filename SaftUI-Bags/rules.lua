@@ -358,7 +358,7 @@ describers.oldgear = function() return 'Old gear for my level' end
 
 compilers.protected = function()
 	return function(info)
-		return info.itemID ~= nil and INV.IsProtected ~= nil and INV:IsProtected(info.itemID) and true or false
+		return info.itemID ~= nil and INV:IsProtected(info.itemID) and true or false
 	end
 end
 describers.protected = function() return 'Protected' end

@@ -73,7 +73,6 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 				count = item.stackCount,
 				--upgradeInfo = upgradeInfo,
 				itemID = item.itemID,
-				unitPrice = vendorPrice,
 				stackPrice = vendorPrice * item.stackCount,
 				link = item.hyperlink,
 				quality = quality or 0,
@@ -98,7 +97,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 				tooltipStripped = strlower(tooltipText),
 				-- Filed without its tooltip, which never arrived (ScanBagItem).
 				tooltipMissing = tooltipMissing or nil,
-				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.itemCount or 0) .. (item.itemId or 0),
+				sortString = (itemLevel or 0) .. name .. (quality or 0) .. (class or '') .. (subclass or '') .. (reqLevel or 0) .. (item.stackCount or 0) .. (item.itemID or 0),
 			}
 		else
 			return {

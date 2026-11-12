@@ -25,10 +25,11 @@ end
 
 function INV:HideBags()
 	self.containers.bag:Hide()
-	if not self.containers.bag.slots then return end
-	for _,slot in pairs(self.containers.bag.slots) do
-		if slot.info and not slot.info.empty then
-			C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
+	for _, category in pairs(self.containers.bag.categories) do
+		for _, slot in pairs(category.slots) do
+			if slot.info and not slot.info.empty then
+				C_NewItems.RemoveNewItem(slot.info.bagID, slot.info.slotID)
+			end
 		end
 	end
 
@@ -96,10 +97,8 @@ function INV:InitializePlayerBagSlots()
 		tinsert(BagSlots, slot)
 	end
 
-	if st.retail then
-		CharacterReagentBag0Slot.icon = CharacterReagentBag0SlotIconTexture
-		tinsert(BagSlots, CharacterReagentBag0Slot)
-	end
+	CharacterReagentBag0Slot.icon = CharacterReagentBag0SlotIconTexture
+	tinsert(BagSlots, CharacterReagentBag0Slot)
 
 	-- Forever has a keyring bag button on the bags bar
 	if KeyRingButton and C_ActionBar.ShouldShowKeyring and C_ActionBar.ShouldShowKeyring() then
@@ -211,15 +210,10 @@ function INV:InitializePlayerBags()
 	self:InitializeAllCategories('bag')
 	container.UpdateContainerSlots = UpdateContainerSlots
 
-    if st.retail then
-    	self:SecureHook('OpenAllBags', 'ShowBags')
-    	self:SecureHook('CloseAllBags', 'HideBags')
-    	self:SecureHook('ToggleBag', 'ToggleBags')
-    	self:SecureHook('ToggleAllBags', 'ToggleBags')
-    else
-        ContainerFrame1:ClearAllPoints()
-        ContainerFrame1:SetPoint('BOTTOMLEFT', UIParent, 'TOPRIGHT', 100, 100)
-    end
+	self:SecureHook('OpenAllBags', 'ShowBags')
+	self:SecureHook('CloseAllBags', 'HideBags')
+	self:SecureHook('ToggleBag', 'ToggleBags')
+	self:SecureHook('ToggleAllBags', 'ToggleBags')
 
 	self:SecureHook('ToggleBackpack', 'ToggleBags')
 end

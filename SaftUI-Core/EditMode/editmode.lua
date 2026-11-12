@@ -24,10 +24,6 @@ function EM:Fire(event, ...)
 	end
 end
 
-function EM:IsActive()
-	return self.active
-end
-
 function EM:Activate()
 	if self.active then return end
 	if InCombatLockdown() then

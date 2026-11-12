@@ -1,21 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
---[[
-	We can override the altPower functionality to force the main power bar
-	to stay as mana for shaman/druid/priest with additionalPower. This will
-	be used in conjunction the additional power overridden to show mana
-	when both config.additionalpower.enable and config.additionalpower.manaAsPrimary
-	are set as true
-]]
-local function GetDisplayPower(element)
-	local unit = element.__owner.__unit
-
-	if unit == 'player' then
-		return Enum.PowerType.Mana, 0
-	end
-end
-
 local function PostUpdatePower(power, unit, current, min, max)
 	-- oUF's power update calls element:Show() every time, so Enable = false only
 	-- sticks if it's re-applied here, after oUF's update.
@@ -24,7 +9,6 @@ local function PostUpdatePower(power, unit, current, min, max)
 		return
 	end
 	local deficit = issecretvalue(current) and C_StringUtil.TruncateWhenZero(UnitPowerMissing(unit)) or max - current
-	local percent = issecretvalue(current) and UnitPowerPercent(unit) or current / max * 100
 
 	if  power.text then
 		if power.config.text.hide_full and deficit == 0 then
@@ -58,7 +42,6 @@ local function PostUpdateColor(power, unit, color, r, g, b)
 		UF.SetPowerBackgroundColor(power, r, g, b)
 		return
 	end
-	if not st.retail then return end
 	if color then
 		r, g, b = color:GetRGB()
 	end
@@ -72,7 +55,6 @@ local function Constructor(unitframe)
     local power = UF:AddStatusBarElement(unitframe, 'Power')
     UF:AddText(unitframe, power)
 
-	power.GetDisplayPower = GetDisplayPower
 	power.PostUpdate = PostUpdatePower
 	power.PostUpdateColor = PostUpdateColor
 

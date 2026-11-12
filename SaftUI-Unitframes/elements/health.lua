@@ -40,15 +40,7 @@ local function PostUpdateHealth(health, unit, current, max)
 		elseif UnitIsDead(unit) then
 			health.text:SetText('Dead')
 		elseif config.deficit then
-			if st.retail then
-				health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
-			else
-				if deficit <= 0 then
-					health.text:SetText('')
-				else
-					health.text:SetText('-' .. st.StringFormat:ShortFormat(deficit))
-				end
-			end
+			health.text:SetText(C_StringUtil.WrapString(deficit, '-'))
 		elseif config.percent then
 			if secret then
 				health.text:SetFormattedText('%.0f', UnitHealthPercent(unit, true, CurveConstants.ScaleTo100))
@@ -71,7 +63,7 @@ local function PostUpdateHealth(health, unit, current, max)
 	end
 
 	if health.config.bg.enable then
-		r, g, b = health:GetStatusBarColor()
+		local r, g, b = health:GetStatusBarColor()
 		local mu = health.config.bg.multiplier or 1
 		health.bg:SetVertexColor(mu, mu, mu)
 	end

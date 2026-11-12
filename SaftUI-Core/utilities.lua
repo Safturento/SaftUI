@@ -7,10 +7,6 @@ if not issecretvalue then
 	function issecretvalue() return false end
 end
 
-local function escape(str)
-	return string.gsub(str, "[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1") -- escape pattern
-end
-
 local function removeMagicChars(x)
    return (x:gsub('%%', ' ')
             :gsub('^%^', '')
@@ -26,24 +22,9 @@ local function removeMagicChars(x)
             :gsub('%?', ''))
 end
 
-string.escape = escape
 string.unmagic = removeMagicChars
 
 function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
-function string.findnocase(str, pattern) return strlower(removeMagicChars(str)):find(strlower(pattern)) end
-
-function st:createBarrier(threshold)
-	local frame = CreateFrame('frame')
-	frame.threshold = threshold
-	frame.isBlocking = function(self, elapsed)
-		self.barrierTime = (self.barrierTime or 0) + elapsed
-		if self.barrierTime <= threshold then return true end
-		self.barrierTime = 0
-		return false
-	end
-
-	return frame
-end
 
 function st:barrier(self, elapsed, threshold)
 	self.barrierTime = (self.barrierTime or 0) + elapsed
@@ -104,20 +85,6 @@ function st.tablemerge(t1, t2, inPlace)
 	return rootTable
 end
 
---Purge any variable of t1 who's value is set to the same as t2
-function st.tablepurge(t1, t2)
-	for k, v in pairs(t2) do
-		if (type(v) == 'table') and (type(t1[k] or false) == 'table') then
-			st.tablepurge(t1[k], t2[k])
-		else
-			if t1[k] == v then
-				t1[k] = nil
-			end
-		end
-	end
-	return t1
-end
-
 local colors = {
 	'E65050',--red
 	'50E650',--green
@@ -149,23 +116,9 @@ function st.tableprint(table, indent, maxDepth)
 end
 
 
-function st.tableinvert(table)
-	local inverted = {}
-	for k,v in pairs(table) do
-		inverted[v] = k
-	end
-	return inverted
-end
-
 function st.map(table, func)
 	for key, value in pairs(table) do
 		func(key, value)
-	end
-end
-
-function st.imap(table, func)
-	for index, value in ipairs(table) do
-		func(index, value)
 	end
 end
 
@@ -173,37 +126,6 @@ function st.normalizeRGB(r, g, b)
 	return r/255, g/255, b/255
 end
 
-
-local scanner = CreateFrame("GameTooltip", "ScanningTooltip", nil, "GameTooltipTemplate")
-scanner:SetOwner(WorldFrame, "ANCHOR_NONE")
-
-function st:ScanEquippedItem(slotId, unit)
-	scanner:ClearLines()
-	scanner:SetInventoryItem(unit or 'player', slotId)
-	scanner:SetScale(0.7)
-	--scanner:SetPoint('CENTER', 200, 0)
-	--scanner:Show()
-
-	--ItemRefTooltip:SetInventoryItem(unit or 'player', slotId)
-	--ItemRefTooltip:SetScale(0.7)
-	--ItemRefTooltip:SetPoint('CENTER', -200, 0)
-	--ItemRefTooltip:Show()
-    --ItemRefTooltip:SetOwner(UIParent, 'ANCHOR_NONE')
-	----ItemRefTooltip.SetPoint = function() end
-	----ItemRefTooltip.Hide = function() end
-	--ItemRefTooltip.SetOwner = function() end
-
-	local data = {}
-    for i=1, ItemRefTooltip:NumLines() do
-        local left = _G["ScanningTooltipTextLeft"..i]:GetText()
-        local right = _G["ScanningTooltipTextRight"..i]:GetText()
-		if left and left:find("Reforged") then
-			data.reforge = { left:match("Reforged %((%a+) > (%a+)%)") }
-		end
-    end
-
-	return data
-end
 
 -- The dialog's edit box is Blizzard's StaticPopupN edit box, so nothing here
 -- SetScripts on it or writes onto it: Blizzard calls the dialog's own

@@ -112,9 +112,6 @@ function UF.ConstructUnit(self, unit)
 	end
 
 	self.ID = tonumber(strmatch(self:GetName(), '(%d+)'))
-	if UF.unit_strings[self.base_unit] then
-		self.unitLabel = UF.unit_strings[self.base_unit] .. (self.ID or '')
-	end
 	-- A plate's frame takes no mouse (oUF turned it off), so the mouse stays
 	-- the game's: a click on the plate targets its unit. So it gets no clicks
 	-- and no hover scripts, which could take the mouse over the plate.
@@ -172,7 +169,7 @@ name (string): the name of the element to use as the key
 Constructor (function): for actually creating the element and binding it to oUF
 UpdateConfig (function): the function used to update the display of the element based on the configuration table
 	Constructor and UpdateConfig take the unitframe object created from oUF:Spawn and the element name.
-GetConfigTable (function, optional): GetConfigTable(unit, frame_position_get, frame_position_set)
+GetConfigTable (function, optional): GetConfigTable(unit)
 	returns the AceConfig group for the element's tab in the unit's /sui section.
 ValidUnit (function, optional): ValidUnit(unit) is true for the config units
 	('player', 'boss', 'party', ...) that get the element. Others get neither the
@@ -692,8 +689,6 @@ function UF:OnEnable()
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)
 		end
 	end
-
-	self.RMH = RealMobHealth
 
 	UF:CreateGroupHeaders()
 	UF:ApplyConfig()

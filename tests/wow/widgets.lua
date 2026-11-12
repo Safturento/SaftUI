@@ -365,7 +365,17 @@ local function resolve_relative(self, s, relativeTo, method)
 		usage(s, method .. '(): relativeTo must be a region')
 	end
 	if relativeTo == self then usage(s, method .. '(): Cannot anchor to itself') end
-	if depends_on(relativeTo, self, {}) then usage(s, method .. '(): Cannot anchor to a region dependent on it') end
+	-- A region nothing has been anchored to (anchor_target is set the first time
+	-- any region is, and never cleared) can't be what relativeTo depends on, so
+	-- the search for a loop through the anchor graph is skipped for it. This is
+	-- the usual case: a frame is placed on its parent before it has anything of
+	-- its own anchored to it. This relies on every relativeTo written into
+	-- s.points having come through here, so a stub method that writes points
+	-- some other way must set anchor_target on its relativeTo too.
+	if s.anchor_target and depends_on(relativeTo, self, {}) then
+		usage(s, method .. '(): Cannot anchor to a region dependent on it')
+	end
+	states[relativeTo].anchor_target = true
 	return relativeTo
 end
 
@@ -418,14 +428,20 @@ function ScriptRegion.SetParent(self, s, parent)
 	end)
 end
 
+-- Showing a shown widget or hiding a hidden one changes nothing, so, as in the
+-- game, no OnShow or OnHide fires and nothing under it is walked.
 function ScriptRegion.Show(self, s)
+	if s.shown then return end
 	changing_visibility(self, function() s.shown = true end)
 end
 function ScriptRegion.Hide(self, s)
+	if not s.shown then return end
 	changing_visibility(self, function() s.shown = false end)
 end
 function ScriptRegion.SetShown(self, s, shown)
-	changing_visibility(self, function() s.shown = shown and true or false end)
+	shown = shown and true or false
+	if s.shown == shown then return end
+	changing_visibility(self, function() s.shown = shown end)
 end
 function ScriptRegion.IsShown(self, s) return s.shown end
 function ScriptRegion.IsVisible(self, s) return is_visible(s) end

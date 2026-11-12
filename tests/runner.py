@@ -9,20 +9,33 @@ prints the results and sets the exit status:
   0  every file loaded, ran at least one check, and had no failures
   1  test failures: a file failed to load, ran no checks, or had a failing check
   2  bad arguments (a path that doesn't exist, a folder with no tests)
-  70 the runner itself crashed (a Python exception; the traceback is on stderr)
+  70 the runner itself crashed (a Python exception; the traceback is on stderr),
+     or a worker process died while running a file
 
 Exit 0 means all passed and every other status is a failure. 1 and 70 are kept
 apart so `tests/run --self-check` can tell a caught failure from a runner crash
 (Python's own exit status for an uncaught exception is also 1).
+
+Files run in parallel (-jN, default the CPU count): each file in its own worker
+process, so still its own Lua state, and the report is printed in file order
+whatever order the files finish in, with the same text as a serial run. -j1 runs
+them one after another in this process, with no worker processes.
 """
 
 import argparse
+import contextlib
+import io
+import multiprocessing
+import multiprocessing.connection
 import os
 import sys
+import time
 
 
 lua51 = LuaError = None  # imported in entry(), so a missing lupa is reported as a crash
 CRASH_IN_RUN_FILE = False  # set by --crash-for-self-check=run_file
+EXIT_BADLY_FOR = None  # set by --crash-for-self-check=worker_exit: a worker running this file exits 3 after sending its result
+KILL_WORKER_FOR = None  # set by --crash-for-self-check=worker_death: a worker running this file dies
 
 TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(TESTS_DIR)
@@ -132,6 +145,81 @@ def report(path, verbose):
     return passed, result.checks, result.failures
 
 
+def render(path, verbose):
+    """report() with its output returned as text: (text, passed, checks, failures, seconds)."""
+    buffer = io.StringIO()
+    started = time.perf_counter()
+    with contextlib.redirect_stdout(buffer):
+        passed, checks, failures = report(path, verbose)
+    return buffer.getvalue(), passed, checks, failures, time.perf_counter() - started
+
+
+def worker(path, verbose, conn):
+    """Runs in a worker process: runs one file and sends its rendered report back.
+    A Python exception is sent as a traceback, so the parent can call it a crash."""
+    try:
+        if KILL_WORKER_FOR == path:
+            os._exit(9)
+        conn.send(('done', render(path, verbose)))
+        if EXIT_BADLY_FOR == path:
+            conn.close()
+            os._exit(3)
+    except Exception:
+        import traceback
+        conn.send(('crash', traceback.format_exc()))
+    finally:
+        conn.close()
+
+
+class WorkerCrash(Exception):
+    pass
+
+
+def run_parallel(files, verbose, jobs):
+    """Yields render()'s result for each file, in file order, running up to jobs
+    files at once, each in its own forked process. Raises WorkerCrash, naming the
+    file, when a worker raised a Python exception or died without a result."""
+    context = multiprocessing.get_context('fork')
+    running = {}  # file index -> (process, connection)
+    results = {}
+    next_start = next_yield = 0
+    try:
+        while next_yield < len(files):
+            while next_start < len(files) and len(running) < jobs:
+                parent_conn, child_conn = context.Pipe(duplex=False)
+                process = context.Process(target=worker, args=(files[next_start], verbose, child_conn))
+                process.start()
+                child_conn.close()
+                running[next_start] = (process, parent_conn)
+                next_start += 1
+            ready = multiprocessing.connection.wait([conn for _, conn in running.values()])
+            for index, (process, conn) in list(running.items()):
+                if conn not in ready:
+                    continue
+                try:
+                    kind, payload = conn.recv()
+                except EOFError:  # the worker died without sending anything
+                    process.join()
+                    raise WorkerCrash(f'a worker process died (exit status {process.exitcode}) running '
+                                      f'{shown_path(files[index])}')
+                conn.close()
+                process.join()
+                del running[index]
+                if process.exitcode != 0:  # it sent its result but did not exit cleanly
+                    raise WorkerCrash(f'a worker process exited with status {process.exitcode} after running '
+                                      f'{shown_path(files[index])}')
+                if kind == 'crash':
+                    raise WorkerCrash(f'runner crash running {shown_path(files[index])}:\n{payload}')
+                results[index] = payload
+            while next_yield in results:
+                yield results.pop(next_yield)
+                next_yield += 1
+    finally:
+        for process, conn in running.values():
+            process.terminate()
+            process.join()
+
+
 FIXTURES = os.path.join(TESTS_DIR, 'lib', 'runner_fixtures')
 # fixture file -> (exit status the runner must give it, text its output must contain)
 FIXTURE_EXPECTED = {
@@ -144,9 +232,12 @@ FIXTURE_EXPECTED = {
     'endless_loop.lua': (EXIT_FAILED, 'so the harness stopped it'),
 }
 # The runner is made to crash on passing.lua with the hidden --crash-for-self-check flag, in main() or inside run_file().
-CRASH_FIXTURES = [  # (fixture, flag value, text on stderr)
-    ('passing.lua', 'main', 'runner crash (self-check)'),
-    ('passing.lua', 'run_file', 'runner crash in run_file (self-check)'),
+CRASH_FIXTURES = [  # (fixture, flag value, text on stderr, -j flag)
+    ('passing.lua', 'main', 'runner crash (self-check)', '-j1'),
+    ('passing.lua', 'run_file', 'runner crash in run_file (self-check)', '-j1'),  # serial, in this process
+    ('passing.lua', 'run_file', 'runner crash in run_file (self-check)', '-j2'),  # in a worker process
+    ('passing.lua', 'worker_death', 'a worker process died', '-j2'),
+    ('passing.lua', 'worker_exit', 'exited with status 3', '-j2'),
 ]
 TRACEBACK = 'Traceback (most recent call last)'
 
@@ -195,15 +286,40 @@ def self_check():
             bad += 1
             print_lines((done.stdout + done.stderr).splitlines(), '      ')
 
-    for name, where, text in CRASH_FIXTURES:
-        done = run(os.path.join(FIXTURES, name), f'--crash-for-self-check={where}')
+    for name, where, text, jobs in CRASH_FIXTURES:
+        done = run(os.path.join(FIXTURES, name), f'--crash-for-self-check={where}', jobs)
         kind = classify(done)
         good = kind == 'crash' and done.returncode == EXIT_CRASHED and text in done.stderr
-        print(f'{"ok  " if good else "FAIL"}  {name} with --crash-for-self-check={where}: exit {done.returncode} ({kind}), '
+        print(f'{"ok  " if good else "FAIL"}  {name} with --crash-for-self-check={where} {jobs}: exit {done.returncode} ({kind}), '
               f'expected a crash (exit {EXIT_CRASHED})')
         if not good:
             bad += 1
             print_lines((done.stdout + done.stderr).splitlines(), '      ')
+
+    # -j1 (serial, in one process) and the default (parallel, a process per file)
+    # must give the same report and exit status for every fixture, in file order
+    paths = [os.path.join(FIXTURES, name) for name in sorted(FIXTURE_EXPECTED)]
+    serial = subprocess.run([sys.executable, os.path.abspath(__file__), '-j1', *paths], capture_output=True, text=True)
+    parallel = subprocess.run([sys.executable, os.path.abspath(__file__), '-j2', *paths], capture_output=True, text=True)
+    same = (serial.stdout, serial.stderr, serial.returncode) == (parallel.stdout, parallel.stderr, parallel.returncode)
+    print(f'{"ok  " if same else "FAIL"}  -j1 and -j2 give the same report for the fixtures')
+    if not same:
+        bad += 1
+        print_lines(['-j1: exit ' + str(serial.returncode)] + serial.stdout.splitlines(), '      ')
+        print_lines(['-j2: exit ' + str(parallel.returncode)] + parallel.stdout.splitlines(), '      ')
+
+    # a bad -j value is a bad argument (exit 2), like any other; so is a
+    # worker crash asked for with no workers
+    done = run(os.path.join(FIXTURES, 'passing.lua'), '--crash-for-self-check=worker_death', '-j1')
+    good = done.returncode == 2 and TRACEBACK not in done.stderr
+    print(f'{"ok  " if good else "FAIL"}  worker_death with -j1: exit {done.returncode}, expected 2')
+    bad += not good
+    for value in ('0', 'x', '-3'):
+        done = subprocess.run([sys.executable, os.path.abspath(__file__), f'-j{value}',
+                               os.path.join(FIXTURES, 'passing.lua')], capture_output=True, text=True)
+        good = done.returncode == 2 and TRACEBACK not in done.stderr
+        print(f'{"ok  " if good else "FAIL"}  -j{value}: exit {done.returncode}, expected 2')
+        bad += not good
 
     # every fixture on disk must be listed, so a new one can't go unchecked
     on_disk = {n for n in os.listdir(FIXTURES) if n.endswith('.lua')}
@@ -214,13 +330,33 @@ def self_check():
     return 1 if bad else 0
 
 
+def default_jobs():
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except AttributeError:
+        return max(1, os.cpu_count() or 1)
+
+
+def jobs_count(text):
+    try:
+        n = int(text)
+    except ValueError:
+        n = 0
+    if n < 1:
+        raise argparse.ArgumentTypeError(f'invalid job count {text!r}: a whole number, 1 or more')
+    return n
+
+
 def main():
     parser = argparse.ArgumentParser(prog='tests/run', description="Runs SaftUI's Lua tests on Lua 5.1.")
     parser.add_argument('paths', nargs='*', help='test files, or folders to search for *_test.lua (default: tests/)')
     parser.add_argument('-v', '--verbose', action='store_true', help='list every case and show what tests printed')
+    parser.add_argument('-j', '--jobs', type=jobs_count, default=None, metavar='N',
+                        help='run N files at once, each in its own process (default: the CPU count; -j1 runs them one after another in this process)')
+    parser.add_argument('--timings', metavar='FILE', help=argparse.SUPPRESS)  # per-file seconds, tab separated, for measuring the run
     parser.add_argument('--self-check', action='store_true',
                         help="check the runner itself: each file in tests/lib/runner_fixtures must give the exit status it should")
-    parser.add_argument('--crash-for-self-check', nargs='?', const='main', choices=['main', 'run_file'],
+    parser.add_argument('--crash-for-self-check', nargs='?', const='main', choices=['main', 'run_file', 'worker_death', 'worker_exit'],
                         help=argparse.SUPPRESS)  # only the self-check uses this: a runner crash on demand
     args = parser.parse_args()
     if args.crash_for_self_check == 'main':
@@ -237,12 +373,36 @@ def main():
         print(f'tests/run: {error}', file=sys.stderr)
         return 2
 
+    jobs = args.jobs or default_jobs()
+    if args.crash_for_self_check in ('worker_death', 'worker_exit'):
+        if jobs == 1:  # -j1 has no workers to crash
+            print(f'tests/run: --crash-for-self-check={args.crash_for_self_check} needs workers (not -j1)', file=sys.stderr)
+            return 2
+        global KILL_WORKER_FOR, EXIT_BADLY_FOR
+        if args.crash_for_self_check == 'worker_death':
+            KILL_WORKER_FOR = files[-1]
+        else:
+            EXIT_BADLY_FOR = files[-1]
     failed_files = total_checks = total_failures = 0
-    for path in files:
-        passed, checks, failures = report(path, args.verbose)
-        failed_files += not passed
-        total_checks += checks
-        total_failures += failures
+    timings = []
+    if jobs == 1:
+        results = (render(path, args.verbose) for path in files)
+    else:
+        results = run_parallel(files, args.verbose, jobs)
+    try:
+        for path, (text, passed, checks, failures, seconds) in zip(files, results, strict=True):
+            sys.stdout.write(text)
+            sys.stdout.flush()
+            timings.append((seconds, path))
+            failed_files += not passed
+            total_checks += checks
+            total_failures += failures
+    except WorkerCrash as error:
+        print(f'tests/run: {error}', file=sys.stderr)
+        return EXIT_CRASHED
+    if args.timings:
+        with open(args.timings, 'w', encoding='utf-8') as f:
+            f.writelines(f'{seconds:.3f}\t{shown_path(path)}\n' for seconds, path in timings)
 
     print()
     print(f'{count(len(files), "file")}: {len(files) - failed_files} passed, {failed_files} failed '

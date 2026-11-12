@@ -127,82 +127,6 @@ function st:InsetTexture(texture, inset)
 	texture:SetTexCoord(inset, 1-inset, inset, 1-inset)
 end
 
-function st:SnapTop(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOP', anchorFrame, 'TOP', 0, -yOffset)
-end
-
-
-function st:SnapTopLeft(frame, anchorFrame, xOffset, yOffset)
-	xOffset = st:CalculateSpacing(frame, anchorFrame, xOffset)
-	if yOffset then
-		yOffset = st:CalculateSpacing(frame, anchorFrame,yOffset)
-	end
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPLEFT', xOffset, -(yOffset or xOffset))
-end
-
-function st:SnapBottomLeft(frame, anchorFrame, xOffset, yOffset)
-	xOffset = st:CalculateSpacing(frame, anchorFrame, xOffset)
-	if yOffset then
-		yOffset = st:CalculateSpacing(frame, anchorFrame,yOffset)
-	end
-	frame:ClearAllPoints()
-	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMLEFT', xOffset, -(yOffset or xOffset))
-end
-
-function st:SnapTopRight(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPRIGHT', anchorFrame, 'TOPRIGHT', 0, -yOffset)
-end
-
-function st:SnapTopAcross(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPLEFT', 0, -yOffset)
-	frame:SetPoint('TOPRIGHT', anchorFrame, 'TOPRIGHT', 0, -yOffset)
-end
-
-function st:SnapBelow(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOP', anchorFrame, 'BOTTOM', 0, -yOffset)
-end
-
-function st:SnapBelowLeft(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPLEFT', anchorFrame, 'BOTTOMLEFT', 0, -yOffset)
-end
-
-function st:SnapBelowRight(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPRIGHT', anchorFrame, 'BOTTOMRIGHT', 0, -yOffset)
-end
-
-function st:SnapBelowAcross(frame, anchorFrame, spacing)
-	local yOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPRIGHT', anchorFrame, 'BOTTOMRIGHT', 0, -yOffset)
-	frame:SetPoint('TOPLEFT', anchorFrame, 'BOTTOMLEFT', 0, -yOffset)
-end
-
-function st:SnapTopRightOf(frame, anchorFrame, spacing)
-	local xOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('TOPLEFT', anchorFrame, 'TOPRIGHT', xOffset, 0)
-end
-
-function st:SnapBottomRightOf(frame, anchorFrame, spacing)
-	local xOffset = st:CalculateSpacing(frame, anchorFrame, spacing)
-	frame:ClearAllPoints()
-	frame:SetPoint('BOTTOMLEFT', anchorFrame, 'BOTTOMRIGHT', xOffset, 0)
-end
-
 local title = "|cff00adefSaftUI|r"
 
 function st:Print(...)
@@ -216,9 +140,9 @@ end
 function st:Debug(module, ...)
 	if not self.DEBUG then return end
 
-	debug = st.StringFormat:ColorString(
+	local label = st.StringFormat:ColorString(
 			'DEBUG', st.config.profile.colors.text.red:GetRGB())
-	st:Print(('<%s:%s>'):format(debug, module), ...)
+	st:Print(('<%s:%s>'):format(label, module), ...)
 end
 
 function st:Kill(frame)
@@ -238,13 +162,6 @@ function st:Kill(frame)
 	frame.SetAtlas = frame.Hide
 
 	frame:Hide()
-end
-
-function st:Hide(frame, reparent)
-   frame:ClearAllPoints()
-   frame:SetPoint('BOTTOM', HiddenFrame)
-
-   if reparent then frame:SetParent(st.HiddenFrame) end
 end
 
 -- Work that touches protected (secure) frames can't run in combat. In combat,
