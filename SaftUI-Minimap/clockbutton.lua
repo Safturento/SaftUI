@@ -22,14 +22,7 @@ function MicroMenu:KillBlizzard_TimeManager()
     end
 
     -- Blizzard_TimeManager is load on demand
-    local frame = CreateFrame('frame')
-    frame:RegisterEvent("ADDON_LOADED")
-    frame:SetScript('OnEvent', function(self, event, addon)
-        if addon == 'Blizzard_TimeManager' then
-            self:UnregisterAllEvents()
-            HideBlizzardClock()
-        end
-    end)
+    st:OnBlizzardAddon('Blizzard_TimeManager', HideBlizzardClock)
 end
 
 function MicroMenu:SkinTimeManagerClockButton()

@@ -381,8 +381,7 @@ function UF:PlaceHolder(unit)
 	local holder = self.holders[unit]
 	local config = self:GetProfileConfig()[unit]
 	local count = #self.units[unit]
-	holder:ClearAllPoints()
-	holder:SetPoint(st:UnpackPoint(config.position))
+	st:PlaceAtPosition(holder, config.position)
 	-- Boss/arena lay out like party and raid: the holder covers all of it.
 	local width, height = UF.GetGroupLayoutSize(UF.GetUnitGroupLayout(unit, config), count)
 	st:SetSize(holder, width, height)
@@ -648,12 +647,11 @@ end
 -- unit_strings), so it has none.
 function UF:RegisterMovers()
 	local function Register(unit, label)
-		st:RegisterMover('uf_' .. unit, {
-			frame = self:GetMoverFrame(unit),
+		st:RegisterConfigMover(self:GetMoverFrame(unit), {
+			key = 'uf_' .. unit,
 			label = label,
 			-- Looked up on every call: a profile change replaces these tables.
-			getPosition = function() return self:GetProfileConfig()[unit].position end,
-			setPosition = function(pos) self:GetProfileConfig()[unit].position = pos end,
+			config = function() return self:GetProfileConfig()[unit] end,
 			apply = function() self:ApplyPosition(unit) end,
 			configPath = { 'Unitframes', unit, 'general' },
 		})

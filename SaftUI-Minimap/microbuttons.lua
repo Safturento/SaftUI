@@ -345,11 +345,7 @@ function MicroMenu:SkinBlizzardMicroMenu()
 
     -- Blizzard's Edit Mode box for the micro menu no longer moves or sizes the
     -- buttons, so keep it hidden. HookScript only; nothing is written onto it.
-    if MicroMenuContainer and MicroMenuContainer.Selection then
-        MicroMenuContainer.Selection:HookScript('OnShow', function(selection)
-            selection:Hide()
-        end)
-    end
+    st:HideEditModeSelection(MicroMenuContainer)
 end
 
 -- Puts each button over its holder in SaftUI's bar (UpdateButtons places the

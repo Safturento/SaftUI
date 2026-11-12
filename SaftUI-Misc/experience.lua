@@ -157,8 +157,7 @@ function XP:UpdateConfig()
 		local width = st:RoundToPixel(self.config.width, self.container)
 		local height = st:RoundToPixel(self.config.height, self.container)
 		self.container:SetWidth(width)
-		self.container:ClearAllPoints()
-		self.container:SetPoint(st:UnpackPoint(self.config.position))
+		st:PlaceAtPosition(self.container, self.config.position)
 
 		-- The rested bar goes between the experience bar's backdrop and its fill.
 		-- Under the backdrop it only showed through the backdrop's transparency.
@@ -389,11 +388,7 @@ function XP:HideBlizz()
 				frame:HookScript('OnShow', HideBlizzBar)
 				-- Blizzard's Edit Mode box for the container no longer
 				-- controls anything, so keep it hidden. HookScript only.
-				if frame.Selection then
-					frame.Selection:HookScript('OnShow', function(selection)
-						selection:Hide()
-					end)
-				end
+				st:HideEditModeSelection(frame)
 			end
 			if frame:IsShown() then
 				HideBlizzBar(frame)
@@ -412,7 +407,7 @@ function XP:OnEnable()
 	local container = CreateFrame('frame', st.name ..'_Experience', UIParent)
 	container:SetWidth(self.config.width)
 	self:MigratePosition()
-	container:SetPoint(st:UnpackPoint(self.config.position))
+	st:PlaceAtPosition(container, self.config.position)
 	self:HookScript(container, 'OnEnter')
 	self:HookScript(container, 'OnLeave')
 	self.container = container

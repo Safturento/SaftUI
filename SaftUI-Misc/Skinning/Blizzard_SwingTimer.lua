@@ -123,17 +123,11 @@ function ST:UpdateConfig()
 	end
 end
 
-function ST:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_SwingTimer' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:SkinFrames()
-end
-
 function ST:OnEnable()
 	if _G.SwingTimerMainHandFrame then
 		self:SkinFrames()
 	elseif C_AddOns.DoesAddOnExist('Blizzard_SwingTimer') then
 		-- Only Forever has the addon; on retail there is nothing to wait for.
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_SwingTimer', function() self:SkinFrames() end)
 	end
 end

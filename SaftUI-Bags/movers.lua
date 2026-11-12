@@ -187,11 +187,10 @@ function INV:RegisterMovers()
 			self:ApplyPosition(id)
 			self:SyncAnchorSize(id)
 
-			st:RegisterMover('bags_' .. id, {
-				frame = self:GetAnchor(id),
+			st:RegisterConfigMover(self:GetAnchor(id), {
+				key = 'bags_' .. id,
 				label = WINDOW_LABELS[id],
-				getPosition = function() return self.config[id].position end,
-				setPosition = function(position) self.config[id].position = position end,
+				config = function() return self.config[id] end,
 				apply = function() self:ApplyPosition(id) end,
 				configPath = { 'Inventory', id, 'general' },
 			})

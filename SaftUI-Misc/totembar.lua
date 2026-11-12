@@ -514,13 +514,9 @@ function TB:ApplyHolder()
 	if not holder then return end
 	self:KeepPlacement()
 
-	st:SafeReposition(holder, 'totembar_holder', function()
-		holder:SetSize(BarSize(self.config, self.bar))
-		local point, relative, rel_point, x, y = st:UnpackPoint(self:GetPosition())
-		holder:ClearAllPoints()
-		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
-			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
-	end)
+	st:PlaceHolder(holder, 'totembar_holder',
+		function() return BarSize(self.config, self.bar) end,
+		function() return self:GetPosition() end)
 
 	local position = self.config.position
 	if not position then return end
@@ -567,12 +563,10 @@ function TB:SetupPosition()
 	hooksecurefunc(bar, 'ClearAllPoints', PutBack)
 	hooksecurefunc(bar, 'SetPoint', PutBack)
 
-	-- Blizzard's Edit Mode box for the bar. Not secure, so hiding it is safe in combat.
-	local selection = bar.Selection
-	if selection then
-		selection:HookScript('OnShow', function(box) box:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box for the bar, hidden from its next show, and now. Not
+	-- secure, so hiding it is safe in combat.
+	st:HideEditModeSelection(bar)
+	if bar.Selection then bar.Selection:Hide() end
 
 	self:DisableBarMouse()
 
@@ -650,18 +644,12 @@ function TB:SetupSkinAndTimers()
 	self:SetupSkin()
 end
 
-function TB:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_ActionBar' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function TB:OnEnable()
 	st:BindModuleConfig(self, 'totembar')
 	if _G.MultiCastActionBarFrame then
 		self:Setup()
 	elseif st.forever then
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_ActionBar', function() self:Setup() end)
 	end
 end
 

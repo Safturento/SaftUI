@@ -27,11 +27,6 @@ local timerTexts = setmetatable({}, { __mode = 'k' })
 -- the next held roll.
 local held, heldPool = {}, {}
 
--- A value that isn't secret (.agents/clients.md), else nil.
-local function Plain(v)
-	if not issecretvalue(v) then return v end
-end
-
 -- A roll timer's value in seconds. Blizzard's roll timer runs from the roll's
 -- length (START_LOOT_ROLL's rollTime, its max) down to 0 by GetLootRollTimeLeft.
 -- The two share a unit (GroupLootFrame_OnUpdate clamps one to the other), and
@@ -217,7 +212,7 @@ function LT:GroupLootFrame_OnShow(frame)
 	local skin = skins[frame]
 	if skin then
 		skin.shown = {
-			rollID = Plain(frame.rollID), texture = texture, text = text .. name,
+			rollID = st.Plain(frame.rollID), texture = texture, text = text .. name,
 			color = color, transmog = canTransmog == true,
 		}
 	end
@@ -595,8 +590,7 @@ function LT:ApplyRollAnchor()
 	local anchor = self:CreateRollAnchor()
 
 	anchor:SetSize(st:RoundToPixel(config.width, anchor), st:RoundToPixel(config.height, anchor))
-	anchor:ClearAllPoints()
-	anchor:SetPoint(st:UnpackPoint(config.position))
+	st:PlaceAtPosition(anchor, config.position)
 end
 
 -- Stacks Blizzard's roll frames and the held rolls from the anchor, with no
@@ -632,7 +626,7 @@ function LT:LayoutRollFrames()
 		local entry = stack[i]
 		local keep
 		if entry.frame then
-			keep = slots[entry.frame] ~= nil and Plain(entry.frame.rollID) == entry.rollID
+			keep = slots[entry.frame] ~= nil and st.Plain(entry.frame.rollID) == entry.rollID
 			if keep then slots[entry.frame] = nil end
 		else
 			keep = entry.bar.holding
@@ -642,7 +636,7 @@ function LT:LayoutRollFrames()
 
 	local new = {}
 	for frame, slot in pairs(slots) do
-		local rollID = Plain(frame.rollID)
+		local rollID = st.Plain(frame.rollID)
 		if heldFrom[frame] == nil or heldFrom[frame] ~= rollID then
 			tinsert(new, { frame = frame, rollID = rollID, slot = slot })
 		end
@@ -701,11 +695,10 @@ function LT:InitializeRollFrame()
 end
 
 function LT:RegisterRollMover()
-	st:RegisterMover('lootroll', {
-		frame = self.rollAnchor,
+	st:RegisterConfigMover(self.rollAnchor, {
+		key = 'lootroll',
 		label = 'Loot Rolls',
-		getPosition = function() return self.config.roll.position end,
-		setPosition = function(pos) self.config.roll.position = pos end,
+		config = function() return self.config.roll end,
 		apply = function() self:UpdateGroupLootConfig() end,
 		configPath = { 'Loot', 'roll', 'general' },
 	})

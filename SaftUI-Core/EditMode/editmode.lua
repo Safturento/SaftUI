@@ -175,3 +175,32 @@ function st:RegisterMover(key, def)
 	end
 	return mover
 end
+
+-- Registers a mover for frame whose position lives at config.position in the
+-- profile. spec = { key, config, apply, <anything else st:RegisterMover takes:
+-- label, configPath, blizzardFrame, ...> }. spec isn't changed; its other fields
+-- go to st:RegisterMover as they are, except frame, getPosition and setPosition,
+-- which the helper's own replace:
+--   key     the mover's key, as st:RegisterMover's first argument.
+--   config  a function returning the table that holds the position, called on
+--           every read and write, not once, since a profile change replaces
+--           the profile's tables (e.g. function() return self.config[id] end).
+--   apply   places the frame from the profile, as st:RegisterMover's apply.
+-- getPosition returns config().position; setPosition(position) stores the table
+-- it's given as config().position. Every other field goes to st:RegisterMover
+-- as it is. Returns the mover. A frame whose position needs more than that
+-- (migrating it on read, a default when the profile has none) registers with
+-- st:RegisterMover.
+function st:RegisterConfigMover(frame, spec)
+	assert(type(spec) == 'table' and type(spec.config) == 'function',
+		'RegisterConfigMover: spec needs a config function')
+	local getConfig = spec.config
+	local def = {}
+	for field, value in pairs(spec) do
+		if field ~= 'key' and field ~= 'config' then def[field] = value end
+	end
+	def.frame = frame
+	def.getPosition = function() return getConfig().position end
+	def.setPosition = function(position) getConfig().position = position end
+	return st:RegisterMover(spec.key, def)
+end

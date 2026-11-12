@@ -187,6 +187,46 @@ function st:QueueAfterCombat(key, fn)
 	return true
 end
 
+-- Runs fn once the Blizzard addon `name` is loaded: now if C_AddOns.IsAddOnLoaded
+-- says it is (loaded, or loading, as during its own ADDON_LOADED), otherwise
+-- when its ADDON_LOADED fires. fn gets no arguments. Several waits on one addon
+-- run in the order they were made; run from the event, an error in one goes to
+-- the error handler and doesn't stop the rest (an fn run at once raises into
+-- its caller). The one event frame is made on the first wait and
+-- listens only while a wait is left. It touches no Blizzard frame.
+-- A wait made from inside a waiting fn is kept (or runs at once, if its addon
+-- is loaded) and is never run twice.
+local addonWaits = {} -- addon name -> the fns waiting for it, in order
+local addonWaitFrame
+
+function st:OnBlizzardAddon(name, fn)
+	if C_AddOns.IsAddOnLoaded(name) then
+		fn()
+		return
+	end
+	if not addonWaitFrame then
+		addonWaitFrame = CreateFrame('Frame')
+		addonWaitFrame:SetScript('OnEvent', function(self, event, loaded)
+			local fns = addonWaits[loaded]
+			if not fns then return end
+			-- Taken off the list before they run, so a wait made by one of them
+			-- starts a new list instead of joining this one.
+			addonWaits[loaded] = nil
+			if not next(addonWaits) then self:UnregisterEvent('ADDON_LOADED') end
+			for _, wait in ipairs(fns) do
+				xpcall(wait, geterrorhandler())
+			end
+		end)
+	end
+	local fns = addonWaits[name]
+	if not fns then
+		fns = {}
+		addonWaits[name] = fns
+	end
+	fns[#fns + 1] = fn
+	addonWaitFrame:RegisterEvent('ADDON_LOADED')
+end
+
 -- The widget API's own ClearAllPoints and SetPoint, called directly so any Lua
 -- replacement on the frame itself is skipped. Blizzard's Edit Mode systems (e.g.
 -- ChatFrame1) get Lua overrides of both (EditModeSystemMixin:OnSystemLoad) that
@@ -288,6 +328,102 @@ function st:SafeReposition(frame, key, fn)
 	pendingMoves[key] = { frame = frame, fn = fn }
 	st:QueueAfterCombat('SafeReposition', FlushPendingMoves)
 	return false
+end
+
+--[[
+	Taking over a Blizzard Edit Mode frame (.agents/edit-mode.md): a holder of
+	SaftUI's is placed from the profile (st:PlaceHolder), the Blizzard frame
+	follows it (st:HoldFrame), and Blizzard's Edit Mode box for the frame is kept
+	hidden (st:HideEditModeSelection), so Blizzard's Edit Mode can't select or
+	drag it. Nothing is written onto a Blizzard frame or its box: what these keep
+	is in weak tables of their own (.agents/taint.md rule 1), and their hooks are
+	post-hooks (rule 2).
+]]
+
+-- Edit Mode boxes already kept hidden: box -> true.
+local hiddenSelections = setmetatable({}, { __mode = 'k' })
+
+local function HideSelection(box)
+	box:Hide()
+end
+
+-- Keeps a Blizzard Edit Mode system's box (frame.Selection) hidden, so
+-- Blizzard's Edit Mode doesn't offer the frame: a post-hook on the box's OnShow
+-- hides it each time Blizzard shows it (on Edit Mode enter,
+-- EditModeSystemMixin:HighlightSystem). A hook only: a box showing now stays
+-- until it next shows, so a site that wants it gone at once also calls the
+-- box's Hide. The box's template (EditModeSystemSelectionBaseTemplate)
+-- has no OnShow or OnHide of its own and isn't protected, so in combat it's
+-- hooked and hidden just the same. Called again for a frame, it adds no second
+-- hook. Does nothing for a nil frame or one without a box.
+function st:HideEditModeSelection(frame)
+	local selection = frame and frame.Selection
+	if not selection or hiddenSelections[selection] then return end
+	hiddenSelections[selection] = true
+	selection:HookScript('OnShow', HideSelection)
+end
+
+-- Blizzard frames st:HoldFrame holds: frame -> { holder, x, y, reanchor }. The weak
+-- mode frees nothing in practice (each value's reanchor refers to its frame, and Lua
+-- 5.1 has no ephemerons), which is fine: Blizzard's frames live for the session.
+local heldFrames = setmetatable({}, { __mode = 'k' })
+
+-- Anchors a Blizzard Edit Mode frame over holder by its top left and bottom right
+-- corners, x and y (0 if not given) outside the holder on each side, and puts it
+-- back after each of its ClearAllPoints and SetPoint (post-hooks), which
+-- Blizzard's Edit Mode places it through on every layout apply. Those two are
+-- Edit Mode's Lua overrides, so SaftUI moves it with the plain widget methods
+-- (st:ClearAllPointsDirect, st:SetPointDirect), which don't run the hooks. In
+-- combat a protected frame (something secure anchored to it) is left where
+-- Blizzard puts it, and held again once when combat ends. Called again for a
+-- frame, it holds it on the new holder, with no second pair of hooks.
+function st:HoldFrame(frame, holder, x, y)
+	local hold = heldFrames[frame]
+	if not hold then
+		hold = {}
+		heldFrames[frame] = hold
+		function hold.reanchor()
+			if not st:CanMoveNow(frame) and st:QueueAfterCombat(hold, hold.reanchor) then return end
+			local outX, outY = hold.x, hold.y
+			st:ClearAllPointsDirect(frame)
+			-- 0 - outX rather than -outX, so no outset gives an offset of 0, not -0.
+			st:SetPointDirect(frame, 'TOPLEFT', hold.holder, 'TOPLEFT', 0 - outX, outY)
+			st:SetPointDirect(frame, 'BOTTOMRIGHT', hold.holder, 'BOTTOMRIGHT', outX, 0 - outY)
+		end
+		hooksecurefunc(frame, 'ClearAllPoints', hold.reanchor)
+		hooksecurefunc(frame, 'SetPoint', hold.reanchor)
+	end
+	hold.holder, hold.x, hold.y = holder, x or 0, y or 0
+	hold.reanchor()
+end
+
+-- Clears frame's points and sets it from a saved position table (point, frame,
+-- rel_point, x_off, y_off), as st:UnpackPoint reads one. Nothing else: the
+-- offsets go as saved, not rounded or made numbers, and the frame is whatever
+-- the position holds (a name is the game's to resolve, none is the frame's
+-- parent). A site that rounds, resolves with st:ResolveFrame and falls back to
+-- UIParent, or has work between the clear and the set, keeps its own. A frame
+-- that can't move now (protected, in combat) is the caller's to queue
+-- (st:SafeReposition); this moves it.
+function st:PlaceAtPosition(frame, position)
+	frame:ClearAllPoints()
+	frame:SetPoint(st:UnpackPoint(position))
+end
+
+-- Sizes and places a holder of SaftUI's: getSize() gives its width and height,
+-- getPosition() the profile's position (point, frame, rel_point, x_off, y_off),
+-- anchored to the frame it names or UIParent, its offsets rounded to whole
+-- pixels. Through st:SafeReposition under key, so in combat a protected holder
+-- waits for the end of combat, and both are read when it's placed. Returns true
+-- if it was placed now.
+function st:PlaceHolder(holder, key, getSize, getPosition)
+	return st:SafeReposition(holder, key, function()
+		holder:SetSize(getSize())
+		local point, relative, rel_point, x, y = st:UnpackPoint(getPosition())
+		holder:ClearAllPoints()
+		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
+			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
+	end)
 end
 
 --[[

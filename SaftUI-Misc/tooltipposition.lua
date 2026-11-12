@@ -91,13 +91,9 @@ end
 function TT:ApplyTooltipHolder()
 	local holder = self.tooltipHolder
 	if not holder then return end
-	st:SafeReposition(holder, 'tooltip_holder', function()
-		holder:SetSize(st:RoundToPixel(HOLDER_WIDTH, holder), st:RoundToPixel(HOLDER_HEIGHT, holder))
-		local point, relative, rel_point, x, y = st:UnpackPoint(self.config.position)
-		holder:ClearAllPoints()
-		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
-			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
-	end)
+	st:PlaceHolder(holder, 'tooltip_holder',
+		function() return st:RoundToPixel(HOLDER_WIDTH, holder), st:RoundToPixel(HOLDER_HEIGHT, holder) end,
+		function() return self.config.position end)
 	self:UpdateTooltipAnchor()
 end
 
@@ -149,11 +145,9 @@ function TT:SetupTooltipPosition()
 	hooksecurefunc(container, 'ClearAllPoints', update)
 	hooksecurefunc(container, 'SetPoint', update)
 
-	local selection = container.Selection
-	if selection then
-		selection:HookScript('OnShow', function(box) box:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box for the container: hidden from its next show, and now.
+	st:HideEditModeSelection(container)
+	if container.Selection then container.Selection:Hide() end
 
 	-- The bag window and loot feed are built in their own addons' OnEnable, which
 	-- runs before this one (SaftUI-Bags and SaftUI-Loot load before SaftUI-Misc).
@@ -164,11 +158,10 @@ function TT:SetupTooltipPosition()
 		self:UpdateTooltipAnchor()
 	end)
 
-	st:RegisterMover('tooltip', {
-		frame = self.tooltipHolder,
+	st:RegisterConfigMover(self.tooltipHolder, {
+		key = 'tooltip',
 		label = 'Tooltip',
-		getPosition = function() return self.config.position end,
-		setPosition = function(pos) self.config.position = pos end,
+		config = function() return self.config end,
 		apply = function() self:ApplyTooltipHolder() end,
 		configPath = { 'Tooltip', 'general' },
 	})

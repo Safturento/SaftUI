@@ -44,7 +44,7 @@ local AB = st:GetModule('ActionBars')
 	frames stay in Blizzard's layout, empty and invisible. ExtraActionBarFrame,
 	the only one that takes the mouse, is made click-through, so it can't catch
 	clicks meant for SaftUI's bars under it (AB:DisableMouse, hideblizzard.lua).
-	The container's Edit Mode box is kept hidden (AB:HideEditModeSelection). Its
+	The container's Edit Mode box is kept hidden (st:HideEditModeSelection). Its
 	Edit Mode system has no settings but its position, which the holders take
 	over.
 	  - Size: a Scale setting, the widgets' own SetScale on ExtraActionButton1
@@ -133,10 +133,6 @@ AB.EXTRA_LABELS = {
 -- id -> its holder, the frame its edit mode mover moves. Only the ones the
 -- client has Blizzard's frames for. The leave vehicle button's is its header.
 AB.extras = {}
-
--- Blizzard's extra action and zone ability buttons at scale 1
--- (ExtraActionButtonTemplate, ZoneAbilityFrameSpellButtonTemplate).
-local BLIZZARD_SIZE = 52
 
 -- The leave art of Blizzard's button, cropped to the inside of its round frame.
 local LEAVE_TEXTURE = [[Interface\Vehicles\UI-Vehicles-Button-Exit-Up]]
@@ -230,7 +226,7 @@ function layouts.extra(self, holder, config)
 	st:ClearAllPointsDirect(button)
 	st:SetPointDirect(button, 'CENTER', holder, 'CENTER')
 
-	local size = st:RoundToPixel(BLIZZARD_SIZE * scale, holder)
+	local size = st:RoundToPixel(st.BLIZZARD_SIZE * scale, holder)
 	self:PlaceFrame(holder, size, size, config.position)
 end
 
@@ -246,7 +242,7 @@ function layouts.zone(self, holder, config)
 		st:SetPointDirect(zone.Style, 'CENTER', buttons, 'CENTER')
 	end
 
-	local size = st:RoundToPixel(BLIZZARD_SIZE * scale, holder)
+	local size = st:RoundToPixel(st.BLIZZARD_SIZE * scale, holder)
 	self:PlaceFrame(holder, size, size, config.position)
 end
 
@@ -423,7 +419,7 @@ function AB:SetupExtras()
 	end
 
 	-- Blizzard's Edit Mode box for the container, which shows nothing now.
-	self:HideEditModeSelection(_G.ExtraAbilityContainer)
+	st:HideEditModeSelection(_G.ExtraAbilityContainer)
 
 	self.extras.vehicleleave = CreateLeaveButton(self)
 

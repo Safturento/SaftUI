@@ -107,10 +107,6 @@ local PANEL_PADDING = 3
 -- The size SaftUI's arrow art is drawn at.
 local ARROW_SIZE = 16
 
--- From this button size up, cooldown numbers are in the larger pixel font, as on SaftUI's
--- action bars (SaftUI-ActionBars/skin.lua's LARGE_COUNTDOWN_SIZE).
-local LARGE_COUNTDOWN_SIZE = 36
-
 ------------------------------------
 --- Element colours -----------------
 ------------------------------------
@@ -330,7 +326,7 @@ local function StyleButton(button, skin, theme, background)
 
 	-- Cooldown numbers in the pixel font, larger on large buttons, as on SaftUI's action
 	-- bars. A new button size styles the buttons again (TB:ApplyButtonLayout).
-	local countdownFont = st:GetFont(TB.config.button_size >= LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
+	local countdownFont = st:GetFont(TB.config.button_size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
 	if countdownFont and button.cooldown and button.cooldown.GetCountdownFontString then
 		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end

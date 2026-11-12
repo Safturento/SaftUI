@@ -266,18 +266,13 @@ function CHT:ApplyHolder()
 	local holder = self.holder
 	if not holder then return end
 
-	st:SafeReposition(holder, 'chat_holder', function()
+	st:PlaceHolder(holder, 'chat_holder', function()
 		local width, height = self:GetChatSize()
 		if not width then
 			width, height = ChatFrame1:GetSize()
 		end
-		holder:SetSize(width, height)
-
-		local point, relative, rel_point, x, y = st:UnpackPoint(self.config.position)
-		holder:ClearAllPoints()
-		holder:SetPoint(point, st:ResolveFrame(relative) or UIParent, rel_point,
-			st:RoundToPixel(x, holder), st:RoundToPixel(y, holder))
-	end)
+		return width, height
+	end, function() return self.config.position end)
 end
 
 -- Puts the mover's outline on the chat frame's border line. SaftUI's backdrop sits
@@ -344,22 +339,23 @@ function CHT:TakeOverChatFrame()
 	ChatFrame1:HookScript('OnSizeChanged', function() self:HoldSize() end)
 
 	-- Blizzard's Edit Mode box and resize grabber no longer control this frame, so keep
-	-- them hidden. HookScript only; nothing is written onto the frames.
+	-- them hidden, from their next show and now. HookScript only; nothing is written
+	-- onto the frames.
+	st:HideEditModeSelection(ChatFrame1)
+	if ChatFrame1.Selection then ChatFrame1.Selection:Hide() end
 	local function KeepHidden(frame)
 		if not frame then return end
 		frame:HookScript('OnShow', function(self) self:Hide() end)
 		frame:Hide()
 	end
-	KeepHidden(ChatFrame1.Selection)
 	KeepHidden(ChatFrame1.EditModeResizeButton)
 end
 
 function CHT:RegisterChatMover()
-	self.mover = st:RegisterMover('chat', {
-		frame = self.holder,
+	self.mover = st:RegisterConfigMover(self.holder, {
+		key = 'chat',
 		label = 'Chat',
-		getPosition = function() return self.config.position end,
-		setPosition = function(position) self.config.position = position end,
+		config = function() return self.config end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'Chat', 'general' },
 	})

@@ -6,12 +6,15 @@ covers:
   - 'SaftUI-*/*.toc'
   - 'SaftUI-Core/init.lua'
   - 'SaftUI-Core/constants.lua'
+  - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/Config/config.lua'
   - 'SaftUI-Core/Config/defaults.lua'
   - 'SaftUI-*/config.lua'
   - 'SaftUI-*/init.lua'
   - 'SaftUI-Core/theme.lua'
   - 'SaftUI-Core/themeart.lua'
+  - 'SaftUI-Core/utilities.lua'
+  - 'SaftUI-Core/Media/fonts.lua'
   - 'SaftUI-Unitframes/unitframes.lua'
   - 'SaftUI-Unitframes/updaters.lua'
   - 'SaftUI-Unitframes/groups.lua'
@@ -39,11 +42,13 @@ covers:
 - A module that shows profile colors can define `OnColorsChanged(group)`. `st:ColorsChanged(group)` (`SaftUI-Core/Media/colors.lua`) calls it on every module that has one (one per module: SaftUI-Loot's, in `init.lua`, hands it to the feed and the roll bars), after a Colors tab change; `group` is `text`, `button`, `class`, `reaction`, `renown`, `power`, `item_quality`, `status` or `threat`, or `theme` after a theme recolor or redraw put the theme's colors back on every drawn frame (see Themes, below). Skinning's skins are its submodules, which `st:ColorsChanged` doesn't reach, so `SK:OnColorsChanged` passes the call on to them. Anything that colors by item quality uses `st:QualityColor(quality)` (the profile's color, else Blizzard's).
 - `SaftUI-Core/constants.lua` sets client flags and screen constants. `st.forever` is the only client flag (there is no `st.retail`); see `.agents/clients.md`.
 - Core helpers live in `SaftUI-Core/api.lua`. The ones you'll use most:
-  - position: `st:UnpackPoint`, `st:ResolveFrame`, `st:ValidateAnchor`, `st:RoundToPixel`, `st:GetPixelSize`
+  - position: `st:UnpackPoint`, `st:PlaceAtPosition` (clear and set a frame from a saved position, offsets as saved; see `.agents/edit-mode.md`), `st:ResolveFrame`, `st:ValidateAnchor`, `st:RoundToPixel`, `st:GetPixelSize`
   - **Half pixels from centred anchors.** SaftUI's UI scale makes one unit one physical pixel, and `st:RoundToPixel` keeps sizes and offsets whole. But a frame anchored by its centre on an axis (TOP/BOTTOM centre it across, LEFT/RIGHT up and down, CENTER both) that's an odd number of pixels long on that axis has its edges half a pixel off the grid. So do its children. The game then rounds each child separately, and children either side of the centre round in opposite directions. Symptom: one gap in a row of buttons is a pixel short, right at the middle (a 12-button bar at 3px spacing is 573px wide). Fix: round the frame up to an even pixel length on each centred axis, so its edges and its centre stay on whole pixels and frames anchored to it line up too. `EvenIfCentred` in `SaftUI-ActionBars/bars.lua` does this, through `AB:PlaceFrame`, which sizes and places both the bars and the extra buttons' holders (`extras.lua`). When another addon needs it, move it into `api.lua`. Where the anchor can change without SaftUI's sizing code seeing it, round up on both axes whatever it is. The totem bar (`SaftUI-Misc/totembar.lua`, `EvenPixels`) is always sized even, with the spare pixel as empty bar at the right and the top: on a shaman SaftUI places it from its holder, whose Position can be anchored by any point and is changed by drags, and on other classes Blizzard's Edit Mode places it.
   - combat-safe moves: `st:CanMoveNow`, `st:SafeReposition`, `st:QueueAfterCombat`, `st:GetPoints`/`st:RestorePoints`
+  - waiting for a Blizzard addon: `st:OnBlizzardAddon(name, fn)` runs `fn` at once if `C_AddOns.IsAddOnLoaded(name)`, else once on that addon's `ADDON_LOADED`, through one shared event frame (a wait made inside a waiting `fn` is kept; an error in a `fn` run from the event goes to the error handler and the others still run; a `fn` run at once raises into its caller). Use it instead of a module's own `ADDON_LOADED` method with `RegisterEvent`/`UnregisterEvent`. A site that already tests for its frame (`if SomeFrame then Setup() else st:OnBlizzardAddon('Blizzard_X', Setup) end`) keeps that test in front, and a guard such as `C_AddOns.DoesAddOnExist` goes before the wait. It is for one named Blizzard addon; a wait on any addon or on another author's addon stays a handler of its own
   - moving Blizzard frames whose methods are Lua overrides: `st:SetPointDirect`, `st:ClearAllPointsDirect`, `st:SetSizeDirect`
-- Styling: `st:SetBackdrop`, `st:SetTemplate`, `st:SetBackdropIn` (`theme.lua`, below), `st:CreateFrame` (`panels.lua`), `st:GetFont` (`Media/fonts.lua`), `st:CreateButton`/`st:SkinButton` (`Widgets/`). Colors other than the theme's live in `st.config.profile.colors`.
+  - taking over a Blizzard Edit Mode frame: `st:PlaceHolder` (a holder of SaftUI's, from the profile), `st:HoldFrame` (the Blizzard frame over it) and `st:HideEditModeSelection` (its Edit Mode box); see `.agents/edit-mode.md`
+- Styling: `st:SetBackdrop`, `st:SetTemplate`, `st:SetBackdropIn` (`theme.lua`, below), `st:CreateFrame` (`panels.lua`), `st:GetFont` and `st.OutlineFlag(outline)` (`Media/fonts.lua`; the font flag for a saved outline key, `'NONE'` giving `''`, so pass it to `SetFont` and never the raw key), `st.Clamp(value, low, high)` (`utilities.lua`; floors, nil is `low`), `st:CreateButton`/`st:SkinButton` (`Widgets/`). Colors other than the theme's live in `st.config.profile.colors`.
 
 ## Themes
 

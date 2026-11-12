@@ -108,12 +108,11 @@ end
 function AB:RegisterBarMover(id)
 	local bar = self.bars[id]
 	if not bar or self.movers[id] then return end
-	self.movers[id] = st:RegisterMover('ab_' .. id, {
-		frame = bar,
+	self.movers[id] = st:RegisterConfigMover(bar, {
+		key = 'ab_' .. id,
 		label = self:GetBarLabel(id),
 		-- Read through self.config on every call: a profile change replaces it.
-		getPosition = function() return self.config[id].position end,
-		setPosition = function(position) self.config[id].position = position end,
+		config = function() return self.config[id] end,
 		apply = function() self:LayoutBar(id) end,
 		configPath = { 'ActionBars', id, 'general' },
 	})
@@ -125,12 +124,11 @@ end
 function AB:RegisterExtraMover(id)
 	local holder = self.extras[id]
 	if not holder or self.movers[id] then return end
-	self.movers[id] = st:RegisterMover('ab_' .. id, {
-		frame = holder,
+	self.movers[id] = st:RegisterConfigMover(holder, {
+		key = 'ab_' .. id,
 		label = self.EXTRA_LABELS[id] .. '\n' .. EXTRA_NOTES[id],
 		-- Read through self.config on every call: a profile change replaces it.
-		getPosition = function() return self.config[id].position end,
-		setPosition = function(position) self.config[id].position = position end,
+		config = function() return self.config[id] end,
 		apply = function() self:LayoutExtra(id) end,
 		configPath = { 'ActionBars', id, 'general' },
 	})
@@ -139,17 +137,6 @@ end
 ------------------------------------
 --- /sui ----------------------------
 ------------------------------------
-
--- The Fonts module's outlines, with None named (Fonts leaves it blank).
-local function OutlineValues()
-	local fonts = st:GetModule('Fonts', true)
-	local values = {}
-	for key, name in pairs(fonts and fonts.outlines or { OUTLINE = 'Outline' }) do
-		values[key] = name
-	end
-	values.NONE = 'None'
-	return values
-end
 
 -- What each text is, for its tooltips.
 -- The titles of the texts' Position sections: the Text tab has one for each.
@@ -197,7 +184,7 @@ function AB:GetTextOptions(id, kind, name, order)
 				name = 'Outline',
 				desc = 'The outline drawn around ' .. what .. '.',
 				type = 'select',
-				values = OutlineValues(),
+				values = st:GetModule('Fonts').outlines,
 			},
 			position = generators.position(5, false,
 				function(key) return self.config[id].text[kind][key] end,

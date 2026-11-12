@@ -19,14 +19,14 @@ local STP = st:NewModule('SwingTimer')
 	(EditModeSystemMixin:OnSystemLoad) that write Edit Mode state, such as
 	EditModeManagerFrame.editModeSystemAnchorDirty. Calling them from addon code would
 	taint that state, so this file never does. It calls the plain widget methods
-	instead (see Setup), which run no Blizzard Lua.
+	instead (st:HoldFrame, and SetAlpha in Setup), which run no Blizzard Lua.
 
 	Each bar gets a SaftUI holder frame, sized and positioned from the profile. The mover
 	and the /sui section work on the holder. The bar is anchored around its holder so the
 	bar's StatusBar covers the holder exactly, and post-hooks on the bar's ClearAllPoints
-	and SetPoint put it back whenever Blizzard lays it out again. With two opposite
-	corners anchored, Blizzard's SetWidth/SetHeight no longer change the bar's size, and
-	its Scale setting only scales the bar's insides (text, pip, backdrop edge).
+	and SetPoint put it back whenever Blizzard lays it out again (st:HoldFrame). With two
+	opposite corners anchored, Blizzard's SetWidth/SetHeight no longer change the bar's
+	size, and its Scale setting only scales the bar's insides (text, pip, backdrop edge).
 
 	The bar keeps whatever parent Blizzard gives it. Reparenting it would take it out of
 	the managed stack, but every show would then bounce it between Blizzard's container
@@ -70,44 +70,23 @@ local BARS = {
 -- cancel at any Edit Mode Scale.
 local INSET_X, INSET_Y = 5, 4
 
--- The widget API's own methods, called directly so the bars' Lua overrides are skipped.
--- Looked up in Setup, so nothing runs on clients without the bars.
-local ClearAllPoints, SetPoint, SetAlpha
-
-local function AnchorBar(bar, holder)
-	ClearAllPoints(bar)
-	SetPoint(bar, 'TOPLEFT', holder, 'TOPLEFT', -INSET_X, INSET_Y)
-	SetPoint(bar, 'BOTTOMRIGHT', holder, 'BOTTOMRIGHT', INSET_X, -INSET_Y)
-end
+-- The widget API's own SetAlpha, called directly so the bar's SetAlpha hook (below)
+-- can't recurse. Looked up in Setup, so nothing runs on clients without the bars.
+local SetAlpha
 
 -- Anchors the bar to its holder and keeps it there. Every Blizzard path that places a
 -- bar (managed-stack layout, ApplySystemAnchor, the Scale setting's SetScale override)
--- goes through its ClearAllPoints or SetPoint, so these post-hooks undo each one
--- straight after. They only touch the bar (not protected), so they're safe when
--- Blizzard lays a bar out in combat.
-local function TakeOver(bar, holder, key, getConfig)
-	local function Reanchor()
-		-- A protected frame anchored to the bar makes the bar protected, and it can't
-		-- be re-anchored in combat. Wait for the end of combat then.
-		if InCombatLockdown() and bar:IsProtected()
-			and st:QueueAfterCombat('swingtimer_anchor_' .. key, Reanchor) then
-			return
-		end
-		AnchorBar(bar, holder)
-	end
+-- goes through its ClearAllPoints or SetPoint, so st:HoldFrame's post-hooks undo each
+-- one straight after. They only touch the bar (not protected), so they're safe when
+-- Blizzard lays a bar out in combat. A protected frame anchored to the bar makes the
+-- bar protected, and then it's re-anchored at the end of combat.
+local function TakeOver(bar, holder, getConfig)
+	st:HoldFrame(bar, holder, INSET_X, INSET_Y)
 
-	hooksecurefunc(bar, 'ClearAllPoints', Reanchor)
-	hooksecurefunc(bar, 'SetPoint', Reanchor)
-
-	-- Blizzard's Edit Mode box no longer controls this bar, so keep it hidden.
-	-- HookScript only; nothing is written onto the frame.
-	local selection = bar.Selection
-	if selection then
-		selection:HookScript('OnShow', function(self) self:Hide() end)
-		selection:Hide()
-	end
-
-	Reanchor()
+	-- Blizzard's Edit Mode box no longer controls this bar, so keep it hidden, from its
+	-- next show and now. HookScript only; nothing is written onto the frame.
+	st:HideEditModeSelection(bar)
+	if bar.Selection then bar.Selection:Hide() end
 
 	-- Title and time text. Blizzard only ever calls SetShown on these regions, so each
 	-- gets a post-hook that puts the SaftUI choice back. Show and Hide are not hooked,
@@ -194,11 +173,10 @@ end
 
 function STP:RegisterBarMover(info)
 	local key = info.key
-	self.movers[key] = st:RegisterMover('swingtimer_' .. key, {
-		frame = self.holders[key],
+	self.movers[key] = st:RegisterConfigMover(self.holders[key], {
+		key = 'swingtimer_' .. key,
 		label = info.label .. ' Swing',
-		getPosition = function() return self.config[key].position end,
-		setPosition = function(pos) self.config[key].position = pos end,
+		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'SwingTimer', key, 'general' },
 	})
@@ -214,8 +192,7 @@ function STP:Setup()
 	end
 
 	-- The shared Frame method table (the bars are plain Frames, like UIParent).
-	local methods = getmetatable(UIParent).__index
-	ClearAllPoints, SetPoint, SetAlpha = methods.ClearAllPoints, methods.SetPoint, methods.SetAlpha
+	SetAlpha = getmetatable(UIParent).__index.SetAlpha
 
 	-- Every holder exists before any is placed, since the defaults chain them by name.
 	self.holders = {}
@@ -228,7 +205,7 @@ function STP:Setup()
 	for _, info in ipairs(BARS) do
 		local key, bar = info.key, bars[info.key]
 		self.infos[key] = info
-		local title, time = TakeOver(bar, self.holders[key], key, function() return self.config[key] end)
+		local title, time = TakeOver(bar, self.holders[key], function() return self.config[key] end)
 		self.appearance[key] = { bar = bar, title = title, time = time }
 		self:RegisterBarMover(info)
 		self:ApplyAppearance(key)
@@ -241,18 +218,12 @@ function STP:Setup()
 	end
 end
 
-function STP:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_SwingTimer' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function STP:OnEnable()
 	st:BindModuleConfig(self, 'swingtimer')
 	if _G.SwingTimerMainHandFrame then
 		self:Setup()
 	elseif st.forever then
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_SwingTimer', function() self:Setup() end)
 	end
 end
 

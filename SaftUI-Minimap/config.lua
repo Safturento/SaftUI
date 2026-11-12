@@ -59,8 +59,7 @@ function MM:UpdateConfig()
 	st:SafeReposition(Minimap, 'minimap', function()
 		local size = st:RoundToPixel(self.config.size, Minimap)
 		Minimap:SetSize(size, size)
-		Minimap:ClearAllPoints()
-		Minimap:SetPoint(st:UnpackPoint(self.config.position))
+		st:PlaceAtPosition(Minimap, self.config.position)
 	end)
 
 	-- Only SaftUI's backdrop frame is touched, so this is fine in combat.

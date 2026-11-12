@@ -82,11 +82,6 @@ local OVERLAY_ATLAS = 'ui-hud-cooldownmanager-iconoverlay'
 -- Blizzard's round icon sat (see the top of this file).
 local ITEM_INSET = 2
 
--- From this item width up the countdown numbers are Pixel Med, below it Pixel
--- (SaftUI-ActionBars/skin.lua's LARGE_COUNTDOWN_SIZE). The Essential items are
--- 50 wide, the tracked buffs' 40 and the Utility items 30.
-local LARGE_COUNTDOWN_SIZE = 36
-
 -- The bar's fill: Blizzard's own orange (its BarTexture's color), flat.
 local BAR_COLOR = { 1, 0.5, 0.25 }
 local PIP_WIDTH = 2
@@ -162,11 +157,12 @@ local function Backdrop(holder)
 	return backdrop
 end
 
--- The countdown numbers' font: Pixel Med on a large item, Pixel on a small one,
--- or Pixel when its width can't be read.
+-- The countdown numbers' font: Pixel Med on a large item (st.LARGE_COUNTDOWN_SIZE
+-- wide or more), Pixel on a small one, or Pixel when its width can't be read.
+-- The Essential items are 50 wide, the tracked buffs' 40 and the Utility items 30.
 local function CountdownFont(holder)
 	local width = holder:GetWidth()
-	local large = not issecretvalue(width) and width >= LARGE_COUNTDOWN_SIZE
+	local large = not issecretvalue(width) and width >= st.LARGE_COUNTDOWN_SIZE
 	return st:GetFont(large and 'pixel_med' or 'pixel')
 end
 
@@ -300,12 +296,6 @@ function CD:UpdateConfig()
 	end
 end
 
-function CD:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_CooldownViewer' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:SkinViewers()
-end
-
 -- Off (Skinning -> Cooldown Manager), nothing is hooked or touched: Blizzard's
 -- look stays until a reload with it on.
 function CD:OnEnable()
@@ -314,6 +304,6 @@ function CD:OnEnable()
 	if _G.EssentialCooldownViewer then
 		self:SkinViewers()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_CooldownViewer', function() self:SkinViewers() end)
 	end
 end

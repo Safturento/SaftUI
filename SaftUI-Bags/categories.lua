@@ -348,26 +348,6 @@ end
 
 --------------------------------------------------------------------- writing
 
--- A deep copy of a rule: its tables only, so the profile never shares one with
--- a caller, with the shipped default, or with another category.
-local function CopyTree(value)
-	if type(value) ~= 'table' then return value end
-	local copy = {}
-	for k, v in pairs(value) do copy[k] = CopyTree(v) end
-	return copy
-end
-
-local function SameTree(a, b)
-	if type(a) ~= 'table' or type(b) ~= 'table' then return a == b end
-	for k, v in pairs(a) do
-		if not SameTree(v, b[k]) then return false end
-	end
-	for k in pairs(b) do
-		if a[k] == nil then return false end
-	end
-	return true
-end
-
 -- The entry of a list id, or nil.
 local function Entry(self, id)
 	return type(id) == 'string' and self:GetCategoryList().byId[id] or nil
@@ -399,8 +379,8 @@ local function SetField(self, id, field, value)
 		local shipped = def[field]
 		local edit = EditOf(store, id)
 		local current = edit[field]
-		if SameTree(value, shipped) then value = nil end
-		if SameTree(current, value) then
+		if R.Equal(value, shipped) then value = nil end
+		if R.Equal(current, value) then
 			Normalize(store, id)
 			return false
 		end
@@ -408,7 +388,7 @@ local function SetField(self, id, field, value)
 		Normalize(store, id)
 	else
 		local custom = store.custom[id]
-		if SameTree(custom[field], value) then return false end
+		if R.Equal(custom[field], value) then return false end
 		custom[field] = value
 	end
 	return true
@@ -506,7 +486,7 @@ end
 function INV:SetCategoryRule(id, rule)
 	local entry = Entry(self, id)
 	if not entry or entry.kind ~= 'rule' or type(rule) ~= 'table' then return false end
-	if SetField(self, id, 'rule', CopyTree(rule)) then self:CategoriesChanged() end
+	if SetField(self, id, 'rule', R.Copy(rule)) then self:CategoriesChanged() end
 	return true
 end
 
@@ -575,7 +555,7 @@ function INV:ResetCategory(id)
 	if not entry or not entry.default then return false end
 	local store = self:CategoryStore()
 	local edit = ShippedEdit(self, id)
-	if not SameTree(store.edits[id], edit) then
+	if not R.Equal(store.edits[id], edit) then
 		store.edits[id] = edit
 		self:CategoriesChanged()
 	end

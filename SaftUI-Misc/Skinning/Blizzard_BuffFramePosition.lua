@@ -40,7 +40,8 @@ local AP = st:NewModule('Auras')
 	    and placed from the profile. The mover and the /sui section work on the holder.
 	  - The Blizzard frame is anchored over its holder (two corners, so Blizzard's SetSize has
 	    no effect), and post-hooks on its ClearAllPoints and SetPoint put it back whenever
-	    Blizzard places it again (ApplySystemAnchor, StatusTrayManager, snapping).
+	    Blizzard places it again (ApplySystemAnchor, StatusTrayManager, snapping): Core's
+	    st:HoldFrame.
 	  - A post-hook on each frame's UpdateGridLayout re-lays every button out by SaftUI's
 	    settings: scale 1, size x size, the Icon filling the button, anchored to the holder
 	    by the grid's first corner. Blizzard's order (frame.auraFrames) is kept. Buffs keep
@@ -154,13 +155,6 @@ local function IsShown(frame)
 		return true
 	end
 	return shown
-end
-
-local function OutlineFlags(outline)
-	if not outline or outline == 'NONE' then
-		return ''
-	end
-	return outline
 end
 
 -- The grid for one frame, from its profile settings: sizes rounded to whole pixels, the
@@ -436,28 +430,14 @@ end
 function AP:TakeOver(key)
 	local frame, holder = self.frames[key], self.holders[key]
 
-	local function Reanchor()
-		-- A protected frame anchored to the frame (e.g. snapped to it in Blizzard's Edit
-		-- Mode) makes it protected, and it can't be re-anchored in combat.
-		if InCombatLockdown() and frame:IsProtected()
-			and st:QueueAfterCombat('auras_anchor_' .. key, Reanchor) then
-			return
-		end
-		st:ClearAllPointsDirect(frame)
-		st:SetPointDirect(frame, 'TOPLEFT', holder, 'TOPLEFT')
-		st:SetPointDirect(frame, 'BOTTOMRIGHT', holder, 'BOTTOMRIGHT')
-	end
-	hooksecurefunc(frame, 'ClearAllPoints', Reanchor)
-	hooksecurefunc(frame, 'SetPoint', Reanchor)
-	Reanchor()
+	-- A protected frame anchored to the frame (e.g. snapped to it in Blizzard's Edit
+	-- Mode) makes it protected, and then it's re-anchored at the end of combat.
+	st:HoldFrame(frame, holder)
 
-	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden.
-	-- HookScript only; nothing is written onto the frame.
-	local selection = frame.Selection
-	if selection then
-		selection:HookScript('OnShow', function(self) self:Hide() end)
-		selection:Hide()
-	end
+	-- Blizzard's Edit Mode box no longer controls this frame, so keep it hidden, from
+	-- its next show and now. HookScript only; nothing is written onto the frame.
+	st:HideEditModeSelection(frame)
+	if frame.Selection then frame.Selection:Hide() end
 
 	hooksecurefunc(frame, 'UpdateGridLayout', function() self:LayoutButtons(key) end)
 	hooksecurefunc(frame, 'UpdateAuraButtons', function() self:OnButtonsUpdated(key) end)
@@ -490,7 +470,7 @@ function AP:UpdateFont(key, kind)
 	local font = fonts[key] and fonts[key][kind]
 	if not font then return end
 	local config = st.config.profile.auras[key][kind]
-	font:SetFont(st.LSM:Fetch('font', config.font), config.size, OutlineFlags(config.outline))
+	font:SetFont(st.LSM:Fetch('font', config.font), config.size, st.OutlineFlag(config.outline))
 end
 
 function AP:UpdateFonts()
@@ -577,11 +557,10 @@ end
 
 function AP:RegisterAuraMover(info)
 	local key = info.key
-	st:RegisterMover('auras_' .. key, {
-		frame = self.holders[key],
+	st:RegisterConfigMover(self.holders[key], {
+		key = 'auras_' .. key,
 		label = info.label,
-		getPosition = function() return self.config[key].position end,
-		setPosition = function(pos) self.config[key].position = pos end,
+		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'Auras', key, 'general' },
 	})
@@ -626,18 +605,12 @@ function AP:Setup()
 	self:UpdateText()
 end
 
-function AP:ADDON_LOADED(event, addon)
-	if addon ~= 'Blizzard_BuffFrame' then return end
-	self:UnregisterEvent('ADDON_LOADED')
-	self:Setup()
-end
-
 function AP:OnEnable()
 	st:BindModuleConfig(self, 'auras')
 	if _G.BuffFrame and BuffFrame.auraFrames then
 		self:Setup()
 	else
-		self:RegisterEvent('ADDON_LOADED')
+		st:OnBlizzardAddon('Blizzard_BuffFrame', function() self:Setup() end)
 	end
 end
 

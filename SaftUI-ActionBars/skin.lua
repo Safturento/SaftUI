@@ -65,11 +65,6 @@ local OVER_ICON = {
 	'AutoCastOverlay',
 }
 
--- Buttons at least this big get the bigger cooldown numbers (Pixel Med, 18px by
--- default). Smaller ones get Pixel (10px), so the numbers fit inside a 28px
--- button.
-local LARGE_COUNTDOWN_SIZE = 36
-
 ------------------------------------
 --- Hotkeys -------------------------
 ------------------------------------
@@ -146,14 +141,6 @@ local function Justify(point)
 	return 'CENTER'
 end
 
--- SaftUI's outline names, as font flags. 'NONE' is no flags.
-local function OutlineFlags(outline)
-	if not outline or outline == 'NONE' then
-		return ''
-	end
-	return outline
-end
-
 -- A text offset in whole pixels, so the pixel fonts stay sharp. The buttons are
 -- at UIParent's scale.
 local function Offset(value)
@@ -166,7 +153,7 @@ local function TextConfig(text)
 		font = {
 			font = st.LSM:Fetch('font', text.font),
 			size = text.size,
-			flags = OutlineFlags(text.outline),
+			flags = st.OutlineFlag(text.outline),
 		},
 		color = { 1, 1, 1 },
 		position = {
@@ -370,7 +357,7 @@ function AB:StyleButton(button, config, theme, background)
 	end
 	button.Count:SetShown(config.text.count.show)
 
-	local countdownFont = st:GetFont(config.size >= LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
+	local countdownFont = st:GetFont(config.size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
 	if countdownFont then
 		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
 	end
