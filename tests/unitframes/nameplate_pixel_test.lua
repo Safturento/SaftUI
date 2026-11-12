@@ -374,7 +374,14 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			end
 			st:ColorsChanged('theme')
 			eq(unrounded(frame), '', label .. ': rounded once the theme has changed')
-			eq(unrounded(button.backdrop), '', label .. ": and the aura button's backdrop")
+			-- The re-round's walk stops at the aura container, so it never
+			-- reaches the button's backdrop: that one was rounded where the
+			-- update drew it (auras.lua's StyleButton). The redraw after it makes
+			-- no art there and turns no snapping back on: under Blizzard an aura
+			-- is bare (no border or cut to lay again, themeart.lua), and Thick's
+			-- lines are made by the first draw, which a redraw paints again
+			-- without making new ones or touching their rounding.
+			eq(unrounded(button.backdrop), '', label .. ": the aura button's backdrop, rounded by the update, untouched by the redraw")
 
 			-- And in the order Config:UpdateConfig runs them out of combat
 			-- (nameplate_theme_test.lua's theme_changed).

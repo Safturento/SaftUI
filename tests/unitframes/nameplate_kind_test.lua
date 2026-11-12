@@ -340,6 +340,36 @@ test('a plate that showed only widgets gets its kind back when it is reused', fu
 	end
 end)
 
+-- oUF's update after every add scans the auras once (its Auras element sets
+-- the container's unit, or forces an update). Turning an aura area on or off
+-- scans them again, so the kind pass turns an area only where it changes:
+-- Blizzard's container itself ignores a SetEnabled that changes nothing
+-- (AuraContainerSharedMixin:SetEnabled, both clients), as the stand-in does.
+test("an add of the kind the plate last showed runs no aura scan from the kind; a kind change, one per area", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, UF = world(client)
+		enemy('nameplate1')
+		local frame = NP.add('nameplate1')
+		local function scans() return (frame.Buffs.__scans or 0) + (frame.Debuffs.__scans or 0) end
+		NP.remove('nameplate1')
+		local before = scans()
+		enemy('nameplate2')
+		NP.add('nameplate2', { plate = 1 })
+		eq(scans() - before, 0, client .. ': an enemy after an enemy: none')
+		NP.remove('nameplate2')
+		before = scans()
+		friend('nameplate3')
+		NP.add('nameplate3', { plate = 1 })
+		eq(scans() - before, 2, client .. ': a friend after an enemy: each area turned off, once')
+		NP.remove('nameplate3')
+		before = scans()
+		friend('nameplate4')
+		NP.add('nameplate4', { plate = 1 })
+		eq(scans() - before, 0, client .. ': a friend after a friend: none')
+		eq(#take_errors(), 0, client .. ': no error')
+	end
+end)
+
 test('kinds are applied after init: a first add of a friendly plate raises no error', function()
 	local st, UF = world()
 	friend('nameplate1')

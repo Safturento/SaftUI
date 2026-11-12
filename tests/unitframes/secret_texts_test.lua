@@ -18,7 +18,8 @@
 --     registers st:name (oUF calls a tag with the unit, the real unit and the
 --     tag's argument, the config unit), and the class colours (oUF's own, into
 --     which UF:UpdateColors merges the profile's; here the profile's).
---   * Secrets from tests/lib/secrets.lua, installed into issecretvalue.
+--   * Secrets from tests/lib/secrets.lua, installed into issecretvalue by each
+--     world and taken out again when the file is done.
 --   * UnitHealthPercent returns a secret percent (secretPercent) and records its
 --     arguments (lastHealthPercentArgs), as UnitPowerPercent does in
 --     power_text_test.lua. CurveConstants.ScaleTo100 is Blizzard's 0-100 curve;
@@ -33,8 +34,15 @@ local T = load_test_file('lib/theme_helpers.lua')
 local S = load_test_file('lib/secrets.lua')
 
 local st, UF, P, tag, secretPercent, lastHealthPercentArgs
+-- Puts back the issecretvalue the current world had before S.install, or nil
+-- before the first world.
+local restoreSecrets
 
+-- Each world installs the secrets once, and puts the last world's install
+-- back first, so wrappers never pile up; the file's last case puts the last
+-- one back.
 local function world(client)
+	if restoreSecrets then restoreSecrets() end
 	st = T.client(client)
 	load_saftui('SaftUI-Unitframes/config/default.lua')
 	apply_defaults()
@@ -53,7 +61,7 @@ local function world(client)
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	load_saftui('SaftUI-Unitframes/tags.lua')
 
-	S.install()
+	restoreSecrets = S.install()
 	secretPercent = S.secret('PERCENT')
 	CurveConstants = { ScaleTo100 = {} }
 	function UnitHealthPercent(...)
@@ -201,3 +209,9 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(type(shown) == 'table' and AbbreviateNumbers(12500, shown.options), '12.5K', 'in the short form')
 	end)
 end
+
+test('the secrets come out of issecretvalue once the file is done with them', function()
+	restoreSecrets()
+	restoreSecrets = nil
+	eq(issecretvalue(S.secret('AFTER')), false, 'a secret made now is a plain value again')
+end)

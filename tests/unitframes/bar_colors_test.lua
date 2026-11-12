@@ -214,16 +214,22 @@ test('castbar: a secret notInterruptible is handed to EvaluateColorValueFromBool
 	local original = C_CurveUtil.EvaluateColorValueFromBoolean
 	C_CurveUtil.EvaluateColorValueFromBoolean = function(b, t, f) got[#got + 1] = { b, t, f }; return secret end
 	castbar.SetStatusBarColor = function() end -- the stub's takes numbers only
-	castbar.PostCastStart(castbar, 'target', 133, secret)
+	-- Put back even when the call errors, so the cases after it see the real one.
+	local ok, err = pcall(castbar.PostCastStart, castbar, 'target', 133, secret)
 	C_CurveUtil.EvaluateColorValueFromBoolean = original
+	check(ok, 'no error: ' .. tostring(err))
 	eq(#got, 3, 'r, g and b')
 	check(got[1][1] == secret and near(got[1][2], castbar.config.colors.nointerrupt.r) and near(got[1][3], castbar.config.colors.normal.r), 'the secret, then true and false colors')
 end)
 test("castbar: the icon is oUF's; no CastingInfo is read", function()
 	local castbar = bar('Castbar'); UF:UpdateStatusBarElement(castbar)
-	CastingInfo = nil -- classic-only (Blizzard_DeprecatedUnitScript); Forever and retail lack it
+	-- Classic-only (Blizzard_DeprecatedUnitScript); Forever and retail lack it,
+	-- so it's taken away for the call and put back after, whatever happens.
+	local castingInfo = CastingInfo
+	CastingInfo = nil
 	castbar.Icon.texture:SetTexture([[Interface\ICONS\INV_Misc_QuestionMark]])
 	local ok, err = pcall(castbar.PostCastStart, castbar, 'target', 133, false)
+	CastingInfo = castingInfo
 	check(ok, 'no error: ' .. tostring(err))
 	eq(castbar.Icon.texture:GetTexture(), [[Interface\ICONS\INV_Misc_QuestionMark]], 'the icon left as oUF set it')
 end)

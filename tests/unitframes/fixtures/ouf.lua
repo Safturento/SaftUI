@@ -85,7 +85,10 @@
 -- resume too); the castbar's Enable and Disable both hide it, as castbar.lua's
 -- do (oUF shows it for a cast, which nothing here starts). Enabling the aura
 -- containers turns each on (SetEnabled(true)), as the Auras meta element's
--- Enable does. Enabling QuestIndicator gives it ForceUpdate, as its Enable
+-- Enable does; a container is made on, and a SetEnabled that changes its state
+-- counts a full update in container.__scans, as Blizzard's container does
+-- (AuraContainerSharedMixin, Blizzard_AuraContainer.lua, both clients).
+-- Enabling QuestIndicator gives it ForceUpdate, as its Enable
 -- does (Libraries/oUF/elements/questindicator.lua), which runs oUF's Path
 -- with (frame, 'ForceUpdate', frame.__unit): the element's Override where it
 -- has one; oUF's own update, without one, isn't run here.
@@ -115,7 +118,8 @@
 --     which makes a button for each aura it shows; here a plain frame that
 --     records what's set on it and makes a button only when a test asks:
 --       container.groups[key] = { filter, options, candidateFilters, layout },
---       container.enabled, container.flow = { anchor, lineSize, growthX, growthY },
+--       container.enabled (and IsEnabled), container.__scans,
+--       container.flow = { anchor, lineSize, growthX, growthY },
 --       container:_AddButton() -> button: a Button child of the container, at
 --       its group's size (oUF's default 16 before any group), built as oUF's
 --       CreateButton builds one (Libraries/oUF/elements/auras.lua): its Icon
@@ -338,7 +342,17 @@ function M.new()
 		function container:SetAuraGroupFilterString(key, filter) self.groups[key].filter = filter end
 		function container:SetAuraGroupCandidateFilters(key, filters) self.groups[key].candidateFilters = filters end
 		function container:SetAuraGroupLayout(key, layout) self.groups[key].layout = layout end
-		function container:SetEnabled(enabled) self.enabled = enabled end
+		-- Blizzard's AuraContainerSharedMixin (Blizzard_AuraContainer.lua, the
+		-- same on both clients): made enabled (its enabled KeyValue), and a
+		-- SetEnabled that changes the state runs a full update of the auras.
+		container.enabled = true
+		function container:SetEnabled(enabled)
+			if self.enabled ~= enabled then
+				self.enabled = enabled
+				self.__scans = (self.__scans or 0) + 1
+			end
+		end
+		function container:IsEnabled() return self.enabled == true end
 		function container:SetFlowLayoutAnchorPoint(point) self.flow.anchor = point end
 		function container:SetFlowLayoutMaximumLineSize(size) self.flow.lineSize = size end
 		function container:SetFlowLayoutGrowthDirection(x, y) self.flow.growthX, self.flow.growthY = x, y end
