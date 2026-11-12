@@ -41,9 +41,10 @@
 --     button's dispel type texture (Border) with a secret color. Here a plain
 --     frame with the methods auras.lua's UpdateConfig calls on it (oUF's
 --     AddGroup, which gives a group key, and the container's SetEnabled, flow
---     layout setters and SetAuraGroupLayout, which here only take their
---     arguments), and the test hands PostCreateButton a button with oUF's
---     Icon, Count and Border, and tints the Border itself.
+--     layout setters, SetAuraGroupLayout and SetAuraGroupMaxFrameCount,
+--     which here only take their arguments), and the test hands
+--     PostCreateButton a button with oUF's Icon, Count and Border, and
+--     tints the Border itself.
 --
 -- The kind a frame is drawn with changes nothing under Thick and Thin, so the
 -- draw calls are watched: st:SetBackdrop is wrapped to note its arguments, and
@@ -129,6 +130,7 @@ local function make_unit_frame(name, unit, elements, parent)
 		function auras:SetFlowLayoutGrowthDirection() end
 		function auras:AddGroup() return 'Group1' end
 		function auras:SetAuraGroupLayout() end
+		function auras:SetAuraGroupMaxFrameCount() end
 		return auras
 	end
 	local overlay = CreateFrame('Frame', nil, frame)
