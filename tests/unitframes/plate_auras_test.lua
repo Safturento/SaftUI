@@ -7,7 +7,9 @@
 -- in combat too), and sizes the buttons as it restyles them: at once out of
 -- combat, at the end of combat in it, since Blizzard's container restricts
 -- its buttons while aura data is secret (.agents/taint.md rule 11). The aura
--- tabs no longer ask for a reload for Size, Relative size and Max.
+-- tabs no longer ask for a reload for Size, Relative size and Max. Border and
+-- Cooldown -> Show still do, and on the two plate pages their notes say which
+-- page's settings a plate's buttons are made with (ruling N2).
 --
 -- The world is nameplate_world.lua's, with the oUF stand-in's containers made
 -- as Blizzard's are: a batch of buttons for a group (ouf.batchButtons) and
@@ -160,4 +162,47 @@ test('the aura tabs: Size, Relative size and Max apply without a reload; Show an
 			check(tab.args.cooldown.args.enable.desc:find('/reload') ~= nil, ('%s %s: the cooldown Show still asks for one'):format(unit, area))
 		end
 	end
+end)
+
+-- The note each unit's aura Border and Cooldown -> Show end with: a group is
+-- made once, from its frame's first update with the area on, and a plate's
+-- frame is first updated from Enemy nameplates (ruling N2). So on the
+-- Friendly page they reach friendly plates only while the Enemy page has the
+-- area off; the Enemy page's make every plate's buttons while it has the
+-- area on. Other units keep theirs.
+local NOTES = {
+	target = function() return 'Reload to apply (/reload): aura groups are built once, when the unit frame is set up.' end,
+	nameplate = function(area)
+		return ("Reload to apply (/reload): a plate's buttons are made once, with the settings of the first page that shows them on it, which is this one whenever its %s are on, for friendly plates too."):format(area)
+	end,
+	friendlynameplate = function(area)
+		return ("Reaches friendly plates only while Enemy nameplates has its %s off, and then after a reload (/reload): a plate's buttons are made once, with the settings of the first page that shows them on it, which is Enemy nameplates whenever its %s are on."):format(area, area)
+	end,
+}
+
+test("the aura Border and Cooldown -> Show notes say which page's settings a plate's buttons are made with", function()
+	local st, UF = world('forever')
+	local BORDER = { Buffs = 'A border on buffs you can steal.', Debuffs = "Colors each debuff's border by its dispel type." }
+	for unit, note in pairs(NOTES) do
+		for _, area in ipairs({ 'Buffs', 'Debuffs' }) do
+			local tab = UF.elements[area].GetConfigTable(unit)
+			eq(tab.args.buttons.args.border.desc, BORDER[area] .. ' ' .. note(area), ('%s %s: the border'):format(unit, area))
+			eq(tab.args.cooldown.args.enable.desc, 'The swipe over each button. ' .. note(area), ('%s %s: Cooldown Show'):format(unit, area))
+		end
+	end
+
+	-- What the Friendly page's note says, in the stand-in's world: with the
+	-- Enemy page's debuffs on, a friend's plate is made with its cooldown
+	-- option; with them off, with the Friendly page's.
+	local P = UF:GetProfileConfig()
+	P.nameplate.debuffs.cooldown.enable = true
+	P.friendlynameplate.debuffs.cooldown.enable = false
+	friend('nameplate1')
+	local frame = NP.add('nameplate1')
+	eq(group(frame.Debuffs).options.disableCooldown, false, "the Enemy page's debuffs on: a friend's buttons made with its cooldown")
+	P.nameplate.debuffs.enable = false
+	friend('nameplate2')
+	frame = NP.add('nameplate2')
+	eq(group(frame.Debuffs).options.disableCooldown, true, "the Enemy page's debuffs off: with the Friendly page's")
+	eq(#take_errors(), 0, 'no error')
 end)

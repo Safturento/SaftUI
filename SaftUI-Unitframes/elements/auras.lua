@@ -13,17 +13,21 @@ local UF = st:GetModule('Unitframes')
 	The group is made once, on the first config update with the area on. Which
 	borders its buttons show and whether they get a cooldown are baked into each
 	button as the container makes it, so changing them requires a /reload, and
-	their /sui options say so. Everything else updates live, profile changes
-	included: the filter, the layout (anchor, growth, spacing, wrapping), the
-	button styling (theme, count font and spot, cooldown look and timer), the
-	max count (through the container, SetAuraGroupMaxFrameCount) and the button
-	size (set on each button as it's styled: the container has no call for it).
-	A plate's frame draws from Enemy or Friendly nameplates by its unit's kind
-	(nameplates.lua) but its group is always made from the first, so this is
-	what gives a friend's plate the Friendly page's count and size. In combat
-	the buttons can't be touched, so their size waits for the end of combat
-	(RestyleButtons). The borders and the cooldown a plate's buttons are made
-	with stay the Enemy page's while it has the area on, even after a reload.
+	their /sui options say so (ReloadNote, below, which on the nameplate pages
+	says which page's a plate's buttons take). Everything else updates live,
+	profile changes included: the filter, the layout (anchor, growth, spacing,
+	wrapping), the button styling (theme, count font and spot, cooldown look
+	and timer), the max count (through the container,
+	SetAuraGroupMaxFrameCount) and the button size (set on each button as it's
+	styled: the container has no call for it). A plate's frame draws from
+	Enemy or Friendly nameplates by its unit's kind (nameplates.lua), but its
+	group is made from the first page that shows the area on it, which is
+	Enemy nameplates whenever its area is on (a plate's first update is from
+	it), so this is what gives a friend's plate the Friendly page's count and
+	size. In combat the buttons can't be touched, so their size waits for the
+	end of combat (RestyleButtons). The borders and the cooldown a plate's
+	buttons are made with stay that page's, even after a reload: the Friendly
+	page's reach friendly plates only while the Enemy page has the area off.
 ]]
 
 local function getButtonSize(unitframe, config)
@@ -83,8 +87,9 @@ local function StyleButton(auras, button)
 	local config = auras.config
 
 	-- Its size: oUF's button gets the size its group was made with, which is
-	-- the first config's (a plate's: Enemy nameplates', whatever kind it shows
-	-- now), so it's set from the config in use, as oUF sets it (SetSize).
+	-- the first config's (a plate's: Enemy nameplates' while that page has
+	-- the area on, whatever kind it shows now), so it's set from the config in
+	-- use, as oUF sets it (SetSize).
 	local size = getButtonSize(auras.unitframe, config)
 	button:SetSize(size, size)
 
@@ -315,6 +320,22 @@ end
 
 local RELOAD = 'Reload to apply (/reload): aura groups are built once, when the unit frame is set up.'
 
+-- The note an aura area's Border and Cooldown -> Show end with on unit's
+-- page. On the two nameplate pages a plate's group is made on the frame's
+-- first update with the area on, and that first update is always from Enemy
+-- nameplates, whatever the plate's unit (nameplates.lua). So while the Enemy
+-- page has the area on, its settings make every plate's buttons, friendly
+-- ones too, and the Friendly page's reach friendly plates only while it has
+-- the area off (ruling N2, docs/followups.md). Other units' say to reload.
+local function ReloadNote(unit, aura_type)
+	if unit == 'nameplate' then
+		return ("Reload to apply (/reload): a plate's buttons are made once, with the settings of the first page that shows them on it, which is this one whenever its %s are on, for friendly plates too."):format(aura_type)
+	elseif unit == 'friendlynameplate' then
+		return ("Reaches friendly plates only while Enemy nameplates has its %s off, and then after a reload (/reload): a plate's buttons are made once, with the settings of the first page that shows them on it, which is Enemy nameplates whenever its %s are on."):format(aura_type, aura_type)
+	end
+	return RELOAD
+end
+
 -- The border each aura type can show (AddGroup). Either hostility's setting
 -- turns it on (eitherHostility), so the option sets both.
 local BORDERS = {
@@ -330,8 +351,9 @@ local function GetConfigTable(unit, aura_type)
 	local function Update() UF:UpdateConfig(unit, aura_type) end
 
 	-- An option StyleButton can't apply: it goes into AddGroup.
+	local note = ReloadNote(unit, aura_type)
 	local function NeedsReload(option)
-		option.desc = option.desc and (option.desc .. ' ' .. RELOAD) or RELOAD
+		option.desc = option.desc and (option.desc .. ' ' .. note) or note
 		return option
 	end
 
