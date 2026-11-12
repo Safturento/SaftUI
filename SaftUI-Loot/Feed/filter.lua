@@ -54,10 +54,6 @@ function LT:InitializeFilterDropdown()
 	self.feed.filterButton = filterButton
 	self:HookScript(filterButton, 'OnClick', 'OpenSlotOptions')
 
-    if not self.config.feed then
-        self.config.feed = { filters = {} }
-    end
-
 	local entries = {
 		Loot = { text = 'Loot' },
 		Skill = { text = 'Skill ups' },
