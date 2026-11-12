@@ -432,55 +432,6 @@ function st:SetTexture(texture, key)
 	texture:SetTexCoord(unpack(ATLAS_COORDS[key]))
 end
 
-function st:CreateArrowButton(parent, direction)
-	local ARROW_SIZE = 16
-	local button = CreateFrame('Button', nil, parent)
-	button:SetSize(ARROW_SIZE, ARROW_SIZE)
-
-	local normalTexture = button:CreateTexture()
-	normalTexture:SetTexture(st.textures.atlas)
-	normalTexture:SetDrawLayer('OVERLAY', 0)
-	normalTexture:SetAllPoints()
-	st:SetTexture(normalTexture, direction..'-arrow')
-	button:SetNormalTexture(normalTexture)
-
-	local hoverTexture = button:CreateTexture()
-	hoverTexture:SetTexture(st.textures.atlas)
-	hoverTexture:SetBlendMode('DISABLE')
-	hoverTexture:SetVertexColor(1, 0, 0, 1)
-	hoverTexture:SetAllPoints()
-	st:SetTexture(hoverTexture, direction..'-arrow-thick')
-	button:SetHighlightTexture(hoverTexture)
-
-	return button
-end
-
-function st:CreateArrowCluster(parent)
-
-	local cluster = CreateFrame('Frame', nil, parent)
-
-	local left = st:CreateArrowButton(cluster, 'left')
-	left:SetPoint('LEFT')
-	cluster.left = left
-
-	local right = st:CreateArrowButton(cluster, 'right')
-	right:SetPoint('RIGHT')
-	cluster.right = right
-
-	local up = st:CreateArrowButton(cluster, 'up')
-	up:SetPoint('TOP')
-	cluster.up = up
-
-	local down = st:CreateArrowButton(cluster, 'down')
-	down:SetPoint('BOTTOM')
-	cluster.down = down
-
-	cluster:SetSize(48, 48)
-
-	return cluster
-
-end
-
 -- A backdrop anchored to a region with a secret size (e.g. some icons in combat)
 -- gets a secret width, and BackdropTemplateMixin's texcoord math errors on it.
 -- Skip until the size is readable; OnSizeChanged runs again when it changes.
@@ -505,10 +456,6 @@ function st:CreatePanel(name, width, height)
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
 	if width then st:SetWidth(panel, width) end
 	if height then st:SetHeight(panel, height) end
-
-	function panel:CreateArrowButton(...)
-		return st:CreateArrowButton(self, ...)
-	end
 
 	return panel
 end

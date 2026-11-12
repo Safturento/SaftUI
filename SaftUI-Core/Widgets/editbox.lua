@@ -8,10 +8,6 @@ function st:CreateEditBox(name, parent, lines)
     editbox:SetScript('OnEnterPressed', function(self) self:ClearFocus() end)
 
     editbox:SetSize(200, 20)
-    editbox.Label = editbox:CreateFontString(nil, 'OVERLAY')
-    editbox.Label:SetPoint('BOTTOMLEFT', editbox, 'TOPLEFT', 3, 5)
-    editbox.Label:SetFontObject(st:GetFont('normal'))
-    editbox.SetLabel = function(self, text) self.Label:SetText(text) end
 
     if lines then
         editbox:SetMultiLine(true)

@@ -11,13 +11,10 @@ st.retail = st.GAME_VERSION >= 110000 or st.forever
 
 st.my_name = select(1, UnitName('player'))
 st.my_class = select(2, UnitClass('player'))
-st.my_race = select(2, UnitRace('player'))
-st.my_faction = UnitFactionGroup('player')
 st.my_realm = GetRealmName()
 
 st.screenWidth, st.screenHeight = GetPhysicalScreenSize()
 st.scale = 768/st.screenHeight
-st.mult = 1
 
 st.CLOSE_BUTTON_SIZE = {20, 10} -- a Blizzard close button handed to st:CreateHeader
 st.CLOSE_X_BUTTON_SIZE = {24, 24} -- SaftUI's own (st:CreateCloseButton)
@@ -35,9 +32,7 @@ st.BOX_COLORS = {
 }
 -- The close X's part of close.tga: a power-of-two canvas (like the other textures), with the X in the middle 10x10.
 st.CLOSE_X_COORDS = {3/16, 13/16, 3/16, 13/16}
-st.ICON_COORDS = {.08, .92, .08, .92}
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
-st.TAB_HEIGHT = 20
 st.BACKDROP = {
 	bgFile = st.BLANK_TEX, 
 	edgeFile = st.BLANK_TEX,
@@ -58,9 +53,7 @@ end
 
 st.textures = {
 	cornerbr = st:TexturePath('cornerarrowbottomright.tga'),
-	mail = st:TexturePath('mail.tga'),
 	mailSquare = st:TexturePath('mail-square.tga'),
-	glow = st:TexturePath('glowTex.tga'),
 	eyeClosed = st:TexturePath('eye-hidden.tga'),
 	eyeOpen = st:TexturePath('eye-visible.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp'),
@@ -78,17 +71,6 @@ st.FRAME_ANCHORS = {
 	['LEFT'] = 'Left',
 	['RIGHT'] = 'Right',
 	['CENTER'] = 'Center',
-}
-
-st.INVERSE_ANCHORS = {
-	['LEFT'] = 'RIGHT',
-	['RIGHT'] = 'LEFT',
-	['TOP'] = 'BOTTOM',
-	['BOTTOM'] = 'TOP',
-	['TOPLEFT'] = 'BOTTOMRIGHT',
-	['BOTTOMRIGHT'] = 'TOPLEFT',
-	['TOPRIGHT'] = 'BOTTOMLEFT',
-	['BOTTOMLEFT'] = 'TOPRIGHT',
 }
 
 st.HiddenFrame = CreateFrame('frame')

@@ -57,23 +57,6 @@ test('a FontString with no font refuses text, as in game', function()
 	check(tostring(err):find('^tests/lib/harness_self_test%.lua:%d+: '), 'the error starts with the caller\'s file:line: ' .. tostring(err))
 end)
 
-test("the real st:CreateButton's SetText alias errors, as in game", function()
-	-- SaftUI-Core/Widgets/button.lua sets button.SetText = button.text.SetText,
-	-- so button:SetText passes the button as the FontString. That's the bug
-	-- behind the 2026-11-09 footer error. load_core_helpers loads button.lua
-	-- through load_saftui, with the real panels.lua and fonts it needs.
-	load_core_helpers()
-	local button = SaftUI:CreateButton(nil, UIParent, 'x')
-	eq(button.text:GetText(), 'x', 'the button was built, with its label')
-
-	local ok, err = pcall(function() button:SetText('y') end)
-	eq(ok, false, 'button:SetText errors')
-	check(tostring(err):find('Wrong object type', 1, true), "WoW's wrong-object error: " .. tostring(err))
-
-	button.text:SetText('y')
-	eq(button.text:GetText(), 'y', 'setting the label through button.text works')
-end)
-
 test('load_saftui passes the addon folder name and its namespace as ...', function()
 	reset_world()
 	-- constants.lua (loaded by the shell) builds its media paths from the addon

@@ -71,11 +71,3 @@ function Util:SetItemUpgradeQualityForBagSlot(button, bagId, slotId, anchor)
         anchor
     )
 end
-
-function Util:SetItemUpgradeQualityForEquipmentSlot(equipSlot, equipSlotId, anchor)
-    Util:SetItemUpgradeQuality(
-        equipSlot,
-        GetInventoryItemLink('player', equipSlotId),
-        anchor
-    )
-end

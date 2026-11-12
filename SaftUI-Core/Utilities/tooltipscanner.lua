@@ -27,11 +27,3 @@ function Util:ScanItemLink(itemLink)
     self.TooltipCache[itemLink] = text
     return text
 end
-
-function Util:ScanBagItem(bagId, slotId)
-    return self:ScanItemLink(C_Container.GetContainerItemLink(bagId, slotId))
-end
-
-function Util:ScanEquipmentSlotItem(equipSlotId)
-    return self:ScanItemLink(GetInventoryItemLink('player', equipSlotId))
-end

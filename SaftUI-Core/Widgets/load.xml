@@ -4,8 +4,6 @@
 	<Script file="dropdown.lua"/>
 	<Script file="scrollbar.lua"/>
 	<Script file="editbox.lua"/>
-	<Include file="templates.xml"/>
-	<Script file="scrolllist.lua"/>
 	<Script file="scrollframe.lua"/>
 	<Script file="statusbar.lua"/>
 	<Script file="radiogroup.lua"/>

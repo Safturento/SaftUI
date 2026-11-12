@@ -510,7 +510,7 @@ function st:SetBackdrop(frame, theme, background, kind)
 	CheckKind(theme, kind)
 	if not frame.backdrop then
 		if not DrawLook(theme, background, kind) then return end
-		if not frame.GetObjectType then return print('GetObjectType missing', debugstack()) end
+		if not frame.GetObjectType then return end
 
 		local isTexture = frame:GetObjectType() == 'Texture'
 		local parent = isTexture and frame:GetParent() or frame
