@@ -119,7 +119,6 @@ local AB = st:GetModule('ActionBars')
 
 local BLIZZARD_BARS = {
 	{ name = 'MainActionBar', events = false },
-	{ name = 'MainMenuBar', events = false },
 	{ name = 'MultiBarBottomLeft', events = true },
 	{ name = 'MultiBarBottomRight', events = true },
 	{ name = 'MultiBarRight', events = true },
@@ -138,10 +137,8 @@ local BLIZZARD_BARS = {
 local BLIZZARD_ADDONS = { 'Blizzard_ActionBar', 'Blizzard_OverrideActionBar' }
 
 -- Bars already taken off screen: frame -> 'blocked' or 'concealed'. A table of
--- SaftUI's own, so nothing is written onto the frames. MainMenuBar can be the
--- same frame as MainActionBar.
+-- SaftUI's own, so nothing is written onto the frames.
 local handled = {}
-AB.blizzardBars = handled
 
 -- True only for a plain false. A secret IsVisible counts as on screen, so a bar
 -- is never blocked on a guess.
