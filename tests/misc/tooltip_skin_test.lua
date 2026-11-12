@@ -18,7 +18,7 @@ local function make_tooltip(name)
 end
 
 local names = { 'GameTooltip', 'ItemRefTooltip', 'ItemRefShoppingTooltip1', 'ItemRefShoppingTooltip2',
-	'ItemRefShoppingTooltip3', 'ShoppingTooltip1', 'ShoppingTooltip2', 'ShoppingTooltip3', 'WorldMapTooltip' }
+	'ShoppingTooltip1', 'ShoppingTooltip2' }
 local tooltips = {}
 for _, name in ipairs(names) do tooltips[name] = make_tooltip(name) end
 -- GameTooltip's name line, which Blizzard makes before SaftUI loads and the unit hook colors.

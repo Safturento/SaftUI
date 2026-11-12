@@ -108,10 +108,6 @@ end
 
 
 
-function TT:GameTooltip_OnTooltipSetItem()
-	self:UpdateTooltipDisplay(GameTooltip)
-end
-
 function TT:GameTooltip_ShowCompareItem()
 	for i=1, 2 do
 		local tt = _G['ShoppingTooltip'..i]
@@ -171,7 +167,6 @@ function TT:OnEnable()
 	SkinBackdrop(GameTooltipStatusBar, 'bar')
 	self:SetupTooltipPosition()
 	--self:SecureHookScript(GameTooltip, 'OnTooltipSetSpell', 'UpdateTooltipDisplay')
-	--self:SecureHook(GameTooltip, 'GetItem', 'GameTooltip_OnTooltipSetItem')
 	self:SecureHook(GameTooltip, 'GetUnit', 'GameTooltip_OnTooltipSetUnit')
 	self:SecureHook('GameTooltip_ShowCompareItem')
 
@@ -180,11 +175,8 @@ function TT:OnEnable()
 		ItemRefTooltip,
 		ItemRefShoppingTooltip1,
 		ItemRefShoppingTooltip2,
-		ItemRefShoppingTooltip3,
 		ShoppingTooltip1,
 		ShoppingTooltip2,
-		ShoppingTooltip3,
-		WorldMapTooltip,
 	}
 	for _,tooltip in pairs(self.AllTooltips) do
 		SkinBackdrop(tooltip, 'tooltip')

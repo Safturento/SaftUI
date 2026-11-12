@@ -33,7 +33,6 @@ local BF = SK:NewModule('Blizzard_BuffFrame')
 	a secret atlas changes nothing.
 ]]
 
-local issecretvalue = issecretvalue or function() return false end
 
 local TEMP_ENCHANT_COLOR = { 0.6, 0.2, 0.9 }
 
