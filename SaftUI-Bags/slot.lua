@@ -393,10 +393,9 @@ end
 
 function INV:CreateSlot(container, categoryName)
 	local categoryFrame = container.categories[categoryName]
+	assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 	local slotID = #categoryFrame.slots + 1
 	local slot, slotName
-
-    assert(categoryFrame, 'Category "'..categoryName..'" does not exist')
 
     local bagName = container:GetName()
     -- Letters and digits: One bag's and Multi bag's frames differ by bag ID
