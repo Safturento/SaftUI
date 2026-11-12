@@ -17,8 +17,9 @@ local UF = st:GetModule('Unitframes')
 	normal text colour while good.
 
 	Tints show on enemy plates only, in a party or raid, and on your own only
-	with Threat when solo on (the Nameplates page's General). A secret threat
-	state (restricted content) shows nothing: a secret can't become a colour.
+	with Threat when solo on (Enemy nameplates' General, whichever page the
+	plate draws from). A secret threat state (restricted content) shows
+	nothing: a secret can't become a colour.
 	The player's role is Blizzard's own (PlayerUtil.IsPlayerEffectivelyTank:
 	on Forever an aura that makes a tank first, then the assigned role; on
 	retail the role, else the spec's).
@@ -236,12 +237,19 @@ end)
 
 --[[
 	The threat text, the Threat element: a font string of the plate's, on the
-	plates only (enemy plates: UF.PLATE_ENEMY_ONLY). Its config is the
-	nameplate unit's threat table (config/units/nameplate.lua): Enable, Font
-	(its size), Alpha and Position.
+	plates only (enemy plates: UF.PLATE_ENEMY_ONLY). Its config is Enemy
+	nameplates' threat table (config/units/nameplate.lua): Enable, Font (its
+	size), Alpha and Position. That one whatever config unit the plate draws
+	from (frame.base_unit, nameplates.lua): an enemy's plate drawn from
+	Friendly nameplates, which has no threat settings, keeps the Enemy page's.
 ]]
+local function ThreatConfig() return UF:GetProfileConfig().nameplate.threat end
+
 local function Constructor(frame)
-	return UF:AddTextElement(frame, 'Threat')
+	local text = UF:AddTextElement(frame, 'Threat')
+	text.config = ThreatConfig()
+	text.GetConfig = ThreatConfig
+	return text
 end
 
 -- Its font, alpha, place and Enable. What it says, and whether it shows,

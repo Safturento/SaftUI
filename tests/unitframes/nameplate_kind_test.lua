@@ -2,10 +2,12 @@
 -- updaters.lua's UF:ElementWanted, which the castbar, the indicators and the
 -- aura areas read):
 --   - an enemy's plate shows every part; a friendly plate
---     (UF.IsFriendlyPlate) carries the bar, the name, the health text and the
---     raid mark, its enemy-only parts (UF.PLATE_ENEMY_ONLY) disabled in oUF,
---     turned off and hidden. Set on every add, again when the unit's faction
---     changes, and when a config change turns a part on or off;
+--     (UF.IsFriendlyPlate) draws from the friendly config, whose defaults
+--     carry the name and the raid mark, the rest off: the castbar and quest
+--     icon disabled in oUF, the aura areas turned off, and every part off
+--     hidden. Set on every add, again when the unit's faction changes, and
+--     when a config change turns a part on or off (friendly_plate_test.lua
+--     has each kind's config);
 --   - a plate reused for the other kind, after a plate that showed only
 --     widgets too (oUF's resume turns its parts on again);
 --   - Blizzard's widgets and soft target icon moved onto the plate on every
@@ -41,31 +43,35 @@ end
 local function friend(unit) unit_is(unit, true, false) end
 local function enemy(unit) unit_is(unit, false, true) end
 
--- Checks a plate's frame carries an enemy's parts (enemy true) or a friend's.
+-- Checks a plate's frame carries an enemy's parts (enemy true) or a friend's,
+-- which are the friendly config's defaults: the friend's castbar, quest icon,
+-- aura areas, health bar and health text are off there, not by its kind.
 -- The castbar, the quest icon and the raid mark are shown by oUF's own
 -- updates (a cast, a quest unit, a mark), which the stand-in doesn't run; for
 -- those, shown here means SaftUI left them to oUF (UF:SetElementEnabled and
 -- UF:ApplyPlateKind show them, after oUF's castbar Enable hid the bar), and
 -- the oUF update after an add decides. Hidden means SaftUI hid them.
 local function check_kind(frame, enemy, label)
+	eq(frame.base_unit, enemy and 'nameplate' or 'friendlynameplate', label .. (enemy and ': the enemy config' or ': the friendly config'))
+	local off = ' (off in the friendly config)'
 	for _, name in ipairs({ 'Castbar', 'QuestIndicator' }) do
-		eq(frame:IsElementEnabled(name) == true, enemy, label .. ': ' .. name .. (enemy and ' enabled in oUF' or ' disabled in oUF'))
-		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' left to oUF' or ' hidden'))
+		eq(frame:IsElementEnabled(name) == true, enemy, label .. ': ' .. name .. (enemy and ' enabled in oUF' or ' disabled in oUF' .. off))
+		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' left to oUF' or ' hidden' .. off))
 	end
 	for _, name in ipairs({ 'Buffs', 'Debuffs' }) do
-		eq(frame[name].enabled, enemy, label .. ': ' .. name .. (enemy and ' on' or ' off'))
-		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' shown' or ' hidden'))
+		eq(frame[name].enabled, enemy, label .. ': ' .. name .. (enemy and ' on' or ' off' .. off))
+		eq(frame[name]:IsShown(), enemy, label .. ': ' .. name .. (enemy and ' shown' or ' hidden' .. off))
 	end
-	eq(frame.Health:IsShown(), true, label .. ': the bar shown')
+	eq(frame.Health:IsShown(), enemy, label .. (enemy and ': the bar shown' or ': the bar hidden' .. off))
 	eq(frame.Name:IsShown(), true, label .. ': the name shown')
-	eq(frame.Health.text:IsShown(), true, label .. ': the health text shown')
+	eq(frame.Health.text:IsShown(), enemy, label .. (enemy and ': the health text shown' or ': the health text hidden' .. off))
 	eq(frame.RaidTargetIndicator:IsShown(), true, label .. ': the raid mark left to oUF')
 	eq(frame.friendly, not enemy, label .. ': frame.friendly')
 end
 
 ------------------------------------------------------------------ kinds
 
-test('an enemy plate shows every part; a friendly plate carries the bar, name, health text and raid mark', function()
+test("an enemy plate shows every part; a friendly plate the friendly config's name and raid mark", function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
 		enemy('nameplate1')
@@ -84,17 +90,17 @@ test('an enemy plate shows every part; a friendly plate carries the bar, name, h
 	end
 end)
 
-test('a friendly plate never shows a cast', function()
+test('a friendly plate never shows a cast while the friendly config has the castbar off', function()
 	local st, UF = world()
 	friend('nameplate1')
 	local frame = NP.add('nameplate1')
 	local castbar = frame.Castbar
 	castbar:Show()
-	eq(castbar.ShouldShow(castbar, 'nameplate1'), false, "oUF skips the friend's cast")
+	eq(castbar.ShouldShow(castbar, 'nameplate1'), false, "oUF skips the friend's cast: off in the friendly config")
 	eq(castbar:IsShown(), false, 'and the castbar is hidden')
 
-	-- The quest icon too: oUF shows it by its own rules, and its PostUpdate
-	-- hides it again.
+	-- The quest icon too (off in the friendly config): oUF shows it by its
+	-- own rules, and its PostUpdate hides it again.
 	local quest = frame.QuestIndicator
 	quest:Show()
 	quest.PostUpdate(quest)
@@ -131,7 +137,10 @@ test('a plate reused for an enemy shows the enemy parts, placed', function()
 
 		-- oUF's order on a reused plate: the new unit attribute updates every
 		-- element once with the old kind's set (the castbar still disabled),
-		-- then the added callback sets the kind, then oUF updates again.
+		-- then the added callback sets the kind, then oUF updates again. The
+		-- kind moves the frame to the enemy config, so it's updated in full
+		-- from it (UF:UpdateUnitFrame, ending in oUF's update), and its
+		-- 'updated' callback enables the castbar and updates once more.
 		local seen = {}
 		for i = mark + 1, #NP.ouf.calls do
 			local call = NP.ouf.calls[i]
@@ -140,8 +149,8 @@ test('a plate reused for an enemy shows the enemy parts, placed', function()
 			end
 		end
 		eq(table.concat(seen, ', '),
-			'UpdateAllElements OnAttributeChanged, EnableElement Castbar, UpdateAllElements NAME_PLATE_UNIT_ADDED',
-			client .. ": oUF's early update, the kind, then oUF's update")
+			'UpdateAllElements OnAttributeChanged, UpdateAllElements OnShow, EnableElement Castbar, UpdateAllElements OnShow, UpdateAllElements NAME_PLATE_UNIT_ADDED',
+			client .. ": oUF's early update, the kind with the enemy config's update, then oUF's update")
 
 		for _, part in ipairs({ { 'Castbar', P.castbar.position }, { 'Debuffs', P.debuffs.position } }) do
 			local element, position = frame[part[1]], part[2]
@@ -257,12 +266,13 @@ test('a part turned on or off in the options follows on a plate that shows its u
 	check(not frame:IsElementEnabled('Castbar'), 'turned off: disabled in oUF')
 	eq(frame.Castbar:IsShown(), false, 'and hidden')
 
-	-- On a friend's plate, turning it on leaves it off.
+	-- On a friend's plate, turning it on in the enemy config leaves it off: the
+	-- friend draws from the friendly config, which has it off.
 	friend('nameplate2')
 	local ally = NP.add('nameplate2')
 	P.castbar.enable = true
 	UF:UpdateConfig('nameplate')
-	check(not ally:IsElementEnabled('Castbar'), "a friend's castbar stays disabled")
+	check(not ally:IsElementEnabled('Castbar'), "a friend's castbar stays disabled (off in the friendly config)")
 	eq(ally.Castbar:IsShown(), false, 'and hidden')
 	eq(frame:IsElementEnabled('Castbar'), true, "the enemy's on again")
 	frame.EnableElement, frame.UpdateAllElements = enable, update
@@ -290,8 +300,10 @@ test('a plate that showed only widgets gets its kind back when it is reused', fu
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF, P = world(client)
 		-- oUF's resume, when the widget-only unit leaves, turns every aura
-		-- area on and shows the bar whatever the config says.
+		-- area on and shows the bar whatever the config says. The bar is off
+		-- in both configs: the enemy one here, the friendly one by default.
 		P.health.enable = false
+		eq(UF:GetProfileConfig().friendlynameplate.health.enable, false, client .. ": the friendly config's bar off")
 		friend('nameplate1')
 		local frame = NP.add('nameplate1')
 		eq(frame.Health:IsShown(), false, client .. ': the bar off in the options')
@@ -378,7 +390,7 @@ test('kinds are applied after init: a first add of a friendly plate raises no er
 	local frame = NP.add('nameplate1')
 	eq(#take_errors(), 0, "no error: oUF's EnableElement and DisableElement ran on an initialized frame")
 	check(NP.ouf.IsInitialized(frame), 'initialized')
-	check(not frame:IsElementEnabled('Castbar'), 'the castbar disabled')
+	check(not frame:IsElementEnabled('Castbar'), 'the castbar disabled (off in the friendly config)')
 	eq(frame.friendly, true, 'a friend')
 end)
 
@@ -491,8 +503,10 @@ test('every other unit shows its parts by its config alone', function()
 		eq(UF:ElementWanted({ name = name, unitframe = unitframe, config = { enable = true } }), true, name .. ': on')
 		eq(UF:ElementWanted({ name = name, unitframe = unitframe, config = { enable = false } }), false, name .. ': off')
 	end
+	-- The threat text alone: every other part a friend's plate shows or
+	-- hides by the friendly config.
 	local keys = {}
 	for name in pairs(UF.PLATE_ENEMY_ONLY) do keys[#keys + 1] = name end
 	table.sort(keys)
-	eq(table.concat(keys, ','), 'Buffs,Castbar,Debuffs,QuestIndicator,Threat', 'the enemy-only parts')
+	eq(table.concat(keys, ','), 'Threat', 'the enemy-only parts')
 end)

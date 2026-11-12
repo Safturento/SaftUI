@@ -582,12 +582,20 @@ function UF:ApplyConfig(unit, element_name)
 				xpcall(function() self:ApplyGroupLayout(unit) end, geterrorhandler())
 			end
 			xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
-		elseif unit == 'nameplate' then
+		elseif UF.IsPlateUnit(unit) then
 			-- The plates' frames (nameplates.lua), which aren't among the units:
-			-- oUF's nameplate driver makes them. Their size is the plates', set
-			-- through the driver (none while SaftUI doesn't draw the plates).
+			-- oUF's nameplate driver makes them. Either page's change, one of the
+			-- boxes among them, can move a plate to the other config unit, so
+			-- each plate's is worked out again first (UF:ApplyPlateConfig): one
+			-- that moved gets a full update from it, the others the update
+			-- asked for. Every plate, whichever page it draws from, since the
+			-- threat text is always the Enemy page's (threat.lua). Their size is
+			-- the plates', set through the driver (none while SaftUI doesn't
+			-- draw the plates).
 			for _, frame in pairs(self.nameplates or {}) do
-				SafeUpdateUnitFrame(frame, element_name)
+				if not self:ApplyPlateConfig(frame) then
+					SafeUpdateUnitFrame(frame, element_name)
+				end
 			end
 			if not element_name and self.plateDriver then
 				xpcall(function() self:ApplyPlateSize() end, geterrorhandler())
