@@ -777,14 +777,15 @@ end
 --[[
 	Rows whose name, section title or tab title has text in it, ignoring
 	case, across every page, tab and pick:
-	{ {pageKey, path, name, tabName, sectionTitle} }. tabName is the tab and
+	{ {pageKey, path, name, tabName, sectionTitle, footer} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
 	aren't searched, nor descriptions, nor a tab a selection can't open (a
 	disabled one beside an enabled one: Choose). At most 100 results, by page
 	order. A page's footer's options come after the page's own, under the
-	footer's name as their tabName; their path is the page's key and theirs,
-	which opens the page.
+	footer's name as their tabName, with footer = true; their path is the
+	page's key and theirs, which opens the page (and nothing more: a footer
+	result's path isn't one a selection can follow).
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -798,7 +799,7 @@ function OM.Search(root, text)
 
 	-- Adds group's matching rows; true once there are enough. within is the
 	-- tree its path is from (the root's, or a footer's own).
-	local function Collect(pageKey, group, path, deep, tabNames, within)
+	local function Collect(pageKey, group, path, deep, tabNames, within, footer)
 		local tabMatch = false
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
@@ -816,6 +817,7 @@ function OM.Search(root, text)
 						name = row.name,
 						tabName = tabName,
 						sectionTitle = section.title,
+						footer = footer or nil,
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
@@ -833,7 +835,7 @@ function OM.Search(root, text)
 		if type(footer) == 'table' then
 			local within = Options({ [key] = footer })
 			local name = Text(GetMember('name', footer, within, pagePath))
-			if Collect(key, footer, pagePath, false, name ~= '' and { name } or {}, within) then return results end
+			if Collect(key, footer, pagePath, false, name ~= '' and { name } or {}, within, true) then return results end
 		end
 		local slot = SlotFor(2, nil, pageOption)
 		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do

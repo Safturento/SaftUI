@@ -840,6 +840,17 @@ test("a page's footer (SaftUI's field): BuildView hands it on; Search finds its 
 	local pageKey, selection = OM.SelectionForPath(root, results[1].path)
 	eq(pageKey, 'Unitframes', "a result's path opens the page")
 	eq(selection.pick, nil, 'on its first pick')
+
+	-- Tagged as the footer's, so the window opens the page and nothing more: a
+	-- key that matches a child group's (here a unit's) can't open that pick.
+	check(results[1].footer and results[2].footer, "a footer's results are tagged")
+	root.Unitframes.footer.args.player = opt('execute', 'Player thing', { order = 4, func = function() end })
+	local clash = OM.Search(root, 'player thing')
+	eq(paths(clash), 'Unitframes.player', 'a footer option keyed like a unit')
+	check(clash[1].footer, 'tagged')
+	local _, wrong = OM.SelectionForPath(root, clash[1].path)
+	eq(wrong.pick, 'player', 'the model alone would take its path for that unit, which is why the tag matters')
+	check(OM.Search(root, 'enable')[1] and not OM.Search(root, 'enable')[1].footer, "a page's own results aren't tagged")
 end)
 
 ------------------------------------------------------------------ the real tree

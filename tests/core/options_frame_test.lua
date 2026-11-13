@@ -521,6 +521,172 @@ test("edit mode's real buttons on the Unitframes page: the control stays clear o
 	close_all()
 end)
 
+-- A validate error about as long as the longest real one (an anchor's).
+local ERROR_TEXT = "Can't anchor a frame to itself"
+
+local function status_width(f) return f.status:GetRight() - f.status:GetLeft() end
+
+for _, look in ipairs({ 'thick', 'blizzard' }) do
+	test('a validate error on a page with a footer control (' .. look .. '): the status line gets room, the control drops its label for it and comes back', function()
+		H.theme(look)
+		st.Config:Open('Unitframes', 'player', 'general')
+		local f = frames()
+		local frame, label, widgets = control()
+		local region = OW:GetFooter()
+		local regionWidth = region:GetWidth()
+		local centred = from_left(label)
+		local last = widgets[2].frame
+
+		-- Edit mode off: the label drops, the widgets are at the right end, the status has the rest.
+		OW:SetStatus(ERROR_TEXT)
+		check(f.status:IsShown() and frame:IsShown(), 'both show')
+		check(not label:IsShown(), 'the label is dropped while the error shows')
+		eq(from_right(last), 0, 'the widgets at the right end, beside Close')
+		eq(f.status:GetRight(), frame:GetLeft() - 12, 'the status line ends 12 before the control')
+		check(status_width(f) >= f.status:GetStringWidth(), 'room for the whole error: ' .. status_width(f) .. ' for ' .. f.status:GetStringWidth())
+		OW:SetStatus(nil)
+		check(label:IsShown(), 'the label comes back when the status clears')
+		eq(from_left(label), centred, 'the control is centred again')
+
+		-- Edit mode's buttons up, taking most of the region: the control hides for the error.
+		local bare = last:GetRight() - widgets[1].frame:GetLeft()
+		OW:SetFooterInset(regionWidth - bare - 12)
+		check(frame:IsShown(), 'the control shows at the right end with no error')
+		OW:SetStatus(ERROR_TEXT)
+		check(not frame:IsShown(), 'no room beside it for the error: the control hides')
+		check(f.status:IsShown(), 'the status line shows')
+		eq(f.status:GetLeft(), region:GetLeft() + regionWidth - bare - 12, 'from after edit mode\'s buttons')
+		eq(f.status:GetRight(), region:GetRight(), 'to the right end')
+		OW:SetStatus(nil)
+		check(frame:IsShown() and widgets[1].frame:IsVisible(), 'the control is back when the status clears')
+		OW:SetFooterInset(0)
+		eq(from_left(label), centred, 'and centred without them')
+		H.theme('thick')
+		close_all()
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end
+
+test('leaving a page whose control hid for an error shows the status line again; a page without the control has none of it', function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local region = OW:GetFooter()
+	local bare = f.footerWidgets[2].frame:GetRight() - f.footerWidgets[1].frame:GetLeft()
+	OW:SetFooterInset(region:GetWidth() - bare - 12)
+	OW:SetStatus(ERROR_TEXT)
+	check(not f.footerControl:IsShown(), 'the control is hidden for the error')
+	OW:Navigate('Loot') -- clears the status, and the new page has no control
+	check(f.status:IsShown(), 'the status line is shown on Loot')
+	OW:SetStatus(ERROR_TEXT)
+	check(f.status:IsShown(), 'and shows an error')
+	eq(f.status:GetRight(), region:GetRight(), 'to the right end')
+	OW:SetFooterInset(0)
+	OW:Navigate('Unitframes')
+	check(f.footerControl:IsShown(), 'the control is back on Unitframes')
+	close_all()
+end)
+
+test("a footer that is hidden draws nothing; and the control's frame level is above edit mode's buttons'", function()
+	local EM = st.EditModeFrames
+	EM:Enable()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local frame, _, widgets = control()
+	check(#widgets == 2 and frame:IsShown(), 'drawn')
+	-- Edit mode's frame, over the region, and its buttons, must stay under the control.
+	printed(function() EM:Activate() end)
+	local region = OW:GetFooter()
+	local seen = 0
+	for _, child in ipairs({ region:GetChildren() }) do
+		if child ~= frame then
+			check(frame:GetFrameLevel() > child:GetFrameLevel(), "the control is above the region's other frame")
+			for _, button in ipairs({ child:GetChildren() }) do
+				seen = seen + 1
+				check(frame:GetFrameLevel() > button:GetFrameLevel(), "the control is above edit mode's button")
+			end
+		end
+	end
+	check(seen > 0, "edit mode's buttons were checked")
+	printed(function() EM:Deactivate() end)
+
+	local page = OW:GetRoot().Unitframes
+	local footer = page.footer
+	page.footer = { type = 'group', name = footer.name, args = footer.args, hidden = true }
+	OW:Render()
+	check(not frame:IsShown(), 'a hidden footer: no control')
+	eq(#f.footerWidgets, 0, 'and no widgets')
+	check(f.status:IsShown(), 'the status line has the region')
+	page.footer = footer
+	OW:Render()
+	check(frame:IsShown() and #f.footerWidgets == 2, 'shown when it is not hidden')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the footer's dropdown and Manage show their option's tooltip; the game's motion argument is no trouble", function()
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local dropdown, manage = f.footerWidgets[1], f.footerWidgets[2]
+	for _, case in ipairs({ { dropdown, 'Profile', 'The profile.' }, { manage, 'Manage', 'Manages the profiles.' } }) do
+		local widget, name, desc = case[1], case[2], case[3]
+		stub.fire_script(widget.frame, 'OnEnter', true) -- the game's second argument, motion
+		check(GameTooltip:IsOwned(widget.frame) and GameTooltip:IsShown(), name .. ': a tooltip over it')
+		local texts = stub.state(GameTooltip).texts -- the stub keeps every line added
+		eq(texts[#texts - 1], name, name .. ': its name')
+		eq(texts[#texts], desc, name .. ': its desc')
+		stub.fire_script(widget.frame, 'OnLeave', true)
+		check(not GameTooltip:IsShown(), name .. ': gone when the mouse leaves')
+	end
+	-- Drawn again (pooled frames): still one tip, for the right option; none once released.
+	OW:Render()
+	stub.fire_script(f.footerWidgets[1].frame, 'OnEnter', true)
+	local texts = stub.state(GameTooltip).texts
+	eq(texts[#texts - 1], 'Profile', 'drawn again: its tooltip')
+	stub.fire_script(f.footerWidgets[1].frame, 'OnLeave', true)
+	local released = f.footerWidgets[1].frame
+	OW:Navigate('Loot')
+	stub.fire_script(released, 'OnEnter', true)
+	check(not GameTooltip:IsShown(), 'a released widget shows no tip')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a search result for the footer's options opens the page as it is: the page's pick and tab stay, and a footer key that matches a unit opens nothing else", function()
+	st.Config:Open('Unitframes', 'target', 'power')
+	local f = frames()
+	eq(OW:GetState().pick, 'target', 'on Target')
+	f.search:SetText('manage')
+	tick(0.3)
+	local result
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.key == 'manage' then result = c end
+	end
+	check(result ~= nil, 'a result for Manage')
+	click(result.frame)
+	local state = OW:GetState()
+	eq(state.page, 'Unitframes', 'the page opened')
+	eq(state.pick, 'target', 'on the unit that was picked')
+	eq(state.tab, 'power', 'and the tab that was open')
+	check(f.footerControl:IsShown(), 'with its control')
+
+	-- A footer option keyed like a unit: still only the page.
+	local footer = OW:GetRoot().Unitframes.footer
+	footer.args.player = { order = 9, type = 'execute', name = 'Player thing', func = function() end }
+	f.search:SetText('player thing')
+	tick(0.3)
+	result = nil
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.key == 'player' then result = c end
+	end
+	check(result ~= nil, 'a result for it')
+	click(result.frame)
+	eq(OW:GetState().pick, 'target', 'the pick is not Player')
+	footer.args.player = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('OW.FooterPlace: centred while clear of the inset, else the right end, else the right end without the label', function()
 	-- regionWidth, inset, labelWidth (with its gap), widgetsWidth -> x, label shown.
 	local function place(...)

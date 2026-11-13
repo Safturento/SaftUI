@@ -80,8 +80,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	own widgets, so in either look. It's centred between Reload UI and Close;
 	while edit mode's buttons take the region's left it keeps clear of them,
 	at the region's right end, beside Close, and without its label when even
-	that is too close (OW.FooterPlace). The status line ends before it.
-	Search results draw no page, so no control. A render draws an open dialog
+	that is too close (OW.FooterPlace). The status line ends before it, and
+	comes before the control's label (and, when edit mode leaves it no room,
+	before the control itself): an error shows whole, in the room the control
+	leaves, the control dropping its label or hiding until the status clears
+	(OW:SetStatus places the footer again). Search results draw no page, so
+	no control, and a result for a footer's option opens its page as it is. A render draws an open dialog
 	again too, so the dialog follows what changed the tree (a profile change,
 	UF's profile prompts).
 
@@ -390,7 +394,13 @@ local function SearchChanged(box)
 end
 
 -- A search result: its page, picker and tabs, with the row brought into view.
-local function GoTo(path)
+-- A footer's result opens its page as it is: the footer isn't in the picker or
+-- the tabs, so the page's own pick and tab stay, and its key can't match one.
+local function GoTo(path, footer)
+	if footer then
+		if path[1] then OW:Navigate(path[1]) end
+		return
+	end
 	local pageKey, selection = OM.SelectionForPath(root, path)
 	if not pageKey then return end
 	focusPath = path
@@ -419,9 +429,35 @@ local FOOTER_SPACING = 8 -- after the label, and between the widgets
 local footerInset = 0 -- the region's left that edit mode's buttons take (OW:SetFooterInset)
 
 local function ReleaseFooterControl()
-	for _, widget in ipairs(F.footerWidgets) do widget:Release() end
+	for _, widget in ipairs(F.footerWidgets) do
+		widget.frame.footerTip = nil
+		widget:Release()
+	end
 	wipe(F.footerWidgets)
 	F.footerControl:Hide()
+end
+
+-- A footer widget's tooltip, its option's name and desc as a body's row shows
+-- them. An execute button has the hook for it (widget.onTip); any other
+-- widget's frame gets one, once (the frame is pooled), that reads footerTip.
+-- The game calls a script with the mouse's motion as a second argument, so
+-- these take none.
+local function TipFooterWidget(widget, row)
+	local owner = widget.frame
+	local tip = { row = row }
+	local function Tip(on)
+		if on then OB.ShowTip(tip, owner) else OB.HideTip(tip, owner) end
+	end
+	if row.type == 'execute' then
+		widget.onTip = Tip
+		return
+	end
+	if not owner.footerTipHooked then
+		owner.footerTipHooked = true
+		owner:HookScript('OnEnter', function(self) if self.footerTip then self.footerTip(true) end end)
+		owner:HookScript('OnLeave', function(self) if self.footerTip then self.footerTip(false) end end)
+	end
+	owner.footerTip = Tip
 end
 
 -- footer (a page's view.footer, or nil for none) drawn into the control.
@@ -435,6 +471,7 @@ local function DrawFooterControl(footer)
 		for _, row in ipairs(section.rows) do
 			local widget = W.Create(F.footerControl, row.type)
 			widget:Bind(tree, row, Changed)
+			TipFooterWidget(widget, row)
 			F.footerWidgets[#F.footerWidgets + 1] = widget
 		end
 	end
@@ -444,22 +481,36 @@ end
 -- The region's parts: the status line from edit mode's buttons (footerInset)
 -- and, while a page's footer control shows, the control where
 -- OW.FooterPlace puts it, the label, then its widgets left to right, with the
--- status line ending FOOTER_GAP before it, cut short (hidden when nothing of
--- it is left, rather than drawn under the control).
+-- status line ending FOOTER_GAP before it. An error to read comes before the
+-- control's place: while the status has text the label is dropped and the
+-- widgets are at the region's right end, and when even then the status would
+-- have no room (edit mode's buttons take it), the control is hidden until
+-- the status clears (OW:SetStatus places the footer again).
 local function PlaceFooter()
 	local region, control, status = F.footerRegion, F.footerControl, F.status
 	status:ClearAllPoints()
 	status:SetPoint('LEFT', region, 'LEFT', footerInset, 0)
-	if not control:IsShown() then
+	local label, widgets = F.footerLabel, F.footerWidgets
+	if #widgets == 0 then
 		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
 		status:Show()
 		return
 	end
-	local label, widgets = F.footerLabel, F.footerWidgets
 	local labelWidth = ceil(label:GetStringWidth()) + FOOTER_SPACING
 	local widgetsWidth = (#widgets - 1) * FOOTER_SPACING
 	for _, widget in ipairs(widgets) do widgetsWidth = widgetsWidth + widget:GetWidth() end
-	local x, labelShown = OW.FooterPlace(floor(region:GetWidth() + 0.5), footerInset, labelWidth, widgetsWidth)
+	local regionWidth = floor(region:GetWidth() + 0.5)
+	local x, labelShown = OW.FooterPlace(regionWidth, footerInset, labelWidth, widgetsWidth)
+	if (status:GetText() or '') ~= '' then
+		x, labelShown = regionWidth - widgetsWidth, false
+		if x - FOOTER_GAP <= footerInset then
+			control:Hide()
+			status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
+			status:Show()
+			return
+		end
+	end
+	control:Show()
 	label:SetShown(labelShown)
 	local left = labelShown and labelWidth or 0
 	for _, widget in ipairs(widgets) do
@@ -592,9 +643,9 @@ local function DrawSearch(pages)
 			last = { title = title, note = result.sectionTitle, rows = {} }
 			sections[#sections + 1] = last
 		end
-		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, size = 'normal', path = result.path }
+		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, size = 'normal', path = result.path, footer = result.footer }
 	end
-	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path) end)
+	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path, row.footer) end)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
@@ -1094,7 +1145,9 @@ function OW:SetRoot(tree)
 end
 
 function OW:SetStatus(text)
-	if F.status then F.status:SetText(text or '') end
+	if not F.status then return end
+	F.status:SetText(text or '')
+	PlaceFooter()
 end
 
 function OW:GetFooter()

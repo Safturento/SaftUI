@@ -267,11 +267,15 @@ end
 -- after its name): the dialog's own profile dropdown, then Manage, which
 -- opens the dialog.
 function UF.GenerateProfileFooter()
+	-- The dialog's select takes its own line (size 'wide'); the footer has no lines.
+	local current = {}
+	for key, value in pairs(UF.GenerateProfileConfigGroup().args.current) do current[key] = value end
+	current.size = nil
 	return {
 		type = 'group',
 		name = 'Unit frame profile',
 		args = {
-			current = UF.GenerateProfileConfigGroup().args.current,
+			current = current,
 			manage = {
 				order = 2,
 				type = 'execute',

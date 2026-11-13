@@ -165,9 +165,13 @@ end
 
 -- The window's render (OW:Render) draws an open dialog again with it, unless
 -- the user is busy in it: a slider of its own held (a lost mouse-up can't
--- hold it off), or one of its boxes typed in.
-local function FollowWindow()
+-- hold it off), one of its boxes typed in, or its own dropdown list or a
+-- confirm open (drawing it again would close them).
+local function FollowDialog()
 	if not (D.frame and D.frame:IsShown()) then return end
+	local owner = W.ListOwner()
+	if owner and Inside(owner, D.frame) then return end
+	if W.ConfirmText() then return end
 	if D.dragging and IsMouseButtonDown('LeftButton') then return end
 	local focus = GetCurrentKeyBoardFocus()
 	if focus and Inside(focus, D.frame) then return end
@@ -206,4 +210,4 @@ function OW.GetDialogFrames() return D end
 
 ------------------------------------------------------------------ for optionswindow.lua
 
-S.FollowDialog = FollowWindow
+S.FollowDialog = FollowDialog

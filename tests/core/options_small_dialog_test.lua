@@ -202,6 +202,42 @@ test("the window's render draws an open dialog again, so it follows a change mad
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("the window's render leaves an open dialog be while its own dropdown list or a confirm is open", function()
+	st.Config:Open('Loot')
+	local name, value = 'Before', 'a'
+	OW:OpenDialog('Guard', {
+		type = 'group', name = 'Guard',
+		args = {
+			pick = { order = 1, type = 'select', name = function() return name end, values = { a = 'A', b = 'B' },
+				get = function() return value end, set = function(_, v) value = v end },
+		},
+	})
+	local W = st.OptionsWidgets
+	eq(dialogCell('pick').label:GetText(), 'Before', 'drawn')
+	local widget = dialogCell('pick').widget
+	click(widget.frame)
+	check(W.ListOwner() == widget.frame, "the dialog's dropdown list is open")
+	name = 'During list'
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'Before', 'not drawn again under its open list')
+	check(W.ListOwner() == widget.frame, 'the list stays open')
+	W.CloseList()
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During list', 'drawn again once the list is shut')
+
+	name = 'During confirm'
+	W.Confirm('Sure?', function() end)
+	check(W.ConfirmText() ~= nil, 'a confirm is open')
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During list', 'not drawn again under a confirm')
+	W.CancelConfirm()
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During confirm', 'drawn again once it is answered')
+	OW:CloseDialog()
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ under the Blizzard theme
 
 test("the dialog's scroll reaches 7 past its content under Blizzard", function()
