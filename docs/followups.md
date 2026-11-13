@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
@@ -131,6 +132,27 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box
+
+**What:** `/sui` → Action Bars sets text (hotkey, stack count, macro name, cooldown numbers: font, size, outline, position) per bar, and the Cooldown numbers box (Blizzard's own "Show Numbers for Cooldowns", `countdownForCooldowns`) sits loose at the top of the page beside Theme and Background. The user wants the settings every bar shares set in one place, with a single bar able to override.
+
+**Why noticed:** The user's in-game look at the cooldown numbers change (072b9a3), 2026-11-13: "The cooldown numbers checkbox just being randomly placed at the top seems kind of weird, that checkbox should be an Enable checkbox in the Cooldown numbers section. Also a lot of these settings in the action bar (theme, font, size, are most likely things we want to have a shared config across all bars, we should have an option to have those common settings modifiable in one place for all bars." Asked which settings should differ per bar: "things like button count, per row, growth direction, spacing, size, position, combat fade, now that I think about it really the text and theme are the things that should be grouped for all action bars". On overrides: "I think a single bar should be able to override, but by default they all take the same configs". (The same message's third point, the Reset button's tooltip, was fixed in a5e8ea6 and b4e218c.)
+
+**Anchors:** `SaftUI-ActionBars/options.lua` (header comment, `AB:GetTextOptions`, the Cooldown numbers toggle, `COUNTDOWN_NOTE`, the Reset), `SaftUI-ActionBars/config.lua` (`text = { hotkey, count, macro, countdown }` per bar), `skin.lua` (`AB:GetCountdownFont`, the CVar), `bars.lua` (`AB:UpdateBar`, the layout: no growth direction today), `AB.barTypes` (the pet and stance bars have only the hotkey and cooldown numbers). Precedent for "use the shared settings": the nameplate pages' "Use the other's settings" boxes (`SaftUI-Unitframes/nameplates/options.lua`).
+
+**What's been considered:** Played back to the user 2026-11-13, awaiting their correction (the brainstorm was mid-way; the calls marked as the builder's are not the user's):
+
+- An **All bars** entry, first in the bar picker. Its General tab holds Theme and Background (moved from the top of the page). Its Text tab holds the four texts. The Cooldown numbers section gets an **Enable** box at its top (Blizzard's setting, so all-bars only) and its Reset.
+- Each bar's **General** and **Visibility** tabs stay per bar: enable, button count, buttons per row, size, spacing, position, combat fade.
+- Each bar's **Text** tab: each of the four texts gets a "Same as All bars" box, checked by default. While it's checked the text's settings are hidden and it follows All bars. Unchecking shows them, starting from All bars' values. Checking again follows All bars but keeps the bar's own values for later. (Builder's call: per text, not one box per bar.)
+- Theme and Background: all bars only, no per-bar override. (Builder's call.)
+- Migration: All bars' text starts from Bar 1's. A bar whose text differs from Bar 1's starts with that text unchecked, so nothing changes on upgrade. (Builder's call.)
+- Pet and stance bars show only the hotkey and cooldown numbers in their Text tab, as today.
+
+**Shape of work:** A project: a config shape change with a profile migration, the options pages, the skin reading the effective text config. Next: the user's answer on growth direction, then a design document (`docs/superpowers/specs/`), a builder check, a plan, and subagent implementation.
+
+**Open questions:** Growth direction (which corner the first button sits in, which way rows fill) doesn't exist yet. The user listed it as per-bar; asked whether it joins this work or comes later, no answer yet. Mockups of the All bars page and a bar's Text tab would help before the spec.
 
 ### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
 
