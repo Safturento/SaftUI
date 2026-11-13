@@ -17,7 +17,7 @@
 -- microbuttons.lua, Core's helpers and the theme engine. Each case starts from
 -- a fresh world on a client (T.client), since cases change the profile's theme.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local st, MM, drawn
 

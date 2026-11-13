@@ -21,7 +21,7 @@
 --   - a skin that errors is reported, and Blizzard's layout still completes;
 --     the item is skinned the next time it's handed out;
 --   - nothing written onto Blizzard's frames: every viewer, item, frame and
---     region of the fixture is locked (fixtures/locked_widget.lua);
+--     region of the fixture is locked (lib/locked_widget.lua);
 --   - a theme switch (Thick, Thin, Blizzard, None) and the Skinning page's own
 --     Theme, Background and font reaching every item;
 --   - Skinning -> Cooldown Manager off leaving Blizzard's look, hooking nothing.

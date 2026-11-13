@@ -10,7 +10,7 @@
 -- The art pieces (Border, Background, NameFrame, Corner, Count) are left
 -- unlocked in the stub for that reason.
 
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local function world()
 	reset_world()

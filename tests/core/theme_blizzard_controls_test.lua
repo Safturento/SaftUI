@@ -27,9 +27,9 @@
 --   - a button of Blizzard's panel button template (UIPanelButtonTemplate:
 --     its Left, Middle and Right) and Blizzard's chat edit box
 --     (ChatFrameEditBoxTemplate: its border and focus textures), both locked
---     (misc/fixtures/locked_widget.lua) once SaftUI has what it keeps on them.
+--     (lib/locked_widget.lua) once SaftUI has what it keeps on them.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 local text = T.text
 
 local drawn

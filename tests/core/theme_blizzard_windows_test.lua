@@ -32,7 +32,7 @@
 -- Config/config.lua on a real AceDB-3.0 (core/config_helpers.lua) with the
 -- options window. Each case starts from a fresh world.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 local text, fill = T.text, T.fill
 
 -- A nine-slice border's shown pieces as T.art lists them.

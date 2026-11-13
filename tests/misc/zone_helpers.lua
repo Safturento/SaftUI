@@ -3,14 +3,14 @@
 -- reaches them, and the module loaded on top. Not a test (no _test suffix);
 -- each zone_*_test.lua loads it with load_test_file('misc/zone_helpers.lua').
 --
--- Blizzard's frames are locked (fixtures/locked_widget.lua), so SaftUI writing
+-- Blizzard's frames are locked (lib/locked_widget.lua), so SaftUI writing
 -- a new field onto one, or replacing one of its scripts with SetScript, fails
 -- the test. Blizzard's own code here writes its fields with rawset, or makes
 -- them before the lock, as the RestedXP fixture does for RestedXP's.
 
 local H = {}
 
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local function lock(...)
 	for i = 1, select('#', ...) do locked((select(i, ...)), 'Blizzard') end

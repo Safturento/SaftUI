@@ -555,7 +555,7 @@ end)
 
 -- Stands in for a secure group header, which oUF's SpawnHeader makes and the
 -- border mustn't be written onto: a field written onto it errors.
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 -- How many keys a table has.
 local function count(t)

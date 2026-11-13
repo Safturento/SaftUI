@@ -123,7 +123,7 @@ end)
 -- Blizzard's LoadMicroButtonTextures calls), so it's given here as it works:
 -- the highlight's atlas and blend mode. The button is locked, so a field the
 -- skin writes onto it fails.
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local function micro_button(index, textureName)
 	local menu = _G.MicroMenu

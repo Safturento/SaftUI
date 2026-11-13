@@ -27,7 +27,7 @@
 -- and the profile's defaults; every SaftUI Lua file's source, for the scan. Each case starts from a fresh world on a client
 -- (T.client), on Forever unless it names retail, with SaftUI's theme Blizzard.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offset
 
 -- A fresh world on client, with SaftUI's theme Blizzard.

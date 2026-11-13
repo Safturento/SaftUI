@@ -35,7 +35,7 @@
 -- Feed/rolls.lua calls LT:UpdateRollBars after every loot history update; the
 -- tests call it themselves after changing a drop.
 
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local LT, st, T, drawn, S
 local game -- { rolls = { [rollID] = roll }, drops = { drop, ... }, rolled = { [rollID] = rollType } }

@@ -354,7 +354,7 @@ test("the loot window's buttons are marked as Blizzard's before they're drawn as
 	-- (a known write; the popup is disabled, init.lua:17), so that one key is
 	-- given a placeholder first, which a lock lets be assigned.
 	button.nametext = false
-	local locked = load_test_file('misc/fixtures/locked_widget.lua')
+	local locked = load_test_file('lib/locked_widget.lua')
 	locked(button, 'Blizzard loot button')
 	LT:SkinLootButton(button)
 	st.MarkForeign, st.SkinActionButton = mark, skin

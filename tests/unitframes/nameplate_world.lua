@@ -19,7 +19,7 @@
 --     Blizzard's NamePlateDriverFrame, and every NamePlateN the game makes
 --     with each UnitFrame it hands one and that one's WidgetContainer and
 --     SoftTargetFrame (tests/wow/game.lua's stub.add_nameplate), are locked
---     as Blizzard's (misc/fixtures/locked_widget.lua), so SaftUI writing a
+--     as Blizzard's (lib/locked_widget.lua), so SaftUI writing a
 --     field onto one fails. What oUF writes onto a plate (unitFrame, style),
 --     and the hook hooksecurefunc stores, are set with rawset.
 --
@@ -33,7 +33,7 @@
 --     The game takes unit's plate away (stub.remove_nameplate).
 local T = load_test_file('lib/theme_helpers.lua')
 local fixture = load_test_file('unitframes/fixtures/ouf.lua')
-local lock = load_test_file('misc/fixtures/locked_widget.lua')
+local lock = load_test_file('lib/locked_widget.lua')
 
 local NP = {}
 
