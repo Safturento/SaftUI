@@ -16,5 +16,6 @@
 	<Script file="units\nameplate.lua"/>
 	<Script file="units\friendlynameplate.lua"/>
 	<Script file="profiles.lua"/>
+	<Script file="groupoptions.lua"/>
 	<Script file="config.lua"/>
 </Ui>

@@ -14,9 +14,9 @@
 -- way AceDB fills them; unitframes.lua (UF.ConstructUnit, UF.InitUnit,
 -- UF:UpdateUnitFrame); the group files (grouplayout.lua, groups.lua,
 -- blizzardraid.lua, grouppreview.lua); config/profiles.lua
--- (UF:GetProfileConfig) and config/config.lua; constructors.lua, updaters.lua
--- and tags.lua; the files elements/elements.xml lists; LibStringFormat-1.0,
--- which init.lua makes st.StringFormat.
+-- (UF:GetProfileConfig), config/groupoptions.lua and config/config.lua;
+-- constructors.lua, updaters.lua and tags.lua; the files elements/elements.xml
+-- lists; LibStringFormat-1.0, which init.lua makes st.StringFormat.
 --
 -- Stand-in: oUF (tests/unitframes/fixtures/ouf.lua, which says what the real
 -- one does beyond it), made before unitframes.lua loads, with SaftUI's style
@@ -37,6 +37,7 @@ load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/blizzardraid.lua')
 load_saftui('SaftUI-Unitframes/grouppreview.lua')
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
+load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')

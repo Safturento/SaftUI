@@ -23,12 +23,12 @@
 -- unit's), filled the way AceDB fills them; unitframes.lua
 -- (UF:UpdateUnitFrame, UF:ApplyConfig, UF:RegisterElement); the group files
 -- (grouplayout.lua, groups.lua, blizzardraid.lua, grouppreview.lua: the
--- previews); config/profiles.lua (UF:GetProfileConfig) and config/config.lua;
--- constructors.lua and updaters.lua; aurafilters.lua (the aura groups'
--- filters, UF.AuraFilter); the health, power, additional power, castbar, class
--- power, aura and indicator elements, whose constructors build the parts and
--- whose UpdateConfig draws them; LibStringFormat-1.0, which init.lua makes
--- st.StringFormat.
+-- previews); config/profiles.lua (UF:GetProfileConfig),
+-- config/groupoptions.lua and config/config.lua; constructors.lua and
+-- updaters.lua; aurafilters.lua (the aura groups' filters, UF.AuraFilter); the
+-- health, power, additional power, castbar, class power, aura and indicator
+-- elements, whose constructors build the parts and whose UpdateConfig draws
+-- them; LibStringFormat-1.0, which init.lua makes st.StringFormat.
 --
 -- Stand-ins, for what needs oUF:
 --   * UF.oUF, as far as unitframes.lua and the previews use it: its colors
@@ -76,6 +76,7 @@ load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/blizzardraid.lua')
 load_saftui('SaftUI-Unitframes/grouppreview.lua')
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
+load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')

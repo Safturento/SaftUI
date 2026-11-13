@@ -44,6 +44,7 @@ function st.Config:Import(text)
 end
 
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
+load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 
 -- st:Print goes to print. Count what it prints.
