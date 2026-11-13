@@ -751,3 +751,67 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	restore()
 	body:Release()
 end)
+
+------------------------------------------------------------------ an execute button's tooltip
+
+test("an execute button shows its row's tooltip while the mouse is on it, under Thick and Blizzard; a disabled one shows why through its row", function()
+	local lock = false
+	local root = { page = { type = 'group', name = 'Page', args = {
+		reset = { type = 'execute', name = 'Reset', order = 1, desc = 'Puts it back.', func = function() end,
+			disabled = function() return lock end, disabledDesc = 'Nothing to reset.' },
+		bare = { type = 'execute', name = 'Plain', order = 2, func = function() end },
+	} } }
+	local tip, restore = watch_tooltip()
+	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		content:SetSize(774, 400)
+		local body = st.OptionsBody.New(content, root, nil, 774)
+		lock = false
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local by = {}
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		local button = by.reset.widget.frame
+
+		stub.fire_script(button, 'OnEnter')
+		check(tip.owner == button, look .. ': the tooltip is the button\'s')
+		eq(table.concat(tip.lines, '|'), 'Reset|Puts it back.', look .. ': its name and desc, no why while enabled')
+		stub.fire_script(button, 'OnLeave')
+		check(tip.owner == nil, look .. ': gone when the mouse leaves')
+		tip.lines = {}
+
+		-- The button's edge still lights under Thick.
+		if look == 'thick' then
+			local blue = { st.config.profile.colors.button.blue:GetRGB() }
+			stub.fire_script(button, 'OnEnter')
+			eq((button:GetBackdropBorderColor()), blue[1], 'the edge lights')
+			stub.fire_script(button, 'OnLeave')
+			check((button:GetBackdropBorderColor()) ~= blue[1], 'and goes out')
+		end
+
+		-- No desc and no why: no tooltip.
+		stub.fire_script(by.bare.widget.frame, 'OnEnter')
+		check(tip.owner == nil, look .. ': a button with nothing to say shows none')
+
+		-- The row's own empty space keeps its tooltip.
+		stub.fire_script(by.reset.frame, 'OnEnter')
+		check(tip.owner == by.reset.frame, look .. ': the row beside the button shows it too')
+		stub.fire_script(by.reset.frame, 'OnLeave')
+
+		-- Disabled: the button takes no mouse, so the row under it says why.
+		lock = true
+		body:Release()
+		body:Draw(OM.BuildView(root, 'page').sections)
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		eq(by.reset.widget.frame:IsMouseEnabled(), false, look .. ': a disabled button takes no mouse')
+		stub.fire_script(by.reset.frame, 'OnEnter')
+		eq(table.concat(tip.lines, '|'), 'Reset|Puts it back.|Nothing to reset.', look .. ': name, desc, then why')
+		eq(tip.colors[3], red, look .. ': why in Text > Red')
+		stub.fire_script(by.reset.frame, 'OnLeave')
+		body:Release()
+	end
+	restore()
+	st.config.profile.theme.name = 'thick'
+end)
