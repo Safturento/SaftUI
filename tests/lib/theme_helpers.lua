@@ -42,6 +42,24 @@ function T.theme(name, after)
 	if after then after() end
 end
 
+-- The Thick, Blizzard, Thick round trip: expect(label .. ', Thick') in the
+-- world as it is, then SaftUI's theme switched to Blizzard and
+-- expect(label .. ', Blizzard'), then back to Thick and
+-- expect(label .. ', Thick again'). Each switch is switch(name), by default
+-- the profile's theme name set and st:ThemeChanged() run, as the Theme tab
+-- runs it.
+function T.round_trip(label, expect, switch)
+	switch = switch or function(name)
+		SaftUI.config.profile.theme.name = name
+		SaftUI:ThemeChanged()
+	end
+	expect(label .. ', Thick')
+	switch('blizzard')
+	expect(label .. ', Blizzard')
+	switch('thick')
+	expect(label .. ', Thick again')
+end
+
 ------------------------------------------------------------------ draws
 
 -- Wraps st:SetTemplate, st:SetBackdrop and st:SetBackdropIn so each notes the

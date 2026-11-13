@@ -934,13 +934,7 @@ test('Thick, Blizzard, Thick with a bag window open', function()
 				name .. ': the window where it was, its size as INV:UpdateConfig gives it')
 		end
 
-		expect(client .. ', Thick')
-		st.config.profile.theme.name = 'blizzard'
-		st:ThemeChanged()
-		expect(client .. ', Blizzard')
-		st.config.profile.theme.name = 'thick'
-		st:ThemeChanged()
-		expect(client .. ', Thick again')
+		T.round_trip(client, expect)
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
