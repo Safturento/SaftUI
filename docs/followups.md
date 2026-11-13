@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
+  - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
@@ -133,6 +135,28 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override
+
+**What:** Bag sorting should be richer: one general sort order, built from blocks the user drags into order (as the category rules are), and each bag category able to override it with a sort order of its own.
+
+**Why noticed:** The user, 2026-11-13, while the action bars' shared settings were being designed: "once this is done I want to talk about beefing up bag sorting functionality, similarly to the action bar I think we should have a general sorting order that can be modified using dragable blocks, and each category can override the sort order with a different one". "Similarly to the action bar" means the shared-with-override model: a general value everything follows, and a part that can own its own (`docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md`).
+
+**Anchors:** `SaftUI-Bags/layout.lua` and `container.lua` (where items are ordered today), `categories.lua`, `categoriestab.lua`, `ruleeditor.lua` and `dragparts.lua` (the Categories tab and the drag handle, ghost and drop line to reuse), `rules.lua` (the block rules).
+
+**Shape of work:** A design round with the user first (they asked to talk about it): which sort keys exist (quality, item level, name, type, count, recency, ...), ascending or descending per block, where the general order is edited, how a category shows that it overrides. Then a spec and plan. The own/shared marks and menu items the action bars work adds to Core's options kit may fit.
+
+**Open questions:** All of the above; not yet discussed. Start it once the action bars' shared settings are built.
+
+### 2026-11-13 — Unit frames: shared settings across units, and small parts as menu items
+
+**What:** The action bars' shared-settings model (an "All" entry, own marks, the diff icon, "Apply to: All | Multiple") applied across unit frames, and a unit's texts, icons and small parts drawn as one-line menu items on its General page, cutting Player's tabs from about thirteen to five.
+
+**Why noticed:** The user, 2026-11-13: the Apply to idea "is widely used for options across the action bars (we could also use it elsewhere, like a lot of unit frames changes)", and of the unit frame mockup: "the unitframe change is great". They asked to see the menu with the full unit frame position block (the TO dropdown) "to make sure that's also planned out"; it fits a 400 wide menu (the block is 351 wide).
+
+**Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
+
+**Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
+
 ### 2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box
 
 **What:** `/sui` → Action Bars sets text (hotkey, stack count, macro name, cooldown numbers: font, size, outline, position) per bar, and the Cooldown numbers box (Blizzard's own "Show Numbers for Cooldowns", `countdownForCooldowns`) sits loose at the top of the page beside Theme and Background. The user wants the settings every bar shares set in one place, with a single bar able to override.
@@ -150,9 +174,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - Migration: All bars' text starts from Bar 1's. A bar whose text differs from Bar 1's starts with that text unchecked, so nothing changes on upgrade. (Builder's call.)
 - Pet and stance bars show only the hotkey and cooldown numbers in their Text tab, as today.
 
-**Shape of work:** A project: a config shape change with a profile migration, the options pages, the skin reading the effective text config. Next: the user's answer on growth direction, then a design document (`docs/superpowers/specs/`), a builder check, a plan, and subagent implementation.
-
-**Open questions:** Growth direction (which corner the first button sits in, which way rows fill) doesn't exist yet. The user listed it as per-bar; asked whether it joins this work or comes later, no answer yet. Mockups of the All bars page and a bar's Text tab would help before the spec.
+**Shape of work:** A project. **Designed 2026-11-13:** the user chose from mockups (an All bars entry with marks only where a bar differs, Lucide's diff icon with a tooltip, texts as one-line menu items, no tabs on a bar, growth direction included, overrides per setting extended to layout and visibility) and said "Looks good, lets send it". The design is `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md`, which replaces the "What's been considered" list above where they differ. Next: the plan, then subagent implementation.
 
 ### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
 
