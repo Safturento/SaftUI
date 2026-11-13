@@ -738,11 +738,13 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	hover(locked.widget.frame)
 	check(locked.frame:IsMouseMotionFocus(), 'the row gets the hover over its disabled box')
 	check(not locked.widget.frame:IsMouseMotionFocus(), 'not the box')
-	stub.fire_script(locked.frame, 'OnEnter')
+	-- The game passes OnEnter and OnLeave a second argument (motion: true when
+	-- the mouse moved in), so the row's scripts must not take it for an owner.
+	stub.fire_script(locked.frame, 'OnEnter', true)
 	check(tip.owner == locked.frame, 'the tooltip shows for the row')
 	eq(table.concat(tip.lines, '|'), 'Locked|What it does.|Uncheck Other first.', 'its name, desc, then why')
 	eq(tip.colors[3], red, 'why in Text > Red')
-	stub.fire_script(locked.frame, 'OnLeave')
+	stub.fire_script(locked.frame, 'OnLeave', true)
 	check(tip.owner == nil, 'and goes')
 
 	-- An enabled box takes the mouse, and an enabled row shows no reason.
