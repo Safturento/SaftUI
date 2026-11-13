@@ -208,7 +208,7 @@ function TT:GetConfigTable()
 	return {
 		name = 'Tooltip',
 		type = 'group',
-		category = 'Info', -- the /sui sidebar's group (optionswindow.lua)
+		category = 'Info', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',
 		args = {
 			general = {

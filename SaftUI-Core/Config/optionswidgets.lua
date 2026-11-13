@@ -47,8 +47,8 @@ local OM = st.OptionsModel
 
 	Other files add types of their own with W.Define (custom types, at the
 	end), each with its own pool. W.CUSTOM marks them, and the body draws a
-	bare one's row with no label, across the line. W.OpenCheckList opens
-	the select list's frames as a list of check boxes.
+	bare one's row with no label, across the line. W.OpenCheckList (in
+	optionslist.lua) opens the select list's frames as a list of check boxes.
 
 	The widgets are split by job, each file loading after this one in
 	Config/load.xml's order. This file has the registry: the base widget,

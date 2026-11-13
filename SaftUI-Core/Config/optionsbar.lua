@@ -1,6 +1,5 @@
 local st = SaftUI
 local W = st.OptionsWidgets
-local Kit = W.Kit
 
 --[[
 	Blizzard's minimal scroll bar on SaftUI's own frames, W.BlizzardBar

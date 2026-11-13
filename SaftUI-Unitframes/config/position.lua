@@ -9,7 +9,8 @@ local st = SaftUI
 local generators = st.Config.generators
 
 -- target is the frame being placed, or a function returning it (or nil while
--- it doesn't exist), as in Core's generators.
+-- it doesn't exist). A copy of ResolveTarget in Core's generators.lua: keep it
+-- in step with that one.
 local function ResolveTarget(target)
 	if type(target) == 'function' then
 		return target()

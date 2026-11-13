@@ -892,8 +892,8 @@ local function Build()
 	BuildTitleBar(window)
 	S.BuildResize(window)
 
-	-- Esc, only while the window is shown.
-	-- The dialog's Esc is its own (its catcher closes it).
+	-- Esc, only while the window is shown. The dialog's Esc is its own (its
+	-- catcher, in optionssmalldialog.lua, closes it).
 	F.keys = EscapeKeys(window, function() return OW:IsDialogShown() end, function() OW:Close() end)
 
 	-- The frame clock: deferred renders and the search's wait. Shown only

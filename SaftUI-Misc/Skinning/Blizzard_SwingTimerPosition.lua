@@ -287,7 +287,7 @@ function STP:GetConfigTable()
 	return {
 		name = 'Swing Timer',
 		type = 'group',
-		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
+		category = 'Combat', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',
 		args = args,
 	}
