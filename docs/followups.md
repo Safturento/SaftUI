@@ -9,7 +9,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - [Active](#active)
   - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
-  - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
   - [2026-11-13 — Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui)
@@ -100,6 +99,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
   - [2026-11-13 — Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)
   - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
   - [2026-11-07 — Fonts outline dropdowns show None as a blank entry](#2026-11-07--fonts-outline-dropdowns-show-none-as-a-blank-entry)
@@ -157,22 +157,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **What's been considered:** No error has been traced to it. The equipment slots are secure buttons used in combat (swapping a weapon), so a tainted field on one is the kind of thing that ends in `ADDON_ACTION_BLOCKED`. The item level text beside it already shows the pattern to follow: SaftUI's own frame over the slot, with its state kept in a table keyed by the button.
 
 **Shape of work:** Small: draw the upgrade tier and the crafting quality on a SaftUI overlay per slot, keep the state in the skin's own table, and stop calling the helpers on Blizzard's buttons. Tests beside the item level's (`tests/misc/`). An in-game check that the tier icon and the level text still show.
-
-### 2026-11-13 — In-game pass: five small changes asked for
-
-**What:** The user's in-game pass over the cleanup's 39 checks (2026-11-13) turned up five small changes, each clear enough to build without a design round. They are being built on `modular` in the same session; this entry is the record in case the session is lost.
-
-**Why noticed:** The user's own words, by the step each came from:
-
-1. *Step 2, the character frame's item levels (Forever):* "Character frame item level doesn't seem to be skinned in foreveer". The screenshot shows a slot's item level in Blizzard's outlined number font. That has been so since the character frame was unskinned (e8ff3f6, 2026-11-07): `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua` makes the text from `NumberFontNormalSmall`. Wanted: SaftUI's icon text, as on bag slots (`SaftUI-Bags/slot.lua`).
-2. *Step 31, `/sui edit`:* "Works but I noticed that I can drag the mover past the screen edge margin, looks kinda weird". The screenshot is the Chat mover dragged into the bottom left corner: its outline sits about 10px left of and 10px below the chat panel, which stopped short of it. Wanted: the mover's outline and the frame it moves stop at the same place.
-3. *Step 9, the nameplate pages:* "the "use enemy/friendly nameplates" checkboxes work great, but instead of removing the tabs can we just fade them out and disable them? I don't love that it shifts everything up. Instead of the "Friendly nameplates use the enemy nameplates..." text can we replace it with centered text on the page that says "Sourced from enemy nameplates"? also when one of the swap buttons is disabled because the other one is enable can mousing over the checkbox explain why its disabled?"
-4. *Step 21, the action bars:* "Can we add a setting for cooldown numbers that maps to the blizzard setting in sui's config? I'd also like options for the font and its position". Blizzard's setting is the `countdownForCooldowns` CVar ("Show Numbers for Cooldowns"), which the bars already follow (`SaftUI-ActionBars/skin.lua`, `buttons.lua`).
-5. *Step 25, the Copy from dialog:* "Copy from is truncated on the popup can we remove the dividers from the all and non buttons and just shove them far right to expand the label? Can we also put a cancel button next to the confirm copy button and center them like most blizzard popup dialogs?" The screenshot shows the label cut to "Copy fr...".
-
-**Anchors:** `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua`; `SaftUI-Core/EditMode/mover.lua` (`EM.MarginCorrection`, `Where`), `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:GetClampShift`), `SaftUI-Chat/chatframe.lua` (the holder, `CHT:UpdateFootprint`); `SaftUI-Unitframes/nameplates/options.lua` (`PLATE_PAGES`, `HideWhileChecked`, `PlateBox`); `SaftUI-ActionBars/options.lua` (`AB:GetTextOptions`), `config.lua`, `skin.lua`; `SaftUI-Unitframes/config/config.lua` (`UF:OpenCopyTable`), `SaftUI-Core/Config/optionsdialog.lua`.
-
-**Shape of work:** Five small tasks, one worktree each, a reviewer each, then an in-game check of each.
 
 ### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
 
@@ -232,7 +216,9 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** Which of the three, or another.
 
-**Mocked 2026-11-13:** Drawn on the real window for the user to pick from. Round 1: A, a "Unit frame profile" dropdown and Manage button on the Unit row; B, the same in the title row; C, first in the Unit dropdown, set apart; D, a section of the sidebar's Profiles page. The user then asked whether A sat where search is (it didn't: search is at the right end of the first tab line, `SEARCH_WIDTH` in `SaftUI-Core/Config/optionswindow.lua`), and proposed moving search: "the search might be better suited above the editmode and keybind mode buttons on the left. With that change lets see what the profile item looks like where search is currently positioned, but lets also get an option where the unit profile is centered on the footer." Round 2, both with search moved into the sidebar above Edit mode and Keybind mode: E, the profile control where search is today (it is wider than the search box, so the first tab line holds fewer tabs: Unitframes' 13 tabs wrap 4, 7, 2 instead of 9, 4); F, the control centred in the footer between Reload UI and Close, drawn only while the Unitframes page is open (the builder's assumption). Pick pending. Whichever is chosen, moving search to the sidebar is part of the work.
+**Mocked 2026-11-13:** Drawn on the real window for the user to pick from. Round 1: A, a "Unit frame profile" dropdown and Manage button on the Unit row; B, the same in the title row; C, first in the Unit dropdown, set apart; D, a section of the sidebar's Profiles page. The user then asked whether A sat where search is (it didn't: search is at the right end of the first tab line, `SEARCH_WIDTH` in `SaftUI-Core/Config/optionswindow.lua`), and proposed moving search: "the search might be better suited above the editmode and keybind mode buttons on the left. With that change lets see what the profile item looks like where search is currently positioned, but lets also get an option where the unit profile is centered on the footer." Round 2, both with search moved into the sidebar above Edit mode and Keybind mode: E, the profile control where search is today (it is wider than the search box, so the first tab line holds fewer tabs: Unitframes' 13 tabs wrap 4, 7, 2 instead of 9, 4); F, the control centred in the footer between Reload UI and Close, drawn only while the Unitframes page is open (the builder's assumption).
+
+**Decided 2026-11-13:** The user chose F: "Lets go with F for the unit frame profiles and search bar position, looks good". Being built on branch `fb-profile`: search moves into the sidebar above the Edit mode and Keybind mode buttons; the Unitframes page declares a footer control (label, dropdown, a Manage button that opens the profile actions in the window's small dialog) through a SaftUI-only field on its option group, so Core doesn't know about Unitframes; "Profile" leaves the Unit dropdown. The builder's rulings, not the user's: the control is centred while that keeps it clear of edit mode's footer buttons, otherwise it sits beside Close and drops its label first; the status line stops short of it. This entry stays Active until it is merged and seen in game.
 
 ### 2026-11-13 — Colour swatches read as checkboxes, and the colour picker
 
@@ -248,7 +234,7 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** Which swatch look. Whether the picker's additions are SaftUI's own controls on Blizzard's frame, or a SaftUI picker of its own that replaces it.
 
-**Mocked and decided 2026-11-13:** Forever's picker was read: it already has an opacity strip and a hex box; it lacks number boxes for red, green and blue and a number for opacity, and it is unskinned. Swatches drawn: today's 22px square; A, a bar as wide as a dropdown with the colour's hex code written in it, and its opacity when it has one (the code is for reading; a click opens the picker); B, a wider chip with a hex box you can type into; C, the option's name inside the colour; D, a circle. **The user chose A** ("Lets go with A for the color choice"). Pickers drawn: P1, Blizzard's frame in SaftUI's look with nothing added; P2, the same, a little wider, with boxes for red, green, blue and opacity (SaftUI controls on a frame Blizzard and other addons share, so the usual taint care); P3, a picker of SaftUI's own that only `/sui` opens. P2 is the builder's recommendation; the user hasn't picked. Swatch A is a small change in `builders.color` (`SaftUI-Core/Config/optionstypes.lua`), to be built once the nameplate pages' branch, which changes the same files, is merged.
+**Mocked and decided 2026-11-13:** Forever's picker was read: it already has an opacity strip and a hex box; it lacks number boxes for red, green and blue and a number for opacity, and it is unskinned. Swatches drawn: today's 22px square; A, a bar as wide as a dropdown with the colour's hex code written in it, and its opacity when it has one (the code is for reading; a click opens the picker); B, a wider chip with a hex box you can type into; C, the option's name inside the colour; D, a circle. **The user chose A** ("Lets go with A for the color choice"). Pickers drawn: P1, Blizzard's frame in SaftUI's look with nothing added; P2, the same, a little wider, with boxes for red, green, blue and opacity (SaftUI controls on a frame Blizzard and other addons share, so the usual taint care); P3, a picker of SaftUI's own that only `/sui` opens. P2 is the builder's recommendation; the user hasn't picked. Swatch A is being built on branch `fb-swatch` (the nameplate pages' branch, which changed the same files, merged at dc5ce76): the bar is as wide and tall as a dropdown, the code is `#RRGGBB`, black or white by the colour's brightness, with `· 60%` after it when the option has opacity under 100%.
 
 ### 2026-11-13 — Codebase cleanup: small things left over
 
@@ -1853,11 +1839,13 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 ### 2026-11-07 — Chat mover leftovers: overlay reach-in, anchor in Blizzard layout, clamp dead zone
 
-**What:** Three minor items left after the chat frame became a mover (Task 12, `2ad2e90`) and SaftUI took over its size (`ccfcaa2`):
+**What:** Minor items left after the chat frame became a mover (Task 12, `2ad2e90`) and SaftUI took over its size (`ccfcaa2`):
 1. `SaftUI-Chat` re-anchors the edit mode mover's overlay (`mover.overlay`, a Core internal) to cover the chat plus padding. A Core API for a mover's footprint (e.g. `def.footprint` or an `overlayInsets` field) would replace that reach-in.
 2. Blizzard's `UpdateSystemAnchorInfo` copies ChatFrame1's current anchor into Blizzard's saved Edit Mode layout. A Blizzard Save can store SaftUI's placement there. It's harmless while SaftUI-Chat is on, but with it off the chat comes back at that spot instead of Blizzard's.
 3. Blizzard clamps the chat frame about 32px from the screen's left and bottom edges (`UpdateClampOffsets`). SaftUI's holder isn't clamped, so dragging the outline into that band leaves the outline and the chat apart.
    *Update 2026-11-10:* the holder is now kept inside SaftUI's screen edge margin (20 by default), and ChatFrame1 follows where it shows (`st:GetClampShift`), so drags stop at the margin. Where the margin is narrower than Blizzard's band, the outline and the chat can still be apart by the difference (about 12px at the left and bottom with the default margin). Not yet confirmed in game.
+   *Update 2026-11-13:* fixed (6f12ab9): the chat's holder stops where ChatFrame1's own clamp stops it (`st:KeepHolderInScreenMargin`, which reads the frame's clamp live and hooks `UpdateClampOffsets`), so the outline and the chat stop together. Not yet seen in game. Chat's border sits 10px outside its clamped area, and its default place (30, 30) shows at 32.
+4. `CHT:SkinChatFrame` still calls `frame:SetClampRectInsets(0,0,0,0)` on every chat frame, ChatFrame1 included (`SaftUI-Chat/chatframe.lua:67`). Blizzard writes ChatFrame1's clamp again on every layout apply (`UpdateClampOffsets`), so until then the chat and its holder can reach the margin, and then both jump to Blizzard's 32. Nothing splits (the holder reads the clamp live), but it goes against `.agents/taint.md` rule 5 and the comment in `st:KeepHolderInScreenMargin`. Leave ChatFrame1 out of that call, so its band is always Blizzard's. Found by the screen margin fix's review (2026-11-13).
 
 **Why noticed:** The Task 12 review and the fix round (`.superpowers/sdd/2026-11-06-saftui-edit-mode/task-12-review.md`).
 
@@ -1922,6 +1910,25 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-13 — In-game pass: five small changes asked for
+
+**What:** The user's in-game pass over the cleanup's 39 checks (2026-11-13) turned up five small changes, each clear enough to build without a design round. They are being built on `modular` in the same session; this entry is the record in case the session is lost.
+
+**Why noticed:** The user's own words, by the step each came from:
+
+1. *Step 2, the character frame's item levels (Forever):* "Character frame item level doesn't seem to be skinned in foreveer". The screenshot shows a slot's item level in Blizzard's outlined number font. That has been so since the character frame was unskinned (e8ff3f6, 2026-11-07): `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua` makes the text from `NumberFontNormalSmall`. Wanted: SaftUI's icon text, as on bag slots (`SaftUI-Bags/slot.lua`).
+2. *Step 31, `/sui edit`:* "Works but I noticed that I can drag the mover past the screen edge margin, looks kinda weird". The screenshot is the Chat mover dragged into the bottom left corner: its outline sits about 10px left of and 10px below the chat panel, which stopped short of it. Wanted: the mover's outline and the frame it moves stop at the same place.
+3. *Step 9, the nameplate pages:* "the "use enemy/friendly nameplates" checkboxes work great, but instead of removing the tabs can we just fade them out and disable them? I don't love that it shifts everything up. Instead of the "Friendly nameplates use the enemy nameplates..." text can we replace it with centered text on the page that says "Sourced from enemy nameplates"? also when one of the swap buttons is disabled because the other one is enable can mousing over the checkbox explain why its disabled?"
+4. *Step 21, the action bars:* "Can we add a setting for cooldown numbers that maps to the blizzard setting in sui's config? I'd also like options for the font and its position". Blizzard's setting is the `countdownForCooldowns` CVar ("Show Numbers for Cooldowns"), which the bars already follow (`SaftUI-ActionBars/skin.lua`, `buttons.lua`).
+5. *Step 25, the Copy from dialog:* "Copy from is truncated on the popup can we remove the dividers from the all and non buttons and just shove them far right to expand the label? Can we also put a cancel button next to the confirm copy button and center them like most blizzard popup dialogs?" The screenshot shows the label cut to "Copy fr...".
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua`; `SaftUI-Core/EditMode/mover.lua` (`EM.MarginCorrection`, `Where`), `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:GetClampShift`), `SaftUI-Chat/chatframe.lua` (the holder, `CHT:UpdateFootprint`); `SaftUI-Unitframes/nameplates/options.lua` (`PLATE_PAGES`, `HideWhileChecked`, `PlateBox`); `SaftUI-ActionBars/options.lua` (`AB:GetTextOptions`), `config.lua`, `skin.lua`; `SaftUI-Unitframes/config/config.lua` (`UF:OpenCopyTable`), `SaftUI-Core/Config/optionsdialog.lua`.
+
+**Shape of work:** Five small tasks, one worktree each, a reviewer each, then an in-game check of each.
+
+**Resolved 2026-11-13:** all five built on `modular`, each in its own worktree with a reviewer, and merged: the character frame's item levels in SaftUI's icon text (58a646a); the Copy from dialog with a full label, All and None at the right, and Confirm copy and Cancel centred (5eac40d); the nameplate pages' tabs faded and disabled, the centred "Sourced from enemy nameplates" and the tooltip on the disabled box (dc5ce76); a Cooldown numbers setting on Blizzard's own, and each bar's font, place and Reset for the numbers (072b9a3); a mover stops where its Blizzard frame's own clamp stops it, for chat, the tooltip and the swing timers (6f12ab9; buffs keep to the margin alone, on purpose). None has been seen in game yet. Calls left for the user there: the Copy from dialog's buttons scroll with the list rather than sitting in a fixed footer, and Confirm copy is wider than Cancel; the item level's backing slightly darkens the quality border's inner corner; whether a cooldown's number keeps its place when a cooldown starts (the client may re-place it).
+
 
 ### 2026-11-13 — Codebase cleanup: in-game checks
 
