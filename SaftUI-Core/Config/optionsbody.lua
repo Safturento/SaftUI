@@ -38,9 +38,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	quarters of a half. Under Thick and Thin rows are 38 tall, each section
 	with rows sits on a panel (black at 28%) the body wide, every row 14 in
 	from its slot's edges (Body:SlotRect is the slot, Body:CellRect the cell),
-	with a hairline (white at 7%) at the top of each line but the first and as
-	dividers between columns. No line between sections. A section holding a
-	fill row has no panel, and the fill row is the whole line.
+	with a hairline (white at 7%) at the top of each line but the first of a
+	panel and as dividers between columns (a last line with a row in the left
+	half only has its divider too). No line between sections. Rows that follow
+	an inline group join the panel above, one panel. A fill row is bare, the
+	whole line, and ends a panel; the section's other lines have theirs.
 	Buttons with an align (row.align, the model's) that follow each other
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
@@ -54,15 +56,15 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
 	no label either: its widget is given its cell's width (the body's less the
-	padding; SetWidth, when it
-	has one) before its height is read, and sits at the cell's top left, 6
-	down, in a cell as tall as the widget plus 12. Its row takes no mouse,
-	so the widget's own parts get it. A titled bare row (W.Define's titled)
-	shows its name as a label 6 down, with its desc as the name's tooltip,
-	and its widget 28 down, in a cell as tall as the widget plus 34. A fill
-	row (W.Define's fill, a bare type) takes the height the view has left
-	once the other rows are laid out (fillHeight less the drawn height), so
-	the drawn height is the view's and the page has nothing to scroll; never
+	padding; SetWidth, when it has one) before its height is read, and sits
+	at the cell's top left, 6 down, in a cell as tall as the widget plus 12.
+	Its row takes no mouse, so the widget's own parts get it. A titled bare
+	row (W.Define's titled) shows its name as a label 6 down, with its desc
+	as the name's tooltip, and its widget 28 down, in a cell as tall as the
+	widget plus 34. A fill row (W.Define's fill, a bare type) takes the
+	height the view has left once the other rows are laid out (fillHeight
+	less the drawn height), so the drawn height is the view's and the page
+	has nothing to scroll; never
 	less than its type's minHeight, and the widget is told its height with
 	SetHeight. Without fillHeight (a dialog, search results) it's minHeight.
 	A description with SaftUI's fill set is a fill row too, its minHeight
@@ -91,7 +93,7 @@ local LABEL_GAP = 10
 local STOP_GAP = 24 -- a wide row ends this far before the buttons at its line's right end
 local BUTTON_GAP = 12 -- between the buttons of a line (W.Confirm's Yes and No are 12 apart)
 local SMALL_INPUT_WIDTH = 60
-local WIDTH = 774 -- the window's body: two columns of 367 with a gap of 40
+local WIDTH = 774 -- the window's body: under Blizzard two columns of 367 with a gap of 40; under Thick and Thin two of 387
 
 -- Sections (OB.LayoutSections).
 local BODY_TOP, BODY_BOTTOM = 4, 24
@@ -340,12 +342,13 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 end
 
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
--- rowsHeight, placed} } and the body's height. The space for a line between
--- sections after the first is kept (lineY) though none is drawn any more; an
--- untitled one (rows that follow a nested group) keeps none, so it reads as a
--- continuation of the one above. heightOf, sizeOf and alignOf
--- are OB.LayoutRows'.
-function OB.LayoutSections(sections, heightOf, sizeOf, alignOf)
+-- rowsHeight, joins, placed} } and the body's height. The space for a line
+-- between sections after the first is kept (lineY) though none is drawn any
+-- more; an untitled one (rows that follow a nested group) keeps none, so it
+-- reads as a continuation of the one above: CONTINUE_GAP below it, or with
+-- panels (the fifth argument) none at all, and joins = true, for it to share
+-- the panel above. heightOf, sizeOf and alignOf are OB.LayoutRows'.
+function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
 		local entry = { section = section }
@@ -355,6 +358,8 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf)
 			y = y + SECTION_MARGIN
 			entry.lineY = y
 			y = y + 1 + SECTION_PAD
+		elseif panels and not section.note then
+			entry.joins = true
 		else
 			y = y + CONTINUE_GAP
 		end
@@ -381,11 +386,14 @@ end
 -- each, and one between the quarters of a half with two small rows. A
 -- divider is as tall as its line (heightOf as for OB.LayoutRows), so the
 -- dividers of lines that follow each other join up. A wide row's line and a
--- line of buttons have none. Returns { {at = 'half' | 'quarter', col = 1|2
--- (quarters), y, height} }.
-function OB.Dividers(placed, heightOf)
-	local lines, order = {}, {}
+-- line of buttons have none. With extendLast, the section's last line has
+-- one too when it holds only a row in the left half, so the divider runs to
+-- the bottom beside the empty half. Returns { {at = 'half' | 'quarter', col =
+-- 1|2 (quarters), y, height} }.
+function OB.Dividers(placed, heightOf, extendLast)
+	local lines, order, lastY = {}, {}, nil
 	for _, p in ipairs(placed) do
+		lastY = max(lastY or p.y, p.y)
 		if p.col == 1 or p.col == 2 then
 			local line = lines[p.y]
 			if not line then
@@ -400,7 +408,7 @@ function OB.Dividers(placed, heightOf)
 	end
 	local dividers = {}
 	for _, line in ipairs(order) do
-		if line.halves[1] and line.halves[2] then
+		if line.halves[1] and (line.halves[2] or (extendLast and line.y == lastY)) then
 			dividers[#dividers + 1] = { at = 'half', y = line.y, height = line.height }
 		end
 		for col = 1, 2 do
@@ -629,7 +637,8 @@ end
 -- unit a pixel, and a 1px border on a frame that starts or ends between two
 -- pixels blurs. Halves round down, and the second of each pair sits flush with
 -- the outer edge (SlotRect), so an odd remainder widens the gap by a pixel
--- (a 367 column's quarters are 171 and 171, 25 apart).
+-- (a 367 column's quarters are 171 and 171, 25 apart; a 387 column's, under
+-- panels, are 193 and 193 with a gap of 1 at 193, where the divider sits).
 function Body:UseMetrics()
 	local metrics = W.BlizzardLook() and OB.FLAT or OB.PANELED
 	self.metrics = metrics
@@ -755,14 +764,14 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	end
 	local function heightOf(row) return byRow[row].height end
 	local function alignOf(row) return byRow[row].align end
-	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf)
+	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, self.metrics.panels)
 	local extra = fillHeight and #fills > 0 and floor(fillHeight - height) or 0
 	if extra > 0 then
 		local share = floor(extra / #fills)
 		for i, cell in ipairs(fills) do
 			cell.height = cell.height + share + (i == 1 and extra - share * #fills or 0)
 		end
-		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf)
+		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, self.metrics.panels)
 	end
 	-- A group of buttons' x, by its buttons' widths: { xs, left }, once a draw.
 	local buttonsAt = {}
@@ -783,25 +792,49 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	end
 	self.filled = #fills > 0
 	local pools, content, metrics = self.pools, self.content, self.metrics
-	for _, entry in ipairs(laid) do
-		-- No line between sections: the panels part them (and Blizzard never drew
-		-- one); the gap for it stays (entry.lineY).
-		-- A section holding a fill row has no panel: that row is the whole line.
-		local panelled = metrics.panels
-		local hasFill
-		for _, p in ipairs(entry.placed) do
-			if byRow[p.row].fill then hasFill = true end
-		end
-		if panelled and not hasFill then
-			local panel = Acquire(pools.panel)
-			panel:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.rowsY)
-			panel:SetSize(self.width, entry.rowsHeight)
-			for _, y in ipairs(OB.Hairlines(entry.placed)) do
-				local hairline = Acquire(pools.hairline)
-				hairline:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -(entry.rowsY + y))
-				hairline:SetSize(self.width, 1)
+	-- No line between sections: the panels part them (and Blizzard never drew
+	-- one); the gap for it stays (entry.lineY). Under panels a panel covers each
+	-- run of lines that hold no fill cell, across the sections that join one
+	-- another; a hairline is at the top of each line in a run but its first.
+	-- A line with a fill cell is bare: that row is the whole line, and ends a run.
+	local hairlineAt = {} -- the y (in the content) of each hairline
+	if metrics.panels then
+		local run, runs = nil, {}
+		for _, entry in ipairs(laid) do
+			if not entry.joins then run = nil end
+			local fillAt, tops = {}, {}
+			for _, p in ipairs(entry.placed) do
+				if fillAt[p.y] == nil then
+					fillAt[p.y] = false
+					tops[#tops + 1] = p.y
+				end
+				if byRow[p.row].fill then fillAt[p.y] = true end
+			end
+			table.sort(tops)
+			for i, y in ipairs(tops) do
+				local top = entry.rowsY + y
+				local bottom = entry.rowsY + (tops[i + 1] or entry.rowsHeight)
+				if fillAt[y] then
+					run = nil
+				elseif run then
+					run.height = bottom - run.top
+					hairlineAt[top] = true
+					local hairline = Acquire(pools.hairline)
+					hairline:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -top)
+					hairline:SetSize(self.width, 1)
+				else
+					run = { top = top, height = bottom - top }
+					runs[#runs + 1] = run
+				end
 			end
 		end
+		for _, each in ipairs(runs) do
+			local panel = Acquire(pools.panel)
+			panel:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -each.top)
+			panel:SetSize(self.width, each.height)
+		end
+	end
+	for _, entry in ipairs(laid) do
 		if entry.titleY then
 			local title = Acquire(pools.title)
 			title:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.titleY)
@@ -827,7 +860,8 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			end
 			cell.place(cell, x, cell.y, cellWidth)
 		end
-		for _, d in ipairs(OB.Dividers(entry.placed, heightOf)) do
+		-- Under panels the last line's divider runs through a lone left half too.
+		for _, d in ipairs(OB.Dividers(entry.placed, heightOf, metrics.panels)) do
 			local x
 			-- In the middle of the gap the line divides; with no gap, on the
 			-- boundary. The slots', not the padded cells'.
@@ -836,10 +870,14 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			else
 				x = self:SlotRect(d.col) + self.columnWidth / 2
 			end
-			-- Under panels a divider is as faint as a hairline, and part of them.
-			local line = Acquire(panelled and pools.hairline or pools.line)
-			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -(entry.rowsY + d.y))
-			line:SetSize(1, d.height)
+			-- Under panels a divider is as faint as a hairline, and part of them;
+			-- it starts under the hairline at the top of its line, which has the
+			-- pixel already.
+			local top, lineHeight = entry.rowsY + d.y, d.height
+			if hairlineAt[top] then top, lineHeight = top + 1, lineHeight - 1 end
+			local line = Acquire(metrics.panels and pools.hairline or pools.line)
+			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -top)
+			line:SetSize(1, lineHeight)
 		end
 	end
 	return #kept > 0 and height or 0

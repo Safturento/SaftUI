@@ -235,7 +235,7 @@ test('a label reused from a small toggle takes the normal cell\'s width, so its 
 	body:Release()
 end)
 
-test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 193 (Thick)', function()
+test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 193, and through a last line with one row (Thick)', function()
 	local body, by = draw_body(774, {
 		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'toggle', 'C' },
 		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
@@ -250,8 +250,10 @@ test('the body draws dividers a line tall: between the halves at 387, between tw
 	end
 	table.sort(got)
 	local y = by.a.y
-	eq(table.concat(got, ' '), '193,' .. y .. ',38 387,' .. y .. ',38',
-		'none beside the wide row or the lone half after it')
+	-- The first line's dividers start at its top; d's line, the section's last,
+	-- has a divider too (its right half is empty), starting under its hairline.
+	eq(table.concat(got, ' '), '193,' .. y .. ',38 387,' .. y .. ',38 387,' .. (by.d.y + 1) .. ',37',
+		'none beside the wide row; one through the last line, the lone half')
 	eq(#body.pools.line.used, 0, 'none from the old line pool')
 	body:Release()
 end)
@@ -372,7 +374,7 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 			got[#got + 1] = x .. ',' .. -y
 		end
 	end
-	eq(table.concat(got, ' '), '260,' .. by.a.y, 'none beside the buttons')
+	eq(table.concat(got, ' '), '260,' .. (by.a.y + 1), "none beside the buttons; the toggles' starts under the hairline above them")
 	body:Release()
 end)
 
@@ -922,10 +924,11 @@ test('under Thick and Thin a section sits on a faded panel, rows 38 tall, 14 in 
 			eq(table.concat(got, ' '), '0,' .. y .. ' 774x1', look .. ': one hairline, at the second line\'s top')
 			table.sort(dividers)
 			local y1 = by.a.y
-			local want = { '193,' .. y .. ' 1x38', '387,' .. y .. ' 1x38', '387,' .. y1 .. ' 1x38', '580,' .. y .. ' 1x38' }
-			-- the first line has two ranges (one divider, at 387); the second two small pairs (193, 580) and the halves (387)
+			-- the first line has two ranges (one divider, at 387); the second two small pairs (193, 580) and the halves (387).
+			-- The second line's start one pixel under the hairline at its top, so the junction isn't drawn twice.
+			local want = { '193,' .. (y + 1) .. ' 1x37', '387,' .. (y + 1) .. ' 1x37', '387,' .. y1 .. ' 1x38', '580,' .. (y + 1) .. ' 1x37' }
 			table.sort(want)
-			eq(table.concat(dividers, ' '), table.concat(want, ' '), look .. ': dividers a line tall')
+			eq(table.concat(dividers, ' '), table.concat(want, ' '), look .. ': dividers a line tall, under the hairline')
 			eq(#shown(body.pools.line), 0, look .. ': no line between sections, none for dividers')
 			body:Release()
 		end)
@@ -1037,7 +1040,7 @@ test('position blocks, descriptions, bare rows, aligned buttons and results sit 
 	eq(by.bare.widget.frame:GetWidth(), 746, 'its widget given 746')
 	eq(point_x(by.y.frame) + by.y.frame:GetWidth(), 760, "a 'right' group's last button ends at 760")
 	check(by.x.y == by.y.y, 'one line of buttons')
-	eq(#shown(body.pools.panel), 2, 'a panel for the position block\'s section and one for the rest')
+	eq(#shown(body.pools.panel), 1, 'the position block\'s section and the rows after it, one panel')
 	body:Release()
 
 	-- Results: halves at 14 and 401 on a panel.
@@ -1057,4 +1060,417 @@ test('position blocks, descriptions, bare rows, aligned buttons and results sit 
 	eq(#shown(fillBody.pools.panel), 0, 'no panel')
 	eq(#shown(fillBody.pools.hairline), 0, 'no hairline')
 	fillBody:Release()
+end)
+
+------------------------------------------------------------------ fix round 1: joined panels, fill sections, releases
+
+-- A page of options (each { key, type, name, order, fields }) as a root.
+local function tree(args)
+	return { page = {
+		type = 'group', name = 'Page', args = args,
+		get = function() return true end, set = function() end,
+	} }
+end
+
+local function toggle(name, order, fields)
+	local option = { type = 'toggle', name = name, order = order }
+	for k, v in pairs(fields or {}) do option[k] = v end
+	return option
+end
+
+local function inline(name, order, args)
+	return { type = 'group', name = name, inline = true, order = order, args = args }
+end
+
+local function button(name, order, align)
+	return { type = 'execute', name = name, order = order, align = align, func = function() end }
+end
+
+local function drawn_root(root, width)
+	local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, width or 774)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local by = {}
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	return body, by
+end
+
+-- The body's shown hairline textures: the lines (as wide as the body, 1 tall) and the dividers, as rects.
+local function hairline_rects(body)
+	local lines, dividers = {}, {}
+	for _, h in ipairs(shown(body.pools.hairline)) do
+		if h:GetHeight() == 1 then lines[#lines + 1] = rect(h) else dividers[#dividers + 1] = rect(h) end
+	end
+	table.sort(lines); table.sort(dividers)
+	return lines, dividers
+end
+
+test('under panels rows after an inline group join its panel: one panel, no gap, a hairline between (Unitframes > Copy from)', function()
+	for _, look in ipairs({ 'thick', 'thin' }) do
+		in_look(look, function()
+			local body, by = drawn_root(tree({
+				settings = inline('Settings', 1, { t1 = toggle('One', 1), t2 = toggle('Two', 2) }),
+				accept = button('Confirm copy', 2, 'center'), cancel = button('Cancel', 3, 'center'),
+			}))
+			check(by.accept.y == by.cancel.y, look .. ': Confirm copy and Cancel on one line')
+			eq(by.accept.y, by.t1.y + 38, look .. ': the line under the toggles, no 4px gap')
+			local panels = shown(body.pools.panel)
+			eq(#panels, 1, look .. ': one panel for both sections')
+			eq(rect(panels[1]), '0,' .. by.t1.y .. ' 774x76', look .. ': from the toggles down over the buttons')
+			local lines, dividers = hairline_rects(body)
+			eq(table.concat(lines, ' '), '0,' .. by.accept.y .. ' 774x1', look .. ': a hairline parts the buttons from the toggles')
+			eq(table.concat(dividers, ' '), '387,' .. by.t1.y .. ' 1x38', look .. ': the toggles\' divider only')
+			body:Release()
+		end)
+	end
+
+	-- A continuation after a titled group in the middle of a page, and the sections on either side keep their own panels.
+	local body, by = drawn_root(tree({
+		first = toggle('First', 1),
+		nested = inline('Nested', 2, { n1 = toggle('N1', 1), n2 = toggle('N2', 2) }),
+		c = toggle('C', 3), d = toggle('D', 4),
+	}))
+	eq(by.c.y, by.n1.y + 38, 'the continuation directly under the group\'s rows')
+	local panels = shown(body.pools.panel)
+	eq(#panels, 2, 'the page\'s own section, and the group with its continuation')
+	local got = { rect(panels[1]), rect(panels[2]) }
+	local want = { '0,' .. by.first.y .. ' 774x38', '0,' .. by.n1.y .. ' 774x76' }
+	table.sort(got); table.sort(want)
+	eq(table.concat(got, ' '), table.concat(want, ' '), 'the first section\'s, and the group\'s over its continuation')
+	body:Release()
+
+	-- Blizzard keeps the 4px continuation gap and has no panel.
+	in_look('blizzard', function()
+		local flat, fby = drawn_root(tree({
+			nested = inline('Nested', 1, { n1 = toggle('N1', 1), n2 = toggle('N2', 2) }),
+			c = toggle('C', 2), d = toggle('D', 3),
+		}))
+		eq(fby.c.y, fby.n1.y + 34 + 4, 'Blizzard: 4 below the group\'s rows, as before')
+		eq(#flat.pools.panel.used, 0, 'Blizzard: no panel')
+		flat:Release()
+	end)
+end)
+
+test('a section holding a fill row: the lines without a fill cell get their panel, hairlines and divider; only the fill row is bare', function()
+	W.Define('mixfill', {
+		bare = true, fill = true, minHeight = 100,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = { Refresh = function() end },
+	})
+	-- The nameplate pages' General: three toggles over the centred line.
+	local body, by = drawn_root(tree({
+		a = toggle('A', 1, { size = 'small' }), b = toggle('B', 2, { size = 'small' }), c = toggle('C', 3),
+		sourced = { type = 'mixfill', name = 'Sourced', order = 4, size = 'wide' },
+	}))
+	local panels = shown(body.pools.panel)
+	eq(#panels, 1, 'one panel')
+	eq(panels[1] and rect(panels[1]), '0,' .. by.a.y .. ' 774x38', 'over the toggles\' line only')
+	eq(point_x(by.sourced.frame) .. '+' .. by.sourced.frame:GetWidth(), '0+774', 'the fill row bare, the whole line')
+	eq(point_x(by.a.frame) .. '+' .. by.a.frame:GetWidth(), '14+165', 'the toggles padded')
+	local lines, dividers = hairline_rects(body)
+	eq(#lines, 0, 'no hairline over the fill row')
+	eq(table.concat(dividers, ' '), '193,' .. by.a.y .. ' 1x38 387,' .. by.a.y .. ' 1x38', 'the toggles\' dividers')
+	body:Release()
+
+	-- Lines either side of the fill row each get a panel; a hairline within a run only.
+	body, by = drawn_root(tree({
+		x1 = toggle('X1', 1), x2 = toggle('X2', 2), x3 = toggle('X3', 3), x4 = toggle('X4', 4),
+		fill = { type = 'mixfill', name = 'Fill', order = 5, size = 'wide' },
+		y1 = toggle('Y1', 6), y2 = toggle('Y2', 7),
+	}))
+	local got = {}
+	for _, panel in ipairs(shown(body.pools.panel)) do got[#got + 1] = rect(panel) end
+	table.sort(got)
+	local want = { '0,' .. by.x1.y .. ' 774x76', '0,' .. by.y1.y .. ' 774x38' }
+	table.sort(want)
+	eq(table.concat(got, ' '), table.concat(want, ' '), 'a panel over the lines above the fill row, another under it')
+	local lines2 = hairline_rects(body)
+	eq(table.concat(lines2, ' '), '0,' .. by.x3.y .. ' 774x1', 'a hairline between the two lines above; none beside the fill row')
+	eq(#shown(body.pools.panel), 2)
+	body:Release()
+end)
+
+test('a divider starts under the hairline at the top of its line, so the crossing is drawn once', function()
+	local body, by = drawn_root(tree({
+		a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3), d = toggle('D', 4),
+		e = toggle('E', 5), f = toggle('F', 6),
+	}))
+	local lines, dividers = hairline_rects(body)
+	eq(table.concat(lines, ' '), '0,' .. by.c.y .. ' 774x1 0,' .. by.e.y .. ' 774x1', 'the hairlines at the second and third lines')
+	eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38 387,' .. (by.c.y + 1) .. ' 1x37 387,' .. (by.e.y + 1) .. ' 1x37',
+		'the first line\'s divider whole, the others one pixel under their hairlines and one shorter')
+	body:Release()
+end)
+
+test("a section's last line with one row: the divider runs through it, to the panel's bottom; a wide or full line has none", function()
+	local body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3) }))
+	local panel = shown(body.pools.panel)[1]
+	local _, dividers = hairline_rects(body)
+	eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38 387,' .. (by.c.y + 1) .. ' 1x37', 'both lines')
+	eq(panel:GetHeight(), 76)
+	local _, _, _, _, py = panel:GetPoint(1)
+	local last = shown(body.pools.hairline)
+	local bottom = 0
+	for _, h in ipairs(last) do
+		local _, _, _, _, hy = h:GetPoint(1)
+		if h:GetWidth() == 1 then bottom = math.max(bottom, -hy + h:GetHeight()) end
+	end
+	eq(bottom, -py + panel:GetHeight(), 'to the panel\'s bottom')
+	body:Release()
+
+	-- A lone small is a lone half too.
+	body, by = drawn_root(tree({ a = toggle('A', 1, { size = 'small' }) }))
+	_, dividers = hairline_rects(body)
+	eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38', 'a lone small')
+	body:Release()
+
+	-- A last line of one wide row, or of buttons: none.
+	body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), w = toggle('W', 3, { size = 'wide' }) }))
+	_, dividers = hairline_rects(body)
+	eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38', 'the first line\'s only')
+	body:Release()
+	body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), ok = button('OK', 3, 'center') }))
+	_, dividers = hairline_rects(body)
+	eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38', 'none beside a line of buttons')
+	body:Release()
+
+	-- Blizzard draws no more than before: no divider through a lone last half.
+	in_look('blizzard', function()
+		local flat, fby = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3) }))
+		local got = {}
+		for _, line in ipairs(shown(flat.pools.line)) do got[#got + 1] = rect(line) end
+		eq(table.concat(got, ' '), '387,' .. fby.a.y .. ' 1x34', 'Blizzard: the first line\'s only')
+		flat:Release()
+	end)
+end)
+
+test('OB.Dividers with its last-line flag: a lone left half on the last line gets a half divider; without it, as before', function()
+	local OB = st.OptionsBody
+	local function r(key, size) return { key = key, size = size } end
+	local placed = OW.LayoutRows({ r('a'), r('b'), r('c') })
+	local function list(dividers)
+		local got = {}
+		for _, d in ipairs(dividers) do got[#got + 1] = d.at .. '@' .. d.y .. '+' .. d.height end
+		return table.concat(got, ' ')
+	end
+	eq(list(OB.Dividers(placed)), 'half@0+34', 'today')
+	eq(list(OB.Dividers(placed, nil, true)), 'half@0+34 half@34+34', 'through the last line')
+	placed = OW.LayoutRows({ r('a'), r('b'), r('c'), r('w', 'wide') })
+	eq(list(OB.Dividers(placed, nil, true)), 'half@0+34', 'a lone half that is not the last line gets none')
+	placed = OW.LayoutRows({ r('a') })
+	eq(list(OB.Dividers(placed, function() return 60 end, true)), 'half@0+60', 'as tall as the line')
+end)
+
+test('LayoutSections: with panels an untitled section after another joins it with no gap, and says so; a note or title still parts', function()
+	local function rows(n)
+		local list = {}
+		for i = 1, n do list[i] = { key = 'r' .. i, size = 'normal' } end
+		return list
+	end
+	local sections = {
+		{ rows = rows(2) }, { title = 'Group', rows = rows(2) }, { rows = rows(2) }, { title = 'Next', rows = rows(1) },
+	}
+	local flat = OW.LayoutSections(sections)
+	eq(flat[3].rowsY, flat[2].rowsY + flat[2].rowsHeight + 4, 'flat: 4 under the rows above')
+	check(not flat[3].joins, 'flat: not joined')
+	local joined = OW.LayoutSections(sections, nil, nil, nil, true)
+	eq(joined[3].rowsY, joined[2].rowsY + joined[2].rowsHeight, 'panels: right under them')
+	check(joined[3].joins and not joined[2].joins and not joined[1].joins and not joined[4].joins, 'only the continuation joins')
+	check(joined[4].lineY ~= nil, 'a titled section still has its line')
+end)
+
+test('Release hides every panel and hairline, so a smaller draw on the same body shows only its own', function()
+	local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), nil, nil, 774)
+	local big = tree({
+		first = toggle('First', 1), second = toggle('Second', 2), third = toggle('Third', 3),
+		g1 = inline('One', 4, { a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3), d = toggle('D', 4) }),
+		g2 = inline('Two', 5, { e = toggle('E', 1), f = toggle('F', 2), g = toggle('G', 3), h = toggle('H', 4) }),
+	})
+	body:SetRoot(big)
+	body:Draw(OM.BuildView(big, 'page').sections)
+	local panels, hairlines = #shown(body.pools.panel), #shown(body.pools.hairline)
+	check(panels >= 3 and hairlines >= 5, 'a page of three sections draws several panels and hairlines')
+	body:Release()
+	eq(#body.pools.panel.used, 0, 'no panel in use')
+	eq(#body.pools.hairline.used, 0, 'no hairline in use')
+	eq(#body.pools.panel.free, panels, 'every panel back in its pool')
+	eq(#body.pools.hairline.free, hairlines, 'every hairline back in its pool')
+	for _, pool in ipairs({ body.pools.panel, body.pools.hairline }) do
+		for _, texture in ipairs(pool.free) do check(not texture:IsShown(), 'a released texture is hidden') end
+	end
+
+	-- A smaller page on the same body: only its own.
+	local small = tree({ a = toggle('A', 1), b = toggle('B', 2) })
+	body:SetRoot(small)
+	body:Draw(OM.BuildView(small, 'page').sections)
+	eq(#shown(body.pools.panel), 1, 'one panel')
+	eq(#shown(body.pools.hairline), 1, 'one hairline: the halves\' divider')
+	local visible = 0
+	for _, pool in ipairs({ body.pools.panel, body.pools.hairline }) do
+		for _, texture in ipairs(pool.free) do
+			if texture:IsShown() then visible = visible + 1 end
+		end
+	end
+	eq(visible, 0, 'nothing left shown in the pools\' free lists')
+
+	-- Search results release the same way.
+	body:Release()
+	body:DrawResults(OM.BuildView(small, 'page').sections, function() end)
+	eq(#shown(body.pools.panel), 1, 'results: one panel')
+	body:Release()
+	eq(#body.pools.panel.used + #body.pools.hairline.used, 0, 'results released')
+end)
+
+test('through the window a page change and search results leave no panel or hairline of the page before', function()
+	local function painted(color)
+		local n, want = 0, table.concat(color, ',')
+		for _, region in ipairs({ frames().content:GetRegions() }) do
+			local c = region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture
+			if c and table.concat(c, ',') == want then n = n + 1 end
+		end
+		return n
+	end
+	local OB = st.OptionsBody
+	st.Config:Open('Loot')
+	OW:Navigate('Inventory', { tab = 'general' })
+	local inventoryPanels, inventoryHairlines = painted(OB.PANEL_FILL), painted(OB.HAIRLINE)
+	check(inventoryPanels >= 1 and inventoryHairlines >= 3, 'Inventory General draws a panel and several hairlines')
+	st.Config:Open('Loot')
+	eq(painted(OB.PANEL_FILL), 1, 'a one-row page: one panel, none left over')
+	eq(painted(OB.HAIRLINE), 1, 'and one hairline (the divider through its one row)')
+	OW:Navigate('Inventory', { tab = 'general' })
+	eq(painted(OB.PANEL_FILL), inventoryPanels, 'back again: as before')
+	eq(painted(OB.HAIRLINE), inventoryHairlines, 'with the same hairlines')
+	frames().search:SetText('frame wid')
+	tick(0.3)
+	local results = #OW.GetDrawnRows()
+	check(results >= 1, 'search results')
+	local panels = painted(OB.PANEL_FILL)
+	check(panels >= 1 and panels <= results, 'a panel per result section, none of the page before')
+	frames().search:SetText('')
+	close_all()
+end)
+
+test('DrawResults reads the look again: a theme switch redraws the results on the other metrics', function()
+	local root = tree({ a = toggle('A', 1), b = toggle('B', 2) })
+	local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, 774)
+	local sections = OM.BuildView(root, 'page').sections
+	body:DrawResults(sections, function() end)
+	eq(body.cells[1].height, 38, 'Thick: a result 38 tall')
+	eq(#shown(body.pools.panel), 1, 'on a panel')
+	body:Release()
+	in_look('blizzard', function()
+		body:DrawResults(sections, function() end)
+		eq(body.cells[1].height, 34, 'Blizzard: 34 tall')
+		eq(#shown(body.pools.panel), 0, 'no panel')
+		eq(point_x(body.cells[2].frame) .. '+' .. body.cells[2].frame:GetWidth(), '407+367', 'the second half at 407')
+		eq(point_x(body.cells[1].frame) .. '+' .. body.cells[1].frame:GetWidth(), '0+367', 'the first at 0')
+		body:Release()
+	end)
+	body:DrawResults(sections, function() end)
+	eq(body.cells[1].height, 38, 'Thick again: 38')
+	eq(body.cells[1].frame:GetHeight(), 38, 'its frame too')
+	body:Release()
+end)
+
+test('a tall row: its label 11 down in a 38 band under Thick (9 in 34 under Blizzard), its divider as tall as the line', function()
+	local values = {}
+	for i = 1, 8 do values['k' .. i] = 'Value ' .. i end
+	local function page()
+		return tree({
+			multi = { type = 'multiselect', name = 'Many', order = 1, values = values, get = function() return false end, set = function() end },
+			other = toggle('Other', 2), after = toggle('After', 3),
+		})
+	end
+	for _, case in ipairs({ { 'thick', 38, 11 }, { 'blizzard', 34, 9 } }) do
+		in_look(case[1], function()
+			local body, by = drawn_root(page())
+			local c = by.multi
+			check(c.height > case[2], case[1] .. ': the multiselect is taller than a row')
+			local _, _, _, lx, ly = c.label:GetPoint(1)
+			eq(lx .. ',' .. ly, '0,-' .. case[3], case[1] .. ': its label ' .. case[3] .. ' down')
+			eq(by.after.y, c.y + c.height, case[1] .. ': the next line under the tall one')
+			local divider
+			local pool = case[1] == 'blizzard' and body.pools.line or body.pools.hairline
+			for _, t in ipairs(shown(pool)) do
+				if t:GetWidth() == 1 then
+					local _, _, _, _, ty = t:GetPoint(1)
+					if -ty == c.y then divider = t end
+				end
+			end
+			check(divider ~= nil, case[1] .. ': a divider on the tall line')
+			eq(divider and divider:GetHeight(), c.height, case[1] .. ': as tall as the line')
+			body:Release()
+		end)
+	end
+end)
+
+test('a titled section\'s panel starts at its rows, under the title and note', function()
+	local body, by = drawn_root(tree({
+		g = { type = 'group', name = 'Titled', desc = 'A note.', inline = true, order = 1, args = { a = toggle('A', 1), b = toggle('B', 2) } },
+	}))
+	local panel = shown(body.pools.panel)[1]
+	eq(rect(panel), '0,' .. by.a.y .. ' 774x38', 'the panel at the rows\' top')
+	local title = body.pools.title.used[1]
+	local _, _, _, _, ty = title:GetPoint(1)
+	check(-ty < by.a.y, 'the title above the rows')
+	check(by.a.y - (-ty) >= 15, 'with the title\'s own height between')
+	body:Release()
+end)
+
+-- The same rows under both looks, each with its own numbers: Blizzard's layout is pinned beside Thick's.
+test('the bare row, description, position block, results and buttons keep their flat layout under Blizzard', function()
+	W.Define('flatbare', {
+		bare = true,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = {
+			SetWidth = function(self, width)
+				self.frame:SetWidth(width)
+				self.frame:SetHeight(width / 7)
+			end,
+			Refresh = function() end,
+		},
+	})
+	local looks = {
+		{ 'thick', 746, 14, 38, 774 },
+		{ 'blizzard', 774, 0, 34, 774 },
+	}
+	for _, look in ipairs(looks) do
+		local name, inside, pad, rowHeight = look[1], look[2], look[3], look[4]
+		in_look(name, function()
+			local root = tree({
+				before = toggle('Before', 1),
+				pos = { type = 'position', name = 'Position', order = 2 },
+				text = { type = 'description', name = 'Some words', order = 3 },
+				bare = { type = 'flatbare', name = 'Bare', order = 4, size = 'wide' },
+				pick = { type = 'select', name = 'Pick', order = 5, size = 'wide', values = { a = 'A' } },
+				all = button('All', 6, 'right'), none = button('None', 7, 'right'),
+				after = toggle('After', 8),
+			})
+			local body, by = drawn_root(root, 774)
+			eq(point_x(by.bare.frame) .. '+' .. by.bare.frame:GetWidth(), pad .. '+' .. inside, name .. ': the bare row\'s cell')
+			eq(by.bare.widget.frame:GetWidth(), inside, name .. ': its widget given the cell\'s width')
+			eq(by.bare.height, math.ceil(inside / 7) + 12, name .. ': its height follows')
+			eq(point_x(by.text.frame) .. '+' .. by.text.frame:GetWidth(), pad .. '+' .. inside, name .. ': the description\'s cell')
+			eq(by.text.widget:GetWidth(), inside, name .. ': wrapped to it')
+			eq(by.text.height, rowHeight, name .. ': a one-line description is a row tall')
+			eq(point_x(by.pos.frame) .. '+' .. by.pos.frame:GetWidth(), pad .. '+' .. inside, name .. ': the position block\'s cell')
+			eq(by.after.y, by.none.y + rowHeight, name .. ': the line after the buttons')
+			eq(by.pick.y, by.bare.y + by.bare.height, name .. ': the select under the bare row')
+			-- Buttons: the last ends flush with the line's right edge inside the padding; the wide row stops 24 short of the first.
+			eq(point_x(by.none.frame) + by.none.frame:GetWidth(), 774 - pad, name .. ': None ends at the right edge')
+			eq(by.pick.frame:GetWidth(), point_x(by.all.frame) - 24 - pad, name .. ': the wide row ends 24 before All')
+			body:Release()
+
+			-- A wide row alone, in a dialog's width.
+			local wide = drawn_root(tree({ w = { type = 'input', name = 'Wide', order = 1, size = 'wide' } }), 520)
+			eq(wide.cells[1].frame:GetWidth(), 520 - 2 * pad, name .. ': a wide row takes the body less its padding')
+			wide:Release()
+		end)
+	end
 end)

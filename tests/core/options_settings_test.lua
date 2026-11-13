@@ -435,6 +435,17 @@ local function lines(wide)
 	return n
 end
 
+-- How many of the body's textures show in color (a panel's fill, a hairline's).
+local function painted(color)
+	local F, n = OW.GetFrames(), 0
+	local want = table.concat(color, ',')
+	for _, region in ipairs({ F.content:GetRegions() }) do
+		local c = region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture
+		if c and table.concat(c, ',') == want then n = n + 1 end
+	end
+	return n
+end
+
 test('the sidebar under Blizzard: no fill or lines, banners by index, gold and white names', function()
 	for _, client in ipairs(CLIENTS) do
 		world(client)
@@ -474,6 +485,8 @@ test('the main column under Blizzard: the page divider, no section rules, no foo
 		st.Config:Open('Long') -- three titled sections
 		eq(lines(true), 0, client .. ': no 1px line across the body')
 		check(lines(false) > 0, client .. ": the halves' dividers stay")
+		eq(painted(st.OptionsBody.HAIRLINE), 0, client .. ': no hairline under Blizzard')
+		eq(painted(st.OptionsBody.PANEL_FILL), 0, client .. ': no panel under Blizzard')
 		check(not F.footerLine:IsShown(), client .. ': no footer line')
 		local glass
 		for _, region in ipairs({ F.search:GetRegions() }) do
@@ -510,6 +523,7 @@ test('the dressing comes off under Thick', function()
 		eq(table.concat(stub.state(line).color_texture, ','), table.concat(st.OptionsBody.LINE, ','), 'the lines color')
 	end
 	eq(lines(true), 0, 'no line between the sections: their panels part them')
+	check(painted(st.OptionsBody.PANEL_FILL) > 0 and painted(st.OptionsBody.HAIRLINE) > 0, 'panels and hairlines drawn under Thick')
 	check(F.footerLine:IsShown(), 'the footer line back')
 	local glass = false
 	for _, region in ipairs({ F.search:GetRegions() }) do
