@@ -1,7 +1,7 @@
 ---
 name: workflow
 description: Followups, specs/plans, branching and how subagents work in SaftUI (no Jira)
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 covers:
   - 'docs/followups.md'
   - 'docs/superpowers/**'
@@ -54,7 +54,7 @@ Repo-specific overlay on the user-level `~/.claude/CLAUDE.md` "Planning workflow
   - a report path in the session scratchpad, since `.superpowers/` isn't present inside a worktree
 
   Workers never dispatch subagents.
-- **Tests.** Workers write their logic tests in `tests/` (`.agents/testing.md`) and run `tests/run`, never a harness of their own in the scratchpad.
+- **Tests.** Workers write their logic tests in `tests/` (`.agents/testing.md`) and run `tests/run`, never a harness of their own in the scratchpad. `tests/run` uses every CPU by default, so when several workers run at once, tell each to run single files while it works (`tests/run tests/<addon>/<file>`) and the full suite as `tests/run -j2` (or `-j3`) before its last commit.
 - **Reviews.** Every task gets a reviewer, and fix rounds get a scoped re-review. For changes that touch Blizzard frames, ask the reviewer to check taint against the forever source specifically (see `.agents/taint.md`).
 - **Merge conflicts.** Parallel tasks often conflict where each appends defaults to the end of `SaftUI-Misc/config.lua`, or edits `docs/followups.md`, or appends a stub block to `tests/wow/game.lua`. Keep both sides. In `game.lua`, git's resolution often leaves the two appended blocks sharing one closing `end` (the conflict sits inside the first block's last lines): check each block closes, or the file fails to load and every test errors.
 

@@ -7,6 +7,10 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)
+  - [2026-11-13 — Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over)
+  - [2026-11-13 — Chat's dock hook runs only on forced updates](#2026-11-13--chats-dock-hook-runs-only-on-forced-updates)
+  - [2026-11-13 — Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line)
   - [2026-11-12 — Codebase cleanup: the items waiting on a decision](#2026-11-12--codebase-cleanup-the-items-waiting-on-a-decision)
   - [2026-11-12 — Cooldown Manager skin: in-game checks](#2026-11-12--cooldown-manager-skin-in-game-checks)
   - [2026-11-12 — Cooldown Manager skin: a tracked debuff's dispel type on SaftUI's border](#2026-11-12--cooldown-manager-skin-a-tracked-debuffs-dispel-type-on-saftuis-border)
@@ -27,7 +31,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Purge table: retail gaps](#2026-11-11--purge-table-retail-gaps)
   - [2026-11-11 — Blizzard theme round 2: in-game checks](#2026-11-11--blizzard-theme-round-2-in-game-checks)
   - [2026-11-11 — Blizzard theme: a border per real raid group, not per header](#2026-11-11--blizzard-theme-a-border-per-real-raid-group-not-per-header)
-  - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
   - [2026-11-11 — /sui: no resize cursor on the grip and the bottom edge](#2026-11-11--sui-no-resize-cursor-on-the-grip-and-the-bottom-edge)
   - [2026-11-11 — Screen edge margin: art reach only for /sui](#2026-11-11--screen-edge-margin-art-reach-only-for-sui)
   - [2026-11-11 — Blizzard theme round 2: test gaps and small items parked in review](#2026-11-11--blizzard-theme-round-2-test-gaps-and-small-items-parked-in-review)
@@ -84,7 +87,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Minimap pieces still belong to MinimapCluster, which stretches across the screen](#2026-11-07--minimap-pieces-still-belong-to-minimapcluster-which-stretches-across-the-screen)
   - [2026-11-07 — Extra buttons leftovers: zone ability hidden by Blizzard's bar settings, Blizzard's art, skinned vehicles' pitch and status bars](#2026-11-07--extra-buttons-leftovers-zone-ability-hidden-by-blizzards-bar-settings-blizzards-art-skinned-vehicles-pitch-and-status-bars)
   - [2026-11-07 — Pet and stance bar leftovers: spellbook highlight, pings, pickup click, autocast names after an in-combat pet swap](#2026-11-07--pet-and-stance-bar-leftovers-spellbook-highlight-pings-pickup-click-autocast-names-after-an-in-combat-pet-swap)
-  - [2026-11-07 — Fonts outline dropdowns show None as a blank entry](#2026-11-07--fonts-outline-dropdowns-show-none-as-a-blank-entry)
   - [2026-11-07 — Unit frame defaults that nothing reads, or that break when turned on](#2026-11-07--unit-frame-defaults-that-nothing-reads-or-that-break-when-turned-on)
   - [2026-11-07 — Action bar leftovers: main bar concealed not blocked, LibActionButton on deprecated APIs, unskinned flyouts](#2026-11-07--action-bar-leftovers-main-bar-concealed-not-blocked-libactionbutton-on-deprecated-apis-unskinned-flyouts)
   - [2026-11-07 — Chat mover leftovers: overlay reach-in, anchor in Blizzard layout, clamp dead zone](#2026-11-07--chat-mover-leftovers-overlay-reach-in-anchor-in-blizzard-layout-clamp-dead-zone)
@@ -92,6 +94,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
+  - [2026-11-07 — Fonts outline dropdowns show None as a blank entry](#2026-11-07--fonts-outline-dropdowns-show-none-as-a-blank-entry)
   - [2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config](#2026-11-12--nameplates-a-plate-switching-config-can-trip-an-anchor-loop-in-a-users-config)
   - [2026-11-09 — Unit frame color flags are set after oUF enables the bars, so their recolor events are never registered](#2026-11-09--unit-frame-color-flags-are-set-after-ouf-enables-the-bars-so-their-recolor-events-are-never-registered)
   - [2026-11-11 — Blizzard theme: the bag slot bars sit over the metal's title bar](#2026-11-11--blizzard-theme-the-bag-slot-bars-sit-over-the-metals-title-bar)
@@ -121,9 +125,146 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-13 — Codebase cleanup: in-game checks
+
+**What:** The codebase cleanup (`docs/superpowers/plans/2026-11-12-saftui-cleanup.md`, 21 tasks, merged into `modular` at 1d69905) fixed bugs, deleted dead code, merged copies of the same code and split large files, in every addon. Its tests (128 files) run on stubs, so none of it has been seen in game. Most steps below are "this still works as before". The steps marked *New* are where what the user sees was meant to change.
+
+**Why noticed:** The user asked for every item with a clear fix in the cleanup report to be done with subagents (2026-11-12). Each task's report listed the in-game checks it needed; this entry is those lists put together. The per-task reports were in the run's workspace under `.superpowers/sdd/`, which is not versioned.
+
+**Anchors:** `docs/reports/2026-11-12-codebase-cleanup-analysis.md` (the report), `docs/superpowers/plans/2026-11-12-saftui-cleanup.md` (the plan). The five merges on `modular`: 343aee8 (wave 1, fixes and removals), f70f24c (wave 2, shared Core helpers), 9fa3221 (wave 3, Core's Config), b829ad2 (wave 4, each addon's files), 1d69905 (wave 5, the tests). The followups [Chat's dock hook runs only on forced updates](#2026-11-13--chats-dock-hook-runs-only-on-forced-updates) (step 35) and [Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line) (step 16).
+
+**Shape of work:** A pass by the user, a group at a time, then a small fix per step that fails. Keep BugSack on throughout: any Lua error or `ADDON_ACTION_BLOCKED` is a fail, whichever step it turns up in. Wave 5 changed tests only, so it has no steps. The steps:
+
+*Login, both clients*
+1. `/reload` with BugSack on: no Lua errors. On Forever, no "Frame not found: TransmogFrame". On retail, no error from `DoesAddOnExist`, and the transmog window still drags.
+2. The skins all load: buffs and debuffs, the Cooldown Manager, the world map (drag it, resize it), the zone text with its level and faction line, the character frame's item levels and gems (and the item upgrade text on bag slots), Hekili, WeakAuras and RestedXP if installed, and `/sui` → Skinning lists them as before.
+3. Forever, on a melee class: the swing timer bars are skinned, sized and movable as before.
+4. The minimap's mail icon, tracking button, queue eye and clock (Blizzard's clock hidden), the reputation and renown bars, and tooltips look as before.
+
+*Unit frames*
+5. *New:* Mana as primary. Set `additionalpower.manaAsPrimary` in a unit frame profile (a profile edit; there is no `/sui` control) on a shaman, druid or priest in a form or spec that shows the Additional power bar. The Power and Additional power bars now trade places as well as sizes; before, only the sizes swapped. Say whether trading places is what's wanted.
+6. `/sui` → Unitframes → Profile: New, Copy, Rename, Export, Import and Delete each work.
+7. Party, Raid 10, Raid 40 and Boss: the Layout and Range settings apply, Test mode shows its previews, and the group border draws under the Blizzard theme.
+8. Blizzard's raid frames stay hidden while a SaftUI raid group is on and come back when both are off. Changing that in a raid prints its note in chat ("Blizzard's raid frames will hide after you leave the raid.").
+9. The Enemy and Friendly nameplate pages work, and "Use friendly nameplates' settings" and "Use enemy nameplates' settings" each still hide the rest of their page.
+10. Power and Additional power with a Custom colour draw the darker background; Copy from works; the name text's placement, the health deficit text, the target's level hiding at max level, and the indicators are as before.
+
+*Bags*
+11. *New:* with the bags closed, change the bag's view in `/sui` → Bags, then open the bags: the items sit in the new view's sections. Do it once in combat too: the view applies when the fight ends.
+12. *New:* within one item, the bigger stack sorts first. The count is still compared as text, so a stack of 9 sorts before a stack of 10.
+13. *New:* Shift-click a currency in the bag's currency row with a chat box open: it links the currency. A plain click still opens the transfer menu where there is one.
+14. The reagent bag's slots, and the item level and crafting quality overlays on slots, as before.
+15. The gold footer and its tooltip, on both clients.
+16. Search: typing fades the slots that don't match, and the fading is kept when the view changes. Type a few words and press Enter: say whether the box behaves as one line (see "Bag search box is made multi-line"). The view buttons and the title bar sit right under each theme and title height, and Compact holds.
+17. Bank: open and close, the Deposit and Withdraw popups, the warband bank (retail), the combined bank. With the bank open, B closes both windows and ends the talk with the banker.
+18. `/sui` → Bags → Categories: drag a category, and drag a rule block inside the rule editor.
+19. Merge stacks, auto sell junk, and closing the bags with new items in them, on both clients.
+
+*Fonts and outlines*
+20. *New:* every outline list shows "None" where it showed a blank line: `/sui` → Fonts, the Buffs and Debuffs text, the action bars' text. Set Normal and Title to outline None: `/sui`'s own text draws with no outline.
+21. Action bars: the button count and buttons per row still clamp to each other; the extra action button's size; the large cooldown numbers.
+
+*The `/sui` window*
+22. The sidebar's groups, the tabs and subtabs, the page picker; search, then click a result.
+23. Switch the theme with the window open: it redraws in the new theme.
+24. Resize by the grip and by the bottom edge; the height survives closing and reopening; a screen margin change applies while the window is open; the mouse wheel scrolls.
+25. The Edit mode button's colour, and the unit frames' Copy from dialog.
+26. Esc closes the window, a small dialog, a confirm and a dropdown, each on its own; in a text box it clears the focus first; with the colour picker open it closes only the picker. Enter confirms a dialog. Entering combat closes the window, and it refuses to open in combat.
+27. Every kind of widget under Thick and under Blizzard; the Position blocks; the unit frame Profiles prompts; the rule editor's value picker.
+
+*Blizzard's Edit Mode and SaftUI's holders*
+28. Open Blizzard's Edit Mode: no selection boxes on the action bars, the pet bar, Extra Abilities, the minimap, the micro menu or the status bars. Close it and open it again: still none.
+29. Buffs and debuffs stay on SaftUI's holders after Blizzard's Edit Mode opens and closes, and through a fight (no `ADDON_ACTION_BLOCKED`).
+30. The swing timer bars cover their holders; chat keeps its size and spot; the tooltip grows from its holder's corner; the totem bar sits on its holder (a Forever shaman); entering a vehicle in combat raises no error.
+31. `/sui edit`: drag each mover, `/reload`, and each frame is where it was left. Switch profile: the frames move to that profile's spots.
+
+*Loot, action bars, chat*
+32. Roll bars are skinned and their timer runs; after a choice the SaftUI bar holds until the roll ends; Loot → Test mode shows its previews.
+33. The loot feed's lines (item, gold, currency, skill-up, reputation, experience) and a rolled item's entry.
+34. `/sui kb`: hover a button and press a key to bind it, right-click clears it, Esc or combat leaves the mode. The pet and stance bars redraw. Chat's fonts. Blizzard's action bars stay hidden.
+35. Chat's docked tabs, with three or more windows docked: tabs 2, 3 and 4 each sit to the right of the one before with no overlap, and tab 1 sits above its window. Check after dragging a tab off and docking it again, and after only clicking between tabs (see "Chat's dock hook runs only on forced updates").
+
+*Misc, minimap, Core*
+36. The totem bar's options apply (button size and spacing, the timers). Hide totem bar hides Blizzard's bar, and turning it off brings it back (after a `/reload` if the bar was on screen). A class with no totems: no bar, no error.
+37. The experience bar's defaults (width 250) on a new profile and after Reset profile.
+38. The micro menu's contents, its Blizzard theme art (the bronze strip on Forever), and `/sui` → Micro Menu → Position.
+39. The Blizzard theme's art on `/sui`, the bags, the character frame and the unit frames; class power and name sizing; the loot feed's test interval.
+
+### 2026-11-13 — Codebase cleanup: small things left over
+
+**What:** Small things the cleanup's workers and reviewers noticed and set aside, because they were outside the task in hand, needed a call, or needed a look in game. None changes what the user sees unless its line says so. The items that need the user's decision are in [Codebase cleanup: the items waiting on a decision](#2026-11-12--codebase-cleanup-the-items-waiting-on-a-decision), not here.
+
+**Why noticed:** The reviews of the cleanup's 21 tasks and five waves (2026-11-12). They were kept in the run's ledger, which is not versioned, so this entry is their only record.
+
+**Anchors:** Each item names its file. The plan is `docs/superpowers/plans/2026-11-12-saftui-cleanup.md`; the report is `docs/reports/2026-11-12-codebase-cleanup-analysis.md`.
+
+**What's been considered:**
+
+*Tests*
+- The nameplate tests copy the whole defaults table for each case; a cheaper `copy_defaults` would speed them up. Test timings were measured across two filesystems and should be measured again on one before anyone tunes them.
+- `st:OnBlizzardAddon` (`SaftUI-Core/api.lua`) keeps its waiting list across test cases; the harness has no reset for it.
+- `SaftUI-Loot/rollinfo.lua` has two `if not PlainNumber then return end` guards that exist only because `tests/loot/roll_skin_test.lua` loads `rollinfo.lua` without `Feed/rolls.lua`. Load both in the test and the guards can go.
+- `st:RoundToPixel`: the tests' locked stub could raise stricter errors (and string offsets could be an error).
+- `tests/core/options_kit_test.lua`'s 'redefining a built-in type is an error' keeps a fixed list of ten types, which a new built-in type won't join by itself.
+- A test that loads one file of a split set by path runs the addon with part of its code. A drift check for that was parked: it needs a change to the harness.
+- `tests/unitframes/secret_texts_test.lua` is still on its own setup, not the shared helpers. No agent has opened it (its name falls under the user's rule about files named `secret`), so it needs the user's "go ahead and read it" first.
+- The split options and categories tests each carry their own copies of small readers (`rgba`, `size_of`, `yes`/`no`, `cell`, `same_rgb`, `inside`, `shown_textures`, `atlases_of`, `coords_of`, `corners`); the four-line load sequence for the options window is repeated in twelve files; `tests/core/options_frames_pages_test.lua` has its own copy of `INV.IndexOf`.
+- `tests/lib/theme_helpers.lua`: `T.check_theme_page` covers 7 pages and could cover the rest; `T.round_trip` has one caller and a `switch` parameter nothing uses.
+- `tests/misc/restedxp_fixes_test.lua` is named after a review wave, not after what it tests.
+- The `theme_blizzard_*_test.lua` files' "Real:" headers name `themeart.lua` but not `themeart_data.lua`, which they also load.
+
+*Code*
+- Nil guards: `HideBlizzardClock` (`SaftUI-Minimap/clockbutton.lua`) uses `TimeManagerClockButton` unguarded, and `BF:SkinFrames` (`SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua`) does the same with Blizzard's buff frames. Neither has raised an error.
+- Should the action bars' skin anchor a button's `Flash` to its icon, as `SaftUI-Misc/totemskin.lua` does? That would change what the user sees, so it wasn't done.
+- `st:SkinCooldown` (`SaftUI-Core/skinning.lua`) makes a FontString and stores it as `cooldown.text`, a field on what is often Blizzard's cooldown, though its comment says nothing is written onto the cooldown. Whether anything reads `cooldown.text` is not verified; if nothing does, both the FontString and the write can go.
+- The nameplate subtext's `'updated'` callback (`SaftUI-Unitframes/nameplates/subtext.lua`) calls `frame:UpdateTags()` on every plate it knows, including one the game has taken away. Harmless so far.
+- `SaftUI-Unitframes/nameplates/target.lua`'s comment says the `nameplatetarget` art is in `themeart.lua`; it is in `themeart_data.lua`.
+
+*Copies left apart, because they differ*
+- Chat: the local `KeepHidden` (`SaftUI-Chat/chatframe.lua`, one caller) stays local; the edit box setup, which uses `st:SkinEditBox` in one place and `st:StyleEditBox` in another.
+- Bags: `WINDOW_NAMES` (`categoriestab.lua`) and `INV.windowLabels` (`movers.lua`) differ in casing; the bank's open and close bodies; the two warband money updaters' guards; `INV.IndexOf` (`inventory.lua`) kept the views copy's nil guard.
+- `FIELD_HEIGHT` is 22 in `SaftUI-Bags/ruleeditor.lua` and 24 in `SaftUI-Core/Config/optionswidgets.lua`.
+- Key catching: `optionskeybinding.lua`'s key handler and EditMode's mover catcher stand beside `Kit.CatchKeys` (`SaftUI-Core/Config/optionsdialog.lua`).
+- Unit frames: health's own `PostUpdateColor`, which adds the nameplate threat tint, beside `UF.PostUpdatePowerColor` (`updaters.lua`); the private `ResolveTarget` in `SaftUI-Unitframes/config/position.lua`, kept on purpose, with a comment to keep it in step with `SaftUI-Core/Config/generators.lua`.
+
+*Renames not done*
+- The Utilities module, which Bags (`slot.lua`), Loot (`Feed/feed.lua`), Misc (`characterframe.lua`) and six tests reach by name.
+- The `ItemQuality` names in `SaftUI-Core/Utilities/itemupgrades.lua`.
+
+*The report itself*
+- Section 4.1 calls `optionsbar.lua` "the button bar"; it is Blizzard's minimal scroll bar on SaftUI's frames (`W.BlizzardBar`).
+- "The nine-slice code `mover.lua` has twice" is stale: there was nothing to merge.
+- "Micro menu options in `config.lua:239-324`" matches no file.
+
+**Shape of work:** None is urgent. Fold one in when working nearby. The nil guards are a few lines each; the test items are an hour or two together.
+
+### 2026-11-13 — Chat's dock hook runs only on forced updates
+
+**What:** `CHT:FCFDock_UpdateTabs(dock, forceUpdate)` (`SaftUI-Chat/chatframe.lua`) starts with `if not (dock.isDirty or forceUpdate) then return end`. It is a post-hook (`self:SecureHook('FCFDock_UpdateTabs')`), and Blizzard's `FCFDock_UpdateTabs` clears `dock.isDirty` before the post-hook runs. So SaftUI's tab layout runs only on forced updates, and after a plain dirty update the docked tabs may be left where Blizzard put them.
+
+**Why noticed:** The review of the cleanup's wave 1 (2026-11-12), which touched Chat, read the hook against Forever's `FloatingChatFrame.lua`. The behaviour is older than the cleanup, which didn't change it.
+
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:FCFDock_UpdateTabs`, and the `SecureHook` in the module's enable); Blizzard's `FCFDock_UpdateTabs` in `FloatingChatFrame.lua`; `tests/chat/dock_test.lua`, which sets `isDirty` by hand before calling the hook, so it can't see this.
+
+**What's been considered:** Dropping the guard makes the hook run on every call, which Blizzard makes often (each tab flash and each resize), so it may want its own cheap "has anything moved" check. Whether anything is wrong on screen is not known: the game may force an update in every case that matters.
+
+**Shape of work:** First the in-game check: step 35 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks). If the tabs are right after a drag and dock and after a plain tab switch, the guard is harmless and only the test needs to stop setting `isDirty` by hand. If not, a small fix in `chatframe.lua` and a test that calls the hook the way the game does.
+
+### 2026-11-13 — Bag search box is made multi-line
+
+**What:** `INV:InitializeSearch` (`SaftUI-Bags/search.lua`) calls `st:CreateEditBox(container:GetName()..'Search', container.footer, 'SearchBoxTemplate')`. But `st:CreateEditBox(name, parent, lines)` (`SaftUI-Core/Widgets/editbox.lua`) always creates from `'InputBoxTemplate'` and takes its third argument as `lines`: `if lines then editbox:SetMultiLine(true) end`. So the search box gets no `SearchBoxTemplate` (no magnifier, no clear button) and is a multi-line box. It is also skinned twice, once inside `st:CreateEditBox` and once by the caller.
+
+**Why noticed:** The cleanup's Task 16 moved the search code into `search.lua` (2026-11-12) without changing it, and its reviewer read the call against `st:CreateEditBox`. The behaviour is older than the cleanup.
+
+**Anchors:** `SaftUI-Bags/search.lua` (`INV:InitializeSearch`); `SaftUI-Core/Widgets/editbox.lua` (`st:CreateEditBox`). The search box has no test file of its own.
+
+**Shape of work:** Small. Either drop the third argument, or give `st:CreateEditBox` a template parameter and pass `'SearchBoxTemplate'` properly (then the skin has to deal with the template's own art, on both clients). Check in game what Enter does in the box today (step 16 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)).
+
+**Open questions:** Does the user want the search template's magnifier and clear button, or SaftUI's plain box?
+
 ### 2026-11-12 — Codebase cleanup: the items waiting on a decision
 
-**What:** The cleanup report (`docs/reports/2026-11-12-codebase-cleanup-analysis.md`) found bugs, dead code and refactors. Everything with a clear fix is being done under `docs/superpowers/plans/2026-11-12-saftui-cleanup.md`. The items below were left untouched, because each needs the user's choice or an in-game check first.
+**What:** The cleanup report (`docs/reports/2026-11-12-codebase-cleanup-analysis.md`) found bugs, dead code and refactors. Everything with a clear fix was done under `docs/superpowers/plans/2026-11-12-saftui-cleanup.md` (21 tasks in five waves, merged into `modular`, 343aee8 to 1d69905). What that work set aside is in [Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over), and what it needs seen in game is in [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks). The items below were left untouched, because each needs the user's choice or an in-game check first.
 
 **Why noticed:** The user asked for an analysis of the code base (dead code, organization), then said: "Lets work on all the items with subagents that have clear fixes, as for the ones that need my decison for now lets leave them and take a look at them later". This entry is the "later" list.
 
@@ -138,7 +279,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - **Features that look unused, keep or delete:**
   - the loot window popup (`SaftUI-Loot/popup.lua`, with its two accidental globals);
   - the honor feed;
-  - the keybinding widget in `optionswidgets.lua`;
+  - the keybinding widget (`SaftUI-Core/Config/optionskeybinding.lua`);
   - the old bag Edit view;
   - time played in Core's `init.lua`;
   - Unitframes' `arena` unit, Portrait and AuraWatch;
@@ -162,7 +303,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The skin was built straight from the user's ask ("no need for planning, just standard action button skinning"), so this list is the only in-game check it gets. The run's report is `.superpowers/sdd/cooldown-manager-skin/report.md` (not versioned).
 
-**Anchors:** `SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua`, `SaftUI-Misc/Skinning/skinning.lua` (the Skinning page's Cooldown Manager toggle), `SaftUI-Misc/config.lua` (`skinning.cooldown_manager`); `tests/misc/cooldown_viewer_test.lua`, `tests/misc/fixtures/cooldown_viewer.lua`; `.agents/taint.md` (rules 1, 2 and 11), `.agents/clients.md` (Cooldown Manager).
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_CooldownViewer.lua`, `SaftUI-Misc/Skinning/skinning.lua` (the Skinning page's Cooldown Manager toggle), `SaftUI-Misc/config.lua` (`skinning.cooldown_manager`); `tests/misc/cooldown_viewer_test.lua`, `tests/misc/fixtures/cooldown_viewer.lua`; `.agents/taint.md` (rules 1, 2 and 11), `.agents/clients.md` (Cooldown Manager).
 
 **What's been considered:** Blizzard's layout puts the items Icon Padding less 4 apart (`GetAdditionalPaddingOffset`), so its round icons, about 2px inside each item, touch. SaftUI's backdrop sits 2px inside the item, where that icon was, so neighbours are Icon Padding apart: 2px at Blizzard's default for Essential and Utility (the presets Forever loads), 5px for the tracked buffs. The skin doesn't change the layout: Edit Mode owns it. Under Blizzard the action ring is a texture of the item over the icon (moved to BACKGROUND), the totem bar's way, so every frame Blizzard puts on the item (the cooldown, the count, the debuff border, the proc and pandemic glows) stays where Blizzard made it, over the ring. Icon Size scales each item, and SaftUI's border with it, so at a size other than 100% the border is no longer whole pixels; counter-scaling SaftUI's backdrop was left out until it's seen. The Cooldown Manager's settings window keeps Blizzard's look.
 
@@ -201,18 +342,18 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** Out of scope for the Cooldown Manager skin ("standard action button skinning"), noticed while reading `Blizzard_CooldownViewer` for it. Tracked buffs and bars show a debuff border for a harmful aura they track (a DoT you put on your target, read from the player's and the target's auras).
 
-**Anchors:** `SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua`; the buff skin's way, `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` (`SkinBorders`, `BuildAtlasColors`); Blizzard's `CooldownViewerItemDebuffBorderMixin:UpdateFromAuraData` and `AuraUtil.SetAuraBorderAtlasFromAura` (`Blizzard_FrameXMLUtil/AuraUtil.lua`, both clients).
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_CooldownViewer.lua`; the buff skin's way, `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua` (`SkinBorders`, `BuildAtlasColors`); Blizzard's `CooldownViewerItemDebuffBorderMixin:UpdateFromAuraData` and `AuraUtil.SetAuraBorderAtlasFromAura` (`Blizzard_FrameXMLUtil/AuraUtil.lua`, both clients).
 
 **What's been considered:** The buff skin's way carries over: post-hook the border texture's `SetAtlas` and its frame's `Show` and `Hide`, map the atlas to a color through `AuraUtil.GetDebuffDisplayInfoTable()`, put it on SaftUI's border with `st:SetBorderColor` and again in `OnColorsChanged('theme')`, fade Blizzard's art by alpha under Thick and Thin, and fall back on it for a secret atlas (on retail the aura data, and so the atlas, can be secret in combat).
 
 **Shape of work:** Small: one function and a test on the fixture, after the in-game check (step 4 of "Cooldown Manager skin: in-game checks") says whether Blizzard's border over SaftUI's reads badly.
 ### 2026-11-12 — Nameplates: a plate page's Position editor checks anchors against whichever plate has the lowest number
 
-**What:** A Position editor on Enemy nameplates or Friendly nameplates checks a new anchor against live frames: `st:ValidateAnchor` (`SaftUI-Core/api.lua`), from the `validate` of `uf_element_position` (`SaftUI-Core/Config/widgets.lua`), asks whether the part chosen to anchor to already depends on the part being moved, on the frame `UF:GetConfigFrame(unit)` gives, which for either plate key is the frame on the lowest-numbered plate (`SaftUI-Unitframes/config/config.lua`), whichever page that plate draws from now. So with an enemy on the lowest plate, the Friendly page refuses Health → Name with "Anchor would create a loop", though the friendly config has none (it's the enemy's name that sits on its bar). With a friend there, the Enemy page accepts Health → Name, which does loop in the enemy config (its name is on its bar), and every update of an enemy plate then errors. Which answer you get depends on which plate has the lowest number. Anchors that loop only across the two pages no longer error at run time (the final fix wave places a switching plate's parts afresh), so the refusal is only a wrong answer in the options; the acceptance lets a loop inside one config through.
+**What:** A Position editor on Enemy nameplates or Friendly nameplates checks a new anchor against live frames: `st:ValidateAnchor` (`SaftUI-Core/api.lua`), from the `validate` of `uf_element_position` (`SaftUI-Unitframes/config/position.lua`), asks whether the part chosen to anchor to already depends on the part being moved, on the frame `UF:GetConfigFrame(unit)` gives, which for either plate key is the frame on the lowest-numbered plate (`SaftUI-Unitframes/config/config.lua`), whichever page that plate draws from now. So with an enemy on the lowest plate, the Friendly page refuses Health → Name with "Anchor would create a loop", though the friendly config has none (it's the enemy's name that sits on its bar). With a friend there, the Enemy page accepts Health → Name, which does loop in the enemy config (its name is on its bar), and every update of an enemy plate then errors. Which answer you get depends on which plate has the lowest number. Anchors that loop only across the two pages no longer error at run time (the final fix wave places a switching plate's parts afresh), so the refusal is only a wrong answer in the options; the acceptance lets a loop inside one config through.
 
 **Why noticed:** The final review of the friendly nameplates build (2026-11-12, its M1), filed here by that build's final fix wave, which changed no code for it.
 
-**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:GetConfigFrame`, `UF:ConfigTarget`), `SaftUI-Core/Config/widgets.lua` (`generators.uf_element_position`: `ResolveTarget`, `UnitFrame`, `GetElementNames`, `validate`), `SaftUI-Core/api.lua` (`st:ValidateAnchor`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF.nameplates`, `frame.base_unit`, `ClearPlacedPoints`), `tests/unitframes/nameplate_page_test.lua` and `friendly_page_test.lua` (the plate pages).
+**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:GetConfigFrame`, `UF:ConfigTarget`), `SaftUI-Unitframes/config/position.lua` (`generators.uf_element_position`: `ResolveTarget`, `UnitFrame`, `GetElementNames`, `validate`), `SaftUI-Core/api.lua` (`st:ValidateAnchor`), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF.nameplates`, `frame.base_unit`, `ClearPlacedPoints`), `tests/unitframes/nameplate_page_test.lua` and `friendly_page_test.lua` (the plate pages).
 
 **What's been considered:** For a plate page, return the lowest plate whose `base_unit` is that page's key, and nil when there's none, so the validator allows, as it does before any plate exists. With nil, the element dropdown falls back to every registered element (`GetElementNames`), Power and Class power among them, so it may want the lowest plate of either kind for the list and only the page's for the check. A check against the page's config (the anchors as its positions set them, not the live frame's) would give the same answer whatever plates are up, and would suit every unit's editor.
 
@@ -264,7 +405,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The review of Task 3 of the friendly nameplates plan (its minor 5). Task 4's end-to-end box test runs out of combat (ruling P1), and the controller parked the in-combat case.
 
-**Anchors:** `SaftUI-Unitframes/config/config.lua` (`PlateBox`'s `set`), `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateConfig`, `UF:RefreshConfigReferences`, `UF:ApplyConfig`'s plate branch), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateConfig`), `SaftUI-Core/Config/config.lua` (`Config:Open` refusing in combat, and closing `/sui` on `PLAYER_REGEN_DISABLED`).
+**Anchors:** `SaftUI-Unitframes/nameplates/options.lua` (`PlateBox`'s `set`), `SaftUI-Unitframes/unitframes.lua` (`UF:UpdateConfig`, `UF:RefreshConfigReferences`, `UF:ApplyConfig`'s plate branch), `SaftUI-Unitframes/nameplates/nameplates.lua` (`UF:ApplyPlateConfig`), `SaftUI-Core/Config/config.lua` (`Config:Open` refusing in combat, and closing `/sui` on `PLAYER_REGEN_DISABLED`).
 
 **What's been considered:** In `UF:UpdateConfig`'s combat branch, also run `UF:ApplyPlateConfig` on every plate (a plate's frame isn't secure), leaving the rest to the queued update. Or leave it while nothing can change a box in combat.
 
@@ -304,7 +445,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The plan's in-game check list (its Task 13), every task's report and review, and the run's ledger (`.superpowers/sdd/2026-11-11-saftui-nameplates/`, task-N-report.md and progress.md, not versioned) named what the stubs can't show. This entry merges them, grouped by area, so the user can run them in one pass. The friendly nameplates' (the spec's five, then what that run's reports and ledger named, `.superpowers/sdd/2026-11-12-saftui-friendly-nameplates/`) are steps 26 to 36, and the steps before them were brought in line with the two pages. The purge filters keep their own entry ("Purge filters: in-game checks"), which step 5 points to.
 
-**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-nameplates.md`, `docs/superpowers/specs/2026-11-11-saftui-nameplates-design.md`; `SaftUI-Unitframes/nameplates/` (`nameplates.lua`, `cvars.lua`, `target.lua`, `threat.lua`, `subtext.lua`, `pixels.lua`), `docs/superpowers/plans/2026-11-12-saftui-nameplate-subtext.md` (the subtext, steps 37 to 44; merged into `modular` at 06f2754), `SaftUI-Unitframes/config/units/nameplate.lua`, `SaftUI-Unitframes/config/units/friendlynameplate.lua`, `SaftUI-Unitframes/config/config.lua` (the Enemy and Friendly nameplates pages), `docs/superpowers/specs/2026-11-12-saftui-friendly-nameplates-design.md`, `docs/superpowers/plans/2026-11-12-saftui-friendly-nameplates.md`, `SaftUI-Unitframes/purge.lua`, `SaftUI-Unitframes/elements/health.lua` (`SHORT`), `elements/name.lua` (Max width), `elements/indicators.lua` (the quest icon), `SaftUI-Core/themeart.lua` (`ART.nameplatetarget`); `.agents/architecture.md` (Nameplates), `.agents/taint.md` (rule 13), `.agents/clients.md` (Nameplates).
+**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-nameplates.md`, `docs/superpowers/specs/2026-11-11-saftui-nameplates-design.md`; `SaftUI-Unitframes/nameplates/` (`nameplates.lua`, `cvars.lua`, `target.lua`, `threat.lua`, `subtext.lua`, `pixels.lua`), `docs/superpowers/plans/2026-11-12-saftui-nameplate-subtext.md` (the subtext, steps 37 to 44; merged into `modular` at 06f2754), `SaftUI-Unitframes/config/units/nameplate.lua`, `SaftUI-Unitframes/config/units/friendlynameplate.lua`, `SaftUI-Unitframes/nameplates/options.lua` (the Enemy and Friendly nameplates pages), `docs/superpowers/specs/2026-11-12-saftui-friendly-nameplates-design.md`, `docs/superpowers/plans/2026-11-12-saftui-friendly-nameplates.md`, `SaftUI-Unitframes/aurafilters.lua`, `SaftUI-Unitframes/elements/health.lua` (`SHORT`), `elements/name.lua` (Max width), `elements/indicators.lua` (the quest icon), `SaftUI-Core/themeart.lua` (`ART.nameplatetarget`); `.agents/architecture.md` (Nameplates), `.agents/taint.md` (rule 13), `.agents/clients.md` (Nameplates).
 
 **What's been considered:** Where a check fails the fix is usually small: the target art's offsets in `themeart.lua`, a folder name in `UF.NAMEPLATE_ADDONS`, `AbbreviateNumbers`' options (without SaftUI's breakpoints the game's own give 12K for 12.5K), an event in `threat.lua`. Two have a fallback named already. If the plates' borders still shimmer after a `/reload` (step 2), they could be built from SaftUI's own textures sized in whole pixels instead of the theme engine's backdrop; the plan kept the engine's borders unless this check shows shimmer. If the personal resource display turns out to be a nameplate after all (step 16), SaftUI's frame must stay off the player's own plate, as a patch to the bundled oUF did before it was reverted (ruling N5 in the ledger).
 
@@ -380,7 +521,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** Task 6 of the nameplates plan (branch `np-6`), its concerns 2 and 3. Its brief named only the toggle and login as the places to set them, and Task 11 was changing the same part of `UF:ApplyConfig` at the time, so the profile switch was left out.
 
-**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s plate branch, which sets the plates' size again when no element is named; `UF:OnEnable`), `SaftUI-Unitframes/config/config.lua` (`FriendlyNameplateGeneral`, Friendly plates' `set`), `tests/unitframes/nameplate_page_test.lua`.
+**Anchors:** `SaftUI-Unitframes/nameplates/cvars.lua` (`UF:ApplyNameplateCVars`), `SaftUI-Unitframes/unitframes.lua` (`UF:ApplyConfig`'s plate branch, which sets the plates' size again when no element is named; `UF:OnEnable`), `SaftUI-Unitframes/nameplates/options.lua` (`FriendlyNameplateGeneral`, Friendly plates' `set`), `tests/unitframes/nameplate_page_test.lua`.
 
 **What's been considered:** One `UF:ApplyNameplateCVars()` in `UF:ApplyConfig`'s plate branch with no element, beside `UF:ApplyPlateSize()`, makes it follow every profile switch, copy and reset (`UF:UpdateConfig()` runs `UF:ApplyConfig()`, which includes the plates). It does nothing without SaftUI's driver or with Nameplates off, and waits out combat. For Blizzard's own toggle: leave it (SaftUI's toggle wins at the next login), or have SaftUI's toggle follow the game's setting (a `CVAR_UPDATE` listener writing the profile), which would make a key press change the profile.
 
@@ -448,13 +589,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **What:** "Only buffs I can purge" (a toggle on every unit's Buffs, on by default for nameplates) builds Blizzard's aura container filters from facts the stubs can't confirm: which dispel name an enrage reports on each client, whether `RAID_PLAYER_DISPELLABLE` lets a Frenzy through for a Forever hunter, and whether the pet's spellbook is ready when the filters are first built at login.
 
-**Why noticed:** Task 10 of the nameplates plan (branch `np-10`) and its review. Blizzard's candidate filter matches `includeDispelTypes[auraData.dispelName]`, and an aura's dispel name is its type's internal name in `SpellDispelType`. Type 9 (an enrage; "Frenzy" on Forever) has no internal name on Forever 1.60.1.70888, and had none on retail before 12.1 (empty at 12.0.7.68974 and 11.2.7.64978, "Enrage" at 12.1.5.70783, wago.tools). Blizzard's own `Blizzard_PrivateAurasUI.lua` checks `dispelName ~= ""` on both clients, so an empty name most likely reports `''`. `purge.lua` therefore matches an enrage as both `'Enrage'` and `''`, on both clients. If a client reports `nil` instead, no candidate filter can pick enrages out, and a player whose only remover is an enrage one (a Forever hunter's Tranquilizing Shot, a retail druid's Soothe, a rogue's Shiv) sees no buffs with the toggle on.
+**Why noticed:** Task 10 of the nameplates plan (branch `np-10`) and its review. Blizzard's candidate filter matches `includeDispelTypes[auraData.dispelName]`, and an aura's dispel name is its type's internal name in `SpellDispelType`. Type 9 (an enrage; "Frenzy" on Forever) has no internal name on Forever 1.60.1.70888, and had none on retail before 12.1 (empty at 12.0.7.68974 and 11.2.7.64978, "Enrage" at 12.1.5.70783, wago.tools). Blizzard's own `Blizzard_PrivateAurasUI.lua` checks `dispelName ~= ""` on both clients, so an empty name most likely reports `''`. `aurafilters.lua` therefore matches an enrage as both `'Enrage'` and `''`, on both clients. If a client reports `nil` instead, no candidate filter can pick enrages out, and a player whose only remover is an enrage one (a Forever hunter's Tranquilizing Shot, a retail druid's Soothe, a rogue's Shiv) sees no buffs with the toggle on.
 
-**Anchors:** `SaftUI-Unitframes/purge.lua` (`DispelNames`, `UF.PurgeFilter`, `UF:KnownRemovals`, `UF:RefreshPurgeFilters` and its event frame), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`, `UpdateConfig`), `tests/unitframes/purge_test.lua`; `.superpowers/sdd/2026-11-11-saftui-nameplates/task-10-report.md` (not versioned).
+**Anchors:** `SaftUI-Unitframes/aurafilters.lua` (`DispelNames`, `UF.PurgeFilter`, `UF:KnownRemovals`, `UF:RefreshPurgeFilters` and its event frame), `SaftUI-Unitframes/elements/auras.lua` (`AddGroup`, `UpdateConfig`), `tests/unitframes/purge_test.lua`; `.superpowers/sdd/2026-11-11-saftui-nameplates/task-10-report.md` (not versioned).
 
 **What's been considered:** Matching `''` too costs nothing: `RAID_PLAYER_DISPELLABLE` keeps only auras someone in the group can dispel, so `''` can't let in a buff with no dispel type. If a client reports `nil`, the choice is between dropping the dispel type filter for players who remove only enrages (showing everything `RAID_PLAYER_DISPELLABLE` lets through, which in a group includes other classes' magic dispels) or showing them nothing.
 
-**Shape of work:** A pass by the user, out of combat (aura data is secret in combat), then a small fix in `purge.lua` if a check fails:
+**Shape of work:** A pass by the user, out of combat (aura data is secret in combat), then a small fix in `aurafilters.lua` if a check fails:
 1. Forever, as a hunter with Tranquilizing Shot, Target's Buffs with Only buffs I can purge on: target a mob with a Frenzy buff (Molten Core's Magmadar or Flamegor, or a beast that frenzies). Does the buff show? `/dump C_UnitAuras.GetAuraDataByIndex('target', 1, 'HELPFUL').dispelName` (the buff's index in place of 1): `""`, `nil` or `"Enrage"`?
 2. If it doesn't show: `/dump C_UnitAuras.IsAuraFilteredOutByInstanceID('target', <its auraInstanceID>, 'HELPFUL|RAID_PLAYER_DISPELLABLE')` (false means the filter string lets it through, so the dispel name is what blocks it).
 3. Retail, as a druid with Soothe or a rogue with Shiv: the same two checks on an enrage (most dungeon enrages).
@@ -469,7 +610,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The review of Task 10 of the nameplates plan (branch `np-10`) swept wago.tools' `SpellEffect` at 12.1.5.70783 for every dispel or steal effect on a spell with a class skill line or a talent, beyond the spec's list. Neither spell exists on Forever 1.60.1.70888.
 
-**Anchors:** `SaftUI-Unitframes/purge.lua` (`UF.PURGE_SPELLS.live`, and the comment above it on how each spell was checked), `tests/unitframes/purge_test.lua` (`VERIFIED`, which pins the table: a new spell goes in both).
+**Anchors:** `SaftUI-Unitframes/aurafilters.lua` (`UF.PURGE_SPELLS.live`, and the comment above it on how each spell was checked), `tests/unitframes/purge_test.lua` (`VERIFIED`, which pins the table: a new spell goes in both).
 
 **Shape of work:** Small: check each spell's effects (and Mass Dispel's triggered spells) at the current build, add `MONK = { { id = 115078, removes = { 'Enrage' } } }` and Mass Dispel to `PRIEST` if it dispels enemies, and add them to `VERIFIED`.
 
@@ -481,7 +622,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The plan's "In-game check list" and every task's report and review (`.superpowers/sdd/2026-11-11-saftui-blizzard-theme-round2/`, task-N-report.md and progress.md, not versioned) named what the stubs can't show. This entry merges them, grouped by area, so the user can run them in one pass.
 
-**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-blizzard-theme-round2.md` (the check list at its end), `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`, branch `round2`; `SaftUI-Core/themeart.lua` (the art tables, `ART.unitframe`, `ART.groupborder`, `ART.unitbars`, `ART.microbar`, `ART.resizegrip`), `SaftUI-Core/Config/optionswindow.lua` (`OW.LAYOUT`), `SaftUI-Core/Config/optionswidgets.lua`, `SaftUI-Core/Config/optionsbody.lua`, `SaftUI-Bags/categoriestab.lua`, `SaftUI-Unitframes/groups.lua`, `SaftUI-Unitframes/updaters.lua`, `SaftUI-Minimap/micromenu.lua`.
+**Anchors:** `docs/superpowers/plans/2026-11-11-saftui-blizzard-theme-round2.md` (the check list at its end), `docs/superpowers/specs/2026-11-11-saftui-blizzard-theme-round2-design.md`, branch `round2`; `SaftUI-Core/themeart_data.lua` (the art tables: `unitframe`, `groupborder`, `unitbars`, `microbar`, `resizegrip`), `SaftUI-Core/Config/optionslayout.lua` (`OW.LAYOUT`), `SaftUI-Core/Config/optionswidgets.lua`, `SaftUI-Core/Config/optionsbody.lua`, `SaftUI-Bags/categoriestab.lua`, `SaftUI-Unitframes/groups.lua`, `SaftUI-Unitframes/updaters.lua`, `SaftUI-Minimap/micromenu.lua`.
 
 **What's been considered:** Where a check fails the fix is usually a number in the art tables or the layout (offsets, slice margins, outsets), or one of the fallbacks the spec names: cutting the micro menu strip's pieces by texture coordinates as the bronze box is, cutting the scroll thumb's middle instead of stretching it, offsetting the select list by the c-bg's outset.
 
@@ -574,29 +715,13 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Open questions:** Does the user want the border per real raid group at all, given a single border around the raid already reads as Blizzard's with Keep Groups Together off?
 
-### 2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)
-
-**What:** `UF:UpdateElement` calls `self:UpdateElementPosition(element, configOverride)`, but the signature is `UF:UpdateElementPosition(element, unitframe, configOverride)`. The override lands in the `unitframe` slot, which is then overwritten, so an element is always placed by its own config. With Mana as primary, power and additional power are sized by each other's config (`UF:UpdateElementSize`) but placed by their own. Commit f0dda64 meant the override to place the element too.
-
-**Why noticed:** The Blizzard theme round 2's Task 13 gave `UF:ElementKind` and `UF:ElementTheme` a `configOverride` so a bar's kind follows the size it is drawn at, and `UF.FillsFrame(configOverride or config)` then checks the override's position while the bar is placed by its own. That only matters if a user makes the player's power fill the unit frame and also turns Mana as primary on. Pre-existing; found in review, not caused by round 2.
-
-**Anchors:** `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`, `UF:UpdateElementSize`, `UF:ElementKind`, `UF:ElementTheme`, `UF.FillsFrame`); commit f0dda64; `SaftUI-Unitframes/elements/name.lua` (passes the string `'Name'` as its override).
-
-**What's been considered:** Fixing the call changes where those two bars sit (they would take the other bar's position) and would break `name.lua`, which passes a string as its override, so it needs its own look at which callers mean what. Not fixed in round 2 for that reason.
-
-**Shape of work:** Small: audit the callers of `UpdateElementPosition` and of the override, fix the argument, and pin the result with a test in `tests/unitframes/`.
-
-**Open questions:** Should the other bar's config place the element with Mana as primary, as f0dda64 intended, or does each bar keep its own spot?
-
-**Update 2026-11-12:** the friendly nameplates build added a second call of the same shape, for a plate's part that's off (`UF:UpdateElement`'s off branch, `self:UpdateElementPosition(element, configOverride)`). It places by the element's own config, as the first does, and the plates pass no override. Fix both together.
-
 ### 2026-11-11 — /sui: no resize cursor on the grip and the bottom edge
 
 **What:** `/sui` grows taller by its grip and its bottom edge, but neither shows a resize cursor on hover. The 6px bottom edge has no visual cue at all, and the grip's only cue is its highlight.
 
 **Why noticed:** Round 2's Task 10. Blizzard's `PanelResizeButtonMixin:OnEnter` calls `SetCursor('UI_RESIZE_CURSOR')`; the task's brief didn't ask for it and `SetCursor` isn't stubbed.
 
-**Anchors:** `SaftUI-Core/Config/optionswindow.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/api.lua` (`st:EnableResizing`, which also sets none).
+**Anchors:** `SaftUI-Core/Config/optionsresize.lua` (`F.grip`, `F.sizer`, `StartResize`); `tests/wow/` (no `SetCursor` stub); `SaftUI-Core/skinning.lua` (`st:EnableResizing`, which also sets none).
 
 **What's been considered:** `SetCursor` on `OnEnter` and `SetCursor(nil)` on `OnLeave` and while the resize is held, on both handles, with a `SetCursor` stub that remembers the last cursor. Whether to do the same for `st:EnableResizing`'s windows is a question for the same change.
 
@@ -606,11 +731,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ### 2026-11-11 — Screen edge margin: art reach only for /sui
 
-**What:** `st:KeepInScreenMargin(frame, reach)` can keep a frame's art, not just its rect, inside the margin, but only `/sui`'s window passes a `reach` (the metal's, under Blizzard). The bag, bank and combined bank windows, whose header sits in the metal's title bar above the window, still clamp their rect only, so at a margin under 20 their title bar can go off the top of the screen. *Update 2026-11-11 (round 2's final fix wave):* the entry's second loose end, a margin change while `/sui` is open at its most height not shrinking it until the next open, is fixed: `optionswindow.lua`'s `Build` hooks `st:UpdateScreenMargin` to `ApplyHeight`, tested in `tests/core/options_window_test.lua`. What is left is the art reach for the bag windows.
+**What:** `st:KeepInScreenMargin(frame, reach)` can keep a frame's art, not just its rect, inside the margin, but only `/sui`'s window passes a `reach` (the metal's, under Blizzard). The bag, bank and combined bank windows, whose header sits in the metal's title bar above the window, still clamp their rect only, so at a margin under 20 their title bar can go off the top of the screen. *Update 2026-11-11 (round 2's final fix wave):* the entry's second loose end, a margin change while `/sui` is open at its most height not shrinking it until the next open, is fixed: `optionswindow.lua`'s `Build` hooks `st:UpdateScreenMargin` to `ApplyHeight` (`optionsresize.lua`), tested in `tests/core/options_resize_test.lua`. What is left is the art reach for the bag windows.
 
 **Why noticed:** Round 2's Task 2 carried the art reach to Task 10, which did it for `/sui` only (the window's resize also stops where the metal meets the margin) and found the height not re-applied on a margin change (its ruling 12); its review parked "hook `st:UpdateScreenMargin` to re-apply `WindowHeight`", which the final fix wave did.
 
-**Anchors:** `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:UpdateScreenMargin`); `SaftUI-Core/Config/optionswindow.lua` (`ArtReach`, `Margins`, `OW.MaxHeight`, `OW.WindowHeight`, `Relayout`); `SaftUI-Core/panels.lua` (`st:CreateHeader`, `st:HeaderInTitleBar`); `SaftUI-Core/themeart.lua` (`ThemeArt.MetalReach`); `tests/core/screen_margin_test.lua`; "Blizzard theme: in-game checks" (the bags' margin item).
+**Anchors:** `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:UpdateScreenMargin`); `SaftUI-Core/Config/optionslayout.lua` (`ArtReach`, `Margins`, `OW.MaxHeight`, `OW.WindowHeight`); `SaftUI-Core/Config/optionswindow.lua` (`Relayout`); `SaftUI-Core/panels.lua` (`st:CreateHeader`, `st:HeaderInTitleBar`); `SaftUI-Core/themeart.lua` (`ThemeArt.MetalReach`); `tests/core/screen_margin_test.lua`; "Blizzard theme: in-game checks" (the bags' margin item).
 
 **What's been considered:** `st:CreateHeader`'s windows could pass `ThemeArt.MetalReach` while the header is in the title bar and re-apply on a theme change, which also needs the bags' mover anchor and edit mode's outline to agree (the existing in-game-checks entry names that).
 
@@ -632,7 +757,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The reviews of Tasks 4, 5, 7, 8, 9, 10, 12 and 17 of the round 2 plan (`docs/superpowers/plans/2026-11-11-saftui-blizzard-theme-round2.md`), each Approved with these left for the final fix wave. The review notes live in the plan's ledger (`.superpowers/sdd/2026-11-11-saftui-blizzard-theme-round2/progress.md`, not versioned), so they are recorded here.
 
-**Anchors:** the files named above; `tests/core/theme_blizzard_draw_test.lua`, `tests/minimap/blizzard_look_test.lua`, `tests/core/options_widgets_test.lua`, `tests/bags/categories_tab_test.lua`.
+**Anchors:** the files named above; `tests/core/theme_blizzard_draw_test.lua`, `tests/minimap/blizzard_look_test.lua`, `tests/core/options_*_test.lua` (the widget tests, on `tests/core/options_widgets_helpers.lua`), `tests/bags/categories_*_test.lua` (the Categories tab's tests, on `tests/bags/categories_world.lua`).
 
 **Shape of work:** What's left: the off-grid step is a small behaviour call (step to the next grid point by direction, as Blizzard's slider does?) with its test; the arrow displacement and the held repeat wait on the in-game checks.
 
@@ -642,7 +767,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Why noticed:** The 2026-11-11 change that gave the tab its two scroll areas (user feedback, screenshot 112: scrolling the list down to Quest scrolled Quest's editor out of view). The brief asked for the list's edge scroll only, and for the hover not to scroll. Measured then, on the shipped categories at the default window size: the tab is 483 high; only Grays/Auto Vendor (653 on Forever, 697 on retail) and Container (523, 567) need the editor to scroll, and every shipped rule plus the Caught now strip spans at most 457 (Grays), so both fit in view together, but only with the editor scrolled to show both. Those figures are out of date since the footer (the editor's view is the tab less the footer, at most half the tab). A longer rule of the user's still makes the lit block go out of view.
 
-**Anchors:** `SaftUI-Bags/categoriestab.lua` (`EdgeScroll`, `DrawDrag`, `ScrollEditor`, `ScrollFooter`, `SplitFooter`, `HighlightWhy`); `SaftUI-Bags/ruleeditor.lua` (`DrawDrag`, `StartDrag`, the `bagrule` type); `tests/bags/categories_tab_test.lua` (the scrolling tests).
+**Anchors:** `SaftUI-Bags/categoriestab.lua` (`EdgeScroll`, `DrawDrag`, `ScrollEditor`, `ScrollFooter`, `SplitFooter`, `HighlightWhy`); `SaftUI-Bags/ruleeditor.lua` (`DrawDrag`, `StartDrag`, the `bagrule` type); `tests/bags/categories_scroll_test.lua` (the scrolling tests; two scrolled drags are in `categories_drag_test.lua`).
 
 **What's been considered:** The edge scroll could be the tab's: while `EditorDragging(w)`, an OnUpdate on the tab's frame runs the same band test against `w.editorScroll` and calls `ScrollEditor`; the rule editor's own `DrawDrag` already redraws its line from the rows each frame, so the line follows. For the hover, an arrow or a mark at the editor's top or bottom edge when the lit block is out of view would say where it is without moving anything.
 
@@ -673,7 +798,7 @@ Buttons and controls (both clients):
 
 Slots under Thick and Thin (both clients): the hover on a bag, bank, currency or bags bar slot is a blue tint over the icon, not an opaque blue square. `st:SkinActionButton` (`SaftUI-Core/skinning.lua`) now puts back the blend `SetHighlightTexture` gave the hover when it was made, which the stubs take to be ADD (the final review found it forced to BLEND); check that's the client's default too. 2026-11-11: in game every slot and action button showed the blue all the time, not just under the mouse, because the theme work had moved the hover out of the HIGHLIGHT layer (fixed in 8b4ef2f, every look); recheck the tint under the mouse after that fix.
 
-Window headers in the metal's title bar (both clients; `st:HeaderInTitleBar`, `SaftUI-Core/panels.lua`, and `INV:SizeHeaderButtons` / `INV:SpaceViewButtons`, `SaftUI-Bags/container.lua`; 2026-11-11). Open the bags, the bank and the combined bank under Blizzard:
+Window headers in the metal's title bar (both clients; `st:HeaderInTitleBar`, `SaftUI-Core/panels.lua`, and `INV:SizeHeaderButtons` / `INV:SpaceViewButtons`, `SaftUI-Bags/header.lua`; 2026-11-11). Open the bags, the bank and the combined bank under Blizzard:
 - the header is the title bar's strip, 20 tall with its bottom on the window's top (`st.ThemeArt.TitleStrip()`): on Forever the whole title bar, centred on its dark band (measured in a screenshot: the band runs 1 to 18 below the drawn frame's top, the lip from 19); on retail its bottom 20, under a 1px rim, where Blizzard's TitleContainer sits. The title and every button should look centred on the band, clear of the rim and the lip;
 - the view buttons, Bag Slots and the Edit toggle are 16 tall (the strip less 4), the view buttons' 12px glyphs sharp in their 16px panel buttons, and "Bag Slots" readable at 16;
 - the view buttons end 4px short of the close button in its socket (26px in from the window's right edge on Forever, 21 on retail, `st:SocketReach`), and the title doesn't run into them at the window's narrowest;
@@ -697,7 +822,7 @@ Totem bar (Forever):
 
 Micro menu: Blizzard's micro button art is 22x28, centred on SaftUI's 20x25 buttons (the icons' scale), so check it's neither too big nor too small, and that the performance bar (`MainMenuBarPerformanceBar`, left at its template anchors) sits on the button.
 
-Hekili (if installed): SaftUI's backdrop strata is set LOW after the first draw (`SaftUI-Misc/Skinning/hekili.lua`). If Hekili's buttons sit higher, the ring draws under their icon.
+Hekili (if installed): SaftUI's backdrop strata is set LOW after the first draw (`SaftUI-Misc/Skinning/addons/hekili.lua`). If Hekili's buttons sit higher, the ring draws under their icon.
 
 Loot feed, retail: the item's `n/m` quality text and the profession overlay under the ring (see "Loot feed: retail item quality text and profession overlay sit under the Blizzard ring").
 
@@ -733,7 +858,7 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 **Why noticed:** The Blizzard theme's spec listed it as out of scope ("Per-dispel-type debuff art on SaftUI's own aura buttons (unit frames, WeakAuras). They take the white icon border in SaftUI's colors."), to keep the first version to one art per kind. The final branch review (2026-11-11) found that wasn't so for the unit frames: under Blizzard an aura's inset is 0, so the flat fill sat wholly behind the icon and debuffs lost their dispel color; `StyleButton` now draws the white border instead.
 
-**Anchors:** `SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua` (`ShowBorder`, `UpdateBorderColor`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, the dispel border fill and `ColorInnerLine`); `SaftUI-Misc/Skinning/weakauras.lua`; `SaftUI-Core/themeart.lua` (the `aura` art); `.agents/taint.md` rule 11 (what can be done to the unit frame aura buttons).
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua` (`ShowBorder`, `UpdateBorderColor`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, the dispel border fill and `ColorInnerLine`); `SaftUI-Misc/Skinning/addons/weakauras.lua`; `SaftUI-Core/themeart.lua` (the `aura` art); `.agents/taint.md` rule 11 (what can be done to the unit frame aura buttons).
 
 **What's been considered:** The unit frame aura buttons are Blizzard's (`AuraContainer`), so rule 11 limits it: a texture handed to a button for the dispel border gets secret alpha, vertex color and shown aspects, and the container's own `SetAtlas` calls are what pick the dispel type's art. WeakAuras' icons are SaftUI's to draw on but know a dispel type only if the aura has one.
 
@@ -743,15 +868,15 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 ### 2026-11-11 — Blizzard bag-bar slots and the Hekili skin write onto frames that aren't SaftUI's
 
-**What:** `SaftUI-Bags/containers/bag.lua` (the bags bar's Blizzard bag slots) writes `.backdrop`, `.thick` and a hover texture onto them through `st:SetBackdrop` and `st:SkinActionButton`, and `SaftUI-Misc/Skinning/hekili.lua` does the same to Hekili's buttons (`st:SetBackdrop`, `button.backdrop:SetFrameStrata('LOW')`, `button.skinned`). That breaks `.agents/taint.md` rule 1 for Blizzard's slots, and writes onto another addon's frames for Hekili. Both are `st:MarkForeign` now, so the Blizzard theme puts none of its art on them, but the old field writes are still there.
+**What:** `SaftUI-Bags/containers/bag.lua` (the bags bar's Blizzard bag slots) writes `.backdrop`, `.thick` and a hover texture onto them through `st:SetBackdrop` and `st:SkinActionButton`, and `SaftUI-Misc/Skinning/addons/hekili.lua` does the same to Hekili's buttons (`st:SetBackdrop`, `button.backdrop:SetFrameStrata('LOW')`, `button.skinned`). That breaks `.agents/taint.md` rule 1 for Blizzard's slots, and writes onto another addon's frames for Hekili. Both are `st:MarkForeign` now, so the Blizzard theme puts none of its art on them, but the old field writes are still there.
 
 **Why noticed:** The Blizzard theme's reviews (2026-11-11). Task 3 had to mark both foreign so the ring went on a frame of SaftUI's, and carried the writes forward as pre-existing.
 
-**Anchors:** `SaftUI-Bags/containers/bag.lua` (`RestyleBagSlot`, the `st:MarkForeign(slot)` and `st:SkinActionButton` lines); `SaftUI-Misc/Skinning/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`); `SaftUI-Core/theme.lua` (`st:MarkForeign`, `st:SetBackdropIn`); `.agents/taint.md` rule 1.
+**Anchors:** `SaftUI-Bags/containers/bag.lua` (`RestyleBagSlot`, the `st:MarkForeign(slot)` and `st:SkinActionButton` lines); `SaftUI-Misc/Skinning/addons/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`); `SaftUI-Core/theme.lua` (`st:MarkForeign`, `st:SetBackdropIn`); `.agents/taint.md` rule 1.
 
 **What's been considered:** Move both to `st:SetBackdropIn(backdrops, frame, ...)` with a weak table of their own, keep the hover and pushed textures as `st:SkinActionButton` makes them but in a side table, and read `backdrops[button]` where `button.backdrop` is read now (Hekili's strata line).
 
-**Shape of work:** One small task, two files, with a locked-frame test for each as `tests/misc/fixtures/locked_widget.lua` gives.
+**Shape of work:** One small task, two files, with a locked-frame test for each as `tests/lib/locked_widget.lua` gives.
 
 ### 2026-11-11 — Loot feed: retail item quality text and profession overlay sit under the Blizzard ring
 
@@ -795,7 +920,7 @@ Loot feed, retail: the item's `n/m` quality text and the profession overlay unde
 
 **Why noticed:** Merging `modular` (the bag categories project) into `blizzardtheme` (2026-11-11). Both were built from modular 8dc348c in parallel: the Blizzard theme gave `/sui`'s built-in widgets Blizzard's Settings art (its spec's ruling 2), while the bag categories added three custom widget types (`W.Define`) that draw their own frames with `W.Box`. The merge brief said to leave them as they were, apart from what follows from the shared helpers, and to note the gap. The merge did give the check list's boxes the Settings check box, since the check list is Core's (`W.OpenCheckList`) and the spec's ruling 3 is one check box look everywhere.
 
-**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`MakeBox`, `MakeField`, `MakeCheck`, the NOT box, `GroupParts`' badge, `MakeAdd`); `SaftUI-Bags/categoriestab.lua` (`ListRow`, `Action`); `SaftUI-Core/Config/optionswidgets.lua` (`LookInput`, `LookDropdown`, `LookCheckBox`, `LookLine`, `W.LookButton`, `W.BlizzardLook`); `SaftUI-Core/Config/optionswindow.lua` (the sidebar's `Options_List_Active` and `Options_List_Hover`); `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md` ("`/sui`'s controls under Blizzard"); `.agents/edit-mode.md` (Options window widgets).
+**Anchors:** `SaftUI-Bags/ruleeditor.lua` (`MakeBox`, `MakeField`, `MakeCheck`, the NOT box, `GroupParts`' badge, `MakeAdd`); `SaftUI-Bags/categoriestab.lua` (`ListRow`, `Action`); `SaftUI-Core/Config/optionslook.lua` (`LookInput`, `LookDropdown`, `LookCheckBox`, `LookLine`, `W.LookButton`, `W.BlizzardLook`); `SaftUI-Core/themeart_data.lua` (the sidebar's `Options_List_Active` and `Options_List_Hover`, drawn by `SaftUI-Core/Config/optionsnav.lua`); `docs/superpowers/specs/2026-11-10-saftui-blizzard-theme-design.md` ("`/sui`'s controls under Blizzard"); `.agents/edit-mode.md` (Options window widgets).
 
 **What's been considered:** Most of Core's look helpers are locals of `optionswidgets.lua`. Exporting them on `W` (as `W.LookButton` and `W.LookSearch` already are) would let the bags' widgets call them when they bind: a box as `LookInput`, a field as `LookDropdown` (which wants `button.caret` and `DropdownStates`), the check box as `LookCheckBox`, and the selected category row as the sidebar's `Options_List_Active` with `Options_List_Hover` under the mouse. The NOT toggle and the AND/OR badge have no Blizzard equivalent, so they would take the 1px line the multiselect's box takes.
 
@@ -975,7 +1100,7 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 
 **Why noticed:** The zone level and faction feature (2026-11-10). The stubs run no OnUpdate, layout pass or fonts, and stand in for the game's map and PvP answers, so placement, glyphs and the live API are in-game checks.
 
-**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:ZoneLine`, `ZT:UpdateZoneLine`, `ZT:UpdateMapLine`, `ZT:HookWorldMap`), `SaftUI-Misc/Skinning/ZoneFactions.lua`; Blizzard's `Blizzard_FrameXML/Mainline/ZoneText.lua` and `Blizzard_SharedMapDataProviders/AreaLabelDataProvider.lua`; `tests/misc/zone_text_test.lua`, `tests/misc/zone_map_test.lua` and `tests/misc/zone_helpers.lua`.
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (`ZT:ZoneLine`, `ZT:UpdateZoneLine`, `ZT:UpdateMapLine`, `ZT:HookWorldMap`), `SaftUI-Misc/Skinning/blizzard/ZoneFactions.lua`; Blizzard's `Blizzard_FrameXML/Mainline/ZoneText.lua` and `Blizzard_SharedMapDataProviders/AreaLabelDataProvider.lua`; `tests/misc/zone_text_test.lua`, `tests/misc/zone_map_test.lua` and `tests/misc/zone_helpers.lua`.
 
 **Shape of work:** An in-game pass. Fixes, if any, are likely offsets or a font.
 
@@ -988,7 +1113,7 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 
 **Why noticed:** The review of the zone level and faction feature (2026-11-10, minors 4 and 6), left as they are; the subzone case from its re-review (N1), left as it is because Blizzard's own PvP line behaves the same.
 
-**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`ZT:LiveFaction`, `ZT:MapFaction`, `ZT:UpdateMapLine`'s `mapLineFor`); `tests/misc/zone_map_test.lua`.
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (`ZT:LiveFaction`, `ZT:MapFaction`, `ZT:UpdateMapLine`'s `mapLineFor`); `tests/misc/zone_map_test.lua`.
 
 **What's been considered:** For the subzone: when `isSubZonePvP`, use the table's word for the zone, at least on the map. For a cleared banner: `ZT:UpdateZoneLine` and `ZT:SetZoneDifficultyText` also require a non-blank `ZoneTextString`. For the map: key the cache on the map's ID and the label text (`map:GetMapID() .. name`), which costs nothing.
 
@@ -1000,7 +1125,7 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 
 **Why noticed:** Resolving "Zone text replaces Blizzard's OnEvent script with AceHook's HookScript" (2026-11-10, see Resolved). That entry asked about the `ZoneFadeInDuration` globals, which are now left alone; the setters behind them are the write that's left. They stay for now because dropping them changes what the user sees: the zone text would leave sooner.
 
-**Anchors:** `SaftUI-Misc/Skinning/ZoneText.lua` (`FADE_IN`, `HOLD`, `FADE_OUT`, `ZT:OnEnable`); Blizzard's `Blizzard_FrameXMLUtil/FadingFrame.lua`; `.agents/taint.md` rules 1 and 3.
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/ZoneText.lua` (`FADE_IN`, `HOLD`, `FADE_OUT`, `ZT:OnEnable`); Blizzard's `Blizzard_FrameXMLUtil/FadingFrame.lua`; `.agents/taint.md` rules 1 and 3.
 
 **What's been considered:** The fields' only reader is the frames' own OnUpdate, `FadingFrame_OnUpdate`, which turns tainted at the first read and then only sets the frames' alpha and hides them. Nothing protected hangs off either frame, so no blocked action is expected. The one way it could: another addon anchoring a protected frame to either one, which would make the tainted `Hide` a blocked action in combat, blamed on SaftUI. There's no way to change the timing that writes nothing onto them. The choices: keep it, and name it in `.agents/taint.md` as a known exception; drop the setters for Blizzard's shorter timing; or have SaftUI show zone text frames of its own instead of Blizzard's (a bigger change).
 
@@ -1010,7 +1135,7 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 
 ### 2026-11-10 — The zone faction table is a snapshot of two builds
 
-**What:** `SaftUI-Misc/Skinning/ZoneFactions.lua` lists each client's zones by uiMapID as of Forever build 1.60.1.70888 and retail build 12.1.5.70783. A zone a later build adds gets no faction line on the world map (unless you stand in it) until the table is made again. Forever adds zones of its own: Riverglades, Shen'dralas and Zephras Isle are in this one.
+**What:** `SaftUI-Misc/Skinning/blizzard/ZoneFactions.lua` lists each client's zones by uiMapID as of Forever build 1.60.1.70888 and retail build 12.1.5.70783. A zone a later build adds gets no faction line on the world map (unless you stand in it) until the table is made again. Forever adds zones of its own: Riverglades, Shen'dralas and Zephras Isle are in this one.
 
 **Why noticed:** Building the table (2026-11-10).
 
@@ -1026,13 +1151,13 @@ Today the bag category titles already have a font choice (`inventory.fonts.title
 - `st:SetBackdrop` on each `ChatFrameN` (~73, ~128) writes `.backdrop` and `.thick` onto it. Its edit box no longer gets them: since the Blizzard theme's Task 8 (2026-11-11), `st:SkinEditBox` / `st:StyleEditBox` draw through `st:SetBackdropIn` with a table of their own, and conceal the box's border textures by alpha instead of `st:Kill`.
 - `frame.EditBox`, `frame.EditBox.Header` and `.HeaderSuffix` (~96-98), `frame.Tab` (~113), and `frame.Tab.SetAlpha = UIFrameFadeRemoveFrame` (~121, when tab fading is off) are written onto Blizzard's frames.
 - `frame:SetScript('OnMouseWheel', onMouseScroll)` on `ChatFrameN` (~85), and `SetScript('OnShow')` / `SetScript('OnHide')` on its edit box (~107-108, hiding and showing `GeneralDockManager`), replace Blizzard's handlers.
-- On retail, `st:SkinScrollBar(frame.ScrollBar)` (~79) skins Blizzard's `MinimalScrollBar` through `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`), which still writes `.backdrop` and `.thick` (`st:SetBackdrop(thumb, ...)`, ~64) and `.entered` and `.pressed` (the thumb's hover and press state, ~35-50, read by `ColorThumb`) onto the bar's thumb, and `HookScript`s four of its scripts. Under the Blizzard theme the thumb is a control, so SaftUI draws nothing on it and shows MinimalScrollBar's own layers (`DrawScrollBar`), but the writes are unchanged. Core's own scroll bars (`st:CreateScrollBar`) are SaftUI's frames, where the writes are fine.
+- On retail, `st:SkinScrollBar(frame.ScrollBar)` (~79) skins Blizzard's `MinimalScrollBar` through `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`), which still writes `.backdrop` and `.thick` (`st:SetBackdrop(thumb, ...)`, ~64) and `.entered` and `.pressed` (the thumb's hover and press state, ~35-50, read by `ColorThumb`) onto the bar's thumb, and `HookScript`s four of its scripts. Under the Blizzard theme the thumb is a control, so SaftUI draws nothing on it and shows MinimalScrollBar's own layers (`DrawScrollBar`), but the writes are unchanged. Core's own scroll frames (`st:CreateScrollFrame`, `SaftUI-Core/Widgets/scrollframe.lua`) are SaftUI's frames, where the writes are fine.
 
 Since Themes there's also a new trigger for one of these writes. `st:RedrawThemed` (`SaftUI-Core/theme.lua`, `DrawBackdrop`, the `owner.thick = ...` line, ~349) runs the `owner.thick` write again on every theme change and every profile switch, copy or reset (ruling R13), for each `st:SetBackdrop` owner that isn't SaftUI's: `ChatFrame1` and the other chat frames, the chat edit boxes, and the unit frames' aura buttons (Blizzard's, `SaftUI-Unitframes/elements/auras.lua`, `StyleButton`). It's the same write the module's own `UpdateConfig` already made; only the trigger is new.
 
 **Why noticed:** The Themes project's reviews (2026-11-10). Task 6, which converted chat's draw calls to Theme and Background, carried the chat writes forward as pre-existing; the final review (`008527b..8250a53`) confirmed them and traced the new `owner.thick` trigger to R13's redraw on every profile change. None of the writes was introduced by Themes, which only changed the draw calls' arguments.
 
-**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`, `onMouseScroll`, `CHT:UpdateFootprint`); `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `st:StyleEditBox`, `DrawEditBox`, `ColorFocused`); `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`, `ColorThumb`, `thumbOnEnter`, `thumbOnMouseDown`); `SaftUI-Core/theme.lua` (`DrawBackdrop`, `st:SetBackdropIn`, `st:RedrawThemed`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, `ColorInnerLine`); `.agents/taint.md` rules 1, 2 and 11; `tests/chat/theme_test.lua`. The tooltip and roll bar skins already moved to side tables (see Resolved), and `tests/misc/fixtures/locked_widget.lua` locks a frame so a skin that writes onto it fails.
+**Anchors:** `SaftUI-Chat/chatframe.lua` (`CHT:SkinChatFrame`, `CHT:UpdateChatFrameDisplay`, `onMouseScroll`, `CHT:UpdateFootprint`); `SaftUI-Core/skinning.lua` (`st:SkinEditBox`, `st:StyleEditBox`, `DrawEditBox`, `ColorFocused`); `SaftUI-Core/Widgets/scrollbar.lua` (`st:SkinNewScrollBar`, `ColorThumb`, `thumbOnEnter`, `thumbOnMouseDown`); `SaftUI-Core/theme.lua` (`DrawBackdrop`, `st:SetBackdropIn`, `st:RedrawThemed`); `SaftUI-Unitframes/elements/auras.lua` (`StyleButton`, `ColorInnerLine`); `.agents/taint.md` rules 1, 2 and 11; `tests/chat/theme_test.lua`. The tooltip and roll bar skins already moved to side tables (see Resolved), and `tests/lib/locked_widget.lua` locks a frame so a skin that writes onto it fails.
 
 **What's been considered:**
 - Draw the chat frames and edit boxes with `st:SetBackdropIn(backdrops, frame, ...)`, and keep the backdrop, edit box, header and tab references in weak side tables keyed by the chat frame. Everything that reads `frame.backdrop` (the retail scroll bar's anchors, the edit box's anchors, `UpdateChatFrameDisplay`'s padding) reads the side table instead.
@@ -1047,14 +1172,14 @@ Since Themes there's also a new trigger for one of these writes. `st:RedrawTheme
 ### 2026-11-10 — The Hekili and WeakAuras skins error when Skinning's Theme is None
 
 **What:** With Skinning's Theme set to None, `st:SetBackdrop` makes no backdrop (None only clears, and a frame never drawn has nothing to clear), but both skins use it on the next line:
-- `SaftUI-Misc/Skinning/hekili.lua:16`, `button.backdrop:SetFrameStrata('LOW')`;
-- `SaftUI-Misc/Skinning/weakauras.lua:11` and `:14`, `region.backdrop:SetFrameLevel(...)` and `:SetFrameStrata('LOW')`.
+- `SaftUI-Misc/Skinning/addons/hekili.lua:16`, `button.backdrop:SetFrameStrata('LOW')`;
+- `SaftUI-Misc/Skinning/addons/weakauras.lua:11` and `:14`, `region.backdrop:SetFrameLevel(...)` and `:SetFrameStrata('LOW')`.
 
 Each new Hekili button or WeakAuras icon then errors. The error comes before `skinned = true` and the `tinsert` into `skinnedButtons` / `skinnedRegions`, so it errors again on every call, and a later switch away from None doesn't reach those frames through `UpdateConfig`.
 
 **Why noticed:** The Themes project's reviews (2026-11-10): Task 6 converted these skins to Theme and Background and carried this forward as pre-existing, and the final review confirmed it. The old `none` template behaved the same, so it predates Themes.
 
-**Anchors:** `SaftUI-Misc/Skinning/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`), `SaftUI-Misc/Skinning/weakauras.lua` (`WA:SkinIcon`, `WA:UpdateConfig`), `SaftUI-Core/theme.lua` (`st:SetBackdrop`, which returns without making a backdrop for None); `tests/misc/theme_test.lua` (the Skinning page). There's no Hekili or WeakAuras stand-in in `tests/misc/fixtures/` yet.
+**Anchors:** `SaftUI-Misc/Skinning/addons/hekili.lua` (`HK:SkinIcon`, `HK:UpdateConfig`), `SaftUI-Misc/Skinning/addons/weakauras.lua` (`WA:SkinIcon`, `WA:UpdateConfig`), `SaftUI-Core/theme.lua` (`st:SetBackdrop`, which returns without making a backdrop for None); `tests/misc/theme_test.lua` (the Skinning page). There's no Hekili or WeakAuras stand-in in `tests/misc/fixtures/` yet.
 
 **What's been considered:** Guard each `.backdrop` use, and still mark the frame skinned and record it, so `UpdateConfig` draws it once the theme isn't None. The strata and level then need setting after every draw, in `UpdateConfig` too, or a backdrop first made there sits at the default level. Both skins also write `.skinned` and `.backdrop` onto another addon's frames. Rule 1 doesn't bind third-party frames, but `.agents/taint.md` asks for side tables there anyway, and the same pass could move them.
 
@@ -1102,9 +1227,9 @@ Each new Hekili button or WeakAuras icon then errors. The error comes before `sk
 
 On both clients:
 - the Blizzard micro buttons' panels (`SaftUI-Minimap/microbuttons.lua`, `SkinButton`, drawn with `st:SetBackdropIn`) moving from Thick's border to Thin's on a theme switch, with no gap or overlap;
-- zone text (`SaftUI-Misc/Skinning/ZoneText.lua`): the flourish lines drawn Thin, keeping the zone name's color after a recolor;
-- the character frame's gem slots (`SaftUI-Misc/Skinning/characterframe/gems.lua`) in SaftUI's theme;
-- the Hekili and WeakAuras skins (`SaftUI-Misc/Skinning/hekili.lua`, `weakauras.lua`) following Skinning's Theme and Background, and a profile switch;
+- zone text (`SaftUI-Misc/Skinning/blizzard/ZoneText.lua`): the flourish lines drawn Thin, keeping the zone name's color after a recolor;
+- the character frame's gem slots (`SaftUI-Misc/Skinning/blizzard/characterframe/gems.lua`) in SaftUI's theme;
+- the Hekili and WeakAuras skins (`SaftUI-Misc/Skinning/addons/hekili.lua`, `weakauras.lua`) following Skinning's Theme and Background, and a profile switch;
 - the loot roll previews (`SaftUI-Loot/roll.lua`, `LT:CreateRollPreviews`) drawn like real roll bars.
 
 On retail:
@@ -1135,7 +1260,7 @@ On retail:
 
 **Why noticed:** The bag views branch's final-review fix wave (2026-11-10), which made `ApplyView` re-apply the search and left the eye toggle as it was.
 
-**Anchors:** `SaftUI-Bags/containers/combinedbank.lua` (`INV:UpdateContainerBagIds`, called from the eye buttons), `SaftUI-Bags/container.lua` (`INV:ApplyView`, `INV:UpdateSearchFilter`).
+**Anchors:** `SaftUI-Bags/containers/combinedbank.lua` (`INV:UpdateContainerBagIds`, called from the eye buttons), `SaftUI-Bags/layout.lua` (`INV:ApplyView`), `SaftUI-Bags/search.lua` (`INV:UpdateSearchFilter`).
 
 **Shape of work:** One line (call `INV:UpdateSearchFilter` after the toggle's layout) and a test.
 
@@ -1164,7 +1289,7 @@ On retail:
 
 **Why noticed:** The bag views project's final task (2026-11-10). Its tests run on stubbed bags and frames (`tests/bags/bag_world.lua`, `container_helpers.lua`), so the icon art, real widths, secure buttons, combat lockdown and retail's tab names were only compile-checked and read through. The user plays Forever, so the retail item needs a retail session.
 
-**Anchors:** `SaftUI-Bags/views.lua` (`INV:GetBagInfo`, the tab names), `SaftUI-Bags/container.lua` (`INV:LayoutSections`, `INV:ApplyView`, `INV:SetView`, `INV:HeaderMinWidth`, the view buttons), `SaftUI-Bags/category.lua` (`INV:EnsureSlotPools`, `INV:FitSlots`: the buttons made before a fight, and what shows in one), `SaftUI-Bags/slot.lua`; `tests/bags/views_switch_test.lua`, `views_layout_test.lua`, `views_onebag_multibag_test.lua`, `views_data_test.lua`; `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`.
+**Anchors:** `SaftUI-Bags/views.lua` (`INV:GetBagInfo`, the tab names), `SaftUI-Bags/layout.lua` (`INV:LayoutSections`, `INV:ApplyView`), `SaftUI-Bags/header.lua` (`INV:SetView`, `INV:HeaderMinWidth`, the view buttons), `SaftUI-Bags/category.lua` (`INV:EnsureSlotPools`, `INV:FitSlots`: the buttons made before a fight, and what shows in one), `SaftUI-Bags/slot.lua`; `tests/bags/views_switch_test.lua`, `views_layout_test.lua`, `views_onebag_multibag_test.lua`, `views_data_test.lua`; `docs/superpowers/specs/2026-11-10-saftui-bag-views-design.md`.
 
 **Shape of work:** An in-game pass on Forever through the list, a retail pass for the tab names, then a small fix for each problem found, with a test where the stubs allow.
 
@@ -1178,10 +1303,10 @@ On retail:
 
 **Also, from the user (2026-11-10):** while designing configurable bag categories (filter blocks combined with AND, OR and groups, edited in game), the user agreed the within-category sort stays as it is for that project, and said: "great point about sorting - we should tackle that later and do some work on the sort string to build it from blocks as well". So the sort itself should become configurable the same way: an ordered list of sort keys (item level, quality, name, expansion, stack count, …), each ascending or descending, edited in game like the category rules, with today's order as the default.
 
-**Research already done:** the bag categories research (2026-11-10) found that `sortString`'s last two parts are always 0 because of field-name typos (`itemCount`, `itemId`), besides the item-level-as-text bug. It was a scratchpad report, not committed; its findings on the sort are summarized here.
+**Research already done:** the bag categories research (2026-11-10) found that `sortString`'s last two parts are always 0 because of field-name typos (`itemCount`, `itemId`), besides the item-level-as-text bug. It was a scratchpad report, not committed; its findings on the sort are summarized here. *The typos were fixed on 2026-11-12 (codebase cleanup, Task 3, the report's bug 5): `sortString` now ends with the stack count and the item ID, so within one item the bigger stack sorts first (as text still, so 9 before 10).*
 
 **Shape of work:**
-- Small now: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string, and fix the typos. Add a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
+- Small now: compare the fields in turn (item level as a number, then name, quality and so on) instead of one concatenated string (the typos are fixed). Add a test of mixed item levels. Check with the user which order they want: highest level first, as the descending string intends.
 - Later: sort keys as blocks, on top of the configurable categories project's data model and editor. It needs a brainstorm and a spec after that project lands.
 
 ### 2026-11-10 — The minimap has no SaftUI holder, so the screen edge margin only holds it in edit mode
@@ -1202,20 +1327,20 @@ On retail:
 
 ### 2026-11-10 — panels.tab_height has no option, because nothing live reads it
 
-**What:** `panels.tab_height` (21, in `st.defaults.panels`, `SaftUI-Core/Config/defaults.lua`) is the one leftover Core setting that got no `/sui` option when Global Settings gained its General tab and the Fonts tab's new rows. Nothing that runs reads it. Either wire it to something that draws tabs and give it an option, or remove the key.
+**What:** `panels.tab_height` (21, in `st.defaults.panels`, `SaftUI-Core/Config/defaults.lua`) is the one leftover Core setting that got no `/sui` option when Global Settings gained its General tab and the Fonts tab's new rows. Since 2026-11-12 nothing reads it at all: the codebase cleanup's Task 5 deleted the dead tab helpers that were its only readers. Either remove the key, or keep it for a future tab skin and give it an option then.
 
-**Why noticed:** Options project 3 (Core's leftover settings, `coresettings` branch, approved by the user 2026-11-10). The approved design gave every other Core setting an option (icon trim, title bar height, clamp inset, font shadow and spacing, and the header, button and panel fonts) and said `panels.tab_height` gets none, to be treated like chat's `linespacing`: a setting nothing applies gets no option, only a followup to wire it up or drop it. Chat's `linespacing` is in the Chat line of [Settings with no /sui option](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover).
+**Why noticed:** Options project 3 (Core's leftover settings, `coresettings` branch, approved by the user 2026-11-10). The approved design gave every other Core setting an option (icon trim, title bar height, clamp inset, font shadow and spacing, and the header, button and panel fonts) and said `panels.tab_height` gets none, to be treated like chat's `linespacing`: a setting nothing applies gets no option, only a followup to wire it up or drop it. Chat's `linespacing` is in the Chat line of [Settings with no /sui option](#2026-11-09--settings-with-no-sui-option-settings-nothing-reads-and-frames-with-no-edit-mode-mover). `linespacing` itself was removed on 2026-11-12 (codebase cleanup, Task 4).
 
 **Anchors:**
-- Its only readers are in `SaftUI-Misc/Skinning/skinning.lua`: `SK:UpdateTab` (`tab:SetHeight(...)`, reached from `SK:SkinTab`) and `SK:SkinTabHeader` (`header:SetHeight(...)`). `SK:SkinTab` is called only by `SK:SkinBlizzardPanel` and `SK:SkinTabHeader`, and nothing calls either of those (grep `SkinBlizzardPanel`, `SkinTabHeader`).
-- The same dead path also reads `panels.font` (`SK:UpdateTab`'s `SetDisabledFontObject`), and `panels.theme` and `panels.background` (`SK:SkinBlizzardPanel`'s `st:SetBackdrop(panel, panels.theme, panels.background, 'panel')`, and `SK:SkinTab` through `st:SkinActionButton(tab, st.config.profile.panels, 'small')`, which reads the same pair; `skinning.lua:~83-84,123`). Before Themes these read `panels.template`. `panels.font` stays alive through check box labels (`SaftUI-Core/Widgets/checkbutton.lua`), which is the reader its Fonts → Kinds of text → Check box labels option names.
-- The dead helpers also write fields onto Blizzard's tabs (`tab.skinned`, `tab.Text`, and `st:SkinActionButton`'s fields), which `.agents/taint.md` rule 1 forbids, so reviving them as they are isn't an option.
+- `tab_height = 21` in `st.defaults.panels` (`SaftUI-Core/Config/defaults.lua`). No addon code and no test reads it.
+- Its readers were `SK:UpdateTab`, `SK:SkinTab`, `SK:SkinTabHeader` and `SK:SkinBlizzardPanel` in `SaftUI-Misc/Skinning/skinning.lua`, which nothing called. The cleanup deleted them (Task 5, 2026-11-12). They also wrote fields onto Blizzard's tabs, which `.agents/taint.md` rule 1 forbids, so a future tab skin starts fresh, through side tables.
+- `panels.font`, which the same helpers read, stays alive through check box labels (`SaftUI-Core/Widgets/checkbutton.lua`), the reader its Fonts → Kinds of text → Check box labels option names.
 
 **What's been considered:**
-- Removing the key: saved values are harmless (the 2026-11-09 audit settled that dead keys can be dropped from the defaults). `SK:SkinBlizzardPanel`, `SkinTab`, `UpdateTab` and `SkinTabHeader` could go with it, or be left for a future Blizzard panel skin.
+- Removing the key: saved values are harmless (the 2026-11-09 audit settled that dead keys can be dropped from the defaults). The dead helpers that read it are already gone (2026-11-12).
 - Wiring it up: only worth it once SaftUI skins a Blizzard window with tabs again, through side tables. Its option would then sit in General → Layout, with Title bar height.
 
-**Shape of work:** Small. Removal: one default, and the dead helpers if they go too, plus the line in the options-coverage entry's Core list. Wiring it up belongs with whichever skin first needs tabs.
+**Shape of work:** Small. Removal: one default, plus the line in the options-coverage entry's Core list. Wiring it up belongs with whichever skin first needs tabs.
 
 **Open questions:** Remove now, or keep it for a Blizzard panel skin the Themes project might bring?
 
@@ -1263,11 +1388,11 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 ### 2026-11-09 — st:CreateHeader writes title and close_button onto the Blizzard panels it skins
 
-**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: `SK:SkinBlizzardPanel` (`SaftUI-Misc/Skinning/skinning.lua`) calls it for Blizzard frames, and so does the unloaded loot window code (`SaftUI-Loot/popup.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). Neither caller runs today.
+**What:** `st:CreateHeader(frame, title, close_button)` (`SaftUI-Core/panels.lua`) writes `frame.title`, `frame.close_button` and `frame.header` onto the frame it's given. That frame can be a Blizzard panel: the unloaded loot window code (`SaftUI-Loot/popup.lua`) hands it `LootFrame`, and is the only such caller left since the codebase cleanup deleted `SK:SkinBlizzardPanel` (2026-11-12). Its other callers pass SaftUI's own frames (`SaftUI-Bags/container.lua`, and `st:CreatePanel` in `SaftUI-Core/panels.lua`). Writing them breaks `.agents/taint.md` rule 1. It also keeps the frame inside the screen edge margin (`st:KeepInScreenMargin`), which is meant for SaftUI's own frames only (2026-11-10). The loot window code isn't loaded, so no Blizzard frame gets these writes today.
 
 **Why noticed:** The options window rework (2026-11-09) fixed the same class of write in `st:CreateCloseButton`, which now uses a weak side table and `st:GetCloseButton(frame)`. Its re-reviewer pointed out that `CreateHeader` still does it. That's old code, outside that task.
 
-**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Misc/Skinning/skinning.lua` (`SkinBlizzardPanel`), `SaftUI-Loot/popup.lua`.
+**Anchors:** `SaftUI-Core/panels.lua` (`CreateHeader`, `closeOf`, `headerTitles`), `SaftUI-Loot/popup.lua`.
 
 **What's been considered:** Use the same pattern: weak side tables keyed by frame, with accessors such as `st:GetHeader(frame)`. Then find every reader of `.header`, `.title` and `.close_button` and switch it over.
 
@@ -1281,7 +1406,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Anchors:**
 - `SaftUI-Core/Widgets/button.lua:8-9`. `button.SetText = button.text.SetText` passes the button, not the FontString, as `self` when called as `button:SetText(x)`, which errors. `button.SetFont = function(font) ... end` receives the button as `font` when called as `button:SetFont('pixel')`.
-- `SaftUI-Bags/container.lua:53` and `SaftUI-Bags/currencies.lua:179` call `button:SetFont('pixel')`, so the bag filter buttons' font is probably never set as intended.
+- `SaftUI-Bags/header.lua` calls `filterButton:SetFont('pixel')`, so the bag filter buttons' font is probably never set as intended.
 - `SaftUI-Core/Widgets/checkbutton.lua:30`, the pattern to copy: `function(self, v) self.text:SetText(v) end`.
 
 **What's been considered:** Make both aliases take `self` first, like `checkbutton.lua:30`. Changing them changes what existing callers do (for example the bag buttons would start getting their font), so check every `st:CreateButton` caller before changing it.
@@ -1344,7 +1469,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 **Anchors:**
 - `UF:RegisterMovers` and `UF:GetMoverFrame` in `SaftUI-Unitframes/unitframes.lua`.
 - `UF:UpdateElementPosition` in `SaftUI-Unitframes/updaters.lua`.
-- The element position editor `generators.uf_element_position` in `SaftUI-Core/Config/widgets.lua`.
+- The element position editor `generators.uf_element_position` in `SaftUI-Unitframes/config/position.lua`.
 - `st:RegisterMover` in `SaftUI-Core/EditMode/`.
 
 **What's been considered:** One idea: register a mover for any element whose position's `frame` is `UIParent`, re-registered when that changes. Most of these elements are children of secure unit frames, so moves go through `st:SafeReposition`.
@@ -1378,7 +1503,7 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 - **Misc** (`SaftUI-Misc/config.lua`): `tooltip.template` and `.font`, `skinning.font` and `.template` (the new Skinning page, `SK:GetConfigTable`) and `totembar.colors.*` now have options (Task 4 of the options layout project, 2026-11-09).
 - **Action bars:** `actionbars.template`.
 - **Bags:** `inventory.enable`, `template`, `padding`, `categoryTitleHeight`, `scrollSpeed`, `autorepair`, `autovendor`, `combinedBank`, `inverted`, `fonts.titles` and `fonts.icons` now have options (Task 5 of the options layout project, 2026-11-09): Bags → General and Look.
-- **Chat:** `chat.linespacing` is left without an option, because nothing applies it. Only `CHT:ChatFrame_OnUpdate` (`SaftUI-Chat/chatframe.lua`) reads it, and its `SecureHook` is commented out, so the setting is read by nothing. Either hook it back up (the function sets each line's spacing once, so a change would also need the lines un-marked `handled`, and it writes a field onto Blizzard's chat lines, which `.agents/taint.md` forbids, so it needs a side table) and give it an option, or remove the key.
+- **Chat:** ~~`chat.linespacing` is left without an option, because nothing applies it. Only `CHT:ChatFrame_OnUpdate` (`SaftUI-Chat/chatframe.lua`) reads it, and its `SecureHook` is commented out, so the setting is read by nothing. Either hook it back up (the function sets each line's spacing once, so a change would also need the lines un-marked `handled`, and it writes a field onto Blizzard's chat lines, which `.agents/taint.md` forbids, so it needs a side table) and give it an option, or remove the key.~~ *Done 2026-11-12 (codebase cleanup, Task 4): the key and `CHT:ChatFrame_OnUpdate`, its only reader, were removed.*
 - **Loot:** `loot.popup.*` (template, font, name_wrap, width, button_height, spacing) is in fact read by nothing. `SaftUI-Loot/popup.lua` isn't in the TOC, and `LT:InitializeLootFrame()` has been commented out of `init.lua` since the Loot addon was added. The skin is also written for the classic loot window (`LootButton1`-`4`, `LootFrameInset`), which current clients don't have, and it writes onto `LootFrame`. Skinning the loot window means a new skin for today's `LootFrame`, with these settings.
 - **Unit frames:** these now have options (Tasks 8 and 9 of the options layout project, 2026-11-09), each only on the units where it does something:
   - `range_alpha.inside` and `.outside`: on party and the raids, the only frames with oUF's Range element.
@@ -1429,16 +1554,16 @@ The roll bar skin (`SaftUI-Loot/roll.lua`) calls them on Blizzard pieces: `IconF
 
 **Frames with no edit mode mover:**
 - **Unit frame elements placed on the screen** are moved to their own entry, [Edit mode movers for unit frame parts placed on the screen](#2026-11-09--edit-mode-movers-for-unit-frame-parts-placed-on-the-screen). The user wants that planned later as its own effort.
-- **The zone text banner,** fixed at `TOP, 0, -300` (`SaftUI-Misc/Skinning/ZoneText.lua:51`). The user said to leave it for now.
+- **The zone text banner,** fixed at `TOP, 0, -300` (`SaftUI-Misc/Skinning/blizzard/ZoneText.lua:51`). The user said to leave it for now.
 - **The loot window.** Blizzard places it, and SaftUI's skin isn't loaded (see Loot above). The user said to leave its position for now.
-- **`Blizzard_WatchFrame.lua`** returns early on `st.retail`, which is true on both supported clients, so it is dead code rather than a gap.
+- ~~**`Blizzard_WatchFrame.lua`** returns early on `st.retail`, which is true on both supported clients, so it is dead code rather than a gap.~~ *Deleted 2026-11-12 (codebase cleanup, Task 5).*
 - Everything else SaftUI places has a mover.
 
 **Why noticed:** On 2026-11-09 the user asked to "go through all of the existing config settings in saftui and see what all hasn't been setup in the config gui yet as well as what modules haven't been setup on edit mode". Three read-only agents audited the defaults by area (unit frames; Core, minimap and misc; action bars, bags, chat and loot). The session checked the edit mode side, and spot-checked the dead-setting and broken-option claims with greps.
 
 **Anchors:**
 - Defaults: `SaftUI-Core/Config/defaults.lua`, `SaftUI-*/config.lua`, `SaftUI-Unitframes/config/default.lua`, `SaftUI-Unitframes/config/units/*.lua`.
-- Options: each module's `GetConfigTable`; the shared generators in `SaftUI-Core/Config/widgets.lua`.
+- Options: each module's `GetConfigTable`; the shared generators in `SaftUI-Core/Config/generators.lua`.
 - Movers: `st:RegisterMover` calls; `UF:RegisterMovers` in `SaftUI-Unitframes/unitframes.lua`.
 
 **What's been considered:**
@@ -1479,11 +1604,11 @@ The one route left is to work out the button order without reading the buttons. 
 
 ### 2026-11-08 — Edit Mode frames anchored straight to SaftUI holders: tooltip container, buffs, swing timers
 
-**What:** Three of SaftUI's Blizzard Edit Mode takeovers anchor the Blizzard frame straight to SaftUI's holder: `GameTooltipDefaultContainer` to `SaftUITooltipHolder` (`SaftUI-Misc/tooltipposition.lua`, `UpdateTooltipAnchor`), `BuffFrame`/`DebuffFrame` to their holders (`SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua`, around line 449), and the swing timer bars to theirs (`Blizzard_SwingTimerPosition.lua`, around line 79). Blizzard's Edit Mode can read such a frame's anchor and write it into the active layout (`EditModeManagerFrameMixin:UpdateSystemAnchorInfo`, which stores `relativeTo:GetName()`), and a layout save keeps it. Wherever the holder doesn't exist (an alt with that SaftUI addon off, or the module disabled), Blizzard's `ApplySystemAnchor` would then anchor the frame to a frame that isn't there.
+**What:** Three of SaftUI's Blizzard Edit Mode takeovers anchor the Blizzard frame straight to SaftUI's holder: `GameTooltipDefaultContainer` to `SaftUITooltipHolder` (`SaftUI-Misc/tooltipposition.lua`, `UpdateTooltipAnchor`), `BuffFrame`/`DebuffFrame` to their holders (`SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua`, around line 449), and the swing timer bars to theirs (`Blizzard_SwingTimerPosition.lua`, around line 79). Blizzard's Edit Mode can read such a frame's anchor and write it into the active layout (`EditModeManagerFrameMixin:UpdateSystemAnchorInfo`, which stores `relativeTo:GetName()`), and a layout save keeps it. Wherever the holder doesn't exist (an alt with that SaftUI addon off, or the module disabled), Blizzard's `ApplySystemAnchor` would then anchor the frame to a frame that isn't there.
 
 **Why noticed:** The totem bar mover's review (fix round 1, 2026-11-08, `.superpowers/sdd/2026-11-08-totem-mover/review-1.md`) found the same exposure for the totem bar. There the bar is snapped to MainActionBar in its default position; entering a vehicle out of combat hides MainActionBar, `BreakSnappedFrames` runs the bar's `BreakFrameSnap`, which re-anchors it (SaftUI's post-hooks put it on the holder) and then calls `OnSystemPositionChange` → `UpdateSystemAnchorInfo`, reading `GetPoint(1)`. The totem bar was fixed by placing the bar on UIParent at the holder's spot instead (`TB:AnchorBar`, re-run from a post-hook on the holder's `SetPoint`), and `.agents/edit-mode.md`'s takeover bullet now says to do that. The three older takeovers predate the rule and weren't checked.
 
-**Anchors:** `SaftUI-Misc/tooltipposition.lua`, `SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua`, `SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`, `SaftUI-Misc/totembar.lua` (`TB:AnchorBar`, the pattern to copy), Blizzard source in `Blizzard_EditMode/Shared/EditModeSystemTemplates.lua` (`BreakFrameSnap`, `BreakSnappedFrames`, `SetSnappedToFrame`, `PrepareForSave`) and `EditModeManager.lua` (`UpdateSystemAnchorInfo`, `OnSystemPositionChange`). Related: the chat entry below (item 2), where ChatFrame1 copies its holder's anchor, so the layout names UIParent by default.
+**Anchors:** `SaftUI-Misc/tooltipposition.lua`, `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua`, `SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua`, `SaftUI-Misc/totemposition.lua` (`TB:AnchorBar`, the pattern to copy), Blizzard source in `Blizzard_EditMode/Shared/EditModeSystemTemplates.lua` (`BreakFrameSnap`, `BreakSnappedFrames`, `SetSnappedToFrame`, `PrepareForSave`) and `EditModeManager.lua` (`UpdateSystemAnchorInfo`, `OnSystemPositionChange`). Related: the chat entry below (item 2), where ChatFrame1 copies its holder's anchor, so the layout names UIParent by default.
 
 **What's been considered:** Each frame only reaches `UpdateSystemAnchorInfo` if something triggers it: a snap break (the frame is in another Edit Mode system's `snappedFrames`, which `SetSnappedToFrame` adds when Blizzard anchors it relative to that system), `PrepareForSave` on a layout save (it calls `BreakFrameSnap` for a frame not in its default position that has `alwaysUseTopLeftAnchor` or `alwaysUseTopRightAnchor`, which may be the case for the buff frames), or a drag or nudge in Blizzard's Edit Mode (blocked, as SaftUI hides their Selection). Copying the holder's anchor, as chat does, names whatever frame the user typed in Position, which could be a SaftUI frame too; placing on UIParent from the holder's rect is the safe form.
 
@@ -1527,7 +1652,7 @@ The one route left is to work out the button order without reading the buttons. 
 
 **Why noticed:** The loot rolls plan's final review (2026-11-08), finding 4.
 
-**Anchors:** `SaftUI-Loot/Feed/history.lua` (`SAVED_FIELDS`, `CopyRolls`), `SaftUI-Loot/Feed/rolls.lua` (`SummarizeDrop`'s trimmed lists). The reviewer's size estimate script is gone with the session scratchpad.
+**Anchors:** `SaftUI-Loot/Feed/history.lua` (`SAVED_FIELDS`, `CopyRolls`), `SaftUI-Loot/Feed/loothistory.lua` (`LT:SummarizeDrop`'s trimmed lists). The reviewer's size estimate script is gone with the session scratchpad.
 
 **What's been considered:** Store each choice's names as one compact string, Pass especially. Cap roll lists. Keep fewer entries for other players' results.
 
@@ -1569,7 +1694,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Why noticed:** On 2026-11-07 the user found a full-width strip across the top of the screen that couldn't be clicked. `/fstack` showed `MinimapCluster` covering it. There's an old `-- TODO: figure out how to stop cluster resizing` in `minimap.lua`'s `OnEnable` about the same thing.
 
-**Anchors:** `SaftUI-Minimap/minimap.lua` (`OnEnable`), `micromenu.lua` (mail and tracking hosting), `zonetextbutton.lua`, `instancedifficulty.lua`, `queuebutton.lua`, `addoncompartmentframe.lua`; Blizzard's `Blizzard_Minimap/Mainline/Minimap.xml` (`MinimapCluster` inherits `ResizeLayoutFrame`, `enableMouse="true"`) and `Minimap.lua` (`MinimapClusterMixin`), on `forever` and `live`.
+**Anchors:** `SaftUI-Minimap/minimap.lua` (`OnEnable`), `micromenuitems.lua` (mail and tracking hosting), `zonetextbutton.lua`, `instancedifficulty.lua`, `queuebutton.lua`, `addoncompartmentframe.lua`; Blizzard's `Blizzard_Minimap/Mainline/Minimap.xml` (`MinimapCluster` inherits `ResizeLayoutFrame`, `enableMouse="true"`) and `Minimap.lua` (`MinimapClusterMixin`), on `forever` and `live`.
 
 **What's been considered:**
 - Mark the moved pieces `ignoreInLayout` so the cluster's layout skips them: that writes a field onto Blizzard frames, against rule 1 in `.agents/taint.md`.
@@ -1611,16 +1736,6 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 
 **Shape of work:** Small, each one independent: a hook for 1, two methods and an attribute for 2, a few lines in `petbar.lua` for 3. 4 is a known limit.
 
-### 2026-11-07 — Fonts outline dropdowns show None as a blank entry
-
-**What:** `FN.outlines` in `SaftUI-Core/Media/fonts.lua` is the `values` table for every font outline dropdown, and its `NONE` entry is `st.retail and '' or 'NONE'`. `st.retail` is true on both clients, so the None choice shows as a blank line in `/sui` → Fonts and in the Auras text options. It looks like the `''` was meant as the font flag to pass to `SetFont` rather than the label. `FN:UpdateFontConfig` passes the saved `'NONE'` straight to `SetFont`.
-
-**Why noticed:** Building the action bars' Text options (Task 3 of `docs/superpowers/plans/2026-11-07-saftui-action-bars.md`). `SaftUI-ActionBars/options.lua` copies the table and names None itself, and `skin.lua` maps `'NONE'` to `''` for `SetFont`, as `SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua` (`OutlineFlags`) already does.
-
-**Anchors:** `SaftUI-Core/Media/fonts.lua` (`FN.outlines`, `FN:UpdateFontConfig`); `OutlineFlags` in `SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua` and `SaftUI-ActionBars/skin.lua`; `OutlineValues` in `SaftUI-ActionBars/options.lua`.
-
-**Shape of work:** Small: label `NONE` as 'None', map `'NONE'` to `''` in `FN:UpdateFontConfig`, then drop the local copies in the action bars and auras.
-
 ### 2026-11-07 — Unit frame defaults that nothing reads, or that break when turned on
 
 **What:** Adding `/sui` tabs for the remaining unit frame elements turned up defaults (`SaftUI-Unitframes/config/default.lua`, `config/units/*.lua`) that do nothing, or that error once turned on. They were left out of the options:
@@ -1631,27 +1746,27 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
   - Focus `castbar.colors.normal = { .5, .9, .7 }`: a list, but `GetRGB` reads the `r`/`g`/`b` that the base default's color fills in, so the focus castbar uses the base color. *Fixed 2026-11-09 (options layout project, Task 9): now `{ r = .5, g = .9, b = .7 }`.*
   - Raid target `position.element = 'Portrait'`: Portrait isn't registered, so the marker anchors to the unit frame.
   - `widget` (`widget.lua` is commented out of `elements/elements.xml`, and it has no `UpdateConfig`), `portrait` and `aurawatch` (their `RegisterElement` calls are commented out).
-- **Errors once on** (*both fixed 2026-11-09:* `colorCustom` reads either color shape through `UF.UnpackColor`, and is applied in `PostUpdateColor` after oUF's recolor on health, power and additional power, with power backgrounds following it. The castbar's `bg` has `alpha`/`multiplier` defaults and is colored from the bar. `tests/unitframes/bar_colors_test.lua`. Still open: `groups.lua`'s preview path applies the custom power color without `UF.SetPowerBackgroundColor`):
+- **Errors once on** (*both fixed 2026-11-09:* `colorCustom` reads either color shape through `UF.UnpackColor`, and is applied in `PostUpdateColor` after oUF's recolor on health, power and additional power, with power backgrounds following it. The castbar's `bg` has `alpha`/`multiplier` defaults and is colored from the bar. `tests/unitframes/bar_colors_test.lua`. Still open: `grouppreview.lua`'s preview path (Test mode's previews, moved out of `groups.lua` on 2026-11-12) applies the custom power color without `UF.SetPowerBackgroundColor`):
   - `castbar.bg.enable`: the castbar's `bg` has no `alpha` or `multiplier`, so `UF:UpdateStatusBarElement` calls `bg:SetAlpha(nil)`. Nothing colors the background either.
   - `colorCustom` on health, power and additional power: the `customColor` defaults are plain `{ r, g, b }` lists, and `config.customColor:GetRGB()` errors on them.
-- **Half done:** `additionalpower.manaAsPrimary` swaps the size, texture and text settings of the Power and AdditionalPower bars (`UF:UpdateElement`'s `configOverride`), but not their positions: `UF:UpdateElementPosition(element, unitframe, configOverride)` gets the override in its `unitframe` slot. The `Override` that would keep the bar on mana is commented out, and power's `GetDisplayPower` never runs (oUF only calls it with `displayAltPower`).
+- **Half done:** `additionalpower.manaAsPrimary` swaps the size, texture and text settings of the Power and AdditionalPower bars (`UF:UpdateElement`'s `configOverride`). It didn't swap their positions. *Fixed 2026-11-12 (codebase cleanup, Task 2): `UF:UpdateElementPosition(element, configOverride)` now gets the override, so the two bars trade places too. The commented-out `Override` and power's `GetDisplayPower`, which never ran, are gone. What's left is a look in game, by a profile edit: the setting has no `/sui` control.*
 - **Looks broken:** additional power defaults to `colorPower = false`, and nothing else colors the bar or its background, so it's white once enabled. Its `/sui` option says so. *Fixed 2026-11-09 (options layout project, Task 9): the default is `colorPower = true`.*
 
-**Progress 2026-11-09:** the additional power bar's color (`colorPower = true`), the focus castbar color (now `{ r, g, b }`) and the health text Deficit defaults (on every unit) are fixed (options layout project 2, Task 9, `e5e4426`), and `colorCustom` and the castbar background were fixed earlier the same day. What's left is the "read by nothing" keys, `show_empty`, Raid target's `Portrait` anchor, and the `manaAsPrimary` decision.
+**Progress 2026-11-09:** the additional power bar's color (`colorPower = true`), the focus castbar color (now `{ r, g, b }`) and the health text Deficit defaults (on every unit) are fixed (options layout project 2, Task 9, `e5e4426`), and `colorCustom` and the castbar background were fixed earlier the same day. What's left is the "read by nothing" keys, `show_empty`, Raid target's `Portrait` anchor, and a look at `manaAsPrimary` in game (its position half was fixed on 2026-11-12).
 
 **Why noticed:** On 2026-11-07, while adding Castbar, Class power, Additional power, Buffs, Debuffs and indicator tabs to `/sui` → Unitframes (the user asked to "start adding other UF elements to the config"). The rule for that pass was to expose only settings the element code reads, and note the rest.
 
-**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/focus.lua`, `config/units/player.lua` (`manaAsPrimary`); `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`, `UF:UpdateStatusBarElement`); `SaftUI-Unitframes/elements/additionalpower.lua`, `power.lua` (`GetDisplayPower`), `health.lua` (`PostUpdateHealth`), `classpower.lua`, `auras.lua`, `elements/elements.xml`; `SaftUI-Unitframes/groups.lua` (`UnpackColor`).
+**Anchors:** `SaftUI-Unitframes/config/default.lua`, `config/units/focus.lua`, `config/units/player.lua` (`manaAsPrimary`); `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`, `UF:UpdateStatusBarElement`, `UF.UnpackColor`); `SaftUI-Unitframes/elements/additionalpower.lua`, `power.lua`, `health.lua` (`PostUpdateHealth`), `classpower.lua`, `auras.lua`, `elements/elements.xml`; `SaftUI-Unitframes/grouppreview.lua` (the preview path).
 
 **What's been considered:**
 - Keys nothing reads can simply be dropped from the defaults. Saved values of them are harmless.
-- `customColor`: store it as a color (`CreateColor`), or read it with something like `groups.lua`'s `UnpackColor`, which takes either shape. Then `colorCustom` and a color picker could go into the Health and Power tabs.
+- `customColor`: store it as a color (`CreateColor`), or read it with something like `updaters.lua`'s `UF.UnpackColor`, which takes either shape. Then `colorCustom` and a color picker could go into the Health and Power tabs.
 - Castbar background: give it `alpha` and `multiplier` defaults and color it from the bar color, or drop `bg` from the castbar defaults.
 - Additional power: default `colorPower = true`, or color the bar in `PostUpdateColor` when oUF passes no color.
 
-**Shape of work:** A small cleanup of the defaults, plus two small fixes (`customColor`, the castbar background). `manaAsPrimary` needs a decision first.
+**Shape of work:** A small cleanup of the defaults, plus two small fixes (`customColor`, the castbar background). `manaAsPrimary` only needs a look in game now.
 
-**Open questions:** Finish `manaAsPrimary` or remove it? Should the focus castbar get its own color back? *(The second was settled by the options layout spec: yes, fixed 2026-11-09.)*
+**Open questions:** `manaAsPrimary` works as of 2026-11-12, but has no `/sui` control: give it one, or remove it? Should the focus castbar get its own color back? *(The second was settled by the options layout spec: yes, fixed 2026-11-09.)*
 
 ### 2026-11-07 — Action bar leftovers: main bar concealed not blocked, LibActionButton on deprecated APIs, unskinned flyouts
 
@@ -1733,7 +1848,7 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 - Duration filtering may be expressible through the container's processing `policy` (`CustomAuraContainerAuraProcessingPolicy`).
 - Live updates to group options would need either an AuraContainer API to remove or clear groups, or recreating the container on config change.
 - Found 2026-11-07 (review of the unit frame element options): groups can't be removed, but `CustomAuraContainerSharedMixin` (`Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua`, on `live` and `forever`) has `SetAuraGroupMaxFrameCount(key, n)`, `SetAuraGroupFilterString(key, filter)` and `SetAuraGroupLayout(key, layout)`. `elements/auras.lua` now keeps the key oUF's `AddGroup` returns as `auras.groupKey` and re-applies the spacing with `SetAuraGroupLayout` (`af25f66`). `max` and `onlyShowPlayer` could go live the same way and lose their "Reload to apply". Size, borders and cooldown are button options, set when a button is made, so they still need a reload.
-- Update 2026-11-11: the filter string and candidate filters now go live (`UF:ApplyAuraFilter`, `SaftUI-Unitframes/purge.lua`, nameplates Task 10), so `onlyShowPlayer` lost its "Reload to apply". `max` still needs a reload.
+- Update 2026-11-11: the filter string and candidate filters now go live (`UF:ApplyAuraFilter`, `SaftUI-Unitframes/aurafilters.lua`, nameplates Task 10), so `onlyShowPlayer` lost its "Reload to apply". `max` still needs a reload.
 - Update 2026-11-12: `max` now goes live through `SetAuraGroupMaxFrameCount` on every update, and the button size through `StyleButton` setting each button's size from the config in use, so Size, Relative size and Max lost their "Reload to apply" (the friendly nameplates build: a plate's aura count and size follow its kind). Borders and the cooldown are still baked into each button when it's made ("Nameplates: the Friendly page's aura borders and cooldown never reach plate buttons").
 
 **Shape of work:** A research pass on the AuraContainer API (group options, policies, removing groups), then a small change in `elements/auras.lua` that maps config to options. It may also need a config-schema cleanup to drop options that can't be supported.
@@ -1741,6 +1856,36 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)
+
+**What:** `UF:UpdateElement` calls `self:UpdateElementPosition(element, configOverride)`, but the signature is `UF:UpdateElementPosition(element, unitframe, configOverride)`. The override lands in the `unitframe` slot, which is then overwritten, so an element is always placed by its own config. With Mana as primary, power and additional power are sized by each other's config (`UF:UpdateElementSize`) but placed by their own. Commit f0dda64 meant the override to place the element too.
+
+**Why noticed:** The Blizzard theme round 2's Task 13 gave `UF:ElementKind` and `UF:ElementTheme` a `configOverride` so a bar's kind follows the size it is drawn at, and `UF.FillsFrame(configOverride or config)` then checks the override's position while the bar is placed by its own. That only matters if a user makes the player's power fill the unit frame and also turns Mana as primary on. Pre-existing; found in review, not caused by round 2.
+
+**Anchors:** `SaftUI-Unitframes/updaters.lua` (`UF:UpdateElement`, `UF:UpdateElementPosition`, `UF:UpdateElementSize`, `UF:ElementKind`, `UF:ElementTheme`, `UF.FillsFrame`); commit f0dda64; `SaftUI-Unitframes/elements/name.lua` (passes the string `'Name'` as its override).
+
+**What's been considered:** Fixing the call changes where those two bars sit (they would take the other bar's position) and would break `name.lua`, which passes a string as its override, so it needs its own look at which callers mean what. Not fixed in round 2 for that reason.
+
+**Shape of work:** Small: audit the callers of `UpdateElementPosition` and of the override, fix the argument, and pin the result with a test in `tests/unitframes/`.
+
+**Open questions:** Should the other bar's config place the element with Mana as primary, as f0dda64 intended, or does each bar keep its own spot?
+
+**Update 2026-11-12:** the friendly nameplates build added a second call of the same shape, for a plate's part that's off (`UF:UpdateElement`'s off branch, `self:UpdateElementPosition(element, configOverride)`). It places by the element's own config, as the first does, and the plates pass no override. Fix both together.
+
+**Resolved 2026-11-12:** fixed by the codebase cleanup's Task 2 (the report's bug 9). `name.lua` no longer passes a string as its override (16eb1e6), the signature is `UF:UpdateElementPosition(element, configOverride)`, and `UF:UpdateElement` hands the override over in both branches (`SaftUI-Unitframes/updaters.lua`). So with Mana as primary the Power and Additional power bars now trade places as well as sizes, as f0dda64 intended. Still owed: a look in game, and the user's word that trading places is wanted (a profile edit; the setting has no `/sui` control). It is step 5 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks).
+
+### 2026-11-07 — Fonts outline dropdowns show None as a blank entry
+
+**What:** `FN.outlines` in `SaftUI-Core/Media/fonts.lua` is the `values` table for every font outline dropdown, and its `NONE` entry is `st.retail and '' or 'NONE'`. `st.retail` is true on both clients, so the None choice shows as a blank line in `/sui` → Fonts and in the Auras text options. It looks like the `''` was meant as the font flag to pass to `SetFont` rather than the label. `FN:UpdateFontConfig` passes the saved `'NONE'` straight to `SetFont`.
+
+**Why noticed:** Building the action bars' Text options (Task 3 of `docs/superpowers/plans/2026-11-07-saftui-action-bars.md`). `SaftUI-ActionBars/options.lua` copies the table and names None itself, and `skin.lua` maps `'NONE'` to `''` for `SetFont`, as `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` (`OutlineFlags`) already does.
+
+**Anchors:** `SaftUI-Core/Media/fonts.lua` (`FN.outlines`, `FN:UpdateFontConfig`); `OutlineFlags` in `SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua` and `SaftUI-ActionBars/skin.lua`; `OutlineValues` in `SaftUI-ActionBars/options.lua`.
+
+**Shape of work:** Small: label `NONE` as 'None', map `'NONE'` to `''` in `FN:UpdateFontConfig`, then drop the local copies in the action bars and auras.
+
+**Resolved 2026-11-12:** fixed by the codebase cleanup's Tasks 1 and 8. `FN.outlines.NONE` is labelled 'None', and one shared `st.OutlineFlag(outline)` gives `SetFont` its flag (`''` for `'NONE'` or nil), both in `SaftUI-Core/Media/fonts.lua`. The fonts module, `SaftUI-ActionBars/skin.lua`, `Blizzard_BuffFramePosition.lua` and the options window's own text all use it, and the local `OutlineFlags` and `OutlineValues` copies are gone (the action bars' options take the Fonts module's `outlines`). Still owed: a look at the lists in game, step 20 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks).
 
 ### 2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config
 
