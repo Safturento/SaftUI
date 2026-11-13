@@ -140,10 +140,10 @@ local LEAVE_CROP_MIN, LEAVE_CROP_MAX = 0.22, 0.78
 
 -- The leave vehicle button has no hotkey, stack count or macro name, but
 -- skin.lua lays those out from a bar's text settings. These keep them hidden.
--- It never has a cooldown either; its numbers get a bar's defaults (skin.lua).
+-- It never has a cooldown either, and with no countdown here skin.lua gives
+-- its numbers a bar's default place and font.
 local NO_TEXT = { show = false, size = 10, point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 }
-local NO_COUNTDOWN = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 }
-local LEAVE_TEXT = { hotkey = NO_TEXT, count = NO_TEXT, macro = NO_TEXT, countdown = NO_COUNTDOWN }
+local LEAVE_TEXT = { hotkey = NO_TEXT, count = NO_TEXT, macro = NO_TEXT }
 
 -- The header's state driver: its token changes as you get into or out of a
 -- vehicle you can leave, as you start or stop possessing, and as you mount or

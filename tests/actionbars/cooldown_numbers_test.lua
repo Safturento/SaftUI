@@ -13,7 +13,12 @@
 --     the extra buttons) set their font, size and outline and their place at
 --     once, show what's drawn until they're set, and hold through
 --     LibActionButton's button update, a restyle, a theme switch and a
---     profile switch, back to the defaults too.
+--     profile switch, back to the defaults too. Its Reset unsets the font,
+--     size and outline and puts the place back.
+--   - A button styled with text settings that name no countdown (the leave
+--     vehicle button's, extras.lua) gets a bar's defaults.
+--   - An open /sui is told to draw again when the setting changes, and only
+--     for that setting.
 --
 -- Real: SaftUI-ActionBars' files but hideblizzard.lua and keybindmode.lua, in
 -- TOC order, over Core's helpers (load_core_helpers). Made by hand:
@@ -31,6 +36,8 @@
 --     AB:Build isn't run (it needs LibActionButton's real buttons), so
 --     AB.built stays false and AB:UpdateBindings does nothing; the toggle's
 --     case sets it by hand, since the page is drawn only for built bars.
+-- The shell's st.Config stands in for Core's Config module (tests/lib/shell.lua):
+-- the toggle's case counts its Refresh, the call that redraws an open /sui.
 -- A profile switch is Config:UpdateConfig's steps for the action bars: the
 -- module bound to the new profile, then AB:UpdateConfig, which waits for the
 -- bars to be built, so AB:UpdateBar on the bar here, as it runs it for each.
@@ -151,8 +158,13 @@ test("Cooldown numbers is Blizzard's Show Numbers for Cooldowns, not a profile s
 	eq(stub.cvars[CVAR], '0', 'unchecked: off')
 	eq(dump(st.config.profile), before, 'nothing is written to the profile')
 
+	local refreshes = 0
+	function st.Config:Refresh() refreshes = refreshes + 1 end
 	stub.set_cvar_secure(CVAR, '1')
 	eq(option.get(), true, "turned on in Blizzard's options: shown checked")
+	eq(refreshes, 1, 'and an open /sui is told to draw again, once')
+	stub.set_cvar_secure('nameplateShowFriendlyNpcs', '1')
+	eq(refreshes, 1, 'another setting changing tells it nothing')
 
 	stub.in_combat = true
 	option.set({ 'countdown' }, false)
@@ -284,6 +296,44 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	eq(T.anchor(numbers, names), 'CENTER button CENTER 0.00,0.00', 'in the middle again')
 	switch_profile(first)
 	eq(look(), mine, "back to the first profile: its numbers again")
+
+	-- Reset: the font, size and outline unset again and the place put back.
+	local reset = group.args.reset
+	eq(reset.type, 'execute', 'a Reset button')
+	eq(reset.name, 'Reset', 'named Reset')
+	check(group.args.outline.order < reset.order and reset.order < position.order, 'after Outline, before the Position block')
+	eq(reset.confirm, true, 'which asks first')
+	eq(reset.confirmText, "Reset Bar 1's cooldown numbers to SaftUI's defaults?", 'naming the bar')
+	reset.func()
+	local countdown = AB.config.bar1.text.countdown
+	eq(tostring(countdown.font) .. ',' .. tostring(countdown.size) .. ',' .. tostring(countdown.outline),
+		'nil,nil,nil', 'the font, size and outline are unset')
+	eq(('%s %s %s,%s'):format(countdown.point, countdown.rel_point, countdown.x_off, countdown.y_off),
+		'CENTER CENTER 0,0', 'and the place is the default')
+	eq(numbers:GetFontObject(), st:GetFont('pixel_med'), 'the numbers are on Pixel Med again, at once')
+	eq(font(numbers), font(st:GetFont('pixel_med')), "drawn in its font")
+	eq(T.anchor(numbers, names), 'CENTER button CENTER 0.00,0.00', 'in the middle')
+	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
+		pixelMed.font_name .. ',' .. pixelMed.font_size .. ',' .. OUTLINE, "the rows show Pixel Med's again")
+	AB.config.bar1.size = 30
+	AB:UpdateBar('bar1')
+	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the font follows the button size again: Pixel at 30px')
+	eq(font(numbers), font(st:GetFont('pixel')), "drawn in Pixel's font")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("text settings with no countdown, as the leave vehicle button's, give a bar's defaults", function()
+	fresh()
+	-- extras.lua styles its leave vehicle button with text settings of its own
+	-- (LEAVE_TEXT, a local there), which name no countdown: these are a copy.
+	local NO_TEXT = { show = false, size = 10, point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+	local b = button('CooldownTestLeave')
+	AB:StyleButton(b, { size = 30, text = { hotkey = NO_TEXT, count = NO_TEXT, macro = NO_TEXT } },
+		AB.config.theme, AB.config.background)
+	local numbers = b.cooldown:GetCountdownFontString()
+	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'Pixel, on a 30px button')
+	eq(stub.state(numbers).font, nil, 'and no font of its own')
+	eq(T.anchor(numbers, { [b] = 'button' }), 'CENTER button CENTER 0.00,0.00', 'in the middle')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

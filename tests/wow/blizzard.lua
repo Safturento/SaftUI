@@ -159,24 +159,25 @@ end)
 
 -- Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua (the same on both
 -- clients): RegisterStateDriver(frame, state, values) is
--- RegisterAttributeDriver(frame, 'state-' .. state, values), which hands the
--- frame and its conditions to the secure SecureStateDriverManager with two
--- SetAttribute calls, blocked for addon code in combat. Here the driver is
--- only remembered, as stub.state(frame).state_drivers['state-' .. state] =
--- values: no macro condition is evaluated, so a visibility driver shows or
--- hides nothing and no state attribute is set. In combat the call is noted in
+-- RegisterAttributeDriver(frame, 'state-' .. state, values), which does nothing
+-- without values and otherwise hands the frame and its conditions (values
+-- joined onto the attribute's name, so a number is taken as text) to the
+-- secure SecureStateDriverManager with two SetAttribute calls, blocked for
+-- addon code in combat. Here the driver is only remembered, as
+-- stub.state(frame).state_drivers['state-' .. state], the conditions as text:
+-- no macro condition is evaluated, so a visibility driver shows or hides
+-- nothing and no state attribute is set. In combat the call is noted in
 -- stub.blocked as { RegisterStateDriver, frame, state } and does nothing.
 function RegisterStateDriver(frame, state, values)
-	if type(state) ~= 'string' or type(values) ~= 'string' then
-		error('Usage: RegisterStateDriver(frame, state, values)', 2)
-	end
+	local attribute = 'state-' .. state
+	if not values then return end
 	local s = stub.state(frame)
 	if InCombatLockdown() then
 		stub.blocked[#stub.blocked + 1] = { RegisterStateDriver, frame, state }
 		return
 	end
 	s.state_drivers = s.state_drivers or {}
-	s.state_drivers['state-' .. state] = values
+	s.state_drivers[attribute] = '' .. values
 end
 
 ------------------------------------------------------------------ backdrops

@@ -282,35 +282,46 @@ local function CountdownFontKey(size)
 	return size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel'
 end
 
+-- A bar's default place for the numbers, in the middle, with no font, size or
+-- outline of its own (config.lua). For a config with no text.countdown (the
+-- leave vehicle button's, extras.lua), so it needs no copy to keep in step.
+local DEFAULT_COUNTDOWN = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+
 -- The font, size and outline of the cooldown numbers on a bar with config:
 -- each the bar's own (text.countdown) where it's set, else that of its default
 -- font on the Fonts tab (CountdownFontKey). /sui shows these.
 function AB:GetCountdownFont(config)
-	local own = config.text.countdown
+	local own = config.text.countdown or DEFAULT_COUNTDOWN
 	local default = st.config.profile.fonts[CountdownFontKey(config.size)]
 	return own.font or default.font_name, own.size or default.font_size, own.outline or default.font_outline
 end
 
 -- Draws a button's cooldown numbers, its cooldown's own countdown text, in the
--- bar's font and at the bar's place for them (text.countdown). From
--- AB:StyleButton, so out of combat.
+-- bar's font and at the bar's place for them (text.countdown, else a bar's
+-- defaults). From AB:StyleButton, so out of combat.
 --   - While the bar sets no font, size or outline, they're in the default font
 --     object (CountdownFontKey), as they always were, which follows the Fonts
 --     tab at once. Once one is set, SetFont goes over it, the others from that
---     font. Back to none (a profile without them), the font object alone may
---     not replace a font set with SetFont (.agents/testing.md, stub rule 3),
---     so its font is set too; that button then takes a Fonts tab change on its
---     next restyle.
+--     font. Back to none (a profile without them, or the section's Reset in
+--     /sui), the font object alone may not replace a font set with SetFont
+--     (.agents/testing.md, stub rule 3), so its font is set too; that button
+--     then takes a Fonts tab change on its next restyle.
 --   - The text is anchored to the button, as the other texts are. Its default,
 --     the middle, is the middle of the cooldown over the icon too, where the
 --     game puts the numbers. It's a region of the cooldown, a child of SaftUI's
---     button (.agents/taint.md rule 1), and nothing else places it or sets its
---     font: Blizzard's code never does, LibActionButton only shows or hides it
---     (it re-anchors the cooldown itself, put back by OnLABButtonUpdate), and
---     addons that move it (tullaCTC, Inomena) set its point and leave it.
+--     button (.agents/taint.md rule 1).
+--   - What's known to touch it: Blizzard's Lua never touches these buttons'
+--     countdown text (it calls SetCountdownFont only on cooldowns of its own,
+--     such as the Cooldown Manager's and the arena frames'). LibActionButton only
+--     shows or hides it; it re-anchors the cooldown itself, which
+--     OnLABButtonUpdate puts back and which the text, anchored to the button,
+--     doesn't follow. tullaCTC sets the font and point again on every cooldown
+--     start, so it shows nothing either way. Whether the client's own code
+--     places or fonts the text again when a cooldown starts isn't known: an
+--     in-game check (a custom place, watched through a cooldown and the next).
 local function StyleCountdown(button, skin, config)
 	local numbers = button.cooldown:GetCountdownFontString()
-	local text = config.text.countdown
+	local text = config.text.countdown or DEFAULT_COUNTDOWN
 	local object = st:GetFont(CountdownFontKey(config.size))
 	if object then
 		numbers:SetFontObject(object)

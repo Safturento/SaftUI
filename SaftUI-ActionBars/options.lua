@@ -33,8 +33,9 @@ local AB = st:GetModule('ActionBars')
 	    with show, font, size, outline, and a Position block with no TO part:
 	    the text's point (THIS), the button's point it sits on (AT ITS) and the
 	    offsets. The cooldown numbers have no show (Cooldown numbers, above,
-	    shows them on every bar), and their font, size and outline show what's
-	    drawn until they're set (AB:GetCountdownFont). The pet and stance bars
+	    shows them on every bar), their font, size and outline show what's
+	    drawn until they're set (AB:GetCountdownFont), and their Reset unsets
+	    those and puts their place back. The pet and stance bars
 	    only have the hotkey and the cooldown numbers (AB.barTypes texts); the
 	    extra buttons have no Text tab.
 	  - Visibility: always, in combat only, or faded until moused over, with how
@@ -163,14 +164,19 @@ local TEXT_DESCS = {
 
 -- The cooldown numbers' section note, and what their Font, Size and Outline
 -- add: what's drawn until they're set (AB:GetCountdownFont).
-local COUNTDOWN_NOTE = "Whether they show is Cooldown numbers, above the bars: Blizzard's own setting, for every bar."
-local COUNTDOWN_UNSET = " Until it's set here, it's that of Pixel Med on buttons of 36px and up and of Pixel below (Global Settings > Fonts)."
+local COUNTDOWN_NOTE = "Cooldown numbers, at the top of this page, shows or hides them on every bar (Blizzard's own setting)."
+local COUNTDOWN_UNSET = " Until set here, Pixel Med's on buttons of 36px and up and Pixel's below (Global Settings > Fonts)."
+
+-- What the cooldown numbers' Reset puts back: their place, from the bar's
+-- defaults, while their font, size and outline go back to unset.
+local COUNTDOWN_PLACE = { 'point', 'rel_point', 'x_off', 'y_off' }
 
 -- One text's options (hotkey, count, macro name or cooldown numbers), a box in
 -- the Text tab. Its Position block has no TO part: the text sits inside its
 -- own button. It reads and writes the text's point, rel_point, x_off and y_off,
--- and goes last. The cooldown numbers have no Show, and their Font, Size and
--- Outline read what's drawn until they're set (see the top).
+-- and goes last. The cooldown numbers have no Show, their Font, Size and
+-- Outline read what's drawn until they're set, and a Reset before the Position
+-- block unsets those three and puts the place back (see the top).
 function AB:GetTextOptions(id, kind, name, order)
 	local generators = st.Config.generators
 	local what = TEXT_DESCS[kind]
@@ -225,6 +231,24 @@ function AB:GetTextOptions(id, kind, name, order)
 			local font, size, outline = self:GetCountdownFont(self.config[id])
 			return ({ font = font, size = size, outline = outline })[info[#info]]
 		end
+		options.args.reset = {
+			type = 'execute',
+			size = 'small',
+			order = 4.5,
+			name = 'Reset',
+			desc = "Puts the cooldown numbers' font, size, outline and place back to SaftUI's default: Pixel Med on buttons of 36px and up and Pixel below, following Global Settings > Fonts, in the middle of the button.",
+			confirm = true,
+			confirmText = ("Reset %s's cooldown numbers to SaftUI's defaults?"):format(self:GetBarLabel(id)),
+			func = function()
+				local countdown = self.config[id].text.countdown
+				countdown.font, countdown.size, countdown.outline = nil, nil, nil
+				local default = st.defaults.actionbars[id].text.countdown
+				for _, key in ipairs(COUNTDOWN_PLACE) do
+					countdown[key] = default[key]
+				end
+				self:UpdateBar(id)
+			end,
+		}
 	end
 	return options
 end
@@ -410,7 +434,7 @@ function AB:GetConfigTable()
 		order = 1,
 		type = 'toggle',
 		name = 'Cooldown numbers',
-		desc = "Show the seconds left on a button's cooldown, on every bar. This is Blizzard's own Show Numbers for Cooldowns (Options > Gameplay > Action Bars), so it changes there too, and SaftUI's profiles don't keep it. Each bar's Text tab sets their font and place.",
+		desc = "Show the time left on a button's cooldown, on every bar. This is Blizzard's own Show Numbers for Cooldowns (Options > Gameplay > Action Bars), so it changes there too, and SaftUI's profiles don't keep it. Each bar's Text tab sets the numbers' font and place.",
 		get = function() return self:ShowsCooldownNumbers() end,
 		set = function(_, value) self:SetShowCooldownNumbers(value) end,
 	}
