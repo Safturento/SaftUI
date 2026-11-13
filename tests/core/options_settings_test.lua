@@ -20,7 +20,7 @@ local st, OW, W, drawn
 -- The heights the Fill page's row was given (its SetHeight), in order.
 local fillHeights
 
--- One small page, as options_window_test.lua's SmallModule.
+-- One small page, as options_window_helpers.lua's SmallModule.
 local function SmallModule(key, name, category)
 	local module = st:NewModule(key)
 	function module:GetConfigTable()
@@ -192,7 +192,7 @@ local METAL = table.concat({
 	'TopRightCorner=UI-Frame-Metal-CornerTopRight',
 }, ',')
 
--- /sui's frames where options_window_test.lua's Task 1 case pins them under
+-- /sui's frames where options_window_look_test.lua's first case pins them under
 -- Thick and Thin, on the Loot page (one tab: no tab row).
 local function check_own(where)
 	local F = OW.GetFrames()

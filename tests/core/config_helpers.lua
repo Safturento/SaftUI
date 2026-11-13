@@ -16,7 +16,7 @@
 -- load_options_widgets() loads, optionsbody.lua and the window's files
 -- load_options_window() loads, which config.lua's Open, Close and GetWindow
 -- use) isn't loaded here: a test that opens /sui loads them after this
--- (options_window_test.lua).
+-- (options_window_helpers.lua).
 --
 -- Modules a test wants in the tree (e.g. SaftUI-Misc/experience.lua) load
 -- after this, and the test enables them.

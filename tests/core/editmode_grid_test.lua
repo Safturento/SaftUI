@@ -217,7 +217,7 @@ test('the footer and the screen events', function()
 	st.CreateButton = createButton
 
 	-- Edit mode is on, but this world has no /sui window (the shell's
-	-- GetWindow is nil), so the buttons aren't shown. options_window_test.lua
+	-- GetWindow is nil), so the buttons aren't shown. options_frame_test.lua
 	-- checks them on the real window's footer.
 	check(EM.active and not buttons[1]:IsVisible(), 'no /sui window: the footer buttons are hidden')
 
