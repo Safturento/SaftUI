@@ -190,8 +190,7 @@ line as a row on the page.
   check list (`W.OpenCheckList` exists). A menu item is an option type or field that draws
   Show box, name and dots and opens a small menu drawn from an option group, position
   block included. New fields go in `SAFTUI_FIELDS` and `.agents/edit-mode.md`.
-- **The diff icon** is three lines, so it can be drawn from plain textures; no image file
-  is needed.
+- **The diff icon** is `st.icons.diff` (added with the other Lucide icons in e2094e5).
 - **The menu:** closes on Escape, a click outside, a page change and the window closing;
   only one is open at a time; a dropdown's list or the position block's TO list opened
   inside it draws above it and isn't cut off by it; it stays on screen near the window's
