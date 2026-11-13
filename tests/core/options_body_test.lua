@@ -1,8 +1,9 @@
 -- SaftUI-Core/Config/optionslayout.lua and optionsbody.lua: the layout math that
--- needs no frame (LayoutRows, Dividers, LayoutSections, SidebarEntries), the
--- body that draws sections of rows into a content frame (cells, dividers, whole
--- pixels, small cells), and a custom type's bare row: with no label, titled,
--- and a fill row that stretches to the body's height.
+-- needs no frame (LayoutRows, Dividers, LayoutSections, SidebarEntries,
+-- ButtonRow), the body that draws sections of rows into a content frame (cells,
+-- dividers, whole pixels, small cells, lines of aligned buttons), and a custom
+-- type's bare row: with no label, titled, and a fill row that stretches to the
+-- body's height.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
@@ -21,11 +22,11 @@ local cell, close_all, drawn, FillRowsTable, frames = H.cell, H.close_all, H.dra
 local FillRowsModule, tick = H.FillRowsModule, H.tick
 
 -- A body of width, on a fresh content frame, with the given options on one
--- page (each { key, type, name, size }). Returns the body and its cells by key.
+-- page (each { key, type, name, size, align }). Returns the body and its cells by key.
 local function draw_body(width, options)
 	local store, args = {}, {}
 	for i, o in ipairs(options) do
-		args[o[1]] = { type = o[2], name = o[3], size = o[4], order = i, min = 0, max = 10, step = 1, values = { a = 'A' } }
+		args[o[1]] = { type = o[2], name = o[3], size = o[4], align = o[5], order = i, min = 0, max = 10, step = 1, values = { a = 'A' } }
 		store[o[1]] = o[2] == 'toggle' and true or o[2] == 'color' and { 1, 0, 0, 1 } or o[2] == 'input' and 'text' or nil
 	end
 	local root = { page = {
@@ -98,6 +99,63 @@ test('Dividers: one between halves that both have a row, one between two smalls 
 	eq(table.concat(got, ' '), 'half@0+34 half@34+60 quarter/1@34+60 half@94+34 quarter/1@94+34 quarter/2@94+34 half@162+34',
 		'a line\'s dividers are its height; a wide line and a half alone get none')
 	eq(#st.OptionsBody.Dividers(OW.LayoutRows({})), 0, 'no rows, no dividers')
+end)
+
+test('LayoutRows: aligned buttons in a row make a group; right ones share the line of a wide row before them, others take a line of their own', function()
+	local function r(key, size, align, rowType) return { key = key, size = size, align = align, type = rowType } end
+	local rows = {
+		r('pick', 'wide'), r('all', 'small', 'right'), r('none', nil, 'right'), -- line 0: All and None at the wide row's right end
+		r('a'), r('b'),                                                        -- line 34: the next line, as after any line
+		r('ok', nil, 'center'), r('cancel', nil, 'center'),                    -- line 68: a centred pair
+		r('c', 'small'), r('go', nil, 'right'),                                -- line 102: c; line 136: go alone, at the right
+		r('d', 'small'),                                                       -- line 170
+		r('text', 'wide', nil, 'description'), r('more', nil, 'right'),        -- 204: a description shares no line; 238: more
+		r('mid', nil, 'center'),                                               -- line 272: another align, another group
+	}
+	local placed, height = OW.LayoutRows(rows)
+	local function at(i)
+		local p = placed[i]
+		if p.col == 'buttons' then return p.group.align .. '#' .. p.index .. '@' .. p.y end
+		return p.col .. '/' .. tostring(p.quarter) .. '@' .. p.y
+	end
+	local got = {}
+	for i = 1, #placed do got[i] = at(i) end
+	eq(table.concat(got, ' '), 'full/nil@0 right#1@0 right#2@0 1/nil@34 2/nil@34 center#1@68 center#2@68 '
+		.. '1/1@102 right#1@136 1/1@170 full/nil@204 right#1@238 center#1@272', 'where each row goes')
+	eq(height, 306, 'nine lines')
+	check(placed[2].group == placed[3].group, 'All and None are one group')
+	check(placed[1].buttons == placed[2].group, 'on the wide row\'s line')
+	check(placed[11].buttons == nil, 'not on the description\'s')
+	check(placed[6].group ~= placed[2].group and placed[13].group ~= placed[12].group, 'another align is another group')
+	eq(#placed[2].group.rows, 2, 'the group holds its rows')
+	check(placed[2].group.rows[1] == rows[2] and placed[2].group.rows[2] == rows[3], 'in order')
+
+	-- A line holding buttons has no dividers: only a and b's line has one.
+	local dividers = st.OptionsBody.Dividers(placed)
+	eq(#dividers, 1, 'one divider')
+	eq(dividers[1].at .. '@' .. dividers[1].y, 'half@34', "between a and b")
+
+	-- A taller button makes its line taller, the wide row's too.
+	placed, height = OW.LayoutRows({ r('pick', 'wide'), r('go', nil, 'right'), r('a') },
+		function(row) return row.key == 'go' and 40 or 34 end)
+	eq(placed[3].y, 40, 'the line after the 40-high button starts at 40')
+	eq(height, 74)
+
+	-- alignOf overrides the rows' align (search results draw none).
+	placed = OW.LayoutRows(rows, nil, nil, function() return nil end)
+	for _, p in ipairs(placed) do check(p.col ~= 'buttons', p.row.key .. ' is laid out by its size') end
+end)
+
+test('ButtonRow: buttons side by side 12 apart, the last at the right edge, or the row in the middle, on whole units', function()
+	local ButtonRow = st.OptionsBody.ButtonRow
+	local xs, left = ButtonRow({ 80, 80 }, 'right', 520)
+	eq(table.concat(xs, ','), '348,440', 'the second ends at 520')
+	eq(left, 348, 'the row starts at the first')
+	xs, left = ButtonRow({ 118, 80 }, 'center', 520)
+	eq(table.concat(xs, ','), '155,285', '155 on either side')
+	eq(left, 155)
+	xs = ButtonRow({ 81 }, 'center', 520)
+	eq(xs[1], 219, 'rounded down to a whole unit')
 end)
 
 ------------------------------------------------------------------ the body
@@ -232,6 +290,63 @@ test('quarter cells are whole pixels, the second flush with its column\'s right 
 	eq(d.f.x, 280); eq(d.f.w, 108)
 	local _, wide = draw_body(520, { { 'w', 'input', 'Wide', 'wide' } })
 	eq(wide.w.frame:GetWidth(), 520, 'a wide row takes the body\'s width')
+end)
+
+test("buttons aligned right sit at the right end of a wide row's line, which ends 24 before them; centred ones in the middle; no dividers", function()
+	local body, by = draw_body(520, {
+		{ 'pick', 'select', 'Copy from', 'wide' },
+		{ 'all', 'execute', 'All', 'small', 'right' }, { 'none', 'execute', 'None', nil, 'right' },
+		{ 'a', 'toggle', 'A' }, { 'b', 'toggle', 'B' },
+		{ 'ok', 'execute', 'Confirm copy', nil, 'center' }, { 'cancel', 'execute', 'Cancel', nil, 'center' },
+	})
+	-- All and None: 80 wide each (a small size changes nothing), 12 apart, None flush with the right edge.
+	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '348+80', 'All')
+	eq(point_x(by.none.frame) .. '+' .. by.none.frame:GetWidth(), '440+80', 'None ends at 520')
+	check(by.all.y == by.pick.y and by.none.y == by.pick.y, "on the wide row's line")
+	-- The wide row ends 24 before All, and its label has the rest.
+	eq(point_x(by.pick.frame), 0, 'the wide row at the left')
+	eq(by.pick.frame:GetWidth(), 324, 'up to 24 before All')
+	eq(by.pick.label:GetWidth(), 324 - 170 - 10, 'its label is the rest of the cell')
+	local point, rel, relPoint = by.pick.widget.frame:GetPoint(1)
+	check(point == 'RIGHT' and rel == by.pick.frame and relPoint == 'RIGHT', "the dropdown at its cell's right end")
+	-- Each button at its cell's left, the cell as wide as the button.
+	for _, key in ipairs({ 'all', 'none', 'ok', 'cancel' }) do
+		local p, r, rp, x = by[key].widget.frame:GetPoint(1)
+		check(p == 'LEFT' and r == by[key].frame and rp == 'LEFT' and x == 0, key .. ' at its cell\'s left')
+		eq(by[key].frame:GetWidth(), by[key].widget:GetWidth(), key .. "'s cell is the button's width")
+	end
+	-- Confirm copy and Cancel: a pair in the middle, Confirm copy first, 12 apart.
+	local okWidth, cancelWidth = by.ok.widget:GetWidth(), by.cancel.widget:GetWidth()
+	local left = math.floor((520 - okWidth - 12 - cancelWidth) / 2)
+	eq(point_x(by.ok.frame), left, 'Confirm copy on the left')
+	eq(point_x(by.cancel.frame), left + okWidth + 12, 'Cancel 12 after it')
+	check(math.abs(left - (520 - (left + okWidth + 12 + cancelWidth))) <= 1, 'the same room either side')
+	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 34, 'one line, under the toggles')
+	-- The one divider is the toggles', between the halves at 260.
+	local got = {}
+	for _, line in ipairs(body.pools.line.used) do
+		if line:GetWidth() == 1 then
+			local _, _, _, x, y = line:GetPoint(1)
+			got[#got + 1] = x .. ',' .. -y
+		end
+	end
+	eq(table.concat(got, ' '), '260,' .. by.a.y, 'none beside the buttons')
+	body:Release()
+end)
+
+test('search results lay aligned buttons out as halves, as any result', function()
+	local args = {
+		pick = { type = 'select', name = 'Pick', size = 'wide', order = 1, values = { a = 'A' } },
+		all = { type = 'execute', name = 'All', align = 'right', order = 2, func = function() end },
+	}
+	local root = { page = { type = 'group', name = 'Page', args = args, get = function() end, set = function() end } }
+	local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, 520)
+	body:DrawResults(OM.BuildView(root, 'page').sections, function() end)
+	local by = {}
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	eq(point_x(by.pick.frame) .. '+' .. by.pick.frame:GetWidth(), '0+240', 'the wide row a half')
+	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '280+240', 'the button the other half')
+	body:Release()
 end)
 
 test('LayoutSections: titled sections get a line, an untitled one after a nested group continues without one', function()
