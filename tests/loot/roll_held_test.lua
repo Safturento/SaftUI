@@ -308,6 +308,7 @@ local function world()
 	load_saftui('SaftUI-Loot/roll.lua')
 	load_saftui('SaftUI-Loot/rolltest.lua')
 	load_saftui('SaftUI-Loot/rollinfo.lua')
+	load_saftui('SaftUI-Loot/Feed/loothistory.lua')
 	load_saftui('SaftUI-Loot/Feed/rolls.lua')
 	S = LT.ROLL_STATE
 	LT:InitializeRollFrame()
