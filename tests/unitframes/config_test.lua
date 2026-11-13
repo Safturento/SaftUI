@@ -1,5 +1,6 @@
 -- SaftUI-Unitframes/config/config.lua's /sui pieces: the Copy from dialog
--- (UF:OpenCopyTable, drawn by st.OptionsWindow:OpenDialog), the order of the
+-- (UF:OpenCopyTable, drawn by st.OptionsWindow:OpenDialog: its rows, its
+-- layout under each theme, Cancel), the order of the
 -- units in the page's picker, AceConfigRegistry's validation of the table, and
 -- each unit's element tabs (the elements' GetConfigTable).
 --
@@ -121,18 +122,18 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	local d = OW.GetDialogFrames()
 	eq(d.title:GetText(), 'Clone player from..', 'its title')
 
-	-- Copy from, All and None, a toggle per setting of the unit's, Confirm copy.
+	-- Copy from, All and None, a toggle per setting of the unit's, Confirm copy and Cancel.
 	local keys = rows()
 	eq(table.concat(keys, ',', 1, 3), 'copy_from,toggle_all,toggle_none', 'the unit to copy from, All, None')
-	eq(keys[#keys], 'accept', 'Confirm copy last')
+	eq(keys[#keys - 1] .. ',' .. keys[#keys], 'accept,cancel', 'Confirm copy, then Cancel, last')
 	local expected, got = {}, {}
 	for key in pairs(P.player) do expected[#expected + 1] = key end
-	for i = 4, #keys - 1 do got[#got + 1] = keys[i] end
+	for i = 4, #keys - 2 do got[#got + 1] = keys[i] end
 	table.sort(expected)
 	table.sort(got)
 	eq(table.concat(got, ','), table.concat(expected, ','), "a toggle per setting of player's")
 	check(#got > 10, 'many of them: ' .. #got)
-	for i = 4, #keys - 1 do
+	for i = 4, #keys - 2 do
 		local size = cell(keys[i]).row.size
 		check(size == nil or size == 'normal', keys[i] .. ' is a normal toggle, so its label has half the line: ' .. tostring(size))
 	end
@@ -156,11 +157,11 @@ test('Copy from opens a SaftUI dialog whose rows come from its table, and copies
 	-- All, then None, then width and health.
 	click(cell('toggle_all').widget.frame)
 	local all = true
-	for i = 4, #keys - 1 do all = all and cell(keys[i]).widget.value end
+	for i = 4, #keys - 2 do all = all and cell(keys[i]).widget.value end
 	check(all, 'All ticks every setting')
 	click(cell('toggle_none').widget.frame)
 	local none = true
-	for i = 4, #keys - 1 do none = none and not cell(keys[i]).widget.value end
+	for i = 4, #keys - 2 do none = none and not cell(keys[i]).widget.value end
 	check(none, 'None clears them')
 	click(cell('width').widget.frame)
 	click(cell('health').widget.frame)
@@ -189,6 +190,95 @@ test("opening Copy from again starts over, with the new unit's settings", functi
 		if c.row.type == 'toggle' then check(not c.widget.value, key .. ' starts unticked') end
 	end
 	check(cell('accept').widget:IsDisabled(), 'no unit picked yet')
+	OW:CloseDialog()
+end)
+
+-- Where a drawn cell starts in the dialog's content.
+local function left(c)
+	local _, _, _, x = c.frame:GetPoint(1)
+	return x
+end
+
+-- The vertical dividers drawn in the dialog, as their y in the content.
+local function divider_ys()
+	local ys = {}
+	for _, line in ipairs(OW.GetDialogFrames().body.pools.line.used) do
+		if line:GetWidth() == 1 then
+			local _, _, _, _, y = line:GetPoint(1)
+			ys[-y] = true
+		end
+	end
+	return ys
+end
+
+-- The first line: Copy from's label and dropdown, then All and None at the
+-- right end, with no dividers. The last: Confirm copy and Cancel in the
+-- middle, as Blizzard's popup dialogs place their buttons.
+local function check_copy_layout(where)
+	local d = OW.GetDialogFrames()
+	local width = d.content:GetWidth()
+	local pick, all, none = cell('copy_from'), cell('toggle_all'), cell('toggle_none')
+	eq(pick.label:GetText(), 'Copy from', where .. ': the label')
+	eq(pick.label:GetStringWidth(), pick.label:GetUnboundedStringWidth(), where .. ': the label is not cut')
+	check(all.y == pick.y and none.y == pick.y, where .. ': All and None on its line')
+	eq(left(none) + none.frame:GetWidth(), width, where .. ': None at the right edge')
+	eq(left(all) + all.frame:GetWidth() + 12, left(none), where .. ': All 12 before None')
+	eq(left(pick), 0, where .. ': the label at the left')
+	eq(left(pick) + pick.frame:GetWidth() + 24, left(all), where .. ': the dropdown ends 24 before All')
+	local point, rel, relPoint, x = pick.widget.frame:GetPoint(1)
+	check(point == 'RIGHT' and rel == pick.frame and relPoint == 'RIGHT' and x == 0, where .. ': the dropdown at its right end')
+	check(not divider_ys()[pick.y], where .. ': no divider on the line')
+
+	local accept, cancel = cell('accept'), cell('cancel')
+	eq(accept.y, cancel.y, where .. ': Confirm copy and Cancel on one line')
+	eq(left(accept) + accept.frame:GetWidth() + 12, left(cancel), where .. ': Confirm copy, then Cancel, 12 apart')
+	local room = width - (left(cancel) + cancel.frame:GetWidth())
+	check(math.abs(left(accept) - room) <= 1, where .. ': in the middle: ' .. left(accept) .. ' and ' .. room)
+	local last = 0
+	for _, c in ipairs(d.body.cells) do last = math.max(last, c.y) end
+	eq(accept.y, last, where .. ': at the bottom')
+	check(not divider_ys()[accept.y], where .. ': no divider on their line')
+end
+
+test("Copy from's label has room: All and None sit at its line's right end; Confirm copy and Cancel in the middle at the bottom", function()
+	UF:OpenCopyTable('player')
+	check_copy_layout('Thick')
+	-- Picking a unit draws it again the same way.
+	cell('copy_from').widget:Commit('target')
+	eq(OW.GetDialogFrames().title:GetText(), 'Clone player from target', 'picked')
+	check_copy_layout('after a pick')
+	OW:CloseDialog()
+end)
+
+test('Cancel closes Copy from and copies nothing; Confirm copy still asks and waits for a unit', function()
+	local P = UF:GetProfileConfig()
+	P.player.width, P.target.width = 1, 123
+	local before = updates
+	UF:OpenCopyTable('player')
+	eq(cell('cancel').row.name, 'Cancel', 'named Cancel')
+	check(not cell('cancel').widget:IsDisabled(), 'Cancel works before a unit is picked')
+	click(cell('cancel').widget.frame)
+	check(not OW:IsDialogShown(), 'Cancel closes it, before a pick')
+
+	UF:OpenCopyTable('player')
+	check(cell('accept').widget:IsDisabled(), 'Confirm copy waits for a unit')
+	cell('copy_from').widget:Commit('target')
+	click(cell('toggle_all').widget.frame)
+	check(not cell('accept').widget:IsDisabled(), 'Confirm copy is on once one is picked')
+	click(cell('cancel').widget.frame)
+	check(not OW:IsDialogShown(), 'Cancel closes it, after a pick and All')
+	eq(W.ConfirmText(), nil, 'without asking')
+	eq(P.player.width, 1, 'nothing copied')
+	eq(updates, before, 'and the unit frames not updated')
+
+	UF:OpenCopyTable('player')
+	cell('copy_from').widget:Commit('target')
+	click(cell('toggle_all').widget.frame)
+	click(cell('accept').widget.frame)
+	eq(W.ConfirmText(), 'Are you sure you want to clone player from target?', 'Confirm copy asks')
+	click(W.GetDialogFrames().no)
+	check(OW:IsDialogShown(), 'No leaves the dialog open')
+	eq(P.player.width, 1, 'and copies nothing')
 	OW:CloseDialog()
 end)
 
@@ -864,4 +954,18 @@ test("the name tag's Class color colors a player's name by class, and leaves a s
 	issecretvalue = real
 	name.colorClass = false
 	stub.units.target = nil
+end)
+
+-- Last, since it switches SaftUI's theme.
+test('Copy from draws under Thin, Blizzard and Thick, its buttons in each look', function()
+	for _, name in ipairs({ 'thin', 'blizzard', 'thick' }) do
+		T.theme(name)
+		UF:OpenCopyTable('player')
+		check_copy_layout(name)
+		for _, key in ipairs({ 'toggle_all', 'toggle_none', 'accept', 'cancel' }) do
+			eq(cell(key).widget.blizzard or false, name == 'blizzard', name .. ': ' .. key .. " is the look's button")
+		end
+		OW:CloseDialog()
+	end
+	eq(#take_errors(), 0, 'no errors')
 end)
