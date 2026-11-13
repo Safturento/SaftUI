@@ -162,10 +162,10 @@ end
 
 -- st:ThemeChanged's steps, as Config:UpdateConfig runs them (tests/actionbars/theme_test.lua's switch).
 local function switch(name)
-	profile.theme.name = name
-	st:RedrawThemed()
-	SK:UpdateConfig()
-	st:ColorsChanged('theme')
+	T.theme(name, function()
+		SK:UpdateConfig()
+		st:ColorsChanged('theme')
+	end)
 end
 
 test("Blizzard's default Icon Padding leaves a gap between neighbours' borders", function()

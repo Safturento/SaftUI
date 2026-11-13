@@ -28,6 +28,20 @@ function T.client(name)
 	return SaftUI
 end
 
+------------------------------------------------------------------ the theme
+
+-- SaftUI's theme switched to name, as the Theme tab switches it: the
+-- profile's theme name set and every drawn frame drawn again
+-- (st:RedrawThemed, the profile update's first step), then after(), if
+-- given: the rest of what the case runs for the switch (a module's update,
+-- st:ColorsChanged('theme'), as Config:UpdateConfig runs them).
+function T.theme(name, after)
+	local st = SaftUI
+	st.config.profile.theme.name = name
+	st:RedrawThemed()
+	if after then after() end
+end
+
 ------------------------------------------------------------------ draws
 
 -- Wraps st:SetTemplate, st:SetBackdrop and st:SetBackdropIn so each notes the

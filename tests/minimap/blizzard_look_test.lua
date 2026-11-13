@@ -44,9 +44,7 @@ end
 -- A switch to the theme name, as Config:UpdateConfig runs it: every drawn frame
 -- redrawn, then the bar laid out again.
 local function theme(name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-	MM:UpdateButtons()
+	T.theme(name, function() MM:UpdateButtons() end)
 end
 
 -- A bar item: a Button of UIParent's, added with options.

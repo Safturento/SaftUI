@@ -53,6 +53,7 @@
 -- The kind a frame is drawn with changes nothing under Thick and Thin, so the
 -- draw calls are watched: st:SetBackdrop is wrapped to note its arguments, and
 -- still draws.
+local T = load_test_file('lib/theme_helpers.lua')
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
 for _, unit in ipairs({ 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }) do
@@ -366,9 +367,7 @@ test("under Blizzard an aura button's dispel texture is the white icon border ov
 	local tint = rgba(0.8, 0.1, 0.9, 1)
 
 	local function switch(name)
-		theme.name = name
-		st:RedrawThemed()
-		UF:UpdateUnitFrame(frame, 'Debuffs')
+		T.theme(name, function() UF:UpdateUnitFrame(frame, 'Debuffs') end)
 	end
 	local function blizzard(where)
 		eq(dispel(button), WHITE .. ', OVERLAY, BOTTOMRIGHT button BOTTOMRIGHT 0,0; TOPLEFT button TOPLEFT 0,0',

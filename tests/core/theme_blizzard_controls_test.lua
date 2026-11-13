@@ -57,13 +57,6 @@ local function fresh()
 	return st
 end
 
--- SaftUI's theme switched and every drawn frame drawn again, as the Theme tab
--- does it (the profile update's first step).
-local function switch(st, name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-end
-
 -- The textures shown on a frame (shown and not see-through), as a list.
 local function shown(frame)
 	local out = {}
@@ -161,7 +154,7 @@ test("a SaftUI button: Blizzard's panel button, swapped by its states, and its o
 	end
 	eq(button.backdrop.backdropInfo, nil, 'the backdrop draws nothing')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	eq(select(2, panel(button)), '', 'under Thick the three are hidden')
 	check(not (pieces.Highlight and pieces.Highlight:IsShown()), "and Blizzard's highlight")
 	for _, key in ipairs({ 'hover', 'pushed', 'disabled' }) do
@@ -179,7 +172,7 @@ test("a 31-tall button's ends are 17 wide", function()
 	local button = st:CreateButton('ThemeTestTallButton', UIParent, 'Go')
 	button:SetSize(100, 31)
 	button:SetPoint('CENTER')
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	local pieces = panel(button)
 	eq(pieces.Left and pieces.Left:GetWidth(), 17, 'the left end: 12/22 of 31, rounded')
 	eq(pieces.Right and pieces.Right:GetWidth(), 17, 'the right end')
@@ -222,7 +215,7 @@ test("a Blizzard panel button given to st:SkinButton shows its own Left, Middle 
 	locked(button, 'Blizzard')
 	local regions = select('#', button:GetRegions())
 
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	for _, key in ipairs({ 'Left', 'Middle', 'Right' }) do
 		eq(button[key]:GetAlpha(), 1, 'under Blizzard its own ' .. key .. ' shows again')
 	end
@@ -231,7 +224,7 @@ test("a Blizzard panel button given to st:SkinButton shows its own Left, Middle 
 	end
 	eq(select('#', button:GetRegions()), regions, 'no texture of SaftUI\'s is made on it')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	for _, key in ipairs({ 'Left', 'Middle', 'Right' }) do
 		eq(button[key]:GetAlpha(), 0, 'under Thick its ' .. key .. ' is faded again')
 	end
@@ -268,7 +261,7 @@ test("a check box takes checkbox-minimal, checked checkmark-minimal, and SaftUI'
 	eq(hover:GetAtlas(), 'checkbox-minimal', "the highlight is the box's own art")
 	eq(hover:GetBlendMode(), 'ADD', 'additive')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	check(not art:IsShown(), "under Thick Blizzard's box is hidden")
 	eq(checked:GetAtlas(), nil, "the check is SaftUI's flat square")
 	eq(checked:GetTexture(), st.BLANK_TEX, 'blank')
@@ -306,7 +299,7 @@ test("a check button styled 'button' is a panel button, pressed while checked", 
 	stub.fire_script(toggle, 'PostClick', 'LeftButton', false)
 	eq(select(2, panel(toggle)), 'Left=Down,Middle=Down,Right=Down', 'clicked on: pressed while checked')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	eq(select(2, panel(toggle)), '', 'under Thick no panel button')
 	eq(toggle:GetCheckedTexture():GetAlpha(), 1, 'its flat check again')
 	eq(toggle:GetHighlightTexture():GetAlpha(), 1, 'and its flat highlight')
@@ -325,8 +318,8 @@ test("a check button styled 'bare' keeps SaftUI's flat textures in every theme, 
 	eq(checked:GetAlpha(), 1, 'shown')
 	-- Its caller restyles it (the bags' currency overlay, the bank's eye).
 	checked:SetVertexColor(0, 0, 0, 0.6)
-	switch(st, 'thick')
-	switch(st, 'blizzard')
+	T.theme('thick')
+	T.theme('blizzard')
 	eq(text(checked:GetVertexColor()), '0.00,0.00,0.00,0.60', "its caller's color survives a switch")
 	eq(select(2, panel(bare)), '', 'no panel button')
 	eq(#take_errors(), 0, 'no errors')
@@ -371,7 +364,7 @@ test("a radio group shows Blizzard's tabs, the picked one active", function()
 	eq(tabs(first), PICKED, 'a new pick is active')
 	eq(tabs(second), OTHER, 'the old one a tab again')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	eq(tabs(first), '', 'under Thick no tabs')
 	eq(tabs(second), '', 'on either')
 	eq(T.edge(first.backdrop), text(st.config.profile.colors.button.blue:GetRGB()) .. ',1.00', "SaftUI's blue border on the picked one")
@@ -417,7 +410,7 @@ test("a scroll bar's layers come back on under Blizzard and go off under Thick",
 		eq(parts[layer[1]]:IsDrawLayerEnabled(layer[2]), false, 'Thick: ' .. layer[1] .. ' ' .. layer[2] .. ' off, as before')
 	end
 
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	for _, layer in ipairs(LAYERS) do
 		eq(parts[layer[1]]:IsDrawLayerEnabled(layer[2]), true, 'Blizzard: ' .. layer[1] .. ' ' .. layer[2] .. ' on')
 	end
@@ -428,7 +421,7 @@ test("a scroll bar's layers come back on under Blizzard and go off under Thick",
 	stub.fire_script(thumb, 'OnMouseUp')
 	stub.fire_script(thumb, 'OnLeave')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	for _, layer in ipairs(LAYERS) do
 		eq(parts[layer[1]]:IsDrawLayerEnabled(layer[2]), false, 'Thick again: ' .. layer[1] .. ' ' .. layer[2] .. ' off')
 	end
@@ -481,7 +474,7 @@ test("an edit box's border textures show under Blizzard and hide under Thick", f
 	eq(backdrop and T.edge(backdrop), '1.00,1.00,1.00,1.00', 'white while focused')
 	box:ClearFocus()
 
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	for key, texture in pairs(borders) do
 		eq(texture:GetAlpha(), 1, 'Blizzard: ' .. key .. ' shows')
 	end
@@ -491,7 +484,7 @@ test("an edit box's border textures show under Blizzard and hide under Thick", f
 	box:ClearFocus()
 	eq(backdrop.backdropInfo, nil, 'nor after losing focus')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	for key, texture in pairs(borders) do
 		eq(texture:GetAlpha(), 0, 'Thick again: ' .. key .. ' concealed')
 	end
@@ -508,7 +501,7 @@ test('st:StyleEditBox draws a box st:SkinEditBox never skinned, as before', func
 	st:StyleEditBox(box, 'theme', 'theme')
 	eq(drawn(box), 'theme,theme,control', 'drawn as a control')
 	eq(T.inset(st:DrawnFrame(box)), 2, "in Thick's border")
-	switch(st, 'blizzard')
-	switch(st, 'thick')
+	T.theme('blizzard')
+	T.theme('thick')
 	eq(#take_errors(), 0, 'no error: it has no border textures to show or hide')
 end)

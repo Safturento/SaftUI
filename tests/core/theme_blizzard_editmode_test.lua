@@ -40,9 +40,7 @@ end
 -- A switch of SaftUI's theme as Config:UpdateConfig runs it: every drawn frame
 -- redrawn, then the modules color what they color themselves.
 local function switch(name)
-	profile.theme.name = name
-	st:RedrawThemed()
-	st:ColorsChanged('theme')
+	T.theme(name, function() st:ColorsChanged('theme') end)
 end
 
 -- Edit Mode's pieces shown on an overlay, as 'atlas' entries sorted, for the

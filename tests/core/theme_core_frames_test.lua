@@ -58,12 +58,6 @@ local function frame(st, frameType, name)
 	return f
 end
 
--- Switches SaftUI's theme and redraws, as the Theme tab does.
-local function switch(st, name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-end
-
 local THICK_EDGE, THIN_EDGE = '0.30,0.30,0.30,1.00', '0.00,0.00,0.00,1.00'
 
 ------------------------------------------------------------------ panels
@@ -92,7 +86,7 @@ test("window headers and footers follow SaftUI's theme, not their window's", fun
 	eq(fill(p.backdrop), '0.12,0.12,0.12,0.90', "SaftUI's theme: Thick's background at the opacity")
 	eq(offset(p.backdrop, 'TOPLEFT'), '-2.00,2.00', "Thick's 2px out")
 
-	switch(st, 'thin')
+	T.theme('thin')
 	eq(fill(panel.header), '0.00,0.00,0.00,0.40', "after a switch to Thin: Thin's border color at 0.4")
 	eq(fill(panel.footer), '0.00,0.00,0.00,0.40', 'the footer too')
 	eq(offset(p.backdrop, 'TOPLEFT'), '-1.00,1.00', "the panel moves to Thin's 1px")
@@ -119,7 +113,7 @@ test("the /sui window takes the theme's border and stays solid", function()
 		eq(inset(f), 2, name .. ": Thick's 2px border")
 	end
 
-	switch(st, 'thin')
+	T.theme('thin')
 	for name, f in pairs({ window = window, dialog = dialog }) do
 		eq(inset(f), 1, name .. ": after a switch to Thin, Thin's 1px border")
 		eq(edge(f), THIN_EDGE, name .. ": Thin's border color")
@@ -300,7 +294,7 @@ test("Icon zoom's preview has a border in SaftUI's theme, and a description with
 	st.config.profile.templates.thick.bordercolor = { 1, 0, 0, 1 }
 	st:RecolorThemed()
 	eq(edge(backdrop), '1.00,0.00,0.00,1.00', 'a recolor gives it the new border color')
-	switch(st, 'thin')
+	T.theme('thin')
 	eq(offset(backdrop, 'TOPLEFT'), '-1.00,1.00', "a switch to Thin moves it to Thin's 1px")
 	eq(edge(backdrop), THIN_EDGE, "with Thin's border color")
 	-- The theme is picked on the Theme tab: back on General, the row is drawn
@@ -432,7 +426,7 @@ test('st:SkinActionButton draws config.theme and config.background as its kind',
 	local t = button('ThemeTestTrueSize')
 	st:SkinActionButton(t, { theme = 'theme', background = 'theme', trueSize = true })
 	eq(offset(t.backdrop, 'TOPLEFT'), '0.00,0.00', 'trueSize: the backdrop fills the button')
-	switch(st, 'thin')
+	T.theme('thin')
 	eq(offset(t.backdrop, 'TOPLEFT'), '0.00,0.00', 'and a redraw leaves it there')
 	eq(offset(a.backdrop, 'TOPLEFT'), '-1.00,1.00', 'a Thin override stays Thin')
 	eq(offset(s.backdrop, 'TOPLEFT'), '-1.00,1.00', "the theme's slot moves to Thin's 1px")
@@ -457,14 +451,14 @@ test("st:SkinActionButton's flat hover keeps the blend its highlight setter gave
 	eq(slot:GetHighlightTexture(), slot.hover, 'the flat hover is the highlight')
 	eq(slot.hover:GetBlendMode(), made, 'Thick: the blend the setter gave it')
 
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	st:SkinActionButton(slot, config, 'slot')
 	eq(slot.hover:GetBlendMode(), st.ThemeArt.State('slot').highlightBlend, "Blizzard: its state art's blend")
 	-- Someone else's code may set it too (Blizzard's UpdateTextures does on the
 	-- bags bar's slots).
 	slot.hover:SetBlendMode('MOD')
 
-	switch(st, 'thick')
+	T.theme('thick')
 	st:SkinActionButton(slot, config, 'slot')
 	eq(slot.hover:GetBlendMode(), made, 'Thick again: the blend the setter gave it')
 	eq(#take_errors(), 0, 'no errors')
@@ -543,7 +537,7 @@ test("Core's buttons and status bars draw a Theme and Background as their kind",
 	eq(drawn(obar), 'thick,solid,bar', 'a status bar with a Theme and no Background: Solid')
 
 	-- A switch moves what follows the theme and leaves an override as it is.
-	switch(st, 'thin')
+	T.theme('thin')
 	eq(offset(b.backdrop, 'TOPLEFT'), '-1.00,1.00', "the button moves to Thin's 1px")
 	eq(offset(bar.backdrop, 'TOPLEFT'), '-1.00,1.00', 'the status bar too')
 	eq(inset(obar.backdrop), 2, 'a Thick status bar still draws Thick')

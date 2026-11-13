@@ -65,10 +65,10 @@ end
 -- (st:RedrawThemed), every module's UpdateConfig (the unit frames' here),
 -- then st:ColorsChanged('theme').
 local function theme_changed(st, UF, theme)
-	st.config.profile.theme.name = theme
-	st:RedrawThemed()
-	UF:UpdateConfig()
-	st:ColorsChanged('theme')
+	T.theme(theme, function()
+		UF:UpdateConfig()
+		st:ColorsChanged('theme')
+	end)
 end
 
 -- oUF colouring an enemy's health bar SaftUI's hostile red, then its colour
