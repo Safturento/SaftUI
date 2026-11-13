@@ -322,11 +322,59 @@ test('under Thick and Thin /sui is unchanged', function()
 	local thick = drawn()
 	local sizes = drawn(true)
 	theme('blizzard')
-	eq(drawn(true), sizes, 'Blizzard: every cell and widget keeps its rect')
+	-- Blizzard keeps the flat layout (rows 34 tall, no padding, a gap of 40
+	-- between the columns); Thick and Thin lay rows out 38 tall on panels, so
+	-- the cells' rects differ and the widgets' stay. The flat layout is pinned
+	-- by a literal, as /sui drew it before the panels: every cell and widget.
+	local flat = drawn(true)
+	check(flat ~= sizes, 'Blizzard: the cells are laid out flat')
+	local GOLDEN_BLIZZARD = table.concat({
+		'toggle cell 0,-20 367x34',
+		'toggle widget 18x18',
+		'small cell 407,-20 171x34',
+		'small widget 18x18',
+		'range cell 0,-54 367x34',
+		'range widget 168x24',
+		'select cell 407,-54 367x34',
+		'select widget 170x24',
+		'multiselect cell 0,-88 367x56',
+		'multiselect widget 170x44',
+		'input cell 407,-88 367x34',
+		'input widget 170x24',
+		'smallinput cell 0,-144 171x34',
+		'smallinput widget 60x24',
+		'color cell 407,-144 367x34',
+		'color widget 170x24',
+		'execute cell 0,-178 367x34',
+		'execute widget 96x26',
+		'keybinding cell 407,-178 367x34',
+		'keybinding widget 170x24',
+		'description cell 0,-212 774x34',
+		'description widget 774x19',
+		'position cell 0,-298 774x77',
+		'position widget 331x65',
+		'search 182x24',
+		'reloadButton 96x26',
+		'closeButton 80x26',
+		'action 1 88x24',
+		'action 2 88x24',
+		'tab 1 30x24',
+		'tab 2 30x24',
+	}, '\n')
+	eq(flat, GOLDEN_BLIZZARD, 'Blizzard: every cell and widget as it was drawn before the panels')
+	for line in sizes:gmatch('[^\n]+') do
+		-- The description wraps to its cell: 746 inside the padding, 774 flat.
+		if line:find(' widget ', 1, true) and not line:find('^description widget') then
+			check(flat:find(line, 1, true), 'Blizzard: every widget keeps its rect: ' .. line)
+		end
+	end
 	theme('thin')
 	eq(drawn(), thick, 'Thin: as under Thick before Blizzard')
 	theme('thick')
 	eq(drawn(), thick, 'Thick again: as before Blizzard')
+	theme('blizzard')
+	eq(drawn(true), flat, 'Blizzard again: as before')
+	theme('thick')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

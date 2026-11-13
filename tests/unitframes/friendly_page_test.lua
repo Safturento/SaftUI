@@ -544,3 +544,44 @@ test('another nameplate addon loaded: both pages say which, and everything on th
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
+
+test("General's toggles keep their panel while the box is checked: only the centred line under them is bare", function()
+	local st, UF = world('forever')
+	local theme = st.config.profile.theme.name
+	st.config.profile.theme.name = 'thick'
+	for _, case in ipairs({ { 'nameplate', 'use_friendly' }, { 'friendlynameplate', 'use_enemy' } }) do
+		local name, box = case[1], case[2]
+		for _, checked in ipairs({ false, true }) do
+			check(set(UF, name, box, checked), name .. ': the box ' .. tostring(checked))
+			local root, view = page(UF, name)
+			local content = CreateFrame('Frame', nil, UIParent)
+			local body = st.OptionsBody.New(content, root, nil, 774)
+			body:Draw(view.sections)
+			local first, sourced
+			for _, c in ipairs(body.cells) do
+				first = first or c
+				if c.row.key == 'sourced' then sourced = c end
+			end
+			local panels = {}
+			for _, p in ipairs(body.pools.panel.used) do
+				if p:IsShown() then panels[#panels + 1] = p end
+			end
+			local label = name .. ' ' .. tostring(checked)
+			eq(#panels, 1, label .. ': one panel')
+			local _, _, _, _, top = panels[1]:GetPoint(1)
+			eq(-top, first.y, label .. ': from the first row')
+			if checked then
+				check(sourced ~= nil, label .. ': the centred line')
+				eq(-top + panels[1]:GetHeight(), sourced.y, label .. ': to the line, which is not under it')
+				local _, _, _, x = sourced.frame:GetPoint(1)
+				eq(x .. '+' .. sourced.frame:GetWidth(), '0+774', label .. ': the line bare, the whole width')
+				local _, _, _, fx = first.frame:GetPoint(1)
+				eq(fx, 14, label .. ': the toggles padded')
+			else
+				check(sourced == nil, label .. ': no line')
+			end
+			body:Release()
+		end
+	end
+	st.config.profile.theme.name = theme
+end)

@@ -426,7 +426,8 @@ test('a description with fill and justifyH CENTER sits in the middle of what the
 		local view = F.body:GetHeight()
 		local c = H.cell('line')
 		eq(H.drawn(), 'switch,box,line', name .. ': the line after the switches')
-		eq(c.y, H.cell('box').y + 34, name .. ': on the line after them')
+		-- Rows are 38 tall under Thick and Thin, 34 under Blizzard.
+		eq(c.y, H.cell('box').y + (name == 'Blizzard' and 34 or 38), name .. ': on the line after them')
 		eq(c.y + c.height + 24, view, name .. ': its row takes what the page leaves (less the bottom padding)')
 		local w = c.widget
 		eq(w:GetHeight(), c.height - 12, name .. ': the description as tall as its row less its padding')
@@ -465,18 +466,23 @@ test('a description with fill and justifyH CENTER sits in the middle of what the
 
 	-- With no height to fill (a dialog's body, search results): as tall as its text.
 	local root = { CentredLine = page() }
-	local content = CreateFrame('Frame', nil, UIParent)
-	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
-	content:SetSize(520, 300)
-	local body = st.OptionsBody.New(content, root, nil, 520)
-	body:Draw(st.OptionsModel.BuildView(root, 'CentredLine').sections)
-	local c
-	for _, each in ipairs(body.cells) do if each.row.key == 'line' then c = each end end
-	eq(c.height, 34, 'no fill height: a row as tall as any one-line description')
-	eq(c.widget:GetHeight(), 34 - 12, 'the description told that, less its padding')
-	eq(c.widget.text:GetTop(), c.widget.frame:GetTop() - math.floor((34 - 12 - lineHeight) / 2), 'its text in the middle')
-	eq(c.widget.text:GetJustifyH(), 'CENTER', 'and centred across')
-	body:Release()
+	for _, look in ipairs({ { 'thick', 38 }, { 'blizzard', 34 } }) do
+		local name, rowHeight = look[1], look[2]
+		st.config.profile.theme.name = name
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		content:SetSize(520, 300)
+		local body = st.OptionsBody.New(content, root, nil, 520)
+		body:Draw(st.OptionsModel.BuildView(root, 'CentredLine').sections)
+		local c
+		for _, each in ipairs(body.cells) do if each.row.key == 'line' then c = each end end
+		eq(c.height, rowHeight, name .. ': no fill height: a row as tall as any one-line description')
+		eq(c.widget:GetHeight(), rowHeight - 12, name .. ': the description told that, less its padding')
+		eq(c.widget.text:GetTop(), c.widget.frame:GetTop() - math.floor((rowHeight - 12 - lineHeight) / 2), name .. ': its text in the middle')
+		eq(c.widget.text:GetJustifyH(), 'CENTER', name .. ': and centred across')
+		body:Release()
+	end
+	st.config.profile.theme.name = 'thick'
 	module.GetConfigTable = nil
 	eq(#take_errors(), 0, 'no errors')
 end)

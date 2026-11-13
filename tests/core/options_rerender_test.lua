@@ -253,26 +253,40 @@ end)
 
 -- A 1px border blurs when its frame sits between two pixels. The window is on
 -- whole pixels (SaftUI's scale makes a unit a pixel), so every cell of the body
--- must start and end on whole units too: a quarter of a 367 column is 171.5.
+-- must start and end on whole units too: under Blizzard a quarter of a 367
+-- column is 171.5. Under Thick and Thin the slots are flush (no gap) and each
+-- cell is its slot inset by 14, so the second column's cell ends 14 short of
+-- the body's edge, the slot's flush with it.
 test('every cell of the body starts and ends on whole pixels, at any width', function()
 	local OB = st.OptionsBody
-	for _, width in ipairs({ OB.WIDTH, 775, 480 }) do
-		local body = OB.New(CreateFrame('Frame', nil, UIParent), nil, function() end, width)
-		local spans = {}
-		for _, col in ipairs({ 'full', 1, 2 }) do
-			for _, quarter in ipairs(col == 'full' and { false } or { false, 1, 2 }) do
-				local x, w = body:CellRect(col, quarter or nil)
-				spans[#spans + 1] = { col, quarter, x, w }
-				eq(x, math.floor(x), ('width %d, col %s, quarter %s: x %s is whole'):format(width, tostring(col), tostring(quarter), tostring(x)))
-				eq(w, math.floor(w), ('width %d, col %s, quarter %s: width %s is whole'):format(width, tostring(col), tostring(quarter), tostring(w)))
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local pad = look == 'blizzard' and 0 or 14
+		for _, width in ipairs({ OB.WIDTH, 775, 480 }) do
+			local body = OB.New(CreateFrame('Frame', nil, UIParent), nil, function() end, width)
+			local where = look .. ', width ' .. width
+			for _, col in ipairs({ 'full', 1, 2 }) do
+				for _, quarter in ipairs(col == 'full' and { false } or { false, 1, 2 }) do
+					for _, rect in ipairs({ 'SlotRect', 'CellRect' }) do
+						local x, w = body[rect](body, col, quarter or nil)
+						local name = ('%s, %s(%s, %s)'):format(where, rect, tostring(col), tostring(quarter))
+						eq(x, math.floor(x), name .. ': x ' .. tostring(x) .. ' is whole')
+						eq(w, math.floor(w), name .. ': width ' .. tostring(w) .. ' is whole')
+					end
+				end
 			end
+			local x1, w1 = body:SlotRect(1)
+			local x2, w2 = body:SlotRect(2)
+			eq(x2 + w2, width, where .. ": the second column's slot ends at the body's edge")
+			local q2x, q2w = body:SlotRect(1, 2)
+			eq(q2x + q2w, x1 + w1, where .. ": a column's second quarter ends at the column's edge")
+			local cx2, cw2 = body:CellRect(2)
+			eq(cx2 + cw2, width - pad, where .. ': the second column\'s cell ends ' .. pad .. ' short of the edge')
+			local cx1 = body:CellRect(1)
+			eq(cx1, pad, where .. ': the first column\'s cell starts ' .. pad .. ' in')
 		end
-		local x1, w1 = body:CellRect(1)
-		local x2, w2 = body:CellRect(2)
-		eq(x2 + w2, width, 'the second column ends at the body\'s edge')
-		local q2x, q2w = body:CellRect(1, 2)
-		eq(q2x + q2w, x1 + w1, "a column's second quarter ends at the column's edge")
 	end
+	st.config.profile.theme.name = 'thick'
 end)
 
 test('the picker and tabs switch the selection', function()

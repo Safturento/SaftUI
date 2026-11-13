@@ -202,10 +202,14 @@ end
 -- The vertical dividers drawn in the dialog, as their y in the content.
 local function divider_ys()
 	local ys = {}
-	for _, line in ipairs(OW.GetDialogFrames().body.pools.line.used) do
-		if line:GetWidth() == 1 then
-			local _, _, _, _, y = line:GetPoint(1)
-			ys[-y] = true
+	-- Under Blizzard they are OB.LINE's, under Thick and Thin the panel's hairlines.
+	local pools = OW.GetDialogFrames().body.pools
+	for _, pool in ipairs({ pools.line, pools.hairline }) do
+		for _, line in ipairs(pool.used) do
+			if line:GetWidth() == 1 then
+				local _, _, _, _, y = line:GetPoint(1)
+				ys[-y] = true
+			end
 		end
 	end
 	return ys
@@ -217,13 +221,15 @@ end
 local function check_copy_layout(where)
 	local d = OW.GetDialogFrames()
 	local width = d.content:GetWidth()
+	-- Under Thick and Thin the rows sit 14 in from the body's edges (on its panel).
+	local pad = st.config.profile.theme.name == 'blizzard' and 0 or 14
 	local pick, all, none = cell('copy_from'), cell('toggle_all'), cell('toggle_none')
 	eq(pick.label:GetText(), 'Copy from', where .. ': the label')
 	eq(pick.label:GetStringWidth(), pick.label:GetUnboundedStringWidth(), where .. ': the label is not cut')
 	check(all.y == pick.y and none.y == pick.y, where .. ': All and None on its line')
-	eq(left(none) + none.frame:GetWidth(), width, where .. ': None at the right edge')
+	eq(left(none) + none.frame:GetWidth(), width - pad, where .. ': None at the right edge, inside the padding')
 	eq(left(all) + all.frame:GetWidth() + 12, left(none), where .. ': All 12 before None')
-	eq(left(pick), 0, where .. ': the label at the left')
+	eq(left(pick), pad, where .. ': the label at the left, inside the padding')
 	eq(left(pick) + pick.frame:GetWidth() + 24, left(all), where .. ': the dropdown ends 24 before All')
 	local point, rel, relPoint, x = pick.widget.frame:GetPoint(1)
 	check(point == 'RIGHT' and rel == pick.frame and relPoint == 'RIGHT' and x == 0, where .. ': the dropdown at its right end')
@@ -238,6 +244,20 @@ local function check_copy_layout(where)
 	for _, c in ipairs(d.body.cells) do last = math.max(last, c.y) end
 	eq(accept.y, last, where .. ': at the bottom')
 	check(not divider_ys()[accept.y], where .. ': no divider on their line')
+	if pad > 0 then
+		-- Confirm copy and Cancel carry on the Settings section: one panel, no seam.
+		local panels, above = {}, 0
+		for _, p in ipairs(d.body.pools.panel.used) do
+			if p:IsShown() then panels[#panels + 1] = p end
+		end
+		for _, c in ipairs(d.body.cells) do
+			if c.y < accept.y then above = math.max(above, c.y) end
+		end
+		eq(#panels, 2, where .. ': a panel for Copy from\'s line and one for the settings and the buttons')
+		eq(accept.y, above + 38, where .. ': the buttons directly under the settings, no gap')
+		local _, _, _, _, py = panels[#panels]:GetPoint(1)
+		eq(-py + panels[#panels]:GetHeight(), accept.y + 38, where .. ': the settings\' panel reaches under the buttons')
+	end
 end
 
 test("Copy from's label has room: All and None sit at its line's right end; Confirm copy and Cancel in the middle at the bottom", function()
