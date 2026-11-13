@@ -1,8 +1,9 @@
 -- The world and the helpers the options widgets' tests share
 -- (options_kit_test.lua, options_range_test.lua, options_select_test.lua,
 -- options_list_test.lua, options_fields_test.lua, options_dialog_test.lua,
--- options_position_test.lua and options_look_test.lua). A test file loads it
--- with load_test_file and takes the helpers it uses from what it returns.
+-- options_position_test.lua and options_widget_look_test.lua). A test file
+-- loads it with load_test_file and takes the helpers it uses from what it
+-- returns.
 --
 -- It loads, in the file that loads it: config_helpers.lua, lib/options_walk.lua,
 -- skinning.lua (st:StripTextures, which a header uses on a button that isn't
