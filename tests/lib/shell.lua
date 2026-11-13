@@ -26,6 +26,7 @@
 	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
 	                          in the game's order; options_window_files() lists them
 	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
+	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
 	  use_client(name)        a fresh world on 'forever' or 'retail'
 ]]
 
@@ -472,6 +473,13 @@ function load_editmode()
 	for _, path in ipairs(editmode_files()) do
 		load_saftui(path)
 	end
+end
+
+-- LibStringFormat-1.0, as st.StringFormat: SaftUI-Core/init.lua takes it from
+-- LibStub. Load Core's helpers (load_core_helpers, which loads LibStub) first.
+function load_string_format()
+	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+	st.StringFormat = LibStub('LibStringFormat-1.0')
 end
 
 -- Core's TOC loads these three in this order (with Widgets, skinning.lua,

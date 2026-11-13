@@ -95,8 +95,7 @@ function NP.world(client)
 	for _, xml in ipairs({ 'SaftUI-Unitframes/elements/elements.xml', 'SaftUI-Unitframes/nameplates/nameplates.xml' }) do
 		for _, file in ipairs(scripts(xml)) do load_saftui(file) end
 	end
-	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-	st.StringFormat = LibStub('LibStringFormat-1.0')
+	load_string_format()
 
 	local UF = st:GetModule('Unitframes')
 	-- What UF:OnEnable sets up before it spawns.

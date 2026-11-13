@@ -48,10 +48,9 @@ for _, file in ipairs({ 'name', 'auras', 'aurawatch', 'power', 'additionalpower'
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end
 load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+load_string_format()
 
 local st = SaftUI
-st.StringFormat = LibStub('LibStringFormat-1.0')
 local UF = st:GetModule('Unitframes')
 local P = UF:GetProfileConfig()
 

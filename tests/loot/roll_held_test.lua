@@ -291,9 +291,8 @@ local function world()
 	T = load_test_file('lib/theme_helpers.lua')
 	drawn = T.watch()
 	load_editmode()
-	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+	load_string_format()
 	st = SaftUI
-	st.StringFormat = LibStub('LibStringFormat-1.0') -- as SaftUI-Core/init.lua does
 	CreateFrame('GameTooltip', 'GameTooltip', UIParent)
 	game_api()
 	blizzard()

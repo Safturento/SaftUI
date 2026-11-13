@@ -94,8 +94,7 @@ end
 -- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
 -- st.StringFormat.
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-st.StringFormat = LibStub('LibStringFormat-1.0')
+load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
 
 local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end

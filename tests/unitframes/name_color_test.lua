@@ -21,8 +21,7 @@ load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 UF.oUF = { Tags = { Events = {}, Methods = {} },
 	colors = { class = st.config.profile.colors.class, reaction = st.config.profile.colors.reaction } }
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-st.StringFormat = LibStub('LibStringFormat-1.0')
+load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
 load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 local restoreSecrets = S.install()

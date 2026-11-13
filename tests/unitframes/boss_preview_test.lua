@@ -54,10 +54,9 @@ load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+load_string_format()
 
 local st = SaftUI
-st.StringFormat = LibStub('LibStringFormat-1.0')
 local UF = st:GetModule('Unitframes')
 local P = UF:GetProfileConfig()
 local profile_colors = st.config.profile.colors
