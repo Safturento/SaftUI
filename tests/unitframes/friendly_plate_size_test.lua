@@ -51,8 +51,7 @@ local function world(client)
 	return st, UF, UF:GetProfileConfig()
 end
 
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
-local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
+local enemy, friend = NP.enemy, NP.friend
 
 -- A region's left, bottom, width and height in the screen's units: its own
 -- times its effective scale.

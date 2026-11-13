@@ -45,8 +45,7 @@ local function world(client)
 	return st, UF, UF:GetProfileConfig().nameplate
 end
 
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
-local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
+local enemy, friend = NP.enemy, NP.friend
 
 -- An enemy's plate, the player's entry (a status, or { status, percent }) on
 -- its threat list.

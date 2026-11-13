@@ -31,6 +31,10 @@
 --
 --   NP.remove(unit)
 --     The game takes unit's plate away (stub.remove_nameplate).
+--
+--   NP.enemy(unit), NP.friend(unit)
+--     unit is a hostile NPC (unfriendly, attackable, reaction 2) or a
+--     friendly one (reaction 5), named after its token, in stub.units.
 local T = load_test_file('lib/theme_helpers.lua')
 local UW = load_test_file('unitframes/uf_world.lua')
 local fixture = load_test_file('unitframes/fixtures/ouf.lua')
@@ -104,5 +108,8 @@ end
 function NP.remove(unit)
 	stub.remove_nameplate(unit)
 end
+
+function NP.enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
+function NP.friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
 
 return NP
