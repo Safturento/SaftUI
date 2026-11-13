@@ -40,7 +40,7 @@ Text Size" when it holds more than size.
    listing each differing bar and its value. The list lives in the tooltip so it can be
    long. (Option C1.)
 3. **A hover line under the label**, Ellesmere's idea: the label lifts and a small line
-   appears under it. On a bar's own setting: `Own · Reset · Apply to: All | Multiple`.
+   appears under it. On a bar's own setting: `Own`, a reset icon (Lucide's rotate-ccw, with a tooltip saying what it will do), then `Apply to: All | Multiple`.
    On All bars, for a setting with the diff icon: `Apply to: All | Multiple`.
 4. **Small parts are one-line items with a menu**: a Show box, the part's name, and three
    dots that open a menu titled with the part's name and holding its settings, including
@@ -59,6 +59,7 @@ Text Size" when it holds more than size.
 - A page that stays plain until something differs, and then says exactly what and where.
 - Nothing a player has set changes when they update: every bar looks and behaves as it
   did.
+- Lucide icons (lucide.dev) wherever an icon fits, from now on (the user: "from now on when there's a good opportunity to use lucide icons lets use them"): diff, rotate-ccw for Reset, and the menu's dots (ellipsis, ellipsis-vertical or settings: the user is choosing).
 - The new page pieces (own marks and the hover line, the diff icon, the menu item) are
   parts of Core's options kit that another module can use, because the user wants the
   same on unit frames later.
