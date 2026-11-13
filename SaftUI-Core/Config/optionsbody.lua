@@ -540,8 +540,10 @@ function OB.New(content, root, onChanged, width)
 		row = Pool(function()
 			local frame = CreateFrame('Frame', nil, content)
 			frame.label = Text(frame, 'label')
-			frame:SetScript('OnEnter', ShowTip)
-			frame:SetScript('OnLeave', HideTip)
+			-- Wrapped: the game passes these scripts a second argument (motion),
+			-- which ShowTip and HideTip would take for the tooltip's owner.
+			frame:SetScript('OnEnter', function(self) ShowTip(self) end)
+			frame:SetScript('OnLeave', function(self) HideTip(self) end)
 			return frame
 		end),
 		result = Pool(function()
