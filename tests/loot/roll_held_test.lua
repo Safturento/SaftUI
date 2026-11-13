@@ -17,8 +17,8 @@
 --   - Test mode shows one of its preview bars locked;
 --   - nothing is written onto Blizzard's roll frames or its container.
 --
--- Real: SaftUI-Loot's config.lua, init.lua, roll.lua, rollinfo.lua and
--- Feed/rolls.lua, Core's helpers and edit mode (the rolls' mover), the theme
+-- Real: SaftUI-Loot's config.lua, init.lua, rollbar.lua, roll.lua, rolltest.lua,
+-- rollinfo.lua and Feed/loothistory.lua and rolls.lua, Core's helpers and edit mode (the rolls' mover), the theme
 -- helpers' draw watch, and LibStringFormat-1.0.
 -- Stand-ins:
 --   - Blizzard's group loot container and its four roll frames

@@ -14,7 +14,7 @@ local st = SaftUI
 	Everything is read at call time, through ThemeArt.Client(), as the client
 	decides some values.
 
-	The tables, st.ThemeArt.KINDS and st.ThemeArt.ART:
+	The tables, st.ThemeArt.KINDS and st.ThemeArt.ART (in themeart_data.lua):
 	  KINDS[kind]  each kind of frame (st.THEME_KINDS) under Blizzard: its inset
 	               on each client, the art it's drawn in (a name in ART), its
 	               fill (one of the theme's colors) and whether it's a 1px line.

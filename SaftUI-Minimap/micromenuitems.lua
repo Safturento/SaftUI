@@ -99,7 +99,7 @@ function MicroMenu:SkinTrackingButton()
         trackingButton:SetHighlightTexture(hover)
     end
 
-    -- Under Blizzard it stands on Blizzard's tracking button (UpdateArt).
+    -- Under Blizzard it stands on Blizzard's tracking button (micromenuart.lua's UpdateArt).
     -- Forever's has the magnifier drawn in, so SaftUI's hides there. Live
     -- has no magnifier of SaftUI's: Blizzard's own icon shows on its box.
     return button, { art = 'tracking', icon = icon }

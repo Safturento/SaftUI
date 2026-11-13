@@ -121,7 +121,7 @@ end
 -- default position, once it shows: until then Blizzard leaves it at UIParent's top-left
 -- corner (ApplySystemAnchor), as UpdateBottomActionBarPositions only stacks shown bars.
 -- The position keeps the bar's own anchor point, moved onto UIParent's same point, so the
--- holder grows from where the bar grew (see the top of this file). Called out of combat,
+-- holder grows from where the bar grew (totemlayout.lua). Called out of combat,
 -- from outside Blizzard's re-places (TB:QueueCapture), so the bar is where Blizzard left it.
 function TB:CapturePosition()
 	local bar = self.bar

@@ -11,8 +11,9 @@
 --     drawn;
 --   - a shown mount entry keeps its yellow border and fill through a theme recolor.
 --
--- Real: SaftUI-Loot's config.lua, init.lua, options.lua, roll.lua, rollinfo.lua,
--- Feed/history.lua, feed.lua, filter.lua and progress.lua, Core's helpers, the
+-- Real: SaftUI-Loot's config.lua, init.lua, options.lua, rollbar.lua, roll.lua,
+-- rolltest.lua, popup.lua, rollinfo.lua and Feed/history.lua, parse.lua,
+-- feed.lua, filter.lua and progress.lua, Core's helpers, the
 -- theme engine and Core's Utilities (the feed's item quality overlay).
 load_core_helpers()
 local T = load_test_file('lib/theme_helpers.lua')

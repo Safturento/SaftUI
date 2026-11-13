@@ -1,5 +1,5 @@
 --[[
-	The atlases the Blizzard theme names (st:ThemeAtlases, SaftUI-Core/themeart.lua),
+	The atlases the Blizzard theme names (st:ThemeAtlases, SaftUI-Core/themeart_data.lua),
 	as each client's atlas tables have them, for C_Texture.GetAtlasInfo
 	(tests/wow/blizzard.lua). Data, not a stub: blizzard.lua loads it.
 

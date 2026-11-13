@@ -11,8 +11,8 @@ st.ActionBars = AB
 	  - bars.lua: building, laying out and updating the bars.
 	  - buttons.lua: SaftUI's own secure buttons, for the pet and stance bars.
 	  - petbar.lua and stancebar.lua: the pet bar and the stance bar.
-	  - bindings.lua: the bars' keys, from Blizzard's binding commands, and
-	    hover binding (/sui kb).
+	  - bindings.lua: the bars' keys, from Blizzard's binding commands.
+	  - keybindmode.lua: hover binding (/sui kb).
 	  - extras.lua: the extra action button, the zone ability and the leave
 	    vehicle button, on holders of SaftUI's.
 	  - options.lua: the /sui section and the edit mode movers.

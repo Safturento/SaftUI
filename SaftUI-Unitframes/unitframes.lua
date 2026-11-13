@@ -152,7 +152,7 @@ function UF.ConstructUnit(self, unit)
 	-- before any config is applied (UF.InitUnit updates a group button after
 	-- that). So a group button's range fade table is made here: its alphas come
 	-- from that update (UF:UpdateUnitFrame). Other units get no range fade
-	-- (config.lua's Range options are for groups only).
+	-- (config/groupoptions.lua's Range options are for groups only).
 	if self.is_group_unit then
 		self.Range = {}
 	elseif self.isNamePlate then

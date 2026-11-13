@@ -375,7 +375,8 @@ end
 -- (st:SkinIcon and st:IconTexCoords, which the General tab's Icon zoom
 -- preview cuts its icon with), panels.lua (st:CreateFrame,
 -- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
--- theme they draw) and themeart.lua (the Blizzard theme's art, st.ThemeArt),
+-- theme they draw), themeart_data.lua (the Blizzard theme's tables, which make
+-- st.ThemeArt) and themeart.lua (its accessors and drawing),
 -- the media and fonts (st:GetFont) with the Colors
 -- and Theme modules, the profile defaults, Config/generators.lua (st.Config.generators) and
 -- the General module (Global Settings' General tab). Then the profile is
