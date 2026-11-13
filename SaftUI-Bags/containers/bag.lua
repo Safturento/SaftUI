@@ -23,6 +23,16 @@ function INV:ShowBags()
 	self:MovePlayerBagSlots()
 end
 
+-- Closes a bank window (the bank or the combined bank) that's open, and
+-- Blizzard's bank with it.
+local function CloseBankWindow(container)
+	if container and container:IsShown() then
+		container:Hide()
+		HideUIPanel(BankFrame);
+		CloseBankFrame();
+	end
+end
+
 function INV:HideBags()
 	self.containers.bag:Hide()
 	for _, category in pairs(self.containers.bag.categories) do
@@ -33,17 +43,8 @@ function INV:HideBags()
 		end
 	end
 
-	if self.containers.bank and self.containers.bank:IsShown() then
-		self.containers.bank:Hide()
-		HideUIPanel(BankFrame);
-		CloseBankFrame();
-	end
-
-	if self.containers.combinedbank and self.containers.combinedbank:IsShown() then
-		self.containers.combinedbank:Hide()
-		HideUIPanel(BankFrame);
-		CloseBankFrame();
-	end
+	CloseBankWindow(self.containers.bank)
+	CloseBankWindow(self.containers.combinedbank)
 	if CurrencyTransferMenu and CurrencyTransferMenu:IsShown() then CurrencyTransferMenu:Hide() end
 end
 

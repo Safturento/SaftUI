@@ -205,9 +205,7 @@ function INV:OpenBank()
 	self.containers.bank:Show()
 	self:ShowBags()
 	self:UpdateVisibleContainers()
-	if self:GetContainer('bag').footer.depositButton then
-		self:GetContainer('bag').footer.depositButton:Show()
-	end
+	self:SetDepositButtonShown(true)
 end
 
 function INV:CloseBank()
@@ -220,9 +218,7 @@ function INV:CloseBank()
 		BankPanel:CloseAllBankPopups()
 	end
 
-	if self:GetContainer('bag').footer.depositButton then
-		self:GetContainer('bag').footer.depositButton:Hide()
-	end
+	self:SetDepositButtonShown(false)
 end
 
 function INV:InitializeBank()
