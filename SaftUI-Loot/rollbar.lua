@@ -19,7 +19,7 @@ local roll_buttons = {
 ---- SaftUI's own roll bars --------
 ------------------------------------
 -- Copies of a skinned roll bar, SaftUI's own frames: Test mode's previews and
--- the held rolls (below). Each has the same size, theme, font, spacing, icon,
+-- the held rolls (roll.lua). Each has the same size, theme, font, spacing, icon,
 -- name, timer and buttons as a skinned bar, the buttons with their counts.
 
 -- The alpha of a locked bar's other buttons: Blizzard's for a roll button it
@@ -207,9 +207,6 @@ local function SetBarTimer(bar, sec)
 	end
 end
 
-------------------------------------
----- Held rolls --------------------
-
 -- Held bars and the previews stand where Blizzard's roll frames do, so they
 -- draw at their strata (GroupLootFrame.xml: DIALOG).
 local ROLL_STRATA = 'DIALOG'
@@ -219,7 +216,6 @@ LT.rollbar = {
 	strata = ROLL_STRATA,
 	CreateBar = CreateBar,
 	SetBarTransmog = SetBarTransmog,
-	ColorLit = ColorLit,
 	LockBar = LockBar,
 	ColorLocked = ColorLocked,
 	ApplyBarConfig = ApplyBarConfig,

@@ -232,6 +232,8 @@ function LT:GroupLootFrame_OnUpdateTimer(timer, elapsed)
 end
 
 ------------------------------------
+---- Held rolls --------------------
+------------------------------------
 -- When you choose on a roll, Blizzard takes its bar away (CANCEL_LOOT_ROLL ->
 -- GroupLootFrame_Remove; a main spec Need after its dice animation). Keeping it
 -- would mean replacing Blizzard's code (.agents/taint.md rule 2), so SaftUI
@@ -241,7 +243,6 @@ end
 -- when the drop resolves; it goes here when its time runs out.
 
 local heldParent
-
 
 -- The held bars shown, oldest first. Read only.
 function LT:GetHeldRolls()
