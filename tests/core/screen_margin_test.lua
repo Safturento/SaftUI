@@ -316,6 +316,83 @@ test("a Blizzard frame's mover still keeps to the margin when dragged", function
 	check(not minimap:IsClampedToScreen(), 'though SaftUI never clamps it')
 end)
 
+test('EM.MarginCorrection takes a margin per side', function()
+	local rect = { left = 100, right = 200, bottom = 100, top = 140 }
+	local margin = { left = 32, right = 25, top = 60, bottom = 32 } -- ChatFrame1's own clamp
+	local mx, my = EM.MarginCorrection(rect, -500, -500, 1000, 600, margin)
+	eq(mx .. ',' .. my, '432,432', 'pulled back to 32 in from the left and bottom')
+	mx, my = EM.MarginCorrection(rect, 2000, 2000, 1000, 600, margin)
+	eq(mx .. ',' .. my, '-1225,-1600', 'and to 25 in from the right (975) and 60 from the top (540)')
+end)
+
+------------------------------------------------------------------ holders with a Blizzard frame on them
+
+-- A Blizzard Edit Mode system as the game makes it: clamped to the screen
+-- (EditModeSystemTemplate's XML), with the insets its Edit Mode sets from its
+-- Selection box (UpdateClampOffsets; none for a box on the frame's edges).
+local function ClampedSystem(insets)
+	local frame = CreateFrame('Frame', nil, UIParent)
+	frame:SetClampedToScreen(true)
+	frame:SetClampRectInsets(unpack(insets or { 0, 0, 0, 0 }))
+	return frame
+end
+
+test("st:GetScreenMargin is the margin plus a frame's reach on each side; a frame SaftUI doesn't keep gets the margin", function()
+	local frame = Frame()
+	st:KeepInScreenMargin(frame, function() return 8, 2, 16, 4 end)
+	eq(table.concat({ st:GetScreenMargin(frame) }, ','), '28,22,36,24', 'left, right, top, bottom')
+	eq(table.concat({ st:GetScreenMargin(Frame()) }, ','), '20,20,20,20', 'the margin alone')
+end)
+
+test("a held Blizzard frame's own clamp keeps its holder in: a bar 5 and 4 outside its holder stops at the screen's edge with it", function()
+	-- A swing timer bar (st:HoldFrame with its 5, 4) is kept on screen by its own
+	-- clamp. A holder the margin let reach the edge would leave the bar 5 and 4
+	-- short of where it sits around the holder, and the outline past it.
+	local holder = Frame(100, 20)
+	local mover, position = Mover(holder, { point = 'BOTTOMLEFT', x_off = 300, y_off = 300 })
+	local bar = ClampedSystem()
+	st:HoldFrame(bar, holder, 5, 4)
+	Set(0)
+	Drag(mover, -1000, -1000)
+	eq(At(position), '5,4', 'the holder stops 5 and 4 in')
+	eq(bar:GetLeft() .. ',' .. bar:GetBottom(), '0,0', 'so the bar, around it, reaches the edge and no further')
+	eq(Insets(holder), '-5,5,4,-4', "the holder's clamp keeps it there too")
+	Set(20)
+	Drag(mover, -1000, -1000)
+	eq(At(position), '20,20', "a margin wider than the bar's clamp is the margin")
+	eq(Insets(holder), Margin(20))
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("below a 0 margin a held frame's holder stops at the edge, where the frame's clamp stops the frame (the buffs)", function()
+	local holder = Frame(200, 40)
+	local mover, position = Mover(holder, { point = 'TOPRIGHT', x_off = -300, y_off = -300 })
+	local buffs = ClampedSystem({ 0, -15, 0, 0 }) -- BuffFrame's box leaves out its collapse button
+	st:HoldFrame(buffs, holder)
+	Set(-10)
+	Drag(mover, 0, 1000)
+	eq(At(position), '-300,0', 'stops at the top edge, with the buffs')
+	Drag(mover, 1000, 0)
+	eq(At(position), '10,0', "15 past the right edge, as far as the buffs' clamp lets them go; the margin's 10 is less")
+	Set(20)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a held frame's holder takes the frame's clamp again each time Blizzard's Edit Mode sets it", function()
+	local holder = Frame()
+	Mover(holder)
+	local frame = ClampedSystem()
+	local insets = { 0, 0, 0, 0 }
+	-- EditModeSystemMixin:UpdateClampOffsets, from the box (layout apply, Edit Mode enter).
+	function frame:UpdateClampOffsets() self:SetClampRectInsets(unpack(insets)) end
+	st:HoldFrame(frame, holder)
+	eq(Insets(holder), Margin(20), 'the margin')
+	insets = { -32, 25, 60, -32 }
+	frame:UpdateClampOffsets()
+	eq(Insets(holder), '-32,25,60,-32', "the frame's clamp, where it's wider than the margin")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('st:GetClampShift, and a drag starts where the game shows the frame, not where its anchor says', function()
 	-- Anchored 5 in from the left; the game shows it at the margin, 20 in. The
 	-- stubs don't clamp, so the frame reports the rect the game would show.

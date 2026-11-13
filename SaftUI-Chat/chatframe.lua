@@ -157,10 +157,14 @@ end
 	The holder, not ChatFrame1, is kept inside SaftUI's screen edge margin
 	(st:KeepInScreenMargin). ChatFrame1's clamp insets are Blizzard's: its Edit Mode
 	rewrites them from the frame's Selection box on every layout apply and Edit Mode
-	enter (EditModeSystemMixin:UpdateClampOffsets). The game shows a holder anchored
-	into the margin at the margin, but its anchor stays as set, so ChatFrame1 takes the
-	anchor moved by as much as the holder was (st:GetClampShift), and is placed again
-	whenever the margin changes.
+	enter (EditModeSystemMixin:UpdateClampOffsets), and they keep ChatFrame1 32 in from
+	the screen's left and bottom, 25 from its right and 60 from its top. So the holder
+	goes no nearer the edges than that either (st:KeepHolderInScreenMargin): where the
+	margin is narrower, the holder and the mover's outline on it went on past the chat,
+	which stopped at Blizzard's 32. The game shows a holder anchored into the margin at
+	the margin, but its anchor stays as set, so ChatFrame1 takes the anchor moved by as
+	much as the holder was (st:GetClampShift), and is placed again whenever the margin
+	changes.
 
 	These put SaftUI's size and anchor back after Blizzard changes them:
 	  - post-hooks on ChatFrame1's ClearAllPoints and SetPoint, after each anchor change;
@@ -178,8 +182,9 @@ end
 	too; should one show, the OnSizeChanged hook undoes its resize.
 
 	Nothing is written onto ChatFrame1 or any other Blizzard table, except that
-	hooksecurefunc replaces the methods it hooks (ChatFrame1's ClearAllPoints, SetPoint and
-	UpdateSystem) with its own secure wrappers.
+	hooksecurefunc replaces the methods it hooks (ChatFrame1's ClearAllPoints, SetPoint,
+	UpdateSystem and, through st:KeepHolderInScreenMargin, UpdateClampOffsets) with its
+	own secure wrappers.
 ]]
 
 -- SetPoint's argument order: the array shape chat.position had before the chat frame
@@ -320,6 +325,10 @@ end
 function CHT:TakeOverChatFrame()
 	local function Place() self:PlaceChatFrame() end
 
+	-- The holder is kept inside the screen edge margin, and no nearer the edges than
+	-- ChatFrame1's own clamp lets ChatFrame1 go, so the two stop together.
+	st:KeepHolderInScreenMargin(self.holder, ChatFrame1)
+
 	-- Every SaftUI placement of the holder, and a mover drag (which calls SetPoint on
 	-- it), is copied to ChatFrame1. ClearAllPoints needs no hook: SetPoint follows it.
 	hooksecurefunc(self.holder, 'SetPoint', Place)
@@ -395,10 +404,10 @@ function CHT:OnEnable()
 		self:SkinChatFrame(_G['ChatFrame'..chatID])
 	end
 
-	-- The holder exists, with its hooks and the screen edge margin, before it is first
-	-- placed: placing it copies the size and where it shows to ChatFrame1.
+	-- The holder exists, with its hooks and the screen edge margin (TakeOverChatFrame),
+	-- before it is first placed: placing it copies the size and where it shows to
+	-- ChatFrame1.
 	self.holder = CreateFrame('Frame', st.name .. 'ChatHolder', UIParent)
-	st:KeepInScreenMargin(self.holder)
 	self:TakeOverChatFrame()
 	self:CaptureSize()
 	self:ApplyHolder()
