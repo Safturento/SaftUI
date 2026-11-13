@@ -97,14 +97,6 @@ function st:ValidateAnchor(frame, relative)
 	return true
 end
 
-function st:SetHeight(frame, height)
-	frame:SetHeight(height)
-end
-
-function st:SetWidth(frame, width)
-	frame:SetWidth(width)
-end
-
 function st:SetSize(frame, width, height)
 	frame:SetSize(width, height or width)
 end
