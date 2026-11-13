@@ -191,7 +191,7 @@ test('a toggle and a color sit at their cell\'s right edge, a toggle at normal a
 		check(rel == c.frame, key .. ' is anchored to its cell')
 		eq(relPoint, 'RIGHT', key .. ' at the cell\'s right')
 		eq(x, 0, key .. ' offset')
-		local cellWidth = c.row.size == 'small' and 171 or 367 -- whole pixels: a 367 column's quarter is 171
+		local cellWidth = c.row.size == 'small' and 165 or 359 -- under Thick: a 387 column inside its 14 of padding, a 193 quarter likewise
 		eq(c.label:GetWidth(), cellWidth - c.widget:GetWidth() - 10, key .. ' label is the rest of the cell')
 	end
 	body:Release()
@@ -206,12 +206,12 @@ test('a color row gets the room a select row gets: a normal half, so its label a
 	eq(by.c1.row.size, 'normal', 'small is not honored for a color')
 	local _, _, _, x1 = by.c1.frame:GetPoint(1)
 	local _, _, _, x2 = by.c2.frame:GetPoint(1)
-	eq(x1, 0, 'the first in the left half')
-	eq(x2, 407, 'the second in the right half, not beside the first in a quarter')
-	eq(by.c1.frame:GetWidth(), 367, 'a half wide, as a select\'s')
+	eq(x1, 14, 'the first in the left half, inside the padding (Thick)')
+	eq(x2, 401, 'the second in the right half, not beside the first in a quarter')
+	eq(by.c1.frame:GetWidth(), 359, 'a half wide, as a select\'s')
 	eq(by.c1.frame:GetWidth(), by.s.frame:GetWidth(), 'as a select row')
-	eq(by.c1.label:GetWidth(), 367 - 170 - 10, 'the label has the rest beside the bar')
-	eq(by.c3.y, by.c1.y + 34, 'a third colour starts the next line')
+	eq(by.c1.label:GetWidth(), 359 - 170 - 10, 'the label has the rest beside the bar')
+	eq(by.c3.y, by.c1.y + 38, 'a third colour starts the next line (rows are 38 tall under Thick)')
 	body:Release()
 end)
 
@@ -230,18 +230,19 @@ test('a label reused from a small toggle takes the normal cell\'s width, so its 
 	body:Draw(OM.BuildView(root, 'page').sections)
 	local c = body.cells[1]
 	check(c.label == label, 'the label was reused')
-	eq(c.label:GetWidth(), 367 - 18 - 10, 'the normal cell\'s width, not the small one\'s')
+	eq(c.label:GetWidth(), 359 - 18 - 10, 'the normal cell\'s width, not the small one\'s')
 	eq(c.label:GetStringWidth(), c.label:GetUnboundedStringWidth(), 'so the game reports it uncut')
 	body:Release()
 end)
 
-test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 183', function()
+test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 193 (Thick)', function()
 	local body, by = draw_body(774, {
 		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'toggle', 'C' },
 		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
 	})
 	local got = {}
-	for _, line in ipairs(body.pools.line.used) do
+	-- Under Thick the dividers are the panel's hairlines (white at 7%), not OB.LINE's.
+	for _, line in ipairs(body.pools.hairline.used) do
 		if line:GetWidth() == 1 then
 			local _, _, _, x, y = line:GetPoint(1)
 			got[#got + 1] = x .. ',' .. -y .. ',' .. line:GetHeight()
@@ -249,8 +250,9 @@ test('the body draws dividers a line tall: between the halves at 387, between tw
 	end
 	table.sort(got)
 	local y = by.a.y
-	eq(table.concat(got, ' '), '183,' .. y .. ',34 387,' .. y .. ',34',
+	eq(table.concat(got, ' '), '193,' .. y .. ',38 387,' .. y .. ',38',
 		'none beside the wide row or the lone half after it')
+	eq(#body.pools.line.used, 0, 'none from the old line pool')
 	body:Release()
 end)
 
@@ -258,7 +260,7 @@ test('a position cell is wide, has no label, is the block plus 12 tall, and show
 	local body, by = draw_body(774, { { 'pos', 'position', 'Position' }, { 'after', 'toggle', 'After' } })
 	local c = by.pos
 	eq(c.height, 65 + 12, 'the widget plus 12')
-	eq(c.frame:GetWidth(), 774, 'the whole line')
+	eq(c.frame:GetWidth(), 746, 'the whole line, inside the padding (Thick)')
 	check(not c.label:IsShown(), 'no label: the section says Position')
 	local point, rel, _, x, y = c.widget.frame:GetPoint(1)
 	eq(point, 'TOPLEFT', 'the block sits at the cell\'s top left')
@@ -287,7 +289,7 @@ end)
 test('a label too long for its small cell is cut to leave room for the control', function()
 	local body, by = draw_body(774, { { 'x', 'toggle', 'A very very long small toggle name', 'small' } })
 	local c = by.x
-	eq(c.label:GetWidth(), 171 - 18 - 10, 'the label gives way')
+	eq(c.label:GetWidth(), 165 - 18 - 10, 'the label gives way')
 	body:Release()
 end)
 
@@ -318,16 +320,17 @@ test('quarter cells are whole pixels, the second flush with its column\'s right 
 		return out
 	end
 	local w = xs(774)
-	-- A 367 column's quarters are 171 wide, 25 apart: the second ends at 367.
-	eq(w.a.x, 0); eq(w.b.x, 196); eq(w.c.x, 407)
-	eq(w.a.w, 171); eq(w.b.w, 171); eq(w.c.w, 367)
-	eq(w.d.x, 0); eq(w.e.x, 196); eq(w.f.x, 407); eq(w.f.w, 171)
+	-- Under Thick a 387 column's quarters are 193 wide with no gap, the second
+	-- ending at 387, and each cell is its slot inset by 14 either side.
+	eq(w.a.x, 14); eq(w.b.x, 208); eq(w.c.x, 401)
+	eq(w.a.w, 165); eq(w.b.w, 165); eq(w.c.w, 359)
+	eq(w.d.x, 14); eq(w.e.x, 208); eq(w.f.x, 401); eq(w.f.w, 165)
 	local d = xs(520)
-	eq(d.a.x, 0); eq(d.b.x, 132); eq(d.c.x, 280)
-	eq(d.a.w, 108); eq(d.b.w, 108); eq(d.c.w, 240)
-	eq(d.f.x, 280); eq(d.f.w, 108)
+	eq(d.a.x, 14); eq(d.b.x, 144); eq(d.c.x, 274)
+	eq(d.a.w, 102); eq(d.b.w, 102); eq(d.c.w, 232)
+	eq(d.f.x, 274); eq(d.f.w, 102)
 	local _, wide = draw_body(520, { { 'w', 'input', 'Wide', 'wide' } })
-	eq(wide.w.frame:GetWidth(), 520, 'a wide row takes the body\'s width')
+	eq(wide.w.frame:GetWidth(), 492, 'a wide row takes the body\'s width less the padding')
 end)
 
 test("buttons aligned right sit at the right end of a wide row's line, which ends 24 before them; centred ones in the middle; no dividers", function()
@@ -338,13 +341,14 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 		{ 'ok', 'execute', 'Confirm copy', nil, 'center' }, { 'cancel', 'execute', 'Cancel', nil, 'center' },
 	})
 	-- All and None: 80 wide each (a small size changes nothing), 12 apart, None flush with the right edge.
-	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '348+80', 'All')
-	eq(point_x(by.none.frame) .. '+' .. by.none.frame:GetWidth(), '440+80', 'None ends at 520')
+	-- Under Thick the line of buttons lies in the cell, 14 in from each edge.
+	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '334+80', 'All')
+	eq(point_x(by.none.frame) .. '+' .. by.none.frame:GetWidth(), '426+80', 'None ends at 506')
 	check(by.all.y == by.pick.y and by.none.y == by.pick.y, "on the wide row's line")
 	-- The wide row ends 24 before All, and its label has the rest.
-	eq(point_x(by.pick.frame), 0, 'the wide row at the left')
-	eq(by.pick.frame:GetWidth(), 324, 'up to 24 before All')
-	eq(by.pick.label:GetWidth(), 324 - 170 - 10, 'its label is the rest of the cell')
+	eq(point_x(by.pick.frame), 14, 'the wide row at the left, inside the padding')
+	eq(by.pick.frame:GetWidth(), 296, 'up to 24 before All')
+	eq(by.pick.label:GetWidth(), 296 - 170 - 10, 'its label is the rest of the cell')
 	local point, rel, relPoint = by.pick.widget.frame:GetPoint(1)
 	check(point == 'RIGHT' and rel == by.pick.frame and relPoint == 'RIGHT', "the dropdown at its cell's right end")
 	-- Each button at its cell's left, the cell as wide as the button.
@@ -355,14 +359,14 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 	end
 	-- Confirm copy and Cancel: a pair in the middle, Confirm copy first, 12 apart.
 	local okWidth, cancelWidth = by.ok.widget:GetWidth(), by.cancel.widget:GetWidth()
-	local left = math.floor((520 - okWidth - 12 - cancelWidth) / 2)
+	local left = 14 + math.floor((492 - okWidth - 12 - cancelWidth) / 2)
 	eq(point_x(by.ok.frame), left, 'Confirm copy on the left')
 	eq(point_x(by.cancel.frame), left + okWidth + 12, 'Cancel 12 after it')
 	check(math.abs(left - (520 - (left + okWidth + 12 + cancelWidth))) <= 1, 'the same room either side')
-	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 34, 'one line, under the toggles')
+	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 38, 'one line, under the toggles')
 	-- The one divider is the toggles', between the halves at 260.
 	local got = {}
-	for _, line in ipairs(body.pools.line.used) do
+	for _, line in ipairs(body.pools.hairline.used) do
 		if line:GetWidth() == 1 then
 			local _, _, _, x, y = line:GetPoint(1)
 			got[#got + 1] = x .. ',' .. -y
@@ -408,8 +412,8 @@ test('search results lay aligned buttons out as halves, as any result', function
 	body:DrawResults(OM.BuildView(root, 'page').sections, function() end)
 	local by = {}
 	for _, c in ipairs(body.cells) do by[c.row.key] = c end
-	eq(point_x(by.pick.frame) .. '+' .. by.pick.frame:GetWidth(), '0+240', 'the wide row a half')
-	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '280+240', 'the button the other half')
+	eq(point_x(by.pick.frame) .. '+' .. by.pick.frame:GetWidth(), '14+232', 'the wide row a half, inside the padding (Thick)')
+	eq(point_x(by.all.frame) .. '+' .. by.all.frame:GetWidth(), '274+232', 'the button the other half')
 	body:Release()
 end)
 
@@ -490,16 +494,16 @@ test("a bare row: no label, the body's width, at the cell's top left, its widget
 	local c = cell('bare')
 	check(not c.label:IsShown(), 'no label')
 	check(cell('before').label:IsShown(), 'a normal row has one')
-	eq(c.widget.frame:GetWidth(), 774, "the widget has the body's width")
-	eq(c.frame:GetWidth(), 774, 'and the cell is the whole line')
+	eq(c.widget.frame:GetWidth(), 746, "the widget has the cell's width (the body's less the 14 of padding either side, under Thick)")
+	eq(c.frame:GetWidth(), 746, 'and the cell is the whole line, inside the padding')
 	local point, rel, relPoint, x, y = c.widget.frame:GetPoint(1)
 	eq(point, 'TOPLEFT', "at the cell's top left")
 	check(rel == c.frame, 'in its cell')
 	eq(relPoint, 'TOPLEFT')
 	eq(x, 0)
 	eq(y, -6, '6 down')
-	eq(c.height, math.ceil(774 / 7) + 12, "the widget's height, at the body's width, rounded up, plus 12")
-	eq(c.y, cell('before').y + 34, 'on the line after the normal rows')
+	eq(c.height, math.ceil(746 / 7) + 12, "the widget's height, at the cell's width, rounded up, plus 12")
+	eq(c.y, cell('before').y + 38, 'on the line after the normal rows (38 tall under Thick)')
 	eq(cell('after').y, c.y + c.height, 'and the next row under it')
 	check(not c.frame:IsMouseEnabled(), 'its row takes no mouse')
 	check(cell('before').frame:IsMouseEnabled() and cell('after').frame:IsMouseEnabled(), 'a normal row does')
@@ -563,7 +567,7 @@ test("a titled bare row: its name above the widget, the desc its name's tooltip,
 	check(rel == c.frame, 'in its cell')
 	eq(x, 0)
 	eq(y, -6, '6 down')
-	eq(c.widget.frame:GetWidth(), 774, "the widget has the body's width")
+	eq(c.widget.frame:GetWidth(), 746, "the widget has the cell's width (the body's less the padding, under Thick)")
 	point, rel, relPoint, x, y = c.widget.frame:GetPoint(1)
 	eq(point .. relPoint, 'TOPLEFTTOPLEFT', "the widget at the cell's left")
 	check(rel == c.frame, 'in its cell')
@@ -622,7 +626,7 @@ test("a fill row stretches to the body's visible height, so the body has nothing
 	eq(drawn(), 'before,fill,after', 'the fill row between normal rows')
 	local view = F.body:GetHeight()
 	local c = cell('fill')
-	eq(c.y + c.height + 34 + 24, view, 'the fill row takes what the rows around it leave (the row after it, the bottom padding)')
+	eq(c.y + c.height + 38 + 24, view, 'the fill row takes what the rows around it leave (the row after it, 38 tall under Thick, the bottom padding)')
 	eq(c.widget.frame:GetHeight(), c.height - 12, 'its widget is told its height: the cell less its padding')
 	eq(heights[#heights], c.height - 12, 'through SetHeight')
 	eq(c.widget.frame:GetWidth(), 774, "the body's width, as a bare row")
@@ -834,4 +838,223 @@ test("an execute button shows its row's tooltip while the mouse is on it, under 
 	end
 	restore()
 	st.config.profile.theme.name = 'thick'
+end)
+
+------------------------------------------------------------------ section panels, hairlines and the padding
+
+-- A texture as 'x,y WxH' (its first point's offsets, as the content's TOPLEFT).
+local function rect(tex)
+	local _, _, _, x, y = tex:GetPoint(1)
+	return x .. ',' .. -y .. ' ' .. tex:GetWidth() .. 'x' .. tex:GetHeight()
+end
+
+local function color_of(tex)
+	local c = stub.state(tex).color_texture
+	return c and (c[1] .. ',' .. c[2] .. ',' .. c[3] .. ',' .. c[4])
+end
+
+local function shown(pool)
+	local list = {}
+	for _, t in ipairs(pool.used) do
+		if t:IsShown() then list[#list + 1] = t end
+	end
+	return list
+end
+
+local function sorted_rects(pool)
+	local got = {}
+	for _, t in ipairs(shown(pool)) do got[#got + 1] = rect(t) end
+	table.sort(got)
+	return got
+end
+
+local function in_look(look, fn)
+	st.config.profile.theme.name = look
+	local ok, err = pcall(fn)
+	st.config.profile.theme.name = 'thick'
+	if not ok then error(err, 0) end
+end
+
+test('OB.Hairlines: every distinct line top but the first, ascending', function()
+	local OB = st.OptionsBody
+	eq(#OB.Hairlines({}), 0, 'none for nothing')
+	local placed = {
+		{ col = 1, y = 0 }, { col = 2, y = 0 }, { col = 'full', y = 38 },
+		{ col = 'buttons', y = 38 }, { col = 1, y = 76 }, { col = 1, y = 114, quarter = 1 }, { col = 1, y = 114, quarter = 2 },
+	}
+	eq(table.concat(OB.Hairlines(placed), ','), '38,76,114', 'the first line has none')
+	eq(#OB.Hairlines({ { col = 1, y = 0 } }), 0, 'one line, none')
+	eq(OB.PANELED.rowHeight .. ',' .. OB.PANELED.pad .. ',' .. OB.PANELED.columnGap .. ',' .. OB.PANELED.quarterGap, '38,14,0,0')
+	eq(OB.FLAT.rowHeight .. ',' .. OB.FLAT.pad .. ',' .. OB.FLAT.columnGap .. ',' .. OB.FLAT.quarterGap, '34,0,40,24')
+	eq(OB.PANELED.panels, true); eq(OB.FLAT.panels, false)
+end)
+
+test('LayoutSections gives each section the height its rows take', function()
+	local laid = OW.LayoutSections({ { title = 'A', rows = { { key = 'a' }, { key = 'b' }, { key = 'c' } } } })
+	eq(laid[1].rowsHeight, 68, 'two lines')
+end)
+
+test('under Thick and Thin a section sits on a faded panel, rows 38 tall, 14 in from their slots', function()
+	for _, look in ipairs({ 'thick', 'thin' }) do
+		in_look(look, function()
+			local body, by = draw_body(774, {
+				{ 'a', 'range', 'A' }, { 'b', 'range', 'B' },
+				{ 'c', 'toggle', 'C', 'small' }, { 'd', 'toggle', 'D', 'small' }, { 'e', 'toggle', 'E', 'small' }, { 'f', 'toggle', 'F', 'small' },
+			})
+			eq(point_x(by.a.frame) .. '+' .. by.a.frame:GetWidth(), '14+359', look .. ': a half, inside its padding')
+			eq(point_x(by.b.frame) .. '+' .. by.b.frame:GetWidth(), '401+359', look .. ': the second half')
+			eq(table.concat({ point_x(by.c.frame), point_x(by.d.frame), point_x(by.e.frame), point_x(by.f.frame) }, ','), '14,208,401,595', look .. ': quarters')
+			eq(by.c.frame:GetWidth(), 165, look .. ': a quarter inside its padding')
+			eq(by.a.height, 38, look .. ': rows are 38 tall')
+			local panels = shown(body.pools.panel)
+			eq(#panels, 1, look .. ': one panel')
+			eq(rect(panels[1]), '0,' .. by.a.y .. ' 774x76', look .. ': the rows\' top, 774 x 76')
+			eq(color_of(panels[1]), table.concat(st.OptionsBody.PANEL_FILL, ','), look .. ': black at 28%')
+			eq(panels[1]:GetDrawLayer(), 'BACKGROUND', look .. ': behind the rows')
+			local hairlines = shown(body.pools.hairline)
+			local y = by.a.y + 38
+			local got, dividers = {}, {}
+			for _, h in ipairs(hairlines) do
+				eq(color_of(h), table.concat(st.OptionsBody.HAIRLINE, ','), look .. ': white at 7%')
+				eq(h:GetDrawLayer(), 'BORDER', look .. ': in the border layer')
+				if h:GetHeight() == 1 then got[#got + 1] = rect(h) else dividers[#dividers + 1] = rect(h) end
+			end
+			eq(table.concat(got, ' '), '0,' .. y .. ' 774x1', look .. ': one hairline, at the second line\'s top')
+			table.sort(dividers)
+			local y1 = by.a.y
+			local want = { '193,' .. y .. ' 1x38', '387,' .. y .. ' 1x38', '387,' .. y1 .. ' 1x38', '580,' .. y .. ' 1x38' }
+			-- the first line has two ranges (one divider, at 387); the second two small pairs (193, 580) and the halves (387)
+			table.sort(want)
+			eq(table.concat(dividers, ' '), table.concat(want, ' '), look .. ': dividers a line tall')
+			eq(#shown(body.pools.line), 0, look .. ': no line between sections, none for dividers')
+			body:Release()
+		end)
+	end
+end)
+
+test('under Blizzard the body is laid out as before, with no panel or hairline', function()
+	in_look('blizzard', function()
+		local body, by = draw_body(774, {
+			{ 'a', 'range', 'A' }, { 'b', 'range', 'B' },
+			{ 'c', 'toggle', 'C', 'small' }, { 'd', 'toggle', 'D', 'small' }, { 'e', 'toggle', 'E', 'small' }, { 'f', 'toggle', 'F', 'small' },
+		})
+		eq(point_x(by.a.frame) .. '+' .. by.a.frame:GetWidth(), '0+367')
+		eq(point_x(by.b.frame) .. '+' .. by.b.frame:GetWidth(), '407+367')
+		eq(table.concat({ point_x(by.c.frame), point_x(by.d.frame), point_x(by.e.frame), point_x(by.f.frame) }, ','), '0,196,407,603')
+		eq(by.c.frame:GetWidth(), 171, 'a quarter')
+		eq(by.a.height, 34, 'rows are 34 tall')
+		eq(#body.pools.panel.used, 0, 'no panel')
+		eq(#body.pools.hairline.used, 0, 'no hairline')
+		local got = {}
+		for _, line in ipairs(shown(body.pools.line)) do
+			eq(color_of(line), table.concat(st.OptionsBody.LINE, ','), 'in OB.LINE')
+			got[#got + 1] = rect(line)
+		end
+		table.sort(got)
+		local y = by.a.y
+		local want = { '387,' .. y .. ' 1x34', '183,' .. y + 34 .. ' 1x34', '387,' .. y + 34 .. ' 1x34', '590,' .. y + 34 .. ' 1x34' }
+		table.sort(want)
+		eq(table.concat(got, ' '), table.concat(want, ' '), "the dividers, at today's places")
+		body:Release()
+	end)
+end)
+
+test('panels, hairlines and dividers sit on whole pixels at any width', function()
+	for _, width in ipairs({ 774, 520, 540, 525 }) do
+		local body = draw_body(width, {
+			{ 'a', 'range', 'A' }, { 'b', 'range', 'B' },
+			{ 'c', 'toggle', 'C', 'small' }, { 'd', 'toggle', 'D', 'small' }, { 'e', 'toggle', 'E', 'small' }, { 'f', 'toggle', 'F', 'small' },
+		})
+		local count = 0
+		for _, pool in ipairs({ body.pools.panel, body.pools.hairline }) do
+			for _, t in ipairs(shown(pool)) do
+				count = count + 1
+				local _, _, _, x, y = t:GetPoint(1)
+				for _, n in ipairs({ x, y, t:GetWidth(), t:GetHeight() }) do
+					eq(n, math.floor(n), width .. ': a whole number')
+				end
+			end
+		end
+		check(count >= 4, width .. ': panels, hairlines and dividers were drawn')
+		local x2, w2 = body:SlotRect(2)
+		eq(x2 + w2, width, width .. ': the second half ends flush with the body')
+		local qx, qw = body:SlotRect(1, 2)
+		eq(qx + qw, body.columnWidth, width .. ': the second quarter ends flush with the column')
+		for _, args in ipairs({ { 1 }, { 2 }, { 1, 1 }, { 1, 2 }, { 2, 1 }, { 2, 2 }, { 'full' } }) do
+			local sx, sw = body:SlotRect(args[1], args[2])
+			local cx, cw = body:CellRect(args[1], args[2])
+			eq(cx .. '+' .. cw, (sx + 14) .. '+' .. (sw - 28), width .. ': the cell is the slot inset by 14')
+		end
+		body:Release()
+	end
+end)
+
+test('position blocks, descriptions, bare rows, aligned buttons and results sit inside the padding; a fill row does not', function()
+	W.Define('padbare', {
+		bare = true,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = {
+			SetWidth = function(self, width) self.frame:SetWidth(width) end,
+			Refresh = function() end,
+		},
+	})
+	W.Define('padfill', {
+		bare = true, fill = true, minHeight = 100,
+		build = function(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(10, 10)
+		end,
+		methods = { Refresh = function() end },
+	})
+	local function draw(options)
+		local args = {}
+		for i, o in ipairs(options) do
+			args[o[1]] = { type = o[2], name = o[3], size = o[4], align = o[5], order = i, desc = o[1], func = function() end,
+				values = { a = 'A' }, get = o[2] == 'range' and function() return 1 end or nil, min = 0, max = 10, step = 1 }
+		end
+		local root = { page = { type = 'group', name = 'Page', args = args, get = function() return true end, set = function() end } }
+		return root
+	end
+	local function body_of(root, width)
+		local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, width)
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local by = {}
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		return body, by
+	end
+
+	local body, by = body_of(draw({
+		{ 'pos', 'position', 'Position' }, { 'desc', 'description', 'Some words' }, { 'bare', 'padbare', 'Bare', 'wide' },
+		{ 'pick', 'select', 'Pick', 'wide' }, { 'x', 'execute', 'X', nil, 'right' }, { 'y', 'execute', 'Y', nil, 'right' },
+	}), 774)
+	eq(point_x(by.pos.frame), 14, 'a position row at 14')
+	eq(point_x(by.desc.frame) .. '+' .. by.desc.frame:GetWidth(), '14+746', 'a description 14 in and 746 wide')
+	eq(by.desc.widget:GetWidth(), 746, 'its text is wrapped to 746')
+	eq(point_x(by.bare.frame) .. '+' .. by.bare.frame:GetWidth(), '14+746', 'a bare row at 14')
+	eq(by.bare.widget.frame:GetWidth(), 746, 'its widget given 746')
+	eq(point_x(by.y.frame) + by.y.frame:GetWidth(), 760, "a 'right' group's last button ends at 760")
+	check(by.x.y == by.y.y, 'one line of buttons')
+	eq(#shown(body.pools.panel), 2, 'a panel for the position block\'s section and one for the rest')
+	body:Release()
+
+	-- Results: halves at 14 and 401 on a panel.
+	local root = draw({ { 'a', 'toggle', 'A' }, { 'b', 'toggle', 'B' } })
+	local results = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, 774)
+	results:DrawResults(OM.BuildView(root, 'page').sections, function() end)
+	local rby = {}
+	for _, c in ipairs(results.cells) do rby[c.row.key] = c end
+	eq(point_x(rby.a.frame) .. '+' .. rby.a.frame:GetWidth(), '14+359', 'a result in the first half')
+	eq(point_x(rby.b.frame) .. '+' .. rby.b.frame:GetWidth(), '401+359', 'a result in the second')
+	eq(#shown(results.pools.panel), 1, 'on a panel')
+	results:Release()
+
+	-- A fill row: the whole line, and its section has no panel.
+	local fillBody, fby = body_of(draw({ { 'fill', 'padfill', 'Fill', 'wide' } }), 774)
+	eq(point_x(fby.fill.frame) .. '+' .. fby.fill.frame:GetWidth(), '0+774', 'a fill row at 0, 774 wide')
+	eq(#shown(fillBody.pools.panel), 0, 'no panel')
+	eq(#shown(fillBody.pools.hairline), 0, 'no hairline')
+	fillBody:Release()
 end)

@@ -419,11 +419,15 @@ local function entry_of(key)
 end
 
 -- The body's shown line textures as wide as the body's content and 1 tall,
--- and those 1 wide (the halves' dividers).
+-- and those 1 wide (the halves' dividers), in OB.LINE's color: under Thick and
+-- Thin the dividers and the lines between rows are the panels' hairlines (white
+-- at 7%), which are no part of what this counts.
 local function lines(wide)
 	local F, n = OW.GetFrames(), 0
+	local line = table.concat(st.OptionsBody.LINE, ',')
 	for _, region in ipairs({ F.content:GetRegions() }) do
-		if region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture then
+		local color = region:GetObjectType() == 'Texture' and region:IsShown() and stub.state(region).color_texture
+		if color and table.concat(color, ',') == line then
 			if wide and region:GetWidth() == F.content:GetWidth() and region:GetHeight() == 1 then n = n + 1 end
 			if not wide and region:GetWidth() == 1 then n = n + 1 end
 		end
@@ -505,7 +509,7 @@ test('the dressing comes off under Thick', function()
 		eq(line:GetAtlas(), nil, 'no atlas on a tab row line')
 		eq(table.concat(stub.state(line).color_texture, ','), table.concat(st.OptionsBody.LINE, ','), 'the lines color')
 	end
-	eq(lines(true), 2, 'a line between each pair of the three sections')
+	eq(lines(true), 0, 'no line between the sections: their panels part them')
 	check(F.footerLine:IsShown(), 'the footer line back')
 	local glass = false
 	for _, region in ipairs({ F.search:GetRegions() }) do

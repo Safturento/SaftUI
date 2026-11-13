@@ -322,11 +322,27 @@ test('under Thick and Thin /sui is unchanged', function()
 	local thick = drawn()
 	local sizes = drawn(true)
 	theme('blizzard')
-	eq(drawn(true), sizes, 'Blizzard: every cell and widget keeps its rect')
+	-- Blizzard keeps the flat layout (rows 34 tall, no padding, a gap of 40
+	-- between the columns); Thick and Thin lay rows out 38 tall on panels, so
+	-- the cells' rects differ and the widgets' stay.
+	local flat = drawn(true)
+	check(flat ~= sizes, 'Blizzard: the cells are laid out flat')
+	check(flat:find('toggle cell 0,-20 367x34', 1, true), 'Blizzard: the first cell at 0, 367 x 34')
+	check(flat:find('small cell 407,-20 171x34', 1, true), 'Blizzard: the second column at 407, a quarter 171 wide')
+	for line in sizes:gmatch('[^\n]+') do
+		-- The description wraps to its cell: 746 inside the padding, 774 flat.
+		if line:find(' widget ', 1, true) and not line:find('^description widget') then
+			check(flat:find(line, 1, true), 'Blizzard: every widget keeps its rect: ' .. line)
+		end
+	end
+	check(flat:find('description widget 774x', 1, true), 'Blizzard: the description wraps to the whole line')
 	theme('thin')
 	eq(drawn(), thick, 'Thin: as under Thick before Blizzard')
 	theme('thick')
 	eq(drawn(), thick, 'Thick again: as before Blizzard')
+	theme('blizzard')
+	eq(drawn(true), flat, 'Blizzard again: as before')
+	theme('thick')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

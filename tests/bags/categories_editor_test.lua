@@ -494,8 +494,9 @@ test('the rule editor fits its pane: a long row wraps, every field clear of the 
 	open()
 	local w = tab()
 	local editor = w:EditorCell('rule').widget
-	eq(editor.frame:GetWidth(), 540, "the pane's width")
-	eq(editor.frame:GetRight(), w.frame:GetRight(), 'at the right of the tab')
+	-- The editor's body draws its sections on panels, 14 in from each edge.
+	eq(editor.frame:GetWidth(), 540 - 28, "the pane's width, inside the panel's padding")
+	eq(editor.frame:GetRight(), w.frame:GetRight() - 14, 'at the right of the tab, inside the padding')
 	local oldGear, top = 0, editor.frame:GetTop()
 	for i, row in ipairs(editor.rows) do
 		local f = row.frame

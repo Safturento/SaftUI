@@ -31,18 +31,30 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	0 when nothing is drawn. Sections are laid out by OB.LayoutSections, their
 	rows by OB.LayoutRows, both pure: a row is small (a quarter of the line;
 	two make a half), normal (a half) or wide (the whole line), by row.size.
+
+	Two sets of metrics (OB.FLAT, OB.PANELED; body.metrics), chosen by the look
+	at each Draw: under Blizzard rows are 34 tall in two columns 40 apart with
+	nothing behind them, a 1px OB.LINE between the halves of a line and the
+	quarters of a half. Under Thick and Thin rows are 38 tall, each section
+	with rows sits on a panel (black at 28%) the body wide, every row 14 in
+	from its slot's edges (Body:SlotRect is the slot, Body:CellRect the cell),
+	with a hairline (white at 7%) at the top of each line but the first and as
+	dividers between columns. No line between sections. A section holding a
+	fill row has no panel, and the fill row is the whole line.
 	Buttons with an align (row.align, the model's) that follow each other
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
 	middle, and right ones at the line's right end, on the line of a wide
 	row just before them (whose cell then ends 24 before the buttons, so its
-	label and control take the rest), else on a line of their own.
+	label and control take the rest), else on a line of their own, all
+	inside the padding.
 	A toggle's check box and a color's bar sit at their cell's right edge,
 	the label taking the rest; a small input's box is 60 wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
-	no label either: its widget is given the body's width (SetWidth, when it
+	no label either: its widget is given its cell's width (the body's less the
+	padding; SetWidth, when it
 	has one) before its height is read, and sits at the cell's top left, 6
 	down, in a cell as tall as the widget plus 12. Its row takes no mouse,
 	so the widget's own parts get it. A titled bare row (W.Define's titled)
@@ -76,8 +88,7 @@ local tremove = table.remove
 
 local ROW_HEIGHT = 34
 local LABEL_GAP = 10
-local COLUMN_GAP = 40
-local QUARTER_GAP = 24 -- between the two quarters of a half
+local STOP_GAP = 24 -- a wide row ends this far before the buttons at its line's right end
 local BUTTON_GAP = 12 -- between the buttons of a line (W.Confirm's Yes and No are 12 apart)
 local SMALL_INPUT_WIDTH = 60
 local WIDTH = 774 -- the window's body: two columns of 367 with a gap of 40
@@ -90,6 +101,16 @@ local NOTE_HEIGHT, NOTE_GAP = 13, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
+
+-- The two sets of metrics a body lays out with (chosen at each draw, by look):
+-- FLAT is Blizzard's, rows 34 tall in two columns 40 apart (quarters 24 apart)
+-- with nothing behind them; PANELED is Thick's and Thin's, rows 38 tall on a
+-- panel per section, padded 14 either side, the columns and quarters flush
+-- (a faint line divides them).
+OB.FLAT = { rowHeight = 34, pad = 0, columnGap = 40, quarterGap = 24, panels = false }
+OB.PANELED = { rowHeight = 38, pad = 14, columnGap = 0, quarterGap = 0, panels = true }
+OB.PANEL_FILL = { 0, 0, 0, 0.28 } -- a section's panel: black at 28%
+OB.HAIRLINE = { 1, 1, 1, 0.07 } -- the lines between rows and between columns: white at 7%
 OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
@@ -319,9 +340,10 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 end
 
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
--- placed} } and the body's height. Sections after the first are separated by
--- a line; an untitled one (rows that follow a nested group) gets none, so it
--- reads as a continuation of the one above. heightOf, sizeOf and alignOf
+-- rowsHeight, placed} } and the body's height. The space for a line between
+-- sections after the first is kept (lineY) though none is drawn any more; an
+-- untitled one (rows that follow a nested group) keeps none, so it reads as a
+-- continuation of the one above. heightOf, sizeOf and alignOf
 -- are OB.LayoutRows'.
 function OB.LayoutSections(sections, heightOf, sizeOf, alignOf)
 	local laid, y = {}, BODY_TOP
@@ -347,6 +369,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf)
 		entry.rowsY = y
 		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf, alignOf)
 		entry.placed = placed
+		entry.rowsHeight = height
 		y = y + height
 		laid[#laid + 1] = entry
 	end
@@ -387,6 +410,21 @@ function OB.Dividers(placed, heightOf)
 		end
 	end
 	return dividers
+end
+
+-- The lines between a section's rows (placed, as OB.LayoutRows gives it): the
+-- top of every line but the first, ascending.
+function OB.Hairlines(placed)
+	local seen, tops = {}, {}
+	for _, p in ipairs(placed) do
+		if not seen[p.y] then
+			seen[p.y] = true
+			tops[#tops + 1] = p.y
+		end
+	end
+	table.sort(tops)
+	tremove(tops, 1)
+	return tops
 end
 
 -- Where a line of buttons goes (widths, each button's, in order): side by
@@ -503,8 +541,8 @@ local function PlaceRow(cell, x, y, width)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
 		label:Show()
 		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
-		if cell.height > ROW_HEIGHT then
-			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((ROW_HEIGHT - 16) / 2))
+		if cell.height > cell.rowHeight then
+			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((cell.rowHeight - 16) / 2))
 			widget:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, -6)
 		else
 			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
@@ -529,13 +567,7 @@ function OB.New(content, root, onChanged, width)
 		content = content, root = root, onChanged = onChanged,
 		width = width or WIDTH, cells = {},
 	}, Body)
-	-- Whole units only: SaftUI's scale makes a unit a pixel, and a 1px border on
-	-- a frame that starts or ends between two pixels blurs. Halves round down,
-	-- and the second of each pair sits flush with the outer edge (CellRect), so
-	-- an odd remainder widens the gap by a pixel (a 367 column's quarters are
-	-- 171 and 171, 25 apart).
-	body.columnWidth = floor((body.width - COLUMN_GAP) / 2)
-	body.quarterWidth = floor((body.columnWidth - QUARTER_GAP) / 2)
+	body:UseMetrics()
 
 	body.pools = {
 		row = Pool(function()
@@ -566,6 +598,16 @@ function OB.New(content, root, onChanged, width)
 			return button
 		end),
 		line = Pool(function() return Line(content) end),
+		panel = Pool(function()
+			local panel = content:CreateTexture(nil, 'BACKGROUND')
+			panel:SetColorTexture(unpack(OB.PANEL_FILL))
+			return panel
+		end),
+		hairline = Pool(function()
+			local hairline = content:CreateTexture(nil, 'BORDER')
+			hairline:SetColorTexture(unpack(OB.HAIRLINE))
+			return hairline
+		end),
 		title = Pool(function()
 			local title = Text(content, 'section')
 			title:SetTextColor(Grey())
@@ -582,16 +624,37 @@ function OB.New(content, root, onChanged, width)
 	return body
 end
 
--- Where a cell goes: its x in the content and its width, for a column ('full',
--- 1 or 2) and, in a half, a quarter (1 or 2, or nil for the whole half). The
--- second column and the second quarter sit flush with their right edge, so
--- every edge is a whole unit.
-function Body:CellRect(col, quarter)
+-- The metrics for the look now drawn (OB.FLAT under Blizzard, else OB.PANELED),
+-- and the widths that follow them. Whole units only: SaftUI's scale makes a
+-- unit a pixel, and a 1px border on a frame that starts or ends between two
+-- pixels blurs. Halves round down, and the second of each pair sits flush with
+-- the outer edge (SlotRect), so an odd remainder widens the gap by a pixel
+-- (a 367 column's quarters are 171 and 171, 25 apart).
+function Body:UseMetrics()
+	local metrics = W.BlizzardLook() and OB.FLAT or OB.PANELED
+	self.metrics = metrics
+	self.columnWidth = floor((self.width - metrics.columnGap) / 2)
+	self.quarterWidth = floor((self.columnWidth - metrics.quarterGap) / 2)
+end
+
+-- Where a column's slot goes: its x in the content and its width, for a column
+-- ('full', 1 or 2) and, in a half, a quarter (1 or 2, or nil for the whole
+-- half). The second column and the second quarter sit flush with their right
+-- edge, so every edge is a whole unit.
+function Body:SlotRect(col, quarter)
 	if col == 'full' then return 0, self.width end
 	local x = col == 2 and (self.width - self.columnWidth) or 0
 	if not quarter then return x, self.columnWidth end
 	if quarter == 2 then x = x + self.columnWidth - self.quarterWidth end
 	return x, self.quarterWidth
+end
+
+-- Where a cell goes: its slot, inset by the metrics' padding on each side
+-- ('full' too). Under OB.FLAT that is the slot.
+function Body:CellRect(col, quarter)
+	local x, width = self:SlotRect(col, quarter)
+	local pad = self.metrics.pad
+	return x + pad, width - 2 * pad
 end
 
 function Body:SetRoot(root)
@@ -613,18 +676,21 @@ function Body:RowCell(row)
 		widget.width = row.size == 'small' and SMALL_INPUT_WIDTH or W.WIDTH.input
 		widget.frame:SetWidth(widget.width)
 	end
+	local rowHeight, inside = self.metrics.rowHeight, self.width - 2 * self.metrics.pad
 	local cell = {
-		row = row, frame = frame, widget = widget, label = frame.label, height = ROW_HEIGHT, place = PlaceRow,
-		align = row.align,
+		row = row, frame = frame, widget = widget, label = frame.label, height = rowHeight, rowHeight = rowHeight,
+		place = PlaceRow, align = row.align,
 	}
 	if row.type == 'description' then
-		widget:SetWidth(self.width)
-		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
 		-- With fill (SaftUI's), a fill row at its own height at least: what it
 		-- shows sits in the middle of the height it's given (its SetHeight).
-		if OM.Member(self.root, row, 'fill') then cell.fill, cell.pad = true, 12 end
+		-- A fill row is the whole line; any other is inside the padding.
+		local fill = OM.Member(self.root, row, 'fill')
+		widget:SetWidth(fill and self.width or inside)
+		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
+		if fill then cell.fill, cell.pad = true, 12 end
 	elseif row.type == 'multiselect' then
-		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
+		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
 	elseif row.type == 'position' then
 		cell.height = ceil(widget:GetHeight()) + 12
 		widget.onTip = function(on)
@@ -639,9 +705,9 @@ function Body:RowCell(row)
 		end
 	elseif bare then
 		-- The width first: a bare widget's height can follow it.
-		if widget.SetWidth then widget:SetWidth(self.width) end
-		local pad = IsTitled(row.type) and BARE_TITLE + 6 or 12
 		local least = FillMin(row.type)
+		if widget.SetWidth then widget:SetWidth(least and self.width or inside) end
+		local pad = IsTitled(row.type) and BARE_TITLE + 6 or 12
 		if least then
 			-- Its least for now: DrawSections gives it what the view leaves.
 			cell.fill, cell.pad, cell.height = true, pad, ceil(least) + pad
@@ -658,7 +724,10 @@ function Body:ResultCell(row, onPick)
 	local button = Acquire(self.pools.result)
 	button.row, button.onPick = row, onPick
 	button.text:SetText(row.name)
-	local cell = { row = row, frame = button, label = button.text, height = ROW_HEIGHT, place = PlaceResult }
+	local cell = {
+		row = row, frame = button, label = button.text, height = self.metrics.rowHeight, rowHeight = self.metrics.rowHeight,
+		place = PlaceResult,
+	}
 	self.cells[#self.cells + 1] = cell
 	return cell
 end
@@ -701,8 +770,11 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if not buttonsAt[group] then
 			local widths = {}
 			for i, row in ipairs(group.rows) do widths[i] = byRow[row].widget:GetWidth() end
-			local xs, left = OB.ButtonRow(widths, group.align, self.width)
-			buttonsAt[group] = { xs = xs, left = left }
+			-- Inside the padding: the line of buttons lies in the cell, then moves by it.
+			local pad = self.metrics.pad
+			local xs, left = OB.ButtonRow(widths, group.align, self.width - 2 * pad)
+			for i in ipairs(xs) do xs[i] = xs[i] + pad end
+			buttonsAt[group] = { xs = xs, left = left + pad }
 		end
 		return buttonsAt[group]
 	end
@@ -710,13 +782,25 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if cell.widget.SetHeight then cell.widget:SetHeight(cell.height - cell.pad) end
 	end
 	self.filled = #fills > 0
-	local pools, content = self.pools, self.content
+	local pools, content, metrics = self.pools, self.content, self.metrics
 	for _, entry in ipairs(laid) do
-		-- Under Blizzard the sections have no line between them; the gap stays.
-		if entry.lineY and not self.blizzard then
-			local line = Acquire(pools.line)
-			line:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.lineY)
-			line:SetSize(self.width, 1)
+		-- No line between sections: the panels part them (and Blizzard never drew
+		-- one); the gap for it stays (entry.lineY).
+		-- A section holding a fill row has no panel: that row is the whole line.
+		local panelled = metrics.panels
+		local hasFill
+		for _, p in ipairs(entry.placed) do
+			if byRow[p.row].fill then hasFill = true end
+		end
+		if panelled and not hasFill then
+			local panel = Acquire(pools.panel)
+			panel:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.rowsY)
+			panel:SetSize(self.width, entry.rowsHeight)
+			for _, y in ipairs(OB.Hairlines(entry.placed)) do
+				local hairline = Acquire(pools.hairline)
+				hairline:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -(entry.rowsY + y))
+				hairline:SetSize(self.width, 1)
+			end
 		end
 		if entry.titleY then
 			local title = Acquire(pools.title)
@@ -734,22 +818,26 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			local x, cellWidth
 			if p.col == 'buttons' then
 				x, cellWidth = ButtonsAt(p.group).xs[p.index], cell.widget:GetWidth()
+			elseif cell.fill then
+				x, cellWidth = self:SlotRect(p.col, p.quarter) -- the whole line, padding or not
 			else
 				x, cellWidth = self:CellRect(p.col, p.quarter)
 				-- A wide row with buttons at its line's right end stops short of them.
-				if p.buttons then cellWidth = max(1, ButtonsAt(p.buttons).left - QUARTER_GAP) end
+				if p.buttons then cellWidth = max(1, ButtonsAt(p.buttons).left - STOP_GAP - x) end
 			end
 			cell.place(cell, x, cell.y, cellWidth)
 		end
 		for _, d in ipairs(OB.Dividers(entry.placed, heightOf)) do
 			local x
-			-- In the middle of the gap the line divides.
+			-- In the middle of the gap the line divides; with no gap, on the
+			-- boundary. The slots', not the padded cells'.
 			if d.at == 'half' then
 				x = self.width / 2
 			else
-				x = self:CellRect(d.col) + self.columnWidth / 2
+				x = self:SlotRect(d.col) + self.columnWidth / 2
 			end
-			local line = Acquire(pools.line)
+			-- Under panels a divider is as faint as a hairline, and part of them.
+			local line = Acquire(panelled and pools.hairline or pools.line)
 			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -(entry.rowsY + d.y))
 			line:SetSize(1, d.height)
 		end
@@ -758,12 +846,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 end
 
 function Body:Draw(sections, fillHeight)
-	self.blizzard = W.BlizzardLook()
+	self:UseMetrics()
 	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)
-	self.blizzard = W.BlizzardLook()
+	self:UseMetrics()
 	-- A result is a half, whatever size its setting is.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
 		function() return 'normal' end)
@@ -798,5 +886,5 @@ function Body:Release()
 	end
 	wipe(self.cells)
 	self.filled = false
-	for _, key in ipairs({ 'row', 'result', 'title', 'note', 'line' }) do ReleaseAll(self.pools[key]) end
+	for _, key in ipairs({ 'row', 'result', 'title', 'note', 'line', 'panel', 'hairline' }) do ReleaseAll(self.pools[key]) end
 end
