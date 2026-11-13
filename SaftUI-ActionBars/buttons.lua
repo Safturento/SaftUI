@@ -204,6 +204,13 @@ function AB:CreateSecureButton(bar, i, methods)
 	return button
 end
 
+-- Redraws every button of a pet or stance bar from the game.
+function AB:RefreshBarButtons(bar)
+	for _, button in ipairs(bar.buttons) do
+		button:Refresh()
+	end
+end
+
 -- Bindings changed: the hotkey text. The "Show Numbers for Cooldowns" setting
 -- changed: the cooldown numbers. LibActionButton follows the same two events.
 local events = CreateFrame('Frame')
