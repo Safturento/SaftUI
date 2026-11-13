@@ -120,6 +120,20 @@ local function Pieces(set)
 	return table.concat(out, ',')
 end
 
+-- One of a region's anchors as text, 'POINT relative RELPOINT x,y', x and y as
+-- T.text gives them and relative named from names (region -> name), else
+-- tostring'd: its first anchor, or with point the one at that point (nil when
+-- it has none there).
+function T.anchor(region, names, point)
+	names = names or {}
+	for i = 1, point and region:GetNumPoints() or 1 do
+		local p, rel, relPoint, x, y = region:GetPoint(i)
+		if not point or p == point then
+			return ('%s %s %s %s'):format(tostring(p), names[rel] or tostring(rel), tostring(relPoint), T.text(x, y))
+		end
+	end
+end
+
 -- The Blizzard art shown on a drawn frame itself (T.art) and over its icon's
 -- edge (T.over), as Pieces gives it: '' for a frame with none, or never drawn
 -- under Blizzard.

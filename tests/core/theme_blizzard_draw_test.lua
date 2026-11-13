@@ -67,12 +67,7 @@ end
 
 -- One of a region's anchors as text: 'POINT relative RELPOINT x,y', where
 -- relative names what it's anchored to among names (a table of region -> name).
-local function anchor(region, point, names)
-	for i = 1, region:GetNumPoints() do
-		local p, rel, rp, x, y = region:GetPoint(i)
-		if p == point then return ('%s %s %s %s'):format(p, names[rel] or tostring(rel), rp, text(x, y)) end
-	end
-end
+local function anchor(region, point, names) return T.anchor(region, names, point) end
 
 -- Every anchor of a region, as text, in a fixed order.
 local function anchors(region)

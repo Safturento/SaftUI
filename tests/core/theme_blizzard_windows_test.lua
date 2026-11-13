@@ -55,10 +55,7 @@ local THICK_STRIP = '0.30,0.30,0.30,0.40'
 
 -- A region's first anchor as text, 'POINT relative RELPOINT x,y', relative
 -- named from names (region -> name).
-local function anchor(region, names)
-	local point, rel, relPoint, x, y = region:GetPoint(1)
-	return ('%s %s %s %s'):format(tostring(point), names[rel] or tostring(rel), tostring(relPoint), text(x, y))
-end
+local anchor = T.anchor
 
 -- A state texture's atlas, 'none' for no texture.
 local function atlas(texture)

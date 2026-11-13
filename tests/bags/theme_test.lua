@@ -778,9 +778,7 @@ local THICK_STRIP = '0.30,0.30,0.30,0.40'
 -- A region's first anchor as text, 'POINT relative RELPOINT x,y', with a
 -- window's header, close button and drawn frame (its backdrop) named.
 local function anchor(region, container)
-	local names = { [container.header] = 'header', [st:GetCloseButton(container)] = 'close', [container.backdrop] = 'backdrop' }
-	local point, rel, relPoint, x, y = region:GetPoint(1)
-	return ('%s %s %s %s'):format(tostring(point), names[rel] or tostring(rel), tostring(relPoint), T.text(x, y))
+	return T.anchor(region, { [container.header] = 'header', [st:GetCloseButton(container)] = 'close', [container.backdrop] = 'backdrop' })
 end
 
 -- Where the close button sits in the metal's socket on this client: TOPRIGHT
