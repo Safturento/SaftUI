@@ -239,8 +239,16 @@ end
 -- would mean replacing Blizzard's code (.agents/taint.md rule 2), so SaftUI
 -- shows a bar of its own in its place instead, locked on your choice, until
 -- the roll ends. rollinfo.lua says when (LT:HoldRoll), matches it to its loot
--- history drop and keeps its counts and tooltip up to date, and takes it away
--- when the drop resolves; it goes here when its time runs out.
+-- history drop and keeps its counts and tooltip up to date, and finishes it
+-- when the drop resolves; it's finished here when its time runs out.
+--
+-- A finished bar doesn't vanish: it stays in the stack, locked, for
+-- FINISHED_HOLD seconds, fades out over FINISHED_FADE, and is then released
+-- (LT:ReleaseHeldRoll), which closes its gap. So choosing last on a roll, which
+-- resolves at the click, still shows your choice for a moment.
+
+-- How long a finished held bar stays up, and how long it then takes to fade.
+local FINISHED_HOLD, FINISHED_FADE = 3, 0.5
 
 local heldParent
 
@@ -260,20 +268,71 @@ local function OnHeldUpdate()
 	LT:UpdateHeldRolls()
 end
 
--- Counts each held roll's time down, and takes away those whose time is up.
+-- Seconds left on a held bar's timer: run on from the clock, or where it stood
+-- when the bar finished.
+local function HeldLeft(bar)
+	if bar.finishedAt then return bar.finishedLeft end
+	return max(0, bar.ends - GetTime())
+end
+
+-- Finishes a held bar (`why` says for the debug print: its drop resolved, or
+-- its time ran out): it stays up locked for FINISHED_HOLD seconds, then fades
+-- (LT:UpdateHeldRolls), then is released. It takes no drop from then on
+-- (rollinfo.lua leaves finished bars out), so a new roll of the same item
+-- matches as if it weren't there. Its timer stops: empty when its time ran
+-- out, otherwise where it was. `rolls` is the drop's last summary, if it could
+-- be read; without it the bar keeps the counts it had. It remembers the drop
+-- it finished on (`finalDropID`), only to show later results for it
+-- (LT:UpdateRollBars): a time-out's auto-passes and winner can arrive inside
+-- the linger.
+function LT:FinishHeldRoll(bar, why, rolls)
+	if not bar.holding or bar.finishedAt then return end
+	bar.finishedLeft = why == 'time' and 0 or HeldLeft(bar)
+	bar.finishedAt = GetTime()
+	bar.finalDropID, bar.dropID = bar.dropID, nil
+	if rolls then
+		bar.rolls = rolls
+		self:SetRollCounts(bar.counts, rolls)
+	end
+	SetBarTimer(bar, bar.finishedLeft)
+	if st.DEBUG then
+		-- What the result was, to tell a real one from a misread drop (a winner
+		-- set before the roll ends): how many are still waiting, and who won.
+		local summary = rolls or bar.rolls
+		local waiting = 0
+		for _, line in ipairs(summary and summary.list or {}) do
+			if line.state == self.ROLL_STATE.NoRoll then waiting = waiting + 1 end
+		end
+		st:Debug('Loot', 'held roll finished:', bar.rollID, why, 'waiting', waiting,
+			summary and (summary.allPassed and 'all passed' or summary.winner and 'winner' or 'no winner') or 'no summary')
+	end
+end
+
+-- Counts each held roll's time down, finishes those whose time is up, and fades
+-- and releases the finished ones. The only per-frame work: it prints nothing
+-- except as a bar finishes or goes.
 function LT:UpdateHeldRolls()
 	local now = GetTime()
-	local ended
+	local gone
 	for _, bar in ipairs(held) do
-		local left = bar.ends - now
-		if left > 0 then
-			SetBarTimer(bar, left)
+		if bar.finishedAt then
+			local over = now - bar.finishedAt - FINISHED_HOLD
+			if over >= FINISHED_FADE then
+				gone = gone or {}
+				tinsert(gone, bar)
+			elseif over > 0 then
+				bar:SetAlpha(1 - over / FINISHED_FADE)
+			end
 		else
-			ended = ended or {}
-			tinsert(ended, bar)
+			local left = bar.ends - now
+			if left > 0 then
+				SetBarTimer(bar, left)
+			else
+				self:FinishHeldRoll(bar, 'time')
+			end
 		end
 	end
-	for _, bar in ipairs(ended or {}) do
+	for _, bar in ipairs(gone or {}) do
 		self:ReleaseHeldRoll(bar)
 	end
 end
@@ -295,8 +354,14 @@ local stack = {}
 function LT:HoldRoll(frame, roll)
 	local skin = skins[frame]
 	local shown = skin and skin.shown
-	if not shown or shown.rollID == nil or shown.rollID ~= roll.rollID then return end
-	if roll.ends - GetTime() < 1 then return end
+	if not shown or shown.rollID == nil or shown.rollID ~= roll.rollID then
+		if st.DEBUG then st:Debug('Loot', 'hold', roll.rollID, 'skipped: the frame did not show that roll') end
+		return
+	end
+	if roll.ends - GetTime() < 1 then
+		if st.DEBUG then st:Debug('Loot', 'hold', roll.rollID, 'skipped: under a second left') end
+		return
+	end
 	local choice = roll.choice
 	if choice == 'Disenchant' then choice = shown.transmog and 'Transmog' or 'Greed' end
 
@@ -311,6 +376,8 @@ function LT:HoldRoll(frame, roll)
 		self:SetRollTooltipScripts(bar.InfoFrame, HeldTooltip)
 	end
 	bar.holding = true
+	bar.finishedAt, bar.finishedLeft, bar.finalDropID = nil, nil, nil
+	bar:SetAlpha(1)
 	bar.rollID, bar.from = roll.rollID, frame
 	bar.ends, bar.length = roll.ends, roll.length
 	bar.link, bar.item, bar.itemID = roll.link, roll.item, roll.itemID
@@ -346,12 +413,15 @@ function LT:HoldRoll(frame, roll)
 	heldParent:SetScript('OnUpdate', OnHeldUpdate)
 	self:LayoutRollFrames()
 	self:UpdateRollPreviewVisibility()
+	if st.DEBUG then st:Debug('Loot', 'held roll', bar.rollID, 'choice', choice, 'seconds left', ('%.1f'):format(roll.ends - GetTime())) end
 	return bar
 end
 
--- Takes a held bar away (its roll ended), and closes the gap.
+-- Takes a held bar away (its linger is over, or every roll was cancelled), and
+-- closes the gap.
 function LT:ReleaseHeldRoll(bar)
 	if not bar.holding then return end
+	if st.DEBUG then st:Debug('Loot', 'held roll released:', bar.rollID) end
 	for i, other in ipairs(held) do
 		if other == bar then
 			tremove(held, i)
@@ -359,6 +429,8 @@ function LT:ReleaseHeldRoll(bar)
 		end
 	end
 	bar.holding = nil
+	bar.finishedAt, bar.finishedLeft, bar.finalDropID = nil, nil, nil
+	bar:SetAlpha(1)
 	bar:Hide()
 	bar.rollID, bar.from, bar.link, bar.item, bar.itemID = nil, nil, nil, nil, nil
 	bar.dropID, bar.rolls = nil, nil
@@ -529,7 +601,7 @@ function LT:UpdateGroupLootConfig()
 		end
 		for _, bar in ipairs(held) do
 			ApplyBarConfig(bar, self.config.roll)
-			SetBarTimer(bar, max(0, bar.ends - GetTime()))
+			SetBarTimer(bar, HeldLeft(bar))
 		end
 		self:LayoutRollFrames()
 		self:UpdateRollPreviews()
