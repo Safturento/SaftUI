@@ -254,6 +254,11 @@ builders.execute = function(w)
 	w.text = NewText(button, 'CENTER')
 	w.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
 	HoverEdge(button, function() return w.disabled end)
+	-- The button covers the row's whole mouse area bar its empty sides (it has
+	-- no label), so it shows the row's tooltip itself (w:Tip, set by the
+	-- body). Hooked after HoverEdge's scripts, so the edge is unchanged.
+	button:HookScript('OnEnter', function() w:Tip(true) end)
+	button:HookScript('OnLeave', function() w:Tip(false) end)
 	button:SetScript('OnMouseDown', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, -1) end)
 	button:SetScript('OnMouseUp', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, 0) end)
 	button:SetScript('OnClick', function() w:Run() end)
@@ -301,6 +306,17 @@ define('execute', {
 		end
 		local text = OM.Confirm(root, row)
 		if text then W.Confirm(text, Go) else Go() end
+	end,
+
+	-- The window shows the row's tooltip for the button (set by the body).
+	-- A disabled button takes no mouse, so the row under it shows the tip,
+	-- with the why.
+	Tip = function(self, on)
+		if self.onTip then self.onTip(on) end
+	end,
+
+	OnRelease = function(self)
+		self.onTip = nil
 	end,
 
 	OnDisabled = function(self, disabled)
