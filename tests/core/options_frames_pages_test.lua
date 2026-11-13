@@ -263,7 +263,7 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 		for i = 1, (id == 'pet' or id == 'stance') and 10 or 12 do AB.bars[id].buttons[i] = {} end
 	end
 	for _, id in ipairs(AB.EXTRA_IDS) do AB.extras[id] = CreateFrame('Frame', nil, UIParent) end
-	AB.barTypes = { pet = { texts = { hotkey = true } }, stance = { texts = { hotkey = true } } }
+	AB.barTypes = { pet = { texts = { hotkey = true, countdown = true } }, stance = { texts = { hotkey = true, countdown = true } } }
 	-- The bars are secure and the skin restyles their buttons: counters here.
 	local calls = {}
 	local function count(name) return function(_, id) calls[#calls + 1] = name .. (id and (':' .. id) or '') end end
@@ -272,7 +272,7 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 
 	local tree = AB:GetConfigTable()
 	-- A Position in each bar's General, each extra's General and each text of the Text tabs.
-	local texts = 8 * 3 + 2
+	local texts = 8 * 4 + 2 * 2
 	eq(check_page('ActionBars', tree), 10 + 3 + texts, 'a Position for every bar, extra button and text')
 	eq(tree.pickerLabel, 'Bar', 'the picker is labelled Bar')
 	eq(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.name, 'Bar', 'and the window shows it')
@@ -299,13 +299,13 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 		'Theme offers the themes, not the old template names')
 	check(tree.args.theme.order < tree.args.background.order, 'Theme, then Background')
 
-	-- Each bar: Position last in General; the Text tab has the hotkey, count and macro (the
-	-- pet and stance bars only the hotkey), each a Position block with no target over the
-	-- text's stored keys.
+	-- Each bar: Position last in General; the Text tab has the hotkey, count, macro and
+	-- cooldown numbers (the pet and stance bars only the hotkey and the numbers), each a
+	-- Position block with no target over the text's stored keys. The numbers have no Show.
 	for _, id in ipairs(AB.BAR_IDS) do
 		local bar = tree.args[id]
 		eq(bar.childGroups, 'tab', id .. ' declares its own tabs')
-		local want = (id == 'pet' or id == 'stance') and 'hotkey' or 'count,hotkey,macro'
+		local want = (id == 'pet' or id == 'stance') and 'countdown,hotkey' or 'count,countdown,hotkey,macro'
 		local kinds = {}
 		for kind in pairs(bar.args.text.args) do kinds[#kinds + 1] = kind end
 		table.sort(kinds)
@@ -314,7 +314,11 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 			local option = group.args.position
 			eq(option.type, 'position', id .. ' ' .. kind .. ' is a Position block')
 			eq(option.target, nil, id .. ' ' .. kind .. ' has no TO part')
-			check(group.args.show.size == 'small', id .. ' ' .. kind .. ': Show is small')
+			if kind == 'countdown' then
+				eq(group.args.show, nil, id .. ' ' .. kind .. ': no Show')
+			else
+				check(group.args.show.size == 'small', id .. ' ' .. kind .. ': Show is small')
+			end
 			for _, part in ipairs({ 'point', 'rel_point', 'x_off', 'y_off' }) do
 				local stored = profile.actionbars[id].text[kind][part]
 				eq(option.get(info_for('position'), part), part:find('_off') and (tonumber(stored) or 0) or stored,

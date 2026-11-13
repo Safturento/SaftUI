@@ -171,5 +171,5 @@ AB.barTypes.stance = {
 	IsAvailable = function() return NumForms() > 0 end,
 	unavailableLabel = 'no forms',
 	buttonsNote = 'It shows one button per form, so no more than the class has.',
-	texts = { hotkey = true },
+	texts = { hotkey = true, countdown = true },
 }

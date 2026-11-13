@@ -29,9 +29,11 @@ local LAB = LibStub('LibActionButton-1.0')
 	    sit over the icon.
 	  - Cooldown swipes, charges, loss of control and the out-of-range and unusable
 	    tints are LibActionButton's own. Cooldown numbers follow Blizzard's "Show
-	    Numbers for Cooldowns" setting (the countdownForCooldowns CVar), in SaftUI's
-	    pixel font: Pixel Med on buttons of 36px and up, Pixel below that, so the
-	    numbers fit on small buttons.
+	    Numbers for Cooldowns" setting (the countdownForCooldowns CVar), which
+	    /sui's Cooldown numbers reads and sets. They're drawn in the bar's font
+	    and place for them (text.countdown): by default SaftUI's pixel font, Pixel
+	    Med on buttons of 36px and up and Pixel below that, so the numbers fit on
+	    small buttons, in the middle of the button.
 	  - Hotkeys are shortened ("SHIFT-MOUSEWHEELUP" -> "SMU").
 	  - Text. The hotkey, stack count and macro name follow the bar's Text
 	    settings (font, size, outline, show, and where each is anchored), set
@@ -47,7 +49,7 @@ local LAB = LibStub('LibActionButton-1.0')
 ]]
 
 -- SaftUI's pieces of each skinned button: button -> { hover, pushed, checked,
--- equipped }. Kept here so no key on the button can clash
+-- equipped, ownCountdownFont }. Kept here so no key on the button can clash
 -- with LibActionButton's or the template's.
 local skins = {}
 
@@ -207,7 +209,8 @@ end
 --   - actionButtonUI registers the button with the client like Blizzard's own
 --     action buttons (C_ActionBar.RegisterActionUIButton), as Bartender4 does for
 --     its action bars. Every LibActionButton button here is a plain action button.
---   - cooldownCount is left unset: the numbers follow the countdownForCooldowns CVar.
+--   - cooldownCount is left unset: the numbers follow the countdownForCooldowns
+--     CVar, and LibActionButton shows or hides them on its CVAR_UPDATE.
 --   - Flyouts open upwards from rows and to the left from columns.
 function AB:GetButtonConfig(id, i)
 	local config = self.config[id]
@@ -236,6 +239,103 @@ function AB:GetButtonConfig(id, i)
 			macro = TextConfig(text.macro),
 		},
 	}
+end
+
+------------------------------------
+--- Cooldown numbers ----------------
+------------------------------------
+
+-- Blizzard's "Show Numbers for Cooldowns" (Options > Gameplay > Action Bars).
+local COUNTDOWN_CVAR = 'countdownForCooldowns'
+
+-- Whether cooldown numbers show: the game's setting, so /sui's Cooldown
+-- numbers and Blizzard's option are one setting.
+function AB:ShowsCooldownNumbers()
+	return C_CVar.GetCVarBool(COUNTDOWN_CVAR) and true or false
+end
+
+-- Turns the numbers on or off: Blizzard's setting, set as its option sets it,
+-- and never saved in the profile. Setting it fires CVAR_UPDATE, which every
+-- SaftUI bar follows at once, as it follows Blizzard's option: LibActionButton's
+-- buttons (bars 1-8, cooldownCount unset) and buttons.lua's (the pet and stance
+-- bars). The game refuses some settings from addon code in combat (some of the
+-- nameplates'), so in combat this waits for the end of combat, as those do;
+-- /sui, which calls it, is closed in combat anyway.
+function AB:SetShowCooldownNumbers(show)
+	if st:QueueAfterCombat('actionbars_countdown', function() self:SetShowCooldownNumbers(show) end) then return end
+	C_CVar.SetCVar(COUNTDOWN_CVAR, show and '1' or '0')
+end
+
+-- The setting changed, in /sui or in Blizzard's options: an open /sui shows it.
+local countdownWatch = CreateFrame('Frame')
+countdownWatch:RegisterEvent('CVAR_UPDATE')
+countdownWatch:SetScript('OnEvent', function(_, _, name)
+	if name == COUNTDOWN_CVAR then
+		st.Config:Refresh()
+	end
+end)
+
+-- The Fonts tab's font the numbers are drawn in on a button of size, where the
+-- bar sets none of its own: Pixel Med on buttons of 36px and up, Pixel below,
+-- so the numbers fit on small buttons.
+local function CountdownFontKey(size)
+	return size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel'
+end
+
+-- A bar's default place for the numbers, in the middle, with no font, size or
+-- outline of its own (config.lua). For a config with no text.countdown (the
+-- leave vehicle button's, extras.lua), so it needs no copy to keep in step.
+local DEFAULT_COUNTDOWN = { point = 'CENTER', rel_point = 'CENTER', x_off = 0, y_off = 0 }
+
+-- The font, size and outline of the cooldown numbers on a bar with config:
+-- each the bar's own (text.countdown) where it's set, else that of its default
+-- font on the Fonts tab (CountdownFontKey). /sui shows these.
+function AB:GetCountdownFont(config)
+	local own = config.text.countdown or DEFAULT_COUNTDOWN
+	local default = st.config.profile.fonts[CountdownFontKey(config.size)]
+	return own.font or default.font_name, own.size or default.font_size, own.outline or default.font_outline
+end
+
+-- Draws a button's cooldown numbers, its cooldown's own countdown text, in the
+-- bar's font and at the bar's place for them (text.countdown, else a bar's
+-- defaults). From AB:StyleButton, so out of combat.
+--   - While the bar sets no font, size or outline, they're in the default font
+--     object (CountdownFontKey), as they always were, which follows the Fonts
+--     tab at once. Once one is set, SetFont goes over it, the others from that
+--     font. Back to none (a profile without them, or the section's Reset in
+--     /sui), the font object alone may not replace a font set with SetFont
+--     (.agents/testing.md, stub rule 3), so its font is set too; that button
+--     then takes a Fonts tab change on its next restyle.
+--   - The text is anchored to the button, as the other texts are. Its default,
+--     the middle, is the middle of the cooldown over the icon too, where the
+--     game puts the numbers. It's a region of the cooldown, a child of SaftUI's
+--     button (.agents/taint.md rule 1).
+--   - What's known to touch it: Blizzard's Lua never touches these buttons'
+--     countdown text (it calls SetCountdownFont only on cooldowns of its own,
+--     such as the Cooldown Manager's and the arena frames'). LibActionButton only
+--     shows or hides it; it re-anchors the cooldown itself, which
+--     OnLABButtonUpdate puts back and which the text, anchored to the button,
+--     doesn't follow. tullaCTC sets the font and point again on every cooldown
+--     start, so it shows nothing either way. Whether the client's own code
+--     places or fonts the text again when a cooldown starts isn't known: an
+--     in-game check (a custom place, watched through a cooldown and the next).
+local function StyleCountdown(button, skin, config)
+	local numbers = button.cooldown:GetCountdownFontString()
+	local text = config.text.countdown or DEFAULT_COUNTDOWN
+	local object = st:GetFont(CountdownFontKey(config.size))
+	if object then
+		numbers:SetFontObject(object)
+	end
+	if text.font or text.size or text.outline then
+		local font, size, outline = AB:GetCountdownFont(config)
+		numbers:SetFont(st.LSM:Fetch('font', font), size, st.OutlineFlag(outline))
+		skin.ownCountdownFont = true
+	elseif skin.ownCountdownFont and object then
+		numbers:SetFont(object:GetFont())
+	end
+	numbers:SetJustifyH(Justify(text.point))
+	numbers:ClearAllPoints()
+	numbers:SetPoint(text.point, button, text.rel_point, Offset(text.x_off), Offset(text.y_off))
 end
 
 ------------------------------------
@@ -357,10 +457,7 @@ function AB:StyleButton(button, config, theme, background)
 	end
 	button.Count:SetShown(config.text.count.show)
 
-	local countdownFont = st:GetFont(config.size >= st.LARGE_COUNTDOWN_SIZE and 'pixel_med' or 'pixel')
-	if countdownFont then
-		button.cooldown:GetCountdownFontString():SetFontObject(countdownFont)
-	end
+	StyleCountdown(button, skin, config)
 
 	self:UpdateEquippedBorder(button)
 end

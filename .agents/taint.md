@@ -1,7 +1,7 @@
 ---
 name: taint
 description: Rules for touching Blizzard frames and code without causing taint, blocked actions or crashes
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 covers:
   - 'SaftUI-Core/api.lua'
   - 'SaftUI-Core/taintfix.lua'
@@ -79,6 +79,7 @@ The RestedXP skin stands down for RestedXP's v2 window because RestedXP hides th
    - Secure frames (unit frames, action buttons, group headers) can't be moved, sized, shown, hidden, reparented or have attributes set in combat. Neither can any frame a secure frame is anchored to, which becomes implicitly protected.
    - Route every move through `st:SafeReposition(frame, key, fn)`, which runs `fn` now or after combat. Check with `st:CanMoveNow(frame)`. Defer other work with `st:QueueAfterCombat(key, fn)`.
    - Key binding calls are blocked in combat too: `SetBinding`, `SaveBindings`, `SetOverrideBindingClick` and the other `SetOverrideBinding*`, and `ClearOverrideBindings`. Queue them with `st:QueueAfterCombat`, as `SaftUI-ActionBars/bindings.lua` does.
+   - The game refuses some of its settings (`C_CVar.SetCVar`) from addon code in combat (some nameplate settings, rule 13), so SaftUI changes a game setting out of combat and queues one asked for in combat: the nameplates' (`UF:ApplyNameplateCVars`) and the action bars' Cooldown numbers (`AB:SetShowCooldownNumbers`, Blizzard's `countdownForCooldowns`, `SaftUI-ActionBars/skin.lua`).
    - `RegisterStateDriver` sets attributes, so a state driver can't be changed in combat either. A driver that's set keeps showing, hiding and paging its frame in combat with no addon Lua (`[combat] show; hide` shows a bar only in combat).
    - A driver can also hand a token to a snippet (`_onstate-<name>`), which can call the restricted environment's functions and set attributes on frame refs in combat. SaftUI's leave vehicle button shows by `CanExitVehicle()` that way, the check Blizzard's own leave button uses, which covers flight paths. Whether `[canexitvehicle]` alone covers them isn't confirmed. The same snippet shows it on `[possessbar]` and switches its secure type for a possess (`SaftUI-ActionBars/extras.lua`).
    - Alpha isn't protected. `SetAlpha` on a secure frame works in combat, so a fade that only changes alpha is combat-safe (the action bars' mouseover fade in `SaftUI-ActionBars/bars.lua`).
