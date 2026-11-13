@@ -18,8 +18,14 @@ local st = SaftUI
 	  - text: hotkey, stack count and macro name. Each has show, font (a
 	    LibSharedMedia font name), size, outline (a Fonts outline name, 'NONE' for
 	    none), point and rel_point (the text's point and the button's), and
-	    x_off / y_off from there. The pet and stance buttons only have a hotkey;
-	    their count and macro name keep the shape and go unused.
+	    x_off / y_off from there. text.countdown is the cooldown numbers:
+	    point, rel_point, x_off and y_off as above, and no show (Blizzard's
+	    "Show Numbers for Cooldowns" shows them, for every bar). Their font,
+	    size and outline have no default: each one unset is SaftUI's Pixel Med
+	    font's on buttons of 36px and up and its Pixel font's below (skin.lua),
+	    the font the numbers have always had, so a bar looks as it did until
+	    one is set. The pet and stance buttons only have a hotkey and cooldown
+	    numbers; their count and macro name keep the shape and go unused.
 	theme and background are the Theme and Background (SaftUI-Core/theme.lua)
 	every button is drawn with, the leave vehicle button too. 'theme' follows
 	SaftUI's.
@@ -90,6 +96,17 @@ local function Text(point, x_off, y_off)
 	}
 end
 
+-- The cooldown numbers: in the middle of the button, where the game puts
+-- them. No font, size or outline (see the top).
+local function Countdown()
+	return {
+		point = 'CENTER',
+		rel_point = 'CENTER',
+		x_off = 0,
+		y_off = 0,
+	}
+end
+
 -- A new table each call: AceDB defaults mustn't share tables between bars.
 local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 	return {
@@ -105,6 +122,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 			hotkey = Text('TOPRIGHT', -3, -3),
 			count = Text('BOTTOMRIGHT', -3, 3),
 			macro = Text('BOTTOM', 0, 3),
+			countdown = Countdown(),
 		},
 	}
 end

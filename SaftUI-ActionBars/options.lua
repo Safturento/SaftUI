@@ -21,16 +21,22 @@ local AB = st:GetModule('ActionBars')
 	buttons show, as they mostly don't.
 
 	/sui -> Action Bars has the Theme and Background options
-	(actionbars.theme and .background, which every button is drawn with), then
+	(actionbars.theme and .background, which every button is drawn with) and
+	Cooldown numbers, Blizzard's own "Show Numbers for Cooldowns" (skin.lua:
+	the game's setting, read and set as it is, never in the profile), then
 	one picker entry ('Bar') per bar, each with tabs:
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
 	    button size and spacing, and the Position option, last. The relative
 	    frame typed there goes through st:ValidateAnchor with the bar, so a bar
 	    can't be anchored to itself, its own buttons, or a bar anchored to it.
-	  - Text: the hotkey, stack count and macro name, each with show, font, size,
-	    outline, and a Position block with no TO part: the text's point (THIS),
-	    the button's point it sits on (AT ITS) and the offsets. The pet and
-	    stance bars only have the hotkey (AB.barTypes texts).
+	  - Text: the hotkey, stack count, macro name and cooldown numbers, each
+	    with show, font, size, outline, and a Position block with no TO part:
+	    the text's point (THIS), the button's point it sits on (AT ITS) and the
+	    offsets. The cooldown numbers have no show (Cooldown numbers, above,
+	    shows them on every bar), and their font, size and outline show what's
+	    drawn until they're set (AB:GetCountdownFont). The pet and stance bars
+	    only have the hotkey and the cooldown numbers (AB.barTypes texts); the
+	    extra buttons have no Text tab.
 	  - Visibility: always, in combat only, or faded until moused over, with how
 	    faded.
 	Then one section per extra button, with General: Scale for Blizzard's extra
@@ -77,6 +83,7 @@ local TEXTS = {
 	{ 'hotkey', 'Hotkey' },
 	{ 'count', 'Stack count' },
 	{ 'macro', 'Macro name' },
+	{ 'countdown', 'Cooldown numbers' },
 }
 
 function AB:GetBarLabel(id)
@@ -144,21 +151,30 @@ local TEXT_POSITION_NAMES = {
 	hotkey = 'Hotkey position',
 	count = 'Count position',
 	macro = 'Macro position',
+	countdown = 'Numbers position',
 }
 
 local TEXT_DESCS = {
 	hotkey = 'the key bound to the button',
 	count = "the button's stack or charge count",
 	macro = "a macro button's name",
+	countdown = 'the cooldown numbers',
 }
 
--- One text's options (hotkey, count or macro name), a box in the Text tab. Its
--- Position block has no TO part: the text sits inside its own button. It reads
--- and writes the text's point, rel_point, x_off and y_off, and goes last.
+-- The cooldown numbers' section note, and what their Font, Size and Outline
+-- add: what's drawn until they're set (AB:GetCountdownFont).
+local COUNTDOWN_NOTE = "Whether they show is Cooldown numbers, above the bars: Blizzard's own setting, for every bar."
+local COUNTDOWN_UNSET = " Until it's set here, it's that of Pixel Med on buttons of 36px and up and of Pixel below (Global Settings > Fonts)."
+
+-- One text's options (hotkey, count, macro name or cooldown numbers), a box in
+-- the Text tab. Its Position block has no TO part: the text sits inside its
+-- own button. It reads and writes the text's point, rel_point, x_off and y_off,
+-- and goes last. The cooldown numbers have no Show, and their Font, Size and
+-- Outline read what's drawn until they're set (see the top).
 function AB:GetTextOptions(id, kind, name, order)
 	local generators = st.Config.generators
 	local what = TEXT_DESCS[kind]
-	return {
+	local options = {
 		name = name,
 		type = 'group',
 		inline = true,
@@ -198,6 +214,19 @@ function AB:GetTextOptions(id, kind, name, order)
 			),
 		},
 	}
+	if kind == 'countdown' then
+		options.desc = COUNTDOWN_NOTE
+		options.args.show = nil
+		for _, key in ipairs({ 'font', 'size', 'outline' }) do
+			options.args[key].desc = options.args[key].desc .. COUNTDOWN_UNSET
+		end
+		options.args.position.desc = 'Where the cooldown numbers sit on the button: the point of the numbers that is anchored (THIS), the point of the button it is anchored to (AT ITS), and how far they are moved from there.'
+		options.get = function(info)
+			local font, size, outline = self:GetCountdownFont(self.config[id])
+			return ({ font = font, size = size, outline = outline })[info[#info]]
+		end
+	end
+	return options
 end
 
 -- One bar's section: General (Position last), Text and Visibility tabs. The
@@ -374,6 +403,17 @@ function AB:GetConfigTable()
 			self:UpdateConfig()
 		end
 	end
+	-- Blizzard's own setting, read and set at call time, so this and Blizzard's
+	-- option are one and the profile keeps nothing (skin.lua). Every bar
+	-- follows a change at once.
+	args.countdown = {
+		order = 1,
+		type = 'toggle',
+		name = 'Cooldown numbers',
+		desc = "Show the seconds left on a button's cooldown, on every bar. This is Blizzard's own Show Numbers for Cooldowns (Options > Gameplay > Action Bars), so it changes there too, and SaftUI's profiles don't keep it. Each bar's Text tab sets their font and place.",
+		get = function() return self:ShowsCooldownNumbers() end,
+		set = function(_, value) self:SetShowCooldownNumbers(value) end,
+	}
 	for i, id in ipairs(self.BAR_IDS) do
 		if self.bars[id] then
 			args[id] = self:GetBarOptions(id, i)

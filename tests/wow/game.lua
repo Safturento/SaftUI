@@ -856,6 +856,10 @@ end
 --     tests' own).
 --   C_CVar.GetCVar(name): stub.cvars[name], or nil for a setting the client
 --     lacks (the documentation marks its return Nilable).
+--   C_CVar.GetCVarBool(name): the setting as a boolean, nil for a setting the
+--     client lacks (Nilable too). Any value but '0' is true, as Blizzard's own
+--     cached reads take it (CvarUtil.lua, CVarCallbackRegistry:GetCVarValueBool);
+--     the tests set only '0' and '1'.
 --   C_CVar.SetCVar(name, value): sets the string and returns true. An unknown
 --     name returns false (RequiresValidAndPublicCVar). The game protects some
 --     nameplate settings in combat (the documentation's RequiresNonSecureCVar,
@@ -886,6 +890,12 @@ C_CVar = {}
 function C_CVar.GetCVar(name)
 	if type(name) ~= 'string' then error('Usage: local value = C_CVar.GetCVar(name)', 2) end
 	return stub.cvars[name]
+end
+function C_CVar.GetCVarBool(name)
+	if type(name) ~= 'string' then error('Usage: local value = C_CVar.GetCVarBool(name)', 2) end
+	local value = stub.cvars[name]
+	if value == nil then return nil end
+	return value ~= '0'
 end
 function C_CVar.SetCVar(name, value)
 	if type(name) ~= 'string' then error('Usage: local success = C_CVar.SetCVar(name [, value])', 2) end
