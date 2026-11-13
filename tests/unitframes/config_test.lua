@@ -7,8 +7,9 @@
 -- frames' defaults, filled the way AceDB fills them (apply_defaults), so a
 -- unit's settings are made by reading them, as in game; AceConfigRegistry-3.0
 -- (the options window listens to it); the options model, widgets, body and
--- window; config/position.lua, config/config.lua, updaters.lua (UF.UnpackColor) and the element
--- files, whose tabs config.lua adds to each unit that has the element;
+-- window; config/position.lua, config/profiles.lua, config/config.lua,
+-- updaters.lua (UF.UnpackColor) and the element files, whose tabs config.lua
+-- adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
 -- read; with no other nameplate addon loaded, SaftUI draws the plates) and
 -- nameplates/threat.lua (the plates' Threat element and its tab).
@@ -78,6 +79,7 @@ function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, Val
 		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
 end
 
+load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')

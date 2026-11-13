@@ -9,8 +9,9 @@
 -- too), filled the way AceDB fills them; unitframes.lua (UF:PlaceUnitFrame,
 -- UF:PlaceHolder, UF:ApplyConfig, UF:UpdateConfig, UF:OnColorsChanged);
 -- the group files (grouplayout.lua, groups.lua, blizzardraid.lua,
--- grouppreview.lua); config/config.lua (UF:GetProfileConfig and the boss page, whose
--- General set is the Layout options' set); constructors.lua and updaters.lua,
+-- grouppreview.lua); config/profiles.lua (UF:GetProfileConfig);
+-- config/config.lua (the boss page, whose General set is the Layout options'
+-- set); constructors.lua and updaters.lua,
 -- which build and style the previews' bars and texts; LibStringFormat-1.0,
 -- which init.lua makes st.StringFormat.
 --
@@ -46,6 +47,7 @@ load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/blizzardraid.lua')
 load_saftui('SaftUI-Unitframes/grouppreview.lua')
+load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')

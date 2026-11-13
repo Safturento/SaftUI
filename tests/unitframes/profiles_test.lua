@@ -1,4 +1,4 @@
--- The unit frame profile prompts in SaftUI-Unitframes/config/config.lua: New,
+-- The unit frame profile prompts in SaftUI-Unitframes/config/profiles.lua: New,
 -- Copy, Rename, Delete, Export and Import, drawn by SaftUI's own dialog
 -- (st.OptionsWidgets Prompt and Confirm, which show over the /sui window).
 -- Migrated from the ufprofsim harness. The prompts are driven the way a user
@@ -43,6 +43,7 @@ function st.Config:Import(text)
 	return false
 end
 
+load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 
 -- st:Print goes to print. Count what it prints.

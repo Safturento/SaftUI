@@ -28,12 +28,12 @@
 -- The world is theme_test.lua's (see its top), made fresh on each client
 -- (world): real Core and its defaults, the unit frames' defaults (every
 -- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
--- blizzardraid.lua, grouppreview.lua), config/config.lua, constructors.lua,
--- updaters.lua and the bar and aura elements; oUF stood in for by its colors
--- table, and a unit frame by a SaftUI button with UF.ConstructUnit's fields
--- and the elements a test names, built by their own constructors
--- (make_unit_frame). The draw calls are watched (T.watch), since the kind
--- changes nothing under Thick and Thin.
+-- blizzardraid.lua, grouppreview.lua), config/profiles.lua, config/config.lua,
+-- constructors.lua, updaters.lua and the bar and aura elements; oUF stood in
+-- for by its colors table, and a unit frame by a SaftUI button with
+-- UF.ConstructUnit's fields and the elements a test names, built by their own
+-- constructors (make_unit_frame). The draw calls are watched (T.watch), since
+-- the kind changes nothing under Thick and Thin.
 local T = load_test_file('lib/theme_helpers.lua')
 
 local st, UF, P, drawn
@@ -57,7 +57,7 @@ local function world(client, theme)
 			roles = {}, runes = {},
 		},
 	}
-	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/config', 'constructors', 'updaters' }) do
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/config', 'constructors', 'updaters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, file in ipairs(ELEMENTS) do

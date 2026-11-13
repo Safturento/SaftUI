@@ -4,12 +4,12 @@
 -- PostUpdate).
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults filled
--- the way AceDB fills them, config/config.lua (UF:GetProfileConfig),
--- updaters.lua and constructors.lua (the bar and its text), elements/health.lua,
--- and tags.lua with LibStringFormat-1.0 as st.StringFormat (as init.lua makes
--- it). The stubs' C_StringUtil.WrapString and AbbreviateNumbers
--- (tests/wow/game.lua) give a table for a secret, so a case can read what the
--- game was asked to join or shorten.
+-- the way AceDB fills them, config/profiles.lua (UF:GetProfileConfig) and
+-- config/config.lua, updaters.lua and constructors.lua (the bar and its text),
+-- elements/health.lua, and tags.lua with LibStringFormat-1.0 as
+-- st.StringFormat (as init.lua makes it). The stubs' C_StringUtil.WrapString
+-- and AbbreviateNumbers (tests/wow/game.lua) give a table for a secret, so a
+-- case can read what the game was asked to join or shorten.
 --
 -- Stand-ins, as config_test.lua and power_text_test.lua have them:
 --   * UF:RegisterElement, a copy of unitframes.lua's table store (lines
@@ -52,6 +52,7 @@ local function world(client)
 		self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
 			GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
 	end
+	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/config.lua')
 	load_saftui('SaftUI-Unitframes/updaters.lua')
 	load_saftui('SaftUI-Unitframes/constructors.lua')

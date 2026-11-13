@@ -17,10 +17,11 @@
 -- whose profile is filled from the defaults the way AceDB fills it; the bags',
 -- chat's and unit frames' defaults; LibBase64-1.0, LibCompress and
 -- AceSerializer-3.0 (loaded before config_helpers.lua, so its fixtures for them
--- stay out); the unit frames' config/config.lua, for its Import prompt, with the
--- stand-ins tests/unitframes/profiles_test.lua has for unitframes.lua (it needs
--- oUF): UF:UpdateConfig counts its calls, and UF.units and the rest of what
--- its OnEnable makes are empty, enough for UF:GetConfigTable's Profiles group.
+-- stay out); the unit frames' config/profiles.lua (its Import prompt) and
+-- config/config.lua, with the stand-ins tests/unitframes/profiles_test.lua has
+-- for unitframes.lua (it needs oUF): UF:UpdateConfig counts its calls, and
+-- UF.units and the rest of what its OnEnable makes are empty, enough for
+-- UF:GetConfigTable's Profiles group.
 
 local st
 
@@ -261,6 +262,7 @@ test('an imported old profile string migrates', function()
 	UF.units, UF.groups, UF.holders, UF.elements = {}, {}, {}, {}
 	UF.unit_strings, UF.group_strings = {}, {}
 	function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
+	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/config.lua')
 
 	UF:GetConfigTable().args.profile.args.import.func()
