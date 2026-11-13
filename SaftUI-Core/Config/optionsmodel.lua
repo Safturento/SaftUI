@@ -49,7 +49,8 @@ local st = SaftUI
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
 	align, disabled, disabledDesc, path, option }: path is the keys from the
 	root, option the option table. size is the option's own size member:
-	'small' (honored only for a toggle, color, execute or input) or 'wide';
+	'small' (honored only for a toggle, execute or input; a color is a bar as
+	wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
 	anything else is normal. Every description and every position row is wide.
 	Ace's width is not read. align is an execute's own align member, SaftUI's:
 	'right' or 'center' (a button the body lines up with the buttons beside
@@ -375,8 +376,9 @@ end
 
 ------------------------------------------------------------------ sections and rows
 
--- The types a setting can be small for.
-local canBeSmall = { toggle = true, color = true, execute = true, input = true }
+-- The types a setting can be small for. Not a color: its bar is a dropdown's
+-- width, and a quarter of a line is too narrow for it and its label.
+local canBeSmall = { toggle = true, execute = true, input = true }
 
 local function SizeOf(option, options, path)
 	if option.type == 'description' or option.type == 'position' then return 'wide' end

@@ -8,7 +8,8 @@ local Kit = W.Kit
 	the methods define (optionswidgets.lua) copies onto its widgets.
 ]]
 
-local floor, max, ceil = math.floor, math.max, math.ceil
+local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
+local format = string.format
 
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
@@ -118,27 +119,34 @@ local function OpenPicker(info, swatch)
 	end
 end
 
--- The black line and the color inside the swatch's border, in from its edges.
+-- The black line and the color inside the bar's border, in from its edges.
 local SWATCH_INNER, SWATCH_COLOR = 1, 2
 
+-- A color is a bar as wide and as tall as a dropdown (W.WIDTH.color is the
+-- select's), filled with the color and with its hex code written in the middle.
 builders.color = function(w)
 	local button = Box(st:CreateFrame('Button', nil, UIParent))
-	button:SetSize(W.WIDTH.color, W.WIDTH.color)
+	button:SetSize(W.WIDTH.color, FIELD_HEIGHT)
 	w.frame = button
 	-- The black 1px line inside the border, then the color.
 	w.inner = button:CreateTexture(nil, 'ARTWORK')
 	w.inner:SetColorTexture(0, 0, 0, 1)
 	Inset(w.inner, button, SWATCH_INNER)
-	w.swatch = button:CreateTexture(nil, 'OVERLAY')
+	-- In ARTWORK, a sublevel over the black line; the code (OVERLAY) is over both.
+	w.swatch = button:CreateTexture(nil, 'ARTWORK', nil, 1)
 	Inset(w.swatch, button, SWATCH_COLOR)
+	w.text = NewText(button, 'CENTER')
+	w.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
 	HoverEdge(button, function() return w.disabled end)
 	button:SetScript('OnClick', function() w:Pick() end)
 end
 
--- The swatch's look, when it changed: Box, the black line and the color, or
--- Blizzard's swatch (ColorSwatchTemplate, st.ThemeArt.Control('swatch')): a
--- white square, a black one inside it and the color inside that, at the
--- template's sizes, centred in the swatch's own square.
+-- The bar's look, when it changed: Box, the black line and the color, or the
+-- idea of Blizzard's swatch (ColorSwatchTemplate, st.ThemeArt.Control('swatch'):
+-- a white square, a black one inside it and the color inside that, each a
+-- pixel in from the one before) drawn at the bar's shape, so the bar reads
+-- as Blizzard's swatch stretched to sit beside its dropdowns. The white and
+-- black are the template's own colors.
 local function LookColor(w, blizzard)
 	local button = w.frame
 	local art = Art(button)
@@ -146,19 +154,33 @@ local function LookColor(w, blizzard)
 	ShowBox(button, not blizzard)
 	if blizzard then
 		local look = st.ThemeArt.Control('swatch')
-		local function Centred(size) return floor((W.WIDTH.color - size) / 2) end
 		local white = Piece(art, button, 'White', 'BACKGROUND')
 		white:SetColorTexture(unpack(look.whiteColor))
-		Inset(white, button, Centred(look.white))
+		Inset(white, button, 0)
 		w.inner:SetColorTexture(unpack(look.blackColor))
-		Inset(w.inner, button, Centred(look.black))
-		Inset(w.swatch, button, Centred(look.color))
+		Inset(w.inner, button, SWATCH_INNER)
+		Inset(w.swatch, button, SWATCH_COLOR)
 	else
 		HidePieces(art)
 		w.inner:SetColorTexture(0, 0, 0, 1)
 		Inset(w.inner, button, SWATCH_INNER)
 		Inset(w.swatch, button, SWATCH_COLOR)
 	end
+end
+
+-- The code is always white, on any color and opacity: the options font's
+-- outline (W.GetFont, the profile's, always black) keeps it readable. Black
+-- letters would vanish into that outline.
+local CODE_COLOR = { 1, 1, 1 }
+
+-- '#RRGGBB' in capitals, each channel rounded to a whole 0-255; with an
+-- opacity under 100% (hasAlpha only) '#RRGGBB · 60%', whole percent.
+local function HexText(r, g, b, a, hasAlpha)
+	local function byte(v) return max(0, min(255, floor(v * 255 + 0.5))) end
+	local text = format('#%02X%02X%02X', byte(r), byte(g), byte(b))
+	local percent = hasAlpha and floor(a * 100 + 0.5) or 100
+	if percent < 100 then text = text .. ' \194\183 ' .. percent .. '%' end
+	return text
 end
 
 define('color', {
@@ -171,7 +193,10 @@ define('color', {
 		local r, g, b, a = self:Value()
 		self.r, self.g, self.b, self.a = r or 0, g or 0, b or 0, a or 1
 		self.hasAlpha = OM.Member(self.root, self.row, 'hasAlpha') and true or false
-		self.swatch:SetColorTexture(self.r, self.g, self.b, self.hasAlpha and self.a or 1)
+		local shown = self.hasAlpha and self.a or 1
+		self.swatch:SetColorTexture(self.r, self.g, self.b, shown)
+		self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
+		self.text:SetTextColor(unpack(CODE_COLOR))
 	end,
 
 	-- Opens the picker on the current color. Each change it makes is set;
@@ -223,6 +248,11 @@ builders.execute = function(w)
 	w.text = NewText(button, 'CENTER')
 	w.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
 	HoverEdge(button, function() return w.disabled end)
+	-- The button covers the row's whole mouse area bar its empty sides (it has
+	-- no label), so it shows the row's tooltip itself (w:Tip, set by the
+	-- body). Hooked after HoverEdge's scripts, so the edge is unchanged.
+	button:HookScript('OnEnter', function() w:Tip(true) end)
+	button:HookScript('OnLeave', function() w:Tip(false) end)
 	button:SetScript('OnMouseDown', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, -1) end)
 	button:SetScript('OnMouseUp', function() w.text:SetPoint('CENTER', button, 'CENTER', 0, 0) end)
 	button:SetScript('OnClick', function() w:Run() end)
@@ -270,6 +300,17 @@ define('execute', {
 		end
 		local text = OM.Confirm(root, row)
 		if text then W.Confirm(text, Go) else Go() end
+	end,
+
+	-- The window shows the row's tooltip for the button (set by the body).
+	-- A disabled button takes no mouse, so the row under it shows the tip,
+	-- with the why.
+	Tip = function(self, on)
+		if self.onTip then self.onTip(on) end
+	end,
+
+	OnRelease = function(self)
+		self.onTip = nil
 	end,
 
 	OnDisabled = function(self, disabled)

@@ -180,9 +180,9 @@ end)
 
 ------------------------------------------------------------------ the body
 
-test('a toggle and a color sit at their cell\'s right edge, at normal and small size, the label taking the rest', function()
+test('a toggle and a color sit at their cell\'s right edge, a toggle at normal and small size and a color at normal, the label taking the rest', function()
 	local body, by = draw_body(774, {
-		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' },
+		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' }, -- the model makes it normal
 		{ 'nc', 'color', 'A color that is long' },
 	})
 	for key, c in pairs(by) do
@@ -194,6 +194,24 @@ test('a toggle and a color sit at their cell\'s right edge, at normal and small 
 		local cellWidth = c.row.size == 'small' and 171 or 367 -- whole pixels: a 367 column's quarter is 171
 		eq(c.label:GetWidth(), cellWidth - c.widget:GetWidth() - 10, key .. ' label is the rest of the cell')
 	end
+	body:Release()
+end)
+
+test('a color row gets the room a select row gets: a normal half, so its label and its bar fit', function()
+	-- Marked small, as the Colors page marks its rows: the model makes it normal.
+	local body, by = draw_body(774, {
+		{ 'c1', 'color', 'Tint', 'small' }, { 'c2', 'color', 'Another tint', 'small' },
+		{ 'c3', 'color', 'A third' }, { 's', 'select', 'Pick' },
+	})
+	eq(by.c1.row.size, 'normal', 'small is not honored for a color')
+	local _, _, _, x1 = by.c1.frame:GetPoint(1)
+	local _, _, _, x2 = by.c2.frame:GetPoint(1)
+	eq(x1, 0, 'the first in the left half')
+	eq(x2, 407, 'the second in the right half, not beside the first in a quarter')
+	eq(by.c1.frame:GetWidth(), 367, 'a half wide, as a select\'s')
+	eq(by.c1.frame:GetWidth(), by.s.frame:GetWidth(), 'as a select row')
+	eq(by.c1.label:GetWidth(), 367 - 170 - 10, 'the label has the rest beside the bar')
+	eq(by.c3.y, by.c1.y + 34, 'a third colour starts the next line')
 	body:Release()
 end)
 
@@ -219,7 +237,7 @@ end)
 
 test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 183', function()
 	local body, by = draw_body(774, {
-		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'color', 'B', 'small' }, { 'c', 'toggle', 'C' },
+		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'toggle', 'C' },
 		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
 	})
 	local got = {}
@@ -720,11 +738,13 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	hover(locked.widget.frame)
 	check(locked.frame:IsMouseMotionFocus(), 'the row gets the hover over its disabled box')
 	check(not locked.widget.frame:IsMouseMotionFocus(), 'not the box')
-	stub.fire_script(locked.frame, 'OnEnter')
+	-- The game passes OnEnter and OnLeave a second argument (motion: true when
+	-- the mouse moved in), so the row's scripts must not take it for an owner.
+	stub.fire_script(locked.frame, 'OnEnter', true)
 	check(tip.owner == locked.frame, 'the tooltip shows for the row')
 	eq(table.concat(tip.lines, '|'), 'Locked|What it does.|Uncheck Other first.', 'its name, desc, then why')
 	eq(tip.colors[3], red, 'why in Text > Red')
-	stub.fire_script(locked.frame, 'OnLeave')
+	stub.fire_script(locked.frame, 'OnLeave', true)
 	check(tip.owner == nil, 'and goes')
 
 	-- An enabled box takes the mouse, and an enabled row shows no reason.
@@ -750,4 +770,68 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	check(by.locked.widget.frame:IsMouseMotionFocus(), 'and its box takes the hover again')
 	restore()
 	body:Release()
+end)
+
+------------------------------------------------------------------ an execute button's tooltip
+
+test("an execute button shows its row's tooltip while the mouse is on it, under Thick and Blizzard; a disabled one shows why through its row", function()
+	local lock = false
+	local root = { page = { type = 'group', name = 'Page', args = {
+		reset = { type = 'execute', name = 'Reset', order = 1, desc = 'Puts it back.', func = function() end,
+			disabled = function() return lock end, disabledDesc = 'Nothing to reset.' },
+		bare = { type = 'execute', name = 'Plain', order = 2, func = function() end },
+	} } }
+	local tip, restore = watch_tooltip()
+	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		content:SetSize(774, 400)
+		local body = st.OptionsBody.New(content, root, nil, 774)
+		lock = false
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local by = {}
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		local button = by.reset.widget.frame
+
+		stub.fire_script(button, 'OnEnter')
+		check(tip.owner == button, look .. ': the tooltip is the button\'s')
+		eq(table.concat(tip.lines, '|'), 'Reset|Puts it back.', look .. ': its name and desc, no why while enabled')
+		stub.fire_script(button, 'OnLeave')
+		check(tip.owner == nil, look .. ': gone when the mouse leaves')
+		tip.lines = {}
+
+		-- The button's edge still lights under Thick.
+		if look == 'thick' then
+			local blue = { st.config.profile.colors.button.blue:GetRGB() }
+			stub.fire_script(button, 'OnEnter')
+			eq((button:GetBackdropBorderColor()), blue[1], 'the edge lights')
+			stub.fire_script(button, 'OnLeave')
+			check((button:GetBackdropBorderColor()) ~= blue[1], 'and goes out')
+		end
+
+		-- No desc and no why: no tooltip.
+		stub.fire_script(by.bare.widget.frame, 'OnEnter')
+		check(tip.owner == nil, look .. ': a button with nothing to say shows none')
+
+		-- The row's own empty space keeps its tooltip.
+		stub.fire_script(by.reset.frame, 'OnEnter')
+		check(tip.owner == by.reset.frame, look .. ': the row beside the button shows it too')
+		stub.fire_script(by.reset.frame, 'OnLeave')
+
+		-- Disabled: the button takes no mouse, so the row under it says why.
+		lock = true
+		body:Release()
+		body:Draw(OM.BuildView(root, 'page').sections)
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		eq(by.reset.widget.frame:IsMouseEnabled(), false, look .. ': a disabled button takes no mouse')
+		stub.fire_script(by.reset.frame, 'OnEnter')
+		eq(table.concat(tip.lines, '|'), 'Reset|Puts it back.|Nothing to reset.', look .. ': name, desc, then why')
+		eq(tip.colors[3], red, look .. ': why in Text > Red')
+		stub.fire_script(by.reset.frame, 'OnLeave')
+		body:Release()
+	end
+	restore()
+	st.config.profile.theme.name = 'thick'
 end)

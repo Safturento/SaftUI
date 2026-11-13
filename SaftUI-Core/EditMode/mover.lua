@@ -138,25 +138,32 @@ end
 -- The correction (mx, my), in UIParent units, that keeps a frame moved by
 -- (dx, dy) inside the screen edge margin: rect is where it shows before the
 -- move ({ left, right, bottom, top }, UIParent units), the screen is width x
--- height, and inset is the margin (below 0, how far past the edges it can go).
--- 0, 0 for a move that stays inside. A frame too wide or tall for the room
--- inside the margin keeps its left and top edges in.
+-- height, and inset is the margin (below 0, how far past the edges it can go):
+-- one number for every side, or { left, right, top, bottom }. 0, 0 for a move
+-- that stays inside. A frame too wide or tall for the room inside the margin
+-- keeps its left and top edges in.
 function EM.MarginCorrection(rect, dx, dy, width, height, inset)
+	local margin = type(inset) == 'table' and inset
+		or { left = inset, right = inset, top = inset, bottom = inset }
 	-- The smallest and largest moves that keep low..high inside 0..size.
-	local function Range(low, high, size)
-		return inset - low, size - inset - high
+	local function Range(low, high, size, lowMargin, highMargin)
+		return lowMargin - low, size - highMargin - high
 	end
-	local leastX, mostX = Range(rect.left, rect.right, width)
-	local leastY, mostY = Range(rect.bottom, rect.top, height)
+	local leastX, mostX = Range(rect.left, rect.right, width, margin.left, margin.right)
+	local leastY, mostY = Range(rect.bottom, rect.top, height, margin.bottom, margin.top)
 	local x = math.max(math.min(dx, mostX), leastX) -- left wins
 	local y = math.min(math.max(dy, leastY), mostY) -- top wins
 	return x - dx, y - dy
 end
 
--- The screen edge margin in UIParent units. It's in the frame's own units
--- (SetClampRectInsets), and ratio is UIParent's scale over the frame's.
-local function MarginInUI(ratio)
-	return st.config.profile.misc.clamp_inset / ratio
+-- The screen edge margin around frame in UIParent units, per side: how far in
+-- from each edge the game's clamp keeps it (st:GetScreenMargin: the margin, and
+-- for a holder with a Blizzard frame on it, as far in as that frame's own clamp
+-- keeps it), so a drag or nudge stops where the frame does. It's in the frame's
+-- own units (SetClampRectInsets), and ratio is UIParent's scale over the frame's.
+local function MarginInUI(frame, ratio)
+	local left, right, top, bottom = st:GetScreenMargin(frame)
+	return { left = left / ratio, right = right / ratio, top = top / ratio, bottom = bottom / ratio }
 end
 
 function EM:StartDrag(mover)
@@ -197,7 +204,7 @@ function EM:UpdateDrag(mover)
 	-- The screen edge margin has the last word: the frame can't be dragged into it.
 	if drag.shown then
 		local mx, my = EM.MarginCorrection(drag.shown, dUIx + sx, dUIy + sy,
-			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(ratio))
+			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(mover.def.frame, ratio))
 		sx, sy = sx + mx, sy + my
 	end
 	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
@@ -253,7 +260,7 @@ function EM:Nudge(mover, key, big)
 	if shown then
 		local ratio = UIParent:GetEffectiveScale() / def.frame:GetEffectiveScale()
 		local mx, my = EM.MarginCorrection(shown, dx / ratio, dy / ratio,
-			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(ratio))
+			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(def.frame, ratio))
 		dx, dy = dx + mx * ratio, dy + my * ratio
 	end
 	self:CommitPosition(mover, x + dx, y + dy)

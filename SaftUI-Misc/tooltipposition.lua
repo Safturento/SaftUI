@@ -135,8 +135,9 @@ function TT:SetupTooltipPosition()
 	self.tooltipHolder = CreateFrame('Frame', st.name .. 'TooltipHolder', UIParent)
 	-- Kept inside the screen edge margin (its mover would do this too), so the
 	-- container, anchored to it, and the tooltip go no nearer the edges. Blizzard
-	-- clamps the container itself, with insets of its own.
-	st:KeepInScreenMargin(self.tooltipHolder)
+	-- clamps the container itself, with insets of its own, so the holder also goes
+	-- no nearer the edges than that clamp lets the container go.
+	st:KeepHolderInScreenMargin(self.tooltipHolder, container)
 	self:ApplyTooltipHolder()
 
 	-- Blizzard's Edit Mode places the container through these on every layout load

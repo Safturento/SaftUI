@@ -450,14 +450,12 @@ ThemeArt.ART = {
 		icon = Atlas('common-search-magnifyingglass'),
 	},
 
-	-- A color swatch (ColorSwatchTemplate): plain squares, centred, at the
-	-- template's sizes: white (HIGHLIGHT_FONT_COLOR), black inside it
-	-- (BLACK_FONT_COLOR), and the color inside that.
+	-- A color swatch (ColorSwatchTemplate): a white square (HIGHLIGHT_FONT_COLOR),
+	-- a black one inside it (BLACK_FONT_COLOR), and the color inside that. Only
+	-- the two colors are kept: SaftUI draws them at the color bar's shape.
 	swatch = {
-		size = 16,
-		white = 14, whiteColor = { 1, 1, 1, 1 },
-		black = 12, blackColor = { 0, 0, 0, 1 },
-		color = 10,
+		whiteColor = { 1, 1, 1, 1 },
+		blackColor = { 0, 0, 0, 1 },
 	},
 
 	-- The key binding button (KeyBindingFrameBindingButtonTemplate, on

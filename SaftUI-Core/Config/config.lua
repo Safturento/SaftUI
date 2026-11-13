@@ -75,6 +75,9 @@ function Config:InitializeAceConfig()
 	})
 
     self.db = st.config
+	-- Debug prints (st:Debug) are switched by '/sui debug', saved account-wide so
+	-- a reload in the middle of a run keeps them on.
+	st.DEBUG = st.config.global.debug == true
 	-- A profile saved before themes: its template choices become a Theme and
 	-- Background before any module reads it. Every profile change, copy or
 	-- reset does the same for the profile it lands on (UpdateConfig).
@@ -95,6 +98,12 @@ function Config:InitializeAceConfig()
 		local command = strtrim(msg or ''):lower()
 		if command == 'edit' then
 			st.EditModeFrames:Toggle()
+			return
+		end
+		if command == 'debug' then
+			st.DEBUG = not st.DEBUG
+			st.config.global.debug = st.DEBUG or nil
+			st:Print('Debug prints ' .. (st.DEBUG and 'on' or 'off'))
 			return
 		end
 		local entry = FindCommand(command)

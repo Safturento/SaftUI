@@ -37,8 +37,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	middle, and right ones at the line's right end, on the line of a wide
 	row just before them (whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own.
-	A toggle's check box and a color's swatch sit just after their label's
-	text; a small input's box is 60 wide. A position block
+	A toggle's check box and a color's bar sit at their cell's right edge,
+	the label taking the rest; a small input's box is 60 wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
@@ -409,14 +409,15 @@ end
 ------------------------------------------------------------------ rows
 
 -- A row's tooltip: its name, its desc, and while it's disabled why
--- (row.disabledDesc, the model's), in Text > Red.
-local function ShowTip(frame)
+-- (row.disabledDesc, the model's), in Text > Red. Of frame's row, owned by
+-- owner (the frame itself when nil: an execute button owns its own).
+local function ShowTip(frame, owner)
 	local row = frame.row
 	if not row then return end
 	local desc = row.desc ~= '' and row.desc or nil
 	local why = row.disabledDesc ~= '' and row.disabledDesc or nil
 	if not (desc or why) then return end
-	GameTooltip:SetOwner(frame, 'ANCHOR_TOPLEFT')
+	GameTooltip:SetOwner(owner or frame, 'ANCHOR_TOPLEFT')
 	GameTooltip:AddLine(row.name, 1, 1, 1)
 	if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
 	if why then
@@ -426,8 +427,8 @@ local function ShowTip(frame)
 	GameTooltip:Show()
 end
 
-local function HideTip(frame)
-	if GameTooltip:IsOwned(frame) then GameTooltip:Hide() end
+local function HideTip(frame, owner)
+	if GameTooltip:IsOwned(owner or frame) then GameTooltip:Hide() end
 end
 
 -- A custom type W.Define marked bare: no label, the widget across the line.
@@ -539,8 +540,10 @@ function OB.New(content, root, onChanged, width)
 		row = Pool(function()
 			local frame = CreateFrame('Frame', nil, content)
 			frame.label = Text(frame, 'label')
-			frame:SetScript('OnEnter', ShowTip)
-			frame:SetScript('OnLeave', HideTip)
+			-- Wrapped: the game passes these scripts a second argument (motion),
+			-- which ShowTip and HideTip would take for the tooltip's owner.
+			frame:SetScript('OnEnter', function(self) ShowTip(self) end)
+			frame:SetScript('OnLeave', function(self) HideTip(self) end)
 			return frame
 		end),
 		result = Pool(function()
@@ -625,6 +628,13 @@ function Body:RowCell(row)
 		cell.height = ceil(widget:GetHeight()) + 12
 		widget.onTip = function(on)
 			if on then ShowTip(frame) else HideTip(frame) end
+		end
+	elseif row.type == 'execute' then
+		-- A button has no label for the mouse to rest on, so it shows the
+		-- row's tooltip itself, as the position block does, owned by the
+		-- button so it opens over the button, not the row's corner.
+		widget.onTip = function(on)
+			if on then ShowTip(frame, widget.frame) else HideTip(frame, widget.frame) end
 		end
 	elseif bare then
 		-- The width first: a bare widget's height can follow it.

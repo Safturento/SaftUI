@@ -680,8 +680,8 @@ test('Health and Power: the color toggles, small, in a Colors section, in the or
 		"target's health colors, four to a line")
 	eq(layout(config, 'player', 'Power', 'Colors'), 'colorPower:small 1/1, colorClass:small 1/2, colorReaction:small 2/1',
 		"the player's power colors")
-	eq(layout(config, 'player', 'Power', 'Colors', true), 'colorCustom:small 1/1, customColor:small 1/2',
-		'Custom and its color on the next line, untitled, whatever the count above')
+	eq(layout(config, 'player', 'Power', 'Colors', true), 'colorCustom:small 1/1, customColor:normal 2',
+		'Custom and its color on the next line, untitled, whatever the count above: the color takes the right half')
 	eq(layout(config, 'nameplate', 'Health', 'Colors'),
 		'colorTapping:small 1/1, colorClass:small 1/2, colorClassNPC:small 2/1, colorClassPet:small 2/2, '
 		.. 'colorReaction:small 1/1, colorSmooth:small 1/2, colorHealth:small 2/1',

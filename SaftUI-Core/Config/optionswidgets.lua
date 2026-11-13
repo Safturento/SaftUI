@@ -24,15 +24,15 @@ local OM = st.OptionsModel
 
 	Types: toggle, range, select, multiselect, input, color, execute,
 	keybinding, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
-	of 6 and a 46 value box), select, multiselect, input and keybinding 170,
-	color 22. An execute button is as wide as its name needs (80 at least),
+	of 6 and a 46 value box), select, multiselect, input, keybinding and color 170.
+	An execute button is as wide as its name needs (80 at least),
 	and a description is as wide as the window sets it (400 until it does). A
 	position block is as wide as its parts (200, 332 with a name target, 352
 	with a select target) and 65 high; its get/set/validate take the part first (point,
 	rel_point, x_off, y_off, frame, relative_to), so a change is
 	Commit(part, value). The window sets widget.onTip, which the block calls
 	as the mouse enters and leaves any of its parts. A multiselect's and a description's height follow what they hold
-	(widget.frame:GetHeight()); the others are 18, 22, 24 or 26 high.
+	(widget.frame:GetHeight()); the others are 18, 24 or 26 high.
 
 	Left out: input's multiline (one line), select's radio style (a dropdown,
 	as the spec says). A description's fontSize is small (the default), medium
@@ -82,9 +82,10 @@ local format, tinsert, tremove = string.format, table.insert, table.remove
 
 W.WIDTH = {
 	toggle = 18, range = 168, select = 170, multiselect = 170, input = 170,
-	color = 22, execute = 80, keybinding = 170, description = 400,
+	execute = 80, keybinding = 170, description = 400,
 	position = 0, -- the block's width follows its parts (widget:GetWidth())
 }
+W.WIDTH.color = W.WIDTH.select -- a color's bar is as wide as a dropdown
 local FIELD_HEIGHT = 24
 -- Above the options window (FULLSCREEN_DIALOG, like edit mode's outlines), so
 -- the list and the confirm dialog show over it and catch the clicks around them.

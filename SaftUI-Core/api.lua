@@ -368,7 +368,10 @@ local heldFrames = setmetatable({}, { __mode = 'k' })
 -- (st:ClearAllPointsDirect, st:SetPointDirect), which don't run the hooks. In
 -- combat a protected frame (something secure anchored to it) is left where
 -- Blizzard puts it, and held again once when combat ends. Called again for a
--- frame, it holds it on the new holder, with no second pair of hooks.
+-- frame, it holds it on the new holder, with no second pair of hooks. A site
+-- whose frame its own clamp would hold back short of the holder also calls
+-- st:KeepHolderInScreenMargin (the swing timers; not the buffs, whose buttons
+-- are anchored to the holder).
 function st:HoldFrame(frame, holder, x, y)
 	local hold = heldFrames[frame]
 	if not hold then
@@ -441,6 +444,10 @@ end
 	clamps some of its frames itself: its Edit Mode systems (ChatFrame1, the
 	tooltip container, the buffs) rewrite their insets from their Selection box on
 	every layout apply and Edit Mode enter (EditModeSystemMixin:UpdateClampOffsets).
+	Where that clamp would hold back the frame the user sees (chat, the swing
+	timers, the tooltip container), its holder is kept no nearer the edges than
+	the clamp lets the frame go (st:KeepHolderInScreenMargin), or the frame would
+	stop short of its holder and edit mode's outline, on the holder, go on past it.
 
 	Both calls are blocked in combat on a protected frame (a secure unit frame or
 	action bar, or a frame one is anchored to). That frame keeps the margin it had,
@@ -450,15 +457,24 @@ local marginFrames = {} -- every frame st:KeepInScreenMargin was given, in order
 local inMargin = {} -- frame -> true for those
 local reachOf = {} -- frame -> its reach, for a frame whose art reaches past it
 
+-- How far in from the screen's left, right, top and bottom edges the margin
+-- keeps frame, in frame's own units: the profile's margin, plus frame's reach
+-- if it has one. A frame SaftUI doesn't keep (the Minimap) gets the margin
+-- alone, which only its drags and nudges keep to.
+function st:GetScreenMargin(frame)
+	local inset = st.config.profile.misc.clamp_inset
+	local left, right, top, bottom = 0, 0, 0, 0
+	if reachOf[frame] then left, right, top, bottom = reachOf[frame]() end
+	return inset + left, inset + right, inset + top, inset + bottom
+end
+
 -- Clamps frame with the profile's margin, its rect grown by how far its art
 -- reaches past it. False if it can't be now (combat).
 local function ApplyScreenMargin(frame)
 	if not st:CanMoveNow(frame) then return false end
-	local inset = st.config.profile.misc.clamp_inset
-	local left, right, top, bottom = 0, 0, 0, 0
-	if reachOf[frame] then left, right, top, bottom = reachOf[frame]() end
+	local left, right, top, bottom = st:GetScreenMargin(frame)
 	frame:SetClampedToScreen(true)
-	frame:SetClampRectInsets(-inset - left, inset + right, inset + top, -inset - bottom)
+	frame:SetClampRectInsets(-left, right, top, -bottom)
 	return true
 end
 
@@ -488,6 +504,73 @@ function st:UpdateScreenMargin()
 		if not ApplyScreenMargin(frame) then waiting = true end
 	end
 	if waiting then UpdateScreenMarginAfterCombat() end
+end
+
+-- Holders with a Blizzard frame on them (st:KeepHolderInScreenMargin): holder ->
+-- { frame, x, y }; and the frames whose UpdateClampOffsets is hooked: frame -> true.
+local heldOn = setmetatable({}, { __mode = 'k' })
+local clampHooked = setmetatable({}, { __mode = 'k' })
+
+-- How much further in than the margin holder has to stay on each side (left,
+-- right, top, bottom, in holder's units) for the Blizzard frame on it to follow
+-- it: how far in the frame's own clamp keeps the frame, plus how far the frame
+-- sits outside the holder, less the margin. 0 on a side the margin already
+-- covers, and for a frame that isn't clamped or whose clamp or scale can't be
+-- read.
+local function HeldFrameReach(holder)
+	local held = heldOn[holder]
+	local frame = held and held.frame
+	local clamped = frame and frame:IsClampedToScreen()
+	if issecretvalue(clamped) or not clamped then return 0, 0, 0, 0 end
+	local left, right, top, bottom = frame:GetClampRectInsets()
+	local scale, holderScale = frame:GetEffectiveScale(), holder:GetEffectiveScale()
+	for _, value in ipairs({ left, right, top, bottom, scale, holderScale }) do
+		if issecretvalue(value) then return 0, 0, 0, 0 end
+	end
+	if not (left and right and top and bottom and scale and holderScale) or holderScale == 0 then
+		return 0, 0, 0, 0
+	end
+	-- The frame's units to the holder's.
+	local k = scale / holderScale
+	local margin = st.config.profile.misc.clamp_inset
+	local function Past(keptIn, outside)
+		return math.max(0, (keptIn + outside) * k - margin)
+	end
+	return Past(-left, held.x), Past(right, held.x), Past(top, held.y), Past(-bottom, held.y)
+end
+
+-- Keeps holder, a holder of SaftUI's with a Blizzard frame on it (x and y
+-- outside it on each side, in frame's units; 0 if not given), inside the screen
+-- edge margin, and no nearer the edges than frame's own clamp lets frame go.
+-- Blizzard's Edit Mode keeps its systems on screen (EditModeSystemTemplate is
+-- clampedToScreen) with insets from their Selection box
+-- (EditModeSystemMixin:UpdateClampOffsets): ChatFrame1's keep it 32 in from the
+-- left and bottom, 25 from the right and 60 from the top. A holder the margin
+-- let go further would leave its frame behind, and edit mode's outline, on the
+-- holder, would go on past the frame. Blizzard sets the insets again on every
+-- layout apply and Edit Mode enter, so a post-hook on frame's UpdateClampOffsets
+-- applies the holder's margin again; it reads frame's clamp and changes only
+-- the holder, so it's safe in combat. It never changes frame's clamp
+-- (.agents/taint.md rule 5). Called again for a holder, it takes the new frame
+-- and outsets; a frame given with a new holder leaves its old one to the margin
+-- alone.
+function st:KeepHolderInScreenMargin(holder, frame, x, y)
+	for other, held in pairs(heldOn) do
+		if held.frame == frame and other ~= holder then
+			heldOn[other] = nil
+			st:KeepInScreenMargin(other)
+		end
+	end
+	heldOn[holder] = { frame = frame, x = x or 0, y = y or 0 }
+	if frame.UpdateClampOffsets and not clampHooked[frame] then
+		clampHooked[frame] = true
+		hooksecurefunc(frame, 'UpdateClampOffsets', function()
+			for other, held in pairs(heldOn) do
+				if held.frame == frame then st:KeepInScreenMargin(other) end
+			end
+		end)
+	end
+	st:KeepInScreenMargin(holder, function() return HeldFrameReach(holder) end)
 end
 
 -- Where point (a SetPoint point) is on frame, in frame's own units, or nil if an
