@@ -114,6 +114,8 @@ function CF:UpdateConfig()
 	if not font then return end
 	for _, slot in pairs(slots) do
 		slot.itemLevel:SetFontObject(font)
+		-- A font object can reset an explicit colour, and the profile's white may differ.
+		slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
 	end
 end
 
