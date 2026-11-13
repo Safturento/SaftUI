@@ -27,7 +27,8 @@
 --
 -- The world is theme_test.lua's (see its top), made fresh on each client
 -- (world): real Core and its defaults, the unit frames' defaults (every
--- unit's), unitframes.lua, groups.lua, config/config.lua, constructors.lua,
+-- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua), config/config.lua, constructors.lua,
 -- updaters.lua and the bar and aura elements; oUF stood in for by its colors
 -- table, and a unit frame by a SaftUI button with UF.ConstructUnit's fields
 -- and the elements a test names, built by their own constructors
@@ -56,7 +57,7 @@ local function world(client, theme)
 			roles = {}, runes = {},
 		},
 	}
-	for _, file in ipairs({ 'unitframes', 'groups', 'config/config', 'constructors', 'updaters' }) do
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/config', 'constructors', 'updaters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, file in ipairs(ELEMENTS) do
@@ -469,7 +470,7 @@ end)
 
 ------------------------------------------------------------------ previews
 
--- Each part a preview has (groups.lua's CreatePreviewFrame) as
+-- Each part a preview has (grouppreview.lua's CreatePreviewFrame) as
 -- 'part: how it was drawn; how it looks'.
 local PREVIEW_PARTS = { 'Health', 'Power', 'GroupRoleIndicator' }
 local function picture(frame)

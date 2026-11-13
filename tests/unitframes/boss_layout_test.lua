@@ -1,11 +1,12 @@
 -- Boss (and arena) frames laid out like party and raid: the shared layout math
--- in SaftUI-Unitframes/groups.lua (UF.GetGroupLayout, UF.GetGroupLayoutSize,
+-- in SaftUI-Unitframes/grouplayout.lua (UF.GetGroupLayout, UF.GetGroupLayoutSize,
 -- UF.GroupAnchor), which UF:PlaceUnitFrame and UF:PlaceHolder
 -- (unitframes.lua) call. Boss gets its layout from UF.GetUnitGroupLayout: always
 -- one column, whatever column keys an old profile saved. Pure functions: no frames are placed here.
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults, and
--- groups.lua. Stand-in: the Unitframes module, which unitframes.lua makes and
+-- the group files (grouplayout.lua, groups.lua, blizzardraid.lua,
+-- grouppreview.lua). Stand-in: the Unitframes module, which unitframes.lua makes and
 -- needs oUF for.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
@@ -15,7 +16,10 @@ apply_defaults()
 
 local st = SaftUI
 local UF = st:NewModule('Unitframes')
+load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
+load_saftui('SaftUI-Unitframes/blizzardraid.lua')
+load_saftui('SaftUI-Unitframes/grouppreview.lua')
 
 local function expect_anchor(actual, point, relativeTo, relativePoint, x, y)
 	eq(#actual, 1, 'one point')

@@ -4,7 +4,7 @@
 -- oUF (its colors table) and stand-in frames that count their ForceUpdate and
 -- UpdateTags calls. Each carries its unit as oUF does, in __unit, and no
 -- .unit, which only UF.OnEnter sets (a frame never hovered has none).
--- UF:UpdateGroupPreview and UF.testGroups live in groups.lua,
+-- UF:UpdateGroupPreview and UF.testGroups live in grouppreview.lua,
 -- which isn't loaded; the tests stand them in.
 load_core_helpers()
 addon_namespace('SaftUI-Unitframes').oUF = {

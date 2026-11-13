@@ -13,7 +13,8 @@
 --
 -- The world is theme_test.lua's (see its top), made fresh on each client
 -- (world): real Core and its defaults, the unit frames' defaults (every
--- unit's), unitframes.lua, groups.lua, config/config.lua, constructors.lua,
+-- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua), config/config.lua, constructors.lua,
 -- updaters.lua, aurafilters.lua and the elements; oUF stood in for by its colors
 -- table, and a unit frame by a SaftUI button with UF.ConstructUnit's fields
 -- and the elements a test names, built by their own constructors
@@ -52,7 +53,7 @@ local function world(client)
 		},
 	}
 	-- The TOC's order: aurafilters.lua after tags.lua, before the elements.
-	for _, file in ipairs({ 'unitframes', 'groups', 'config/config', 'constructors', 'updaters', 'aurafilters' }) do
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/config', 'constructors', 'updaters', 'aurafilters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, file in ipairs(ELEMENTS) do

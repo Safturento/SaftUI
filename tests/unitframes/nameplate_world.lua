@@ -5,7 +5,8 @@
 --     leaves it before the plates are spawned. Real: Core's helpers and
 --     defaults; the unit frames' defaults and every unit's config, the files
 --     config/load.xml lists (nameplate.lua among them), filled the way AceDB
---     fills them; unitframes.lua, groups.lua, config/config.lua,
+--     fills them; unitframes.lua, the group files (grouplayout.lua,
+--     groups.lua, blizzardraid.lua, grouppreview.lua), config/config.lua,
 --     constructors.lua, updaters.lua, tags.lua and aurafilters.lua; the files
 --     elements/elements.xml and nameplates/nameplates.xml list, read from the
 --     XML so a file a later change adds there loads too; LibStringFormat-1.0,
@@ -81,7 +82,9 @@ function NP.world(client)
 	local ouf = fixture.new()
 	addon_namespace('SaftUI-Unitframes').oUF = ouf
 	load_saftui('SaftUI-Unitframes/unitframes.lua')
-	load_saftui('SaftUI-Unitframes/groups.lua')
+	for _, file in ipairs({ 'grouplayout', 'groups', 'blizzardraid', 'grouppreview' }) do
+		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
+	end
 	load_saftui(configLua)
 	for _, file in ipairs({ 'constructors', 'updaters', 'tags', 'aurafilters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')

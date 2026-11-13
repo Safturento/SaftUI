@@ -9,7 +9,8 @@
 --   - a config update draws no backdrop on the aura and class power areas
 --     (their buttons and points are drawn), so nothing of SaftUI's is anchored
 --     to Blizzard's aura container (.agents/taint.md, rule 11);
---   - a boss or party test mode preview draws like its real frame (groups.lua);
+--   - a boss or party test mode preview draws like its real frame
+--     (grouppreview.lua);
 --   - an aura button's dispel type fill keeps its color through a theme
 --     recolor and redraw, and the dark line SaftUI draws over it follows the
 --     theme (elements/auras.lua);
@@ -20,7 +21,8 @@
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults (every
 -- unit's), filled the way AceDB fills them; unitframes.lua (UF:UpdateUnitFrame,
--- UF:ApplyConfig, UF:RegisterElement); groups.lua (the previews);
+-- UF:ApplyConfig, UF:RegisterElement); the group files (grouplayout.lua,
+-- groups.lua, blizzardraid.lua, grouppreview.lua: the previews);
 -- config/config.lua (UF:GetProfileConfig); constructors.lua and updaters.lua;
 -- aurafilters.lua (the aura groups' filters, UF.AuraFilter); the health, power,
 -- additional power, castbar, class power, aura and indicator elements, whose
@@ -68,7 +70,10 @@ addon_namespace('SaftUI-Unitframes').oUF = {
 	},
 }
 load_saftui('SaftUI-Unitframes/unitframes.lua')
+load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
+load_saftui('SaftUI-Unitframes/blizzardraid.lua')
+load_saftui('SaftUI-Unitframes/grouppreview.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
@@ -438,7 +443,7 @@ end)
 
 ------------------------------------------------------------------ previews
 
--- Each part a preview has (groups.lua's CreatePreviewFrame), on a preview and
+-- Each part a preview has (grouppreview.lua's CreatePreviewFrame), on a preview and
 -- on a real frame: 'part: how it was drawn; how it looks'.
 local PREVIEW_PARTS = { 'Health', 'Power', 'GroupRoleIndicator' }
 local function picture(frame)

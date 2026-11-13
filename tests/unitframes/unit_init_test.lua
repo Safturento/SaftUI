@@ -12,7 +12,8 @@
 --
 -- Real: Core's helpers and profile defaults, every unit's defaults, filled the
 -- way AceDB fills them; unitframes.lua (UF.ConstructUnit, UF.InitUnit,
--- UF:UpdateUnitFrame); groups.lua; config/config.lua (UF:GetProfileConfig);
+-- UF:UpdateUnitFrame); the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua); config/config.lua (UF:GetProfileConfig);
 -- constructors.lua, updaters.lua and tags.lua; the files elements/elements.xml
 -- lists; LibStringFormat-1.0, which init.lua makes st.StringFormat.
 --
@@ -30,7 +31,10 @@ apply_defaults()
 local ouf = fixture.new()
 addon_namespace('SaftUI-Unitframes').oUF = ouf
 load_saftui('SaftUI-Unitframes/unitframes.lua')
+load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
+load_saftui('SaftUI-Unitframes/blizzardraid.lua')
+load_saftui('SaftUI-Unitframes/grouppreview.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')

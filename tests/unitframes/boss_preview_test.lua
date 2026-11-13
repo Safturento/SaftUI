@@ -1,4 +1,4 @@
--- Boss frames' test mode: UF:UpdateGroupPreview (SaftUI-Unitframes/groups.lua)
+-- Boss frames' test mode: UF:UpdateGroupPreview (SaftUI-Unitframes/grouppreview.lua)
 -- fills the boss holder with SaftUI-owned preview frames, one for each boss
 -- frame the boss Layout shows, each where UF:PlaceUnitFrame (unitframes.lua)
 -- puts that boss frame, and hides them while any real boss frame is shown. The
@@ -8,7 +8,8 @@
 -- Real: Core's helpers and profile defaults, the unit frames' defaults (boss's
 -- too), filled the way AceDB fills them; unitframes.lua (UF:PlaceUnitFrame,
 -- UF:PlaceHolder, UF:ApplyConfig, UF:UpdateConfig, UF:OnColorsChanged);
--- groups.lua; config/config.lua (UF:GetProfileConfig and the boss page, whose
+-- the group files (grouplayout.lua, groups.lua, blizzardraid.lua,
+-- grouppreview.lua); config/config.lua (UF:GetProfileConfig and the boss page, whose
 -- General set is the Layout options' set); constructors.lua and updaters.lua,
 -- which build and style the previews' bars and texts; LibStringFormat-1.0,
 -- which init.lua makes st.StringFormat.
@@ -41,7 +42,10 @@ addon_namespace('SaftUI-Unitframes').oUF = {
 	},
 }
 load_saftui('SaftUI-Unitframes/unitframes.lua')
+load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
+load_saftui('SaftUI-Unitframes/blizzardraid.lua')
+load_saftui('SaftUI-Unitframes/grouppreview.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
