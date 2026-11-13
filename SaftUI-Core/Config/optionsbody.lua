@@ -37,8 +37,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	middle, and right ones at the line's right end, on the line of a wide
 	row just before them (whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own.
-	A toggle's check box and a color's swatch sit just after their label's
-	text; a small input's box is 60 wide. A position block
+	A toggle's check box and a color's bar sit at their cell's right edge,
+	the label taking the rest; a small input's box is 60 wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has

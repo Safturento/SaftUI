@@ -180,9 +180,9 @@ end)
 
 ------------------------------------------------------------------ the body
 
-test('a toggle and a color sit at their cell\'s right edge, at normal and small size, the label taking the rest', function()
+test('a toggle and a color sit at their cell\'s right edge, a toggle at normal and small size and a color at normal, the label taking the rest', function()
 	local body, by = draw_body(774, {
-		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' },
+		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' }, -- the model makes it normal
 		{ 'nc', 'color', 'A color that is long' },
 	})
 	for key, c in pairs(by) do
@@ -194,6 +194,24 @@ test('a toggle and a color sit at their cell\'s right edge, at normal and small 
 		local cellWidth = c.row.size == 'small' and 171 or 367 -- whole pixels: a 367 column's quarter is 171
 		eq(c.label:GetWidth(), cellWidth - c.widget:GetWidth() - 10, key .. ' label is the rest of the cell')
 	end
+	body:Release()
+end)
+
+test('a color row gets the room a select row gets: a normal half, so its label and its bar fit', function()
+	-- Marked small, as the Colors page marks its rows: the model makes it normal.
+	local body, by = draw_body(774, {
+		{ 'c1', 'color', 'Tint', 'small' }, { 'c2', 'color', 'Another tint', 'small' },
+		{ 'c3', 'color', 'A third' }, { 's', 'select', 'Pick' },
+	})
+	eq(by.c1.row.size, 'normal', 'small is not honored for a color')
+	local _, _, _, x1 = by.c1.frame:GetPoint(1)
+	local _, _, _, x2 = by.c2.frame:GetPoint(1)
+	eq(x1, 0, 'the first in the left half')
+	eq(x2, 407, 'the second in the right half, not beside the first in a quarter')
+	eq(by.c1.frame:GetWidth(), 367, 'a half wide, as a select\'s')
+	eq(by.c1.frame:GetWidth(), by.s.frame:GetWidth(), 'as a select row')
+	eq(by.c1.label:GetWidth(), 367 - 170 - 10, 'the label has the rest beside the bar')
+	eq(by.c3.y, by.c1.y + 34, 'a third colour starts the next line')
 	body:Release()
 end)
 
@@ -219,7 +237,7 @@ end)
 
 test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 183', function()
 	local body, by = draw_body(774, {
-		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'color', 'B', 'small' }, { 'c', 'toggle', 'C' },
+		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'toggle', 'C' },
 		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
 	})
 	local got = {}

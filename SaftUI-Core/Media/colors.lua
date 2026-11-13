@@ -227,7 +227,7 @@ local function SectionGroup(section, index)
 end
 
 -- The Colors tab of Global Settings: one inline section per color group, a
--- swatch per color and a Reset button. Each row's get and set are bound to its
+-- color bar per color and a Reset button. Each row's get and set are bound to its
 -- own color, so they read no info.
 function CO:GetConfigTable()
 	local args = {}

@@ -86,10 +86,9 @@ end)
 
 ------------------------------------------------------------------ color
 
-test('color: the swatch shows the color and opens the picker on it', function()
+test('color: the bar shows the color and opens the picker on it', function()
 	local w = color_widget({ hasAlpha = true })
-	eq(w:GetWidth(), 22, 'swatch width')
-	local r, g, b, a = w.swatch:GetVertexColor()
+	eq(w:GetWidth(), 170, 'bar width')
 	click(w.frame)
 	check(ColorPickerFrame:IsShown(), 'the picker opens')
 	local pr, pg, pb = ColorPickerFrame:GetColorRGB()
@@ -185,6 +184,145 @@ test('color: without SetupColorPickerAndShow the swatch does nothing, and writes
 	eq(old.func, nil, 'no field written')
 	eq(old.hasOpacity, nil, 'none')
 	w:Release()
+end)
+
+test('color: the bar is a dropdown\'s size', function()
+	local w = color_widget()
+	local d = bind('select', 'pick', opt('select', 'Pick', {
+		values = { a = 'A' }, get = function() return 'a' end, set = function() end,
+	}))
+	eq(size_of(w.frame), size_of(d.frame), 'the select\'s width and height')
+	eq(size_of(w.frame), '170x24')
+	eq(w:GetWidth(), W.WIDTH.select, 'W.WIDTH.color is the select\'s')
+	d:Release()
+	w:Release()
+end)
+
+test('color: the bar reads the color\'s hex code in capitals, channels rounded', function()
+	local function text(r, g, b)
+		local w = color_widget({ value = { r, g, b, 1 } })
+		local out = w.text:GetText()
+		w:Release()
+		return out
+	end
+	eq(text(1, 1, 1), '#FFFFFF', 'white')
+	eq(text(0, 0, 0), '#000000', 'black')
+	eq(text(1, 0.5, 0), '#FF8000', '0.5 rounds to 128 (0x80)')
+	eq(text(0.2, 0.4, 0.6), '#336699', 'a color of whole bytes')
+	eq(text(0.999, 0.001, 0.7), '#FF00B3', 'rounded, not cut')
+	eq(text(0.6666, 0.1, 0.9), '#AA1AE6', 'letters in capitals')
+end)
+
+test('color: black text on a light color, white on a dark one', function()
+	local function ink(r, g, b)
+		local w = color_widget({ value = { r, g, b, 1 } })
+		local tr, tg, tb = w.text:GetTextColor()
+		w:Release()
+		return tr .. ',' .. tg .. ',' .. tb
+	end
+	eq(ink(1, 1, 1), '0,0,0', 'white fill')
+	eq(ink(1, 1, 0), '0,0,0', 'yellow')
+	eq(ink(0, 1, 0), '0,0,0', 'green')
+	eq(ink(0, 0, 0), '1,1,1', 'black fill')
+	eq(ink(1, 0, 0), '1,1,1', 'red')
+	eq(ink(0, 0, 1), '1,1,1', 'blue')
+	eq(ink(0.5, 0.5, 0.5), '1,1,1', 'mid grey, on the dark side of the cut')
+	eq(ink(0.51, 0.51, 0.51), '0,0,0', 'just over it')
+end)
+
+test('color: the ink reads on what the bar shows, the fill at its opacity over the black line', function()
+	local function ink(hasAlpha, r, g, b, a)
+		local w = color_widget({ hasAlpha = hasAlpha, value = { r, g, b, a } })
+		local tr, tg, tb = w.text:GetTextColor()
+		w:Release()
+		return tr .. ',' .. tg .. ',' .. tb
+	end
+	eq(ink(true, 1, 1, 1, 1), '0,0,0', 'white, solid')
+	eq(ink(true, 1, 1, 1, 0.3), '1,1,1', 'white at 30% shows dark grey')
+	eq(ink(false, 1, 1, 1, 0.3), '0,0,0', 'no hasAlpha: drawn solid')
+	eq(ink(false, 1, 0.5, 0), '0,0,0', 'orange: red counts for more than blue')
+end)
+
+test('color: the fill sits over the black line and under the code, which is centred; a disabled bar takes no mouse', function()
+	local w = color_widget()
+	local fl, fs = w.swatch:GetDrawLayer()
+	local ll, ls = w.inner:GetDrawLayer()
+	eq(fl .. fs, 'ARTWORK1', 'the fill')
+	eq(ll .. ls, 'ARTWORK0', 'the black line, under it')
+	eq((w.text:GetDrawLayer()), 'OVERLAY', 'the code, over both')
+	local point, rel, relPoint = w.text:GetPoint(1)
+	eq(point .. relPoint, 'CENTERCENTER', 'the code in the middle')
+	check(rel == w.frame, 'of the bar')
+	w:SetDisabled(true)
+	eq(w.frame:IsMouseEnabled(), false, 'disabled: no mouse, so the row shows its tooltip')
+	w:SetDisabled(false)
+	eq(w.frame:IsMouseEnabled(), true, 'enabled: the mouse again')
+	w:Release()
+end)
+
+test('color: the opacity shows only with hasAlpha and under 100%', function()
+	local function text(hasAlpha, a)
+		local w = color_widget({ hasAlpha = hasAlpha, value = { 1, 0, 0, a } })
+		local out = w.text:GetText()
+		w:Release()
+		return out
+	end
+	local dot = ' \194\183 '
+	eq(text(true, 0.6), '#FF0000' .. dot .. '60%', 'hasAlpha, 60%')
+	eq(text(true, 0.555), '#FF0000' .. dot .. '56%', 'a whole percent, rounded')
+	eq(text(true, 1), '#FF0000', 'hasAlpha at 100%')
+	eq(text(true, 0.999), '#FF0000', '99.9% rounds to 100%')
+	eq(text(true, 0), '#FF0000' .. dot .. '0%', 'fully clear')
+	eq(text(false, 0.6), '#FF0000', 'no hasAlpha: the code alone')
+end)
+
+test('color: the text and the fill follow the picker, and Cancel puts them back', function()
+	local w = color_widget({ hasAlpha = true, value = { 0, 0, 0, 1 } })
+	click(w.frame)
+	eq(w.text:GetText(), '#000000')
+	stub.pick_color(1, 1, 1, 0.8)
+	eq(w.text:GetText(), '#FFFFFF \194\183 80%', 'the new code and opacity')
+	local tr, tg, tb = w.text:GetTextColor()
+	eq(tr .. ',' .. tg .. ',' .. tb, '0,0,0', 'black ink on the white now')
+	-- SetColorTexture records the fill in the stub's color_texture (GetVertexColor stays 1,1,1).
+	local function fill()
+		local c = stub.state(w.swatch).color_texture
+		return string.format('%.1f,%.1f,%.1f,%.1f', c[1], c[2], c[3], c[4])
+	end
+	eq(fill(), '1.0,1.0,1.0,0.8', 'the fill is white at 80%')
+	stub.color_picker_cancel()
+	eq(fill(), '0.0,0.0,0.0,1.0', 'Cancel: the old fill')
+	eq(w.text:GetText(), '#000000', 'Cancel: the old code')
+	tr, tg, tb = w.text:GetTextColor()
+	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'white ink again')
+	w:Release()
+end)
+
+test('color: a click anywhere on the bar opens the picker; a disabled bar does not', function()
+	local w = color_widget()
+	w:SetDisabled(true)
+	click(w.frame)
+	check(not ColorPickerFrame:IsShown(), 'disabled: no picker')
+	w:SetDisabled(false)
+	click(w.frame)
+	check(ColorPickerFrame:IsShown(), 'enabled: the picker opens')
+	stub.color_picker_cancel()
+	w:Release()
+end)
+
+test('color: the bar draws under Thick, Thin and Blizzard, and a look change redraws it', function()
+	local w = color_widget({ value = { 1, 0.5, 0, 1 } })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	for _, name in ipairs({ 'thick', 'blizzard', 'thin', 'blizzard', 'thick' }) do
+		theme(name)
+		rebind(w)
+		if name == 'blizzard' then check_no_box(w.frame, name) else check_box(w.frame, name) end
+		eq(size_of(w.frame), '170x24', name .. ': the same bar')
+		eq(w.text:GetText(), '#FF8000', name .. ': the code')
+		check(w.text:IsShown(), name .. ': shown')
+	end
+	w:Release()
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ execute
@@ -488,7 +626,7 @@ test("an input carries InputBoxTemplate's art", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a color is Blizzard's swatch", function()
+test("a color is Blizzard's swatch, stretched to a bar", function()
 	theme('blizzard')
 	local w = bind('color', 'tint', opt('color', 'Tint', { get = function() return 1, 0.5, 0, 1 end, set = function() end }))
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
@@ -506,9 +644,9 @@ test("a color is Blizzard's swatch", function()
 		return table.concat(out, ' ')
 	end
 	check_no_box(button, 'Blizzard')
-	eq(squares(), '4,4,4,4=1.0,1.0,1.0 5,5,5,5=0.0,0.0,0.0 6,6,6,6=1.0,0.5,0.0',
-		'white 14, black 12 inside it and the color 10 inside that, centred')
-	eq(size_of(button), '22x22', 'it keeps its size')
+	eq(squares(), '0,0,0,0=1.0,1.0,1.0 1,1,1,1=0.0,0.0,0.0 2,2,2,2=1.0,0.5,0.0',
+		'white the whole bar, black a pixel in, the color a pixel in again')
+	eq(size_of(button), '170x24', "a dropdown's size")
 
 	theme('thick')
 	rebind(w)
