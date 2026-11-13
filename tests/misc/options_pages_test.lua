@@ -7,8 +7,9 @@
 -- has a desc and no Ace width, Position is the last option of its group, and
 -- the new options read and write their profile keys and apply the change.
 --
--- Real: the files of the pages (tooltipposition.lua, totembar.lua,
--- Blizzard_BuffFramePosition.lua, Blizzard_SwingTimerPosition.lua,
+-- Real: the files of the pages (tooltipposition.lua; totembar.lua,
+-- totemlayout.lua, totemposition.lua and totemoptions.lua;
+-- Blizzard_BuffFramePosition.lua; Blizzard_SwingTimerPosition.lua;
 -- skinning.lua), Misc's defaults, Core's generators and the options model.
 load_core_helpers()
 load_saftui('SaftUI-Misc/config.lua')
@@ -112,7 +113,9 @@ test('Tooltip: Theme, Background and Font read and write the profile, and a Them
 end)
 
 test('Totem bar: one small color per element, read and written as the bar reads them, applied at once', function()
-	load_saftui('SaftUI-Misc/totembar.lua')
+	for _, file in ipairs({ 'totembar', 'totemlayout', 'totemposition', 'totemoptions' }) do
+		load_saftui('SaftUI-Misc/' .. file .. '.lua') -- the TOC's order
+	end
 	local TB = st:GetModule('TotemBar')
 	TB.bar = CreateFrame('Frame', 'ScratchTotemBar', UIParent)
 	TB.holder = CreateFrame('Frame', nil, UIParent)
@@ -165,7 +168,7 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 end)
 
 test('Buffs: the text positions are Position options over the same keys', function()
-	load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua')
 	local AP = st:GetModule('Auras')
 	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
 	AP.maxAuras = { buffs = 32, debuffs = 16 }
@@ -203,7 +206,7 @@ test('Buffs: the text positions are Position options over the same keys', functi
 end)
 
 test('Swing timer: sizes and descs, Position last', function()
-	load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua')
 	local STP = st:GetModule('SwingTimer')
 	STP.holders = {
 		mainhand = CreateFrame('Frame', nil, UIParent),

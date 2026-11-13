@@ -1,13 +1,22 @@
 local st = SaftUI
 
--- The experience bars' default spot, in the named position shape (Core's default
--- is an array). Same spot: under the minimap, right edges lined up.
-st.defaults.experience.position = {
-	point = 'TOPRIGHT',
-	frame = 'Minimap',
-	rel_point = 'BOTTOMRIGHT',
-	x_off = 0,
-	y_off = -7,
+-- The experience and reputation bars (experience.lua). position is under the
+-- minimap, right edges lined up; a profile that saved it as an array has it
+-- converted by XP:MigratePosition.
+st.defaults.experience = {
+	width = 250, -- the minimap's default size
+	height = 13,
+	spacing = 8,
+	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
+	theme = 'theme',
+	background = 'theme',
+	position = {
+		point = 'TOPRIGHT',
+		frame = 'Minimap',
+		rel_point = 'BOTTOMRIGHT',
+		x_off = 0,
+		y_off = -7,
+	},
 }
 
 -- position is the default tooltip's edit mode holder (tooltipposition.lua). The
@@ -23,7 +32,7 @@ st.defaults.tooltip = {
 }
 
 -- cooldown_manager skins Blizzard's Cooldown Manager as SaftUI's action buttons
--- (Skinning/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
+-- (Skinning/blizzard/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
@@ -31,7 +40,7 @@ st.defaults.skinning = {
 	cooldown_manager = true,
 }
 
--- Forever's swing timer bars (SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua).
+-- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).
 -- Width and height are the visible bar: Blizzard's default 426x30 frame less the
 -- 5/4px art inset around its StatusBar. Blizzard stacks the bars in its bottom managed
 -- container, main hand on top with a 12px gap between visible bars; the chain below
@@ -81,7 +90,7 @@ st.defaults.swingtimer = {
 -- position (a shaman's holder, SaftUI's edit mode mover for the bar) has no default: a
 -- profile without one (a new or reset one too) keeps the holder's spot from the last
 -- profile, or takes the bar's spot on screen once Blizzard has placed it
--- (SaftUI-Misc/totembar.lua), so nothing moves on first load or on a profile change.
+-- (SaftUI-Misc/totemposition.lua), so nothing moves on first load or on a profile change.
 st.defaults.totembar = {
 	hide = false,
 	button_size = 30,
@@ -100,7 +109,7 @@ st.defaults.totembar = {
 	},
 }
 
--- Blizzard's player buff and debuff frames (SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua).
+-- Blizzard's player buff and debuff frames (SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua).
 -- The defaults reproduce Blizzard's default Edit Mode layout (Modern and Classic share it),
 -- which is what SaftUI showed before it took the frames over:
 --   - 30px icons, 5px apart in a row. Rows are 15px apart: Blizzard's buttons are 40px

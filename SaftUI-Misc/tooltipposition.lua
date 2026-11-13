@@ -13,7 +13,7 @@ local TT = st:GetModule('Tooltip')
 	from the Edit Mode layout.
 
 	SaftUI never moves the tooltip. It moves the container, the same way as the
-	swing timer (Skinning/Blizzard_SwingTimerPosition.lua):
+	swing timer (Skinning/blizzard/Blizzard_SwingTimerPosition.lua):
 	  - A SaftUI holder, sized like the container and placed from the profile, is
 	    the edit mode mover and the /sui Position.
 	  - The container is anchored by one corner: to the holder's matching corner

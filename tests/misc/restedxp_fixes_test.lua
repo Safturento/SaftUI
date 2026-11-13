@@ -1,4 +1,4 @@
--- The RestedXP skin (SaftUI-Misc/Skinning/restedxp.lua): the final review fix
+-- The RestedXP skin (SaftUI-Misc/Skinning/addons/restedxp.lua): the final review fix
 -- wave (final-fix-findings.md, findings 1-6). Migrated from the rxpsim
 -- harness's test_fixes.lua.
 local H = load_test_file('misc/restedxp_helpers.lua')

@@ -8,7 +8,8 @@
 --     frame under Thick and Thin), and an item added with Theme None has none.
 --     Its Blizzard art is blizzard_look_test.lua's.
 --
--- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua and
+-- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua,
+-- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
 load_test_file('core/options_walk.lua')
@@ -20,6 +21,9 @@ load_saftui('SaftUI-Minimap/minimap.lua')
 load_saftui('SaftUI-Minimap/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Minimap/micromenu.lua')
+load_saftui('SaftUI-Minimap/micromenuart.lua')
+load_saftui('SaftUI-Minimap/micromenuitems.lua')
+load_saftui('SaftUI-Minimap/micromenuoptions.lua')
 load_saftui('SaftUI-Minimap/microbuttons.lua')
 
 local st = SaftUI

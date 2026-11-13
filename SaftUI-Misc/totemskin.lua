@@ -3,13 +3,14 @@ local TB = st:GetModule('TotemBar')
 
 --[[
 	SaftUI's look for WoW Forever's totem bar (totembar.lua says what the bar is and how
-	Blizzard shows and places it). Every button looks like SaftUI's action bar buttons: a
-	flat backdrop in the profile's button theme, the icon cropped square, flat hover,
-	pushed and checked, and the profile's button font on the keybind.
-	SaftUI-ActionBars/skin.lua is the visual reference, but Misc only needs Core, so
-	nothing here calls into ActionBars. The buttons' size is the bar's setting, and
-	totembar.lua sizes them, out of combat. The skin holds at any size: the backdrop fills
-	the button and the icon is inset from the button's edges by the template's border.
+	Blizzard shows it, totemposition.lua how Blizzard places it). Every button looks like
+	SaftUI's action bar buttons: a flat backdrop in the profile's button theme, the icon
+	cropped square, flat hover, pushed and checked, and the profile's button font on the
+	keybind. SaftUI-ActionBars/skin.lua is the visual reference, but Misc only needs Core,
+	so nothing here calls into ActionBars. The buttons' size is the bar's setting, and
+	totemlayout.lua sizes them, out of combat. The skin holds at any size: the backdrop
+	fills the button and the icon is inset from the button's edges by the template's
+	border.
 
 	What's skinned:
 	  - The summon and recall buttons, with the template's own border.
@@ -65,7 +66,7 @@ local TB = st:GetModule('TotemBar')
 	anchored to, not to its children), and the rest only touches SaftUI's own frames
 	and Blizzard's regions. The slot buttons, on the other hand, are protected that
 	way: the recall button is anchored to the last shown one and they chain left to
-	right, so they're never moved or resized here (totembar.lua lays them out, out of
+	right, so they're never moved or resized here (totemlayout.lua lays them out, out of
 	combat). The flyout's choices are sized here, in combat too.
 
 	The flyout's layout leaves room for the totem timers: the panel is anchored to the
@@ -205,13 +206,8 @@ local function FlatStateTexture(texture, icon, layer)
 	texture:SetAllPoints(icon)
 end
 
--- hooksecurefunc on one of Blizzard's global functions, if this client has it. On TB
--- for totemtimers.lua too.
-function TB.PostHook(name, hook)
-	if type(_G[name]) == 'function' then
-		hooksecurefunc(name, hook)
-	end
-end
+-- hooksecurefunc on one of Blizzard's global functions, if this client has it
+-- (totembar.lua).
 local PostHook = TB.PostHook
 
 ------------------------------------

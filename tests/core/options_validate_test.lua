@@ -27,6 +27,7 @@ CreateFrame('Frame', 'Minimap', UIParent) -- Blizzard's, which experience.lua an
 for _, file in ipairs({
 	'SaftUI-Misc/experience.lua',
 	'SaftUI-Minimap/minimap.lua', 'SaftUI-Minimap/config.lua', 'SaftUI-Minimap/micromenu.lua',
+	'SaftUI-Minimap/micromenuart.lua', 'SaftUI-Minimap/micromenuitems.lua', 'SaftUI-Minimap/micromenuoptions.lua',
 }) do
 	load_saftui(file)
 end

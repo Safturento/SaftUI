@@ -7,6 +7,9 @@
 minimap.lua
 config.lua
 micromenu.lua
+micromenuart.lua
+micromenuitems.lua
+micromenuoptions.lua
 microbuttons.lua
 killblizz.lua
 expansionbutton.lua

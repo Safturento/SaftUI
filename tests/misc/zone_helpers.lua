@@ -1,5 +1,5 @@
 -- What the zone text and world map tests share: Blizzard's zone text and the
--- world map's area label, built as far as SaftUI-Misc/Skinning/ZoneText.lua
+-- world map's area label, built as far as SaftUI-Misc/Skinning/blizzard/ZoneText.lua
 -- reaches them, and the module loaded on top. Not a test (no _test suffix);
 -- each zone_*_test.lua loads it with load_test_file('misc/zone_helpers.lua').
 --
@@ -395,8 +395,8 @@ function H.fresh(opts)
 	H.make_zone_text()
 	if opts.map ~= false then H.make_world_map() end
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
-	load_saftui('SaftUI-Misc/Skinning/ZoneText.lua')
-	load_saftui('SaftUI-Misc/Skinning/ZoneFactions.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/ZoneText.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/ZoneFactions.lua')
 	local ZT = SaftUI:GetModule('Skinning'):GetModule('ZoneText')
 	ZT:Enable()
 	return ZT

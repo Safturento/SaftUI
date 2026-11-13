@@ -1,4 +1,4 @@
--- SaftUI-Misc/Skinning/ZoneFactions.lua: the table of which faction holds each
+-- SaftUI-Misc/Skinning/blizzard/ZoneFactions.lua: the table of which faction holds each
 -- zone, by uiMapID, one list per client, and its lookup, ZT:GetZoneFaction,
 -- which the world map's zone label reads.
 --
@@ -7,8 +7,8 @@
 -- no frames.
 load_core_helpers()
 load_saftui('SaftUI-Misc/Skinning/skinning.lua')
-load_saftui('SaftUI-Misc/Skinning/ZoneText.lua')
-load_saftui('SaftUI-Misc/Skinning/ZoneFactions.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/ZoneText.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/ZoneFactions.lua')
 local st = SaftUI
 local ZT = st:GetModule('Skinning'):GetModule('ZoneText')
 

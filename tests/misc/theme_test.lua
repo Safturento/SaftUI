@@ -11,7 +11,8 @@
 --   - the totem bar's element borders survive a theme recolor.
 --
 -- Real: SaftUI-Misc's config.lua, tooltip.lua, tooltipposition.lua,
--- experience.lua, totembar.lua, totemskin.lua and Skinning/skinning.lua,
+-- experience.lua, totembar.lua, totemlayout.lua, totemposition.lua,
+-- totemoptions.lua, totemskin.lua and Skinning/skinning.lua,
 -- Blizzard_BuffFrame.lua and Blizzard_SwingTimer.lua, Core's helpers and the
 -- theme engine. Blizzard's frames are built as far as the skins read them, and
 -- locked (fixtures/locked_widget.lua), so a skin that writes a field onto one fails.
@@ -26,6 +27,9 @@ load_saftui('SaftUI-Misc/tooltip.lua')
 load_saftui('SaftUI-Misc/tooltipposition.lua')
 load_saftui('SaftUI-Misc/experience.lua')
 load_saftui('SaftUI-Misc/totembar.lua')
+load_saftui('SaftUI-Misc/totemlayout.lua')
+load_saftui('SaftUI-Misc/totemposition.lua')
+load_saftui('SaftUI-Misc/totemoptions.lua')
 load_saftui('SaftUI-Misc/totemskin.lua')
 load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 -- The skin treats this atlas as a secret value (the stubs can't make one, and
@@ -33,9 +37,9 @@ load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 local SECRET_ATLAS = 'a-secret-atlas'
 local real_issecretvalue = issecretvalue
 function issecretvalue(v) return v == SECRET_ATLAS or (real_issecretvalue and real_issecretvalue(v)) or false end
-load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua')
-load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua')
-load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimer.lua')
 
 local st = SaftUI
 local profile = st.config.profile
@@ -616,7 +620,7 @@ end
 
 test('gem icons are drawn as slots, their icon under the ring', function()
 	local CF = SK:NewModule('CharacterFrame')
-	load_saftui('SaftUI-Misc/Skinning/characterframe/gems.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/characterframe/gems.lua')
 	local equipSlot = CreateFrame('Button', nil, UIParent)
 	equipSlot:SetSize(40, 40)
 	equipSlot:SetPoint('CENTER')

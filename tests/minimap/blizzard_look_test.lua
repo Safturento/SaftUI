@@ -12,7 +12,8 @@
 --   - Thick puts today's boxes back, and nothing of Blizzard's micro menu is
 --     shown, moved or written onto.
 --
--- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua and
+-- Real: SaftUI-Minimap's minimap.lua, config.lua, micromenu.lua,
+-- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
 -- microbuttons.lua, Core's helpers and the theme engine. Each case starts from
 -- a fresh world on a client (T.client), since cases change the profile's theme.
 local T = load_test_file('lib/theme_helpers.lua')
@@ -31,6 +32,9 @@ local function world(client)
 	load_saftui('SaftUI-Minimap/config.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Minimap/micromenu.lua')
+	load_saftui('SaftUI-Minimap/micromenuart.lua')
+	load_saftui('SaftUI-Minimap/micromenuitems.lua')
+	load_saftui('SaftUI-Minimap/micromenuoptions.lua')
 	load_saftui('SaftUI-Minimap/microbuttons.lua')
 	MM = st:GetModule('MicroMenu')
 	MM.Container = CreateFrame('Frame', nil, UIParent)

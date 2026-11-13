@@ -1,4 +1,4 @@
--- The Cooldown Manager skin (SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua):
+-- The Cooldown Manager skin (SaftUI-Misc/Skinning/blizzard/Blizzard_CooldownViewer.lua):
 --   - every viewer's items look like SaftUI's action buttons in the Skinning
 --     page's look: a backdrop of SaftUI's drawn as the action kind with the
 --     item as its host, 2px inside the item (where Blizzard's round icon sat),
@@ -28,7 +28,7 @@
 -- On both clients: the Cooldown Manager is the same on each.
 --
 -- Real: SaftUI-Misc's config.lua, Skinning/skinning.lua and
--- Skinning/Blizzard_CooldownViewer.lua, Core's helpers and the theme engine.
+-- Skinning/blizzard/Blizzard_CooldownViewer.lua, Core's helpers and the theme engine.
 -- Blizzard's Cooldown Manager is fixtures/cooldown_viewer.lua.
 local T = load_test_file('lib/theme_helpers.lua')
 
@@ -51,7 +51,7 @@ local function world(client, opts)
 	profile = st.config.profile
 	if opts.off then profile.skinning.cooldown_manager = false end
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
-	load_saftui('SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_CooldownViewer.lua')
 	SK = st:GetModule('Skinning')
 	CV = load_test_file('misc/fixtures/cooldown_viewer.lua')
 	if not opts.late then CV.build() end

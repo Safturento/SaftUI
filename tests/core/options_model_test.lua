@@ -6,7 +6,8 @@
 --
 -- Synthetic option tables pin each rule. Then the real tree that Core's real
 -- Config/config.lua builds (config_helpers.lua): SaftUI-Misc/experience.lua's
--- page, with its Position option last in its General tab, and
+-- page (its defaults are SaftUI-Misc/config.lua's), with its Position option
+-- last in its General tab, and
 -- AceDBOptions-3.0's profiles table on a real AceDB-3.0.
 
 -- First, in the bare shell: the model needs nothing but SaftUI.
@@ -16,6 +17,10 @@ local OM = st.OptionsModel
 
 -- The real tree's world, with the Experience module enabled as at login.
 load_test_file('core/config_helpers.lua')
+-- Misc's defaults (the bar's among them): AceDB filled the profile from every
+-- default at login, as Misc's config.lua loads before SaftUI:OnEnable makes it.
+load_saftui('SaftUI-Misc/config.lua')
+apply_defaults()
 CreateFrame('Frame', 'Minimap', UIParent) -- the bar's default position anchors to it
 load_saftui('SaftUI-Misc/experience.lua')
 local XP = st:GetModule('Experience')

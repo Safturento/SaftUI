@@ -29,9 +29,12 @@ covers:
   - 'SaftUI-Unitframes/config/config.lua'
   - 'SaftUI-*/options.lua'
   - 'SaftUI-*/movers.lua'
-  - 'SaftUI-Misc/Skinning/*Position.lua'
+  - 'SaftUI-Misc/Skinning/blizzard/*Position.lua'
   - 'SaftUI-Misc/tooltipposition.lua'
   - 'SaftUI-Misc/totembar.lua'
+  - 'SaftUI-Misc/totemlayout.lua'
+  - 'SaftUI-Misc/totemposition.lua'
+  - 'SaftUI-Misc/totemoptions.lua'
   - 'SaftUI-ActionBars/extras.lua'
 ---
 
@@ -80,7 +83,7 @@ st:RegisterMover('key', {
   Size the holder from the config, place it from the profile, and anchor the real frame to it. The overlay then always has a footprint. `st:PlaceHolder(holder, key, getSize, getPosition)` (`SaftUI-Core/api.lua`) sizes and places a holder through `st:SafeReposition` under `key`, its offsets rounded to whole pixels, reading `getSize()` and `getPosition()` when it runs, so after combat too: chat, the tooltip and the totem bar use it. The buffs and swing timers place theirs without rounding the offsets, so they keep their own.
 
   A SaftUI frame that's only hidden, and still sized and placed from the profile while hidden, can be its own mover frame: the overlay follows its edges either way. SaftUI's action bars (`SaftUI-ActionBars/options.lua`) move their secure headers this way, also while a bar is disabled or hidden by its Visibility setting, and while the pet bar has no pet or the stance bar no forms (laid out as one button then, so the outline keeps a size). Label the outline when the frame may not be visible (`mover.label:SetText`), as the action bars and the swing timer do. The extra buttons' outlines (`SaftUI-ActionBars/options.lua`) always say when they show, as they mostly don't.
-- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`), chat (`SaftUI-Chat/chatframe.lua`), the default tooltip's `GameTooltipDefaultContainer` (`SaftUI-Misc/tooltipposition.lua`; the tooltip itself is never moved) and, on a shaman, Forever's totem bar `MultiCastActionBarFrame` (`SaftUI-Misc/totembar.lua`, mover `totembar`) all follow the same pattern:
+- **Taking over a Blizzard Edit Mode frame.** The swing timer bars (`SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua`), buffs (`Blizzard_BuffFramePosition.lua`), chat (`SaftUI-Chat/chatframe.lua`), the default tooltip's `GameTooltipDefaultContainer` (`SaftUI-Misc/tooltipposition.lua`; the tooltip itself is never moved) and, on a shaman, Forever's totem bar `MultiCastActionBarFrame` (`SaftUI-Misc/totemposition.lua`, mover `totembar`) all follow the same pattern:
   - Use a holder.
   - Re-anchor the Blizzard frame with `st:SetPointDirect` / `st:ClearAllPointsDirect` in post-hooks on its `SetPoint` / `ClearAllPoints` / `UpdateSystem`. If it's protected (the totem bar holds secure buttons), the re-anchor waits for the end of combat (`st:QueueAfterCombat`), and the holder goes through `st:SafeReposition`. For a frame anchored over its holder by two corners, `st:HoldFrame(frame, holder, x, y)` (`api.lua`; `x` and `y` outside the holder on each side) gives the anchor and its re-anchor post-hooks on `ClearAllPoints` and `SetPoint`, with the wait for the end of combat on a protected frame; the buffs and the swing timers use it. It hooks no `UpdateSystem` and doesn't place the holder: the site still does that.
   - Where Blizzard's Edit Mode can read the frame's anchor (a snap break, when the frame it's snapped to hides, records it into the layout through `UpdateSystemAnchorInfo`, and a layout save keeps it), don't anchor the frame straight to a SaftUI holder. Place it on UIParent at the holder's spot instead, from the holder's rect, and again whenever the holder moves or resizes (the totem bar's `TB:AnchorBar`, run from a post-hook on the holder's `SetPoint`). Otherwise the layout names the holder, and Blizzard anchors the frame to a missing frame wherever the holder doesn't exist. Chat copies its holder's own anchor instead (`CHT:PlaceChatFrame`), so the layout would name the holder's relative frame, UIParent by default.
