@@ -264,6 +264,28 @@ function UF.SetPowerBackgroundColor(power, r, g, b)
 	end
 end
 
+-- The power and additional power bars' PostUpdateColor (elements/power.lua,
+-- elements/additionalpower.lua). oUF calls it after it recolors the bar (any
+-- color flag), so a custom color set earlier or in PostUpdate would be
+-- overwritten. The custom color comes from the config, so it is never secret.
+-- color is the color object oUF used, and r, g, b the alternative color oUF's
+-- power element passes for a power with no color of its own (additional
+-- power's passes none).
+function UF.PostUpdatePowerColor(power, color, r, g, b)
+	if power.config.colorCustom then
+		r, g, b = UF.UnpackColor(power.config.customColor)
+		power:SetStatusBarColor(r, g, b)
+		UF.SetPowerBackgroundColor(power, r, g, b)
+		return
+	end
+	if color then
+		r, g, b = color:GetRGB()
+	end
+	if r and g and b then
+		UF.SetPowerBackgroundColor(power, r, g, b)
+	end
+end
+
 -- Where the Blizzard fills apply, by element name: the key of
 -- st.ThemeArt.Control('unitbars').
 local FILL_KEYS = { Health = 'health', Power = 'power', AdditionalPower = 'power' }
