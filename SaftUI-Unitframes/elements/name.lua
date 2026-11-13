@@ -23,12 +23,12 @@ end
 local function SetMaxWidth(name, config)
 	local width = tonumber(config.max_width) or 0
 	if width > 0 then
-		st:SetWidth(name, width)
+		name:SetWidth(width)
 		name:SetWordWrap(false)
 		name:SetJustifyH(Justify(st:UnpackPoint(config.position)))
 		name.sizedByMaxWidth = true
 	elseif name.sizedByMaxWidth then
-		st:SetWidth(name, 0)
+		name:SetWidth(0)
 		name:SetWordWrap(true)
 		name.sizedByMaxWidth = nil
 	end

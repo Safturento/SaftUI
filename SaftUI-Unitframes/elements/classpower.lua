@@ -77,7 +77,7 @@ local function PostUpdateClassPower(classPower, cur, max, hasCurChanged, hasMaxC
 	classPower:SetShown(classPower.config.enable and true or false)
 	local width = (classPower:GetWidth() - (classPower.config.spacing * (max - 1))) / max
 	for i = 1, max do
-		st:SetWidth(classPower[i], width)
+		classPower[i]:SetWidth(width)
 		if classPower.config.show_empty then
 			classPower[i]:Show()
 		end

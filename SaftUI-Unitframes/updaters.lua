@@ -222,8 +222,8 @@ end
 
 function UF:UpdateElementSize(element, configOverride)
     local width, height = self:ElementSize(element, configOverride)
-    if width then st:SetWidth(element, width) end
-    if height then st:SetHeight(element, height) end
+    if width then element:SetWidth(width) end
+    if height then element:SetHeight(height) end
 end
 
 function UF:UpdateElementPosition(element, configOverride)
