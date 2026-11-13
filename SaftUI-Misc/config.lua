@@ -81,7 +81,7 @@ st.defaults.swingtimer = {
 -- position (a shaman's holder, SaftUI's edit mode mover for the bar) has no default: a
 -- profile without one (a new or reset one too) keeps the holder's spot from the last
 -- profile, or takes the bar's spot on screen once Blizzard has placed it
--- (SaftUI-Misc/totembar.lua), so nothing moves on first load or on a profile change.
+-- (SaftUI-Misc/totemposition.lua), so nothing moves on first load or on a profile change.
 st.defaults.totembar = {
 	hide = false,
 	button_size = 30,
