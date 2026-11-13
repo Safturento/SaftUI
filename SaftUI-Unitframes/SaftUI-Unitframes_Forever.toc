@@ -13,6 +13,6 @@ config\load.xml
 constructors.lua
 updaters.lua
 tags.lua
-purge.lua
+aurafilters.lua
 elements\elements.xml
 nameplates\nameplates.xml

@@ -22,7 +22,7 @@
 -- unit's), filled the way AceDB fills them; unitframes.lua (UF:UpdateUnitFrame,
 -- UF:ApplyConfig, UF:RegisterElement); groups.lua (the previews);
 -- config/config.lua (UF:GetProfileConfig); constructors.lua and updaters.lua;
--- purge.lua (the aura groups' filters, UF.AuraFilter); the health, power,
+-- aurafilters.lua (the aura groups' filters, UF.AuraFilter); the health, power,
 -- additional power, castbar, class power, aura and indicator elements, whose
 -- constructors build the parts and whose UpdateConfig draws them;
 -- LibStringFormat-1.0, which init.lua makes st.StringFormat.
@@ -72,7 +72,7 @@ load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/purge.lua')
+load_saftui('SaftUI-Unitframes/aurafilters.lua')
 for _, file in ipairs({ 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end

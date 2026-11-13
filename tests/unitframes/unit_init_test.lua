@@ -34,7 +34,7 @@ load_saftui('SaftUI-Unitframes/groups.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/purge.lua') -- the aura groups' filters (UF.AuraFilter), as the TOC loads it after updaters
+load_saftui('SaftUI-Unitframes/aurafilters.lua') -- the aura groups' filters (UF.AuraFilter), as the TOC loads it after updaters
 load_saftui('SaftUI-Unitframes/tags.lua')
 for _, file in ipairs({ 'name', 'auras', 'aurawatch', 'power', 'additionalpower', 'health', 'castbar', 'portrait', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
