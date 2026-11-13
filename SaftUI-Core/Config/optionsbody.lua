@@ -241,9 +241,10 @@ end
 
 ------------------------------------------------------------------ the pure layout
 
--- Whether buttons aligned right can share a wide row's line: a row with a
--- label and a control, not a description or a bare row, which are drawn
--- across the whole line.
+-- Whether buttons aligned right can share a wide row's line: any wide row
+-- but a description or a bare row, which are drawn across the whole line.
+-- A position row would share it, but never comes before them: the model
+-- gives it a section of its own.
 local function SharesLine(row)
 	local custom = W.CUSTOM[row.type]
 	return row.type ~= 'description' and not (custom and custom.bare)
@@ -255,9 +256,11 @@ end
 -- follow each other are a group, a line of buttons (OB.ButtonRow places
 -- them): a 'center' group takes a line of its own; a 'right' group takes the
 -- line of the wide row just before it, if that row can share it, else a line
--- of its own. A line is as tall as its tallest row (heightOf(row),
--- ROW_HEIGHT without it). sizeOf(row) gives a row's size (row.size without
--- it; no size is normal), alignOf(row) its align (row.align without it).
+-- of its own. A group must fit its line: it never wraps, and buttons wider
+-- than the line run past its edges. A line is as tall as its tallest row
+-- (heightOf(row), ROW_HEIGHT without it). sizeOf(row) gives a row's size
+-- (row.size without it; no size is normal), alignOf(row) its align
+-- (row.align without it).
 -- Returns { {row, col = 1|2|'full', quarter = 1|2|nil (smalls only), y} }
 -- and the height of them all; a button's entry is {row, col = 'buttons',
 -- group, index (its place in the group), y}, a group { align, rows }, and a

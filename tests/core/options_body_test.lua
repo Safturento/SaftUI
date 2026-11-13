@@ -146,6 +146,26 @@ test('LayoutRows: aligned buttons in a row make a group; right ones share the li
 	for _, p in ipairs(placed) do check(p.col ~= 'buttons', p.row.key .. ' is laid out by its size') end
 end)
 
+test("LayoutRows: buttons aligned right don't share a bare row's line, which the row draws across", function()
+	W.Define('buttonsbare', {
+		bare = true,
+		build = function(w) w.frame = CreateFrame('Frame', nil, UIParent) end,
+	})
+	local function heightOf(row) return row.key == 'bare' and 60 or 34 end
+	local placed, height = OW.LayoutRows({
+		{ key = 'bare', type = 'buttonsbare', size = 'wide' }, { key = 'go', align = 'right' },
+	}, heightOf)
+	eq(placed[1].buttons, nil, "not on the bare row's line")
+	eq(placed[2].col .. '@' .. placed[2].y, 'buttons@60', 'on a line of its own under it')
+	eq(height, 94, 'two lines')
+	-- A wide row with a label in its place shares it.
+	placed, height = OW.LayoutRows({
+		{ key = 'pick', type = 'select', size = 'wide' }, { key = 'go', align = 'right' },
+	}, heightOf)
+	check(placed[1].buttons == placed[2].group, "a select's line is shared")
+	eq(placed[2].y .. ',' .. height, '0,34', 'one line')
+end)
+
 test('ButtonRow: buttons side by side 12 apart, the last at the right edge, or the row in the middle, on whole units', function()
 	local ButtonRow = st.OptionsBody.ButtonRow
 	local xs, left = ButtonRow({ 80, 80 }, 'right', 520)
@@ -331,6 +351,32 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 		end
 	end
 	eq(table.concat(got, ' '), '260,' .. by.a.y, 'none beside the buttons')
+	body:Release()
+end)
+
+test('a centred pair with one button hidden draws the other centred alone', function()
+	local shown = true
+	local root = { page = { type = 'group', name = 'Page', args = {
+		ok = { type = 'execute', name = 'Confirm copy', align = 'center', order = 1, func = function() end },
+		cancel = { type = 'execute', name = 'Cancel', align = 'center', order = 2, func = function() end,
+			hidden = function() return not shown end },
+	} } }
+	local body = st.OptionsBody.New(CreateFrame('Frame', nil, UIParent), root, nil, 520)
+	local function draw()
+		body:Release()
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local by = {}
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		return by
+	end
+	local by = draw()
+	local okWidth, cancelWidth = by.ok.widget:GetWidth(), by.cancel.widget:GetWidth()
+	eq(point_x(by.ok.frame), math.floor((520 - okWidth - 12 - cancelWidth) / 2), 'the pair in the middle')
+	shown = false
+	by = draw()
+	eq(by.cancel, nil, 'Cancel hidden')
+	eq(point_x(by.ok.frame), math.floor((520 - okWidth) / 2), 'Confirm copy in the middle alone')
+	eq(by.ok.frame:GetWidth(), okWidth, 'at its own width')
 	body:Release()
 end)
 
