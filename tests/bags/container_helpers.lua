@@ -37,6 +37,7 @@ function H.fresh()
 	load_saftui('SaftUI-Bags/movers.lua')
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
+	load_saftui('SaftUI-Bags/search.lua')
 	local INV = SaftUI:GetModule('Inventory')
 	H.INV = INV
 	-- As INV:OnEnable binds it.
@@ -267,6 +268,7 @@ function H.views_world(client, core)
 	load_saftui('SaftUI-Bags/movers.lua')
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
+	load_saftui('SaftUI-Bags/search.lua')
 	H.INV = INV
 	stand_in_templates()
 	stand_in_api()

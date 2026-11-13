@@ -15,6 +15,7 @@ tooltipscanner.lua
 category.lua
 views.lua
 container.lua
+search.lua
 containers\bag.lua
 containers\combinedbank.lua
 containers\bank.lua
