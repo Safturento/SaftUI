@@ -82,7 +82,7 @@ end
 -- The tab's widget, as the window drew it last.
 local function tab() return cell('categories').widget end
 
-local function tick() stub.fire_script(OW.GetFrames().ticker, 'OnUpdate', 0.01) end
+local tick = tick_options_window
 local click = stub.click
 
 local function enter(box, text)

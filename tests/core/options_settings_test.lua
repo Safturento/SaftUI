@@ -112,10 +112,7 @@ end
 ------------------------------------------------------------------ helpers
 
 -- One frame passes on the window's clock (none before the window is built).
-local function tick()
-	local ticker = OW.GetFrames().ticker
-	if ticker then stub.fire_script(ticker, 'OnUpdate', 0.01) end
-end
+local tick = tick_options_window
 
 -- SaftUI's theme switched, as the Theme tab does it, and the window's next frame.
 local function switch(name)

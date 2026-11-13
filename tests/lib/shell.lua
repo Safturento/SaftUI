@@ -25,6 +25,7 @@
 	                          in the game's order; options_widget_files() lists them
 	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
 	                          in the game's order; options_window_files() lists them
+	  tick_options_window(elapsed) one frame passes on the /sui window's clock
 	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
 	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
 	  use_client(name, before) a fresh world on 'forever' or 'retail'
@@ -450,6 +451,15 @@ function load_options_window()
 	for _, path in ipairs(options_window_files()) do
 		load_saftui(path)
 	end
+end
+
+-- One frame passes on the /sui window's clock: its ticker's OnUpdate runs with
+-- elapsed seconds (0.01 by default), as the game runs it every frame. Nothing
+-- runs before the window is built, when it has no ticker yet. It reads the
+-- window from SaftUI when called, so it follows a reset_world().
+function tick_options_window(elapsed)
+	local ticker = SaftUI.OptionsWindow.GetFrames().ticker
+	if ticker then stub.fire_script(ticker, 'OnUpdate', elapsed or 0.01) end
 end
 
 -- Edit mode's files (st.EditModeFrames, st:RegisterMover and the rest), by

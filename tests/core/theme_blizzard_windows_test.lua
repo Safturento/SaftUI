@@ -406,7 +406,7 @@ test("the /sui window's close button sits in the metal's socket under Blizzard, 
 	local place = 'TOPRIGHT window TOPRIGHT -16.00,-14.00'
 	eq(anchor(close, names), place, 'Thick: its place')
 	-- The window lays itself out again on its next frame after a theme change.
-	local function tick() stub.fire_script(OW.GetFrames().ticker, 'OnUpdate', 0.01) end
+	local tick = tick_options_window
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()

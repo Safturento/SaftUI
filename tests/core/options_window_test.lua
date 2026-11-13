@@ -183,7 +183,7 @@ end
 local click = stub.click
 
 -- One frame passes on the window's clock.
-local function tick(elapsed) stub.fire_script(frames().ticker, 'OnUpdate', elapsed or 0.01) end
+local tick = tick_options_window
 
 -- What fn printed to chat (WoW's print), joined.
 local function printed(fn)
