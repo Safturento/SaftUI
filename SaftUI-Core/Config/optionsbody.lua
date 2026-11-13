@@ -31,6 +31,12 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	0 when nothing is drawn. Sections are laid out by OB.LayoutSections, their
 	rows by OB.LayoutRows, both pure: a row is small (a quarter of the line;
 	two make a half), normal (a half) or wide (the whole line), by row.size.
+	Buttons with an align (row.align, the model's) that follow each other
+	are a line of buttons instead, side by side at their own widths, 12
+	apart, with no dividers: centred ones on a line of their own, in its
+	middle, and right ones at the line's right end, on the line of a wide
+	row just before them (whose cell then ends 24 before the buttons, so its
+	label and control take the rest), else on a line of their own.
 	A toggle's check box and a color's swatch sit just after their label's
 	text; a small input's box is 60 wide. A position block
 	has no label (its section is titled Position), is as tall as the widget
@@ -72,6 +78,7 @@ local ROW_HEIGHT = 34
 local LABEL_GAP = 10
 local COLUMN_GAP = 40
 local QUARTER_GAP = 24 -- between the two quarters of a half
+local BUTTON_GAP = 12 -- between the buttons of a line (W.Confirm's Yes and No are 12 apart)
 local SMALL_INPUT_WIDTH = 60
 local WIDTH = 774 -- the window's body: two columns of 367 with a gap of 40
 
@@ -237,27 +244,66 @@ end
 
 ------------------------------------------------------------------ the pure layout
 
+-- Whether buttons aligned right can share a wide row's line: any wide row
+-- but a description or a bare row, which are drawn across the whole line.
+-- A position row would share it, but never comes before them: the model
+-- gives it a section of its own.
+local function SharesLine(row)
+	local custom = W.CUSTOM[row.type]
+	return row.type ~= 'description' and not (custom and custom.bare)
+end
+
 -- Places rows on lines of four quarters (two halves). A small row takes the
 -- next quarter, a normal row the next whole half (it skips a lone quarter's
--- other half), a wide row a line of its own. A line is as tall as its
--- tallest row (heightOf(row), ROW_HEIGHT without it). sizeOf(row) gives a
--- row's size (row.size without it; no size is normal). Returns { {row,
--- col = 1|2|'full', quarter = 1|2|nil (smalls only), y} } and the height of
--- them all.
-function OB.LayoutRows(rows, heightOf, sizeOf)
+-- other half), a wide row a line of its own. Buttons with an align that
+-- follow each other are a group, a line of buttons (OB.ButtonRow places
+-- them): a 'center' group takes a line of its own; a 'right' group takes the
+-- line of the wide row just before it, if that row can share it, else a line
+-- of its own. A group must fit its line: it never wraps, and buttons wider
+-- than the line run past its edges. A line is as tall as its tallest row
+-- (heightOf(row), ROW_HEIGHT without it). sizeOf(row) gives a row's size
+-- (row.size without it; no size is normal), alignOf(row) its align
+-- (row.align without it).
+-- Returns { {row, col = 1|2|'full', quarter = 1|2|nil (smalls only), y} }
+-- and the height of them all; a button's entry is {row, col = 'buttons',
+-- group, index (its place in the group), y}, a group { align, rows }, and a
+-- wide row's entry has buttons = the group on its line, if any.
+function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 	local placed, y, cursor, lineHeight = {}, 0, 0, 0 -- cursor: quarters used in the line
+	local wide, group -- the wide row just placed, as { entry, height }; the group being placed
 	local function NextLine()
 		y, cursor, lineHeight = y + lineHeight, 0, 0
 	end
 	for _, row in ipairs(rows) do
 		local height = heightOf and heightOf(row) or ROW_HEIGHT
 		local size = (sizeOf and sizeOf(row) or row.size) or 'normal'
-		if size == 'wide' then
+		local align
+		if alignOf then align = alignOf(row) else align = row.align end
+		if align then
+			if not (group and group.align == align) then
+				group = { align = align, rows = {} }
+				if align == 'right' and wide and SharesLine(wide.entry.row) then
+					-- Back onto the wide row's line, at its right end.
+					y, lineHeight = wide.entry.y, wide.height
+					wide.entry.buttons = group
+				elseif cursor > 0 then
+					NextLine()
+				end
+			end
+			group.rows[#group.rows + 1] = row
+			placed[#placed + 1] = { row = row, col = 'buttons', group = group, index = #group.rows, y = y }
+			lineHeight = max(lineHeight, height)
+			cursor = 4 -- the line is the buttons'
+			wide = nil
+		elseif size == 'wide' then
 			if cursor > 0 then NextLine() end
-			placed[#placed + 1] = { row = row, col = 'full', y = y }
+			local entry = { row = row, col = 'full', y = y }
+			placed[#placed + 1] = entry
 			lineHeight = height
 			NextLine()
+			wide, group = { entry = entry, height = height }, nil
 		else
+			wide, group = nil, nil
 			if size == 'normal' and cursor % 2 == 1 then cursor = cursor + 1 end
 			if cursor >= 4 then NextLine() end
 			local col = cursor < 2 and 1 or 2
@@ -275,8 +321,9 @@ end
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
 -- placed} } and the body's height. Sections after the first are separated by
 -- a line; an untitled one (rows that follow a nested group) gets none, so it
--- reads as a continuation of the one above.
-function OB.LayoutSections(sections, heightOf, sizeOf)
+-- reads as a continuation of the one above. heightOf, sizeOf and alignOf
+-- are OB.LayoutRows'.
+function OB.LayoutSections(sections, heightOf, sizeOf, alignOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
 		local entry = { section = section }
@@ -298,7 +345,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf)
 			y = y + NOTE_HEIGHT + NOTE_GAP
 		end
 		entry.rowsY = y
-		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf)
+		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf, alignOf)
 		entry.placed = placed
 		y = y + height
 		laid[#laid + 1] = entry
@@ -310,12 +357,13 @@ end
 -- OB.LayoutRows gives it): one between the halves of a line with a row in
 -- each, and one between the quarters of a half with two small rows. A
 -- divider is as tall as its line (heightOf as for OB.LayoutRows), so the
--- dividers of lines that follow each other join up. Returns { {at = 'half'
--- | 'quarter', col = 1|2 (quarters), y, height} }.
+-- dividers of lines that follow each other join up. A wide row's line and a
+-- line of buttons have none. Returns { {at = 'half' | 'quarter', col = 1|2
+-- (quarters), y, height} }.
 function OB.Dividers(placed, heightOf)
 	local lines, order = {}, {}
 	for _, p in ipairs(placed) do
-		if p.col ~= 'full' then
+		if p.col == 1 or p.col == 2 then
 			local line = lines[p.y]
 			if not line then
 				line = { y = p.y, height = 0, halves = {}, smalls = { 0, 0 } }
@@ -339,6 +387,23 @@ function OB.Dividers(placed, heightOf)
 		end
 	end
 	return dividers
+end
+
+-- Where a line of buttons goes (widths, each button's, in order): side by
+-- side, BUTTON_GAP apart, the last flush with the line's right edge
+-- (align 'right') or the whole row in the line's middle ('center'), on
+-- whole units (whole widths in a width of whole units). Returns each
+-- button's x and the row's left edge.
+function OB.ButtonRow(widths, align, width)
+	local total = 0
+	for i, w in ipairs(widths) do total = total + w + (i > 1 and BUTTON_GAP or 0) end
+	local x = align == 'right' and width - total or floor((width - total) / 2)
+	local xs, left = {}, x
+	for i, w in ipairs(widths) do
+		xs[i] = x
+		x = x + w + BUTTON_GAP
+	end
+	return xs, left
 end
 
 ------------------------------------------------------------------ rows
@@ -544,7 +609,10 @@ function Body:RowCell(row)
 		widget.width = row.size == 'small' and SMALL_INPUT_WIDTH or W.WIDTH.input
 		widget.frame:SetWidth(widget.width)
 	end
-	local cell = { row = row, frame = frame, widget = widget, label = frame.label, height = ROW_HEIGHT, place = PlaceRow }
+	local cell = {
+		row = row, frame = frame, widget = widget, label = frame.label, height = ROW_HEIGHT, place = PlaceRow,
+		align = row.align,
+	}
 	if row.type == 'description' then
 		widget:SetWidth(self.width)
 		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
@@ -586,7 +654,9 @@ end
 
 -- Draws sections of rows with makeCell (rows it draws nothing for are left
 -- out, and so are sections left empty), with OB.Dividers' lines between
--- their cells. sizeOf(row) overrides the rows' sizes in the layout. Fill
+-- their cells. sizeOf(row) overrides the rows' sizes in the layout. A cell's
+-- align (an option row's; a search result has none) lines its button up
+-- with the others of its group (OB.ButtonRow, at the button's width). Fill
 -- rows share what fillHeight (the view's height) leaves, in whole units, the
 -- first taking any remainder. Returns the height drawn.
 function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
@@ -604,14 +674,26 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
 	end
 	local function heightOf(row) return byRow[row].height end
-	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf)
+	local function alignOf(row) return byRow[row].align end
+	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf)
 	local extra = fillHeight and #fills > 0 and floor(fillHeight - height) or 0
 	if extra > 0 then
 		local share = floor(extra / #fills)
 		for i, cell in ipairs(fills) do
 			cell.height = cell.height + share + (i == 1 and extra - share * #fills or 0)
 		end
-		laid, height = OB.LayoutSections(kept, heightOf, sizeOf)
+		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf)
+	end
+	-- A group of buttons' x, by its buttons' widths: { xs, left }, once a draw.
+	local buttonsAt = {}
+	local function ButtonsAt(group)
+		if not buttonsAt[group] then
+			local widths = {}
+			for i, row in ipairs(group.rows) do widths[i] = byRow[row].widget:GetWidth() end
+			local xs, left = OB.ButtonRow(widths, group.align, self.width)
+			buttonsAt[group] = { xs = xs, left = left }
+		end
+		return buttonsAt[group]
 	end
 	for _, cell in ipairs(fills) do
 		if cell.widget.SetHeight then cell.widget:SetHeight(cell.height - cell.pad) end
@@ -638,7 +720,14 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
-			local x, cellWidth = self:CellRect(p.col, p.quarter)
+			local x, cellWidth
+			if p.col == 'buttons' then
+				x, cellWidth = ButtonsAt(p.group).xs[p.index], cell.widget:GetWidth()
+			else
+				x, cellWidth = self:CellRect(p.col, p.quarter)
+				-- A wide row with buttons at its line's right end stops short of them.
+				if p.buttons then cellWidth = max(1, ButtonsAt(p.buttons).left - QUARTER_GAP) end
+			end
 			cell.place(cell, x, cell.y, cellWidth)
 		end
 		for _, d in ipairs(OB.Dividers(entry.placed, heightOf)) do

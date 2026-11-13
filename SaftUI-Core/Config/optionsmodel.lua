@@ -47,13 +47,15 @@ local st = SaftUI
 	where it's disabled. Search leaves out the tabs a selection can't open.
 
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
-	disabled, disabledDesc, path, option }: path is the keys from the root,
-	option the option table. disabledDesc is the option's own disabledDesc
-	member (SaftUI's: why it's disabled, a string or a function), read only
-	while the row is disabled, else nil. size is the option's own size
-	member: 'small' (honored only for a toggle, color, execute or input) or
-	'wide'; anything else is normal. Every description and every position row
-	is wide. Ace's width is not read.
+	align, disabled, disabledDesc, path, option }: path is the keys from the
+	root, option the option table. size is the option's own size member:
+	'small' (honored only for a toggle, color, execute or input) or 'wide';
+	anything else is normal. Every description and every position row is wide.
+	Ace's width is not read. align is an execute's own align member, SaftUI's:
+	'right' or 'center' (a button the body lines up with the buttons beside
+	it, optionsbody.lua), else nil. disabledDesc is the option's own
+	disabledDesc member (SaftUI's: why it's disabled, a string or a function),
+	read only while the row is disabled, else nil.
 	A position row sits in a section of its own, titled with its name; the
 	rows after it continue in an untitled one.
 ]]
@@ -85,7 +87,7 @@ local isInherited = {
 -- Members where a string is the value, not a handler method name.
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
-	size = true, target = true, nameKey = true, pickerLabel = true, disabledDesc = true, justifyH = true,
+	size = true, target = true, nameKey = true, pickerLabel = true, align = true, disabledDesc = true, justifyH = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -379,6 +381,15 @@ local function SizeOf(option, options, path)
 	return 'normal'
 end
 
+-- The places a button can take on its line.
+local canAlign = { right = true, center = true }
+
+local function AlignOf(option, options, path)
+	if option.type ~= 'execute' then return nil end
+	local align = GetMember('align', option, options, path)
+	return canAlign[align] and align or nil
+end
+
 local function Row(option, options, path)
 	local disabled = IsDisabled(option, options, path)
 	return {
@@ -387,6 +398,7 @@ local function Row(option, options, path)
 		name = Text(GetMember('name', option, options, path)),
 		desc = Desc(GetMember('desc', option, options, path)),
 		size = SizeOf(option, options, path),
+		align = AlignOf(option, options, path),
 		disabled = disabled,
 		-- Why it's disabled (SaftUI's own member, never inherited), read only then.
 		disabledDesc = disabled and Desc(GetMember('disabledDesc', option, options, path)) or nil,

@@ -69,7 +69,7 @@ test('the check is real: a malformed option fails it, and so does each field ace
 
 	-- Why ace_ready leaves them off, and why registering skips validation:
 	-- AceConfig doesn't know SaftUI's fields or its position type.
-	for _, field in ipairs({ 'category', 'size', 'target', 'nameKey' }) do
+	for _, field in ipairs({ 'category', 'size', 'target', 'nameKey', 'align' }) do
 		local page = { type = 'group', name = 'Page', args = { t = { type = 'toggle', name = 'T' } } }
 		page.args.t[field] = 'x'
 		ok, err = Validate(Registered({ Page = page }))

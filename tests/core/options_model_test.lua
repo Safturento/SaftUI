@@ -351,6 +351,26 @@ test('rows: size is the option\'s small or wide; Ace width is ignored; small onl
 	eq(row(view, 't').width, nil, 'rows carry no width')
 end)
 
+test("rows: align is an execute's right or center, else nil; a string is the value, a function is called", function()
+	local root = { Align = group('Align', {
+		r = opt('execute', 'R', { order = 1, align = 'right' }),
+		c = opt('execute', 'C', { order = 2, align = 'center' }),
+		f = opt('execute', 'F', { order = 3, align = function(info) return info[#info] == 'f' and 'right' or nil end }),
+		l = opt('execute', 'L', { order = 4, align = 'left' }),
+		n = opt('execute', 'N', { order = 5 }),
+		t = opt('toggle', 'T', { order = 6, align = 'right' }),
+	}) }
+	local view = OM.BuildView(root, 'Align')
+	local function align(key) return tostring(row(view, key).align) end
+	eq(align('r'), 'right', 'a button at the right')
+	eq(align('c'), 'center', 'a centred button')
+	eq(align('f'), 'right', 'a function, called with info')
+	eq(align('l'), 'nil', 'an unknown align is none')
+	eq(align('n'), 'nil', 'none by default')
+	eq(align('t'), 'nil', 'only a button aligns')
+	eq(#take_errors(), 0, "a string isn't a handler method's name")
+end)
+
 test('a position row gets a section of its own, titled with its name; rows after it continue untitled', function()
 	local root = { Pos = group('Pos', {
 		a = opt('toggle', 'A', { order = 1 }),
