@@ -1,4 +1,4 @@
--- SaftUI-Misc/Skinning/ZoneText.lua on the world map: hovering a zone, a line
+-- SaftUI-Misc/Skinning/blizzard/ZoneText.lua on the world map: hovering a zone, a line
 -- under Blizzard's zone name and level label names who holds it, in that
 -- faction's color:
 --   - from ZoneFactions.lua's table, and for the zone you're in from the

@@ -165,7 +165,7 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 end)
 
 test('Buffs: the text positions are Position options over the same keys', function()
-	load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua')
 	local AP = st:GetModule('Auras')
 	AP.holders = { buffs = CreateFrame('Frame', nil, UIParent), debuffs = CreateFrame('Frame', nil, UIParent) }
 	AP.maxAuras = { buffs = 32, debuffs = 16 }
@@ -203,7 +203,7 @@ test('Buffs: the text positions are Position options over the same keys', functi
 end)
 
 test('Swing timer: sizes and descs, Position last', function()
-	load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua')
 	local STP = st:GetModule('SwingTimer')
 	STP.holders = {
 		mainhand = CreateFrame('Frame', nil, UIParent),

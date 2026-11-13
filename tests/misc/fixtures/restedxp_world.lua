@@ -1,5 +1,5 @@
 -- A stand-in for the RestedXP Guides addon's guide window (GuideWindow.lua), as
--- the SaftUI skin (SaftUI-Misc/Skinning/restedxp.lua) sees it, built by
+-- the SaftUI skin (SaftUI-Misc/Skinning/addons/restedxp.lua) sees it, built by
 -- RXP.make(). Anchors and calls mirror GuideWindow.lua:353-395
 -- (SetStepFrameAnchor), 422, 473-474, 636-670 (ClearFrameData), 985-1195
 -- (SetStep), 1230-1394 (UpdateText), 1402-1427, 1508-1510 and UpdateVisuals

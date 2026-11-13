@@ -1,5 +1,5 @@
 -- The guide name grows to fit its title (FitTitle in
--- SaftUI-Misc/Skinning/restedxp.lua). Migrated from the rxpsim harness's
+-- SaftUI-Misc/Skinning/addons/restedxp.lua). Migrated from the rxpsim harness's
 -- test_title.lua.
 --
 -- The stubs have no text layout (a font string is one line tall), so a test

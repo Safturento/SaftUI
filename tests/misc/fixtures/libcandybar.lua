@@ -1,5 +1,5 @@
 -- LibCandyBar-3.0 (v104) and RestedXP's Timers.lua, as the SaftUI skin
--- (SaftUI-Misc/Skinning/restedxp.lua) sees them. Stand-ins for third-party
+-- (SaftUI-Misc/Skinning/addons/restedxp.lua) sees them. Stand-ins for third-party
 -- addons: the widgets and layout come from the shared stubs in tests/wow/.
 --
 --   candy = Timers.make_candy()     builds the library and registers it with

@@ -1,4 +1,4 @@
--- The RestedXP skin (SaftUI-Misc/Skinning/restedxp.lua), part 1: module,
+-- The RestedXP skin (SaftUI-Misc/Skinning/addons/restedxp.lua), part 1: module,
 -- setup, fonts, the guide panel's frame. Migrated from the rxpsim harness's
 -- test_task1.lua.
 local H = load_test_file('misc/restedxp_helpers.lua')

@@ -2,7 +2,7 @@
 	Blizzard's Cooldown Manager (Blizzard_CooldownViewer: CooldownViewer.xml and
 	CooldownViewer.lua, the same on Forever 1.60.1.70888 and retail 12.1.5.70783
 	in everything built here), as far as SaftUI's skin
-	(SaftUI-Misc/Skinning/Blizzard_CooldownViewer.lua) reads it. Load it with
+	(SaftUI-Misc/Skinning/blizzard/Blizzard_CooldownViewer.lua) reads it. Load it with
 	`local CV = load_test_file('misc/fixtures/cooldown_viewer.lua')`, then
 	CV.build() makes the viewers, as the game does when the addon loads:
 

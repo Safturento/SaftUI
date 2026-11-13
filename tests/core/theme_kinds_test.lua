@@ -333,7 +333,7 @@ test('the scan reads every SaftUI Lua file through the TOCs', function()
 	for _, path in ipairs({
 		'SaftUI-Core/theme.lua', 'SaftUI-Core/panels.lua', 'SaftUI-Core/Widgets/radiogroup.lua',
 		'SaftUI-Core/EditMode/mover.lua', 'SaftUI-Core/Utilities/utilities.lua',
-		'SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua', 'SaftUI-Misc/Skinning/characterframe/gems.lua',
+		'SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua', 'SaftUI-Misc/Skinning/blizzard/characterframe/gems.lua',
 		'SaftUI-Unitframes/elements/auras.lua', 'SaftUI-Unitframes/config/units/player.lua',
 		'SaftUI-Bags/containers/warbandbank.lua', 'SaftUI-Loot/Feed/feed.lua', 'SaftUI-Minimap/microbuttons.lua',
 	}) do

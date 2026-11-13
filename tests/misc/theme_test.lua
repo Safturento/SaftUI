@@ -33,9 +33,9 @@ load_saftui('SaftUI-Misc/Skinning/skinning.lua')
 local SECRET_ATLAS = 'a-secret-atlas'
 local real_issecretvalue = issecretvalue
 function issecretvalue(v) return v == SECRET_ATLAS or (real_issecretvalue and real_issecretvalue(v)) or false end
-load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFrame.lua')
-load_saftui('SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua')
-load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFrame.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimer.lua')
 
 local st = SaftUI
 local profile = st.config.profile
@@ -616,7 +616,7 @@ end
 
 test('gem icons are drawn as slots, their icon under the ring', function()
 	local CF = SK:NewModule('CharacterFrame')
-	load_saftui('SaftUI-Misc/Skinning/characterframe/gems.lua')
+	load_saftui('SaftUI-Misc/Skinning/blizzard/characterframe/gems.lua')
 	local equipSlot = CreateFrame('Button', nil, UIParent)
 	equipSlot:SetSize(40, 40)
 	equipSlot:SetPoint('CENTER')

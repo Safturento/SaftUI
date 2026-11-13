@@ -23,7 +23,7 @@ st.defaults.tooltip = {
 }
 
 -- cooldown_manager skins Blizzard's Cooldown Manager as SaftUI's action buttons
--- (Skinning/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
+-- (Skinning/blizzard/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
@@ -31,7 +31,7 @@ st.defaults.skinning = {
 	cooldown_manager = true,
 }
 
--- Forever's swing timer bars (SaftUI-Misc/Skinning/Blizzard_SwingTimerPosition.lua).
+-- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).
 -- Width and height are the visible bar: Blizzard's default 426x30 frame less the
 -- 5/4px art inset around its StatusBar. Blizzard stacks the bars in its bottom managed
 -- container, main hand on top with a 12px gap between visible bars; the chain below
@@ -100,7 +100,7 @@ st.defaults.totembar = {
 	},
 }
 
--- Blizzard's player buff and debuff frames (SaftUI-Misc/Skinning/Blizzard_BuffFramePosition.lua).
+-- Blizzard's player buff and debuff frames (SaftUI-Misc/Skinning/blizzard/Blizzard_BuffFramePosition.lua).
 -- The defaults reproduce Blizzard's default Edit Mode layout (Modern and Classic share it),
 -- which is what SaftUI showed before it took the frames over:
 --   - 30px icons, 5px apart in a row. Rows are 15px apart: Blizzard's buttons are 40px
