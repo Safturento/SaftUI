@@ -101,7 +101,7 @@ local function editor(rule)
 	return ed
 end
 
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 local function Color(group, name) return { st.config.profile.colors[group][name]:GetRGB() } end
 local function same_rgb(c, want)

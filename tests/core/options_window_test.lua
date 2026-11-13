@@ -180,7 +180,7 @@ local function cell(key)
 	end
 end
 
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 -- One frame passes on the window's clock.
 local function tick(elapsed) stub.fire_script(frames().ticker, 'OnUpdate', elapsed or 0.01) end

@@ -56,7 +56,7 @@ local function bind(rowType, key, option, groupFields)
 	return w, told, root, row
 end
 
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 -- The text a font string shows.
 local function text_of(fs) return fs:GetText() end

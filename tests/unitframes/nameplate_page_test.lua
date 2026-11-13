@@ -87,7 +87,7 @@ local function watch_sets()
 	return calls
 end
 
-local function click(frame) stub.fire_script(frame, 'OnClick') end
+local click = stub.click
 
 local function record(st)
 	return st.config.char.nameplateCVars

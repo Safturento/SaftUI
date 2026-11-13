@@ -83,7 +83,7 @@ end
 local function tab() return cell('categories').widget end
 
 local function tick() stub.fire_script(OW.GetFrames().ticker, 'OnUpdate', 0.01) end
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 local function enter(box, text)
 	box:SetText(text)

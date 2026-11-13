@@ -1493,6 +1493,12 @@ function stub.fire_script(widget, script, ...)
 	return run_script(widget, script, ...)
 end
 
+-- The user clicks a button: its OnClick, with any arguments given (the mouse
+-- button, down), through stub.fire_script. Returns what fire_script returns.
+function stub.click(button, ...)
+	return stub.fire_script(button, 'OnClick', ...)
+end
+
 -- Fires a game event: every frame registered for it gets OnEvent(event, ...),
 -- in registration order; a frame registered for it with RegisterUnitEvent
 -- only when the first argument is one of its units. Shell modules hear it

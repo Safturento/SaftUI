@@ -97,7 +97,7 @@ UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.pr
 load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
 
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 -- The dialog's drawn rows' keys, in order.
 local function rows()
