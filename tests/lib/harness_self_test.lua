@@ -862,3 +862,13 @@ test('near tells float drift from a different number, and nil from any number', 
 	check(not near(1, 1.001), 'a different number is not')
 	check(not near(nil, 1) and not near(1, nil), 'nil is near nothing')
 end)
+
+test("stub.click runs a button's OnClick with the mouse button, and returns false for none", function()
+	reset_world()
+	local button = CreateFrame('Button', nil, UIParent)
+	check(stub.click(button, 'LeftButton') == false, 'a button without an OnClick runs nothing')
+	local got
+	button:SetScript('OnClick', function(self, mouse) got = { self, mouse } end)
+	check(stub.click(button, 'RightButton') == true, 'a button with an OnClick runs it')
+	check(got and got[1] == button and got[2] == 'RightButton', 'OnClick gets the button and the mouse button')
+end)
