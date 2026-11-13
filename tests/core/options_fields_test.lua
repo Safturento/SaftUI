@@ -415,6 +415,50 @@ test('description: no image, or one that is not a path or fileID, draws none and
 	w:Release()
 end)
 
+test("description: justifyH (SaftUI's) sets its text CENTER or RIGHT across the row; anything else, or none, LEFT", function()
+	local cases = { { 'CENTER', 'CENTER' }, { 'RIGHT', 'RIGHT' }, { 'LEFT', 'LEFT' }, { 'middle', 'LEFT' }, { false, 'LEFT' } }
+	for _, case in ipairs(cases) do
+		local w = placed_description('line', opt('description', 'Sourced from elsewhere', { justifyH = case[1] or nil }))
+		eq(w.text:GetJustifyH(), case[2], tostring(case[1]) .. ': ' .. case[2])
+		eq(w.text:GetLeft() .. '-' .. w.text:GetRight(), w.frame:GetLeft() .. '-' .. w.frame:GetRight(),
+			tostring(case[1]) .. ': the text spans the row, so it sits by its justify')
+		w:Release()
+	end
+	-- A pooled one reused after a centred row is LEFT again.
+	local centred = placed_description('a', opt('description', 'x', { justifyH = 'CENTER' }))
+	centred:Release()
+	local w = placed_description('b', opt('description', 'x'))
+	check(w == centred, 'the same widget')
+	eq(w.text:GetJustifyH(), 'LEFT', 'LEFT again')
+	w:Release()
+end)
+
+test('description: SetHeight (a fill row, optionsbody.lua) makes it that tall with its text in the middle; a release forgets it', function()
+	local w = placed_description('line', opt('description', 'Sourced from elsewhere', { justifyH = 'CENTER', fill = true }))
+	local lineHeight = math.floor(15 * 1.3)
+	eq(w:GetHeight(), lineHeight, 'one line before it is told a height')
+	eq(w.text:GetTop(), w.frame:GetTop(), 'from the top')
+	w:SetHeight(200)
+	eq(w:GetHeight(), 200, 'as tall as it is told')
+	eq(w.text:GetHeight(), lineHeight, 'the text still one line')
+	eq(w.text:GetTop(), w.frame:GetTop() - math.floor((200 - lineHeight) / 2), 'in the middle of it')
+	w:SetWidth(300)
+	eq(w:GetHeight(), 200, 'a new width keeps the height')
+	w:Refresh()
+	eq(w:GetHeight(), 200, 'and so does reading the row again (the window, mid-drag)')
+	eq(w.text:GetTop(), w.frame:GetTop() - math.floor((200 - lineHeight) / 2), 'the text still in the middle')
+	w:SetHeight(5)
+	eq(w:GetHeight(), lineHeight, 'never shorter than its text')
+	eq(w.text:GetTop(), w.frame:GetTop(), 'which starts at the top then')
+	w:SetHeight(200)
+	w:Release()
+	local again = placed_description('next', opt('description', 'Sourced from elsewhere'))
+	check(again == w, 'the same widget')
+	eq(again:GetHeight(), lineHeight, 'reused: as tall as its text')
+	eq(again.text:GetTop(), again.frame:GetTop(), 'from the top')
+	again:Release()
+end)
+
 ------------------------------------------------------------------ /sui's other controls under the Blizzard theme
 
 test("an input carries InputBoxTemplate's art", function()
