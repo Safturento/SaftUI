@@ -270,5 +270,5 @@ end
 AB.barTypes.pet = {
 	CreateButtons = CreateButtons,
 	UpdateActions = UpdateActions,
-	texts = { hotkey = true },
+	texts = { hotkey = true, countdown = true },
 }

@@ -61,6 +61,24 @@ test('a disabled widget ignores clicks', function()
 	w:Release()
 end)
 
+test("a disabled toggle's box takes no mouse, so the row under it gets the hover (and shows its tooltip), as every other disabled control's does", function()
+	local w = bind('toggle', 'on', opt('toggle', 'On', { get = function() return true end, set = function() end }))
+	eq(w.frame:IsMouseEnabled(), true, 'enabled: the box takes the mouse')
+	w:SetDisabled(true)
+	eq(w.frame:IsMouseEnabled(), false, 'disabled: it takes none')
+	w:SetDisabled(false)
+	eq(w.frame:IsMouseEnabled(), true, 'enabled again: it takes it again')
+	w:Release()
+
+	-- A pooled box bound to a disabled row, then an enabled one.
+	w = bind('toggle', 'off', opt('toggle', 'Off', { get = function() return false end, set = function() end, disabled = true }))
+	eq(w.frame:IsMouseEnabled(), false, 'bound disabled: none')
+	w:Release()
+	w = bind('toggle', 'on', opt('toggle', 'On', { get = function() return true end, set = function() end }))
+	eq(w.frame:IsMouseEnabled(), true, 'the same box bound enabled: the mouse again')
+	w:Release()
+end)
+
 ------------------------------------------------------------------ validate, confirm, set
 
 test('a change is validated, then confirmed, then set', function()
@@ -453,5 +471,22 @@ test("ace_ready leaves out SaftUI's own types", function()
 		local ok, err = Validate(one)
 		check(not ok and tostring(err):find(rowType, 1, true) ~= nil, rowType .. ' is unknown to it: ' .. tostring(err))
 		check(Validate(ace_ready(one)), rowType .. ': passes once left out')
+	end
+end)
+
+test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH and fill among them", function()
+	local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
+	local function Validate(page)
+		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
+			{ name = st.name, type = 'group', args = { Page = page } }, st.name)
+	end
+	for field, value in pairs({ disabledDesc = 'Why.', justifyH = 'CENTER', fill = true }) do
+		local option = { type = field == 'disabledDesc' and 'toggle' or 'description', name = 'Mine' }
+		option[field] = value
+		local page = { type = 'group', name = 'Page', args = { mine = option } }
+		local ok, err = Validate(page)
+		check(not ok and tostring(err):find(field, 1, true) ~= nil, field .. ' is unknown to AceConfig: ' .. tostring(err))
+		check(Validate(ace_ready(page)), field .. ': passes once left off')
+		eq(option[field], value, field .. ': the original keeps it')
 	end
 end)

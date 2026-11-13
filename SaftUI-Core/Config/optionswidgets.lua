@@ -43,7 +43,13 @@ local OM = st.OptionsModel
 	sits at the description's left with the text to its right, and the height
 	covers both. It has a border in SaftUI's theme, as an icon SaftUI skins
 	does. Refresh reads them all again (the window refreshes the other
-	rows while a slider is dragged, so a preview can follow it).
+	rows while a slider is dragged, so a preview can follow it). SaftUI's
+	own justifyH sets a description's text LEFT (the default), CENTER or
+	RIGHT across it, and SaftUI's fill makes its row a fill row
+	(optionsbody.lua), which tells it its height with SetHeight: it is then
+	that tall, with what it shows in the middle. A disabled toggle takes no
+	mouse, as every other disabled control but a multiselect (whose rows
+	keep it), so its row shows its tooltip.
 
 	Other files add types of their own with W.Define (custom types, at the
 	end), each with its own pool. W.CUSTOM marks them, and the body draws a

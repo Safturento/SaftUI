@@ -294,3 +294,143 @@ test("the footer's and the sidebar's buttons are panel buttons", function()
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ a disabled tab, and a centred fill line, in every theme
+
+test('a disabled tab stays in its place, faded and taking no click, under Thick, Thin and Blizzard', function()
+	local off = false
+	local module = st:GetModule('FadedTabs', true) or st:NewModule('FadedTabs')
+	function module:GetConfigTable()
+		local function tab(name, order, fields)
+			local group = { type = 'group', name = name, order = order, args = {
+				on = { type = 'toggle', name = name .. ' on', desc = name, get = function() return true end, set = function() end },
+			} }
+			for key, value in pairs(fields or {}) do group[key] = value end
+			return group
+		end
+		return {
+			name = 'Faded tabs', type = 'group', category = 'Frames',
+			args = {
+				one = tab('One', 1),
+				two = tab('Two', 2, { disabled = function() return off end }),
+				three = tab('Three', 3, { disabled = function() return off end }),
+			},
+		}
+	end
+	local function tabs_by_key()
+		local out = {}
+		for _, tab in ipairs(frames().tabs) do out[tab.key] = tab end
+		return out
+	end
+
+	st.Config:Open('FadedTabs')
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(name)
+		off = false
+		st.OptionsWindow:Render()
+		local places = {}
+		for key, tab in pairs(tabs_by_key()) do
+			places[key] = tab:GetLeft() .. ',' .. tab:GetTop() .. ',' .. size_of(tab)
+			eq(tab:GetAlpha(), 1, name .. ': ' .. key .. ' whole while enabled')
+		end
+		local top = frames().body:GetTop()
+
+		off = true
+		st.OptionsWindow:Render()
+		local now = tabs_by_key()
+		eq(now.one:GetAlpha(), 1, name .. ': the enabled tab whole')
+		for _, key in ipairs({ 'two', 'three' }) do
+			eq(now[key]:GetAlpha(), 0.4, name .. ': ' .. key .. ' faded')
+			eq(now[key]:GetLeft() .. ',' .. now[key]:GetTop() .. ',' .. size_of(now[key]), places[key], name .. ': ' .. key .. ' where it was')
+		end
+		eq(frames().body:GetTop(), top, name .. ': the page under the tabs does not move')
+		click(now.two)
+		eq(st.OptionsWindow:GetState().tab, 'one', name .. ': a click on a disabled tab opens nothing')
+		stub.fire_script(now.two, 'OnEnter')
+		local function rgb(r, g, b) return string.format('%.2f,%.2f,%.2f', r, g, b) end
+		eq(rgb(now.two.text:GetTextColor()), rgb(st.config.profile.colors.text.grey:GetRGB()), name .. ': nor lights it')
+		stub.fire_script(now.two, 'OnLeave')
+	end
+	theme('thick')
+	module.GetConfigTable = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a description with fill and justifyH CENTER sits in the middle of what the page leaves, across and down, under Thick, Thin and Blizzard', function()
+	local module = st:GetModule('CentredLine', true) or st:NewModule('CentredLine')
+	local function toggle(name, order, size)
+		return { type = 'toggle', name = name, desc = name, order = order, size = size, get = function() return true end, set = function() end }
+	end
+	local function page()
+		return {
+			name = 'Centred line', type = 'group', category = 'Frames',
+			args = {
+				switch = toggle('Switch', 1, 'small'),
+				box = toggle('Box', 2),
+				line = { type = 'description', name = 'Sourced from elsewhere', order = 3, justifyH = 'CENTER', fill = true },
+			},
+		}
+	end
+	module.GetConfigTable = page
+	local lineHeight = math.floor(15 * 1.3)
+
+	local function check_centred(name)
+		local F = frames()
+		local view = F.body:GetHeight()
+		local c = H.cell('line')
+		eq(H.drawn(), 'switch,box,line', name .. ': the line after the switches')
+		eq(c.y, H.cell('box').y + 34, name .. ': on the line after them')
+		eq(c.y + c.height + 24, view, name .. ': its row takes what the page leaves (less the bottom padding)')
+		local w = c.widget
+		eq(w:GetHeight(), c.height - 12, name .. ': the description as tall as its row less its padding')
+		eq(w.frame:GetWidth(), 774, name .. ": the body's width")
+		eq(w.text:GetJustifyH(), 'CENTER', name .. ': its text centred across it')
+		eq(w.text:GetLeft() .. '-' .. w.text:GetRight(), w.frame:GetLeft() .. '-' .. w.frame:GetRight(), name .. ': the text spans it')
+		eq(w.text:GetTop(), w.frame:GetTop() - math.floor((w:GetHeight() - lineHeight) / 2), name .. ': in the middle of it, down')
+		eq(F.content:GetHeight(), view, name .. ': nothing to scroll')
+		check(not F.bar:IsShown(), name .. ': no bar')
+		return c
+	end
+
+	st.Config:Open('CentredLine')
+	local F = frames()
+	check_centred('Thick')
+	eq(F.body:GetRight() - F.content:GetRight(), 13, "Thick: the body reaches over its bar's place, as on any fill page")
+
+	-- A taller window: the line follows, still in the middle.
+	local before = H.cell('line').height
+	F.window:SetHeight(F.window:GetHeight() + 100)
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), F.body:GetHeight())
+	H.tick()
+	eq(H.cell('line').height, before + 100, 'a taller window: its row 100 taller')
+	check_centred('Thick, taller')
+	F.window:SetHeight(F.window:GetHeight() - 100)
+	stub.fire_script(F.body, 'OnSizeChanged', F.body:GetWidth(), F.body:GetHeight())
+	H.tick()
+
+	theme('thin')
+	check_centred('Thin')
+	theme('blizzard')
+	check_centred('Blizzard')
+	eq(F.body:GetRight() - F.content:GetRight(), 25, "Blizzard: the body reaches over Blizzard's bar's place")
+	theme('thick')
+	close_all()
+
+	-- With no height to fill (a dialog's body, search results): as tall as its text.
+	local root = { CentredLine = page() }
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	content:SetSize(520, 300)
+	local body = st.OptionsBody.New(content, root, nil, 520)
+	body:Draw(st.OptionsModel.BuildView(root, 'CentredLine').sections)
+	local c
+	for _, each in ipairs(body.cells) do if each.row.key == 'line' then c = each end end
+	eq(c.height, 34, 'no fill height: a row as tall as any one-line description')
+	eq(c.widget:GetHeight(), 34 - 12, 'the description told that, less its padding')
+	eq(c.widget.text:GetTop(), c.widget.frame:GetTop() - math.floor((34 - 12 - lineHeight) / 2), 'its text in the middle')
+	eq(c.widget.text:GetJustifyH(), 'CENTER', 'and centred across')
+	body:Release()
+	module.GetConfigTable = nil
+	eq(#take_errors(), 0, 'no errors')
+end)

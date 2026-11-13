@@ -149,7 +149,7 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 		local keys = {}
 		for key in pairs(general.args) do keys[#keys + 1] = key end
 		table.sort(keys)
-		eq(table.concat(keys, ','), 'background,box_note,enable,height,theme,threat_solo,use_friendly,width', client .. ": General's rows")
+		eq(table.concat(keys, ','), 'background,enable,height,sourced,theme,threat_solo,use_friendly,width', client .. ": General's rows")
 		for key, name in pairs({ enable = 'Nameplates', threat_solo = 'Threat when solo', use_friendly = "Use friendly nameplates' settings",
 				theme = 'Theme', background = 'Background', width = 'Width', height = 'Height' }) do
 			eq(general.args[key].name, name, client .. ': ' .. key .. ' is ' .. name)
@@ -162,7 +162,8 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 		eq(general.args.background.order, general.args.theme.order + 0.5, client .. ': Background right after Theme')
 
 		-- In the order the window draws them: the two toggles and the box on a
-		-- line. The box's line shows only while a box is checked.
+		-- line. The centred line in place of the rest shows only while the box
+		-- is checked.
 		local drawn = {}
 		for i, row in ipairs(rows(view)) do drawn[i] = row.key end
 		eq(table.concat(drawn, ','), 'enable,threat_solo,use_friendly,theme,background,width,height', client .. ': in order')

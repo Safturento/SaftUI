@@ -40,17 +40,22 @@ local st = SaftUI
 	A selection is { tab = key, subtab = key, pick = key }. Each is nil for the
 	first: the first tab that isn't disabled, or the first pick, as
 	AceConfigDialog selects. A key that isn't there (or is hidden) is the same
-	as nil. A disabled tab chosen by key still opens, as AceConfigDialog
-	reopens a saved selection.
+	as nil. A disabled tab chosen by key opens only while no tab beside it is
+	enabled (a page standing down), as AceConfigDialog reopens a saved
+	selection; otherwise it's the same as nil. One page keeps one selection
+	across its picks, so a tab chosen on one pick can be carried to another
+	where it's disabled. Search leaves out the tabs a selection can't open.
 
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
-	align, disabled, path, option }: path is the keys from the root, option the
-	option table. size is the option's own size member: 'small' (honored only
-	for a toggle, color, execute or input) or 'wide'; anything else is normal.
-	Every description and every position row is wide. Ace's width is not read.
-	align is an execute's own align member, SaftUI's: 'right' or 'center' (a
-	button the body lines up with the buttons beside it, optionsbody.lua), else
-	nil.
+	align, disabled, disabledDesc, path, option }: path is the keys from the
+	root, option the option table. size is the option's own size member:
+	'small' (honored only for a toggle, color, execute or input) or 'wide';
+	anything else is normal. Every description and every position row is wide.
+	Ace's width is not read. align is an execute's own align member, SaftUI's:
+	'right' or 'center' (a button the body lines up with the buttons beside
+	it, optionsbody.lua), else nil. disabledDesc is the option's own
+	disabledDesc member (SaftUI's: why it's disabled, a string or a function),
+	read only while the row is disabled, else nil.
 	A position row sits in a section of its own, titled with its name; the
 	rows after it continue in an untitled one.
 ]]
@@ -82,7 +87,7 @@ local isInherited = {
 -- Members where a string is the value, not a handler method name.
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
-	size = true, target = true, nameKey = true, pickerLabel = true, align = true,
+	size = true, target = true, nameKey = true, pickerLabel = true, align = true, disabledDesc = true, justifyH = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -334,16 +339,33 @@ local function Levels(options, page, pagePath, choose)
 	return levels
 end
 
--- The entry with key, else the first (that isn't disabled, for tabs).
+-- The entry with key, else the first (that isn't disabled, for tabs). A
+-- disabled tab named by key opens only while no tab is enabled (a page
+-- standing down), so a tab carried over from another pick can't open one
+-- the user can't use.
 local function Choose(list, key, skipDisabled)
+	local named
 	if key ~= nil then
 		for _, entry in ipairs(list) do
-			if entry.key == key then return entry end
+			if entry.key == key then named = entry; break end
 		end
 	end
+	if named and not (skipDisabled and named.disabled) then return named end
 	for _, entry in ipairs(list) do
 		if not (skipDisabled and entry.disabled) then return entry end
 	end
+	return named
+end
+
+-- The entries of a level a selection can open (Choose): every pick, and the
+-- tabs that aren't disabled, or every tab while none is enabled.
+local function Openable(list, slot)
+	if slot == 'pick' then return list end
+	local open = {}
+	for _, entry in ipairs(list) do
+		if not entry.disabled then open[#open + 1] = entry end
+	end
+	return #open > 0 and open or list
 end
 
 ------------------------------------------------------------------ sections and rows
@@ -369,6 +391,7 @@ local function AlignOf(option, options, path)
 end
 
 local function Row(option, options, path)
+	local disabled = IsDisabled(option, options, path)
 	return {
 		key = path[#path],
 		type = option.type,
@@ -376,7 +399,9 @@ local function Row(option, options, path)
 		desc = Desc(GetMember('desc', option, options, path)),
 		size = SizeOf(option, options, path),
 		align = AlignOf(option, options, path),
-		disabled = IsDisabled(option, options, path),
+		disabled = disabled,
+		-- Why it's disabled (SaftUI's own member, never inherited), read only then.
+		disabledDesc = disabled and Desc(GetMember('disabledDesc', option, options, path)) or nil,
 		path = path,
 		option = option,
 	}
@@ -746,7 +771,9 @@ end
 	{ {pageKey, path, name, tabName, sectionTitle} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
-	aren't searched, nor descriptions. At most 100 results, by page order.
+	aren't searched, nor descriptions, nor a tab a selection can't open (a
+	disabled one beside an enabled one: Choose). At most 100 results, by page
+	order.
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -788,10 +815,12 @@ function OM.Search(root, text)
 		local key = page.key
 		local pageOption, pagePath = options.args[key], { key }
 		if Collect(key, pageOption, pagePath, false, {}) then return results end
-		for _, second in ipairs(SubGroups(pageOption, options, pagePath)) do
+		local slot = SlotFor(2, nil, pageOption)
+		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do
 			local group, path = GetSubOption(pageOption, second.key), Append(pagePath, second.key)
 			if Collect(key, group, path, false, { second.name }) then return results end
-			for _, third in ipairs(SubGroups(group, options, path)) do
+			local thirdSlot = SlotFor(3, slot, group)
+			for _, third in ipairs(Openable(SubGroups(group, options, path), thirdSlot)) do
 				if Collect(key, GetSubOption(group, third.key), Append(path, third.key), true, { second.name, third.name }) then
 					return results
 				end
