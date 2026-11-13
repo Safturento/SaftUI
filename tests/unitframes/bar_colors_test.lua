@@ -16,12 +16,9 @@ load_saftui('SaftUI-Core/Config/defaults.lua')
 load_saftui('SaftUI-Unitframes/config/default.lua')
 
 local st = SaftUI
-local UF = st:NewModule('Unitframes')
-UF.elements = {}
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
-	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
-		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
-end
+-- The module by hand, UF:RegisterElement as unitframes.lua's table store
+-- (uf_world.lua's UW.module): the real file needs oUF.
+local UF = load_test_file('unitframes/uf_world.lua').module()
 
 local secret = newproxy(true)
 do
@@ -69,7 +66,6 @@ local function bar(element_name)
 end
 
 local function rgb(r, g, b) return { r, g, b } end
-local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function bar_color(element)
 	local r, g, b = element:GetStatusBarColor()
 	return r, g, b

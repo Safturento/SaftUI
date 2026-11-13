@@ -37,7 +37,7 @@ local function world(client)
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	st.config.char = {}
 	reloads = 0
 	ReloadUI = function() reloads = reloads + 1 end
@@ -87,7 +87,7 @@ local function watch_sets()
 	return calls
 end
 
-local function click(frame) stub.fire_script(frame, 'OnClick') end
+local click = stub.click
 
 local function record(st)
 	return st.config.char.nameplateCVars

@@ -21,7 +21,6 @@
 -- Real: the source files; Core's Config/config.lua on a real AceDB-3.0
 -- (core/config_helpers.lua).
 load_test_file('core/config_helpers.lua')
-load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local st = SaftUI
 

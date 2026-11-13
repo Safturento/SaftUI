@@ -16,9 +16,7 @@
 -- EditMode/load.xml's order.
 load_core_helpers()
 local T = load_test_file('lib/theme_helpers.lua')
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-end
+load_editmode()
 local drawn = T.watch()
 
 local st = SaftUI
@@ -42,9 +40,7 @@ end
 -- A switch of SaftUI's theme as Config:UpdateConfig runs it: every drawn frame
 -- redrawn, then the modules color what they color themselves.
 local function switch(name)
-	profile.theme.name = name
-	st:RedrawThemed()
-	st:ColorsChanged('theme')
+	T.theme(name, function() st:ColorsChanged('theme') end)
 end
 
 -- Edit Mode's pieces shown on an overlay, as 'atlas' entries sorted, for the

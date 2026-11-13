@@ -5,7 +5,7 @@
 -- AceConfigRegistry only validates when its getter hands a table to a UI,
 -- nothing asks it for SaftUI's, and the validator rejects SaftUI's own fields
 -- (category, size, target, nameKey) and its own option type, position. So
--- this runs it instead, over ace_ready (options_walk.lua) of the tree as
+-- this runs it instead, over ace_ready (lib/options_walk.lua) of the tree as
 -- registered: a copy with those left out, so AceConfig checks the rest.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
@@ -19,7 +19,7 @@
 -- stand-ins.
 
 load_test_file('core/config_helpers.lua')
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local st = SaftUI
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 

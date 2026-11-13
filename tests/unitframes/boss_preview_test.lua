@@ -27,39 +27,11 @@
 --     up, and a test shows one to play a boss appearing. The boss holder is
 --     OnEnable's, and SaftUI_Target is there because boss's default position
 --     is relative to it.
-load_core_helpers()
-load_saftui('SaftUI-Unitframes/config/default.lua')
-load_saftui('SaftUI-Unitframes/config/units/boss.lua')
-apply_defaults()
-addon_namespace('SaftUI-Unitframes').oUF = {
-	colors = {
-		class = {},
-		reaction = {},
-		power = {},
-		disconnected = CreateColor(1, 1, 1),
-		tapped = CreateColor(1, 1, 1),
-		health = CreateColor(0.2, 0.8, 0.2),
-		roles = {},
-		runes = {},
-	},
-}
-load_saftui('SaftUI-Unitframes/unitframes.lua')
-load_saftui('SaftUI-Unitframes/grouplayout.lua')
-load_saftui('SaftUI-Unitframes/groups.lua')
-load_saftui('SaftUI-Unitframes/blizzardraid.lua')
-load_saftui('SaftUI-Unitframes/grouppreview.lua')
-load_saftui('SaftUI-Unitframes/config/profiles.lua')
-load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
-load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/constructors.lua')
-load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-
-local st = SaftUI
-st.StringFormat = LibStub('LibStringFormat-1.0')
-local UF = st:GetModule('Unitframes')
-local P = UF:GetProfileConfig()
+local T = load_test_file('lib/theme_helpers.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
+-- uf_world.lua's world with boss's config and no elements. The colors go to
+-- oUF after the boss frames are placed, below, as UF:OnEnable does.
+local st, UF, P = UW.world({ units = { 'boss' }, elements = {}, colors = false })
 local profile_colors = st.config.profile.colors
 
 local target = CreateFrame('Frame', 'SaftUI_Target', UIParent)
@@ -112,9 +84,7 @@ local function rect(frame)
 	return string.format('%.2f,%.2f,%.2f,%.2f', left, bottom, width, height)
 end
 
-local function rgb(r, g, b)
-	return string.format('%.2f,%.2f,%.2f', r, g, b)
-end
+local rgb = T.rgb
 
 -- The boss page's General group (its set is the Layout options') and its
 -- Layout's Test mode toggle.

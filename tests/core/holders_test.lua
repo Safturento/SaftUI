@@ -5,7 +5,7 @@
 -- and places the holder from the profile, or at the end of combat.
 --
 -- Real: Core's helpers (api.lua). Blizzard's frames are stand-ins locked with
--- misc/fixtures/locked_widget.lua, so a field written onto one (or onto its
+-- lib/locked_widget.lua, so a field written onto one (or onto its
 -- Selection) or a SetScript on one fails the case. An Edit Mode system's
 -- SetPoint and ClearAllPoints are Lua overrides of Blizzard's
 -- (EditModeSystemMixin:OnSystemLoad), which addon code must never call: the
@@ -13,7 +13,7 @@
 -- frame (.agents/testing.md), so a test gives one an IsProtected of its own;
 -- its moves are then blocked in combat and noted in stub.blocked.
 local st = SaftUI
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 -- One UIParent unit per physical pixel, so st:RoundToPixel rounds to whole units.
 stub.screen_width, stub.screen_height = 1000, 600

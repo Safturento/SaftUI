@@ -78,10 +78,10 @@ end
 
 -- A theme switch, as st:ThemeChanged runs it (see the top).
 local function switch(name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-	AB:StyleBar('bar1')
-	st:ColorsChanged('theme')
+	T.theme(name, function()
+		AB:StyleBar('bar1')
+		st:ColorsChanged('theme')
+	end)
 end
 
 local function green()

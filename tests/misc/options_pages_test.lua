@@ -14,7 +14,7 @@
 load_core_helpers()
 load_saftui('SaftUI-Misc/config.lua')
 apply_defaults()
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_saftui('SaftUI-Core/Config/optionsbody.lua')

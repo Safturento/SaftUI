@@ -142,6 +142,11 @@ local function number_arg(s, value, what)
 	return value
 end
 
+-- The game keeps an alpha within 0 to 1.
+local function alpha_arg(s, alpha)
+	return math.max(0, math.min(1, number_arg(s, alpha, 'alpha')))
+end
+
 local function has_script(s, script)
 	for group in pairs(s.groups) do
 		local names = SCRIPTS[group]
@@ -588,7 +593,7 @@ end
 
 ------------------------------------------------------------------ Region (textures, font strings)
 
-function Region.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
+function Region.SetAlpha(self, s, alpha) s.alpha = alpha_arg(s, alpha) end
 function Region.GetAlpha(self, s) return s.alpha end
 function Region.GetEffectiveAlpha(self, s)
 	local alpha, parent = s.alpha, s.parent
@@ -922,7 +927,7 @@ function Frame.GetFrameStrata(self, s)
 	return s.parent and states[s.parent].groups.Frame and Frame.GetFrameStrata(s.parent, states[s.parent]) or 'MEDIUM'
 end
 
-function Frame.SetAlpha(self, s, alpha) s.alpha = number_arg(s, alpha, 'alpha') end
+function Frame.SetAlpha(self, s, alpha) s.alpha = alpha_arg(s, alpha) end
 function Frame.GetAlpha(self, s) return s.alpha end
 -- Ignoring the parent's alpha: off until set. Only remembered.
 function Frame.SetIgnoreParentAlpha(self, s, ignore) s.ignore_parent_alpha = ignore and true or false end
@@ -1491,6 +1496,12 @@ function stub.fire_script(widget, script, ...)
 	local s = stub.state(widget)
 	check_script(s, script, 'fire_script')
 	return run_script(widget, script, ...)
+end
+
+-- The user clicks a button: its OnClick, with any arguments given (the mouse
+-- button, down), through stub.fire_script. Returns what fire_script returns.
+function stub.click(button, ...)
+	return stub.fire_script(button, 'OnClick', ...)
 end
 
 -- Fires a game event: every frame registered for it gets OnEvent(event, ...),

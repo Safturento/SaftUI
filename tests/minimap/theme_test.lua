@@ -12,7 +12,6 @@
 -- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
-load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap: SaftUI sizes and places it, and draws its panel behind it.
@@ -43,14 +42,11 @@ test('each page offers Theme and Background, not Template', function()
 	local MicroMenu = st:GetModule('MicroMenu')
 	MicroMenu.Container = CreateFrame('Frame', nil, UIParent) -- SaftUI's, made by OnEnable
 	T.check_no_old_names(MicroMenu:GetConfigTable(), 'Micro Menu')
-	local general = MM:GetConfigTable().args.general
-	T.check_options(general, 'Minimap')
-	eq(general.get({ 'theme' }), 'theme', 'Theme reads minimap.theme')
-	eq(general.get({ 'background' }), 'solid', 'Background reads minimap.background')
-	general.set({ 'theme' }, 'thin')
-	general.set({ 'background' }, 'transparent')
-	eq(profile.minimap.theme, 'thin', 'Theme writes minimap.theme')
-	eq(profile.minimap.background, 'transparent', 'Background writes minimap.background')
+	T.check_theme_page({
+		group = MM:GetConfigTable().args.general, where = 'Minimap', config = profile.minimap, path = 'minimap',
+		reads = { { 'theme', 'theme' }, { 'background', 'solid' } },
+		writes = { { 'theme', 'thin' }, { 'background', 'transparent' } },
+	})
 	eq(updates, 2, 'each applies at once')
 	MM.UpdateConfig = update
 	profile.minimap.theme, profile.minimap.background = 'theme', 'solid'
@@ -123,7 +119,7 @@ end)
 -- Blizzard's LoadMicroButtonTextures calls), so it's given here as it works:
 -- the highlight's atlas and blend mode. The button is locked, so a field the
 -- skin writes onto it fails.
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local function micro_button(index, textureName)
 	local menu = _G.MicroMenu

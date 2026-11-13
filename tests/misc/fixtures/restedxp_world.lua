@@ -3,7 +3,7 @@
 -- RXP.make(). Anchors and calls mirror GuideWindow.lua:353-395
 -- (SetStepFrameAnchor), 422, 473-474, 636-670 (ClearFrameData), 985-1195
 -- (SetStep), 1230-1394 (UpdateText), 1402-1427, 1508-1510 and UpdateVisuals
--- (52-82). Every frame it builds is locked (locked_widget.lua): SetScript and
+-- (52-82). Every frame it builds is locked (lib/locked_widget.lua): SetScript and
 -- new fields written by anyone but RestedXP error. RestedXP's own field writes
 -- go through rawset. Fields starting with '_' are the fixture's own state,
 -- which tests may set.
@@ -13,7 +13,7 @@
 -- load_test_file('misc/fixtures/restedxp_world.lua') and call make() after
 -- reset_world(), in the world the skin is loaded into.
 
-local lock = load_test_file('misc/fixtures/locked_widget.lua')
+local lock = load_test_file('lib/locked_widget.lua')
 
 local RXP = {}
 

@@ -1,4 +1,4 @@
--- The RestedXP skin (SaftUI-Misc/Skinning/addons/restedxp.lua), part 3: the current
+-- The RestedXP skin (SaftUI-Misc/Skinning/addons/restedxp.lua): the current
 -- steps and the tip window. Migrated from the rxpsim harness's test_task3.lua.
 local H = load_test_file('misc/restedxp_helpers.lua')
 local RXP, near, font, pt, colored = H.RXP, H.near, H.font, H.pt, H.colored

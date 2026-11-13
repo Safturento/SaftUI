@@ -20,7 +20,7 @@ local st, OW, W, drawn
 -- The heights the Fill page's row was given (its SetHeight), in order.
 local fillHeights
 
--- One small page, as options_window_test.lua's SmallModule.
+-- One small page, as options_window_helpers.lua's SmallModule.
 local function SmallModule(key, name, category)
 	local module = st:NewModule(key)
 	function module:GetConfigTable()
@@ -43,10 +43,7 @@ end
 -- Tabs, two tabs, the first with two subtabs; Fill, a fill row. setup, if
 -- given, runs on the fresh stubs before Core's config loads.
 local function world(client, setup)
-	reset_world()
-	if setup then setup() end
-	stub.interface = client == 'forever' and 16001 or 120000
-	load_saftui('SaftUI-Core/constants.lua')
+	use_client(client, setup)
 	load_test_file('core/config_helpers.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()
@@ -115,10 +112,7 @@ end
 ------------------------------------------------------------------ helpers
 
 -- One frame passes on the window's clock (none before the window is built).
-local function tick()
-	local ticker = OW.GetFrames().ticker
-	if ticker then stub.fire_script(ticker, 'OnUpdate', 0.01) end
-end
+local tick = tick_options_window
 
 -- SaftUI's theme switched, as the Theme tab does it, and the window's next frame.
 local function switch(name)
@@ -198,7 +192,7 @@ local METAL = table.concat({
 	'TopRightCorner=UI-Frame-Metal-CornerTopRight',
 }, ',')
 
--- /sui's frames where options_window_test.lua's Task 1 case pins them under
+-- /sui's frames where options_window_look_test.lua's first case pins them under
 -- Thick and Thin, on the Loot page (one tab: no tab row).
 local function check_own(where)
 	local F = OW.GetFrames()

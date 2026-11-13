@@ -27,7 +27,7 @@
 -- and the profile's defaults; every SaftUI Lua file's source, for the scan. Each case starts from a fresh world on a client
 -- (T.client), on Forever unless it names retail, with SaftUI's theme Blizzard.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 local text, fill, edge, inset, offset = T.text, T.fill, T.edge, T.inset, T.offset
 
 -- A fresh world on client, with SaftUI's theme Blizzard.
@@ -67,12 +67,7 @@ end
 
 -- One of a region's anchors as text: 'POINT relative RELPOINT x,y', where
 -- relative names what it's anchored to among names (a table of region -> name).
-local function anchor(region, point, names)
-	for i = 1, region:GetNumPoints() do
-		local p, rel, rp, x, y = region:GetPoint(i)
-		if p == point then return ('%s %s %s %s'):format(p, names[rel] or tostring(rel), rp, text(x, y)) end
-	end
-end
+local function anchor(region, point, names) return T.anchor(region, names, point) end
 
 -- Every anchor of a region, as text, in a fixed order.
 local function anchors(region)

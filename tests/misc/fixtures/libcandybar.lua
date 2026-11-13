@@ -11,10 +11,10 @@
 --                                   T.Sort), and sets T.v2 for the v2 window.
 --
 -- Call both after reset_world(), in the world the skin is loaded into. Bars,
--- their parts and the container are locked (locked_widget.lua), so the skin
+-- their parts and the container are locked (lib/locked_widget.lua), so the skin
 -- can't stamp fields onto them.
 
-local lock = load_test_file('misc/fixtures/locked_widget.lua')
+local lock = load_test_file('lib/locked_widget.lua')
 
 local Timers = {}
 

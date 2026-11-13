@@ -10,34 +10,53 @@
 -- Not a test (no _test
 -- suffix), so the runner doesn't run it. Load it with
 -- `local T = load_test_file('lib/theme_helpers.lua')`, after load_core_helpers()
--- (or core/config_helpers.lua); it makes no globals, and its functions read SaftUI
--- when they run.
+-- (or core/config_helpers.lua); it makes no globals (T.old_names loads
+-- lib/options_walk.lua, which makes its own, when the world lacks them), and its
+-- functions read SaftUI when they run.
 local T = {}
 
 ------------------------------------------------------------------ clients
 
-local INTERFACE = { forever = 16001, retail = 120000 }
-
--- A fresh world on one client, 'forever' or 'retail': the world a test file
--- starts in after load_core_helpers(), with stub.interface set to the
--- client's and Core's constants.lua run again for it (it reads the interface
--- when it loads, so st.forever follows), and the globals that client lacks
--- dropped (stub.apply_client, tests/wow/game.lua). Everything else is as
--- fresh as reset_world() leaves it, so a file can switch clients between
--- cases. Returns SaftUI. Load anything else the case needs, and call
--- T.watch(), after it.
+-- A fresh world on one client, 'forever' or 'retail' (the shell's
+-- use_client), with Core's helpers loaded and the profile filled: the world a
+-- test file starts in after load_core_helpers(), on that client. Returns
+-- SaftUI. Load anything else the case needs, and call T.watch(), after it.
 function T.client(name)
-	local interface = INTERFACE[name]
-	if not interface then
-		error(("T.client: no client '%s' (forever or retail)"):format(tostring(name)), 2)
-	end
-	reset_world()
-	stub.interface = interface
-	stub.apply_client()
-	load_saftui('SaftUI-Core/constants.lua')
+	use_client(name)
 	load_core_helpers()
 	apply_defaults()
 	return SaftUI
+end
+
+------------------------------------------------------------------ the theme
+
+-- SaftUI's theme switched to name, as the Theme tab switches it: the
+-- profile's theme name set and every drawn frame drawn again
+-- (st:RedrawThemed, the profile update's first step), then after(), if
+-- given: the rest of what the case runs for the switch (a module's update,
+-- st:ColorsChanged('theme'), as Config:UpdateConfig runs them).
+function T.theme(name, after)
+	local st = SaftUI
+	st.config.profile.theme.name = name
+	st:RedrawThemed()
+	if after then after() end
+end
+
+-- The Thick, Blizzard, Thick round trip: expect(label .. ', Thick') in the
+-- world as it is, then SaftUI's theme switched to Blizzard and
+-- expect(label .. ', Blizzard'), then back to Thick and
+-- expect(label .. ', Thick again'). Each switch sets the profile's theme name
+-- and runs st:ThemeChanged(), as the Theme tab runs it.
+function T.round_trip(label, expect)
+	local function switch(name)
+		SaftUI.config.profile.theme.name = name
+		SaftUI:ThemeChanged()
+	end
+	expect(label .. ', Thick')
+	switch('blizzard')
+	expect(label .. ', Blizzard')
+	switch('thick')
+	expect(label .. ', Thick again')
 end
 
 ------------------------------------------------------------------ draws
@@ -81,6 +100,10 @@ function T.text(...)
 	return table.concat(out, ',')
 end
 
+-- A color's r, g and b as text, to two places: '1.00,0.50,0.00'. Anything
+-- after the third is left out, so it takes a getter's r, g, b, a whole.
+function T.rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+
 -- A drawn frame's background and border color, 'r,g,b,a'.
 function T.fill(f) return T.text(f:GetBackdropColor()) end
 function T.edge(f) return T.text(f:GetBackdropBorderColor()) end
@@ -112,6 +135,20 @@ local function Pieces(set)
 	end
 	table.sort(out)
 	return table.concat(out, ',')
+end
+
+-- One of a region's anchors as text, 'POINT relative RELPOINT x,y', x and y as
+-- T.text gives them and relative named from names (region -> name), else
+-- tostring'd: its first anchor, or with point the one at that point (nil when
+-- it has none there).
+function T.anchor(region, names, point)
+	names = names or {}
+	for i = 1, point and region:GetNumPoints() or 1 do
+		local p, rel, relPoint, x, y = region:GetPoint(i)
+		if not point or p == point then
+			return ('%s %s %s %s'):format(tostring(p), names[rel] or tostring(rel), tostring(relPoint), T.text(x, y))
+		end
+	end
 end
 
 -- The Blizzard art shown on a drawn frame itself (T.art) and over its icon's
@@ -187,6 +224,27 @@ function T.check_options(group, where)
 	end
 end
 
+local LABELS = { theme = 'Theme', background = 'Background' }
+
+-- Checks a module page's Theme and Background: the options themselves
+-- (T.check_options(spec.group, spec.where)), then each of spec.reads, a
+-- { key, value } pair, read through the group's get, then each of
+-- spec.writes, the same, set through its set, and then each found in
+-- spec.config. The messages name what is stored as spec.path .. '.' .. key
+-- ('Theme reads chat.theme'), after spec.prefix when there is one
+-- ('roll: Theme reads loot.roll.theme').
+function T.check_theme_page(spec)
+	local group, prefix = spec.group, spec.prefix or ''
+	T.check_options(group, spec.where)
+	for _, read in ipairs(spec.reads or {}) do
+		eq(group.get({ read[1] }), read[2], prefix .. LABELS[read[1]] .. ' reads ' .. spec.path .. '.' .. read[1])
+	end
+	for _, write in ipairs(spec.writes or {}) do group.set({ write[1] }, write[2]) end
+	for _, write in ipairs(spec.writes or {}) do
+		eq(spec.config[write[1]], write[2], prefix .. LABELS[write[1]] .. ' writes ' .. spec.path .. '.' .. write[1])
+	end
+end
+
 -- What the old template picker offered and themes never show: the word
 -- Template, Highlight, Close Button, and the old names ThickTransparent and
 -- ThinTransparent, as a label or as a select's value.
@@ -208,8 +266,10 @@ end
 -- listing one of them or an old template name as a choice or a value. A list of
 -- 'path: what', empty when there's none. Names and values that are functions
 -- are called as the options window calls them, with an info table of the path.
+-- It walks the tree with lib/options_walk.lua's each_option, loading that file
+-- when the world doesn't have it yet.
 function T.old_names(tree)
-	assert(each_option, 'load core/options_walk.lua first')
+	if not each_option then load_test_file('lib/options_walk.lua') end
 	local found = {}
 	local function note(path, what) found[#found + 1] = table.concat(path, '.') .. ': ' .. what end
 	local function resolve(value, path)
@@ -239,8 +299,7 @@ function T.old_names(tree)
 end
 
 -- Checks that nothing under tree (a group, e.g. a module's GetConfigTable())
--- offers what the old template picker did (T.old_names). Needs
--- core/options_walk.lua loaded.
+-- offers what the old template picker did (T.old_names).
 function T.check_no_old_names(tree, where)
 	eq(table.concat(T.old_names(tree), '; '), '', where .. ': no Template, Highlight, Close Button or old template name')
 end

@@ -28,7 +28,7 @@ local CLIENTS = { 'forever', 'retail' }
 local NPCS = 'nameplateShowFriendlyNpcs'
 local NAMES = 'nameplateShowOnlyNameForFriendlyPlayerUnits'
 
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
+local enemy = NP.enemy
 
 -- What a plate's click area covers: the one region every anchor is on, 'none'
 -- for no anchors, 'mixed' for anchors on different regions.

@@ -16,7 +16,7 @@
 -- load_options_widgets() loads, optionsbody.lua and the window's files
 -- load_options_window() loads, which config.lua's Open, Close and GetWindow
 -- use) isn't loaded here: a test that opens /sui loads them after this
--- (options_window_test.lua).
+-- (options_window_helpers.lua).
 --
 -- Modules a test wants in the tree (e.g. SaftUI-Misc/experience.lua) load
 -- after this, and the test enables them.
@@ -37,9 +37,7 @@ load_test_file('core/fixtures/config_libs.lua')
 remove_shell_config()
 load_saftui('SaftUI-Core/Config/config.lua')
 load_core_helpers()
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-end
+load_editmode()
 
 -- What SaftUI:OnEnable (init.lua) does at login: st.config becomes a real
 -- AceDB database over the profile defaults, and /sui is set up.

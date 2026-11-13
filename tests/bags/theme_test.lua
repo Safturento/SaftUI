@@ -47,13 +47,9 @@ local st, INV, drawn
 
 -- client is 'forever' (the default) or 'retail'.
 local function fresh(client)
-	reset_world()
-	if client == 'retail' then
-		stub.interface = 120000
-		load_saftui('SaftUI-Core/constants.lua') -- st.forever follows the interface
-	end
+	use_client(client or 'forever')
 	load_test_file('core/config_helpers.lua')
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	st = SaftUI
 	drawn = T.watch()
 	load_saftui('SaftUI-Core/Utilities/utilities.lua')
@@ -782,9 +778,7 @@ local THICK_STRIP = '0.30,0.30,0.30,0.40'
 -- A region's first anchor as text, 'POINT relative RELPOINT x,y', with a
 -- window's header, close button and drawn frame (its backdrop) named.
 local function anchor(region, container)
-	local names = { [container.header] = 'header', [st:GetCloseButton(container)] = 'close', [container.backdrop] = 'backdrop' }
-	local point, rel, relPoint, x, y = region:GetPoint(1)
-	return ('%s %s %s %s'):format(tostring(point), names[rel] or tostring(rel), tostring(relPoint), T.text(x, y))
+	return T.anchor(region, { [container.header] = 'header', [st:GetCloseButton(container)] = 'close', [container.backdrop] = 'backdrop' })
 end
 
 -- Where the close button sits in the metal's socket on this client: TOPRIGHT
@@ -940,13 +934,7 @@ test('Thick, Blizzard, Thick with a bag window open', function()
 				name .. ': the window where it was, its size as INV:UpdateConfig gives it')
 		end
 
-		expect(client .. ', Thick')
-		st.config.profile.theme.name = 'blizzard'
-		st:ThemeChanged()
-		expect(client .. ', Blizzard')
-		st.config.profile.theme.name = 'thick'
-		st:ThemeChanged()
-		expect(client .. ', Thick again')
+		T.round_trip(client, expect)
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)

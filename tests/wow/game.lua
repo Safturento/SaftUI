@@ -556,7 +556,7 @@ end
 --   stub.on_nameplate_frame: nil, or a function the stub calls with each
 --     Blizzard frame it makes for the plates (a plate, and each pooled
 --     UnitFrame with its WidgetContainer and SoftTargetFrame) once it is set
---     up, so a test can lock them as Blizzard's (misc/fixtures/locked_widget.lua).
+--     up, so a test can lock them as Blizzard's (lib/locked_widget.lua).
 -- Not mimicked: script nameplates, the personal resource display, plates the
 -- game makes before an add (NAME_PLATE_CREATED), FORBIDDEN_NAME_PLATE_UNIT_ADDED
 -- and its remove, a plate's place on screen (each sits at the WorldFrame's

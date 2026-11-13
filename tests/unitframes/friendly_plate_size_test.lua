@@ -41,8 +41,6 @@ local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local CLIENTS = { 'forever', 'retail' }
 
-local function near(a, b) return a ~= nil and b ~= nil and math.abs(a - b) < 1e-6 end
-
 -- A world with the plates spawned. Returns st, UF and the profile's units.
 -- st.config.char is AceDB's per-character table, which the shell doesn't
 -- have: {} for each world, as for a new character.
@@ -53,8 +51,7 @@ local function world(client)
 	return st, UF, UF:GetProfileConfig()
 end
 
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
-local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
+local enemy, friend = NP.enemy, NP.friend
 
 -- A region's left, bottom, width and height in the screen's units: its own
 -- times its effective scale.
@@ -496,7 +493,7 @@ local function page_world(client)
 	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	ReloadUI = function() end
 	return st, UF, P
 end

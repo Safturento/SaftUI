@@ -213,8 +213,7 @@ end
 
 -- A unit the game shows: a friend, whose plate is the friendly config's name
 -- alone by default (its health bar off, the frame's Theme None), or an enemy.
-local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
+local friend, enemy = NP.friend, NP.enemy
 
 -- The two points the target art's texture hangs from: their frames.
 local function art_on(art)

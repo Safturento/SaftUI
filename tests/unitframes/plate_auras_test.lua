@@ -33,8 +33,7 @@ local function world(client)
 	return st, UF, P
 end
 
-local function enemy(unit) stub.units[unit] = { name = unit, friend = false, attackable = true, reaction = 2 } end
-local function friend(unit) stub.units[unit] = { name = unit, friend = true, attackable = false, reaction = 5 } end
+local enemy, friend = NP.enemy, NP.friend
 
 -- An aura area's group (its one group).
 local function group(auras)

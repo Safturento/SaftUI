@@ -15,12 +15,11 @@
 -- totemoptions.lua, totemskin.lua and Skinning/skinning.lua,
 -- Blizzard_BuffFrame.lua and Blizzard_SwingTimer.lua, Core's helpers and the
 -- theme engine. Blizzard's frames are built as far as the skins read them, and
--- locked (fixtures/locked_widget.lua), so a skin that writes a field onto one fails.
+-- locked (lib/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
-load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 load_saftui('SaftUI-Misc/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Misc/tooltip.lua')
@@ -60,11 +59,11 @@ test('each page offers Theme and Background, not Template', function()
 	local XP = st:GetModule('Experience')
 	st:BindModuleConfig(XP, 'experience')
 	T.check_no_old_names(XP:GetConfigTable(), 'Experience')
-	local general = XP:GetConfigTable().args.general
-	T.check_options(general, 'Experience')
-	eq(general.get({ 'theme' }), 'theme', 'Experience: Theme reads experience.theme')
-	general.set({ 'background' }, 'solid')
-	eq(profile.experience.background, 'solid', 'Experience: Background writes experience.background')
+	T.check_theme_page({
+		group = XP:GetConfigTable().args.general, where = 'Experience', config = profile.experience,
+		path = 'experience', prefix = 'Experience: ',
+		reads = { { 'theme', 'theme' } }, writes = { { 'background', 'solid' } },
+	})
 	profile.experience.background = 'theme'
 
 	-- Tooltip: its holder is SaftUI's, made on enable. Its update reaches
@@ -75,9 +74,10 @@ test('each page offers Theme and Background, not Template', function()
 	local reskins = 0
 	local update = TT.UpdateConfig
 	function TT:UpdateConfig() reskins = reskins + 1 end
-	general = TT:GetConfigTable().args.general
-	T.check_options(general, 'Tooltip')
-	eq(general.get({ 'theme' }), 'theme', 'Tooltip: Theme reads tooltip.theme')
+	local general = TT:GetConfigTable().args.general
+	T.check_theme_page({
+		group = general, where = 'Tooltip', path = 'tooltip', prefix = 'Tooltip: ', reads = { { 'theme', 'theme' } },
+	})
 	general.set({ 'theme' }, 'thin')
 	general.set({ 'background' }, 'solid')
 	eq(profile.tooltip.theme .. ',' .. profile.tooltip.background, 'thin,solid', 'Tooltip: both write the profile')
@@ -87,10 +87,10 @@ test('each page offers Theme and Background, not Template', function()
 
 	-- Skinning: each change re-applies the skins.
 	general = SK:GetConfigTable().args.general
-	T.check_options(general, 'Skinning')
-	eq(general.get({ 'theme' }), 'theme', 'Skinning: Theme reads skinning.theme')
-	general.set({ 'theme' }, 'thin')
-	eq(profile.skinning.theme, 'thin', 'Skinning: Theme writes skinning.theme')
+	T.check_theme_page({
+		group = general, where = 'Skinning', config = profile.skinning, path = 'skinning', prefix = 'Skinning: ',
+		reads = { { 'theme', 'theme' } }, writes = { { 'theme', 'thin' } },
+	})
 	general.set({ 'theme' }, 'theme')
 end)
 

@@ -38,7 +38,7 @@
 --     profile's). The tag reads the unit through the stubbed unit API
 --     (stub.units).
 --
--- AceConfigRegistry validates ace_ready (tests/core/options_walk.lua) of the
+-- AceConfigRegistry validates ace_ready (tests/lib/options_walk.lua) of the
 -- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
@@ -52,17 +52,19 @@ load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_options_window()
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 
 local st = SaftUI
 local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
-local UF = st:NewModule('Unitframes')
+-- The module by hand, UF:RegisterElement as unitframes.lua's table store
+-- (uf_world.lua's UW.module).
+local UF = load_test_file('unitframes/uf_world.lua').module()
 local updates = 0
 function UF:UpdateConfig() updates = updates + 1 end
 
-UF.units, UF.groups, UF.holders, UF.elements = {}, {}, {}, {}
+UF.units, UF.groups, UF.holders = {}, {}, {}
 for _, unit in ipairs({ 'boss', 'focustarget', 'player', 'pettarget', 'target', 'pet', 'targettarget', 'focus' }) do
 	UF.units[unit] = CreateFrame('Frame', nil, UIParent)
 end
@@ -75,10 +77,6 @@ UF.group_strings = { party = 'Party', raid10 = 'Raid 10', raid40 = 'Raid 40' }
 UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
 function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
 function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
-	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
-		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
-end
 
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
@@ -94,11 +92,10 @@ end
 -- The name tag (tags.lua), with LibStringFormat-1.0, which init.lua makes
 -- st.StringFormat.
 UF.oUF = { Tags = { Events = {}, Methods = {} }, colors = { class = st.config.profile.colors.class } }
-load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-st.StringFormat = LibStub('LibStringFormat-1.0')
+load_string_format()
 load_saftui('SaftUI-Unitframes/tags.lua')
 
-local function click(frame, ...) stub.fire_script(frame, 'OnClick', ...) end
+local click = stub.click
 
 -- The dialog's drawn rows' keys, in order.
 local function rows()
@@ -590,7 +587,6 @@ test('Health, Power and Additional power: Custom and its color, kept in the shap
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()
 	local root = { Unitframes = config }
-	local function near(a, b) return math.abs(a - b) < 1e-6 end
 	for _, case in ipairs({ { 'target', 'Health' }, { 'party', 'Health' }, { 'player', 'Power' }, { 'boss', 'Power' }, { 'player', 'AdditionalPower' } }) do
 		local unit, tab = case[1], case[2]
 		local where = unit .. '.' .. tab

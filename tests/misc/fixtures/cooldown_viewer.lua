@@ -37,7 +37,7 @@
 	    right end).
 
 	Each viewer, and each item with every frame and region in it (the
-	countdown numbers too), is locked once built (fixtures/locked_widget.lua),
+	countdown numbers too), is locked once built (lib/locked_widget.lua),
 	so a skin that writes a field onto one, or SetScripts one, fails. The
 	fixture's own writes (Blizzard's) go through rawset.
 
@@ -55,7 +55,7 @@
 	mouse, the edit mode system and the settings window.
 ]]
 
-local lock = load_test_file('misc/fixtures/locked_widget.lua')
+local lock = load_test_file('lib/locked_widget.lua')
 local OWNER = 'Blizzard Cooldown Manager'
 
 local CV = {}

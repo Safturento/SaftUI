@@ -35,7 +35,7 @@
 -- Feed/rolls.lua calls LT:UpdateRollBars after every loot history update; the
 -- tests call it themselves after changing a drop.
 
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local LT, st, T, drawn, S
 local game -- { rolls = { [rollID] = roll }, drops = { drop, ... }, rolled = { [rollID] = rollType } }
@@ -290,12 +290,9 @@ local function world()
 	load_core_helpers()
 	T = load_test_file('lib/theme_helpers.lua')
 	drawn = T.watch()
-	for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-		load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-	end
-	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+	load_editmode()
+	load_string_format()
 	st = SaftUI
-	st.StringFormat = LibStub('LibStringFormat-1.0') -- as SaftUI-Core/init.lua does
 	CreateFrame('GameTooltip', 'GameTooltip', UIParent)
 	game_api()
 	blizzard()

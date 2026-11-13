@@ -53,9 +53,7 @@ for _, name in ipairs(names) do blizzard[#blizzard + 1] = tooltips[name] end
 local before = {}
 for _, frame in ipairs(blizzard) do before[frame] = keys(frame) end
 
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-end
+load_editmode()
 load_saftui('SaftUI-Misc/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Misc/tooltip.lua')

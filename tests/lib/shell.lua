@@ -25,6 +25,10 @@
 	                          in the game's order; options_widget_files() lists them
 	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
 	                          in the game's order; options_window_files() lists them
+	  tick_options_window(elapsed) one frame passes on the /sui window's clock
+	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
+	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
+	  use_client(name, before) a fresh world on 'forever' or 'retail'
 ]]
 
 local function pack(...)
@@ -449,6 +453,45 @@ function load_options_window()
 	end
 end
 
+-- One frame passes on the /sui window's clock: its ticker's OnUpdate runs with
+-- elapsed seconds (0.01 by default), as the game runs it every frame. Nothing
+-- runs before the window is built, when it has no ticker yet. It reads the
+-- window from SaftUI when called, so it follows a reset_world().
+function tick_options_window(elapsed)
+	local ticker = SaftUI.OptionsWindow.GetFrames().ticker
+	if ticker then stub.fire_script(ticker, 'OnUpdate', elapsed or 0.01) end
+end
+
+-- Edit mode's files (st.EditModeFrames, st:RegisterMover and the rest), by
+-- path from the repo root, in the order SaftUI-Core/EditMode/load.xml loads
+-- them.
+function editmode_files()
+	return {
+		'SaftUI-Core/EditMode/editmode.lua',
+		'SaftUI-Core/EditMode/mover.lua',
+		'SaftUI-Core/EditMode/picker.lua',
+		'SaftUI-Core/EditMode/footer.lua',
+		'SaftUI-Core/EditMode/grid.lua',
+		'SaftUI-Core/EditMode/snap.lua',
+		'SaftUI-Core/EditMode/settings.lua',
+	}
+end
+
+-- Loads edit mode's files in that order. Load Core's helpers
+-- (load_core_helpers) first.
+function load_editmode()
+	for _, path in ipairs(editmode_files()) do
+		load_saftui(path)
+	end
+end
+
+-- LibStringFormat-1.0, as st.StringFormat: SaftUI-Core/init.lua takes it from
+-- LibStub. Load Core's helpers (load_core_helpers, which loads LibStub) first.
+function load_string_format()
+	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
+	st.StringFormat = LibStub('LibStringFormat-1.0')
+end
+
 -- Core's TOC loads these three in this order (with Widgets, skinning.lua,
 -- panels.lua and theme.lua between api.lua and utilities.lua).
 load_saftui('SaftUI-Core/constants.lua')
@@ -478,6 +521,31 @@ function remove_shell_config()
 		end
 	end
 	st.Config = nil
+end
+
+-- The interface each client a world can be on reports (GetBuildInfo).
+local CLIENT_INTERFACES = { forever = 16001, retail = 120000 }
+
+-- A fresh world on one client, 'forever' or 'retail': reset_world(), then
+-- stub.interface set to the client's, the globals that client lacks dropped
+-- (stub.apply_client, tests/wow/game.lua) and Core's constants.lua run again
+-- (it reads the interface, the player's name and realm and the screen when it
+-- loads, so st.forever follows). before, if given, runs on the fresh stubs
+-- first, to change what constants.lua reads. Returns SaftUI. Everything else
+-- is as reset_world() leaves it, so a file can switch clients between cases;
+-- the caller loads the rest of its world after it (load_core_helpers(), or
+-- core/config_helpers.lua for the real AceDB).
+function use_client(name, before)
+	local interface = CLIENT_INTERFACES[name]
+	if not interface then
+		error(("use_client: no client '%s' (forever or retail)"):format(tostring(name)), 2)
+	end
+	reset_world()
+	if before then before() end
+	stub.interface = interface
+	stub.apply_client()
+	load_saftui('SaftUI-Core/constants.lua')
+	return SaftUI
 end
 
 -- What init.lua's OnEnable does: SaftUI's pixel-perfect scale, one UIParent

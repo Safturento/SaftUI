@@ -761,6 +761,28 @@ test('Show, Hide and SetShown fire OnShow and OnHide only for a visibility that 
 	check(parent:IsShown() and child:IsShown() and child:IsVisible(), 'both end up shown')
 end)
 
+test('SetAlpha keeps an alpha within 0 to 1 on a frame and on a region, as in game, and still wants a number', function()
+	local frame = CreateFrame('Frame')
+	local texture = frame:CreateTexture()
+	for name, widget in pairs({ frame = frame, texture = texture }) do
+		widget:SetAlpha(-0.5)
+		eq(widget:GetAlpha(), 0, name .. ': below 0 is 0')
+		widget:SetAlpha(1.5)
+		eq(widget:GetAlpha(), 1, name .. ': above 1 is 1')
+		widget:SetAlpha(0.25)
+		eq(widget:GetAlpha(), 0.25, name .. ': in range stays')
+		widget:SetAlpha(0)
+		eq(widget:GetAlpha(), 0, name .. ': 0 stays')
+		widget:SetAlpha(1)
+		eq(widget:GetAlpha(), 1, name .. ': 1 stays')
+		check(not pcall(widget.SetAlpha, widget, 'x'), name .. ': a non-number is still an error')
+	end
+	frame:SetAlpha(2)
+	eq(frame:GetEffectiveAlpha(), 1, 'and the effective alpha is within 0 to 1 too')
+	texture:SetAlpha(-3)
+	eq(texture:GetEffectiveAlpha(), 0, 'as a region under it')
+end)
+
 test('SetPoint still refuses an anchor that makes a loop, through any chain, as in game', function()
 	local a, b, c = CreateFrame('Frame'), CreateFrame('Frame'), CreateFrame('Frame')
 	local parent = CreateFrame('Frame')
@@ -804,4 +826,49 @@ test('SetPoint finds a loop through an anchor that was cleared, and refuses noth
 	y:ClearAllPoints()
 	ok = pcall(x.SetPoint, x, 'CENTER', y)
 	eq(ok, true, 'no loop once y is not anchored to x')
+end)
+
+test("use_client gives a fresh world on each client, without the globals that client lacks", function()
+	local st = use_client('retail')
+	check(not st.forever, 'retail: st.forever off')
+	eq(select(4, GetBuildInfo()), 120000, "retail: the game's interface")
+	eq(UnitHasEffectivelyTankAura, nil, "retail: Forever's tank aura check is gone")
+	st.marked = true
+
+	st = use_client('forever')
+	check(st.forever, 'forever: st.forever on')
+	eq(select(4, GetBuildInfo()), 16001, "forever: the game's interface")
+	eq(type(UnitHasEffectivelyTankAura), 'function', 'forever: it has the tank aura check')
+	eq(st.marked, nil, 'a fresh world: SaftUI is made again')
+
+	st = use_client('retail', function() GetRealmName = function() return 'Elsewhere' end end)
+	eq(st.my_realm, 'Elsewhere', 'before runs on the fresh stubs, before constants.lua reads them')
+
+	check(not pcall(use_client, 'classic'), 'a client that is neither is an error')
+	reset_world()
+end)
+
+test("load_editmode loads the files Core's EditMode/load.xml lists, in its order", function()
+	local xml = assert(read_saftui_source('SaftUI-Core/EditMode/load.xml')):gsub('<!%-%-.-%-%->', '')
+	local listed = {}
+	for file in xml:gmatch('<Script%s+file%s*=%s*"([^"]+)"') do
+		listed[#listed + 1] = 'SaftUI-Core/EditMode/' .. file
+	end
+	eq(table.concat(editmode_files(), ', '), table.concat(listed, ', '), "the shell's edit mode files are load.xml's, in its order")
+end)
+
+test('near tells float drift from a different number, and nil from any number', function()
+	check(near(0.1 + 0.2, 0.3), 'float drift is near')
+	check(not near(1, 1.001), 'a different number is not')
+	check(not near(nil, 1) and not near(1, nil), 'nil is near nothing')
+end)
+
+test("stub.click runs a button's OnClick with the mouse button, and returns false for none", function()
+	reset_world()
+	local button = CreateFrame('Button', nil, UIParent)
+	check(stub.click(button, 'LeftButton') == false, 'a button without an OnClick runs nothing')
+	local got
+	button:SetScript('OnClick', function(self, mouse) got = { self, mouse } end)
+	check(stub.click(button, 'RightButton') == true, 'a button with an OnClick runs it')
+	check(got and got[1] == button and got[2] == 'RightButton', 'OnClick gets the button and the mouse button')
 end)

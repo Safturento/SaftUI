@@ -46,7 +46,7 @@ local function world(client, core)
 	return container
 end
 
-local function click(button) stub.fire_script(button, 'OnClick') end
+local click = stub.click
 
 local function blue() return T.text(SaftUI.config.profile.colors.button.blue:GetRGB()) end
 

@@ -11,61 +11,22 @@
 -- the arguments oUF gives it: cur, max, hasCurChanged, hasMaxChanged, power type
 -- and the charged points' indices.
 local T = load_test_file('lib/theme_helpers.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
 
 local st, UF, P, drawn
 
+-- A fresh world on client (uf_world.lua's, with the player's config and the
+-- class power element) for a player of class. Only the class power points
+-- read st.my_class, when they're drawn.
 local function fresh(client, class)
-	T.client(client)
-	st = SaftUI
+	st, UF, P = UW.world({ client = client, units = { 'player' }, elements = { 'classpower' } })
 	st.my_class = class
-	load_saftui('SaftUI-Unitframes/config/default.lua')
-	load_saftui('SaftUI-Unitframes/config/units/player.lua')
-	apply_defaults()
-	addon_namespace('SaftUI-Unitframes').oUF = {
-		colors = { class = {}, reaction = {}, power = {}, disconnected = CreateColor(1, 1, 1),
-			tapped = CreateColor(1, 1, 1), health = CreateColor(0.2, 0.8, 0.2), roles = {}, runes = {} },
-	}
-	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters' }) do
-		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
-	end
-	load_saftui('SaftUI-Unitframes/elements/classpower.lua')
-	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
-	st.StringFormat = LibStub('LibStringFormat-1.0')
-	UF = st:GetModule('Unitframes')
-	P = UF:GetProfileConfig()
-	UF:UpdateColors()
 	drawn = T.watch()
 end
 
 -- A unit frame for a config unit, with the named elements built by their own
 -- constructors (see the top of this file).
-local function make_unit_frame(name, unit, elements, parent)
-	local frame = CreateFrame('Button', name, parent or UIParent)
-	frame.base_unit = unit
-	frame.GetConfig = function() return UF:GetProfileConfig()[unit] end
-	frame.config = frame:GetConfig()
-	function frame:UpdateAllElements() end
-	function frame:CreateAuras()
-		local auras = CreateFrame('Frame', nil, self)
-		function auras:SetEnabled() end
-		function auras:SetFlowLayoutAnchorPoint() end
-		function auras:SetFlowLayoutMaximumLineSize() end
-		function auras:SetFlowLayoutGrowthDirection() end
-		function auras:AddGroup() return 'Group1' end
-		function auras:SetAuraGroupLayout() end
-		return auras
-	end
-	local overlay = CreateFrame('Frame', nil, frame)
-	overlay:SetFrameLevel(99)
-	overlay:SetAllPoints(frame)
-	frame.TextOverlay = overlay
-	frame.elements = {}
-	for _, element in ipairs(elements) do
-		frame.elements[element] = UF.elements[element].Constructor(frame, element)
-	end
-	return frame
-end
+local make_unit_frame = UW.unit_frame
 
 
 -- The player's unit frame with a class power row of height 20, drawn.

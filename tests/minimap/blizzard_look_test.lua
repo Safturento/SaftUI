@@ -17,7 +17,7 @@
 -- microbuttons.lua, Core's helpers and the theme engine. Each case starts from
 -- a fresh world on a client (T.client), since cases change the profile's theme.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 
 local st, MM, drawn
 
@@ -44,9 +44,7 @@ end
 -- A switch to the theme name, as Config:UpdateConfig runs it: every drawn frame
 -- redrawn, then the bar laid out again.
 local function theme(name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-	MM:UpdateButtons()
+	T.theme(name, function() MM:UpdateButtons() end)
 end
 
 -- A bar item: a Button of UIParent's, added with options.

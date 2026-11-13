@@ -30,7 +30,7 @@ verified by reading the code, and by the user checking them in game.
 | `SaftUI-ActionBars/` | SaftUI's own action bars, built on a bundled LibActionButton-1.0 (`Libraries/`), in place of Blizzard's, which it takes off screen at load (`hideblizzard.lua`). Bars 1-8 use LibActionButton buttons; the pet and stance bars (`petbar.lua`, `stancebar.lua`) use SaftUI's own secure buttons (`buttons.lua`). Their keys come from Blizzard's binding commands, with hover binding in `/sui kb` (`keybindmode.lua`; `bindings.lua` lays the keys). The extra action button and zone ability (Blizzard's) and a leave vehicle button (SaftUI's) sit on SaftUI holders (`extras.lua`). Per-bar options and edit mode movers are in `options.lua`. |
 | `SaftUI-Misc/` | Experience/rep bars (their defaults in `config.lua` with Misc's others), tooltip, totem bar (`totembar.lua` the module and hiding, `totemlayout.lua` its buttons, `totemposition.lua` its holder and mover, `totemoptions.lua` its `/sui` page, `totemskin.lua`, `totemtimers.lua`), and skins in `Skinning/`: `skinning.lua` the Skinning module, Blizzard's frames in `blizzard/` (buff frames, swing timer, character frame, Cooldown Manager, zone text) and other addons' in `addons/` (Hekili, RestedXP, WeakAuras). |
 | `docs/` | Followups queue, design specs and implementation plans. |
-| `tests/` | Lua 5.1 tests for agents, run with `tests/run`: the runner, the test harness and core shell (`lib/`), the WoW API stubs (`wow/`), and tests by addon. Never loaded by the game. |
+| `tests/` | Lua 5.1 tests for agents, run with `tests/run`: the runner, the test harness, the core shell and the shared test helpers (`lib/`), the WoW API stubs (`wow/`), and tests by addon. Never loaded by the game. |
 
 ## When you need it
 

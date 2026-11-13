@@ -21,7 +21,7 @@
 --   - a skin that errors is reported, and Blizzard's layout still completes;
 --     the item is skinned the next time it's handed out;
 --   - nothing written onto Blizzard's frames: every viewer, item, frame and
---     region of the fixture is locked (fixtures/locked_widget.lua);
+--     region of the fixture is locked (lib/locked_widget.lua);
 --   - a theme switch (Thick, Thin, Blizzard, None) and the Skinning page's own
 --     Theme, Background and font reaching every item;
 --   - Skinning -> Cooldown Manager off leaving Blizzard's look, hooking nothing.
@@ -162,10 +162,10 @@ end
 
 -- st:ThemeChanged's steps, as Config:UpdateConfig runs them (tests/actionbars/theme_test.lua's switch).
 local function switch(name)
-	profile.theme.name = name
-	st:RedrawThemed()
-	SK:UpdateConfig()
-	st:ColorsChanged('theme')
+	T.theme(name, function()
+		SK:UpdateConfig()
+		st:ColorsChanged('theme')
+	end)
 end
 
 test("Blizzard's default Icon Padding leaves a gap between neighbours' borders", function()

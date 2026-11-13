@@ -19,6 +19,7 @@
 -- name's text here is the st:name tag (tags.lua) run with the config unit its
 -- bound tag string names, as oUF runs it. The tests check configs, parts and
 -- colours, not where a plate's frame sits.
+local T = load_test_file('lib/theme_helpers.lua')
 local NP = load_test_file('unitframes/nameplate_world.lua')
 
 -- A world with the plates spawned: the player a damage dealer in a party with
@@ -53,7 +54,7 @@ local function name_text(UF, frame)
 end
 local function hex(st, color) return '|cff' .. st.StringFormat:ToHex(color:GetRGB()) end
 
-local function rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+local rgb = T.rgb
 
 local function check_no_threat(frame, label)
 	eq(frame.threatState, nil, label .. ': no threat tint')

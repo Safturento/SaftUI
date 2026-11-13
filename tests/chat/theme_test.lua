@@ -12,9 +12,7 @@
 load_core_helpers()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order
-end
+load_editmode()
 load_saftui('SaftUI-Chat/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Chat/chatframe.lua')
@@ -36,14 +34,11 @@ test('each page offers Theme and Background, not Template', function()
 	local apply = CHT.ApplyAppearance
 	function CHT:ApplyAppearance() applied = applied + 1 end
 
-	local general = CHT:GetConfigTable().args.general
-	T.check_options(general, 'Chat')
-	eq(general.get({ 'theme' }), 'theme', 'Theme reads chat.theme')
-	eq(general.get({ 'background' }), 'theme', 'Background reads chat.background')
-	general.set({ 'theme' }, 'thin')
-	general.set({ 'background' }, 'solid')
-	eq(profile.chat.theme, 'thin', 'Theme writes chat.theme')
-	eq(profile.chat.background, 'solid', 'Background writes chat.background')
+	T.check_theme_page({
+		group = CHT:GetConfigTable().args.general, where = 'Chat', config = profile.chat, path = 'chat',
+		reads = { { 'theme', 'theme' }, { 'background', 'theme' } },
+		writes = { { 'theme', 'thin' }, { 'background', 'solid' } },
+	})
 	eq(applied, 2, 'each restyles the chat windows at once')
 
 	CHT.ApplyAppearance = apply

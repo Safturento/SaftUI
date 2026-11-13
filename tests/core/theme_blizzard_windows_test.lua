@@ -32,7 +32,7 @@
 -- Config/config.lua on a real AceDB-3.0 (core/config_helpers.lua) with the
 -- options window. Each case starts from a fresh world.
 local T = load_test_file('lib/theme_helpers.lua')
-local locked = load_test_file('misc/fixtures/locked_widget.lua')
+local locked = load_test_file('lib/locked_widget.lua')
 local text, fill = T.text, T.fill
 
 -- A nine-slice border's shown pieces as T.art lists them.
@@ -53,19 +53,9 @@ local TOOLTIP, METAL = nine('Tooltip-NineSlice'), nine('UI-Frame-Metal')
 -- Thick's header strip: its border color at 0.4.
 local THICK_STRIP = '0.30,0.30,0.30,0.40'
 
--- SaftUI's theme switched and every drawn frame drawn again, as the Theme tab
--- does it (the profile update's first step).
-local function switch(st, name)
-	st.config.profile.theme.name = name
-	st:RedrawThemed()
-end
-
 -- A region's first anchor as text, 'POINT relative RELPOINT x,y', relative
 -- named from names (region -> name).
-local function anchor(region, names)
-	local point, rel, relPoint, x, y = region:GetPoint(1)
-	return ('%s %s %s %s'):format(tostring(point), names[rel] or tostring(rel), tostring(relPoint), text(x, y))
-end
+local anchor = T.anchor
 
 -- A state texture's atlas, 'none' for no texture.
 local function atlas(texture)
@@ -160,7 +150,7 @@ test('st:CreatePanel draws a window', function()
 	local p = panel(st, 'Window test')
 	eq(drawn(p), 'theme,theme,window', 'panels.theme and panels.background, as a window')
 	eq(st:DrawnKind(p), 'window', 'the engine records it as a window')
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	eq(T.art(p.backdrop), METAL, 'under Blizzard it wears the metal')
 end)
 
@@ -184,7 +174,7 @@ test("under Blizzard a window's header sits in the metal's title bar, with no st
 		end
 
 		thick(client .. ', Thick')
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		local name = client .. ', Blizzard'
 		eq(T.art(p.backdrop), METAL, name .. ': the window wears the metal')
 		inTitleBar(st, p, client, name)
@@ -197,12 +187,12 @@ test("under Blizzard a window's header sits in the metal's title bar, with no st
 		st:RedrawThemed()
 		inTitleBar(st, p, client, name .. ', after a redraw')
 
-		switch(st, 'thick')
+		T.theme('thick')
 		thick(client .. ', Thick again')
 		eq(T.art(p.backdrop), '', client .. ', Thick again: no art')
 		eq(rect(p), window, client .. ', Thick again: the window where it was')
 
-		switch(st, 'thin')
+		T.theme('thin')
 		eq(st:HeaderInTitleBar(p), false, client .. ', Thin: the header in the window')
 		eq(rect(p.header), header, client .. ', Thin: where it was')
 		eq(#take_errors(), 0, client .. ': no errors')
@@ -212,10 +202,10 @@ end)
 test('a window made under Blizzard has its header in the title bar at once', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st = T.client(client)
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		local p = panel(st, 'Made under Blizzard')
 		inTitleBar(st, p, client, client)
-		switch(st, 'thick')
+		T.theme('thick')
 		inWindow(st, p, 31, client .. ', Thick')
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
@@ -225,12 +215,12 @@ test("Title bar height reaches the footer under Blizzard, where the header keeps
 	local st = T.client('forever')
 	local p = panel(st, 'Height test')
 	st:CreateFooter(p)
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	st.config.profile.headers.height = 40
 	st:UpdateHeader() -- as General -> Title bar height does
 	inTitleBar(st, p, 'forever', 'Blizzard, 40')
 	eq(p.footer:GetHeight(), 40, 'Blizzard: the footer takes it')
-	switch(st, 'thick')
+	T.theme('thick')
 	inWindow(st, p, 40, 'Thick, 40')
 	eq(p.footer:GetHeight(), 40, 'Thick: the footer too')
 	st.config.profile.headers.height = 31
@@ -249,7 +239,7 @@ test("the rule is Core's: a window with no close button follows it, and a window
 	st:CreateHeader(bare, 'Bare')
 	eq(st:GetCloseButton(bare), nil, 'it has no close button')
 	inWindow(st, bare, 31, 'Thick')
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	inTitleBar(st, bare, 'retail', 'Blizzard')
 
 	-- A window drawn in a look of its own, as a module's Theme draws it, then
@@ -263,7 +253,7 @@ test("the rule is Core's: a window with no close button follows it, and a window
 
 	-- Its own Blizzard under SaftUI's Thick: the metal, and the header and
 	-- its strip stay with SaftUI's theme, in the window.
-	switch(st, 'thick')
+	T.theme('thick')
 	st:SetBackdrop(bare, 'blizzard', 'theme', 'window')
 	st:UpdateHeader(bare.header)
 	eq(T.art(bare.backdrop), METAL, "its own Blizzard under SaftUI's Thick: the metal")
@@ -271,7 +261,7 @@ test("the rule is Core's: a window with no close button follows it, and a window
 
 	-- Its own theme followed again, SaftUI's Blizzard: into the title bar.
 	st:SetBackdrop(bare, 'theme', 'theme', 'window')
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	inTitleBar(st, bare, 'retail', "SaftUI's Blizzard again")
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -288,7 +278,7 @@ test("SaftUI's close button under Blizzard: Blizzard's four atlases at the clien
 		local close = st:CreateCloseButton(frame)
 		ownLook(st, close, client .. ', Thick')
 
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		blizzardLook(close, size, client .. ', Blizzard')
 		-- Its own hover look stays off: Blizzard's highlight shows the hover.
 		stub.fire_script(close, 'OnEnter')
@@ -298,7 +288,7 @@ test("SaftUI's close button under Blizzard: Blizzard's four atlases at the clien
 		st:RecolorThemed()
 		blizzardLook(close, size, client .. ', after a recolor')
 
-		switch(st, 'thick')
+		T.theme('thick')
 		ownLook(st, close, client .. ', Thick again')
 		stub.fire_script(close, 'OnEnter')
 		eq(T.edge(close), text(st.config.profile.colors.text.red:GetRGB()) .. ',1.00', client .. ': hovered under Thick, its red border')
@@ -306,7 +296,7 @@ test("SaftUI's close button under Blizzard: Blizzard's four atlases at the clien
 		eq(T.edge(close), text(unpack(st.BOX_COLORS.edge)), client .. ': and back')
 
 		-- A close button made while the theme is Blizzard has Blizzard's look at once.
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		local other = st:CreateFrame('Frame', nil, UIParent)
 		other:SetSize(200, 100)
 		other:SetPoint('CENTER')
@@ -328,7 +318,7 @@ test('on a window the close button sits in the socket, and goes back', function(
 		eq(anchor(close, names), home, client .. ', Thick: at the right of the header')
 		eq(st:CloseButtonInSocket(p), false, client .. ', Thick: not in the socket')
 
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		eq(close:GetNumPoints(), 1, client .. ', Blizzard: one point')
 		eq(anchor(close, names), 'TOPRIGHT backdrop TOPRIGHT ' .. text(x, y),
 			client .. ", Blizzard: at TOPRIGHT of the window's drawn frame, in the metal's socket")
@@ -345,17 +335,17 @@ test('on a window the close button sits in the socket, and goes back', function(
 		st:RecolorThemed()
 		eq(anchor(close, names), 'TOPRIGHT backdrop TOPRIGHT ' .. text(x, y), client .. ': a recolor leaves it in the socket')
 
-		switch(st, 'thick')
+		T.theme('thick')
 		eq(close:GetNumPoints(), 1, client .. ', Thick again: one point')
 		eq(anchor(close, names), home, client .. ', Thick again: back at the right of the header')
 		eq(st:CloseButtonInSocket(p), false, client .. ', Thick again: out of the socket')
 
-		switch(st, 'thin')
+		T.theme('thin')
 		eq(anchor(close, names), home, client .. ', Thin: at the right of the header')
 		eq(st:CloseButtonInSocket(p), false, client .. ', Thin: out of the socket')
 
 		-- A window made while the theme is Blizzard has it in the socket at once.
-		switch(st, 'blizzard')
+		T.theme('blizzard')
 		local made = panel(st, 'Socket made')
 		eq(st:CloseButtonInSocket(made), true, client .. ': a window made under Blizzard has it in the socket')
 		eq(anchor(st:GetCloseButton(made), { [made.backdrop] = 'backdrop' }), 'TOPRIGHT backdrop TOPRIGHT ' .. text(x, y),
@@ -372,9 +362,9 @@ test("a close button made for a frame that isn't SaftUI's writes nothing onto it
 	locked(tooltip, 'Blizzard')
 	local ok, err = pcall(st.CreateCloseButton, st, tooltip)
 	check(ok, 'made without writing onto the frame: ' .. tostring(err))
-	switch(st, 'blizzard')
+	T.theme('blizzard')
 	st:RecolorThemed()
-	switch(st, 'thick')
+	T.theme('thick')
 	local errors = take_errors()
 	eq(#errors, 0, 'nothing written through two switches and a recolor: ' .. tostring(errors[1]))
 	eq(st:CloseButtonInSocket(tooltip), false, 'not a window: never in the socket')
@@ -406,7 +396,7 @@ test("the /sui window's close button sits in the metal's socket under Blizzard, 
 	local place = 'TOPRIGHT window TOPRIGHT -16.00,-14.00'
 	eq(anchor(close, names), place, 'Thick: its place')
 	-- The window lays itself out again on its next frame after a theme change.
-	local function tick() stub.fire_script(OW.GetFrames().ticker, 'OnUpdate', 0.01) end
+	local tick = tick_options_window
 
 	st.config.profile.theme.name = 'blizzard'
 	st:ThemeChanged()

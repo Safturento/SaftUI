@@ -9,9 +9,7 @@ local st, EM, settings
 
 local function load_edit_mode()
 	load_core_helpers() -- st:CreateButton, panels, fonts and the profile defaults
-	for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-		load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order
-	end
+	load_editmode()
 	st, EM = SaftUI, SaftUI.EditModeFrames
 	settings = EM:GetSettings()
 	-- A 1000 x 600 screen at the scale SaftUI sets at login: one UIParent unit

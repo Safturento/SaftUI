@@ -7,6 +7,7 @@
 	  test(name, fn)                 registers a case. Cases run in order once the file has loaded.
 	  check(cond, message)           records a pass, or a failure with message. Returns cond as a boolean.
 	  eq(actual, expected, message)  check(actual == expected), failing with "expected <e>, got <a>".
+	  near(a, b)                     whether two numbers differ by float drift only (under 1e-6), for check().
 	  load_saftui(path)              runs a SaftUI file, from the repo root, the way WoW does.
 	  load_test_file(path)           runs a helper or fixture file, from tests/.
 	  read_saftui_source(path)       a SaftUI file's text (a TOC, XML or Lua file), from the repo root.
@@ -27,6 +28,7 @@ local io, loadstring, xpcall, error, type, tostring, select, ipairs, pairs, rawg
 local traceback, getinfo, sethook = debug.traceback, debug.getinfo, debug.sethook
 local clock = os.clock -- os is removed below
 local format, concat = string.format, table.concat
+local abs = math.abs
 
 -- The WoW stubs and the core shell, from tests/, in load order. Every test
 -- file starts in this world, and reset_world rebuilds it.
@@ -172,6 +174,12 @@ function eq(actual, expected, message)
 		text = format('%sexpected %s, got %s', message ~= nil and (tostring(message) .. ': ') or '', e, a)
 	end
 	return record(passed, text, 3)
+end
+
+-- Whether a and b are the same number but for float drift: within 1e-6 of
+-- each other. False when either is nil. For check(near(a, b), message).
+function near(a, b)
+	return a ~= nil and b ~= nil and abs(a - b) < 1e-6
 end
 
 -- WoW's print writes to chat. Here it goes to the running case's output,

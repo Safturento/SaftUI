@@ -27,6 +27,7 @@
 -- (theme_changed).
 local T = load_test_file('lib/theme_helpers.lua')
 local NP = load_test_file('unitframes/nameplate_world.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
 
 local CLIENTS = { 'forever', 'retail' }
 local BOX = 'BottomEdge,BottomLeftCorner,BottomRightCorner,LeftEdge,RightEdge,TopEdge,TopLeftCorner,TopRightCorner'
@@ -65,10 +66,10 @@ end
 -- (st:RedrawThemed), every module's UpdateConfig (the unit frames' here),
 -- then st:ColorsChanged('theme').
 local function theme_changed(st, UF, theme)
-	st.config.profile.theme.name = theme
-	st:RedrawThemed()
-	UF:UpdateConfig()
-	st:ColorsChanged('theme')
+	T.theme(theme, function()
+		UF:UpdateConfig()
+		st:ColorsChanged('theme')
+	end)
 end
 
 -- oUF colouring an enemy's health bar SaftUI's hostile red, then its colour
@@ -79,22 +80,11 @@ local function ouf_colours(frame)
 	frame.Health:PostUpdateColor(frame.__unit)
 end
 
--- A button oUF's aura container made for an aura, handed to the area's
--- PostCreateButton as oUF does (theme_test.lua's make_aura_button).
-local function aura_button(auras)
-	local button = CreateFrame('Button', nil, auras)
-	button:SetSize(20, 20)
-	button:SetPoint('TOPLEFT')
-	button.Icon = button:CreateTexture(nil, 'BORDER')
-	button.Icon:SetAllPoints()
-	button.Count = button:CreateFontString(nil, 'OVERLAY')
-	button.Border = button:CreateTexture(nil, 'OVERLAY')
-	button.Border:SetAllPoints()
-	auras:PostCreateButton(button)
-	return button
-end
+-- A 20px button oUF's aura container made for an aura, handed to the area's
+-- PostCreateButton as oUF does (uf_world.lua's UW.aura_button).
+local function aura_button(auras) return UW.aura_button(auras, 20) end
 
-local function rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+local rgb = T.rgb
 local function color(c) return rgb(c.r, c.g, c.b) end
 local function bar(frame) return rgb(frame.Health:GetStatusBarColor()) end
 
