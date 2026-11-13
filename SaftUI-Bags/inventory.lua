@@ -44,6 +44,14 @@ function INV:HasWarbandBank()
 	return not st.forever and self.bagIds.warband ~= nil and #self.bagIds.warband > 0
 end
 
+-- Where value is in list, or nil (nil too for no list). categories.lua and
+-- views.lua find ids in lists with it.
+function INV.IndexOf(list, value)
+	for i, v in ipairs(list or {}) do
+		if v == value then return i end
+	end
+end
+
 INV.containers = {}
 
 -- Item buttons are not square: 60 wide by 50 tall by default, with the icon
