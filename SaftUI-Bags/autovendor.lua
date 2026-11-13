@@ -10,9 +10,7 @@ function INV:GetVendorItems()
 	local items = {}
 	local profit = 0
 
-	local bags, _, _, categoryOf = self:ReadBags('bag', function(bagID)
-		return self:IsReagentBag(bagID) and 'reagent' or 'bag'
-	end, true)
+	local bags, _, _, categoryOf = self:ReadBags('bag', function(bagID) return self:StackGroup(bagID) end, true)
 	for _, bag in ipairs(bags) do
 		for _, info in ipairs(bag.items) do
 			if self:IsAutoVendorItem(info, categoryOf[info]) then

@@ -6,12 +6,13 @@
 --
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
 -- under the module's real files, slot.lua among them), the options window and
--- SaftUI-Bags' options.lua, ruleeditor.lua and categoriestab.lua (for Edit this
--- category), and Core's tooltipscanner.lua. Made by hand, because the stubs
--- have no Blizzard menu or tooltip data processing: MenuUtil (it records the
--- generator's elements, which the test then clicks), TooltipDataProcessor (it
--- keeps the post-call), and ContainerFrameItemButton_OnEnter (it shows the
--- item on GameTooltip as Blizzard's does).
+-- SaftUI-Bags' options.lua, dragparts.lua, ruleeditor.lua and categoriestab.lua
+-- (for Edit this category), and Core's tooltipscanner.lua. Made by hand,
+-- because the stubs have no Blizzard menu or tooltip data processing:
+-- MenuUtil (it records the generator's elements, which the test then
+-- clicks), TooltipDataProcessor (it keeps the post-call), and
+-- ContainerFrameItemButton_OnEnter (it shows the item on GameTooltip as
+-- Blizzard's does).
 local H = load_test_file('bags/container_helpers.lua')
 
 local st, INV, B, OW, R
@@ -26,6 +27,7 @@ local function world()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()
 	load_saftui('SaftUI-Bags/options.lua')
+	load_saftui('SaftUI-Bags/dragparts.lua')
 	load_saftui('SaftUI-Bags/ruleeditor.lua')
 	load_saftui('SaftUI-Bags/categoriestab.lua')
 	OW, R = st.OptionsWindow, INV.Rules

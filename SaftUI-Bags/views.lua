@@ -93,12 +93,8 @@ local function GetTabName(bagID)
 	end
 end
 
--- Where a bag ID is in a list of bag IDs, or nil.
-local function IndexOf(list, value)
-	for i, v in ipairs(list or {}) do
-		if v == value then return i end
-	end
-end
+-- Where a bag ID is in a list of bag IDs, or nil (inventory.lua).
+local IndexOf = INV.IndexOf
 
 -- Whether a bag is special: a reagent bag, or one that holds only some kinds
 -- of item (a bag family, like a herb bag's). The backpack never is, nor a
@@ -225,9 +221,7 @@ function INV:GetViewSections(id, view)
 
 	local bags, numItems, numLoading, categoryOf
 	if view == 'rows' then
-		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
-			return self:IsReagentBag(bagID) and 'reagent' or 'bag'
-		end)
+		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID) return self:StackGroup(bagID) end)
 		local byCategory = {}
 		for _, item in ipairs(ItemsOf(bags)) do
 			local category = categoryOf[item]

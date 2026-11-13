@@ -132,11 +132,7 @@ local function CustomBefore(a, b)
 	return a < b
 end
 
-local function IndexOf(ids, id)
-	for i, v in ipairs(ids) do
-		if v == id then return i end
-	end
-end
+local IndexOf = INV.IndexOf
 
 --[[
 	The saved order, else the default order, keeping each id once if it

@@ -1,5 +1,5 @@
 -- How the bag views other than Compact lay a window out (SaftUI-Bags/
--- container.lua's INV:LayoutSections and INV:ApplyView, with INV:UpdateCategory,
+-- layout.lua's INV:LayoutSections and INV:ApplyView, with INV:UpdateCategory,
 -- INV:SetSlotPosition and the currency slots): each section a full-width
 -- category frame stacked top to bottom, its slots in lines of
 -- INV:LineSlots, the window as wide as Compact's with every column in use and
@@ -10,7 +10,7 @@
 -- than there are buttons.
 --
 -- bags/container_helpers.lua's views world: bag_world.lua's stubbed bags under
--- the module's real files (container.lua, category.lua, slot.lua, views.lua,
+-- the module's real files (the window files, category.lua, slot.lua, views.lua,
 -- currencies.lua, movers.lua, inventory.lua), and its stand-ins for the
 -- Blizzard templates and API the slots are made of. The currencies case gives
 -- C_CurrencyInfo a currency list, as far as INV:GetCurrencies, the currency

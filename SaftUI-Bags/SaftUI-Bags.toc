@@ -15,6 +15,9 @@ tooltipscanner.lua
 category.lua
 views.lua
 container.lua
+header.lua
+layout.lua
+search.lua
 containers\bag.lua
 containers\combinedbank.lua
 containers\bank.lua
@@ -24,5 +27,6 @@ utilities.lua
 autovendor.lua
 movers.lua
 options.lua
+dragparts.lua
 ruleeditor.lua
 categoriestab.lua
