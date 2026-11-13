@@ -1,5 +1,5 @@
 -- How the bag views other than Compact lay a window out (SaftUI-Bags/
--- container.lua's INV:LayoutSections and INV:ApplyView, with INV:UpdateCategory,
+-- layout.lua's INV:LayoutSections and INV:ApplyView, with INV:UpdateCategory,
 -- INV:SetSlotPosition and the currency slots): each section a full-width
 -- category frame stacked top to bottom, its slots in lines of
 -- INV:LineSlots, the window as wide as Compact's with every column in use and

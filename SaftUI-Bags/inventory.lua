@@ -152,7 +152,7 @@ function INV:UpdateConfig(id)
 	end
 
 	local container = self.containers[id]
-	-- New settings re-pack the window (container.lua, HoldLayout), in the view
+	-- New settings re-pack the window (layout.lua, HoldLayout), in the view
 	-- they name. Out of combat (the profile update waits for its end), so the
 	-- slots restyled after this are anchored for that view's line.
 	self:ReleaseLayout(container)
