@@ -207,7 +207,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - `st:RoundToPixel`: the tests' locked stub could raise stricter errors (and string offsets could be an error).
 - `tests/core/options_kit_test.lua`'s 'redefining a built-in type is an error' keeps a fixed list of ten types, which a new built-in type won't join by itself.
 - A test that loads one file of a split set by path runs the addon with part of its code. A drift check for that was parked: it needs a change to the harness.
-- `tests/unitframes/secret_texts_test.lua` is still on its own setup, not the shared helpers. No agent has opened it (its name falls under the user's rule about files named `secret`), so it needs the user's "go ahead and read it" first.
+- `tests/unitframes/secret_texts_test.lua` is still on its own setup, not the shared helpers. The cleanup left it unopened, because its name falls under the user's rule about files named `secret`. The user cleared it and `tests/lib/secrets.lua` on 2026-11-13 (they test against Blizzard's secret values and hold no credentials), so it can be moved onto the shared helpers like the rest.
 - The split options and categories tests each carry their own copies of small readers (`rgba`, `size_of`, `yes`/`no`, `cell`, `same_rgb`, `inside`, `shown_textures`, `atlases_of`, `coords_of`, `corners`); the four-line load sequence for the options window is repeated in twelve files; `tests/core/options_frames_pages_test.lua` has its own copy of `INV.IndexOf`.
 - `tests/lib/theme_helpers.lua`: `T.check_theme_page` covers 7 pages and could cover the rest; `T.round_trip` has one caller and a `switch` parameter nothing uses.
 - `tests/misc/restedxp_fixes_test.lua` is named after a review wave, not after what it tests.
