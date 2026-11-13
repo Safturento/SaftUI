@@ -265,3 +265,23 @@ copied here).
     **Cooldown** (the menu's title stays "Cooldown numbers"). The own mark sits inside the
     cell (the body clips left of the first column). The hover line stays up while the
     mouse is anywhere on the row, its control and the line's links included.
+
+## Chosen after the icon and background mockups (the user's, 2026-11-13)
+
+"alright lets stick with ellipses-vertical, and section backgrounds with hairlines between
+rows. I like the new chevron-down." (Mockup: `actionbars-shared-v6.html`, switch S2.)
+
+- **The menu's icon is Lucide's `ellipsis-vertical`** (`st.icons.ellipsisVertical`; the
+  icons were added in e2094e5, with `rotateCcw` for Reset and `diff`).
+- **Section backgrounds, for every page of `/sui`, under Thick and Thin** (the Blizzard
+  theme keeps its own section art; builder's call). The user: "I think this UI would
+  benefit from some faded section backgrounds to help break up the flatness of the
+  design." Each section's rows sit on a faded darker panel under the section's title
+  (the mockup: black at about 28% over the window's fill). Between the two columns runs a
+  light vertical divider, and between each line of rows a hairline (white at about 7%).
+  A line of quarter-cell items (the texts) has a divider after each item but the last.
+  Rows get side padding inside the panel (the mockup: 14px, rows 38px tall against
+  today's 34), and the own mark sits just inside the panel's left edge. Position blocks,
+  descriptions and bare rows sit on the panel too; the builder says how each is treated.
+  This is a change to Core's options body, not to Action Bars, and is its own task in the
+  plan, before the pages that rely on it.
