@@ -1,6 +1,6 @@
 -- SaftUI-Core/Config/optionssmalldialog.lua: OW:OpenDialog, the small dialog
--- over the window for an option table of its own (UF's Copy from), and its
--- scroll under Blizzard.
+-- over the window for an option table of its own (UF's Copy from), drawn
+-- again by the window's renders, and its scroll under Blizzard.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the model (optionsmodel.lua), the widgets
@@ -154,6 +154,88 @@ test('the dialog closes with the window and on entering combat, and refuses to o
 	eq(OW:OpenDialog('Combat', DialogTable()), false, 'refused in combat')
 	check(not OW:IsDialogShown(), 'not shown')
 	close_all()
+end)
+
+test("the window's render draws an open dialog again, so it follows a change made elsewhere; not while its box is typed in or its slider held", function()
+	st.Config:Open('Loot')
+	local name, size = 'Before', 5
+	OW:OpenDialog('Follow', {
+		type = 'group', name = 'Follow',
+		args = {
+			note = { order = 1, type = 'input', name = function() return name end, get = function() return 'text' end, set = function() end },
+			size = { order = 2, type = 'range', name = 'Size', min = 1, max = 10, step = 1,
+				get = function() return size end, set = function(_, v) size = v end },
+		},
+	})
+	eq(dialogCell('note').label:GetText(), 'Before', 'drawn')
+	name = 'After'
+	st.Config:Refresh()
+	H.tick()
+	eq(dialogCell('note').label:GetText(), 'After', "a change to the tree: the window's render drew it again")
+
+	-- One of its boxes typed in: left be, so the typing isn't lost.
+	local box = dialogCell('note').widget.frame
+	box:SetFocus()
+	name = 'Typed'
+	OW:Render()
+	eq(dialogCell('note').widget.frame, box, 'the box keeps the keyboard')
+	eq(dialogCell('note').label:GetText(), 'After', 'not drawn again while typing')
+	box:ClearFocus()
+	OW:Render()
+	eq(dialogCell('note').label:GetText(), 'Typed', 'drawn again once the box lets go')
+
+	-- Its slider held: left be until the mouse is let go.
+	local w, row = dialogCell('size').widget, dialogCell('size').row
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(w.slider, 'OnMouseDown')
+	w.slider:SetValue(7)
+	OW:Render()
+	eq(dialogCell('size').row, row, 'not drawn again mid-drag')
+	eq(dialogCell('size').widget, w, 'the slider is still the one held')
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(w.slider, 'OnMouseUp')
+	check(dialogCell('size').row ~= row, 'drawn again when let go')
+	OW:Render()
+	check(OW:IsDialogShown(), 'and still open')
+	OW:CloseDialog()
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the window's render leaves an open dialog be while its own dropdown list or a confirm is open", function()
+	st.Config:Open('Loot')
+	local name, value = 'Before', 'a'
+	OW:OpenDialog('Guard', {
+		type = 'group', name = 'Guard',
+		args = {
+			pick = { order = 1, type = 'select', name = function() return name end, values = { a = 'A', b = 'B' },
+				get = function() return value end, set = function(_, v) value = v end },
+		},
+	})
+	local W = st.OptionsWidgets
+	eq(dialogCell('pick').label:GetText(), 'Before', 'drawn')
+	local widget = dialogCell('pick').widget
+	click(widget.frame)
+	check(W.ListOwner() == widget.frame, "the dialog's dropdown list is open")
+	name = 'During list'
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'Before', 'not drawn again under its open list')
+	check(W.ListOwner() == widget.frame, 'the list stays open')
+	W.CloseList()
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During list', 'drawn again once the list is shut')
+
+	name = 'During confirm'
+	W.Confirm('Sure?', function() end)
+	check(W.ConfirmText() ~= nil, 'a confirm is open')
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During list', 'not drawn again under a confirm')
+	W.CancelConfirm()
+	OW:Render()
+	eq(dialogCell('pick').label:GetText(), 'During confirm', 'drawn again once it is answered')
+	OW:CloseDialog()
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ under the Blizzard theme

@@ -62,7 +62,7 @@ test('/sui grows taller by its bottom edge or its grip: its width and top stay, 
 	resize(F.grip, 100)
 	eq(at(w), '0,0 1040x800')
 	eq(w:GetTop(), top, 'its top stays')
-	eq(at(F.side), '2,2 208x796'); eq(at(F.navFrame), '2,120 207x647'); eq(at(F.body), '238,113 774x639')
+	eq(at(F.side), '2,2 208x796'); eq(at(F.navFrame), '2,152 207x615'); eq(at(F.body), '238,113 774x639')
 	eq(at(F.reloadButton:GetParent()), '210,752 828x46', 'the footer at the bottom')
 	eq(at(F.grip), '1024,784 16x16', 'the grip with it')
 	eq(st.config.global.optionsWindow.height, 800, "saved in SaftUI's global settings")

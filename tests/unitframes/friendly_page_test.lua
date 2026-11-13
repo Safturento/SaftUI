@@ -143,7 +143,7 @@ test('the two pages: Enemy nameplates then Friendly nameplates after Raid 40, wi
 		local root, view = page(UF, 'nameplate')
 		local picked, names = {}, {}
 		for i, entry in ipairs(view.picker.values) do picked[i], names[i] = entry.key, entry.name end
-		eq(table.concat(picked, ','), 'player,raid40,nameplate,friendlynameplate,profile', client .. ': Enemy, then Friendly, after Raid 40')
+		eq(table.concat(picked, ','), 'player,raid40,nameplate,friendlynameplate', client .. ': Enemy, then Friendly, after Raid 40')
 		eq(names[3], 'Enemy nameplates', client .. ': the Enemy page')
 		eq(names[4], 'Friendly nameplates', client .. ': the Friendly page')
 

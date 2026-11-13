@@ -5,8 +5,9 @@ local OB = st.OptionsBody
 	The layouts of SaftUI's options window (st.OptionsWindow,
 	optionswindow.lua) and the layout math that needs no frame: OW.LAYOUT,
 	the sidebar's width and entries, the body's layout (OB's, here for the
-	window's tests), and the window's height. It loads first of the window's
-	files (Config/load.xml), so it makes OW and OW.S.
+	window's tests), the window's height, and where a page's footer control
+	sits (OW.FooterPlace). It loads first of the window's files
+	(Config/load.xml), so it makes OW and OW.S.
 ]]
 
 local OW = {}
@@ -52,8 +53,8 @@ local CATEGORIES = { 'Frames', 'Combat', 'Info' } -- then any others, then Other
 	  navWidth               the sidebar's rows
 	  mainLeft, mainTop, mainRight, mainBottom
 	                         the main column, from the window's edges
-	  rightPad               the main column right of the content: the search
-	                         box's right and, under own, Close's
+	  rightPad               the main column right of the content: the body's
+	                         right and, under own, Close's
 	  bodyBottom             the body's bottom, up from the main column's
 	  bodyReach, fillReach   how far the body's scroll frame reaches past the
 	                         content, and on a fill page (PlaceBody)
@@ -143,6 +144,34 @@ function OW.SidebarEntries(pages)
 	return entries
 end
 
+------------------------------------------------------------------ the footer control
+
+-- How far a page's footer control (optionswindow.lua) keeps from edit mode's
+-- buttons: 12, as the footer's region keeps from Reload UI and Close.
+local FOOTER_GAP = 12
+
+--[[
+	Where a page's footer control sits in the footer's region (between Reload
+	UI and Close), regionWidth wide, whose left inset edit mode's buttons take
+	(OW:SetFooterInset; 0 without them). labelWidth is its label's, with the
+	gap after it; widgetsWidth its widgets', in a line. Returns the control's
+	left edge in the region, and whether its label shows:
+	  - centred, while that keeps it FOOTER_GAP clear of the buttons;
+	  - else at the region's right end, beside Close;
+	  - else, when even there it would come closer, at the right end without
+	    its label: the label goes first, and the widgets stay there, however
+	    close that brings them.
+	Whole pixels: the centre is rounded down.
+]]
+function OW.FooterPlace(regionWidth, inset, labelWidth, widgetsWidth)
+	local clear = inset > 0 and inset + FOOTER_GAP or 0
+	local full = labelWidth + widgetsWidth
+	local centred = floor((regionWidth - full) / 2)
+	if centred >= clear then return centred, true end
+	if regionWidth - full >= clear then return regionWidth - full, true end
+	return regionWidth - widgetsWidth, false
+end
+
 ------------------------------------------------------------------ the window's height
 
 --[[
@@ -189,4 +218,4 @@ end
 
 ------------------------------------------------------------------ for the later files
 
-S.ArtReach, S.Margins = ArtReach, Margins
+S.ArtReach, S.Margins, S.FOOTER_GAP = ArtReach, Margins, FOOTER_GAP

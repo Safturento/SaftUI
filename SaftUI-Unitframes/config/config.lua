@@ -297,8 +297,7 @@ end
 
 -- The units' order in /sui's unit picker (their keys are UF.unit_strings',
 -- UF.group_strings' and the nameplates'); the page opens on the first. A unit
--- not listed sorts after these, and the Profile group (a negative order)
--- after everything.
+-- not listed sorts after these.
 local UNIT_ORDER = {}
 for i, unit in ipairs({
 	'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss',
@@ -312,13 +311,13 @@ function UF:GetConfigTable()
 		name = 'Unitframes',
 		type = 'group',
 		category = 'Frames', -- the /sui sidebar's group (optionslayout.lua)
-		-- The units (and the Profile group) are the page's picker; each unit's
-		-- elements are its tabs.
+		-- The units are the page's picker; each unit's elements are its tabs.
 		childGroups = 'select',
 		pickerLabel = 'Unit',
-		args = {
-			profile = UF.GenerateProfileConfigGroup(),
-		}
+		-- The unit frame profile, in /sui's footer while the page is open
+		-- (SaftUI's footer field; config/profiles.lua).
+		footer = UF.GenerateProfileFooter(),
+		args = {},
 	}
 
 	local function GetUnitConfig(unit)

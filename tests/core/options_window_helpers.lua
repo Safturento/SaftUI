@@ -14,9 +14,10 @@
 -- of what is drawn (size_of, rgba), theme, and the pieces of the fill row
 -- page (FillRowsTable, FillRowsModule).
 --
--- hideTarget, ufProfile, ufPickerLabel and columns are the modules' state,
--- read when a page's table is built. They are globals, not locals, so a case
--- in any file that sets one (hideTarget = true) reaches the modules here.
+-- hideTarget, ufProfile, ufProfiles, ufManaged, ufPickerLabel and columns are
+-- the modules' state, read when a page's table is built. They are globals,
+-- not locals, so a case in any file that sets one (hideTarget = true) reaches
+-- the modules here.
 
 load_test_file('core/config_helpers.lua')
 local st = SaftUI
@@ -27,14 +28,17 @@ load_options_window()
 local OM, W, OW = st.OptionsModel, st.OptionsWidgets, st.OptionsWindow
 
 -- Unitframes' shape: childGroups = 'select' on the module (its units are the
--- picker), a profile group with a negative order, and units whose element
--- groups are tabs. Values live in uf, read and written at call time.
+-- picker), a footer control (SaftUI's footer field: the profile's dropdown and
+-- Manage), and units whose element groups are tabs. Values live in uf, read
+-- and written at call time.
 local uf = {
 	player = { enable = true, width = 200, power = { enable = true, height = 10 } },
 	target = { enable = true, width = 180, power = { enable = true, height = 8 } },
 }
 hideTarget = false
 ufProfile = 'Main'
+ufProfiles = { Main = 'Main', Alt = 'Alt' } -- the dropdown's values, read each time it's drawn
+ufManaged = 0 -- Manage's clicks
 ufPickerLabel = nil -- the page's pickerLabel, when a test sets one
 
 local function UnitTable(unit, name)
@@ -85,18 +89,23 @@ function UFM:GetConfigTable()
 		childGroups = 'select',
 		pickerLabel = ufPickerLabel,
 		category = 'Frames',
-		args = {
-			profile = {
-				order = -99, name = 'Profile', type = 'group',
-				args = {
-					current = {
-						order = 1, type = 'select', name = 'Profile', values = { Main = 'Main', Alt = 'Alt' },
-						-- As UF's real profile select does: its get notifies the registry.
-						get = function() st.Config:Refresh(); return ufProfile end,
-						set = function(_, value) ufProfile = value end,
-					},
+		footer = {
+			type = 'group', name = 'Unit frame profile',
+			args = {
+				current = {
+					order = 1, type = 'select', name = 'Profile', desc = 'The profile.',
+					values = function() return ufProfiles end,
+					-- As UF's real profile select does: its get notifies the registry.
+					get = function() st.Config:Refresh(); return ufProfile end,
+					set = function(_, value) ufProfile = value end,
+				},
+				manage = {
+					order = 2, type = 'execute', name = 'Manage', desc = 'Manages the profiles.',
+					func = function() ufManaged = ufManaged + 1 end,
 				},
 			},
+		},
+		args = {
 			player = UnitTable('player', 'Player'),
 			target = UnitTable('target', 'Target'),
 		},

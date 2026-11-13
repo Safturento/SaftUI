@@ -816,6 +816,43 @@ test("Search skips a disabled tab or subtab beside an enabled one, as a selectio
 		'the disabled tab and subtab beside enabled ones left out; a page all disabled and a disabled pick kept')
 end)
 
+test("a page's footer (SaftUI's field): BuildView hands it on; Search finds its options under its name, on a path that opens the page", function()
+	local root = unitframes_root()
+	local footer = group('Unit frame profile', {
+		current = opt('select', 'Profile', { order = 1, values = { Main = 'Main' } }),
+		manage = opt('execute', 'Manage', { order = 2, func = function() end }),
+		gone = opt('execute', 'Hidden one', { order = 3, hidden = true }),
+	})
+	root.Unitframes.footer = footer
+	eq(OM.BuildView(root, 'Unitframes').footer, footer, "the page's footer, as it is")
+	eq(OM.BuildView(root, 'Unitframes', { pick = 'target' }).footer, footer, 'whatever is picked')
+	root.Minimap = minimap_page()
+	eq(OM.BuildView(root, 'Minimap').footer, nil, 'none on a page without one')
+	root.Minimap.footer = 'junk'
+	eq(OM.BuildView(root, 'Minimap').footer, nil, 'nor one that is no table')
+	eq(#OM.Pages(root), 2, 'not a page itself')
+
+	local results = OM.Search(root, 'frame profile')
+	eq(paths(results), 'Unitframes.current,Unitframes.manage', "its options, under its name; the hidden one left out")
+	eq(results[1].tabName, 'Unit frame profile', 'named for the control')
+	eq(results[1].name, 'Profile', 'by their own names')
+	eq(paths(OM.Search(root, 'manage')), 'Unitframes.manage', 'and by name')
+	local pageKey, selection = OM.SelectionForPath(root, results[1].path)
+	eq(pageKey, 'Unitframes', "a result's path opens the page")
+	eq(selection.pick, nil, 'on its first pick')
+
+	-- Tagged as the footer's, so the window opens the page and nothing more: a
+	-- key that matches a child group's (here a unit's) can't open that pick.
+	check(results[1].footer and results[2].footer, "a footer's results are tagged")
+	root.Unitframes.footer.args.player = opt('execute', 'Player thing', { order = 4, func = function() end })
+	local clash = OM.Search(root, 'player thing')
+	eq(paths(clash), 'Unitframes.player', 'a footer option keyed like a unit')
+	check(clash[1].footer, 'tagged')
+	local _, wrong = OM.SelectionForPath(root, clash[1].path)
+	eq(wrong.pick, 'player', 'the model alone would take its path for that unit, which is why the tag matters')
+	check(OM.Search(root, 'enable')[1] and not OM.Search(root, 'enable')[1].footer, "a page's own results aren't tagged")
+end)
+
 ------------------------------------------------------------------ the real tree
 
 test('Experience on the real tree: the General page with its rows, then its Position option', function()

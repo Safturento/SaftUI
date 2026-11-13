@@ -334,12 +334,12 @@ test("Copy from lists a migrated profile's Theme and Background, not its old tem
 	player.theme, player.background, health.theme, health.background = unpack(kept)
 end)
 
-test('the unit picker lists the units in a fixed order, Player first, and Profile last', function()
+test('the unit picker lists the units in a fixed order, Player first, and no Profile (it is the footer control)', function()
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes')
 	local keys = {}
 	for i, entry in ipairs(view.picker.values) do keys[i] = entry.key end
-	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,friendlynameplate,profile',
-		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates, then Profile')
+	eq(table.concat(keys, ','), 'player,target,targettarget,focus,focustarget,pet,pettarget,boss,party,raid10,raid40,nameplate,friendlynameplate',
+		'Player, Target, TargetTarget, Focus, FocusTarget, Pet, PetTarget, Boss, Party, Raid 10, Raid 40, Enemy nameplates, Friendly nameplates')
 	eq(view.picker.selected, 'player', 'the page opens on Player')
 end)
 
@@ -351,6 +351,11 @@ test("the unit frames' table passes AceConfigRegistry validation, SaftUI's field
 		ace_ready({ name = st.name, type = 'group', args = { Unitframes = config } }), st.name)
 	check(ok, 'valid: ' .. tostring(err))
 	check(config.category ~= nil, 'the table itself keeps its category')
+	check(config.footer ~= nil, 'and its footer (SaftUI\'s field, which ace_ready leaves off)')
+	-- The footer control's options and the Unit frame profiles dialog's, as groups of their own.
+	ok, err = pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
+		ace_ready({ name = st.name, type = 'group', args = { footer = config.footer, dialog = UF.GenerateProfileConfigGroup() } }), st.name)
+	check(ok, 'the footer and the dialog valid: ' .. tostring(err))
 end)
 
 test("the unit frames' page: picker labelled Unit; boss has Layout with test mode; range alpha on the groups only", function()
@@ -429,14 +434,24 @@ test('every unit-level option has a tooltip and no Ace width', function()
 	local config = UF:GetConfigTable()
 	each_option(config, function(option, path)
 		-- The element tabs are the next task's.
-		if #path >= 2 and path[2] ~= 'general' and path[2] ~= 'copy' and path[1] ~= 'profile' then return end
+		if #path >= 2 and path[2] ~= 'general' and path[2] ~= 'copy' then return end
 		local where = table.concat(path, '.')
 		eq(option.width, nil, where .. ' has no width')
 		if option.type ~= 'group' and option.type ~= 'header' and option.type ~= 'description' then
 			check(type(option.desc) == 'string' and option.desc ~= '', where .. ' has a desc')
 		end
 	end)
-	eq(config.args.profile.args.new.size, 'small', 'Profile buttons are small')
+	-- The footer control's options and the Unit frame profiles dialog's.
+	for where, tree in pairs({ footer = config.footer, dialog = UF.GenerateProfileConfigGroup() }) do
+		local count = 0
+		each_option(tree, function(option, path)
+			count = count + 1
+			eq(option.width, nil, where .. '.' .. table.concat(path, '.') .. ' has no width')
+			check(type(option.desc) == 'string' and option.desc ~= '', where .. '.' .. table.concat(path, '.') .. ' has a desc')
+		end)
+		check(count > 1, where .. ': its options walked')
+	end
+	eq(UF.GenerateProfileConfigGroup().args.new.size, 'small', "the dialog's buttons are small")
 end)
 
 ------------------------------------------------------------------ the element tabs

@@ -14,6 +14,7 @@
 -- themselves.
 local H = load_test_file('core/options_window_helpers.lua')
 local st = SaftUI
+local OW = st.OptionsWindow
 local frames, theme, close_all, size_of, click = H.frames, H.theme, H.close_all, H.size_of, H.click
 local rgba = H.rgba
 
@@ -100,13 +101,13 @@ test("/sui's frames where they sit today, under Thick and Thin", function()
 		eq(F.window.backdropInfo.insets.left, name == 'thick' and 2 or 1, name .. ': the border')
 		eq(at(side), '2,2 208x696', name)
 		eq(at(brand), '2,2 207x73', name)
-		eq(at(F.actionsFrame), '2,75 207x44', name)
-		eq(at(F.navFrame), '2,120 207x547', name)
+		eq(at(F.actionsFrame), '2,75 207x76', name)
+		eq(at(F.navFrame), '2,152 207x515', name)
 		eq(at(F.profile:GetParent()), '2,668 207x30', name)
 		eq(at(F.main), '210,2 828x696', name)
 		eq(at(F.title):match('^%d+,%d+'), '238,22', name)
 		eq(at(F.close), '1000,14 24x24', name)
-		eq(at(F.search), '822,83 190x24', name)
+		eq(at(F.search), '14,85 182x24', name .. ': the search box in the sidebar, over the buttons')
 		eq(at(F.tabLine), '210,113 828x1', name)
 		eq(at(F.body), '238,113 774x539', name)
 		eq(at(F.reloadButton:GetParent()), '210,652 828x46', name)
@@ -234,7 +235,7 @@ test("the search box carries SearchBoxTemplate's art", function()
 	eq(atlases_of(box), 'common-search-border-left,common-search-border-middle,common-search-border-right,common-search-magnifyingglass',
 		"SearchBoxTemplate's border and magnifying glass")
 	art_inside(box, 'the search box')
-	eq(size_of(box), '190x24', 'it keeps its size')
+	eq(size_of(box), '182x24', 'it keeps its size')
 	local glass
 	for _, region in ipairs(shown_textures(box)) do
 		if region:GetAtlas() == 'common-search-magnifyingglass' then glass = region end
@@ -291,6 +292,51 @@ test("the footer's and the sidebar's buttons are panel buttons", function()
 		eq(rgba(button:GetBackdropBorderColor()), BOX.edge, 'Thick again: ' .. name .. "'s own edge")
 		check(button.outline:IsShown(), 'Thick again: ' .. name .. "'s dark line")
 	end
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the footer control is the options kit's own widgets, so it takes both looks", function()
+	theme('thick')
+	st.Config:Open('Unitframes', 'player', 'general')
+	local function pieces()
+		local w = frames().footerWidgets
+		return w[1], w[2]
+	end
+	-- How many of Blizzard's panel button pieces a button shows.
+	local function panel(button)
+		local n = 0
+		for _, region in ipairs(shown_textures(button)) do
+			local file = region:GetTexture()
+			if type(file) == 'string' and file:find('UI-Panel-Button-Up', 1, true) then n = n + 1 end
+		end
+		return n
+	end
+	local function centred(where)
+		local region, f = OW:GetFooter(), frames()
+		local left = f.footerLabel:GetLeft() - region:GetLeft()
+		local right = region:GetRight() - f.footerWidgets[2].frame:GetRight()
+		check(math.abs(left - right) <= 1, where .. ': centred between Reload UI and Close: ' .. left .. ' and ' .. right)
+	end
+	local dropdown, manage = pieces()
+	eq(atlases_of(dropdown.frame), '', 'Thick: the dropdown has no Blizzard art')
+	check(dropdown.frame.backdropInfo ~= nil and dropdown.frame.outline:IsShown(), 'Thick: its own box')
+	eq(panel(manage.frame), 0, 'Thick: Manage is no panel button')
+	check(manage.frame.backdropInfo ~= nil, 'Thick: its own box')
+	centred('Thick')
+
+	theme('blizzard')
+	dropdown, manage = pieces()
+	check(atlases_of(dropdown.frame):find('common-dropdown-c-button', 1, true) ~= nil, "Blizzard: the Settings dropdown")
+	eq(dropdown.frame.backdropInfo, nil, 'Blizzard: its own box off')
+	eq(panel(manage.frame), 3, "Blizzard: Manage is Blizzard's panel button")
+	centred('Blizzard, the footer across the window')
+
+	theme('thick')
+	dropdown, manage = pieces()
+	eq(atlases_of(dropdown.frame), '', 'Thick again: no Blizzard art')
+	eq(panel(manage.frame), 0, 'Thick again: no panel button')
+	centred('Thick again')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)

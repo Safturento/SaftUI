@@ -59,6 +59,11 @@ local st = SaftUI
 	read only while the row is disabled, else nil.
 	A position row sits in a section of its own, titled with its name; the
 	rows after it continue in an untitled one.
+
+	A page's group may carry a footer (SaftUI's own field, never in its args):
+	a group of options the window draws in its footer while the page is open,
+	its name as their one label (optionswindow.lua). BuildView hands it on as
+	view.footer, and Search finds its options as the page's.
 ]]
 
 local OM = {}
@@ -486,7 +491,8 @@ end
 	  tabs = { {key, name, desc, disabled} }, tab,
 	  subtabs = { ... }, subtab,
 	  picker = { name, values = { {key, name, desc, disabled} }, selected } or nil,
-	  sections = { { title, note, rows = { row } } } }
+	  sections = { { title, note, rows = { row } } },
+	  footer = the page group's footer (a table) or nil }
 	tabs and subtabs are empty when there are none. The picker's name is the
 	group's pickerLabel when it has one, else the name of the
 	group whose children it picks, as AceConfigDialog titles its dropdown.
@@ -504,6 +510,7 @@ function OM.BuildView(root, pageKey, selection)
 		tabs = {},
 		subtabs = {},
 		sections = {},
+		footer = type(page.footer) == 'table' and page.footer or nil,
 	}
 	local levels = Levels(options, page, pagePath, function(slot, list)
 		return Choose(list, selection[slot], slot ~= 'pick')
@@ -770,12 +777,15 @@ end
 --[[
 	Rows whose name, section title or tab title has text in it, ignoring
 	case, across every page, tab and pick:
-	{ {pageKey, path, name, tabName, sectionTitle} }. tabName is the tab and
+	{ {pageKey, path, name, tabName, sectionTitle, footer} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
 	aren't searched, nor descriptions, nor a tab a selection can't open (a
 	disabled one beside an enabled one: Choose). At most 100 results, by page
-	order.
+	order. A page's footer's options come after the page's own, under the
+	footer's name as their tabName, with footer = true; their path is the
+	page's key and theirs, which opens the page (and nothing more: a footer
+	result's path isn't one a selection can follow).
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -787,15 +797,16 @@ function OM.Search(root, text)
 		return type(value) == 'string' and value:lower():find(needle, 1, true) ~= nil
 	end
 
-	-- Adds group's matching rows; true once there are enough.
-	local function Collect(pageKey, group, path, deep, tabNames)
+	-- Adds group's matching rows; true once there are enough. within is the
+	-- tree its path is from (the root's, or a footer's own).
+	local function Collect(pageKey, group, path, deep, tabNames, within, footer)
 		local tabMatch = false
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
 		end
 		local tabName = #tabNames > 0 and tconcat(tabNames, ' > ') or nil
 		local sections = {}
-		Feed(sections, options, group, path, deep)
+		Feed(sections, within or options, group, path, deep)
 		for _, section in ipairs(sections) do
 			local sectionMatch = matches(section.title)
 			for _, row in ipairs(section.rows) do
@@ -806,6 +817,7 @@ function OM.Search(root, text)
 						name = row.name,
 						tabName = tabName,
 						sectionTitle = section.title,
+						footer = footer or nil,
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
@@ -817,6 +829,14 @@ function OM.Search(root, text)
 		local key = page.key
 		local pageOption, pagePath = options.args[key], { key }
 		if Collect(key, pageOption, pagePath, false, {}) then return results end
+		-- The page's footer: a tree of its own under the page's key, so a
+		-- result's path names the page.
+		local footer = pageOption.footer
+		if type(footer) == 'table' then
+			local within = Options({ [key] = footer })
+			local name = Text(GetMember('name', footer, within, pagePath))
+			if Collect(key, footer, pagePath, false, name ~= '' and { name } or {}, within, true) then return results end
+		end
 		local slot = SlotFor(2, nil, pageOption)
 		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do
 			local group, path = GetSubOption(pageOption, second.key), Append(pagePath, second.key)

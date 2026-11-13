@@ -430,6 +430,7 @@ end
 local function HideTip(frame, owner)
 	if GameTooltip:IsOwned(owner or frame) then GameTooltip:Hide() end
 end
+OB.ShowTip, OB.HideTip = ShowTip, HideTip -- the window's footer control shows its widgets' tips with them
 
 -- A custom type W.Define marked bare: no label, the widget across the line.
 local function IsBare(rowType)

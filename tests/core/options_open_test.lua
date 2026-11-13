@@ -170,8 +170,8 @@ test("Open({'Unitframes','player','general'}) selects the page, the picker value
 	eq(state.pick .. '/' .. state.tab, 'target/power', 'target, Power')
 	eq(drawn(), 'copy,enable,height,size', "Power's rows")
 
-	-- Picker values: the units, then the profile group (negative order sorts last).
-	eq(keys(OM.BuildView(OW:GetRoot(), 'Unitframes').picker.values), 'player,target,profile', 'picker entries')
+	-- Picker values: the units only (the profile is the page's footer control).
+	eq(keys(OM.BuildView(OW:GetRoot(), 'Unitframes').picker.values), 'player,target', 'picker entries')
 	close_all()
 end)
 
