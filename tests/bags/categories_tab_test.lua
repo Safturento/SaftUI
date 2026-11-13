@@ -540,7 +540,7 @@ end)
 
 test('the editor has its rows, each with a desc', function()
 	world()
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	INV:PinItem(301, 'Trade Goods')
 	local group = INV:CategoryEditorOptions('Trade Goods')
 	eq(group.type, 'group', 'a group')

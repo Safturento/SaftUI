@@ -10,8 +10,9 @@
 -- Not a test (no _test
 -- suffix), so the runner doesn't run it. Load it with
 -- `local T = load_test_file('lib/theme_helpers.lua')`, after load_core_helpers()
--- (or core/config_helpers.lua); it makes no globals, and its functions read SaftUI
--- when they run.
+-- (or core/config_helpers.lua); it makes no globals (T.old_names loads
+-- lib/options_walk.lua, which makes its own, when the world lacks them), and its
+-- functions read SaftUI when they run.
 local T = {}
 
 ------------------------------------------------------------------ clients
@@ -208,8 +209,10 @@ end
 -- listing one of them or an old template name as a choice or a value. A list of
 -- 'path: what', empty when there's none. Names and values that are functions
 -- are called as the options window calls them, with an info table of the path.
+-- It walks the tree with lib/options_walk.lua's each_option, loading that file
+-- when the world doesn't have it yet.
 function T.old_names(tree)
-	assert(each_option, 'load core/options_walk.lua first')
+	if not each_option then load_test_file('lib/options_walk.lua') end
 	local found = {}
 	local function note(path, what) found[#found + 1] = table.concat(path, '.') .. ': ' .. what end
 	local function resolve(value, path)
@@ -239,8 +242,7 @@ function T.old_names(tree)
 end
 
 -- Checks that nothing under tree (a group, e.g. a module's GetConfigTable())
--- offers what the old template picker did (T.old_names). Needs
--- core/options_walk.lua loaded.
+-- offers what the old template picker did (T.old_names).
 function T.check_no_old_names(tree, where)
 	eq(table.concat(T.old_names(tree), '; '), '', where .. ': no Template, Highlight, Close Button or old template name')
 end

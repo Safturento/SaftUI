@@ -53,7 +53,7 @@ local function fresh(client)
 		load_saftui('SaftUI-Core/constants.lua') -- st.forever follows the interface
 	end
 	load_test_file('core/config_helpers.lua')
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	st = SaftUI
 	drawn = T.watch()
 	load_saftui('SaftUI-Core/Utilities/utilities.lua')

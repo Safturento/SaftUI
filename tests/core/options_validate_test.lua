@@ -19,7 +19,7 @@
 -- stand-ins.
 
 load_test_file('core/config_helpers.lua')
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local st = SaftUI
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 

@@ -38,7 +38,7 @@
 --     profile's). The tag reads the unit through the stubbed unit API
 --     (stub.units).
 --
--- AceConfigRegistry validates ace_ready (tests/core/options_walk.lua) of the
+-- AceConfigRegistry validates ace_ready (tests/lib/options_walk.lua) of the
 -- table: a copy without SaftUI's own fields and Position options.
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
@@ -52,7 +52,7 @@ load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_options_window()
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 
 local st = SaftUI

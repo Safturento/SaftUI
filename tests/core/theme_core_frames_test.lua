@@ -703,7 +703,7 @@ end)
 
 test('no desc in /sui, nor the Theme and Background builders, has an arrow', function()
 	local st = fresh()
-	load_test_file('core/options_walk.lua')
+	load_test_file('lib/options_walk.lua')
 	local ARROW = '\226\134\146' -- U+2192, which SaftUI's fonts may not have
 	local found = {}
 	local function look(where, desc)

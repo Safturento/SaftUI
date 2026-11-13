@@ -4,7 +4,7 @@
 -- keybinding, description, position, the confirm dialog, custom types made with
 -- W.Define, the check list), the close button of SaftUI-Core/panels.lua
 -- (st:CreateCloseButton, st:CreateHeader), and ace_ready
--- (tests/core/options_walk.lua) leaving SaftUI's own types out.
+-- (tests/lib/options_walk.lua) leaving SaftUI's own types out.
 --
 -- Real: the model (optionsmodel.lua) the widgets read and write through, the
 -- widgets, panels.lua and the helpers it needs (config_helpers.lua, with a real
@@ -14,7 +14,7 @@
 -- (tests/wow/blizzard.lua).
 
 load_test_file('core/config_helpers.lua')
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua') -- st:StripTextures, which a header uses on a button that isn't SaftUI's
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')

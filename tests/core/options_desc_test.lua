@@ -9,7 +9,7 @@
 -- micro menu, whose tables build with no frames of their own made.
 
 load_test_file('core/config_helpers.lua')
-load_test_file('core/options_walk.lua')
+load_test_file('lib/options_walk.lua')
 local st = SaftUI
 
 CreateFrame('Frame', 'Minimap', UIParent) -- Blizzard's, which experience.lua and the minimap's files find

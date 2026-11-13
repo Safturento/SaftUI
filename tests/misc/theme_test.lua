@@ -17,7 +17,6 @@
 -- theme engine. Blizzard's frames are built as far as the skins read them, and
 -- locked (lib/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
-load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 local locked = load_test_file('lib/locked_widget.lua')

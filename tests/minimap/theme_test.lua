@@ -12,7 +12,6 @@
 -- micromenuart.lua, micromenuitems.lua, micromenuoptions.lua and
 -- microbuttons.lua, Core's helpers and the theme engine.
 load_core_helpers()
-load_test_file('core/options_walk.lua')
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap: SaftUI sizes and places it, and draws its panel behind it.

@@ -1,6 +1,6 @@
 -- Walking SaftUI's /sui option tables, for the tests that check every option
 -- of a tree. Not a test (no _test suffix), so the runner doesn't run it. A
--- test loads it with load_test_file('core/options_walk.lua'), which defines:
+-- test loads it with load_test_file('lib/options_walk.lua'), which defines:
 --
 --   each_option(tree, fn)  calls fn(option, path) for every option under tree
 --                          (a group: its args, their args, ...), groups
