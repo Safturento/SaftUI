@@ -69,6 +69,10 @@ function T.text(...)
 	return table.concat(out, ',')
 end
 
+-- A color's r, g and b as text, to two places: '1.00,0.50,0.00'. Anything
+-- after the third is left out, so it takes a getter's r, g, b, a whole.
+function T.rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+
 -- A drawn frame's background and border color, 'r,g,b,a'.
 function T.fill(f) return T.text(f:GetBackdropColor()) end
 function T.edge(f) return T.text(f:GetBackdropBorderColor()) end

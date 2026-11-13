@@ -30,6 +30,7 @@
 -- ForceUpdate only counts (Health.__forceUpdates). The threat, group and role
 -- API is tests/wow/game.lua's (stub.threat, stub.secret_threat, stub.group,
 -- stub.role, stub.tank_aura) and PlayerUtil blizzard.lua's (stub.spec_role).
+local T = load_test_file('lib/theme_helpers.lua')
 local NP = load_test_file('unitframes/nameplate_world.lua')
 local S = load_test_file('lib/secrets.lua')
 
@@ -58,7 +59,7 @@ end
 -- The game's threat list for unit changed.
 local function threat_changed(unit) stub.fire_event('UNIT_THREAT_LIST_UPDATE', unit) end
 
-local function rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+local rgb = T.rgb
 local function color(c) return rgb(c.r, c.g, c.b) end
 local function bar(frame) return rgb(frame.Health:GetStatusBarColor()) end
 local function forced(frame) return frame.Health.__forceUpdates or 0 end

@@ -94,7 +94,7 @@ local function aura_button(auras)
 	return button
 end
 
-local function rgb(r, g, b) return ('%.2f,%.2f,%.2f'):format(r, g, b) end
+local rgb = T.rgb
 local function color(c) return rgb(c.r, c.g, c.b) end
 local function bar(frame) return rgb(frame.Health:GetStatusBarColor()) end
 

@@ -27,6 +27,7 @@
 --     up, and a test shows one to play a boss appearing. The boss holder is
 --     OnEnable's, and SaftUI_Target is there because boss's default position
 --     is relative to it.
+local T = load_test_file('lib/theme_helpers.lua')
 load_core_helpers()
 load_saftui('SaftUI-Unitframes/config/default.lua')
 load_saftui('SaftUI-Unitframes/config/units/boss.lua')
@@ -111,9 +112,7 @@ local function rect(frame)
 	return string.format('%.2f,%.2f,%.2f,%.2f', left, bottom, width, height)
 end
 
-local function rgb(r, g, b)
-	return string.format('%.2f,%.2f,%.2f', r, g, b)
-end
+local rgb = T.rgb
 
 -- The boss page's General group (its set is the Layout options') and its
 -- Layout's Test mode toggle.
