@@ -22,7 +22,7 @@ local LookInput, LookWindow = Kit.LookInput, Kit.LookWindow
 -- shown it takes the keys in consumes ({ KEY = true }) and lets every other
 -- one go on to the game. act(key) runs on each key. Out of combat only, as
 -- SetPropagateKeyboardInput is protected in it.
-function W.CatchKeys(catcher, consumes, act)
+local function CatchKeys(catcher, consumes, act)
 	catcher:SetScript('OnKeyDown', function(self, key)
 		if not InCombatLockdown() then self:SetPropagateKeyboardInput(not consumes[key]) end
 		act(key)
@@ -132,7 +132,7 @@ local function BuildDialog()
 	no:SetPoint('BOTTOMLEFT', frame, 'BOTTOM', 6, 14)
 
 	catcher:SetScript('OnMouseDown', function() Answer(false) end)
-	W.CatchKeys(catcher, { ESCAPE = true, ENTER = true }, function(key)
+	CatchKeys(catcher, { ESCAPE = true, ENTER = true }, function(key)
 		if key == 'ESCAPE' then Answer(false) elseif key == 'ENTER' then Answer(true) end
 	end)
 
@@ -240,3 +240,4 @@ function W.GetDialogFrames() return dialog end
 ------------------------------------------------------------------ for the later widget files
 
 Kit.CountLines = CountLines
+Kit.CatchKeys = CatchKeys

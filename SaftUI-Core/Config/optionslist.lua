@@ -15,7 +15,7 @@ local LIST_STRATA = Kit.LIST_STRATA
 local BG, EDGE, Colors, FIELD_FONT_SIZE = Kit.BG, Kit.EDGE, Kit.Colors, Kit.FIELD_FONT_SIZE
 local SetFieldFont, NewText, Art, Changes = Kit.SetFieldFont, Kit.NewText, Kit.Art, Kit.Changes
 local ShowBox, PaintFace, CheckBox, LookCheckBox = Kit.ShowBox, Kit.PaintFace, Kit.CheckBox, Kit.LookCheckBox
-local SetCheck = Kit.SetCheck
+local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
 
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
 local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
@@ -204,7 +204,7 @@ local function BuildList()
 	end)
 	catcher:SetScript('OnMouseDown', W.CloseList)
 	-- Esc closes the list; every other key goes on to the game.
-	W.CatchKeys(catcher, { ESCAPE = true }, function(key)
+	CatchKeys(catcher, { ESCAPE = true }, function(key)
 		if key == 'ESCAPE' then W.CloseList() end
 	end)
 end
