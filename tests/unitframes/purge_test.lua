@@ -1,4 +1,4 @@
--- "Only buffs I can purge" (SaftUI-Unitframes/purge.lua and elements/auras.lua):
+-- "Only buffs I can purge" (SaftUI-Unitframes/aurafilters.lua and elements/auras.lua):
 --   - the purge table: each class's purge, dispel and steal spells per client,
 --     with what each removes (Magic, Enrage, stealable);
 --   - the spells the player knows, through C_SpellBook.IsSpellKnown (a pet's in
@@ -13,11 +13,13 @@
 --
 -- The world is theme_test.lua's (see its top), made fresh on each client
 -- (world): real Core and its defaults, the unit frames' defaults (every
--- unit's), unitframes.lua, groups.lua, config/config.lua, constructors.lua,
--- updaters.lua, purge.lua and the elements; oUF stood in for by its colors
--- table, and a unit frame by a SaftUI button with UF.ConstructUnit's fields
--- and the elements a test names, built by their own constructors
--- (make_unit_frame).
+-- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua), config/profiles.lua,
+-- config/groupoptions.lua, config/config.lua, constructors.lua, updaters.lua,
+-- aurafilters.lua, the elements and nameplates/options.lua; oUF stood in for
+-- by its colors table, and a unit frame by a SaftUI button with
+-- UF.ConstructUnit's fields and the elements a test names, built by their own
+-- constructors (make_unit_frame).
 --
 -- Stand-in, for what needs oUF: the aura container (frame:CreateAuras). oUF's
 -- CreateAuras makes a Blizzard AuraContainer; here a plain frame with the
@@ -51,13 +53,14 @@ local function world(client)
 			roles = {}, runes = {},
 		},
 	}
-	-- The TOC's order: purge.lua after tags.lua, before the elements.
-	for _, file in ipairs({ 'unitframes', 'groups', 'config/config', 'constructors', 'updaters', 'purge' }) do
+	-- The TOC's order: aurafilters.lua after tags.lua, before the elements.
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters', 'aurafilters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, file in ipairs(ELEMENTS) do
 		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 	end
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	UF = st:GetModule('Unitframes')
@@ -188,7 +191,7 @@ test('the purge table: each spell has an ID and what it removes, by class, on ea
 end)
 
 -- Every spell verified against wago.tools at Forever 1.60.1.70888 and retail
--- 12.1.5.70783 (purge.lua's comment): 'CLASS id removes[ pet]', what it
+-- 12.1.5.70783 (aurafilters.lua's comment): 'CLASS id removes[ pet]', what it
 -- removes sorted.
 local VERIFIED = {
 	forever = {
@@ -255,7 +258,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	-- An enrage (dispel type 9, Frenzy on Forever) is matched as 'Enrage' and
 	-- as '', on both clients: the type had no internal name on either until
 	-- retail's 12.1, and an aura with such a type most likely reports '' as its
-	-- dispelName (purge.lua).
+	-- dispelName (aurafilters.lua).
 	test(client .. ": a hunter's Tranquilizing Shot", function()
 		world(client)
 		local frame = make_unit_frame('SaftUI_PurgeHunter', 'target', { 'Buffs' })

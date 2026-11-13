@@ -27,12 +27,14 @@
 --
 -- The world is theme_test.lua's (see its top), made fresh on each client
 -- (world): real Core and its defaults, the unit frames' defaults (every
--- unit's), unitframes.lua, groups.lua, config/config.lua, constructors.lua,
--- updaters.lua and the bar and aura elements; oUF stood in for by its colors
--- table, and a unit frame by a SaftUI button with UF.ConstructUnit's fields
--- and the elements a test names, built by their own constructors
--- (make_unit_frame). The draw calls are watched (T.watch), since the kind
--- changes nothing under Thick and Thin.
+-- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua), config/profiles.lua,
+-- config/groupoptions.lua, config/config.lua, constructors.lua, updaters.lua
+-- and the bar and aura elements, and nameplates/options.lua; oUF stood in for
+-- by its colors table, and a unit frame by a SaftUI button with
+-- UF.ConstructUnit's fields and the elements a test names, built by their own
+-- constructors (make_unit_frame). The draw calls are watched (T.watch), since
+-- the kind changes nothing under Thick and Thin.
 local T = load_test_file('lib/theme_helpers.lua')
 
 local st, UF, P, drawn
@@ -56,12 +58,13 @@ local function world(client, theme)
 			roles = {}, runes = {},
 		},
 	}
-	for _, file in ipairs({ 'unitframes', 'groups', 'config/config', 'constructors', 'updaters' }) do
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, file in ipairs(ELEMENTS) do
 		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 	end
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	UF = st:GetModule('Unitframes')
@@ -469,7 +472,7 @@ end)
 
 ------------------------------------------------------------------ previews
 
--- Each part a preview has (groups.lua's CreatePreviewFrame) as
+-- Each part a preview has (grouppreview.lua's CreatePreviewFrame) as
 -- 'part: how it was drawn; how it looks'.
 local PREVIEW_PARTS = { 'Health', 'Power', 'GroupRoleIndicator' }
 local function picture(frame)

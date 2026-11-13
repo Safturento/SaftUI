@@ -1,22 +1,6 @@
 local st = SaftUI
 local UF = st:GetModule('Unitframes')
 
--- oUF calls this after it recolors the bar (see power.lua's PostUpdateColor).
-local function PostUpdateColor(power, color, r, g, b)
-	if power.config.colorCustom then
-		r, g, b = UF.UnpackColor(power.config.customColor)
-		power:SetStatusBarColor(r, g, b)
-		UF.SetPowerBackgroundColor(power, r, g, b)
-		return
-	end
-	if color then
-		r, g, b = color:GetRGB()
-	end
-	if r and g and b then
-		UF.SetPowerBackgroundColor(power, r, g, b)
-	end
-end
-
 -- The bar always shows mana, so a secret percent is mana's.
 local function PostUpdate(additionalPower, curr, max)
 	local config = additionalPower.config.text
@@ -52,7 +36,8 @@ local function Constructor(self)
     UF:AddText(self, additionalPower)
 	additionalPower.PostVisibility = PostVisibility
 	additionalPower.PostUpdate = PostUpdate
-	additionalPower.PostUpdateColor = PostUpdateColor
+	-- oUF calls it after it recolors the bar (updaters.lua).
+	additionalPower.PostUpdateColor = UF.PostUpdatePowerColor
 
 	return additionalPower
 end
