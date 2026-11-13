@@ -47,11 +47,7 @@ local st, INV, drawn
 
 -- client is 'forever' (the default) or 'retail'.
 local function fresh(client)
-	reset_world()
-	if client == 'retail' then
-		stub.interface = 120000
-		load_saftui('SaftUI-Core/constants.lua') -- st.forever follows the interface
-	end
+	use_client(client or 'forever')
 	load_test_file('core/config_helpers.lua')
 	load_test_file('lib/options_walk.lua')
 	st = SaftUI

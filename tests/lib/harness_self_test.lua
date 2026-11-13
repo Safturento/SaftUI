@@ -805,3 +805,20 @@ test('SetPoint finds a loop through an anchor that was cleared, and refuses noth
 	ok = pcall(x.SetPoint, x, 'CENTER', y)
 	eq(ok, true, 'no loop once y is not anchored to x')
 end)
+
+test("use_client gives a fresh world on each client, without the globals that client lacks", function()
+	local st = use_client('retail')
+	check(not st.forever, 'retail: st.forever off')
+	eq(select(4, GetBuildInfo()), 120000, "retail: the game's interface")
+	eq(UnitHasEffectivelyTankAura, nil, "retail: Forever's tank aura check is gone")
+	st.marked = true
+
+	st = use_client('forever')
+	check(st.forever, 'forever: st.forever on')
+	eq(select(4, GetBuildInfo()), 16001, "forever: the game's interface")
+	eq(type(UnitHasEffectivelyTankAura), 'function', 'forever: it has the tank aura check')
+	eq(st.marked, nil, 'a fresh world: SaftUI is made again')
+
+	check(not pcall(use_client, 'classic'), 'a client that is neither is an error')
+	reset_world()
+end)

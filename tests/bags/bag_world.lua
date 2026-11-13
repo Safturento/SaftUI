@@ -37,10 +37,7 @@ local W = {}
 function W.fresh(client, core)
 	client = client or 'forever'
 	W.client = client
-	reset_world()
-	stub.interface = client == 'retail' and 120000 or 16001
-	-- constants.lua reads the interface when it loads, so load it again.
-	load_saftui('SaftUI-Core/constants.lua')
+	use_client(client)
 	if client == 'forever' then
 		-- Forever has no reagent bag. (The stubbed enum is retail's.)
 		Enum.BagIndex.ReagentBag = nil

@@ -25,6 +25,7 @@
 	                          in the game's order; options_widget_files() lists them
 	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
 	                          in the game's order; options_window_files() lists them
+	  use_client(name)        a fresh world on 'forever' or 'retail'
 ]]
 
 local function pack(...)
@@ -478,6 +479,28 @@ function remove_shell_config()
 		end
 	end
 	st.Config = nil
+end
+
+-- The interface each client a world can be on reports (GetBuildInfo).
+local CLIENT_INTERFACES = { forever = 16001, retail = 120000 }
+
+-- A fresh world on one client, 'forever' or 'retail': reset_world(), then
+-- stub.interface set to the client's, the globals that client lacks dropped
+-- (stub.apply_client, tests/wow/game.lua) and Core's constants.lua run again
+-- (it reads the interface when it loads, so st.forever follows). Returns
+-- SaftUI. Everything else is as reset_world() leaves it, so a file can switch
+-- clients between cases; the caller loads the rest of its world after it
+-- (load_core_helpers(), or core/config_helpers.lua for the real AceDB).
+function use_client(name)
+	local interface = CLIENT_INTERFACES[name]
+	if not interface then
+		error(("use_client: no client '%s' (forever or retail)"):format(tostring(name)), 2)
+	end
+	reset_world()
+	stub.interface = interface
+	stub.apply_client()
+	load_saftui('SaftUI-Core/constants.lua')
+	return SaftUI
 end
 
 -- What init.lua's OnEnable does: SaftUI's pixel-perfect scale, one UIParent
