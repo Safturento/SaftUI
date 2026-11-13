@@ -11,6 +11,7 @@
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI
+local W = st.OptionsWidgets
 local range, bind, opt, check_no_box, shown_textures = H.range, H.bind, H.opt, H.check_no_box, H.shown_textures
 local check_box, parent, rebind, art_inside, theme = H.check_box, H.parent, H.rebind, H.art_inside, H.theme
 local INPUT_ART, atlases_of, inside, size_of, anchor = H.INPUT_ART, H.atlases_of, H.inside, H.size_of, H.anchor
@@ -56,20 +57,51 @@ test('range: the track is drawn on the slider under its knob, so no frame level 
 	w:Release()
 end)
 
--- The caret's rows are 7, 5, 3 and 1 wide. Placed by their centre, an odd width
--- starts half a pixel off and blurs; each is placed by its left edge instead.
-test("select: the caret's rows sit on whole pixels", function()
+-- The caret is Lucide's chevron-down, 16 px square. An even size on a whole-pixel
+-- centre keeps its edges on whole pixels, so it doesn't blur.
+test("select: the caret is a chevron-down texture on whole pixels", function()
 	local w = bind('select', 'pick', opt('select', 'Pick', { values = { a = 'Alpha' }, get = function() return 'a' end, set = function() end }))
-	local rows = 0
-	for _, region in ipairs({ w.frame:GetRegions() }) do
-		if region.GetHeight and region:GetObjectType() == 'Texture' and region:GetHeight() == 1 and region:GetWidth() % 2 == 1 then
-			rows = rows + 1
-			local point, _, _, x = region:GetPoint(1)
-			check(point == 'TOPLEFT' or point == 'LEFT' or point == 'BOTTOMLEFT', 'a caret row is placed by its left edge, not ' .. tostring(point))
-			eq(x, math.floor(x), 'at a whole x')
-		end
+	eq(#w.frame.caret, 1, 'one caret texture')
+	local caret = w.frame.caret[1]
+	eq(caret:GetTexture(), st.icons.chevronDown, "Lucide's chevron-down")
+	eq(caret:GetWidth(), 16); eq(caret:GetHeight(), 16)
+	local point, relative, relPoint, x, y = caret:GetPoint(1)
+	eq(point, 'CENTER'); eq(relative, w.frame); eq(relPoint, 'RIGHT')
+	eq(x, math.floor(x), 'at a whole x'); eq(y, math.floor(y), 'and a whole y')
+	eq(caret:GetWidth() % 2, 0, 'an even size')
+end)
+
+-- Today's caret colour, in every state: the colour of grey text, never changed by
+-- the mouse, an open list or the select being disabled.
+test("select: the caret stays grey at rest, hovered, open and disabled", function()
+	local w = bind('select', 'pick', opt('select', 'Pick', { values = { a = 'Alpha' }, get = function() return 'a' end, set = function() end }))
+	local grey = st.config.profile.colors.text.grey
+	local caret = w.frame.caret[1]
+	local function is_grey(state)
+		local r, g, b = caret:GetVertexColor()
+		eq(r, grey.r, state .. ': r'); eq(g, grey.g, state .. ': g'); eq(b, grey.b, state .. ': b')
+		check(caret:IsShown(), state .. ': shown')
 	end
-	eq(rows, 4, 'four caret rows')
+	is_grey('rest')
+	stub.fire_script(w.frame, 'OnEnter'); is_grey('hover')
+	stub.fire_script(w.frame, 'OnLeave')
+	click(w.frame); eq(W.ListOwner(), w.frame, 'the list is open'); is_grey('open')
+	W.CloseList()
+	w:SetDisabled(true); is_grey('disabled')
+	w:SetDisabled(false)
+end)
+
+-- Blizzard's look keeps Blizzard's arrow (the face's own): no chevron of SaftUI's,
+-- and Thick brings it back.
+test("select: the caret is hidden under Blizzard and back under Thick", function()
+	theme('thick')
+	local w = bind('select', 'pick', opt('select', 'Pick', { values = { a = 'Alpha' }, get = function() return 'a' end, set = function() end }))
+	check(w.frame.caret[1]:IsShown(), 'Thick: the chevron')
+	theme('blizzard'); rebind(w)
+	check(not w.frame.caret[1]:IsShown(), 'Blizzard: hidden')
+	theme('thick'); rebind(w)
+	check(w.frame.caret[1]:IsShown(), 'Thick again: the chevron')
+	eq(w.frame.caret[1]:GetTexture(), st.icons.chevronDown, 'still the chevron')
 end)
 
 test('range: dragging snaps to bigStep, else step', function()

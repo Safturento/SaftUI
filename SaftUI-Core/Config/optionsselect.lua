@@ -7,7 +7,7 @@ local Kit = W.Kit
 	optionswidgets.lua). A select opens the select list (optionslist.lua).
 ]]
 
-local floor, max, ceil = math.floor, math.max, math.ceil
+local max, ceil = math.max, math.ceil
 
 local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.BlizzardLook
 local DropdownStates, LookDropdown = W.DropdownStates, W.LookDropdown
@@ -19,20 +19,18 @@ local SetCheck = Kit.SetCheck
 
 ------------------------------------------------------------------ select
 
--- A box that shows its choice and opens the list. The caret is four rows of
--- pixels, 7, 5, 3 and 1 wide, each placed by its left edge on a whole pixel
--- around one centre: placed by their centre, the odd widths would start half a
--- pixel off and blur. Returns the rows (hidden under Blizzard, LookDropdown).
+-- A box that shows its choice and opens the list. The caret is Lucide's
+-- chevron-down, grey in every state (a list that opens doesn't flip it): a
+-- 16 px texture holding an 8 x 4 chevron, centred 12 from the box's right edge
+-- (an even size on a whole-pixel centre, so its edges are whole pixels).
+-- Returns it in a list (hidden under Blizzard, LookDropdown).
 local function Caret(parent)
-	local carets = {}
-	for i, width in ipairs({ 7, 5, 3, 1 }) do
-		local t = parent:CreateTexture(nil, 'OVERLAY')
-		t:SetColorTexture(Colors().text.grey:GetRGB())
-		t:SetSize(width, 1)
-		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
-		carets[i] = t
-	end
-	return carets
+	local t = parent:CreateTexture(nil, 'OVERLAY')
+	t:SetTexture(st.icons.chevronDown)
+	t:SetVertexColor(Colors().text.grey:GetRGB())
+	t:SetSize(16, 16)
+	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
+	return { t }
 end
 
 -- Whether a select's row is a font list (LibSharedMedia's LSM30_Font):

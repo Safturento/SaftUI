@@ -345,9 +345,8 @@ function st:CreateCloseButton(frame)
 	close.outline = outline
 
 	local x = close:CreateTexture(nil, 'OVERLAY')
-	x:SetTexture(self.textures.close)
-	x:SetTexCoord(unpack(self.CLOSE_X_COORDS))
-	x:SetSize(10, 10)
+	x:SetTexture(self.icons.x)
+	x:SetSize(20, 20) -- Lucide's x is a 10 px cross in the middle of its 20
 	x:SetPoint('CENTER', 0, 0)
 	close.icon = x
 
