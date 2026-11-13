@@ -8,7 +8,9 @@ config.lua
 init.lua
 options.lua
 popup.lua
+rollbar.lua
 roll.lua
+rolltest.lua
 rollinfo.lua
 
 Feed/icons.lua
