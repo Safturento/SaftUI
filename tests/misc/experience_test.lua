@@ -1,13 +1,16 @@
 -- SaftUI-Misc/experience.lua: the XP bar's frame levels (backdrop below the
 -- rested part below the fill), the Experience and Rested color options, and the
 -- bars drawn as bars in the page's Theme and Background.
--- Migrated from the xpsim harness. The config is Core's real defaults, and
--- the frames come from Core's real helpers (st:SetBackdrop and the rest).
+-- Migrated from the xpsim harness. The config is Core's and Misc's real
+-- defaults (SaftUI-Misc/config.lua has the bars'), and the frames come from
+-- Core's real helpers (st:SetBackdrop and the rest).
 load_core_helpers()
+load_saftui('SaftUI-Misc/config.lua')
+apply_defaults()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 -- Blizzard's minimap, which the bar's default position anchors to (the profile
--- has Core's real defaults).
+-- has the real defaults).
 CreateFrame('Frame', 'Minimap', UIParent)
 for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
 	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order; the bar registers a mover

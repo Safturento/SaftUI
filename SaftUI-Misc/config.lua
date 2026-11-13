@@ -1,13 +1,22 @@
 local st = SaftUI
 
--- The experience bars' default spot, in the named position shape (Core's default
--- is an array). Same spot: under the minimap, right edges lined up.
-st.defaults.experience.position = {
-	point = 'TOPRIGHT',
-	frame = 'Minimap',
-	rel_point = 'BOTTOMRIGHT',
-	x_off = 0,
-	y_off = -7,
+-- The experience and reputation bars (experience.lua). position is under the
+-- minimap, right edges lined up; a profile that saved it as an array has it
+-- converted by XP:MigratePosition.
+st.defaults.experience = {
+	width = 250, -- the minimap's default size
+	height = 13,
+	spacing = 8,
+	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
+	theme = 'theme',
+	background = 'theme',
+	position = {
+		point = 'TOPRIGHT',
+		frame = 'Minimap',
+		rel_point = 'BOTTOMRIGHT',
+		x_off = 0,
+		y_off = -7,
+	},
 }
 
 -- position is the default tooltip's edit mode holder (tooltipposition.lua). The
