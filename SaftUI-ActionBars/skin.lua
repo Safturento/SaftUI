@@ -8,7 +8,8 @@ local LAB = LibStub('LibActionButton-1.0')
 	regions and children belong to SaftUI too (.agents/taint.md rule 1). The pet
 	and stance bars' buttons (buttons.lua) are made from the same templates and
 	take the same config table (GetButtonConfig), so everything here applies to
-	them too.
+	them too. Every value comes from the bar's effective config (AB:GetBarConfig,
+	shared.lua), which StyleBar and GetButtonConfig take.
 
 	  - The button's size is its whole footprint. Its backdrop, drawn with the
 	    action bars' Theme and Background as an action button, fills it, and the
@@ -201,7 +202,8 @@ local function TextWidth(text, size, inset)
 	return math.min(width, inside)
 end
 
--- The LibActionButton config of button i on bar id, from the profile. The pet
+-- The LibActionButton config of button i on bar id, from the bar's resolved
+-- config (AB:GetBarConfig, built when none is passed). The pet
 -- and stance buttons take it too (buttons.lua), and use its text, hideElements,
 -- keyBoundTarget, showGrid, colors and tooltip settings.
 --   - keyBoundTarget is the Blizzard binding command whose keys the button takes,
@@ -212,8 +214,8 @@ end
 --   - cooldownCount is left unset: the numbers follow the countdownForCooldowns
 --     CVar, and LibActionButton shows or hides them on its CVAR_UPDATE.
 --   - Flyouts open upwards from rows and to the left from columns.
-function AB:GetButtonConfig(id, i)
-	local config = self.config[id]
+function AB:GetButtonConfig(id, i, config)
+	config = config or self:GetBarConfig(id)
 	local text = config.text
 	return {
 		outOfRangeColoring = 'button',
@@ -467,10 +469,10 @@ end
 function AB:StyleBar(id)
 	local bar = self.bars[id]
 	if not bar then return end
-	local config = self.config[id]
+	local config = self:GetBarConfig(id)
 	local theme, background = self.config.theme, self.config.background
 	for i, button in ipairs(bar.buttons) do
-		button:UpdateConfig(self:GetButtonConfig(id, i))
+		button:UpdateConfig(self:GetButtonConfig(id, i, config))
 		self:StyleButton(button, config, theme, background)
 	end
 end

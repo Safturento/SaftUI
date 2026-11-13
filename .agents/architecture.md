@@ -31,6 +31,7 @@ covers:
   - 'SaftUI-Minimap/micromenuart.lua'
   - 'SaftUI-Minimap/micromenuitems.lua'
   - 'SaftUI-Minimap/micromenuoptions.lua'
+  - 'SaftUI-ActionBars/shared.lua'
 ---
 
 # Architecture
@@ -98,6 +99,7 @@ SaftUI draws its frames in one theme, Thick, Thin or Blizzard, set on Global Set
   In combat, protected work is deferred with `st:SafeReposition` / `st:QueueAfterCombat`, and one chat message says what will finish after combat.
 - **Every module needs an `UpdateConfig`** that re-reads the profile and re-applies everything it controls (positions, sizes, its Theme and Background, fonts, colors, visibility). It must be idempotent: never create frames, font strings or hooks on each call. Create once, re-style on every call. Settings that genuinely can't apply live (module on/off toggles, secure header attributes) say "reload to apply" in their option description.
 - Position config shape: `{ point, frame, rel_point, x_off, y_off }`, unpacked with `st:UnpackPoint`. Some older code used array positions (`{'BOTTOMRIGHT', -20, 20}`). Modules that converted (Bags, Chat, Experience) migrate saved arrays in place on enable and on profile change, filling missing slots from the old array defaults, because AceDB only saves slots that differ from the default.
+- **A module that converts its profile once** keeps a marker inside its own profile table, so a profile copy carries it and a reset clears it, and converts in `OnEnable` right after `st:BindModuleConfig` and first thing in `UpdateConfig` (a profile switched to, copied or reset, in combat too: table writes only, before any combat queue), so the next layout reads the converted profile. The bags' categories (`INV:MigrateCategories`, `categories.version`) do; so do the action bars: `actionbars.version = 1` (no default) marks a profile converted to All bars (`actionbars.all`) and per-bar own flags (`<bar>.own`), by `AB:ConvertProfile` in `SaftUI-ActionBars/shared.lua`. Every action bar reader takes `AB:GetBarConfig(id)`, never a bar's stored values, as a bar follows All bars for each setting it doesn't own.
 
 ## Bag categories
 

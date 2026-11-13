@@ -99,7 +99,7 @@ end
 -- off, nothing to show, only in combat, or faded.
 function AB:UpdateMoverLabel(id)
 	local mover = self.movers[id]
-	local config = self.config[id]
+	local config = self.config[id] and self:GetBarConfig(id)
 	if not (mover and mover.label and config) then return end
 	local state
 	if not config.enable then
@@ -167,10 +167,6 @@ local TEXT_DESCS = {
 local COUNTDOWN_NOTE = "Cooldown numbers, at the top of this page, shows or hides them on every bar (Blizzard's own setting)."
 local COUNTDOWN_UNSET = " Until set here, Pixel Med's on buttons of 36px and up and Pixel's below (Global Settings > Fonts)."
 
--- What the cooldown numbers' Reset puts back: their place, from the bar's
--- defaults, while their font, size and outline go back to unset.
-local COUNTDOWN_PLACE = { 'point', 'rel_point', 'x_off', 'y_off' }
-
 -- One text's options (hotkey, count, macro name or cooldown numbers), a box in
 -- the Text tab. Its Position block has no TO part: the text sits inside its
 -- own button. It reads and writes the text's point, rel_point, x_off and y_off,
@@ -185,9 +181,9 @@ function AB:GetTextOptions(id, kind, name, order)
 		type = 'group',
 		inline = true,
 		order = order,
-		get = function(info) return self.config[id].text[kind][info[#info]] end,
+		get = function(info) return self:GetSetting(id, kind .. '.' .. info[#info]) end,
 		set = function(info, value)
-			self.config[id].text[kind][info[#info]] = value
+			self:SetSetting(id, kind .. '.' .. info[#info], value)
 			self:UpdateBar(id)
 		end,
 		args = {
@@ -209,9 +205,9 @@ function AB:GetTextOptions(id, kind, name, order)
 				values = st:GetModule('Fonts').outlines,
 			},
 			position = generators.position(5, false,
-				function(key) return self.config[id].text[kind][key] end,
+				function(key) return self:GetSetting(id, kind .. '.position', key) end,
 				function(key, value)
-					self.config[id].text[kind][key] = value
+					self:SetSetting(id, kind .. '.position', value, key)
 					self:UpdateBar(id)
 				end,
 				nil,
@@ -228,7 +224,7 @@ function AB:GetTextOptions(id, kind, name, order)
 		end
 		options.args.position.desc = 'Where the cooldown numbers sit on the button: the point of the numbers that is anchored (THIS), the point of the button it is anchored to (AT ITS), and how far they are moved from there.'
 		options.get = function(info)
-			local font, size, outline = self:GetCountdownFont(self.config[id])
+			local font, size, outline = self:GetCountdownFont(self:GetBarConfig(id))
 			return ({ font = font, size = size, outline = outline })[info[#info]]
 		end
 		options.args.reset = {
@@ -240,12 +236,7 @@ function AB:GetTextOptions(id, kind, name, order)
 			confirm = true,
 			confirmText = ("Reset %s's cooldown numbers to SaftUI's defaults?"):format(self:GetBarLabel(id)),
 			func = function()
-				local countdown = self.config[id].text.countdown
-				countdown.font, countdown.size, countdown.outline = nil, nil, nil
-				local default = st.defaults.actionbars[id].text.countdown
-				for _, key in ipairs(COUNTDOWN_PLACE) do
-					countdown[key] = default[key]
-				end
+				self:ResetCountdown(id)
 				self:UpdateBar(id)
 			end,
 		}
@@ -271,9 +262,23 @@ function AB:GetBarOptions(id, order)
 	end
 
 	-- Options of the bar's own table (General and Visibility).
-	local get = function(info) return self.config[id][info[#info]] end
+	-- Enable is the bar's own; the rest are shared settings (shared.lua), and a
+	-- change on a bar makes the setting the bar's own. Buttons and Buttons per
+	-- row show no more than the bar has, as a bar following All bars' 12 does.
+	local get = function(info)
+		local key = info[#info]
+		if key == 'enable' then return self.config[id].enable end
+		local value = self:GetSetting(id, key)
+		if key == 'buttons' or key == 'perrow' then return math.min(value, numButtons) end
+		return value
+	end
 	local set = function(info, value)
-		self.config[id][info[#info]] = value
+		local key = info[#info]
+		if key == 'enable' then
+			self.config[id].enable = value
+		else
+			self:SetSetting(id, key, value)
+		end
 		self:UpdateBar(id)
 	end
 
@@ -306,7 +311,7 @@ function AB:GetBarOptions(id, order)
 
 	local fade = generators.range(2, 'Faded opacity', 0, 1, 0.05,
 		"How visible the bar is while the mouse isn't over it.")
-	fade.hidden = function() return self.config[id].visibility ~= 'mouseover' end
+	fade.hidden = function() return self:GetSetting(id, 'visibility') ~= 'mouseover' end
 
 	return {
 		name = self:GetBarLabel(id),

@@ -268,6 +268,7 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 	local calls = {}
 	local function count(name) return function(_, id) calls[#calls + 1] = name .. (id and (':' .. id) or '') end end
 	AB.UpdateBar, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = count('UpdateBar'), count('LayoutBar'), count('LayoutExtra'), count('UpdateConfig')
+	load_saftui('SaftUI-ActionBars/shared.lua')
 	load_saftui('SaftUI-ActionBars/options.lua')
 
 	local tree = AB:GetConfigTable()

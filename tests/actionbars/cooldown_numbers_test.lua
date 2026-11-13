@@ -47,6 +47,7 @@ local CVAR = 'countdownForCooldowns'
 
 local FILES = {
 	'SaftUI-ActionBars/init.lua',
+	'SaftUI-ActionBars/shared.lua',
 	'SaftUI-ActionBars/skin.lua',
 	'SaftUI-ActionBars/bars.lua',
 	'SaftUI-ActionBars/buttons.lua',
@@ -73,6 +74,7 @@ local function fresh(saved)
 	AB = st:GetModule('ActionBars')
 	st:BindModuleConfig(AB, 'actionbars')
 	stub.cvars[CVAR] = '1'
+	AB:ConvertProfile()
 end
 
 -- A button as LibActionButton makes one, skinned by AB:SkinButton.
@@ -105,6 +107,7 @@ local function switch_profile(profile)
 	st.config.profile = profile
 	apply_defaults()
 	st:BindModuleConfig(AB, 'actionbars')
+	AB:ConvertProfile()
 	AB:UpdateBar('bar1')
 end
 
@@ -179,7 +182,7 @@ end)
 test('by default the numbers look as they did: Pixel Med on buttons of 36px and up, Pixel below, in the middle', function()
 	fresh()
 	for _, id in ipairs(AB.BAR_IDS) do
-		local countdown = AB.config[id].text.countdown
+		local countdown = AB:GetBarConfig(id).text.countdown
 		eq(('%s %s %s,%s'):format(countdown.point, countdown.rel_point, countdown.x_off, countdown.y_off),
 			'CENTER CENTER 0,0', id .. ': in the middle by default')
 		eq(tostring(countdown.font) .. ',' .. tostring(countdown.size) .. ',' .. tostring(countdown.outline),
@@ -202,10 +205,10 @@ test('by default the numbers look as they did: Pixel Med on buttons of 36px and 
 	st:GetModule('Fonts'):UpdateFontConfig('pixel_med')
 	eq(select(2, numbers:GetFont()), 20, "a change to Pixel Med on the Fonts tab reaches them at once")
 
-	AB.config.bar1.size = 30
+	AB:SetSetting('bar1', 'size', 30)
 	AB:UpdateBar('bar1')
 	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'buttons made 30px: Pixel, so they fit')
-	AB.config.bar1.size = st.LARGE_COUNTDOWN_SIZE
+	AB:SetSetting('bar1', 'size', st.LARGE_COUNTDOWN_SIZE)
 	AB:UpdateBar('bar1')
 	eq(numbers:GetFontObject(), st:GetFont('pixel_med'), 'made 36px: Pixel Med again')
 	eq(stub.state(numbers).font, nil, 'still no font of its own')
@@ -305,7 +308,7 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	eq(reset.confirm, true, 'which asks first')
 	eq(reset.confirmText, "Reset Bar 1's cooldown numbers to SaftUI's defaults?", 'naming the bar')
 	reset.func()
-	local countdown = AB.config.bar1.text.countdown
+	local countdown = AB:GetBarConfig('bar1').text.countdown
 	eq(tostring(countdown.font) .. ',' .. tostring(countdown.size) .. ',' .. tostring(countdown.outline),
 		'nil,nil,nil', 'the font, size and outline are unset')
 	eq(('%s %s %s,%s'):format(countdown.point, countdown.rel_point, countdown.x_off, countdown.y_off),
@@ -315,7 +318,7 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	eq(T.anchor(numbers, names), 'CENTER button CENTER 0.00,0.00', 'in the middle')
 	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
 		pixelMed.font_name .. ',' .. pixelMed.font_size .. ',' .. OUTLINE, "the rows show Pixel Med's again")
-	AB.config.bar1.size = 30
+	AB:SetSetting('bar1', 'size', 30)
 	AB:UpdateBar('bar1')
 	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the font follows the button size again: Pixel at 30px')
 	eq(font(numbers), font(st:GetFont('pixel')), "drawn in Pixel's font")
