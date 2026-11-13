@@ -53,7 +53,7 @@ function SK:GetConfigTable()
 						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, Hekili and WeakAuras."),
 					background = generators.background(1.5),
 					font = generators.font(2,
-						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars and the Cooldown Manager."),
+						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager and the item levels on the character frame."),
 					cooldown_manager = {
 						order = 3,
 						name = 'Cooldown Manager',

@@ -7,6 +7,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
+  - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
   - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
@@ -130,6 +132,32 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
+### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
+
+**What:** Picking another theme in `/sui` throws "Can't measure restricted regions" from `IsPlaced` in `SaftUI-Core/theme.lua`, at its `backdrop:GetPoint(i)`, 40 times in one session on Forever. The redraw of that frame's backdrop stops there, so some themed frame may keep the old theme's look until a `/reload`.
+
+**Why noticed:** BugGrabber's log, read on 2026-11-13 while looking for a Loot error. The user hasn't reported a symptom.
+
+**Anchors:** `SaftUI-Core/theme.lua` (`IsPlaced`, called from `DrawBackdrop` on a redraw; `RedrawThemed`); the stack runs from the theme dropdown's pick (`optionsselect.lua`, `optionswidgets.lua` Commit and Apply, `optionsmodel.lua` Set) through `SaftUI-Core/Media/theme.lua` (`ThemeChanged`), `SaftUI-Core/Config/config.lua` (`UpdateConfig`) and `RedrawThemed` to `DrawBackdrop` and `IsPlaced`; the backdrop frame is one made by `st:CreateFrame` (`SaftUI-Core/panels.lua`); `.agents/taint.md`, `.agents/clients.md` (secret values).
+
+**What's been considered:** `IsPlaced` asks whether the backdrop still sits where the engine put it (two points, the placed offsets), so a redraw doesn't move a backdrop someone else placed. It already returns false when `GetPoint`'s results are secret values (`issecretvalue`). But for a restricted region `GetPoint` itself throws, before there is a value to test. Which themed frame is restricted isn't known: likely one whose backdrop is anchored to, or parented under, a frame the client restricts (a nameplate, or a frame showing secret values), which would also explain 40 at once (one per plate). No cause has been confirmed.
+
+**Shape of work:** A debugging pass first (`superpowers:systematic-debugging`): which owner frames the 40 errors belong to, and whether a region is restricted for good or only at times (in combat, while it shows a secret value). Then a failing test with a `GetPoint` that throws, and a small fix: most likely a way to know the backdrop's placement without measuring it (the engine remembering that it placed it), or a protected call that treats a throw as "not placed".
+
+**Open questions:** Which frames. Whether skipping the re-place on a restricted backdrop leaves it visibly wrong after a theme change.
+
+### 2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons
+
+**What:** The character frame's skin calls `Util:SetItemQuality` and `Util:ClearItemQuality` on Blizzard's equipment slot buttons. Those helpers write fields onto the button (`alwaysShowProfessionsQuality`, `isProfessionItem`, `professionQualityOverlayOverride`, and a `qualityText` font string stored on it) and run Blizzard's `SetItemCraftingQualityOverlay`, `SetItemCraftingQualityOverlayOverride` and `ClearItemCraftingQualityOverlay` on it. That breaks `.agents/taint.md`'s rules 1 (write nothing onto a Blizzard frame) and 3 (don't run Blizzard's functions on its frames from addon code). The same helpers are fine on SaftUI's own bag slots and loot feed items.
+
+**Why noticed:** The reviewer of the character frame's item level change (branch `fb-ilvl`, merged 58a646a, 2026-11-13). It was there before that change and was left alone as out of scope.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua` (the two calls, in the slot update); `SaftUI-Core/Utilities/itemupgrades.lua` (`Util:SetItemQuality`, `Util:ClearItemQuality`, `Util:SetItemUpgradeQuality`, `Util:SetItemQualityLevelText`); other callers `SaftUI-Bags/slot.lua` and `SaftUI-Loot/Feed/feed.lua` (SaftUI's own frames); `.agents/taint.md`.
+
+**What's been considered:** No error has been traced to it. The equipment slots are secure buttons used in combat (swapping a weapon), so a tainted field on one is the kind of thing that ends in `ADDON_ACTION_BLOCKED`. The item level text beside it already shows the pattern to follow: SaftUI's own frame over the slot, with its state kept in a table keyed by the button.
+
+**Shape of work:** Small: draw the upgrade tier and the crafting quality on a SaftUI overlay per slot, keep the state in the skin's own table, and stop calling the helpers on Blizzard's buttons. Tests beside the item level's (`tests/misc/`). An in-game check that the tier icon and the level text still show.
+
 ### 2026-11-13 — In-game pass: five small changes asked for
 
 **What:** The user's in-game pass over the cleanup's 39 checks (2026-11-13) turned up five small changes, each clear enough to build without a design round. They are being built on `modular` in the same session; this entry is the record in case the session is lost.
@@ -172,6 +200,10 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
 
+**In game 2026-11-13:** BugGrabber's log has no Loot error, so cause 1 is out. The user: "I was pressing greed, it went away as soon as I clicked. It could very well be that I was the last one to roll, I wasn't paying much attention." That fits cause 2's by-design case: the last to choose, so the roll resolved at the click and the held bar was released in the same update.
+
+**Decided 2026-11-13:** The user: "I like the hold for a finished roll, we can hold it for a few seconds and fade out after. the debug print is a good idea, lets add that as well." Being built on branch `fb-rollhold`: a held bar that finishes (its drop resolved, or its time ran out) stays 3 seconds, locked on the choice with its final counts, fades over half a second, then goes; and `/sui debug` turns on `st:Debug('Loot', ...)` lines at each decision in the list above, for the next group run. The 3 seconds and the half second are the builder's numbers, not the user's. This entry stays Active until the held bar has been seen in game with others still rolling.
+
 ### 2026-11-13 — Test mode: choose which elements the previews show
 
 **What:** Let Test mode show or hide each kind of element on its preview frames: buffs, debuffs, raid markers and so on. Today a group's Test mode (`/sui` → Unitframes → Party, Raid 10, Raid 40 or Boss → Layout → Test mode) draws a fixed set: size, theme, health and power bars, name, role corner and range alpha. It draws no auras, castbars, portraits, raid targets, ready checks or leader icons, so those can't be placed or sized without a real group.
@@ -200,6 +232,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 
 **Open questions:** Which of the three, or another.
 
+**Mocked 2026-11-13:** Drawn on the real window for the user to pick from. Round 1: A, a "Unit frame profile" dropdown and Manage button on the Unit row; B, the same in the title row; C, first in the Unit dropdown, set apart; D, a section of the sidebar's Profiles page. The user then asked whether A sat where search is (it didn't: search is at the right end of the first tab line, `SEARCH_WIDTH` in `SaftUI-Core/Config/optionswindow.lua`), and proposed moving search: "the search might be better suited above the editmode and keybind mode buttons on the left. With that change lets see what the profile item looks like where search is currently positioned, but lets also get an option where the unit profile is centered on the footer." Round 2, both with search moved into the sidebar above Edit mode and Keybind mode: E, the profile control where search is today (it is wider than the search box, so the first tab line holds fewer tabs: Unitframes' 13 tabs wrap 4, 7, 2 instead of 9, 4); F, the control centred in the footer between Reload UI and Close, drawn only while the Unitframes page is open (the builder's assumption). Pick pending. Whichever is chosen, moving search to the sidebar is part of the work.
+
 ### 2026-11-13 — Colour swatches read as checkboxes, and the colour picker
 
 **What:** Two things about colours in `/sui`. The colour swatches are small squares that are hard to tell from checkboxes. And the colour picker is Blizzard's, unskinned, without the opacity and RGB values the user wants.
@@ -213,6 +247,8 @@ What's left needs evidence from the game. In the order they'd be checked:
 **Shape of work:** A design round with mockups of the swatch options for the user to pick from, then two tasks: the swatch in Core's options kit, and the picker's skin and additions in Misc's Skinning (a taint review, since the picker is Blizzard's and is shared with other addons).
 
 **Open questions:** Which swatch look. Whether the picker's additions are SaftUI's own controls on Blizzard's frame, or a SaftUI picker of its own that replaces it.
+
+**Mocked and decided 2026-11-13:** Forever's picker was read: it already has an opacity strip and a hex box; it lacks number boxes for red, green and blue and a number for opacity, and it is unskinned. Swatches drawn: today's 22px square; A, a bar as wide as a dropdown with the colour's hex code written in it, and its opacity when it has one (the code is for reading; a click opens the picker); B, a wider chip with a hex box you can type into; C, the option's name inside the colour; D, a circle. **The user chose A** ("Lets go with A for the color choice"). Pickers drawn: P1, Blizzard's frame in SaftUI's look with nothing added; P2, the same, a little wider, with boxes for red, green, blue and opacity (SaftUI controls on a frame Blizzard and other addons share, so the usual taint care); P3, a picker of SaftUI's own that only `/sui` opens. P2 is the builder's recommendation; the user hasn't picked. Swatch A is a small change in `builders.color` (`SaftUI-Core/Config/optionstypes.lua`), to be built once the nameplate pages' branch, which changes the same files, is merged.
 
 ### 2026-11-13 — Codebase cleanup: small things left over
 
