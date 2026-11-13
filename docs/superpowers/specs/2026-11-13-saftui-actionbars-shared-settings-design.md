@@ -223,3 +223,45 @@ line as a row on the page.
   pattern.
 - Using a menu for Visibility's dependents or the Look settings, if the page feels crowded
   in use.
+
+## Settled after the builder check (builder's calls unless marked)
+
+A reviewer read this design against the code (its notes:
+`actionbars-builder-check.md` in the session's scratchpad; the points that matter are
+copied here).
+
+1. **A text item's row** carries the own mark, hover line and diff icon for the text's
+   **Show** only. Each setting inside the menu carries its own. There is no "apply the
+   whole text" action. An item is drawn own-marked when Show or anything inside is own.
+2. **The conversion compares what a bar shows**, not what is stored: values clamped to the
+   bar's button count, and the stack count and macro name skipped on the pet and stance
+   bars. A profile with nothing set converts to exactly the shipped own flags.
+3. **Apply to: Multiple** opens a check list with an **Apply** button, as the mockup
+   drew it (the kit's `W.OpenCheckList` applies each click at once; this list doesn't).
+   On a bar it lists the other bars; on All bars it lists the bars that own the setting.
+   Nothing changes until Apply.
+4. **The cooldown numbers' menu Reset on a bar** sets font, size and outline to unset and
+   the position to the middle, as the bar's own only where that differs from All bars.
+5. **A text's Position** has no label row: its own mark, reset icon, hover line and diff
+   icon sit on the position block's title. The kit marks section titles as well as rows.
+6. **Faded opacity on All bars** shows when All bars' Show, or any bar's, is "Faded until
+   moused over".
+7. **A new profile shows two diff icons on All bars** (Buttons per row, Button size):
+   intended, they are true.
+8. **Storage rules:** every bar keeps today's defaults (the conversion reads them); the
+   conversion's marker lives inside `actionbars`, so a profile copy carries it and a reset
+   clears it; clearing an own flag that ships true writes `false`, never nil; the
+   conversion runs before the bars are built and before `UpdateConfig`'s combat queue;
+   when a bar first owns a text's Position, All bars' four parts are copied in first. The
+   effective config is a resolved table built per call (`StyleButton`,
+   `GetCountdownFont` and `extras.lua` take a table).
+9. **The menu** is about 400 wide (the hover line beside a 170 control needs it), modelled
+   on the small dialog: above the window, with its own click-outside catcher, re-anchored
+   to its item after every page redraw, one column. Dropdown lists and confirms already
+   draw above that level.
+10. **Four items on one line:** the item type may take a quarter cell. "Cooldown numbers"
+    with its Show box, diff icon and dots is 1px inside a quarter under Thick and Thin and
+    about 12px over under Blizzard's larger check box, so the item's label is
+    **Cooldown** (the menu's title stays "Cooldown numbers"). The own mark sits inside the
+    cell (the body clips left of the first column). The hover line stays up while the
+    mouse is anywhere on the row, its control and the line's links included.
