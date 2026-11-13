@@ -35,8 +35,6 @@ st.BOX_COLORS = {
 	alt = { 0.1, 0.1, 0.1, 1 },
 	bg = { 0.12, 0.12, 0.12, 1 },
 }
--- The close X's part of close.tga: a power-of-two canvas (like the other textures), with the X in the middle 10x10.
-st.CLOSE_X_COORDS = {3/16, 13/16, 3/16, 13/16}
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
 st.BACKDROP = {
 	bgFile = st.BLANK_TEX, 
@@ -62,8 +60,23 @@ st.textures = {
 	eyeClosed = st:TexturePath('eye-hidden.tga'),
 	eyeOpen = st:TexturePath('eye-visible.tga'),
 	atlas = st:TexturePath('SaftUIAtlas.blp'),
-	close = st:TexturePath('close.tga'), -- the close button's X: white, 16x16 with the 10x10 X at 3,3 (see CLOSE_X_COORDS)
 	filter = st:TexturePath('funnel.tga'), -- a funnel: white, a 24x24 drawing centred on 32x32 (the bags' currency Filter button)
+}
+
+-- Lucide's icons (lucide.dev, ISC; see Media/Textures/LUCIDE-LICENSE.txt), by
+-- name: white on transparent, so a caller tints them with SetVertexColor. Each
+-- is 32x32 (made by tools/lucide-to-tga.cjs, which says how to add one), Lucide's
+-- 24 grid with the glyph in its middle half: draw one at twice the glyph's size
+-- (20 for a 10 px X, 16 for an 8 px wide chevron). No texture coordinates.
+st.icons = {
+	x = st:TexturePath('lucide-x.tga'),
+	chevronDown = st:TexturePath('lucide-chevron-down.tga'),
+	chevronUp = st:TexturePath('lucide-chevron-up.tga'),
+	rotateCcw = st:TexturePath('lucide-rotate-ccw.tga'),
+	diff = st:TexturePath('lucide-diff.tga'),
+	ellipsis = st:TexturePath('lucide-ellipsis.tga'),
+	ellipsisVertical = st:TexturePath('lucide-ellipsis-vertical.tga'),
+	settings = st:TexturePath('lucide-settings.tga'),
 }
 
 st.FRAME_ANCHORS = {

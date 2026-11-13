@@ -94,18 +94,15 @@ local function OpColor(op)
 	return Colors().button.blue:GetRGB()
 end
 
--- A select's caret: rows of 7, 5, 3 and 1 pixels, each placed by its left
--- edge. Returns the rows.
+-- A select's caret: Lucide's chevron-down, as the options' selects have
+-- (Kit.Caret in Core's optionsselect.lua). Returns it in a list.
 local function Caret(parent)
-	local rows = {}
-	for i, width in ipairs({ 7, 5, 3, 1 }) do
-		local t = parent:CreateTexture(nil, 'OVERLAY')
-		t:SetColorTexture(Grey())
-		t:SetSize(width, 1)
-		t:SetPoint('TOPLEFT', parent, 'RIGHT', -12 - floor(width / 2), 3 - i)
-		rows[i] = t
-	end
-	return rows
+	local t = parent:CreateTexture(nil, 'OVERLAY')
+	t:SetTexture(st.icons.chevronDown)
+	t:SetVertexColor(Grey())
+	t:SetSize(16, 16)
+	t:SetPoint('CENTER', parent, 'RIGHT', -12, 0)
+	return { t }
 end
 
 ------------------------------------------------------------------ values
@@ -780,9 +777,8 @@ local function RowFrame(w, i)
 	remove:SetSize(REMOVE_SIZE, REMOVE_SIZE)
 	remove:SetPoint('RIGHT', f, 'TOPRIGHT', 0, -ROW_HEIGHT / 2) -- on the first line
 	remove.icon = remove:CreateTexture(nil, 'OVERLAY')
-	remove.icon:SetTexture(st.textures.close)
-	remove.icon:SetTexCoord(unpack(st.CLOSE_X_COORDS))
-	remove.icon:SetSize(10, 10)
+	remove.icon:SetTexture(st.icons.x)
+	remove.icon:SetSize(20, 20) -- a 10 px cross in the middle
 	remove.icon:SetPoint('CENTER', remove, 'CENTER', 0, 0)
 	remove:SetScript('OnEnter', function(self) self.icon:SetVertexColor(Colors().text.red:GetRGB()) end)
 	remove:SetScript('OnLeave', function(self) self.icon:SetVertexColor(Grey()) end)

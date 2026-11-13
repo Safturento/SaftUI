@@ -243,7 +243,7 @@ test('a row per block and group, a badge per group, AND blue and OR orange', fun
 	eq(w.rows[7].fields.addBlock.text:GetText(), '+ Block', '+ Block')
 	eq(w.rows[7].fields.addGroup.text:GetText(), '+ Group', '+ Group')
 	check(same_rgb({ w.rows[7].fields.addBlock.text:GetTextColor() }, Color('text', 'blue')), 'in blue')
-	eq(w.rows[1].remove.icon:GetTexture(), st.textures.close, 'the X is the close texture')
+	eq(w.rows[1].remove.icon:GetTexture(), st.icons.x, "the X is Lucide's x")
 	eq(w.rows[1].remove:GetRight(), w.frame:GetRight(), 'at the right')
 	local dots = 0
 	for _, region in ipairs({ w.rows[1].handle:GetRegions() }) do
@@ -907,7 +907,8 @@ test("under Blizzard a rule's value fields are compact Settings dropdowns; under
 	local field = ed.w.rows[1].fields.class
 	local thickSize = size(field)
 	check(field.backdropInfo ~= nil and field.outline:IsShown(), "Thick: W.Box's backdrop")
-	eq(#field.caret, 4, 'its caret rows are kept')
+	eq(#field.caret, 1, 'its caret is kept')
+	eq(field.caret[1]:GetTexture(), st.icons.chevronDown, "Lucide's chevron-down")
 	for _, row in ipairs(field.caret) do check(row:IsShown(), 'Thick: the caret') end
 	eq(atlases_of(field), '', 'Thick: no Blizzard art')
 	eq(text_insets(field), '6,20', 'Thick: its text clear of the caret')

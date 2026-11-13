@@ -361,6 +361,7 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	eq(atlases_of(w.select), 'common-dropdown-c-button', 'the dropdown is the Settings face')
 	local face = atlas_exact(w.select, 'common-dropdown-c-button')
 	eq(around(face, w.select), '-4,4,4,-4', 'compact: a 4px glow, clear of the name box under it')
+	eq(#w.select.caret, 1, 'one caret texture')
 	for _, row in ipairs(w.select.caret) do check(not row:IsShown(), 'no caret') end
 	eq(w.select.text:GetJustifyH(), 'CENTER', 'its text centred')
 	stub.fire_script(w.select, 'OnEnter')
@@ -399,7 +400,10 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	end
 	check_box(w.select, 'Thick again: the dropdown')
 	eq(atlases_of(w.select), '', 'Thick again: the dropdown has no art')
-	for _, row in ipairs(w.select.caret) do check(row:IsShown(), 'Thick again: the caret') end
+	for _, row in ipairs(w.select.caret) do
+		check(row:IsShown(), 'Thick again: the caret')
+		eq(row:GetTexture(), st.icons.chevronDown, "Lucide's chevron-down")
+	end
 	eq(w.select.text:GetJustifyH(), 'LEFT', 'Thick again: the text from the left')
 	for name, nudge in pairs(nudges) do
 		eq(atlases_of(nudge), '', 'Thick again: ' .. name .. ' has no art')
