@@ -12,9 +12,7 @@
 load_core_helpers()
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order
-end
+load_editmode()
 load_saftui('SaftUI-Chat/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Chat/chatframe.lua')

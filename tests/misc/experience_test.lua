@@ -12,9 +12,7 @@ local drawn = T.watch()
 -- Blizzard's minimap, which the bar's default position anchors to (the profile
 -- has the real defaults).
 CreateFrame('Frame', 'Minimap', UIParent)
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order; the bar registers a mover
-end
+load_editmode() -- the bar registers a mover
 load_saftui('SaftUI-Misc/experience.lua')
 -- The page's layout, as the options window lays it out.
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')

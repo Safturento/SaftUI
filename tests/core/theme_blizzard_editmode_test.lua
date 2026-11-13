@@ -16,9 +16,7 @@
 -- EditMode/load.xml's order.
 load_core_helpers()
 local T = load_test_file('lib/theme_helpers.lua')
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-end
+load_editmode()
 local drawn = T.watch()
 
 local st = SaftUI

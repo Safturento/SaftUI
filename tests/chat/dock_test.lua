@@ -6,9 +6,7 @@
 -- Stand-ins: the dock is a plain table with Blizzard's DOCKED_CHAT_FRAMES list, each a
 -- chat window with its Tab (Blizzard's FCFDock_UpdateTabs walks that list the same way).
 load_core_helpers()
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order
-end
+load_editmode()
 load_saftui('SaftUI-Chat/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Chat/chatframe.lua')

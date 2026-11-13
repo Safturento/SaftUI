@@ -5,9 +5,7 @@
 -- one world and run in order, each going on from the state the last left.
 
 load_core_helpers() -- st:CreateButton, panels, fonts and the profile defaults
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua') -- EditMode/load.xml's order
-end
+load_editmode()
 
 local st = SaftUI
 local EM = st.EditModeFrames

@@ -37,9 +37,7 @@ load_test_file('core/fixtures/config_libs.lua')
 remove_shell_config()
 load_saftui('SaftUI-Core/Config/config.lua')
 load_core_helpers()
-for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-	load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-end
+load_editmode()
 
 -- What SaftUI:OnEnable (init.lua) does at login: st.config becomes a real
 -- AceDB database over the profile defaults, and /sui is set up.

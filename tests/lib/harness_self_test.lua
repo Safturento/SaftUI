@@ -822,3 +822,12 @@ test("use_client gives a fresh world on each client, without the globals that cl
 	check(not pcall(use_client, 'classic'), 'a client that is neither is an error')
 	reset_world()
 end)
+
+test("load_editmode loads the files Core's EditMode/load.xml lists, in its order", function()
+	local xml = assert(read_saftui_source('SaftUI-Core/EditMode/load.xml')):gsub('<!%-%-.-%-%->', '')
+	local listed = {}
+	for file in xml:gmatch('<Script%s+file%s*=%s*"([^"]+)"') do
+		listed[#listed + 1] = 'SaftUI-Core/EditMode/' .. file
+	end
+	eq(table.concat(editmode_files(), ', '), table.concat(listed, ', '), "the shell's edit mode files are load.xml's, in its order")
+end)

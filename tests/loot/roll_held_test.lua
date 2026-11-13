@@ -290,9 +290,7 @@ local function world()
 	load_core_helpers()
 	T = load_test_file('lib/theme_helpers.lua')
 	drawn = T.watch()
-	for _, file in ipairs({ 'editmode', 'mover', 'picker', 'footer', 'grid', 'snap', 'settings' }) do
-		load_saftui('SaftUI-Core/EditMode/' .. file .. '.lua')
-	end
+	load_editmode()
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st = SaftUI
 	st.StringFormat = LibStub('LibStringFormat-1.0') -- as SaftUI-Core/init.lua does

@@ -25,6 +25,7 @@
 	                          in the game's order; options_widget_files() lists them
 	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
 	                          in the game's order; options_window_files() lists them
+	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
 	  use_client(name)        a fresh world on 'forever' or 'retail'
 ]]
 
@@ -446,6 +447,29 @@ end
 -- widget files (load_options_widgets) and Config/optionsbody.lua first.
 function load_options_window()
 	for _, path in ipairs(options_window_files()) do
+		load_saftui(path)
+	end
+end
+
+-- Edit mode's files (st.EditModeFrames, st:RegisterMover and the rest), by
+-- path from the repo root, in the order SaftUI-Core/EditMode/load.xml loads
+-- them.
+function editmode_files()
+	return {
+		'SaftUI-Core/EditMode/editmode.lua',
+		'SaftUI-Core/EditMode/mover.lua',
+		'SaftUI-Core/EditMode/picker.lua',
+		'SaftUI-Core/EditMode/footer.lua',
+		'SaftUI-Core/EditMode/grid.lua',
+		'SaftUI-Core/EditMode/snap.lua',
+		'SaftUI-Core/EditMode/settings.lua',
+	}
+end
+
+-- Loads edit mode's files in that order. Load Core's helpers
+-- (load_core_helpers) first.
+function load_editmode()
+	for _, path in ipairs(editmode_files()) do
 		load_saftui(path)
 	end
 end
