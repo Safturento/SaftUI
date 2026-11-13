@@ -58,11 +58,13 @@ local T = load_test_file('lib/theme_helpers.lua')
 local st = SaftUI
 local OM, OW, W = st.OptionsModel, st.OptionsWindow, st.OptionsWidgets
 local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
-local UF = st:NewModule('Unitframes')
+-- The module by hand, UF:RegisterElement as unitframes.lua's table store
+-- (uf_world.lua's UW.module).
+local UF = load_test_file('unitframes/uf_world.lua').module()
 local updates = 0
 function UF:UpdateConfig() updates = updates + 1 end
 
-UF.units, UF.groups, UF.holders, UF.elements = {}, {}, {}, {}
+UF.units, UF.groups, UF.holders = {}, {}, {}
 for _, unit in ipairs({ 'boss', 'focustarget', 'player', 'pettarget', 'target', 'pet', 'targettarget', 'focus' }) do
 	UF.units[unit] = CreateFrame('Frame', nil, UIParent)
 end
@@ -75,10 +77,6 @@ UF.group_strings = { party = 'Party', raid10 = 'Raid 10', raid40 = 'Raid 40' }
 UF.PLATE_UNITS = { nameplate = true, friendlynameplate = true }
 function UF.IsPlateUnit(unit) return UF.PLATE_UNITS[unit] == true end
 function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
-	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
-		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
-end
 
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
 load_saftui('SaftUI-Unitframes/config/groupoptions.lua')

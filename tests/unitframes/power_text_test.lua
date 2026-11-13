@@ -25,14 +25,10 @@
 load_core_helpers()
 
 local st = SaftUI
-local UF = st:NewModule('Unitframes')
--- What unitframes.lua's UF:RegisterElement does (lines 126-134: it keeps the
--- constructor in UF.elements). The real file needs oUF, which isn't loaded here.
-UF.elements = {}
-function UF:RegisterElement(name, Constructor, UpdateConfig, GetConfigTable, ValidUnit)
-	self.elements[name] = { name = name, Constructor = Constructor, UpdateConfig = UpdateConfig,
-		GetConfigTable = GetConfigTable, ValidUnit = ValidUnit }
-end
+-- What unitframes.lua's UF:RegisterElement does (it keeps the constructor in
+-- UF.elements), as uf_world.lua's UW.module makes it. The real file needs oUF,
+-- which isn't loaded here.
+local UF = load_test_file('unitframes/uf_world.lua').module()
 
 local function make_secret(name)
 	local value = newproxy(true)
