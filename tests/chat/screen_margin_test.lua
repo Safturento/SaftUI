@@ -199,10 +199,17 @@ test("Blizzard's clamp arriving after SaftUI's setup (a layout apply, Edit Mode 
 	ChatFrame1:SetClampRectInsets(0, 0, 0, 0)
 	SetMargin(20)
 	eq(Insets(CHT.holder), '-20,20,20,-20', 'no clamp on the chat: the margin alone')
-	ChatFrame1:UpdateClampOffsets() -- Edit Mode enter: HighlightSystem, AnchorSelectionFrame
-	eq(Insets(CHT.holder), '-32,25,60,-32', "the chat's clamp, at once")
 	Drag(mover, -1000, -1000)
+	eq(Shown(ChatFrame1), '20,20,420,220', 'so both go to the margin')
 	eq(Shown(CHT.holder), Shown(ChatFrame1), 'together')
+	-- Edit Mode enter (HighlightSystem, AnchorSelectionFrame): the holder is clamped
+	-- again, and nothing places ChatFrame1.
+	ChatFrame1:UpdateClampOffsets()
+	eq(Insets(CHT.holder), '-32,25,60,-32', "the chat's clamp, at once")
+	eq(Shown(ChatFrame1), '32,32,432,232', "the chat at Blizzard's 32")
+	eq(Shown(CHT.holder), Shown(ChatFrame1), 'the holder with it, before any drag')
+	Drag(mover, -1000, -1000)
+	eq(Shown(CHT.holder), Shown(ChatFrame1), 'and after one')
 	eq(#take_errors(), 0, 'no errors')
 end)
 

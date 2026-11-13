@@ -82,6 +82,11 @@ local SetAlpha
 -- bar protected, and then it's re-anchored at the end of combat.
 local function TakeOver(bar, holder, getConfig)
 	st:HoldFrame(bar, holder, INSET_X, INSET_Y)
+	-- Blizzard keeps the bar on screen by its own clamp, and the bar sits INSET_X and
+	-- INSET_Y outside the holder, so at a margin under those the holder (and its
+	-- outline) would go on past the bar. The holder goes no nearer the edges than the
+	-- bar can.
+	st:KeepHolderInScreenMargin(holder, bar, INSET_X, INSET_Y)
 
 	-- Blizzard's Edit Mode box no longer controls this bar, so keep it hidden, from its
 	-- next show and now. HookScript only; nothing is written onto the frame.

@@ -15,10 +15,6 @@
 local st = SaftUI
 local locked = load_test_file('lib/locked_widget.lua')
 
--- st:HoldFrame keeps the holder inside the screen edge margin, which is in the profile.
-load_saftui('SaftUI-Core/Config/defaults.lua')
-apply_defaults()
-
 -- One UIParent unit per physical pixel, so st:RoundToPixel rounds to whole units.
 stub.screen_width, stub.screen_height = 1000, 600
 UIParent:SetScale(768 / 600)

@@ -367,10 +367,11 @@ local heldFrames = setmetatable({}, { __mode = 'k' })
 -- Edit Mode's Lua overrides, so SaftUI moves it with the plain widget methods
 -- (st:ClearAllPointsDirect, st:SetPointDirect), which don't run the hooks. In
 -- combat a protected frame (something secure anchored to it) is left where
--- Blizzard puts it, and held again once when combat ends. The holder is kept
--- no nearer the screen's edges than frame's own clamp lets frame go
--- (st:KeepHolderInScreenMargin). Called again for a frame, it holds it on the
--- new holder, with no second pair of hooks.
+-- Blizzard puts it, and held again once when combat ends. Called again for a
+-- frame, it holds it on the new holder, with no second pair of hooks. A site
+-- whose frame its own clamp would hold back short of the holder also calls
+-- st:KeepHolderInScreenMargin (the swing timers; not the buffs, whose buttons
+-- are anchored to the holder).
 function st:HoldFrame(frame, holder, x, y)
 	local hold = heldFrames[frame]
 	if not hold then
@@ -388,9 +389,6 @@ function st:HoldFrame(frame, holder, x, y)
 		hooksecurefunc(frame, 'SetPoint', hold.reanchor)
 	end
 	hold.holder, hold.x, hold.y = holder, x or 0, y or 0
-	-- The holder goes no nearer the screen's edges than the frame's own clamp
-	-- lets the frame go, so the frame never stops short of it.
-	st:KeepHolderInScreenMargin(holder, frame, hold.x, hold.y)
 	hold.reanchor()
 end
 
@@ -446,9 +444,10 @@ end
 	clamps some of its frames itself: its Edit Mode systems (ChatFrame1, the
 	tooltip container, the buffs) rewrite their insets from their Selection box on
 	every layout apply and Edit Mode enter (EditModeSystemMixin:UpdateClampOffsets).
-	A holder with one of those on it is kept no nearer the edges than that clamp
-	lets the frame go (st:KeepHolderInScreenMargin), or the frame would stop short
-	of its holder and edit mode's outline, on the holder, go on past it.
+	Where that clamp would hold back the frame the user sees (chat, the swing
+	timers, the tooltip container), its holder is kept no nearer the edges than
+	the clamp lets the frame go (st:KeepHolderInScreenMargin), or the frame would
+	stop short of its holder and edit mode's outline, on the holder, go on past it.
 
 	Both calls are blocked in combat on a protected frame (a secure unit frame or
 	action bar, or a frame one is anchored to). That frame keeps the margin it had,
@@ -551,10 +550,17 @@ end
 -- holder, would go on past the frame. Blizzard sets the insets again on every
 -- layout apply and Edit Mode enter, so a post-hook on frame's UpdateClampOffsets
 -- applies the holder's margin again; it reads frame's clamp and changes only
--- the holder, so it's safe in combat. SaftUI never changes a Blizzard frame's
--- clamp (.agents/taint.md rule 5). Called again for a holder, it takes the new
--- frame and outsets.
+-- the holder, so it's safe in combat. It never changes frame's clamp
+-- (.agents/taint.md rule 5). Called again for a holder, it takes the new frame
+-- and outsets; a frame given with a new holder leaves its old one to the margin
+-- alone.
 function st:KeepHolderInScreenMargin(holder, frame, x, y)
+	for other, held in pairs(heldOn) do
+		if held.frame == frame and other ~= holder then
+			heldOn[other] = nil
+			st:KeepInScreenMargin(other)
+		end
+	end
 	heldOn[holder] = { frame = frame, x = x or 0, y = y or 0 }
 	if frame.UpdateClampOffsets and not clampHooked[frame] then
 		clampHooked[frame] = true

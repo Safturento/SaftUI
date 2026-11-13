@@ -344,14 +344,16 @@ test("st:GetScreenMargin is the margin plus a frame's reach on each side; a fram
 	eq(table.concat({ st:GetScreenMargin(Frame()) }, ','), '20,20,20,20', 'the margin alone')
 end)
 
-test("a held Blizzard frame's own clamp keeps its holder in: a bar 5 and 4 outside its holder stops at the screen's edge with it", function()
-	-- A swing timer bar (st:HoldFrame with its 5, 4) is kept on screen by its own
-	-- clamp. A holder the margin let reach the edge would leave the bar 5 and 4
-	-- short of where it sits around the holder, and the outline past it.
+test("st:KeepHolderInScreenMargin: a bar 5 and 4 outside its holder, kept on screen by its own clamp, stops at the screen's edge with the holder", function()
+	-- A swing timer bar (Blizzard_SwingTimerPosition.lua: st:HoldFrame and this,
+	-- with its 5, 4) is kept on screen by its own clamp. A holder the margin let
+	-- reach the edge would leave the bar 5 and 4 short of where it sits around
+	-- the holder, and the outline past it.
 	local holder = Frame(100, 20)
 	local mover, position = Mover(holder, { point = 'BOTTOMLEFT', x_off = 300, y_off = 300 })
 	local bar = ClampedSystem()
 	st:HoldFrame(bar, holder, 5, 4)
+	st:KeepHolderInScreenMargin(holder, bar, 5, 4)
 	Set(0)
 	Drag(mover, -1000, -1000)
 	eq(At(position), '5,4', 'the holder stops 5 and 4 in')
@@ -364,16 +366,36 @@ test("a held Blizzard frame's own clamp keeps its holder in: a bar 5 and 4 outsi
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("below a 0 margin a held frame's holder stops at the edge, where the frame's clamp stops the frame (the buffs)", function()
+test("a held frame with a scale of its own: its clamp and outsets count in the holder's units", function()
+	-- A swing timer bar at Blizzard's Edit Mode Scale 150%: its 5, 4 outside the
+	-- holder and its clamp are in its own units, 1.5 times the holder's.
+	local holder = Frame(100, 20)
+	Mover(holder)
+	local bar = ClampedSystem({ -2, 2, 2, -2 })
+	bar:SetScale(1.5)
+	st:KeepHolderInScreenMargin(holder, bar, 5, 4)
+	Set(0)
+	eq(Insets(holder), '-10.5,10.5,9,-9', '(2 + 5) x 1.5 and (2 + 4) x 1.5')
+	eq(table.concat({ st:GetScreenMargin(holder) }, ','), '10.5,10.5,9,9', 'which drags keep to')
+	Set(20)
+	eq(Insets(holder), Margin(20), 'a wider margin is the margin')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("st:HoldFrame alone keeps the holder to the margin: below 0 the buffs' holder still goes past the screen's edges", function()
+	-- The buffs' buttons are anchored to the holder, not to BuffFrame, so
+	-- BuffFrame's own clamp held back nothing the user sees; their holder keeps
+	-- to the margin alone (Blizzard_BuffFramePosition.lua calls only st:HoldFrame).
 	local holder = Frame(200, 40)
 	local mover, position = Mover(holder, { point = 'TOPRIGHT', x_off = -300, y_off = -300 })
 	local buffs = ClampedSystem({ 0, -15, 0, 0 }) -- BuffFrame's box leaves out its collapse button
 	st:HoldFrame(buffs, holder)
 	Set(-10)
+	eq(Insets(holder), Margin(-10), 'the margin alone')
 	Drag(mover, 0, 1000)
-	eq(At(position), '-300,0', 'stops at the top edge, with the buffs')
+	eq(At(position), '-300,10', 'goes 10 past the top edge, as the margin says')
 	Drag(mover, 1000, 0)
-	eq(At(position), '10,0', "15 past the right edge, as far as the buffs' clamp lets them go; the margin's 10 is less")
+	eq(At(position), '10,10', 'and 10 past the right')
 	Set(20)
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -385,11 +407,84 @@ test("a held frame's holder takes the frame's clamp again each time Blizzard's E
 	local insets = { 0, 0, 0, 0 }
 	-- EditModeSystemMixin:UpdateClampOffsets, from the box (layout apply, Edit Mode enter).
 	function frame:UpdateClampOffsets() self:SetClampRectInsets(unpack(insets)) end
-	st:HoldFrame(frame, holder)
+	st:KeepHolderInScreenMargin(holder, frame)
 	eq(Insets(holder), Margin(20), 'the margin')
 	insets = { -32, 25, 60, -32 }
 	frame:UpdateClampOffsets()
 	eq(Insets(holder), '-32,25,60,-32', "the frame's clamp, where it's wider than the margin")
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("UpdateClampOffsets is hooked once per frame, however often the frame is given", function()
+	local frame = ClampedSystem({ -32, 25, 60, -32 })
+	function frame:UpdateClampOffsets() end
+	local real, hooks = hooksecurefunc, 0
+	hooksecurefunc = function(tbl, name, ...)
+		if tbl == frame and name == 'UpdateClampOffsets' then hooks = hooks + 1 end
+		return real(tbl, name, ...)
+	end
+	local ok, err = pcall(function()
+		local holder = Frame()
+		st:KeepHolderInScreenMargin(holder, frame)
+		st:KeepHolderInScreenMargin(holder, frame)
+		st:KeepHolderInScreenMargin(Frame(), frame)
+	end)
+	hooksecurefunc = real
+	check(ok, tostring(err))
+	eq(hooks, 1, 'one hook')
+end)
+
+test('a frame given with a new holder leaves its old holder to the margin alone', function()
+	local frame = ClampedSystem({ -32, 25, 60, -32 })
+	local insets = { -32, 25, 60, -32 }
+	function frame:UpdateClampOffsets() self:SetClampRectInsets(unpack(insets)) end
+	local old, new = Frame(), Frame()
+	st:KeepHolderInScreenMargin(old, frame)
+	eq(Insets(old), '-32,25,60,-32', "the old holder takes the frame's clamp")
+	st:KeepHolderInScreenMargin(new, frame)
+	eq(Insets(new), '-32,25,60,-32', 'the new holder takes it')
+	eq(Insets(old), Margin(20), 'the old one is back to the margin at once')
+	insets = { -40, 40, 70, -40 }
+	frame:UpdateClampOffsets()
+	eq(Insets(new), '-40,40,70,-40', "Blizzard's next clamp reaches the new holder")
+	eq(Insets(old), Margin(20), 'and not the old one')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a secret clamp or inset on the Blizzard frame gives no reach, and no error", function()
+	local S = load_test_file('lib/secrets.lua')
+	local restore = S.install()
+	local ok, err = pcall(function()
+		local frame = ClampedSystem({ -32, 25, 60, -32 })
+		local holder = Frame()
+		function frame:GetClampRectInsets() return S.secret('left inset'), 25, 60, -32 end
+		st:KeepHolderInScreenMargin(holder, frame)
+		eq(Insets(holder), Margin(20), 'a secret inset: the margin alone')
+		frame.GetClampRectInsets = nil
+		function frame:IsClampedToScreen() return S.secret('clamped') end
+		st:KeepInScreenMargin(holder)
+		eq(Insets(holder), Margin(20), 'a secret clamp: the margin alone')
+	end)
+	restore()
+	check(ok, tostring(err))
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("in combat a protected holder takes the frame's new clamp when combat ends", function()
+	local holder = Frame()
+	function holder:IsProtected() return true, true end -- something secure is anchored to it
+	local frame = ClampedSystem()
+	local insets = { 0, 0, 0, 0 }
+	function frame:UpdateClampOffsets() self:SetClampRectInsets(unpack(insets)) end
+	st:KeepHolderInScreenMargin(holder, frame)
+	eq(Insets(holder), Margin(20), 'the margin, out of combat')
+	stub.in_combat = true
+	insets = { -32, 25, 60, -32 }
+	frame:UpdateClampOffsets() -- a layout apply in combat
+	eq(Insets(holder), Margin(20), 'unchanged in combat')
+	stub.in_combat = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	eq(Insets(holder), '-32,25,60,-32', "the frame's clamp when combat ends")
 	eq(#take_errors(), 0, 'no errors')
 end)
 
