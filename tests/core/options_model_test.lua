@@ -437,6 +437,47 @@ test('hidden and disabled: booleans, functions, guiHidden, and values inherited 
 	check(OM.IsDisabled(root, row(view, 'offFn')) == true, 'and the other way')
 end)
 
+test("disabledDesc: why a row is disabled, its own (a string, or a function called with info), read only while it's disabled", function()
+	local state = { lock = true }
+	local calls = {}
+	local root = { Why = group('Why', {
+		text = opt('toggle', 'Text', { order = 1, disabled = function() return state.lock end,
+			disabledDesc = 'Turn on Other first.' }),
+		fn = opt('toggle', 'Fn', { order = 2, disabled = function() return state.lock end,
+			disabledDesc = function(info)
+				calls[#calls + 1] = info[#info]
+				return 'Because of ' .. info[#info] .. '.'
+			end }),
+		inner = group('Inner', {
+			child = opt('toggle', 'Child', { order = 1 }),
+		}, { inline = true, order = 3, disabled = function() return state.lock end, disabledDesc = "The group's." }),
+		plain = opt('toggle', 'Plain', { order = 4, disabled = true }),
+		on = opt('toggle', 'On', { order = 5 }),
+	}, { handler = {} }) } -- a handler: a string member that isn't a literal is a method name on it
+	local view = OM.BuildView(root, 'Why')
+	eq(row(view, 'text').disabledDesc, 'Turn on Other first.', 'a string is the text, not a method name')
+	eq(row(view, 'fn').disabledDesc, 'Because of fn.', 'a function is called with the row\'s info')
+	eq(row(view, 'child').disabledDesc, nil, "a group's is not inherited")
+	eq(row(view, 'plain').disabledDesc, nil, 'none given, none')
+	eq(row(view, 'on').disabledDesc, nil, 'an enabled row has none')
+
+	state.lock = false
+	calls = {}
+	view = OM.BuildView(root, 'Why')
+	eq(row(view, 'text').disabledDesc, nil, 'enabled now: no reason')
+	eq(row(view, 'fn').disabledDesc, nil, 'nor from the function')
+	eq(#calls, 0, 'which is not called while the row is enabled')
+end)
+
+test("SaftUI's justifyH and fill on a description are read as they are: a string is the value, not a method name", function()
+	local root = { Note = group('Note', {
+		line = opt('description', 'In the middle', { justifyH = 'CENTER', fill = true }),
+	}, { handler = {} }) }
+	local r = row(OM.BuildView(root, 'Note'), 'line')
+	eq(OM.Member(root, r, 'justifyH'), 'CENTER', 'justifyH')
+	eq(OM.Member(root, r, 'fill'), true, 'fill')
+end)
+
 test('tabs: hidden ones are left out, disabled ones are listed but not selected by default', function()
 	local root = { Tabs = group('Tabs', {
 		first = group('First', { a = opt('toggle', 'A') }, { order = 1, disabled = true }),

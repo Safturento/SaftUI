@@ -41,8 +41,12 @@ define('toggle', {
 		SetCheck(self.frame, self.value, self.disabled)
 	end,
 
+	-- A disabled box takes no mouse, as every other disabled control: the row
+	-- under it then gets the hover and shows its tooltip, which says why
+	-- (optionsbody.lua). Bind sets it again for a pooled box.
 	OnDisabled = function(self, disabled)
 		SetCheck(self.frame, self.frame:GetChecked(), disabled)
+		self.frame:EnableMouse(not disabled)
 	end,
 })
 
@@ -296,6 +300,8 @@ end
 
 local DESCRIPTION_SIZES = { small = FIELD_FONT_SIZE, medium = FIELD_FONT_SIZE + 2, large = FIELD_FONT_SIZE + 5 }
 local IMAGE_SIZE, IMAGE_GAP = 32, 8 -- AceGUI's label image is 32 square without a size
+-- justifyH, SaftUI's own member: how the text sits across the row.
+local JUSTIFY_H = { LEFT = true, CENTER = true, RIGHT = true }
 
 define('description', {
 	GetWidth = function(self) return self.frame:GetWidth() end,
@@ -307,16 +313,22 @@ define('description', {
 		self:Fit()
 	end,
 
+	-- A fill row's height (the body's, optionsbody.lua: a description with
+	-- fill set): the description is that tall, what it shows in the middle.
+	SetHeight = function(self, height)
+		self.fillHeight = height
+		self:Fit()
+	end,
+
 	-- The text takes what the image and its border leave of the width. Beside
 	-- an image taller than it, it sits in the image's middle, as AceGUI's label
 	-- puts it. The border's width is the theme's now: a theme picked on the
-	-- Theme tab reaches the row when it is drawn again.
+	-- Theme tab reaches the row when it is drawn again. Told a taller height
+	-- (SetHeight), both sit in the middle of it.
 	Fit = function(self)
-		local imageWidth, imageHeight = 0, 0
+		local imageWidth, imageHeight, border = 0, 0, 0
 		if self.image:IsShown() then
-			local border = st:ThemeInset('theme', 'theme', 'action')
-			self.image:ClearAllPoints()
-			self.image:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', border, -border)
+			border = st:ThemeInset('theme', 'theme', 'action')
 			imageWidth = self.image:GetWidth() + 2 * border
 			imageHeight = self.image:GetHeight() + 2 * border
 		end
@@ -324,12 +336,22 @@ define('description', {
 		local lineHeight = floor((self.size or FIELD_FONT_SIZE) * 1.3)
 		local lines = CountLines(self.measure, self.fullText or '', self.frame:GetWidth() - textLeft - 10)
 		local textHeight = lines * lineHeight
-		local textTop = imageHeight > textHeight and floor((imageHeight - textHeight) / 2) or 0
+		local height = max(textHeight, imageHeight)
+		local top = 0
+		if self.fillHeight and self.fillHeight > height then
+			top = floor((self.fillHeight - height) / 2)
+			height = self.fillHeight
+		end
+		if imageWidth > 0 then
+			self.image:ClearAllPoints()
+			self.image:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', border, -(top + border))
+		end
+		local textTop = top + (imageHeight > textHeight and floor((imageHeight - textHeight) / 2) or 0)
 		self.text:ClearAllPoints()
 		self.text:SetPoint('TOPLEFT', self.frame, 'TOPLEFT', textLeft, -textTop)
 		self.text:SetPoint('TOPRIGHT', self.frame, 'TOPRIGHT', 0, -textTop)
 		self.text:SetHeight(textHeight)
-		self.frame:SetHeight(max(textHeight, imageHeight))
+		self.frame:SetHeight(height)
 	end,
 
 	-- AceConfigDialog's description image: image (a path or fileID, or a
@@ -372,7 +394,13 @@ define('description', {
 		self.fullText = text
 		self.text:SetText(text)
 		self.text:SetTextColor(Colors().text.normal:GetRGB())
+		local justify = OM.Member(self.root, self.row, 'justifyH')
+		self.text:SetJustifyH(JUSTIFY_H[justify] and justify or 'LEFT')
 		self:ShowImage()
 		self:Fit()
+	end,
+
+	OnRelease = function(self)
+		self.fillHeight = nil
 	end,
 })

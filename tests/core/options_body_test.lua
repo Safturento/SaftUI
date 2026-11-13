@@ -489,3 +489,90 @@ test("a fill row stretches to the body's visible height, so the body has nothing
 	module.GetConfigTable = nil
 	close_all()
 end)
+
+------------------------------------------------------------------ a disabled row's tooltip
+
+-- GameTooltip, as a stand-in that notes each line it's given with its color.
+local function watch_tooltip()
+	local tip = { lines = {}, colors = {} }
+	local saved = _G.GameTooltip
+	_G.GameTooltip = {
+		SetOwner = function(_, frame) tip.owner = frame; tip.lines, tip.colors = {}, {} end,
+		AddLine = function(_, text, r, g, b)
+			tip.lines[#tip.lines + 1] = text
+			tip.colors[#tip.colors + 1] = r and string.format('%.2f,%.2f,%.2f', r, g, b) or 'default'
+		end,
+		Show = function() end,
+		IsOwned = function(_, frame) return tip.owner == frame end,
+		Hide = function() tip.owner = nil end,
+	}
+	return tip, function() _G.GameTooltip = saved end
+end
+
+-- The cursor on the middle of frame, in screen units.
+local function hover(frame)
+	local scale = frame:GetEffectiveScale()
+	stub.cursor_x = (frame:GetLeft() + frame:GetRight()) / 2 * scale
+	stub.cursor_y = (frame:GetTop() + frame:GetBottom()) / 2 * scale
+end
+
+test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > Red; the mouse on its box reaches the row", function()
+	local lock = true
+	local function toggle(name, order, fields)
+		local option = { type = 'toggle', name = name, order = order, get = function() return true end, set = function() end }
+		for key, value in pairs(fields or {}) do option[key] = value end
+		return option
+	end
+	local root = { page = { type = 'group', name = 'Page', args = {
+		locked = toggle('Locked', 1, { desc = 'What it does.', disabled = function() return lock end,
+			disabledDesc = function() return 'Uncheck Other first.' end }),
+		free = toggle('Free', 2, { desc = 'Its own.', disabledDesc = 'Never shown: it is enabled.' }),
+		bare = toggle('Bare', 3, { disabled = true, disabledDesc = 'Only why.' }),
+		plain = toggle('Plain', 4, { desc = 'No reason.', disabled = true }),
+	} } }
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	content:SetSize(774, 400)
+	local body = st.OptionsBody.New(content, root, nil, 774)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local by = {}
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	local tip, restore = watch_tooltip()
+	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
+
+	-- The mouse on a disabled box: the box takes none, so the row is under it.
+	local locked = by.locked
+	hover(locked.widget.frame)
+	check(locked.frame:IsMouseMotionFocus(), 'the row gets the hover over its disabled box')
+	check(not locked.widget.frame:IsMouseMotionFocus(), 'not the box')
+	stub.fire_script(locked.frame, 'OnEnter')
+	check(tip.owner == locked.frame, 'the tooltip shows for the row')
+	eq(table.concat(tip.lines, '|'), 'Locked|What it does.|Uncheck Other first.', 'its name, desc, then why')
+	eq(tip.colors[3], red, 'why in Text > Red')
+	stub.fire_script(locked.frame, 'OnLeave')
+	check(tip.owner == nil, 'and goes')
+
+	-- An enabled box takes the mouse, and an enabled row shows no reason.
+	hover(by.free.widget.frame)
+	check(by.free.widget.frame:IsMouseMotionFocus(), 'an enabled box takes the hover')
+	stub.fire_script(by.free.frame, 'OnEnter')
+	eq(table.concat(tip.lines, '|'), 'Free|Its own.', 'no reason while enabled')
+
+	-- A reason alone shows; no reason, just the desc.
+	stub.fire_script(by.bare.frame, 'OnEnter')
+	eq(table.concat(tip.lines, '|'), 'Bare|Only why.', 'a reason with no desc still shows')
+	stub.fire_script(by.plain.frame, 'OnEnter')
+	eq(table.concat(tip.lines, '|'), 'Plain|No reason.', 'a disabled row with none: its desc')
+
+	-- Enabled on the next draw: no reason, and its box takes the mouse again.
+	lock = false
+	body:Release()
+	body:Draw(OM.BuildView(root, 'page').sections)
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	stub.fire_script(by.locked.frame, 'OnEnter')
+	eq(table.concat(tip.lines, '|'), 'Locked|What it does.', 'enabled: its desc alone')
+	hover(by.locked.widget.frame)
+	check(by.locked.widget.frame:IsMouseMotionFocus(), 'and its box takes the hover again')
+	restore()
+	body:Release()
+end)

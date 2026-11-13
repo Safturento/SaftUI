@@ -7,37 +7,42 @@ local UF = st:GetModule('Unitframes')
 	draws its kind of plate with the other page's settings (UF.PlateConfigKey
 	reads them).
 
-	While a page's box is checked, the rest of the page is hidden, so nobody
-	changes a setting that does nothing there. What stays: the on/off switches
-	(Nameplates, Friendly plates), the box and the line under it, the
-	stand-down line, and on the Enemy page threat (Threat when solo and the
-	Threat tab), since threat is always the Enemy page's (threat.lua reads
-	nameplate.threat). The hidden settings stay in the profile, so unchecking
-	brings them back as they were. While one box is checked, the other page's
-	is disabled, so both are never on, and a line under it says why. All of it
-	is read from the profile at call time: a profile change replaces the
-	tables.
+	While a page's box is checked, nobody can change a setting that does
+	nothing there. The page's tabs stay where they are, so nothing above the
+	page moves, but the ones it doesn't keep are disabled (the window fades
+	them and takes no click on them), and General hides its own settings,
+	with one centred line in their place saying where the plates' settings
+	come from ("Sourced from enemy nameplates"). What stays: General, with the
+	on/off switches (Nameplates, Friendly plates) and the box, the stand-down
+	line, and on the Enemy page threat (Threat when solo and the Threat tab),
+	since threat is always the Enemy page's (threat.lua reads
+	nameplate.threat). The settings
+	set aside stay in the profile, so unchecking brings them back as they
+	were. While one box is checked, the other page's is disabled, so both are
+	never on, and its tooltip says why (disabledDesc). All of it is read from
+	the profile at call time: a profile change replaces the tables.
 
 	Per page: box, the box's key in the page's config; other, the other page;
-	kept, the page's options (its tabs) that stay while the box is checked,
-	and keptGeneral, General's; checked, the line under the box while it's
-	checked, and otherChecked, while the other page's is.
+	kept, the page's options (its tabs) that stay usable while the box is
+	checked, and keptGeneral, General's that stay shown; sourced, the centred
+	line while it's checked; otherChecked, the box's tooltip while it's
+	disabled because the other page's is checked.
 ]]
 local PLATE_PAGES = {
 	nameplate = {
 		box = 'use_friendly',
 		other = 'friendlynameplate',
 		kept = { general = true, drawn_by = true, Threat = true },
-		keptGeneral = { enable = true, threat_solo = true, use_friendly = true, box_note = true },
-		checked = "Enemy nameplates use the Friendly nameplates page's settings, all but threat, which stays on this page.",
+		keptGeneral = { enable = true, threat_solo = true, use_friendly = true, sourced = true },
+		sourced = 'Sourced from friendly nameplates',
 		otherChecked = "Friendly nameplates use this page's settings. To check this box, uncheck Use enemy nameplates' settings on the Friendly nameplates page.",
 	},
 	friendlynameplate = {
 		box = 'use_enemy',
 		other = 'nameplate',
 		kept = { general = true, drawn_by = true },
-		keptGeneral = { friendly = true, use_enemy = true, box_note = true },
-		checked = "Friendly nameplates use the Enemy nameplates page's settings. They never show threat.",
+		keptGeneral = { friendly = true, use_enemy = true, sourced = true },
+		sourced = 'Sourced from enemy nameplates',
 		otherChecked = "Enemy nameplates use this page's settings, all but threat. To check this box, uncheck Use friendly nameplates' settings on the Enemy nameplates page.",
 	},
 }
@@ -59,13 +64,18 @@ local function OtherNameplateAddon()
 	return UF.NameplateAddon and UF:NameplateAddon() or nil
 end
 
+-- The line naming the addon that draws the plates.
+local function DrawnBy(addon)
+	return ("Nameplates are drawn by %s. Turn it off to use SaftUI's."):format(addon)
+end
+
 local function StandDown(config_table)
 	local addon = OtherNameplateAddon()
 	config_table.disabled = function() return OtherNameplateAddon() ~= nil end
 	if not addon then return end
 	config_table.args.drawn_by = {
 		order = 0,
-		name = ("Nameplates are drawn by %s. Turn it off to use SaftUI's."):format(addon),
+		name = DrawnBy(addon),
 		type = 'description',
 		-- Read at full strength while everything under it is dimmed.
 		disabled = false,
@@ -73,7 +83,7 @@ local function StandDown(config_table)
 end
 
 -- Hides every option in args that kept doesn't name while unit's box is
--- checked.
+-- checked: General's own settings.
 local function HideWhileChecked(unit, args, kept)
 	local function Checked() return PlateBoxChecked(unit) end
 	for key, option in pairs(args) do
@@ -81,18 +91,39 @@ local function HideWhileChecked(unit, args, kept)
 	end
 end
 
--- A nameplate page's box (name, desc, at order), and the line under it, as
--- General's box and box_note.
+-- Disables every option in args that kept doesn't name (the page's tabs)
+-- while unit's box is checked, so they stay where they are, faded, and take
+-- no click. An option's own disabled replaces the page's (StandDown), which
+-- it would otherwise inherit, so another addon drawing the plates disables
+-- them too. No element tab sets its own disabled, so nothing is overwritten.
+local function DisableWhileChecked(unit, args, kept)
+	local function Disabled() return OtherNameplateAddon() ~= nil or PlateBoxChecked(unit) end
+	for key, option in pairs(args) do
+		if not kept[key] then option.disabled = Disabled end
+	end
+end
+
+-- Why unit's box is disabled, or nil while it isn't: another addon draws the
+-- plates, or the other page's box is checked and this one isn't (both
+-- checked, from a profile made elsewhere, leaves either free to uncheck).
+local function WhyBoxDisabled(unit)
+	local addon = OtherNameplateAddon()
+	if addon then return DrawnBy(addon) end
+	local plate = PLATE_PAGES[unit]
+	if PlateBoxChecked(plate.other) and not PlateBoxChecked(unit) then return plate.otherChecked end
+end
+
+-- A nameplate page's box (name, desc, at order), and the centred line that
+-- stands in for General's other settings while it's checked, as General's
+-- box and sourced.
 local function PlateBox(unit, order, name, desc)
 	local plate = PLATE_PAGES[unit]
 	local box = st.Config.generators.toggle(order, name, desc)
-	-- Disabled while the other page's box is checked and this one isn't (both
-	-- checked, from a profile made elsewhere, leaves either free to uncheck),
-	-- and while another addon draws the plates: an option's own disabled
-	-- replaces the page's (StandDown), which it would otherwise inherit.
-	box.disabled = function()
-		return OtherNameplateAddon() ~= nil or (PlateBoxChecked(plate.other) and not PlateBoxChecked(unit))
-	end
+	-- Its own disabled replaces the page's (StandDown), so it checks for
+	-- another addon drawing the plates too. Hovered while disabled, its
+	-- tooltip says why.
+	box.disabled = function() return WhyBoxDisabled(unit) ~= nil end
+	box.disabledDesc = function() return WhyBoxDisabled(unit) end
 	-- A box moves one kind of plate to the other config, so every plate looks
 	-- its config up again and the plates' size follows: UF:ApplyConfig's plate
 	-- branch, which does the same for either plate key.
@@ -100,17 +131,18 @@ local function PlateBox(unit, order, name, desc)
 		UF:GetProfileConfig()[unit][plate.box] = value
 		UF:UpdateConfig('nameplate')
 	end
-	local note = {
-		order = order + 0.5,
+	-- After General's other settings, which are hidden while it shows: in the
+	-- middle of what the switches leave of the page, across and down (a fill
+	-- row, as the window draws a description with fill).
+	local sourced = {
+		order = 100,
 		type = 'description',
-		name = function()
-			return PlateBoxChecked(unit) and plate.checked or plate.otherChecked
-		end,
-		hidden = function()
-			return not (PlateBoxChecked(unit) or PlateBoxChecked(plate.other))
-		end,
+		name = plate.sourced,
+		justifyH = 'CENTER',
+		fill = true,
+		hidden = function() return not PlateBoxChecked(unit) end,
 	}
-	return box, note
+	return box, sourced
 end
 
 --[[
@@ -141,15 +173,15 @@ local function NameplateGeneral()
 		st.OptionsWidgets.Confirm('Nameplates change after a reload. Reload now?', ReloadUI)
 	end
 
-	local box, note = PlateBox('nameplate', 3, "Use friendly nameplates' settings",
-		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings, and hides this page's other settings, which are kept for when it's unchecked. Threat when solo and the Threat tab stay, and still apply.")
+	local box, sourced = PlateBox('nameplate', 3, "Use friendly nameplates' settings",
+		"Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Threat when solo and the Threat tab stay, and still apply.")
 
 	local args = {
 		enable = enable,
 		threat_solo = G.toggle(2, 'Threat when solo',
 			"Tints enemy health bars by your threat while you're on your own too. In a party or raid they're always tinted.", 'small'),
 		use_friendly = box,
-		box_note = note,
+		sourced = sourced,
 		theme = G.theme(4, "How the border and background around each whole enemy nameplate are drawn. Its bars have their own, on their tabs."),
 		background = G.background(4.5),
 		width = G.width(5, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size."),
@@ -190,13 +222,13 @@ local function FriendlyNameplateGeneral()
 		UF:ApplyNameplateCVars()
 	end
 
-	local box, note = PlateBox('friendlynameplate', 2, "Use enemy nameplates' settings",
-		"Draws friendly nameplates with the Enemy nameplates page's settings, and hides this page's other settings, which are kept for when it's unchecked. Friendly nameplates never show threat.")
+	local box, sourced = PlateBox('friendlynameplate', 2, "Use enemy nameplates' settings",
+		"Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Friendly nameplates never show threat.")
 
 	local args = {
 		friendly = friendly,
 		use_enemy = box,
-		box_note = note,
+		sourced = sourced,
 		theme = G.theme(4, "How the border and background around each whole friendly nameplate are drawn. Its bars have their own, on their tabs."),
 		background = G.background(4.5),
 		width = G.width(5, "Friendly nameplates' width, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size."),
@@ -238,12 +270,12 @@ function UF.SetUpPlatePage(unit, config_table)
 	end
 end
 
--- A nameplate page's tabs hide while its box is checked, but those it keeps:
--- UF:GetConfigTable calls it once the element tabs are on. Any other unit's
--- page is left as it is.
-function UF.HidePlatePageTabs(unit, config_table)
+-- A nameplate page's tabs are disabled while its box is checked, but those it
+-- keeps: UF:GetConfigTable calls it once the element tabs are on. Any other
+-- unit's page is left as it is.
+function UF.DisablePlatePageTabs(unit, config_table)
 	local plate = PLATE_PAGES[unit]
 	if plate then
-		HideWhileChecked(unit, config_table.args, plate.kept)
+		DisableWhileChecked(unit, config_table.args, plate.kept)
 	end
 end

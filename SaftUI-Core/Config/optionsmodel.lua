@@ -44,10 +44,13 @@ local st = SaftUI
 	reopens a saved selection.
 
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
-	disabled, path, option }: path is the keys from the root, option the option
-	table. size is the option's own size member: 'small' (honored only for a
-	toggle, color, execute or input) or 'wide'; anything else is normal. Every
-	description and every position row is wide. Ace's width is not read.
+	disabled, disabledDesc, path, option }: path is the keys from the root,
+	option the option table. disabledDesc is the option's own disabledDesc
+	member (SaftUI's: why it's disabled, a string or a function), read only
+	while the row is disabled, else nil. size is the option's own size
+	member: 'small' (honored only for a toggle, color, execute or input) or
+	'wide'; anything else is normal. Every description and every position row
+	is wide. Ace's width is not read.
 	A position row sits in a section of its own, titled with its name; the
 	rows after it continue in an untitled one.
 ]]
@@ -79,7 +82,7 @@ local isInherited = {
 -- Members where a string is the value, not a handler method name.
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
-	size = true, target = true, nameKey = true, pickerLabel = true,
+	size = true, target = true, nameKey = true, pickerLabel = true, disabledDesc = true, justifyH = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -357,13 +360,16 @@ local function SizeOf(option, options, path)
 end
 
 local function Row(option, options, path)
+	local disabled = IsDisabled(option, options, path)
 	return {
 		key = path[#path],
 		type = option.type,
 		name = Text(GetMember('name', option, options, path)),
 		desc = Desc(GetMember('desc', option, options, path)),
 		size = SizeOf(option, options, path),
-		disabled = IsDisabled(option, options, path),
+		disabled = disabled,
+		-- Why it's disabled (SaftUI's own member, never inherited), read only then.
+		disabledDesc = disabled and Desc(GetMember('disabledDesc', option, options, path)) or nil,
 		path = path,
 		option = option,
 	}

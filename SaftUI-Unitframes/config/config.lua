@@ -387,8 +387,9 @@ function UF:GetConfigTable()
 			end
 		end
 
-		-- A nameplate page's tabs hide while its box is checked, but those it keeps.
-		UF.HidePlatePageTabs(unit, config_table)
+		-- A nameplate page's tabs are disabled while its box is checked, but
+		-- those it keeps.
+		UF.DisablePlatePageTabs(unit, config_table)
 
 		return config_table
 	end

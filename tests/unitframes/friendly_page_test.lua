@@ -6,14 +6,16 @@
 --     plates, nameplate.friendly), its box, Theme, Background, Width and
 --     Height, and its element tabs are a plate's but Threat;
 --   - each page's box ("Use enemy nameplates' settings" on the Friendly page,
---     "Use friendly nameplates' settings" on the Enemy page) hides the rest
---     of its page while it's checked, but the on/off switches and, on the
---     Enemy page, threat; a line under it says where the look comes from;
---   - while one box is checked the other page's is disabled, with a line
---     saying the other kind uses that page;
+--     "Use friendly nameplates' settings" on the Enemy page), while it's
+--     checked, leaves its page's tabs where they are but disables them (all
+--     but General, and Threat on the Enemy page), and General keeps only the
+--     on/off switches and the box, with one centred line in place of the
+--     rest ("Sourced from enemy nameplates");
+--   - while one box is checked the other page's is disabled, and its tooltip
+--     (the row's disabledDesc) says why; while another nameplate addon draws
+--     the plates, it says that;
 --   - unchecking brings the settings back as they were, and the tab chosen
---     before the box was checked, which the window's stored selection kept
---     while the box hid it;
+--     before the box was checked;
 --   - a box re-applies the plates (UF:UpdateConfig for a plate key) and their
 --     size (UF:ApplyPlateSize). That a shown plate's base_unit follows is
 --     Task 4's end-to-end test (ruling P1): it needs the plates' code;
@@ -33,10 +35,18 @@ local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs
 local ENEMY_TABS = 'general,Health,Threat,Name,Subtext,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
 local FRIENDLY_TABS = 'general,Health,Name,Subtext,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
 local ENEMY_BOX, FRIENDLY_BOX = "Use friendly nameplates' settings", "Use enemy nameplates' settings"
-local ENEMY_USES_FRIENDLY = "Enemy nameplates use the Friendly nameplates page's settings, all but threat, which stays on this page."
-local FRIENDLY_USES_ENEMY = "Friendly nameplates use the Enemy nameplates page's settings. They never show threat."
+-- Each page's box's key.
+local PLATE_BOX = { nameplate = 'use_friendly', friendlynameplate = 'use_enemy' }
 local FRIENDLY_USES_THIS = "Friendly nameplates use this page's settings. To check this box, uncheck Use enemy nameplates' settings on the Friendly nameplates page."
 local ENEMY_USES_THIS = "Enemy nameplates use this page's settings, all but threat. To check this box, uncheck Use friendly nameplates' settings on the Enemy nameplates page."
+local DRAWN_BY_PLATER = "Nameplates are drawn by Plater. Turn it off to use SaftUI's."
+-- The centred line in place of General's other settings while a page's box is checked.
+local FRIENDLY_SOURCED, ENEMY_SOURCED = 'Sourced from enemy nameplates', 'Sourced from friendly nameplates'
+local ENEMY_BOX_DESC = "Draws enemy and neutral nameplates with the Friendly nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Threat when solo and the Threat tab stay, and still apply."
+local FRIENDLY_BOX_DESC = "Draws friendly nameplates with the Enemy nameplates page's settings. This page's own are set aside, kept for when it's unchecked: its other tabs are disabled and General's other settings hidden. Friendly nameplates never show threat."
+-- The tabs the Friendly page's box disables, and the Enemy page's (Threat stays).
+local FRIENDLY_OFF_TABS = 'Health,Name,Subtext,Castbar,Buffs,Debuffs,RaidTargetIndicator,QuestIndicator'
+local ENEMY_OFF_TABS = FRIENDLY_OFF_TABS
 
 local function world(client)
 	local st, UF = NP.world(client or 'forever')
@@ -91,6 +101,15 @@ end
 local function tabs(view)
 	local out = {}
 	for i, tab in ipairs(view.tabs) do out[i] = tab.key end
+	return table.concat(out, ',')
+end
+
+-- The view's disabled tabs, in order.
+local function disabled_tabs(view)
+	local out = {}
+	for _, tab in ipairs(view.tabs) do
+		if tab.disabled then out[#out + 1] = tab.key end
+	end
 	return table.concat(out, ',')
 end
 
@@ -156,10 +175,10 @@ end)
 test('the Enemy page: Nameplates, Threat when solo, its box, Theme, Background, Width and Height; Friendly plates is on the Friendly page', function()
 	local st, UF = world('forever')
 	local root, view = page(UF, 'nameplate')
-	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height', 'in order, no line with no box checked')
+	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height', 'in order, no centred line with no box checked')
 	local general = root.Unitframes.args.nameplate.args.general.args
 	eq(general.use_friendly.name, ENEMY_BOX, "the box's name")
-	eq(general.use_friendly.desc, "Draws enemy and neutral nameplates with the Friendly nameplates page's settings, and hides this page's other settings, which are kept for when it's unchecked. Threat when solo and the Threat tab stay, and still apply.", "the box's desc")
+	eq(general.use_friendly.desc, ENEMY_BOX_DESC, "the box's desc")
 	eq(general.width.desc, "Enemy nameplates' width: the health bar and the area you click. The game stacks every nameplate at this size.", "Width's desc")
 	eq(general.height.desc, "Enemy nameplates' height: the health bar and the area you click. The game stacks every nameplate at this size.", "Height's desc")
 	check(general.theme.desc:find('enemy nameplate', 1, true) ~= nil, "Theme says it's the enemy plates': " .. general.theme.desc)
@@ -175,13 +194,13 @@ test("the Friendly page: Friendly plates, its box, Theme, Background, Width and 
 		local root, view = page(UF, 'friendlynameplate')
 		local config = root.Unitframes.args.friendlynameplate
 		local general = config.args.general.args
-		eq(keys(view), 'friendly,use_enemy,theme,background,width,height', client .. ': in order, no line with no box checked')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height', client .. ': in order, no centred line with no box checked')
 		for key, name in pairs({ friendly = 'Friendly plates', use_enemy = FRIENDLY_BOX, theme = 'Theme',
 				background = 'Background', width = 'Width', height = 'Height' }) do
 			eq(general[key].name, name, client .. ': ' .. key .. ' is ' .. name)
 		end
 		eq(general.friendly.desc, "Shows nameplates over friendly players and NPCs: SaftUI's outside instances, Blizzard's inside them. Off, friendly units have none.", client .. ": Friendly plates' desc")
-		eq(general.use_enemy.desc, "Draws friendly nameplates with the Enemy nameplates page's settings, and hides this page's other settings, which are kept for when it's unchecked. Friendly nameplates never show threat.", client .. ": the box's desc")
+		eq(general.use_enemy.desc, FRIENDLY_BOX_DESC, client .. ": the box's desc")
 		eq(general.width.desc, "Friendly nameplates' width, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size.", client .. ": Width's desc")
 		eq(general.height.desc, "Friendly nameplates' height, centred on the plate: the area you click. While enemy nameplates use this page, the game stacks every nameplate at this size.", client .. ": Height's desc")
 		check(general.theme.desc:find('friendly nameplate', 1, true) ~= nil, client .. ": Theme says it's the friendly plates': " .. general.theme.desc)
@@ -250,97 +269,143 @@ end)
 
 ------------------------------------------------------------------ the boxes
 
-test('checking a box hides the page: all but the switches, and threat on the Enemy page', function()
+test("checking a box: the page's tabs stay where they are, disabled but General (and Threat on the Enemy page), and General keeps its switches with a centred line in place of the rest", function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
+		local OM = SaftUI.OptionsModel
 
 		-- The Friendly page's box.
 		check(set(UF, 'friendlynameplate', 'use_enemy', true), client .. ': the Friendly box checked')
 		eq(UF:GetProfileConfig().friendlynameplate.use_enemy, true, client .. ': saved')
 		local root, view = page(UF, 'friendlynameplate')
-		eq(keys(view), 'friendly,use_enemy,box_note', client .. ': only Friendly plates, the box and its line')
-		eq(row_for(view, 'box_note').type, 'description', client .. ': a description')
-		eq(row_for(view, 'box_note').name, FRIENDLY_USES_ENEMY, client .. ': it says where the look comes from')
-		eq(tabs(view), 'general', client .. ': every element tab hidden')
-		root, view = page(UF, 'friendlynameplate', 'Health')
-		eq(view.tab, 'general', client .. ': a hidden tab opens General')
-		-- The window's stored selection, which only a click changes: the tab
-		-- chosen before the box was checked.
-		local chosen = { pick = 'friendlynameplate', tab = 'Health' }
-		eq(view_of(UF, chosen).tab, 'general', client .. ': the chosen tab hidden: General')
-		-- Nor are the hidden settings found by the search.
-		for _, result in ipairs(SaftUI.OptionsModel.Search(root, 'Max width')) do
-			check(result.path[2] ~= 'friendlynameplate', client .. ': no hidden setting found: ' .. table.concat(result.path, '.'))
+		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': Friendly plates, the box, and one line in place of the rest')
+		local line = row_for(view, 'sourced')
+		eq(line.type, 'description', client .. ': a description')
+		eq(line.name, FRIENDLY_SOURCED, client .. ': saying where the settings come from')
+		eq(OM.Member(root, line, 'justifyH'), 'CENTER', client .. ': centred across the page')
+		eq(OM.Member(root, line, 'fill'), true, client .. ': and down the space the switches leave')
+		for _, row in ipairs(rows(view)) do
+			check(not row.disabled, client .. ': ' .. row.key .. ' enabled')
 		end
-		check(#SaftUI.OptionsModel.Search(root, 'Max width') > 0, client .. ": other units' still are")
+		eq(tabs(view), FRIENDLY_TABS, client .. ': every tab still there, so nothing above the page moves')
+		eq(disabled_tabs(view), FRIENDLY_OFF_TABS, client .. ': all but General disabled')
+		eq(view.tab, 'general', client .. ': General open')
 
-		-- The Enemy page shows everything, its box disabled.
+		-- A disabled tab the stored selection names (one chosen on the other page,
+		-- then this page picked) still opens, as the model opens any disabled tab
+		-- chosen by key, with every setting on it disabled.
+		root, view = page(UF, 'friendlynameplate', 'Health')
+		eq(view.tab, 'Health', client .. ': the chosen Health tab opens')
+		check(#rows(view) > 0, client .. ': with its settings')
+		for _, row in ipairs(rows(view)) do
+			check(row.disabled, client .. ': Health ' .. row.key .. ' disabled')
+		end
+		local chosen = { pick = 'friendlynameplate', tab = 'Health' }
+		eq(view_of(UF, { pick = 'friendlynameplate' }).tab, 'general', client .. ': none chosen: General')
+		-- Search finds a disabled tab's settings (disabled, not hidden), not General's hidden ones.
+		local found, hidden = false, false
+		for _, result in ipairs(OM.Search(root, 'Max width')) do
+			if result.path[2] == 'friendlynameplate' then found = true end
+		end
+		for _, result in ipairs(OM.Search(root, 'Width')) do
+			if result.path[2] == 'friendlynameplate' and result.path[3] == 'general' then hidden = true end
+		end
+		check(found, client .. ": a disabled tab's setting is found")
+		check(not hidden, client .. ": General's hidden Width isn't")
+
+		-- The Enemy page shows everything, its box disabled, with no line.
 		root, view = page(UF, 'nameplate')
-		eq(keys(view), 'enable,threat_solo,use_friendly,box_note,theme,background,width,height', client .. ': the Enemy page whole')
+		eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height', client .. ': the Enemy page whole, no line')
 		eq(tabs(view), ENEMY_TABS, client .. ': and its tabs')
+		eq(disabled_tabs(view), '', client .. ': none disabled')
 		check(set(UF, 'friendlynameplate', 'use_enemy', false), client .. ': unchecked')
-		eq(view_of(UF, chosen).tab, 'Health', client .. ': unchecked: the tab chosen before opens again')
+		eq(view_of(UF, chosen).tab, 'Health', client .. ': unchecked: the tab chosen before opens')
+		eq(disabled_tabs(view_of(UF, chosen)), '', client .. ': every tab enabled again')
 		eq(chosen.tab, 'Health', client .. ': the stored selection kept')
 
 		-- The Enemy page's box.
 		check(set(UF, 'nameplate', 'use_friendly', true), client .. ': the Enemy box checked')
 		eq(UF:GetProfileConfig().nameplate.use_friendly, true, client .. ': saved')
 		root, view = page(UF, 'nameplate')
-		eq(keys(view), 'enable,threat_solo,use_friendly,box_note', client .. ': Nameplates, Threat when solo, the box and its line')
-		eq(row_for(view, 'box_note').name, ENEMY_USES_FRIENDLY, client .. ': it says all but threat comes from the Friendly page')
-		eq(tabs(view), 'general,Threat', client .. ': the Threat tab stays')
+		eq(keys(view), 'enable,threat_solo,use_friendly,sourced', client .. ': Nameplates, Threat when solo, the box and the line')
+		eq(row_for(view, 'sourced').name, ENEMY_SOURCED, client .. ': saying where the settings come from')
+		eq(tabs(view), ENEMY_TABS, client .. ': every tab still there')
+		eq(disabled_tabs(view), ENEMY_OFF_TABS, client .. ': all but General and Threat disabled')
 		root, view = page(UF, 'nameplate', 'Threat')
-		eq(view.tab, 'Threat', client .. ': and opens')
-		local enemyChosen = { pick = 'nameplate', tab = 'Castbar' }
-		eq(view_of(UF, enemyChosen).tab, 'general', client .. ': the chosen Castbar tab hidden: General')
+		eq(view.tab, 'Threat', client .. ': Threat opens')
 		eq(keys(view), 'enable,font,alpha,position', client .. ': with its settings')
 		for _, row in ipairs(rows(view)) do
 			check(not row.disabled, client .. ': Threat ' .. row.key .. ' is enabled')
 		end
+		local enemyChosen = { pick = 'nameplate', tab = 'Castbar' }
+		check(rows(view_of(UF, enemyChosen))[1].disabled, client .. ': the chosen Castbar tab opens disabled')
 
 		-- The Friendly page shows everything, its box disabled.
 		root, view = page(UF, 'friendlynameplate')
-		eq(keys(view), 'friendly,use_enemy,box_note,theme,background,width,height', client .. ': the Friendly page whole')
-		eq(tabs(view), FRIENDLY_TABS, client .. ': and its tabs')
+		eq(keys(view), 'friendly,use_enemy,theme,background,width,height', client .. ': the Friendly page whole, no line')
+		eq(disabled_tabs(view), '', client .. ': its tabs enabled')
 		check(set(UF, 'nameplate', 'use_friendly', false), client .. ': the Enemy box unchecked')
-		eq(view_of(UF, enemyChosen).tab, 'Castbar', client .. ': unchecked: the Castbar tab chosen before opens again')
+		eq(view_of(UF, enemyChosen).tab, 'Castbar', client .. ': unchecked: the Castbar tab chosen before opens')
+		check(not rows(view_of(UF, enemyChosen))[1].disabled, client .. ': enabled')
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
 
-test("one box at a time: the other page's box is disabled, with a line saying the other kind uses that page", function()
+test("one box at a time: the other page's box is disabled, and hovering it says why in its tooltip", function()
 	local st, UF = world('forever')
 	check(set(UF, 'friendlynameplate', 'use_enemy', true), 'the Friendly box checked')
 	local root, view = page(UF, 'nameplate')
-	eq(row_for(view, 'use_friendly').disabled, true, "the Enemy page's box is disabled")
-	eq(row_for(view, 'box_note').name, FRIENDLY_USES_THIS, 'its line says friendly plates use this page')
-	eq(row_for(view, 'box_note').disabled, false, 'at full strength')
+	local box = row_for(view, 'use_friendly')
+	eq(box.disabled, true, "the Enemy page's box is disabled")
+	eq(box.disabledDesc, FRIENDLY_USES_THIS, 'its tooltip says friendly plates use this page, and how to free it')
+	eq(row_for(view, 'sourced'), nil, 'no line on the page')
 	for _, row in ipairs(rows(view)) do
-		if row.key ~= 'use_friendly' then check(not row.disabled, row.key .. ' is enabled') end
+		if row.key ~= 'use_friendly' then
+			check(not row.disabled, row.key .. ' is enabled')
+			eq(row.disabledDesc, nil, row.key .. ' has no reason')
+		end
 	end
+
+	-- Drawn, hovering the box shows it: the box takes no mouse, so its row's tooltip shows.
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	content:SetSize(774, 400)
+	local body = st.OptionsBody.New(content, root)
+	body:Draw(view.sections)
+	local cell
+	for _, c in ipairs(body.cells) do if c.row.key == 'use_friendly' then cell = c end end
+	eq(cell.widget.frame:IsMouseEnabled(), false, "the box takes no mouse: its row's does")
+	stub.fire_script(cell.frame, 'OnEnter')
+	local texts = stub.state(GameTooltip).texts
+	eq(table.concat(texts, '|'), ENEMY_BOX .. '|' .. ENEMY_BOX_DESC .. '|' .. FRIENDLY_USES_THIS, 'its name, what it does, and why it is disabled')
+	stub.fire_script(cell.frame, 'OnLeave')
+	body:Release()
+
 	root, view = page(UF, 'friendlynameplate')
 	eq(row_for(view, 'use_enemy').disabled, false, 'the checked box can be unchecked')
+	eq(row_for(view, 'use_enemy').disabledDesc, nil, 'no reason on it')
 	check(set(UF, 'friendlynameplate', 'use_enemy', false), 'unchecked')
 	root, view = page(UF, 'nameplate')
 	eq(row_for(view, 'use_friendly').disabled, false, "the Enemy page's box is free again")
-	eq(row_for(view, 'box_note'), nil, 'and its line gone')
+	eq(row_for(view, 'use_friendly').disabledDesc, nil, 'with no reason')
 
 	check(set(UF, 'nameplate', 'use_friendly', true), 'the Enemy box checked')
 	root, view = page(UF, 'friendlynameplate')
 	eq(row_for(view, 'use_enemy').disabled, true, "the Friendly page's box is disabled")
-	eq(row_for(view, 'box_note').name, ENEMY_USES_THIS, 'its line says enemy plates use this page, all but threat')
+	eq(row_for(view, 'use_enemy').disabledDesc, ENEMY_USES_THIS, 'its tooltip says enemy plates use this page, all but threat')
 	root, view = page(UF, 'nameplate')
 	eq(row_for(view, 'use_friendly').disabled, false, 'the checked box can be unchecked')
 
 	-- Both checked (a profile from elsewhere): neither is disabled, so either
-	-- can be unchecked, and each page says it uses the other.
+	-- can be unchecked, and each page says it's sourced from the other.
 	UF:GetProfileConfig().friendlynameplate.use_enemy = true
 	root, view = page(UF, 'nameplate')
 	eq(row_for(view, 'use_friendly').disabled, false, 'both checked: the Enemy box is free')
-	eq(row_for(view, 'box_note').name, ENEMY_USES_FRIENDLY, 'the Enemy line')
+	eq(row_for(view, 'sourced').name, ENEMY_SOURCED, 'the Enemy line')
 	root, view = page(UF, 'friendlynameplate')
 	eq(row_for(view, 'use_enemy').disabled, false, 'both checked: the Friendly box is free')
-	eq(row_for(view, 'box_note').name, FRIENDLY_USES_ENEMY, 'the Friendly line')
+	eq(row_for(view, 'sourced').name, FRIENDLY_SOURCED, 'the Friendly line')
 	eq(#take_errors(), 0, 'no error')
 end)
 
@@ -360,6 +425,7 @@ test('unchecking brings the settings back as they were', function()
 	local _, view = page(UF, 'friendlynameplate')
 	eq(keys(view), 'friendly,use_enemy,theme,background,width,height', 'General whole again')
 	eq(tabs(view), FRIENDLY_TABS, 'and the tabs')
+	eq(disabled_tabs(view), '', 'every one enabled')
 	eq(get(UF, 'friendlynameplate', 'theme'), 'thin', 'Theme as it was')
 	eq(get(UF, 'friendlynameplate', 'width'), '180', 'Width as it was')
 	eq(get(UF, 'friendlynameplate', 'enable', 'Castbar'), true, 'the castbar as it was')
@@ -370,6 +436,7 @@ test('unchecking brings the settings back as they were', function()
 	_, view = page(UF, 'nameplate')
 	eq(keys(view), 'enable,threat_solo,use_friendly,theme,background,width,height', 'General whole again')
 	eq(tabs(view), ENEMY_TABS, 'and the tabs')
+	eq(disabled_tabs(view), '', 'every one enabled')
 	eq(get(UF, 'nameplate', 'theme'), 'thick', 'Theme as it was')
 	eq(get(UF, 'nameplate', 'height'), '24', 'Height as it was')
 	eq(get(UF, 'nameplate', 'enable', 'Buffs'), false, 'the buffs as they were')
@@ -413,7 +480,7 @@ end)
 
 ------------------------------------------------------------------ standing down
 
-test('another nameplate addon loaded: both pages say which, and everything on them is disabled', function()
+test('another nameplate addon loaded: both pages say which, and everything on them is disabled, the boxes saying why', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF = world(client)
 		stub.loaded_addons.Plater = true
@@ -422,7 +489,7 @@ test('another nameplate addon loaded: both pages say which, and everything on th
 			local where = client .. ' ' .. pick
 			eq(root.Unitframes.args[pick].disabled(), true, where .. ': the group is disabled')
 			local list = rows(view)
-			eq(list[1].name, "Nameplates are drawn by Plater. Turn it off to use SaftUI's.", where .. ': the line first')
+			eq(list[1].name, DRAWN_BY_PLATER, where .. ': the line first')
 			eq(list[1].disabled, false, where .. ': not dimmed')
 			for i = 2, #list do
 				check(list[i].disabled, where .. ': ' .. list[i].key .. ' is disabled')
@@ -430,15 +497,33 @@ test('another nameplate addon loaded: both pages say which, and everything on th
 			for _, tab in ipairs(view.tabs) do
 				check(tab.disabled, where .. ': ' .. tab.key .. ' is disabled')
 			end
+			local box = row_for(view, PLATE_BOX[pick])
+			eq(box.disabledDesc, DRAWN_BY_PLATER, where .. ": the box's tooltip says which addon")
 		end
 
-		-- A box checked: the line still shows, the other box stays disabled.
+		-- A box checked: the line still shows, everything stays disabled, and
+		-- each box's tooltip names the addon, the other page's included.
 		UF:GetProfileConfig().friendlynameplate.use_enemy = true
 		local _, view = page(UF, 'friendlynameplate')
-		eq(rows(view)[1].name, "Nameplates are drawn by Plater. Turn it off to use SaftUI's.", client .. ': the line shows with the box checked')
+		eq(rows(view)[1].name, DRAWN_BY_PLATER, client .. ': the line shows with the box checked')
 		eq(row_for(view, 'use_enemy').disabled, true, client .. ': the checked box disabled too')
+		eq(row_for(view, 'use_enemy').disabledDesc, DRAWN_BY_PLATER, client .. ': saying which addon')
+		eq(row_for(view, 'sourced').disabled, true, client .. ': the centred line dimmed with the rest')
+		for _, tab in ipairs(view.tabs) do
+			check(tab.disabled, client .. ': with the box checked ' .. tab.key .. ' is disabled')
+		end
 		_, view = page(UF, 'nameplate')
 		eq(row_for(view, 'use_friendly').disabled, true, client .. ': the Enemy box disabled')
+		eq(row_for(view, 'use_friendly').disabledDesc, DRAWN_BY_PLATER, client .. ': saying which addon, not the other box')
+		for _, tab in ipairs(view.tabs) do
+			check(tab.disabled, client .. ': the Enemy page with the other box checked: ' .. tab.key .. ' is disabled')
+		end
+		UF:GetProfileConfig().friendlynameplate.use_enemy = false
+		UF:GetProfileConfig().nameplate.use_friendly = true
+		_, view = page(UF, 'nameplate')
+		for _, tab in ipairs(view.tabs) do
+			check(tab.disabled, client .. ': its own box checked: ' .. tab.key .. ' (Threat too) is disabled')
+		end
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)

@@ -47,6 +47,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	the drawn height is the view's and the page has nothing to scroll; never
 	less than its type's minHeight, and the widget is told its height with
 	SetHeight. Without fillHeight (a dialog, search results) it's minHeight.
+	A description with SaftUI's fill set is a fill row too, its minHeight
+	the height it would have without: its text sits in the middle of it.
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar,
@@ -54,7 +56,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	loads first.
 
 	Every frame and texture here is SaftUI's. GameTooltip shows a row's desc
-	through its public API.
+	through its public API, and while the row is disabled its disabledDesc
+	(why) under it.
 ]]
 
 local OB = {}
@@ -340,12 +343,21 @@ end
 
 ------------------------------------------------------------------ rows
 
+-- A row's tooltip: its name, its desc, and while it's disabled why
+-- (row.disabledDesc, the model's), in Text > Red.
 local function ShowTip(frame)
 	local row = frame.row
-	if not (row and row.desc and row.desc ~= '') then return end
+	if not row then return end
+	local desc = row.desc ~= '' and row.desc or nil
+	local why = row.disabledDesc ~= '' and row.disabledDesc or nil
+	if not (desc or why) then return end
 	GameTooltip:SetOwner(frame, 'ANCHOR_TOPLEFT')
 	GameTooltip:AddLine(row.name, 1, 1, 1)
-	GameTooltip:AddLine(row.desc, nil, nil, nil, true)
+	if desc then GameTooltip:AddLine(desc, nil, nil, nil, true) end
+	if why then
+		local r, g, b = Colors().text.red:GetRGB()
+		GameTooltip:AddLine(why, r, g, b, true)
+	end
 	GameTooltip:Show()
 end
 
@@ -536,6 +548,9 @@ function Body:RowCell(row)
 	if row.type == 'description' then
 		widget:SetWidth(self.width)
 		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
+		-- With fill (SaftUI's), a fill row at its own height at least: what it
+		-- shows sits in the middle of the height it's given (its SetHeight).
+		if OM.Member(self.root, row, 'fill') then cell.fill, cell.pad = true, 12 end
 	elseif row.type == 'multiselect' then
 		cell.height = max(ROW_HEIGHT, ceil(widget:GetHeight()) + 12)
 	elseif row.type == 'position' then

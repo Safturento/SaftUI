@@ -394,7 +394,7 @@ end)
 
 ------------------------------------------------------------------ the page and the defaults
 
-test('the Subtext tab on both plate pages, its options in order, and the box that hides it', function()
+test('the Subtext tab on both plate pages, its options in order, and the box that disables it', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
 		local st, UF, P = world(client)
 		for _, unit in ipairs({ 'nameplate', 'friendlynameplate' }) do
@@ -436,20 +436,21 @@ test('the Subtext tab on both plate pages, its options in order, and the box tha
 		check(frame.__updates > updates, client .. ': the plate updated, which runs the tag again')
 		eq(line(UF, frame), '', client .. ': the title cleared')
 
-		-- The box hides the tab with the rest of the page.
+		-- The box disables the tab with the rest of the page's, in its place.
+		local function subtext_tab(view)
+			for _, tab in ipairs(view.tabs) do
+				if tab.key == 'Subtext' then return tab end
+			end
+		end
 		P.friendlynameplate.use_enemy = true
 		root = { Unitframes = UF:GetConfigTable() }
 		view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'friendlynameplate', tab = 'general' })
-		local tabs = {}
-		for i, tab in ipairs(view.tabs) do tabs[i] = tab.key end
-		eq(table.concat(tabs, ','), 'general', client .. ': only General while the Friendly box is checked')
+		eq(subtext_tab(view) and subtext_tab(view).disabled, true, client .. ': disabled while the Friendly box is checked')
 		P.friendlynameplate.use_enemy = false
 		P.nameplate.use_friendly = true
 		root = { Unitframes = UF:GetConfigTable() }
 		view = SaftUI.OptionsModel.BuildView(root, 'Unitframes', { pick = 'nameplate', tab = 'general' })
-		tabs = {}
-		for i, tab in ipairs(view.tabs) do tabs[i] = tab.key end
-		eq(table.concat(tabs, ','), 'general,Threat', client .. ': no Subtext while the Enemy box is checked')
+		eq(subtext_tab(view) and subtext_tab(view).disabled, true, client .. ': and while the Enemy box is checked')
 		eq(#take_errors(), 0, client .. ': no error')
 	end
 end)
