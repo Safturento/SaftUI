@@ -796,7 +796,7 @@ function TB:GetConfigTable()
 	return {
 		name = 'Totem Bar',
 		type = 'group',
-		category = 'Combat', -- the /sui sidebar's group (optionswindow.lua)
+		category = 'Combat', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',
 		args = {
 			general = general,

@@ -21,6 +21,10 @@
 	  remove_shell_config()   takes that Config module out, for a test that loads the real config.lua
 	  apply_defaults()        fills st.config.profile from st.defaults, with AceDB's wildcard keys
 	  load_core_helpers()     loads Core's frame helpers and what they need
+	  load_options_widgets()  loads the /sui window's widget files (st.OptionsWidgets)
+	                          in the game's order; options_widget_files() lists them
+	  load_options_window()   loads the /sui window's own files (st.OptionsWindow)
+	                          in the game's order; options_window_files() lists them
 ]]
 
 local function pack(...)
@@ -373,7 +377,7 @@ end
 -- st:CreateFontString), theme.lua (st:SetTemplate, st:SetBackdrop and the
 -- theme they draw) and themeart.lua (the Blizzard theme's art, st.ThemeArt),
 -- the media and fonts (st:GetFont) with the Colors
--- and Theme modules, the profile defaults, Config/widgets.lua (st.Config.generators) and
+-- and Theme modules, the profile defaults, Config/generators.lua (st.Config.generators) and
 -- the General module (Global Settings' General tab). Then the profile is
 -- filled from the defaults and the Fonts module enabled, as at login, so
 -- st:GetFont has font objects.
@@ -391,10 +395,56 @@ function load_core_helpers()
 	load_saftui('SaftUI-Core/Media/colors.lua')
 	load_saftui('SaftUI-Core/Media/theme.lua')
 	load_saftui('SaftUI-Core/Config/defaults.lua')
-	load_saftui('SaftUI-Core/Config/widgets.lua')
+	load_saftui('SaftUI-Core/Config/generators.lua')
 	load_saftui('SaftUI-Core/Config/general.lua')
 	apply_defaults()
 	st:GetModule('Fonts'):Enable()
+end
+
+-- The /sui window's widget files (st.OptionsWidgets), by path from the repo
+-- root, in the order the game loads them: right after Config/optionsmodel.lua
+-- and before Config/optionsbody.lua.
+function options_widget_files()
+	return {
+		'SaftUI-Core/Config/optionswidgets.lua',
+		'SaftUI-Core/Config/optionslook.lua',
+		'SaftUI-Core/Config/optionsdialog.lua',
+		'SaftUI-Core/Config/optionsbar.lua',
+		'SaftUI-Core/Config/optionslist.lua',
+		'SaftUI-Core/Config/optionstypes.lua',
+		'SaftUI-Core/Config/optionsrange.lua',
+		'SaftUI-Core/Config/optionsselect.lua',
+		'SaftUI-Core/Config/optionskeybinding.lua',
+		'SaftUI-Core/Config/optionsposition.lua',
+	}
+end
+
+-- Loads the widget files in that order. Load Config/optionsmodel.lua first.
+function load_options_widgets()
+	for _, path in ipairs(options_widget_files()) do
+		load_saftui(path)
+	end
+end
+
+-- The /sui window's own files (st.OptionsWindow), by path from the repo root,
+-- in the order the game loads them: right after Config/optionsbody.lua and
+-- before Config/generators.lua.
+function options_window_files()
+	return {
+		'SaftUI-Core/Config/optionslayout.lua',
+		'SaftUI-Core/Config/optionswindow.lua',
+		'SaftUI-Core/Config/optionsresize.lua',
+		'SaftUI-Core/Config/optionsnav.lua',
+		'SaftUI-Core/Config/optionssmalldialog.lua',
+	}
+end
+
+-- Loads the window's files in that order. Load Config/optionsmodel.lua, the
+-- widget files (load_options_widgets) and Config/optionsbody.lua first.
+function load_options_window()
+	for _, path in ipairs(options_window_files()) do
+		load_saftui(path)
+	end
 end
 
 -- Core's TOC loads these three in this order (with Widgets, skinning.lua,
@@ -413,8 +463,8 @@ function st.Config:GetWindow() return nil end
 -- For a test that loads Core's real Config/config.lua instead: it makes the
 -- Config module itself, and NewModule errors on a name that exists (as
 -- AceAddon's does), so this takes the shell's out of st.modules, the enable
--- order and st.Config. Load config.lua before Config/widgets.lua
--- (load_core_helpers), as Core's TOC does: widgets.lua adds to st.Config.
+-- order and st.Config. Load config.lua before Config/generators.lua
+-- (load_core_helpers), as Core's TOC does: generators.lua adds to st.Config.
 -- tests/core/config_helpers.lua does all of it.
 function remove_shell_config()
 	local config = st.modules.Config

@@ -16,7 +16,7 @@ local st = SaftUI
 	root is the args table Config:GetOptionsTable() returns: one group per page.
 	Every function takes it first. info.options is the table AceConfig had
 	registered around it ({ type = 'group', name = st.name, args = root }),
-	since SaftUI's own option code walks info.options.args (Config/widgets.lua).
+	since SaftUI's own option code walks info.options.args (Config/generators.lua).
 
 	How a page is laid out (the spec's nesting rule):
 	  - Each top-level group is a page. topmenu is left out.
@@ -57,6 +57,10 @@ st.OptionsModel = OM
 
 local format, strmatch, tconcat, tsort = string.format, string.match, table.concat, table.sort
 local emptyTbl = {}
+
+-- The profile's colors. Not the model's: the one getter the options files that
+-- draw (widgets, body, window) share, here as the first of them to load.
+function OM.Colors() return st.config.profile.colors end
 
 -- The most results OM.Search gives.
 local MAX_RESULTS = 100

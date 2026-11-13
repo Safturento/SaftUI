@@ -10,8 +10,8 @@
 --
 -- Real: bags/container_helpers.lua's views world (bag_world.lua's stubbed bags
 -- under the module's real files) on Core's real config.lua and AceDB
--- (core/config_helpers.lua), the options window (optionsmodel.lua,
--- optionswidgets.lua, optionsbody.lua, optionswindow.lua), and SaftUI-Bags'
+-- (core/config_helpers.lua), the options window (optionsmodel.lua, the
+-- widget files, optionsbody.lua, the window's files), and SaftUI-Bags'
 -- options.lua, ruleeditor.lua and categoriestab.lua. Made by hand:
 -- INV:UpdateGold, which INV:UpdateHandler runs first, is a no-op here (it
 -- reads the player's money with GetMoney and formats it with
@@ -32,9 +32,9 @@ local function world(client)
 	INV, B = H.views_world(client or 'forever', function() load_test_file('core/config_helpers.lua') end)
 	st = SaftUI
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
-	load_saftui('SaftUI-Core/Config/optionswindow.lua')
+	load_options_window()
 	load_saftui('SaftUI-Bags/options.lua')
 	load_saftui('SaftUI-Bags/ruleeditor.lua')
 	load_saftui('SaftUI-Bags/categoriestab.lua')

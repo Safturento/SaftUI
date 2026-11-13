@@ -27,9 +27,9 @@ local function world(client)
 	restoreSecrets = S.install()
 	load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
-	load_saftui('SaftUI-Core/Config/optionswindow.lua')
+	load_options_window()
 	load_test_file('core/options_walk.lua')
 	st.config.char = {}
 	ReloadUI = function() end

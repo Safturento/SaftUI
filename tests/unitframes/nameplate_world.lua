@@ -51,8 +51,8 @@ function NP.world(client)
 	stub.on_nameplate_frame = function(frame) lock(frame, 'Blizzard') end
 	lock(NamePlateDriverFrame, 'Blizzard')
 
-	-- config/load.xml: default.lua and the units' files, then config.lua,
-	-- which needs the module (unitframes.lua) first.
+	-- config/load.xml: position.lua, default.lua and the units' files, then
+	-- config.lua, which needs the module (unitframes.lua) first.
 	local configFiles = scripts('SaftUI-Unitframes/config/load.xml')
 	local configLua
 	for _, file in ipairs(configFiles) do

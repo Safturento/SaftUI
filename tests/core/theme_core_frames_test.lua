@@ -3,9 +3,9 @@
 -- SaftUI's theme:
 --   - window headers, footers and a close button that isn't SaftUI's
 --     (panels.lua), and st:CreatePanel's panel, from panels.theme;
---   - the /sui window and its dialog (Config/optionswindow.lua), and the
---     border of Icon zoom's preview (a description's image,
---     Config/optionswidgets.lua);
+--   - the /sui window and its dialog (Config/optionswindow.lua and
+--     optionssmalldialog.lua), and the border of Icon zoom's preview (a
+--     description's image, Config/optionstypes.lua);
 --   - the buttons.theme / panels.theme defaults (Config/defaults.lua);
 --   - the wrappers st:SkinActionButton and st:SkinEditBox (skinning.lua) and
 --     Core's widgets (Widgets/button.lua, scrollbar.lua, statusbar.lua,
@@ -13,7 +13,7 @@
 --   - edit mode's movers, and Core's widgets that color their own backdrops
 --     (a scroll bar thumb, a radio group's pick, a focused edit box), which
 --     keep their colors through a recolor;
---   - the Theme and Background option builders (Config/widgets.lua), and no
+--   - the Theme and Background option builders (Config/generators.lua), and no
 --     desc with an arrow SaftUI's fonts may not draw.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 with Core's helpers and
@@ -37,9 +37,9 @@ local function fresh()
 	reset_world()
 	load_test_file('core/config_helpers.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-	load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+	load_options_widgets()
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
-	load_saftui('SaftUI-Core/Config/optionswindow.lua')
+	load_options_window()
 	load_saftui('SaftUI-Core/Widgets/scrollbar.lua')
 	load_saftui('SaftUI-Core/Widgets/statusbar.lua')
 	load_saftui('SaftUI-Core/Widgets/radiogroup.lua')

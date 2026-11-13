@@ -1,4 +1,5 @@
--- SaftUI-Core/Config/optionswidgets.lua, the widgets SaftUI's options window
+-- SaftUI-Core/Config/optionswidgets.lua and the widget files after it in
+-- Config/load.xml (load_options_widgets), the widgets SaftUI's options window
 -- draws rows with (toggle, range, select, multiselect, input, color, execute,
 -- keybinding, description, position, the confirm dialog, custom types made with
 -- W.Define, the check list), the close button of SaftUI-Core/panels.lua
@@ -17,7 +18,7 @@ load_test_file('core/options_walk.lua')
 local st = SaftUI
 load_saftui('SaftUI-Core/skinning.lua') -- st:StripTextures, which a header uses on a button that isn't SaftUI's
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua') -- the position block's caption font
 local OM, W = st.OptionsModel, st.OptionsWidgets
 

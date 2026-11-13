@@ -8,7 +8,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	mockup.html). The model (optionsmodel.lua) turns the tree into pages, tabs,
 	a picker, sections and rows; the body (optionsbody.lua) draws the sections
 	and rows, and the widgets (optionswidgets.lua) the rows' controls. This file
-	owns the frame, navigation, search, the footer and the keyboard.
+	owns the frame, search, the footer and the keyboard; the navigation is
+	optionsnav.lua's.
 
 	  OW:Open(path, root)   shows the window (root: the tree, kept for later
 	                        opens), at the page, picker, tab and subtab a path
@@ -26,16 +27,16 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  OW:UpdateFonts()      the profile's faces again (a profile change)
 	  OW:OpenDialog(title, options), OW:CloseDialog(), OW:IsDialogShown()
 	                        a small dialog over the window for an option table
-	                        of its own (UF's Copy from; "a small dialog" below)
+	                        of its own (UF's Copy from; optionssmalldialog.lua)
 
 	The window (drawn as a window in SaftUI's theme with a solid background,
 	FULLSCREEN_DIALOG, so edit mode's outlines draw under it), laid out in one
-	of two layouts (OW.LAYOUT, below): the mockup's under Thick and Thin
-	(1040 wide, at least 700 tall), and under Blizzard Blizzard's Settings
-	window (1110 wide, at least 728 tall: the metal and its title bar, the inner
-	frame over the sidebar and the main column, the footer under it across the
-	window). It grows taller by its grip (the bottom right corner) or its bottom
-	edge ("growing taller", below), in either layout:
+	of two layouts (OW.LAYOUT, optionslayout.lua): the mockup's under Thick
+	and Thin (1040 wide, at least 700 tall), and under Blizzard Blizzard's
+	Settings window (1110 wide, at least 728 tall: the metal and its title
+	bar, the inner frame over the sidebar and the main column, the footer
+	under it across the window). It grows taller by its grip (the bottom
+	right corner) or its bottom edge (optionsresize.lua), in either layout:
 	  - the sidebar: Edit mode and the st.Config:AddCommand buttons, then Global
 	    Settings and Profiles, then the module pages under their category
 	    (Frames, Combat, Info, any other, then Other; OW.SidebarEntries);
@@ -78,99 +79,34 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	Every frame and texture here is SaftUI's; nothing is written onto Blizzard
 	frames or tables.
+
+	The window is split by job, its files loading in Config/load.xml's order:
+	optionslayout.lua (OW.LAYOUT, the sidebar's width and entries, the
+	window's height; it makes OW and OW.S), this one, then
+	optionsresize.lua (growing taller), optionsnav.lua (the sidebar, the
+	tabs and the picker) and optionssmalldialog.lua (OW:OpenDialog). OW.S
+	holds what they share (optionslayout.lua says how).
 ]]
 
-local OW = {}
-st.OptionsWindow = OW
+local OW = st.OptionsWindow
+local S = OW.S
 
-local floor, max, min, ceil = math.floor, math.max, math.min, math.ceil
+local floor, max, ceil = math.floor, math.max, math.ceil
 local format = string.format
 
------------------------------------------------------------------- the two layouts
-
---[[
-	Where the window's parts sit, from its edges, in each look: chosen on
-	every render by W.BlizzardLook() and applied only when the look changed
-	(Relayout). Inside the main column the parts keep their places from its
-	top left under both (the constants below).
-	  own       the mockup's, under Thick and Thin: the sidebar and the main
-	            column 2 in from the window's border, the footer along the
-	            main column's bottom.
-	  blizzard  Blizzard's Settings window: the inner frame (st.ThemeArt.
-	            Control('optionswindow')) innerX in from the metal's sides and
-	            innerTop down, the sidebar on the divider drawn into it
-	            (OW.SidebarWidth), the footer across the window under it. The
-	            window is wider and taller than the mockup's, so the body keeps
-	            its 774 and its height.
-
-	  width                  the window's
-	  height                 its least height, and its height with none saved
-	                         (OW.WindowHeight)
-	  sideX, sideTop, sideBottom, sideWidth
-	                         the sidebar, from the window's left, top and bottom
-	  navWidth               the sidebar's rows
-	  mainLeft, mainTop, mainRight, mainBottom
-	                         the main column, from the window's edges
-	  rightPad               the main column right of the content: the search
-	                         box's right and, under own, Close's
-	  bodyBottom             the body's bottom, up from the main column's
-	  bodyReach, fillReach   how far the body's scroll frame reaches past the
-	                         content, and on a fill page (PlaceBody)
-	  footer                 the footer's height: in the main column under own,
-	                         across the window under Blizzard
-	  innerX, innerTop       the inner frame, from the window's sides and top
-	                         (Blizzard); it ends footer up from the bottom
-	  footerX, footerY       Reload UI and Close, from the window's bottom
-	                         corners (Blizzard; under own they sit in the footer)
-]]
-OW.LAYOUT = {
-	own = {
-		width = 1040, height = 700,
-		sideX = 2, sideTop = 2, sideBottom = 2, sideWidth = 208,
-		navWidth = 207,
-		mainLeft = 210, mainTop = 2, mainRight = 2, mainBottom = 2,
-		rightPad = 26, -- the main column's 828 less PAD and the content
-		bodyBottom = 46, -- over the footer
-		bodyReach = 0,
-		fillReach = 13, -- over the body's own 3px bar, 10 past the content (OB.BAR_GAP + OB.BAR_WIDTH)
-		footer = 46,
-	},
-	blizzard = {
-		width = 1110, height = 728, -- 17 + 1076 + 17 by 28 + 654 + 46, both even (it's centred)
-		sideX = 17, sideTop = 28, sideBottom = 46,
-		sideWidth = 242, -- OW.SidebarWidth(1076): its right edge on the divider
-		navWidth = 226, -- the sidebar less 16: the nav's narrow bar 4 from the rows and 4 from the divider
-		mainLeft = 259, mainTop = 28, mainRight = 17, mainBottom = 46,
-		-- The dropdown's glow 7, the scroll bar's gap 12 and its 17-wide
-		-- arrows less 4 (25 past the content), the inner frame's 2px rim and 5 clear.
-		rightPad = 32,
-		bodyBottom = 4, -- the inner frame's 2px rim and 2 clear
-		bodyReach = 7, -- the dropdown's glow
-		fillReach = 25, -- where the Blizzard scroll bar's arrows end
-		footer = 46,
-		innerX = 17, innerTop = 28, -- Settings' inner frame 17 in; its tabs 27 down, +1 for an even height
-		footerX = 16, footerY = 16, -- SettingsPanel's Close: BOTTOMRIGHT -16, 16
-	},
-}
-
--- The sidebar's width for an inner frame innerWidth wide: its right edge on
--- the divider drawn into Options_InnerFrame, which is stretched to that width.
-function OW.SidebarWidth(innerWidth)
-	local look = st.ThemeArt.Control('optionswindow')
-	return floor(look.divider * innerWidth / look.width + 0.5)
-end
+-- From optionslayout.lua.
+local ArtReach = S.ArtReach
 
 ------------------------------------------------------------------ the mockup's numbers
 
 local PAD = 28 -- the main column's left padding
 local CONTENT_WIDTH = OB.WIDTH -- the body: two columns of 367 with a gap of 40
 local ROW_HEIGHT = OB.ROW_HEIGHT
-local LABEL_GAP = OB.LABEL_GAP
-local FIELD_HEIGHT = 24
+local FIELD_HEIGHT = W.FIELD_HEIGHT
 
 local HEAD_TOP = 20 -- the title's top, in the main column
 local TABS_TOP = 87 -- the first tab line's top
-local TAB_HEIGHT, TAB_GAP, TAB_WRAP_GAP, SUBTAB_GAP = 24, 22, 6, 10
+local TAB_HEIGHT, SUBTAB_GAP = 24, 10
 local SEARCH_WIDTH, SEARCH_DELAY = 190, 0.25
 local SEARCH_TEXT_INSET = 8 -- the search box's text, in from its edges, and its hint
 local PICKER_GAP = 12
@@ -179,92 +115,68 @@ local SCROLL_STEP = OB.SCROLL_STEP
 
 -- The sidebar.
 local BRAND_HEIGHT = 73
-local ACTION_PAD, ACTION_GAP, ACTION_HEIGHT = 10, 6, 24
--- Two to a line in the mockup's sidebar; the same size in either layout.
-local ACTION_WIDTH = floor((OW.LAYOUT.own.navWidth - 24 - ACTION_GAP) / 2)
-local NAV_ITEM, NAV_GROUP, NAV_TOP = 26, 29, 6
+local ACTION_PAD, ACTION_HEIGHT = 10, 24
+local NAV_ITEM = 26
 local FOOT_HEIGHT = 30
 
 local SIDEBAR_BG = { 0.09, 0.09, 0.09, 1 } -- #171717
-local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
 
-local CATEGORIES = { 'Frames', 'Combat', 'Info' } -- then any others, then Other
 local POINTS = {
 	TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
 	BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true,
 }
 local EMPTY = {}
 
------------------------------------------------------------------- the pure layout
-
--- The body's layout (optionsbody.lua), here too for the window's tests.
-OW.LayoutRows, OW.LayoutSections = OB.LayoutRows, OB.LayoutSections
-
--- The sidebar's entries from OM.Pages: Global Settings and Profiles, then a
--- { group = category } header and its pages for each category, in the fixed
--- order. Pages keep the order they came in (order, then name).
-function OW.SidebarEntries(pages)
-	local entries, byCategory, others = {}, {}, {}
-	for _, special in ipairs({ 'global', 'profiles' }) do
-		for _, page in ipairs(pages) do
-			if page.special == special then entries[#entries + 1] = page end
-		end
-	end
-	local fixed = { Other = true }
-	for _, category in ipairs(CATEGORIES) do fixed[category] = true end
-	for _, page in ipairs(pages) do
-		if not page.special then
-			local category = tostring(page.category or 'Other')
-			if not byCategory[category] then
-				byCategory[category] = {}
-				if not fixed[category] then others[#others + 1] = category end
-			end
-			local list = byCategory[category]
-			list[#list + 1] = page
-		end
-	end
-	table.sort(others)
-	local order = {}
-	for _, category in ipairs(CATEGORIES) do order[#order + 1] = category end
-	for _, category in ipairs(others) do order[#order + 1] = category end
-	order[#order + 1] = 'Other'
-	for _, category in ipairs(order) do
-		if byCategory[category] then
-			entries[#entries + 1] = { group = category }
-			for _, page in ipairs(byCategory[category]) do entries[#entries + 1] = page end
-		end
-	end
-	return entries
-end
-
 ------------------------------------------------------------------ state
 
 local F = {} -- the window's frames (OW.GetFrames, for tests)
 local root -- the tree drawn: Config:GetOptionsTable()'s args
 local state = { page = nil, selections = {}, search = '' } -- what the user chose
-local shown = {} -- what the last render drew: page, tab, subtab, pick
+S.shown = {} -- what the last render drew: page, tab, subtab, pick
 local results -- the current search's results
 local pageBody -- the body (OB.New) the page is drawn in: its cells are the drawn rows
 local rendering, pending, dragging = false, false, false
-local sizing -- the resize under way (StartResize), or nil
+S.sizing = nil -- the resize under way (StartResize), or nil
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
-local scrollOffset, contentHeight, navOffset, navHeight = 0, 0, 0, 0
-local filledTo -- the view height the last page's fill rows were drawn to, or nil
+local contentHeight = 0
+S.scrollOffset, S.navOffset, S.navHeight = 0, 0, 0
+S.filledTo = nil -- the view height the last page's fill rows were drawn to, or nil
 local renders = 0
 -- Whether the window draws its controls in Blizzard's Settings art: under
 -- SaftUI's theme Blizzard (W.BlizzardLook), read once a render, so a theme
 -- change reaches them when the window renders again. Under Thick and Thin
 -- they keep the mockup's look.
-local blizzard = false
+S.blizzard = false
 -- The layout the window is in (OW.LAYOUT), and the look it was laid out for
 -- (Relayout): nil until the window is built.
-local layout, laidOut = OW.LAYOUT.own, nil
+S.layout = OW.LAYOUT.own
+local laidOut = nil
 
-local function Colors() return st.config.profile.colors end
-local function Normal() return Colors().text.normal:GetRGB() end
-local function Grey() return Colors().text.grey:GetRGB() end
-local function Blue() return Colors().button.blue:GetRGB() end
+local Colors, Normal, Grey, Blue = OB.Colors, OB.Normal, OB.Grey, OB.Blue
+
+-- Whether Blizzard's color picker is open (its keys and its changes are its).
+local function ColorPickerShown() return ColorPickerFrame and ColorPickerFrame:IsShown() end
+
+-- The Esc catcher of the window and of its small dialog: a frame, shown only
+-- with its owner, that closes it on Esc. A box's keys and the owner's own
+-- exceptions (held(), and Blizzard's color picker) go on to the game; nothing
+-- is done in combat (SetPropagateKeyboardInput is protected).
+local function EscapeKeys(parent, held, close)
+	local keys = CreateFrame('Frame', nil, parent)
+	keys:Hide()
+	keys:SetScript('OnKeyDown', function(self, key)
+		if InCombatLockdown() then return end
+		if GetCurrentKeyBoardFocus() or held() or ColorPickerShown() then
+			self:SetPropagateKeyboardInput(true)
+			return
+		end
+		local escape = key == 'ESCAPE'
+		self:SetPropagateKeyboardInput(not escape)
+		if escape then close() end
+	end)
+	return keys
+end
 
 local function Copy(t)
 	local copy = {}
@@ -275,7 +187,7 @@ end
 ------------------------------------------------------------------ small pieces
 
 -- The window's fonts and pieces (optionsbody.lua).
-local Text, Line, Pool, Acquire, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.Acquire, OB.ReleaseAll
+local Text, Line, Pool, ReleaseAll = OB.Text, OB.Line, OB.Pool, OB.ReleaseAll
 
 function OW:UpdateFonts()
 	OB.UpdateFonts()
@@ -325,47 +237,7 @@ end
 	height they dragged it to (nil until they do). A move keeps the height saved
 	as it was, and only a resize writes it: a height saved by a move under
 	Blizzard (728) would open Thick's window 728 tall.
-
-	The window keeps its art inside the screen edge margin (misc.clamp_inset):
-	under Blizzard the metal reaches past its edges (st.ThemeArt.MetalReach:
-	16 above, 8 to the left), so the game's clamp (st:KeepInScreenMargin)
-	keeps the metal in, and a resize leaves room for it. It never grows past
-	the screen, whatever the margin, so its grip and title bar stay on it.
 ]]
-
--- How far the window's art reaches past its edges in layout L: left, right,
--- top and bottom. Under Blizzard the metal does; under Thick and Thin nothing.
-local function ArtReach(L)
-	if L == OW.LAYOUT.blizzard then return st.ThemeArt.MetalReach() end
-	return 0, 0, 0, 0
-end
-
--- How far in from the screen's top and bottom the window's edges keep in
--- layout L: the screen edge margin (none below 0, so the window never grows
--- past the screen) and the art past the window there.
-local function Margins(L)
-	local margin = max(0, st.config.profile.misc.clamp_inset)
-	local _, _, above, below = ArtReach(L)
-	return margin + above, margin + below
-end
-
--- The most height the window takes in layout L (the one it's in when nil):
--- the screen less what it keeps at its top and bottom (Margins), even.
-function OW.MaxHeight(L)
-	local above, below = Margins(L or layout)
-	return 2 * floor((UIParent:GetHeight() - above - below) / 2)
-end
-
--- The window's height in layout L: the saved height (a number) made even (the
--- window is centred, so its edges stay on whole pixels), at most
--- OW.MaxHeight(L) and at least L's least height, which wins on a screen too
--- small for it; L's least height with none saved.
-function OW.WindowHeight(L)
-	local saved = st.config.global.optionsWindow
-	local height = type(saved) == 'table' and saved.height
-	if type(height) ~= 'number' then return L.height end
-	return max(L.height, min(OW.MaxHeight(L), 2 * floor(height / 2 + 0.5)))
-end
 
 local function SavedPosition()
 	local saved = st.config.global.optionsWindow
@@ -411,7 +283,7 @@ end
 local ScrollTo = OB.ScrollTo
 
 local function SetScroll(offset)
-	scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
+	S.scrollOffset = ScrollTo(F.body, F.bar, offset, contentHeight)
 end
 
 -- The sidebar's nav: no bar under Thick and Thin; under Blizzard a narrow
@@ -419,7 +291,7 @@ end
 local NAV_BAR_GAP = 4
 
 local function SetNavScroll(offset)
-	navOffset = ScrollTo(F.navFrame, F.navBar, offset, navHeight, NAV_BAR_GAP)
+	S.navOffset = ScrollTo(F.navFrame, F.navBar, offset, S.navHeight, NAV_BAR_GAP)
 end
 
 ------------------------------------------------------------------ re-rendering
@@ -429,8 +301,8 @@ local function Busy()
 	-- A drag ends when the button comes up, even if the slider's OnMouseUp
 	-- never arrived; so does a scroll bar's held thumb (W.ScrollBarHeld).
 	if dragging and not IsMouseButtonDown('LeftButton') then dragging = false end
-	if dragging or sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then return true end
+	if dragging or S.sizing or W.ListOwner() or W.ConfirmText() or W.ScrollBarHeld() then return true end
+	if ColorPickerShown() then return true end
 	local focus = GetCurrentKeyBoardFocus()
 	return focus ~= nil and focus ~= F.search and Inside(focus, F.window)
 end
@@ -458,173 +330,10 @@ local function Changed(ok, err, isDragging, widget)
 		return
 	end
 	dragging = false
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then
+	if ColorPickerShown() then
 		Schedule()
 	else
 		OW:Render()
-	end
-end
-
------------------------------------------------------------------- growing taller
-
---[[
-	The window grows taller by its grip (F.grip, the bottom right corner:
-	Blizzard's PanelResizeButtonTemplate under Blizzard, st:EnableResizing's
-	corner under Thick and Thin) or its bottom edge (F.sizer, the strip left of
-	the grip). Its width and top stay; the sidebar, the main column, the inner
-	frame and the body take the height (their anchors), the footer staying at
-	the bottom. Its height stays even, from the layout's least to the most
-	(OW.MaxHeight), and stops where its bottom, or under Blizzard the metal
-	under it, meets the screen edge margin (Margins).
-
-	A press of the left button on either starts a resize; while it's held, the
-	pressed handle's OnUpdate follows the cursor. Each new height re-places the
-	body's and the sidebar's scroll bars (their offsets clamp to the new
-	range; FollowHeight); nothing renders while the button is held (Busy), and
-	a fill page (the Categories tab) draws its fill row again once it's let
-	go. It ends on the button's release (OnMouseUp, or the handle's next frame
-	finding it up) or the window hiding, and a height it changed is saved,
-	then the position. A change of the screen edge margin moves the most
-	height, so the window takes its height again then (st:UpdateScreenMargin,
-	hooked in Build; ApplyHeight).
-]]
-local GRIP_SIZE = 16 -- st:EnableResizing's, and PanelResizeButtonTemplate's
-local EDGE_HEIGHT = 6
-local HANDLE_LEVEL = 10 -- the grip and the edge, over the window's own frames
-
--- After the window's height changed: the sidebar's bar re-placed in its new
--- range, and the body's, except on a fill page, whose fill row was drawn to
--- the old height: re-placed now, the body's bar would show over the page's
--- own bars until the render that draws the row again (Schedule; in game the
--- body's OnSizeChanged schedules it too), which places it.
-local function FollowHeight()
-	if filledTo then Schedule() else SetScroll(scrollOffset) end
-	SetNavScroll(navOffset)
-end
-
--- The window's height again (OW.WindowHeight), from its current anchor, while
--- it shows and isn't being resized: for a change of the screen edge margin,
--- which moves OW.MaxHeight.
-local function ApplyHeight()
-	if not (F.window and F.window:IsShown()) or sizing then return end
-	local height = OW.WindowHeight(layout)
-	if F.window:GetHeight() == height then return end
-	F.window:SetHeight(height)
-	FollowHeight()
-end
-
-local function StopResize()
-	if not sizing then return end
-	local resize = sizing
-	sizing = nil
-	resize.handle:SetScript('OnUpdate', nil)
-	if resize.at == resize.height then return end
-	local saved = st.config.global.optionsWindow
-	if type(saved) ~= 'table' then
-		saved = {}
-		st.config.global.optionsWindow = saved
-	end
-	saved.height = resize.at
-	SavePosition()
-end
-
-local function UpdateResize()
-	if not IsMouseButtonDown('LeftButton') then return StopResize() end
-	local window = F.window
-	local _, y = GetCursorPosition()
-	local _, below = Margins(layout)
-	local most = min(OW.MaxHeight(), 2 * floor((sizing.top - below) / 2))
-	local height = sizing.height + sizing.cursor - y / window:GetEffectiveScale()
-	height = max(layout.height, min(most, 2 * floor(height / 2 + 0.5)))
-	if height == sizing.at then return end
-	sizing.at = height
-	-- Centred, so it moves down by half the change (a whole number: the
-	-- change is even) and its top stays.
-	window:SetHeight(height)
-	window:ClearAllPoints()
-	window:SetPoint('CENTER', UIParent, 'CENTER', sizing.x, sizing.y - (height - sizing.height) / 2)
-	FollowHeight()
-end
-
--- From where the window shows (the game's clamp may have moved it from its
--- anchor): the cursor's y, the window's height, its centre's offset from the
--- screen's and its top.
-local function StartResize(handle, button)
-	if button ~= 'LeftButton' or sizing then return end
-	local window = F.window
-	local cx, cy = window:GetCenter()
-	local ux, uy = UIParent:GetCenter()
-	if not (cx and ux) then return end
-	local _, y = GetCursorPosition()
-	local height = floor(window:GetHeight() + 0.5)
-	-- cursor and height at the press, at the height now, x and y the centre's
-	-- offset at the press.
-	sizing = {
-		handle = handle,
-		cursor = y / window:GetEffectiveScale(),
-		height = height, at = height,
-		x = floor(cx - ux + 0.5), y = floor(cy - uy + 0.5),
-		top = window:GetTop(),
-	}
-	handle:SetScript('OnUpdate', UpdateResize)
-end
-
-local function EndResize(_, button)
-	if button == 'LeftButton' then StopResize() end
-end
-
--- The grip and the edge, at the window's bottom, over its frames. The grip's
--- textures are dressed for the look by LookGrip.
-local function BuildResize(window)
-	local level = window:GetFrameLevel() + HANDLE_LEVEL
-	local grip = CreateFrame('Button', nil, window)
-	grip:SetSize(GRIP_SIZE, GRIP_SIZE)
-	grip:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', 0, 0)
-	grip:SetFrameLevel(level)
-	grip.normal = grip:CreateTexture(nil, 'ARTWORK')
-	grip.highlight = grip:CreateTexture(nil, st.ThemeArt.HOVER_LAYER)
-	grip.pushed = grip:CreateTexture(nil, 'ARTWORK')
-	for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetAllPoints(grip) end
-	grip:SetNormalTexture(grip.normal)
-	grip:SetHighlightTexture(grip.highlight)
-	grip:SetPushedTexture(grip.pushed)
-
-	local sizer = CreateFrame('Frame', nil, window)
-	sizer:SetPoint('BOTTOMLEFT', window, 'BOTTOMLEFT', 0, 0)
-	sizer:SetPoint('BOTTOMRIGHT', grip, 'BOTTOMLEFT', 0, 0)
-	sizer:SetHeight(EDGE_HEIGHT)
-	sizer:SetFrameLevel(level)
-
-	for _, handle in ipairs({ grip, sizer }) do
-		handle:EnableMouse(true)
-		handle:SetScript('OnMouseDown', StartResize)
-		handle:SetScript('OnMouseUp', EndResize)
-	end
-	F.grip, F.sizer = grip, sizer
-end
-
--- The grip in the look: Blizzard's PanelResizeButtonTemplate
--- (st.ThemeArt.Control('resizegrip')), or st:EnableResizing's corner, its
--- highlight and pushed tinted the buttons' hover color, the highlight blended.
-local function LookGrip()
-	local grip = F.grip
-	local look = blizzard and st.ThemeArt.Control('resizegrip')
-	grip.normal:SetVertexColor(1, 1, 1, 1)
-	if look then
-		grip:SetSize(look.size, look.size)
-		grip.normal:SetTexture(look.normal)
-		grip.highlight:SetTexture(look.highlight)
-		grip.pushed:SetTexture(look.pushed)
-		grip.highlight:SetVertexColor(1, 1, 1, 1)
-		grip.pushed:SetVertexColor(1, 1, 1, 1)
-		grip.highlight:SetBlendMode(look.highlightBlend)
-	else
-		local r, g, b = Colors().button.hover:GetRGB()
-		grip:SetSize(GRIP_SIZE, GRIP_SIZE)
-		for _, texture in ipairs({ grip.normal, grip.highlight, grip.pushed }) do texture:SetTexture(st.textures.cornerbr) end
-		grip.highlight:SetVertexColor(r, g, b, 1)
-		grip.pushed:SetVertexColor(r, g, b, 1)
-		grip.highlight:SetBlendMode('BLEND')
 	end
 end
 
@@ -645,7 +354,7 @@ local function RunSearch()
 	if text == '' or text == state.search then return end
 	state.search = text
 	results = OM.Search(root, text)
-	scrollOffset = 0
+	S.scrollOffset = 0
 	OW:Render()
 end
 
@@ -657,7 +366,7 @@ local function SearchChanged(box)
 	elseif text == '' then
 		-- Cleared: the page comes back at once.
 		state.search, results, searchDue = '', nil, nil
-		scrollOffset = 0
+		S.scrollOffset = 0
 		OW:Render()
 	else
 		searchDue = SEARCH_DELAY
@@ -673,308 +382,16 @@ local function GoTo(path)
 	OW:Navigate(pageKey, selection)
 end
 
------------------------------------------------------------------- the sidebar
-
-local function UpdateEditModeButton()
-	local button = F.actions and F.actions[1]
-	if not button then return end
-	local EM = st.EditModeFrames
-	local color = (EM and EM.active) and Colors().text.green or Colors().text.normal
-	button.text:SetTextColor(color:GetRGB())
-end
-
--- Edit mode, then every st.Config:AddCommand, two to a line.
-local function DrawActions()
-	local list = { { label = 'Edit mode', func = function() st.EditModeFrames:Toggle() end } }
-	for _, command in ipairs(st.Config:GetCommands()) do list[#list + 1] = command end
-	for i, command in ipairs(list) do
-		local button = F.actions[i]
-		if not button then
-			button = Button(F.actionsFrame, command.label, function(self) self.func() end)
-			F.actions[i] = button
-		end
-		button.label, button.func = command.label, command.func
-		button.text:SetText(command.label)
-		button:SetSize(ACTION_WIDTH, ACTION_HEIGHT)
-		W.LookButton(button, blizzard, st.BOX_COLORS.bg)
-		button:ClearAllPoints()
-		button:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT',
-			12 + ((i - 1) % 2) * (ACTION_WIDTH + ACTION_GAP),
-			-(ACTION_PAD + floor((i - 1) / 2) * (ACTION_HEIGHT + ACTION_GAP)))
-	end
-	local lines = ceil(#list / 2)
-	F.actionsFrame:SetHeight(ACTION_PAD * 2 + lines * ACTION_HEIGHT + (lines - 1) * ACTION_GAP)
-	UpdateEditModeButton()
-end
-
--- The banner a group header wears: the Settings panel's three, in turn.
-function OW.BannerAtlas(n)
-	local banners = st.ThemeArt.Control('optionswindow').banners
-	return banners[((n - 1) % #banners) + 1]
-end
-
--- A sidebar name's white: the open page's, and the one under the mouse.
-local function PickedText()
-	return unpack(st.ThemeArt.Control('optionslist').text.picked)
-end
-
--- A sidebar entry's look: the open page's blue fill and bar, or under
--- Blizzard (item.blizzard) the Settings panel's category list, the open page
--- on its picked art (item.listPicked) with its name white and the others
--- gold; the one under the mouse is lit by OnEnter (item.listHover). Under
--- Thick and Thin the name keeps the profile's text color.
-local function StyleNavItem(item)
-	item.listHover:Hide()
-	if item.blizzard then
-		local text = st.ThemeArt.Control('optionslist').text
-		if item.active then item.text:SetTextColor(PickedText()) else item.text:SetTextColor(unpack(text.normal)) end
-	else
-		item.text:SetTextColor(Normal())
-	end
-	item.listPicked:SetShown(item.blizzard and item.active or false)
-	if item.active and not item.blizzard then
-		local r, g, b = Blue()
-		item.bg:SetColorTexture(r, g, b, 0.25)
-		item.bg:Show()
-		item.bar:Show()
-	else
-		item.bg:Hide()
-		item.bar:Hide()
-	end
-	item:SetAlpha(item.disabled and 0.4 or 1)
-end
-
-local function MakeNavItem()
-	local item = CreateFrame('Button', nil, F.navContent)
-	item:SetHeight(NAV_ITEM) -- as wide as the layout's rows (DrawSidebar)
-	item.bg = item:CreateTexture(nil, 'BACKGROUND')
-	item.bg:SetAllPoints(item)
-	item.bar = item:CreateTexture(nil, 'ARTWORK')
-	item.bar:SetColorTexture(Blue())
-	item.bar:SetPoint('TOPLEFT', item, 'TOPLEFT', 0, 0)
-	item.bar:SetPoint('BOTTOMLEFT', item, 'BOTTOMLEFT', 0, 0)
-	item.bar:SetWidth(2)
-	-- Under Blizzard, the Settings panel's category list: the open page's
-	-- art, and the art under the mouse (their atlases set as it's drawn).
-	item.listPicked = item:CreateTexture(nil, 'BACKGROUND')
-	item.listPicked:SetAllPoints(item)
-	item.listPicked:Hide()
-	item.listHover = item:CreateTexture(nil, 'BACKGROUND')
-	item.listHover:SetAllPoints(item)
-	item.listHover:Hide()
-	item.text = Text(item, 'label')
-	item:SetScript('OnEnter', function(self)
-		if self.active then return end
-		if self.blizzard then
-			self.listHover:Show()
-			if not self.disabled then self.text:SetTextColor(PickedText()) end
-			return
-		end
-		self.bg:SetColorTexture(unpack(HOVER))
-		self.bg:Show()
-	end)
-	item:SetScript('OnLeave', function(self) StyleNavItem(self) end)
-	item:SetScript('OnClick', function(self)
-		if not self.disabled then OW:Navigate(self.key) end
-	end)
-	return item
-end
-
-local function MakeNavGroup()
-	local header = CreateFrame('Frame', nil, F.navContent)
-	header:SetHeight(NAV_GROUP) -- as wide as the layout's rows (DrawSidebar)
-	-- Under Blizzard its banner (DrawSidebar sets its art), hanging from the
-	-- header's top left at its own size.
-	header.banner = header:CreateTexture(nil, 'BACKGROUND')
-	header.banner:SetPoint('TOPLEFT', header, 'TOPLEFT', 0, 0)
-	header.banner:Hide()
-	header.text = Text(header, 'group')
-	return header
-end
-
-local function DrawSidebar(entries)
-	DrawActions()
-	ReleaseAll(pools.nav)
-	ReleaseAll(pools.group)
-	wipe(F.nav)
-	local look = blizzard and st.ThemeArt.Control('optionslist')
-	local art = blizzard and st.ThemeArt.Control('optionswindow')
-	local y, groups = NAV_TOP, 0
-	for _, entry in ipairs(entries) do
-		local frame
-		if entry.group then
-			frame = Acquire(pools.group)
-			frame.group = entry.group
-			frame.text:SetText(entry.group)
-			frame.text:ClearAllPoints()
-			if art then
-				groups = groups + 1
-				local atlas = OW.BannerAtlas(groups)
-				local info = C_Texture.GetAtlasInfo(atlas)
-				frame.banner:SetAtlas(atlas)
-				frame.banner:SetSize(info.width, info.height)
-				frame.banner:Show()
-				frame:SetHeight(art.groupHeight)
-				frame.text:SetPoint('LEFT', frame, 'LEFT', art.groupLabel.x, art.groupLabel.y)
-				frame.text:SetTextColor(PickedText())
-			else
-				frame.banner:Hide()
-				frame:SetHeight(NAV_GROUP)
-				frame.text:SetPoint('TOPLEFT', frame, 'TOPLEFT', 18, -12)
-				frame.text:SetTextColor(Grey())
-			end
-		else
-			frame = Acquire(pools.nav)
-			frame.key, frame.name, frame.disabled = entry.key, entry.name, entry.disabled
-			frame.active = state.search == '' and entry.key == state.page
-			frame.text:ClearAllPoints()
-			frame.text:SetPoint('LEFT', frame, 'LEFT', entry.special and 18 or 22, 0)
-			frame.text:SetText(entry.name)
-			frame.text:SetWidth(layout.navWidth - 30)
-			frame.blizzard = look and true or false
-			if look then
-				frame.listPicked:SetAtlas(look.picked)
-				frame.listHover:SetAtlas(look.hover)
-			end
-			StyleNavItem(frame)
-		end
-		frame:SetWidth(layout.navWidth)
-		frame:SetPoint('TOPLEFT', F.navContent, 'TOPLEFT', 0, -y)
-		y = y + frame:GetHeight()
-		F.nav[#F.nav + 1] = frame
-	end
-	navHeight = y + 10
-	F.navContent:SetHeight(navHeight)
-	F.navFrame:UpdateScrollChildRect()
-	SetNavScroll(navOffset)
-
-	local r, g, b = Normal()
-	F.profile:SetText(format('Profile: |cff%02x%02x%02x%s|r', floor(r * 255), floor(g * 255), floor(b * 255),
-		tostring(st.config:GetCurrentProfile())))
-end
-
------------------------------------------------------------------- tabs and the picker
-
+-- A tab or the picker (optionsnav.lua) chose key for slot ('tab', 'subtab'
+-- or 'pick').
 local function Select(slot, key)
 	local selection = state.selections[state.page] or {}
 	state.selections[state.page] = selection
 	selection[slot] = key
 	if state.search ~= '' or searchDue then ClearSearch() end
-	scrollOffset = 0
+	S.scrollOffset = 0
 	OW:SetStatus(nil)
 	OW:Render()
-end
-
-local function MakeTab()
-	local tab = CreateFrame('Button', nil, F.main)
-	tab.text = Text(tab, 'tab')
-	tab.text:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 2, 7)
-	tab.underline = tab:CreateTexture(nil, 'OVERLAY')
-	tab.underline:SetColorTexture(Blue())
-	tab.underline:SetPoint('BOTTOMLEFT', tab, 'BOTTOMLEFT', 0, -1)
-	tab.underline:SetPoint('BOTTOMRIGHT', tab, 'BOTTOMRIGHT', 0, -1)
-	tab.underline:SetHeight(2)
-	tab:SetScript('OnEnter', function(self)
-		if not (self.active or self.disabled) then self.text:SetTextColor(Normal()) end
-	end)
-	tab:SetScript('OnLeave', function(self)
-		if not self.active then self.text:SetTextColor(Grey()) end
-	end)
-	tab:SetScript('OnClick', function(self)
-		if not self.disabled then Select(self.slot, self.key) end
-	end)
-	return tab
-end
-
--- A tab's art under Blizzard: the Settings panel's tab (look,
--- st.ThemeArt.Control('optionstab')), the picked one for the active tab, at
--- its art's height (at most the tab's) along the tab's bottom, in place of
--- the blue underline. None under Thick and Thin (look nil).
-local function LookTab(tab, look)
-	if not look then
-		W.HideArt(tab)
-		return
-	end
-	local set = tab.active and look.picked or look.other
-	local _, height = W.AtlasSize(set.left)
-	W.LayThree(tab, set, 'BACKGROUND', min(height or TAB_HEIGHT, TAB_HEIGHT), 'BOTTOM')
-end
-
--- A row of tabs from top, wrapping onto more lines when they don't fit (the
--- first line stops short of the search box). Returns its bottom.
-local function DrawTabRow(pool, list, active, top, slot)
-	ReleaseAll(pool)
-	local look = blizzard and st.ThemeArt.Control('optionstab')
-	local x, y = 0, top
-	local limit = slot == 'tab' and (CONTENT_WIDTH - SEARCH_WIDTH - TAB_GAP) or CONTENT_WIDTH
-	for _, entry in ipairs(list) do
-		local tab = Acquire(pool)
-		tab.key, tab.slot, tab.disabled = entry.key, slot, entry.disabled
-		tab.active = entry.key == active
-		tab.text:SetText(entry.name)
-		local width = ceil(tab.text:GetStringWidth()) + 4
-		if x > 0 and x + width > limit then
-			x, y, limit = 0, y + TAB_HEIGHT + TAB_WRAP_GAP, CONTENT_WIDTH
-		end
-		tab:SetSize(width, TAB_HEIGHT)
-		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
-		if tab.active then tab.text:SetTextColor(Normal()) else tab.text:SetTextColor(Grey()) end
-		tab.underline:SetShown(tab.active and not blizzard)
-		LookTab(tab, look)
-		tab:SetAlpha(entry.disabled and 0.4 or 1)
-		x = x + width + TAB_GAP
-	end
-	return y + TAB_HEIGHT
-end
-
--- A line across the main column: Blizzard's divider under Blizzard, a 1px
--- line in OB.LINE's color otherwise.
-local function PlaceLine(line, y)
-	if blizzard then
-		line:SetAtlas(st.ThemeArt.Control('optionswindow').rule)
-	else
-		line:SetColorTexture(unpack(OB.LINE))
-	end
-	line:ClearAllPoints()
-	line:SetPoint('TOPLEFT', F.main, 'TOPLEFT', 0, -y)
-	line:SetPoint('TOPRIGHT', F.main, 'TOPRIGHT', 0, -y)
-	line:Show()
-end
-
--- The picker is a select widget over a one-option tree of its own, so it
--- gets the same list (and the list's Esc and outside click).
-local pickerOption = {
-	type = 'select', name = '',
-	get = function() return shown.pick end,
-	set = function(_, key) Select('pick', key) end,
-}
-local pickerRoot = { picker = pickerOption }
-local pickerRow = { key = 'picker', type = 'select', name = '', size = 'normal', path = { 'picker' }, option = pickerOption }
-local function NoChange() end
-
-local function HidePicker()
-	F.pickerLabel:Hide()
-	F.picker.frame:Hide()
-end
-
-local function DrawPicker(picker, top)
-	local values, sorting = {}, {}
-	for i, entry in ipairs(picker.values) do
-		values[entry.key] = entry.name
-		sorting[i] = entry.key
-	end
-	pickerOption.values, pickerOption.sorting = values, sorting
-	local label = F.pickerLabel
-	label:SetText(picker.name)
-	label:Show()
-	local w = F.picker
-	w.frame:ClearAllPoints()
-	w.frame:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + ceil(label:GetStringWidth()) + LABEL_GAP, -top)
-	label:ClearAllPoints()
-	label:SetPoint('RIGHT', w.frame, 'LEFT', -LABEL_GAP, 0)
-	w:Bind(pickerRoot, pickerRow, NoChange)
-	w.frame:Show()
-	return top + FIELD_HEIGHT
 end
 
 ------------------------------------------------------------------ the body
@@ -990,10 +407,10 @@ end
 -- so its body reaches over its own bar's place (filled, fillReach), where the
 -- row draws bars of its own: the Categories tab's editor.
 local function PlaceBody(top, filled)
-	local reach = filled and layout.fillReach or layout.bodyReach
+	local reach = filled and S.layout.fillReach or S.layout.bodyReach
 	F.body:ClearAllPoints()
 	F.body:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD, -top)
-	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(layout.rightPad - reach), layout.bodyBottom)
+	F.body:SetPoint('BOTTOMRIGHT', F.main, 'BOTTOMRIGHT', -(S.layout.rightPad - reach), S.layout.bodyBottom)
 end
 
 local function SamePath(a, b)
@@ -1011,7 +428,7 @@ local function BringIntoView()
 	if not path then return end
 	for _, cell in ipairs(pageBody.cells) do
 		if cell.row.path and SamePath(cell.row.path, path) then
-			scrollOffset = max(0, cell.y - ROW_HEIGHT)
+			S.scrollOffset = max(0, cell.y - ROW_HEIGHT)
 			cell.label:SetTextColor(Colors().text.blue:GetRGB())
 			return
 		end
@@ -1026,44 +443,44 @@ end
 ------------------------------------------------------------------ pages
 
 local function DrawPage()
-	shown = { page = state.page }
+	S.shown = { page = state.page }
 	local view = state.page and OM.BuildView(root, state.page, state.selections[state.page])
 	if not view then
 		F.title:SetText(st.name)
 		F.desc:SetText('')
-		PlaceLine(F.tabLine, DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
+		S.PlaceLine(F.tabLine, S.DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
 		ReleaseAll(pools.subtab)
 		F.subLine:Hide()
-		HidePicker()
+		S.HidePicker()
 		PlaceBody(TABS_TOP + TAB_HEIGHT)
 		return
 	end
 	F.title:SetText(view.title)
 	F.desc:SetText(view.desc or '')
-	shown.tab, shown.subtab = view.tab, view.subtab
-	shown.pick = view.picker and view.picker.selected
+	S.shown.tab, S.shown.subtab = view.tab, view.subtab
+	S.shown.pick = view.picker and view.picker.selected
 
 	-- A single tab is the page itself, so it isn't drawn (as in the mockup).
-	local bottom = DrawTabRow(pools.tab, #view.tabs > 1 and view.tabs or EMPTY, view.tab, TABS_TOP, 'tab')
-	PlaceLine(F.tabLine, bottom)
+	local bottom = S.DrawTabRow(pools.tab, #view.tabs > 1 and view.tabs or EMPTY, view.tab, TABS_TOP, 'tab')
+	S.PlaceLine(F.tabLine, bottom)
 	if #view.subtabs > 1 then
-		bottom = DrawTabRow(pools.subtab, view.subtabs, view.subtab, bottom + SUBTAB_GAP, 'subtab')
-		PlaceLine(F.subLine, bottom)
+		bottom = S.DrawTabRow(pools.subtab, view.subtabs, view.subtab, bottom + SUBTAB_GAP, 'subtab')
+		S.PlaceLine(F.subLine, bottom)
 	else
 		ReleaseAll(pools.subtab)
 		F.subLine:Hide()
 	end
 	if view.picker then
-		bottom = DrawPicker(view.picker, bottom + PICKER_GAP)
+		bottom = S.DrawPicker(view.picker, bottom + PICKER_GAP)
 	else
-		HidePicker()
+		S.HidePicker()
 	end
 	PlaceBody(bottom)
 	-- A fill row stretches to what the body shows.
 	local visible = F.body:GetHeight() or 0
 	contentHeight = pageBody:Draw(view.sections, visible)
 	if pageBody.filled then
-		filledTo = visible
+		S.filledTo = visible
 		PlaceBody(bottom, true)
 	end
 	if #pageBody.cells == 0 then Placeholder('Nothing to set here.') end
@@ -1072,14 +489,14 @@ end
 
 -- The results page: a section per page, tabs and section, in the order found.
 local function DrawSearch(pages)
-	shown = { page = state.page }
+	S.shown = { page = state.page }
 	local count = #results
 	F.title:SetText('Search')
 	F.desc:SetText(format('%d%s result%s for "%s"', count, count >= 100 and '+' or '', count == 1 and '' or 's', state.search))
-	PlaceLine(F.tabLine, DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
+	S.PlaceLine(F.tabLine, S.DrawTabRow(pools.tab, EMPTY, nil, TABS_TOP, 'tab'))
 	ReleaseAll(pools.subtab)
 	F.subLine:Hide()
-	HidePicker()
+	S.HidePicker()
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
 
 	local names = {}
@@ -1102,12 +519,12 @@ end
 -- box (its text and hint start clear of Blizzard's magnifying glass) and the
 -- resize grip.
 local function LookControls()
-	W.LookButton(F.reloadButton, blizzard, st.BOX_COLORS.bg)
-	W.LookButton(F.closeButton, blizzard, st.BOX_COLORS.bg)
-	local left = W.LookSearch(F.search, blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
+	W.LookButton(F.reloadButton, S.blizzard, st.BOX_COLORS.bg)
+	W.LookButton(F.closeButton, S.blizzard, st.BOX_COLORS.bg)
+	local left = W.LookSearch(F.search, S.blizzard, FIELD_HEIGHT) or SEARCH_TEXT_INSET
 	F.search:SetTextInsets(left, SEARCH_TEXT_INSET, 0, 0)
 	F.search.hint:SetPoint('LEFT', F.search, 'LEFT', left, 0)
-	LookGrip()
+	S.LookGrip()
 end
 
 -- Lays the window out for a look (settings: Blizzard's), in its layout
@@ -1119,7 +536,7 @@ end
 -- Build runs it, and Draw again when the look changed.
 local function Relayout(settings)
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
-	layout, F.layout = L, L
+	S.layout, F.layout = L, L
 	local window = F.window
 	window:SetSize(L.width, OW.WindowHeight(L))
 	st:SetTemplate(window, 'theme', 'solid', 'window')
@@ -1211,14 +628,14 @@ local function Relayout(settings)
 end
 
 local function Draw()
-	blizzard = W.BlizzardLook()
-	if blizzard ~= laidOut then Relayout(blizzard) end
+	S.blizzard = W.BlizzardLook()
+	if S.blizzard ~= laidOut then Relayout(S.blizzard) end
 	-- The window's name in the profile's font for window titles, which the
 	-- Fonts tab can change.
 	F.titleText:SetFontObject(st:GetFont(st.config.profile.headers.font))
 	LookControls()
 	ReleaseBody()
-	contentHeight, filledTo = 0, nil
+	contentHeight, S.filledTo = 0, nil
 	pageBody:SetRoot(root)
 	local pages = OM.Pages(root)
 	local entries = OW.SidebarEntries(pages)
@@ -1235,11 +652,11 @@ local function Draw()
 			end
 		end
 	end
-	DrawSidebar(entries)
+	S.DrawSidebar(entries)
 	if state.search ~= '' and results then DrawSearch(pages) else DrawPage() end
 	F.content:SetHeight(max(1, contentHeight))
 	F.body:UpdateScrollChildRect()
-	SetScroll(scrollOffset)
+	SetScroll(S.scrollOffset)
 end
 
 ------------------------------------------------------------------ the frame
@@ -1254,7 +671,7 @@ end
 
 local function OnHide()
 	F.window:StopMovingOrSizing()
-	StopResize()
+	S.StopResize()
 	F.keys:EnableKeyboard(false)
 	F.keys:Hide()
 	pending, dragging = false, false
@@ -1320,11 +737,11 @@ local function BuildSidebar(window)
 	content:SetHeight(1)
 	nav:SetScrollChild(content)
 	nav:EnableMouseWheel(true)
-	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(navOffset - delta * NAV_ITEM * 2) end)
+	nav:SetScript('OnMouseWheel', function(_, delta) SetNavScroll(S.navOffset - delta * NAV_ITEM * 2) end)
 	F.navFrame, F.navContent, F.nav = nav, content, {}
 	F.navBar = OB.ScrollBar(side, SetNavScroll, { narrow = true, step = NAV_ITEM * 2, flat = false })
-	pools.nav = Pool(MakeNavItem)
-	pools.group = Pool(MakeNavGroup)
+	pools.nav = Pool(S.MakeNavItem)
+	pools.group = Pool(S.MakeNavGroup)
 end
 
 local function BuildMain(window)
@@ -1351,7 +768,7 @@ local function BuildMain(window)
 	F.tabLine, F.subLine = Line(main), Line(main)
 	F.tabLine:SetHeight(1)
 	F.subLine:SetHeight(1)
-	pools.tab, pools.subtab = Pool(MakeTab), Pool(MakeTab)
+	pools.tab, pools.subtab = Pool(S.MakeTab), Pool(S.MakeTab)
 	F.tabs, F.subtabs = pools.tab.used, pools.subtab.used
 
 	-- The search box, at the right of the first tab line.
@@ -1387,7 +804,7 @@ local function BuildMain(window)
 
 	F.pickerLabel = Text(main, 'field')
 	F.picker = W.Create(main, 'select')
-	HidePicker()
+	S.HidePicker()
 
 	-- The body.
 	local body = CreateFrame('ScrollFrame', nil, main)
@@ -1395,10 +812,10 @@ local function BuildMain(window)
 	content:SetSize(CONTENT_WIDTH, 1)
 	body:SetScrollChild(content)
 	body:EnableMouseWheel(true)
-	body:SetScript('OnMouseWheel', function(_, delta) SetScroll(scrollOffset - delta * SCROLL_STEP) end)
+	body:SetScript('OnMouseWheel', function(_, delta) SetScroll(S.scrollOffset - delta * SCROLL_STEP) end)
 	-- A fill row follows the body's height: drawn again once it changes.
 	body:SetScript('OnSizeChanged', function(_, _, height)
-		if filledTo and floor((height or 0) + 0.5) ~= floor(filledTo + 0.5) then Schedule() end
+		if S.filledTo and floor((height or 0) + 0.5) ~= floor(S.filledTo + 0.5) then Schedule() end
 	end)
 	F.body, F.content = body, content
 	F.bar = OB.ScrollBar(main, SetScroll, { step = SCROLL_STEP })
@@ -1460,10 +877,10 @@ local function Build()
 	window:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	window:SetMovable(true)
 	-- Dragged by its header, so it keeps to the margin too, with its art.
-	st:KeepInScreenMargin(window, function() return ArtReach(layout) end)
+	st:KeepInScreenMargin(window, function() return ArtReach(S.layout) end)
 	-- A margin change takes its height in at once, as chat and the totem bar
 	-- take their places in.
-	hooksecurefunc(st, 'UpdateScreenMargin', ApplyHeight)
+	hooksecurefunc(st, 'UpdateScreenMargin', S.ApplyHeight)
 	window:EnableMouse(true)
 	window:Hide()
 	F.window = window
@@ -1473,24 +890,11 @@ local function Build()
 	BuildMain(window)
 	BuildFooter()
 	BuildTitleBar(window)
-	BuildResize(window)
+	S.BuildResize(window)
 
-	-- Esc, only while the window is shown.
-	local keys = CreateFrame('Frame', nil, window)
-	keys:Hide()
-	keys:SetScript('OnKeyDown', function(self, key)
-		if InCombatLockdown() then return end
-		-- A box's keys, the dialog's Esc (its catcher closes it), and Esc while
-		-- Blizzard's color picker is open (it's the picker's).
-		if GetCurrentKeyBoardFocus() or OW:IsDialogShown() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
-			self:SetPropagateKeyboardInput(true)
-			return
-		end
-		local escape = key == 'ESCAPE'
-		self:SetPropagateKeyboardInput(not escape)
-		if escape then OW:Close() end
-	end)
-	F.keys = keys
+	-- Esc, only while the window is shown. The dialog's Esc is its own (its
+	-- catcher, in optionssmalldialog.lua, closes it).
+	F.keys = EscapeKeys(window, function() return OW:IsDialogShown() end, function() OW:Close() end)
 
 	-- The frame clock: deferred renders and the search's wait. Shown only
 	-- while one is due.
@@ -1510,159 +914,14 @@ local function Build()
 	window:SetScript('OnHide', OnHide)
 	local EM = st.EditModeFrames
 	if EM then
-		EM:On('Enabled', UpdateEditModeButton)
-		EM:On('Disabled', UpdateEditModeButton)
+		EM:On('Enabled', S.UpdateEditModeButton)
+		EM:On('Disabled', S.UpdateEditModeButton)
 	end
 
 	-- Its size, its look (st:SetTemplate) and its parts' places, in the
 	-- layout of the look now.
 	Relayout(W.BlizzardLook())
 	PlaceBody(TABS_TOP + TAB_HEIGHT)
-end
-
------------------------------------------------------------------- a small dialog
-
---[[
-	OW:OpenDialog(title, options): a small SaftUI window, over /sui, for an
-	option table of its own (UF's Copy from). title is text, or a function
-	that gives it, read on each render. options is a group, as a page's: its
-	options and inline groups are drawn by a body of its own (OB.New), two
-	columns of rows as in the window. A dialog has no tabs or picker: of child
-	groups that aren't inline, only the first one's rows show.
-
-	A set re-renders it, after the drag for a slider's (meanwhile its other
-	rows follow the drag in place, as the window's do), and not while
-	Blizzard's color picker is open (the swatch shows its color itself; the
-	next set draws the rest). A failed validate shows its message at the
-	bottom. Esc (its own keyboard catcher, which the window's passes to) and
-	the close X close it, and so do closing the window and entering combat.
-	It refuses to open in combat (false).
-]]
-
-local DIALOG_WIDTH, DIALOG_PAD = 568, 24
-local DIALOG_CONTENT = DIALOG_WIDTH - 2 * DIALOG_PAD -- two columns of 240
-local DIALOG_HEAD, DIALOG_FOOT, DIALOG_MAX_BODY = 58, 30, 600
-local DIALOG_KEY = 'dialog' -- the table's key in the dialog's root
-local D = { offset = 0, height = 0 } -- the dialog's frames, body and what it draws
-
-local function SetDialogScroll(offset)
-	D.offset = ScrollTo(D.scroll, D.bar, offset, D.height)
-end
-
--- The dialog's scroll frame reaches past its content as the window's body
--- does in the look it's drawn in (OW.LAYOUT's bodyReach: under Blizzard the
--- dropdown's glow, so a select at the content's right edge isn't clipped).
--- Set when the look changed.
-local function PlaceDialogScroll()
-	local blizzard = W.BlizzardLook()
-	if blizzard == D.laidOut then return end
-	local reach = (blizzard and OW.LAYOUT.blizzard or OW.LAYOUT.own).bodyReach
-	D.scroll:SetPoint('BOTTOMRIGHT', D.frame, 'BOTTOMRIGHT', -(DIALOG_PAD - reach), DIALOG_FOOT)
-	D.laidOut = blizzard
-end
-
-local function DrawDialog()
-	PlaceDialogScroll()
-	D.body:Release()
-	local title = D.titleSource
-	if type(title) == 'function' then title = title() end
-	D.title:SetText(tostring(title or ''))
-	local view = OM.BuildView(D.root, DIALOG_KEY)
-	D.height = view and D.body:Draw(view.sections) or 0
-	D.content:SetHeight(max(1, D.height))
-	D.frame:SetHeight(DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + DIALOG_FOOT)
-	D.scroll:UpdateScrollChildRect()
-	SetDialogScroll(D.offset)
-end
-
-local function RenderDialog()
-	if D.frame and D.frame:IsShown() then xpcall(DrawDialog, geterrorhandler()) end
-end
-
--- The dialog's widgets' onChanged, as the window's Changed: mid-drag its other
--- rows follow in place, and it's drawn again when the mouse is let go.
-local function DialogChanged(ok, err, isDragging, widget)
-	D.status:SetText(ok == false and err or '')
-	if ok == false and err then return end
-	if isDragging then
-		xpcall(function() D.body:Refresh(widget) end, geterrorhandler())
-		return
-	end
-	if ColorPickerFrame and ColorPickerFrame:IsShown() then return end
-	RenderDialog()
-end
-
-local function BuildDialog()
-	local frame = st:CreateFrame('Frame', nil, UIParent)
-	frame:SetFrameStrata('FULLSCREEN_DIALOG')
-	frame:SetFrameLevel(300) -- over the window (100) and all it holds
-	frame:SetWidth(DIALOG_WIDTH)
-	st:KeepInScreenMargin(frame)
-	frame:EnableMouse(true)
-	frame:Hide()
-	st:SetTemplate(frame, 'theme', 'solid', 'panel')
-	D.frame = frame
-
-	D.title = Text(frame, 'brand')
-	D.title:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIALOG_PAD, -18)
-	D.title:SetWidth(DIALOG_CONTENT - 40)
-	local close = st:CreateCloseButton(frame)
-	close:ClearAllPoints()
-	close:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -14, -14)
-	local line = Line(frame)
-	line:SetPoint('TOPLEFT', frame, 'TOPLEFT', 2, -(DIALOG_HEAD - 6))
-	line:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', -2, -(DIALOG_HEAD - 6))
-	line:SetHeight(1)
-
-	local scroll = CreateFrame('ScrollFrame', nil, frame)
-	scroll:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIALOG_PAD, -DIALOG_HEAD)
-	scroll:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -DIALOG_PAD, DIALOG_FOOT)
-	local content = CreateFrame('Frame', nil, scroll)
-	content:SetSize(DIALOG_CONTENT, 1)
-	scroll:SetScrollChild(content)
-	scroll:EnableMouseWheel(true)
-	scroll:SetScript('OnMouseWheel', function(_, delta) SetDialogScroll(D.offset - delta * SCROLL_STEP) end)
-	D.scroll, D.content = scroll, content
-	D.bar = OB.ScrollBar(frame, SetDialogScroll, { narrow = true, step = SCROLL_STEP })
-	D.body = OB.New(content, nil, DialogChanged, DIALOG_CONTENT)
-
-	D.status = Text(frame, 'field')
-	D.status:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', DIALOG_PAD, 10)
-	D.status:SetWidth(DIALOG_CONTENT)
-	D.status:SetTextColor(Colors().text.red:GetRGB())
-
-	-- Esc, only while the dialog is shown.
-	local keys = CreateFrame('Frame', nil, frame)
-	keys:Hide()
-	keys:SetScript('OnKeyDown', function(self, key)
-		if InCombatLockdown() then return end
-		if GetCurrentKeyBoardFocus() or (ColorPickerFrame and ColorPickerFrame:IsShown()) then
-			self:SetPropagateKeyboardInput(true)
-			return
-		end
-		local escape = key == 'ESCAPE'
-		self:SetPropagateKeyboardInput(not escape)
-		if escape then OW:CloseDialog() end
-	end)
-	D.keys = keys
-
-	frame:SetScript('OnShow', function()
-		keys:Show()
-		keys:EnableKeyboard(true)
-		if not InCombatLockdown() then keys:SetPropagateKeyboardInput(true) end
-	end)
-	frame:SetScript('OnHide', function()
-		keys:EnableKeyboard(false)
-		keys:Hide()
-		D.body:Release()
-		local owner = W.ListOwner()
-		if owner and Inside(owner, frame) then W.CloseList() end
-		W.CancelConfirm()
-		D.status:SetText('')
-	end)
-	-- Its sets can reach protected frames (UF's copy updates the unit frames).
-	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
-	frame:SetScript('OnEvent', function() OW:CloseDialog() end)
 end
 
 ------------------------------------------------------------------ the API
@@ -1692,7 +951,7 @@ function OW:Open(path, tree)
 		if pageKey then
 			state.page = pageKey
 			state.selections[pageKey] = selection
-			scrollOffset = 0
+			S.scrollOffset = 0
 			if state.search ~= '' or searchDue then ClearSearch() end
 		end
 	end
@@ -1715,7 +974,7 @@ function OW:Navigate(pageKey, selection)
 	state.page = pageKey
 	if selection then state.selections[pageKey] = Copy(selection) end
 	if state.search ~= '' or searchDue then ClearSearch() end
-	scrollOffset = 0
+	S.scrollOffset = 0
 	self:SetStatus(nil)
 	self:Render()
 end
@@ -1733,29 +992,6 @@ end
 function OW:SetRoot(tree)
 	root = tree
 	Schedule()
-end
-
--- A small dialog over the window for options, a group table of its own
--- (see "a small dialog" above). False in combat.
-function OW:OpenDialog(title, options)
-	if InCombatLockdown() then return false end
-	if not D.frame then BuildDialog() end
-	D.titleSource, D.root, D.offset = title, { [DIALOG_KEY] = options }, 0
-	D.body:SetRoot(D.root)
-	D.status:SetText('')
-	D.frame:ClearAllPoints()
-	D.frame:SetPoint('CENTER', self:IsShown() and F.window or UIParent, 'CENTER', 0, 0)
-	D.frame:Show()
-	RenderDialog()
-	return true
-end
-
-function OW:CloseDialog()
-	if self:IsDialogShown() then D.frame:Hide() end
-end
-
-function OW:IsDialogShown()
-	return D.frame ~= nil and D.frame:IsShown()
 end
 
 function OW:SetStatus(text)
@@ -1776,18 +1012,24 @@ end
 
 -- What the last render drew: { page, tab, subtab, pick, search }.
 function OW:GetState()
-	return { page = shown.page, tab = shown.tab, subtab = shown.subtab, pick = shown.pick, search = state.search }
+	return { page = S.shown.page, tab = S.shown.tab, subtab = S.shown.subtab, pick = S.shown.pick, search = state.search }
 end
 
 -- For tests: the frames, the drawn body rows, how many renders ran.
 function OW.GetFrames() return F end
 function OW.GetDrawnRows() return pageBody and pageBody.cells or EMPTY end
--- The dialog's: { frame, title, scroll, content, bar, status, keys, body };
--- its drawn rows are body.cells.
-function OW.GetDialogFrames() return D end
 function OW.GetRenderCount() return renders end
 
 -- st.Config:Refresh notifies AceConfigRegistry: re-render on the next frame.
 LibStub('AceConfigRegistry-3.0').RegisterCallback(OW, 'ConfigTableChange', function(_, appName)
 	if appName == st.name and not rendering then Schedule() end
 end)
+
+------------------------------------------------------------------ for the later files
+
+S.F, S.Colors, S.Schedule, S.SavePosition, S.Inside = F, Colors, Schedule, SavePosition, Inside
+S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
+S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
+S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, Button, Select
+S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT, S.SEARCH_WIDTH = PAD, FIELD_HEIGHT, TAB_HEIGHT, SEARCH_WIDTH
+S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM = ACTION_PAD, ACTION_HEIGHT, NAV_ITEM

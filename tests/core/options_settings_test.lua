@@ -1,6 +1,6 @@
 -- /sui under the Blizzard theme as Blizzard's Settings window
--- (SaftUI-Core/Config/optionswindow.lua, with themeart.lua's optionswindow
--- art), on both clients: the window drawn as a window (the metal, its title
+-- (SaftUI-Core/Config/optionswindow.lua and the files beside it, with
+-- themeart.lua's optionswindow art), on both clients: the window drawn as a window (the metal, its title
 -- bar reading "SaftUI Options", the close button in the metal's socket), the
 -- inner frame over the sidebar and the main column, the sidebar as wide as
 -- the divider drawn into the inner frame, the footer under it across the
@@ -48,9 +48,10 @@ local function world(client, setup)
 	stub.interface = client == 'forever' and 16001 or 120000
 	load_saftui('SaftUI-Core/constants.lua')
 	load_test_file('core/config_helpers.lua')
-	for _, f in ipairs({ 'optionsmodel', 'optionswidgets', 'optionsbody', 'optionswindow' }) do
-		load_saftui('SaftUI-Core/Config/' .. f .. '.lua')
-	end
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_options_widgets()
+	load_saftui('SaftUI-Core/Config/optionsbody.lua')
+	load_options_window()
 	st, OW, W = SaftUI, SaftUI.OptionsWindow, SaftUI.OptionsWidgets
 	drawn = T.watch()
 

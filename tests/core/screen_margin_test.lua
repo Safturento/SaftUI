@@ -4,11 +4,12 @@
 -- insets and re-apply them; the frames given to them (edit mode's movers,
 -- st:RegisterMover in EditMode/editmode.lua; windows with a header,
 -- st:CreateHeader in panels.lua; /sui's window and its dialog,
--- Config/optionswindow.lua); what re-applies the margin (the General tab's row,
--- a profile switch, the end of combat); Blizzard frames SaftUI moves, which it
--- never clamps (st:EnableMoving's, and a mover on a Blizzard frame); and edit
--- mode drags and nudges (EditMode/mover.lua), which stop at the margin and start
--- from where the game's clamp shows a frame (st:GetClampShift).
+-- Config/optionswindow.lua and optionssmalldialog.lua); what re-applies the
+-- margin (the General tab's row, a profile switch, the end of combat);
+-- Blizzard frames SaftUI moves, which it never clamps (st:EnableMoving's,
+-- and a mover on a Blizzard frame); and edit mode drags and nudges
+-- (EditMode/mover.lua), which stop at the margin and start from where the
+-- game's clamp shows a frame (st:GetClampShift).
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 (config_helpers.lua), with
 -- Core's helpers and edit mode; the options model, widgets, body and window.
@@ -20,9 +21,9 @@ load_test_file('core/config_helpers.lua')
 local st = SaftUI
 local EM = st.EditModeFrames
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
-load_saftui('SaftUI-Core/Config/optionswidgets.lua')
+load_options_widgets()
 load_saftui('SaftUI-Core/Config/optionsbody.lua')
-load_saftui('SaftUI-Core/Config/optionswindow.lua')
+load_options_window()
 local OM, OW = st.OptionsModel, st.OptionsWindow
 
 -- A 1000 x 600 screen at the scale SaftUI sets at login: one UIParent unit per
