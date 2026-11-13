@@ -207,6 +207,27 @@ function T.check_options(group, where)
 	end
 end
 
+local LABELS = { theme = 'Theme', background = 'Background' }
+
+-- Checks a module page's Theme and Background: the options themselves
+-- (T.check_options(spec.group, spec.where)), then each of spec.reads, a
+-- { key, value } pair, read through the group's get, then each of
+-- spec.writes, the same, set through its set, and then each found in
+-- spec.config. The messages name what is stored as spec.path .. '.' .. key
+-- ('Theme reads chat.theme'), after spec.prefix when there is one
+-- ('roll: Theme reads loot.roll.theme').
+function T.check_theme_page(spec)
+	local group, prefix = spec.group, spec.prefix or ''
+	T.check_options(group, spec.where)
+	for _, read in ipairs(spec.reads or {}) do
+		eq(group.get({ read[1] }), read[2], prefix .. LABELS[read[1]] .. ' reads ' .. spec.path .. '.' .. read[1])
+	end
+	for _, write in ipairs(spec.writes or {}) do group.set({ write[1] }, write[2]) end
+	for _, write in ipairs(spec.writes or {}) do
+		eq(spec.config[write[1]], write[2], prefix .. LABELS[write[1]] .. ' writes ' .. spec.path .. '.' .. write[1])
+	end
+end
+
 -- What the old template picker offered and themes never show: the word
 -- Template, Highlight, Close Button, and the old names ThickTransparent and
 -- ThinTransparent, as a label or as a select's value.

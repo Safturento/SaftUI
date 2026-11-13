@@ -42,14 +42,11 @@ test('each page offers Theme and Background, not Template', function()
 	local MicroMenu = st:GetModule('MicroMenu')
 	MicroMenu.Container = CreateFrame('Frame', nil, UIParent) -- SaftUI's, made by OnEnable
 	T.check_no_old_names(MicroMenu:GetConfigTable(), 'Micro Menu')
-	local general = MM:GetConfigTable().args.general
-	T.check_options(general, 'Minimap')
-	eq(general.get({ 'theme' }), 'theme', 'Theme reads minimap.theme')
-	eq(general.get({ 'background' }), 'solid', 'Background reads minimap.background')
-	general.set({ 'theme' }, 'thin')
-	general.set({ 'background' }, 'transparent')
-	eq(profile.minimap.theme, 'thin', 'Theme writes minimap.theme')
-	eq(profile.minimap.background, 'transparent', 'Background writes minimap.background')
+	T.check_theme_page({
+		group = MM:GetConfigTable().args.general, where = 'Minimap', config = profile.minimap, path = 'minimap',
+		reads = { { 'theme', 'theme' }, { 'background', 'solid' } },
+		writes = { { 'theme', 'thin' }, { 'background', 'transparent' } },
+	})
 	eq(updates, 2, 'each applies at once')
 	MM.UpdateConfig = update
 	profile.minimap.theme, profile.minimap.background = 'theme', 'solid'

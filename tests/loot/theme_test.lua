@@ -70,15 +70,13 @@ test('each page offers Theme and Background, not Template', function()
 
 	local tree = LT:GetConfigTable()
 	for _, key in ipairs({ 'roll', 'feed' }) do
-		local general = tree.args[key].args.general
-		T.check_options(general, key)
-		eq(general.get({ 'theme' }), 'theme', key .. ': Theme reads loot.' .. key .. '.theme')
-		eq(general.get({ 'background' }), 'solid', key .. ': Background reads loot.' .. key .. '.background')
-		applied = {}
-		general.set({ 'theme' }, 'thin')
-		general.set({ 'background' }, 'transparent')
-		eq(profile.loot[key].theme, 'thin', key .. ': Theme writes loot.' .. key .. '.theme')
-		eq(profile.loot[key].background, 'transparent', key .. ': Background writes loot.' .. key .. '.background')
+		applied = {} -- reading changes nothing, so only the two sets are counted
+		T.check_theme_page({
+			group = tree.args[key].args.general, where = key, config = profile.loot[key],
+			path = 'loot.' .. key, prefix = key .. ': ',
+			reads = { { 'theme', 'theme' }, { 'background', 'solid' } },
+			writes = { { 'theme', 'thin' }, { 'background', 'transparent' } },
+		})
 		eq(table.concat(applied, ','), key .. ',' .. key, key .. ': each applies at once')
 		profile.loot[key].theme, profile.loot[key].background = 'theme', 'solid'
 	end

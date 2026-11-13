@@ -34,14 +34,11 @@ test('each page offers Theme and Background, not Template', function()
 	local apply = CHT.ApplyAppearance
 	function CHT:ApplyAppearance() applied = applied + 1 end
 
-	local general = CHT:GetConfigTable().args.general
-	T.check_options(general, 'Chat')
-	eq(general.get({ 'theme' }), 'theme', 'Theme reads chat.theme')
-	eq(general.get({ 'background' }), 'theme', 'Background reads chat.background')
-	general.set({ 'theme' }, 'thin')
-	general.set({ 'background' }, 'solid')
-	eq(profile.chat.theme, 'thin', 'Theme writes chat.theme')
-	eq(profile.chat.background, 'solid', 'Background writes chat.background')
+	T.check_theme_page({
+		group = CHT:GetConfigTable().args.general, where = 'Chat', config = profile.chat, path = 'chat',
+		reads = { { 'theme', 'theme' }, { 'background', 'theme' } },
+		writes = { { 'theme', 'thin' }, { 'background', 'solid' } },
+	})
 	eq(applied, 2, 'each restyles the chat windows at once')
 
 	CHT.ApplyAppearance = apply
