@@ -45,11 +45,10 @@ end
 -- The Thick, Blizzard, Thick round trip: expect(label .. ', Thick') in the
 -- world as it is, then SaftUI's theme switched to Blizzard and
 -- expect(label .. ', Blizzard'), then back to Thick and
--- expect(label .. ', Thick again'). Each switch is switch(name), by default
--- the profile's theme name set and st:ThemeChanged() run, as the Theme tab
--- runs it.
-function T.round_trip(label, expect, switch)
-	switch = switch or function(name)
+-- expect(label .. ', Thick again'). Each switch sets the profile's theme name
+-- and runs st:ThemeChanged(), as the Theme tab runs it.
+function T.round_trip(label, expect)
+	local function switch(name)
 		SaftUI.config.profile.theme.name = name
 		SaftUI:ThemeChanged()
 	end
