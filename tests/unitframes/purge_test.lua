@@ -29,42 +29,17 @@
 -- and candidate filters; the flow layout setters, SetEnabled,
 -- SetAuraGroupLayout and SetAuraGroupMaxFrameCount only take their
 -- arguments.
-local T = load_test_file('lib/theme_helpers.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
 
 local st, UF, P
 
-local UNITS = { 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }
-local ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }
+local UNITS = UW.UNITS
 
--- A fresh world on one client ('forever' or 'retail').
+-- A fresh world on one client ('forever' or 'retail'): uf_world.lua's, with
+-- config/position.lua first and aurafilters.lua after the module, as the TOC
+-- loads it before the elements.
 local function world(client)
-	T.client(client)
-	st = SaftUI
-	load_saftui('SaftUI-Unitframes/config/position.lua')
-	load_saftui('SaftUI-Unitframes/config/default.lua')
-	for _, unit in ipairs(UNITS) do
-		load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')
-	end
-	apply_defaults()
-	addon_namespace('SaftUI-Unitframes').oUF = {
-		colors = {
-			class = {}, reaction = {}, power = {},
-			disconnected = CreateColor(1, 1, 1), tapped = CreateColor(1, 1, 1), health = CreateColor(0.2, 0.8, 0.2),
-			roles = {}, runes = {},
-		},
-	}
-	-- The TOC's order: aurafilters.lua after tags.lua, before the elements.
-	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters', 'aurafilters' }) do
-		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
-	end
-	for _, file in ipairs(ELEMENTS) do
-		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-	end
-	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-	load_string_format()
-	UF = st:GetModule('Unitframes')
-	P = UF:GetProfileConfig()
-	UF:UpdateColors()
+	st, UF, P = UW.world({ client = client, position = true, after = { 'aurafilters' } })
 end
 
 -- The player: a class token and the spell IDs known in the player's
@@ -107,16 +82,11 @@ end
 local calls = setmetatable({}, { __mode = 'k' })
 
 -- A unit frame for a config unit, with the named elements built by their own
--- constructors (theme_test.lua's, with the container recording its group's
+-- constructors (uf_world.lua's, with a container that records its group's
 -- filters).
 local function make_unit_frame(name, unit, elements)
-	local frame = CreateFrame('Button', name, UIParent)
-	frame.base_unit = unit
-	frame.GetConfig = function() return UF:GetProfileConfig()[unit] end
-	frame.config = frame:GetConfig()
-	function frame:UpdateAllElements() end
-	function frame:CreateAuras()
-		local auras = CreateFrame('Frame', nil, self)
+	return UW.unit_frame(name, unit, elements, nil, function(frame)
+		local auras = CreateFrame('Frame', nil, frame)
 		calls[auras] = {}
 		function auras:SetEnabled() end
 		function auras:SetFlowLayoutAnchorPoint() end
@@ -137,16 +107,7 @@ local function make_unit_frame(name, unit, elements)
 			table.insert(calls[self], 'SetAuraGroupCandidateFilters: ' .. candidates(candidateFilters))
 		end
 		return auras
-	end
-	local overlay = CreateFrame('Frame', nil, frame)
-	overlay:SetFrameLevel(99)
-	overlay:SetAllPoints(frame)
-	frame.TextOverlay = overlay
-	frame.elements = {}
-	for _, element in ipairs(elements) do
-		frame.elements[element] = UF.elements[element].Constructor(frame, element)
-	end
-	return frame
+	end)
 end
 
 -- The calls an aura element's container recorded since the last take, joined

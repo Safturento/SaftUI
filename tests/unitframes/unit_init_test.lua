@@ -23,43 +23,23 @@
 -- one does beyond it), made before unitframes.lua loads, with SaftUI's style
 -- and UF.InitUnit registered as UF:OnEnable registers them.
 local fixture = load_test_file('unitframes/fixtures/ouf.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
 
-load_core_helpers()
-load_saftui('SaftUI-Unitframes/config/default.lua')
-for _, unit in ipairs({ 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'arena', 'party', 'raid10', 'raid40' }) do
-	load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')
-end
-apply_defaults()
+-- uf_world.lua's world: every unit's config, in config/load.xml's order; the
+-- module, then aurafilters.lua (the aura groups' filters, UF.AuraFilter) and
+-- tags.lua; the elements elements.xml lists; the oUF stand-in. The colors go
+-- to oUF after UF:OnEnable's setup below.
 local ouf = fixture.new()
-addon_namespace('SaftUI-Unitframes').oUF = ouf
-load_saftui('SaftUI-Unitframes/unitframes.lua')
-load_saftui('SaftUI-Unitframes/grouplayout.lua')
-load_saftui('SaftUI-Unitframes/groups.lua')
-load_saftui('SaftUI-Unitframes/blizzardraid.lua')
-load_saftui('SaftUI-Unitframes/grouppreview.lua')
-load_saftui('SaftUI-Unitframes/config/profiles.lua')
-load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
-load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/constructors.lua')
-load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/aurafilters.lua') -- the aura groups' filters (UF.AuraFilter), as the TOC loads it after updaters
-load_saftui('SaftUI-Unitframes/tags.lua')
-for _, file in ipairs({ 'name', 'auras', 'aurawatch', 'power', 'additionalpower', 'health', 'castbar', 'portrait', 'classpower', 'indicators' }) do
-	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-end
-load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-load_string_format()
-
-local st = SaftUI
-local UF = st:GetModule('Unitframes')
-local P = UF:GetProfileConfig()
+local st, UF, P = UW.world({
+	units = { 'player', 'target', 'targettarget', 'focus', 'focustarget', 'pet', 'pettarget', 'boss', 'arena', 'party', 'raid10', 'raid40' },
+	ouf = ouf,
+	after = { 'aurafilters', 'tags' },
+	elements = { 'name', 'auras', 'aurawatch', 'power', 'additionalpower', 'health', 'castbar', 'portrait', 'classpower', 'indicators' },
+	colors = false,
+})
 
 -- What UF:OnEnable sets up before it spawns, as far as these frames need it.
-ouf:RegisterInitCallback(UF.InitUnit)
-ouf:RegisterStyle('SaftUI', UF.ConstructUnit)
-ouf:SetActiveStyle('SaftUI')
-UF.units = {}
-UF.allUnits = {}
+UW.before_spawn(UF, ouf)
 UF:UpdateColors()
 
 -- Runs fn with UF:UpdateUnitFrame watched: returns, for each call, the frame

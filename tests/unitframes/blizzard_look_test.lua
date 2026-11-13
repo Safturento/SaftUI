@@ -36,71 +36,23 @@
 -- constructors (make_unit_frame). The draw calls are watched (T.watch), since
 -- the kind changes nothing under Thick and Thin.
 local T = load_test_file('lib/theme_helpers.lua')
+local UW = load_test_file('unitframes/uf_world.lua')
 
 local st, UF, P, drawn
 
-local UNITS = { 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }
-local ELEMENTS = { 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }
+local UNITS = UW.UNITS
 
--- A fresh world on one client, with SaftUI's theme set to theme.
+-- A fresh world on one client (uf_world.lua's), with SaftUI's theme set to
+-- theme.
 local function world(client, theme)
-	T.client(client)
-	st = SaftUI
-	load_saftui('SaftUI-Unitframes/config/default.lua')
-	for _, unit in ipairs(UNITS) do
-		load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')
-	end
-	apply_defaults()
-	addon_namespace('SaftUI-Unitframes').oUF = {
-		colors = {
-			class = {}, reaction = {}, power = {},
-			disconnected = CreateColor(1, 1, 1), tapped = CreateColor(1, 1, 1), health = CreateColor(0.2, 0.8, 0.2),
-			roles = {}, runes = {},
-		},
-	}
-	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters' }) do
-		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
-	end
-	for _, file in ipairs(ELEMENTS) do
-		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-	end
-	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-	load_string_format()
-	UF = st:GetModule('Unitframes')
-	P = UF:GetProfileConfig()
-	UF:UpdateColors()
+	st, UF, P = UW.world({ client = client })
 	drawn = T.watch()
 	st.config.profile.theme.name = theme or 'thick'
 end
 
 -- A unit frame for a config unit, with the named elements built by their own
--- constructors (theme_test.lua's).
-local function make_unit_frame(name, unit, elements, parent)
-	local frame = CreateFrame('Button', name, parent or UIParent)
-	frame.base_unit = unit
-	frame.GetConfig = function() return UF:GetProfileConfig()[unit] end
-	frame.config = frame:GetConfig()
-	function frame:UpdateAllElements() end
-	function frame:CreateAuras()
-		local auras = CreateFrame('Frame', nil, self)
-		function auras:SetEnabled() end
-		function auras:SetFlowLayoutAnchorPoint() end
-		function auras:SetFlowLayoutMaximumLineSize() end
-		function auras:SetFlowLayoutGrowthDirection() end
-		function auras:AddGroup() return 'Group1' end
-		function auras:SetAuraGroupLayout() end
-		return auras
-	end
-	local overlay = CreateFrame('Frame', nil, frame)
-	overlay:SetFrameLevel(99)
-	overlay:SetAllPoints(frame)
-	frame.TextOverlay = overlay
-	frame.elements = {}
-	for _, element in ipairs(elements) do
-		frame.elements[element] = UF.elements[element].Constructor(frame, element)
-	end
-	return frame
-end
+-- constructors (uf_world.lua's).
+local make_unit_frame = UW.unit_frame
 
 -- What a frame's backdrop shows: its inset, fill and edge colors, whether
 -- Thick's outer lines show, where it sits around the frame, whether it has an

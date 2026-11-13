@@ -54,45 +54,10 @@
 -- draw calls are watched: st:SetBackdrop is wrapped to note its arguments, and
 -- still draws.
 local T = load_test_file('lib/theme_helpers.lua')
-load_core_helpers()
-load_saftui('SaftUI-Unitframes/config/default.lua')
-for _, unit in ipairs({ 'arena', 'boss', 'focus', 'focustarget', 'party', 'pet', 'pettarget', 'player', 'raid10', 'raid40', 'target', 'targettarget' }) do
-	load_saftui('SaftUI-Unitframes/config/units/' .. unit .. '.lua')
-end
-apply_defaults()
-addon_namespace('SaftUI-Unitframes').oUF = {
-	colors = {
-		class = {},
-		reaction = {},
-		power = {},
-		disconnected = CreateColor(1, 1, 1),
-		tapped = CreateColor(1, 1, 1),
-		health = CreateColor(0.2, 0.8, 0.2),
-		roles = {},
-		runes = {},
-	},
-}
-load_saftui('SaftUI-Unitframes/unitframes.lua')
-load_saftui('SaftUI-Unitframes/grouplayout.lua')
-load_saftui('SaftUI-Unitframes/groups.lua')
-load_saftui('SaftUI-Unitframes/blizzardraid.lua')
-load_saftui('SaftUI-Unitframes/grouppreview.lua')
-load_saftui('SaftUI-Unitframes/config/profiles.lua')
-load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
-load_saftui('SaftUI-Unitframes/config/config.lua')
-load_saftui('SaftUI-Unitframes/constructors.lua')
-load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/aurafilters.lua')
-for _, file in ipairs({ 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
-	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
-end
-load_saftui('SaftUI-Unitframes/nameplates/options.lua')
-load_string_format()
-
-local st = SaftUI
-local UF = st:GetModule('Unitframes')
-local P = UF:GetProfileConfig()
-UF:UpdateColors()
+local UW = load_test_file('unitframes/uf_world.lua')
+-- uf_world.lua's world: every unit's config, the module and aurafilters.lua,
+-- and the bar, aura and indicator elements.
+local st, UF, P = UW.world({ after = { 'aurafilters' } })
 
 -- draws[frame] is the theme, background and kind frame was last drawn with.
 local draws = setmetatable({}, { __mode = 'k' })
@@ -126,48 +91,11 @@ end
 
 -- A unit frame for a config unit, with the named elements built by their own
 -- constructors (see the top of this file).
-local function make_unit_frame(name, unit, elements, parent)
-	local frame = CreateFrame('Button', name, parent or UIParent)
-	frame.base_unit = unit
-	frame.GetConfig = function() return UF:GetProfileConfig()[unit] end
-	frame.config = frame:GetConfig()
-	function frame:UpdateAllElements() end
-	function frame:CreateAuras()
-		local auras = CreateFrame('Frame', nil, self)
-		function auras:SetEnabled() end
-		function auras:SetFlowLayoutAnchorPoint() end
-		function auras:SetFlowLayoutMaximumLineSize() end
-		function auras:SetFlowLayoutGrowthDirection() end
-		function auras:AddGroup() return 'Group1' end
-		function auras:SetAuraGroupLayout() end
-		function auras:SetAuraGroupMaxFrameCount() end
-		return auras
-	end
-	local overlay = CreateFrame('Frame', nil, frame)
-	overlay:SetFrameLevel(99)
-	overlay:SetAllPoints(frame)
-	frame.TextOverlay = overlay
-	frame.elements = {}
-	for _, element in ipairs(elements) do
-		frame.elements[element] = UF.elements[element].Constructor(frame, element)
-	end
-	return frame
-end
+local make_unit_frame = UW.unit_frame
 
 -- A button oUF's aura container made for an aura, handed to the element's
 -- PostCreateButton as oUF does (see the top of this file).
-local function make_aura_button(auras)
-	local button = CreateFrame('Button', nil, auras)
-	button:SetSize(24, 24)
-	button:SetPoint('TOPLEFT')
-	button.Icon = button:CreateTexture(nil, 'BORDER')
-	button.Icon:SetAllPoints()
-	button.Count = button:CreateFontString(nil, 'OVERLAY')
-	button.Border = button:CreateTexture(nil, 'OVERLAY')
-	button.Border:SetAllPoints()
-	auras:PostCreateButton(button)
-	return button
-end
+local function make_aura_button(auras) return UW.aura_button(auras, 24) end
 
 local function rgba(r, g, b, a) return ('%.2f,%.2f,%.2f,%.2f'):format(r, g, b, a or 1) end
 
