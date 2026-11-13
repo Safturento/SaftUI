@@ -168,16 +168,10 @@ local function LookColor(w, blizzard)
 	end
 end
 
--- A color's text color reads on what the bar shows: black on a light fill,
--- white on a dark one. The fill is drawn at a (its opacity, 1 without
--- hasAlpha) over the black line, so what shows is the color times a, and its
--- brightness (Rec. 601 luma, .299 r + .587 g + .114 b) the color's times a.
--- The cut is a half: pure green and yellow get black, pure red and blue white.
-local LIGHT = 0.5
-local function TextColorFor(r, g, b, a)
-	if (0.299 * r + 0.587 * g + 0.114 * b) * a > LIGHT then return 0, 0, 0 end
-	return 1, 1, 1
-end
+-- The code is always white, on any color and opacity: the options font's
+-- outline (W.GetFont, the profile's, always black) keeps it readable. Black
+-- letters would vanish into that outline.
+local CODE_COLOR = { 1, 1, 1 }
 
 -- '#RRGGBB' in capitals, each channel rounded to a whole 0-255; with an
 -- opacity under 100% (hasAlpha only) '#RRGGBB · 60%', whole percent.
@@ -202,7 +196,7 @@ define('color', {
 		local shown = self.hasAlpha and self.a or 1
 		self.swatch:SetColorTexture(self.r, self.g, self.b, shown)
 		self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
-		self.text:SetTextColor(TextColorFor(self.r, self.g, self.b, shown))
+		self.text:SetTextColor(unpack(CODE_COLOR))
 	end,
 
 	-- Opens the picker on the current color. Each change it makes is set;

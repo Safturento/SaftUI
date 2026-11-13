@@ -213,34 +213,18 @@ test('color: the bar reads the color\'s hex code in capitals, channels rounded',
 	eq(text(0.6666, 0.1, 0.9), '#AA1AE6', 'letters in capitals')
 end)
 
-test('color: black text on a light color, white on a dark one', function()
-	local function ink(r, g, b)
-		local w = color_widget({ value = { r, g, b, 1 } })
-		local tr, tg, tb = w.text:GetTextColor()
-		w:Release()
-		return tr .. ',' .. tg .. ',' .. tb
-	end
-	eq(ink(1, 1, 1), '0,0,0', 'white fill')
-	eq(ink(1, 1, 0), '0,0,0', 'yellow')
-	eq(ink(0, 1, 0), '0,0,0', 'green')
-	eq(ink(0, 0, 0), '1,1,1', 'black fill')
-	eq(ink(1, 0, 0), '1,1,1', 'red')
-	eq(ink(0, 0, 1), '1,1,1', 'blue')
-	eq(ink(0.5, 0.5, 0.5), '1,1,1', 'mid grey, on the dark side of the cut')
-	eq(ink(0.51, 0.51, 0.51), '0,0,0', 'just over it')
-end)
-
-test('color: the ink reads on what the bar shows, the fill at its opacity over the black line', function()
+test('color: the code is white on a light color, a dark one and a light one at low opacity', function()
 	local function ink(hasAlpha, r, g, b, a)
 		local w = color_widget({ hasAlpha = hasAlpha, value = { r, g, b, a } })
 		local tr, tg, tb = w.text:GetTextColor()
 		w:Release()
 		return tr .. ',' .. tg .. ',' .. tb
 	end
-	eq(ink(true, 1, 1, 1, 1), '0,0,0', 'white, solid')
-	eq(ink(true, 1, 1, 1, 0.3), '1,1,1', 'white at 30% shows dark grey')
-	eq(ink(false, 1, 1, 1, 0.3), '0,0,0', 'no hasAlpha: drawn solid')
-	eq(ink(false, 1, 0.5, 0), '0,0,0', 'orange: red counts for more than blue')
+	eq(ink(false, 1, 1, 1, 1), '1,1,1', 'white fill')
+	eq(ink(false, 1, 1, 0, 1), '1,1,1', 'yellow, a light color')
+	eq(ink(false, 0, 0, 0, 1), '1,1,1', 'black fill, a dark color')
+	eq(ink(true, 1, 1, 1, 0.3), '1,1,1', 'a light color at 30%')
+	eq(ink(true, 1, 1, 1, 1), '1,1,1', 'a light color, solid')
 end)
 
 test('color: the fill sits over the black line and under the code, which is centred; a disabled bar takes no mouse', function()
@@ -283,7 +267,7 @@ test('color: the text and the fill follow the picker, and Cancel puts them back'
 	stub.pick_color(1, 1, 1, 0.8)
 	eq(w.text:GetText(), '#FFFFFF \194\183 80%', 'the new code and opacity')
 	local tr, tg, tb = w.text:GetTextColor()
-	eq(tr .. ',' .. tg .. ',' .. tb, '0,0,0', 'black ink on the white now')
+	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'white ink on the white fill')
 	-- SetColorTexture records the fill in the stub's color_texture (GetVertexColor stays 1,1,1).
 	local function fill()
 		local c = stub.state(w.swatch).color_texture
@@ -294,7 +278,7 @@ test('color: the text and the fill follow the picker, and Cancel puts them back'
 	eq(fill(), '0.0,0.0,0.0,1.0', 'Cancel: the old fill')
 	eq(w.text:GetText(), '#000000', 'Cancel: the old code')
 	tr, tg, tb = w.text:GetTextColor()
-	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'white ink again')
+	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'Cancel: white ink still')
 	w:Release()
 end)
 
