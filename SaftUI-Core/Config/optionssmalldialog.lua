@@ -4,8 +4,10 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 --[[
 	The small dialog over SaftUI's options window (st.OptionsWindow,
 	optionswindow.lua): OW:OpenDialog, OW:CloseDialog and OW:IsDialogShown,
-	for an option table of its own (UF's Copy from). It loads after
-	optionswindow.lua (Config/load.xml) and takes what it needs from OW.S.
+	for an option table of its own (UF's Copy from and its unit frame
+	profiles). It loads after optionswindow.lua (Config/load.xml) and takes
+	what it needs from OW.S; the window's render draws it again through
+	S.FollowDialog.
 ]]
 
 local OW = st.OptionsWindow
@@ -25,19 +27,24 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 
 --[[
 	OW:OpenDialog(title, options): a small SaftUI window, over /sui, for an
-	option table of its own (UF's Copy from). title is text, or a function
-	that gives it, read on each render. options is a group, as a page's: its
-	options and inline groups are drawn by a body of its own (OB.New), two
-	columns of rows as in the window. A dialog has no tabs or picker: of child
-	groups that aren't inline, only the first one's rows show.
+	option table of its own (UF's Copy from, its unit frame profiles). title
+	is text, or a function that gives it, read on each render. options is a
+	group, as a page's: its options and inline groups are drawn by a body of
+	its own (OB.New), two columns of rows as in the window. A dialog has no
+	tabs or picker: of child groups that aren't inline, only the first one's
+	rows show.
 
 	A set re-renders it, after the drag for a slider's (meanwhile its other
 	rows follow the drag in place, as the window's do), and not while
 	Blizzard's color picker is open (the swatch shows its color itself; the
-	next set draws the rest). A failed validate shows its message at the
-	bottom. Esc (its own keyboard catcher, which the window's passes to) and
-	the close X close it, and so do closing the window and entering combat.
-	It refuses to open in combat (false).
+	next set draws the rest). Each render of the window draws it again too,
+	so it follows a change made elsewhere (a ConfigTableChange, a profile
+	change; UF's profile prompts answer after its own set drew it), but not
+	while one of its sliders is held or one of its boxes has the keyboard. A
+	failed validate shows its message at the bottom. Esc (its own keyboard
+	catcher, which the window's passes to) and the close X close it, and so
+	do closing the window and entering combat. It refuses to open in combat
+	(false).
 ]]
 
 local DIALOG_WIDTH, DIALOG_PAD = 568, 24
@@ -83,6 +90,7 @@ end
 -- The dialog's widgets' onChanged, as the window's Changed: mid-drag its other
 -- rows follow in place, and it's drawn again when the mouse is let go.
 local function DialogChanged(ok, err, isDragging, widget)
+	D.dragging = isDragging and true or nil
 	D.status:SetText(ok == false and err or '')
 	if ok == false and err then return end
 	if isDragging then
@@ -155,6 +163,18 @@ local function BuildDialog()
 	frame:SetScript('OnEvent', function() OW:CloseDialog() end)
 end
 
+-- The window's render (OW:Render) draws an open dialog again with it, unless
+-- the user is busy in it: a slider of its own held (a lost mouse-up can't
+-- hold it off), or one of its boxes typed in.
+local function FollowWindow()
+	if not (D.frame and D.frame:IsShown()) then return end
+	if D.dragging and IsMouseButtonDown('LeftButton') then return end
+	local focus = GetCurrentKeyBoardFocus()
+	if focus and Inside(focus, D.frame) then return end
+	D.dragging = nil
+	DrawDialog()
+end
+
 ------------------------------------------------------------------ the API
 
 -- A small dialog over the window for options, a group table of its own
@@ -162,7 +182,7 @@ end
 function OW:OpenDialog(title, options)
 	if InCombatLockdown() then return false end
 	if not D.frame then BuildDialog() end
-	D.titleSource, D.root, D.offset = title, { [DIALOG_KEY] = options }, 0
+	D.titleSource, D.root, D.offset, D.dragging = title, { [DIALOG_KEY] = options }, 0, nil
 	D.body:SetRoot(D.root)
 	D.status:SetText('')
 	D.frame:ClearAllPoints()
@@ -183,3 +203,7 @@ end
 -- For tests: the dialog's { frame, title, scroll, content, bar, status, keys,
 -- body }; its drawn rows are body.cells.
 function OW.GetDialogFrames() return D end
+
+------------------------------------------------------------------ for optionswindow.lua
+
+S.FollowDialog = FollowWindow

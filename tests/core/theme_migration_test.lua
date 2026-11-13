@@ -268,7 +268,7 @@ test('an imported old profile string migrates', function()
 	load_saftui('SaftUI-Unitframes/config/config.lua')
 	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 
-	UF:GetConfigTable().args.profile.args.import.func()
+	UF.GenerateProfileConfigGroup().args.import.func() -- Import, in the Unit frame profiles dialog
 	local W = st.OptionsWidgets
 	W.PromptBox():SetText(export_text(old))
 	stub.fire_script(W.PromptBox(), 'OnEnterPressed')

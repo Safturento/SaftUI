@@ -4,10 +4,13 @@ local UF = st:GetModule('Unitframes')
 --[[
 	The unit frame profiles: layouts kept inside the SaftUI profile, in
 	st.config.profile.unitframes.profiles, config_profile naming the one every
-	unit frame uses (UF:GetProfileConfig). The Unitframes page's Profile group
-	(UF.GenerateProfileConfigGroup, which UF:GetConfigTable in config.lua puts
-	on the page) picks one, and makes, copies, deletes, renames, exports and
-	imports them.
+	unit frame uses (UF:GetProfileConfig). In /sui they're the Unitframes
+	page's footer control (UF.GenerateProfileFooter, which UF:GetConfigTable in
+	config.lua makes the page group's footer: drawn between Reload UI and Close
+	while the page is open), a dropdown that picks one and Manage, which opens
+	the Unit frame profiles dialog (UF:OpenProfileDialog, over
+	UF.GenerateProfileConfigGroup): the same dropdown, and the buttons that
+	make, copy, rename, delete, export and import them.
 ]]
 
 local function get_profiles()
@@ -152,21 +155,22 @@ function UF:GetProfileConfig()
 	return st.config.profile.unitframes.profiles[currentProfile]
 end
 
--- The Unitframes page's Profile group: the profile being edited, and the
--- buttons that make, copy, delete, rename, export and import one. Sorts after
--- every unit in the page's picker (a negative order).
+-- The Unit frame profiles dialog's options (UF:OpenProfileDialog), as the
+-- approved mockup lays them out: the profile being edited on a line of its
+-- own, the buttons that make, copy, rename, delete, export and import one, two
+-- to a half line, and Close in the middle of the last line. The footer
+-- control's dropdown is its current (UF.GenerateProfileFooter).
 function UF.GenerateProfileConfigGroup()
 	return {
-		order = -99,
-		name = 'Profile',
+		name = 'Unit frame profiles',
 		type = 'group',
-		-- inline = true,
 		args = {
 			current = {
 				order = 1,
 				type = 'select',
 				name = 'Profile',
 				desc = 'The unit frame profile being edited. Every unit frame uses it.',
+				size = 'wide',
 				values = get_profiles,
 				get = function(info)
 					st.Config:Refresh()
@@ -198,8 +202,18 @@ function UF.GenerateProfileConfigGroup()
 					PromptNewProfile(true)
 				end,
 			},
-			delete = {
+			rename = {
 				order = 4,
+				type = 'execute',
+				name = 'Rename',
+				desc = 'Renames this unit frame profile.',
+				size = 'small',
+				func = function()
+					PromptRenameProfile()
+				end,
+			},
+			delete = {
+				order = 5,
 				type = 'execute',
 				name = 'Delete',
 				desc = 'Deletes this unit frame profile, after asking. The last profile cannot be deleted.',
@@ -208,16 +222,6 @@ function UF.GenerateProfileConfigGroup()
 					if get_num_profiles() > 1 then
 						ConfirmDeleteProfile()
 					end
-				end,
-			},
-			rename = {
-				order = 5,
-				type = 'execute',
-				name = 'Rename',
-				desc = 'Renames this unit frame profile.',
-				size = 'small',
-				func = function()
-					PromptRenameProfile()
 				end,
 			},
 			export = {
@@ -239,7 +243,42 @@ function UF.GenerateProfileConfigGroup()
 				func = function()
 					PromptImportProfile()
 				end
-			}
+			},
+			close = {
+				order = 8,
+				type = 'execute',
+				name = 'Close',
+				desc = 'Closes Unit frame profiles.',
+				align = 'center',
+				func = function() st.OptionsWindow:CloseDialog() end,
+			},
 		}
+	}
+end
+
+-- The Unit frame profiles dialog, over /sui (st.OptionsWindow:OpenDialog). Its
+-- table is made anew each time.
+function UF:OpenProfileDialog()
+	st.OptionsWindow:OpenDialog('Unit frame profiles', UF.GenerateProfileConfigGroup())
+end
+
+-- The Unitframes page's footer control (the page group's footer, SaftUI's
+-- field: /sui draws it between Reload UI and Close while the page is open,
+-- after its name): the dialog's own profile dropdown, then Manage, which
+-- opens the dialog.
+function UF.GenerateProfileFooter()
+	return {
+		type = 'group',
+		name = 'Unit frame profile',
+		args = {
+			current = UF.GenerateProfileConfigGroup().args.current,
+			manage = {
+				order = 2,
+				type = 'execute',
+				name = 'Manage',
+				desc = 'Opens Unit frame profiles, to make, copy, rename, delete, export or import one.',
+				func = function() UF:OpenProfileDialog() end,
+			},
+		},
 	}
 end

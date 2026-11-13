@@ -88,15 +88,16 @@ test('ConfigTableChange re-renders on the next frame, coalesced, and keeps the s
 end)
 
 test("a get that notifies the registry doesn't re-render in a loop", function()
-	st.Config:Open('Unitframes', 'profile')
-	eq(OW:GetState().pick, 'profile', 'the profile group')
-	eq(drawn(), 'current', 'its select')
+	-- The footer control's dropdown, as UF's real profile select: its get notifies.
+	st.Config:Open('Unitframes', 'player', 'general')
+	local function dropdown() return frames().footerWidgets[1] end
+	eq(dropdown().text:GetText(), 'Main', "the footer's dropdown")
 	local before = OW.GetRenderCount()
 	tick(); tick(); tick()
 	eq(OW.GetRenderCount(), before, 'gets during a render are ignored')
 
 	-- Opening its list runs the get again: the render waits until the list closes.
-	click(cell('current').widget.frame)
+	click(dropdown().frame)
 	check(W.ListOwner() ~= nil, 'the list is open')
 	tick(); tick()
 	eq(OW.GetRenderCount(), before, 'no render under the open list')
@@ -106,6 +107,7 @@ test("a get that notifies the registry doesn't re-render in a loop", function()
 	eq(OW.GetRenderCount(), before + 1, 'the set re-renders once')
 	tick()
 	eq(OW.GetRenderCount(), before + 1, 'and nothing is left pending')
+	ufProfile = 'Main'
 	close_all()
 end)
 
@@ -283,7 +285,7 @@ test('the picker and tabs switch the selection', function()
 	for i, row in ipairs(list.rows) do
 		if row:IsShown() then labels[#labels + 1] = row.text:GetText() end
 	end
-	eq(table.concat(labels, ','), 'Player,Target,Profile', 'the picker lists the groups')
+	eq(table.concat(labels, ','), 'Player,Target', 'the picker lists the units: the profile is in the footer')
 	click(list.rows[2])
 	eq(OW:GetState().pick, 'target', 'picked Target')
 	eq(OW:GetState().tab, 'power', 'the tab is kept')

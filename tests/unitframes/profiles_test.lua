@@ -11,7 +11,7 @@
 -- contract the prompts use:
 --   * UF:UpdateConfig is unitframes.lua's (it needs oUF). It counts its calls.
 --   * UF.units and the rest of what its OnEnable makes: empty, enough for
---     UF:GetConfigTable, whose Profiles group holds the buttons pressed here.
+--     UF:GetConfigTable.
 --   * st.Config:Export and Import are SaftUI-Core/Config/config.lua's, which
 --     needs AceDB, AceConfigRegistry and others. The real ones turn the data
 --     into text and back (Base64 of compressed AceSerializer text); these
@@ -59,9 +59,11 @@ end
 local P = st.config.profile.unitframes
 P.profiles.SaftUI.player.width = 1 -- reading profiles.SaftUI makes it, from the defaults
 
-local function profile_buttons() return UF:GetConfigTable().args.profile.args end
+-- The Unit frame profiles dialog's options, which Manage opens: the buttons
+-- pressed here.
+local function profile_buttons() return UF.GenerateProfileConfigGroup().args end
 
--- Presses a Profiles button (New, Copy, Delete, ...) as the options window does.
+-- Presses a button (New, Copy, Delete, ...) as the options window does.
 local function press(key) profile_buttons()[key].func() end
 
 local D = W.GetDialogFrames

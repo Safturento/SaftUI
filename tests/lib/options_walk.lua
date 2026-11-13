@@ -9,7 +9,7 @@
 --   ace_ready(tree)        a copy of tree that AceConfigRegistry-3.0's
 --                          validator can check: SaftUI's own fields
 --                          (category, size, target, nameKey, pickerLabel,
---                          align, disabledDesc, justifyH, fill) are left off
+--                          align, disabledDesc, justifyH, fill, footer) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -23,7 +23,7 @@
 
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
-	disabledDesc = true, justifyH = true, fill = true,
+	disabledDesc = true, justifyH = true, fill = true, footer = true,
 }
 
 SAFTUI_TYPES = { position = true, bagcategories = true, bagrule = true, bagitems = true }

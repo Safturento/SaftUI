@@ -132,6 +132,52 @@ test('clearing the search box goes back to the page', function()
 	close_all()
 end)
 
+test('the search box sits in the sidebar, above Edit mode and the command buttons, as wide as their line', function()
+	st.Config:Open('Loot')
+	local f = frames()
+	local edit = f.actions[1]
+	check(inside(f.search, f.side), 'in the sidebar')
+	check(not inside(f.search, f.main), 'not in the main column')
+	eq(f.search:GetLeft() - f.actionsFrame:GetLeft(), 12, '12 in, as the buttons')
+	eq(f.search:GetLeft(), edit:GetLeft(), 'its left on the buttons\'')
+	eq(f.search:GetWidth(), 2 * edit:GetWidth() + 6, 'as wide as two buttons and their gap')
+	eq(f.actionsFrame:GetTop() - f.search:GetTop(), 10, 'at the top of the sidebar\'s actions')
+	eq(f.search:GetBottom() - edit:GetTop(), 8, '8 above the first line of buttons')
+	eq(edit:GetBottom() - f.actionsFrame:GetBottom(), 10, 'the actions end 10 under the buttons')
+	eq(f.navFrame:GetTop(), f.actionsFrame:GetBottom() - 1, 'the pages under them')
+
+	-- Searching from there.
+	f.search:SetText('frame wid')
+	tick(0.3)
+	eq(OW:GetState().search, 'frame wid', 'it searches')
+	eq(#OW.GetDrawnRows(), 2, 'the results')
+	f.search:SetText('')
+	eq(OW:GetState().search, '', 'and clears')
+	close_all()
+end)
+
+test('the first tab line holds tabs across the whole width: no room is kept for the search box', function()
+	local module = st:GetModule('ManyTabs', true) or st:NewModule('ManyTabs')
+	function module:GetConfigTable()
+		local args = {}
+		for i = 1, 8 do
+			args['t' .. i] = { order = i, type = 'group', name = 'Tabname' .. i, args = {
+				on = { type = 'toggle', name = 'Switch', get = function() return true end, set = function() end },
+			} }
+		end
+		return { name = 'Many tabs', type = 'group', category = 'Info', childGroups = 'tab', args = args }
+	end
+	st.Config:Open('ManyTabs')
+	-- Each tab 'TabnameN' is 72 wide (8 characters of 17 at half their size, and
+	-- 4), 22 apart: 730, past the 562 the line held beside the search box.
+	local tabs = frames().tabs
+	eq(#tabs, 8, 'eight tabs')
+	for i, tab in ipairs(tabs) do eq(tab:GetTop(), tabs[1]:GetTop(), 'tab ' .. i .. ' on the first line') end
+	eq(tabs[8]:GetRight() - tabs[1]:GetLeft(), 730, 'across the width the search box took')
+	eq(frames().tabLine:GetTop(), tabs[1]:GetBottom(), 'one line of tabs')
+	close_all()
+end)
+
 ------------------------------------------------------------------ moving, keys, combat
 
 test('the position is saved when a drag ends and restored on open', function()
@@ -276,6 +322,219 @@ test("edit mode's footer buttons sit on the window's footer while edit mode is o
 	check(not grid:IsVisible(), 'edit mode on, window closed: not shown')
 	printed(function() EM:Deactivate() end)
 	close_all()
+end)
+
+------------------------------------------------------------------ the page's footer control
+
+-- The footer control as drawn: its frame, its label and its widgets.
+local function control()
+	local f = frames()
+	return f.footerControl, f.footerLabel, f.footerWidgets
+end
+
+-- Where a frame's left edge sits in the footer's region, and how far its right
+-- edge stops short of the region's right.
+local function from_left(frame) return frame:GetLeft() - OW:GetFooter():GetLeft() end
+local function from_right(frame) return OW:GetFooter():GetRight() - frame:GetRight() end
+
+-- The labels a select's open list shows, in order.
+local function listed()
+	local out = {}
+	for _, row in ipairs(W.GetListFrames().rows) do
+		if row:IsShown() then out[#out + 1] = row.text:GetText() end
+	end
+	return table.concat(out, ',')
+end
+
+test("a page's footer field: its control in the footer, centred between Reload UI and Close; other pages have none", function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local frame, label, widgets = control()
+	local region = OW:GetFooter()
+	check(frame:IsShown(), 'shown on Unitframes')
+	check(inside(frame, region), "in the footer's region")
+	eq(label:GetText(), 'Unit frame profile', "the footer group's name is its label")
+	check(label:IsShown(), 'the label shows')
+	eq(#widgets, 2, 'a widget per option')
+	eq(widgets[1].type .. ',' .. widgets[2].type, 'select,execute', 'the dropdown, then Manage, in order')
+	eq(widgets[1].text:GetText(), 'Main', 'the dropdown shows the value')
+	eq(widgets[2].text:GetText(), 'Manage', 'the button')
+	eq(widgets[1].frame:GetWidth(), W.WIDTH.select, "the kit's own dropdown")
+	-- Left to right: the label, the dropdown, Manage, 8 apart.
+	eq(from_left(label), from_left(frame), 'the label first')
+	eq(from_left(widgets[1].frame), from_left(label) + label:GetStringWidth() + 8, 'the dropdown 8 after the label')
+	eq(from_left(widgets[2].frame), from_left(widgets[1].frame) + widgets[1].frame:GetWidth() + 8, 'Manage 8 after it')
+	check(math.abs(from_left(label) - from_right(widgets[2].frame)) <= 1,
+		'centred: ' .. from_left(label) .. ' and ' .. from_right(widgets[2].frame))
+	local _, ly = label:GetCenter()
+	local _, ry = region:GetCenter()
+	eq(ly, ry, 'on the region\'s middle line')
+	-- The status line stops short of it.
+	eq(f.status:GetLeft(), region:GetLeft(), 'the status line from the left')
+	eq(f.status:GetRight(), frame:GetLeft() - 12, 'and 12 short of the control')
+
+	-- A page without the field: the footer as before.
+	OW:Navigate('Loot')
+	check(not frame:IsShown(), 'none on Loot')
+	eq(#f.footerWidgets, 0, 'its widgets released')
+	eq(f.status:GetLeft(), region:GetLeft(), 'the status line has the whole region')
+	eq(f.status:GetRight(), region:GetRight(), 'to its right end')
+	check(f.status:IsShown(), 'shown')
+	OW:SetFooterInset(40)
+	eq(f.status:GetLeft(), region:GetLeft() + 40, "starting clear of edit mode's buttons, as before")
+	eq(f.status:GetRight(), region:GetRight(), 'to the right end')
+	OW:SetFooterInset(0)
+	OW:Navigate('Unitframes')
+	check(frame:IsShown(), 'back on Unitframes')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the footer's dropdown lists its values and sets through the model; the page draws again and the list follows", function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local dropdown = select(3, control())[1]
+	click(dropdown.frame)
+	eq(listed(), 'Alt,Main', 'its values')
+	local before = OW.GetRenderCount()
+	for _, row in ipairs(W.GetListFrames().rows) do
+		if row:IsShown() and row.text:GetText() == 'Alt' then click(row) break end
+	end
+	eq(ufProfile, 'Alt', 'set through the option')
+	eq(OW.GetRenderCount(), before + 1, 'the page drawn again')
+	eq(select(3, control())[1].text:GetText(), 'Alt', 'the dropdown shows it')
+	tick(); tick()
+	eq(OW.GetRenderCount(), before + 1, "its get's notifying doesn't draw it again and again")
+
+	-- A value made elsewhere (a new profile): the next render lists it.
+	ufProfiles.Fresh = 'Fresh'
+	st.Config:Refresh(); tick()
+	click(select(3, control())[1].frame)
+	eq(listed(), 'Alt,Fresh,Main', 'the list follows')
+	W.CloseList()
+	ufProfiles.Fresh, ufProfile = nil, 'Main'
+	st.Config:Refresh(); tick()
+	eq(select(3, control())[1].text:GetText(), 'Main', 'and the value')
+
+	-- Manage runs its func.
+	click(select(3, control())[2].frame)
+	eq(ufManaged, 1, 'Manage clicked')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("search results draw no page, so no footer control; leaving search brings it back", function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	f.search:SetText('enable')
+	tick(0.3)
+	eq(OW:GetState().search, 'enable', 'searching')
+	check(not f.footerControl:IsShown(), 'no control over the results')
+	eq(f.status:GetRight(), OW:GetFooter():GetRight(), 'the status line has the whole region')
+	f.search:SetText('')
+	check(f.footerControl:IsShown(), 'the page and its control are back')
+	close_all()
+end)
+
+test("edit mode's buttons: centred while clear of them, else at the right end beside Close, else without its label", function()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local frame, label, widgets = control()
+	local region = OW:GetFooter()
+	local regionWidth = region:GetWidth()
+	local dropdown, manage = widgets[1].frame, widgets[2].frame
+	local centred = from_left(label)
+	local full = manage:GetRight() - label:GetLeft() -- label, dropdown and Manage
+	local bare = manage:GetRight() - dropdown:GetLeft() -- dropdown and Manage
+
+	-- Clear of them by 12: still centred.
+	OW:SetFooterInset(centred - 12)
+	eq(from_left(label), centred, 'centred while 12 clear of the buttons')
+	eq(f.status:GetLeft(), region:GetLeft() + centred - 12, 'the status line starts after them')
+	eq(f.status:GetRight(), frame:GetLeft() - 12, 'and stops 12 short of the control')
+	check(not f.status:IsShown() or f.status:GetRight() >= f.status:GetLeft(), 'never a backwards rect')
+
+	-- Closer than 12: at the right end, beside Close, label and all.
+	OW:SetFooterInset(centred - 11)
+	eq(from_right(manage), 0, 'at the right end')
+	check(label:IsShown(), 'with its label')
+	eq(from_left(label), regionWidth - full, 'the whole control at the right end')
+	eq(f.status:GetRight(), frame:GetLeft() - 12, 'the status line stops 12 short of it')
+
+	-- The right end 12 clear of them: the label stays.
+	OW:SetFooterInset(regionWidth - full - 12)
+	check(label:IsShown(), 'the label fits at the right end')
+	eq(from_right(manage), 0, 'at the right end')
+
+	-- Not even there: the label goes first; the dropdown and Manage stay at the right end.
+	OW:SetFooterInset(regionWidth - full - 11)
+	check(not label:IsShown(), 'the label goes')
+	check(dropdown:IsVisible() and manage:IsVisible(), 'the dropdown and Manage stay')
+	eq(from_left(dropdown), regionWidth - bare, 'the dropdown first now')
+	eq(from_right(manage), 0, 'Manage at the right end')
+	eq(f.status:GetRight(), frame:GetLeft() - 12, 'the status line still stops short of it')
+	check(f.status:GetRight() >= f.status:GetLeft(), 'what is left of it')
+
+	-- No room left for the status line at all: hidden rather than drawn under it.
+	OW:SetFooterInset(regionWidth - bare - 12)
+	check(not f.status:IsShown(), 'no room: the status line is hidden')
+	OW:SetFooterInset(regionWidth)
+	check(not label:IsShown() and from_right(manage) == 0, 'the dropdown and Manage stay at the right end')
+	check(not f.status:IsShown(), 'hidden')
+
+	-- The buttons gone: centred again, the label back, the status line too.
+	OW:SetFooterInset(0)
+	eq(from_left(label), centred, 'centred again')
+	check(label:IsShown(), 'the label back')
+	check(f.status:IsShown(), 'the status line back')
+	close_all()
+end)
+
+test("edit mode's real buttons on the Unitframes page: the control stays clear of them, or drops its label at the right end", function()
+	local EM = st.EditModeFrames
+	EM:Enable() -- once per world: a second call does nothing
+	st.Config:Open('Unitframes', 'player', 'general')
+	printed(function() EM:Activate() end)
+	local f = frames()
+	local frame, label, widgets = control()
+	local region = OW:GetFooter()
+	-- Edit mode's last button: the rightmost button on the region's edit mode frame.
+	local last = 0
+	for _, child in ipairs({ region:GetChildren() }) do
+		if child ~= frame then
+			for _, button in ipairs({ child:GetChildren() }) do
+				if button:IsVisible() then last = math.max(last, button:GetRight()) end
+			end
+		end
+	end
+	check(last > region:GetLeft(), "edit mode's buttons are up")
+	local first = label:IsShown() and label or widgets[1].frame
+	if label:IsShown() then
+		check(first:GetLeft() >= last + 12, 'the control 12 clear of them')
+	else
+		eq(from_right(widgets[2].frame), 0, 'no room with its label: at the right end without it')
+	end
+	check(first:GetLeft() > last, 'nothing of it over their last button')
+	check(not f.status:IsShown() or f.status:GetRight() <= frame:GetLeft() - 12, 'the status line stops short of the control')
+	printed(function() EM:Deactivate() end)
+	check(label:IsShown(), 'edit mode off: the label is back')
+	eq(f.status:GetLeft(), region:GetLeft(), 'and the status line from the left again')
+	close_all()
+end)
+
+test('OW.FooterPlace: centred while clear of the inset, else the right end, else the right end without the label', function()
+	-- regionWidth, inset, labelWidth (with its gap), widgetsWidth -> x, label shown.
+	local function place(...)
+		local x, shown = OW.FooterPlace(...)
+		return x .. (shown and ' label' or ' bare')
+	end
+	eq(place(600, 0, 140, 260), '100 label', 'no buttons: centred')
+	eq(place(601, 0, 140, 260), '100 label', 'centred on a whole pixel')
+	eq(place(600, 88, 140, 260), '100 label', '12 clear of the inset: centred')
+	eq(place(600, 89, 140, 260), '200 label', 'closer: the right end')
+	eq(place(600, 188, 140, 260), '200 label', 'the right end 12 clear')
+	eq(place(600, 189, 140, 260), '340 bare', 'closer: without the label')
+	eq(place(600, 500, 140, 260), '340 bare', 'past it: still the right end, without the label')
+	eq(place(300, 0, 140, 260), '40 bare', 'a region too narrow for it all: without the label')
 end)
 
 test('a profile change rebuilds the open window from the new tree', function()

@@ -140,7 +140,7 @@ test('the Enemy nameplates page follows Raid 40; General has Nameplates, Threat 
 		local root, view = page(UF, { pick = 'nameplate' })
 		local picked = {}
 		for i, entry in ipairs(view.picker.values) do picked[i] = entry.key end
-		eq(table.concat(picked, ','), 'player,raid40,nameplate,friendlynameplate,profile', client .. ': Enemy nameplates follows Raid 40, Friendly nameplates it')
+		eq(table.concat(picked, ','), 'player,raid40,nameplate,friendlynameplate', client .. ': Enemy nameplates follows Raid 40, Friendly nameplates it')
 		eq(view.picker.selected, 'nameplate', client .. ': picked')
 		local config = root.Unitframes.args.nameplate
 		eq(config.name, 'Enemy nameplates', client .. ': its name')

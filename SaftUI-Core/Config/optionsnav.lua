@@ -3,11 +3,11 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 --[[
 	The navigation of SaftUI's options window (st.OptionsWindow,
-	optionswindow.lua): the sidebar (Edit mode and the command buttons, the
-	pages under their groups, the profile's name) and the tab rows and the
-	picker over the body. It draws into frames optionswindow.lua builds (F.side
-	and the main column), and loads after it (Config/load.xml); optionswindow.lua
-	calls it through OW.S.
+	optionswindow.lua): the sidebar (the search box over Edit mode and the
+	command buttons, the pages under their groups, the profile's name) and the
+	tab rows and the picker over the body. It draws into frames
+	optionswindow.lua builds (F.side and the main column), and loads after it
+	(Config/load.xml); optionswindow.lua calls it through OW.S.
 ]]
 
 local OW = st.OptionsWindow
@@ -24,7 +24,7 @@ local CONTENT_WIDTH = OB.WIDTH
 local F, state, pools = S.F, S.state, S.pools
 local Colors, Normal, Grey, Blue, Button = S.Colors, S.Normal, S.Grey, S.Blue, S.Button
 local SetNavScroll, Select = S.SetNavScroll, S.Select
-local PAD, FIELD_HEIGHT, TAB_HEIGHT, SEARCH_WIDTH = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT, S.SEARCH_WIDTH
+local PAD, FIELD_HEIGHT, TAB_HEIGHT = S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT
 local ACTION_PAD, ACTION_HEIGHT, NAV_ITEM = S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM
 
 ------------------------------------------------------------------ the mockup's numbers
@@ -36,6 +36,9 @@ local TAB_GAP, TAB_WRAP_GAP = 22, 6
 local ACTION_GAP = 6
 -- Two to a line in the mockup's sidebar; the same size in either layout.
 local ACTION_WIDTH = floor((OW.LAYOUT.own.navWidth - 24 - ACTION_GAP) / 2)
+-- The search box over them: as wide as a line of two, flush with them (the
+-- sidebar less its padding, as the mockup draws it), and 8 above them.
+local SEARCH_WIDTH, SEARCH_GAP = 2 * ACTION_WIDTH + ACTION_GAP, 8
 local NAV_GROUP, NAV_TOP = 29, 6
 
 local HOVER = { 0.133, 0.133, 0.133, 1 } -- #222
@@ -50,8 +53,14 @@ local function UpdateEditModeButton()
 	button.text:SetTextColor(color:GetRGB())
 end
 
--- Edit mode, then every st.Config:AddCommand, two to a line.
+-- The search box (optionswindow.lua's), then under it Edit mode and every
+-- st.Config:AddCommand, two to a line. Under Blizzard the same, at the
+-- sidebar's top (the title bar names the window, so there is no brand).
 local function DrawActions()
+	F.search:ClearAllPoints()
+	F.search:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT', 12, -ACTION_PAD)
+	F.search:SetWidth(SEARCH_WIDTH)
+	local top = ACTION_PAD + FIELD_HEIGHT + SEARCH_GAP
 	local list = { { label = 'Edit mode', func = function() st.EditModeFrames:Toggle() end } }
 	for _, command in ipairs(st.Config:GetCommands()) do list[#list + 1] = command end
 	for i, command in ipairs(list) do
@@ -67,10 +76,10 @@ local function DrawActions()
 		button:ClearAllPoints()
 		button:SetPoint('TOPLEFT', F.actionsFrame, 'TOPLEFT',
 			12 + ((i - 1) % 2) * (ACTION_WIDTH + ACTION_GAP),
-			-(ACTION_PAD + floor((i - 1) / 2) * (ACTION_HEIGHT + ACTION_GAP)))
+			-(top + floor((i - 1) / 2) * (ACTION_HEIGHT + ACTION_GAP)))
 	end
 	local lines = ceil(#list / 2)
-	F.actionsFrame:SetHeight(ACTION_PAD * 2 + lines * ACTION_HEIGHT + (lines - 1) * ACTION_GAP)
+	F.actionsFrame:SetHeight(top + lines * ACTION_HEIGHT + (lines - 1) * ACTION_GAP + ACTION_PAD)
 	UpdateEditModeButton()
 end
 
@@ -257,21 +266,20 @@ local function LookTab(tab, look)
 	W.LayThree(tab, set, 'BACKGROUND', min(height or TAB_HEIGHT, TAB_HEIGHT), 'BOTTOM')
 end
 
--- A row of tabs from top, wrapping onto more lines when they don't fit (the
--- first line stops short of the search box). Returns its bottom.
+-- A row of tabs from top, wrapping onto more lines when they don't fit the
+-- content's width. Returns its bottom.
 local function DrawTabRow(pool, list, active, top, slot)
 	ReleaseAll(pool)
 	local look = S.blizzard and st.ThemeArt.Control('optionstab')
 	local x, y = 0, top
-	local limit = slot == 'tab' and (CONTENT_WIDTH - SEARCH_WIDTH - TAB_GAP) or CONTENT_WIDTH
 	for _, entry in ipairs(list) do
 		local tab = Acquire(pool)
 		tab.key, tab.slot, tab.disabled = entry.key, slot, entry.disabled
 		tab.active = entry.key == active
 		tab.text:SetText(entry.name)
 		local width = ceil(tab.text:GetStringWidth()) + 4
-		if x > 0 and x + width > limit then
-			x, y, limit = 0, y + TAB_HEIGHT + TAB_WRAP_GAP, CONTENT_WIDTH
+		if x > 0 and x + width > CONTENT_WIDTH then
+			x, y = 0, y + TAB_HEIGHT + TAB_WRAP_GAP
 		end
 		tab:SetSize(width, TAB_HEIGHT)
 		tab:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + x, -y)
