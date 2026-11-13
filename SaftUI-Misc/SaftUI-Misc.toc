@@ -9,6 +9,9 @@ tooltip.lua
 tooltipposition.lua
 experience.lua
 totembar.lua
+totemlayout.lua
+totemposition.lua
+totemoptions.lua
 totemskin.lua
 totemtimers.lua
 movable.lua

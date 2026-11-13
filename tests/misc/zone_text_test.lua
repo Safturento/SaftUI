@@ -1,4 +1,4 @@
--- SaftUI-Misc/Skinning/ZoneText.lua, the zone text that shows when you enter a
+-- SaftUI-Misc/Skinning/blizzard/ZoneText.lua, the zone text that shows when you enter a
 -- zone:
 --   - the faction: the game's PvP status as Alliance, Horde or Neutral, and
 --     each word in its Colors tab text color;

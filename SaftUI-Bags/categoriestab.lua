@@ -27,8 +27,9 @@ local INV = st:GetModule('Inventory')
 	the drag holds the window's render as the rule editor's does, and the drop
 	is worked out on the mouse up (OnUpdate only draws the ghost and the line,
 	and scrolls the list while the cursor is held near its top or bottom
-	edge). The handle, the ghost and the row under the cursor are the rule
-	editor's (INV.DragParts, ruleeditor.lua), with its text helpers.
+	edge). The handle, the ghost and the row under the cursor are the ones
+	the rule editor drags with (INV.DragParts, dragparts.lua), with their text
+	helpers.
 
 	The editor, from x 234 and 540 wide, is an options body of its own drawing
 	INV:CategoryEditorOptions(selected), less Caught now and Pinned items
@@ -99,7 +100,7 @@ local INV = st:GetModule('Inventory')
 ]]
 
 local W, OB, OM = st.OptionsWidgets, st.OptionsBody, st.OptionsModel
--- The rule editor's (ruleeditor.lua): its text helpers and how it drags.
+-- What the rule editor drags with too (dragparts.lua): text helpers and the drag.
 local D = INV.DragParts
 local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
 

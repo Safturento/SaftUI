@@ -12,8 +12,8 @@
 -- under the module's real files) on Core's real config.lua and AceDB
 -- (core/config_helpers.lua), the options window (optionsmodel.lua, the
 -- widget files, optionsbody.lua, the window's files), and SaftUI-Bags'
--- options.lua, ruleeditor.lua and categoriestab.lua. Made by hand:
--- INV:UpdateGold, which INV:UpdateHandler runs first, is a no-op here (it
+-- options.lua, dragparts.lua, ruleeditor.lua and categoriestab.lua. Made by
+-- hand: INV:UpdateGold, which INV:UpdateHandler runs first, is a no-op here (it
 -- reads the player's money with GetMoney and formats it with
 -- LibStringFormat-1.0, neither loaded here). The mouse, the keyboard and the
 -- frame clock are played by firing scripts: the window renders on its
@@ -36,6 +36,7 @@ local function world(client)
 	load_saftui('SaftUI-Core/Config/optionsbody.lua')
 	load_options_window()
 	load_saftui('SaftUI-Bags/options.lua')
+	load_saftui('SaftUI-Bags/dragparts.lua')
 	load_saftui('SaftUI-Bags/ruleeditor.lua')
 	load_saftui('SaftUI-Bags/categoriestab.lua')
 	OW, OM, W, R = st.OptionsWindow, st.OptionsModel, st.OptionsWidgets, INV.Rules

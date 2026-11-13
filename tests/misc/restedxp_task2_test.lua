@@ -1,4 +1,4 @@
--- The RestedXP skin (SaftUI-Misc/Skinning/restedxp.lua), part 2: the step list
+-- The RestedXP skin (SaftUI-Misc/Skinning/addons/restedxp.lua), part 2: the step list
 -- and the scroll bar. Migrated from the rxpsim harness's test_task2.lua.
 --
 -- Hovering a step uses the stubs' cursor: H.cursor_on(frame) puts it in the

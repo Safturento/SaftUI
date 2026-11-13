@@ -25,7 +25,7 @@ st.BLIZZARD_SIZE = 52
 st.LARGE_COUNTDOWN_SIZE = 36
 -- How far in from a header's right edge SaftUI's close button sits
 -- (st:CreateHeader), which the bags count in a window's least width
--- (SaftUI-Bags/container.lua). In the metal's socket it reaches
+-- (INV:HeaderMinWidth, SaftUI-Bags/header.lua). In the metal's socket it reaches
 -- st:SocketReach in instead.
 st.CLOSE_INSET = 10
 -- The options window's box colors, shared by its widgets and the close button.

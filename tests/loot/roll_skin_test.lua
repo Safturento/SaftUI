@@ -31,7 +31,9 @@ local function world()
 	SaftUI.StringFormat = { ToClock = function(_, sec) return ('%d:%02d'):format(sec / 60, sec % 60) end }
 	local LT = SaftUI:GetModule('Loot')
 	LT.config = SaftUI.config.profile.loot
+	load_saftui('SaftUI-Loot/rollbar.lua')
 	load_saftui('SaftUI-Loot/roll.lua')
+	load_saftui('SaftUI-Loot/rolltest.lua')
 	load_saftui('SaftUI-Loot/rollinfo.lua')
 	return LT
 end

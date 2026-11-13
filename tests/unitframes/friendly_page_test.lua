@@ -1,5 +1,5 @@
 -- The Enemy nameplates and Friendly nameplates pages in /sui
--- (SaftUI-Unitframes/config/config.lua):
+-- (SaftUI-Unitframes/nameplates/options.lua):
 --   - the two pages follow Raid 40 in the unit picker, Enemy first; neither
 --     has Copy from, and no unit's Copy from offers either;
 --   - the Friendly page's General has Friendly plates (the game's friendly
@@ -21,9 +21,10 @@
 --     is disabled.
 --
 -- The world is nameplate_page_test.lua's: nameplate_world.lua's (see its top),
--- which has the real config/config.lua and every unit's defaults, with SaftUI's
--- options window, model and widgets loaded, so the pages are read through
--- UF:GetConfigTable() and st.OptionsModel as the window reads them.
+-- which has the real config/config.lua, nameplates/options.lua and every
+-- unit's defaults, with SaftUI's options window, model and widgets loaded, so
+-- the pages are read through UF:GetConfigTable() and st.OptionsModel as the
+-- window reads them.
 local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local PLAYERS, NPCS = 'nameplateShowFriendlyPlayers', 'nameplateShowFriendlyNpcs'

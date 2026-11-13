@@ -68,16 +68,6 @@ st.defaults.panels = {
 	tab_height = 21,
 }
 
-st.defaults.experience = {
-	width = 250, -- the minimap's default size
-	height = 13,
-	spacing = 8,
-	rest_alpha = 0.4, -- the rested part past the fill, in the fill's color
-	theme = 'theme',
-	background = 'theme',
-	position = {'TOPRIGHT', 'Minimap', 'BOTTOMRIGHT', 0, -7},
-}
-
 -- SaftUI's theme (SaftUI-Core/theme.lua): Thick, Thin or Blizzard, and whether
 -- backgrounds are see-through, at opacity, where a module doesn't say.
 st.defaults.theme = {

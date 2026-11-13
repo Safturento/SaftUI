@@ -20,7 +20,7 @@ function H.fresh()
 	load_saftui('SaftUI-Chat/config.lua')
 	apply_defaults()
 	load_saftui('SaftUI-Misc/Skinning/skinning.lua')
-	load_saftui('SaftUI-Misc/Skinning/restedxp.lua')
+	load_saftui('SaftUI-Misc/Skinning/addons/restedxp.lua')
 end
 
 function H.get_rx()

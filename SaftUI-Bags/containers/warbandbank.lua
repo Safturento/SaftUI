@@ -1,48 +1,50 @@
 local st = SaftUI
 local INV = st:GetModule('Inventory')
 
-function INV:InitializeDepositButton(container)
-    container = container or self:GetContainer('bag')
-    local depositButton = st:CreateButton('GoldDepositButton', container, 'Deposit', 'theme', 'solid')
-    depositButton:SetPoint('BOTTOMRIGHT', container.footer.gold, 'BOTTOMLEFT', 0, 7)
-    depositButton:SetSize(100, 16)
-    depositButton:SetFrameLevel(90)
-    depositButton:SetScript('OnClick', function()
-        StaticPopup_Hide("BANK_MONEY_WITHDRAW");
+-- The Deposit and Withdraw buttons: 100 by 16, left of a window's gold
+-- (container.footer.gold), each toggling Blizzard's popup for the warband
+-- bank's gold, popup (BANK_MONEY_DEPOSIT or BANK_MONEY_WITHDRAW), and
+-- closing the other one, otherPopup, first.
+local function MoneyButton(name, container, label, popup, otherPopup)
+    local button = st:CreateButton(name, container, label, 'theme', 'solid')
+    button:SetPoint('BOTTOMRIGHT', container.footer.gold, 'BOTTOMLEFT', 0, 7)
+    button:SetSize(100, 16)
+    button:SetFrameLevel(90)
+    button:SetScript('OnClick', function()
+        StaticPopup_Hide(otherPopup);
 
-        local alreadyShown = StaticPopup_Visible("BANK_MONEY_DEPOSIT");
+        local alreadyShown = StaticPopup_Visible(popup);
         if alreadyShown then
-            StaticPopup_Hide("BANK_MONEY_DEPOSIT");
+            StaticPopup_Hide(popup);
             return;
         end
 
-        local textArg1, textArg2 = nil, nil;
-        StaticPopup_Show("BANK_MONEY_DEPOSIT", textArg1, textArg2, { bankType = 2 });
+        StaticPopup_Show(popup, nil, nil, { bankType = 2 });
     end)
+    return button
+end
+
+function INV:InitializeDepositButton(container)
+    container = container or self:GetContainer('bag')
+    local depositButton = MoneyButton('GoldDepositButton', container, 'Deposit', "BANK_MONEY_DEPOSIT", "BANK_MONEY_WITHDRAW")
     container.footer.depositButton = depositButton
     return depositButton
 end
 
 function INV:InitializeWithdrawButton(container)
     container = container or self:GetContainer('warband')
-    local withdrawButton = st:CreateButton('GoldWithdrawButton', container, 'Withdraw', 'theme', 'solid')
-    withdrawButton:SetPoint('BOTTOMRIGHT',  container.footer.gold, 'BOTTOMLEFT', 0, 7)
-    withdrawButton:SetSize(100, 16)
-    withdrawButton:SetFrameLevel(90)
-    withdrawButton:SetScript('OnClick', function()
-        StaticPopup_Hide("BANK_MONEY_DEPOSIT");
-
-        local alreadyShown = StaticPopup_Visible("BANK_MONEY_WITHDRAW");
-        if alreadyShown then
-            StaticPopup_Hide("BANK_MONEY_WITHDRAW");
-            return;
-        end
-
-        StaticPopup_Show("BANK_MONEY_WITHDRAW", nil, nil, { bankType = 2 });
-    end)
-
+    local withdrawButton = MoneyButton('GoldWithdrawButton', container, 'Withdraw', "BANK_MONEY_WITHDRAW", "BANK_MONEY_DEPOSIT")
     container.footer.withdrawButton = withdrawButton
     return withdrawButton
+end
+
+-- The bag window's Deposit button, where it has one (made with the warband
+-- bank or the combined bank), shows while a bank window is open.
+function INV:SetDepositButtonShown(shown)
+    local depositButton = self:GetContainer('bag').footer.depositButton
+    if depositButton then
+        if shown then depositButton:Show() else depositButton:Hide() end
+    end
 end
 
 function INV:UpdateWarbandMoney()

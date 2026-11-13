@@ -89,6 +89,13 @@ test('Bags: the new settings read and write their profile keys and apply the way
 	INV.ApplyPosition = count('ApplyPosition')
 	function INV:GetAnchor() return CreateFrame('Frame', nil, UIParent) end
 	-- The views' order and words, which the View select lists; the switch is a counter.
+	-- views.lua takes INV.IndexOf at load; inventory.lua's, copied here as that file can't load
+	-- (its NewModule would clash with the stub).
+	function INV.IndexOf(list, value)
+		for i, v in ipairs(list or {}) do
+			if v == value then return i end
+		end
+	end
 	load_saftui('SaftUI-Bags/views.lua')
 	INV.SetView = function(_, id, view) calls[#calls + 1] = 'SetView:' .. id .. ':' .. view end
 	load_saftui('SaftUI-Bags/options.lua')

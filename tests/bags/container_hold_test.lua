@@ -1,4 +1,4 @@
--- The held category layout of SaftUI-Bags/container.lua (INV:UpdateContainerLayout
+-- The held category layout of SaftUI-Bags/layout.lua (INV:UpdateContainerLayout
 -- with INV:HoldLayout / PlaceHeldCategories / ReleaseLayout): while a window
 -- is open its categories keep their columns and order. Migrated from the
 -- bagsim harness. bags/container_helpers.lua loads the real files.

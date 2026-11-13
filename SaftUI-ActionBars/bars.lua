@@ -56,7 +56,7 @@ local LAB = LibStub('LibActionButton-1.0')
 	               slots; the two multiply.
 	The drivers are secure, so combat starting or ending shows and hides bars
 	with no Lua of SaftUI's. Changing them is protected: out of combat only.
-	While keybind mode is on (bindings.lua), every enabled bar is shown and not
+	While keybind mode is on (keybindmode.lua), every enabled bar is shown and not
 	faded (AB:SetForceShown), so bars that are only shown in combat or faded can
 	be hover-bound.
 
@@ -316,7 +316,7 @@ function AB:UpdateVisibility(id)
 	end
 end
 
--- Keybind mode (bindings.lua): while on, every enabled bar is shown and not
+-- Keybind mode (keybindmode.lua): while on, every enabled bar is shown and not
 -- faded, whatever its Visibility setting, so it can be hovered. Turned on out
 -- of combat only; turning it off in combat waits for the end of combat.
 function AB:SetForceShown(on)

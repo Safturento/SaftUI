@@ -505,6 +505,10 @@ end)
 
 test("a real module's category: Experience is under Info", function()
 	CreateFrame('Frame', 'Minimap', UIParent)
+	-- Misc's defaults (the bar's among them): AceDB filled the profile from every
+	-- default at login, as Misc's config.lua loads before SaftUI:OnEnable makes it.
+	load_saftui('SaftUI-Misc/config.lua')
+	apply_defaults()
 	load_saftui('SaftUI-Misc/experience.lua')
 	st:GetModule('Experience'):Enable()
 	local root = st.Config:GetOptionsTable()

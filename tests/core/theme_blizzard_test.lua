@@ -1,4 +1,4 @@
--- The Blizzard theme's looks (SaftUI-Core/themeart.lua, and theme.lua's
+-- The Blizzard theme's looks (SaftUI-Core/themeart_data.lua and themeart.lua, and theme.lua's
 -- resolution):
 --   - Blizzard resolving its name, colors and alpha by the same rules as Thick
 --     and Thin, with each kind's inset on each client (st:ResolveTheme and

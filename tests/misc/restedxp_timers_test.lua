@@ -1,5 +1,5 @@
 -- RestedXP's timer bars (Timers.lua, LibCandyBar) in SaftUI's look, through
--- SaftUI-Misc/Skinning/restedxp.lua. Migrated from the rxpsim harness's
+-- SaftUI-Misc/Skinning/addons/restedxp.lua. Migrated from the rxpsim harness's
 -- test_timers.lua.
 local H = load_test_file('misc/restedxp_helpers.lua')
 local RXP, pt = H.RXP, H.pt

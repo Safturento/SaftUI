@@ -8,11 +8,14 @@
 Libraries\oUF\oUF.xml
 
 unitframes.lua
+grouplayout.lua
 groups.lua
+blizzardraid.lua
+grouppreview.lua
 config\load.xml
 constructors.lua
 updaters.lua
 tags.lua
-purge.lua
+aurafilters.lua
 elements\elements.xml
 nameplates\nameplates.xml

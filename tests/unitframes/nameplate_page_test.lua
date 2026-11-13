@@ -1,5 +1,5 @@
--- The Enemy nameplates page in /sui (SaftUI-Unitframes/config/config.lua) and
--- the game's nameplate settings SaftUI sets while its plates are drawn
+-- The Enemy nameplates page in /sui (SaftUI-Unitframes/nameplates/options.lua)
+-- and the game's nameplate settings SaftUI sets while its plates are drawn
 -- (SaftUI-Unitframes/nameplates/cvars.lua):
 --   - the page follows Raid 40 in the unit picker; its General tab has
 --     Nameplates, Threat when solo, its box, Theme, Background, Width and
@@ -19,9 +19,9 @@
 --     whose name the page then shows over its options, all disabled.
 --
 -- The world is nameplate_world.lua's (see its top), which has the real
--- config/config.lua, with SaftUI's options window, model and widgets loaded
--- as config_test.lua loads them, so the page is read through
--- UF:GetConfigTable() and st.OptionsWidgets.Confirm draws its dialog.
+-- config/config.lua and nameplates/options.lua, with SaftUI's options window,
+-- model and widgets loaded as config_test.lua loads them, so the page is read
+-- through UF:GetConfigTable() and st.OptionsWidgets.Confirm draws its dialog.
 -- ReloadUI is a recorder. The game's settings are tests/wow/game.lua's
 -- stub.cvars. st.config.char is AceDB's per-character table, which the shell
 -- doesn't have: {} for each world, as for a new character.

@@ -126,26 +126,20 @@ function PetButton:SetTooltip()
 	return GameTooltip:SetPetAction(self.index)
 end
 
-local function RefreshAll()
-	for _, button in ipairs(bar.buttons) do
-		button:Refresh()
-	end
-end
-
 -- Out of combat (InCombatLockdown is checked): PickupPetAction lifts the slot's
 -- action, or swaps it with the one on the cursor.
 local function OnDragStart(self)
 	if InCombatLockdown() then return end
 	self:SetChecked(false)
 	PickupPetAction(self.index)
-	RefreshAll()
+	AB:RefreshBarButtons(bar)
 end
 
 local function OnReceiveDrag(self)
 	if InCombatLockdown() or GetCursorInfo() ~= 'petaction' then return end
 	self:SetChecked(false)
 	PickupPetAction(self.index)
-	RefreshAll()
+	AB:RefreshBarButtons(bar)
 end
 
 -- The right click of each button: /petautocasttoggle with the action's name if
@@ -217,7 +211,7 @@ local function OnEvent(_, event)
 			button:UpdateGrid()
 		end
 	else
-		RefreshAll()
+		AB:RefreshBarButtons(bar)
 		if what == 'actions' then
 			QueueActions()
 		end

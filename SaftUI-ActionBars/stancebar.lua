@@ -105,12 +105,6 @@ function StanceButton:SetTooltip()
 	return true
 end
 
-local function RefreshAll()
-	for _, button in ipairs(bar.buttons) do
-		button:Refresh()
-	end
-end
-
 -- Each button casts its form's spell. Out of combat only (AB:UpdateBar).
 local function UpdateActions()
 	for i, button in ipairs(bar.buttons) do
@@ -146,7 +140,7 @@ local function OnEvent(_, event)
 	if FORMS_EVENTS[event] and Signature() ~= applied then
 		AB:UpdateBar('stance')
 	end
-	RefreshAll()
+	AB:RefreshBarButtons(bar)
 end
 
 ------------------------------------

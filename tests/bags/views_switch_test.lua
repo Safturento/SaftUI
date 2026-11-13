@@ -1,4 +1,4 @@
--- The bag views' switch (SaftUI-Bags/container.lua's INV:CreateViewButtons and
+-- The bag views' switch (SaftUI-Bags/header.lua's INV:CreateViewButtons and
 -- INV:SetView, SaftUI-Bags/options.lua's View and Empty slots): four small icon
 -- buttons in each window's title bar, left of the close button, in the order
 -- One bag, Multi bag, Compact, Rows, with a tooltip naming the view; the

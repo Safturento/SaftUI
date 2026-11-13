@@ -152,7 +152,7 @@ function UF.ConstructUnit(self, unit)
 	-- before any config is applied (UF.InitUnit updates a group button after
 	-- that). So a group button's range fade table is made here: its alphas come
 	-- from that update (UF:UpdateUnitFrame). Other units get no range fade
-	-- (config.lua's Range options are for groups only).
+	-- (config/groupoptions.lua's Range options are for groups only).
 	if self.is_group_unit then
 		self.Range = {}
 	elseif self.isNamePlate then
@@ -343,7 +343,7 @@ function UF:PlaceUnitFrame(frame)
 		end
 		local holder = self.holders[frame.base_unit]
 		if frame.ID and holder then
-			-- Boss/arena share party and raid's layout math (groups.lua). Arena has
+			-- Boss/arena share party and raid's layout math (grouplayout.lua). Arena has
 			-- no layout keys, so GetGroupLayout's fallbacks give it one column
 			-- growing down by its spacing, as before. Frame i then hangs TOP to
 			-- BOTTOM under frame i-1 (it was TOPLEFT to BOTTOMLEFT) and frame 1
@@ -448,7 +448,7 @@ function UF:UpdateConfig(unit, element_name)
 		self:UpdateColors()
 	end
 	self:ApplyConfig(unit, element_name)
-	-- Either raid group being on hides Blizzard's raid frames (groups.lua).
+	-- Either raid group being on hides Blizzard's raid frames (blizzardraid.lua).
 	self:UpdateBlizzardRaidFrames()
 end
 
@@ -554,7 +554,7 @@ function UF:ApplyConfig(unit, element_name)
 				for i,frame in pairs(self.units[unit]) do
 					SafeUpdateUnitFrame(frame, element_name)
 				end
-				-- Boss's test mode previews follow the frames (groups.lua).
+				-- Boss's test mode previews follow the frames (grouppreview.lua).
 				xpcall(function() self:UpdateGroupPreview(unit) end, geterrorhandler())
 			else
 				SafeUpdateUnitFrame(self.units[unit], element_name)
@@ -681,7 +681,7 @@ function UF:OnEnable()
 			end
 			-- The five frames move as one group, on a SaftUI holder.
 			self.holders[unit] = CreateFrame('Frame', 'SaftUI_'..labelName..'Holder', UIParent)
-			-- Test mode's previews make way for them (groups.lua).
+			-- Test mode's previews make way for them (grouppreview.lua).
 			self:WatchFramesForPreview(unit)
 		else
 			self.units[unit] = self.oUF:Spawn(unit, 'SaftUI_'..labelName)

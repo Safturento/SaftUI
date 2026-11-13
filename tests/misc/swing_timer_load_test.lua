@@ -1,4 +1,4 @@
--- The swing timer skin (SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua) waits for
+-- The swing timer skin (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimer.lua) waits for
 -- Blizzard_SwingTimer only on a client that has that addon: Forever does,
 -- retail has none (checked in Blizzard's source, both clients), so there
 -- nothing may be registered for ADDON_LOADED.
@@ -10,7 +10,7 @@ load_core_helpers()
 load_saftui('SaftUI-Misc/config.lua')
 apply_defaults()
 load_saftui('SaftUI-Misc/Skinning/skinning.lua')
-load_saftui('SaftUI-Misc/Skinning/Blizzard_SwingTimer.lua')
+load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimer.lua')
 
 local st = SaftUI
 local SK = st:GetModule('Skinning')

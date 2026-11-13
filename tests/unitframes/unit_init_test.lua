@@ -12,9 +12,12 @@
 --
 -- Real: Core's helpers and profile defaults, every unit's defaults, filled the
 -- way AceDB fills them; unitframes.lua (UF.ConstructUnit, UF.InitUnit,
--- UF:UpdateUnitFrame); groups.lua; config/config.lua (UF:GetProfileConfig);
+-- UF:UpdateUnitFrame); the group files (grouplayout.lua, groups.lua,
+-- blizzardraid.lua, grouppreview.lua); config/profiles.lua
+-- (UF:GetProfileConfig), config/groupoptions.lua and config/config.lua;
 -- constructors.lua, updaters.lua and tags.lua; the files elements/elements.xml
--- lists; LibStringFormat-1.0, which init.lua makes st.StringFormat.
+-- lists; nameplates/options.lua; LibStringFormat-1.0, which init.lua makes
+-- st.StringFormat.
 --
 -- Stand-in: oUF (tests/unitframes/fixtures/ouf.lua, which says what the real
 -- one does beyond it), made before unitframes.lua loads, with SaftUI's style
@@ -30,15 +33,21 @@ apply_defaults()
 local ouf = fixture.new()
 addon_namespace('SaftUI-Unitframes').oUF = ouf
 load_saftui('SaftUI-Unitframes/unitframes.lua')
+load_saftui('SaftUI-Unitframes/grouplayout.lua')
 load_saftui('SaftUI-Unitframes/groups.lua')
+load_saftui('SaftUI-Unitframes/blizzardraid.lua')
+load_saftui('SaftUI-Unitframes/grouppreview.lua')
+load_saftui('SaftUI-Unitframes/config/profiles.lua')
+load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
-load_saftui('SaftUI-Unitframes/purge.lua') -- the aura groups' filters (UF.AuraFilter), as the TOC loads it after updaters
+load_saftui('SaftUI-Unitframes/aurafilters.lua') -- the aura groups' filters (UF.AuraFilter), as the TOC loads it after updaters
 load_saftui('SaftUI-Unitframes/tags.lua')
 for _, file in ipairs({ 'name', 'auras', 'aurawatch', 'power', 'additionalpower', 'health', 'castbar', 'portrait', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 
 local st = SaftUI

@@ -454,8 +454,8 @@ function st:CreatePanel(name, width, height)
 	local panels = st.config.profile.panels
 	st:SetBackdrop(panel, panels.theme, panels.background, 'window')
 	self:CreateHeader(panel, name, self:CreateCloseButton(panel))
-	if width then st:SetWidth(panel, width) end
-	if height then st:SetHeight(panel, height) end
+	if width then panel:SetWidth(width) end
+	if height then panel:SetHeight(height) end
 
 	return panel
 end

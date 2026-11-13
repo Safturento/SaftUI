@@ -5,8 +5,10 @@
 --     leaves it before the plates are spawned. Real: Core's helpers and
 --     defaults; the unit frames' defaults and every unit's config, the files
 --     config/load.xml lists (nameplate.lua among them), filled the way AceDB
---     fills them; unitframes.lua, groups.lua, config/config.lua,
---     constructors.lua, updaters.lua, tags.lua and purge.lua; the files
+--     fills them; unitframes.lua, the group files (grouplayout.lua,
+--     groups.lua, blizzardraid.lua, grouppreview.lua), config/profiles.lua,
+--     config/groupoptions.lua, config/config.lua, constructors.lua,
+--     updaters.lua, tags.lua and aurafilters.lua; the files
 --     elements/elements.xml and nameplates/nameplates.xml list, read from the
 --     XML so a file a later change adds there loads too; LibStringFormat-1.0,
 --     which init.lua makes st.StringFormat. UF.units, UF.allUnits and
@@ -52,12 +54,14 @@ function NP.world(client)
 	lock(NamePlateDriverFrame, 'Blizzard')
 
 	-- config/load.xml: position.lua, default.lua and the units' files, then
-	-- config.lua, which needs the module (unitframes.lua) first.
+	-- the files that need the module (unitframes.lua) first: profiles.lua,
+	-- groupoptions.lua and config.lua, kept in their order for after it.
+	local NEEDS_MODULE = { ['profiles.lua'] = true, ['groupoptions.lua'] = true, ['config.lua'] = true }
 	local configFiles = scripts('SaftUI-Unitframes/config/load.xml')
-	local configLua
+	local moduleConfigFiles = {}
 	for _, file in ipairs(configFiles) do
-		if file:match('/config%.lua$') then
-			configLua = file
+		if NEEDS_MODULE[file:match('[^/]+$')] then
+			moduleConfigFiles[#moduleConfigFiles + 1] = file
 		else
 			load_saftui(file)
 		end
@@ -81,9 +85,11 @@ function NP.world(client)
 	local ouf = fixture.new()
 	addon_namespace('SaftUI-Unitframes').oUF = ouf
 	load_saftui('SaftUI-Unitframes/unitframes.lua')
-	load_saftui('SaftUI-Unitframes/groups.lua')
-	load_saftui(configLua)
-	for _, file in ipairs({ 'constructors', 'updaters', 'tags', 'purge' }) do
+	for _, file in ipairs({ 'grouplayout', 'groups', 'blizzardraid', 'grouppreview' }) do
+		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
+	end
+	for _, file in ipairs(moduleConfigFiles) do load_saftui(file) end
+	for _, file in ipairs({ 'constructors', 'updaters', 'tags', 'aurafilters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	for _, xml in ipairs({ 'SaftUI-Unitframes/elements/elements.xml', 'SaftUI-Unitframes/nameplates/nameplates.xml' }) do

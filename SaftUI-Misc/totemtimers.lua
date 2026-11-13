@@ -110,7 +110,7 @@ local flyoutBaseHeight
 --- Helpers -------------------------
 ------------------------------------
 
--- totemskin.lua's helper (it loads first): hooksecurefunc on a Blizzard global
+-- totembar.lua's helper (it loads first): hooksecurefunc on a Blizzard global
 -- if this client has it.
 local PostHook = TB.PostHook
 

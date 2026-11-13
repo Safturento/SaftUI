@@ -25,10 +25,11 @@ local function fresh(client, class)
 		colors = { class = {}, reaction = {}, power = {}, disconnected = CreateColor(1, 1, 1),
 			tapped = CreateColor(1, 1, 1), health = CreateColor(0.2, 0.8, 0.2), roles = {}, runes = {} },
 	}
-	for _, file in ipairs({ 'unitframes', 'groups', 'config/config', 'constructors', 'updaters' }) do
+	for _, file in ipairs({ 'unitframes', 'grouplayout', 'groups', 'blizzardraid', 'grouppreview', 'config/profiles', 'config/groupoptions', 'config/config', 'constructors', 'updaters' }) do
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Unitframes/elements/classpower.lua')
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	UF = st:GetModule('Unitframes')

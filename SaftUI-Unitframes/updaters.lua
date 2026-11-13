@@ -222,8 +222,8 @@ end
 
 function UF:UpdateElementSize(element, configOverride)
     local width, height = self:ElementSize(element, configOverride)
-    if width then st:SetWidth(element, width) end
-    if height then st:SetHeight(element, height) end
+    if width then element:SetWidth(width) end
+    if height then element:SetHeight(height) end
 end
 
 function UF:UpdateElementPosition(element, configOverride)
@@ -261,6 +261,28 @@ function UF.SetPowerBackgroundColor(power, r, g, b)
 		power.bg:SetVertexColor(r, g, b, bg.alpha * bg.multiplier)
 	else
 		power.bg:SetVertexColor(r * bg.multiplier, g * bg.multiplier, b * bg.multiplier, bg.alpha)
+	end
+end
+
+-- The power and additional power bars' PostUpdateColor (elements/power.lua,
+-- elements/additionalpower.lua). oUF calls it after it recolors the bar (any
+-- color flag), so a custom color set earlier or in PostUpdate would be
+-- overwritten. The custom color comes from the config, so it is never secret.
+-- color is the color object oUF used, and r, g, b the alternative color oUF's
+-- power element passes for a power with no color of its own (additional
+-- power's passes none).
+function UF.PostUpdatePowerColor(power, color, r, g, b)
+	if power.config.colorCustom then
+		r, g, b = UF.UnpackColor(power.config.customColor)
+		power:SetStatusBarColor(r, g, b)
+		UF.SetPowerBackgroundColor(power, r, g, b)
+		return
+	end
+	if color then
+		r, g, b = color:GetRGB()
+	end
+	if r and g and b then
+		UF.SetPowerBackgroundColor(power, r, g, b)
 	end
 end
 

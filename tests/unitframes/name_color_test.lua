@@ -2,9 +2,11 @@
 -- the Color friendly option colours a friendly unit's name in its reaction
 -- colour; players keep their class colour, and with the option off nothing
 -- changes. Built as secret_texts_test.lua builds its world: Core's helpers and
--- defaults, the unit frames' defaults, config.lua and tags.lua, with a stand-in
--- UF:RegisterElement and UF.oUF (its tag tables and the colours, where oUF's
--- reaction table holds the profile's colours as UF:UpdateColors merges them).
+-- defaults, the unit frames' defaults, config/profiles.lua,
+-- config/groupoptions.lua, config/config.lua, tags.lua and
+-- nameplates/options.lua, with a stand-in UF:RegisterElement and UF.oUF (its
+-- tag tables and the colours, where oUF's reaction table holds the profile's
+-- colours as UF:UpdateColors merges them).
 local T = load_test_file('lib/theme_helpers.lua')
 local S = load_test_file('lib/secrets.lua')
 
@@ -14,12 +16,15 @@ apply_defaults()
 local UF = st:NewModule('Unitframes')
 UF.elements = {}
 function UF:RegisterElement() end
+load_saftui('SaftUI-Unitframes/config/profiles.lua')
+load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 UF.oUF = { Tags = { Events = {}, Methods = {} },
 	colors = { class = st.config.profile.colors.class, reaction = st.config.profile.colors.reaction } }
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 st.StringFormat = LibStub('LibStringFormat-1.0')
 load_saftui('SaftUI-Unitframes/tags.lua')
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 local restoreSecrets = S.install()
 
 local P = UF:GetProfileConfig()

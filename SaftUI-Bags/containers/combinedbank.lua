@@ -106,19 +106,13 @@ function INV:OpenCombinedBank()
 	end
 	self.containers.combinedbank:Show()
 	self:ShowBags()
-
-	if self:GetContainer('bag').footer.depositButton then
-		self:GetContainer('bag').footer.depositButton:Show()
-	end
+	self:SetDepositButtonShown(true)
 end
 
 function INV:CloseCombinedBank()
 	self.containers.combinedbank:Hide()
 	self:HideBags()
-
-	if self:GetContainer('bag').footer.depositButton then
-		self:GetContainer('bag').footer.depositButton:Hide()
-	end
+	self:SetDepositButtonShown(false)
 end
 
 local function UpdateContainerSlots(container)

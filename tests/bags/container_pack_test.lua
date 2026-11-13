@@ -1,4 +1,4 @@
--- How SaftUI-Bags/container.lua packs categories into columns
+-- How SaftUI-Bags/layout.lua packs categories into columns
 -- (INV:CompactCategories and packColumns, through INV:UpdateContainerLayout):
 -- the shortest window the columns allow, the order inside a column, a stable
 -- arrangement, and the time it takes. Migrated from the bagsim harness.

@@ -1,6 +1,7 @@
--- What the bag layout tests share: the world with SaftUI-Bags' container.lua
--- loaded, and the containers and categories the layout works on. Not a test
--- (no _test suffix), so the runner doesn't run it; container_hold_test.lua,
+-- What the bag layout tests share: the world with SaftUI-Bags' window files
+-- (container.lua, header.lua, layout.lua, search.lua) loaded, and the
+-- containers and categories the layout works on. Not a test (no _test
+-- suffix), so the runner doesn't run it; container_hold_test.lua,
 -- container_pack_test.lua and views_layout_test.lua (the views world, at the
 -- end) load it with load_test_file('bags/container_helpers.lua').
 --
@@ -19,7 +20,7 @@ local H = {}
 -- The height of one row of items, button and spacing.
 function H.row() return H.INV:GetButtonHeight() + H.INV.config.buttonspacing end
 
--- A fresh world with container.lua loaded. The module's config is the real
+-- A fresh world with the window files loaded. The module's config is the real
 -- defaults (padding 10, spacing 3, icon height 50, inverted, the bag window
 -- 15 rows by 3 columns).
 function H.fresh()
@@ -37,6 +38,9 @@ function H.fresh()
 	load_saftui('SaftUI-Bags/movers.lua')
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
+	load_saftui('SaftUI-Bags/header.lua')
+	load_saftui('SaftUI-Bags/layout.lua')
+	load_saftui('SaftUI-Bags/search.lua')
 	local INV = SaftUI:GetModule('Inventory')
 	H.INV = INV
 	-- As INV:OnEnable binds it.
@@ -138,7 +142,7 @@ end
 --[[
 	The views' layout tests (views_layout_test.lua) lay windows out with real
 	slots: H.views_world(client) is bag_world.lua's stubbed bags under the
-	module's real files, with container.lua, movers.lua and currencies.lua as
+	module's real files, with the window files, movers.lua and currencies.lua as
 	well, Core's check button and status bar, and the item upgrade helpers and
 	tooltip scanner of Core's Utilities module. H.window(id) is a window in it.
 
@@ -267,6 +271,9 @@ function H.views_world(client, core)
 	load_saftui('SaftUI-Bags/movers.lua')
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom
 	load_saftui('SaftUI-Bags/container.lua')
+	load_saftui('SaftUI-Bags/header.lua')
+	load_saftui('SaftUI-Bags/layout.lua')
+	load_saftui('SaftUI-Bags/search.lua')
 	H.INV = INV
 	stand_in_templates()
 	stand_in_api()

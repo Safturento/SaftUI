@@ -6,7 +6,7 @@ local UF = st:GetModule('Unitframes')
 	AuraContainer. Aura data is no longer exposed to Lua (secret values), so the old
 	Lua-side filters (whitelist/blacklist/time) and per-aura styling can't be applied.
 	Filtering is done with the aura filter string and candidate filters
-	(UF.AuraFilter, purge.lua: Only mine, Only buffs I can purge, a nameplate's
+	(UF.AuraFilter, aurafilters.lua: Only mine, Only buffs I can purge, a nameplate's
 	debuffs), and dispel/stealable coloring with the container's built-in
 	dispel textures.
 
