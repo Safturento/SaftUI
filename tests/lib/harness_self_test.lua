@@ -761,6 +761,28 @@ test('Show, Hide and SetShown fire OnShow and OnHide only for a visibility that 
 	check(parent:IsShown() and child:IsShown() and child:IsVisible(), 'both end up shown')
 end)
 
+test('SetAlpha keeps an alpha within 0 to 1 on a frame and on a region, as in game, and still wants a number', function()
+	local frame = CreateFrame('Frame')
+	local texture = frame:CreateTexture()
+	for name, widget in pairs({ frame = frame, texture = texture }) do
+		widget:SetAlpha(-0.5)
+		eq(widget:GetAlpha(), 0, name .. ': below 0 is 0')
+		widget:SetAlpha(1.5)
+		eq(widget:GetAlpha(), 1, name .. ': above 1 is 1')
+		widget:SetAlpha(0.25)
+		eq(widget:GetAlpha(), 0.25, name .. ': in range stays')
+		widget:SetAlpha(0)
+		eq(widget:GetAlpha(), 0, name .. ': 0 stays')
+		widget:SetAlpha(1)
+		eq(widget:GetAlpha(), 1, name .. ': 1 stays')
+		check(not pcall(widget.SetAlpha, widget, 'x'), name .. ': a non-number is still an error')
+	end
+	frame:SetAlpha(2)
+	eq(frame:GetEffectiveAlpha(), 1, 'and the effective alpha is within 0 to 1 too')
+	texture:SetAlpha(-3)
+	eq(texture:GetEffectiveAlpha(), 0, 'as a region under it')
+end)
+
 test('SetPoint still refuses an anchor that makes a loop, through any chain, as in game', function()
 	local a, b, c = CreateFrame('Frame'), CreateFrame('Frame'), CreateFrame('Frame')
 	local parent = CreateFrame('Frame')
