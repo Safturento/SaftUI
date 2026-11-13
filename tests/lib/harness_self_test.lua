@@ -834,3 +834,9 @@ test("load_editmode loads the files Core's EditMode/load.xml lists, in its order
 	end
 	eq(table.concat(editmode_files(), ', '), table.concat(listed, ', '), "the shell's edit mode files are load.xml's, in its order")
 end)
+
+test('near tells float drift from a different number, and nil from any number', function()
+	check(near(0.1 + 0.2, 0.3), 'float drift is near')
+	check(not near(1, 1.001), 'a different number is not')
+	check(not near(nil, 1) and not near(1, nil), 'nil is near nothing')
+end)

@@ -33,9 +33,7 @@ function H.is_grey(r, g, b)
 	return H.near(r, gr) and H.near(g, gg) and H.near(b, gb)
 end
 
-function H.near(a, b)
-	return math.abs(a - b) < 1e-6
-end
+H.near = near -- the harness's
 
 -- A font string's font: the face and outline of SaftUI's font object named
 -- face ('normal', 'title', 'pixel'), or face itself if it names no such font

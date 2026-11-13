@@ -26,8 +26,6 @@
 local NP = load_test_file('unitframes/nameplate_world.lua')
 local S = load_test_file('lib/secrets.lua')
 
-local function near(a, b) return a ~= nil and b ~= nil and math.abs(a - b) < 1e-6 end
-
 -- A world with the plates spawned, in theme where one is given. Returns st,
 -- UF, the nameplate's config, and a list that fills with every Blizzard frame
 -- the game makes for the plates (each plate, and each pooled UnitFrame with

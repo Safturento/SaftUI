@@ -27,8 +27,6 @@
 local NP = load_test_file('unitframes/nameplate_world.lua')
 local S = load_test_file('lib/secrets.lua')
 
-local function near(a, b) return a ~= nil and b ~= nil and math.abs(a - b) < 1e-6 end
-
 -- A world with the plates spawned, and the nameplate's config.
 local function world(client)
 	local st, UF = NP.world(client or 'forever')

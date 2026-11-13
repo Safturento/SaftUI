@@ -41,8 +41,6 @@ local NP = load_test_file('unitframes/nameplate_world.lua')
 
 local CLIENTS = { 'forever', 'retail' }
 
-local function near(a, b) return a ~= nil and b ~= nil and math.abs(a - b) < 1e-6 end
-
 -- A world with the plates spawned. Returns st, UF and the profile's units.
 -- st.config.char is AceDB's per-character table, which the shell doesn't
 -- have: {} for each world, as for a new character.

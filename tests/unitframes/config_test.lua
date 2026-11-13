@@ -589,7 +589,6 @@ test('Health, Power and Additional power: Custom and its color, kept in the shap
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()
 	local root = { Unitframes = config }
-	local function near(a, b) return math.abs(a - b) < 1e-6 end
 	for _, case in ipairs({ { 'target', 'Health' }, { 'party', 'Health' }, { 'player', 'Power' }, { 'boss', 'Power' }, { 'player', 'AdditionalPower' } }) do
 		local unit, tab = case[1], case[2]
 		local where = unit .. '.' .. tab

@@ -69,7 +69,6 @@ local function bar(element_name)
 end
 
 local function rgb(r, g, b) return { r, g, b } end
-local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function bar_color(element)
 	local r, g, b = element:GetStatusBarColor()
 	return r, g, b
