@@ -132,7 +132,7 @@ builders.color = function(w)
 	w.inner = button:CreateTexture(nil, 'ARTWORK')
 	w.inner:SetColorTexture(0, 0, 0, 1)
 	Inset(w.inner, button, SWATCH_INNER)
-	-- One sublevel up, so the code (a font string of the layer above) is never under it.
+	-- In ARTWORK, a sublevel over the black line; the code (OVERLAY) is over both.
 	w.swatch = button:CreateTexture(nil, 'ARTWORK', nil, 1)
 	Inset(w.swatch, button, SWATCH_COLOR)
 	w.text = NewText(button, 'CENTER')
@@ -168,14 +168,14 @@ local function LookColor(w, blizzard)
 	end
 end
 
--- A color's text color reads on its fill: black on a light color, white on a
--- dark one. The cut is the color's brightness (Rec. 601 luma, .299 r + .587 g
--- + .114 b) over a half: pure green and yellow get black, pure red and blue
--- white. The opacity isn't counted: the bar shows the color solid, with the
--- opacity in its text.
+-- A color's text color reads on what the bar shows: black on a light fill,
+-- white on a dark one. The fill is drawn at a (its opacity, 1 without
+-- hasAlpha) over the black line, so what shows is the color times a, and its
+-- brightness (Rec. 601 luma, .299 r + .587 g + .114 b) the color's times a.
+-- The cut is a half: pure green and yellow get black, pure red and blue white.
 local LIGHT = 0.5
-local function TextColorFor(r, g, b)
-	if 0.299 * r + 0.587 * g + 0.114 * b > LIGHT then return 0, 0, 0 end
+local function TextColorFor(r, g, b, a)
+	if (0.299 * r + 0.587 * g + 0.114 * b) * a > LIGHT then return 0, 0, 0 end
 	return 1, 1, 1
 end
 
@@ -188,7 +188,6 @@ local function HexText(r, g, b, a, hasAlpha)
 	if percent < 100 then text = text .. ' \194\183 ' .. percent .. '%' end
 	return text
 end
-W.HexText = HexText
 
 define('color', {
 	Bind = function(self, ...)
@@ -200,9 +199,10 @@ define('color', {
 		local r, g, b, a = self:Value()
 		self.r, self.g, self.b, self.a = r or 0, g or 0, b or 0, a or 1
 		self.hasAlpha = OM.Member(self.root, self.row, 'hasAlpha') and true or false
-		self.swatch:SetColorTexture(self.r, self.g, self.b, self.hasAlpha and self.a or 1)
+		local shown = self.hasAlpha and self.a or 1
+		self.swatch:SetColorTexture(self.r, self.g, self.b, shown)
 		self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
-		self.text:SetTextColor(TextColorFor(self.r, self.g, self.b))
+		self.text:SetTextColor(TextColorFor(self.r, self.g, self.b, shown))
 	end,
 
 	-- Opens the picker on the current color. Each change it makes is set;

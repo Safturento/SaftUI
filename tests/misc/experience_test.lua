@@ -99,7 +99,7 @@ test('before the module is enabled a color change does nothing', function()
 	eq(drawn, 0, 'no redraw')
 end)
 
-test('the Experience page reads Theme | Background, Spacing | Height, Width | the two colors, Rested bar alpha, then Position', function()
+test('the Experience page reads Theme | Background, Spacing | Height, Width | Normal color, Rested color | Rested bar alpha, then Position', function()
 	local root = { Experience = XP:GetConfigTable() }
 	local view = st.OptionsModel.BuildView(root, 'Experience')
 	local sections = view.sections

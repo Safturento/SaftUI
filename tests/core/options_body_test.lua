@@ -180,9 +180,9 @@ end)
 
 ------------------------------------------------------------------ the body
 
-test('a toggle and a color sit at their cell\'s right edge, at normal and small size, the label taking the rest', function()
+test('a toggle and a color sit at their cell\'s right edge, a toggle at normal and small size and a color at normal, the label taking the rest', function()
 	local body, by = draw_body(774, {
-		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' },
+		{ 'nt', 'toggle', 'Normal toggle' }, { 'st', 'toggle', 'Small', 'small' }, { 'sc', 'color', 'Tint', 'small' }, -- the model makes it normal
 		{ 'nc', 'color', 'A color that is long' },
 	})
 	for key, c in pairs(by) do
