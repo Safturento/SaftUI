@@ -43,10 +43,7 @@ end
 -- Tabs, two tabs, the first with two subtabs; Fill, a fill row. setup, if
 -- given, runs on the fresh stubs before Core's config loads.
 local function world(client, setup)
-	reset_world()
-	if setup then setup() end
-	stub.interface = client == 'forever' and 16001 or 120000
-	load_saftui('SaftUI-Core/constants.lua')
+	use_client(client, setup)
 	load_test_file('core/config_helpers.lua')
 	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 	load_options_widgets()

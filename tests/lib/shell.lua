@@ -27,7 +27,7 @@
 	                          in the game's order; options_window_files() lists them
 	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
 	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
-	  use_client(name)        a fresh world on 'forever' or 'retail'
+	  use_client(name, before) a fresh world on 'forever' or 'retail'
 ]]
 
 local function pack(...)
@@ -519,16 +519,19 @@ local CLIENT_INTERFACES = { forever = 16001, retail = 120000 }
 -- A fresh world on one client, 'forever' or 'retail': reset_world(), then
 -- stub.interface set to the client's, the globals that client lacks dropped
 -- (stub.apply_client, tests/wow/game.lua) and Core's constants.lua run again
--- (it reads the interface when it loads, so st.forever follows). Returns
--- SaftUI. Everything else is as reset_world() leaves it, so a file can switch
--- clients between cases; the caller loads the rest of its world after it
--- (load_core_helpers(), or core/config_helpers.lua for the real AceDB).
-function use_client(name)
+-- (it reads the interface, the player's name and realm and the screen when it
+-- loads, so st.forever follows). before, if given, runs on the fresh stubs
+-- first, to change what constants.lua reads. Returns SaftUI. Everything else
+-- is as reset_world() leaves it, so a file can switch clients between cases;
+-- the caller loads the rest of its world after it (load_core_helpers(), or
+-- core/config_helpers.lua for the real AceDB).
+function use_client(name, before)
 	local interface = CLIENT_INTERFACES[name]
 	if not interface then
 		error(("use_client: no client '%s' (forever or retail)"):format(tostring(name)), 2)
 	end
 	reset_world()
+	if before then before() end
 	stub.interface = interface
 	stub.apply_client()
 	load_saftui('SaftUI-Core/constants.lua')

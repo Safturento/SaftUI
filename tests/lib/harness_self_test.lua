@@ -819,6 +819,9 @@ test("use_client gives a fresh world on each client, without the globals that cl
 	eq(type(UnitHasEffectivelyTankAura), 'function', 'forever: it has the tank aura check')
 	eq(st.marked, nil, 'a fresh world: SaftUI is made again')
 
+	st = use_client('retail', function() GetRealmName = function() return 'Elsewhere' end end)
+	eq(st.my_realm, 'Elsewhere', 'before runs on the fresh stubs, before constants.lua reads them')
+
 	check(not pcall(use_client, 'classic'), 'a client that is neither is an error')
 	reset_world()
 end)
