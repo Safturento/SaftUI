@@ -8,7 +8,7 @@
 --                          from tree down to the option.
 --   ace_ready(tree)        a copy of tree that AceConfigRegistry-3.0's
 --                          validator can check: SaftUI's own fields
---                          (category, size, target, nameKey, pickerLabel) are left off
+--                          (category, size, target, nameKey, pickerLabel, align) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -20,7 +20,7 @@
 --                          window draws: position, and the types the bags
 --                          define with W.Define (optionswidgets.lua).
 
-local SAFTUI_FIELDS = { category = true, size = true, target = true, nameKey = true, pickerLabel = true }
+local SAFTUI_FIELDS = { category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true }
 
 SAFTUI_TYPES = { position = true, bagcategories = true, bagrule = true, bagitems = true }
 

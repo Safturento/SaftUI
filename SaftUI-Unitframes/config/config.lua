@@ -182,7 +182,11 @@ end
 -- The Copy from dialog: copies the ticked settings of another unit (in the
 -- current unit frame profile) onto unit, after asking. SaftUI's options window
 -- draws it as a small dialog (st.OptionsWindow:OpenDialog). The table is made
--- anew each time, so nothing carries over from the last unit.
+-- anew each time, so nothing carries over from the last unit. Copy from takes
+-- a line of its own, so its label has room, with All and None at the line's
+-- right end; Confirm copy and Cancel are a pair in the middle of the last
+-- line, as Blizzard's popup dialogs place their buttons (align, the options
+-- body's line of buttons).
 -- The nameplates, enemy and friendly, are left out both ways (their pages have
 -- no Copy from, and they're never offered here): the game places each plate
 -- and gives every plate one size, Nameplates and Friendly plates change the
@@ -209,6 +213,7 @@ function UF:OpenCopyTable(unit)
 				name = 'Copy from',
 				desc = 'The unit frame to copy settings from.',
 				type = 'select',
+				size = 'wide',
 				values = function()
 					local units = {}
 					-- The current profile's, in case the profile changed since opening
@@ -226,7 +231,7 @@ function UF:OpenCopyTable(unit)
 				order = 1,
 				name = 'All',
 				desc = 'Ticks every setting below.',
-				size = 'small',
+				align = 'right',
 				type = 'execute',
 				func = function() SetAll(true) end,
 			},
@@ -234,7 +239,7 @@ function UF:OpenCopyTable(unit)
 				order = 1,
 				name = 'None',
 				desc = 'Clears every tick below.',
-				size = 'small',
+				align = 'right',
 				type = 'execute',
 				func = function() SetAll(false) end,
 			},
@@ -251,6 +256,7 @@ function UF:OpenCopyTable(unit)
 				order = -95,
 				name = 'Confirm copy',
 				desc = 'Copies the ticked settings onto this unit frame, after asking.',
+				align = 'center',
 				type = 'execute',
 				disabled = function() return not copy.from end,
 				confirm = function()
@@ -272,6 +278,14 @@ function UF:OpenCopyTable(unit)
 					st.Config:Refresh()
 					st.OptionsWindow:CloseDialog()
 				end,
+			},
+			cancel = {
+				order = -94,
+				name = 'Cancel',
+				desc = 'Closes Copy from without copying anything.',
+				align = 'center',
+				type = 'execute',
+				func = function() st.OptionsWindow:CloseDialog() end,
 			},
 		},
 	}
