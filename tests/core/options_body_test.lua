@@ -197,6 +197,24 @@ test('a toggle and a color sit at their cell\'s right edge, at normal and small 
 	body:Release()
 end)
 
+test('a color row gets the room a select row gets: a normal half, so its label and its bar fit', function()
+	-- Marked small, as the Colors page marks its rows: the model makes it normal.
+	local body, by = draw_body(774, {
+		{ 'c1', 'color', 'Tint', 'small' }, { 'c2', 'color', 'Another tint', 'small' },
+		{ 'c3', 'color', 'A third' }, { 's', 'select', 'Pick' },
+	})
+	eq(by.c1.row.size, 'normal', 'small is not honored for a color')
+	local _, _, _, x1 = by.c1.frame:GetPoint(1)
+	local _, _, _, x2 = by.c2.frame:GetPoint(1)
+	eq(x1, 0, 'the first in the left half')
+	eq(x2, 407, 'the second in the right half, not beside the first in a quarter')
+	eq(by.c1.frame:GetWidth(), 367, 'a half wide, as a select\'s')
+	eq(by.c1.frame:GetWidth(), by.s.frame:GetWidth(), 'as a select row')
+	eq(by.c1.label:GetWidth(), 367 - 170 - 10, 'the label has the rest beside the bar')
+	eq(by.c3.y, by.c1.y + 34, 'a third colour starts the next line')
+	body:Release()
+end)
+
 test('a label reused from a small toggle takes the normal cell\'s width, so its text isn\'t cut', function()
 	local body, by = draw_body(774, { { 't', 'toggle', 'Show', 'small' } })
 	local label = by.t.label
@@ -219,7 +237,7 @@ end)
 
 test('the body draws dividers a line tall: between the halves at 387, between two smalls of the left half at 183', function()
 	local body, by = draw_body(774, {
-		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'color', 'B', 'small' }, { 'c', 'toggle', 'C' },
+		{ 'a', 'toggle', 'A', 'small' }, { 'b', 'toggle', 'B', 'small' }, { 'c', 'toggle', 'C' },
 		{ 'w', 'description', 'Wide text' }, { 'd', 'toggle', 'D' },
 	})
 	local got = {}

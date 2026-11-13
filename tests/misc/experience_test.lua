@@ -112,10 +112,11 @@ test('the Experience page reads Theme | Background, Spacing | Height, Width | th
 	end
 	eq(table.concat(got, ', '),
 		'theme:normal 1, background:normal 2, spacing:normal 1, height:normal 2, '
-		.. 'width:normal 1, normal_color:small 2/1, rested_color:small 2/2, rest_alpha:normal 1',
-		'General reads in pairs, the two colors sharing a half')
+		.. 'width:normal 1, normal_color:normal 2, rested_color:normal 1, rest_alpha:normal 2',
+		'General reads in pairs, each color a half of its own (a bar as wide as a dropdown)')
 	eq(placed[1].y, placed[2].y, 'Theme and Background share a line')
-	eq(placed[5].y, placed[7].y, 'Width and the colors share a line')
+	eq(placed[5].y, placed[6].y, 'Width and the first color share a line')
+	eq(placed[7].y, placed[8].y, 'the second color and Rested bar alpha share the next')
 	eq(sections[2].title, 'Position', 'Position has a section of its own')
 	eq(#sections[2].rows, 1, 'with the one row')
 	eq(sections[2].rows[1].type, 'position', 'the Position block')

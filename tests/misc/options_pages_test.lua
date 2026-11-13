@@ -158,7 +158,8 @@ test('Totem bar: one small color per element, read and written as the bar reads 
 	eq(colors.title, 'Element colors', 'the colors have a section')
 	local placed = OB.LayoutRows(colors.rows)
 	eq(#placed, 4, 'four colors')
-	eq(placed[1].y == placed[4].y, true, 'on one line')
+	eq(placed[1].y == placed[2].y and placed[3].y == placed[4].y and placed[1].y ~= placed[3].y, true,
+		'two to a line (each a bar as wide as a dropdown)')
 	eq(view.sections[#view.sections].title, 'Position', 'Position is the last section')
 
 	profile.totembar.position = nil

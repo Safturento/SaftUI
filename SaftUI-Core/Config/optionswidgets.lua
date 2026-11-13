@@ -82,7 +82,7 @@ local format, tinsert, tremove = string.format, table.insert, table.remove
 
 W.WIDTH = {
 	toggle = 18, range = 168, select = 170, multiselect = 170, input = 170,
-	color = 22, execute = 80, keybinding = 170, description = 400,
+	color = 170, execute = 80, keybinding = 170, description = 400,
 	position = 0, -- the block's width follows its parts (widget:GetWidth())
 }
 local FIELD_HEIGHT = 24

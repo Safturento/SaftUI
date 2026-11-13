@@ -323,7 +323,7 @@ end)
 
 ------------------------------------------------------------------ rows
 
-test('rows: size is the option\'s small or wide; Ace width is ignored; small only for toggle, color, execute, input', function()
+test('rows: size is the option\'s small or wide; Ace width is ignored; small only for toggle, execute, input; a color is never small', function()
 	local root = { Sizes = group('Sizes', {
 		t = opt('toggle', 'T', { order = 1, size = 'small' }),
 		c = opt('color', 'C', { order = 2, size = 'small' }),
@@ -339,7 +339,7 @@ test('rows: size is the option\'s small or wide; Ace width is ignored; small onl
 	local view = OM.BuildView(root, 'Sizes')
 	local function size(key) return row(view, key).size end
 	eq(size('t'), 'small', 'a small toggle')
-	eq(size('c'), 'small', 'a small color')
+	eq(size('c'), 'normal', 'a color is a dropdown-wide bar, so it cannot be small')
 	eq(size('e'), 'small', 'a small execute')
 	eq(size('i'), 'small', 'a small input')
 	eq(size('r'), 'normal', 'a range cannot be small')
