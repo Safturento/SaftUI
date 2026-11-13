@@ -48,7 +48,8 @@ local OM = st.OptionsModel
 	RIGHT across it, and SaftUI's fill makes its row a fill row
 	(optionsbody.lua), which tells it its height with SetHeight: it is then
 	that tall, with what it shows in the middle. A disabled toggle takes no
-	mouse, as every other disabled control, so its row shows its tooltip.
+	mouse, as every other disabled control but a multiselect (whose rows
+	keep it), so its row shows its tooltip.
 
 	Other files add types of their own with W.Define (custom types, at the
 	end), each with its own pool. W.CUSTOM marks them, and the body draws a

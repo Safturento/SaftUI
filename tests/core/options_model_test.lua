@@ -469,13 +469,14 @@ test("disabledDesc: why a row is disabled, its own (a string, or a function call
 	eq(#calls, 0, 'which is not called while the row is enabled')
 end)
 
-test("SaftUI's justifyH and fill on a description are read as they are: a string is the value, not a method name", function()
+test("SaftUI's justifyH on a description is a string, not a method name; its fill may be a function called with info", function()
 	local root = { Note = group('Note', {
-		line = opt('description', 'In the middle', { justifyH = 'CENTER', fill = true }),
+		line = opt('description', 'In the middle', { justifyH = 'CENTER',
+			fill = function(info) return info[#info] == 'line' end }),
 	}, { handler = {} }) }
 	local r = row(OM.BuildView(root, 'Note'), 'line')
-	eq(OM.Member(root, r, 'justifyH'), 'CENTER', 'justifyH')
-	eq(OM.Member(root, r, 'fill'), true, 'fill')
+	eq(OM.Member(root, r, 'justifyH'), 'CENTER', 'justifyH, with a handler that has no such method')
+	eq(OM.Member(root, r, 'fill'), true, "fill's function, called with the row's info")
 end)
 
 test('tabs: hidden ones are left out, disabled ones are listed but not selected by default', function()
@@ -491,9 +492,28 @@ test('tabs: hidden ones are left out, disabled ones are listed but not selected 
 	eq(view.tab, 'second', 'the first tab that is not disabled, as AceConfigDialog selects')
 	eq(layout(view), '-:b', 'its rows')
 	view = OM.BuildView(root, 'Tabs', { tab = 'first' })
-	eq(view.tab, 'first', 'a disabled tab chosen by key still opens, as a saved AceConfigDialog selection does')
-	eq(row(view, 'a').disabled, true, "its rows inherit the tab's disabled")
+	eq(view.tab, 'second', 'a disabled tab chosen by key falls back to the first enabled one while there is one (a tab carried over from another pick)')
 	eq(OM.BuildView(root, 'Tabs', { tab = 'gone' }).tab, 'second', 'a hidden tab is never selected')
+
+	-- Every tab disabled (a page standing down): one chosen by key still
+	-- opens, as a saved AceConfigDialog selection does; none chosen opens none.
+	local down = { Down = group('Down', {
+		first = group('First', { a = opt('toggle', 'A') }, { order = 1, disabled = true }),
+		second = group('Second', { b = opt('toggle', 'B') }, { order = 2, disabled = true }),
+	}) }
+	view = OM.BuildView(down, 'Down', { tab = 'second' })
+	eq(view.tab, 'second', 'all disabled: the chosen one opens')
+	eq(row(view, 'b').disabled, true, "its rows inherit the tab's disabled")
+	eq(OM.BuildView(down, 'Down').tab, nil, 'all disabled, none chosen: no tab')
+
+	-- The same rule for a second row of tabs.
+	local sub = { Sub = group('Sub', {
+		main = group('Main', {
+			on = group('On', { c = opt('toggle', 'C') }, { order = 1 }),
+			off = group('Off', { d = opt('toggle', 'D') }, { order = 2, disabled = true }),
+		}, { order = 1 }),
+	}) }
+	eq(OM.BuildView(sub, 'Sub', { tab = 'main', subtab = 'off' }).subtab, 'on', 'a disabled subtab falls back too')
 end)
 
 ------------------------------------------------------------------ get, set, validate
@@ -744,6 +764,36 @@ test('Search: option names, section and tab titles, any case; hidden options and
 	local many = {}
 	for i = 1, 150 do many['opt' .. i] = opt('toggle', 'Option ' .. i, { order = i }) end
 	eq(#OM.Search({ Many = group('Many', many) }, 'option'), 100, 'at most 100 results')
+end)
+
+test("Search skips a disabled tab or subtab beside an enabled one, as a selection can't open it; all disabled, or a disabled pick, still found", function()
+	local root = {
+		Some = group('Some', {
+			open = group('Open', { w = opt('toggle', 'Width open') }, { order = 1 }),
+			shut = group('Shut', { w = opt('toggle', 'Width shut') }, { order = 2, disabled = true }),
+		}, { order = 1 }),
+		Down = group('Down', {
+			a = group('A', { w = opt('toggle', 'Width down a') }, { order = 1, disabled = true }),
+			b = group('B', { w = opt('toggle', 'Width down b') }, { order = 2, disabled = true }),
+		}, { order = 2 }),
+		Sub = group('Sub', {
+			main = group('Main', {
+				on = group('On', { w = opt('toggle', 'Width sub on') }, { order = 1 }),
+				off = group('Off', { w = opt('toggle', 'Width sub off') }, { order = 2, disabled = true }),
+			}, { order = 1 }),
+		}, { order = 3 }),
+		Picks = group('Picks', {
+			one = group('One', {
+				general = group('General', { w = opt('toggle', 'Width pick one') }, { order = 1 }),
+			}, { order = 1, disabled = true }),
+			two = group('Two', {
+				general = group('General', { w = opt('toggle', 'Width pick two') }, { order = 1 }),
+			}, { order = 2 }),
+		}, { order = 4, childGroups = 'select' }),
+	}
+	eq(paths(OM.Search(root, 'width')),
+		'Some.open.w,Down.a.w,Down.b.w,Sub.main.on.w,Picks.one.general.w,Picks.two.general.w',
+		'the disabled tab and subtab beside enabled ones left out; a page all disabled and a disabled pick kept')
 end)
 
 ------------------------------------------------------------------ the real tree

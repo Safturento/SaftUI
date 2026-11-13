@@ -16,11 +16,13 @@ local UF = st:GetModule('Unitframes')
 	on/off switches (Nameplates, Friendly plates) and the box, the stand-down
 	line, and on the Enemy page threat (Threat when solo and the Threat tab),
 	since threat is always the Enemy page's (threat.lua reads
-	nameplate.threat). The settings
-	set aside stay in the profile, so unchecking brings them back as they
-	were. While one box is checked, the other page's is disabled, so both are
-	never on, and its tooltip says why (disabledDesc). All of it is read from
-	the profile at call time: a profile change replaces the tables.
+	nameplate.threat). A disabled tab the window's selection names (one tab
+	is kept across the Unitframes picks) opens General instead, and Search
+	skips the disabled tabs (st.OptionsModel). The settings set aside stay in
+	the profile, so unchecking brings them back as they were. While one box
+	is checked, the other page's is disabled, so both are never on, and its
+	tooltip says why (disabledDesc). All of it is read from the profile at
+	call time: a profile change replaces the tables.
 
 	Per page: box, the box's key in the page's config; other, the other page;
 	kept, the page's options (its tabs) that stay usable while the box is
@@ -55,7 +57,8 @@ end
 -- nameplate page says which, and every option on it is disabled. The line
 -- sits on the page above the tabs, not in General: every tab is disabled then,
 -- and the window chooses a disabled tab only when it was the tab chosen
--- already (st.OptionsModel), so a line in General would mostly not show.
+-- already and no tab is enabled (st.OptionsModel), so a line in General would
+-- mostly not show.
 
 -- The nameplate addon drawing the plates, or nil: UF:NameplateAddon
 -- (nameplates/nameplates.lua), and nil where that isn't loaded, so the page

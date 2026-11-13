@@ -291,27 +291,26 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 		eq(disabled_tabs(view), FRIENDLY_OFF_TABS, client .. ': all but General disabled')
 		eq(view.tab, 'general', client .. ': General open')
 
-		-- A disabled tab the stored selection names (one chosen on the other page,
-		-- then this page picked) still opens, as the model opens any disabled tab
-		-- chosen by key, with every setting on it disabled.
+		-- A disabled tab the stored selection names (the page keeps one tab
+		-- across its picks, so one chosen on another unit, then this page
+		-- picked) opens General, with the line saying why, as when the tabs were
+		-- hidden; the stored selection is kept.
 		root, view = page(UF, 'friendlynameplate', 'Health')
-		eq(view.tab, 'Health', client .. ': the chosen Health tab opens')
-		check(#rows(view) > 0, client .. ': with its settings')
-		for _, row in ipairs(rows(view)) do
-			check(row.disabled, client .. ': Health ' .. row.key .. ' disabled')
-		end
+		eq(view.tab, 'general', client .. ': the chosen Health tab disabled: General')
+		eq(keys(view), 'friendly,use_enemy,sourced', client .. ': with the line')
 		local chosen = { pick = 'friendlynameplate', tab = 'Health' }
-		eq(view_of(UF, { pick = 'friendlynameplate' }).tab, 'general', client .. ': none chosen: General')
-		-- Search finds a disabled tab's settings (disabled, not hidden), not General's hidden ones.
-		local found, hidden = false, false
+		eq(view_of(UF, chosen).tab, 'general', client .. ': from the stored selection too')
+		eq(chosen.tab, 'Health', client .. ': which keeps Health')
+		-- Search finds neither the disabled tabs' settings (a selection can't open
+		-- them) nor General's hidden ones; other units' still.
 		for _, result in ipairs(OM.Search(root, 'Max width')) do
-			if result.path[2] == 'friendlynameplate' then found = true end
+			check(result.path[2] ~= 'friendlynameplate', client .. ': no disabled tab setting found: ' .. table.concat(result.path, '.'))
 		end
+		check(#OM.Search(root, 'Max width') > 0, client .. ": other units' still are")
 		for _, result in ipairs(OM.Search(root, 'Width')) do
-			if result.path[2] == 'friendlynameplate' and result.path[3] == 'general' then hidden = true end
+			check(not (result.path[2] == 'friendlynameplate' and result.path[3] == 'general'),
+				client .. ": General's hidden Width isn't found")
 		end
-		check(found, client .. ": a disabled tab's setting is found")
-		check(not hidden, client .. ": General's hidden Width isn't")
 
 		-- The Enemy page shows everything, its box disabled, with no line.
 		root, view = page(UF, 'nameplate')
@@ -338,7 +337,14 @@ test("checking a box: the page's tabs stay where they are, disabled but General 
 			check(not row.disabled, client .. ': Threat ' .. row.key .. ' is enabled')
 		end
 		local enemyChosen = { pick = 'nameplate', tab = 'Castbar' }
-		check(rows(view_of(UF, enemyChosen))[1].disabled, client .. ': the chosen Castbar tab opens disabled')
+		eq(view_of(UF, enemyChosen).tab, 'general', client .. ': the chosen Castbar tab disabled: General')
+		local threatFound = false
+		for _, result in ipairs(OM.Search(root, 'Threat')) do
+			check(result.path[2] ~= 'nameplate' or result.path[3] == 'Threat' or result.path[3] == 'general',
+				client .. ': only the kept tabs searched: ' .. table.concat(result.path, '.'))
+			if result.path[2] == 'nameplate' and result.path[3] == 'Threat' then threatFound = true end
+		end
+		check(threatFound, client .. ": the kept Threat tab's settings still found")
 
 		-- The Friendly page shows everything, its box disabled.
 		root, view = page(UF, 'friendlynameplate')
@@ -373,9 +379,20 @@ test("one box at a time: the other page's box is disabled, and hovering it says 
 	content:SetSize(774, 400)
 	local body = st.OptionsBody.New(content, root)
 	body:Draw(view.sections)
+	-- In the game a check box starts out taking the mouse (the stubs' frames
+	-- don't): give them it and draw again from the pool, so only Bind can
+	-- take it off the disabled box.
+	local primed = {}
+	for _, c in ipairs(body.cells) do
+		c.widget.frame:EnableMouse(true)
+		primed[c.widget.frame] = true
+	end
+	body:Release()
+	body:Draw(view.sections)
 	local cell
 	for _, c in ipairs(body.cells) do if c.row.key == 'use_friendly' then cell = c end end
-	eq(cell.widget.frame:IsMouseEnabled(), false, "the box takes no mouse: its row's does")
+	check(primed[cell.widget.frame], 'the box is one that took the mouse')
+	eq(cell.widget.frame:IsMouseEnabled(), false, "the disabled box gave the mouse up: its row takes it")
 	stub.fire_script(cell.frame, 'OnEnter')
 	local texts = stub.state(GameTooltip).texts
 	eq(table.concat(texts, '|'), ENEMY_BOX .. '|' .. ENEMY_BOX_DESC .. '|' .. FRIENDLY_USES_THIS, 'its name, what it does, and why it is disabled')

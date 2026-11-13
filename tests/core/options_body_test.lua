@@ -535,13 +535,27 @@ test("a disabled row's tooltip shows its disabledDesc under its desc, in Text > 
 	content:SetSize(774, 400)
 	local body = st.OptionsBody.New(content, root, nil, 774)
 	body:Draw(OM.BuildView(root, 'page').sections)
+	-- In the game a check box starts out taking the mouse (the stubs' frames
+	-- don't), so the boxes are given it and drawn again from the pool: only
+	-- Bind can then take it off a disabled one.
+	local primed = {}
+	for _, c in ipairs(body.cells) do
+		c.widget.frame:EnableMouse(true)
+		primed[c.widget.frame] = true
+	end
+	body:Release()
+	body:Draw(OM.BuildView(root, 'page').sections)
 	local by = {}
-	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	for _, c in ipairs(body.cells) do
+		by[c.row.key] = c
+		check(primed[c.widget.frame], c.row.key .. ': a box that took the mouse, reused')
+	end
 	local tip, restore = watch_tooltip()
 	local red = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.red:GetRGB())
 
 	-- The mouse on a disabled box: the box takes none, so the row is under it.
 	local locked = by.locked
+	eq(locked.widget.frame:IsMouseEnabled(), false, 'the disabled box gave up the mouse it had')
 	hover(locked.widget.frame)
 	check(locked.frame:IsMouseMotionFocus(), 'the row gets the hover over its disabled box')
 	check(not locked.widget.frame:IsMouseMotionFocus(), 'not the box')

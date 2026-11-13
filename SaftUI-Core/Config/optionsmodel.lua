@@ -40,8 +40,11 @@ local st = SaftUI
 	A selection is { tab = key, subtab = key, pick = key }. Each is nil for the
 	first: the first tab that isn't disabled, or the first pick, as
 	AceConfigDialog selects. A key that isn't there (or is hidden) is the same
-	as nil. A disabled tab chosen by key still opens, as AceConfigDialog
-	reopens a saved selection.
+	as nil. A disabled tab chosen by key opens only while no tab beside it is
+	enabled (a page standing down), as AceConfigDialog reopens a saved
+	selection; otherwise it's the same as nil. One page keeps one selection
+	across its picks, so a tab chosen on one pick can be carried to another
+	where it's disabled. Search leaves out the tabs a selection can't open.
 
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
 	disabled, disabledDesc, path, option }: path is the keys from the root,
@@ -334,16 +337,33 @@ local function Levels(options, page, pagePath, choose)
 	return levels
 end
 
--- The entry with key, else the first (that isn't disabled, for tabs).
+-- The entry with key, else the first (that isn't disabled, for tabs). A
+-- disabled tab named by key opens only while no tab is enabled (a page
+-- standing down), so a tab carried over from another pick can't open one
+-- the user can't use.
 local function Choose(list, key, skipDisabled)
+	local named
 	if key ~= nil then
 		for _, entry in ipairs(list) do
-			if entry.key == key then return entry end
+			if entry.key == key then named = entry; break end
 		end
 	end
+	if named and not (skipDisabled and named.disabled) then return named end
 	for _, entry in ipairs(list) do
 		if not (skipDisabled and entry.disabled) then return entry end
 	end
+	return named
+end
+
+-- The entries of a level a selection can open (Choose): every pick, and the
+-- tabs that aren't disabled, or every tab while none is enabled.
+local function Openable(list, slot)
+	if slot == 'pick' then return list end
+	local open = {}
+	for _, entry in ipairs(list) do
+		if not entry.disabled then open[#open + 1] = entry end
+	end
+	return #open > 0 and open or list
 end
 
 ------------------------------------------------------------------ sections and rows
@@ -739,7 +759,9 @@ end
 	{ {pageKey, path, name, tabName, sectionTitle} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
-	aren't searched, nor descriptions. At most 100 results, by page order.
+	aren't searched, nor descriptions, nor a tab a selection can't open (a
+	disabled one beside an enabled one: Choose). At most 100 results, by page
+	order.
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -781,10 +803,12 @@ function OM.Search(root, text)
 		local key = page.key
 		local pageOption, pagePath = options.args[key], { key }
 		if Collect(key, pageOption, pagePath, false, {}) then return results end
-		for _, second in ipairs(SubGroups(pageOption, options, pagePath)) do
+		local slot = SlotFor(2, nil, pageOption)
+		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do
 			local group, path = GetSubOption(pageOption, second.key), Append(pagePath, second.key)
 			if Collect(key, group, path, false, { second.name }) then return results end
-			for _, third in ipairs(SubGroups(group, options, path)) do
+			local thirdSlot = SlotFor(3, slot, group)
+			for _, third in ipairs(Openable(SubGroups(group, options, path), thirdSlot)) do
 				if Collect(key, GetSubOption(group, third.key), Append(path, third.key), true, { second.name, third.name }) then
 					return results
 				end

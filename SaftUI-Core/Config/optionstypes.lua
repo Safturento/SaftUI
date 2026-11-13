@@ -41,9 +41,10 @@ define('toggle', {
 		SetCheck(self.frame, self.value, self.disabled)
 	end,
 
-	-- A disabled box takes no mouse, as every other disabled control: the row
-	-- under it then gets the hover and shows its tooltip, which says why
-	-- (optionsbody.lua). Bind sets it again for a pooled box.
+	-- A disabled box takes no mouse, as every other disabled control but a
+	-- multiselect: the row under it then gets the hover and shows its
+	-- tooltip, which says why (optionsbody.lua). Bind sets it again for a
+	-- pooled box.
 	OnDisabled = function(self, disabled)
 		SetCheck(self.frame, self.frame:GetChecked(), disabled)
 		self.frame:EnableMouse(not disabled)
