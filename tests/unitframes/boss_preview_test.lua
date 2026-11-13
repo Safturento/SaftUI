@@ -1,9 +1,9 @@
--- Boss frames' test mode: UF:UpdateGroupPreview (SaftUI-Unitframes/grouppreview.lua)
--- fills the boss holder with SaftUI-owned preview frames, one for each boss
--- frame the boss Layout shows, each where UF:PlaceUnitFrame (unitframes.lua)
--- puts that boss frame, and hides them while any real boss frame is shown. The
--- boss page's Test mode toggle turns it on, and a Layout or color change draws
--- the previews again.
+-- Boss frames' test mode: UF:UpdateGroupPreview
+-- (SaftUI-Unitframes/grouppreview.lua) fills the boss holder with SaftUI-owned
+-- preview frames, one for each boss frame the boss Layout shows, each where
+-- UF:PlaceUnitFrame (unitframes.lua) puts that boss frame, and hides them
+-- while any real boss frame is shown. The boss page's Test mode toggle turns
+-- it on, and a Layout or color change draws the previews again.
 --
 -- Real: Core's helpers and profile defaults, the unit frames' defaults (boss's
 -- too), filled the way AceDB fills them; unitframes.lua (UF:PlaceUnitFrame,
@@ -13,7 +13,8 @@
 -- config/groupoptions.lua (the boss page's Layout options) and
 -- config/config.lua (the boss page, whose General set is the Layout options'
 -- set); constructors.lua and updaters.lua, which build and style the previews'
--- bars and texts; LibStringFormat-1.0, which init.lua makes st.StringFormat.
+-- bars and texts; nameplates/options.lua; LibStringFormat-1.0, which init.lua
+-- makes st.StringFormat.
 --
 -- Stand-ins, for what needs oUF:
 --   * UF.oUF, as far as unitframes.lua and the previews use it: its colors
@@ -52,6 +53,7 @@ load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/constructors.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 
 local st = SaftUI

@@ -16,7 +16,8 @@
 -- blizzardraid.lua, grouppreview.lua); config/profiles.lua
 -- (UF:GetProfileConfig), config/groupoptions.lua and config/config.lua;
 -- constructors.lua, updaters.lua and tags.lua; the files elements/elements.xml
--- lists; LibStringFormat-1.0, which init.lua makes st.StringFormat.
+-- lists; nameplates/options.lua; LibStringFormat-1.0, which init.lua makes
+-- st.StringFormat.
 --
 -- Stand-in: oUF (tests/unitframes/fixtures/ouf.lua, which says what the real
 -- one does beyond it), made before unitframes.lua loads, with SaftUI's style
@@ -46,6 +47,7 @@ load_saftui('SaftUI-Unitframes/tags.lua')
 for _, file in ipairs({ 'name', 'auras', 'aurawatch', 'power', 'additionalpower', 'health', 'castbar', 'portrait', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 
 local st = SaftUI

@@ -29,6 +29,7 @@ local function fresh(client, class)
 		load_saftui('SaftUI-Unitframes/' .. file .. '.lua')
 	end
 	load_saftui('SaftUI-Unitframes/elements/classpower.lua')
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	UF = st:GetModule('Unitframes')

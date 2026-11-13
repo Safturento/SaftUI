@@ -266,6 +266,7 @@ test('an imported old profile string migrates', function()
 	load_saftui('SaftUI-Unitframes/config/profiles.lua')
 	load_saftui('SaftUI-Unitframes/config/groupoptions.lua')
 	load_saftui('SaftUI-Unitframes/config/config.lua')
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 
 	UF:GetConfigTable().args.profile.args.import.func()
 	local W = st.OptionsWidgets

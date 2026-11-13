@@ -16,9 +16,10 @@
 -- unit's), unitframes.lua, the group files (grouplayout.lua, groups.lua,
 -- blizzardraid.lua, grouppreview.lua), config/profiles.lua,
 -- config/groupoptions.lua, config/config.lua, constructors.lua, updaters.lua,
--- aurafilters.lua and the elements; oUF stood in for by its colors table, and
--- a unit frame by a SaftUI button with UF.ConstructUnit's fields and the
--- elements a test names, built by their own constructors (make_unit_frame).
+-- aurafilters.lua, the elements and nameplates/options.lua; oUF stood in for
+-- by its colors table, and a unit frame by a SaftUI button with
+-- UF.ConstructUnit's fields and the elements a test names, built by their own
+-- constructors (make_unit_frame).
 --
 -- Stand-in, for what needs oUF: the aura container (frame:CreateAuras). oUF's
 -- CreateAuras makes a Blizzard AuraContainer; here a plain frame with the
@@ -59,6 +60,7 @@ local function world(client)
 	for _, file in ipairs(ELEMENTS) do
 		load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 	end
+	load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 	load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 	st.StringFormat = LibStub('LibStringFormat-1.0')
 	UF = st:GetModule('Unitframes')

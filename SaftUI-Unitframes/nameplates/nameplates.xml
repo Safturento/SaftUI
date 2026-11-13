@@ -5,4 +5,5 @@
 	<Script file="threat.lua"/>
 	<Script file="subtext.lua"/>
 	<Script file="pixels.lua"/>
+	<Script file="options.lua"/>
 </Ui>

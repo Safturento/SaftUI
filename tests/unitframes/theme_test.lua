@@ -28,7 +28,8 @@
 -- updaters.lua; aurafilters.lua (the aura groups' filters, UF.AuraFilter); the
 -- health, power, additional power, castbar, class power, aura and indicator
 -- elements, whose constructors build the parts and whose UpdateConfig draws
--- them; LibStringFormat-1.0, which init.lua makes st.StringFormat.
+-- them; nameplates/options.lua (the nameplate pages, which config.lua builds);
+-- LibStringFormat-1.0, which init.lua makes st.StringFormat.
 --
 -- Stand-ins, for what needs oUF:
 --   * UF.oUF, as far as unitframes.lua and the previews use it: its colors
@@ -84,6 +85,7 @@ load_saftui('SaftUI-Unitframes/aurafilters.lua')
 for _, file in ipairs({ 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
 end
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 load_saftui('SaftUI-Core/Libraries/LibStringFormat-1.0/LibStringFormat-1.0.lua')
 
 local st = SaftUI

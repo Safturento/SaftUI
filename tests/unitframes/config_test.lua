@@ -12,7 +12,8 @@
 -- whose tabs config.lua adds to each unit that has the element;
 -- nameplates/nameplates.lua (UF:NameplateAddon, which the nameplate pages
 -- read; with no other nameplate addon loaded, SaftUI draws the plates) and
--- nameplates/threat.lua (the plates' Threat element and its tab).
+-- nameplates/threat.lua (the plates' Threat element and its tab) and
+-- nameplates/options.lua (the nameplate pages).
 --
 -- Stand-ins, for unitframes.lua, which needs oUF:
 --   * UF:UpdateConfig counts its calls. The real one re-applies every unit
@@ -85,6 +86,7 @@ load_saftui('SaftUI-Unitframes/config/config.lua')
 load_saftui('SaftUI-Unitframes/updaters.lua')
 load_saftui('SaftUI-Unitframes/nameplates/nameplates.lua')
 load_saftui('SaftUI-Unitframes/nameplates/threat.lua')
+load_saftui('SaftUI-Unitframes/nameplates/options.lua')
 -- elements/elements.xml's order; aurawatch.lua and portrait.lua register nothing.
 for _, file in ipairs({ 'name', 'auras', 'power', 'additionalpower', 'health', 'castbar', 'classpower', 'indicators' }) do
 	load_saftui('SaftUI-Unitframes/elements/' .. file .. '.lua')
