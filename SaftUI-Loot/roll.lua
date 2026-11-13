@@ -281,18 +281,31 @@ end
 -- (rollinfo.lua leaves finished bars out), so a new roll of the same item
 -- matches as if it weren't there. Its timer stops: empty when its time ran
 -- out, otherwise where it was. `rolls` is the drop's last summary, if it could
--- be read; without it the bar keeps the counts it had.
+-- be read; without it the bar keeps the counts it had. It remembers the drop
+-- it finished on (`finalDropID`), only to show later results for it
+-- (LT:UpdateRollBars): a time-out's auto-passes and winner can arrive inside
+-- the linger.
 function LT:FinishHeldRoll(bar, why, rolls)
 	if not bar.holding or bar.finishedAt then return end
 	bar.finishedLeft = why == 'time' and 0 or HeldLeft(bar)
 	bar.finishedAt = GetTime()
-	bar.dropID = nil
+	bar.finalDropID, bar.dropID = bar.dropID, nil
 	if rolls then
 		bar.rolls = rolls
 		self:SetRollCounts(bar.counts, rolls)
 	end
 	SetBarTimer(bar, bar.finishedLeft)
-	if st.DEBUG then st:Debug('Loot', 'held roll finished:', bar.rollID, why) end
+	if st.DEBUG then
+		-- What the result was, to tell a real one from a misread drop (a winner
+		-- set before the roll ends): how many are still waiting, and who won.
+		local summary = rolls or bar.rolls
+		local waiting = 0
+		for _, line in ipairs(summary and summary.list or {}) do
+			if line.state == self.ROLL_STATE.NoRoll then waiting = waiting + 1 end
+		end
+		st:Debug('Loot', 'held roll finished:', bar.rollID, why, 'waiting', waiting,
+			summary and (summary.allPassed and 'all passed' or summary.winner and 'winner' or 'no winner') or 'no summary')
+	end
 end
 
 -- Counts each held roll's time down, finishes those whose time is up, and fades
@@ -363,7 +376,7 @@ function LT:HoldRoll(frame, roll)
 		self:SetRollTooltipScripts(bar.InfoFrame, HeldTooltip)
 	end
 	bar.holding = true
-	bar.finishedAt, bar.finishedLeft = nil, nil
+	bar.finishedAt, bar.finishedLeft, bar.finalDropID = nil, nil, nil
 	bar:SetAlpha(1)
 	bar.rollID, bar.from = roll.rollID, frame
 	bar.ends, bar.length = roll.ends, roll.length
@@ -400,7 +413,7 @@ function LT:HoldRoll(frame, roll)
 	heldParent:SetScript('OnUpdate', OnHeldUpdate)
 	self:LayoutRollFrames()
 	self:UpdateRollPreviewVisibility()
-	if st.DEBUG then st:Debug('Loot', 'held roll', bar.rollID, 'choice', choice, 'seconds left', roll.ends - GetTime()) end
+	if st.DEBUG then st:Debug('Loot', 'held roll', bar.rollID, 'choice', choice, 'seconds left', ('%.1f'):format(roll.ends - GetTime())) end
 	return bar
 end
 
@@ -416,7 +429,7 @@ function LT:ReleaseHeldRoll(bar)
 		end
 	end
 	bar.holding = nil
-	bar.finishedAt, bar.finishedLeft = nil, nil
+	bar.finishedAt, bar.finishedLeft, bar.finalDropID = nil, nil, nil
 	bar:SetAlpha(1)
 	bar:Hide()
 	bar.rollID, bar.from, bar.link, bar.item, bar.itemID = nil, nil, nil, nil, nil

@@ -937,9 +937,224 @@ test('the held roll debug prints each early return, finishing and release, once'
 	local late = start_roll('ring')
 	choose(late, 'Greed')
 	lines = printed_by(function() tick(125) end)
-	st.DEBUG = false
 	check(any_line(lines, 'held roll finished: ' .. late .. ' time'), 'a held roll that times out says why')
-	eq(#lines, 1, 'and a frame with nothing changing prints nothing: ' .. table.concat(lines, ' | '))
+	eq(#lines, 1, 'the frame it finishes prints that and nothing else: ' .. table.concat(lines, ' | '))
+	lines = printed_by(function() tick_by(2.9, 0.1) end)
+	eq(#lines, 0, 'the frames of its linger print nothing: ' .. table.concat(lines, ' | '))
+	lines = printed_by(function() tick_by(0.4, 0.1) end)
+	eq(#lines, 0, 'nor do those of its fade: ' .. table.concat(lines, ' | '))
+	lines = printed_by(function() tick(0.3) end)
+	st.DEBUG = false
+	eq(#lines, 1, 'the frame it goes prints its release: ' .. table.concat(lines, ' | '))
+	check(any_line(lines, 'held roll released: ' .. late), 'naming the roll')
+end)
+
+test('debug prints only at a state change: not per frame in the countdown, the linger or the fade, nor on every update', function()
+	world()
+	local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' } })
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(0.123)
+	st.DEBUG = true
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if not bar then return end
+
+	local lines = printed_by(function()
+		tick_by(5, 0.1)
+		for _ = 1, 3 do LT:UpdateRollBars() end
+		tick_by(5, 0.1)
+	end)
+	eq(#lines, 0, 'the countdown and updates that change nothing print nothing: ' .. table.concat(lines, ' | '))
+
+	-- A held roll with no drop yet claims one once, then keeps it quietly.
+	local late = start_roll('sword')
+	LT:UpdateRollBars()
+	choose(late, 'Greed')
+	lines = printed_by(function()
+		history_choice(add_drop('sword', {}), 'Greed')
+		for _ = 1, 4 do LT:UpdateRollBars() end
+	end)
+	local took = 0
+	for _, line in ipairs(lines) do
+		if line:find('took drop', 1, true) then took = took + 1 end
+	end
+	eq(took, 1, 'a claim prints once, not on every update: ' .. table.concat(lines, ' | '))
+
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	lines = printed_by(function()
+		LT:UpdateRollBars()
+		LT:UpdateRollBars()
+		tick_by(2.9, 0.1)
+		LT:UpdateRollBars()
+		tick_by(0.4, 0.1)
+	end)
+	eq(#lines, 1, 'the finish, then nothing in the linger or the fade: ' .. table.concat(lines, ' | '))
+	check(any_line(lines, 'held roll finished: ' .. roll .. ' drop resolved'), 'it is the finish')
+	st.DEBUG = false
+end)
+
+test('the debug lines give seconds to one decimal, and the finish says what the result was', function()
+	world()
+	local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' }, { 'Stonefist', 'SHAMAN', 'NoRoll' } })
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(0.123)
+	st.DEBUG = true
+	local lines = printed_by(function() choose(roll, 'Greed', drop) end)
+	check(any_line(lines, 'choice noted: ' .. roll .. ' Greed seconds left 119.9'), 'noted: ' .. table.concat(lines, ' | '))
+	check(any_line(lines, 'choice Greed seconds left 119.9'), 'held: ' .. table.concat(lines, ' | '))
+	for _, line in ipairs(lines) do
+		check(not line:find('%.%d%d'), 'no long decimals: ' .. line)
+	end
+
+	-- Resolved with a winner while one player has not chosen.
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	lines = printed_by(function() LT:UpdateRollBars() end)
+	check(any_line(lines, 'held roll finished: ' .. roll .. ' drop resolved waiting 1 winner'), 'a winner: ' .. table.concat(lines, ' | '))
+
+	-- Everyone passed.
+	local passed = add_drop('cloth', { { 'Mistweave', 'PRIEST', 'Pass' } })
+	local r2 = start_roll('cloth')
+	choose(r2, 'Pass', passed)
+	passed.allPassed = true
+	lines = printed_by(function() LT:UpdateRollBars() end)
+	check(any_line(lines, 'held roll finished: ' .. r2 .. ' drop resolved waiting 0 all passed'), 'all passed: ' .. table.concat(lines, ' | '))
+
+	-- Its time ran out with no result yet.
+	local open = add_drop('sword', { { 'Stonefist', 'SHAMAN', 'NoRoll' } })
+	local r3 = start_roll('sword')
+	choose(r3, 'Greed', open)
+	lines = printed_by(function() tick(121) end)
+	st.DEBUG = false
+	check(any_line(lines, 'held roll finished: ' .. r3 .. ' time waiting 1 no winner'), 'timed out: ' .. table.concat(lines, ' | '))
+end)
+
+test('a time-out shows the result when it arrives inside the linger, for its own drop only', function()
+	world()
+	local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' }, { 'Stonefist', 'SHAMAN', 'NoRoll' } })
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(30)
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if not bar then return end
+	tick(91)
+	check(bar.finishedAt ~= nil, 'its time ran out')
+	eq(bar.dropID, nil, 'it claims no drop')
+	eq(count(bar, 'Pass'), nil, 'and shows no pass yet')
+	local finishedAt = bar.finishedAt
+	tick(0.5)
+
+	-- Another drop of the item changes nothing on it.
+	local other = add_drop('amulet', { { 'Quickshot', 'HUNTER', 'Greed' }, { 'Brightblade', 'PALADIN', 'Greed' } })
+	LT:UpdateRollBars()
+	eq(count(bar, 'Greed'), '2', "another drop's choices are not its counts")
+	eq(bar.dropID, nil, 'and it still claims nothing')
+
+	-- The server's result for its own drop: the AFK player auto-passes, a winner.
+	drop.rollInfos[2].state = S.Pass
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	LT:UpdateRollBars()
+	eq(count(bar, 'Greed'), '2', 'the Greeds')
+	eq(count(bar, 'Pass'), '1', 'the auto-pass shows')
+	eq(bar.rolls ~= nil and bar.rolls.winner, 1, 'its summary has the winner')
+	eq(bar.dropID, nil, 'it still claims no drop')
+	eq(bar.finishedAt, finishedAt, "and the linger's clock is untouched")
+	eq(bar.Timer.Text:GetText(), '00:00', 'its timer stays empty')
+	eq(bar:GetAlpha(), 1, 'at full alpha')
+
+	-- A new roll of the item matches normally while the old bar lingers.
+	local r2 = start_roll('amulet')
+	LT:UpdateRollBars()
+	choose(r2, 'Greed', other)
+	local new = held_bar(r2)
+	check(new ~= nil and new ~= bar, 'a bar of its own')
+	if not new then return end
+	eq(new.dropID, '7:2', 'it took the other drop')
+	eq(count(new, 'Greed'), '3', 'with its counts')
+	eq(count(bar, 'Pass'), '1', "the old bar's own")
+	tick(3.6)
+	eq(held_bar(roll), nil, 'the old bar goes on its own clock')
+	check(held_bar(r2) ~= nil, 'the new one stays')
+end)
+
+test("a finished bar's timer stays where it was, through frames and a config change", function()
+	world()
+	local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' } })
+	local roll = start_roll('amulet')
+	LT:UpdateRollBars()
+	tick(30)
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if not bar then return end
+	eq(bar.Timer.Text:GetText(), '01:30', 'counting down')
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	LT:UpdateRollBars()
+	tick_by(2.5, 0.1)
+	eq(bar.Timer.Text:GetText(), '01:30', 'stopped once finished')
+	eq(bar.Timer:GetValue(), 90, 'at the same value')
+	LT:UpdateGroupLootConfig()
+	eq(bar.Timer.Text:GetText(), '01:30', 'a config change does not set it going again')
+	eq(bar.Timer:GetValue(), 90, 'nor move it')
+end)
+
+test('the per-frame update stops when the last held bar, finished or not, is released', function()
+	world()
+	local drop = add_drop('amulet', {})
+	local roll = start_roll('amulet')
+	choose(roll, 'Greed', drop)
+	local bar = held_bar(roll)
+	check(bar ~= nil, 'held')
+	if not bar then return end
+	local parent = bar:GetParent()
+	check(parent:GetScript('OnUpdate') ~= nil, 'running while a roll is held')
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	LT:UpdateRollBars()
+	check(parent:GetScript('OnUpdate') ~= nil, 'and while it lingers')
+	tick(3.6)
+	eq(held_bar(roll), nil, 'released')
+	eq(parent:GetScript('OnUpdate'), nil, 'nothing runs every frame any more')
+end)
+
+test('the last to choose gets the final counts whichever comes first, the history update or the bar hiding', function()
+	local function room()
+		world()
+		local drop = add_drop('amulet', { { 'Mistweave', 'PRIEST', 'Greed' }, { 'Quickshot', 'HUNTER', 'Pass' } })
+		local roll = start_roll('amulet')
+		LT:UpdateRollBars()
+		tick(10)
+		return drop, roll
+	end
+
+	-- The bar hides first; the history update (your pick, the result) follows.
+	local drop, roll = room()
+	choose(roll, 'Greed')
+	local bar = held_bar(roll)
+	check(bar ~= nil and bar.finishedAt == nil, 'A: held, not finished yet')
+	if not bar then return end
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	history_choice(drop, 'Greed')
+	LT:UpdateRollBars()
+	check(bar.finishedAt ~= nil, 'A: the update finishes it')
+	eq(count(bar, 'Greed'), '2', "A: Mistweave's and yours")
+	eq(count(bar, 'Pass'), '1', "A: and Quickshot's pass")
+
+	-- The history update comes first, with Blizzard's bar still up.
+	drop, roll = room()
+	drop.winner = { playerName = 'Mistweave', playerClass = 'PRIEST' }
+	history_choice(drop, 'Greed')
+	LT:UpdateRollBars()
+	check(frame_of(roll) ~= nil, 'B: Blizzard bar still up')
+	choose(roll, 'Greed')
+	bar = held_bar(roll)
+	check(bar ~= nil and bar.finishedAt ~= nil, 'B: held and finished at once')
+	if not bar then return end
+	eq(count(bar, 'Greed'), '2', "B: Mistweave's and yours")
+	eq(count(bar, 'Pass'), '1', "B: and Quickshot's pass")
 end)
 
 test('a roll with no loot history drop is held with no counts', function()

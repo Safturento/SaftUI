@@ -19,7 +19,8 @@
 -- you've chosen on (only a bar that keeps its roll keeps one), and a held roll
 -- only takes one you have. It finishes when its drop resolves (here) or its
 -- time runs out (roll.lua): it then stays up a few seconds and fades before it
--- goes (roll.lua), takes no drop and is left out of matching.
+-- goes (roll.lua), takes no drop and is left out of matching; it still shows
+-- the later results of the drop it finished on (counts only).
 --
 -- The roll frames and their buttons are Blizzard's: nothing is written onto
 -- them. Each bar's count font strings and matched drop live in `bars`, keyed by
@@ -225,6 +226,14 @@ end
 
 local function ByRoll(a, b) return a.rollID < b.rollID end
 
+-- A drop's summary from its id (encounterID:index, as LT:GetOpenDrops makes
+-- them), nil when it can't be read.
+function LT:ReadDropRolls(dropID)
+	local encounterID, index = dropID:match('^(%-?%d+):(%-?%d+)$')
+	local info = encounterID and C_LootHistory.GetSortedInfoForDrop(tonumber(encounterID), tonumber(index))
+	return self:SummarizeDrop(info)
+end
+
 -- Matches every shown roll bar and every held roll (roll.lua) to a drop still
 -- being rolled, then sets its counts and rebuilds its tooltip if that's open;
 -- a held roll whose drop has resolved finishes. Runs after every loot history
@@ -257,7 +266,20 @@ function LT:UpdateRollBars()
 	end
 	local held = {}
 	for _, bar in ipairs(self:GetHeldRolls()) do
-		if bar.item and not bar.finishedAt then tinsert(held, bar) end
+		if bar.finishedAt then
+			-- A finished bar takes no part in matching, but shows later results for
+			-- the drop it finished on, counts only: a time-out's auto-passes and
+			-- winner come inside its linger.
+			local rolls = bar.finalDropID and self:ReadDropRolls(bar.finalDropID)
+			if rolls then
+				bar.rolls = rolls
+				self:SetRollCounts(bar.counts, rolls)
+				UpdateOpenTooltip(bar.InfoFrame)
+				UpdateOpenTooltip(bar.IconFrame)
+			end
+		elseif bar.item then
+			tinsert(held, bar)
+		end
 	end
 	if not shown[1] and not held[1] then return end
 	-- First come, first served, assuming the game numbers rolls in the order
@@ -329,9 +351,7 @@ function LT:UpdateRollBars()
 	-- still be read; if not, the bar keeps the counts it had.
 	for _, bar in ipairs(held) do
 		if ended[bar] then
-			local encounterID, index = bar.dropID:match('^(%-?%d+):(%-?%d+)$')
-			local info = encounterID and C_LootHistory.GetSortedInfoForDrop(tonumber(encounterID), tonumber(index))
-			self:FinishHeldRoll(bar, 'drop resolved', self:SummarizeDrop(info))
+			self:FinishHeldRoll(bar, 'drop resolved', self:ReadDropRolls(bar.dropID))
 		end
 	end
 end
@@ -347,7 +367,8 @@ end
 -- The bar hid. Hidden itself (not only with UIParent), Blizzard took its roll
 -- away: it ended, or you chose on it. If you chose, the roll is held, carrying
 -- the drop it was matched to (or last was: one that resolved just before
--- makes the held roll go at once, below).
+-- makes the held roll finish at once (LT:UpdateRollBars, below): it stays up a
+-- few seconds and fades).
 local function OnBarHide(frame)
 	local state = bars[frame]
 	if state then
@@ -398,7 +419,7 @@ local function OnRollChosen(rollID, rollType)
 					ends = GetTime() + LT.RollSeconds(left, length),
 					length = LT.RollSeconds(length, length),
 				}
-				if st.DEBUG then st:Debug('Loot', 'choice noted:', rollID, choice, 'seconds left', LT.RollSeconds(left, length)) end
+				if st.DEBUG then st:Debug('Loot', 'choice noted:', rollID, choice, 'seconds left', ('%.1f'):format(LT.RollSeconds(left, length))) end
 			elseif st.DEBUG then
 				st:Debug('Loot', 'choice not noted:', rollID, 'the timer values are not plain')
 			end
