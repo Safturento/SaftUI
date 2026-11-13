@@ -38,6 +38,14 @@ local function onMouseScroll(self, delta)
 	end
 end
 
+-- The profile's font and font size on a chat frame, shared by SkinChatFrame and
+-- ApplyChatFrameConfig.
+function CHT:ApplyChatFont(frame)
+	local font, _, outline = st:GetFont(self.config.font):GetFont()
+	frame:SetFont(font, self.config.fontsize, outline)
+	frame:SetShadowOffset(0, 0)
+end
+
 function CHT:SkinChatFrame(frame)
 	local name = frame:GetName()
 	st:StripTextures(frame)
@@ -58,9 +66,7 @@ function CHT:SkinChatFrame(frame)
 	frame:SetFading(false)
 	frame:SetClampRectInsets(0,0,0,0)
 
-	local font, size, outline = st:GetFont(self.config.font):GetFont()
-	frame:SetFont(font, self.config.fontsize, outline)
-	frame:SetShadowOffset(0,0)
+	self:ApplyChatFont(frame)
 
 	frame.EditBox = _G[name..'EditBox']
 	frame.EditBox.Header = _G[name..'EditBoxHeader']
@@ -115,9 +121,7 @@ end
 -- Applies the profile's font, font size, theme, padding and edit box
 -- height to a chat frame SkinChatFrame already skinned.
 function CHT:ApplyChatFrameConfig(frame)
-	local font, _, outline = st:GetFont(self.config.font):GetFont()
-	frame:SetFont(font, self.config.fontsize, outline)
-	frame:SetShadowOffset(0, 0)
+	self:ApplyChatFont(frame)
 
 	local editbox = _G[frame:GetName()..'EditBox']
 	if editbox then
