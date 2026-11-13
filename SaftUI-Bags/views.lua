@@ -221,9 +221,7 @@ function INV:GetViewSections(id, view)
 
 	local bags, numItems, numLoading, categoryOf
 	if view == 'rows' then
-		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID)
-			return self:IsReagentBag(bagID) and 'reagent' or 'bag'
-		end)
+		bags, numItems, numLoading, categoryOf = self:ReadBags(id, function(bagID) return self:StackGroup(bagID) end)
 		local byCategory = {}
 		for _, item in ipairs(ItemsOf(bags)) do
 			local category = categoryOf[item]
