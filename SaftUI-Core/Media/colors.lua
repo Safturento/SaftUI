@@ -55,7 +55,7 @@ CO.SECTIONS = {
 			{ 'blue', 'Blue', "Selected options window tabs and rows, tank role marks on unit frames, and Alliance on the zone text and the world map's zone names." },
 			{ 'purple', 'Purple', 'Transmog on loot rolls: the roll buttons and the roll counts.' },
 			{ 'cyan', 'Cyan', 'Warbound item levels and the warband bank count in bags.' },
-			{ 'white', 'White', 'Need on loot rolls, and plain item levels and counts in bags.' },
+			{ 'white', 'White', 'Need on loot rolls, and plain item levels and counts in bags, and item levels on the character frame.' },
 		}),
 	},
 	{

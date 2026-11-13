@@ -61,12 +61,28 @@ local function SetupSlot(slotId, slotName)
 	local button = _G[format('Character%sSlot', slotName)]
 	if not button then return end
 
-	local itemLevel = button:CreateFontString(nil, 'OVERLAY', 'NumberFontNormalSmall')
+	-- Looks like the item level on SaftUI's bag slots: the Skinning font, white,
+	-- on a dark backing. The font and backing are SaftUI's own; only they are
+	-- added to Blizzard's button.
+	local itemLevel = button:CreateFontString(nil, 'OVERLAY')
+	local font = st:GetFont(st.config.profile.skinning.font)
+	if font then itemLevel:SetFontObject(font) end
+	itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
 	itemLevel:SetDrawLayer('OVERLAY', 7)
-	itemLevel:SetPoint('BOTTOMRIGHT', -2, 2)
+	itemLevel:SetPoint('BOTTOMRIGHT', -3, 3)
+
+	local itemLevelBG = button:CreateTexture(nil, 'OVERLAY')
+	itemLevelBG:SetDrawLayer('OVERLAY', 6)
+	itemLevelBG:SetPoint('BOTTOMRIGHT', button, -1, 1)
+	itemLevelBG:SetPoint('TOPLEFT', itemLevel, -2, 1)
+	itemLevelBG:SetTexture(st.BLANK_TEX)
+	itemLevelBG:SetAlpha(0.8)
+	itemLevelBG:SetVertexColor(0, 0, 0)
+	itemLevelBG:Hide()
 
 	slots[button] = {
 		itemLevel = itemLevel,
+		itemLevelBG = itemLevelBG,
 		gems = CF:CreateSlotGems(button, SLOT_POSITIONS[slotId]),
 	}
 end
@@ -78,14 +94,29 @@ function CF:UpdateEquipSlot(button)
 	local itemLink = GetInventoryItemLink('player', button:GetID())
 
 	if itemLink then
-		slot.itemLevel:SetText(C_Item.GetDetailedItemLevelInfo(itemLink) or '')
+		local level = C_Item.GetDetailedItemLevelInfo(itemLink)
+		slot.itemLevel:SetText(level or '')
+		slot.itemLevelBG:SetShown(level ~= nil)
 		Util:SetItemQuality(button, itemLink)
 	else
 		slot.itemLevel:SetText('')
+		slot.itemLevelBG:Hide()
 		Util:ClearItemQuality(button)
 	end
 
 	self:UpdateSlotGems(slot.gems, itemLink)
+end
+
+-- A profile change or the Skinning page's font: the item level text takes the
+-- profile's Skinning font again.
+function CF:UpdateConfig()
+	local font = st:GetFont(st.config.profile.skinning.font)
+	if not font then return end
+	for _, slot in pairs(slots) do
+		slot.itemLevel:SetFontObject(font)
+		-- A font object can reset an explicit colour, and the profile's white may differ.
+		slot.itemLevel:SetTextColor(st.config.profile.colors.text.white:GetRGB())
+	end
 end
 
 function CF:UpdateAllEquipSlots()
