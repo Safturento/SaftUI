@@ -64,10 +64,10 @@ string.unmagic = removeMagicChars
 
 function string.matchnocase(str, pattern) return strlower(removeMagicChars(str)):match(strlower(pattern)) end
 
-function st:barrier(self, elapsed, threshold)
-	self.barrierTime = (self.barrierTime or 0) + elapsed
-	if self.barrierTime <= threshold then return true end
-	self.barrierTime = 0
+function st:barrier(frame, elapsed, threshold)
+	frame.barrierTime = (frame.barrierTime or 0) + elapsed
+	if frame.barrierTime <= threshold then return true end
+	frame.barrierTime = 0
 	return false
 end
 
