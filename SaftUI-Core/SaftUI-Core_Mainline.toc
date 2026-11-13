@@ -37,6 +37,7 @@ Widgets\load.xml
 skinning.lua
 panels.lua
 theme.lua
+themeart_data.lua
 themeart.lua
 utilities.lua
 
