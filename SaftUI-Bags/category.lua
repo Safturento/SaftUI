@@ -28,7 +28,7 @@ function INV:GetInventoryItemInfo(bagID, slotID, containerId, peek)
 				--StaticPopup_Show("EXTRACT_LINK_DIALOG", nil, nil, item.hyperlink)
 				--\124cnIQ4:\124Hkeystone:180653:504:11:162:10:9:0:0\124h[Keystone: Darkflame Cleft (11)]\124h\124r
 
-				_, _, _, keyLevel =  string.split(':', itemString)
+				local keyLevel = select(4, string.split(':', itemString))
 
 				name = item.itemName
 				class = 'Key'
