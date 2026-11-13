@@ -19,15 +19,17 @@ local AB = st:GetModule('ActionBars')
 	texts): HasSetting says, it is never own and its value is the bar's stored
 	one. Enable, position, Theme and Background aren't shared.
 
-	Nothing here applies a change: callers run AB:UpdateBar(id) (or UpdateBars)
-	after, which defers to the end of combat as it always has. Every function
-	here is table writes only, safe in combat.
+	Nothing here applies a change: callers run AB:UpdateBar(id) (or AB:UpdateBars,
+	bars.lua) after, which defers to the end of combat as it always has. Every
+	function here is table writes only, safe in combat.
 
 	AB:ConvertProfile() turns a profile saved before this existed into one that
 	looks exactly the same: All bars takes Bar 1's values and each bar owns the
 	settings where it shows something else. It runs once per profile, marked by
 	profile.actionbars.version (inside actionbars, so a profile copy carries the
-	marker and a reset clears it), from AB:OnEnable and AB:UpdateConfig.
+	marker and a reset clears it), from AB:OnEnable and AB:UpdateConfig, through
+	AB:TryConvertProfile, which reports an error through the game's error handler
+	and goes on: the bars then build from the profile as it is.
 ]]
 
 AB.CONFIG_VERSION = 1
@@ -57,7 +59,7 @@ end
 -- How many buttons each bar has, for the conversion to compare what a bar shows
 -- (a bar's built buttons aren't there yet when a profile is converted).
 local NUM_BUTTONS = { pet = 10, stance = 10 }
-local DEFAULT_NUM_BUTTONS = 12
+local DEFAULT_NUM_BUTTONS = AB.NUM_BUTTONS
 
 -- Whether a table of parts or plain values is the same; a position is the list
 -- of its four values.
@@ -282,13 +284,6 @@ function AB:ResetCountdown(id)
 	own['countdown.position'] = differs
 end
 
--- Every built bar, updated from the profile, in AB.BAR_IDS order.
-function AB:UpdateBars()
-	for _, id in ipairs(self.BAR_IDS) do
-		if self.bars[id] then self:UpdateBar(id) end
-	end
-end
-
 -- What a bar shows for key, for the conversion: Buttons and Buttons per row
 -- clamped to the bar's button count, a position as its parts.
 local function Shown(src, key, numButtons)
@@ -334,4 +329,12 @@ function AB:ConvertProfile()
 	end
 
 	config.version = self.CONFIG_VERSION
+end
+
+-- ConvertProfile that never stops its caller: a profile the conversion can't
+-- read (a malformed saved table) is reported through the error handler, left
+-- without the marker (so the next profile change tries again), and the bars
+-- still build from it. Every caller at login or on a profile change uses this.
+function AB:TryConvertProfile()
+	return xpcall(function() self:ConvertProfile() end, geterrorhandler())
 end

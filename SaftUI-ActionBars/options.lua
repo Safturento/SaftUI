@@ -25,6 +25,9 @@ local AB = st:GetModule('ActionBars')
 	Cooldown numbers, Blizzard's own "Show Numbers for Cooldowns" (skin.lua:
 	the game's setting, read and set as it is, never in the profile), then
 	one picker entry ('Bar') per bar, each with tabs:
+	  (General, Text and Visibility read the bar's effective config, All bars'
+	  value for a setting the bar doesn't own, and a change makes the setting
+	  the bar's own: shared.lua.)
 	  - General: enable, buttons (up to the bar's 12 or 10), buttons per row,
 	    button size and spacing, and the Position option, last. The relative
 	    frame typed there goes through st:ValidateAnchor with the bar, so a bar

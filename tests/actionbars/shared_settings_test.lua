@@ -24,6 +24,7 @@ local FILES = {
 }
 
 local st, AB, LAB
+local fader -- bars.lua's fader frame, caught while the file loads
 
 -- A fresh world with Blizzard's setting on. saved is the action bars' part of
 -- a profile saved earlier (AceDB keeps only what differs from the defaults).
@@ -35,7 +36,22 @@ local function fresh(saved, convert)
 	load_saftui('SaftUI-ActionBars/config.lua')
 	if saved then st.config.profile.actionbars = saved end
 	apply_defaults()
-	for _, file in ipairs(FILES) do load_saftui(file) end
+	fader = nil
+	for _, file in ipairs(FILES) do
+		if file == 'SaftUI-ActionBars/bars.lua' then
+			-- The fader is the file's only unnamed Frame.
+			local real = CreateFrame
+			CreateFrame = function(kind, name, ...)
+				local frame = real(kind, name, ...)
+				if kind == 'Frame' and name == nil then fader = frame end
+				return frame
+			end
+			load_saftui(file)
+			CreateFrame = real
+		else
+			load_saftui(file)
+		end
+	end
 	AB = st:GetModule('ActionBars')
 	st:BindModuleConfig(AB, 'actionbars')
 	stub.cvars[CVAR] = '1'
@@ -207,6 +223,11 @@ test('the conversion runs once per profile, and again for one switched to, copie
 	AB:SetSetting('bar2', 'size', 33)
 	AB:ConvertProfile()
 	eq(AB:GetSetting('bar2', 'size'), 33, "a bar's own value changed after is kept by a third call (the marker)")
+	-- What a second conversion would break is All bars: it would take Bar 1's
+	-- stored values again (and a theme change runs UpdateConfig).
+	AB:SetSetting('all', 'size', 38)
+	AB:ConvertProfile()
+	eq(AB:GetSetting('all', 'size'), 38, "All bars keeps its change: a converted profile isn't converted again")
 
 	-- A profile never converted, bound and updated.
 	AB.built = true
@@ -231,7 +252,7 @@ test('a profile switched to in combat is converted at once, and the bars wait fo
 	local b = button('SharedCombatButton')
 	bar('bar2', b)
 	AB.built = true
-	function AB:UpdateBindings() end -- the keys' own test is elsewhere; they need the game's binding API
+	function AB:UpdateBindings() end -- the stubs have no binding API (GetBindingKey, SetOverrideBindingClick, C_PetBattles)
 	eq(b:GetWidth(), 45, 'laid out at 45')
 	stub.in_combat = true
 	switch_profile({ actionbars = { bar2 = { size = 30 } } })
@@ -297,7 +318,7 @@ test('setting, resetting and applying', function()
 	AB:SetSetting('bar4', 'perrow', 3)
 	AB:SetSetting('bar5', 'perrow', 3)
 	AB:ApplyTo('all', 'perrow', { 'bar4' })
-	eq(AB:IsOwn('bar4', 'perrow') or false, false, 'bar4 follows')
+	eq(AB:IsOwn('bar4', 'perrow'), false, 'bar4 follows')
 	eq(AB:IsOwn('bar5', 'perrow'), true, 'bar5 still owns')
 	eq(table.concat(AB:OwnersOf('perrow'), ','), 'bar5', 'OwnersOf')
 	AB:ApplyToAll('all', 'perrow')
@@ -382,4 +403,171 @@ test('the countdown Reset: on All bars the shared values, on a bar its own only 
 	eq(AB:IsOwn('bar2', 'countdown.position'), true, "All bars' place isn't the default: the bar owns the default place")
 	eq(AB:GetSetting('bar2', 'countdown.position', 'x_off'), 0, 'in the middle')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+-- The first login on a profile saved before the update: OnEnable converts before
+-- the build, which in combat waits for the end of it.
+test('OnEnable converts the profile before the build, in combat too', function()
+	fresh({ bar2 = { size = 30 } }, false)
+	stub.in_combat = true
+	AB:OnEnable()
+	eq(AB.config.version, 1, 'converted')
+	eq(AB:IsOwn('bar2', 'size'), true, 'bar2 owns its 30')
+	eq(AB.built, nil, 'the build waits for the end of combat')
+	eq(AB:GetSetting('all', 'size'), 45, "All bars: Bar 1's")
+	eq(table.concat(take_errors(), '\n'), '', 'no errors')
+end)
+
+-- A profile switch before the bars are built (a /reload in combat, then a switch
+-- before combat ends): the deferred build must draw a converted profile.
+test('a profile switched to before the bars are built is converted', function()
+	fresh()
+	AB.built = false
+	switch_profile({ actionbars = { bar3 = { size = 20 } } })
+	eq(AB.config.version, 1, 'converted')
+	eq(AB:IsOwn('bar3', 'size'), true, 'bar3 owns its 20')
+	eq(table.concat(take_errors(), '\n'), '', 'no errors')
+end)
+
+test('a conversion error is reported and the bars still build from the profile', function()
+	fresh(nil, false)
+	AB.config.bar2.text.hotkey = 5 -- a malformed saved table
+	local seen, builds = {}, 0
+	function AB:Build() builds = builds + 1 end -- the real one needs LibActionButton's buttons
+	local real = geterrorhandler
+	geterrorhandler = function() return function(message) seen[#seen + 1] = tostring(message) end end
+	local ok, err = pcall(function() AB:OnEnable() end)
+	geterrorhandler = real
+	check(ok, 'OnEnable goes on: ' .. tostring(err))
+	eq(#seen, 1, 'one error reported')
+	eq(AB.config.version, nil, 'no marker, so the next profile change tries again')
+	eq(builds, 1, 'the bars are built')
+	take_errors()
+end)
+
+test('a position that differs in one part only is owned whole', function()
+	fresh({ bar2 = { text = { hotkey = { x_off = 5 } } } }, false)
+	AB:ConvertProfile()
+	eq(AB:IsOwn('bar2', 'hotkey.position'), true, 'owned')
+	eq(AB:GetSetting('bar2', 'hotkey.position', 'x_off'), 5, 'shows 5')
+	eq(AB:GetSetting('bar2', 'hotkey.position', 'point'), 'TOPRIGHT', "the other parts as they were")
+	eq(AB:IsOwn('bar3', 'hotkey.position'), false, 'a bar left alone follows')
+end)
+
+test('the shipped own flags are in the defaults', function()
+	fresh()
+	local defaults = st.defaults.actionbars
+	for _, id in ipairs({ 'bar4', 'bar5', 'bar6', 'bar7', 'bar8' }) do
+		eq(defaults[id].own.perrow, true, id .. ' owns Buttons per row')
+	end
+	eq(defaults.pet.own.size, true, 'the pet bar owns Button size')
+	eq(defaults.stance.own.size, true, 'the stance bar owns Button size')
+	eq(defaults.bar1.own.size, nil, 'bar 1 owns nothing')
+end)
+
+test('OwnersOf leaves out a bar for a key it has no use for', function()
+	fresh()
+	AB.config.pet.own['macro.show'] = true -- a stray flag
+	eq(AB:IsOwn('pet', 'macro.show'), true, 'the flag is there')
+	eq(#AB:OwnersOf('macro.show'), 0, 'the pet bar has no macro name, so it is no owner')
+end)
+
+test('a key the bar lacks reads its own stored value', function()
+	fresh()
+	AB:SetSetting('all', 'macro.show', false)
+	eq(AB:GetBarConfig('pet').text.macro.show, true, "the pet bar's own")
+	eq(AB:GetBarConfig('bar3').text.macro.show, false, 'a bar that has it follows All bars')
+end)
+
+test('readers: the button count, the visibility driver and StyleBar follow All bars', function()
+	fresh()
+	AB.bars.pet = { buttons = {} }
+	for i = 1, 10 do AB.bars.pet.buttons[i] = {} end
+	AB:SetSetting('all', 'buttons', 6)
+	eq(AB:GetNumButtons('pet'), 6, 'the pet bar follows 6')
+
+	AB:SetSetting('all', 'visibility', 'combat')
+	eq(AB:GetVisibilityDriver('bar3'), '[petbattle][vehicleui][overridebar] hide; [combat] show; hide', 'bar3: combat only')
+
+	local b = button('SharedStyleBar')
+	bar('bar2', b)
+	AB:SetSetting('all', 'hotkey.size', 14)
+	AB:UpdateBar('bar2')
+	eq(b.labConfig.text.hotkey.font.size, 14, 'a button is styled from All bars')
+	eq(table.concat(take_errors(), '\n'), '', 'no errors')
+end)
+
+test('the fader moves a fading bar to a changed opacity', function()
+	fresh()
+	local b = button('SharedFade')
+	bar('bar2', b)
+	AB:SetSetting('bar2', 'visibility', 'mouseover')
+	AB:SetSetting('all', 'fade_alpha', 0.5)
+	AB:UpdateBar('bar2')
+	eq(AB.bars.bar2:GetAlpha(), 0.5, 'faded to 0.5')
+	AB:SetSetting('all', 'fade_alpha', 0.2)
+	AB:UpdateBar('bar2')
+	check(fader ~= nil, 'the fader was caught')
+	stub.fire_script(fader, 'OnUpdate', 10)
+	eq(AB.bars.bar2:GetAlpha(), 0.2, 'the fader moves it to the new opacity')
+end)
+
+test('ResetCountdown on All bars puts the place back', function()
+	fresh()
+	AB:SetSetting('all', 'countdown.position', 'TOP', 'point')
+	AB:ResetCountdown('all')
+	eq(AB:GetSetting('all', 'countdown.position', 'point'), 'CENTER', 'the middle')
+end)
+
+test('UpdateBars updates every built bar, in order', function()
+	fresh()
+	local seen = {}
+	AB.bars = { pet = {}, bar2 = {} }
+	function AB:UpdateBar(id) seen[#seen + 1] = id end
+	AB:UpdateBars()
+	eq(table.concat(seen, ','), 'bar2,pet', 'the built bars, in AB.BAR_IDS order')
+end)
+
+-- The interim page: a bar's own General, Text and Visibility options.
+test('the interim options read the effective config and a change makes the setting own', function()
+	fresh()
+	for _, id in ipairs({ 'bar3', 'pet' }) do
+		AB.bars[id] = { buttons = {} }
+		for i = 1, (id == 'pet') and 10 or 12 do AB.bars[id].buttons[i] = {} end
+	end
+	function AB:UpdateBar() end
+	local general = AB:GetBarOptions('bar3', 1).args.general
+	general.set({ 'size' }, 40)
+	eq(AB:IsOwn('bar3', 'size'), true, 'a change on a bar makes the setting its own')
+	eq(general.get({ 'size' }), 40, 'and it shows')
+	eq(AB.config.bar3.size, 40, 'in the bar\'s own table')
+
+	local pet = AB:GetBarOptions('pet', 2).args
+	eq(AB:GetSetting('pet', 'buttons'), 12, "the pet bar follows All bars' 12")
+	eq(pet.general.get({ 'buttons' }), 10, 'and shows at most its 10')
+	eq(pet.general.get({ 'perrow' }), 10, 'Buttons per row too')
+	eq(general.get({ 'buttons' }), 12, 'bar 3 shows 12')
+
+	-- Visibility follows All bars, and the faded opacity hides with it.
+	local visibility = AB:GetBarOptions('bar3', 1).args.visibility
+	eq(visibility.args.fade_alpha.hidden(), true, 'hidden while All bars is always shown')
+	AB:SetSetting('all', 'visibility', 'mouseover')
+	eq(visibility.args.fade_alpha.hidden(), false, "shown once All bars' Visibility is mouseover")
+
+	-- The cooldown numbers' rows show what the bar draws, All bars' where it follows.
+	AB:SetSetting('all', 'countdown.size', 20)
+	local countdown = AB:GetBarOptions('bar3', 1).args.text.args.countdown
+	eq(countdown.get({ 'size' }), 20, "the numbers' size is All bars'")
+	eq(table.concat(take_errors(), '\n'), '', 'no errors')
+end)
+
+test("a bar's outline label says how All bars' Visibility hides it", function()
+	fresh()
+	local label = { text = '' }
+	function label:SetText(text) self.text = text end
+	AB.movers = { bar3 = { label = label } }
+	AB:SetSetting('all', 'visibility', 'combat')
+	AB:UpdateMoverLabel('bar3')
+	eq(label.text:find('in combat', 1, true) ~= nil, true, 'bar3 follows: in combat')
+	eq(table.concat(take_errors(), '\n'), '', 'no errors')
 end)

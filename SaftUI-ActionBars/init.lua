@@ -137,7 +137,7 @@ end
 function AB:OnEnable()
 	st:BindModuleConfig(self, 'actionbars')
 	-- Before the build, deferred or not: the bars read the converted profile.
-	self:ConvertProfile()
+	self:TryConvertProfile()
 
 	-- Secure frames can't be set up in combat. The UI loads before combat lockdown
 	-- applies, also on a /reload in combat (the unit frames' headers rely on it
@@ -182,7 +182,7 @@ end
 function AB:UpdateConfig()
 	-- A profile switched to, copied or reset: converted at once (table writes
 	-- only, safe in combat), before the combat queue below reads it.
-	self:ConvertProfile()
+	self:TryConvertProfile()
 	if not self.built then return end
 	if st:QueueAfterCombat('actionbars', function() self:UpdateConfig() end) then return end
 

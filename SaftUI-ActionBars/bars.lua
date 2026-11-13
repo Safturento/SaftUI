@@ -62,7 +62,9 @@ local LAB = LibStub('LibActionButton-1.0')
 
 	Settings. Every reader here and in skin.lua takes AB:GetBarConfig(id)
 	(shared.lua), the bar's effective config: each value the bar's own where it
-	owns the setting, else All bars'. Never self.config[id]'s values directly.
+	owns the setting, else All bars'. Never self.config[id]'s values directly
+	(enable and position are the bar's own and read from there). AB:UpdateBars
+	updates every built bar, after a change to All bars.
 
 	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 at the
 	top left, filling rows left to right. A bar shows no more buttons than it has
@@ -401,4 +403,11 @@ function AB:UpdateBar(id)
 	self:UpdateVisibility(id)
 	self:UpdateBindings()
 	self:UpdateMoverLabel(id)
+end
+
+-- Every built bar, updated from the profile, in AB.BAR_IDS order.
+function AB:UpdateBars()
+	for _, id in ipairs(self.BAR_IDS) do
+		if self.bars[id] then self:UpdateBar(id) end
+	end
 end

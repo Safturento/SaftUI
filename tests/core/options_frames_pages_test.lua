@@ -270,6 +270,10 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 	AB.UpdateBar, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = count('UpdateBar'), count('LayoutBar'), count('LayoutExtra'), count('UpdateConfig')
 	load_saftui('SaftUI-ActionBars/shared.lua')
 	load_saftui('SaftUI-ActionBars/options.lua')
+	AB:ConvertProfile() -- the world the game reaches: a converted profile
+	-- All bars' places differ from what any bar stores, so a bar that follows
+	-- can only show All bars'.
+	for _, kind in ipairs(AB.TEXT_KINDS) do AB:SetSetting('all', kind .. '.position', 3, 'x_off') end
 
 	local tree = AB:GetConfigTable()
 	-- A Position in each bar's General, each extra's General and each text of the Text tabs.
@@ -321,9 +325,12 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 				check(group.args.show.size == 'small', id .. ' ' .. kind .. ': Show is small')
 			end
 			for _, part in ipairs({ 'point', 'rel_point', 'x_off', 'y_off' }) do
-				local stored = profile.actionbars[id].text[kind][part]
-				eq(option.get(info_for('position'), part), part:find('_off') and (tonumber(stored) or 0) or stored,
-					id .. ' ' .. kind .. ' reads text.' .. kind .. '.' .. part)
+				local shown = AB:GetSetting(id, kind .. '.position', part)
+				eq(option.get(info_for('position'), part), part:find('_off') and (tonumber(shown) or 0) or shown,
+					id .. ' ' .. kind .. ' reads the effective ' .. part)
+			end
+			if not AB:IsOwn(id, kind .. '.position') then
+				eq(option.get(info_for('position'), 'x_off'), 3, id .. ' ' .. kind .. ' follows All bars')
 			end
 			-- No 50 limit: the stored offset can be set past it.
 			calls = {}

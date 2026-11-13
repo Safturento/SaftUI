@@ -18,7 +18,8 @@ local st = SaftUI
 	  - own: which of the shared settings below are this bar's own, as flags
 	    (own.size = true). A bar follows All bars' value (the 'all' table) for
 	    each one it doesn't own, so every reader goes through
-	    AB:GetBarConfig(id) (shared.lua), never this table's values directly.
+	    AB:GetBarConfig(id) (shared.lua), never this table's values of a shared
+	    setting directly (enable and position are the bar's own).
 	    Buttons per row is shipped own on bars 4-8 (columns), Button size on
 	    the pet and stance bars (30). The values here are kept for every bar
 	    as today's defaults, which the one-time conversion reads (shared.lua).
