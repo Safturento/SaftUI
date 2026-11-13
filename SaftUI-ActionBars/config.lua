@@ -15,6 +15,14 @@ local st = SaftUI
 	  - visibility: 'always', 'combat' (shown only in combat) or 'mouseover'
 	    (faded to fade_alpha until the mouse is over it). See bars.lua.
 	  - fade_alpha: the opacity of a 'mouseover' bar while the mouse isn't on it.
+	  - own: which of the shared settings below are this bar's own, as flags
+	    (own.size = true). A bar follows All bars' value (the 'all' table) for
+	    each one it doesn't own, so every reader goes through
+	    AB:GetBarConfig(id) (shared.lua), never this table's values of a shared
+	    setting directly (enable and position are the bar's own).
+	    Buttons per row is shipped own on bars 4-8 (columns), Button size on
+	    the pet and stance bars (30). The values here are kept for every bar
+	    as today's defaults, which the one-time conversion reads (shared.lua).
 	  - text: hotkey, stack count and macro name. Each has show, font (a
 	    LibSharedMedia font name), size, outline (a Fonts outline name, 'NONE' for
 	    none), point and rel_point (the text's point and the button's), and
@@ -26,6 +34,11 @@ local st = SaftUI
 	    the font the numbers have always had, so a bar looks as it did until
 	    one is set. The pet and stance buttons only have a hotkey and cooldown
 	    numbers; their count and macro name keep the shape and go unused.
+	all: the 'All bars' settings every bar follows until it owns one: buttons,
+	perrow, size, spacing, visibility, fade_alpha and text, with today's
+	Bar 1 as its defaults (shared.lua has the keys and the rules).
+	version: the profile has been converted to All bars and own flags
+	(shared.lua, AB:ConvertProfile). It has no default.
 	theme and background are the Theme and Background (SaftUI-Core/theme.lua)
 	every button is drawn with, the leave vehicle button too. 'theme' follows
 	SaftUI's.
@@ -107,6 +120,16 @@ local function Countdown()
 	}
 end
 
+-- The four texts, a new table each call.
+local function Texts()
+	return {
+		hotkey = Text('TOPRIGHT', -3, -3),
+		count = Text('BOTTOMRIGHT', -3, 3),
+		macro = Text('BOTTOM', 0, 3),
+		countdown = Countdown(),
+	}
+end
+
 -- A new table each call: AceDB defaults mustn't share tables between bars.
 local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 	return {
@@ -118,12 +141,8 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		position = Position(point, frame, rel_point, x_off, y_off),
 		visibility = 'always',
 		fade_alpha = 0.3,
-		text = {
-			hotkey = Text('TOPRIGHT', -3, -3),
-			count = Text('BOTTOMRIGHT', -3, 3),
-			macro = Text('BOTTOM', 0, 3),
-			countdown = Countdown(),
-		},
+		text = Texts(),
+		own = {},
 	}
 end
 
@@ -133,7 +152,28 @@ local function SmallBar(point, rel_point)
 	local bar = Bar(true, 10, point, 'SaftUI_ActionBar3', rel_point, 0, SPACING)
 	bar.buttons = 10
 	bar.size = SMALL_SIZE
+	bar.own.size = true
 	return bar
+end
+
+-- A column bar: Buttons per row 1, shipped as the bar's own.
+local function Column(enable, point, frame, rel_point, x_off, y_off)
+	local bar = Bar(enable, 1, point, frame, rel_point, x_off, y_off)
+	bar.own.perrow = true
+	return bar
+end
+
+-- All bars: today's Bar 1.
+local function AllBars()
+	return {
+		buttons = 12,
+		perrow = 12,
+		size = 45,
+		spacing = SPACING,
+		visibility = 'always',
+		fade_alpha = 0.3,
+		text = Texts(),
+	}
 end
 
 -- Replaces the legacy table from SaftUI-Misc/config.lua, whose positions named
@@ -142,14 +182,16 @@ st.defaults.actionbars = {
 	theme = 'theme',
 	background = 'theme',
 
+	all = AllBars(),
+
 	bar1 = Bar(true, 12, 'BOTTOM', 'UIParent', 'BOTTOM', 0, st.CLAMP_INSET),
 	bar2 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar1', 'TOP', 0, SPACING),
 	bar3 = Bar(true, 12, 'BOTTOM', 'SaftUI_ActionBar2', 'TOP', 0, SPACING),
-	bar4 = Bar(true, 1, 'RIGHT', 'UIParent', 'RIGHT', -st.CLAMP_INSET, 0),
-	bar5 = Bar(true, 1, 'RIGHT', 'SaftUI_ActionBar4', 'LEFT', -SPACING, 0),
-	bar6 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar5', 'LEFT', -SPACING, 0),
-	bar7 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar6', 'LEFT', -SPACING, 0),
-	bar8 = Bar(false, 1, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -SPACING, 0),
+	bar4 = Column(true, 'RIGHT', 'UIParent', 'RIGHT', -st.CLAMP_INSET, 0),
+	bar5 = Column(true, 'RIGHT', 'SaftUI_ActionBar4', 'LEFT', -SPACING, 0),
+	bar6 = Column(false, 'RIGHT', 'SaftUI_ActionBar5', 'LEFT', -SPACING, 0),
+	bar7 = Column(false, 'RIGHT', 'SaftUI_ActionBar6', 'LEFT', -SPACING, 0),
+	bar8 = Column(false, 'RIGHT', 'SaftUI_ActionBar7', 'LEFT', -SPACING, 0),
 	pet = SmallBar('BOTTOMLEFT', 'TOPLEFT'),
 	stance = SmallBar('BOTTOMRIGHT', 'TOPRIGHT'),
 

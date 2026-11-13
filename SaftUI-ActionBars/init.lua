@@ -6,6 +6,9 @@ st.ActionBars = AB
 	SaftUI's own action bars, built on LibActionButton-1.0, in place of Blizzard's.
 
 	  - init.lua: the module, the bars it owns and their Blizzard counterparts.
+	  - shared.lua: All bars' settings, each bar's own flags, the effective
+	    config every reader takes (AB:GetBarConfig) and the one-time conversion
+	    of a profile to them.
 	  - hideblizzard.lua: takes Blizzard's bars off screen at load.
 	  - skin.lua: SaftUI's look for the action buttons.
 	  - bars.lua: building, laying out and updating the bars.
@@ -133,6 +136,8 @@ end
 
 function AB:OnEnable()
 	st:BindModuleConfig(self, 'actionbars')
+	-- Before the build, deferred or not: the bars read the converted profile.
+	self:TryConvertProfile()
 
 	-- Secure frames can't be set up in combat. The UI loads before combat lockdown
 	-- applies, also on a /reload in combat (the unit frames' headers rely on it
@@ -175,6 +180,9 @@ end
 -- protected, so in combat it waits for the end of combat and reads the profile
 -- then.
 function AB:UpdateConfig()
+	-- A profile switched to, copied or reset: converted at once (table writes
+	-- only, safe in combat), before the combat queue below reads it.
+	self:TryConvertProfile()
 	if not self.built then return end
 	if st:QueueAfterCombat('actionbars', function() self:UpdateConfig() end) then return end
 

@@ -60,6 +60,12 @@ local LAB = LibStub('LibActionButton-1.0')
 	faded (AB:SetForceShown), so bars that are only shown in combat or faded can
 	be hover-bound.
 
+	Settings. Every reader here and in skin.lua takes AB:GetBarConfig(id)
+	(shared.lua), the bar's effective config: each value the bar's own where it
+	owns the setting, else All bars'. Never self.config[id]'s values directly
+	(enable and position are the bar's own and read from there). AB:UpdateBars
+	updates every built bar, after a change to All bars.
+
 	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 at the
 	top left, filling rows left to right. A bar shows no more buttons than it has
 	something for (the stance bar one per form, AB:GetNumButtons), and at least
@@ -230,7 +236,7 @@ end
 
 -- The state driver that shows or hides bar id (see the top of this file).
 function AB:GetVisibilityDriver(id)
-	local config = self.config[id]
+	local config = self:GetBarConfig(id)
 	if not config.enable or not self:IsBarAvailable(id) then
 		return 'hide'
 	end
@@ -245,13 +251,14 @@ end
 --- Mouseover fade ------------------
 ------------------------------------
 
--- The bars faded until moused over: bar -> id. The fader runs while there are any.
+-- The bars faded until moused over: bar -> its faded alpha, from the bar's
+-- effective config (AB:UpdateFade refreshes it every time it runs, so the
+-- fader's OnUpdate builds no table). The fader runs while there are any.
 local fading = {}
 local fader = CreateFrame('Frame')
 fader:Hide()
 
-local function FadeAlpha(id)
-	local config = AB.config[id]
+local function FadeAlpha(config)
 	local alpha = tonumber(config and config.fade_alpha) or 0
 	return math.min(math.max(alpha, 0), 1)
 end
@@ -271,8 +278,8 @@ end
 -- GetAlpha gives back a float, so a bar within a hair of its target is left be.
 fader:SetScript('OnUpdate', function(_, elapsed)
 	local step = elapsed / FADE_TIME
-	for bar, id in pairs(fading) do
-		local target = IsHovered(bar) and 1 or FadeAlpha(id)
+	for bar, faded in pairs(fading) do
+		local target = IsHovered(bar) and 1 or faded
 		local alpha = bar:GetAlpha()
 		if alpha < target - 0.001 then
 			bar:SetAlpha(math.min(alpha + step, target))
@@ -287,12 +294,13 @@ end)
 function AB:UpdateFade(id)
 	local bar = self.bars[id]
 	if not bar then return end
-	local config = self.config[id]
+	local config = self:GetBarConfig(id)
 	if config.enable and config.visibility == 'mouseover' and not forceShown then
+		local faded = FadeAlpha(config)
 		if not fading[bar] then
-			fading[bar] = id
-			bar:SetAlpha(IsHovered(bar) and 1 or FadeAlpha(id))
+			bar:SetAlpha(IsHovered(bar) and 1 or faded)
 		end
+		fading[bar] = faded
 	else
 		fading[bar] = nil
 		bar:SetAlpha(1)
@@ -338,7 +346,7 @@ function AB:GetNumButtons(id)
 	if not bar then return 0 end
 	local barType = self.barTypes[id]
 	local slots = barType and barType.GetNumSlots and barType.GetNumSlots() or #bar.buttons
-	return st.Clamp(self.config[id].buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
+	return st.Clamp(self:GetBarConfig(id).buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
 end
 
 -- Sizes bar id, lays out its buttons and places it, from the profile. In combat
@@ -348,7 +356,7 @@ function AB:LayoutBar(id)
 	if not bar then return end
 
 	st:SafeReposition(bar, 'actionbars_layout_' .. id, function()
-		local config = self.config[id]
+		local config = self:GetBarConfig(id)
 		local numButtons = self:GetNumButtons(id)
 		local perRow = st.Clamp(config.perrow, 1, numButtons)
 		local numRows = math.ceil(numButtons / perRow)
@@ -395,4 +403,11 @@ function AB:UpdateBar(id)
 	self:UpdateVisibility(id)
 	self:UpdateBindings()
 	self:UpdateMoverLabel(id)
+end
+
+-- Every built bar, updated from the profile, in AB.BAR_IDS order.
+function AB:UpdateBars()
+	for _, id in ipairs(self.BAR_IDS) do
+		if self.bars[id] then self:UpdateBar(id) end
+	end
 end
