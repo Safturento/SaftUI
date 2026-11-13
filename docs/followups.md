@@ -7,7 +7,11 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
-  - [2026-11-13 — Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)
+  - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
+  - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
+  - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
+  - [2026-11-13 — Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui)
+  - [2026-11-13 — Colour swatches read as checkboxes, and the colour picker](#2026-11-13--colour-swatches-read-as-checkboxes-and-the-colour-picker)
   - [2026-11-13 — Codebase cleanup: small things left over](#2026-11-13--codebase-cleanup-small-things-left-over)
   - [2026-11-13 — Chat's dock hook runs only on forced updates](#2026-11-13--chats-dock-hook-runs-only-on-forced-updates)
   - [2026-11-13 — Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line)
@@ -94,6 +98,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-13 — Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)
   - [2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)](#2026-11-11--ufupdateelement-passes-its-config-override-into-the-wrong-argument-of-updateelementposition-mana-as-primary)
   - [2026-11-07 — Fonts outline dropdowns show None as a blank entry](#2026-11-07--fonts-outline-dropdowns-show-none-as-a-blank-entry)
   - [2026-11-12 — Nameplates: a plate switching config can trip an anchor loop in a user's config](#2026-11-12--nameplates-a-plate-switching-config-can-trip-an-anchor-loop-in-a-users-config)
@@ -125,70 +130,89 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 ## Active
 
-### 2026-11-13 — Codebase cleanup: in-game checks
+### 2026-11-13 — In-game pass: five small changes asked for
 
-**What:** The codebase cleanup (`docs/superpowers/plans/2026-11-12-saftui-cleanup.md`, 21 tasks, merged into `modular` at 1d69905) fixed bugs, deleted dead code, merged copies of the same code and split large files, in every addon. Its tests (128 files) run on stubs, so none of it has been seen in game. Most steps below are "this still works as before". The steps marked *New* are where what the user sees was meant to change.
+**What:** The user's in-game pass over the cleanup's 39 checks (2026-11-13) turned up five small changes, each clear enough to build without a design round. They are being built on `modular` in the same session; this entry is the record in case the session is lost.
 
-**Why noticed:** The user asked for every item with a clear fix in the cleanup report to be done with subagents (2026-11-12). Each task's report listed the in-game checks it needed; this entry is those lists put together. The per-task reports were in the run's workspace under `.superpowers/sdd/`, which is not versioned.
+**Why noticed:** The user's own words, by the step each came from:
 
-**Anchors:** `docs/reports/2026-11-12-codebase-cleanup-analysis.md` (the report), `docs/superpowers/plans/2026-11-12-saftui-cleanup.md` (the plan). The five merges on `modular`: 343aee8 (wave 1, fixes and removals), f70f24c (wave 2, shared Core helpers), 9fa3221 (wave 3, Core's Config), b829ad2 (wave 4, each addon's files), 1d69905 (wave 5, the tests). The followups [Chat's dock hook runs only on forced updates](#2026-11-13--chats-dock-hook-runs-only-on-forced-updates) (step 35) and [Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line) (step 16).
+1. *Step 2, the character frame's item levels (Forever):* "Character frame item level doesn't seem to be skinned in foreveer". The screenshot shows a slot's item level in Blizzard's outlined number font. That has been so since the character frame was unskinned (e8ff3f6, 2026-11-07): `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua` makes the text from `NumberFontNormalSmall`. Wanted: SaftUI's icon text, as on bag slots (`SaftUI-Bags/slot.lua`).
+2. *Step 31, `/sui edit`:* "Works but I noticed that I can drag the mover past the screen edge margin, looks kinda weird". The screenshot is the Chat mover dragged into the bottom left corner: its outline sits about 10px left of and 10px below the chat panel, which stopped short of it. Wanted: the mover's outline and the frame it moves stop at the same place.
+3. *Step 9, the nameplate pages:* "the "use enemy/friendly nameplates" checkboxes work great, but instead of removing the tabs can we just fade them out and disable them? I don't love that it shifts everything up. Instead of the "Friendly nameplates use the enemy nameplates..." text can we replace it with centered text on the page that says "Sourced from enemy nameplates"? also when one of the swap buttons is disabled because the other one is enable can mousing over the checkbox explain why its disabled?"
+4. *Step 21, the action bars:* "Can we add a setting for cooldown numbers that maps to the blizzard setting in sui's config? I'd also like options for the font and its position". Blizzard's setting is the `countdownForCooldowns` CVar ("Show Numbers for Cooldowns"), which the bars already follow (`SaftUI-ActionBars/skin.lua`, `buttons.lua`).
+5. *Step 25, the Copy from dialog:* "Copy from is truncated on the popup can we remove the dividers from the all and non buttons and just shove them far right to expand the label? Can we also put a cancel button next to the confirm copy button and center them like most blizzard popup dialogs?" The screenshot shows the label cut to "Copy fr...".
 
-**Shape of work:** A pass by the user, a group at a time, then a small fix per step that fails. Keep BugSack on throughout: any Lua error or `ADDON_ACTION_BLOCKED` is a fail, whichever step it turns up in. Wave 5 changed tests only, so it has no steps. The steps:
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/characterframe/characterframe.lua`; `SaftUI-Core/EditMode/mover.lua` (`EM.MarginCorrection`, `Where`), `SaftUI-Core/api.lua` (`st:KeepInScreenMargin`, `st:GetClampShift`), `SaftUI-Chat/chatframe.lua` (the holder, `CHT:UpdateFootprint`); `SaftUI-Unitframes/nameplates/options.lua` (`PLATE_PAGES`, `HideWhileChecked`, `PlateBox`); `SaftUI-ActionBars/options.lua` (`AB:GetTextOptions`), `config.lua`, `skin.lua`; `SaftUI-Unitframes/config/config.lua` (`UF:OpenCopyTable`), `SaftUI-Core/Config/optionsdialog.lua`.
 
-*Login, both clients*
-1. `/reload` with BugSack on: no Lua errors. On Forever, no "Frame not found: TransmogFrame". On retail, no error from `DoesAddOnExist`, and the transmog window still drags.
-2. The skins all load: buffs and debuffs, the Cooldown Manager, the world map (drag it, resize it), the zone text with its level and faction line, the character frame's item levels and gems (and the item upgrade text on bag slots), Hekili, WeakAuras and RestedXP if installed, and `/sui` → Skinning lists them as before.
-3. Forever, on a melee class: the swing timer bars are skinned, sized and movable as before.
-4. The minimap's mail icon, tracking button, queue eye and clock (Blizzard's clock hidden), the reputation and renown bars, and tooltips look as before.
+**Shape of work:** Five small tasks, one worktree each, a reviewer each, then an in-game check of each.
 
-*Unit frames*
-5. *New:* Mana as primary. Set `additionalpower.manaAsPrimary` in a unit frame profile (a profile edit; there is no `/sui` control) on a shaman, druid or priest in a form or spec that shows the Additional power bar. The Power and Additional power bars now trade places as well as sizes; before, only the sizes swapped. Say whether trading places is what's wanted.
-6. `/sui` → Unitframes → Profile: New, Copy, Rename, Export, Import and Delete each work.
-7. Party, Raid 10, Raid 40 and Boss: the Layout and Range settings apply, Test mode shows its previews, and the group border draws under the Blizzard theme.
-8. Blizzard's raid frames stay hidden while a SaftUI raid group is on and come back when both are off. Changing that in a raid prints its note in chat ("Blizzard's raid frames will hide after you leave the raid.").
-9. The Enemy and Friendly nameplate pages work, and "Use friendly nameplates' settings" and "Use enemy nameplates' settings" each still hide the rest of their page.
-10. Power and Additional power with a Custom colour draw the darker background; Copy from works; the name text's placement, the health deficit text, the target's level hiding at max level, and the indicators are as before.
+### 2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice
 
-*Bags*
-11. *New:* with the bags closed, change the bag's view in `/sui` → Bags, then open the bags: the items sit in the new view's sections. Do it once in combat too: the view applies when the fight ends.
-12. *New:* within one item, the bigger stack sorts first. The count is still compared as text, so a stack of 9 sorts before a stack of 10.
-13. *New:* Shift-click a currency in the bag's currency row with a chat box open: it links the currency. A plain click still opens the transfer menu where there is one.
-14. The reagent bag's slots, and the item level and crafting quality overlays on slots, as before.
-15. The gold footer and its tooltip, on both clients.
-16. Search: typing fades the slots that don't match, and the fading is kept when the view changes. Type a few words and press Enter: say whether the box behaves as one line (see "Bag search box is made multi-line"). The view buttons and the title bar sit right under each theme and title height, and Compact holds.
-17. Bank: open and close, the Deposit and Withdraw popups, the warband bank (retail), the combined bank. With the bank open, B closes both windows and ends the talk with the banker.
-18. `/sui` → Bags → Categories: drag a category, and drag a rule block inside the rule editor.
-19. Merge stacks, auto sell junk, and closing the bags with new items in them, on both clients.
+**What:** After a choice on a group loot roll, SaftUI should show its own bar in Blizzard's place, locked on the choice, until the roll ends (the held rolls feature, built 2026-11-10). In game it doesn't: the user reports the bars "don't seem to be staying up after selecting a choice" (Forever, the night of 2026-11-12).
 
-*Fonts and outlines*
-20. *New:* every outline list shows "None" where it showed a blank line: `/sui` → Fonts, the Buffs and Debuffs text, the action bars' text. Set Normal and Title to outline None: `/sui`'s own text draws with no outline.
-21. Action bars: the button count and buttons per row still clamp to each other; the extra action button's size; the large cooldown numbers.
+**Why noticed:** Step 32 of the cleanup's in-game checks. The feature was built from Blizzard's source and has never been seen working in game ([Loot rolls: confirm the client assumptions in game](#2026-11-08--loot-rolls-confirm-the-client-assumptions-in-game)), so it may never have worked there.
 
-*The `/sui` window*
-22. The sidebar's groups, the tabs and subtabs, the page picker; search, then click a result.
-23. Switch the theme with the window open: it redraws in the new theme.
-24. Resize by the grip and by the bottom edge; the height survives closing and reopening; a screen margin change applies while the window is open; the mouse wheel scrolls.
-25. The Edit mode button's colour, and the unit frames' Copy from dialog.
-26. Esc closes the window, a small dialog, a confirm and a dropdown, each on its own; in a text box it clears the focus first; with the colour picker open it closes only the picker. Enter confirms a dialog. Entering combat closes the window, and it refuses to open in combat.
-27. Every kind of widget under Thick and under Blizzard; the Position blocks; the unit frame Profiles prompts; the rule editor's value picker.
+**Anchors:** `SaftUI-Loot/rollinfo.lua` (`OnRollChosen`, the `RollOnLoot` post-hook that notes the choice; `OnBarHide`, which calls `LT:HoldRoll`; `LT:UpdateRollBars`, which releases a held bar whose drop isn't open); `SaftUI-Loot/roll.lua` (`LT:HoldRoll`, `LT:ReleaseHeldRoll`, `LT:UpdateHeldRolls`); `SaftUI-Loot/Feed/loothistory.lua` (`LT:GetOpenDrops`, `HasEnded`, `RollTimeOver`); `tests/loot/roll_held_test.lua` (19 tests, all passing on stubs); Forever's `Interface/AddOns/Blizzard_UIPanels_Game/Mainline/GroupLootFrame.lua` and `.xml`.
 
-*Blizzard's Edit Mode and SaftUI's holders*
-28. Open Blizzard's Edit Mode: no selection boxes on the action bars, the pet bar, Extra Abilities, the minimap, the micro menu or the status bars. Close it and open it again: still none.
-29. Buffs and debuffs stay on SaftUI's holders after Blizzard's Edit Mode opens and closes, and through a fight (no `ADDON_ACTION_BLOCKED`).
-30. The swing timer bars cover their holders; chat keeps its size and spot; the tooltip grows from its holder's corner; the totem bar sits on its holder (a Forever shaman); entering a vehicle in combat raises no error.
-31. `/sui edit`: drag each mover, `/reload`, and each frame is where it was left. Switch profile: the frames move to that profile's spots.
+**What's been considered:** A read of the code against Forever's source (2026-11-13) found no cause:
 
-*Loot, action bars, chat*
-32. Roll bars are skinned and their timer runs; after a choice the SaftUI bar holds until the roll ends; Loot → Test mode shows its previews.
-33. The loot feed's lines (item, gold, currency, skill-up, reputation, experience) and a rolled item's entry.
-34. `/sui kb`: hover a button and press a key to bind it, right-click clears it, Esc or combat leaves the mode. The pet and stance bars redraw. Chat's fonts. Blizzard's action bars stay hidden.
-35. Chat's docked tabs, with three or more windows docked: tabs 2, 3 and 4 each sit to the right of the one before with no overlap, and tab 1 sits above its window. Check after dragging a tab off and docking it again, and after only clicking between tabs (see "Chat's dock hook runs only on forced updates").
+- The cleanup didn't change the logic. 81bf0b4 swapped Loot's local plain-value helpers for Core's (`st.PlainNumber`, the same test), and the other commits only moved code between files. `LT.PlainNumber` is set before anything runs.
+- Blizzard's source matches what the code assumes: a roll button's click calls `RollOnLoot(rollID, rollType)`; `CANCEL_LOOT_ROLL` leads to `GroupLootFrame_Remove`, `GroupLootContainer_RemoveFrame` and `frame:Hide()`, which is where `OnBarHide` runs; a main spec Need plays its dice for 5 seconds first.
+- The timer's values are plain: the timer draws in game.
 
-*Misc, minimap, Core*
-36. The totem bar's options apply (button size and spacing, the timers). Hide totem bar hides Blizzard's bar, and turning it off brings it back (after a `/reload` if the bar was on screen). A class with no totems: no bar, no error.
-37. The experience bar's defaults (width 250) on a new profile and after Reset profile.
-38. The micro menu's contents, its Blizzard theme art (the bronze strip on Forever), and `/sui` → Micro Menu → Position.
-39. The Blizzard theme's art on `/sui`, the bags, the character frame and the unit frames; class power and name sizing; the loot feed's test interval.
+What's left needs evidence from the game. In the order they'd be checked:
+
+1. An error inside `LT:HoldRoll` or `OnBarHide`. It would be in BugGrabber's log.
+2. The held bar is shown and released at once, because its drop isn't in `LT:GetOpenDrops()` when `LT:UpdateRollBars` runs right after the hide. That is by design when everyone else has already chosen (the roll is over). Otherwise `HasEnded` or `RollTimeOver` reads Forever's drop wrongly (the units of `startTime` and `duration`, or `winner` being a table before the roll ends).
+3. `chosen[rollID]` is never set: the frame's `rollID` or the timer's values aren't plain at the click, or the click doesn't go through the global `RollOnLoot`.
+4. `LT:HoldRoll` returns early: `skins[frame].shown` is missing or for another roll, or under a second is left.
+5. The bar is up, but off screen or behind something.
+
+**Shape of work:** Evidence first: BugGrabber's log for Loot errors, and what the user saw (which button, whether others were still rolling, whether the bar went at once or after a Need's dice). If that doesn't settle it, a debug print at each decision in the list above, off by default, for the next group run. Then a failing test and a small fix.
+
+**Open questions:** Was anyone else still rolling when the bar went? If not, the bar going is the design, and the question becomes whether a finished roll should hold for a moment to show its result.
+
+### 2026-11-13 — Test mode: choose which elements the previews show
+
+**What:** Let Test mode show or hide each kind of element on its preview frames: buffs, debuffs, raid markers and so on. Today a group's Test mode (`/sui` → Unitframes → Party, Raid 10, Raid 40 or Boss → Layout → Test mode) draws a fixed set: size, theme, health and power bars, name, role corner and range alpha. It draws no auras, castbars, portraits, raid targets, ready checks or leader icons, so those can't be placed or sized without a real group.
+
+**Why noticed:** The user, after checking the group previews in game (step 7 of the cleanup's in-game checks, 2026-11-13): "Looks good, but can we geet a follow up to improve test mode by being able to show/hide certain elements in test mode? I'm thinking about being able to toggle testing buffs, debuffs, raid markers, etc."
+
+**Anchors:** `SaftUI-Unitframes/grouppreview.lua` (the previews; its header comment lists what is and isn't drawn; `UF:SetGroupTestMode`, `UF.testGroups`, `UF.previews`); `SaftUI-Unitframes/config/groupoptions.lua` (`test_mode`); the element files in `SaftUI-Unitframes/elements/`; `tests/unitframes/` (the group preview tests).
+
+**What's been considered:** The previews are SaftUI's own plain frames, built from the element helpers with made-up data. No unit is faked, so nothing secure is touched and they work in combat. Adding an element means giving the preview that element's frames and made-up data for it: a few sample buffs and debuffs with durations and stacks (a dispellable and a purgeable one, to see the filters' borders), a raid marker on some members, a cast in progress, a ready check, a leader. The single unit frames (player, target, focus, pet) have no Test mode at all; whether they should get one is part of the same question.
+
+**Shape of work:** A design pass first: which elements, whether the choice is one list of checkboxes beside Test mode or per element, whether it's saved in the profile or lasts until `/reload` like Test mode itself, and whether the single frames get previews. Then likely two or three tasks: preview data and frames per element, the options, and tests.
+
+**Open questions:** The ones in the design pass above. Should the sample auras follow each aura group's real filter, or always show?
+
+### 2026-11-13 — Unit frame profiles are hard to find in /sui
+
+**What:** The unit frame profiles (New, Copy, Rename, Export, Import, Delete) are in `/sui` → Unitframes as the last entry, "Profile", of the Unit dropdown, under every unit. Nothing on the page says so, and the user looked for them and didn't find them.
+
+**Why noticed:** Step 6 of the cleanup's in-game checks (2026-11-13). The user: "I actually don't see the unitframes profile optoin anywhere, did that get missed when moving to the new GUI?" It wasn't missed: `UF:GetConfigTable` (`SaftUI-Unitframes/config/config.lua`) adds `profile = UF.GenerateProfileConfigGroup()` to the page's groups, the page is `childGroups = 'select'` with `pickerLabel = 'Unit'`, and the group's order (-99) puts it at the end of the list.
+
+**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:GetConfigTable`), `SaftUI-Unitframes/config/profiles.lua` (`UF.GenerateProfileConfigGroup`), `SaftUI-Core/Config/optionsnav.lua` and `optionsselect.lua` (the picker); the sidebar's own Profiles page (the AceDB profiles, a different thing).
+
+**What's been considered:** Three places it could go: (a) a "Unit frame profile" dropdown at the top of the Unitframes page, beside Unit, with a button that opens the manage page; (b) first in the Unit dropdown, set apart from the units; (c) a section of the sidebar's Profiles page, next to SaftUI's own profiles. (a) is the most visible and says which profile is being edited.
+
+**Shape of work:** Small once chosen: one options change and its tests.
+
+**Open questions:** Which of the three, or another.
+
+### 2026-11-13 — Colour swatches read as checkboxes, and the colour picker
+
+**What:** Two things about colours in `/sui`. The colour swatches are small squares that are hard to tell from checkboxes. And the colour picker is Blizzard's, unskinned, without the opacity and RGB values the user wants.
+
+**Why noticed:** The user's in-game pass (2026-11-13): "can we explore different visuals for the color swatches? it can be difficult to differentiate them from checkboxes sometimes, maybe we can make them larger with the text inside of it or something? I'd also like to skin the color picker and enhance it with opacity and rgb values."
+
+**Anchors:** `SaftUI-Core/Config/optionswidgets.lua` and `optionstypes.lua` (the `color` option's widget and the checkbox beside it); `ColorPickerFrame` (Blizzard's; `Blizzard_ColorPickerFrame` on both clients); `SaftUI-Misc/Skinning/blizzard/` (where a Blizzard frame's skin goes); `.agents/taint.md`.
+
+**What's been considered:** For the swatch, the user's own idea: a wider swatch with the option's name written inside it. Others to draw: a wide bar the width of a dropdown, a swatch with a hex value beside it, a round swatch. For the picker: skin Blizzard's frame (backdrop, buttons, edit boxes), and add what it lacks: number boxes for red, green and blue, a hex box, and an opacity slider with its value. Retail's picker already has a hex box and an alpha slider; Forever's has to be read first.
+
+**Shape of work:** A design round with mockups of the swatch options for the user to pick from, then two tasks: the swatch in Core's options kit, and the picker's skin and additions in Misc's Skinning (a taint review, since the picker is Blizzard's and is shared with other addons).
+
+**Open questions:** Which swatch look. Whether the picker's additions are SaftUI's own controls on Blizzard's frame, or a SaftUI picker of its own that replaces it.
 
 ### 2026-11-13 — Codebase cleanup: small things left over
 
@@ -248,6 +272,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **What's been considered:** Dropping the guard makes the hook run on every call, which Blizzard makes often (each tab flash and each resize), so it may want its own cheap "has anything moved" check. Whether anything is wrong on screen is not known: the game may force an update in every case that matters.
 
+**In game 2026-11-13:** the user checked step 35 and the docked tabs sit right, so the guard does no harm on screen. What's left is the test.
+
 **Shape of work:** First the in-game check: step 35 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks). If the tabs are right after a drag and dock and after a plain tab switch, the guard is harmless and only the test needs to stop setting `isDirty` by hand. If not, a small fix in `chatframe.lua` and a test that calls the hook the way the game does.
 
 ### 2026-11-13 — Bag search box is made multi-line
@@ -259,6 +285,8 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `SaftUI-Bags/search.lua` (`INV:InitializeSearch`); `SaftUI-Core/Widgets/editbox.lua` (`st:CreateEditBox`). The search box has no test file of its own.
 
 **Shape of work:** Small. Either drop the third argument, or give `st:CreateEditBox` a template parameter and pass `'SearchBoxTemplate'` properly (then the skin has to deal with the template's own art, on both clients). Check in game what Enter does in the box today (step 16 of [Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)).
+
+**In game 2026-11-13:** the user checked step 16 and the box behaves fine as it is. The call is still wrong as written.
 
 **Open questions:** Does the user want the search template's magnifier and clear button, or SaftUI's plain box?
 
@@ -1646,6 +1674,8 @@ The one route left is to work out the button order without reading the buttons. 
 - Fix whatever doesn't hold.
 - Record what's confirmed in `.agents/clients.md`.
 
+**In game 2026-11-13:** the held bar doesn't stay up after a choice. See [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice).
+
 ### 2026-11-08 — Saved loot feed size in SaftUI_DB
 
 **What:** The loot feed is saved per character in `SaftUI_DB` (AceDB char namespace), which is account-wide, so every character's feed is loaded at every login. 500 roll results with full roll lists come to about 1.6 MB per character at 20 players and 2.8 MB at 40, by the final reviewer's estimate. Several raiding characters could push `SaftUI_DB.lua` to 10 MB or more, parsed at every login and written at every reload.
@@ -1856,6 +1886,73 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-13 — Codebase cleanup: in-game checks
+
+**What:** The codebase cleanup (`docs/superpowers/plans/2026-11-12-saftui-cleanup.md`, 21 tasks, merged into `modular` at 1d69905) fixed bugs, deleted dead code, merged copies of the same code and split large files, in every addon. Its tests (128 files) run on stubs, so none of it has been seen in game. Most steps below are "this still works as before". The steps marked *New* are where what the user sees was meant to change.
+
+**Why noticed:** The user asked for every item with a clear fix in the cleanup report to be done with subagents (2026-11-12). Each task's report listed the in-game checks it needed; this entry is those lists put together. The per-task reports were in the run's workspace under `.superpowers/sdd/`, which is not versioned.
+
+**Anchors:** `docs/reports/2026-11-12-codebase-cleanup-analysis.md` (the report), `docs/superpowers/plans/2026-11-12-saftui-cleanup.md` (the plan). The five merges on `modular`: 343aee8 (wave 1, fixes and removals), f70f24c (wave 2, shared Core helpers), 9fa3221 (wave 3, Core's Config), b829ad2 (wave 4, each addon's files), 1d69905 (wave 5, the tests). The followups [Chat's dock hook runs only on forced updates](#2026-11-13--chats-dock-hook-runs-only-on-forced-updates) (step 35) and [Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line) (step 16).
+
+**Shape of work:** A pass by the user, a group at a time, then a small fix per step that fails. Keep BugSack on throughout: any Lua error or `ADDON_ACTION_BLOCKED` is a fail, whichever step it turns up in. Wave 5 changed tests only, so it has no steps. The steps:
+
+*Login, both clients*
+1. `/reload` with BugSack on: no Lua errors. On Forever, no "Frame not found: TransmogFrame". On retail, no error from `DoesAddOnExist`, and the transmog window still drags.
+2. The skins all load: buffs and debuffs, the Cooldown Manager, the world map (drag it, resize it), the zone text with its level and faction line, the character frame's item levels and gems (and the item upgrade text on bag slots), Hekili, WeakAuras and RestedXP if installed, and `/sui` → Skinning lists them as before.
+3. Forever, on a melee class: the swing timer bars are skinned, sized and movable as before.
+4. The minimap's mail icon, tracking button, queue eye and clock (Blizzard's clock hidden), the reputation and renown bars, and tooltips look as before.
+
+*Unit frames*
+5. *New:* Mana as primary. Set `additionalpower.manaAsPrimary` in a unit frame profile (a profile edit; there is no `/sui` control) on a shaman, druid or priest in a form or spec that shows the Additional power bar. The Power and Additional power bars now trade places as well as sizes; before, only the sizes swapped. Say whether trading places is what's wanted.
+6. `/sui` → Unitframes → Profile: New, Copy, Rename, Export, Import and Delete each work.
+7. Party, Raid 10, Raid 40 and Boss: the Layout and Range settings apply, Test mode shows its previews, and the group border draws under the Blizzard theme.
+8. Blizzard's raid frames stay hidden while a SaftUI raid group is on and come back when both are off. Changing that in a raid prints its note in chat ("Blizzard's raid frames will hide after you leave the raid.").
+9. The Enemy and Friendly nameplate pages work, and "Use friendly nameplates' settings" and "Use enemy nameplates' settings" each still hide the rest of their page.
+10. Power and Additional power with a Custom colour draw the darker background; Copy from works; the name text's placement, the health deficit text, the target's level hiding at max level, and the indicators are as before.
+
+*Bags*
+11. *New:* with the bags closed, change the bag's view in `/sui` → Bags, then open the bags: the items sit in the new view's sections. Do it once in combat too: the view applies when the fight ends.
+12. *New:* within one item, the bigger stack sorts first. The count is still compared as text, so a stack of 9 sorts before a stack of 10.
+13. *New:* Shift-click a currency in the bag's currency row with a chat box open: it links the currency. A plain click still opens the transfer menu where there is one.
+14. The reagent bag's slots, and the item level and crafting quality overlays on slots, as before.
+15. The gold footer and its tooltip, on both clients.
+16. Search: typing fades the slots that don't match, and the fading is kept when the view changes. Type a few words and press Enter: say whether the box behaves as one line (see "Bag search box is made multi-line"). The view buttons and the title bar sit right under each theme and title height, and Compact holds.
+17. Bank: open and close, the Deposit and Withdraw popups, the warband bank (retail), the combined bank. With the bank open, B closes both windows and ends the talk with the banker.
+18. `/sui` → Bags → Categories: drag a category, and drag a rule block inside the rule editor.
+19. Merge stacks, auto sell junk, and closing the bags with new items in them, on both clients.
+
+*Fonts and outlines*
+20. *New:* every outline list shows "None" where it showed a blank line: `/sui` → Fonts, the Buffs and Debuffs text, the action bars' text. Set Normal and Title to outline None: `/sui`'s own text draws with no outline.
+21. Action bars: the button count and buttons per row still clamp to each other; the extra action button's size; the large cooldown numbers.
+
+*The `/sui` window*
+22. The sidebar's groups, the tabs and subtabs, the page picker; search, then click a result.
+23. Switch the theme with the window open: it redraws in the new theme.
+24. Resize by the grip and by the bottom edge; the height survives closing and reopening; a screen margin change applies while the window is open; the mouse wheel scrolls.
+25. The Edit mode button's colour, and the unit frames' Copy from dialog.
+26. Esc closes the window, a small dialog, a confirm and a dropdown, each on its own; in a text box it clears the focus first; with the colour picker open it closes only the picker. Enter confirms a dialog. Entering combat closes the window, and it refuses to open in combat.
+27. Every kind of widget under Thick and under Blizzard; the Position blocks; the unit frame Profiles prompts; the rule editor's value picker.
+
+*Blizzard's Edit Mode and SaftUI's holders*
+28. Open Blizzard's Edit Mode: no selection boxes on the action bars, the pet bar, Extra Abilities, the minimap, the micro menu or the status bars. Close it and open it again: still none.
+29. Buffs and debuffs stay on SaftUI's holders after Blizzard's Edit Mode opens and closes, and through a fight (no `ADDON_ACTION_BLOCKED`).
+30. The swing timer bars cover their holders; chat keeps its size and spot; the tooltip grows from its holder's corner; the totem bar sits on its holder (a Forever shaman); entering a vehicle in combat raises no error.
+31. `/sui edit`: drag each mover, `/reload`, and each frame is where it was left. Switch profile: the frames move to that profile's spots.
+
+*Loot, action bars, chat*
+32. Roll bars are skinned and their timer runs; after a choice the SaftUI bar holds until the roll ends; Loot → Test mode shows its previews.
+33. The loot feed's lines (item, gold, currency, skill-up, reputation, experience) and a rolled item's entry.
+34. `/sui kb`: hover a button and press a key to bind it, right-click clears it, Esc or combat leaves the mode. The pet and stance bars redraw. Chat's fonts. Blizzard's action bars stay hidden.
+35. Chat's docked tabs, with three or more windows docked: tabs 2, 3 and 4 each sit to the right of the one before with no overlap, and tab 1 sits above its window. Check after dragging a tab off and docking it again, and after only clicking between tabs (see "Chat's dock hook runs only on forced updates").
+
+*Misc, minimap, Core*
+36. The totem bar's options apply (button size and spacing, the timers). Hide totem bar hides Blizzard's bar, and turning it off brings it back (after a `/reload` if the bar was on screen). A class with no totems: no bar, no error.
+37. The experience bar's defaults (width 250) on a new profile and after Reset profile.
+38. The micro menu's contents, its Blizzard theme art (the bronze strip on Forever), and `/sui` → Micro Menu → Position.
+39. The Blizzard theme's art on `/sui`, the bags, the character frame and the unit frames; class power and name sizing; the loot feed's test interval.
+
+**Resolved 2026-11-13:** the user went through the list in game and confirmed every step but the ones named here ("Every item I didn't comment on is considered confirmed working fine"). Step 5: the bars trading places is accepted. Step 16: the search box behaves fine (its code is still odd, see [Bag search box is made multi-line](#2026-11-13--bag-search-box-is-made-multi-line)). Step 35: the docked tabs sit right. Step 17, the bank, wasn't tested ("can't test right now but I'll let you know if anything is off later. Assume it's fine for now"). Step 32 failed in part: the roll bar doesn't hold after a choice, see [Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice). Step 6 worked but the profiles were hard to find, see [Unit frame profiles are hard to find in /sui](#2026-11-13--unit-frame-profiles-are-hard-to-find-in-sui). What the pass asked for beyond that is in [In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for) (steps 2, 9, 21, 25 and 31), [Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show) (step 7) and [Colour swatches read as checkboxes, and the colour picker](#2026-11-13--colour-swatches-read-as-checkboxes-and-the-colour-picker).
 
 ### 2026-11-11 — UF:UpdateElement passes its config override into the wrong argument of UpdateElementPosition (Mana as primary)
 
