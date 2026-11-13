@@ -169,7 +169,7 @@ end)
 test('the keys, in order, and which bars have them', function()
 	fresh()
 	eq(table.concat(AB.SHARED_KEYS, ','),
-		'buttons,perrow,size,spacing,visibility,fade_alpha,'
+		'buttons,perrow,size,spacing,growth,visibility,fade_alpha,'
 		.. 'hotkey.show,hotkey.font,hotkey.size,hotkey.outline,hotkey.position,'
 		.. 'count.show,count.font,count.size,count.outline,count.position,'
 		.. 'macro.show,macro.font,macro.size,macro.outline,macro.position,'

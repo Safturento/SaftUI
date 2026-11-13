@@ -10,8 +10,8 @@ local AB = st:GetModule('ActionBars')
 	directly: AB:GetBarConfig(id) builds the table every reader takes, each
 	value the bar's own where it owns the key, else All bars'.
 
-	A key is one setting of the page: buttons, perrow, size, spacing,
-	visibility, fade_alpha, '<kind>.show', '.font', '.size', '.outline' and
+	A key is one setting of the page: buttons, perrow, size, spacing, growth
+	(the corner the first button sits in, AB.GROWTH_ORDER), visibility, fade_alpha, '<kind>.show', '.font', '.size', '.outline' and
 	'.position' for the texts (hotkey, count, macro, countdown; the cooldown
 	numbers have no show). A '<kind>.position' is the text's four position parts
 	(point, rel_point, x_off, y_off) at once. A bar doesn't have a key its type
@@ -38,8 +38,16 @@ AB.POSITION_PARTS = { 'point', 'rel_point', 'x_off', 'y_off' }
 
 local POSITION_PARTS = AB.POSITION_PARTS
 
+-- The corners a bar's first button can sit in, as the page offers them (here, not in options.lua,
+-- since the effective config reads them and files load before that one).
+AB.GROWTH_VALUES = {
+	TOPLEFT = 'Top left', TOPRIGHT = 'Top right',
+	BOTTOMLEFT = 'Bottom left', BOTTOMRIGHT = 'Bottom right',
+}
+AB.GROWTH_ORDER = { 'TOPLEFT', 'TOPRIGHT', 'BOTTOMLEFT', 'BOTTOMRIGHT' }
+
 -- Every shared key, in the page's order.
-AB.SHARED_KEYS = { 'buttons', 'perrow', 'size', 'spacing', 'visibility', 'fade_alpha' }
+AB.SHARED_KEYS = { 'buttons', 'perrow', 'size', 'spacing', 'growth', 'visibility', 'fade_alpha' }
 for _, kind in ipairs(AB.TEXT_KINDS) do
 	if kind ~= 'countdown' then
 		table.insert(AB.SHARED_KEYS, kind .. '.show')
@@ -162,6 +170,7 @@ function AB:GetBarConfig(id)
 			config[key] = Read(src, key)
 		end
 	end
+	if not AB.GROWTH_VALUES[config.growth] then config.growth = 'TOPLEFT' end
 	return config
 end
 

@@ -312,6 +312,15 @@ function AB:GetBarOptions(id, order)
 
 	local spacing = generators.range(5, 'Spacing', 0, 20, 1, 'The gap between buttons.')
 
+	local growth = {
+		order = 6,
+		name = 'First button',
+		desc = "The corner of the bar its first button sits in. Rows fill across from it and the next row starts away from it.",
+		type = 'select',
+		values = self.GROWTH_VALUES,
+		sorting = self.GROWTH_ORDER,
+	}
+
 	local fade = generators.range(2, 'Faded opacity', 0, 1, 0.05,
 		"How visible the bar is while the mouse isn't over it.")
 	fade.hidden = function() return self:GetSetting(id, 'visibility') ~= 'mouseover' end
@@ -334,6 +343,7 @@ function AB:GetBarOptions(id, order)
 					perrow = perrow,
 					size = size,
 					spacing = spacing,
+					growth = growth,
 					position = position,
 				},
 			},

@@ -66,8 +66,9 @@ local LAB = LibStub('LibActionButton-1.0')
 	(enable and position are the bar's own and read from there). AB:UpdateBars
 	updates every built bar, after a change to All bars.
 
-	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 at the
-	top left, filling rows left to right. A bar shows no more buttons than it has
+	Layout. buttons, perrow, size and spacing, pixel-rounded, button 1 in the
+	growth corner (AB.ButtonPoint; top left to start), filling rows across from
+	it, the next row away from it. The bar's size and place don't depend on it. A bar shows no more buttons than it has
 	something for (the stance bar one per form, AB:GetNumButtons), and at least
 	one. A disabled or hidden bar keeps its size and place, so bars anchored to
 	it stay put, and its edit mode outline (options.lua) still covers it. All
@@ -349,6 +350,20 @@ function AB:GetNumButtons(id)
 	return st.Clamp(self:GetBarConfig(id).buttons, 1, math.max(math.min(slots, #bar.buttons), 1))
 end
 
+-- Button i's anchor: the growth corner (anything else is the top left), of the
+-- button and of the bar alike, and its offset from it: each column one pitch
+-- (size + spacing) along the row, away from the corner's side, and each row
+-- one pitch away from the corner's edge.
+function AB.ButtonPoint(i, perRow, size, spacing, growth)
+	if not AB.GROWTH_VALUES[growth] then growth = 'TOPLEFT' end
+	local pitch = size + spacing
+	local x = ((i - 1) % perRow) * pitch
+	local y = math.floor((i - 1) / perRow) * pitch
+	if growth:find('RIGHT', 1, true) then x = 0 - x end
+	if growth:find('TOP', 1, true) then y = 0 - y end
+	return growth, x, y
+end
+
 -- Sizes bar id, lays out its buttons and places it, from the profile. In combat
 -- this waits for the end of combat and reads the profile then.
 function AB:LayoutBar(id)
@@ -365,11 +380,10 @@ function AB:LayoutBar(id)
 
 		for i, button in ipairs(bar.buttons) do
 			if i <= numButtons then
-				local column = (i - 1) % perRow
-				local row = math.floor((i - 1) / perRow)
+				local point, x, y = self.ButtonPoint(i, perRow, size, spacing, config.growth)
 				button:ClearAllPoints()
 				button:SetSize(size, size)
-				button:SetPoint('TOPLEFT', bar, 'TOPLEFT', column * (size + spacing), -row * (size + spacing))
+				button:SetPoint(point, bar, point, x, y)
 				button:Show()
 			else
 				button:Hide()

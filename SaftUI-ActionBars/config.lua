@@ -11,6 +11,9 @@ local st = SaftUI
 	  - size: the edge of a button, its border included. The icon sits inside the
 	    border, so bars fit together on a size + spacing grid.
 	  - spacing: the gap between buttons, and in the default layout between bars.
+	  - growth: the corner the first button sits in, 'TOPLEFT' (today's layout),
+	    'TOPRIGHT', 'BOTTOMLEFT' or 'BOTTOMRIGHT'. Rows fill across from it, the
+	    next row sits away from it. Anything else reads as 'TOPLEFT'.
 	  - position: { point, frame, rel_point, x_off, y_off }, as everywhere in SaftUI.
 	  - visibility: 'always', 'combat' (shown only in combat) or 'mouseover'
 	    (faded to fade_alpha until the mouse is over it). See bars.lua.
@@ -35,7 +38,7 @@ local st = SaftUI
 	    one is set. The pet and stance buttons only have a hotkey and cooldown
 	    numbers; their count and macro name keep the shape and go unused.
 	all: the 'All bars' settings every bar follows until it owns one: buttons,
-	perrow, size, spacing, visibility, fade_alpha and text, with today's
+	perrow, size, spacing, growth, visibility, fade_alpha and text, with today's
 	Bar 1 as its defaults (shared.lua has the keys and the rules).
 	version: the profile has been converted to All bars and own flags
 	(shared.lua, AB:ConvertProfile). It has no default.
@@ -138,6 +141,7 @@ local function Bar(enable, perrow, point, frame, rel_point, x_off, y_off)
 		perrow = perrow,
 		size = 45,
 		spacing = SPACING,
+		growth = 'TOPLEFT',
 		position = Position(point, frame, rel_point, x_off, y_off),
 		visibility = 'always',
 		fade_alpha = 0.3,
@@ -170,6 +174,7 @@ local function AllBars()
 		perrow = 12,
 		size = 45,
 		spacing = SPACING,
+		growth = 'TOPLEFT',
 		visibility = 'always',
 		fade_alpha = 0.3,
 		text = Texts(),
