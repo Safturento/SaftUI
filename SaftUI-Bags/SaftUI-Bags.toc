@@ -27,5 +27,6 @@ utilities.lua
 autovendor.lua
 movers.lua
 options.lua
+dragparts.lua
 ruleeditor.lua
 categoriestab.lua

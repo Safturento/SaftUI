@@ -9,7 +9,7 @@
 -- widget files, optionsbody.lua) on Core's real config.lua
 -- (core/config_helpers.lua), as tests/core/options_widgets_test.lua loads
 -- them; SaftUI-Bags' config.lua, inventory.lua (the module), itemclasses.lua,
--- rules.lua and ruleeditor.lua. Made by hand: C_Item's GetItemClassInfo and
+-- rules.lua, dragparts.lua and ruleeditor.lua. Made by hand: C_Item's GetItemClassInfo and
 -- GetItemSubClassInfo, from Forever's tables (fixtures/item_classes.lua), and
 -- GetItemNameByID. The mouse is played by firing the frames' scripts and
 -- placing the cursor (stub.cursor_x / cursor_y); OnUpdate never runs here,
@@ -33,7 +33,7 @@ C_Item = {
 
 load_saftui('SaftUI-Bags/config.lua')
 apply_defaults()
-for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'ruleeditor' }) do
+for _, file in ipairs({ 'inventory', 'itemclasses', 'rules', 'dragparts', 'ruleeditor' }) do
 	load_saftui('SaftUI-Bags/' .. file .. '.lua')
 end
 local INV = st:GetModule('Inventory')
