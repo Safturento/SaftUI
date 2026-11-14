@@ -577,3 +577,13 @@ Ordered by how much the owner is likely to care.
 26. Collapsing the sidebar leaves a search as it is and takes the keyboard off the box.
 27. The bar is the window's own frame with its parts hidden, not a second frame.
 28. Under Blizzard the sidebar toggle is the Lucide panel icon on Blizzard's panel button.
+
+## Settled with the owner after the first draft (2026-11-13)
+
+These override anything above that they contradict.
+
+1. **The arrows are as drawn:** "The arrow direction is indeed what I meant". Grow points left and sits at the left of the pair; shrink points right; the sidebar toggle points right to collapse and left to show.
+2. **With the sidebar collapsed, its things move, they don't vanish** (this replaces the draft's call that the player shows the sidebar again to change page). "maybe the sidebar collapse means moving the actions elsewhere - edit mode and keybind mode and search could move to icon buttons either in the header or footer somewhere (gotta be careful not to overlap with other elements though), a dropdown arrow appears next to the current page title with the sidebar pages as a dropdown menu. I'm not sure where the SAFTUI label would go.. maybe just not present with the sidebar hidden?" Search, Edit mode and Keybind mode become icon buttons with tooltips (Lucide `search`, `move`, `keyboard`); the page's title gets an arrow and opens the page list, grouped as the sidebar is; the SaftUI name is not shown while the sidebar is collapsed. Whether the icons sit in the header or the footer is being chosen from a mockup (`window-collapsed-v1.html`).
+3. **The SaftUI name takes the accent colour,** in part or whole: "can we make the SAFTUI label have the accent color on it? I'm not sure if I want the Saft part accented or the UI, or both.. worth a quick mockup". Being chosen from the same mockup.
+
+Still open: whether `/sui` reopens at the size it was left at; whether the mini bar stays through combat; what the bags' Categories tab does at half size.

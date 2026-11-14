@@ -185,6 +185,14 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 6. Whether frames Blizzard stacks above the tracker in its right column (the durability figure, vehicle seats, widgets under the minimap) draw over its header now that its top is pinned.
 7. After a dungeon run, BugGrabber has nothing from SaftUI.
 
+**Seen in game 2026-11-13:** the owner: "Objective tracker skin is looking good". No report yet on the quest item in combat (check 1).
+
+**Asked for next (the owner, 2026-11-13):** "I'll probably want some additional enhancements like zone grouping, objective status coloring, is it possible to set a max height and a scroll frame on it? I'd also love the mover to fill the full height of the tracker not just the header."
+- *The mover filling the tracker's height:* small. The outline can follow the tracker's height read with `GetHeight(true)` (the read the skin already uses); the holder and what is saved don't change.
+- *Objective status colouring* (done, in progress, failed): small to medium, in the skin's line hooks, colours from the Colors page.
+- *Zone grouping:* Blizzard's tracker groups by module (Quests, Campaign, ...), not zone. Regrouping its blocks means changing its layout, which the skin never does today (taint: a tainted layout makes the quest item buttons it creates tainted). Needs a design and a taint study; it may only be safe as a SaftUI-drawn list beside or in place of Blizzard's.
+- *A max height and a scroll frame:* the same hazard. Blizzard already limits the tracker's height (its Edit Mode Height) and collapses modules that don't fit; putting its container in a scroll frame means re-parenting or sizing it from addon code. To be studied with zone grouping.
+
 **Left out, for later:** a Height setting (sizing the tracker from addon code may taint its layout; only the game can show whether it is safe) and Blizzard's Opacity and Text Size, which SaftUI's edit mode now hides; the large art panels (auto quest popups, the scenario stage, challenge mode and proving grounds banners), the bars' round reward icon, the map pin and find group buttons; standing down for another tracker addon; a default spot clear of SaftUI's minimap and experience bars.
 
 **Shape of work:** The checks first. Then small tasks as the user asks for them; the art panels need a design pass.
