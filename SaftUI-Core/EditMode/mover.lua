@@ -176,7 +176,7 @@ end
 function EM:StartDrag(mover)
 	-- The position before anything moves: the ticks below write into the table
 	-- getPosition returns, so a step's old must be a copy made now.
-	local before = EM.CopyPosition(mover.def.getPosition())
+	local before = EM.SavedPosition(mover)
 	local x, y, shown = Where(mover)
 	local cx, cy = GetCursorPosition()
 	local uiScale = UIParent:GetEffectiveScale()
@@ -280,9 +280,16 @@ function EM:Nudge(mover, key, big)
 			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(def.frame, ratio))
 		dx, dy = dx + mx * ratio, dy + my * ratio
 	end
-	local before = EM.CopyPosition(def.getPosition())
-	self:CommitPosition(mover, x + dx, y + dy)
-	self:RecordMove(mover, 'nudge', before)
+	local before = EM.SavedPosition(mover)
+	-- A mover with nothing saved shows a position it makes up: the label reads
+	-- its offsets from that.
+	local shownBefore
+	if before == nil then shownBefore = EM.CopyPosition(def.getPosition()) end
+	-- As StopDrag: an apply that errors is reported, the nudge is still recorded
+	-- (the position was stored), and the run ends, so the next one starts clean.
+	local ok = xpcall(self.CommitPosition, geterrorhandler(), self, mover, x + dx, y + dy)
+	self:RecordMove(mover, 'nudge', before, shownBefore)
+	if not ok then EM.History:CloseRun() end
 end
 
 function EM:CreateMover(key, def)

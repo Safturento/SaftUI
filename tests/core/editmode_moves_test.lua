@@ -361,3 +361,161 @@ test('EM:RecordMove names the mover when its label is read later', function()
 	eq(History.Label(step), 'Nudged Player by 2, 0', 'a nudge reads its net offset')
 	eq(step.open, true, 'a nudge opens a run')
 end)
+
+------------------------------------------------------------ fix round 1
+
+test('a nudge whose apply errors is recorded, closes the run and leaves undo working', function()
+	reset_world()
+	local failing = false
+	local p, config, calls = make('player', 'Player')
+	local real = p.def.apply
+	p.def.apply = function() if failing then error('apply failed') end real() end
+	EM:Activate()
+	drag(p, 10, 0)
+	EM:Nudge(p, 'RIGHT')
+	failing = true
+	EM:Nudge(p, 'RIGHT') -- the error is the handler's, not the key catcher's
+	check(#take_errors() >= 1, 'the error reached the handler')
+	eq(config.position.x_off, 12, 'the position was stored')
+	eq(#History:Steps(), 2, 'the nudge run is one step, recorded with the erroring nudge')
+	eq(History:Steps()[2].changes[1].new.x_off, 12, 'its new is what was stored')
+	eq(History:Steps()[2].open, nil, 'and the run is closed')
+	failing = false
+	local ok = History:Undo()
+	eq(ok, true, 'undo is not refused')
+	eq(config.position.x_off, 10, 'back to where the nudges began')
+	eq(#History:Steps(), 2, 'earlier steps survive')
+end)
+
+test('the position kind stores copies: later drags never reach the steps', function()
+	reset_world()
+	local p, config = make('player', 'Player')
+	EM:Activate()
+	drag(p, 40, 0)
+	History:Undo()
+	drag(p, 15, 0) -- its ticks write into the stored table
+	eq(History:Steps()[1].changes[1].old.x_off, 0, "the step's old is untouched")
+	eq(History:Steps()[1].changes[1].new.x_off, 15, 'and the new step has its own')
+	History:Undo()
+	History:Redo()
+	History:Undo()
+	eq(config.position.x_off, 0, 'undo goes back to the start')
+	check(config.position ~= History:Steps()[1].changes[1].old, 'the stored table is not the step\'s own')
+end)
+
+test('CanReset: combat does not hide the other reasons', function()
+	reset_world()
+	local a = make('thing', 'Thing')
+	stub.in_combat = true
+	eq(select(2, EM:CanReset(a)), 'Thing has no default place.', 'no default first')
+	local b = make('reasoned', 'Reasoned', { noDefaultReason = 'Because.' })
+	eq(select(2, EM:CanReset(b)), 'Because.', 'its own reason first')
+	local c = make('player', 'Player', { defaults = function()
+		return { position = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 0, y_off = 0 } } end })
+	eq(select(2, EM:CanReset(c)), 'Player is already in its default place.', 'already there first')
+end)
+
+test('a position set from outside the history makes the next undo stale, with the real position kind', function()
+	reset_world()
+	local p, config = make('player', 'Player')
+	EM:Activate()
+	drag(p, 40, 0)
+	config.position = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 99, y_off = 0 } -- /sui
+	local ok, message = History:Undo()
+	eq(ok, false, 'refused')
+	eq(message, 'Player was changed since; its earlier steps are dropped.', 'why')
+	eq(config.position.x_off, 99, 'nothing written')
+	eq(#History:Steps(), 0, 'dropped')
+end)
+
+test('a position set from outside between two nudges ends the run', function()
+	reset_world()
+	local p, config = make('player', 'Player')
+	EM:Activate()
+	EM:Nudge(p, 'RIGHT')
+	config.position.y_off = 77 -- a /sui change, within a second
+	EM:Nudge(p, 'RIGHT')
+	eq(#History:Steps(), 2, 'the second nudge is its own step')
+	eq(History.Label(History:Steps()[2]), 'Nudged Player by 1, 0', 'and does not carry the /sui change')
+	History:Undo()
+	eq(config.position.y_off, 77, "undo leaves the /sui change alone")
+end)
+
+test('a mover that has no saved position goes back to none, not to the position it invents', function()
+	reset_world()
+	local saved
+	local frame = CreateFrame('Frame', 'EMMovesInvented', UIParent)
+	frame:SetSize(100, 50)
+	local function apply()
+		local pos = saved or { point = 'CENTER', x_off = 5, y_off = 5 }
+		frame:ClearAllPoints()
+		frame:SetPoint(pos.point, UIParent, pos.point, pos.x_off, pos.y_off)
+	end
+	apply()
+	local mover = st:RegisterMover('invented', {
+		frame = frame, label = 'Invented', apply = apply,
+		getPosition = function() return saved or { point = 'CENTER', x_off = 5, y_off = 5 } end,
+		getSavedPosition = function() return saved end,
+		setPosition = function(position) saved = position end,
+	})
+	movers.invented = mover
+	EM:Activate()
+	EM:Nudge(mover, 'RIGHT')
+	check(saved ~= nil, 'the nudge saved a position')
+	eq(History.Label(History:Steps()[1]), 'Nudged Invented by 1, 0', 'its label reads the offset from the invented spot')
+	History:Undo()
+	eq(saved, nil, 'undo clears the saved position again')
+	eq(select(4, frame:GetPoint(1)), 5, 'the frame is at the invented spot')
+	History:Redo()
+	eq(saved.x_off, 6, 'redo saves it')
+	eq(EM:Reset(mover), false, 'no default')
+end)
+
+test('a random run of moves, nudges, resets, undos, redos and jumps goes back to the start and forward to the end exactly', function()
+	reset_world()
+	History:SetLimit(1000)
+	local seed = 12345
+	local function rand(n) -- a small deterministic generator
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed % n + 1
+	end
+	local defaults = { position = { point = 'TOP', frame = 'UIParent', rel_point = 'TOP', x_off = 0, y_off = -40 } }
+	local list, configs = {}, {}
+	for i = 1, 3 do
+		local m, config = make('rm' .. i, 'RM' .. i, i ~= 3 and { defaults = function() return defaults end } or nil)
+		list[i], configs[i] = m, config
+	end
+	configs[2].position = { point = 'BOTTOM', x_off = '12', y_off = 3 } -- an older profile: strings, missing fields
+	local function snapshot()
+		local out = {}
+		for i = 1, 3 do
+			local pos = configs[i].position
+			local parts = {}
+			for _, f in ipairs({ 'point', 'frame', 'rel_point', 'x_off', 'y_off' }) do
+				parts[#parts + 1] = f .. '=' .. type(pos[f]) .. ':' .. tostring(pos[f])
+			end
+			out[i] = table.concat(parts, ',')
+		end
+		return table.concat(out, '|')
+	end
+	EM:Activate()
+	local start = snapshot()
+	for _ = 1, 300 do
+		local m = list[rand(3)]
+		local op = rand(8)
+		stub.time = stub.time + rand(14) / 10
+		if op <= 2 then drag(m, rand(60) - 30, rand(40) - 20)
+		elseif op <= 4 then EM:Select(m); EM:Nudge(m, ({ 'UP', 'DOWN', 'LEFT', 'RIGHT' })[rand(4)], rand(4) == 1)
+		elseif op == 5 then EM:Reset(m)
+		elseif op == 6 then History:Undo()
+		elseif op == 7 then History:Redo()
+		else History:JumpTo(rand(#History:Steps() + 1) - 1) end
+	end
+	local position = History:Position()
+	local finish = snapshot()
+	eq(#take_errors(), 0, 'no errors')
+	eq(History:JumpTo(0), true, 'jumped to the start')
+	eq(snapshot(), start, 'undo of everything is the start, field for field')
+	eq(History:JumpTo(position), true, 'jumped back')
+	eq(snapshot(), finish, 'redo of everything is the end, field for field')
+end)

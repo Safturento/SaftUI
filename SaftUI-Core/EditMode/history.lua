@@ -118,11 +118,25 @@ function History:Position() return position end
 function History:CanUndo() return position > 0 end
 function History:CanRedo() return position < #steps end
 
+-- Whether the step starts where the top step left off: each change of it that
+-- the top also made begins at the top's current new. A value changed from
+-- outside between two nudges (a /sui edit) ends the run.
+function History.Continues(top, step)
+	for _, change in ipairs(step.changes or {}) do
+		local place = PlaceOf(change)
+		for _, have in ipairs(top.changes) do
+			if PlaceOf(have) == place and not Same(have, have.new, change.old) then return false end
+		end
+	end
+	return true
+end
+
 -- The grouping rule, the one place it lives: the top step is an open run of
 -- nudges, the new step is a nudge of the same mover, nothing has been undone,
 -- and the new nudge comes within MERGE_GAP of the run's last.
 function History.Merges(top, step, now)
 	return top ~= nil
+		and History.Continues(top, step)
 		and top.open == true
 		and top.kind == 'nudge' and step.kind == 'nudge'
 		and top.target == step.target
@@ -139,19 +153,28 @@ end
 
 local function Changed() EM:Fire('HistoryChanged') end
 
--- Drops the oldest steps past the limit. True when it dropped any.
+-- Drops the steps past the limit: the oldest applied ones first (what has to
+-- go is the oldest history), then, if the redo steps alone are still over,
+-- the newest redo steps. The steps that stay are one unbroken chain, so every
+-- redo that is left still starts from the state the frames are in. True when
+-- it dropped any.
 local function Trim()
 	local extra = #steps - History.limit
 	if extra <= 0 then return false end
-	for _ = 1, extra do table.remove(steps, 1) end
-	position = math.max(position - extra, 0)
+	local applied = math.min(extra, position)
+	for _ = 1, applied do table.remove(steps, 1) end
+	position = position - applied
+	for _ = 1, extra - applied do steps[#steps] = nil end
 	return true
 end
 
 -- The limit, a whole number from LIMIT_MIN to LIMIT_MAX. Lowering it drops the
--- oldest steps at once.
+-- oldest steps at once. NaN and anything that is not a number (typed text
+-- included) is rejected: the limit stays.
 function History:SetLimit(n)
-	n = tonumber(n) or History.limit
+	n = tonumber(n)
+	if n == nil or n ~= n then return end
+	if n == math.huge then n = History.LIMIT_MAX elseif n == -math.huge then n = History.LIMIT_MIN end
 	n = math.floor(n + 0.5)
 	History.limit = math.min(math.max(n, History.LIMIT_MIN), History.LIMIT_MAX)
 	if Trim() then Changed() end
@@ -198,7 +221,7 @@ function History:Push(step)
 		for _, change in ipairs(changes) do
 			local found
 			for _, have in ipairs(top.changes) do
-				if have.kind == change.kind and have.where == change.where then found = have break end
+				if have.kind == change.kind and PlaceOf(have) == PlaceOf(change) then found = have break end
 			end
 			if found then
 				found.new = change.new
@@ -236,30 +259,67 @@ end
 
 ------------------------------------------------------------ undo and redo
 
--- Writes each change's value (old or new, by direction) and runs each kind's
--- finish once, through xpcall. Changes whose thing is gone are skipped; their
--- names are returned.
+-- The value a step puts in a change when it is undone (old) or redone (new).
+-- Explicit, not `a and b or c`: false and nil are values.
+local function Target(change, wantNew)
+	if wantNew then return change.new end
+	return change.old
+end
+
+local function Report(err)
+	geterrorhandler()(err)
+	return err
+end
+
+-- Runs each kind's finish once with the wheres it was given, through xpcall.
+local function Finish(byKind, order)
+	for _, kind in ipairs(order) do
+		local finish = Handler(kind).finish
+		if finish then xpcall(finish, geterrorhandler(), byKind[kind]) end
+	end
+end
+
+-- Writes each change's value (old when undoing, new when redoing) and runs each
+-- kind's finish once. Changes whose thing is gone are skipped; their names are
+-- returned. A write that errors (reported to the error handler) rolls the step
+-- back: what was written is written back and placed again, and the failed
+-- change's name and the error are the second and third results; the history
+-- and the frames then agree that the step was not applied.
 local function WriteStep(step, undoing)
-	local skipped = {}
+	local skipped, written = {}, {}
 	local count = #step.changes
-	local byKind, order = {}, {}
 	for n = 1, count do
 		local change = step.changes[undoing and count - n + 1 or n]
 		if Missing(change) then
 			skipped[#skipped + 1] = NameOf(change)
 		else
-			Handler(change.kind).write(change.where, undoing and change.old or change.new)
-			if not byKind[change.kind] then
-				byKind[change.kind] = {}
-				order[#order + 1] = change.kind
+			local ok, err = xpcall(Handler(change.kind).write, Report, change.where, Target(change, not undoing))
+			if not ok then
+				local byKind, order = {}, {}
+				for i = #written, 1, -1 do
+					local back = written[i]
+					xpcall(Handler(back.kind).write, Report, back.where, Target(back, undoing))
+					if not byKind[back.kind] then
+						byKind[back.kind] = {}
+						order[#order + 1] = back.kind
+					end
+					table.insert(byKind[back.kind], back.where)
+				end
+				Finish(byKind, order)
+				return nil, NameOf(change), err
 			end
-			table.insert(byKind[change.kind], change.where)
+			written[#written + 1] = change
 		end
 	end
-	for _, kind in ipairs(order) do
-		local finish = Handler(kind).finish
-		if finish then xpcall(finish, geterrorhandler(), byKind[kind]) end
+	local byKind, order = {}, {}
+	for _, change in ipairs(written) do
+		if not byKind[change.kind] then
+			byKind[change.kind] = {}
+			order[#order + 1] = change.kind
+		end
+		table.insert(byKind[change.kind], change.where)
 	end
+	Finish(byKind, order)
 	return skipped
 end
 
@@ -291,7 +351,7 @@ local function StaleChange(step, expectNew)
 	for _, change in ipairs(step.changes) do
 		if not Missing(change) then
 			local now = Handler(change.kind).read(change.where)
-			if not Same(change, now, expectNew and change.new or change.old) then return change end
+			if not Same(change, now, Target(change, expectNew)) then return change end
 		end
 	end
 end
@@ -301,7 +361,7 @@ local function Refusal(step, writeNew)
 	for _, change in ipairs(step.changes) do
 		local check = Handler(change.kind).check
 		if check and not Missing(change) then
-			local ok, why = check(change.where, writeNew and change.new or change.old)
+			local ok, why = check(change.where, Target(change, writeNew))
 			if not ok then return why or (NameOf(change) .. ' can\'t be put back.') end
 		end
 	end
@@ -334,7 +394,11 @@ local function Step(undoing)
 		Changed()
 		return false, why
 	end
-	local skipped = WriteStep(step, undoing)
+	local skipped, failed = WriteStep(step, undoing)
+	if not skipped then
+		Changed()
+		return false, failed .. " couldn't be " .. (undoing and 'undone' or 'redone') .. '; the step was put back.'
+	end
 	position = undoing and position - 1 or position + 1
 	Changed()
 	return true, Skipped(skipped)
@@ -346,7 +410,9 @@ function History:Redo() return Step(false) end
 -- Undoes or redoes one step at a time until Position() is n (0 is before every
 -- step). Stops at the first refusal.
 function History:JumpTo(n)
-	if type(n) ~= 'number' or n < 0 or n > #steps then return false, 'No such step.' end
+	if type(n) ~= 'number' or n ~= n or n < 0 or n > #steps or n ~= math.floor(n) then
+		return false, 'No such step.'
+	end
 	while position ~= n do
 		local ok, message = Step(position > n)
 		if not ok then return false, message end
@@ -393,7 +459,8 @@ function History:Revert(i)
 			old = Handler(change.kind).read(change.where), new = change.old,
 		}
 	end
-	WriteStep(step, true)
+	local skipped, failed = WriteStep(step, true)
+	if not skipped then return false, failed .. " couldn't be reverted; the step was put back." end
 	self:CloseRun()
 	self:Push({
 		kind = 'revert', label = 'Reverted: ' .. tostring(History.Label(step)),

@@ -55,6 +55,16 @@ function EM.SamePosition(a, b)
 		and math.abs(Offset(a.y_off) - Offset(b.y_off)) <= TOLERANCE
 end
 
+-- A copy of what the mover has saved. A mover that makes up a position while
+-- none is saved (the totem bar, the objective tracker) gives def.getSavedPosition,
+-- which is nil then, so the history puts "nothing saved" back instead of saving
+-- the position it made up. Others read getPosition.
+function EM.SavedPosition(mover)
+	local def = mover.def
+	local get = def.getSavedPosition or def.getPosition
+	return EM.CopyPosition(get())
+end
+
 -- A number as one decimal at most, never -0.
 local function Number(v)
 	v = math.floor(v * 10 + 0.5) / 10
@@ -78,7 +88,7 @@ end
 History:RegisterKind('position', {
 	read = function(key)
 		local mover = EM.movers[key]
-		return mover and EM.CopyPosition(mover.def.getPosition())
+		return mover and EM.SavedPosition(mover)
 	end,
 	write = function(key, value)
 		local mover = EM.movers[key]
@@ -123,23 +133,23 @@ History:RegisterKind('position', {
 -- Records a move already made: kind 'move' (a drag), 'nudge' or 'reset'; before
 -- is the position copied before it. A nudge's label is a function of its first
 -- change, so a run of nudges merged into one reads its net offset.
-function EM:RecordMove(mover, kind, before)
+function EM:RecordMove(mover, kind, before, shownBefore)
 	local def = mover.def
 	local key = mover.key
-	local after = EM.CopyPosition(def.getPosition())
+	local after = EM.SavedPosition(mover)
 	local label
 	if kind == 'nudge' then
 		label = function(step)
 			local change = step.changes[1]
 			local m = EM.movers[key]
-			return EM.MoveLabel('nudge', m and EM.MoverName(m) or key, change.old, change.new)
+			return EM.MoveLabel('nudge', m and EM.MoverName(m) or key, change.old or change.from, change.new)
 		end
 	else
 		label = EM.MoveLabel(kind, EM.MoverName(mover), before, after)
 	end
 	return History:Push({
 		kind = kind, target = key, label = label,
-		changes = { { kind = 'position', where = key, old = before, new = after } },
+		changes = { { kind = 'position', where = key, old = before, new = after, from = shownBefore } },
 	})
 end
 
@@ -166,7 +176,7 @@ function EM:Reset(mover)
 	local ok, why = self:CanReset(mover)
 	if not ok then return false, why end
 	local def = mover.def
-	local before = EM.CopyPosition(def.getPosition())
+	local before = EM.SavedPosition(mover)
 	def.setPosition(self:GetDefaultPosition(mover))
 	xpcall(def.apply, geterrorhandler())
 	self:Fire('PositionChanged', mover)

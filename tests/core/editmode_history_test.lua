@@ -372,3 +372,196 @@ test('Same: numbers and their strings, nested tables, nil', function()
 	eq(Same('abc', 'abc'), true, 'the same string')
 	eq(Same(0, nil), false, '0 is not nil')
 end)
+
+------------------------------------------------------------ fix round 1
+
+test('false and nil are values: undo writes old exactly, redo writes new, neither is stale when the store matches', function()
+	local cases = {
+		{ 'false to true', false, true }, { 'true to false', true, false },
+		{ 'nil to a value', nil, 5 }, { 'a value to nil', 250, nil },
+		{ 'false to nil', false, nil }, { 'nil to false', nil, false },
+	}
+	for _, case in ipairs(cases) do
+		local label, old, new = case[1], case[2], case[3]
+		fresh()
+		local step = push('move', 'a', 'k', old, new)
+		check(step ~= nil, label .. ': recorded')
+		local ok, message = History:Undo()
+		eq(ok, true, label .. ': undo succeeds (' .. tostring(message) .. ')')
+		eq(store.k, old, label .. ': undo wrote old exactly')
+		eq(History:Position(), 0, label .. ': position moved')
+		ok, message = History:Redo()
+		eq(ok, true, label .. ': redo succeeds (' .. tostring(message) .. ')')
+		eq(store.k, new, label .. ': redo wrote new exactly')
+		eq(#History:Steps(), 1, label .. ': the step is kept')
+		-- Revert writes the step's old and records a revert holding it.
+		local can = History:CanRevert(1)
+		eq(can, true, label .. ': can revert')
+		ok = History:Revert(1)
+		eq(ok, true, label .. ': revert succeeds')
+		eq(store.k, old, label .. ': revert wrote old exactly')
+		eq(History:Steps()[2].changes[1].new, old, label .. ': the revert step holds old')
+	end
+end)
+
+test('a stale redo or a refused one leaves the position right when an applied step sits below it', function()
+	fresh()
+	push('move', 'b', 'b', 5, 6)
+	push('move', 'a', 'a', 1, 2)
+	push('move', 'a', 'a', 2, 3)
+	History:Undo()
+	store.a = 7
+	local ok = History:Redo()
+	eq(ok, false, 'the redo is stale')
+	eq(#History:Steps(), 1, 'the step and the older step on a are dropped')
+	eq(History:Position(), 1, 'the unrelated applied step stays applied')
+	eq(History:CanRedo(), false, 'nothing to redo')
+
+	fresh()
+	History:RegisterKind('nope', {
+		read = function(k) return store[k] end, write = function(k, v) store[k] = v end,
+		check = function(_, v) if v == 2 then return false, 'No.' end return true end, name = function(k) return k end,
+	})
+	push('move', 'b', 'b', 5, 6)
+	store.c = 2
+	History:Push({ kind = 'move', label = 'x', changes = { { kind = 'nope', where = 'c', old = 1, new = 2 } } })
+	push('move', 'b', 'b', 6, 7)
+	History:JumpTo(1)
+	eq(select(2, History:Redo()), 'No.', 'a refused redo says why')
+	eq(History:Position(), 1, 'the position stays')
+	eq(#History:Steps(), 2, 'only the refused step is dropped')
+end)
+
+test('Clear fires HistoryChanged; undo and redo close the run; a gap of exactly MERGE_GAP merges', function()
+	fresh()
+	push('move', 'a', 'a', 1, 2)
+	fired = 0
+	History:Clear()
+	eq(fired, 1, 'Clear fires')
+
+	fresh()
+	stub.time = 10
+	push('nudge', 'a', 'a', 1, 2)
+	History:Undo()
+	eq(History:Steps()[1].open, nil, 'undo closed the run')
+	History:Redo()
+	eq(History:Steps()[1].open, nil, 'redo closed it too')
+	stub.time = 10.2
+	push('nudge', 'a', 'a', 2, 3)
+	eq(#History:Steps(), 2, 'a nudge right after a redo is a new step')
+
+	fresh()
+	stub.time = 10
+	push('nudge', 'a', 'a', 1, 2)
+	stub.time = 11
+	push('nudge', 'a', 'a', 2, 3)
+	eq(#History:Steps(), 1, 'exactly MERGE_GAP later still merges')
+end)
+
+test('lowering the limit while steps are undone leaves no gap in the redo chain', function()
+	fresh()
+	for i = 1, 6 do push('move', 'a', 'a', i - 1, i) end
+	History:JumpTo(3)
+	History:SetLimit(5)
+	eq(#History:Steps(), 5, 'the oldest step dropped')
+	eq(History:Position(), 2, 'the position follows the dropped applied step')
+	History:JumpTo(5)
+	eq(store.a, 6, 'the whole redo chain still applies')
+
+	fresh()
+	for i = 1, 6 do push('move', 'a', 'a', i - 1, i) end
+	History:JumpTo(3)
+	History:SetLimit(2)
+	eq(#History:Steps(), 2, 'at the limit')
+	eq(History:Position(), 0, 'the applied steps went first')
+	eq(store.a, 3, 'the frames stay where step 3 left them')
+	eq(History:CanRedo(), true, 'the redo chain that is left starts from there')
+	History:JumpTo(2)
+	eq(store.a, 5, 'and applies without a gap (steps 4 and 5 are what is left)')
+end)
+
+test('SetLimit rejects NaN and non-numbers, rounds, and clamps to 1 and 1000', function()
+	fresh()
+	History:SetLimit(30)
+	History:SetLimit(0 / 0); eq(History.limit, 30, 'NaN is rejected')
+	History:SetLimit('abc'); eq(History.limit, 30, 'text is rejected')
+	History:SetLimit(nil); eq(History.limit, 30, 'nil is rejected')
+	History:SetLimit({}); eq(History.limit, 30, 'a table is rejected')
+	History:SetLimit('12'); eq(History.limit, 12, 'a number typed as text is taken')
+	History:SetLimit(-5); eq(History.limit, 1, 'below 1 is 1')
+	History:SetLimit(5000); eq(History.limit, 1000, 'capped at 1000')
+	History:SetLimit(math.huge); eq(History.limit, 1000, 'infinity is the cap')
+	push('move', 'a', 'a', 0, 1)
+	History:SetLimit(0 / 0)
+	eq(History:Position(), 1, 'a rejected limit never touches the position')
+end)
+
+test('JumpTo refuses a non-integer or out-of-range index at once, writing nothing', function()
+	fresh()
+	push('move', 'a', 'a', 0, 1); push('move', 'b', 'b', 0, 1)
+	for _, n in ipairs({ 1.5, -1, 3, 0 / 0, math.huge }) do
+		local ok, message = History:JumpTo(n)
+		eq(ok, false, tostring(n) .. ': refused')
+		eq(message, 'No such step.', tostring(n) .. ': why')
+	end
+	eq(History:JumpTo('1'), false, 'text is refused')
+	eq(#writes, 0, 'nothing written')
+	eq(History:Position(), 2, 'position kept')
+end)
+
+test('a merge matches changes by their place, not by the identity of where', function()
+	fresh()
+	History:RegisterKind('tv', {
+		read = function(w) return store[w.id] end, write = function(w, v) store[w.id] = v end,
+		place = function(w) return 'tv:' .. w.id end, name = function(w) return w.id end,
+	})
+	local function nudge(old, new)
+		store.x = new
+		return History:Push({ kind = 'nudge', target = 't', label = 'n',
+			changes = { { kind = 'tv', where = { id = 'x' }, old = old, new = new } } })
+	end
+	stub.time = 10
+	nudge(1, 2)
+	stub.time = 10.5
+	nudge(2, 3)
+	eq(#History:Steps(), 1, 'one step')
+	eq(#History:Steps()[1].changes, 1, 'one change, not a duplicate')
+	eq(History:Steps()[1].changes[1].old, 1, 'the first old')
+	eq(History:Steps()[1].changes[1].new, 3, 'the latest new')
+end)
+
+test('a nudge that does not start where the run left off is a new step', function()
+	fresh()
+	stub.time = 10
+	push('nudge', 'a', 'a', 1, 2)
+	stub.time = 10.2
+	push('nudge', 'a', 'a', 7, 8) -- something else moved it from 2 to 7 in between
+	eq(#History:Steps(), 2, 'a new step')
+	eq(History:Steps()[1].changes[1].new, 2, 'the run kept its own end')
+end)
+
+test('a write that errors rolls the step back: what was written is put back and placed, the step stays', function()
+	fresh()
+	local rolled = {}
+	History:RegisterKind('fragile', {
+		read = function(k) return store[k] end,
+		write = function(k, v) if k == 'bad' and v == 1 then error('write failed') end store[k] = v end,
+		finish = function(ws) rolled[#rolled + 1] = table.concat(ws, ',') end,
+		name = function(k) return k end,
+	})
+	store.a, store.bad, store.c = 2, 2, 2
+	History:Push({ kind = 'bulk', label = 'three', changes = {
+		{ kind = 'fragile', where = 'a', old = 1, new = 2 },
+		{ kind = 'fragile', where = 'bad', old = 1, new = 2 },
+		{ kind = 'fragile', where = 'c', old = 1, new = 2 } } })
+	local ok, message = History:Undo()
+	eq(ok, false, 'refused')
+	check(message and message:find('bad', 1, true), 'names what failed: ' .. tostring(message))
+	eq(store.c, 2, 'c (written first) is put back')
+	eq(store.a, 2, 'a was never written')
+	eq(store.bad, 2, 'bad untouched')
+	eq(History:Position(), 1, 'the step is still applied')
+	eq(#History:Steps(), 1, 'and kept')
+	eq(rolled[#rolled], 'c', 'the rolled-back part was placed again')
+	eq(#take_errors(), 1, 'the error reached the handler once')
+end)

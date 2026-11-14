@@ -378,9 +378,13 @@ function OTP:Setup()
 		frame = holder,
 		label = 'Objective Tracker',
 		getPosition = function() return self:GetPosition() end,
+		-- What the profile holds, nil while it has none (getPosition makes one up): the
+		-- edit mode history puts "none" back with this and setPosition(nil).
+		getSavedPosition = function() return self.config.position end,
 		setPosition = function(position)
 			self.config.position = position
-			placedAt = CopyPosition(position)
+			-- "None" also forgets where it was placed, or KeepPlacement would save that spot again.
+			placedAt = position and CopyPosition(position) or nil
 		end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'ObjectiveTracker', 'general' },

@@ -274,7 +274,14 @@ function TB:SetupPosition()
 		frame = holder,
 		label = 'Totem Bar',
 		getPosition = function() return self:GetPosition() end,
-		setPosition = function(position) self.config.position = position end,
+		-- nil while the profile has none (getPosition makes one up): the edit mode
+		-- history puts "none" back with this and setPosition(nil), so the bar takes
+		-- Blizzard's spot as before.
+		getSavedPosition = function() return self.config.position end,
+		setPosition = function(position)
+			self.config.position = position
+			if position == nil then placedAt = nil end -- or KeepPlacement would save that spot again
+		end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'TotemBar', 'general' },
 		module = 'Misc',

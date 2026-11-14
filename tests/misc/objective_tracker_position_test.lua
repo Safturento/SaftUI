@@ -547,7 +547,12 @@ test("Reset saves a copy of Blizzard's default spot, which KeepPlacement keeps; 
 	check(saved ~= nil, 'a position is saved, not nil')
 	eq(('%s %s %s %d,%d'):format(saved.point, saved.frame, saved.rel_point, saved.x_off, saved.y_off),
 		('TOPRIGHT UIParent TOPRIGHT %d,-275'):format(-st.CLAMP_INSET), "Blizzard's default spot")
-	check(saved ~= EM:GetDefaultPosition(mover), 'a copy, not the same table twice')
+	EM:Nudge(mover, 'LEFT', true)
+	EM:Reset(mover)
+	local second = profile.objectivetracker.position
+	check(second ~= saved, 'a second Reset saves a table of its own')
+	second.x_off = 5
+	eq(EM:GetDefaultPosition(mover).x_off, -st.CLAMP_INSET, 'a write into it never reaches the default')
 	eq(top_right(OTP.holder), top_right(OT.tracker), 'the holder and the tracker are placed')
 
 	-- A profile with no position keeps where the tracker was last placed.
@@ -561,5 +566,19 @@ test("Reset saves a copy of Blizzard's default spot, which KeepPlacement keeps; 
 	local undone = EM.History:Undo()
 	eq(undone, true, 'Undo')
 	eq(profile.objectivetracker.position.x_off, movedX, 'the moved spot is back')
+	clean()
+end)
+
+test('Undo of the first move clears the saved position again instead of saving the one the tracker invents', function()
+	world('forever')
+	local EM = st.EditModeFrames
+	local mover = EM.movers.objectivetracker
+	eq(profile.objectivetracker.position, nil, 'no saved position at first')
+	EM:Nudge(mover, 'LEFT')
+	check(profile.objectivetracker.position ~= nil, 'the nudge saved one')
+	EM.History:Undo()
+	eq(profile.objectivetracker.position, nil, 'undo put "none" back')
+	EM.History:Redo()
+	check(profile.objectivetracker.position ~= nil, 'redo saves it again')
 	clean()
 end)
