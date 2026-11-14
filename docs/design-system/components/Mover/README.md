@@ -4,7 +4,7 @@ Edit mode's overlay on a movable frame: a 1px white outline where the frame's bo
 
 ## When to use
 
-Every frame the player can move registers one with `st:RegisterMover` or `st:RegisterConfigMover` (a holder for frames that can be empty, have no size or are Blizzard's). Edit mode (`/sui edit`, the `/sui` Edit mode button, or Blizzard's Edit Mode) shows them all; dragging moves, arrow keys nudge 1, Shift+arrows 10, and a click opens the frame's `/sui` page.
+Every frame the player can move registers one with `st:RegisterMover` or `st:RegisterConfigMover` (a holder for frames that can be empty, have no size or are Blizzard's). Edit mode (`/sui edit`, the `/sui` Edit mode button, or Blizzard's Edit Mode) shows them all, with its bar across the top of the screen (Exit, the grid and snaps, Options; it fades and takes no mouse while a mover is dragged, so a frame dragged up under it shows through; an outline's mouse-down is edit mode's `Pressed` event); dragging moves, arrow keys nudge 1, Shift+arrows 10, and a click opens the frame's `/sui` page.
 
 ## What the consumer provides
 

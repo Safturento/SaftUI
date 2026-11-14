@@ -166,6 +166,13 @@ local function MarginInUI(frame, ratio)
 	return { left = left / ratio, right = right / ratio, top = top / ratio, bottom = bottom / ratio }
 end
 
+-- The label's first line (some labels add a second, an action bar's "off"),
+-- else the key: the name the picker's list and the bar's Options tooltip give.
+function EM.MoverName(mover)
+	local label = mover.label:GetText() or mover.key
+	return label:match('^[^\n]*')
+end
+
 function EM:StartDrag(mover)
 	local x, y, shown = Where(mover)
 	local cx, cy = GetCursorPosition()
@@ -183,6 +190,7 @@ function EM:StartDrag(mover)
 	mover.drag.xLines, mover.drag.yLines = self:GetSnapLines(mover)
 	mover.dragged = true
 	mover.overlay:SetScript('OnUpdate', function() EM:UpdateDrag(mover) end)
+	self:Fire('DragStarted', mover)
 end
 
 function EM:UpdateDrag(mover)
@@ -231,7 +239,10 @@ function EM:StopDrag(mover)
 	if not drag then return end
 	mover.drag = nil
 	mover.overlay:SetScript('OnUpdate', nil)
-	self:CommitPosition(mover, drag.x, drag.y)
+	-- The drag ends even when its commit errors (an apply that does): the error
+	-- is reported, and DragStopped still tells the bar to come back.
+	xpcall(self.CommitPosition, geterrorhandler(), self, mover, drag.x, drag.y)
+	self:Fire('DragStopped', mover)
 end
 
 function EM:Select(mover)
@@ -286,7 +297,10 @@ function EM:CreateMover(key, def)
 	mover.overlay = overlay
 	mover.label = label
 
-	overlay:SetScript('OnMouseDown', function() mover.dragged = false end)
+	overlay:SetScript('OnMouseDown', function()
+		mover.dragged = false
+		EM:Fire('Pressed', mover)
+	end)
 	overlay:SetScript('OnDragStart', function() EM:StartDrag(mover) end)
 	overlay:SetScript('OnDragStop', function() EM:StopDrag(mover) end)
 	overlay:SetScript('OnClick', function()
@@ -310,12 +324,15 @@ function EM:CreateMover(key, def)
 end
 
 -- A theme recolor (or redraw) gives every drawn frame the theme's colors; the
--- overlays take their own back.
+-- overlays take their own back. Every group is passed on ('ColorsChanged': the
+-- bar's accent follows Button > Blue).
 function EM:OnColorsChanged(group)
-	if group ~= 'theme' then return end
-	for _, mover in pairs(self.movers) do
-		SetBorderColor(mover, mover == self.selected)
+	if group == 'theme' then
+		for _, mover in pairs(self.movers) do
+			SetBorderColor(mover, mover == self.selected)
+		end
 	end
+	self:Fire('ColorsChanged', group)
 end
 
 -- Keyboard catcher: only exists while edit mode is active. Everything except

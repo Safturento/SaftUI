@@ -66,11 +66,7 @@ local text = list:CreateFontString(nil, 'OVERLAY')
 text:SetJustifyH('LEFT')
 text:SetPoint('TOPLEFT', 6, -6)
 
-local function Name(mover)
-	-- Some labels add a second line (an action bar's "off").
-	local label = mover.label:GetText() or mover.key
-	return label:match('^[^\n]*')
-end
+local Name = EM.MoverName -- the label's first line (mover.lua)
 
 local function ColorCode(color)
 	local r, g, b = color:GetRGB()

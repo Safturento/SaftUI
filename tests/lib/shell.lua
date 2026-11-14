@@ -27,6 +27,8 @@
 	                          in the game's order; options_window_files() lists them
 	  tick_options_window(elapsed) one frame passes on the /sui window's clock
 	  load_editmode()         loads edit mode's files in the game's order; editmode_files() lists them
+	  load_editmode_bar()     loads the edit mode bar's files (after the options window's world);
+	                          editmode_bar_files() lists them
 	  load_string_format()    loads LibStringFormat-1.0 as st.StringFormat, as init.lua takes it
 	  use_client(name, before) a fresh world on 'forever' or 'retail'
 ]]
@@ -474,7 +476,6 @@ function editmode_files()
 		'SaftUI-Core/EditMode/editmode.lua',
 		'SaftUI-Core/EditMode/mover.lua',
 		'SaftUI-Core/EditMode/picker.lua',
-		'SaftUI-Core/EditMode/footer.lua',
 		'SaftUI-Core/EditMode/grid.lua',
 		'SaftUI-Core/EditMode/snap.lua',
 		'SaftUI-Core/EditMode/settings.lua',
@@ -485,6 +486,24 @@ end
 -- (load_core_helpers) first.
 function load_editmode()
 	for _, path in ipairs(editmode_files()) do
+		load_saftui(path)
+	end
+end
+
+-- The edit mode bar's files (EditMode/Bar/load.xml, which EditMode/load.xml
+-- includes last), by path from the repo root, in the order it loads them.
+function editmode_bar_files()
+	return {
+		'SaftUI-Core/EditMode/Bar/bar.lua',
+		'SaftUI-Core/EditMode/Bar/bargroups.lua',
+	}
+end
+
+-- Loads the bar's files in that order. Load the options window's world
+-- (tests/core/options_window_helpers.lua: the kit's controls and the window's
+-- footer) first; edit mode's own files (load_editmode) come with it.
+function load_editmode_bar()
+	for _, path in ipairs(editmode_bar_files()) do
 		load_saftui(path)
 	end
 end

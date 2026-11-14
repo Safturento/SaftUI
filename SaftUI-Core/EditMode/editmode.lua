@@ -1,6 +1,7 @@
 local st = SaftUI
 
--- SaftUI's own edit mode, exposed as st.EditModeFrames.
+-- SaftUI's own edit mode, exposed as st.EditModeFrames. Its bar across the top
+-- of the screen (Bar/) and the other parts listen to its events (EM:On).
 local EM = st:NewModule('EditMode')
 st.EditModeFrames = EM
 
@@ -10,7 +11,16 @@ EM.selected = nil
 
 local callbacks = {}
 
--- Registers fn for event ('PositionChanged', 'Selected', 'Enabled', 'Disabled').
+-- Registers fn for event. The events, with what fn gets:
+--   'PositionChanged'  mover (a drag's live offsets, a nudge, a commit)
+--   'Selected'         mover, or nil when nothing is selected now
+--   'Enabled', 'Disabled'  edit mode turned on or off
+--   'SettingsChanged'  key, or nil for every setting (a profile change): a
+--                      setting of the grid and snapping changed (settings.lua)
+--   'Pressed'          mover: the mouse went down on its outline
+--   'DragStarted', 'DragStopped'  mover: a drag began, or ended (by a drop, or
+--                      dropped by a profile change)
+--   'ColorsChanged'    group: st:ColorsChanged(group), for every group
 function EM:On(event, fn)
 	callbacks[event] = callbacks[event] or {}
 	table.insert(callbacks[event], fn)
@@ -36,7 +46,6 @@ function EM:Activate()
 	end
 	self:UpdateKeyboard()
 	self:Fire('Enabled')
-	st:Print('Edit mode on.')
 end
 
 function EM:Deactivate()
@@ -49,7 +58,6 @@ function EM:Deactivate()
 	self:Select(nil)
 	self:UpdateKeyboard()
 	self:Fire('Disabled')
-	st:Print('Edit mode off.')
 end
 
 function EM:Toggle()
@@ -123,6 +131,7 @@ function EM:UpdateConfig()
 		if mover.drag then
 			mover.drag = nil
 			mover.overlay:SetScript('OnUpdate', nil)
+			self:Fire('DragStopped', mover)
 		end
 		local def = mover.def
 		st:SafeReposition(def.frame, 'mover_' .. key, function()
@@ -136,9 +145,8 @@ function EM:UpdateConfig()
 	for mover in pairs(failed) do
 		st:RestorePoints(mover.def.frame, mover.previousPoints)
 	end
-	-- The new profile has its own grid settings.
-	self:UpdateGrid()
-	self:UpdateFooterToggles()
+	-- The new profile has its own grid settings: the grid and the bar follow.
+	self:Fire('SettingsChanged')
 end
 
 -- Shows the mover's section in /sui, opening /sui if it's closed.

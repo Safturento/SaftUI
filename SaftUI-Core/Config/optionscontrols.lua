@@ -108,7 +108,7 @@ local function Paint(control)
 	end
 	-- A label's colour is written only to light it (a button with no icon
 	-- showing) and to take the light off, putting back what it was: a caller's
-	-- own colour (the sidebar's green Edit mode) and the font object's survive.
+	-- own colour and the font object's survive.
 	if control.label then
 		local textOnly = not (control.icon and (control.compact or control.iconWithLabel))
 		local lit = (blizzard and on and textOnly) and true or false

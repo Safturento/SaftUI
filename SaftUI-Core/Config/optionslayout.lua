@@ -146,29 +146,25 @@ end
 
 ------------------------------------------------------------------ the footer control
 
--- How far a page's footer control (optionswindow.lua) keeps from edit mode's
--- buttons: 12, as the footer's region keeps from Reload UI and Close.
+-- How far the status line keeps from a page's footer control (optionswindow.lua),
+-- and the footer's region from Reload UI and Close: 12.
 local FOOTER_GAP = 12
 
 --[[
 	Where a page's footer control sits in the footer's region (between Reload
-	UI and Close), regionWidth wide, whose left inset edit mode's buttons take
-	(OW:SetFooterInset; 0 without them). labelWidth is its label's, with the
-	gap after it; widgetsWidth its widgets', in a line. Returns the control's
-	left edge in the region, and whether its label shows:
-	  - centred, while that keeps it FOOTER_GAP clear of the buttons;
-	  - else at the region's right end, beside Close;
-	  - else, when even there it would come closer, at the right end without
-	    its label: the label goes first, and the widgets stay there, however
-	    close that brings them.
+	UI and Close), regionWidth wide. labelWidth is its label's, with the gap
+	after it; widgetsWidth its widgets', in a line. Returns the control's left
+	edge in the region, and whether its label shows:
+	  - centred, while it fits;
+	  - else at the region's right end, beside Close, without its label: the
+	    label goes first, and the widgets stay there, however narrow the
+	    region is.
 	Whole pixels: the centre is rounded down.
 ]]
-function OW.FooterPlace(regionWidth, inset, labelWidth, widgetsWidth)
-	local clear = inset > 0 and inset + FOOTER_GAP or 0
+function OW.FooterPlace(regionWidth, labelWidth, widgetsWidth)
 	local full = labelWidth + widgetsWidth
 	local centred = floor((regionWidth - full) / 2)
-	if centred >= clear then return centred, true end
-	if regionWidth - full >= clear then return regionWidth - full, true end
+	if centred >= 0 then return centred, true end
 	return regionWidth - widgetsWidth, false
 end
 

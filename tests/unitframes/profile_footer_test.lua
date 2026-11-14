@@ -140,7 +140,7 @@ test('the footer control: on the Unitframes page only, centred; its dropdown lis
 	local dropdown, manage = footer()
 	eq(dropdown.text:GetText(), 'SaftUI', 'the profile in use')
 	eq(manage.text:GetText(), 'Manage', 'and Manage')
-	local region = OW:GetFooter()
+	local region = frames().footerRegion
 	local left, right = f.footerLabel:GetLeft() - region:GetLeft(), region:GetRight() - manage.frame:GetRight()
 	check(math.abs(left - right) <= 1, 'centred between Reload UI and Close: ' .. left .. ' and ' .. right)
 	eq(page_cell('width').widget.frame:GetText(), '111', "the page shows the profile's settings")
