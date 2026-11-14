@@ -32,6 +32,72 @@ function TR.Tab(order, name, args)
 	}
 end
 
+-- The Quests tab: which quests show and how a quest row reads. Every row saves
+-- into tracker.quests and runs TR:UpdateConfig, which draws the rows again.
+-- Left click and Tooltips come with the clicks (Task 7).
+function TR.QuestsTab()
+	local function toggle(order, key, name, desc)
+		local option = generators.toggle(order, name, desc)
+		option.default = TR.SettingDefault('quests', key)
+		return option
+	end
+	local args = {
+		show = {
+			order = 1,
+			name = 'Show',
+			desc = "Which quests the tracker lists: the ones you track, or those and every other quest of the zone you're in.",
+			type = 'select',
+			values = { tracked = 'Tracked quests', zone = "Tracked and the current zone's" },
+			sorting = { 'tracked', 'zone' },
+			default = TR.SettingDefault('quests', 'show'),
+		},
+		zones = toggle(2, 'zones', 'Group by zone',
+			"Groups the quests under their zone's header, which collapses. Off lists them all in one list."),
+		current_first = toggle(3, 'current_first', 'Current zone first',
+			"Puts the zone you're in first in the list, with a map pin."),
+		order = {
+			order = 4,
+			name = 'Order',
+			desc = "How the quests of a group are ordered: as the game sorts your tracked quests (nearest first), as your quest log has them, or by level, low first.",
+			type = 'select',
+			values = { game = "The game's order", log = 'Quest log order', level = 'Level' },
+			sorting = { 'game', 'log', 'level' },
+			default = TR.SettingDefault('quests', 'order'),
+		},
+		finished_first = toggle(5, 'finished_first', 'Finished quests first',
+			'Puts the quests you can turn in first in their group.'),
+		level = toggle(6, 'level', 'Level', "The quest's level before its title."),
+		tags = toggle(7, 'tags', 'Tags', "The quest's tags (Elite, Dungeon, Daily...) after its title."),
+		difficulty = toggle(8, 'difficulty', 'Color by difficulty',
+			"Colors a title by how hard the quest is for you. Off, titles are in the normal text color."),
+		icons = toggle(9, 'icons', 'Quest icons', "The quest's icon before its title."),
+		hide_finished = toggle(10, 'hide_finished', 'Hide finished objectives',
+			'Leaves out the objectives of a quest you have already finished.'),
+		finished_objectives = toggle(11, 'finished_objectives', 'Objectives of finished quests',
+			'Lists a finished quest\'s objectives above its turn-in line.'),
+		bars = toggle(12, 'bars', 'Progress bars',
+			"Draws a quest's progress objective as a bar. Off, it is a line of text."),
+		timers = toggle(13, 'timers', 'Timers', 'The time left of a timed quest.'),
+		waypoint = toggle(14, 'waypoint', 'Waypoint', "The next waypoint's line under the quest you are following."),
+		spacing = generators.range(15, 'Spacing', 0, 20, 1, 'The space between two quests.'),
+		colors = {
+			order = 16,
+			type = 'description',
+			name = 'Finished and failed objectives take Global settings > Colors > Objectives.',
+		},
+	}
+	args.spacing.default = TR.SettingDefault('quests', 'spacing')
+	-- With Group by zone off there is no zone to put first.
+	args.current_first.disabled = function() return not TR.config.quests.zones end
+	local tab = TR.Tab(2, 'Quests', args)
+	tab.get = function(info) return TR.config.quests[info[#info]] end
+	tab.set = function(info, value)
+		TR.config.quests[info[#info]] = value
+		TR:UpdateConfig()
+	end
+	return tab
+end
+
 -- The Tracker page in /sui, under Info: General first, with the switch, then
 -- a tab for each part of the tracker as it's built (each task adds its own).
 function TR:GetConfigTable()
@@ -126,6 +192,7 @@ function TR:GetConfigTable()
 		childGroups = 'tab',
 		args = {
 			general = general,
+			quests = TR.QuestsTab(),
 		},
 	}
 

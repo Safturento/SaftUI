@@ -1,0 +1,637 @@
+-- SaftUI's tracker's rows (SaftUI-Tracker/rows.lua, init.lua's refresh), on
+-- both clients: zone headers, quest rows, their lines, bars, timers, popups,
+-- the focused quest, the empty window, a Colors tab change and whole pixels.
+-- The throttle and what a refresh costs are refresh_test.lua's.
+--
+-- Real: SaftUI-Tracker's files, Core's helpers and theme engine, the quest
+-- stubs. The scroll frame is tracker_world.lua's stand-in.
+local RW = load_test_file('tracker/rows_world.lua')
+local TW, Q = RW.TW, RW.Q
+local T = load_test_file('lib/theme_helpers.lua')
+local P = load_test_file('lib/pixels.lua')
+
+-- Two zones, the player in the first; the quests are tracked in log order.
+local function two_zones()
+	stub.real_zone_text = 'Elwynn Forest'
+	Q.set({
+		Q.header('Westfall'),
+		Q.quest(10, { title = 'Missing Crates' }),
+		Q.header('Elwynn Forest'),
+		Q.quest(1, { title = 'Wolves' }), Q.quest(2, { title = 'Boars' }),
+	}, { 10, 1, 2 })
+end
+
+local function colors(st) return st.config.profile.colors end
+
+RW.both('zone headers: the current one first with the map pin in the accent, the rest in grey; the count', function(st, TR)
+	two_zones()
+	TR:Refresh()
+	local zones = RW.rows(TR, 'zone')
+	eq(#zones, 2, 'two headers')
+	local here, there = RW.zone(TR, 'Elwynn Forest'), RW.zone(TR, 'Westfall')
+	eq(zones[1], here, 'the current zone first')
+	eq(zones[2], there, 'then the other')
+	eq(RW.text(here.title), 'Elwynn Forest', 'its name')
+	eq(RW.text(here.count), '2', 'the number of its quests')
+	eq(RW.text(there.count), '1', 'the other has one')
+	eq(RW.color(here.title), RW.rgb(colors(st).text.normal), 'the current zone in Text > Normal')
+	eq(RW.color(there.title), RW.rgb(colors(st).text.grey), 'the rest in Text > Grey')
+	eq(RW.color(here.count), RW.rgb(colors(st).text.grey), 'the count in Text > Grey')
+	eq(here.title:GetFontObject(), st:GetFont('normal'), 'the Header font')
+	check(here.pin:IsShown(), 'the pin shows for the current zone')
+	check(not there.pin:IsShown(), 'and not for the rest')
+	eq(here.pin:GetWidth(), 16, 'the pin is 16')
+	eq(here.pin:GetTexture(), st.icons.mapPin, "Lucide's map-pin")
+	eq(RW.rgb({ r = here.pin:GetVertexColor() , g = select(2, here.pin:GetVertexColor()), b = select(3, here.pin:GetVertexColor()) }), RW.rgb(colors(st).button.blue), 'in the accent')
+	eq(here:GetHeight(), 20, 'a header is 20 tall')
+	eq(here.chevron:GetWidth(), 16, 'the chevron is 16')
+	-- Where things sit: the quests 4 under the header and 10 between groups.
+	local top = TR.content:GetTop()
+	eq(here:GetTop(), top, 'the first row at the top')
+	eq(RW.quest(TR, 1):GetTop(), top - 20 - 4, 'a quest 4 under its header')
+	eq(there:GetTop(), RW.quest(TR, 2):GetTop() - RW.quest(TR, 2):GetHeight() - 10, 'a header 10 under what is above it')
+	-- Current zone first is a setting.
+	TR.config.quests.current_first = false
+	TR:UpdateConfig()
+	eq(RW.rows(TR, 'zone')[1], there, 'Current zone first off: the log\'s order')
+	check(here.pin:IsShown(), 'and the pin still marks the zone')
+end)
+
+RW.both('a zone header collapses and expands by its chevron, per character, the count staying', function(st, TR)
+	two_zones()
+	TR:Refresh()
+	local here = RW.zone(TR, 'Elwynn Forest')
+	eq(here.chevron.icon:GetTexture(), st.icons.chevronUp, 'chevron-up while it shows')
+	check(RW.quest(TR, 1) and RW.quest(TR, 2), 'its quests show')
+	stub.click(here.chevron)
+	eq(TR:CharData().zones['Elwynn Forest'], true, 'saved per character, by the header title')
+	eq(RW.quest(TR, 1), nil, 'its quests are not drawn')
+	eq(RW.quest(TR, 2), nil, 'any of them')
+	check(RW.quest(TR, 10) ~= nil, 'the other zone is untouched')
+	eq(RW.text(here.count), '2', 'the count is still shown')
+	eq(here.chevron.icon:GetTexture(), st.icons.chevronDown, 'chevron-down while collapsed')
+	eq(RW.zone(TR, 'Elwynn Forest'), here, 'the header keeps its row')
+	-- The tooltip says what a click does.
+	stub.fire_script(here.chevron, 'OnEnter', true)
+	eq(stub.state(GameTooltip).texts[1], 'Expand', 'the tooltip: Expand')
+	stub.fire_script(here.chevron, 'OnLeave', true)
+	-- A refresh (the log changed) keeps it collapsed.
+	TR:Refresh()
+	eq(RW.quest(TR, 1), nil, 'still collapsed after a refresh')
+	stub.click(here.chevron)
+	eq(TR:CharData().zones['Elwynn Forest'], nil, 'expanded: no saved state')
+	check(RW.quest(TR, 1) and RW.quest(TR, 2), 'its quests are back')
+	eq(here.chevron.icon:GetTexture(), st.icons.chevronUp, 'chevron-up again')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a collapsed zone stays collapsed in a new session, as the character left it', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, TR = RW.world({ client = client, before = function(st)
+			st.config.char.tracker = { zones = { Westfall = true } }
+		end })
+		two_zones()
+		TR:Refresh()
+		eq(RW.quest(TR, 10), nil, client .. ': the saved collapse is kept')
+		check(RW.quest(TR, 1) ~= nil, client .. ': the rest shows')
+		eq(RW.text(RW.zone(TR, 'Westfall').count), '1', client .. ': with its count')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+RW.both('the Other group and Group by zone off', function(st, TR)
+	Q.set({ Q.quest(5, { title = 'Stray' }), Q.header('A'), Q.quest(6) }, { 5, 6 })
+	TR:Refresh()
+	-- Quest 5 sits above any header: C_QuestLog.GetHeaderIndexForQuest gives nothing.
+	local other = RW.zone(TR, TR.OTHER_KEY)
+	check(other ~= nil, 'a header for the quests the log can not place')
+	eq(RW.text(other.title), 'Other', 'named Other')
+	eq(RW.rows(TR, 'zone')[2], other, 'last')
+	st.config.profile.tracker.quests.zones = false
+	TR:UpdateConfig()
+	eq(#RW.rows(TR, 'zone'), 0, 'Group by zone off: no zone header')
+	check(RW.quest(TR, 5) and RW.quest(TR, 6), 'one list of quests')
+	eq(RW.quest(TR, 5):GetTop(), TR.content:GetTop(), 'from the top')
+end)
+
+RW.both('titles: level and tags, the difficulty color or Text > Normal, Completed when ready, Failed when failed', function(st, TR)
+	Q.set({
+		Q.header('A'),
+		Q.quest(1, { title = 'Plain', level = 12, difficulty = Enum.RelativeContentDifficulty.Difficult }),
+		Q.quest(2, { title = 'Ready', level = 12, complete = true }),
+		Q.quest(3, { title = 'Lost', level = 12, failed = true }),
+		Q.quest(4, { title = 'Tagged', level = 30, elite = true, frequency = Enum.QuestFrequency.Daily, tag = { tagName = 'Elite', tagID = 1, isElite = true } }),
+	}, { 1, 2, 3, 4 })
+	local settings = st.config.profile.tracker.quests
+	settings.level, settings.tags, settings.difficulty = true, true, true
+	TR:Refresh()
+	eq(RW.text(RW.quest(TR, 1).title), '[12] Plain', 'level')
+	eq(RW.text(RW.quest(TR, 4).title), '[30+] Tagged (Elite) (Daily)', 'an elite quest, its tags')
+	local color = GetDifficultyColor(Enum.RelativeContentDifficulty.Difficult)
+	eq(RW.color(RW.quest(TR, 1).title), RW.rgb(color), 'the difficulty color')
+	eq(RW.color(RW.quest(TR, 2).title), RW.rgb(colors(st).objectives.completed), 'Completed when ready to turn in')
+	eq(RW.color(RW.quest(TR, 3).title), RW.rgb(colors(st).objectives.failed), 'Failed when failed')
+	settings.level, settings.tags, settings.difficulty = false, false, false
+	TR:UpdateConfig()
+	eq(RW.text(RW.quest(TR, 1).title), 'Plain', 'no level, no tags')
+	eq(RW.text(RW.quest(TR, 4).title), 'Tagged', 'no tags either')
+	eq(RW.color(RW.quest(TR, 1).title), RW.rgb(colors(st).text.normal), 'Color by difficulty off: Text > Normal')
+	eq(RW.color(RW.quest(TR, 2).title), RW.rgb(colors(st).objectives.completed), 'Completed whatever')
+	eq(RW.quest(TR, 1).title:GetFontObject(), st:GetFont('normal'), 'in the Font')
+end)
+
+RW.both('lines: objectives, a finished one in Completed, Failed, the completion lines, money, the timer', function(st, TR)
+	stub.money = 100
+	Q.set({
+		Q.header('A'),
+		Q.quest(1, { objectives = { { text = '3/8 Boars slain', type = 'monster' }, { text = 'Found the key', type = 'item', finished = true } } }),
+		Q.quest(2, { failed = true, objectives = { { text = 'ignored', type = 'monster' } } }),
+		Q.quest(3, { complete = true, completion = 'Return to Marshal McBride' }),
+		Q.quest(4, { complete = true, auto = true }),
+		Q.quest(5, { objectives = { { text = 'Bring gold', type = 'monster' } }, money = 50000 }),
+		Q.quest(6, { objectives = { { text = 'Hurry', type = 'monster' } }, time = { total = 120, elapsed = 70 }, timer = 50 }),
+		Q.quest(7, { objectives = { { text = 'Hurry more', type = 'monster' } }, time = { total = 600, elapsed = 60 }, timer = 540 }),
+	}, { 1, 2, 3, 4, 5, 6, 7 })
+	TR:Refresh()
+	local function lines(id)
+		local row, out = RW.quest(TR, id), {}
+		for j = 1, row.nparts do
+			local part = row.parts[j]
+			if part.fs:IsShown() then out[#out + 1] = RW.text(part.fs) .. '=' .. RW.color(part.fs) end
+		end
+		return table.concat(out, ' | ')
+	end
+	local normal, done, failed = RW.rgb(colors(st).text.normal), RW.rgb(colors(st).objectives.completed), RW.rgb(colors(st).objectives.failed)
+	eq(lines(1), '3/8 Boars slain=' .. normal .. ' | Found the key=' .. done, 'objectives, the finished one in Completed')
+	eq(lines(2), 'Failed=' .. failed, 'a failed quest says Failed')
+	eq(lines(3), 'Return to Marshal McBride=' .. done, 'the completion line')
+	eq(lines(4), 'Quest complete=' .. done .. ' | Click to complete=' .. done, 'an auto-complete quest')
+	local money = lines(5)
+	check(money:find('Bring gold', 1, true) and money:find('/', 1, true) and money:find(normal, 1, true), 'money after the objectives: ' .. money)
+	eq(lines(6), 'Hurry=' .. normal .. ' | Time left: 0:50=' .. failed, 'a timer under a minute in Failed')
+	eq(lines(7), 'Hurry more=' .. normal .. ' | Time left: 9:00=' .. normal, 'a timer over a minute in Text > Normal')
+	-- Where the lines sit: the objectives 12 right of the title, 2 under it.
+	local row = RW.quest(TR, 1)
+	eq(row.parts[1].fs:GetLeft(), row.title:GetLeft() + 12, 'objectives are indented 12 under the title')
+	-- Hide finished objectives and the finished-quest objectives.
+	st.config.profile.tracker.quests.hide_finished = true
+	st.config.profile.tracker.quests.finished_objectives = true
+	TR:UpdateConfig()
+	eq(lines(1), '3/8 Boars slain=' .. normal, 'Hide finished objectives')
+	Q.set(stub.quests.log, stub.quests.watched)
+	stub.quests.log[4].objectives = { { text = 'Also done', type = 'monster', finished = true } }
+	TR:Refresh()
+	eq(lines(3), 'Also done=' .. done .. ' | Return to Marshal McBride=' .. done, 'Objectives of finished quests on')
+end)
+
+RW.both("progress bars in Blizzard's blue with the percent centred in the Pixel font; off, the objective's text", function(st, TR)
+	Q.set({
+		Q.header('A'),
+		Q.quest(1, { objectives = { { text = 'Escort', type = 'progressbar' } }, percent = 45 }),
+		Q.quest(2, { objectives = { { text = 'Kill', type = 'monster' }, { text = 'Escort', type = 'progressbar' }, { text = 'Then talk', type = 'monster' } }, percent = 100 }),
+	}, { 1, 2 })
+	TR:Refresh()
+	local row = RW.quest(TR, 1)
+	local bar = row.parts[1].bar
+	check(bar and bar:IsShown(), 'the objective is a bar')
+	check(not row.parts[1].fs:IsShown(), 'in place of its line')
+	eq(RW.text(bar.label), '45%', 'the percent')
+	eq(bar.label:GetFontObject(), st:GetFont('pixel'), 'in the Pixel font')
+	eq(bar.label:GetJustifyH(), 'CENTER', 'centred')
+	local filled = stub.state(bar.fill)
+	eq(filled.vertex_color[1] .. ' ' .. filled.vertex_color[2] .. ' ' .. filled.vertex_color[3], '0.26 0.42 1', "Blizzard's progress blue")
+	eq(bar:GetHeight(), 12, '12 tall')
+	eq(bar.fill:GetWidth(), math.floor(bar:GetWidth() * 0.45 + 0.5), 'filled to the percent, a whole pixel')
+	eq(bar:GetWidth(), 226 - 12 + 0, 'as wide as the objectives: the list less the icon and the indent')
+	eq(bar.backdrop ~= nil, true, 'drawn as a SaftUI bar (a backdrop)')
+	eq(row:GetHeight(), TR:LineHeight() + 3 + 12 + 3, 'the row: the title, 3, the bar, 3')
+	local two = RW.quest(TR, 2)
+	eq(two.parts[2].bar.fill:GetWidth(), two.parts[2].bar:GetWidth(), '100% fills it')
+	check(two.parts[1].fs:IsShown() and two.parts[3].fs:IsShown(), 'the lines around it')
+	-- Progress bars off: the objective's own text.
+	st.config.profile.tracker.quests.bars = false
+	TR:UpdateConfig()
+	check(not bar:IsShown(), 'the bar is gone')
+	eq(RW.text(row.parts[1].fs), 'Escort', "the objective's text in its place")
+	check(row.parts[1].fs:IsShown(), 'shown')
+end)
+
+RW.both('the quest icon is 14 and the title 4 after it; off, the title is at the left', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1), Q.quest(2, { complete = true }) }, { 1, 2 })
+	TR:Refresh()
+	local row, done = RW.quest(TR, 1), RW.quest(TR, 2)
+	check(row.icon:IsShown(), 'the icon shows')
+	eq(row.icon:GetWidth(), 14, '14 wide')
+	eq(row.icon:GetHeight(), 14, 'and tall')
+	eq(row.icon:GetAtlas(), 'SideInProgressquesticon', "the game's icon for an active quest")
+	eq(done.icon:GetTexture(), 'Interface/GossipFrame/ActiveQuestIcon', "a finished quest's, a file")
+	eq(row.title:GetLeft(), row:GetLeft() + 18, 'the title 14 + 4 after it')
+	st.config.profile.tracker.quests.icons = false
+	TR:UpdateConfig()
+	check(not row.icon:IsShown(), 'Quest icons off: no icon')
+	eq(row.title:GetLeft(), row:GetLeft(), 'the title at the left')
+end)
+
+RW.both("the focused quest: a 2 px accent bar 4 left of its row, its waypoint line; the list scrolls it into view", function(st, TR)
+	local log, watched = { Q.header('A') }, {}
+	for id = 1, 30 do
+		log[#log + 1] = Q.quest(id, { objectives = { { text = 'Thing ' .. id, type = 'monster' } } })
+		watched[#watched + 1] = id
+	end
+	log[3].waypoint = 'Take the boat'
+	Q.set(log, watched, { focused = 2 })
+	TR:Refresh()
+	local bar = TR.focusBar
+	check(bar:IsShown(), 'the focus bar shows')
+	local row = RW.quest(TR, 2)
+	eq(bar:GetWidth(), 2, '2 px')
+	eq(bar:GetRight(), TR.scroll:GetLeft() - 4, '4 left of the row')
+	eq(bar:GetTop(), row:GetTop(), 'from the row\'s top')
+	eq(bar:GetHeight(), row:GetHeight(), 'as tall as the row')
+	local blue = colors(st).button.blue
+	eq(stub.state(bar).color_texture[1] .. stub.state(bar).color_texture[2], blue.r .. blue.g, 'in the accent')
+	local lines = {}
+	for j = 1, row.nparts do if row.parts[j].fs:IsShown() then lines[#lines + 1] = RW.text(row.parts[j].fs) end end
+	eq(table.concat(lines, '|'), 'Thing 2|Waypoint: Take the boat', 'the focused quest has its waypoint line')
+
+	-- The focus moves to a quest far below: the list scrolls it into view.
+	check(TR.scrollRange > 0, 'the list scrolls')
+	eq(TR:GetScroll(), 0, 'at the top')
+	stub.quests.focused = 28
+	TR:Refresh()
+	local last = RW.quest(TR, 28)
+	local view_bottom = TR.scroll:GetBottom()
+	check(TR:GetScroll() > 0, 'scrolled')
+	check(last:GetBottom() >= view_bottom and last:GetTop() <= TR.scroll:GetTop(), 'the row shows whole')
+	check(bar:IsShown(), 'and the bar with it')
+	eq(bar:GetTop(), last:GetTop(), 'the bar follows it')
+	-- Scrolled so the focused row is out of view: no bar.
+	TR:ScrollTo(0)
+	check(not bar:IsShown(), 'out of view: the bar is hidden')
+	-- No focus: no bar; a refresh keeps the place.
+	stub.quests.focused = 0
+	TR:ScrollTo(200)
+	TR:Refresh()
+	check(not bar:IsShown(), 'no focus, no bar')
+	eq(TR:GetScroll(), 200, 'a refresh keeps the scroll offset')
+	-- A collapsed window shows no bar for a row it does not show.
+	stub.quests.focused = 1
+	TR:Refresh()
+	check(bar:IsShown(), 'the focused quest is in view again')
+	TR:SetCollapsed(true)
+	check(not bar:IsShown(), 'collapsed: no focus bar')
+	TR:SetCollapsed(false)
+	check(bar:IsShown(), 'expanded: it is back')
+	-- Locked scrolling does not move the list.
+	local locked = TR.IsScrollLocked
+	TR.IsScrollLocked = function() return true end
+	TR:ScrollTo(200)
+	stub.quests.focused = 28
+	TR:Refresh()
+	eq(TR:GetScroll(), 200, 'locked: the list stays')
+	TR.IsScrollLocked = locked
+end)
+
+RW.both('a newly tracked quest is scrolled into view', function(st, TR)
+	local log, watched = { Q.header('A') }, {}
+	for id = 1, 30 do
+		log[#log + 1] = Q.quest(id)
+		watched[#watched + 1] = id
+	end
+	Q.set(log, watched)
+	TR:Refresh()
+	eq(TR:GetScroll(), 0, 'the first refresh does not scroll')
+	log[#log + 1] = Q.quest(31, { title = 'New one' })
+	watched[#watched + 1] = 31
+	Q.set(log, watched)
+	TR:Refresh()
+	local row = RW.quest(TR, 31)
+	check(TR:GetScroll() > 0, 'scrolled to it')
+	check(row:GetBottom() >= TR.scroll:GetBottom(), 'whole in view')
+	TR:ScrollTo(0)
+	TR:Refresh()
+	eq(TR:GetScroll(), 0, 'nothing new: the place is kept')
+end)
+
+RW.both('hover fills a quest row with the accent at TINT_ROW, 2 beyond it above and below', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 })
+	TR:Refresh()
+	local row = RW.quest(TR, 1)
+	check(row:IsMouseEnabled(), 'a quest row takes the mouse')
+	check(not row.hover:IsShown(), 'no fill at rest')
+	stub.fire_script(row, 'OnEnter', true)
+	check(row.hover:IsShown(), 'a fill under the mouse')
+	local c = stub.state(row.hover).color_texture
+	local blue = colors(st).button.blue
+	eq(c[1] .. ' ' .. c[2] .. ' ' .. c[3] .. ' ' .. c[4], blue.r .. ' ' .. blue.g .. ' ' .. blue.b .. ' ' .. st.TINT_ROW, 'the accent at TINT_ROW')
+	eq(row.hover:GetTop(), row:GetTop() + 2, '2 above')
+	eq(row.hover:GetBottom(), row:GetBottom() - 2, '2 below')
+	stub.fire_script(row, 'OnLeave', true)
+	check(not row.hover:IsShown(), 'gone on leave')
+	stub.fire_script(row, 'OnEnter', true)
+	Q.set({ Q.header('A') }, {})
+	TR:Refresh()
+	check(not row.hover:IsShown(), 'a row that went does not keep its fill')
+	local src = read_saftui_source('SaftUI-Tracker/rows.lua')
+	check(not src:find("SetScript%('On%a+', function%(self, motion", 1), 'no script takes the motion argument')
+end)
+
+RW.both('popups: above the zones, the window expanded while they show, a click shows the quest and removes the popup', function(st, TR)
+	two_zones()
+	TR:CharData().collapsed = true
+	Q.set(stub.quests.log, stub.quests.watched, {
+		popups = { { id = 77, kind = 'OFFER' }, { id = 78, kind = 'COMPLETE' } }, titles = { [77] = 'An offer', [78] = 'A turn-in' },
+	})
+	TR:Refresh()
+	local popups = RW.rows(TR, 'popup')
+	eq(#popups, 2, 'two popups')
+	local first, second = RW.quest and TR:GetRow('popup', 77), TR:GetRow('popup', 78)
+	eq(popups[1], first, 'in the popups\' order')
+	eq(first:GetHeight(), 22, '22 tall')
+	eq(first:GetTop(), TR.content:GetTop(), 'at the top of the list')
+	eq(second:GetTop(), first:GetTop() - 22 - 8, 'spacing apart')
+	eq(RW.zone(TR, 'Elwynn Forest'):GetTop(), second:GetTop() - 22 - 10, 'the first zone header 10 under the last popup')
+	eq(RW.text(first.label), 'Quest discovered', 'an offer says Quest discovered')
+	eq(RW.text(second.label), 'Quest complete', 'a turn-in says Quest complete')
+	eq(RW.text(first.title), 'An offer', 'over the quest\'s title')
+	eq(RW.color(first.label), RW.rgb(colors(st).button.blue), 'in the accent')
+	eq(first.label:GetFontObject(), st:GetFont('normal'), 'in the Header font')
+	eq(first.bar:GetWidth(), 2, 'a 2 px bar')
+	eq(first.bar:GetLeft(), first:GetLeft(), 'at its left')
+	-- The window is expanded while they show, and the saved state is untouched.
+	check(not TR:IsCollapsed(), 'expanded while popups show')
+	eq(TR:CharData().collapsed, true, 'the saved state is untouched')
+	eq(TR.window:GetHeight() > 40, true, 'the window is open')
+	eq(TR.header.collapse.icon:GetTexture(), st.icons.chevronUp, 'the header chevron shows it open')
+	-- A click.
+	stub.click(first)
+	eq(table.concat(stub.quests.shown, ','), 'offer:77', 'the offer is shown')
+	eq(#stub.quests.popups, 1, 'and its popup removed')
+	stub.click(second)
+	eq(table.concat(stub.quests.shown, ','), 'offer:77,complete:78', 'a turn-in shows the complete frame')
+	RW.later(1)
+	eq(#RW.rows(TR, 'popup'), 0, 'the popups are gone after the refresh the click asked for')
+	check(TR:IsCollapsed(), 'the window is collapsed again, as the player left it')
+	eq(TR.window:GetHeight(), 40, 'to its header')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+RW.both('a popup click in combat works; nothing is blocked', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1) }, { 1 }, { popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'An offer' } })
+	TR:Refresh()
+	TW.combat(true)
+	stub.click(TR:GetRow('popup', 77))
+	eq(#stub.blocked, 0, 'nothing blocked')
+	eq(table.concat(stub.quests.shown, ','), 'offer:77', 'the click ran')
+end)
+
+RW.both('empty: hidden with Hide when empty, else the header and "No tracked quests."', function(st, TR)
+	Q.set({ Q.header('A') }, {})
+	TR:Refresh()
+	check(not TR.window:IsShown(), 'Hide when empty: the window is hidden')
+	eq(#RW.rows(TR, 'empty'), 0, 'with no empty line')
+	st.config.profile.tracker.hide_empty = false
+	TR:UpdateConfig()
+	check(TR.window:IsShown(), 'off: it shows')
+	local line = RW.rows(TR, 'empty')[1]
+	check(line ~= nil, 'the empty line')
+	eq(RW.text(line.title), 'No tracked quests.', 'its words')
+	eq(RW.color(line.title), RW.rgb(colors(st).text.grey), 'in Text > Grey')
+	eq(TR.header:IsShown(), true, 'under the header')
+	-- A quest comes: the line goes, the window shows (Hide when empty on again).
+	st.config.profile.tracker.hide_empty = true
+	Q.set({ Q.header('A'), Q.quest(1) }, { 1 })
+	TR:UpdateConfig()
+	check(TR.window:IsShown(), 'shown with a quest')
+	eq(#RW.rows(TR, 'empty'), 0, 'no empty line')
+	-- An arena has no quest rows.
+	Q.set({ Q.header('A'), Q.quest(1) }, { 1 })
+	stub.instance_type = 'arena'
+	if type(IsInInstance) == 'function' then
+		local is_in = IsInInstance
+		IsInInstance = function() return true, 'arena' end
+		TR:Refresh()
+		check(not TR.window:IsShown(), 'an arena: empty, hidden')
+		IsInInstance = is_in
+	end
+end)
+
+RW.both('a Colors tab change recolors the status lines (objectives) and the accent pieces (button), with no new frame, text or measure', function(st, TR)
+	stub.real_zone_text = 'A'
+	Q.set({
+		Q.header('A'),
+		Q.quest(1, { objectives = { { text = 'Found', type = 'item', finished = true }, { text = 'Bar', type = 'progressbar' } }, percent = 20 }),
+		Q.quest(2, { complete = true }),
+		Q.quest(3, { failed = true }),
+	}, { 1, 2, 3 }, { focused = 1 })
+	TR:Refresh()
+	local row = RW.quest(TR, 1)
+	stub.fire_script(row, 'OnEnter', true)
+	local counter = RW.counter()
+	local measured = row.title.measuredStamp
+	colors(st).objectives.completed:SetRGB(0.1, 0.2, 0.3)
+	colors(st).objectives.failed:SetRGB(0.4, 0.5, 0.6)
+	TR:OnColorsChanged('objectives')
+	eq(RW.color(row.parts[1].fs), '0.10 0.20 0.30', 'a finished objective in the new Completed')
+	eq(RW.color(RW.quest(TR, 2).title), '0.10 0.20 0.30', 'a ready quest\'s title')
+	eq(RW.color(RW.quest(TR, 3).title), '0.40 0.50 0.60', 'a failed quest\'s title in the new Failed')
+	colors(st).button.blue:SetRGB(0.7, 0.8, 0.9)
+	TR:OnColorsChanged('button')
+	local function rgb(t) local c = stub.state(t).color_texture; return ('%.2f %.2f %.2f'):format(c[1], c[2], c[3]) end
+	eq(rgb(TR.focusBar), '0.70 0.80 0.90', 'the focus bar')
+	eq(rgb(row.hover), '0.70 0.80 0.90', 'the hover')
+	do
+		local r, g, b = RW.zone(TR, 'A').pin:GetVertexColor()
+		eq(('%.2f %.2f %.2f'):format(r, g, b), '0.70 0.80 0.90', 'the pin')
+	end
+	colors(st).text.grey:SetRGB(0.3, 0.3, 0.3)
+	colors(st).text.normal:SetRGB(0.9, 0.9, 0.9)
+	TR:OnColorsChanged('text')
+	eq(RW.color(RW.zone(TR, 'A').count), '0.30 0.30 0.30', 'the zone count in Text > Grey')
+	eq(RW.color(RW.zone(TR, 'A').title), '0.90 0.90 0.90', 'the current zone in Text > Normal')
+	eq(counter.frames, 0, 'no frame')
+	eq(counter.texts, 0, 'no text set')
+	eq(row.title.measuredStamp, measured, 'nothing measured again')
+	counter.stop()
+	-- Shown rows drawn after the change use the new color too.
+	TR:Refresh()
+	eq(RW.color(row.parts[1].fs), '0.10 0.20 0.30', 'a later draw reads it too')
+end)
+
+RW.both('a button in the row leaves its room and height; no frame of it is made', function(st, TR)
+	Q.set({ Q.header('A'),
+		Q.quest(1, { item = { link = 'item:6948', texture = 134400 } }),
+		Q.quest(2),
+	}, { 1, 2 })
+	TR:Refresh()
+	local with, without = RW.quest(TR, 1), RW.quest(TR, 2)
+	eq(with.item, 'row', 'the row says its button sits in it')
+	eq(without.item, nil, 'the other says none')
+	eq(without.title:GetWidth() - with.title:GetWidth(), 24 + 4, 'the title leaves the button and 4')
+	check(with:GetHeight() >= 24, 'at least Button size tall')
+	st.config.profile.tracker.items.size = 40
+	TR:UpdateConfig()
+	check(with:GetHeight() >= 40, 'at 40: 40 tall')
+	st.config.profile.tracker.items.placement = 'off'
+	TR:UpdateConfig()
+	eq(with.item, nil, 'Off: no room kept')
+	eq(without.title:GetWidth(), with.title:GetWidth(), 'the same width')
+	eq(TW.counts.secure, 0, 'no secure frame')
+end)
+
+RW.both('Width and Spacing and the fonts reach the rows', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1), Q.quest(2) }, { 1, 2 })
+	TR:Refresh()
+	local one, two = RW.quest(TR, 1), RW.quest(TR, 2)
+	eq(one:GetWidth(), 244, 'the list\'s width: Width 260 less padding')
+	eq(one:GetTop() - one:GetHeight() - two:GetTop(), 8, 'rows 8 apart')
+	st.config.profile.tracker.quests.spacing = 0
+	st.config.profile.tracker.width = 300
+	TR:UpdateConfig()
+	eq(one:GetWidth(), 284, 'Width 300')
+	eq(one:GetTop() - one:GetHeight() - two:GetTop(), 0, 'Spacing 0')
+	st.config.profile.tracker.font = 'pixel'
+	st.config.profile.tracker.header_font = 'pixel'
+	TR:UpdateConfig()
+	eq(one.title:GetFontObject(), st:GetFont('pixel'), 'Font')
+	eq(RW.zone(TR, 'A').title:GetFontObject(), st:GetFont('pixel'), 'Header font')
+	check(one:GetHeight() == 10, 'a 10 px title: the row is 10 tall: ' .. one:GetHeight())
+end)
+
+RW.both('a theme change draws the bars again; the rows follow a profile switch', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'Bar', type = 'progressbar' } }, percent = 50 }) }, { 1 })
+	TR:Refresh()
+	local bar = RW.quest(TR, 1).parts[1].bar
+	check(bar.backdrop ~= nil, 'drawn')
+	st.config.profile.tracker.theme = 'none'
+	TR:UpdateConfig()
+	eq(bar.backdrop.backdropInfo, nil, 'Theme None draws none')
+	st.config.profile.tracker.theme = 'thin'
+	TR:UpdateConfig()
+	check(bar.backdrop.backdropInfo ~= nil, 'Thin: drawn again')
+end)
+
+----------------------------------------------------------------- whole pixels
+
+local THEMES = { 'thick', 'thin', 'blizzard' }
+local NOISES = { 2 ^ -14, -2 ^ -14, 0 }
+
+-- A zone with a quest of one, three and wrapped objectives, a bar, a timer, a
+-- popup, a collapsed group and the focus: every row a layout makes.
+local function every_row(st)
+	local long = 'Gather a great many of the things this long objective asks of you from around the whole zone'
+	stub.real_zone_text = 'Elwynn Forest'
+	Q.set({
+		Q.header('Elwynn Forest'),
+		Q.quest(1, { title = 'One objective', objectives = { { text = '1/2 Wolves', type = 'monster' } } }),
+		Q.quest(2, { title = 'Three objectives', objectives = { { text = '1/2 A', type = 'monster' }, { text = '2/3 B', type = 'monster' }, { text = '3/4 C', type = 'monster' } } }),
+		Q.quest(3, { title = 'Wrapped objectives with a very long title that wraps on to a second line at this width', objectives = { { text = long, type = 'monster' } }, waypoint = 'Take the boat' }),
+		Q.quest(4, { title = 'A bar', objectives = { { text = 'Escort', type = 'progressbar' } }, percent = 37 }),
+		Q.quest(5, { title = 'A timer', objectives = { { text = 'Hurry', type = 'monster' } }, time = { total = 300, elapsed = 10 }, timer = 290 }),
+		Q.quest(6, { title = 'An item', objectives = { { text = 'Use it', type = 'item' } }, item = { link = 'item:6948', texture = 134400 } }),
+		Q.header('Westfall'),
+		Q.quest(7, { title = 'Collapsed away' }),
+	}, { 1, 2, 3, 4, 5, 6, 7 }, {
+		focused = 3, popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'An offer' },
+	})
+	st.config.char.tracker = { zones = { Westfall = true } }
+end
+
+test('whole pixels under Thick, Thin and Blizzard, size noise up, down and off, at Width 260 and a narrow and a wide one, scrolled and not', function()
+	local checked = 0
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		for _, theme in ipairs(THEMES) do
+			for _, noise in ipairs(NOISES) do
+				for _, width in ipairs({ 260, 181, 601 }) do
+					for _, scrolled in ipairs({ false, true }) do
+						local where = ('%s, %s, noise %g, Width %d, %s'):format(client, theme, noise, width, scrolled and 'scrolled' or 'top')
+						local st, TR = RW.world({ client = client })
+						T.theme(theme, function() TR:UpdateConfig(); st:ColorsChanged('theme') end)
+						every_row(st)
+						TR.config.width = width
+						TR.config.height = 300
+						TR.config.items.placement = 'row'
+						stub.size_noise = noise
+						TR:UpdateConfig()
+						TR:Refresh()
+						if scrolled then TR:ScrollTo(137.4) end
+						local off = P.off(TR.window)
+						eq(#off, 0, where .. ': ' .. P.report(off))
+						off = P.off(TR.holder)
+						eq(#off, 0, where .. ' (the holder): ' .. P.report(off))
+						-- A second refresh moves nothing.
+						TR:Refresh()
+						off = P.off(TR.window)
+						eq(#off, 0, where .. ' (again): ' .. P.report(off))
+						stub.size_noise = 0
+						checked = checked + 1
+					end
+				end
+			end
+		end
+	end
+	eq(checked, 2 * 3 * 3 * 3 * 2, 'every combination ran')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('whole pixels: the rows of every kind, collapsed, popups, no header, Group by zone off', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		for _, noise in ipairs(NOISES) do
+			local st, TR = RW.world({ client = client })
+			every_row(st)
+			stub.size_noise = noise
+			local variants = {
+				function() end,
+				function() TR.config.header = false; TR:UpdateConfig() end,
+				function() TR.config.quests.zones = false; TR:UpdateConfig() end,
+				function() TR:SetCollapsed(true) end,
+				function() TR.config.quests.icons = false; TR:UpdateConfig() end,
+				function() TR.config.hide_empty = false; Q.set({ Q.header('A') }, {}, { popups = {} }); TR:Refresh() end,
+			}
+			for index, variant in ipairs(variants) do
+				variant()
+				TR:Refresh()
+				local off = P.off(TR.window)
+				eq(#off, 0, ('%s, noise %g, variant %d: %s'):format(client, noise, index, P.report(off)))
+			end
+			stub.size_noise = 0
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("sizes read back a hair off (a text's height, the bar's room) never change a row: heights are rounded, widths and rects exactly whole", function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local function rects(noise)
+			local st, TR = RW.world({ client = client })
+			every_row(st)
+			TR.config.width, TR.config.height = 261, 300
+			TR:UpdateConfig()
+			-- The game reads a text's height back a hair off too.
+			local methods = getmetatable(UIParent:CreateFontString(nil, 'OVERLAY')).__index
+			local height = methods.GetStringHeight
+			methods.GetStringHeight = function(self) return height(self) + noise end
+			stub.size_noise = noise
+			TR.fontStamp = TR.fontStamp + 1 -- every text is measured again
+			TR:Refresh()
+			local out = {}
+			for _, kind in ipairs({ 'popup', 'zone', 'quest' }) do
+				for _, row in ipairs(RW.rows(TR, kind)) do
+					local width, tall = row:GetRight() - row:GetLeft(), row:GetTop() - row:GetBottom()
+					eq(width, math.floor(width), ('%s noise %g: a %s row is exactly whole wide (%s)'):format(client, noise, kind, tostring(width)))
+					eq(tall, math.floor(tall), ('%s noise %g: and exactly whole tall (%s)'):format(client, noise, tostring(tall)))
+					out[#out + 1] = ('%s %s %s'):format(row.key, width, tall)
+				end
+			end
+			check(TR.scrollRange > 0, client .. ': the list scrolls, so the bar takes its room')
+			eq(TR.content:GetRight() - TR.content:GetLeft(), 261 - 16 - 14, 'the child is the width less padding and the bar')
+			methods.GetStringHeight = height
+			stub.size_noise = 0
+			return table.concat(out, '; ')
+		end
+		local flat = rects(0)
+		eq(rects(2 ^ -14), flat, client .. ': noise up changes no row')
+		eq(rects(-2 ^ -14), flat, client .. ': noise down changes none either')
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)

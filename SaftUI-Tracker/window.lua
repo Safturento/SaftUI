@@ -215,9 +215,28 @@ end
 
 -- Whether the window is its header only: the player collapsed it, per
 -- character. With Header off there is no whole-tracker collapse, and the saved
--- state is ignored (Ruling 15).
+-- state is ignored (Ruling 15). While auto quest popups show it is open
+-- whatever was saved, and the saved state stays (Ruling 15).
 function TR:IsCollapsed()
-	return self.config.header and self:CharData().collapsed or false
+	return self.config.header and not self.popupsShown and self:CharData().collapsed or false
+end
+
+-- Popups show (the refresh says so before it sizes the window): the window is
+-- expanded while they do, without changing the saved state.
+function TR:SetPopups(shown)
+	shown = shown and true or false
+	if self.popupsShown == shown then return end
+	self.popupsShown = shown
+	if self.header then self.header.collapse:SetDown(self:IsCollapsed()) end
+end
+
+-- Whether the list is empty (nothing tracked, no popups): the window is hidden
+-- for it with Hide when empty, else it shows its header and the empty line.
+function TR:SetEmpty(empty)
+	self.isEmpty = empty and true or false
+	if not self.window then return end
+	local shown = not (self.isEmpty and self.config.hide_empty)
+	if self.window:IsShown() ~= shown then self.window:SetShown(shown) end
 end
 
 function TR:SetCollapsed(collapsed)
@@ -283,6 +302,12 @@ function TR:LayoutWindow()
 	self:UpdateWatcher()
 	-- A collapsed window keeps the player's place for when it opens again.
 	if not collapsed then self:ScrollTo(self:GetScroll()) end
+	self:PlaceFocusBar()
+end
+
+-- The scroll view's height as drawn, in whole pixels.
+function TR:ViewHeight()
+	return self.scroll and Round(self.scroll:GetHeight()) or 0
 end
 
 -- How far down the list is scrolled.
@@ -296,6 +321,7 @@ function TR:ScrollTo(offset)
 	local whole = math.min(math.max(Round(offset), 0), self.scrollRange or 0)
 	self.scrollAt = whole
 	self.scroll:SetVerticalScroll(whole)
+	self:PlaceFocusBar()
 end
 
 -- Task 8: while an item button sits in a row the list doesn't scroll in combat.
@@ -363,7 +389,7 @@ function TR:UpdateHeader(model)
 	self.counts = model and model.counts or nil
 	local header = self.header
 	if not header then return end
-	header.count:SetText(TR.CountText(self.counts))
+	TR.SetText(header.count, TR.CountText(self.counts))
 	header.tipLine = TR.HeaderTip(self.counts)
 end
 
@@ -515,6 +541,7 @@ function TR:BuildWindow()
 			frame:SetVerticalScroll(target)
 			settling = false
 		end
+		TR:PlaceFocusBar()
 	end)
 	self.scroll = scroll
 	self.content = scroll.ScrollChild

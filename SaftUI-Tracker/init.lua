@@ -60,6 +60,10 @@ function TR:Build()
 	if self.built then return end
 	self.built = true
 	self:BuildWindow()
+	self:BuildRows()
+	self:RegisterEvents()
+	-- The first refresh, on the next frame like any other.
+	self:MarkDirty('BUILD')
 end
 
 -- The switch was just saved from /sui and the player is being asked about a
@@ -95,7 +99,10 @@ function TR:UpdateConfig()
 	if not self.built then return end
 	self:ApplyHolder()
 	self:DrawWindow()
-	-- Each part of the tracker adds its own update below.
+	self:DrawRowsLook()
+	-- Each part of the tracker adds its own update below. The rows are read and
+	-- drawn again once a first refresh has run (the build's own is on its way).
+	if self.model then self:Refresh() end
 end
 
 -- A theme recolor or a change of a profile color: what each part of the tracker
@@ -106,6 +113,7 @@ end
 function TR:OnColorsChanged(group)
 	if not self.built then return end
 	self:ColorWindow()
+	self:ColorRows(group)
 end
 
 -- What the tracker keeps per character, in st.config.char.tracker: each zone
@@ -162,4 +170,193 @@ function TR.SettingDefault(group, key)
 		end,
 		value = function() return Default() end,
 	}
+end
+
+------------------------------------------------------------------ events and the refresh
+
+-- The game's events that mark the quest list dirty (design: "Events and the
+-- refresh"). PLAYER_MONEY is registered only while a quest needs more money
+-- than the player has (TR:UpdateMoneyEvent), UNIT_QUEST_LOG_CHANGED for the
+-- player only; BAG_UPDATE_COOLDOWN is for the item buttons' cooldowns, which
+-- Task 8 gives TR:RefreshCooldowns (it refreshes nothing else).
+TR.EVENTS = {
+	'QUEST_LOG_UPDATE', 'QUEST_WATCH_LIST_CHANGED', 'QUEST_WATCH_UPDATE', 'QUEST_ACCEPTED',
+	'QUEST_REMOVED', 'QUEST_TURNED_IN', 'QUEST_AUTOCOMPLETE', 'QUEST_POI_UPDATE',
+	'QUEST_LOG_CRITERIA_UPDATE', 'UNIT_QUEST_LOG_CHANGED', 'SUPER_TRACKING_CHANGED',
+	'SUPER_TRACKING_PATH_UPDATED', 'ZONE_CHANGED', 'ZONE_CHANGED_INDOORS', 'ZONE_CHANGED_NEW_AREA',
+	'PLAYER_ENTERING_WORLD', 'PLAYER_LEVEL_UP', 'PLAYER_MONEY', 'BAG_UPDATE_DELAYED',
+	'BAG_UPDATE_COOLDOWN', 'PLAYER_REGEN_ENABLED', 'PLAYER_REGEN_DISABLED',
+}
+TR.UNIT_EVENTS = { UNIT_QUEST_LOG_CHANGED = 'player' }
+TR.CONDITIONAL_EVENTS = { PLAYER_MONEY = true }
+
+-- QUEST_LOG_UPDATE can fire many times a second while killing: it refreshes at
+-- most this often (seconds).
+TR.REFRESH_GAP = 0.1
+
+-- The module's one event frame. Only called by TR:Build, so with the switch off
+-- no event is registered.
+function TR:RegisterEvents()
+	local frame = CreateFrame('Frame')
+	frame:SetScript('OnEvent', function(_, event) TR:OnEvent(event) end)
+	for _, event in ipairs(TR.EVENTS) do
+		local unit = TR.UNIT_EVENTS[event]
+		if unit then
+			frame:RegisterUnitEvent(event, unit)
+		elseif not TR.CONDITIONAL_EVENTS[event] then
+			frame:RegisterEvent(event)
+		end
+	end
+	self.eventFrame = frame
+end
+
+function TR:OnEvent(event)
+	if event == 'BAG_UPDATE_COOLDOWN' then
+		if self.RefreshCooldowns then self:RefreshCooldowns() end
+		return
+	end
+	self:MarkDirty(event)
+end
+
+-- PLAYER_MONEY, while a quest needs more money than the player has.
+function TR:UpdateMoneyEvent(model)
+	local needed = false
+	for _, quest in ipairs(model.quests) do
+		if quest.money then
+			needed = true
+			break
+		end
+	end
+	if needed ~= (self.moneyEvent or false) then
+		self.moneyEvent = needed
+		if needed then
+			self.eventFrame:RegisterEvent('PLAYER_MONEY')
+		else
+			self.eventFrame:UnregisterEvent('PLAYER_MONEY')
+		end
+	end
+end
+
+-- Something changed: the list is read and drawn again, once, on the next frame
+-- (C_Timer.After(0)), however many marks come before it. QUEST_LOG_UPDATE waits
+-- out TR.REFRESH_GAP since the last refresh, so a burst of them refreshes at
+-- most every 0.1 seconds; any other mark, arriving while that wait is pending,
+-- brings the refresh forward to the next frame. Nothing runs before the
+-- tracker is built.
+function TR:MarkDirty(event)
+	if not self.built then return end
+	local delay = 0
+	if event == 'QUEST_LOG_UPDATE' and self.lastRefresh then
+		delay = math.max(0, TR.REFRESH_GAP - (GetTime() - self.lastRefresh))
+	end
+	if self.pendingDelay and self.pendingDelay <= delay then return end
+	self.pendingDelay = delay
+	self.pendingToken = (self.pendingToken or 0) + 1
+	local token = self.pendingToken
+	C_Timer.After(delay, function()
+		-- A later mark with a shorter wait scheduled its own; this one is stale.
+		if self.pendingToken ~= token then return end
+		self.pendingDelay = nil
+		self:Refresh()
+	end)
+end
+
+-- Reads the quest log into the model and draws it: the model, the groups, the
+-- entries, the layout, the rows, then each later stage where its file defines
+-- it (the item buttons, the probes, the handover, the visibility).
+function TR:Refresh()
+	if not self.built then return end
+	self.lastRefresh = GetTime()
+	local model = TR.Model.Read(self.config.quests.show)
+	self.model = model
+	self:UpdateMoneyEvent(model)
+	self:UpdateHeader(model)
+	self:Redraw()
+end
+
+-- The width the rows are laid out at: the window's, less padding, and the scroll
+-- bar's room while the list scrolls.
+function TR:RowsWidth(room)
+	return TR.Layout.ChildWidth(math.floor(self.config.width + 0.5), room)
+end
+
+-- Everything after the read, from the model already read: the groups, entries,
+-- layout and rows, the window's height and scroll. What a click on a zone
+-- header runs, and what a refresh ends with.
+function TR:Redraw()
+	if not self.built then return end
+	if not self.model then return self:Refresh() end
+	local model, config = self.model, self.config
+	local Layout = TR.Layout
+	self:CheckFonts()
+
+	local groups = TR.Groups.Build(model.quests, config.quests, model.zoneNames, self:CharData().zones)
+	local empty = #model.quests == 0 and #model.popups == 0
+	self:SetPopups(#model.popups > 0)
+	self:SetEmpty(empty)
+	local entries = self:BuildEntries(model, groups)
+
+	-- The list's width depends on whether it scrolls (the bar's room), which
+	-- depends on its height: laid out at the last width, and again at the other
+	-- when that was wrong.
+	local metrics = self.metrics
+	metrics.spacing = math.floor(config.quests.spacing + 0.5)
+	metrics.icons = self:ShowsIcons()
+	metrics.itemSize = config.items.size
+	local header, collapsed, max = config.header and true or false, self:IsCollapsed(), self:MaxHeight()
+	local room = self.barRoom or 0
+	local placed, height
+	for _ = 1, 2 do
+		metrics.width = self:RowsWidth(room)
+		placed, height = Layout.Rows(entries, metrics, self.measureText, self.placed)
+		local windowHeight = Layout.WindowHeight(height, { header = header, collapsed = collapsed, max = max })
+		local scrolls = not collapsed and height > Layout.ViewHeight(windowHeight, header)
+		local needed = scrolls and math.floor(st:ScrollBarRoom(self.scroll) + 0.5) or 0
+		if needed == room then break end
+		room = needed
+	end
+	self.barRoom = room
+	self.rowWidth = metrics.width
+
+	self:DrawRows(entries, placed)
+	self:SetContentHeight(height)
+	self:KeepInView(entries, placed)
+
+	-- The stages of the later tasks, each once its file defines it.
+	if self.RefreshItems then self:RefreshItems() end
+	if self.RunProbes then self:RunProbes() end
+	if self.UpdateHandover then self:UpdateHandover() end
+	if self.ApplyVisibility then self:ApplyVisibility() end
+end
+
+-- The list keeps the player's place across a refresh, except that the focused
+-- quest (when the focus changed) or a newly tracked one (the first, when
+-- several) is scrolled into view, unless scrolling is locked.
+function TR:KeepInView(entries, placed)
+	local model = self.model
+	local target
+	local known = self.knownQuests
+	if not known then
+		known = {}
+		self.knownQuests = known
+	end
+	local first = not self.hasRefreshed
+	for _, quest in ipairs(model.quests) do
+		if not known[quest.id] and not first and not target then target = quest.id end
+	end
+	for id in pairs(known) do known[id] = nil end
+	for _, quest in ipairs(model.quests) do known[quest.id] = true end
+	self.hasRefreshed = true
+	if model.focused ~= self.lastFocused then
+		self.lastFocused = model.focused
+		if model.focused then target = model.focused end
+	end
+	if not target or self:IsCollapsed() or self:IsScrollLocked() then return end
+	for index, entry in ipairs(entries) do
+		if entry.quest and entry.quest.id == target then
+			local p = placed[index]
+			self:ScrollTo(TR.Layout.IntoView(self:GetScroll(), p.y, p.height, self:ViewHeight(), self.scrollRange or 0))
+			return
+		end
+	end
 end

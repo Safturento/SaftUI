@@ -35,6 +35,8 @@ The icon's name from `st.icons` (`x`, `chevronDown`, `chevronUp`, `rotateCcw`, `
 | `move` | the Edit mode button in /sui's collapsed footer (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
 | `keyboard` | the keybind mode command in /sui's collapsed footer (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
 | `list` | the Categories tab's category button (registered; used by the window's sizes work) | 16 | `text-grey`, `accent` |
+| `map-pin` | SaftUI's tracker: after the current zone's name on its zone header | 16 (an 8 px glyph) | `accent` |
+| `chevron-up`, `chevron-down` | SaftUI's tracker: the header's collapse button and each zone header's (up while it shows, down while collapsed; a 16 square button, hover white) | 16 (an 8 px glyph) | `text-grey`, `white` under the mouse |
 | `ellipsis`, `settings` | registered, unused | | |
 
 ## To replace with Lucide

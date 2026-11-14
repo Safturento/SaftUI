@@ -119,6 +119,19 @@ C_Timer = {
 		end
 		table.insert(stub.timers, { due = stub.time + delay, fn = fn })
 	end,
+	-- A ticker runs fn every `seconds` (the game's, from the time it's made),
+	-- once at the most per stub.run_timers(), until its Cancel. Returns the
+	-- ticker object, with Cancel and IsCancelled.
+	NewTicker = function(seconds, fn, iterations)
+		if type(seconds) ~= 'number' or type(fn) ~= 'function' then
+			error('Usage: C_Timer.NewTicker(seconds, callback [, iterations])', 2)
+		end
+		local timer = { due = stub.time + seconds, fn = fn, interval = seconds, left = iterations }
+		local ticker = { Cancel = function(self) timer.cancelled = true end, IsCancelled = function() return timer.cancelled == true end }
+		timer.object = ticker
+		table.insert(stub.timers, timer)
+		return ticker
+	end,
 }
 -- Starts the game's next frame (stub.tick), then runs, in the order they were
 -- made, the timers due by stub.time (callbacks they make that are due run
@@ -129,10 +142,21 @@ function stub.run_timers()
 	local i = 1
 	while i <= #stub.timers do
 		local timer = stub.timers[i]
-		if timer.due <= stub.time then
+		if timer.cancelled then
+			table.remove(stub.timers, i)
+		elseif timer.due <= stub.time then
 			table.remove(stub.timers, i)
 			ran = ran + 1
-			timer.fn()
+			if timer.interval then
+				-- A ticker goes on from now (once per call, however late), unless it
+				-- has run its iterations.
+				if timer.left then timer.left = timer.left - 1 end
+				if not timer.left or timer.left > 0 then
+					timer.due = stub.time + timer.interval
+					table.insert(stub.timers, timer)
+				end
+			end
+			timer.fn(timer.object)
 		else
 			i = i + 1
 		end

@@ -460,6 +460,13 @@ function TR.TitleText(quest, settings)
 	return title
 end
 
+-- The timer line's text and color state for the seconds left: "Time left: 4:32",
+-- in 'failed' under a minute. The ticker that counts a shown timer down says it
+-- through this too.
+function TR.TimerLine(left)
+	return 'Time left: ' .. TR.TimeText(left), left < 60 and 'failed' or 'normal'
+end
+
 local function Line(kind, text, state, value)
 	return { kind = kind, text = text, state = state, value = value }
 end
@@ -523,7 +530,8 @@ function TR.QuestLines(quest, settings, now)
 			local left = quest.timeLeft
 			if now and quest.readAt then left = left - (now - quest.readAt) end
 			if left > 0 then
-				lines[#lines + 1] = Line('timer', 'Time left: ' .. TR.TimeText(left), left < 60 and 'failed' or 'normal', left)
+				local text, state = TR.TimerLine(left)
+				lines[#lines + 1] = Line('timer', text, state, left)
 			end
 		end
 	end

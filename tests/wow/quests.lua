@@ -8,6 +8,7 @@
 	    focused = 0,            -- the super tracked (focused) quest, 0 for none
 	    popups = { { id, kind } }, -- auto quest pop-ups; kind 'OFFER' or 'COMPLETE'
 	    max = nil,              -- the most quests the log holds: nil is the client's own (Forever 40, retail 35)
+	    shown = nil,            -- what ShowQuestOffer and ShowQuestComplete were asked, 'offer:<id>' / 'complete:<id>', in order
 	    titles = { [id] = title }, -- titles the quest cache has for quests not in the log (an offered quest's)
 	  }
 	  stub.money  -- GetMoney(), in copper
@@ -493,6 +494,26 @@ do
 		local popup = stub.quests.popups[index]
 		if not popup then return end
 		return popup.id, popup.kind
+	end
+	-- The offer and turn-in frames a popup's click opens (Blizzard's functions,
+	-- which open the quest frame through the game's own events) and the
+	-- removal of the popup: only recorded, in stub.quests.shown, each as
+	-- 'offer:<id>' or 'complete:<id>'; RemoveAutoQuestPopUp drops the popup.
+	function ShowQuestOffer(questID)
+		number_arg(questID, 'ShowQuestOffer(questID)')
+		stub.quests.shown = stub.quests.shown or {}
+		table.insert(stub.quests.shown, 'offer:' .. questID)
+	end
+	function ShowQuestComplete(questID)
+		number_arg(questID, 'ShowQuestComplete(questID)')
+		stub.quests.shown = stub.quests.shown or {}
+		table.insert(stub.quests.shown, 'complete:' .. questID)
+	end
+	function RemoveAutoQuestPopUp(questID)
+		number_arg(questID, 'RemoveAutoQuestPopUp(questID)')
+		for index, popup in ipairs(stub.quests.popups) do
+			if popup.id == questID then table.remove(stub.quests.popups, index) break end
+		end
 	end
 	-- The chat link of a quest in the log, nil for one that isn't.
 	function GetQuestLink(questID)

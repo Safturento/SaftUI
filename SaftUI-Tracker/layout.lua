@@ -60,3 +60,121 @@ end
 function Layout.Wheel(offset, delta, range)
 	return math.min(math.max(offset - delta * L.WHEEL, 0), range)
 end
+
+------------------------------------------------------------------ the rows
+
+-- The whole-pixel clamp of a scroll offset.
+local function Clamp(offset, range)
+	return math.min(math.max(offset, 0), range)
+end
+
+-- Where each row goes in the list (the scroll child), from the top, in whole
+-- pixels, and how tall the list is. Pure: the heights of wrapped texts come
+-- from measure, which the tracker answers from the real font strings.
+--
+-- entries are { kind = 'popup' | 'zone' | 'quest' | 'empty', first, lines,
+-- item = 'row' | nil }: first is a quest's title (or the empty line's text),
+-- lines a quest's lines, each { text } or { kind = 'bar' } (model.lua's lines
+-- are this shape); item says a quest's button sits in its row.
+-- metrics is { width, spacing, icons, itemSize }: width the scroll child's.
+-- measure(text, width, font, entry, slot) -> height gives a text's height
+-- wrapped at width; font is 'text' (titles, objectives, the empty line); slot
+-- is 'title' or the line's index (the last two are for a caller that measures
+-- the font string of that text).
+--
+-- Each placed entry is { y, height, titleWidth, lineWidth, titleHeight,
+-- lines = { { y, height } } }, y from the list's top and lines' y from the
+-- row's. Gaps (Ruling 18): a zone header is 10 under what's above it, a row
+-- 4 under a zone header, and rows spacing apart (popups too). Title width is
+-- the child width, less ICON + ICON_GAP with icons, less itemSize + 4 with the
+-- button in the row; line width is the title width less INDENT (Ruling 11). A
+-- bar takes 3 above and 3 below and no line gap of its own. out, when given,
+-- is a table of an earlier call to fill again, so a refresh makes none.
+function Layout.Rows(entries, metrics, measure, out)
+	local placed = out or {}
+	for index = #entries + 1, #placed do placed[index] = nil end
+	local width, spacing = metrics.width, metrics.spacing
+	local y, previous = 0, nil
+	for index, entry in ipairs(entries) do
+		local kind = entry.kind
+		if previous == nil then
+			-- the first row: no gap
+		elseif kind == 'zone' then
+			y = y + L.ZONE_ABOVE
+		elseif previous == 'zone' then
+			y = y + L.ZONE_BELOW
+		else
+			y = y + spacing
+		end
+		local row = placed[index]
+		if not row then
+			row = { lines = {} }
+			placed[index] = row
+		end
+		local lines = row.lines
+		local used = 0
+		row.y = y
+		row.titleHeight = 0
+		if kind == 'zone' then
+			row.height = L.ZONE
+			row.titleWidth = width - L.CHEVRON - L.ZONE_TITLE_GAP
+			row.lineWidth = row.titleWidth
+		elseif kind == 'popup' then
+			row.height = L.POPUP
+			row.titleWidth = width - L.POPUP_BAR - L.FOCUS_GAP
+			row.lineWidth = row.titleWidth
+		elseif kind == 'empty' then
+			row.titleWidth = width
+			row.lineWidth = width
+			row.titleHeight = measure(entry.first, width, 'text', entry, 'title')
+			row.height = row.titleHeight
+		else
+			local titleWidth = width
+			if metrics.icons then titleWidth = titleWidth - L.ICON - L.ICON_GAP end
+			if entry.item == 'row' then titleWidth = titleWidth - metrics.itemSize - L.ITEM_GAP end
+			local lineWidth = titleWidth - L.INDENT
+			row.titleWidth, row.lineWidth = titleWidth, lineWidth
+			local titleHeight = measure(entry.first, titleWidth, 'text', entry, 'title')
+			row.titleHeight = titleHeight
+			local cursor, afterBar = titleHeight, false
+			for j, line in ipairs(entry.lines or {}) do
+				local part = lines[j]
+				if not part then
+					part = {}
+					lines[j] = part
+				end
+				if line.kind == 'bar' then
+					cursor = cursor + L.BAR_GAP
+					part.y, part.height = cursor, L.BAR
+					cursor = cursor + L.BAR + L.BAR_GAP
+					afterBar = true
+				else
+					if not afterBar then cursor = cursor + L.LINE_GAP end
+					part.y = cursor
+					part.height = measure(line.text, lineWidth, 'text', entry, j)
+					cursor = cursor + part.height
+					afterBar = false
+				end
+				used = j
+			end
+			row.height = cursor
+			if entry.item == 'row' and metrics.itemSize > cursor then row.height = metrics.itemSize end
+		end
+		for j = used + 1, #lines do lines[j] = nil end
+		y = y + row.height
+		previous = kind
+	end
+	return placed, y
+end
+
+-- The scroll offset that shows the row at top (height tall) whole in a view
+-- of view pixels, or the offset it has when it's in view already; a row
+-- taller than the view is shown from its top. Clamped to 0 and range.
+function Layout.IntoView(offset, top, height, view, range)
+	if height >= view or top < offset then
+		offset = top
+	elseif top + height > offset + view then
+		offset = top + height - view
+	end
+	return Clamp(offset, range)
+end
