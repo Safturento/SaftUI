@@ -518,7 +518,12 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	end
 	local width = (self:GetButtonWidth() + spacing) * lineSlots - spacing
 	categoryFrame:SetWidth(width)
-	if titleText then
+	if titleText and self:GetLaidOutView(container) == 'compact' then
+		-- Compact's titles are as they always were: not cut.
+		categoryFrame.header.text:SetWordWrap(true)
+		categoryFrame.header.text:SetWidth(0)
+		categoryFrame.header.text:SetText(titleText)
+	elseif titleText then
 		local room = width - 2 - (categoryFrame.filterCheckbox and categoryFrame.filterCheckbox:IsShown() and 16 or 0)
 		FitTitle(categoryFrame.header.text, titleText, room)
 	end

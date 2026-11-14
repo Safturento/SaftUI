@@ -461,3 +461,97 @@ test('a title longer than the line is cut with dots inside it, the count kept', 
 	eq(text:GetText(), 'Short (2)', 'a short title is left alone')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ Compact, Items per row changed while closed
+
+-- No two shown category frames overlap (Compact has several columns), each
+-- is as wide as its column, and every shown item button is inside its frame.
+local function compact_ok(c, label)
+	local frames = {}
+	for name, frame in pairs(c.categories) do
+		if frame:IsShown() and name ~= 'Currencies' then
+			table.insert(frames, frame)
+			eq(frame:GetWidth(), c.columns[1]:GetWidth(), label .. ': ' .. name .. ' as wide as its column')
+			for i, slot in ipairs(frame.slots) do
+				if slot:IsShown() then
+					check(slot:GetLeft() >= frame:GetLeft() - EPS and slot:GetRight() <= frame:GetRight() + EPS
+						and slot:GetBottom() >= frame:GetBottom() - EPS and slot:GetTop() <= frame:GetTop() + EPS,
+						label .. ': ' .. name .. ' slot ' .. i .. ' inside its frame')
+				end
+			end
+		end
+	end
+	for i = 1, #frames do
+		for j = i + 1, #frames do
+			local a, b = frames[i], frames[j]
+			local w = math.min(a:GetRight(), b:GetRight()) - math.max(a:GetLeft(), b:GetLeft())
+			local h = math.min(a:GetTop(), b:GetTop()) - math.max(a:GetBottom(), b:GetBottom())
+			check(not (w > EPS and h > EPS), label .. ': ' .. a.name .. ' and ' .. b.name .. ' do not overlap')
+		end
+	end
+end
+
+test('Compact: Items per row changed while the bags are closed, then opened in combat', function()
+	local c = world('compact', { Consumable = 5, Weapon = 2, ['Trade Goods'] = 2, Armor = 5 })
+	c:Hide()
+	INV.config.bag.perrow = 3
+	INV:UpdateConfig('bag')
+	INV:StyleContainerContents(c)
+	in_combat(function()
+		local moved = moves(c)
+		c:Show()
+		update(c)
+		compact_ok(c, 'bags')
+		eq(moved(), 0, 'no item button moved in combat')
+	end)
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	update(c)
+	compact_ok(c, 'bags after combat')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('Compact: the same in the combined bank', function()
+	INV, W = H.views_world('forever')
+	bw, bh, sp = INV:GetButtonWidth(), INV:GetButtonHeight(), INV.config.buttonspacing
+	padding = INV.config.padding
+	local tab = INV.bagIds.combinedbank[1]
+	W.bag(tab, 60, 'Bank')
+	local slot, id = 0, 500
+	for _, class in ipairs({ 'Consumable', 'Weapon', 'Trade Goods', 'Armor' }) do
+		for i = 1, 4 do
+			slot, id = slot + 1, id + 1
+			W.put(tab, slot, W.item(id, class .. i, class, 50 - i))
+		end
+	end
+	INV.config.stackItems = false
+	INV.config.combinedbank.view = 'compact'
+	INV.config.combinedbank.perrow = 4
+	H.window('bag') -- the Currencies category is the bag window's
+	local c = H.window('combinedbank')
+	c:HookScript('OnHide', function() INV:ReleaseLayout(c) end)
+	INV:UpdateContainer('combinedbank', true)
+	c:Hide()
+	INV.config.combinedbank.perrow = 2
+	INV:UpdateConfig('combinedbank')
+	INV:StyleContainerContents(c)
+	in_combat(function()
+		c:Show()
+		INV:UpdateContainer('combinedbank', true)
+		compact_ok(c, 'bank')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('combat: two frames on different lines, the narrower holding more items than its line', function()
+	local c = world('rows', { Consumable = 5 })
+	in_combat(function()
+		for i = 1, 3 do W.put(0, 30 + i, W.item(900 + i, 'Tonic ' .. i, 'Consumable', 10)) end
+		for i = 1, 7 do W.put(0, 34 + i, W.item(950 + i, 'Bolt ' .. i, 'Trade Goods', 10)) end
+		update(c)
+		local cons = c.categories.Consumables
+		check(cons.slotLine < c.categories['Trade Goods'].slotLine, 'the frames are anchored at different lines')
+		eq(cons.numRows, 2, 'eight consumables wrap at their own line')
+		invariant(c, 'two lines')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)

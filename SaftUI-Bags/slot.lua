@@ -499,8 +499,8 @@ end
 
 -- Applies the profile's slot size, spot, Slot theme and fonts to a slot made by
 -- INV:CreateSlot. Runs on profile changes; skinning a slot again is safe.
-function INV:StyleSlot(slot, categoryFrame, container)
-	self:SetSlotPosition(slot, categoryFrame, container)
+function INV:StyleSlot(slot, categoryFrame, container, lineSlots)
+	self:SetSlotPosition(slot, categoryFrame, container, lineSlots)
 	slot:SetSize(self:GetButtonWidth(), self:GetButtonHeight())
 	slot.itemLevel:SetFontObject(st:GetFont(self.config.fonts.icons))
 	slot.reagentMarker:SetVertexColor(st.config.profile.colors.text.green:GetRGB())
