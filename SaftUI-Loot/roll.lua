@@ -566,6 +566,19 @@ function LT:InitializeRollFrame()
 	self:RegisterEvent('CANCEL_ALL_LOOT_ROLLS', 'OnCancelAllLootRolls')
 end
 
+-- True while a roll bar is on screen: a held roll, one of Blizzard's roll
+-- frames, or Test mode's previews. Only reads.
+local function AnyRollBarShown(self)
+	if held[1] then return true end
+	local container = _G.GroupLootContainer
+	if container and container.rollFrames then
+		for _, frame in pairs(container.rollFrames) do
+			if frame:IsShown() then return true end
+		end
+	end
+	return (self.rollPreview and self.rollPreview:IsShown()) == true
+end
+
 function LT:RegisterRollMover()
 	st:RegisterConfigMover(self.rollAnchor, {
 		key = 'lootroll',
@@ -573,6 +586,9 @@ function LT:RegisterRollMover()
 		config = function() return self.config.roll end,
 		apply = function() self:UpdateGroupLootConfig() end,
 		configPath = { 'Loot', 'roll', 'general' },
+		module = 'Loot',
+		isHidden = function() return not AnyRollBarShown(self) end,
+		defaults = function() return st.defaults.loot.roll end,
 	})
 end
 

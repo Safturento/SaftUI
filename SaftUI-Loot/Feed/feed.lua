@@ -758,6 +758,8 @@ function LT:InitializeLootFeed()
 		config = function() return self.config.feed end,
 		apply = function() self:UpdateLootFeedConfig(); self:UpdateFeed() end,
 		configPath = { 'Loot', 'feed', 'general' },
+		module = 'Loot',
+		defaults = function() return st.defaults.loot.feed end,
 	})
 
 	self:RegisterEvent('CHAT_MSG_LOOT', 'LootFeedHandler')

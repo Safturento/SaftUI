@@ -239,3 +239,16 @@ test("in combat Blizzard's clamp still reaches the holder, and nothing is done t
 	eq(#stub.blocked, 0, 'nothing blocked')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("chat's mover is the Chat module, with a copy of the profile defaults' position as its default", function()
+	eq(EM:MoverModule(mover), 'Chat', 'module')
+	eq(EM:IsMoverDisabled(mover), false, 'never disabled')
+	eq(EM:IsMoverHidden(mover), false, 'never hidden')
+	local default = EM:GetDefaultPosition(mover)
+	local want = st.defaults.chat.position
+	eq(At(default), want.x_off .. ',' .. want.y_off, "the defaults' position")
+	check(default ~= want, 'a copy, not the defaults table')
+	default.x_off = 777
+	eq(st.defaults.chat.position.x_off, want.x_off, 'a write into it never reaches the defaults')
+	eq(#take_errors(), 0, 'no errors')
+end)

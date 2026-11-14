@@ -135,11 +135,18 @@ end
 -- the outline would otherwise sit around a bar that never shows. Only reads the
 -- bar's visibility field; the outline's label is SaftUI's.
 function STP:UpdateMoverLabel(key)
-	local info, mover, bar = self.infos[key], self.movers[key], self.bars[key]
+	local info, mover = self.infos[key], self.movers[key]
 	if not (mover and mover.label) then return end
-	local visibilities = Enum and Enum.EditModeSwingTimerVisibility
-	local hidden = visibilities and bar.visibility == visibilities.Hidden
+	local hidden = self:IsHiddenByBlizzard(key)
 	mover.label:SetText(info.label .. ' Swing' .. (hidden and ' (hidden by Blizzard setting)' or ''))
+end
+
+-- True while Blizzard's saved Visibility for the bar is Hidden. Only reads the
+-- bar's visibility field.
+function STP:IsHiddenByBlizzard(key)
+	local bar = self.bars[key]
+	local visibilities = Enum and Enum.EditModeSwingTimerVisibility
+	return (visibilities and bar and bar.visibility == visibilities.Hidden) == true
 end
 
 -- Sizes and places one holder from the profile. Only SaftUI's holder is touched (the
@@ -184,6 +191,10 @@ function STP:RegisterBarMover(info)
 		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'SwingTimer', key, 'general' },
+		module = 'Misc',
+		-- Off while Blizzard's setting hides the bar (the read UpdateMoverLabel makes).
+		isDisabled = function() return self:IsHiddenByBlizzard(key) end,
+		defaults = function() return st.defaults.swingtimer[key] end,
 	})
 end
 

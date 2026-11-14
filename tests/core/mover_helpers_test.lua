@@ -204,3 +204,34 @@ test('a dragged position is placed by apply through PlaceAtPosition', function()
 	eq(p[4], 30, 'x')
 	eq(p[5], -40, 'y')
 end)
+
+test('RegisterConfigMover passes module, isDisabled, isHidden and noDefaultReason through, and makes getDefaultPosition from defaults', function()
+	local isDisabled, isHidden = function() return false end, function() return true end
+	local defaults = { position = { point = 'CENTER', x_off = 4, y_off = 8 } }
+	local mover = st:RegisterConfigMover(Frame(), {
+		key = 'helpers_fields', config = function() return {} end, apply = function() end,
+		module = 'Chat', isDisabled = isDisabled, isHidden = isHidden, noDefaultReason = 'why',
+		defaults = function() return defaults end,
+	})
+	local def = mover.def
+	eq(def.module, 'Chat', 'module')
+	eq(def.isDisabled, isDisabled, 'isDisabled as given')
+	eq(def.isHidden, isHidden, 'isHidden as given')
+	eq(def.noDefaultReason, 'why', 'noDefaultReason')
+	eq(def.defaults, nil, 'defaults is not passed on')
+	local position = def.getDefaultPosition()
+	eq(position.x_off, 4, 'the default position')
+	check(position ~= defaults.position, 'a copy')
+	position.x_off = 50
+	eq(defaults.position.x_off, 4, 'a write into the copy leaves the defaults')
+	local none = st:RegisterConfigMover(Frame(), {
+		key = 'helpers_nodefaults', config = function() return {} end, apply = function() end,
+	})
+	eq(none.def.getDefaultPosition, nil, 'no defaults, no getDefaultPosition')
+	local ok, err = pcall(st.RegisterConfigMover, st, Frame(), {
+		key = 'helpers_both', config = function() return {} end, apply = function() end,
+		defaults = function() return {} end, getDefaultPosition = function() end,
+	})
+	eq(ok, false, 'both is an error')
+	check(tostring(err):find('give defaults or getDefaultPosition, not both', 1, true), 'naming both')
+end)

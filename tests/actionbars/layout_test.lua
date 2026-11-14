@@ -173,3 +173,37 @@ test("First button in a bar's Layout writes the setting as the bar's own", funct
 	eq(AB:GetBarConfig('bar4').growth, 'TOPLEFT', 'another bar is unmoved')
 	eq(table.concat(updated, ','), 'bar3', 'the bar was updated')
 end)
+
+-- What the edit mode bar reads from a bar's mover: its module, whether its
+-- enable setting turns it off, and whether it is on but not on screen.
+test("a bar's mover knows its module, follows its enable setting, and is hidden while the bar is unavailable or not shown", function()
+	fresh()
+	load_editmode()
+	local EM = st.EditModeFrames
+	bar('bar2', button('LayoutMoverB2'))
+	-- A bare frame for the pet bar: its mover reads only the frame's shown state.
+	AB.bars.pet = CreateFrame('Frame', AB:GetBarFrameName('pet'), UIParent)
+	AB:RegisterBarMover('bar2')
+	AB:RegisterBarMover('pet')
+	local two, pet = AB.movers.bar2, AB.movers.pet
+	eq(EM:MoverModule(two), 'Action bars', 'module')
+	eq(EM:IsMoverDisabled(two), false, 'enabled')
+	AB.config.bar2.enable = false
+	eq(EM:IsMoverDisabled(two), true, 'its enable off')
+	AB.config.bar2.enable = true
+	eq(EM:IsMoverDisabled(two), false, 'and on again')
+
+	AB.barTypes.pet.IsAvailable = function() return false end
+	eq(EM:IsMoverHidden(pet), true, 'the pet bar is hidden while IsBarAvailable is false')
+	AB.barTypes.pet.IsAvailable = function() return true end
+	AB.bars.pet:Show()
+	eq(EM:IsMoverHidden(pet), false, 'shown when available and shown')
+	AB.bars.pet:Hide()
+	eq(EM:IsMoverHidden(pet), true, 'hidden while the bar is not shown')
+
+	local default = EM:GetDefaultPosition(two)
+	eq(default.frame, 'SaftUI_ActionBar1', 'the default position is st.defaults')
+	default.x_off = 99
+	eq(st.defaults.actionbars.bar2.position.x_off, 0, 'a copy')
+	eq(#take_errors(), 0, 'no errors')
+end)

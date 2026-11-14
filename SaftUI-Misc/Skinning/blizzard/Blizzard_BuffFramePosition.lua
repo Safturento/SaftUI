@@ -563,6 +563,8 @@ function AP:RegisterAuraMover(info)
 		config = function() return self.config[key] end,
 		apply = function() self:ApplyHolder(key) end,
 		configPath = { 'Auras', key, 'general' },
+		module = 'Misc',
+		defaults = function() return st.defaults.auras[key] end,
 	})
 end
 

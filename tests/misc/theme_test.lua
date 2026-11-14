@@ -17,6 +17,7 @@
 -- theme engine. Blizzard's frames are built as far as the skins read them, and
 -- locked (lib/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
+load_editmode() -- the totem bar's holder registers a mover (the last test)
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 local locked = load_test_file('lib/locked_widget.lua')
@@ -643,4 +644,28 @@ test('gem icons are drawn as slots, their icon under the ring', function()
 	check(draw_depth(ring) > draw_depth(socket.icon), 'over the icon, not under it')
 	profile.theme.name = 'thick'
 	st:RedrawThemed()
+end)
+
+test('the totem bar has no default place and says why; it is hidden while Blizzard\'s bar is', function()
+	local TB = st:GetModule('TotemBar')
+	st:BindModuleConfig(TB, 'totembar')
+	local EM = st.EditModeFrames
+	local bar = CreateFrame('Frame', nil, UIParent)
+	bar:SetSize(100, 40)
+	bar:SetPoint('CENTER')
+	local holder = CreateFrame('Frame', nil, UIParent)
+	holder:SetSize(100, 40)
+	holder:SetPoint('CENTER')
+	TB.bar, TB.holder = bar, holder
+	TB:SetupPosition()
+	local mover = EM.movers.totembar
+	check(mover ~= nil, 'the totem bar is a mover')
+	eq(EM:MoverModule(mover), 'Misc', 'module')
+	eq(EM:GetDefaultPosition(mover), nil, 'no default position')
+	eq(mover.def.noDefaultReason, "The totem bar has no default place: SaftUI took its place from Blizzard's Edit Mode.", 'and why')
+	eq(EM:IsMoverDisabled(mover), false, 'never disabled')
+	bar:Show()
+	eq(EM:IsMoverHidden(mover), false, "shown while Blizzard's bar is")
+	bar:Hide()
+	eq(EM:IsMoverHidden(mover), true, "hidden while Blizzard's bar isn't shown")
 end)

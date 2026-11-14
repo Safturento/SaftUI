@@ -80,3 +80,21 @@ test("each bar's holder goes no nearer the edges than the bar, 5 and 4 outside i
 	eq(Insets(STP.holders.mainhand), '-20,20,20,-20', 'and back')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("a swing timer mover is disabled while Blizzard's saved Visibility for its bar is Hidden, and has the defaults' position", function()
+	local EM = st.EditModeFrames
+	local mover = EM.movers.swingtimer_mainhand
+	eq(EM:MoverModule(mover), 'Misc', 'module')
+	eq(EM:IsMoverHidden(mover), false, 'never hidden on its own')
+	local realBar, enum = STP.bars.mainhand, Enum
+	Enum = { EditModeSwingTimerVisibility = { Always = 0, Hidden = 1 } }
+	STP.bars.mainhand = { visibility = 0 }
+	eq(EM:IsMoverDisabled(mover), false, "Blizzard's Visibility is not Hidden")
+	STP.bars.mainhand = { visibility = 1 }
+	eq(EM:IsMoverDisabled(mover), true, 'Hidden by Blizzard setting')
+	STP.bars.mainhand, Enum = realBar, enum
+	local default = EM:GetDefaultPosition(mover)
+	eq(default.y_off, st.defaults.swingtimer.mainhand.position.y_off, "the defaults' position")
+	check(default ~= st.defaults.swingtimer.mainhand.position, 'a copy')
+	eq(#take_errors(), 0, 'no errors')
+end)

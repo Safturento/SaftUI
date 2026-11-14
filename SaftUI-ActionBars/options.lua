@@ -151,8 +151,29 @@ function AB:RegisterBarMover(id)
 		config = function() return self.config[id] end,
 		apply = function() self:LayoutBar(id) end,
 		configPath = { 'ActionBars', id },
+		module = 'Action bars',
+		-- What the edit mode bar reads: only reads, never a call that writes.
+		isDisabled = function() return not self:GetBarConfig(id).enable end,
+		isHidden = function() return not self:IsBarAvailable(id) or not bar:IsShown() end,
+		defaults = function() return st.defaults.actionbars[id] end,
 	})
 	self:UpdateMoverLabel(id)
+end
+
+-- The frame whose showing says an extra button is on screen now: Blizzard's
+-- button and zone ability row while the game has them up (IsVisible, as their
+-- own frames' flags don't say), the leave vehicle button's header (a state
+-- driver shows it).
+local function ExtraShown(id, holder)
+	local frame
+	if id == 'extra' then
+		frame = _G.ExtraActionButton1
+	elseif id == 'zone' then
+		frame = _G.ZoneAbilityFrame and _G.ZoneAbilityFrame.SpellButtonContainer
+	else
+		frame = holder
+	end
+	return frame ~= nil and frame:IsVisible() == true
 end
 
 -- Once per extra button, when they're set up (AB:SetupExtras). The holder
@@ -167,6 +188,10 @@ function AB:RegisterExtraMover(id)
 		config = function() return self.config[id] end,
 		apply = function() self:LayoutExtra(id) end,
 		configPath = { 'ActionBars', id, 'general' },
+		module = 'Action bars',
+		-- No enable setting: the buttons show only while the game has them up.
+		isHidden = function() return not ExtraShown(id, holder) end,
+		defaults = function() return st.defaults.actionbars[id] end,
 	})
 end
 
