@@ -49,8 +49,8 @@ local st = SaftUI
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
 	align, disabled, disabledDesc, path, option }: path is the keys from the
 	root, option the option table. size is the option's own size member:
-	'small' (honored only for a toggle, execute or input; a color is a bar as
-	wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
+	'small' (honored only for a toggle, execute, input or item; a color is a
+	bar as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
 	anything else is normal. Every description and every position row is wide.
 	Ace's width is not read. align is an execute's own align member, SaftUI's:
 	'right' or 'center' (a button the body lines up with the buttons beside
@@ -81,6 +81,44 @@ local st = SaftUI
 	is the tree its options' info comes from), OM.ShareCall runs an action,
 	OM.ShareTargets lists Multiple's targets. The window draws them in
 	optionsshare.lua.
+
+	An item (type = 'item', SaftUI's own type, optionsitem.lua) is one row: a
+	Show box, its name and three dots that open a menu of its settings:
+	  { type = 'item', name, desc, order, size = 'small' (or none, or 'wide'),
+	    get, set,      -- its Show box (no get, or get = false to stop an
+	                   -- inherited one: no box)
+	    share,         -- its Show's (above)
+	    menu = { type = 'group', name, args = { ... }, get, set, ... },
+	    menuTitle,     -- the menu's title (a string or a function of info;
+	                   -- the item's name when nil) }
+	Its menu (SaftUI's own field, never in args) is a group drawn in a menu
+	of its own (optionsmenu.lua) from the tree OM.MenuRoot(option) gives:
+	{ menu = option.menu }, so a menu option's path is { 'menu', key } and
+	it inherits get, set and the rest from the menu group only, not from the
+	item's page. Search finds a menu's settings (OM.Search).
+
+	Any option may carry default (SaftUI's own field, read raw from the
+	option, never inherited): whether its value differs from its default
+	now, and how to put the default back. The window draws a reset icon by
+	the control while it differs (optionsshare.lua's OB.PlaceDefault); it is
+	the standard for resets, one per setting, in place of a section's or a
+	page's Reset button. Its functions are each called with the option's
+	info:
+	  default = {
+	    differs = function(info) -> bool,  -- the value isn't its default now
+	    reset = function(info),            -- puts the default back (no confirm)
+	    value = function(info) -> ...,     -- the default as get gives it (a
+	                                       -- color's r, g, b[, a]), which the
+	                                       -- icon's tooltip names by the row's
+	                                       -- type: a color's hex (with its
+	                                       -- opacity when it hasAlpha), a
+	                                       -- select's label, On or Off, ...
+	    text = string | function(info),    -- or the default in words, which
+	                                       -- wins over value
+	  }
+	OM.DefaultState reads it, OM.DefaultReset runs reset. A row whose share
+	has own (a member page) shows only its share's Reset; a disabled row
+	shows none.
 
 	A page's group may carry a footer (SaftUI's own field, never in its args):
 	a group of options the window draws in its footer while the page is open,
@@ -116,6 +154,7 @@ local isInherited = {
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
 	size = true, target = true, nameKey = true, pickerLabel = true, align = true, disabledDesc = true, justifyH = true,
+	menuTitle = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -399,8 +438,9 @@ end
 ------------------------------------------------------------------ sections and rows
 
 -- The types a setting can be small for. Not a color: its bar is a dropdown's
--- width, and a quarter of a line is too narrow for it and its label.
-local canBeSmall = { toggle = true, execute = true, input = true }
+-- width, and a quarter of a line is too narrow for it and its label. An item
+-- (a Show box, its name and its dots) fits a quarter.
+local canBeSmall = { toggle = true, execute = true, input = true, item = true }
 
 local function SizeOf(option, options, path)
 	if option.type == 'description' or option.type == 'position' then return 'wide' end
@@ -959,10 +999,55 @@ function OM.ShareTargets(root, row)
 	return list
 end
 
+-- The option's default (SaftUI's field, read raw: never inherited), or nil.
+local function DefaultOf(option)
+	return type(option.default) == 'table' and option.default or nil
+end
+
+-- safecall's answers packed: ok, then { n, ... }.
+local function Packed(ok, ...)
+	return ok, { n = select('#', ...), ... }
+end
+
+--[[
+	A row's default (its option's default field, the header's): nil without
+	one; else { differs, text, value }:
+	  differs  default.differs(info), true or false
+	  text     default.text (a string, or a function's answer) as text, or nil
+	  value    default.value(info)'s answers, { n, ... }, when there's no
+	           text (the drawing names them by the row's type), or nil
+	A function that errors is reported and counts as false or nothing.
+]]
+function OM.DefaultState(root, row)
+	local default = DefaultOf(row.option)
+	if not default then return nil end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	local state = { differs = ShareAsk(default, 'differs', info) and true or false }
+	local text = default.text
+	if type(text) == 'function' then text = ShareAsk(default, 'text', info) end
+	if text ~= nil then
+		state.text = Text(text)
+	elseif type(default.value) == 'function' then
+		local ok, values = Packed(safecall(default.value, info))
+		if ok then state.value = values end
+	end
+	return state
+end
+
+-- Runs the row's default.reset(info) through safecall: true when it ran,
+-- false when there's none or it errored (the error goes to the handler).
+function OM.DefaultReset(root, row)
+	local default = DefaultOf(row.option)
+	local func = default and default.reset
+	if type(func) ~= 'function' then return false end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	return (safecall(func, info)) and true or false
+end
+
 --[[
 	Rows whose name, section title or tab title has text in it, ignoring
 	case, across every page, tab and pick:
-	{ {pageKey, path, name, tabName, sectionTitle, footer} }. tabName is the tab and
+	{ {pageKey, path, name, tabName, sectionTitle, footer, menu} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
 	aren't searched, nor descriptions, nor a tab a selection can't open (a
@@ -971,6 +1056,13 @@ end
 	footer's name as their tabName, with footer = true; their path is the
 	page's key and theirs, which opens the page (and nothing more: a footer
 	result's path isn't one a selection can follow).
+	An item's menu settings follow its row (whether or not the item itself
+	matches), found as a page's are: by their name, the item's name (their
+	section title) or a tab name above the item; hidden ones aren't. Each is
+	{ pageKey, path = the item's path, name = the setting's name, tabName,
+	sectionTitle = the item's name, menu = true }, which opens the page with
+	the item in view and its menu open; an item in a page's footer gives
+	footer = true too, as its own row does (the page opens as it is).
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -980,6 +1072,35 @@ function OM.Search(root, text)
 
 	local function matches(value)
 		return type(value) == 'string' and value:lower():find(needle, 1, true) ~= nil
+	end
+
+	-- Adds the matching settings of an item's menu (row, an item's row): by
+	-- their name, the item's name or a tab's (tabMatch), each a result on the
+	-- item's path (a footer's item's with footer, as its own row's); true once
+	-- there are enough.
+	local function CollectMenu(pageKey, row, tabMatch, tabName, footer)
+		local menu = row.option.menu
+		if type(menu) ~= 'table' or menu.type ~= 'group' then return end
+		local within = Options(OM.MenuRoot(row.option))
+		local itemMatch = matches(row.name)
+		local sections = {}
+		Feed(sections, within, menu, { OM.MENU_KEY }, false)
+		for _, section in ipairs(sections) do
+			for _, inner in ipairs(section.rows) do
+				if inner.type ~= 'description' and (tabMatch or itemMatch or matches(inner.name)) then
+					results[#results + 1] = {
+						pageKey = pageKey,
+						path = row.path,
+						name = inner.name,
+						tabName = tabName,
+						sectionTitle = row.name,
+						footer = footer or nil,
+						menu = true,
+					}
+					if #results >= MAX_RESULTS then return true end
+				end
+			end
+		end
 	end
 
 	-- Adds group's matching rows; true once there are enough. within is the
@@ -1006,6 +1127,7 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
+				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer) then return true end
 			end
 		end
 	end

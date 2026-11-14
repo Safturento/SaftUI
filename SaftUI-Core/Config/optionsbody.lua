@@ -6,11 +6,15 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	rows drawn into a content frame. The window (optionswindow.lua) and
 	OW:OpenDialog each make one.
 
-	  local body = OB.New(content, root, onChanged, width)
-	      content     the frame the rows are drawn in (a scroll child)
+	  local body = OB.New(content, root, onChanged, width, opts)
+	      content     the frame the rows are drawn in (a scroll child, or a
+	                  plain frame: an item's menu's)
 	      root        the option tree the rows' widgets read and set
 	      onChanged   the widgets' onChanged(ok, err, isDragging)
 	      width       the content's width (OB.WIDTH, the window's, when nil)
+	      opts        nil, or { oneColumn = true }: every row of the body is
+	                  laid out as wide, one to a line (an item's menu,
+	                  optionsmenu.lua); body.oneColumn
 	  body:SetRoot(root)               a new tree (a profile change rebuilt it)
 	  body:Draw(sections, fillHeight) -> height
 	                                   option rows, each with its widget;
@@ -27,10 +31,19 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                                   row again in place (a drag, below)
 	  body.cells                       the drawn rows, in order:
 	                                   { row, frame, widget, label, height, y,
-	                                     x, body, labelX }; labelX (nil: 0)
-	                                   is how far in the label starts, for a
-	                                   row type whose label comes after
-	                                   something of its own
+	                                     x, body, labelX, lineEnd }; labelX
+	                                   (nil: 0) is how far in the label
+	                                   starts, for a row type whose label
+	                                   comes after something of its own (the
+	                                   widget's labelX, read once it's bound:
+	                                   an item's), lineEnd (nil: the cell's
+	                                   width) where its hover line must end
+	                                   (optionsshare.lua), from the cell's left
+	  widget.rowBody                   every drawn widget's body, the one its
+	                                   row is drawn in (cleared when it's
+	                                   released; not widget.body, which the
+	                                   bags' Categories tab keeps its editor's
+	                                   own body in)
 	  body.shareTitles                 the section titles drawn with a
 	                                   shareable block's marks (optionsshare.lua)
 
@@ -51,15 +64,22 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	half only has its divider too). No line between sections. Rows that follow
 	an inline group join the panel above, one panel. A fill row is bare, the
 	whole line, and ends a panel; the section's other lines have theirs. A
-	line of execute rows alone that ends its section (so also one that
-	continues a section after an inline group) floats under the panel
-	instead: the panel ends above it, and the line sits OB.FLOAT_GAP (6, as
-	a title sits over its panel) under it on the body's own fill, as tall as
-	its buttons, each in its slot off the padding (a centred group across
-	the body, a right one ending at its right edge), with no hairline or
-	divider; rows that continue the section after it start a panel of their
-	own, as far under it. A line of buttons mid-section stays on the panel.
-	Blizzard's layout has no panels, so nothing floats there.
+	line of execute rows alone, wherever it is in its section (so also one
+	that continues a section after an inline group), floats off the panel
+	instead, on the body's own fill, as tall as its buttons, each in its
+	slot off the padding (a centred group across the body, a right one
+	ending at its right edge, a small one at its quarter's left, in line
+	with the panel's edge), with no panel, hairline or divider. The gaps: a
+	panel ends OB.FLOAT_GAP (24, the body's bottom margin) above it, and the
+	rows after it start a panel of their own as far under it, so a line of
+	buttons between two runs of rows has the same space above and below;
+	lines of buttons after each other are 12 apart (as their buttons were on
+	a panel), but the section's last line, its closing buttons, sits 24
+	under whatever is above it, midway between the rows and the bottom; a
+	section that starts with one sits 6 down, where its buttons would on a
+	panel (24 when it joins the panel above). A button beside a row stays on
+	the panel with it. Blizzard's layout has no panels, so nothing floats
+	there.
 	Buttons with an align (row.align, the model's) that follow each other
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
@@ -68,7 +88,16 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
 	A toggle's check box and a color's bar sit at their cell's right edge,
-	the label taking the rest; a small input's box is 60 wide. A position block
+	the label taking the rest; a small input's box is 60 wide. An item
+	(optionsitem.lua) is given its cell's width and spans it, as tall as the
+	row (its box and dots centred on it), its Show box at the cell's left
+	and its dots at the right; its label starts its labelX in (26 after a
+	box, else 0), centred on the row, and ends 6 before the dots, and so
+	does its hover line (lineEnd; an item with no menu has no dots, and
+	both end at the cell's right edge); its label is grey while its Show is
+	off or it's disabled (OB.LabelColor, which a drag's Refresh reads too,
+	so a row a drag enables stays grey while its Show is off). Under its own mark the box
+	moves markShift right with the label (under Blizzard 6). A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
@@ -88,13 +117,17 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	the height it would have without: its text sits in the middle of it.
 
 	Shareable options (SaftUI's share field) are drawn by optionsshare.lua,
-	which loads right after this file and hooks in at three places: PlaceRow
+	which loads right after this file, and so is a setting's own reset (its
+	default field: OB.PlaceDefault, which PlaceRow runs before
+	OB.PlaceShare, and Refresh again for a row with one, so the icon follows
+	a drag). The share hooks in at three places: PlaceRow
 	ends with OB.PlaceShare(cell) (cell.body is the body), the row frame's
 	OnEnter and a position block's parts call OB.ShareEnter(frame), and
 	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
 	with a shareRow (the model's) once its block is placed. A world that
 	draws no window may load this file without it, so each is called only
-	when it's there. The metrics' markX and markShift place the own mark, and
+	when it's there. An item is 'row' in OB.SHARE_KINDS: its name is its
+	label. The metrics' markX and markShift place the own mark, and
 	OB.OWN_TEXT and OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
 	where PlaceRow does, cell.labelX plus x in (PlaceRow's label is labelX
 	narrower too).
@@ -122,6 +155,7 @@ local LABEL_GAP = 10
 local STOP_GAP = 24 -- a wide row ends this far before the buttons at its line's right end
 local BUTTON_GAP = 12 -- between the buttons of a line (W.Confirm's Yes and No are 12 apart)
 local SMALL_INPUT_WIDTH = 60
+local ITEM_GAP = 6 -- an item's label (and its hover line) ends this far before its dots
 local WIDTH = 774 -- the window's body: under Blizzard two columns of 367 with a gap of 40; under Thick and Thin two of 387
 
 -- Sections (OB.LayoutSections).
@@ -130,7 +164,16 @@ local SECTION_PAD, SECTION_MARGIN = 16, 14
 local TITLE_HEIGHT, TITLE_GAP = 15, 6
 local NOTE_HEIGHT, NOTE_GAP = 13, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
-local FLOAT_GAP = TITLE_GAP -- a section's closing buttons under its panel, as its title over it
+-- A section's closing buttons under its panel: as far as the body's (and a
+-- dialog's) bottom margin is under them, so they sit midway between the rows
+-- and the bottom.
+local FLOAT_GAP = BODY_BOTTOM
+-- A section that starts with a line of buttons: they sit where they would on
+-- a panel (a 38 row's 26 button, 6 down), with no panel above to stand off from.
+local LEAD_GAP = TITLE_GAP
+-- Between two lines of buttons off the panel: as far apart as the buttons of
+-- two lines on it were (38 rows, 26 buttons), and as the buttons of a line.
+local FLOAT_LINE_GAP = BUTTON_GAP
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
 OB.FLOAT_GAP = FLOAT_GAP
@@ -285,9 +328,15 @@ end
 -- Blizzard the bar's companion shows in its place, from the scroll frame's
 -- top to its bottom, gap (OB.BLIZZARD_GAP when nil) to the right of the
 -- scroll child. Returns the offset it took.
+-- What there is to scroll is counted in whole units too: the game hands a
+-- view's height back from its layout in single precision, a hair off the
+-- whole height it was laid out to (559.99994 for 560), so content exactly
+-- as tall as its view (a dialog sized to its rows, a page whose fill rows
+-- take the view's height) would otherwise read as a sliver to scroll and
+-- show an idle bar as tall as the view.
 function OB.ScrollTo(frame, bar, offset, height, gap)
 	local view = frame:GetHeight() or 0
-	local range = max(0, height - view)
+	local range = max(0, floor(height - view + 0.5))
 	offset = max(0, min(range, floor(offset + 0.5)))
 	frame:SetVerticalScroll(offset)
 	local child = frame:GetScrollChild()
@@ -297,7 +346,9 @@ function OB.ScrollTo(frame, bar, offset, height, gap)
 	if companion and not blizzard then companion.bar:Hide() end
 	if blizzard then
 		bar:Hide()
-		companion.bar:Set(frame, width + (gap or OB.BLIZZARD_GAP), 0, floor(view + 0.5), view, height, offset)
+		-- Its view in whole units as well (what's held less the range), so it
+		-- shows by the same rule.
+		companion.bar:Set(frame, width + (gap or OB.BLIZZARD_GAP), 0, floor(view + 0.5), height - range, height, offset)
 	elseif range > 0 and view > 0 and (not companion or companion.flat) then
 		local size = max(20, floor(view * view / height))
 		bar:SetHeight(size)
@@ -386,43 +437,73 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 	return placed, y
 end
 
--- A section's last line floats off its panel when every row on it gives a
--- height off the panel (floatOf(row); nil: it can't): the line moves
--- FLOAT_GAP under where the panel ends (entry.panelHeight, the height of the
--- rows on it, 0 when the line is all there is), its entries are marked
--- floats, and it's as tall as its tallest row (entry.floatHeight). Returns
--- the rows' height.
+-- A section's lines float off its panel wherever every row on one gives a
+-- height off the panel (floatOf(row); nil: it can't): a line of buttons,
+-- anywhere in the section. Its lines are laid down again from the top. A
+-- floating line's entries are marked floats and given floatHeight, its
+-- tallest row's, as the line is; it sits FLOAT_GAP under a line on the panel,
+-- FLOAT_LINE_GAP under another floating line, and at the section's start
+-- LEAD_GAP down (FLOAT_GAP when the section joins the panel above,
+-- entry.joins). The section's last line, its closing buttons, sits FLOAT_GAP
+-- under a floating line too: as far under what's above it as the bottom
+-- margin is under it. A line on the panel after a floating one starts
+-- FLOAT_GAP under it, so a line of buttons between two runs of panel has the
+-- same gap above and below. entry.endsFloating: the section's last line
+-- floats.
+-- Returns the rows' height (height itself when no line floats).
 local function Float(entry, placed, height, floatOf)
-	local lastY
-	for _, p in ipairs(placed) do lastY = max(lastY or p.y, p.y) end
-	if not lastY then return height end
-	local lineHeight = 0
+	local lines, byY, any = {}, {}, false
 	for _, p in ipairs(placed) do
-		if p.y == lastY then
-			local h = floatOf(p.row)
-			if not h then return height end
-			lineHeight = max(lineHeight, h)
+		local line = byY[p.y]
+		if not line then
+			line = { y = p.y, entries = {}, floats = true, floatHeight = 0 }
+			byY[p.y] = line
+			lines[#lines + 1] = line
+		end
+		line.entries[#line.entries + 1] = p
+		local h = floatOf(p.row)
+		if h then line.floatHeight = max(line.floatHeight, h) else line.floats = false end
+	end
+	for _, line in ipairs(lines) do any = any or line.floats end
+	if not any then return height end
+	table.sort(lines, function(a, b) return a.y < b.y end)
+	local y, above = 0, nil -- above: 'panel' or 'float', the line before
+	for i, line in ipairs(lines) do
+		if line.floats then
+			if above == 'panel' then
+				y = y + FLOAT_GAP
+			elseif above == 'float' then
+				y = y + (i == #lines and FLOAT_GAP or FLOAT_LINE_GAP)
+			else
+				y = y + (entry.joins and FLOAT_GAP or LEAD_GAP)
+			end
+			for _, p in ipairs(line.entries) do p.y, p.floats, p.floatHeight = y, true, line.floatHeight end
+			y = y + line.floatHeight
+			above = 'float'
+		else
+			if above == 'float' then y = y + FLOAT_GAP end
+			for _, p in ipairs(line.entries) do p.y = y end
+			-- As tall on the panel as it was laid out.
+			y = y + (lines[i + 1] and lines[i + 1].y or height) - line.y
+			above = 'panel'
 		end
 	end
-	for _, p in ipairs(placed) do
-		if p.y == lastY then p.y, p.floats = lastY + FLOAT_GAP, true end
-	end
-	entry.panelHeight, entry.floatHeight = lastY, lineHeight
-	return lastY + FLOAT_GAP + lineHeight
+	entry.endsFloating = above == 'float'
+	return y
 end
 
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
--- rowsHeight, joins, placed, panelHeight, floatHeight} } and the body's
+-- rowsHeight, joins, placed, endsFloating} } and the body's
 -- height (BODY_BOTTOM, OB.BOTTOM, under the last rows). The space for a line
 -- between sections after the first is kept (lineY) though none is drawn any
 -- more; an untitled one (rows that follow a nested group) keeps none, so it
 -- reads as a continuation of the one above: CONTINUE_GAP below it, or with
 -- panels (the fifth argument) none at all, and joins = true, for it to share
 -- the panel above. With panels and floatOf (the sixth, see Float) a
--- section's last line of rows that float (a line of buttons) sits FLOAT_GAP
--- under its panel; a continuation after it has no panel to join, so it
--- starts its own FLOAT_GAP under the line. heightOf, sizeOf and alignOf are
--- OB.LayoutRows'.
+-- section's lines of rows that float (lines of buttons) sit off its panel,
+-- FLOAT_GAP from it; a continuation after a section that ends with one has
+-- no panel to join, so it starts its own FLOAT_GAP under the line. heightOf,
+-- sizeOf and alignOf are OB.LayoutRows'.
 function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
@@ -434,7 +515,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 			y = y + SECTION_MARGIN
 			entry.lineY = y
 			y = y + 1 + SECTION_PAD
-		elseif panels and after.floatHeight then
+		elseif panels and after.endsFloating then
 			y = y + FLOAT_GAP
 		elseif panels and not section.note then
 			entry.joins = true
@@ -497,6 +578,17 @@ function OB.Dividers(placed, heightOf, extendLast)
 		end
 	end
 	return dividers
+end
+
+-- OB.Dividers of each run of a section's lines on the panel (parts: lists of
+-- placed entries, a floating line between each), all together: each run's
+-- last line is a last line, extended with extendLast.
+function OB.DividersOf(parts, heightOf, extendLast)
+	local all = {}
+	for _, part in ipairs(parts) do
+		for _, d in ipairs(OB.Dividers(part, heightOf, extendLast)) do all[#all + 1] = d end
+	end
+	return all
 end
 
 -- The lines between a section's rows (placed, as OB.LayoutRows gives it): the
@@ -608,6 +700,17 @@ function OB.PlaceLabel(cell, x)
 	end
 end
 
+-- A row's label color (r, g, b): grey while it's disabled; an own row's
+-- light blue (cell.ownLabel, optionsshare.lua); an item's grey while its
+-- Show is off (widget.value false); else the text color. PlaceRow and a
+-- drag's Refresh both read it.
+function OB.LabelColor(cell, disabled)
+	if disabled then return Grey() end
+	if cell.ownLabel then return unpack(OB.OWN_TEXT) end
+	if cell.row.type == 'item' and cell.widget and cell.widget.value == false then return Grey() end
+	return Normal()
+end
+
 -- A row's place in its cell: the label on the left, the control on the
 -- right. A description is text across the row, and a button stands alone.
 -- Then a shareable row's marks (OB.PlaceShare, optionsshare.lua, which a
@@ -642,6 +745,20 @@ local function PlaceRow(cell, x, y, width)
 	elseif IsBare(row.type) then
 		label:Hide()
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
+	elseif row.type == 'item' then
+		-- The widget spans the cell: its box at the left, its dots at the right.
+		widget:SetWidth(width)
+		widget.frame:SetHeight(cell.height)
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+		label:SetText(row.name)
+		label:SetTextColor(OB.LabelColor(cell, row.disabled))
+		label:Show()
+		-- After the box (cell.labelX), ending short of the dots (an item with
+		-- no menu has none: at the cell's right edge); the hover line too.
+		local stop = widget.hasMenu and width - widget.dots:GetWidth() - ITEM_GAP or width
+		label:SetWidth(max(1, stop - (cell.labelX or 0)))
+		cell.lineEnd = stop
+		OB.PlaceLabel(cell, 0)
 	else
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
@@ -654,7 +771,15 @@ local function PlaceRow(cell, x, y, width)
 			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 		end
 	end
+	-- A setting's own reset by its control (its default), then a shareable
+	-- row's marks: optionsshare.lua.
+	if OB.PlaceDefault then OB.PlaceDefault(cell) end
 	if OB.PlaceShare then OB.PlaceShare(cell) end
+	-- An item's box moves under its own mark with the label (markShift).
+	if row.type == 'item' then
+		local state = frame.shareState
+		widget:ShiftBox(state and state.marked and cell.body and cell.body.metrics.markShift or 0)
+	end
 end
 
 local function PlaceResult(cell, x, y, width)
@@ -668,10 +793,11 @@ end
 local Body = {}
 Body.__index = Body
 
-function OB.New(content, root, onChanged, width)
+function OB.New(content, root, onChanged, width, opts)
 	local body = setmetatable({
 		content = content, root = root, onChanged = onChanged,
 		width = width or WIDTH, cells = {},
+		oneColumn = opts and opts.oneColumn and true or nil, -- every row wide (an item's menu)
 		shareTitles = {}, -- the section titles drawn with a shareable block's marks (optionsshare.lua)
 	}, Body)
 	body:UseMetrics()
@@ -784,6 +910,7 @@ function Body:RowCell(row)
 	if frame.titleTip then frame.titleTip:Hide() end -- a titled bare row's (PlaceRow)
 	local widget = W.Create(frame, row.type)
 	widget:Bind(self.root, row, self.onChanged)
+	widget.rowBody = self -- cleared by its Release
 	if row.type == 'input' then -- a reused box is sized again: small or not
 		widget.width = row.size == 'small' and SMALL_INPUT_WIDTH or W.WIDTH.input
 		widget.frame:SetWidth(widget.width)
@@ -792,6 +919,7 @@ function Body:RowCell(row)
 	local cell = {
 		row = row, frame = frame, widget = widget, label = frame.label, height = rowHeight, rowHeight = rowHeight,
 		place = PlaceRow, align = row.align, body = self,
+		labelX = widget.labelX, -- an item's: its label after its box
 	}
 	if row.type == 'description' then
 		-- With fill (SaftUI's), a fill row at its own height at least: what it
@@ -917,29 +1045,35 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	-- run of lines that hold no fill cell, across the sections that join one
 	-- another; a hairline is at the top of each line in a run but its first.
 	-- A line with a fill cell is bare: that row is the whole line, and ends a run.
-	-- A floating line of buttons is off the panel: the run ends above it.
+	-- A floating line of buttons is off the panel: a run ends above it, and the
+	-- lines after it start one of their own.
 	local hairlineAt = {} -- the y (in the content) of each hairline
 	if metrics.panels then
 		local run, runs = nil, {}
 		for _, entry in ipairs(laid) do
 			if not entry.joins then run = nil end
-			local fillAt, tops = {}, {}
+			-- The lines on the panel, by their tops: each as tall as its
+			-- tallest row, and whether it holds a fill cell.
+			local lines, tops = {}, {}
 			for _, p in ipairs(entry.placed) do
 				if not p.floats then
-					if fillAt[p.y] == nil then
-						fillAt[p.y] = false
+					local line = lines[p.y]
+					if not line then
+						line = { height = 0, fill = false }
+						lines[p.y] = line
 						tops[#tops + 1] = p.y
 					end
-					if byRow[p.row].fill then fillAt[p.y] = true end
+					line.height = max(line.height, heightOf(p.row))
+					if byRow[p.row].fill then line.fill = true end
 				end
 			end
 			table.sort(tops)
-			for i, y in ipairs(tops) do
+			for _, y in ipairs(tops) do
 				local top = entry.rowsY + y
-				local bottom = entry.rowsY + (tops[i + 1] or entry.panelHeight or entry.rowsHeight)
-				if fillAt[y] then
+				local bottom = top + lines[y].height
+				if lines[y].fill then
 					run = nil
-				elseif run then
+				elseif run and run.top + run.height == top then
 					run.height = bottom - run.top
 					hairlineAt[top] = true
 					local hairline = Acquire(pools.hairline)
@@ -970,14 +1104,19 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			note:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.noteY)
 			note:SetText(entry.section.note)
 		end
-		-- The rows on the panel: all but a floating line's.
-		local onPanel = entry.floatHeight and {} or entry.placed
+		-- The rows on the panel, in runs a floating line parts.
+		local onPanel, parts = nil, {}
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
 			if p.floats then
-				cell.height = entry.floatHeight -- as tall as its buttons, which fill it
-			elseif entry.floatHeight then
+				cell.height = p.floatHeight -- as tall as its line's buttons, which fill it
+				onPanel = nil
+			else
+				if not onPanel then
+					onPanel = {}
+					parts[#parts + 1] = onPanel
+				end
 				onPanel[#onPanel + 1] = p
 			end
 			local x, cellWidth
@@ -993,9 +1132,9 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			end
 			cell.place(cell, x, cell.y, cellWidth)
 		end
-		-- Under panels the last line's divider runs through a lone left half too
-		-- (the panel's last: a floating line has none).
-		for _, d in ipairs(OB.Dividers(onPanel, heightOf, metrics.panels)) do
+		-- Under panels a run's last line's divider runs through a lone left half
+		-- too (the panel's last: a floating line has none).
+		for _, d in ipairs(OB.DividersOf(parts, heightOf, metrics.panels)) do
 			local x
 			-- In the middle of the gap the line divides; with no gap, on the
 			-- boundary. The slots', not the padded cells'.
@@ -1021,9 +1160,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	return #kept > 0 and height or 0
 end
 
+-- A oneColumn body's rows are all wide.
+local function Wide() return 'wide' end
+
 function Body:Draw(sections, fillHeight)
 	self:UseMetrics()
-	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
+	return self:DrawSections(sections, function(row) return self:RowCell(row) end, self.oneColumn and Wide or nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)
@@ -1037,28 +1179,24 @@ end
 -- take the slider out from under the mouse), so the other rows follow the
 -- drag in place: each widget but except (the dragged one, whose own commit
 -- has refreshed it) reads its value again, a description its image too, and
--- whether it's disabled, which greys its label as the next Draw would.
--- Nothing is released or laid out again: rows that would show, hide or
--- change height wait for the Draw after the drag.
+-- whether it's disabled, which colors its label as the next Draw would
+-- (OB.LabelColor; an item's also when its Show changed). Nothing is
+-- released or laid out again: rows that would show, hide or change height
+-- wait for the Draw after the drag.
 function Body:Refresh(except)
 	for _, cell in ipairs(self.cells) do
 		local widget = cell.widget
 		if widget and widget ~= except then
 			local disabled = OM.IsDisabled(self.root, cell.row)
-			if disabled ~= widget:IsDisabled() then
-				widget:SetDisabled(disabled)
-				if cell.label:IsShown() then
-					if disabled then
-						cell.label:SetTextColor(Grey())
-					elseif cell.ownLabel then -- an own row's (OB.PlaceShare)
-						cell.label:SetTextColor(unpack(OB.OWN_TEXT))
-					else
-						cell.label:SetTextColor(Normal())
-					end
-				end
-			end
+			local flipped, was = disabled ~= widget:IsDisabled(), widget.value
+			if flipped then widget:SetDisabled(disabled) end
 			widget:Refresh()
+			if (flipped or (cell.row.type == 'item' and widget.value ~= was)) and cell.label:IsShown() then
+				cell.label:SetTextColor(OB.LabelColor(cell, disabled))
+			end
 		end
+		-- A setting's own reset follows the drag (the dragged row's too).
+		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then OB.PlaceDefault(cell) end
 	end
 end
 

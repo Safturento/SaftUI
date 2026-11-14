@@ -527,8 +527,11 @@ test('the Colors tab: Threat with Warning and Bad at their defaults; a change re
 	ouf_colours(frame)
 	eq(bar(frame), '0.50,0.00,0.50', 'oUF colouring the bar again keeps the new colour')
 	eq(forced(hidden) - before, 0, 'a plate showing no unit is left alone')
-	section.args.reset.func()
-	eq(bar(frame), '1.00,0.10,0.10', 'Reset puts it back')
+	check(section.args.bad.default.differs(), 'Bad differs from its default: its reset shows')
+	check(not section.args.warning.default.differs(), 'Warning, at its default, has none')
+	section.args.bad.default.reset()
+	eq(bar(frame), '1.00,0.10,0.10', "Bad's reset puts it back")
+	check(not section.args.bad.default.differs(), 'and its reset goes')
 end)
 
 test('a reputation colour change recolours the plates showing a unit, never one the game took away', function()

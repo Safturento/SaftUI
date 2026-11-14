@@ -23,8 +23,10 @@ local OM = st.OptionsModel
 	the window doesn't rebuild the slider under the user's mouse.
 
 	Types: toggle, range, select, multiselect, input, color, execute,
-	keybinding, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
+	keybinding, item, description, position. Widths: toggle 18, range 168 (a 116 track, a gap
 	of 6 and a 46 value box), select, multiselect, input, keybinding and color 170.
+	An item (its Show box, its name and its menu's dots) spans its cell: the
+	body gives it the cell's width (W.WIDTH.item is 0) and draws its name.
 	An execute button is as wide as its name needs (80 at least),
 	and a description is as wide as the window sets it (400 until it does). A
 	position block is as wide as its parts (200, 332 with a name target, 352
@@ -64,8 +66,14 @@ local OM = st.OptionsModel
 	optionsdialog.lua (W.Confirm, W.Prompt), optionsbar.lua (W.BlizzardBar),
 	optionslist.lua (the select list and the check list), optionstypes.lua
 	(toggle, input, color, execute, description), optionsrange.lua,
-	optionsselect.lua (select, multiselect), optionskeybinding.lua and
-	optionsposition.lua. W.Kit (below) holds what they share.
+	optionsselect.lua (select, multiselect), optionskeybinding.lua,
+	optionsitem.lua (the item) and optionsposition.lua. W.Kit (below) holds
+	what they share.
+
+	widget.rowBody is the body (optionsbody.lua) that drew the widget, set
+	as its row is drawn and cleared when it's released: an item opens its
+	menu from it (optionsmenu.lua). (A custom type may keep a body of its
+	own: the bags' Categories tab's is widget.body.)
 ]]
 
 local W = {}
@@ -85,6 +93,7 @@ W.WIDTH = {
 	toggle = 18, range = 168, select = 170, multiselect = 170, input = 170,
 	execute = 80, keybinding = 170, description = 400,
 	position = 0, -- the block's width follows its parts (widget:GetWidth())
+	item = 0, -- it spans its cell: the body gives it the cell's width
 }
 W.WIDTH.color = W.WIDTH.select -- a color's bar is as wide as a dropdown
 local FIELD_HEIGHT = 24
@@ -162,7 +171,7 @@ function Base:Release()
 	if self.released then return end
 	self.released = true
 	if self.OnRelease then self:OnRelease() end
-	self.root, self.row, self.onChanged = nil, nil, nil
+	self.root, self.row, self.onChanged, self.rowBody = nil, nil, nil, nil
 	self.dragging = nil
 	self.frame:Hide()
 	self.frame:ClearAllPoints()

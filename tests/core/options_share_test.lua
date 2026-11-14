@@ -21,7 +21,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 local calls -- every reset, applyAll and apply the shares took: { action, key, keys }
 local own -- the member page's own settings, by key
 local differs -- the source page's differing pages, by key
-local SHARED = { spacing = '3', show = 'Always', hotkey = 'Shown', size = '10', pos = 'Top left', position = 'Top left' }
+local SHARED = { spacing = '3', show = 'Always', hotkey = 'Shown', size = '10', pos = 'Top left', position = 'Top left', a = 'On' }
 local TARGETS = { { key = 'bar2', label = 'Bar 2' }, { key = 'bar4', label = 'Bar 4' }, { key = 'bar5', label = 'Bar 5' } }
 
 local function fresh()
@@ -642,18 +642,22 @@ test('Blizzard: every piece draws, and no line runs past the body', function()
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(parts)
 
-		-- D sits in the last quarter: its line, wider than its room, starts under its
-		-- label (not moved back into C's cell) and is cut at the cell's right edge,
-		-- here the body's width.
+		-- D sits in the last quarter: its whole line is wider than its room, so it
+		-- drops Own and the words before All, and the rest fits: it starts under
+		-- its label (not moved back into C's cell) and ends inside the cell,
+		-- here short of the body's width, uncut.
 		local d = by.d
 		eq(d.frame:GetLeft() - content:GetLeft(), 774 - 171, 'the last quarter')
-		local line = d.frame.share.line
+		local dp = d.frame.share
+		local line = dp.line
 		stub.fire_script(d.frame, 'OnEnter', true)
 		check(line:IsShown())
-		check(d.frame.share.multiple:GetRight() > line:GetRight(), 'a line wider than its room')
+		check(not dp.ownText:IsShown() and not dp.sep:IsShown(), 'Own and the words dropped')
+		check(dp.reset:IsShown() and dp.all:IsShown() and dp.multiple:IsShown(), 'the reset icon and All | Multiple kept')
 		eq(line:GetLeft() - content:GetLeft(), 774 - 171 + 6, 'under its shifted label')
-		eq(line:GetRight() - content:GetLeft(), 774, "its right edge at the cell's, the body's width")
-		check(line:DoesClipChildren(), 'cut: the line clips what runs past it')
+		eq(line:GetRight(), dp.multiple:GetRight(), 'it ends at Multiple')
+		check(line:GetRight() - content:GetLeft() <= 774, 'not past the body')
+		check(not line:DoesClipChildren(), 'whole: nothing cut')
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(d.frame.share)
 
@@ -699,33 +703,10 @@ local function read_tip(tip, piece)
 	return text
 end
 
--- A stand-in for Task 5's item row, so an item's marks can be drawn here: a
--- custom type (a 24 box at its cell's right), drawn with every piece ('row' in
--- OB.SHARE_KINDS), its cell's labelX set as an item's is, its label sitting
--- after its Show box. Runs fn, then puts the body and the kinds back.
-local function with_items(labelX, fn)
-	if not W.WIDTH.item then
-		W.Define('item', {
-			width = 24,
-			build = function(w)
-				w.frame = CreateFrame('Button', nil, UIParent)
-				w.frame:SetSize(24, 24)
-			end,
-			methods = { Refresh = function() end },
-		})
-	end
-	local Body = getmetatable(OB.New(CreateFrame('Frame', nil, UIParent), nil, nil, 100))
-	local rowCell, kind = Body.RowCell, OB.SHARE_KINDS.item
-	Body.RowCell = function(self, row)
-		local cell = rowCell(self, row)
-		if cell and row.type == 'item' then cell.labelX = labelX end
-		return cell
-	end
-	OB.SHARE_KINDS.item = 'row'
-	local ok, err = pcall(fn)
-	Body.RowCell, OB.SHARE_KINDS.item = rowCell, kind
-	if not ok then error(err, 0) end
-end
+-- An item's row is the real one now (optionsitem.lua, 'row' in
+-- OB.SHARE_KINDS): its label after its Show box (labelX 26, the page's get
+-- giving it one), ending 6 before its 16 wide dots.
+local ITEM_LABEL_X, ITEM_STOP = 26, 16 + 6
 
 test('the Apply list closes when its row is drawn again or released, and its Apply acts on the row it was opened for', function()
 	in_look('thick', function()
@@ -816,8 +797,8 @@ test('a row entered through its control shows its line: from the column beside i
 	end)
 end)
 
-test("the line sits above the control, its links over every part of it; in a quarter cell it is cut at the cell's right edge", function()
-	in_look('thick', function()
+test("the line sits above the control, its links over every part of it; in a quarter cell it drops Own and the words, and only past that is it cut", function()
+	in_look('thick', function(tip)
 		fresh()
 		own.spacing, own.a = true, true
 		local function quarters(size)
@@ -851,56 +832,86 @@ test("the line sits above the control, its links over every part of it; in a qua
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(sp)
 
-		-- A, in the first quarter: its line ends at its cell's right edge, never in B's.
+		-- Own's tooltip names the source's value; Reset's doesn't need to.
+		stub.fire_script(sp.reset, 'OnEnter', true)
+		eq(#tip.lines, 2, "a whole line's Reset: its title and what it does")
+		stub.fire_script(sp.reset, 'OnLeave', true)
+
+		-- A, in the first quarter: its whole line is wider than the cell, so it
+		-- drops Own, then the words before All; the rest fits, uncut, ending
+		-- inside the cell, never in B's.
 		local a = by.a
 		local parts = a.frame.share
 		hover(a.frame, 5)
 		stub.fire_script(a.frame, 'OnEnter', true)
 		check(parts.line:IsShown())
 		eq(a.frame:GetWidth(), 165, 'a quarter cell')
-		check(parts.multiple:GetRight() > a.frame:GetRight(), 'its line is wider than the cell')
-		eq(parts.line:GetLeft(), a.frame:GetLeft(), 'it starts under the label')
-		eq(parts.line:GetRight(), a.frame:GetRight(), "it ends at the cell's right edge")
-		check(parts.line:GetRight() < by.b.frame:GetLeft(), "not in B's cell")
-		check(parts.line:DoesClipChildren(), 'cut: what runs past is clipped')
-		local cut = a.frame:GetRight()
-		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
-			local p = parts[piece]
-			if p:IsShown() then
-				check(p:GetLeft() < cut, piece .. ' starts before the cut')
-				eq((select(2, p:GetHitRectInsets())), math.max(0, p:GetRight() - cut), piece .. ' takes no mouse past the cut')
-			else
-				check(p:GetLeft() >= cut, piece .. ' hidden only when wholly past the cut')
-			end
+		check(not parts.ownText:IsShown(), 'Own dropped')
+		check(not parts.sep:IsShown(), "'\194\183 Apply to:' dropped")
+		for _, piece in ipairs({ 'reset', 'all', 'multiple' }) do
+			check(parts[piece]:IsShown(), piece .. ' kept')
+			eq((select(2, parts[piece]:GetHitRectInsets())), 0, piece .. ' takes the mouse whole')
 		end
-		check(not parts.multiple:IsShown() or select(2, parts.multiple:GetHitRectInsets()) > 0, 'Multiple is cut')
+		eq(parts.line:GetLeft(), a.frame:GetLeft(), 'it starts under the label')
+		eq(parts.reset:GetLeft(), parts.line:GetLeft(), 'with the reset icon')
+		eq(parts.all:GetLeft() - parts.reset:GetRight(), 6, 'All 6 after it')
+		eq(parts.line:GetRight(), parts.multiple:GetRight(), 'it ends at Multiple')
+		check(parts.line:GetRight() <= a.frame:GetRight(), 'inside its cell')
+		check(parts.line:GetRight() < by.b.frame:GetLeft(), "not in B's cell")
+		check(not parts.line:DoesClipChildren(), 'whole: not cut')
+		-- Own's tooltip line moves to Reset's.
+		stub.fire_script(parts.reset, 'OnEnter', true)
+		eq(tip.lines[1], 'Reset', "Reset's tooltip")
+		eq(tip.lines[3], 'All bars: On', "with Own's line: the source and its value")
+		stub.fire_script(parts.reset, 'OnLeave', true)
+		eq(tip.owner, nil, 'gone with the mouse')
+		stub.fire_script(parts.all, 'OnEnter', true)
+		eq(tip.lines[1], 'Apply to: All', "the dropped words title All's tooltip")
+		stub.fire_script(parts.all, 'OnLeave', true)
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(parts)
 
-		-- A dialog's 520 body: a quarter is 102 inside its padding, and a piece
-		-- wholly past the cut is hidden, taking no mouse at all.
-		local narrowContent = CreateFrame('Frame', nil, UIParent)
-		narrowContent:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
-		narrowContent:SetSize(520, 600)
-		local root = quarters('small')
-		local narrow = OB.New(narrowContent, root, nil, 520)
-		narrow:Draw(OM.BuildView(root, 'page').sections)
-		local na
-		for _, each in ipairs(narrow.cells) do if each.row.key == 'a' then na = each end end
-		eq(na.frame:GetWidth(), 102, 'a narrow quarter')
-		local np, hidden = na.frame.share, 0
-		stub.fire_script(na.frame, 'OnEnter', true)
-		eq(np.line:GetRight(), na.frame:GetRight(), "cut at the narrow cell's right edge")
-		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
-			local p = np[piece]
-			if p:IsShown() then
-				check(p:GetLeft() < na.frame:GetRight(), piece .. ' shown: it starts before the cut')
-			else
-				hidden = hidden + 1
-				check(p:GetLeft() >= na.frame:GetRight(), piece .. ' hidden: wholly past the cut')
+		-- Narrower still, the cut is the last resort. A dialog's 520 body: a
+		-- quarter is 102 inside its padding, under the line left: Multiple runs
+		-- past the cut and takes no mouse there.
+		local function narrow_a(width)
+			local narrowContent = CreateFrame('Frame', nil, UIParent)
+			narrowContent:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+			narrowContent:SetSize(width, 600)
+			local root = quarters('small')
+			local narrow = OB.New(narrowContent, root, nil, width)
+			narrow:Draw(OM.BuildView(root, 'page').sections)
+			for _, each in ipairs(narrow.cells) do
+				if each.row.key == 'a' then
+					stub.fire_script(each.frame, 'OnEnter', true)
+					return narrow, each, each.frame.share
+				end
 			end
 		end
-		check(hidden >= 1, 'something wholly past the cut, hidden')
+		local narrow, na, np = narrow_a(520)
+		eq(na.frame:GetWidth(), 102, 'a narrow quarter')
+		check(not np.ownText:IsShown() and not np.sep:IsShown(), 'Own and the words dropped first')
+		check(np.multiple:GetRight() > na.frame:GetRight(), 'still wider than its room')
+		eq(np.line:GetRight(), na.frame:GetRight(), "cut at the narrow cell's right edge")
+		check(np.line:DoesClipChildren(), 'cut: what runs past is clipped')
+		local cut = na.frame:GetRight()
+		for _, piece in ipairs({ 'reset', 'all', 'multiple' }) do
+			local p = np[piece]
+			check(p:IsShown() and p:GetLeft() < cut, piece .. ' starts before the cut')
+			eq((select(2, p:GetHitRectInsets())), math.max(0, p:GetRight() - cut), piece .. ' takes no mouse past the cut')
+		end
+		check(select(2, np.multiple:GetHitRectInsets()) > 0, 'Multiple is cut')
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(np)
+		narrow:Release()
+
+		-- A 300 body: a quarter is 47, and a piece wholly past the cut is
+		-- hidden, taking no mouse at all.
+		narrow, na, np = narrow_a(300)
+		eq(na.frame:GetWidth(), 47, 'a narrower quarter')
+		check(not np.multiple:IsShown(), 'Multiple hidden')
+		check(np.multiple:GetLeft() >= na.frame:GetRight(), 'wholly past the cut')
+		check(np.reset:IsShown() and np.all:IsShown(), 'what starts before it shows')
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(np)
 		narrow:Release()
@@ -1028,21 +1039,21 @@ end)
 
 test("an item's row: its line's tooltips name its Show, its diff tooltip has no source line, and its label sits labelX in", function()
 	in_look('thick', function(tip)
-		with_items(30, function()
+		do
 			fresh()
 			own.hotkey = true
 			local body, by = draw(Page('member', { hotkey = Item('member') }))
 			local c = by.hotkey
 			local parts = c.frame.share
-			-- labelX: the label 30 in, lifted and put back there, the line under it.
-			eq((select(4, point(c.label))), 30, 'the label 30 in')
-			eq(c.label:GetWidth(), c.frame:GetWidth() - 30 - 24 - 10, 'its width the rest, up to 10 before the control')
+			-- labelX: the label 26 in, lifted and put back there, the line under it.
+			eq((select(4, point(c.label))), ITEM_LABEL_X, 'the label 26 in')
+			eq(c.label:GetWidth(), c.frame:GetWidth() - ITEM_LABEL_X - ITEM_STOP, 'its width the rest, up to 6 before the dots')
 			hover(c.frame, 40)
 			stub.fire_script(c.frame, 'OnEnter', true)
 			check(parts.line:IsShown(), 'its line')
 			local p, _, _, x, y = point(c.label)
-			eq(p .. ' ' .. x .. ',' .. y, 'TOPLEFT 30,-4', 'lifted where it sits')
-			eq(parts.line:GetLeft() - c.frame:GetLeft(), 30, 'the line under it')
+			eq(p .. ' ' .. x .. ',' .. y, 'TOPLEFT 26,-4', 'lifted where it sits')
+			eq(parts.line:GetLeft() - c.frame:GetLeft(), ITEM_LABEL_X, 'the line under it')
 			eq(read_tip(tip, parts.ownText), "Hotkey's Show|All bars: Shown")
 			eq(read_tip(tip, parts.reset), "Reset|Hotkey's Show follows All bars again. Bar 3's own value is dropped.")
 			eq(read_tip(tip, parts.all), "Apply to: All|All bars takes Hotkey's Show from Bar 3, and nothing keeps its own any more.")
@@ -1051,16 +1062,16 @@ test("an item's row: its line's tooltips name its Show, its diff tooltip has no 
 			watch(parts)
 			check(not parts.line:IsShown(), 'gone')
 			local lp, _, _, lx = point(c.label)
-			eq(lp .. ' ' .. lx, 'LEFT 30', 'the label back at 30')
+			eq(lp .. ' ' .. lx, 'LEFT 26', 'the label back at 26')
 			stub.click(parts.reset)
 			eq(calls[1].action .. ' ' .. calls[1].key, 'reset hotkey', "Reset acts on the item's own share, its Show")
 
 			-- Under Blizzard the mark's shift adds to it.
 			in_look('blizzard', function()
 				by = redraw(body, Page('member', { hotkey = Item('member') }))
-				eq((select(4, point(by.hotkey.label))), 36, 'Blizzard: 30 and the shift of 6')
+				eq((select(4, point(by.hotkey.label))), ITEM_LABEL_X + 6, 'Blizzard: 26 and the shift of 6')
 				stub.fire_script(by.hotkey.frame, 'OnEnter', true)
-				eq(by.hotkey.frame.share.line:GetLeft() - by.hotkey.frame:GetLeft(), 36, 'the line under it')
+				eq(by.hotkey.frame.share.line:GetLeft() - by.hotkey.frame:GetLeft(), ITEM_LABEL_X + 6, 'the line under it')
 				stub.cursor_x, stub.cursor_y = 0, 0
 				watch(by.hotkey.frame.share)
 			end)
@@ -1078,7 +1089,7 @@ test("an item's row: its line's tooltips name its Show, its diff tooltip has no 
 			stub.cursor_x, stub.cursor_y = 0, 0
 			watch(c.frame.share)
 			body:Release()
-		end)
+		end
 	end)
 end)
 

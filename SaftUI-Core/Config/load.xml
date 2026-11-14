@@ -12,6 +12,7 @@
 	<Script file="optionsrange.lua"/>
 	<Script file="optionsselect.lua"/>
 	<Script file="optionskeybinding.lua"/>
+	<Script file="optionsitem.lua"/>
 	<Script file="optionsposition.lua"/>
 	<Script file="optionsbody.lua"/>
 	<Script file="optionsshare.lua"/>
@@ -20,6 +21,7 @@
 	<Script file="optionsresize.lua"/>
 	<Script file="optionsnav.lua"/>
 	<Script file="optionssmalldialog.lua"/>
+	<Script file="optionsmenu.lua"/>
 	<Script file="generators.lua"/>
 	<Script file="general.lua"/>
 </Ui>

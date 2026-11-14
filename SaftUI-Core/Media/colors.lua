@@ -172,6 +172,41 @@ local function ProfileColor(color)
 	return group[color.key]
 end
 
+-- SaftUI's default for a row: st.defaults.colors[group][key], as ProfileColor.
+local function DefaultColor(color)
+	local from = st.defaults.colors[color.group]
+	if color.key == nil then return from end
+	return from[color.key]
+end
+
+-- Whether two colors look the same where the Colors tab shows them: each
+-- channel as a whole 0-255 (the swatch's hex), and with an opacity (hasAlpha)
+-- its whole percent.
+local function SameColor(a, b, hasAlpha)
+	local function byte(v) return math.floor((v or 0) * 255 + 0.5) end
+	if byte(a.r) ~= byte(b.r) or byte(a.g) ~= byte(b.g) or byte(a.b) ~= byte(b.b) then return false end
+	return not hasAlpha or math.floor((a.a or 1) * 100 + 0.5) == math.floor((b.a or 1) * 100 + 0.5)
+end
+
+-- A color's own reset (the options kit's default field, optionsmodel.lua): a
+-- reset icon by the color's swatch while it differs from SaftUI's default; it
+-- puts that back, alpha too, and says the group changed, as a Reset of the
+-- whole section did for each of its colors.
+local function ColorDefault(section, color)
+	return {
+		differs = function() return not SameColor(ProfileColor(color), DefaultColor(color), section.hasAlpha) end,
+		reset = function()
+			local from, c = DefaultColor(color), ProfileColor(color)
+			c.r, c.g, c.b, c.a = from.r, from.g, from.b, from.a
+			st:ColorsChanged(color.group)
+		end,
+		value = function()
+			local from = DefaultColor(color)
+			return from.r, from.g, from.b, from.a
+		end,
+	}
+end
+
 local function SectionGroup(section, index)
 	local args = {}
 	for i, color in ipairs(section.colors) do
@@ -191,31 +226,9 @@ local function SectionGroup(section, index)
 				if section.hasAlpha then c.a = a end
 				st:ColorsChanged(color.group)
 			end,
+			default = ColorDefault(section, color),
 		}
 	end
-	args.reset = {
-		type = 'execute',
-		size = 'small',
-		order = #section.colors + 1,
-		name = 'Reset',
-		desc = "Puts every color in this section back to SaftUI's default.",
-		confirm = true,
-		confirmText = ("Reset the %s colors to SaftUI's defaults?"):format(section.name),
-		func = function()
-			local seen, groups = {}, {}
-			for _, color in ipairs(section.colors) do
-				local from = st.defaults.colors[color.group]
-				if color.key ~= nil then from = from[color.key] end
-				local c = ProfileColor(color)
-				c.r, c.g, c.b, c.a = from.r, from.g, from.b, from.a
-				if not seen[color.group] then
-					seen[color.group] = true
-					groups[#groups + 1] = color.group
-				end
-			end
-			for _, group in ipairs(groups) do st:ColorsChanged(group) end
-		end,
-	}
 	return {
 		type = 'group',
 		inline = true,
@@ -227,8 +240,9 @@ local function SectionGroup(section, index)
 end
 
 -- The Colors tab of Global Settings: one inline section per color group, a
--- color bar per color and a Reset button. Each row's get and set are bound to its
--- own color, so they read no info.
+-- color swatch per color, each with its own reset by it while it differs
+-- from SaftUI's default (no section Reset). Each row's get and set are bound
+-- to its own color, so they read no info.
 function CO:GetConfigTable()
 	local args = {}
 	for i, section in ipairs(CO.SECTIONS) do

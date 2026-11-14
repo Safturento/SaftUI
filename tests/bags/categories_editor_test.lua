@@ -245,10 +245,10 @@ test('Reset <name> to default clears the edit and keeps the pins; the edited mar
 	open()
 	local reset = tab():EditorCell('reset')
 	eq(reset.widget.text:GetText(), 'Reset Plate to default', 'named by its name')
-	-- Reset and Delete end the editor's section: they float 6 under its panel, off its padding.
+	-- Reset and Delete end the editor's section: they float 24 under its panel, off its padding.
 	local delete, rule = tab():EditorCell('delete'), tab():EditorCell('rule')
 	eq(reset.y, delete.y, 'Reset and Delete on one line')
-	eq(reset.y, rule.y + rule.height + 6, 'Thick: 6 under the panel, which ends with the rule')
+	eq(reset.y, rule.y + rule.height + 24, 'Thick: 24 under the panel, which ends with the rule')
 	eq(reset.height, reset.widget:GetHeight(), 'their line as tall as the buttons')
 	eq((select(4, reset.frame:GetPoint(1))), 0, "Reset at the pane's left edge, off the padding")
 	check(not reset.widget:IsDisabled(), 'on for an edited default')

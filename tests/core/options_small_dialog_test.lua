@@ -233,7 +233,19 @@ test("the window's render leaves an open dialog be while its own dropdown list o
 	W.CancelConfirm()
 	OW:Render()
 	eq(dialogCell('pick').label:GetText(), 'During confirm', 'drawn again once it is answered')
+
+	-- Closing the dialog takes its list and a confirm with it.
+	click(dialogCell('pick').widget.frame)
+	check(W.ListOwner() ~= nil, 'its list open')
 	OW:CloseDialog()
+	eq(W.ListOwner(), nil, 'the list goes with the dialog')
+	OW:OpenDialog('Guard', { type = 'group', name = 'Guard', args = {
+		go = { order = 1, type = 'execute', name = 'Go', confirm = true, func = function() end },
+	} })
+	click(dialogCell('go').widget.frame)
+	check(W.ConfirmText() ~= nil, 'a confirm from it')
+	OW:CloseDialog()
+	eq(W.ConfirmText(), nil, 'the confirm goes with the dialog')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -258,7 +270,7 @@ test("the dialog ends its side padding (24) under its last row, Copy from's butt
 	OW:OpenDialog('Copy', CopyLike())
 	local d = OW.GetDialogFrames()
 	local accept = dialogCell('accept')
-	eq(accept.y, dialogCell('t1').y + 38 + 6, 'the buttons float 6 under the settings')
+	eq(accept.y, dialogCell('t1').y + 38 + 24, 'the buttons float 24 under the settings, as far as under them')
 	eq(d.content:GetHeight(), accept.y + accept.height, 'the content ends at the buttons: no bottom margin')
 	eq(accept.frame:GetBottom() - d.frame:GetBottom(), 24, 'Thick: 24 under the buttons, as at the sides (54 before)')
 	eq(d.frame:GetHeight(), 58 + accept.y + accept.height + 24, 'the head, the rows, the side padding')
@@ -284,6 +296,50 @@ test("the dialog ends its side padding (24) under its last row, Copy from's butt
 	theme('thick')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ an idle scroll bar
+
+-- The dialog sizes its scroll frame to its rows exactly (SizeDialog), but the
+-- game reads a frame's height back from its layout in single precision: a
+-- view laid out 560 tall can come back 559.99994, a sliver short of the 560
+-- of rows it holds, and the bar showed, as tall as the view, with nothing to
+-- scroll. The stubs lay out in double precision and give 560 back, so the
+-- view's read-back is set here by hand.
+test("OB.ScrollTo counts what there is to scroll in whole units: a view a hair short of its rows shows no bar, under either look", function()
+	local OB = st.OptionsBody
+	local parent = CreateFrame('Frame', nil, UIParent)
+	parent:SetSize(600, 700)
+	parent:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	local scroll = CreateFrame('ScrollFrame', nil, parent)
+	scroll:SetPoint('TOPLEFT', parent, 'TOPLEFT', 0, 0)
+	scroll:SetSize(520, 560 - 2 ^ -14) -- 560 as the game's layout hands it back
+	local content = CreateFrame('Frame', nil, scroll)
+	content:SetSize(520, 560)
+	scroll:SetScrollChild(content)
+	local bar = OB.ScrollBar(parent, function() end, { narrow = true })
+	local companion = OB.Companion(bar)
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		eq(OB.ScrollTo(scroll, bar, 30, 560), 0, look .. ': nothing to scroll to')
+		check(not bar:IsShown(), look .. ': no bar')
+		check(not companion.frame:IsShown(), look .. ": nor Blizzard's")
+		-- A whole unit more is something to scroll.
+		eq(OB.ScrollTo(scroll, bar, 30, 561), 1, look .. ': a unit to scroll')
+		check(bar:IsShown() or companion.frame:IsShown(), look .. ': its bar')
+		eq(bar:IsShown(), look == 'thick', look .. ': the look\'s own bar')
+	end
+	theme('thick')
+
+	-- The dialog sized to its rows, and the window's page that fits: no bar.
+	st.Config:Open('Loot')
+	OW:OpenDialog('Fits', DialogTable())
+	local d = OW.GetDialogFrames()
+	eq(d.scroll:GetHeight(), d.height, 'the view is the rows')
+	check(not d.bar:IsShown(), "the dialog's: none")
+	check(not frames().bar:IsShown(), "the window's: none")
+	OW:CloseDialog()
+	close_all()
 end)
 
 ------------------------------------------------------------------ under the Blizzard theme

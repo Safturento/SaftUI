@@ -51,7 +51,11 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 	failed validate shows its message at the bottom. Esc (its own keyboard
 	catcher, which the window's passes to) and the close X close it, and so
 	do closing the window and entering combat. It refuses to open in combat
-	(false).
+	(false). Its catcher passes Esc on while an item's menu shows
+	(optionsmenu.lua). Closing it, or opening it again on other options,
+	closes a menu whose item is one of its rows; drawing it again by itself
+	(its own set) has that menu follow its item, as a window render does. A
+	failed validate in such a menu shows in this dialog's status line.
 ]]
 
 local DIALOG_WIDTH, DIALOG_PAD = 568, 24
@@ -105,8 +109,13 @@ local function DrawDialog()
 	SizeDialog()
 end
 
+-- The dialog drawn again by itself (its own set, its opening), and an item's
+-- menu with it, as a window render draws both: the menu follows its item to
+-- the redrawn row, or closes (optionsmenu.lua).
 local function RenderDialog()
-	if D.frame and D.frame:IsShown() then xpcall(DrawDialog, geterrorhandler()) end
+	if not (D.frame and D.frame:IsShown()) then return end
+	xpcall(DrawDialog, geterrorhandler())
+	if S.FollowMenu then xpcall(S.FollowMenu, geterrorhandler()) end
 end
 
 -- The status line's text (a validate error; '' clears it). Its coming or
@@ -172,8 +181,10 @@ local function BuildDialog()
 	D.status:SetWidth(DIALOG_CONTENT)
 	D.status:SetTextColor(Colors().text.red:GetRGB())
 
-	-- Esc, only while the dialog is shown.
-	local keys = EscapeKeys(frame, function() return false end, function() OW:CloseDialog() end)
+	-- Esc, only while the dialog is shown, and not while an item's menu is
+	-- (its own keys close it).
+	local keys = EscapeKeys(frame, function() return OW.IsMenuShown ~= nil and OW:IsMenuShown() end,
+		function() OW:CloseDialog() end)
 	D.keys = keys
 
 	frame:SetScript('OnShow', function()
@@ -184,10 +195,14 @@ local function BuildDialog()
 	frame:SetScript('OnHide', function()
 		keys:EnableKeyboard(false)
 		keys:Hide()
-		D.body:Release()
+		-- A menu of one of its items goes with it.
+		if OW.CloseMenu then OW:CloseMenu(D.body) end
+		-- Its list first, while its owner is still inside the dialog (a
+		-- released widget is parented away).
 		local owner = W.ListOwner()
 		if owner and Inside(owner, frame) then W.CloseList() end
 		W.CancelConfirm()
+		D.body:Release()
 		SetStatus('')
 	end)
 	-- Its sets can reach protected frames (UF's copy updates the unit frames).
@@ -218,6 +233,8 @@ end
 function OW:OpenDialog(title, options)
 	if InCombatLockdown() then return false end
 	if not D.frame then BuildDialog() end
+	-- A menu of the dialog's last rows goes: the new rows reuse their widgets.
+	if OW.CloseMenu then OW:CloseMenu(D.body) end
 	D.titleSource, D.root, D.offset, D.dragging = title, { [DIALOG_KEY] = options }, 0, nil
 	D.body:SetRoot(D.root)
 	SetStatus('')
@@ -243,3 +260,6 @@ function OW.GetDialogFrames() return D end
 ------------------------------------------------------------------ for optionswindow.lua
 
 S.FollowDialog = FollowDialog
+-- Its status line, for a validate's message from an item's menu on one of
+-- its rows (optionsmenu.lua); nil or '' clears it.
+S.SetDialogStatus = function(text) SetStatus(text) end

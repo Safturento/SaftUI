@@ -1,6 +1,8 @@
--- The Theme tab of Global Settings (SaftUI-Core/Media/theme.lua): Theme, the
+-- The Theme tab of Global Settings (SaftUI-Core/Media/theme.lua): Theme and the
 -- chosen theme's colors (Border, Outer border and Background; under Blizzard
--- Window background in place of Outer border) and Reset. Background has an
+-- Window background in place of Outer border), each with its own reset (the
+-- options kit's default field: OM.DefaultState, OM.DefaultReset) in place of
+-- the tab's old Reset. Background has an
 -- opacity: its alpha is the profile's theme.transparent and theme.opacity
 -- (100% is a solid background, anything under it see-through at that opacity),
 -- which profiles saved before the merge already hold. A
@@ -81,14 +83,18 @@ test('its rows, in order, with descs', function()
 		check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc')
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Reset')
-	eq(table.concat(types, ','), 'select,color,color,color,color,execute')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background', 'no Reset row')
+	eq(table.concat(types, ','), 'select,color,color,color,color')
 
-	local theme, reset = rows[1].v, rows[6].v
+	local theme = rows[1].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')
 	eq(theme.values.blizzard, 'Blizzard')
 	eq(theme.values.none, nil, 'None is a module override, not a theme to choose')
-	check(reset.confirm, 'Reset asks first')
+	eq(theme.default, nil, 'Theme itself has no reset')
+	for i = 2, 5 do
+		local d = rows[i].v.default
+		check(type(d) == 'table' and d.differs and d.reset and d.value, rows[i].v.name .. ' has its own reset')
+	end
 	for i = 2, 4 do
 		eq(rows[i].v.hasAlpha, nil, rows[i].v.name .. ' has no opacity slider')
 	end
@@ -154,20 +160,28 @@ test('each theme keeps its own colors, Blizzard too', function()
 	Set('theme', 'thick')
 end)
 
-test("Reset under Blizzard restores Blizzard's colors, windowcolor among them, and the transparency", function()
+-- A row's own reset through the model, as the window's icon runs it.
+local function Differs(key) local root, row = Row(key); return OM.DefaultState(root, row).differs end
+local function Reset(key) local root, row = Row(key); return OM.DefaultReset(root, row) end
+
+test("under Blizzard each color's own reset restores Blizzard's, windowcolor among them; Background's the transparency too", function()
 	Set('theme', 'blizzard')
-	for _, key in ipairs({ 'border', 'windowcolor', 'background' }) do Set(key, 0.9, 0.9, 0.9) end
+	for _, key in ipairs({ 'border', 'windowcolor', 'background' }) do
+		Reset(key) -- whatever the cases before left
+		check(not Differs(key), key .. ': at its default')
+		Set(key, 0.9, 0.9, 0.9)
+		check(Differs(key), key .. ': differs once set')
+	end
 	SetAlpha(1)
 	SetAlpha(0.2)
-	local root, row = Row('reset')
-	eq(OM.Confirm(root, row), "Reset the Blizzard theme to SaftUI's defaults?")
-	OM.Set(root, row)
 	local d, p = st.defaults.templates.blizzard, st.config.profile.templates.blizzard
-	for _, key in ipairs({ 'bordercolor', 'altbordercolor', 'backdropcolor', 'windowcolor' }) do
-		eq(table.concat(p[key], ','), table.concat(d[key], ','), 'Blizzard ' .. key)
+	for key, stored in pairs({ border = 'bordercolor', windowcolor = 'windowcolor', background = 'backdropcolor' }) do
+		eq(Reset(key), true, key .. ': its reset runs')
+		eq(table.concat(p[stored], ','), table.concat(d[stored], ','), 'Blizzard ' .. stored)
+		check(not Differs(key), key .. ': no longer differs')
 	end
-	eq(st.config.profile.theme.transparent, st.defaults.theme.transparent)
-	eq(st.config.profile.theme.opacity, st.defaults.theme.opacity)
+	eq(st.config.profile.theme.transparent, st.defaults.theme.transparent, "Background's reset: the transparency")
+	eq(st.config.profile.theme.opacity, st.defaults.theme.opacity, 'and the opacity')
 	eq(st.config.profile.theme.name, 'blizzard', 'the theme itself stays')
 	Set('theme', 'thick')
 end)
@@ -324,31 +338,46 @@ test('in combat a theme change waits for its end, once', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('Reset restores the chosen theme and the transparency', function()
+test("each color's own reset puts back the chosen theme's, recoloring as a set does; Background's opacity alone differs too, and a reset back to see-through redraws", function()
 	Set('theme', 'thin')
 	Set('border', 0.9, 0.9, 0.9)
-	SetAlpha(1)
-	SetAlpha(0.2)
 	Set('theme', 'thick')
 	Set('border', 0.9, 0.9, 0.9)
 	Set('outer', 0.5, 0.5, 0.5)
-	Set('background', 0.9, 0.9, 0.9)
-	local root, row = Row('reset')
-	eq(OM.Confirm(root, row), "Reset the Thick theme to SaftUI's defaults?")
-	OM.Set(root, row)
+	local log, restore = {}, {}
+	restore[1] = Spy(st, 'RecolorThemed', log)
+	restore[2] = Spy(st.Config, 'UpdateConfig', log)
+	Reset('border')
+	Reset('outer')
+	eq(table.concat(log, ','), 'RecolorThemed,RecolorThemed', 'each recolors, no config update')
 	local d, p = st.defaults.templates.thick, st.config.profile.templates.thick
-	for _, key in ipairs({ 'bordercolor', 'altbordercolor', 'backdropcolor' }) do
+	for _, key in ipairs({ 'bordercolor', 'altbordercolor' }) do
 		eq(table.concat(p[key], ','), table.concat(d[key], ','), 'Thick ' .. key)
 	end
-	eq(st.config.profile.theme.transparent, st.defaults.theme.transparent)
-	eq(st.config.profile.theme.opacity, st.defaults.theme.opacity)
-	eq(st.config.profile.theme.name, 'thick', 'the theme itself stays')
 	eq(Rgb(st.config.profile.templates.thin.bordercolor), '0.9,0.9,0.9', "Thin's colors are not touched")
 
-	Set('theme', 'thin')
-	root, row = Row('reset')
-	eq(OM.Confirm(root, row), "Reset the Thin theme to SaftUI's defaults?")
-	Set('theme', 'thick')
+	-- Background: its color as it ships, its opacity changed: it differs.
+	Reset('background') -- whatever the cases before left
+	check(not Differs('background'), 'Background at its default')
+	SetAlpha(0.5)
+	check(Differs('background'), 'a new opacity alone differs')
+	for i = #log, 1, -1 do log[i] = nil end
+	Reset('background')
+	eq(table.concat(log, ','), 'RecolorThemed', 'see-through to see-through: a recolor')
+	eq(st.config.profile.theme.opacity, st.defaults.theme.opacity, 'the opacity back')
+	SetAlpha(1)
+	check(Differs('background'), 'solid differs from the see-through default')
+	for i = #log, 1, -1 do log[i] = nil end
+	Reset('background')
+	eq(log[1], 'UpdateConfig', 'solid back to see-through: the profile update, which redraws')
+	eq(st.config.profile.theme.transparent, st.defaults.theme.transparent)
+	check(not Differs('background'), 'at its default again')
+	local root, row = Row('background')
+	local value = OM.DefaultState(root, row).value
+	eq(value.n, 4, "its default's value: r, g, b and the alpha")
+	eq(value[4], st.defaults.theme.opacity, 'the shipped opacity')
+	for _, r in ipairs(restore) do r() end
+	eq(st.config.profile.theme.name, 'thick', 'the theme itself stays')
 end)
 
 test('after a profile switch the rows reach the new profile', function()
@@ -384,10 +413,9 @@ test("a saved theme this version doesn't know shows as Thick, and its rows read,
 		check(Row('outer') ~= nil, 'Outer border shows, as for Thick')
 		Set('border', 0.31, 0.32, 0.33)
 		eq(Rgb(thick.bordercolor), '0.31,0.32,0.33', "a Border set reaches Thick's")
-		local root, row = Row('reset')
-		eq(OM.Confirm(root, row), "Reset the Thick theme to SaftUI's defaults?", "Reset names Thick")
-		OM.Set(root, row)
-		eq(Rgb(thick.bordercolor), Rgb(st.defaults.templates.thick.bordercolor), "Reset puts back Thick's")
+		check(Differs('border'), "Border differs from Thick's default")
+		Reset('border')
+		eq(Rgb(thick.bordercolor), Rgb(st.defaults.templates.thick.bordercolor), "its reset puts back Thick's")
 	end)
 	check(ok, 'the rows raise nothing: ' .. tostring(err))
 	eq(#take_errors(), 0, 'and report nothing')
