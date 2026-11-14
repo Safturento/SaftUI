@@ -328,6 +328,12 @@ test("OB.ScrollTo counts what there is to scroll in whole units: a view a hair s
 		eq(OB.ScrollTo(scroll, bar, 30, 561), 1, look .. ': a unit to scroll')
 		check(bar:IsShown() or companion.frame:IsShown(), look .. ': its bar')
 		eq(bar:IsShown(), look == 'thick', look .. ': the look\'s own bar')
+		-- Read back a hair over its 560, the view still leaves that unit to
+		-- scroll: the range is rounded, not floored (floored, 0.99994 is 0).
+		scroll:SetHeight(560 + 2 ^ -14)
+		eq(OB.ScrollTo(scroll, bar, 30, 561), 1, look .. ': a view a hair over still has its unit to scroll')
+		check(bar:IsShown() or companion.frame:IsShown(), look .. ': and its bar')
+		scroll:SetHeight(560 - 2 ^ -14)
 	end
 	theme('thick')
 
@@ -338,6 +344,33 @@ test("OB.ScrollTo counts what there is to scroll in whole units: a view a hair s
 	eq(d.scroll:GetHeight(), d.height, 'the view is the rows')
 	check(not d.bar:IsShown(), "the dialog's: none")
 	check(not frames().bar:IsShown(), "the window's: none")
+	OW:CloseDialog()
+	close_all()
+end)
+
+------------------------------------------------------------------ a setting's own reset
+
+test("a setting's own reset works in the dialog: the icon by its control, and a click resets and draws the dialog again", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	local size = 7
+	OW:OpenDialog('Reset', { type = 'group', name = 'Reset', args = {
+		size = { order = 1, type = 'range', name = 'Size', min = 1, max = 10, step = 1,
+			get = function() return size end, set = function(_, v) size = v end,
+			default = { differs = function() return size ~= 5 end, reset = function() size = 5 end } },
+	} })
+	local icon = dialogCell('size').frame.defaultReset
+	check(icon and icon:IsShown(), 'its icon, as it differs')
+	-- GameTooltip, which a click takes the icon's tooltip from, as a stand-in.
+	local saved = _G.GameTooltip
+	_G.GameTooltip = { IsOwned = function() return false end, Hide = function() end }
+	stub.click(icon)
+	_G.GameTooltip = saved
+	eq(size, 5, 'reset')
+	check(OW:IsDialogShown(), 'the dialog stays')
+	local after = dialogCell('size').frame.defaultReset
+	check(not (after and after:IsShown()), 'drawn again: no icon')
+	eq(dialogCell('size').widget.edit:GetText(), '5', 'showing the default')
 	OW:CloseDialog()
 	close_all()
 end)

@@ -344,6 +344,8 @@ test("each color's own reset puts back the chosen theme's, recoloring as a set d
 	Set('theme', 'thick')
 	Set('border', 0.9, 0.9, 0.9)
 	Set('outer', 0.5, 0.5, 0.5)
+	-- No control sets a theme color's alpha, but its reset puts it back too.
+	st.config.profile.templates.thick.bordercolor[4] = 0.5
 	local log, restore = {}, {}
 	restore[1] = Spy(st, 'RecolorThemed', log)
 	restore[2] = Spy(st.Config, 'UpdateConfig', log)

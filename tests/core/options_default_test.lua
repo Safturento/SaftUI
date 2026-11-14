@@ -399,6 +399,32 @@ test("mid-drag, another row's label and hover line make room for its icon as it 
 	end)
 end)
 
+-- A custom type (W.Define) draws its own frames and leaves a default alone:
+-- no icon, though its differs says it differs, bare or with a label; the
+-- built-in toggle beside them shows its own.
+test('a custom type leaves its default alone: no icon, though it differs', function()
+	in_look('thick', function()
+		local function build(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(60, 20)
+		end
+		W.Define('defaultsbare', { bare = true, build = build, methods = { Refresh = function() end } })
+		W.Define('defaultsrow', { width = 60, build = build, methods = { Refresh = function() end } })
+		local always = { differs = function() return true end, reset = function() end }
+		local root = { page = { type = 'group', name = 'Page', get = function() return true end, set = function() end, args = {
+			bare = { type = 'defaultsbare', name = 'Bare', size = 'wide', order = 1, default = always },
+			row = { type = 'defaultsrow', name = 'Row', order = 2, default = always },
+			toggle = { type = 'toggle', name = 'Toggle', order = 3, default = always },
+		} } }
+		local body, by = draw(root)
+		check(by.bare and by.row, 'both drawn')
+		check(shown(by.toggle), 'the toggle shows its icon')
+		check(not shown(by.bare), 'a bare custom type: none')
+		check(not shown(by.row), 'a custom type with a label: none')
+		body:Release()
+	end)
+end)
+
 ------------------------------------------------------------------ in a menu
 
 local menuDiffers, menuResets = false, 0
@@ -468,6 +494,20 @@ test("Global Settings' Colors and Theme: no Reset buttons; a changed color's own
 		local d = st.defaults.colors.class.MAGE
 		eq(tip.lines[2], ('Mage goes back to its default: %s.'):format(W.HexText(d.r, d.g, d.b, 1, false)), 'naming its hex')
 		stub.fire_script(icon_of(c), 'OnLeave', true)
+		-- Its colors are read as it's painted: a new Text > Grey at rest once
+		-- drawn again, a new Button > Blue lit on its next hover.
+		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
+		local buttonBlue = st.config.profile.colors.button.blue
+		colorCell('text', 'grey').widget:Commit(0.3, 0.6, 0.9)
+		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'a new Text > Grey at rest, drawn again')
+		colorCell('button', 'blue').widget:Commit(0.9, 0.1, 0.2, buttonBlue.a)
+		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'still grey at rest')
+		stub.fire_script(icon_of(cell('MAGE')), 'OnEnter', true)
+		eq(rgb(icon_of(cell('MAGE'))), '0.90,0.10,0.20', 'the new Button > Blue under the mouse')
+		stub.fire_script(icon_of(cell('MAGE')), 'OnLeave', true)
+		stub.click(icon_of(colorCell('text', 'grey')))
+		stub.click(icon_of(colorCell('button', 'blue')))
+		c = cell('MAGE')
 		for i = #changed, 1, -1 do changed[i] = nil end
 		stub.click(icon_of(c))
 		eq(mage.r .. ',' .. mage.g .. ',' .. mage.b, r .. ',' .. g .. ',' .. b, 'Mage back to its default')
