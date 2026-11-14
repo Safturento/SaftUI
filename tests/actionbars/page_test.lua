@@ -913,3 +913,70 @@ test('drawn under Thick and Blizzard: the diff icons, marks and resets where the
 	st.config.profile.theme.name = 'thick'
 	no_errors()
 end)
+
+test('drawn at half under Thick and Blizzard: one column, the texts two lines of two, every piece inside its cell, on whole pixels', function()
+	fresh()
+	load_saftui('SaftUI-Core/Libraries/Ace3/AceConfig-3.0/AceConfigRegistry-3.0/AceConfigRegistry-3.0.lua')
+	load_options_widgets()
+	load_saftui('SaftUI-Core/Config/optionsbody.lua')
+	load_options_window()
+	local OB = st.OptionsBody
+	local P = load_test_file('lib/pixels.lua')
+	AB:SetSetting('bar3', 'size', 40)
+	AB:SetSetting('bar3', 'hotkey.position', 'TOPLEFT', 'point')
+	AB:SetSetting('all', 'spacing', 5)
+	AB.config.bar3.enable = false
+
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local width = look == 'blizzard' and 368 or 388
+		local r = root()
+		for _, pick in ipairs({ 'all', 'bar3', 'pet' }) do
+			local content = CreateFrame('Frame', nil, UIParent)
+			content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+			content:SetSize(width, 2400)
+			local body = OB.New(content, r, function() end, 774)
+			body:SetWidth(width, true)
+			body:Draw(view(r, pick).sections)
+			local where = look .. ' ' .. pick .. ': '
+			check(#body.cells > 0, where .. 'drawn')
+			for _, c in ipairs(body.cells) do
+				local left, right = c.frame:GetLeft() - content:GetLeft(), c.frame:GetRight() - content:GetLeft()
+				check(left >= 0 and right <= width, where .. tostring(c.row.key) .. ' inside the body')
+				if c.frame.defaultReset and c.frame.defaultReset:IsShown() then
+					check(c.frame.defaultReset:GetRight() <= c.frame:GetRight(), where .. c.row.key .. ': its reset inside its cell')
+				end
+			end
+			-- Every row on a line of its own, but the quarters, which pair.
+			local lines = {}
+			for _, c in ipairs(body.cells) do
+				local top = c.frame:GetTop()
+				lines[top] = (lines[top] or 0) + 1
+			end
+			for top, n in pairs(lines) do check(n <= 2, where .. 'no more than two to a line at ' .. top) end
+			local by = {}
+			for _, c in ipairs(body.cells) do by[c.row.key] = c end
+			if pick == 'all' then
+				eq(by.hotkey.frame:GetTop(), by.count.frame:GetTop(), where .. 'Hotkey and Stack count on a line')
+				eq(by.macro.frame:GetTop(), by.countdown.frame:GetTop(), where .. 'Macro name and Cooldown on the next')
+				check(by.macro.frame:GetTop() < by.hotkey.frame:GetTop(), where .. 'under it')
+				eq(math.floor(by.spacing.frame:GetWidth() + 0.5), look == 'blizzard' and width or width - 28, where .. 'a setting takes the whole line')
+				check(by.spacing.frame.defaultReset:IsShown(), where .. "Spacing's reset shows")
+				check(by.perrow.frame.share and by.perrow.frame.share.diff:IsShown(), where .. 'a diff icon')
+			elseif pick == 'bar3' then
+				check(by.size.frame.share.mark:IsShown(), where .. 'the own mark')
+			end
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				stub.size_noise = noise
+				body:Release()
+				body:Draw(view(r, pick).sections)
+				local off = P.off(content)
+				eq(#off, 0, where .. 'noise ' .. noise .. ': ' .. P.report(off))
+			end
+			stub.size_noise = 0
+			body:Release()
+		end
+	end
+	st.config.profile.theme.name = 'thick'
+	no_errors()
+end)

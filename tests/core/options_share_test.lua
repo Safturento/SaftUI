@@ -678,6 +678,57 @@ test('Blizzard: every piece draws, and no line runs past the body', function()
 	end)
 end)
 
+test('at half: the own mark markX in from each slot, a row\'s hover line ending inside its cell, a title\'s line whole', function()
+	in_look('thick', function()
+		fresh()
+		own.spacing, own.a, own.b, own.pos = true, true, true, true
+		local root = Page('member', {
+			a = { type = 'toggle', name = 'A', order = 3, size = 'small', share = true },
+			b = { type = 'toggle', name = 'B', order = 4, size = 'small', share = true },
+			pos = { type = 'position', name = 'Position', order = 10, share = true },
+		})
+		local content = CreateFrame('Frame', nil, UIParent)
+		content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		content:SetSize(388, 600)
+		local body = OB.New(content, root, nil, 774)
+		body:SetWidth(388, true)
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local by = {}
+		for _, c in ipairs(body.cells) do by[c.row.key] = c end
+		local function markAt(key) return by[key].frame.share.mark:GetLeft() - content:GetLeft() end
+		eq(markAt('spacing'), 5, 'a half row: 5 in from the slot at 0')
+		eq(markAt('a'), 5, 'a quarter in the left slot')
+		eq(markAt('b'), 194 + 5, 'a quarter in the right slot, 194 in')
+		check(by.a.frame:GetTop() == by.b.frame:GetTop(), 'A and B on one line')
+		for _, key in ipairs({ 'spacing', 'show', 'a', 'b' }) do
+			local c = by[key]
+			stub.fire_script(c.frame, 'OnEnter', true)
+			local parts = c.frame.share
+			if parts and parts.line:IsShown() then
+				check(parts.line:GetRight() <= c.frame:GetRight(), key .. ': the line ends inside its cell')
+				check(parts.line:GetLeft() >= c.frame:GetLeft(), key .. ': and starts inside it')
+			end
+			stub.fire_script(c.frame, 'OnLeave', true)
+			stub.cursor_x, stub.cursor_y = 0, 0
+		end
+		-- The whole 360 cell's line shows all of it, ending at its last link.
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		local sp = by.spacing.frame.share
+		check(sp.line:IsShown(), "spacing's line shows")
+		eq(sp.line:GetRight(), sp.multiple:GetRight(), 'it ends at its last link')
+		stub.fire_script(by.spacing.frame, 'OnLeave', true)
+		stub.cursor_x, stub.cursor_y = 0, 0
+
+		local entry = body.shareTitles[1]
+		eq(entry.title:GetWidth(), 388, 'the title takes the narrow width')
+		stub.fire_script(entry.hover, 'OnEnter', true)
+		check(entry.parts.line:IsShown(), "the title's line shows")
+		check(not entry.parts.line:DoesClipChildren(), 'whole: nothing cut')
+		check(entry.parts.line:GetRight() - content:GetLeft() <= 388, 'inside the body')
+		body:Release()
+	end)
+end)
+
 ------------------------------------------------------------------ fix round 1
 
 -- Every frame under frame (frame first, then its children and theirs).

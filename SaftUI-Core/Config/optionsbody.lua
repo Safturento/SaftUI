@@ -16,6 +16,12 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                  laid out as wide, one to a line (an item's menu,
 	                  optionsmenu.lua); body.oneColumn
 	  body:SetRoot(root)               a new tree (a profile change rebuilt it)
+	  body:SetWidth(width, half)       the body's width, and whether it is the
+	                                   window's half (body.half): every row is
+	                                   read one size larger (OB.HalfSize), so
+	                                   the page is one column. Takes effect at
+	                                   the next Draw; cancels an open color
+	                                   picker of the body when it changes
 	  body:Draw(sections, fillHeight) -> height
 	                                   option rows, each with its widget;
 	                                   fillHeight is the view's height, which
@@ -92,7 +98,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
 	middle, and right ones at the line's right end, on the line of a wide
-	row just before them (whose cell then ends 24 before the buttons, so its
+	row just before them, one wide of its own (row.size: not one a sizeOf
+	made wide, a half body's or an item menu's), whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
 	A toggle's check box and a color's field sit at their cell's right edge,
@@ -423,7 +430,10 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 		if align then
 			if not (group and group.align == align) then
 				group = { align = align, rows = {} }
-				if align == 'right' and wide and SharesLine(wide.entry.row) then
+				-- Only a row wide of its own: one a sizeOf made wide (a half
+				-- body's) keeps the buttons on a line of their own, so its
+				-- control isn't cut.
+				if align == 'right' and wide and wide.own and SharesLine(wide.entry.row) then
 					-- Back onto the wide row's line, at its right end.
 					y, lineHeight = wide.entry.y, wide.height
 					wide.entry.buttons = group
@@ -442,7 +452,7 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 			placed[#placed + 1] = entry
 			lineHeight = height
 			NextLine()
-			wide, group = { entry = entry, height = height }, nil
+			wide, group = { entry = entry, height = height, own = row.size == 'wide' }, nil
 		else
 			wide, group = nil, nil
 			if size == 'normal' and cursor % 2 == 1 then cursor = cursor + 1 end
@@ -546,8 +556,10 @@ end
 -- section's lines of rows that float (lines of buttons) sit off its panel,
 -- FLOAT_GAP from it; a continuation after a section that ends with one has
 -- no panel to join, so it starts its own FLOAT_GAP under the line. heightOf,
--- sizeOf and alignOf are OB.LayoutRows'.
-function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
+-- sizeOf and alignOf are OB.LayoutRows'. noteHeightOf(section) (the seventh)
+-- is the height of a section's note, NOTE_HEIGHT without it: a note that
+-- wraps (a narrow body's) is as tall as its lines.
+function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
 		local entry = { section = section }
@@ -571,7 +583,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 		end
 		if section.note then
 			entry.noteY = y - 2
-			y = y + NOTE_HEIGHT + NOTE_GAP
+			y = y + (noteHeightOf and noteHeightOf(section) or NOTE_HEIGHT) + NOTE_GAP
 		end
 		entry.rowsY = y
 		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf, alignOf)
@@ -905,6 +917,8 @@ function OB.New(content, root, onChanged, width, opts)
 		end),
 		note = Pool(function()
 			local note = Text(content, 'small')
+			note:SetWordWrap(true) -- one that doesn't fit the body wraps (Body:NoteHeight)
+			note:SetJustifyV('TOP')
 			note:SetTextColor(Grey())
 			note:SetWidth(body.width)
 			return note
@@ -923,7 +937,9 @@ end
 function Body:UseMetrics()
 	local metrics = W.BlizzardLook() and OB.FLAT or OB.PANELED
 	self.metrics = metrics
-	self.columnWidth = floor((self.width - metrics.columnGap) / 2)
+	-- At half the two columns are the quarters of the body at its full width:
+	-- only the gap a quarter has between them (OB.PANELED's 0, OB.FLAT's 24).
+	self.columnWidth = floor((self.width - (self.half and metrics.quarterGap or metrics.columnGap)) / 2)
 	self.quarterWidth = floor((self.columnWidth - metrics.quarterGap) / 2)
 end
 
@@ -965,6 +981,44 @@ end
 
 function Body:SetRoot(root)
 	self.root = root
+end
+
+-- The body's width, and whether it is the window's half (body.half: every row
+-- is read one size larger, OB.HalfSize, so the page is one column). It takes
+-- effect at the next Draw, which the caller makes after releasing the body;
+-- the pooled titles and notes, used or free, take the width now. A color
+-- picker open from a row of this body is cancelled first when either changes
+-- (a draw at another width would rebind its field under it).
+function Body:SetWidth(width, half)
+	half = half and true or false
+	if width ~= self.width or half ~= (self.half or false) then
+		if W.CloseColorPicker then W.CloseColorPicker(self.content) end
+	end
+	self.width, self.half = width, half
+	for _, pool in ipairs({ self.pools.title, self.pools.note }) do
+		for _, list in ipairs({ pool.used, pool.free }) do
+			for _, fs in ipairs(list) do fs:SetWidth(width) end
+		end
+	end
+end
+
+-- A section's note's height: NOTE_HEIGHT, a line, when it fits the body's
+-- width on one, else the height of its lines wrapped to that width, in whole
+-- units (never less than a line). Measured on a font string of its own, the
+-- notes' font, so what a note drawn later takes is what the layout held for it.
+function Body:NoteHeight(section)
+	local measure = self.measure
+	if not measure then
+		measure = Text(self.content, 'small')
+		measure:SetWordWrap(true)
+		measure:SetJustifyV('TOP')
+		measure:Hide()
+		self.measure = measure
+	end
+	measure:SetWidth(self.width)
+	measure:SetText(section.note)
+	if ceil(measure:GetUnboundedStringWidth()) <= self.width then return NOTE_HEIGHT end
+	return max(NOTE_HEIGHT, WholeHeight(measure:GetStringHeight()))
 end
 
 -- A drawn row of the page: its frame and widget, and its height.
@@ -1080,14 +1134,15 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if cell.widget and row.type == 'execute' then return WholeHeight(cell.widget:GetHeight()) end
 	end
 	local panels = self.metrics.panels
-	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)
+	local function noteHeightOf(section) return self:NoteHeight(section) end
+	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	local extra = fillHeight and #fills > 0 and floor(fillHeight - height) or 0
 	if extra > 0 then
 		local share = floor(extra / #fills)
 		for i, cell in ipairs(fills) do
 			cell.height = cell.height + share + (i == 1 and extra - share * #fills or 0)
 		end
-		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)
+		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	end
 	-- A group of buttons' x, by its buttons' widths: { xs, left }, once a draw.
 	-- A floating group lies across the body's whole width, off the panel.
@@ -1237,16 +1292,27 @@ end
 -- A oneColumn body's rows are all wide.
 local function Wide() return 'wide' end
 
+-- A row's size at half: one larger. A quarter takes half of the narrow body,
+-- a half the whole line, and a wide row stays.
+function OB.HalfSize(row)
+	if row.size == 'small' then return 'normal' end
+	return 'wide'
+end
+
 function Body:Draw(sections, fillHeight)
 	self:UseMetrics()
-	return self:DrawSections(sections, function(row) return self:RowCell(row) end, self.oneColumn and Wide or nil, fillHeight)
+	local sizeOf = self.oneColumn and Wide or self.half and OB.HalfSize or nil
+	return self:DrawSections(sections, function(row) return self:RowCell(row) end, sizeOf, fillHeight)
 end
+
+local function Half() return 'normal' end
 
 function Body:DrawResults(sections, onPick)
 	self:UseMetrics()
-	-- A result is a half, whatever size its setting is.
+	-- A result is a half, whatever size its setting is; at half the body is
+	-- narrower than a half row's name, so one to a line.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
-		function() return 'normal' end)
+		self.half and Wide or Half)
 end
 
 -- While a slider is dragged the window can't draw the page again (that would

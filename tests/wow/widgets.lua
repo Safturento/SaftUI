@@ -825,7 +825,9 @@ end
 -- There are no font metrics outside the game, so each character counts as
 -- half the font's height wide, and a line of text is one font height tall.
 -- Whether the text wraps at the font string's width. Wrapping itself isn't done (a
--- font string is one line here), so this only remembers the setting.
+-- font string is one line here), so this only remembers the setting; a font
+-- string set to wrap (true, not the default) and given a width reports the
+-- height of the lines its text would take (GetStringHeight).
 function FontString.SetWordWrap(self, s, wrap) s.word_wrap = wrap and true or false end
 function FontString.CanWordWrap(self, s) return s.word_wrap ~= false end
 -- The text's full width, however narrow the font string is.
@@ -844,6 +846,11 @@ end
 function FontString.GetStringHeight(self, s)
 	local font = font_of(s)
 	if not font or not s.text or s.text == '' then return 0 end
+	-- Wrapped (SetWordWrap(true) said so, and it has a width): as many lines as
+	-- the text's full width needs of that width.
+	if s.word_wrap == true and s.width and s.width > 0 then
+		return math.ceil(#s.text * font[2] / 2 / s.width) * font[2]
+	end
 	return font[2]
 end
 

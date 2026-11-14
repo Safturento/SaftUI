@@ -1182,3 +1182,36 @@ test('Copy from draws under Thin, Blizzard and Thick, its buttons in each look',
 	end
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test("at half: the Health and Power tabs' note wraps to the body, clear of the rows, whole pixels under every look", function()
+	local OB = st.OptionsBody
+	local P = load_test_file('lib/pixels.lua')
+	local N = load_test_file('lib/halfnotes.lua')
+	local config, seen = UF:GetConfigTable(), 0
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local width = look == 'blizzard' and 368 or 388
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			for _, unit in ipairs({ 'player', 'target' }) do
+				for _, tab in ipairs({ 'Health', 'Power' }) do
+					local content = CreateFrame('Frame', nil, UIParent)
+					content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+					content:SetSize(width, 4000)
+					local body = OB.New(content, { Unitframes = config }, nil, 774)
+					body:SetWidth(width, true)
+					body:Draw(OM.BuildView({ Unitframes = config }, 'Unitframes', { pick = unit, tab = tab }).sections)
+					local where = look .. ' ' .. unit .. ' ' .. tab .. ' noise ' .. noise
+					seen = seen + N.check(body, where)
+					local off = P.off(content)
+					eq(#off, 0, where .. ': ' .. P.report(off))
+					body:Release()
+				end
+			end
+		end
+	end
+	stub.size_noise = 0
+	st.config.profile.theme.name = 'thick'
+	check(seen >= 3 * 3 * 4, 'the tabs have notes (' .. seen .. ' checked)')
+	eq(#take_errors(), 0, 'no errors')
+end)
