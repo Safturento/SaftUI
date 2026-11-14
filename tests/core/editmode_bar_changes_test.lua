@@ -158,7 +158,8 @@ test('the changes group: Undo, Redo, History and Reset, at the right of row one,
 		eq(c:Lay(false), 26, key .. ': 26 wide')
 		keys[#keys + 1] = frame_of(key):GetLeft()
 	end
-	for i = 2, #keys do check(keys[i] > keys[i - 1], 'left to right: ' .. i) end
+	-- keys is in the control order (undo, redo, history, reset); docked, Reset is before History.
+	check(keys[1] < keys[2] and keys[2] < keys[4] and keys[4] < keys[3], 'left to right on the bar: undo, redo, reset, history')
 	check(frame_of('options'):GetTop() < frame_of('reset'):GetTop(), 'Options is on the second row, under the changes')
 	eq(frame_of('undo').icon:GetTexture(), st.icons.undo2, 'undo-2')
 	eq(frame_of('redo').icon:GetTexture(), st.icons.redo2, 'redo-2')

@@ -7,8 +7,8 @@ local W = st.OptionsWidgets
 	the docked bar and its section in the floating window:
 	  exit     (left, 10, row 1, section 'title')    Exit
 	  grid     (left, 20, row 1, section 'grid')     Grid, Grid size, Snap to grid,
-	                                                 Snap to frames, Dim world,
-	                                                 Coordinates
+	                                                 Snap to frames
+	  view     (left, 25, row 1, section 'grid')     Dim world, Coordinates
 	  options  (right, 90, row 2, section 'changes') Options, Hide until hovered,
 	                                                 and Detach (section 'title')
 	                                                 at its end
@@ -186,6 +186,17 @@ EM:AddBarGroup({
 				"A dragged frame snaps to the grid's lines, shown or not. Hold Ctrl to drag without snapping."),
 			Toggle(bar, 'snapFrames', st.icons.alignStartVertical, 'snap_frames', 'Snap to frames',
 				"A dragged frame snaps to the edges and middles of the other frames shown, and to the screen's middle. Hold Ctrl to drag without snapping."),
+		}
+	end,
+})
+
+-- Dim world and Coordinates: a group of their own on the docked bar (the mockup
+-- has a divider after the snaps), in the floating window's Grid and snap section
+-- with the rest.
+EM:AddBarGroup({
+	key = 'view', order = 25, side = 'left', row = 1, section = 'grid',
+	controls = function(bar)
+		return {
 			Toggle(bar, 'dim', st.icons.layers, 'dim', 'Dim world',
 				'Darkens the game world behind your frames while edit mode is on.'),
 			Toggle(bar, 'coordinates', st.icons.mapPin, 'coordinates', 'Coordinates',

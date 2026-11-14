@@ -757,7 +757,7 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 				lines_shown = lines_shown + 1
 			end
 		end
-		eq(lines_shown, 3, where .. 'every divider still shown (row one: exit, grid, changes; row two: show with the filter, options: three between the groups)')
+		eq(lines_shown, 4, where .. 'every divider still shown (row one: exit, grid, view, changes; row two: show with the filter, options: four between the groups)')
 
 		look('thick')
 		check(box.edit.backdropInfo ~= nil, where .. 'back to Thick: the box has its edges again')

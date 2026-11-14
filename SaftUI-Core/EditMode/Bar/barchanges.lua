@@ -334,5 +334,6 @@ for _, event in ipairs({ 'HistoryChanged', 'Selected', 'PositionChanged' }) do E
 
 EM:AddBarGroup({
 	key = 'changes', order = 80, side = 'right', row = 1, section = 'changes',
+	dockKeys = { 'undo', 'redo', 'reset', 'history' }, -- the mockup's order; the floating window keeps undo, redo, history, reset,
 	controls = function(bar) return { Undo(bar), Redo(bar), HistoryButton(bar), Reset(bar) } end,
 })

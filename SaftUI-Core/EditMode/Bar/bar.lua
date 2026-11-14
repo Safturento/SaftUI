@@ -20,12 +20,15 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	                           GROUP_PAD 8 (each side of a divider), LEVEL 9500,
 	                           DRAG_ALPHA
 	  EM:AddBarGroup(group)    group = { key, order, side = 'left' | 'right',
-	                           row = 1 | 2, section = 'title' | 'grid' | 'show' |
+	                           row = 1 | 2, dockKeys = { key, ... }, section = 'title' | 'grid' | 'show' |
 	                           'changes', controls = function(parent) -> { control, ... } }.
 	                           row is the docked bar's (a group without one is on
 	                           row 1 when left, row 2 when right); section is the
 	                           floating window's. Within a row groups run left to
-	                           right by order.
+	                           right by order. dockKeys (optional) is the order of
+	                           the group's controls on the docked bar only; the
+	                           floating window keeps the group's own. side only
+	                           says the default row.
 	  a control                { key, frame, Lay, Refresh, Look, section, align }
 	    Lay(control, floating) -> width   lays the control out and says its
 	                           width; 0 is not shown
@@ -176,8 +179,17 @@ local function LayAll()
 	local rows = {}
 	for r = 1, ROWS do rows[r] = {} end
 	for _, group in ipairs(groups) do
-		local entry = { widths = {}, group = group }
-		for c, control in ipairs(group.built or {}) do
+		local entry = { widths = {}, group = group, controls = {} }
+		local byKey = {}
+		for _, control in ipairs(group.built or {}) do byKey[control.key] = control end
+		for _, key in ipairs(group.dockKeys or {}) do
+			entry.controls[#entry.controls + 1] = byKey[key]
+			byKey[key] = nil
+		end
+		for _, control in ipairs(group.built or {}) do
+			if byKey[control.key] then entry.controls[#entry.controls + 1] = control end
+		end
+		for c, control in ipairs(entry.controls) do
 			local width = control:Lay(false) or 0
 			entry.widths[c] = width
 			control.frame:SetShown(width > 0)
@@ -205,7 +217,7 @@ local dividers = {} -- the bar's dividers, kept
 local function Place(rows, xs, divided)
 	for r, row in ipairs(rows) do
 		for g, entry in ipairs(row) do
-			for c, control in ipairs(entry.group.built or {}) do
+			for c, control in ipairs(entry.controls) do
 				local x = xs[r][g][c]
 				if x then
 					control.frame:ClearAllPoints()

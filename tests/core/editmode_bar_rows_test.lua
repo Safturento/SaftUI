@@ -42,7 +42,7 @@ local function reset()
 	H.close_all()
 end
 
-local ROW_ONE = { 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'undo', 'redo', 'history', 'reset' }
+local ROW_ONE = { 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'undo', 'redo', 'reset', 'history' }
 local ROW_TWO = { 'showDisabled', 'showHidden', 'modules', 'filter', 'options', 'hide', 'detach' }
 
 -- A control's row is the one its top is in (row 1 starts 7 down, row 2 starts 37 down).
@@ -143,7 +143,7 @@ test('the bar is two rows tall (7, 26, 4, 26, 7) and as wide as its wider row pl
 	reset()
 end)
 
-test('the dividers are 1 x 26 lines between the groups of a row: two on row one, one on row two', function()
+test('the dividers are 1 x 26 lines between the groups of a row: three on row one (Exit | Grid, size, snaps | Dim world, Coordinates | changes), one on row two', function()
 	reset()
 	EM:Activate()
 	local bar = EM:GetBar()
@@ -154,7 +154,7 @@ test('the dividers are 1 x 26 lines between the groups of a row: two on row one,
 			if top == 7 then one = one + 1 elseif top == 37 then two = two + 1 end
 		end
 	end
-	eq(one .. ',' .. two, '2,1', 'two on the first row, one on the second')
+	eq(one .. ',' .. two, '3,1', 'three on the first row, one on the second')
 	reset()
 end)
 
@@ -305,5 +305,20 @@ test('the status tooltip is the bar\'s own: it stays when the mouse leaves the p
 	EM:SetBarStatus('')
 	check(not GameTooltip:IsShown(), 'cleared')
 	EM.movers.status_mover = nil
+	reset()
+end)
+
+test('the floating window keeps the controls in their own order (Undo, Redo, History, Reset) while the docked bar has Reset before History', function()
+	reset()
+	EM:Activate()
+	local docked = keys_on(1)
+	eq(docked[#docked - 1] .. ',' .. docked[#docked], 'reset,history', 'docked: Reset, History')
+	stub.click(frame_of('detach'))
+	local list = {}
+	for _, key in ipairs({ 'undo', 'redo', 'history', 'reset' }) do list[#list + 1] = frame_of(key) end
+	for i = 2, #list do check(list[i]:GetLeft() > list[i - 1]:GetLeft(), 'the window: left to right in the old order, ' .. i) end
+	local keys = {}
+	for _, c in ipairs(EM:BarControls()) do keys[#keys + 1] = c.key end
+	eq(table.concat(keys, ' '), 'exit grid gridSize snapGrid snapFrames dim coordinates showDisabled showHidden modules filter undo redo history reset options hide detach', 'every control in its old group order')
 	reset()
 end)
