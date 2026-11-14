@@ -25,13 +25,23 @@ function INV:GetLaidOutView(container)
 	return container.view or self:GetView(container.id)
 end
 
--- How many slots a line of a window's view holds: a Compact column's perrow,
+-- The most slots a line of a window's view holds: a Compact column's perrow,
 -- or the whole width of Compact's columns (perrow * maxColumns) in the other
--- views, so a window is as wide in every view.
+-- views. A window in One bag, Multi bag or Rows is only as wide as its widest
+-- section needs, up to this (INV:SectionLineSlots).
 function INV:LineSlots(id, view)
 	local config = self.config[id]
 	if view == 'compact' then return config.perrow end
 	return config.perrow * config.maxColumns
+end
+
+-- How many slots a line of a window holds now: Compact's perrow, or the line
+-- its sections were last laid out in (container.sectionLine), the most a line
+-- holds before there was a layout.
+function INV:SlotLine(container)
+	local view = self:GetLaidOutView(container)
+	if view == 'compact' then return self:LineSlots(container.id, view) end
+	return container.sectionLine or self:LineSlots(container.id, view)
 end
 
 -- The name of the category frame a section is laid out in: Rows' categories

@@ -234,14 +234,14 @@ function INV:UpdateCurrencyBorders()
 end
 
 -- Fills the bag window's Currencies category, in lines of lineSlots slots, and
--- sizes it to them: by default the line of the view the bag window is laid out
--- in (INV:LineSlots), whichever window's update calls it.
+-- sizes it to them: by default the bag window's line now
+-- (INV:SlotLine), whichever window's update calls it.
 function INV:UpdateCurrencyCategory(forceShow, lineSlots)
     --C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
     local bag = self.containers.bag
     local category = bag.categories.Currencies
     if not category then return end
-    lineSlots = lineSlots or self:LineSlots('bag', self:GetLaidOutView(bag))
+    lineSlots = lineSlots or self:SlotLine(bag)
 
     category:SetShown(forceShow or not INV.config.filters.categories.bag.Currencies)
     --TODO: We can definitely be smarter about updating but this is fine for now

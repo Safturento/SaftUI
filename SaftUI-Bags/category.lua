@@ -433,11 +433,12 @@ end
 -- Fills a category frame with its items (made if it isn't), shows it and sizes
 -- it. title is its header's text: by default its name and how many it holds
 -- ("Armor (3)"), and false for none, the header hidden and taking no height.
--- lineSlots is how many slots a line holds, by default the line of the view
--- the window is laid out in (INV:LineSlots).
+-- lineSlots is how many slots a line holds, by default the window's line now
+-- (INV:SlotLine). A frame whose slots are anchored for another line has them
+-- anchored again, out of combat.
 function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	local container = self.containers[id]
-	lineSlots = lineSlots or self:LineSlots(id, self:GetLaidOutView(container))
+	lineSlots = lineSlots or self:SlotLine(container)
 
 	local categoryFrame = container.categories[categoryName] or self:CreateCategory(id, categoryName)
 	categoryFrame:Show()
@@ -474,6 +475,13 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 		for i = #categoryFrame.slots - #categoryItems + 1 , INV.CATEGORY_SLOT_POOL do
 			self:CreateSlot(container, categoryName)
 		end
+	end
+
+	if categoryFrame.slotLine ~= lineSlots and not InCombatLockdown() then
+		for _, slot in ipairs(categoryFrame.slots) do
+			self:SetSlotPosition(slot, categoryFrame, container, lineSlots)
+		end
+		categoryFrame.slotLine = lineSlots
 	end
 
 	local spacing = self.config.buttonspacing

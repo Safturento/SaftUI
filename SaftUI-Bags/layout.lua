@@ -212,6 +212,7 @@ end
 function INV:ReleaseLayout(container)
 	container.heldLayout = nil
 	container.heldSize = nil
+	container.sectionLine = nil
 end
 
 -- Lays the categories out in the held layout. One that has emptied is skipped,
@@ -330,25 +331,56 @@ function INV:UpdateContainerLayout(id)
 	SizeWindow(self, container, scrollFrameWidth, tallestColumn:GetHeight(), visibleHeight)
 end
 
+-- How many slots the widest of a window's sections shows, as the line of the
+-- window: a section's items (a grouped free slot is one button), the currency
+-- slots of the Currencies section when it is shown. Never under perrow, one
+-- Compact column, nor over perrow * maxColumns.
+function INV:SectionLineSlots(container, sections)
+	local id = container.id
+	local most = 0
+	for _, section in ipairs(sections) do
+		local need = #section.items
+		if section.kind == 'currencies' then
+			local category = container.categories.Currencies
+			need = 0
+			if category and (container.filterButton:GetChecked() or not self.config.filters.categories.bag.Currencies) then
+				need = #self:GetCurrencies(category.filterButton:GetChecked())
+			end
+		end
+		most = max(most, need)
+	end
+	return min(max(most, self.config[id].perrow), self:LineSlots(id, 'rows'))
+end
+
 --[[
 	One bag, Multi bag and Rows lay a window out in sections (INV:GetViewSections),
-	each a category frame as wide as Compact's columns together (INV:LineSlots;
-	UpdateCategory and UpdateCurrencyCategory size it), stacked top to bottom in
-	the scroll child, spacing apart. Each frame is anchored to the scroll child
-	at its own offset, never to the frame above it (as Compact's columns are,
-	see INV:UpdateConfig). Rows uses the window's category frames, and the
-	Currencies section the bag window's Currencies; One bag's and Multi bag's
-	sections have frames of their own ('view:<key>', made by
-	INV:CreateCategory). The window's other category frames, and Compact's
-	columns, are hidden. The window is the line's width, sized as Compact sizes
-	it (VisibleHeight, SizeWindow); while it is open it doesn't shrink
-	(container.heldSize), and the items close up within their sections. Closing
-	the window or switching views releases it (INV:ReleaseLayout).
+	each a category frame as wide as the window's line, stacked top to bottom in
+	the scroll child, spacing apart. The line is as many slots as the widest
+	section shows (INV:SectionLineSlots), from perrow (one Compact column) up to
+	perrow * maxColumns (INV:LineSlots), so a window with few items is narrow.
+	UpdateCategory and UpdateCurrencyCategory size a frame to the line. Each
+	frame is anchored to the scroll child at its own offset, never to the frame
+	above it (as Compact's columns are, see INV:UpdateConfig). Rows uses the
+	window's category frames, and the Currencies section the bag window's
+	Currencies; One bag's and Multi bag's sections have frames of their own
+	('view:<key>', made by INV:CreateCategory). The window's other category
+	frames, and Compact's columns, are hidden. The window is sized as Compact
+	sizes it (VisibleHeight, SizeWindow); while it is open it doesn't shrink,
+	in height or in line (container.heldSize), and the items close up within
+	their sections; it widens at once when a section needs more. Closing the
+	window or switching views releases it (INV:ReleaseLayout). In combat the
+	line stays as it is: moving the slots would touch Blizzard's buttons.
 ]]
 function INV:LayoutSections(container, sections)
 	local id = container.id
 	local spacing = self.config.buttonspacing
-	local lineSlots = self:LineSlots(id, self:GetLaidOutView(container))
+	local lineSlots = self:SectionLineSlots(container, sections)
+	local held = container:IsShown() and container.heldSize
+	if held and held.lineSlots then lineSlots = max(lineSlots, held.lineSlots) end
+	if InCombatLockdown() then
+		lineSlots = container.sectionLine or self:LineSlots(id, self:GetLaidOutView(container))
+	end
+	container.sectionLine = lineSlots
 	local lineWidth = (self:GetButtonWidth() + spacing) * lineSlots - spacing
 	local child = container.scrollFrame.ScrollChild
 
@@ -379,9 +411,8 @@ function INV:LayoutSections(container, sections)
 	local contentHeight = max(0, y - spacing)
 	local visibleHeight = VisibleHeight(self, id, contentHeight)
 	if container:IsShown() then
-		local held = container.heldSize
 		if held and held.height then visibleHeight = max(visibleHeight, held.height) end
-		container.heldSize = { height = visibleHeight }
+		container.heldSize = { height = visibleHeight, lineSlots = lineSlots }
 	else
 		container.heldSize = nil
 	end
@@ -420,6 +451,7 @@ function INV:ApplyView(id)
 		for _, slot in ipairs(category.slots) do
 			self:SetSlotPosition(slot, category, container, lineSlots)
 		end
+		category.slotLine = lineSlots
 	end
 	if view == 'compact' then
 		for _, column in ipairs(container.columns) do column:Show() end
