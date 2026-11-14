@@ -365,8 +365,8 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 	eq(point_x(by.ok.frame), left, 'Confirm copy on the left')
 	eq(point_x(by.cancel.frame), left + okWidth + 12, 'Cancel 12 after it')
 	check(math.abs(left - (520 - (left + okWidth + 12 + cancelWidth))) <= 1, 'the same room either side')
-	-- The last line, of buttons alone: under the panel, 6 below (Thick).
-	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 38 + 6, 'one line, under the toggles\' panel')
+	-- The last line, of buttons alone: under the panel, 24 below (Thick).
+	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 38 + 24, 'one line, under the toggles\' panel')
 	-- The one divider is the toggles', between the halves at 260.
 	local got = {}
 	for _, line in ipairs(body.pools.hairline.used) do
@@ -1113,8 +1113,8 @@ test('under panels rows after an inline group join its panel: one panel, no gap,
 				accept = button('Confirm copy', 2, 'center'), cancel = button('Cancel', 3, 'center'),
 			}))
 			check(by.accept.y == by.cancel.y, look .. ': Confirm copy and Cancel on one line')
-			-- Buttons alone continuing the section float under its panel, 6 below, as a title sits over one.
-			eq(by.accept.y, by.t1.y + 38 + 6, look .. ': the buttons 6 under the toggles\' panel')
+			-- Buttons alone continuing the section float under its panel, 24 below, as the bottom margin under them.
+			eq(by.accept.y, by.t1.y + 38 + 24, look .. ': the buttons 24 under the toggles\' panel')
 			local tall = by.accept.widget:GetHeight()
 			check(tall < 38, look .. ': a button is less than a row tall')
 			eq(by.accept.height .. ',' .. by.accept.frame:GetHeight(), tall .. ',' .. tall, look .. ': their line as tall as the buttons')
@@ -1292,7 +1292,7 @@ end)
 
 test('LayoutSections: with panels and floatOf a last line of rows that float sits FLOAT_GAP under the panel, as tall as its tallest; else as before', function()
 	local OB = st.OptionsBody
-	eq(OB.FLOAT_GAP, 6, "as far under the panel as a title's line is over one")
+	eq(OB.FLOAT_GAP, 24, "as far under the panel as the body's bottom margin is under its rows: midway")
 	eq(OB.BOTTOM, 24, "the body's bottom margin")
 	local function r(key, size, align) return { key = key, size = size, align = align } end
 	local floating = { ok = 24, no = 22, go = 24, reset = 24 }
@@ -1309,14 +1309,14 @@ test('LayoutSections: with panels and floatOf a last line of rows that float sit
 		for _, p in ipairs(entry.placed) do out[#out + 1] = p.row.key .. '@' .. p.y .. (p.floats and 'f' or '') end
 		return table.concat(out, ' ')
 	end
-	eq(ys(laid[1]), 'a@0 b@0 ok@40f no@40f', 'A: its buttons 6 under the panel, marked floats')
+	eq(ys(laid[1]), 'a@0 b@0 ok@58f no@58f', 'A: its buttons 24 under the panel, marked floats')
 	eq(laid[1].panelHeight, 34, 'A: the panel ends over them')
-	eq(laid[1].rowsHeight, 34 + 6 + 24, 'A: the line as tall as its tallest button')
+	eq(laid[1].rowsHeight, 34 + 24 + 24, 'A: the line as tall as its tallest button')
 	eq(ys(laid[2]), 'x@0 go@0', 'the continuation: a row beside the button, nothing floats')
 	eq(laid[2].panelHeight, nil)
 	check(not laid[2].joins, 'after floating buttons there is no panel to join: it starts its own')
-	eq(laid[2].rowsY, laid[1].rowsY + laid[1].rowsHeight + 6, '6 under the floating line')
-	eq(ys(laid[3]), 'reset@6f', 'B: a lone button floats; no panel above it')
+	eq(laid[2].rowsY, laid[1].rowsY + laid[1].rowsHeight + 24, '24 under the floating line')
+	eq(ys(laid[3]), 'reset@6f', 'B: a lone button floats; no panel above it: 6 down, where it would sit on one')
 	eq(laid[3].panelHeight, 0)
 	eq(laid[3].rowsHeight, 30)
 	eq(ys(laid[4]), 'c@0 ok@34 d@68', 'C: buttons mid-section stay')
@@ -1331,7 +1331,7 @@ test('LayoutSections: with panels and floatOf a last line of rows that float sit
 	end
 end)
 
-test("under panels a section's last line of buttons floats under its panel, 6 below, off the padding; one mid-section stays on it; Blizzard as before", function()
+test("under panels a section's last line of buttons floats under its panel, 24 below, off the padding; one mid-section stays on it; Blizzard as before", function()
 	local function reset(order) return { type = 'execute', name = 'Reset', size = 'small', order = order, func = function() end } end
 	local function small(name, order) return { type = 'execute', name = name, size = 'small', order = order, func = function() end } end
 	in_look('thick', function()
@@ -1340,7 +1340,7 @@ test("under panels a section's last line of buttons floats under its panel, 6 be
 		local panels = shown(body.pools.panel)
 		eq(#panels, 1, 'one panel')
 		eq(rect(panels[1]), '0,' .. by.a.y .. ' 774x38', 'ending above the Reset')
-		eq(by.reset.y, by.a.y + 38 + 6, '6 under it')
+		eq(by.reset.y, by.a.y + 38 + 24, '24 under it')
 		eq(point_x(by.reset.frame), 0, "at its slot's left, off the padding: in line with the panel's edge")
 		local tall = by.reset.widget:GetHeight()
 		eq(by.reset.height .. ',' .. by.reset.frame:GetHeight(), tall .. ',' .. tall, 'its line as tall as the button')
@@ -1371,7 +1371,7 @@ test("under panels a section's last line of buttons floats under its panel, 6 be
 		eq(#panels, 1)
 		eq(rect(panels[1]), '0,' .. by.pick.y .. ' 520x114', 'the profile and both lines of buttons on the panel')
 		eq(point_x(by.new.frame), 14, 'New inside the padding')
-		eq(by.close.y, by.export.y + 38 + 6, 'Close 6 under the panel')
+		eq(by.close.y, by.export.y + 38 + 24, 'Close 24 under the panel')
 		eq(point_x(by.close.frame), math.floor((520 - by.close.frame:GetWidth()) / 2), 'in the middle')
 		lines = hairline_rects(body)
 		eq(table.concat(lines, ' '), '0,' .. by.new.y .. ' 520x1 0,' .. by.export.y .. ' 520x1', 'hairlines over the button lines on the panel, none over Close')
@@ -1380,16 +1380,16 @@ test("under panels a section's last line of buttons floats under its panel, 6 be
 		-- Right-aligned buttons ending a section: at the body's right edge, in line with the panel's.
 		body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), x = button('X', 3, 'right'), y = button('Y', 4, 'right') }))
 		eq(point_x(by.y.frame) + by.y.frame:GetWidth(), 774, "the last ends at the body's right edge")
-		eq(by.x.y, by.a.y + 38 + 6)
+		eq(by.x.y, by.a.y + 38 + 24)
 		body:Release()
 
-		-- Rows that continue a section after its floating buttons: a panel of their own, 6 under them.
+		-- Rows that continue a section after its floating buttons: a panel of their own, 24 under them.
 		body, by = drawn_root(tree({
 			g = inline('Group', 1, { n = toggle('N', 1), ok = button('OK', 2, 'center') }),
 			after = toggle('After', 2),
 		}))
-		eq(by.ok.y, by.n.y + 38 + 6, "the group's buttons float")
-		eq(by.after.y, by.ok.y + by.ok.height + 6, 'the rows after them 6 below')
+		eq(by.ok.y, by.n.y + 38 + 24, "the group's buttons float")
+		eq(by.after.y, by.ok.y + by.ok.height + 24, 'the rows after them 24 below')
 		local got = {}
 		for _, panel in ipairs(shown(body.pools.panel)) do got[#got + 1] = rect(panel) end
 		table.sort(got)
@@ -1430,15 +1430,15 @@ test("Global Settings' Colors and Theme: a section's lone Reset floats under its
 			local _, _, _, x = c.frame:GetPoint(1)
 			local where = tab .. ' ' .. tostring(c.row.path[#c.row.path - 1])
 			if byY[c.y] == 1 then
-				-- Alone on its line: under its section's panel, 6 below, the button's height, at the panel's left edge.
+				-- Alone on its line: under its section's panel, 24 below, the button's height, at the panel's left edge.
 				eq(c.height .. ' at ' .. x, c.widget:GetHeight() .. ' at 0', where .. ': a lone Reset floats')
 				local ends, under = false, false
 				for _, p in ipairs(c.body.pools.panel.used) do
 					local _, _, _, _, py = p:GetPoint(1)
-					if -py + p:GetHeight() == c.y - 6 then ends = true end
+					if -py + p:GetHeight() == c.y - 24 then ends = true end
 					if -py <= c.y and -py + p:GetHeight() > c.y then under = true end
 				end
-				check(ends, where .. ': its panel ends 6 above it')
+				check(ends, where .. ': its panel ends 24 above it')
 				check(not under, where .. ': no panel under it')
 				seen[#seen + 1] = where .. ' floats'
 			else

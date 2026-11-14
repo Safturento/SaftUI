@@ -66,8 +66,10 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	whole line, and ends a panel; the section's other lines have theirs. A
 	line of execute rows alone that ends its section (so also one that
 	continues a section after an inline group) floats under the panel
-	instead: the panel ends above it, and the line sits OB.FLOAT_GAP (6, as
-	a title sits over its panel) under it on the body's own fill, as tall as
+	instead: the panel ends above it, and the line sits OB.FLOAT_GAP (24,
+	the body's bottom margin, so a closing line sits midway between the rows
+	and the bottom; a section of only that line sits 6 down, where its
+	buttons would on a panel) under it on the body's own fill, as tall as
 	its buttons, each in its slot off the padding (a centred group across
 	the body, a right one ending at its right edge), with no hairline or
 	divider; rows that continue the section after it start a panel of their
@@ -154,7 +156,13 @@ local SECTION_PAD, SECTION_MARGIN = 16, 14
 local TITLE_HEIGHT, TITLE_GAP = 15, 6
 local NOTE_HEIGHT, NOTE_GAP = 13, 4
 local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
-local FLOAT_GAP = TITLE_GAP -- a section's closing buttons under its panel, as its title over it
+-- A section's closing buttons under its panel: as far as the body's (and a
+-- dialog's) bottom margin is under them, so they sit midway between the rows
+-- and the bottom.
+local FLOAT_GAP = BODY_BOTTOM
+-- A section of nothing but a line of buttons: they sit where they would on a
+-- panel (a 38 row's 26 button, 6 down), with no panel above to stand off from.
+local LEAD_GAP = TITLE_GAP
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
 OB.FLOAT_GAP = FLOAT_GAP
@@ -413,9 +421,10 @@ end
 -- A section's last line floats off its panel when every row on it gives a
 -- height off the panel (floatOf(row); nil: it can't): the line moves
 -- FLOAT_GAP under where the panel ends (entry.panelHeight, the height of the
--- rows on it, 0 when the line is all there is), its entries are marked
--- floats, and it's as tall as its tallest row (entry.floatHeight). Returns
--- the rows' height.
+-- rows on it; when the line is all there is, 0, and it sits LEAD_GAP down,
+-- unless the section joins the panel above (entry.joins): then FLOAT_GAP),
+-- its entries are marked floats, and it's as tall as its tallest row
+-- (entry.floatHeight). Returns the rows' height.
 local function Float(entry, placed, height, floatOf)
 	local lastY
 	for _, p in ipairs(placed) do lastY = max(lastY or p.y, p.y) end
@@ -428,11 +437,12 @@ local function Float(entry, placed, height, floatOf)
 			lineHeight = max(lineHeight, h)
 		end
 	end
+	local gap = (lastY > 0 or entry.joins) and FLOAT_GAP or LEAD_GAP
 	for _, p in ipairs(placed) do
-		if p.y == lastY then p.y, p.floats = lastY + FLOAT_GAP, true end
+		if p.y == lastY then p.y, p.floats = lastY + gap, true end
 	end
 	entry.panelHeight, entry.floatHeight = lastY, lineHeight
-	return lastY + FLOAT_GAP + lineHeight
+	return lastY + gap + lineHeight
 end
 
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,

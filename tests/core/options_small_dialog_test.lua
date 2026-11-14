@@ -270,7 +270,7 @@ test("the dialog ends its side padding (24) under its last row, Copy from's butt
 	OW:OpenDialog('Copy', CopyLike())
 	local d = OW.GetDialogFrames()
 	local accept = dialogCell('accept')
-	eq(accept.y, dialogCell('t1').y + 38 + 6, 'the buttons float 6 under the settings')
+	eq(accept.y, dialogCell('t1').y + 38 + 24, 'the buttons float 24 under the settings, as far as under them')
 	eq(d.content:GetHeight(), accept.y + accept.height, 'the content ends at the buttons: no bottom margin')
 	eq(accept.frame:GetBottom() - d.frame:GetBottom(), 24, 'Thick: 24 under the buttons, as at the sides (54 before)')
 	eq(d.frame:GetHeight(), 58 + accept.y + accept.height + 24, 'the head, the rows, the side padding')
