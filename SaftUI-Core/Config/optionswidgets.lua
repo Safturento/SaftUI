@@ -68,7 +68,7 @@ local OM = st.OptionsModel
 	optionslist.lua (the select list and the check list), optionstypes.lua
 	(toggle, input, color, execute, description), optionsrange.lua,
 	optionsselect.lua (select, multiselect), optionskeybinding.lua,
-	optionsitem.lua (the item) and optionsposition.lua. W.Kit (below) holds
+	optionsitem.lua (the item), optionscontrols.lua (the standalone controls) and optionsposition.lua. W.Kit (below) holds
 	what they share.
 
 	widget.rowBody is the body (optionsbody.lua) that drew the widget, set

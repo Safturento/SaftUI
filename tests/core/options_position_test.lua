@@ -95,17 +95,17 @@ test('position: the parts are laid out 12 apart, each caption over its part, on 
 	eq(px, -1, 'overlapping it by 1: one shared seam')
 	eq(py, 0)
 	-- Each half's arrow is one Lucide chevron, 12 x 12, on whole pixels: the
-	-- up one's middle 6 down its half, the down one's 5 down its own.
+	-- both 1 above their half's top, a middle 5 down it.
 	local function arrow(button, texture)
 		eq(button.arrow:GetTexture(), texture, 'the chevron')
 		eq(button.arrow:GetWidth() .. 'x' .. button.arrow:GetHeight(), '12x12', 'drawn 12 by 12')
 		local point, rel, relPoint, ax, ay = button.arrow:GetPoint(1)
-		return ('%s %s %d,%d'):format(point, relPoint, ax, ay), rel == button
+		return ('%s %s %s,%s'):format(point, relPoint, ax, ay), rel == button
 	end
 	local upAt, upOn = arrow(w.xUp, st.icons.chevronUp)
 	local downAt, downOn = arrow(w.xDown, st.icons.chevronDown)
-	eq(upAt, 'TOP TOP 0,0', 'the up chevron from its half\'s top')
-	eq(downAt, 'TOP TOP 0,1', 'the down chevron from its half\'s top, 1 above it')
+	eq(upAt, 'TOP TOP 0,1', 'the up chevron 1 above its half\'s top: a whole offset')
+	eq(downAt, 'TOP TOP 0,1', 'the down chevron the same, as far from the divider')
 	check(upOn and downOn, 'on its own button')
 	check(w.xUp.arrows == nil and w.xDown.arrows == nil, 'the three rows are gone')
 	local divider

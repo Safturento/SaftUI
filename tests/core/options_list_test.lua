@@ -489,6 +489,8 @@ test('a check list with buttons: All and None under the rows, each applying at o
 	wide:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
 	W.OpenCheckList(wide, entries, isChecked, onToggle, buttons)
 	eq(list.frame:GetWidth(), 300, 'a wider owner keeps its width')
+	eq(list.checkButtons[1]:GetLeft() - list.frame:GetLeft(), list.frame:GetRight() - list.checkButtons[2]:GetRight(),
+		'the buttons centred in it, the same gap either side')
 	W.CloseList()
 
 	-- Under Blizzard the buttons are the panel button.
@@ -505,4 +507,34 @@ test('a check list with buttons: All and None under the rows, each applying at o
 	eq((H.panel_of(list.checkButtons[1])), '', 'Thick: no panel button')
 	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the check list buttons are on whole pixels and centred, under each look and with sizes read back a hair off', function()
+	local P = load_test_file('lib/pixels.lua')
+	local HAIR = 2 ^ -14
+	local entries = { { key = 'a', label = 'A' }, { key = 'b', label = 'B' }, { key = 'c', label = 'C' } }
+	local buttons = { { label = 'All', onClick = function() end }, { label = 'None', onClick = function() end } }
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+			stub.size_noise = noise
+			theme(look)
+			local where = look .. ' noise ' .. noise .. ': '
+			for _, ownerWidth in ipairs({ 52, 300 }) do
+				local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+				owner:SetSize(ownerWidth, 14)
+				owner:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+				W.OpenCheckList(owner, entries, function() return false end, function() end, buttons)
+				local list = W.GetListFrames()
+				local b1, b2 = list.checkButtons[1], list.checkButtons[2]
+				local off = {}
+				for _, b in ipairs({ b1, b2 }) do for _, o in ipairs(P.off(b)) do off[#off + 1] = o end end
+				eq(#off, 0, where .. ownerWidth .. ' wide: ' .. P.report(off))
+				local leftGap, rightGap = b1:GetLeft() - list.frame:GetLeft(), list.frame:GetRight() - b2:GetRight()
+				check(math.abs(leftGap - rightGap) <= 1, where .. ownerWidth .. ' wide: centred, ' .. leftGap .. ' | ' .. rightGap)
+				W.CloseList()
+			end
+		end
+	end
+	stub.size_noise = 0
+	theme('thick')
 end)

@@ -378,8 +378,13 @@ test('the nudge pair draws Lucide chevrons, on whole pixels, and Blizzard steppe
 	eq(size_of(up.arrow), '12x12', 'up: 12 by 12')
 	eq(size_of(down.arrow), '12x12', 'down: 12 by 12')
 	check(up.arrows == nil, 'the three rows are gone')
-	eq(H.insets(up.arrow, up), '1,0,1,-1', 'up: a whole pixel in, its middle 6 down the half')
-	eq(H.insets(down.arrow, down), '1,-1,1,0', 'down: its middle 5 down the half')
+	eq(H.insets(up.arrow, up), '1,-1,1,0', 'up: a whole pixel in, 1 above its half, its middle 5 down it')
+	eq(H.insets(down.arrow, down), '1,-1,1,0', 'down: the same')
+	local top = pair:GetTop()
+	local divider = (top - pair.divider:GetTop() + top - pair.divider:GetBottom()) / 2
+	local upMid = top - (up.arrow:GetTop() + up.arrow:GetBottom()) / 2
+	local downMid = top - (down.arrow:GetTop() + down.arrow:GetBottom()) / 2
+	eq(divider - upMid, downMid - divider, 'the chevrons as far from the divider as each other')
 	eq(vertex(up.arrow), GREY(), 'Text > Grey')
 	eq(#P.off(pair), 0, 'on whole pixels: ' .. P.report(P.off(pair)))
 	stub.fire_script(up, 'OnEnter', true)
@@ -464,4 +469,160 @@ test('W.LookControl: a button is Box or the panel button, with its on and disabl
 	eq(panel_of(b), '', 'no panel button')
 	check_box(b, 'Thick again: the button', H.BG_RGBA, true)
 	eq(#P.off(b), 0, 'on whole pixels')
+end)
+
+test('a press moves the label only: the button keeps its size; a disabled one does not even move it', function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		local b = put(W.Button(new_parent(), 'Edit mode', function() end))
+		W.LookControl(b, look == 'blizzard')
+		b:SetSize(88, 24) -- as the sidebar sizes its buttons
+		stub.fire_script(b, 'OnMouseDown', 'LeftButton')
+		eq(size_of(b), '88x24', look .. ': the size while pressed')
+		local _, _, _, _, y = b.text:GetPoint(1)
+		eq(y, -1, look .. ': the label 1 down')
+		stub.fire_script(b, 'OnMouseUp', 'LeftButton')
+		eq(size_of(b), '88x24', look .. ': the size once let go')
+		_, _, _, _, y = b.text:GetPoint(1)
+		eq(y, 0, look .. ': the label back')
+		W.SetEnabled(b, false)
+		stub.fire_script(b, 'OnMouseDown', 'LeftButton')
+		_, _, _, _, y = b.text:GetPoint(1)
+		eq(y, 0, look .. ': disabled: the label stays put')
+		stub.fire_script(b, 'OnMouseUp', 'LeftButton')
+	end
+	theme('thick')
+end)
+
+test('a press moves the label 1 down in the icon-with-label layout too, the icon staying', function()
+	theme('thick')
+	local b = put(W.Button(new_parent(), 'Exit', function() end, { icon = st.icons.logOut, iconWithLabel = true, tip = tip }))
+	local left = b.icon:GetLeft()
+	local function label_y() local _, rel, _, _, y = b.text:GetPoint(1); check(rel == b.icon, 'anchored to the icon'); return y end
+	eq(label_y(), 0, 'at rest')
+	stub.fire_script(b, 'OnMouseDown', 'LeftButton')
+	eq(label_y(), -1, 'pressed: 1 down')
+	eq(b.icon:GetLeft(), left, 'the icon stays')
+	eq(size_of(b), math.max(80, 16 + 6 + math.ceil(b.text:GetStringWidth()) + 28) .. 'x26', 'and the size')
+	stub.fire_script(b, 'OnMouseUp', 'LeftButton')
+	eq(label_y(), 0, 'let go: back')
+end)
+
+test("a label keeps the colour its caller gave it through hover, and one with none follows the font object", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		local blizzard = look == 'blizzard'
+		local green = st.config.profile.colors.text.green
+		local b = put(W.Button(new_parent(), 'Edit mode', function() end))
+		W.LookControl(b, blizzard)
+		b.text:SetTextColor(green:GetRGB())
+		stub.fire_script(b, 'OnEnter', true)
+		stub.fire_script(b, 'OnLeave', true)
+		eq(color_of(CreateColor(b.text:GetTextColor())), color_of(green), look .. ': the caller\'s colour survives a hover')
+		b:Hide(); b:Show()
+		eq(color_of(CreateColor(b.text:GetTextColor())), color_of(green), look .. ': and a hide')
+		-- Lit under Blizzard, then put back as it was.
+		W.SetOn(b, true)
+		eq(color_of(CreateColor(b.text:GetTextColor())), blizzard and BLUE() or color_of(green), look .. ': on')
+		W.SetOn(b, false)
+		eq(color_of(CreateColor(b.text:GetTextColor())), color_of(green), look .. ': off: the caller\'s colour again')
+
+		local plain = put(W.Button(new_parent(), 'Close', function() end))
+		W.LookControl(plain, blizzard)
+		stub.fire_script(plain, 'OnEnter', true)
+		stub.fire_script(plain, 'OnLeave', true)
+		local font = W.GetFont()
+		local r, g, bl, a = font:GetTextColor()
+		font:SetTextColor(0.1, 0.2, 0.3)
+		eq(color_of(CreateColor(plain.text:GetTextColor())), '0.10,0.20,0.30', look .. ': no colour of its own: it follows the font object')
+		font:SetTextColor(r, g, bl, a)
+	end
+	theme('thick')
+end)
+
+test('W.SetOn under Blizzard lights a button whose icon is for compact only, by its label', function()
+	theme('blizzard')
+	local b = put(W.Button(new_parent(), 'Options', function() end, { icon = st.icons.settings, tip = tip }))
+	W.LookControl(b, true)
+	W.SetOn(b, true)
+	eq(color_of(CreateColor(b.text:GetTextColor())), BLUE(), 'not compact: its label is lit')
+	W.SetCompact(b, true)
+	W.SetOn(b, true)
+	eq(color_of(CreateColor(b.text:GetTextColor())), color_of(colors().text.normal), 'compact: the icon shows it, the label is put back')
+	eq(vertex(b.icon), BLUE(), 'the icon lit')
+	theme('thick')
+end)
+
+test('W.SetEnabled paints a Blizzard dropdown face disabled at once', function()
+	theme('blizzard')
+	local face = put(W.SelectFace(new_parent(), 150, function() end))
+	W.LookSelectFace(face, true)
+	eq(atlases_of(face), 'common-dropdown-c-button', 'enabled')
+	W.SetEnabled(face, false)
+	eq(atlases_of(face), 'common-dropdown-c-button-disabled', 'disabled, before the mouse passes')
+	theme('thick')
+end)
+
+test('W.IconButton and W.IconLink refuse a click in place of the tooltip', function()
+	local ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, function() end, tip)
+	check(not ok and tostring(err):find('takes no click', 1, true), 'an extra argument is refused')
+	ok, err = pcall(W.IconLink, new_parent(), st.icons.eye, 14, 'a tip')
+	check(not ok and tostring(err):find('takes no click', 1, true), 'a tip that is no function is refused')
+end)
+
+test('a number box that has focus drops it when disabled', function()
+	local box = put(W.NumberBox(new_parent(), { width = 54, get = function() return 1 end, set = function() end,
+		tip = function() return 'N', {} end }))
+	box.edit:SetFocus()
+	check(box.edit:HasFocus(), 'it has focus')
+	W.SetEnabled(box, false)
+	check(not box.edit:HasFocus(), 'and drops it when disabled')
+end)
+
+-- Every control on whole pixels under Thick, Thin and Blizzard, with sizes read
+-- back a hair off, unpressed and pressed (the repo's convention for a layout).
+test('every control is on whole pixels, under each look and with sizes read back a hair off', function()
+	local HAIR = 2 ^ -14
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+			stub.size_noise = noise
+			theme(look)
+			local blizzard = look == 'blizzard'
+			local where = look .. ' noise ' .. noise .. ': '
+			local p = CreateFrame('Frame', nil, UIParent)
+			p:SetSize(400, 400)
+			p:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 10, -10)
+			local controls = {
+				button = W.Button(p, 'Reload UI', function() end),
+				long = W.Button(p, 'A rather long button label indeedy', function() end),
+				withIcon = W.Button(p, 'Exit', function() end, { icon = st.icons.logOut, iconWithLabel = true, tip = tip }),
+				withIconLong = W.Button(p, 'Options and more', function() end, { icon = st.icons.settings, iconWithLabel = true, tip = tip }),
+				compact = W.Button(p, 'Options', function() end, { icon = st.icons.settings, tip = tip }),
+				iconButton = W.IconButton(p, st.icons.magnet, tip),
+				link = W.IconLink(p, st.icons.rotateCcw, 14, tip),
+				face = W.SelectFace(p, 150, function() end),
+				box = W.NumberBox(p, { width = 54, min = 8, max = 128, step = 4, get = function() return 32 end, set = function() end, tip = tip }),
+			}
+			W.SetCompact(controls.compact, true)
+			local y = 0
+			for _, name in ipairs({ 'button', 'long', 'withIcon', 'withIconLong', 'compact', 'iconButton', 'link', 'face', 'box' }) do
+				local c = controls[name]
+				if name == 'face' then W.LookSelectFace(c, blizzard)
+				elseif name == 'box' then W.LookNumberBox(c, blizzard)
+				else W.LookControl(c, blizzard) end
+				c:ClearAllPoints()
+				c:SetPoint('TOPLEFT', p, 'TOPLEFT', 0, -y)
+				y = y + 30
+				local off = P.off(c)
+				eq(#off, 0, where .. name .. ': ' .. P.report(off))
+				stub.fire_script(c, 'OnMouseDown', 'LeftButton')
+				off = P.off(c)
+				eq(#off, 0, where .. name .. ' pressed: ' .. P.report(off))
+				stub.fire_script(c, 'OnMouseUp', 'LeftButton')
+			end
+			p:Hide()
+		end
+	end
+	stub.size_noise = 0
+	theme('thick')
 end)

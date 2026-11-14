@@ -16,6 +16,9 @@ local Kit = W.Kit
 
 	A control keeps its state in fields: on (W.SetOn), disabled
 	(W.SetEnabled) and onClick, which every click runs unless it is disabled.
+	Never SetScript('OnClick') on a control of this file: it drops the
+	disabled guard. W.IconButton and W.IconLink take no click argument; set
+	control.onClick.
 	A disabled control keeps the mouse, so its tooltip shows (an icon with no
 	label must say why it does nothing); it is drawn at alpha 0.4, with no
 	hover look. Its look is painted by one function (Paint) from those
@@ -103,9 +106,19 @@ local function Paint(control)
 		local color = lit and Colors().button.blue or Colors().text.grey
 		control.icon:SetVertexColor(color:GetRGB())
 	end
+	-- A label's colour is written only to light it (a button with no icon
+	-- showing) and to take the light off, putting back what it was: a caller's
+	-- own colour (the sidebar's green Edit mode) and the font object's survive.
 	if control.label then
-		local color = (blizzard and on and not control.icon) and Colors().button.blue or Colors().text.normal
-		control.text:SetTextColor(color:GetRGB())
+		local textOnly = not (control.icon and (control.compact or control.iconWithLabel))
+		local lit = (blizzard and on and textOnly) and true or false
+		if lit then
+			if not control.labelLit then control.labelWas = { control.text:GetTextColor() } end
+			control.text:SetTextColor(Colors().button.blue:GetRGB())
+		elseif control.labelLit then
+			control.text:SetTextColor(unpack(control.labelWas))
+		end
+		control.labelLit = lit
 	end
 end
 
@@ -145,9 +158,9 @@ function W.SetEnabled(control, enabled)
 	control.disabled = not enabled
 	if control.edit then
 		if control.disabled then control.edit:ClearFocus() end
-		if control.edit.SetEnabled then control.edit:SetEnabled(not control.disabled) end
 	end
 	Paint(control)
+	Kit.PaintFace(control) -- a Blizzard dropdown face shows disabled at once; nothing for any other control
 end
 
 -- Puts on the look of a W.Button or W.IconButton, when it changed: Box in the
@@ -174,11 +187,24 @@ local function LabelWidth(button)
 	return ceil(button.text:GetStringWidth())
 end
 
--- Lays out button for its mode: the label alone, the icon before the label
--- (iconWithLabel), or the icon alone (compact). Returns its width.
-local function Layout(button, pressed)
+-- Places the label for the mode, 1 lower while pressed; the size is Layout's
+-- alone, so a press never resizes a button a caller sized (the sidebar's).
+local function PlaceLabel(button, pressed)
 	local text, icon = button.text, button.icon
 	local y = pressed and -1 or 0
+	if button.compact and icon then return end
+	text:ClearAllPoints()
+	if icon and button.iconWithLabel then
+		text:SetPoint('LEFT', icon, 'RIGHT', ICON_GAP, y)
+	else
+		text:SetPoint('CENTER', button, 'CENTER', 0, y)
+	end
+end
+
+-- Lays out button for its mode: the label alone, the icon before the label
+-- (iconWithLabel), or the icon alone (compact). Returns its width.
+local function Layout(button)
+	local text, icon = button.text, button.icon
 	local width
 	if button.compact and icon then
 		width = BUTTON_HEIGHT
@@ -195,16 +221,13 @@ local function Layout(button, pressed)
 		icon:Show()
 		text:Show()
 		text:SetJustifyH('LEFT')
-		text:ClearAllPoints()
-		text:SetPoint('LEFT', icon, 'RIGHT', ICON_GAP, y)
 	else
 		width = max(MIN_WIDTH, LabelWidth(button) + PAD)
 		if icon then icon:Hide() end
 		text:Show()
 		text:SetJustifyH('CENTER')
-		text:ClearAllPoints()
-		text:SetPoint('CENTER', button, 'CENTER', 0, y)
 	end
+	PlaceLabel(button, false)
 	button:SetSize(width, BUTTON_HEIGHT)
 	return width
 end
@@ -226,9 +249,11 @@ function W.Button(parent, label, onClick, opts)
 	button.text:SetText(label)
 	if opts.icon then button.icon = NewIcon(button, opts.icon) end
 	Wire(button)
-	button:HookScript('OnMouseDown', function(self) Layout(self, true) end)
-	button:HookScript('OnMouseUp', function(self) Layout(self, false) end)
-	Layout(button, false)
+	button:HookScript('OnMouseDown', function(self)
+		if not self.disabled then PlaceLabel(self, true) end
+	end)
+	button:HookScript('OnMouseUp', function(self) PlaceLabel(self, false) end)
+	Layout(button)
 	Paint(button)
 	return button
 end
@@ -236,8 +261,11 @@ end
 -- A 26 square button with only its icon, 16 in the middle (its edges at 5
 -- and 21), in Text > Grey. Set button.onClick for what a click does. tip,
 -- function(button) -> title, lines, is required: an icon says nothing.
-function W.IconButton(parent, icon, tip)
+function W.IconButton(parent, icon, tip, extra)
 	if not tip then error('W.IconButton needs its tooltip') end
+	if extra ~= nil or type(tip) ~= 'function' then
+		error('W.IconButton(parent, icon, tip) takes no click: set button.onClick')
+	end
 	local button = Box(st:CreateFrame('Button', nil, parent), BG)
 	button.boxed, button.tip = true, tip
 	button:SetSize(BUTTON_HEIGHT, BUTTON_HEIGHT)
@@ -251,8 +279,11 @@ end
 -- An icon with no box, on a frame size square that takes the mouse: Text >
 -- Grey at rest and accent under the mouse. tip is required. Set
 -- link.onClick for what a click does.
-function W.IconLink(parent, icon, size, tip)
+function W.IconLink(parent, icon, size, tip, extra)
 	if not tip then error('W.IconLink needs its tooltip') end
+	if extra ~= nil or type(tip) ~= 'function' then
+		error('W.IconLink(parent, icon, size, tip) takes no click: set link.onClick')
+	end
 	local link = st:CreateFrame('Button', nil, parent)
 	link.link, link.tip = true, tip
 	link:SetSize(size, size)
@@ -273,7 +304,7 @@ function W.SetCompact(button, compact)
 		error("W.SetCompact needs the button's tooltip")
 	end
 	button.compact = compact
-	return Layout(button, false)
+	return Layout(button)
 end
 
 ------------------------------------------------------------------ the select face
@@ -318,9 +349,9 @@ end
 
 -- One half of the nudge pair: a 14x11 button (a clickable region of the
 -- pair's box) with its chevron, button.arrow: Lucide's, 12x12, Text > Grey
--- and Text > Normal under the mouse while enabled. Up's middle sits 6 down its
--- half and down's 5 down its own, whole pixels, which put them as far from
--- the divider as each other. owner.disabled stops it, and owner:Tip(on) shows
+-- and Text > Normal under the mouse while enabled. Both halves' arrows sit 1
+-- above their half's top (a middle 5 down it), whole pixels: 5.5 from the
+-- divider's middle either side. owner.disabled stops it, and owner:Tip(on) shows
 -- and hides the owner's tooltip.
 local function NudgeButton(owner, parent, up, onClick)
 	local button = st:CreateFrame('Button', nil, parent)
@@ -328,7 +359,7 @@ local function NudgeButton(owner, parent, up, onClick)
 	local arrow = button:CreateTexture(nil, 'OVERLAY')
 	arrow:SetTexture(up and st.icons.chevronUp or st.icons.chevronDown)
 	arrow:SetSize(CHEVRON, CHEVRON)
-	arrow:SetPoint('TOP', button, 'TOP', 0, up and 0 or 1)
+	arrow:SetPoint('TOP', button, 'TOP', 0, 1)
 	arrow:SetVertexColor(Colors().text.grey:GetRGB())
 	button.arrow = arrow
 	button:SetScript('OnClick', function()

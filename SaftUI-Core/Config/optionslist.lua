@@ -249,11 +249,12 @@ local function OpenList(owner, entries, selected, onPick, fontMode, kind, button
 	local count = buttons and #buttons or 0
 	local extra = (kind == 'apply' or count > 0) and APPLY_GAP + FIELD_HEIGHT + (list.blizzard and APPLY_GAP or 0) or 0
 	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4] + extra
-	local width = max(owner:GetWidth(), W.WIDTH.select)
+	local width = max(floor(owner:GetWidth() + 0.5), W.WIDTH.select) -- a size read back is a hair off: round it
 	if count > 0 then
 		width = max(width, count * APPLY_WIDTH + (count - 1) * APPLY_GAP + list.insets[1] + list.insets[3])
 	end
 	list.frame:SetSize(width, height)
+	list.width = width -- as asked, not as read back (which can be a hair off)
 	list.frame:SetScale(owner:GetEffectiveScale() / UIParent:GetEffectiveScale())
 	list.frame:ClearAllPoints()
 	local bottom = owner:GetBottom()
@@ -369,7 +370,7 @@ function W.OpenCheckList(owner, entries, isChecked, onToggle, buttons)
 	if count == 0 then return end
 	local rows = min(#entries, LIST_MAX_ROWS)
 	local total = count * APPLY_WIDTH + (count - 1) * APPLY_GAP
-	local left = floor((list.frame:GetWidth() - total) / 2)
+	local left = floor((list.width - total) / 2)
 	local top = -(list.insets[2] + rows * LIST_ROW_HEIGHT + APPLY_GAP)
 	for i, spec in ipairs(buttons) do
 		local button = list.checkButtons[i]
@@ -432,7 +433,7 @@ function W.OpenApplyList(owner, entries, onApply)
 	LookButton(button, list.blizzard or false)
 	local rows = min(#entries, LIST_MAX_ROWS)
 	button:ClearAllPoints()
-	button:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', floor((list.frame:GetWidth() - APPLY_WIDTH) / 2),
+	button:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', floor((list.width - APPLY_WIDTH) / 2),
 		-(list.insets[2] + rows * LIST_ROW_HEIGHT + APPLY_GAP))
 	button:Show()
 end
