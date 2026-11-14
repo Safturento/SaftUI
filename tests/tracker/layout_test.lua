@@ -186,3 +186,21 @@ test('IntoView: a row below the view scrolls to show it whole, one above to its 
 	eq(Layout.IntoView(300, 0, 40, 287, 1000), 0, 'the top row: 0')
 	eq(Layout.IntoView(0, 100, 400, 287, 1000), 100, 'a row taller than the view: its top')
 end)
+
+test('Rows: an objective line has a dash before its text: the text is narrower by the dash (metrics.dash) and starts after it; other lines are not dashed', function()
+	local Layout = layout()
+	local asked = {}
+	local placed = Layout.Rows({
+		{ kind = 'quest', first = 'T', lines = { { kind = 'objective', text = 'O' }, { kind = 'timer', text = 'Time' }, { kind = 'bar' }, { kind = 'money', text = 'M' } } },
+	}, { width = 244, spacing = 8, icons = true, itemSize = 24, dash = 10 }, function(text, width) asked[#asked + 1] = text .. width; return 12 end)
+	eq(table.concat(asked, ' '), 'T226 O204 Time214 M214', 'the objective at the line width less the dash, the others as before')
+	local lines = placed[1].lines
+	eq(lines[1].x .. ' ' .. lines[1].width, '22 204', 'the objective text: indent 12 + dash 10, 204 wide')
+	eq(lines[2].x .. ' ' .. lines[2].width, '12 214', 'a timer at the indent')
+	eq(lines[3].x .. ' ' .. lines[3].width, '12 214', 'a bar at the indent, as wide as the objectives')
+	eq(placed[1].lineWidth, 214, 'the line width is still the title width less the indent')
+	asked = {}
+	Layout.Rows({ { kind = 'quest', first = 'T', lines = { { kind = 'objective', text = 'O' } } } },
+		{ width = 244, spacing = 8, icons = false, itemSize = 24 }, function(text, width) asked[#asked + 1] = text .. width; return 12 end)
+	eq(table.concat(asked, ' '), 'T244 O232', 'no dash width given: none taken')
+end)

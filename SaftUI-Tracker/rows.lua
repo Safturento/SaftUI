@@ -264,6 +264,29 @@ function TR:Part(row, index)
 	return part
 end
 
+-- A line's dash: its own font string (the text may be a secret that can't be
+-- joined to one), made when first needed.
+function TR:PartDash(part)
+	if not part.dash then
+		part.dash = self:NewText(part.fs:GetParent(), 'text')
+		part.dash:SetWordWrap(false)
+		part.dash:SetJustifyV('TOP')
+	end
+	return part.dash
+end
+
+-- The room an objective's dash takes before its text: the dash's width and 4.
+function TR:DashWidth()
+	if self.dashStamp ~= self.fontStamp then
+		local scratch = self.scratch
+		TR.SetText(scratch, '-')
+		local unbounded = scratch.GetUnboundedStringWidth or scratch.GetStringWidth
+		self.dashValue = math.ceil(PlainNumber(unbounded(scratch)) or 0) + L.ICON_GAP
+		self.dashStamp = self.fontStamp
+	end
+	return self.dashValue
+end
+
 -- The progress bar of a line: SaftUI's bar (a backdrop drawn as kind 'bar' in
 -- the page's Theme and Background, the flat texture) in Blizzard's progress
 -- blue, with the percent centred on it in the Pixel font. The fill is a
@@ -541,10 +564,11 @@ local function DrawQuest(self, row, entry, p, width)
 	for j, line in ipairs(lines) do
 		local part = self:Part(row, j)
 		local lp = p.lines[j]
-		local x = titleX + L.INDENT
+		local x = titleX + lp.x
 		if line.kind == 'bar' then
 			local bar = self:PartBar(row, part)
 			Shown(part.fs, false)
+			if part.dash then Shown(part.dash, false) end
 			Shown(bar, true)
 			Place(bar, row, x, lp.y)
 			Size(bar, p.lineWidth, L.BAR)
@@ -562,8 +586,19 @@ local function DrawQuest(self, row, entry, p, width)
 			Shown(part.fs, true)
 			Place(part.fs, row, x, lp.y)
 			Paint(part.fs, line.state)
+			-- An objective's dash is its own font string, so a secret text needs no
+			-- join; the text's later lines align under the text, not the dash.
+			if line.kind == 'objective' then
+				local dash = self:PartDash(part)
+				Place(dash, row, titleX + L.INDENT, lp.y)
+				TR.SetText(dash, '-')
+				Paint(dash, line.state)
+				Shown(dash, true)
+			elseif part.dash then
+				Shown(part.dash, false)
+			end
 			if line.kind == 'timer' then
-				row.timerPart, row.timerHeight, row.lineWidth = j, lp.height, p.lineWidth
+				row.timerPart, row.timerHeight, row.lineWidth = j, lp.height, lp.width
 				self.timedRows = self.timedRows + 1
 			end
 		end
@@ -573,6 +608,7 @@ local function DrawQuest(self, row, entry, p, width)
 		if part then
 			Shown(part.fs, false)
 			if part.bar then Shown(part.bar, false) end
+			if part.dash then Shown(part.dash, false) end
 		end
 	end
 end

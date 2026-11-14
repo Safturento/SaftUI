@@ -303,6 +303,7 @@ function TR:Redraw()
 	metrics.spacing = math.floor(config.quests.spacing + 0.5)
 	metrics.icons = self:ShowsIcons()
 	metrics.itemSize = config.items.size
+	metrics.dash = self:DashWidth()
 	local header, collapsed, max = config.header and true or false, self:IsCollapsed(), self:MaxHeight()
 	local room = self.barRoom or 0
 	local placed, height

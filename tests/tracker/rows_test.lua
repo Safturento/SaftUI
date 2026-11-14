@@ -172,7 +172,18 @@ RW.both('lines: objectives, a finished one in Completed, Failed, the completion 
 	eq(lines(7), 'Hurry more=' .. normal .. ' | Time left: 9:00=' .. normal, 'a timer over a minute in Text > Normal')
 	-- Where the lines sit: the objectives 12 right of the title, 2 under it.
 	local row = RW.quest(TR, 1)
-	eq(row.parts[1].fs:GetLeft(), row.title:GetLeft() + 12, 'objectives are indented 12 under the title')
+	-- 16 px fonts: the dash is 8 wide here and 4 after it.
+	eq(row.parts[1].dash:GetLeft(), row.title:GetLeft() + 12, 'the dash is indented 12 under the title')
+	eq(RW.text(row.parts[1].dash), '-', 'a dash')
+	eq(row.parts[1].fs:GetLeft(), row.title:GetLeft() + 12 + 12, 'the text after the dash and 4')
+	check(row.parts[1].dash:IsShown(), 'shown')
+	eq(RW.color(row.parts[1].dash), RW.color(row.parts[1].fs), "in the line's color")
+	eq(RW.color(row.parts[2].dash), done, 'a finished objective\'s dash in Completed')
+	local money_row = RW.quest(TR, 5)
+	check(not money_row.parts[2].dash or not money_row.parts[2].dash:IsShown(), 'the money line has no dash')
+	local timer_row = RW.quest(TR, 6)
+	check(not timer_row.parts[2].dash or not timer_row.parts[2].dash:IsShown(), 'nor the timer')
+	check(not RW.quest(TR, 3).parts[1].dash or not RW.quest(TR, 3).parts[1].dash:IsShown(), 'nor a completion line')
 	-- Hide finished objectives and the finished-quest objectives.
 	st.config.profile.tracker.quests.hide_finished = true
 	st.config.profile.tracker.quests.finished_objectives = true
@@ -650,4 +661,15 @@ RW.both('a popup row at a small font stays 22 tall; the label is over the title,
 	row = TR:GetRow('popup', 77)
 	eq(row:GetHeight(), 22, '10 + 2 + 10 is 22: the floor')
 	eq(row.bar:GetHeight(), 22, 'the bar follows')
+end)
+
+RW.both("a wrapped objective's later lines align with its text, not the dash", function(st, TR)
+	local long = 'Gather a great many of the things this long objective asks of you from around the whole zone'
+	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = long, type = 'monster' } } }) }, { 1 })
+	TR:Refresh()
+	local part = RW.quest(TR, 1).parts[1]
+	eq(part.fs:GetLeft(), part.dash:GetLeft() + 12, 'the text block starts after the dash, so every line of it does')
+	eq(part.fs:GetTop(), part.dash:GetTop(), 'and at the dash\'s top')
+	eq(TR.placed[2].lines[1].width, 226 - 12 - 12, 'wrapped at the width less the dash')
+	TR.config.quests.hide_finished = false
 end)

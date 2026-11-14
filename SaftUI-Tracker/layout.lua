@@ -76,14 +76,16 @@ end
 -- item = 'row' | nil }: first is a quest's title (or the empty line's text),
 -- lines a quest's lines, each { text } or { kind = 'bar' } (model.lua's lines
 -- are this shape); item says a quest's button sits in its row.
--- metrics is { width, spacing, icons, itemSize }: width the scroll child's.
+-- metrics is { width, spacing, icons, itemSize, dash }: width the scroll child's,
+-- dash the room an objective's dash takes before its text (nil for none).
 -- measure(text, width, font, entry, slot) -> height gives a text's height
 -- wrapped at width; font is 'text' (titles, objectives, the empty line); slot
 -- is 'title', 'label' (a popup's) or the line's index (the last two are for a caller that measures
 -- the font string of that text).
 --
 -- Each placed entry is { y, height, titleWidth, lineWidth, titleHeight,
--- lines = { { y, height } } }, y from the list's top and lines' y from the
+-- lines = { { y, height, x, width } } }, y from the list's top and a line's x
+-- (where its text starts, from the title's left) and y from the
 -- row's; a popup also has labelHeight. A popup entry has its label and its
 -- title (first): the row is the two and 2 between them, at least POPUP tall.
 -- Gaps (Ruling 18): a zone header is 10 under what's above it, a row
@@ -148,7 +150,12 @@ function Layout.Rows(entries, metrics, measure, out)
 					part = {}
 					lines[j] = part
 				end
+				-- An objective's text starts after its dash (metrics.dash); other lines
+				-- start at the indent.
+				local dash = line.kind == 'objective' and metrics.dash or 0
+				part.x, part.width = L.INDENT + dash, lineWidth - dash
 				if line.kind == 'bar' then
+					part.x, part.width = L.INDENT, lineWidth
 					cursor = cursor + L.BAR_GAP
 					part.y, part.height = cursor, L.BAR
 					cursor = cursor + L.BAR + L.BAR_GAP
@@ -156,7 +163,7 @@ function Layout.Rows(entries, metrics, measure, out)
 				else
 					if not afterBar then cursor = cursor + L.LINE_GAP end
 					part.y = cursor
-					part.height = measure(line.text, lineWidth, 'text', entry, j)
+					part.height = measure(line.text, part.width, 'text', entry, j)
 					cursor = cursor + part.height
 					afterBar = false
 				end
