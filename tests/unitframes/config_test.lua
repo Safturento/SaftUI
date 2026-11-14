@@ -993,7 +993,7 @@ end)
 
 -- Every section of the player's Class power tab, as the window packs it: a
 -- line to an entry, and whether it shares the panel above.
-test("Class power: Enable and Theme across one line, no gap beside Enable; width, Relative and Height on one line with Height filling its half", function()
+test("Class power: Enable and Theme across one line, no gap beside Enable; Width, Relative, Height and its Relative as four quarters on one line", function()
 	local view = OM.BuildView({ Unitframes = UF:GetConfigTable() }, 'Unitframes', { pick = 'player', tab = 'ClassPower' })
 	local got = {}
 	for i, section in ipairs(view.sections) do
@@ -1005,8 +1005,8 @@ test("Class power: Enable and Theme across one line, no gap beside Enable; width
 	end
 	eq(got[1], 'enable:normal 1 y0, theme:normal 2 y0, background:normal 1 y34, alpha:normal 2 y34, framelevel:normal 1 y68, spacing:normal 2 y68',
 		'six rows in three full lines')
-	eq(got[2], 'width:small 1/1 y0, relative_width:small 1/2 y0, height:normal 2 y0',
-		"Width and its Relative in the left half, Height the right: no lone quarter beside an empty one")
+	eq(got[2], 'width:small 1/1 y0, relative_width:small 1/2 y0, height:small 2/1 y0, relative_height:small 2/2 y0',
+		"Width and its Relative in the left half, Height and its Relative the right")
 	eq(got[3], 'position:wide full y0', 'Position last')
 	eq(#got, 3)
 	eq(view.sections[2].title, nil, "the size row continues the panel above, untitled")

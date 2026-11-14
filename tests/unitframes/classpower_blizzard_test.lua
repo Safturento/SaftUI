@@ -185,3 +185,76 @@ test('points a shrinking max hides draw nothing', function()
 	eq(shown(frame.ClassPower[3], 'uf-roguecp-icon-red'), true, 'point 3 still draws')
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+-- Relative height: with it on, each point is the unit frame's height plus the
+-- config's height, in every theme.
+local function relative_frame(theme, unitHeight, height)
+	local frame = player_frame(theme)
+	P.player.height = unitHeight
+	P.player.classpower.relative_height = true
+	P.player.classpower.height = height
+	UF:UpdateUnitFrame(frame)
+	frame.ClassPower:SetWidth(100)
+	return frame
+end
+
+test('Relative height is off by default for every unit that has class power', function()
+	fresh('forever', 'ROGUE')
+	local seen = 0
+	for unit, config in pairs(P) do
+		if type(config) == 'table' and config.classpower then
+			seen = seen + 1
+			eq(config.classpower.relative_height, false, unit .. ' starts with Relative height off')
+		end
+	end
+	eq(seen > 0, true, 'at least one unit has class power')
+end)
+
+test('with Relative height off each flat point and the row are height tall, whatever the unit frame is', function()
+	fresh('forever', 'ROGUE')
+	local frame = player_frame('thick')
+	P.player.height = 50
+	UF:UpdateUnitFrame(frame)
+	eq(frame.ClassPower:GetHeight(), 20, 'the row')
+	for i = 1, 10 do eq(frame.ClassPower[i]:GetHeight(), 20, 'point ' .. i) end
+end)
+
+test('with Relative height on each flat point and the row are the unit frame height plus height', function()
+	fresh('forever', 'ROGUE')
+	local frame = relative_frame('thick', 40, 0)
+	eq(frame.ClassPower:GetHeight(), 40, 'the row, 0 is as tall as the frame')
+	for i = 1, 10 do eq(frame.ClassPower[i]:GetHeight(), 40, 'point ' .. i) end
+	P.player.classpower.height = -6
+	UF:UpdateUnitFrame(frame)
+	for i = 1, 10 do eq(frame.ClassPower[i]:GetHeight(), 34, 'point ' .. i .. ' with -6') end
+end)
+
+test("with Relative height on Blizzard's art is square at the effective height, empty and filled", function()
+	fresh('forever', 'ROGUE')
+	local frame = relative_frame('blizzard', 30, 4)
+	power(frame, 'COMBO_POINTS', 3, 5)
+	for i = 1, 5 do
+		local point = frame.ClassPower[i]
+		eq(point:GetHeight(), 34, 'point ' .. i)
+		for _, atlas in ipairs({ 'uf-roguecp-bg', 'uf-roguecp-icon-red' }) do
+			local region = atlases(point)[atlas]
+			eq(region:GetWidth() .. 'x' .. region:GetHeight(), '34x34', atlas .. ' is 34 square')
+		end
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a change to the unit frame's height re-sizes the points", function()
+	fresh('forever', 'ROGUE')
+	local frame = relative_frame('blizzard', 30, 0)
+	power(frame, 'COMBO_POINTS', 3, 5)
+	P.player.height = 44
+	UF:UpdateUnitFrame(frame)
+	for i = 1, 5 do
+		local point = frame.ClassPower[i]
+		eq(point:GetHeight(), 44, 'point ' .. i)
+		local region = atlases(point)['uf-roguecp-bg']
+		eq(region:GetHeight(), 44, 'its art ' .. i)
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)

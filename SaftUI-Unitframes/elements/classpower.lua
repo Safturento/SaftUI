@@ -10,6 +10,13 @@ local pointArt = setmetatable({}, { __mode = 'k' })
 -- before the next power event.
 local lastState = setmetatable({}, { __mode = 'k' })
 
+-- How tall each point is: config.height, or with Relative on the unit frame's
+-- height plus it (UF:ElementSize, which also sizes the row).
+local function PointHeight(classPower)
+	local _, height = UF:ElementSize(classPower)
+	return height
+end
+
 local function PointArt(point)
 	local set = pointArt[point]
 	if not set then
@@ -33,6 +40,7 @@ end
 -- art.
 local function ApplyArt(classPower)
 	local config = classPower.config
+	local height = PointHeight(classPower)
 	local blizzard = st:IsBlizzardLook(config.theme, config.background)
 	local state = lastState[classPower]
 	local powerType = state and state.powerType
@@ -47,8 +55,8 @@ local function ApplyArt(classPower)
 			local set = PointArt(point)
 			set.empty:SetAtlas(empty)
 			set.filled:SetAtlas(filled)
-			st:SetSize(set.empty, config.height, config.height)
-			st:SetSize(set.filled, config.height, config.height)
+			st:SetSize(set.empty, height, height)
+			st:SetSize(set.filled, height, height)
 			set.empty:Show()
 			-- Every power type with art gives an integer cur; only demon hunter
 			-- soul fragments are fractional, and they have no art, so they keep
@@ -109,6 +117,7 @@ local function UpdateConfig(unitframe)
     -- is drawn below.
     UF:UpdateElement(classPower)
 
+	local height = PointHeight(classPower)
 	local prev
 	for i=1, 10 do
 		local point = classPower[i]
@@ -122,7 +131,7 @@ local function UpdateConfig(unitframe)
 		else
 			point:SetPoint('LEFT')
 		end
-		point:SetHeight(classPower.config.height)
+		point:SetHeight(height)
 		prev = point
 	end
 	ApplyArt(classPower)
@@ -134,10 +143,11 @@ local function GetConfigTable(unit)
 	local function Config() return UF:GetProfileConfig()[unit].classpower end
 	local function Update() UF:UpdateConfig(unit, 'ClassPower') end
 
-	local width = generators.width(1, "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame.")
-	width.size = 'small'
-	-- Height is a half of its line: it has no Relative to share its half with.
-	local height = generators.height(3, "Each point's height in pixels.")
+	-- Width, Relative | Height, Relative: the shared line, with the row's own
+	-- words for Width and Height.
+	local size = UF.GenerateRelativeSizeConfigGroup(5)
+	size.args.width.desc = "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame."
+	size.args.height.desc = "Each point's height in pixels. With Relative on, it's added to the unit frame's height: 0 is as tall as the unit frame, -4 is 4 shorter."
 
 	return {
 		order = 4,
@@ -156,19 +166,7 @@ local function GetConfigTable(unit)
 			alpha = generators.alpha(2, 'How solid the points are, from see-through to opaque.'),
 			framelevel = generators.framelevel(3, 'Draws the points over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
 			spacing = generators.range(4, 'Spacing', 0, 20, 1, 'The gap between one point and the next.'),
-			-- Each point is height tall (UpdateConfig), never relative to the
-			-- unit frame, so height has no Relative toggle.
-			size = {
-				order = 5,
-				name = '',
-				type = 'group',
-				inline = true,
-				args = {
-					width = width,
-					relative_width = generators.toggle(2, 'Relative', "Width follows the unit frame: it is added to the unit frame's width.", 'small'),
-					height = height,
-				},
-			},
+			size = size,
 			-- Last in the tab.
 			position = generators.uf_element_position(1000,
 				function(index) return Config().position[index] end,
