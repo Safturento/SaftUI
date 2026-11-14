@@ -16,7 +16,9 @@
 --     left where Blizzard puts it until combat ends, with stub.blocked empty;
 --   - the holder going no lower than the tracker's own clamp lets it go, its
 --     reach read again after Blizzard's UpdateHeight;
---   - the Objective Tracker page: the fonts and Position, Position last;
+--   - the Blizzard's tracker page (named for what it moves): the fonts and Position, Position last;
+--   - SaftUI's own tracker owning Blizzard's: this mover standing down (no placing, no
+--     capture, no KeepPlacement, the mover and Position disabled);
 --   - the addon loading after SaftUI.
 -- On both clients (the tracker sits 15 lower in its container on Forever).
 --
@@ -462,12 +464,13 @@ test('a position saved without some keys is filled from the default spot', funct
 	clean()
 end)
 
-test('the Objective Tracker page: the fonts, then Position', function()
+test("the Blizzard's tracker page: the fonts, then Position", function()
 	world('forever')
 	load_test_file('lib/options_walk.lua')
 	local tree = OTP:GetConfigTable()
 	eq(tree.category, 'Info', 'in the Info group')
-	eq(tree.name, 'Objective tracker', 'sentence case, as the sidebar shows it')
+	eq(tree.name, "Blizzard's tracker", 'the sidebar names it for what it moves')
+	eq(tree.desc, "Blizzard's objective tracker: its fonts, and its place while SaftUI's tracker is off. Its fonts also style it while it fills in for SaftUI's (Tracker page).", 'its desc')
 	local general = tree.args.general
 	eq(general.args.font.type, 'select', 'Font')
 	eq(general.args.header_font.name, 'Header font', 'Header font')
@@ -504,6 +507,56 @@ test('the addon loading after SaftUI', function()
 	clean()
 end)
 
+-- SaftUI's own tracker owning Blizzard's (SaftUI-Tracker, switched on): this
+-- module stands down. A stand-in for the Tracker module answers OwnsBlizzard,
+-- as SaftUI-Tracker's does at call time; tests/tracker/conceal_test.lua runs it
+-- against the real one.
+test("while SaftUI's tracker owns Blizzard's the mover places nothing, is disabled, its page's Position too; the moment it doesn't, all as before", function()
+	world('forever')
+	local owns = false
+	local Tracker = st:NewModule('Tracker')
+	function Tracker:OwnsBlizzard() return owns end
+	local EM = st.EditModeFrames
+	local mover = EM.movers.objectivetracker
+	eq(EM:IsMoverDisabled(mover), false, 'not owned: the mover works')
+	local row = OTP:GetConfigTable().args.general.args.position
+	eq(row.disabled(), false, 'and Position')
+
+	owns = true
+	eq(EM:IsMoverDisabled(mover), true, 'owned: the mover is disabled')
+	eq(row.disabled(), true, 'and Position')
+	eq(row.disabledDesc, "SaftUI's tracker is on (Tracker page): Blizzard's tracker shows in its place when it's needed.", 'with its reason')
+	local direct = 0
+	local clear, set = st.ClearAllPointsDirect, st.SetPointDirect
+	st.ClearAllPointsDirect = function(self, frame, ...) if frame == OT.tracker then direct = direct + 1 end return clear(self, frame, ...) end
+	st.SetPointDirect = function(self, frame, ...) if frame == OT.tracker then direct = direct + 1 end return set(self, frame, ...) end
+	local before = anchored_to(OT.tracker)
+	OTP.config.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -200, y_off = -50 }
+	OTP:ApplyHolder()
+	OTP:PlaceTracker()
+	OTP:KeepInMargin()
+	OTP:UpdateFootprint()
+	OTP:QueueCapture()
+	eq(direct, 0, 'owned: no SetPointDirect or ClearAllPointsDirect on the tracker')
+	eq(anchored_to(OT.tracker), before, 'owned: the tracker stays where it is')
+	eq(profile.objectivetracker.position.x_off, -200, "owned: the skin's saved position is as it was set")
+	-- A profile with none keeps nothing for the tracker while it's not the skin's to place.
+	profile.objectivetracker.position = nil
+	OTP:KeepPlacement()
+	OTP:UpdateConfig()
+	eq(profile.objectivetracker.position, nil, 'owned: KeepPlacement writes no position')
+	local reach = { OTP:TrackerReach() }
+	eq(table.concat(reach, ','), '0,0,0,0', 'owned: no reach')
+
+	owns = false
+	OTP.config.position = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -200, y_off = -50 }
+	OTP:ApplyHolder()
+	check(direct > 0, 'not owned again: it places the tracker')
+	eq(top_right(OT.tracker), top_right(OTP.holder), 'on its holder')
+	st.ClearAllPointsDirect, st.SetPointDirect = clear, set
+	clean()
+end)
+
 -- What the edit mode bar reads from the mover (SaftUI-Core/EditMode/editmode.lua).
 for _, client in ipairs({ 'forever', 'retail' }) do
 	test(client .. ": the mover's default is Blizzard's default spot, a copy each time; it's hidden while the tracker is", function()
@@ -534,7 +587,7 @@ test("Reset saves a copy of Blizzard's default spot, which KeepPlacement keeps; 
 	local mover = EM.movers.objectivetracker
 	local ok, why = EM:CanReset(mover)
 	eq(ok, false, 'a profile with no position is in the default place')
-	eq(why, 'Objective Tracker is already in its default place.', 'and says so')
+	eq(why, "Blizzard's tracker is already in its default place.", 'and says so')
 
 	EM:Nudge(mover, 'LEFT', true)
 	local moved = profile.objectivetracker.position

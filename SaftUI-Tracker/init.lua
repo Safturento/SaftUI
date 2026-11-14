@@ -62,6 +62,9 @@ function TR:Build()
 	self:BuildWindow()
 	self:BuildRows()
 	self:RegisterEvents()
+	-- Blizzard's tracker goes off screen (blizzard.lua), once the window is there
+	-- for the y it hides at.
+	self:SetupBlizzard()
 	-- The Fonts tab changes the font objects without telling any module: SaftUI's
 	-- own update function is post-hooked (never Blizzard's) so the rows reflow at
 	-- once.
@@ -111,6 +114,10 @@ function TR:UpdateConfig()
 	self:ApplyHolder()
 	self:DrawWindow()
 	self:DrawRowsLook()
+	-- The holder or the window may have moved: Blizzard's tracker goes where
+	-- it is meant to be (concealed, or at the handover's place), no write if
+	-- it's there already.
+	self:PlaceBlizzard(self.blizzardWhere)
 	-- Each part of the tracker adds its own update below. The rows are read and
 	-- drawn again once a first refresh has run (the build's own is on its way).
 	if self.model then self:Refresh() end

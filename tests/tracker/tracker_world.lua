@@ -9,8 +9,10 @@
 --                         misc     Misc's config loaded (true), or a table
 --                                  { skinning, skin, otp } to load those too
 --                         blizzard Blizzard's tracker built from the misc
---                                  fixture (true, or its OT.build options);
---                                  TW.OT is the fixture
+--                                  fixture (true, or its OT.build options),
+--                                  with or without Misc; TW.OT is the fixture
+--                         screen   { width, height } in pixels: UIParent scaled
+--                                  to one unit per pixel
 --                         combat   in combat when the addon enables
 --                         addons   names for C_AddOns.IsAddOnLoaded
 --                         enabling function(st, TR) run after Misc's modules
@@ -27,7 +29,7 @@
 --                       tracker mover first (the Tracker module exists by then,
 --                       its OnEnable not yet run), then TR:Enable().
 --   TW.snapshot(frame)  a string of a frame's points, shown state, parent,
---                       alpha and scripts, to compare before and after.
+--                       alpha, clamp and scripts, to compare before and after.
 --   TW.counts           what SaftUI-Tracker made, counted from just before its
 --                       files load: frames, hooks (hooksecurefunc and frame
 --                       HookScript, AceHook's script hooks among them), scripts
@@ -142,8 +144,9 @@ function TW.snapshot(frame)
 	parts[#parts + 1] = 'shown=' .. tostring(frame:IsShown())
 	parts[#parts + 1] = 'parent=' .. tostring(parent and parent:GetName())
 	parts[#parts + 1] = 'alpha=' .. tostring(frame:GetAlpha())
+	if frame.IsClampedToScreen then parts[#parts + 1] = 'clamped=' .. tostring(frame:IsClampedToScreen()) end
 	for _, script in ipairs(SCRIPTS) do
-		if frame:HasScript(script) then parts[#parts + 1] = script .. '=' .. tostring(frame:GetScript(script)) end
+		if frame:HasScript(script) then parts[#parts + 1] = script .. '=' .. tostring((frame:GetScript(script))) end -- (a script that isn't set returns nothing)
 	end
 	return table.concat(parts, ' ')
 end
@@ -152,6 +155,11 @@ function TW.world(opts)
 	opts = opts or {}
 	counting = false
 	local st = T.client(opts.client or 'forever')
+	if opts.screen then
+		-- One UIParent unit per physical pixel, so whole-pixel rounding shows nothing.
+		stub.screen_width, stub.screen_height = opts.screen[1], opts.screen[2]
+		UIParent:SetScale(768 / opts.screen[2])
+	end
 	load_editmode()
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom (the window reads the bar's room)
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
@@ -176,10 +184,11 @@ function TW.world(opts)
 		if misc.otp then
 			load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua')
 		end
-		if opts.blizzard then
-			TW.OT = load_test_file('misc/fixtures/objective_tracker.lua')
-			TW.OT.build(type(opts.blizzard) == 'table' and opts.blizzard or nil)
-		end
+	end
+	-- Blizzard's tracker is the game's, there with or without SaftUI-Misc.
+	if opts.blizzard then
+		TW.OT = load_test_file('misc/fixtures/objective_tracker.lua')
+		TW.OT.build(type(opts.blizzard) == 'table' and opts.blizzard or nil)
 	end
 
 	if opts.before then opts.before(st) end

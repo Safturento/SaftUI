@@ -39,6 +39,16 @@ local OTP = st:NewModule('ObjectiveTracker')
 	Blizzard's re-places (post-hooks on the tracker's ClearAllPoints and
 	SetPoint), and after the screen edge margin changes.
 
+	While SaftUI's own tracker is on (SaftUI-Tracker, switched off by default:
+	Owned() below, asked at call time), this module stands down: SaftUI's
+	tracker conceals Blizzard's one off screen (SaftUI-Tracker/blizzard.lua)
+	and this file places nothing of Blizzard's and reads none of it. PlaceTracker,
+	KeepInMargin, UpdateFootprint, CapturePosition, KeepPlacement and
+	TrackerReach return at once (the last with no reach), the
+	mover is disabled and Position is, with its reason. The holder is still
+	made and placed, the saved position is never touched, and the hooks stay
+	(they do nothing). With the switch off everything here is as it always was.
+
 	SaftUI never sets the tracker's height, and never reads its size in a way
 	that could run its OnSizeChanged (GetWidth(true) and GetHeight(true), which
 	skip the rect resolve), and never reads its rect (GetRight, GetTop, GetRect...). Setting the height runs the tracker's OnSizeChanged
@@ -99,6 +109,14 @@ local function DefaultPosition()
 	return st:DefaultTrackerPosition()
 end
 
+-- Whether SaftUI's own tracker owns Blizzard's tracker (it conceals it: this
+-- module stands down). Asked at call time: SaftUI-Tracker's files load after
+-- this one, and its answer latches on the first call (TR:IsOn).
+local function Owned()
+	local TR = st:GetModule('Tracker', true)
+	return TR ~= nil and type(TR.OwnsBlizzard) == 'function' and TR:OwnsBlizzard() or false
+end
+
 -- A copy of the position the holder was last placed from, kept across profile
 -- changes for OTP:KeepPlacement. nil until a profile's position first places it.
 local placedAt
@@ -128,6 +146,7 @@ end
 -- profiles moves nothing, and the capture below never reads SaftUI's own
 -- placement as Blizzard's. Only writes the profile, so it's safe in combat.
 function OTP:KeepPlacement()
+	if Owned() then return end
 	if self.holder and not self.config.position and placedAt then
 		self.config.position = CopyPosition(placedAt)
 	end
@@ -216,7 +235,7 @@ end
 -- (OTP:KeepPlacement), so this only ever reads a tracker SaftUI never placed.
 function OTP:CapturePosition()
 	local tracker, holder = self.tracker, self.holder
-	if not (tracker and holder) or self.config.position or not Moved(tracker) then return false end
+	if not (tracker and holder) or self.config.position or Owned() or not Moved(tracker) then return false end
 	local right, top = TrackerCorner(tracker)
 	local parentRight, parentTop, parentScale = UIParent:GetRight(), UIParent:GetTop(), UIParent:GetEffectiveScale()
 	if not (right and Plain(parentRight, parentTop, parentScale)) or parentScale == 0 then return false end
@@ -256,7 +275,7 @@ end
 -- position yet: that spot is the profile's first (OTP:CapturePosition).
 function OTP:PlaceTracker()
 	local tracker, holder = self.tracker, self.holder
-	if not (tracker and holder) then return end
+	if not (tracker and holder) or Owned() then return end
 	if not self.config.position and Moved(tracker) then
 		self:QueueCapture()
 		return
@@ -265,12 +284,10 @@ function OTP:PlaceTracker()
 		return
 	end
 	local parent = tracker:GetParent() or UIParent
-	local right, top, parentRight, parentTop = holder:GetRight(), holder:GetTop(), parent:GetRight(), parent:GetTop()
-	local scale, parentScale, trackerScale = holder:GetEffectiveScale(), parent:GetEffectiveScale(), tracker:GetEffectiveScale()
-	if not Plain(right, top, parentRight, parentTop, scale, parentScale, trackerScale) or trackerScale == 0 then return end
-	local x = (right * scale - parentRight * parentScale) / trackerScale
-	local y = (top * scale - parentTop * parentScale) / trackerScale
-	x, y = st:RoundToPixel(x, tracker), st:RoundToPixel(y, tracker)
+	local right, top, scale = holder:GetRight(), holder:GetTop(), holder:GetEffectiveScale()
+	if not Plain(right, top, scale) then return end
+	local x, y = st:CornerOffset(tracker, parent, 'TOPRIGHT', right * scale, top * scale)
+	if not x then return end
 	if PlacedAt(tracker, parent, x, y) then return end
 	st:ClearAllPointsDirect(tracker)
 	st:SetPointDirect(tracker, 'TOPRIGHT', parent, 'TOPRIGHT', x, y)
@@ -282,6 +299,7 @@ end
 -- what it's wider. 0 where the margin already covers it, or if a size, scale
 -- or inset can't be read.
 function OTP:TrackerReach()
+	if Owned() then return 0, 0, 0, 0 end
 	local tracker, holder = self.tracker, self.holder
 	local clamped = tracker:IsClampedToScreen()
 	if issecretvalue(clamped) or not clamped then return 0, 0, 0, 0 end
@@ -301,6 +319,7 @@ end
 -- The holder's margin again, with the tracker's reach now, and the tracker put
 -- where the holder shows (the clamp can move it without its SetPoint).
 function OTP:KeepInMargin()
+	if Owned() then return end
 	st:KeepInScreenMargin(self.holder)
 	self:PlaceTracker()
 	self:UpdateFootprint()
@@ -315,7 +334,7 @@ end
 -- of Blizzard's UpdateHeight (KeepInMargin).
 function OTP:UpdateFootprint()
 	local tracker, holder, mover = self.tracker, self.holder, self.mover
-	if not (tracker and holder and mover and st.EditModeFrames.active) then return end
+	if not (tracker and holder and mover and st.EditModeFrames.active) or Owned() then return end
 	local height, scale, holderScale = tracker:GetHeight(true), tracker:GetEffectiveScale(), holder:GetEffectiveScale()
 	local extra = 0
 	if Plain(height, scale, holderScale) and holderScale ~= 0 then
@@ -369,7 +388,7 @@ function OTP:Setup()
 	self:ApplyHolder()
 	self.mover = st:RegisterMover('objectivetracker', {
 		frame = holder,
-		label = 'Objective Tracker',
+		label = "Blizzard's tracker",
 		getPosition = function() return self:GetPosition() end,
 		-- What the profile holds, nil while it has none (getPosition makes one up): the
 		-- edit mode history puts "none" back with this and setPosition(nil).
@@ -384,6 +403,8 @@ function OTP:Setup()
 		module = 'Misc',
 		-- Blizzard's tracker, read only.
 		isHidden = function() return not tracker:IsShown() end,
+		-- SaftUI's own tracker conceals Blizzard's while it's on: nothing to move.
+		isDisabled = Owned,
 		-- Blizzard's default spot, saved as a copy (a fresh table on every call).
 		getDefaultPosition = DefaultPosition,
 	})
@@ -467,7 +488,7 @@ local function SkinOff()
 	return not (skin and skin:IsActive())
 end
 
--- The Objective Tracker page in /sui: General, the tracker's fonts, a line saying
+-- The Blizzard's tracker page in /sui: General, the tracker's fonts, a line saying
 -- where its objective colors went, then its Position. Clicking the tracker in edit mode opens it (the mover's
 -- configPath). Absent until the tracker exists.
 function OTP:GetConfigTable()
@@ -486,6 +507,8 @@ function OTP:GetConfigTable()
 		end,
 		function() return self.holder end,
 		"Where the objective tracker's top right corner is. The tracker hangs down from here, as tall as Blizzard makes it: in Blizzard's default position down to Blizzard's own bottom line, else the Height last set in Blizzard's Edit Mode.")
+	position.disabled = Owned
+	position.disabledDesc = "SaftUI's tracker is on (Tracker page): Blizzard's tracker shows in its place when it's needed."
 	local validate = position.validate
 	position.validate = function(info, part, value)
 		if part == 'frame' and value == 'ObjectiveTrackerFrame' then
@@ -503,7 +526,8 @@ function OTP:GetConfigTable()
 	end
 
 	return {
-		name = 'Objective tracker',
+		name = "Blizzard's tracker",
+		desc = "Blizzard's objective tracker: its fonts, and its place while SaftUI's tracker is off. Its fonts also style it while it fills in for SaftUI's (Tracker page).",
 		type = 'group',
 		category = 'Info', -- the /sui sidebar's group (optionslayout.lua)
 		childGroups = 'tab',

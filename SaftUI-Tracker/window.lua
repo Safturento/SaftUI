@@ -149,21 +149,48 @@ end
 
 ------------------------------------------------------------------ position
 
--- The first position (call 26): a copy of the skin's saved one when Misc is
--- loaded and the profile has one, else Blizzard's default spot, so SaftUI's
--- tracker starts where the player's was. A copy of the five keys of a
--- position, never the skin's own table (AceDB's, with its metatable).
+-- The first position (call 26): where the player's tracker was, so SaftUI's
+-- starts there. The skin's saved position when Misc's tracker mover is loaded
+-- and the profile has one, else Blizzard's default spot:
+--   - a position by a top point (TOPLEFT, TOP, TOPRIGHT) is copied (the five
+--     keys, never the skin's own table, which is AceDB's with its metatable):
+--     the tracker hangs from its top, so the spot is the same either way;
+--   - one by another point is converted to the tracker's own TOPRIGHT form from
+--     where the skin's holder shows (st:CornerOffset), so the player keeps the
+--     spot they see: the holder's top right on screen, whatever it was anchored
+--     by. Without that holder (Blizzard's tracker isn't loaded yet) or with
+--     its place unreadable, Blizzard's default spot.
+-- It reads only the profile and the skin's holder, never writing the skin's
+-- position, and the skin's mover stands down while SaftUI's tracker is on, so it
+-- never writes one either: the answer is the same in whatever order a profile
+-- switch updates the modules (Misc's mover enables before this addon builds:
+-- AceAddon enables modules in the order they were made, and Misc loads first).
 local POSITION_KEYS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
+local TOP_POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true }
 
-local function FirstPosition()
+local function FirstPosition(self)
 	local position = st:DefaultTrackerPosition()
 	-- Only while Misc's tracker mover exists: AceDB keeps the profile's table
 	-- after Misc is disabled, and a stale spot must not be copied.
-	local skin = st:GetModule('ObjectiveTracker', true) and st.config.profile.objectivetracker
-	local saved = skin and skin.position
-	if type(saved) == 'table' then
+	local skin = st:GetModule('ObjectiveTracker', true)
+	local profile = skin and st.config.profile.objectivetracker
+	local saved = profile and profile.position
+	if type(saved) ~= 'table' then return position end
+	if TOP_POINTS[saved.point or position.point] then
 		for _, key in ipairs(POSITION_KEYS) do
 			if saved[key] ~= nil then position[key] = saved[key] end
+		end
+		return position
+	end
+	local from, mine = skin.holder, self.holder
+	if from and mine then
+		local right, top, scale = from:GetRight(), from:GetTop(), from:GetEffectiveScale()
+		if type(right) == 'number' and type(top) == 'number' and type(scale) == 'number'
+			and not (issecretvalue(right) or issecretvalue(top) or issecretvalue(scale)) then
+			local x, y = st:CornerOffset(mine, UIParent, 'TOPRIGHT', right * scale, top * scale)
+			if x then
+				position.x_off, position.y_off = x, y
+			end
 		end
 	end
 	return position
@@ -178,7 +205,7 @@ function TR:GetPosition()
 	local config = self.config
 	local position = config.position
 	if not position then
-		position = FirstPosition()
+		position = FirstPosition(self)
 		if self.holder then config.position = position end
 		return position
 	end
@@ -209,6 +236,8 @@ function TR:ApplyHolder()
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
+	-- Blizzard's tracker follows the holder (its y concealed, its corner in place).
+	self:PlaceBlizzard(self.blizzardWhere)
 end
 
 ------------------------------------------------------------------ collapsed

@@ -1453,6 +1453,9 @@ local PROTECTED_IN_COMBAT = {
 	SetSize = true, SetWidth = true, SetHeight = true,
 	Show = true, Hide = true, SetShown = true, SetParent = true,
 	SetAttribute = true,
+	-- Protected functions in SimpleFrameAPIDocumentation and
+	-- SimpleScriptRegionAPIDocumentation (both clients), blocked the same way.
+	SetClampedToScreen = true, EnableMouse = true,
 	-- IsProtectedFunction in their documentation, both clients.
 	SetRoundLayoutToNearestPixel = true, SetIgnoreParentScale = true,
 }
