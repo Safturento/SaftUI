@@ -4,14 +4,17 @@ local Kit = W.Kit
 
 --[[
 	The select list (st.OptionsWidgets, optionswidgets.lua): one list every
-	select opens (W.OpenList, W.CloseList, W.ListOwner), and the check list
-	drawn on its frames (W.OpenCheckList).
+	select opens (W.OpenList, W.CloseList, W.ListOwner), and two lists drawn
+	on its frames: the check list (W.OpenCheckList), whose clicks apply at
+	once, and the Apply list (W.OpenApplyList), a check list whose picks wait
+	for its Apply button (a shared setting's Apply to: Multiple,
+	optionsshare.lua).
 ]]
 
 local floor, max, min = math.floor, math.max, math.min
 
-local Box, BlizzardLook = W.Box, W.BlizzardLook
-local LIST_STRATA = Kit.LIST_STRATA
+local Box, BlizzardLook, HoverEdge, LookButton = W.Box, W.BlizzardLook, W.HoverEdge, W.LookButton
+local LIST_STRATA, FIELD_HEIGHT = Kit.LIST_STRATA, Kit.FIELD_HEIGHT
 local BG, EDGE, Colors, FIELD_FONT_SIZE = Kit.BG, Kit.EDGE, Kit.Colors, Kit.FIELD_FONT_SIZE
 local SetFieldFont, NewText, Art, Changes = Kit.SetFieldFont, Kit.NewText, Kit.Art, Kit.Changes
 local ShowBox, PaintFace, CheckBox, LookCheckBox = Kit.ShowBox, Kit.PaintFace, Kit.CheckBox, Kit.LookCheckBox
@@ -19,6 +22,11 @@ local SetCheck, CatchKeys = Kit.SetCheck, Kit.CatchKeys
 
 local LIST_ROW_HEIGHT, LIST_MAX_ROWS = 22, 12
 local LIST_WHEEL_ROWS = 3 -- a turn of the wheel over the list, or over its scroll bar
+
+-- The Apply list's button: 80 wide (W.Confirm's buttons), 6 under the rows
+-- and 6 above the list's bottom edge (inside its insets).
+local APPLY_WIDTH, APPLY_GAP = 80, 6
+local APPLY_ROOM = APPLY_GAP + FIELD_HEIGHT + APPLY_GAP
 
 ------------------------------------------------------------------ the select list
 
@@ -94,7 +102,8 @@ function W.CloseList()
 	if list then
 		local owner = list.owner
 		list.owner, list.onPick, list.entries = nil, nil, nil
-		list.isChecked, list.onToggle = nil, nil
+		list.isChecked, list.onToggle, list.onApply = nil, nil, nil
+		if list.apply then list.apply:Hide() end -- only the Apply list shows it
 		list.catcher:Hide()
 		if owner then PaintFace(owner) end
 	end
@@ -209,11 +218,9 @@ local function BuildList()
 	end)
 end
 
--- Opens the list under owner (a frame; above it when there's no room below).
--- entries: { {key, label, font = path} }, the selected key shows blue, and
--- onPick(key) runs on a choice. fontMode draws each label in its own face
--- (entry.font). An empty list doesn't open.
-function W.OpenList(owner, entries, selected, onPick, fontMode)
+-- Opens the list under owner, as W.OpenList says, extra taller than its rows
+-- (the Apply list's button's room).
+local function OpenList(owner, entries, selected, onPick, fontMode, extra)
 	if not list then BuildList() end
 	W.CloseList()
 	if #entries == 0 then return end
@@ -221,7 +228,7 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	LookList()
 
 	local rows = min(#entries, LIST_MAX_ROWS)
-	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4]
+	local height = rows * LIST_ROW_HEIGHT + list.insets[2] + list.insets[4] + (extra or 0)
 	list.frame:SetSize(max(owner:GetWidth(), W.WIDTH.select), height)
 	list.frame:SetScale(owner:GetEffectiveScale() / UIParent:GetEffectiveScale())
 	list.frame:ClearAllPoints()
@@ -244,9 +251,17 @@ function W.OpenList(owner, entries, selected, onPick, fontMode)
 	PaintFace(owner)
 end
 
--- The list's frames { catcher, frame, rows, skin, menu, insets, ... } (nil
--- until first opened; skin and menu, c-bg, from the first Blizzard look).
--- For tests.
+-- Opens the list under owner (a frame; above it when there's no room below).
+-- entries: { {key, label, font = path} }, the selected key shows blue, and
+-- onPick(key) runs on a choice. fontMode draws each label in its own face
+-- (entry.font). An empty list doesn't open.
+function W.OpenList(owner, entries, selected, onPick, fontMode)
+	OpenList(owner, entries, selected, onPick, fontMode, 0)
+end
+
+-- The list's frames { catcher, frame, rows, skin, menu, insets, apply, ... }
+-- (nil until first opened; skin and menu, c-bg, from the first Blizzard look;
+-- apply, the Apply list's button, from the first Apply list). For tests.
 function W.GetListFrames() return list end
 
 -- The frame the open list belongs to, or nil.
@@ -307,4 +322,58 @@ function W.OpenCheckList(owner, entries, isChecked, onToggle)
 	if W.ListOwner() ~= owner then return end
 	list.isChecked, list.onToggle = isChecked, onToggle
 	ListFill()
+end
+
+------------------------------------------------------------------ the Apply list
+
+-- The Apply list's button, made the first time: Box, blue-edged under the
+-- mouse, its text Apply; a click runs list.onApply.
+local function ApplyButton()
+	if not list.apply then
+		local button = Box(st:CreateFrame('Button', nil, list.frame))
+		button:SetSize(APPLY_WIDTH, FIELD_HEIGHT)
+		button:SetFrameLevel(list.frame:GetFrameLevel() + 1)
+		button.text = NewText(button, 'CENTER')
+		button.text:SetAllPoints()
+		button.text:SetText('Apply')
+		HoverEdge(button, function() return false end)
+		button:SetScript('OnClick', function()
+			if list.onApply then list.onApply() end
+		end)
+		button:Hide()
+		list.apply = button
+	end
+	return list.apply
+end
+
+-- Opens the select list's frames under owner as a check list with an Apply
+-- button under its rows: entries are { {key, label} }, every row unchecked to
+-- start. A click on a row toggles its mark and leaves the list open, calling
+-- nothing. Apply closes the list and calls onApply(keys) with the checked
+-- keys in entries' order, or nothing when none is checked. Esc, a click
+-- outside and W.CloseList close it calling nothing; W.ListOwner() reports
+-- owner while it's open. An empty list doesn't open. Under Blizzard the
+-- button is the panel button (W.LookButton), as the confirm dialog's.
+function W.OpenApplyList(owner, entries, onApply)
+	OpenList(owner, entries, nil, nil, nil, APPLY_ROOM)
+	if W.ListOwner() ~= owner then return end
+	local checked = {}
+	list.isChecked = function(key) return checked[key] end
+	list.onToggle = function(key) checked[key] = not checked[key] or nil end
+	list.onApply = function()
+		local keys = {}
+		for _, entry in ipairs(entries) do
+			if checked[entry.key] then keys[#keys + 1] = entry.key end
+		end
+		W.CloseList()
+		if #keys > 0 then onApply(keys) end
+	end
+	ListFill()
+	local button = ApplyButton()
+	LookButton(button, list.blizzard or false)
+	local rows = min(#entries, LIST_MAX_ROWS)
+	button:ClearAllPoints()
+	button:SetPoint('TOPLEFT', list.frame, 'TOPLEFT', floor((list.frame:GetWidth() - APPLY_WIDTH) / 2),
+		-(list.insets[2] + rows * LIST_ROW_HEIGHT + APPLY_GAP))
+	button:Show()
 end

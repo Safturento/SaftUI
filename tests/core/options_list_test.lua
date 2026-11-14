@@ -291,3 +291,85 @@ test("W.OpenCheckList under Blizzard: drawn as the select list is, its boxes Set
 	W.CloseList()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('the Apply list: checks change nothing until Apply, which hands over the checked keys', function()
+	local owner = W.Box(st:CreateFrame('Button', nil, UIParent))
+	owner:SetSize(52, 14)
+	owner:SetPoint('CENTER', UIParent, 'CENTER', 0, 0)
+	local got = {}
+	local function onApply(keys) got[#got + 1] = table.concat(keys, ',') end
+	local entries = { { key = 'a', label = 'A' }, { key = 'b', label = 'B' }, { key = 'c', label = 'C' } }
+	local function marks()
+		local out = {}
+		for i = 1, 3 do out[i] = H.text_of(W.GetListFrames().rows[i].text) .. '=' .. tostring(W.GetListFrames().rows[i].box:GetChecked()) end
+		return table.concat(out, ',')
+	end
+
+	theme('thick')
+	W.OpenApplyList(owner, entries, onApply)
+	local list = W.GetListFrames()
+	eq(W.ListOwner(), owner, 'open, its owner reported')
+	eq(marks(), 'A=false,B=false,C=false', 'every row unchecked to start')
+	for i = 1, 3 do check(list.rows[i].box:IsShown(), 'row ' .. i .. ' is a check box') end
+	check(list.apply ~= nil and list.apply:IsShown(), 'the Apply button shows')
+	eq(list.apply.text:GetText(), 'Apply')
+	check(list.apply:GetTop() <= list.rows[3]:GetBottom(), 'under the rows')
+	check(inside(list.apply, list.frame), 'inside the list')
+	eq(list.frame:GetHeight(), 3 * 22 + 2 + 36, 'the rows, the edge and the button\'s room')
+	check_box(list.apply, 'Thick: the Apply button', nil, true)
+
+	click(list.rows[2]); click(list.rows[3])
+	eq(marks(), 'A=false,B=true,C=true', 'a click marks its row')
+	eq(W.ListOwner(), owner, 'the list stays open')
+	eq(#got, 0, 'nothing applied yet')
+	click(list.rows[3]); click(list.rows[3])
+	eq(marks(), 'A=false,B=true,C=true', 'a second click unmarks, a third marks again')
+	click(list.apply)
+	eq(W.ListOwner(), nil, 'Apply closes it')
+	eq(#got, 1); eq(got[1], 'b,c', "the checked keys, in the entries' order")
+
+	-- Again: it starts unchecked, and Apply with none checked calls nothing.
+	W.OpenApplyList(owner, entries, onApply)
+	eq(marks(), 'A=false,B=false,C=false', 'unchecked again')
+	click(list.apply)
+	eq(W.ListOwner(), nil, 'closed'); eq(#got, 1, 'no call with none checked')
+	-- Esc and a click outside close it, calling nothing.
+	W.OpenApplyList(owner, entries, onApply)
+	click(list.rows[1])
+	stub.fire_script(list.catcher, 'OnKeyDown', 'ESCAPE')
+	eq(W.ListOwner(), nil, 'Esc closes it'); eq(#got, 1, 'calling nothing')
+	W.OpenApplyList(owner, entries, onApply)
+	click(list.rows[1])
+	stub.fire_script(list.catcher, 'OnMouseDown')
+	eq(W.ListOwner(), nil, 'a click outside closes it'); eq(#got, 1)
+	W.OpenApplyList(owner, entries, onApply)
+	click(list.rows[1])
+	W.CloseList()
+	eq(#got, 1, 'W.CloseList calls nothing')
+	W.OpenApplyList(owner, {}, onApply)
+	eq(W.ListOwner(), nil, "an empty list doesn't open")
+
+	-- The list's other uses never show the button.
+	W.OpenList(owner, entries, 'a', function() end)
+	check(not list.apply:IsShown(), 'no Apply on a select\'s list')
+	eq(list.frame:GetHeight(), 3 * 22 + 2, 'nor its room')
+	W.CloseList()
+	W.OpenCheckList(owner, entries, function() return false end, function() end)
+	check(not list.apply:IsShown(), 'nor on the check list')
+	W.CloseList()
+
+	-- Under Blizzard the button is the panel button.
+	theme('blizzard')
+	W.OpenApplyList(owner, entries, onApply)
+	check(list.apply:IsShown())
+	eq((H.panel_of(list.apply)), 'Left=Up,Middle=Up,Right=Up', "Blizzard's panel button")
+	check_no_box(list.apply, 'Blizzard: the Apply button')
+	check(inside(list.apply, list.frame), 'inside the list')
+	click(list.rows[1]); click(list.apply)
+	eq(got[2], 'a', 'and it applies')
+	theme('thick')
+	W.OpenApplyList(owner, entries, onApply)
+	eq((H.panel_of(list.apply)), '', 'Thick: no panel button')
+	W.CloseList()
+	eq(#take_errors(), 0, 'no errors')
+end)

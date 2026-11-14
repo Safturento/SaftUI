@@ -24,7 +24,10 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	  body:Refresh(except)             every drawn widget but except shows its
 	                                   row again in place (a drag, below)
 	  body.cells                       the drawn rows, in order:
-	                                   { row, frame, widget, label, height, y }
+	                                   { row, frame, widget, label, height, y,
+	                                     x, body }
+	  body.shareTitles                 the section titles drawn with a
+	                                   shareable block's marks (optionsshare.lua)
 
 	sections are the model's ({ title, note, rows }, OM.BuildView). Rows no
 	widget draws are left out, and so are sections left empty; the height is
@@ -70,6 +73,17 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	A description with SaftUI's fill set is a fill row too, its minHeight
 	the height it would have without: its text sits in the middle of it.
 
+	Shareable options (SaftUI's share field) are drawn by optionsshare.lua,
+	which loads right after this file and hooks in at three places: PlaceRow
+	ends with OB.PlaceShare(cell) (cell.body is the body), the row frame's
+	OnEnter and a position block's parts call OB.ShareEnter(frame), and
+	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
+	with a shareRow (the model's) once its block is placed. A world that
+	draws no window may load this file without it, so each is called only
+	when it's there. The metrics' markX and markShift place the own mark, and
+	OB.OWN_TEXT and OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
+	where PlaceRow does, x in.
+
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar,
 	OB.ScrollTo, and under Blizzard its companion, OB.Companion), as this file
@@ -108,12 +122,25 @@ OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
 -- FLAT is Blizzard's, rows 34 tall in two columns 40 apart (quarters 24 apart)
 -- with nothing behind them; PANELED is Thick's and Thin's, rows 38 tall on a
 -- panel per section, padded 14 either side, the columns and quarters flush
--- (a faint line divides them).
-OB.FLAT = { rowHeight = 34, pad = 0, columnGap = 40, quarterGap = 24, panels = false }
-OB.PANELED = { rowHeight = 38, pad = 14, columnGap = 0, quarterGap = 0, panels = true }
+-- (a faint line divides them). A shared setting's own mark (optionsshare.lua)
+-- sits markX in from its slot's left (under PANELED inside the padding), and
+-- what it marks moves markShift right (under FLAT, to make room inside the
+-- cell: the body's scroll frame clips left of the content).
+OB.FLAT = { rowHeight = 34, pad = 0, columnGap = 40, quarterGap = 24, panels = false, markX = 0, markShift = 6 }
+OB.PANELED = { rowHeight = 38, pad = 14, columnGap = 0, quarterGap = 0, panels = true, markX = 5, markShift = 0 }
 OB.PANEL_FILL = { 0, 0, 0, 0.28 } -- a section's panel: black at 28%
 OB.HAIRLINE = { 1, 1, 1, 0.07 } -- the lines between rows and between columns: white at 7%
 OB.TOP = BODY_TOP + SECTION_PAD -- where the first section's rows start
+OB.TITLE_HEIGHT = TITLE_HEIGHT -- a section title's line
+
+-- A shared setting's marks (optionsshare.lua): an own row's label (the
+-- mockup's light blue), and the diff icon (its orange).
+OB.OWN_TEXT = { 0.56, 0.85, 1 }
+OB.DIFF_COLOR = { 0.88, 0.63, 0.25 }
+
+-- A row's label line: its text sits in a band this tall.
+local LABEL_HEIGHT = 16
+OB.LABEL_HEIGHT = LABEL_HEIGHT
 
 OB.LINE = { 0.18, 0.18, 0.18, 1 } -- #2e2e2e: the lines between parts
 
@@ -513,12 +540,28 @@ local function TitleTip(frame)
 	return tip
 end
 
+-- Where a row's label sits, x in from its cell's left: across the row's
+-- middle, or in a tall row (a multiselect's) across its first rowHeight.
+-- optionsshare.lua moves it (a mark's shift) and puts it back with this.
+function OB.PlaceLabel(cell, x)
+	local label, frame = cell.label, cell.frame
+	label:ClearAllPoints()
+	if cell.height > cell.rowHeight then
+		label:SetPoint('TOPLEFT', frame, 'TOPLEFT', x or 0, -floor((cell.rowHeight - LABEL_HEIGHT) / 2))
+	else
+		label:SetPoint('LEFT', frame, 'LEFT', x or 0, 0)
+	end
+end
+
 -- A row's place in its cell: the label on the left, the control on the
 -- right. A description is text across the row, and a button stands alone.
+-- Then a shareable row's marks (OB.PlaceShare, optionsshare.lua, which a
+-- world that draws no window may not load).
 local function PlaceRow(cell, x, y, width)
 	local frame, widget, label, row = cell.frame, cell.widget, cell.label, cell.row
 	frame:SetPoint('TOPLEFT', frame:GetParent(), 'TOPLEFT', x, -y)
 	frame:SetSize(width, cell.height)
+	cell.x = x
 	label:ClearAllPoints()
 	if row.type == 'description' then
 		label:Hide()
@@ -549,14 +592,14 @@ local function PlaceRow(cell, x, y, width)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
 		label:Show()
 		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
+		OB.PlaceLabel(cell, 0)
 		if cell.height > cell.rowHeight then
-			label:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor((cell.rowHeight - 16) / 2))
 			widget:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, -6)
 		else
-			label:SetPoint('LEFT', frame, 'LEFT', 0, 0)
 			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 		end
 	end
+	if OB.PlaceShare then OB.PlaceShare(cell) end
 end
 
 local function PlaceResult(cell, x, y, width)
@@ -574,6 +617,7 @@ function OB.New(content, root, onChanged, width)
 	local body = setmetatable({
 		content = content, root = root, onChanged = onChanged,
 		width = width or WIDTH, cells = {},
+		shareTitles = {}, -- the section titles drawn with a shareable block's marks (optionsshare.lua)
 	}, Body)
 	body:UseMetrics()
 
@@ -582,8 +626,12 @@ function OB.New(content, root, onChanged, width)
 			local frame = CreateFrame('Frame', nil, content)
 			frame.label = Text(frame, 'label')
 			-- Wrapped: the game passes these scripts a second argument (motion),
-			-- which ShowTip and HideTip would take for the tooltip's owner.
-			frame:SetScript('OnEnter', function(self) ShowTip(self) end)
+			-- which ShowTip and HideTip would take for the tooltip's owner. A
+			-- shareable row's hover line shows too (optionsshare.lua).
+			frame:SetScript('OnEnter', function(self)
+				ShowTip(self)
+				if OB.ShareEnter then OB.ShareEnter(self) end
+			end)
 			frame:SetScript('OnLeave', function(self) HideTip(self) end)
 			return frame
 		end),
@@ -688,7 +736,7 @@ function Body:RowCell(row)
 	local rowHeight, inside = self.metrics.rowHeight, self.width - 2 * self.metrics.pad
 	local cell = {
 		row = row, frame = frame, widget = widget, label = frame.label, height = rowHeight, rowHeight = rowHeight,
-		place = PlaceRow, align = row.align,
+		place = PlaceRow, align = row.align, body = self,
 	}
 	if row.type == 'description' then
 		-- With fill (SaftUI's), a fill row at its own height at least: what it
@@ -702,8 +750,14 @@ function Body:RowCell(row)
 		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
 	elseif row.type == 'position' then
 		cell.height = ceil(widget:GetHeight()) + 12
+		-- A shareable block's parts bring its title's hover line too.
 		widget.onTip = function(on)
-			if on then ShowTip(frame) else HideTip(frame) end
+			if on then
+				ShowTip(frame)
+				if OB.ShareEnter then OB.ShareEnter(frame) end
+			else
+				HideTip(frame)
+			end
 		end
 	elseif row.type == 'execute' then
 		-- A button has no label for the mouse to rest on, so it shows the
@@ -760,7 +814,9 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 				if cell.fill then fills[#fills + 1] = cell end
 			end
 		end
-		if #rows > 0 then kept[#kept + 1] = { title = section.title, note = section.note, rows = rows } end
+		if #rows > 0 then
+			kept[#kept + 1] = { title = section.title, note = section.note, rows = rows, shareRow = section.shareRow }
+		end
 	end
 	local function heightOf(row) return byRow[row].height end
 	local function alignOf(row) return byRow[row].align end
@@ -835,10 +891,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		end
 	end
 	for _, entry in ipairs(laid) do
+		local title
 		if entry.titleY then
-			local title = Acquire(pools.title)
+			title = Acquire(pools.title)
 			title:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.titleY)
 			title:SetText(entry.section.title)
+			title:SetTextColor(Grey()) -- a pooled title may last have been marked
 		end
 		if entry.noteY then
 			local note = Acquire(pools.note)
@@ -879,6 +937,10 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			line:SetPoint('TOPLEFT', content, 'TOPLEFT', floor(x), -top)
 			line:SetSize(1, lineHeight)
 		end
+		-- A shareable position block's marks on its title, once the block is placed.
+		if title and entry.section.shareRow and OB.PlaceShareTitle then
+			OB.PlaceShareTitle(self, entry, title)
+		end
 	end
 	return #kept > 0 and height or 0
 end
@@ -910,7 +972,13 @@ function Body:Refresh(except)
 			if disabled ~= widget:IsDisabled() then
 				widget:SetDisabled(disabled)
 				if cell.label:IsShown() then
-					if disabled then cell.label:SetTextColor(Grey()) else cell.label:SetTextColor(Normal()) end
+					if disabled then
+						cell.label:SetTextColor(Grey())
+					elseif cell.ownLabel then -- an own row's (OB.PlaceShare)
+						cell.label:SetTextColor(unpack(OB.OWN_TEXT))
+					else
+						cell.label:SetTextColor(Normal())
+					end
 				end
 			end
 			widget:Refresh()
@@ -923,6 +991,8 @@ function Body:Release()
 		if cell.widget then cell.widget:Release() end
 	end
 	wipe(self.cells)
+	wipe(self.shareTitles)
 	self.filled = false
-	for _, key in ipairs({ 'row', 'result', 'title', 'note', 'line', 'panel', 'hairline' }) do ReleaseAll(self.pools[key]) end
+	-- Every pool, optionsshare.lua's title hovers among them.
+	for _, pool in pairs(self.pools) do ReleaseAll(pool) end
 end
