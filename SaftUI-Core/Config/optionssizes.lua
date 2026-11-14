@@ -36,9 +36,13 @@ local W = st.OptionsWidgets
 	and sits at the left of the pair, shrink points right at the right, beside
 	the close X: under Thick and Thin 6 apart, right to left from the close X,
 	top-aligned with it; under Blizzard on the title bar left of the metal's
-	socket, centred on the close button, in Blizzard's panel button
-	(W.LookControl). Shrink shows at full and half, grow at half; at the bar
-	neither does.
+	socket, centred on the close button, wearing Blizzard's own expand
+	(grow) and condense (shrink) art (S.LookSizeButton, st.ThemeArt.Control(
+	'sizebutton'), MaximizeMinimizeButtonFrameTemplate's atlases: normal,
+	pushed and disabled, and the additive highlight) where the client has it,
+	which is both clients today; on a client without it, in Blizzard's panel
+	button (W.LookControl) with the chevron. Shrink shows at full and half,
+	grow at half; at the bar neither does.
 
 	The bar (F.mini, a frame over the whole window, shown only at the bar;
 	S.BuildMini, S.DrawMini): the window made 42 tall (OW.MINI_HEIGHT) and as
@@ -125,6 +129,103 @@ local function MiniGrowTip()
 	return WithReasons('Grow to half', 'Back to the page as you left it.', 'half')
 end
 
+------------------------------------------------------------------ Blizzard's art
+
+-- The expand and condense art this client has (st.ThemeArt.Control('sizebutton')),
+-- or nil where it has none: a client without it keeps the chevron on Blizzard's
+-- panel button (plan Ruling 17). Read at call time, as the client decides it.
+local function SizeArt()
+	local art = st.ThemeArt.Control('sizebutton')
+	if art and art.grow and art.shrink and C_Texture.GetAtlasInfo(art.grow.normal) and C_Texture.GetAtlasInfo(art.shrink.normal) then
+		return art
+	end
+end
+
+-- button -> its art: { face, glow, set, shown, down }. Textures of SaftUI's
+-- own on SaftUI's own button, made the first time it wears the art: nothing of
+-- Blizzard's template (its scripts, its frame) is instantiated.
+local sizeArts = setmetatable({}, { __mode = 'k' })
+
+-- Puts the art for the button's state on its face: pushed while the mouse is
+-- down on an enabled button, disabled while it is disabled (and then no
+-- highlight under the mouse), normal otherwise.
+local function PaintSizeArt(button)
+	local art = sizeArts[button]
+	if not art or not art.shown then return end
+	local set = art.set
+	local atlas = set.normal
+	if button.disabled then
+		atlas = set.disabled
+	elseif art.down then
+		atlas = set.pushed
+	end
+	art.face:SetAtlas(atlas)
+	art.glow:SetShown(not button.disabled)
+end
+
+local function MakeSizeArt(button)
+	local art = {}
+	-- ARTWORK, over the Box (a backdrop) and under the icon (OVERLAY), which is
+	-- hidden while the art shows.
+	art.face = button:CreateTexture(nil, 'ARTWORK')
+	-- In the HIGHLIGHT layer, which the game shows only under the mouse.
+	art.glow = button:CreateTexture(nil, 'HIGHLIGHT')
+	sizeArts[button] = art
+	button:HookScript('OnMouseDown', function(self)
+		if not self.disabled then
+			art.down = true
+			PaintSizeArt(self)
+		end
+	end)
+	button:HookScript('OnMouseUp', function(self)
+		art.down = false
+		PaintSizeArt(self)
+	end)
+	button:HookScript('OnHide', function(self)
+		art.down = false
+		PaintSizeArt(self)
+	end)
+	return art
+end
+
+-- The arrow's look: under Blizzard, where the client has the art, Blizzard's
+-- expand (kind 'grow') or condense ('shrink') button drawn at the art's size,
+-- centred on the button's square, its Box and chevron hidden, its disabled art
+-- while button.disabled; otherwise the Box and the chevron as before (under
+-- Blizzard on Blizzard's panel button, W.LookControl). The tooltip, the guard,
+-- the disabled alpha and hoverIcon are the button's own and don't change.
+function S.LookSizeButton(button, kind)
+	local look = S.blizzard and SizeArt() or nil
+	local art = sizeArts[button]
+	if look then
+		-- LookControl keeps the Box and panel button's state in step; the
+		-- panel button it shows is hidden again under the art.
+		W.LookControl(button, true)
+		st:ShowPanelButton(button, false)
+		art = art or MakeSizeArt(button)
+		art.set, art.shown = look[kind], true
+		for _, key in ipairs({ 'face', 'glow' }) do
+			art[key]:ClearAllPoints()
+			art[key]:SetSize(look.size, look.size)
+			art[key]:SetPoint('CENTER', button, 'CENTER', 0, 0)
+			art[key]:Show()
+		end
+		art.glow:SetAtlas(look.highlight)
+		art.glow:SetBlendMode(look.highlightBlend)
+		button.icon:Hide()
+	else
+		if art and art.shown then
+			art.shown, art.down = false, false
+			art.face:Hide()
+			art.glow:Hide()
+		end
+		W.LookControl(button, S.blizzard)
+		if S.blizzard then st:ShowPanelButton(button, true) end
+		button.icon:Show()
+	end
+	PaintSizeArt(button)
+end
+
 ------------------------------------------------------------------ the buttons
 
 function S.BuildSizeButtons(window)
@@ -156,6 +257,7 @@ function S.UpdateWindowButtons()
 	W.SetEnabled(F.shrink, Enabled(1))
 	W.SetEnabled(F.grow, Enabled(-1))
 	W.SetEnabled(F.miniGrow, Enabled(-1))
+	for _, button in ipairs({ F.shrink, F.grow, F.miniGrow }) do PaintSizeArt(button) end
 	if F.sideToggle then W.SetEnabled(F.sideToggle, S.SideToggleEnabled()) end
 end
 
@@ -175,9 +277,9 @@ function S.PlaceSizeButtons()
 	F.miniGrow:ClearAllPoints()
 	F.miniGrow:SetPoint('TOPRIGHT', F.mini, 'TOPRIGHT', -(MINI_PAD + MINI_GAP + floor(F.close:GetWidth() + 0.5)),
 		-floor((OW.MINI_HEIGHT - width) / 2))
-	W.LookControl(F.shrink, S.blizzard)
-	W.LookControl(F.grow, S.blizzard)
-	W.LookControl(F.miniGrow, S.blizzard)
+	S.LookSizeButton(F.shrink, 'shrink')
+	S.LookSizeButton(F.grow, 'grow')
+	S.LookSizeButton(F.miniGrow, 'grow')
 	S.UpdateWindowButtons()
 end
 

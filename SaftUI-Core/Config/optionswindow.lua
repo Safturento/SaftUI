@@ -1605,9 +1605,17 @@ function OW:GetState()
 	return { page = S.shown.page, tab = S.shown.tab, subtab = S.shown.subtab, pick = S.shown.pick, search = state.search }
 end
 
--- For tests: the frames, the drawn body rows, how many renders ran.
+-- For tests: the frames and the drawn body rows.
 function OW.GetFrames() return F end
 function OW.GetDrawnRows() return pageBody and pageBody.cells or EMPTY end
+
+-- How many renders have run. Tests read it, and so does the Bags' Categories
+-- tab (categoriestab.lua): it notes the count when its widget is released with
+-- the menu open and keeps the menu open only if the tab is drawn in that same
+-- render (a drop, a bag update), closing it when it is drawn in a later one
+-- (another page or tab). So the count must go up exactly once for each render
+-- of the window, in every draw of the page whatever asked for it, and never
+-- otherwise.
 function OW.GetRenderCount() return renders end
 
 -- st.Config:Refresh notifies AceConfigRegistry: re-render on the next frame.

@@ -64,7 +64,7 @@ local CONTROLS = {
 	input = true, search = true, swatch = true, binding = true, nudge = true, scrollbar = true,
 	optionstab = true, optionslist = true, micro = true, microbar = true, mover = true, classpower = true,
 	groupborder = true, unitbars = true, optionswindow = true, resizegrip = true,
-	nameplatetarget = true,
+	nameplatetarget = true, sizebutton = true,
 }
 
 ------------------------------------

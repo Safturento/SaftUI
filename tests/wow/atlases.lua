@@ -61,6 +61,13 @@ return {
 		['RedButton-exit-pressed'] = { 32, 32 },
 		['RedButton-Highlight'] = { 32, 32 },
 		['RedButton-Exit-Disabled'] = { 32, 32 },
+		-- The window's size arrows (MaximizeMinimizeButtonFrameTemplate): the Camelot (-c60) members, 32 square
+		['RedButton-Expand'] = { 32, 32 },
+		['RedButton-Expand-Pressed'] = { 32, 32 },
+		['RedButton-Expand-Disabled'] = { 32, 32 },
+		['RedButton-Condense'] = { 32, 32 },
+		['RedButton-Condense-Pressed'] = { 32, 32 },
+		['RedButton-Condense-disabled'] = { 32, 32 },
 		-- Controls: the check box
 		['checkbox-minimal'] = { 30, 29 },
 		['checkmark-minimal'] = { 30, 29 },
@@ -252,6 +259,13 @@ return {
 		['RedButton-exit-pressed'] = { 18, 19 },
 		['RedButton-Highlight'] = { 18, 19 },
 		['RedButton-Exit-Disabled'] = { 18, 19 },
+		-- The window's size arrows (MaximizeMinimizeButtonFrameTemplate)
+		['RedButton-Expand'] = { 18, 19 },
+		['RedButton-Expand-Pressed'] = { 18, 19 },
+		['RedButton-Expand-Disabled'] = { 18, 19 },
+		['RedButton-Condense'] = { 18, 19 },
+		['RedButton-Condense-Pressed'] = { 18, 19 },
+		['RedButton-Condense-disabled'] = { 18, 19 },
 		-- Controls: the check box
 		['checkbox-minimal'] = { 30, 29 },
 		['checkmark-minimal'] = { 30, 29 },
