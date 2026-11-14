@@ -63,22 +63,16 @@ local DUR = st:NewModule('Durability')
 local HOLDER_WIDTH, HOLDER_HEIGHT = 60, 75
 
 -- Where the holder waits while the figure has never shown: the right column's
--- top, as the objective tracker's default (260 below the screen's top, 275 on
--- Forever, whose tracker sits 15 lower).
+-- top, 260 below the screen's top on both clients (the figure has no top padding,
+-- unlike Forever's tracker), and 5 in from the right (RightManagedFrameContainer).
 local function FallbackPosition()
 	return {
 		point = 'TOPRIGHT',
 		frame = 'UIParent',
 		rel_point = 'TOPRIGHT',
-		x_off = -st.CLAMP_INSET,
-		y_off = st.forever and -275 or -260,
+		x_off = -5,
+		y_off = -260,
 	}
-end
-
-local function CopyPosition(position)
-	local copy = {}
-	for key, value in pairs(position) do copy[key] = value end
-	return copy
 end
 
 local function Plain(...)
@@ -126,10 +120,22 @@ function DUR:Placing()
 	return self.config.move and self.config.position ~= nil
 end
 
+-- How far past the screen edge margin the holder may go. While the holder only
+-- follows an unmoved figure it may sit as near the right and top edges as the
+-- figure does (Blizzard puts it 5 in from the right, the margin is 20), so the
+-- outline sits exactly on the figure; the margin applies once a place is saved
+-- (a drag's own limit is the margin).
+function DUR:MarginReach()
+	if self:Placing() or not followed then return 0, 0, 0, 0 end
+	local margin = st.config.profile.misc.clamp_inset
+	return 0, math.min(0, -followed.x_off - margin), math.min(0, -followed.y_off - margin), 0
+end
+
 -- Sizes and places the holder; its SetPoint hook puts the figure there.
 function DUR:ApplyHolder()
 	local holder = self.holder
 	if not holder then return end
+	st:KeepInScreenMargin(holder)
 	st:PlaceHolder(holder, 'durability_holder',
 		function() return HOLDER_WIDTH, HOLDER_HEIGHT end,
 		function() return self:GetPosition() end)
@@ -139,6 +145,10 @@ end
 -- The anchor Blizzard last gave the figure (its SetPoint's arguments), kept to put
 -- it back when the setting goes off. nil until one is known.
 local blizzardPoint
+
+-- Whether the figure is at SaftUI's anchor now (set by PlaceFigure, cleared when
+-- Blizzard re-places it or SaftUI gives it back).
+local placed = false
 
 -- Whether the figure already hangs where PlaceFigure would put it (each
 -- re-anchor makes the game lay its subtree out again, and Blizzard sets it
@@ -155,7 +165,16 @@ end
 -- leaves it as it is.
 function DUR:PlaceFigure()
 	local frame, holder = self.frame, self.holder
-	if not (frame and holder and self:Placing()) then return end
+	if not (frame and holder) then return end
+	if not self:Placing() then
+		-- The place was cleared (edit mode's Undo, a profile with none) or the
+		-- setting went off while the figure is still where SaftUI put it.
+		if placed then
+			self:ReleaseFigure()
+			self:QueueFollow()
+		end
+		return
+	end
 	if not st:CanMoveNow(frame) and st:QueueAfterCombat('durability_place', function() self:PlaceFigure() end) then
 		return
 	end
@@ -169,15 +188,21 @@ function DUR:PlaceFigure()
 	if PlacedAt(frame, parent, x, y) then return end
 	st:ClearAllPointsDirect(frame)
 	st:SetPointDirect(frame, 'TOPRIGHT', parent, 'TOPRIGHT', x, y)
+	placed = true
 end
 
 -- Puts the figure back where Blizzard last put it (setting turned off).
 function DUR:ReleaseFigure()
 	local frame = self.frame
-	if not (frame and blizzardPoint) then return end
+	if not frame then return end
+	if not blizzardPoint then
+		placed = false
+		return
+	end
 	if not st:CanMoveNow(frame) and st:QueueAfterCombat('durability_place', function() self:ReleaseFigure() end) then
 		return
 	end
+	placed = false
 	st:ClearAllPointsDirect(frame)
 	st:SetPointDirect(frame, unpack(blizzardPoint, 1, blizzardPoint.n))
 end
@@ -226,6 +251,7 @@ function DUR:Setup()
 	-- and the figure goes back on the holder, or the holder follows the figure.
 	hooksecurefunc(frame, 'SetPoint', function(_, ...)
 		blizzardPoint = { n = select('#', ...), ... }
+		placed = false -- Blizzard's call replaced SaftUI's anchor
 		if self.config.move then
 			if self:Placing() then
 				self:PlaceFigure()
@@ -267,7 +293,7 @@ function DUR:Setup()
 		isHidden = function() return not frame:IsShown() end,
 		noDefaultReason = "The durability figure has no default place of its own: Blizzard stacks it in its right column, wherever its container puts it. Undo goes back to where it was, and turning off Move the durability figure leaves it to Blizzard.",
 	})
-	st:KeepInScreenMargin(holder)
+	st:KeepInScreenMargin(holder, function() return self:MarginReach() end)
 	self:PlaceFigure()
 	st.EditModeFrames:On('Enabled', function() self:Follow() end)
 end

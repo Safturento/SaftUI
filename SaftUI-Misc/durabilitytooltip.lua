@@ -91,11 +91,11 @@ function DUR:GetTooltipLines()
 		local current, maximum = GetInventoryItemDurability(slot)
 		current, maximum = Number(current), Number(maximum)
 		if current and maximum and maximum > 0 then
-			local cost = RepairCost(slot)
-			if cost then total = total + cost end
 			if current < maximum then
-				-- A damaged item whose cost can't be read makes the sum a guess.
-				if not cost then unknown = true end
+				-- Only a damaged item has a repair cost; one whose cost can't be
+				-- read makes the sum a guess.
+				local cost = RepairCost(slot)
+				if cost then total = total + cost else unknown = true end
 				local quality = GetInventoryItemQuality and GetInventoryItemQuality('player', slot)
 				local color = Number(quality) and st:QualityColor(quality)
 				local name = ItemName(slot, slotName)
@@ -116,7 +116,7 @@ function DUR:GetTooltipLines()
 	local lines = {}
 	for i, item in ipairs(items) do lines[i] = { item.left, item.right } end
 	local money = not unknown and MoneyString(total)
-	if money then lines[#lines + 1] = { _G.REPAIR_COST and _G.REPAIR_COST:gsub(':%s*$', '') or 'Repair cost', money } end
+	if money then lines[#lines + 1] = { _G.REPAIR_COST and _G.REPAIR_COST:gsub(':%s*$', ''):gsub('\239\188\154%s*$', '') or 'Repair cost', money } end
 	return lines
 end
 
@@ -135,6 +135,5 @@ function DUR:AddTooltipLines()
 end
 
 function DUR:SetupTooltip()
-	if not self.frame:HasScript('OnEnter') then return end
 	self.frame:HookScript('OnEnter', function() self:AddTooltipLines() end)
 end

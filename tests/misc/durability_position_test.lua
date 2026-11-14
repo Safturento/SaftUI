@@ -40,6 +40,8 @@ local function world(client, build, opts)
 	if opts.move == false then profile.durability.move = false end
 	DF = load_test_file('misc/fixtures/durability_frame.lua')
 	if not opts.late then DF.build(build) end
+	if opts.shown then DF.show() end
+	if opts.scale then UIParent:SetScale(opts.scale) end
 	load_saftui('SaftUI-Misc/durability.lua')
 	load_saftui('SaftUI-Misc/durabilitytooltip.lua')
 	DUR = st:GetModule('Durability')
@@ -156,11 +158,91 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		eq(profile.durability.position.y_off, -300, 'Position saved')
 		eq(frame:GetTop(), 300, 'the figure follows Position')
 
-		-- The first move saves a position, and Undo's setPosition(nil) goes back to Blizzard's place.
+		-- Undo's setPosition(nil) and apply: back at Blizzard's place at once, with no help from Blizzard's layout.
 		mover.def.setPosition(nil)
+		mover.def.apply()
 		eq(profile.durability.position, nil, 'none saved again')
-		DF.manage()
-		eq(anchored_to(frame), 'TOPRIGHT RightManagedFrameContainer TOPRIGHT 0,-50', "and Blizzard's layout is the figure's again")
+		eq(anchored_to(frame), 'TOPRIGHT RightManagedFrameContainer TOPRIGHT 0,-50', "Blizzard's own anchor again, unaided")
+		stub.run_timers()
+		eq(top_right(DUR.holder), top_right(frame), 'and the holder back on the figure')
+		clean()
+	end)
+
+	test(client .. ': Undo of the first move, and a profile with no position, give the figure back to Blizzard', function()
+		world(client)
+		DF.show()
+		stub.run_timers()
+		local mover = st.EditModeFrames.movers.durability
+		local blizzard = top_right(DF.frame)
+		local position = mover.def.getPosition()
+		position.x_off, position.y_off = -40, -100
+		mover.def.setPosition(position)
+		mover.def.apply()
+		eq(top_right(DF.frame), '960,500', 'moved')
+		mover.def.setPosition(nil)
+		mover.def.apply()
+		eq(top_right(DF.frame), blizzard, 'Undo: back where Blizzard has it, at once')
+		stub.run_timers()
+		eq(top_right(DUR.holder), blizzard, 'the holder with it')
+
+		profile.durability.position = SAVED()
+		DUR:UpdateConfig()
+		eq(top_right(DF.frame), '960,500', 'a profile with a position')
+		profile.durability.position = nil
+		DUR:UpdateConfig()
+		eq(top_right(DF.frame), blizzard, 'a profile switch to one with none: back where Blizzard has it')
+		stub.run_timers()
+		eq(top_right(DUR.holder), blizzard, 'the holder with it')
+		clean()
+	end)
+
+	test(client .. ': a figure shown at load with Move off is left alone; Move on at runtime hides the box; no needless re-anchor', function()
+		world(client, nil, { position = SAVED(), move = false, shown = true })
+		eq(anchored_to(DF.frame), 'TOPRIGHT RightManagedFrameContainer TOPRIGHT 0,0', "shown at load, Move off: Blizzard's")
+		DUR:PlaceFigure()
+		eq(anchored_to(DF.frame), 'TOPRIGHT RightManagedFrameContainer TOPRIGHT 0,0', 'and a placement call changes nothing')
+
+		DF.frame.Selection:Show()
+		profile.durability.move = true
+		DUR:UpdateConfig()
+		check(not DF.frame.Selection:IsShown(), 'Move turned on at runtime hides the box')
+		DF.frame.Selection:Show()
+		check(not DF.frame.Selection:IsShown(), 'and keeps it hidden')
+
+		-- An unchanged layout makes no C-level re-anchor.
+		local methods = getmetatable(DF.frame).__index
+		local set, clear, n = methods.SetPoint, methods.ClearAllPoints, 0
+		methods.SetPoint = function(self, ...) if self == DF.frame then n = n + 1 end return set(self, ...) end
+		methods.ClearAllPoints = function(self, ...) if self == DF.frame then n = n + 1 end return clear(self, ...) end
+		DUR:PlaceFigure()
+		DUR:ApplyHolder()
+		methods.SetPoint, methods.ClearAllPoints = set, clear
+		eq(n, 0, 'already in place: no SetPoint or ClearAllPoints')
+		clean()
+	end)
+
+	test(client .. ': the following holder is whole pixels at a scale where one unit is not one pixel', function()
+		world(client, nil, { scale = 1 })
+		DF.show()
+		stub.run_timers()
+		local x = DUR:GetPosition().x_off
+		local pixel = st:GetPixelSize(DUR.holder)
+		check(pixel > 1.01, 'a pixel is more than a unit here')
+		check(math.abs(x / pixel - math.floor(x / pixel + 0.5)) < 1e-3, 'x_off is a whole number of pixels: ' .. tostring(x))
+		clean()
+	end)
+
+	test(client .. ': an unmoved figure\'s outline sits on the figure, not the screen margin; a saved place keeps the margin', function()
+		world(client)
+		DF.show()
+		stub.run_timers()
+		local left, right = st:GetScreenMargin(DUR.holder)
+		eq(right, 5, "the figure is 5 from the screen's right edge: the holder may go that near")
+		eq(left, 20, 'the other edges keep the margin')
+		eq(DUR.holder:GetRight(), DF.frame:GetRight(), 'the outline on the figure')
+		profile.durability.position = SAVED()
+		DUR:UpdateConfig()
+		eq(select(2, st:GetScreenMargin(DUR.holder)), 20, 'a saved place: the margin again')
 		clean()
 	end)
 
