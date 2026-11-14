@@ -1,0 +1,33 @@
+<!-- @dsCard group="Shared settings" height=250 width=830 subtitle="All bars: two settings some bar has as its own, one under the mouse with its tooltip open" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>DiffIcon</title>
+<style>
+  .tip { position: absolute; left: calc(var(--content-width) / 4); top: calc(var(--row-height) - var(--title-gap)); z-index: 2; white-space: nowrap; }
+  .cols { display: grid; grid-template-columns: auto auto; column-gap: var(--section-margin); }
+  .cols span:nth-child(odd) { color: var(--tooltip-gold); }
+  .cols span:nth-child(even) { color: var(--own); }
+  .sui-cell .sui-hover { display: none; }
+  .sui-cell:hover .sui-hover, .sui-cell.is-open .sui-hover { display: flex; }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-section">
+    <div class="section-title">Layout</div>
+    <div class="sui-panel">
+      <div class="sui-line">
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Buttons</div></div><div class="sui-range"><div class="sui-track" style="--p: 100%"><i></i><b></b></div><div class="sui-box sui-value field">12</div></div></div>
+        <div class="sui-cell is-open"><div class="sui-lab"><div class="sui-label label">Buttons per row<svg class="sui-ic sui-ic-diff is-diff" viewBox="0 0 24 24"><path d="M12 3v14"/><path d="M5 10h14"/><path d="M5 21h14"/></svg></div><div class="sui-hover small"><span>Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 100%"><i></i><b></b></div><div class="sui-box sui-value field">12</div></div><span class="tip sui-tooltip sui-frame normal sui-outline"><span>Buttons per row</span><span class="sui-gold">All bars: 12</span><span class="cols"><span>Bar 4</span><span>1</span><span>Bar 5</span><span>1</span><span>Bar 6</span><span>1</span></span></span></div>
+      </div>
+      <div class="sui-line">
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Button size<svg class="sui-ic sui-ic-diff is-diff" viewBox="0 0 24 24"><path d="M12 3v14"/><path d="M5 10h14"/><path d="M5 21h14"/></svg></div><div class="sui-hover small"><span>Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 50%"><i></i><b></b></div><div class="sui-box sui-value field">45</div></div></div>
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Spacing</div></div><div class="sui-range"><div class="sui-track" style="--p: 15%"><i></i><b></b></div><div class="sui-box sui-value field">3</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!-- @dsCard group="Controls" height=270 width=830 subtitle="The kit button's states, the confirm's button, and a closing line floating under its panel" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Button</title>
+<style>
+  .float-demo .sui-float { justify-content: center; }
+  .float-demo .sui-float + .sui-state { margin-top: var(--float-gap); }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-stack"><div class="caption sui-state">Rest</div><div class="sui-box is-raised sui-btn field"><span>Copy from</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="sui-box is-raised sui-btn field is-hover"><span>Copy from</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Pressed</div><div class="sui-box is-raised sui-btn field is-hover is-pressed"><span>Copy from</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Disabled</div><div class="sui-box is-raised sui-btn field is-disabled"><span class="sui-grey">Confirm copy</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Short label</div><div class="sui-box is-raised sui-btn field"><span>New</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Confirm</div><div class="sui-box sui-btn is-confirm field"><span>Yes</span></div></div>
+  <div class="sui-section float-demo">
+    <div class="section-title">Settings</div>
+    <div class="sui-panel">
+      <div class="sui-line">
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Health</div></div><div class="sui-box sui-check is-on"></div></div>
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Power</div></div><div class="sui-box sui-check"></div></div>
+      </div>
+    </div>
+    <div class="sui-float"><div class="sui-box is-raised sui-btn field"><span>Confirm copy</span></div><div class="sui-box is-raised sui-btn field"><span>Cancel</span></div></div>
+  </div>
+</div>
+</body>
+</html>

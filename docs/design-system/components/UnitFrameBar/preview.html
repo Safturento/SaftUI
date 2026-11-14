@@ -1,0 +1,33 @@
+<!-- @dsCard group="In world" height=230 width=760 subtitle="301 x 34 frames: class and reaction health with name and value, an offline unit, out of range, and the player's separate power bar" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>UnitFrameBar</title>
+<style>
+  .uf { width: var(--unitframe-width); height: var(--unitframe-height); position: relative; }
+  .uf .fill { position: absolute; left: var(--line-width); top: var(--line-width); bottom: var(--line-width); width: calc(var(--hp) - var(--line-width) * 2); }
+  .uf .name, .uf .value { position: absolute; top: 50%; transform: translateY(calc(-50% + var(--line-width))); color: var(--white); }
+  .uf .name { left: var(--bar-text-inset); }
+  .uf .value { right: var(--bar-text-inset); }
+  .uf.is-far { opacity: var(--alpha-out-of-range); }
+  .uf.power { width: calc(var(--unitframe-width) - var(--line-width) * 2); height: calc(var(--unitframe-height) - var(--panel-pad)); position: relative; }
+  .uf.power .value { left: 0; right: 0; text-align: center; }
+  .cols { display: grid; grid-template-columns: auto auto; gap: var(--section-margin) var(--window-pad); }
+</style>
+</head>
+<body class="sui-world">
+<div class="sui-stage cols">
+  <div class="sui-stack"><div class="caption sui-state">Class colour</div>
+    <div class="uf sui-frame is-see" style="--hp: 100%"><div class="fill" style="background: var(--class-mage)"></div><span class="name normal sui-outline">Player</span><span class="value normal sui-outline">1340</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Reaction colour, damaged</div>
+    <div class="uf sui-frame is-see" style="--hp: 62%"><div class="fill" style="background: var(--reaction-hostile)"></div><span class="name normal sui-outline">Target</span><span class="value normal sui-outline">820</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Offline</div>
+    <div class="uf sui-frame is-see" style="--hp: 100%"><div class="fill" style="background: var(--status-offline)"></div><span class="name normal sui-outline">Party member</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Out of range</div>
+    <div class="uf sui-frame is-see is-far" style="--hp: 80%"><div class="fill" style="background: var(--class-paladin)"></div><span class="name normal sui-outline">Party member</span><span class="value normal sui-outline">1105</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Power, 299 x 20</div>
+    <div class="uf power sui-frame is-see" style="--hp: 70%"><div class="fill" style="background: var(--power-mana)"></div><span class="value normal sui-outline">2063</span></div></div>
+</div>
+</body>
+</html>

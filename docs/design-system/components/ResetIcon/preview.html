@@ -1,0 +1,33 @@
+<!-- @dsCard group="Shared settings" height=250 width=830 subtitle="Beside a changed control (the rule), absent on an unchanged one, in a shared row's hover line, and under the mouse with its tooltip" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ResetIcon</title>
+<style>
+  .reset { display: flex; align-items: center; margin-right: calc(var(--reset-gap) - var(--label-gap)); }
+  .reset.is-hover .sui-ic { stroke: var(--white); }
+  .tipcell { position: relative; }
+  .tip { position: absolute; right: var(--panel-pad); top: calc(var(--row-height) - var(--title-gap)); z-index: 2; width: calc(var(--control-width) * 1.5); }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-section">
+    <div class="section-title">Text</div>
+    <div class="sui-panel">
+      <div class="sui-line">
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Red</div></div><div class="reset"><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div class="sui-colorbar sui-outline field" style="--swatch: var(--threat-bad)">#FF1A1A</div></div>
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Orange</div></div><div class="sui-colorbar sui-outline field" style="--swatch: var(--text-orange)">#DC9664</div></div>
+      </div>
+      <div class="sui-line">
+        <div class="sui-cell is-own"><div class="sui-lab"><div class="sui-label label">Spacing</div><div class="sui-hover small"><span class="is-own-word">Own</span><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 30%"><i></i><b></b></div><div class="sui-box sui-value field">6</div></div></div>
+        <div class="sui-cell tipcell"><div class="sui-lab"><div class="sui-label label">Green</div></div><div class="reset is-hover"><svg class="sui-ic sui-ic-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div class="sui-colorbar sui-outline field" style="--swatch: var(--class-hunter)">#86A35F</div>
+          <div class="tip sui-tooltip sui-frame normal sui-outline"><span>Reset</span><span class="sui-gold">Green goes back to its default, #3CF03C.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!-- @dsCard group="In world" height=160 width=760 subtitle="Unit frame auras (24, 7 apart) with a stack count; buffs (30, 5 apart) with durations under them and a temporary enchant; icon art stands in as flat fills" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AuraButton</title>
+<style>
+  .auras { display: flex; gap: var(--aura-spacing); }
+  .buffs { display: flex; gap: var(--buff-spacing-x); }
+  .aura { width: var(--aura-size); height: var(--aura-size); }
+  .buff { width: var(--small-button); height: var(--small-button); }
+  .aura .ct, .buff .ct { right: var(--line-width); bottom: calc(var(--line-width) * 2); }
+  .buff .dur { position: absolute; top: calc(100% + var(--hotkey-inset)); left: 0; right: 0; text-align: center; color: var(--white); line-height: 1; }
+  .buff.is-enchant { border-color: var(--temp-enchant); }
+  .gap { height: var(--buff-spacing-y); }
+</style>
+</head>
+<body class="sui-world">
+<div class="sui-stage">
+  <div class="sui-stack"><div class="caption sui-state">Unit frame auras</div>
+    <div class="auras">
+      <div class="aura sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-priest)"></div></div>
+      <div class="aura sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-paladin)"></div><span class="sui-pixeltext pixel sui-outline ct">3</span></div>
+      <div class="aura sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warlock)"></div></div>
+      <div class="aura sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-mage)"></div></div>
+    </div>
+  </div>
+  <div class="sui-stack"><div class="caption sui-state">Buffs</div>
+    <div class="buffs">
+      <div class="buff sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-druid)"></div><span class="dur pixel sui-outline">4m</span></div>
+      <div class="buff sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-monk)"></div><span class="sui-pixeltext pixel sui-outline ct">2</span><span class="dur pixel sui-outline">12s</span></div>
+      <div class="buff sui-iconbtn sui-frame is-enchant"><div class="sui-art" style="background: var(--class-shaman)"></div><span class="dur pixel sui-outline">58m</span></div>
+    </div>
+    <div class="gap"></div>
+  </div>
+</div>
+</body>
+</html>

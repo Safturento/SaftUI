@@ -1,0 +1,91 @@
+<!-- @dsCard group="Window" height=500 width=1040 subtitle="The /sui window under Thick: sidebar, title, tabs, picker, a section, footer" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OptionsWindow</title>
+<style>
+  .win { width: var(--window-width); display: flex; position: relative; }
+  .side { width: var(--sidebar-width); background: var(--sidebar); border-right: var(--line-width) solid var(--line); display: flex; flex-direction: column; flex: none; }
+  .brandbox { height: var(--brand-height); padding: var(--brand-pad) 0 0 var(--brand-pad); border-bottom: var(--line-width) solid var(--line); }
+  .brandbox .small { color: var(--text-grey); }
+  .actions { padding: var(--action-pad) var(--button-gap); display: flex; flex-direction: column; gap: var(--search-gap); border-bottom: var(--line-width) solid var(--line); }
+  .actions .search { width: 100%; color: var(--text-grey); }
+  .actions .two { display: flex; gap: var(--action-gap); }
+  .actions .two .sui-btn { flex: 1; min-width: 0; height: var(--field-height); padding: 0; }
+  .nav { padding-top: var(--nav-group); flex: 1; }
+  .nav .entry { height: var(--nav-item); display: flex; align-items: center; padding-left: calc(var(--brand-pad) + var(--diff-gap)); position: relative; }
+  .nav .entry.special { padding-left: var(--brand-pad); }
+  .nav .entry.on { background: var(--accent-fill); }
+  .nav .entry.on::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--mark-width); background: var(--accent); }
+  .nav .entry.hover { background: var(--sidebar-hover); }
+  .nav .group { height: var(--nav-group); padding: var(--button-gap) 0 0 var(--brand-pad); color: var(--text-grey); }
+  .nav .gap { height: var(--section-margin); }
+  .profile { height: var(--footer-height); display: flex; align-items: center; padding-left: var(--brand-pad); color: var(--text-grey); }
+  .profile b { color: var(--text); font-weight: inherit; }
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .head { padding: var(--head-top) var(--window-pad) 0; height: var(--tabs-top); }
+  .head .desc { color: var(--text-grey); margin-top: var(--note-gap); }
+  .tabs { display: flex; gap: var(--tab-gap); margin: 0 var(--window-pad); border-bottom: var(--line-width) solid var(--line); height: var(--tab-height); align-items: flex-start; }
+  .tabs span { color: var(--text-grey); height: var(--tab-height); border-bottom: var(--mark-width) solid transparent; }
+  .tabs span.on { color: var(--text); border-bottom-color: var(--accent); }
+  .picker { margin: var(--picker-gap) var(--window-pad) 0; }
+  .body { padding: var(--section-pad) var(--window-pad) 0; flex: 1; }
+  .foot { height: var(--footer-height); border-top: var(--line-width) solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--window-pad); }
+  .closex { position: absolute; right: var(--window-close-x); top: var(--window-close-y); width: var(--close-size); height: var(--close-size); display: flex; align-items: center; justify-content: center; }
+  .grip { position: absolute; right: var(--line-width); bottom: var(--line-width); width: 0; height: 0; border-left: var(--pos-nudge) solid transparent; border-bottom: var(--pos-nudge) solid var(--kit-edge); }
+</style>
+</head>
+<body>
+<div class="win sui-frame">
+  <div class="side">
+    <div class="brandbox"><div class="brand">SaftUI</div><div class="small">Options</div></div>
+    <div class="actions">
+      <div class="sui-box sui-field field search">Search settings...</div>
+      <div class="two"><div class="sui-box is-raised sui-btn field"><span>Edit mode</span></div><div class="sui-box is-raised sui-btn field"><span>Keybind mode</span></div></div>
+    </div>
+    <div class="nav">
+      <div class="entry special label">Global Settings</div>
+      <div class="entry special label">Profiles</div>
+      <div class="group group-title">Frames</div>
+      <div class="entry label on">Action Bars</div>
+      <div class="entry label hover">Bags</div>
+      <div class="entry label">Chat</div>
+      <div class="entry label">Unitframes</div>
+      <div class="group group-title">Combat</div>
+      <div class="entry label">Auras</div>
+      <div class="entry label">Totem Bar</div>
+    </div>
+    <div class="profile small">Profile:&nbsp;<b>Default</b></div>
+  </div>
+  <div class="main">
+    <div class="head">
+      <div class="page-title">Action Bars</div>
+    </div>
+    <div class="tabs tab"><span class="on">General</span><span>Text</span><span>Visibility</span></div>
+    <div class="picker sui-inline"><span class="field">Bar</span><div class="sui-box sui-field field">All bars<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div></div>
+    <div class="body">
+      <div class="sui-section">
+        <div class="section-title">Layout</div>
+        <div class="sui-panel">
+          <div class="sui-line">
+            <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Buttons</div></div><div class="sui-range"><div class="sui-track" style="--p: 100%"><i></i><b></b></div><div class="sui-box sui-value field">12</div></div></div>
+            <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Buttons per row</div></div><div class="sui-range"><div class="sui-track" style="--p: 100%"><i></i><b></b></div><div class="sui-box sui-value field">12</div></div></div>
+          </div>
+          <div class="sui-line">
+            <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Button size</div></div><div class="sui-range"><div class="sui-track" style="--p: 50%"><i></i><b></b></div><div class="sui-box sui-value field">45</div></div></div>
+            <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">First button</div></div><div class="sui-box sui-field field">Top left<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="sui-box is-raised sui-btn field"><span>Reload UI</span></div>
+      <div class="sui-box is-raised sui-btn field"><span>Close</span></div>
+    </div>
+  </div>
+  <div class="closex sui-box"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+  <div class="grip"></div>
+</div>
+</body>
+</html>

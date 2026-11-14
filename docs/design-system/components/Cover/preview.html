@@ -1,0 +1,65 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SaftUI</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--kit-bg); color: var(--text); font-family: var(--font-agency); overflow: hidden; }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--kit-bg); }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .sq { rx: var(--radius); ry: var(--radius); }
+  .accent { fill: var(--accent); }
+  .edge { fill: var(--kit-edge); }
+  .own { fill: var(--own); }
+  .ink { fill: var(--text); }
+  .diff { fill: var(--diff); }
+  .cut { fill: var(--kit-bg); }
+  .slot { fill: none; stroke: var(--kit-edge); stroke-width: var(--line-width); }
+  .words { position: absolute; left: var(--window-pad); bottom: var(--window-pad); max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-colus); font-weight: 400; font-size: 104px; line-height: .92; color: var(--text); }
+  .tag { margin: var(--title-gap) 0 0 var(--line-width); font-size: 14px; line-height: 18px; color: var(--text-grey); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      accent 141x189 off the top (three by four buttons merged, the identity) · kit-edge 240x192 bleeding off the right and bottom · own 45x93 · text 93x45 · diff 45x45 once (it only ever means "differs") : about 30% of 960x288
+  arrangement an action bar grid: every block is whole buttons merged on one 48 pitch, like bars of buttons in the world
+  pattern     tiles cut by radius 0, from "flat, dark, 1px borders, square, whole pixels": empty slots as 1px kit-edge outlines on the free cells, and four slots cut from the grey block in the ground colour
+  scales      tile side action-button 45, gap button-spacing 3 (pitch 48), outline line-width 1, corners radius 0
+-->
+<rect class="accent sq" x="48" y="-48" width="141" height="237"/>
+<rect class="own sq" x="192" y="0" width="45" height="93"/>
+<rect class="ink sq" x="336" y="0" width="93" height="45"/>
+<rect class="diff sq" x="192" y="144" width="45" height="45"/>
+<rect class="edge sq" x="240" y="96" width="240" height="192"/>
+<rect class="cut sq" x="288" y="144" width="45" height="45"/>
+<rect class="cut sq" x="336" y="144" width="45" height="45"/>
+<rect class="cut sq" x="384" y="192" width="45" height="45"/>
+<rect class="cut sq" x="288" y="240" width="45" height="45"/>
+<rect class="slot" x="0.5" y="0.5" width="44" height="44"/>
+<rect class="slot" x="0.5" y="48.5" width="44" height="44"/>
+<rect class="slot" x="0.5" y="96.5" width="44" height="44"/>
+<rect class="slot" x="240.5" y="0.5" width="44" height="44"/>
+<rect class="slot" x="288.5" y="0.5" width="44" height="44"/>
+<rect class="slot" x="432.5" y="0.5" width="44" height="44"/>
+<rect class="slot" x="240.5" y="48.5" width="44" height="44"/>
+<rect class="slot" x="336.5" y="48.5" width="44" height="44"/>
+<rect class="slot" x="384.5" y="48.5" width="44" height="44"/>
+<rect class="slot" x="48.5" y="192.5" width="44" height="44"/>
+<rect class="slot" x="144.5" y="192.5" width="44" height="44"/>
+<rect class="slot" x="192.5" y="240.5" width="44" height="44"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">SaftUI</h1>
+<p class="tag">Flat, dark frames on whole pixels, with one blue.</p>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!-- @dsCard group="Window" height=270 subtitle="A row's tooltip, a disabled row's, and the diff tooltip, as the code draws them" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tooltip</title>
+<style>
+  .tip { width: calc(var(--menu-width) - var(--window-pad) * 3); }
+  .tip.wide { width: auto; }
+  .cols { display: grid; grid-template-columns: auto auto; column-gap: var(--section-margin); }
+  .cols span:nth-child(even) { color: var(--own); }
+</style>
+</head>
+<body>
+<div class="sui-stage sui-world">
+  <div class="sui-stack">
+    <div class="caption sui-state">Row</div>
+    <div class="sui-tooltip sui-frame is-see tip normal sui-outline">
+      <div>Buttons per row</div>
+      <div class="sui-gold">How many buttons sit on a line before the next line starts.</div>
+    </div>
+  </div>
+  <div class="sui-stack">
+    <div class="caption sui-state">Disabled row</div>
+    <div class="sui-tooltip sui-frame is-see tip normal sui-outline">
+      <div>How faded</div>
+      <div class="sui-gold">How see-through the bar is until the mouse is over it.</div>
+      <div class="sui-red">Only for Show: Faded until moused over.</div>
+    </div>
+  </div>
+  <div class="sui-stack">
+    <div class="caption sui-state">Diff icon</div>
+    <div class="sui-tooltip sui-frame is-see tip wide normal sui-outline">
+      <div>Spacing</div>
+      <div class="sui-gold">All bars: 3</div>
+      <div class="cols"><span class="sui-gold">Bar 2</span><span>2</span><span class="sui-gold">Bar 7</span><span>6</span><span class="sui-gold">Pet</span><span>4</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

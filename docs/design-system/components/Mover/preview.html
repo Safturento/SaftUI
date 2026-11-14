@@ -1,0 +1,35 @@
+<!-- @dsCard group="In world" height=250 width=760 subtitle="Edit mode over the grid: an idle mover, a selected one, overlapping movers with the picker list" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mover</title>
+<style>
+  .field-of-play { position: relative; height: calc(var(--grid-size) * 7); margin: var(--section-pad) var(--window-pad); background: var(--world); overflow: hidden; }
+  .grid { position: absolute; inset: 0; }
+  .grid i { position: absolute; background: var(--grid-line); }
+  .grid i.h { left: 0; right: 0; height: var(--line-width); }
+  .grid i.v { top: 0; bottom: 0; width: var(--line-width); }
+  .grid i.centre { background: var(--grid-centre); }
+  .mover { position: absolute; border: var(--line-width) solid var(--white); background: var(--mover-fill); display: flex; align-items: center; justify-content: center; color: var(--white); }
+  .mover.is-selected { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+  .mover.is-dim { opacity: var(--alpha-disabled); }
+  .picker { position: absolute; padding: var(--title-gap); color: var(--white); line-height: 1.4; }
+  .picker .cur { color: var(--accent); }
+  .picker .hint { color: var(--text-grey); }
+</style>
+</head>
+<body>
+<div class="field-of-play">
+  <div class="grid">
+    <i class="h" style="top: calc(var(--grid-size) * 1)"></i><i class="h" style="top: calc(var(--grid-size) * 2)"></i><i class="h" style="top: calc(var(--grid-size) * 3)"></i><i class="h centre" style="top: calc(var(--grid-size) * 4)"></i><i class="h" style="top: calc(var(--grid-size) * 5)"></i><i class="h" style="top: calc(var(--grid-size) * 6)"></i>
+    <i class="v" style="left: calc(var(--grid-size) * 2)"></i><i class="v" style="left: calc(var(--grid-size) * 4)"></i><i class="v" style="left: calc(var(--grid-size) * 6)"></i><i class="v" style="left: calc(var(--grid-size) * 8)"></i><i class="v" style="left: calc(var(--grid-size) * 10)"></i><i class="v centre" style="left: calc(var(--grid-size) * 11)"></i><i class="v" style="left: calc(var(--grid-size) * 12)"></i><i class="v" style="left: calc(var(--grid-size) * 14)"></i><i class="v" style="left: calc(var(--grid-size) * 16)"></i><i class="v" style="left: calc(var(--grid-size) * 18)"></i><i class="v" style="left: calc(var(--grid-size) * 20)"></i>
+  </div>
+  <div class="mover pixel sui-outline" style="left: var(--grid-size); top: var(--grid-size); width: var(--unitframe-width); height: var(--unitframe-height)">Player</div>
+  <div class="mover is-selected pixel sui-outline" style="left: var(--grid-size); top: calc(var(--grid-size) * 3); width: var(--unitframe-width); height: var(--unitframe-height)">Target</div>
+  <div class="mover is-dim pixel sui-outline" style="left: calc(var(--grid-size) * 13); top: calc(var(--grid-size) * 1); width: calc(var(--small-button) * 10 + var(--button-spacing) * 9); height: var(--small-button)">Pet bar</div>
+  <div class="mover pixel sui-outline" style="left: calc(var(--grid-size) * 14); top: calc(var(--grid-size) * 1 + var(--button-spacing) * 4); width: calc(var(--small-button) * 4 + var(--button-spacing) * 3); height: var(--small-button)">Totem Bar</div>
+  <div class="picker sui-frame pixel sui-outline" style="left: calc(var(--grid-size) * 17); top: calc(var(--grid-size) * 2 + var(--title-gap))"><div>Pet bar</div><div class="cur">&gt; Totem Bar</div><div class="hint">Alt: next</div></div>
+</div>
+</body>
+</html>

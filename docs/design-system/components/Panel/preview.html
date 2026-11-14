@@ -1,0 +1,52 @@
+<!-- @dsCard group="In world" height=420 width=760 subtitle="The backdrop kinds under Thick, then Thin: a window with its header strip, a panel, a bar" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Panel</title>
+<style>
+  .theme { display: flex; flex-direction: column; gap: var(--section-margin); padding: var(--section-pad) var(--window-pad); }
+  .theme > .caption { color: var(--text); }
+  .theme + .theme { border-top: var(--line-width) solid var(--line); }
+  .row { display: flex; gap: var(--window-pad); align-items: flex-start; }
+  .win { width: calc(var(--unitframe-width) - var(--slot-width)); }
+  .win .header { height: var(--header-height); display: flex; align-items: center; justify-content: center; position: relative; }
+  .win .header .closex { position: absolute; right: var(--close-inset); top: 50%; margin-top: calc(var(--close-size) / -2); width: var(--close-size); height: var(--close-size); display: flex; align-items: center; justify-content: center; }
+  .win .content { height: calc(var(--slot-height) * 2); }
+  .panel { width: var(--unitframe-width); height: var(--unitframe-height); padding: 0 var(--frame-padding); display: flex; align-items: center; }
+  .bar { width: var(--xp-width); height: var(--xp-height); position: relative; }
+  .bar i { position: absolute; left: var(--line-width); top: var(--line-width); bottom: var(--line-width); width: 60%; background: var(--xp-normal); }
+  .stack { display: flex; flex-direction: column; gap: var(--section-margin); }
+</style>
+</head>
+<body class="sui-world">
+<div>
+  <div class="theme" data-theme="thick">
+    <div class="caption">Thick</div>
+    <div class="row">
+      <div class="win sui-frame is-see">
+        <div class="header sui-strip normal sui-outline">Bag<div class="closex sui-box"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
+        <div class="content"></div>
+      </div>
+      <div class="stack">
+        <div class="panel sui-frame is-see normal sui-outline">Panel</div>
+        <div class="bar sui-frame is-see"><i></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="theme" data-theme="thin">
+    <div class="caption">Thin</div>
+    <div class="row">
+      <div class="win sui-frame is-see">
+        <div class="header sui-strip normal sui-outline">Bag<div class="closex sui-box"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div></div>
+        <div class="content"></div>
+      </div>
+      <div class="stack">
+        <div class="panel sui-frame is-see normal sui-outline">Panel</div>
+        <div class="bar sui-frame is-see"><i></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
