@@ -339,6 +339,7 @@ end
 -- the keys we use propagates, so other keybinds keep working.
 local keys = CreateFrame('Frame', nil, UIParent)
 keys:Hide()
+EM.keyCatcher = keys -- for tests
 
 keys:SetScript('OnKeyDown', function(self, key)
 	-- A focused edit box (e.g. a settings window field) gets typing, not us.

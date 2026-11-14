@@ -160,7 +160,7 @@ test('hidden overlays are no snap target', function()
 	check(gone.overlay:IsShown(), 'Show hidden shows it')
 	xl = EM:GetSnapLines(me)
 	check(has(xl, 798) and has(xl, 850) and has(xl, 902), 'its outline lines are there')
-	settings.show_hidden = false
+	settings.show_hidden = true
 	EM.movers.snap_me, EM.movers.snap_gone = nil, nil
 	settings.snap_frames = false
 end)

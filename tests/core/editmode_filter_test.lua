@@ -182,7 +182,10 @@ test('the filter narrows inside the choice, never brings one back, and Enter sel
 	local t = add_mover('t', { module = 'Unit frames', label = 'Target', x = -300 })
 	local t2 = add_mover('t2', { module = 'Chat', label = 'Target 2', x = 300 })
 	local b = add_mover('b', { module = 'Chat', label = 'Bar 2', y = 200 })
-	local b1 = add_mover('b1', { module = 'Chat', label = 'bar 1', y = -200 })
+	-- Under the bar: its top is UIParent's top. Another named bar, in an unticked module, sorts first.
+	local b1 = add_mover('b1', { module = 'Chat', label = 'bar 1', y = UIParent:GetHeight() / 2 - 25 })
+	local b0 = add_mover('b0', { module = 'Hid', label = 'bar 0', y = -200 })
+	EM:SetModuleShown('Hid', false)
 	EM:Activate()
 	EM:SetModuleShown('Chat', false)
 	EM:SetFilter('TAR')
@@ -201,15 +204,15 @@ test('the filter narrows inside the choice, never brings one back, and Enter sel
 	local box = frame_of('filter')
 	box:SetText('bar')
 	eq(EM.filterText, 'bar', 'typing sets the filter')
-	check(not t.overlay:IsShown() and b.overlay:IsShown() and b1.overlay:IsShown(), 'only the bars show')
+	check(not t.overlay:IsShown() and b.overlay:IsShown() and b1.overlay:IsShown() and not b0.overlay:IsShown(), 'only the bars show')
 	box:SetFocus()
 	stub.fire_script(box, 'OnEnterPressed')
-	eq(EM.selected, b1, 'Enter selects the first match by name, ignoring case')
+	eq(EM.selected, b1, 'Enter selects the first match that is shown, by name, ignoring case (not bar 0 in an unticked module)')
 	check(GetCurrentKeyBoardFocus() == nil, 'and drops the focus')
-	-- The arrow keys reach the nudge: a mover with its top at the screen's top.
+	-- The arrow keys reach the nudge through edit mode's key catcher.
 	local x0 = b1.def.getPosition().x_off
-	EM:Nudge(b1, 'RIGHT', false)
-	eq(b1.def.getPosition().x_off, x0 + 1, 'the arrow nudges it')
+	stub.fire_script(EM.keyCatcher, 'OnKeyDown', 'RIGHT')
+	eq(b1.def.getPosition().x_off, x0 + 1, 'the arrow nudges it, with no click on the mover')
 	-- Esc clears.
 	box:SetFocus()
 	stub.fire_script(box, 'OnEscapePressed')
@@ -320,7 +323,17 @@ test('a frame that comes on screen in edit mode gets its mover within half a sec
 	local fired = 0
 	EM:On('ShownChanged', function() fired = fired + 1 end)
 	stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6)
-	eq(fired, 1, 'ShownChanged fires')
+	eq(fired, 0, 'ShownChanged is silent while nothing changed')
+	state.hidden = false
+	settings().show_hidden = true
+	stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6)
+	eq(fired, 1, 'ShownChanged fires once when a mover appears')
+	stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6)
+	eq(fired, 1, 'and not again')
+	local o = add_mover('o2', { x = 20 })
+	stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6)
+	check(o.overlaps and m.overlaps, 'a mover now overlaps it')
+	eq(fired, 2, 'a changed overlap state fires it')
 	EM:Deactivate()
 	check(not EM.shownFrame:IsShown(), 'the ticker stops with edit mode')
 	reset()
@@ -502,5 +515,128 @@ test("the Show group's pieces sit on whole pixels, under each look, at any scree
 			end
 		end
 	end
+	reset()
+end)
+
+------------------------------------------------------------------ the frames' own rects
+
+test('movers overlap by their frames own rects, more than a pixel: frames that touch or sit a few pixels apart keep their labels', function()
+	look('thick')
+	local p, pc = add_mover('p', { label = 'Bar 4', x = 0 })
+	local q, qc = add_mover('q', { label = 'Bar 5', x = 100 })
+	EM:Activate()
+	local function at(x)
+		qc.position.x_off = x
+		q.def.apply()
+		EM:UpdateShown()
+	end
+	for _, gap in ipairs({ 0, 1, 2, 3 }) do
+		at(100 + gap)
+		check(not p.overlaps and not q.overlaps, gap .. ' px apart under Thick: no overlap')
+		check(p.label:IsShown() and q.label:IsShown(), gap .. ' px apart: both labels show')
+	end
+	at(100 - 1e-4)
+	check(not p.overlaps and p.label:IsShown() and q.label:IsShown(), 'a read-back error of 1e-4 is not an overlap')
+	at(99)
+	check(not p.overlaps, 'overlapping by exactly 1 px: still not')
+	at(98)
+	check(p.overlaps and q.overlaps, 'by 2 px: overlapping')
+	check(not p.label:IsShown() and not q.label:IsShown(), 'both labels hidden')
+	EM:UpdateLabels(p)
+	check(p.label:IsShown() and not q.label:IsShown(), 'the hovered one shows')
+	look('thin')
+	at(101)
+	check(not p.overlaps, 'Thin: a pixel apart, no overlap')
+	reset()
+end)
+
+test('a mover being dragged keeps its label for the drag, and its overlay though its frame stops showing, until the drop', function()
+	local p = add_mover('p', { label = 'Bar 4', x = 0 })
+	local gone = false
+	local q = add_mover('q', { label = 'Bar 5', x = 30, isHidden = function() return gone end })
+	settings().show_hidden = false
+	EM:Activate()
+	check(not q.label:IsShown() and not p.label:IsShown(), 'overlapping: both hidden')
+	stub.cursor_x, stub.cursor_y = 500, 500
+	EM:StartDrag(q)
+	check(q.label:IsShown() and not p.label:IsShown(), 'dragged: its label shows at once')
+	EM:UpdateLabels(nil)
+	check(q.label:IsShown(), 'and stays through label updates')
+	gone = true
+	stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6)
+	check(q.overlay:IsShown(), 'its frame stopped showing: the ticker leaves its overlay')
+	EM:UpdateShown()
+	check(q.overlay:IsShown(), 'so does UpdateShown')
+	EM:StopDrag(q)
+	check(not q.overlay:IsShown(), 'after the drop the rule applies')
+	reset()
+end)
+
+------------------------------------------------------------------ guards, hint, tooltips, errors
+
+test('the filter box and the module face do nothing in combat; the hint hides while the box has focus', function()
+	local m = add_mover('barx', { label = 'Bar X' })
+	EM:Activate()
+	local box, face = frame_of('filter'), frame_of('modules')
+	box:SetText('bar')
+	stub.in_combat = true
+	stub.fire_script(box, 'OnEnterPressed')
+	eq(EM.selected, nil, 'Enter in combat selects nothing')
+	stub.click(face)
+	eq(W.ListOwner(), nil, 'the face opens no list in combat')
+	stub.in_combat = false
+	stub.click(face)
+	eq(W.ListOwner(), face, 'out of combat it does')
+	W.CloseList()
+	box:SetText('')
+	check(box.hint:IsShown(), 'empty and unfocused: the hint shows')
+	box:SetFocus()
+	check(not box.hint:IsShown(), 'focused: no hint')
+	box:ClearFocus()
+	check(box.hint:IsShown(), 'focus gone: the hint is back')
+	reset()
+end)
+
+test('one module reads All modules whatever its name; two with one ticked read that name', function()
+	add_mover('only', { module = 'Chat' })
+	eq(EM.ShowFaceText(EM:GetModules(), function() return true end), 'All modules', 'a single ticked module')
+	eq(EM.ShowFaceText(EM:GetModules(), function() return false end), 'Nothing', 'a single unticked one')
+	reset()
+end)
+
+test('the Show face and the filter have their tooltips; the hint stays inside the box', function()
+	EM:Activate()
+	local lines = {}
+	local realAdd = GameTooltip.AddLine
+	GameTooltip.AddLine = function(self, text, ...) lines[#lines + 1] = text; return realAdd(self, text, ...) end
+	local face, box = frame_of('modules'), frame_of('filter')
+	stub.fire_script(face, 'OnEnter', true)
+	eq(lines[1] .. '|' .. tostring(lines[2]), "Show|Which modules' movers edit mode shows.", 'the face')
+	stub.fire_script(face, 'OnLeave', true)
+	lines = {}
+	stub.fire_script(box, 'OnEnter', true)
+	eq(lines[1] .. '|' .. tostring(lines[2]),
+		'Filter movers|Shows only the movers whose name has this text. Enter selects the first one, Esc clears it.', 'the filter')
+	stub.fire_script(box, 'OnLeave', true)
+	check(not GameTooltip:IsShown(), 'and it goes')
+	GameTooltip.AddLine = realAdd
+	local right = false
+	for i = 1, box.hint:GetNumPoints() do
+		if box.hint:GetPoint(i) == 'RIGHT' then right = true end
+	end
+	check(right, "the hint is anchored at its right edge too: it is cut at the box's")
+	reset()
+end)
+
+test('a predicate that errors is reported once per mover for a session of edit mode, not every tick', function()
+	local m = add_mover('bad', { isHidden = function() error('boom') end })
+	take_errors()
+	EM:Activate()
+	for _ = 1, 5 do stub.fire_script(EM.shownFrame, 'OnUpdate', 0.6) end
+	eq(#take_errors(), 1, 'one report for the session')
+	check(m.overlay:IsShown(), 'its mover shows (the predicate counts as false)')
+	EM:Deactivate()
+	EM:Activate()
+	eq(#take_errors(), 1, 'a new session reports it again')
 	reset()
 end)

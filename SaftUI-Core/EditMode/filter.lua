@@ -22,13 +22,16 @@ local EM = st.EditModeFrames
 	  EM:UpdateShown()                every overlay shown or not by the rule; a
 	                                  selected mover that no longer shows is
 	                                  deselected; then the overlaps and the labels;
-	                                  then 'ShownChanged'
-	  EM.RectsOverlap(a, b)           rects { left, right, bottom, top } sharing
-	                                  more than an edge
-	  mover.overlaps                  the mover's outline overlaps another shown
-	                                  mover's
+	                                  then 'ShownChanged', only if an overlay, the
+	                                  selection or an overlap changed
+	  EM.RectsOverlap(a, b, tol)      rects { left, right, bottom, top } sharing
+	                                  more than an edge (more than tol on both axes)
+	  mover.overlaps                  the mover's frame rect overlaps another shown
+	                                  mover's by more than EM.OVERLAP_TOLERANCE (1),
+	                                  not the outlines, which reach outside the frame
 	  EM:UpdateLabels(hovered)        a mover's label shows when it doesn't overlap,
 	                                  or when it is hovered (the picker's top mover)
+	                                  or being dragged
 
 	What shows can change while edit mode is open (a target appears, a bag
 	opens, a pet is summoned), since the hidden check reads live frame state. So
@@ -153,41 +156,57 @@ end
 
 ------------------------------------------------------------------ overlaps and labels
 
--- Whether two rects { left, right, bottom, top } share more than an edge.
-function EM.RectsOverlap(a, b)
-	return a.left < b.right and b.left < a.right and a.bottom < b.top and b.bottom < a.top
+-- Whether two rects { left, right, bottom, top } share more than an edge, or
+-- more than tolerance (UIParent units, default 0) on both axes.
+function EM.RectsOverlap(a, b, tolerance)
+	tolerance = tolerance or 0
+	return a.left < b.right - tolerance and b.left < a.right - tolerance
+		and a.bottom < b.top - tolerance and b.bottom < a.top - tolerance
 end
 
-local function OutlineRect(mover)
-	local l, r, b, t = EM.GetOutlineRect(mover)
+-- Two movers overlap when their frames' own rects share more than a pixel on
+-- both axes. Not the outlines, which reach outside the frame (2 px under
+-- Thick): frames that touch or sit a few pixels apart don't have labels on top
+-- of each other, and a read-back error of a hair is no overlap.
+EM.OVERLAP_TOLERANCE = 1
+
+local function FrameRect(mover)
+	local l, r, b, t = EM.GetRectInUI(mover.def.frame)
 	if l then return { left = l, right = r, bottom = b, top = t } end
 end
 
--- Sets mover.overlaps for every shown mover: its outline overlaps another
--- shown mover's. A mover whose rect can't be read overlaps nothing.
+-- Sets mover.overlaps for every shown mover: its frame overlaps another shown
+-- mover's (EM.OVERLAP_TOLERANCE). A mover whose rect can't be read (a secret
+-- edge) overlaps nothing. Returns whether any mover's state changed.
 function EM:UpdateOverlaps()
-	local rects = {}
+	local rects, before = {}, {}
 	for _, mover in pairs(self.movers) do
+		before[mover] = mover.overlaps or false
 		mover.overlaps = false
-		if mover.overlay:IsShown() then rects[mover] = OutlineRect(mover) end
+		if mover.overlay:IsShown() then rects[mover] = FrameRect(mover) end
 	end
 	for a, ra in pairs(rects) do
 		for b, rb in pairs(rects) do
-			if a ~= b and EM.RectsOverlap(ra, rb) then
+			if a ~= b and EM.RectsOverlap(ra, rb, EM.OVERLAP_TOLERANCE) then
 				a.overlaps = true
 				break
 			end
 		end
 	end
+	for mover, was in pairs(before) do
+		if mover.overlaps ~= was then return true end
+	end
+	return false
 end
 
 -- Each shown mover's label shows unless it overlaps another shown mover, and
--- then only while it is hovered: the top mover under the cursor (picker.lua).
+-- then only while it is hovered: the top mover under the cursor (picker.lua),
+-- or being dragged (the mouse is on it for the whole drag).
 function EM:UpdateLabels(hovered)
 	self.hovered = hovered
 	for _, mover in pairs(self.movers) do
 		if mover.overlay:IsShown() then
-			mover.label:SetShown(not mover.overlaps or mover == hovered)
+			mover.label:SetShown(not mover.overlaps or mover == hovered or mover.drag ~= nil)
 		end
 	end
 end
@@ -195,18 +214,29 @@ end
 ------------------------------------------------------------------ showing
 
 -- Every overlay shown or not by the rule while edit mode is on. A selected
--- mover that doesn't show is deselected, so its settings, label and selection
--- go with it. A mover being dragged stays until its drop.
+-- mover that doesn't show is deselected, so its label and selection go with
+-- it (/sui stays where it is). A mover being dragged stays shown, with its
+-- label, until its drop; then the rule applies.
+-- 'ShownChanged' fires only when an overlay was shown or hidden, a selection
+-- was dropped, or a mover's overlap state changed: the ticker runs this twice
+-- a second, and a listener rebuilds on it.
 function EM:UpdateShown()
 	local active = self.active
+	local changed = false
 	for _, mover in pairs(self.movers) do
 		local shown = active and (mover.drag ~= nil or self:IsMoverShown(mover)) or false
-		if mover.overlay:IsShown() ~= shown then mover.overlay:SetShown(shown) end
+		if mover.overlay:IsShown() ~= shown then
+			mover.overlay:SetShown(shown)
+			changed = true
+		end
 	end
-	if self.selected and not self.selected.overlay:IsShown() then self:Select(nil) end
-	self:UpdateOverlaps()
+	if self.selected and not self.selected.overlay:IsShown() then
+		self:Select(nil)
+		changed = true
+	end
+	if self:UpdateOverlaps() then changed = true end
 	self:UpdateLabels(self.hovered)
-	self:Fire('ShownChanged')
+	if changed then self:Fire('ShownChanged') end
 end
 
 -- A mover moved: its overlaps and everyone's labels follow.
@@ -214,6 +244,16 @@ EM:On('PositionChanged', function()
 	if not EM.active then return end
 	EM:UpdateOverlaps()
 	EM:UpdateLabels(EM.hovered)
+end)
+
+-- A drag keeps its label (UpdateLabels); its drop applies the rule to a mover
+-- whose frame stopped showing meanwhile.
+EM:On('DragStarted', function()
+	if EM.active then EM:UpdateLabels(EM.hovered) end
+end)
+
+EM:On('DragStopped', function()
+	if EM.active then EM:UpdateShown() end
 end)
 
 EM:On('SettingsChanged', function()

@@ -72,6 +72,7 @@ end
 local function Modules(bar)
 	local face = W.SelectFace(bar, 150, nil)
 	face.onClick = Guard(function() OpenModules(face) end)
+	face.tip = function() return 'Show', { "Which modules' movers edit mode shows." } end
 	return {
 		key = 'modules', frame = face,
 		Lay = function(_, stage, floating)
@@ -104,8 +105,15 @@ local function Filter(bar)
 	local function ShowHint()
 		box.hint:SetShown(box:GetText() == '' and not box:HasFocus())
 	end
-	box:SetScript('OnEnter', function(self) W.Edge(self, true) end)
-	box:SetScript('OnLeave', function(self) W.Edge(self, self:HasFocus()) end)
+	box:SetScript('OnEnter', function(self)
+		W.Edge(self, true)
+		W.ShowTip(self, 'Filter movers',
+			{ 'Shows only the movers whose name has this text. Enter selects the first one, Esc clears it.' })
+	end)
+	box:SetScript('OnLeave', function(self)
+		W.Edge(self, self:HasFocus())
+		W.HideTip(self)
+	end)
 	box:SetScript('OnEditFocusGained', function(self)
 		W.Edge(self, true)
 		ShowHint()
@@ -152,6 +160,7 @@ local function Filter(bar)
 			box:SetTextInsets(left, TEXT_RIGHT, 0, 0)
 			box.hint:ClearAllPoints()
 			box.hint:SetPoint('LEFT', box, 'LEFT', left, 0)
+			box.hint:SetPoint('RIGHT', box, 'RIGHT', -TEXT_RIGHT, 0) -- cut at the box's edge in a narrow stage
 		end,
 		Refresh = ShowHint,
 	}

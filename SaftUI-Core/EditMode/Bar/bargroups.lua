@@ -13,6 +13,9 @@ local W = st.OptionsWidgets
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
 	says nothing, so each has one.
 
+	It also exports EM.BarGuard (the click guard) and EM.BarToggle (an icon
+	toggle of a setting) for barshow.lua's controls (show, filter).
+
 	A control's click is set as control.onClick, never SetScript('OnClick'):
 	the kit's controls guard a disabled one in their own script
 	(optionscontrols.lua). Every click, and the number box's set, goes through
