@@ -6,7 +6,16 @@ local generators = st.Config.generators
 -- Every tab but General is disabled while SaftUI's tracker is off for the
 -- session (its switch off, or another tracker addon loaded), since there is
 -- nothing for it to change until it's on and the game reloaded.
-TR.OFF_DESC = "Turn on SaftUI's tracker (General) and reload."
+function TR.TrackedByText(label)
+	return ("Quests are tracked by %s. Turn it off to use SaftUI's."):format(label)
+end
+
+-- Why a tab is off: another tracker addon is loaded, else the switch.
+function TR.OffDesc()
+	local addon = TR:TrackerAddon()
+	if addon then return TR.TrackedByText(addon) end
+	return "Turn on SaftUI's tracker (General) and reload."
+end
 
 function TR.TabOff() return not TR:IsOn() end
 
@@ -18,7 +27,7 @@ function TR.Tab(order, name, args)
 		name = name,
 		type = 'group',
 		disabled = TR.TabOff,
-		disabledDesc = TR.OFF_DESC,
+		disabledDesc = TR.OffDesc,
 		args = args,
 	}
 end
@@ -39,11 +48,16 @@ function TR:GetConfigTable()
 				"Draws your quests in SaftUI's own tracker, grouped by zone, in place of Blizzard's objective tracker. Changes after a reload."),
 		},
 	}
-	general.args.enable.default = TR.SettingDefault(nil, 'enable')
-	general.args.enable.set = function(_, value)
-		TR.config.enable = value
+	-- The switch is read once, so saving it, by the box or by its reset,
+	-- asks for a reload.
+	local function Save(value)
+		TR:SwitchSaved(value)
 		st.OptionsWidgets.Confirm("SaftUI's tracker changes after a reload. Reload now?", function() ReloadUI() end)
 	end
+	local default = TR.SettingDefault(nil, 'enable')
+	default.reset = function() Save(default.value()) end
+	general.args.enable.default = default
+	general.args.enable.set = function(_, value) Save(value) end
 
 	local page = {
 		name = 'Tracker',
@@ -62,7 +76,7 @@ function TR:GetConfigTable()
 		page.disabled = function() return TR:TrackerAddon() ~= nil end
 		page.args.tracked_by = {
 			order = 0,
-			name = ('Quests are tracked by %s. Turn it off to use SaftUI\'s.'):format(addon),
+			name = TR.TrackedByText(addon),
 			type = 'description',
 			-- Read at full strength while everything under it is dimmed.
 			disabled = false,

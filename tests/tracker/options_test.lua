@@ -46,7 +46,7 @@ test('the page: Tracker under Info, its tabs in order, General first with the sw
 			seen = seen + 1
 			eq(tab.order, orders[key], key .. "'s order")
 			eq(tab.disabled(), true, key .. ' is disabled while off')
-			eq(tab.disabledDesc, "Turn on SaftUI's tracker (General) and reload.", key .. "'s disabledDesc")
+			eq(tab.disabledDesc(), "Turn on SaftUI's tracker (General) and reload.", key .. "'s disabledDesc")
 		end
 	end
 	local tab = TR.Tab(2, 'Quests', {})
@@ -71,8 +71,9 @@ test('every option has a desc and no width; every value option has a default tha
 			values = values + 1
 			check(type(option.default) == 'table', where .. ' has a default')
 			local key = path[#path]
-			-- General's keys sit under no group.
-			local group = path[#path - 1] ~= 'general' and path[#path - 1] or nil
+			-- General's keys sit under no group; any other tab is the group, however
+			-- deep the option is nested in it.
+			local group = path[1] ~= 'general' and path[1] or nil
 			local default = st.defaults.tracker
 			if group then default = default[group] end
 			eq(option.default.value(), default[key], where .. ' default value')

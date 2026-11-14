@@ -62,7 +62,7 @@ test('the TOC: both clients, Core required, Misc first, every listed file exists
 	check(xml, 'Bindings.xml is there')
 	check(xml:find('name="CLICK SaftUITrackerNearestItem:LeftButton"', 1, true), 'the CLICK binding')
 	check(xml:find('header="SAFTUI"', 1, true), 'under the SAFTUI header')
-	check(xml:find('category="ADDONS"', 1, true), 'in the ADDONS category')
+	check(xml:find('category="BINDING_HEADER_SAFTUI"', 1, true), "in SaftUI's own category: the game titles a section by _G[category]")
 
 	local _, TR = TW.world({})
 	eq(BINDING_HEADER_SAFTUI, 'SaftUI', 'the header string')
@@ -72,8 +72,14 @@ end)
 
 test('off by default: enabling builds no frame, hooks nothing, registers no event or mover', function()
 	for _, client in ipairs({ 'forever', 'retail' }) do
-		local st, TR = TW.world({ client = client, misc = { skinning = true, skin = true, otp = true }, blizzard = true })
+		local before, timers
+		local st, TR = TW.world({ client = client, misc = { skinning = true, skin = true, otp = true }, blizzard = true,
+			enabling = function() before, timers = TW.snapshot(ObjectiveTrackerFrame), #stub.timers end })
 		local where = client .. ': '
+		eq(TW.snapshot(ObjectiveTrackerFrame), before, where .. "Blizzard's tracker: points, shown, parent, alpha and scripts as before")
+		eq(TW.counts.scripts, 0, where .. 'no script set')
+		eq(TW.counts.timers, 0, where .. 'no timer')
+		eq(#stub.timers, timers, where .. 'no timer pending')
 		eq(st.config.profile.tracker.enable, false, where .. 'the switch defaults off')
 		eq(TW.counts.frames, 0, where .. 'no frame')
 		eq(TW.counts.hooks, 0, where .. 'no hook')
@@ -188,4 +194,134 @@ test('CharData: per character, made on first use', function()
 	eq(st.config.char.tracker, data, 'kept in st.config.char.tracker')
 	data.zones.Elwynn = true
 	eq(TR:CharData().zones.Elwynn, true, 'the same table')
+end)
+
+test("the world loads as the game does: the Tracker module exists when Misc's tracker mover enables, with the switch and combat already set", function()
+	local seen
+	local st = TW.world({
+		on = true, combat = true, misc = { skinning = true, skin = true, otp = true }, blizzard = true,
+		before = function(st)
+			local OTP = st:GetModule('ObjectiveTracker')
+			local OnEnable = OTP.OnEnable
+			OTP.OnEnable = function(self, ...)
+				local TR = st:GetModule('Tracker', true)
+				seen = {
+					module = TR ~= nil, bound = TR and TR.config ~= nil,
+					config = st.config ~= nil, enable = st.config and st.config.profile.tracker and st.config.profile.tracker.enable,
+					combat = stub.in_combat,
+				}
+				-- Misc asks before TR:OnEnable has run (Ruling 5).
+				seen.answer = TR and TR:IsOn()
+				return OnEnable(self, ...)
+			end
+		end,
+	})
+	check(seen, "Misc's mover enabled")
+	eq(seen.module, true, 'the Tracker module exists')
+	eq(seen.bound, false, 'its OnEnable has not run')
+	eq(seen.config, true, 'st.config exists by then')
+	eq(seen.enable, true, 'opts.on is applied before any module enables')
+	eq(seen.combat, true, 'opts.combat too')
+	eq(seen.answer, true, 'IsOn answers before OnEnable, and the same after')
+	eq(st:GetModule('Tracker'):IsOn(), true)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the files load before the profile exists: a file-scope read of st.config fails, as at login', function()
+	local seen
+	TW.world({ before = function(st) seen = function() return st.config end end })
+	check(seen, 'ran')
+	-- A tracker file that reads the profile while it loads errors in the world.
+	local real = read_saftui_source
+	local seen_config
+	TW.world({ before = function(st)
+		local NewModule = st.NewModule
+		st.NewModule = function(self, name, ...)
+			if name == 'Tracker' then seen_config = st.config end
+			return NewModule(self, name, ...)
+		end
+	end })
+	eq(seen_config, nil, "st.config isn't there while init.lua loads")
+end)
+
+test('the TOC reader fails loudly on a line it does not understand', function()
+	local real = read_saftui_source
+	read_saftui_source = function(path)
+		if path == 'SaftUI-Tracker/SaftUI-Tracker.toc' then return '## Interface: 1\n\nconfig.lua\nmodel.xml\n' end
+		return real(path)
+	end
+	local ok, err = pcall(TW.toc_files)
+	read_saftui_source = real
+	eq(ok, false, 'an XML line is not skipped')
+	check(tostring(err):find('model.xml', 1, true), 'it names the line')
+end)
+
+test('an installed addon that is not loaded does not stand the tracker down', function()
+	local _, TR = TW.world({ on = true, before = function() stub.installed_addons['!KalielsTracker'] = true end })
+	eq(TR:TrackerAddon(), nil, 'not loaded: no label')
+	eq(TR:IsOn(), true, 'on')
+	check(TR.built, 'built')
+end)
+
+test('answering No to the reload question: a later theme change does not say it again', function()
+	local st, TR = TW.world({})
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_options_widgets()
+	local W = st.OptionsWidgets
+	local enable = TR:GetConfigTable().args.general.args.enable
+	local lines = printed(function()
+		enable.set({}, true)
+		eq(W.ConfirmText(), "SaftUI's tracker changes after a reload. Reload now?", 'asked')
+		W.CancelConfirm()
+		TR:UpdateConfig() -- a theme change
+		TR:UpdateConfig()
+	end)
+	eq(chat_lines(lines), 0, 'no chat line for a value the player just set and declined')
+	-- A profile whose switch differs for another reason still says it, once.
+	st.config.profile.tracker.enable = false
+	eq(chat_lines(printed(function() TR:UpdateConfig() end)), 0, 'back to the session value: nothing')
+	-- Unticked at login-on: set false, decline, theme change.
+	local st2, TR2 = TW.world({ on = true })
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_options_widgets()
+	local enable2 = TR2:GetConfigTable().args.general.args.enable
+	local lines2 = printed(function()
+		enable2.set({}, false)
+		st2.OptionsWidgets.CancelConfirm()
+		TR2:UpdateConfig()
+	end)
+	eq(chat_lines(lines2), 0, 'the same unticking an on switch')
+end)
+
+test("the switch's reset asks about a reload as ticking does, and says nothing after", function()
+	local st, TR = TW.world({ on = true })
+	load_saftui('SaftUI-Core/Config/optionsmodel.lua')
+	load_options_widgets()
+	local enable = TR:GetConfigTable().args.general.args.enable
+	check(enable.default.differs(), 'on differs from the default')
+	local lines = printed(function()
+		enable.default.reset()
+		eq(st.config.profile.tracker.enable, false, 'reset to off')
+		eq(st.OptionsWidgets.ConfirmText(), "SaftUI's tracker changes after a reload. Reload now?", 'asked')
+		st.OptionsWidgets.CancelConfirm()
+		TR:UpdateConfig()
+	end)
+	eq(chat_lines(lines), 0, 'no chat line')
+end)
+
+test('standing down: the chat line and the tabs say it is for that addon', function()
+	local st, TR = TW.world({ on = true, addons = { '!KalielsTracker' } })
+	st.config.profile.tracker.enable = false
+	local lines = printed(function() TR:UpdateConfig() end)
+	eq(chat_lines(lines), 0, 'no "changes after a reload"')
+	local named = 0
+	for _, line in ipairs(lines) do
+		if line:find("stands down for Kaliel's Tracker", 1, true) then named = named + 1 end
+	end
+	eq(named, 1, 'it names the addon, once')
+	eq(#printed(function() TR:UpdateConfig() end), 0, 'not again')
+	local tab = TR.Tab(2, 'Quests', {})
+	eq(tab.disabledDesc(), "Quests are tracked by Kaliel's Tracker. Turn it off to use SaftUI's.", "the tabs' hover text")
+	local _, TR2 = TW.world({})
+	eq(TR2.Tab(2, 'Quests', {}).disabledDesc(), "Turn on SaftUI's tracker (General) and reload.", 'no addon: the switch')
 end)

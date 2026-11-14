@@ -13,14 +13,28 @@
 --                                  TW.OT is the fixture
 --                         combat   in combat when the addon enables
 --                         addons   names for C_AddOns.IsAddOnLoaded
+--                         enabling function(st, TR) run after Misc's modules
+--                                  enable, just before TR:Enable()
 --                         before   function(st) run before SaftUI-Tracker's
 --                                  files load
---                       It runs T.client, load_editmode(), st.config.char = {},
---                       the TOC's files with apply_defaults() after config.lua,
---                       then TR:Enable().
+--                       It runs as the game does: T.client, load_editmode(),
+--                       st.config.char = {}, Misc's files and Blizzard's tracker
+--                       (when asked), then SaftUI-Tracker's files with st.config
+--                       NOT there (the game makes it at login, so a file-scope
+--                       read of it fails), then st.config back and
+--                       apply_defaults(), opts.on and opts.combat applied, and
+--                       only then every module enables: Misc's Skinning and its
+--                       tracker mover first (the Tracker module exists by then,
+--                       its OnEnable not yet run), then TR:Enable().
+--   TW.snapshot(frame)  a string of a frame's points, shown state, parent,
+--                       alpha and scripts, to compare before and after.
 --   TW.counts           what SaftUI-Tracker made, counted from just before its
---                       files load: frames, hooks, events (frame
---                       RegisterEvent) and secure frames.
+--                       files load: frames, hooks (hooksecurefunc and frame
+--                       HookScript, AceHook's script hooks among them), scripts
+--                       (SetScript on a frame it didn't make), events (frame
+--                       RegisterEvent), timers (C_Timer.After, NewTimer,
+--                       NewTicker) and secure frames. Misc's enables aren't
+--                       counted.
 --   TW.combat(on)       combat starts or ends: stub.in_combat, then
 --                       PLAYER_REGEN_DISABLED or PLAYER_REGEN_ENABLED.
 --
@@ -37,7 +51,10 @@ function TW.toc_files()
 	local files = {}
 	for line in (text .. '\n'):gmatch('(.-)\r?\n') do
 		line = line:gsub('^%s+', ''):gsub('%s+$', '')
-		if line ~= '' and not line:find('^#') and line:find('%.lua$') then
+		if line ~= '' and not line:find('^#') then
+			if not line:find('%.lua$') then
+				error('SaftUI-Tracker.toc: a line the test world does not understand: ' .. line, 2)
+			end
 			files[#files + 1] = 'SaftUI-Tracker/' .. line:gsub('\\', '/')
 		end
 	end
@@ -45,33 +62,40 @@ function TW.toc_files()
 end
 
 local counting = false
+local made = setmetatable({}, { __mode = 'k' }) -- frames made while counting
 
--- Counts frames, hooks and events from now on. Frame methods live in a table
--- per frame type (getmetatable(frame).__index), so each is wrapped once.
+-- Counts frames, hooks, scripts, events and timers from now on. Frame methods
+-- live in a table per frame type (getmetatable(frame).__index), so each is
+-- wrapped once.
 local function InstallCounters()
 	local counts = TW.counts
-	counts.frames, counts.hooks, counts.events, counts.secure = 0, 0, 0, 0
+	for _, key in ipairs({ 'frames', 'hooks', 'scripts', 'events', 'timers', 'secure' }) do counts[key] = 0 end
 	local create, hook = CreateFrame, hooksecurefunc
 	local wrapped = {}
+	local function Wrap(methods, name, key, only_unmade)
+		local original = methods[name]
+		if not original then return end
+		methods[name] = function(self, ...)
+			if counting and not (only_unmade and made[self]) then counts[key] = counts[key] + 1 end
+			return original(self, ...)
+		end
+	end
 	for _, kind in ipairs({ 'Frame', 'Button', 'CheckButton', 'ScrollFrame', 'EditBox', 'StatusBar', 'Slider', 'Cooldown', 'GameTooltip' }) do
 		local ok, frame = pcall(create, kind)
 		local methods = ok and getmetatable(frame).__index
 		if type(methods) == 'table' and not wrapped[methods] then
 			wrapped[methods] = true
-			for _, name in ipairs({ 'RegisterEvent', 'RegisterUnitEvent', 'RegisterAllEvents' }) do
-				local original = methods[name]
-				if original then
-					methods[name] = function(...)
-						if counting then counts.events = counts.events + 1 end
-						return original(...)
-					end
-				end
-			end
+			Wrap(methods, 'RegisterEvent', 'events')
+			Wrap(methods, 'RegisterUnitEvent', 'events')
+			Wrap(methods, 'RegisterAllEvents', 'events')
+			Wrap(methods, 'HookScript', 'hooks')
+			Wrap(methods, 'SetScript', 'scripts', true)
 		end
 	end
 	CreateFrame = function(frameType, name, parent, template, ...)
 		local frame = create(frameType, name, parent, template, ...)
 		if counting then
+			made[frame] = true
 			counts.frames = counts.frames + 1
 			if tostring(template or ''):find('Secure') then counts.secure = counts.secure + 1 end
 		end
@@ -81,6 +105,33 @@ local function InstallCounters()
 		if counting then counts.hooks = counts.hooks + 1 end
 		return hook(...)
 	end
+	for _, name in ipairs({ 'After', 'NewTimer', 'NewTicker' }) do
+		local original = C_Timer[name]
+		if original then
+			C_Timer[name] = function(...)
+				if counting then counts.timers = counts.timers + 1 end
+				return original(...)
+			end
+		end
+	end
+end
+
+local SCRIPTS = { 'OnShow', 'OnHide', 'OnEvent', 'OnUpdate', 'OnSizeChanged', 'OnEnter', 'OnLeave', 'OnMouseDown', 'OnMouseUp', 'OnDragStart' }
+
+function TW.snapshot(frame)
+	local parts = {}
+	for i = 1, frame:GetNumPoints() do
+		local point, rel, relPoint, x, y = frame:GetPoint(i)
+		parts[#parts + 1] = ('%s>%s:%s:%s,%s'):format(point, rel and rel.GetName and rel:GetName() or tostring(rel), relPoint, tostring(x), tostring(y))
+	end
+	local parent = frame:GetParent()
+	parts[#parts + 1] = 'shown=' .. tostring(frame:IsShown())
+	parts[#parts + 1] = 'parent=' .. tostring(parent and parent:GetName())
+	parts[#parts + 1] = 'alpha=' .. tostring(frame:GetAlpha())
+	for _, script in ipairs(SCRIPTS) do
+		if frame:HasScript(script) then parts[#parts + 1] = script .. '=' .. tostring(frame:GetScript(script)) end
+	end
+	return table.concat(parts, ' ')
 end
 
 function TW.world(opts)
@@ -94,9 +145,11 @@ function TW.world(opts)
 		for _, name in ipairs(opts.addons) do stub.loaded_addons[name] = true end
 	end
 
+	-- Every addon's files load first, Misc's before the tracker's (its
+	-- OptionalDeps).
 	TW.OT, TW.SK, TW.OTP = nil, nil, nil
-	if opts.misc then
-		local misc = type(opts.misc) == 'table' and opts.misc or {}
+	local misc = opts.misc and (type(opts.misc) == 'table' and opts.misc or {})
+	if misc then
 		load_saftui('SaftUI-Misc/config.lua')
 		apply_defaults()
 		if misc.skinning or misc.skin then
@@ -110,8 +163,23 @@ function TW.world(opts)
 			TW.OT = load_test_file('misc/fixtures/objective_tracker.lua')
 			TW.OT.build(type(opts.blizzard) == 'table' and opts.blizzard or nil)
 		end
-		-- Misc's modules enable before SaftUI-Tracker's, as the TOCs load in
-		-- the game's order: Skinning, then its skins, then the tracker's mover.
+	end
+
+	if opts.before then opts.before(st) end
+
+	-- st.config is made at login, after every file has loaded.
+	local config = st.config
+	st.config = nil
+	counting = true
+	for _, file in ipairs(TW.toc_files()) do load_saftui(file) end
+	counting = false
+	st.config = config
+	apply_defaults()
+	if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
+	if opts.combat then stub.in_combat = true end
+
+	-- Then the modules enable, Misc's first.
+	if misc then
 		if misc.skinning or misc.skin then
 			TW.SK = st:GetModule('Skinning')
 			TW.SK:Enable()
@@ -121,18 +189,9 @@ function TW.world(opts)
 			TW.OTP:Enable()
 		end
 	end
-
-	if opts.before then opts.before(st) end
-
-	counting = true
-	local files = TW.toc_files()
-	for _, file in ipairs(files) do
-		load_saftui(file)
-		if file == 'SaftUI-Tracker/config.lua' then apply_defaults() end
-	end
-	if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
 	local TR = st:GetModule('Tracker')
-	if opts.combat then stub.in_combat = true end
+	if opts.enabling then opts.enabling(st, TR) end
+	counting = true
 	TR:Enable()
 	counting = false
 	return st, TR

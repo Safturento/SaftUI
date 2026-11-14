@@ -61,6 +61,19 @@ function TR:Build()
 	self.built = true
 end
 
+-- The switch was just saved from /sui and the player is being asked about a
+-- reload there: that value is already said, so a later profile or theme
+-- change must not say it again.
+function TR:SwitchSaved(value)
+	self:IsOn()
+	self.config.enable = value
+	if value == self.sessionEnable then
+		self.warned = nil
+	else
+		self.warned = value
+	end
+end
+
 -- A profile change, or a theme change (Config:UpdateConfig runs it on both).
 -- The switch is read once, so a profile whose switch differs from the
 -- session's says so in chat, once per value: a theme change must not repeat it.
@@ -71,7 +84,12 @@ function TR:UpdateConfig()
 		self.warned = nil
 	elseif enable ~= self.warned then
 		self.warned = enable
-		st:Print("SaftUI's tracker changes after a reload.")
+		local addon = self:TrackerAddon()
+		if addon then
+			st:Print(("SaftUI's tracker stands down for %s, so this changes nothing until that addon is off."):format(addon))
+		else
+			st:Print("SaftUI's tracker changes after a reload.")
+		end
 	end
 	if not self.built then return end
 	-- Each part of the tracker adds its own update below.
