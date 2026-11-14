@@ -1,9 +1,11 @@
 -- The unit frame profile on /sui (SaftUI-Unitframes/config/profiles.lua and
--- config/config.lua): the Unitframes page's footer control (the profile's
--- dropdown and Manage, the page group's footer) as the real window draws it,
--- the Unit frame profiles dialog Manage opens, and both following New,
--- Rename and Delete made in the dialog; the Unit dropdown without Profile; a
--- search finding the control; the old Unitframes > profile path.
+-- config/config.lua, nameplates/options.lua): the Unit dropdown's line (Unit,
+-- Copy from, Profile, Manage: each unit's pickerControl; the nameplate pages'
+-- hold Profile and Manage only) as the real window draws it, the footer
+-- holding none, the Unit frame profiles dialog Manage opens, and the line
+-- following New, Rename and Delete made in the dialog; the Unit dropdown without
+-- Profile as a pick; a search finding the control; the old Unitframes >
+-- profile path; the line at half, wrapped, on whole pixels.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
 -- (config_helpers.lua), the options model, widgets, body and window, the unit
@@ -27,6 +29,7 @@ load_saftui('SaftUI-Core/Config/optionsbody.lua')
 load_options_window()
 load_saftui('SaftUI-Unitframes/config/position.lua') -- config/load.xml's order: first
 load_saftui('SaftUI-Unitframes/config/default.lua')
+load_saftui('SaftUI-Unitframes/config/units/party.lua') -- a group's page too
 apply_defaults()
 
 local OW, W = st.OptionsWindow, st.OptionsWidgets
@@ -36,8 +39,9 @@ function UF:UpdateConfig()
 	updates = updates + 1
 	local _ = self:GetProfileConfig().player
 end
-UF.units, UF.groups, UF.holders, UF.elements = { player = CreateFrame('Frame', nil, UIParent) }, {}, {}, {}
-UF.unit_strings, UF.group_strings = { player = 'Player' }, {}
+UF.testGroups = {}
+UF.units, UF.groups, UF.holders, UF.elements = { player = CreateFrame('Frame', nil, UIParent) }, { party = CreateFrame('Frame', nil, UIParent) }, { party = CreateFrame('Frame', nil, UIParent) }, {}
+UF.unit_strings, UF.group_strings = { player = 'Player' }, { party = 'Party' }
 function UF:GetMoverFrame(unit) return self.holders[unit] or self.units[unit] end
 
 load_saftui('SaftUI-Unitframes/config/profiles.lua')
@@ -53,10 +57,10 @@ P.profiles.Healer.player.width = 222
 local click, tick = stub.click, tick_options_window
 local function frames() return OW.GetFrames() end
 
--- The footer control's dropdown and Manage, as drawn last.
+-- The line's Profile dropdown and Manage, as drawn last (Copy from is first).
 local function footer()
-	local widgets = frames().footerWidgets
-	return widgets[1], widgets[2]
+	local widgets = frames().pickerWidgets
+	return widgets[#widgets - 1], widgets[#widgets]
 end
 
 -- The labels an open select list shows, in order.
@@ -76,7 +80,7 @@ local function pick(text)
 	error('no list row ' .. text)
 end
 
--- The profiles the footer's dropdown lists, its list opened and closed again.
+-- The profiles the line's dropdown lists, its list opened and closed again.
 local function footer_list()
 	click(footer().frame)
 	local names = listed()
@@ -103,6 +107,12 @@ local function page_cell(key)
 	end
 end
 
+-- Picks unit's name in the Unit dropdown.
+local function pick_unit(name)
+	click(frames().picker.frame)
+	pick(name)
+end
+
 local function type_and_enter(text)
 	local box = W.PromptBox()
 	box:SetText(text)
@@ -115,16 +125,27 @@ local function close_all()
 	P.config_profile = 'SaftUI'
 end
 
-test("the Unit dropdown lists the units, no Profile; the page's footer holds the profile's dropdown and Manage", function()
+test("the unit frame profile is on the Unit dropdown's line: Unit, Copy from, Profile, Manage; the footer holds none", function()
 	local config = UF:GetConfigTable()
+	eq(config.footer, nil, 'no footer on the page group')
 	eq(config.args.profile, nil, 'no Profile group among the units')
-	eq(config.footer.name, 'Unit frame profile', "the page group's footer")
-	eq(config.footer.args.current.type .. ',' .. config.footer.args.manage.type, 'select,execute', 'the dropdown and Manage')
-	eq(config.footer.args.current.desc, UF.GenerateProfileConfigGroup().args.current.desc, "the dropdown is the dialog's own")
+	local args = config.args.player.pickerControl.args
+	eq(args.copy.order .. ',' .. args.profile.order .. ',' .. args.manage.order, '1,10,11', 'in order')
+	eq(args.profile.type .. ',' .. args.profile.name .. ',' .. tostring(args.profile.size), 'select,Profile,nil', 'a dropdown named Profile, with no line of its own')
+	eq(args.profile.desc, UF.GenerateProfileConfigGroup().args.current.desc, "the dropdown is the dialog's own")
+	local control = UF.GenerateProfileControl()
+	eq(control.profile.order .. ',' .. control.manage.order, '10,11', 'UF.GenerateProfileControl')
 
-	st.Config:Open('Unitframes')
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = OW.GetFrames()
+	eq(#F.footerWidgets, 0, 'no footer control')
+	local types = {}
+	for i, w in ipairs(F.pickerWidgets) do types[i] = w.type end
+	eq(table.concat(types, ','), 'execute,select,execute', 'Copy from, the profile, Manage')
+	eq(F.pickerLabels[1]:GetText(), 'Profile', "the select's name, drawn before it")
+	check(not F.footerControl:IsShown(), 'nothing in the footer')
 	eq(OW:GetState().pick, 'player', 'the page opens on Player')
-	click(frames().picker.frame)
+	click(F.picker.frame)
 	local units = listed()
 	W.CloseList()
 	check(not units:find('Profile', 1, true), 'the Unit dropdown lists no Profile: ' .. units)
@@ -132,17 +153,17 @@ test("the Unit dropdown lists the units, no Profile; the page's footer holds the
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('the footer control: on the Unitframes page only, centred; its dropdown lists the profiles and switches, and the page draws again', function()
+test("the line's dropdown lists the profiles and switches, and the page draws again, on every unit's page", function()
 	st.Config:Open('Unitframes')
 	local f = frames()
-	check(f.footerControl:IsShown(), 'shown on Unitframes')
-	eq(f.footerLabel:GetText(), 'Unit frame profile', 'its label')
 	local dropdown, manage = footer()
 	eq(dropdown.text:GetText(), 'SaftUI', 'the profile in use')
 	eq(manage.text:GetText(), 'Manage', 'and Manage')
-	local region = frames().footerRegion
-	local left, right = f.footerLabel:GetLeft() - region:GetLeft(), region:GetRight() - manage.frame:GetRight()
-	check(math.abs(left - right) <= 1, 'centred between Reload UI and Close: ' .. left .. ' and ' .. right)
+	local label = f.pickerLabels[1]
+	eq(f.pickerWidgets[1].frame:GetLeft(), f.picker.frame:GetRight() + 12, 'Copy from 12 after the Unit dropdown')
+	eq(label:GetLeft(), f.pickerWidgets[1].frame:GetRight() + 12, 'Profile 12 after Copy from')
+	check(dropdown.frame:GetLeft() > label:GetRight(), 'the dropdown after its name')
+	eq(manage.frame:GetLeft(), dropdown.frame:GetRight() + 12, 'Manage 12 after it')
 	eq(page_cell('width').widget.frame:GetText(), '111', "the page shows the profile's settings")
 
 	click(dropdown.frame)
@@ -156,10 +177,28 @@ test('the footer control: on the Unitframes page only, centred; its dropdown lis
 	eq(page_cell('width').widget.frame:GetText(), '222', "and the page the new profile's settings")
 
 	OW:Navigate('Fonts')
-	check(not f.footerControl:IsShown(), 'none on Global settings')
+	eq(#f.pickerWidgets, 0, 'none on Global settings')
 	OW:Navigate('Unitframes')
-	check(f.footerControl:IsShown(), 'back on Unitframes')
+	eq(#f.pickerWidgets, 3, 'back on Unitframes')
+	pick_unit('Enemy nameplates')
+	eq(#f.pickerWidgets, 2, 'Profile and Manage on a nameplate page')
+	pick_unit('Player')
+	eq(#f.pickerWidgets, 3, 'and all three back on Player')
 	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a switch on the line keeps the unit and tab you are on", function()
+	for _, case in ipairs({ { 'party', 'general' }, { 'nameplate', 'general' } }) do
+		st.Config:Open('Unitframes', case[1], case[2])
+		click((footer()).frame)
+		pick('Healer')
+		tick()
+		local state = OW:GetState()
+		eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/' .. case[1] .. '/' .. case[2], case[1] .. ': still there after the switch')
+		eq((footer()).text:GetText(), 'Healer', case[1] .. ': showing the new profile')
+		close_all()
+	end
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -268,32 +307,62 @@ test("the footer's dropdown and the dialog's follow New, Rename and Delete made 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a search for the unit frame profile finds the footer control's options, and a result opens the Unitframes page", function()
+-- The drawn search results named name, with each one's pick (the second step of its path).
+local function found(name)
+	local out = {}
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.name == name then out[#out + 1] = c end
+	end
+	return out
+end
+
+test("a search for the unit frame profile lists it once, not once per unit: by its words, and by its names", function()
 	st.Config:Open('Fonts')
+	local f = frames()
+	for _, case in ipairs({
+		{ 'unit frame profile', 1, 1 }, { 'unit frame', 1, 1 }, { 'profile', 1, 1 }, { 'manage', 0, 1 },
+	}) do
+		f.search:SetText(case[1])
+		tick(0.3)
+		local what = '"' .. case[1] .. '"'
+		eq(#found('Profile'), case[2], what .. ': the Profile dropdown once')
+		eq(#found('Manage'), case[3], what .. ': Manage once')
+	end
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a unit frame profile result keeps the unit and tab you are on, and from another page opens Unitframes", function()
+	st.Config:Open('Unitframes', 'party', 'general') -- no element tabs in this world
 	local f = frames()
 	f.search:SetText('unit frame profile')
 	tick(0.3)
-	local names = {}
-	for i, c in ipairs(OW.GetDrawnRows()) do names[i] = c.row.name end
-	eq(table.concat(names, ','), 'Profile,Manage', 'the dropdown and Manage, by their names')
-	check(not f.footerControl:IsShown(), 'no footer control over the results')
-	click(OW.GetDrawnRows()[1].frame)
-	eq(OW:GetState().page, 'Unitframes', 'a result opens the page')
-	check(f.footerControl:IsShown(), 'with the control in its footer')
+	check(OW:GetState().search ~= '', 'searching')
+	click(found('Manage')[1].frame)
+	local state = OW:GetState()
+	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/party/general', 'the unit and tab as they were (not Player)')
+	eq(#f.pickerWidgets, 3, "with the line's control")
+	st.Config:Open('Fonts')
+	f.search:SetText('unit frame profile')
+	tick(0.3)
+	click(found('Profile')[1].frame)
+	state = OW:GetState()
+	eq(state.page, 'Unitframes', 'from another page it opens the unit frames page')
+	check(state.pick ~= nil and #f.pickerWidgets >= 2, 'on a pick with the control')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('the old Unitframes > profile path opens the Unitframes page on its first unit, the profile in its footer', function()
+test('the old Unitframes > profile path opens the Unitframes page on its first unit, the profile on its line', function()
 	st.Config:Open('Unitframes', 'profile')
 	local state = OW:GetState()
 	eq(state.page .. '/' .. tostring(state.pick), 'Unitframes/player', 'the page, on Player')
-	check(frames().footerControl:IsShown(), 'the footer control there')
+	eq(#frames().pickerWidgets, 3, 'the line has it')
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a SaftUI (AceDB) profile switch with Unitframes open: the footer's dropdown follows the new profile's unit frame profile", function()
+test("a SaftUI (AceDB) profile switch with Unitframes open: the line's dropdown follows the new profile's unit frame profile", function()
 	P.config_profile = 'Healer'
 	st.Config:Open('Unitframes')
 	eq((footer()).text:GetText(), 'Healer', "the first profile's unit frame profile")
@@ -301,7 +370,7 @@ test("a SaftUI (AceDB) profile switch with Unitframes open: the footer's dropdow
 	st.config:SetProfile('FooterTestTwo')
 	tick()
 	eq(st.config.profile.unitframes.config_profile, 'SaftUI', "the new profile's own")
-	eq((footer()).text:GetText(), 'SaftUI', "the footer's dropdown shows it")
+	eq((footer()).text:GetText(), 'SaftUI', "the line's dropdown shows it")
 	st.config:SetProfile(first)
 	tick()
 	eq(st.config.profile.unitframes.config_profile, 'Healer', 'the first profile again')
@@ -334,7 +403,7 @@ test('Copy from in the real window: a button right of the Unit dropdown, on ever
 	function UF:OpenCopyTable(unit) opened = unit end
 	st.Config:Open('Unitframes', 'player', 'general')
 	local f = frames()
-	eq(#f.pickerWidgets, 1, 'one button beside the picker')
+	eq(#f.pickerWidgets, 3, 'Copy from, Profile and Manage on the line')
 	local button = f.pickerWidgets[1]
 	eq(button.text:GetText(), 'Copy from', 'Copy from')
 	eq(button.frame:GetLeft(), f.picker.frame:GetRight() + 12, 'right of the Unit dropdown')
@@ -343,38 +412,81 @@ test('Copy from in the real window: a button right of the Unit dropdown, on ever
 	eq(page_cell('copy'), nil, 'not in General any more')
 	OW:Navigate('Unitframes', { pick = 'nameplate' })
 	eq(OW:GetState().pick, 'nameplate', 'on Enemy nameplates')
-	eq(#f.pickerWidgets, 0, 'none on a nameplate page')
+	eq(#f.pickerWidgets, 2, 'Profile and Manage on a nameplate page')
+	eq(f.pickerWidgets[1].type .. ',' .. f.pickerWidgets[2].type, 'select,execute', 'and no Copy from')
 
 	-- A search for it opens the unit's page.
 	f.search:SetText('copy from')
 	tick(0.3)
 	local result
 	for _, c in ipairs(OW.GetDrawnRows()) do
-		if c.row.name == 'Copy from' then result = c end
+		if c.row.name == 'Copy from' and not result then result = c end
 	end
 	check(result ~= nil, 'found')
 	click(result.frame)
 	local state = OW:GetState()
 	eq(state.page .. '/' .. state.pick, 'Unitframes/player', "the unit's page")
-	eq(#f.pickerWidgets, 1, 'with Copy from beside its picker')
+	eq(#f.pickerWidgets, 3, 'with Copy from beside its picker')
 	UF.OpenCopyTable = real
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a search result for the footer's options leaves the page's unit and tab as they were", function()
-	st.Config:Open('Unitframes', 'nameplate', 'general')
-	local f = frames()
-	eq(OW:GetState().pick, 'nameplate', 'on the enemy nameplates')
-	f.search:SetText('unit frame profile')
-	tick(0.3)
-	check(OW:GetState().search ~= '', 'searching')
-	click(OW.GetDrawnRows()[2].frame) -- Manage
-	local state = OW:GetState()
-	eq(state.page, 'Unitframes', 'the page')
-	eq(state.pick, 'nameplate', 'the unit as it was, not Player')
-	eq(state.tab, 'general', 'and its tab')
-	check(f.footerControl:IsShown(), 'with the control in its footer')
-	close_all()
-	eq(#take_errors(), 0, 'no errors')
+test("the Unit dropdown's line (Unit, Copy from, Profile, Manage) on the real page, on whole pixels: one line at full, two at half, the body under it", function()
+	local P = load_test_file('lib/pixels.lua')
+	local HAIR = 2 ^ -14
+	local function line(f)
+		local out = {}
+		for _, w in ipairs(f.pickerWidgets) do out[#out + 1] = w.type end
+		return table.concat(out, ',')
+	end
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		st.config.profile.theme.name = look
+		local halfBody = look == 'blizzard' and 368 or 388
+		for _, noise in ipairs({ HAIR, -HAIR, 0 }) do
+			stub.size_noise = noise
+			for _, case in ipairs({ { 'player', 'general', 'execute,select,execute' }, { 'party', 'general', 'execute,select,execute' },
+				{ 'nameplate', 'general', 'select,execute' } }) do
+				local unit, tab, types = case[1], case[2], case[3]
+				local where = look .. ' ' .. unit .. ' noise ' .. noise
+				st.Config:Open('Unitframes', unit, tab)
+				local f = OW.GetFrames()
+				for _, size in ipairs({ 'full', 'half' }) do
+					if size == 'half' then OW:SetWindowSize('half') end
+					local tag = where .. ' ' .. size
+					eq(line(f), types, tag .. ': the line')
+					eq(#f.footerWidgets, 0, tag .. ': the footer holds none')
+					local off = P.off(f.main)
+					eq(#off, 0, tag .. ': whole pixels: ' .. P.report(off))
+					local select = f.pickerWidgets[unit == 'nameplate' and 1 or 2]
+					local drop = f.picker.frame:GetTop() - select.frame:GetTop()
+					eq(drop, size == 'full' and 0 or 32, tag .. ': Profile on the first line at full, the second at half')
+					local lowest = f.picker.frame:GetBottom()
+					for _, w in ipairs(f.pickerWidgets) do
+						check(w.frame:GetBottom() <= f.picker.frame:GetBottom() + 1, tag .. ': no piece above the picker')
+						lowest = math.min(lowest, w.frame:GetBottom() + (w.frame:GetHeight() > 24 and 1 or 0))
+					end
+					eq(f.body:GetTop(), lowest, tag .. ": the body's top under the last line")
+					local right = f.main:GetLeft() + 28 + (size == 'half' and halfBody or 774)
+					for _, w in ipairs(f.pickerWidgets) do
+						check(w.frame:GetRight() <= right, tag .. ': no piece past the body\'s width')
+					end
+				end
+				-- Half with the sidebar collapsed: the same line, the footer's tools clear of it.
+				OW:SetWindowSize('half')
+				OW:SetSidebarShown(false)
+				eq(line(f), types, where .. ' collapsed: the line')
+				eq(#f.footerWidgets, 0, where .. ' collapsed: the footer holds none')
+				local off = P.off(f.main)
+				eq(#off, 0, where .. ' collapsed: whole pixels: ' .. P.report(off))
+				OW:SetSidebarShown(true)
+				OW:SetWindowSize('full')
+				st.Config:Close()
+			end
+		end
+	end
+	stub.size_noise = 0
+	st.config.profile.theme.name = 'thick'
+	local errs = take_errors()
+	eq(#errs, 0, 'no errors: ' .. tostring(errs[1]))
 end)

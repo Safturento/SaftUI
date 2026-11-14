@@ -437,14 +437,13 @@ function UF:GetConfigTable()
 		-- The units are the page's picker; each unit's elements are its tabs.
 		childGroups = 'select',
 		pickerLabel = 'Unit',
-		-- The unit frame profile, in /sui's footer while the page is open
-		-- (SaftUI's footer field; config/profiles.lua).
-		footer = UF.GenerateProfileFooter(),
 		args = {},
 	}
 
 	local function GetUnitConfig(unit)
 		if not unit then return end
+
+		local profile = UF.GenerateProfileControl() -- this unit's own copies
 
 		-- Looked up on every get/set: a profile change replaces these tables.
 		local function UnitConfig() return UF:GetProfileConfig()[unit] end
@@ -464,9 +463,10 @@ function UF:GetConfigTable()
 			inline = false,
 			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
 			childGroups = 'tab',
-			-- Copy from, on the picker's line right of the Unit dropdown, so it's
-			-- there from every tab (Core's pickerControl field). A nameplate
-			-- page has none (UF.SetUpPlatePage).
+			-- Copy from, the unit frame profile and Manage, on the picker's line
+			-- right of the Unit dropdown, so they're there from every tab (Core's
+			-- pickerControl field; config/profiles.lua). A nameplate page has
+			-- no Copy from (UF.SetUpPlatePage).
 			pickerControl = {
 				type = 'group',
 				name = '',
@@ -480,6 +480,8 @@ function UF:GetConfigTable()
 							UF:OpenCopyTable(unit)
 						end,
 					},
+					profile = profile.profile,
+					manage = profile.manage,
 				},
 			},
 			args = {

@@ -99,7 +99,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	(S.FollowMenu, after the dialog's), and closes with the window, on
 	OW:Navigate (a search result's too) and on a tab or pick (Select).
 
-	A page's footer control is its group's footer (SaftUI's field,
+	A page's footer control (in the kit; no page draws one now: the unit
+	frames' profile is on the Unit dropdown's line) is its group's footer (SaftUI's field,
 	OM.BuildView's view.footer): a group whose options are drawn in the
 	footer's region after its name (their one label), with the options kit's
 	own widgets, so in either look. It's centred in the region (left of Reload
@@ -114,11 +115,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	UF's profile prompts).
 
 	A pick's control is the picked group's pickerControl (SaftUI's field,
-	OM.BuildView's view.picker.control): a group whose options, buttons, are
-	drawn on the picker's line, 12 right of the picker and apart, with the
-	options kit's own widgets and their options' tooltips, on every tab of
-	that pick (DrawPickerControl). A pick without one draws none; nor do
-	search results.
+	OM.BuildView's view.picker.control): a group whose options are drawn on
+	the picker's line, 12 right of the picker and apart (a button as it is,
+	any other option after its name, 10 before its widget), with the options
+	kit's own widgets and their options' tooltips, on every tab of that pick
+	(DrawPickerControl). OW.PickerFlow wraps a piece that would pass the
+	body's width onto a new line, and the body starts under the last. A pick
+	without one draws none; nor do search results.
 
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every
@@ -589,14 +592,14 @@ end
 
 -- A control's widgets, one for each row of its view, made in parent and bound
 -- to the control's own tree, listed in into; place (optional) is called with
--- each widget.
+-- each widget and its row.
 local function CreateControlWidgets(view, tree, parent, into, place)
 	for _, section in ipairs(view.sections) do
 		for _, row in ipairs(section.rows) do
 			local widget = W.Create(parent, row.type)
 			widget:Bind(tree, row, Changed)
 			TipFooterWidget(widget, row)
-			if place then place(widget) end
+			if place then place(widget, row) end
 			into[#into + 1] = widget
 		end
 	end
@@ -645,9 +648,8 @@ local function PlaceFooter()
 	local regionWidth = floor(region:GetWidth() + 0.5)
 	local x, labelShown = OW.FooterPlace(regionWidth, labelWidth, widgetsWidth)
 	-- A control the region can't hold is hidden (it would hang out over the
-	-- sidebar): at half under Thick and Thin the unit frames' profile control
-	-- (258) is wider than the region (188). Temporary: it moves to the Unit
-	-- dropdown's line in Task 7 of the sizes plan.
+	-- sidebar). No page draws a footer control now (the unit frames' profile is
+	-- on the Unit dropdown's line), but the field stays in the kit.
 	if x < 0 then
 		control:Hide()
 		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
@@ -681,14 +683,16 @@ end
 ------------------------------------------------------------------ a pick's control
 
 -- A pick's control (its group's pickerControl, SaftUI's field: OM.BuildView's
--- view.picker.control): a group whose options, buttons, are drawn on the
--- picker's line, PICKER_CONTROL_GAP right of the picker and apart, each the
--- options kit's own widget (so it takes both looks) showing its option's
--- tooltip, read and set through the model from a tree of their own, as the
--- footer control's (Changed: a set draws the page again). They go with the
--- page's rows, and a pick without one draws none.
+-- view.picker.control): a group whose options are drawn on the picker's line,
+-- each the options kit's own widget (so it takes both looks) showing its
+-- option's tooltip, read and set through the model from a tree of their own,
+-- as the footer control's (Changed: a set draws the page again). A button is
+-- a piece of its own; any other option is drawn after its name (a label from
+-- F.pickerLabels, as the picker's, LABEL_GAP before its widget). OW.PickerFlow
+-- places the picker and the pieces, wrapping at the body's width. They go with
+-- the page's rows, and a pick without one draws none.
 local PICKER_CONTROL_KEY = OM.PICKER_CONTROL_KEY -- the control's key in that tree
-local PICKER_CONTROL_GAP = 12 -- as the buttons on a line are apart
+local LABEL_GAP = OB.LABEL_GAP -- between a name and its widget, as the picker's
 
 local function ReleasePickerControl()
 	for _, widget in ipairs(F.pickerWidgets) do
@@ -696,23 +700,52 @@ local function ReleasePickerControl()
 		widget:Release()
 	end
 	wipe(F.pickerWidgets)
+	ReleaseAll(pools.pickerLabel)
 end
 
--- picker (a page's view.picker, drawn) and its control, if any, beside it.
-local function DrawPickerControl(picker)
+-- picker (a page's view.picker, drawn by S.DrawPicker at top) and its
+-- control, if any, on its line; returns the line's bottom (under the last
+-- line, when the control wrapped).
+local function DrawPickerControl(picker, top)
 	local control = picker and picker.control
-	if not control then return end
-	local tree = { [PICKER_CONTROL_KEY] = control }
-	local view = OM.BuildView(tree, PICKER_CONTROL_KEY)
-	if not view then return end -- hidden
-	local anchor = F.picker.frame
-	CreateControlWidgets(view, tree, F.main, F.pickerWidgets, function(widget)
-		-- By its left, on the picker's middle line: a button 2 taller than
-		-- the picker sits 1 over and under it, on whole pixels.
-		widget.frame:ClearAllPoints()
-		widget.frame:SetPoint('LEFT', anchor, 'RIGHT', PICKER_CONTROL_GAP, 0)
-		anchor = widget.frame
-	end)
+	local view
+	if control then
+		local tree = { [PICKER_CONTROL_KEY] = control }
+		view = OM.BuildView(tree, PICKER_CONTROL_KEY)
+		if view then
+			local pieces = {}
+			CreateControlWidgets(view, tree, F.main, F.pickerWidgets, function(widget, row)
+				local piece = { widget = widget, width = widget:GetWidth(), labelWidth = 0 }
+				if widget.type ~= 'execute' then
+					local label = OB.Acquire(pools.pickerLabel)
+					label:SetText(tostring(row.name or ''))
+					label:SetTextColor(Normal())
+					piece.label = label
+					piece.labelWidth = ceil(label:GetStringWidth()) + LABEL_GAP
+					piece.width = piece.width + piece.labelWidth
+				end
+				pieces[#pieces + 1] = piece
+			end)
+			local widths = { ceil(F.pickerLabel:GetStringWidth()) + LABEL_GAP + F.picker:GetWidth() }
+			for i, piece in ipairs(pieces) do widths[i + 1] = piece.width end
+			local places, height = OW.PickerFlow(widths, S.bodyWidth)
+			for i, piece in ipairs(pieces) do
+				local at = places[i + 1]
+				local frame = piece.widget.frame
+				-- By its top left, level with the picker's middle: a button 2
+				-- taller than the picker sits 1 over and under it, on whole
+				-- pixels whatever the size read back.
+				local y = top + at.y + floor((FIELD_HEIGHT - Whole(frame:GetHeight())) / 2)
+				frame:ClearAllPoints()
+				frame:SetPoint('TOPLEFT', F.main, 'TOPLEFT', PAD + at.x + piece.labelWidth, -y)
+				if piece.label then
+					piece.label:SetPoint('LEFT', F.main, 'TOPLEFT', PAD + at.x, -(top + at.y + FIELD_HEIGHT / 2))
+				end
+			end
+			return top + height
+		end
+	end
+	return top + FIELD_HEIGHT
 end
 
 ------------------------------------------------------------------ the body
@@ -823,8 +856,9 @@ local function DrawPage()
 		F.subLine:Hide()
 	end
 	if view.picker then
-		bottom = S.DrawPicker(view.picker, bottom + PICKER_GAP)
-		DrawPickerControl(view.picker)
+		local top = bottom + PICKER_GAP
+		S.DrawPicker(view.picker, top)
+		bottom = DrawPickerControl(view.picker, top)
 	else
 		S.HidePicker()
 	end
@@ -1329,6 +1363,8 @@ local function BuildMain(window)
 	F.pickerLabel = Text(main, 'field')
 	F.picker = W.Create(main, 'select')
 	F.pickerWidgets = {} -- a pick's control, beside the picker (DrawPickerControl)
+	pools.pickerLabel = Pool(function() return Text(main, 'field') end)
+	F.pickerLabels = pools.pickerLabel.used -- the names of its widgets that aren't buttons
 	S.HidePicker()
 
 	-- The body.

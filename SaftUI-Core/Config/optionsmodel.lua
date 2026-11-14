@@ -174,7 +174,7 @@ local isInherited = {
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
 	size = true, target = true, nameKey = true, pickerLabel = true, align = true, disabledDesc = true, justifyH = true,
-	menuTitle = true,
+	menuTitle = true, searchText = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -1101,13 +1101,17 @@ end
 	A pick's control's options (its pickerControl) follow the pick's own
 	options, before its tabs', under the pick's name (and the names above
 	it); their path is the pick's (the page's key and the pick's), which
-	opens the page at that pick.
+	opens the page at that pick. One with searchText (SaftUI's own plain
+	string field, more words to match) is a control shared by every pick: it is
+	listed once (the first in page order), as footer = true with the path
+	{ pageKey, its key }, so a result opens the page as it is.
 ]]
 function OM.Search(root, text)
 	local results = {}
 	local needle = type(text) == 'string' and strtrim(text):lower() or ''
 	if needle == '' then return results end
 	local options = Options(root)
+	local sharedSeen = {} -- the shared controls (searchText) already listed
 
 	local function matches(value)
 		return type(value) == 'string' and value:lower():find(needle, 1, true) ~= nil
@@ -1157,14 +1161,28 @@ function OM.Search(root, text)
 		for _, section in ipairs(sections) do
 			local sectionMatch = matches(section.title)
 			for _, row in ipairs(section.rows) do
-				if row.type ~= 'description' and (tabMatch or sectionMatch or matches(row.name)) then
+				-- searchText (SaftUI's own field, a plain string): more words a
+				-- search matches, so a control the pick's tabs repeat is found
+				-- by what it is. A row with it is one control, whatever pick
+				-- drew it: listed once (the first in page order), on the page
+				-- as it is (footer = true), its path the page's key and its own.
+				local words = type(row.option) == 'table' and rawget(row.option, 'searchText') or nil
+				local shared = at ~= nil and type(words) == 'string'
+				local hit = row.type ~= 'description'
+					and (tabMatch or sectionMatch or matches(row.name) or (shared and matches(words)))
+				if hit and shared then
+					local id = pageKey .. '\0' .. tostring(row.key)
+					if sharedSeen[id] then hit = false end
+					sharedSeen[id] = true
+				end
+				if hit then
 					results[#results + 1] = {
 						pageKey = pageKey,
-						path = at or row.path,
+						path = shared and { pageKey, row.key } or at or row.path,
 						name = row.name,
 						tabName = tabName,
 						sectionTitle = section.title,
-						footer = footer or nil,
+						footer = (footer or shared) or nil,
 					}
 					if #results >= MAX_RESULTS then return true end
 				end

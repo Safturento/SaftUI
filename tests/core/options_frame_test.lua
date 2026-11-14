@@ -644,6 +644,76 @@ test("a pick's pickerControl: its buttons on the picker's line, 12 right of the 
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+-- ufPickerControl for the picker line's flow: Copy from, then Profile (a select
+-- named 'Profile'), then Manage.
+local function line_control()
+	return {
+		type = 'group', name = '',
+		args = {
+			copy = { order = 1, type = 'execute', name = 'Copy from', func = function() end },
+			profile = {
+				order = 10, type = 'select', name = 'Profile',
+				values = { Main = 'Main', Alt = 'Alt' },
+				get = function() return 'Main' end, set = function() end,
+			},
+			manage = { order = 11, type = 'execute', name = 'Manage', func = function() end },
+		},
+	}
+end
+
+test("a pick's control: a dropdown drawn after its name, and the line wrapping at the body's width", function()
+	local P = load_test_file('lib/pixels.lua')
+	local HAIR = 2 ^ -14
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+			stub.size_noise = noise
+			H.theme(look)
+			ufPickerControl = line_control()
+			st.Config:Open('Unitframes', 'player', 'power')
+			local f = frames()
+			local tag = look .. ' ' .. noise
+			local widgets = f.pickerWidgets
+			eq(#widgets, 3, tag .. ': a widget per option')
+			local copy, profile, manage = widgets[1], widgets[2], widgets[3]
+			eq(profile.type, 'select', tag .. ': the profile is a dropdown')
+			local label = f.pickerLabels and f.pickerLabels[1]
+			check(label ~= nil and label:GetText() == 'Profile', tag .. ': named Profile, drawn after it')
+			eq(copy.frame:GetLeft(), f.picker.frame:GetRight() + 12, tag .. ': Copy from 12 after the picker')
+			local labelLeft = copy.frame:GetRight() + 12
+			eq(label:GetLeft(), labelLeft, tag .. ': Profile 12 after Copy from')
+			eq(profile.frame:GetLeft(), labelLeft + math.ceil(label:GetStringWidth()) + 10, tag .. ': the select 10 after its label')
+			eq(manage.frame:GetLeft(), profile.frame:GetRight() + 12, tag .. ': Manage 12 after')
+			local _, py = f.picker.frame:GetCenter()
+			local _, by = profile.frame:GetCenter()
+			eq(by, py, tag .. ': one line')
+			-- The name is the Unit label's colour, and level with the line's middle.
+			eq(table.concat({ label:GetTextColor() }, ','), table.concat({ f.pickerLabel:GetTextColor() }, ','), tag .. ": the name in the Unit label's colour")
+			local _, ly = label:GetCenter()
+			eq(ly, py, tag .. ": the name level with the line's middle")
+			local bodyTop = f.body:GetTop()
+			local oneLine = f.picker.frame:GetBottom()
+			eq(bodyTop, oneLine, tag .. ": the body's top under the line")
+
+			-- Half: the body is one column; the line wraps.
+			OW:SetWindowSize('half')
+			f = frames()
+			widgets = f.pickerWidgets
+			label = f.pickerLabels[1]
+			local top = f.picker.frame:GetTop()
+			eq(label:GetLeft(), f.main:GetLeft() + 28, tag .. ": half: Profile's label at PAD")
+			eq(top - widgets[2].frame:GetTop(), 32, tag .. ': half: on a second line 32 under the first')
+			eq(f.body:GetTop(), widgets[2].frame:GetBottom(), tag .. ": half: the body's top under that line")
+			eq(#P.off(f.main), 0, tag .. ': half: whole pixels: ' .. P.report(P.off(f.main)))
+			OW:SetWindowSize('full')
+			close_all()
+		end
+	end
+	stub.size_noise = 0
+	H.theme('thick')
+	ufPickerControl = nil
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test("a pick's control shows each option's tooltip, follows disabled and hidden, and goes with the results page", function()
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
 	local ran = {}
