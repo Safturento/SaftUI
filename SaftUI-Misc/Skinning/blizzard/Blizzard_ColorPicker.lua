@@ -39,13 +39,17 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	    with 6 between them and their outer ends in line with the content (the
 	    wheel and the hex box are 23 in from the sides; the buttons are 11.5 in
 	    at 331 wide and 40 at 388, and a box stays inside its button), placed
-	    again by a post-hook on the picker's OnSizeChanged when Blizzard changes
-	    its width, whose edge turns the
+	    again by post-hooks on the picker's OnShow and OnSizeChanged when Blizzard
+	    changes its width, whose edge turns the
 	    accent blue under the mouse, as the kit's buttons do, and the text in
 	    the Skinning font (the button's three state fonts). The label stays
 	    Blizzard's, uncovered.
 	  - .Content.HexBox (InputBoxInstructionsTemplate): its Left, Middle and Right
-	    border art faded, SaftUI's backdrop (kind control) behind it with the
+	    border art faded, SaftUI's backdrop (kind control) behind it, on the
+	    box's own rect and 5 wider at the left as Blizzard's art is (so it is as
+	    tall as the buttons' boxes and ends in line with them at 331 wide), the
+	    "#" anchored 5 in on that rounded backdrop (its anchor put back by a
+	    restore), with the
 	    white border while it has focus, as st:SkinEditBox draws a box, and its
 	    text, its Instructions and the "#" (.Hash) in the Skinning font (the
 	    last two keeping the grey Blizzard's XML gives them).
@@ -62,8 +66,8 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	textures SaftUI made), no script is set or replaced, and no function of
 	Blizzard's runs from here. The only hooks are HookScript post-hooks on the
 	hex box (OnEditFocusGained, OnEditFocusLost) and on Okay and Cancel
-	(OnEnter, OnLeave) that color SaftUI's own boxes, and one on the picker
-	(OnSizeChanged) that places them, writing nothing onto Blizzard's.
+	(OnEnter, OnLeave) that color SaftUI's own boxes, and two on the picker
+	(OnShow, run after Blizzard's own has set the width, and OnSizeChanged) that place them, writing nothing onto Blizzard's.
 	Blizzard's frames get widget calls only: alpha on regions whose
 	alpha Blizzard never sets (the NineSlice border, the header metal, the
 	buttons' Left, Middle and Right, the highlight texture, the hex box's
@@ -105,6 +109,7 @@ local BOX_ART = { 'Left', 'Middle', 'Right' } -- InputBoxVisualTemplate's border
 local CONTENT_PAD = 23
 local FOOTER_Y = 12 -- the footer's bottom, up from the picker's
 local BUTTON_GAP = 6 -- between the Okay and Cancel boxes, as SaftUI's own buttons sit
+local HEX_LEFT = 5 -- the hex backdrop reaches this far left of Blizzard's box, as its art does, and the "#" sits that far in
 local TITLE_Y = 18 -- the title's top, down from the panel's top, as a SaftUI dialog's is (optionssmalldialog.lua)
 local BUTTON_SIDE = { OkayButton = 'left', CancelButton = 'right' } -- the end of the row each one is at
 
@@ -436,6 +441,24 @@ local function HookBox(box)
 	st:KeepOwnColors(box, ColorFocus)
 end
 
+-- The "#" on the rounded backdrop, HEX_LEFT in, so it sits on whole pixels with
+-- it; Blizzard's anchor, read the first time, is put back by a restore.
+local function PutHash(box, backdrop, active)
+	local hash = box.Hash
+	local entry = hash and hash.GetPoint and saved[hash]
+	if not entry then return end
+	if active then
+		if not entry.point then entry.point = { hash:GetPoint(1) } end
+		if backdrop then
+			hash:ClearAllPoints()
+			hash:SetPoint('LEFT', backdrop, 'LEFT', HEX_LEFT, 0)
+		end
+	elseif entry.point then
+		hash:ClearAllPoints()
+		hash:SetPoint(unpack(entry.point))
+	end
+end
+
 local function StyleHexBox(frame, active)
 	local content = frame.Content
 	local box = content and content.HexBox
@@ -443,15 +466,25 @@ local function StyleHexBox(frame, active)
 	if not boxes[box] and not active then return end
 	local theme, background = Look()
 	st:SetBackdropIn(boxes, box, active and theme or 'none', background, 'control')
-	if boxes[box] then
-		boxes[box]:SetShown(active)
-		if active then Round(boxes[box]) end
+	local backdrop = boxes[box]
+	if backdrop then
+		backdrop:SetShown(active)
+		if active then
+			-- On the box's own rect, as tall as the buttons' boxes and with room
+			-- for the "#", not the theme's border outside it. Anchored here, so a
+			-- redraw leaves it where it is.
+			backdrop:ClearAllPoints()
+			backdrop:SetPoint('TOPLEFT', box, 'TOPLEFT', -HEX_LEFT, 0)
+			backdrop:SetPoint('BOTTOMRIGHT', box, 'BOTTOMRIGHT', 0, 0)
+			Round(backdrop)
+		end
 	end
 	if active then HookBox(box) end
 	FadeAll(box, BOX_ART, active)
 	PutFont(box, 'hex', active)
 	PutFont(box.Instructions, 'instructions', active, true)
 	PutFont(box.Hash, 'hash', active, true)
+	PutHash(box, backdrop, active)
 	if active then ColorFocus(box) end
 end
 
@@ -465,25 +498,37 @@ function CP:StartMove(frame)
 	if InCombatLockdown() and frame:IsProtected() then return end
 	moving[frame] = true
 	frame:StartMoving()
+	-- A mouse up that never reaches the band (let go where it no longer is)
+	-- ends the move too.
+	if bands[frame] then
+		bands[frame]:SetScript('OnUpdate', function()
+			if not IsMouseButtonDown('LeftButton') then CP:StopMove(frame) end
+		end)
+	end
 end
 
 -- Stops a move SaftUI's band started, and none that is anyone else's.
 function CP:StopMove(frame)
 	if not moving[frame] then return end
 	moving[frame] = nil
+	if bands[frame] then bands[frame]:SetScript('OnUpdate', nil) end
 	frame:StopMovingOrSizing()
 end
 
 -- Blizzard's OnShow sets the width (388 with the alpha slider, 331 without),
--- and the boxes in the buttons follow it. A post-hook that only places SaftUI's
--- boxes.
+-- and the boxes in the buttons follow it. Post-hooks that only place SaftUI's
+-- boxes, made once whatever the toggle does.
 HookFrame = function(frame)
 	if hooked[frame] or not frame.HookScript then return end
 	hooked[frame] = true
-	frame:HookScript('OnSizeChanged', function(self)
+	local function Place(self)
 		if not Active() or (InCombatLockdown() and self:IsProtected()) then return end
 		Apply(PlaceBoxes, self)
-	end)
+	end
+	-- OnShow runs after Blizzard's own, which has just set the width; the size
+	-- event covers a width changed any other time.
+	frame:HookScript('OnShow', Place)
+	frame:HookScript('OnSizeChanged', Place)
 end
 
 ------------------------------------------------------------------ all of it

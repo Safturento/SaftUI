@@ -52,6 +52,8 @@ local function snapshot()
 		out[key] = { b:GetNormalFontObject(), b:GetHighlightFontObject(), b:GetDisabledFontObject() }
 	end
 	out.title_point = T.anchor(frame.Header.Text, { [frame.Header] = 'header' })
+	local hex = frame.Content.HexBox
+	out.hash_point = hex.Hash and T.anchor(hex.Hash, { [hex] = 'hexbox' })
 	return out
 end
 
@@ -619,11 +621,10 @@ local CONTENT_PAD = 23 -- the wheel's left and the hex box's right, in from the 
 
 local function whole(value) return math.abs(value - math.floor(value + 0.5)) < 1e-3 end
 
--- The picker opened the way an addon opens it, then told its size changed, as
--- the game does for the width Blizzard's OnShow sets.
+-- The picker opened the way an addon opens it: Blizzard's OnShow sets the
+-- width, and nothing else tells the skin (no size event is fired here).
 local function open_picker(opacity)
 	CP.show({ r = 1, g = 0, b = 0, hasOpacity = opacity, opacity = 1, swatchFunc = function() end, cancelFunc = function() end })
-	stub.fire_script(CP.frame, 'OnSizeChanged', CP.frame:GetWidth(), CP.frame:GetHeight())
 end
 
 test('Okay and Cancel: two boxes of one size, 6 apart, evenly padded, inside their buttons, on whole pixels', function()
@@ -764,5 +765,49 @@ test('off, or under the Blizzard theme, the band moves nothing', function()
 	switch('blizzard')
 	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
 	eq(moving(CP.frame), false, 'Blizzard theme: the band is not there to drag')
+	clean()
+end)
+
+------------------------------------------------------------------ the hex box
+
+test('the hex box: a backdrop as tall as the buttons\' boxes, its right end in line with Cancel\'s, room before the "#"', function()
+	world('forever')
+	local frame = CP.frame
+	local hex = frame.Content.HexBox
+	for _, opacity in ipairs({ true, false }) do
+		local where = opacity and '388 wide: ' or '331 wide: '
+		open_picker(opacity)
+		local backdrop = the_one(own_children(hex), where .. 'the hex backdrop')
+		local cancel = the_one(own_children(frame.Footer.CancelButton), 'the Cancel box')
+		eq(backdrop:GetHeight(), cancel:GetHeight(), where .. "as tall as the buttons' boxes")
+		if opacity then
+			check(backdrop:GetRight() >= cancel:GetRight(), where .. "the content's own end, which the button can't reach")
+		else
+			check(math.abs(backdrop:GetRight() - cancel:GetRight()) <= 1, where .. "right end in line with Cancel's box")
+		end
+		eq(T.anchor(hex.Hash, { [backdrop] = 'backdrop' }), 'LEFT backdrop LEFT ' .. T.text(5, 0), where .. 'the "#" anchored to the backdrop, 5 in')
+		check(backdrop:GetLeft() < hex:GetLeft(), where .. 'the backdrop reaches left of the box, as Blizzard\'s art does')
+		eq(stub.state(backdrop).round_layout, true, where .. 'rounded to whole pixels')
+	end
+	-- Off: the "#" is where Blizzard anchored it (check_blizzard compares the snapshot).
+	profile.skinning.color_picker = false
+	SK:UpdateConfig()
+	check_blizzard('off')
+	clean()
+end)
+
+------------------------------------------------------------------ a missed mouse up
+
+test('the band stops the move when the button is up, whichever way it was let go', function()
+	world('forever')
+	open_picker(true)
+	local _, band = own_frames(CP.frame)
+	stub.mouse_buttons = { LeftButton = true }
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(band, 'OnUpdate', 0.016)
+	check(moving(CP.frame), 'button still down: moving')
+	stub.mouse_buttons = {}
+	stub.fire_script(band, 'OnUpdate', 0.016)
+	check(not moving(CP.frame), 'button up, no mouse up seen: stopped')
 	clean()
 end)

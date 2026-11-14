@@ -1025,3 +1025,18 @@ test("pressing the square or a strip drags the color, not the panel; the title s
 	eq(#told.changes, count, 'a drag of the panel changes no color')
 	reset()
 end)
+
+test('a missed mouse up still ends the move: the strip stops it when the button is up', function()
+	reset()
+	local _, F = open()
+	stub.mouse_buttons.LeftButton = true
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(F.drag, 'OnUpdate', 0.016)
+	check(moving(F.frame), 'button down: moving')
+	dropped(F.frame, 300.4, 400.6)
+	stub.mouse_buttons.LeftButton = nil
+	stub.fire_script(F.drag, 'OnUpdate', 0.016)
+	check(not moving(F.frame), 'button up: stopped')
+	eq(F.frame:GetLeft(), 300, 'and dropped on whole units')
+	reset()
+end)

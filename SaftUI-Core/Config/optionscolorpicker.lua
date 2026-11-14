@@ -456,6 +456,7 @@ local movingPanel = false -- the title strip is moving the panel
 local function StopMove(drop)
 	if not movingPanel then return end
 	movingPanel = false
+	F.drag:SetScript('OnUpdate', nil)
 	frame:StopMovingOrSizing()
 	local left, top = frame:GetLeft(), frame:GetTop()
 	if drop and left and top then
@@ -479,6 +480,11 @@ local function BuildDragStrip()
 		if button ~= 'LeftButton' or not spec or movingPanel then return end
 		movingPanel = true
 		frame:StartMoving()
+		-- A mouse up that never reaches the strip (let go where it no longer is)
+		-- ends the move too.
+		strip:SetScript('OnUpdate', function()
+			if not IsMouseButtonDown('LeftButton') then StopMove(true) end
+		end)
 	end)
 	strip:SetScript('OnMouseUp', function() StopMove(true) end)
 	F.drag = strip

@@ -33,7 +33,7 @@
 	  - The Header is anchored TOP, y 11 above the frame, 39 tall; its Text TOP,
 	    y -13. The Border is DialogBorderNoCenterTemplate's useParentLevel: at the
 	    frame's own level.
-	  - ColorPickerFrameMixin: OnShow sets the frame's width to 388 with the alpha
+	  - the frame's OnShow script (ColorPickerFrameMixin:OnShow) sets its width to 388 with the alpha
 	    slider (hasOpacity) and 331 without (the wheel to 255 or 200 wide), and
 	    :SetupColorPickerAndShow(info) keeps the caller's functions in swatchFunc,
 	    opacityFunc, cancelFunc, hasOpacity, opacity, previousValues, extraInfo
@@ -45,7 +45,7 @@
 	Every frame and region is locked once built (lib/locked_widget.lua), so a skin
 	that writes a field onto one, or SetScripts one, fails. CP.keys(widget) lists
 	the fields Blizzard's tables have, for comparing before and after. The
-	frame's methods Blizzard's code calls (OnShow, SetupColorPickerAndShow) record
+	frame's method Blizzard's code calls (SetupColorPickerAndShow) records
 	a call from SaftUI's code, outside CP.show, in CP.stray: the skin must never
 	run them (.agents/taint.md rule 3). Every method of a Blizzard widget that
 	changes it (Set..., Hide, Show, Clear..., Enable, Disable, Create..., Add...,
@@ -221,10 +221,12 @@ function CP.build(opts)
 	end
 
 	-- ColorPickerFrameMixin: what other addons call and read.
-	rawset(frame, 'OnShow', guard('OnShow', function(self)
+	-- The frame's own OnShow script (<OnShow method="OnShow"/> in the XML): it
+	-- sets the width as the picker shows, so a post-hook on it sees the new width.
+	frame:SetScript('OnShow', function(self)
 		local width = self.hasOpacity and 388 or 331
 		self:SetWidth(width)
-	end))
+	end)
 	rawset(frame, 'SetupColorPickerAndShow', guard('SetupColorPickerAndShow', function(self, info)
 		-- Blizzard's own writes, which the lock would refuse from anyone else.
 		rawset(self, 'swatchFunc', info.swatchFunc)
@@ -236,7 +238,6 @@ function CP.build(opts)
 		rawset(self, 'extraInfo', info.extraInfo)
 		rawset(self, 'swatch', info.swatch)
 		self:Show()
-		self:OnShow()
 	end))
 
 	-- Blizzard's own OnClick on the buttons (set in OnLoad, before any skin).
@@ -291,6 +292,9 @@ end
 -- Opens the picker the way an addon does (Blizzard's SetupColorPickerAndShow).
 function CP.show(info)
 	driving = driving + 1
+	-- A picker shown already isn't shown again by the game (no OnShow), so it is
+	-- put away first, as a caller opening it afresh would have it.
+	if CP.frame:IsShown() then CP.frame:Hide() end
 	local ok, err = pcall(CP.frame.SetupColorPickerAndShow, CP.frame, info or {
 		r = 1, g = 0.5, b = 0.25, hasOpacity = false,
 		swatchFunc = function() end, cancelFunc = function() end,
