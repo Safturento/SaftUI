@@ -85,6 +85,7 @@ Standard: the owner's rule: a `ResetIcon` per setting, shown only while it diffe
 **18. The Copy from dialog shows internal keys.**
 Where: Unitframes > General > Copy from (`SaftUI-Unitframes/config/config.lua:205-300`): the settings list's labels are profile keys ("additionalpower", "grouproleindicator", "range_alpha"), and the title reads "Clone Player from.." (`:294`).
 Standard: labels as the page names them ("Additional power", "Group role", "Range"); a title such as "Copy to Player".
+Built (decision 17): each setting named as `/sui` names that part, sorted by name; the title "Copy to Player from"; the button right of the Unit dropdown.
 
 **19. Empty cells beside lone rows.**
 Where: Unitframes > General: Height alone with the divider beside an empty half; Health: "Custom" in a quarter, an empty quarter, then "Custom color" in a half.

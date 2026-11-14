@@ -39,5 +39,5 @@ The small dialog is drawn in the theme's `panel` art with flat rows (34, no pane
 
 - Do end a small dialog with its closing buttons on a line of their own, so they float.
 - Do write the confirm as a question about the thing, naming it: 'Delete the profile "Raid"?'.
-- Don't show internal keys as labels (the Copy from dialog lists "grouproleindicator", "range_alpha"; see Discrepancies).
+- Don't show internal keys as labels: name a setting as the page names it (the Copy from dialog's "Group role" and "Range", once "grouproleindicator" and "range_alpha").
 - Don't put a panel behind the closing buttons.

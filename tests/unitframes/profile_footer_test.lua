@@ -328,6 +328,40 @@ test("a SaftUI (AceDB) profile switch with Manage's dialog open: the dialog foll
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test('Copy from in the real window: a button right of the Unit dropdown, on every tab; none on a nameplate page; a search opens the unit', function()
+	local opened
+	local real = UF.OpenCopyTable
+	function UF:OpenCopyTable(unit) opened = unit end
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	eq(#f.pickerWidgets, 1, 'one button beside the picker')
+	local button = f.pickerWidgets[1]
+	eq(button.text:GetText(), 'Copy from', 'Copy from')
+	eq(button.frame:GetLeft(), f.picker.frame:GetRight() + 12, 'right of the Unit dropdown')
+	click(button.frame)
+	eq(opened, 'player', 'it opens the dialog for the picked unit')
+	eq(page_cell('copy'), nil, 'not in General any more')
+	OW:Navigate('Unitframes', { pick = 'nameplate' })
+	eq(OW:GetState().pick, 'nameplate', 'on Enemy nameplates')
+	eq(#f.pickerWidgets, 0, 'none on a nameplate page')
+
+	-- A search for it opens the unit's page.
+	f.search:SetText('copy from')
+	tick(0.3)
+	local result
+	for _, c in ipairs(OW.GetDrawnRows()) do
+		if c.row.name == 'Copy from' then result = c end
+	end
+	check(result ~= nil, 'found')
+	click(result.frame)
+	local state = OW:GetState()
+	eq(state.page .. '/' .. state.pick, 'Unitframes/player', "the unit's page")
+	eq(#f.pickerWidgets, 1, 'with Copy from beside its picker')
+	UF.OpenCopyTable = real
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test("a search result for the footer's options leaves the page's unit and tab as they were", function()
 	st.Config:Open('Unitframes', 'nameplate', 'general')
 	local f = frames()

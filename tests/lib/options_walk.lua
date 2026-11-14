@@ -29,7 +29,7 @@
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
 	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
-	default = true,
+	default = true, pickerControl = true,
 }
 
 SAFTUI_TYPES = { position = true, item = true, bagcategories = true, bagrule = true, bagitems = true }

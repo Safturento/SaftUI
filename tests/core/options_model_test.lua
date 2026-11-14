@@ -853,6 +853,39 @@ test("a page's footer (SaftUI's field): BuildView hands it on; Search finds its 
 	check(OM.Search(root, 'enable')[1] and not OM.Search(root, 'enable')[1].footer, "a page's own results aren't tagged")
 end)
 
+test("a pick's pickerControl (SaftUI's field): BuildView hands the picked one on; Search finds its options on the pick's path", function()
+	local root = unitframes_root()
+	root.Unitframes.args.player.args.copy = nil
+	local control = group('', {
+		copy = opt('execute', 'Copy from', { order = 1, func = function() end }),
+		gone = opt('execute', 'Hidden one', { order = 2, hidden = true }),
+	})
+	root.Unitframes.args.player.pickerControl = control
+	eq(OM.BuildView(root, 'Unitframes', { pick = 'player' }).picker.control, control, "the picked group's control, as it is")
+	eq(OM.BuildView(root, 'Unitframes', { pick = 'target' }).picker.control, nil, 'none for a pick without one')
+	root.Unitframes.args.target.pickerControl = 'junk'
+	eq(OM.BuildView(root, 'Unitframes', { pick = 'target' }).picker.control, nil, 'nor one that is no table')
+	eq(OM.BuildView(root, 'Unitframes', { pick = 'player' }).footer, nil, 'not the footer')
+
+	-- Search: under the pick's name, on the pick's own path (the page and the
+	-- pick: it opens the page at that pick); the hidden one left out.
+	local results = OM.Search(root, 'copy from')
+	eq(paths(results), 'Unitframes.player', "its option, on the pick's path")
+	eq(results[1].name, 'Copy from', 'by its own name')
+	eq(results[1].tabName, 'Player', "under the pick's name")
+	eq(paths(OM.Search(root, 'hidden one')), '', 'a hidden one is not found')
+	local pageKey, selection = OM.SelectionForPath(root, results[1].path)
+	eq(pageKey .. '/' .. tostring(selection.pick), 'Unitframes/player', 'it opens the page at that pick')
+	eq(selection.tab, nil, 'on its first tab')
+	-- After the pick's own options, before its tabs'.
+	root.Unitframes.args.player.args.zeta = opt('toggle', 'Copy from too', { order = -1 })
+	eq(paths(OM.Search(root, 'copy from')), 'Unitframes.player.zeta,Unitframes.player', "the pick's own row, then its control's")
+	local tabbed = OM.Search(root, 'player')
+	eq(tabbed[1].name, 'Copy from too', "a search for the pick's name finds its rows")
+	eq(tabbed[2].name, 'Copy from', 'its control too, before its tabs')
+	eq(tabbed[3].tabName, 'Player > General', 'then its tabs')
+end)
+
 ------------------------------------------------------------------ the real tree
 
 test('Experience on the real tree: the General page with its rows, then its Position option', function()

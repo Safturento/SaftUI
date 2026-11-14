@@ -124,6 +124,13 @@ local st = SaftUI
 	a group of options the window draws in its footer while the page is open,
 	its name as their one label (optionswindow.lua). BuildView hands it on as
 	view.footer, and Search finds its options as the page's.
+
+	A pick's group (a child of a group whose childGroups is 'select') may carry
+	a pickerControl (SaftUI's own field, never in its args): a group of
+	options, buttons, the window draws on the picker's line, right of the
+	picker, while that pick is shown. BuildView hands the picked one on as
+	view.picker.control, and Search finds its options on the pick's path,
+	which opens the page at that pick.
 ]]
 
 local OM = {}
@@ -138,6 +145,9 @@ function OM.Colors() return st.config.profile.colors end
 
 -- The most results OM.Search gives.
 local MAX_RESULTS = 100
+
+-- A pick's control's key in the tree of its own Search reads it from.
+local PICKER_CONTROL_KEY = 'pickerControl'
 
 -- The pages the window shows apart from the module groups.
 local SPECIAL = { Fonts = 'global', profile = 'profiles' }
@@ -555,7 +565,8 @@ end
 	{ title, desc,
 	  tabs = { {key, name, desc, disabled} }, tab,
 	  subtabs = { ... }, subtab,
-	  picker = { name, values = { {key, name, desc, disabled} }, selected } or nil,
+	  picker = { name, values = { {key, name, desc, disabled} }, selected,
+	             control = the picked group's pickerControl (a table) or nil } or nil,
 	  sections = { { title, note, rows = { row } } },
 	  footer = the page group's footer (a table) or nil }
 	tabs and subtabs are empty when there are none. The picker's name is the
@@ -591,10 +602,12 @@ function OM.BuildView(root, pageKey, selection)
 			if pickerName == '' then
 				pickerName = Text(GetMember('name', level.group, options, level.path))
 			end
+			local control = level.child and level.child.pickerControl
 			view.picker = {
 				name = pickerName,
 				values = level.list,
 				selected = key,
+				control = type(control) == 'table' and control or nil,
 			}
 		elseif level.slot == 'tab' then
 			view.tabs, view.tab = level.list, key
@@ -1063,6 +1076,10 @@ end
 	sectionTitle = the item's name, menu = true }, which opens the page with
 	the item in view and its menu open; an item in a page's footer gives
 	footer = true too, as its own row does (the page opens as it is).
+	A pick's control's options (its pickerControl) follow the pick's own
+	options, before its tabs', under the pick's name (and the names above
+	it); their path is the pick's (the page's key and the pick's), which
+	opens the page at that pick.
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -1076,9 +1093,9 @@ function OM.Search(root, text)
 
 	-- Adds the matching settings of an item's menu (row, an item's row): by
 	-- their name, the item's name or a tab's (tabMatch), each a result on the
-	-- item's path (a footer's item's with footer, as its own row's); true once
-	-- there are enough.
-	local function CollectMenu(pageKey, row, tabMatch, tabName, footer)
+	-- item's path (a footer's item's with footer, as its own row's; at, a
+	-- pick's control's, in place of it); true once there are enough.
+	local function CollectMenu(pageKey, row, tabMatch, tabName, footer, at)
 		local menu = row.option.menu
 		if type(menu) ~= 'table' or menu.type ~= 'group' then return end
 		local within = Options(OM.MenuRoot(row.option))
@@ -1090,7 +1107,7 @@ function OM.Search(root, text)
 				if inner.type ~= 'description' and (tabMatch or itemMatch or matches(inner.name)) then
 					results[#results + 1] = {
 						pageKey = pageKey,
-						path = row.path,
+						path = at or row.path,
 						name = inner.name,
 						tabName = tabName,
 						sectionTitle = row.name,
@@ -1104,8 +1121,10 @@ function OM.Search(root, text)
 	end
 
 	-- Adds group's matching rows; true once there are enough. within is the
-	-- tree its path is from (the root's, or a footer's own).
-	local function Collect(pageKey, group, path, deep, tabNames, within, footer)
+	-- tree its path is from (the root's, or a footer's or a pick's control's
+	-- own); at, the path every result takes in place of its row's (a pick's
+	-- control's: the pick's).
+	local function Collect(pageKey, group, path, deep, tabNames, within, footer, at)
 		local tabMatch = false
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
@@ -1119,7 +1138,7 @@ function OM.Search(root, text)
 				if row.type ~= 'description' and (tabMatch or sectionMatch or matches(row.name)) then
 					results[#results + 1] = {
 						pageKey = pageKey,
-						path = row.path,
+						path = at or row.path,
 						name = row.name,
 						tabName = tabName,
 						sectionTitle = section.title,
@@ -1127,9 +1146,19 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
-				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer) then return true end
+				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer, at) then return true end
 			end
 		end
+	end
+
+	-- A pick's control (group, the pick's group, at path, in slot 'pick'): its
+	-- options, a tree of their own, each on the pick's path; true once there
+	-- are enough.
+	local function CollectControl(pageKey, slot, group, path, tabNames)
+		local control = group.pickerControl
+		if slot ~= 'pick' or type(control) ~= 'table' then return end
+		local within = Options({ [PICKER_CONTROL_KEY] = control })
+		return Collect(pageKey, control, { PICKER_CONTROL_KEY }, false, tabNames, within, nil, path)
 	end
 
 	for _, page in ipairs(OM.Pages(root)) do
@@ -1148,11 +1177,14 @@ function OM.Search(root, text)
 		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do
 			local group, path = GetSubOption(pageOption, second.key), Append(pagePath, second.key)
 			if Collect(key, group, path, false, { second.name }) then return results end
+			if CollectControl(key, slot, group, path, { second.name }) then return results end
 			local thirdSlot = SlotFor(3, slot, group)
 			for _, third in ipairs(Openable(SubGroups(group, options, path), thirdSlot)) do
-				if Collect(key, GetSubOption(group, third.key), Append(path, third.key), true, { second.name, third.name }) then
+				local thirdGroup, thirdPath = GetSubOption(group, third.key), Append(path, third.key)
+				if Collect(key, thirdGroup, thirdPath, true, { second.name, third.name }) then
 					return results
 				end
+				if CollectControl(key, thirdSlot, thirdGroup, thirdPath, { second.name, third.name }) then return results end
 			end
 		end
 	end

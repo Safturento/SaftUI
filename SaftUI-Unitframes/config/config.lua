@@ -179,10 +179,65 @@ function UF.GenerateColorsConfigGroup(order, unit, flags, config, update, descs)
 end
 
 
+-- A unit's name, as its page in /sui is named.
+local function UnitName(unit)
+	return UF.unit_strings[unit] or UF.group_strings[unit] or unit
+end
+
+-- What Copy from calls the parts of a unit frame no page in /sui names (no
+-- element registers a tab for them).
+local COPY_NAMES = {
+	aurawatch = 'Aura watch',
+	portrait = 'Portrait',
+}
+
+-- A key's name made from the key itself, for one nothing else names: its
+-- words apart and in sentence case ('range_alpha', 'growthDirection').
+local function KeyName(key)
+	local words = tostring(key):gsub('_', ' '):gsub('(%l)(%u)', '%1 %2'):lower()
+	return (words:gsub('^%l', string.upper))
+end
+
+-- What Copy from calls each key of a unit's config: the name /sui shows for
+-- that part, read from the unit frames' pages (the units' own page first,
+-- then the others by key; never a nameplate page's, which Copy from leaves
+-- out): an element's tab by its key in lower case (the config's key for it),
+-- and General's options, sections and the options in them by their keys
+-- (Layout's settings, the Range section). Then COPY_NAMES, else KeyName.
+local function CopyNames(self, unit)
+	local names = {}
+	local function Add(key, name)
+		if names[key] == nil and type(key) == 'string' and type(name) == 'string' and name ~= '' then
+			names[key] = name
+		end
+	end
+	local function AddGeneral(args)
+		for key, option in pairs(args) do
+			Add(key, option.name)
+			if option.type == 'group' and type(option.args) == 'table' then AddGeneral(option.args) end
+		end
+	end
+	local pages = self:GetConfigTable().args
+	local order = {}
+	for key in pairs(pages) do
+		if key ~= unit and not UF.IsPlateUnit(key) then order[#order + 1] = key end
+	end
+	table.sort(order)
+	table.insert(order, 1, unit)
+	for _, key in ipairs(order) do
+		for tabKey, tab in pairs(pages[key] and pages[key].args or {}) do
+			if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
+		end
+	end
+	return setmetatable(names, { __index = function(_, key) return COPY_NAMES[key] or KeyName(key) end })
+end
+
 -- The Copy from dialog: copies the ticked settings of another unit (in the
 -- current unit frame profile) onto unit, after asking. SaftUI's options window
 -- draws it as a small dialog (st.OptionsWindow:OpenDialog). The table is made
--- anew each time, so nothing carries over from the last unit. Copy from takes
+-- anew each time, so nothing carries over from the last unit. Each setting is
+-- named as /sui names that part elsewhere (CopyNames), and they sort by that
+-- name; the units are named as their pages are. Copy from takes
 -- a line of its own, so its label has room, with All and None at the line's
 -- right end; Confirm copy and Cancel are a pair in the middle of the last
 -- line, as Blizzard's popup dialogs place their buttons (align, the options
@@ -195,9 +250,10 @@ end
 function UF:OpenCopyTable(unit)
 	local copy = { from = nil, settings = {} }
 	local settingArgs = {}
+	local names = CopyNames(self, unit)
 	for key in pairs(self:GetProfileConfig()[unit]) do
 		copy.settings[key] = false
-		settingArgs[key] = st.Config.generators.toggle(0, key,
+		settingArgs[key] = st.Config.generators.toggle(0, names[key],
 			'Copies this setting from the other unit frame onto this one.')
 	end
 	local function SetAll(value)
@@ -219,7 +275,7 @@ function UF:OpenCopyTable(unit)
 					-- The current profile's, in case the profile changed since opening
 					for key in pairs(UF:GetProfileConfig()) do
 						if key ~= unit and not UF.IsPlateUnit(key) then
-							units[key] = key
+							units[key] = UnitName(key)
 						end
 					end
 					return units
@@ -260,7 +316,8 @@ function UF:OpenCopyTable(unit)
 				type = 'execute',
 				disabled = function() return not copy.from end,
 				confirm = function()
-					return 'Are you sure you want to clone ' .. unit .. ' from ' .. tostring(copy.from) .. '?'
+					return 'Are you sure you want to copy the ticked settings to ' .. UnitName(unit)
+						.. ' from ' .. UnitName(copy.from) .. '?'
 				end,
 				func = function()
 					local profile = UF:GetProfileConfig()
@@ -291,7 +348,7 @@ function UF:OpenCopyTable(unit)
 	}
 
 	st.OptionsWindow:OpenDialog(function()
-		return 'Clone ' .. unit .. (copy.from and (' from ' .. copy.from) or ' from..')
+		return 'Copy to ' .. UnitName(unit) .. ' from' .. (copy.from and (' ' .. UnitName(copy.from)) or '')
 	end, options)
 end
 
@@ -341,6 +398,24 @@ function UF:GetConfigTable()
 			inline = false,
 			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
 			childGroups = 'tab',
+			-- Copy from, on the picker's line right of the Unit dropdown, so it's
+			-- there from every tab (Core's pickerControl field). A nameplate
+			-- page has none (UF.SetUpPlatePage).
+			pickerControl = {
+				type = 'group',
+				name = '',
+				args = {
+					copy = {
+						order = 1,
+						name = 'Copy from',
+						desc = "Copies chosen settings from another unit frame onto this one.",
+						type = 'execute',
+						func = function()
+							UF:OpenCopyTable(unit)
+						end,
+					},
+				},
+			},
 			args = {
 				-- Clicking the unit's frame in edit mode selects this group (the
 				-- mover's configPath, UF:RegisterMovers).
@@ -356,19 +431,9 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(unit)
 					end,
 					args = {
-						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.', 'small'),
-						-- A quarter beside Enable, with Theme in the right half
-						-- of the line.
-						copy = {
-							name = 'Copy from',
-							desc = "Copies chosen settings from another unit frame onto this one.",
-							size = 'small',
-							type = 'execute',
-							func = function()
-								UF:OpenCopyTable(unit)
-							end,
-							order = 0.5,
-						},
+						-- A half, so Theme sits beside it with no empty quarter
+						-- between (as Class power's).
+						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
 						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
 						background = st.Config.generators.background(1.5),
 						width = st.Config.generators.width(2, "The unit frame's width."),

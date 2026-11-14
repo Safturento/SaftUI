@@ -14,8 +14,8 @@
 -- of what is drawn (size_of, rgba), theme, and the pieces of the fill row
 -- page (FillRowsTable, FillRowsModule).
 --
--- hideTarget, ufProfile, ufProfiles, ufManaged, ufPickerLabel and columns are
--- the modules' state, read when a page's table is built. They are globals,
+-- hideTarget, ufProfile, ufProfiles, ufManaged, ufPickerLabel, ufPickerControl
+-- and columns are the modules' state, read when a page's table is built. They are globals,
 -- not locals, so a case in any file that sets one (hideTarget = true) reaches
 -- the modules here.
 
@@ -40,6 +40,7 @@ ufProfile = 'Main'
 ufProfiles = { Main = 'Main', Alt = 'Alt' } -- the dropdown's values, read each time it's drawn
 ufManaged = 0 -- Manage's clicks
 ufPickerLabel = nil -- the page's pickerLabel, when a test sets one
+ufPickerControl = nil -- the player's pickerControl (SaftUI's field), when a test sets one
 
 local function UnitTable(unit, name)
 	local cfg = uf[unit]
@@ -48,6 +49,7 @@ local function UnitTable(unit, name)
 		type = 'group',
 		childGroups = 'tab',
 		hidden = unit == 'target' and function() return hideTarget end or nil,
+		pickerControl = unit == 'player' and ufPickerControl or nil,
 		args = {
 			copy = { name = 'Copy from', type = 'execute', order = -99, func = function() end },
 			general = {

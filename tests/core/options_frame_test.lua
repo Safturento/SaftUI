@@ -687,6 +687,133 @@ test("a search result for the footer's options opens the page as it is: the page
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+------------------------------------------------------------------ a pick's control beside the picker
+
+-- The player's control (ufPickerControl, the helpers' Unitframes): Copy from
+-- and Swap, two buttons; ran counts their clicks.
+local function picker_control(ran)
+	return {
+		type = 'group', name = '',
+		args = {
+			copy = { order = 1, type = 'execute', name = 'Copy from', desc = 'Copies settings onto this unit.',
+				func = function() ran.copy = (ran.copy or 0) + 1 end },
+			swap = { order = 2, type = 'execute', name = 'Swap', desc = 'Swaps them.',
+				func = function() ran.swap = (ran.swap or 0) + 1 end },
+		},
+	}
+end
+
+-- Picks key in the picker's list.
+local function pick(key)
+	click(frames().picker.frame)
+	for _, row in ipairs(W.GetListFrames().rows) do
+		if row:IsShown() and row.text:GetText() == key then click(row) return end
+	end
+	error('no pick ' .. key)
+end
+
+test("a pick's pickerControl: its buttons on the picker's line, 12 right of the dropdown and apart; a pick without one has none", function()
+	local P = load_test_file('lib/pixels.lua')
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		H.theme(look)
+		local ran = {}
+		ufPickerControl = picker_control(ran)
+		st.Config:Open('Unitframes', 'player', 'power')
+		local f = frames()
+		local picker, widgets = f.picker.frame, f.pickerWidgets
+		eq(#widgets, 2, look .. ': a widget per option')
+		eq(widgets[1].type .. ',' .. widgets[2].type, 'execute,execute', look .. ": the kit's buttons")
+		eq(widgets[1].text:GetText() .. ',' .. widgets[2].text:GetText(), 'Copy from,Swap', look .. ': in order')
+		eq(widgets[1].frame:GetLeft(), picker:GetRight() + 12, look .. ': 12 right of the dropdown')
+		eq(widgets[2].frame:GetLeft(), widgets[1].frame:GetRight() + 12, look .. ': the next 12 after it')
+		local _, py = picker:GetCenter()
+		local _, by = widgets[1].frame:GetCenter()
+		eq(by, py, look .. ": on the picker's middle line")
+		local off = {}
+		for _, w in ipairs(widgets) do
+			for _, o in ipairs(P.off(w.frame)) do off[#off + 1] = o end
+		end
+		eq(#off, 0, look .. ': on whole pixels: ' .. P.report(off))
+
+		-- A click runs it, and the page draws again where it was.
+		local before = OW.GetRenderCount()
+		click(f.pickerWidgets[1].frame)
+		eq(ran.copy, 1, look .. ': Copy from ran')
+		eq(OW.GetRenderCount(), before + 1, look .. ': the page drawn again')
+		eq(OW:GetState().tab, 'power', look .. ': on the tab it was')
+		eq(#f.pickerWidgets, 2, look .. ': and the control with it')
+
+		-- Target has none; back on Player, there again; a page with no picker, none.
+		pick('Target')
+		eq(OW:GetState().pick, 'target', look .. ': on Target')
+		eq(#f.pickerWidgets, 0, look .. ': none on a pick without one')
+		pick('Player')
+		eq(#f.pickerWidgets, 2, look .. ': back on Player')
+		OW:Navigate('Loot')
+		eq(#f.pickerWidgets, 0, look .. ': none on a page with no picker')
+		close_all()
+	end
+	H.theme('thick')
+	ufPickerControl = nil
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a pick's control shows each option's tooltip, follows disabled and hidden, and goes with the results page", function()
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	local ran = {}
+	ufPickerControl = picker_control(ran)
+	st.Config:Open('Unitframes', 'player', 'general')
+	local f = frames()
+	local copy = f.pickerWidgets[1]
+	stub.fire_script(copy.frame, 'OnEnter', true) -- the game's second argument, motion
+	check(GameTooltip:IsOwned(copy.frame) and GameTooltip:IsShown(), 'a tooltip over it')
+	local texts = stub.state(GameTooltip).texts
+	eq(texts[#texts - 1], 'Copy from', 'its name')
+	eq(texts[#texts], 'Copies settings onto this unit.', 'its desc')
+	stub.fire_script(copy.frame, 'OnLeave', true)
+	check(not GameTooltip:IsShown(), 'gone when the mouse leaves')
+
+	-- Disabled and hidden, read at each render as a page's rows.
+	ufPickerControl.args.copy.disabled = true
+	ufPickerControl.args.swap.hidden = true
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(#f.pickerWidgets, 1, 'a hidden one is left out')
+	check(f.pickerWidgets[1]:IsDisabled(), 'a disabled one is dimmed')
+	click(f.pickerWidgets[1].frame)
+	eq(ran.copy, nil, 'and does nothing')
+
+	-- The results page has no picker, so no control.
+	f.search:SetText('enable')
+	tick(0.3)
+	eq(f.title:GetText(), 'Search', 'searching')
+	eq(#f.pickerWidgets, 0, 'no control on the results')
+	f.search:SetText('')
+	tick(0.3)
+	eq(#f.pickerWidgets, 1, 'back with the page')
+	ufPickerControl = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a search finds a pick's control's options, and a result opens the page at that pick", function()
+	local ran = {}
+	ufPickerControl = picker_control(ran)
+	st.Config:Open('Unitframes', 'target', 'power')
+	local f = frames()
+	f.search:SetText('swap')
+	tick(0.3)
+	local results = OW.GetDrawnRows()
+	eq(#results, 1, 'one result')
+	eq(results[1].row.name, 'Swap', 'the option')
+	click(results[1].frame)
+	local state = OW:GetState()
+	eq(state.page .. '/' .. state.pick, 'Unitframes/player', 'the page, at that pick')
+	eq(#f.pickerWidgets, 2, 'with its control')
+	ufPickerControl = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 test('OW.FooterPlace: centred while clear of the inset, else the right end, else the right end without the label', function()
 	-- regionWidth, inset, labelWidth (with its gap), widgetsWidth -> x, label shown.
 	local function place(...)
