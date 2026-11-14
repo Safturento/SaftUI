@@ -92,6 +92,30 @@ function UF:GetFrame(unitframe, configPosition)
     return unitframe[configPosition.element] or _G[configPosition.frame] or unitframe
 end
 
+-- What a nameplate's frame or one of its parts is anchored to, for
+-- st:ValidateAnchor's loop check (st:RegisterAnchorSource): the game refuses
+-- to measure a plate's parts (GetPoint errors "Can't measure restricted
+-- regions", in combat and out), so it can't walk their live points. A part is
+-- anchored where UF:GetFrame puts it, by its config's position. The plate's own
+-- frame is anchored to the game's plate, outside every unit frame's config:
+-- nothing to follow. Any other frame gets nil, and the live walk.
+function UF.PlatePartAnchors(frame)
+	if rawget(frame, 'isNamePlate') then
+		return {}
+	end
+	local unitframe = rawget(frame, 'unitframe')
+	if not (unitframe and rawget(unitframe, 'isNamePlate') and frame.GetConfig) then
+		return nil
+	end
+	local config = frame:GetConfig()
+	local position = config and config.position
+	if type(position) ~= 'table' then
+		return { unitframe }
+	end
+	return { UF:GetFrame(unitframe, position) }
+end
+st:RegisterAnchorSource(UF.PlatePartAnchors)
+
 -- oUF keeps the active unit in __unit, but Blizzard's UnitFrame_OnEnter reads
 -- self.unit and passes it straight to GameTooltip:SetUnit, which throws on nil.
 function UF.OnEnter(self)

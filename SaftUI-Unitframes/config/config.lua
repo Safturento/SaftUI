@@ -4,15 +4,18 @@ local UF = st:GetModule('Unitframes')
 -- One spawned frame of a config unit, for its options to look at: the unit's
 -- frame, boss (or arena) 1, a party or raid group's first button, or, for
 -- either nameplate page, the frame on the plate with the lowest number
--- (nameplates/nameplates.lua). nil while a group has no buttons, or no plate
--- has had a unit yet.
+-- (nameplates/nameplates.lua) that draws from that page's config (its
+-- base_unit), else the lowest plate of either kind. nil while a group has no
+-- buttons, or no plate has had a unit yet.
 function UF:GetConfigFrame(unit)
 	if UF.IsPlateUnit(unit) then
-		local lowest
-		for id in pairs(self.nameplates or {}) do
+		local lowest, lowestOfPage
+		for id, frame in pairs(self.nameplates or {}) do
 			if not lowest or id < lowest then lowest = id end
+			if frame.base_unit == unit and (not lowestOfPage or id < lowestOfPage) then lowestOfPage = id end
 		end
-		return lowest and self.nameplates[lowest] or nil
+		local id = lowestOfPage or lowest
+		return id and self.nameplates[id] or nil
 	end
 	local frame = self.units and self.units[unit]
 	if frame then
