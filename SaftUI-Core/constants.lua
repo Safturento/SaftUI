@@ -35,6 +35,11 @@ st.BOX_COLORS = {
 	alt = { 0.1, 0.1, 0.1, 1 },
 	bg = { 0.12, 0.12, 0.12, 1 },
 }
+-- The two strengths of an accent tint, by what it means. A hovered or selected
+-- row in a list is tinted at TINT_ROW, everywhere. TINT_OBJECT is only for a
+-- selected object's fill (a selected mover in the edit mode).
+st.TINT_ROW = 0.25
+st.TINT_OBJECT = 0.15
 st.BLANK_TEX = [[Interface\BUTTONS\WHITE8X8]]
 st.BACKDROP = {
 	bgFile = st.BLANK_TEX, 

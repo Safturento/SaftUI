@@ -130,7 +130,6 @@ local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows 
 local EDGE_INSIDE, EDGE_OUTSIDE = 6, ROW_HEIGHT
 local EDGE_SPEED = 12 * ROW_HEIGHT
 local TIP_GAP = 4 -- an item tooltip from the window's edge
-local TINT_ALPHA, HOVER_ALPHA = 0.25, 0.1
 local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
 local QUESTION_MARK = 134400 -- Interface\Icons\INV_Misc_QuestionMark
@@ -514,8 +513,8 @@ local function LayListRow(w, i, entry, count, selected)
 		f.bar:Hide()
 	else
 		local r, g, b = Colors().button.blue:GetRGB()
-		f.hover:SetColorTexture(r, g, b, HOVER_ALPHA)
-		f.tint:SetColorTexture(r, g, b, TINT_ALPHA)
+		f.hover:SetColorTexture(r, g, b, st.TINT_ROW)
+		f.tint:SetColorTexture(r, g, b, st.TINT_ROW)
 		f.bar:SetColorTexture(r, g, b)
 		f.bar:SetShown(selected)
 	end
