@@ -44,7 +44,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	true }), which draws OM.BuildView(root, OM.MENU_KEY).sections: every row
 	a line of its own, on panels under Thick and Thin (a closing line of
 	buttons floats under its panel), none under Blizzard. The menu is as tall
-	as its title and its body: its last row ends 12 above its edge. Its
+	as its title and its body: its last row ends 12 above its edge, or a
+	closing line of buttons 24 (OB.FLOAT_GAP), as far as it floats under the
+	panel above it. Its
 	content's parent is the menu, which the hover lines' watcher takes for
 	the body's view (optionsshare.lua). Its catcher: a frame over UIParent at
 	FULLSCREEN_DIALOG level 400 that takes the mouse and closes the menu on a
@@ -167,8 +169,11 @@ local function DrawBody()
 	local view = OM.BuildView(M.root, OM.MENU_KEY)
 	local height = view and M.body:Draw(view.sections) or 0
 	M.content:SetHeight(max(1, height))
-	-- The body ends OB.BOTTOM under its last row: the menu's own padding instead.
-	M.frame:SetHeight(CONTENT_TOP + (height > 0 and height - OB.BOTTOM or OB.TOP) + MENU_PAD)
+	-- The body ends OB.BOTTOM under its last row: the menu's own padding
+	-- instead; under a closing line of buttons (off the panel), OB.FLOAT_GAP,
+	-- as far as the line is under the rows above it.
+	local foot = M.body.endsFloating and OB.FLOAT_GAP or MENU_PAD
+	M.frame:SetHeight(CONTENT_TOP + (height > 0 and height - OB.BOTTOM or OB.TOP) + foot)
 end
 
 -- The menu of an item's row (in body, the body that drew it) drawn, and on

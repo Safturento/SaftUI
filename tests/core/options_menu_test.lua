@@ -176,9 +176,11 @@ test('the dots open the menu: over the dialog, one column, titled, the position 
 	check(menuCell('position') ~= nil, 'with its block')
 	local reset = menuCell('reset').widget.frame
 	eq(math.floor(reset:GetLeft() - m.content:GetLeft() + reset:GetWidth() / 2), 188, 'Reset centred')
-	-- As tall as the title and the body.
-	local last = reset:GetBottom()
-	eq(last - m.frame:GetBottom(), 12, 'the menu ends 12 under its last row')
+	-- As tall as the title and the body. Reset, the closing line, floats 24
+	-- under the Position block's panel (Thick), so the menu ends as far under
+	-- it: 24, where a last row on a panel has 12.
+	eq(menuCell('position').frame:GetBottom() - reset:GetTop(), 24, 'Reset 24 under the panel above it')
+	eq(reset:GetBottom() - m.frame:GetBottom(), 24, 'the menu ends 24 under it, as far')
 	check(m.content:GetParent() == m.frame, "the body's view is the menu")
 
 	-- The dots again close it; another item's open it on that item.
@@ -787,6 +789,7 @@ test('Blizzard: the menu drawn as the dialog is, its body without panels', funct
 	click(dots('hotkey'))
 	eq(m.body.metrics, OB.FLAT, 'Blizzard: flat')
 	eq(#m.body.pools.panel.used, 0, 'no panels')
+	eq(menuCell('reset').frame:GetBottom() - m.frame:GetBottom(), 12, 'nothing floats: the menu ends 12 under its last row')
 	eq(menuCell('size').frame:GetWidth(), 376, 'a row the whole body')
 	theme('thick')
 	close_all()

@@ -46,6 +46,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                                   own body in)
 	  body.shareTitles                 the section titles drawn with a
 	                                   shareable block's marks (optionsshare.lua)
+	  body.endsFloating                the last drawn line is a line of
+	                                   buttons off the panel (under panels):
+	                                   what holds the body ends OB.FLOAT_GAP
+	                                   under it, as far as it is under the
+	                                   rows (an item's menu)
 
 	sections are the model's ({ title, note, rows }, OM.BuildView). Rows no
 	widget draws are left out, and so are sections left empty; the height is
@@ -1091,6 +1096,7 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if cell.widget.SetHeight then cell.widget:SetHeight(cell.height - cell.pad) end
 	end
 	self.filled = #fills > 0
+	self.endsFloating = laid[#laid] ~= nil and laid[#laid].endsFloating or false
 	local pools, content, metrics = self.pools, self.content, self.metrics
 	-- No line between sections: the panels part them (and Blizzard never drew
 	-- one); the gap for it stays (entry.lineY). Under panels a panel covers each
@@ -1266,7 +1272,7 @@ function Body:Release()
 	end
 	wipe(self.cells)
 	wipe(self.shareTitles)
-	self.filled = false
+	self.filled, self.endsFloating = false, false
 	-- Every pool, optionsshare.lua's title hovers among them.
 	for _, pool in pairs(self.pools) do ReleaseAll(pool) end
 end
