@@ -65,7 +65,7 @@ local floor, ceil, max = math.floor, math.ceil, math.max
 -- From optionswindow.lua.
 local F, SaveWindow = S.F, S.SaveWindow
 local CLOSE_RIGHT, MINI_PAD = S.CLOSE_RIGHT, S.MINI_PAD
-local Draggable, SavePosition = S.Draggable, S.SavePosition
+local Draggable = S.Draggable
 local Text, Grey = OB.Text, S.Grey
 
 local MINI_GAP = 8 -- between the bar's parts
@@ -148,7 +148,10 @@ function S.UpdateWindowButtons()
 	local picker = S.ColorPickerShown()
 	local function Enabled(step)
 		local target = OW.NextSize(S.size, step)
-		return target ~= nil and not picker and (target == 'mini' or OW.Fits(S.layout, target, S.sidebar))
+		-- The bar and the way back from it to half are always allowed: half is
+		-- the floor a screen that is too narrow falls back to (Ruling 4), as
+		-- OW:Open does.
+		return target ~= nil and not picker and (target == 'mini' or S.size == 'mini' or OW.Fits(S.layout, target, S.sidebar))
 	end
 	W.SetEnabled(F.shrink, Enabled(1))
 	W.SetEnabled(F.grow, Enabled(-1))
@@ -203,7 +206,7 @@ function OW:SetWindowSize(size)
 	if size == S.size then return false end
 	-- One step at a time: the bar is taken only from half.
 	if size ~= OW.NextSize(S.size, 1) and size ~= OW.NextSize(S.size, -1) then return false end
-	if size ~= 'mini' and not OW.Fits(S.layout, size, S.sidebar) then return false end
+	if size ~= 'mini' and S.size ~= 'mini' and not OW.Fits(S.layout, size, S.sidebar) then return false end
 	local before = S.size
 	if size == 'mini' then CloseOverlays() end
 	-- The bar saves half: it opens again as half.
@@ -263,17 +266,10 @@ function S.BuildMini(window)
 	local names = CreateFrame('Button', nil, mini)
 	names:EnableMouse(true)
 	names:RegisterForClicks('LeftButtonUp')
-	names:RegisterForDrag('LeftButton')
+	Draggable(names) -- the window moves and its corner is saved, as the bar's
 	names.dragged = false
 	names:SetScript('OnMouseDown', function(self) self.dragged = false end)
-	names:SetScript('OnDragStart', function(self)
-		self.dragged = true
-		F.window:StartMoving()
-	end)
-	names:SetScript('OnDragStop', function()
-		F.window:StopMovingOrSizing()
-		SavePosition()
-	end)
+	names:HookScript('OnDragStart', function(self) self.dragged = true end)
 	names:SetScript('OnClick', function(self)
 		if self.dragged then return end
 		OW:Grow()
@@ -301,6 +297,8 @@ function S.DrawMini(page, tab, path)
 	F.miniBrand:SetText(OW.BrandText())
 	F.miniPage:SetText(page)
 	F.miniTab:SetText(tab)
+	-- ceil, though widths are rounded elsewhere: a text's own width rounded down
+	-- would cut its last letter to an ellipsis (as the tab row does).
 	local pageWidth, tabWidth = ceil(F.miniPage:GetUnboundedStringWidth()), ceil(F.miniTab:GetUnboundedStringWidth())
 	local buttons = Whole(F.miniGrow:GetWidth()) + MINI_GAP + Whole(F.close:GetWidth())
 	local pageShown, tabShown, width = OW.MiniLayout(brand, pageWidth, tabWidth, buttons)

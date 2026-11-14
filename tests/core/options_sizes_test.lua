@@ -79,6 +79,15 @@ test('OW.MiniLayout: the bar is its parts and their gaps, rounded up to even, at
 	eq(layout(54, 90, 70, 56.4), '90 70 314')
 	-- Too wide for MINI_MAX: the tab is cut first, to what is left, and dropped with its gap when none is.
 	eq(layout(54, 100, 300, 56), '100 146 400', 'the tab cut to the room')
+	-- A tab cut under MIN_TAB (24) is dropped with its gap; the page then keeps its room.
+	eq(layout(54, 240, 30, 56), '240 0 386', 'a 6 wide sliver of a tab is dropped, the page uncut')
+	eq(layout(54, 200, 20, 56), '200 20 374', 'a tab that fits whole is never dropped, however narrow')
+	eq(layout(54, 100, 100, 56), '100 100 354', 'a tab that fits')
+	eq(layout(54, 100, 300, 76), '100 126 400', 'a tab cut to 126 stays')
+	eq(layout(54, 200, 100, 46), '200 56 400', 'cut to 56')
+	eq(layout(54, 200, 100, 78), '200 24 400', 'cut to exactly 24 stays')
+	eq(layout(54, 200, 100, 79), '200 0 370', 'cut to 23 goes: 369 rounded up to even')
+	eq(layout(54, 260, 30, 56), '254 0 400', 'dropped, then the page is cut to the room')
 	eq(layout(54, 300, 300, 56), '254 0 400', 'the tab goes, then the page is cut')
 	eq(layout(54, 400, 0, 56), '254 0 400', 'a page alone is cut to the room')
 	eq(layout(54, 254, 0, 56), '254 0 400', 'a page that just fits')
@@ -492,19 +501,22 @@ test('a size button ignores clicks for a third of a second after a change', func
 	close_all()
 end)
 
-test('OW:SetWindowSize: false in combat, for no change, for a bar (Task 4), for a size that does not fit', function()
+test('OW:SetWindowSize: false in combat, for no change, for a jump from full to the bar, for a size that does not fit', function()
 	theme('thick')
 	st.config.global.optionsWindow = nil
 	st.Config:Open('Unitframes', 'player', 'general')
 	wait()
 	eq(OW:SetWindowSize('full'), false, 'no change')
-	eq(OW:SetWindowSize('mini'), false, 'no bar yet')
+	eq(OW:SetWindowSize('mini'), false, 'full to the bar is two steps')
 	stub.in_combat = true
 	eq(OW:SetWindowSize('half'), false, 'refused in combat')
 	stub.in_combat = false
 	eq(OW:GetWindowSize(), 'full')
 	eq(OW:SetWindowSize('half'), true)
-	eq(OW:Shrink(), false, 'shrink at half: nothing to shrink to until the bar')
+	eq(OW:Shrink(), false, 'inside the size guard')
+	wait()
+	eq(OW:Shrink(), true, 'then half shrinks to the bar')
+	eq(OW:GetWindowSize(), 'mini')
 	st.config.global.optionsWindow = nil
 	close_all()
 end)

@@ -259,6 +259,7 @@ end
 ]]
 OW.MINI_HEIGHT = 42 -- the bar's height
 OW.MINI_MAX = 400 -- the most the bar's width takes
+OW.MINI_MIN_TAB = 24 -- the least a tab name cut to fit is worth showing
 
 -- The window's width in layout L at size ('full'; anything else gives half's,
 -- the size the bar grows back to) with the sidebar shown (true) or collapsed (false).
@@ -288,6 +289,9 @@ function OW.MiniLayout(brand, page, tab, buttons)
 	local over = Total() - OW.MINI_MAX
 	if over > 0 then
 		tab = max(0, tab - over)
+		-- A tab cut under what shows an ellipsis and a letter or two is dropped
+		-- with its gap, and the page takes the room.
+		if tab < OW.MINI_MIN_TAB then tab = 0 end
 		over = Total() - OW.MINI_MAX
 		if over > 0 then page = max(0, page - over) end
 	end

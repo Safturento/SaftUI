@@ -231,10 +231,12 @@ test('growing back: half at the page, tab, pick, scroll and search it had', func
 	local F, S = frames(), OW.S
 	S.SetScroll(120)
 	eq(S.scrollOffset, 120, 'scrolled at half')
+	S.navOffset = 5 -- a value the bar's render must not clamp away or reset
+	local nav = S.navOffset
 	to_mini()
 	st.Config:Refresh(); tick()
 	eq(#OW.GetDrawnRows(), 0, 'a render at the bar draws no page')
-	eq(S.scrollOffset, 120, 'the offset is kept'); eq(S.navOffset, S.navOffset, 'and the nav\'s')
+	eq(S.scrollOffset, 120, 'the offset is kept'); eq(S.navOffset, nav, "and the nav's")
 	wait(); OW:Grow()
 	eq(F.body:GetVerticalScroll(), 120, 'half again at exactly the scroll it had')
 	check(#OW.GetDrawnRows() > 0, 'the page is drawn')
@@ -263,6 +265,7 @@ test('a click on the names grows it; a drag anywhere but its buttons moves it an
 	local F = frames(); local w, names = F.window, F.miniNames
 	eq(names:GetLeft(), F.miniPage:GetLeft(), 'the names button starts at the page'); eq(names:GetRight(), F.miniTab:GetRight(), 'and ends at the tab')
 	eq(names:GetHeight(), 42, 'the bar tall')
+	wait() -- past the size guard, so only the dragged flag can stop the click below
 	stub.fire_script(names, 'OnMouseDown', 'LeftButton')
 	eq(names.dragged, false, 'a press is no drag yet')
 	stub.fire_script(names, 'OnDragStart')
@@ -343,11 +346,15 @@ test('/sui, a path, and a mover\'s click while the bar shows grow it to half on 
 	st.Config:Open('Chat'); wait(); OW:Shrink()
 	EM:Select(mover)
 	eq(OW:GetWindowSize(), 'half', "selecting a mover grows it"); eq(OW:GetState().page, 'Loot', 'on its page')
-	-- The mover already selected: a click on its overlay. At half it leaves /sui
-	-- on the page it shows; closed it opens /sui. (The bar counts as closed
-	-- there: EditMode/mover.lua, whose change is left to the controller.)
-	OW:Navigate('Chat')
+	-- The mover already selected: a click on its overlay grows the bar to its
+	-- page (from another page, so the click must have navigated); at half it
+	-- leaves /sui on the page it shows; closed it opens /sui.
+	OW:Navigate('Chat'); wait(); OW:Shrink()
+	eq(OW:GetWindowSize(), 'mini')
 	mover.dragged = false
+	stub.click(mover.overlay)
+	eq(OW:GetWindowSize(), 'half', 'a click on the selected mover grows the bar'); eq(OW:GetState().page, 'Loot', 'to the mover\'s page')
+	OW:Navigate('Chat')
 	stub.click(mover.overlay)
 	eq(OW:GetState().page, 'Chat', "at half the click leaves /sui on the page it shows"); eq(OW:GetWindowSize(), 'half')
 	st.Config:Close()
@@ -489,4 +496,78 @@ test('whole pixels at the bar under Thick and Thin, with the size noise up, down
 	end
 	reset()
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ fix round 1
+
+-- A page with exactly one tab.
+local ONE = st:NewModule('MiniOneTab')
+function ONE:GetConfigTable()
+	return { name = 'One tab', type = 'group', category = 'Frames', childGroups = 'tab', args = {
+		only = { order = 1, type = 'group', name = 'Only tab', args = { on = { type = 'toggle', name = 'On',
+			get = function() return true end, set = function() end } } } } }
+end
+
+test('a page with exactly one tab shows no tab name on the bar', function()
+	reset()
+	st.Config:Open('MiniOneTab'); to_half(); to_mini()
+	local F = frames()
+	eq(F.miniPage:GetText() .. '/' .. F.miniTab:GetText(), 'One tab/', 'one tab: no tab name')
+	check(not F.miniTab:IsShown(), 'the tab hidden')
+	eq(F.miniNames:GetRight(), F.miniPage:GetRight(), 'the names end at the page')
+	reset()
+end)
+
+test("a double click whose second click lands on the other size's arrow does nothing", function()
+	reset()
+	st.Config:Open('Loot'); to_half()
+	local F = frames()
+	wait(); click(F.shrink)
+	eq(OW:GetWindowSize(), 'mini')
+	click(F.miniGrow)
+	eq(OW:GetWindowSize(), 'mini', "half's shrink then the bar's grow, which sits about there: held by the guard")
+	stub.fire_script(F.miniNames, 'OnMouseDown', 'LeftButton')
+	click(F.miniNames)
+	eq(OW:GetWindowSize(), 'mini', 'and on the names')
+	wait(); click(F.miniGrow)
+	eq(OW:GetWindowSize(), 'half')
+	click(F.shrink)
+	eq(OW:GetWindowSize(), 'half', "the bar's grow then half's shrink: held too")
+	reset()
+end)
+
+test('on a screen too narrow for half the bar still grows to half, by its arrow, its names and /sui alike', function()
+	reset()
+	st.Config:Open('Loot'); to_half(); to_mini()
+	local F = frames()
+	local old = UIParent:GetScale()
+	stub.screen_width = 600
+	OW:Render()
+	check(not OW.Fits(OW.LAYOUT.own, 'half', true), 'half does not fit')
+	check(not F.miniGrow.disabled, 'grow is not disabled: half is the floor (Ruling 4)')
+	wait(); click(F.miniGrow)
+	eq(OW:GetWindowSize(), 'half', 'it grows')
+	to_mini()
+	st.Config:Open()
+	eq(OW:GetWindowSize(), 'half', '/sui grows it too')
+	stub.screen_width = 1920
+	UIParent:SetScale(old)
+	reset()
+end)
+
+test('the bar keeps only its own edges in the screen margin, under Blizzard too', function()
+	reset()
+	theme('blizzard')
+	st.Config:Open('Loot'); to_half()
+	local F = frames()
+	local margin = math.max(0, st.config.profile.misc.clamp_inset)
+	local l, r, t, b = F.window:GetClampRectInsets()
+	check(l ~= -margin or r ~= margin or t ~= margin or b ~= -margin, 'half keeps the metal in as well')
+	to_mini()
+	l, r, t, b = F.window:GetClampRectInsets()
+	eq(l .. ' ' .. r .. ' ' .. t .. ' ' .. b, (-margin) .. ' ' .. margin .. ' ' .. margin .. ' ' .. (-margin), 'the bar: the margin only')
+	wait(); OW:Grow()
+	l, r, t, b = F.window:GetClampRectInsets()
+	check(l ~= -margin or r ~= margin or t ~= margin or b ~= -margin, 'grown, the metal again')
+	reset()
 end)
