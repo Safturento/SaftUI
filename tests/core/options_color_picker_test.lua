@@ -437,6 +437,13 @@ test('a click on Was goes back to the opening color', function()
 	reset()
 end)
 
+-- The classes a client lists, by token, as the chips show them (by tooltip).
+local function class_names(F)
+	local out = {}
+	for _, chip in ipairs(chips_shown(F.classes)) do out[#out + 1] = chip.tip() end
+	return out
+end
+
 test('class colors: a chip for each class the client has, SaftUI\'s colors, the class name as the tooltip', function()
 	reset()
 	local _, F = open()
@@ -445,7 +452,7 @@ test('class colors: a chip for each class the client has, SaftUI\'s colors, the 
 	local colors = st.config.profile.colors.class
 	local seen = {}
 	for i, chip in ipairs(chips) do
-		local name, token = GetClassInfo(i)
+		local name, token = GetClassInfo(stub.class_ids[i]) -- by class ID, as the game takes it
 		local c = stub.state(chip.color).color_texture
 		eq(c[1], colors[token].r, name .. ' red')
 		eq(c[3], colors[token].b, name .. ' blue')
@@ -456,17 +463,37 @@ test('class colors: a chip for each class the client has, SaftUI\'s colors, the 
 		check(not GameTooltip:IsShown(), 'gone on leaving')
 		seen[name] = true
 	end
-	check(seen['Warrior'] and not seen['Evoker'], 'no Evoker on Forever')
+	check(seen['Warrior'] and seen['Druid'] and not seen['Evoker'], 'Druid (ID 11) is there, no Evoker on Forever')
 	reset()
-	stub.class_ids = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }
-	_, F = open()
-	eq(#chips_shown(F.classes), 13, 'retail has thirteen')
 	-- A changed class color is the chip's color.
 	st.config.profile.colors.class.WARRIOR = CreateColor(0.1, 0.2, 0.3)
-	reset()
 	_, F = open()
 	eq(stub.state(F.classes.chips[1].color).color_texture[1], 0.1, 'SaftUI\'s Colors page color')
+	reset()
+end)
+
+test('class colors: retail has no GetAllClassIDs, its IDs are 1 to GetNumClasses', function()
+	local real = C_SpecializationInfo.GetAllClassIDs
+	C_SpecializationInfo.GetAllClassIDs = nil
+	stub.class_ids = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }
+	reset()
+	local _, F = open()
+	eq(#chips_shown(F.classes), 13, 'thirteen')
+	eq(class_names(F)[13], 'Evoker', 'in ID order')
+	-- A gap (an ID the client has no class for) is skipped, not an error.
 	stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
+	_, F = open()
+	eq(#chips_shown(F.classes), 8, 'ID 6 gives no class: skipped (Druid, ID 11, is past GetNumClasses)')
+	C_SpecializationInfo.GetAllClassIDs = real
+	reset()
+end)
+
+test('class colors: with GetAllClassIDs the list is the client\'s own IDs, gaps and all', function()
+	reset()
+	stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
+	local _, F = open()
+	local names = class_names(F)
+	eq(table.concat(names, ','), 'Warrior,Paladin,Hunter,Rogue,Priest,Shaman,Mage,Warlock,Druid', 'nine, in ID order')
 	reset()
 end)
 
@@ -709,4 +736,129 @@ test('the title, captions and chips: Class colors and Last used, Shade, Hue and 
 	local cr, cg, cb = F.shadeCaption:GetTextColor()
 	eq(cr, r, 'captions are Text > Grey')
 	reset()
+end)
+
+------------------------------------------------------------------ fix round 1
+
+test('New and Was are two equal halves of an even width, the column splits evenly', function()
+	reset()
+	local _, F = open()
+	eq(F.new:GetWidth(), F.was:GetWidth(), 'equal')
+	eq(F.new:GetWidth() % 2, 0, 'even')
+	eq(F.was:GetLeft() - F.new:GetLeft(), F.new:GetWidth(), 'side by side')
+	eq(F.frame:GetWidth() % 2, 0, 'the panel is even')
+	reset()
+end)
+
+test('the opacity strip, the halves and the chips use the kit\'s checker: its 4px squares and greys', function()
+	reset()
+	st.config.global.colorPicker.recent = { { r = 1, g = 0, b = 0, a = 0.5 } }
+	local _, F = open({ a = 0.5 })
+	local function check_checker(owner, name)
+		local c = owner.checker
+		check(c and #c.squares > 0, name .. ' has a checker')
+		for i, square in ipairs(c.squares) do
+			if i <= 3 then
+				check(square:GetWidth() <= W.Kit.CHECKER and square:GetHeight() <= W.Kit.CHECKER, name .. ' square ' .. i .. ' no bigger than the kit\'s')
+			end
+		end
+		eq(c.squares[1]:GetWidth(), W.Kit.CHECKER, name .. ': the kit\'s square size')
+		eq(table.concat(stub.state(c.back).color_texture, ','), table.concat(W.Kit.CHECKER_DARK, ','), name .. ': the kit\'s dark grey')
+		eq(table.concat(stub.state(c.squares[1]).color_texture, ','), table.concat(W.Kit.CHECKER_LIGHT, ','), name .. ': the kit\'s light grey')
+	end
+	check_checker(F.alpha, 'the opacity strip')
+	check_checker(F.new, 'New')
+	check_checker(F.recent.chips[1], 'a chip')
+	reset()
+end)
+
+test('Cancel restores first, then calls onCancel', function()
+	reset()
+	local order = {}
+	local owner = field()
+	W.OpenColorPicker(owner, { r = 0.2, g = 0.4, b = 0.6, a = 1, hasAlpha = true,
+		onChange = function() order[#order + 1] = 'change' end,
+		onCancel = function() order[#order + 1] = 'cancel' end })
+	type_into(W.GetColorPickerFrames().hex, '#FF0000')
+	order = {}
+	click(W.GetColorPickerFrames().cancel)
+	eq(table.concat(order, ','), 'change,cancel', 'the restore, then onCancel')
+	reset()
+end)
+
+test('the hue strip is red at the top and runs down through yellow (not upside down)', function()
+	reset()
+	local told, F = open({ r = 1, g = 0, b = 0 })
+	press(F.hue, 0, 1 / 6)
+	release(F.hue)
+	local r, g, b = told.last()
+	eq(bytes(r, g, b), '255,255,0', 'a sixth down is yellow')
+	press(F.hue, 0, 5 / 6)
+	release(F.hue)
+	r, g, b = told.last()
+	eq(bytes(r, g, b), '255,0,255', 'five sixths down is magenta')
+	reset()
+end)
+
+test('Was goes back to the opening opacity too', function()
+	reset()
+	local told, F = open({ a = 0.8 })
+	type_into(F.opacity, '10')
+	check(select(4, told.last()) < 0.2, 'opacity changed')
+	click(F.was)
+	eq(select(4, told.last()), 0.8, 'the opening opacity is back')
+	eq(F.opacity:GetText(), '80%', 'and its box')
+	reset()
+end)
+
+test('a color is handed back bit-exact: typing one channel leaves the other two as they were', function()
+	reset()
+	local told, F = open({ r = 0.2137, g = 0.8412, b = 0.4421 })
+	type_into(F.green, '10')
+	local r, g, b = told.last()
+	eq(r, 0.2137, 'red exactly')
+	eq(b, 0.4421, 'blue exactly')
+	eq(g, 10 / 255, 'green as typed')
+	reset()
+end)
+
+test('the PLAYER_REGEN_DISABLED event is registered on the panel', function()
+	reset()
+	local _, F = open()
+	check(stub.state(F.frame).events and stub.state(F.frame).events.PLAYER_REGEN_DISABLED, 'registered')
+	reset()
+end)
+
+test('a drag takes a box\'s typed text first, so it cannot override the drag later', function()
+	reset()
+	local told, F = open()
+	F.red:SetFocus()
+	F.red:SetText('255')
+	press(F.square, 0.5, 0.5)
+	release(F.square)
+	check(not F.red:HasFocus(), 'the box let go')
+	local r = told.last()
+	check(r < 1, 'the dragged color kept')
+	reset()
+end)
+
+test('a number box lights its edge under the mouse, as the kit\'s input does', function()
+	reset()
+	local _, F = open()
+	stub.fire_script(F.red, 'OnEnter', true)
+	local blue = W.Kit.Colors().button.blue
+	local r = F.red:GetBackdropBorderColor()
+	eq(r, blue.r, 'blue edge')
+	stub.fire_script(F.red, 'OnLeave', true)
+	reset()
+end)
+
+test('an onChange that errors does not stop Cancel from calling onCancel', function()
+	reset()
+	local cancelled = false
+	W.OpenColorPicker(field(), { r = 0.2, g = 0.4, b = 0.6, a = 1, hasAlpha = false,
+		onChange = function() error('boom') end, onCancel = function() cancelled = true end })
+	click(W.GetColorPickerFrames().cancel)
+	check(cancelled, 'onCancel ran')
+	take_errors()
 end)

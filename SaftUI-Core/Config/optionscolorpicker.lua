@@ -27,7 +27,7 @@ local Kit = W.Kit
 	are drawn): a 170 square for shade (saturation across, brightness up) of
 	the current hue, a 16 wide strip for hue and, with hasAlpha, another for
 	opacity (the color over a checker, solid at the top), their captions; a
-	column 150 wide with New and Was (a click on Was goes back to it), the
+	column 152 wide with New and Was (a click on Was goes back to it), the
 	red, green and blue boxes (0 to 255), the opacity box (a percent, hasAlpha
 	only) and the hex box; Class colors (SaftUI's own, a chip for each class
 	the client has, its name the tooltip), Last used (up to 12, newest first,
@@ -187,8 +187,8 @@ local PAD = 20
 local BODY_Y = 48 -- the square's top, under the title
 local SQUARE, STRIP_WIDTH, GAP = 170, 16, 16
 local INNER = SQUARE - 2 -- inside the 1px edge of the square and the strips
-local COLUMN = 150
-local HALF_WIDTH, HALF_HEIGHT = 75, 26
+local COLUMN = 152 -- two equal, even halves of 76
+local HALF_WIDTH, HALF_HEIGHT = COLUMN / 2, 26
 local BOX_WIDTH, BOX_HEIGHT = 84, 22
 local ROW_FIRST, ROW_PITCH = 34, 28 -- the first number row, in from the column's top; between rows
 local CAPTION_SIZE = 13
@@ -198,7 +198,7 @@ local RECENT_CAPTION_Y, RECENT_Y = 294, 312
 local HEIGHT = 388
 local LEVEL = 500 -- over the window (100), the small dialog (300) and an item's menu (410)
 local THUMB, BAR_WIDTH, BAR_HEIGHT = 10, 22, 6 -- the square's thumb; a strip's
-local CHECKER_DARK, CHECKER_LIGHT = { 0.353, 0.353, 0.353, 1 }, { 0.541, 0.541, 0.541, 1 }
+local CHECKER, CHECKER_DARK, CHECKER_LIGHT = Kit.CHECKER, Kit.CHECKER_DARK, Kit.CHECKER_LIGHT -- the color field's own (optionstypes.lua)
 
 ------------------------------------------------------------------ state
 
@@ -279,14 +279,14 @@ end
 
 -- A button swatch width x height: a black field with a 1px edge and the color
 -- a pixel in, over a checker while it is see-through. swatch:Paint(r, g, b, a).
-local function NewSwatch(parent, width, height, cell)
+local function NewSwatch(parent, width, height)
 	local swatch = Box(st:CreateFrame('Button', nil, parent), { 0, 0, 0, 1 })
 	swatch:SetSize(width, height)
 	swatch.color = swatch:CreateTexture(nil, 'ARTWORK', nil, 3)
 	Place(swatch.color, swatch, 1, 1, width - 2, height - 2)
 	function swatch:Paint(r, g, b, a)
 		self.color:SetColorTexture(r, g, b, a)
-		ShowChecker(self, a < 1, 1, 1, width - 2, height - 2, cell)
+		ShowChecker(self, a < 1, 1, 1, width - 2, height - 2, CHECKER)
 	end
 	return swatch
 end
@@ -322,7 +322,7 @@ end
 -- The color has changed: show it, and tell the field.
 local function Changed()
 	Paint()
-	if spec and spec.onChange then spec.onChange(S.r, S.g, S.b, spec.hasAlpha and S.a or 1) end
+	if spec and spec.onChange then xpcall(spec.onChange, geterrorhandler(), S.r, S.g, S.b, spec.hasAlpha and S.a or 1) end
 end
 
 local function SetHSV(h, s, v)
@@ -364,9 +364,12 @@ end
 -- Okay: a box still being typed in takes its text first; then the color is
 -- remembered and the picker closes. Nothing is called: the field has the
 -- color already.
+local Cancel
 local function Okay()
 	if not spec then return end
 	ClearBoxFocus()
+	-- The setting changed under it (a profile switch): nothing is recorded or written.
+	if spec.stale and spec.stale() then return Cancel() end
 	local done = spec
 	RememberColor(S.r, S.g, S.b, done.hasAlpha and S.a or 1)
 	spec = nil
@@ -375,14 +378,14 @@ end
 
 -- Cancel (and Esc, the window closing, combat): the opening color back through
 -- onChange, then onCancel.
-local function Cancel()
+function Cancel()
 	local done = spec
 	if not done then return end
 	spec = nil
 	ClearBoxFocus()
 	frame:Hide()
-	if done.onChange then done.onChange(done.r, done.g, done.b, done.hasAlpha and done.a or 1) end
-	if done.onCancel then done.onCancel() end
+	if done.onChange then xpcall(done.onChange, geterrorhandler(), done.r, done.g, done.b, done.hasAlpha and done.a or 1) end
+	if done.onCancel then xpcall(done.onCancel, geterrorhandler()) end
 end
 
 function W.CloseColorPicker(within)
@@ -417,6 +420,7 @@ local function Draggable(area, apply)
 	area:EnableMouse(true)
 	area:SetScript('OnMouseDown', function(self, button)
 		if button ~= 'LeftButton' or not spec then return end
+		ClearBoxFocus() -- a box's typed text is taken first, so it can't override the drag later
 		self:SetScript('OnUpdate', Follow)
 		local fx, fy = Fractions(self)
 		if fx then apply(fx, fy) end
@@ -488,6 +492,7 @@ local function NewBox(parent, entry)
 	edit.show, edit.take, edit.alpha = entry.show, entry.take, entry.alpha
 	edit.label = NewText(parent, 'LEFT')
 	edit.label:SetText(entry.label)
+	W.HoverEdge(edit, function() return edit:HasFocus() end)
 	edit:SetScript('OnEnterPressed', function(self)
 		Commit(self)
 		self:SetText(self.show())
@@ -525,7 +530,7 @@ end
 local function Chip(row, i)
 	local chip = row.chips[i]
 	if not chip then
-		chip = NewSwatch(frame, CHIP, CHIP, 4)
+		chip = NewSwatch(frame, CHIP, CHIP)
 		chip:SetScript('OnEnter', function(self)
 			Edge(self, true)
 			tipOwner = self
@@ -544,12 +549,21 @@ local function Chip(row, i)
 	return chip
 end
 
--- The classes the client has, in its order: { name, token }.
+-- The classes the client has, in its order: { name, token }. GetClassInfo takes
+-- a class ID, and Forever's IDs are not 1 to N (Druid is 11): its own list is
+-- C_SpecializationInfo.GetAllClassIDs, as Blizzard's class menu reads it;
+-- retail has none, and its IDs are 1 to GetNumClasses. An ID the client gives
+-- no class for is skipped.
 local function Classes()
+	local ids = C_SpecializationInfo and C_SpecializationInfo.GetAllClassIDs and C_SpecializationInfo.GetAllClassIDs()
+	if not ids then
+		ids = {}
+		for i = 1, GetNumClasses and GetNumClasses() or 0 do ids[i] = i end
+	end
 	local out = {}
-	if GetNumClasses and GetClassInfo then
-		for i = 1, GetNumClasses() do
-			local name, token = GetClassInfo(i)
+	if GetClassInfo then
+		for _, id in ipairs(ids) do
+			local name, token = GetClassInfo(id)
 			if name and token then out[#out + 1] = { name = name, token = token } end
 		end
 	end
@@ -659,7 +673,7 @@ end
 local function BuildAlpha()
 	local alpha = Box(st:CreateFrame('Frame', nil, frame), { 0, 0, 0, 1 })
 	alpha:SetSize(STRIP_WIDTH, SQUARE)
-	ShowChecker(alpha, true, 1, 1, STRIP_WIDTH - 2, INNER, 7)
+	ShowChecker(alpha, true, 1, 1, STRIP_WIDTH - 2, INNER, CHECKER)
 	F.alphaFill = alpha:CreateTexture(nil, 'ARTWORK', nil, 3)
 	Place(F.alphaFill, alpha, 1, 1, STRIP_WIDTH - 2, INNER)
 	F.alphaFill:SetColorTexture(1, 1, 1, 1)
@@ -670,7 +684,7 @@ end
 
 local function BuildHalves()
 	local function Half(label)
-		local half = NewSwatch(frame, HALF_WIDTH, HALF_HEIGHT, 6)
+		local half = NewSwatch(frame, HALF_WIDTH, HALF_HEIGHT)
 		half.text = NewText(half, 'CENTER')
 		half.text:SetPoint('CENTER', half, 'CENTER', 0, 0)
 		half.text:SetText(label)
@@ -769,7 +783,7 @@ local function Build()
 	-- A field that went away under the picker (its window closed or drew
 	-- again) takes it with it.
 	frame:SetScript('OnUpdate', function()
-		if spec and spec.owner and not spec.owner:IsVisible() then Cancel() end
+		if spec and ((spec.owner and not spec.owner:IsVisible()) or (spec.stale and spec.stale())) then Cancel() end
 	end)
 	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
 	frame:SetScript('OnEvent', function() Cancel() end)
@@ -848,7 +862,7 @@ function W.OpenColorPicker(owner, options)
 	spec = {
 		owner = owner, hasAlpha = hasAlpha,
 		r = options.r or 0, g = options.g or 0, b = options.b or 0, a = options.a or 1,
-		onChange = options.onChange, onCancel = options.onCancel,
+		onChange = options.onChange, onCancel = options.onCancel, stale = options.stale,
 	}
 	S.r, S.g, S.b, S.a = spec.r, spec.g, spec.b, hasAlpha and spec.a or 1
 	S.h, S.s, S.v = M.RGBToHSV(S.r, S.g, S.b, 0)

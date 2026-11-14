@@ -159,7 +159,7 @@ test('color: a pick sets r, g, b and a; Cancel puts the opening color back', fun
 	eq(g, 0.4, 'g restored')
 	eq(b, 0.6, 'b restored')
 	eq(a, 0.8, 'a restored')
-	check(#csets >= 2, 'the picks, then the restore')
+	eq(#csets, 3, 'the hex, the opacity, then the restore')
 	c:Release()
 end)
 
@@ -174,18 +174,20 @@ test('color: with no alpha the picker has no opacity and a is 1', function()
 	w:Release()
 end)
 
-test('color: a field that changed row under the picker ignores it, and Cancel writes nothing back', function()
-	local w, _, sets = color_widget({ hasAlpha = true })
+test('color: a field rebound to another row closes the picker, the old row gets its opening color, the new one nothing', function()
+	local w, _, sets, get = color_widget({ hasAlpha = true })
 	click(w.frame)
 	pick_color(1, 0, 0)
-	local n = #sets
+	local written = false
 	-- The window drew another page: the same widget is bound to another row.
-	local other = opt('color', 'Other', { get = function() return 0, 0, 0, 1 end, set = function() error('written') end })
+	local other = opt('color', 'Other', { get = function() return 0, 0, 0, 1 end, set = function() written = true end })
 	local root, row = H.make('other', other)
 	w:Bind(root, row, function() end)
-	pick_color(0, 1, 0)
-	picker_cancel()
-	eq(#sets, n, 'the old row hears nothing more')
+	check(not W.ColorPickerShown(), 'the picker is closed')
+	local r, g, b, a = unpack(get())
+	eq(r, 0.2, 'the old row: opening r')
+	eq(a, 0.8, 'and a')
+	check(not written, 'the new row is never written')
 	w:Release()
 end)
 

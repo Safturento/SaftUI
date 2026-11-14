@@ -636,6 +636,22 @@ test("a click outside while the color picker is open is the picker's: the menu s
 	close_all()
 end)
 
+test("closing the menu with a color picker open from one of its rows puts the color back and closes it", function()
+	open_items()
+	showTint = true
+	click(dots('hotkey'))
+	click(menuCell('tint').widget.frame)
+	local hex = W.GetColorPickerFrames().hex
+	hex:SetFocus()
+	hex:SetText('#00FF00')
+	stub.fire_script(hex, 'OnEnterPressed')
+	eq(table.concat(tint, ','), '0,1,0', 'a pick is set')
+	OW:CloseMenu()
+	check(not W.ColorPickerShown(), 'the picker closed with the menu')
+	eq(table.concat(tint, ','), '1,0,0', 'the color is back')
+	close_all()
+end)
+
 test('the mouse wheel stops at the menu and its catcher', function()
 	open_items()
 	click(dots('hotkey'))

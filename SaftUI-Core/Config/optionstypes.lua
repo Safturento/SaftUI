@@ -129,6 +129,7 @@ local BLIZZARD_INSET = 3 -- the swatch in from the Blizzard face's edge
 local CHECKER = 4 -- a checker square
 -- The checker's greys (the mockup's #5a5a5a and #8a8a8a).
 local CHECKER_DARK, CHECKER_LIGHT = { 0.353, 0.353, 0.353, 1 }, { 0.541, 0.541, 0.541, 1 }
+Kit.CHECKER, Kit.CHECKER_DARK, Kit.CHECKER_LIGHT = CHECKER, CHECKER_DARK, CHECKER_LIGHT -- the color picker's checker is the same
 
 -- region at x, y in from button's top left, width x height, on whole pixels.
 local function Place(region, button, x, y, width, height)
@@ -273,6 +274,9 @@ W.HexText = HexText -- a color's code as its field writes it: a setting's reset 
 
 define('color', {
 	Bind = function(self, ...)
+		-- A picker open for this field's last row is over: it cancels while the
+		-- field still has that row to put the opening color back on.
+		W.CloseColorPicker(self.frame)
 		LookColor(self, BlizzardLook())
 		return Base.Bind(self, ...)
 	end,
@@ -288,19 +292,39 @@ define('color', {
 		self.text:SetTextColor(Colors().text.normal:GetRGB())
 	end,
 
+	-- The field is released (the window drew another page, closed, a menu or
+	-- dialog closed): a picker open for it cancels now, while it is still bound.
+	OnRelease = function(self)
+		W.CloseColorPicker(self.frame)
+	end,
+
 	-- Opens SaftUI's picker (optionscolorpicker.lua) on the current color. Each
 	-- change it makes is set; Cancel puts the color it opened with back, through
-	-- the same change. The picker never calls onChange as it opens, and a field
-	-- that changed row under it (the window drew another page) ignores it.
+	-- the same change. The picker never calls onChange as it opens. Nothing is
+	-- written unless the field is still on the row it opened for and the setting
+	-- still holds what the field last showed: a setting that changed under the
+	-- picker (a profile switch, a reset arrow) closes it, writing nothing, so
+	-- an old profile's color never lands in the new one. What the old profile
+	-- holds then is whatever the picker last set there (nothing hooks a switch
+	-- to put its opening color back).
 	Pick = function(self)
 		if self.disabled or not self.row then return end
 		local root, row = self.root, self.row
 		local hasAlpha = self.hasAlpha
+		local function Current()
+			if self.root ~= root or self.row ~= row then return false end
+			local r, g, b, a = self:Value()
+			return (r or 0) == self.r and (g or 0) == self.g and (b or 0) == self.b and (not hasAlpha or (a or 1) == self.a)
+		end
 		W.OpenColorPicker(self.frame, {
 			r = self.r, g = self.g, b = self.b, a = self.a,
 			hasAlpha = hasAlpha,
+			stale = function() return not Current() end,
 			onChange = function(nr, ng, nb, na)
-				if self.root ~= root or self.row ~= row then return end
+				if not Current() then
+					W.CloseColorPicker(self.frame)
+					return
+				end
 				if nr == self.r and ng == self.g and nb == self.b and (not hasAlpha or na == self.a) then return end
 				self:Commit(nr, ng, nb, na)
 			end,
