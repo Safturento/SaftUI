@@ -156,6 +156,7 @@ function S.UpdateWindowButtons()
 	W.SetEnabled(F.shrink, Enabled(1))
 	W.SetEnabled(F.grow, Enabled(-1))
 	W.SetEnabled(F.miniGrow, Enabled(-1))
+	if F.sideToggle then W.SetEnabled(F.sideToggle, S.SideToggleEnabled()) end
 end
 
 -- The arrows beside the close X (placed first by Relayout), in the look,
@@ -186,12 +187,13 @@ function OW:GetWindowSize()
 	return S.size
 end
 
--- What shrinking to the bar closes: an item's menu, the small dialog, a
+-- What shrinking to the bar and the sidebar's toggle (optionsnav.lua) close:
+-- an item's menu, the small dialog, a
 -- dropdown's list, the keyboard in a box of the window's and the status line.
 -- (A color picker can't be open: the guard refuses first. A confirm can't be
 -- either: its catcher takes the click. A drag in the Categories list ends
 -- with the page's widgets, which the bar's render releases.)
-local function CloseOverlays()
+function S.CloseOverlays()
 	OW:CloseMenu()
 	OW:CloseDialog()
 	W.CloseList()
@@ -208,7 +210,7 @@ function OW:SetWindowSize(size)
 	if size ~= OW.NextSize(S.size, 1) and size ~= OW.NextSize(S.size, -1) then return false end
 	if size ~= 'mini' and S.size ~= 'mini' and not OW.Fits(S.layout, size, S.sidebar) then return false end
 	local before = S.size
-	if size == 'mini' then CloseOverlays() end
+	if size == 'mini' then S.CloseOverlays() end
 	-- The bar saves half: it opens again as half.
 	SaveWindow({ size = size == 'full' and S.UNSET or 'half' })
 	S.size = size
