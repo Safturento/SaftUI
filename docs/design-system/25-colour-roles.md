@@ -12,6 +12,16 @@ A proposal, not yet decided. The Colors page lets the player change colours that
 6. **The Buttons section's opacity sliders do nothing** (no code reads them). Remove them, or make them work?
 7. **White and Text** are nearly the same role. Keep both (Strong for item levels and counts), or fold White into Text?
 
+### The owner's answers (2026-11-14)
+
+1. **The role names are right.** "yep this is good"
+2. **Blue becomes the theme's accent.** "sounds good, if there's something that's using blue that isn't a "theme" coloring let me know and we can address what to shift them to". The design that follows lists every such use for him.
+3. **Loot rolls, factions and roles get groups of their own.** "yep this is exactly why I wanted the research, we can establish better groups to change certain things without messing other things up"
+4. **No new Own and Edited colours.** The diff marker becomes Muted and the highlight of a bar's own setting becomes the accent. "maybe the yellow diff marker can just become muted, and the blue highlight we can make the accent color? we can play with individual opacity for those highlights if needed"
+5. **The equipped item's border is the accent.** "lets go with accent color for now"
+6. **The Buttons section's opacity sliders are made to work.** "lets make opacity work"
+7. **White and Text stay separate** (Strong and Text). "lets keep them separate, if we want to make the text a muter color like eggshell or light gray it might look weird for certain elements that should really be white"
+
 
 Read-only pass over `/mnt/c/Github/wow-addons/SaftUI-Modular` (every `SaftUI-*` addon, skipping `Libraries/`, `tests/` and `.claude/`). Counts come from grep. Paths are relative to the repo root. `Config/` means `SaftUI-Core/Config/`.
 
