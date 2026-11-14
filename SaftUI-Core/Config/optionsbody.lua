@@ -25,7 +25,10 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                                   row again in place (a drag, below)
 	  body.cells                       the drawn rows, in order:
 	                                   { row, frame, widget, label, height, y,
-	                                     x, body }
+	                                     x, body, labelX }; labelX (nil: 0)
+	                                   is how far in the label starts, for a
+	                                   row type whose label comes after
+	                                   something of its own
 	  body.shareTitles                 the section titles drawn with a
 	                                   shareable block's marks (optionsshare.lua)
 
@@ -82,7 +85,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	draws no window may load this file without it, so each is called only
 	when it's there. The metrics' markX and markShift place the own mark, and
 	OB.OWN_TEXT and OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
-	where PlaceRow does, x in.
+	where PlaceRow does, cell.labelX plus x in (PlaceRow's label is labelX
+	narrower too).
 
 	The window's fonts live here too (OB.Font, OB.UpdateFonts), with the small
 	pieces both use (OB.Text, OB.Line, the pools, the scroll bar: OB.ScrollBar,
@@ -540,16 +544,19 @@ local function TitleTip(frame)
 	return tip
 end
 
--- Where a row's label sits, x in from its cell's left: across the row's
--- middle, or in a tall row (a multiselect's) across its first rowHeight.
--- optionsshare.lua moves it (a mark's shift) and puts it back with this.
+-- Where a row's label sits, cell.labelX (0 when nil: a row type whose label
+-- comes after something of its own sets it) plus x in from its cell's left:
+-- across the row's middle, or in a tall row (a multiselect's) across its
+-- first rowHeight. optionsshare.lua moves it (a mark's shift) and puts it
+-- back with this.
 function OB.PlaceLabel(cell, x)
 	local label, frame = cell.label, cell.frame
+	x = (cell.labelX or 0) + (x or 0)
 	label:ClearAllPoints()
 	if cell.height > cell.rowHeight then
-		label:SetPoint('TOPLEFT', frame, 'TOPLEFT', x or 0, -floor((cell.rowHeight - LABEL_HEIGHT) / 2))
+		label:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, -floor((cell.rowHeight - LABEL_HEIGHT) / 2))
 	else
-		label:SetPoint('LEFT', frame, 'LEFT', x or 0, 0)
+		label:SetPoint('LEFT', frame, 'LEFT', x, 0)
 	end
 end
 
@@ -591,7 +598,7 @@ local function PlaceRow(cell, x, y, width)
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
 		label:Show()
-		label:SetWidth(max(1, width - widget:GetWidth() - LABEL_GAP))
+		label:SetWidth(max(1, width - (cell.labelX or 0) - widget:GetWidth() - LABEL_GAP))
 		OB.PlaceLabel(cell, 0)
 		if cell.height > cell.rowHeight then
 			widget:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, -6)

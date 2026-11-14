@@ -19,38 +19,57 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    row's top and bottom, the metrics' markX in from its slot's left
 	    (under Thick and Thin inside the panel's padding), and what it marks
 	    (the label, the position block, the title) moves the metrics'
-	    markShift right (under Blizzard 6, inside the cell). An own row's
-	    label is OB.OWN_TEXT while the row isn't disabled.
+	    markShift right (under Blizzard 6, inside the cell). A marked row's
+	    label is OB.OWN_TEXT while the row isn't disabled (cell.ownLabel, so
+	    the body's Refresh keeps it once the row is enabled mid-drag).
 	  - the diff icon (state.differs): st.icons.diff, 16x16, OB.DIFF_COLOR, 4
 	    after the label's text (its string width, at most the label's
 	    width; the label leaves the icon its room), on a frame that takes
 	    the mouse. Its tooltip: the row's name, '<source>: <shared>' (not
-	    for an item), then '<name>: <value>' for each page that differs.
+	    for an item), then a line per page that differs in two columns, the
+	    page on the left and its value on the right in OB.OWN_TEXT.
 	  - the hover line (state.offers, on a row that isn't disabled): the
 	    small font under the label. On a member page Own (its tooltip: the
 	    name and '<source>: <shared>'), the reset icon (st.icons.rotateCcw,
 	    14x14, blue; its tooltip says what it drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
-	    are frames that take the mouse (Text > Blue, white under it), one
-	    level over the row frame. Reset runs OM.ShareCall(root, row,
-	    'reset'), All 'applyAll', Multiple opens W.OpenApplyList with
-	    OM.ShareTargets, whose Apply runs 'apply'; each then calls the
-	    body's onChanged(true), which draws the page again.
+	    are frames that take the mouse (Text > Blue, white under it), the
+	    line 4 levels over the row frame and they one over the line, so they
+	    are above every part of the control. Reset runs OM.ShareCall(root,
+	    row, 'reset'), All 'applyAll', Multiple opens W.OpenApplyList with
+	    OM.ShareTargets, whose Apply runs 'apply' on the row it was opened
+	    for; each then calls the body's onChanged(true), which draws the
+	    page again. The list closes when the line's row is drawn again or
+	    hidden (released). An item's (state.item) tooltips name its Show,
+	    which is what they act on. No tooltip builds "s's": a possessive
+	    after a final s is just an apostrophe (Possessive), and All and
+	    Multiple say "from <page>" and "follow <source> again for <name>".
 	  - showing it: OB.ShareEnter shows the line on an offering row, the
-	    label lifted so it and the line are centred in the row; a line that
-	    would end past the body's width ends at it. The line's OnUpdate (it
-	    runs only while the line shows) hides it and puts the label back once
-	    neither the row frame nor the line is under the mouse (IsMouseOver)
-	    and the Apply list it opened is closed. A row that offers nothing
-	    never moves.
+	    label lifted so it and the line are centred in the row; the row
+	    frame's OnEnter calls it, and so does each mouse-enabled part of the
+	    row's control (hooked once per pooled part, finding the row when it
+	    runs), so a row entered through its control shows its line too. The
+	    line starts under the label and ends no further right than its
+	    cell's right edge: a longer one is cut there (it clips its pieces,
+	    and a piece past the cut takes no mouse there). The line's OnUpdate
+	    (it runs only while the line shows) hides it and puts the label back
+	    once the body's view (the content's parent) isn't under the mouse,
+	    or neither the row frame nor the line is (IsMouseOver), unless the
+	    Apply list it opened is open. A row that offers nothing never moves.
 	  - a section title (a position block's): OB.OWN_TEXT when marked (and
 	    markShift right), the diff icon after its text, the hover line
 	    inline 8 after the text (or the icon). It shows while the mouse is
 	    on the title's line (a pooled frame over it), the block's row frame
-	    or the line, and acts on the block's option.
+	    or the line, and acts on the block's option. It reuses the block's
+	    row's state (OM.ShareState once a row a draw).
 	Under Blizzard the pieces, colors and icons are the same (Blizzard's
 	Settings panel has nothing to draw them with), placed by OB.FLAT's markX
 	and markShift.
+
+	A row's label sits cell.labelX in from its cell's left (0 when nil; an
+	item's after its Show box): OB.PlaceLabel, the lift, putting it back and
+	the line's left all add it, so a type whose label doesn't start at the
+	cell's left can still be 'row' in OB.SHARE_KINDS.
 
 	The pieces live on the row frame as frame.share = { mark, diff, line,
 	ownText, reset, all, multiple, sep, pipe } (made the first time a row
@@ -66,6 +85,7 @@ local floor, ceil, max, min, format = math.floor, math.ceil, math.max, math.min,
 OB.SHARE_KINDS = { toggle = 'row', range = 'row', select = 'row', input = 'row', color = 'row', position = 'mark' }
 
 local LINE_HEIGHT = 14 -- the hover line: the small font (13)
+local LINE_LEVEL = 4 -- the line over its row frame, above every part of the control
 local MARK_WIDTH, MARK_INSET = 2, 6
 local DIFF_SIZE, DIFF_GAP = 16, 4
 local RESET_SIZE, RESET_GAP = 14, 6
@@ -93,38 +113,56 @@ local function Untip(owner)
 	if GameTooltip:IsOwned(owner) then GameTooltip:Hide() end
 end
 
+-- name's possessive: just an apostrophe after a final s, so none reads "s's".
+local function Possessive(name)
+	return name .. (name:find('[sS]$') and "'" or "'s")
+end
+
+-- What the line's tooltips call the setting: the row's name, or an item's
+-- Show, which is what its line acts on.
+local function SettingName(state, name)
+	return state.item and (Possessive(name) .. ' Show') or name
+end
+
 -- '<source>: <shared>', the source's value.
 local function SourceLine(state)
 	return state.source .. ': ' .. (state.shared or '')
 end
 
--- What each link's tooltip says. Every name comes from the share.
+-- The diff icon's tooltip: the name, the source's value (not for an item),
+-- then a line per page that differs, the page on the left and its value on
+-- the right in light blue, as the mockup's two columns.
 local function DiffTip(host, owner)
 	local state, name = host.shareState, host.shareCell.row.name
 	GameTooltip:SetOwner(owner, 'ANCHOR_TOPLEFT')
 	GameTooltip:AddLine(name, 1, 1, 1)
 	if not state.item then GameTooltip:AddLine(SourceLine(state), Grey()) end
-	for _, entry in ipairs(state.differs) do GameTooltip:AddLine(entry.name .. ': ' .. entry.value) end
+	for _, entry in ipairs(state.differs) do
+		GameTooltip:AddDoubleLine(entry.name, entry.value, nil, nil, nil, unpack(OB.OWN_TEXT))
+	end
 	GameTooltip:Show()
 end
 
+-- What each link's tooltip says (name: SettingName's). Every name comes from
+-- the share; no possessive is built from the source's or the page's name but
+-- Reset's, through Possessive.
 local TIPS = {
 	ownText = function(state, name) return name, SourceLine(state) end,
 	reset = function(state, name)
-		local dropped = state.page and (state.page .. "'s own value is dropped.") or 'Its own value is dropped.'
+		local dropped = state.page and (Possessive(state.page) .. ' own value is dropped.') or 'Its own value is dropped.'
 		return 'Reset', format('%s follows %s again. %s', name, state.source, dropped)
 	end,
 	all = function(state, name)
 		if state.member then
-			return 'Apply to: All', format("%s takes %s's %s, and nothing keeps its own any more.", state.source, state.page or 'this', name)
+			return 'Apply to: All', format('%s takes %s from %s, and nothing keeps its own any more.', state.source, name, state.page or 'this page')
 		end
 		return 'Apply to: All', format('Everything that keeps its own %s follows %s again.', name, state.source)
 	end,
 	multiple = function(state, name)
 		if state.member then
-			return 'Apply to: Multiple', format("Pick which take %s's %s as their own.", state.page or 'this', name)
+			return 'Apply to: Multiple', format('Pick which take %s from %s as their own.', name, state.page or 'this page')
 		end
-		return 'Apply to: Multiple', format("Pick which follow %s's %s again.", state.source, name)
+		return 'Apply to: Multiple', format('Pick which follow %s again for %s.', state.source, name)
 	end,
 }
 
@@ -132,23 +170,30 @@ local TIPS = {
 
 local ShowLine, HideLine -- below
 
--- A row's action, then the body's onChanged(true), which draws the page again.
-local function Act(host, action, ...)
-	local cell = host.shareCell
-	local body = cell.body
-	OM.ShareCall(body.root, cell.row, action, ...)
+-- A share's action on row (of root, drawn by body), then the body's
+-- onChanged(true), which draws the page again.
+local function Act(body, root, row, action, ...)
+	OM.ShareCall(root, row, action, ...)
 	if body.onChanged then body.onChanged(true) end
 end
 
+-- An action on the row host shows now (Reset, All: their links show only
+-- while it does).
+local function ActNow(host, action)
+	local cell = host.shareCell
+	Act(cell.body, cell.body.root, cell.row, action)
+end
+
 -- A frame on the line that takes the mouse and shows its tooltip (TIPS[key]),
--- one level over host.
+-- one level over the line.
 local function Piece(host, line, key, frameType)
 	local piece = CreateFrame(frameType or 'Frame', nil, line)
-	piece:SetFrameLevel(host:GetFrameLevel() + 1)
+	piece:SetFrameLevel(line:GetFrameLevel() + 1)
 	piece:EnableMouse(true)
 	piece:SetHeight(LINE_HEIGHT)
 	piece:SetScript('OnEnter', function(self)
-		Tip(self, TIPS[key](host.shareState, host.shareCell.row.name))
+		local state = host.shareState
+		Tip(self, TIPS[key](state, SettingName(state, host.shareCell.row.name)))
 		if self.text and self.lit then self.text:SetTextColor(1, 1, 1) end
 		if self.icon then self.icon:SetVertexColor(1, 1, 1) end
 	end)
@@ -174,10 +219,20 @@ local function Link(host, line, key, label, onClick)
 	return link
 end
 
+-- Hides the pieces, closing the Apply list the line opened (its row is drawn
+-- again: the list was for the row the frame held).
 local function HideParts(parts)
+	if W.ListOwner() == parts.multiple then W.CloseList() end
 	if parts.mark then parts.mark:Hide() end
 	parts.diff:Hide()
 	parts.line:Hide()
+end
+
+-- The view the body's rows are seen through: the content's parent (the
+-- window's and the dialog's scroll frame), or nil.
+local function ViewOf(host)
+	local cell = host.shareCell
+	return cell and cell.body and cell.body.content:GetParent()
 end
 
 -- The pieces on host (a row frame, or a title's hover frame), made the first
@@ -203,11 +258,15 @@ local function MakeParts(host, withMark)
 
 	local line = CreateFrame('Frame', nil, host)
 	line:SetHeight(LINE_HEIGHT)
-	line:SetFrameLevel(host:GetFrameLevel() + 1)
+	line:SetFrameLevel(host:GetFrameLevel() + LINE_LEVEL)
 	line:Hide()
-	-- The watcher: only while the line shows.
+	-- The watcher: only while the line shows. The Apply list it opened keeps
+	-- it; off the body's view (a row partly scrolled out) it goes.
 	line:SetScript('OnUpdate', function(self)
-		if W.ListOwner() == parts.multiple or self:IsMouseOver() then return end
+		if W.ListOwner() == parts.multiple then return end
+		local view = ViewOf(host)
+		if view and not view:IsMouseOver() then return HideLine(host) end
+		if self:IsMouseOver() then return end
 		for _, area in ipairs(host.shareWatch) do
 			if area:IsMouseOver() then return end
 		end
@@ -227,18 +286,25 @@ local function MakeParts(host, withMark)
 	parts.reset.icon:SetTexture(st.icons.rotateCcw)
 	parts.reset:SetScript('OnClick', function(self)
 		Untip(self)
-		Act(host, 'reset')
+		ActNow(host, 'reset')
 	end)
 
 	parts.sep = OB.Text(line, 'small')
-	parts.all = Link(host, line, 'all', 'All', function() Act(host, 'applyAll') end)
+	parts.all = Link(host, line, 'all', 'All', function() ActNow(host, 'applyAll') end)
 	parts.pipe = OB.Text(line, 'small')
 	parts.pipe:SetText('|')
+	-- Its Apply acts on the row the list was opened for, whatever the pooled
+	-- frame holds by then.
 	parts.multiple = Link(host, line, 'multiple', 'Multiple', function(self)
 		local cell = host.shareCell
-		W.OpenApplyList(self, OM.ShareTargets(cell.body.root, cell.row), function(keys)
-			Act(host, 'apply', keys)
+		local body, root, row = cell.body, cell.body.root, cell.row
+		W.OpenApplyList(self, OM.ShareTargets(root, row), function(keys)
+			Act(body, root, row, 'apply', keys)
 		end)
+	end)
+	-- Its row released or hidden: the list goes with it.
+	parts.multiple:SetScript('OnHide', function(self)
+		if W.ListOwner() == self then W.CloseList() end
 	end)
 
 	HideParts(parts)
@@ -251,14 +317,24 @@ local function TextWidth(fs)
 	return ceil(fs:GetUnboundedStringWidth())
 end
 
--- Lays the line's pieces out for state, left to right, and returns its width.
-local function FillLine(parts, state)
+-- Lays the line's pieces out for state, left to right. With room, a line
+-- wider than it is cut there: it clips what runs past, a piece wholly past
+-- the cut is hidden, and one across it takes no mouse past it. Returns the
+-- line's width.
+local function FillLine(parts, state, room)
 	local line, x = parts.line, 0
-	local function Put(region, width)
+	local function Put(region, width, gap)
 		region:ClearAllPoints()
 		region:SetPoint('LEFT', line, 'LEFT', x, 0)
 		region:Show()
-		x = x + width
+		if region:IsObjectType('Frame') then -- a piece; the words are clipped with the line
+			if room and x >= room then
+				region:Hide()
+			else
+				region:SetHitRectInsets(0, room and max(0, x + width - room) or 0, 0, 0)
+			end
+		end
+		x = x + width + (gap or 0)
 	end
 	parts.ownText.text:SetTextColor(unpack(OB.OWN_TEXT))
 	parts.reset.icon:SetVertexColor(Colors().button.blue:GetRGB())
@@ -271,20 +347,23 @@ local function FillLine(parts, state)
 	if state.member then
 		local ownWidth = TextWidth(parts.ownText.text)
 		parts.ownText:SetWidth(ownWidth)
-		Put(parts.ownText, ownWidth + RESET_GAP)
-		Put(parts.reset, RESET_SIZE + RESET_GAP)
+		Put(parts.ownText, ownWidth, RESET_GAP)
+		Put(parts.reset, RESET_SIZE, RESET_GAP)
 		parts.sep:SetText('· Apply to:')
 	else
 		parts.ownText:Hide()
 		parts.reset:Hide()
 		parts.sep:SetText('Apply to:')
 	end
-	Put(parts.sep, TextWidth(parts.sep) + WORD_GAP)
-	Put(parts.all, parts.all:GetWidth() + WORD_GAP)
-	Put(parts.pipe, TextWidth(parts.pipe) + WORD_GAP)
+	Put(parts.sep, TextWidth(parts.sep), WORD_GAP)
+	Put(parts.all, parts.all:GetWidth(), WORD_GAP)
+	Put(parts.pipe, TextWidth(parts.pipe), WORD_GAP)
 	Put(parts.multiple, parts.multiple:GetWidth())
-	line:SetWidth(x)
-	return x
+	local cut = room ~= nil and x > room
+	line:SetClipsChildren(cut)
+	local width = cut and max(1, floor(room)) or x
+	line:SetWidth(width)
+	return width
 end
 
 ------------------------------------------------------------------ showing the line
@@ -302,7 +381,7 @@ function ShowLine(host)
 	if host.shareLifts then
 		local cell = host.shareCell
 		cell.label:ClearAllPoints()
-		cell.label:SetPoint('TOPLEFT', host, 'TOPLEFT', host.shareShift, -LiftTop(cell))
+		cell.label:SetPoint('TOPLEFT', host, 'TOPLEFT', (cell.labelX or 0) + host.shareShift, -LiftTop(cell))
 	end
 end
 
@@ -312,8 +391,8 @@ function HideLine(host)
 	if host.shareLifts then OB.PlaceLabel(host.shareCell, host.shareShift) end
 end
 
--- The row frame's OnEnter (and a position block's parts): shows the line of
--- an offering row, or of the block's title.
+-- The row frame's OnEnter (and a position block's parts, and a control's):
+-- shows the line of an offering row, or of the block's title.
 function OB.ShareEnter(frame)
 	ShowLine(frame.shareTitle or frame)
 end
@@ -324,10 +403,30 @@ local function KeepInBody(body, left, width)
 	return min(left, body.width - width)
 end
 
+-- The control's hover is its row's: each mouse-enabled part of it (region
+-- and what's under it) gets a hook once (the widgets are pooled), which finds
+-- the row frame when it runs: the first frame up from the part that a
+-- PlaceShare has been through (shareOffers is set on each), so a control
+-- drawn on a plain row since shows nothing. A part enabled later is hooked
+-- the next time an offering row draws it.
+local function HookControl(region)
+	if region:IsMouseEnabled() and not region.shareHooked then
+		region.shareHooked = true
+		region:HookScript('OnEnter', function(self)
+			local host = self:GetParent()
+			while host and host.shareOffers == nil do host = host:GetParent() end
+			if host then OB.ShareEnter(host) end
+		end)
+	end
+	for _, child in ipairs({ region:GetChildren() }) do HookControl(child) end
+end
+
 ------------------------------------------------------------------ a row
 
 -- A placed row's marks (the end of the body's PlaceRow). Everything a pooled
--- frame drew for its last row is taken off first.
+-- frame drew for its last row is taken off first. The state is kept on the
+-- frame (frame.shareState) as soon as it's read, for the section title's
+-- marks (OB.PlaceShareTitle) to reuse.
 function OB.PlaceShare(cell)
 	local frame, body = cell.frame, cell.body
 	frame.shareTitle, frame.shareOffers, frame.shareState, frame.shareLifts = nil, false, nil, nil
@@ -336,6 +435,7 @@ function OB.PlaceShare(cell)
 	local kind = OB.SHARE_KINDS[cell.row.type]
 	if not (kind and body) then return end
 	local state = OM.ShareState(body.root, cell.row)
+	frame.shareCell, frame.shareState = cell, state
 	if not state then return end
 	local row, metrics = cell.row, body.metrics
 	local isRow = kind == 'row'
@@ -344,7 +444,7 @@ function OB.PlaceShare(cell)
 	if not (state.marked or diffs or offers) then return end
 
 	local parts = frame.share or MakeParts(frame, true)
-	frame.shareCell, frame.shareState, frame.shareWatch = cell, state, { frame }
+	frame.shareWatch = { frame }
 	local shift = state.marked and metrics.markShift or 0
 	if state.marked then
 		local mark = parts.mark
@@ -359,10 +459,9 @@ function OB.PlaceShare(cell)
 			cell.widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', shift, -6)
 			return
 		end
-		if not row.disabled then
-			cell.label:SetTextColor(unpack(OB.OWN_TEXT))
-			cell.ownLabel = true
-		end
+		-- Light blue while it isn't disabled; Refresh brings it back once enabled.
+		cell.ownLabel = true
+		if not row.disabled then cell.label:SetTextColor(unpack(OB.OWN_TEXT)) end
 	end
 	if not isRow then return end
 
@@ -380,10 +479,12 @@ function OB.PlaceShare(cell)
 	end
 	if offers then
 		frame.shareOffers, frame.shareLifts = true, true
-		local width = FillLine(parts, state)
-		local left = KeepInBody(body, cell.x + shift, width) - cell.x
+		-- Under the label, and cut at the cell's right edge: never in the next cell.
+		local left = (cell.labelX or 0) + shift
+		FillLine(parts, state, frame:GetWidth() - left)
 		parts.line:ClearAllPoints()
 		parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
+		HookControl(cell.widget.frame)
 	end
 end
 
@@ -406,15 +507,16 @@ local function HoverPool(body)
 end
 
 -- A shareable position block's marks on its section's title (entry, as
--- OB.LayoutSections gives it): called once the block's row is placed.
+-- OB.LayoutSections gives it): called once the block's row is placed, whose
+-- state (PlaceShare's, on its frame) it reuses.
 function OB.PlaceShareTitle(body, entry, title)
 	local row = entry.section.shareRow
 	local cell
 	for _, each in ipairs(body.cells) do
 		if each.row == row then cell = each; break end
 	end
-	if not cell then return end
-	local state = OM.ShareState(body.root, row)
+	if not (cell and cell.frame.shareCell == cell) then return end
+	local state = cell.frame.shareState
 	if not state then return end
 	local metrics, content = body.metrics, body.content
 

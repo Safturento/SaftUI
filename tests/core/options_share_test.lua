@@ -116,13 +116,20 @@ local function draw(root, onChanged)
 	return body, by, content
 end
 
--- GameTooltip, as a stand-in that notes each line it's given.
+-- GameTooltip, as a stand-in that notes each line it's given: a double line's
+-- left text in lines, its right in rights and the right's color (as rgb text)
+-- in rightColors, by line.
 local function watch_tooltip()
-	local tip = { lines = {} }
+	local tip = { lines = {}, rights = {}, rightColors = {} }
 	local saved = _G.GameTooltip
 	_G.GameTooltip = {
-		SetOwner = function(_, frame) tip.owner = frame; tip.lines = {} end,
+		SetOwner = function(_, frame) tip.owner = frame; tip.lines, tip.rights, tip.rightColors = {}, {}, {} end,
 		AddLine = function(_, text) tip.lines[#tip.lines + 1] = text end,
+		AddDoubleLine = function(_, left, right, _, _, _, r, g, b)
+			tip.lines[#tip.lines + 1] = left
+			tip.rights[#tip.lines] = right
+			tip.rightColors[#tip.lines] = r and string.format('%.2f,%.2f,%.2f', r, g, b) or nil
+		end,
 		Show = function() end,
 		IsOwned = function(_, frame) return tip.owner == frame end,
 		Hide = function() tip.owner = nil end,
@@ -413,7 +420,12 @@ test("the diff icon follows the label's text and lists who differs", function()
 
 		stub.fire_script(diff, 'OnEnter', true)
 		check(tip.owner == diff, 'its own tooltip')
-		eq(table.concat(tip.lines, '|'), 'Spacing|All bars: 3|Bar 2: 2|Bar 4: 1', 'the name, the source, a line per page')
+		-- Two columns, as the mockup draws them: the page on the left, its value on the right in light blue.
+		eq(table.concat(tip.lines, '|'), 'Spacing|All bars: 3|Bar 2|Bar 4', 'the name, the source, a line per page')
+		eq(tostring(tip.rights[3]) .. '|' .. tostring(tip.rights[4]), '2|1', 'each value on the right')
+		eq(tostring(tip.rightColors[3]) .. '|' .. tostring(tip.rightColors[4]), OWN .. '|' .. OWN, 'in light blue')
+		eq(tip.rights[1], nil, 'the title a line of its own')
+		eq(tip.rights[2], nil, "and the source's line")
 		stub.fire_script(diff, 'OnLeave', true)
 		check(tip.owner == nil, 'gone on leaving')
 
@@ -630,14 +642,18 @@ test('Blizzard: every piece draws, and no line runs past the body', function()
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(parts)
 
-		-- D sits in the last quarter: its line, wider than its room, ends at the body's width.
+		-- D sits in the last quarter: its line, wider than its room, starts under its
+		-- label (not moved back into C's cell) and is cut at the cell's right edge,
+		-- here the body's width.
 		local d = by.d
 		eq(d.frame:GetLeft() - content:GetLeft(), 774 - 171, 'the last quarter')
 		local line = d.frame.share.line
-		check(line:GetWidth() > 171 - 6, 'a line wider than its room')
 		stub.fire_script(d.frame, 'OnEnter', true)
 		check(line:IsShown())
-		eq(line:GetRight() - content:GetLeft(), 774, "its right edge at the body's width")
+		check(d.frame.share.multiple:GetRight() > line:GetRight(), 'a line wider than its room')
+		eq(line:GetLeft() - content:GetLeft(), 774 - 171 + 6, 'under its shifted label')
+		eq(line:GetRight() - content:GetLeft(), 774, "its right edge at the cell's, the body's width")
+		check(line:DoesClipChildren(), 'cut: the line clips what runs past it')
 		stub.cursor_x, stub.cursor_y = 0, 0
 		watch(d.frame.share)
 
@@ -656,4 +672,559 @@ test('Blizzard: every piece draws, and no line runs past the body', function()
 		eq((select(4, point(by.spacing.label))), 0, 'no shift without a mark')
 		body:Release()
 	end)
+end)
+
+------------------------------------------------------------------ fix round 1
+
+-- Every frame under frame (frame first, then its children and theirs).
+local function frames_under(frame, list)
+	list = list or {}
+	list[#list + 1] = frame
+	for _, child in ipairs({ frame:GetChildren() }) do frames_under(child, list) end
+	return list
+end
+
+-- A tooltip's text: its lines joined with |, a double line as 'left = right'.
+local function tip_text(tip)
+	local out = {}
+	for i, line in ipairs(tip.lines) do out[i] = tip.rights[i] and (line .. ' = ' .. tip.rights[i]) or line end
+	return table.concat(out, '|')
+end
+
+-- The tooltip a piece of a line shows, as text (its OnEnter, then its OnLeave).
+local function read_tip(tip, piece)
+	stub.fire_script(piece, 'OnEnter', true)
+	local text = tip_text(tip)
+	stub.fire_script(piece, 'OnLeave', true)
+	return text
+end
+
+-- A stand-in for Task 5's item row, so an item's marks can be drawn here: a
+-- custom type (a 24 box at its cell's right), drawn with every piece ('row' in
+-- OB.SHARE_KINDS), its cell's labelX set as an item's is, its label sitting
+-- after its Show box. Runs fn, then puts the body and the kinds back.
+local function with_items(labelX, fn)
+	if not W.WIDTH.item then
+		W.Define('item', {
+			width = 24,
+			build = function(w)
+				w.frame = CreateFrame('Button', nil, UIParent)
+				w.frame:SetSize(24, 24)
+			end,
+			methods = { Refresh = function() end },
+		})
+	end
+	local Body = getmetatable(OB.New(CreateFrame('Frame', nil, UIParent), nil, nil, 100))
+	local rowCell, kind = Body.RowCell, OB.SHARE_KINDS.item
+	Body.RowCell = function(self, row)
+		local cell = rowCell(self, row)
+		if cell and row.type == 'item' then cell.labelX = labelX end
+		return cell
+	end
+	OB.SHARE_KINDS.item = 'row'
+	local ok, err = pcall(fn)
+	Body.RowCell, OB.SHARE_KINDS.item = rowCell, kind
+	if not ok then error(err, 0) end
+end
+
+test('the Apply list closes when its row is drawn again or released, and its Apply acts on the row it was opened for', function()
+	in_look('thick', function()
+		fresh()
+		own.spacing, own.show = true, true
+		local body, by = draw(Page('member'))
+		local frame = by.spacing.frame
+		stub.fire_script(frame, 'OnEnter', true)
+		stub.click(frame.share.multiple)
+		local list = W.GetListFrames()
+		eq(W.ListOwner(), frame.share.multiple, 'open')
+		stub.click(list.rows[1]) -- Bar 2
+		local apply = list.onApply -- what its Apply button runs
+		-- Drawn again with the rows the other way round: the same frame now holds Show.
+		local swapped = Page('member')
+		swapped.page.args.spacing.order, swapped.page.args.show.order = 2, 1
+		redraw(body, swapped)
+		eq(frame.shareCell.row.key, 'show', 'the pooled frame holds another shareable row')
+		eq(W.ListOwner(), nil, 'the list closed with the row it was opened on')
+		-- Had its Apply still been clicked, it acts on Spacing, the row it opened for.
+		apply()
+		eq(#calls, 1, 'one call')
+		eq(calls[1].action .. ' ' .. calls[1].key .. ' ' .. calls[1].keys, 'apply spacing bar2', 'on the row it was opened for')
+
+		-- Released with nothing drawn on its frame again (a page of fewer rows): closed too.
+		fresh()
+		own.spacing, own.show = true, true
+		by = redraw(body, Page('member'))
+		local last = by.show.frame
+		stub.fire_script(last, 'OnEnter', true)
+		stub.click(last.share.multiple)
+		eq(W.ListOwner(), last.share.multiple, 'open on the second row')
+		body:Release()
+		eq(W.ListOwner(), nil, 'closed when its row is released')
+		eq(#calls, 0, 'nothing applied')
+	end)
+end)
+
+test('a row entered through its control shows its line: from the column beside it, and from above onto the slider', function()
+	in_look('thick', function()
+		fresh()
+		own.spacing, own.show = true, true
+		local body, by = draw(Page('member'))
+		local spacing, show = by.spacing, by.show
+
+		-- From above, straight onto the slider: the row frame never hears of it.
+		hover(spacing.widget.slider)
+		stub.fire_script(spacing.widget.slider, 'OnEnter', true)
+		check(spacing.frame.share.line:IsShown(), "the slider's hover is the row's")
+		eq((point(spacing.label)), 'TOPLEFT', 'the label lifted')
+		watch(spacing.frame.share)
+		check(spacing.frame.share.line:IsShown(), 'kept while the mouse is on the slider')
+
+		-- From the column beside it: from Show's half leftwards onto Spacing's value box.
+		hover(show.frame, 10)
+		stub.fire_script(show.frame, 'OnEnter', true)
+		watch(spacing.frame.share)
+		check(not spacing.frame.share.line:IsShown(), "Spacing's line gone once the mouse is on Show")
+		hover(spacing.widget.edit)
+		stub.fire_script(spacing.widget.edit, 'OnEnter', true)
+		check(spacing.frame.share.line:IsShown(), "the value box's hover is the row's too")
+		watch(show.frame.share)
+		check(not show.frame.share.line:IsShown(), "Show's line gone")
+		-- And back right, onto Show's dropdown.
+		hover(show.widget.frame)
+		stub.fire_script(show.widget.frame, 'OnEnter', true)
+		check(show.frame.share.line:IsShown(), "the dropdown's hover is its row's")
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(show.frame.share)
+		watch(spacing.frame.share)
+
+		-- Hooked once each, however often the row is drawn.
+		local slider = spacing.widget.slider
+		local hooks = #(stub.state(slider).hooks.OnEnter or {})
+		check(hooks >= 1, 'the slider is hooked')
+		for _ = 1, 3 do by = redraw(body, Page('member')) end
+		check(by.spacing.widget.slider == slider, 'the same slider, from its pool')
+		eq(#stub.state(slider).hooks.OnEnter, hooks, 'no hook added by a redraw')
+
+		-- A row that offers nothing: its control's hover shows nothing, and its label stays.
+		own.show = nil
+		by = redraw(body, Page('member'))
+		hover(by.show.widget.frame)
+		stub.fire_script(by.show.widget.frame, 'OnEnter', true)
+		check(not shown(by.show.frame.share, 'line'), 'no line')
+		eq((point(by.show.label)), 'LEFT', 'its label unmoved')
+		body:Release()
+	end)
+end)
+
+test("the line sits above the control, its links over every part of it; in a quarter cell it is cut at the cell's right edge", function()
+	in_look('thick', function()
+		fresh()
+		own.spacing, own.a = true, true
+		local function quarters(size)
+			return Page('member', {
+				a = { type = 'toggle', name = 'A', order = 3, size = size, share = true },
+				b = { type = 'toggle', name = 'B', order = 4, size = size, share = true },
+			})
+		end
+		local body, by = draw(quarters('small'))
+		-- Levels: the line 4 over its row, its links one over the line, over every part of the control.
+		for _, key in ipairs({ 'spacing', 'a' }) do
+			local c = by[key]
+			local parts, top = c.frame.share, 0
+			for _, f in ipairs(frames_under(c.widget.frame)) do top = math.max(top, f:GetFrameLevel()) end
+			eq(parts.line:GetFrameLevel(), c.frame:GetFrameLevel() + 4, key .. ': the line 4 over its row')
+			for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+				eq(parts[piece]:GetFrameLevel(), parts.line:GetFrameLevel() + 1, key .. ': ' .. piece .. ' one over the line')
+				check(parts[piece]:GetFrameLevel() > top, key .. ': ' .. piece .. ' over every part of the control')
+			end
+		end
+
+		-- A half's line fits: whole, not cut.
+		local sp = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		check(not sp.line:DoesClipChildren(), 'a line that fits is not cut')
+		eq(sp.line:GetRight(), sp.multiple:GetRight(), 'it ends at its last link')
+		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+			check(sp[piece]:IsShown(), piece .. ' shown')
+			eq((select(2, sp[piece]:GetHitRectInsets())), 0, piece .. ' takes the mouse whole')
+		end
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(sp)
+
+		-- A, in the first quarter: its line ends at its cell's right edge, never in B's.
+		local a = by.a
+		local parts = a.frame.share
+		hover(a.frame, 5)
+		stub.fire_script(a.frame, 'OnEnter', true)
+		check(parts.line:IsShown())
+		eq(a.frame:GetWidth(), 165, 'a quarter cell')
+		check(parts.multiple:GetRight() > a.frame:GetRight(), 'its line is wider than the cell')
+		eq(parts.line:GetLeft(), a.frame:GetLeft(), 'it starts under the label')
+		eq(parts.line:GetRight(), a.frame:GetRight(), "it ends at the cell's right edge")
+		check(parts.line:GetRight() < by.b.frame:GetLeft(), "not in B's cell")
+		check(parts.line:DoesClipChildren(), 'cut: what runs past is clipped')
+		local cut = a.frame:GetRight()
+		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+			local p = parts[piece]
+			if p:IsShown() then
+				check(p:GetLeft() < cut, piece .. ' starts before the cut')
+				eq((select(2, p:GetHitRectInsets())), math.max(0, p:GetRight() - cut), piece .. ' takes no mouse past the cut')
+			else
+				check(p:GetLeft() >= cut, piece .. ' hidden only when wholly past the cut')
+			end
+		end
+		check(not parts.multiple:IsShown() or select(2, parts.multiple:GetHitRectInsets()) > 0, 'Multiple is cut')
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(parts)
+
+		-- A dialog's 520 body: a quarter is 102 inside its padding, and a piece
+		-- wholly past the cut is hidden, taking no mouse at all.
+		local narrowContent = CreateFrame('Frame', nil, UIParent)
+		narrowContent:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		narrowContent:SetSize(520, 600)
+		local root = quarters('small')
+		local narrow = OB.New(narrowContent, root, nil, 520)
+		narrow:Draw(OM.BuildView(root, 'page').sections)
+		local na
+		for _, each in ipairs(narrow.cells) do if each.row.key == 'a' then na = each end end
+		eq(na.frame:GetWidth(), 102, 'a narrow quarter')
+		local np, hidden = na.frame.share, 0
+		stub.fire_script(na.frame, 'OnEnter', true)
+		eq(np.line:GetRight(), na.frame:GetRight(), "cut at the narrow cell's right edge")
+		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+			local p = np[piece]
+			if p:IsShown() then
+				check(p:GetLeft() < na.frame:GetRight(), piece .. ' shown: it starts before the cut')
+			else
+				hidden = hidden + 1
+				check(p:GetLeft() >= na.frame:GetRight(), piece .. ' hidden: wholly past the cut')
+			end
+		end
+		check(hidden >= 1, 'something wholly past the cut, hidden')
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(np)
+		narrow:Release()
+
+		-- The same frames drawn as halves: whole again.
+		by = redraw(body, quarters(nil))
+		parts = by.a.frame.share
+		stub.fire_script(by.a.frame, 'OnEnter', true)
+		check(not parts.line:DoesClipChildren(), 'a half: not cut')
+		for _, piece in ipairs({ 'ownText', 'reset', 'all', 'multiple' }) do
+			check(parts[piece]:IsShown(), piece .. ' shown again')
+			eq((select(2, parts[piece]:GetHitRectInsets())), 0, piece .. ' takes the mouse whole again')
+		end
+		stub.cursor_x, stub.cursor_y = 0, 0
+		watch(parts)
+		body:Release()
+	end)
+end)
+
+test("the line goes once the mouse leaves the body's view, though its row runs on past the view's edge", function()
+	in_look('thick', function()
+		fresh()
+		own.spacing = true
+		-- A view 40 tall over the content: the first row (20 to 58) is half out of it.
+		local view = CreateFrame('Frame', nil, UIParent)
+		view:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+		view:SetSize(774, 40)
+		local content = CreateFrame('Frame', nil, view)
+		content:SetPoint('TOPLEFT', view, 'TOPLEFT', 0, 0)
+		content:SetSize(774, 600)
+		local root = Page('member')
+		local body = OB.New(content, root, nil, 774)
+		body:Draw(OM.BuildView(root, 'page').sections)
+		local c = body.cells[1]
+		eq(c.row.key, 'spacing')
+		local parts = c.frame.share
+		local scale = c.frame:GetEffectiveScale()
+		local function at(y) -- the cursor 10 into the row, y down its content
+			stub.cursor_x = (c.frame:GetLeft() + 10) * scale
+			stub.cursor_y = (content:GetTop() - y) * scale
+		end
+		at(c.y + 6) -- in the row, in the view
+		stub.fire_script(c.frame, 'OnEnter', true)
+		check(parts.line:IsShown(), 'shown')
+		watch(parts)
+		check(parts.line:IsShown(), 'kept in the view')
+		at(c.y + c.height - 2) -- still on the row (under its line), past the view's edge
+		check(c.frame:IsMouseOver() and not view:IsMouseOver(), 'on the row, off the view')
+		watch(parts)
+		check(not parts.line:IsShown(), 'gone once the view is not under the mouse')
+		eq((point(c.label)), 'LEFT', 'its label back')
+		body:Release()
+	end)
+end)
+
+test('an own row keeps its light blue across Refresh: disabled then enabled again, or drawn disabled and enabled mid-drag', function()
+	in_look('thick', function()
+		fresh()
+		own.spacing = true
+		local disabled = false
+		local root = Page('member')
+		root.page.args.spacing.disabled = function() return disabled end
+		local body, by = draw(root)
+		eq(text_rgb(by.spacing.label), OWN, 'light blue')
+		disabled = true
+		body:Refresh()
+		eq(text_rgb(by.spacing.label), grey(), 'grey while disabled')
+		disabled = false
+		body:Refresh()
+		eq(text_rgb(by.spacing.label), OWN, 'light blue again')
+		-- Drawn while disabled, then enabled mid-drag.
+		disabled = true
+		by = redraw(body, root)
+		eq(text_rgb(by.spacing.label), grey(), 'drawn disabled: grey')
+		check(shown(by.spacing.frame.share, 'mark'), 'with its mark')
+		disabled = false
+		body:Refresh()
+		eq(text_rgb(by.spacing.label), OWN, 'enabled mid-drag: light blue, not Text > Normal')
+		body:Release()
+	end)
+end)
+
+test("no tooltip builds s's: All and Multiple name no page's or source's own, the rest put just an apostrophe after an s", function()
+	in_look('thick', function(tip)
+		fresh()
+		own.spacing = true
+		local root = Page('member')
+		root.page.args.spacing.share.page = 'Totems'
+		local body, by = draw(root)
+		local parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		local texts = {}
+		local function read(piece)
+			local text = read_tip(tip, parts[piece])
+			texts[#texts + 1] = text
+			return text
+		end
+		eq(read('reset'), "Reset|Spacing follows All bars again. Totems' own value is dropped.")
+		eq(read('all'), 'Apply to: All|All bars takes Spacing from Totems, and nothing keeps its own any more.')
+		eq(read('multiple'), 'Apply to: Multiple|Pick which take Spacing from Totems as their own.')
+		eq(read('ownText'), 'Spacing|All bars: 3')
+		-- A page with no name of its own.
+		root.page.args.spacing.share.page = nil
+		by = redraw(body, root)
+		parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read('reset'), 'Reset|Spacing follows All bars again. Its own value is dropped.')
+		eq(read('all'), 'Apply to: All|All bars takes Spacing from this page, and nothing keeps its own any more.')
+
+		-- The source page, whose name ends in s.
+		fresh()
+		differs.spacing = { { name = 'Totems', value = '2' } }
+		by = redraw(body, Page('source'))
+		parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		eq(read('all'), 'Apply to: All|Everything that keeps its own Spacing follows All bars again.')
+		eq(read('multiple'), 'Apply to: Multiple|Pick which follow All bars again for Spacing.')
+		texts[#texts + 1] = read_tip(tip, parts.diff)
+		for _, text in ipairs(texts) do
+			check(not text:find("s's", 1, true), "no s's: " .. text)
+		end
+		body:Release()
+	end)
+end)
+
+test("an item's row: its line's tooltips name its Show, its diff tooltip has no source line, and its label sits labelX in", function()
+	in_look('thick', function(tip)
+		with_items(30, function()
+			fresh()
+			own.hotkey = true
+			local body, by = draw(Page('member', { hotkey = Item('member') }))
+			local c = by.hotkey
+			local parts = c.frame.share
+			-- labelX: the label 30 in, lifted and put back there, the line under it.
+			eq((select(4, point(c.label))), 30, 'the label 30 in')
+			eq(c.label:GetWidth(), c.frame:GetWidth() - 30 - 24 - 10, 'its width the rest, up to 10 before the control')
+			hover(c.frame, 40)
+			stub.fire_script(c.frame, 'OnEnter', true)
+			check(parts.line:IsShown(), 'its line')
+			local p, _, _, x, y = point(c.label)
+			eq(p .. ' ' .. x .. ',' .. y, 'TOPLEFT 30,-4', 'lifted where it sits')
+			eq(parts.line:GetLeft() - c.frame:GetLeft(), 30, 'the line under it')
+			eq(read_tip(tip, parts.ownText), "Hotkey's Show|All bars: Shown")
+			eq(read_tip(tip, parts.reset), "Reset|Hotkey's Show follows All bars again. Bar 3's own value is dropped.")
+			eq(read_tip(tip, parts.all), "Apply to: All|All bars takes Hotkey's Show from Bar 3, and nothing keeps its own any more.")
+			eq(read_tip(tip, parts.multiple), "Apply to: Multiple|Pick which take Hotkey's Show from Bar 3 as their own.")
+			stub.cursor_x, stub.cursor_y = 0, 0
+			watch(parts)
+			check(not parts.line:IsShown(), 'gone')
+			local lp, _, _, lx = point(c.label)
+			eq(lp .. ' ' .. lx, 'LEFT 30', 'the label back at 30')
+			stub.click(parts.reset)
+			eq(calls[1].action .. ' ' .. calls[1].key, 'reset hotkey', "Reset acts on the item's own share, its Show")
+
+			-- Under Blizzard the mark's shift adds to it.
+			in_look('blizzard', function()
+				by = redraw(body, Page('member', { hotkey = Item('member') }))
+				eq((select(4, point(by.hotkey.label))), 36, 'Blizzard: 30 and the shift of 6')
+				stub.fire_script(by.hotkey.frame, 'OnEnter', true)
+				eq(by.hotkey.frame.share.line:GetLeft() - by.hotkey.frame:GetLeft(), 36, 'the line under it')
+				stub.cursor_x, stub.cursor_y = 0, 0
+				watch(by.hotkey.frame.share)
+			end)
+
+			-- The source page: its diff tooltip, two columns, no source line.
+			fresh()
+			differs.hotkey = { { name = 'Bar 3', value = 'Hidden' } }
+			differs.size = { { name = 'Bar 5', value = '9' } }
+			by = redraw(body, Page('source', { hotkey = Item('source') }))
+			c = by.hotkey
+			eq(read_tip(tip, c.frame.share.diff), 'Hotkey|Bar 3 = Show|Bar 5 = Size', 'the name, then a line per page')
+			eq(c.frame.share.diff:GetLeft() - c.label:GetLeft(), math.ceil(c.label:GetUnboundedStringWidth()) + 4, 'the icon after the label')
+			stub.fire_script(c.frame, 'OnEnter', true)
+			eq(read_tip(tip, c.frame.share.multiple), "Apply to: Multiple|Pick which follow All bars again for Hotkey's Show.")
+			stub.cursor_x, stub.cursor_y = 0, 0
+			watch(c.frame.share)
+			body:Release()
+		end)
+	end)
+end)
+
+test("a shareable position row's state is asked once a draw, its title reusing it", function()
+	in_look('thick', function()
+		fresh()
+		own.pos = true
+		local root = Page('member', { pos = { type = 'position', name = 'Position', order = 10, share = true } })
+		local asked = 0
+		local share = root.page.args.pos.share
+		local ownOf = share.own
+		share.own = function(info)
+			asked = asked + 1
+			return ownOf(info)
+		end
+		local body = draw(root)
+		eq(#body.shareTitles, 1, 'its title drawn')
+		eq(text_rgb(body.shareTitles[1].title), OWN, 'and marked')
+		eq(asked, 1, 'own asked once: the row and its title share one state')
+		body:Release()
+	end)
+end)
+
+test('a pooled frame drawn for a plain row keeps nothing of the shareable row it last held', function()
+	in_look('thick', function()
+		fresh()
+		own.spacing = true
+		local body, by = draw(Page('member'))
+		local frame = by.spacing.frame
+		stub.fire_script(frame, 'OnEnter', true)
+		check(frame.share.line:IsShown(), 'its line up')
+		local plain = { page = { type = 'group', name = 'P', get = function() return 1 end, set = function() end, args = {
+			a = { type = 'range', name = 'A', order = 1, min = 0, max = 10, step = 1 },
+		} } }
+		by = redraw(body, plain)
+		check(by.a.frame == frame, 'the same frame')
+		check(not frame.share.line:IsShown(), 'its line hidden')
+		hover(by.a.frame, 10)
+		stub.fire_script(by.a.frame, 'OnEnter', true)
+		check(not frame.share.line:IsShown(), 'no line on entering')
+		eq((point(by.a.label)), 'LEFT', 'its label unmoved')
+		stub.fire_script(by.a.widget.slider, 'OnEnter', true)
+		check(not frame.share.line:IsShown(), 'nor through its control')
+		eq((point(by.a.label)), 'LEFT', 'still unmoved')
+		body:Release()
+	end)
+end)
+
+test("a title's hover frame drawn again keeps nothing of its last title and goes with a release; a disabled block's title offers no line", function()
+	in_look('thick', function()
+		fresh()
+		differs.pos = { { name = 'Bar 3', value = 'Center' } }
+		local function pos() return { type = 'position', name = 'Position', order = 10, share = true } end
+		local body = draw(Page('source', { pos = pos() }))
+		local hover = body.shareTitles[1].hover
+		check(body.shareTitles[1].parts.diff:IsShown(), 'the source title has its diff icon')
+		fresh()
+		own.pos = true
+		redraw(body, Page('member', { pos = pos() }))
+		check(body.shareTitles[1].hover == hover, 'the same hover frame')
+		check(not body.shareTitles[1].parts.diff:IsShown(), 'its diff icon gone: nothing differs on a member page')
+		local entry = body.shareTitles[1]
+		check(entry.hover:IsShown(), 'shown while drawn')
+		body:Release()
+		check(not entry.hover:IsShown(), 'a release hides it')
+
+		local root = Page('member', { pos = pos() })
+		root.page.args.pos.disabled = true
+		redraw(body, root)
+		entry = body.shareTitles[1]
+		check(entry ~= nil, 'a disabled own block still marks its title')
+		stub.fire_script(entry.hover, 'OnEnter', true)
+		check(not entry.parts.line:IsShown(), 'but offers no line')
+		body:Release()
+	end)
+end)
+
+test("the diff icon's hover shows its row's line too", function()
+	in_look('thick', function()
+		fresh()
+		differs.spacing = { { name = 'Bar 2', value = '2' } }
+		local body, by = draw(Page('source'))
+		local parts = by.spacing.frame.share
+		hover(parts.diff)
+		stub.fire_script(parts.diff, 'OnEnter', true)
+		check(parts.line:IsShown(), 'reached straight onto the icon: the line shows')
+		stub.fire_script(parts.diff, 'OnLeave', true)
+		body:Release()
+	end)
+end)
+
+test("a link's click takes its tooltip away, and leaving a link puts its blue back", function()
+	in_look('thick', function(tip)
+		fresh()
+		own.spacing = true
+		local body, by = draw(Page('member'))
+		local parts = by.spacing.frame.share
+		stub.fire_script(by.spacing.frame, 'OnEnter', true)
+		local textBlue = rgb(st.config.profile.colors.text.blue:GetRGB())
+		local buttonBlue = rgb(st.config.profile.colors.button.blue:GetRGB())
+		for _, key in ipairs({ 'all', 'multiple' }) do
+			stub.fire_script(parts[key], 'OnEnter', true)
+			eq(rgb(parts[key].text:GetTextColor()), '1.00,1.00,1.00', key .. ' white under the mouse')
+			stub.fire_script(parts[key], 'OnLeave', true)
+			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in Text > Blue again')
+		end
+		stub.fire_script(parts.reset, 'OnEnter', true)
+		eq(rgb(parts.reset.icon:GetVertexColor()), '1.00,1.00,1.00', 'the reset icon white under the mouse')
+		stub.fire_script(parts.reset, 'OnLeave', true)
+		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'and blue again')
+		for _, key in ipairs({ 'all', 'multiple' }) do
+			stub.fire_script(parts[key], 'OnEnter', true)
+			check(tip.owner == parts[key], key .. ' shows its tooltip')
+			stub.click(parts[key])
+			check(tip.owner == nil, key .. "'s click takes it away")
+			W.CloseList()
+		end
+		body:Release()
+	end)
+end)
+
+test("ShareState: a hidden option in an item's menu neither marks nor diffs it", function()
+	fresh()
+	own.size = true
+	local item = Item('member')
+	item.menu.args.size.hidden = true
+	eq(state_of(Page('member', { hotkey = item }), 'hotkey').marked, false, 'its hidden Size marks nothing')
+	fresh()
+	differs.size = { { name = 'Bar 5', value = '9' } }
+	item = Item('source')
+	item.menu.args.size.hidden = true
+	eq(#state_of(Page('source', { hotkey = item }), 'hotkey').differs, 0, 'nor diffs')
+end)
+
+test('ShareCall refuses an action it has no name for; ShareTargets leaves out a target with no key', function()
+	fresh()
+	local root = Page('member')
+	local row = row_of(root, 'spacing')
+	local ok, err = pcall(OM.ShareCall, root, row, 'bogus')
+	check(not ok, 'an unknown action errors')
+	check(tostring(err):find('no share action', 1, true) ~= nil, 'naming it')
+	eq(#calls, 0, 'nothing ran')
+	root.page.args.spacing.share.targets = function()
+		return { { label = 'No key' }, { key = 'bar2', label = 'Bar 2' }, 'junk' }
+	end
+	local targets = OM.ShareTargets(root, row)
+	eq(#targets, 1, 'only the target with a key')
+	eq(targets[1] and targets[1].key, 'bar2')
 end)
