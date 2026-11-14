@@ -51,7 +51,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    Blizzard) moves the window, and where it was left is kept in
 	    st.config.global.optionsWindow, with the height it was dragged to;
 	  - the tab row, across the main column; a second row for subtabs; the
-	    picker row; the body, a scroll frame of sections (OB.LayoutSections)
+	    picker row (the picked group's control, its pickerControl, right of
+	    the picker); the body, a scroll frame of sections (OB.LayoutSections)
 	    of rows in quarters, halves and whole lines (OB.LayoutRows), drawn by
 	    an OB.New body;
 	  - the footer: Reload UI, the region (edit mode's buttons from its left,
@@ -96,6 +97,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	no control, and a result for a footer's option opens its page as it is. A render draws an open dialog
 	again too, so the dialog follows what changed the tree (a profile change,
 	UF's profile prompts).
+
+	A pick's control is the picked group's pickerControl (SaftUI's field,
+	OM.BuildView's view.picker.control): a group whose options, buttons, are
+	drawn on the picker's line, 12 right of the picker and apart, with the
+	options kit's own widgets and their options' tooltips, on every tab of
+	that pick (DrawPickerControl). A pick without one draws none; nor do
+	search results.
 
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every
@@ -455,11 +463,11 @@ local function ReleaseFooterControl()
 	F.footerControl:Hide()
 end
 
--- A footer widget's tooltip, its option's name and desc as a body's row shows
--- them. An execute button has the hook for it (widget.onTip); any other
--- widget's frame gets one, once (the frame is pooled), that reads footerTip.
--- The game calls a script with the mouse's motion as a second argument, so
--- these take none.
+-- A footer widget's tooltip (a pick's control's too), its option's name and
+-- desc as a body's row shows them. An execute button has the hook for it
+-- (widget.onTip); any other widget's frame gets one, once (the frame is
+-- pooled), that reads footerTip. The game calls a script with the mouse's
+-- motion as a second argument, so these take none.
 local function TipFooterWidget(widget, row)
 	local owner = widget.frame
 	local tip = { row = row }
@@ -478,6 +486,21 @@ local function TipFooterWidget(widget, row)
 	owner.footerTip = Tip
 end
 
+-- A control's widgets, one for each row of its view, made in parent and bound
+-- to the control's own tree, listed in into; place (optional) is called with
+-- each widget.
+local function CreateControlWidgets(view, tree, parent, into, place)
+	for _, section in ipairs(view.sections) do
+		for _, row in ipairs(section.rows) do
+			local widget = W.Create(parent, row.type)
+			widget:Bind(tree, row, Changed)
+			TipFooterWidget(widget, row)
+			if place then place(widget) end
+			into[#into + 1] = widget
+		end
+	end
+end
+
 -- footer (a page's view.footer, or nil for none) drawn into the control.
 local function DrawFooterControl(footer)
 	if not footer then return end
@@ -485,14 +508,7 @@ local function DrawFooterControl(footer)
 	local view = OM.BuildView(tree, FOOTER_KEY)
 	if not view then return end -- hidden
 	F.footerLabel:SetText(view.title)
-	for _, section in ipairs(view.sections) do
-		for _, row in ipairs(section.rows) do
-			local widget = W.Create(F.footerControl, row.type)
-			widget:Bind(tree, row, Changed)
-			TipFooterWidget(widget, row)
-			F.footerWidgets[#F.footerWidgets + 1] = widget
-		end
-	end
+	CreateControlWidgets(view, tree, F.footerControl, F.footerWidgets)
 	F.footerControl:SetShown(#F.footerWidgets > 0)
 end
 
@@ -543,13 +559,51 @@ local function PlaceFooter()
 	status:SetShown(x - FOOTER_GAP > footerInset)
 end
 
+------------------------------------------------------------------ a pick's control
+
+-- A pick's control (its group's pickerControl, SaftUI's field: OM.BuildView's
+-- view.picker.control): a group whose options, buttons, are drawn on the
+-- picker's line, PICKER_CONTROL_GAP right of the picker and apart, each the
+-- options kit's own widget (so it takes both looks) showing its option's
+-- tooltip, read and set through the model from a tree of their own, as the
+-- footer control's (Changed: a set draws the page again). They go with the
+-- page's rows, and a pick without one draws none.
+local PICKER_CONTROL_KEY = OM.PICKER_CONTROL_KEY -- the control's key in that tree
+local PICKER_CONTROL_GAP = 12 -- as the buttons on a line are apart
+
+local function ReleasePickerControl()
+	for _, widget in ipairs(F.pickerWidgets) do
+		widget.frame.footerTip = nil
+		widget:Release()
+	end
+	wipe(F.pickerWidgets)
+end
+
+-- picker (a page's view.picker, drawn) and its control, if any, beside it.
+local function DrawPickerControl(picker)
+	local control = picker and picker.control
+	if not control then return end
+	local tree = { [PICKER_CONTROL_KEY] = control }
+	local view = OM.BuildView(tree, PICKER_CONTROL_KEY)
+	if not view then return end -- hidden
+	local anchor = F.picker.frame
+	CreateControlWidgets(view, tree, F.main, F.pickerWidgets, function(widget)
+		-- By its left, on the picker's middle line: a button 2 taller than
+		-- the picker sits 1 over and under it, on whole pixels.
+		widget.frame:ClearAllPoints()
+		widget.frame:SetPoint('LEFT', anchor, 'RIGHT', PICKER_CONTROL_GAP, 0)
+		anchor = widget.frame
+	end)
+end
+
 ------------------------------------------------------------------ the body
 
--- The page's rows, and its footer control with them.
+-- The page's rows, and its footer control and a pick's control with them.
 local function ReleaseBody()
 	pageBody:Release()
 	F.placeholder:Hide()
 	ReleaseFooterControl()
+	ReleasePickerControl()
 end
 
 -- The body from top down to the layout's bottom (the footer under Thick and
@@ -626,6 +680,7 @@ local function DrawPage()
 	end
 	if view.picker then
 		bottom = S.DrawPicker(view.picker, bottom + PICKER_GAP)
+		DrawPickerControl(view.picker)
 	else
 		S.HidePicker()
 	end
@@ -971,6 +1026,7 @@ local function BuildMain(window)
 
 	F.pickerLabel = Text(main, 'field')
 	F.picker = W.Create(main, 'select')
+	F.pickerWidgets = {} -- a pick's control, beside the picker (DrawPickerControl)
 	S.HidePicker()
 
 	-- The body.

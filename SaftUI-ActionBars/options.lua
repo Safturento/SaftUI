@@ -284,7 +284,8 @@ end
 --[[
 	The share (Core's share field, optionsmodel.lua) of the shared key on id's
 	page, a bar or 'all'. Everything the kit says comes from here: All bars is
-	the source, each bar a member page named by its label.
+	the source, each bar a member page named by its label, a member a bar
+	(noun), and a bar's name in a sentence its pageText.
 	  On All bars: shared (All bars' value), differs (each bar that owns the
 	  setting, with its value: owning is differing, even at All bars' value),
 	  targets (those bars), applyAll (every bar follows) and apply (the picked
@@ -299,9 +300,15 @@ end
 ]]
 function AB:ShareFor(id, key)
 	local function shared() return self:SettingText('all', key, id ~= 'all' and id or nil) end
+	-- What a member is, for the kit's texts ('every bar', 'which bars'); and a
+	-- bar's name in a sentence: the pet and stance bars read as common nouns
+	-- ('from the Pet bar'), Bar 1 to 8 as names.
+	local noun = { 'bar', 'bars' }
+	local label = self:GetBarLabel(id)
 	if id == 'all' then
 		return {
 			source = ALL_LABEL,
+			noun = noun,
 			shared = shared,
 			differs = function()
 				local list = {}
@@ -323,7 +330,9 @@ function AB:ShareFor(id, key)
 	end
 	return {
 		source = ALL_LABEL,
-		page = self:GetBarLabel(id),
+		page = label,
+		pageText = (id == 'pet' or id == 'stance') and ('the ' .. label) or label,
+		noun = noun,
 		own = function() return self:IsOwn(id, key) end,
 		reset = function()
 			self:ResetSetting(id, key)

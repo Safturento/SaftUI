@@ -452,7 +452,7 @@ ThemeArt.ART = {
 
 	-- A color swatch (ColorSwatchTemplate): a white square (HIGHLIGHT_FONT_COLOR),
 	-- a black one inside it (BLACK_FONT_COLOR), and the color inside that. Only
-	-- the two colors are kept: SaftUI draws them at the color bar's shape.
+	-- the two colors are kept: SaftUI draws them as the color field's swatch.
 	swatch = {
 		whiteColor = { 1, 1, 1, 1 },
 		blackColor = { 0, 0, 0, 1 },

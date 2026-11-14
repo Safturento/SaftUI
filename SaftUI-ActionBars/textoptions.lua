@@ -196,7 +196,7 @@ function AB:GetTextItem(id, kind, order)
 			item.set = function(_, value) self:SetShowCooldownNumbers(value) end
 		else
 			item.desc = COUNTDOWN_BAR_DESC
-			item.get = false
+			item.get, item.reserveBox = false, true -- no box, but its room kept: the names line up
 		end
 		return item
 	end

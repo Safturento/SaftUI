@@ -148,9 +148,9 @@ test('the two pages: Enemy nameplates then Friendly nameplates after Raid 40, wi
 		eq(names[4], 'Friendly nameplates', client .. ': the Friendly page')
 
 		local args = root.Unitframes.args
-		eq(args.nameplate.args.general.args.copy, nil, client .. ': no Copy from on the Enemy page')
-		eq(args.friendlynameplate.args.general.args.copy, nil, client .. ': nor on the Friendly page')
-		check(args.player.args.general.args.copy ~= nil, client .. ": the player's General keeps it")
+		eq(args.nameplate.pickerControl, nil, client .. ': no Copy from on the Enemy page')
+		eq(args.friendlynameplate.pickerControl, nil, client .. ': nor on the Friendly page')
+		check(args.player.pickerControl ~= nil, client .. ": the player's page keeps it, beside the picker")
 
 		-- What another unit's Copy from offers (the dialog's own table).
 		local dialog

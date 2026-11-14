@@ -226,6 +226,32 @@ test('an item: its Show box, its name, its dots', function()
 	end)
 end)
 
+test("an item with no box that says reserveBox keeps the box's room: its name lines up with its neighbours', under both looks", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			local args = FourItems()
+			args.cooldown.get, args.cooldown.set, args.cooldown.reserveBox = false, nil, true
+			local body, by = draw(Page(args))
+			local c, beside = by.cooldown, by.macro
+			check(not c.widget.box:IsShown(), look .. ': no box')
+			eq(c.labelX, 26, look .. ": the cell's labelX keeps the box's room")
+			eq(c.label:GetLeft() - c.frame:GetLeft(), beside.label:GetLeft() - beside.frame:GetLeft(),
+				look .. ": the name as far in as the next item's")
+			eq(c.label:GetWidth(), beside.label:GetWidth(), look .. ': and as wide')
+			body:Release()
+
+			-- Drawn again from the pool without the field: back at the left.
+			fresh()
+			args = FourItems()
+			args.cooldown.get, args.cooldown.set = false, nil
+			body, by = draw(Page(args))
+			eq(by.cooldown.labelX, 0, look .. ': without reserveBox, at the left')
+			body:Release()
+		end)
+	end
+end)
+
 test("an item's label is grey while its Show is off, and while it's disabled", function()
 	in_look('thick', function()
 		fresh()

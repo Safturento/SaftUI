@@ -26,7 +26,9 @@ local Kit = W.Kit
 	            w.hasMenu, which the body reads to end the label at the
 	            cell's right edge instead
 	  w.labelX  where the body starts the name: 26 with a box (its 18 and a
-	            gap of 8), else 0
+	            gap of 8), or with none when the option sets reserveBox
+	            (SaftUI's field: the box's room kept empty, so its name
+	            lines up with its neighbours'), else 0
 	  w.value   the Show box's value (nil without one)
 	The box and the dots are centred on the widget's frame, which the body
 	makes as tall as the row.
@@ -107,7 +109,11 @@ define('item', {
 
 	Refresh = function(self)
 		self.hasBox = OM.Has(self.root, self.row, 'get')
-		self.labelX = self.hasBox and LABEL_X or 0
+		-- An item with no box whose option says reserveBox (SaftUI's field,
+		-- read raw) keeps the box's room, so its name lines up with the
+		-- names of the items with boxes beside it.
+		local keepsRoom = self.hasBox or (self.row.option and self.row.option.reserveBox == true)
+		self.labelX = keepsRoom and LABEL_X or 0
 		self.hasMenu = type(self.row.option and self.row.option.menu) == 'table'
 		self.dots:SetShown(self.hasMenu)
 		self.box:SetShown(self.hasBox)

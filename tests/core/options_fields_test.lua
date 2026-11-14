@@ -213,30 +213,248 @@ test('color: the bar reads the color\'s hex code in capitals, channels rounded',
 	eq(text(0.6666, 0.1, 0.9), '#AA1AE6', 'letters in capitals')
 end)
 
-test('color: the code is white on a light color, a dark one and a light one at low opacity', function()
+-- The normal text color, 'r,g,b' to two places, and a font string's.
+local function normal_rgb() return string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.normal:GetRGB()) end
+local function ink_of(fs) return string.format('%.2f,%.2f,%.2f', fs:GetTextColor()) end
+
+test('color: the code is the normal text color on any color and opacity, never white by the fill', function()
 	local function ink(hasAlpha, r, g, b, a)
 		local w = color_widget({ hasAlpha = hasAlpha, value = { r, g, b, a } })
-		local tr, tg, tb = w.text:GetTextColor()
+		local out = ink_of(w.text)
 		w:Release()
-		return tr .. ',' .. tg .. ',' .. tb
+		return out
 	end
-	eq(ink(false, 1, 1, 1, 1), '1,1,1', 'white fill')
-	eq(ink(false, 1, 1, 0, 1), '1,1,1', 'yellow, a light color')
-	eq(ink(false, 0, 0, 0, 1), '1,1,1', 'black fill, a dark color')
-	eq(ink(true, 1, 1, 1, 0.3), '1,1,1', 'a light color at 30%')
-	eq(ink(true, 1, 1, 1, 1), '1,1,1', 'a light color, solid')
+	eq(ink(false, 1, 1, 1, 1), normal_rgb(), 'white fill')
+	eq(ink(false, 1, 1, 0, 1), normal_rgb(), 'yellow, a light color')
+	eq(ink(false, 0, 0, 0, 1), normal_rgb(), 'black fill, a dark color')
+	eq(ink(true, 1, 1, 1, 0.3), normal_rgb(), 'a light color at 30%')
+	check(normal_rgb() ~= '1.00,1.00,1.00', 'not white: the normal text color')
 end)
 
-test('color: the fill sits over the black line and under the code, which is centred; a disabled bar takes no mouse', function()
-	local w = color_widget()
+-- The color field's parts' insets from the field, 'left,top,right,bottom'.
+local function swatch_insets(w)
+	return {
+		inner = H.insets(w.inner, w.frame),
+		fill = H.insets(w.swatch, w.frame),
+		line = w.line:IsShown() and H.insets(w.line, w.frame) or 'hidden',
+	}
+end
+
+-- The code's left, from the field's left, and how it sits.
+local function code_place(w)
+	local point, rel, relPoint, x = w.text:GetPoint(1)
+	check(rel == w.frame, 'the code is placed on the field')
+	return point .. ' ' .. relPoint .. ' ' .. x .. ' ' .. w.text:GetJustifyH()
+end
+
+test('color: a field, its swatch at the left (40 wide, the inner height, a line after it), then the code', function()
+	theme('thick')
+	local w = color_widget({ value = { 1, 0, 0, 1 } })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	check_box(w.frame, 'thick')
+	eq(size_of(w.frame), '170x24', "a dropdown's size")
+	local p = swatch_insets(w)
+	-- Inside the 1px edge: the swatch's black line from 1 to 41, the color a
+	-- pixel in from it, then the edge's line from 41 to 42.
+	eq(p.inner, '1,1,129,1', 'the swatch: 40 wide, the field\'s inner height')
+	eq(p.fill, '2,2,130,2', 'the color a pixel in, inside its black line')
+	eq(p.line, '41,1,128,1', 'a 1px line after it')
+	eq(H.rgba(unpack(stub.state(w.line).color_texture)), H.rgba(unpack(st.BOX_COLORS.edge)), "the line in the field's edge color")
+	eq(H.rgba(unpack(stub.state(w.inner).color_texture)), '0.00,0.00,0.00,1.00', 'the swatch\'s black line')
+	-- The code: the field's text inset (8) after the line, to 8 from the right.
+	eq(code_place(w), 'LEFT LEFT 50 LEFT', 'the code 8 after the line, left-aligned')
+	local _, _, _, rx = w.text:GetPoint(2)
+	eq(rx, -8, 'and 8 in from the right')
+	eq(w.text:GetText(), '#FF0000', 'the code')
+	eq(ink_of(w.text), normal_rgb(), 'in the normal text color')
+	-- Layers: the black line, the checker, the color, then the code over them.
 	local fl, fs = w.swatch:GetDrawLayer()
 	local ll, ls = w.inner:GetDrawLayer()
-	eq(fl .. fs, 'ARTWORK1', 'the fill')
-	eq(ll .. ls, 'ARTWORK0', 'the black line, under it')
-	eq((w.text:GetDrawLayer()), 'OVERLAY', 'the code, over both')
-	local point, rel, relPoint = w.text:GetPoint(1)
-	eq(point .. relPoint, 'CENTERCENTER', 'the code in the middle')
-	check(rel == w.frame, 'of the bar')
+	eq(ll .. ls, 'ARTWORK0', 'the black line at the bottom')
+	eq(fl .. fs, 'ARTWORK3', 'the color over the checker')
+	eq((w.text:GetDrawLayer()), 'OVERLAY', 'the code over them all')
+	w:Release()
+end)
+
+-- The checker's squares shown on a color field: { rect = 'x,y,w,h' from the
+-- field's top left, light = true for the light grey }.
+local function checker_of(w)
+	local out = {}
+	for _, region in ipairs(H.shown_textures(w.frame)) do
+		local c = stub.state(region).color_texture
+		if region.checker then
+			out[#out + 1] = {
+				x = math.floor(region:GetLeft() - w.frame:GetLeft() + 0.5),
+				y = math.floor(w.frame:GetTop() - region:GetTop() + 0.5),
+				w = math.floor(region:GetWidth() + 0.5), h = math.floor(region:GetHeight() + 0.5),
+				grey = c and string.format('%.2f', c[1]),
+			}
+		end
+	end
+	return out
+end
+
+test('color: a see-through color shows over a checker of two greys in 4px squares; a solid one over none', function()
+	theme('thick')
+	local w = color_widget({ hasAlpha = true, value = { 1, 0, 0, 0.6 } })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local squares = checker_of(w)
+	check(#squares > 0, 'a checker under the see-through color')
+	-- The dark grey covers the color's area, the light squares alternate on it.
+	local back, light, greys = nil, {}, {}
+	for _, s in ipairs(squares) do
+		greys[s.grey] = true
+		if s.w > 4 then back = s else light[#light + 1] = s end
+	end
+	check(back ~= nil, 'a dark grey under the squares')
+	eq(back and (back.x .. ',' .. back.y .. ',' .. back.w .. ',' .. back.h), '2,2,38,20', "it fills the color's area")
+	local count = 0
+	for _ in pairs(greys) do count = count + 1 end
+	eq(count, 2, 'two greys')
+	-- The light squares: every other 4px square from the area's top left, cut
+	-- at its right edge (38 is 9 squares and a half).
+	local cells = {}
+	for _, s in ipairs(light) do
+		check(s.w <= 4 and s.h <= 4, 'a square at most 4px')
+		cells[#cells + 1] = ((s.x - 2) / 4) .. ':' .. ((s.y - 2) / 4)
+		check((((s.x - 2) / 4) + ((s.y - 2) / 4)) % 2 == 0, 'a light square every other place')
+	end
+	eq(#light, 25, '10 columns of 5 rows, every other one light')
+	local tl, tr = w.swatch:GetDrawLayer()
+	eq(tl .. tr, 'ARTWORK3', 'the color over the checker')
+	eq(string.format('%.1f', stub.state(w.swatch).color_texture[4]), '0.6', 'drawn at its opacity')
+
+	-- Solid at 100%, or with no opacity: no checker.
+	w:Release()
+	local solid = color_widget({ hasAlpha = true, value = { 1, 0, 0, 1 } })
+	solid:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(#checker_of(solid), 0, 'at 100%: no checker')
+	solid:Release()
+	local opaque = color_widget({ hasAlpha = false, value = { 1, 0, 0, 0.6 } })
+	opaque:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(#checker_of(opaque), 0, 'no hasAlpha: no checker')
+	opaque:Release()
+end)
+
+test('color: the checker and the code round the opacity alike: 99.6% is solid, 99.4% is not', function()
+	for _, case in ipairs({ { 0.996, false, '#FF0000' }, { 0.995, false, '#FF0000' }, { 0.994, true, '#FF0000 \194\183 99%' } }) do
+		local w = color_widget({ hasAlpha = true, value = { 1, 0, 0, case[1] } })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		eq(#checker_of(w) > 0, case[2], case[1] .. ': the checker')
+		eq(w.text:GetText(), case[3], case[1] .. ': the code')
+		w:Release()
+	end
+end)
+
+test("color: the checker's squares stay inside the swatch's area, under Thick, Thin and Blizzard", function()
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(name)
+		local w = color_widget({ hasAlpha = true, value = { 1, 0, 0, 0.5 } })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		local area = w.area
+		local squares = checker_of(w)
+		check(#squares > 0, name .. ': a checker')
+		for _, s in ipairs(squares) do
+			check(s.x >= area.x and s.y >= area.y and s.x + s.w <= area.x + area.width and s.y + s.h <= area.y + area.height,
+				name .. ': ' .. s.x .. ',' .. s.y .. ',' .. s.w .. ',' .. s.h .. ' inside ' .. area.x .. ',' .. area.y .. ',' .. area.width .. ',' .. area.height)
+		end
+		w:Release()
+	end
+	theme('thick')
+end)
+
+test('color: the checker follows the picker, coming and going with the opacity', function()
+	theme('thick')
+	local w = color_widget({ hasAlpha = true, value = { 0, 0, 1, 1 } })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	eq(#checker_of(w), 0, 'solid: none')
+	click(w.frame)
+	stub.pick_color(0, 0, 1, 0.5)
+	check(#checker_of(w) > 0, 'see-through: the checker')
+	stub.pick_color(0, 0, 1, 1)
+	eq(#checker_of(w), 0, 'solid again: gone')
+	stub.color_picker_cancel()
+	w:Release()
+end)
+
+test('color: under the mouse its edge lights blue, as an input\'s', function()
+	theme('thick')
+	local w = color_widget()
+	stub.fire_script(w.frame, 'OnEnter', true)
+	local r, g, b = st.config.profile.colors.button.blue:GetRGB()
+	eq(H.rgba(w.frame:GetBackdropBorderColor()), H.rgba(r, g, b, 1), 'lit')
+	stub.fire_script(w.frame, 'OnLeave', true)
+	eq(H.rgba(w.frame:GetBackdropBorderColor()), H.rgba(unpack(st.BOX_COLORS.edge)), 'its edge again')
+	w:Release()
+end)
+
+test("color: under Blizzard the field is the Settings dropdown's face, with Blizzard's swatch inside it", function()
+	theme('blizzard')
+	local w = color_widget({ hasAlpha = true, value = { 0, 1, 0, 0.5 } })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	check_no_box(w.frame, 'blizzard')
+	local face = H.atlas_piece(w.frame, 'common-dropdown-c-button')
+	check(face ~= nil, 'the dropdown face')
+	eq(face and H.insets(face, w.frame), '-7,-7,-7,-7', 'outset 7 round the field, as a select\'s')
+	-- The swatch: a white square, a black one a pixel in, the color (and the
+	-- checker) a pixel in again, 3 in from the face's edge.
+	local white = w.white
+	check(white and white:IsShown(), "the swatch's white square")
+	eq(H.insets(white, w.frame), '3,3,127,3', 'the swatch 40 wide, 3 in from the face')
+	eq(H.rgba(unpack(stub.state(white).color_texture)), '1.00,1.00,1.00,1.00', 'white')
+	eq(H.insets(w.inner, w.frame), '4,4,128,4', 'the black square a pixel in')
+	eq(H.insets(w.swatch, w.frame), '5,5,129,5', 'the color a pixel in again')
+	check(not w.line:IsShown(), 'no line: the white square parts it from the code')
+	check(#checker_of(w) > 0, 'see-through: the checker inside it')
+	eq(code_place(w), 'LEFT LEFT 51 LEFT', 'the code 8 after the swatch')
+	eq(ink_of(w.text), normal_rgb(), 'in the normal text color')
+	-- The face follows the mouse and the disabled state, as a select's.
+	stub.fire_script(w.frame, 'OnEnter', true)
+	eq(face:GetAtlas(), 'common-dropdown-c-button-hover-1', 'under the mouse')
+	stub.fire_script(w.frame, 'OnMouseDown', 'LeftButton')
+	eq(face:GetAtlas(), 'common-dropdown-c-button-pressedhover-1', 'pressed')
+	stub.fire_script(w.frame, 'OnMouseUp', 'LeftButton')
+	stub.fire_script(w.frame, 'OnLeave', true)
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'at rest')
+	w:SetDisabled(true)
+	eq(face:GetAtlas(), 'common-dropdown-c-button-disabled', 'disabled')
+	w:SetDisabled(false)
+	eq(face:GetAtlas(), 'common-dropdown-c-button', 'enabled again')
+	check(H.atlas_piece(w.frame, 'common-dropdown-c-button-hover-arrow') == nil, 'no hover arrow: no list opens')
+
+	-- Back to Thick: Box again, the face and the white square gone.
+	theme('thick')
+	rebind(w)
+	check_box(w.frame, 'thick again', nil, true)
+	check(H.atlas_piece(w.frame, 'common-dropdown-c-button') == nil, 'no face')
+	check(not w.white:IsShown(), 'no white square')
+	eq(H.insets(w.swatch, w.frame), '2,2,130,2', "the color where Thick's swatch has it")
+	eq(code_place(w), 'LEFT LEFT 50 LEFT', "the code where Thick's has it")
+	w:Release()
+end)
+
+test('color: every edge on a whole pixel, under Thick, Thin and Blizzard, see-through and solid, with a size read back a hair off', function()
+	local P = load_test_file('lib/pixels.lua')
+	local HAIR = 2 ^ -14
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		for _, a in ipairs({ 1, 0.4 }) do
+			for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+				stub.size_noise = noise
+				theme(name)
+				local w = color_widget({ hasAlpha = true, value = { 0.3, 0.6, 0.9, a } })
+				w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+				local off = P.off(w.frame)
+				eq(#off, 0, name .. ' at ' .. a .. ', noise ' .. noise .. ': ' .. P.report(off))
+				w:Release()
+			end
+		end
+	end
+	stub.size_noise = 0
+	theme('thick')
+end)
+
+test('color: a disabled field takes no mouse', function()
+	local w = color_widget()
 	w:SetDisabled(true)
 	eq(w.frame:IsMouseEnabled(), false, 'disabled: no mouse, so the row shows its tooltip')
 	w:SetDisabled(false)
@@ -266,8 +484,7 @@ test('color: the text and the fill follow the picker, and Cancel puts them back'
 	eq(w.text:GetText(), '#000000')
 	stub.pick_color(1, 1, 1, 0.8)
 	eq(w.text:GetText(), '#FFFFFF \194\183 80%', 'the new code and opacity')
-	local tr, tg, tb = w.text:GetTextColor()
-	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'white ink on the white fill')
+	eq(ink_of(w.text), normal_rgb(), 'the code in the normal text color')
 	-- SetColorTexture records the fill in the stub's color_texture (GetVertexColor stays 1,1,1).
 	local function fill()
 		local c = stub.state(w.swatch).color_texture
@@ -277,8 +494,7 @@ test('color: the text and the fill follow the picker, and Cancel puts them back'
 	stub.color_picker_cancel()
 	eq(fill(), '0.0,0.0,0.0,1.0', 'Cancel: the old fill')
 	eq(w.text:GetText(), '#000000', 'Cancel: the old code')
-	tr, tg, tb = w.text:GetTextColor()
-	eq(tr .. ',' .. tg .. ',' .. tb, '1,1,1', 'Cancel: white ink still')
+	eq(ink_of(w.text), normal_rgb(), 'Cancel: the normal text color still')
 	w:Release()
 end)
 
@@ -610,7 +826,7 @@ test("an input carries InputBoxTemplate's art", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("a color is Blizzard's swatch, stretched to a bar", function()
+test("a color field: Blizzard's swatch inside the face under Blizzard, the swatch and its line under Thick", function()
 	theme('blizzard')
 	local w = bind('color', 'tint', opt('color', 'Tint', { get = function() return 1, 0.5, 0, 1 end, set = function() end }))
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
@@ -628,14 +844,15 @@ test("a color is Blizzard's swatch, stretched to a bar", function()
 		return table.concat(out, ' ')
 	end
 	check_no_box(button, 'Blizzard')
-	eq(squares(), '0,0,0,0=1.0,1.0,1.0 1,1,1,1=0.0,0.0,0.0 2,2,2,2=1.0,0.5,0.0',
-		'white the whole bar, black a pixel in, the color a pixel in again')
+	eq(squares(), '3,3,127,3=1.0,1.0,1.0 4,4,128,4=0.0,0.0,0.0 5,5,129,5=1.0,0.5,0.0',
+		'white 40 wide, 3 in from the face; black a pixel in, the color a pixel in again')
 	eq(size_of(button), '170x24', "a dropdown's size")
 
 	theme('thick')
 	rebind(w)
 	check_box(button, 'Thick')
-	eq(squares(), '1,1,1,1=0.0,0.0,0.0 2,2,2,2=1.0,0.5,0.0', 'Thick: the black line and the color, as before')
+	eq(squares(), '1,1,129,1=0.0,0.0,0.0 2,2,130,2=1.0,0.5,0.0 41,1,128,1=0.3,0.3,0.3',
+		"Thick: the swatch's black line and the color inside the edge, then the edge's line")
 	w:Release()
 	eq(#take_errors(), 0, 'no errors')
 end)

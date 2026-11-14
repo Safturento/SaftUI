@@ -8,7 +8,7 @@ Shared settings: a page of an "All" entry that members follow (All bars, later a
 
 ## What the consumer provides
 
-The option's SaftUI-only share fields: whether it is the member's own, how to reset it, who differs and with what, who it can be applied to, and how to apply it (`SAFTUI_FIELDS`, `.agents/edit-mode.md`). Row types that carry every piece: toggle, range, select, input, color; a position block carries the mark on its section title.
+The option's SaftUI-only share fields: whether it is the member's own, how to reset it, who differs and with what, who it can be applied to, and how to apply it (`SAFTUI_FIELDS`, `.agents/edit-mode.md`); and, for the tooltips' sentences, what a member is (`noun`, "bar"/"bars": "Every bar that keeps its own Spacing follows All bars again") and the page's name as a sentence reads it (`pageText`, "the Pet bar"). Row types that carry every piece: toggle, range, select, input, color; a position block carries the mark on its section title.
 
 ## Sizes and tokens
 

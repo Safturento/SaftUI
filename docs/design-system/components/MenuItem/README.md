@@ -9,6 +9,7 @@ The owner's rule: a part with three or more settings, or with settings that only
 ## What the consumer provides
 
 - The item: the part's Show option (a toggle, the item's box), a short `name` that fits a quarter ("Cooldown"), the menu's title if longer ("Cooldown numbers").
+- An item with no Show (no box) whose names should line up with the boxed items beside it: `reserveBox = true`, which keeps the box's room empty (a bar's Cooldown).
 - The menu: an option group (Font, Size, Outline, then the part's position block, last). Shared settings inside carry their own marks.
 
 ## Sizes and tokens

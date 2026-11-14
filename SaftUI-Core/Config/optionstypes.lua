@@ -15,7 +15,7 @@ local Box, Edge, HoverEdge, BlizzardLook = W.Box, W.Edge, W.HoverEdge, W.Blizzar
 local FIELD_HEIGHT, Base, builders, define = Kit.FIELD_HEIGHT, Kit.Base, Kit.builders, Kit.define
 local BG, Colors, FIELD_FONT_SIZE, SetFieldFont = Kit.BG, Kit.Colors, Kit.FIELD_FONT_SIZE, Kit.SetFieldFont
 local NewText, Art, Changes, Piece, HidePieces = Kit.NewText, Kit.Art, Kit.Changes, Kit.Piece, Kit.HidePieces
-local ShowBox, Inset, LookInput, CheckBox = Kit.ShowBox, Kit.Inset, Kit.LookInput, Kit.CheckBox
+local ShowBox, LookInput, CheckBox = Kit.ShowBox, Kit.LookInput, Kit.CheckBox
 local LookCheckBox, SetCheck = Kit.LookCheckBox, Kit.SetCheck
 local CountLines = Kit.CountLines
 
@@ -119,70 +119,174 @@ local function OpenPicker(info, swatch)
 	end
 end
 
--- The black line and the color inside the bar's border, in from its edges.
-local SWATCH_INNER, SWATCH_COLOR = 1, 2
+--[[
+	A color is a field as wide and as tall as a dropdown (W.WIDTH.color is the
+	select's), drawn as an input is (Box: the field's fill and edge): a swatch
+	at its left, SWATCH_WIDTH wide and the field's inner height (a black line
+	round the color, the mockup's), the field's edge as a 1px line after it,
+	then the code in the field font and the normal text color, CODE_GAP after
+	that line (the field's usual text inset), left-aligned. The code is
+	ordinary field text, the same color on every color. A see-through color
+	(an opacity under 100%) is drawn over a checker of two greys, so its
+	opacity shows; a solid one over none.
+	Under Blizzard the field is the Settings dropdown's face (outset round it,
+	following the mouse and the disabled state as a select's, with no hover
+	arrow: no list opens), as it opens the picker as a dropdown opens its list,
+	and an input's art would ask to be typed in. The swatch inside it is
+	Blizzard's (ColorSwatchTemplate, st.ThemeArt.Control('swatch'): a white
+	square, a black one a pixel in, the color a pixel in again, in the
+	template's own white and black), BLIZZARD_INSET in from the face's edge,
+	clear of its border and round corners; the white square parts it from the
+	code, so there's no line.
+]]
+local SWATCH_WIDTH = 40
+local CODE_GAP = 8 -- the code after the swatch's line (Blizzard: its white square)
+local EDGE_WIDTH = 1 -- Box's edge, which the swatch sits inside under Thick and Thin
+local BLIZZARD_INSET = 3 -- the swatch in from the Blizzard face's edge
+local CHECKER = 4 -- a checker square
+-- The checker's greys (the mockup's #5a5a5a and #8a8a8a).
+local CHECKER_DARK, CHECKER_LIGHT = { 0.353, 0.353, 0.353, 1 }, { 0.541, 0.541, 0.541, 1 }
 
--- A color is a bar as wide and as tall as a dropdown (W.WIDTH.color is the
--- select's), filled with the color and with its hex code written in the middle.
-builders.color = function(w)
-	local button = Box(st:CreateFrame('Button', nil, UIParent))
-	button:SetSize(W.WIDTH.color, FIELD_HEIGHT)
-	w.frame = button
-	-- The black 1px line inside the border, then the color.
-	w.inner = button:CreateTexture(nil, 'ARTWORK')
-	w.inner:SetColorTexture(0, 0, 0, 1)
-	Inset(w.inner, button, SWATCH_INNER)
-	-- In ARTWORK, a sublevel over the black line; the code (OVERLAY) is over both.
-	w.swatch = button:CreateTexture(nil, 'ARTWORK', nil, 1)
-	Inset(w.swatch, button, SWATCH_COLOR)
-	w.text = NewText(button, 'CENTER')
-	w.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
-	HoverEdge(button, function() return w.disabled end)
-	button:SetScript('OnClick', function() w:Pick() end)
+-- region at x, y in from button's top left, width x height, on whole pixels.
+local function Place(region, button, x, y, width, height)
+	region:ClearAllPoints()
+	region:SetPoint('TOPLEFT', button, 'TOPLEFT', x, -y)
+	region:SetSize(width, height)
 end
 
--- The bar's look, when it changed: Box, the black line and the color, or the
--- idea of Blizzard's swatch (ColorSwatchTemplate, st.ThemeArt.Control('swatch'):
--- a white square, a black one inside it and the color inside that, each a
--- pixel in from the one before) drawn at the bar's shape, so the bar reads
--- as Blizzard's swatch stretched to sit beside its dropdowns. The white and
--- black are the template's own colors.
+-- The swatch and the code where the look puts them: the swatch's black line
+-- at x, y, width x height, the color (and the checker, w.area) a pixel in
+-- from it, the code codeX in to CODE_GAP from the field's right.
+local function PlaceSwatch(w, x, y, width, height, codeX)
+	local button = w.frame
+	Place(w.inner, button, x, y, width, height)
+	w.area = { x = x + 1, y = y + 1, width = width - 2, height = height - 2 }
+	Place(w.swatch, button, w.area.x, w.area.y, w.area.width, w.area.height)
+	w.text:ClearAllPoints()
+	w.text:SetPoint('LEFT', button, 'LEFT', codeX, 0)
+	w.text:SetPoint('RIGHT', button, 'RIGHT', -CODE_GAP, 0)
+end
+
+-- The swatch's parts for a look (see the top): under Thick and Thin inside
+-- Box's edge, the edge's line after it; under Blizzard the white square
+-- BLIZZARD_INSET in from the face, the black one and the color inside it.
+local function PlaceParts(w, blizzard)
+	local button = w.frame
+	w.white:SetShown(blizzard)
+	w.line:SetShown(not blizzard)
+	if blizzard then
+		local swatch = st.ThemeArt.Control('swatch')
+		local height = FIELD_HEIGHT - 2 * BLIZZARD_INSET
+		w.white:SetColorTexture(unpack(swatch.whiteColor))
+		Place(w.white, button, BLIZZARD_INSET, BLIZZARD_INSET, SWATCH_WIDTH, height)
+		w.inner:SetColorTexture(unpack(swatch.blackColor))
+		PlaceSwatch(w, BLIZZARD_INSET + 1, BLIZZARD_INSET + 1, SWATCH_WIDTH - 2, height - 2,
+			BLIZZARD_INSET + SWATCH_WIDTH + CODE_GAP)
+	else
+		local height = FIELD_HEIGHT - 2 * EDGE_WIDTH
+		w.inner:SetColorTexture(0, 0, 0, 1)
+		Place(w.line, button, EDGE_WIDTH + SWATCH_WIDTH, EDGE_WIDTH, 1, height)
+		PlaceSwatch(w, EDGE_WIDTH, EDGE_WIDTH, SWATCH_WIDTH, height, EDGE_WIDTH + SWATCH_WIDTH + 1 + CODE_GAP)
+	end
+end
+
+-- The field's look, when it changed: Box and the swatch inside its edge; or
+-- the Settings dropdown's face round it (its art outset as a select's) and
+-- Blizzard's swatch inside it.
 local function LookColor(w, blizzard)
 	local button = w.frame
 	local art = Art(button)
 	if not Changes(art, blizzard) then return end
 	ShowBox(button, not blizzard)
 	if blizzard then
-		local look = st.ThemeArt.Control('swatch')
-		local white = Piece(art, button, 'White', 'BACKGROUND')
-		white:SetColorTexture(unpack(look.whiteColor))
-		Inset(white, button, 0)
-		w.inner:SetColorTexture(unpack(look.blackColor))
-		Inset(w.inner, button, SWATCH_INNER)
-		Inset(w.swatch, button, SWATCH_COLOR)
+		local look = st.ThemeArt.Control('dropdown')
+		art.look = look
+		local face = Piece(art, button, 'Face', 'BACKGROUND')
+		face:ClearAllPoints()
+		face:SetPoint('TOPLEFT', button, 'TOPLEFT', -look.outset, look.outset)
+		face:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', look.outset, -look.outset)
 	else
 		HidePieces(art)
-		w.inner:SetColorTexture(0, 0, 0, 1)
-		Inset(w.inner, button, SWATCH_INNER)
-		Inset(w.swatch, button, SWATCH_COLOR)
 	end
+	PlaceParts(w, blizzard)
+	Kit.PaintFace(button)
 end
 
--- The code is always white, on any color and opacity: the options font's
--- outline (W.GetFont, the profile's, always black) keeps it readable. Black
--- letters would vanish into that outline.
-local CODE_COLOR = { 1, 1, 1 }
+builders.color = function(w)
+	local button = Box(st:CreateFrame('Button', nil, UIParent))
+	button:SetSize(W.WIDTH.color, FIELD_HEIGHT)
+	w.frame = button
+	-- Under Blizzard, the swatch's white square (PlaceParts shows it).
+	w.white = button:CreateTexture(nil, 'BORDER')
+	w.white:Hide()
+	-- The swatch's black line, then the checker (a dark grey and the light
+	-- squares on it, made as a see-through color first needs them: w.checker),
+	-- then the color; the code (OVERLAY) over them all.
+	w.inner = button:CreateTexture(nil, 'ARTWORK')
+	w.checkerBack = button:CreateTexture(nil, 'ARTWORK', nil, 1)
+	w.checkerBack:SetColorTexture(unpack(CHECKER_DARK))
+	w.checkerBack.checker = true
+	w.checkerBack:Hide()
+	w.checker = {}
+	w.swatch = button:CreateTexture(nil, 'ARTWORK', nil, 3)
+	-- The field's edge as a line between the swatch and the code.
+	w.line = button:CreateTexture(nil, 'ARTWORK')
+	w.line:SetColorTexture(unpack(Kit.EDGE))
+	w.text = NewText(button, 'LEFT')
+	w.text:SetWordWrap(false)
+	HoverEdge(button, function() return w.disabled end)
+	-- Under Blizzard the face follows the mouse as a select's does.
+	W.DropdownStates(button, function() return w.disabled end)
+	button:SetScript('OnClick', function() w:Pick() end)
+	-- Box's look until the first look change (LookColor).
+	PlaceParts(w, false)
+end
+
+-- The checker under a see-through color (shown), else none: the dark grey
+-- across the color's area (w.area) and a light square every other CHECKER
+-- from its top left, the last column and row cut at its edges.
+local function ShowChecker(w, shown)
+	local area, n = w.area, 0
+	w.checkerBack:SetShown(shown)
+	if shown then
+		Place(w.checkerBack, w.frame, area.x, area.y, area.width, area.height)
+		for row = 0, ceil(area.height / CHECKER) - 1 do
+			for col = 0, ceil(area.width / CHECKER) - 1 do
+				if (row + col) % 2 == 0 then
+					n = n + 1
+					local square = w.checker[n]
+					if not square then
+						square = w.frame:CreateTexture(nil, 'ARTWORK', nil, 2)
+						square:SetColorTexture(unpack(CHECKER_LIGHT))
+						square.checker = true
+						w.checker[n] = square
+					end
+					local x, y = col * CHECKER, row * CHECKER
+					Place(square, w.frame, area.x + x, area.y + y,
+						min(CHECKER, area.width - x), min(CHECKER, area.height - y))
+					square:Show()
+				end
+			end
+		end
+	end
+	for i = n + 1, #w.checker do w.checker[i]:Hide() end
+end
+
+-- An opacity's whole percent (100 without hasAlpha), as the code writes it.
+local function Percent(a, hasAlpha)
+	return hasAlpha and floor(a * 100 + 0.5) or 100
+end
 
 -- '#RRGGBB' in capitals, each channel rounded to a whole 0-255; with an
 -- opacity under 100% (hasAlpha only) '#RRGGBB · 60%', whole percent.
 local function HexText(r, g, b, a, hasAlpha)
 	local function byte(v) return max(0, min(255, floor(v * 255 + 0.5))) end
 	local text = format('#%02X%02X%02X', byte(r), byte(g), byte(b))
-	local percent = hasAlpha and floor(a * 100 + 0.5) or 100
+	local percent = Percent(a, hasAlpha)
 	if percent < 100 then text = text .. ' \194\183 ' .. percent .. '%' end
 	return text
 end
-W.HexText = HexText -- a color's code as its swatch writes it: a setting's reset names its default with it (optionsshare.lua)
+W.HexText = HexText -- a color's code as its field writes it: a setting's reset names its default with it (optionsshare.lua)
 
 define('color', {
 	Bind = function(self, ...)
@@ -196,8 +300,9 @@ define('color', {
 		self.hasAlpha = OM.Member(self.root, self.row, 'hasAlpha') and true or false
 		local shown = self.hasAlpha and self.a or 1
 		self.swatch:SetColorTexture(self.r, self.g, self.b, shown)
+		ShowChecker(self, Percent(self.a, self.hasAlpha) < 100)
 		self.text:SetText(HexText(self.r, self.g, self.b, self.a, self.hasAlpha))
-		self.text:SetTextColor(unpack(CODE_COLOR))
+		self.text:SetTextColor(Colors().text.normal:GetRGB())
 	end,
 
 	-- Opens the picker on the current color. Each change it makes is set;
@@ -237,6 +342,7 @@ define('color', {
 
 	OnDisabled = function(self, disabled)
 		self.frame:EnableMouse(not disabled)
+		Kit.PaintFace(self.frame)
 	end,
 })
 

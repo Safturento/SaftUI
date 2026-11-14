@@ -76,6 +76,7 @@ Standard: `Button` at `button-height` in `/sui`; one button component with an in
 Where: Global Settings > Colors: Text > Normal (#E6E6CC), White, Grey; any light class or quality colour. White on those fills is 1.3:1 to 3:1; only the black outline carries it.
 Two ways: the code is always white (`optionstypes.lua:171-174`, `.agents/edit-mode.md`); a followup paragraph says it turns black or white by brightness (`docs/followups.md:285`), which the code never did.
 Standard: unsettled (unknown 10). Fix the followup paragraph either way.
+Settled (decisions 9 and 13) and built: the control is a field, the code beside the swatch in `text` on `kit-field` (`ColorBar`).
 
 **17. Section Reset buttons against per-setting reset, and where they sit.**
 Where: Colors' Text, Buttons, Status and Threat Resets float left under the panel; Class, Reaction, Power and Item quality keep theirs on the panel in the right half beside the last colour (`SaftUI-Core/Media/colors.lua:196-218`); Theme's Reset (`Media/theme.lua:145-160`); the cooldown numbers' Reset (`ActionBars/options.lua:237`); Categories' "Reset to default" and "Reset all".
@@ -84,6 +85,7 @@ Standard: the owner's rule: a `ResetIcon` per setting, shown only while it diffe
 **18. The Copy from dialog shows internal keys.**
 Where: Unitframes > General > Copy from (`SaftUI-Unitframes/config/config.lua:205-300`): the settings list's labels are profile keys ("additionalpower", "grouproleindicator", "range_alpha"), and the title reads "Clone Player from.." (`:294`).
 Standard: labels as the page names them ("Additional power", "Group role", "Range"); a title such as "Copy to Player".
+Built (decision 17): each setting named as `/sui` names that part, sorted by name; the title "Copy to Player from"; the button right of the Unit dropdown.
 
 **19. Empty cells beside lone rows.**
 Where: Unitframes > General: Height alone with the divider beside an empty half; Health: "Custom" in a quarter, an empty quarter, then "Custom color" in a half.
@@ -172,4 +174,4 @@ These are the code's colours and stay as they are here; the owner decides whethe
 | `border` against `backdrop` | 1.9:1 | 1.7:1 | 3:1 for a line that carries meaning |
 | `kit-edge` against `kit-field` | 2.2:1 | 2.2:1 | 3:1 for a control border |
 | `dot-grey` on `kit-field` | 2.5:1 | 2.5:1 | 3:1 for a mark |
-| `white` code on a light `ColorBar` | 1.3:1 and up | same | outline only |
+| `text` code on `kit-field`, beside a `ColorBar`'s swatch (was `white` on the colour, 1.3:1 and up) | 14.5:1 | same | 4.5:1 |

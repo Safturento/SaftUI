@@ -198,10 +198,10 @@ test('the reset icon shows by a control only while its setting differs, on every
 			end
 			check(icon:GetFrameLevel() > c.frame:GetFrameLevel(), key .. ': over its row')
 		end
-		-- The item: before its dots, its label ending before it.
+		-- The item: against its dots, its label ending before it.
 		local item = by.item
 		check(shown(item), 'item: its reset shows')
-		eq(icon_of(item):GetRight(), item.widget.dots:GetLeft() - 6, 'item: 6 before its dots')
+		eq(icon_of(item):GetRight(), item.widget.dots:GetLeft(), 'item: right against its dots')
 		check(item.label:GetLeft() + item.label:GetWidth() <= icon_of(item):GetLeft() - 4, 'item: its label ends before it')
 		eq(item.lineEnd, icon_of(item):GetLeft() - 4 - item.frame:GetLeft(), 'and its hover line')
 		-- The block: no label; after the block, on its first line.
@@ -309,6 +309,81 @@ test("Blizzard: the same icon, left of the control's art", function()
 		check(reaches >= 1, "some art reaches past its frame (the dropdown's glow), and the icon keeps clear of it")
 		body:Release()
 	end)
+end)
+
+-- A page of one quarter item named name, its menu's dots, its reset showing
+-- while differs.on, and with diffs a source page's share whose diff icon shows.
+local function ItemPage(name, differs, diffs)
+	local item = { type = 'item', name = name, desc = 'x', order = 1, size = 'small',
+		get = function() return true end, set = function() end,
+		menu = { type = 'group', name = name, args = {} },
+		default = { differs = function() return differs.on end, reset = function() end, value = function() return false end } }
+	if diffs then
+		item.share = { source = 'All bars', shared = function() return 'on' end,
+			differs = function() return { { name = 'Bar 3', value = 'off' } } end }
+	end
+	return { page = { type = 'group', name = 'Page', args = { item = item } } }
+end
+
+test("an item's reset sits against its dots: its label gives up only the icon and its gap (12), so a quarter's Macro name isn't cut", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			-- The label's width with the reset and without: 12 apart (the icon's 14
+			-- and its gap of 4, less the 6 the label already keeps from the dots).
+			local differs = { on = false }
+			local body, by = draw(ItemPage('Hotkey', differs))
+			check(not shown(by.item), look .. ': at its default, no reset')
+			local without = by.item.label:GetWidth()
+			body:Release()
+			differs.on = true
+			body, by = draw(ItemPage('Hotkey', differs))
+			local c = by.item
+			check(shown(c), look .. ': differing, its reset')
+			eq(icon_of(c):GetRight(), c.widget.dots:GetLeft(), look .. ': right against its dots')
+			eq(without - c.label:GetWidth(), 12, look .. ': the label 12 shorter')
+			eq(c.lineEnd, icon_of(c):GetLeft() - 4 - c.frame:GetLeft(), look .. ': its hover line ends where the label does')
+			body:Release()
+
+			-- A quarter with a long name, the reset and the diff icon showing.
+			body, by = draw(ItemPage('Macro name', differs, true))
+			c = by.item
+			check(shown(c), look .. ': the reset shows')
+			check(c.frame.share and c.frame.share.diff:IsShown(), look .. ': and the diff icon')
+			eq(c.label:GetStringWidth(), c.label:GetUnboundedStringWidth(), look .. ': Macro name is not cut')
+			check(c.frame.share.diff:GetRight() <= icon_of(c):GetLeft(), look .. ': its diff icon short of the reset')
+			body:Release()
+		end)
+	end
+end)
+
+test("an item with no menu has no dots: its reset sits 6 in from the cell's edge, and the label gives up its room", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			local differs = { on = true }
+			local page = ItemPage('Hotkey', differs)
+			page.page.args.item.menu = nil
+			local body, by = draw(page)
+			local c = by.item
+			check(shown(c), look .. ': its reset shows')
+			check(not c.widget.hasMenu, look .. ': no menu')
+			eq(c.frame:GetRight() - icon_of(c):GetRight(), 6, look .. ": 6 from the cell's right edge")
+			body:Release()
+		end)
+	end
+end)
+
+test("a color field's reset sits where a select's does, under Thick and Blizzard", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			differs.select, differs.color = true, true
+			local body, by = draw(Page(Args()))
+			local function from_right(c) return c.frame:GetRight() - icon_of(c):GetRight() end
+			check(shown(by.color) and shown(by.select), look .. ': both show')
+			eq(from_right(by.color), from_right(by.select), look .. ': the same place from the cell\'s right')
+			body:Release()
+		end)
+	end
 end)
 
 test('the icon follows a drag: shown once the dragged value differs, gone back at the default', function()

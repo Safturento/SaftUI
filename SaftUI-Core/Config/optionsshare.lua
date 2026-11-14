@@ -47,6 +47,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    which is what they act on. No tooltip builds "s's": a possessive
 	    after a final s is just an apostrophe (Possessive), and All and
 	    Multiple say "from <page>" and "follow <source> again for <name>".
+	    The share's noun names the members in them ("every page", "which
+	    pages"), and its pageText is the page as a sentence reads it ("the
+	    Third"; TIPS).
 	  - showing it: OB.ShareEnter shows the line on an offering row, the
 	    label lifted so it and the line are centred in the row; the row
 	    frame's OnEnter calls it, and so does each mouse-enabled part of the
@@ -188,29 +191,49 @@ local function DiffTip(host, owner)
 	GameTooltip:Show()
 end
 
+-- text with its first letter a capital, to start a sentence: the only change
+-- Core makes to a name it's given (a pageText's 'the').
+local function Sentence(text)
+	return (text:gsub('^%l', string.upper))
+end
+
+-- The page as a sentence reads it: the share's pageText (its article, if
+-- its names take one, is the module's to give), else its name; nil for none.
+local function PageText(state)
+	return state.pageText or state.page
+end
+
 -- What each link's tooltip says (name: SettingName's; parts, the line's
 -- pieces). Every name comes from the share; no possessive is built from the
--- source's or the page's name but Reset's, through Possessive. A line too
+-- source's or the page's name but Reset's, through Possessive. With the
+-- share's noun, what a member is ({ 'page', 'pages' }), All and Multiple name
+-- the members ('Every page that keeps...', 'Pick which pages...'); without it,
+-- the wording as before ('Everything', 'Pick which'). A line too
 -- long for its room drops Own (FillLine: parts.ownDropped), and Reset's
 -- tooltip then carries Own's '<source>: <shared>'.
 local TIPS = {
 	ownText = function(state, name) return name, SourceLine(state) end,
 	reset = function(state, name, parts)
-		local dropped = state.page and (Possessive(state.page) .. ' own value is dropped.') or 'Its own value is dropped.'
+		local page = PageText(state)
+		local dropped = page and (Sentence(Possessive(page)) .. ' own value is dropped.') or 'Its own value is dropped.'
 		return 'Reset', format('%s follows %s again. %s', name, state.source, dropped),
 			parts and parts.ownDropped and SourceLine(state) or nil
 	end,
 	all = function(state, name)
+		local noun = state.noun
 		if state.member then
-			return 'Apply to: All', format('%s takes %s from %s, and nothing keeps its own any more.', state.source, name, state.page or 'this page')
+			return 'Apply to: All', format('%s takes %s from %s, and %s keeps its own any more.', state.source, name,
+				PageText(state) or 'this page', noun and ('no ' .. noun[1]) or 'nothing')
 		end
-		return 'Apply to: All', format('Everything that keeps its own %s follows %s again.', name, state.source)
+		return 'Apply to: All', format('%s that keeps its own %s follows %s again.',
+			noun and ('Every ' .. noun[1]) or 'Everything', name, state.source)
 	end,
 	multiple = function(state, name)
+		local which = state.noun and ('Pick which ' .. state.noun[2]) or 'Pick which'
 		if state.member then
-			return 'Apply to: Multiple', format('Pick which take %s from %s as their own.', name, state.page or 'this page')
+			return 'Apply to: Multiple', format('%s take %s from %s as their own.', which, name, PageText(state) or 'this page')
 		end
-		return 'Apply to: Multiple', format('Pick which follow %s again for %s.', state.source, name)
+		return 'Apply to: Multiple', format('%s follow %s again for %s.', which, state.source, name)
 	end,
 }
 
@@ -656,7 +679,7 @@ end
 
 -- The default in words, for the icon's tooltip: the field's text, or its
 -- value named by the row's type (a color's hex, with its opacity when the
--- row hasAlpha, as its swatch writes it; on or off; a select's label; a percent
+-- row hasAlpha, as its field writes it; on or off; a select's label; a percent
 -- range as a percent; a string or a number as it is), or nil.
 local function DefaultText(body, row, state)
 	if state.text then return state.text end
@@ -700,9 +723,11 @@ end
 	  - where: its right edge DEFAULT_GAP left of what the control draws
 	    (DrawnLeft: under Blizzard its art, a dropdown's glow included),
 	    centred on the row (on its first band for a taller row, a
-	    multiselect's); an item's left of its dots (its control's right end;
-	    the cell's right edge without them); a position block, which has no
-	    label, has it after the block on its first line.
+	    multiselect's); an item's right against its dots, with no gap (their
+	    button has room round its glyph, so the label gives up only the
+	    icon and LABEL_ROOM), or DEFAULT_GAP left of the cell's right edge
+	    without them; a position block, which has no label, has it after the
+	    block on its first line.
 	  - the label, and the hover line (cell.lineEnd), end LABEL_ROOM before it.
 	  - a row whose share has own (a member page: its hover line's Reset
 	    acts on it) never shows it: one reset per row, the share's. A
@@ -750,14 +775,17 @@ function OB.PlaceDefault(cell)
 		return
 	end
 	local x0, right = frame:GetLeft(), nil
-	if row.type == 'item' then
-		local dots = widget.hasMenu and widget.dots:GetLeft()
-		right = dots and x0 and floor(dots - x0 + 0.5) or (widget.hasMenu and frame:GetWidth() - widget.dots:GetWidth()) or frame:GetWidth()
+	if row.type == 'item' and widget.hasMenu then
+		-- Right against the dots, whose button has room either side of its
+		-- glyph: the label gives up only the icon and LABEL_ROOM.
+		local dots = widget.dots:GetLeft()
+		right = dots and x0 and floor(dots - x0 + 0.5) or (frame:GetWidth() - widget.dots:GetWidth())
+	elseif row.type == 'item' then
+		right = frame:GetWidth() - DEFAULT_GAP
 	else
 		local drawn = DrawnLeft(widget.frame)
-		right = drawn and x0 and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())
+		right = (drawn and x0 and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())) - DEFAULT_GAP
 	end
-	right = right - DEFAULT_GAP
 	if cell.height > cell.rowHeight then
 		icon:SetPoint('RIGHT', frame, 'TOPLEFT', right, -floor(cell.rowHeight / 2))
 	else

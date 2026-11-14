@@ -50,7 +50,7 @@ local st = SaftUI
 	align, disabled, disabledDesc, path, option }: path is the keys from the
 	root, option the option table. size is the option's own size member:
 	'small' (honored only for a toggle, execute, input or item; a color is a
-	bar as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
+	field as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
 	anything else is normal. Every description and every position row is wide.
 	Ace's width is not read. align is an execute's own align member, SaftUI's:
 	'right' or 'center' (a button the body lines up with the buttons beside
@@ -68,6 +68,12 @@ local st = SaftUI
 	  share = {
 	    source = 'Everything',   -- the page everything follows, for texts
 	    page = 'Third',          -- a member page: this page's name, for texts
+	    pageText = 'the third',  -- optional: page as it reads in a sentence,
+	                             -- with any article the module's names take
+	                             -- (Core guesses none); page when nil
+	    noun = { 'page', 'pages' }, -- optional: what a member is, singular
+	                             -- and plural, for texts ('every page', 'which
+	                             -- pages'); the wording without one when nil
 	    own = function(info) -> bool,           -- a member page: it's this page's own
 	    reset = function(info),                 -- a member page: follow the source again
 	    differs = function(info) -> { {name, value} }, -- the source page: who owns it, with what
@@ -87,6 +93,8 @@ local st = SaftUI
 	  { type = 'item', name, desc, order, size = 'small' (or none, or 'wide'),
 	    get, set,      -- its Show box (no get, or get = false to stop an
 	                   -- inherited one: no box)
+	    reserveBox,    -- true: with no box, its room kept empty, so the name
+	                   -- lines up with boxed items' (read raw)
 	    share,         -- its Show's (above)
 	    menu = { type = 'group', name, args = { ... }, get, set, ... },
 	    menuTitle,     -- the menu's title (a string or a function of info;
@@ -124,6 +132,13 @@ local st = SaftUI
 	a group of options the window draws in its footer while the page is open,
 	its name as their one label (optionswindow.lua). BuildView hands it on as
 	view.footer, and Search finds its options as the page's.
+
+	A pick's group (a child of a group whose childGroups is 'select') may carry
+	a pickerControl (SaftUI's own field, never in its args): a group of
+	options, buttons, the window draws on the picker's line, right of the
+	picker, while that pick is shown. BuildView hands the picked one on as
+	view.picker.control, and Search finds its options on the pick's path,
+	which opens the page at that pick.
 ]]
 
 local OM = {}
@@ -138,6 +153,11 @@ function OM.Colors() return st.config.profile.colors end
 
 -- The most results OM.Search gives.
 local MAX_RESULTS = 100
+
+-- A pick's control's key in the tree of its own, where Search reads it from
+-- and the window draws it from.
+local PICKER_CONTROL_KEY = 'pickerControl'
+OM.PICKER_CONTROL_KEY = PICKER_CONTROL_KEY
 
 -- The pages the window shows apart from the module groups.
 local SPECIAL = { Fonts = 'global', profile = 'profiles' }
@@ -437,7 +457,7 @@ end
 
 ------------------------------------------------------------------ sections and rows
 
--- The types a setting can be small for. Not a color: its bar is a dropdown's
+-- The types a setting can be small for. Not a color: its field is a dropdown's
 -- width, and a quarter of a line is too narrow for it and its label. An item
 -- (a Show box, its name and its dots) fits a quarter.
 local canBeSmall = { toggle = true, execute = true, input = true, item = true }
@@ -555,7 +575,8 @@ end
 	{ title, desc,
 	  tabs = { {key, name, desc, disabled} }, tab,
 	  subtabs = { ... }, subtab,
-	  picker = { name, values = { {key, name, desc, disabled} }, selected } or nil,
+	  picker = { name, values = { {key, name, desc, disabled} }, selected,
+	             control = the picked group's pickerControl (a table) or nil } or nil,
 	  sections = { { title, note, rows = { row } } },
 	  footer = the page group's footer (a table) or nil }
 	tabs and subtabs are empty when there are none. The picker's name is the
@@ -591,10 +612,12 @@ function OM.BuildView(root, pageKey, selection)
 			if pickerName == '' then
 				pickerName = Text(GetMember('name', level.group, options, level.path))
 			end
+			local control = level.child and level.child.pickerControl
 			view.picker = {
 				name = pickerName,
 				values = level.list,
 				selected = key,
+				control = type(control) == 'table' and control or nil,
 			}
 		elseif level.slot == 'tab' then
 			view.tabs, view.tab = level.list, key
@@ -864,6 +887,14 @@ local function ShareAsk(share, name, info, ...)
 	if ok then return answer end
 end
 
+-- A share's noun, { singular, plural } when it's two strings that aren't
+-- empty, else nil.
+local function NounOf(noun)
+	if type(noun) ~= 'table' then return nil end
+	local one, many = noun[1], noun[2]
+	if type(one) == 'string' and one ~= '' and type(many) == 'string' and many ~= '' then return { one, many } end
+end
+
 -- A differs answer as { {name, value} }, names and values as text.
 local function DiffList(answer)
 	local list = {}
@@ -901,7 +932,7 @@ end
 	any option directly in its menu has share. A share's own makes its page a
 	member page (it follows the source page until a setting is its own), its
 	differs the source page.
-	{ member, own, marked, offers, source, page, shared, differs, item }:
+	{ member, own, marked, offers, source, page, pageText, noun, shared, differs, item }:
 	  own      a member page and share.own(info);
 	  marked   own, or for an item any option in its menu own;
 	  differs  { {name, value} }: the source page's share.differs(info); an
@@ -911,7 +942,9 @@ end
 	  offers   own on a member page, or a non-empty own differs on the source
 	           page (an item's Show alone);
 	  source, page, shared: the share's source and page names and its
-	           shared(info), as text (shared and page nil when there's none).
+	           shared(info), as text (shared and page nil when there's none);
+	  pageText, noun: the share's pageText (nil when there's none) and noun
+	           ({ singular, plural }, nil unless it's two strings).
 	A share function that errors is reported and counts as false or empty.
 ]]
 function OM.ShareState(root, row)
@@ -962,6 +995,8 @@ function OM.ShareState(root, row)
 		offers = (member and own) or (not member and #ownDiffers > 0),
 		source = Text(first.source),
 		page = Title(first.page),
+		pageText = Title(first.pageText),
+		noun = NounOf(first.noun),
 		shared = shared ~= nil and Text(shared) or nil,
 		differs = differs,
 		item = item,
@@ -1063,6 +1098,10 @@ end
 	sectionTitle = the item's name, menu = true }, which opens the page with
 	the item in view and its menu open; an item in a page's footer gives
 	footer = true too, as its own row does (the page opens as it is).
+	A pick's control's options (its pickerControl) follow the pick's own
+	options, before its tabs', under the pick's name (and the names above
+	it); their path is the pick's (the page's key and the pick's), which
+	opens the page at that pick.
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -1076,9 +1115,9 @@ function OM.Search(root, text)
 
 	-- Adds the matching settings of an item's menu (row, an item's row): by
 	-- their name, the item's name or a tab's (tabMatch), each a result on the
-	-- item's path (a footer's item's with footer, as its own row's); true once
-	-- there are enough.
-	local function CollectMenu(pageKey, row, tabMatch, tabName, footer)
+	-- item's path (a footer's item's with footer, as its own row's; at, a
+	-- pick's control's, in place of it); true once there are enough.
+	local function CollectMenu(pageKey, row, tabMatch, tabName, footer, at)
 		local menu = row.option.menu
 		if type(menu) ~= 'table' or menu.type ~= 'group' then return end
 		local within = Options(OM.MenuRoot(row.option))
@@ -1090,7 +1129,7 @@ function OM.Search(root, text)
 				if inner.type ~= 'description' and (tabMatch or itemMatch or matches(inner.name)) then
 					results[#results + 1] = {
 						pageKey = pageKey,
-						path = row.path,
+						path = at or row.path,
 						name = inner.name,
 						tabName = tabName,
 						sectionTitle = row.name,
@@ -1104,8 +1143,10 @@ function OM.Search(root, text)
 	end
 
 	-- Adds group's matching rows; true once there are enough. within is the
-	-- tree its path is from (the root's, or a footer's own).
-	local function Collect(pageKey, group, path, deep, tabNames, within, footer)
+	-- tree its path is from (the root's, or a footer's or a pick's control's
+	-- own); at, the path every result takes in place of its row's (a pick's
+	-- control's: the pick's).
+	local function Collect(pageKey, group, path, deep, tabNames, within, footer, at)
 		local tabMatch = false
 		for _, name in ipairs(tabNames) do
 			if matches(name) then tabMatch = true end
@@ -1119,7 +1160,7 @@ function OM.Search(root, text)
 				if row.type ~= 'description' and (tabMatch or sectionMatch or matches(row.name)) then
 					results[#results + 1] = {
 						pageKey = pageKey,
-						path = row.path,
+						path = at or row.path,
 						name = row.name,
 						tabName = tabName,
 						sectionTitle = section.title,
@@ -1127,9 +1168,19 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
-				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer) then return true end
+				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName, footer, at) then return true end
 			end
 		end
+	end
+
+	-- A pick's control (group, the pick's group, at path, in slot 'pick'): its
+	-- options, a tree of their own, each on the pick's path; true once there
+	-- are enough.
+	local function CollectControl(pageKey, slot, group, path, tabNames)
+		local control = group.pickerControl
+		if slot ~= 'pick' or type(control) ~= 'table' then return end
+		local within = Options({ [PICKER_CONTROL_KEY] = control })
+		return Collect(pageKey, control, { PICKER_CONTROL_KEY }, false, tabNames, within, nil, path)
 	end
 
 	for _, page in ipairs(OM.Pages(root)) do
@@ -1148,11 +1199,14 @@ function OM.Search(root, text)
 		for _, second in ipairs(Openable(SubGroups(pageOption, options, pagePath), slot)) do
 			local group, path = GetSubOption(pageOption, second.key), Append(pagePath, second.key)
 			if Collect(key, group, path, false, { second.name }) then return results end
+			if CollectControl(key, slot, group, path, { second.name }) then return results end
 			local thirdSlot = SlotFor(3, slot, group)
 			for _, third in ipairs(Openable(SubGroups(group, options, path), thirdSlot)) do
-				if Collect(key, GetSubOption(group, third.key), Append(path, third.key), true, { second.name, third.name }) then
+				local thirdGroup, thirdPath = GetSubOption(group, third.key), Append(path, third.key)
+				if Collect(key, thirdGroup, thirdPath, true, { second.name, third.name }) then
 					return results
 				end
+				if CollectControl(key, thirdSlot, thirdGroup, thirdPath, { second.name, third.name }) then return results end
 			end
 		end
 	end

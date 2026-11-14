@@ -96,7 +96,7 @@ W.WIDTH = {
 	position = 0, -- the block's width follows its parts (widget:GetWidth())
 	item = 0, -- it spans its cell: the body gives it the cell's width
 }
-W.WIDTH.color = W.WIDTH.select -- a color's bar is as wide as a dropdown
+W.WIDTH.color = W.WIDTH.select -- a color's field is as wide as a dropdown
 local FIELD_HEIGHT = 24
 -- Above the options window (FULLSCREEN_DIALOG, like edit mode's outlines), so
 -- the list and the confirm dialog show over it and catch the clicks around them.

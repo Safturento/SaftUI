@@ -179,10 +179,44 @@ function UF.GenerateColorsConfigGroup(order, unit, flags, config, update, descs)
 end
 
 
+-- A unit's name, as its page in /sui is named.
+local function UnitName(unit)
+	return UF.unit_strings[unit] or UF.group_strings[unit] or unit
+end
+
+-- What Copy from calls each setting of a unit, and so which it lists: the
+-- name the unit's own /sui page shows for that part. An element's tab by its
+-- key in lower case (the config's key for it), and General's options, sections
+-- and the options in them by their keys (Layout's settings, the Range section).
+-- A key the page names nothing for isn't listed: the config holds it but
+-- nothing reads it for this unit (Aura watch and Portrait have no element, a
+-- single unit has no Range section), so ticking it would copy nothing.
+local function CopyNames(self, unit)
+	local names = {}
+	local function Add(key, name)
+		if names[key] == nil and type(key) == 'string' and type(name) == 'string' and name ~= '' then
+			names[key] = name
+		end
+	end
+	local function AddGeneral(args)
+		for key, option in pairs(args) do
+			Add(key, option.name)
+			if option.type == 'group' and type(option.args) == 'table' then AddGeneral(option.args) end
+		end
+	end
+	local page = self:GetConfigTable().args[unit]
+	for tabKey, tab in pairs(page and page.args or {}) do
+		if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
+	end
+	return names
+end
+
 -- The Copy from dialog: copies the ticked settings of another unit (in the
 -- current unit frame profile) onto unit, after asking. SaftUI's options window
 -- draws it as a small dialog (st.OptionsWindow:OpenDialog). The table is made
--- anew each time, so nothing carries over from the last unit. Copy from takes
+-- anew each time, so nothing carries over from the last unit. Each setting is
+-- named as /sui names that part elsewhere (CopyNames), and they sort by that
+-- name; the units are named as their pages are. Copy from takes
 -- a line of its own, so its label has room, with All and None at the line's
 -- right end; Confirm copy and Cancel are a pair in the middle of the last
 -- line, as Blizzard's popup dialogs place their buttons (align, the options
@@ -195,10 +229,13 @@ end
 function UF:OpenCopyTable(unit)
 	local copy = { from = nil, settings = {} }
 	local settingArgs = {}
+	local names = CopyNames(self, unit)
 	for key in pairs(self:GetProfileConfig()[unit]) do
-		copy.settings[key] = false
-		settingArgs[key] = st.Config.generators.toggle(0, key,
-			'Copies this setting from the other unit frame onto this one.')
+		if names[key] then
+			copy.settings[key] = false
+			settingArgs[key] = st.Config.generators.toggle(0, names[key],
+				'Copies this setting from the other unit frame onto this one.')
+		end
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
@@ -218,8 +255,10 @@ function UF:OpenCopyTable(unit)
 					local units = {}
 					-- The current profile's, in case the profile changed since opening
 					for key in pairs(UF:GetProfileConfig()) do
-						if key ~= unit and not UF.IsPlateUnit(key) then
-							units[key] = key
+						-- Only the units that have a page (arena has none)
+						if key ~= unit and not UF.IsPlateUnit(key)
+							and (UF.unit_strings[key] or UF.group_strings[key]) then
+							units[key] = UnitName(key)
 						end
 					end
 					return units
@@ -260,7 +299,8 @@ function UF:OpenCopyTable(unit)
 				type = 'execute',
 				disabled = function() return not copy.from end,
 				confirm = function()
-					return 'Are you sure you want to clone ' .. unit .. ' from ' .. tostring(copy.from) .. '?'
+					return 'Are you sure you want to copy the ticked settings to ' .. UnitName(unit)
+						.. ' from ' .. UnitName(copy.from) .. '?'
 				end,
 				func = function()
 					local profile = UF:GetProfileConfig()
@@ -291,7 +331,7 @@ function UF:OpenCopyTable(unit)
 	}
 
 	st.OptionsWindow:OpenDialog(function()
-		return 'Clone ' .. unit .. (copy.from and (' from ' .. copy.from) or ' from..')
+		return 'Copy to ' .. UnitName(unit) .. ' from' .. (copy.from and (' ' .. UnitName(copy.from)) or '')
 	end, options)
 end
 
@@ -341,6 +381,24 @@ function UF:GetConfigTable()
 			inline = false,
 			-- Elements (General, Health, Name, Power, ...) as tabs, not a dropdown.
 			childGroups = 'tab',
+			-- Copy from, on the picker's line right of the Unit dropdown, so it's
+			-- there from every tab (Core's pickerControl field). A nameplate
+			-- page has none (UF.SetUpPlatePage).
+			pickerControl = {
+				type = 'group',
+				name = '',
+				args = {
+					copy = {
+						order = 1,
+						name = 'Copy from',
+						desc = "Copies chosen settings from another unit frame onto this one.",
+						type = 'execute',
+						func = function()
+							UF:OpenCopyTable(unit)
+						end,
+					},
+				},
+			},
 			args = {
 				-- Clicking the unit's frame in edit mode selects this group (the
 				-- mover's configPath, UF:RegisterMovers).
@@ -356,19 +414,9 @@ function UF:GetConfigTable()
 						UF:UpdateConfig(unit)
 					end,
 					args = {
-						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.', 'small'),
-						-- A quarter beside Enable, with Theme in the right half
-						-- of the line.
-						copy = {
-							name = 'Copy from',
-							desc = "Copies chosen settings from another unit frame onto this one.",
-							size = 'small',
-							type = 'execute',
-							func = function()
-								UF:OpenCopyTable(unit)
-							end,
-							order = 0.5,
-						},
+						-- A half, so Theme sits beside it with no empty quarter
+						-- between (as Class power's).
+						enable = st.Config.generators.enable(0, 'Shows this unit frame. When off, the unit frame is hidden.'),
 						theme = st.Config.generators.theme(1, "How this unit frame's border and background are drawn."),
 						background = st.Config.generators.background(1.5),
 						width = st.Config.generators.width(2, "The unit frame's width."),
