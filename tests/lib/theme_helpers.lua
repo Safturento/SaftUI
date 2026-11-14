@@ -309,7 +309,7 @@ end
 -- SaftUI's addons. A new addon goes here.
 T.ADDONS = {
 	'SaftUI-Core', 'SaftUI-ActionBars', 'SaftUI-Bags', 'SaftUI-Chat',
-	'SaftUI-Loot', 'SaftUI-Minimap', 'SaftUI-Misc', 'SaftUI-Unitframes',
+	'SaftUI-Loot', 'SaftUI-Minimap', 'SaftUI-Misc', 'SaftUI-Unitframes', 'SaftUI-Tracker',
 }
 -- The TOC names the game reads: <addon>.toc and the per-client ones.
 local TOC_SUFFIXES = { '', '_Mainline', '_Forever', '_Classic', '_Vanilla', '_TBC', '_Wrath', '_Cata', '_Mists' }

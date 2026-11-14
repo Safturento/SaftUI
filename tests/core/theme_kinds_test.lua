@@ -319,7 +319,7 @@ end)
 test('the scan reads every SaftUI Lua file through the TOCs', function()
 	local files, tocs, missing = LoadedFiles()
 	eq(table.concat(missing, ', '), '', 'every XML a TOC or XML names can be read')
-	eq(#tocs, 10, 'the TOCs: Core and the unit frames have one per client, the rest one: ' .. table.concat(tocs, ', '))
+	eq(#tocs, 11, 'the TOCs: Core and the unit frames have one per client, the rest one: ' .. table.concat(tocs, ', '))
 	for _, addon in ipairs(ADDONS) do
 		local any = false
 		for _, path in ipairs(files) do
