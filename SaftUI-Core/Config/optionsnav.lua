@@ -18,7 +18,6 @@ local format = string.format
 
 -- The window's fonts and pieces (optionsbody.lua).
 local Text, Acquire, ReleaseAll = OB.Text, OB.Acquire, OB.ReleaseAll
-local CONTENT_WIDTH = OB.WIDTH
 
 -- From optionswindow.lua.
 local F, state, pools = S.F, S.state, S.pools
@@ -277,7 +276,7 @@ local function DrawTabRow(pool, list, active, top, slot)
 		tab.active = entry.key == active
 		tab.text:SetText(entry.name)
 		local width = ceil(tab.text:GetStringWidth()) + 4
-		if x > 0 and x + width > CONTENT_WIDTH then
+		if x > 0 and x + width > S.bodyWidth then
 			x, y = 0, y + TAB_HEIGHT + TAB_WRAP_GAP
 		end
 		tab:SetSize(width, TAB_HEIGHT)

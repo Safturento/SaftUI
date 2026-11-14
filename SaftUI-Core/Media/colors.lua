@@ -22,7 +22,7 @@ function st:QualityColor(quality)
 	return st.config.profile.colors.item_quality[quality] or (ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality])
 end
 
-local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local RELOAD_NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 -- The Colors tab's sections, in order. A section is { key, name, note,
 -- hasAlpha, colors }: key is its group's key, note shows under its title,

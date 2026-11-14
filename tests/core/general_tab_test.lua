@@ -19,7 +19,7 @@ local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 local OM = st.OptionsModel
 
-local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
+local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom right).'
 local PREVIEW_ICON = 'Interface\\Icons\\Spell_Nature_Lightning'
 -- The bags' Bag Slots button follows the title bar's height (INV:SizeHeaderButtons),
 -- so the note no longer says it waits for a reload.

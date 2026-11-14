@@ -830,6 +830,10 @@ end
 -- height of the lines its text would take (GetStringHeight).
 function FontString.SetWordWrap(self, s, wrap) s.word_wrap = wrap and true or false end
 function FontString.CanWordWrap(self, s) return s.word_wrap ~= false end
+-- The most lines the text shows (0, the default, is no limit); a wrapped
+-- font string's height stops there (GetStringHeight).
+function FontString.SetMaxLines(self, s, lines) s.max_lines = number_arg(s, lines, 'maxLines') end
+function FontString.GetMaxLines(self, s) return s.max_lines or 0 end
 -- The text's full width, however narrow the font string is.
 function FontString.GetUnboundedStringWidth(self, s)
 	local font = font_of(s)
@@ -849,7 +853,9 @@ function FontString.GetStringHeight(self, s)
 	-- Wrapped (SetWordWrap(true) said so, and it has a width): as many lines as
 	-- the text's full width needs of that width.
 	if s.word_wrap == true and s.width and s.width > 0 then
-		return math.ceil(#s.text * font[2] / 2 / s.width) * font[2]
+		local lines = math.ceil(#s.text * font[2] / 2 / s.width)
+		if s.max_lines and s.max_lines > 0 then lines = math.min(lines, s.max_lines) end
+		return lines * font[2]
 	end
 	return font[2]
 end

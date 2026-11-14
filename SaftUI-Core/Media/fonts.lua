@@ -105,7 +105,7 @@ local TEXT_FONTS = {
 		"The labels of SaftUI's check boxes, such as the bags' filters." },
 }
 
-local TEXT_FONTS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local TEXT_FONTS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 local function TextFontsGroup()
 	local args = {}

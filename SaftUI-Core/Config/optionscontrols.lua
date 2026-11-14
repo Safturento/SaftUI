@@ -92,7 +92,8 @@ end
 
 -- Paints control from its state: alpha; under Thick and Thin the edge (accent
 -- when on, or under the mouse while enabled); the icon (accent when on, or
--- for a link under the mouse while enabled, else grey); under Blizzard a text
+-- for a link, or a button with hoverIcon, under the mouse while enabled, else
+-- grey); under Blizzard a text
 -- button's label (accent when on).
 local function Paint(control)
 	local blizzard = Blizzard(control)
@@ -102,7 +103,7 @@ local function Paint(control)
 		Edge(control, on or hovered)
 	end
 	if control.icon then
-		local lit = on or (control.link and hovered)
+		local lit = on or ((control.link or control.hoverIcon) and hovered)
 		local color = lit and Colors().button.blue or Colors().text.grey
 		control.icon:SetVertexColor(color:GetRGB())
 	end
@@ -174,10 +175,10 @@ end
 
 ------------------------------------------------------------------ buttons
 
-local function NewIcon(button, path)
+local function NewIcon(button, path, size)
 	local icon = button:CreateTexture(nil, 'OVERLAY')
 	icon:SetTexture(path)
-	icon:SetSize(ICON, ICON)
+	icon:SetSize(size or ICON, size or ICON)
 	icon:SetVertexColor(Colors().text.grey:GetRGB())
 	return icon
 end
@@ -258,20 +259,32 @@ function W.Button(parent, label, onClick, opts)
 	return button
 end
 
--- A 26 square button with only its icon, 16 in the middle (its edges at 5
--- and 21), in Text > Grey. Set button.onClick for what a click does. tip,
--- function(button) -> title, lines, is required: an icon says nothing.
-function W.IconButton(parent, icon, tip, extra)
+-- A square button with only its icon, in Text > Grey: 26 square with a 16
+-- icon in the middle (its edges at 5 and 21), or size square with an iconSize
+-- icon (the window's header arrows: 24 and 20). Both are whole numbers and
+-- (size - iconSize) / 2 is whole, so the icon's edges are. The icon sits 1
+-- lower while the button is pressed (never the size). Set button.onClick for
+-- what a click does. tip, function(button) -> title, lines, is required: an
+-- icon says nothing.
+function W.IconButton(parent, icon, tip, size, iconSize, extra)
 	if not tip then error('W.IconButton needs its tooltip') end
-	if extra ~= nil or type(tip) ~= 'function' then
-		error('W.IconButton(parent, icon, tip) takes no click: set button.onClick')
+	if extra ~= nil or type(tip) ~= 'function' or (size ~= nil and type(size) ~= 'number') or (iconSize ~= nil and type(iconSize) ~= 'number') then
+		error('W.IconButton(parent, icon, tip, size, iconSize) takes no click: set button.onClick')
+	end
+	size, iconSize = size or BUTTON_HEIGHT, iconSize or ICON
+	if size ~= floor(size) or iconSize ~= floor(iconSize) or (size - iconSize) % 2 ~= 0 or iconSize > size then
+		error('W.IconButton: (size - iconSize) / 2 must be whole, so the icon sits on whole pixels')
 	end
 	local button = Box(st:CreateFrame('Button', nil, parent), BG)
 	button.boxed, button.tip = true, tip
-	button:SetSize(BUTTON_HEIGHT, BUTTON_HEIGHT)
-	button.icon = NewIcon(button, icon)
+	button:SetSize(size, size)
+	button.icon = NewIcon(button, icon, iconSize)
 	button.icon:SetPoint('CENTER', button, 'CENTER', 0, 0)
 	Wire(button)
+	button:HookScript('OnMouseDown', function(self)
+		if not self.disabled then self.icon:SetPoint('CENTER', self, 'CENTER', 0, -1) end
+	end)
+	button:HookScript('OnMouseUp', function(self) self.icon:SetPoint('CENTER', self, 'CENTER', 0, 0) end)
 	Paint(button)
 	return button
 end

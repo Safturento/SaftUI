@@ -8,7 +8,7 @@ The top right of every SaftUI window and dialog that can close: bag, bank and co
 
 ## What the consumer provides
 
-The frame it closes. The icon rule asks for a tooltip, "Close"; the code shows none today (`panels.lua`, OnEnter only changes the look).
+The frame it closes. The icon rule asks for a tooltip, "Close". The `/sui` window's X has it ("Close", "Closes the options window. Esc does too."); the other windows' show none yet (`panels.lua`, OnEnter only changes the look).
 
 ## Sizes and tokens
 

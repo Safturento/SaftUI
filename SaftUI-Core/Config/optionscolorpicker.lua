@@ -20,6 +20,8 @@ local Kit = W.Kit
 	      the widget the picker changes, so the restore reaches it.
 	  W.ColorPickerShown() -> boolean: what the window's keys, its renders
 	      and the menu's click-away ask.
+	  W.WatchColorPicker(fn) calls fn() each time the picker is shown or
+	      hidden, after it has: the window's size buttons follow it.
 	  W.GetColorPickerFrames() -> the frames, for tests.
 	  W.ColorMath: the pure maths (below), for tests too.
 
@@ -210,6 +212,13 @@ local tipOwner -- the chip the tooltip shows for
 
 local function Shown() return frame ~= nil and frame:IsShown() end
 function W.ColorPickerShown() return Shown() end
+
+-- Who is told when the picker is shown or hidden (W.WatchColorPicker).
+local watchers = {}
+function W.WatchColorPicker(fn) watchers[#watchers + 1] = fn end
+local function Tell()
+	for _, fn in ipairs(watchers) do xpcall(fn, geterrorhandler()) end
+end
 function W.GetColorPickerFrames() return F end
 
 -- Whether frame is inside parent (or is it).
@@ -770,6 +779,7 @@ local function Build()
 		keys:Show()
 		keys:EnableKeyboard(true)
 		if not InCombatLockdown() then keys:SetPropagateKeyboardInput(true) end
+		Tell()
 	end)
 	frame:SetScript('OnHide', function()
 		keys:EnableKeyboard(false)
@@ -779,6 +789,7 @@ local function Build()
 			tipOwner = nil
 		end
 		Cancel() -- hidden by anything else: the opening color goes back
+		Tell()
 	end)
 	-- A field that went away under the picker (its window closed or drew
 	-- again) takes it with it.

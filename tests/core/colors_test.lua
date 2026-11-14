@@ -49,7 +49,7 @@ end
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.colors end
 local function Section(key) return Tab().args[key] end
 
-local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local NOTE = 'Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 test('the sections and their colors, in order, as small color swatches with tooltips, each with its own reset and no section Reset', function()
 	local sections, names = ByOrder(Tab().args), {}

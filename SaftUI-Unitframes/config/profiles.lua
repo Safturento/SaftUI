@@ -6,8 +6,8 @@ local UF = st:GetModule('Unitframes')
 	st.config.profile.unitframes.profiles, config_profile naming the one every
 	unit frame uses (UF:GetProfileConfig). In /sui they're the Unitframes
 	page's footer control (UF.GenerateProfileFooter, which UF:GetConfigTable in
-	config.lua makes the page group's footer: drawn between Reload UI and Close
-	while the page is open), a dropdown that picks one and Manage, which opens
+	config.lua makes the page group's footer: drawn in the footer's region, left
+	of Reload UI, while the page is open), a dropdown that picks one and Manage, which opens
 	the Unit frame profiles dialog (UF:OpenProfileDialog, over
 	UF.GenerateProfileConfigGroup): the same dropdown, and the buttons that
 	make, copy, rename, delete, export and import them.
@@ -263,7 +263,7 @@ function UF:OpenProfileDialog()
 end
 
 -- The Unitframes page's footer control (the page group's footer, SaftUI's
--- field: /sui draws it between Reload UI and Close while the page is open,
+-- field: /sui draws it in the footer's region, left of Reload UI, while the page is open,
 -- after its name): the dialog's own profile dropdown, then Manage, which
 -- opens the dialog.
 function UF.GenerateProfileFooter()
