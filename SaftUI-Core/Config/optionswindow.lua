@@ -20,11 +20,6 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  OW:Render()           draws the current page again (and an open dialog)
 	  OW:SetRoot(root)      a new tree (a profile change), drawn next frame
 	  OW:SetStatus(text)    the footer's status line (validate errors)
-	  OW:GetFooter()        the footer region between Reload UI and Close, for
-	                        edit mode's controls
-	  OW:SetFooterInset(w)  edit mode's controls take the region's first w: the
-	                        status line starts there, and a page's footer
-	                        control keeps clear of them
 	  OW:UpdateFonts()      the profile's faces again (a profile change)
 	  OW:OpenDialog(title, options), OW:CloseDialog(), OW:IsDialogShown()
 	                        a small dialog over the window for an option table
@@ -55,8 +50,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    the picker); the body, a scroll frame of sections (OB.LayoutSections)
 	    of rows in quarters, halves and whole lines (OB.LayoutRows), drawn by
 	    an OB.New body;
-	  - the footer: Reload UI, the region (edit mode's buttons from its left,
-	    the status line, and the open page's footer control), Close.
+	  - the footer: Reload UI, the region (the status line from its left and
+	    the open page's footer control), Close. Edit mode's controls are not
+	    here: they are on its bar (EditMode/Bar/).
 
 	Re-rendering redraws the whole page from the model, keeping the page, tab,
 	subtab and pick (and the scroll) when they still exist:
@@ -86,14 +82,13 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	A page's footer control is its group's footer (SaftUI's field,
 	OM.BuildView's view.footer): a group whose options are drawn in the
 	footer's region after its name (their one label), with the options kit's
-	own widgets, so in either look. It's centred between Reload UI and Close;
-	while edit mode's buttons take the region's left it keeps clear of them,
-	at the region's right end, beside Close, and without its label when even
-	that is too close (OW.FooterPlace). The status line ends before it, and
-	comes before the control's label (and, when edit mode leaves it no room,
-	before the control itself): an error shows whole, in the room the control
-	leaves, the control dropping its label or hiding until the status clears
-	(OW:SetStatus places the footer again). Search results draw no page, so
+	own widgets, so in either look. It's centred between Reload UI and Close,
+	and at the region's right end, beside Close, without its label when the
+	region is too narrow for it (OW.FooterPlace). The status line ends before
+	it, and comes before the control's label (and, in a region narrower than
+	the control, before the control itself): an error shows whole, in the room
+	the control leaves, the control dropping its label or hiding until the
+	status clears (OW:SetStatus places the footer again). Search results draw no page, so
 	no control, and a result for a footer's option opens its page as it is. A render draws an open dialog
 	again too, so the dialog follows what changed the tree (a profile change,
 	UF's profile prompts).
@@ -435,7 +430,6 @@ end
 -- a tree of their own, as the picker's and the dialog's.
 local FOOTER_KEY = 'footer' -- the footer group's key in that tree
 local FOOTER_SPACING = 8 -- after the label, and between the widgets
-local footerInset = 0 -- the region's left that edit mode's buttons take (OW:SetFooterInset)
 
 local function ReleaseFooterControl()
 	for _, widget in ipairs(F.footerWidgets) do
@@ -495,18 +489,18 @@ local function DrawFooterControl(footer)
 	F.footerControl:SetShown(#F.footerWidgets > 0)
 end
 
--- The region's parts: the status line from edit mode's buttons (footerInset)
--- and, while a page's footer control shows, the control where
--- OW.FooterPlace puts it, the label, then its widgets left to right, with the
--- status line ending FOOTER_GAP before it. An error to read comes before the
--- control's place: while the status has text the label is dropped and the
--- widgets are at the region's right end, and when even then the status would
--- have no room (edit mode's buttons take it), the control is hidden until
+-- The region's parts: the status line from the region's left and, while a
+-- page's footer control shows, the control where OW.FooterPlace puts it, the
+-- label, then its widgets left to right, with the status line ending
+-- FOOTER_GAP before it. An error to read comes before the control's place:
+-- while the status has text the label is dropped and the widgets are at the
+-- region's right end, and when even then the status would have no room (a
+-- region narrower than the widgets and the gap), the control is hidden until
 -- the status clears (OW:SetStatus places the footer again).
 local function PlaceFooter()
 	local region, control, status = F.footerRegion, F.footerControl, F.status
 	status:ClearAllPoints()
-	status:SetPoint('LEFT', region, 'LEFT', footerInset, 0)
+	status:SetPoint('LEFT', region, 'LEFT', 0, 0)
 	local label, widgets = F.footerLabel, F.footerWidgets
 	if #widgets == 0 then
 		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
@@ -517,10 +511,10 @@ local function PlaceFooter()
 	local widgetsWidth = (#widgets - 1) * FOOTER_SPACING
 	for _, widget in ipairs(widgets) do widgetsWidth = widgetsWidth + widget:GetWidth() end
 	local regionWidth = floor(region:GetWidth() + 0.5)
-	local x, labelShown = OW.FooterPlace(regionWidth, footerInset, labelWidth, widgetsWidth)
+	local x, labelShown = OW.FooterPlace(regionWidth, labelWidth, widgetsWidth)
 	if (status:GetText() or '') ~= '' then
 		x, labelShown = regionWidth - widgetsWidth, false
-		if x - FOOTER_GAP <= footerInset then
+		if x - FOOTER_GAP <= 0 then
 			control:Hide()
 			status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
 			status:Show()
@@ -539,7 +533,7 @@ local function PlaceFooter()
 	control:SetPoint('LEFT', region, 'LEFT', x, 0)
 	control:SetWidth(left - FOOTER_SPACING)
 	status:SetPoint('RIGHT', control, 'LEFT', -FOOTER_GAP, 0)
-	status:SetShown(x - FOOTER_GAP > footerInset)
+	status:SetShown(x - FOOTER_GAP > 0)
 end
 
 ------------------------------------------------------------------ a pick's control
@@ -866,7 +860,6 @@ local function OnShow()
 	F.keys:EnableKeyboard(true)
 	if not InCombatLockdown() then F.keys:SetPropagateKeyboardInput(true) end
 	OW:Render()
-	if st.EditModeFrames then st.EditModeFrames:UpdateFooter() end
 end
 
 local function OnHide()
@@ -882,7 +875,6 @@ local function OnHide()
 	OW:SetStatus(nil)
 	CloseMenu()
 	OW:CloseDialog()
-	if st.EditModeFrames then st.EditModeFrames:UpdateFooter() end
 end
 
 -- The search box, at the top of the sidebar's actions (parent), over Edit
@@ -1041,9 +1033,8 @@ local function BuildFooter()
 	F.reloadButton = W.Button(footer, 'Reload UI', function() ReloadUI() end)
 	F.closeButton = W.Button(footer, 'Close', function() OW:Close() end)
 
-	-- Edit mode's controls go here (from the left); the status line shows
-	-- validate errors (from the right); a page's footer control sits in it
-	-- too (PlaceFooter places them).
+	-- The status line shows validate errors; a page's footer control sits in
+	-- the region too (PlaceFooter places them).
 	local region = CreateFrame('Frame', nil, footer)
 	region:SetPoint('LEFT', F.reloadButton, 'RIGHT', FOOTER_GAP, 0)
 	region:SetPoint('RIGHT', F.closeButton, 'LEFT', -FOOTER_GAP, 0)
@@ -1054,9 +1045,7 @@ local function BuildFooter()
 	F.status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
 	F.status:SetTextColor(Colors().text.red:GetRGB())
 
-	-- The footer control, over edit mode's buttons' frame (its level + 2,
-	-- EditMode/footer.lua) should the two ever meet: its label, then its
-	-- widgets (DrawFooterControl).
+	-- The footer control: its label, then its widgets (DrawFooterControl).
 	local control = CreateFrame('Frame', nil, region)
 	control:SetHeight(26)
 	control:SetFrameLevel(region:GetFrameLevel() + 3)
@@ -1223,19 +1212,6 @@ function OW:SetStatus(text)
 	if not F.status then return end
 	F.status:SetText(text or '')
 	PlaceFooter()
-end
-
-function OW:GetFooter()
-	if not F.window then Build() end
-	return F.footerRegion
-end
-
--- Edit mode's buttons take the region's left (EditMode/footer.lua): the
--- status line starts width in, clear of them, and a page's footer control
--- keeps clear of them too (PlaceFooter).
-function OW:SetFooterInset(width)
-	footerInset = width or 0
-	if F.status then PlaceFooter() end
 end
 
 -- What the last render drew: { page, tab, subtab, pick, search }.

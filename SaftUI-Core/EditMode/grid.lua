@@ -4,7 +4,8 @@ local EM = st.EditModeFrames
 -- The alignment grid drawn behind the UI while edit mode is on. Two center
 -- lines (UIParent's center) run vertically and horizontally, and the other
 -- lines repeat outward from them every Grid size, so the center lines are
--- always grid lines. Snapping (snap.lua) uses the same lines through
+-- always grid lines. It draws again on 'SettingsChanged' (the bar's Grid and
+-- Grid size, the Edit mode tab, a profile change). Snapping (snap.lua) uses the same lines through
 -- EM.GridLinePositions and EM:GetGridCenter, so what's drawn is what snaps.
 
 local CENTER_ALPHA = 0.9
@@ -126,3 +127,5 @@ end
 
 EM:On('Enabled', function() EM:UpdateGrid() end)
 EM:On('Disabled', function() EM:UpdateGrid() end)
+-- Grid, Grid size or a profile change (settings.lua's 'SettingsChanged').
+EM:On('SettingsChanged', function() EM:UpdateGrid() end)

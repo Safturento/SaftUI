@@ -1,10 +1,10 @@
 -- Edit mode's alignment grid (SaftUI-Core/EditMode/grid.lua) and its
 -- settings (settings.lua): the line math, the grid's center, drawing and the
--- line pool, redraws, the footer buttons, the screen events and the /sui
--- options. Migrated from the emsim harness (test_grid.lua). The cases share
+-- line pool, redraws, EM:SetSetting and EM:SetGridSize (which tell the grid
+-- through 'SettingsChanged'), the screen events and the /sui options. Migrated from the emsim harness (test_grid.lua). The cases share
 -- one world and run in order, each going on from the state the last left.
 
-load_core_helpers() -- st:CreateButton, panels, fonts and the profile defaults
+load_core_helpers() -- panels, fonts and the profile defaults
 load_editmode()
 
 local st = SaftUI
@@ -173,7 +173,7 @@ test('UpdateConfig', function()
 	check(EM.gridFrame:IsShown(), 'UpdateConfig shows grid')
 end)
 
-test('StepGridSize', function()
+test('StepGridSize and SetGridSize', function()
 	-- Count the Refresh calls that redraw an open /sui.
 	local refreshes = 0
 	local refresh = st.Config.Refresh
@@ -195,37 +195,31 @@ test('StepGridSize', function()
 	EM:StepGridSize(4)
 	check(refreshes == before + 1, 'step refreshes /sui')
 
+	-- SetGridSize: a whole size within the range, the grid redrawn at once.
+	settings.grid = true
+	EM:SetGridSize(30)
+	check(settings.grid_size == 30, 'SetGridSize sets it')
+	check(hasVerticalLineAt(EM:GetGridCenter() + 30), 'and the grid redraws with lines 30 apart')
+	EM:SetGridSize(33.6)
+	check(settings.grid_size == 34, 'a whole number')
+	EM:SetGridSize(7)
+	check(settings.grid_size == 8, 'at least 8')
+	EM:SetGridSize(500)
+	check(settings.grid_size == 128, 'at most 128')
+	before = refreshes
+	EM:SetGridSize(64)
+	check(refreshes == before + 1, 'SetGridSize refreshes /sui')
+	settings.grid_size = 32
+
 	st.Config.Refresh = refresh
 end)
 
-test('the footer and the screen events', function()
-	-- Keep the buttons the real st:CreateButton makes for the footer. They are:
-	-- Grid, Snap to grid, Snap to frames, -, the size label, +.
-	local buttons = {}
-	local createButton = st.CreateButton
-	st.CreateButton = function(...)
-		local button = createButton(...)
-		buttons[#buttons + 1] = button
-		return button
-	end
-
-	-- Enable runs OnInitialize and OnEnable, which builds the footer. AceAddon
+test('the screen events', function()
+	-- Enable runs OnInitialize and OnEnable, which registers them. AceAddon
 	-- would report an error in them to the error handler rather than raise it.
 	local ok, err = pcall(EM.Enable, EM)
 	local reported = take_errors()
-	check(ok and #reported == 0, 'OnEnable builds the footer without error: ' .. tostring(not ok and err or reported[1]))
-	st.CreateButton = createButton
-
-	-- Edit mode is on, but this world has no /sui window (the shell's
-	-- GetWindow is nil), so the buttons aren't shown. options_frame_test.lua
-	-- checks them on the real window's footer.
-	check(EM.active and not buttons[1]:IsVisible(), 'no /sui window: the footer buttons are hidden')
-
-	local sizeLabel = buttons[5]
-	settings.grid_size = 32
-	ok, err = pcall(function() EM:StepGridSize(4) end)
-	check(ok, 'StepGridSize with the footer built: ' .. tostring(err))
-	check(sizeLabel and sizeLabel.text:GetText() == '36', 'footer size label shows 36')
+	check(ok and #reported == 0, 'OnEnable runs without error: ' .. tostring(not ok and err or reported[1]))
 
 	-- The grid redraws on each screen event. Fire it and see the center line
 	-- follow a new screen size.

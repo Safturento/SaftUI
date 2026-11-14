@@ -342,7 +342,8 @@ test("the footer control is the options kit's own widgets, so it takes both look
 		return n
 	end
 	local function centred(where)
-		local region, f = OW:GetFooter(), frames()
+		local f = frames()
+		local region = f.footerRegion
 		local left = f.footerLabel:GetLeft() - region:GetLeft()
 		local right = region:GetRight() - f.footerWidgets[2].frame:GetRight()
 		check(math.abs(left - right) <= 1, where .. ': centred between Reload UI and Close: ' .. left .. ' and ' .. right)

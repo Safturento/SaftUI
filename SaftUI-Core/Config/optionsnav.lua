@@ -49,8 +49,7 @@ local function UpdateEditModeButton()
 	local button = F.actions and F.actions[1]
 	if not button then return end
 	local EM = st.EditModeFrames
-	local color = (EM and EM.active) and Colors().text.green or Colors().text.normal
-	button.text:SetTextColor(color:GetRGB())
+	W.SetOn(button, (EM and EM.active) and true or false)
 end
 
 -- The search box (optionswindow.lua's), then under it Edit mode and every

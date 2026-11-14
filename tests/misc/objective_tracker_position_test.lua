@@ -75,10 +75,10 @@ local function Insets(frame)
 	return table.concat(out, ',')
 end
 
--- Runs fn with chat's print silenced (edit mode says "Edit mode on.").
+-- Runs fn with chat's print silenced (edit mode still says why it won't open in combat).
 local function printed(fn)
 	local real = print
-	print = function() end -- edit mode says "Edit mode on."
+	print = function() end
 	local ok, err = pcall(fn)
 	print = real
 	if not ok then error(err, 0) end

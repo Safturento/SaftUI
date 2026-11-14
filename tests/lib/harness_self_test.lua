@@ -848,13 +848,23 @@ test("use_client gives a fresh world on each client, without the globals that cl
 	reset_world()
 end)
 
-test("load_editmode loads the files Core's EditMode/load.xml lists, in its order", function()
-	local xml = assert(read_saftui_source('SaftUI-Core/EditMode/load.xml')):gsub('<!%-%-.-%-%->', '')
-	local listed = {}
-	for file in xml:gmatch('<Script%s+file%s*=%s*"([^"]+)"') do
-		listed[#listed + 1] = 'SaftUI-Core/EditMode/' .. file
+test("load_editmode loads the files Core's EditMode/load.xml lists, in its order; the bar's come last, through Bar/load.xml", function()
+	local function scripts(path, dir)
+		local xml = assert(read_saftui_source(path)):gsub('<!%-%-.-%-%->', '')
+		local listed = {}
+		for file in xml:gmatch('<Script%s+file%s*=%s*"([^"]+)"') do
+			listed[#listed + 1] = dir .. file
+		end
+		return listed, xml
 	end
+	local listed, xml = scripts('SaftUI-Core/EditMode/load.xml', 'SaftUI-Core/EditMode/')
 	eq(table.concat(editmode_files(), ', '), table.concat(listed, ', '), "the shell's edit mode files are load.xml's, in its order")
+	local bar = scripts('SaftUI-Core/EditMode/Bar/load.xml', 'SaftUI-Core/EditMode/Bar/')
+	eq(table.concat(editmode_bar_files(), ', '), table.concat(bar, ', '), "the shell's bar files are Bar/load.xml's, in its order")
+	local includes = {}
+	for file in xml:gmatch('<Include%s+file%s*=%s*"([^"]+)"') do includes[#includes + 1] = file end
+	eq(table.concat(includes, ', '), 'Bar\\load.xml', 'EditMode/load.xml includes the bar')
+	check(xml:find('Bar\\load.xml', 1, true) > xml:find('settings.lua', 1, true), 'the bar comes after every other file')
 end)
 
 test('near tells float drift from a different number, and nil from any number', function()
