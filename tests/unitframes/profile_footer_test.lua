@@ -182,10 +182,25 @@ test('Manage opens Unit frame profiles: the profile, then New, Copy, Rename, Del
 	eq(dialog_cell('new').y, dialog_cell('delete').y, 'New, Copy, Rename and Delete on one line')
 	eq(dialog_cell('export').y, dialog_cell('import').y, 'Export and Import on the next')
 	check(dialog_cell('close').y > dialog_cell('import').y, 'Close last')
-	-- The lines of buttons under the profile stay on its panel; Close, alone on
-	-- the last line, floats 24 under it, and the dialog ends 24 under Close.
-	eq(dialog_cell('export').y, dialog_cell('new').y + 38, 'Export and Import on the panel, the line under New')
-	eq(dialog_cell('close').y, dialog_cell('import').y + 38 + 24, 'Close 24 under the panel')
+	-- Under Thick the lines of buttons have no panel: the profile's ends over
+	-- them, 24 above New's line; Export's line is 12 under New's, as far as the
+	-- buttons were apart on the panel; Close, the closing line, sits 24 under
+	-- Export's, as the dialog ends 24 under Close.
+	local function panels()
+		local out = {}
+		for _, p in ipairs(d.body.pools.panel.used) do
+			if p:IsShown() then
+				local _, _, _, _, py = p:GetPoint(1)
+				out[#out + 1] = -py .. '+' .. p:GetHeight()
+			end
+		end
+		return table.concat(out, ' ')
+	end
+	eq(panels(), current.y .. '+38', "one panel, the profile's")
+	eq(dialog_cell('new').y, current.y + 38 + 24, "New's line 24 under the panel")
+	eq(dialog_cell('new').height, dialog_cell('new').widget:GetHeight(), 'as tall as its buttons')
+	eq(dialog_cell('export').y, dialog_cell('new').y + dialog_cell('new').height + 12, "Export's line 12 under New's")
+	eq(dialog_cell('close').y, dialog_cell('import').y + dialog_cell('import').height + 24, "Close 24 under Export's line")
 	eq(dialog_cell('close').frame:GetBottom() - d.frame:GetBottom(), 24, 'the dialog ends 24 under Close')
 
 	-- The dialog's dropdown switches too, and the footer follows.

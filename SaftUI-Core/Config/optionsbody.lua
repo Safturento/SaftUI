@@ -64,17 +64,22 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	half only has its divider too). No line between sections. Rows that follow
 	an inline group join the panel above, one panel. A fill row is bare, the
 	whole line, and ends a panel; the section's other lines have theirs. A
-	line of execute rows alone that ends its section (so also one that
-	continues a section after an inline group) floats under the panel
-	instead: the panel ends above it, and the line sits OB.FLOAT_GAP (24,
-	the body's bottom margin, so a closing line sits midway between the rows
-	and the bottom; a section of only that line sits 6 down, where its
-	buttons would on a panel) under it on the body's own fill, as tall as
-	its buttons, each in its slot off the padding (a centred group across
-	the body, a right one ending at its right edge), with no hairline or
-	divider; rows that continue the section after it start a panel of their
-	own, as far under it. A line of buttons mid-section stays on the panel.
-	Blizzard's layout has no panels, so nothing floats there.
+	line of execute rows alone, wherever it is in its section (so also one
+	that continues a section after an inline group), floats off the panel
+	instead, on the body's own fill, as tall as its buttons, each in its
+	slot off the padding (a centred group across the body, a right one
+	ending at its right edge, a small one at its quarter's left, in line
+	with the panel's edge), with no panel, hairline or divider. The gaps: a
+	panel ends OB.FLOAT_GAP (24, the body's bottom margin) above it, and the
+	rows after it start a panel of their own as far under it, so a line of
+	buttons between two runs of rows has the same space above and below;
+	lines of buttons after each other are 12 apart (as their buttons were on
+	a panel), but the section's last line, its closing buttons, sits 24
+	under whatever is above it, midway between the rows and the bottom; a
+	section that starts with one sits 6 down, where its buttons would on a
+	panel (24 when it joins the panel above). A button beside a row stays on
+	the panel with it. Blizzard's layout has no panels, so nothing floats
+	there.
 	Buttons with an align (row.align, the model's) that follow each other
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
@@ -160,9 +165,12 @@ local CONTINUE_GAP = 4 -- an untitled section after another: a continuation
 -- dialog's) bottom margin is under them, so they sit midway between the rows
 -- and the bottom.
 local FLOAT_GAP = BODY_BOTTOM
--- A section of nothing but a line of buttons: they sit where they would on a
--- panel (a 38 row's 26 button, 6 down), with no panel above to stand off from.
+-- A section that starts with a line of buttons: they sit where they would on
+-- a panel (a 38 row's 26 button, 6 down), with no panel above to stand off from.
 local LEAD_GAP = TITLE_GAP
+-- Between two lines of buttons off the panel: as far apart as the buttons of
+-- two lines on it were (38 rows, 26 buttons), and as the buttons of a line.
+local FLOAT_LINE_GAP = BUTTON_GAP
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
 OB.FLOAT_GAP = FLOAT_GAP
@@ -426,45 +434,73 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 	return placed, y
 end
 
--- A section's last line floats off its panel when every row on it gives a
--- height off the panel (floatOf(row); nil: it can't): the line moves
--- FLOAT_GAP under where the panel ends (entry.panelHeight, the height of the
--- rows on it; when the line is all there is, 0, and it sits LEAD_GAP down,
--- unless the section joins the panel above (entry.joins): then FLOAT_GAP),
--- its entries are marked floats, and it's as tall as its tallest row
--- (entry.floatHeight). Returns the rows' height.
+-- A section's lines float off its panel wherever every row on one gives a
+-- height off the panel (floatOf(row); nil: it can't): a line of buttons,
+-- anywhere in the section. Its lines are laid down again from the top. A
+-- floating line's entries are marked floats and given floatHeight, its
+-- tallest row's, as the line is; it sits FLOAT_GAP under a line on the panel,
+-- FLOAT_LINE_GAP under another floating line, and at the section's start
+-- LEAD_GAP down (FLOAT_GAP when the section joins the panel above,
+-- entry.joins). The section's last line, its closing buttons, sits FLOAT_GAP
+-- under a floating line too: as far under what's above it as the bottom
+-- margin is under it. A line on the panel after a floating one starts
+-- FLOAT_GAP under it, so a line of buttons between two runs of panel has the
+-- same gap above and below. entry.endsFloating: the section's last line
+-- floats.
+-- Returns the rows' height (height itself when no line floats).
 local function Float(entry, placed, height, floatOf)
-	local lastY
-	for _, p in ipairs(placed) do lastY = max(lastY or p.y, p.y) end
-	if not lastY then return height end
-	local lineHeight = 0
+	local lines, byY, any = {}, {}, false
 	for _, p in ipairs(placed) do
-		if p.y == lastY then
-			local h = floatOf(p.row)
-			if not h then return height end
-			lineHeight = max(lineHeight, h)
+		local line = byY[p.y]
+		if not line then
+			line = { y = p.y, entries = {}, floats = true, floatHeight = 0 }
+			byY[p.y] = line
+			lines[#lines + 1] = line
+		end
+		line.entries[#line.entries + 1] = p
+		local h = floatOf(p.row)
+		if h then line.floatHeight = max(line.floatHeight, h) else line.floats = false end
+	end
+	for _, line in ipairs(lines) do any = any or line.floats end
+	if not any then return height end
+	table.sort(lines, function(a, b) return a.y < b.y end)
+	local y, above = 0, nil -- above: 'panel' or 'float', the line before
+	for i, line in ipairs(lines) do
+		if line.floats then
+			if above == 'panel' then
+				y = y + FLOAT_GAP
+			elseif above == 'float' then
+				y = y + (i == #lines and FLOAT_GAP or FLOAT_LINE_GAP)
+			else
+				y = y + (entry.joins and FLOAT_GAP or LEAD_GAP)
+			end
+			for _, p in ipairs(line.entries) do p.y, p.floats, p.floatHeight = y, true, line.floatHeight end
+			y = y + line.floatHeight
+			above = 'float'
+		else
+			if above == 'float' then y = y + FLOAT_GAP end
+			for _, p in ipairs(line.entries) do p.y = y end
+			-- As tall on the panel as it was laid out.
+			y = y + (lines[i + 1] and lines[i + 1].y or height) - line.y
+			above = 'panel'
 		end
 	end
-	local gap = (lastY > 0 or entry.joins) and FLOAT_GAP or LEAD_GAP
-	for _, p in ipairs(placed) do
-		if p.y == lastY then p.y, p.floats = lastY + gap, true end
-	end
-	entry.panelHeight, entry.floatHeight = lastY, lineHeight
-	return lastY + gap + lineHeight
+	entry.endsFloating = above == 'float'
+	return y
 end
 
 -- Places sections down the body: { {section, lineY, titleY, noteY, rowsY,
--- rowsHeight, joins, placed, panelHeight, floatHeight} } and the body's
+-- rowsHeight, joins, placed, endsFloating} } and the body's
 -- height (BODY_BOTTOM, OB.BOTTOM, under the last rows). The space for a line
 -- between sections after the first is kept (lineY) though none is drawn any
 -- more; an untitled one (rows that follow a nested group) keeps none, so it
 -- reads as a continuation of the one above: CONTINUE_GAP below it, or with
 -- panels (the fifth argument) none at all, and joins = true, for it to share
 -- the panel above. With panels and floatOf (the sixth, see Float) a
--- section's last line of rows that float (a line of buttons) sits FLOAT_GAP
--- under its panel; a continuation after it has no panel to join, so it
--- starts its own FLOAT_GAP under the line. heightOf, sizeOf and alignOf are
--- OB.LayoutRows'.
+-- section's lines of rows that float (lines of buttons) sit off its panel,
+-- FLOAT_GAP from it; a continuation after a section that ends with one has
+-- no panel to join, so it starts its own FLOAT_GAP under the line. heightOf,
+-- sizeOf and alignOf are OB.LayoutRows'.
 function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
@@ -476,7 +512,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 			y = y + SECTION_MARGIN
 			entry.lineY = y
 			y = y + 1 + SECTION_PAD
-		elseif panels and after.floatHeight then
+		elseif panels and after.endsFloating then
 			y = y + FLOAT_GAP
 		elseif panels and not section.note then
 			entry.joins = true
@@ -539,6 +575,17 @@ function OB.Dividers(placed, heightOf, extendLast)
 		end
 	end
 	return dividers
+end
+
+-- OB.Dividers of each run of a section's lines on the panel (parts: lists of
+-- placed entries, a floating line between each), all together: each run's
+-- last line is a last line, extended with extendLast.
+function OB.DividersOf(parts, heightOf, extendLast)
+	local all = {}
+	for _, part in ipairs(parts) do
+		for _, d in ipairs(OB.Dividers(part, heightOf, extendLast)) do all[#all + 1] = d end
+	end
+	return all
 end
 
 -- The lines between a section's rows (placed, as OB.LayoutRows gives it): the
@@ -992,29 +1039,35 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	-- run of lines that hold no fill cell, across the sections that join one
 	-- another; a hairline is at the top of each line in a run but its first.
 	-- A line with a fill cell is bare: that row is the whole line, and ends a run.
-	-- A floating line of buttons is off the panel: the run ends above it.
+	-- A floating line of buttons is off the panel: a run ends above it, and the
+	-- lines after it start one of their own.
 	local hairlineAt = {} -- the y (in the content) of each hairline
 	if metrics.panels then
 		local run, runs = nil, {}
 		for _, entry in ipairs(laid) do
 			if not entry.joins then run = nil end
-			local fillAt, tops = {}, {}
+			-- The lines on the panel, by their tops: each as tall as its
+			-- tallest row, and whether it holds a fill cell.
+			local lines, tops = {}, {}
 			for _, p in ipairs(entry.placed) do
 				if not p.floats then
-					if fillAt[p.y] == nil then
-						fillAt[p.y] = false
+					local line = lines[p.y]
+					if not line then
+						line = { height = 0, fill = false }
+						lines[p.y] = line
 						tops[#tops + 1] = p.y
 					end
-					if byRow[p.row].fill then fillAt[p.y] = true end
+					line.height = max(line.height, heightOf(p.row))
+					if byRow[p.row].fill then line.fill = true end
 				end
 			end
 			table.sort(tops)
-			for i, y in ipairs(tops) do
+			for _, y in ipairs(tops) do
 				local top = entry.rowsY + y
-				local bottom = entry.rowsY + (tops[i + 1] or entry.panelHeight or entry.rowsHeight)
-				if fillAt[y] then
+				local bottom = top + lines[y].height
+				if lines[y].fill then
 					run = nil
-				elseif run then
+				elseif run and run.top + run.height == top then
 					run.height = bottom - run.top
 					hairlineAt[top] = true
 					local hairline = Acquire(pools.hairline)
@@ -1045,14 +1098,19 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			note:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, -entry.noteY)
 			note:SetText(entry.section.note)
 		end
-		-- The rows on the panel: all but a floating line's.
-		local onPanel = entry.floatHeight and {} or entry.placed
+		-- The rows on the panel, in runs a floating line parts.
+		local onPanel, parts = nil, {}
 		for _, p in ipairs(entry.placed) do
 			local cell = byRow[p.row]
 			cell.y = entry.rowsY + p.y
 			if p.floats then
-				cell.height = entry.floatHeight -- as tall as its buttons, which fill it
-			elseif entry.floatHeight then
+				cell.height = p.floatHeight -- as tall as its line's buttons, which fill it
+				onPanel = nil
+			else
+				if not onPanel then
+					onPanel = {}
+					parts[#parts + 1] = onPanel
+				end
 				onPanel[#onPanel + 1] = p
 			end
 			local x, cellWidth
@@ -1068,9 +1126,9 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			end
 			cell.place(cell, x, cell.y, cellWidth)
 		end
-		-- Under panels the last line's divider runs through a lone left half too
-		-- (the panel's last: a floating line has none).
-		for _, d in ipairs(OB.Dividers(onPanel, heightOf, metrics.panels)) do
+		-- Under panels a run's last line's divider runs through a lone left half
+		-- too (the panel's last: a floating line has none).
+		for _, d in ipairs(OB.DividersOf(parts, heightOf, metrics.panels)) do
 			local x
 			-- In the middle of the gap the line divides; with no gap, on the
 			-- boundary. The slots', not the padded cells'.
