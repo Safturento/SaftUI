@@ -233,17 +233,22 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			item = "Hotkey's Show goes back to its default: on.",
 			position = 'Position goes back to its default: the middle.',
 		}
+		-- Text > Grey at rest; under the mouse it lights, in Button > Blue (the accent).
+		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB())
+		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue:GetRGB())
+		check(grey ~= blue, 'two colors')
 		for key, line in pairs(want) do
 			local icon = icon_of(by[key])
+			eq(rgb(icon), grey, key .. ': Text > Grey at rest')
 			stub.fire_script(icon, 'OnEnter', true)
 			eq(tip.lines[1], 'Reset', key .. ': titled Reset')
 			eq(tip.lines[2], line, key)
-			eq(string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()), '1.00,1.00,1.00', key .. ': white under the mouse')
+			eq(rgb(icon), blue, key .. ': Button > Blue under the mouse')
 			stub.fire_script(icon, 'OnLeave', true)
 			eq(tip.owner, nil, key .. ': its tooltip goes')
+			eq(rgb(icon), grey, key .. ': grey again')
 		end
-		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue:GetRGB())
-		eq(string.format('%.2f,%.2f,%.2f', icon_of(by.range).icon:GetVertexColor()), blue, 'Button > Blue')
 
 		stub.click(icon_of(by.color))
 		eq(table.concat(resets, ','), 'color', 'its reset ran')

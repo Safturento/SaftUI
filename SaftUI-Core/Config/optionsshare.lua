@@ -33,7 +33,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  - the hover line (state.offers, on a row that isn't disabled): the
 	    small font under the label. On a member page Own (its tooltip: the
 	    name and '<source>: <shared>'), the reset icon (st.icons.rotateCcw,
-	    14x14, blue; its tooltip says what it drops), then '· Apply to: All
+	    14x14, grey, lit blue under the mouse; its tooltip says what it
+	    drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
 	    are frames that take the mouse (Text > Blue, white under it), the
 	    line 4 levels over the row frame and they one over the line, so they
@@ -129,8 +130,11 @@ end
 
 -- The reset icon, which a shared row's hover line (Reset) and a setting's
 -- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
--- rotate-ccw (st.icons.rotateCcw) in Button > Blue, white under the mouse.
--- tip(self) shows its tooltip; a click hides that, then runs onClick(self).
+-- rotate-ccw (st.icons.rotateCcw), Text > Grey at rest, lit in Button > Blue
+-- (the accent) under the mouse; each read as it's painted, so a color
+-- change shows on its next place or hover. tip(self) shows its tooltip; a
+-- click hides that, then runs onClick(self).
+local function ResetAtRest(button) button.icon:SetVertexColor(Grey()) end
 local function ResetIcon(parent, tip, onClick)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(RESET_SIZE, RESET_SIZE)
@@ -138,14 +142,14 @@ local function ResetIcon(parent, tip, onClick)
 	button.icon = button:CreateTexture(nil, 'ARTWORK')
 	button.icon:SetAllPoints(button)
 	button.icon:SetTexture(st.icons.rotateCcw)
-	button.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(button)
 	button:SetScript('OnEnter', function(self)
 		tip(self)
-		self.icon:SetVertexColor(1, 1, 1)
+		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
 	end)
 	button:SetScript('OnLeave', function(self)
 		Untip(self)
-		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
+		ResetAtRest(self)
 	end)
 	button:SetScript('OnClick', function(self)
 		Untip(self)
@@ -377,7 +381,7 @@ local function FillLine(parts, state, room)
 		x = x + width + (gap or 0)
 	end
 	parts.ownText.text:SetTextColor(unpack(OB.OWN_TEXT))
-	parts.reset.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(parts.reset)
 	for _, link in ipairs({ parts.all, parts.multiple }) do
 		link.text:SetTextColor(LinkBlue())
 		link:SetWidth(TextWidth(link.text))
@@ -709,7 +713,7 @@ function OB.PlaceDefault(cell)
 		frame.defaultReset = icon
 	end
 	frame.defaultCell = cell
-	icon.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(icon)
 	icon:ClearAllPoints()
 	icon:Show()
 	if row.type == 'position' then
