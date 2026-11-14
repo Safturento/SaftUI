@@ -271,7 +271,8 @@ test("under Blizzard an action button's hover, pushed, checked and flash are Bli
 		local colors = st.config.profile.colors.button
 		eq(hover:GetAtlas(), nil, 'Thick: hover is no atlas')
 		eq(hover:GetTexture(), st.BLANK_TEX, 'Thick: hover is the flat texture')
-		eq(T.text(hover:GetVertexColor()), T.text(colors.blue:GetRGB()) .. ',1.00', 'Thick: hover is blue')
+		eq(T.text(hover:GetVertexColor()), '1.00,1.00,1.00,0.15', 'Thick: hover is a faint white tint, so the icon shows through')
+		eq(hover:GetBlendMode(), 'ADD', 'Thick: hover is additive')
 		eq(T.text(pushed:GetVertexColor()), '0.00,0.00,0.00,0.10', 'Thick: pushed is the dark tint')
 		eq(T.text(checked:GetVertexColor()), '1.00,1.00,1.00,0.30', 'Thick: checked is the white tint')
 		eq(checked:GetBlendMode(), 'ADD', 'Thick: checked is additive')
