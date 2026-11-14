@@ -235,6 +235,41 @@ test('Delete asks first; the selection moves to the next category', function()
 	st.Config:Close()
 end)
 
+-- Reset and Delete float under the editor's panel. The game reads a button's
+-- height back a hair over its 26 (stub.size_noise plays it), and a plain ceil
+-- made their line 27 tall: Reset sat half a unit down it, between two pixels,
+-- its border blurred (the user's screenshot: Reset Grays/Auto Vendor to
+-- default). The editor, its rows and buttons, and its panels and lines sit on
+-- whole pixels, with the hair either way, a lone Reset or with Delete.
+local P = load_test_file('lib/pixels.lua')
+
+test("the editor's Reset and Delete, and everything in the editor, sit on whole pixels", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
+			for _, id in ipairs({ 'Armor', 'Grays/Auto Vendor' }) do
+				world()
+				st.config.profile.theme.name = look
+				stub.size_noise = noise
+				local list = INV:GetCategoryList()
+				for _, entry in ipairs(list) do
+					if entry.name == id or entry.id == id then INV.categoryEditor.selected = entry.id end
+				end
+				open()
+				local w = tab()
+				local where = ('%s, noise %s, %s'):format(look, noise, id)
+				check(w:EditorCell('reset') ~= nil, where .. ': Reset drawn')
+				for _, part in ipairs({ { 'the editor', w.pane }, { 'its footer', w.footerPane } }) do
+					local off = P.off(part[2])
+					eq(#off, 0, where .. ', ' .. part[1] .. ': ' .. P.report(off))
+				end
+				stub.size_noise = 0
+				st.config.profile.theme.name = 'thick'
+				st.Config:Close()
+			end
+		end
+	end
+end)
+
 test('Reset <name> to default clears the edit and keeps the pins; the edited marker goes', function()
 	world()
 	INV:RenameCategory('Armor', 'Plate')

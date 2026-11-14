@@ -176,9 +176,11 @@ test('the dots open the menu: over the dialog, one column, titled, the position 
 	check(menuCell('position') ~= nil, 'with its block')
 	local reset = menuCell('reset').widget.frame
 	eq(math.floor(reset:GetLeft() - m.content:GetLeft() + reset:GetWidth() / 2), 188, 'Reset centred')
-	-- As tall as the title and the body.
-	local last = reset:GetBottom()
-	eq(last - m.frame:GetBottom(), 12, 'the menu ends 12 under its last row')
+	-- As tall as the title and the body. Reset, the closing line, floats 24
+	-- under the Position block's panel (Thick), so the menu ends as far under
+	-- it: 24, where a last row on a panel has 12.
+	eq(menuCell('position').frame:GetBottom() - reset:GetTop(), 24, 'Reset 24 under the panel above it')
+	eq(reset:GetBottom() - m.frame:GetBottom(), 24, 'the menu ends 24 under it, as far')
 	check(m.content:GetParent() == m.frame, "the body's view is the menu")
 
 	-- The dots again close it; another item's open it on that item.
@@ -787,7 +789,57 @@ test('Blizzard: the menu drawn as the dialog is, its body without panels', funct
 	click(dots('hotkey'))
 	eq(m.body.metrics, OB.FLAT, 'Blizzard: flat')
 	eq(#m.body.pools.panel.used, 0, 'no panels')
+	eq(menuCell('reset').frame:GetBottom() - m.frame:GetBottom(), 12, 'nothing floats: the menu ends 12 under its last row')
 	eq(menuCell('size').frame:GetWidth(), 376, 'a row the whole body')
 	theme('thick')
 	close_all()
+end)
+
+------------------------------------------------------------------ whole pixels
+
+-- As the small dialog (options_small_dialog_test.lua's whole pixels): the
+-- menu, placed by a corner on its item's dots, and everything in it on whole
+-- pixels, from the window's page and from the small dialog (whose height is
+-- as often odd as even), below its dots or above them, and with the game's
+-- read-back hair (stub.size_noise) either way, which made its floating Reset
+-- 27 tall for a 26 button and set the button half a unit down it.
+local P = load_test_file('lib/pixels.lua')
+
+test('the menu and everything in it sit on whole pixels, from the page or the small dialog, below or above its dots', function()
+	local function on(value) return { get = function() return value end, set = function() end } end
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
+			stub.size_noise = noise
+			-- The window centred (the menu below the dots), and low on the screen (above them).
+			for _, low in ipairs({ false, true }) do
+				st.config.global.optionsWindow = low and { point = 'CENTER', x = 0, y = -300 } or nil
+				local where = ('%s, noise %s%s'):format(look, noise, low and ', the window low' or '')
+				open_items()
+				click(dots('hotkey'))
+				check(OW:IsMenuShown(), where .. ': open')
+				local off = P.off(M().frame)
+				eq(#off, 0, where .. ', from the page: ' .. P.report(off))
+				OW:CloseMenu()
+				for count = 0, 3 do
+					local args = { hotkey = HotkeyItem() }
+					for i = 1, count do
+						local t = on(true)
+						t.order, t.type, t.name = 1 + i, 'toggle', 'Toggle ' .. i
+						args['t' .. i] = t
+					end
+					OW:OpenDialog('Dialog', { type = 'group', name = 'Dialog', args = args })
+					click(OW.GetDialogFrames().body.cells[1].widget.dots)
+					check(OW:IsMenuShown(), where .. ', ' .. count .. ' toggles: open')
+					off = P.off(M().frame)
+					eq(#off, 0, where .. ', from the dialog with ' .. count .. ' toggles: ' .. P.report(off))
+					OW:CloseDialog()
+				end
+				close_all()
+			end
+		end
+	end
+	stub.size_noise = 0
+	st.config.global.optionsWindow = nil
+	theme('thick')
 end)

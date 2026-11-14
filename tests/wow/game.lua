@@ -16,6 +16,13 @@ stub = {
 	-- (and UIParent's scale), as in game.
 	screen_width = 1920,
 	screen_height = 1080,
+	-- What GetWidth, GetHeight and GetSize add to a size that isn't 0, to play
+	-- the game's read-back: it hands a size back from its layout in single
+	-- precision, a hair off the size it was given (26.000002 for a button set
+	-- to 26, 559.99994 for a view of 560). 0, an exact size, unless a test
+	-- sets it (2 ^ -14 is about the game's hair); where frames are placed
+	-- doesn't change.
+	size_noise = 0,
 	in_combat = false, -- InCombatLockdown
 	-- The calls the game blocked on a protected frame in combat (widgets.lua,
 	-- "Protected frames in combat"), in order: { widget, method name }. The

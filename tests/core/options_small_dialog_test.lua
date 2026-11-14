@@ -328,6 +328,12 @@ test("OB.ScrollTo counts what there is to scroll in whole units: a view a hair s
 		eq(OB.ScrollTo(scroll, bar, 30, 561), 1, look .. ': a unit to scroll')
 		check(bar:IsShown() or companion.frame:IsShown(), look .. ': its bar')
 		eq(bar:IsShown(), look == 'thick', look .. ': the look\'s own bar')
+		-- Read back a hair over its 560, the view still leaves that unit to
+		-- scroll: the range is rounded, not floored (floored, 0.99994 is 0).
+		scroll:SetHeight(560 + 2 ^ -14)
+		eq(OB.ScrollTo(scroll, bar, 30, 561), 1, look .. ': a view a hair over still has its unit to scroll')
+		check(bar:IsShown() or companion.frame:IsShown(), look .. ': and its bar')
+		scroll:SetHeight(560 - 2 ^ -14)
 	end
 	theme('thick')
 
@@ -340,6 +346,158 @@ test("OB.ScrollTo counts what there is to scroll in whole units: a view a hair s
 	check(not frames().bar:IsShown(), "the window's: none")
 	OW:CloseDialog()
 	close_all()
+end)
+
+------------------------------------------------------------------ a setting's own reset
+
+test("a setting's own reset works in the dialog: the icon by its control, and a click resets and draws the dialog again", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	local size = 7
+	OW:OpenDialog('Reset', { type = 'group', name = 'Reset', args = {
+		size = { order = 1, type = 'range', name = 'Size', min = 1, max = 10, step = 1,
+			get = function() return size end, set = function(_, v) size = v end,
+			default = { differs = function() return size ~= 5 end, reset = function() size = 5 end } },
+	} })
+	local icon = dialogCell('size').frame.defaultReset
+	check(icon and icon:IsShown(), 'its icon, as it differs')
+	-- GameTooltip, which a click takes the icon's tooltip from, as a stand-in.
+	local saved = _G.GameTooltip
+	_G.GameTooltip = { IsOwned = function() return false end, Hide = function() end }
+	stub.click(icon)
+	_G.GameTooltip = saved
+	eq(size, 5, 'reset')
+	check(OW:IsDialogShown(), 'the dialog stays')
+	local after = dialogCell('size').frame.defaultReset
+	check(not (after and after:IsShown()), 'drawn again: no icon')
+	eq(dialogCell('size').widget.edit:GetText(), '5', 'showing the default')
+	OW:CloseDialog()
+	close_all()
+end)
+
+------------------------------------------------------------------ whole pixels
+
+-- SaftUI's scale makes a unit a pixel, and a 1px border or line that sits
+-- between two pixels blurs, vanishes or doubles: the user saw it in Copy from
+-- and Unit frame profiles. The game reads a size back in single precision, a
+-- hair off what it was given (stub.size_noise plays it): a button set to 26
+-- read back as 26.000002 made each floating line of buttons 27 tall (the
+-- screenshots: Unit frame profiles 281 tall for 278, its lines of buttons 39
+-- and 51 apart for 38 and 50; Copy from 661 for 660), so the dialog came out
+-- an odd height, and centred on the window its edges, and all it holds, sat
+-- on half units; the 26 button centred in its 27 line sat half a unit down.
+local P = load_test_file('lib/pixels.lua')
+local HAIR = 2 ^ -14
+
+-- A dialog's table: Copy from's shape (a note when withNote, count toggles
+-- in a Settings section, and Confirm copy and Cancel centred under them when
+-- closing), or with shape 'profiles' Unit frame profiles' (a wide select,
+-- six small buttons, Close centred).
+local function ShapedTable(count, closing, withNote, shape)
+	local values = {}
+	local args = {}
+	if shape == 'profiles' then
+		args.current = { order = 1, type = 'select', name = 'Profile', size = 'wide', values = { a = 'A', b = 'B' },
+			get = function() return 'a' end, set = function() end }
+		for i, name in ipairs({ 'New', 'Copy', 'Rename', 'Delete', 'Export', 'Import' }) do
+			args[name:lower()] = { order = 1 + i, type = 'execute', name = name, size = 'small', func = function() end }
+		end
+		args.close = { order = 8, type = 'execute', name = 'Close', align = 'center', func = function() end }
+		return { type = 'group', name = 'Profiles', args = args }
+	end
+	if withNote then
+		args.note = { order = 0, type = 'description', name = 'Ticks the settings to copy from the other unit frame.' }
+	end
+	local settings = {}
+	for i = 1, count do
+		settings['s' .. string.format('%02d', i)] = { order = i, type = 'toggle', name = 'Setting ' .. i }
+	end
+	args.settings = { order = 1, type = 'group', inline = true, name = 'Settings', args = settings }
+	if closing then
+		args.accept = { order = 2, type = 'execute', name = 'Confirm copy', align = 'center', func = function() end }
+		args.cancel = { order = 3, type = 'execute', name = 'Cancel', align = 'center', func = function() end }
+	end
+	return {
+		type = 'group', name = 'Copy',
+		get = function(info) return values[info[#info]] end,
+		set = function(info, v) values[info[#info]] = v end,
+		args = args,
+	}
+end
+
+test("a floating line of buttons is as tall as its buttons, though the game reads a button's height back a hair over it", function()
+	theme('thick')
+	st.Config:Open('Loot')
+	for _, noise in ipairs({ HAIR, -HAIR }) do
+		stub.size_noise = noise
+		OW:OpenDialog('Copy', ShapedTable(2, true))
+		local d, accept = OW.GetDialogFrames(), dialogCell('accept')
+		eq(accept.height, 26, noise .. ": the line is the button's 26")
+		eq(d.height, accept.y + 26, noise .. ': the rows end with it')
+		OW:CloseDialog()
+		OW:OpenDialog('Profiles', ShapedTable(0, false, false, 'profiles'))
+		local new, export, close = dialogCell('new'), dialogCell('export'), dialogCell('close')
+		eq(export.y - new.y, 26 + 12, noise .. ': two lines of buttons 12 apart')
+		eq(close.y - export.y, 26 + 24, noise .. ': the closing line 24 under them')
+		OW:CloseDialog()
+	end
+	stub.size_noise = 0
+	close_all()
+end)
+
+test('the small dialog and everything in it sit on whole pixels, at any number of rows, odd or even, with or without a floating line of buttons', function()
+	local function Where(look, noise, placed, count, closing, withNote)
+		return ('%s, noise %s, %s, %s rows%s%s'):format(look, noise, placed, tostring(count),
+			closing and ', closing buttons' or '', withNote and ', a note' or '')
+	end
+	local function Check(where)
+		local d = OW.GetDialogFrames()
+		local off = P.off(d.frame)
+		eq(#off, 0, where .. ': ' .. P.report(off))
+		-- Scrolled too, where there is something to scroll.
+		stub.fire_script(d.scroll, 'OnMouseWheel', -1)
+		off = P.off(d.frame)
+		eq(#off, 0, where .. ', scrolled: ' .. P.report(off))
+	end
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+			stub.size_noise = noise
+			-- Over the window where it was left (centred, or moved and made
+			-- taller), or over the screen with the window closed.
+			for _, placed in ipairs({ 'centred window', 'moved window', 'no window' }) do
+				st.config.global.optionsWindow = placed == 'moved window' and { point = 'CENTER', x = 37, y = -21, height = 760 } or nil
+				close_all()
+				if placed ~= 'no window' then
+					st.Config:Open('Loot')
+					local window = frames().window
+					local edges = { window:GetLeft(), window:GetRight(), window:GetTop(), window:GetBottom() }
+					for _, v in ipairs(edges) do
+						eq(v, math.floor(v + 0.5), placed .. ': the window itself on whole pixels')
+					end
+				end
+				for _, count in ipairs({ 1, 2, 3, 4, 5, 21, 22, 40 }) do
+					for _, closing in ipairs({ false, true }) do
+						for _, withNote in ipairs({ false, true }) do
+							OW:OpenDialog('Copy', ShapedTable(count, closing, withNote))
+							Check(Where(look, noise, placed, count, closing, withNote))
+						end
+					end
+				end
+				OW:OpenDialog('Profiles', ShapedTable(0, false, false, 'profiles'))
+				Check(Where(look, noise, placed, 'profiles'))
+				-- A status line changes the foot, so the height: still whole.
+				OW.GetDialogFrames().body.onChanged(false, 'That will not do.')
+				Check(Where(look, noise, placed, 'profiles') .. ', a status line')
+				OW:CloseDialog()
+			end
+		end
+	end
+	stub.size_noise = 0
+	st.config.global.optionsWindow = nil
+	theme('thick')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
 end)
 
 ------------------------------------------------------------------ under the Blizzard theme

@@ -46,6 +46,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                                   own body in)
 	  body.shareTitles                 the section titles drawn with a
 	                                   shareable block's marks (optionsshare.lua)
+	  body.endsFloating                the last drawn line is a line of
+	                                   buttons off the panel (under panels):
+	                                   what holds the body ends OB.FLOAT_GAP
+	                                   under it, as far as it is under the
+	                                   rows (an item's menu)
 
 	sections are the model's ({ title, note, rows }, OM.BuildView). Rows no
 	widget draws are left out, and so are sections left empty; the height is
@@ -68,8 +73,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	that continues a section after an inline group), floats off the panel
 	instead, on the body's own fill, as tall as its buttons, each in its
 	slot off the padding (a centred group across the body, a right one
-	ending at its right edge, a small one at its quarter's left, in line
-	with the panel's edge), with no panel, hairline or divider. The gaps: a
+	ending at its right edge, a lone small one at its quarter's left, in
+	line with the panel's edge; buttons that share the line in its halves
+	or quarters each fill their slot, the slots 12 apart, so they're an
+	even row across the body and the line under them lines up:
+	Body:ButtonSlotRect), with no panel, hairline or divider. The gaps: a
 	panel ends OB.FLOAT_GAP (24, the body's bottom margin) above it, and the
 	rows after it start a panel of their own as far under it, so a line of
 	buttons between two runs of rows has the same space above and below;
@@ -120,7 +128,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	which loads right after this file, and so is a setting's own reset (its
 	default field: OB.PlaceDefault, which PlaceRow runs before
 	OB.PlaceShare, and Refresh again for a row with one, so the icon follows
-	a drag). The share hooks in at three places: PlaceRow
+	a drag, then OB.FollowShare, so the row's label, diff icon and hover line
+	follow the icon). The share hooks in at three places: PlaceRow
 	ends with OB.PlaceShare(cell) (cell.body is the body), the row frame's
 	OnEnter and a position block's parts call OB.ShareEnter(frame), and
 	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
@@ -176,6 +185,19 @@ local LEAD_GAP = TITLE_GAP
 local FLOAT_LINE_GAP = BUTTON_GAP
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
+
+-- The whole units that hold a height read back from the game (GetHeight):
+-- the next whole unit up, but a hair either side of a whole number is that
+-- number. The game hands a size back from its layout in single precision, a
+-- hair off the size it was given (26.000002 for a button set to 26), and a
+-- plain ceil made a 26 button's line of buttons 27 tall: the button sat
+-- half a unit down it, and a dialog holding it came out an odd height.
+-- SaftUI's scale makes a unit a pixel, so a 1px border half a unit off blurs.
+local READ_BACK = 0.01 -- far over the game's hair, far under a unit
+local function WholeHeight(height)
+	return ceil(height - READ_BACK)
+end
+OB.WholeHeight = WholeHeight
 OB.FLOAT_GAP = FLOAT_GAP
 OB.BOTTOM = BODY_BOTTOM -- the body's bottom margin, in the height Draw returns (a dialog leaves it off)
 
@@ -449,7 +471,11 @@ end
 -- margin is under it. A line on the panel after a floating one starts
 -- FLOAT_GAP under it, so a line of buttons between two runs of panel has the
 -- same gap above and below. entry.endsFloating: the section's last line
--- floats.
+-- floats. A floating line's buttons that share it in slots (two or more in
+-- its halves or quarters, not a group with an align) are marked slotted:
+-- each takes its whole slot (Body:ButtonSlotRect). A line of buttons right
+-- under a description, but for the section's closing line, doesn't float:
+-- it's the description's, and stays on the panel with it.
 -- Returns the rows' height (height itself when no line floats).
 local function Float(entry, placed, height, floatOf)
 	local lines, byY, any = {}, {}, false
@@ -464,9 +490,19 @@ local function Float(entry, placed, height, floatOf)
 		local h = floatOf(p.row)
 		if h then line.floatHeight = max(line.floatHeight, h) else line.floats = false end
 	end
+	table.sort(lines, function(a, b) return a.y < b.y end)
+	-- A line of buttons right under a description, mid-section, is that
+	-- description's (the Profiles page's Reset Profile under the text that
+	-- explains it): it stays on the panel with it. The section's closing
+	-- line still floats: those buttons are the section's (the bags'
+	-- Miscellaneous editor's Reset under its note).
+	for i = 2, #lines - 1 do
+		for _, p in ipairs(lines[i - 1].entries) do
+			if p.row.type == 'description' then lines[i].floats = false end
+		end
+	end
 	for _, line in ipairs(lines) do any = any or line.floats end
 	if not any then return height end
-	table.sort(lines, function(a, b) return a.y < b.y end)
 	local y, above = 0, nil -- above: 'panel' or 'float', the line before
 	for i, line in ipairs(lines) do
 		if line.floats then
@@ -477,7 +513,14 @@ local function Float(entry, placed, height, floatOf)
 			else
 				y = y + (entry.joins and FLOAT_GAP or LEAD_GAP)
 			end
-			for _, p in ipairs(line.entries) do p.y, p.floats, p.floatHeight = y, true, line.floatHeight end
+			local inSlots = 0
+			for _, p in ipairs(line.entries) do
+				if p.col == 1 or p.col == 2 then inSlots = inSlots + 1 end
+			end
+			for _, p in ipairs(line.entries) do
+				p.y, p.floats, p.floatHeight = y, true, line.floatHeight
+				p.slotted = inSlots > 1 and (p.col == 1 or p.col == 2) or nil
+			end
 			y = y + line.floatHeight
 			above = 'float'
 		else
@@ -726,7 +769,11 @@ local function PlaceRow(cell, x, y, width)
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 	elseif row.type == 'execute' then
 		label:Hide()
-		widget:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+		-- In the middle of the row, by its top: half the room above it, rounded
+		-- down, so a button shorter than its line by an odd amount stays on
+		-- whole units (a floating line is its tallest button's height).
+		local room = cell.height - WholeHeight(widget:GetHeight())
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor(room / 2))
 	elseif row.type == 'position' then
 		label:Hide()
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
@@ -771,6 +818,11 @@ local function PlaceRow(cell, x, y, width)
 			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 		end
 	end
+	-- The label's and the hover line's own ends: a setting's own reset cuts
+	-- them while its icon shows and gives them back when it goes, mid-drag
+	-- too (OB.PlaceDefault).
+	cell.labelWidth = label:IsShown() and label:GetWidth() or nil
+	cell.ownLineEnd = cell.lineEnd
 	-- A setting's own reset by its control (its default), then a shareable
 	-- row's marks: optionsshare.lua.
 	if OB.PlaceDefault then OB.PlaceDefault(cell) end
@@ -887,6 +939,22 @@ function Body:SlotRect(col, quarter)
 	return x, self.quarterWidth
 end
 
+-- Where a floating button that shares its line takes its slot (slotted,
+-- OB.LayoutSections): the line's halves and quarters as SlotRect lays them
+-- out, but BUTTON_GAP (12) apart, as two lines of buttons are, so the
+-- buttons of a line are an even row across the body and those of the line
+-- under them line up with them. Whole units as SlotRect: halves and quarters
+-- round down, the second of each pair flush with the outer edge (a 520
+-- dialog's quarters are 121 wide, at 0, 133, 266 and 399).
+function Body:ButtonSlotRect(col, quarter)
+	local half = floor((self.width - BUTTON_GAP) / 2)
+	local x = col == 2 and (self.width - half) or 0
+	if not quarter then return x, half end
+	local width = floor((half - BUTTON_GAP) / 2)
+	if quarter == 2 then x = x + half - width end
+	return x, width
+end
+
 -- Where a cell goes: its slot, inset by the metrics' padding on each side
 -- ('full' too). Under OB.FLAT that is the slot.
 function Body:CellRect(col, quarter)
@@ -927,12 +995,12 @@ function Body:RowCell(row)
 		-- A fill row is the whole line; any other is inside the padding.
 		local fill = OM.Member(self.root, row, 'fill')
 		widget:SetWidth(fill and self.width or inside)
-		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
+		cell.height = max(rowHeight, WholeHeight(widget:GetHeight()) + 12)
 		if fill then cell.fill, cell.pad = true, 12 end
 	elseif row.type == 'multiselect' then
-		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
+		cell.height = max(rowHeight, WholeHeight(widget:GetHeight()) + 12)
 	elseif row.type == 'position' then
-		cell.height = ceil(widget:GetHeight()) + 12
+		cell.height = WholeHeight(widget:GetHeight()) + 12
 		-- A shareable block's parts bring its title's hover line too.
 		widget.onTip = function(on)
 			if on then
@@ -958,7 +1026,7 @@ function Body:RowCell(row)
 			-- Its least for now: DrawSections gives it what the view leaves.
 			cell.fill, cell.pad, cell.height = true, pad, ceil(least) + pad
 		else
-			cell.height = ceil(widget:GetHeight()) + pad
+			cell.height = WholeHeight(widget:GetHeight()) + pad
 		end
 	end
 	self.cells[#self.cells + 1] = cell
@@ -1004,11 +1072,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	local function heightOf(row) return byRow[row].height end
 	local function alignOf(row) return byRow[row].align end
 	-- Under panels a section's closing line of buttons floats under its panel
-	-- (OB.LayoutSections): an execute row's button, at its own height. A
+	-- (OB.LayoutSections): an execute row's button, at its own height in whole
+	-- units (WholeHeight: the game reads a 26 button back a hair over 26). A
 	-- search result never does.
 	local function floatOf(row)
 		local cell = byRow[row]
-		if cell.widget and row.type == 'execute' then return ceil(cell.widget:GetHeight()) end
+		if cell.widget and row.type == 'execute' then return WholeHeight(cell.widget:GetHeight()) end
 	end
 	local panels = self.metrics.panels
 	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)
@@ -1039,6 +1108,7 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if cell.widget.SetHeight then cell.widget:SetHeight(cell.height - cell.pad) end
 	end
 	self.filled = #fills > 0
+	self.endsFloating = laid[#laid] ~= nil and laid[#laid].endsFloating or false
 	local pools, content, metrics = self.pools, self.content, self.metrics
 	-- No line between sections: the panels part them (and Blizzard never drew
 	-- one); the gap for it stays (entry.lineY). Under panels a panel covers each
@@ -1122,6 +1192,10 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			local x, cellWidth
 			if p.col == 'buttons' then
 				x, cellWidth = ButtonsAt(p.group, p.floats).xs[p.index], cell.widget:GetWidth()
+			elseif p.slotted then
+				-- A floating button sharing its line: its whole slot, 12 from the next.
+				x, cellWidth = self:ButtonSlotRect(p.col, p.quarter)
+				cell.widget:SetWidth(cellWidth)
 			elseif cell.fill or p.floats then
 				-- The whole line, padding or not; a floating button its slot, off the panel.
 				x, cellWidth = self:SlotRect(p.col, p.quarter)
@@ -1195,8 +1269,12 @@ function Body:Refresh(except)
 				cell.label:SetTextColor(OB.LabelColor(cell, disabled))
 			end
 		end
-		-- A setting's own reset follows the drag (the dragged row's too).
-		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then OB.PlaceDefault(cell) end
+		-- A setting's own reset follows the drag (the dragged row's too), and
+		-- the row's diff icon and hover line follow the room it takes or gives.
+		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then
+			OB.PlaceDefault(cell)
+			if OB.FollowShare then OB.FollowShare(cell) end
+		end
 	end
 end
 
@@ -1206,7 +1284,7 @@ function Body:Release()
 	end
 	wipe(self.cells)
 	wipe(self.shareTitles)
-	self.filled = false
+	self.filled, self.endsFloating = false, false
 	-- Every pool, optionsshare.lua's title hovers among them.
 	for _, pool in pairs(self.pools) do ReleaseAll(pool) end
 end

@@ -27,8 +27,9 @@ local OM = st.OptionsModel
 	of 6 and a 46 value box), select, multiselect, input, keybinding and color 170.
 	An item (its Show box, its name and its menu's dots) spans its cell: the
 	body gives it the cell's width (W.WIDTH.item is 0) and draws its name.
-	An execute button is as wide as its name needs (80 at least),
-	and a description is as wide as the window sets it (400 until it does). A
+	An execute button is as wide as its name needs (80 at least), or as its
+	slot when the body gives it one (widget:SetWidth: a floating line of
+	buttons that share it), and a description is as wide as the window sets it (400 until it does). A
 	position block is as wide as its parts (200, 332 with a name target, 352
 	with a select target) and 65 high; its get/set/validate take the part first (point,
 	rel_point, x_off, y_off, frame, relative_to), so a change is
@@ -220,6 +221,25 @@ local function define(rowType, methods)
 		end
 		build(w)
 	end
+end
+
+------------------------------------------------------------------ whole units
+
+-- SaftUI's scale makes a unit a pixel, and a 1px border or line on a frame
+-- whose edge sits between two pixels blurs (or the game snaps it away, or
+-- doubles it). So the window, its dialogs and its menus keep every edge on a
+-- whole unit, whatever they hold (the body's heights: OB.WholeHeight).
+
+-- Places frame, width x height (the size just given it), over relative's
+-- middle as near as whole units allow: its top left corner half its size,
+-- rounded down, left of and above relative's centre. Anchored by its own
+-- centre, a frame of odd height (or width) would have every edge half a unit
+-- off, and all it holds with it. relative's centre is whole itself (the
+-- options window's is: an even size on whole units; and so is the screen's).
+-- Placed again whenever its size changes.
+function W.PlaceCentred(frame, relative, width, height)
+	frame:ClearAllPoints()
+	frame:SetPoint('TOPLEFT', relative, 'CENTER', -math.floor(width / 2), math.floor(height / 2))
 end
 
 ------------------------------------------------------------------ custom types

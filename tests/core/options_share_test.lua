@@ -1196,10 +1196,13 @@ test("a link's click takes its tooltip away, and leaving a link puts its blue ba
 			stub.fire_script(parts[key], 'OnLeave', true)
 			eq(rgb(parts[key].text:GetTextColor()), textBlue, key .. ' in Text > Blue again')
 		end
+		-- The reset icon: Text > Grey at rest, lit in Button > Blue under the mouse.
+		local textGrey = rgb(st.config.profile.colors.text.grey:GetRGB())
+		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'the reset icon Text > Grey at rest')
 		stub.fire_script(parts.reset, 'OnEnter', true)
-		eq(rgb(parts.reset.icon:GetVertexColor()), '1.00,1.00,1.00', 'the reset icon white under the mouse')
+		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'the reset icon Button > Blue under the mouse')
 		stub.fire_script(parts.reset, 'OnLeave', true)
-		eq(rgb(parts.reset.icon:GetVertexColor()), buttonBlue, 'and blue again')
+		eq(rgb(parts.reset.icon:GetVertexColor()), textGrey, 'and grey again')
 		for _, key in ipairs({ 'all', 'multiple' }) do
 			stub.fire_script(parts[key], 'OnEnter', true)
 			check(tip.owner == parts[key], key .. ' shows its tooltip')

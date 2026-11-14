@@ -33,7 +33,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  - the hover line (state.offers, on a row that isn't disabled): the
 	    small font under the label. On a member page Own (its tooltip: the
 	    name and '<source>: <shared>'), the reset icon (st.icons.rotateCcw,
-	    14x14, blue; its tooltip says what it drops), then '· Apply to: All
+	    14x14, grey, lit blue under the mouse; its tooltip says what it
+	    drops), then '· Apply to: All
 	    | Multiple'; on the source page 'Apply to: All | Multiple'. The links
 	    are frames that take the mouse (Text > Blue, white under it), the
 	    line 4 levels over the row frame and they one over the line, so they
@@ -129,8 +130,11 @@ end
 
 -- The reset icon, which a shared row's hover line (Reset) and a setting's
 -- own reset (OB.PlaceDefault) both draw: a 14x14 button holding Lucide's
--- rotate-ccw (st.icons.rotateCcw) in Button > Blue, white under the mouse.
--- tip(self) shows its tooltip; a click hides that, then runs onClick(self).
+-- rotate-ccw (st.icons.rotateCcw), Text > Grey at rest, lit in Button > Blue
+-- (the accent) under the mouse; each read as it's painted, so a color
+-- change shows on its next place or hover. tip(self) shows its tooltip; a
+-- click hides that, then runs onClick(self).
+local function ResetAtRest(button) button.icon:SetVertexColor(Grey()) end
 local function ResetIcon(parent, tip, onClick)
 	local button = CreateFrame('Button', nil, parent)
 	button:SetSize(RESET_SIZE, RESET_SIZE)
@@ -138,14 +142,14 @@ local function ResetIcon(parent, tip, onClick)
 	button.icon = button:CreateTexture(nil, 'ARTWORK')
 	button.icon:SetAllPoints(button)
 	button.icon:SetTexture(st.icons.rotateCcw)
-	button.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(button)
 	button:SetScript('OnEnter', function(self)
 		tip(self)
-		self.icon:SetVertexColor(1, 1, 1)
+		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
 	end)
 	button:SetScript('OnLeave', function(self)
 		Untip(self)
-		self.icon:SetVertexColor(Colors().button.blue:GetRGB())
+		ResetAtRest(self)
 	end)
 	button:SetScript('OnClick', function(self)
 		Untip(self)
@@ -377,7 +381,7 @@ local function FillLine(parts, state, room)
 		x = x + width + (gap or 0)
 	end
 	parts.ownText.text:SetTextColor(unpack(OB.OWN_TEXT))
-	parts.reset.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(parts.reset)
 	for _, link in ipairs({ parts.all, parts.multiple }) do
 		link.text:SetTextColor(LinkBlue())
 		link:SetWidth(TextWidth(link.text))
@@ -474,6 +478,14 @@ end
 
 ------------------------------------------------------------------ a row
 
+-- The diff icon DIFF_GAP after the label's text, or its end when the text is
+-- cut.
+local function PlaceDiff(cell, parts)
+	local label = cell.label
+	parts.diff:ClearAllPoints()
+	parts.diff:SetPoint('LEFT', label, 'LEFT', min(TextWidth(label), floor(label:GetWidth())) + DIFF_GAP, 0)
+end
+
 -- A placed row's marks (the end of the body's PlaceRow). Everything a pooled
 -- frame drew for its last row is taken off first. The state is kept on the
 -- frame (frame.shareState) as soon as it's read, for the section title's
@@ -516,17 +528,17 @@ function OB.PlaceShare(cell)
 	end
 	if not isRow then return end
 
-	-- The label moves under the mark and leaves the diff icon its room.
+	-- The label moves under the mark and leaves the diff icon its room
+	-- (cell.shareCut, which a setting's own reset keeps off it too).
 	local label = cell.label
-	label:SetWidth(max(1, label:GetWidth() - shift - (diffs and DIFF_SIZE + DIFF_GAP or 0)))
+	cell.shareCut = shift + (diffs and DIFF_SIZE + DIFF_GAP or 0)
+	label:SetWidth(max(1, label:GetWidth() - cell.shareCut))
 	OB.PlaceLabel(cell, shift)
 	frame.shareShift = shift
 	if diffs then
-		local diff = parts.diff
-		diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
-		diff:ClearAllPoints()
-		diff:SetPoint('LEFT', label, 'LEFT', min(TextWidth(label), floor(label:GetWidth())) + DIFF_GAP, 0)
-		diff:Show()
+		parts.diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
+		PlaceDiff(cell, parts)
+		parts.diff:Show()
 	end
 	if offers then
 		frame.shareOffers, frame.shareLifts = true, true
@@ -537,6 +549,20 @@ function OB.PlaceShare(cell)
 		parts.line:ClearAllPoints()
 		parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
 		HookControl(cell.widget.frame)
+	end
+end
+
+-- Mid-drag (the body's Refresh), once a setting's own reset came or went and
+-- moved the label's end and the line's (OB.PlaceDefault): the diff icon
+-- after the label again, and the hover line, shown or not, cut again at its
+-- lineEnd, as PlaceShare would draw them now.
+function OB.FollowShare(cell)
+	local frame = cell.frame
+	local parts = frame.share
+	if not (parts and frame.shareCell == cell) then return end
+	if parts.diff:IsShown() then PlaceDiff(cell, parts) end
+	if frame.shareOffers then
+		FillLine(parts, frame.shareState, (cell.lineEnd or frame:GetWidth()) - (cell.labelX or 0) - (frame.shareShift or 0))
 	end
 end
 
@@ -691,6 +717,12 @@ function OB.PlaceDefault(cell)
 	local frame, body, row, widget = cell.frame, cell.body, cell.row, cell.widget
 	if frame.defaultReset then frame.defaultReset:Hide() end
 	frame.defaultCell = nil
+	-- The label and the hover line end as the row drew them (PlaceRow's
+	-- cell.labelWidth and ownLineEnd), the label less a share's room
+	-- (cell.shareCut): what an icon took is given back while none shows.
+	local label, cut = cell.label, cell.shareCut or 0
+	if cell.labelWidth then label:SetWidth(max(1, cell.labelWidth - cut)) end
+	cell.lineEnd = cell.ownLineEnd
 	if not (body and widget) or NO_DEFAULT[row.type] or W.CUSTOM[row.type] then return end
 	local share = row.option.share
 	if type(share) == 'table' and share.own ~= nil then return end
@@ -709,7 +741,7 @@ function OB.PlaceDefault(cell)
 		frame.defaultReset = icon
 	end
 	frame.defaultCell = cell
-	icon.icon:SetVertexColor(Colors().button.blue:GetRGB())
+	ResetAtRest(icon)
 	icon:ClearAllPoints()
 	icon:Show()
 	if row.type == 'position' then
@@ -732,7 +764,6 @@ function OB.PlaceDefault(cell)
 		icon:SetPoint('RIGHT', frame, 'LEFT', right, 0)
 	end
 	local stop = right - RESET_SIZE - LABEL_ROOM
-	local label = cell.label
-	if label:IsShown() then label:SetWidth(max(1, min(label:GetWidth(), stop - (cell.labelX or 0)))) end
-	cell.lineEnd = min(cell.lineEnd or frame:GetWidth(), stop)
+	if cell.labelWidth then label:SetWidth(max(1, min(cell.labelWidth, stop - (cell.labelX or 0)) - cut)) end
+	cell.lineEnd = min(cell.ownLineEnd or frame:GetWidth(), stop)
 end

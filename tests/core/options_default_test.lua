@@ -233,17 +233,22 @@ test("the icon's tooltip says what it does and names the default by the row's ty
 			item = "Hotkey's Show goes back to its default: on.",
 			position = 'Position goes back to its default: the middle.',
 		}
+		-- Text > Grey at rest; under the mouse it lights, in Button > Blue (the accent).
+		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
+		local grey = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.grey:GetRGB())
+		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue:GetRGB())
+		check(grey ~= blue, 'two colors')
 		for key, line in pairs(want) do
 			local icon = icon_of(by[key])
+			eq(rgb(icon), grey, key .. ': Text > Grey at rest')
 			stub.fire_script(icon, 'OnEnter', true)
 			eq(tip.lines[1], 'Reset', key .. ': titled Reset')
 			eq(tip.lines[2], line, key)
-			eq(string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()), '1.00,1.00,1.00', key .. ': white under the mouse')
+			eq(rgb(icon), blue, key .. ': Button > Blue under the mouse')
 			stub.fire_script(icon, 'OnLeave', true)
 			eq(tip.owner, nil, key .. ': its tooltip goes')
+			eq(rgb(icon), grey, key .. ': grey again')
 		end
-		local blue = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.button.blue:GetRGB())
-		eq(string.format('%.2f,%.2f,%.2f', icon_of(by.range).icon:GetVertexColor()), blue, 'Button > Blue')
 
 		stub.click(icon_of(by.color))
 		eq(table.concat(resets, ','), 'color', 'its reset ran')
@@ -332,6 +337,94 @@ test('the icon follows a drag: shown once the dragged value differs, gone back a
 	end)
 end)
 
+-- Mid-drag the body draws nothing again (Body:Refresh), so as another row's
+-- icon comes and goes with the dragged value, its label and its open hover
+-- line follow it in place: cut short of the icon while it shows, their own
+-- width again once it goes. A quarter toggle on a source page, a page
+-- differing: its line, 'Apply to: All | Multiple', fits the cell without the
+-- icon and not with it, so it drops 'Apply to:' while the icon shows.
+test("mid-drag, another row's label and hover line make room for its icon as it comes, and take it back as it goes", function()
+	in_look('thick', function()
+		fresh()
+		local level = 3
+		local args = Args()
+		args.level = { type = 'range', name = 'Level', desc = 'x', order = 0.5, min = 0, max = 10, step = 1,
+			get = function() return level end, set = function(_, v) level = v end }
+		args.flag = { type = 'toggle', name = 'Flag', desc = 'x', order = 0.6, size = 'small',
+			get = function() return true end, set = function() end,
+			share = { source = 'Everything', differs = function() return { { name = 'Third', value = 'off' } } end, shared = function() return 'on' end,
+				targets = function() return {} end, applyAll = function() end, apply = function() end },
+			default = { differs = function() return level ~= 3 end, reset = function() level = 3 end } }
+		-- And a half toggle with no share: its label is what the icon cuts.
+		args.plain = { type = 'toggle', name = 'Plain', desc = 'x', order = 0.7,
+			get = function() return true end, set = function() end,
+			default = { differs = function() return level ~= 3 end, reset = function() level = 3 end } }
+		local body, by
+		body, by = draw(Page(args), function(ok, err, isDragging, widget)
+			if isDragging then body:Refresh(widget) end
+		end)
+		local c, plain = by.flag, by.plain
+		local plainWidth = plain.label:GetWidth()
+		check(not shown(c), 'no icon at its default')
+		local labelWidth, parts = c.label:GetWidth(), c.frame.share
+		stub.fire_script(c.frame, 'OnEnter', true)
+		check(parts.line:IsShown(), 'its hover line')
+		check(parts.sep:IsShown(), "'Apply to:' fits without the icon")
+		local lineWidth = parts.line:GetWidth()
+
+		local slider = by.level.widget
+		stub.mouse_buttons.LeftButton = true
+		slider.dragging = true
+		slider:Commit(6)
+		check(shown(c), 'dragged: its icon shows')
+		local stop = icon_of(c):GetLeft() - 4 - c.frame:GetLeft()
+		eq(c.lineEnd, stop, 'its line ends 4 before the icon')
+		check(c.label:GetWidth() <= stop, 'and so does its label')
+		local plainStop = icon_of(plain):GetLeft() - 4 - plain.frame:GetLeft()
+		eq(plain.label:GetWidth(), plainStop, "the plain row's label cut 4 before its icon")
+		check(parts.line:GetRight() <= icon_of(c):GetLeft() - 4, 'the line, cut again, short of the icon')
+		check(not parts.sep:IsShown(), "'Apply to:' dropped to fit")
+
+		slider:Commit(3)
+		check(not shown(c), 'back at the default: gone')
+		eq(c.lineEnd, nil, "its line's own end again")
+		eq(c.label:GetWidth(), labelWidth, 'its label its own width again')
+		eq(plain.label:GetWidth(), plainWidth, "the plain row's label its own width again")
+		eq(plain.lineEnd, nil, "and its line's end")
+		check(parts.sep:IsShown(), "'Apply to:' back")
+		eq(parts.line:GetWidth(), lineWidth, 'the whole line again')
+		stub.mouse_buttons.LeftButton = nil
+		slider.dragging = nil
+		body:Release()
+	end)
+end)
+
+-- A custom type (W.Define) draws its own frames and leaves a default alone:
+-- no icon, though its differs says it differs, bare or with a label; the
+-- built-in toggle beside them shows its own.
+test('a custom type leaves its default alone: no icon, though it differs', function()
+	in_look('thick', function()
+		local function build(w)
+			w.frame = CreateFrame('Frame', nil, UIParent)
+			w.frame:SetSize(60, 20)
+		end
+		W.Define('defaultsbare', { bare = true, build = build, methods = { Refresh = function() end } })
+		W.Define('defaultsrow', { width = 60, build = build, methods = { Refresh = function() end } })
+		local always = { differs = function() return true end, reset = function() end }
+		local root = { page = { type = 'group', name = 'Page', get = function() return true end, set = function() end, args = {
+			bare = { type = 'defaultsbare', name = 'Bare', size = 'wide', order = 1, default = always },
+			row = { type = 'defaultsrow', name = 'Row', order = 2, default = always },
+			toggle = { type = 'toggle', name = 'Toggle', order = 3, default = always },
+		} } }
+		local body, by = draw(root)
+		check(by.bare and by.row, 'both drawn')
+		check(shown(by.toggle), 'the toggle shows its icon')
+		check(not shown(by.bare), 'a bare custom type: none')
+		check(not shown(by.row), 'a custom type with a label: none')
+		body:Release()
+	end)
+end)
+
 ------------------------------------------------------------------ in a menu
 
 local menuDiffers, menuResets = false, 0
@@ -401,6 +494,20 @@ test("Global Settings' Colors and Theme: no Reset buttons; a changed color's own
 		local d = st.defaults.colors.class.MAGE
 		eq(tip.lines[2], ('Mage goes back to its default: %s.'):format(W.HexText(d.r, d.g, d.b, 1, false)), 'naming its hex')
 		stub.fire_script(icon_of(c), 'OnLeave', true)
+		-- Its colors are read as it's painted: a new Text > Grey at rest once
+		-- drawn again, a new Button > Blue lit on its next hover.
+		local function rgb(icon) return string.format('%.2f,%.2f,%.2f', icon.icon:GetVertexColor()) end
+		local buttonBlue = st.config.profile.colors.button.blue
+		colorCell('text', 'grey').widget:Commit(0.3, 0.6, 0.9)
+		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'a new Text > Grey at rest, drawn again')
+		colorCell('button', 'blue').widget:Commit(0.9, 0.1, 0.2, buttonBlue.a)
+		eq(rgb(icon_of(cell('MAGE'))), '0.30,0.60,0.90', 'still grey at rest')
+		stub.fire_script(icon_of(cell('MAGE')), 'OnEnter', true)
+		eq(rgb(icon_of(cell('MAGE'))), '0.90,0.10,0.20', 'the new Button > Blue under the mouse')
+		stub.fire_script(icon_of(cell('MAGE')), 'OnLeave', true)
+		stub.click(icon_of(colorCell('text', 'grey')))
+		stub.click(icon_of(colorCell('button', 'blue')))
+		c = cell('MAGE')
 		for i = #changed, 1, -1 do changed[i] = nil end
 		stub.click(icon_of(c))
 		eq(mage.r .. ',' .. mage.g .. ',' .. mage.b, r .. ',' .. g .. ',' .. b, 'Mage back to its default')
