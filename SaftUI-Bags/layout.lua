@@ -331,25 +331,29 @@ function INV:UpdateContainerLayout(id)
 	SizeWindow(self, container, scrollFrameWidth, tallestColumn:GetHeight(), visibleHeight)
 end
 
--- How many slots the widest of a window's sections shows, as the line of the
--- window: a section's items (a grouped free slot is one button), the currency
--- slots of the Currencies section when it is shown. Never under perrow, one
--- Compact column, nor over perrow * maxColumns.
-function INV:SectionLineSlots(container, sections)
+-- The bag window's currencies as UpdateCurrencyCategory lays them out, or nil
+-- when its Currencies section isn't shown.
+local function ShownCurrencies(self, container)
+	local category = container.categories.Currencies
+	if not (category and (container.filterButton:GetChecked() or not self.config.filters.categories.bag.Currencies)) then return end
+	return self:GetCurrencies(category.filterButton:GetChecked())
+end
+
+-- How many slots wide a window's line is: the widest of its sections (a
+-- section's items, a grouped free slot being one button; the Currencies
+-- section's currencies, `currencies` being ShownCurrencies), and wide enough
+-- to use the room the header's least width gives (whole slots), but never
+-- under perrow, one Compact column, nor over perrow * maxColumns.
+function INV:SectionLineSlots(container, sections, currencies)
 	local id = container.id
 	local most = 0
 	for _, section in ipairs(sections) do
-		local need = #section.items
-		if section.kind == 'currencies' then
-			local category = container.categories.Currencies
-			need = 0
-			if category and (container.filterButton:GetChecked() or not self.config.filters.categories.bag.Currencies) then
-				need = #self:GetCurrencies(category.filterButton:GetChecked())
-			end
-		end
+		local need = section.kind == 'currencies' and currencies and #currencies or #section.items
 		most = max(most, need)
 	end
-	return min(max(most, self.config[id].perrow), self:LineSlots(id, 'rows'))
+	local slot = self:GetButtonWidth() + self.config.buttonspacing
+	local room = math.floor((math.ceil(self:HeaderMinWidth(container)) - self.config.padding * 2 + self.config.buttonspacing) / slot)
+	return min(max(most, room, self.config[id].perrow), self:LineSlots(id, 'rows'))
 end
 
 --[[
@@ -368,17 +372,42 @@ end
 	sizes it (VisibleHeight, SizeWindow); while it is open it doesn't shrink,
 	in height or in line (container.heldSize), and the items close up within
 	their sections; it widens at once when a section needs more. Closing the
-	window or switching views releases it (INV:ReleaseLayout). In combat the
-	line stays as it is: moving the slots would touch Blizzard's buttons.
+	window or switching views releases it (INV:ReleaseLayout). In combat
+	no slot is moved (Blizzard's buttons): each frame is sized by the line its
+	slots are anchored at (category.slotLine), the window is as wide as the
+	widest, and a layout after combat brings the line to the rule.
 ]]
 function INV:LayoutSections(container, sections)
 	local id = container.id
 	local spacing = self.config.buttonspacing
-	local lineSlots = self:SectionLineSlots(container, sections)
+	local currencies
+	for _, section in ipairs(sections) do
+		if section.kind == 'currencies' then currencies = ShownCurrencies(self, container) end
+	end
+	local want = self:SectionLineSlots(container, sections, currencies)
 	local held = container:IsShown() and container.heldSize
-	if held and held.lineSlots then lineSlots = max(lineSlots, held.lineSlots) end
+	if held and held.lineSlots then want = max(want, held.lineSlots) end
+	local lineSlots = want
 	if InCombatLockdown() then
-		lineSlots = container.sectionLine or self:LineSlots(id, self:GetLaidOutView(container))
+		-- Each frame's slots stay anchored at their own line (UpdateCategory
+		-- sizes it by that), so the window is as wide as the widest of them.
+		lineSlots = 0
+		local disagree
+		for _, section in ipairs(sections) do
+			local frame = container.categories[self:SectionFrameName(section)]
+			if frame and frame.slotLine then
+				lineSlots = max(lineSlots, frame.slotLine)
+			end
+		end
+		if lineSlots == 0 then lineSlots = container.sectionLine or self:LineSlots(id, self:GetLaidOutView(container)) end
+		for _, section in ipairs(sections) do
+			local frame = container.categories[self:SectionFrameName(section)]
+			if frame and frame.slotLine and frame.slotLine ~= lineSlots then disagree = true end
+		end
+		-- Laid out again out of combat, to the line the rule gives.
+		if want ~= lineSlots or disagree then
+			st:QueueAfterCombat('InventoryLine', function() INV:QueueUpdate(true) end)
+		end
 	end
 	container.sectionLine = lineSlots
 	local lineWidth = (self:GetButtonWidth() + spacing) * lineSlots - spacing
@@ -389,7 +418,7 @@ function INV:LayoutSections(container, sections)
 		local name = self:SectionFrameName(section)
 		if section.kind == 'currencies' then
 			-- Shown or hidden by its own setting (filters.categories.bag.Currencies).
-			self:UpdateCurrencyCategory(container.filterButton:GetChecked(), lineSlots)
+			self:UpdateCurrencyCategory(container.filterButton:GetChecked(), lineSlots, currencies)
 		else
 			self:UpdateCategory(id, name, section.items, section.title, lineSlots)
 		end
@@ -412,7 +441,8 @@ function INV:LayoutSections(container, sections)
 	local visibleHeight = VisibleHeight(self, id, contentHeight)
 	if container:IsShown() then
 		if held and held.height then visibleHeight = max(visibleHeight, held.height) end
-		container.heldSize = { height = visibleHeight, lineSlots = lineSlots }
+		-- A line widened in combat isn't held: it follows the rule after combat.
+		container.heldSize = { height = visibleHeight, lineSlots = not InCombatLockdown() and lineSlots or held and held.lineSlots or nil }
 	else
 		container.heldSize = nil
 	end

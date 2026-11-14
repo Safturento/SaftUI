@@ -430,6 +430,30 @@ function INV:CreateCategory(id, categoryName, slotPoolFunc)
 	return categoryFrame
 end
 
+-- Sets a title on its font string, cut short with dots inside `room` wide so
+-- the scroll frame doesn't cut it mid-glyph: the name gives way, the count in
+-- parentheses at its end stays.
+local function FitTitle(text, title, room)
+	text:SetWordWrap(false)
+	text:SetWidth(0)
+	text:SetText(title)
+	if text:GetUnboundedStringWidth() <= room then return end
+	local head, tail = title:match('^(.-)( %(.-%))$')
+	if not head then head, tail = title, '' end
+	local cut = #head
+	while cut > 0 do
+		cut = cut - 1
+		-- Not in the middle of a character, nor of a color escape.
+		while cut > 0 and head:byte(cut + 1) and head:byte(cut + 1) >= 128 and head:byte(cut + 1) < 192 do cut = cut - 1 end
+		local piece = head:sub(1, cut):gsub('|c%x*$', ''):gsub('|$', '')
+		local opened = select(2, piece:gsub('|c%x%x%x%x%x%x%x%x', ''))
+		local closed = select(2, piece:gsub('|r', ''))
+		text:SetText(piece .. (opened > closed and '|r' or '') .. '...' .. tail)
+		if text:GetUnboundedStringWidth() <= room then return end
+	end
+	text:SetText('...' .. tail)
+end
+
 -- Fills a category frame with its items (made if it isn't), shows it and sizes
 -- it. title is its header's text: by default its name and how many it holds
 -- ("Armor (3)"), and false for none, the header hidden and taking no height.
@@ -458,11 +482,7 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 		numShown = 0
 		for _, item in pairs(categoryItems) do numShown = numShown + (item.count or 1) end
 	end
-	if title then
-		categoryFrame.header.text:SetText(title)
-	elseif title == nil then
-		categoryFrame.header.text:SetFormattedText("%s (%d)", self:CategoryName(categoryName), numShown)
-	end
+	local titleText = title or title == nil and ("%s (%d)"):format(self:CategoryName(categoryName), numShown)
 
 	for i, item in pairs(categoryItems) do
 		local slot = categoryFrame.slots[i] or self:CreateSlot(container, categoryName)
@@ -484,6 +504,9 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 		categoryFrame.slotLine = lineSlots
 	end
 
+	-- In combat the slots stay where they are, so the frame is as wide as the
+	-- line they are anchored at: rows and width agree with them.
+	lineSlots = categoryFrame.slotLine or lineSlots
 	local spacing = self.config.buttonspacing
 	local numRows = math.ceil(#categoryItems / lineSlots)
 	categoryFrame.numRows = numRows
@@ -493,7 +516,12 @@ function INV:UpdateCategory(id, categoryName, categoryItems, title, lineSlots)
 	else
 		categoryFrame:SetHeight(rowsHeight + self.config.categoryTitleHeight)
 	end
-	categoryFrame:SetWidth((self:GetButtonWidth() + spacing) * lineSlots - spacing)
+	local width = (self:GetButtonWidth() + spacing) * lineSlots - spacing
+	categoryFrame:SetWidth(width)
+	if titleText then
+		local room = width - 2 - (categoryFrame.filterCheckbox and categoryFrame.filterCheckbox:IsShown() and 16 or 0)
+		FitTitle(categoryFrame.header.text, titleText, room)
+	end
 end
 
 function INV:FlushCategory(category)

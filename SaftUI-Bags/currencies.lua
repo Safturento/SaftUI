@@ -235,8 +235,9 @@ end
 
 -- Fills the bag window's Currencies category, in lines of lineSlots slots, and
 -- sizes it to them: by default the bag window's line now
--- (INV:SlotLine), whichever window's update calls it.
-function INV:UpdateCurrencyCategory(forceShow, lineSlots)
+-- (INV:SlotLine), whichever window's update calls it. currencyItems is the list
+-- (INV:GetCurrencies) when the caller has it.
+function INV:UpdateCurrencyCategory(forceShow, lineSlots, currencyItems)
     --C_CurrencyInfo.RequestCurrencyDataForAccountCharacters()
     local bag = self.containers.bag
     local category = bag.categories.Currencies
@@ -247,7 +248,7 @@ function INV:UpdateCurrencyCategory(forceShow, lineSlots)
     --TODO: We can definitely be smarter about updating but this is fine for now
     category.slotPool:ReleaseAll()
 
-    local currencyItems = self:GetCurrencies(category.filterButton:GetChecked())
+    currencyItems = currencyItems or self:GetCurrencies(category.filterButton:GetChecked())
     local prev
     local prevRow = category.header
     for i, currencyData in pairs(currencyItems) do

@@ -270,5 +270,6 @@ function INV:HeaderMinWidth(container)
 	else
 		extent = extent + st.CLOSE_INSET + close:GetWidth()
 	end
-	return 2 * (extent + closeGap) + container.title:GetStringWidth()
+	-- A whole number, so the window's edge is on a pixel.
+	return math.ceil(2 * (extent + closeGap) + container.title:GetStringWidth())
 end

@@ -10,6 +10,8 @@ local P = load_test_file('lib/pixels.lua')
 
 local INV, W
 local bw, bh, sp, padding
+-- The least line: perrow, or the slots the header's least width has room for.
+local F
 
 -- The bag window in view, perrow 4 and maxColumns 3 (a line of at most 12),
 -- laid out with the bag's items given by counts: how many items of each class
@@ -39,7 +41,10 @@ local function world(view, counts, setup)
 	INV.config.bag.maxColumns = 3
 	if setup then setup() end
 	local container = H.window('bag')
+	-- As INV:CreateContainer hooks it: closing a window releases its layout.
+	container:HookScript('OnHide', function() INV:ReleaseLayout(container) end)
 	INV:UpdateContainer('bag', true)
+	F = math.max(INV.config.bag.perrow, math.floor((INV:HeaderMinWidth(container) - padding * 2 + sp) / (bw + sp)))
 	return container
 end
 
@@ -87,12 +92,12 @@ test('rows: a section of 30 items caps the line at perrow * maxColumns', functio
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('rows: one item is a line of perrow, the floor', function()
+test("rows: one item is the floor: perrow, or what the header's least width has room for", function()
 	local c = world('rows', { Weapon = 1 })
-	eq(c.categories.Weapons:GetWidth(), line(4), 'one Compact column wide')
-	eq(c:GetWidth(), window_width(c, 4), 'the window is as wide as one column')
+	eq(c.categories.Weapons:GetWidth(), line(F), 'the floor wide')
+	eq(c:GetWidth(), window_width(c, F), 'the window is as wide as the floor')
 	local none = world('rows', {})
-	eq(none:GetWidth(), window_width(none, 4), 'no items: the same')
+	eq(none:GetWidth(), window_width(none, F), 'no items: the same')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -133,10 +138,12 @@ test('the window holds its width while open, widens at once, and releases it on 
 	-- Closed and opened again (OnHide releases the layout): afresh.
 	c:Hide()
 	INV:ReleaseLayout(c)
+	eq(c.sectionLine, nil, 'a release forgets the window\'s line')
+	eq(INV:SlotLine(c), INV:LineSlots('bag', 'rows'), 'and a slot made now takes the most a line holds')
 	c:Show()
 	update(c)
-	eq(c.scrollFrame:GetWidth(), line(4), 'reopened, as narrow as the items need: the floor')
-	eq(c.categories.Weapons:GetWidth(), line(4), 'and the frames')
+	eq(c.scrollFrame:GetWidth(), line(F), 'reopened, as narrow as the items need: the floor')
+	eq(c.categories.Weapons:GetWidth(), line(F), 'and the frames')
 
 	-- A view switch releases it too.
 	for i = 1, 11 do W.put(0, 20 + i, W.item(700 + i, 'Bolt ' .. i, 'Trade Goods', 10)) end
@@ -145,7 +152,7 @@ test('the window holds its width while open, widens at once, and releases it on 
 	for i = 1, 11 do W.bags[0].items[20 + i] = nil end
 	switch('compact')
 	switch('rows')
-	eq(c.scrollFrame:GetWidth(), line(4), 'after a switch away and back, released')
+	eq(c.scrollFrame:GetWidth(), line(F), 'after a switch away and back, released')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -194,7 +201,7 @@ test('rows with Grouped empty slots: the Empty Slots section counts its buttons,
 	local c = world('rows', { Weapon = 2 }, function() INV.config.bag.emptySlots = 'grouped' end)
 	local empties = c.categories['Empty Slots']
 	check(empties and empties:IsShown(), 'the Empty Slots section shows')
-	eq(empties:GetWidth(), line(4), 'one grouped button: the floor')
+	eq(empties:GetWidth(), line(F), 'one grouped button: the floor')
 	eq(#take_errors(), 0, 'no errors')
 end)
 
@@ -204,5 +211,253 @@ test('the sections and slots sit on whole pixels, and the window is a whole widt
 		eq(P.report(P.off(c.scrollFrame.ScrollChild)), P.report({}), view .. ': every section and slot on a whole pixel')
 		eq(c:GetWidth() % 1, 0, view .. ': a whole width')
 	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+------------------------------------------------------------------ the invariant
+
+-- At every moment, in combat or not: every shown item button lies inside its
+-- section frame, no two sections overlap, and every section lies inside the
+-- window.
+local EPS = 0.01
+local function invariant(c, label)
+	local frames = {}
+	for name, frame in pairs(c.categories) do
+		if frame:IsShown() and frame.container == c and not (name == 'Currencies') then
+			table.insert(frames, frame)
+			for i, slot in ipairs(frame.slots) do
+				if slot:IsShown() then
+					local where = label .. ': ' .. name .. ' slot ' .. i
+					check(slot:GetLeft() >= frame:GetLeft() - EPS and slot:GetRight() <= frame:GetRight() + EPS, where .. ' inside its frame sideways')
+					check(slot:GetTop() <= frame:GetTop() + EPS and slot:GetBottom() >= frame:GetBottom() - EPS, where .. ' inside its frame down')
+				end
+			end
+			check(frame:GetLeft() >= c.scrollFrame:GetLeft() - EPS and frame:GetRight() <= c.scrollFrame:GetRight() + EPS, label .. ': ' .. name .. ' inside the scroll frame')
+		end
+	end
+	table.sort(frames, function(a, b) return a:GetTop() > b:GetTop() end)
+	for i = 2, #frames do
+		check(frames[i]:GetTop() <= frames[i - 1]:GetBottom() + EPS, label .. ': ' .. frames[i].name .. ' below ' .. frames[i - 1].name)
+	end
+	check(c.scrollFrame:GetRight() <= c:GetRight() + EPS, label .. ': the scroll frame inside the window')
+end
+
+local function in_combat(fn)
+	stub.in_combat = true
+	fn()
+	stub.in_combat = false
+end
+
+local function moves(c)
+	local n = 0
+	for _, frame in pairs(c.categories) do
+		for _, slot in ipairs(frame.slots) do
+			for _, method in ipairs({ 'SetPoint', 'ClearAllPoints' }) do
+				local original = slot[method]
+				slot[method] = function(...) n = n + 1 return original(...) end
+			end
+		end
+	end
+	return function() return n end
+end
+
+test('combat: opened after a close, with a section that grew while closed', function()
+	local c = world('rows', { Consumable = 5, Weapon = 2 }) -- a line of five (or the floor, if wider)
+	local line5 = c.categories.Consumables:GetWidth()
+	c:Hide()
+	for i = 1, 3 do W.put(0, 30 + i, W.item(900 + i, 'Tonic ' .. i, 'Consumable', 10)) end
+	local moved
+	in_combat(function()
+		c:Show()
+		moved = moves(c)
+		update(c)
+		invariant(c, 'opened in combat')
+		eq(moved(), 0, 'no item button moved in combat')
+		eq(c.categories.Consumables:GetWidth(), line5, 'frames keep the line their slots are anchored at')
+		eq(c.categories.Consumables.numRows, 8 > F and 2 or 1, 'rows follow that line')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('combat: a category first shown in combat with more items than the line', function()
+	local c = world('rows', { Weapon = 2 })
+	local before = c:GetWidth()
+	in_combat(function()
+		local moved = moves(c)
+		for i = 1, 7 do W.put(0, 30 + i, W.item(900 + i, 'Bolt ' .. i, 'Trade Goods', 10)) end
+		update(c)
+		invariant(c, 'new section in combat')
+		eq(moved(), 0, 'no item button moved')
+		check(c:GetWidth() >= before, 'the window did not narrow')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('after combat the window lays out again to the rule', function()
+	local c = world('rows', { Weapon = 2 })
+	in_combat(function()
+		for i = 1, 7 do W.put(0, 30 + i, W.item(900 + i, 'Bolt ' .. i, 'Trade Goods', 10)) end
+		update(c)
+	end)
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	update(c)
+	eq(c.categories['Trade Goods']:GetWidth(), line(math.max(7, F)), 'seven trade goods: a line of seven')
+	eq(c.categories.Weapons:GetWidth(), line(math.max(7, F)), 'every section')
+	invariant(c, 'after combat')
+	local top = c.categories['Trade Goods'].slots
+	eq(top[7]:GetTop(), top[1]:GetTop(), 'the seventh on the first line')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('after combat a layout is queued for a window opened in combat with a stale line', function()
+	local c = world('rows', { Consumable = 5, Weapon = 2 })
+	c:Hide()
+	for i = 1, 8 do W.put(0, 30 + i, W.item(900 + i, 'Tonic ' .. i, 'Consumable', 10)) end
+	in_combat(function() c:Show() update(c) end)
+	INV.NEED_UPDATE = false
+	stub.fire_event('PLAYER_REGEN_ENABLED')
+	check(INV.NEED_UPDATE, 'a full update is queued when combat ends')
+	update(c)
+	eq(c.categories.Consumables:GetWidth(), line(math.max(13, F) > 12 and 12 or math.max(13, F)), 'at the line the rule gives')
+	invariant(c, 'caught up')
+end)
+
+test('combat: items arriving while open keep every item inside its section', function()
+	local c = world('rows', { Consumable = 6, Weapon = 2 })
+	in_combat(function()
+		local moved = moves(c)
+		for i = 1, 4 do W.put(0, 30 + i, W.item(900 + i, 'Tonic ' .. i, 'Consumable', 10)) end
+		update(c)
+		invariant(c, 'loot in combat')
+		eq(moved(), 0, 'no item button moved')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a Bags setting changed, then combat: slotLine is true and the invariant holds', function()
+	local c = world('rows', { Consumable = 5, Weapon = 2 })
+	INV:UpdateConfig('bag')
+	INV:StyleContainerContents(c)
+	update(c)
+	for name, frame in pairs(c.categories) do
+		if frame.slotLine and frame.slots[frame.slotLine + 1] then
+			eq(select(2, frame.slots[frame.slotLine + 1]:GetPoint(1)), frame.slots[1], name .. ': slot after the line is under the first, as slotLine says')
+		end
+	end
+	c:Hide()
+	in_combat(function()
+		for i = 1, 3 do W.put(0, 30 + i, W.item(900 + i, 'Tonic ' .. i, 'Consumable', 10)) end
+		c:Show()
+		update(c)
+		invariant(c, 'setting then combat')
+	end)
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('slotLine is recorded by every path that anchors slots', function()
+	local c = world('compact', { Consumable = 5, Weapon = 2 })
+	switch('rows')
+	local cap = INV:LineSlots('bag', 'rows')
+	for name, frame in pairs(c.categories) do
+		if #frame.slots > 0 and name ~= 'Currencies' then
+			check(frame.slotLine == cap or frame.slotLine == c.sectionLine, name .. ': recorded after a view switch: ' .. tostring(frame.slotLine))
+		end
+	end
+	INV:ReleaseLayout(c)
+	switch('compact')
+	for name, frame in pairs(c.categories) do
+		if #frame.slots > 0 and name ~= 'Currencies' then eq(frame.slotLine, 4, name .. ': Compact records perrow') end
+	end
+	switch('rows')
+	local armor = c.categories.Armor
+	local line = armor.slotLine
+	local made = #armor.slots
+	INV:CreateSlot(c, 'Armor')
+	eq(armor.slotLine, line, 'a new slot anchors at the frame\'s line and leaves it')
+	eq(#armor.slots, made + 1, 'made')
+	INV:ReleaseLayout(c)
+	INV:SetSlotPosition(armor.slots[#armor.slots], armor, c)
+	eq(armor.slotLine, line, 'released, a slot still anchors at the frame\'s own line')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+local function currencies_world(view, counts, n)
+	return world(view, counts, function()
+		C_CurrencyInfo.RequestCurrencyDataForAccountCharacters = function() end
+		C_CurrencyInfo.GetCurrencyListSize = function() return n end
+		C_CurrencyInfo.GetCurrencyListInfo = function(i)
+			return { name = 'Coin ' .. i, quantity = i, iconFileID = i, isHeader = false }
+		end
+		C_CurrencyInfo.GetCurrencyListLink = function(i) return 'currency:' .. i end
+		C_CurrencyInfo.GetCurrencyIDFromLink = function(link) return tonumber(link:match('%d+')) end
+		C_CurrencyInfo.GetBasicCurrencyInfo = function() return { quality = 1 } end
+	end)
+end
+
+test('the Currencies section decides the line when it has the most, once per layout', function()
+	local calls = 0
+	local c = currencies_world('rows', { Weapon = 2 }, 10)
+	local original = INV.GetCurrencies
+	INV.GetCurrencies = function(...) calls = calls + 1 return original(...) end
+	update(c)
+	INV.GetCurrencies = original
+	check(c.categories.Currencies:IsShown(), 'the Currencies section shows')
+	eq(c.categories.Weapons:GetWidth(), line(10), 'ten currencies, two weapons: a line of ten')
+	eq(c.categories.Currencies:GetWidth(), line(10), 'the Currencies frame too')
+	eq(calls, 1, 'GetCurrencies once per layout')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("a bank in Rows: sections of 3, 2, 2 and 5 are a line of 5 (or what the header's room allows)", function()
+	INV, W = H.views_world('forever')
+	bw, bh, sp = INV:GetButtonWidth(), INV:GetButtonHeight(), INV.config.buttonspacing
+	padding = INV.config.padding
+	local tab = INV.bagIds.combinedbank[1]
+	W.bag(tab, 98, 'Bank')
+	local slot, id = 0, 500
+	for _, class in ipairs({ 'Consumable', 'Weapon', 'Trade Goods', 'Armor' }) do
+		for i = 1, ({ Consumable = 3, Weapon = 2, ['Trade Goods'] = 2, Armor = 5 })[class] do
+			slot, id = slot + 1, id + 1
+			W.put(tab, slot, W.item(id, class .. i, class, 50 - i))
+		end
+	end
+	INV.config.stackItems = false
+	INV.config.combinedbank.view = 'rows'
+	INV.config.combinedbank.perrow = 4
+	INV.config.combinedbank.maxColumns = 5
+	local c = H.window('combinedbank')
+	c:HookScript('OnHide', function() INV:ReleaseLayout(c) end)
+	INV:UpdateContainer('combinedbank', true)
+	local fit = math.floor((INV:HeaderMinWidth(c) - padding * 2 + sp) / (bw + sp))
+	local want = math.min(20, math.max(5, fit))
+	eq(c.sectionLine, want, 'a line of five, or the header-wide slots if more')
+	check(want < 20, 'far under the cap of twenty')
+	eq(c.scrollFrame:GetWidth(), line(want), 'the scroll frame')
+	eq(c:GetWidth() % 1, 0, 'a whole width')
+	check(c:GetWidth() <= line(want) + padding * 2 + bw + sp, 'no blank strip as wide as a slot')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the window uses the room its header needs: whole slots, never over the cap', function()
+	local c = world('rows', { Weapon = 1 }, function() INV.config.bag.perrow = 2 end)
+	local room = math.floor((INV:HeaderMinWidth(c) - padding * 2 + sp) / (bw + sp))
+	check(room > 2, 'the header is wider than two slots (the test means something)')
+	eq(c.sectionLine, math.min(room, INV:LineSlots('bag', 'rows')), 'the line grows to fit the header')
+	eq(c:GetWidth() % 1, 0, 'a whole width')
+	check(c:GetWidth() - padding * 2 - c.scrollFrame:GetWidth() < bw + sp, 'under a slot of blank on the right')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a title longer than the line is cut with dots inside it, the count kept', function()
+	local c = world('rows', { Weapon = 2 })
+	local weapons = c.categories.Weapons
+	local items = {}
+	for _, s in ipairs(weapons.slots) do if s.info then table.insert(items, s.info) end end
+	INV:UpdateCategory('bag', 'Weapons', items, 'A very long category name that cannot possibly fit (12)', F)
+	local text = weapons.header.text
+	check(text:GetUnboundedStringWidth() <= weapons:GetWidth(), 'the title fits the frame')
+	check(text:GetText():find('%.%.%. %(12%)$'), 'cut with dots, the count at the end: ' .. tostring(text:GetText()))
+	INV:UpdateCategory('bag', 'Weapons', items, 'Short (2)', F)
+	eq(text:GetText(), 'Short (2)', 'a short title is left alone')
 	eq(#take_errors(), 0, 'no errors')
 end)

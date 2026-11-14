@@ -3,11 +3,14 @@ local INV = st:GetModule('Inventory')
 local Util = st:GetModule('Utilities')
 
 -- Anchors a slot in its category frame, in lines of lineSlots slots (by
--- default the window's line now, INV:SlotLine): the
+-- default the line the frame's slots are anchored at, else the window's line
+-- now, INV:SlotLine): the
 -- first under the frame's title (at its top when it has none), the first of
 -- each line under the one above, the rest after the one before.
 function INV:SetSlotPosition(slot, categoryFrame, container, lineSlots)
-	lineSlots = lineSlots or self:SlotLine(container)
+	lineSlots = lineSlots or categoryFrame.slotLine or self:SlotLine(container)
+	-- The frame's line is the one its slots are anchored at: the first slot sets it.
+	categoryFrame.slotLine = categoryFrame.slotLine or lineSlots
 	local spacing = self.config.buttonspacing
 
 	slot:ClearAllPoints()
