@@ -375,6 +375,9 @@ test('the bar fades and takes no mouse while a mover is dragged', function()
 		end
 		return n
 	end
+	local box = frame_of('gridSize')
+	-- In the game an edit box and a button take the mouse by themselves; the stub's do not.
+	for _, f in ipairs({ box.edit, box.pair.up, box.pair.down }) do f:EnableMouse(true) end
 	local before = mouse_on()
 	check(before > 0, 'controls take the mouse')
 	eq(bar:GetAlpha(), 1, 'full alpha')
@@ -389,6 +392,8 @@ test('the bar fades and takes no mouse while a mover is dragged', function()
 	eq(bar:GetAlpha(), 1, 'back')
 	eq(mouse_on(), before, 'the controls take the mouse again, the same ones')
 	check(frame_of('grid'):IsMouseEnabled(), 'Grid among them')
+	check(box.edit:IsMouseEnabled() and box.pair.up:IsMouseEnabled() and box.pair.down:IsMouseEnabled(), "the box's own frames too")
+	check(not bar:IsMouseEnabled() and not box:IsMouseEnabled(), 'the bar and the box frame never take it')
 	eq(table.concat(events, ','), 'started drag_test,stopped drag_test', 'DragStarted and DragStopped, with the mover')
 
 	-- A drag a profile change drops is stopped too.
@@ -397,6 +402,62 @@ test('the bar fades and takes no mouse while a mover is dragged', function()
 	EM:UpdateConfig()
 	eq(bar:GetAlpha(), 1, 'a drag dropped by UpdateConfig: back')
 	eq(events[#events], 'stopped drag_test', 'and it said so')
+	reset_edit_mode()
+end)
+
+test('a drag whose commit errors still ends: the bar is whole again, and the error is reported', function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	local fail = false
+	local mover = add_mover('bad_commit', { apply = function() if fail then error('boom') end end })
+	local stopped = 0
+	EM:On('DragStopped', function(m) if m == mover then stopped = stopped + 1 end end)
+	take_errors()
+	EM:StartDrag(mover)
+	fail = true
+	EM:StopDrag(mover)
+	fail = false
+	eq(#take_errors(), 1, 'the error reached the error handler')
+	eq(stopped, 1, 'DragStopped fired anyway')
+	eq(bar:GetAlpha(), 1, 'full alpha')
+	check(frame_of('grid'):IsMouseEnabled(), 'the controls take the mouse')
+	reset_edit_mode()
+end)
+
+test('a bar left mid-drag is whole again after edit mode closes and opens', function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	local mover = add_mover('left_over')
+	EM:StartDrag(mover)
+	mover.drag = nil -- as if nothing will ever end it
+	eq(bar:GetAlpha(), 0.25, 'faded')
+	EM:Deactivate()
+	eq(bar:GetAlpha(), 1, 'Disabled puts the fade back')
+	check(frame_of('grid'):IsMouseEnabled(), 'and the mouse')
+	EM:StartDrag(mover)
+	mover.drag = nil
+	bar:Show()
+	stub.fire_script(bar, 'OnHide')
+	EM.active = false
+	EM:Activate()
+	eq(bar:GetAlpha(), 1, 'Enabled starts with a live bar')
+	check(frame_of('grid'):IsMouseEnabled(), 'the controls take the mouse')
+	reset_edit_mode()
+end)
+
+test("the Grid size box lets go of the keyboard when a mover is pressed or dragged, or edit mode closes", function()
+	EM:Activate()
+	EM:SetSetting('grid', true) -- a disabled box takes no focus
+	local mover = add_mover('focus_test')
+	local edit = frame_of('gridSize').edit
+	for _, how in ipairs({ 'Pressed', 'DragStarted', 'Disabled' }) do
+		edit:SetFocus()
+		check(edit:HasFocus(), how .. ': it has focus')
+		if how == 'Pressed' then stub.fire_script(mover.overlay, 'OnMouseDown', 'LeftButton')
+		elseif how == 'DragStarted' then EM:StartDrag(mover); EM:StopDrag(mover)
+		else EM:Deactivate() end
+		check(not edit:HasFocus(), how .. ': focus let go')
+	end
 	reset_edit_mode()
 end)
 
@@ -433,18 +494,25 @@ end)
 
 test('in combat the bar hides with edit mode and its buttons do nothing', function()
 	EM:Activate()
+	EM:SetSetting('grid', true) -- the box is on, so only Guard stops it
 	local bar = EM:GetBar()
 	stub.fire_event('PLAYER_REGEN_DISABLED')
 	check(not bar:IsShown(), 'entering combat: hidden')
 	check(not EM.active, 'edit mode off')
 	EM.active = true -- the bar's buttons, should one be pressed in that last moment
 	stub.in_combat = true
+	settings().grid = false
 	stub.click(frame_of('grid'))
 	eq(settings().grid, false, 'Grid unchanged')
 	stub.click(frame_of('snapFrames'))
 	eq(settings().snap_frames, false, 'Snap to frames unchanged')
+	settings().grid = true
 	stub.click(frame_of('gridSize').pair.up)
-	eq(settings().grid_size, 32, 'Grid size unchanged')
+	eq(settings().grid_size, 32, 'Grid size arrow does nothing')
+	frame_of('gridSize').edit:SetText('50')
+	stub.fire_script(frame_of('gridSize').edit, 'OnEnterPressed')
+	eq(settings().grid_size, 32, 'a typed size does nothing')
+	settings().grid = false
 	stub.click(frame_of('options'))
 	check(not OW:IsShown(), 'Options opens nothing')
 	stub.click(frame_of('exit'))
@@ -584,8 +652,8 @@ test("every piece of the bar sits on whole pixels, at any screen, under each loo
 				eq(#off, 0, where .. 'pressed: ' .. P.report(off))
 				stub.fire_script(frame_of('exit'), 'OnMouseUp', 'LeftButton')
 			end
-			-- The game's scale change: SaftUI sets its scale for the new size, a
-			-- unit a pixel again, and the event follows.
+			-- SaftUI's scale for a new screen (what a reload gives: it sets
+			-- UIParent's scale at login only), then the event.
 			set_screen(1600, 900)
 			stub.fire_event('UI_SCALE_CHANGED')
 			local off = P.off(bar)
@@ -595,6 +663,24 @@ test("every piece of the bar sits on whole pixels, at any screen, under each loo
 	set_screen(1920, 1080)
 	stub.size_noise = 0
 	look('thick')
+	reset_edit_mode()
+end)
+
+test("at a scale that is not SaftUI's the controls still sit whole from the bar, and Options ends 10 short of its width", function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	set_screen(1920, 1080)
+	UIParent:SetScale(0.71) -- UIParent's own edges are fractional here: nothing anchored to them can be whole
+	stub.fire_event('UI_SCALE_CHANGED')
+	local width = math.floor(bar:GetWidth() + 0.5)
+	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'options' }) do
+		local _, _, _, x, y = frame_of(key):GetPoint(1)
+		eq(x, math.floor(x), key .. ': x whole from the bar')
+		eq(y, math.floor(y), key .. ': y whole from the bar')
+	end
+	local _, _, _, ox = frame_of('options'):GetPoint(1)
+	eq(ox + frame_of('options'):GetWidth(), width - 10, "Options ends 10 short of the bar's rounded width")
+	set_screen(1920, 1080)
 	reset_edit_mode()
 end)
 

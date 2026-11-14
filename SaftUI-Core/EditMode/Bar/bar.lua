@@ -341,7 +341,7 @@ function EM:GetBar()
 	bar:RegisterEvent('UI_SCALE_CHANGED')
 	bar:RegisterEvent('DISPLAY_SIZE_CHANGED')
 	bar:SetScript('OnEvent', function() EM:LayoutBar() end)
-	bar:SetScript('OnSizeChanged', function() EM:LayoutBar() end)
+	bar:HookScript('OnSizeChanged', function() EM:LayoutBar() end)
 	for _, group in ipairs(groups) do BuildGroup(group) end
 	self:LayoutBar()
 	self:RefreshBar()
@@ -361,7 +361,26 @@ local function ReleaseMouse(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do ReleaseMouse(child) end
 end
 
+-- Puts the bar back as it is outside a drag: full alpha and the mouse on the
+-- frames the drag took it off. Called when a drag ends and when edit mode turns
+-- on or off, so a drag that never reported its end can't leave the bar dead.
+local function Restore()
+	if not bar then return end
+	bar:SetAlpha(1)
+	for _, frame in ipairs(released) do frame:EnableMouse(true) end
+	wipe(released)
+end
+
+-- A focused Grid size box would keep the keyboard from edit mode's catcher, so
+-- the arrow keys would not nudge: it lets go when a mover is pressed or dragged
+-- and when edit mode closes.
+local function DropFocus()
+	local control = EM:BarControl('gridSize')
+	if control and control.frame.edit then control.frame.edit:ClearFocus() end
+end
+
 EM:On('Enabled', function()
+	Restore()
 	local frame = EM:GetBar()
 	EM:LayoutBar()
 	EM:RefreshBar()
@@ -373,23 +392,25 @@ EM:On('Disabled', function()
 	for _, group in ipairs(groups) do
 		for _, control in ipairs(group.built or {}) do W.HideTip(control.frame) end
 	end
+	DropFocus()
+	Restore()
 	bar:Hide()
 end)
+
+EM:On('Pressed', DropFocus)
 
 EM:On('DragStarted', function()
 	if not bar then return end
 	for _, group in ipairs(groups) do
 		for _, control in ipairs(group.built or {}) do W.HideTip(control.frame) end
 	end
+	DropFocus()
 	bar:SetAlpha(BAR.DRAG_ALPHA)
 	if #released == 0 then ReleaseMouse(bar) end
 end)
 
 EM:On('DragStopped', function()
-	if not bar then return end
-	bar:SetAlpha(1)
-	for _, frame in ipairs(released) do frame:EnableMouse(true) end
-	wipe(released)
+	Restore()
 end)
 
 EM:On('SettingsChanged', function() EM:RefreshBar() end)

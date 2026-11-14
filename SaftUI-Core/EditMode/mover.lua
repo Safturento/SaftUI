@@ -239,7 +239,9 @@ function EM:StopDrag(mover)
 	if not drag then return end
 	mover.drag = nil
 	mover.overlay:SetScript('OnUpdate', nil)
-	self:CommitPosition(mover, drag.x, drag.y)
+	-- The drag ends even when its commit errors (an apply that does): the error
+	-- is reported, and DragStopped still tells the bar to come back.
+	xpcall(self.CommitPosition, geterrorhandler(), self, mover, drag.x, drag.y)
 	self:Fire('DragStopped', mover)
 end
 
