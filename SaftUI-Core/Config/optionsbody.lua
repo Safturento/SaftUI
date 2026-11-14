@@ -317,9 +317,15 @@ end
 -- Blizzard the bar's companion shows in its place, from the scroll frame's
 -- top to its bottom, gap (OB.BLIZZARD_GAP when nil) to the right of the
 -- scroll child. Returns the offset it took.
+-- What there is to scroll is counted in whole units too: the game hands a
+-- view's height back from its layout in single precision, a hair off the
+-- whole height it was laid out to (559.99994 for 560), so content exactly
+-- as tall as its view (a dialog sized to its rows, a page whose fill rows
+-- take the view's height) would otherwise read as a sliver to scroll and
+-- show an idle bar as tall as the view.
 function OB.ScrollTo(frame, bar, offset, height, gap)
 	local view = frame:GetHeight() or 0
-	local range = max(0, height - view)
+	local range = max(0, floor(height - view + 0.5))
 	offset = max(0, min(range, floor(offset + 0.5)))
 	frame:SetVerticalScroll(offset)
 	local child = frame:GetScrollChild()
@@ -329,7 +335,9 @@ function OB.ScrollTo(frame, bar, offset, height, gap)
 	if companion and not blizzard then companion.bar:Hide() end
 	if blizzard then
 		bar:Hide()
-		companion.bar:Set(frame, width + (gap or OB.BLIZZARD_GAP), 0, floor(view + 0.5), view, height, offset)
+		-- Its view in whole units as well (what's held less the range), so it
+		-- shows by the same rule.
+		companion.bar:Set(frame, width + (gap or OB.BLIZZARD_GAP), 0, floor(view + 0.5), height - range, height, offset)
 	elseif range > 0 and view > 0 and (not companion or companion.flat) then
 		local size = max(20, floor(view * view / height))
 		bar:SetHeight(size)
