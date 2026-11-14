@@ -478,6 +478,14 @@ end
 
 ------------------------------------------------------------------ a row
 
+-- The diff icon DIFF_GAP after the label's text, or its end when the text is
+-- cut.
+local function PlaceDiff(cell, parts)
+	local label = cell.label
+	parts.diff:ClearAllPoints()
+	parts.diff:SetPoint('LEFT', label, 'LEFT', min(TextWidth(label), floor(label:GetWidth())) + DIFF_GAP, 0)
+end
+
 -- A placed row's marks (the end of the body's PlaceRow). Everything a pooled
 -- frame drew for its last row is taken off first. The state is kept on the
 -- frame (frame.shareState) as soon as it's read, for the section title's
@@ -520,17 +528,17 @@ function OB.PlaceShare(cell)
 	end
 	if not isRow then return end
 
-	-- The label moves under the mark and leaves the diff icon its room.
+	-- The label moves under the mark and leaves the diff icon its room
+	-- (cell.shareCut, which a setting's own reset keeps off it too).
 	local label = cell.label
-	label:SetWidth(max(1, label:GetWidth() - shift - (diffs and DIFF_SIZE + DIFF_GAP or 0)))
+	cell.shareCut = shift + (diffs and DIFF_SIZE + DIFF_GAP or 0)
+	label:SetWidth(max(1, label:GetWidth() - cell.shareCut))
 	OB.PlaceLabel(cell, shift)
 	frame.shareShift = shift
 	if diffs then
-		local diff = parts.diff
-		diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
-		diff:ClearAllPoints()
-		diff:SetPoint('LEFT', label, 'LEFT', min(TextWidth(label), floor(label:GetWidth())) + DIFF_GAP, 0)
-		diff:Show()
+		parts.diff.icon:SetVertexColor(unpack(OB.DIFF_COLOR))
+		PlaceDiff(cell, parts)
+		parts.diff:Show()
 	end
 	if offers then
 		frame.shareOffers, frame.shareLifts = true, true
@@ -541,6 +549,20 @@ function OB.PlaceShare(cell)
 		parts.line:ClearAllPoints()
 		parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
 		HookControl(cell.widget.frame)
+	end
+end
+
+-- Mid-drag (the body's Refresh), once a setting's own reset came or went and
+-- moved the label's end and the line's (OB.PlaceDefault): the diff icon
+-- after the label again, and the hover line, shown or not, cut again at its
+-- lineEnd, as PlaceShare would draw them now.
+function OB.FollowShare(cell)
+	local frame = cell.frame
+	local parts = frame.share
+	if not (parts and frame.shareCell == cell) then return end
+	if parts.diff:IsShown() then PlaceDiff(cell, parts) end
+	if frame.shareOffers then
+		FillLine(parts, frame.shareState, (cell.lineEnd or frame:GetWidth()) - (cell.labelX or 0) - (frame.shareShift or 0))
 	end
 end
 
@@ -695,6 +717,12 @@ function OB.PlaceDefault(cell)
 	local frame, body, row, widget = cell.frame, cell.body, cell.row, cell.widget
 	if frame.defaultReset then frame.defaultReset:Hide() end
 	frame.defaultCell = nil
+	-- The label and the hover line end as the row drew them (PlaceRow's
+	-- cell.labelWidth and ownLineEnd), the label less a share's room
+	-- (cell.shareCut): what an icon took is given back while none shows.
+	local label, cut = cell.label, cell.shareCut or 0
+	if cell.labelWidth then label:SetWidth(max(1, cell.labelWidth - cut)) end
+	cell.lineEnd = cell.ownLineEnd
 	if not (body and widget) or NO_DEFAULT[row.type] or W.CUSTOM[row.type] then return end
 	local share = row.option.share
 	if type(share) == 'table' and share.own ~= nil then return end
@@ -736,7 +764,6 @@ function OB.PlaceDefault(cell)
 		icon:SetPoint('RIGHT', frame, 'LEFT', right, 0)
 	end
 	local stop = right - RESET_SIZE - LABEL_ROOM
-	local label = cell.label
-	if label:IsShown() then label:SetWidth(max(1, min(label:GetWidth(), stop - (cell.labelX or 0)))) end
-	cell.lineEnd = min(cell.lineEnd or frame:GetWidth(), stop)
+	if cell.labelWidth then label:SetWidth(max(1, min(cell.labelWidth, stop - (cell.labelX or 0)) - cut)) end
+	cell.lineEnd = min(cell.ownLineEnd or frame:GetWidth(), stop)
 end

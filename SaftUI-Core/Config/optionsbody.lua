@@ -123,7 +123,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	which loads right after this file, and so is a setting's own reset (its
 	default field: OB.PlaceDefault, which PlaceRow runs before
 	OB.PlaceShare, and Refresh again for a row with one, so the icon follows
-	a drag). The share hooks in at three places: PlaceRow
+	a drag, then OB.FollowShare, so the row's label, diff icon and hover line
+	follow the icon). The share hooks in at three places: PlaceRow
 	ends with OB.PlaceShare(cell) (cell.body is the body), the row frame's
 	OnEnter and a position block's parts call OB.ShareEnter(frame), and
 	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
@@ -800,6 +801,11 @@ local function PlaceRow(cell, x, y, width)
 			widget:SetPoint('RIGHT', frame, 'RIGHT', 0, 0)
 		end
 	end
+	-- The label's and the hover line's own ends: a setting's own reset cuts
+	-- them while its icon shows and gives them back when it goes, mid-drag
+	-- too (OB.PlaceDefault).
+	cell.labelWidth = label:IsShown() and label:GetWidth() or nil
+	cell.ownLineEnd = cell.lineEnd
 	-- A setting's own reset by its control (its default), then a shareable
 	-- row's marks: optionsshare.lua.
 	if OB.PlaceDefault then OB.PlaceDefault(cell) end
@@ -1245,8 +1251,12 @@ function Body:Refresh(except)
 				cell.label:SetTextColor(OB.LabelColor(cell, disabled))
 			end
 		end
-		-- A setting's own reset follows the drag (the dragged row's too).
-		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then OB.PlaceDefault(cell) end
+		-- A setting's own reset follows the drag (the dragged row's too), and
+		-- the row's diff icon and hover line follow the room it takes or gives.
+		if widget and OB.PlaceDefault and type(cell.row.option.default) == 'table' then
+			OB.PlaceDefault(cell)
+			if OB.FollowShare then OB.FollowShare(cell) end
+		end
 	end
 end
 

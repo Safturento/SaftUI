@@ -337,6 +337,68 @@ test('the icon follows a drag: shown once the dragged value differs, gone back a
 	end)
 end)
 
+-- Mid-drag the body draws nothing again (Body:Refresh), so as another row's
+-- icon comes and goes with the dragged value, its label and its open hover
+-- line follow it in place: cut short of the icon while it shows, their own
+-- width again once it goes. A quarter toggle on a source page, a page
+-- differing: its line, 'Apply to: All | Multiple', fits the cell without the
+-- icon and not with it, so it drops 'Apply to:' while the icon shows.
+test("mid-drag, another row's label and hover line make room for its icon as it comes, and take it back as it goes", function()
+	in_look('thick', function()
+		fresh()
+		local level = 3
+		local args = Args()
+		args.level = { type = 'range', name = 'Level', desc = 'x', order = 0.5, min = 0, max = 10, step = 1,
+			get = function() return level end, set = function(_, v) level = v end }
+		args.flag = { type = 'toggle', name = 'Flag', desc = 'x', order = 0.6, size = 'small',
+			get = function() return true end, set = function() end,
+			share = { source = 'Everything', differs = function() return { { name = 'Third', value = 'off' } } end, shared = function() return 'on' end,
+				targets = function() return {} end, applyAll = function() end, apply = function() end },
+			default = { differs = function() return level ~= 3 end, reset = function() level = 3 end } }
+		-- And a half toggle with no share: its label is what the icon cuts.
+		args.plain = { type = 'toggle', name = 'Plain', desc = 'x', order = 0.7,
+			get = function() return true end, set = function() end,
+			default = { differs = function() return level ~= 3 end, reset = function() level = 3 end } }
+		local body, by
+		body, by = draw(Page(args), function(ok, err, isDragging, widget)
+			if isDragging then body:Refresh(widget) end
+		end)
+		local c, plain = by.flag, by.plain
+		local plainWidth = plain.label:GetWidth()
+		check(not shown(c), 'no icon at its default')
+		local labelWidth, parts = c.label:GetWidth(), c.frame.share
+		stub.fire_script(c.frame, 'OnEnter', true)
+		check(parts.line:IsShown(), 'its hover line')
+		check(parts.sep:IsShown(), "'Apply to:' fits without the icon")
+		local lineWidth = parts.line:GetWidth()
+
+		local slider = by.level.widget
+		stub.mouse_buttons.LeftButton = true
+		slider.dragging = true
+		slider:Commit(6)
+		check(shown(c), 'dragged: its icon shows')
+		local stop = icon_of(c):GetLeft() - 4 - c.frame:GetLeft()
+		eq(c.lineEnd, stop, 'its line ends 4 before the icon')
+		check(c.label:GetWidth() <= stop, 'and so does its label')
+		local plainStop = icon_of(plain):GetLeft() - 4 - plain.frame:GetLeft()
+		eq(plain.label:GetWidth(), plainStop, "the plain row's label cut 4 before its icon")
+		check(parts.line:GetRight() <= icon_of(c):GetLeft() - 4, 'the line, cut again, short of the icon')
+		check(not parts.sep:IsShown(), "'Apply to:' dropped to fit")
+
+		slider:Commit(3)
+		check(not shown(c), 'back at the default: gone')
+		eq(c.lineEnd, nil, "its line's own end again")
+		eq(c.label:GetWidth(), labelWidth, 'its label its own width again')
+		eq(plain.label:GetWidth(), plainWidth, "the plain row's label its own width again")
+		eq(plain.lineEnd, nil, "and its line's end")
+		check(parts.sep:IsShown(), "'Apply to:' back")
+		eq(parts.line:GetWidth(), lineWidth, 'the whole line again')
+		stub.mouse_buttons.LeftButton = nil
+		slider.dragging = nil
+		body:Release()
+	end)
+end)
+
 ------------------------------------------------------------------ in a menu
 
 local menuDiffers, menuResets = false, 0
