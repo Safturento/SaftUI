@@ -1,9 +1,11 @@
 -- The loot feed's two buttons (SaftUI-Loot/Feed/feed.lua, filter.lua): the filter
 -- button and the jump to the newest entry are Lucide icons with tooltips (not the
--- letters F and V); they show only while the mouse is over the feed's area (the
--- feed, the strip its buttons sit in, or a button), or the filter menu is open, and
--- the jump button only while the feed is scrolled back; and the filter menu is the
--- options kit's check list, not Blizzard's menu. Both looks.
+-- letters F and V); they show while an entry is on the feed, at the alpha of the
+-- most visible one (so they fade out with the last), or while the mouse is over the
+-- feed's area (the feed, the strip its buttons sit in, or a button) or the filter
+-- menu is open, at full alpha, and the jump button only while the feed is scrolled
+-- back; a faded-out button is hidden and takes no mouse; and the filter menu is
+-- the options kit's check list, not Blizzard's menu. Both looks.
 --
 -- Real: SaftUI-Loot's config.lua, init.lua, Feed/history.lua, parse.lua, feed.lua,
 -- filter.lua and progress.lua, Core's helpers, the theme engine, Core's Utilities,
@@ -67,6 +69,13 @@ local function reset()
 	W.CloseList()
 	wipe(LT:GetAllItems())
 	feed.offset = 0
+	for _, item in ipairs(feed.items) do
+		item:Hide()
+		item:SetAlpha(1)
+		item.fadeInfo = nil
+	end
+	stub.time = 1000
+	config.fade_time = 10
 	for key in pairs(config.filters) do config.filters[key] = true end
 	config.filters.Self = false
 	stub.cursor_x, stub.cursor_y = 0, 0 -- the corner: nowhere near the feed
@@ -164,16 +173,16 @@ end)
 
 ------------------------------------------------------------------ where the mouse is
 
-test('with the mouse away an empty feed shows no button, and one with entries shows only its entries', function()
+test('with the mouse away an empty feed shows no button, nor do entries that have gone from the screen', function()
 	reset()
 	frame_passes()
 	check(not shown(filterButton), 'empty feed, mouse away: no filter button')
 	check(not shown(jumpButton), 'and no jump button')
 
-	tinsert(LT:GetAllItems(), { name = 'A', type = 'Loot', icon = 1, time = 100 })
+	tinsert(LT:GetAllItems(), { name = 'A', type = 'Loot', icon = 1, time = 0 })
 	LT:GetFilteredItems()
 	frame_passes()
-	check(not shown(filterButton), 'a feed with an entry, mouse away: still no filter button')
+	check(not shown(filterButton), 'an entry in the history but none on screen, mouse away: no filter button')
 	check(not shown(jumpButton), 'and no jump button')
 end)
 
@@ -236,7 +245,7 @@ test('the jump button shows only while the feed is scrolled back and the mouse i
 
 	stub.cursor_x, stub.cursor_y = 0, 0
 	frame_passes()
-	check(not shown(jumpButton), 'the mouse gone: the jump button goes, scrolled back or not')
+	check(not shown(jumpButton), 'the mouse gone and no entry on screen: the jump button goes, scrolled back or not')
 
 	mouse_on(feed)
 	feed.offset = 0
@@ -271,6 +280,154 @@ test('the filter menu being open keeps the filter button, and closing it lets th
 	W.CloseList()
 	frame_passes()
 	check(not shown(filterButton), 'the menu closed and the mouse away: the button goes')
+end)
+
+------------------------------------------------------------------ with entries on the feed
+
+-- A fresh entry on screen, as UpdateFeed draws it (the test's UpdateFeed draws no lines).
+local function entry_on(i)
+	tinsert(LT:GetAllItems(), i, { name = 'E' .. i, type = 'Loot', icon = 1, time = GetTime() })
+	local item = feed.items[i]
+	item.info = LT:GetFilteredItems()[i]
+	item:SetAlpha(1)
+	item:Show()
+	return item
+end
+
+-- The entry on a line has run out of time: UpdateFeedVisibility leaves its alpha to
+-- the fade (Blizzard's UIFrameFadeOut, which the test sets by hand), instead of
+-- putting it back to full as it does a fresh one.
+local function run_out(item) item.info.time = 0 end
+
+local function alpha(button) return button:GetAlpha() end
+
+test('an entry on screen shows the filter button with the mouse away, at full alpha, and a blank feed shows none', function()
+	reset()
+	frame_passes()
+	check(not shown(filterButton), 'blank feed, mouse away: none')
+	entry_on(1)
+	frame_passes()
+	check(shown(filterButton), 'one entry on screen: the filter button')
+	eq(alpha(filterButton), 1, 'at full alpha')
+	check(not shown(jumpButton), 'the jump button waits for a scrolled feed')
+end)
+
+test('the buttons fade with the last entry: their alpha is the highest entry alpha, and they are gone when it is', function()
+	reset()
+	local a, b = entry_on(1), entry_on(2)
+	frame_passes()
+	run_out(a)
+	run_out(b)
+	a:SetAlpha(.5)
+	b:SetAlpha(.25)
+	frame_passes()
+	eq(alpha(filterButton), .5, 'the highest of the two')
+	a:Hide() -- the first one is gone
+	frame_passes()
+	eq(alpha(filterButton), .25, 'then the last one: its alpha')
+	b:SetAlpha(.1)
+	frame_passes()
+	eq(alpha(filterButton), .1, 'fading with it')
+	b:SetAlpha(0)
+	frame_passes()
+	check(not shown(filterButton), 'at 0: the button is hidden')
+	b:Hide()
+	frame_passes()
+	check(not shown(filterButton), 'and stays gone with the entry')
+end)
+
+test('an entry arriving brings the buttons back at once, at its alpha', function()
+	reset()
+	local a = entry_on(1)
+	run_out(a)
+	a:SetAlpha(.2)
+	a:Hide()
+	frame_passes()
+	check(not shown(filterButton), 'faded out')
+	entry_on(1) -- UpdateFeed draws it: full alpha, shown, then asks for the buttons
+	LT:UpdateFeedButtons()
+	check(shown(filterButton), 'back with no frame passing')
+	eq(alpha(filterButton), 1, 'at full alpha')
+end)
+
+test('under the mouse or with the list open the buttons are at full alpha, whatever the entries are', function()
+	reset()
+	local a = entry_on(1)
+	frame_passes()
+	run_out(a)
+	a:SetAlpha(.3) -- fading out
+	frame_passes()
+	eq(alpha(filterButton), .3, 'mouse away: the entry alpha')
+	mouse_on(feed)
+	frame_passes()
+	eq(alpha(filterButton), 1, 'over the feed: full')
+	stub.cursor_x, stub.cursor_y = 0, 0
+	frame_passes()
+	eq(alpha(filterButton), .3, 'the mouse gone: back to the entry alpha')
+	stub.click(filterButton)
+	frame_passes()
+	eq(alpha(filterButton), 1, 'list open: full')
+	W.CloseList()
+
+	a:Hide()
+	mouse_on(feed)
+	frame_passes()
+	check(shown(filterButton), 'blank feed, mouse over: shown')
+	eq(alpha(filterButton), 1, 'at full alpha')
+end)
+
+test('the jump button shows while scrolled back with an entry on screen, and follows the same alpha', function()
+	reset()
+	local a = entry_on(1)
+	feed.offset = 3
+	frame_passes()
+	check(shown(jumpButton) and shown(filterButton), 'scrolled back, entry on screen, mouse away: both')
+	run_out(a)
+	a:SetAlpha(.4)
+	frame_passes()
+	eq(alpha(jumpButton), .4, 'the jump button: the entry alpha')
+	eq(alpha(filterButton), .4, 'the filter button too')
+	feed.offset = 0
+	frame_passes()
+	check(not shown(jumpButton), 'at the newest entry: no jump button')
+	check(shown(filterButton), 'the filter button stays')
+	feed.offset = 3
+	a:Hide()
+	frame_passes()
+	check(not shown(jumpButton) and not shown(filterButton), 'no entry on screen, mouse away: neither')
+end)
+
+test('a faded-out button takes no mouse and shows no tooltip, until it is visible again', function()
+	reset()
+	local a = entry_on(1)
+	frame_passes()
+	stub.fire_script(filterButton, 'OnEnter', true)
+	check(GameTooltip:IsShown(), 'visible: its tooltip shows')
+	run_out(a)
+	a:SetAlpha(0)
+	frame_passes()
+	check(not shown(filterButton), 'faded out: hidden, which takes no mouse')
+	check(not GameTooltip:IsShown(), 'and its tooltip is put away')
+	a.info.time = GetTime() -- a new gain: fresh again
+	frame_passes()
+	check(shown(filterButton), 'visible again: back')
+end)
+
+test('Fade time 0 keeps the entries on screen, and the buttons stay as long as they do', function()
+	reset()
+	config.fade_time = 0
+	local a = entry_on(1)
+	frame_passes()
+	check(shown(filterButton), 'an entry on screen: the buttons')
+	stub.time = stub.time + 100000
+	frame_passes()
+	eq(alpha(a), 1, 'the entry never fades')
+	check(shown(filterButton), 'and the buttons stay')
+	eq(alpha(filterButton), 1, 'at full alpha')
+	a:Hide()
+	frame_passes()
+	check(not shown(filterButton), 'the entry gone: so are the buttons')
+	config.fade_time = 10
 end)
 
 ------------------------------------------------------------------ the filter menu
