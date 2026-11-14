@@ -49,6 +49,18 @@ for _, candidate in ipairs(FD.CANDIDATES) do
 	st.LSM:Register('font', 'Candidate: ' .. candidate.family, CandidatePath(candidate))
 end
 
+-- The game loads a font file the first time something asks for it, and
+-- SetFont is false until it has: in game every candidate "failed" on first
+-- use, and so did a byte-for-byte copy of a working font, while fonts SaftUI
+-- had already used loaded (the /suifonts test, 2026-11-13). So ask for each
+-- candidate once here, at load, on a hidden font string, and the demo tries a
+-- row again a moment later while it still says it failed (FD:RetryFailed).
+local preload = CreateFrame('Frame')
+preload:Hide()
+for _, candidate in ipairs(FD.CANDIDATES) do
+	preload:CreateFontString(nil, 'OVERLAY'):SetFont(CandidatePath(candidate), 12, '')
+end
+
 -- What the controls pick. outline is a key of OUTLINES.
 FD.OUTLINES = {
 	{ key = 'NONE',     label = 'None',               flags = '' },
@@ -268,6 +280,26 @@ function FD:ApplyRow(row)
 	row.failed = not loaded
 	row.specimen:SetShown(loaded)
 	row.failure:SetShown(not loaded)
+	if not loaded then self:RetryFailed() end
+end
+
+-- A font asked for the first time isn't loaded yet (see the preload above):
+-- try the rows that failed again shortly, a few times, then leave the row
+-- saying so.
+local RETRIES, RETRY_DELAY = 10, 0.5
+function FD:RetryFailed()
+	if self.retryPending or (self.retries or 0) >= RETRIES or not (C_Timer and C_Timer.After) then return end
+	self.retryPending = true
+	C_Timer.After(RETRY_DELAY, function()
+		self.retryPending = nil
+		self.retries = (self.retries or 0) + 1
+		for _, row in ipairs(self.rows or {}) do
+			if row.failed then self:ApplyRow(row) end
+		end
+		local any = false
+		for _, row in ipairs(self.rows or {}) do any = any or row.failed end
+		if not any then self.retries = 0; self:Layout() end
+	end)
 end
 
 -- Places the rows: starred first, then in order, each row's specimens flowing
@@ -554,5 +586,46 @@ function FD:Toggle()
 	if self.window:IsShown() then self.window:Hide() else self.window:Show() end
 end
 
+-- TEMPORARY DIAGNOSTIC (2026-11-13): in game every candidate failed to load
+-- after a full restart, though the files are sound and on disk. "/suifonts test"
+-- prints what SetFont returns for the same font file under different folders and
+-- names, to tell a folder problem from a name problem from a file problem.
+-- Delete this block and the four test files it names once that is known.
+local DIAG = {
+	{ 'a working font, as a control', 'AgencyFB_Bold.ttf' },
+	{ 'a copy of that working font, in Candidates', 'Candidates\\agencycopy.ttf' },
+	{ 'a candidate, in Candidates, its own name', 'Candidates\\BarlowCondensed-SemiBold.ttf' },
+	{ 'the same candidate, in Candidates, a plain name', 'Candidates\\barlowtest.ttf' },
+	{ 'the same candidate, beside the working fonts, its own name', 'BarlowCondensed-SemiBold.ttf' },
+	{ 'the same candidate, beside the working fonts, a plain name', 'barlowtest.ttf' },
+}
+
+function FD:Diagnose()
+	local holder = self.diagHolder or CreateFrame('Frame', nil, UIParent)
+	self.diagHolder = holder
+	print('|cff00adefSaftUI font test|r (true = loaded):')
+	for i, test in ipairs(DIAG) do
+		local path = st:FontPath(test[2])
+		local fs = holder:CreateFontString(nil, 'OVERLAY')
+		local ok = fs:SetFont(path, 12, '')
+		print(('%d. %s: %s'):format(i, test[1], tostring(ok)))
+		print('   ' .. path)
+		test.fs = fs
+	end
+	-- The same font strings again in two seconds: true now and false above
+	-- means the files load, only not on the first ask.
+	if C_Timer and C_Timer.After then
+		C_Timer.After(2, function()
+			local again = {}
+			for i, test in ipairs(DIAG) do
+				again[i] = tostring(test.fs:SetFont(st:FontPath(test[2]), 12, ''))
+			end
+			print('|cff00adefSaftUI font test|r, two seconds later: ' .. table.concat(again, ', '))
+		end)
+	end
+end
+
 SLASH_SAFTUIFONTS1 = '/suifonts'
-SlashCmdList['SAFTUIFONTS'] = function() FD:Toggle() end
+SlashCmdList['SAFTUIFONTS'] = function(msg)
+	if msg and msg:lower():match('^%s*test') then FD:Diagnose() else FD:Toggle() end
+end
