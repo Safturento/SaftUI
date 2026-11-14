@@ -9,7 +9,8 @@ local st = SaftUI
 
 local NAMES = { 'x', 'chevronDown', 'chevronUp', 'rotateCcw', 'diff', 'ellipsis', 'ellipsisVertical', 'settings', 'funnel', 'arrowDownToLine',
 	'logOut', 'grid3x3', 'magnet', 'alignStartVertical', 'layers', 'mapPin', 'eye', 'powerOff', 'search', 'undo2', 'redo2', 'history', 'pictureInPicture2', 'panelTop',
-	'chevronLeft', 'chevronRight', 'panelLeftOpen', 'panelLeftClose', 'move', 'keyboard', 'list', 'minimize2', 'maximize2' }
+	'chevronLeft', 'chevronRight', 'panelLeftOpen', 'panelLeftClose', 'move', 'keyboard', 'list', 'minimize2', 'maximize2',
+	'squareMousePointer', 'squareDashedMousePointer' }
 
 local function read(path)
 	return (read_saftui_source(path))

@@ -168,7 +168,8 @@ test('the groups and their controls: exit, then the grid group (grid, size, two 
 	for i = 2, #xs - 1 do check(xs[i] > xs[i - 1], 'left to right: ' .. i) end
 	check(xs[1] - EM:GetBar():GetLeft() >= 10, 'Exit at least 10 in')
 	check(EM:GetBar():GetRight() - frame_of('detach'):GetRight() >= 10, 'Detach, the options group\'s last control, at least 10 from the right')
-	eq(frame_of('detach'):GetLeft() - frame_of('options'):GetRight(), 4, 'Options 4 left of Detach')
+	eq(frame_of('hide'):GetLeft() - frame_of('options'):GetRight(), 4, 'Options 4 left of the hide toggle')
+	eq(frame_of('detach'):GetLeft() - frame_of('hide'):GetRight(), 4, 'which is 4 left of Detach')
 	eq(EM:BarControl('nothing'), nil, 'no such control')
 	reset_edit_mode()
 end)

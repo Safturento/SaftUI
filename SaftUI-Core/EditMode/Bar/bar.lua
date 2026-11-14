@@ -428,13 +428,18 @@ local function ShowSurface()
 			window:Show()
 		else
 			window:Hide()
-			bar:Show()
+			bar:SetShown(not EM:IsBarAway())
 		end
 	else
 		bar:Hide()
 		window:Hide()
 	end
+	EM:UpdateBarDock()
 end
+
+-- Shows the bar or the window for the state edit mode is in (bardock.lua's
+-- hide until hovered changes it).
+function EM:ShowBarSurface() ShowSurface() end
 
 -- Puts the controls where the saved mode says (on the bar or in the window).
 -- The controls move, the layout is redone and the lists close when it changed.

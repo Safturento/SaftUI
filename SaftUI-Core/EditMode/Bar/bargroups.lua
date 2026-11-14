@@ -9,8 +9,9 @@ local W = st.OptionsWidgets
 	  grid     (left, 20, row 1, section 'grid')     Grid, Grid size, Snap to grid,
 	                                                 Snap to frames, Dim world,
 	                                                 Coordinates
-	  options  (right, 90, row 2, section 'changes') Options, and Detach (section
-	                                                 'title') at its end
+	  options  (right, 90, row 2, section 'changes') Options, Hide until hovered,
+	                                                 and Detach (section 'title')
+	                                                 at its end
 	Each control is { key, frame, Lay, Refresh, ... } as bar.lua says. The
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
 	says nothing, so each has one.
@@ -100,6 +101,26 @@ local function Detach(bar)
 	}
 end
 
+-- Hide until hovered (bardock.lua keeps the setting and does the hiding): an
+-- icon toggle on the docked bar only, square-mouse-pointer while off and
+-- square-dashed-mouse-pointer while on, lit in the accent as the other toggles
+-- are. Not in the floating window, which has nothing to hide.
+local function HideToggle(bar)
+	local button = W.IconButton(bar, st.icons.squareMousePointer, function()
+		return 'Hide until hovered', { 'Hides this bar until the mouse reaches the top edge of the screen where it sits.' }
+	end)
+	button.onClick = Guard(function() EM:SetBarHideUntilHovered(not EM:IsBarHideUntilHovered()) end)
+	return {
+		key = 'hide', frame = button, section = 'title',
+		Lay = function(_, floating) return floating and 0 or ICON end,
+		Refresh = function()
+			local on = EM:IsBarHideUntilHovered()
+			button.icon:SetTexture(on and st.icons.squareDashedMousePointer or st.icons.squareMousePointer)
+			W.SetOn(button, on)
+		end,
+	}
+end
+
 ------------------------------------------------------------------ the grid
 
 -- An icon button that toggles the boolean setting key, lit while it is on.
@@ -175,5 +196,5 @@ EM:AddBarGroup({
 
 EM:AddBarGroup({
 	key = 'options', order = 90, side = 'right', row = 2, section = 'changes',
-	controls = function(bar) return { Options(bar), Detach(bar) } end,
+	controls = function(bar) return { Options(bar), HideToggle(bar), Detach(bar) } end,
 })

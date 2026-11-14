@@ -43,7 +43,7 @@ local function reset()
 end
 
 local ROW_ONE = { 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'undo', 'redo', 'history', 'reset' }
-local ROW_TWO = { 'showDisabled', 'showHidden', 'modules', 'filter', 'options', 'detach' }
+local ROW_TWO = { 'showDisabled', 'showHidden', 'modules', 'filter', 'options', 'hide', 'detach' }
 
 -- A control's row is the one its top is in (row 1 starts 7 down, row 2 starts 37 down).
 local function row_of(key)
@@ -107,7 +107,7 @@ end)
 
 ------------------------------------------------------------------ the rows
 
-test('row one is Exit, the grid group and the changes; row two is what shows, the filter, then Options and Detach (the hide toggle, between them, is in editmode_bar_hide_test.lua)', function()
+test('row one is Exit, the grid group and the changes; row two is what shows, the filter, then Options, the hide toggle and Detach', function()
 	reset()
 	EM:Activate()
 	eq(table.concat(keys_on(1), ' '), table.concat(ROW_ONE, ' '), 'row one, left to right')
