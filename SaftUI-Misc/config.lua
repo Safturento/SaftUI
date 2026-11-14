@@ -66,6 +66,16 @@ st.defaults.objectivetracker = {
 	},
 }
 
+-- Blizzard's armour durability figure (durability.lua). move lets it be moved in
+-- edit mode; off, it stays wherever Blizzard puts it. position is the holder its
+-- top right corner hangs from. It has no default: AceDB fills in defaults, so one
+-- couldn't be told apart from a position the user set. With none the figure is left
+-- where Blizzard puts it, so first load moves nothing.
+st.defaults.durability = {
+	move = true,
+	tooltip_details = true, -- the damaged items and the repair cost in its tooltip (durabilitytooltip.lua)
+}
+
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).
 -- Width and height are the visible bar: Blizzard's default 426x30 frame less the
 -- 5/4px art inset around its StatusBar. Blizzard stacks the bars in its bottom managed
