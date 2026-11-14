@@ -1,6 +1,6 @@
 -- The action bars' growth direction (First button): AB.ButtonPoint, LayoutBar
 -- laying the buttons out from the chosen corner, the setting's storage, and the
--- interim option on each bar's General.
+-- option in each bar's Layout section.
 --
 -- The world is shared_settings_test.lua's (the action bars' files but
 -- hideblizzard.lua and keybindmode.lua, bars as plain frames).
@@ -18,6 +18,7 @@ local FILES = {
 	'SaftUI-ActionBars/stancebar.lua',
 	'SaftUI-ActionBars/bindings.lua',
 	'SaftUI-ActionBars/extras.lua',
+	'SaftUI-ActionBars/textoptions.lua',
 	'SaftUI-ActionBars/options.lua',
 }
 
@@ -148,7 +149,7 @@ test('anything but a corner reads as top left', function()
 	eq(AB:GetBarConfig('all').growth, 'BOTTOMRIGHT', "All bars' own")
 end)
 
-test("First button on a bar's General writes the setting as the bar's own", function()
+test("First button in a bar's Layout writes the setting as the bar's own", function()
 	fresh()
 	AB.built = true
 	AB.bars.bar3 = { buttons = {} }
@@ -159,14 +160,14 @@ test("First button on a bar's General writes the setting as the bar's own", func
 	eq(AB.GROWTH_VALUES.TOPRIGHT, 'Top right', 'a name')
 	local updated = {}
 	function AB:UpdateBar(id) updated[#updated + 1] = id end
-	local growth = AB:GetBarOptions('bar3', 3).args.general.args.growth
+	local growth = AB:GetBarOptions('bar3', 3).args.layout.args.growth
 	eq(growth.type, 'select', 'a select')
 	eq(growth.name, 'First button', 'named')
 	eq(growth.sorting, AB.GROWTH_ORDER, 'sorted by the order')
 	eq(type(growth.desc), 'string', 'with a description')
-	local general = AB:GetBarOptions('bar3', 3).args.general
-	eq(general.get({ 'growth' }), 'TOPLEFT', 'reads the effective value')
-	general.set({ 'growth' }, 'BOTTOMRIGHT')
+	local layout = AB:GetBarOptions('bar3', 3).args.layout
+	eq(layout.get({ 'growth' }), 'TOPLEFT', 'reads the effective value')
+	layout.set({ 'growth' }, 'BOTTOMRIGHT')
 	eq(AB:IsOwn('bar3', 'growth'), true, "the bar's own now")
 	eq(AB:GetBarConfig('bar3').growth, 'BOTTOMRIGHT', 'and it shows')
 	eq(AB:GetBarConfig('bar4').growth, 'TOPLEFT', 'another bar is unmoved')

@@ -1,7 +1,7 @@
--- The action bars' cooldown numbers (SaftUI-ActionBars): the Cooldown numbers
--- toggle on the Action Bars page, and each bar's font and place for them in
--- its Text tab.
---   - The toggle is Blizzard's "Show Numbers for Cooldowns" (the
+-- The action bars' cooldown numbers (SaftUI-ActionBars): the Cooldown item's
+-- Show box on the Action Bars page's All bars, and each bar's font and place
+-- for them in its Cooldown item's menu (textoptions.lua).
+--   - All bars' box is Blizzard's "Show Numbers for Cooldowns" (the
 --     countdownForCooldowns setting), read and set as it is: nothing goes in
 --     the profile, a change in Blizzard's options shows in it, a change made
 --     with it fires the CVAR_UPDATE the bars follow, and in combat it waits
@@ -9,12 +9,14 @@
 --   - By default the numbers look as they did: SaftUI's Pixel Med font object
 --     on buttons of 36px and up and Pixel below, in the middle of the button.
 --     A profile saved before the options existed gets those defaults.
---   - The Text tab's Cooldown numbers (on the pet and stance bars too, not on
---     the extra buttons) set their font, size and outline and their place at
---     once, show what's drawn until they're set, and hold through
+--   - A bar's Cooldown menu (on the pet and stance bars too, not on the extra
+--     buttons) sets their font, size and outline and their place at once,
+--     shows what's drawn until they're set, and holds through
 --     LibActionButton's button update, a restyle, a theme switch and a
---     profile switch, back to the defaults too. Its Reset unsets the font,
---     size and outline and puts the place back.
+--     profile switch, back to the defaults too. Each setting's reset there
+--     (its share's: follow All bars again) puts back All bars' unset font,
+--     size and outline and its place; on All bars each one's own reset
+--     unsets it again. There's no Reset button.
 --   - A button styled with text settings that name no countdown (the leave
 --     vehicle button's, extras.lua) gets a bar's defaults.
 --   - An open /sui is told to draw again when the setting changes, and only
@@ -34,10 +36,10 @@
 --     update also sets its buttons' secure actions (petbar.lua), which needs
 --     buttons made by petbar.lua, so the pet bar is only styled (AB:StyleBar).
 --     AB:Build isn't run (it needs LibActionButton's real buttons), so
---     AB.built stays false and AB:UpdateBindings does nothing; the toggle's
+--     AB.built stays false and AB:UpdateBindings does nothing; the box's
 --     case sets it by hand, since the page is drawn only for built bars.
 -- The shell's st.Config stands in for Core's Config module (tests/lib/shell.lua):
--- the toggle's case counts its Refresh, the call that redraws an open /sui.
+-- the box's case counts its Refresh, the call that redraws an open /sui.
 -- A profile switch is Config:UpdateConfig's steps for the action bars: the
 -- module bound to the new profile, then AB:UpdateConfig, which waits for the
 -- bars to be built, so AB:UpdateBar on the bar here, as it runs it for each.
@@ -55,6 +57,7 @@ local FILES = {
 	'SaftUI-ActionBars/stancebar.lua',
 	'SaftUI-ActionBars/bindings.lua',
 	'SaftUI-ActionBars/extras.lua',
+	'SaftUI-ActionBars/textoptions.lua',
 	'SaftUI-ActionBars/options.lua',
 }
 
@@ -131,16 +134,17 @@ local function dump(value)
 	return '{' .. table.concat(out, ',') .. '}'
 end
 
-test("Cooldown numbers is Blizzard's Show Numbers for Cooldowns, not a profile setting", function()
+test("All bars' Cooldown box is Blizzard's Show Numbers for Cooldowns, not a profile setting", function()
 	fresh()
 	bar('bar1', button('CooldownTestToggle'))
 	AB.built = true -- see the top
-	local args = AB:GetConfigTable().args
-	local option = args.countdown
-	eq(option.type, 'toggle', 'a toggle')
-	eq(option.name, 'Cooldown numbers', 'named Cooldown numbers')
+	local all = AB:GetConfigTable().args.all
+	local option = all.args.text.args.countdown
+	eq(option.type, 'item', 'a menu item, its box the setting')
+	eq(option.name, 'Cooldown', 'named Cooldown')
+	eq(option.menuTitle, 'Cooldown numbers', 'its menu titled Cooldown numbers')
 	check(option.desc:find('Show Numbers for Cooldowns', 1, true), "its tooltip names Blizzard's option")
-	check(args.theme.order < option.order and args.background.order < option.order, 'after Theme and Background')
+	check(all.args.look.order < all.args.text.order, 'in Text, after Look (Theme and Background)')
 
 	eq(option.get(), true, 'checked while the setting is on')
 	stub.cvars[CVAR] = '0'
@@ -237,7 +241,7 @@ test('a profile saved before the cooldown number options gets their defaults', f
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test("the Text tab's Cooldown numbers set the numbers' font, size, outline and place at once, and they hold", function()
+test("a bar's Cooldown menu sets the numbers' font, size, outline and place at once, and they hold", function()
 	fresh()
 	local b = bar('bar1', button('CooldownTestOptions'))
 	local numbers = b.cooldown:GetCountdownFontString()
@@ -245,14 +249,19 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	local pixelMed = st.config.profile.fonts.pixel_med
 	local OUTLINE = pixelMed.font_outline
 
-	local group = AB:GetBarOptions('bar1', 1).args.text.args.countdown
-	eq(group.name, 'Cooldown numbers', 'a Cooldown numbers section')
-	check(type(group.desc) == 'string' and group.desc:find('Cooldown numbers', 1, true), 'whose note says the page toggle shows them')
+	local item = AB:GetBarOptions('bar1', 1).args.text.args.countdown
+	eq(item.type, 'item', 'a Cooldown item')
+	eq(item.get, false, 'with no Show box on a bar')
+	check(type(item.desc) == 'string' and item.desc:find('All bars', 1, true), 'whose tooltip says All bars shows them')
+	local group = item.menu
+	eq(group.name, 'Cooldown numbers', 'its menu is Cooldown numbers')
 	eq(group.args.show, nil, 'no Show of its own')
 	eq(group.args.position.type, 'position', 'a Position block')
 	eq(group.args.position.target, nil, 'with no TO part')
-	local function get(key) return group.get({ key }) end
-	local function set(key, value) group.set({ key }, value) end
+	eq(group.args.reset, nil, 'no Reset button: each setting has its own')
+	-- A menu option's info is { 'menu', key } (Core's OM.MenuRoot).
+	local function get(key) return group.get({ 'menu', key }) end
+	local function set(key, value) group.set({ 'menu', key }, value) end
 
 	-- Until set, the options show what's drawn.
 	eq(get('font') .. ',' .. get('size') .. ',' .. get('outline'),
@@ -271,11 +280,12 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	eq(get('font') .. ',' .. get('outline'), 'Friz Quadrata TT,NONE', 'shown in their rows')
 
 	local position = group.args.position
-	position.set({ 'position' }, 'point', 'BOTTOMRIGHT')
-	position.set({ 'position' }, 'rel_point', 'BOTTOMRIGHT')
-	position.set({ 'position' }, 'x_off', -2)
-	position.set({ 'position' }, 'y_off', 2)
-	eq(position.get({ 'position' }, 'point'), 'BOTTOMRIGHT', 'Position reads text.countdown.point')
+	local at = { 'menu', 'position' }
+	position.set(at, 'point', 'BOTTOMRIGHT')
+	position.set(at, 'rel_point', 'BOTTOMRIGHT')
+	position.set(at, 'x_off', -2)
+	position.set(at, 'y_off', 2)
+	eq(position.get(at, 'point'), 'BOTTOMRIGHT', 'Position reads text.countdown.point')
 	eq(T.anchor(numbers, names), 'BOTTOMRIGHT button BOTTOMRIGHT -2.00,2.00', 'moved at once')
 	eq(numbers:GetNumPoints(), 1, 'by that one point')
 	eq(numbers:GetJustifyH(), 'RIGHT', 'right-aligned, on a right-hand point')
@@ -300,14 +310,13 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	switch_profile(first)
 	eq(look(), mine, "back to the first profile: its numbers again")
 
-	-- Reset: the font, size and outline unset again and the place put back.
-	local reset = group.args.reset
-	eq(reset.type, 'execute', 'a Reset button')
-	eq(reset.name, 'Reset', 'named Reset')
-	check(group.args.outline.order < reset.order and reset.order < position.order, 'after Outline, before the Position block')
-	eq(reset.confirm, true, 'which asks first')
-	eq(reset.confirmText, "Reset Bar 1's cooldown numbers to SaftUI's defaults?", 'naming the bar')
-	reset.func()
+	-- Each setting's reset on a bar is its share's: Bar 1 follows All bars
+	-- again, whose numbers ship with no font, size or outline, in the middle.
+	for _, key in ipairs({ 'font', 'size', 'outline', 'position' }) do
+		eq(AB:IsOwn('bar1', 'countdown.' .. key), true, key .. ' is the bar\'s own')
+		group.args[key].share.reset({ 'menu', key })
+		eq(AB:IsOwn('bar1', 'countdown.' .. key), false, key .. ': reset, it follows All bars')
+	end
 	local countdown = AB:GetBarConfig('bar1').text.countdown
 	eq(tostring(countdown.font) .. ',' .. tostring(countdown.size) .. ',' .. tostring(countdown.outline),
 		'nil,nil,nil', 'the font, size and outline are unset')
@@ -321,6 +330,18 @@ test("the Text tab's Cooldown numbers set the numbers' font, size, outline and p
 	AB:SetSetting('bar1', 'size', 30)
 	AB:UpdateBar('bar1')
 	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the font follows the button size again: Pixel at 30px')
+	eq(font(numbers), font(st:GetFont('pixel')), "drawn in Pixel's font")
+
+	-- All bars' Cooldown menu: a size there reaches Bar 1, which follows, and
+	-- its own reset unsets it again.
+	local allGroup = AB:GetAllBarsOptions(0).args.text.args.countdown.menu
+	local allSize = allGroup.args.size
+	allGroup.set({ 'menu', 'size' }, 13)
+	eq(select(2, numbers:GetFont()), 13, "All bars' size reaches the bar at once")
+	eq(allSize.default.differs({ 'menu', 'size' }), true, 'set: it differs from its default, unset')
+	allSize.default.reset({ 'menu', 'size' })
+	eq(AB:GetSetting('all', 'countdown.size'), nil, 'its reset unsets it')
+	eq(numbers:GetFontObject(), st:GetFont('pixel'), 'and the bar is back on Pixel at 30px')
 	eq(font(numbers), font(st:GetFont('pixel')), "drawn in Pixel's font")
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -340,7 +361,7 @@ test("text settings with no countdown, as the leave vehicle button's, give a bar
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('the pet and stance bars have the Cooldown numbers section too, the extra buttons none', function()
+test('the pet and stance bars have the Cooldown item too, the extra buttons none', function()
 	fresh()
 	for _, id in ipairs({ 'pet', 'stance' }) do
 		AB.bars[id] = { buttons = {} }

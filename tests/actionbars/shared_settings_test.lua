@@ -20,6 +20,7 @@ local FILES = {
 	'SaftUI-ActionBars/stancebar.lua',
 	'SaftUI-ActionBars/bindings.lua',
 	'SaftUI-ActionBars/extras.lua',
+	'SaftUI-ActionBars/textoptions.lua',
 	'SaftUI-ActionBars/options.lua',
 }
 
@@ -383,28 +384,6 @@ test('every reader takes the effective config', function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('the countdown Reset: on All bars the shared values, on a bar its own only where All bars differs', function()
-	fresh()
-	AB:SetSetting('all', 'countdown.size', 14)
-	AB:SetSetting('bar3', 'countdown.font', 'Friz Quadrata TT')
-	AB:ResetCountdown('bar3')
-	eq(AB:IsOwn('bar3', 'countdown.size'), true, "All bars' size is set, so the bar's unset one is its own")
-	eq(AB:GetBarConfig('bar3').text.countdown.size, nil, 'unset')
-	eq(AB:IsOwn('bar3', 'countdown.font'), false, "All bars has no font: followed")
-	eq(AB:IsOwn('bar3', 'countdown.position'), false, 'the place is the default: followed')
-	eq(AB:GetBarConfig('bar3').text.countdown.font, nil, 'no font')
-	AB:ResetCountdown('all')
-	eq(AB:GetSetting('all', 'countdown.size'), nil, "All bars' size unset")
-	eq(AB:GetBarConfig('bar3').text.countdown.size, nil, 'bar3 keeps its own (nil) size')
-	eq(AB:IsOwn('bar3', 'countdown.size'), true, 'still owned')
-	eq(AB:GetSetting('all', 'countdown.position', 'point'), 'CENTER', "All bars' place is the middle")
-	AB:SetSetting('all', 'countdown.position', 4, 'x_off')
-	AB:ResetCountdown('bar2')
-	eq(AB:IsOwn('bar2', 'countdown.position'), true, "All bars' place isn't the default: the bar owns the default place")
-	eq(AB:GetSetting('bar2', 'countdown.position', 'x_off'), 0, 'in the middle')
-	eq(#take_errors(), 0, 'no errors')
-end)
-
 -- The first login on a profile saved before the update: OnEnable converts before
 -- the build, which in combat waits for the end of it.
 test('OnEnable converts the profile before the build, in combat too', function()
@@ -512,13 +491,6 @@ test('the fader moves a fading bar to a changed opacity', function()
 	eq(AB.bars.bar2:GetAlpha(), 0.2, 'the fader moves it to the new opacity')
 end)
 
-test('ResetCountdown on All bars puts the place back', function()
-	fresh()
-	AB:SetSetting('all', 'countdown.position', 'TOP', 'point')
-	AB:ResetCountdown('all')
-	eq(AB:GetSetting('all', 'countdown.position', 'point'), 'CENTER', 'the middle')
-end)
-
 test('UpdateBars updates every built bar, in order', function()
 	fresh()
 	local seen = {}
@@ -528,25 +500,25 @@ test('UpdateBars updates every built bar, in order', function()
 	eq(table.concat(seen, ','), 'bar2,pet', 'the built bars, in AB.BAR_IDS order')
 end)
 
--- The interim page: a bar's own General, Text and Visibility options.
-test('the interim options read the effective config and a change makes the setting own', function()
+-- The page's options on a bar: its Layout, Visibility and Text sections.
+test("a bar's options read the effective config and a change makes the setting own", function()
 	fresh()
 	for _, id in ipairs({ 'bar3', 'pet' }) do
 		AB.bars[id] = { buttons = {} }
 		for i = 1, (id == 'pet') and 10 or 12 do AB.bars[id].buttons[i] = {} end
 	end
 	function AB:UpdateBar() end
-	local general = AB:GetBarOptions('bar3', 1).args.general
-	general.set({ 'size' }, 40)
+	local layout = AB:GetBarOptions('bar3', 1).args.layout
+	layout.set({ 'size' }, 40)
 	eq(AB:IsOwn('bar3', 'size'), true, 'a change on a bar makes the setting its own')
-	eq(general.get({ 'size' }), 40, 'and it shows')
+	eq(layout.get({ 'size' }), 40, 'and it shows')
 	eq(AB.config.bar3.size, 40, 'in the bar\'s own table')
 
 	local pet = AB:GetBarOptions('pet', 2).args
 	eq(AB:GetSetting('pet', 'buttons'), 12, "the pet bar follows All bars' 12")
-	eq(pet.general.get({ 'buttons' }), 10, 'and shows at most its 10')
-	eq(pet.general.get({ 'perrow' }), 10, 'Buttons per row too')
-	eq(general.get({ 'buttons' }), 12, 'bar 3 shows 12')
+	eq(pet.layout.get({ 'buttons' }), 10, 'and shows at most its 10')
+	eq(pet.layout.get({ 'perrow' }), 10, 'Buttons per row too')
+	eq(layout.get({ 'buttons' }), 12, 'bar 3 shows 12')
 
 	-- Visibility follows All bars, and the faded opacity hides with it.
 	local visibility = AB:GetBarOptions('bar3', 1).args.visibility
@@ -556,8 +528,8 @@ test('the interim options read the effective config and a change makes the setti
 
 	-- The cooldown numbers' rows show what the bar draws, All bars' where it follows.
 	AB:SetSetting('all', 'countdown.size', 20)
-	local countdown = AB:GetBarOptions('bar3', 1).args.text.args.countdown
-	eq(countdown.get({ 'size' }), 20, "the numbers' size is All bars'")
+	local countdown = AB:GetBarOptions('bar3', 1).args.text.args.countdown.menu
+	eq(countdown.get({ 'menu', 'size' }), 20, "the numbers' size is All bars'")
 	eq(table.concat(take_errors(), '\n'), '', 'no errors')
 end)
 
