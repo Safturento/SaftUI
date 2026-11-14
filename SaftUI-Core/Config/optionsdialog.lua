@@ -50,6 +50,7 @@ local function CountLines(measure, text, avail)
 end
 
 local dialog
+local DIALOG_WIDTH = 320
 
 local function CloseConfirmFrames()
 	if dialog then
@@ -97,7 +98,7 @@ local function BuildDialog()
 
 	local frame = Box(st:CreateFrame('Frame', nil, catcher), BG)
 	frame:SetFrameLevel(110)
-	frame:SetWidth(320)
+	frame:SetWidth(DIALOG_WIDTH)
 	frame:EnableMouse(true)
 	-- The thick template's second border.
 	frame.outline:SetBackdropBorderColor(unpack(ALT))
@@ -188,8 +189,9 @@ local function OpenDialog(text, onYes, onNo, prompt, yesLabel, noLabel)
 		dialog.yes:SetPoint('BOTTOM', dialog.frame, 'BOTTOM', 0, 14)
 		dialog.no:Hide()
 	end
-	dialog.frame:ClearAllPoints()
-	dialog.frame:SetPoint('CENTER', W.dialogAnchor or UIParent, 'CENTER', 0, 0)
+	-- Its height is odd for an odd number of lines: placed by its corner, so
+	-- its edges stay on whole units.
+	W.PlaceCentred(dialog.frame, W.dialogAnchor or UIParent, DIALOG_WIDTH, height)
 	dialog.catcher:Show()
 end
 

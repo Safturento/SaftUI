@@ -30,7 +30,10 @@ test('W.Confirm: centered over the window, Esc is No, Enter is Yes', function()
 	local wx, wy = window:GetCenter()
 	local dx, dy = d.frame:GetCenter()
 	eq(dx, wx, 'centered across')
-	eq(dy, wy, 'and down')
+	-- An odd height (one line of text) is half a unit up, so its edges stay on whole pixels.
+	check(math.abs(dy - wy) <= 0.5, 'and down, within half a unit: ' .. dy .. ' for ' .. wy)
+	eq(d.frame:GetTop(), math.floor(d.frame:GetTop()), 'its top on a whole pixel')
+	eq(d.frame:GetBottom(), math.floor(d.frame:GetBottom()), 'and its bottom')
 	eq(W.ConfirmText(), 'Sure?', 'text')
 
 	stub.fire_script(d.catcher, 'OnKeyDown', 'ESCAPE')
@@ -79,7 +82,10 @@ test('W.Prompt: a box with the initial text, Enter and the button accept it, Esc
 	local wx, wy = window:GetCenter()
 	local dx, dy = d.frame:GetCenter()
 	eq(dx, wx, 'centered across')
-	eq(dy, wy, 'and down')
+	-- An odd height (one line of text) is half a unit up, so its edges stay on whole pixels.
+	check(math.abs(dy - wy) <= 0.5, 'and down, within half a unit: ' .. dy .. ' for ' .. wy)
+	eq(d.frame:GetTop(), math.floor(d.frame:GetTop()), 'its top on a whole pixel')
+	eq(d.frame:GetBottom(), math.floor(d.frame:GetBottom()), 'and its bottom')
 	check(d.yes:IsShown() and d.no:IsShown(), 'two buttons')
 	eq(d.yes.text:GetText(), 'Yes', 'default accept label')
 	eq(d.no.text:GetText(), 'No', 'default cancel label')

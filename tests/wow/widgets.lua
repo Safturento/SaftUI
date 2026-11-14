@@ -24,7 +24,9 @@
 
 	Not mimicked: the game's layout pass, so OnSizeChanged never fires by
 	itself (fire it with stub.fire_script), and nothing is placed on whole
-	pixels (SetRoundLayoutToNearestPixel is only remembered); text wrapping
+	pixels (SetRoundLayoutToNearestPixel is only remembered); a size read back
+	in single precision (GetWidth and GetHeight are exact unless a test sets
+	stub.size_noise, game.lua); text wrapping
 	(a font string is one line); OnUpdate; a backdrop's border textures; secret
 	values; taint, and which frames are protected (a frame a test marks
 	protected has its moves blocked in combat: see "Protected frames in
@@ -561,9 +563,14 @@ function ScriptRegion.SetHeight(self, s, height) s.height = number_arg(s, height
 function ScriptRegion.SetSize(self, s, width, height)
 	s.width, s.height = number_arg(s, width, 'width'), number_arg(s, height, 'height')
 end
-function ScriptRegion.GetWidth(self, s) return width_of(self, s) end
-function ScriptRegion.GetHeight(self, s) return height_of(self, s) end
-function ScriptRegion.GetSize(self, s) return width_of(self, s), height_of(self, s) end
+-- A size as the game reads it back: stub.size_noise off, unless it's 0.
+local function read_back(size)
+	if size == 0 then return 0 end
+	return size + stub.size_noise
+end
+function ScriptRegion.GetWidth(self, s) return read_back(width_of(self, s)) end
+function ScriptRegion.GetHeight(self, s) return read_back(height_of(self, s)) end
+function ScriptRegion.GetSize(self, s) return read_back(width_of(self, s)), read_back(height_of(self, s)) end
 
 function ScriptRegion.GetLeft(self, s) return (rect_of(self, {})) end
 function ScriptRegion.GetRight(self, s) return (select(2, rect_of(self, {}))) end

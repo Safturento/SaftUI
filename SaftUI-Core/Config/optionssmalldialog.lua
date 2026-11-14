@@ -39,7 +39,10 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 	(24), the body's own bottom margin (OB.BOTTOM) left off, so a closing
 	line of buttons (floating under the panel) ends 24 above the dialog's
 	edge, or 30 while the status line has text, to fit it; under Blizzard,
-	as before, the margin and a foot of 30 (54 under the last row).
+	as before, the margin and a foot of 30 (54 under the last row). It sits
+	over the window's middle (the screen's without the window) by its top
+	left corner (W.PlaceCentred), so at any height, odd or even, its edges
+	and all it holds are on whole pixels.
 
 	A set re-renders it, after the drag for a slider's (meanwhile its other
 	rows follow the drag in place, as the window's do), and not while
@@ -80,16 +83,21 @@ local function Foot(blizzard)
 end
 
 -- Sizes the dialog to its rows (D.height) with its head and foot, its scroll
--- frame's bottom on the foot. The scroll frame reaches past its content as
--- the window's body does in the look it's drawn in (OW.LAYOUT's bodyReach:
--- under Blizzard the dropdown's glow, so a select at the content's right
--- edge isn't clipped).
+-- frame's bottom on the foot, and places it again over what it opened over
+-- (D.over): its height follows what it holds, and is as often odd as even,
+-- so it's placed by its corner (W.PlaceCentred), its edges and all it holds
+-- on whole units. The scroll frame reaches past its content as the window's
+-- body does in the look it's drawn in (OW.LAYOUT's bodyReach: under Blizzard
+-- the dropdown's glow, so a select at the content's right edge isn't
+-- clipped).
 local function SizeDialog()
 	local blizzard = W.BlizzardLook()
 	local reach = (blizzard and OW.LAYOUT.blizzard or OW.LAYOUT.own).bodyReach
 	local foot = Foot(blizzard)
 	D.scroll:SetPoint('BOTTOMRIGHT', D.frame, 'BOTTOMRIGHT', -(DIALOG_PAD - reach), foot)
-	D.frame:SetHeight(DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + foot)
+	local height = DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + foot
+	D.frame:SetHeight(height)
+	W.PlaceCentred(D.frame, D.over, DIALOG_WIDTH, height)
 	D.scroll:UpdateScrollChildRect()
 	SetDialogScroll(D.offset)
 end
@@ -238,8 +246,10 @@ function OW:OpenDialog(title, options)
 	D.titleSource, D.root, D.offset, D.dragging = title, { [DIALOG_KEY] = options }, 0, nil
 	D.body:SetRoot(D.root)
 	SetStatus('')
-	D.frame:ClearAllPoints()
-	D.frame:SetPoint('CENTER', self:IsShown() and F.window or UIParent, 'CENTER', 0, 0)
+	-- Over the window, or the screen without it; placed at the height it
+	-- has, and again by its draw (SizeDialog).
+	D.over = self:IsShown() and F.window or UIParent
+	W.PlaceCentred(D.frame, D.over, DIALOG_WIDTH, OB.WholeHeight(D.frame:GetHeight()))
 	D.frame:Show()
 	RenderDialog()
 	return true

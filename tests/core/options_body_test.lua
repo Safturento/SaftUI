@@ -353,10 +353,12 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 	eq(by.pick.label:GetWidth(), 296 - 170 - 10, 'its label is the rest of the cell')
 	local point, rel, relPoint = by.pick.widget.frame:GetPoint(1)
 	check(point == 'RIGHT' and rel == by.pick.frame and relPoint == 'RIGHT', "the dropdown at its cell's right end")
-	-- Each button at its cell's left, the cell as wide as the button.
+	-- Each button at its cell's left, the cell as wide as the button; in its
+	-- middle by its top (6 down a 38 row), on whole pixels.
 	for _, key in ipairs({ 'all', 'none', 'ok', 'cancel' }) do
-		local p, r, rp, x = by[key].widget.frame:GetPoint(1)
-		check(p == 'LEFT' and r == by[key].frame and rp == 'LEFT' and x == 0, key .. ' at its cell\'s left')
+		local p, r, rp, x, y = by[key].widget.frame:GetPoint(1)
+		check(p == 'TOPLEFT' and r == by[key].frame and rp == 'TOPLEFT' and x == 0, key .. ' at its cell\'s left')
+		eq(y, -math.floor((by[key].height - 26) / 2), key .. ' in the middle of its row, by its top')
 		eq(by[key].frame:GetWidth(), by[key].widget:GetWidth(), key .. "'s cell is the button's width")
 	end
 	-- Confirm copy and Cancel: a pair in the middle, Confirm copy first, 12 apart.
@@ -1350,6 +1352,33 @@ test('LayoutSections: with panels and floatOf every line of rows that float sits
 	end
 end)
 
+-- A button is placed in its row by its top, half the room above it rounded
+-- down: centred, a button shorter than its line by an odd amount would sit
+-- half a unit down it, between two pixels (a 26 button in the 27 line the
+-- game's read-back made, in the user's screenshots). No built-in button is
+-- shorter than another, so one is made 21 tall here, through the pool.
+test('a button shorter than its line by an odd amount sits on whole pixels, floating or on a panel', function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			local parent = CreateFrame('Frame', nil, UIParent)
+			local tall, short = W.Create(parent, 'execute'), W.Create(parent, 'execute')
+			short.frame:SetHeight(21)
+			tall:Release()
+			short:Release() -- taken first: Confirm copy's
+			local body, by = drawn_root(tree({
+				t = toggle('T', 1), ok = button('Confirm copy', 2, 'center'), cancel = button('Cancel', 3, 'center'),
+			}))
+			body.content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)
+			eq(by.ok.widget.frame:GetHeight(), 21, look .. ': Confirm copy is the short one')
+			local top = by.ok.widget.frame:GetTop()
+			eq(top, math.floor(top), look .. ': its top on a whole pixel')
+			eq(by.ok.frame:GetTop() - top, math.floor((by.ok.height - 21) / 2), look .. ': in the middle of its line, rounded down')
+			body:Release()
+			short.frame:SetHeight(26)
+		end)
+	end
+end)
+
 test("under panels a line of buttons floats off the panel wherever it is, 24 from a panel, off the padding; one beside a row stays on it; Blizzard as before", function()
 	local function reset(order) return { type = 'execute', name = 'Reset', size = 'small', order = order, func = function() end } end
 	local function small(name, order) return { type = 'execute', name = name, size = 'small', order = order, func = function() end } end
@@ -1364,7 +1393,7 @@ test("under panels a line of buttons floats off the panel wherever it is, 24 fro
 		local tall = by.reset.widget:GetHeight()
 		eq(by.reset.height .. ',' .. by.reset.frame:GetHeight(), tall .. ',' .. tall, 'its line as tall as the button')
 		local p, rel, relPoint, x, y = by.reset.widget.frame:GetPoint(1)
-		check(p == 'LEFT' and rel == by.reset.frame and relPoint == 'LEFT' and x == 0 and y == 0, 'the button fills its line')
+		check(p == 'TOPLEFT' and rel == by.reset.frame and relPoint == 'TOPLEFT' and x == 0 and y == 0, 'the button fills its line')
 		local lines, dividers = hairline_rects(body)
 		eq(#lines, 0, 'no hairline')
 		eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38', "the halves' divider only, none beside the Reset")

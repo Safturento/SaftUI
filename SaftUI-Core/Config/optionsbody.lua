@@ -176,6 +176,19 @@ local LEAD_GAP = TITLE_GAP
 local FLOAT_LINE_GAP = BUTTON_GAP
 
 OB.ROW_HEIGHT, OB.LABEL_GAP, OB.WIDTH = ROW_HEIGHT, LABEL_GAP, WIDTH
+
+-- The whole units that hold a height read back from the game (GetHeight):
+-- the next whole unit up, but a hair either side of a whole number is that
+-- number. The game hands a size back from its layout in single precision, a
+-- hair off the size it was given (26.000002 for a button set to 26), and a
+-- plain ceil made a 26 button's line of buttons 27 tall: the button sat
+-- half a unit down it, and a dialog holding it came out an odd height.
+-- SaftUI's scale makes a unit a pixel, so a 1px border half a unit off blurs.
+local READ_BACK = 0.01 -- far over the game's hair, far under a unit
+local function WholeHeight(height)
+	return ceil(height - READ_BACK)
+end
+OB.WholeHeight = WholeHeight
 OB.FLOAT_GAP = FLOAT_GAP
 OB.BOTTOM = BODY_BOTTOM -- the body's bottom margin, in the height Draw returns (a dialog leaves it off)
 
@@ -726,7 +739,11 @@ local function PlaceRow(cell, x, y, width)
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
 	elseif row.type == 'execute' then
 		label:Hide()
-		widget:SetPoint('LEFT', frame, 'LEFT', 0, 0)
+		-- In the middle of the row, by its top: half the room above it, rounded
+		-- down, so a button shorter than its line by an odd amount stays on
+		-- whole units (a floating line is its tallest button's height).
+		local room = cell.height - WholeHeight(widget:GetHeight())
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -floor(room / 2))
 	elseif row.type == 'position' then
 		label:Hide()
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
@@ -927,12 +944,12 @@ function Body:RowCell(row)
 		-- A fill row is the whole line; any other is inside the padding.
 		local fill = OM.Member(self.root, row, 'fill')
 		widget:SetWidth(fill and self.width or inside)
-		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
+		cell.height = max(rowHeight, WholeHeight(widget:GetHeight()) + 12)
 		if fill then cell.fill, cell.pad = true, 12 end
 	elseif row.type == 'multiselect' then
-		cell.height = max(rowHeight, ceil(widget:GetHeight()) + 12)
+		cell.height = max(rowHeight, WholeHeight(widget:GetHeight()) + 12)
 	elseif row.type == 'position' then
-		cell.height = ceil(widget:GetHeight()) + 12
+		cell.height = WholeHeight(widget:GetHeight()) + 12
 		-- A shareable block's parts bring its title's hover line too.
 		widget.onTip = function(on)
 			if on then
@@ -958,7 +975,7 @@ function Body:RowCell(row)
 			-- Its least for now: DrawSections gives it what the view leaves.
 			cell.fill, cell.pad, cell.height = true, pad, ceil(least) + pad
 		else
-			cell.height = ceil(widget:GetHeight()) + pad
+			cell.height = WholeHeight(widget:GetHeight()) + pad
 		end
 	end
 	self.cells[#self.cells + 1] = cell
@@ -1004,11 +1021,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	local function heightOf(row) return byRow[row].height end
 	local function alignOf(row) return byRow[row].align end
 	-- Under panels a section's closing line of buttons floats under its panel
-	-- (OB.LayoutSections): an execute row's button, at its own height. A
+	-- (OB.LayoutSections): an execute row's button, at its own height in whole
+	-- units (WholeHeight: the game reads a 26 button back a hair over 26). A
 	-- search result never does.
 	local function floatOf(row)
 		local cell = byRow[row]
-		if cell.widget and row.type == 'execute' then return ceil(cell.widget:GetHeight()) end
+		if cell.widget and row.type == 'execute' then return WholeHeight(cell.widget:GetHeight()) end
 	end
 	local panels = self.metrics.panels
 	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)

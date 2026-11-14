@@ -791,3 +791,52 @@ test('Blizzard: the menu drawn as the dialog is, its body without panels', funct
 	theme('thick')
 	close_all()
 end)
+
+------------------------------------------------------------------ whole pixels
+
+-- As the small dialog (options_small_dialog_test.lua's whole pixels): the
+-- menu, placed by a corner on its item's dots, and everything in it on whole
+-- pixels, from the window's page and from the small dialog (whose height is
+-- as often odd as even), below its dots or above them, and with the game's
+-- read-back hair (stub.size_noise) either way, which made its floating Reset
+-- 27 tall for a 26 button and set the button half a unit down it.
+local P = load_test_file('lib/pixels.lua')
+
+test('the menu and everything in it sit on whole pixels, from the page or the small dialog, below or above its dots', function()
+	local function on(value) return { get = function() return value end, set = function() end } end
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		for _, noise in ipairs({ 0, 2 ^ -14, -2 ^ -14 }) do
+			stub.size_noise = noise
+			-- The window centred (the menu below the dots), and low on the screen (above them).
+			for _, low in ipairs({ false, true }) do
+				st.config.global.optionsWindow = low and { point = 'CENTER', x = 0, y = -300 } or nil
+				local where = ('%s, noise %s%s'):format(look, noise, low and ', the window low' or '')
+				open_items()
+				click(dots('hotkey'))
+				check(OW:IsMenuShown(), where .. ': open')
+				local off = P.off(M().frame)
+				eq(#off, 0, where .. ', from the page: ' .. P.report(off))
+				OW:CloseMenu()
+				for count = 0, 3 do
+					local args = { hotkey = HotkeyItem() }
+					for i = 1, count do
+						local t = on(true)
+						t.order, t.type, t.name = 1 + i, 'toggle', 'Toggle ' .. i
+						args['t' .. i] = t
+					end
+					OW:OpenDialog('Dialog', { type = 'group', name = 'Dialog', args = args })
+					click(OW.GetDialogFrames().body.cells[1].widget.dots)
+					check(OW:IsMenuShown(), where .. ', ' .. count .. ' toggles: open')
+					off = P.off(M().frame)
+					eq(#off, 0, where .. ', from the dialog with ' .. count .. ' toggles: ' .. P.report(off))
+					OW:CloseDialog()
+				end
+				close_all()
+			end
+		end
+	end
+	stub.size_noise = 0
+	st.config.global.optionsWindow = nil
+	theme('thick')
+end)

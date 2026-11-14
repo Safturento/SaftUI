@@ -222,6 +222,25 @@ local function define(rowType, methods)
 	end
 end
 
+------------------------------------------------------------------ whole units
+
+-- SaftUI's scale makes a unit a pixel, and a 1px border or line on a frame
+-- whose edge sits between two pixels blurs (or the game snaps it away, or
+-- doubles it). So the window, its dialogs and its menus keep every edge on a
+-- whole unit, whatever they hold (the body's heights: OB.WholeHeight).
+
+-- Places frame, width x height (the size just given it), over relative's
+-- middle as near as whole units allow: its top left corner half its size,
+-- rounded down, left of and above relative's centre. Anchored by its own
+-- centre, a frame of odd height (or width) would have every edge half a unit
+-- off, and all it holds with it. relative's centre is whole itself (the
+-- options window's is: an even size on whole units; and so is the screen's).
+-- Placed again whenever its size changes.
+function W.PlaceCentred(frame, relative, width, height)
+	frame:ClearAllPoints()
+	frame:SetPoint('TOPLEFT', relative, 'CENTER', -math.floor(width / 2), math.floor(height / 2))
+end
+
 ------------------------------------------------------------------ custom types
 
 -- The types other files define (the bags' Categories tab): W.CUSTOM[rowType]
