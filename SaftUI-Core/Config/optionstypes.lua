@@ -102,23 +102,6 @@ define('input', {
 
 ------------------------------------------------------------------ color
 
--- ColorPickerFrame is Blizzard's: used only through its public API, and no
--- Lua field is written onto it. The forever branch's picker is the mainline
--- one, where opacity is the alpha (1 is solid). Two C methods move it above the
--- options window, as AceGUI's color picker does (AceGUIWidget-ColorPicker.lua):
--- SetFrameStrata('FULLSCREEN_DIALOG') and SetFrameLevel(swatch level + 10).
--- Its own strata is DIALOG, under the window (FULLSCREEN_DIALOG), where it
--- opens behind it and its GLOBAL_MOUSE_DOWN cancel takes the next click.
-local function OpenPicker(info, swatch)
-	-- Forever and retail both have SetupColorPickerAndShow. Without it the swatch
-	-- does nothing: the older way means writing fields onto Blizzard's frame.
-	if ColorPickerFrame.SetupColorPickerAndShow then
-		ColorPickerFrame:SetFrameStrata('FULLSCREEN_DIALOG')
-		ColorPickerFrame:SetFrameLevel(swatch:GetFrameLevel() + 10)
-		ColorPickerFrame:SetupColorPickerAndShow(info)
-	end
-end
-
 --[[
 	A color is a field as wide and as tall as a dropdown (W.WIDTH.color is the
 	select's), drawn as an input is (Box: the field's fill and edge): a swatch
@@ -305,39 +288,23 @@ define('color', {
 		self.text:SetTextColor(Colors().text.normal:GetRGB())
 	end,
 
-	-- Opens the picker on the current color. Each change it makes is set;
-	-- Cancel puts the color it opened with back. The picker calls swatchFunc
-	-- once as it opens, with the same color, which isn't a change.
+	-- Opens SaftUI's picker (optionscolorpicker.lua) on the current color. Each
+	-- change it makes is set; Cancel puts the color it opened with back, through
+	-- the same change. The picker never calls onChange as it opens, and a field
+	-- that changed row under it (the window drew another page) ignores it.
 	Pick = function(self)
 		if self.disabled or not self.row then return end
 		local root, row = self.root, self.row
-		local r, g, b, a = self.r, self.g, self.b, self.a
 		local hasAlpha = self.hasAlpha
-		local function Current()
-			local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-			local na = hasAlpha and ColorPickerFrame:GetColorAlpha() or 1
-			return nr, ng, nb, na
-		end
-		local opening = true
-		local function Changed(nr, ng, nb, na)
-			-- The picker calls swatchFunc while it opens (with whatever alpha it
-			-- held before), before it is the user's.
-			if opening or self.root ~= root or self.row ~= row then return end
-			if nr == self.r and ng == self.g and nb == self.b and (not hasAlpha or na == self.a) then return end
-			self:Commit(nr, ng, nb, na)
-		end
-		OpenPicker({
-			r = r, g = g, b = b,
-			opacity = hasAlpha and a or nil,
-			hasOpacity = hasAlpha,
-			swatchFunc = function() Changed(Current()) end,
-			opacityFunc = function() Changed(Current()) end,
-			cancelFunc = function(previous)
-				previous = previous or { r = r, g = g, b = b, a = a }
-				Changed(previous.r, previous.g, previous.b, hasAlpha and previous.a or 1)
+		W.OpenColorPicker(self.frame, {
+			r = self.r, g = self.g, b = self.b, a = self.a,
+			hasAlpha = hasAlpha,
+			onChange = function(nr, ng, nb, na)
+				if self.root ~= root or self.row ~= row then return end
+				if nr == self.r and ng == self.g and nb == self.b and (not hasAlpha or na == self.a) then return end
+				self:Commit(nr, ng, nb, na)
 			end,
-		}, self.frame)
-		opening = false
+		})
 	end,
 
 	OnDisabled = function(self, disabled)

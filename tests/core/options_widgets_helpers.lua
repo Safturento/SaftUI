@@ -219,7 +219,27 @@ local function anchor(region, names)
 	return string.format('%s %s %s %d,%d', point, names[rel] or tostring(rel), relPoint, x, y)
 end
 
+-- SaftUI's color picker (optionscolorpicker.lua), played as the user does: a
+-- color typed into its hex box (a whole byte of each channel, so a test uses
+-- n / 255 for what it expects) and its opacity box (a whole percent), and its
+-- Okay and Cancel. W.GetColorPickerFrames() has its frames.
+local function pick_color(r, g, b, a)
+	local F = W.GetColorPickerFrames()
+	local function typed(edit, text)
+		edit:SetFocus()
+		edit:SetText(text)
+		stub.fire_script(edit, 'OnEnterPressed')
+	end
+	typed(F.hex, W.ColorMath.FormatHex(r, g, b))
+	if a ~= nil then typed(F.opacity, tostring(math.floor(a * 100 + 0.5))) end
+end
+local function color_picker_cancel() click(W.GetColorPickerFrames().cancel) end
+local function color_picker_okay() click(W.GetColorPickerFrames().okay) end
+
 return {
+	pick_color = pick_color,
+	color_picker_cancel = color_picker_cancel,
+	color_picker_okay = color_picker_okay,
 	click = click,
 	bind = bind,
 	opt = opt,

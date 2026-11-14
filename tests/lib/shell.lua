@@ -423,6 +423,7 @@ function options_widget_files()
 		'SaftUI-Core/Config/optionskeybinding.lua',
 		'SaftUI-Core/Config/optionsitem.lua',
 		'SaftUI-Core/Config/optionscontrols.lua',
+		'SaftUI-Core/Config/optionscolorpicker.lua',
 		'SaftUI-Core/Config/optionsposition.lua',
 	}
 end
