@@ -1,7 +1,7 @@
 local st = SaftUI
 
--- The Theme tab of Global Settings: Thick, Thin or Blizzard, the chosen theme's colors,
--- Transparent background and Opacity (the engine is SaftUI-Core/theme.lua).
+-- The Theme tab of Global Settings: Thick, Thin or Blizzard and the chosen theme's
+-- colors, the Background's opacity among them (the engine is SaftUI-Core/theme.lua).
 -- Each row reads st.config.profile at call time, so a profile switch reaches
 -- the new profile's tables.
 local TH = st:NewModule('Theme')
@@ -10,7 +10,7 @@ local NAMES = { thick = 'Thick', thin = 'Thin', blizzard = 'Blizzard' }
 local SORTING = { 'thick', 'thin', 'blizzard' }
 local COLORS = { 'bordercolor', 'altbordercolor', 'backdropcolor', 'windowcolor' }
 
--- After the theme or the Transparent background toggle changed: the profile
+-- After the theme or whether the background is see-through changed: the profile
 -- update a profile switch runs (Config:UpdateConfig), which draws every themed
 -- frame again, has every module lay itself out again (the border's width moves
 -- what sits inside it), and tells them the theme's colors changed. Redrawing
@@ -21,7 +21,7 @@ function st:ThemeChanged()
 	st.Config:UpdateConfig()
 end
 
--- After a theme color or the opacity changed: the same wait for combat.
+-- After a theme color or the background's opacity changed: the same wait for combat.
 local function Recolor()
 	if st:QueueAfterCombat('ThemeRecolor', function() st:RecolorThemed() end) then return end
 	st:RecolorThemed()
@@ -54,6 +54,34 @@ local function ColorRow(order, name, key, desc, hidden)
 			Recolor()
 		end,
 	}
+end
+
+-- The Background color, with the opacity every theme shares. The profile saves
+-- that opacity as theme.transparent (see-through or solid) and theme.opacity,
+-- as it did when they were a toggle and a slider, so a saved profile reads and
+-- draws as before: an alpha of 100% is a solid background, under it a
+-- see-through one at that opacity (the opacity kept while it's solid, so
+-- going back to see-through returns to it).
+local function BackgroundAlpha()
+	local theme = Theme()
+	return theme.transparent and theme.opacity or 1
+end
+
+local function SetBackgroundAlpha(alpha)
+	local theme = Theme()
+	local wasTransparent = theme.transparent
+	if alpha >= 1 then
+		theme.transparent = false
+	else
+		theme.transparent = true
+		theme.opacity = alpha
+	end
+	-- Solid or see-through moves borders (a redraw); an opacity only recolors.
+	if (theme.transparent and true or false) ~= (wasTransparent and true or false) then
+		st:ThemeChanged()
+	else
+		Recolor()
+	end
 end
 
 local function NotThick() return Name() ~= 'thick' end
@@ -90,43 +118,36 @@ function TH:GetConfigTable()
 			outer = ColorRow(3, 'Outer border', 'altbordercolor',
 				"The dark lines on either side of a Thick frame's border.", NotThick),
 			windowcolor = ColorRow(4, 'Window background', 'windowcolor',
-				"The fill of SaftUI's windows in Blizzard's theme. How see-through it is is set by Transparent background and Opacity.",
+				"The fill of SaftUI's windows in Blizzard's theme. How see-through it is is set by Background's opacity.",
 				NotBlizzard),
-			background = ColorRow(5, 'Background', 'backdropcolor',
-				ByTheme("The fill of everything that isn't a window in Blizzard's theme. How see-through it is is set by Transparent background and Opacity.",
-					"The fill of SaftUI's frames in the chosen theme. How see-through it is is set by Transparent background and Opacity.")),
-			transparent = {
-				type = 'toggle',
+			background = {
+				type = 'color',
 				size = 'small',
-				order = 6,
-				name = 'Transparent background',
-				desc = "Makes the background of SaftUI's frames see-through, at the Opacity below. A module can set its own background.",
-				get = function() return Theme().transparent end,
-				set = function(_, value)
-					Theme().transparent = value
-					st:ThemeChanged()
+				order = 5,
+				name = 'Background',
+				desc = ByTheme("The fill of everything that isn't a window in Blizzard's theme, and how see-through the fills are: 100% is solid, less shows what is behind. A module can set its own background.",
+					"The fill of SaftUI's frames in the chosen theme, and how see-through the fills are: 100% is solid, less shows what is behind. A module can set its own background."),
+				hasAlpha = true,
+				get = function()
+					local c = Colors().backdropcolor
+					return c[1], c[2], c[3], BackgroundAlpha()
 				end,
-			},
-			opacity = {
-				type = 'range',
-				order = 7,
-				name = 'Opacity',
-				desc = 'How solid the background is while Transparent background is on: 0% shows everything behind it, 100% none of it.',
-				min = 0, max = 1, step = 0.05,
-				isPercent = true,
-				disabled = function() return not Theme().transparent end,
-				get = function() return Theme().opacity end,
-				set = function(_, value)
-					Theme().opacity = value
-					Recolor()
+				set = function(_, r, g, b, a)
+					local c = Colors().backdropcolor
+					c[1], c[2], c[3] = r, g, b
+					if a == nil then
+						Recolor()
+					else
+						SetBackgroundAlpha(a)
+					end
 				end,
 			},
 			reset = {
 				type = 'execute',
 				size = 'small',
-				order = 8,
+				order = 6,
 				name = 'Reset',
-				desc = "Puts the chosen theme's colors, Transparent background and Opacity back to SaftUI's default.",
+				desc = "Puts the chosen theme's colors and the Background's opacity back to SaftUI's default.",
 				confirm = function()
 					return ("Reset the %s theme to SaftUI's defaults?"):format(NAMES[Name()])
 				end,

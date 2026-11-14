@@ -136,8 +136,8 @@ local function GetConfigTable(unit)
 
 	local width = generators.width(1, "The whole row's width in pixels, shared out among the points. With Relative on, it's added to the unit frame's width: 0 is as wide as the unit frame.")
 	width.size = 'small'
+	-- Height is a half of its line: it has no Relative to share its half with.
 	local height = generators.height(3, "Each point's height in pixels.")
-	height.size = 'small'
 
 	return {
 		order = 4,
@@ -149,7 +149,8 @@ local function GetConfigTable(unit)
 			Update()
 		end,
 		args = {
-			enable = generators.toggle(0, 'Enable', 'Shows your combo points, holy power, chi, soul shards and the like, as a row of points.', 'small'),
+			-- A half, so Theme sits beside it with no empty quarter between.
+			enable = generators.enable(0, 'Shows your combo points, holy power, chi, soul shards and the like, as a row of points.'),
 			theme = generators.theme(1, "Each point's border and background."),
 			background = generators.background(1.5),
 			alpha = generators.alpha(2, 'How solid the points are, from see-through to opaque.'),

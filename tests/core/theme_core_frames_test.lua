@@ -687,7 +687,7 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(background.order, 4, 'its order')
 	eq(background.width, nil, 'no Ace width')
 	eq(listed(background), "theme=Use SaftUI's theme;solid=Solid;transparent=Transparent", 'its values, in order')
-	eq(background.desc, "Solid, or see-through by Global Settings > Theme's Opacity. Use SaftUI's theme follows its Transparent background.",
+	eq(background.desc, "Solid, or see-through by Global Settings > Theme's Background opacity. Use SaftUI's theme follows its Background.",
 		'its desc by default')
 	eq(generators.background(4, 'Own words.').desc, 'Own words.', "a caller's desc instead")
 

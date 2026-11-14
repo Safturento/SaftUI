@@ -246,7 +246,7 @@ local function RedrawTheme()
 end
 
 -- Runs on every profile change, copy or reset, and on a change of the theme or
--- its Transparent background toggle (st:ThemeChanged, Media/theme.lua).
+-- going solid or see-through (st:ThemeChanged, Media/theme.lua).
 function Config:UpdateConfig()
 	-- A profile switched to or copied from one saved before themes still has
 	-- its template choices: they become a Theme and Background first, so every
