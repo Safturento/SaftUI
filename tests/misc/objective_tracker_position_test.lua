@@ -295,6 +295,73 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	end)
 end
 
+-- The mover's outline in edit mode: as tall as the tracker (a read of
+-- GetHeight(true), as the skin reads sizes), never shorter than the header,
+-- hanging down from the holder's top and sides so what's saved is the holder's.
+local function printed(fn)
+	local real = print
+	print = function() end -- edit mode says "Edit mode on."
+	local ok, err = pcall(fn)
+	print = real
+	if not ok then error(err, 0) end
+end
+
+local function outline(client, mover)
+	local overlay = mover.overlay
+	return ('%d,%d,%d,%d'):format(overlay:GetLeft(), overlay:GetRight(), overlay:GetTop(), overlay:GetBottom())
+end
+
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ": edit mode's outline fills the tracker's height, from the holder's top", function()
+		world(client)
+		local holder, tracker = OTP.holder, OT.tracker
+		local mover = st.EditModeFrames.movers.objectivetracker
+		local function hold(height, why)
+			eq(outline(client, mover), ('%d,%d,%d,%d'):format(holder:GetLeft(), holder:GetRight(), holder:GetTop(), holder:GetTop() - height), why)
+		end
+		hold(32, 'the header only until edit mode opens')
+		printed(function() st.EditModeFrames:Activate() end)
+		hold(default_height(client), "on opening: the tracker's height, down to Blizzard's bottom line")
+		eq(('%d,%d'):format(holder:GetSize()), '260,32', 'the holder stays the header')
+
+		-- The tracker's height changing while edit mode is open (a layout apply).
+		OT.edit_mode_moves(MOVED)
+		stub.run_timers()
+		rawset(OT.tracker, 'editModeHeight', 400) -- Blizzard's own setting
+		OT.break_snap()
+		OT.apply_layout()
+		hold(400, "follows the tracker's new height")
+		eq(('%d,%d'):format(holder:GetSize()), '260,32', 'the holder is still the header')
+		clean()
+	end)
+end
+
+test("the outline never goes shorter than the header, and a tracker below it leaves it", function()
+	world('forever', { height = 0 })
+	local mover = st.EditModeFrames.movers.objectivetracker
+	OT.break_snap()
+	OT.apply_layout()
+	printed(function() st.EditModeFrames:Activate() end)
+	eq(OT.tracker:GetHeight(), 0, 'a tracker with no height')
+	eq(OTP.holder:GetTop() - mover.overlay:GetBottom(), 32, "the header's height")
+	clean()
+end)
+
+test("what the mover saves is the holder's spot, whatever the outline's height", function()
+	world('forever')
+	local mover = st.EditModeFrames.movers.objectivetracker
+	printed(function() st.EditModeFrames:Activate() end)
+	check(mover.overlay:GetHeight() > 32, 'the outline is tall')
+	st.EditModeFrames:Nudge(mover, 'LEFT')
+	local position = profile.objectivetracker.position
+	eq(('%s %s %s %d,%d'):format(position.point, position.frame, position.rel_point, position.x_off, position.y_off),
+		'TOPRIGHT UIParent TOPRIGHT -21,-275', 'the same position a nudge saved before')
+	eq(('%d,%d'):format(OTP.holder:GetSize()), '260,32', 'the holder is the header')
+	eq(top_right(OT.tracker), top_right(OTP.holder), 'the tracker on the holder')
+	eq(mover.overlay:GetTop(), OTP.holder:GetTop(), 'the outline from the same top')
+	clean()
+end)
+
 -- Profile changes: a profile with no position keeps the spot the tracker was
 -- last placed at, whether Blizzard's layout has it moved or not, and the
 -- capture never reads that as Blizzard's.

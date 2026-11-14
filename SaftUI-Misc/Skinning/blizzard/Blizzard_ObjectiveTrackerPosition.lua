@@ -77,6 +77,10 @@ local OTP = st:NewModule('ObjectiveTracker')
 	than the tracker can (its reach below, read again after each of Blizzard's
 	UpdateHeight), or the tracker would stop above it.
 
+	In edit mode the mover's outline is as tall as the tracker (never shorter
+	than the holder), from the holder's top; the holder itself, and so what is
+	saved, stays the header (OTP:UpdateFootprint).
+
 	Blizzard's Edit Mode box for the tracker (its Selection) is kept hidden, so
 	Blizzard's Edit Mode can't select or drag it: its Height, Opacity and Text
 	Size settings can't be reached, and keep the values the layout has. Text
@@ -306,6 +310,28 @@ end
 function OTP:KeepInMargin()
 	st:KeepInScreenMargin(self.holder)
 	self:PlaceTracker()
+	self:UpdateFootprint()
+end
+
+-- Edit mode's outline (the mover's overlay, a frame of SaftUI's, anchored to
+-- the holder) as tall as the tracker is now, never shorter than the holder (the
+-- header), hanging down from the holder's top and sides. Only the outline
+-- changes: the holder, and so what the mover saves, stays the header. The
+-- tracker's height is read with GetHeight(true), as TrackerReach reads it. Only
+-- while edit mode is open; opening it refreshes the outline, and so does each
+-- of Blizzard's UpdateHeight (KeepInMargin).
+function OTP:UpdateFootprint()
+	local tracker, holder, mover = self.tracker, self.holder, self.mover
+	if not (tracker and holder and mover and st.EditModeFrames.active) then return end
+	local height, scale, holderScale = tracker:GetHeight(true), tracker:GetEffectiveScale(), holder:GetEffectiveScale()
+	local extra = 0
+	if Plain(height, scale, holderScale) and holderScale ~= 0 then
+		extra = st:RoundToPixel(math.max(0, height * scale / holderScale - holder:GetHeight()), holder)
+	end
+	local overlay = mover.overlay
+	overlay:ClearAllPoints()
+	overlay:SetPoint('TOPLEFT', holder, 'TOPLEFT', 0, 0)
+	overlay:SetPoint('BOTTOMRIGHT', holder, 'BOTTOMRIGHT', 0, -extra)
 end
 
 function OTP:Setup()
@@ -361,6 +387,7 @@ function OTP:Setup()
 	})
 	st:KeepInScreenMargin(holder, function() return self:TrackerReach() end)
 	self:PlaceTracker()
+	st.EditModeFrames:On('Enabled', function() self:UpdateFootprint() end)
 end
 
 -- A profile change: the holder from the new profile, and the tracker on it.
