@@ -215,9 +215,28 @@ end
 
 -- Whether the window is its header only: the player collapsed it, per
 -- character. With Header off there is no whole-tracker collapse, and the saved
--- state is ignored (Ruling 15).
+-- state is ignored (Ruling 15). While auto quest popups show it is open
+-- whatever was saved, and the saved state stays (Ruling 15).
 function TR:IsCollapsed()
-	return self.config.header and self:CharData().collapsed or false
+	return self.config.header and not self.popupsShown and self:CharData().collapsed or false
+end
+
+-- Popups show (the refresh says so before it sizes the window): the window is
+-- expanded while they do, without changing the saved state.
+function TR:SetPopups(shown)
+	shown = shown and true or false
+	if self.popupsShown == shown then return end
+	self.popupsShown = shown
+	if self.header then self.header.collapse:SetDown(self:IsCollapsed()) end
+end
+
+-- Whether the list is empty (nothing tracked, no popups): the window is hidden
+-- for it with Hide when empty, else it shows its header and the empty line.
+function TR:SetEmpty(empty)
+	self.isEmpty = empty and true or false
+	if not self.window then return end
+	local shown = not (self.isEmpty and self.config.hide_empty)
+	if self.window:IsShown() ~= shown then self.window:SetShown(shown) end
 end
 
 function TR:SetCollapsed(collapsed)
@@ -225,6 +244,9 @@ function TR:SetCollapsed(collapsed)
 	if not self.window then return end
 	self.header.collapse:SetDown(self:IsCollapsed())
 	self:LayoutWindow()
+	-- Opening draws the rows a collapsed refresh left alone.
+	if not self:IsCollapsed() and self.rowsStale and self.model then self:Redraw() end
+	self:UpdateTicker()
 end
 
 ------------------------------------------------------------------ size and scroll
@@ -267,22 +289,34 @@ function TR:LayoutWindow()
 	local room = range > 0 and Round(st:ScrollBarRoom(scroll)) or 0
 	local childWidth = Layout.ChildWidth(width, room)
 
-	window:SetSize(width, height)
-	self.header:SetSize(width - 2 * L.PAD, L.HEADER)
-	scroll:ClearAllPoints()
-	scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and L.HEADER + L.HEADER_GAP or 0)))
-	scroll:SetSize(childWidth, view)
-	scroll:SetContentSize(childWidth, content)
-	scroll:SetShown(not collapsed)
+	-- Only when something it is made of changed: a refresh that changed nothing
+	-- resizes and re-anchors nothing.
+	local key = ('%s,%s,%s,%s,%s,%s,%s,%s'):format(width, height, view, childWidth, content, range, header and 1 or 0, collapsed and 1 or 0)
+	if key ~= self.layoutKey then
+		self.layoutKey = key
+		window:SetSize(width, height)
+		self.header:SetSize(width - 2 * L.PAD, L.HEADER)
+		scroll:ClearAllPoints()
+		scroll:SetPoint('TOPLEFT', window, 'TOPLEFT', L.PAD, -(L.PAD + (header and L.HEADER + L.HEADER_GAP or 0)))
+		scroll:SetSize(childWidth, view)
+		scroll:SetContentSize(childWidth, content)
+		scroll:SetShown(not collapsed)
+		-- The window and the list take the wheel only while the list scrolls, so
+		-- the camera still zooms with the cursor over a tracker that fits, is empty
+		-- or is collapsed. Neither frame is protected: safe in combat.
+		window:EnableMouseWheel(range > 0)
+		scroll:EnableMouseWheel(range > 0)
+	end
 	self.scrollRange = range
-	-- The window and the list take the wheel only while the list scrolls, so
-	-- the camera still zooms with the cursor over a tracker that fits, is empty
-	-- or is collapsed. Neither frame is protected: safe in combat.
-	window:EnableMouseWheel(range > 0)
-	scroll:EnableMouseWheel(range > 0)
 	self:UpdateWatcher()
 	-- A collapsed window keeps the player's place for when it opens again.
 	if not collapsed then self:ScrollTo(self:GetScroll()) end
+	self:PlaceFocusBar()
+end
+
+-- The scroll view's height as drawn, in whole pixels.
+function TR:ViewHeight()
+	return self.scroll and Round(self.scroll:GetHeight()) or 0
 end
 
 -- How far down the list is scrolled.
@@ -295,7 +329,12 @@ function TR:ScrollTo(offset)
 	if not self.scroll then return end
 	local whole = math.min(math.max(Round(offset), 0), self.scrollRange or 0)
 	self.scrollAt = whole
-	self.scroll:SetVerticalScroll(whole)
+	if self.scroll:GetVerticalScroll() ~= whole then
+		self.scrolling = true
+		self.scroll:SetVerticalScroll(whole)
+		self.scrolling = false
+	end
+	self:PlaceFocusBar()
 end
 
 -- Task 8: while an item button sits in a row the list doesn't scroll in combat.
@@ -306,6 +345,7 @@ end
 -- The wheel over the window or the scroll frame: 40 a notch, clamped.
 local function OnWheel(_, delta)
 	if (TR.scrollRange or 0) <= 0 or TR:IsScrollLocked() then return end
+	TR.lastUserScroll = GetTime()
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
@@ -331,7 +371,11 @@ function TR:UpdateBar()
 			visible = self.hoverAt ~= nil and now - self.hoverAt < L.BAR_LINGER
 		end
 	end
-	bar:SetAlpha(visible and 1 or 0)
+	local alpha = visible and 1 or 0
+	if self.barAlpha ~= alpha or bar:GetAlpha() ~= alpha then
+		self.barAlpha = alpha
+		bar:SetAlpha(alpha)
+	end
 end
 
 local function OnWatch()
@@ -363,7 +407,7 @@ function TR:UpdateHeader(model)
 	self.counts = model and model.counts or nil
 	local header = self.header
 	if not header then return end
-	header.count:SetText(TR.CountText(self.counts))
+	TR.SetText(header.count, TR.CountText(self.counts))
 	header.tipLine = TR.HeaderTip(self.counts)
 end
 
@@ -445,6 +489,8 @@ local function BuildHeader(window)
 	end)
 	collapse:SetPoint('TOPRIGHT', header, 'TOPRIGHT', 0, -(L.HEADER - L.CHEVRON) / 2)
 	collapse:SetScript('OnClick', function(self)
+		-- Popups hold the window open: a click would save a state that shows nothing.
+		if TR.popupsShown then return end
 		TR:SetCollapsed(not TR:IsCollapsed())
 		if GameTooltip:IsOwned(self) then self:ShowTip() end
 	end)
@@ -515,7 +561,21 @@ function TR:BuildWindow()
 			frame:SetVerticalScroll(target)
 			settling = false
 		end
+		TR:PlaceFocusBar()
 	end)
+	-- The player's own scrolling is real input only: the wheel (OnWheel) and a
+	-- mouse-down on the bar's thumb, track or steppers. The bar setting the offset
+	-- itself after a range change fires OnVerticalScroll too and is not that.
+	local bar = scroll.ScrollBar
+	if bar then
+		local parts = { bar.Track, bar.Back, bar.Forward, bar.GetThumb and bar:GetThumb() }
+		for index = 1, 4 do
+			local part = parts[index]
+			if part and part.HookScript then
+				part:HookScript('OnMouseDown', function() TR.lastUserScroll = GetTime() end)
+			end
+		end
+	end
 	self.scroll = scroll
 	self.content = scroll.ScrollChild
 

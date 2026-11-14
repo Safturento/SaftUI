@@ -11,4 +11,5 @@ model.lua
 groups.lua
 layout.lua
 window.lua
+rows.lua
 options.lua

@@ -8,6 +8,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 - [Active](#active)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
+  - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
@@ -157,6 +158,19 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Settled 2026-11-14:** the owner builds each unit frame layout in game as a unit frame profile, and it is migrated from the game's saved settings (SaftUI's SavedVariables in the WTF folder) into built-in defaults that ship with the addon. "yep I'd build them myself in game and you can just migrate the settings from the wtf folder to actual defaults". When migrating, only the settings go into the repo: no account, realm or character names from the file or its path.
 
 **Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
+### 2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game
+
+**What:** SaftUI's tracker (`SaftUI-Tracker`) allocates about 175 KB of Lua tables per refresh in the stub world with 25 tracked quests of 3 objectives (about 240 KB with 6 objectives each). At the throttle's ceiling of ten refreshes a second (`TR.REFRESH_GAP` 0.1 s) that is about 2 MB/s of garbage while quest events stream, for example in a fight. An idle refresh (nothing changed) allocates no frame and sets no text. The question is whether the real numbers matter in game.
+
+**Why noticed:** Review of tracker Task 5 (rows and the refresh), `.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/task-5-review.md`, which measured it and recommended accepting it for Phase 1 and measuring in game. The split in the stub world: the model read (`TR.Model.Read`) about 150 KB, of which about 70 KB is the stub's own API tables (30 `C_QuestLog.GetInfo` results, 25 `GetQuestObjectives` results), which the game makes too; the redraw (`TR.QuestLines`, `TR.Groups.Build`, title strings) about 25 KB.
+
+**Anchors:** `SaftUI-Tracker/model.lua` (`Model.Read`, `ReadQuest`, `ReadObjectives`, `TR.QuestLines`), `SaftUI-Tracker/groups.lua` (`Groups.Build`), `SaftUI-Tracker/init.lua` (`TR:MarkDirty`, `TR:Refresh`, `TR:Redraw`), `tests/tracker/refresh_test.lua`.
+
+**What's been considered:** Skipping the read when an event can't have changed the model, or reading only the quests an event names, does little in a fight: the stream there is `QUEST_LOG_UPDATE`, which names no quest and can change any of them. `PLAYER_REGEN_ENABLED` and `PLAYER_REGEN_DISABLED` need no re-read until the item buttons (Task 8) use them, a free micro-cut. The cheapest real cut, if the numbers call for one: `TR.Model.Read` fills last refresh's per-quest and objective tables in place, keyed by quest ID, instead of making new ones (most of the model's own share), and `TR.QuestLines` and `TR.Groups.Build` reuse their line and group tables (the redraw's share).
+
+**Shape of work:** First measure: with a full log in a fight, run `/run local m=collectgarbage('count') local t=debugprofilestop() SaftUI.Tracker:Refresh() print(debugprofilestop()-t, collectgarbage('count')-m)` a few times and note the milliseconds and KB, here. If they are small (a refresh well under a millisecond, garbage collected without a visible hitch), resolve this as accepted. If not, one small change in `model.lua` and `groups.lua` (reuse the tables), with the idle-refresh test kept.
+
+**Open questions:** The in-game milliseconds and KB per refresh on the owner's client with a full log, in and out of a fight.
 
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 

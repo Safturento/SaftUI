@@ -141,3 +141,47 @@ test("the tree passes AceConfigRegistry's validator", function()
 	end
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+test('the Quests tab: every setting but Left click and Tooltips, in order, saving into tracker.quests and drawing the rows again', function()
+	local st, TR = world(true)
+	local tab = TR:GetConfigTable().args.quests
+	eq(tab.name, 'Quests', 'the name')
+	eq(tab.order, 2, 'second')
+	eq(tab.disabled(), false, 'on while the tracker is on')
+	local order = {}
+	for key, option in pairs(tab.args) do order[#order + 1] = { key, option.order } end
+	table.sort(order, function(a, b) return a[2] < b[2] end)
+	local keys = {}
+	for i, entry in ipairs(order) do keys[i] = entry[1] end
+	eq(table.concat(keys, ' '),
+		'show zones current_first order finished_first level tags difficulty icons hide_finished finished_objectives bars timers waypoint spacing colors',
+		'the settings of the design, then the description row')
+	check(tab.args.left_click == nil and tab.args.tooltips == nil, "Left click and Tooltips are Task 7's")
+	eq(tab.args.show.values.tracked, 'Tracked quests', 'Show: tracked quests')
+	eq(tab.args.show.values.zone, "Tracked and the current zone's", "or the current zone's")
+	eq(tab.args.order.values.game, "The game's order", 'Order: the game\'s')
+	eq(tab.args.order.values.log, 'Quest log order', 'the log\'s')
+	eq(tab.args.order.values.level, 'Level', 'or level')
+	eq(tab.args.spacing.min .. ' ' .. tab.args.spacing.max, '0 20', 'Spacing 0 to 20')
+	eq(tab.args.colors.type, 'description', 'the last row is a description')
+	eq(tab.args.colors.name, 'Finished and failed objectives take Global settings > Colors > Objectives.', 'its words')
+	check(not tab.args.current_first.disabled(), 'Current zone first is enabled with Group by zone on...')
+	TR.config.quests.zones = false
+	check(tab.args.current_first.disabled(), '... and disabled with it off')
+	TR.config.quests.zones = true
+
+	-- A set saves and draws again: Level shows in the titles at once.
+	stub.real_zone_text = 'A'
+	local Q = load_test_file('tracker/quest_log.lua')
+	Q.set({ Q.header('A'), Q.quest(1, { level = 12 }) }, { 1 })
+	stub.run_timers()
+	TR:Refresh()
+	local row = TR:GetQuestRow(1)
+	local before = row.title:GetText()
+	tab.set({ 'quests', 'level' }, not TR.config.quests.level)
+	check(row.title:GetText() ~= before, 'the title changed at once: ' .. tostring(before) .. ' -> ' .. tostring(row.title:GetText()))
+	tab.set({ 'quests', 'spacing' }, 3)
+	eq(TR.config.quests.spacing, 3, 'saved')
+	eq(tab.get({ 'quests', 'spacing' }), 3, 'and read back')
+	eq(#take_errors(), 0, 'no errors')
+end)
