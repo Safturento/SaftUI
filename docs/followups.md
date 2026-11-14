@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
   - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
@@ -134,6 +135,28 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect
+
+**What:** SaftUI sets UIParent's scale to 768 over the screen's physical height, so one unit is one physical pixel on every display. Sizes are therefore in pixels: a 45 button is 45 pixels whether the screen is 1080, 1440 or 2160 tall. The user tuned their sizes on a 1440p monitor, so the UI is large on 1080p and tiny on 4K and Retina displays. Wanted: the UI scales with the display and stays pixel perfect.
+
+**Why noticed:** The user, 2026-11-13: "Another thing I'd like to look at is being able to scale saft UI to work well across different resolutions and maintain pixel perfection. since I've configured the sizing to make sense on a 1440p monitor things look blown up on a 1080 monitor and tiny on higher resolution monitors like mac retina displays or 4k monitors".
+
+**Anchors:** `SaftUI-Core/constants.lua` (`st.scale = 768/st.screenHeight`), `SaftUI-Core/init.lua` (`UIParent:SetScale(st.scale)`), `SaftUI-Core/api.lua` (`st:GetPixelSize`, `st:RoundToPixel`), every `edgeSize = 1`, 1-unit line and inset in the code (they assume a unit is a pixel; the options body's hairlines and dividers say so), `SaftUI-Unitframes/nameplates/pixels.lua`, the README's Installation section; related: [UIParent's scale is set once, at login](#2026-11-11--uiparents-scale-is-set-once-at-login-so-plates-leave-whole-pixels-after-a-ui-scale-or-display-change).
+
+**What's been considered:** Not yet discussed with the user beyond the request. The shape of the problem:
+
+- A scale factor k on top of today's scale (UIParent at 768/height times k): k = height/1440 makes a layout take the same share of any screen (0.75 at 1080p, 1.5 at 4K), or the user picks k.
+- With k not 1 a unit is k pixels, so "1" is no longer one pixel: every border, hairline, inset and gap written as 1 must become "one pixel" (1/k units, `st:GetPixelSize`) or a whole number of pixels, and every size and offset must be rounded to whole pixels (`st:RoundToPixel` exists and the bars and plates already use it; most of the code does not).
+- Whole-number k (2 on 4K and Retina) needs none of that and is crisp today's way, with 2-pixel borders; it can't serve 1080p (0.75).
+- Whether borders stay one pixel at every scale (thin on 4K) or grow with k rounded to whole pixels (2 at 4K) is a look decision.
+- Fonts scale with k; the pixel fonts (Pixel, Pixel Med) are only crisp at whole multiples of their design size.
+- Saved positions are in units, so they keep their place relative to the screen when k follows the height; a profile shared between machines would then look alike on each. Width differs by aspect ratio (ultrawide), which k doesn't address.
+- The scale is set once at login (the linked followup); a display change needs it set again.
+
+**Shape of work:** A project: a design round with the user (automatic or chosen scale, border thickness, pixel fonts, per-machine or per-profile), then an audit of every place that assumes a unit is a pixel, a "one pixel" token and rounding helpers used everywhere (this meets the design system's tokens table), and in-game checks at 1080p, 1440p and 4K. Best done after the design system's tokens and spacing are in code, since that work touches the same constants.
+
+**Open questions:** All of the design round's. Does the user play the same profile on several machines? Which displays (exact resolutions)?
 
 ### 2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override
 
