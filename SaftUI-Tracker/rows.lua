@@ -347,15 +347,15 @@ local function MakePopupRow(self)
 	local row = CreateFrame('Button', nil, self.content)
 	row:EnableMouse(true)
 	local bar = row:CreateTexture(nil, 'ARTWORK')
-	bar:SetSize(L.POPUP_BAR, L.POPUP)
 	bar:SetPoint('TOPLEFT', row, 'TOPLEFT', 0, 0)
+	bar:SetPoint('BOTTOMLEFT', row, 'BOTTOMLEFT', 0, 0)
+	bar:SetWidth(L.POPUP_BAR)
 	row.bar = self:NewAccent(bar, 1)
 	row.label = self:NewText(row, 'header')
 	row.label:SetWordWrap(false)
 	row.label:SetPoint('TOPLEFT', row, 'TOPLEFT', L.POPUP_BAR + L.FOCUS_GAP, 0)
 	row.title = self:NewText(row, 'text')
 	row.title:SetWordWrap(false)
-	row.title:SetPoint('BOTTOMLEFT', row, 'BOTTOMLEFT', L.POPUP_BAR + L.FOCUS_GAP, 0)
 	row:SetScript('OnClick', function(self) TR:OnPopupClick(self) end)
 	return row
 end
@@ -491,12 +491,9 @@ end
 local function DrawPopup(self, row, entry, p, width)
 	local popup = entry.popup
 	row.questID, row.popupKind = popup.id, popup.kind
-	TR.SetText(row.label, popup.kind == 'COMPLETE' and 'Quest complete' or 'Quest discovered')
 	Paint(row.label, 'accent')
-	TR.SetText(row.title, popup.title)
 	Paint(row.title, 'normal')
-	Width(row.label, p.titleWidth)
-	Width(row.title, p.titleWidth)
+	Place(row.title, row, L.POPUP_BAR + L.FOCUS_GAP, p.labelHeight + L.LINE_GAP)
 end
 
 local function DrawEmpty(self, row, entry, p, width)
@@ -699,7 +696,14 @@ function TR:BuildRows()
 	-- that text, in its row, answers.
 	self.measureText = function(text, width, font, entry, slot)
 		local row = entry.row
-		local fs = slot == 'title' and row.title or TR:Part(row, slot).fs
+		local fs
+		if slot == 'title' then
+			fs = row.title
+		elseif slot == 'label' then
+			fs = row.label
+		else
+			fs = TR:Part(row, slot).fs
+		end
 		return TR:Measure(row, fs, text, width)
 	end
 end
@@ -738,7 +742,7 @@ local function NextEntry(entries, n, kind)
 		entries[n] = entry
 	end
 	entry.kind = kind
-	entry.first, entry.lines, entry.item, entry.group, entry.quest, entry.popup, entry.row, entry.icons = nil, nil, nil, nil, nil, nil, nil, nil
+	entry.label, entry.first, entry.lines, entry.item, entry.group, entry.quest, entry.popup, entry.row, entry.icons = nil, nil, nil, nil, nil, nil, nil, nil, nil
 	return entry
 end
 
@@ -760,7 +764,10 @@ function TR:BuildEntries(model, groups)
 
 	for _, popup in ipairs(model.popups) do
 		n = n + 1
-		NextEntry(entries, n, 'popup').popup = popup
+		local entry = NextEntry(entries, n, 'popup')
+		entry.popup = popup
+		entry.label = popup.kind == 'COMPLETE' and 'Quest complete' or 'Quest discovered'
+		entry.first = popup.title
 	end
 	for _, group in ipairs(groups) do
 		if group.key ~= TR.ALL_KEY then

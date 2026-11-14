@@ -139,12 +139,22 @@ test('Rows: a row with a button is at least Button size tall; the measure gets t
 	eq(table.concat(asked, ' '), 'T226text L214text', 'title then each line, with its width and font; a bar is not measured')
 end)
 
-test('Rows: a popup is 22 tall, a popup then a zone is 22 + 10, popups are spacing apart; the empty line is measured', function()
-	local placed, height = rows({
-		{ kind = 'popup' }, { kind = 'popup' }, { kind = 'zone' }, { kind = 'quest', first = 'a', lines = {} },
-	})
-	eq(ys(placed), '0 22, 30 22, 62 20, 86 12', 'popup, spacing, popup, 10, zone, 4, quest')
-	eq(height, 98)
+test('Rows: a popup is its label, 2, its title tall but at least 22; then a zone is 10 under it, popups are spacing apart; the empty line is measured', function()
+	local function popup() return { kind = 'popup', label = 'Quest discovered', first = 'An offer' } end
+	-- Two 12 texts: 12 + 2 + 12 = 26.
+	local placed, height = rows({ popup(), popup(), { kind = 'zone' }, { kind = 'quest', first = 'a', lines = {} } })
+	eq(ys(placed), '0 26, 34 26, 70 20, 94 12', 'popup, spacing, popup, 10, zone, 4, quest')
+	eq(placed[1].labelHeight, 12, 'the label height is kept')
+	eq(placed[1].titleHeight, 12, 'and the title height')
+	eq(height, 106)
+	-- Small texts: the 22 is a floor.
+	placed = rows({ popup() }, nil, function() return 10 end)
+	eq(ys(placed), '0 22', '10 + 2 + 10 is 22')
+	placed = rows({ popup() }, nil, function() return 4 end)
+	eq(ys(placed), '0 22', 'never under 22')
+	local asked = {}
+	rows({ popup() }, nil, function(text, width, font, entry, slot) asked[#asked + 1] = text .. width .. font .. slot; return 12 end)
+	eq(table.concat(asked, ' '), 'Quest discovered238headerlabel An offer238texttitle', 'the label in the header font, then the title, at the popup text width')
 	placed, height = rows({ { kind = 'empty', first = 'No tracked quests.' } })
 	eq(ys(placed), '0 12', 'the empty line is the measured text')
 	eq(height, 12)

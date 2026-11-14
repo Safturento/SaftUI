@@ -347,15 +347,16 @@ RW.both('popups: above the zones, the window expanded while they show, a click s
 	eq(#popups, 2, 'two popups')
 	local first, second = RW.quest and TR:GetRow('popup', 77), TR:GetRow('popup', 78)
 	eq(popups[1], first, 'in the popups\' order')
-	eq(first:GetHeight(), 22, '22 tall')
+	eq(first:GetHeight(), 34, 'the label, 2 and the title: 16 + 2 + 16 at the default fonts')
 	eq(first:GetTop(), TR.content:GetTop(), 'at the top of the list')
-	eq(second:GetTop(), first:GetTop() - 22 - 8, 'spacing apart')
-	eq(RW.zone(TR, 'Elwynn Forest'):GetTop(), second:GetTop() - 22 - 10, 'the first zone header 10 under the last popup')
+	eq(second:GetTop(), first:GetTop() - 34 - 8, 'spacing apart')
+	eq(RW.zone(TR, 'Elwynn Forest'):GetTop(), second:GetTop() - 34 - 10, 'the first zone header 10 under the last popup')
 	eq(RW.text(first.label), 'Quest discovered', 'an offer says Quest discovered')
 	eq(RW.text(second.label), 'Quest complete', 'a turn-in says Quest complete')
 	eq(RW.text(first.title), 'An offer', 'over the quest\'s title')
 	eq(RW.color(first.label), RW.rgb(colors(st).button.blue), 'in the accent')
 	eq(first.label:GetFontObject(), st:GetFont('normal'), 'in the Header font')
+	eq(first.bar:GetHeight(), 34, 'the accent bar is the whole row')
 	eq(first.bar:GetWidth(), 2, 'a 2 px bar')
 	eq(first.bar:GetLeft(), first:GetLeft(), 'at its left')
 	-- The window is expanded while they show, and the saved state is untouched.
@@ -586,6 +587,7 @@ test('whole pixels: the rows of every kind, collapsed, popups, no header, Group 
 				function() TR.config.quests.zones = false; TR:UpdateConfig() end,
 				function() TR:SetCollapsed(true) end,
 				function() TR.config.quests.icons = false; TR:UpdateConfig() end,
+				function() TR.config.font, TR.config.header_font = 'pixel', 'pixel'; TR:UpdateConfig() end,
 				function() TR.config.hide_empty = false; Q.set({ Q.header('A') }, {}, { popups = {} }); TR:Refresh() end,
 			}
 			for index, variant in ipairs(variants) do
@@ -634,4 +636,18 @@ test("sizes read back a hair off (a text's height, the bar's room) never change 
 		eq(rects(-2 ^ -14), flat, client .. ': noise down changes none either')
 	end
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+RW.both('a popup row at a small font stays 22 tall; the label is over the title, never on it', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1) }, { 1 }, { popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'An offer' } })
+	TR:Refresh()
+	local row = TR:GetRow('popup', 77)
+	check(row.label:GetBottom() >= row.title:GetTop(), 'the label ends where the title starts or above')
+	eq(row.label:GetTop(), row:GetTop(), "the label at the row's top")
+	eq(row.title:GetTop(), row:GetTop() - 16 - 2, 'the title 2 under it')
+	TR.config.font, TR.config.header_font = 'pixel', 'pixel'
+	TR:UpdateConfig()
+	row = TR:GetRow('popup', 77)
+	eq(row:GetHeight(), 22, '10 + 2 + 10 is 22: the floor')
+	eq(row.bar:GetHeight(), 22, 'the bar follows')
 end)

@@ -79,12 +79,14 @@ end
 -- metrics is { width, spacing, icons, itemSize }: width the scroll child's.
 -- measure(text, width, font, entry, slot) -> height gives a text's height
 -- wrapped at width; font is 'text' (titles, objectives, the empty line); slot
--- is 'title' or the line's index (the last two are for a caller that measures
+-- is 'title', 'label' (a popup's) or the line's index (the last two are for a caller that measures
 -- the font string of that text).
 --
 -- Each placed entry is { y, height, titleWidth, lineWidth, titleHeight,
 -- lines = { { y, height } } }, y from the list's top and lines' y from the
--- row's. Gaps (Ruling 18): a zone header is 10 under what's above it, a row
+-- row's; a popup also has labelHeight. A popup entry has its label and its
+-- title (first): the row is the two and 2 between them, at least POPUP tall.
+-- Gaps (Ruling 18): a zone header is 10 under what's above it, a row
 -- 4 under a zone header, and rows spacing apart (popups too). Title width is
 -- the child width, less ICON + ICON_GAP with icons, less itemSize + 4 with the
 -- button in the row; line width is the title width less INDENT (Ruling 11). A
@@ -120,9 +122,12 @@ function Layout.Rows(entries, metrics, measure, out)
 			row.titleWidth = width - L.CHEVRON - L.ZONE_TITLE_GAP
 			row.lineWidth = row.titleWidth
 		elseif kind == 'popup' then
-			row.height = L.POPUP
+			-- The label over the title, 2 apart; 22 is the least (two small fonts).
 			row.titleWidth = width - L.POPUP_BAR - L.FOCUS_GAP
 			row.lineWidth = row.titleWidth
+			row.labelHeight = measure(entry.label, row.titleWidth, 'header', entry, 'label')
+			row.titleHeight = measure(entry.first, row.titleWidth, 'text', entry, 'title')
+			row.height = math.max(L.POPUP, row.labelHeight + L.LINE_GAP + row.titleHeight)
 		elseif kind == 'empty' then
 			row.titleWidth = width
 			row.lineWidth = width
