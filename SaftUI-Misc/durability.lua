@@ -248,6 +248,7 @@ function DUR:Setup()
 		if Plain(point, relativePoint, x, y) then blizzardPoint = { n = 5, point, relativeTo, relativePoint, x, y } end
 	end
 
+	self:SetupTooltip()
 	self:ApplyHolder()
 	self:QueueFollow()
 	self.mover = st:RegisterMover('durability', {
@@ -295,7 +296,7 @@ function DUR:OnEnable()
 	end
 end
 
--- The Durability page in /sui: the setting, then its Position. Clicking the
+-- The Durability page in /sui: the two settings, then its Position. Clicking the
 -- figure's outline in edit mode opens it (the mover's configPath). Absent until
 -- the figure exists.
 function DUR:GetConfigTable()
@@ -343,6 +344,12 @@ function DUR:GetConfigTable()
 						name = 'Move the durability figure',
 						type = 'toggle',
 						desc = "Lets you move Blizzard's durability figure (the armoured man that shows when gear is damaged) in edit mode and below. Off, it stays wherever Blizzard puts it and its edit mode outline is turned off. Blizzard's own Edit Mode box for it is kept hidden once this has been on, until a reload.",
+					},
+					tooltip_details = {
+						order = 2,
+						name = 'Durability details in its tooltip',
+						type = 'toggle',
+						desc = "Adds to the figure's tooltip each damaged item's durability, lowest first, and what repairing everything costs. Applies at once.",
 					},
 					position = position,
 				},

@@ -73,6 +73,7 @@ st.defaults.objectivetracker = {
 -- where Blizzard puts it, so first load moves nothing.
 st.defaults.durability = {
 	move = true,
+	tooltip_details = true, -- the damaged items and the repair cost in its tooltip (durabilitytooltip.lua)
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).

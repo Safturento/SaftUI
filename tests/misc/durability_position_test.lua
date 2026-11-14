@@ -16,7 +16,7 @@
 --   - the Durability page and the addon loading after SaftUI.
 -- On both clients (the files are the same on both).
 --
--- Real: SaftUI-Misc's config.lua and durability.lua, Core's helpers and edit
+-- Real: SaftUI-Misc's config.lua, durability.lua and durabilitytooltip.lua (loaded as the game does), Core's helpers and edit
 -- mode. Blizzard's figure is fixtures/durability_frame.lua, every frame of it
 -- locked.
 local st, DF, DUR, profile
@@ -41,6 +41,7 @@ local function world(client, build, opts)
 	DF = load_test_file('misc/fixtures/durability_frame.lua')
 	if not opts.late then DF.build(build) end
 	load_saftui('SaftUI-Misc/durability.lua')
+	load_saftui('SaftUI-Misc/durabilitytooltip.lua')
 	DUR = st:GetModule('Durability')
 	DUR:Enable()
 	stub.run_timers()
@@ -241,7 +242,7 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 	end)
 end
 
-test('the Durability page: the setting, then Position', function()
+test('the Durability page: the settings, then Position', function()
 	world('forever')
 	load_test_file('lib/options_walk.lua')
 	local tree = DUR:GetConfigTable()
