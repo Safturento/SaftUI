@@ -258,6 +258,11 @@ function TW.scroll_frame(parent)
 	-- MinimalScrollBar's thumb, which SaftUI's skin draws (st:SkinNewScrollBar).
 	local thumb = SaftUI:CreateFrame('Frame', nil, bar)
 	bar.GetThumb = function() return thumb end
+	-- MinimalScrollBar's other parts the player presses: the track (a click
+	-- pages) and the two steppers.
+	bar.Track = CreateFrame('Button', nil, bar)
+	bar.Back = CreateFrame('Button', nil, bar)
+	bar.Forward = CreateFrame('Button', nil, bar)
 	return scrollFrame
 end
 

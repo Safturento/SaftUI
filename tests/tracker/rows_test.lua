@@ -396,9 +396,10 @@ RW.both('no scroll into view while the mouse is over the tracker or the player s
 	RW.later(TR.SCROLL_QUIET + 1)
 	focus(30)
 	check(TR:GetScroll() > at, 'a few seconds on: it scrolls to the focused quest')
-	-- A drag of the bar counts as the player's too.
+	-- A drag of the bar counts as the player's too: its mouse-down on the thumb.
 	TR:ScrollTo(0)
 	focus(0)
+	stub.fire_script(TR.scroll.ScrollBar:GetThumb(), 'OnMouseDown', 'LeftButton')
 	TR.scroll.ScrollBar:SetScrollPercentage(0.5)
 	local dragged = TR:GetScroll()
 	focus(28)
@@ -883,4 +884,42 @@ RW.both('a secret in any field of the log (objective text, counts, percent, wayp
 	check(TR:GetRow('popup', 77) ~= nil, 'and the popup with its secret title')
 	restore()
 	methods.SetText = set_text
+end)
+
+RW.both("only the player's own input counts as scrolling: the wheel, and a mouse-down on the bar; the bar re-setting the offset after a range change does not", function(st, TR)
+	-- Blizzard's bar answers a range change by setting the offset again (clamped),
+	-- which fires OnVerticalScroll outside ScrollTo.
+	local set_content = TR.scroll.SetContentSize
+	TR.scroll.SetContentSize = function(self, width, height)
+		set_content(self, width, height)
+		self:SetVerticalScroll(math.min(self:GetVerticalScroll(), math.max(0, height - self:GetHeight())))
+	end
+	local log, watched = long_log(30)
+	TR:Refresh()
+	TR:ScrollTo(TR.scrollRange)
+	check(TR:GetScroll() > 100, 'scrolled to the bottom')
+	-- Turn in quests so the list shrinks under the offset, then accept a follow-up that sorts first.
+	local shorter, kept = { Q.header('A'), Q.quest(31, { title = 'Follow-up', overrides = true }) }, { 31 }
+	for id = 1, 20 do
+		shorter[#shorter + 1] = Q.quest(id)
+		kept[#kept + 1] = id
+	end
+	Q.set(shorter, kept)
+	stub.fire_event('QUEST_REMOVED', 25)
+	stub.fire_event('QUEST_WATCH_LIST_CHANGED', 31, true)
+	RW.later(1)
+	eq(TR.lastUserScroll, nil, "the bar's own re-set is not the player's scrolling")
+	local row = RW.quest(TR, 31)
+	check(row:GetTop() <= TR.scroll:GetTop() and row:GetBottom() >= TR.scroll:GetBottom(), 'the follow-up is in view')
+	-- Real input does start the quiet period: the wheel...
+	TR:ScrollTo(100)
+	stub.fire_script(TR.window, 'OnMouseWheel', -1)
+	check(TR.lastUserScroll ~= nil, 'the wheel counts')
+	-- ...and a mouse-down on any part of the bar.
+	local bar = TR.scroll.ScrollBar
+	for _, part in ipairs({ bar:GetThumb(), bar.Track, bar.Back, bar.Forward }) do
+		TR.lastUserScroll = nil
+		stub.fire_script(part, 'OnMouseDown', 'LeftButton')
+		check(TR.lastUserScroll ~= nil, 'a mouse-down on the bar counts')
+	end
 end)

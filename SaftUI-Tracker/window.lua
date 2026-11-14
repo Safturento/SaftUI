@@ -544,8 +544,6 @@ function TR:BuildWindow()
 	local settling = false
 	scroll:HookScript('OnVerticalScroll', function(frame, offset)
 		if settling then return end
-		-- Not the tracker's own ScrollTo: the player dragged or clicked the bar.
-		if not TR.scrolling then TR.lastUserScroll = GetTime() end
 		local at = TR.scrollAt or 0
 		local target
 		if TR:IsScrollLocked() and math.abs(offset - at) > 0.01 then
@@ -563,6 +561,19 @@ function TR:BuildWindow()
 		end
 		TR:PlaceFocusBar()
 	end)
+	-- The player's own scrolling is real input only: the wheel (OnWheel) and a
+	-- mouse-down on the bar's thumb, track or steppers. The bar setting the offset
+	-- itself after a range change fires OnVerticalScroll too and is not that.
+	local bar = scroll.ScrollBar
+	if bar then
+		local parts = { bar.Track, bar.Back, bar.Forward, bar.GetThumb and bar:GetThumb() }
+		for index = 1, 4 do
+			local part = parts[index]
+			if part and part.HookScript then
+				part:HookScript('OnMouseDown', function() TR.lastUserScroll = GetTime() end)
+			end
+		end
+	end
 	self.scroll = scroll
 	self.content = scroll.ScrollChild
 
