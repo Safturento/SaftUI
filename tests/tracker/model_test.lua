@@ -273,20 +273,29 @@ both("the item and show-when-complete; area, distance (none when the API returns
 	eq(TR.Model.Read('tracked').focused, nil, 'none focused')
 end)
 
-both('popups, none while SplashFrame shows; no quests in an arena; the counts', function(st, TR)
+both('popups, none while SplashFrame shows; no quests in an arena; the counts', function(st, TR, client)
 	Q.set({
 		Q.header('Zone'),
 		Q.quest(1), Q.quest(2), Q.quest(3, { task = true }),
 		Q.header('Other zone'), Q.quest(4),
-	}, { 1, 2 }, { popups = { { id = 1, kind = 'COMPLETE' }, { id = 2, kind = 'OFFER' }, { id = 99, kind = 'OFFER' } } })
+	}, { 1, 2 }, {
+		popups = {
+			{ id = 1, kind = 'COMPLETE' }, { id = 2, kind = 'OFFER' }, { id = 99, kind = 'OFFER' },
+			{ id = 50, kind = 'OFFER' }, { id = 2, kind = 'BOGUS' },
+		},
+		titles = { [50] = 'An offered quest' },
+	})
 	local model = TR.Model.Read('tracked')
-	eq(#model.popups, 2, 'the popups, but not one for a quest with no title')
+	eq(#model.popups, 3, 'the popups: two in the log, an offered one the quest cache has a title for; not 99 (no title yet), not a bogus kind')
+	eq(model.popups[3].id, 50, 'the offered quest, which is not in the log')
+	eq(model.popups[3].title, 'An offered quest', 'has its cached title')
+	eq(Q.find(model, 50), nil, 'and is no quest of the model')
 	eq(model.popups[1].id, 1, 'the first popup\'s quest')
 	eq(model.popups[1].kind, 'COMPLETE', 'its kind')
 	eq(model.popups[1].title, 'Quest 1', 'its title')
 	eq(model.popups[2].kind, 'OFFER', 'the second')
 	eq(model.counts.inLog, 3, 'quests in the log (no headers, no tasks)')
-	eq(model.counts.max, 35, 'the most the log holds')
+	eq(model.counts.max, client == 'forever' and 40 or 35, 'the most the log holds, from the game: 40 on Forever')
 	eq(model.counts.watched, 2, 'tracked')
 	eq(model.counts.watchMax, 25, 'the most that can be tracked')
 	eq(model.arena, false, 'not an arena')
@@ -296,7 +305,13 @@ both('popups, none while SplashFrame shows; no quests in an arena; the counts', 
 	eq(#TR.Model.Read('tracked').popups, 0, 'no popups while the splash screen shows')
 	eq(#TR.Model.Read('tracked').quests, 2, 'the quests still show')
 	SplashFrame:Hide()
-	eq(#TR.Model.Read('tracked').popups, 2, 'and they are back when it goes')
+	eq(#TR.Model.Read('tracked').popups, 3, 'and they are back when it goes')
+	-- Blizzard's display filter (ShouldDisplayAutoQuest): not a bounty, not a task, not disabled.
+	stub.quests.log[2].bounty = true
+	stub.quests.log[3].disabled = true
+	stub.quests.log[4].task = true
+	eq(#TR.Model.Read('tracked').popups, 1, 'no popup for a bounty, a disabled or a task quest')
+	stub.quests.log[2].bounty, stub.quests.log[3].disabled, stub.quests.log[4].task = nil, nil, nil
 
 	stub.instance = { name = 'Ruins of Lordaeron', type = 'arena' }
 	local arena = TR.Model.Read('tracked')
@@ -410,7 +425,7 @@ both('a missing function makes its part absent; a secret value (level, numbers, 
 	drop_member('C_QuestLog', 'GetQuestTimers', function(q) eq(q.timeLeft, 150, 'Forever without GetQuestTimers reads GetTimeAllowed') end)
 	drop_member('C_QuestLog', 'IsEliteQuest', function(q) eq(q.elite, true, "falls back to the tag's isElite") end)
 	drop_member('C_QuestLog', 'GetNumQuestLogEntries', function(_, m) eq(m.counts.inLog, nil, 'no log count') end)
-	drop_member('C_QuestLog', 'GetMaxNumQuestsCanAccept', function(_, m) eq(m.counts.max, nil, 'no max') end)
+	drop_member('C_QuestLog', 'GetMaxNumQuestsCanAccept', function(_, m) eq(m.counts.max, stub.interface == 16001 and 40 or TR.FALLBACK_MAX_QUESTS, "Forever's constant, else the fallback") end)
 	drop_member('C_SuperTrack', 'GetSuperTrackedQuestID', function(q, m) eq(m.focused, nil, 'none focused') eq(q.waypoint, nil, 'so no waypoint') end)
 	drop_member('C_Minimap', 'IsInsideQuestBlob', function(q) eq(q.inArea, nil, 'no area') end)
 	drop_member('C_PlayerInfo', 'GetContentDifficultyQuestForPlayer', function(q) eq(q.difficultyColor, nil, 'no color') end)
@@ -520,4 +535,69 @@ test('nothing at file scope: the model and the groups define functions only', fu
 		eq(TW.counts.hooks, 0, client .. ': no hook')
 		eq(TW.counts.timers, 0, client .. ': no timer')
 	end
+end)
+
+both("the log's maximum is read from the game, never assumed: the API, else Forever's constant, else the fallback", function(st, TR, client)
+	eq(TR.MaxQuests(), client == 'forever' and 40 or 35, 'the client\'s own')
+	stub.quests.max = 12
+	eq(TR.MaxQuests(), 12, 'whatever the API says')
+	eq(TR.Model.Read('tracked').counts.max, 12, 'and the counts')
+	local real = C_QuestLog.GetMaxNumQuestsCanAccept
+	C_QuestLog.GetMaxNumQuestsCanAccept = nil
+	eq(TR.MaxQuests(), client == 'forever' and 40 or TR.FALLBACK_MAX_QUESTS, "without the API: Forever's constant, else the fallback")
+	Constants.QuestLogConstsMainlineCamelot = { MAXIMUM_NUM_QUESTS_LOG_CAN_ACCEPT = 41 }
+	eq(TR.MaxQuests(), 41, 'the constant is read')
+	Constants.QuestLogConstsMainlineCamelot = nil
+	eq(TR.MaxQuests(), TR.FALLBACK_MAX_QUESTS, 'without either: the fallback')
+	local restore = S.install()
+	C_QuestLog.GetMaxNumQuestsCanAccept = function() return S.secret('max') end
+	eq(TR.MaxQuests(), TR.FALLBACK_MAX_QUESTS, 'a secret answer is no answer')
+	restore()
+	C_QuestLog.GetMaxNumQuestsCanAccept = real
+	eq(type(Constants.QuestLogConstsMainlineCamelot), 'nil', 'sanity: the test took the constant away')
+end)
+
+both('a current-zone quest under a collapsed quest log header is read: the API returns every entry', function(st, TR)
+	Q.set({
+		{ header = true, title = 'Elwynn Forest', collapsed = true },
+		Q.quest(1), Q.quest(2),
+	}, { 1 })
+	stub.zone_text = 'Elwynn Forest'
+	eq(C_QuestLog.GetInfo(1).isCollapsed, true, 'the header is collapsed')
+	eq(select(1, C_QuestLog.GetNumQuestLogEntries()), 3, 'every entry is counted')
+	eq(C_QuestLog.GetInfo(3).title, 'Quest 2', 'and a collapsed header\'s quest is there by index')
+	eq(Q.ids(TR.Model.Read('zone')), '1,2', 'Tracked and the current zone\'s reads the untracked one under it')
+end)
+
+both('Forever reads the timer from GetQuestTimers alone, retail from GetTimeAllowed; a quest not in the list has none on Forever', function(st, TR, client)
+	Q.set({ Q.header('Z'), Q.quest(1, { time = { total = 100, elapsed = 40 } }) }, { 1 })
+	local left = TR.Model.Read('tracked').quests[1].timeLeft
+	if client == 'forever' then left = left == nil and 'none' or left else left = left end
+	eq(left, client == 'forever' and 'none' or 60, 'a timed quest GetQuestTimers does not list')
+end)
+
+both("Tracked and the current zone's takes no quest the log can't place under a header", function(st, TR)
+	Q.set({ Q.quest(1), Q.header('Zone'), Q.quest(2) }, {})
+	stub.zone_text = 'Zone'
+	eq(Q.ids(TR.Model.Read('zone')), '2', 'a quest above every header is not the zone\'s')
+end)
+
+both('the item hides for a quest that is ready to turn in as for a complete one; a level of 0 falls back; a campaign ID of 0 is no campaign', function(st, TR)
+	local item = { link = 'l', texture = 1, showWhenComplete = false }
+	Q.set({
+		Q.header('Z', 0), Q.quest(1, { ready = true, item = item }), Q.quest(2, { level = 14, scaled = 0 }),
+	}, { 1, 2 })
+	local model = TR.Model.Read('tracked')
+	eq(Q.find(model, 1).item, nil, 'ready: the item does not show')
+	eq(Q.find(model, 2).level, 14, 'difficultyLevel 0 falls back to the quest\'s level')
+	eq(Q.find(model, 2).campaign, nil, 'a header with campaignID 0 is no campaign')
+end)
+
+both('the zone names stop at a dungeon map: its zone outside is not a current name', function(st, TR)
+	stub.maps = {
+		[1] = { name = 'Westfall', mapType = Enum.UIMapType.Zone, parentMapID = 0 },
+		[2] = { name = 'The Deadmines', mapType = Enum.UIMapType.Dungeon, parentMapID = 1 },
+	}
+	stub.player_map = 2
+	eq(table.concat(TR.Model.ZoneNames(), '|'), 'The Deadmines', 'the dungeon, not Westfall')
 end)

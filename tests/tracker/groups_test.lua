@@ -195,3 +195,12 @@ both('the groups are a read, not a change: the model\'s quests keep their order'
 	TR.Groups.Build(model.quests, Q.settings(st, { zones = true, order = 'level' }), model.zoneNames, {})
 	eq(Q.ids(model), before, 'in both modes')
 end)
+
+both("a merged group takes the first header's campaign; a campaign header of the same title later does not move it", function(st, TR)
+	Q.set({
+		Q.header('Road', 5), Q.quest(1), Q.header('Zone'), Q.quest(2), Q.header('Road'), Q.quest(3),
+	}, { 1, 2, 3 })
+	local groups = build(st, TR, {})
+	eq(keys(groups), 'Road|Zone', 'merged in the first one\'s place')
+	eq(groups[1].campaign, 5, 'with the campaign of the first header')
+end)

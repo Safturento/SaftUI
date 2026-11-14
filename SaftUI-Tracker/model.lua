@@ -267,7 +267,7 @@ local function ReadQuest(questID, watchIndex, context)
 	-- A title is shown as it is, secret or not; one the log hasn't got yet
 	-- (nothing, or an empty string) skips the quest until a later read has it.
 	local title = info.title
-	if title == nil or (not issecretvalue(title) and (type(title) ~= 'string' or title == '')) then return nil end
+	if not issecretvalue(title) and (type(title) ~= 'string' or title == '') then return nil end
 	if not Model.Shown(info) then return nil end
 
 	local tagInfo = Exists(C_QuestLog, 'GetQuestTagInfo') and C_QuestLog.GetQuestTagInfo(questID) or nil
@@ -322,13 +322,37 @@ local function ReadPopups()
 		local questID, kind = GetAutoQuestPopUp(i)
 		questID, kind = PlainNumber(questID), PlainString(kind)
 		if questID and (kind == 'OFFER' or kind == 'COMPLETE') then
-			local title = Exists(C_QuestLog, 'GetTitleForQuestID') and C_QuestLog.GetTitleForQuestID(questID) or nil
-			if title ~= nil and (issecretvalue(title) or title ~= '') then
+			-- Blizzard's own filter (QuestObjectiveTracker's ShouldDisplayAutoQuest):
+			-- not a bounty, not a task, not disabled for the session.
+			local hidden = (Exists(C_QuestLog, 'IsQuestBounty') and Flag(C_QuestLog.IsQuestBounty(questID)))
+				or (Exists(C_QuestLog, 'IsQuestTask') and Flag(C_QuestLog.IsQuestTask(questID)))
+				or (Exists(C_QuestLog, 'IsQuestDisabledForSession') and Flag(C_QuestLog.IsQuestDisabledForSession(questID)))
+			-- The title is the quest cache's: an offered quest has one before it is in
+			-- the log. None yet (nothing or empty) drops the popup.
+			local title = not hidden and Exists(C_QuestLog, 'GetTitleForQuestID') and C_QuestLog.GetTitleForQuestID(questID) or nil
+			if title and (issecretvalue(title) or (type(title) == 'string' and title ~= '')) then
 				popups[#popups + 1] = { id = questID, kind = kind, title = title }
 			end
 		end
 	end
 	return popups
+end
+
+-- The most quests the log holds, read from the game and never assumed: the
+-- client's C_QuestLog.GetMaxNumQuestsCanAccept() where it gives one, else
+-- Forever's constant (Constants.QuestLogConstsMainlineCamelot, 40 on the
+-- owner's client), else TR.FALLBACK_MAX_QUESTS. The item button pool and every
+-- "of N quests" use this, not a number of their own.
+TR.FALLBACK_MAX_QUESTS = 35
+function TR.MaxQuests()
+	if Exists(C_QuestLog, 'GetMaxNumQuestsCanAccept') then
+		local max = PlainNumber(C_QuestLog.GetMaxNumQuestsCanAccept())
+		if max and max > 0 then return max end
+	end
+	local consts = type(Constants) == 'table' and Constants.QuestLogConstsMainlineCamelot
+	local max = type(consts) == 'table' and PlainNumber(consts.MAXIMUM_NUM_QUESTS_LOG_CAN_ACCEPT)
+	if max and max > 0 then return max end
+	return TR.FALLBACK_MAX_QUESTS
 end
 
 -- The model. show is the Show setting: 'tracked' (the default: the game's
@@ -343,7 +367,7 @@ function Model.Read(show)
 		local _, inLog = C_QuestLog.GetNumQuestLogEntries()
 		counts.inLog = PlainNumber(inLog)
 	end
-	if Exists(C_QuestLog, 'GetMaxNumQuestsCanAccept') then counts.max = PlainNumber(C_QuestLog.GetMaxNumQuestsCanAccept()) end
+	counts.max = TR.MaxQuests()
 	if Exists(C_QuestLog, 'GetNumQuestWatches') then counts.watched = PlainNumber(C_QuestLog.GetNumQuestWatches()) end
 	local consts = type(Constants) == 'table' and Constants.QuestWatchConsts
 	counts.watchMax = consts and PlainNumber(consts.MAX_QUEST_WATCHES) or nil
@@ -390,9 +414,11 @@ function Model.Read(show)
 			local questID = type(info) == 'table' and not Flag(info.isHeader) and PlainNumber(info.questID)
 			if questID and not seen[questID] then
 				seen[questID] = true
-				local quest = ReadQuest(questID, nil, context)
-				if quest and quest.headerTitle and TR.Groups.IsCurrent(quest.headerTitle, model.zoneNames) then
-					quests[#quests + 1] = quest
+				-- The header says whether it's the zone's, before the quest is read.
+				local headerTitle = ReadHeader(questID, context.headers)
+				if headerTitle and TR.Groups.IsCurrent(headerTitle, model.zoneNames) then
+					local quest = ReadQuest(questID, nil, context)
+					if quest then quests[#quests + 1] = quest end
 				end
 			end
 		end

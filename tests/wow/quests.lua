@@ -7,7 +7,8 @@
 	    watched = { questID, ... }, -- the watch list, in the order tracked
 	    focused = 0,            -- the super tracked (focused) quest, 0 for none
 	    popups = { { id, kind } }, -- auto quest pop-ups; kind 'OFFER' or 'COMPLETE'
-	    max = 35,               -- the most quests the log holds
+	    max = nil,              -- the most quests the log holds: nil is the client's own (Forever 40, retail 35)
+	    titles = { [id] = title }, -- titles the quest cache has for quests not in the log (an offered quest's)
 	  }
 	  stub.money  -- GetMoney(), in copper
 	  stub.real_zone_text -- GetRealZoneText()
@@ -56,11 +57,21 @@
 
 	Not modelled: quest POIs, the quest cache, task quests apart from the flag
 	(GetNumWorldQuestWatches is 0, IsWorldQuest follows the classification),
-	collapsed headers (GetNumQuestLogEntries counts every entry), and the
-	watch types (a world quest's watch).
+	the watch types (a world quest's watch). A header entry's `collapsed` is
+	only its QuestInfo.isCollapsed: GetInfo and GetNumQuestLogEntries return
+	every entry, a collapsed header's quests included, as Blizzard's own
+	quest log reads them (QuestLogQuests_ShouldShowQuestButton hides them by
+	info.header.isCollapsed); that this is what the game does is read from
+	source, not yet confirmed in game.
+
+	The log's size: C_QuestLog.GetMaxNumQuestsCanAccept is on both clients.
+	Forever's QuestConstantsDocumentation.lua has
+	QuestLogConstsMainlineCamelot.MAXIMUM_NUM_QUESTS_LOG_CAN_ACCEPT = 40 (the
+	stub's Constants has it on Forever only); retail's has no constant and the
+	stub says 35, the figure its log has had (not in the documentation).
 ]]
 
-stub.quests = { log = {}, watched = {}, focused = 0, popups = {}, max = 35 }
+stub.quests = { log = {}, watched = {}, focused = 0, popups = {}, titles = {} }
 stub.money = 0
 stub.real_zone_text = ''
 
@@ -80,6 +91,8 @@ Enum.UIMapType = Enum.UIMapType
 
 Constants = Constants or {}
 Constants.QuestWatchConsts = { MAX_QUEST_WATCHES = 25 }
+-- Forever's only (QuestConstantsDocumentation.lua); stub.apply_client() drops it on retail.
+Constants.QuestLogConstsMainlineCamelot = { MAXIMUM_NUM_QUESTS_LOG_CAN_ACCEPT = 40 }
 
 -- Blizzard's global strings the tracker reads (English).
 DAILY = 'Daily'
@@ -131,8 +144,8 @@ do
 
 	-- The checks of the game's argument parser: a number where a number is
 	-- expected, else the call's Usage error, raised at the caller's caller.
-	local function number_arg(value, usage)
-		if type(value) ~= 'number' then error('Usage: ' .. usage, 3) end
+	local function number_arg(value, usage, level)
+		if type(value) ~= 'number' then error('Usage: ' .. usage, level or 3) end
 		return value
 	end
 
@@ -144,7 +157,7 @@ do
 	end
 
 	local function quest_arg(questID, usage)
-		number_arg(questID, usage)
+		number_arg(questID, usage, 4)
 		return (find_quest(questID))
 	end
 
@@ -197,7 +210,7 @@ do
 			isHeader = header,
 			useMinimalHeader = false,
 			sortAsNormalQuest = false,
-			isCollapsed = false,
+			isCollapsed = header and entry.collapsed == true or false,
 			startEvent = false,
 			isTask = bool(entry.task),
 			isBounty = bool(entry.bounty),
@@ -237,6 +250,7 @@ do
 			list[i] = {
 				text = objective.text, type = objective.type, finished = bool(objective.finished),
 				numFulfilled = objective.numFulfilled or 0, numRequired = objective.numRequired or 0,
+				objectiveType = objective.objectiveType,
 			}
 		end
 		return list
@@ -313,12 +327,27 @@ do
 		return #stub.quests.log, quests
 	end
 
-	function Q.GetMaxNumQuestsCanAccept() return stub.quests.max end
+	function Q.GetMaxNumQuestsCanAccept()
+		return stub.quests.max or (stub.interface == 16001 and 40 or 35)
+	end
 
-	-- Nilable; headers' titles can't be found this way.
+	-- Nilable; from the quest cache, so any quest the cache has: one in the
+	-- log, or one in stub.quests.titles (an offered quest, not in the log
+	-- yet). Headers' titles can't be found this way.
 	function Q.GetTitleForQuestID(questID)
 		local entry = quest_arg(questID, 'local title = C_QuestLog.GetTitleForQuestID(questID)')
-		return entry and entry.title
+		if entry then return entry.title end
+		return stub.quests.titles[questID]
+	end
+
+	-- QuestLogDocumentation.lua: whether the quest is a bounty or a task quest.
+	function Q.IsQuestBounty(questID)
+		local entry = quest_arg(questID, 'local isBounty = C_QuestLog.IsQuestBounty(questID)')
+		return bool(entry and entry.bounty)
+	end
+	function Q.IsQuestTask(questID)
+		local entry = quest_arg(questID, 'local isTask = C_QuestLog.IsQuestTask(questID)')
+		return bool(entry and entry.task)
 	end
 
 	function Q.IsPushableQuest(questID)
@@ -405,6 +434,7 @@ do
 	-- modelled.
 	function QuestUtil.GetQuestIconActiveForQuestID(questID, isComplete)
 		number_arg(questID, 'local asset, isAtlas = QuestUtil.GetQuestIconActiveForQuestID(questID, isComplete, ...)')
+		if isComplete == nil then isComplete = Q.IsComplete(questID) end
 		if isComplete then return 'Interface/GossipFrame/ActiveQuestIcon', false end
 		return 'SideInProgressquesticon', true
 	end
@@ -490,7 +520,6 @@ do
 	-- Two colors: the plain one and its highlight (DifficultyUtil.lua). The
 	-- tables are the game's own, shared.
 	function GetDifficultyColor(difficulty)
-		number_arg(difficulty, 'local color, highlight = GetDifficultyColor(difficulty)')
 		local names = { [0] = 'trivial', 'standard', 'difficult', 'verydifficult', 'impossible' }
 		local name = names[difficulty] or 'difficult'
 		return QuestDifficultyColors[name], QuestDifficultyHighlightColors[name]

@@ -1131,7 +1131,9 @@ do
 	-- The members of a namespace table only one client has: { table, name,
 	-- interface }. C_QuestLog's two are in Forever's QuestLogDocumentation.lua
 	-- and not in retail's (tests/wow/quests.lua adds them).
+	Constants = Constants or {}
 	local CLIENT_ONLY_MEMBERS = {
+		{ Constants, 'QuestLogConstsMainlineCamelot', 16001 },
 		{ C_QuestLog, 'IsEliteQuest', 16001 },
 		{ C_QuestLog, 'GetQuestTimers', 16001 },
 	}
