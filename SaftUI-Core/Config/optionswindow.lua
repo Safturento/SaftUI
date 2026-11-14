@@ -38,9 +38,12 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	the list's part over the sidebar and the settings' over the main column,
 	F.innerList and F.innerSettings). It grows taller by its grip (the bottom
 	right corner) or its bottom edge (optionsresize.lua), in either layout. It
-	is in one of two sizes, full and half (S.size; optionssizes.lua), the
-	header's arrows moving between them: half is the page in one column, the
-	window narrower from its left, its top right corner staying where it is.
+	is in one of three sizes, full, half and the bar (S.size; optionssizes.lua),
+	the header's arrows moving between them: half is the page in one column, the
+	window narrower from its left, its top right corner staying where it is; the
+	bar is the window made 42 tall and as wide as its name, page and tab, drawn
+	as a panel with everything else hidden (Relayout), and Draw at the bar draws
+	only those names (MiniNames, S.DrawMini), leaving the scroll offsets as they were.
 	S.bodyWidth is the body's width at the size (774, or L.halfBody), and
 	the title, the description, the tabs and the body follow it:
 	  - the sidebar: the search box, with Edit mode and the
@@ -124,7 +127,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	The window is split by job, its files loading in Config/load.xml's order:
 	optionslayout.lua (OW.LAYOUT, the sidebar's width and entries, the
 	window's height; it makes OW and OW.S), this one, then
-	optionsresize.lua (growing taller), optionssizes.lua (full and half),
+	optionsresize.lua (growing taller), optionssizes.lua (the sizes and the bar),
 	optionsnav.lua (the sidebar, the
 	tabs and the picker), optionssmalldialog.lua (OW:OpenDialog) and
 	optionsmenu.lua (OW:OpenMenu). OW.S holds what they share
@@ -324,10 +327,18 @@ local function SaveWindow(fields)
 	end
 end
 
--- The window at S.corner.
+-- How far the window's top right corner sits from S.corner: at the bar under
+-- Blizzard the metal's reach (OW.MiniShift), else none.
+local function Shift()
+	if S.size == 'mini' then return OW.MiniShift(S.layout) end
+	return 0, 0
+end
+
+-- The window at S.corner (and the bar's shift).
 local function Anchor()
+	local dx, dy = Shift()
 	F.window:ClearAllPoints()
-	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x, S.corner.y)
+	F.window:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', S.corner.x + dx, S.corner.y + dy)
 end
 
 -- The layout of the look the window is about to be drawn in: Draw lays it out
@@ -349,12 +360,14 @@ local function CentredCorner(L)
 end
 
 -- Where the window's top right corner shows, as its offset from the screen's,
--- in whole units (pixels, at SaftUI's scale); nothing before it has a place.
+-- in whole units (pixels, at SaftUI's scale), less the bar's shift; nothing
+-- before it has a place.
 local function ShownCorner()
 	local right, top = F.window:GetRight(), F.window:GetTop()
 	local screenRight, screenTop = UIParent:GetRight(), UIParent:GetTop()
 	if not (right and screenRight) then return end
-	return Whole(right - screenRight), Whole(top - screenTop)
+	local dx, dy = Shift()
+	return Whole(right - screenRight) - dx, Whole(top - screenTop) - dy
 end
 
 local function RestorePosition()
@@ -839,6 +852,32 @@ local function DrawSearch(pages)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
+-- What the bar says: the page's name, the tab's ('' for a page with one tab) and
+-- the path the tooltip gives (the page, the pick and the tab, with > between).
+-- A search is the page Search and its text in quotes.
+local function MiniNames()
+	if state.search ~= '' and results then
+		local text = format('"%s"', state.search)
+		return 'Search', text, 'Search > ' .. text
+	end
+	local view = state.page and OM.BuildView(root, state.page, state.selections[state.page])
+	if not view then return st.name, '', st.name end
+	local names = { view.title }
+	if view.picker then
+		for _, entry in ipairs(view.picker.values) do
+			if entry.key == view.picker.selected then names[#names + 1] = tostring(entry.name) end
+		end
+	end
+	local tab = ''
+	if #view.tabs > 1 then
+		for _, entry in ipairs(view.tabs) do
+			if entry.key == view.tab then tab = tostring(entry.name) end
+		end
+	end
+	if tab ~= '' then names[#names + 1] = tab end
+	return tostring(view.title), tab, table.concat(names, ' > ')
+end
+
 -- The window's own controls in the look: the footer's buttons, the search
 -- box (its text and hint start clear of Blizzard's magnifying glass) and the
 -- resize grip.
@@ -869,23 +908,35 @@ end
 -- Draw again when the look, the size or the sidebar changed.
 local function Relayout()
 	local settings = S.blizzard
+	local mini = S.size == 'mini'
 	local L = settings and OW.LAYOUT.blizzard or OW.LAYOUT.own
 	S.layout, F.layout = L, L
 	local window = F.window
 	local width = OW.WindowWidth(L, S.size, S.sidebar)
 	local mainLeft = OW.MainLeft(L, S.sidebar)
 	S.bodyWidth = OW.BodyWidth(L, S.size)
-	window:SetSize(width, OW.WindowHeight(L))
-	st:SetTemplate(window, 'theme', 'solid', 'window')
+	-- The bar is as wide as its texts (S.DrawMini, which the render runs next)
+	-- and always 42 tall, a panel; the other sizes are a window.
+	if mini then
+		window:SetSize(S.miniWidth or width, OW.MINI_HEIGHT)
+	else
+		window:SetSize(width, OW.WindowHeight(L))
+	end
+	st:SetTemplate(window, 'theme', 'solid', mini and 'panel' or 'window')
 	-- The screen edge margin again, now the art reaches as far as the look's
-	-- (the metal under Blizzard).
+	-- (the metal under Blizzard, none at the bar).
 	st:KeepInScreenMargin(window)
+	-- The bar sits where the metal's corner was (Shift), so anchor it again.
+	if S.corner then Anchor() end
 
 	-- The close X: Blizzard's in the metal's socket, at its spot from the
-	-- window's top right corner (st.ThemeArt.Close), or the mockup's at its own.
+	-- window's top right corner (st.ThemeArt.Close), or the mockup's at its own;
+	-- at the bar 8 in from the right, centred on the bar's height.
 	st:UpdateCloseButton(window)
 	F.close:ClearAllPoints()
-	if settings then
+	if mini then
+		F.close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', -S.MINI_PAD, -floor((OW.MINI_HEIGHT - Whole(F.close:GetHeight())) / 2))
+	elseif settings then
 		local close = st.ThemeArt.Close()
 		F.close:SetPoint('TOPRIGHT', window, 'TOPRIGHT', close.x, close.y)
 	else
@@ -895,6 +946,22 @@ local function Relayout()
 	-- them (under Blizzard they sit on the title bar: the strip stays 56 short
 	-- of the main column's right, the title as wide as the body less 40).
 	S.PlaceSizeButtons()
+	if mini then
+		-- Everything of the window but the bar: no sidebar, main column, footer,
+		-- grip, edge, inner frame or title bar.
+		for _, part in ipairs({ F.side, F.main, F.footer, F.grip, F.sizer, F.innerList, F.innerSettings, F.titleBar, F.titleText }) do
+			part:Hide()
+		end
+		S.StopResize()
+		F.mini:Show()
+		laidOut = LayoutKey()
+		return
+	end
+	F.mini:Hide()
+	F.main:Show()
+	F.footer:Show()
+	F.grip:Show()
+	F.sizer:Show()
 	local mainWidth = width - mainLeft - L.mainRight
 	local headerGap, titleRoom
 	if settings then
@@ -1010,9 +1077,11 @@ local function Draw()
 	LookControls()
 	ReleaseBody()
 	contentHeight, S.filledTo = 0, nil
+	F.brandName:SetText(OW.BrandText())
+	local mini = S.size == 'mini'
 	-- The body's width follows the size; a change closes an open color picker
 	-- of the body's (the size buttons refuse while one is open).
-	pageBody:SetWidth(S.bodyWidth, S.size ~= 'full')
+	if not mini then pageBody:SetWidth(S.bodyWidth, S.size ~= 'full') end
 	pageBody:SetRoot(root)
 	local pages = OM.Pages(root)
 	local entries = OW.SidebarEntries(pages)
@@ -1029,8 +1098,14 @@ local function Draw()
 			end
 		end
 	end
-	S.DrawSidebar(entries)
 	menuFor = nil
+	if mini then
+		-- The bar: the page's and the tab's names and nothing else drawn. The
+		-- scroll offsets stay as they were, for growing back.
+		S.DrawMini(MiniNames())
+		return
+	end
+	S.DrawSidebar(entries)
 	if state.search ~= '' and results then DrawSearch(pages) else DrawPage() end
 	PlaceFooter()
 	F.content:SetHeight(max(1, contentHeight))
@@ -1069,6 +1144,8 @@ local function OnHide()
 	F.keys:Hide()
 	pending, dragging = false, false
 	S.keepRow = nil
+	-- A window closed as the bar opens at half (the save says so).
+	if S.size == 'mini' then S.size = 'half' end
 	ClearSearch()
 	ReleaseBody()
 	W.CloseList()
@@ -1134,7 +1211,8 @@ local function BuildSidebar(window)
 	Draggable(brand)
 	local name = Text(brand, 'brand')
 	name:SetPoint('TOPLEFT', brand, 'TOPLEFT', 18, -18)
-	name:SetText(st.name)
+	name:SetText(OW.BrandText()) -- Draw reads the accent again
+	F.brandName = name
 	local sub = Text(brand, 'small')
 	sub:SetPoint('TOPLEFT', name, 'BOTTOMLEFT', 0, -2)
 	sub:SetTextColor(Grey())
@@ -1308,6 +1386,7 @@ local function Build()
 	BuildFooter()
 	BuildTitleBar(window)
 	S.BuildSizeButtons(window)
+	S.BuildMini(window)
 	S.BuildResize(window)
 
 	-- Esc, only while the window is shown. The dialog's Esc is its own (its
@@ -1380,6 +1459,12 @@ function OW:Open(path, tree)
 		end
 	end
 	if F.window:IsShown() then
+		-- Opened to a page while the bar shows: half, on that page (the save
+		-- says half already), whatever the screen: half is what opens.
+		if S.size == 'mini' then
+			SaveWindow({ size = 'half' })
+			S.size = 'half'
+		end
 		self:Render()
 	else
 		RestorePosition()
@@ -1458,4 +1543,5 @@ S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
 S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, W.Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT = PAD, FIELD_HEIGHT, TAB_HEIGHT
 S.CLOSE_RIGHT, S.CLOSE_TOP = 16, 14 -- the close X's place under Thick and Thin, from the window's top right corner
+S.MINI_PAD, S.Draggable = 8, Draggable -- the bar's close X 8 in from its right; a frame that moves the window
 S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM = ACTION_PAD, ACTION_HEIGHT, NAV_ITEM

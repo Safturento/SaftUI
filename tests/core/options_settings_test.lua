@@ -376,6 +376,80 @@ test('under Blizzard: the inner frame in two parts, the arrows on the title bar,
 	end
 end)
 
+test("the bar under Blizzard: a panel at the metal's top right, the red close button inside it", function()
+	local P = load_test_file('lib/pixels.lua')
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+		st.config.global.optionsWindow = nil
+		switch('blizzard'); st.Config:Open('Unitframes')
+		local F = OW.GetFrames()
+		local w = F.window
+		local reachLeft, reachRight, reachTop = st.ThemeArt.MetalReach()
+		local dx, dy = OW.MiniShift(OW.LAYOUT.blizzard)
+		eq(dx .. ' ' .. dy, reachRight .. ' ' .. reachTop, client .. ': the shift is the metal\'s right and top reach')
+		-- At full the metal's top right is the window's corner plus the reach.
+		local metalRight, metalTop = w:GetRight() + dx, w:GetTop() + dy
+		local right, top = w:GetRight(), w:GetTop()
+		local x0, y0 = select(4, w:GetPoint(1)), select(5, w:GetPoint(1))
+		stub.time = stub.time + 1; stub.click(F.shrink)
+		stub.time = stub.time + 1; stub.click(F.shrink)
+		eq(OW:GetWindowSize(), 'mini', client .. ': the bar')
+		eq(w:GetRight(), metalRight, client .. ": the bar's right is the metal's")
+		eq(w:GetTop(), metalTop, client .. ": and its top")
+		eq(w:GetHeight(), 42, client .. ': 42 tall')
+		eq(drawn(w), 'theme,solid,panel', client .. ': a panel')
+		local reference = st:CreateFrame('Frame', nil, UIParent)
+		st:SetTemplate(reference, 'theme', 'solid', 'panel')
+		eq(T.art(w), T.art(reference), client .. ": the panel kind's art")
+		check(T.art(w) ~= METAL, client .. ': not the metal')
+		local close = st.ThemeArt.Close()
+		eq(F.close:GetWidth(), close.size, client .. ": the red close button at Blizzard's size")
+		eq(F.close:GetNormalTexture():GetAtlas(), close.normal, client .. ': in its art')
+		eq(F.close:GetTop() - F.close:GetBottom(), close.size, client .. ': ' .. close.size .. ' tall')
+		eq(w:GetTop() - F.close:GetTop(), (42 - close.size) / 2, client .. ': centred on the bar')
+		eq(w:GetRight() - F.close:GetRight(), 8, client .. ': 8 in from the right')
+		eq(F.close:GetLeft(), F.miniGrow:GetRight() + 8, client .. ': grow 8 before it')
+		eq(w:GetTop() - F.miniGrow:GetTop(), 9, client .. ': grow centred on the bar')
+		check(not F.titleBar:IsShown() and not F.innerList:IsShown() and not F.innerSettings:IsShown(), client .. ': no title bar or inner frame')
+		check(F.close:IsShown() and F.miniGrow:IsShown(), client .. ': the buttons')
+		eq(#P.off(w), 0, client .. ': whole pixels')
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local off = P.off(w)
+			eq(#off, 0, client .. ' noise ' .. noise .. ': ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		-- A switch to Thick and back keeps it a bar.
+		switch('thick')
+		eq(OW:GetWindowSize(), 'mini', client .. ': Thick: still the bar'); eq(drawn(w), 'theme,solid,panel')
+		eq(select(4, w:GetPoint(1)) .. ' ' .. select(5, w:GetPoint(1)), x0 .. ' ' .. y0, client .. ': under Thick the bar sits at the corner')
+		switch('blizzard')
+		eq(OW:GetWindowSize(), 'mini', client .. ': Blizzard again: still the bar'); eq(drawn(w), 'theme,solid,panel')
+		eq(w:GetRight(), metalRight, client .. ": at the metal's corner again")
+		-- A drag saves the corner less the shift.
+		stub.fire_script(F.miniNames, 'OnMouseDown', 'LeftButton')
+		stub.fire_script(F.miniNames, 'OnDragStart')
+		w:ClearAllPoints()
+		w:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', -200 + dx, -100 + dy)
+		stub.fire_script(F.miniNames, 'OnDragStop')
+		local saved = st.config.global.optionsWindow
+		eq(saved.x .. ' ' .. saved.y, '-200 -100', client .. ': the saved corner is where it shows less the shift')
+		-- Grow: the window under the metal again, at that corner.
+		stub.time = stub.time + 1; stub.click(F.miniGrow)
+		eq(OW:GetWindowSize(), 'half', client .. ': half')
+		eq(drawn(w), 'theme,solid,window', client .. ': a window')
+		eq(T.art(w), METAL, client .. ': the metal again')
+		eq(select(4, w:GetPoint(1)) .. ' ' .. select(5, w:GetPoint(1)), '-200 -100', client .. ': the corner')
+		eq(F.close:GetWidth(), close.size)
+		check(F.titleBar:IsShown() and F.innerSettings:IsShown(), client .. ': the title bar and the inner frame back')
+		st.Config:Close()
+		st.config.global.optionsWindow = nil
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)
+
 test('OW.LAYOUT: Blizzard sizes follow the divider and keep the body', function()
 	world('forever')
 	local b = OW.LAYOUT.blizzard

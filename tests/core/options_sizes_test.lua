@@ -68,6 +68,48 @@ test('OW.NextSize steps full, half, mini and back, and stops at each end', funct
 	eq(steps('full', 1, 'half', 1, 'mini', 1, 'mini', -1, 'half', -1, 'full', -1), 'half mini nil half full nil')
 end)
 
+test('OW.MiniLayout: the bar is its parts and their gaps, rounded up to even, at most 400, the tab cut first and then the page', function()
+	local function layout(...) return table.concat({ OW.MiniLayout(...) }, ' ') end
+	eq(layout(54, 90, 70, 56), '90 70 314', '12 + 54 + 8 + 90 + 8 + 70 + 8 + 56 + 8')
+	local _, _, width = OW.MiniLayout(54, 90, 0, 56)
+	eq(width, 236, 'no tab: its gap goes too')
+	eq(layout(54, 90, 0, 56), '90 0 236')
+	eq(layout(55, 90, 70, 56), '90 70 316', '315 rounded up to even')
+	eq(layout(53.99997, 90.00002, 69.99999, 56), '90 70 314', 'each width is rounded first')
+	eq(layout(54, 90, 70, 56.4), '90 70 314')
+	-- Too wide for MINI_MAX: the tab is cut first, to what is left, and dropped with its gap when none is.
+	eq(layout(54, 100, 300, 56), '100 146 400', 'the tab cut to the room')
+	-- A tab cut under MIN_TAB (24) is dropped with its gap; the page then keeps its room.
+	eq(layout(54, 240, 30, 56), '240 0 386', 'a 6 wide sliver of a tab is dropped, the page uncut')
+	eq(layout(54, 200, 20, 56), '200 20 374', 'a tab that fits whole is never dropped, however narrow')
+	eq(layout(54, 100, 100, 56), '100 100 354', 'a tab that fits')
+	eq(layout(54, 100, 300, 76), '100 126 400', 'a tab cut to 126 stays')
+	eq(layout(54, 200, 100, 46), '200 56 400', 'cut to 56')
+	eq(layout(54, 200, 100, 78), '200 24 400', 'cut to exactly 24 stays')
+	eq(layout(54, 200, 100, 79), '200 0 370', 'cut to 23 goes: 369 rounded up to even')
+	eq(layout(54, 260, 30, 56), '254 0 400', 'dropped, then the page is cut to the room')
+	eq(layout(54, 300, 300, 56), '254 0 400', 'the tab goes, then the page is cut')
+	eq(layout(54, 400, 0, 56), '254 0 400', 'a page alone is cut to the room')
+	eq(layout(54, 254, 0, 56), '254 0 400', 'a page that just fits')
+	eq(layout(54, 255, 0, 56), '254 0 400', 'one over is cut')
+	for _, args in ipairs({ { 54, 90, 70, 56 }, { 61, 117, 33, 56 }, { 61, 117, 331, 60 }, { 40, 500, 500, 60 } }) do
+		local _, _, w = OW.MiniLayout(unpack(args))
+		eq(w % 2, 0, 'even'); check(w <= OW.MINI_MAX, 'at most MINI_MAX')
+	end
+end)
+
+test('OW.MiniShift: under Blizzard the metal\'s right and top reach, else nothing; OW.BrandText is Saft and the accent\'s UI', function()
+	local _, reach_right, reach_top = st.ThemeArt.MetalReach()
+	local dx, dy = OW.MiniShift(OW.LAYOUT.blizzard)
+	eq(dx .. ' ' .. dy, reach_right .. ' ' .. reach_top, 'the metal\'s right and top reach')
+	check(dx > 0 and dy > 0, 'some')
+	dx, dy = OW.MiniShift(OW.LAYOUT.own)
+	eq(dx .. ' ' .. dy, '0 0', 'none under Thick and Thin')
+	local blue = st.config.profile.colors.button.blue
+	local hex = ('%02x%02x%02x'):format(math.floor(blue.r * 255 + 0.5), math.floor(blue.g * 255 + 0.5), math.floor(blue.b * 255 + 0.5))
+	eq(OW.BrandText(), 'Saft|cff' .. hex .. 'UI|r')
+end)
+
 test('OW.SavedState reads an older save, bad values and a saved bar safely', function()
 	local function state(saved)
 		st.config.global.optionsWindow = saved
@@ -378,7 +420,7 @@ test('Shrink to half: 386 narrower from the left; the corner, the close X and th
 	eq(w:GetWidth(), 654, '1040 less 386'); eq(w:GetRight(), right, 'the right edge stays'); eq(w:GetTop(), top, 'and the top')
 	eq(F.close:GetLeft(), closeLeft, 'the close X stays'); eq(F.shrink:GetLeft(), shrinkLeft, 'and the shrink arrow')
 	check(F.grow:IsShown(), 'grow at half'); eq(F.grow:GetRight(), F.shrink:GetLeft() - 6, '6 left of shrink')
-	check(not F.shrink:IsShown(), 'shrink is hidden at half until the bar exists')
+	check(F.shrink:IsShown(), 'shrink shows at half, beside grow')
 	eq(F.content:GetWidth(), 388, 'the body one column')
 	local state = OW:GetState()
 	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/player/general', 'the page, pick and tab kept')
@@ -459,19 +501,22 @@ test('a size button ignores clicks for a third of a second after a change', func
 	close_all()
 end)
 
-test('OW:SetWindowSize: false in combat, for no change, for a bar (Task 4), for a size that does not fit', function()
+test('OW:SetWindowSize: false in combat, for no change, for a jump from full to the bar, for a size that does not fit', function()
 	theme('thick')
 	st.config.global.optionsWindow = nil
 	st.Config:Open('Unitframes', 'player', 'general')
 	wait()
 	eq(OW:SetWindowSize('full'), false, 'no change')
-	eq(OW:SetWindowSize('mini'), false, 'no bar yet')
+	eq(OW:SetWindowSize('mini'), false, 'full to the bar is two steps')
 	stub.in_combat = true
 	eq(OW:SetWindowSize('half'), false, 'refused in combat')
 	stub.in_combat = false
 	eq(OW:GetWindowSize(), 'full')
 	eq(OW:SetWindowSize('half'), true)
-	eq(OW:Shrink(), false, 'shrink at half: nothing to shrink to until the bar')
+	eq(OW:Shrink(), false, 'inside the size guard')
+	wait()
+	eq(OW:Shrink(), true, 'then half shrinks to the bar')
+	eq(OW:GetWindowSize(), 'mini')
 	st.config.global.optionsWindow = nil
 	close_all()
 end)

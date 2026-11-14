@@ -248,6 +248,7 @@ OB.Colors, OB.Normal, OB.Grey, OB.Blue = Colors, Normal, Grey, Blue -- the windo
 local FONTS = {
 	title = { 'title', 34 }, brand = { 'title', 26 }, section = { 'title', 15 }, group = { 'title', 13 },
 	caption = { 'title', 11 }, tab = { 'normal', 17 }, label = { 'normal', 16 }, small = { 'normal', 13 },
+	mini = { 'title', 18 }, -- the name on the options window's bar
 }
 local fontObjects = {}
 
