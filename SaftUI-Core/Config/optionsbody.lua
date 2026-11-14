@@ -68,8 +68,11 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	that continues a section after an inline group), floats off the panel
 	instead, on the body's own fill, as tall as its buttons, each in its
 	slot off the padding (a centred group across the body, a right one
-	ending at its right edge, a small one at its quarter's left, in line
-	with the panel's edge), with no panel, hairline or divider. The gaps: a
+	ending at its right edge, a lone small one at its quarter's left, in
+	line with the panel's edge; buttons that share the line in its halves
+	or quarters each fill their slot, the slots 12 apart, so they're an
+	even row across the body and the line under them lines up:
+	Body:ButtonSlotRect), with no panel, hairline or divider. The gaps: a
 	panel ends OB.FLOAT_GAP (24, the body's bottom margin) above it, and the
 	rows after it start a panel of their own as far under it, so a line of
 	buttons between two runs of rows has the same space above and below;
@@ -462,7 +465,9 @@ end
 -- margin is under it. A line on the panel after a floating one starts
 -- FLOAT_GAP under it, so a line of buttons between two runs of panel has the
 -- same gap above and below. entry.endsFloating: the section's last line
--- floats.
+-- floats. A floating line's buttons that share it in slots (two or more in
+-- its halves or quarters, not a group with an align) are marked slotted:
+-- each takes its whole slot (Body:ButtonSlotRect).
 -- Returns the rows' height (height itself when no line floats).
 local function Float(entry, placed, height, floatOf)
 	local lines, byY, any = {}, {}, false
@@ -490,7 +495,14 @@ local function Float(entry, placed, height, floatOf)
 			else
 				y = y + (entry.joins and FLOAT_GAP or LEAD_GAP)
 			end
-			for _, p in ipairs(line.entries) do p.y, p.floats, p.floatHeight = y, true, line.floatHeight end
+			local inSlots = 0
+			for _, p in ipairs(line.entries) do
+				if p.col == 1 or p.col == 2 then inSlots = inSlots + 1 end
+			end
+			for _, p in ipairs(line.entries) do
+				p.y, p.floats, p.floatHeight = y, true, line.floatHeight
+				p.slotted = inSlots > 1 and (p.col == 1 or p.col == 2) or nil
+			end
 			y = y + line.floatHeight
 			above = 'float'
 		else
@@ -904,6 +916,22 @@ function Body:SlotRect(col, quarter)
 	return x, self.quarterWidth
 end
 
+-- Where a floating button that shares its line takes its slot (slotted,
+-- OB.LayoutSections): the line's halves and quarters as SlotRect lays them
+-- out, but BUTTON_GAP (12) apart, as two lines of buttons are, so the
+-- buttons of a line are an even row across the body and those of the line
+-- under them line up with them. Whole units as SlotRect: halves and quarters
+-- round down, the second of each pair flush with the outer edge (a 520
+-- dialog's quarters are 121 wide, at 0, 133, 266 and 399).
+function Body:ButtonSlotRect(col, quarter)
+	local half = floor((self.width - BUTTON_GAP) / 2)
+	local x = col == 2 and (self.width - half) or 0
+	if not quarter then return x, half end
+	local width = floor((half - BUTTON_GAP) / 2)
+	if quarter == 2 then x = x + half - width end
+	return x, width
+end
+
 -- Where a cell goes: its slot, inset by the metrics' padding on each side
 -- ('full' too). Under OB.FLAT that is the slot.
 function Body:CellRect(col, quarter)
@@ -1140,6 +1168,10 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 			local x, cellWidth
 			if p.col == 'buttons' then
 				x, cellWidth = ButtonsAt(p.group, p.floats).xs[p.index], cell.widget:GetWidth()
+			elseif p.slotted then
+				-- A floating button sharing its line: its whole slot, 12 from the next.
+				x, cellWidth = self:ButtonSlotRect(p.col, p.quarter)
+				cell.widget:SetWidth(cellWidth)
 			elseif cell.fill or p.floats then
 				-- The whole line, padding or not; a floating button its slot, off the panel.
 				x, cellWidth = self:SlotRect(p.col, p.quarter)

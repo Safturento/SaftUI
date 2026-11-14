@@ -202,6 +202,20 @@ test('Manage opens Unit frame profiles: the profile, then New, Copy, Rename, Del
 	eq(dialog_cell('export').y, dialog_cell('new').y + dialog_cell('new').height + 12, "Export's line 12 under New's")
 	eq(dialog_cell('close').y, dialog_cell('import').y + dialog_cell('import').height + 24, "Close 24 under Export's line")
 	eq(dialog_cell('close').frame:GetBottom() - d.frame:GetBottom(), 24, 'the dialog ends 24 under Close')
+	-- Buttons that share a line each fill their quarter, 12 apart, an even row
+	-- across the 520 body; Export and Import under the first two at their
+	-- width. Close keeps its own width, in the middle.
+	local function row(keys)
+		local out = {}
+		for _, key in ipairs(keys) do
+			local c = dialog_cell(key)
+			out[#out + 1] = (select(4, c.frame:GetPoint(1))) .. '+' .. c.widget.frame:GetWidth()
+		end
+		return table.concat(out, ' ')
+	end
+	eq(row({ 'new', 'copy', 'rename', 'delete' }), '0+121 133+121 266+121 399+121', 'New to Delete: edge to edge, 12 apart')
+	eq(row({ 'export', 'import' }), '0+121 133+121', 'Export and Import under New and Copy')
+	eq(row({ 'close' }), (520 - 80) / 2 .. '+80', 'Close: its own 80, in the middle')
 
 	-- The dialog's dropdown switches too, and the footer follows.
 	click(current.widget.frame)

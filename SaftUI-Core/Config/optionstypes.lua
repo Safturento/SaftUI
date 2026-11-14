@@ -284,10 +284,19 @@ define('execute', {
 		return Base.Bind(self, ...)
 	end,
 
+	-- As wide as its name needs (80 at least), or as its slot when the body
+	-- gave it one (SetWidth).
 	Refresh = function(self)
 		self.text:SetText(self.row.name or '')
-		self.width = max(W.WIDTH.execute, ceil(self.text:GetStringWidth()) + 28)
+		self.width = self.slotWidth or max(W.WIDTH.execute, ceil(self.text:GetStringWidth()) + 28)
 		self.frame:SetWidth(self.width)
+	end,
+
+	-- width wide, whatever its name: its slot, in a floating line of buttons
+	-- that share it (optionsbody.lua). Kept through a Refresh until released.
+	SetWidth = function(self, width)
+		self.slotWidth = width
+		self:Refresh()
 	end,
 
 	-- Confirm, then call the option's func.
@@ -311,7 +320,7 @@ define('execute', {
 	end,
 
 	OnRelease = function(self)
-		self.onTip = nil
+		self.onTip, self.slotWidth = nil, nil
 	end,
 
 	OnDisabled = function(self, disabled)

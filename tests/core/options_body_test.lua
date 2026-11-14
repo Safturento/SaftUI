@@ -1409,9 +1409,11 @@ test("under panels a line of buttons floats off the panel wherever it is, 24 fro
 		body:Release()
 
 		-- Unit frame profiles' shape: the lines of small buttons under the profile
-		-- float off the panel too, 24 under it and 12 apart, each button at its
-		-- quarter's slot (in line with the panel's edge); Close, the closing
-		-- line, 24 under them.
+		-- float off the panel too, 24 under it and 12 apart. Buttons that share a
+		-- floating line each take their whole slot, the slots 12 apart (as the
+		-- lines are): the four an even row across the body, the two under them
+		-- under the first two at their width. Close, alone on the closing line,
+		-- 24 under them, keeps its own width, in the middle.
 		body, by = drawn_root(tree({
 			pick = { type = 'select', name = 'Profile', size = 'wide', order = 1, values = { a = 'A' } },
 			new = small('New', 2), copy = small('Copy', 3), rename = small('Rename', 4), delete = small('Delete', 5),
@@ -1423,9 +1425,19 @@ test("under panels a line of buttons floats off the panel wherever it is, 24 fro
 		eq(rect(panels[1]), '0,' .. by.pick.y .. ' 520x38', "the profile's panel only")
 		eq(by.new.y, by.pick.y + 38 + 24, 'New 24 under it')
 		eq(by.new.height, by.new.widget:GetHeight(), 'its line as tall as its buttons')
-		local slots = {}
-		for _, key in ipairs({ 'new', 'copy', 'rename', 'delete' }) do slots[#slots + 1] = point_x(by[key].frame) end
-		eq(table.concat(slots, ','), '0,130,260,390', 'each in its quarter\'s slot, off the padding')
+		local function slots(keys)
+			local out = {}
+			for _, key in ipairs(keys) do
+				local c = by[key]
+				eq(c.widget.frame:GetWidth(), c.frame:GetWidth(), key .. ': the button is its cell')
+				out[#out + 1] = point_x(c.frame) .. '+' .. c.widget.frame:GetWidth()
+			end
+			return table.concat(out, ' ')
+		end
+		-- (520 - 12) / 2 = 254 a half, (254 - 12) / 2 = 121 a quarter.
+		eq(slots({ 'new', 'copy', 'rename', 'delete' }), '0+121 133+121 266+121 399+121', 'four even buttons, 12 apart, edge to edge')
+		eq(slots({ 'export', 'import' }), '0+121 133+121', 'the two under the first two, as wide')
+		eq(by.close.widget.frame:GetWidth(), 80, 'Close keeps its own width')
 		eq(by.export.y, by.new.y + by.new.height + 12, 'Export 12 under New')
 		eq(by.close.y, by.export.y + by.export.height + 24, 'Close 24 under Export')
 		eq(point_x(by.close.frame), math.floor((520 - by.close.frame:GetWidth()) / 2), 'in the middle')
