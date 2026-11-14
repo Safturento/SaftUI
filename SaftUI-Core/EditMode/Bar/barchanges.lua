@@ -31,13 +31,13 @@ local History = EM.History
 	clock) and when edit mode turns off.
 ]]
 
-local floor, ceil, min = math.floor, math.ceil, math.min
+local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
 
 EM.STATUS_SECONDS = 6
 EM.HISTORY_START = 'Before these changes' -- the History list's last row, and what going back to it is called
 local STATUS_GAP = 12 -- the text's right end this far short of the divider
 local ICON = 26
-local HIDDEN = ' Its mover is hidden by Show or the filter.'
+local HIDDEN = ' Its mover is hidden by Show or the filter.' -- after a full stop
 
 local Guard = EM.BarGuard
 
@@ -45,12 +45,21 @@ local Guard = EM.BarGuard
 
 local statusToken = 0 -- each status has its own clock: only the newest clears
 
+-- The tooltip a message that doesn't fit the gap is shown in (see
+-- EM:SetBarStatus), and the control it is under.
+local statusTipOwner
+
 local function ClearStatus()
 	local text = EM.statusText
 	if text then
 		text:SetText('')
 		text:Hide()
 	end
+	if statusTipOwner then
+		W.HideTip(statusTipOwner)
+		statusTipOwner = nil
+	end
+	EM.statusCut = false
 end
 
 -- Puts the text in the gap: right-aligned, as wide as it is (a whole number)
@@ -62,11 +71,13 @@ local function PlaceStatus()
 	local left, right = EM:BarGap()
 	local room = right - STATUS_GAP - left
 	if message == '' or room <= 0 then
+		EM.statusCut = message ~= ''
 		text:Hide()
 		return
 	end
 	local full = text.GetUnboundedStringWidth and text:GetUnboundedStringWidth() or text:GetStringWidth()
 	local width = min(ceil(full), room)
+	EM.statusCut = ceil(full) > room
 	text:SetWidth(width)
 	local height = ceil(text:GetStringHeight())
 	text:SetHeight(height)
@@ -84,15 +95,26 @@ local function StatusText()
 	return text
 end
 
--- Says text in the bar's status line; nil or '' clears it.
-function EM:SetBarStatus(message)
+-- Says text in the bar's status line; nil or '' clears it. When the gap is too
+-- narrow for the whole message (a narrow screen), it is also shown in full as
+-- a tooltip under owner, the control that was pressed, for the same time (red
+-- for a refusal), never in combat. EM.statusCut says the line was cut.
+function EM:SetBarStatus(message, owner, refusal)
 	statusToken = statusToken + 1
 	if message == nil or message == '' then
 		ClearStatus()
 		return
 	end
+	if statusTipOwner then
+		W.HideTip(statusTipOwner)
+		statusTipOwner = nil
+	end
 	StatusText():SetText(message)
 	PlaceStatus()
+	if EM.statusCut and owner and not InCombatLockdown() then
+		statusTipOwner = owner
+		W.ShowTip(owner, refusal and "It didn't work" or 'Done', { { text = message, red = refusal and true or nil } })
+	end
 	local mine = statusToken
 	C_Timer.After(EM.STATUS_SECONDS, function()
 		if mine == statusToken then ClearStatus() end
@@ -121,10 +143,16 @@ local function MoverHidden(key)
 	return r <= 0 or l >= UIParent:GetWidth() or t <= 0 or b >= UIParent:GetHeight()
 end
 
+-- text with the note that a mover is hidden, after a full stop.
+local function Hidden(text)
+	if text:sub(-1) ~= '.' then text = text .. '.' end
+	return text .. HIDDEN
+end
+
 -- Runs call, then posts verb and the step's label (read before: the call can
 -- drop the step), or the refusal's message. A message with a success is a
 -- skipped part ("<name> isn't there now; skipped.") and goes on the end.
-local function Run(call, verb, step, label)
+local function Run(call, verb, step, label, owner)
 	local target = step and step.target
 	if step and label == nil then label = History.Label(step) end
 	local ok, message = call()
@@ -132,32 +160,63 @@ local function Run(call, verb, step, label)
 	if ok then
 		text = verb .. ': ' .. tostring(label)
 		if message then text = text .. ' ' .. message end
-		if MoverHidden(target) then text = text .. HIDDEN end
+		if MoverHidden(target) then text = Hidden(text) end
 	else
 		text = message or "Couldn't do that."
 	end
-	EM:SetBarStatus(text)
+	EM:SetBarStatus(text, owner, not ok)
 	return ok, text
 end
 
-function EM:UndoStep()
-	return Run(function() return History:Undo() end, 'Undid', History:Steps()[History:Position()])
+-- Each takes the control that was pressed, optionally: a message too long for
+-- the status line is shown under it.
+function EM:UndoStep(owner)
+	return Run(function() return History:Undo() end, 'Undid', History:Steps()[History:Position()], nil, owner)
 end
 
-function EM:RedoStep()
-	return Run(function() return History:Redo() end, 'Redid', History:Steps()[History:Position() + 1])
+function EM:RedoStep(owner)
+	return Run(function() return History:Redo() end, 'Redid', History:Steps()[History:Position() + 1], nil, owner)
+end
+
+-- The label of the point after step i (0: the start).
+local function PointLabel(step)
+	if step then return tostring(History.Label(step)) end
+	return EM.HISTORY_START
 end
 
 -- Goes to just after step n (0: before every step). The current point is left
--- alone, silently.
-function EM:JumpToStep(n)
-	if n == History:Position() then return true end
-	local step = History:Steps()[n]
-	return Run(function() return History:JumpTo(n) end, 'Went back to', step, step == nil and EM.HISTORY_START or nil)
+-- alone, silently. The note about a hidden mover is about the steps the jump
+-- actually walked (read before, as the call can drop them), and a jump that
+-- stops part way says so and where, with the refusal.
+function EM:JumpToStep(n, owner)
+	local steps, from = History:Steps(), History:Position()
+	if n == from then return true end
+	local walked = {}
+	if type(n) == 'number' and n >= 0 and n <= #steps then
+		for i = min(from, n) + 1, max(from, n) do walked[#walked + 1] = steps[i] end
+	end
+	local point = steps[n]
+	local ok, message = History:JumpTo(n)
+	local text
+	local now = History:Position()
+	local hidden = false
+	for _, step in ipairs(walked) do
+		if step.target and MoverHidden(step.target) then hidden = true end
+	end
+	if ok then
+		text = 'Went back to: ' .. PointLabel(point)
+	elseif now ~= from then
+		text = 'Went back part way, to ' .. PointLabel(History:Steps()[now]) .. ': ' .. (message or "couldn't go on.")
+	else
+		text = message or "Couldn't do that."
+	end
+	if hidden and (ok or now ~= from) then text = Hidden(text) end
+	EM:SetBarStatus(text, owner, not ok)
+	return ok, text
 end
 
-function EM:RevertStep(i)
-	return Run(function() return History:Revert(i) end, 'Reverted', History:Steps()[i])
+function EM:RevertStep(i, owner)
+	return Run(function() return History:Revert(i) end, 'Reverted', History:Steps()[i], nil, owner)
 end
 
 ------------------------------------------------------------------ the controls
@@ -169,7 +228,7 @@ local function StepMover(step)
 end
 
 local function Retip(button)
-	if GameTooltip:IsOwned(button) then
+	if GameTooltip:IsShown() and GameTooltip:IsOwned(button) then
 		local title, lines = button.tip(button)
 		W.ShowTip(button, title, lines)
 	end
@@ -183,7 +242,7 @@ local function Undo(bar)
 		return 'Undo', { name and ('Puts %s back where it was before.'):format(name)
 			or ('Undoes %s.'):format(tostring(History.Label(step))) }
 	end)
-	button.onClick = Guard(function() EM:UndoStep() end)
+	button.onClick = Guard(function(self) EM:UndoStep(self) end)
 	return {
 		key = 'undo', frame = button,
 		Lay = function() return ICON end,
@@ -202,7 +261,7 @@ local function Redo(bar)
 		return 'Redo', { name and ('Moves %s again.'):format(name)
 			or ('Redoes %s.'):format(tostring(History.Label(step))) }
 	end)
-	button.onClick = Guard(function() EM:RedoStep() end)
+	button.onClick = Guard(function(self) EM:RedoStep(self) end)
 	return {
 		key = 'redo', frame = button,
 		Lay = function() return ICON end,
@@ -232,9 +291,9 @@ local function Reset(bar)
 		if not ok then return 'Reset', { { text = why, red = true } } end
 		return 'Reset', { ('%s goes back to its default place.'):format(EM.MoverName(mover)) }
 	end)
-	button.onClick = Guard(function()
-		local _, message = EM:Reset(EM.selected)
-		EM:SetBarStatus(message)
+	button.onClick = Guard(function(self)
+		local ok, message = EM:Reset(EM.selected)
+		EM:SetBarStatus(message, self, not ok)
 	end)
 	return {
 		key = 'reset', frame = button,

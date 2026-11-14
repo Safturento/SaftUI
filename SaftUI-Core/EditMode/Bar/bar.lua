@@ -383,6 +383,7 @@ end
 local function Restore()
 	if not bar then return end
 	bar:SetAlpha(1)
+	if EM.historyList then EM.historyList:SetAlpha(1) end
 	for _, frame in ipairs(released) do frame:EnableMouse(true) end
 	wipe(released)
 end
@@ -423,6 +424,12 @@ EM:On('DragStarted', function()
 	DropFocus()
 	bar:SetAlpha(BAR.DRAG_ALPHA)
 	if #released == 0 then ReleaseMouse(bar) end
+	-- The open History list (historylist.lua) follows the bar: faded, and off the mouse.
+	local list = EM.historyList
+	if list then
+		list:SetAlpha(BAR.DRAG_ALPHA)
+		if list:IsShown() then ReleaseMouse(list) end
+	end
 end)
 
 EM:On('DragStopped', function()

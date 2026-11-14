@@ -121,6 +121,7 @@ end
 local function NewRow(i)
 	local row = CreateFrame('Button', nil, list)
 	row:SetSize(ROW_WIDTH, HL.ROW)
+	row:EnableMouse(true)
 	row.index = 0
 
 	row.hover = row:CreateTexture(nil, 'BACKGROUND')
@@ -148,12 +149,13 @@ local function NewRow(i)
 	end)
 	row.revert.row = row
 	row.revert:SetPoint('TOPLEFT', row, 'TOPLEFT', ROW_WIDTH - EDGE_GAP - REVERT, -floor((HL.ROW - REVERT) / 2))
-	row.revert.onClick = Guard(function(link) EM:RevertStep(link.row.index) end)
+	row.revert.onClick = Guard(function(link) EM:RevertStep(link.row.index, link) end)
 
 	row:SetScript('OnEnter', function(self)
 		self.hovered = true
 		PaintHover(self)
 		local title, lines = RowTip(self)
+		self.tipTitle = title
 		W.ShowTip(self, title, lines)
 	end)
 	row:SetScript('OnLeave', function(self)
@@ -165,7 +167,7 @@ local function NewRow(i)
 		self.hovered = false
 		PaintHover(self)
 	end)
-	row:SetScript('OnClick', Guard(function(self) EM:JumpToStep(self.index) end))
+	row:SetScript('OnClick', Guard(function(self) EM:JumpToStep(self.index, self) end))
 	return row
 end
 
@@ -234,13 +236,21 @@ local function FillRow(row, index, position, now)
 		if undone then
 			detail = 'undone'
 		elseif step.kind == 'bulk' then
-			detail = ('%d settings'):format(#step.changes)
+			detail = ('%d setting%s'):format(#step.changes, #step.changes == 1 and '' or 's')
 		else
 			detail = EM.Ago(now - (step.time or now))
 		end
 	end
 	row.detail:SetText(detail)
 	row.mark:SetShown(index == position)
+	-- A tooltip showing under the mouse follows what the row now says.
+	if row.hovered and GameTooltip:IsShown() and GameTooltip:IsOwned(row) then
+		local title, lines = RowTip(row)
+		if title ~= row.tipTitle then
+			row.tipTitle = title
+			W.ShowTip(row, title, lines)
+		end
+	end
 
 	local revertX = ROW_WIDTH - EDGE_GAP - REVERT
 	local detailWidth = Width(row.detail)

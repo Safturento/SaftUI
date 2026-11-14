@@ -124,18 +124,22 @@ test('a new step after an undo discards the redo steps; the limit drops the olde
 	eq(#History:Steps(), 3, 'two kept and the new one')
 	eq(History:CanRedo(), false, 'no redo after a new step')
 
+	-- Lowering the limit is lazy: nothing goes until the next step is recorded.
 	fresh()
 	for i, k in ipairs({ 'a', 'b', 'c' }) do push('move', k, k, 0, i) end
 	fired = 0
 	History:SetLimit(2)
-	eq(fired, 1, 'a trim fires HistoryChanged')
+	eq(History.limit, 2, 'the limit is lowered')
+	eq(#History:Steps(), 3, 'but no step is thrown away yet')
+	eq(fired, 0, 'and nothing fires')
+	History:SetLimit(5)
+	eq(#History:Steps(), 3, 'raising it keeps them')
 	History:SetLimit(2)
-	eq(fired, 1, 'a limit that trims nothing does not')
-	eq(#History:Steps(), 2, 'the oldest dropped at once')
-	eq(History:Steps()[1].changes[1].where, 'b', 'the oldest first')
+	push('move', 'd', 'd', 0, 4)
+	eq(#History:Steps(), 2, 'the next step trims, the oldest first')
+	eq(History:Steps()[1].changes[1].where, 'c', 'the oldest dropped')
 	eq(History:Position(), 2, 'position follows')
 	History:SetLimit(0); eq(History.limit, 1, '0 is the minimum')
-	eq(#History:Steps(), 1, 'one left')
 	History:SetLimit(5000); eq(History.limit, 1000, 'capped at 1000')
 	History:SetLimit(1.6); eq(History.limit, 2, 'a whole number')
 	eq(History.LIMIT_MIN, 1, 'min'); eq(History.LIMIT_MAX, 1000, 'max')
@@ -458,26 +462,20 @@ test('Clear fires HistoryChanged; undo and redo close the run; a gap of exactly 
 	eq(#History:Steps(), 1, 'exactly MERGE_GAP later still merges')
 end)
 
-test('lowering the limit while steps are undone leaves no gap in the redo chain', function()
-	fresh()
-	for i = 1, 6 do push('move', 'a', 'a', i - 1, i) end
-	History:JumpTo(3)
-	History:SetLimit(5)
-	eq(#History:Steps(), 5, 'the oldest step dropped')
-	eq(History:Position(), 2, 'the position follows the dropped applied step')
-	History:JumpTo(5)
-	eq(store.a, 6, 'the whole redo chain still applies')
-
+test('lowering the limit while steps are undone keeps the redo chain until the next step, which then trims without a gap', function()
 	fresh()
 	for i = 1, 6 do push('move', 'a', 'a', i - 1, i) end
 	History:JumpTo(3)
 	History:SetLimit(2)
+	eq(#History:Steps(), 6, 'nothing trimmed yet')
+	History:JumpTo(6)
+	eq(store.a, 6, 'the whole redo chain still applies')
+	History:JumpTo(3)
+	push('move', 'a', 'a', 3, 30) -- discards the redo steps, then trims the oldest applied
 	eq(#History:Steps(), 2, 'at the limit')
-	eq(History:Position(), 0, 'the applied steps went first')
-	eq(store.a, 3, 'the frames stay where step 3 left them')
-	eq(History:CanRedo(), true, 'the redo chain that is left starts from there')
-	History:JumpTo(2)
-	eq(store.a, 5, 'and applies without a gap (steps 4 and 5 are what is left)')
+	eq(History:Position(), 2, 'both applied')
+	History:Undo(); History:Undo()
+	eq(store.a, 2, 'back to where step 2 left it (steps 1 and 2 were dropped)')
 end)
 
 test('SetLimit rejects NaN and non-numbers, rounds, and clamps to 1 and 1000', function()

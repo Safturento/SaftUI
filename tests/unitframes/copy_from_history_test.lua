@@ -128,6 +128,43 @@ test("an Undo is refused, and the step dropped, once the unit frame profile is n
 	eq(st.config.profile.unitframes.profiles.SaftUI.focus.width, 300, "and SaftUI's still has the copy")
 end)
 
+test("an Undo and a Redo each refresh /sui once, after the unit frames", function()
+	fresh()
+	local refreshed = 0
+	local real = st.Config.Refresh
+	function st.Config:Refresh() refreshed = refreshed + 1 end
+	UF:CopySettings('focus', 'target', { 'width' })
+	History:Undo()
+	eq(refreshed, 1, 'Undo: /sui refreshed once')
+	History:Redo()
+	eq(refreshed, 2, 'Redo: once more')
+	st.Config.Refresh = real
+end)
+
+test("the kind stores copies: an edit made in /sui after an Undo is not the step's data, Redo is refused as stale and the edit survives", function()
+	fresh()
+	local P = config()
+	local step = UF:CopySettings('focus', 'target', { 'health' })
+	eq(History:Undo(), true, 'Undo')
+	local change = step.changes[1]
+	check(P.focus.health ~= change.old and P.focus.health ~= change.new, "the stored table is neither of the step's")
+	eq(change.old.height, 0, "the step's old is untouched")
+	P.focus.health.height = 55 -- an edit in /sui
+	eq(change.old.height, 0, "and an edit never reaches the step's old")
+	local ok, why = History:Redo()
+	eq(ok, false, 'Redo is refused: the setting changed since')
+	eq(why, 'Focus was changed since; its earlier steps are dropped.', 'with the history\'s message')
+	eq(P.focus.health.height, 55, 'the edit survives')
+	eq(#History:Steps(), 0, 'and the step is dropped')
+	-- And after a Redo, an edit to the copied value is not the step's new.
+	fresh()
+	step = UF:CopySettings('focus', 'target', { 'health' })
+	P.focus.health.height = 66
+	eq(step.changes[1].new.height, 7, "an edit after the copy never reaches the step's new")
+	eq(History:Undo(), false, 'and Undo is refused as stale')
+	eq(P.focus.health.height, 66, 'the edit survives')
+end)
+
 -- The dialog's drawn rows, by key.
 local function cell(key)
 	for _, c in ipairs(OW.GetDialogFrames().body.cells) do

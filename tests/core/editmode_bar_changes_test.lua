@@ -70,6 +70,9 @@ local function hover(owner)
 end
 local function unhover(owner) stub.fire_script(owner, 'OnLeave', true) end
 
+-- Whether the tooltip is up and is owner's.
+local function tip_on(owner) return GameTooltip:IsShown() and GameTooltip:IsOwned(owner) end
+
 local added = {}
 
 -- A mover on a 100 x 50 frame, its position in config.position, a default of
@@ -279,7 +282,7 @@ test('Undo moves the frame back and says so in the status line, naming a mover t
 	check(not player.overlay:IsShown(), 'the filter hides its mover')
 	local selected = EM.selected -- the filter let go of it (a selected mover that stops showing is deselected)
 	stub.click(frame_of('undo'))
-	eq(status(), 'Undid: Moved Player Its mover is hidden by Show or the filter.', 'the status adds that its mover is hidden')
+	eq(status(), 'Undid: Moved Player. Its mover is hidden by Show or the filter.', 'the status adds that its mover is hidden')
 	eq(EM.selected, selected, 'the selection did not change')
 	EM:SetFilter('')
 
@@ -295,7 +298,7 @@ test('Undo moves the frame back and says so in the status line, naming a mover t
 	EM:UndoStep()
 	eq(status(), 'Undid: Moved Player', 'back on screen: no addition')
 	EM:RedoStep()
-	eq(status(), 'Redid: Moved Player Its mover is hidden by Show or the filter.', 'its outline is off the screen: the addition')
+	eq(status(), 'Redid: Moved Player. Its mover is hidden by Show or the filter.', 'its outline is off the screen: the addition')
 	reset()
 end)
 
@@ -437,6 +440,43 @@ test("a refused step (a write that errors, a stale one) is shown as the refusal 
 	stub.click(undo)
 	eq(status(), 'Player was changed since; its earlier steps are dropped.', 'a stale step says so')
 	check(undo.disabled, 'and Undo follows the history: nothing left')
+	reset()
+end)
+
+test("a jump's note is about the steps it walked, and a jump that stops part way says where", function()
+	reset()
+	local p1 = add_mover('p1', 'P1')
+	local p2, c2 = add_mover('p2', 'P2')
+	local p3 = add_mover('p3', 'P3')
+	EM:Activate()
+	drag(p1, 10, 0)
+	drag(p2, 20, 0)
+	EM:SetFilter('p1') -- P2's mover is hidden, P1's shows
+	check(p1.overlay:IsShown() and not p2.overlay:IsShown(), 'only P1 shows')
+	EM:JumpToStep(1)
+	eq(status(), 'Went back to: Moved P1. Its mover is hidden by Show or the filter.', 'the step that moved is P2, which is hidden')
+	EM:SetFilter('')
+	EM:JumpToStep(2)
+	eq(status(), 'Went back to: Moved P2', 'nothing hidden: no note')
+
+	-- Part way: P2 is moved from outside, then a jump to the start.
+	reset()
+	p1 = add_mover('p1', 'P1')
+	p2, c2 = add_mover('p2', 'P2')
+	p3 = add_mover('p3', 'P3')
+	EM:Activate()
+	drag(p1, 10, 0)
+	drag(p2, 20, 0)
+	drag(p3, 30, 0)
+	c2.position.x_off = 77
+	EM:JumpToStep(0)
+	eq(status(), 'Went back part way, to Moved P1: P2 was changed since; its earlier steps are dropped.', 'it says it stopped, where, and why')
+	eq(History:Position(), 1, 'at P1')
+	-- A refusal before anything moved is the refusal alone.
+	stub.in_combat = true
+	EM:JumpToStep(0)
+	eq(status(), "Can't undo in combat.", 'a refusal with no progress')
+	stub.in_combat = false
 	reset()
 end)
 
@@ -727,9 +767,8 @@ test('the History list scrolls past 12 rows, sets its length, and closes on Esc,
 	stub.fire_script(box.edit, 'OnEnterPressed')
 	eq(settings().history_limit, 5, 'history_limit is saved')
 	eq(History.limit, 5, 'and applied')
-	eq(#History:Steps(), 5, 'only 5 steps are left')
+	eq(#History:Steps(), 20, 'nothing is thrown away until the next step')
 	eq(box.edit:GetText(), '5', 'the box shows it')
-	check(not list.bar:IsShown(), 'and nothing to scroll')
 	box.edit:SetText('2000')
 	stub.fire_script(box.edit, 'OnEnterPressed')
 	eq(settings().history_limit, 1000, '2000 gives 1000')
@@ -777,7 +816,7 @@ test('the History list scrolls past 12 rows, sets its length, and closes on Esc,
 	reset()
 end)
 
-test('the list: a click, a revert, and a number box do nothing in combat; it hides in combat as the bar does', function()
+test('the list: a click, a revert and the length box do nothing in combat', function()
 	reset()
 	local p, t, f, pc = three()
 	stub.click(frame_of('history'))
@@ -794,6 +833,12 @@ test('the list: a click, a revert, and a number box do nothing in combat; it hid
 	stub.click(frame_of('history'))
 	eq(status(), '', 'the buttons say nothing either')
 	check(EM:IsHistoryListShown(), "and History does not toggle the list")
+	list.box.edit:SetText('5')
+	stub.fire_script(list.box.edit, 'OnEnterPressed')
+	eq(History.limit, 50, 'the length box sets nothing in combat')
+	eq(settings().history_limit, 50, 'nor the setting')
+	stub.click(list.box.pair.down)
+	eq(History.limit, 50, 'nor do its arrows')
 	stub.in_combat = false
 	reset()
 end)
@@ -848,6 +893,162 @@ test('a click on the current row does nothing; a step with a part that is gone s
 	reset()
 end)
 
+test('a message the status line is too narrow for is also shown in full under the control that was pressed, for the same time', function()
+	watch_tooltip()
+	for _, size in ipairs({ { 1024, 768 }, { 800, 600 } }) do
+		reset()
+		set_screen(size[1], size[2])
+		local player, config = add_mover('player', 'Player')
+		EM:Activate()
+		EM:LayoutBar()
+		drag(player, 40, 0)
+		config.position.x_off = 77 -- moved from outside: Undo is refused
+		local message = 'Player was changed since; its earlier steps are dropped.'
+		local undo = frame_of('undo')
+		lines = {}
+		stub.click(undo)
+		eq(status(), message, size[1] .. ': the status line has the message (cut to its room)')
+		check(EM.statusCut, size[1] .. ': and knows it is cut')
+		check(tip_on(undo), size[1] .. ': the tooltip is under the pressed control')
+		local text = {}
+		for _, line in ipairs(lines) do text[#text + 1] = line.text end
+		check(table.concat(text, '|'):find(message, 1, true), size[1] .. ': with the whole message')
+		eq(lines[#lines].color, rgb(colors().text.red), size[1] .. ': a refusal in red')
+		stub.time = stub.time + 5
+		stub.run_timers()
+		check(tip_on(undo), 'still there at 5 seconds')
+		stub.time = stub.time + 2
+		stub.run_timers()
+		check(not tip_on(undo), 'gone at 6')
+		eq(status(), '', 'with the status line')
+		-- In combat it is not shown.
+		stub.in_combat = true
+		EM:SetBarStatus(message, undo, true)
+		check(not tip_on(undo), 'nothing in combat')
+		stub.in_combat = false
+		EM:SetBarStatus('')
+		eq(#P.off(EM:GetBar()), 0, size[1] .. ': the bar is still on whole pixels')
+	end
+	reset()
+	local player, config = add_mover('player', 'Player')
+	EM:Activate()
+	drag(player, 40, 0)
+	config.position.x_off = 77
+	stub.click(frame_of('undo'))
+	check(not EM.statusCut and not tip_on(frame_of('undo')), 'at 1920 the line holds it: no tooltip')
+	reset()
+end)
+
+test('the status line and the open list are placed again when the bar lays out again', function()
+	reset()
+	local player = add_mover('player', 'Player')
+	EM:Activate()
+	drag(player, 40, 0)
+	stub.click(frame_of('undo'))
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	local text = EM.statusText
+	text:ClearAllPoints()
+	text:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 3, -3)
+	list:ClearAllPoints()
+	list:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 5, -200)
+	EM:LayoutBar()
+	local _, gapRight = EM:BarGap()
+	eq(text:GetRight() - UIParent:GetLeft(), gapRight - 12, 'the status line is back in the gap')
+	eq(list:GetRight(), frame_of('history'):GetRight(), 'the list is back under History')
+	reset()
+end)
+
+test("the length box shows what the history keeps, not the saved setting", function()
+	reset()
+	EM:Activate()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	settings().history_limit = 77
+	History:SetLimit(33)
+	list.box:Refresh()
+	eq(list.box.edit:GetText(), '33', 'History.limit')
+	reset()
+end)
+
+test('the list is kept in the screen margin, starts at the top when reopened, and a .5 length rounds up', function()
+	reset()
+	twenty()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	check(list:IsClampedToScreen(), 'clamped to the screen margin (st:KeepInScreenMargin)')
+	stub.fire_script(list, 'OnMouseWheel', -1)
+	eq(list.offset, 3, 'scrolled')
+	stub.click(frame_of('history'))
+	stub.click(frame_of('history'))
+	eq(list.offset, 0, 'reopened at the top')
+	eq(list.rows[1].index, 20, 'the newest first again')
+	EM:SetSetting('history_limit', 12.5)
+	eq(settings().history_limit, 13, '12.5 rounds up')
+	eq(History.limit, 13, 'and so does the history')
+	reset()
+end)
+
+test('lowering the length trims at the next step, not before', function()
+	reset()
+	local movers = twenty()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	list.box.edit:SetText('5')
+	stub.fire_script(list.box.edit, 'OnEnterPressed')
+	eq(#History:Steps(), 20, 'nothing lost to a slider dragged down')
+	list.box.edit:SetText('50')
+	stub.fire_script(list.box.edit, 'OnEnterPressed')
+	eq(#History:Steps(), 20, 'and back up')
+	list.box.edit:SetText('5')
+	stub.fire_script(list.box.edit, 'OnEnterPressed')
+	drag(movers[1], 99, 0)
+	eq(#History:Steps(), 5, 'the next step trims to the limit')
+	reset()
+end)
+
+test("a row's tooltip follows the list when it refreshes under the mouse; a one-key copy says '1 setting'; the open list fades with the bar during a drag", function()
+	reset()
+	local p, t, f = three()
+	stub.click(frame_of('history'))
+	local list = EM:GetHistoryList()
+	hover(list.rows[1])
+	eq(lines[1].text, 'Moved Focus', 'the newest')
+	lines = {}
+	drag(p, 5, 0)
+	check(GameTooltip:IsOwned(list.rows[1]), 'still under the mouse')
+	eq(lines[1] and lines[1].text, 'Moved Player', 'the tooltip names what the row says now')
+	unhover(list.rows[1])
+
+	History:Push({ kind = 'bulk', label = 'Copied A to B', changes = {
+		{ kind = 'position', where = 'player', old = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 3, y_off = 0 },
+			new = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 4, y_off = 0 } } } })
+	eq(list.rows[1].detail:GetText(), '1 setting', 'one key')
+
+	-- The drag fade.
+	check(list.rows[2]:IsMouseEnabled(), 'a row takes the mouse')
+	EM:StartDrag(f)
+	eq(list:GetAlpha(), EM.BAR.DRAG_ALPHA, 'the list fades with the bar')
+	check(not list.rows[2]:IsMouseEnabled() and not list:IsMouseEnabled(), 'and is off the mouse')
+	EM:StopDrag(f)
+	eq(list:GetAlpha(), 1, 'full again')
+	check(list.rows[2]:IsMouseEnabled() and list:IsMouseEnabled(), 'with the mouse back')
+	reset()
+end)
+
+test('Reset, Undo and Redo of a unit with a change under the bar still work at the narrowest stage', function()
+	reset()
+	set_screen(800, 600)
+	local player = add_mover('player', 'Player')
+	EM:Activate()
+	EM:LayoutBar()
+	EM:Select(player)
+	drag(player, 40, 0)
+	stub.click(frame_of('undo'))
+	check(History:CanRedo(), 'Undo works at 800 wide')
+	reset()
+end)
+
 ------------------------------------------------------------------ whole pixels and looks
 
 local function all_whole(list, where)
@@ -876,9 +1077,6 @@ for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		all_whole(list, name .. ' scrolled')
 		for i = 1, 6 do EM:UndoStep() end
 		all_whole(list, name .. ' after undo')
-		History:SetLimit(5)
-		all_whole(list, name .. ' five rows')
-		History:SetLimit(50)
 		History:Clear()
 		all_whole(list, name .. ' empty')
 		hover(frame_of('undo'))

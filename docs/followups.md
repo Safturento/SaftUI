@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
   - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
@@ -137,6 +138,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — Copy from writes default tables into keys the source unit doesn't have
+
+**What:** Unit frames' Copy from lists the destination unit's settings, but the source unit may not have them. Reading a key the source lacks gives AceDB's `['**']` default (a fresh table), so the copy writes that junk table onto the destination and also creates the key on the source.
+
+**Why noticed:** Reviewing Task 7 of the edit mode bar plan (Copy from as one undoable step). The reviewer's probe: "Copy to Party from Target" with Layout ticked, `spacing` and `growthDirection` ticked, put `number`/`string` values on Party's side as old and element-default tables as new, and made `target.spacing` appear. Pre-existing behaviour of Copy from, not caused by the history work (Undo now restores the destination exactly, but the source keeps the created keys).
+
+**Anchors:** `SaftUI-Unitframes/config/config.lua` (`UF:CopySettings`, `UF:OpenCopyTable`, `CopyNames`); `SaftUI-Unitframes/config/default.lua` (the `['**']` defaults at unit level); `tests/unitframes/copy_from_history_test.lua`.
+
+**What's been considered:** Offering only keys both units have (the dialog already lists only parts the destination's page names), or skipping a key whose source value is not stored (`rawget` nil) so nothing is written.
+
+**Shape of work:** small change in `UF:CopySettings` and the dialog's list, plus a test per case (a group unit as destination, a single unit as source).
+
+**Open questions:** whether a key the source never stored should copy the source's default (what the player sees there) or be left alone.
 
 ### 2026-11-13 — Design decisions waiting to be built
 
