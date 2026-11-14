@@ -4,17 +4,14 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 --[[
 	The edit mode bar's controls for what shows (filter.lua has the rule):
-	  show    (left, 30, section 'show')  the caption "Show", Show disabled and
-	                                      Show hidden (icon buttons, on while
-	                                      the setting is), and the module list's
-	                                      face
-	  filter  (left, 40, section 'show')  the filter box
-	Each control is { key, frame, Lay, Refresh, Look } as bar.lua says; a
-	control reads its stage in Lay and ignores the others (the caption is gone
-	from stage 2, the face is narrower from 3, the filter is narrower from 1
-	and gone at 5; floating, each has its own width). Clicks go through
-	EM.BarGuard (nothing in combat), as bargroups.lua's do; an icon says
-	nothing, so its tooltip does.
+	  show    (left, 30, row 2, section 'show')  Show disabled and Show hidden
+	                                             (icon buttons, on while the
+	                                             setting is), the module list's
+	                                             face and the filter box
+	Each control is { key, frame, Lay, Refresh, Look } as bar.lua says; the face
+	and the filter are 150 wide on the bar and 140 in the floating window. Clicks
+	go through EM.BarGuard (nothing in combat), as bargroups.lua's do; an icon
+	says nothing, so its tooltip does.
 
 	The filter box is the kit's input with a search glass: Lucide's, 6 in at its
 	left, with the text inset past it; under Blizzard it is the search box's
@@ -26,32 +23,8 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 local FIELD_HEIGHT = W.Kit.FIELD_HEIGHT
 local Guard = EM.BarGuard
-local ceil = math.ceil
 
 local GLASS, GLASS_LEFT, GLASS_GAP, TEXT_RIGHT = 16, 6, 4, 8
-local CAPTION_HEIGHT = 16
-
------------------------------------------------------------------- the caption
-
-local function Caption(bar)
-	local frame = st:CreateFrame('Frame', nil, bar)
-	frame:SetHeight(CAPTION_HEIGHT)
-	local text = OB.Text(frame, 'caption', 'LEFT')
-	text:SetPoint('LEFT', frame, 'LEFT', 0, 0)
-	text:SetText('Show')
-	frame.text = text
-	return {
-		key = 'caption', frame = frame,
-		-- Gone from stage 2, and in the floating window (its section has a title).
-		Lay = function(_, stage, floating)
-			if floating or stage >= 2 then return 0 end
-			local width = ceil(text:GetStringWidth())
-			frame:SetWidth(width)
-			return width
-		end,
-		Look = function() text:SetTextColor(OB.Grey()) end,
-	}
-end
 
 ------------------------------------------------------------------ the module list
 
@@ -75,8 +48,8 @@ local function Modules(bar)
 	face.tip = function() return 'Show', { "Which modules' movers edit mode shows." } end
 	return {
 		key = 'modules', frame = face,
-		Lay = function(_, stage, floating)
-			local width = floating and 140 or stage >= 3 and 110 or 150
+		Lay = function(_, floating)
+			local width = floating and 140 or 150
 			face:SetWidth(width)
 			return width
 		end,
@@ -144,22 +117,11 @@ local function Filter(bar)
 		box:SetText('') -- the filter is for this session of edit mode
 	end)
 
-	-- A filter with no box to show it or clear it would hide movers with nothing
-	-- on the bar saying why: at the narrowest stage it is cleared (it is only
-	-- this session's, and typing it again costs a few keys).
-	EM:On('BarLaid', function()
-		if box:IsShown() or box:GetText() == '' then return end
-		box:SetText('')
-		local message = 'Filter cleared: the bar is too narrow for its box.'
-		EM:SetBarStatus(message)
-		st:Print(message) -- the bar has no room for a status line at this stage
-	end)
-
 	return {
 		key = 'filter', frame = box,
-		Lay = function(_, stage, floating)
-			local width = floating and 140 or stage >= 5 and 0 or stage >= 1 and 100 or 150
-			if width > 0 then box:SetWidth(width) end
+		Lay = function(_, floating)
+			local width = floating and 140 or 150
+			box:SetWidth(width)
 			return width
 		end,
 		Look = function(_, blizzard)
@@ -171,7 +133,7 @@ local function Filter(bar)
 			box:SetTextInsets(left, TEXT_RIGHT, 0, 0)
 			box.hint:ClearAllPoints()
 			box.hint:SetPoint('LEFT', box, 'LEFT', left, 0)
-			box.hint:SetPoint('RIGHT', box, 'RIGHT', -TEXT_RIGHT, 0) -- cut at the box's edge in a narrow stage
+			box.hint:SetPoint('RIGHT', box, 'RIGHT', -TEXT_RIGHT, 0)
 		end,
 		Refresh = ShowHint,
 	}
@@ -180,20 +142,15 @@ end
 ------------------------------------------------------------------ the groups
 
 EM:AddBarGroup({
-	key = 'show', order = 30, side = 'left', section = 'show',
+	key = 'show', order = 30, side = 'left', row = 2, section = 'show',
 	controls = function(bar)
 		return {
-			Caption(bar),
 			EM.BarToggle(bar, 'showDisabled', st.icons.powerOff, 'show_disabled', 'Show disabled',
 				"Shows the movers of frames you've turned off."),
 			EM.BarToggle(bar, 'showHidden', st.icons.eye, 'show_hidden', 'Show hidden',
 				"Shows the movers of frames that aren't on screen right now: closed bags, no pet, no boss."),
 			Modules(bar),
+			Filter(bar),
 		}
 	end,
-})
-
-EM:AddBarGroup({
-	key = 'filter', order = 40, side = 'left', section = 'show',
-	controls = function(bar) return { Filter(bar) } end,
 })

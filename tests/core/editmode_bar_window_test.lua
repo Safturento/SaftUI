@@ -135,7 +135,7 @@ test('Detach turns the bar into a window holding the same controls in sections; 
 	local captions = {}
 	for i, section in ipairs(EM.WINDOW_SECTIONS) do captions[i] = window.captions[section.key]:GetText() end
 	eq(table.concat(captions, '|'), 'Grid and snap|Show|Changes', 'Grid and snap, Show, Changes')
-	check(not frame_of('caption'):IsShown(), 'the bar controls own Show caption is gone: the section has one')
+	eq(control('caption'), nil, 'there is no Show caption control: the section has one')
 	eq(top_of(frame_of('grid')), top_of(frame_of('coordinates')), 'Grid and snap on one line')
 	eq(top_of(frame_of('showDisabled')), top_of(frame_of('showHidden')), 'the two Show toggles on one line')
 	eq(top_of(frame_of('modules')), top_of(frame_of('filter')), 'the face and the filter on the next')
@@ -164,7 +164,6 @@ test('Detach turns the bar into a window holding the same controls in sections; 
 	check(frame_of('detach'):IsShown(), 'detach is back')
 	check(not window.dock:IsShown() or not window:IsShown(), 'and Dock goes with the window')
 	eq(frame_of('grid'):GetFrameLevel(), bar:GetFrameLevel() + 2, 'raised over the bar')
-	check(frame_of('caption'):IsShown(), 'the caption is back')
 	reset()
 end)
 
@@ -354,11 +353,10 @@ test('the window lays out again on the screen events and at a new size, and its 
 	stub.fire_event('UI_SCALE_CHANGED')
 	check(window:GetRight() - UIParent:GetLeft() <= 1024 - margin(), 'UI_SCALE_CHANGED puts it back inside too')
 	check(window:GetRight() - UIParent:GetLeft() <= 1024, 'on the smaller screen')
-	-- Docked again, the status line is the bar's: right-aligned in the gap.
+	-- Docked again, the bar has no status line: the message is a tooltip.
 	stub.click(EM:GetBarWindow().dock)
 	EM:SetBarStatus('Reset Player')
-	eq(EM.statusText:GetParent(), EM:GetBar(), 'on the bar again')
-	eq(EM.statusText:GetJustifyH(), 'RIGHT', 'right-aligned')
+	check(not EM.statusText:IsShown() and EM.statusCut, 'no line on the bar again')
 	reset()
 end)
 
@@ -556,19 +554,25 @@ end)
 
 ------------------------------------------------------------------ what keeps clear of the bar
 
-test('the bar covers its height at the top while docked and shown, nothing floating or hidden; ScreenTop and Coordinates read it', function()
+test('the bar covers its rect at the top while docked and shown, nothing floating or hidden; BarCoverHeight is that rect\'s height', function()
 	reset()
 	local top = UIParent:GetHeight()
 	local inset = st:ThemeInset('theme', 'theme', 'panel')
 	eq(EM:BarCoverHeight(), 0, 'not built or shown: 0')
+	eq(EM:BarRect(), nil, 'and no rect')
 	EM:Activate()
 	eq(EM:BarCoverHeight(), EM.BAR.HEIGHT + inset, 'docked and shown: its height and the line it draws')
-	eq(EM:ScreenTop(), top - EM:BarCoverHeight(), 'ScreenTop reads it')
+	local rect = EM:BarRect()
+	eq(rect.top, top, 'flush with the screen top')
+	eq(rect.top - rect.bottom, EM:BarCoverHeight(), 'BarCoverHeight is its height')
+	local bar = EM:GetBar()
+	eq(rect.left, bar:GetLeft() - UIParent:GetLeft() - inset, 'its left, the line it draws included')
+	eq(rect.right, bar:GetRight() - UIParent:GetLeft() + inset, 'and its right')
 	stub.click(frame_of('detach'))
 	eq(EM:BarCoverHeight(), 0, 'floating: 0')
-	eq(EM:ScreenTop(), top, 'ScreenTop is the whole screen')
+	eq(EM:BarRect(), nil, 'no rect')
 	-- The label can sit in the strip the bar covered.
-	local spot = { EM.CoordinatesSpot('TOPLEFT', { left = 100, right = 260, bottom = 1007, top = 1035 }, 120, 12, 1920, EM:ScreenTop()) }
+	local spot = { EM.CoordinatesSpot('TOPLEFT', { left = 100, right = 260, bottom = 1007, top = 1035 }, 120, 12, 1920, top) }
 	eq(spot[2], 1037, 'above the outline, where the bar would have been')
 	stub.click(EM:GetBarWindow().dock)
 	eq(EM:BarCoverHeight(), EM.BAR.HEIGHT + inset, 'docked again: back')
@@ -598,20 +602,29 @@ test('a mover can be dragged into the strip the bar covered once the bar floats,
 	reset()
 end)
 
-test('the Coordinates label follows the mode: it re-places itself when the bar detaches or docks', function()
+test('the Coordinates label follows the mode: under the bar it keeps clear of it, and it re-places itself when the bar detaches or docks', function()
 	reset()
 	local mover, config = add_mover('coord')
-	config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 100, y_off = -2 }
-	EM.movers.coord.def.apply()
+	local bar_x = 0
 	EM:Activate()
+	local rect = EM:BarRect()
+	-- A mover right under the bar's rect, its top at the screen's top.
+	config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = rect.left + 20, y_off = -2 }
+	EM.movers.coord.def.apply()
 	EM:SetSetting('coordinates', true)
 	EM:Select(mover)
 	local docked = EM.coordinates:GetTop()
+	check(docked <= rect.bottom + 1e-3, 'docked: the label is under the bar, not on it: ' .. docked .. ' vs ' .. rect.bottom)
 	stub.click(frame_of('detach'))
 	local floating = EM.coordinates:GetTop()
 	check(floating > docked, 'floating: the label can go above the frame, in the strip: ' .. docked .. ' -> ' .. floating)
 	stub.click(EM:GetBarWindow().dock)
 	eq(EM.coordinates:GetTop(), docked, 'docked: under the bar again')
+	-- Beside the bar the strip is free: the label goes above the frame as when floating.
+	config.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 100, y_off = -2 }
+	EM.movers.coord.def.apply()
+	EM:UpdateCoordinates()
+	eq(EM.coordinates:GetTop(), floating - 0, 'beside the bar: where it is when floating')
 	reset()
 end)
 

@@ -220,7 +220,7 @@ function EM:LayoutWindow()
 	end
 	local title = {}
 	for _, control in ipairs(self:BarControls()) do
-		local width = control:Lay(0, true) or 0
+		local width = control:Lay(true) or 0
 		control.frame:SetShown(width > 0)
 		-- A section the window does not have goes in the last one (never left
 		-- shown with no place).
@@ -375,7 +375,7 @@ function EM:GetBarWindow()
 	end
 
 	local dock = W.IconButton(window, st.icons.panelTop, function()
-		return 'Dock', { 'Puts the controls back in a bar across the top of the screen.' }
+		return 'Dock', { 'Puts the controls back in a bar on the top edge of the screen.' }
 	end)
 	dock.onClick = EM.BarGuard(function() EM:SetBarFloating(false) end)
 	EM.SettleLevel(dock, window:GetFrameLevel() + 2, EM.LevelShape(dock))

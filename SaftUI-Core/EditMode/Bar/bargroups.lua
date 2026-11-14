@@ -3,13 +3,15 @@ local EM = st.EditModeFrames
 local W = st.OptionsWidgets
 
 --[[
-	The groups of the edit mode bar's controls (bar.lua):
-	  exit     (left, 10, section 'title')    Exit
-	  grid     (left, 20, section 'grid')     Grid, Grid size, Snap to grid,
-	                                          Snap to frames, Dim world,
-	                                          Coordinates
-	  options  (right, 90, section 'changes') Options, and Detach (section
-	                                          'title') at its end
+	The groups of the edit mode bar's controls (bar.lua), each with its row on
+	the docked bar and its section in the floating window:
+	  exit     (left, 10, row 1, section 'title')    Exit
+	  grid     (left, 20, row 1, section 'grid')     Grid, Grid size, Snap to grid,
+	                                                 Snap to frames
+	  view     (left, 25, row 1, section 'grid')     Dim world, Coordinates
+	  options  (right, 90, row 2, section 'changes') Options, Hide until hovered,
+	                                                 and Detach (section 'title')
+	                                                 at its end
 	Each control is { key, frame, Lay, Refresh, ... } as bar.lua says. The
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
 	says nothing, so each has one.
@@ -55,8 +57,8 @@ local function Exit(bar)
 	button.onClick = Guard(function() EM:Deactivate() end)
 	return {
 		key = 'exit', frame = button,
-		-- Compact (the icon alone) from stage 4, and in the floating window's title.
-		Lay = function(_, stage, floating) return W.SetCompact(button, floating or stage >= 4) end,
+		-- Compact (the icon alone) in the floating window's title.
+		Lay = function(_, floating) return W.SetCompact(button, floating) end,
 	}
 end
 
@@ -82,7 +84,7 @@ local function Options(bar)
 	end)
 	return {
 		key = 'options', frame = button, align = 'right',
-		Lay = function(_, stage, floating) return W.SetCompact(button, not floating and stage >= 4) end,
+		Lay = function() return W.SetCompact(button, false) end,
 	}
 end
 
@@ -95,7 +97,27 @@ local function Detach(bar)
 	button.onClick = Guard(function() EM:SetBarFloating(true) end)
 	return {
 		key = 'detach', frame = button, section = 'title',
-		Lay = function(_, _, floating) return floating and 0 or ICON end,
+		Lay = function(_, floating) return floating and 0 or ICON end,
+	}
+end
+
+-- Hide until hovered (bardock.lua keeps the setting and does the hiding): an
+-- icon toggle on the docked bar only, square-mouse-pointer while off and
+-- square-dashed-mouse-pointer while on, lit in the accent as the other toggles
+-- are. Not in the floating window, which has nothing to hide.
+local function HideToggle(bar)
+	local button = W.IconButton(bar, st.icons.squareMousePointer, function()
+		return 'Hide until hovered', { 'Hides this bar until the mouse reaches the top edge of the screen where it sits.' }
+	end)
+	button.onClick = Guard(function() EM:SetBarHideUntilHovered(not EM:IsBarHideUntilHovered()) end)
+	return {
+		key = 'hide', frame = button, section = 'title',
+		Lay = function(_, floating) return floating and 0 or ICON end,
+		Refresh = function()
+			local on = EM:IsBarHideUntilHovered()
+			button.icon:SetTexture(on and st.icons.squareDashedMousePointer or st.icons.squareMousePointer)
+			W.SetOn(button, on)
+		end,
 	}
 end
 
@@ -150,12 +172,12 @@ EM.BarToggle = Toggle -- Show disabled and Show hidden (barshow.lua) are toggles
 ------------------------------------------------------------------ the groups
 
 EM:AddBarGroup({
-	key = 'exit', order = 10, side = 'left', section = 'title',
+	key = 'exit', order = 10, side = 'left', row = 1, section = 'title',
 	controls = function(bar) return { Exit(bar) } end,
 })
 
 EM:AddBarGroup({
-	key = 'grid', order = 20, side = 'left', section = 'grid',
+	key = 'grid', order = 20, side = 'left', row = 1, section = 'grid',
 	controls = function(bar)
 		return {
 			Toggle(bar, 'grid', st.icons.grid3x3, 'grid', 'Grid', 'Draws a grid over the screen, centred on its middle.'),
@@ -164,6 +186,17 @@ EM:AddBarGroup({
 				"A dragged frame snaps to the grid's lines, shown or not. Hold Ctrl to drag without snapping."),
 			Toggle(bar, 'snapFrames', st.icons.alignStartVertical, 'snap_frames', 'Snap to frames',
 				"A dragged frame snaps to the edges and middles of the other frames shown, and to the screen's middle. Hold Ctrl to drag without snapping."),
+		}
+	end,
+})
+
+-- Dim world and Coordinates: a group of their own on the docked bar (the mockup
+-- has a divider after the snaps), in the floating window's Grid and snap section
+-- with the rest.
+EM:AddBarGroup({
+	key = 'view', order = 25, side = 'left', row = 1, section = 'grid',
+	controls = function(bar)
+		return {
 			Toggle(bar, 'dim', st.icons.layers, 'dim', 'Dim world',
 				'Darkens the game world behind your frames while edit mode is on.'),
 			Toggle(bar, 'coordinates', st.icons.mapPin, 'coordinates', 'Coordinates',
@@ -173,6 +206,6 @@ EM:AddBarGroup({
 })
 
 EM:AddBarGroup({
-	key = 'options', order = 90, side = 'right', section = 'changes',
-	controls = function(bar) return { Options(bar), Detach(bar) } end,
+	key = 'options', order = 90, side = 'right', row = 2, section = 'changes',
+	controls = function(bar) return { Options(bar), HideToggle(bar), Detach(bar) } end,
 })

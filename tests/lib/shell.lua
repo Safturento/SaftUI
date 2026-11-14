@@ -506,6 +506,7 @@ function editmode_bar_files()
 		'SaftUI-Core/EditMode/Bar/barchanges.lua',
 		'SaftUI-Core/EditMode/Bar/historylist.lua',
 		'SaftUI-Core/EditMode/Bar/barwindow.lua',
+		'SaftUI-Core/EditMode/Bar/bardock.lua',
 	}
 end
 

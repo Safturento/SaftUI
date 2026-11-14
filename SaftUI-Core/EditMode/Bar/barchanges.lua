@@ -5,7 +5,7 @@ local History = EM.History
 
 --[[
 	The edit mode bar's changes group (bar.lua) and its status line:
-	  changes (right, 80, section 'changes')  Undo, Redo, History, Reset
+	  changes (right, 80, row 1, section 'changes')  Undo, Redo, History, Reset
 	Icon buttons (bargroups.lua's, EM.BarGuard on every click, so nothing in
 	combat). Each tells why when it can't act, in red under its title, and each
 	refreshes on HistoryChanged, Selected and PositionChanged:
@@ -24,20 +24,20 @@ local History = EM.History
 	' Its mover is hidden by Show or the filter.' follows. The selection never
 	changes. Each returns ok and the text posted.
 
-	The status line, EM:SetBarStatus(text): one line of small, Text > Grey text
-	in the bar's flexible gap, right-aligned STATUS_GAP short of the first right
-	group's divider (EM:BarGap), cut to the room. In the floating window
-	(barwindow.lua) it is under the Changes section instead, from the left and
-	wrapped to the window's inside width, never cut. It takes no mouse. It clears
-	after EM.STATUS_SECONDS, when a new status replaces it (each with its own
-	clock) and when edit mode turns off.
+	The status line, EM:SetBarStatus(message, owner, refusal). The docked bar is
+	two rows with no spare width, so it has no line: the message is the tooltip
+	under owner, the control that was pressed (under the bar when none is given;
+	red for a refusal), and EM.statusCut says so. In the floating window
+	(barwindow.lua) it is a line of small, Text > Grey text under the Changes
+	section instead, from the left and wrapped to the window's inside width,
+	never cut. It takes no mouse. It clears after EM.STATUS_SECONDS, when a new
+	status replaces it (each with its own clock) and when edit mode turns off.
 ]]
 
-local floor, ceil, min, max = math.floor, math.ceil, math.min, math.max
+local min, max = math.min, math.max
 
 EM.STATUS_SECONDS = 6
 EM.HISTORY_START = 'Before these changes' -- the History list's last row, and what going back to it is called
-local STATUS_GAP = 12 -- the text's right end this far short of the divider
 local ICON = 26
 local HIDDEN = ' Its mover is hidden by Show or the filter.' -- after a full stop
 
@@ -47,9 +47,11 @@ local Guard = EM.BarGuard
 
 local statusToken = 0 -- each status has its own clock: only the newest clears
 
--- The tooltip a message that doesn't fit the gap is shown in (see
--- EM:SetBarStatus), and the control it is under.
-local statusTipOwner
+-- Whether the status tooltip (see EM:SetBarStatus) is showing. It is owned by
+-- the bar, not by the control it is under, so no control's OnLeave or Retip
+-- touches it: only its clock, a new status, Disabled and combat end it.
+local statusTipShown = false
+function EM:IsStatusTipShown() return statusTipShown and GameTooltip:IsShown() and GameTooltip:IsOwned(EM.bar) end
 
 local function ClearStatus()
 	local text = EM.statusText
@@ -57,16 +59,17 @@ local function ClearStatus()
 		text:SetText('')
 		text:Hide()
 	end
-	if statusTipOwner then
-		W.HideTip(statusTipOwner)
-		statusTipOwner = nil
+	if statusTipShown then
+		W.HideTip(EM.bar)
+		statusTipShown = false
 	end
 	EM.statusCut = false
 	if EM:IsBarFloating() and EM.barWindow then EM:PlaceWindowStatus(nil) end
 end
 
--- Puts the text in the gap: right-aligned, as wide as it is (a whole number)
--- or the room if that is less, from its top left on whole pixels.
+-- Puts the text where it shows: in the floating window under the Changes
+-- section; on the docked bar nowhere (a tooltip shows the message, see
+-- EM:SetBarStatus).
 local function PlaceStatus()
 	local text = EM.statusText
 	if not text then return end
@@ -83,25 +86,8 @@ local function PlaceStatus()
 		end
 		return
 	end
-	text:SetParent(EM:GetBar())
-	text:SetJustifyH('RIGHT')
-	text:SetWordWrap(false)
-	local left, right = EM:BarGap()
-	local room = right - STATUS_GAP - left
-	if message == '' or room <= 0 then
-		EM.statusCut = message ~= ''
-		text:Hide()
-		return
-	end
-	local full = text.GetUnboundedStringWidth and text:GetUnboundedStringWidth() or text:GetStringWidth()
-	local width = min(ceil(full), room)
-	EM.statusCut = ceil(full) > room
-	text:SetWidth(width)
-	local height = ceil(text:GetStringHeight())
-	text:SetHeight(height)
-	text:ClearAllPoints()
-	text:SetPoint('TOPLEFT', EM:GetBar(), 'TOPLEFT', right - STATUS_GAP - width, -floor((EM.BAR.HEIGHT - height) / 2))
-	text:Show()
+	text:Hide()
+	EM.statusCut = message ~= ''
 end
 
 local function StatusText()
@@ -113,25 +99,35 @@ local function StatusText()
 	return text
 end
 
--- Says text in the bar's status line; nil or '' clears it. When the gap is too
--- narrow for the whole message (a narrow screen), it is also shown in full as
--- a tooltip under owner, the control that was pressed, for the same time (red
--- for a refusal), never in combat. EM.statusCut says the line was cut.
+-- Says text in the bar's status line; nil or '' clears it. On the docked bar,
+-- which has no line, the message is the GameTooltip owned by the bar (so no
+-- control's OnLeave takes it), under owner, the control that was pressed (under
+-- the bar with none), for EM.STATUS_SECONDS whatever the mouse does (red for a
+-- refusal), never in combat; EM.statusCut says the bar has no line for it.
 function EM:SetBarStatus(message, owner, refusal)
 	statusToken = statusToken + 1
 	if message == nil or message == '' then
 		ClearStatus()
 		return
 	end
-	if statusTipOwner then
-		W.HideTip(statusTipOwner)
-		statusTipOwner = nil
+	if statusTipShown then
+		W.HideTip(EM.bar)
+		statusTipShown = false
 	end
 	StatusText():SetText(message)
 	PlaceStatus()
-	if EM.statusCut and owner and not InCombatLockdown() then
-		statusTipOwner = owner
-		W.ShowTip(owner, refusal and "It didn't work" or 'Done', { { text = message, red = refusal and true or nil } })
+	local under = owner or (EM.bar and EM.bar:IsShown() and EM.bar) or nil
+	if EM.statusCut and under and not InCombatLockdown() then
+		local colors = st.config.profile.colors.text
+		GameTooltip:SetOwner(EM.bar, 'ANCHOR_NONE')
+		GameTooltip:ClearLines()
+		GameTooltip:AddLine(refusal and "It didn't work" or 'Done', 1, 1, 1)
+		local r, g, b = (refusal and colors.red or colors.normal):GetRGB()
+		GameTooltip:AddLine(message, r, g, b, true)
+		GameTooltip:ClearAllPoints()
+		GameTooltip:SetPoint('TOP', under, 'BOTTOM', 0, -4)
+		GameTooltip:Show()
+		statusTipShown = true
 	end
 	local mine = statusToken
 	C_Timer.After(EM.STATUS_SECONDS, function()
@@ -337,6 +333,7 @@ for _, event in ipairs({ 'HistoryChanged', 'Selected', 'PositionChanged' }) do E
 ------------------------------------------------------------------ the group
 
 EM:AddBarGroup({
-	key = 'changes', order = 80, side = 'right', section = 'changes',
+	key = 'changes', order = 80, side = 'right', row = 1, section = 'changes',
+	dockKeys = { 'undo', 'redo', 'reset', 'history' }, -- the mockup's order; the floating window keeps undo, redo, history, reset,
 	controls = function(bar) return { Undo(bar), Redo(bar), HistoryButton(bar), Reset(bar) } end,
 })

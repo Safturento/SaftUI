@@ -16,10 +16,11 @@ local EM = st.EditModeFrames
 	                           anchored to, or gives nil
 	  EM.MoverNameOf(ref) -> string | nil               the name of the mover
 	                           whose frame is ref (an object or a global name)
-	  EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop) -> x, y
-	                           the label's bottom left in UIParent units, whole
-	  EM:ScreenTop() -> number                          where the label must stay under
-	                           (UIParent's height less EM:BarCoverHeight())
+	  EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop, avoid) -> x, y
+	                           the label's bottom left in UIParent units, whole;
+	                           avoid (optional) is a rect { left, right, bottom }
+	                           the label stays out of, as it stays under the
+	                           screen's top (EM:BarRect, the docked bar's)
 	  EM:UpdateCoordinates()                            shows, places or hides it
 	  EM.coordinates                                    the label's frame (.text)
 
@@ -95,10 +96,11 @@ end
 -- left up with the outline's, a RIGHT point its right, and the rest centre it (a
 -- plain LEFT or RIGHT puts it beside, COORD_GAP out); a TOP point puts it
 -- COORD_GAP above, a BOTTOM point below, the rest centre it. Where that leaves
--- the screen (or goes under the bar, which is below screenTop) the axis flips
--- inside the outline, COORD_GAP in; a centred axis can't flip. Whatever is left
--- is clamped into the screen and made whole.
-function EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop)
+-- the screen (or goes under the bar: where avoid, the bar's rect, is over its
+-- width the top is its bottom) the axis flips inside the outline, COORD_GAP in; a
+-- centred axis can't flip. Whatever is left is clamped into the screen and
+-- made whole.
+function EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop, avoid)
 	local gap = EM.COORD_GAP
 	local left, right, bottom, top = rect.left, rect.right, rect.bottom, rect.top
 	local x, y, flipX, flipY
@@ -115,6 +117,10 @@ function EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop)
 		x = (left + right) / 2 - width / 2
 	end
 	if flipX and (x < 0 or x + width > screenWidth) then x = flipX end
+	x = math.max(0, math.min(Round(x), Round(screenWidth - width)))
+
+	-- Under the bar's rect while the label is across any of its width.
+	if avoid and x < avoid.right and x + width > avoid.left then screenTop = math.min(screenTop, avoid.bottom) end
 
 	if point:find('TOP', 1, true) then
 		y, flipY = top + gap, top - gap - height
@@ -125,17 +131,8 @@ function EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop)
 	end
 	if flipY and (y < 0 or y + height > screenTop) then y = flipY end
 
-	x = math.max(0, math.min(Round(x), Round(screenWidth - width)))
 	y = math.max(0, math.min(Round(y), Round(screenTop - height)))
 	return x, y
-end
-
--- UIParent's height, less what the bar covers at the top (EM:BarCoverHeight:
--- its height and the line it draws below it while it is docked and shown, 0
--- while it floats or is hidden).
-function EM:ScreenTop()
-	local cover = self.BarCoverHeight and self:BarCoverHeight() or 0
-	return UIParent:GetHeight() - cover
 end
 
 ------------------------------------------------------------------ the label
@@ -214,7 +211,7 @@ function EM:UpdateCoordinates()
 	local height = math.max(1, math.ceil(f.text:GetStringHeight()))
 	f:SetSize(width, height)
 	local x, y = EM.CoordinatesSpot(pos.point or 'CENTER', { left = l, right = r, bottom = b, top = t },
-		width, height, UIParent:GetWidth(), self:ScreenTop())
+		width, height, UIParent:GetWidth(), UIParent:GetHeight(), self:BarRect())
 	f:ClearAllPoints()
 	f:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', x, y)
 	f:Show()
@@ -232,7 +229,7 @@ EM:On('Selected', Update)
 EM:On('SettingsChanged', Update)
 EM:On('ColorsChanged', Update)
 EM:On('PositionChanged', Update)
-EM:On('BarModeChanged', Update) -- the bar docked or detached: what it covers at the top changed
+EM:On('BarModeChanged', Update) -- the bar docked, detached, hidden or moved: what it covers at the top changed
 
 -- A drag moves the frame every frame: Tick follows it without the throttle (the
 -- drag's own OnUpdate, on the overlay, has run by then or runs next frame).

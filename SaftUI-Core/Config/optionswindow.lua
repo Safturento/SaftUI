@@ -343,17 +343,34 @@ local function Shift()
 	return 0, 0
 end
 
--- How far down from the screen's top the window's top (and the metal's art
--- above it, under Blizzard, but not the bar's panel) must stay while edit
--- mode's bar is docked and shown (EM:BarCoverHeight): /sui is never under it.
--- 0 when the bar is floating, hidden, or edit mode is off.
-function S.BarCover()
-	local EM = st.EditModeFrames
-	return EM and EM.BarCoverHeight and EM:BarCoverHeight() or 0
+-- The window's right edge from the screen's left, as S.corner places it (and
+-- the bar's shift), in whole units; nothing before it has a place.
+local function PlacedRight()
+	if not S.corner then return end
+	local dx = Shift()
+	return Whole(UIParent:GetWidth()) + S.corner.x + dx
 end
 
-local function CoverTop()
-	local cover = S.BarCover()
+-- How far down from the screen's top the window must stay to be clear of edit
+-- mode's docked bar (EM:BarRect): the rect's height when the window, whose
+-- right edge is `right` from the screen's left (where S.corner puts it when
+-- nil) and as wide as it is now, is under the rect horizontally, else 0 (the
+-- bar is beside it). 0 when the bar is floating, hidden or edit mode is off.
+function S.BarCover(right)
+	local EM = st.EditModeFrames
+	local rect = EM and EM.BarRect and EM:BarRect()
+	if not rect then return 0 end
+	right = right or PlacedRight()
+	local width = F.window and F.window:GetWidth()
+	if right and width and (right <= rect.left or right - width >= rect.right) then return 0 end
+	return rect.top - rect.bottom
+end
+
+-- How far down from the screen's top the window's top (and the metal's art
+-- above it, under Blizzard, but not the bar's panel) must stay: the bar's
+-- cover and the reach of the art; 0 with no cover.
+local function CoverTop(right)
+	local cover = S.BarCover(right)
 	if cover <= 0 then return 0 end
 	local reach = (S.size ~= 'mini' and S.blizzard) and st.ThemeArt.MetalAbove() or 0
 	return Whole(cover + reach)
@@ -413,7 +430,7 @@ local function ShownCorner()
 	-- Where it was dropped, never above the docked edit mode bar's bottom (what
 	-- shows is kept below it, so a doubled offset is never saved).
 	local y = Whole(top - screenTop)
-	local cover = CoverTop()
+	local cover = CoverTop(Whole(right - UIParent:GetLeft()))
 	if cover > 0 then y = math.min(y, -cover) end
 	return Whole(right - screenRight) - dx, y - dy
 end
@@ -1013,6 +1030,9 @@ local function Relayout()
 	if mini then
 		window:SetSize(S.miniWidth or width, OW.MINI_HEIGHT)
 	else
+		-- The width first: the height reads whether the window is under the docked
+		-- edit bar (S.BarCover), which depends on it.
+		window:SetWidth(width)
 		window:SetSize(width, OW.WindowHeight(L))
 	end
 	st:SetTemplate(window, 'theme', 'options', mini and 'panel' or 'window')

@@ -13,7 +13,9 @@ local Guard = EM.BarGuard
 	  EM:ToggleHistoryList(), EM:ShowHistoryList(), EM:HideHistoryList(),
 	  EM:IsHistoryListShown()
 	  EM:PlaceHistoryList()    anchors it: docked, its top right 6 under the
-	                           History button's bottom right; floating, its top
+	                           bar's bottom (the History button is on the first
+	                           row, the second is not covered), its right edge
+	                           on the button's; floating, its top
 	                           left 8 right of the window's top right, or its
 	                           top right 8 left of the window's top left with no
 	                           room (barwindow.lua; it closes when the bar docks
@@ -412,7 +414,9 @@ end
 
 local WINDOW_GAP = 8 -- beside the floating window
 
--- Docked: its top right 6 under the History button's bottom right. Floating:
+-- Docked: its top right 6 under the bar, its right edge on the History button's
+-- (the button is on the bar's first row, and the list would cover the second).
+-- Floating:
 -- its top left 8 right of the window's top right, or, where there is no room
 -- on that side (inside the screen edge margin), its top right 8 left of the
 -- window's top left; with room on neither side (a narrow screen), the side with
@@ -440,7 +444,8 @@ function EM:PlaceHistoryList()
 		end
 		return
 	end
-	list:SetPoint('TOPRIGHT', control.frame, 'BOTTOMRIGHT', 0, -6)
+	local below = EM.bar and math.floor(control.frame:GetBottom() - EM.bar:GetBottom() + 0.5) or 0
+	list:SetPoint('TOPRIGHT', control.frame, 'BOTTOMRIGHT', 0, -(below + 6))
 end
 
 function EM:ShowHistoryList()

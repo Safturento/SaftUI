@@ -131,15 +131,15 @@ test('the bar shows while edit mode is on, with /sui open or closed, and hides w
 	reset_edit_mode()
 end)
 
-test('across the top, 40 tall, drawn as a panel in the theme; the bar itself takes no mouse, its controls do', function()
+test('against the top, two rows tall (70), in the middle, drawn as a panel in the theme; the bar takes the mouse (its blank parts slide it), and so do its controls', function()
 	EM:Activate()
 	local bar = EM:GetBar()
-	eq(bar:GetHeight(), 40, '40 tall')
+	eq(bar:GetHeight(), 70, '70 tall')
 	eq(bar:GetTop(), UIParent:GetTop(), 'at the top')
-	eq(bar:GetLeft(), UIParent:GetLeft(), 'from the left')
-	eq(bar:GetWidth(), UIParent:GetWidth(), 'full width')
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - bar:GetWidth()) / 2), 'in the middle')
+	check(bar:GetWidth() < UIParent:GetWidth(), 'only as wide as it needs')
 	eq(st:DrawnKind(bar), 'panel', 'a panel')
-	check(not bar:IsMouseEnabled(), 'a click between controls reaches the mover under it')
+	check(bar:IsMouseEnabled(), 'its blank parts take the mouse: they are what slides it')
 	check(frame_of('grid'):IsMouseEnabled(), 'the controls take it')
 	eq(bar:GetFrameStrata() .. bar:GetFrameLevel(), 'FULLSCREEN_DIALOG9500', 'over the movers and /sui')
 	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
@@ -147,13 +147,13 @@ test('across the top, 40 tall, drawn as a panel in the theme; the bar itself tak
 		eq(frame:GetFrameLevel(), 9502, key .. ': two over the bar')
 		eq(frame:GetParent(), bar, key .. ': a child of the bar')
 		local _, _, _, _, y = frame:GetPoint(1)
-		local expect = ({ gridSize = -9 })[key] or -7
+		local expect = ({ gridSize = -9, options = -37 })[key] or -7
 		eq(y, expect, key .. ': centred on whole pixels')
 	end
 	reset_edit_mode()
 end)
 
-test('the groups and their controls: exit, then the grid group (grid, size, two snaps, Dim world, Coordinates), Options on the right', function()
+test('the groups and their controls: exit, then the grid group (grid, size, two snaps, Dim world, Coordinates), Options on row two', function()
 	EM:Activate()
 	local keys = {}
 	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do
@@ -165,10 +165,11 @@ test('the groups and their controls: exit, then the grid group (grid, size, two 
 	eq(control('options').align, 'right', 'Options aligns right')
 	local xs = {}
 	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do xs[#xs + 1] = frame_of(key):GetLeft() end
-	for i = 2, #xs do check(xs[i] > xs[i - 1], 'left to right: ' .. i) end
-	eq(xs[1] - UIParent:GetLeft(), 10, 'Exit 10 in')
-	eq(UIParent:GetRight() - frame_of('detach'):GetRight(), 10, 'Detach, the options group\'s last control, 10 from the right')
-	eq(frame_of('detach'):GetLeft() - frame_of('options'):GetRight(), 4, 'Options 4 left of Detach')
+	for i = 2, #xs - 1 do check(xs[i] > xs[i - 1], 'left to right: ' .. i) end
+	check(xs[1] - EM:GetBar():GetLeft() >= 10, 'Exit at least 10 in')
+	check(EM:GetBar():GetRight() - frame_of('detach'):GetRight() >= 10, 'Detach, the options group\'s last control, at least 10 from the right')
+	eq(frame_of('hide'):GetLeft() - frame_of('options'):GetRight(), 4, 'Options 4 left of the hide toggle')
+	eq(frame_of('detach'):GetLeft() - frame_of('hide'):GetRight(), 4, 'which is 4 left of Detach')
 	eq(EM:BarControl('nothing'), nil, 'no such control')
 	reset_edit_mode()
 end)
@@ -410,13 +411,14 @@ test('the bar fades and takes no mouse while a mover is dragged', function()
 	EM:StartDrag(mover)
 	eq(bar:GetAlpha(), 0.25, 'faded to 0.25')
 	eq(mouse_on(), 0, 'no control takes the mouse')
+	check(not bar:IsMouseEnabled(), 'nor does the bar itself')
 	check(bar:IsShown(), 'still there')
 	EM:StopDrag(mover)
 	eq(bar:GetAlpha(), 1, 'back')
 	eq(mouse_on(), before, 'the controls take the mouse again, the same ones')
 	check(frame_of('grid'):IsMouseEnabled(), 'Grid among them')
 	check(box.edit:IsMouseEnabled() and box.pair.up:IsMouseEnabled() and box.pair.down:IsMouseEnabled(), "the box's own frames too")
-	check(not bar:IsMouseEnabled() and not box:IsMouseEnabled(), 'the bar and the box frame never take it')
+	check(bar:IsMouseEnabled() and not box:IsMouseEnabled(), 'the bar takes it again (it slides by its blank parts); the box frame never does')
 	eq(table.concat(events, ','), 'started drag_test,stopped drag_test', 'DragStarted and DragStopped, with the mover')
 
 	-- A drag a profile change drops is stopped too.
@@ -584,104 +586,27 @@ end)
 
 ------------------------------------------------------------------ layout
 
-test('EM.BarLayout: left groups from 10, controls 4 apart, 8 + 1 + 8 between groups, a divider before the right ones, fits at a gap of 12', function()
-	local groups = {
-		{ side = 'left', widths = { 80 } },
-		{ side = 'left', widths = { 26, 54 } },
-		{ side = 'right', widths = { 26, 26 } },
-	}
-	local xs, dividers, fits = EM.BarLayout(600, groups)
-	eq(xs[1][1], 10, 'the first control at PAD')
-	eq(xs[2][1], 107, 'the next group after 8, 1 and 8')
-	eq(xs[2][2], 137, '4 after its first control')
-	eq(xs[3][1], 534, 'the right group ends 10 short of the right end: 590')
-	eq(xs[3][2], 564, 'its controls 4 apart')
-	eq(table.concat(dividers, ','), '98,525', 'a divider between left groups, and one before the right ones')
-	eq(fits, true, 'fits')
-	local _, _, atEdge = EM.BarLayout(278, groups)
-	eq(atEdge, true, 'a gap of exactly 12 fits (left end 191, divider 203)')
-	local _, _, tight = EM.BarLayout(277, groups)
-	eq(tight, false, 'a gap of 11 does not')
-	for g, row in ipairs(xs) do
-		for c, x in pairs(row) do eq(x, math.floor(x), ('x[%d][%d] whole'):format(g, c)) end
-	end
-
-	-- A width of 0 is skipped; a group with none is skipped whole, divider and all.
-	xs, dividers = EM.BarLayout(600, {
-		{ side = 'left', widths = { 80, 0, 20 } },
-		{ side = 'left', widths = { 0, 0 } },
-		{ side = 'left', widths = { 30 } },
-		{ side = 'right', widths = { 0 } },
-		{ side = 'right', widths = { 26 } },
-	})
-	eq(xs[1][1] .. ',' .. tostring(xs[1][2]) .. ',' .. xs[1][3], '10,nil,94', 'a 0 width takes no room and no gap')
-	eq(xs[3][1], 131, 'the next group follows the empty one as if it were not there (114 + 8 + 1 + 8)')
-	eq(table.concat(dividers, ','), '122,555', 'one divider before the left group after the empty one, one before the right')
-	eq(xs[5][1], 564, 'the one right control ends at 590')
-	-- With no right groups the bar's right end less PAD is the limit.
-	local _, _, none = EM.BarLayout(110, { { side = 'left', widths = { 78 } } })
-	eq(none, true, 'no right groups: the right end less PAD is the limit (88 + 12 <= 100)')
-	_, _, none = EM.BarLayout(109, { { side = 'left', widths = { 78 } } })
-	eq(none, false, 'one less does not fit')
-end)
-
-test('a narrow screen gives way in order: the filter, the caption, the face, then Exit and Options lose their words', function()
-	EM:Activate()
-	local exit, options = frame_of('exit'), frame_of('options')
-	local full = EM:BarWidthAt(0)
-	set_screen(full, 1080)
-	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	eq(EM:LayoutBar(), 0, 'at the width stage 0 needs: stage 0')
-	check(exit:GetWidth() > 26 and options:GetWidth() > 26, 'Exit and Options with their words')
-	check(exit.text:IsShown() and options.text:IsShown(), 'their labels show')
-	set_screen(full - 1, 1080)
-	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	check(EM:LayoutBar() >= 1, 'one pixel less: a later stage')
-	set_screen(EM:BarWidthAt(3) - 1, 1080)
-	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	eq(EM:LayoutBar(), 4, 'less than stage 3 needs: stage 4')
-	eq(exit:GetWidth() .. 'x' .. options:GetWidth(), '26x26', 'Exit and Options are 26 wide')
-	check(not exit.text:IsShown() and not options.text:IsShown(), 'their labels are hidden')
-	hover(exit)
-	eq(lines[1].text, 'Exit', 'and their tooltips name them')
-	stub.fire_script(exit, 'OnLeave', true)
-	hover(options)
-	eq(lines[1].text, 'Options', 'Options too')
-	stub.fire_script(options, 'OnLeave', true)
-	check(EM:BarWidthAt(4) < EM:BarWidthAt(3), 'stage 4 needs less width')
-	eq(EM:LayoutBar(), 4, 'the width asked about does not change the stage')
-
-	-- Too narrow even then: the last stage, and nothing hides the controls.
-	set_screen(100, 1080)
-	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	eq(EM:LayoutBar(), EM.BAR.STAGES - 1, 'nothing fits: the last stage')
-	set_screen(1920, 1080)
-	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	eq(EM:LayoutBar(), 0, 'a wide screen again: stage 0')
-	check(exit.text:IsShown(), 'the words are back')
-	reset_edit_mode()
-end)
-
-test("the bar lays out again on UI_SCALE_CHANGED, DISPLAY_SIZE_CHANGED and its own size change", function()
+test("the bar lays out again on UI_SCALE_CHANGED and DISPLAY_SIZE_CHANGED: its size is the same and it is in the middle of the new screen", function()
 	EM:Activate()
 	local bar = EM:GetBar()
-	local options = frame_of('detach') -- the right end of the options group
+	local width = bar:GetWidth()
 	set_screen(1366, 768)
 	stub.fire_event('UI_SCALE_CHANGED')
-	eq(UIParent:GetRight() - options:GetRight(), 10, 'UI_SCALE_CHANGED: Options 10 from the new right end')
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - width) / 2), 'UI_SCALE_CHANGED: in the middle of the new screen')
 	set_screen(1600, 900)
 	stub.fire_event('DISPLAY_SIZE_CHANGED')
-	eq(UIParent:GetRight() - options:GetRight(), 10, 'DISPLAY_SIZE_CHANGED: and again')
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - width) / 2), 'DISPLAY_SIZE_CHANGED: and again')
+	eq(bar:GetWidth(), width, 'the same width')
+	-- The events can fire before UIParent has its new size: the next frame puts it right.
 	set_screen(1280, 720)
-	stub.fire_script(bar, 'OnSizeChanged', 1280, 40)
-	eq(UIParent:GetRight() - options:GetRight(), 10, 'OnSizeChanged: and again')
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	stub.run_timers()
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - width) / 2), 'and the next frame')
 	set_screen(1920, 1080)
 	stub.fire_event('DISPLAY_SIZE_CHANGED')
 	reset_edit_mode()
 end)
 
--- Every piece of the bar on whole pixels, under each look, at each screen, with
--- the game's read-back noise (a hair either way, and none).
 test("every piece of the bar sits on whole pixels, at any screen, under each look, with the game's read-back noise, and after a UI scale change", function()
 	local HAIR = 2 ^ -14
 	EM:Activate()
@@ -717,7 +642,7 @@ test("every piece of the bar sits on whole pixels, at any screen, under each loo
 	reset_edit_mode()
 end)
 
-test("at a scale that is not SaftUI's the controls still sit whole from the bar, and the last control ends 10 short of its width", function()
+test("at a scale that is not SaftUI's the controls still sit whole from the bar", function()
 	EM:Activate()
 	local bar = EM:GetBar()
 	set_screen(1920, 1080)
@@ -832,7 +757,7 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 				lines_shown = lines_shown + 1
 			end
 		end
-		eq(lines_shown, 5, where .. 'every divider still shown (exit, grid, show, filter, changes, options: five between six groups)')
+		eq(lines_shown, 4, where .. 'every divider still shown (row one: exit, grid, view, changes; row two: show with the filter, options: four between the groups)')
 
 		look('thick')
 		check(box.edit.backdropInfo ~= nil, where .. 'back to Thick: the box has its edges again')
@@ -841,4 +766,18 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 		EM:Deactivate()
 	end
 	world()
+end)
+
+test('a screen event that fires before UIParent has its new size is put right on the next frame', function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	set_screen(1920, 1080)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	set_screen(1280, 720) -- the size arrives after the event
+	stub.run_timers()
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - bar:GetWidth()) / 2), 'in the middle of the new screen')
+	set_screen(1920, 1080)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	stub.run_timers()
+	reset_edit_mode()
 end)

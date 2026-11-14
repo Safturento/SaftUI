@@ -5,4 +5,5 @@
 	<Script file="barchanges.lua"/>
 	<Script file="historylist.lua"/>
 	<Script file="barwindow.lua"/>
+	<Script file="bardock.lua"/>
 </Ui>
