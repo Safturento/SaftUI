@@ -277,5 +277,14 @@ function TB:SetupPosition()
 		setPosition = function(position) self.config.position = position end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'TotemBar', 'general' },
+		module = 'Misc',
+		-- Off while the Hide totem bar setting is on (TB:Apply puts the bar under a
+		-- hidden frame).
+		isDisabled = function() return self.config.hide == true end,
+		-- Blizzard's bar, read only. IsVisible, not IsShown: under SaftUI's hider the
+		-- bar's own flag stays set whenever the shaman has totems.
+		isHidden = function() return not bar:IsVisible() end,
+		-- No default: SaftUI took the place from Blizzard's Edit Mode (TB:CapturePosition).
+		noDefaultReason = "The totem bar has no default place: SaftUI took its place from Blizzard's Edit Mode.",
 	})
 end

@@ -358,6 +358,11 @@ function OTP:Setup()
 		end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'ObjectiveTracker', 'general' },
+		module = 'Misc',
+		-- Blizzard's tracker, read only.
+		isHidden = function() return not tracker:IsShown() end,
+		-- Blizzard's default spot, saved as a copy (a fresh table on every call).
+		getDefaultPosition = DefaultPosition,
 	})
 	st:KeepInScreenMargin(holder, function() return self:TrackerReach() end)
 	self:PlaceTracker()

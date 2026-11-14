@@ -193,6 +193,13 @@ function INV:RegisterMovers()
 				config = function() return self.config[id] end,
 				apply = function() self:ApplyPosition(id) end,
 				configPath = { 'Inventory', id, 'general' },
+				module = 'Bags',
+				-- On screen only while the window is open (one not made yet is closed).
+				isHidden = function()
+					local container = self.containers[id]
+					return not (container and container:IsShown())
+				end,
+				defaults = function() return st.defaults.inventory[id] end,
 			})
 		end
 	end

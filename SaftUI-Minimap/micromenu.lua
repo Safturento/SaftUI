@@ -178,5 +178,7 @@ function MicroMenu:OnEnable()
         config = function() return self.config end,
         apply = function() MicroMenu:UpdateConfig() end,
         configPath = { 'MicroMenu', 'general' },
+        module = 'Minimap',
+        defaults = function() return st.defaults.micromenu end,
     })
 end

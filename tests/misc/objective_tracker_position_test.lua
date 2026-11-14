@@ -383,3 +383,26 @@ test('the addon loading after SaftUI', function()
 	eq(top_right(OT.tracker), top_right(OTP.holder), 'and the tracker on it')
 	clean()
 end)
+
+-- What the edit mode bar reads from the mover (SaftUI-Core/EditMode/editmode.lua).
+for _, client in ipairs({ 'forever', 'retail' }) do
+	test(client .. ": the mover's default is Blizzard's default spot, a copy each time; it's hidden while the tracker is", function()
+		world(client)
+		local EM = st.EditModeFrames
+		local mover = EM.movers.objectivetracker
+		eq(EM:MoverModule(mover), 'Misc', 'module')
+		local default = EM:GetDefaultPosition(mover)
+		eq(('%s %s %s %d,%d'):format(default.point, default.frame, default.rel_point, default.x_off, default.y_off),
+			('TOPRIGHT UIParent TOPRIGHT %d,%d'):format(-st.CLAMP_INSET, client == 'forever' and -275 or -260),
+			"Blizzard's default spot")
+		eq(default.x_off, -st.CLAMP_INSET, 'the margin in from the right')
+		default.x_off = 5
+		eq(EM:GetDefaultPosition(mover).x_off, -st.CLAMP_INSET, 'a write into it changes nothing')
+		eq(EM:IsMoverDisabled(mover), false, 'never disabled')
+		OT.tracker:Show()
+		eq(EM:IsMoverHidden(mover), false, 'shown with the tracker')
+		OT.tracker:Hide()
+		eq(EM:IsMoverHidden(mover), true, 'hidden with it')
+		clean()
+	end)
+end

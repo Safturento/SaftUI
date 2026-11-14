@@ -82,5 +82,7 @@ function MM:OnEnable()
         config = function() return self.config end,
         apply = function() MM:UpdateConfig() end,
         configPath = { 'Minimap', 'general' },
+        module = 'Minimap',
+        defaults = function() return st.defaults.minimap end,
     })
 end

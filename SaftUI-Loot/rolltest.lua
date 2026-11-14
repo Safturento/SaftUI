@@ -106,6 +106,11 @@ local function RealRollShowing()
 	return false
 end
 
+-- Whether a real roll is up or held, for the roll mover's hidden check (roll.lua).
+function LT:RealRollShowing()
+	return RealRollShowing()
+end
+
 -- Name, count and icon, the way GroupLootFrame_OnShow builds them.
 local function FillPreviewBar(bar)
 	local spec = bar.spec

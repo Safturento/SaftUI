@@ -141,3 +141,21 @@ test("the bars are drawn as bars in the page's Theme and Background", function()
 	profile.experience.theme, profile.experience.background = 'theme', 'theme'
 	XP:UpdateConfig()
 end)
+
+test("the mover's default position is a copy of the profile defaults'; it is hidden while no bar shows", function()
+	local EM = st.EditModeFrames
+	local mover = EM.movers.experience
+	eq(EM:MoverModule(mover), 'Misc', 'module')
+	eq(EM:IsMoverDisabled(mover), false, 'never disabled')
+	local default = EM:GetDefaultPosition(mover)
+	local want = st.defaults.experience.position
+	eq(('%s %s %s %d,%d'):format(default.point, default.frame, default.rel_point, default.x_off, default.y_off),
+		('%s %s %s %d,%d'):format(want.point, want.frame, want.rel_point, want.x_off, want.y_off), "the defaults' position")
+	check(default ~= want, 'a copy, not the defaults table')
+	default.y_off = 123
+	eq(want.y_off, -7, 'a write into it never reaches the defaults')
+	for _, bar in pairs(XP.bars) do bar:Show() end
+	eq(EM:IsMoverHidden(mover), false, 'shown while a bar shows')
+	for _, bar in pairs(XP.bars) do bar:Hide() end
+	eq(EM:IsMoverHidden(mover), true, 'hidden while none does')
+end)

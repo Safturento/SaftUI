@@ -165,6 +165,8 @@ function TT:SetupTooltipPosition()
 		config = function() return self.config end,
 		apply = function() self:ApplyTooltipHolder() end,
 		configPath = { 'Tooltip', 'general' },
+		module = 'Misc',
+		defaults = function() return st.defaults.tooltip end,
 	})
 end
 

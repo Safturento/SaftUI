@@ -371,6 +371,8 @@ function CHT:RegisterChatMover()
 		config = function() return self.config end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'Chat', 'general' },
+		module = 'Chat',
+		defaults = function() return st.defaults.chat end,
 	})
 	self:UpdateFootprint()
 end

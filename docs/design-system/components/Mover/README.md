@@ -8,7 +8,7 @@ Every frame the player can move registers one with `st:RegisterMover` or `st:Reg
 
 ## What the consumer provides
 
-The frame (or holder) with a real size, a `label` (the frame's name as the sidebar says it: "Player", "Pet bar"), get and set of its position, `apply`, and a `configPath` to its page. Label the outline when the frame may be hidden ("Bar 8 off", "Extra action button, when active").
+The frame (or holder) with a real size, a `label` (the frame's name as the sidebar says it: "Player", "Pet bar"), get and set of its position, `apply`, and a `configPath` to its page. It also tells the edit mode bar which `module` it belongs to (the Show list's name, sentence case), whether its frame is disabled by a setting (`isDisabled`) or on but not on screen (`isHidden`), and its default position (`getDefaultPosition`, or `noDefaultReason` when it has none and Reset can't run). Label the outline when the frame may be hidden ("Bar 8 off", "Extra action button, when active").
 
 ## Sizes and tokens
 

@@ -442,5 +442,15 @@ function XP:OnEnable()
 		setPosition = function(pos) self.config.position = pos end,
 		apply = function() XP:UpdateConfig() end,
 		configPath = { 'Experience', 'general' },
+		module = 'Misc',
+		-- On screen while a bar shows (experience, reputation); a bar's own flag
+		-- is what StackBars stacks by.
+		isHidden = function()
+			for _, bar in pairs(self.bars) do
+				if bar:IsShown() then return false end
+			end
+			return true
+		end,
+		getDefaultPosition = function() return st.tablecopy(st.defaults.experience.position, true) end,
 	})
 end

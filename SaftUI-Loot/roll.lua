@@ -566,6 +566,13 @@ function LT:InitializeRollFrame()
 	self:RegisterEvent('CANCEL_ALL_LOOT_ROLLS', 'OnCancelAllLootRolls')
 end
 
+-- True while a roll bar is on screen: a real or held roll (rolltest.lua's
+-- RealRollShowing), or Test mode's previews. Only reads.
+local function AnyRollBarShown(self)
+	if self.RealRollShowing and self:RealRollShowing() then return true end
+	return (self.rollPreview and self.rollPreview:IsShown()) == true
+end
+
 function LT:RegisterRollMover()
 	st:RegisterConfigMover(self.rollAnchor, {
 		key = 'lootroll',
@@ -573,6 +580,9 @@ function LT:RegisterRollMover()
 		config = function() return self.config.roll end,
 		apply = function() self:UpdateGroupLootConfig() end,
 		configPath = { 'Loot', 'roll', 'general' },
+		module = 'Loot',
+		isHidden = function() return not AnyRollBarShown(self) end,
+		defaults = function() return st.defaults.loot.roll end,
 	})
 end
 

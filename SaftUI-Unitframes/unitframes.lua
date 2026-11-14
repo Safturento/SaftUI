@@ -641,6 +641,32 @@ function UF:ApplyPosition(unit)
 	end)
 end
 
+-- The unit's profile defaults: its own table when that holds a position (every
+-- unit that has one), else the shared '**' table's. Edit mode's Reset reads the
+-- position from it. The table is AceDB's defaults: copy before writing.
+function UF.DefaultUnitConfig(unit)
+	local profiles = st.defaults.unitframes.profiles['**']
+	local own = profiles[unit]
+	if type(own) == 'table' and own.position then return own end
+	return profiles['**']
+end
+
+-- True while a unit's frame, or a group's header, is on screen: the frame, any
+-- boss frame, the group's header, or the group's Test mode previews. Only reads.
+function UF:IsMoverFrameShown(unit)
+	local preview = self.previews and self.previews[unit]
+	if preview and preview:IsShown() then return true end
+	local header = self.groups and self.groups[unit]
+	if header then return header:IsShown() == true end
+	local frames = self.units and self.units[unit]
+	if not frames then return false end
+	if frames.IsShown then return frames:IsShown() == true end
+	for _, frame in ipairs(frames) do
+		if frame:IsShown() then return true end
+	end
+	return false
+end
+
 -- Every spawned unit gets an edit mode mover: each single frame, and boss,
 -- party, raid10 and raid40 as one group each (its holder). Clicking one opens
 -- its General group in /sui. Arena isn't spawned (commented out of
@@ -654,6 +680,10 @@ function UF:RegisterMovers()
 			config = function() return self:GetProfileConfig()[unit] end,
 			apply = function() self:ApplyPosition(unit) end,
 			configPath = { 'Unitframes', unit, 'general' },
+			module = 'Unit frames',
+			isDisabled = function() return not self:GetProfileConfig()[unit].enable end,
+			isHidden = function() return not self:IsMoverFrameShown(unit) end,
+			defaults = function() return UF.DefaultUnitConfig(unit) end,
 		})
 	end
 	for unit in pairs(self.units) do

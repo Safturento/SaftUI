@@ -1497,3 +1497,15 @@ test("holding rolls writes nothing onto Blizzard's roll frames or its container"
 	end
 	eq(table.concat(added, ', '), '', 'fields SaftUI added to Blizzard frames')
 end)
+
+test("the roll mover is hidden with no roll up, and shown while a roll frame shows", function()
+	world()
+	local EM = st.EditModeFrames
+	LT:RegisterRollMover()
+	local mover = EM.movers.lootroll
+	eq(EM:MoverModule(mover), 'Loot', 'module')
+	eq(EM:IsMoverHidden(mover), true, 'no roll bar shows')
+	start_roll('sword')
+	eq(EM:IsMoverHidden(mover), false, "a roll's frame shows")
+	eq(#take_errors(), 0, 'no errors')
+end)

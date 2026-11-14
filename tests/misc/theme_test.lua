@@ -14,9 +14,10 @@
 -- experience.lua, totembar.lua, totemlayout.lua, totemposition.lua,
 -- totemoptions.lua, totemskin.lua and Skinning/skinning.lua,
 -- Blizzard_BuffFrame.lua and Blizzard_SwingTimer.lua, Core's helpers and the
--- theme engine. Blizzard's frames are built as far as the skins read them, and
+-- theme engine, and Core's edit mode (the totem bar's mover). Blizzard's frames are built as far as the skins read them, and
 -- locked (lib/locked_widget.lua), so a skin that writes a field onto one fails.
 load_core_helpers()
+load_editmode() -- the totem bar's holder registers a mover (the last test)
 local T = load_test_file('lib/theme_helpers.lua')
 local drawn = T.watch()
 local locked = load_test_file('lib/locked_widget.lua')
@@ -643,4 +644,40 @@ test('gem icons are drawn as slots, their icon under the ring', function()
 	check(draw_depth(ring) > draw_depth(socket.icon), 'over the icon, not under it')
 	profile.theme.name = 'thick'
 	st:RedrawThemed()
+end)
+
+test('the totem bar has no default place and says why; it is hidden while Blizzard\'s bar is', function()
+	local TB = st:GetModule('TotemBar')
+	st:BindModuleConfig(TB, 'totembar')
+	local EM = st.EditModeFrames
+	local bar = CreateFrame('Frame', nil, UIParent)
+	bar:SetSize(100, 40)
+	bar:SetPoint('CENTER')
+	local holder = CreateFrame('Frame', nil, UIParent)
+	holder:SetSize(100, 40)
+	holder:SetPoint('CENTER')
+	TB.bar, TB.holder = bar, holder
+	TB:SetupPosition()
+	local mover = EM.movers.totembar
+	check(mover ~= nil, 'the totem bar is a mover')
+	eq(EM:MoverModule(mover), 'Misc', 'module')
+	eq(EM:GetDefaultPosition(mover), nil, 'no default position')
+	eq(mover.def.noDefaultReason, "The totem bar has no default place: SaftUI took its place from Blizzard's Edit Mode.", 'and why')
+	TB.config.hide = false
+	eq(EM:IsMoverDisabled(mover), false, 'not disabled while Hide totem bar is off')
+	TB.config.hide = true
+	eq(EM:IsMoverDisabled(mover), true, 'disabled by the Hide totem bar setting')
+	TB.config.hide = false
+	bar:Show()
+	eq(EM:IsMoverHidden(mover), false, "shown while Blizzard's bar is")
+	bar:Hide()
+	eq(EM:IsMoverHidden(mover), true, "hidden while Blizzard's bar isn't shown")
+	bar:Show()
+	local hider = CreateFrame('Frame', nil, UIParent)
+	hider:Hide()
+	bar:SetParent(hider)
+	eq(bar:IsShown(), true, 'under a hidden frame the bar keeps its own shown flag')
+	eq(EM:IsMoverHidden(mover), true, 'but is hidden: it is not visible')
+	TB.bar, TB.holder = nil, nil
+	EM.movers.totembar = nil
 end)
