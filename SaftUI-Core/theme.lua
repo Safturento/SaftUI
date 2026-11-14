@@ -4,7 +4,7 @@ local st = SaftUI
 	SaftUI's theme engine.
 
 	The profile's theme (st.config.profile.theme) is Thick, Thin or Blizzard,
-	with a Transparent background toggle and the Opacity it uses. Each theme
+	with whether backgrounds are see-through and the opacity they use (the Theme tab's Background alpha). Each theme
 	keeps its own colors in st.config.profile.templates[name]. A module can
 	override the theme with a Theme ('theme', 'thick', 'thin', 'blizzard' or
 	'none') and a Background ('theme', 'solid' or 'transparent'); 'theme', or

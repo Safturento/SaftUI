@@ -1,9 +1,11 @@
 -- The Theme tab of Global Settings (SaftUI-Core/Media/theme.lua): Theme, the
 -- chosen theme's colors (Border, Outer border and Background; under Blizzard
--- Window background in place of Outer border), Transparent background,
--- Opacity and Reset. A
+-- Window background in place of Outer border) and Reset. Background has an
+-- opacity: its alpha is the profile's theme.transparent and theme.opacity
+-- (100% is a solid background, anything under it see-through at that opacity),
+-- which profiles saved before the merge already hold. A
 -- color or the opacity recolors every drawn frame (st:RecolorThemed); the
--- theme and the toggle also move borders, so they run st:ThemeChanged
+-- theme and a switch between solid and see-through also move borders, so they run st:ThemeChanged
 -- (redraw, then every module's UpdateConfig, then ColorsChanged('theme')).
 -- Both wait for the end of combat, with one pending run. tests/core/
 -- theme_test.lua checks the engine; this checks the tab's rows.
@@ -39,6 +41,13 @@ end
 local function Get(key) local root, row = Row(key); return OM.Get(root, row) end
 local function Set(key, ...) local root, row = Row(key); return OM.Set(root, row, ...) end
 
+-- The Background color's alpha written alone (its rgb as it is), and its rgb
+-- written with the alpha it has. What the old toggle and slider did.
+local function SetAlpha(a)
+	local r, g, b = Get('background')
+	Set('background', r, g, b, a)
+end
+
 local function Rgb(c) return table.concat({ c[1], c[2], c[3] }, ',') end
 
 -- Counts calls to st[name] (or st.Config[name]) while running fn, and logs
@@ -72,18 +81,20 @@ test('its rows, in order, with descs', function()
 		check(type(desc) == 'string' and desc ~= '', r.v.name .. ' has a desc')
 		eq(r.v.width, nil, r.v.name .. ' has no Ace width')
 	end
-	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Transparent background,Opacity,Reset')
-	eq(table.concat(types, ','), 'select,color,color,color,color,toggle,range,execute')
+	eq(table.concat(names, ','), 'Theme,Border,Outer border,Window background,Background,Reset')
+	eq(table.concat(types, ','), 'select,color,color,color,color,execute')
 
-	local theme, opacity, reset = rows[1].v, rows[7].v, rows[8].v
+	local theme, reset = rows[1].v, rows[6].v
 	eq(theme.values.thick, 'Thick'); eq(theme.values.thin, 'Thin')
 	eq(theme.values.blizzard, 'Blizzard')
 	eq(theme.values.none, nil, 'None is a module override, not a theme to choose')
-	check(opacity.isPercent, 'Opacity shows as a percent')
-	eq(opacity.min, 0); eq(opacity.max, 1)
 	check(reset.confirm, 'Reset asks first')
-	for i = 2, 5 do
+	for i = 2, 4 do
 		eq(rows[i].v.hasAlpha, nil, rows[i].v.name .. ' has no opacity slider')
+	end
+	check(rows[5].v.hasAlpha, 'Background has an opacity: its bar reads #RRGGBB · 85%')
+	for _, r in ipairs(rows) do
+		check(not (r.v.name == 'Transparent background' or r.v.name == 'Opacity'), 'no ' .. r.v.name .. ' row')
 	end
 end)
 
@@ -146,8 +157,8 @@ end)
 test("Reset under Blizzard restores Blizzard's colors, windowcolor among them, and the transparency", function()
 	Set('theme', 'blizzard')
 	for _, key in ipairs({ 'border', 'windowcolor', 'background' }) do Set(key, 0.9, 0.9, 0.9) end
-	Set('transparent', false)
-	Set('opacity', 0.2)
+	SetAlpha(1)
+	SetAlpha(0.2)
 	local root, row = Row('reset')
 	eq(OM.Confirm(root, row), "Reset the Blizzard theme to SaftUI's defaults?")
 	OM.Set(root, row)
@@ -169,13 +180,52 @@ test('Outer border shows only for Thick', function()
 	st.config.profile.theme.name = 'thick'
 end)
 
-test('Opacity is disabled while Transparent background is off', function()
-	st.config.profile.theme.transparent = false
-	local root, row = Row('opacity')
-	check(OM.IsDisabled(root, row), 'disabled when off')
-	st.config.profile.theme.transparent = true
-	root, row = Row('opacity')
-	check(not OM.IsDisabled(root, row), 'enabled when on')
+-- The Background color's alpha is what the old toggle and slider drew: a
+-- profile with the toggle off is solid (100%), with it on at its Opacity.
+test("Background's alpha reads the profile's old toggle and opacity, so a saved profile draws as it did", function()
+	local theme = st.config.profile.theme
+	theme.transparent, theme.opacity = false, 0.6
+	local _, _, _, a = Get('background')
+	eq(a, 1, 'toggle off: solid, whatever the saved opacity')
+	eq(st:ResolveTheme().alpha, 1, 'and the engine draws it solid')
+
+	theme.transparent = true
+	_, _, _, a = Get('background')
+	eq(a, 0.6, 'toggle on: its opacity')
+	eq(st:ResolveTheme().alpha, 0.6, 'and the engine draws it at that')
+
+	theme.transparent, theme.opacity = true, 0.9
+	local r, g, b
+	r, g, b, a = Get('background')
+	eq(Rgb({ r, g, b }), Rgb(st.config.profile.templates[st:ResolveTheme().name].backdropcolor), 'its rgb is the theme backdrop color')
+	eq(a, 0.9)
+end)
+
+test("a Background alpha under 100% sets the toggle on at that opacity; 100% sets it off and keeps the opacity", function()
+	local theme = st.config.profile.theme
+	theme.transparent, theme.opacity = false, 0.9
+	local r, g, b = Get('background')
+	Set('background', r, g, b, 0.55)
+	eq(theme.transparent, true); eq(theme.opacity, 0.55)
+	eq(st:ResolveTheme().alpha, 0.55)
+	Set('background', r, g, b, 1)
+	eq(theme.transparent, false, 'solid')
+	eq(theme.opacity, 0.55, 'the opacity is kept for the profile that reads it')
+	eq(st:ResolveTheme().alpha, 1)
+	-- A set with no alpha (a caller that passes rgb only) leaves it alone.
+	Set('background', 0.3, 0.3, 0.3)
+	eq(theme.transparent, false); eq(theme.opacity, 0.55)
+	theme.transparent, theme.opacity = true, 0.9
+end)
+
+test('Background shows its alpha in its hex text and writes the three color channels in place', function()
+	Set('theme', 'thick')
+	local arr = st.config.profile.templates.thick.backdropcolor
+	local alpha = arr[4]
+	Set('background', 0.1, 0.2, 0.3, 0.7)
+	check(st.config.profile.templates.thick.backdropcolor == arr, 'the same array')
+	eq(Rgb(arr), '0.1,0.2,0.3'); eq(arr[4], alpha, "the array's own alpha stays; the opacity is the theme's")
+	st.config.profile.theme.transparent, st.config.profile.theme.opacity = true, 0.9
 end)
 
 test('each theme keeps its own colors', function()
@@ -210,7 +260,7 @@ test('a color set recolors without a config update', function()
 	restore[1] = Spy(st, 'RecolorThemed', log)
 	restore[2] = Spy(st.Config, 'UpdateConfig', log)
 	Set('border', 0.2, 0.2, 0.2)
-	Set('opacity', 0.5)
+	SetAlpha(0.5)
 	for _, r in ipairs(restore) do r() end
 	eq(table.concat(log, ','), 'RecolorThemed,RecolorThemed')
 	eq(st.config.profile.theme.opacity, 0.5)
@@ -234,13 +284,22 @@ test('a theme or toggle switch runs ThemeChanged: the profile update, which redr
 	eq(st.config.profile.theme.name, 'thin')
 
 	for i = #log, 1, -1 do log[i] = nil end
-	Set('transparent', false)
-	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'the toggle')
+	SetAlpha(1)
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'going solid, the old toggle')
 	eq(st.config.profile.theme.transparent, false)
+
+	for i = #log, 1, -1 do log[i] = nil end
+	SetAlpha(0.8)
+	eq(table.concat(log, ','), 'UpdateConfig,RedrawThemed,module,ColorsChanged(theme)', 'going see-through')
+	eq(st.config.profile.theme.transparent, true)
+
+	for i = #log, 1, -1 do log[i] = nil end
+	SetAlpha(0.7)
+	eq(table.concat(log, ','), 'RecolorThemed,ColorsChanged(theme)', 'a new opacity alone only recolors: no redraw, no module update')
 
 	recolor(); restore[1](); restore[2](); st.ColorsChanged = real
 	probe.UpdateConfig = nil
-	Set('transparent', true)
+	SetAlpha(0.9)
 	Set('theme', 'thick')
 end)
 
@@ -250,9 +309,9 @@ test('in combat a theme change waits for its end, once', function()
 	restore[2] = Spy(st, 'RecolorThemed', log)
 	stub.in_combat = true
 	Set('theme', 'thin')
-	Set('transparent', false)
+	SetAlpha(1)
 	Set('border', 0.3, 0.3, 0.3)
-	Set('opacity', 0.4)
+	SetAlpha(0.4)
 	eq(#log, 0, 'nothing drawn in combat')
 	eq(st.config.profile.theme.name, 'thin', 'but the setting is stored')
 	stub.in_combat = false
@@ -260,7 +319,7 @@ test('in combat a theme change waits for its end, once', function()
 	table.sort(log)
 	eq(table.concat(log, ','), 'RecolorThemed,RedrawThemed', 'one redraw and one recolor')
 	for _, r in ipairs(restore) do r() end
-	Set('transparent', true)
+	SetAlpha(0.9)
 	Set('theme', 'thick')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -268,8 +327,8 @@ end)
 test('Reset restores the chosen theme and the transparency', function()
 	Set('theme', 'thin')
 	Set('border', 0.9, 0.9, 0.9)
-	Set('transparent', false)
-	Set('opacity', 0.2)
+	SetAlpha(1)
+	SetAlpha(0.2)
 	Set('theme', 'thick')
 	Set('border', 0.9, 0.9, 0.9)
 	Set('outer', 0.5, 0.5, 0.5)
@@ -296,11 +355,11 @@ test('after a profile switch the rows reach the new profile', function()
 	local first = st.config:GetCurrentProfile()
 	Set('theme', 'thin')
 	Set('border', 0.11, 0.12, 0.13)
-	Set('opacity', 0.33)
+	SetAlpha(0.33)
 	st.config:SetProfile('ThemeTabTwo')
 	eq(Get('theme'), 'thick', "the new profile's theme")
 	eq(Rgb({ Get('border') }), Rgb(st.defaults.templates.thick.bordercolor), "the new profile's Thick border")
-	eq(Get('opacity'), st.defaults.theme.opacity)
+	eq(select(4, Get('background')), st.defaults.theme.opacity, "the new profile's alpha")
 
 	Set('theme', 'thin')
 	Set('border', 0.21, 0.22, 0.23)
@@ -309,7 +368,7 @@ test('after a profile switch the rows reach the new profile', function()
 	st.config:SetProfile(first)
 	eq(Get('theme'), 'thin')
 	eq(Rgb({ Get('border') }), '0.11,0.12,0.13', "the first profile's are as they were")
-	eq(Get('opacity'), 0.33)
+	eq(select(4, Get('background')), 0.33)
 end)
 
 -- A profile a later version saved can name a theme this one doesn't have
