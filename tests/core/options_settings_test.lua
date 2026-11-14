@@ -1200,3 +1200,78 @@ test('a resize under Blizzard moves the scroll bars with the body and the sideba
 		eq(#take_errors(), 0, client .. ': no errors')
 	end
 end)
+
+test('collapsed under Blizzard: only the settings part of the inner frame, from 17; the toggle 16 from the bottom left', function()
+	local P = load_test_file('lib/pixels.lua')
+	for _, client in ipairs(CLIENTS) do
+		world(client)
+		CreateFrame('GameTooltip', 'GameTooltip', UIParent)
+		st.config.global.optionsWindow = nil
+		switch('blizzard'); st.Config:Open('Loot')
+		local F = OW.GetFrames()
+		local w = F.window
+		-- Blizzard's panel button: its pieces are textures of the toggle's.
+		local function panel_pieces(frame)
+			local n = 0
+			for _, region in ipairs({ frame:GetRegions() }) do
+				local file = region:GetObjectType() == 'Texture' and region:IsShown() and region:GetTexture()
+				if type(file) == 'string' and file:match('^Interface\\Buttons\\UI%-Panel%-Button%-%a+$') and not file:match('Highlight') then n = n + 1 end
+			end
+			return n
+		end
+		-- Shown: in the sidebar's foot, as under Thick.
+		eq(F.sideToggle:GetParent(), F.foot, client .. ': in the foot')
+		eq(F.sideToggle:GetRight(), F.foot:GetRight() - 8, client .. ": 8 in from the foot's right")
+		eq(F.profile:GetWidth(), 242 - 61, client .. ': the profile line ends 8 before it')
+		eq(panel_pieces(F.sideToggle), 3, client .. ": Blizzard's panel button")
+		check(OW:SetSidebarShown(false), client .. ': collapsed at W1')
+		eq(at(F.window), '0,0 868x728', client .. ': W2')
+		check(not F.innerList:IsShown() and not F.side:IsShown(), client .. ': the list part and the sidebar hidden')
+		eq(at(F.innerSettings), '17,28 834x654', client .. ': the settings part from 17')
+		eq(at(F.main), '17,28 834x654', client .. ': the main column with it')
+		eq(F.sideToggle:GetParent(), F.footer, client .. ': in the footer')
+		eq(F.sideToggle:GetLeft() - w:GetLeft(), 16, client .. ": 16 from the window's left")
+		eq(F.sideToggle:GetBottom() - w:GetBottom(), 16, client .. ': and 16 up')
+		eq(F.sideToggle:GetBottom(), F.closeButton:GetBottom(), client .. ': level with Close')
+		eq(panel_pieces(F.sideToggle), 3, client .. ": on Blizzard's panel button")
+		eq(F.sideToggle.icon:GetTexture(), st.icons.panelLeftClose, client .. ': the show icon')
+		eq(F.footerRegion:GetLeft(), F.sideToggle:GetRight() + 12, client .. ': the region 12 after it')
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local off = P.off(w)
+			eq(#off, 0, client .. ' W2 noise ' .. noise .. ': ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		stub.time = stub.time + 1
+		check(OW:SetWindowSize('half'), client .. ': half')
+		eq(at(F.window), '0,0 462x728', client .. ': W4')
+		check(not F.innerList:IsShown(), client .. ': no list part')
+		eq(at(F.innerSettings), '17,28 428x654', client .. ': W4: the settings part')
+		eq(at(F.main), '17,28 428x654')
+		eq(F.sideToggle:GetLeft() - w:GetLeft(), 16, client .. ': the toggle still 16 in')
+		eq(F.sideToggle:GetBottom() - w:GetBottom(), 16)
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local off = P.off(w)
+			eq(#off, 0, client .. ' W4 noise ' .. noise .. ': ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		-- Shown again at half: W3 with both parts.
+		check(OW:SetSidebarShown(true), client .. ': shown at half')
+		eq(at(F.window), '0,0 704x728', client .. ': W3')
+		check(F.innerList:IsShown() and F.innerSettings:IsShown(), client .. ': both parts')
+		eq(F.sideToggle:GetParent(), F.foot)
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			OW:Render()
+			local off = P.off(w)
+			eq(#off, 0, client .. ' W3 noise ' .. noise .. ': ' .. P.report(off))
+		end
+		stub.size_noise = 0
+		st.Config:Close()
+		st.config.global.optionsWindow = nil
+		eq(#take_errors(), 0, client .. ': no errors')
+	end
+end)

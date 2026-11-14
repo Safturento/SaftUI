@@ -49,7 +49,10 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	  - the sidebar: the search box, with Edit mode and the
 	    st.Config:AddCommand buttons under it, then Global settings and
 	    Profiles, then the module pages under their category (Frames, Combat,
-	    Info, any other, then Other; OW.SidebarEntries);
+	    Info, any other, then Other; OW.SidebarEntries); its foot holds the
+	    profile's name and the toggle that collapses it (F.sideToggle,
+	    optionsnav.lua: OW:SetSidebarShown, S.sidebar), which moves to the
+	    footer's left while it is collapsed;
 	  - the header: the page's title and description, the size arrows
 	    (F.grow, F.shrink) and the close X (st:CreateCloseButton; under
 	    Blizzard in the metal's socket, the arrows on the title bar beside
@@ -63,7 +66,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	    the picker); the body, a scroll frame of sections (OB.LayoutSections)
 	    of rows in quarters, halves and whole lines (OB.LayoutRows), drawn by
 	    an OB.New body;
-	  - the footer: the region (the status line from its left, wrapping to
+	  - the footer: the region (the status line from its left, or 12 after the
+	    sidebar toggle while that is collapsed, wrapping to
 	    two lines, and the open page's footer control), Reload UI and Close at
 	    the right end. Edit mode's controls are not here: they are on its bar
 	    (EditMode/Bar/).
@@ -200,7 +204,7 @@ S.blizzard = false
 -- (Relayout): nil until the window is built.
 S.layout = OW.LAYOUT.own
 local laidOut = nil
--- The size the window is in ('full' or 'half'; optionssizes.lua), whether its
+-- The size the window is in ('full', 'half' or 'mini'; optionssizes.lua), whether its
 -- sidebar is shown (false while collapsed), and the width of the body at that
 -- size (OW.BodyWidth): what Relayout reads. OW:Open sets the first two from the
 -- save.
@@ -426,6 +430,9 @@ end
 local NAV_BAR_GAP = 4
 
 local function SetNavScroll(offset)
+	-- A hidden list has no view to read: its offset stays as it was, for when
+	-- the sidebar is shown again.
+	if S.sidebar == false then return end
 	S.navOffset = ScrollTo(F.navFrame, F.navBar, offset, S.navHeight, NAV_BAR_GAP)
 end
 
@@ -1003,7 +1010,9 @@ local function Relayout()
 		F.innerList:SetPoint('TOPLEFT', window, 'TOPLEFT', L.innerX, -L.innerTop)
 		F.innerList:SetPoint('BOTTOMRIGHT', window, 'BOTTOMLEFT', L.innerX + L.sideWidth, L.footer)
 		F.innerSettings:ClearAllPoints()
-		F.innerSettings:SetPoint('TOPLEFT', window, 'TOPLEFT', L.innerX + L.sideWidth, -L.innerTop)
+		-- With the sidebar collapsed the settings part alone is drawn, from the
+		-- inner frame's left: its divider's line is the window's left edge.
+		F.innerSettings:SetPoint('TOPLEFT', window, 'TOPLEFT', L.innerX + (sidebar and L.sideWidth or 0), -L.innerTop)
 		F.innerSettings:SetPoint('BOTTOMRIGHT', window, 'BOTTOMRIGHT', -L.innerX, L.footer)
 	end
 	F.innerList:SetShown(listCut and sidebar)
@@ -1031,7 +1040,9 @@ local function Relayout()
 		F.actionsFrame:SetPoint('TOPRIGHT', F.brand, 'BOTTOMRIGHT', 0, 0)
 	end
 	F.navContent:SetWidth(L.navWidth)
-	F.profile:SetWidth(L.sideWidth - 1 - 36) -- the foot's width, 18 clear each side
+	-- The profile line: the foot's width less 18 at its left, and 8 and the toggle
+	-- (26, 8 in from the foot's right) at its right: it ends 8 before the toggle.
+	F.profile:SetWidth(L.sideWidth - 1 - 18 - 8 - F.sideToggle:GetWidth() - 8)
 
 	F.main:ClearAllPoints()
 	F.main:SetPoint('TOPLEFT', window, 'TOPLEFT', mainLeft, -L.mainTop)
@@ -1061,9 +1072,13 @@ local function Relayout()
 		F.closeButton:SetPoint('RIGHT', footer, 'RIGHT', -L.rightPad, 0)
 	end
 	F.reloadButton:SetPoint('RIGHT', F.closeButton, 'LEFT', -FOOTER_GAP, 0)
+	-- With the sidebar collapsed its toggle is at the footer's left (S.PlaceSideToggle),
+	-- and the region starts FOOTER_GAP after it.
+	if not sidebar then regionX = regionX + F.sideToggle:GetWidth() + FOOTER_GAP end
 	F.footerRegion:SetPoint('LEFT', footer, 'LEFT', regionX, regionY)
 	F.footerRegion:SetPoint('RIGHT', F.reloadButton, 'LEFT', -FOOTER_GAP, 0)
 	footer:SetHeight(L.footer)
+	S.PlaceSideToggle()
 	laidOut = LayoutKey() -- last, so a Relayout that errors is tried again
 end
 
@@ -1384,6 +1399,7 @@ local function Build()
 	BuildSidebar(window)
 	BuildMain(window)
 	BuildFooter()
+	S.BuildSideToggle(F.foot)
 	BuildTitleBar(window)
 	S.BuildSizeButtons(window)
 	S.BuildMini(window)
