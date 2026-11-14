@@ -49,9 +49,19 @@ local function UnusedProfileName(name)
 	return candidate
 end
 
+-- Edit mode's history belongs to one unit frame profile: a step made in
+-- another one must never be undone here (the 'ufsetting' kind, config.lua, and
+-- the movers' positions, which the unit frames read from the profile). So it
+-- is emptied wherever the profile in use is switched.
+local function ClearHistory()
+	local EM = st.EditModeFrames
+	if EM and EM.History then EM.History:Clear() end
+end
+
 -- Makes name the profile being edited and refreshes the frames and /sui.
 local function SwitchProfile(name)
 	UFProfiles().config_profile = name
+	ClearHistory()
 	UF:UpdateConfig()
 	st.Config:Refresh()
 end
@@ -91,6 +101,7 @@ local function ConfirmDeleteProfile()
 			profiles.profiles[profiles.config_profile] = nil
 		end
 		profiles.config_profile = next(profiles.profiles)
+		ClearHistory()
 		UF:UpdateConfig()
 		st.Config:Refresh()
 	end)
@@ -146,7 +157,9 @@ function UF:SetProfile(profile_name)
 	end
 
 	if st.config.profile.unitframes.profiles[profile_name] then
+		local changed = st.config.profile.unitframes.config_profile ~= profile_name
 		st.config.profile.unitframes.config_profile = profile_name
+		if changed then ClearHistory() end
 	end
 end
 
@@ -177,7 +190,9 @@ function UF.GenerateProfileConfigGroup()
 					return st.config.profile.unitframes.config_profile
 				end,
 				set = function(info, value)
+					local changed = st.config.profile.unitframes.config_profile ~= value
 					st.config.profile.unitframes.config_profile = value
+					if changed then ClearHistory() end
 					UF:UpdateConfig()
 					st.Config:Refresh()
 				end

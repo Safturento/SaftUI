@@ -184,6 +184,66 @@ local function UnitName(unit)
 	return UF.unit_strings[unit] or UF.group_strings[unit] or unit
 end
 
+------------------------------------------------------------------ history
+
+-- Copy from as a step of edit mode's history (SaftUI-Core/EditMode/history.lua).
+-- The 'ufsetting' kind is one key of one unit's config in one unit frame
+-- profile: where = { profile = <the profile's name>, unit, key }. A value is
+-- stored and read as a deep copy, so a step never shares a table with the live
+-- config; false and nil are values (a key that was absent is put back absent).
+-- Writing is safe to run again on the same place: the history also uses it to
+-- roll a failed step back.
+local function CopyValue(value)
+	if type(value) == 'table' then return st.tablecopy(value, true) end
+	return value
+end
+
+-- The unit's config in the profile where names, or nil when either is gone. The
+-- profile is looked up with rawget: reading a missing one from the profiles
+-- would make it.
+local function ConfigOf(where)
+	local profile = rawget(st.config.profile.unitframes.profiles, where.profile)
+	return profile and profile[where.unit]
+end
+
+local ufsetting = {
+	read = function(where)
+		local config = ConfigOf(where)
+		if config == nil then return nil end
+		return CopyValue(config[where.key])
+	end,
+	write = function(where, value)
+		local config = ConfigOf(where)
+		if config == nil then return end
+		config[where.key] = CopyValue(value)
+	end,
+	-- Once, after a step's writes: the frames and /sui follow.
+	finish = function()
+		UF:UpdateConfig()
+		st.Config:Refresh()
+	end,
+	place = function(where) return 'ufsetting:' .. where.profile .. ':' .. where.unit .. ':' .. where.key end,
+	name = function(where) return UF.unit_strings[where.unit] or UF.group_strings[where.unit] or where.unit end,
+	-- Only the profile in use is edited: a step of another one is not applied.
+	check = function(where)
+		if where.profile == UF:GetProfile() then return true end
+		return false, 'The unit frame profile changed since.'
+	end,
+	missing = function(where) return ConfigOf(where) == nil end,
+}
+
+-- The history, when edit mode is loaded (it always is in game; the unit
+-- frames' tests load this file without it). The kind is registered at load,
+-- and again before a step is pushed, so a world that loads edit mode after
+-- this file has it too.
+local function History()
+	local EM = st.EditModeFrames
+	local history = EM and EM.History
+	if history then history:RegisterKind('ufsetting', ufsetting) end
+	return history
+end
+History()
+
 -- What Copy from calls each setting of a unit, and so which it lists: the
 -- name the unit's own /sui page shows for that part. An element's tab by its
 -- key in lower case (the config's key for it), and General's options, sections
@@ -209,6 +269,35 @@ local function CopyNames(self, unit)
 		if tabKey == 'general' then AddGeneral(tab.args or {}) else Add(tabKey:lower(), tab.name) end
 	end
 	return names
+end
+
+-- Copies each of keys' value from unit from onto unit, in the profile in use,
+-- as Copy from does: a deep copy of each (a missing one leaves the key absent).
+-- The old values are copied first, then the unit frames update, then ONE step
+-- goes in edit mode's history: 'Copied <from> to <unit>', with a change for
+-- each key whose value changed, so a single Undo puts every one back. Returns
+-- the step, or nil when no key changed (or there is no history).
+function UF:CopySettings(unit, from, keys)
+	local profile = self:GetProfile()
+	local config = self:GetProfileConfig()
+	local changes = {}
+	for _, key in ipairs(keys) do
+		changes[#changes + 1] = {
+			kind = 'ufsetting', where = { profile = profile, unit = unit, key = key },
+			old = CopyValue(config[unit][key]),
+		}
+	end
+	for _, change in ipairs(changes) do
+		local key = change.where.key
+		change.new = CopyValue(config[from][key])
+		config[unit][key] = CopyValue(config[from][key])
+	end
+	self:UpdateConfig()
+	local history = History()
+	if not history or #changes == 0 then return nil end
+	return history:Push({
+		kind = 'bulk', label = 'Copied ' .. UnitName(from) .. ' to ' .. UnitName(unit), changes = changes,
+	})
 end
 
 -- The Copy from dialog: copies the ticked settings of another unit (in the
@@ -303,18 +392,12 @@ function UF:OpenCopyTable(unit)
 						.. ' from ' .. UnitName(copy.from) .. '?'
 				end,
 				func = function()
-					local profile = UF:GetProfileConfig()
+					local keys = {}
 					for key, ticked in pairs(copy.settings) do
-						if ticked then
-							local value = profile[copy.from][key]
-							if type(value) == 'table' then
-								profile[unit][key] = st.tablecopy(value, true)
-							else
-								profile[unit][key] = value
-							end
-						end
+						if ticked then keys[#keys + 1] = key end
 					end
-					UF:UpdateConfig()
+					table.sort(keys)
+					UF:CopySettings(unit, copy.from, keys)
 					st.Config:Refresh()
 					st.OptionsWindow:CloseDialog()
 				end,

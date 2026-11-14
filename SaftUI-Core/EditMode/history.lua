@@ -168,16 +168,17 @@ local function Trim()
 	return true
 end
 
--- The limit, a whole number from LIMIT_MIN to LIMIT_MAX. Lowering it drops the
--- oldest steps at once. NaN and anything that is not a number (typed text
--- included) is rejected: the limit stays.
+-- The limit, a whole number from LIMIT_MIN to LIMIT_MAX. Lowering it is lazy:
+-- nothing is dropped until the next step is recorded (Push trims then: the
+-- oldest applied steps first), so a slider dragged down and back, or a typo,
+-- loses nothing. Raising it takes effect at once. NaN and anything that is
+-- not a number (typed text included) is rejected: the limit stays.
 function History:SetLimit(n)
 	n = tonumber(n)
 	if n == nil or n ~= n then return end
 	if n == math.huge then n = History.LIMIT_MAX elseif n == -math.huge then n = History.LIMIT_MIN end
 	n = math.floor(n + 0.5)
 	History.limit = math.min(math.max(n, History.LIMIT_MIN), History.LIMIT_MAX)
-	if Trim() then Changed() end
 end
 
 function History:Clear()

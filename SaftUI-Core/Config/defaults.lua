@@ -20,6 +20,7 @@ st.defaults.editmode = {
 	show_disabled = false, -- Show disabled: the movers of frames turned off in a setting
 	show_hidden = true,    -- Show hidden: the movers of frames not on screen now (on: the target, a pet, a closed bag are what edit mode places)
 	hidden_modules = {},   -- [module name] = true for a module unticked in the bar's Show list
+	history_limit = 50,    -- how many steps the history keeps (1 to 1000), the oldest dropped first (EditMode/history.lua)
 }
 
 st.defaults.fonts = {

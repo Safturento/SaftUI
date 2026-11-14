@@ -23,6 +23,10 @@ What "default" is for the setting (AceDB's default, or the shared value), the re
 
 Hidden at the default; shown and `accent` once the value differs; `white` under the mouse; a click resets and the icon goes.
 
+## The History list's revert
+
+A relative of this icon: a row of the edit mode bar's History list ends in a 14px `rotate-ccw` that puts that one step's change back on its own, as a new step. It is grey at rest and `accent` under the mouse (the icon's usual hover is `white`; here the accent matches the list's row fill), and it is dim and disabled, with its reason in red in the tooltip, when a later step touched the same frame ("Changed again later: go back to this point instead.") or the step was a bulk copy. It shows only for a step that is applied. It is the same per-change idea as a setting's reset, not a section Reset.
+
 ## Status
 
 Built for shared settings (`optionsshare.lua:286`). Beside a plain control is the rule, not yet built: this preview shows where it goes.

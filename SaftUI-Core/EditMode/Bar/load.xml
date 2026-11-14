@@ -2,4 +2,6 @@
 	<Script file="bar.lua"/>
 	<Script file="bargroups.lua"/>
 	<Script file="barshow.lua"/>
+	<Script file="barchanges.lua"/>
+	<Script file="historylist.lua"/>
 </Ui>
