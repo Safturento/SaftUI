@@ -206,7 +206,7 @@ local function check_skinned(where)
 	end
 
 	local panel = panel_of(frame)
-	eq(drawn(frame), 'theme,theme,panel', where .. ': drawn in the Skinning look as a panel')
+	eq(drawn(frame), 'theme,solid,panel', where .. ': drawn in the Skinning theme, solid, as a panel')
 	check(panel:IsShown(), where .. ': the panel shows')
 	check(panel:GetFrameLevel() < frame:GetFrameLevel(), where .. ': under the picker')
 	check(panel:GetLeft() < frame:GetLeft() and panel:GetRight() > frame:GetRight()
@@ -809,5 +809,22 @@ test('the band stops the move when the button is up, whichever way it was let go
 	stub.mouse_buttons = {}
 	stub.fire_script(band, 'OnUpdate', 0.016)
 	check(not moving(CP.frame), 'button up, no mouse up seen: stopped')
+	clean()
+end)
+
+------------------------------------------------------------------ a solid panel
+
+test('the picker\'s panel is solid whatever the Skinning Background; the boxes keep theirs', function()
+	world('forever')
+	profile.skinning.background = 'transparent'
+	SK:UpdateConfig()
+	local function alpha(f) return select(4, f:GetBackdropColor()) end
+	local frame = CP.frame
+	eq(alpha(panel_of(frame)), 1, 'see-through Background: the panel is opaque')
+	check(alpha(the_one(own_children(frame.Content.HexBox), 'the hex backdrop')) < 1, 'the hex backdrop keeps the see-through Background')
+	check(alpha(the_one(own_children(frame.Footer.OkayButton), 'the Okay box')) < 1, 'and so does the Okay box')
+	profile.skinning.background = 'solid'
+	SK:UpdateConfig()
+	eq(alpha(panel_of(frame)), 1, 'solid Background: opaque too')
 	clean()
 end)

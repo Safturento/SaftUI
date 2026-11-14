@@ -14,7 +14,8 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	and retail, checked 2026-11-13 against the forever and live branches of
 	Gethe/wow-ui-source):
 	  - ColorPickerFrame: SaftUI's panel behind it (st:SetBackdropIn, kind panel,
-	    a child one level under it, so it follows the frame's size, which
+	    always the solid Background, whatever the Skinning page's, so the page
+	    behind doesn't read through it; a child one level under it, so it follows the frame's size, which
 	    Blizzard's OnShow changes with the alpha slider), reaching up over the
 	    header's band so the drag bar leaves no invisible strip above it, and
 	    down past the buttons as far as it reaches past the content at the sides
@@ -215,7 +216,10 @@ end
 ------------------------------------------------------------------ the pieces
 
 local function StylePanel(frame, active)
-	local theme, background = Look()
+	local theme = Look()
+	-- Solid whatever the Skinning page's Background: a dialog over the UI that
+	-- the page behind would otherwise read through.
+	local background = 'solid'
 	st:SetBackdropIn(panels, frame, active and theme or 'none', background, 'panel')
 	local panel = panels[frame]
 	if panel then
