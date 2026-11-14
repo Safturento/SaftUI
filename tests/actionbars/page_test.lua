@@ -401,6 +401,15 @@ test("the cooldown numbers: Show is Blizzard's setting on All bars, none on a ba
 	local mine = row(r, 'bar3', 'countdown')
 	eq(mine.option.get, false, "on a bar no Show box (get = false)")
 	eq(OM.Has(r, mine, 'get'), false, 'none inherited')
+	eq(mine.option.reserveBox, true, "but the box's room kept (Core's reserveBox), so its name lines up with the other texts'")
+	eq(item.option.reserveBox, nil, 'All bars has its box')
+	for _, id in ipairs({ 'all', 'bar3', 'pet' }) do
+		for _, kind in ipairs({ 'hotkey', 'count', 'macro' }) do
+			if id ~= 'pet' or kind == 'hotkey' then
+				eq(row(r, id, kind).option.reserveBox, nil, id .. ' ' .. kind .. ': a box of its own, no reserveBox')
+			end
+		end
+	end
 	check(mine.desc:find('All bars', 1, true), 'its tooltip says All bars turns them on')
 
 	-- The menu: Font, Size, Outline and Position; no Reset (each setting has its own).

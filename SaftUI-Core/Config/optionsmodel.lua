@@ -87,6 +87,8 @@ local st = SaftUI
 	  { type = 'item', name, desc, order, size = 'small' (or none, or 'wide'),
 	    get, set,      -- its Show box (no get, or get = false to stop an
 	                   -- inherited one: no box)
+	    reserveBox,    -- true: with no box, its room kept empty, so the name
+	                   -- lines up with boxed items' (read raw)
 	    share,         -- its Show's (above)
 	    menu = { type = 'group', name, args = { ... }, get, set, ... },
 	    menuTitle,     -- the menu's title (a string or a function of info;
