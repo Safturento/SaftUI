@@ -21,6 +21,8 @@ local callbacks = {}
 --   'Pressed'          mover: the mouse went down on its outline
 --   'DragStarted', 'DragStopped'  mover: a drag began, or ended (by a drop, or
 --                      dropped by a profile change)
+--   'ShownChanged'     EM:UpdateShown ran: which overlays show may have changed
+--                      (filter.lua)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group
 function EM:On(event, fn)
 	callbacks[event] = callbacks[event] or {}
@@ -42,9 +44,7 @@ function EM:Activate()
 		return
 	end
 	self.active = true
-	for _, mover in pairs(self.movers) do
-		mover.overlay:Show()
-	end
+	self:UpdateShown() -- filter.lua: the overlays of the movers that show
 	self:UpdateKeyboard()
 	self:Fire('Enabled')
 end

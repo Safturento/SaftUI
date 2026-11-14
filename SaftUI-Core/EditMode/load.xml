@@ -6,6 +6,7 @@
 	<Script file="snap.lua"/>
 	<Script file="settings.lua"/>
 	<Script file="coordinates.lua"/>
+	<Script file="filter.lua"/>
 	<!-- The bar loads last: it reads the options window's widgets and listens to every other file's events. -->
 	<Include file="Bar\load.xml"/>
 </Ui>

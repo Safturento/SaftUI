@@ -33,7 +33,7 @@ No line or fill: Blizzard's Edit Mode selection art, the highlight kit on every 
 
 ## Known gaps
 
-Where movers overlap (bars 4 to 8, the extra buttons) their labels sit on top of each other and are hard to read; the picker list is the way through.
+Settled (decision 25): where movers overlap (bars 4 to 8, the extra buttons) only the mover under the mouse shows its label, and the picker list still names them all. Which movers show at all (Show disabled, Show hidden, the module list, the filter) is the edit mode bar's, `EditMode/filter.lua`; Show hidden is on to start with and Show disabled off.
 
 ## Do and don't
 

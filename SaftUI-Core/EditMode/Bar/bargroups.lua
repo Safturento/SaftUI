@@ -33,6 +33,7 @@ local function Guard(fn)
 		return fn(...)
 	end
 end
+EM.BarGuard = Guard -- barshow.lua's controls wrap their clicks the same way
 
 ------------------------------------------------------------------ Exit and Options
 
@@ -121,6 +122,8 @@ local function GridSize(bar)
 		end,
 	}
 end
+
+EM.BarToggle = Toggle -- Show disabled and Show hidden (barshow.lua) are toggles too
 
 ------------------------------------------------------------------ the groups
 

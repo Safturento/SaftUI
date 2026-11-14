@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
 	<Script file="bar.lua"/>
 	<Script file="bargroups.lua"/>
+	<Script file="barshow.lua"/>
 </Ui>

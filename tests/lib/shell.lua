@@ -481,6 +481,7 @@ function editmode_files()
 		'SaftUI-Core/EditMode/snap.lua',
 		'SaftUI-Core/EditMode/settings.lua',
 		'SaftUI-Core/EditMode/coordinates.lua',
+		'SaftUI-Core/EditMode/filter.lua',
 	}
 end
 
@@ -498,6 +499,7 @@ function editmode_bar_files()
 	return {
 		'SaftUI-Core/EditMode/Bar/bar.lua',
 		'SaftUI-Core/EditMode/Bar/bargroups.lua',
+		'SaftUI-Core/EditMode/Bar/barshow.lua',
 	}
 end
 

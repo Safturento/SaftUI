@@ -17,6 +17,9 @@ st.defaults.editmode = {
 	snap_frames = false,
 	dim = true,
 	coordinates = false,
+	show_disabled = false, -- Show disabled: the movers of frames turned off in a setting
+	show_hidden = true,    -- Show hidden: the movers of frames not on screen now (on: the target, a pet, a closed bag are what edit mode places)
+	hidden_modules = {},   -- [module name] = true for a module unticked in the bar's Show list
 }
 
 st.defaults.fonts = {
