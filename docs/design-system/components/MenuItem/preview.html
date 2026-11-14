@@ -1,0 +1,43 @@
+<!-- @dsCard group="Controls" height=320 width=830 subtitle="Four text items on one line (one own, one off, one under the mouse), and the Hotkey item's open menu" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MenuItem</title>
+<style>
+  .item .sui-label { flex: 1; }
+  .item.is-off .sui-label { color: var(--text-grey); }
+  .item .more { display: flex; align-items: center; justify-content: center; }
+  .item.is-hovered .more .sui-ic { stroke: var(--accent); }
+  .menu { width: var(--menu-width); padding: var(--panel-pad) var(--dialog-pad) var(--dialog-pad); margin-left: auto; position: relative; }
+  .menu .group-title { color: var(--text-grey); margin-bottom: var(--title-gap); }
+  .menu .sui-section { width: 100%; }
+  .menu .sui-cell { padding: 0 var(--panel-pad); }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-section">
+    <div class="section-title">Text</div>
+    <div class="sui-panel">
+      <div class="sui-line is-quarters">
+        <div class="sui-cell item is-own is-hovered"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Hotkey</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+        <div class="sui-cell item"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Stack count</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+        <div class="sui-cell item is-off"><div class="sui-box sui-check"></div><div class="sui-label label">Macro name</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+        <div class="sui-cell item"><div class="sui-box sui-check is-on"></div><div class="sui-label label">Cooldown</div><div class="more"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="menu sui-frame">
+    <div class="group-title">Hotkey</div>
+    <div class="sui-section">
+      <div class="sui-panel">
+        <div class="sui-line is-one"><div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Font</div></div><div class="sui-box sui-field field">Homespun<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div></div></div>
+        <div class="sui-line is-one"><div class="sui-cell is-own"><div class="sui-lab"><div class="sui-label label">Size</div><div class="sui-hover small"><span class="is-own-word">Own</span><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 25%"><i></i><b></b></div><div class="sui-box sui-value field">8</div></div></div></div>
+        <div class="sui-line is-one"><div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Outline</div></div><div class="sui-box sui-field field">Monochrome<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

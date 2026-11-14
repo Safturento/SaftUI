@@ -1,0 +1,44 @@
+<!-- @dsCard group="Window" height=340 width=960 subtitle="The small dialog, and the confirm" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Dialog</title>
+<style>
+  .small-dialog { width: var(--dialog-width); position: relative; padding: 0 var(--dialog-pad) var(--dialog-pad); }
+  .small-dialog .head { height: var(--dialog-head); padding-top: var(--dialog-title-top); }
+  .small-dialog .rule { position: absolute; left: var(--line-width); right: var(--line-width); top: calc(var(--dialog-head) - var(--title-gap)); border-top: var(--line-width) solid var(--line); }
+  .small-dialog .closex { position: absolute; right: var(--window-close-y); top: var(--window-close-y); width: var(--close-size); height: var(--close-size); display: flex; align-items: center; justify-content: center; }
+  .small-dialog .sui-section { width: 100%; }
+  .small-dialog .sui-float { justify-content: center; margin-top: var(--float-gap); }
+  .confirm { width: var(--confirm-width); padding: var(--confirm-top) 0 var(--window-close-y); display: flex; flex-direction: column; align-items: center; gap: var(--confirm-top); text-align: center; }
+  .confirm .buttons { display: flex; gap: var(--button-gap); }
+  .confirm .buttons .sui-box { justify-content: center; }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="small-dialog sui-frame">
+    <div class="head brand">Unit frame profiles</div>
+    <div class="rule"></div>
+    <div class="closex sui-box"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+    <div class="sui-section">
+      <div class="sui-panel">
+        <div class="sui-line"><div class="sui-cell is-span"><div class="sui-lab"><div class="sui-label label">Profile</div></div><div class="sui-box sui-field field">SaftUI<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div></div></div>
+        <div class="sui-line is-quarters">
+          <div class="sui-cell"><div class="sui-box is-raised sui-btn field"><span>New</span></div></div>
+          <div class="sui-cell"><div class="sui-box is-raised sui-btn field"><span>Copy</span></div></div>
+          <div class="sui-cell"><div class="sui-box is-raised sui-btn field"><span>Rename</span></div></div>
+          <div class="sui-cell"><div class="sui-box is-raised sui-btn field"><span>Delete</span></div></div>
+        </div>
+      </div>
+      <div class="sui-float"><div class="sui-box is-raised sui-btn field"><span>Close</span></div></div>
+    </div>
+  </div>
+  <div class="confirm sui-box is-raised field">
+    <div>Delete the profile "Raid"?</div>
+    <div class="buttons"><div class="sui-box sui-btn is-confirm is-hover"><span>Yes</span></div><div class="sui-box sui-btn is-confirm"><span>No</span></div></div>
+  </div>
+</div>
+</body>
+</html>

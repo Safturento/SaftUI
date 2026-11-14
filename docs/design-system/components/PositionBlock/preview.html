@@ -1,0 +1,54 @@
+<!-- @dsCard group="Controls" height=200 width=830 subtitle="THIS, TO (a dropdown, open), AT ITS, OFFSET with nudges, on its section's panel" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PositionBlock</title>
+<style>
+  .block { display: flex; gap: var(--pos-gap); align-items: flex-start; padding: var(--title-gap) var(--panel-pad) var(--panel-pad); }
+  .part { display: flex; flex-direction: column; align-items: center; gap: var(--pos-caption-gap); position: relative; }
+  .part > .caption { color: var(--text-grey); }
+  .dots { width: var(--pos-band); height: var(--pos-band); padding: calc(var(--pos-dot-margin) - var(--line-width)); display: grid; grid-template-columns: repeat(3, var(--pos-dot-cell)); grid-auto-rows: var(--pos-dot-cell); place-items: center; }
+  .dots i { width: var(--pos-dot); height: var(--pos-dot); background: var(--dot-grey); }
+  .dots i.on { width: var(--pos-dot-picked); height: var(--pos-dot-picked); background: var(--accent); }
+  .to .sui-field { width: var(--pos-select); }
+  .to .sui-list { position: absolute; top: calc(var(--pos-band) - var(--line-width) * 3); left: 0; width: var(--pos-select); }
+  .offs { display: grid; grid-template-columns: var(--pos-gap) calc(var(--range-value) + var(--pos-axis-gap)) var(--pos-nudge); column-gap: 0; row-gap: var(--pos-caption-gap); align-items: center; }
+  .offs .num { width: var(--range-value); height: var(--pos-box); display: flex; align-items: center; justify-content: center; margin-left: var(--pos-axis-gap); }
+  .offs .nudge { width: var(--pos-nudge); height: var(--pos-box); margin-left: calc(var(--line-width) * -1); display: flex; flex-direction: column; }
+  .nudge span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; }
+  .nudge span + span { border-top: var(--line-width) solid var(--kit-edge); }
+  .nudge u { display: block; height: var(--line-width); background: var(--text-grey); }
+  .nudge u:nth-child(1) { width: calc(var(--line-width) * 2); } .nudge u:nth-child(2) { width: calc(var(--line-width) * 4); } .nudge u:nth-child(3) { width: calc(var(--line-width) * 6); }
+  .nudge span.down { flex-direction: column-reverse; }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-section">
+    <div class="section-title">Text position</div>
+    <div class="sui-panel">
+      <div class="block">
+        <div class="part"><div class="caption">This</div><div class="dots sui-box"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div></div>
+        <div class="part to"><div class="caption">To</div>
+          <div class="sui-box sui-field field">Health<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+          <div class="sui-list sui-box is-raised field">
+            <div class="sui-list-row">Unit frame</div>
+            <div class="sui-list-row">Global frame</div>
+            <div class="sui-list-row is-current">Health</div>
+            <div class="sui-list-row is-hover">Power</div>
+          </div>
+        </div>
+        <div class="part"><div class="caption">At its</div><div class="dots sui-box"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div></div>
+        <div class="part"><div class="caption">Offset</div>
+          <div class="offs field">
+            <span class="axis">X</span><div class="num sui-box">-7</div><div class="nudge sui-box"><span><u></u><u></u><u></u></span><span class="down"><u></u><u></u><u></u></span></div>
+            <span class="axis">Y</span><div class="num sui-box">-1</div><div class="nudge sui-box"><span><u></u><u></u><u></u></span><span class="down"><u></u><u></u><u></u></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

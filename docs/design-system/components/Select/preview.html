@@ -1,0 +1,36 @@
+<!-- @dsCard group="Controls" height=250 subtitle="Closed at rest, under the mouse and disabled; open, with a row under the mouse and the current choice" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Select</title>
+<style>
+  .open { position: relative; }
+  .open .sui-list { position: absolute; left: 0; top: calc(var(--field-height) + var(--line-width)); }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-stack">
+    <div class="caption sui-state">Rest</div>
+    <div class="sui-box sui-field field">Faded until moused over<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="caption sui-state">Hover</div>
+    <div class="sui-box sui-field field is-hover">Always<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+    <div class="caption sui-state">Disabled</div>
+    <div class="sui-box sui-field field is-disabled">Top left<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+  </div>
+  <div class="sui-stack">
+    <div class="caption sui-state">Open</div>
+    <div class="open">
+      <div class="sui-box sui-field field">Top left<svg class="sui-ic sui-caret" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div>
+      <div class="sui-list sui-box is-raised field">
+        <div class="sui-list-row is-current">Top left</div>
+        <div class="sui-list-row is-hover">Top right</div>
+        <div class="sui-list-row">Bottom left</div>
+        <div class="sui-list-row">Bottom right</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

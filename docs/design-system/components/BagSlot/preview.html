@@ -1,0 +1,37 @@
+<!-- @dsCard group="In world" height=140 width=760 subtitle="60 x 50 slots 3 apart: quality borders, a stack count, item levels, an auto-vendor item, a reagent bag item, a free slot; item art and the junk coin stand in as flat fills" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>BagSlot</title>
+<style>
+  .row { display: flex; gap: var(--button-spacing); }
+  .slot { width: var(--slot-width); height: var(--slot-height); }
+  .slot .ct { right: calc(var(--hotkey-inset) + var(--line-width)); bottom: calc(var(--hotkey-inset) + var(--line-width)); }
+  .slot .ilbg { position: absolute; right: var(--line-width); bottom: var(--line-width); background: var(--ilvl-backing); padding: var(--line-width) calc(var(--hotkey-inset) + var(--line-width)) var(--hotkey-inset) calc(var(--line-width) * 2); }
+  .slot .coin { position: absolute; left: calc(var(--line-width) * 2); top: var(--line-width); width: var(--icon-reset); height: var(--icon-reset); background: var(--tooltip-gold); }
+  .slot .wedge { position: absolute; right: var(--line-width); top: var(--line-width); width: var(--reagent-wedge); height: var(--reagent-wedge); background: var(--text-green); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+  .q-poor { border-color: var(--quality-poor); }
+  .q-common { border-color: var(--quality-common); }
+  .q-uncommon { border-color: var(--quality-uncommon); }
+  .q-rare { border-color: var(--quality-rare); }
+  .q-epic { border-color: var(--quality-epic); }
+</style>
+</head>
+<body class="sui-world">
+<div class="sui-stage">
+  <div class="sui-stack">
+    <div class="caption sui-state">Common with a stack, uncommon, rare, epic, poor to sell, reagent bag, free</div>
+    <div class="row">
+      <div class="slot sui-iconbtn sui-frame q-common"><div class="sui-art" style="background: var(--class-priest)"></div><span class="sui-pixeltext pixel sui-outline ct">20</span></div>
+      <div class="slot sui-iconbtn sui-frame q-uncommon"><div class="sui-art" style="background: var(--class-druid)"></div><span class="ilbg sui-pixeltext pixel sui-outline " style="color: var(--text-green)">38</span></div>
+      <div class="slot sui-iconbtn sui-frame q-rare"><div class="sui-art" style="background: var(--class-shaman)"></div><span class="ilbg sui-pixeltext pixel sui-outline ">31</span></div>
+      <div class="slot sui-iconbtn sui-frame q-epic"><div class="sui-art" style="background: var(--class-warlock)"></div><span class="ilbg sui-pixeltext pixel sui-outline " style="color: var(--text-cyan)">42</span></div>
+      <div class="slot sui-iconbtn sui-frame q-poor"><div class="sui-art" style="background: var(--class-warrior)"></div><span class="coin"></span><span class="sui-pixeltext pixel sui-outline ct">4</span></div>
+      <div class="slot sui-iconbtn sui-frame q-common"><div class="sui-art" style="background: var(--class-hunter)"></div><span class="wedge"></span><span class="sui-pixeltext pixel sui-outline ct">7</span></div>
+      <div class="slot sui-iconbtn sui-frame"></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

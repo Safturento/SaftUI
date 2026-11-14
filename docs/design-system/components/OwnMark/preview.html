@@ -1,0 +1,29 @@
+<!-- @dsCard group="Shared settings" height=200 width=830 subtitle="Bar 3's page: two own settings (one under the mouse, showing its hover line) beside ones that follow All bars" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OwnMark</title>
+<style>
+  .sui-cell.is-own .sui-hover { display: none; }
+  .sui-cell.is-own:hover .sui-hover, .sui-cell.is-open .sui-hover { display: flex; }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-section">
+    <div class="section-title">Layout</div>
+    <div class="sui-panel">
+      <div class="sui-line">
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Buttons</div></div><div class="sui-range"><div class="sui-track" style="--p: 100%"><i></i><b></b></div><div class="sui-box sui-value field">12</div></div></div>
+        <div class="sui-cell is-own is-open"><div class="sui-lab"><div class="sui-label label">Buttons per row</div><div class="sui-hover small"><span class="is-own-word">Own</span><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a class="is-hover">All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 45%"><i></i><b></b></div><div class="sui-box sui-value field">6</div></div></div>
+      </div>
+      <div class="sui-line">
+        <div class="sui-cell is-own"><div class="sui-lab"><div class="sui-label label">Button size</div><div class="sui-hover small"><span class="is-own-word">Own</span><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a>All</a><span>|</span><a>Multiple</a></div></div><div class="sui-range"><div class="sui-track" style="--p: 30%"><i></i><b></b></div><div class="sui-box sui-value field">36</div></div></div>
+        <div class="sui-cell"><div class="sui-lab"><div class="sui-label label">Spacing</div></div><div class="sui-range"><div class="sui-track" style="--p: 15%"><i></i><b></b></div><div class="sui-box sui-value field">3</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

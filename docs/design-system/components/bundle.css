@@ -1,0 +1,116 @@
+/* SaftUI: shared preview classes, built on the token variables. Square corners, 1px lines, whole pixels. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--backdrop); color: var(--text); font-family: var(--font-agency); font-weight: 700; border-radius: var(--radius); }
+svg { display: block; }
+
+/* layout helpers for previews */
+.sui-stage { padding: var(--section-pad) var(--window-pad); display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--section-margin) var(--window-pad); }
+.sui-stack { display: flex; flex-direction: column; gap: var(--pos-caption-gap); align-items: flex-start; }
+.sui-inline { display: flex; align-items: center; gap: var(--label-gap); }
+.sui-world { background: var(--world); }
+.sui-state { color: var(--text-grey); }
+.sui-world .sui-state { color: var(--text); }
+
+/* text */
+.sui-outline { text-shadow: var(--line-width) 0 0 var(--text-outline), calc(var(--line-width) * -1) 0 0 var(--text-outline), 0 var(--line-width) 0 var(--text-outline), 0 calc(var(--line-width) * -1) 0 var(--text-outline); }
+.sui-grey { color: var(--text-grey); }
+.sui-white { color: var(--white); }
+.sui-red { color: var(--text-red); }
+.sui-accent { color: var(--accent); }
+.sui-own { color: var(--own); }
+.sui-gold { color: var(--tooltip-gold); }
+
+/* a frame drawn in the theme: Thick is outer dark line, border, inner dark line; Thin is the border alone */
+.sui-frame { background: var(--backdrop); border: var(--line-width) solid var(--border); box-shadow: 0 0 0 var(--line-width) var(--border-alt), inset 0 0 0 var(--line-width) var(--border-alt); border-radius: var(--radius); }
+.sui-frame.is-see { background: color-mix(in srgb, var(--backdrop) calc(var(--alpha-theme) * 100%), transparent); }
+.sui-strip { background: var(--header-strip); }
+
+/* the options kit's Box: field fill, 1px edge, a dark line outside it (fixed palette) */
+.sui-box { background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); color: var(--text); border-radius: var(--radius); }
+.sui-box.is-raised { background: var(--kit-bg); }
+.sui-box.is-hover, .sui-box.is-focus { border-color: var(--accent); }
+.sui-field { height: var(--field-height); width: var(--control-width); display: flex; align-items: center; padding: 0 var(--list-text); position: relative; white-space: nowrap; overflow: hidden; }
+.sui-field.is-small { width: var(--input-small); }
+.is-disabled { opacity: var(--alpha-disabled); }
+.is-disabled .sui-label, .sui-label.is-disabled { color: var(--text-grey); }
+
+/* icons: Lucide on a 24 grid, stroke 2, round caps and joins, no fill */
+.sui-ic { fill: none; stroke: var(--text-grey); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sui-ic.is-accent { stroke: var(--accent); }
+.sui-ic.is-white { stroke: var(--white); }
+.sui-ic.is-red { stroke: var(--text-red); }
+.sui-ic.is-diff { stroke: var(--diff); }
+.sui-ic.is-text { stroke: var(--text); }
+.sui-ic-close { width: var(--icon-close); height: var(--icon-close); }
+.sui-ic-chevron { width: var(--icon-chevron); height: var(--icon-chevron); }
+.sui-ic-diff { width: var(--icon-diff); height: var(--icon-diff); }
+.sui-ic-reset { width: var(--icon-reset); height: var(--icon-reset); }
+.sui-ic-menu { width: var(--icon-chevron); height: var(--icon-chevron); }
+
+/* dropdown caret: chevron-down, centred caret-right in from the right */
+.sui-caret { position: absolute; top: 50%; right: var(--caret-right); width: var(--icon-chevron); height: var(--icon-chevron); margin: calc(var(--icon-chevron) / -2) calc(var(--icon-chevron) / -2) 0 0; }
+
+/* check box */
+.sui-check { width: var(--toggle-size); height: var(--toggle-size); position: relative; flex: none; }
+.sui-check.is-on::after { content: ''; position: absolute; inset: calc(var(--check-inset) - var(--line-width)); background: var(--accent); }
+
+/* range: track, fill, knob, value box */
+.sui-range { display: flex; align-items: center; gap: var(--range-gap); width: var(--range-width); height: var(--field-height); }
+.sui-track { position: relative; width: var(--range-track); height: var(--range-track-height); background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); flex: none; }
+.sui-track > i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--p); background: var(--accent); }
+.sui-track > b { position: absolute; left: var(--p); top: 50%; width: var(--knob-width); height: var(--knob-height); margin: calc(var(--knob-height) / -2) 0 0 calc(var(--knob-width) / -2); background: var(--text); }
+.sui-track.is-hover > b { background: var(--white); }
+.sui-value { width: var(--range-value); height: var(--field-height); display: flex; align-items: center; justify-content: center; }
+
+/* colour bar: as wide as a dropdown, filled with the colour, its hex in white */
+/* inside the edge a 1px black line, then the colour (over black, so opacity darkens it); set --swatch to a colour token */
+.sui-colorbar { width: var(--control-width); height: var(--field-height); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt), inset 0 0 0 var(--line-width) var(--text-outline); background-color: var(--text-outline); background-image: linear-gradient(var(--swatch), var(--swatch)); display: flex; align-items: center; justify-content: center; color: var(--white); }
+.sui-colorbar.is-hover { border-color: var(--accent); }
+
+/* buttons */
+.sui-btn { height: var(--button-height); min-width: var(--execute-min); padding: 0 calc(var(--execute-pad) / 2); display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; }
+.sui-btn.is-pressed > span { transform: translateY(var(--line-width)); }
+.sui-btn.is-confirm { height: var(--field-height); width: var(--execute-min); background: var(--kit-field); }
+
+/* sections: title, note, panel, lines, cells */
+.sui-section { width: var(--content-width); }
+.sui-section > .section-title { color: var(--text-grey); margin: 0 0 var(--title-gap); }
+.sui-section > .sui-note { color: var(--text-grey); margin: calc(var(--title-gap) * -1 + var(--note-gap)) 0 var(--title-gap); }
+.sui-panel { background: var(--panel-fill); }
+.sui-line { display: grid; grid-template-columns: 1fr 1fr; }
+.sui-line.is-quarters { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.sui-line.is-one { grid-template-columns: 1fr; }
+.sui-panel > .sui-line + .sui-line { border-top: var(--line-width) solid var(--hairline); }
+.sui-cell { height: var(--row-height); padding: 0 var(--panel-pad); display: flex; align-items: center; gap: var(--label-gap); position: relative; min-width: 0; }
+.sui-cell + .sui-cell { border-left: var(--line-width) solid var(--hairline); }
+.sui-cell.is-span { grid-column: span 2; }
+.sui-lab { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.sui-label { white-space: nowrap; overflow: hidden; text-overflow: clip; display: flex; align-items: center; gap: var(--diff-gap); }
+.sui-float { display: flex; gap: var(--button-gap); margin-top: var(--float-gap); }
+
+/* shared settings: own mark, hover line, diff, reset */
+.sui-cell.is-own::before { content: ''; position: absolute; left: var(--mark-x); top: var(--mark-inset); bottom: var(--mark-inset); width: var(--mark-width); background: var(--accent); }
+.sui-cell.is-own .sui-label { color: var(--own); }
+.sui-hover { height: var(--hover-line); display: flex; align-items: center; gap: var(--diff-gap); color: var(--text-grey); white-space: nowrap; }
+.sui-hover .is-own-word { color: var(--own); }
+.sui-hover a { color: var(--accent); text-decoration: none; }
+.sui-hover a.is-hover { color: var(--white); }
+.sui-hover .sui-ic-reset { margin: 0 calc(var(--reset-gap) - var(--diff-gap)); }
+
+/* the theme's tooltip (GameTooltip under Misc's skin) */
+.sui-tooltip { padding: var(--frame-padding); display: inline-flex; flex-direction: column; color: var(--white); }
+
+/* lists (an open dropdown, the check list, the Apply list) */
+.sui-list { width: var(--control-width); padding: var(--line-width); }
+.sui-list-row { height: var(--list-row); display: flex; align-items: center; gap: var(--diff-gap); padding: 0 var(--list-text); white-space: nowrap; }
+.sui-list-row.is-hover { background: var(--accent-fill); }
+.sui-list-row.is-current { color: var(--accent); }
+/* a check list row: an 18 box 6 in, its label 8 after it */
+.sui-list-row.is-check { padding-left: var(--action-gap); gap: var(--list-text); }
+
+/* in-world: icon buttons and their texts */
+.sui-iconbtn { position: relative; flex: none; }
+/* the icon sits inside the border and Thick's inner dark line (Thick's inset of 2; Thin's is 1) */
+.sui-iconbtn > .sui-art { position: absolute; inset: var(--line-width); }
+.sui-pixeltext { position: absolute; color: var(--white); line-height: 1; }

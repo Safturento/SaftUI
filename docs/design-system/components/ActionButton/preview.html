@@ -1,0 +1,41 @@
+<!-- @dsCard group="In world" height=150 width=900 subtitle="45px bar buttons with hotkey, count and cooldown text, their states, and a 30px pet button; icon art stands in as flat fills" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ActionButton</title>
+<style>
+  .ab { width: var(--action-button); height: var(--action-button); }
+  .ab.is-small { width: var(--small-button); height: var(--small-button); }
+  .ab .hk { top: var(--hotkey-inset); right: var(--hotkey-inset); }
+  .ab .ct { bottom: var(--hotkey-inset); right: var(--hotkey-inset); }
+  .ab .cd { top: 50%; left: 0; right: 0; text-align: center; transform: translateY(-50%); }
+  .ab .fx { position: absolute; inset: var(--line-width); }
+  .ab .fx.hover { background: var(--accent); mix-blend-mode: plus-lighter; }
+  .ab .fx.pressed { background: var(--pressed-fill); }
+  .ab .fx.checked { background: var(--checked-fill); mix-blend-mode: plus-lighter; }
+  .ab .fx.flash { background: var(--flash-fill); }
+  .ab.is-equipped { border-color: var(--button-green); }
+  .ab.is-unusable .sui-art { filter: brightness(var(--alpha-disabled)); }
+  .bar { display: flex; gap: var(--button-spacing); }
+</style>
+</head>
+<body class="sui-world">
+<div class="sui-stage">
+  <div class="sui-stack"><div class="caption sui-state">Bar, 3 apart</div>
+    <div class="bar">
+      <div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div>
+      <div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-shaman)"></div><span class="sui-pixeltext pixel sui-outline hk">2</span><span class="sui-pixeltext pixel sui-outline ct">20</span></div>
+      <div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-evoker)"></div><span class="sui-pixeltext pixel sui-outline hk">S3</span><span class="sui-pixeltext pixel-med sui-outline cd">3m</span></div>
+    </div>
+  </div>
+  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx hover"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Pressed</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx pressed"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Checked</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx checked"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Flash</div><div class="ab sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-warrior)"></div><div class="fx flash"></div><span class="sui-pixeltext pixel sui-outline hk">1</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Equipped</div><div class="ab sui-iconbtn sui-frame is-equipped"><div class="sui-art" style="background: var(--class-rogue)"></div><span class="sui-pixeltext pixel sui-outline hk">E</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Unusable</div><div class="ab sui-iconbtn sui-frame is-unusable"><div class="sui-art" style="background: var(--class-mage)"></div><span class="sui-pixeltext pixel sui-outline hk">R</span></div></div>
+  <div class="sui-stack"><div class="caption sui-state">Pet, 30</div><div class="ab is-small sui-iconbtn sui-frame"><div class="sui-art" style="background: var(--class-hunter)"></div><span class="sui-pixeltext pixel sui-outline cd">8</span></div></div>
+</div>
+</body>
+</html>

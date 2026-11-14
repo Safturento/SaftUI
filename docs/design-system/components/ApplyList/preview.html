@@ -1,0 +1,30 @@
+<!-- @dsCard group="Shared settings" height=330 subtitle="Apply to: Multiple on Bar 3's Buttons per row: pick bars, nothing changes until Apply" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ApplyList</title>
+<style>
+  .apply { padding-bottom: var(--apply-gap); }
+  .apply .go { display: flex; justify-content: center; margin-top: var(--apply-gap); }
+  .apply .go .sui-btn { justify-content: center; }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="sui-stack">
+    <div class="small sui-hover" style="height: var(--hover-line)"><span class="sui-own">Own</span><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>&middot; Apply to:</span><a>All</a><span>|</span><a class="is-hover">Multiple</a></div>
+    <div class="sui-list sui-box is-raised field apply">
+      <div class="sui-list-row is-check"><div class="sui-box sui-check is-on"></div>Bar 1</div>
+      <div class="sui-list-row is-check"><div class="sui-box sui-check is-on"></div>Bar 2</div>
+      <div class="sui-list-row is-check is-hover"><div class="sui-box sui-check"></div>Bar 4</div>
+      <div class="sui-list-row is-check"><div class="sui-box sui-check"></div>Bar 5</div>
+      <div class="sui-list-row is-check"><div class="sui-box sui-check"></div>Bar 6</div>
+      <div class="sui-list-row is-check"><div class="sui-box sui-check"></div>Pet</div>
+      <div class="sui-list-row is-check"><div class="sui-box sui-check"></div>Stance</div>
+      <div class="go"><div class="sui-box sui-btn is-confirm"><span>Apply</span></div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

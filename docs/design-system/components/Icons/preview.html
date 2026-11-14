@@ -1,0 +1,30 @@
+<!-- @dsCard group="Icons" height=210 width=830 subtitle="Lucide icons SaftUI registers, at the sizes and tints they are drawn; the last three are registered but not used yet" -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Icons</title>
+<style>
+  .set { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--section-margin) var(--button-gap); width: var(--content-width); }
+  .ic-cell { display: flex; flex-direction: column; align-items: center; gap: var(--title-gap); }
+  .ic-cell .tile { width: calc(var(--action-button) + var(--line-width) * 3); height: calc(var(--action-button) + var(--line-width) * 3); display: flex; align-items: center; justify-content: center; gap: var(--diff-gap); }
+  .ic-cell .name { color: var(--text); text-align: center; }
+  .ic-cell .size { color: var(--text-grey); text-align: center; }
+  .ic-cell.unused .tile { opacity: var(--alpha-disabled); }
+</style>
+</head>
+<body>
+<div class="sui-stage">
+  <div class="set">
+    <div class="ic-cell"><div class="tile sui-panel"><svg class="sui-ic sui-ic-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><svg class="sui-ic sui-ic-close is-red" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div><div class="name small">x</div><div class="size small">20 (10px cross)</div></div>
+    <div class="ic-cell"><div class="tile sui-panel"><svg class="sui-ic sui-ic-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></div><div class="name small">chevron-down</div><div class="size small">16 (8 x 4)</div></div>
+    <div class="ic-cell"><div class="tile sui-panel"><svg class="sui-ic sui-ic-reset is-accent" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><svg class="sui-ic sui-ic-reset is-white" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div><div class="name small">rotate-ccw</div><div class="size small">14</div></div>
+    <div class="ic-cell"><div class="tile sui-panel"><svg class="sui-ic sui-ic-diff is-diff" viewBox="0 0 24 24"><path d="M12 3v14"/><path d="M5 10h14"/><path d="M5 21h14"/></svg></div><div class="name small">diff</div><div class="size small">16</div></div>
+    <div class="ic-cell"><div class="tile sui-panel"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg><svg class="sui-ic sui-ic-menu is-accent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></div><div class="name small">ellipsis-vertical</div><div class="size small">16, menus</div></div>
+    <div class="ic-cell unused"><div class="tile sui-panel"><svg class="sui-ic sui-ic-chevron" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg></div><div class="name small">chevron-up</div><div class="size small">unused</div></div>
+    <div class="ic-cell unused"><div class="tile sui-panel"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></div><div class="name small">ellipsis</div><div class="size small">unused</div></div>
+    <div class="ic-cell unused"><div class="tile sui-panel"><svg class="sui-ic sui-ic-menu" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></div><div class="name small">settings</div><div class="size small">unused</div></div>
+  </div>
+</div>
+</body>
+</html>
