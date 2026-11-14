@@ -902,6 +902,63 @@ test("use_client gives a fresh world on each client, without the globals that cl
 	reset_world()
 end)
 
+test("the quest stubs: the two Forever-only C_QuestLog members exist only on Forever, and a questID that isn't a number errors with its Usage", function()
+	use_client('retail')
+	eq(C_QuestLog.IsEliteQuest, nil, 'retail: no IsEliteQuest')
+	eq(C_QuestLog.GetQuestTimers, nil, 'retail: no GetQuestTimers')
+	eq(type(C_QuestLog.GetTimeAllowed), 'function', 'retail: the shared ones stay')
+	use_client('forever')
+	eq(type(C_QuestLog.IsEliteQuest), 'function', 'forever: IsEliteQuest')
+	eq(type(C_QuestLog.GetQuestTimers), 'function', 'forever: GetQuestTimers')
+	stub.quests.log = { { id = 7, title = 'A', elite = true, timer = 90 } }
+	eq(C_QuestLog.IsEliteQuest(7), true, 'an elite quest')
+	eq(C_QuestLog.GetQuestTimers()[1].questTimer, 90, 'its timer')
+	for _, call in ipairs({
+		function() C_QuestLog.GetLogIndexForQuestID('7') end,
+		function() C_QuestLog.IsEliteQuest(nil) end,
+		function() C_QuestLog.GetInfo({}) end,
+	}) do
+		local ok, err = pcall(call)
+		eq(ok, false, 'a questID that is not a number errors')
+		check(tostring(err):find('Usage: ', 1, true), 'with its Usage line: ' .. tostring(err))
+	end
+	-- Every function that takes a questID refuses a string, with its Usage.
+	for _, name in ipairs({ 'GetQuestObjectives', 'IsComplete', 'IsFailed', 'ReadyForTurnIn', 'GetTimeAllowed', 'GetQuestTagInfo',
+		'IsQuestDisabledForSession', 'IsQuestCalling', 'GetDistanceSqToQuest', 'GetNextWaypointText', 'GetTitleForQuestID',
+		'IsPushableQuest', 'AddQuestWatch', 'RemoveQuestWatch', 'IsWorldQuest', 'IsQuestBounty', 'IsQuestTask',
+		'GetHeaderIndexForQuest', 'GetQuestIDForQuestWatchIndex', 'IsEliteQuest' }) do
+		local ok, err = pcall(function() C_QuestLog[name]('7') end)
+		eq(ok, false, name .. ' refuses a string')
+		check(tostring(err):find('Usage: ', 1, true), name .. ' has its Usage line: ' .. tostring(err))
+		check(tostring(err):find('harness_self_test', 1, true), name .. "'s error points at its caller: " .. tostring(err))
+	end
+
+	-- The watch list: the limit, and its event.
+	stub.quests.log = {}
+	for i = 1, 30 do stub.quests.log[i] = { id = i, title = 'Q' .. i } end
+	stub.quests.watched = {}
+	local events = {}
+	local frame = CreateFrame('Frame')
+	frame:RegisterEvent('QUEST_WATCH_LIST_CHANGED')
+	frame:RegisterEvent('SUPER_TRACKING_CHANGED')
+	frame:SetScript('OnEvent', function(_, event, ...) events[#events + 1] = event .. ':' .. table.concat({ tostring((...)) }, ',') end)
+	for i = 1, 25 do eq(C_QuestLog.AddQuestWatch(i), true, 'watch ' .. i) end
+	eq(C_QuestLog.AddQuestWatch(26), false, 'the 26th is refused: the list holds 25')
+	eq(#stub.quests.watched, 25, 'the list is 25 long')
+	eq(#events, 25, 'one QUEST_WATCH_LIST_CHANGED per change, none for the refusal')
+	eq(C_QuestLog.RemoveQuestWatch(3), true, 'a removal')
+	eq(#events, 26, 'fires the event too')
+	eq(C_QuestLog.RemoveQuestWatch(3), false, 'a quest not on the list')
+	eq(#events, 26, 'and fires none')
+	C_SuperTrack.SetSuperTrackedQuestID(4)
+	eq(events[#events], 'SUPER_TRACKING_CHANGED:nil', 'focusing fires SUPER_TRACKING_CHANGED')
+	eq(C_QuestLog.GetMaxNumQuestsCanAccept(), 40, 'Forever: the log holds 40')
+	use_client('retail')
+	eq(C_QuestLog.GetMaxNumQuestsCanAccept(), 35, 'retail: 35')
+	eq(Constants.QuestLogConstsMainlineCamelot, nil, 'retail has no Camelot constants')
+	reset_world()
+end)
+
 test("load_editmode loads the files Core's EditMode/load.xml lists, in its order; the bar's come last, through Bar/load.xml", function()
 	local function scripts(path, dir)
 		local xml = assert(read_saftui_source(path)):gsub('<!%-%-.-%-%->', '')
