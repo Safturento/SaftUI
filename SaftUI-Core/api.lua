@@ -8,6 +8,21 @@ function st:UnpackPoint(config)
 	return config.point, config.frame, config.rel_point or config.point, config.x_off or 0, config.y_off or 0
 end
 
+-- Where Blizzard's objective tracker's default puts its top right corner: in
+-- the right column 260 below the screen's top (275 on Forever, whose tracker
+-- sits 15 lower in it), and the screen edge margin in from the right. A saved
+-- position's shape, and a fresh table on every call, so a write never reaches
+-- a shared one. Misc's tracker mover and SaftUI-Tracker both start here.
+function st:DefaultTrackerPosition()
+	return {
+		point = 'TOPRIGHT',
+		frame = 'UIParent',
+		rel_point = 'TOPRIGHT',
+		x_off = -st.CLAMP_INSET,
+		y_off = st.forever and -275 or -260,
+	}
+end
+
 -- Size of one physical pixel in frame's (or UIParent's) coordinate space, or nil if unknown.
 function st:GetPixelSize(frame)
 	local physicalHeight = select(2, GetPhysicalScreenSize())

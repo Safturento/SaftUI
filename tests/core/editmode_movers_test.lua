@@ -78,9 +78,9 @@ test('a defaults table with no position gives no default', function()
 end)
 
 local MODULES = { ['Action bars'] = true, ['Bags'] = true, ['Chat'] = true, ['Loot'] = true,
-	['Minimap'] = true, ['Misc'] = true, ['Unit frames'] = true }
+	['Minimap'] = true, ['Misc'] = true, ['Tracker'] = true, ['Unit frames'] = true }
 
-test('every mover SaftUI registers names one of the seven modules, and a default or the reason it has none', function()
+test('every mover SaftUI registers names one of the eight modules, and a default or the reason it has none', function()
 	local sites, problems = 0, {}
 	for _, path in ipairs(T.saftui_files()) do
 		if path ~= 'SaftUI-Core/EditMode/editmode.lua' then

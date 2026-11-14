@@ -93,17 +93,10 @@ local OTP = st:NewModule('ObjectiveTracker')
 local HOLDER_HEIGHT = 32
 local TRACKER_WIDTH = 260 -- ObjectiveTrackerContainerTemplate, if the tracker's can't be read
 
--- Where Blizzard's default puts the tracker's top right corner: in the right
--- column 260 below the screen's top (275 on Forever, whose tracker sits 15
--- lower in it), and the screen edge margin in from the right.
+-- Where Blizzard's default puts the tracker's top right corner (Core's
+-- st:DefaultTrackerPosition, which SaftUI's own tracker starts from too).
 local function DefaultPosition()
-	return {
-		point = 'TOPRIGHT',
-		frame = 'UIParent',
-		rel_point = 'TOPRIGHT',
-		x_off = -st.CLAMP_INSET,
-		y_off = st.forever and -275 or -260,
-	}
+	return st:DefaultTrackerPosition()
 end
 
 -- A copy of the position the holder was last placed from, kept across profile
