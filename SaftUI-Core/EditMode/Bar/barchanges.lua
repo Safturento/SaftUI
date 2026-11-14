@@ -26,7 +26,9 @@ local History = EM.History
 
 	The status line, EM:SetBarStatus(text): one line of small, Text > Grey text
 	in the bar's flexible gap, right-aligned STATUS_GAP short of the first right
-	group's divider (EM:BarGap), cut to the room. It takes no mouse. It clears
+	group's divider (EM:BarGap), cut to the room. In the floating window
+	(barwindow.lua) it is under the Changes section instead, from the left and
+	wrapped to the window's inside width, never cut. It takes no mouse. It clears
 	after EM.STATUS_SECONDS, when a new status replaces it (each with its own
 	clock) and when edit mode turns off.
 ]]
@@ -60,6 +62,7 @@ local function ClearStatus()
 		statusTipOwner = nil
 	end
 	EM.statusCut = false
+	if EM:IsBarFloating() and EM.barWindow then EM:PlaceWindowStatus(nil) end
 end
 
 -- Puts the text in the gap: right-aligned, as wide as it is (a whole number)
@@ -68,6 +71,21 @@ local function PlaceStatus()
 	local text = EM.statusText
 	if not text then return end
 	local message = text:GetText() or ''
+	-- In the floating window it is under the Changes section, wrapped to the
+	-- window's inside width, so never cut (barwindow.lua).
+	if EM:IsBarFloating() then
+		EM.statusCut = false
+		if message == '' then
+			text:Hide()
+			EM:PlaceWindowStatus(nil)
+		else
+			EM:PlaceWindowStatus(text)
+		end
+		return
+	end
+	text:SetParent(EM:GetBar())
+	text:SetJustifyH('RIGHT')
+	text:SetWordWrap(false)
 	local left, right = EM:BarGap()
 	local room = right - STATUS_GAP - left
 	if message == '' or room <= 0 then

@@ -8,7 +8,8 @@ local W = st.OptionsWidgets
 	  grid     (left, 20, section 'grid')     Grid, Grid size, Snap to grid,
 	                                          Snap to frames, Dim world,
 	                                          Coordinates
-	  options  (right, 90, section 'changes') Options
+	  options  (right, 90, section 'changes') Options, and Detach (section
+	                                          'title') at its end
 	Each control is { key, frame, Lay, Refresh, ... } as bar.lua says. The
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
 	says nothing, so each has one.
@@ -54,8 +55,8 @@ local function Exit(bar)
 	button.onClick = Guard(function() EM:Deactivate() end)
 	return {
 		key = 'exit', frame = button,
-		-- Compact (the icon alone) from stage 4.
-		Lay = function(_, stage) return W.SetCompact(button, stage >= 4) end,
+		-- Compact (the icon alone) from stage 4, and in the floating window's title.
+		Lay = function(_, stage, floating) return W.SetCompact(button, floating or stage >= 4) end,
 	}
 end
 
@@ -82,6 +83,19 @@ local function Options(bar)
 	return {
 		key = 'options', frame = button, align = 'right',
 		Lay = function(_, stage) return W.SetCompact(button, stage >= 4) end,
+	}
+end
+
+-- Detach: turns the bar into the floating window (barwindow.lua), whose title
+-- has Dock in its place, so it is not shown there.
+local function Detach(bar)
+	local button = W.IconButton(bar, st.icons.pictureInPicture2, function()
+		return 'Detach', { 'Turns the bar into a small window you can move anywhere.' }
+	end)
+	button.onClick = Guard(function() EM:SetBarFloating(true) end)
+	return {
+		key = 'detach', frame = button, section = 'title',
+		Lay = function(_, _, floating) return floating and 0 or ICON end,
 	}
 end
 
@@ -155,5 +169,5 @@ EM:AddBarGroup({
 
 EM:AddBarGroup({
 	key = 'options', order = 90, side = 'right', section = 'changes',
-	controls = function(bar) return { Options(bar) } end,
+	controls = function(bar) return { Options(bar), Detach(bar) } end,
 })

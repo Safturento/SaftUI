@@ -84,6 +84,7 @@ local DIVIDER_HEIGHT = 26
 
 local groups = {} -- registered groups, by order
 local bar         -- the frame, once made
+local windowed = false -- the controls are in the floating window (barwindow.lua), not on the bar
 local stage = 0   -- the stage the controls are laid out for
 local gapLeft, gapRight = BAR.PAD, BAR.PAD -- the flexible gap, from the last layout
 
@@ -192,12 +193,12 @@ end
 
 -- Lays every control out for stage (showing or hiding its frame), and returns
 -- the groups as BarLayout takes them, with the group and its controls.
-local function LayAll(forStage)
+local function LayAll(forStage, floating)
 	local list = {}
 	for _, group in ipairs(groups) do
 		local entry = { side = group.side, widths = {}, group = group }
 		for c, control in ipairs(group.built or {}) do
-			local width = control:Lay(forStage, false) or 0
+			local width = control:Lay(forStage, floating or false) or 0
 			entry.widths[c] = width
 			control.frame:SetShown(width > 0)
 		end
@@ -245,6 +246,7 @@ end
 -- fits, else the last. Returns the stage.
 function EM:LayoutBar()
 	local frame = self:GetBar()
+	if windowed then return self:LayoutWindow() end
 	local width = floor(frame:GetWidth() + 0.5)
 	for s = 0, BAR.STAGES - 1 do
 		local list = LayAll(s)
@@ -273,7 +275,7 @@ function EM:BarGap() return gapLeft, gapRight end
 function EM:BarWidthAt(forStage)
 	self:GetBar()
 	local leftEnd, block = Measure(LayAll(forStage))
-	LayAll(stage)
+	LayAll(stage, windowed)
 	return leftEnd + BAR.FLEX_MIN + BAR.PAD + block
 end
 
@@ -294,6 +296,29 @@ local function Raise(frame)
 	for _, child in ipairs({ frame:GetChildren() }) do Raise(child) end
 end
 
+-- Sets frame's level, and every descendant's by the same shift, so each keeps
+-- its place relative to the frame. SetParent gives a frame the level one over
+-- its new parent's (the game, as the stub), so a control moved to the window
+-- is settled again to the level it had over the bar: two over its parent's.
+local function Settle(frame, level)
+	local shift = level - frame:GetFrameLevel()
+	if shift == 0 then return end
+	local function move(f)
+		f:SetFrameLevel(f:GetFrameLevel() + shift)
+		for _, child in ipairs({ f:GetChildren() }) do move(child) end
+	end
+	move(frame)
+end
+EM.SettleLevel = Settle -- barwindow.lua puts its own buttons the same two over
+
+-- Puts a group's controls on parent, the bar or the floating window.
+local function Adopt(group, parent)
+	for _, control in ipairs(group.built or {}) do
+		control.frame:SetParent(parent)
+		Settle(control.frame, parent:GetFrameLevel() + 2)
+	end
+end
+
 local function BuildGroup(group)
 	group.built = group.controls(bar)
 	for _, control in ipairs(group.built) do
@@ -301,6 +326,7 @@ local function BuildGroup(group)
 		control.section = control.section or group.section
 		Raise(control.frame)
 	end
+	if windowed then Adopt(group, EM:GetBarWindow()) end
 end
 
 -- Adds a group of controls (see the top). Call at load: the controls are made
@@ -336,6 +362,16 @@ function EM:RefreshBar()
 			if control.Refresh then control:Refresh() end
 		end
 	end
+	if self.LookBarWindow then self:LookBarWindow(blizzard) end
+end
+
+-- Every control, in group order: the floating window lays them out by section.
+function EM:BarControls()
+	local list = {}
+	for _, group in ipairs(groups) do
+		for _, control in ipairs(group.built or {}) do list[#list + 1] = control end
+	end
+	return list
 end
 
 ------------------------------------------------------------------ the frame
@@ -356,12 +392,99 @@ function EM:GetBar()
 	-- also lays out when its own size (UIParent's width) changes.
 	bar:RegisterEvent('UI_SCALE_CHANGED')
 	bar:RegisterEvent('DISPLAY_SIZE_CHANGED')
-	bar:SetScript('OnEvent', function() EM:LayoutBar() end)
-	bar:HookScript('OnSizeChanged', function() EM:LayoutBar() end)
+	-- (In the floating window the window's own events lay it out.)
+	bar:SetScript('OnEvent', function() if not windowed then EM:LayoutBar() end end)
+	bar:HookScript('OnSizeChanged', function() if not windowed then EM:LayoutBar() end end)
 	for _, group in ipairs(groups) do BuildGroup(group) end
+	if self:IsBarFloating() then
+		windowed = true
+		for _, group in ipairs(groups) do Adopt(group, self:GetBarWindow()) end
+	end
 	self:LayoutBar()
 	self:RefreshBar()
 	return bar
+end
+
+------------------------------------------------------------------ docked or floating
+
+-- Whether the bar is the floating window now: st.config.global.editModeBar
+-- { floating, x, y }, written on a mode change and a window drag (an account's
+-- choice, not a profile's).
+function EM:IsBarFloating()
+	local saved = st.config and st.config.global and st.config.global.editModeBar
+	return type(saved) == 'table' and saved.floating == true
+end
+
+-- How much of the screen's top the bar covers: its height and the line its
+-- backdrop draws under it while it is docked and shown, else 0 (floating, or
+-- hidden). EM:ScreenTop and what keeps clear of the bar read it.
+function EM:BarCoverHeight()
+	if bar and bar:IsShown() and not windowed then
+		return BAR.HEIGHT + st:ThemeInset('theme', 'theme', 'panel')
+	end
+	return 0
+end
+
+-- Lets go of what an open list or a focused box holds, for a control that is
+-- about to move: tooltips, the History list, the kit's list when a bar control
+-- owns it, and the keyboard.
+local function CloseOpenThings()
+	local owner = W.ListOwner and W.ListOwner()
+	for _, group in ipairs(groups) do
+		for _, control in ipairs(group.built or {}) do
+			W.HideTip(control.frame)
+			if owner and owner == control.frame then W.CloseList() end
+			if control.frame.HasFocus and control.frame:HasFocus() then control.frame:ClearFocus() end
+			if control.frame.edit and control.frame.edit:HasFocus() then control.frame.edit:ClearFocus() end
+		end
+	end
+	EM:HideHistoryList()
+end
+
+-- Shows the docked bar or the window, whichever holds the controls, while edit
+-- mode is on; neither while it is off.
+local function ShowSurface()
+	local window = EM:GetBarWindow()
+	if EM.active and not InCombatLockdown() then
+		if windowed then
+			bar:Hide()
+			window:Show()
+		else
+			window:Hide()
+			bar:Show()
+		end
+	else
+		bar:Hide()
+		window:Hide()
+	end
+end
+
+-- Puts the controls where the saved mode says (on the bar or in the window).
+-- The controls move, the layout is redone and the lists close when it changed.
+local function ApplyMode()
+	local want = EM:IsBarFloating()
+	if want == windowed then return false end
+	CloseOpenThings()
+	windowed = want
+	local parent = want and EM:GetBarWindow() or bar
+	for _, group in ipairs(groups) do Adopt(group, parent) end
+	if EM.statusText then EM:SetBarStatus('') end
+	EM:LayoutBar()
+	EM:RefreshBar()
+	return true
+end
+
+function EM:SetBarFloating(floating)
+	floating = floating and true or false
+	local global = st.config.global
+	if type(global.editModeBar) ~= 'table' then global.editModeBar = {} end
+	global.editModeBar.floating = floating
+	if floating then self:SaveBarWindowPlace() end
+	if bar then
+		ApplyMode()
+		ShowSurface()
+	end
+	self:Fire('BarModeChanged')
 end
 
 ------------------------------------------------------------------ events
@@ -383,6 +506,7 @@ end
 local function Restore()
 	if not bar then return end
 	bar:SetAlpha(1)
+	if EM.barWindow then EM.barWindow:SetAlpha(1) end
 	if EM.historyList then EM.historyList:SetAlpha(1) end
 	for _, frame in ipairs(released) do frame:EnableMouse(true) end
 	wipe(released)
@@ -398,10 +522,11 @@ end
 
 EM:On('Enabled', function()
 	Restore()
-	local frame = EM:GetBar()
+	EM:GetBar()
+	ApplyMode()
 	EM:LayoutBar()
 	EM:RefreshBar()
-	frame:Show()
+	ShowSurface()
 end)
 
 EM:On('Disabled', function()
@@ -412,6 +537,10 @@ EM:On('Disabled', function()
 	DropFocus()
 	Restore()
 	bar:Hide()
+	if EM.barWindow then
+		W.HideTip(EM.barWindow.dock)
+		EM.barWindow:Hide()
+	end
 end)
 
 EM:On('Pressed', DropFocus)
@@ -424,6 +553,14 @@ EM:On('DragStarted', function()
 	DropFocus()
 	bar:SetAlpha(BAR.DRAG_ALPHA)
 	if #released == 0 then ReleaseMouse(bar) end
+	-- The floating window fades and lets go of the mouse the same way (a click
+	-- on it would otherwise stop the dragged frame under it from showing).
+	local window = EM.barWindow
+	if window then
+		W.HideTip(window.dock)
+		window:SetAlpha(BAR.DRAG_ALPHA)
+		if window:IsShown() then ReleaseMouse(window) end
+	end
 	-- The open History list (historylist.lua) follows the bar: faded, and off the mouse.
 	local list = EM.historyList
 	if list then

@@ -181,7 +181,8 @@ test('the groups and their controls: exit, then the grid group (grid, size, two 
 	for _, key in ipairs({ 'exit', 'grid', 'gridSize', 'snapGrid', 'snapFrames', 'dim', 'coordinates', 'options' }) do xs[#xs + 1] = frame_of(key):GetLeft() end
 	for i = 2, #xs do check(xs[i] > xs[i - 1], 'left to right: ' .. i) end
 	eq(xs[1] - UIParent:GetLeft(), 10, 'Exit 10 in')
-	eq(UIParent:GetRight() - frame_of('options'):GetRight(), 10, 'Options 10 from the right')
+	eq(UIParent:GetRight() - frame_of('detach'):GetRight(), 10, 'Detach, the options group\'s last control, 10 from the right')
+	eq(frame_of('detach'):GetLeft() - frame_of('options'):GetRight(), 4, 'Options 4 left of Detach')
 	eq(EM:BarControl('nothing'), nil, 'no such control')
 	reset_edit_mode()
 end)
@@ -656,7 +657,7 @@ end)
 test("the bar lays out again on UI_SCALE_CHANGED, DISPLAY_SIZE_CHANGED and its own size change", function()
 	EM:Activate()
 	local bar = EM:GetBar()
-	local options = frame_of('options')
+	local options = frame_of('detach') -- the right end of the options group
 	set_screen(1366, 768)
 	stub.fire_event('UI_SCALE_CHANGED')
 	eq(UIParent:GetRight() - options:GetRight(), 10, 'UI_SCALE_CHANGED: Options 10 from the new right end')
@@ -708,7 +709,7 @@ test("every piece of the bar sits on whole pixels, at any screen, under each loo
 	reset_edit_mode()
 end)
 
-test("at a scale that is not SaftUI's the controls still sit whole from the bar, and Options ends 10 short of its width", function()
+test("at a scale that is not SaftUI's the controls still sit whole from the bar, and the last control ends 10 short of its width", function()
 	EM:Activate()
 	local bar = EM:GetBar()
 	set_screen(1920, 1080)
@@ -720,8 +721,8 @@ test("at a scale that is not SaftUI's the controls still sit whole from the bar,
 		eq(x, math.floor(x), key .. ': x whole from the bar')
 		eq(y, math.floor(y), key .. ': y whole from the bar')
 	end
-	local _, _, _, ox = frame_of('options'):GetPoint(1)
-	eq(ox + frame_of('options'):GetWidth(), width - 10, "Options ends 10 short of the bar's rounded width")
+	local _, _, _, ox = frame_of('detach'):GetPoint(1)
+	eq(ox + frame_of('detach'):GetWidth(), width - 10, "Detach, the last control, ends 10 short of the bar's rounded width")
 	set_screen(1920, 1080)
 	reset_edit_mode()
 end)

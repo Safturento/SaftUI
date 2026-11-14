@@ -28,6 +28,8 @@ local callbacks = {}
 --                      the ticker runs twice a second: fired only on a change)
 --   'BarLaid'          no arguments: the bar laid its controls out (Bar/bar.lua);
 --                      EM:BarGap() says where the gap is now
+--   'BarModeChanged'   no arguments: the bar detached into its floating window or
+--                      docked again (Bar/bar.lua's EM:SetBarFloating)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group
 --   'HistoryChanged'   no arguments: a step was pushed, merged, undone, redone,
 --                      reverted, trimmed or the history cleared (history.lua)

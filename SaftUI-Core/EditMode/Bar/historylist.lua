@@ -13,8 +13,11 @@ local Guard = EM.BarGuard
 	  EM:ToggleHistoryList(), EM:ShowHistoryList(), EM:HideHistoryList(),
 	  EM:IsHistoryListShown()
 	  EM:PlaceHistoryList()    anchors it: docked, its top right 6 under the
-	                           History button's bottom right (the floating
-	                           window puts it elsewhere)
+	                           History button's bottom right; floating, its top
+	                           left 8 right of the window's top right, or its
+	                           top right 8 left of the window's top left with no
+	                           room (barwindow.lua; it closes when the bar docks
+	                           or detaches)
 	  EM:RefreshHistoryList()  rows, scroll bar and foot from the history again
 	  EM.Ago(seconds)          'now' under 5, then '<n>s ago', '<n>m ago',
 	                           '<n>h ago'
@@ -398,11 +401,27 @@ function EM:IsHistoryListShown()
 	return list ~= nil and list:IsShown()
 end
 
--- Docked: its top right 6 under the History button's bottom right.
+local WINDOW_GAP = 8 -- beside the floating window
+
+-- Docked: its top right 6 under the History button's bottom right. Floating:
+-- its top left 8 right of the window's top right, or, where there is no room
+-- on that side (inside the screen edge margin), its top right 8 left of the
+-- window's top left; the game's clamp keeps the rest of it on the screen.
 function EM:PlaceHistoryList()
 	local control = EM:BarControl('history')
 	if not (list and control) then return end
 	list:ClearAllPoints()
+	if EM:IsBarFloating() and EM.barWindow then
+		local window = EM.barWindow
+		local _, marginRight = st:GetScreenMargin(list)
+		local right = window:GetRight()
+		if right and right + WINDOW_GAP + HL.WIDTH > UIParent:GetRight() - marginRight then
+			list:SetPoint('TOPRIGHT', window, 'TOPLEFT', -WINDOW_GAP, 0)
+		else
+			list:SetPoint('TOPLEFT', window, 'TOPRIGHT', WINDOW_GAP, 0)
+		end
+		return
+	end
 	list:SetPoint('TOPRIGHT', control.frame, 'BOTTOMRIGHT', 0, -6)
 end
 
