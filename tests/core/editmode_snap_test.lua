@@ -209,7 +209,7 @@ test('StartDrag measures the overlay', function()
 	EM:StartDrag(me)
 	local r0 = me.drag.rect0
 	check(r0 and r0.left == 88 and r0.right == 212 and r0.bottom == 88 and r0.top == 152, 'StartDrag rect0 is the overlay outline')
-	local xl, yl = EM.NearLines(me.drag, 0, 0, EM.SNAP_REACH)
+	local xl, yl = EM.NearLines(me.drag, 0, 0)
 	local sdx = EM.SnapDrag(r0, 0, 0, xl, yl, EM.SNAP_REACH)
 	check(sdx == 3, 'outline right (212) snaps to the other outline left (215)')
 end)

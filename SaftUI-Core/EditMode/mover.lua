@@ -191,7 +191,8 @@ function EM:StartDrag(mover)
 	if l then
 		mover.drag.rect0 = { left = l, right = r, bottom = b, top = t }
 	end
-	mover.drag.xLines, mover.drag.yLines, mover.drag.targets = self:GetSnapTargets(mover)
+	local d = mover.drag
+	d.xLines, d.yLines, d.targets, d.xKinds, d.yKinds = self:GetSnapTargets(mover)
 	mover.dragged = true
 	mover.overlay:SetScript('OnUpdate', function() EM:UpdateDrag(mover) end)
 	self:Fire('DragStarted', mover)
@@ -208,11 +209,12 @@ function EM:UpdateDrag(mover)
 	local dUIy = cy / uiScale - drag.cy
 	-- Snapping adds a correction (in UIParent units) that pulls an edge or the
 	-- center onto a nearby line. Ctrl held suspends it.
-	local sx, sy = 0, 0
+	local sx, sy, xHit, yHit, xSources, ySources = 0, 0
 	if drag.rect0 and not IsControlKeyDown()
 			and (#drag.xLines > 0 or #drag.yLines > 0 or #drag.targets > 0) then
-		local xLines, yLines = EM.NearLines(drag, dUIx, dUIy, EM.SNAP_REACH)
-		sx, sy = EM.SnapDrag(drag.rect0, dUIx, dUIy, xLines, yLines, EM.SNAP_REACH)
+		local xLines, yLines
+		xLines, yLines, xSources, ySources = EM.NearLines(drag, dUIx, dUIy)
+		sx, sy, xHit, yHit = EM.SnapDrag(drag.rect0, dUIx, dUIy, xLines, yLines, EM.SNAP_REACH)
 	end
 	-- The screen edge margin has the last word: the frame can't be dragged into it.
 	if drag.shown then
@@ -220,6 +222,12 @@ function EM:UpdateDrag(mover)
 			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(mover.def.frame, ratio))
 		sx, sy = sx + mx, sy + my
 	end
+	-- What it snapped to shows as a guide, where the outline ended up.
+	local rect0 = drag.rect0
+	self:UpdateSnapGuides(rect0 and {
+		left = rect0.left + dUIx + sx, right = rect0.right + dUIx + sx,
+		bottom = rect0.bottom + dUIy + sy, top = rect0.top + dUIy + sy,
+	}, xHit, yHit, xSources, ySources)
 	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
 	drag.y = st:RoundToPixel(EM.SnappedOffset(drag.y0, dUIy, sy, ratio), mover.def.frame)
 	ApplyOffsets(mover, drag.x, drag.y)

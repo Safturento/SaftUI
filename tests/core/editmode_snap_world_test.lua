@@ -78,8 +78,9 @@ local function world()
 end
 
 -- Drags mover by (dx, dy) from where it is, the cursor as the game would have
--- it: a press, a pickup, a move, from the world's spot. Returns the offsets the drag ended at.
-local function drag(mover, dx, dy)
+-- it: a press, a pickup, a move, from the world's spot. Returns the offsets the
+-- drag ended at; the drag ends unless hold, which leaves it on.
+local function drag(mover, dx, dy, hold)
 	local pos = mover.def.getPosition() -- back where the world put it
 	pos.x_off, pos.y_off = 313, 230
 	mover.def.apply()
@@ -89,7 +90,7 @@ local function drag(mover, dx, dy)
 	stub.cursor_x, stub.cursor_y = (1000 + dx) * scale, (500 + dy) * scale
 	EM:UpdateDrag(mover)
 	local x, y = mover.drag.x, mover.drag.y
-	EM:StopDrag(mover)
+	if not hold then EM:StopDrag(mover) end
 	return x, y
 end
 
@@ -198,5 +199,87 @@ test('Snap to grid alone puts a dragged outline edge on a grid line, whatever th
 	local mid, right = cx + x, cx + x + 50 + EM.OutlineOutset()
 	local function onLine(v) return math.abs((v - cx) / size - math.floor((v - cx) / size + 0.5)) < 1e-6 end
 	check(onLine(left) or onLine(mid) or onLine(right), 'an edge of the outline is on a grid line')
+	reset()
+end)
+
+test('tops line up across a gap of 60 and of 200, not of 201', function()
+	local me = world()
+	-- ref is a tall frame (top 242, middle 140, bottom 42) to the right of the
+	-- dragged one, their outlines gap apart sideways. 7 down puts the dragged
+	-- top (245) 3 under ref's top.
+	local function topsAt(gap)
+		local ref = add_mover('ref', 417 + gap, 140, { h = 200 })
+		EM:UpdateShown()
+		local _, y = drag(me, 0, -7)
+		EM.movers.ref.overlay:Hide()
+		EM.movers.ref = nil
+		added.ref = nil
+		return y
+	end
+	eq(topsAt(60), 220, 'a gap of 60: the tops line up')
+	eq(topsAt(200), 220, 'a gap of 200: still')
+	eq(topsAt(201), 223, 'a gap of 201: the cursor\'s')
+	eq(EM.SNAP_NEAR, 200, 'the nearness is 200')
+	eq(EM.SNAP_REACH, 8, 'the snap distance stays 8')
+	reset()
+end)
+
+local function guide(which)
+	local g = EM.snapGuides and EM.snapGuides[which]
+	if not g or not g:IsShown() then return 'none' end
+	return table.concat({ g:GetLeft(), g:GetBottom(), g:GetWidth(), g:GetHeight() }, ',')
+end
+
+test('a guide shows what a drag snapped to: an edge, a middle, the screen center', function()
+	local me = world()
+	add_mover('near', 500, 230)
+	EM:UpdateShown()
+	-- The dragged right outline (448) on near's left outline: an edge snap on x,
+	-- the middles lined up on y. The screen is 1920 x 1080, its middle (960, 540).
+	drag(me, 80, 0, true)
+	check(EM.guideFrame:IsShown(), 'the guide frame shows')
+	-- x: along 960 + 448 = 1408, 743 (near's bottom outline) to 797 (its top)
+	eq(guide('x'), '1408,743,1,54', 'the x guide: the edge, from the far edge to the far edge')
+	-- y: along 540 + 230 = 770, from the dragged left outline 1304 to near's right outline 1512
+	eq(guide('y'), '1304,770,208,1', 'the y guide: the middle')
+	EM:StopDrag(me)
+	eq(guide('x') .. guide('y'), 'nonenone', 'the drop clears them')
+	check(not EM.guideFrame:IsShown(), 'and the frame')
+
+	drag(me, -310, -226, true)
+	eq(guide('x'), '960,0,1,1080', 'the screen center: the whole height')
+	eq(guide('y'), '0,540,1920,1', 'and the whole width')
+	EM:StopDrag(me)
+	reset()
+end)
+
+test('no guide without a snap, none for the grid, none after Disabled or in combat', function()
+	local me = world()
+	drag(me, -10, 5, true)
+	-- (303 is 3 from bar7's middle, 700 below: no target)
+	eq(guide('x') .. guide('y'), 'nonenone', 'nothing near: none')
+	EM:StopDrag(me)
+
+	settings().snap_frames, settings().snap_grid = false, true
+	drag(me, 7, 0, true)
+	eq(guide('x') .. guide('y'), 'nonenone', 'Snap to grid: none, the grid shows')
+	EM:StopDrag(me)
+
+	settings().snap_frames, settings().snap_grid = true, false
+	drag(me, -310, -226, true)
+	check(guide('x') ~= 'none', 'a snap: shown')
+	EM:Deactivate()
+	eq(guide('x') .. guide('y'), 'nonenone', 'Disabled clears them')
+
+	EM:Activate()
+	local scale = UIParent:GetEffectiveScale()
+	drag(me, -310, -226, true)
+	check(guide('x') ~= 'none', 'a snap again')
+	stub.in_combat = true
+	stub.cursor_x = stub.cursor_x + scale
+	EM:UpdateDrag(me)
+	eq(guide('x') .. guide('y'), 'nonenone', 'in combat: none')
+	stub.in_combat = false
+	EM:StopDrag(me)
 	reset()
 end)
