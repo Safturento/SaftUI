@@ -57,3 +57,4 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 36. **The SaftUI name: "Saft" in the text colour, "UI" in the accent.** ("Lets go with accent choice A.")
 37. **`/sui` remembers its size,** and everything of the config hides in combat, the mini bar included.
 38. **SaftUI gets its own colour picker** (the third drawn), and Blizzard's colour picker is skinned as well. ("That third color picker is awesome, I'm okay with the additional work so lets do it. Lets also skin the blizzard color picker anyways just to make it look nice")
+39. **At half size the bags' category list is a menu on a button,** still dragged to reorder there; the rule editor takes the width. ("I really like the 'list in a menu on a button' mockup, lets go with that for the build")
