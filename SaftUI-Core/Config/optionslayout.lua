@@ -6,7 +6,7 @@ local OB = st.OptionsBody
 	optionswindow.lua) and the layout math that needs no frame: OW.LAYOUT,
 	the sidebar's width and entries, the body's layout (OB's, here for the
 	window's tests), the window's height and width limits and the sizes' numbers
-	(OW.WindowWidth, OW.CornerOf and the rest), what changing size needs
+	(OW.WindowWidth, OW.CornerOf, OW.MiniLayout, OW.MiniShift and the rest), what changing size needs
 	(OW.SIZE_GUARD, OW.FirstInView, OW.OffsetFor, OW.InnerCuts), and where a
 	page's footer control sits (OW.FooterPlace). It loads first of the window's files
 	(Config/load.xml), so it makes OW and OW.S.
@@ -184,11 +184,19 @@ end
 	the screen, whatever the margin, so its grip and title bar stay on it.
 ]]
 
--- How far the window's art reaches past its edges in layout L: left, right,
+-- How far the metal reaches past the window's edges in layout L: left, right,
 -- top and bottom. Under Blizzard the metal does; under Thick and Thin nothing.
-local function ArtReach(L)
+local function MetalReach(L)
 	if L == OW.LAYOUT.blizzard then return st.ThemeArt.MetalReach() end
 	return 0, 0, 0, 0
+end
+
+-- How far the window's art reaches past its edges in layout L (MetalReach's),
+-- and none at the bar, a panel with no metal: what keeps the window on the
+-- screen keeps the bar's own edges on it.
+local function ArtReach(L)
+	if S.size == 'mini' then return 0, 0, 0, 0 end
+	return MetalReach(L)
 end
 
 -- How far in from the screen's top and bottom the window's edges keep in
@@ -224,7 +232,7 @@ end
 function OW.MaxWidth(L)
 	L = L or S.layout
 	local margin = max(0, st.config.profile.misc.clamp_inset)
-	local left, right = ArtReach(L)
+	local left, right = MetalReach(L) -- the metal's, even at the bar: what it grows back to has it
 	local room = floor(UIParent:GetWidth() + 0.5) - 2 * margin - left - right
 	return max(0, 2 * floor(room / 2))
 end
@@ -259,6 +267,48 @@ function OW.WindowWidth(L, size, sidebar)
 	if sidebar == false then width = width - L.sideWidth end
 	if size ~= 'full' then width = width - (OB.WIDTH - L.halfBody) end
 	return width
+end
+
+-- The bar's width and its texts' (OW.MINI_MAX at most), from the widths of the
+-- name, the page's name, the tab's name (0 for none) and the buttons (grow, 8,
+-- close). Each width is rounded first (a width the game reads back has float
+-- noise). The parts are 12 in, 8 apart and 8 from the end:
+-- 12 + brand + 8 + page + 8 + tab + 8 + buttons + 8, the tab and its gap
+-- dropped when there is none; the width is rounded up to even (the small
+-- dialog sits on the window's centre). Too wide for OW.MINI_MAX, the tab is cut
+-- first, to what is left, and dropped with its gap when none is; then the
+-- page. Returns the page's and the tab's widths as they are drawn, and the
+-- bar's.
+function OW.MiniLayout(brand, page, tab, buttons)
+	local function Whole(value) return floor(value + 0.5) end
+	brand, page, tab, buttons = Whole(brand), Whole(page), Whole(tab), Whole(buttons)
+	local function Total()
+		return 12 + brand + 8 + page + 8 + (tab > 0 and tab + 8 or 0) + buttons + 8
+	end
+	local over = Total() - OW.MINI_MAX
+	if over > 0 then
+		tab = max(0, tab - over)
+		over = Total() - OW.MINI_MAX
+		if over > 0 then page = max(0, page - over) end
+	end
+	local width = Total()
+	return page, tab, width + width % 2
+end
+
+-- How far the bar's top right corner sits from the window's, as the offset to
+-- add to the corner: under Blizzard the metal's right and top reach, which puts
+-- the bar where the metal's corner was; else nothing. At the bar the window is
+-- anchored at S.corner plus this, and a drag saves the corner less it.
+function OW.MiniShift(L)
+	local _, right, top = MetalReach(L)
+	return right, top
+end
+
+-- The name on the sidebar and the bar: "Saft" in the text colour, "UI" in the
+-- accent (Button > Blue), read at each draw so a change of colour shows.
+function OW.BrandText()
+	local r, g, b = OB.Blue()
+	return ('Saft|cff%02x%02x%02xUI|r'):format(floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5))
 end
 
 -- Where the main column starts, from the window's left: after the sidebar, or

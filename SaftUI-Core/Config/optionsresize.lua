@@ -57,9 +57,9 @@ end
 
 -- The window's height again (OW.WindowHeight), from its current anchor, while
 -- it shows and isn't being resized: for a change of the screen edge margin,
--- which moves OW.MaxHeight.
+-- which moves OW.MaxHeight. The bar is always 42 tall: nothing for it.
 local function ApplyHeight()
-	if not (F.window and F.window:IsShown()) or S.sizing then return end
+	if not (F.window and F.window:IsShown()) or S.sizing or S.size == 'mini' then return end
 	local height = OW.WindowHeight(S.layout)
 	if F.window:GetHeight() == height then return end
 	F.window:SetHeight(height)

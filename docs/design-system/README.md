@@ -38,6 +38,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 | --- | --- | --- | --- |
 | Page title | `page-title` 34 | Colus | the `/sui` page's name |
 | Brand, dialog title | `brand` 26 | Colus | sidebar brand, small dialog |
+| Bar brand | `brand-mini` 18 | Colus | the mini bar's name: Saft in the text colour, UI in the accent |
 | Section title | `section-title` 15 | Colus | over each panel, in `text-grey` |
 | Group title | `group-title` 13 | Colus | sidebar groups, a menu's title |
 | Caption | `caption` 11 | Colus | position block parts |

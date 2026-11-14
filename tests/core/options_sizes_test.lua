@@ -68,6 +68,39 @@ test('OW.NextSize steps full, half, mini and back, and stops at each end', funct
 	eq(steps('full', 1, 'half', 1, 'mini', 1, 'mini', -1, 'half', -1, 'full', -1), 'half mini nil half full nil')
 end)
 
+test('OW.MiniLayout: the bar is its parts and their gaps, rounded up to even, at most 400, the tab cut first and then the page', function()
+	local function layout(...) return table.concat({ OW.MiniLayout(...) }, ' ') end
+	eq(layout(54, 90, 70, 56), '90 70 314', '12 + 54 + 8 + 90 + 8 + 70 + 8 + 56 + 8')
+	local _, _, width = OW.MiniLayout(54, 90, 0, 56)
+	eq(width, 236, 'no tab: its gap goes too')
+	eq(layout(54, 90, 0, 56), '90 0 236')
+	eq(layout(55, 90, 70, 56), '90 70 316', '315 rounded up to even')
+	eq(layout(53.99997, 90.00002, 69.99999, 56), '90 70 314', 'each width is rounded first')
+	eq(layout(54, 90, 70, 56.4), '90 70 314')
+	-- Too wide for MINI_MAX: the tab is cut first, to what is left, and dropped with its gap when none is.
+	eq(layout(54, 100, 300, 56), '100 146 400', 'the tab cut to the room')
+	eq(layout(54, 300, 300, 56), '254 0 400', 'the tab goes, then the page is cut')
+	eq(layout(54, 400, 0, 56), '254 0 400', 'a page alone is cut to the room')
+	eq(layout(54, 254, 0, 56), '254 0 400', 'a page that just fits')
+	eq(layout(54, 255, 0, 56), '254 0 400', 'one over is cut')
+	for _, args in ipairs({ { 54, 90, 70, 56 }, { 61, 117, 33, 56 }, { 61, 117, 331, 60 }, { 40, 500, 500, 60 } }) do
+		local _, _, w = OW.MiniLayout(unpack(args))
+		eq(w % 2, 0, 'even'); check(w <= OW.MINI_MAX, 'at most MINI_MAX')
+	end
+end)
+
+test('OW.MiniShift: under Blizzard the metal\'s right and top reach, else nothing; OW.BrandText is Saft and the accent\'s UI', function()
+	local _, reach_right, reach_top = st.ThemeArt.MetalReach()
+	local dx, dy = OW.MiniShift(OW.LAYOUT.blizzard)
+	eq(dx .. ' ' .. dy, reach_right .. ' ' .. reach_top, 'the metal\'s right and top reach')
+	check(dx > 0 and dy > 0, 'some')
+	dx, dy = OW.MiniShift(OW.LAYOUT.own)
+	eq(dx .. ' ' .. dy, '0 0', 'none under Thick and Thin')
+	local blue = st.config.profile.colors.button.blue
+	local hex = ('%02x%02x%02x'):format(math.floor(blue.r * 255 + 0.5), math.floor(blue.g * 255 + 0.5), math.floor(blue.b * 255 + 0.5))
+	eq(OW.BrandText(), 'Saft|cff' .. hex .. 'UI|r')
+end)
+
 test('OW.SavedState reads an older save, bad values and a saved bar safely', function()
 	local function state(saved)
 		st.config.global.optionsWindow = saved
@@ -378,7 +411,7 @@ test('Shrink to half: 386 narrower from the left; the corner, the close X and th
 	eq(w:GetWidth(), 654, '1040 less 386'); eq(w:GetRight(), right, 'the right edge stays'); eq(w:GetTop(), top, 'and the top')
 	eq(F.close:GetLeft(), closeLeft, 'the close X stays'); eq(F.shrink:GetLeft(), shrinkLeft, 'and the shrink arrow')
 	check(F.grow:IsShown(), 'grow at half'); eq(F.grow:GetRight(), F.shrink:GetLeft() - 6, '6 left of shrink')
-	check(not F.shrink:IsShown(), 'shrink is hidden at half until the bar exists')
+	check(F.shrink:IsShown(), 'shrink shows at half, beside grow')
 	eq(F.content:GetWidth(), 388, 'the body one column')
 	local state = OW:GetState()
 	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/player/general', 'the page, pick and tab kept')
