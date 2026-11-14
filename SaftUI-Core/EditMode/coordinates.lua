@@ -19,6 +19,7 @@ local EM = st.EditModeFrames
 	  EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop) -> x, y
 	                           the label's bottom left in UIParent units, whole
 	  EM:ScreenTop() -> number                          where the label must stay under
+	                           (UIParent's height less EM:BarCoverHeight())
 	  EM:UpdateCoordinates()                            shows, places or hides it
 	  EM.coordinates                                    the label's frame (.text)
 
@@ -129,15 +130,12 @@ function EM.CoordinatesSpot(point, rect, width, height, screenWidth, screenTop)
 	return x, y
 end
 
--- UIParent's height, less the bar's height and the line it draws below it
--- (its backdrop's inset) while the bar is shown across the top.
+-- UIParent's height, less what the bar covers at the top (EM:BarCoverHeight:
+-- its height and the line it draws below it while it is docked and shown, 0
+-- while it floats or is hidden).
 function EM:ScreenTop()
-	local top = UIParent:GetHeight()
-	local bar = self.bar
-	if bar and bar:IsShown() then
-		top = top - self.BAR.HEIGHT - st:ThemeInset('theme', 'theme', 'panel')
-	end
-	return top
+	local cover = self.BarCoverHeight and self:BarCoverHeight() or 0
+	return UIParent:GetHeight() - cover
 end
 
 ------------------------------------------------------------------ the label
@@ -234,6 +232,7 @@ EM:On('Selected', Update)
 EM:On('SettingsChanged', Update)
 EM:On('ColorsChanged', Update)
 EM:On('PositionChanged', Update)
+EM:On('BarModeChanged', Update) -- the bar docked or detached: what it covers at the top changed
 
 -- A drag moves the frame every frame: Tick follows it without the throttle (the
 -- drag's own OnUpdate, on the overlay, has run by then or runs next frame).
