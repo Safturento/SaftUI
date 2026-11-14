@@ -209,7 +209,10 @@ end)
 
 test('a font the game cannot load says "failed to load" in its row', function()
 	local row = FD.rows[5]
-	for _, t in ipairs(row.texts) do t.fs.SetFont = function() return false end end
+	local set = FD.SetTextFont
+	local mine = {}
+	for _, t in ipairs(row.texts) do mine[t] = true end
+	FD.SetTextFont = function(text, ...) if mine[text] then return false end return set(text, ...) end
 	FD:Refresh()
 	check(row.failed, 'failed')
 	check(row.failure:IsShown(), 'message shown')
@@ -217,9 +220,21 @@ test('a font the game cannot load says "failed to load" in its row', function()
 	check(not row.specimen:IsShown(), 'specimens hidden')
 	eq(row.failure:GetFontObject(), st:GetFont('normal'), 'in the normal font')
 	check(not FD.rows[4].failed and FD.rows[4].specimen:IsShown(), 'other rows unaffected')
-	for _, t in ipairs(row.texts) do t.fs.SetFont = nil end
+	FD.SetTextFont = set
 	FD:Refresh()
 	check(not row.failed and row.specimen:IsShown(), 'recovers when it loads')
+end)
+
+test('a text whose own SetFont fails takes a font object set to the same file', function()
+	local row = FD.rows[5]
+	for _, t in ipairs(row.texts) do t.fs.SetFont = function() return false end end
+	FD:Refresh()
+	check(not row.failed and row.specimen:IsShown(), 'loaded through the font object')
+	local t = row.texts[1]
+	eq(t.fs:GetFontObject(), t.object, 'the text takes its font object')
+	eq((t.object:GetFont()), row.def.path, 'set to the row\'s file')
+	for _, t in ipairs(row.texts) do t.fs.SetFont = nil end
+	FD:Refresh()
 end)
 
 test('the window scrolls: its content is taller than the window at scale 1.55', function()

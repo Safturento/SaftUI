@@ -57,8 +57,36 @@ end
 -- row again a moment later while it still says it failed (FD:RetryFailed).
 local preload = CreateFrame('Frame')
 preload:Hide()
-for _, candidate in ipairs(FD.CANDIDATES) do
-	preload:CreateFontString(nil, 'OVERLAY'):SetFont(CandidatePath(candidate), 12, '')
+FD.loadTime = {}
+for i, candidate in ipairs(FD.CANDIDATES) do
+	local path = CandidatePath(candidate)
+	-- The font test showed a font string's SetFont fails for every file the
+	-- game has not loaded yet, old files included, and SaftUI's working fonts
+	-- are all set on font objects while the addon loads. So each candidate is
+	-- set on a font object here, at load, and the result kept for the test.
+	local object = CreateFont('SaftUIFontDemoPreload' .. i)
+	object:SetFont(path, 12, '')
+	FD.loadTime[i] = {
+		family = candidate.family,
+		object = object:GetFont() ~= nil,
+		string = preload:CreateFontString(nil, 'OVERLAY'):SetFont(path, 12, '') and true or false,
+	}
+end
+
+-- Sets one specimen text's font and says whether it loaded. A font string's
+-- own SetFont first; when that fails, a font object of the text's own, which
+-- the text then takes.
+local objects = 0
+function FD.SetTextFont(text, path, size, flags)
+	if text.fs:SetFont(path, size, flags) then return true end
+	if not text.object then
+		objects = objects + 1
+		text.object = CreateFont('SaftUIFontDemoText' .. objects)
+	end
+	text.object:SetFont(path, size, flags)
+	if text.object:GetFont() ~= path then return false end
+	text.fs:SetFontObject(text.object)
+	return text.fs:GetFont() ~= nil
 end
 
 -- What the controls pick. outline is a key of OUTLINES.
@@ -273,7 +301,7 @@ function FD:ApplyRow(row)
 	local flags = fixed and fixed.flags or Flags(s.outline)
 	local loaded = true
 	for _, text in ipairs(row.texts) do
-		if not text.fs:SetFont(row.def.path, size * text.mult, flags) then loaded = false end
+		if not FD.SetTextFont(text, row.def.path, size * text.mult, flags) then loaded = false end
 		text.fs:SetShadowColor(0, 0, 0, 1)
 		if s.shadow then text.fs:SetShadowOffset(1, -1) else text.fs:SetShadowOffset(0, 0) end
 	end
@@ -627,17 +655,22 @@ function FD:Diagnose()
 		if ok then fs:SetText('Test 123') end
 		strings[i] = fs
 		local object = CreateFont('SaftUIFontTest' .. run .. '_' .. i)
-		local okObject = object:SetFont(path, 12, '')
+		object:SetFont(path, 12, '')
 		objects[i] = object
-		print(('%d. %s: string %s, font object %s'):format(i, test[1], tostring(ok), tostring(okObject)))
+		print(('%d. %s: string %s, font object reads back %s'):format(i, test[1], tostring(ok), tostring(object:GetFont())))
 		print('   ' .. path)
+	end
+	print('|cff00adefSaftUI font test|r candidates set while the addon loaded (font object, font string):')
+	for _, at in ipairs(self.loadTime or {}) do
+		print(('   %s: %s, %s'):format(at.family, tostring(at.object), tostring(at.string)))
 	end
 	local function Again(label)
 		local a, b = {}, {}
 		for i, test in ipairs(DIAG) do
 			local path = st:FontPath(test[2])
 			a[i] = tostring(strings[i]:SetFont(path, 12, ''))
-			b[i] = tostring(objects[i]:SetFont(path, 12, ''))
+			objects[i]:SetFont(path, 12, '')
+			b[i] = tostring(objects[i]:GetFont() ~= nil)
 		end
 		print('|cff00adefSaftUI font test|r ' .. label .. ': strings ' .. table.concat(a, ', '))
 		print('   font objects ' .. table.concat(b, ', '))
