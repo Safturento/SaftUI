@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
@@ -135,6 +136,28 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-13 — Objective tracker skin: in-game checks and what was left out
+
+**What:** SaftUI now skins Blizzard's objective tracker and moves it in `/sui edit` (merged into `modular` at 89cf68a; the user: "can we look at skinning the blizzard objective tracker?", "definitely want it movable at least with /sui edit"). It was built and reviewed three times on stubs and has never run in game. This entry is its in-game checks and the parts left for later.
+
+**Why noticed:** The task's reports and reviews (2026-11-13). The tracker is easy to break in combat: a layout that runs tainted makes the quest item buttons it creates tainted for the session, and using an item in combat is then blocked.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTracker.lua` (the skin), `Blizzard_ObjectiveTrackerPosition.lua` (the mover: `OTP:PlaceTracker`, `OTP:CapturePosition`, `OTP:KeepPlacement`), `.agents/taint.md` rule 5, `tests/misc/objective_tracker_*_test.lua` and `tests/misc/fixtures/objective_tracker.lua`.
+
+**In-game checks (Forever), most important first:**
+
+1. `/console taintLog 1`, `/reload`. With no quest item shown yet: switch the theme Thick, Blizzard, Thick; change the tracker's font in `/sui`; drag the tracker in `/sui edit`. Then, in combat, accept or track a quest with an item, and use the item in combat. No "Interface action failed"; `Logs/taint.log` has no "blocked" line and nothing tainted by SaftUI naming `dirty`, `charges`, `rangeTimer`, `OnClick` or an `ObjectiveTracker` field.
+2. `/run print(issecurevariable(ObjectiveTrackerFrame,"dirty"),issecurevariable(QuestObjectiveTracker,"GetBlock"),issecurevariable(ObjectiveTrackerFrame,"SetPoint"))` prints `true true true`, also after a drag, a theme switch and a dungeon.
+3. The look, out of combat: headers with no banners and a thin line; titles and objectives in SaftUI's font with no overlapping lines; collapse buttons as small boxes with a chevron that flips; a scenario or dungeon's progress bar flat with SaftUI's border; a quest item button square with SaftUI's border and a blue hover.
+4. `/sui edit`: the "Objective Tracker" outline sits on the tracker's header; drag it, `/reload`, it stays. Blizzard's Edit Mode shows no box for the tracker; saving a layout there doesn't move it. A tracker moved in Blizzard's Edit Mode before this build stays where it was on first load.
+5. Theme to Blizzard: exactly Blizzard's look; back to Thick with no reload. Skinning > Objective tracker off: Blizzard's look at once, and still movable.
+6. Whether frames Blizzard stacks above the tracker in its right column (the durability figure, vehicle seats, widgets under the minimap) draw over its header now that its top is pinned.
+7. After a dungeon run, BugGrabber has nothing from SaftUI.
+
+**Left out, for later:** a Height setting (sizing the tracker from addon code may taint its layout; only the game can show whether it is safe) and Blizzard's Opacity and Text Size, which SaftUI's edit mode now hides; the large art panels (auto quest popups, the scenario stage, challenge mode and proving grounds banners), the bars' round reward icon, the map pin and find group buttons; standing down for another tracker addon; a default spot clear of SaftUI's minimap and experience bars.
+
+**Shape of work:** The checks first. Then small tasks as the user asks for them; the art panels need a design pass.
 
 ### 2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect
 
