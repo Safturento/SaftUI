@@ -29,7 +29,9 @@ local Kit = W.Kit
 	are drawn): a 170 square for shade (saturation across, brightness up) of
 	the current hue, a 16 wide strip for hue and, with hasAlpha, another for
 	opacity (the color over a checker, solid at the top), their captions; a
-	column 152 wide with New and Was (a click on Was goes back to it), the
+	column 152 wide with the color it opened with at the left (a click on it
+	goes back to it), a chevron-right, and the color being chosen at the right
+	(no words on them; each has a tooltip), the
 	red, green and blue boxes (0 to 255), the opacity box (a percent, hasAlpha
 	only) and the hex box; Class colors (SaftUI's own, a chip for each class
 	the client has, its name the tooltip), Last used (up to 12, newest first,
@@ -189,8 +191,9 @@ local PAD = 20
 local BODY_Y = 48 -- the square's top, under the title
 local SQUARE, STRIP_WIDTH, GAP = 170, 16, 16
 local INNER = SQUARE - 2 -- inside the 1px edge of the square and the strips
-local COLUMN = 152 -- two equal, even halves of 76
-local HALF_WIDTH, HALF_HEIGHT = COLUMN / 2, 26
+local COLUMN = 152 -- two equal, even blocks of 64 with a gap of 24 between them
+local BLOCK_WIDTH, BLOCK_HEIGHT, BLOCK_GAP = 64, 26, 24
+local ARROW = 16 -- the chevron in the gap, 4 either side (the size the bags' next-category button draws it)
 local BOX_WIDTH, BOX_HEIGHT = 84, 22
 local ROW_FIRST, ROW_PITCH = 34, 28 -- the first number row, in from the column's top; between rows
 local CAPTION_SIZE = 13
@@ -303,7 +306,7 @@ end
 ------------------------------------------------------------------ the color
 
 -- The state painted: the square's hue, the thumbs, the opacity strip's color,
--- New, and the boxes (not the one being typed in).
+-- the chosen block, and the boxes (not the one being typed in).
 local function ShowBoxes()
 	for _, edit in ipairs(F.edits) do
 		if not edit:HasFocus() then edit:SetText(edit.show()) end
@@ -324,7 +327,6 @@ local function Paint()
 	end
 	local shown = alpha and S.a or 1
 	F.new:Paint(S.r, S.g, S.b, shown)
-	F.newText:SetTextColor(F.Contrast(S.r, S.g, S.b))
 	ShowBoxes()
 end
 
@@ -630,12 +632,6 @@ local function Caption(text, justify)
 	return fs
 end
 
--- Black or white, whichever reads on the color.
-function F.Contrast(r, g, b)
-	if 0.299 * r + 0.587 * g + 0.114 * b > 0.55 then return 0, 0, 0 end
-	return 1, 1, 1
-end
-
 local function BuildSquare()
 	local square = Box(st:CreateFrame('Frame', nil, frame), { 0, 0, 0, 1 })
 	square:SetSize(SQUARE, SQUARE)
@@ -691,29 +687,30 @@ local function BuildAlpha()
 	F.alpha = alpha
 end
 
-local function BuildHalves()
-	local function Half(label)
-		local half = NewSwatch(frame, HALF_WIDTH, HALF_HEIGHT)
-		half.text = NewText(half, 'CENTER')
-		half.text:SetPoint('CENTER', half, 'CENTER', 0, 0)
-		half.text:SetText(label)
-		return half
+-- The color it opened with (left), a chevron-right, the color being chosen
+-- (right): no words on the colors, which a text can't be read on.
+local function BuildBlocks()
+	local function Tip(block, title, line)
+		block:SetScript('OnEnter', function(self)
+			Edge(self, true)
+			tipOwner = self
+			W.ShowTip(self, title, { line }, 'ANCHOR_TOP')
+		end)
+		block:SetScript('OnLeave', function(self)
+			Edge(self, false)
+			W.HideTip(self)
+		end)
 	end
-	F.new, F.was = Half('New'), Half('Was')
-	F.newText, F.wasText = F.new.text, F.was.text
+	F.was = NewSwatch(frame, BLOCK_WIDTH, BLOCK_HEIGHT)
+	F.new = NewSwatch(frame, BLOCK_WIDTH, BLOCK_HEIGHT)
+	F.arrow = frame:CreateTexture(nil, 'OVERLAY')
+	F.arrow:SetTexture(st.icons.chevronRight)
+	F.arrow:SetSize(ARROW, ARROW)
 	F.was:SetScript('OnClick', function()
 		if spec then SetRGBA(spec.r, spec.g, spec.b, spec.hasAlpha and spec.a or S.a) end
 	end)
-	F.was:SetScript('OnEnter', function(self)
-		Edge(self, true)
-		tipOwner = self
-		W.ShowTip(self, 'Was', { 'Go back to the color it opened with.' }, 'ANCHOR_TOP')
-	end)
-	F.was:SetScript('OnLeave', function(self)
-		Edge(self, false)
-		W.HideTip(self)
-	end)
-	F.new:EnableMouse(false)
+	Tip(F.was, 'Current', 'The color it opened with. Click to go back to it.')
+	Tip(F.new, 'New', 'The color being chosen.')
 end
 
 local function Build()
@@ -735,7 +732,7 @@ local function Build()
 	BuildSquare()
 	BuildHue()
 	BuildAlpha()
-	BuildHalves()
+	BuildBlocks()
 	F.shadeCaption, F.hueCaption, F.alphaCaption = Caption('Shade', 'CENTER'), Caption('Hue', 'CENTER'), Caption('Opacity', 'CENTER')
 	F.classCaption, F.recentCaption = Caption('Class colors', 'LEFT'), Caption('Last used', 'LEFT')
 	F.shadeCaption:SetPoint('TOP', F.square, 'BOTTOM', 0, -4)
@@ -813,8 +810,9 @@ local function Layout(hasAlpha)
 	Place(F.alpha, frame, alphaX, BODY_Y)
 	F.alpha:SetShown(hasAlpha)
 	F.alphaCaption:SetShown(hasAlpha)
-	Place(F.new, frame, columnX, BODY_Y)
-	Place(F.was, frame, columnX + HALF_WIDTH, BODY_Y)
+	Place(F.was, frame, columnX, BODY_Y)
+	Place(F.arrow, frame, columnX + BLOCK_WIDTH + (BLOCK_GAP - ARROW) / 2, BODY_Y + (BLOCK_HEIGHT - ARROW) / 2)
+	Place(F.new, frame, columnX + COLUMN - BLOCK_WIDTH, BODY_Y)
 	local row = 0
 	for _, edit in ipairs(F.edits) do
 		local shown = hasAlpha or not edit.alpha
@@ -842,6 +840,7 @@ local function Look()
 	W.LookControl(F.cancel, blizzard)
 	local r, g, b = Colors().text.grey:GetRGB()
 	for _, caption in ipairs(F.captions) do caption:SetTextColor(r, g, b) end
+	F.arrow:SetVertexColor(r, g, b)
 	r, g, b = Colors().text.normal:GetRGB()
 	for _, edit in ipairs(F.edits) do edit.label:SetTextColor(r, g, b) end
 end
@@ -882,7 +881,6 @@ function W.OpenColorPicker(owner, options)
 	FillClassChips()
 	FillRecentChips()
 	F.was:Paint(spec.r, spec.g, spec.b, hasAlpha and spec.a or 1)
-	F.wasText:SetTextColor(F.Contrast(spec.r, spec.g, spec.b))
 	frame:SetFrameStrata('FULLSCREEN_DIALOG')
 	frame:SetFrameLevel(LEVEL)
 	PlaceBeside(owner)
