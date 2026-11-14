@@ -128,6 +128,7 @@ function CP.build(opts)
 	local frame = CreateFrame('Frame', 'ColorPickerFrame', UIParent)
 	frame:SetSize(388, 210)
 	frame:SetFrameStrata('DIALOG')
+	frame:EnableMouse(true)
 	frame:SetPoint('CENTER')
 	frame:Hide()
 
@@ -304,5 +305,41 @@ function CP.keys(widget)
 	return table.concat(out, ',')
 end
 
+
+-- A click at (x, y) in UIParent's units, as the game and Blizzard's handler
+-- (ColorPickerFrameMixin:OnEvent, GLOBAL_MOUSE_DOWN) see it: the frame under
+-- the point that takes the mouse is the highest by frame level (the later of
+-- equals), and the picker, while shown, cancels and hides itself unless that
+-- frame is it or one of its descendants (DoesAncestryIncludeAny(self,
+-- GetMouseFoci())). Returns the frame that got the click (nil for none) and
+-- whether the picker cancelled.
+function CP.click(x, y)
+	local focus
+	local function walk(frame)
+		if frame:IsVisible() and frame:IsMouseEnabled() then
+			local l, r, t, b = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+			if l and x >= l and x <= r and y >= b and y <= t
+					and (not focus or frame:GetFrameLevel() >= focus:GetFrameLevel()) then
+				focus = frame
+			end
+		end
+		for _, kid in ipairs({ frame:GetChildren() }) do walk(kid) end
+	end
+	walk(CP.frame)
+	local inside = false
+	local f = focus
+	while f do
+		if f == CP.frame then inside = true break end
+		f = f:GetParent()
+	end
+	local cancelled = false
+	if CP.frame:IsShown() and not inside then
+		cancelled = true
+		driving = driving + 1
+		pcall(CP.frame.Hide, CP.frame)
+		driving = driving - 1
+	end
+	return focus, cancelled
+end
 
 return CP

@@ -172,9 +172,19 @@ local function check_blizzard(where)
 	end
 end
 
-local function panel_of(frame)
-	return the_one(own_children(frame), 'one frame of SaftUI\'s on the picker: its panel')
+-- The picker's two frames of SaftUI's: its panel and, over the panel's top
+-- band, the frame that takes the mouse.
+local function own_frames(frame)
+	local panel, band
+	local children = own_children(frame)
+	eq(#children, 2, "two frames of SaftUI's on the picker: its panel and the band over its top")
+	for _, child in ipairs(children) do
+		if child:IsMouseEnabled() then band = child else panel = child end
+	end
+	return panel, band
 end
+
+local function panel_of(frame) return (own_frames(frame)) end
 
 local function check_skinned(where)
 	local frame = CP.frame
@@ -427,7 +437,7 @@ test('skinned once: a second Install and a repeated style add nothing', function
 	skin:StyleAll()
 	skin:UpdateConfig()
 	check_skinned('after repeats')
-	eq(#own_children(CP.frame), 1, 'one panel')
+	eq(#own_children(CP.frame), 2, 'one panel and one band')
 	eq(#own_children(CP.frame.Content.HexBox), 1, 'one hex backdrop')
 	clean()
 end)
@@ -521,5 +531,65 @@ test('skin on then off puts back every font, color and the title anchor it read'
 	check_skinned('on again')
 	switch('blizzard')
 	check_blizzard('Blizzard')
+	clean()
+end)
+
+test("a click on the panel's top band is not a click outside the picker; the drag bar keeps its clicks", function()
+	world('forever')
+	local frame = CP.frame
+	for _, opacity in ipairs({ true, false }) do
+		CP.show({ r = 1, g = 0, b = 0, hasOpacity = opacity, opacity = 1, swatchFunc = function() end, cancelFunc = function() end })
+		local panel, band = own_frames(frame)
+		local header = frame.Header
+		local top = frame:GetTop()
+		local y = top + (panel:GetTop() - top) / 2 -- in the band above the picker
+		check(y > top, 'the band reaches above the picker')
+		check(band:GetTop() == panel:GetTop() and band:GetBottom() == top, 'the band is the part of the panel above the picker')
+		local where = opacity and '388' or '331'
+		-- Left and right of the header (which is 200 wide, centered).
+		for _, x in ipairs({ frame:GetLeft() + 12, frame:GetRight() - 12 }) do
+			check(x < header:GetLeft() or x > header:GetRight(), 'a point beside the header')
+			local focus, cancelled = CP.click(x, y)
+			eq(focus, band, where .. ': the band takes the click beside the header')
+			eq(cancelled, false, where .. ': not treated as outside')
+			check(frame:IsShown(), where .. ': the picker stays open')
+		end
+		-- On the header the drag bar still gets it, and it is the picker's own.
+		local focus, cancelled = CP.click((header:GetLeft() + header:GetRight()) / 2, y)
+		eq(focus, frame.DragBar, where .. ': the drag bar gets the click on the header')
+		eq(cancelled, false, where .. ': and it is not outside either')
+		-- A click inside the picker, and one outside the band and the picker.
+		focus, cancelled = CP.click(frame:GetLeft() + 30, top - 40)
+		eq(cancelled, false, where .. ': inside the picker')
+		focus, cancelled = CP.click(frame:GetLeft() + 12, panel:GetTop() + 20)
+		eq(cancelled, true, where .. ': above the panel is outside, as before')
+		check(not frame:IsShown(), where .. ': so it cancelled')
+	end
+	clean()
+end)
+
+test('the band takes the mouse only while skinned: off, or under the Blizzard theme, nothing of SaftUI\'s does', function()
+	local function mouse_takers()
+		local count = 0
+		local function walk(f)
+			if not blizzard[f] and f.IsMouseEnabled and f:IsMouseEnabled() and f:IsShown() then count = count + 1 end
+			for _, kid in ipairs({ f:GetChildren() }) do walk(kid) end
+		end
+		walk(CP.frame)
+		return count
+	end
+	world('forever', { off = true })
+	eq(mouse_takers(), 0, 'toggle off at load')
+	world('forever', { theme = 'blizzard' })
+	eq(mouse_takers(), 0, 'Blizzard from the start')
+	world('forever')
+	eq(mouse_takers(), 1, 'skinned: the band')
+	switch('blizzard')
+	eq(mouse_takers(), 0, 'Blizzard: the band hidden, takes no mouse')
+	switch('thick')
+	eq(mouse_takers(), 1, 'Thick again')
+	profile.skinning.color_picker = false
+	SK:UpdateConfig()
+	eq(mouse_takers(), 0, 'toggled off')
 	clean()
 end)

@@ -16,7 +16,10 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	  - ColorPickerFrame: SaftUI's panel behind it (st:SetBackdropIn, kind panel,
 	    a child one level under it, so it follows the frame's size, which
 	    Blizzard's OnShow changes with the alpha slider), reaching up over the
-	    header's band so the drag bar leaves no invisible strip above it, and
+	    header's band so the drag bar leaves no invisible strip above it (the
+	    part above the picker is a mouse-taking frame of SaftUI's, a child of the
+	    picker at its level under the drag bar, so a click there isn't "outside"
+	    to Blizzard's GLOBAL_MOUSE_DOWN handler, which cancels the picker), and
 	    .Border (the NineSlice dialog frame, DialogBorderTemplate) faded. Its
 	    frames are kept on whole pixels by the game (SetRoundLayoutToNearestPixel),
 	    since the centered picker is 331 or 388 wide and its edges can sit on
@@ -92,6 +95,7 @@ local BUTTON_INSET = 1 -- the box inside the button, so the two buttons, which t
 local weak = { __mode = 'k' }
 local panels = setmetatable({}, weak)    -- ColorPickerFrame -> its panel (st:SetBackdropIn)
 local buttons = setmetatable({}, weak)   -- button -> { box }
+local bands = setmetatable({}, weak)    -- ColorPickerFrame -> the mouse-taking frame over the panel's top band
 local boxes = setmetatable({}, weak)     -- HexBox -> its backdrop (st:SetBackdropIn)
 local hooked = setmetatable({}, weak)    -- HexBox or button -> true once its hooks are on
 local hovered = setmetatable({}, weak)   -- button -> true while the mouse is over it
@@ -206,7 +210,26 @@ local function StylePanel(frame, active)
 			panel:SetPoint('TOPLEFT', frame, 'TOPLEFT', -inset, rise + inset)
 			panel:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', inset, -inset)
 			Round(panel)
+			-- The band of the panel above the picker takes the mouse, as a
+			-- child of the picker: Blizzard's GLOBAL_MOUSE_DOWN handler cancels
+			-- and hides it for a click whose frame under the mouse
+			-- (GetMouseFoci) isn't it or a descendant (DoesAncestryIncludeAny),
+			-- and a click there would otherwise reach nothing of the picker's.
+			-- At the picker's own level, so its DragBar (a child, above it)
+			-- still gets the header's clicks.
+			local band = bands[frame]
+			if not band then
+				band = st:CreateFrame('Frame', nil, frame)
+				band:EnableMouse(true)
+				bands[frame] = band
+			end
+			band:ClearAllPoints()
+			band:SetPoint('TOPLEFT', frame, 'TOPLEFT', -inset, rise + inset)
+			band:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', inset, 0)
+			local level = frame:GetFrameLevel()
+			if not issecretvalue(level) then band:SetFrameLevel(level) end
 		end
+		if bands[frame] then bands[frame]:SetShown(active) end
 	end
 	if frame.Border and frame.Border.SetAlpha then frame.Border:SetAlpha(active and 0 or 1) end
 end
