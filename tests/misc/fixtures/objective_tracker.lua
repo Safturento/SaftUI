@@ -95,6 +95,8 @@
 	form: OT.size_reads.plain['GetHeight'] and OT.size_reads.ignore['GetHeight']
 	(GetWidth, GetHeight and GetSize with ignoreRect true, which skips the rect
 	resolve that could run a pending OnSizeChanged inside the caller).
+	GetRect, GetLeft, GetRight, GetTop, GetBottom and GetCenter count too: they
+	resolve the rect, so they only ever show under 'plain'.
 
 	Not built: the quest log and its events, the dirty updates and the
 	container's module stacking, heights (every text measures 12), POI and
@@ -885,7 +887,9 @@ end
 function OT.break_snap()
 	return drive(function()
 		local tracker = OT.tracker
+		OT.blizzard_read = true -- Blizzard's own rect read, not SaftUI's: not counted
 		local top, left = tracker:GetTop(), tracker:GetLeft()
+		OT.blizzard_read = nil
 		tracker:ClearAllPoints()
 		tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', left, top - UIParent:GetHeight())
 		local point, relativeTo, relativePoint, x, y = tracker:GetPoint(1)
@@ -957,11 +961,13 @@ function OT.watch_size()
 	local frames = { OT.tracker }
 	for _, name in ipairs(OT.MODULES) do frames[#frames + 1] = OT.modules[name] end
 	for _, frame in ipairs(frames) do
-		for _, name in ipairs({ 'GetWidth', 'GetHeight', 'GetSize' }) do
+		for _, name in ipairs({ 'GetWidth', 'GetHeight', 'GetSize', 'GetRect', 'GetLeft', 'GetRight', 'GetTop', 'GetBottom', 'GetCenter' }) do
 			local read = frame[name]
 			rawset(frame, name, function(self, ignoreRect, ...)
-				local form = ignoreRect and counts.ignore or counts.plain
-				form[name] = (form[name] or 0) + 1
+				if not OT.blizzard_read then
+					local form = ignoreRect and counts.ignore or counts.plain
+					form[name] = (form[name] or 0) + 1
+				end
 				return read(self, ignoreRect, ...)
 			end)
 		end

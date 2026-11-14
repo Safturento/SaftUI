@@ -41,7 +41,7 @@ local OTP = st:NewModule('ObjectiveTracker')
 
 	SaftUI never sets the tracker's height, and never reads its size in a way
 	that could run its OnSizeChanged (GetWidth(true) and GetHeight(true), which
-	skip the rect resolve). Setting the height runs the tracker's OnSizeChanged
+	skip the rect resolve), and never reads its rect (GetRight, GetTop, GetRect...). Setting the height runs the tracker's OnSizeChanged
 	(ObjectiveTrackerContainerMixin:MarkDirty), and from SaftUI's code that
 	would write the tracker's dirty flag and schedule its layout tainted. A
 	tainted layout that makes a quest item button from the pool writes the
@@ -59,8 +59,13 @@ local OTP = st:NewModule('ObjectiveTracker')
 	saved the holder waits at Blizzard's default spot (DefaultPosition), the
 	tracker's own, unsaved, until it's moved. A tracker the player had moved in
 	Blizzard's Edit Mode (systemInfo.isInDefaultPosition false) is left where
-	it is, its spot read once the layout has placed it (OTP:CapturePosition)
-	and saved as the profile's position, and the holder goes there.
+	it is, its spot read once the layout has placed it (OTP:CapturePosition,
+	from the tracker's one anchor and explicit size: no rect of the tracker's
+	is read) and saved as the profile's position, and the holder goes there.
+	A profile change or reset to a profile with no position keeps the spot the
+	tracker was last placed at (OTP:KeepPlacement, as the totem bar's), saved as
+	that profile's, whether Blizzard's layout has it moved or not: so the
+	capture only ever reads a tracker SaftUI never placed.
 
 	None of the tracker's frames is secure, so it isn't protected and is put
 	back at once, in combat too; should the game count it as protected, the
@@ -97,11 +102,38 @@ local function DefaultPosition()
 	}
 end
 
+-- A copy of the position the holder was last placed from, kept across profile
+-- changes for OTP:KeepPlacement. nil until a profile's position first places it.
+local placedAt
+
+local function CopyPosition(position)
+	local copy = {}
+	for key, value in pairs(position) do copy[key] = value end
+	return copy
+end
+
 -- The holder's position: the profile's, or Blizzard's default spot while the
 -- profile has none. The edit mode mover and /sui Position change the table
--- this hands them and save it, so a first move saves a position.
+-- this hands them and save it, so a first move saves a position. A
+-- position saved by an earlier build can lack keys (AceDB drops the ones equal
+-- to a default), so any missing one comes from the default spot.
 function OTP:GetPosition()
-	return self.config.position or DefaultPosition()
+	local position = self.config.position
+	if not position then return DefaultPosition() end
+	for key, value in pairs(DefaultPosition()) do
+		if position[key] == nil then position[key] = value end
+	end
+	return position
+end
+
+-- A profile with no position (a new or reset one) keeps the spot the tracker
+-- was last placed at, as the totem bar's does (TB:KeepPlacement), so switching
+-- profiles moves nothing, and the capture below never reads SaftUI's own
+-- placement as Blizzard's. Only writes the profile, so it's safe in combat.
+function OTP:KeepPlacement()
+	if self.holder and not self.config.position and placedAt then
+		self.config.position = CopyPosition(placedAt)
+	end
 end
 
 -- Sizes and places the holder from the profile; its SetPoint hook puts the
@@ -111,9 +143,13 @@ end
 function OTP:ApplyHolder()
 	local holder = self.holder
 	if not holder then return end
+	self:KeepPlacement()
 	st:PlaceHolder(holder, 'objectivetracker_holder',
 		function() return self.width, HOLDER_HEIGHT end,
 		function() return self:GetPosition() end)
+	-- Only a profile with no position leaves it nil here: a tracker Blizzard
+	-- has moved, waiting for its first capture.
+	if self.config.position then placedAt = CopyPosition(self.config.position) end
 	self:PlaceTracker()
 end
 
@@ -143,25 +179,56 @@ local function PlacedAt(tracker, parent, x, y)
 		and relativePoint == 'TOPRIGHT' and px == x and py == y
 end
 
+-- How far across and up a frame each anchor point is.
+local POINT_X = {
+	TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0,
+	TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+	TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1,
+}
+local POINT_Y = {
+	BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0,
+	LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+	TOPLEFT = 1, TOP = 1, TOPRIGHT = 1,
+}
+
+-- The tracker's top right corner on screen (in screen pixels), worked out from
+-- its one anchor and its explicit size, so no rect of the tracker's is resolved
+-- (.agents/taint.md rule 5). Only the anchor's frame's rect is read. nil while
+-- anything can't be read.
+local function TrackerCorner(tracker)
+	if tracker:GetNumPoints() ~= 1 then return end
+	local point, relativeTo, relativePoint, x, y = tracker:GetPoint(1)
+	relativeTo = relativeTo or tracker:GetParent() or UIParent
+	local width, height = tracker:GetWidth(true), tracker:GetHeight(true)
+	local scale, relativeScale = tracker:GetEffectiveScale(), relativeTo:GetEffectiveScale()
+	local left, bottom, relativeWidth, relativeHeight = relativeTo:GetRect()
+	if not Plain(point, relativePoint, x, y, width, height, scale, relativeScale, left, bottom, relativeWidth, relativeHeight)
+		or not (POINT_X[point] and POINT_X[relativePoint]) then
+		return
+	end
+	local anchorX = (left + relativeWidth * POINT_X[relativePoint]) * relativeScale + x * scale
+	local anchorY = (bottom + relativeHeight * POINT_Y[relativePoint]) * relativeScale + y * scale
+	return anchorX + width * (1 - POINT_X[point]) * scale, anchorY + height * (1 - POINT_Y[point]) * scale
+end
+
 -- Saves the tracker's spot on screen as the profile's position, if the profile
 -- has none and Blizzard's Edit Mode has the tracker moved, and returns whether
 -- it did: its top right corner on UIParent's. Read once Blizzard has placed
--- the tracker (OTP:QueueCapture); the tracker is never moved by this.
+-- the tracker (OTP:QueueCapture); the tracker is never moved by this. A profile
+-- with no position after SaftUI has placed the tracker keeps that spot instead
+-- (OTP:KeepPlacement), so this only ever reads a tracker SaftUI never placed.
 function OTP:CapturePosition()
 	local tracker, holder = self.tracker, self.holder
 	if not (tracker and holder) or self.config.position or not Moved(tracker) then return false end
-	local right, top, scale = tracker:GetRight(), tracker:GetTop(), tracker:GetEffectiveScale()
+	local right, top = TrackerCorner(tracker)
 	local parentRight, parentTop, parentScale = UIParent:GetRight(), UIParent:GetTop(), UIParent:GetEffectiveScale()
-	if not Plain(right, top, scale, parentRight, parentTop, parentScale) or scale == 0 or parentScale == 0 then
-		return false
-	end
-	local ratio = scale / parentScale
+	if not (right and Plain(parentRight, parentTop, parentScale)) or parentScale == 0 then return false end
 	self.config.position = {
 		point = 'TOPRIGHT',
 		frame = 'UIParent',
 		rel_point = 'TOPRIGHT',
-		x_off = st:RoundToPixel(right * ratio - parentRight, holder),
-		y_off = st:RoundToPixel(top * ratio - parentTop, holder),
+		x_off = st:RoundToPixel(right / parentScale - parentRight, holder),
+		y_off = st:RoundToPixel(top / parentScale - parentTop, holder),
 	}
 	return true
 end
@@ -285,7 +352,10 @@ function OTP:Setup()
 		frame = holder,
 		label = 'Objective Tracker',
 		getPosition = function() return self:GetPosition() end,
-		setPosition = function(position) self.config.position = position end,
+		setPosition = function(position)
+			self.config.position = position
+			placedAt = CopyPosition(position)
+		end,
 		apply = function() self:ApplyHolder() end,
 		configPath = { 'ObjectiveTracker', 'general' },
 	})

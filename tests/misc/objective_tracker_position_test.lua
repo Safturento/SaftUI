@@ -240,6 +240,11 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		SetMargin(0)
 		OTP:ApplyHolder()
 		OTP:KeepInMargin()
+		-- A capture too: Blizzard's layout moves the tracker, nothing saved yet.
+		profile.objectivetracker.position = nil
+		OT.edit_mode_moves(MOVED)
+		stub.run_timers()
+		check(profile.objectivetracker.position ~= nil, 'the capture ran')
 		local plain = {}
 		for name, count in pairs(reads.plain) do plain[#plain + 1] = name .. '=' .. count end
 		eq(table.concat(plain, ','), '', "no plain GetWidth, GetHeight or GetSize on the tracker or a module")
@@ -289,6 +294,53 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		clean()
 	end)
 end
+
+-- Profile changes: a profile with no position keeps the spot the tracker was
+-- last placed at, whether Blizzard's layout has it moved or not, and the
+-- capture never reads that as Blizzard's.
+local A = { point = 'TOPRIGHT', frame = 'UIParent', rel_point = 'TOPRIGHT', x_off = -100, y_off = -50 }
+local function pos(p) return p and ('%s %d,%d'):format(p.point, p.x_off, p.y_off) or 'nil' end
+for _, moved in ipairs({ false, true }) do
+	for _, how in ipairs({ 'profile change', 'profile reset' }) do
+		test(('%s to a profile with no position keeps the spot, layout moved=%s'):format(how, tostring(moved)), function()
+			world('forever', moved and { moved = MOVED, height = 400 } or nil)
+			stub.run_timers()
+			profile.objectivetracker.position = { point = A.point, frame = A.frame, rel_point = A.rel_point, x_off = A.x_off, y_off = A.y_off }
+			OTP:UpdateConfig()
+			eq(top_right(OT.tracker), '900,550', 'profile A places it')
+			profile.objectivetracker.position = nil -- B, or a reset
+			OTP:UpdateConfig()
+			eq(top_right(OT.tracker), '900,550', 'nothing moved at once')
+			eq(top_right(OTP.holder), '900,550', 'the holder with it')
+			stub.run_timers()
+			eq(top_right(OT.tracker), '900,550', 'nor on the next frame')
+			eq(pos(profile.objectivetracker.position), 'TOPRIGHT -100,-50', "kept as B's position, not Blizzard's")
+			clean()
+		end)
+	end
+end
+
+test('a nudge before a profile change is the spot the next profile keeps', function()
+	world('forever', { moved = MOVED, height = 400 })
+	stub.run_timers()
+	st.EditModeFrames:Nudge(st.EditModeFrames.movers.objectivetracker, 'LEFT')
+	local nudged = top_right(OT.tracker)
+	profile.objectivetracker.position = nil
+	OTP:UpdateConfig()
+	stub.run_timers()
+	eq(top_right(OT.tracker), nudged, 'the nudged spot')
+	check(profile.objectivetracker.position ~= nil, 'saved')
+	clean()
+end)
+
+test('a position saved without some keys is filled from the default spot', function()
+	world('forever', nil, { position = { x_off = -21 } })
+	local position = OTP:GetPosition()
+	eq(('%s %s %s %d,%d'):format(position.point, position.frame, position.rel_point, position.x_off, position.y_off),
+		'TOPRIGHT UIParent TOPRIGHT -21,-275', 'x_off kept, the rest the default spot')
+	check(OTP.holder:GetNumPoints() == 1 and OTP.holder:GetPoint(1) == 'TOPRIGHT', 'the holder is placed')
+	clean()
+end)
 
 test('the Objective Tracker page: the fonts, then Position', function()
 	world('forever')
