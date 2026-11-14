@@ -129,6 +129,8 @@ function CP.build(opts)
 	frame:SetSize(388, 210)
 	frame:SetFrameStrata('DIALOG')
 	frame:EnableMouse(true)
+	frame:SetMovable(true)
+	frame:SetClampedToScreen(true)
 	frame:SetPoint('CENTER')
 	frame:Hide()
 

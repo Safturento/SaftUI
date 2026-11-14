@@ -125,6 +125,9 @@ end
 
 ------------------------------------------------------------------ checks
 
+-- How far down its panel's top a SaftUI dialog's title sits (optionssmalldialog.lua).
+local DIALOG_TITLE_Y = 18
+
 local ALPHA_PARTS = {
 	{ 'Border' },
 	{ 'Header', 'LeftBG' }, { 'Header', 'RightBG' }, { 'Header', 'CenterBG' },
@@ -172,16 +175,23 @@ local function check_blizzard(where)
 	end
 end
 
--- The picker's two frames of SaftUI's: its panel and, over the panel's top
--- band, the frame that takes the mouse.
+-- The picker's three frames of SaftUI's: its panel and the two frames that take
+-- the mouse over the panel's parts beside the picker: the top band (which also
+-- drags the picker) and the strip under its bottom.
 local function own_frames(frame)
-	local panel, band
+	local panel, band, foot
 	local children = own_children(frame)
-	eq(#children, 2, "two frames of SaftUI's on the picker: its panel and the band over its top")
+	eq(#children, 3, "three frames of SaftUI's on the picker: its panel, the band over its top and the strip under it")
 	for _, child in ipairs(children) do
-		if child:IsMouseEnabled() then band = child else panel = child end
+		if not child:IsMouseEnabled() then
+			panel = child
+		elseif child:GetTop() > frame:GetTop() then
+			band = child
+		else
+			foot = child
+		end
 	end
-	return panel, band
+	return panel, band, foot
 end
 
 local function panel_of(frame) return (own_frames(frame)) end
@@ -202,9 +212,9 @@ local function check_skinned(where)
 		where .. ': around the picker, as Thick draws a border')
 
 	eq(frame.Header.Text:GetFontObject(), st:GetFont(profile.headers.font), where .. ': the title in the Window titles font')
-	eq(T.anchor(frame.Header.Text, { [frame.Header] = 'header' }),
-		('CENTER header TOP %s'):format(T.text(0, -profile.headers.height / 2)),
-		where .. ": the title centered in a header-high strip at the panel's top")
+	eq(T.anchor(frame.Header.Text, { [panel] = 'panel' }),
+		('TOP panel TOP %s'):format(T.text(0, -DIALOG_TITLE_Y)),
+		where .. ": the title centered, as far down the panel's top as a SaftUI dialog's title")
 	check(panel:GetTop() >= frame.Header:GetTop(), where .. ': the panel covers the drag strip above the frame')
 	check(panel:GetTop() <= frame.Header:GetTop() + 2, where .. ': and no more than the theme border above it')
 
@@ -437,7 +447,7 @@ test('skinned once: a second Install and a repeated style add nothing', function
 	skin:StyleAll()
 	skin:UpdateConfig()
 	check_skinned('after repeats')
-	eq(#own_children(CP.frame), 2, 'one panel and one band')
+	eq(#own_children(CP.frame), 3, 'one panel, one band and one strip')
 	eq(#own_children(CP.frame.Content.HexBox), 1, 'one hex backdrop')
 	clean()
 end)
@@ -480,7 +490,10 @@ local function own_pieces()
 			for _, kid in ipairs({ region:GetChildren() }) do walk(kid) end
 		end
 	end
-	walk(panel_of(CP.frame))
+	local panel, band, foot = own_frames(CP.frame)
+	walk(panel)
+	walk(band)
+	walk(foot)
 	for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do walk(the_one(own_children(CP.frame.Footer[key]), key)) end
 	walk(the_one(own_children(CP.frame.Content.HexBox), 'the hex box backdrop'))
 	return out
@@ -544,7 +557,8 @@ test("a click on the panel's top band is not a click outside the picker; the dra
 		local top = frame:GetTop()
 		local y = top + (panel:GetTop() - top) / 2 -- in the band above the picker
 		check(y > top, 'the band reaches above the picker')
-		check(band:GetTop() == panel:GetTop() and band:GetBottom() == top, 'the band is the part of the panel above the picker')
+		check(band:GetTop() == panel:GetTop() and band:GetBottom() == panel:GetTop() - profile.headers.height,
+			"the band is the panel's top strip, a Window titles header high")
 		local where = opacity and '388' or '331'
 		-- Left and right of the header (which is 200 wide, centered).
 		for _, x in ipairs({ frame:GetLeft() + 12, frame:GetRight() - 12 }) do
@@ -558,6 +572,11 @@ test("a click on the panel's top band is not a click outside the picker; the dra
 		local focus, cancelled = CP.click((header:GetLeft() + header:GetRight()) / 2, y)
 		eq(focus, frame.DragBar, where .. ': the drag bar gets the click on the header')
 		eq(cancelled, false, where .. ': and it is not outside either')
+		-- The panel under the buttons is not outside either.
+		local _, _, foot = own_frames(frame)
+		focus, cancelled = CP.click(frame:GetLeft() + 100, frame:GetBottom() - 5)
+		eq(focus, foot, where .. ': the strip under the picker takes the click')
+		eq(cancelled, false, where .. ': not treated as outside')
 		-- A click inside the picker, and one outside the band and the picker.
 		focus, cancelled = CP.click(frame:GetLeft() + 30, top - 40)
 		eq(cancelled, false, where .. ': inside the picker')
@@ -583,13 +602,167 @@ test('the band takes the mouse only while skinned: off, or under the Blizzard th
 	world('forever', { theme = 'blizzard' })
 	eq(mouse_takers(), 0, 'Blizzard from the start')
 	world('forever')
-	eq(mouse_takers(), 1, 'skinned: the band')
+	eq(mouse_takers(), 2, 'skinned: the band and the strip under the picker')
 	switch('blizzard')
 	eq(mouse_takers(), 0, 'Blizzard: the band hidden, takes no mouse')
 	switch('thick')
-	eq(mouse_takers(), 1, 'Thick again')
+	eq(mouse_takers(), 2, 'Thick again')
 	profile.skinning.color_picker = false
 	SK:UpdateConfig()
 	eq(mouse_takers(), 0, 'toggled off')
+	clean()
+end)
+
+------------------------------------------------------------------ pixels and padding
+
+local CONTENT_PAD = 23 -- the wheel's left and the hex box's right, in from the picker's sides (Blizzard's XML)
+
+local function whole(value) return math.abs(value - math.floor(value + 0.5)) < 1e-3 end
+
+-- The picker opened the way an addon opens it, then told its size changed, as
+-- the game does for the width Blizzard's OnShow sets.
+local function open_picker(opacity)
+	CP.show({ r = 1, g = 0, b = 0, hasOpacity = opacity, opacity = 1, swatchFunc = function() end, cancelFunc = function() end })
+	stub.fire_script(CP.frame, 'OnSizeChanged', CP.frame:GetWidth(), CP.frame:GetHeight())
+end
+
+test('Okay and Cancel: two boxes of one size, 6 apart, evenly padded, inside their buttons, on whole pixels', function()
+	world('forever')
+	local frame = CP.frame
+	for _, opacity in ipairs({ true, false }) do
+		local where = opacity and '388 wide: ' or '331 wide: '
+		open_picker(opacity)
+		local okay = the_one(own_children(frame.Footer.OkayButton), 'the Okay box')
+		local cancel = the_one(own_children(frame.Footer.CancelButton), 'the Cancel box')
+		eq(okay:GetWidth(), cancel:GetWidth(), where .. 'equal widths')
+		eq(okay:GetHeight(), cancel:GetHeight(), where .. 'equal heights')
+		eq(cancel:GetLeft() - okay:GetRight(), 6, where .. 'a gap of 6, as SaftUI uses')
+		local left, right = okay:GetLeft() - frame:GetLeft(), frame:GetRight() - cancel:GetRight()
+		eq(left, right, where .. 'the same padding at both ends')
+		if opacity then
+			eq(left, 40, where .. "the buttons' own edges: the box can't leave its button")
+		else
+			check(left >= CONTENT_PAD and left <= CONTENT_PAD + 1, where .. 'in line with the wheel and the hex box, which are 23 in')
+		end
+		for _, key in ipairs({ 'OkayButton', 'CancelButton' }) do
+			local button, box = frame.Footer[key], key == 'OkayButton' and okay or cancel
+			check(box:GetLeft() >= button:GetLeft() and box:GetRight() <= button:GetRight()
+				and box:GetTop() <= button:GetTop() and box:GetBottom() >= button:GetBottom(), where .. key .. ': inside the button')
+			for _, edge in ipairs({ box:GetLeft(), box:GetRight(), box:GetTop(), box:GetBottom() }) do
+				check(whole(edge), where .. key .. ': an edge on a whole unit, ' .. tostring(edge))
+			end
+		end
+		-- The panel's padding under the buttons is the padding at the sides of the picker's content.
+		local panel = panel_of(frame)
+		eq(okay:GetBottom() - panel:GetBottom(), frame:GetLeft() - panel:GetLeft() + CONTENT_PAD,
+			where .. "the panel's bottom as far from the boxes as its sides are from the content")
+	end
+	clean()
+end)
+
+test("the boxes follow a theme switch and the toggle, and keep their place", function()
+	world('forever')
+	open_picker(false)
+	local box = the_one(own_children(CP.frame.Footer.OkayButton), 'the Okay box')
+	local before = box:GetLeft()
+	switch('thin')
+	eq(box:GetLeft(), before, 'Thin: the box has not moved')
+	profile.skinning.color_picker = false
+	SK:UpdateConfig()
+	profile.skinning.color_picker = true
+	SK:UpdateConfig()
+	eq(box:GetLeft(), before, 'off and on again: the same place')
+	clean()
+end)
+
+------------------------------------------------------------------ moving the picker
+
+-- Whether the picker is being moved by the mouse (StartMoving with no StopMovingOrSizing since).
+local function moving(frame) return stub.state(frame).moving == true end
+
+test("dragging the panel's top band moves the picker, and letting go stops it; Blizzard's scripts are not replaced", function()
+	world('forever')
+	local frame = CP.frame
+	local before = {}
+	for _, widget in ipairs(CP.widgets) do before[widget] = { stub.state(widget).scripts } end
+	open_picker(true)
+	local _, band = own_frames(frame)
+	check(frame:IsMovable(), 'Blizzard makes it movable')
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	eq(moving(frame), true, 'the band starts the picker moving')
+	check(frame:IsShown(), 'a drag is not a click outside')
+	stub.fire_script(band, 'OnMouseUp', 'LeftButton')
+	eq(moving(frame), false, 'and the mouse up stops it')
+	stub.fire_script(band, 'OnMouseDown', 'RightButton')
+	eq(moving(frame), false, 'only the left button drags')
+	-- Letting go after the picker was hidden, and hiding it mid-drag.
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	frame:Hide()
+	eq(moving(frame), false, 'hiding the picker in a drag stops it')
+	frame:Show()
+	stub.fire_script(band, 'OnMouseUp', 'LeftButton')
+	eq(moving(frame), false, 'a mouse up with no drag of SaftUI\'s moves and stops nothing')
+	eq(#CP.stray, 0, "none of Blizzard's own functions ran")
+	for _, widget in ipairs(CP.widgets) do
+		eq(stub.state(widget).scripts, before[widget][1], "no script table of Blizzard's was replaced")
+	end
+	clean()
+end)
+
+test("the band does not stop a move that isn't SaftUI's, and does nothing in a picker that isn't movable", function()
+	world('forever')
+	local frame = CP.frame
+	open_picker(true)
+	local _, band = own_frames(frame)
+	frame:StartMoving() -- Blizzard's own drag bar's
+	stub.fire_script(band, 'OnMouseUp', 'LeftButton')
+	eq(moving(frame), true, "a mouse up on the band leaves Blizzard's own drag alone")
+	frame:StopMovingOrSizing()
+	frame:SetMovable(false)
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	eq(moving(frame), false, 'not movable: no move, no error')
+	clean()
+end)
+
+test('the band drags in combat when the picker is not protected', function()
+	world('forever')
+	open_picker(true)
+	local _, band = own_frames(CP.frame)
+	stub.in_combat, stub.blocked = true, {}
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	eq(moving(CP.frame), true, 'moving')
+	stub.fire_script(band, 'OnMouseUp', 'LeftButton')
+	eq(#stub.blocked, 0, 'nothing blocked')
+	stub.in_combat = false
+	clean()
+end)
+
+test('after a drag the pieces of SaftUI are on whole pixels at both widths', function()
+	world('forever')
+	local frame = CP.frame
+	for _, opacity in ipairs({ true, false }) do
+		open_picker(opacity)
+		local _, band = own_frames(frame)
+		stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+		-- Where the game leaves it: a corner anchor, on a fraction.
+		frame:ClearAllPoints()
+		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 412.37, 655.81)
+		stub.fire_script(band, 'OnMouseUp', 'LeftButton')
+		local pieces = own_pieces()
+		check(#pieces > 5, 'pieces of SaftUI\'s to check')
+		for i, piece in ipairs(pieces) do
+			eq(stub.state(piece).round_layout, true, 'piece ' .. i .. ' rounded to whole pixels after a drag')
+		end
+	end
+	clean()
+end)
+
+test('off, or under the Blizzard theme, the band moves nothing', function()
+	world('forever')
+	open_picker(true)
+	local _, band = own_frames(CP.frame)
+	switch('blizzard')
+	stub.fire_script(band, 'OnMouseDown', 'LeftButton')
+	eq(moving(CP.frame), false, 'Blizzard theme: the band is not there to drag')
 	clean()
 end)

@@ -16,21 +16,31 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	  - ColorPickerFrame: SaftUI's panel behind it (st:SetBackdropIn, kind panel,
 	    a child one level under it, so it follows the frame's size, which
 	    Blizzard's OnShow changes with the alpha slider), reaching up over the
-	    header's band so the drag bar leaves no invisible strip above it (the
-	    part above the picker is a mouse-taking frame of SaftUI's, a child of the
-	    picker at its level under the drag bar, so a click there isn't "outside"
-	    to Blizzard's GLOBAL_MOUSE_DOWN handler, which cancels the picker), and
-	    .Border (the NineSlice dialog frame, DialogBorderTemplate) faded. Its
+	    header's band so the drag bar leaves no invisible strip above it, and
+	    down past the buttons as far as it reaches past the content at the sides
+	    (so its padding is even). The panel's top strip (a Window titles header
+	    high) and the part under the picker are mouse-taking frames of SaftUI's,
+	    children of the picker at its level under the drag bar, so a click there
+	    isn't "outside" to Blizzard's GLOBAL_MOUSE_DOWN handler, which cancels
+	    the picker. The top strip also moves the picker, as the drag bar does
+	    (its OnMouseDown and OnMouseUp call ColorPickerFrame:StartMoving() and
+	    :StopMovingOrSizing(), only while the picker is movable and, in combat,
+	    not protected, and a move it didn't start is never stopped), and .Border (the NineSlice dialog frame, DialogBorderTemplate) faded. Its
 	    frames are kept on whole pixels by the game (SetRoundLayoutToNearestPixel),
 	    since the centered picker is 331 or 388 wide and its edges can sit on
 	    half pixels.
 	  - .Header (DialogHeaderTemplate): its LeftBG, RightBG and CenterBG metal
 	    faded, its .Text in the font kit dialogs' titles wear (Window titles),
-	    centered in a strip of that height at the top of the panel (its anchor
-	    is put back by a restore).
+	    centered on the panel, 18 down its top as a kit dialog's title is (its
+	    anchor is put back by a restore).
 	  - .Footer.OkayButton and .Footer.CancelButton (UIPanelButtonTemplate): the
 	    button's Left, Middle and Right art and its highlight texture faded, a
-	    box of SaftUI's (kind control) drawn inside it whose edge turns the
+	    box of SaftUI's (kind control) drawn inside it, the two the same size
+	    with 6 between them and their outer ends in line with the content (the
+	    wheel and the hex box are 23 in from the sides; the buttons are 11.5 in
+	    at 331 wide and 40 at 388, and a box stays inside its button), placed
+	    again by a post-hook on the picker's OnSizeChanged when Blizzard changes
+	    its width, whose edge turns the
 	    accent blue under the mouse, as the kit's buttons do, and the text in
 	    the Skinning font (the button's three state fonts). The label stays
 	    Blizzard's, uncovered.
@@ -52,8 +62,9 @@ local CP = SK:NewModule('Blizzard_ColorPicker')
 	textures SaftUI made), no script is set or replaced, and no function of
 	Blizzard's runs from here. The only hooks are HookScript post-hooks on the
 	hex box (OnEditFocusGained, OnEditFocusLost) and on Okay and Cancel
-	(OnEnter, OnLeave) that color SaftUI's own boxes, writing nothing onto
-	Blizzard's. Blizzard's frames get widget calls only: alpha on regions whose
+	(OnEnter, OnLeave) that color SaftUI's own boxes, and one on the picker
+	(OnSizeChanged) that places them, writing nothing onto Blizzard's.
+	Blizzard's frames get widget calls only: alpha on regions whose
 	alpha Blizzard never sets (the NineSlice border, the header metal, the
 	buttons' Left, Middle and Right, the highlight texture, the hex box's
 	border), and fonts and colors, set to SaftUI's and put back from what was
@@ -89,15 +100,23 @@ local BUTTON_FONTS = {
 local HEADER_ART = { 'LeftBG', 'RightBG', 'CenterBG' }
 local BUTTON_ART = { 'Left', 'Middle', 'Right' }
 local BOX_ART = { 'Left', 'Middle', 'Right' } -- InputBoxVisualTemplate's border
-local BUTTON_INSET = 1 -- the box inside the button, so the two buttons, which touch, don't share a line
+-- The picker's own measures (Blizzard's XML, the same on both clients): the
+-- wheel's left and the hex box's right are this far in from the picker's sides.
+local CONTENT_PAD = 23
+local FOOTER_Y = 12 -- the footer's bottom, up from the picker's
+local BUTTON_GAP = 6 -- between the Okay and Cancel boxes, as SaftUI's own buttons sit
+local TITLE_Y = 18 -- the title's top, down from the panel's top, as a SaftUI dialog's is (optionssmalldialog.lua)
+local BUTTON_SIDE = { OkayButton = 'left', CancelButton = 'right' } -- the end of the row each one is at
 
 -- What SaftUI made or styled, keyed by Blizzard's frames (weak keys).
 local weak = { __mode = 'k' }
 local panels = setmetatable({}, weak)    -- ColorPickerFrame -> its panel (st:SetBackdropIn)
 local buttons = setmetatable({}, weak)   -- button -> { box }
 local bands = setmetatable({}, weak)    -- ColorPickerFrame -> the mouse-taking frame over the panel's top band
+local feet = setmetatable({}, weak)     -- ColorPickerFrame -> the mouse-taking frame under the picker, over the panel's bottom
+local moving = setmetatable({}, weak)   -- ColorPickerFrame -> true while SaftUI's band is moving it
 local boxes = setmetatable({}, weak)     -- HexBox -> its backdrop (st:SetBackdropIn)
-local hooked = setmetatable({}, weak)    -- HexBox or button -> true once its hooks are on
+local hooked = setmetatable({}, weak)    -- HexBox, button or ColorPickerFrame -> true once its hooks are on
 local hovered = setmetatable({}, weak)   -- button -> true while the mouse is over it
 local styled = setmetatable({}, weak)    -- ColorPickerFrame -> true once SaftUI has changed anything on it
 -- What Blizzard had before the first restyle, read then and put back by a
@@ -106,6 +125,7 @@ local styled = setmetatable({}, weak)    -- ColorPickerFrame -> true once SaftUI
 local saved = setmetatable({}, weak)
 
 local installed = false
+local HookFrame -- set below, where the picker's own hook is made
 
 local function Profile() return st.config.profile end
 
@@ -198,7 +218,10 @@ local function StylePanel(frame, active)
 		if active then
 			-- Over the header's band too (the drag bar covers it, so no invisible strip
 			-- is left above the panel): Blizzard's Header sits `rise` above the
-			-- frame's top. Anchored here, so a redraw leaves it where it is.
+			-- frame's top. Anchored here, so a redraw leaves it where it is. Under
+			-- the buttons the panel reaches as far as it does past the content at
+			-- the sides (`drop` below the frame's bottom, on top of the border), so
+			-- its padding is even.
 			local rise = 0
 			local header = frame.Header
 			if header and header.GetPoint then
@@ -206,38 +229,67 @@ local function StylePanel(frame, active)
 				if point == 'TOP' and relativeTo == frame and y and not issecretvalue(y) then rise = y end
 			end
 			local inset = st:ThemeInset(theme, background, 'panel')
+			local footerY = FOOTER_Y
+			local footer = frame.Footer
+			if footer and footer.GetPoint then
+				local point, relativeTo, _, _, y = footer:GetPoint(1)
+				if point == 'BOTTOM' and relativeTo == frame and y and not issecretvalue(y) then footerY = y end
+			end
+			local drop = inset + math.max(0, CONTENT_PAD - footerY)
+			local height = Profile().headers.height
 			panel:ClearAllPoints()
 			panel:SetPoint('TOPLEFT', frame, 'TOPLEFT', -inset, rise + inset)
-			panel:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', inset, -inset)
+			panel:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', inset, -drop)
 			Round(panel)
-			-- The band of the panel above the picker takes the mouse, as a
-			-- child of the picker: Blizzard's GLOBAL_MOUSE_DOWN handler cancels
+			-- The parts of the panel beside the picker take the mouse, as
+			-- children of the picker: Blizzard's GLOBAL_MOUSE_DOWN handler cancels
 			-- and hides it for a click whose frame under the mouse
 			-- (GetMouseFoci) isn't it or a descendant (DoesAncestryIncludeAny),
 			-- and a click there would otherwise reach nothing of the picker's.
 			-- At the picker's own level, so its DragBar (a child, above it)
-			-- still gets the header's clicks.
+			-- still gets the header's clicks. The top one is the panel's top
+			-- strip, a Window titles header high: it also moves the picker.
 			local band = bands[frame]
 			if not band then
 				band = st:CreateFrame('Frame', nil, frame)
 				band:EnableMouse(true)
 				bands[frame] = band
+				band:SetScript('OnMouseDown', function(_, button)
+					if button == 'LeftButton' then CP:StartMove(frame) end
+				end)
+				band:SetScript('OnMouseUp', function() CP:StopMove(frame) end)
+				band:SetScript('OnHide', function() CP:StopMove(frame) end)
 			end
 			band:ClearAllPoints()
 			band:SetPoint('TOPLEFT', frame, 'TOPLEFT', -inset, rise + inset)
-			band:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', inset, 0)
+			band:SetPoint('BOTTOMRIGHT', frame, 'TOPRIGHT', inset, rise + inset - height)
+			Round(band)
+			local foot = feet[frame]
+			if not foot then
+				foot = st:CreateFrame('Frame', nil, frame)
+				foot:EnableMouse(true)
+				feet[frame] = foot
+			end
+			foot:ClearAllPoints()
+			foot:SetPoint('TOPLEFT', frame, 'BOTTOMLEFT', -inset, 0)
+			foot:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', inset, -drop)
+			Round(foot)
 			local level = frame:GetFrameLevel()
-			if not issecretvalue(level) then band:SetFrameLevel(level) end
+			if not issecretvalue(level) then
+				band:SetFrameLevel(level)
+				foot:SetFrameLevel(level)
+			end
 		end
+		if feet[frame] then feet[frame]:SetShown(active) end
 		if bands[frame] then bands[frame]:SetShown(active) end
 	end
 	if frame.Border and frame.Border.SetAlpha then frame.Border:SetAlpha(active and 0 or 1) end
 end
 
--- The title in the font kit dialogs titles wear (Window titles), centered in
--- a strip of the Window titles height at the top of the panel, which is
--- where a kit dialog's title sits. Blizzard's anchor is put back by a restore.
-local function StyleTitle(header, active)
+-- The title in the font kit dialogs titles wear (Window titles), centered on
+-- the panel, as far down its top as a kit dialog's title (TITLE_Y). Blizzard's
+-- anchor is put back by a restore.
+local function StyleTitle(frame, header, active)
 	local text = header.Text
 	if not text then return end
 	PutFont(text, 'title', active)
@@ -248,8 +300,10 @@ local function StyleTitle(header, active)
 			local point, relativeTo, relativePoint, x, y = text:GetPoint(1)
 			saved[text].point = { point, relativeTo, relativePoint, x, y }
 		end
+		local panel = panels[frame]
+		if not panel then return end
 		text:ClearAllPoints()
-		text:SetPoint('CENTER', header, 'TOP', 0, -Profile().headers.height / 2)
+		text:SetPoint('TOP', panel, 'TOP', 0, -TITLE_Y)
 	elseif saved[text] and saved[text].point then
 		text:ClearAllPoints()
 		text:SetPoint(unpack(saved[text].point))
@@ -260,7 +314,7 @@ local function StyleHeader(frame, active)
 	local header = frame.Header
 	if not header then return end
 	FadeAll(header, HEADER_ART, active)
-	StyleTitle(header, active)
+	StyleTitle(frame, header, active)
 end
 
 -- The kit's hover: the box's edge turns the accent blue under the mouse.
@@ -284,7 +338,44 @@ local function HookButton(button)
 	st:KeepOwnColors(button, ColorHover)
 end
 
-local function StyleButton(button, active)
+-- How far in from its button's outer end a button's box starts, so the row of
+-- boxes lines up with the content above it: Blizzard's buttons are 11.5 in from
+-- a 331 wide picker's sides but 40 in from a 388 wide one's, while the wheel and
+-- the hex box are always CONTENT_PAD in. A box can't leave its button (its
+-- click area), so it goes no further out than the button's edge, and a whole
+-- number of units, rounded toward the inside.
+local function ButtonOutset(frame)
+	local footer = frame.Footer
+	local okay, cancel = footer and footer.OkayButton, footer and footer.CancelButton
+	if not (okay and cancel and okay.GetWidth and cancel.GetWidth) then return 0 end
+	local width, span = frame:GetWidth(), okay:GetWidth() + cancel:GetWidth()
+	if issecretvalue(width) or issecretvalue(span) then return 0 end
+	return math.max(0, math.ceil(CONTENT_PAD - (width - span) / 2 - 0.01))
+end
+
+-- Puts SaftUI's box in button: the same size as the other one, BUTTON_GAP
+-- from it, and its outer end in line with the content. Anchored to the
+-- button, whose edges are whole pixels, so the two boxes' edges are too.
+local function PlaceBox(frame, key, entry)
+	local outer, inner = ButtonOutset(frame), BUTTON_GAP / 2
+	local left = BUTTON_SIDE[key] == 'left'
+	local button = entry.button
+	entry.box:ClearAllPoints()
+	entry.box:SetPoint('TOPLEFT', button, 'TOPLEFT', left and outer or inner, 0)
+	entry.box:SetPoint('BOTTOMRIGHT', button, 'BOTTOMRIGHT', -(left and inner or outer), 0)
+end
+
+local function PlaceBoxes(frame)
+	local footer = frame.Footer
+	if not footer then return end
+	for key in pairs(BUTTON_SIDE) do
+		local entry = footer[key] and buttons[footer[key]]
+		if entry then PlaceBox(frame, key, entry) end
+	end
+end
+
+local function StyleButton(frame, key, active)
+	local button = frame.Footer[key]
 	if not button then return end
 	local entry = buttons[button]
 	if not entry then
@@ -292,9 +383,9 @@ local function StyleButton(button, active)
 		local box = st:CreateFrame('Frame', nil, button)
 		local level = button:GetFrameLevel()
 		if not issecretvalue(level) then box:SetFrameLevel(math.max(0, level - 1)) end
-		st:SetInside(box, BUTTON_INSET)
-		entry = { box = box }
+		entry = { box = box, button = button }
 		buttons[button] = entry
+		PlaceBox(frame, key, entry)
 		-- The three state fonts Blizzard's template gave it, read once.
 		local fonts = {}
 		for state, methods in pairs(BUTTON_FONTS) do
@@ -364,6 +455,37 @@ local function StyleHexBox(frame, active)
 	if active then ColorFocus(box) end
 end
 
+------------------------------------------------------------------ moving, and the width
+
+-- The panel's top band moves the picker (the picker is movable: Blizzard's XML
+-- says so, and its DragBar does the same from the header). Only SaftUI's own
+-- frame's scripts start and stop it; none of Blizzard's is replaced.
+function CP:StartMove(frame)
+	if moving[frame] or not Active() or not (frame.IsMovable and frame:IsMovable()) then return end
+	if InCombatLockdown() and frame:IsProtected() then return end
+	moving[frame] = true
+	frame:StartMoving()
+end
+
+-- Stops a move SaftUI's band started, and none that is anyone else's.
+function CP:StopMove(frame)
+	if not moving[frame] then return end
+	moving[frame] = nil
+	frame:StopMovingOrSizing()
+end
+
+-- Blizzard's OnShow sets the width (388 with the alpha slider, 331 without),
+-- and the boxes in the buttons follow it. A post-hook that only places SaftUI's
+-- boxes.
+HookFrame = function(frame)
+	if hooked[frame] or not frame.HookScript then return end
+	hooked[frame] = true
+	frame:HookScript('OnSizeChanged', function(self)
+		if not Active() or (InCombatLockdown() and self:IsProtected()) then return end
+		Apply(PlaceBoxes, self)
+	end)
+end
+
 ------------------------------------------------------------------ all of it
 
 -- Puts the look on the picker, or Blizzard's back (only once SaftUI has styled
@@ -383,8 +505,12 @@ function CP:StyleAll()
 	Apply(StyleHeader, frame, active)
 	local footer = frame.Footer
 	if footer then
-		Apply(StyleButton, footer.OkayButton, active)
-		Apply(StyleButton, footer.CancelButton, active)
+		Apply(StyleButton, frame, 'OkayButton', active)
+		Apply(StyleButton, frame, 'CancelButton', active)
+		if active then
+			Apply(PlaceBoxes, frame)
+			HookFrame(frame)
+		end
 	end
 	Apply(StyleHexBox, frame, active)
 end
