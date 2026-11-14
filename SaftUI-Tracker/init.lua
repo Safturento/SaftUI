@@ -62,6 +62,15 @@ function TR:Build()
 	self:BuildWindow()
 	self:BuildRows()
 	self:RegisterEvents()
+	-- The Fonts tab changes the font objects without telling any module: SaftUI's
+	-- own update function is post-hooked (never Blizzard's) so the rows reflow at
+	-- once.
+	local fonts = st:GetModule('Fonts', true)
+	if fonts and type(fonts.UpdateFontConfig) == 'function' then
+		hooksecurefunc(fonts, 'UpdateFontConfig', function()
+			if TR.model then TR:Redraw() end
+		end)
+	end
 	-- The first refresh, on the next frame like any other.
 	self:MarkDirty('BUILD')
 end

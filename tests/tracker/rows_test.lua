@@ -817,3 +817,70 @@ RW.both("the focus bar follows the scroll bar's own drag", function(st, TR)
 	check(bar:IsShown(), 'dragged back: it returns')
 	eq(bar:GetTop(), row:GetTop(), 'at its row')
 end)
+
+RW.both("a Fonts tab change redraws the rows at once: the font's size is read again, the rows reflow", function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1, { objectives = { { text = 'x', type = 'monster' } } }) }, { 1 })
+	TR:Refresh()
+	local row = RW.quest(TR, 1)
+	local before = row:GetHeight()
+	st.config.profile.fonts.normal.font_size = 24
+	st:GetModule('Fonts'):UpdateFontConfig('normal')
+	check(row:GetHeight() > before, 'the row grew with the font at once: ' .. before .. ' -> ' .. row:GetHeight())
+	st.config.profile.fonts.normal.font_size = 16
+	st:GetModule('Fonts'):UpdateFontConfig('normal')
+	eq(row:GetHeight(), before, 'and back')
+end)
+
+RW.both('a refresh that replaces quests makes no frame: the rows of the quests that went are reused', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1), Q.quest(2), Q.quest(3) }, { 1, 2, 3 })
+	TR:Refresh()
+	Q.set({ Q.header('A'), Q.quest(3), Q.quest(4), Q.quest(5) }, { 3, 4, 5 })
+	local counter = RW.counter()
+	TR:Refresh()
+	eq(counter.frames, 0, 'two quests replaced by two: no new frame')
+	counter.stop()
+	check(RW.quest(TR, 4) and RW.quest(TR, 5) and RW.quest(TR, 3), 'all three drawn')
+end)
+
+RW.both('the timer ticker stops while the tracker is collapsed and starts again when it opens', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1, { time = { total = 300, elapsed = 10 }, timer = 290 }) }, { 1 })
+	TR:Refresh()
+	check(TR.timerTicker ~= nil, 'running')
+	TR:SetCollapsed(true)
+	eq(TR.timerTicker, nil, 'collapsed: no ticker')
+	TR:Refresh()
+	eq(TR.timerTicker, nil, 'a refresh keeps it off')
+	TR:SetCollapsed(false)
+	check(TR.timerTicker ~= nil, 'opened: running again')
+end)
+
+RW.both('the header chevron does nothing while popups hold the window open', function(st, TR)
+	Q.set({ Q.header('A'), Q.quest(1) }, { 1 }, { popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = 'An offer' } })
+	TR:Refresh()
+	stub.click(TR.header.collapse)
+	eq(TR:CharData().collapsed, false, 'the click is ignored: it would save a state that shows nothing')
+	check(not TR:IsCollapsed(), 'still open')
+end)
+
+RW.both('a secret in any field of the log (objective text, counts, percent, waypoint, timer, popup title) errors nothing', function(st, TR)
+	local methods = getmetatable(UIParent:CreateFontString(nil, 'OVERLAY')).__index
+	local set_text = methods.SetText
+	methods.SetText = function(self, text)
+		if issecretvalue(text) then return end
+		return set_text(self, text)
+	end
+	local S = load_test_file('lib/secrets.lua')
+	local restore = S.install()
+	Q.set({
+		Q.header('A'),
+		Q.quest(1, { objectives = { { text = S.secret('text'), type = 'monster', numFulfilled = S.secret('n'), numRequired = S.secret('m'), finished = S.secret('f') } },
+			waypoint = S.secret('wp'), time = { total = S.secret('t'), elapsed = S.secret('e') }, timer = S.secret('timer') }),
+		Q.quest(2, { objectives = { { text = 'Escort', type = 'progressbar' } }, percent = S.secret('percent') }),
+	}, { 1, 2 }, { focused = 1, popups = { { id = 77, kind = 'OFFER' } }, titles = { [77] = S.secret('popup title') } })
+	TR:Refresh()
+	TR:Refresh()
+	check(RW.quest(TR, 1) ~= nil and RW.quest(TR, 2) ~= nil, 'both quests are drawn')
+	check(TR:GetRow('popup', 77) ~= nil, 'and the popup with its secret title')
+	restore()
+	methods.SetText = set_text
+end)

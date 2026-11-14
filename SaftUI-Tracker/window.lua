@@ -244,6 +244,7 @@ function TR:SetCollapsed(collapsed)
 	if not self.window then return end
 	self.header.collapse:SetDown(self:IsCollapsed())
 	self:LayoutWindow()
+	self:UpdateTicker()
 end
 
 ------------------------------------------------------------------ size and scroll
@@ -486,6 +487,8 @@ local function BuildHeader(window)
 	end)
 	collapse:SetPoint('TOPRIGHT', header, 'TOPRIGHT', 0, -(L.HEADER - L.CHEVRON) / 2)
 	collapse:SetScript('OnClick', function(self)
+		-- Popups hold the window open: a click would save a state that shows nothing.
+		if TR.popupsShown then return end
 		TR:SetCollapsed(not TR:IsCollapsed())
 		if GameTooltip:IsOwned(self) then self:ShowTip() end
 	end)

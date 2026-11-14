@@ -65,7 +65,7 @@ function TR.SetText(fs, text)
 end
 
 -- The height of one line of the text font, for a text the game won't measure
--- (a secret one may not give a height) and to centre the quest icon on a
+-- (a secret one may not give a height) and to center the quest icon on a
 -- title's first line.
 function TR:LineHeight()
 	if self.lineHeightStamp ~= self.fontStamp then
@@ -291,7 +291,7 @@ end
 
 -- The progress bar of a line: SaftUI's bar (a backdrop drawn as kind 'bar' in
 -- the page's Theme and Background, the flat texture) in Blizzard's progress
--- blue, with the percent centred on it in the Pixel font. The fill is a
+-- blue, with the percent centered on it in the Pixel font. The fill is a
 -- texture sized in whole pixels.
 local BAR_COLOR = { 0.26, 0.42, 1 }
 
@@ -463,7 +463,7 @@ function TR:HoverRow(row, hovered)
 end
 
 -- A zone header's collapse, kept per character (st.config.char.tracker.zones,
--- the header's title to true) and drawn again at once from the model already
+-- the group's key to true) and drawn again at once from the model already
 -- read.
 function TR:ToggleZone(key)
 	local zones = self:CharData().zones
@@ -543,7 +543,7 @@ local function DrawIcon(self, row, quest, entry)
 				icon.trAsset, icon.trAtlas = asset, isAtlas
 				if isAtlas then icon:SetAtlas(asset) else icon:SetTexture(asset) end
 			end
-			-- Centred on the title's first line.
+			-- Centered on the title's first line.
 			Place(icon, row, 0, math.max(0, math.floor((self:LineHeight() - L.ICON) / 2)))
 		end
 	end
@@ -638,7 +638,12 @@ function TR:DrawRows(entries, placed)
 	end
 	self:ReleaseRows()
 	self:PlaceFocusBar()
-	if self.timedRows > 0 then
+	self:UpdateTicker()
+end
+
+-- The timer's ticker runs while a timed quest shows and the tracker is open.
+function TR:UpdateTicker()
+	if (self.timedRows or 0) > 0 and not self:IsCollapsed() then
 		if not self.timerTicker and C_Timer and C_Timer.NewTicker then
 			self.timerTicker = C_Timer.NewTicker(1, function() TR:TickTimers() end)
 		end
@@ -689,7 +694,7 @@ function TR:PlaceFocusBar()
 	local show = false
 	if self.focusY and not self:IsCollapsed() then
 		local view = Round(self.scroll:GetHeight())
-		local offset = self:GetScroll()
+		local offset = Round(self:GetScroll())
 		local top = math.max(self.focusY - offset, 0)
 		local bottom = math.min(self.focusY + self.focusH - offset, view)
 		if bottom > top then
@@ -784,6 +789,15 @@ local function NextEntry(entries, n, kind)
 	return entry
 end
 
+-- The key an entry's row is found by: a group's key, a quest's or popup's ID.
+local function RowKey(entry)
+	local kind = entry.kind
+	if kind == 'zone' then return entry.group.key end
+	if kind == 'quest' then return entry.quest.id end
+	if kind == 'popup' then return entry.popup.id end
+	return 'empty'
+end
+
 -- The list of what is drawn, top to bottom: the popups, then each group's
 -- header (none with Group by zone off) and, unless the player collapsed it,
 -- its quests (a collapsed group keeps its header and count); or the empty
@@ -831,21 +845,17 @@ function TR:BuildEntries(model, groups)
 	for index = n + 1, #entries do entries[index] = nil end
 
 	-- Every row is claimed before the layout measures, so the texts are measured
-	-- in the font strings they will be drawn in.
+	-- in the font strings they will be drawn in: first the rows their keys had
+	-- last time, then the rows of what went are freed, and only then the rest
+	-- take free rows (so a refresh that swaps quests makes no frame).
 	self:BeginRows()
 	for _, entry in ipairs(entries) do
-		local kind = entry.kind
-		local key
-		if kind == 'zone' then
-			key = entry.group.key
-		elseif kind == 'quest' then
-			key = entry.quest.id
-		elseif kind == 'popup' then
-			key = entry.popup.id
-		else
-			key = 'empty'
-		end
-		entry.row = self:AcquireRow(kind, key)
+		local key = RowKey(entry)
+		if self:GetRow(entry.kind, key) then entry.row = self:AcquireRow(entry.kind, key) end
+	end
+	self:ReleaseRows()
+	for _, entry in ipairs(entries) do
+		if not entry.row then entry.row = self:AcquireRow(entry.kind, RowKey(entry)) end
 	end
 	return entries
 end
