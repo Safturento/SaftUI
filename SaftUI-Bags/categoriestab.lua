@@ -79,7 +79,7 @@ local INV = st:GetModule('Inventory')
 	                                    selected ('Set: ...' selects the sets entry)
 
 	  widget.rows[i] = { frame, id, entry, handle, name, marker, count, strike, tint, bar }
-	  widget.addButton, widget.resetButton (each with .text), widget.list
+	  widget.addButton, widget.resetButton (each with .text; in the menu at half), widget.list
 	  (the rows, the scroll child of widget.listScroll), widget.listBar,
 	  widget.pane (the editor's rows, the scroll child of widget.editorScroll),
 	  widget.editorBar, widget.body (the editor's body), widget.footer (its
@@ -88,6 +88,35 @@ local INV = st:GetModule('Inventory')
 	  widget.footerContent, the footer body's drawn height),
 	  widget:EditorCell(key) (a row of the editor's, or of its footer's)
 	  bagitems: widget.icons[i] = a button { texture, remove (.icon), entry }
+
+	At half width, narrower than 774 (EDITOR_X + EDITOR_WIDTH: w.compact, set by
+	SetWidth), the tab has no list beside the editor. A button row is on top:
+	w.menuButton, a 260 wide W.SelectFace with the list icon, the edited
+	category's name and its place in grey ('3 of 31', counting every row), then
+	w.prevButton and w.nextButton, 24 square and 6 apart (the previous and the
+	next category, each disabled at its end, with a red line saying so, and not
+	wrapping round). Under it the editor and its footer take the whole width
+	(their bodies' SetWidth(width, true): one column, as every page at half) from
+	BUTTON_LINE down. The button opens w.menu, the list as a menu: a panel 234
+	wide on UIParent at FULLSCREEN_DIALOG level 410 (its catcher at 400 closes
+	it on a click outside, and Esc through W.Kit.CatchKeys), 4 under the
+	button, captioned 'Categories: drag to reorder', holding w.listPane (the
+	same rows, counts, handles, ghost, drop line and bar, and + New category and
+	Reset all under them), its view at most 14 rows. The code of the list is the
+	same in the menu as beside the editor; only the pane's parent and its view's
+	height change (ApplyMode, Fit). A drag in the menu scrolls it at its edges as
+	the list does. The menu closes on a pick, + New category, a click outside,
+	Esc, the window closing or leaving half, and INV:EditCategory; it stays open
+	through a drop, Reset all and a bag update, which draw the tab again:
+	INV.categoryEditor.menuOpen is kept across that, and Layout closes it when
+	the tab is drawn in a later render than it was released in (another page or
+	tab). A close with a drag on ends the drag with no move (D.StopDrag), and the
+	window, which waited for it, draws again.
+
+	  INV.categoryEditor.menuOpen       the menu is open while this is true and
+	                                    the tab is compact
+	  widget.compact, widget.menuButton, widget.prevButton, widget.nextButton,
+	  widget.menu (widget.menu.catcher, widget.menu.caption)
 
 	An icon's item tooltip opens beside the window it's in (/sui), out of it,
 	its top level with the icon's: on the window's right, or on its left when
@@ -99,7 +128,7 @@ local INV = st:GetModule('Inventory')
 	GameTooltip's, through its public API (SetOwner, ClearAllPoints, SetPoint).
 ]]
 
-local W, OB, OM = st.OptionsWidgets, st.OptionsBody, st.OptionsModel
+local W, OB, OM, OW = st.OptionsWidgets, st.OptionsBody, st.OptionsModel, st.OptionsWindow
 -- What the rule editor drags with too (dragparts.lua): text helpers and the drag.
 local D = INV.DragParts
 local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWidth, D.Inside
@@ -107,7 +136,7 @@ local Colors, Grey, Text, TextWidth, Inside = D.Colors, D.Grey, D.Text, D.TextWi
 local floor, ceil, max, min = math.floor, math.ceil, math.max, math.min
 local format = string.format
 
-INV.categoryEditor = { selected = nil, listOffset = 0, editorOffset = 0, footerOffset = 0 }
+INV.categoryEditor = { selected = nil, listOffset = 0, editorOffset = 0, footerOffset = 0, menuOpen = false }
 INV.categoriesTabShown = false
 
 ------------------------------------------------------------------ the look
@@ -129,6 +158,20 @@ local MIN_HEIGHT = 10 * ROW_HEIGHT + FOOTER_HEIGHT -- the tab's least: ten rows 
 -- row outside it, this far a second.
 local EDGE_INSIDE, EDGE_OUTSIDE = 6, ROW_HEIGHT
 local EDGE_SPEED = 12 * ROW_HEIGHT
+-- At half the list is a menu on a button (see the header): the tab is compact
+-- while it is narrower than the list and the editor side by side.
+local COMPACT_BELOW = EDITOR_X + EDITOR_WIDTH
+local MENU_BUTTON_WIDTH = 260
+local BUTTON_LINE = W.FIELD_HEIGHT + 10 -- the button row, and the editor's top under it
+local STEP_SIZE, STEP_ICON = 24, 16 -- previous and next
+local MENU_PAD = 8
+local MENU_WIDTH = LIST_WIDTH + 24 -- the list, its bar's room and the padding each side
+local MENU_ROWS = 14 -- the menu's list view, most
+local MENU_GAP = 4 -- the menu under the button
+local MENU_CAPTION_HEIGHT = 14
+local MENU_LIST_TOP = MENU_PAD + MENU_CAPTION_HEIGHT + GAP
+local MENU_LEVEL, MENU_CATCHER_LEVEL = 410, 400 -- as an item's menu (optionsmenu.lua)
+local FACE_ICON, FACE_PLACE_RIGHT = 16, 26 -- the button's icon; its place's right edge from the face's (6 before the caret)
 local TIP_GAP = 4 -- an item tooltip from the window's edge
 local ICON_SIZE, ICON_GAP = 30, 6
 local REMOVE_SIZE = 14
@@ -382,6 +425,7 @@ function INV:EditCategory(key)
 		self.categoryEditor.selected = entry.id
 		self.categoryEditor.reveal = true
 	end
+	self.categoryEditor.menuOpen = false -- at half the button names the category
 	st.Config:Open('Inventory', 'categories')
 end
 
@@ -446,11 +490,87 @@ local function Action(parent, text, run)
 	return button
 end
 
-local StartDrag, EndDrag
+local StartDrag, EndDrag, Fit
+
+-- The place of the category id in list, or nil.
+local function PlaceOf(list, id)
+	for i, entry in ipairs(list) do
+		if entry.id == id then return i end
+	end
+end
+
+------------------------------------------------------------------ the tab: the menu (at half)
+
+-- The menu over the editor holds the list. It is shown while the tab is
+-- compact and INV.categoryEditor.menuOpen is true, which only the button, a
+-- pick and the other things that close it change; a draw (a drop, Reset all, a
+-- bag update) leaves it as it was.
+
+local function HideMenu(w)
+	w.menu.catcher:Hide()
+	w.menu:Hide()
+	W.SetOn(w.menuButton, false)
+end
+
+-- Under the button, 4 below its bottom left, drawn at the button's scale.
+local function ShowMenu(w)
+	local menu, face = w.menu, w.menuButton
+	menu:SetScale(face:GetEffectiveScale() / UIParent:GetEffectiveScale())
+	menu:ClearAllPoints()
+	menu:SetPoint('TOPLEFT', face, 'BOTTOMLEFT', 0, -MENU_GAP)
+	menu.catcher:Show()
+	menu:Show()
+	W.SetOn(face, true)
+end
+
+-- Closes it. A drag in it ends with no move, and the window, which waited
+-- for the drag, draws again.
+local function CloseMenu(w)
+	INV.categoryEditor.menuOpen = false
+	if not w.menu:IsShown() then return end
+	local dragging = w.drag ~= nil
+	D.StopDrag(w)
+	HideMenu(w)
+	if dragging then Changed(w) end
+end
+
+-- The list's selected row comes into view as the menu opens.
+local function OpenMenu(w)
+	if not (w.row and w.compact) or w.drag then return end
+	local state = INV.categoryEditor
+	state.menuOpen = true
+	local list = INV:GetCategoryList()
+	w.reveal, w.listBase = PlaceOf(list, Selected(list)), state.listOffset
+	Fit(w)
+	ShowMenu(w)
+end
+
+local function ToggleMenu(w)
+	if INV.categoryEditor.menuOpen then CloseMenu(w) else OpenMenu(w) end
+end
+
+-- Previous and next: the category dir (-1, 1) places from the edited one.
+local function Step(w, dir)
+	if not w.row or w.drag then return end
+	local list = INV:GetCategoryList()
+	local target = list[(PlaceOf(list, Selected(list)) or 1) + dir]
+	if not target then return end
+	INV.categoryEditor.selected = target.id
+	Changed(w)
+end
+
+local function StepTip(dir)
+	return function(button)
+		local title = dir < 0 and 'Previous category' or 'Next category'
+		if not button.disabled then return title end
+		return title, { { text = dir < 0 and 'This is the first category.' or 'This is the last category.', red = true } }
+	end
+end
 
 local function Select(w, i)
 	local record = w.rows[i]
 	if not (w.row and record) or w.drag then return end
+	CloseMenu(w) -- a pick, of the edited category too
 	if INV.categoryEditor.selected == record.id then return end
 	INV.categoryEditor.selected = record.id
 	Changed(w)
@@ -563,6 +683,7 @@ end
 
 local function Added(w, id)
 	if id then INV.categoryEditor.selected = id end
+	CloseMenu(w)
 	Changed(w)
 end
 
@@ -638,28 +759,38 @@ end
 	tab its height after Layout, and again when /sui grows) lands on the same
 	spot for the new height.
 ]]
-local function Fit(w)
+function Fit(w)
 	local height = max(1, w.frame:GetHeight())
 	local state = INV.categoryEditor
+	local compact = w.compact
+	-- The editor's column: from under the button row (compact) down.
+	local top, x = compact and BUTTON_LINE or 0, compact and 0 or EDITOR_X
+	local column = max(1, height - top)
 	local rows = ListHeight(w)
-	w.listScroll:SetHeight(max(1, min(rows, height - FOOTER_HEIGHT)))
+	-- The list's view: down to its footer, or in the menu at most MENU_ROWS rows.
+	local view = max(1, min(rows, compact and MENU_ROWS * ROW_HEIGHT or height - FOOTER_HEIGHT))
+	w.listScroll:SetHeight(view)
 	w.listScroll:UpdateScrollChildRect()
+	if compact then
+		w.listPane:SetHeight(view + FOOTER_HEIGHT)
+		w.menu:SetSize(MENU_WIDTH, MENU_LIST_TOP + view + FOOTER_HEIGHT + MENU_PAD)
+	end
 	local offset = w.listBase or state.listOffset
 	if w.reveal then offset = Reveal(offset, (w.reveal - 1) * ROW_HEIGHT, w.listScroll:GetHeight()) end
 	state.listOffset = OB.ScrollTo(w.listScroll, w.listBar, offset, rows, LIST_BAR_GAP)
 
 	-- Nothing in the footer (an editor with no rows): no footer.
 	local content = w.footerContent or 0
-	local footer = content > 0 and min(content + FOOTER_EDGE, floor(height / 2)) or 0
+	local footer = content > 0 and min(content + FOOTER_EDGE, floor(column / 2)) or 0
 	w.footer:ClearAllPoints()
-	w.footer:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', EDITOR_X, -(height - footer))
+	w.footer:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', x, -(height - footer))
 	w.footer:SetHeight(max(1, footer))
 	w.footer:SetShown(footer > 0)
 	w.footerScroll:SetHeight(max(1, footer - FOOTER_EDGE))
 	w.footerScroll:UpdateScrollChildRect()
 	state.footerOffset = OB.ScrollTo(w.footerScroll, w.footerBar, w.footerBase or state.footerOffset, footer > 0 and content or 0)
 
-	w.editorScroll:SetHeight(height - footer)
+	w.editorScroll:SetHeight(max(1, column - footer))
 	w.editorScroll:UpdateScrollChildRect()
 	state.editorOffset = OB.ScrollTo(w.editorScroll, w.editorBar, w.editorBase or state.editorOffset, w.editorHeight or 0)
 	w.divider:SetHeight(height)
@@ -756,21 +887,97 @@ end
 
 ------------------------------------------------------------------ the tab: laying it out
 
-local function Layout(w)
+-- The panes for the width the tab has: full, the list beside the editor (234,
+-- 540 wide), or compact, the list in the menu and the editor under the button
+-- row with the whole width and one column (the half body's).
+local function ApplyMode(w)
+	local frame, compact = w.frame, w.compact
+	local width = compact and w.tabWidth or EDITOR_WIDTH
+	local x, top = compact and 0 or EDITOR_X, compact and BUTTON_LINE or 0
+
+	local target = compact and w.menu or frame
+	if w.listPane:GetParent() ~= target then w.listPane:SetParent(target) end
+	w.listPane:ClearAllPoints()
+	w.listPane:SetWidth(LIST_WIDTH)
+	if compact then
+		w.listPane:SetPoint('TOPLEFT', w.menu, 'TOPLEFT', MENU_PAD, -MENU_LIST_TOP)
+	else
+		w.listPane:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+		w.listPane:SetPoint('BOTTOMLEFT', frame, 'BOTTOMLEFT', 0, 0)
+	end
+	w.divider:SetShown(not compact)
+
+	w.editorScroll:ClearAllPoints()
+	w.editorScroll:SetPoint('TOPLEFT', frame, 'TOPLEFT', x, -top)
+	for _, pane in ipairs({ w.editorScroll, w.pane, w.footer, w.footerScroll, w.footerPane }) do pane:SetWidth(width) end
+	w.body:SetWidth(width, compact)
+	w.footerBody:SetWidth(width, compact)
+
+	-- The button row, at the editor's content (under Blizzard the body has no padding).
+	for _, control in ipairs({ w.menuButton, w.prevButton, w.nextButton }) do control:SetShown(compact) end
+	if compact then
+		local pad = (W.BlizzardLook() and OB.FLAT or OB.PANELED).pad
+		w.menuButton:ClearAllPoints()
+		w.menuButton:SetPoint('TOPLEFT', frame, 'TOPLEFT', pad, 0)
+		w.prevButton:ClearAllPoints()
+		w.prevButton:SetPoint('TOPLEFT', w.menuButton, 'TOPRIGHT', GAP, 0)
+		w.nextButton:ClearAllPoints()
+		w.nextButton:SetPoint('TOPLEFT', w.prevButton, 'TOPRIGHT', GAP, 0)
+	end
+end
+
+-- The face's contents: the list icon, the name (cut short, not over the place)
+-- and its place at the right, before the caret. Under Blizzard the face's own
+-- code (W.LookSelectFace) puts the name across it, centred, each time it is
+-- painted: so these go on again after it.
+local function PlaceFaceContents(face)
+	face.text:SetJustifyH('LEFT')
+	face.text:ClearAllPoints()
+	face.text:SetPoint('LEFT', face.icon, 'RIGHT', GAP, 0)
+	face.text:SetPoint('RIGHT', face.place, 'LEFT', -GAP, 0)
+end
+
+-- The button row for the edited category (place of list): the button's name
+-- and place, previous and next disabled at the ends, each in the look now.
+local function LayButtonRow(w, list, place)
+	local face, blizzard = w.menuButton, W.BlizzardLook() or false
+	face.text:SetText(list[place].name)
+	face.place:SetText(format('%d of %d', place, #list))
+	face.place:SetTextColor(Grey())
+	W.LookSelectFace(face, blizzard)
+	PlaceFaceContents(face)
+	W.SetOn(face, w.menu:IsShown())
+	for _, step in ipairs({ { w.prevButton, place > 1 }, { w.nextButton, place < #list } }) do
+		W.LookControl(step[1], blizzard)
+		W.SetEnabled(step[1], step[2])
+	end
+end
+
+local function Layout(w, relayout)
 	-- Nothing moves under the mouse: the drop is worked out on its up.
 	if w.drag or EditorDragging(w) then return end
 	INV.categoriesTabShown = true
 	local owner = W.ListOwner()
 	if owner and Inside(owner, w.listPane) then W.CloseList() end
 
+	local state = INV.categoryEditor
+	-- A menu open as the tab was released stays open only when this draw is
+	-- the one that replaced it (a drop, a bag update): the tab shown again
+	-- later (another page, another tab) opens with it closed.
+	if state.menuAt ~= nil and state.menuAt ~= OW.GetRenderCount() then state.menuOpen = false end
+	state.menuAt = nil
+	ApplyMode(w)
+
 	local list = INV:GetCategoryList()
 	local selected = Selected(list)
 	-- The bags, read once for the counts and the editor's item strips.
 	local counts, items = INV:CountCategories('bag')
 	local level = w.frame:GetFrameLevel()
-	w.listPane:SetFrameLevel(level + 1)
-	w.listScroll:SetFrameLevel(level + 2)
-	w.list:SetFrameLevel(level + 3)
+	-- The list's levels: over the menu's when it is in the menu.
+	local listLevel = w.compact and w.menu:GetFrameLevel() or level
+	w.listPane:SetFrameLevel(listLevel + 1)
+	w.listScroll:SetFrameLevel(listLevel + 2)
+	w.list:SetFrameLevel(listLevel + 3)
 	wipe(w.rows)
 	local place
 	for i, entry in ipairs(list) do
@@ -797,11 +1004,14 @@ local function Layout(w)
 	-- or when asked (state.reveal): the selected one dragged, Reset all,
 	-- EditCategory. A draw that did neither leaves the list where it is: a
 	-- bag update, or another row dragged past the selected one.
-	local state = INV.categoryEditor
-	w.reveal = nil
-	if state.reveal or state.shownId ~= selected then w.reveal = place end
-	state.reveal, state.shownId = false, selected
-	w.listBase = state.listOffset
+	-- (A draw again for another width keeps what the first one found.)
+	if not relayout then
+		w.reveal = nil
+		if state.reveal or state.shownId ~= selected then w.reveal = place end
+		state.reveal, state.shownId = false, selected
+		w.listBase = state.listOffset
+	end
+	LayButtonRow(w, list, place or 1)
 
 	-- The editor's options, less Caught now and Pinned items, which its
 	-- footer draws, under it.
@@ -839,6 +1049,64 @@ local function Layout(w)
 	w.editorBase, w.footerBase = state.editorOffset, state.footerOffset
 
 	Fit(w)
+	if w.compact and state.menuOpen then ShowMenu(w) else HideMenu(w) end
+end
+
+-- The button row (compact only) and the menu, built hidden: the face, previous
+-- and next in the tab's frame; the menu and its catcher on UIParent, where the
+-- list goes while the tab is compact (ApplyMode).
+local function BuildMenu(w)
+	local face = W.SelectFace(w.frame, MENU_BUTTON_WIDTH, function() ToggleMenu(w) end)
+	face.tip = function() return 'Categories', { 'Opens the list: pick one to edit, or drag one to reorder.' } end
+	face.icon = face:CreateTexture(nil, 'OVERLAY')
+	face.icon:SetTexture(st.icons.list)
+	face.icon:SetSize(FACE_ICON, FACE_ICON)
+	face.icon:SetPoint('LEFT', face, 'LEFT', PAD, 0)
+	face.icon:SetVertexColor(Grey())
+	face.place = Text(face, OB.Font('small'), 'RIGHT')
+	face.place:SetPoint('RIGHT', face, 'RIGHT', -FACE_PLACE_RIGHT, 0)
+	PlaceFaceContents(face)
+	-- The kit's face code puts the name across it again as it paints it (the mouse, a press).
+	for _, script in ipairs({ 'OnEnter', 'OnLeave', 'OnMouseDown', 'OnMouseUp', 'OnHide' }) do
+		face:HookScript(script, function(self) PlaceFaceContents(self) end)
+	end
+	w.menuButton = face
+	w.prevButton = W.IconButton(w.frame, st.icons.chevronLeft, StepTip(-1), STEP_SIZE, STEP_ICON)
+	w.prevButton.onClick = function() Step(w, -1) end
+	w.nextButton = W.IconButton(w.frame, st.icons.chevronRight, StepTip(1), STEP_SIZE, STEP_ICON)
+	w.nextButton.onClick = function() Step(w, 1) end
+
+	local catcher = CreateFrame('Frame', nil, UIParent)
+	catcher:SetAllPoints(UIParent)
+	catcher:SetFrameStrata('FULLSCREEN_DIALOG')
+	catcher:SetFrameLevel(MENU_CATCHER_LEVEL)
+	catcher:EnableMouse(true)
+	catcher:Hide()
+	catcher:SetScript('OnMouseDown', function() if w.row then CloseMenu(w) end end)
+	-- Esc closes it; every other key goes on to the game.
+	W.Kit.CatchKeys(catcher, { ESCAPE = true }, function(key)
+		if key == 'ESCAPE' and w.row then CloseMenu(w) end
+	end)
+
+	local menu = st:CreateFrame('Frame', nil, UIParent)
+	menu:SetFrameStrata('FULLSCREEN_DIALOG')
+	menu:SetFrameLevel(MENU_LEVEL)
+	menu:SetSize(MENU_WIDTH, MENU_LIST_TOP + FOOTER_HEIGHT + MENU_PAD)
+	st:KeepInScreenMargin(menu)
+	menu:EnableMouse(true)
+	menu:Hide()
+	st:SetTemplate(menu, 'theme', 'solid', 'panel')
+	-- The wheel stops at the menu and its catcher: the page under them stays.
+	for _, frame in ipairs({ catcher, menu }) do
+		frame:EnableMouseWheel(true)
+		frame:SetScript('OnMouseWheel', function() end)
+	end
+	menu.caption = Text(menu, OB.Font('caption'))
+	menu.caption:SetPoint('TOPLEFT', menu, 'TOPLEFT', MENU_PAD + PAD, -MENU_PAD)
+	menu.caption:SetText('Categories: drag to reorder')
+	menu.caption:SetTextColor(Grey())
+	menu.catcher = catcher
+	w.menu = menu
 end
 
 W.Define('bagcategories', {
@@ -918,6 +1186,9 @@ W.Define('bagcategories', {
 		end, { step = OB.SCROLL_STEP })
 		w.footerBody = OB.New(w.footerPane, nil, function(...) Forward(w, ...) end, EDITOR_WIDTH)
 
+		w.compact, w.tabWidth = false, OB.WIDTH
+		BuildMenu(w)
+
 		w.rows, w.rowFrames = {}, {}
 		-- Over the rows: the line a drag draws where the category would go.
 		w.over = CreateFrame('Frame', nil, w.list)
@@ -930,8 +1201,18 @@ W.Define('bagcategories', {
 	methods = {
 		Refresh = function(w) Layout(w) end,
 
-		-- The body's width (a bare row); the panes' are fixed.
-		SetWidth = function(w, width) w.frame:SetWidth(width) end,
+		-- The body's width (a bare row): under COMPACT_BELOW the list is a menu
+		-- and the editor takes the width. The body gives it after the tab is
+		-- bound, so a change of layout draws the tab again, keeping what the
+		-- first draw found (the list's reveal).
+		SetWidth = function(w, width)
+			local compact = width < COMPACT_BELOW
+			local changed = compact ~= w.compact or width ~= w.tabWidth
+			w.compact, w.tabWidth = compact, width
+			w.frame:SetWidth(width)
+			if not compact then INV.categoryEditor.menuOpen = false end
+			if changed and w.row then Layout(w, true) end
+		end,
 
 		-- The height the body's view leaves it (a fill row): the panes follow.
 		SetHeight = function(w, height)
@@ -961,7 +1242,20 @@ W.Define('bagcategories', {
 		OnRelease = function(w)
 			StopDrag(w)
 			local owner = W.ListOwner()
-			if owner and Inside(owner, w.frame) then W.CloseList() end
+			if owner and (Inside(owner, w.frame) or Inside(owner, w.menu)) then W.CloseList() end
+			-- The menu goes with the tab, and the list back into it. It stays
+			-- open for the draw that replaces the tab at once (a drop, a bag
+			-- update: Layout), not when the window is closed or not at half.
+			HideMenu(w)
+			if w.listPane:GetParent() ~= w.frame then w.listPane:SetParent(w.frame) end
+			local state = INV.categoryEditor
+			if state.menuOpen then
+				if OW:IsShown() and OW:GetWindowSize() == 'half' then
+					state.menuAt = OW.GetRenderCount()
+				else
+					state.menuOpen = false
+				end
+			end
 			w.body:Release()
 			w.footerBody:Release()
 			for _, f in ipairs(w.rowFrames) do f:Hide() end
