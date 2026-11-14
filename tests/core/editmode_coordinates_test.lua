@@ -113,15 +113,28 @@ test('the label sits outside the outline at the anchoring corner, and flips insi
 	-- Whole.
 	eq(spot('CENTER', { left = 100, right = 161, bottom = 400, top = 429 }), '71,410', 'rounded')
 
-	-- EM:ScreenTop: the bar docked and shown takes its height and drawn inset.
-	local top = UIParent:GetHeight()
-	eq(EM:ScreenTop(), top, 'no bar built or shown: UIParent height')
+	-- Beside the docked bar's rect the strip is free; across its width the label stays
+	-- under its bottom: the axis flips inside the outline, never onto the bar.
+	local avoid = { left = 700, right = 1200, bottom = 1008 }
+	local function avoiding(r, w)
+		local x, y = EM.CoordinatesSpot('TOPLEFT', r, w or 120, 12, 1920, 1080, avoid)
+		return x .. ',' .. y
+	end
+	eq(avoiding({ left = 100, right = 260, bottom = 1030, top = 1058 }), '100,1060', 'beside the bar: above the outline, in the strip')
+	eq(avoiding({ left = 800, right = 960, bottom = 1030, top = 1058 }), '800,996', 'under the bar: flipped inside the outline, then held under the bar (the top is 1008)')
+	eq(avoiding({ left = 1190, right = 1350, bottom = 1030, top = 1058 }), '1190,996', 'over the bar by its right end: the same')
+	eq(avoiding({ left = 1210, right = 1370, bottom = 1030, top = 1058 }), '1210,1060', 'just past the bar: free')
+	eq(avoiding({ left = 600, right = 700, bottom = 1030, top = 1058 }, 120), '600,996', 'a label that reaches over the left end is held under it')
+	eq(avoiding({ left = 100, right = 200, bottom = 1030, top = 1058 }, 120), '100,1060', 'one that ends short of it is free')
+
+	-- EM:BarRect is the rect the label reads.
 	EM:Activate()
 	local inset = st:ThemeInset('theme', 'theme', 'panel')
 	check(inset > 0, 'Thick draws an inset')
-	eq(EM:ScreenTop(), top - 40 - inset, 'bar shown: height and inset')
+	local bar = EM:BarRect()
+	eq(bar.top - bar.bottom, 70 + inset, 'bar shown: its height and inset')
 	EM:Deactivate()
-	eq(EM:ScreenTop(), top, 'hidden again: UIParent height')
+	eq(EM:BarRect(), nil, 'hidden again: no rect')
 	reset()
 end)
 

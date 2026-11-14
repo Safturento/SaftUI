@@ -4,62 +4,58 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 --[[
 	Edit mode's bar: the controls of edit mode (Exit, the grid and its size, the
-	snaps, Dim world, Coordinates, Show disabled, Show hidden, the module list, the filter, Options, Detach) in one strip across the top of the
-	screen (or, detached, in the floating window of barwindow.lua), shown while edit
+	snaps, Dim world, Coordinates, Show disabled, Show hidden, the module list, the
+	filter, Options, Hide until hovered, Detach) on a small two-row bar at the top of the screen
+	(or, detached, in the floating window of barwindow.lua), shown while edit
 	mode is on, with /sui open or closed. This file is the bar itself: its
 	frame, the list of groups of controls, the layout (EM.BarLayout, pure) and
-	the events that show it, fade it and keep it current. The groups and their
-	controls are bargroups.lua's, and later files add theirs the same way
-	(EM:AddBarGroup, at load).
+	the events that show it, fade it and keep it current. Where it sits, how it
+	slides and hides is bardock.lua's. The groups and their controls are
+	bargroups.lua's, and later files add theirs the same way (EM:AddBarGroup,
+	at load).
 
-	  EM.BAR                   the numbers: HEIGHT 40, PAD 10 (the bar's ends), GAP 4
-	                           (between controls), GROUP_PAD 8 (each side of a
-	                           divider), FLEX_MIN 12 (the least gap between the left
-	                           and right groups), LEVEL 9500, DRAG_ALPHA, STAGES 6
+	  EM.BAR                   the numbers: ROW 26 (a row of controls), VPAD 7,
+	                           ROW_GAP 4 (HEIGHT 70 = 2 * VPAD + 2 * ROW + ROW_GAP),
+	                           PAD 10 (the bar's ends), GAP 4 (between controls),
+	                           GROUP_PAD 8 (each side of a divider), LEVEL 9500,
+	                           DRAG_ALPHA
 	  EM:AddBarGroup(group)    group = { key, order, side = 'left' | 'right',
-	                           section = 'title' | 'grid' | 'show' | 'changes',
-	                           controls = function(parent) -> { control, ... } }.
-	                           section is the floating window's. Left groups run
-	                           from the left end by order, right groups to the
-	                           right end.
+	                           row = 1 | 2, section = 'title' | 'grid' | 'show' |
+	                           'changes', controls = function(parent) -> { control, ... } }.
+	                           row is the docked bar's (a group without one is on
+	                           row 1 when left, row 2 when right); section is the
+	                           floating window's. Within a row groups run left to
+	                           right by order.
 	  a control                { key, frame, Lay, Refresh, Look, section, align }
-	    Lay(control, stage, floating) -> width   lays the control out for the
-	                           stage and says its width; 0 is not shown
+	    Lay(control, floating) -> width   lays the control out and says its
+	                           width; 0 is not shown
 	    Refresh(control)       puts the settings' state on it (optional)
 	    Look(control, blizzard) its look for the theme; W.LookControl(frame) when
 	                           it has none (a number box's is W.LookNumberBox)
 	    section, align         the group's section overridden, 'right' (unused in
 	                           the docked bar)
-	  EM.BarLayout(width, groups) -> xs, dividers, fits      the pure part
+	  EM.BarLayout(rows) -> xs, dividers, width      the pure part
 	  EM:GetBar()              the frame, built on first use
-	  EM:LayoutBar() -> stage  lays the controls out for the bar's width
-	  EM:BarGap() -> left, right  the flexible gap in the bar's x: where the left
-	                           groups end, and where the first right group's
-	                           divider is (the bar's right end less PAD with no
-	                           right groups), as the last layout left it
-	  EM:BarWidthAt(stage)     the narrowest width the bar fits at that stage
+	  EM:LayoutBar()           lays the controls out and sizes the bar
 	  EM:RefreshBar()          each control's look and state again
 	  EM:BarControl(key)       a control by its key
 	  EM:IsBlizzardEditModeOpen()
 
 	The frame is a SaftUI frame in FULLSCREEN_DIALOG at level BAR.LEVEL, above
 	every mover (they climb to 9000, picker.lua) and /sui (level 100), under
-	everything in TOOLTIP strata. It is HEIGHT tall from the screen's left to
-	its right, drawn as a panel in the theme: its backdrop already sits the
-	theme's inset outside the frame, so with the frame flush with the screen's
-	top, left and right only its bottom line shows. The frame takes no mouse
-	(a click between controls reaches the mover under it); its controls do.
-	Controls are children one level above its own (their boxes' backdrops, one
-	below them, stay over the bar's), vertically centred on whole pixels.
+	everything in TOOLTIP strata. It is two rows tall and only as wide as its
+	wider row, drawn as a panel in the theme: its backdrop sits the theme's
+	inset outside the frame. Each row is centred in the bar; the bar is the
+	wider row plus PAD at each end, made even. It sits against the top edge,
+	slid along it by bardock.lua. The frame takes the mouse (dragging its blank
+	parts slides it); its controls are children one level above its own (their
+	boxes' backdrops, one below them, stay over the bar's), vertically centred
+	in their row on whole pixels.
 
-	Narrow screens. The stages give way cumulatively, each when the one before
-	does not fit (EM:LayoutBar takes the first that does, else the last):
-	1 narrows the filter box, 2 hides the Show caption, 3 narrows the Show
-	face, 4 makes Exit and Options icon buttons, 5 hides the filter box. A
-	control reads its stage in its Lay and ignores the ones that are not its.
-	The bar lays out again on UI_SCALE_CHANGED and DISPLAY_SIZE_CHANGED (its own
-	frame's events) and on its own size change. Sizes the game reads back carry
-	a hair of float noise, so the width is rounded.
+	The two rows fit the narrowest screen at every control's full width, so
+	nothing gives way. The bar lays out again on UI_SCALE_CHANGED and
+	DISPLAY_SIZE_CHANGED (its own frame's events). Sizes the game reads back
+	carry a hair of float noise, so a height is rounded before it is placed by.
 
 	Events (EM:On): Enabled lays out, refreshes and shows it, Disabled hides it
 	(and so does entering combat, which turns edit mode off). DragStarted fades
@@ -76,18 +72,16 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 local floor = math.floor
 
 EM.BAR = {
-	HEIGHT = 40, PAD = 10, GAP = 4, GROUP_PAD = 8, FLEX_MIN = 12,
-	LEVEL = 9500, DRAG_ALPHA = 0.25, STAGES = 6,
+	ROW = 26, VPAD = 7, ROW_GAP = 4, PAD = 10, GAP = 4, GROUP_PAD = 8,
+	LEVEL = 9500, DRAG_ALPHA = 0.25,
 }
 local BAR = EM.BAR
-
-local DIVIDER_HEIGHT = 26
+BAR.HEIGHT = 2 * BAR.VPAD + 2 * BAR.ROW + BAR.ROW_GAP -- 70
+local ROWS = 2
 
 local groups = {} -- registered groups, by order
 local bar         -- the frame, once made
 local windowed = false -- the controls are in the floating window (barwindow.lua), not on the bar
-local stage = 0   -- the stage the controls are laid out for
-local gapLeft, gapRight = BAR.PAD, BAR.PAD -- the flexible gap, from the last layout
 
 ------------------------------------------------------------------ Blizzard's Edit Mode
 
@@ -108,176 +102,149 @@ local function GroupWidth(widths)
 	return total + (count - 1) * BAR.GAP, count
 end
 
--- Puts a row's controls from x, GAP apart, a width of 0 skipped; row[c] is
--- control c's x. Returns where the last one ends.
-local function PlaceRow(row, widths, x)
+-- Puts a group's controls from x, GAP apart, a width of 0 skipped; group[c] is
+-- control c's x.
+local function PlaceGroup(group, widths, x)
 	local first = true
 	for c, width in ipairs(widths) do
 		if width > 0 then
 			if not first then x = x + BAR.GAP end
 			first = false
-			row[c] = x
+			group[c] = x
 			x = x + width
 		end
 	end
 	return x
 end
 
--- Where the left groups end, and how wide the right groups' block is from its
--- first divider to PAD short of the bar's right end.
-local function Measure(list)
-	local x, leftEnd, anyLeft = BAR.PAD, BAR.PAD, false
-	local block, rightCount = 0, 0
-	for _, group in ipairs(list) do
-		local total, count = GroupWidth(group.widths)
-		if count > 0 then
-			if group.side == 'right' then
-				rightCount = rightCount + 1
-				block = block + (rightCount == 1 and 1 + BAR.GROUP_PAD or 2 * BAR.GROUP_PAD + 1) + total
-			else
-				if anyLeft then x = x + 2 * BAR.GROUP_PAD + 1 end
-				anyLeft = true
-				x = x + total
-				leftEnd = x
-			end
+-- How wide a row is: its groups (a group with no control is not there), a
+-- divider and GROUP_PAD each side between them.
+local function RowWidth(row)
+	local total, count = 0, 0
+	for _, group in ipairs(row) do
+		local width, controls = GroupWidth(group.widths)
+		if controls > 0 then
+			if count > 0 then total = total + 2 * BAR.GROUP_PAD + 1 end
+			total, count = total + width, count + 1
 		end
 	end
-	return leftEnd, block
+	return total
 end
 
 --[[
-	Where everything goes in a bar width wide. groups is { { side, widths = {
-	w, ... } }, ... } in order, a width of 0 not shown (a group with none is
-	skipped whole). Returns xs, dividers and fits:
-	  - xs[g][c], control c of group g's x from the bar's left, whole;
-	  - dividers, a list of x;
-	  - fits, whether the left end plus FLEX_MIN is at most the divider before
-	    the right groups (the bar's right end less PAD with no right groups).
-	The left groups run from PAD, GAP between controls, with GROUP_PAD, a 1
-	wide divider and GROUP_PAD between groups. The right groups end PAD short
-	of the right end, the same between them, and the first has a divider at its
-	left.
+	Where everything goes. rows is { row, ... }, a row { group, ... } in order, a
+	group { widths = { w, ... } } (a width of 0 is not shown; a group with none
+	is skipped whole, divider and all). Returns xs, dividers and width:
+	  - xs[r][g][c], control c of group g of row r's x from the bar's left, whole;
+	  - dividers[r], a list of x;
+	  - width, the bar's: the wider row plus PAD at each end, made even.
+	A row's controls run from its own start, GAP apart, with GROUP_PAD, a 1 wide
+	divider and GROUP_PAD between groups. Each row is centred in the bar
+	(floor((width - the row's width) / 2)), so the wider one starts at PAD or,
+	when the width was made even, one more.
 ]]
-function EM.BarLayout(width, list)
+function EM.BarLayout(rows)
+	local widest = 0
+	for _, row in ipairs(rows) do widest = math.max(widest, RowWidth(row)) end
+	local width = widest + 2 * BAR.PAD
+	width = width + width % 2
 	local xs, dividers = {}, {}
-	local x, anyLeft = BAR.PAD, false
-	local right, leftEnd = {}, BAR.PAD
-	for g, group in ipairs(list) do
-		xs[g] = {}
-		local _, count = GroupWidth(group.widths)
-		if count > 0 then
-			if group.side == 'right' then
-				right[#right + 1] = g
-			else
-				if anyLeft then
-					dividers[#dividers + 1] = x + BAR.GROUP_PAD
+	for r, row in ipairs(rows) do
+		xs[r], dividers[r] = {}, {}
+		local x, any = floor((width - RowWidth(row)) / 2), false
+		for g, group in ipairs(row) do
+			xs[r][g] = {}
+			local _, count = GroupWidth(group.widths)
+			if count > 0 then
+				if any then
+					dividers[r][#dividers[r] + 1] = x + BAR.GROUP_PAD
 					x = x + 2 * BAR.GROUP_PAD + 1
 				end
-				anyLeft = true
-				x = PlaceRow(xs[g], group.widths, x)
-				leftEnd = x
+				any = true
+				x = PlaceGroup(xs[r][g], group.widths, x)
 			end
 		end
 	end
-	local _, block = Measure(list)
-	local boundary = width - BAR.PAD
-	x = width - BAR.PAD - block
-	for i, g in ipairs(right) do
-		if i == 1 then boundary = x end
-		dividers[#dividers + 1] = x
-		x = PlaceRow(xs[g], list[g].widths, x + 1 + BAR.GROUP_PAD) + BAR.GROUP_PAD
-	end
-	return xs, dividers, leftEnd + BAR.FLEX_MIN <= boundary
+	return xs, dividers, width
 end
 
 ------------------------------------------------------------------ the controls
 
--- Lays every control out for stage (showing or hiding its frame), and returns
--- the groups as BarLayout takes them, with the group and its controls.
-local function LayAll(forStage, floating)
-	local list = {}
+-- Lays every control out (showing or hiding its frame), and returns the rows as
+-- BarLayout takes them: row r's groups { widths, group }.
+local function LayAll()
+	local rows = {}
+	for r = 1, ROWS do rows[r] = {} end
 	for _, group in ipairs(groups) do
-		local entry = { side = group.side, widths = {}, group = group }
+		local entry = { widths = {}, group = group }
 		for c, control in ipairs(group.built or {}) do
-			local width = control:Lay(forStage, floating or false) or 0
+			local width = control:Lay(false) or 0
 			entry.widths[c] = width
 			control.frame:SetShown(width > 0)
 		end
-		list[#list + 1] = entry
+		local row = rows[group.row] or rows[1]
+		row[#row + 1] = entry
 	end
-	return list
+	return rows
 end
 
--- The controls' top: centred in the bar on whole pixels (26 at 7, 24 at 8, 22
--- at 9), from the height as the game reads it back.
-local function Top(frame)
-	return -floor((BAR.HEIGHT - floor(frame:GetHeight() + 0.5)) / 2)
+-- The top of row r, from the bar's top.
+local function RowTop(r)
+	return BAR.VPAD + (r - 1) * (BAR.ROW + BAR.ROW_GAP)
+end
+
+-- A control's top in its row: centred in its ROW on whole pixels (26 at the
+-- row's top, 24 one down, 22 two), from the height as the game reads it back.
+local function Top(frame, r)
+	return -(RowTop(r) + floor((BAR.ROW - floor(frame:GetHeight() + 0.5)) / 2))
 end
 
 local dividers = {} -- the bar's dividers, kept
 
 -- Puts every shown control and the dividers where BarLayout said.
-local function Place(list, xs, divided)
-	for g, entry in ipairs(list) do
-		for c, control in ipairs(entry.group.built or {}) do
-			local x = xs[g][c]
-			if x then
-				control.frame:ClearAllPoints()
-				control.frame:SetPoint('TOPLEFT', bar, 'TOPLEFT', x, Top(control.frame))
+local function Place(rows, xs, divided)
+	for r, row in ipairs(rows) do
+		for g, entry in ipairs(row) do
+			for c, control in ipairs(entry.group.built or {}) do
+				local x = xs[r][g][c]
+				if x then
+					control.frame:ClearAllPoints()
+					control.frame:SetPoint('TOPLEFT', bar, 'TOPLEFT', x, Top(control.frame, r))
+				end
 			end
 		end
 	end
-	local top = -floor((BAR.HEIGHT - DIVIDER_HEIGHT) / 2)
-	for i, x in ipairs(divided) do
-		local line = dividers[i]
-		if not line then
-			line = bar:CreateTexture(nil, 'ARTWORK')
-			line:SetSize(1, DIVIDER_HEIGHT)
-			dividers[i] = line
+	local n = 0
+	for r, list in ipairs(divided) do
+		for _, x in ipairs(list) do
+			n = n + 1
+			local line = dividers[n]
+			if not line then
+				line = bar:CreateTexture(nil, 'ARTWORK')
+				line:SetSize(1, BAR.ROW)
+				dividers[n] = line
+			end
+			line:SetColorTexture(unpack(OB.HAIRLINE))
+			line:ClearAllPoints()
+			line:SetPoint('TOPLEFT', bar, 'TOPLEFT', x, -RowTop(r))
+			line:Show()
 		end
-		line:SetColorTexture(unpack(OB.HAIRLINE))
-		line:ClearAllPoints()
-		line:SetPoint('TOPLEFT', bar, 'TOPLEFT', x, top)
-		line:Show()
 	end
-	for i = #divided + 1, #dividers do dividers[i]:Hide() end
+	for i = n + 1, #dividers do dividers[i]:Hide() end
 end
 
--- Lays the controls out for the bar's width: the first stage whose layout
--- fits, else the last. Returns the stage.
+-- Lays the controls out and sizes the bar to them, then places it on the top
+-- edge (bardock.lua). Returns the bar's width.
 function EM:LayoutBar()
 	local frame = self:GetBar()
 	if windowed then return self:LayoutWindow() end
-	local width = floor(frame:GetWidth() + 0.5)
-	for s = 0, BAR.STAGES - 1 do
-		local list = LayAll(s)
-		local xs, divided, fits = EM.BarLayout(width, list)
-		if fits or s == BAR.STAGES - 1 then
-			Place(list, xs, divided)
-			stage = s
-			local leftEnd, block = Measure(list)
-			gapLeft = leftEnd
-			gapRight = width - BAR.PAD - block
-			self:Fire('BarLaid')
-			return s
-		end
-	end
-end
-
--- The flexible gap between the left groups and the first right group's
--- divider, in the bar's x, as the last layout left it: the status line
--- (barchanges.lua) sits in it. 'BarLaid' (no arguments) fires after each
--- layout, for what is placed by it.
-function EM:BarGap() return gapLeft, gapRight end
-
--- The narrowest bar the controls fit in at stage: the left groups, FLEX_MIN,
--- and the right groups' block, with PAD at each end. The controls are laid
--- out at the stage they were at again afterwards.
-function EM:BarWidthAt(forStage)
-	self:GetBar()
-	local leftEnd, block = Measure(LayAll(forStage))
-	LayAll(stage, windowed)
-	return leftEnd + BAR.FLEX_MIN + BAR.PAD + block
+	local rows = LayAll()
+	local xs, divided, width = EM.BarLayout(rows)
+	frame:SetSize(width, BAR.HEIGHT)
+	Place(rows, xs, divided)
+	self:PlaceBar()
+	self:Fire('BarLaid')
+	return width
 end
 
 ------------------------------------------------------------------ groups
@@ -347,6 +314,7 @@ function EM:AddBarGroup(group)
 	assert(type(group.key) == 'string' and type(group.order) == 'number'
 		and (group.side == 'left' or group.side == 'right') and type(group.controls) == 'function',
 		'AddBarGroup: a group needs key, order, side and controls')
+	group.row = group.row or (group.side == 'left' and 1 or 2)
 	groups[#groups + 1] = group
 	SortGroups()
 	if bar then
@@ -391,22 +359,24 @@ end
 function EM:GetBar()
 	if bar then return bar end
 	bar = st:CreateFrame('Frame', nil, UIParent)
-	EM.bar = bar -- the docked bar's frame (EM:BarCoverHeight reads whether it is shown)
+	EM.bar = bar -- the docked bar's frame (EM:BarRect reads whether it is shown)
 	bar:SetFrameStrata('FULLSCREEN_DIALOG')
 	bar:SetFrameLevel(BAR.LEVEL)
+	bar:SetSize(BAR.PAD * 2, BAR.HEIGHT)
 	bar:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 0, 0)
-	bar:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, 0)
-	bar:SetHeight(BAR.HEIGHT)
-	bar:EnableMouse(false)
+	bar:EnableMouse(true) -- its blank parts are the handle bardock.lua slides it by
 	st:SetBackdrop(bar, 'theme', 'options', 'panel')
 	bar:Hide()
-	-- The screen events can fire before UIParent has its new size, so the bar
-	-- also lays out when its own size (UIParent's width) changes.
+	-- (In the floating window the window's own events lay it out.) The screen
+	-- events can fire before UIParent has its new size, so the bar is placed
+	-- again on the next frame too (bardock.lua).
 	bar:RegisterEvent('UI_SCALE_CHANGED')
 	bar:RegisterEvent('DISPLAY_SIZE_CHANGED')
-	-- (In the floating window the window's own events lay it out.)
-	bar:SetScript('OnEvent', function() if not windowed then EM:LayoutBar() end end)
-	bar:HookScript('OnSizeChanged', function() if not windowed then EM:LayoutBar() end end)
+	bar:SetScript('OnEvent', function()
+		if windowed then return end
+		EM:LayoutBar()
+		C_Timer.After(0, function() if not windowed then EM:PlaceBar() end end)
+	end)
 	for _, group in ipairs(groups) do BuildGroup(group) end
 	if self:IsBarFloating() then
 		windowed = true
@@ -414,6 +384,7 @@ function EM:GetBar()
 	end
 	self:LayoutBar()
 	self:RefreshBar()
+	self:SetupBarDock()
 	return bar
 end
 
@@ -427,15 +398,8 @@ function EM:IsBarFloating()
 	return type(saved) == 'table' and saved.floating == true
 end
 
--- How much of the screen's top the bar covers: its height and the line its
--- backdrop draws under it while it is docked and shown, else 0 (floating, or
--- hidden). EM:ScreenTop and what keeps clear of the bar read it.
-function EM:BarCoverHeight()
-	if bar and bar:IsShown() and not windowed then
-		return BAR.HEIGHT + st:ThemeInset('theme', 'theme', 'panel')
-	end
-	return 0
-end
+-- Whether the controls are in the floating window, not on the docked bar.
+function EM:IsBarWindowed() return windowed end
 
 -- Lets go of what an open list or a focused box holds, for a control that is
 -- about to move: tooltips, the History list, the kit's list when a bar control

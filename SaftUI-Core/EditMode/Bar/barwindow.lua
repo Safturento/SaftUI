@@ -220,7 +220,7 @@ function EM:LayoutWindow()
 	end
 	local title = {}
 	for _, control in ipairs(self:BarControls()) do
-		local width = control:Lay(0, true) or 0
+		local width = control:Lay(true) or 0
 		control.frame:SetShown(width > 0)
 		-- A section the window does not have goes in the last one (never left
 		-- shown with no place).

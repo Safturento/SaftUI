@@ -145,7 +145,7 @@ end
 
 ------------------------------------------------------------------ the group
 
-test('the changes group: Undo, Redo, History and Reset, at the right, before Options, with the Lucide icons', function()
+test('the changes group: Undo, Redo, History and Reset, at the right of row one, with Options under them on row two, with the Lucide icons', function()
 	reset()
 	EM:Activate()
 	local keys = {}
@@ -155,11 +155,11 @@ test('the changes group: Undo, Redo, History and Reset, at the right, before Opt
 		eq(c.group.key, 'changes', key .. ': in the changes group')
 		eq(c.group.side .. c.group.order, 'right80', key .. ': right, order 80')
 		eq(c.section, 'changes', key .. ': section')
-		eq(c:Lay(0, false), 26, key .. ': 26 wide')
+		eq(c:Lay(false), 26, key .. ': 26 wide')
 		keys[#keys + 1] = frame_of(key):GetLeft()
 	end
 	for i = 2, #keys do check(keys[i] > keys[i - 1], 'left to right: ' .. i) end
-	check(frame_of('options'):GetLeft() > keys[4], 'Options after Reset')
+	check(frame_of('options'):GetTop() < frame_of('reset'):GetTop(), 'Options is on the second row, under the changes')
 	eq(frame_of('undo').icon:GetTexture(), st.icons.undo2, 'undo-2')
 	eq(frame_of('redo').icon:GetTexture(), st.icons.redo2, 'redo-2')
 	eq(frame_of('history').icon:GetTexture(), st.icons.history, 'history')
@@ -301,7 +301,7 @@ test('the status line clears after STATUS_SECONDS, on a new status and when edit
 	drag(player, 40, 0)
 	stub.click(frame_of('undo'))
 	eq(status(), 'Undid: Moved Player', 'shown')
-	check(EM.statusText:IsShown(), 'and visible')
+	check(EM.statusCut and tip_on(frame_of('undo')), 'as a tooltip under the pressed control: the docked bar has no line')
 	stub.time = stub.time + 5
 	stub.run_timers()
 	eq(status(), 'Undid: Moved Player', 'still there at 5 seconds')
@@ -320,39 +320,18 @@ test('the status line clears after STATUS_SECONDS, on a new status and when edit
 	reset()
 end)
 
-test('the status line sits in the gap: small and grey, right-aligned 12 short of the first right divider, cut to the room, taking no mouse', function()
+test('the docked bar has no status line: the text is kept, small and grey, never drawn on the bar and taking no mouse', function()
 	reset()
 	EM:Activate()
 	local bar = EM:GetBar()
 	EM:SetBarStatus('Undid: Moved Player')
 	local text = EM.statusText
-	eq(text:GetParent(), bar, 'on the bar')
+	eq(text:GetText(), 'Undid: Moved Player', 'the message is kept')
+	check(not text:IsShown(), 'but not drawn on the bar')
 	eq(rgb(CreateColor(text:GetTextColor())), rgb(colors().text.grey), 'Text > Grey')
 	eq(text:GetFontObject(), st.OptionsBody.Font('small'), 'the small font')
-	eq(text:GetJustifyH(), 'RIGHT', 'right-aligned')
-	local divider = frame_of('undo'):GetLeft() - UIParent:GetLeft() - 1 - 8 -- the divider before the changes group
-	eq(text:GetRight() - UIParent:GetLeft(), divider - 12, '12 short of the divider')
-	eq(text:GetWidth(), math.ceil(text:GetStringWidth()), "as wide as the text, a whole number")
-	local left, _, _, _ = text:GetLeft(), 0, 0, 0
-	eq(left, math.floor(left), 'on a whole pixel')
 	check(not text:IsMouseEnabled(), 'takes no mouse')
-
-	EM:SetBarStatus(('x'):rep(400))
-	local gapLeft, gapRight = EM:BarGap()
-	check(text:GetLeft() - UIParent:GetLeft() >= gapLeft, 'cut to the room: not into the left groups')
-	eq(text:GetRight() - UIParent:GetLeft(), gapRight - 12, 'still right-aligned')
-	reset()
-end)
-
-test('a bar too narrow for any gap shows no status text', function()
-	reset()
-	EM:Activate()
-	set_screen(800, 600)
-	EM:LayoutBar()
-	EM:SetBarStatus('Undid: Moved Player')
-	local gapLeft, gapRight = EM:BarGap()
-	check(gapRight - 12 - gapLeft >= 0 or not EM.statusText:IsShown() or EM.statusText:GetWidth() == 0, 'no negative width')
-	check(EM.statusText:GetWidth() >= 0, 'never negative')
+	check(EM.statusCut and tip_on(bar), 'with no control to put it under, the tooltip is under the bar')
 	reset()
 end)
 
@@ -963,9 +942,9 @@ test('a click on the current row does nothing; a step with a part that is gone s
 	reset()
 end)
 
-test('a message the status line is too narrow for is also shown in full under the control that was pressed, for the same time', function()
+test('a message is shown in full as a tooltip under the control that was pressed, for 6 seconds, at every screen', function()
 	watch_tooltip()
-	for _, size in ipairs({ { 1024, 768 }, { 800, 600 } }) do
+	for _, size in ipairs({ { 1920, 1080 }, { 1024, 768 }, { 800, 600 } }) do
 		reset()
 		set_screen(size[1], size[2])
 		local player, config = add_mover('player', 'Player')
@@ -977,8 +956,8 @@ test('a message the status line is too narrow for is also shown in full under th
 		local undo = frame_of('undo')
 		lines = {}
 		stub.click(undo)
-		eq(status(), message, size[1] .. ': the status line has the message (cut to its room)')
-		check(EM.statusCut, size[1] .. ': and knows it is cut')
+		eq(status(), message, size[1] .. ': the status has the message')
+		check(EM.statusCut, size[1] .. ': and knows the bar has no line for it')
 		check(tip_on(undo), size[1] .. ': the tooltip is under the pressed control')
 		local text = {}
 		for _, line in ipairs(lines) do text[#text + 1] = line.text end
@@ -1000,16 +979,9 @@ test('a message the status line is too narrow for is also shown in full under th
 		eq(#P.off(EM:GetBar()), 0, size[1] .. ': the bar is still on whole pixels')
 	end
 	reset()
-	local player, config = add_mover('player', 'Player')
-	EM:Activate()
-	drag(player, 40, 0)
-	config.position.x_off = 77
-	stub.click(frame_of('undo'))
-	check(not EM.statusCut and not tip_on(frame_of('undo')), 'at 1920 the line holds it: no tooltip')
-	reset()
 end)
 
-test('the status line and the open list are placed again when the bar lays out again', function()
+test('the open list is placed again when the bar lays out again', function()
 	reset()
 	local player = add_mover('player', 'Player')
 	EM:Activate()
@@ -1017,14 +989,9 @@ test('the status line and the open list are placed again when the bar lays out a
 	stub.click(frame_of('undo'))
 	stub.click(frame_of('history'))
 	local list = EM:GetHistoryList()
-	local text = EM.statusText
-	text:ClearAllPoints()
-	text:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 3, -3)
 	list:ClearAllPoints()
 	list:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 5, -200)
 	EM:LayoutBar()
-	local _, gapRight = EM:BarGap()
-	eq(text:GetRight() - UIParent:GetLeft(), gapRight - 12, 'the status line is back in the gap')
 	eq(list:GetRight(), frame_of('history'):GetRight(), 'the list is back under History')
 	reset()
 end)

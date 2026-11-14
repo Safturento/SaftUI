@@ -3,13 +3,14 @@ local EM = st.EditModeFrames
 local W = st.OptionsWidgets
 
 --[[
-	The groups of the edit mode bar's controls (bar.lua):
-	  exit     (left, 10, section 'title')    Exit
-	  grid     (left, 20, section 'grid')     Grid, Grid size, Snap to grid,
-	                                          Snap to frames, Dim world,
-	                                          Coordinates
-	  options  (right, 90, section 'changes') Options, and Detach (section
-	                                          'title') at its end
+	The groups of the edit mode bar's controls (bar.lua), each with its row on
+	the docked bar and its section in the floating window:
+	  exit     (left, 10, row 1, section 'title')    Exit
+	  grid     (left, 20, row 1, section 'grid')     Grid, Grid size, Snap to grid,
+	                                                 Snap to frames, Dim world,
+	                                                 Coordinates
+	  options  (right, 90, row 2, section 'changes') Options, and Detach (section
+	                                                 'title') at its end
 	Each control is { key, frame, Lay, Refresh, ... } as bar.lua says. The
 	tooltips sit under the control (W.ShowTip), in the spec's wording; an icon
 	says nothing, so each has one.
@@ -55,8 +56,8 @@ local function Exit(bar)
 	button.onClick = Guard(function() EM:Deactivate() end)
 	return {
 		key = 'exit', frame = button,
-		-- Compact (the icon alone) from stage 4, and in the floating window's title.
-		Lay = function(_, stage, floating) return W.SetCompact(button, floating or stage >= 4) end,
+		-- Compact (the icon alone) in the floating window's title.
+		Lay = function(_, floating) return W.SetCompact(button, floating) end,
 	}
 end
 
@@ -82,7 +83,7 @@ local function Options(bar)
 	end)
 	return {
 		key = 'options', frame = button, align = 'right',
-		Lay = function(_, stage, floating) return W.SetCompact(button, not floating and stage >= 4) end,
+		Lay = function() return W.SetCompact(button, false) end,
 	}
 end
 
@@ -95,7 +96,7 @@ local function Detach(bar)
 	button.onClick = Guard(function() EM:SetBarFloating(true) end)
 	return {
 		key = 'detach', frame = button, section = 'title',
-		Lay = function(_, _, floating) return floating and 0 or ICON end,
+		Lay = function(_, floating) return floating and 0 or ICON end,
 	}
 end
 
@@ -150,12 +151,12 @@ EM.BarToggle = Toggle -- Show disabled and Show hidden (barshow.lua) are toggles
 ------------------------------------------------------------------ the groups
 
 EM:AddBarGroup({
-	key = 'exit', order = 10, side = 'left', section = 'title',
+	key = 'exit', order = 10, side = 'left', row = 1, section = 'title',
 	controls = function(bar) return { Exit(bar) } end,
 })
 
 EM:AddBarGroup({
-	key = 'grid', order = 20, side = 'left', section = 'grid',
+	key = 'grid', order = 20, side = 'left', row = 1, section = 'grid',
 	controls = function(bar)
 		return {
 			Toggle(bar, 'grid', st.icons.grid3x3, 'grid', 'Grid', 'Draws a grid over the screen, centred on its middle.'),
@@ -173,6 +174,6 @@ EM:AddBarGroup({
 })
 
 EM:AddBarGroup({
-	key = 'options', order = 90, side = 'right', section = 'changes',
+	key = 'options', order = 90, side = 'right', row = 2, section = 'changes',
 	controls = function(bar) return { Options(bar), Detach(bar) } end,
 })
