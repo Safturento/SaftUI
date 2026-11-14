@@ -46,7 +46,7 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 
 	A set re-renders it, after the drag for a slider's (meanwhile its other
 	rows follow the drag in place, as the window's do), and not while
-	Blizzard's color picker is open (the swatch shows its color itself; the
+	SaftUI's color picker is open (the swatch shows its color itself; the
 	next set draws the rest). Each render of the window draws it again too,
 	so it follows a change made elsewhere (a ConfigTableChange, a profile
 	change; UF's profile prompts answer after its own set drew it), but not
@@ -203,6 +203,8 @@ local function BuildDialog()
 	frame:SetScript('OnHide', function()
 		keys:EnableKeyboard(false)
 		keys:Hide()
+		-- A color picker open from one of its rows cancels while the row's widget is still there.
+		W.CloseColorPicker(frame)
 		-- A menu of one of its items goes with it.
 		if OW.CloseMenu then OW:CloseMenu(D.body) end
 		-- Its list first, while its owner is still inside the dialog (a

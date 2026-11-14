@@ -6,8 +6,8 @@
 -- widgets, panels.lua and the helpers it needs (config_helpers.lua, with a real
 -- AceConfigRegistry-3.0). Synthetic AceConfig option tables stand for the
 -- options. The mouse and the keyboard are played by firing the frames' scripts
--- (stub.fire_script), and the color picker by stub.pick_color and friends
--- (tests/wow/blizzard.lua). The world and the helpers are
+-- (stub.fire_script), and SaftUI's color picker through its own boxes
+-- and buttons (options_widgets_helpers.lua's pick_color). The world and the helpers are
 -- options_widgets_helpers.lua's.
 local H = load_test_file('core/options_widgets_helpers.lua')
 local st = SaftUI

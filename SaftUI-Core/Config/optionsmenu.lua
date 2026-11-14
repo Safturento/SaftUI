@@ -50,7 +50,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	content's parent is the menu, which the hover lines' watcher takes for
 	the body's view (optionsshare.lua). Its catcher: a frame over UIParent at
 	FULLSCREEN_DIALOG level 400 that takes the mouse and closes the menu on a
-	click (OnMouseDown), but not while Blizzard's color picker is open (that
+	click (OnMouseDown), but not while SaftUI's color picker is open (that
 	click is the picker's: it cancels, and the color widget the menu holds
 	must still be there to put its color back). The catcher and the menu
 	take the mouse wheel and do nothing with it, so the page under an open
@@ -66,7 +66,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	again; mid-drag the menu's own rows follow in place (body:Refresh, as
 	the window's do); otherwise the window renders (OW:Render), drawing the
 	page (the item's marks) and the menu again, or with the window closed
-	the small dialog and the menu. While Blizzard's color picker is open it
+	the small dialog and the menu. While SaftUI's color picker is open it
 	waits, as the window does.
 
 	Following its item (S.FollowMenu, on every render after the dialog's): it
@@ -275,6 +275,8 @@ local function Build()
 		catcher:Hide()
 		keys:EnableKeyboard(false)
 		keys:Hide()
+		-- A color picker open from one of its rows cancels while the row's widget is still there.
+		W.CloseColorPicker(frame)
 		-- Its list first, while its owner is still inside the menu (a
 		-- released widget is parented away).
 		local owner = W.ListOwner()

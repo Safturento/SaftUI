@@ -665,6 +665,29 @@ function Texture.GetTexCoord(self, s)
 	local c = s.tex_coord or { 0, 0, 0, 1, 1, 0, 1, 1 }
 	return c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8]
 end
+-- Texture:SetGradient(orientation, minColor, maxColor) (TextureBase, both
+-- clients): 'HORIZONTAL' runs minColor at the left to maxColor at the right,
+-- 'VERTICAL' minColor at the bottom to maxColor at the top. The colors are
+-- ColorMixin tables (CreateColor), with their alpha: a missing r, g or b is
+-- a usage error, as in game, and the game reads a missing alpha as 1. Only
+-- remembered, in stub.state(texture).gradient = { orientation, min = { r, g,
+-- b, a }, max = { r, g, b, a } }; nothing is drawn.
+local function gradient_color(s, color, what)
+	if type(color) ~= 'table' or type(color.r) ~= 'number' or type(color.g) ~= 'number' or type(color.b) ~= 'number' then
+		usage(s, 'SetGradient(): ' .. what .. ' must be a color (CreateColor)')
+	end
+	return { color.r, color.g, color.b, color.a or 1 }
+end
+function Texture.SetGradient(self, s, orientation, minColor, maxColor)
+	if orientation ~= 'HORIZONTAL' and orientation ~= 'VERTICAL' then
+		usage(s, 'SetGradient(): orientation must be HORIZONTAL or VERTICAL, got ' .. tostring(orientation))
+	end
+	s.gradient = {
+		orientation = orientation,
+		min = gradient_color(s, minColor, 'minColor'),
+		max = gradient_color(s, maxColor, 'maxColor'),
+	}
+end
 -- An atlas by name, in place of a texture or color; nil clears it. Not
 -- mimicked: the atlas's file (any name is taken). With useAtlasSize the
 -- texture takes the atlas's size, as the client does, when the atlas tables

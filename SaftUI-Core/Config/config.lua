@@ -70,7 +70,7 @@ function Config:InitializeAceConfig()
 		race = {},
 		faction = {},
 		factionrealm = {},
-		global = {},
+		global = { colorPicker = { recent = {} } }, -- the color picker's last used colors (optionscolorpicker.lua)
 		profile = st.defaults,
 	})
 

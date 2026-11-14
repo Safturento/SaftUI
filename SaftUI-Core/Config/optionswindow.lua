@@ -58,7 +58,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	subtab and pick (and the scroll) when they still exist:
 	  - straight away after the window's own set, except mid-drag (a slider's
 	    onChanged says so; the render waits for the mouse to be let go) and
-	    while Blizzard's color picker is open. Mid-drag, each set refreshes
+	    while SaftUI's color picker is open. Mid-drag, each set refreshes
 	    the other drawn widgets in place instead (body:Refresh): their values,
 	    a description's image, and whether they're disabled follow the drag,
 	    while rows that would show or hide wait for the render;
@@ -103,7 +103,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every
 	other key on, and Esc too while a box has the keyboard, the dialog or an
-	item's menu is shown or Blizzard's color picker is open. In combat it does
+	item's menu is shown or SaftUI's color picker is open. In combat it does
 	nothing (SetPropagateKeyboardInput is protected); the window is closed then
 	anyway (st.Config's PLAYER_REGEN_DISABLED), and opening refuses.
 
@@ -188,8 +188,8 @@ local laidOut = nil
 
 local Colors, Normal, Grey, Blue = OB.Colors, OB.Normal, OB.Grey, OB.Blue
 
--- Whether Blizzard's color picker is open (its keys and its changes are its).
-local function ColorPickerShown() return ColorPickerFrame and ColorPickerFrame:IsShown() end
+-- Whether SaftUI's color picker is open (its keys and its changes are its).
+local function ColorPickerShown() return W.ColorPickerShown() end
 
 -- An item's menu (optionsmenu.lua, loaded after this file): whether one is
 -- shown, and closing it.
@@ -198,7 +198,7 @@ local function CloseMenu() if OW.CloseMenu then OW:CloseMenu() end end
 
 -- The Esc catcher of the window and of its small dialog: a frame, shown only
 -- with its owner, that closes it on Esc. A box's keys and the owner's own
--- exceptions (held(), and Blizzard's color picker) go on to the game; nothing
+-- exceptions (held(), and SaftUI's color picker) go on to the game; nothing
 -- is done in combat (SetPropagateKeyboardInput is protected).
 local function EscapeKeys(parent, held, close)
 	local keys = CreateFrame('Frame', nil, parent)
@@ -863,6 +863,8 @@ local function OnShow()
 end
 
 local function OnHide()
+	-- A picker open from a row cancels first, while its widget is still there to take the color back.
+	W.CloseColorPicker()
 	F.window:StopMovingOrSizing()
 	S.StopResize()
 	F.keys:EnableKeyboard(false)
