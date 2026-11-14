@@ -21,6 +21,17 @@ Every color option (Ace `color`). A click anywhere on the field opens Blizzard's
 | Code | `field` in `text`, left-aligned 8 after the line (the field's text inset), ending 8 from the right | `field`, `text`, `list-text` |
 | Code format | `#` and six uppercase hex digits; with `hasAlpha` under 100%, " · " and the whole percent | |
 
+## With a toggle
+
+A color option can carry a `toggle` (`get(info)`, `set(info, value)`, `offText`, optional `desc`): "use a custom color" and the color as one control, in place of a check box and a color field side by side. A check box (18 square, 4 in from the field's left, the kit's; Blizzard's check art under Blizzard) sits inside the field at its left, and the swatch and code start 30 further in (the swatch's black line 31 in from the field's left under Thick and Thin, its white square 33 in under Blizzard).
+
+| State | The field shows |
+| --- | --- |
+| Ticked | box ticked, swatch and code as above; a click on the swatch or code opens the picker |
+| Unticked | box empty; the swatch and code gone, `offText` in `text-grey` from where the swatch began (what the setting falls back to: "Class", "White"); a click on the field ticks the box and opens nothing |
+
+The box takes its own click and has its own tooltip, which says what unticked means. The per-setting `ResetIcon` covers both the toggle and the color: it shows when either differs, and puts both back.
+
 ## States
 
 - Under the mouse: the edge turns `accent`, as an input's.

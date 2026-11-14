@@ -128,6 +128,20 @@ local st = SaftUI
 	has own (a member page) shows only its share's Reset; a disabled row
 	shows none.
 
+	A color option may carry toggle (SaftUI's own field, read raw, never
+	inherited): the color and a "use this color" check box as one control. Its
+	functions are each called with the option's info:
+	  toggle = {
+	    get = function(info) -> bool,        -- the box is ticked
+	    set = function(info, value),         -- the box was clicked
+	    offText = string | function(info),  -- what the field shows while it
+	                                         -- is unticked
+	    desc = string | function(info),      -- the box's tooltip line (the
+	                                         -- default says what offText is)
+	  }
+	OM.ToggleState reads it, OM.ToggleSet runs set. The option's get and set
+	stay the color's.
+
 	A page's group may carry a footer (SaftUI's own field, never in its args):
 	a group of options the window draws in its footer while the page is open,
 	its name as their one label (optionswindow.lua). BuildView hands it on as
@@ -1077,6 +1091,43 @@ function OM.DefaultReset(root, row)
 	if type(func) ~= 'function' then return false end
 	local info = BuildInfo(row.option, Options(root), row.path)
 	return (safecall(func, info)) and true or false
+end
+
+-- The color option's toggle (SaftUI's field, read raw: never inherited), or nil.
+local function ToggleOf(option)
+	return type(option.toggle) == 'table' and option.toggle or nil
+end
+
+--[[
+	A color row's toggle (its option's toggle field: get(info) -> bool,
+	set(info, value), offText, desc): nil without one; else
+	{ on, offText, desc }: whether it is ticked, the word the field shows
+	while it isn't (a string, or a function's answer, as text) and the box's
+	own tooltip line, or nil. A function that errors is reported and counts as
+	off, with no word.
+]]
+function OM.ToggleState(root, row)
+	local toggle = ToggleOf(row.option)
+	if not toggle then return nil end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	local state = { on = ShareAsk(toggle, 'get', info) and true or false }
+	local off = toggle.offText
+	if type(off) == 'function' then off = ShareAsk(toggle, 'offText', info) end
+	state.offText = off ~= nil and Text(off) or ''
+	local desc = toggle.desc
+	if type(desc) == 'function' then desc = ShareAsk(toggle, 'desc', info) end
+	if desc ~= nil and desc ~= '' then state.desc = Text(desc) end
+	return state
+end
+
+-- Runs the row's toggle.set(info, value) through safecall: true when it ran,
+-- false when there's none or it errored.
+function OM.ToggleSet(root, row, value)
+	local toggle = ToggleOf(row.option)
+	local func = toggle and toggle.set
+	if type(func) ~= 'function' then return false end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	return (safecall(func, info, value and true or false)) and true or false
 end
 
 --[[

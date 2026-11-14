@@ -7,6 +7,26 @@ function UF:GetSmoothing(smooth)
 	return smooth and Enum.StatusBarInterpolation.ExponentialEaseOut or Enum.StatusBarInterpolation.Immediate
 end
 
+-- Short's form of a number, in the health and power texts: 12.5K, 1.2M, 1.2B, one decimal from a thousand
+-- up, as LibStringFormat's ShortFormat writes it. The game's AbbreviateNumbers
+-- writes it: it takes a secret number from an addon (SecretArguments
+-- AllowedWhenTainted in LocalizationDocumentation.lua, on both clients) and
+-- gives back a secret string, which SetText shows. The letters are written as
+-- they are, not looked up as the game's strings.
+local SHORT = {
+	breakpointData = {
+		{ breakpoint = 1e9, abbreviation = 'B', significandDivisor = 1e8, fractionDivisor = 10, abbreviationIsGlobal = false },
+		{ breakpoint = 1e6, abbreviation = 'M', significandDivisor = 1e5, fractionDivisor = 10, abbreviationIsGlobal = false },
+		{ breakpoint = 1e3, abbreviation = 'K', significandDivisor = 1e2, fractionDivisor = 10, abbreviationIsGlobal = false },
+	},
+}
+
+-- The abbreviated form of a number, as the Short options of the health and
+-- power texts show it (power.lua and additionalpower.lua call this too).
+function UF.ShortNumber(value)
+	return AbbreviateNumbers(value, SHORT)
+end
+
 -- A power bar's text as a whole percent. With secret values the game works the
 -- percent out through Blizzard's 0-100 curve, and the FontString formats it
 -- without Lua reading it.
@@ -246,6 +266,10 @@ end
 -- r, g, b of a color object or a plain { r, g, b } list (a config's customColor
 -- is a list in the defaults, and can be a color object in a saved profile).
 function UF.UnpackColor(color)
+	-- A profile imported from an older export lacks keys AceDB hasn't filled in yet.
+	if color == nil then return 1, 1, 1 end
+	-- A profile imported from an older export lacks keys AceDB hasn't filled in yet.
+	if color == nil then return 1, 1, 1 end
 	if type(color) == 'table' and color.GetRGB then return color:GetRGB() end
 	return color[1], color[2], color[3]
 end
@@ -373,7 +397,21 @@ function UF:UpdateText(text, configOverride)
     end
 
     UF:UpdateElement(text, configOverride)
-    text:SetFontObject(st:GetFont(config.font))
+    local font = st:GetFont(config.font)
+    text:SetFontObject(font)
+
+    -- The health and power texts' own color (colorCustom and customColor in
+    -- their text config; the other texts have none). Off, a text keeps its
+    -- font's color, as it always had. The game's SetFontObject gives a font
+    -- string its font's color again, but a color set before it is put back
+    -- here too, whatever the game does with it.
+    if config.colorCustom and config.customColor then
+        text:SetTextColor(UF.UnpackColor(config.customColor))
+        text.hasCustomColor = true
+    elseif text.hasCustomColor then
+        text.hasCustomColor = nil
+        if font then text:SetTextColor(font:GetTextColor()) end
+    end
 end
 
 function UF:UpdateIcon(icon)

@@ -10,7 +10,8 @@ local function PostUpdate(additionalPower, curr, max)
 	elseif config.percent then
 		UF:SetPowerPercentText(text, additionalPower.__owner.unit, curr, max, Enum.PowerType.Mana)
 	else
-		text:SetText(curr)
+		-- Short is health's abbreviation, a secret value included.
+		text:SetText(config.short and UF.ShortNumber(curr) or curr)
 	end
 end
 
@@ -110,7 +111,7 @@ local function GetConfigTable(unit)
 			framelevel = G.framelevel(6, 'Draws the bar over the parts of the unit frame with a lower frame level, and under those with a higher one.'),
 			size = UF.GenerateRelativeSizeConfigGroup(8),
 			-- oUF's AdditionalPower knows only colorPower.
-			colors = UF.GenerateColorsConfigGroup(9, unit, { 'colorPower' }, Config, Update, {
+			colors = UF.GenerateColorsConfigGroup(9, unit, 'additionalpower', { 'colorPower' }, Config, Update, {
 				colorPower = 'Colors the bar and its background in the mana color. With this and Custom both off, nothing colors them: they keep the last color they had.',
 			}),
 			text = Section(98, 'Text', 'text', {
@@ -118,6 +119,18 @@ local function GetConfigTable(unit)
 				hide_full = G.toggle(1, 'Hide full', 'Hides the text while your mana is full.', 'small'),
 				font = G.font(2, "The mana text's font."),
 				percent = G.toggle(3, 'Percent', 'Shows your mana as a percent instead of the number.', 'small'),
+				short = G.toggle(4.5, 'Short', 'Shortens your mana, as 12.5K or 1.2M. Not with Percent on.', 'small'),
+				-- Without it the text keeps its font's color, white.
+				customColor = UF.CustomColorOption(5, {
+					name = 'Text color',
+					desc = 'Colors the mana text with this color.',
+					offDesc = "Unticked, the text keeps its font's color: white.",
+					offText = 'White',
+					unit = unit,
+					path = { 'additionalpower', 'text' },
+					config = function() return Config().text end,
+					update = Update,
+				}),
 				-- Last in Text.
 				position = G.uf_element_position(1000,
 					function(index) return Config().text.position[index] end,

@@ -386,6 +386,45 @@ test("a color field's reset sits where a select's does, under Thick and Blizzard
 	end
 end)
 
+test("a color with a toggle: one reset for both, left of the field with its box; it shows when either differs and puts both back", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			local on, color = false, { 0.5, 0.5, 0.5 }
+			local function page()
+				return Page({
+					tint = { type = 'color', name = 'Tint', desc = 'x', order = 1,
+						get = function() return unpack(color) end,
+						set = function(_, r, g, b) color = { r, g, b } end,
+						toggle = { get = function() return on end, set = function(_, v) on = v end, offText = 'Class' },
+						default = {
+							differs = function() return on ~= false or color[1] ~= 0.25 end,
+							reset = function() on, color = false, { 0.25, 0.25, 0.25 } end,
+							value = function() return 0.25, 0.25, 0.25 end,
+						} },
+					position = st.Config.generators.position(2, false, function(part) return pos[part] end,
+						function(part, value) pos[part] = value end, nil, 'Where it sits.', 'Position'),
+				})
+			end
+			local body, by = draw(page())
+			check(shown(by.tint), look .. ': the color differs from its default, so the reset shows')
+			local icon = icon_of(by.tint)
+			eq(icon:GetRight() - by.tint.frame:GetLeft(), math.floor(leftmost(by.tint.widget.frame) - by.tint.frame:GetLeft()) - 6,
+				look .. ': 6 left of the field, the box in it included')
+			click(icon)
+			eq(tostring(on) .. ',' .. color[1], 'false,0.25', look .. ': a click puts the toggle and the color back')
+			body:Release()
+			on, color = true, { 0.25, 0.25, 0.25 }
+			body, by = draw(page())
+			check(shown(by.tint), look .. ': the toggle alone differing shows it too')
+			body:Release()
+			on = false
+			body, by = draw(page())
+			check(not shown(by.tint), look .. ': both at their defaults: none')
+			body:Release()
+		end)
+	end
+end)
+
 test('the icon follows a drag: shown once the dragged value differs, gone back at the default', function()
 	in_look('thick', function()
 		fresh()
