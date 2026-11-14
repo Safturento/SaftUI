@@ -8,6 +8,7 @@ local get_match, decreasePatterns = LT.parse.get_match, LT.parse.decreasePattern
 
 local MAX_HISTORY = LT.MAX_HISTORY -- Feed/history.lua
 local feed_stack = {}
+local TintButton -- below
 
 
 ------------------------------------
@@ -23,6 +24,115 @@ end
 function LT:IsFeedEntryFresh(info, now)
 	if self.testFeed and info.test then return true end
 	return now - info.time <= self.config.feed.fade_time
+end
+
+-- The feed's two small buttons (the filter and the jump to the newest entry) are
+-- a Lucide icon on a button drawn in the feed's theme: Colors -> Text -> Normal
+-- at rest, Blue under the mouse. The icon is 16 px on the 20 px button: Lucide's
+-- funnel fills 20 of its 24 grid, the arrow 14, so 16 leaves the funnel 13 px
+-- wide and each a few px of the button round it.
+local ICON_SIZE = 16
+
+TintButton = function(button)
+	if not button then return end
+	local colors = st.config.profile.colors.text
+	button.icon:SetVertexColor((button.lit and colors.blue or colors.normal):GetRGB())
+end
+
+-- A feed button with its icon and its tooltip: a title and, for the filter, a line
+-- under it. Hovering lights the icon; a button that hides under the cursor
+-- (UpdateFeedButtons) gets no OnLeave, so hiding puts the icon and the tooltip
+-- away too.
+function LT:CreateFeedIconButton(name, icon, title, line)
+	local button = st:CreateButton(name, self.feed, nil, 'theme', 'solid')
+	button:SetSize(20, 20)
+	button.icon = button:CreateTexture(nil, 'OVERLAY', nil, 7)
+	button.icon:SetTexture(icon)
+	button.icon:SetSize(ICON_SIZE, ICON_SIZE)
+	button.icon:SetPoint('CENTER')
+	TintButton(button)
+
+	button:SetScript('OnEnter', function(self)
+		self.lit = true
+		TintButton(self)
+		if GameTooltip:IsForbidden() then return end
+		GameTooltip:SetOwner(self, 'ANCHOR_TOP')
+		GameTooltip:SetText(title)
+		if line then GameTooltip:AddLine(line, 1, 1, 1, true) end
+		GameTooltip:Show()
+	end)
+	local function Away(self)
+		self.lit = false
+		TintButton(self)
+		if not GameTooltip:IsForbidden() and GameTooltip:IsOwned(self) then GameTooltip:Hide() end
+	end
+	button:SetScript('OnLeave', Away)
+	button:SetScript('OnHide', Away)
+	return button
+end
+
+-- Whether the mouse is where the buttons belong: over the feed, the strip beside
+-- it the buttons sit in (feed.hover, which also covers the gap between the feed
+-- and them), or a button; or the filter menu is open, so the button isn't
+-- gone from under its own menu.
+function LT:IsFeedHovered()
+	local feed = self.feed
+	if feed.hover:IsMouseOver() then return true end
+	for _, button in ipairs({ feed.filterButton, feed.reset_button }) do
+		if button:IsShown() and button:IsMouseOver() then return true end
+	end
+	local W = st.OptionsWidgets
+	return W.ListOwner() == feed.filterMenuAnchor
+end
+
+-- The highest alpha among the entries on screen, or 0 with none shown. An entry
+-- being faded out (UpdateFeedVisibility) is still shown at its alpha.
+function LT:GetFeedEntryAlpha()
+	local top = 0
+	for i = 1, self.config.feed.max_items do
+		local item = self.feed.items[i]
+		if item and item:IsShown() then
+			top = max(top, item:GetAlpha())
+		end
+	end
+	return top
+end
+
+-- Shows the filter button while at least one entry is on the feed, or the mouse is
+-- over the feed's area (or the filter menu is open), and the jump button too while
+-- the feed is scrolled back. The buttons are at full alpha under the mouse, and
+-- otherwise at the alpha of the most visible entry, so they fade out with the last
+-- one and come back at once with a new one. A button at alpha 0 is hidden, so it
+-- takes no mouse and shows no tooltip. Runs every frame, and where the scroll
+-- offset or the entries change.
+function LT:UpdateFeedButtons()
+	local feed = self.feed
+	if not (feed and feed.hover and feed.filterButton) then return end
+	local alpha = self:IsFeedHovered() and 1 or self:GetFeedEntryAlpha()
+	local visible = alpha > 0
+	feed.filterButton:SetShown(visible)
+	feed.filterButton:SetAlpha(alpha)
+	feed.reset_button:SetShown(visible and feed.offset > 0)
+	feed.reset_button:SetAlpha(alpha)
+end
+
+-- The feed's buttons and the area the mouse brings them up in (feed.hover: the
+-- feed and the strip the buttons sit in, placed with them by
+-- UpdateLootFeedConfig; it takes no mouse). The first UpdateFeedButtons hides
+-- them unless an entry is on the feed or the mouse is there.
+function LT:CreateFeedButtons()
+	local feed = self.feed
+	feed.hover = CreateFrame('frame', feed:GetName()..'Hover', feed)
+
+	self:InitializeFilterDropdown()
+	feed.reset_button = self:CreateFeedIconButton(feed:GetName()..'ScrollReset', st.icons.arrowDownToLine,
+		'Jump to the newest entry')
+	feed.reset_button:Hide()
+	feed.reset_button:SetScript('OnClick', function()
+		feed.offset = 0
+		self:UpdateFeedButtons()
+		self:UpdateFeed()
+	end)
 end
 
 -- A mount's entry in yellow: its border and fill, and its icon's border. Every
@@ -52,7 +162,13 @@ end
 -- After a theme recolor (st:RecolorThemed gave every line the theme's colors):
 -- the shown mount entries take their yellow back. From LT:OnColorsChanged (init.lua).
 function LT:ColorFeed(group)
-	if group ~= 'theme' or not self.feed then return end
+	if not self.feed then return end
+	-- The buttons' icons are tinted in Colors -> Text.
+	if group == 'text' then
+		TintButton(self.feed.filterButton)
+		TintButton(self.feed.reset_button)
+	end
+	if group ~= 'theme' then return end
 	for _, item in ipairs(self.feed.items) do
 		if item:IsShown() and item.info and item.info.itemSubType == "Mount" then
 			ColorMount(item)
@@ -111,9 +227,11 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			item.link = info.link
 			item.info = info
 
+			item:SetAlpha(1)
 			item:Show()
 		end
 	end
+	self:UpdateFeedButtons()
 end
 
 -- Drops every entry test mode pushed, leaves real ones alone, and hides the
@@ -125,7 +243,7 @@ function LT:RemoveTestFeedEntries()
 
 	if not self.feed then return end
 	self.feed.offset = 0
-	self.feed.reset_button:Hide()
+	self:UpdateFeedButtons()
 
 	local filteredItems = self:GetFilteredItems()
 	for i, item in ipairs(self.feed.items) do
@@ -521,21 +639,27 @@ function LT:UpdateLootFeedConfig()
 	self.feed.overlay:SetPoint('BOTTOMLEFT', self.feed)
 	self.feed.overlay:SetPoint('TOPRIGHT', self.feed.items[config.max_items], 'TOPRIGHT')
 
+	-- The buttons sit on the feed's inner side, the one facing the screen's middle.
 	local x = self.feed:GetCenter()
+	local onLeft = x and x > GetScreenWidth()/2
+	local strip = 20 + config.spacing -- a button and its gap
 	self.feed.filterButton:ClearAllPoints()
-	if x and x > GetScreenWidth()/2 then
+	self.feed.hover:ClearAllPoints()
+	self.feed.hover:SetPoint('TOPLEFT', self.feed, 'TOPLEFT', onLeft and -strip or 0, 0)
+	self.feed.hover:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMRIGHT', onLeft and 0 or strip, 0)
+	if onLeft then
 		self.feed.filterButton:SetPoint('BOTTOMRIGHT', self.feed, 'BOTTOMLEFT', -config.spacing, 0)
 	else
 		self.feed.filterButton:SetPoint('BOTTOMLEFT', self.feed, 'BOTTOMRIGHT', config.spacing, 0)
 	end
+	self.feed.buttonsOnLeft = onLeft
 
-	self.feed.filterButton.text:SetFontObject(font_obj)
 	st:SkinButton(self.feed.filterButton, config.theme, config.background)
 
-	self.feed.reset_button.text:SetFontObject(font_obj)
 	st:SkinButton(self.feed.reset_button, config.theme, config.background)
 	self.feed.reset_button:ClearAllPoints()
 	self.feed.reset_button:SetPoint('BOTTOM', self.feed.filterButton, 'TOP', 0, config.spacing)
+	self:UpdateFeedButtons()
 end
 
 
@@ -543,7 +667,10 @@ end
 -- GetFilteredItems() rather than filtering the whole feed (up to 500 entries)
 -- again. Everything that changes the feed or a filter refreshes that cache.
 function LT:UpdateFeedVisibility(feed, elapsed)
-	if self.config.feed.fade_time == 0  then return end
+	if self.config.feed.fade_time == 0  then
+		self:UpdateFeedButtons()
+		return
+	end
 	local filteredItems = self:GetFilteredItems(true)
 
 	if self.testFeed then
@@ -577,6 +704,8 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 
 		--item:SetShown(info and now - info.time <= self.config.feed.fade_time)
 	end
+	-- After the entries' alpha is set, so the buttons follow this frame's.
+	self:UpdateFeedButtons()
 end
 
 function LT:InitializeLootFeed()
@@ -601,28 +730,14 @@ function LT:InitializeLootFeed()
 			max(0, #self:GetFilteredItems(true) - self.config.feed.max_items)
 		)
 
-		if feed.offset == 0 then
-			feed.reset_button:Hide()
-		else
-			feed.reset_button:Show()
-		end
-
+		self:UpdateFeedButtons()
 		self:UpdateFeed(true, true)
 	end)
 
 	self:HookScript(feed, 'OnUpdate', 'UpdateFeedVisibility')
 
 	self.feed = feed
-
-	self:InitializeFilterDropdown()
-	feed.reset_button = st:CreateButton(feed:GetName()..'ScrollReset', feed, 'V', 'theme', 'solid')
-	feed.reset_button:SetSize(20, 20)
-	feed.reset_button:Hide()
-	feed.reset_button:SetScript('OnClick', function()
-		feed.offset = 0
-		feed.reset_button:Hide()
-		self:UpdateFeed()
-	end)
+	self:CreateFeedButtons()
 
 	self.debugText = st:CreateFontString(self.feed, 'normal', '0/0')
 	self.debugText:SetPoint('RIGHT', self.feed, 'LEFT', -40, 0)

@@ -245,7 +245,8 @@ local function check_copy_layout(where)
 	eq(accept.y, last, where .. ': at the bottom')
 	check(not divider_ys()[accept.y], where .. ': no divider on their line')
 	if pad > 0 then
-		-- Confirm copy and Cancel carry on the Settings section: one panel, no seam.
+		-- Confirm copy and Cancel float under the Settings section's panel, 6 below
+		-- it, on the dialog's own fill; the dialog ends its side padding under them.
 		local panels, above = {}, 0
 		for _, p in ipairs(d.body.pools.panel.used) do
 			if p:IsShown() then panels[#panels + 1] = p end
@@ -253,10 +254,11 @@ local function check_copy_layout(where)
 		for _, c in ipairs(d.body.cells) do
 			if c.y < accept.y then above = math.max(above, c.y) end
 		end
-		eq(#panels, 2, where .. ': a panel for Copy from\'s line and one for the settings and the buttons')
-		eq(accept.y, above + 38, where .. ': the buttons directly under the settings, no gap')
+		eq(#panels, 2, where .. ': a panel for Copy from\'s line and one for the settings')
+		eq(accept.y, above + 38 + 6, where .. ': the buttons 6 under the settings\' panel')
 		local _, _, _, _, py = panels[#panels]:GetPoint(1)
-		eq(-py + panels[#panels]:GetHeight(), accept.y + 38, where .. ': the settings\' panel reaches under the buttons')
+		eq(-py + panels[#panels]:GetHeight(), accept.y - 6, where .. ': the settings\' panel ends over the buttons')
+		eq(accept.frame:GetBottom() - d.frame:GetBottom(), 24, where .. ': the dialog ends 24 under them')
 	end
 end
 

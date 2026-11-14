@@ -131,17 +131,20 @@ test('a roll bar draws its body as a bar and its icon as a slot, in the Rolls th
 end)
 
 -- The feed as InitializeLootFeed makes it before its lines: the feed, its scroll
--- overlay, the Filter and scroll reset buttons, and the debug text. Made here as
--- InitializeLootFeed and InitializeFilterDropdown make them; the dropdown itself
--- needs Blizzard's menu, and the rest registers events and a mover.
+-- overlay, the Filter and scroll reset buttons (LT:CreateFeedButtons, which
+-- InitializeLootFeed runs), and the debug text; the rest of it registers events
+-- and a mover.
 local function make_feed()
+	GameTooltip = GameTooltip or CreateFrame('GameTooltip', 'GameTooltip', UIParent) -- the buttons' tooltip
+	-- The options kit's check list is what the buttons ask about the filter menu
+	-- (tests/loot/feed_buttons_test.lua loads the real one); here none is open.
+	st.OptionsWidgets = st.OptionsWidgets or { ListOwner = function() end }
 	local feed = CreateFrame('Frame', 'SaftUILootFeed', UIParent)
 	feed:SetSize(400, 20)
 	feed.items, feed.offset = {}, 0
 	feed.overlay = CreateFrame('Frame', nil, feed)
-	feed.filterButton = st:CreateButton('LootFeedFilterButton', feed, 'F', 'theme', 'solid')
-	feed.reset_button = st:CreateButton('LootFeedScrollReset', feed, 'V', 'theme', 'solid')
 	LT.feed = feed
+	LT:CreateFeedButtons()
 	LT.debugText = st:CreateFontString(feed, 'normal', '0/0')
 	LT:UpdateLootFeedConfig()
 	return feed

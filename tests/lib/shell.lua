@@ -437,6 +437,7 @@ end
 -- before Config/generators.lua.
 function options_window_files()
 	return {
+		'SaftUI-Core/Config/optionsshare.lua',
 		'SaftUI-Core/Config/optionslayout.lua',
 		'SaftUI-Core/Config/optionswindow.lua',
 		'SaftUI-Core/Config/optionsresize.lua',

@@ -365,7 +365,8 @@ test("buttons aligned right sit at the right end of a wide row's line, which end
 	eq(point_x(by.ok.frame), left, 'Confirm copy on the left')
 	eq(point_x(by.cancel.frame), left + okWidth + 12, 'Cancel 12 after it')
 	check(math.abs(left - (520 - (left + okWidth + 12 + cancelWidth))) <= 1, 'the same room either side')
-	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 38, 'one line, under the toggles')
+	-- The last line, of buttons alone: under the panel, 6 below (Thick).
+	check(by.ok.y == by.cancel.y and by.ok.y == by.a.y + 38 + 6, 'one line, under the toggles\' panel')
 	-- The one divider is the toggles', between the halves at 260.
 	local got = {}
 	for _, line in ipairs(body.pools.hairline.used) do
@@ -1104,7 +1105,7 @@ local function hairline_rects(body)
 	return lines, dividers
 end
 
-test('under panels rows after an inline group join its panel: one panel, no gap, a hairline between (Unitframes > Copy from)', function()
+test('under panels rows after an inline group join its panel: one panel, no gap, a hairline between; a line of buttons there floats under it (Unitframes > Copy from)', function()
 	for _, look in ipairs({ 'thick', 'thin' }) do
 		in_look(look, function()
 			local body, by = drawn_root(tree({
@@ -1112,13 +1113,19 @@ test('under panels rows after an inline group join its panel: one panel, no gap,
 				accept = button('Confirm copy', 2, 'center'), cancel = button('Cancel', 3, 'center'),
 			}))
 			check(by.accept.y == by.cancel.y, look .. ': Confirm copy and Cancel on one line')
-			eq(by.accept.y, by.t1.y + 38, look .. ': the line under the toggles, no 4px gap')
+			-- Buttons alone continuing the section float under its panel, 6 below, as a title sits over one.
+			eq(by.accept.y, by.t1.y + 38 + 6, look .. ': the buttons 6 under the toggles\' panel')
+			local tall = by.accept.widget:GetHeight()
+			check(tall < 38, look .. ': a button is less than a row tall')
+			eq(by.accept.height .. ',' .. by.accept.frame:GetHeight(), tall .. ',' .. tall, look .. ': their line as tall as the buttons')
 			local panels = shown(body.pools.panel)
-			eq(#panels, 1, look .. ': one panel for both sections')
-			eq(rect(panels[1]), '0,' .. by.t1.y .. ' 774x76', look .. ': from the toggles down over the buttons')
+			eq(#panels, 1, look .. ': one panel, the toggles\'')
+			eq(rect(panels[1]), '0,' .. by.t1.y .. ' 774x38', look .. ': ending above the buttons')
 			local lines, dividers = hairline_rects(body)
-			eq(table.concat(lines, ' '), '0,' .. by.accept.y .. ' 774x1', look .. ': a hairline parts the buttons from the toggles')
+			eq(#lines, 0, look .. ': no hairline over the buttons')
 			eq(table.concat(dividers, ' '), '387,' .. by.t1.y .. ' 1x38', look .. ': the toggles\' divider only')
+			local total = by.accept.frame:GetWidth() + 12 + by.cancel.frame:GetWidth()
+			eq(point_x(by.accept.frame), math.floor((774 - total) / 2), look .. ': the pair in the middle')
 			body:Release()
 		end)
 	end
@@ -1279,6 +1286,169 @@ test('LayoutSections: with panels an untitled section after another joins it wit
 	eq(joined[3].rowsY, joined[2].rowsY + joined[2].rowsHeight, 'panels: right under them')
 	check(joined[3].joins and not joined[2].joins and not joined[1].joins and not joined[4].joins, 'only the continuation joins')
 	check(joined[4].lineY ~= nil, 'a titled section still has its line')
+end)
+
+------------------------------------------------------------------ task 4 fix round 1: a section's closing buttons float
+
+test('LayoutSections: with panels and floatOf a last line of rows that float sits FLOAT_GAP under the panel, as tall as its tallest; else as before', function()
+	local OB = st.OptionsBody
+	eq(OB.FLOAT_GAP, 6, "as far under the panel as a title's line is over one")
+	eq(OB.BOTTOM, 24, "the body's bottom margin")
+	local function r(key, size, align) return { key = key, size = size, align = align } end
+	local floating = { ok = 24, no = 22, go = 24, reset = 24 }
+	local function floatOf(row) return floating[row.key] end
+	local sections = {
+		{ title = 'A', rows = { r('a'), r('b'), r('ok', nil, 'center'), r('no', nil, 'center') } },
+		{ rows = { r('x'), r('go', 'small') } }, -- go beside x: stays
+		{ title = 'B', rows = { r('reset', 'small') } }, -- a section of a lone button
+		{ title = 'C', rows = { r('c'), r('ok', nil, 'center'), r('d') } }, -- buttons mid-section: stay
+	}
+	local laid = OW.LayoutSections(sections, nil, nil, nil, true, floatOf)
+	local function ys(entry)
+		local out = {}
+		for _, p in ipairs(entry.placed) do out[#out + 1] = p.row.key .. '@' .. p.y .. (p.floats and 'f' or '') end
+		return table.concat(out, ' ')
+	end
+	eq(ys(laid[1]), 'a@0 b@0 ok@40f no@40f', 'A: its buttons 6 under the panel, marked floats')
+	eq(laid[1].panelHeight, 34, 'A: the panel ends over them')
+	eq(laid[1].rowsHeight, 34 + 6 + 24, 'A: the line as tall as its tallest button')
+	eq(ys(laid[2]), 'x@0 go@0', 'the continuation: a row beside the button, nothing floats')
+	eq(laid[2].panelHeight, nil)
+	check(not laid[2].joins, 'after floating buttons there is no panel to join: it starts its own')
+	eq(laid[2].rowsY, laid[1].rowsY + laid[1].rowsHeight + 6, '6 under the floating line')
+	eq(ys(laid[3]), 'reset@6f', 'B: a lone button floats; no panel above it')
+	eq(laid[3].panelHeight, 0)
+	eq(laid[3].rowsHeight, 30)
+	eq(ys(laid[4]), 'c@0 ok@34 d@68', 'C: buttons mid-section stay')
+	eq(laid[4].panelHeight, nil)
+
+	-- Without floatOf, or without panels: as before.
+	for _, args in ipairs({ { true }, { nil, floatOf } }) do
+		local plain = OW.LayoutSections(sections, nil, nil, nil, args[1], args[2])
+		eq(ys(plain[1]), 'a@0 b@0 ok@34 no@34', 'as before')
+		eq(plain[1].rowsHeight, 68)
+		eq(plain[1].panelHeight, nil)
+	end
+end)
+
+test("under panels a section's last line of buttons floats under its panel, 6 below, off the padding; one mid-section stays on it; Blizzard as before", function()
+	local function reset(order) return { type = 'execute', name = 'Reset', size = 'small', order = order, func = function() end } end
+	local function small(name, order) return { type = 'execute', name = name, size = 'small', order = order, func = function() end } end
+	in_look('thick', function()
+		-- A lone Reset after two halves (a Colors section with an even count).
+		local body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), reset = reset(3) }))
+		local panels = shown(body.pools.panel)
+		eq(#panels, 1, 'one panel')
+		eq(rect(panels[1]), '0,' .. by.a.y .. ' 774x38', 'ending above the Reset')
+		eq(by.reset.y, by.a.y + 38 + 6, '6 under it')
+		eq(point_x(by.reset.frame), 0, "at its slot's left, off the padding: in line with the panel's edge")
+		local tall = by.reset.widget:GetHeight()
+		eq(by.reset.height .. ',' .. by.reset.frame:GetHeight(), tall .. ',' .. tall, 'its line as tall as the button')
+		local p, rel, relPoint, x, y = by.reset.widget.frame:GetPoint(1)
+		check(p == 'LEFT' and rel == by.reset.frame and relPoint == 'LEFT' and x == 0 and y == 0, 'the button fills its line')
+		local lines, dividers = hairline_rects(body)
+		eq(#lines, 0, 'no hairline')
+		eq(table.concat(dividers, ' '), '387,' .. by.a.y .. ' 1x38', "the halves' divider only, none beside the Reset")
+		body:Release()
+
+		-- A Reset beside a row on its line stays on the panel (an odd count).
+		body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), c = toggle('C', 3), reset = reset(4) }))
+		panels = shown(body.pools.panel)
+		eq(rect(panels[1]), '0,' .. by.a.y .. ' 774x76', 'one panel over both lines')
+		eq(by.reset.y, by.c.y, 'on the last line, beside C')
+		eq(point_x(by.reset.frame), 401, 'inside the padding, as any row')
+		eq(by.reset.height, 38)
+		body:Release()
+
+		-- Unit frame profiles' shape: lines of small buttons mid-section stay; the last line, Close, floats.
+		body, by = drawn_root(tree({
+			pick = { type = 'select', name = 'Profile', size = 'wide', order = 1, values = { a = 'A' } },
+			new = small('New', 2), copy = small('Copy', 3), rename = small('Rename', 4), delete = small('Delete', 5),
+			export = small('Export', 6), import = small('Import', 7),
+			close = button('Close', 8, 'center'),
+		}), 520)
+		panels = shown(body.pools.panel)
+		eq(#panels, 1)
+		eq(rect(panels[1]), '0,' .. by.pick.y .. ' 520x114', 'the profile and both lines of buttons on the panel')
+		eq(point_x(by.new.frame), 14, 'New inside the padding')
+		eq(by.close.y, by.export.y + 38 + 6, 'Close 6 under the panel')
+		eq(point_x(by.close.frame), math.floor((520 - by.close.frame:GetWidth()) / 2), 'in the middle')
+		lines = hairline_rects(body)
+		eq(table.concat(lines, ' '), '0,' .. by.new.y .. ' 520x1 0,' .. by.export.y .. ' 520x1', 'hairlines over the button lines on the panel, none over Close')
+		body:Release()
+
+		-- Right-aligned buttons ending a section: at the body's right edge, in line with the panel's.
+		body, by = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), x = button('X', 3, 'right'), y = button('Y', 4, 'right') }))
+		eq(point_x(by.y.frame) + by.y.frame:GetWidth(), 774, "the last ends at the body's right edge")
+		eq(by.x.y, by.a.y + 38 + 6)
+		body:Release()
+
+		-- Rows that continue a section after its floating buttons: a panel of their own, 6 under them.
+		body, by = drawn_root(tree({
+			g = inline('Group', 1, { n = toggle('N', 1), ok = button('OK', 2, 'center') }),
+			after = toggle('After', 2),
+		}))
+		eq(by.ok.y, by.n.y + 38 + 6, "the group's buttons float")
+		eq(by.after.y, by.ok.y + by.ok.height + 6, 'the rows after them 6 below')
+		local got = {}
+		for _, panel in ipairs(shown(body.pools.panel)) do got[#got + 1] = rect(panel) end
+		table.sort(got)
+		local want = { '0,' .. by.n.y .. ' 774x38', '0,' .. by.after.y .. ' 774x38' }
+		table.sort(want)
+		eq(table.concat(got, ' '), table.concat(want, ' '), "the group's panel, and one of their own")
+		body:Release()
+	end)
+
+	-- Blizzard: no panel, nothing floats: the line where it was.
+	in_look('blizzard', function()
+		local flat, fby = drawn_root(tree({ a = toggle('A', 1), b = toggle('B', 2), reset = reset(3) }))
+		eq(fby.reset.y, fby.a.y + 34, 'Blizzard: the next line')
+		eq(fby.reset.height, 34, 'a row tall')
+		eq(point_x(fby.reset.frame), 0)
+		flat:Release()
+		flat, fby = drawn_root(tree({
+			settings = inline('Settings', 1, { t1 = toggle('One', 1), t2 = toggle('Two', 2) }),
+			accept = button('Confirm copy', 2, 'center'), cancel = button('Cancel', 3, 'center'),
+		}))
+		eq(fby.accept.y, fby.t1.y + 34 + 4, 'Blizzard: Copy from\'s buttons 4 under the settings, as before')
+		flat:Release()
+	end)
+end)
+
+test("Global Settings' Colors and Theme: a section's lone Reset floats under its panel; one beside a row stays on it", function()
+	st.Config:Open('Loot')
+	local seen = {}
+	for _, tab in ipairs({ 'colors', 'theme' }) do
+		OW:Navigate('Fonts', { tab = tab })
+		local byY, resets = {}, {}
+		for _, c in ipairs(OW.GetDrawnRows()) do
+			byY[c.y] = (byY[c.y] or 0) + 1
+			if c.row.key == 'reset' then resets[#resets + 1] = c end
+		end
+		check(#resets >= 1, tab .. ': its Resets drawn')
+		for _, c in ipairs(resets) do
+			local _, _, _, x = c.frame:GetPoint(1)
+			local where = tab .. ' ' .. tostring(c.row.path[#c.row.path - 1])
+			if byY[c.y] == 1 then
+				-- Alone on its line: under its section's panel, 6 below, the button's height, at the panel's left edge.
+				eq(c.height .. ' at ' .. x, c.widget:GetHeight() .. ' at 0', where .. ': a lone Reset floats')
+				local ends, under = false, false
+				for _, p in ipairs(c.body.pools.panel.used) do
+					local _, _, _, _, py = p:GetPoint(1)
+					if -py + p:GetHeight() == c.y - 6 then ends = true end
+					if -py <= c.y and -py + p:GetHeight() > c.y then under = true end
+				end
+				check(ends, where .. ': its panel ends 6 above it')
+				check(not under, where .. ': no panel under it')
+				seen[#seen + 1] = where .. ' floats'
+			else
+				eq(c.height .. ' at ' .. x, '38 at 401', where .. ': a Reset beside a color stays on the panel, in the second half')
+				seen[#seen + 1] = where .. ' stays'
+			end
+		end
+	end
+	print('Resets: ' .. table.concat(seen, ', '))
+	close_all()
 end)
 
 test('Release hides every panel and hairline, so a smaller draw on the same body shows only its own', function()

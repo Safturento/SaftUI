@@ -916,6 +916,11 @@ function Frame.GetHitRectInsets(self, s)
 	return i[1], i[2], i[3], i[4]
 end
 
+-- Whether the frame clips what its children (and its own regions) draw to its
+-- rect. Only remembered: nothing is clipped here.
+function Frame.SetClipsChildren(self, s, clips) s.clips_children = clips and true or false end
+function Frame.DoesClipChildren(self, s) return s.clips_children == true end
+
 function Frame.SetFrameLevel(self, s, level) s.level = number_arg(s, level, 'level') end
 function Frame.GetFrameLevel(self, s) return s.level end
 function Frame.SetFrameStrata(self, s, strata)

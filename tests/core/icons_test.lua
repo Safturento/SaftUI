@@ -6,7 +6,7 @@
 -- followed by 10, so its bytes come back as they are).
 local st = SaftUI
 
-local NAMES = { 'x', 'chevronDown', 'chevronUp', 'rotateCcw', 'diff', 'ellipsis', 'ellipsisVertical', 'settings' }
+local NAMES = { 'x', 'chevronDown', 'chevronUp', 'rotateCcw', 'diff', 'ellipsis', 'ellipsisVertical', 'settings', 'funnel', 'arrowDownToLine' }
 
 local function read(path)
 	return (read_saftui_source(path))

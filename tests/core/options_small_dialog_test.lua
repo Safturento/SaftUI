@@ -238,6 +238,54 @@ test("the window's render leaves an open dialog be while its own dropdown list o
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("the dialog ends its side padding (24) under its last row, Copy from's buttons floating there; a status line makes room for itself; Blizzard keeps its foot", function()
+	local values = { t1 = true, t2 = false }
+	local function CopyLike()
+		return {
+			type = 'group', name = 'Copy',
+			get = function(info) return values[info[#info]] end,
+			set = function(info, v) values[info[#info]] = v end,
+			args = {
+				settings = { order = 1, type = 'group', inline = true, name = 'Settings', args = {
+					t1 = { order = 1, type = 'toggle', name = 'One' }, t2 = { order = 2, type = 'toggle', name = 'Two' },
+				} },
+				accept = { order = 2, type = 'execute', name = 'Confirm copy', align = 'center', func = function() end },
+				cancel = { order = 3, type = 'execute', name = 'Cancel', align = 'center', func = function() end },
+			},
+		}
+	end
+	theme('thick')
+	OW:OpenDialog('Copy', CopyLike())
+	local d = OW.GetDialogFrames()
+	local accept = dialogCell('accept')
+	eq(accept.y, dialogCell('t1').y + 38 + 6, 'the buttons float 6 under the settings')
+	eq(d.content:GetHeight(), accept.y + accept.height, 'the content ends at the buttons: no bottom margin')
+	eq(accept.frame:GetBottom() - d.frame:GetBottom(), 24, 'Thick: 24 under the buttons, as at the sides (54 before)')
+	eq(d.frame:GetHeight(), 58 + accept.y + accept.height + 24, 'the head, the rows, the side padding')
+	check(not d.bar:IsShown(), 'nothing to scroll')
+	-- A status line (a validate error) makes room for itself under the rows, and gives it back.
+	d.body.onChanged(false, 'That will not do.')
+	eq(d.status:GetText(), 'That will not do.', 'the status line')
+	eq(accept.frame:GetBottom() - d.frame:GetBottom(), 30, "the foot grows to the status line's 30")
+	check(d.status:GetTop() <= accept.frame:GetBottom(), 'the status line under the buttons')
+	check(not d.bar:IsShown(), 'still nothing to scroll')
+	d.body.onChanged(true)
+	eq(d.status:GetText(), '', 'cleared')
+	eq(dialogCell('accept').frame:GetBottom() - d.frame:GetBottom(), 24, 'and 24 again')
+	OW:CloseDialog()
+
+	-- Blizzard keeps its layout: the body's bottom margin and a foot of 30 under the last row.
+	theme('blizzard')
+	OW:OpenDialog('Copy', CopyLike())
+	accept = dialogCell('accept')
+	eq(accept.y, dialogCell('t1').y + 34 + 4, 'Blizzard: the buttons 4 under the settings, as before')
+	eq(accept.frame:GetBottom() - d.frame:GetBottom(), 24 + 30, 'Blizzard: 54 under them, as before')
+	OW:CloseDialog()
+	theme('thick')
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
 ------------------------------------------------------------------ under the Blizzard theme
 
 test("the dialog's scroll reaches 7 past its content under Blizzard", function()
