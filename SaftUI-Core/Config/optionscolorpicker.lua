@@ -50,6 +50,11 @@ local Kit = W.Kit
 	changes the color. Okay closes it and remembers the color; Cancel, Esc, the
 	window closing and combat put the opening color back through onChange,
 	then call onCancel, and remember nothing. A click outside does nothing.
+	Its top strip, from the title down to above the square (F.drag), moves it:
+	the panel is kept on the screen by the margin, the drop is rounded to whole
+	units, and it stays there while it is open; closing it forgets the place
+	(opening puts it by its field again). A drag is no click outside, Okay or
+	Cancel, and changes no color.
 	A box takes its value on Enter or when it loses the keyboard (a value out
 	of range is held in it; text that isn't a number puts the old value back),
 	and Tab moves through the boxes in order (Shift-Tab back).
@@ -189,6 +194,7 @@ end
 
 local PAD = 20
 local BODY_Y = 48 -- the square's top, under the title
+local DRAG_HEIGHT = 40 -- the title strip that moves the panel, ending above the square
 local SQUARE, STRIP_WIDTH, GAP = 170, 16, 16
 local INNER = SQUARE - 2 -- inside the 1px edge of the square and the strips
 local COLUMN = 152 -- two equal, even blocks of 64 with a gap of 24 between them
@@ -438,6 +444,50 @@ local function Draggable(area, apply)
 	end)
 	area:SetScript('OnMouseUp', Stop)
 	area:HookScript('OnHide', Stop)
+end
+
+------------------------------------------------------------------ moving it
+
+local movingPanel = false -- the title strip is moving the panel
+
+-- Stops the move the title strip started. Dropped, the panel is placed again
+-- by its top left on whole units (the game leaves a dragged frame on a
+-- fraction).
+local function StopMove(drop)
+	if not movingPanel then return end
+	movingPanel = false
+	F.drag:SetScript('OnUpdate', nil)
+	frame:StopMovingOrSizing()
+	local left, top = frame:GetLeft(), frame:GetTop()
+	if drop and left and top then
+		local k = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+		frame:ClearAllPoints()
+		frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', Round(left * k), Round(top * k))
+	end
+end
+
+-- The top strip of the panel moves it, from the title down to above the
+-- square, so no control's own drag or click is in its way. Where it is dropped
+-- it stays while it is open; opening it puts it by its field again
+-- (PlaceBeside), so nothing is saved.
+local function BuildDragStrip()
+	local strip = st:CreateFrame('Frame', nil, frame)
+	strip:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+	strip:SetPoint('TOPRIGHT', frame, 'TOPRIGHT', 0, 0)
+	strip:SetHeight(DRAG_HEIGHT)
+	strip:EnableMouse(true)
+	strip:SetScript('OnMouseDown', function(_, button)
+		if button ~= 'LeftButton' or not spec or movingPanel then return end
+		movingPanel = true
+		frame:StartMoving()
+		-- A mouse up that never reaches the strip (let go where it no longer is)
+		-- ends the move too.
+		strip:SetScript('OnUpdate', function()
+			if not IsMouseButtonDown('LeftButton') then StopMove(true) end
+		end)
+	end)
+	strip:SetScript('OnMouseUp', function() StopMove(true) end)
+	F.drag = strip
 end
 
 ------------------------------------------------------------------ boxes
@@ -722,6 +772,7 @@ local function Build()
 	frame:EnableMouse(true)
 	frame:Hide()
 	st:SetTemplate(frame, 'theme', 'solid', 'panel')
+	frame:SetMovable(true)
 	st:KeepInScreenMargin(frame)
 
 	local OB = st.OptionsBody
@@ -729,6 +780,7 @@ local function Build()
 	F.title:SetPoint('TOPLEFT', frame, 'TOPLEFT', PAD, -16)
 	F.title:SetText('Color')
 
+	BuildDragStrip()
 	BuildSquare()
 	BuildHue()
 	BuildAlpha()
@@ -779,6 +831,7 @@ local function Build()
 		Tell()
 	end)
 	frame:SetScript('OnHide', function()
+		StopMove(false)
 		keys:EnableKeyboard(false)
 		keys:Hide()
 		if tipOwner then
