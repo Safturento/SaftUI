@@ -1,10 +1,16 @@
 -- /sui under edit mode's docked bar (SaftUI-Core/Config/optionswindow.lua's
--- Anchor, CoverTop and S.UpdateBarCover): while the bar is docked and shown
--- across the top of the screen the window, in every size (the 42 tall bar
--- above all), sits no higher than the bar's bottom, as a display offset only:
--- the saved corner is never changed by it, and the window is back at it when
--- the bar hides, detaches or edit mode ends. A drag while offset saves the
--- place it was dropped at, never a doubled offset. Whole pixels throughout.
+-- Anchor, CoverTop, S.BarCover and S.UpdateBarCover): while the bar is docked
+-- and shown at the top of the screen and the window, in every size (the 42
+-- tall bar above all), is under its rect (EM:BarRect) horizontally, the window
+-- sits no higher than the bar's bottom, as a display offset only: the saved
+-- corner is never changed by it, and the window is back at it when the bar
+-- hides, detaches, slides clear or edit mode ends. Beside the bar (the two
+-- rects do not overlap horizontally, even by a touching edge) the window is
+-- not moved and has all the screen's height. With hide until hovered on the
+-- bar covers nothing. A drag while offset saves the place it was dropped at,
+-- never a doubled offset. Whole pixels throughout. The cases that are about
+-- the offset itself slide the bar to the right end (reset), where the window,
+-- saved at the top right, is under it.
 --
 -- Real: Core's Config on a real AceDB (config_helpers.lua, which loads edit
 -- mode and its bar), the model, the widgets, the body and the window
@@ -22,7 +28,9 @@ local function wait() stub.time = stub.time + 0.31 end
 
 local function reset()
 	if EM.active then EM:Deactivate() end
+	st.config.global.editModeBar = nil -- docked, shown, not hidden until hovered
 	EM:SetBarFloating(false)
+	EM:SetBarX(1e5) -- the right end of the top edge: the window saved at the top right is under it
 	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = 0, y = 0 }
 	close_all()
 	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = 0, y = 0 }
@@ -107,7 +115,7 @@ test('a drag while offset saves the place it was dropped at, never a doubled off
 	local function drop(y)
 		stub.fire_script(F.header, 'OnDragStart')
 		F.window:ClearAllPoints()
-		F.window:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 300, y)
+		F.window:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', math.floor(UIParent:GetWidth() - F.window:GetWidth()), y) -- at the right end, under the bar
 		stub.fire_script(F.header, 'OnDragStop')
 	end
 	drop(-200)
@@ -236,6 +244,165 @@ test('with edit mode off, a corner past the top of the screen is as it was saved
 		st.Config:Close()
 	end
 	st.config.profile.misc.clamp_inset = default
+	reset()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+
+------------------------------------------------------------------ beside the bar, under it
+
+local function window_left(F) return F.window:GetLeft() - UIParent:GetLeft() end
+local function window_right(F) return F.window:GetRight() - UIParent:GetLeft() end
+
+for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+	for _, size in ipairs({ 'full', 'half', 'mini' }) do
+		test(('/sui beside the docked bar is not moved, under it it is, and it follows the bar sliding: %s, %s'):format(look, size), function()
+			reset()
+			theme(look)
+			st.Config:Open('Loot')
+			local F = frames()
+			go(size)
+			local saved_top = top_of(F)
+			local max_height = OW.MaxHeight()
+			EM:Activate()
+			local bar = EM:GetBar()
+			local rect = EM:BarRect()
+			local cover = EM:BarCoverHeight()
+			check(window_left(F) < rect.right and window_right(F) > rect.left, 'the bar is under the window at the right end')
+			check(top_of(F) >= cover - 1e-3, 'under the bar: offset below it')
+			local under_height = F.window:GetHeight()
+			-- Slid to the left end, clear of the window: not offset, and no room taken from its height.
+			EM:SetBarX(0)
+			rect = EM:BarRect()
+			check(rect.right <= window_left(F), 'the bar is clear of the window: ' .. rect.right .. ' vs ' .. window_left(F))
+			eq(top_of(F), saved_top, 'beside the bar: where it was saved')
+			if size ~= 'mini' then eq(F.window:GetHeight(), OW.WindowHeight(OW.S.layout), 'and as tall as it is saved, not limited to the room under the bar') end
+			eq(OW.MaxHeight(), max_height, 'the most height is what it is with edit mode off: nothing taken for the bar')
+			-- Back under it.
+			EM:SetBarX(1e5)
+			check(top_of(F) >= cover - 1e-3, 'slid under it again: offset')
+			eq(F.window:GetHeight(), under_height, 'and its height is the one under the bar')
+			local off = P.off(F.window)
+			eq(#off, 0, 'whole pixels: ' .. P.report(off))
+			EM:Deactivate()
+			reset()
+			eq(#take_errors(), 0, 'no errors')
+		end)
+	end
+end
+
+test('/sui is offset when the bar overlaps its horizontal extent by a pixel, and not when the two only touch', function()
+	reset()
+	theme('thick')
+	st.Config:Open('Loot')
+	local F = frames()
+	go('full')
+	local saved_top = top_of(F)
+	EM:Activate()
+	local bar = EM:GetBar()
+	local inset = st:ThemeInset('theme', 'theme', 'panel')
+	local width = bar:GetWidth()
+	local left = window_left(F)
+	-- The bar's rect (the line its backdrop draws included) ends at the window's left edge: touching.
+	EM:SetBarX(left - width - inset)
+	eq(EM:BarRect().right, left, 'the rect ends where the window starts')
+	eq(top_of(F), saved_top, 'touching: not offset')
+	EM:SetBarX(left - width - inset + 1)
+	eq(EM:BarRect().right, left + 1, 'one pixel over')
+	check(top_of(F) >= EM:BarCoverHeight() - 1e-3, 'overlapping by a pixel: offset')
+	-- The same at the window's right end.
+	local right = window_right(F)
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -700, y = 0 }
+	st.Config:Close(); st.Config:Open('Loot')
+	F = frames()
+	left, right = window_left(F), window_right(F)
+	EM:SetBarX(right + inset)
+	eq(EM:BarRect().left, right, 'the rect starts where the window ends')
+	eq(top_of(F), 0, 'touching: not offset')
+	EM:SetBarX(right + inset - 1)
+	check(top_of(F) >= EM:BarCoverHeight() - 1e-3, 'one pixel over: offset')
+	EM:Deactivate()
+	reset()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('with hide until hovered on the bar covers nothing: /sui under it is not offset, hidden or down', function()
+	reset()
+	theme('thick')
+	st.Config:Open('Loot')
+	local F = frames()
+	local saved_top = top_of(F)
+	EM:Activate()
+	check(top_of(F) >= EM:BarCoverHeight() - 1e-3, 'off: offset under the bar')
+	local height = F.window:GetHeight()
+	stub.cursor_x, stub.cursor_y = 0, 0
+	stub.click(EM:BarControl('hide').frame)
+	eq(EM:BarCoverHeight(), 0, 'on: no cover')
+	eq(top_of(F), saved_top, 'the window is back where it was saved')
+	check(F.window:GetHeight() >= height, 'and has its height')
+	-- The bar comes down over it: nothing moves.
+	local watch = EM.barWatch
+	local scale = UIParent:GetEffectiveScale()
+	stub.cursor_x, stub.cursor_y = (EM.barStrip:GetLeft() + 10) * scale, (UIParent:GetTop() - 2) * scale
+	stub.time = stub.time + 1
+	stub.fire_script(watch, 'OnUpdate', 0.016)
+	check(EM:GetBar():IsShown(), 'down')
+	eq(top_of(F), saved_top, 'it draws over /sui and /sui does not move')
+	EM:Deactivate()
+	reset()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a drag beside the docked bar is saved where it was dropped, even up at the top edge', function()
+	reset()
+	st.Config:Open('Loot')
+	local F = frames()
+	EM:Activate()
+	local function drop(x, y)
+		stub.fire_script(F.header, 'OnDragStart')
+		F.window:ClearAllPoints()
+		F.window:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', x, y)
+		stub.fire_script(F.header, 'OnDragStop')
+	end
+	drop(5, -5)
+	eq(st.config.global.optionsWindow.y, -5, 'at the left end, clear of the bar (at the right end): saved as dropped')
+	eq(UIParent:GetTop() - F.window:GetTop(), 5, 'and shown there')
+	drop(math.floor(UIParent:GetWidth() - F.window:GetWidth()), -5)
+	eq(UIParent:GetTop() - F.window:GetTop(), EM:BarCoverHeight(), 'dropped under the bar: below it')
+	EM:Deactivate()
+	reset()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('/sui offset under the bar sits on whole pixels at 1024, 1920 and 2560 wide, with the read-back noise up, down and off, under each look', function()
+	local HAIR = 2 ^ -14
+	reset()
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(look)
+		st.Config:Open('Loot')
+		local F = frames()
+		EM:Activate()
+		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+			stub.size_noise = noise
+			for _, screen in ipairs({ { 1024, 768 }, { 1920, 1080 }, { 2560, 1440 } }) do
+				stub.screen_width, stub.screen_height = screen[1], screen[2]
+				UIParent:SetScale(768 / screen[2])
+				stub.fire_event('DISPLAY_SIZE_CHANGED')
+				EM:SetBarX(1e5)
+				local where = ('%s noise %s at %d: '):format(look, noise, screen[1])
+				check(top_of(F) >= EM:BarCoverHeight() - 1e-3, where .. 'under the bar: offset')
+				local off = P.off(F.window)
+				eq(#off, 0, where .. P.report(off))
+				EM:SetBarX(0)
+				off = P.off(F.window)
+				eq(#off, 0, where .. 'beside it: ' .. P.report(off))
+			end
+		end
+		EM:Deactivate()
+		close_all()
+	end
+	stub.screen_width, stub.screen_height = 1920, 1080
+	UIParent:SetScale(768 / 1080)
 	reset()
 	eq(#take_errors(), 0, 'no errors')
 end)
