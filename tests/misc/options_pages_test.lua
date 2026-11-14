@@ -3,7 +3,8 @@
 -- frames: Tooltip, Totem bar, Buffs and debuffs (Auras), Swing timer. Each is
 -- built here with stand-ins for those frames (SaftUI's own: holders, bars,
 -- Blizzard's bar and bar frames left out because the tables never touch them),
--- and the Skinning page, which needs none. Checked for each page: every option
+-- and the Skinning page, which needs none. (The Objective Tracker page is
+-- checked in objective_tracker_position_test.lua, over the tracker's fixture.) Checked for each page: every option
 -- has a desc and no Ace width, Position is the last option of its group, and
 -- the new options read and write their profile keys and apply the change.
 --
@@ -263,7 +264,17 @@ test('Skinning: a page with the shared Theme, Background and font, which re-appl
 	eq(printed[1], 'Reload your UI to apply.', 'it says to reload')
 	profile.skinning.cooldown_manager = true
 
+	-- Objective tracker turns the objective tracker's skin on or off at once.
+	local tracker = general.args.objective_tracker
+	eq(tracker.type, 'toggle', 'Objective tracker is a toggle')
+	check(tracker.desc:find('reload', 1, true) == nil, 'its tooltip asks for no reload')
+	eq(general.get(info_for('objective_tracker')), true, 'on by default')
+	general.set(info_for('objective_tracker'), false)
+	eq(profile.skinning.objective_tracker, false, 'Objective tracker writes skinning.objective_tracker')
+	eq(reapplied, 4, 'and re-applies the skins')
+	profile.skinning.objective_tracker = true
+
 	eq(layout({ Skinning = tree }, 'Skinning'),
-		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2',
-		'Theme | Background, Font | Cooldown Manager')
+		'theme:normal 1, background:normal 2, font:normal 1, cooldown_manager:normal 2, objective_tracker:normal 1',
+		'Theme | Background, Font | Cooldown Manager, Objective tracker')
 end)
