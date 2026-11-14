@@ -43,6 +43,40 @@ function st:ResolveFrame(ref)
 	return nil
 end
 
+-- Functions modules register to say what a frame of theirs is anchored to,
+-- where the live points can't be asked: the game refuses to measure a
+-- nameplate's parts (GetPoint errors "Can't measure restricted regions"), so
+-- the unit frames answer for those from their config.
+local anchorSources = {}
+
+-- source(frame) returns a list of the frames frame is anchored to (empty when
+-- none that matter), or nil for a frame it doesn't know, which keeps the live
+-- walk. The first source to answer wins.
+function st:RegisterAnchorSource(source)
+	tinsert(anchorSources, source)
+end
+
+-- The frames from is anchored to: a registered source's answer, else its live
+-- points.
+local function AnchorsOf(from)
+	for _, source in ipairs(anchorSources) do
+		local anchors = source(from)
+		if anchors then
+			return anchors
+		end
+	end
+	local anchors = {}
+	if from.GetNumPoints then
+		for i = 1, from:GetNumPoints() do
+			local _, relativeTo = from:GetPoint(i)
+			if relativeTo then
+				anchors[#anchors + 1] = relativeTo
+			end
+		end
+	end
+	return anchors
+end
+
 local function AnchorReaches(from, target, visited)
 	if from == target then
 		return true
@@ -51,11 +85,7 @@ local function AnchorReaches(from, target, visited)
 		return false
 	end
 	visited[from] = true
-	if not from.GetNumPoints then
-		return false
-	end
-	for i = 1, from:GetNumPoints() do
-		local _, relativeTo = from:GetPoint(i)
+	for _, relativeTo in ipairs(AnchorsOf(from)) do
 		if relativeTo and not issecretvalue(relativeTo) and type(relativeTo) == 'table'
 				and AnchorReaches(relativeTo, target, visited) then
 			return true
