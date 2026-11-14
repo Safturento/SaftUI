@@ -912,3 +912,116 @@ test('an onChange that errors does not stop Cancel from calling onCancel', funct
 	check(cancelled, 'onCancel ran')
 	take_errors()
 end)
+
+------------------------------------------------------------------ moving it
+
+-- Whether the picker is being moved by the mouse (StartMoving, no StopMovingOrSizing since).
+local function moving(frame) return stub.state(frame).moving == true end
+
+-- Where the game leaves a frame a drag ended: a corner anchor on a fraction.
+local function dropped(frame, x, y)
+	frame:ClearAllPoints()
+	frame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', x, y)
+end
+
+test('its title strip drags it: the top strip of the panel, clear of every control', function()
+	reset()
+	local _, F = open()
+	local drag = F.drag
+	check(drag ~= nil, 'a drag strip')
+	check(F.frame:IsMovable(), 'the panel is movable')
+	check(F.frame:IsClampedToScreen(), 'and kept on the screen')
+	check(drag:IsMouseEnabled(), 'the strip takes the mouse')
+	eq(drag:GetParent(), F.frame, "a child of the panel, so it isn't a click outside anything")
+	eq(drag:GetTop(), F.frame:GetTop(), "at the panel's top")
+	eq(drag:GetLeft(), F.frame:GetLeft(), "from the panel's left")
+	eq(drag:GetRight(), F.frame:GetRight(), "to the panel's right")
+	-- It overlaps no control that has a drag or a click of its own.
+	for _, key in ipairs({ 'square', 'hue', 'alpha', 'was', 'new', 'red', 'hex', 'okay', 'cancel' }) do
+		check(F[key]:GetTop() <= drag:GetBottom(), 'the strip ends above the ' .. key)
+	end
+	reset()
+end)
+
+test('a drag on the title strip moves the panel and does nothing else: no commit, no cancel, no change', function()
+	reset()
+	local told, F = open()
+	local changes = #told.changes
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	check(moving(F.frame), 'moving')
+	check(W.ColorPickerShown(), 'still open')
+	stub.fire_script(F.drag, 'OnMouseUp', 'LeftButton')
+	check(not moving(F.frame), 'let go: stopped')
+	check(W.ColorPickerShown(), 'still open')
+	eq(told.cancelled, 0, 'not cancelled')
+	eq(#told.changes, changes, 'no change told to the field')
+	eq(#st.config.global.colorPicker.recent, 0, 'nothing remembered: not an Okay')
+	stub.fire_script(F.drag, 'OnMouseDown', 'RightButton')
+	check(not moving(F.frame), 'only the left button drags')
+	reset()
+end)
+
+test('the drop is rounded to whole units, and the panel stays there while it is open', function()
+	reset()
+	local _, F = open()
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	dropped(F.frame, 412.37, 655.81)
+	stub.fire_script(F.drag, 'OnMouseUp', 'LeftButton')
+	eq(F.frame:GetLeft(), 412, 'left rounded')
+	eq(F.frame:GetTop(), 656, 'top rounded')
+	eq(#P.off(F.frame), 0, 'every part on whole pixels after it: ' .. P.report(P.off(F.frame)))
+	-- A box typed in, the square dragged: it doesn't go back.
+	press(F.square, 0.5, 0.5)
+	release(F.square)
+	type_into(F.red, '200')
+	eq(F.frame:GetLeft(), 412, 'a change of color leaves it where it was dropped')
+	reset()
+end)
+
+test('closing it forgets the place: the next open is beside its field again', function()
+	reset()
+	local owner = field(100, 100)
+	local _, F = open({ owner = owner })
+	local left, top = F.frame:GetLeft(), F.frame:GetTop()
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	dropped(F.frame, 700.4, 500.6)
+	stub.fire_script(F.drag, 'OnMouseUp', 'LeftButton')
+	click(F.okay)
+	check(not W.ColorPickerShown(), 'closed')
+	_, F = open({ owner = owner })
+	eq(F.frame:GetLeft(), left, 'beside the field again: left')
+	eq(F.frame:GetTop(), top, 'and top')
+	-- Cancel forgets it too.
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	dropped(F.frame, 300, 300)
+	stub.fire_script(F.drag, 'OnMouseUp', 'LeftButton')
+	click(F.cancel)
+	_, F = open({ owner = owner })
+	eq(F.frame:GetLeft(), left, 'after Cancel: beside the field')
+	reset()
+end)
+
+test('the panel closing in a drag stops the move', function()
+	reset()
+	local _, F = open()
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	check(moving(F.frame), 'moving')
+	click(F.cancel)
+	check(not moving(F.frame), 'hiding it stopped the move')
+	reset()
+end)
+
+test("pressing the square or a strip drags the color, not the panel; the title strip doesn't touch the color", function()
+	reset()
+	local told, F = open()
+	for _, area in ipairs({ F.square, F.hue, F.alpha }) do
+		press(area, 0.5, 0.5)
+		check(not moving(F.frame), 'the panel is not moved by a press on a control')
+		release(area)
+	end
+	local count = #told.changes
+	stub.fire_script(F.drag, 'OnMouseDown', 'LeftButton')
+	stub.fire_script(F.drag, 'OnMouseUp', 'LeftButton')
+	eq(#told.changes, count, 'a drag of the panel changes no color')
+	reset()
+end)
