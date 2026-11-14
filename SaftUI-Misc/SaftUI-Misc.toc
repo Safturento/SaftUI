@@ -14,5 +14,6 @@ totemposition.lua
 totemoptions.lua
 totemskin.lua
 totemtimers.lua
+durability.lua
 movable.lua
 Skinning\load.xml
