@@ -1362,3 +1362,12 @@ Ordered by how much the owner is likely to care.
 33. **A quest item that came in combat shows greyed in its row** until its button comes.
 34. **Blizzard's progress blue for bars** (0.26, 0.42, 1), as the skin keeps it.
 35. **Phase order** as listed, with scenarios moving up if P4 finds Forever's dungeons are scenarios.
+
+## Settled with the owner after the draft (2026-11-14)
+
+These override anything above that they contradict.
+
+1. **The design is approved.** "All those calls are good". The 35 calls stand as written.
+2. **Which quests it shows is a setting:** the tracked quests (the game's watch list) by default, with a toggle to also show every quest in the current zone. "toggleable, but by default only tracked quests". The setting is "Show: Tracked quests | Tracked and the current zone's" on the Tracker page; a current-zone quest that isn't tracked is drawn like any other in its zone group, with nothing to mark it but its place; untracking or tracking it through the menu works as for any quest.
+3. **Phase order after version one** stays as call 35 has it; the owner isn't particular. "I'm not picky with where to start".
+4. **Building starts before the in-game experiments.** "if you want to start building the core quest tracker we can handle the finer details after". The switch lands off (call 4), so nothing changes for the player until the experiments P1 to P5 have been run and their results folded in. A result that fails changes the part it decides (the concealment for P2, the item button's type for P3, the handover's sections and the nearest button's fallback for P4, Show on map for P5); the plan keeps each of those behind one function so the change is local.
