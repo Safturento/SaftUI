@@ -668,3 +668,17 @@ These override anything above that they contradict. The owner's words are quoted
 13. **The history tracks everything, built in two parts.** "I think it should track everything, if you want to split it into two parts that's totally fine with me." Part one, with the bar: what edit mode changes (moves, nudges, resets) and bulk actions such as Copy from, each restored whole. Part two, its own piece of work after: every setting changed in `/sui`, with Undo, Redo and History reachable from the options window too. Part one's history store must take part two's steps without a redesign: a step is a label, a time and a list of (where, old value, new value), applied through the same setters a player's change uses.
 14. **What counts as one step is provisional.** "if someone decides to nudge the frame 16 pixels one pixel at a time does that become 16 entries in the history? that could flood it and wipe out meaningful changes easily. maybe this is worth exploring other examples on the internet of well designed history systems. For now we can start building and adjust what we consider a 'step' based on the results of that research." The first definition stands for building (a drag; a run of nudges on one mover with under a second between them; a reset; a bulk action); research into how other tools group steps is under way and the grouping rule is kept in one place so it can change.
 15. **Reverting one older step** (builder's call until the research is in): it puts back what that step changed to the values from before it, as a new step that can itself be undone; if a later step changed the same thing, that later change is overwritten and the list says so.
+
+## The history's rules, confirmed (2026-11-13)
+
+The owner read the research (`docs/research/2026-11-13-undo-history-systems.md`) and the rules drawn from it: "All of your decisions from the history research are sound, lets build it!" These replace points 14 and 15 above as provisional.
+
+- A drag is one step, storing its start and end; a drag or any step with no net change records nothing.
+- Nudges merge into the top step while it is the same mover, the same kind of change, nothing else has been recorded since, and each comes within about a second of the last (one named constant, to tune in game). One Undo puts the frame back to where it was before the first nudge.
+- A reset is its own step and never merges. A bulk action is one step holding everything it changed.
+- Labels say what happened and the net result, not a count.
+- A new change after undoing discards the redo steps. No branching.
+- In the History list, clicking a row jumps to that point: later steps are undone and stay redoable until a new change. Each row also has a revert control for just that step, which works only while no later step touched the same mover or setting; otherwise it is disabled and its tooltip says to jump back to that point instead. A bulk step has no single-step revert.
+- Undoing or redoing a step whose mover is filtered out or off screen selects or names that mover.
+- The limit is 50 steps by default, settable up to 1000, oldest dropped first.
+- The floating window is approved as mocked, with the two Show toggles in place of the mockup's switch ("Floating window looks great, just swap out those few buttons in the implementation").
