@@ -343,6 +343,60 @@ test('a frame marked protected has its moves, sizes and shows blocked in combat,
 	eq(#stub.blocked, 4, 'nothing more noted')
 end)
 
+test("SaftUI's code can't measure an anchor restricted region (a nameplate) or one anchored to it; a test and the stubs can", function()
+	reset_world()
+	local plate = CreateFrame('Frame', 'NamePlate1', WorldFrame)
+	plate:SetSize(200, 20)
+	plate:SetPoint('CENTER')
+	stub.restrict_anchors(plate)
+	-- A bar filling it, and a backdrop 2 round the bar: restricted through
+	-- the bar.
+	local bar = CreateFrame('StatusBar', nil, plate)
+	bar:SetAllPoints(plate)
+	local backdrop = CreateFrame('Frame', nil, bar)
+	backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -2, 2)
+	backdrop:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT', 2, -2)
+	-- The plate's child, anchored elsewhere: not restricted.
+	local elsewhere = CreateFrame('Frame', nil, plate)
+	elsewhere:SetSize(10, 10)
+	elsewhere:SetPoint('CENTER', UIParent, 'CENTER')
+
+	-- SaftUI's code: a chunk named as load_saftui names a SaftUI file's. No
+	-- tail call, so the call is seen made from it.
+	local saftui = loadstring('local region, method = ... local a, b, c, d, e = region[method](region) return a, b, c, d, e',
+		'@SaftUI-Core/measure.lua')
+	local MEASURES = { 'GetPoint', 'GetRect', 'GetLeft', 'GetRight', 'GetTop', 'GetBottom', 'GetCenter', 'IsMouseOver' }
+	for _, region in ipairs({ plate, bar, backdrop }) do
+		for _, method in ipairs(MEASURES) do
+			local ok, err = pcall(saftui, region, method)
+			check(not ok and tostring(err):find("Can't measure restricted regions", 1, true) ~= nil,
+				region:GetObjectType() .. ':' .. method .. ' refused: ' .. tostring(err))
+		end
+	end
+	local _, err = pcall(saftui, backdrop, 'GetPoint')
+	eq(err, "SaftUI-Core/measure.lua:1: Frame:GetPoint(): Action[FrameMeasurement] failed because[Can't measure restricted regions]: attempted from: Frame:GetPoint().",
+		"the game's message, at the line that asked")
+
+	-- What still answers, to SaftUI too: the number of points and the size.
+	eq(saftui(backdrop, 'GetNumPoints'), 2, 'GetNumPoints answers')
+	eq(saftui(backdrop, 'GetWidth'), 204, 'GetWidth answers')
+	eq(table.concat({ saftui(backdrop, 'GetSize') }, ','), '204,24', 'GetSize answers')
+	-- A test measures, as the player sees the screen.
+	eq(select(4, backdrop:GetPoint(1)), -2, 'a test reads the anchors')
+	eq(backdrop:GetLeft(), bar:GetLeft() - 2, 'and the edges')
+	check(pcall(saftui, elsewhere, 'GetPoint'), "a child anchored elsewhere isn't restricted")
+
+	-- Anchors can still be set; anchored elsewhere, a region is free again.
+	backdrop:ClearAllPoints()
+	backdrop:SetPoint('TOPLEFT', bar, 'TOPLEFT', -1, 1)
+	backdrop:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT', 1, -1)
+	eq(select(4, backdrop:GetPoint(1)), -1, 'SetPoint on a restricted region works')
+	check(not pcall(saftui, backdrop, 'GetPoint'), 'and it is still restricted')
+	backdrop:ClearAllPoints()
+	backdrop:SetPoint('CENTER', UIParent, 'CENTER')
+	check(pcall(saftui, backdrop, 'GetPoint'), 'anchored outside the family, it measures again')
+end)
+
 test('SetAttribute runs OnAttributeChanged on every call, an unchanged value too, and is blocked in combat on a protected frame', function()
 	reset_world()
 	local frame = CreateFrame('Frame', nil, UIParent)

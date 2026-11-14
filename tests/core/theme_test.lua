@@ -7,7 +7,9 @@
 --     with a kind; a call with no kind is an error unless it draws None;
 --   - st:RecolorThemed and st:RedrawThemed, which bring every drawn frame up to
 --     a changed theme, each frame on its own, so one that errors stops none of
---     the others.
+--     the others; a redraw tells a backdrop it placed from one its caller
+--     moved without measuring either, so a backdrop on a nameplate (anchor
+--     restricted) takes the theme too.
 --
 -- Real: theme.lua, with Core's helpers it's loaded with (load_core_helpers) and
 -- the profile's defaults. Each case starts from a fresh world, since cases
@@ -412,6 +414,113 @@ test('a redraw moves a backdrop that still sits where it was drawn', function()
 	st:RedrawThemed()
 	eq(offset(f.backdrop, 'TOPLEFT'), '-2.00,2.00', 'SetBackdrop: back to 2px out under Thick')
 	eq(offset(tb, 'TOPLEFT'), '-2.00,2.00', 'SetBackdropIn: back to 2px out under Thick')
+end)
+
+-- A frame anchored to an anchor restricted region, as a plate's parts are to
+-- the game's nameplate: SaftUI's code can't measure it or anything anchored
+-- to it (tests/wow/widgets.lua, anchor restricted regions).
+local function on_plate(st)
+	local plate = CreateFrame('Frame', nil, WorldFrame)
+	plate:SetSize(200, 60)
+	plate:SetPoint('CENTER')
+	stub.restrict_anchors(plate)
+	local f = st:CreateFrame('Frame', nil, plate)
+	f:SetSize(100, 50)
+	f:SetPoint('CENTER', plate, 'CENTER')
+	return f
+end
+
+test('a redraw measures no backdrop anchored to a nameplate: those it placed move to the new inset, those their callers anchored keep their anchors, all take the new look', function()
+	local st = fresh()
+	-- Placed by the engine: st:SetBackdrop and st:SetBackdropIn, kinds that
+	-- sit on plates.
+	local bar = on_plate(st)
+	st:SetBackdrop(bar, 'theme', 'theme', 'unitframe')
+	local backdrops = setmetatable({}, { __mode = 'k' })
+	local icon = on_plate(st)
+	local iconBackdrop = st:SetBackdropIn(backdrops, icon, 'theme', 'theme', 'control')
+	-- Anchored by their callers after the draw: to fill the frame, one point
+	-- moved, and placed anew at the engine's own offsets (the caller's all
+	-- the same).
+	local filled = on_plate(st)
+	st:SetBackdrop(filled, 'theme', 'theme', 'aura')
+	filled.backdrop:ClearAllPoints()
+	filled.backdrop:SetAllPoints(filled)
+	local nudged = on_plate(st)
+	st:SetBackdrop(nudged, 'theme', 'theme', 'small')
+	nudged.backdrop:SetPoint('TOPLEFT', nudged, 'TOPLEFT', -4, 4)
+	local same = on_plate(st)
+	st:SetBackdrop(same, 'theme', 'theme', 'small')
+	same.backdrop:ClearAllPoints()
+	same.backdrop:SetPoint('TOPLEFT', same, 'TOPLEFT', -2, 2)
+	same.backdrop:SetPoint('BOTTOMRIGHT', same, 'BOTTOMRIGHT', 2, -2)
+	eq(#take_errors(), 0, 'drawn with no error')
+
+	local callers = { filled.backdrop, nudged.backdrop, same.backdrop }
+	local before = {}
+	for _, b in ipairs(callers) do before[b] = anchors(b) end
+
+	st.config.profile.theme.name = 'thin'
+	local ok, err = pcall(st.RedrawThemed, st)
+	check(ok, 'the redraw raises nothing: ' .. tostring(err))
+	eq(#take_errors(), 0, 'and reports nothing: no backdrop was measured')
+	eq(offset(bar.backdrop, 'TOPLEFT'), '-1.00,1.00', "SetBackdrop: Thin's 1px out")
+	eq(offset(bar.backdrop, 'BOTTOMRIGHT'), '1.00,-1.00', "SetBackdrop: Thin's 1px out (bottom right)")
+	eq(offset(iconBackdrop, 'TOPLEFT'), '-1.00,1.00', "SetBackdropIn: Thin's 1px out")
+	eq(bar.thick, false, 'frame.thick follows')
+	for _, b in ipairs({ bar.backdrop, iconBackdrop }) do
+		eq(inset(b), 1, "a placed backdrop: Thin's 1px border")
+		eq(edge(b), '0.00,0.00,0.00,1.00', "a placed backdrop: Thin's border color")
+		check(not outerShown(b), "a placed backdrop: no outer lines under Thin")
+	end
+	eq(fill(bar.backdrop), '0.12,0.12,0.12,0.90', "Thin's background, see-through as the theme")
+	for i, b in ipairs(callers) do
+		eq(anchors(b), before[b], 'caller ' .. i .. ': the anchors its caller set')
+		eq(inset(b), 1, "caller " .. i .. ": repainted in Thin's 1px border")
+		eq(edge(b), '0.00,0.00,0.00,1.00', "caller " .. i .. ": in Thin's border color")
+	end
+
+	-- Placed by the redraw, it moves again on the next; the callers' stay.
+	st.config.profile.theme.name = 'thick'
+	st:RedrawThemed()
+	eq(#take_errors(), 0, 'back to Thick: no error')
+	eq(offset(bar.backdrop, 'TOPLEFT'), '-2.00,2.00', "back to Thick's 2px out")
+	eq(offset(iconBackdrop, 'BOTTOMRIGHT'), '2.00,-2.00', "SetBackdropIn: back to Thick's 2px out")
+	check(outerShown(bar.backdrop), "Thick's outer lines")
+	for i, b in ipairs(callers) do
+		eq(anchors(b), before[b], 'caller ' .. i .. ': still its own anchors')
+	end
+	-- Drawn anew by its module, a backdrop its caller had anchored is placed
+	-- by the engine again, and moves with the next redraw.
+	st:SetBackdrop(filled, 'theme', 'theme', 'aura')
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	eq(offset(filled.backdrop, 'TOPLEFT'), '-1.00,1.00', "drawn anew, then Thin's 1px out")
+	eq(#take_errors(), 0, 'no error')
+end)
+
+test('a redraw keeps telling apart an ordinary backdrop it placed and one its caller moved, by every way of moving one', function()
+	local st = fresh()
+	local placed, cleared, pointed, filled = frame(st), frame(st), frame(st), frame(st)
+	for _, f in ipairs({ placed, cleared, pointed, filled }) do st:SetBackdrop(f, 'theme', 'theme', 'panel') end
+	-- Cleared and left with no points; one point added (a third); filling it.
+	cleared.backdrop:ClearAllPoints()
+	pointed.backdrop:SetPoint('CENTER', pointed, 'CENTER', 0, 0)
+	filled.backdrop:SetAllPoints(filled)
+	-- The owner moving moves no backdrop's anchors.
+	placed:ClearAllPoints()
+	placed:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 40, -40)
+	local before = {}
+	for _, f in ipairs({ cleared, pointed, filled }) do before[f] = anchors(f.backdrop) end
+
+	st.config.profile.theme.name = 'thin'
+	st:RedrawThemed()
+	eq(offset(placed.backdrop, 'TOPLEFT'), '-1.00,1.00', 'placed by the engine, its owner moved: Thin, 1px out')
+	for _, f in ipairs({ cleared, pointed, filled }) do
+		eq(anchors(f.backdrop), before[f], 'moved by its caller: its anchors kept')
+		eq(inset(f.backdrop), 1, "and repainted in Thin's border")
+	end
+	eq(#take_errors(), 0, 'no error')
 end)
 
 test('a redraw draws each recorded frame once, with its own arguments', function()

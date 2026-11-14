@@ -209,8 +209,9 @@ end
 -- of the look it was drawn in (0 and nil for None). For a backdrop made by
 -- st:SetBackdrop or st:SetBackdropIn, owner is the frame it sits behind,
 -- backdrops the caller's table st:SetBackdropIn keeps it in, and placed where
--- outside owner it was last put ({ side, top }: a window's top differs under
--- Blizzard), so a redraw can tell whether it still sits there.
+-- outside owner the engine last put it ({ side, top }: a window's top differs
+-- under Blizzard), until anyone else moves it (Watch), so a redraw can tell
+-- whether it still sits there.
 local drawn = setmetatable({}, { __mode = 'k' })
 
 -- owner -> the backdrop last drawn behind it with st:SetBackdrop or
@@ -441,44 +442,73 @@ local function Placement(look, kind)
 	return { side = look.inset, top = top }
 end
 
--- Whether a backdrop still sits outside owner where DrawBackdrop put it
--- (placed, a Placement). Many callers anchor their backdrop themselves after
--- drawing it (an action button's fills the button), and a redraw must leave
--- those anchors alone.
-local function IsPlaced(backdrop, owner, placed)
-	if not placed or backdrop:GetNumPoints() ~= 2 then return false end
-	local side = placed.side
-	local want = { TOPLEFT = { -side, placed.top }, BOTTOMRIGHT = { side, -side } }
-	for i = 1, 2 do
-		local point, relativeTo, relativePoint, x, y = backdrop:GetPoint(i)
-		if issecretvalue(relativeTo) or issecretvalue(x) or issecretvalue(y) then return false end
-		local xy = want[point]
-		if not xy or relativeTo ~= owner or relativePoint ~= point or x ~= xy[1] or y ~= xy[2] then
-			return false
-		end
-		want[point] = nil
+--[[
+	Whether a backdrop still sits outside its owner where DrawBackdrop put it.
+	Many callers anchor their backdrop themselves after drawing it (an action
+	button's fills the button), and a redraw must leave those anchors alone.
+
+	The engine keeps that in its own record (placed) and never asks the game
+	where a backdrop is: a backdrop on a nameplate (a plate's bars, its cast
+	icon, its aura buttons) is anchored to the plate through its owner, and the
+	game's plates are anchor restricted, so GetPoint, GetRect and the edges
+	error for addon code on anything anchored to one ("Can't measure
+	restricted regions"). Setting its anchors is allowed, in combat too.
+
+	So every way of moving a region's anchors is post-hooked on the backdrop,
+	once, when the engine first places it (SaftUI's own frame: rule 1 of
+	.agents/taint.md is about Blizzard's), and a call by anyone but the engine
+	forgets placed: the backdrop is then its caller's, wherever the caller put
+	it, until a draw (not a redraw) places it again. The ones the client
+	lacks are skipped.
+]]
+local MOVES = { 'ClearAllPoints', 'SetPoint', 'SetAllPoints', 'ClearPoint', 'SetPointsOffset', 'AdjustPointsOffset', 'ClearPointsOffset' }
+
+local watched = setmetatable({}, { __mode = 'k' }) -- backdrops whose moves are hooked; only keys
+local placing -- the backdrop DrawBackdrop is placing now: its own moves don't count
+
+local function Moved(backdrop)
+	if backdrop == placing then return end
+	local entry = drawn[backdrop]
+	if entry then entry.placed = nil end
+end
+
+local function Watch(backdrop)
+	if watched[backdrop] then return end
+	watched[backdrop] = true
+	for _, name in ipairs(MOVES) do
+		if type(backdrop[name]) == 'function' then hooksecurefunc(backdrop, name, Moved) end
 	end
-	return true
+end
+
+-- Places a backdrop the look's inset outside owner (place, a Placement) and
+-- notes it. placed is nil while it's moved, so a call that errors on the way
+-- leaves the backdrop counted as its caller's, never moved by a redraw.
+local function Place(backdrop, owner, entry, place)
+	Watch(backdrop)
+	entry.placed = nil
+	placing = backdrop
+	backdrop:ClearAllPoints()
+	backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -place.side, place.top)
+	backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', place.side, -place.side)
+	placing = nil
+	entry.placed = place
 end
 
 -- Draws a backdrop frame of SaftUI's behind owner, records it, and places it the
 -- look's inset outside owner (a Placement: a window's reaches its title bar
 -- above it under Blizzard). A redraw places it only while it still sits where
--- the last draw put it; one its caller anchored is repainted where it is, and
--- the caller's UpdateConfig anchors it again. Sets owner.thick for
--- st:SetBackdrop (not for st:SetBackdropIn, whose frames aren't SaftUI's).
--- Returns the look, nil for None (which only clears it).
+-- the engine last put it (placed, which nothing measures: Watch); one its
+-- caller anchored is repainted where it is, and the caller's UpdateConfig
+-- anchors it again. Sets owner.thick for st:SetBackdrop (not for
+-- st:SetBackdropIn, whose frames aren't SaftUI's). Returns the look, nil for
+-- None (which only clears it).
 local function DrawBackdrop(backdrop, owner, backdrops, theme, background, kind, redraw)
 	local look, drawKind = DrawLook(theme, background, kind)
 	local entry = Record(backdrop, theme, background, kind, look, owner, backdrops)
 	if not redraw then owners[owner] = backdrop end
 	if look then
-		if not redraw or IsPlaced(backdrop, owner, entry.placed) then
-			local place = Placement(look, drawKind)
-			backdrop:ClearAllPoints()
-			backdrop:SetPoint('TOPLEFT', owner, 'TOPLEFT', -place.side, place.top)
-			backdrop:SetPoint('BOTTOMRIGHT', owner, 'BOTTOMRIGHT', place.side, -place.side)
-			entry.placed = place
+		if not redraw or entry.placed then
+			Place(backdrop, owner, entry, Placement(look, drawKind))
 		end
 		if not backdrops then
 			-- true or false, so thick is only nil on a frame never given a backdrop

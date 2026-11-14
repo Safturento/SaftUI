@@ -1457,14 +1457,78 @@ local PROTECTED_IN_COMBAT = {
 	SetRoundLayoutToNearestPixel = true, SetIgnoreParentScale = true,
 }
 
+--[[
+	Anchor restricted regions (warcraft.wiki.gg, "Object security": since
+	8.2.0). The game's nameplates are restricted, and so is every region
+	anchored to one, directly or through other regions (its anchor family).
+	Insecure code can't ask where such a region is: GetPoint, GetRect, the
+	edges (GetLeft, GetRight, GetTop, GetBottom), GetCenter and IsMouseOver
+	error "<Type>:<Method>(): Action[FrameMeasurement] failed because[Can't
+	measure restricted regions]", in combat and out (the 8.2.0 notes list the
+	rect and edge getters; GetPoint and IsMouseOver are the game's errors as
+	reported). Its anchors can still be set, and GetNumPoints and its size
+	(GetWidth, GetHeight, GetSize) still answer: neither the 8.2.0 notes nor
+	the wiki list them, and SaftUI's backdrops on plates read their size each
+	time they're drawn.
+	stub.restrict_anchors(region) marks a region restricted, as the game marks
+	its plates (game.lua's stub.add_nameplate marks every plate it makes).
+	Only addon code is refused: a call from a SaftUI file (load_saftui's
+	chunks, the bundled libraries among them). A test, which looks at the
+	screen as the player does, and the stubs, which stand in for the game's
+	own secure code, still measure. Not mimicked: chat bubbles (restricted in
+	game too), and the anchor family rule (in game a SetPoint that would
+	anchor a restricted region to two families errors).
+]]
+local MEASURES_POSITION = {
+	GetPoint = true, GetRect = true, GetLeft = true, GetRight = true, GetTop = true, GetBottom = true,
+	GetCenter = true, IsMouseOver = true,
+}
+
+local any_restricted = false -- whether any region was marked, so the rest skip the walk
+
+-- Whether s is restricted: marked, or anchored to a region that is.
+local function anchor_restricted(s, seen)
+	if s.anchor_restricted then return true end
+	if seen[s] then return false end
+	seen[s] = true
+	for _, p in ipairs(s.points) do
+		if anchor_restricted(states[p.relativeTo], seen) then return true end
+	end
+	return false
+end
+
+function stub.restrict_anchors(region)
+	stub.state(region).anchor_restricted = true
+	any_restricted = true
+end
+
+-- Errors as the game does when addon code measures a restricted region: at
+-- the code that called the method, found as usage() finds it.
+local function refuse_measure(s, name)
+	if not (any_restricted and anchor_restricted(s, {})) then return end
+	local level = 2
+	local info
+	while true do
+		info = debug.getinfo(level, 'S')
+		if not info or (info.source ~= THIS_FILE and info.what ~= 'tail') then break end
+		level = level + 1
+	end
+	if info and info.source:sub(1, #'@SaftUI-') == '@SaftUI-' then
+		error(("%s:%s(): Action[FrameMeasurement] failed because[Can't measure restricted regions]: attempted from: %s:%s().")
+			:format(s.type, name, s.type, name), level)
+	end
+end
+
 -- Wraps a method so it checks its self, then gets the widget's state.
 local function method(group, name, impl)
 	local guarded = PROTECTED_IN_COMBAT[name]
+	local measures = MEASURES_POSITION[name]
 	return function(self, ...)
 		local s = states[self]
 		if not (s and s.groups[group]) then
 			error(('Wrong object type for function %s:%s (called on %s)'):format(group, name, describe(self)), 2)
 		end
+		if measures then refuse_measure(s, name) end
 		if guarded and stub.in_combat and self:IsProtected() then
 			stub.blocked[#stub.blocked + 1] = { self, name }
 			return
