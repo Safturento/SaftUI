@@ -85,22 +85,41 @@ function LT:IsFeedHovered()
 	return W.ListOwner() == feed.filterMenuAnchor
 end
 
--- Shows the filter button while the mouse is over the feed's area, and the jump
--- button too while the feed is scrolled back. With the mouse elsewhere an empty
--- feed shows nothing, and one with entries shows only them. They appear and go
--- at once. Runs every frame, and where the scroll offset changes.
+-- The highest alpha among the entries on screen, or 0 with none shown. An entry
+-- being faded out (UpdateFeedVisibility) is still shown at its alpha.
+function LT:GetFeedEntryAlpha()
+	local top = 0
+	for i = 1, self.config.feed.max_items do
+		local item = self.feed.items[i]
+		if item and item:IsShown() then
+			top = max(top, item:GetAlpha())
+		end
+	end
+	return top
+end
+
+-- Shows the filter button while at least one entry is on the feed, or the mouse is
+-- over the feed's area (or the filter menu is open), and the jump button too while
+-- the feed is scrolled back. The buttons are at full alpha under the mouse, and
+-- otherwise at the alpha of the most visible entry, so they fade out with the last
+-- one and come back at once with a new one. A button at alpha 0 is hidden, so it
+-- takes no mouse and shows no tooltip. Runs every frame, and where the scroll
+-- offset or the entries change.
 function LT:UpdateFeedButtons()
 	local feed = self.feed
 	if not (feed and feed.hover and feed.filterButton) then return end
-	local hovered = self:IsFeedHovered()
-	feed.filterButton:SetShown(hovered)
-	feed.reset_button:SetShown(hovered and feed.offset > 0)
+	local alpha = self:IsFeedHovered() and 1 or self:GetFeedEntryAlpha()
+	local visible = alpha > 0
+	feed.filterButton:SetShown(visible)
+	feed.filterButton:SetAlpha(alpha)
+	feed.reset_button:SetShown(visible and feed.offset > 0)
+	feed.reset_button:SetAlpha(alpha)
 end
 
 -- The feed's buttons and the area the mouse brings them up in (feed.hover: the
 -- feed and the strip the buttons sit in, placed with them by
 -- UpdateLootFeedConfig; it takes no mouse). The first UpdateFeedButtons hides
--- them unless the mouse is there.
+-- them unless an entry is on the feed or the mouse is there.
 function LT:CreateFeedButtons()
 	local feed = self.feed
 	feed.hover = CreateFrame('frame', feed:GetName()..'Hover', feed)
@@ -208,9 +227,11 @@ function LT:UpdateFeed(recentlyScrolled, useCache)
 			item.link = info.link
 			item.info = info
 
+			item:SetAlpha(1)
 			item:Show()
 		end
 	end
+	self:UpdateFeedButtons()
 end
 
 -- Drops every entry test mode pushed, leaves real ones alone, and hides the
@@ -646,8 +667,10 @@ end
 -- GetFilteredItems() rather than filtering the whole feed (up to 500 entries)
 -- again. Everything that changes the feed or a filter refreshes that cache.
 function LT:UpdateFeedVisibility(feed, elapsed)
-	self:UpdateFeedButtons()
-	if self.config.feed.fade_time == 0  then return end
+	if self.config.feed.fade_time == 0  then
+		self:UpdateFeedButtons()
+		return
+	end
 	local filteredItems = self:GetFilteredItems(true)
 
 	if self.testFeed then
@@ -681,6 +704,8 @@ function LT:UpdateFeedVisibility(feed, elapsed)
 
 		--item:SetShown(info and now - info.time <= self.config.feed.fade_time)
 	end
+	-- After the entries' alpha is set, so the buttons follow this frame's.
+	self:UpdateFeedButtons()
 end
 
 function LT:InitializeLootFeed()
