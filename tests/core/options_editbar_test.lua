@@ -406,3 +406,41 @@ test('/sui offset under the bar sits on whole pixels at 1024, 1920 and 2560 wide
 	reset()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+for _, look in ipairs({ 'thick', 'thin' }) do
+	test(('/sui grown from beside the bar to under it, and back, is never left under the bar: %s'):format(look), function()
+		reset()
+		theme(look)
+		st.config.global.optionsWindow = { point = 'TOPRIGHT', x = 0, y = 0, height = 2000, size = 'half' }
+		EM:SetBarX(math.floor(UIParent:GetWidth() / 2) - 270) -- in the middle
+		st.Config:Open('Loot')
+		local F = frames()
+		EM:Activate()
+		local function state(tag)
+			local rect = EM:BarRect()
+			local under = window_right(F) > rect.left and window_left(F) < rect.right
+			local lift = lift_of(F.window)
+			return under, lift, UIParent:GetTop() - F.window:GetTop() - lift
+		end
+		local under, lift, top = state('half')
+		check(not under, 'half is beside the bar')
+		eq(lift, 0, 'and not lifted')
+		wait(); OW:SetWindowSize('full')
+		under, lift, top = state('full')
+		check(under, 'full is under the bar')
+		eq(lift, 0, 'the game has nothing to lift back under the bar')
+		check(top >= EM:BarCoverHeight() - 1e-3, 'its top is below the bar: ' .. top)
+		for _, name in ipairs({ 'close', 'shrink', 'grow', 'header' }) do
+			local f = F[name]
+			if f and f:IsVisible() then check(f:GetTop() + lift <= UIParent:GetTop() - EM:BarCoverHeight() + 1e-3, name .. ' is clear of the bar') end
+		end
+		wait(); OW:SetWindowSize('half')
+		under, lift, top = state('half again')
+		check(not under, 'back beside the bar')
+		eq(top, 0, 'the offset is dropped')
+		eq(F.window:GetHeight(), OW.WindowHeight(OW.S.layout), 'and it has its full height')
+		EM:Deactivate()
+		reset()
+		eq(#take_errors(), 0, 'no errors')
+	end)
+end

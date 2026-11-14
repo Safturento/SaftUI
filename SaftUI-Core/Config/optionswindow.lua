@@ -1030,6 +1030,9 @@ local function Relayout()
 	if mini then
 		window:SetSize(S.miniWidth or width, OW.MINI_HEIGHT)
 	else
+		-- The width first: the height reads whether the window is under the docked
+		-- edit bar (S.BarCover), which depends on it.
+		window:SetWidth(width)
 		window:SetSize(width, OW.WindowHeight(L))
 	end
 	st:SetTemplate(window, 'theme', 'options', mini and 'panel' or 'window')
