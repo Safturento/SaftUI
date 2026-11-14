@@ -227,6 +227,37 @@ function TW.scroll_frame(parent)
 	bar:SetPoint('TOPLEFT', scrollFrame, 'TOPRIGHT', 6, -2)
 	bar:SetPoint('BOTTOMLEFT', scrollFrame, 'BOTTOMRIGHT', 6, 5)
 	scrollFrame.ScrollBar = bar
+
+	-- The bar's own input, as Blizzard's ScrollUtil.InitScrollFrameWithScrollBar
+	-- and ScrollBarBaseTemplate make it (identical on both clients): every one
+	-- ends in scrollFrame:SetVerticalScroll(percentage * range), unrounded, which
+	-- the game follows with the frame's OnVerticalScroll. A wheel notch over the
+	-- bar is panExtent * 2 (ScrollController's wheelPanScalar), a stepper
+	-- panExtent, a thumb drag or a track click any percentage. The stand-in's
+	-- range is the child's height less the frame's, and a percentage is clamped
+	-- to 0..1 as the bar clamps it.
+	local methods = getmetatable(scrollFrame).__index
+	scrollFrame.SetVerticalScroll = function(self, offset)
+		methods.SetVerticalScroll(self, offset)
+		stub.fire_script(self, 'OnVerticalScroll', offset)
+	end
+	local panExtent = 30
+	scrollFrame.SetPanExtent = function(_, extent) panExtent = extent end
+	local function Range() return math.max(0, content:GetHeight() - scrollFrame:GetHeight()) end
+	-- A thumb drag, a track click: the bar's percentage.
+	bar.SetScrollPercentage = function(_, percentage)
+		scrollFrame:SetVerticalScroll(math.min(math.max(percentage, 0), 1) * Range())
+	end
+	local function Pan(self, pixels)
+		local range = Range()
+		if range > 0 then self:SetScrollPercentage(scrollFrame:GetVerticalScroll() / range + pixels / range) end
+	end
+	-- A stepper: direction 1 is down.
+	bar.Step = function(self, direction) Pan(self, direction * panExtent) end
+	bar:SetScript('OnMouseWheel', function(self, delta) Pan(self, -delta * panExtent * 2) end)
+	-- MinimalScrollBar's thumb, which SaftUI's skin draws (st:SkinNewScrollBar).
+	local thumb = SaftUI:CreateFrame('Frame', nil, bar)
+	bar.GetThumb = function() return thumb end
 	return scrollFrame
 end
 

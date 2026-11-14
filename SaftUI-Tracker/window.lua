@@ -157,7 +157,9 @@ local POSITION_KEYS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
 
 local function FirstPosition()
 	local position = st:DefaultTrackerPosition()
-	local skin = st.config.profile.objectivetracker
+	-- Only while Misc's tracker mover exists: AceDB keeps the profile's table
+	-- after Misc is disabled, and a stale spot must not be copied.
+	local skin = st:GetModule('ObjectiveTracker', true) and st.config.profile.objectivetracker
 	local saved = skin and skin.position
 	if type(saved) == 'table' then
 		for _, key in ipairs(POSITION_KEYS) do
@@ -203,7 +205,7 @@ function TR:ApplyHolder()
 	local holder = self.holder
 	if not holder then return end
 	st:PlaceHolder(holder, 'tracker_holder',
-		function() return self.config.width, self.config.height end,
+		function() return self.config.width, self:MaxHeight() end,
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
@@ -227,6 +229,19 @@ end
 
 ------------------------------------------------------------------ size and scroll
 
+-- Max height as drawn: the saved value, but no taller than the room the screen
+-- leaves inside its edge margin (the game would push a taller holder up, and
+-- with Grow up the window hangs from the edge that goes off). The saved value
+-- is kept. Read when the holder or window is sized: a change of the screen's
+-- size shows at the next update.
+function TR:MaxHeight()
+	local height = self.config.height
+	local margin = st.config.profile.misc and st.config.profile.misc.clamp_inset or 0
+	local room = Round(UIParent:GetHeight() - 2 * margin)
+	if room > 0 and height > room then return room end
+	return height
+end
+
 -- The window sized for the content height the rows give it: as tall as the
 -- content up to Max height, then the list scrolls, with the bar's room kept
 -- while it does. The scroll offset is kept, clamped.
@@ -244,7 +259,7 @@ function TR:LayoutWindow()
 	local content = self.contentHeight or 0
 	local width = Round(config.width)
 
-	local height = Layout.WindowHeight(content, { header = header, collapsed = collapsed, max = config.height })
+	local height = Layout.WindowHeight(content, { header = header, collapsed = collapsed, max = self:MaxHeight() })
 	local view = Layout.ViewHeight(height, header)
 	local range = collapsed and 0 or Layout.ScrollRange(content, view)
 	-- The bar's room is read from the game (single precision: a hair off), and
@@ -260,6 +275,12 @@ function TR:LayoutWindow()
 	scroll:SetContentSize(childWidth, content)
 	scroll:SetShown(not collapsed)
 	self.scrollRange = range
+	-- The window and the list take the wheel only while the list scrolls, so
+	-- the camera still zooms with the cursor over a tracker that fits, is empty
+	-- or is collapsed. Neither frame is protected: safe in combat.
+	window:EnableMouseWheel(range > 0)
+	scroll:EnableMouseWheel(range > 0)
+	self:UpdateWatcher()
 	-- A collapsed window keeps the player's place for when it opens again.
 	if not collapsed then self:ScrollTo(self:GetScroll()) end
 end
@@ -272,7 +293,9 @@ end
 -- Scrolls to offset, a whole number of pixels, clamped to the list.
 function TR:ScrollTo(offset)
 	if not self.scroll then return end
-	self.scroll:SetVerticalScroll(math.min(math.max(Round(offset), 0), self.scrollRange or 0))
+	local whole = math.min(math.max(Round(offset), 0), self.scrollRange or 0)
+	self.scrollAt = whole
+	self.scroll:SetVerticalScroll(whole)
 end
 
 -- Task 8: while an item button sits in a row the list doesn't scroll in combat.
@@ -282,7 +305,7 @@ end
 
 -- The wheel over the window or the scroll frame: 40 a notch, clamped.
 local function OnWheel(_, delta)
-	if TR:IsScrollLocked() then return end
+	if (TR.scrollRange or 0) <= 0 or TR:IsScrollLocked() then return end
 	TR:ScrollTo(Layout.Wheel(TR:GetScroll(), delta, TR.scrollRange or 0))
 end
 
@@ -320,7 +343,10 @@ end
 function TR:UpdateWatcher()
 	local watcher = self.watcher
 	if not watcher then return end
-	local needed = self.config.visibility.scrollbar_hover and self.window:IsShown()
+	-- Only while a bar can show: the list scrolls. Otherwise the OnUpdate would
+	-- run every frame (an IsMouseOver and a GetTime) for nothing. While it runs
+	-- that is all it costs.
+	local needed = self.config.visibility.scrollbar_hover and self.window:IsShown() and (self.scrollRange or 0) > 0
 	if needed then
 		if not watcher:GetScript('OnUpdate') then watcher:SetScript('OnUpdate', OnWatch) end
 	elseif watcher:GetScript('OnUpdate') then
@@ -362,7 +388,9 @@ function TR:ColorHeader()
 	for chevron in pairs(chevrons) do PaintChevron(chevron) end
 end
 
-function TR:OnColorsChanged()
+-- The window's part of a color change; the module's one OnColorsChanged
+-- (init.lua) calls it, and each later part adds its own call there.
+function TR:ColorWindow()
 	self:ColorHeader()
 end
 
@@ -385,6 +413,11 @@ end
 function TR:DrawWindow()
 	local config = self.config
 	st:SetBackdrop(self.window, config.theme, config.background, 'panel')
+	-- The bar's thumb wears the tracker's Theme, not only SaftUI's (the skin
+	-- draws it in the global one).
+	local bar = self.scroll.ScrollBar
+	local thumb = bar and bar.GetThumb and bar:GetThumb()
+	if thumb then st:SetBackdrop(thumb, config.theme, 'solid', 'control') end
 	self:DrawHeader()
 	self:LayoutWindow()
 	self:UpdateWatcher()
@@ -458,6 +491,31 @@ function TR:BuildWindow()
 
 	local scroll = TR.NewScrollFrame(window)
 	scroll:SetScript('OnMouseWheel', OnWheel)
+	-- The bar's own input (its wheel, steppers, thumb and track) goes through
+	-- Blizzard's percentage x range (ScrollUtil.InitScrollFrameWithScrollBar):
+	-- its wheel is the window's, its step 40, and the offset it sets is made a
+	-- whole pixel here, or put back while the list is locked.
+	if scroll.ScrollBar then scroll.ScrollBar:SetScript('OnMouseWheel', OnWheel) end
+	if scroll.SetPanExtent then scroll:SetPanExtent(L.WHEEL) end
+	local settling = false
+	scroll:HookScript('OnVerticalScroll', function(frame, offset)
+		if settling then return end
+		local at = TR.scrollAt or 0
+		local target
+		if TR:IsScrollLocked() and math.abs(offset - at) > 0.01 then
+			target = at
+		else
+			target = Round(offset)
+			TR.scrollAt = target
+		end
+		-- The float noise of percentage x range is left alone; a drag's fraction
+		-- isn't. The guard keeps the bar's own re-set from coming back here.
+		if math.abs(target - offset) > 0.01 then
+			settling = true
+			frame:SetVerticalScroll(target)
+			settling = false
+		end
+	end)
 	self.scroll = scroll
 	self.content = scroll.ScrollChild
 

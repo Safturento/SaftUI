@@ -1,8 +1,10 @@
 local st = SaftUI
 
 -- The tracker's profile settings. `position` (the window's holder) has no
--- default: the first one is written when the tracker first builds, from
--- Blizzard's tracker's spot (init.lua).
+-- default: the first one is written when the tracker first builds
+-- (TR:GetPosition, window.lua), as a copy of Misc's objective tracker mover's
+-- saved one when that module is loaded and the profile has one, else
+-- Blizzard's default spot.
 st.defaults.tracker = {
 	enable = false, theme = 'theme', background = 'theme',
 	width = 260, height = 560, grow = 'down', header = true, count = true, hide_empty = true,

@@ -115,7 +115,7 @@ test("first position: the skin's saved one when Misc has one, else Blizzard's de
 	-- Misc loaded with a saved position: a copy of it.
 	local saved
 	local st, TR = world({
-		misc = true,
+		misc = { otp = true },
 		enabling = function(st)
 			saved = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 30, y_off = -80 }
 			st.config.profile.objectivetracker.position = saved
@@ -131,7 +131,7 @@ test("first position: the skin's saved one when Misc has one, else Blizzard's de
 	eq(p .. x .. ',' .. y, 'TOPLEFT31,-80', 'the holder is placed there')
 
 	-- Misc loaded with none saved: the default spot.
-	local st2 = world({ misc = true })
+	local st2 = world({ misc = { otp = true } })
 	eq(st2.config.profile.tracker.position.x_off, -20, 'no saved skin position: the default spot')
 	eq(#take_errors(), 0, 'no errors')
 end)
@@ -375,6 +375,155 @@ test("past Max height the list scrolls, with the bar's room kept; the wheel 40 a
 	eq(TR.scroll:GetWidth(), 245, 'and the bar room is gone')
 	eq(TR:IsScrollLocked(), false, 'not locked (Task 8)')
 	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the bar's own input (its wheel, a thumb drag, a track click, its steppers) goes through the tracker: 40 a notch, whole pixels, the lock", function()
+	local st, TR = world()
+	TR:SetContentHeight(2000)
+	local bar = TR.scroll.ScrollBar
+	stub.fire_script(bar, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 40, 'a notch over the bar is 40, as over the list')
+	stub.fire_script(bar, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 80, 'twice')
+	stub.fire_script(bar, 'OnMouseWheel', 1)
+	eq(TR:GetScroll(), 40, 'up')
+	bar:SetScrollPercentage(0.0734)
+	eq(TR:GetScroll(), math.floor(TR:GetScroll()), 'a thumb drag ends on a whole pixel: ' .. TR:GetScroll())
+	eq(TR:GetScroll(), 109, '0.0734 of 1486, rounded')
+	bar:SetScrollPercentage(0.5)
+	eq(TR:GetScroll(), 743, 'a track click ends whole too')
+	TR:ScrollTo(100)
+	bar:Step(1)
+	eq(TR:GetScroll(), 140, 'a stepper is 40 (SetPanExtent)')
+	bar:SetScrollPercentage(1)
+	eq(TR:GetScroll(), 1486, 'the end')
+
+	-- Locked: nothing the bar does moves the list.
+	TR:ScrollTo(300)
+	local IsScrollLocked = TR.IsScrollLocked
+	TR.IsScrollLocked = function() return true end
+	stub.fire_script(bar, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 300, "the bar's wheel waits")
+	stub.fire_script(TR.scroll, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 300, "the list's wheel waits")
+	bar:SetScrollPercentage(0.9)
+	eq(TR:GetScroll(), 300, 'a drag is put back')
+	bar:Step(1)
+	eq(TR:GetScroll(), 300, 'a stepper is put back')
+	TR:ScrollTo(500)
+	eq(TR:GetScroll(), 500, 'the tracker itself can still scroll it (Task 8 does, to keep a row in view)')
+	TR.IsScrollLocked = IsScrollLocked
+	stub.fire_script(bar, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 540, 'unlocked: from where it was left')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the window takes the wheel only while the list scrolls; a collapsed one keeps its place', function()
+	local _, TR = world()
+	local function wheel() return TR.window:IsMouseWheelEnabled(), TR.scroll:IsMouseWheelEnabled() end
+	local function states() local a, b = wheel(); return tostring(a) .. ',' .. tostring(b) end
+	eq(states(), 'false,false', 'empty')
+	TR:SetContentHeight(100)
+	eq(states(), 'false,false', 'the content fits')
+	TR:SetContentHeight(2000)
+	eq(states(), 'true,true', 'scrolling')
+	TR:ScrollTo(100)
+	TR:SetCollapsed(true)
+	eq(states(), 'false,false', 'collapsed')
+	stub.fire_script(TR.window, 'OnMouseWheel', -1)
+	stub.fire_script(TR.scroll, 'OnMouseWheel', -1)
+	TR:SetCollapsed(false)
+	eq(TR:GetScroll(), 100, 'a notch over the collapsed window left the place alone')
+	eq(states(), 'true,true', 'expanded again')
+	TR:SetContentHeight(50)
+	eq(states(), 'false,false', 'back to fitting')
+	-- A notch the engine would not deliver is ignored anyway.
+	stub.fire_script(TR.window, 'OnMouseWheel', -1)
+	eq(TR:GetScroll(), 0, 'nothing to scroll')
+	TR:SetContentHeight(2000)
+	TR.config.header = false
+	TR:UpdateConfig()
+	eq(states(), 'true,true', 'with Header off')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('whole pixels from ScrollTo and SetContentHeight, and the mover is hidden with the window', function()
+	local st, TR = world()
+	TR:SetContentHeight(100.4)
+	eq(TR.contentHeight, 100, 'the content height is rounded')
+	eq(TR.window:GetHeight(), 146, 'so is the window')
+	TR:SetContentHeight(2000)
+	TR:ScrollTo(100.5)
+	eq(TR:GetScroll(), 101, 'ScrollTo rounds')
+	TR:ScrollTo(137.4)
+	eq(TR:GetScroll(), 137, 'down')
+	local mover = st.EditModeFrames.movers.tracker
+	eq(st.EditModeFrames:IsMoverHidden(mover), false, 'shown with the window')
+	TR.window:Hide()
+	eq(st.EditModeFrames:IsMoverHidden(mover), true, 'hidden with it')
+	TR.window:Show()
+	eq(st.EditModeFrames:IsMoverHidden(mover), false, 'and back')
+end)
+
+test("the watcher runs only while a bar can show: not while the list fits, is collapsed, or the window hides", function()
+	local _, TR = world()
+	local function running() return type(TR.watcher:GetScript('OnUpdate')) == 'function' end
+	eq(running(), false, 'empty: nothing to watch')
+	TR:SetContentHeight(100)
+	eq(running(), false, 'fits')
+	TR:SetContentHeight(2000)
+	eq(running(), true, 'scrolling')
+	TR:SetCollapsed(true)
+	eq(running(), false, 'collapsed')
+	TR:SetCollapsed(false)
+	eq(running(), true, 'expanded')
+	TR:SetContentHeight(100)
+	eq(running(), false, 'back to fitting')
+end)
+
+test("the bar's thumb wears the tracker's Theme, and Max height stays on screen", function()
+	local st, TR = world()
+	local thumb = TR.scroll.ScrollBar:GetThumb()
+	TR.config.theme = 'thin'
+	TR:UpdateConfig()
+	eq(drawn(thumb), 'thin,solid,control', "the thumb in the tracker's Theme")
+	TR.config.theme = 'theme'
+	TR:UpdateConfig()
+	eq(drawn(thumb), 'theme,solid,control', "and back to following SaftUI's")
+
+	local room = UIParent:GetHeight() - 2 * st.config.profile.misc.clamp_inset
+	TR.config.height = 1600
+	TR:UpdateConfig()
+	eq(TR.holder:GetHeight(), room, 'the holder is no taller than the screen less the margins')
+	eq(TR.config.height, 1600, 'the saved value is kept')
+	TR:SetContentHeight(5000)
+	eq(TR.window:GetHeight(), room, 'and so is the window')
+	TR.config.height = 560
+	TR:UpdateConfig()
+	eq(TR.holder:GetHeight(), 560, 'a Max height that fits is as saved')
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the first position ignores the skin's saved spot while the skin's mover is not loaded", function()
+	local st = world({
+		misc = true,
+		enabling = function(st)
+			st.config.profile.objectivetracker.position = { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 30, y_off = -80 }
+		end,
+	})
+	eq(st.config.profile.tracker.position.x_off, -20, 'no ObjectiveTracker module: a stale saved spot is not copied')
+end)
+
+test("OnColorsChanged is the module's one, in init.lua, and calls the window's part", function()
+	local source = read_saftui_source('SaftUI-Tracker/window.lua')
+	check(not source:find('function TR:OnColorsChanged', 1, true), 'window.lua does not define it')
+	local init = read_saftui_source('SaftUI-Tracker/init.lua')
+	check(init:find('function TR:OnColorsChanged', 1, true), 'init.lua does')
+	local st, TR = world()
+	TR.header.line:SetVertexColor(0, 0, 0, 1)
+	st:ColorsChanged('theme')
+	local r, g, b = TR.header.line:GetVertexColor()
+	check(r + g + b > 0, 'a color change paints the header line again')
 end)
 
 test('Scroll bar under the mouse only: shown while hovered and 0.3 s after; always with it off', function()
@@ -667,7 +816,7 @@ local LAYOUTS = {
 	end },
 	{ 'scrolling, scrolled', function(TR)
 		TR:SetContentHeight(2000)
-		TR:ScrollTo(137)
+		TR:ScrollTo(137.4)
 	end },
 	{ 'Grow up, fits', function(TR) TR.config.grow = 'up'; TR:UpdateConfig(); TR:SetContentHeight(100) end },
 	{ 'Grow up, scrolling', function(TR) TR.config.grow = 'up'; TR:UpdateConfig(); TR:SetContentHeight(2000) end },

@@ -98,6 +98,16 @@ function TR:UpdateConfig()
 	-- Each part of the tracker adds its own update below.
 end
 
+-- A theme recolor or a change of a profile color: what each part of the tracker
+-- colors itself is put back. The one entry point of the module (a second
+-- definition in another file would silently replace this one): each part adds
+-- its own call here. Runs while the switch is off too (st:ColorsChanged calls
+-- every module), so each part does nothing until it exists.
+function TR:OnColorsChanged(group)
+	if not self.built then return end
+	self:ColorWindow()
+end
+
 -- What the tracker keeps per character, in st.config.char.tracker: each zone
 -- group's collapsed state, and the whole tracker's.
 function TR:CharData()
