@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position](#2026-11-14--tracker-a-tracker-moved-in-blizzards-edit-mode-isnt-the-first-position)
   - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — Tracker: a refresh allocates about 175 KB, measure it in game](#2026-11-14--tracker-a-refresh-allocates-about-175-kb-measure-it-in-game)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
@@ -142,6 +143,16 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — Tracker: a tracker moved in Blizzard's Edit Mode isn't the first position
+
+**What:** While SaftUI's tracker is on, Misc's mover stands down, so it never captures where a player had moved Blizzard's tracker in Blizzard's own Edit Mode (and never saved a skin position for). SaftUI's tracker then starts at Blizzard's default spot for that player, not where their tracker was (the design's "first enable starts where Blizzard's tracker was").
+
+**Why noticed:** Task 6 review of the Blizzard's-tracker concealment (`.superpowers/sdd/2026-11-14-saftui-objective-tracker-phase-1/task-6-review.md`, Minor 7): the capture used to run a frame after `TR:Build` had already saved the default, and depended on module order.
+
+**Anchors:** `SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua` (`OTP:CapturePosition`, `Owned()`), `SaftUI-Tracker/window.lua` (`FirstPosition`).
+
+**Shape of work:** small: read `ObjectiveTrackerFrame.systemInfo`'s anchor (reads only) once Edit Mode has applied its layout, before SaftUI first conceals it, and convert like `ConvertSkinPosition`.
 
 ### 2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout
 

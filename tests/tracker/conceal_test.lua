@@ -215,12 +215,10 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 			TR.PlaceBlizzard = place
 
 			-- Never stacked: setting up and updating again adds no hook, so one
-			-- Blizzard call is still one place.
-			local hooks = TW.counts.hooks
+			-- Blizzard call is still one place (more on that in the hooks case).
 			TR:SetupBlizzard()
 			TR:SetupBlizzard()
 			for _ = 1, 3 do TR:UpdateConfig() end
-			eq(TW.counts.hooks, hooks, 'no hook added')
 			TR.PlaceBlizzard = function(self, ...) count = count + 1 return place(self, ...) end
 			count = 0
 			OT.as_blizzard(function() tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 7, -7) end)
@@ -661,4 +659,206 @@ test('TR:BlizzardTarget and the seam: where is concealed or place; anything else
 	eq(TR.blizzardWhere, 'concealed', 'the last real place is kept')
 	eq(TR:OwnsBlizzard(), true, 'owned')
 	clean()
+end)
+
+------------------------------------------------------------------ the hooks' safety properties
+
+test('the hooks re-apply the current place: a revealed tracker stays revealed when Blizzard re-places it', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, TR = world({ client = client, misc = MISC })
+		local tracker = OT.tracker
+		TR:PlaceBlizzard('place')
+		local function in_place(where)
+			eq(tracker:GetNumPoints(), 1, where .. ': one point')
+			check(near(tracker:GetRight(), TR.window:GetRight()) and near(tracker:GetTop(), TR.window:GetTop()), where .. ': on the window\'s top right')
+			eq(tracker:IsClampedToScreen(), true, where .. ': clamp on')
+			eq(TR.blizzardWhere, 'place', where .. ': still the current place')
+		end
+		in_place(client .. ' revealed')
+		OT.manage(-50)
+		in_place(client .. ' after its container is laid out')
+		OT.apply_layout()
+		in_place(client .. ' after a layout apply')
+		OT.as_blizzard(function() tracker:UpdateHeight() end)
+		in_place(client .. ' after UpdateHeight')
+		OT.as_blizzard(function() tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 5, -5) end)
+		in_place(client .. ' after a SetPoint')
+		OT.break_snap()
+		in_place(client .. ' after a snap break')
+		-- And concealing again is the same hooks, the other place.
+		TR:PlaceBlizzard('concealed')
+		OT.manage(-50)
+		check_concealed(tracker, TR.holder:GetTop(), client .. ' concealed again')
+		clean()
+	end
+end)
+
+test('an error inside a hook is reported once, Blizzard\'s call goes on and finishes, and the next re-place conceals', function()
+	local st, TR = world({ misc = MISC })
+	local tracker = OT.tracker
+	local target, failed = TR.BlizzardTarget, false
+	TR.BlizzardTarget = function(...)
+		if not failed then
+			failed = true
+			error('a broken hook')
+		end
+		return target(...)
+	end
+	local height = OT.container:GetHeight()
+	local ok = pcall(OT.manage, -50)
+	eq(ok, true, "Blizzard's layout was not stopped by the hook's error")
+	local errors = take_errors()
+	eq(#errors, 1, 'one error reported')
+	check(tostring(errors[1]):find('a broken hook', 1, true) ~= nil, "the hook's error")
+	eq(select(4, OT.container:GetPoint(1)), -50, "the column's layout ran to its end: it is where Blizzard put it")
+	eq(OT.container:GetHeight(), height, 'and sized')
+	TR.BlizzardTarget = target
+	OT.manage(-50)
+	check_concealed(tracker, TR.holder:GetTop(), 'the next re-place conceals')
+	clean()
+end)
+
+test("SaftUI's mover (a nudge, a drag) places Blizzard's concealed tracker again: its y follows the holder", function()
+	local st, TR = world({ misc = MISC })
+	local tracker = OT.tracker
+	local EM = st.EditModeFrames
+	local mover = EM.movers.tracker
+	-- A holder that fits below its spot, or the margin pushes the nudge back up.
+	TR.config.height = 200
+	TR:UpdateConfig()
+	local before = TR.holder:GetTop()
+	EM:Nudge(mover, 'DOWN', true)
+	check(TR.holder:GetTop() < before, 'the holder moved down')
+	check_concealed(tracker, TR.holder:GetTop(), 'a nudge: the concealed y follows')
+	local position = mover.def.getPosition()
+	position.y_off = position.y_off + 40
+	mover.def.setPosition(position)
+	mover.def.apply()
+	check_concealed(tracker, TR.holder:GetTop(), 'a drag: and again')
+	clean()
+end)
+
+test('Grow up: the concealed y follows the window as its contents change height', function()
+	local st, TR = world({ misc = MISC })
+	local tracker = OT.tracker
+	TR.config.grow = 'up'
+	TR:UpdateConfig()
+	for _, height in ipairs({ 100, 300, 60 }) do
+		TR:SetContentHeight(height)
+		check_concealed(tracker, TR.window:GetTop(), 'content ' .. height)
+	end
+	clean()
+end)
+
+test('no hook stacks: a second enable, a profile switch, a settings toggle and a repeated setup add none', function()
+	for _, client in ipairs({ 'forever', 'retail' }) do
+		local st, TR = world({ client = client, misc = MISC })
+		local tracker = OT.tracker
+		local fields = { 'SetPoint', 'ClearAllPoints', 'UpdateHeight' }
+		local wrappers = {}
+		for _, name in ipairs(fields) do wrappers[name] = rawget(tracker, name) end
+		TW.count_from_now()
+		TR:OnEnable()
+		TR:Build()
+		TR:SetupBlizzard()
+		TR:UpdateConfig()
+		-- A profile switch: a new profile with nothing saved, then another.
+		st.config.profile.tracker.position = nil
+		st.config.profile.objectivetracker.position = nil
+		TW.OTP:UpdateConfig()
+		TR:UpdateConfig()
+		-- Settings of the tracker's page.
+		for _, change in ipairs({ { 'grow', 'up' }, { 'grow', 'down' }, { 'width', 300 }, { 'header', false }, { 'header', true } }) do
+			TR.config[change[1]] = change[2]
+			TR:UpdateConfig()
+		end
+		eq(TW.counts.hooks, 0, client .. ': no hook added')
+		TW.count_stop()
+		for _, name in ipairs(fields) do
+			check(rawget(tracker, name) == wrappers[name], client .. ': ' .. name .. ' is still the one wrapper')
+		end
+		-- One Blizzard call is still one place.
+		local count, place = 0, TR.PlaceBlizzard
+		TR.PlaceBlizzard = function(self, ...) count = count + 1 return place(self, ...) end
+		OT.as_blizzard(function() tracker:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 7, -7) end)
+		TR.PlaceBlizzard = place
+		eq(count, 1, client .. ': one SetPoint, one place')
+		clean(client .. ': ')
+	end
+end)
+
+test('while the switch is off an explicit TR:SetupBlizzard() hooks nothing', function()
+	local st, TR = world({ misc = MISC, on = false })
+	local tracker = OT.tracker
+	local wrappers = { rawget(tracker, 'SetPoint'), rawget(tracker, 'ClearAllPoints'), rawget(tracker, 'UpdateHeight') }
+	TR:SetupBlizzard()
+	TR:PlaceBlizzard('concealed')
+	eq(TR.blizzardFrame, nil, 'no frame held')
+	check(rawget(tracker, 'SetPoint') == wrappers[1] and rawget(tracker, 'ClearAllPoints') == wrappers[2]
+		and rawget(tracker, 'UpdateHeight') == wrappers[3], 'its three fields untouched')
+end)
+
+------------------------------------------------------------------ the first position, from the profile
+
+local SKIN_SPOTS = {
+	{ saved = { point = 'BOTTOMRIGHT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = -30, y_off = 200 }, x = -30, y = -368 },
+	{ saved = { point = 'CENTER', frame = 'UIParent', rel_point = 'CENTER', x_off = 40, y_off = -20 }, x = -330, y = -304 },
+	{ saved = { point = 'BOTTOMLEFT', frame = 'UIParent', rel_point = 'BOTTOMLEFT', x_off = 70, y_off = 90 }, x = -670, y = -478 },
+	{ saved = { point = 'LEFT', frame = 'UIParent', rel_point = 'LEFT', x_off = 25, y_off = 60 }, x = -715, y = -224 },
+	-- a point that differs from its relative point
+	{ saved = { point = 'BOTTOM', frame = 'UIParent', rel_point = 'CENTER', x_off = 10, y_off = 5 }, x = -360, y = -263 },
+}
+
+test('the first position converted from a non-top point is the same in either module order, after a profile switch, copy and reset', function()
+	for _, spot in ipairs(SKIN_SPOTS) do
+		for _, how in ipairs({ 'switch', 'copy', 'reset' }) do
+			local results = {}
+			for _, order in ipairs({ 'skin first', 'tracker first' }) do
+				local st, TR = world({ misc = MISC })
+				local OTP, EM, profile = TW.OTP, st.EditModeFrames, st.config.profile
+				-- The old profile's spot is where both holders are now; the new profile has the skin's saved spot only.
+				profile.tracker.position = nil
+				local copy = {}
+				for k, v in pairs(spot.saved) do copy[k] = v end
+				profile.objectivetracker.position = copy
+				if how ~= 'copy' then EM:ClearPositions() end
+				if order == 'skin first' then
+					OTP:UpdateConfig()
+					TR:UpdateConfig()
+				else
+					TR:UpdateConfig()
+					OTP:UpdateConfig()
+				end
+				EM:UpdateConfig()
+				local position = profile.tracker.position
+				results[order] = position.point .. ' ' .. position.x_off .. ',' .. position.y_off
+				eq(results[order], 'TOPRIGHT ' .. spot.x .. ',' .. spot.y, spot.saved.point .. '/' .. how .. '/' .. order .. ': the skin holder\'s top right, from the profile')
+				check(near(TR.holder:GetRight(), spot.x + UIParent:GetRight()) and near(TR.holder:GetTop(), spot.y + UIParent:GetTop()),
+					spot.saved.point .. '/' .. how .. '/' .. order .. ': and the holder is there')
+				check(near(OTP.holder:GetRight(), TR.holder:GetRight()) and near(OTP.holder:GetTop(), TR.holder:GetTop()),
+					spot.saved.point .. '/' .. how .. '/' .. order .. ': on the skin holder\'s own, which the player saw')
+				eq(profile.objectivetracker.position.point, spot.saved.point, 'the skin\'s saved position is untouched')
+				clean()
+			end
+			eq(results['skin first'], results['tracker first'], spot.saved.point .. '/' .. how .. ': the same in both orders')
+		end
+	end
+end)
+
+test('the first position from a position relative to another frame, or unreadable, is the default spot', function()
+	local st, TR = world({ misc = MISC })
+	local profile = st.config.profile
+	local function first(saved)
+		profile.tracker.position = nil
+		profile.objectivetracker.position = saved
+		TR:UpdateConfig()
+		local p = profile.tracker.position
+		return p.point .. ' ' .. p.x_off .. ',' .. p.y_off
+	end
+	local default = 'TOPRIGHT -20,' .. default_y(st)
+	eq(first({ point = 'BOTTOMRIGHT', frame = 'MinimapCluster', rel_point = 'BOTTOMRIGHT', x_off = 1, y_off = 2 }), default, 'relative to another frame')
+	eq(first({ point = 'BOTTOMRIGHT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = 'x', y_off = 2 }), default, 'an offset that is no number')
+	eq(first({ point = 'NOWHERE', frame = 'UIParent', x_off = 1, y_off = 2 }), default, 'a point that is no point')
+	TW.OTP.width = nil
+	eq(first({ point = 'BOTTOMRIGHT', frame = 'UIParent', rel_point = 'BOTTOMRIGHT', x_off = 1, y_off = 2 }), default, 'a skin that has not set up')
 end)

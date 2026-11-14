@@ -37,6 +37,9 @@
 --                       RegisterEvent), timers (C_Timer.After, NewTimer,
 --                       NewTicker) and secure frames. Misc's enables aren't
 --                       counted.
+--   TW.count_from_now() / TW.count_stop()
+--                       reset TW.counts and count until stopped (after the
+--                       world is made: what a later call adds).
 --   TW.combat(on)       combat starts or ends: stub.in_combat, then
 --                       PLAYER_REGEN_DISABLED or PLAYER_REGEN_ENABLED.
 --   TW.scroll_frame(parent)
@@ -274,6 +277,17 @@ function TW.scroll_frame(parent)
 	bar.Forward = CreateFrame('Button', nil, bar)
 	return scrollFrame
 end
+
+-- Counts what SaftUI-Tracker makes from now on, as well as while it loads and
+-- enables (the counts start again from 0), until TW.count_stop(): for a test
+-- that checks what a later call (a second enable, a profile switch, a setting)
+-- adds.
+function TW.count_from_now()
+	for _, key in ipairs({ 'frames', 'hooks', 'scripts', 'events', 'timers', 'secure' }) do TW.counts[key] = 0 end
+	counting = true
+end
+
+function TW.count_stop() counting = false end
 
 function TW.combat(on)
 	stub.in_combat = on and true or false

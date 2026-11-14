@@ -158,7 +158,8 @@ end
 -- st:OnBlizzardAddon when Blizzard_ObjectiveTracker isn't loaded yet. Once: the
 -- hooks never stack however often it is called.
 function TR:SetupBlizzard()
-	if self.blizzardFrame then return end
+	-- Only once the tracker is built (the switch on): while it's off nothing is hooked.
+	if not self.built or self.blizzardFrame then return end
 	local tracker = _G.ObjectiveTrackerFrame
 	if not tracker then
 		if not self.blizzardWaiting and C_AddOns.DoesAddOnExist('Blizzard_ObjectiveTracker') then

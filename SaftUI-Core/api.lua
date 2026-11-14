@@ -71,12 +71,15 @@ function st:CornerOffset(frame, parent, point, screenX, screenY)
 	local fx, fy = POINT_X[point], POINT_Y[point]
 	if not (fx and fy and frame and parent) then return end
 	local scale, parentScale = frame:GetEffectiveScale(), parent:GetEffectiveScale()
-	local left, right, bottom, top = parent:GetLeft(), parent:GetRight(), parent:GetBottom(), parent:GetTop()
-	local values = { scale, parentScale, left, right, bottom, top, screenX, screenY }
-	for i = 1, 8 do -- (not ipairs: a missing value is a hole)
-		local value = values[i]
-		if type(value) ~= 'number' or issecretvalue(value) then return end
-	end
+	-- Only the parent's edges this point needs.
+	local left, right, bottom, top
+	if fx ~= 1 then left = parent:GetLeft() end
+	if fx ~= 0 then right = parent:GetRight() end
+	if fy ~= 1 then bottom = parent:GetBottom() end
+	if fy ~= 0 then top = parent:GetTop() end
+	local function Bad(value) return type(value) ~= 'number' or issecretvalue(value) end
+	if Bad(scale) or Bad(parentScale) or Bad(screenX) or Bad(screenY) then return end
+	if (fx ~= 1 and Bad(left)) or (fx ~= 0 and Bad(right)) or (fy ~= 1 and Bad(bottom)) or (fy ~= 0 and Bad(top)) then return end
 	if scale == 0 or parentScale == 0 then return end
 	local parentX = fx == 0 and left or fx == 1 and right or (left + right) / 2
 	local parentY = fy == 0 and bottom or fy == 1 and top or (bottom + top) / 2

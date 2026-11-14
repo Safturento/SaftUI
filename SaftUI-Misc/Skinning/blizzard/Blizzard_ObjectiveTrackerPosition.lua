@@ -102,6 +102,9 @@ local OTP = st:NewModule('ObjectiveTracker')
 -- The holder's height: the tracker's own header's (ObjectiveTrackerContainerHeaderTemplate).
 local HOLDER_HEIGHT = 32
 local TRACKER_WIDTH = 260 -- ObjectiveTrackerContainerTemplate, if the tracker's can't be read
+-- Read by SaftUI-Tracker's first position, which works out where this holder sits
+-- from its saved position, OTP.width and this height, never from its live rect.
+OTP.HOLDER_HEIGHT = HOLDER_HEIGHT
 
 -- Where Blizzard's default puts the tracker's top right corner (Core's
 -- st:DefaultTrackerPosition, which SaftUI's own tracker starts from too).

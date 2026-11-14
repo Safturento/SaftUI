@@ -156,17 +156,53 @@ end
 --     keys, never the skin's own table, which is AceDB's with its metatable):
 --     the tracker hangs from its top, so the spot is the same either way;
 --   - one by another point is converted to the tracker's own TOPRIGHT form from
---     where the skin's holder shows (st:CornerOffset), so the player keeps the
---     spot they see: the holder's top right on screen, whatever it was anchored
---     by. Without that holder (Blizzard's tracker isn't loaded yet) or with
---     its place unreadable, Blizzard's default spot.
--- It reads only the profile and the skin's holder, never writing the skin's
--- position, and the skin's mover stands down while SaftUI's tracker is on, so it
--- never writes one either: the answer is the same in whatever order a profile
--- switch updates the modules (Misc's mover enables before this addon builds:
--- AceAddon enables modules in the order they were made, and Misc loads first).
+--     the profile's own data, by arithmetic alone (ConvertSkinPosition): where
+--     the skin's holder (Misc's tracker mover: its Width and its 32 tall
+--     header, OTP.HOLDER_HEIGHT) would sit, anchored by that point to the screen
+--     at the saved offsets, its top right relative to the screen's. No live
+--     rect of the skin's holder is read, because a profile switch or copy runs
+--     the modules' UpdateConfig in no set order (pairs(st.modules)) after
+--     every mover's anchors were cleared (EM:ClearPositions), so the holder
+--     can still hold the old profile's spot, or none, when this runs. A
+--     position relative to a frame other than the screen, a skin that hasn't
+--     set up (no Width: Blizzard's tracker isn't loaded yet) or a value that
+--     can't be read gives Blizzard's default spot.
+-- It reads only the profile, the skin's size and the screen's rect, and the
+-- skin's mover writes nothing while SaftUI's tracker is on, so the answer is the
+-- same whatever order the modules update in.
 local POSITION_KEYS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
 local TOP_POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true }
+local POINT_X = {
+	TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0, TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+	TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1,
+}
+local POINT_Y = {
+	BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+	TOPLEFT = 1, TOP = 1, TOPRIGHT = 1,
+}
+
+local function Number(value)
+	if type(value) == 'number' and not issecretvalue(value) then return value end
+end
+
+-- The TOPRIGHT offsets from UIParent's top right (x, y, in UIParent units, to
+-- whole pixels) of where the skin's holder sits for the saved position `saved`,
+-- or nil.
+local function ConvertSkinPosition(self, skin, saved)
+	local frame = saved.frame
+	if not (frame == nil or frame == 'UIParent' or frame == UIParent) then return end
+	-- The holder's own point's fractions are those of `point`, the screen's those of `rel_point`.
+	local px, py = POINT_X[saved.point], POINT_Y[saved.point]
+	local rx, ry = POINT_X[saved.rel_point or saved.point], POINT_Y[saved.rel_point or saved.point]
+	local width, height = Number(skin.width), Number(skin.HOLDER_HEIGHT)
+	local xo, yo = Number(saved.x_off or 0), Number(saved.y_off or 0)
+	local left, right = Number(UIParent:GetLeft()), Number(UIParent:GetRight())
+	local bottom, top = Number(UIParent:GetBottom()), Number(UIParent:GetTop())
+	if not (px and py and rx and ry and width and height and xo and yo and left and right and bottom and top) then return end
+	local holderLeft = left + (right - left) * rx + xo - width * px
+	local holderBottom = bottom + (top - bottom) * ry + yo - height * py
+	return st:RoundToPixel(holderLeft + width - right, self.holder), st:RoundToPixel(holderBottom + height - top, self.holder)
+end
 
 local function FirstPosition(self)
 	local position = st:DefaultTrackerPosition()
@@ -182,17 +218,8 @@ local function FirstPosition(self)
 		end
 		return position
 	end
-	local from, mine = skin.holder, self.holder
-	if from and mine then
-		local right, top, scale = from:GetRight(), from:GetTop(), from:GetEffectiveScale()
-		if type(right) == 'number' and type(top) == 'number' and type(scale) == 'number'
-			and not (issecretvalue(right) or issecretvalue(top) or issecretvalue(scale)) then
-			local x, y = st:CornerOffset(mine, UIParent, 'TOPRIGHT', right * scale, top * scale)
-			if x then
-				position.x_off, position.y_off = x, y
-			end
-		end
-	end
+	local x, y = ConvertSkinPosition(self, skin, saved)
+	if x then position.x_off, position.y_off = x, y end
 	return position
 end
 
@@ -335,6 +362,10 @@ function TR:LayoutWindow()
 		-- or is collapsed. Neither frame is protected: safe in combat.
 		window:EnableMouseWheel(range > 0)
 		scroll:EnableMouseWheel(range > 0)
+		-- With Grow up the window's top is the spot Blizzard's tracker reveals
+		-- at, and it moved: the concealed y follows (nothing is called when it
+		-- is where it should be).
+		if config.grow == 'up' then self:PlaceBlizzard(self.blizzardWhere) end
 	end
 	self.scrollRange = range
 	self:UpdateWatcher()
