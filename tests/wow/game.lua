@@ -197,6 +197,19 @@ function UnitClass(unit)
 	local other = OtherUnit(unit)
 	if other then return other.class, other.class end
 end
+-- The classes the client has, in the order GetNumClasses and GetClassInfo
+-- give them: stub.class_ids, class IDs. Forever has the nine classic classes
+-- (the default); a test of retail sets all thirteen. GetClassInfo(index)
+-- returns the class's name, its token and its ID, nothing past the last.
+stub.class_ids = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
+function GetNumClasses() return #stub.class_ids end
+function GetClassInfo(index)
+	local id = stub.class_ids[index]
+	if not id then return end
+	for token, info in pairs(CLASSES) do
+		if info[2] == id then return info[1], token, id end
+	end
+end
 function UnitRace(unit)
 	if unit == 'player' then return 'Human', 'Human', 1 end
 end
