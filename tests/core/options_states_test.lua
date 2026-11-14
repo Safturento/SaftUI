@@ -223,6 +223,7 @@ local function chrome(F)
 	add('miniTab', F.miniTab)
 	add('title', F.title)
 	add('sideToggle', F.sideToggle)
+	add('profile', F.profile)
 	for i, tool in ipairs(F.tools or {}) do add('tool' .. i, tool) end
 	add('reload', F.reloadButton)
 	add('closeButton', F.closeButton)
@@ -299,6 +300,22 @@ local function check_state(where, page, base)
 		eq(F.close:GetRight(), w:GetRight() - OW.S.MINI_PAD, where .. ': the bar\'s close X, 8 in')
 		check(F.mini:IsShown() and not F.main:IsShown(), where .. ': the bar is drawn alone')
 	end
+	-- The width the pure functions give (the bar's is even and at most OW.MINI_MAX, 42 tall), an even height.
+	local width, height = math.floor(w:GetWidth() + 0.5), math.floor(w:GetHeight() + 0.5) -- read back with the noise
+	if size == 'mini' then
+		eq(width % 2, 0, where .. ': the bar\'s width is even: ' .. width)
+		check(width <= OW.MINI_MAX, where .. ': the bar is at most ' .. OW.MINI_MAX .. ' wide: ' .. width)
+		eq(height, OW.MINI_HEIGHT, where .. ': the bar is 42 tall')
+	else
+		eq(width, OW.WindowWidth(OW.S.layout, size, OW:IsSidebarShown()), where .. ': the width the table gives')
+		eq(width % 2, 0, where .. ': even')
+		eq(height % 2, 0, where .. ': an even height')
+	end
+	-- The save follows the state: half for half and the bar, nothing for full; false for a collapsed sidebar.
+	local saved = st.config.global.optionsWindow
+	saved = type(saved) == 'table' and saved or {}
+	if size == 'full' then eq(saved.size, nil, where .. ': nothing saved for full') else eq(saved.size, 'half', where .. ': half saved') end
+	if OW:IsSidebarShown() then eq(saved.sidebar, nil, where .. ': nothing saved for a shown sidebar') else eq(saved.sidebar, false, where .. ': false saved for a collapsed one') end
 	-- The page kept.
 	local state = OW:GetState()
 	eq(state.page, page.state.page, where .. ': the page')

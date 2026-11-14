@@ -134,9 +134,15 @@ end
 -- The expand and condense art this client has (st.ThemeArt.Control('sizebutton')),
 -- or nil where it has none: a client without it keeps the chevron on Blizzard's
 -- panel button (plan Ruling 17). Read at call time, as the client decides it.
+local function HasAtlases(set)
+	return set and C_Texture.GetAtlasInfo(set.normal) and C_Texture.GetAtlasInfo(set.pushed) and C_Texture.GetAtlasInfo(set.disabled)
+end
+
 local function SizeArt()
 	local art = st.ThemeArt.Control('sizebutton')
-	if art and art.grow and art.shrink and C_Texture.GetAtlasInfo(art.grow.normal) and C_Texture.GetAtlasInfo(art.shrink.normal) then
+	-- Every atlas, so a client lacking the pressed or disabled one or the
+	-- highlight never draws a blank face in that state.
+	if art and HasAtlases(art.grow) and HasAtlases(art.shrink) and C_Texture.GetAtlasInfo(art.highlight) then
 		return art
 	end
 end
@@ -314,6 +320,11 @@ function OW:SetWindowSize(size)
 	if size ~= 'mini' and S.size ~= 'mini' and not OW.Fits(S.layout, size, S.sidebar) then return false end
 	local before = S.size
 	if size == 'mini' then S.CloseOverlays() end
+	-- A box of the window's keeps the keyboard no longer: the render rebinds its
+	-- pooled box to another row, which would be typed into (clearing it commits
+	-- what was typed, as leaving the box does).
+	local focus = GetCurrentKeyBoardFocus()
+	if focus and S.Inside(focus, F.window) then focus:ClearFocus() end
 	-- The bar saves half: it opens again as half.
 	SaveWindow({ size = size == 'full' and S.UNSET or 'half' })
 	S.size = size

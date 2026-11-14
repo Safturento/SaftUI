@@ -31,7 +31,7 @@ There is one. A module adds a page by returning an Ace options group from `GetCo
 | Body | 774 wide (388 at half), scrolls; the kit's scroll bar 3 wide, 10 outside | `content-width`, `scrollbar-width`, `scrollbar-out` |
 | Footer | 46 tall under a `line`: Close at the right end, Reload UI 12 left of it, and from 28 in to 12 before Reload UI a status line in `text-red` (two lines at most) | `footer-height` |
 | Close | `CloseButton`, 16 in and 14 down, with its tooltip | `window-close-x`, `window-close-y` |
-| Size arrows | the close X's 24, `chevron-right` (shrink, at full) and `chevron-left` (grow, at half) at 20, 6 apart and from the X, top-aligned with it; the drag strip stops 18 short of the leftmost and the title 8 | `close-size` |
+| Size arrows | the close X's 24, `chevron-right` (shrink, at full and half) and `chevron-left` (grow, at half) at 20, 6 apart and from the X, top-aligned with it; the drag strip stops 18 short of the leftmost and the title 8 | `close-size` |
 | Resize grip | bottom right, 16 x 16 | |
 
 The profile line at the sidebar's foot reads "Profile: Default", the label in `text-grey`.

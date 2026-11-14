@@ -515,8 +515,9 @@ end
 	      one with no icon, is under one overflow button (ellipsis, "More"),
 	      last, which opens W.OpenList of their labels; a pick runs the
 	      command. The overflow button always fits (Search, Edit mode and it
-	      are the floor; the status line and the profile control have given
-	      way by then). Search is on (W.SetOn) while a search is, Edit mode while edit
+	      are the floor; the status line has given way by then: no footer
+	      control is drawn now that the unit frames' profile is on the Unit
+	      dropdown's line). Search is on (W.SetOn) while a search is, Edit mode while edit
 	      mode is (UpdateEditModeButton: edit mode's Enabled and Disabled, and
 	      every draw). S.DrawTools(room) places them and returns how far they
 	      reach from the toggle's right (the footer's region starts FOOTER_GAP
@@ -753,7 +754,15 @@ function S.BuildCollapsed()
 	end)
 	button:SetScript('OnHide', function() arrow:SetVertexColor(Grey()) end)
 	S.Draggable(button) -- a drag on the title moves the window, a click opens the list
-	button:SetScript('OnClick', function() S.OpenPageList() end)
+	-- A drag is no click (the game can send a click at the end of a drag), as
+	-- the bar's names and a mover.
+	button.dragged = false
+	button:SetScript('OnMouseDown', function(self) self.dragged = false end)
+	button:HookScript('OnDragStart', function(self) self.dragged = true end)
+	button:SetScript('OnClick', function(self)
+		if self.dragged then return end
+		S.OpenPageList()
+	end)
 	F.titleButton, F.titleArrow = button, arrow
 end
 
