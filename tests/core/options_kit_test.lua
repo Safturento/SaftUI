@@ -479,14 +479,15 @@ test("ace_ready leaves out SaftUI's own types", function()
 	end
 end)
 
-test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH and fill among them", function()
+test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH, fill and share among them", function()
 	local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
 	local function Validate(page)
 		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
 			{ name = st.name, type = 'group', args = { Page = page } }, st.name)
 	end
-	for field, value in pairs({ disabledDesc = 'Why.', justifyH = 'CENTER', fill = true }) do
-		local option = { type = field == 'disabledDesc' and 'toggle' or 'description', name = 'Mine' }
+	local onToggle = { disabledDesc = true, share = true }
+	for field, value in pairs({ disabledDesc = 'Why.', justifyH = 'CENTER', fill = true, share = { source = 'All' } }) do
+		local option = { type = onToggle[field] and 'toggle' or 'description', name = 'Mine' }
 		option[field] = value
 		local page = { type = 'group', name = 'Page', args = { mine = option } }
 		local ok, err = Validate(page)

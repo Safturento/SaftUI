@@ -58,7 +58,29 @@ local st = SaftUI
 	disabledDesc member (SaftUI's: why it's disabled, a string or a function),
 	read only while the row is disabled, else nil.
 	A position row sits in a section of its own, titled with its name; the
-	rows after it continue in an untitled one.
+	rows after it continue in an untitled one. When its option has share, the
+	section carries it as shareRow, for its title's marks.
+
+	Any option may carry share (SaftUI's own field, read raw from the option,
+	never inherited): a setting a source page shares with member pages, each
+	of which follows it until the setting is its own. Its functions are each
+	called with the option's AceConfigDialog-style info:
+	  share = {
+	    source = 'Everything',   -- the page everything follows, for texts
+	    page = 'Third',          -- a member page: this page's name, for texts
+	    own = function(info) -> bool,           -- a member page: it's this page's own
+	    reset = function(info),                 -- a member page: follow the source again
+	    differs = function(info) -> { {name, value} }, -- the source page: who owns it, with what
+	    shared = function(info) -> string,      -- the source's value, as text
+	    targets = function(info) -> { {key, label} }, -- who Multiple lists
+	    applyAll = function(info),
+	    apply = function(info, keys),           -- the picked targets' keys, in targets' order
+	  }
+	A page whose share has own is a member page; one with differs the source
+	page. OM.ShareState reads it for the marks (an item's menu too: OM.MenuRoot
+	is the tree its options' info comes from), OM.ShareCall runs an action,
+	OM.ShareTargets lists Multiple's targets. The window draws them in
+	optionsshare.lua.
 
 	A page's group may carry a footer (SaftUI's own field, never in its args):
 	a group of options the window draws in its footer while the page is open,
@@ -439,7 +461,10 @@ local function Feed(sections, options, group, path, deep, title, note)
 				sections[#sections + 1] = section
 			elseif option.type == 'position' then
 				local row = Row(option, options, childPath)
-				sections[#sections + 1] = { title = Title(row.name), rows = { row } }
+				-- A shareable block's marks go on its section's title (optionsshare.lua).
+				local block = { title = Title(row.name), rows = { row } }
+				if type(option.share) == 'table' then block.shareRow = row end
+				sections[#sections + 1] = block
 				section = { rows = {} }
 				sections[#sections + 1] = section
 			else
@@ -772,6 +797,166 @@ function OM.Confirm(root, row, ...)
 		if desc then confirmText = confirmText .. ' - ' .. desc end
 	end
 	return confirmText
+end
+
+------------------------------------------------------------------ shareable options
+
+-- The key an item's menu sits under in OM.MenuRoot's tree.
+OM.MENU_KEY = 'menu'
+
+-- The tree an item's menu is read from: { menu = option.menu }, so an option
+-- inside it has the path { 'menu', key } and its info comes from there.
+function OM.MenuRoot(option)
+	return { [OM.MENU_KEY] = option.menu }
+end
+
+-- The option's share (SaftUI's field, read raw: never inherited), or nil.
+local function ShareOf(option)
+	return type(option.share) == 'table' and option.share or nil
+end
+
+-- A share function's answer: share[name](info, ...) through safecall, or nil
+-- when there's no such function or it errors (the error goes to the handler).
+local function ShareAsk(share, name, info, ...)
+	local func = share and share[name]
+	if type(func) ~= 'function' then return nil end
+	local ok, answer = safecall(func, info, ...)
+	if ok then return answer end
+end
+
+-- A differs answer as { {name, value} }, names and values as text.
+local function DiffList(answer)
+	local list = {}
+	if type(answer) ~= 'table' then return list end
+	for _, entry in ipairs(answer) do
+		if type(entry) == 'table' then list[#list + 1] = { name = Text(entry.name), value = Text(entry.value) } end
+	end
+	return list
+end
+
+-- The shareable options directly in an item's menu, in the menu's order and
+-- not hidden: { {share, info, name} }, each info from OM.MenuRoot's tree.
+local function MenuShares(option)
+	local list, menu = {}, option.menu
+	if type(menu) ~= 'table' or type(menu.args) ~= 'table' then return list end
+	local options = Options(OM.MenuRoot(option))
+	local path = { OM.MENU_KEY }
+	local keys, opts = SortedOptions(menu, options, path)
+	for _, key in ipairs(keys) do
+		local inner, innerPath = opts[key], Append(path, key)
+		local share = type(inner) == 'table' and ShareOf(inner)
+		if share and not IsHidden(inner, options, innerPath) then
+			list[#list + 1] = {
+				share = share,
+				info = (BuildInfo(inner, options, innerPath)),
+				name = Text(GetMember('name', inner, options, innerPath)),
+			}
+		end
+	end
+	return list
+end
+
+--[[
+	A shareable row's state: nil when neither the row's option nor (an item's)
+	any option directly in its menu has share. A share's own makes its page a
+	member page (it follows the source page until a setting is its own), its
+	differs the source page.
+	{ member, own, marked, offers, source, page, shared, differs, item }:
+	  own      a member page and share.own(info);
+	  marked   own, or for an item any option in its menu own;
+	  differs  { {name, value} }: the source page's share.differs(info); an
+	           item's grouped by name in first-seen order over its own
+	           differs (its Show, named 'Show') then each menu option's (by
+	           its name), each value the setting names joined with ', ';
+	  offers   own on a member page, or a non-empty own differs on the source
+	           page (an item's Show alone);
+	  source, page, shared: the share's source and page names and its
+	           shared(info), as text (shared and page nil when there's none).
+	A share function that errors is reported and counts as false or empty.
+]]
+function OM.ShareState(root, row)
+	local option = row.option
+	local share, item = ShareOf(option), row.type == 'item'
+	local inner = item and MenuShares(option) or {}
+	if not share and #inner == 0 then return nil end
+	local first = share or inner[1].share
+	local member = first.own ~= nil
+	local info = share and (BuildInfo(option, Options(root), row.path))
+
+	local own = (member and share and ShareAsk(share, 'own', info)) and true or false
+	local marked = own
+	if member and not marked then
+		for _, each in ipairs(inner) do
+			if ShareAsk(each.share, 'own', each.info) then marked = true; break end
+		end
+	end
+
+	local ownDiffers = (share and not member) and DiffList(ShareAsk(share, 'differs', info)) or {}
+	local differs = ownDiffers
+	if item then
+		local byName, order = {}, {}
+		local function Add(list, settingName)
+			for _, entry in ipairs(list) do
+				local group = byName[entry.name]
+				if not group then
+					group = { name = entry.name, settings = {} }
+					byName[entry.name] = group
+					order[#order + 1] = group
+				end
+				group.settings[#group.settings + 1] = settingName
+			end
+		end
+		Add(ownDiffers, 'Show')
+		if not member then
+			for _, each in ipairs(inner) do Add(DiffList(ShareAsk(each.share, 'differs', each.info)), each.name) end
+		end
+		differs = {}
+		for i, group in ipairs(order) do differs[i] = { name = group.name, value = tconcat(group.settings, ', ') } end
+	end
+
+	local shared = share and ShareAsk(share, 'shared', info)
+	return {
+		member = member,
+		own = own,
+		marked = marked,
+		offers = (member and own) or (not member and #ownDiffers > 0),
+		source = Text(first.source),
+		page = Title(first.page),
+		shared = shared ~= nil and Text(shared) or nil,
+		differs = differs,
+		item = item,
+	}
+end
+
+-- The actions a share takes (OM.ShareCall).
+local shareActions = { reset = true, applyAll = true, apply = true }
+
+-- Runs the row's share[action](info, ...) ('reset', 'applyAll', or 'apply'
+-- with the picked targets' keys) through safecall: true when it ran, false
+-- when there's none or it errored (the error goes to the handler).
+function OM.ShareCall(root, row, action, ...)
+	if not shareActions[action] then error(format('SaftUI options: no share action %q', tostring(action)), 2) end
+	local share = ShareOf(row.option)
+	local func = share and share[action]
+	if type(func) ~= 'function' then return false end
+	local info = BuildInfo(row.option, Options(root), row.path)
+	return (safecall(func, info, ...)) and true or false
+end
+
+-- Who the row's Multiple lists: { {key, label} } from share.targets(info),
+-- empty without targets (or when it errors).
+function OM.ShareTargets(root, row)
+	local list = {}
+	local share = ShareOf(row.option)
+	if not share then return list end
+	local targets = ShareAsk(share, 'targets', (BuildInfo(row.option, Options(root), row.path)))
+	if type(targets) ~= 'table' then return list end
+	for _, target in ipairs(targets) do
+		if type(target) == 'table' and target.key ~= nil then
+			list[#list + 1] = { key = target.key, label = Text(target.label) }
+		end
+	end
+	return list
 end
 
 --[[
