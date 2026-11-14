@@ -59,6 +59,7 @@ end
 function TR:Build()
 	if self.built then return end
 	self.built = true
+	self:BuildWindow()
 end
 
 -- The switch was just saved from /sui and the player is being asked about a
@@ -92,6 +93,8 @@ function TR:UpdateConfig()
 		end
 	end
 	if not self.built then return end
+	self:ApplyHolder()
+	self:DrawWindow()
 	-- Each part of the tracker adds its own update below.
 end
 

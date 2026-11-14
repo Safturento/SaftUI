@@ -37,6 +37,20 @@
 --                       counted.
 --   TW.combat(on)       combat starts or ends: stub.in_combat, then
 --                       PLAYER_REGEN_DISABLED or PLAYER_REGEN_ENABLED.
+--   TW.scroll_frame(parent)
+--                       the scroll frame's stand-in (Ruling 24): TR.NewScrollFrame
+--                       in the world, where the game's is st:CreateScrollFrame.
+--                       That needs Blizzard's ScrollFrameTemplate and the scroll
+--                       bar skin, which the stubs lack, so this is the bags'
+--                       stand-in (tests/bags/container_helpers.lua) with the
+--                       rest of the contract the window reads: a ScrollFrame
+--                       with its ScrollChild, SetContentSize (which sizes the
+--                       child; the game's also calls UpdateScrollChildRect), and
+--                       a ScrollBar with the anchors and width Blizzard's
+--                       template gives it (6 right of the frame, 2 down and 5 up,
+--                       8 wide), so st:ScrollBarRoom reads 14. It does not clamp
+--                       SetVerticalScroll as the game's frame does: the window's
+--                       own clamp is what a test sees.
 --
 -- Real: SaftUI-Tracker's files, Core's helpers and edit mode, and, where asked
 -- for, Misc's.
@@ -139,6 +153,9 @@ function TW.world(opts)
 	counting = false
 	local st = T.client(opts.client or 'forever')
 	load_editmode()
+	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom (the window reads the bar's room)
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	GameTooltip:Hide()
 	st.config.char = {}
 	InstallCounters()
 	if opts.addons then
@@ -175,6 +192,7 @@ function TW.world(opts)
 	counting = false
 	st.config = config
 	apply_defaults()
+	st:GetModule('Tracker').NewScrollFrame = TW.scroll_frame
 	if opts.on ~= nil then st.config.profile.tracker.enable = opts.on end
 	if opts.combat then stub.in_combat = true end
 
@@ -195,6 +213,21 @@ function TW.world(opts)
 	TR:Enable()
 	counting = false
 	return st, TR
+end
+
+function TW.scroll_frame(parent)
+	local scrollFrame = CreateFrame('ScrollFrame', nil, parent)
+	scrollFrame:SetSize(500, 500)
+	local content = CreateFrame('Frame', nil, scrollFrame)
+	scrollFrame:SetScrollChild(content)
+	scrollFrame.ScrollChild = content
+	scrollFrame.SetContentSize = function(self, width, height) content:SetSize(width, height) end
+	local bar = CreateFrame('Frame', nil, scrollFrame)
+	bar:SetWidth(8)
+	bar:SetPoint('TOPLEFT', scrollFrame, 'TOPRIGHT', 6, -2)
+	bar:SetPoint('BOTTOMLEFT', scrollFrame, 'BOTTOMRIGHT', 6, 5)
+	scrollFrame.ScrollBar = bar
+	return scrollFrame
 end
 
 function TW.combat(on)

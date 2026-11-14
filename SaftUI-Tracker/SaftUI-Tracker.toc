@@ -9,4 +9,6 @@ config.lua
 init.lua
 model.lua
 groups.lua
+layout.lua
+window.lua
 options.lua
