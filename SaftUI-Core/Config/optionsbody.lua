@@ -16,6 +16,12 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                  laid out as wide, one to a line (an item's menu,
 	                  optionsmenu.lua); body.oneColumn
 	  body:SetRoot(root)               a new tree (a profile change rebuilt it)
+	  body:SetWidth(width, half)       the body's width, and whether it is the
+	                                   window's half (body.half): every row is
+	                                   read one size larger (OB.HalfSize), so
+	                                   the page is one column. Takes effect at
+	                                   the next Draw; cancels an open color
+	                                   picker of the body when it changes
 	  body:Draw(sections, fillHeight) -> height
 	                                   option rows, each with its widget;
 	                                   fillHeight is the view's height, which
@@ -92,7 +98,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
 	middle, and right ones at the line's right end, on the line of a wide
-	row just before them (whose cell then ends 24 before the buttons, so its
+	row just before them, one wide of its own (row.size: not one a half
+	body's sizeOf made wide), whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
 	A toggle's check box and a color's field sit at their cell's right edge,
@@ -423,7 +430,10 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 		if align then
 			if not (group and group.align == align) then
 				group = { align = align, rows = {} }
-				if align == 'right' and wide and SharesLine(wide.entry.row) then
+				-- Only a row wide of its own: one a sizeOf made wide (a half
+				-- body's) keeps the buttons on a line of their own, so its
+				-- control isn't cut.
+				if align == 'right' and wide and wide.own and SharesLine(wide.entry.row) then
 					-- Back onto the wide row's line, at its right end.
 					y, lineHeight = wide.entry.y, wide.height
 					wide.entry.buttons = group
@@ -442,7 +452,7 @@ function OB.LayoutRows(rows, heightOf, sizeOf, alignOf)
 			placed[#placed + 1] = entry
 			lineHeight = height
 			NextLine()
-			wide, group = { entry = entry, height = height }, nil
+			wide, group = { entry = entry, height = height, own = row.size == 'wide' }, nil
 		else
 			wide, group = nil, nil
 			if size == 'normal' and cursor % 2 == 1 then cursor = cursor + 1 end
@@ -923,7 +933,9 @@ end
 function Body:UseMetrics()
 	local metrics = W.BlizzardLook() and OB.FLAT or OB.PANELED
 	self.metrics = metrics
-	self.columnWidth = floor((self.width - metrics.columnGap) / 2)
+	-- At half the two columns are the quarters of the body at its full width:
+	-- only the gap a quarter has between them (OB.PANELED's 0, OB.FLAT's 24).
+	self.columnWidth = floor((self.width - (self.half and metrics.quarterGap or metrics.columnGap)) / 2)
 	self.quarterWidth = floor((self.columnWidth - metrics.quarterGap) / 2)
 end
 
@@ -965,6 +977,25 @@ end
 
 function Body:SetRoot(root)
 	self.root = root
+end
+
+-- The body's width, and whether it is the window's half (body.half: every row
+-- is read one size larger, OB.HalfSize, so the page is one column). It takes
+-- effect at the next Draw, which the caller makes after releasing the body;
+-- the pooled titles and notes, used or free, take the width now. A color
+-- picker open from a row of this body is cancelled first when either changes
+-- (a draw at another width would rebind its field under it).
+function Body:SetWidth(width, half)
+	half = half and true or false
+	if width ~= self.width or half ~= (self.half or false) then
+		if W.CloseColorPicker then W.CloseColorPicker(self.content) end
+	end
+	self.width, self.half = width, half
+	for _, pool in ipairs({ self.pools.title, self.pools.note }) do
+		for _, list in ipairs({ pool.used, pool.free }) do
+			for _, fs in ipairs(list) do fs:SetWidth(width) end
+		end
+	end
 end
 
 -- A drawn row of the page: its frame and widget, and its height.
@@ -1237,16 +1268,27 @@ end
 -- A oneColumn body's rows are all wide.
 local function Wide() return 'wide' end
 
+-- A row's size at half: one larger. A quarter takes half of the narrow body,
+-- a half the whole line, and a wide row stays.
+function OB.HalfSize(row)
+	if row.size == 'small' then return 'normal' end
+	return 'wide'
+end
+
 function Body:Draw(sections, fillHeight)
 	self:UseMetrics()
-	return self:DrawSections(sections, function(row) return self:RowCell(row) end, self.oneColumn and Wide or nil, fillHeight)
+	local sizeOf = self.oneColumn and Wide or self.half and OB.HalfSize or nil
+	return self:DrawSections(sections, function(row) return self:RowCell(row) end, sizeOf, fillHeight)
 end
+
+local function Half() return 'normal' end
 
 function Body:DrawResults(sections, onPick)
 	self:UseMetrics()
-	-- A result is a half, whatever size its setting is.
+	-- A result is a half, whatever size its setting is; at half the body is
+	-- narrower than a half row's name, so one to a line.
 	return self:DrawSections(sections, function(row) return self:ResultCell(row, onPick) end,
-		function() return 'normal' end)
+		self.half and Wide or Half)
 end
 
 -- While a slider is dragged the window can't draw the page again (that would
