@@ -507,3 +507,37 @@ test('a status message holds the bar down while it shows, then the grace', funct
 	check(not bar:IsShown(), 'then up')
 	reset()
 end)
+
+test('review gaps: the strip line shows when edit mode reopens hidden; turning it on leaves the bar under the cursor; a margin change moves a bar that is away; a press with the History list open leaves the bar', function()
+	reset()
+	EM:Activate()
+	over_bar()
+	stub.click(frame_of('hide'))
+	check(EM:GetBar():IsShown(), 'turned on under the cursor: the bar stays')
+	EM:Deactivate()
+	EM:Activate()
+	check(not EM:GetBar():IsShown() and EM.barStrip.line:IsShown(), 'reopened hidden with the line drawn')
+	-- A margin change while it is away.
+	EM:SetBarX(1e5)
+	local before = bar_x() + EM:GetBar():GetWidth()
+	st.config.profile.misc.clamp_inset = 100
+	st:UpdateScreenMargin()
+	eq(bar_x() + EM:GetBar():GetWidth(), UIParent:GetWidth() - 100, 'the hidden bar is inside the new margin')
+	eq(EM.barStrip:GetLeft() - UIParent:GetLeft(), bar_x(), 'and so is the strip')
+	check(before > UIParent:GetWidth() - 100, 'it was outside before')
+	-- A mover pressed with the History list open: the bar stays with its list.
+	local mover = add_mover('hide_press')
+	over_strip()
+	tick(0.016)
+	stub.click(frame_of('history'))
+	stub.mouse_buttons.LeftButton = true
+	EM:Fire('Pressed', mover)
+	away()
+	tick(0.016)
+	check(EM:GetBar():IsShown() and EM:IsHistoryListShown(), 'the press does not take the bar away from its open list')
+	-- A drag does, and the list goes with it.
+	EM:StartDrag(mover)
+	check(not EM:GetBar():IsShown() and not EM:IsHistoryListShown(), 'a drag hides the bar and closes the list')
+	EM:StopDrag(mover)
+	reset()
+end)

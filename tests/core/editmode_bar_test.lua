@@ -767,3 +767,17 @@ test("under Blizzard, on both clients: the panel's art, Blizzard's panel buttons
 	end
 	world()
 end)
+
+test('a screen event that fires before UIParent has its new size is put right on the next frame', function()
+	EM:Activate()
+	local bar = EM:GetBar()
+	set_screen(1920, 1080)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	set_screen(1280, 720) -- the size arrives after the event
+	stub.run_timers()
+	eq(bar:GetLeft() - UIParent:GetLeft(), math.floor((UIParent:GetWidth() - bar:GetWidth()) / 2), 'in the middle of the new screen')
+	set_screen(1920, 1080)
+	stub.fire_event('DISPLAY_SIZE_CHANGED')
+	stub.run_timers()
+	reset_edit_mode()
+end)

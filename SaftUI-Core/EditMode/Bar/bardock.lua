@@ -213,20 +213,20 @@ end
 
 local function Up()
 	down = false
+	EM:HideHistoryList() -- its list would be left alone on the screen
 	EM.bar:Hide()
 	strip.line:Show()
 end
 
--- Whether a list of the bar's is open or one of its boxes has the keyboard.
+-- Whether a list of the bar's is open, a status is showing or one of its boxes
+-- has the keyboard. Looks up the few controls that matter (no table is made).
 local function Held()
 	if EM:IsHistoryListShown() or EM:IsStatusTipShown() then return true end
 	local owner = W.ListOwner()
-	for _, control in ipairs(EM:BarControls()) do
-		local frame = control.frame
-		if owner and owner == frame then return true end
-		if frame.HasFocus and frame:HasFocus() then return true end
-		if frame.edit and frame.edit:HasFocus() then return true end
-	end
+	local modules, size, filter = EM:BarControl('modules'), EM:BarControl('gridSize'), EM:BarControl('filter')
+	if owner and modules and owner == modules.frame then return true end
+	if size and size.frame.edit and size.frame.edit:HasFocus() then return true end
+	if filter and filter.frame:HasFocus() then return true end
 	return false
 end
 
@@ -234,7 +234,9 @@ end
 local function Tick(_, elapsed)
 	if pressed and not IsMouseButtonDown('LeftButton') then pressed = false end
 	if moverDragging or pressed then
-		if down then Up() end
+		-- A drag takes the bar away at once; a press only keeps it from coming
+		-- down, and leaves one that holds an open list or a box be.
+		if down and (moverDragging or not Held()) then Up() end
 		return
 	end
 	if sliding or strip:IsMouseOver() or (down and EM.bar:IsMouseOver()) or Held() then
@@ -319,7 +321,7 @@ function EM:SetupBarDock()
 	end)
 	-- The margin changes where it can sit.
 	hooksecurefunc(st, 'UpdateScreenMargin', function()
-		if bar:IsShown() and not EM:IsBarWindowed() then EM:PlaceBar() end
+		if not EM:IsBarWindowed() then EM:PlaceBar() end
 	end)
 end
 
