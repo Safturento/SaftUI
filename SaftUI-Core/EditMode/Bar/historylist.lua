@@ -302,9 +302,13 @@ function EM:RefreshHistoryList()
 	local x2 = boxX + FOOT_BOX + FOOT_SPACE
 	PlaceText(list.foot2, list, x2, -footTop, FOOT_HEIGHT,
 		max(0, min(Width(list.foot2), HL.WIDTH - HL.PAD - x2)))
-	-- Not while it is being typed in: the once-a-second tick would put the
-	-- saved length back over the digits.
-	if not list.box.edit:HasFocus() then list.box:Refresh() end
+	-- Not while it is being typed in (the once-a-second tick would put the
+	-- saved length back over the digits), unless the length itself changed since
+	-- the box showed it: an arrow's value shows at once.
+	if not list.box.edit:HasFocus() or History.limit ~= list.shownLimit then
+		list.shownLimit = History.limit
+		list.box:Refresh()
+	end
 
 	list:SetSize(HL.WIDTH, footTop + FOOT_HEIGHT + HL.PAD)
 end

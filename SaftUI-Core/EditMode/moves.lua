@@ -85,6 +85,9 @@ end
 
 ------------------------------------------------------------------- the kind
 
+-- The movers a jump has placed and not yet announced.
+local announce = { list = {}, seen = {} }
+
 History:RegisterKind('position', {
 	read = function(key)
 		local mover = EM.movers[key]
@@ -106,7 +109,22 @@ History:RegisterKind('position', {
 				xpcall(mover.def.apply, geterrorhandler())
 			end
 		end
-		for _, mover in ipairs(movers) do EM:Fire('PositionChanged', mover) end
+		for _, mover in ipairs(movers) do
+			if History.batching then
+				-- In a jump: placed now, told once at the end (flush).
+				if not announce.seen[mover] then
+					announce.seen[mover] = true
+					announce.list[#announce.list + 1] = mover
+				end
+			else
+				EM:Fire('PositionChanged', mover)
+			end
+		end
+	end,
+	flush = function()
+		local list = announce.list
+		announce.list, announce.seen = {}, {}
+		for _, mover in ipairs(list) do EM:Fire('PositionChanged', mover) end
 	end,
 	same = EM.SamePosition,
 	-- The anchor a restored position names must still be one the frame can take

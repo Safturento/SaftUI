@@ -60,9 +60,11 @@ end
 
 -- handler = { read(where) -> value, write(where, value), finish(wheres)?,
 -- same(a, b)?, place(where)?, check(where, value) -> ok, why ?, name(where),
--- missing(where) -> boolean ? }. read gives a copy of what is stored now; write
+-- missing(where) -> boolean, flush()? }. read gives a copy of what is stored now; write
 -- stores a copy, through the setter a player's change uses; finish runs once
--- after a step's writes with the wheres of this kind; missing says the thing
+-- after a step's writes with the wheres of this kind (it places things, and
+-- while History.batching, in a jump, holds back what it would tell listeners
+-- for flush, which runs once after the jump); missing says the thing
 -- is gone (a module turned off): its part of a step is skipped and reported.
 function History:RegisterKind(name, handler)
 	handlers[name] = handler
@@ -151,9 +153,12 @@ end
 
 ----------------------------------------------------------------- changing
 
--- While a jump walks several steps, what each step would announce is held back
--- (the finishes of its kinds, HistoryChanged) and runs once at the end.
+-- While a jump walks several steps every step is written and placed as usual
+-- (a later step's check reads the frames), but what listeners are told is held
+-- back and said once at the end: HistoryChanged here, and each kind's flush.
+-- History.batching is true meanwhile, for a kind's finish to read.
 local batch
+History.batching = false
 
 local function Changed()
 	if batch then batch.changed = true else EM:Fire('HistoryChanged') end
@@ -280,23 +285,6 @@ end
 
 -- Runs each kind's finish once with the wheres it was given, through xpcall.
 local function Finish(byKind, order)
-	if batch then
-		for _, kind in ipairs(order) do
-			local held = batch.byKind[kind]
-			if not held then
-				held = { list = {}, seen = {} }
-				batch.byKind[kind] = held
-				batch.order[#batch.order + 1] = kind
-			end
-			for _, where in ipairs(byKind[kind]) do
-				if not held.seen[where] then
-					held.seen[where] = true
-					held.list[#held.list + 1] = where
-				end
-			end
-		end
-		return
-	end
 	for _, kind in ipairs(order) do
 		local finish = Handler(kind).finish
 		if finish then xpcall(finish, geterrorhandler(), byKind[kind]) end
@@ -437,20 +425,26 @@ function History:JumpTo(n)
 	if type(n) ~= 'number' or n ~= n or n < 0 or n > #steps or n ~= math.floor(n) then
 		return false, 'No such step.'
 	end
-	-- Every step is written and checked in turn (a stale one stops the jump),
-	-- but the frames are placed and the listeners told once, at the end.
-	local held = { byKind = {}, order = {} }
+	-- Every step is written, checked and placed in turn (a stale one stops the
+	-- jump); only what listeners are told waits for the end. An error in a step
+	-- is reported once and ends the jump as a refusal, with the state cleared.
+	local held = {}
 	batch = held
-	local ok, message = true, nil
-	while position ~= n do
-		ok, message = Step(position > n)
-		if not ok then break end
-	end
+	History.batching = true
+	local ran, ok, message = xpcall(function()
+		while position ~= n do
+			local stepped, why = Step(position > n)
+			if not stepped then return false, why end
+		end
+		return true
+	end, Report)
 	batch = nil
-	local byKind = {}
-	for kind, one in pairs(held.byKind) do byKind[kind] = one.list end
-	Finish(byKind, held.order)
+	History.batching = false
+	for _, handler in pairs(handlers) do
+		if handler.flush then xpcall(handler.flush, geterrorhandler()) end
+	end
 	if held.changed then Changed() end
+	if not ran then return false, "The jump stopped on an error; it is in the error log." end
 	return ok, message
 end
 
