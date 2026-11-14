@@ -13,6 +13,9 @@
 --     fill and on Blizzard's, and comes off Blizzard's fill cleanly;
 --   - a theme switch both ways with plates showing leaves nothing of one look
 --     in the other;
+--   - the theme's redraw alone, before the unit frames' update, takes every
+--     part's backdrop to the new look, measuring none (the stubs' plates are
+--     anchor restricted, as the game's are);
 --   - the Enemy nameplates page's Theme draws the plate frame as every unit's
 --     frame is drawn.
 --
@@ -411,6 +414,36 @@ for _, case in ipairs({ { 'thick', 'blizzard' }, { 'thin', 'blizzard' }, { 'bliz
 			theme_changed(st, UF, from)
 			eq(snapshot(st, UF, frame, button), fresh[from], 'and back to ' .. from)
 			eq(#take_errors(), 0, 'no error')
+		end)
+	end
+end
+
+-- The game's plates are anchor restricted (tests/wow/game.lua): SaftUI can't
+-- measure a plate's parts. The theme's redraw comes before the unit frames'
+-- update in a switch (Config:UpdateConfig), and on its own it must already
+-- bring each part's backdrop to the new look, the place round its part
+-- included, measuring none of them.
+for _, case in ipairs({ { 'thick', 'thin' }, { 'thick', 'blizzard' }, { 'blizzard', 'thick' } }) do
+	local from, to = case[1], case[2]
+	for _, client in ipairs(CLIENTS) do
+		test(client .. ': a redraw alone takes a plate\'s backdrops from ' .. from .. ' to ' .. to .. ', measuring none', function()
+			local function parts(frame)
+				return table.concat({
+					'health {' .. looks(frame.Health) .. '}',
+					'castbar {' .. looks(frame.Castbar) .. '}',
+					'icon {' .. looks(frame.Castbar.Icon) .. '}',
+				}, '\n')
+			end
+			local st, UF = world(client, to)
+			local want = parts(enemy('nameplate1', 0))
+
+			st, UF = world(client, from)
+			local frame = enemy('nameplate1', 0)
+			check(parts(frame) ~= want, 'the two looks differ')
+			T.theme(to)
+			eq(#take_errors(), 0, 'the redraw reports no error')
+			eq(parts(frame), want, 'every part as ' .. to .. ' draws it first')
+			eq(frame.Health.thick, to == 'thick', 'frame.thick follows')
 		end)
 	end
 end

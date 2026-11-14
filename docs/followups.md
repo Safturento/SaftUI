@@ -15,7 +15,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
   - [2026-11-13 — Unit frames: shared settings across units, and small parts as menu items](#2026-11-13--unit-frames-shared-settings-across-units-and-small-parts-as-menu-items)
-  - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons](#2026-11-13--character-frame-slots-saftui-writes-fields-onto-blizzards-buttons)
   - [2026-11-13 — Loot rolls: the roll bar doesn't hold after a choice](#2026-11-13--loot-rolls-the-roll-bar-doesnt-hold-after-a-choice)
   - [2026-11-13 — Test mode: choose which elements the previews show](#2026-11-13--test-mode-choose-which-elements-the-previews-show)
@@ -107,6 +106,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-07 — Profile settings that still need a /reload after a profile switch](#2026-11-07--profile-settings-that-still-need-a-reload-after-a-profile-switch)
   - [2026-11-05 — Aura filters and per-aura styling lost in the oUF aura-container rewrite](#2026-11-05--aura-filters-and-per-aura-styling-lost-in-the-ouf-aura-container-rewrite)
 - [Resolved](#resolved)
+  - [2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions](#2026-11-13--theme-change-errors-in-the-theme-engine-cant-measure-restricted-regions)
   - [2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box](#2026-11-13--action-bars-shared-settings-for-all-bars-and-cooldown-numbers-as-an-enable-box)
   - [2026-11-13 — In-game pass: five small changes asked for](#2026-11-13--in-game-pass-five-small-changes-asked-for)
   - [2026-11-13 — Codebase cleanup: in-game checks](#2026-11-13--codebase-cleanup-in-game-checks)
@@ -286,20 +286,6 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 **Anchors:** `.superpowers/brainstorm/46409-1794604463/content/actionbars-shared-v4.html` (part 2, the mockup), `docs/superpowers/specs/2026-11-13-saftui-actionbars-shared-settings-design.md` ("Later"), `SaftUI-Unitframes/config/`, `SaftUI-Core/Config/optionsposition.lua`.
 
 **Shape of work:** A project of its own, after the action bars prove the kit pieces. Health, Power, Cast bar and Auras keep tabs. Needs its own design round: what "All units" means when units differ so much by default, and whether sharing is per unit group (party and raid) instead.
-
-### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
-
-**What:** Picking another theme in `/sui` throws "Can't measure restricted regions" from `IsPlaced` in `SaftUI-Core/theme.lua`, at its `backdrop:GetPoint(i)`, 40 times in one session on Forever. The redraw of that frame's backdrop stops there, so some themed frame may keep the old theme's look until a `/reload`.
-
-**Why noticed:** BugGrabber's log, read on 2026-11-13 while looking for a Loot error. The user hasn't reported a symptom.
-
-**Anchors:** `SaftUI-Core/theme.lua` (`IsPlaced`, called from `DrawBackdrop` on a redraw; `RedrawThemed`); the stack runs from the theme dropdown's pick (`optionsselect.lua`, `optionswidgets.lua` Commit and Apply, `optionsmodel.lua` Set) through `SaftUI-Core/Media/theme.lua` (`ThemeChanged`), `SaftUI-Core/Config/config.lua` (`UpdateConfig`) and `RedrawThemed` to `DrawBackdrop` and `IsPlaced`; the backdrop frame is one made by `st:CreateFrame` (`SaftUI-Core/panels.lua`); `.agents/taint.md`, `.agents/clients.md` (secret values).
-
-**What's been considered:** `IsPlaced` asks whether the backdrop still sits where the engine put it (two points, the placed offsets), so a redraw doesn't move a backdrop someone else placed. It already returns false when `GetPoint`'s results are secret values (`issecretvalue`). But for a restricted region `GetPoint` itself throws, before there is a value to test. Which themed frame is restricted isn't known: likely one whose backdrop is anchored to, or parented under, a frame the client restricts (a nameplate, or a frame showing secret values), which would also explain 40 at once (one per plate). No cause has been confirmed.
-
-**Shape of work:** A debugging pass first (`superpowers:systematic-debugging`): which owner frames the 40 errors belong to, and whether a region is restricted for good or only at times (in combat, while it shows a secret value). Then a failing test with a `GetPoint` that throws, and a small fix: most likely a way to know the backdrop's placement without measuring it (the engine remembering that it placed it), or a protected call that treats a throw as "not placed".
-
-**Open questions:** Which frames. Whether skipping the re-place on a restricted backdrop leaves it visibly wrong after a theme change.
 
 ### 2026-11-13 — Character frame slots: SaftUI writes fields onto Blizzard's buttons
 
@@ -2069,6 +2055,22 @@ Once both are confirmed, record the duration-object pattern in `.agents/clients.
 **Open questions:** Which of the old filter options are worth keeping at all? (Removing groups isn't supported; changing a group's filter, max and layout is.)
 
 ## Resolved
+
+### 2026-11-13 — Theme change errors in the theme engine: can't measure restricted regions
+
+**What:** Picking another theme in `/sui` throws "Can't measure restricted regions" from `IsPlaced` in `SaftUI-Core/theme.lua`, at its `backdrop:GetPoint(i)`, 40 times in one session on Forever. The redraw of that frame's backdrop stops there, so some themed frame may keep the old theme's look until a `/reload`.
+
+**Why noticed:** BugGrabber's log, read on 2026-11-13 while looking for a Loot error. The user hasn't reported a symptom.
+
+**Anchors:** `SaftUI-Core/theme.lua` (`IsPlaced`, called from `DrawBackdrop` on a redraw; `RedrawThemed`); the stack runs from the theme dropdown's pick (`optionsselect.lua`, `optionswidgets.lua` Commit and Apply, `optionsmodel.lua` Set) through `SaftUI-Core/Media/theme.lua` (`ThemeChanged`), `SaftUI-Core/Config/config.lua` (`UpdateConfig`) and `RedrawThemed` to `DrawBackdrop` and `IsPlaced`; the backdrop frame is one made by `st:CreateFrame` (`SaftUI-Core/panels.lua`); `.agents/taint.md`, `.agents/clients.md` (secret values).
+
+**What's been considered:** `IsPlaced` asks whether the backdrop still sits where the engine put it (two points, the placed offsets), so a redraw doesn't move a backdrop someone else placed. It already returns false when `GetPoint`'s results are secret values (`issecretvalue`). But for a restricted region `GetPoint` itself throws, before there is a value to test. Which themed frame is restricted isn't known: likely one whose backdrop is anchored to, or parented under, a frame the client restricts (a nameplate, or a frame showing secret values), which would also explain 40 at once (one per plate). No cause has been confirmed.
+
+**Shape of work:** A debugging pass first (`superpowers:systematic-debugging`): which owner frames the 40 errors belong to, and whether a region is restricted for good or only at times (in combat, while it shows a secret value). Then a failing test with a `GetPoint` that throws, and a small fix: most likely a way to know the backdrop's placement without measuring it (the engine remembering that it placed it), or a protected call that treats a throw as "not placed".
+
+**Open questions:** Which frames. Whether skipping the re-place on a restricted backdrop leaves it visibly wrong after a theme change.
+
+**Resolved 2026-11-14:** the frames were the themed backdrops on SaftUI's nameplates (each plate's health bar, castbar and cast icon, and its aura buttons), seen again as 195 errors in one switch. The game's plates are anchor restricted, and so is everything anchored to one, for as long as it stays anchored there, in combat or out: addon code can't measure it (`GetPoint`, `GetRect`, the edges), though it can set its anchors. The error stopped the redraw of each such backdrop before it was placed and painted, so the redraw left it in the old theme's place, border and colors; the unit frames' update that follows in a switch drew each shown part anew, so no plate kept the old look, but every switch reported the errors. The engine now knows whether it still placed a backdrop from its own record and never measures one: post-hooks on the backdrop's anchor setters forget the record when anyone else moves it (`SaftUI-Core/theme.lua`, `Watch`). The stubs make every plate anchor restricted (`stub.restrict_anchors`, `tests/wow/widgets.lua`).
 
 ### 2026-11-13 — Action bars: shared settings for all bars, and Cooldown numbers as an Enable box
 

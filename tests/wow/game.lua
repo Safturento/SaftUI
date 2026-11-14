@@ -526,7 +526,9 @@ end
 --   stub.add_nameplate(unit, opts) -> plate: the game shows unit ('nameplateN')
 --     on a plate and fires NAME_PLATE_UNIT_ADDED. The plate is a new one,
 --     numbered after the last, unless opts.plate = n hands it NamePlate<n>
---     again (which must be free). opts.forbidden makes it a forbidden plate,
+--     again (which must be free). Every plate is anchor restricted
+--     (stub.restrict_anchors, widgets.lua): SaftUI's code can't measure it or
+--     anything anchored to it. opts.forbidden makes it a forbidden plate,
 --     which C_NamePlate gives addon code only when it asks for forbidden ones
 --     (it can't: Blizzard's own driver passes issecure()); whether the game
 --     fires NAME_PLATE_UNIT_ADDED to addons for a forbidden plate isn't known,
@@ -767,6 +769,9 @@ do
 			assert(n == #plates + 1, 'add_nameplate: the game numbers its plates in order')
 			local frame = CreateFrame('Frame', 'NamePlate' .. n, WorldFrame)
 			frame:SetPoint('CENTER', WorldFrame, 'CENTER')
+			-- Anchor restricted, as the game's plates are (widgets.lua):
+			-- SaftUI can't measure the plate or anything anchored to it.
+			stub.restrict_anchors(frame)
 			if stub.nameplate_size then frame:SetSize(stub.nameplate_size[1], stub.nameplate_size[2]) end
 			frame:Hide()
 			record = { frame = frame, hit_points = {} }
