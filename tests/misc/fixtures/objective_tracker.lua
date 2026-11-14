@@ -299,18 +299,36 @@ end
 
 ------------------------------------------------------------------ lines and blocks
 
+-- Blizzard's OBJECTIVE_TRACKER_COLOR (Blizzard_ObjectiveTrackerShared.lua):
+-- tables of r, g, b, the highlighted pairs each other's `reverse`. A line's
+-- Text keeps the table it was given in colorStyle.
+local COLORS = {
+	Normal = { 0.8, 0.8, 0.8, r = 0.8, g = 0.8, b = 0.8 }, -- the array part is the tests' own (OT.NORMAL), Blizzard's has only r, g, b
+	NormalHighlight = { r = 1, g = 1, b = 1 },
+	Failed = { r = 0.8, g = 0.1, b = 0.1 },
+	FailedHighlight = { r = 1, g = 0.1, b = 0.1 },
+	Complete = { r = 0.6, g = 0.6, b = 0.6 },
+	TimeLeft = { r = 0.8, g = 0.1, b = 0.1 },
+}
+COLORS.Normal.reverse, COLORS.NormalHighlight.reverse = COLORS.NormalHighlight, COLORS.Normal
+COLORS.Failed.reverse, COLORS.FailedHighlight.reverse = COLORS.FailedHighlight, COLORS.Failed
+rawset(_G, 'OBJECTIVE_TRACKER_COLOR', COLORS)
+OT.COLORS = COLORS
+
+-- ObjectiveTrackerBlockMixin:SetStringText's coloring: a color is { r, g, b }
+-- (the fixture's own, below) or one of COLORS.
 local function set_string_text(fontString, text, color)
 	fontString:SetHeight(0)
 	fontString:SetText(text)
 	OT.measured[fontString] = fontString:GetFontObject()
 	if fontString.colorStyle ~= color then
-		fontString:SetTextColor(color[1], color[2], color[3])
+		fontString:SetTextColor(color.r or color[1], color.g or color[2], color.b or color[3])
 		rawset(fontString, 'colorStyle', color)
 	end
 	return 12
 end
 
-OT.NORMAL = { 0.8, 0.8, 0.8 }
+OT.NORMAL = COLORS.Normal
 OT.HEADER = { 1, 0.82, 0 }
 
 local function line_template()
@@ -379,15 +397,27 @@ function BLOCK:SetHeader(text)
 	rawset(self, 'height', set_string_text(self.HeaderText, text, OT.HEADER))
 end
 
-function BLOCK:AddObjective(objectiveKey, text)
+function BLOCK:AddObjective(objectiveKey, text, template, useFullHeight, dashStyle, colorStyle)
 	local line = self:GetLine(objectiveKey)
 	local anchor = self.lastRegion or self.HeaderText
 	line:SetPoint('TOPLEFT', anchor, 'BOTTOMLEFT', 0, -4)
 	line:SetPoint('RIGHT', self.rightEdgeOffset, 0)
-	local height = set_string_text(line.Text, text, OT.NORMAL)
+	local height = set_string_text(line.Text, text, colorStyle or OT.NORMAL)
 	line:SetHeight(height)
 	rawset(self, 'lastRegion', line)
 	return line
+end
+
+-- ObjectiveTrackerBlockMixin:UpdateHighlight's lines: each line's text takes
+-- its color style's reverse, if it has one.
+function BLOCK:UpdateHighlight()
+	for _, line in pairs(self.usedLines) do
+		local style = line.Text.colorStyle and line.Text.colorStyle.reverse
+		if style then
+			line.Text:SetTextColor(style.r, style.g, style.b)
+			rawset(line.Text, 'colorStyle', style)
+		end
+	end
 end
 
 function BLOCK:AddProgressBar(id)
@@ -899,6 +929,14 @@ function OT.break_snap()
 	end)
 end
 
+-- The mouse over (on true) or off a block: Blizzard's own highlight update.
+function OT.hover(block, on)
+	return drive(function()
+		rawset(block, 'isHighlighted', on)
+		block:UpdateHighlight()
+	end)
+end
+
 -- A module's layout (BeginLayout, LayoutContents, EndLayout). quests: a list
 -- of { id, title, objectives = { text, ... }, progress = true, timer = true,
 -- item = questLogIndex }. Returns the blocks, in order.
@@ -920,7 +958,14 @@ function layout_inner(module, quests)
 		local block = module:GetBlock(quest.id)
 		block:SetHeader(quest.title or ('Quest ' .. quest.id))
 		if quest.item then block:AddRightEdgeFrame(module.questItemButtonSettings, quest.item) end
-		for i, text in ipairs(quest.objectives or {}) do block:AddObjective(i, text) end
+		-- An objective is its text, or { text, name of a COLORS entry }.
+		for i, objective in ipairs(quest.objectives or {}) do
+			if type(objective) == 'table' then
+				block:AddObjective(i, objective[1], nil, nil, nil, COLORS[objective[2]])
+			else
+				block:AddObjective(i, objective)
+			end
+		end
 		if quest.progress then block:AddProgressBar(quest.id) end
 		if quest.timer then block:AddTimerBar(60, 0) end
 		rawset(block, 'used', true)

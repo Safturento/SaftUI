@@ -27,6 +27,13 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	    GetBlock and each block's GetLine), before Blizzard sets its text and
 	    measures its height (ObjectiveTrackerBlockMixin:SetStringText), so the
 	    tracker lays out in SaftUI's font.
+	  - A finished objective's line in the Completed color and a failed one's
+	    in Failed (/sui -> Objective Tracker: Objective colors). The line's state
+	    is read from the color style Blizzard gave its text (colorStyle:
+	    OBJECTIVE_TRACKER_COLOR's Complete and Failed), and the color goes on after
+	    Blizzard sets its own (post-hooks on each block's AddObjective and
+	    UpdateHighlight). Under the mouse a failed line shows Blizzard's brighter
+	    red; a completed one, which Blizzard never highlights, stays.
 	  - Progress and timer bars: a flat bar in Blizzard's blue with a backdrop
 	    of SaftUI's drawn as a bar outside it, Blizzard's border and background
 	    art faded, the text in the font. The bonus objective and scenario bars'
@@ -106,6 +113,7 @@ local LINE_ALPHA = 0.5 -- the header line, as RestedXP's skin draws its dividers
 -- What SaftUI styles, keyed by Blizzard's frames and regions (weak keys).
 local weak = { __mode = 'k' }
 local texts = setmetatable({}, weak)     -- font string -> its kind (BLIZZARD_FONTS)
+local colored = setmetatable({}, weak)   -- a line's Text -> true while SaftUI's status color is on it
 local headers = setmetatable({}, weak)   -- header -> { line = texture }
 local collapses = setmetatable({}, weak) -- MinimizeButton -> { box, icon, hover, header }
 local bars = setmetatable({}, weak)      -- StatusBar -> { faded, hidden, label }
@@ -260,9 +268,46 @@ end
 
 ------------------------------------------------------------------ blocks and lines
 
+-- The color a status gets from the tracker's page: 'completed' or 'failed'.
+function OT:StatusColor(state)
+	local colors = Profile().objectivetracker.status_colors
+	return colors and colors[state]
+end
+
+-- A line's state, read from the color style Blizzard gave its text (its
+-- colorStyle, one of OBJECTIVE_TRACKER_COLOR's tables, which Blizzard hands
+-- AddObjective and caches on the font string): Complete is a finished
+-- objective, Failed a failed one. FailedHighlight, which Blizzard shows
+-- under the mouse, and the other styles are left as Blizzard colors them. Only
+-- reads Blizzard's tables.
+local function StateOf(fs)
+	local style, styles = fs.colorStyle, _G.OBJECTIVE_TRACKER_COLOR
+	if not (style and type(styles) == 'table') then return end
+	if style == styles.Complete then return 'completed' end
+	if style == styles.Failed then return 'failed' end
+end
+
+-- A line's text in its state's color, or Blizzard's back (the color of its
+-- style, which Blizzard's own cache still names). Only a text SaftUI styled
+-- (StyleText), and a color only, so a hover Blizzard gives the line stays its.
+local function ColorLine(line, active)
+	local fs = line.Text
+	if not (fs and texts[fs]) then return end
+	local color = active and OT:StatusColor(StateOf(fs))
+	if color then
+		colored[fs] = true
+		fs:SetTextColor(color[1], color[2], color[3])
+	elseif colored[fs] then
+		colored[fs] = nil
+		local style = fs.colorStyle
+		if style then fs:SetTextColor(style.r, style.g, style.b) end
+	end
+end
+
 local function StyleLine(line, active)
 	StyleText(line.Text, 'text', active)
 	StyleText(line.Dash, 'text', active)
+	ColorLine(line, active)
 end
 
 local function OnGetLine(block, objectiveKey)
@@ -272,6 +317,27 @@ end
 
 local function TryOnGetLine(block, objectiveKey)
 	xpcall(OnGetLine, geterrorhandler(), block, objectiveKey)
+end
+
+-- AddObjective sets the line's text color after GetLine, from the style it's
+-- given, so the status color goes on after it.
+local function OnAddObjective(block, objectiveKey)
+	local line = block.usedLines and block.usedLines[objectiveKey]
+	if line then ColorLine(line, Active()) end
+end
+local function TryOnAddObjective(block, objectiveKey)
+	xpcall(OnAddObjective, geterrorhandler(), block, objectiveKey)
+end
+
+local function ColorBlock(block, active)
+	for _, line in pairs(block.usedLines or {}) do ColorLine(line, active) end
+end
+
+-- UpdateHighlight sets every line's color again as the mouse goes on and off
+-- the block (a failed line's too): SaftUI's goes back on after it.
+local function OnUpdateHighlight(block) ColorBlock(block, Active()) end
+local function TryOnUpdateHighlight(block)
+	xpcall(OnUpdateHighlight, geterrorhandler(), block)
 end
 
 local function StyleBlock(block, active)
@@ -286,6 +352,8 @@ local function HookBlock(block)
 	if hookedBlocks[block] or type(block.GetLine) ~= 'function' then return end
 	hookedBlocks[block] = true
 	hooksecurefunc(block, 'GetLine', TryOnGetLine)
+	if type(block.AddObjective) == 'function' then hooksecurefunc(block, 'AddObjective', TryOnAddObjective) end
+	if type(block.UpdateHighlight) == 'function' then hooksecurefunc(block, 'UpdateHighlight', TryOnUpdateHighlight) end
 end
 
 ------------------------------------------------------------------ bars
@@ -536,6 +604,20 @@ end
 -- Objective tracker: on, the tracker is hooked if it wasn't and takes the
 -- look; off or under the Blizzard theme, Blizzard's look goes back on. Widget
 -- calls only, so it runs in combat too.
+-- A status color changed on the page: only the lines are colored again (no
+-- StyleAll, which would restyle every bar and item button for each step of the
+-- color picker).
+function OT:RecolorLines()
+	if not installed then return end
+	local active = Active()
+	EachModule(function(module)
+		if module.ObjectivesBlock then Apply(ColorBlock, module.ObjectivesBlock, active) end
+		for _, blocks in pairs(module.usedBlocks or {}) do
+			for _, block in pairs(blocks) do Apply(ColorBlock, block, active) end
+		end
+	end)
+end
+
 function OT:UpdateConfig()
 	if installed then
 		self:StyleAll()

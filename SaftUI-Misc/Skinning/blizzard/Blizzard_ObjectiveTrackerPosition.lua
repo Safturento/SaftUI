@@ -77,6 +77,10 @@ local OTP = st:NewModule('ObjectiveTracker')
 	than the tracker can (its reach below, read again after each of Blizzard's
 	UpdateHeight), or the tracker would stop above it.
 
+	In edit mode the mover's outline is as tall as the tracker (never shorter
+	than the holder), from the holder's top; the holder itself, and so what is
+	saved, stays the header (OTP:UpdateFootprint).
+
 	Blizzard's Edit Mode box for the tracker (its Selection) is kept hidden, so
 	Blizzard's Edit Mode can't select or drag it: its Height, Opacity and Text
 	Size settings can't be reached, and keep the values the layout has. Text
@@ -306,6 +310,28 @@ end
 function OTP:KeepInMargin()
 	st:KeepInScreenMargin(self.holder)
 	self:PlaceTracker()
+	self:UpdateFootprint()
+end
+
+-- Edit mode's outline (the mover's overlay, a frame of SaftUI's, anchored to
+-- the holder) as tall as the tracker is now, never shorter than the holder (the
+-- header), hanging down from the holder's top and sides. Only the outline
+-- changes: the holder, and so what the mover saves, stays the header. The
+-- tracker's height is read with GetHeight(true), as TrackerReach reads it. Only
+-- while edit mode is open; opening it refreshes the outline, and so does each
+-- of Blizzard's UpdateHeight (KeepInMargin).
+function OTP:UpdateFootprint()
+	local tracker, holder, mover = self.tracker, self.holder, self.mover
+	if not (tracker and holder and mover and st.EditModeFrames.active) then return end
+	local height, scale, holderScale = tracker:GetHeight(true), tracker:GetEffectiveScale(), holder:GetEffectiveScale()
+	local extra = 0
+	if Plain(height, scale, holderScale) and holderScale ~= 0 then
+		extra = st:RoundToPixel(math.max(0, height * scale / holderScale - holder:GetHeight()), holder)
+	end
+	local overlay = mover.overlay
+	overlay:ClearAllPoints()
+	overlay:SetPoint('TOPLEFT', holder, 'TOPLEFT', 0, 0)
+	overlay:SetPoint('BOTTOMRIGHT', holder, 'BOTTOMRIGHT', 0, -extra)
 end
 
 function OTP:Setup()
@@ -366,6 +392,7 @@ function OTP:Setup()
 	})
 	st:KeepInScreenMargin(holder, function() return self:TrackerReach() end)
 	self:PlaceTracker()
+	st.EditModeFrames:On('Enabled', function() self:UpdateFootprint() end)
 end
 
 -- A profile change: the holder from the new profile, and the tracker on it.
@@ -394,8 +421,8 @@ local function SkinOff()
 	return not (skin and skin:IsActive())
 end
 
--- The Objective Tracker page in /sui: General, the tracker's fonts, then its
--- Position. Clicking the tracker in edit mode opens it (the mover's
+-- The Objective Tracker page in /sui: General, the tracker's fonts, its Objective
+-- colors, then its Position. Clicking the tracker in edit mode opens it (the mover's
 -- configPath). Absent until the tracker exists.
 function OTP:GetConfigTable()
 	if not self.holder then return end
@@ -429,6 +456,52 @@ function OTP:GetConfigTable()
 		return option
 	end
 
+	-- A finished or failed objective's color (config.status_colors[state], an
+	-- { r, g, b } array edited in place, which the skin reads each time a line is
+	-- colored), with its own reset by it while it differs from the shipped one.
+	-- Like the fonts, only while the skin is on.
+	local function StatusColor(order, name, state, desc)
+		local option = {
+			order = order,
+			name = name,
+			desc = desc,
+			type = 'color',
+			disabled = SkinOff,
+			disabledDesc = "Only while Skinning -> Objective tracker is on and the Skinning page's Theme isn't Blizzard: otherwise the tracker keeps Blizzard's colors.",
+			get = function()
+				local color = self.config.status_colors[state]
+				return color[1], color[2], color[3]
+			end,
+			set = function(_, r, g, b)
+				local color = self.config.status_colors[state]
+				color[1], color[2], color[3] = r, g, b
+				local skin = Skin()
+				if skin then skin:RecolorLines() end
+			end,
+		}
+		local function Shipped() return st.defaults.objectivetracker.status_colors[state] end
+		option.default = {
+			differs = function()
+				local color, shipped = self.config.status_colors[state], Shipped()
+				for i = 1, 3 do
+					if math.floor(color[i] * 255 + 0.5) ~= math.floor(shipped[i] * 255 + 0.5) then return true end
+				end
+				return false
+			end,
+			reset = function()
+				local color, shipped = self.config.status_colors[state], Shipped()
+				color[1], color[2], color[3] = shipped[1], shipped[2], shipped[3]
+				local skin = Skin()
+				if skin then skin:RecolorLines() end
+			end,
+			value = function()
+				local shipped = Shipped()
+				return shipped[1], shipped[2], shipped[3]
+			end,
+		}
+		return option
+	end
+
 	return {
 		name = 'Objective tracker',
 		type = 'group',
@@ -450,6 +523,18 @@ function OTP:GetConfigTable()
 						"The font of the quest titles, objectives and bar texts in the objective tracker. Texts already showing take it at once; their spacing follows at the tracker's next update."),
 					header_font = FontOption(2, 'Header font',
 						"The font of the objective tracker's headers: All Objectives, Quests, Campaign, Scenario, Achievements and the rest."),
+					colors = {
+						name = 'Objective colors',
+						type = 'group',
+						inline = true,
+						order = 3,
+						args = {
+							completed = StatusColor(1, 'Completed', 'completed',
+								"The color of an objective that's done, in the quest and other lists. Blizzard's own is a plain grey; a line you haven't finished keeps Blizzard's color."),
+							failed = StatusColor(2, 'Failed', 'failed',
+								"The color of a failed objective, and of a failed quest's line. Under the mouse Blizzard brightens a failed quest line, as it does its unfinished lines."),
+						},
+					},
 					position = position,
 				},
 			},
