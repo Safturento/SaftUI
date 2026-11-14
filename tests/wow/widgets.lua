@@ -1399,14 +1399,18 @@ function GameTooltip.GetOwner(self, s) return s.owner end
 function GameTooltip.IsOwned(self, s, frame) return s.owner ~= nil and s.owner == frame end
 -- The lines' texts are kept in stub.state(tooltip).texts (the left text of
 -- each line) and .rights (a double line's right text), by line.
-function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights = 0, {}, {} end
+function GameTooltip.ClearLines(self, s) s.lines, s.texts, s.rights, s.colors = 0, {}, {}, {} end
 function GameTooltip.NumLines(self, s) return s.lines or 0 end
 -- SetText starts the tooltip over with one line; AddLine and AddDoubleLine add one.
 function GameTooltip.SetText(self, s, text) s.lines, s.texts, s.rights = 1, { text }, {} end
-function GameTooltip.AddLine(self, s, text)
+-- A line's color, if one was given, is kept in stub.state(tooltip).colors[line]
+-- as { r, g, b }.
+function GameTooltip.AddLine(self, s, text, r, g, b)
 	s.lines = (s.lines or 0) + 1
 	s.texts, s.rights = s.texts or {}, s.rights or {}
 	s.texts[s.lines] = text
+	s.colors = s.colors or {}
+	s.colors[s.lines] = r and { r, g, b } or nil
 end
 function GameTooltip.AddDoubleLine(self, s, left, right)
 	s.lines = (s.lines or 0) + 1
@@ -1425,6 +1429,30 @@ end
 function GameTooltip.SetBagItem(self, s, bag, slot)
 	if type(bag) ~= 'number' or type(slot) ~= 'number' then usage(s, 'SetBagItem(): bag and slot must be numbers') end
 	s.lines, s.texts, s.rights = 1, { ('bag item %d %d'):format(bag, slot) }, {}
+end
+-- The party's progress on a quest (Blizzard's tracker's own tooltip: it calls
+-- GameTooltip:SetQuestPartyProgress(questID) while grouped; omitTitle, the
+-- second argument, leaves the quest's title out). Not in the generated
+-- documentation: the arguments are Blizzard's callers' and the Warcraft wiki's.
+-- Here, with no title omitted it starts the tooltip over with a line naming the
+-- quest, 'party <id>'; with it, it adds that line to what the tooltip has.
+function GameTooltip.SetQuestPartyProgress(self, s, questID, omitTitle, ignoreActivePlayer)
+	if type(questID) ~= 'number' then usage(s, 'SetQuestPartyProgress(): questID must be a number') end
+	local text = ('party %d'):format(questID)
+	if omitTitle then
+		s.lines = (s.lines or 0) + 1
+		s.texts, s.rights = s.texts or {}, s.rights or {}
+		s.texts[s.lines] = text
+	else
+		s.lines, s.texts, s.rights = 1, { text }, {}
+	end
+end
+-- A quest's item by its quest log index (the quest item buttons' own tooltip,
+-- Blizzard_ObjectiveTracker's QuestObjectiveItemButtonMixin:OnEnter): one line,
+-- 'quest item <index>', as SetBagItem makes one.
+function GameTooltip.SetQuestLogSpecialItem(self, s, questLogIndex)
+	if type(questLogIndex) ~= 'number' then usage(s, 'SetQuestLogSpecialItem(): questLogIndex must be a number') end
+	s.lines, s.texts, s.rights = 1, { ('quest item %d'):format(questLogIndex) }, {}
 end
 function GameTooltip.SetItemByID(self, s, itemID)
 	if type(itemID) ~= 'number' then usage(s, 'SetItemByID(): itemID must be a number') end

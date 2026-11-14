@@ -73,6 +73,18 @@
 ]]
 
 stub.quests = { log = {}, watched = {}, focused = 0, popups = {}, titles = {} }
+-- What the clicks and the menu of SaftUI's tracker ask of the game (see "The
+-- clicks" below): the calls of the Blizzard functions they run, in order, each
+-- 'Name:arg,arg'; which modified clicks are held (stub.modified.QUESTWATCHTOGGLE
+-- and .CHATLINK, Shift by default in the game); whether a chat edit box is open
+-- (stub.chat_open) and what was put into it (stub.chat_inserted, links); whether
+-- the player is in the new player experience (stub.npe_restricted, which keeps a
+-- quest from being untracked).
+stub.quest_calls = {}
+stub.modified = {}
+stub.chat_open = false
+stub.chat_inserted = {}
+stub.npe_restricted = false
 stub.money = 0
 stub.real_zone_text = ''
 
@@ -87,6 +99,7 @@ Enum.QuestClassification = {
 }
 Enum.QuestFrequency = { Default = 0, Daily = 1, Weekly = 2, ResetByScheduler = 3 }
 Enum.RelativeContentDifficulty = { Trivial = 0, Easy = 1, Fair = 2, Difficult = 3, Impossible = 4 }
+Enum.QuestWatchType = { Automatic = 0, Manual = 1 } -- QuestLogDocumentation.lua, both clients
 Enum.UIMapType = Enum.UIMapType
 	or { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 }
 
@@ -102,6 +115,18 @@ FAILED = 'Failed'
 QUEST_WATCH_QUEST_READY = 'Ready for turn-in'
 QUEST_WATCH_QUEST_COMPLETE = 'Quest complete'
 QUEST_WATCH_CLICK_TO_COMPLETE = 'Click to complete'
+-- The quest menu's (Blizzard_QuestObjectiveTracker.lua names them; TRACK_QUEST is
+-- the quest log's own menu's, Mainline/QuestMapFrame.lua). The English is from
+-- memory: GlobalStrings are not in the source repo.
+SUPER_TRACK_QUEST = 'Focus'
+STOP_SUPER_TRACK_QUEST = 'Stop focusing'
+OBJECTIVES_VIEW_IN_QUESTLOG = 'Open quest details'
+OBJECTIVES_HIDE_VIEW_IN_QUESTLOG = 'Hide quest details'
+OBJECTIVES_SHOW_QUEST_MAP = 'Show on map'
+OBJECTIVES_STOP_TRACKING = 'Stop tracking'
+SHARE_QUEST = 'Share quest'
+ABANDON_QUEST_ABBREV = 'Abandon'
+TRACK_QUEST = 'Track quest'
 
 -- Blizzard_FrameXMLBase/Constants.lua (forever branch).
 QuestDifficultyColors = {
@@ -131,6 +156,13 @@ QuestUtil = QuestUtil or {}
 
 do
 	local Q = C_QuestLog
+	-- One call of a Blizzard function a click or a menu entry runs, put in
+	-- stub.quest_calls as 'Name:arg,arg' (a test reads what was and wasn't called).
+	local function record(name, ...)
+		local args = { ... }
+		for i = 1, select('#', ...) do args[i] = tostring(args[i]) end
+		table.insert(stub.quest_calls, name .. ':' .. table.concat(args, ','))
+	end
 	-- The defaults a quest gets, kept here so a test taking an enum away to
 	-- play a client without it doesn't break the stubs.
 	local DEFAULT_FREQUENCY, NORMAL_CLASSIFICATION = Enum.QuestFrequency.Default, Enum.QuestClassification.Normal
@@ -501,16 +533,19 @@ do
 	-- 'offer:<id>' or 'complete:<id>'; RemoveAutoQuestPopUp drops the popup.
 	function ShowQuestOffer(questID)
 		number_arg(questID, 'ShowQuestOffer(questID)')
+		record('ShowQuestOffer', questID)
 		stub.quests.shown = stub.quests.shown or {}
 		table.insert(stub.quests.shown, 'offer:' .. questID)
 	end
 	function ShowQuestComplete(questID)
 		number_arg(questID, 'ShowQuestComplete(questID)')
+		record('ShowQuestComplete', questID)
 		stub.quests.shown = stub.quests.shown or {}
 		table.insert(stub.quests.shown, 'complete:' .. questID)
 	end
 	function RemoveAutoQuestPopUp(questID)
 		number_arg(questID, 'RemoveAutoQuestPopUp(questID)')
+		record('RemoveAutoQuestPopUp', questID)
 		for index, popup in ipairs(stub.quests.popups) do
 			if popup.id == questID then table.remove(stub.quests.popups, index) break end
 		end
@@ -521,6 +556,85 @@ do
 		if not entry or (issecretvalue and issecretvalue(entry.title)) then return nil end
 		return ('|cffffff00|Hquest:%d:%d|h[%s]|h|r'):format(questID, tonumber(entry.level) or 0, tostring(entry.title))
 	end
+
+	------------------------------------------------------------------ the clicks
+
+	--[[
+		What a click on a quest row and the right-click menu ask of the game
+		(SaftUI-Tracker/clicks.lua), after Blizzard's own tracker's block click and
+		menu (Blizzard_ObjectiveTracker/Blizzard_QuestObjectiveTracker.lua:
+		QuestObjectiveTrackerMixin:OnBlockHeaderClick, the same on both branches
+		of Gethe/wow-ui-source, read 2026-11-14), each function recording its call
+		in stub.quest_calls. The two C_QuestLog functions are in
+		QuestLogDocumentation.lua on both branches: GetQuestWatchType(questID) ->
+		watchType (an Enum.QuestWatchType, Automatic 0 or Manual 1, Nilable: nil
+		for a quest that isn't watched) and GetQuestIDForLogIndex(questLogIndex)
+		-> questID (Nilable: "Only returns a questID for actual quests, not
+		headers"). The rest are Blizzard's Lua or old globals, not in the
+		generated documentation; their names and arguments are Blizzard's own
+		callers':
+		  ChatFrameUtil.TryInsertQuestLinkForQuestID(questID) (Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:
+		    IsModifiedClick('CHATLINK'), then ChatFrameUtil.InsertLink of
+		    GetQuestLink: true when a chat edit box took the link)
+		  IsModifiedClick(action) -> boolean (an old global; Blizzard's callers pass
+		    'QUESTWATCHTOGGLE' and 'CHATLINK')
+		  QuestUtil.CanRemoveQuestWatch() (Mainline/QuestUtils.lua: false while
+		    C_PlayerInfo.IsPlayerNPERestricted())
+		  QuestUtil.IsShowingQuestDetails(questID), QuestUtil.OpenQuestDetails(questID),
+		    QuestUtil.ShareQuest(questID) (the same file; they use the quest log's
+		    popup details frame and QuestLogPushQuest)
+		  QuestMapFrame_OpenToQuestDetails(questID) and
+		    QuestMapQuestOptions_AbandonQuest(questID) (Mainline/QuestMapFrame.lua:
+		    the map's quest log, and the abandon confirmation)
+		C_PlayerInfo.IsPlayerNPERestricted() is in PlayerInfoDocumentation.lua.
+		The English texts of the menu's strings are the game's, from memory (the
+		generated documentation has no GlobalStrings): a test reads them through
+		the globals, never as literals.
+	]]
+
+	function Q.GetQuestWatchType(questID)
+		number_arg(questID, 'local watchType = C_QuestLog.GetQuestWatchType(questID)')
+		if not watch_index(questID) then return nil end
+		return Enum.QuestWatchType.Manual
+	end
+	function Q.GetQuestIDForLogIndex(questLogIndex)
+		number_arg(questLogIndex, 'local questID = C_QuestLog.GetQuestIDForLogIndex(questLogIndex)')
+		local entry = stub.quests.log[questLogIndex]
+		if not entry or entry.header then return nil end
+		return entry.id
+	end
+	function C_PlayerInfo.IsPlayerNPERestricted() return stub.npe_restricted == true end
+
+	function IsModifiedClick(action)
+		record('IsModifiedClick', action)
+		return stub.modified[action] == true
+	end
+	ChatFrameUtil = ChatFrameUtil or {}
+	function ChatFrameUtil.TryInsertQuestLinkForQuestID(questID)
+		record('ChatFrameUtil.TryInsertQuestLinkForQuestID', questID)
+		local link = GetQuestLink(questID)
+		if stub.modified.CHATLINK == true and link and stub.chat_open then
+			table.insert(stub.chat_inserted, link)
+			return true
+		end
+		return false
+	end
+	function QuestUtil.CanRemoveQuestWatch()
+		record('QuestUtil.CanRemoveQuestWatch')
+		return not C_PlayerInfo.IsPlayerNPERestricted()
+	end
+	-- stub.quests.details is the quest the popup details frame shows.
+	function QuestUtil.IsShowingQuestDetails(questID)
+		record('QuestUtil.IsShowingQuestDetails', questID)
+		return stub.quests.details == questID
+	end
+	function QuestUtil.OpenQuestDetails(questID)
+		record('QuestUtil.OpenQuestDetails', questID)
+		stub.quests.details = questID
+	end
+	function QuestUtil.ShareQuest(questID) record('QuestUtil.ShareQuest', questID) end
+	function QuestMapFrame_OpenToQuestDetails(questID) record('QuestMapFrame_OpenToQuestDetails', questID) end
+	function QuestMapQuestOptions_AbandonQuest(questID) record('QuestMapQuestOptions_AbandonQuest', questID) end
 
 	function GetMoney() return stub.money end
 	-- Blizzard_SharedXML/FormattingUtil.lua: the gold, silver and copper

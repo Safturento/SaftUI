@@ -34,7 +34,6 @@ end
 
 -- The Quests tab: which quests show and how a quest row reads. Every row saves
 -- into tracker.quests and runs TR:UpdateConfig, which draws the rows again.
--- Left click and Tooltips come with the clicks (Task 7).
 function TR.QuestsTab()
 	local function toggle(order, key, name, desc)
 		local option = generators.toggle(order, name, desc)
@@ -79,9 +78,22 @@ function TR.QuestsTab()
 			"Draws a quest's progress objective as a bar. Off, it is a line of text."),
 		timers = toggle(13, 'timers', 'Timers', 'The time left of a timed quest.'),
 		waypoint = toggle(14, 'waypoint', 'Waypoint', "The next waypoint's line under the quest you are following."),
-		spacing = generators.range(15, 'Spacing', 0, 20, 1, 'The space between two quests.'),
-		colors = {
+		tooltips = toggle(15, 'tooltips', 'Tooltips',
+			"The quest's tooltip when the mouse is over its row, with the party's progress in a group and what the clicks do."),
+		left_click = {
 			order = 16,
+			name = 'Left click',
+			desc = "What a click on a quest does. Show on map opens the quest on the map out of combat and focuses it in combat; Focus focuses it always. Shift-click stops tracking, right-click opens the menu.",
+			type = 'select',
+			-- Read again on every call: Show on map is left out while it isn't allowed.
+			values = function() return TR.LeftClickValues() end,
+			sorting = { 'map', 'focus' },
+			get = function() return TR.LeftClick() end,
+			default = TR.SettingDefault('quests', 'left_click'),
+		},
+		spacing = generators.range(17, 'Spacing', 0, 20, 1, 'The space between two quests.'),
+		colors = {
+			order = 18,
 			type = 'description',
 			name = 'Finished and failed objectives take Global settings > Colors > Objectives.',
 		},
