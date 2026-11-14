@@ -473,7 +473,9 @@ end
 -- same gap above and below. entry.endsFloating: the section's last line
 -- floats. A floating line's buttons that share it in slots (two or more in
 -- its halves or quarters, not a group with an align) are marked slotted:
--- each takes its whole slot (Body:ButtonSlotRect).
+-- each takes its whole slot (Body:ButtonSlotRect). A line of buttons right
+-- under a description, but for the section's closing line, doesn't float:
+-- it's the description's, and stays on the panel with it.
 -- Returns the rows' height (height itself when no line floats).
 local function Float(entry, placed, height, floatOf)
 	local lines, byY, any = {}, {}, false
@@ -488,9 +490,19 @@ local function Float(entry, placed, height, floatOf)
 		local h = floatOf(p.row)
 		if h then line.floatHeight = max(line.floatHeight, h) else line.floats = false end
 	end
+	table.sort(lines, function(a, b) return a.y < b.y end)
+	-- A line of buttons right under a description, mid-section, is that
+	-- description's (the Profiles page's Reset Profile under the text that
+	-- explains it): it stays on the panel with it. The section's closing
+	-- line still floats: those buttons are the section's (the bags'
+	-- Miscellaneous editor's Reset under its note).
+	for i = 2, #lines - 1 do
+		for _, p in ipairs(lines[i - 1].entries) do
+			if p.row.type == 'description' then lines[i].floats = false end
+		end
+	end
 	for _, line in ipairs(lines) do any = any or line.floats end
 	if not any then return height end
-	table.sort(lines, function(a, b) return a.y < b.y end)
 	local y, above = 0, nil -- above: 'panel' or 'float', the line before
 	for i, line in ipairs(lines) do
 		if line.floats then

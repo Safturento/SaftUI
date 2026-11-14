@@ -1504,24 +1504,53 @@ test("under panels a line of buttons floats off the panel wherever it is, 24 fro
 	end)
 end)
 
-test("the Profiles page's Reset Profile, a line of its own between descriptions, floats off the panel: 24 from the panel above and the one below", function()
+-- A line of buttons right under a description, mid-section, is that
+-- description's: it stays on the panel with it, inside the padding, as any
+-- row (review F1: the Profiles page's Reset Profile floated 24 from the text
+-- that explains it, at x 0 under text at 14, as near the next panel as its
+-- own). A section's closing line still floats, under a description too (the
+-- bags' Miscellaneous editor's Reset under its note).
+test('LayoutSections: a line of buttons right under a description, mid-section, stays on the panel with it; a closing line, or one after any other row, floats', function()
+	-- A description across the line, as the model gives the Profiles page's.
+	local function r(key, rowType, align)
+		return { key = key, type = rowType, align = align, size = rowType == 'description' and 'wide' or nil }
+	end
+	local function floatOf(row) return row.type == 'execute' and 26 or nil end
+	local laid = OW.LayoutSections({
+		{ title = 'A', rows = { r('note', 'description'), r('go', 'execute'), r('more', 'description') } },
+		{ title = 'B', rows = { r('note', 'description'), r('ok', 'execute', 'center'), r('no', 'execute', 'center') } },
+		{ title = 'C', rows = { r('t', 'toggle'), r('ok', 'execute', 'center') } },
+	}, nil, nil, nil, true, floatOf)
+	local function ys(entry)
+		local out = {}
+		for _, p in ipairs(entry.placed) do out[#out + 1] = p.row.key .. '@' .. p.y .. (p.floats and 'f' or '') end
+		return table.concat(out, ' ')
+	end
+	eq(ys(laid[1]), 'note@0 go@34 more@68', "A: Go on the panel under its note, the next row under it")
+	eq(ys(laid[2]), 'note@0 ok@58f no@58f', "B: a closing pair under a note floats: they're the section's")
+	check(laid[2].endsFloating, 'B ends with them')
+	eq(ys(laid[3]), 't@0 ok@58f', 'C: under a toggle, the buttons float')
+end)
+
+test("the Profiles page's Reset Profile stays on the panel under the description that explains it, inside the padding", function()
 	st.Config:Open('profile')
-	local reset
-	for _, c in ipairs(OW.GetDrawnRows()) do
-		if c.row.key == 'reset' then reset = c end
+	local reset, desc
+	local cells = OW.GetDrawnRows()
+	for i, c in ipairs(cells) do
+		if c.row.key == 'reset' then reset, desc = c, cells[i - 1] end
 	end
 	check(reset ~= nil, 'Reset Profile drawn')
-	eq(reset.height, reset.widget:GetHeight(), 'its line as tall as the button')
-	local above, below
+	eq(desc.row.type, 'description', 'right after its description')
+	eq(reset.y, desc.y + desc.height, 'on the next line, under it')
+	eq(reset.height, 38, "a row's height, on the panel")
+	eq((select(4, reset.frame:GetPoint(1))), 14, 'inside the padding, in line with the text above it')
+	local on = false
 	for _, p in ipairs(reset.body.pools.panel.used) do
 		local _, _, _, _, py = p:GetPoint(1)
 		local top, bottom = -py, -py + p:GetHeight()
-		if bottom == reset.y - 24 then above = true end
-		if top == reset.y + reset.height + 24 then below = true end
-		check(not (top <= reset.y and bottom > reset.y), 'no panel under it')
+		if top <= desc.y and bottom >= reset.y + reset.height then on = true end
 	end
-	check(above, 'a panel ends 24 above it')
-	check(below, 'and one starts 24 under it')
+	check(on, 'one panel under the description and the button')
 	close_all()
 end)
 
