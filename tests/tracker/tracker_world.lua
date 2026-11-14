@@ -9,8 +9,10 @@
 --                         misc     Misc's config loaded (true), or a table
 --                                  { skinning, skin, otp } to load those too
 --                         blizzard Blizzard's tracker built from the misc
---                                  fixture (true, or its OT.build options);
---                                  TW.OT is the fixture
+--                                  fixture (true, or its OT.build options),
+--                                  with or without Misc; TW.OT is the fixture
+--                         screen   { width, height } in pixels: UIParent scaled
+--                                  to one unit per pixel
 --                         combat   in combat when the addon enables
 --                         addons   names for C_AddOns.IsAddOnLoaded
 --                         enabling function(st, TR) run after Misc's modules
@@ -27,7 +29,7 @@
 --                       tracker mover first (the Tracker module exists by then,
 --                       its OnEnable not yet run), then TR:Enable().
 --   TW.snapshot(frame)  a string of a frame's points, shown state, parent,
---                       alpha and scripts, to compare before and after.
+--                       alpha, clamp and scripts, to compare before and after.
 --   TW.counts           what SaftUI-Tracker made, counted from just before its
 --                       files load: frames, hooks (hooksecurefunc and frame
 --                       HookScript, AceHook's script hooks among them), scripts
@@ -35,6 +37,9 @@
 --                       RegisterEvent), timers (C_Timer.After, NewTimer,
 --                       NewTicker) and secure frames. Misc's enables aren't
 --                       counted.
+--   TW.count_from_now() / TW.count_stop()
+--                       reset TW.counts and count until stopped (after the
+--                       world is made: what a later call adds).
 --   TW.combat(on)       combat starts or ends: stub.in_combat, then
 --                       PLAYER_REGEN_DISABLED or PLAYER_REGEN_ENABLED.
 --   TW.scroll_frame(parent)
@@ -142,8 +147,9 @@ function TW.snapshot(frame)
 	parts[#parts + 1] = 'shown=' .. tostring(frame:IsShown())
 	parts[#parts + 1] = 'parent=' .. tostring(parent and parent:GetName())
 	parts[#parts + 1] = 'alpha=' .. tostring(frame:GetAlpha())
+	if frame.IsClampedToScreen then parts[#parts + 1] = 'clamped=' .. tostring(frame:IsClampedToScreen()) end
 	for _, script in ipairs(SCRIPTS) do
-		if frame:HasScript(script) then parts[#parts + 1] = script .. '=' .. tostring(frame:GetScript(script)) end
+		if frame:HasScript(script) then parts[#parts + 1] = script .. '=' .. tostring((frame:GetScript(script))) end -- (a script that isn't set returns nothing)
 	end
 	return table.concat(parts, ' ')
 end
@@ -152,6 +158,11 @@ function TW.world(opts)
 	opts = opts or {}
 	counting = false
 	local st = T.client(opts.client or 'forever')
+	if opts.screen then
+		-- One UIParent unit per physical pixel, so whole-pixel rounding shows nothing.
+		stub.screen_width, stub.screen_height = opts.screen[1], opts.screen[2]
+		UIParent:SetScale(768 / opts.screen[2])
+	end
 	load_editmode()
 	load_saftui('SaftUI-Core/Widgets/scrollframe.lua') -- st:ScrollBarRoom (the window reads the bar's room)
 	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
@@ -176,10 +187,11 @@ function TW.world(opts)
 		if misc.otp then
 			load_saftui('SaftUI-Misc/Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua')
 		end
-		if opts.blizzard then
-			TW.OT = load_test_file('misc/fixtures/objective_tracker.lua')
-			TW.OT.build(type(opts.blizzard) == 'table' and opts.blizzard or nil)
-		end
+	end
+	-- Blizzard's tracker is the game's, there with or without SaftUI-Misc.
+	if opts.blizzard then
+		TW.OT = load_test_file('misc/fixtures/objective_tracker.lua')
+		TW.OT.build(type(opts.blizzard) == 'table' and opts.blizzard or nil)
 	end
 
 	if opts.before then opts.before(st) end
@@ -265,6 +277,17 @@ function TW.scroll_frame(parent)
 	bar.Forward = CreateFrame('Button', nil, bar)
 	return scrollFrame
 end
+
+-- Counts what SaftUI-Tracker makes from now on, as well as while it loads and
+-- enables (the counts start again from 0), until TW.count_stop(): for a test
+-- that checks what a later call (a second enable, a profile switch, a setting)
+-- adds.
+function TW.count_from_now()
+	for _, key in ipairs({ 'frames', 'hooks', 'scripts', 'events', 'timers', 'secure' }) do TW.counts[key] = 0 end
+	counting = true
+end
+
+function TW.count_stop() counting = false end
 
 function TW.combat(on)
 	stub.in_combat = on and true or false

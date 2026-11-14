@@ -68,7 +68,7 @@ function SK:GetConfigTable()
 						order = 4,
 						name = 'Objective tracker',
 						type = 'toggle',
-						desc = "Draw Blizzard's objective tracker in SaftUI's look: its headers' banners gone, a line under each title, its texts in the fonts of /sui's Objective Tracker page, flat bars and buttons in this page's Theme and Background. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Applies at once.",
+						desc = "Draw Blizzard's objective tracker in SaftUI's look: its headers' banners gone, a line under each title, its texts in the fonts of /sui's Blizzard's tracker page, flat bars and buttons in this page's Theme and Background. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Applies at once.",
 					},
 					color_picker = {
 						order = 5,

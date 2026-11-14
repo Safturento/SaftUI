@@ -48,6 +48,46 @@ function st:RoundToPixel(value, frame)
 	return value < 0 and -result or result
 end
 
+-- How far across and up a frame each anchor point is.
+local POINT_X = {
+	TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0,
+	TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+	TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1,
+}
+local POINT_Y = {
+	BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0,
+	LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+	TOPLEFT = 1, TOP = 1, TOPRIGHT = 1,
+}
+
+-- The offsets that put frame's `point` at (screenX, screenY), in screen pixels,
+-- when it's anchored by `point` to parent's `point`: the screen spot less the
+-- parent's point (read from the parent's rect, as the screen sees it), over the
+-- frame's effective scale, each through st:RoundToPixel on frame. Only the
+-- parent's rect is read, never frame's. nil when anything it needs is missing,
+-- secret or zero (a scale), or `point` isn't an anchor point. Misc's objective
+-- tracker mover and SaftUI-Tracker place Blizzard's tracker by it.
+function st:CornerOffset(frame, parent, point, screenX, screenY)
+	local fx, fy = POINT_X[point], POINT_Y[point]
+	if not (fx and fy and frame and parent) then return end
+	local scale, parentScale = frame:GetEffectiveScale(), parent:GetEffectiveScale()
+	-- Only the parent's edges this point needs.
+	local left, right, bottom, top
+	if fx ~= 1 then left = parent:GetLeft() end
+	if fx ~= 0 then right = parent:GetRight() end
+	if fy ~= 1 then bottom = parent:GetBottom() end
+	if fy ~= 0 then top = parent:GetTop() end
+	local function Bad(value) return type(value) ~= 'number' or issecretvalue(value) end
+	if Bad(scale) or Bad(parentScale) or Bad(screenX) or Bad(screenY) then return end
+	if (fx ~= 1 and Bad(left)) or (fx ~= 0 and Bad(right)) or (fy ~= 1 and Bad(bottom)) or (fy ~= 0 and Bad(top)) then return end
+	if scale == 0 or parentScale == 0 then return end
+	local parentX = fx == 0 and left or fx == 1 and right or (left + right) / 2
+	local parentY = fy == 0 and bottom or fy == 1 and top or (bottom + top) / 2
+	local x = (screenX - parentX * parentScale) / scale
+	local y = (screenY - parentY * parentScale) / scale
+	return st:RoundToPixel(x, frame), st:RoundToPixel(y, frame)
+end
+
 -- Resolves a global frame name or frame object to a frame, or nil.
 function st:ResolveFrame(ref)
 	if type(ref) == 'string' then

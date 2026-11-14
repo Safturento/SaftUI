@@ -3,7 +3,7 @@
 -- frames: Tooltip, Totem bar, Buffs and debuffs (Auras), Swing timer. Each is
 -- built here with stand-ins for those frames (SaftUI's own: holders, bars,
 -- Blizzard's bar and bar frames left out because the tables never touch them),
--- and the Skinning page, which needs none. (The Objective Tracker page is
+-- and the Skinning page, which needs none. (The Blizzard's tracker page is
 -- checked in objective_tracker_position_test.lua, over the tracker's fixture.) Checked for each page: every option
 -- has a desc and no Ace width, Position is the last option of its group, and
 -- the new options read and write their profile keys and apply the change.

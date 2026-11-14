@@ -10,7 +10,7 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	put back as Blizzard's template had it, and a theme switch or the toggle goes
 	between the two live. The tracker's place is Blizzard_ObjectiveTrackerPosition.lua.
 
-	What changes, in the tracker's own fonts (/sui -> Objective Tracker: Font and
+	What changes, in the tracker's own fonts (/sui -> Blizzard's tracker: Font and
 	Header font) and the Skinning page's Theme and Background:
 	  - Headers (the tracker's own, "All Objectives", and each module's: Quests,
 	    Campaign, Scenario, Achievements, ...): Blizzard's banner (Background)
@@ -28,7 +28,7 @@ local OT = SK:NewModule('Blizzard_ObjectiveTracker')
 	    measures its height (ObjectiveTrackerBlockMixin:SetStringText), so the
 	    tracker lays out in SaftUI's font.
 	  - A finished objective's line in the Completed color and a failed one's
-	    in Failed (/sui -> Objective Tracker: Objective colors). The line's state
+	    in Failed (/sui -> Blizzard's tracker: Objective colors). The line's state
 	    is read from the color style Blizzard gave its text (colorStyle:
 	    OBJECTIVE_TRACKER_COLOR's Complete and Failed), and the color goes on after
 	    Blizzard sets its own (post-hooks on each block's AddObjective and

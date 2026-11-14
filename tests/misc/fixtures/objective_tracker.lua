@@ -14,8 +14,19 @@
 	    (ObjectiveTrackerContainerHeaderTemplate: Background, Text in
 	    ObjectiveTrackerHeaderFont, an 18 by 19 MinimizeButton with the
 	    collapse-all atlases, and SetCollapsed swapping them). Edit Mode's
-	    SetPoint and ClearAllPoints overrides (EditModeSystemMixin:OnSystemLoad)
-	    count Blizzard's calls in OT.calls. UpdateHeight is Blizzard's
+	    SetPoint, ClearAllPoints, SetShown, Hide and SetScale overrides
+	    (EditModeSystemMixin:OnSystemLoad), and its Show (a plain method in
+	    the game, counted so a call of it shows), count every call of them
+	    in OT.calls, Blizzard's and SaftUI's alike, and the ones made
+	    from outside Blizzard's drivers in OT.own too (SaftUI's own never
+	    reach them: it calls the C methods through the frame's metatable;
+	    a post-hook of SaftUI's runs inside Blizzard's call, so a test
+	    wraps what it runs in OT.as_saftui to have it counted as SaftUI's).
+	    SetSize, SetWidth, SetHeight, SetParent, UnregisterEvent and
+	    UnregisterAllEvents from SaftUI, on the tracker and (the two
+	    Unregister ones) on every module, are listed in OT.stray, as
+	    MarkDirty, Update, SetCollapsed and UpdateHeight are (Blizzard's own
+	    calls of them, in the drivers below, aren't). UpdateHeight is Blizzard's
 	    (ObjectiveTrackerContainerMixin): in the default position the parent's
 	    height plus its first point's y offset, at least 20; moved in Blizzard's
 	    Edit Mode its Height setting, else 800. Its topPadding is 15 on Forever
@@ -91,6 +102,13 @@
 	Blizzard, and a header button's click) run Blizzard's own calls; one made
 	outside them is SaftUI's, and is listed in OT.stray ('tracker:UpdateHeight').
 
+	OT.watch_calls() records every method called on the tracker and on each
+	module from outside Blizzard's drivers, through the frame or through its
+	metatable (the C methods SaftUI calls with getmetatable(frame).__index):
+	OT.called() is the sorted list of distinct 'frame:Method', so a test can
+	assert the exact set. Only the outermost call is recorded, not the
+	methods the stub's own methods call on the same frame.
+
 	OT.watch_size() counts the size reads on the tracker and every module, by
 	form: OT.size_reads.plain['GetHeight'] and OT.size_reads.ignore['GetHeight']
 	(GetWidth, GetHeight and GetSize with ignoreRect true, which skips the rect
@@ -123,15 +141,33 @@ local function drive(fn, ...)
 end
 OT.as_blizzard = drive
 
+-- SaftUI's own code running inside one of Blizzard's calls (a post-hook on
+-- the tracker's SetPoint runs inside the call that set it): while it does, a
+-- call on the tracker is SaftUI's again. A test wraps the function its hook
+-- runs in OT.as_saftui.
+local saftui = 0
+function OT.as_saftui(fn, ...)
+	saftui = saftui + 1
+	local results = { pcall(fn, ...) }
+	saftui = saftui - 1
+	if not results[1] then error(results[2], 0) end
+	return unpack(results, 2, table.maxn(results))
+end
+local function from_saftui() return driving == 0 or saftui > 0 end
+
 -- Wraps frame[name] so a call from outside Blizzard's drivers is recorded.
 local function guard(frame, label, name)
 	local fn = frame[name]
 	rawset(frame, name, function(self, ...)
-		if driving == 0 then OT.stray[#OT.stray + 1] = label .. ':' .. name end
+		if from_saftui() then OT.stray[#OT.stray + 1] = label .. ':' .. name end
 		return fn(self, ...)
 	end)
 end
 local GUARDED = { 'MarkDirty', 'Update', 'SetCollapsed', 'UpdateHeight' }
+-- Methods that are plain widget calls, which Blizzard's code makes (under the
+-- drivers) and SaftUI's never does on the tracker (or, for the events, on a module).
+local STRAY_TRACKER = { 'SetSize', 'SetWidth', 'SetHeight', 'SetParent', 'UnregisterEvent', 'UnregisterAllEvents' }
+local STRAY_MODULE = { 'UnregisterEvent', 'UnregisterAllEvents' }
 
 -- A plain table of Blizzard's, locked: a key written into it errors. The
 -- fixture's own writes use rawset.
@@ -792,7 +828,8 @@ function OT.build(opts)
 	opts = opts or {}
 	OT.made, OT.measured, OT.used, OT.recorded = {}, setmetatable({}, { __mode = 'k' }), {}, nil
 	OT.protect_items = opts.protect_items
-	OT.calls = { SetPoint = 0, ClearAllPoints = 0 }
+	OT.calls = { SetPoint = 0, ClearAllPoints = 0, Show = 0, Hide = 0, SetShown = 0, SetScale = 0 }
+	OT.own = { SetPoint = 0, ClearAllPoints = 0, Show = 0, Hide = 0, SetShown = 0, SetScale = 0 }
 	OT.stray = {}
 	OT.size_reads = nil
 	for key in pairs(pools) do pools[key] = nil end
@@ -828,18 +865,31 @@ function OT.build(opts)
 	local methods = getmetatable(tracker).__index
 	rawset(tracker, 'SetPoint', function(self, ...)
 		OT.calls.SetPoint = OT.calls.SetPoint + 1
+		if from_saftui() then OT.own.SetPoint = OT.own.SetPoint + 1 end
 		secure(methods.SetPoint, self, ...)
 	end)
 	rawset(tracker, 'ClearAllPoints', function(self)
 		OT.calls.ClearAllPoints = OT.calls.ClearAllPoints + 1
+		if from_saftui() then OT.own.ClearAllPoints = OT.own.ClearAllPoints + 1 end
 		secure(methods.ClearAllPoints, self)
 	end)
+	-- The rest of Edit Mode's overrides, and Show, counted. They look the C
+	-- method up at call time (a recorder may replace it).
+	for _, name in ipairs({ 'Show', 'Hide', 'SetShown', 'SetScale' }) do
+		rawset(tracker, name, function(self, ...)
+			OT.calls[name] = OT.calls[name] + 1
+			if from_saftui() then OT.own[name] = OT.own[name] + 1 end
+			return secure(methods[name], self, ...)
+		end)
+	end
+	for _, name in ipairs(STRAY_TRACKER) do guard(tracker, 'tracker', name) end
 	if opts.protected then
 		rawset(tracker, 'IsProtected', function() return true, true end)
 	end
 	OT.modules = {}
 	for _, name in ipairs(OT.MODULES) do
 		OT.modules[name] = module(name, tracker)
+		for _, method in ipairs(STRAY_MODULE) do guard(OT.modules[name], 'module ' .. name, method) end
 	end
 	OT.tracker = lock(tracker, OWNER)
 
@@ -1000,6 +1050,60 @@ end
 
 -- Counts the size reads on the tracker and every module from now on, by form
 -- (see the top of this file). Call it after OT.build.
+local recorded_types = setmetatable({}, { __mode = 'k' })
+
+-- Starts (or restarts) recording every method called on the tracker and the
+-- modules from outside Blizzard's drivers, at the frame's metatable, so the C
+-- methods a caller takes from getmetatable(frame).__index are seen too.
+function OT.watch_calls()
+	OT.method_calls = {}
+	local labels = setmetatable({ [OT.tracker] = 'tracker' }, { __mode = 'k' })
+	for name, frame in pairs(OT.modules) do labels[frame] = 'module ' .. name end
+	-- The frame's metatable is lib/locked_widget.lua's: its __index holds only
+	-- the SetScript that errors, and its own metatable's __index the type's methods.
+	local methods = getmetatable(OT.tracker).__index
+	if getmetatable(methods) then methods = getmetatable(methods).__index end
+	if recorded_types[methods] then
+		recorded_types[methods].labels = labels
+		return
+	end
+	local state = { labels = labels, depth = 0 }
+	recorded_types[methods] = state
+	local names = {}
+	for name, fn in pairs(methods) do
+		if type(fn) == 'function' then names[#names + 1] = name end
+	end
+	for _, name in ipairs(names) do
+		local fn = methods[name]
+		methods[name] = function(self, ...)
+			local label = state.labels[self]
+			if not label then return fn(self, ...) end
+			if state.depth == 0 and from_saftui() then
+				OT.method_calls[#OT.method_calls + 1] = label .. ':' .. name
+			end
+			state.depth = state.depth + 1
+			local results = { pcall(fn, self, ...) }
+			state.depth = state.depth - 1
+			if not results[1] then error(results[2], 0) end
+			return unpack(results, 2, table.maxn(results))
+		end
+	end
+end
+
+-- The distinct 'frame:Method' recorded since OT.watch_calls, sorted, comma
+-- separated.
+function OT.called()
+	local seen, list = {}, {}
+	for _, call in ipairs(OT.method_calls or {}) do
+		if not seen[call] then
+			seen[call] = true
+			list[#list + 1] = call
+		end
+	end
+	table.sort(list)
+	return table.concat(list, ',')
+end
+
 function OT.watch_size()
 	local counts = { plain = {}, ignore = {} }
 	OT.size_reads = counts

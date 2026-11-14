@@ -149,23 +149,77 @@ end
 
 ------------------------------------------------------------------ position
 
--- The first position (call 26): a copy of the skin's saved one when Misc is
--- loaded and the profile has one, else Blizzard's default spot, so SaftUI's
--- tracker starts where the player's was. A copy of the five keys of a
--- position, never the skin's own table (AceDB's, with its metatable).
+-- The first position (call 26): where the player's tracker was, so SaftUI's
+-- starts there. The skin's saved position when Misc's tracker mover is loaded
+-- and the profile has one, else Blizzard's default spot:
+--   - a position by a top point (TOPLEFT, TOP, TOPRIGHT) is copied (the five
+--     keys, never the skin's own table, which is AceDB's with its metatable):
+--     the tracker hangs from its top, so the spot is the same either way;
+--   - one by another point is converted to the tracker's own TOPRIGHT form from
+--     the profile's own data, by arithmetic alone (ConvertSkinPosition): where
+--     the skin's holder (Misc's tracker mover: its Width and its 32 tall
+--     header, OTP.HOLDER_HEIGHT) would sit, anchored by that point to the screen
+--     at the saved offsets, its top right relative to the screen's. No live
+--     rect of the skin's holder is read, because a profile switch or copy runs
+--     the modules' UpdateConfig in no set order (pairs(st.modules)) after
+--     every mover's anchors were cleared (EM:ClearPositions), so the holder
+--     can still hold the old profile's spot, or none, when this runs. A
+--     position relative to a frame other than the screen, a skin that hasn't
+--     set up (no Width: Blizzard's tracker isn't loaded yet) or a value that
+--     can't be read gives Blizzard's default spot.
+-- It reads only the profile, the skin's size and the screen's rect, and the
+-- skin's mover writes nothing while SaftUI's tracker is on, so the answer is the
+-- same whatever order the modules update in.
 local POSITION_KEYS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
+local TOP_POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true }
+local POINT_X = {
+	TOPLEFT = 0, LEFT = 0, BOTTOMLEFT = 0, TOP = 0.5, CENTER = 0.5, BOTTOM = 0.5,
+	TOPRIGHT = 1, RIGHT = 1, BOTTOMRIGHT = 1,
+}
+local POINT_Y = {
+	BOTTOMLEFT = 0, BOTTOM = 0, BOTTOMRIGHT = 0, LEFT = 0.5, CENTER = 0.5, RIGHT = 0.5,
+	TOPLEFT = 1, TOP = 1, TOPRIGHT = 1,
+}
 
-local function FirstPosition()
+local function Number(value)
+	if type(value) == 'number' and not issecretvalue(value) then return value end
+end
+
+-- The TOPRIGHT offsets from UIParent's top right (x, y, in UIParent units, to
+-- whole pixels) of where the skin's holder sits for the saved position `saved`,
+-- or nil.
+local function ConvertSkinPosition(self, skin, saved)
+	local frame = saved.frame
+	if not (frame == nil or frame == 'UIParent' or frame == UIParent) then return end
+	-- The holder's own point's fractions are those of `point`, the screen's those of `rel_point`.
+	local px, py = POINT_X[saved.point], POINT_Y[saved.point]
+	local rx, ry = POINT_X[saved.rel_point or saved.point], POINT_Y[saved.rel_point or saved.point]
+	local width, height = Number(skin.width), Number(skin.HOLDER_HEIGHT)
+	local xo, yo = Number(saved.x_off or 0), Number(saved.y_off or 0)
+	local left, right = Number(UIParent:GetLeft()), Number(UIParent:GetRight())
+	local bottom, top = Number(UIParent:GetBottom()), Number(UIParent:GetTop())
+	if not (px and py and rx and ry and width and height and xo and yo and left and right and bottom and top) then return end
+	local holderLeft = left + (right - left) * rx + xo - width * px
+	local holderBottom = bottom + (top - bottom) * ry + yo - height * py
+	return st:RoundToPixel(holderLeft + width - right, self.holder), st:RoundToPixel(holderBottom + height - top, self.holder)
+end
+
+local function FirstPosition(self)
 	local position = st:DefaultTrackerPosition()
 	-- Only while Misc's tracker mover exists: AceDB keeps the profile's table
 	-- after Misc is disabled, and a stale spot must not be copied.
-	local skin = st:GetModule('ObjectiveTracker', true) and st.config.profile.objectivetracker
-	local saved = skin and skin.position
-	if type(saved) == 'table' then
+	local skin = st:GetModule('ObjectiveTracker', true)
+	local profile = skin and st.config.profile.objectivetracker
+	local saved = profile and profile.position
+	if type(saved) ~= 'table' then return position end
+	if TOP_POINTS[saved.point or position.point] then
 		for _, key in ipairs(POSITION_KEYS) do
 			if saved[key] ~= nil then position[key] = saved[key] end
 		end
+		return position
 	end
+	local x, y = ConvertSkinPosition(self, skin, saved)
+	if x then position.x_off, position.y_off = x, y end
 	return position
 end
 
@@ -178,7 +232,7 @@ function TR:GetPosition()
 	local config = self.config
 	local position = config.position
 	if not position then
-		position = FirstPosition()
+		position = FirstPosition(self)
 		if self.holder then config.position = position end
 		return position
 	end
@@ -209,6 +263,8 @@ function TR:ApplyHolder()
 		function() return self:GetPosition() end)
 	st:KeepInScreenMargin(holder)
 	self:PlaceWindow()
+	-- Blizzard's tracker follows the holder (its y concealed, its corner in place).
+	self:PlaceBlizzard(self.blizzardWhere)
 end
 
 ------------------------------------------------------------------ collapsed
@@ -306,6 +362,10 @@ function TR:LayoutWindow()
 		-- or is collapsed. Neither frame is protected: safe in combat.
 		window:EnableMouseWheel(range > 0)
 		scroll:EnableMouseWheel(range > 0)
+		-- With Grow up the window's top is the spot Blizzard's tracker reveals
+		-- at, and it moved: the concealed y follows (nothing is called when it
+		-- is where it should be).
+		if config.grow == 'up' then self:PlaceBlizzard(self.blizzardWhere) end
 	end
 	self.scrollRange = range
 	self:UpdateWatcher()
