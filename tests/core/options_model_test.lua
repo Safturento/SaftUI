@@ -145,7 +145,7 @@ test('Pages: in order then name, topmenu and hidden groups left out, Fonts and p
 		'by order, then name (Alpha, Made Dyn, Zeta at the default 100); a negative order last, as AceConfigDialog sorts')
 	local by = {}
 	for _, page in ipairs(pages) do by[page.key] = page end
-	eq(by.Fonts.name, 'Global Settings', 'Fonts is named Global Settings')
+	eq(by.Fonts.name, 'Global settings', 'Fonts is named Global settings')
 	eq(by.Fonts.special, 'global', 'Fonts is the global page')
 	eq(by.profile.special, 'profiles', 'profile is the profiles page')
 	eq(by.profile.name, 'Profiles', 'and keeps its name')
@@ -922,7 +922,7 @@ test('Experience on the real tree: the General page with its rows, then its Posi
 	eq(paths(found), 'Experience.general.rested_color,Experience.general.rest_alpha', 'search finds the rested options')
 	eq(found[1].tabName, 'General', 'on the General tab')
 	local fonts = OM.BuildView(root, 'Fonts')
-	eq(fonts.title, 'Global Settings', 'the Fonts page is Global Settings')
+	eq(fonts.title, 'Global settings', 'the Fonts page is Global settings')
 	eq(fonts.tab, 'general', 'it opens on its General tab')
 	fonts = OM.BuildView(root, 'Fonts', { tab = 'fonts' })
 	check(#fonts.sections > 0 and fonts.sections[1].title ~= nil and row(fonts, 'font_size') ~= nil,

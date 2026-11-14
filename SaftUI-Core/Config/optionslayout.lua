@@ -107,7 +107,7 @@ end
 -- The body's layout (optionsbody.lua), here too for the window's tests.
 OW.LayoutRows, OW.LayoutSections = OB.LayoutRows, OB.LayoutSections
 
--- The sidebar's entries from OM.Pages: Global Settings and Profiles, then a
+-- The sidebar's entries from OM.Pages: Global settings and Profiles, then a
 -- { group = category } header and its pages for each category, in the fixed
 -- order. Pages keep the order they came in (order, then name).
 function OW.SidebarEntries(pages)

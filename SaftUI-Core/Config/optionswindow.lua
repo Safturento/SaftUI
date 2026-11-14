@@ -42,7 +42,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	under it across the window). It grows taller by its grip (the bottom
 	right corner) or its bottom edge (optionsresize.lua), in either layout:
 	  - the sidebar: the search box, with Edit mode and the
-	    st.Config:AddCommand buttons under it, then Global Settings and
+	    st.Config:AddCommand buttons under it, then Global settings and
 	    Profiles, then the module pages under their category (Frames, Combat,
 	    Info, any other, then Other; OW.SidebarEntries);
 	  - the header: the page's title and description, and the close X

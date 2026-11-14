@@ -392,7 +392,7 @@ local OLD_LABELS = { 'Template', 'Highlight', 'Close Button', 'ThickTransparent'
 
 test('no option anywhere offers Template, Highlight or Close Button', function()
 	local root = st.Config:GetOptionsTable()
-	check(root.Fonts and root.Fonts.args.theme and root.profile, 'the tree has Global Settings, its Theme tab and the profiles')
+	check(root.Fonts and root.Fonts.args.theme and root.profile, 'the tree has Global settings, its Theme tab and the profiles')
 	T.check_no_old_names({ type = 'group', args = root }, '/sui')
 
 	eq(st.Config.generators.template, nil, 'the Template dropdown builder is gone')

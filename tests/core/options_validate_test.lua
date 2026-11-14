@@ -9,7 +9,7 @@
 -- registered: a copy with those left out, so AceConfig checks the rest.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0
--- (config_helpers.lua: Global Settings' General, Fonts, Colors and Edit mode
+-- (config_helpers.lua: Global settings' General, Fonts, Colors and Edit mode
 -- tabs, and AceDBOptions' profiles), and the modules whose tables build here
 -- with no frames of their own made: Experience, the minimap and the micro
 -- menu. The others (action bars, bags, chat, loot, buffs, the swing timer,

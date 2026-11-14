@@ -20,7 +20,7 @@ There is one. A module adds a page by returning an Ace options group from `GetCo
 | Sidebar | 208 plus a 1px edge | `sidebar-width`, `sidebar`, `line` |
 | Brand | 73 tall: "SaftUI" in `brand`, "Options" in `small` grey, 18 in | `brand-height`, `brand-pad` |
 | Search and commands | search box over Edit mode and Keybind mode, 24 tall, 6 apart, 8 under the search | `field-height`, `action-gap`, `search-gap`, `action-pad` |
-| Entries | 26 tall, `label`, 18 in (Global Settings, Profiles) or 22 | `nav-item` |
+| Entries | 26 tall, `label`, 18 in (Global settings, Profiles) or 22 | `nav-item` |
 | Group headers | `group-title` in `text-grey`, 29 tall | `nav-group` |
 | Selected entry | `accent-fill` with a 2px `accent` bar at its left | `accent-fill`, `mark-width` |
 | Entry under the mouse | `sidebar-hover` | `sidebar-hover` |

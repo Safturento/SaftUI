@@ -17,7 +17,7 @@ Every frame SaftUI draws: windows, panels, bars, buttons behind their icons, too
 
 | | Thick | Thin |
 | --- | --- | --- |
-| Fill | `backdrop` #1f1f1f | `backdrop` #333333 |
+| Fill | `backdrop` #1f1f1f | `backdrop` #1f1f1f |
 | Border | 1px `border` #4d4d4d | 1px `border` #000000 |
 | Outer border | 1px `border-alt` outside and inside the border (3px in all, `thick-width`) | none |
 | Content inset | 2 | 1 |
@@ -29,7 +29,7 @@ Under Thick and Thin only `header` and `close` draw differently (fill, no lines)
 
 ## States
 
-The theme's colours change live from Global Settings > Theme (`st:RecolorThemed`); a theme change redraws every frame (`st:RedrawThemed`) and every module lays itself out again, since the border's width moves what sits inside it.
+The theme's colours change live from Global settings > Theme (`st:RecolorThemed`); a theme change redraws every frame (`st:RedrawThemed`) and every module lays itself out again, since the border's width moves what sits inside it.
 
 ## Blizzard theme
 

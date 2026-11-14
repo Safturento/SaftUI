@@ -6,7 +6,7 @@
 	outline choice, a shadow toggle and a scale, so the game's own font
 	rendering can be judged. Nothing is saved; the window is never shown unless
 	the command is typed. The candidates are also in LibSharedMedia as
-	"Candidate: <family>", to try on the real UI in Global Settings > Fonts.
+	"Candidate: <family>", to try on the real UI in Global settings > Fonts.
 
 	When a font is chosen, delete exactly this:
 	  1. this file, SaftUI-Core/Dev/fontdemo.lua, and its folder SaftUI-Core/Dev/

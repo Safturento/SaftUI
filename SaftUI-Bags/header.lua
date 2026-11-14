@@ -245,7 +245,7 @@ function INV:SetView(id, view)
 	self:ApplyView(id)
 end
 
--- The title bar's height follows Global Settings (st:UpdateHeader), and so
+-- The title bar's height follows Global settings (st:UpdateHeader), and so
 -- do the buttons in it. st:UpdateHeader also puts a header in the metal's
 -- title bar or back, so this sizes them for that too.
 hooksecurefunc(st, 'UpdateHeader', function()

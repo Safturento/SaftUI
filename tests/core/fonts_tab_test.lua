@@ -1,4 +1,4 @@
--- The Fonts tab of Global Settings (SaftUI-Core/Media/fonts.lua): each font's
+-- The Fonts tab of Global settings (SaftUI-Core/Media/fonts.lua): each font's
 -- Shadow offset X, Shadow offset Y and Line spacing, which its font object
 -- takes at once, and the Kinds of text section, which says which font window
 -- titles, button text and check box labels use. Every row reads and writes the

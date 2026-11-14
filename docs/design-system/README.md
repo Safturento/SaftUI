@@ -17,7 +17,7 @@ SaftUI replaces World of Warcraft's interface with flat, dark frames that sit qu
 
 **Naming.** A label names the setting, not the action: "First button", not "Set growth direction". A picker's label says what it picks: "Unit", "Bar". A part's Position names itself: "Count position". Never show an internal key ("grouproleindicator") or Ace's internal words ("Template", "Highlight", "Close Button").
 
-**Tooltips.** Every option on a finished page has a desc, and the desc is its label's tooltip: the name in `white`, the desc under it, and, while the option is disabled, why, in `text-red`. An icon that stands in for a word always has a tooltip saying what it does ("Reset: Buttons per row follows All bars again. Bar 3's own value is dropped."). Name a path with a plain greater-than sign, "Global Settings > Theme", never an arrow glyph: SaftUI's fonts may not have one. Say "reload to apply" in a desc when a setting can't apply live, and let a section note say what waits for a reload: "Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere."
+**Tooltips.** Every option on a finished page has a desc, and the desc is its label's tooltip: the name in `white`, the desc under it, and, while the option is disabled, why, in `text-red`. An icon that stands in for a word always has a tooltip saying what it does ("Reset: Buttons per row follows All bars again. Bar 3's own value is dropped."). Name a path with a plain greater-than sign, "Global settings > Theme", never an arrow glyph: SaftUI's fonts may not have one. Say "reload to apply" in a desc when a setting can't apply live, and let a section note say what waits for a reload: "Most of SaftUI reads these when it builds its frames: reload (Reload UI, bottom left) to see a change everywhere."
 
 **Numbers.** Colours read as `#RRGGBB`, and `#RRGGBB · 60%` with opacity under 100%. Offsets and sizes are whole numbers. No emoji, no exclamation marks; short, plain sentences.
 
@@ -90,7 +90,7 @@ Frames stack by strata, lowest first: `strata-grid`, `strata-skins`, `strata-fra
 ## Themes
 
 - **Thick** (default): `backdrop` #1f1f1f, `border` #4d4d4d between two `border-alt` #1a1a1a lines; content insets 2.
-- **Thin**: `backdrop` #333333 inside a black `border`; content insets 1.
+- **Thin**: `backdrop` #1f1f1f inside a black `border`; content insets 1.
 - **Blizzard**: Blizzard's own art on SaftUI's frames, per kind (the character frame's metal for windows, the tooltip border, the action ring, the bronze unit frame box). The options window keeps Blizzard's flat layout (rows `row-height-flat` 34, columns 40 apart, no panels), and every control with a Settings equivalent takes that art. SaftUI's own marks keep their colours (`own`, `diff`, `accent`).
 
 Every page whose frames SaftUI draws offers Theme and Background, with "Use SaftUI's theme" as the follow choice. Every draw call names its kind (`panel`, `window`, `bar`, `action`, `slot`, `aura`, `tooltip`, `header`, `close`, `control`, `unitframe`, `member`, `small`).

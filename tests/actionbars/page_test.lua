@@ -776,7 +776,7 @@ test("the cooldown numbers' unset reads as 'by button size', each with its noun"
 	local r = root()
 	for field, noun in pairs({ font = 'font', size = 'size', outline = 'outline' }) do
 		local menuRoot, setting = menu_row(row(r, 'all', 'countdown'), field)
-		local want = "Pixel Med's " .. noun .. " on buttons of 36px and up, Pixel's below (Global Settings > Fonts)"
+		local want = "Pixel Med's " .. noun .. " on buttons of 36px and up, Pixel's below (Global settings > Fonts)"
 		eq(OM.DefaultState(menuRoot, setting).text, want, field .. ': the reset names what comes back')
 		check(setting.option.desc:find("Until set, it goes by the button's size: " .. want, 1, true), field .. ': the desc says so')
 	end

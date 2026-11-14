@@ -97,7 +97,7 @@ st.defaults.templates = {
 	thin = {
 		bordercolor = { 0, 0, 0, 1.0 },
 		altbordercolor = { 0.0, 0.0, 0.0, 0.0 },
-		backdropcolor = { 0.2, 0.2, 0.2, 1 },
+		backdropcolor = { 0.12, 0.12, 0.12, 1 },
 	},
 	thick = {
 		bordercolor = { 0.3, 0.3, 0.3, 1.0 },

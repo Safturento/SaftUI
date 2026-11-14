@@ -161,7 +161,7 @@ OM.PICKER_CONTROL_KEY = PICKER_CONTROL_KEY
 
 -- The pages the window shows apart from the module groups.
 local SPECIAL = { Fonts = 'global', profile = 'profiles' }
-local GLOBAL_NAME = 'Global Settings'
+local GLOBAL_NAME = 'Global settings'
 
 ------------------------------------------------------------------ AceConfigDialog's members
 
@@ -545,7 +545,7 @@ end
 ------------------------------------------------------------------ the API
 
 -- The sidebar's pages: { key, name, desc, category, special, disabled }, in
--- order, then by name. special is 'global' for Fonts (named Global Settings)
+-- order, then by name. special is 'global' for Fonts (named Global settings)
 -- and 'profiles' for profile. category is the group's own category field
 -- (Frames, Combat, Info), or 'Other'.
 function OM.Pages(root)

@@ -41,6 +41,6 @@ The tooltip kind takes Blizzard's tooltip border art; lines and colours are unch
 ## Do and don't
 
 - Do write the desc as what the setting does, in a sentence, not a repeat of its name.
-- Do name a path with ">" ("Global Settings > Theme").
+- Do name a path with ">" ("Global settings > Theme").
 - Don't rely on hover alone to show a state; a tooltip explains, it never is the only sign.
 - Don't colour words in a desc for emphasis.

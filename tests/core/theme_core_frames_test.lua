@@ -401,7 +401,7 @@ test('st:SkinActionButton draws config.theme and config.background as its kind',
 	st:SkinActionButton(a, { theme = 'thin', background = 'transparent' })
 	eq(drawn(a), 'thin,transparent,action', 'Theme and Background, as an action button')
 	eq(offset(a.backdrop, 'TOPLEFT'), '-1.00,1.00', "Thin's 1px out")
-	eq(fill(a.backdrop), '0.20,0.20,0.20,0.90', "Thin's background at the opacity")
+	eq(fill(a.backdrop), '0.12,0.12,0.12,0.90', "Thin's background at the opacity")
 
 	local s = button('ThemeTestSlot')
 	st:SkinActionButton(s, { theme = 'theme', background = 'theme' }, 'slot')
@@ -678,7 +678,7 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(theme.order, 3, 'its order')
 	eq(theme.width, nil, 'no Ace width')
 	eq(listed(theme), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;blizzard=Blizzard;none=None", 'its values, in order')
-	eq(theme.desc, "The bags and bank windows. Use SaftUI's theme follows Global Settings > Theme; None draws no border or background.",
+	eq(theme.desc, "The bags and bank windows. Use SaftUI's theme follows Global settings > Theme; None draws no border or background.",
 		"the caller's desc, then what the choices do")
 
 	local background = generators.background(4)
@@ -687,7 +687,7 @@ test('the theme and background builders: names, values in order, descs', functio
 	eq(background.order, 4, 'its order')
 	eq(background.width, nil, 'no Ace width')
 	eq(listed(background), "theme=Use SaftUI's theme;solid=Solid;transparent=Transparent", 'its values, in order')
-	eq(background.desc, "Solid, or see-through by Global Settings > Theme's Background opacity. Use SaftUI's theme follows its Background.",
+	eq(background.desc, "Solid, or see-through by Global settings > Theme's Background opacity. Use SaftUI's theme follows its Background.",
 		'its desc by default')
 	eq(generators.background(4, 'Own words.').desc, 'Own words.', "a caller's desc instead")
 
@@ -714,6 +714,6 @@ test('no desc in /sui, nor the Theme and Background builders, has an arrow', fun
 	look('generators.theme with a desc', generators.theme(1, 'x').desc)
 	look('generators.background', generators.background(1).desc)
 	eq(table.concat(found, '; '), '', 'no arrow anywhere')
-	check(generators.theme(1).desc:find('Global Settings > Theme', 1, true) ~= nil, "Theme's desc says Global Settings > Theme")
-	check(generators.background(1).desc:find('Global Settings > Theme', 1, true) ~= nil, "Background's desc says Global Settings > Theme")
+	check(generators.theme(1).desc:find('Global settings > Theme', 1, true) ~= nil, "Theme's desc says Global settings > Theme")
+	check(generators.background(1).desc:find('Global settings > Theme', 1, true) ~= nil, "Background's desc says Global settings > Theme")
 end)

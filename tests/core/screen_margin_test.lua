@@ -1,4 +1,4 @@
--- The screen edge margin (misc.clamp_inset, Global Settings > General) on every
+-- The screen edge margin (misc.clamp_inset, Global settings > General) on every
 -- frame the user can move: st:KeepInScreenMargin and st:UpdateScreenMargin
 -- (SaftUI-Core/api.lua), which clamp a frame to the screen with the margin's
 -- insets and re-apply them; the frames given to them (edit mode's movers,

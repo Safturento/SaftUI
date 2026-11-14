@@ -422,7 +422,7 @@ function st:PlaceHolder(holder, key, getSize, getPosition)
 end
 
 --[[
-	The screen edge margin (misc.clamp_inset, Global Settings > General): how far
+	The screen edge margin (misc.clamp_inset, Global settings > General): how far
 	in from the screen's edges SaftUI keeps the frames the user can move or, below
 	0, how far past them it lets them go. The game does the keeping: it keeps a
 	frame clamped to the screen on screen with the frame's rect grown by its clamp

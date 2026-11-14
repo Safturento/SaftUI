@@ -1,6 +1,6 @@
 local st = SaftUI
 
--- The General tab of Global Settings: Core's settings that aren't fonts or
+-- The General tab of Global settings: Core's settings that aren't fonts or
 -- colors. Config:GetOptionsTable makes this module's table the page's first
 -- tab. Each row is bound to its profile key and reads st.config.profile at
 -- call time, so a profile switch reaches the new profile.

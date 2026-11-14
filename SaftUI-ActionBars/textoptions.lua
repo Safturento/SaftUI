@@ -69,7 +69,7 @@ local COUNTDOWN_BAR_DESC = "The time left on a button's cooldown. All bars shows
 -- they're set (AB:GetCountdownFont), which is also their default. field: font,
 -- size or outline.
 local function CountdownDefault(field)
-	return ("Pixel Med's %s on buttons of 36px and up, Pixel's below (Global Settings > Fonts)"):format(field)
+	return ("Pixel Med's %s on buttons of 36px and up, Pixel's below (Global settings > Fonts)"):format(field)
 end
 local function CountdownUnset(field)
 	return " Until set, it goes by the button's size: " .. CountdownDefault(field) .. '.'

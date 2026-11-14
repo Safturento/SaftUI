@@ -161,7 +161,7 @@ function Config:GetWindow()
 	return OW and OW:IsShown() and OW:GetFrame() or nil
 end
 
--- Global Settings' tabs, in order: the tab's key, and the module whose
+-- Global settings' tabs, in order: the tab's key, and the module whose
 -- GetConfigTable it is. A new tab is a line here; the orders follow the list.
 local GLOBAL_TABS = {
 	{ 'general', 'General' },
@@ -175,7 +175,7 @@ local GLOBAL_TABS = {
 -- profiles. The AddCommand commands and the Edit mode button are the window's
 -- sidebar buttons, not options. The GLOBAL_TABS modules' tables (General,
 -- Fonts, Colors, Theme and Edit mode, its grid and snap settings) are the tabs of the
--- Global Settings page, whose key stays Fonts (the options model shows it by
+-- Global settings page, whose key stays Fonts (the options model shows it by
 -- that name). Each module's table already declares its own tabs (childGroups)
 -- and Position option.
 function Config:GetOptionsTable()
@@ -202,7 +202,7 @@ function Config:GetOptionsTable()
 	end
 	if next(tabs) then
 		options.Fonts = {
-			name = 'Global Settings',
+			name = 'Global settings',
 			desc = "Settings used across SaftUI: icon zoom and window title bars, fonts, colors, themes, and edit mode's grid and snapping.",
 			type = 'group',
 			order = 1,

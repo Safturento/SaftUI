@@ -949,7 +949,7 @@ test('each element tab offers Theme and Background, with descs, and no template'
 			local theme, themeRow = option_at(config, unit, tab, unpack(at('theme')))
 			if check(theme and theme.type == 'select' and theme.name == 'Theme', where .. ' has Theme') then
 				eq(listed(config, themeRow), "theme=Use SaftUI's theme;thick=Thick;thin=Thin;blizzard=Blizzard;none=None", where .. ": Theme's choices, in order")
-				check(type(theme.desc) == 'string' and theme.desc:find('Global Settings > Theme', 1, true) ~= nil,
+				check(type(theme.desc) == 'string' and theme.desc:find('Global settings > Theme', 1, true) ~= nil,
 					where .. "'s Theme says what its choices do")
 				check(theme.desc ~= generic, where .. "'s Theme says which frames it draws: " .. tostring(theme.desc))
 				eq(theme.width, nil, where .. "'s Theme has no Ace width")

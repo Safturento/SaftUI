@@ -1,4 +1,4 @@
--- The Theme tab of Global Settings (SaftUI-Core/Media/theme.lua): Theme and the
+-- The Theme tab of Global settings (SaftUI-Core/Media/theme.lua): Theme and the
 -- chosen theme's colors (Border, Outer border and Background; under Blizzard
 -- Window background in place of Outer border), each with its own reset (the
 -- options kit's default field: OM.DefaultState, OM.DefaultReset) in place of

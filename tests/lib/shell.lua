@@ -383,7 +383,7 @@ end
 -- st.ThemeArt) and themeart.lua (its accessors and drawing),
 -- the media and fonts (st:GetFont) with the Colors
 -- and Theme modules, the profile defaults, Config/generators.lua (st.Config.generators) and
--- the General module (Global Settings' General tab). Then the profile is
+-- the General module (Global settings' General tab). Then the profile is
 -- filled from the defaults and the Fonts module enabled, as at login, so
 -- st:GetFont has font objects.
 function load_core_helpers()

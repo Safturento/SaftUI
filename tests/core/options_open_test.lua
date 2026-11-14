@@ -1,5 +1,5 @@
 -- SaftUI-Core/Config/optionsnav.lua and the wiring in config.lua: Config:Open
--- and GetWindow, the sidebar (commands, Global Settings, Profiles, the
+-- and GetWindow, the sidebar (commands, Global settings, Profiles, the
 -- categories), the pages and tabs Open selects, the picker's label, and the
 -- list and dialog sitting above the window. The last case pins /sui under
 -- Thick and Thin against Blizzard; its count includes the Keybinds command the
@@ -42,7 +42,7 @@ test('Config:Open shows the window; GetWindow is truthy only while it is open', 
 	eq(st.Config:GetWindow(), nil, 'Close closes it')
 end)
 
-test('the sidebar: commands, Global Settings, Profiles, then the categories in order', function()
+test('the sidebar: commands, Global settings, Profiles, then the categories in order', function()
 	local ran = 0
 	st.Config:AddCommand('kb', 'Keybinds', function() ran = ran + 1 end)
 	st.Config:Open()
@@ -52,7 +52,7 @@ test('the sidebar: commands, Global Settings, Profiles, then the categories in o
 
 	local names = {}
 	for i, item in ipairs(frames().nav) do names[i] = item.group and ('[' .. item.group .. ']') or item.name end
-	eq(table.concat(names, ','), 'Global Settings,Profiles,[Frames],Bags,Chat,Unitframes,[Combat],Auras,[Info],Loot,[Other],Zeta',
+	eq(table.concat(names, ','), 'Global settings,Profiles,[Frames],Bags,Chat,Unitframes,[Combat],Auras,[Info],Loot,[Other],Zeta',
 		'drawn in order')
 	check(st.Config:GetOptionsTable().topmenu == nil, 'no topmenu group any more')
 	eq(type(st.Config:GetCommands()), 'table', 'the commands, for the sidebar')
@@ -86,7 +86,7 @@ test("a real module's category: Experience is under Info", function()
 	check(found, 'Experience has a page')
 end)
 
-test('Global Settings has General, Fonts, Colors, Theme and Edit mode tabs, and the sidebar has no Edit mode page', function()
+test('Global settings has General, Fonts, Colors, Theme and Edit mode tabs, and the sidebar has no Edit mode page', function()
 	local root = st.Config:GetOptionsTable()
 	eq(root.EditMode, nil, 'no EditMode page in the tree')
 	for _, page in ipairs(OM.Pages(root)) do
@@ -98,7 +98,7 @@ test('Global Settings has General, Fonts, Colors, Theme and Edit mode tabs, and 
 	end
 
 	local view = OM.BuildView(root, 'Fonts')
-	eq(view.title, 'Global Settings', 'the page')
+	eq(view.title, 'Global settings', 'the page')
 	eq(keys(view.tabs), 'general,fonts,colors,theme,editmode', 'General, Fonts, Colors, Theme, then Edit mode')
 	eq(keys(view.tabs, 'name'), 'General,Fonts,Colors,Theme,Edit mode', 'tab names')
 	eq(view.tab, 'general', 'General is the tab the page opens on')

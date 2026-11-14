@@ -1,4 +1,4 @@
--- The General tab of Global Settings (SaftUI-Core/Config/general.lua): Icon
+-- The General tab of Global settings (SaftUI-Core/Config/general.lua): Icon
 -- zoom with its preview, Title bar height and Screen edge margin. Each row
 -- reads and writes its profile key at call time, so a profile switch reaches
 -- the new profile; the preview is cut as st:IconTexCoords (skinning.lua) cuts

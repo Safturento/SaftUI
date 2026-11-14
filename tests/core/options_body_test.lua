@@ -450,13 +450,13 @@ test('SidebarEntries: specials first, then Frames, Combat, Info, other categorie
 		{ key = 'profile', name = 'Profiles', category = 'Other', special = 'profiles' },
 		{ key = 'uf', name = 'Unitframes', category = 'Frames' },
 		{ key = 'aur', name = 'Auras', category = 'Combat' },
-		{ key = 'Fonts', name = 'Global Settings', category = 'Other', special = 'global' },
+		{ key = 'Fonts', name = 'Global settings', category = 'Other', special = 'global' },
 		{ key = 'chat', name = 'Chat', category = 'Frames' },
 		{ key = 'odd', name = 'Odd', category = 'Misc' },
 	}
 	local out = {}
 	for i, entry in ipairs(OW.SidebarEntries(pages)) do out[i] = entry.group and ('[' .. entry.group .. ']') or entry.name end
-	eq(table.concat(out, ','), 'Global Settings,Profiles,[Frames],Unitframes,Chat,[Combat],Auras,[Info],Loot,[Misc],Odd,[Other],Zeta',
+	eq(table.concat(out, ','), 'Global settings,Profiles,[Frames],Unitframes,Chat,[Combat],Auras,[Info],Loot,[Misc],Odd,[Other],Zeta',
 		'the fixed order; pages keep the order they came in')
 end)
 

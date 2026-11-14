@@ -1,6 +1,6 @@
 local st = SaftUI
 
--- The Theme tab of Global Settings: Thick, Thin or Blizzard and the chosen theme's
+-- The Theme tab of Global settings: Thick, Thin or Blizzard and the chosen theme's
 -- colors, the Background's opacity among them (the engine is SaftUI-Core/theme.lua).
 -- Each color has its own reset by its swatch while it differs from the chosen
 -- theme's default (the options kit's default field; no Reset for the tab).

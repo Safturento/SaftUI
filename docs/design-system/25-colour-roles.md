@@ -50,7 +50,7 @@ Other groups in the same table:
 
 **`SaftUI-Core/Media/colors.lua`**
 - `CO.SECTIONS` (lines 44-139) defines the Colors tab. Text rows are at lines 49-58 and Button rows at 64-71, each with a one-line `desc` that says what the colour touches.
-- `CO:GetConfigTable` (line 253) builds the tab. The tab is `Fonts.args.colors` in `tests/core/colors_test.lua`, shown as Global Settings > Colors.
+- `CO:GetConfigTable` (line 253) builds the tab. The tab is `Fonts.args.colors` in `tests/core/colors_test.lua`, shown as Global settings > Colors.
 - `ProfileColor` and `DefaultColor` (lines 167-181) read `st.config.profile.colors[group][key]` and the default at call time.
 - `ColorDefault` (lines 195-208) resets a swatch by writing `c.r, c.g, c.b, c.a = from...` into the existing table.
 - `st:ColorsChanged(group)` (line 10) calls every module's `OnColorsChanged(group)`.

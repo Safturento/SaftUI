@@ -2,7 +2,7 @@
 -- optionsmodel.lua's OM.DefaultState and OM.DefaultReset) and its reset icon
 -- by the control (optionsshare.lua's OB.PlaceDefault, from the body's
 -- PlaceRow and its Refresh), on every built-in row type, under Thick and
--- Blizzard, in an item's menu, through a drag, and on Global Settings' Colors
+-- Blizzard, in an item's menu, through a drag, and on Global settings' Colors
 -- and Theme tabs, whose section Resets it replaces.
 --
 -- Real: Core's Config/config.lua on a real AceDB-3.0 and AceConfigRegistry-3.0,
@@ -539,7 +539,7 @@ test('in an item\'s menu: the icon by its control, and a click resets and draws 
 	restore()
 end)
 
------------------------------------------------------------------- Global Settings' Colors and Theme
+------------------------------------------------------------------ Global settings' Colors and Theme
 
 -- The drawn color row of group (the Colors tab's section key) and key.
 local function colorCell(group, key)
@@ -548,7 +548,7 @@ local function colorCell(group, key)
 	end
 end
 
-test("Global Settings' Colors and Theme: no Reset buttons; a changed color's own reset by its bar puts it back", function()
+test("Global settings' Colors and Theme: no Reset buttons; a changed color's own reset by its bar puts it back", function()
 	local tip, restore = watch_tooltip()
 	local ok, err = pcall(function()
 		st.Config:Open('Fonts', 'colors')

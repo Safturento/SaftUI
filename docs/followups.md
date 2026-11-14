@@ -154,11 +154,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 - 7: the accent as a theme colour with its own swatch; "on" drawn in the accent everywhere (the edit mode bar's plan covers its own toggles).
 - 8: `/sui` tooltips' descriptions in the normal text colour, not Blizzard's gold.
 - 14: hue-named colours renamed by role (waiting on the owner's answers on the Colour roles page), with a migration.
-- 20: "Global Settings" in sentence case (the other sidebar pages are done); its name is set in `SaftUI-Core/Config/config.lua` and `optionsmodel.lua` (`GLOBAL_NAME`).
 - 21: the docs spell "color".
 - 22: SaftUI's font on every line of item and compare tooltips (find why they show Blizzard's).
 - 24: a written spacing scale, and unexplained values moved onto it.
-- 28: Thin's default background matches Thick's.
 - The loot feed's and other hand-drawn glyphs still to become Lucide icons (the audit's list).
 - Remaining section Reset buttons (bags' Categories "Reset ... to default" and "Reset all").
 

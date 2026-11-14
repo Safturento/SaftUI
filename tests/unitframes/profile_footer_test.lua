@@ -156,7 +156,7 @@ test('the footer control: on the Unitframes page only, centred; its dropdown lis
 	eq(page_cell('width').widget.frame:GetText(), '222', "and the page the new profile's settings")
 
 	OW:Navigate('Fonts')
-	check(not f.footerControl:IsShown(), 'none on Global Settings')
+	check(not f.footerControl:IsShown(), 'none on Global settings')
 	OW:Navigate('Unitframes')
 	check(f.footerControl:IsShown(), 'back on Unitframes')
 	close_all()

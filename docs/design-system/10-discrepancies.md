@@ -73,7 +73,7 @@ Where: the footer with edit mode on: Grid and Snap as Core buttons (Pixel 10, 22
 Standard: `Button` at `button-height` in `/sui`; one button component with an in-world size (Code changes 4).
 
 **16. The colour bar's white code is hard to read on light colours.**
-Where: Global Settings > Colors: Text > Normal (#E6E6CC), White, Grey; any light class or quality colour. White on those fills is 1.3:1 to 3:1; only the black outline carries it.
+Where: Global settings > Colors: Text > Normal (#E6E6CC), White, Grey; any light class or quality colour. White on those fills is 1.3:1 to 3:1; only the black outline carries it.
 Two ways: the code is always white (`optionstypes.lua:171-174`, `.agents/edit-mode.md`); a followup paragraph says it turns black or white by brightness (`docs/followups.md:285`), which the code never did.
 Standard: unsettled (unknown 10). Fix the followup paragraph either way.
 Settled (decisions 9 and 13) and built: the control is a field, the code beside the swatch in `text` on `kit-field` (`ColorBar`).
@@ -96,7 +96,7 @@ Where: 15 pages' "Font" lists SaftUI's font objects (`generators.font`, `SaftUI-
 Standard: one meaning per word after the font roles work; sentence case now ("Font", "Size", "Outline").
 
 **21. Sidebar page names mix cases.**
-Where: "Action Bars", "Micro Menu", "Totem Bar", "Swing Timer", "Global Settings" against "Unitframes" as one word (`Unitframes/config/config.lua:311`) and sentence-case nameplate pages; descs say "unit frames" (63 strings).
+Where: "Action Bars", "Micro Menu", "Totem Bar", "Swing Timer", "Global settings" against "Unitframes" as one word (`Unitframes/config/config.lua:311`) and sentence-case nameplate pages; descs say "unit frames" (63 strings).
 Standard: see unknown 7.
 
 **22. Three check box sizes and two marks.**

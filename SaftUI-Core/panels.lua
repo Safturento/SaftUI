@@ -251,7 +251,7 @@ end
 -- st:CreateHeader, and puts it in its window's metal title bar or back at the
 -- window's top (st:HeaderInTitleBar; in the title bar it's the bar's strip,
 -- whatever the profile's height). With no header, updates every header and
--- footer. A profile change and the General and Fonts tabs of Global Settings
+-- footer. A profile change and the General and Fonts tabs of Global settings
 -- call it, and a module that draws its window again with a Theme of its own
 -- (the bags' Theme) calls it after, as it does st:UpdateCloseButton. Every
 -- recolor and redraw puts each header in its place (PlaceHeader) on its own.

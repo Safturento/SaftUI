@@ -239,7 +239,7 @@ local function SectionGroup(section, index)
 	}
 end
 
--- The Colors tab of Global Settings: one inline section per color group, a
+-- The Colors tab of Global settings: one inline section per color group, a
 -- color swatch per color, each with its own reset by it while it differs
 -- from SaftUI's default (no section Reset). Each row's get and set are bound
 -- to its own color, so they read no info.

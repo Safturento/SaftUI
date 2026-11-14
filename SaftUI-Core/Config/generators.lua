@@ -199,8 +199,8 @@ local THEME_VALUES = {
 local BACKGROUND_VALUES = {
 	{ 'theme', "Use SaftUI's theme" }, { 'solid', 'Solid' }, { 'transparent', 'Transparent' },
 }
-local THEME_DESC = "Use SaftUI's theme follows Global Settings > Theme; None draws no border or background."
-local BACKGROUND_DESC = "Solid, or see-through by Global Settings > Theme's Background opacity. Use SaftUI's theme follows its Background."
+local THEME_DESC = "Use SaftUI's theme follows Global settings > Theme; None draws no border or background."
+local BACKGROUND_DESC = "Solid, or see-through by Global settings > Theme's Background opacity. Use SaftUI's theme follows its Background."
 
 -- A select of choices ({ value, name } pairs), listed in their order.
 local function OrderedSelect(order, name, desc, choices)
