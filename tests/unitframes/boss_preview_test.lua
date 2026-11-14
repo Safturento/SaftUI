@@ -247,3 +247,23 @@ test('test mode off hides them, and so do boss frames turned off', function()
 	check(previews_shown(), 'back when they are on')
 	UF:SetGroupTestMode('boss', false)
 end)
+
+test("a preview's power text follows Short, as the real text does", function()
+	local power = P.boss.power
+	UF.testGroups.boss = true
+	power.enable, power.text.enable, power.text.hide_full = true, true, false
+	-- 60000 mana: the long form is ShortFormat's, and Short is health's.
+	power.text.short = false
+	UF:UpdateGroupPreview('boss')
+	local long = previews()[1].Power.text:GetText()
+	eq(long, st.StringFormat:ShortFormat(60000, 1), 'Short off: as it was drawn before')
+	power.text.short = true
+	UF:UpdateGroupPreview('boss')
+	local short = previews()[1].Power.text:GetText()
+	eq(short, UF.ShortNumber(60000), 'Short on: health\'s abbreviation')
+	check(short ~= long or short == '60K', 'the two forms are told apart or agree on 60K: ' .. tostring(short) .. ' / ' .. tostring(long))
+	power.text.short = false
+	power.enable, power.text.enable = false, false
+	UF.testGroups.boss = nil
+	UF:UpdateGroupPreview('boss')
+end)

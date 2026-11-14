@@ -174,6 +174,7 @@ local function PlaceParts(w, blizzard)
 		local swatch = st.ThemeArt.Control('swatch')
 		local height = FIELD_HEIGHT - 2 * BLIZZARD_INSET
 		w.startX = BLIZZARD_INSET + lead
+		Place(w.line, button, w.startX + SWATCH_WIDTH, EDGE_WIDTH, 1, FIELD_HEIGHT - 2 * EDGE_WIDTH) -- hidden, but kept with the rest
 		w.white:SetColorTexture(unpack(swatch.whiteColor))
 		Place(w.white, button, w.startX, BLIZZARD_INSET, SWATCH_WIDTH, height)
 		w.inner:SetColorTexture(unpack(swatch.blackColor))
@@ -244,6 +245,13 @@ local function LookToggle(w, state, blizzard)
 	if not w.check then w.check = MakeCheck(w) end
 	local box = w.check
 	LookCheckBox(box, blizzard, FIELD_HEIGHT, 'LEFT')
+	if blizzard then
+		-- The mouse over all of Blizzard's art, as an item's box has it
+		-- (optionsitem.lua), so a click on its edge never reaches the field.
+		local width, height = W.CheckArtSize(FIELD_HEIGHT)
+		local top = floor((height - CHECK_SIZE) / 2)
+		box:SetHitRectInsets(0, -(width - CHECK_SIZE), -top, -(height - CHECK_SIZE - top))
+	end
 	box:ClearAllPoints()
 	box:SetPoint('TOPLEFT', w.frame, 'TOPLEFT', CHECK_X, -floor((FIELD_HEIGHT - CHECK_SIZE) / 2))
 	box:Show()
@@ -410,6 +418,8 @@ define('color', {
 		local hasAlpha = self.hasAlpha
 		local function Current()
 			if self.root ~= root or self.row ~= row then return false end
+			local state = OM.ToggleState(root, row)
+			if state and not state.on then return false end -- turned off under the picker (a reset)
 			local r, g, b, a = self:Value()
 			return (r or 0) == self.r and (g or 0) == self.g and (b or 0) == self.b and (not hasAlpha or (a or 1) == self.a)
 		end

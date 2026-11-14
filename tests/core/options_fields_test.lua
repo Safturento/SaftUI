@@ -551,6 +551,7 @@ local function toggled_color(fields)
 		},
 	}))
 	log.on = function() return on end
+	log.set_on = function(v) on = v end
 	return w, told, log, root, row
 end
 
@@ -562,7 +563,7 @@ test('color with a toggle: a check box at the left of the field, 18 square on wh
 	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
 	check(w.check and w.check:IsShown(), 'a check box is drawn')
 	eq(size_of(w.check), '18x18', "the kit's check box size")
-	eq(H.insets(w.check, w.frame), '4,3,148,3', 'inside the field, 4 from its left, centred on its line')
+	eq(H.insets(w.check, w.frame), '4,3,148,3', 'inside the field, 4 from its left, centered on its line')
 	eq(w.check:GetChecked(), true, 'ticked')
 	check(w.check.mark:IsShown(), "with the kit's blue mark")
 	check(w.swatch:IsShown() and w.inner:IsShown() and w.line:IsShown(), 'the swatch is shown')
@@ -725,6 +726,100 @@ test('color with a toggle: every edge on a whole pixel, on or off, under Thick, 
 	end
 	stub.size_noise = 0
 	theme('thick')
+end)
+
+test('color with a toggle, Blizzard: the box takes the mouse over all of its art, so a click on the art never reaches the field; Thick and Thin keep the 18 square', function()
+	local w = toggled_color({ on = true })
+	w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard', 'thick' }) do
+		theme(name)
+		rebind(w)
+		local l, r, t, b = w.check:GetHitRectInsets()
+		if name == 'blizzard' then
+			local art = w.check.art.normal
+			check(w.check:GetLeft() + l <= art:GetLeft() + 0.01 and w.check:GetRight() - r >= art:GetRight() - 0.01
+				and w.check:GetTop() - t >= art:GetTop() - 0.01 and w.check:GetBottom() + b <= art:GetBottom() + 0.01,
+				name .. ': the hit rect covers the art (insets ' .. table.concat({ l, r, t, b }, ',') .. ')')
+		else
+			eq(table.concat({ l, r, t, b }, ','), '0,0,0,0', name .. ': the 18 square')
+		end
+	end
+	w:Release()
+end)
+
+test('color with a toggle: the swatch, the code and the word sit where the README says, under each look', function()
+	local want = {
+		thick = { inner = '31,1,99,1', fill = '32,2,100,2', code = 'LEFT LEFT 80 LEFT', word = 31 },
+		blizzard = { code = 'LEFT LEFT 81 LEFT', word = 33 },
+	}
+	want.thin = want.thick
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(name)
+		local w, _, log = toggled_color({ on = true })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		local expected = want[name]
+		if expected.inner then
+			eq(H.insets(w.inner, w.frame), expected.inner, name .. ': the swatch line at 31')
+			eq(H.insets(w.swatch, w.frame), expected.fill, name .. ': the color at 32')
+		else
+			eq(H.insets(w.white, w.frame):match('^(%d+),'), '33', name .. ': the white square at 33')
+			eq(H.insets(w.swatch, w.frame):match('^(%d+),'), '35', name .. ': the color at 35')
+		end
+		eq(code_place(w), expected.code, name .. ': the code')
+		w:Release()
+		w = toggled_color({ on = false })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		local _, _, _, x = w.text:GetPoint(1)
+		eq(x, expected.word, name .. ': the word starts where the swatch did')
+		w:Release()
+	end
+	theme('thick')
+end)
+
+test('color with a toggle: a row bound disabled gives the box no mouse; a row bound on a released box again does', function()
+	local w = bind('color', 'tint', opt('color', 'Tint', {
+		disabled = true, get = function() return 1, 1, 1, 1 end, set = function() end,
+		toggle = { get = function() return true end, set = function() end, offText = 'Class' },
+	}))
+	eq(w.check:IsMouseEnabled(), false, 'bound disabled: no mouse on the box')
+	eq(w.frame:IsMouseEnabled(), false, 'nor on the field')
+	w:Release()
+end)
+
+test("color with a toggle: releasing the field hides the box's tooltip", function()
+	local owner
+	local saved = _G.GameTooltip
+	_G.GameTooltip = {
+		SetOwner = function(_, frame) owner = frame end, ClearLines = function() end, AddLine = function() end, Show = function() end,
+		IsOwned = function(_, frame) return owner == frame end, Hide = function() owner = nil end,
+	}
+	local ok, err = pcall(function()
+		local w = toggled_color()
+		stub.fire_script(w.check, 'OnEnter', true)
+		eq(owner, w.check, 'shown')
+		w:Release()
+		eq(owner, nil, 'gone with the field')
+	end)
+	_G.GameTooltip = saved
+	if not ok then error(err, 0) end
+end)
+
+test('color with a toggle: Pick opens nothing while it is off, even called directly', function()
+	local w = toggled_color({ on = false })
+	w:Pick()
+	check(not W.ColorPickerShown(), 'no picker')
+	w:Release()
+end)
+
+test('color with a toggle: a toggle turned off under an open picker (a reset) closes it, and a later pick writes nothing', function()
+	local w, _, log = toggled_color({ on = true })
+	click(w.frame)
+	check(W.ColorPickerShown(), 'open')
+	log.set_on(false)
+	pick_color(1, 0, 0, 1)
+	check(not W.ColorPickerShown(), 'the pick finds the picker stale and closes it')
+	eq(#log.sets, 0, 'no color is written where nothing shows it')
+	w:Release()
 end)
 
 ------------------------------------------------------------------ execute

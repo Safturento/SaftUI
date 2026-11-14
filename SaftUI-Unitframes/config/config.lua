@@ -103,7 +103,8 @@ end
 -- oUF's color flags, as its health and power elements check them: the
 -- option's name and desc, and the kind of unit it needs (UF.CanShow), if any.
 -- status marks a grey the bar wears only in a state (offline, tapped), which
--- isn't what the bar normally falls back to.
+-- isn't what the bar normally falls back to. covers is the kinds of unit a
+-- color is for (UF.CanShow's players, npcs, pets); none means every kind.
 local COLOR_FLAGS = {
 	colorDisconnected = { name = 'Disconnected', shows = 'offline', status = true,
 		desc = 'Grey while the unit is offline.' },
@@ -111,11 +112,11 @@ local COLOR_FLAGS = {
 		desc = "Grey while someone else has tagged the unit, so it won't give you loot or experience." },
 	colorPower = { name = 'Power type',
 		desc = 'By the power the bar shows: blue for mana, red for rage, yellow for energy and so on.' },
-	colorClass = { name = 'Class', shows = 'players',
+	colorClass = { name = 'Class', shows = 'players', covers = { players = true },
 		desc = 'Players in their class color.' },
-	colorClassNPC = { name = 'NPC class', shows = 'npcs',
+	colorClassNPC = { name = 'NPC class', shows = 'npcs', covers = { npcs = true, pets = true },
 		desc = "Units that aren't players, pets included, in their class color." },
-	colorClassPet = { name = 'Pet class', shows = 'pets',
+	colorClassPet = { name = 'Pet class', shows = 'pets', covers = { pets = true },
 		desc = "Pets and other units players control, in their class color." },
 	colorReaction = { name = 'Reaction',
 		desc = 'By how the unit stands with you: red when hostile, yellow when neutral, green when friendly.' },
@@ -206,6 +207,8 @@ function UF.CustomColorOption(order, spec)
 			differs = function()
 				local settings = config()
 				if (settings.colorCustom and true or false) ~= (Default('colorCustom') and true or false) then return true end
+				-- Unticked, the color isn't shown, so it isn't a difference.
+				if not settings.colorCustom then return false end
 				local r, g, b = UF.UnpackColor(settings.customColor)
 				local dr, dg, db = UF.UnpackColor(Default('customColor'))
 				return not (Near(r, dr) and Near(g, dg) and Near(b, db))
@@ -235,10 +238,12 @@ end
 	the element's config through the tab's get and set; descs overrides a
 	flag's desc. element is the config's key for the element ('health'), for the
 	row's defaults. config() returns the element's config, and update()
-	re-applies it. The check box's word, while it's unticked, is the first color
-	above that is on and fits the unit, which is the one the bar takes (Default
-	when none is on); Disconnected and Tapped are left out, as the bar wears
-	them only while the unit is offline or tapped.
+	re-applies it. The check box's word, while it's unticked, names the colors
+	above that are on and the bar can take for this unit, in the order oUF checks
+	them, up to the first that colors every kind of unit the frames show: "Class
+	or reaction" on a target (Class colors players, Reaction the rest), "Class"
+	on a party frame. Disconnected and Tapped are left out, as the bar wears them
+	only while the unit is offline or tapped. Default when none is on.
 ]]
 function UF.GenerateColorsConfigGroup(order, unit, element, flags, config, update, descs)
 	local G = st.Config.generators
@@ -254,10 +259,31 @@ function UF.GenerateColorsConfigGroup(order, unit, element, flags, config, updat
 	end
 	local function OffText()
 		local settings = config()
-		for _, key in ipairs(shown) do
-			if settings[key] and not COLOR_FLAGS[key].status then return COLOR_FLAGS[key].name end
+		-- The kinds of unit this unit's frames can show, not yet colored by a flag above.
+		local remaining = {}
+		for _, kind in ipairs({ 'players', 'npcs', 'pets' }) do
+			if UF.CanShow(unit, kind) then remaining[kind] = true end
 		end
-		return 'Default'
+		local names = {}
+		for _, key in ipairs(shown) do
+			local flag = COLOR_FLAGS[key]
+			if settings[key] and not flag.status then
+				local covers = flag.covers
+				local reaches = false
+				for kind in pairs(remaining) do
+					if not covers or covers[kind] then reaches = true end
+				end
+				if reaches then
+					names[#names + 1] = #names == 0 and flag.name
+						or (flag.name:sub(2, 2):match('%u') and flag.name or flag.name:sub(1, 1):lower() .. flag.name:sub(2))
+					if not covers then break end
+					for kind in pairs(covers) do remaining[kind] = nil end
+					if next(remaining) == nil then break end
+				end
+			end
+		end
+		if #names == 0 then return 'Default' end
+		return table.concat(names, ' or ')
 	end
 	args.custom = {
 		order = i + 1,

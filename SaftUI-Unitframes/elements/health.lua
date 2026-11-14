@@ -9,26 +9,6 @@ local function getHealthPercentText(perc, precision)
 	return floor(perc)
 end
 
--- Short's form of the health: 12.5K, 1.2M, 1.2B, one decimal from a thousand
--- up, as LibStringFormat's ShortFormat writes it. The game's AbbreviateNumbers
--- writes it: it takes a secret number from an addon (SecretArguments
--- AllowedWhenTainted in LocalizationDocumentation.lua, on both clients) and
--- gives back a secret string, which SetText shows. The letters are written as
--- they are, not looked up as the game's strings.
-local SHORT = {
-	breakpointData = {
-		{ breakpoint = 1e9, abbreviation = 'B', significandDivisor = 1e8, fractionDivisor = 10, abbreviationIsGlobal = false },
-		{ breakpoint = 1e6, abbreviation = 'M', significandDivisor = 1e5, fractionDivisor = 10, abbreviationIsGlobal = false },
-		{ breakpoint = 1e3, abbreviation = 'K', significandDivisor = 1e2, fractionDivisor = 10, abbreviationIsGlobal = false },
-	},
-}
-
--- The abbreviated form of a number, as the Short options of the health and
--- power texts show it (power.lua and additionalpower.lua call this too).
-function UF.ShortNumber(value)
-	return AbbreviateNumbers(value, SHORT)
-end
-
 -- A secret health (enemy nameplates in restricted content) can't be
 -- subtracted, divided or compared here: the game works out what the text
 -- shows, and only the text that's shown is worked out.
