@@ -271,21 +271,51 @@ local function CopyNames(self, unit)
 	return names
 end
 
+-- Why unit's position can't be the one unit from has, or nil when it can. The
+-- position anchors the unit's frame (a group's holder) to a frame, and one that
+-- is the unit's own frame, or is anchored back to it, would place the frame on
+-- itself: the game refuses that (and the Position editor does too, through the
+-- same st:ValidateAnchor). The text is a sentence for the player. Nil too while
+-- the unit's frame isn't spawned (nothing to be anchored to or from).
+function UF:PositionCopyProblem(unit, from)
+	local frame = self:GetMoverFrame(unit)
+	local position = self:GetProfileConfig()[from].position
+	local relative = type(position) == 'table' and position.frame
+	-- No frame named: the game places it on UIParent.
+	if not frame or not relative or relative == '' then return nil end
+	local resolved = st:ResolveFrame(relative)
+	if resolved ~= nil and resolved == frame then
+		return UnitName(from) .. ' is anchored to ' .. UnitName(unit) .. '.'
+	end
+	local ok, why = st:ValidateAnchor(frame, relative)
+	if ok then return nil end
+	return why .. '.'
+end
+
 -- Copies each of keys' value from unit from onto unit, in the profile in use,
 -- as Copy from does: a deep copy of each (a missing one leaves the key absent).
--- The old values are copied first, then the unit frames update, then ONE step
--- goes in edit mode's history: 'Copied <from> to <unit>', with a change for
--- each key whose value changed, so a single Undo puts every one back. Returns
--- the step, or nil when no key changed (or there is no history).
+-- The position is left out when it can't be unit's (PositionCopyProblem): it
+-- is never written, and never in the history. The old values are copied first,
+-- then the unit frames update, then ONE step goes in edit mode's history:
+-- 'Copied <from> to <unit>', with a change for each key whose value changed, so
+-- a single Undo puts every one back. Returns the step, or nil when no key
+-- changed (or there is no history); and, second, the sentence that says why the
+-- position wasn't copied, when it wasn't.
 function UF:CopySettings(unit, from, keys)
 	local profile = self:GetProfile()
 	local config = self:GetProfileConfig()
+	local skipped
 	local changes = {}
 	for _, key in ipairs(keys) do
-		changes[#changes + 1] = {
-			kind = 'ufsetting', where = { profile = profile, unit = unit, key = key },
-			old = CopyValue(config[unit][key]),
-		}
+		local problem = key == 'position' and self:PositionCopyProblem(unit, from)
+		if problem then
+			skipped = "Position wasn't copied: " .. problem
+		else
+			changes[#changes + 1] = {
+				kind = 'ufsetting', where = { profile = profile, unit = unit, key = key },
+				old = CopyValue(config[unit][key]),
+			}
+		end
 	end
 	for _, change in ipairs(changes) do
 		local key = change.where.key
@@ -294,10 +324,10 @@ function UF:CopySettings(unit, from, keys)
 	end
 	self:UpdateConfig()
 	local history = History()
-	if not history or #changes == 0 then return nil end
+	if not history or #changes == 0 then return nil, skipped end
 	return history:Push({
 		kind = 'bulk', label = 'Copied ' .. UnitName(from) .. ' to ' .. UnitName(unit), changes = changes,
-	})
+	}), skipped
 end
 
 -- The Copy from dialog: copies the ticked settings of another unit (in the
@@ -325,6 +355,20 @@ function UF:OpenCopyTable(unit)
 			settingArgs[key] = st.Config.generators.toggle(0, names[key],
 				'Copies this setting from the other unit frame onto this one.')
 		end
+	end
+	-- Position, while the chosen unit frame's can't be this one's (it is
+	-- anchored to this frame, or through others): shown disabled, with why.
+	local function PositionProblem()
+		if not (copy.from and copy.settings.position ~= nil) then return nil end
+		local problem = UF:PositionCopyProblem(unit, copy.from)
+		return problem and "Can't copy Position: " .. problem
+	end
+	if settingArgs.position then
+		settingArgs.position.disabled = function() return PositionProblem() ~= nil end
+		settingArgs.position.disabledDesc = function() return PositionProblem() end
+	end
+	local function Ticked(key)
+		return copy.settings[key] and not (key == 'position' and PositionProblem())
 	end
 	local function SetAll(value)
 		for key in pairs(copy.settings) do copy.settings[key] = value end
@@ -376,7 +420,7 @@ function UF:OpenCopyTable(unit)
 				name = 'Settings',
 				type = 'group',
 				inline = true,
-				get = function(info) return copy.settings[info[#info]] end,
+				get = function(info) return Ticked(info[#info]) or false end,
 				set = function(info, value) copy.settings[info[#info]] = value end,
 				args = settingArgs,
 			},
@@ -393,13 +437,15 @@ function UF:OpenCopyTable(unit)
 				end,
 				func = function()
 					local keys = {}
-					for key, ticked in pairs(copy.settings) do
-						if ticked then keys[#keys + 1] = key end
+					for key in pairs(copy.settings) do
+						if Ticked(key) then keys[#keys + 1] = key end
 					end
 					table.sort(keys)
-					UF:CopySettings(unit, copy.from, keys)
+					local _, skipped = UF:CopySettings(unit, copy.from, keys)
 					st.Config:Refresh()
 					st.OptionsWindow:CloseDialog()
+					-- Only when the position changed between the dialog's check and the click.
+					if skipped then st.OptionsWindow:SetStatus(skipped) end
 				end,
 			},
 			cancel = {
