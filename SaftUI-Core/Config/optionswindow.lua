@@ -613,6 +613,16 @@ local function PlaceFooter()
 	for _, widget in ipairs(widgets) do widgetsWidth = widgetsWidth + widget:GetWidth() end
 	local regionWidth = floor(region:GetWidth() + 0.5)
 	local x, labelShown = OW.FooterPlace(regionWidth, labelWidth, widgetsWidth)
+	-- A control the region can't hold is hidden (it would hang out over the
+	-- sidebar): at half under Thick and Thin the unit frames' profile control
+	-- (258) is wider than the region (188). Temporary: it moves to the Unit
+	-- dropdown's line in Task 7 of the sizes plan.
+	if x < 0 then
+		control:Hide()
+		status:SetPoint('RIGHT', region, 'RIGHT', 0, 0)
+		status:Show()
+		return
+	end
 	if (status:GetText() or '') ~= '' then
 		x, labelShown = regionWidth - widgetsWidth, false
 		if x - FOOTER_GAP <= 0 then

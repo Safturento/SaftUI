@@ -144,6 +144,8 @@ test('W.IconButton takes a size and an icon size: the close X\'s 24 with a 20 ic
 	check(not ok and tostring(err):find('whole', 1, true), 'an odd margin is refused: ' .. tostring(err))
 	ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 24, 'big')
 	check(not ok, 'a size that is no number is refused')
+	ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 24, 20, function() end)
+	check(not ok and tostring(err):find('takes no click', 1, true), 'a sixth argument (a click) is refused')
 	ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 24, function() end)
 	check(not ok and tostring(err):find('takes no click', 1, true), 'a function where a click used to go is still refused')
 end)

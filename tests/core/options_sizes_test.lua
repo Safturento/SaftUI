@@ -733,3 +733,108 @@ test("whole pixels at full and at half, and the small dialog and an item's menu 
 	close_all()
 	eq(#take_errors(), 0, 'no errors')
 end)
+
+------------------------------------------------------------------ fix round 1
+
+test("at half the unit frames' profile control hides where its region can't hold it, and never overlaps the sidebar", function()
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(name)
+		st.config.global.optionsWindow = nil
+		st.Config:Close(); st.Config:Open('Unitframes', 'player', 'general')
+		local F = frames()
+		local where = name .. ': '
+		local function widths() local w = 0; for _, wd in ipairs(F.footerWidgets) do w = w + wd:GetWidth() + 8 end return w - 8 end
+		check(F.footerControl:IsShown(), where .. 'full: shown')
+		wait(); click(F.shrink)
+		local room = F.footerRegion:GetRight() - F.footerRegion:GetLeft()
+		if widths() > room then
+			check(not F.footerControl:IsShown(), where .. 'half: too wide for ' .. room .. ', hidden')
+		else
+			check(F.footerControl:IsShown(), where .. 'half: it fits, shown')
+		end
+		if name ~= 'blizzard' then
+			check(not F.footerControl:IsShown(), where .. 'under Thick and Thin the 258 does not fit 188')
+			check(F.footerControl:GetLeft() >= F.main:GetLeft() or not F.footerControl:IsShown(), where .. 'never over the sidebar')
+		else
+			check(F.footerControl:IsShown(), where .. 'under Blizzard it fits')
+		end
+		check(F.status:IsShown(), where .. 'the status line has the region')
+		wait(); click(F.grow)
+		check(F.footerControl:IsShown(), where .. 'back at full: shown again')
+		st.config.global.optionsWindow = nil
+		close_all()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the half body is one column: a normal row takes a line of its own, at full it shares one', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	local function line_of(key) return H.cell(key).frame:GetTop() end
+	eq(line_of('enable'), line_of('width'), 'full: two normal rows on one line')
+	wait(); click(F.shrink)
+	check(line_of('enable') ~= line_of('width'), 'half: each on its own line')
+	check(H.cell('width').frame:GetWidth() > 194, 'half: a normal row is wider than a half of the half body')
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test("under Blizzard the footer's region sits on the buttons' middle line", function()
+	theme('blizzard')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	for _, size in ipairs({ 'full', 'half' }) do
+		if size == 'half' then wait(); click(F.shrink) end
+		eq(select(2, F.footerRegion:GetCenter()), select(2, F.closeButton:GetCenter()), size .. ': region on the buttons\' line')
+		local _, _, _, _, y = F.footerRegion:GetPoint(1)
+		eq(y, 6, size .. ': its left anchor carries the 6 that puts it on the buttons\' line (the footer\'s middle is 6 under it)')
+	end
+	st.config.global.optionsWindow = nil
+	close_all()
+	theme('thick')
+end)
+
+test('a collapsed sidebar (a saved one, until Task 5) hides the list part of the inner frame and starts the main column at the sidebar\'s place', function()
+	theme('blizzard')
+	st.config.global.optionsWindow = { sidebar = false }
+	st.Config:Close(); st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	check(not F.innerList:IsShown(), 'no list part')
+	check(F.innerSettings:IsShown(), 'the settings part stays')
+	check(not F.side:IsShown(), 'no sidebar')
+	eq(F.main:GetLeft() - F.window:GetLeft(), OW.LAYOUT.blizzard.sideX, 'the main column at the sidebar\'s place')
+	st.config.global.optionsWindow = nil
+	close_all()
+	theme('thick')
+end)
+
+test('a cell that never got its place does not stop a size change from drawing', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Many')
+	local rows = OW.GetDrawnRows()
+	rows[#rows + 1] = { row = { path = { 'x' } }, height = 10 } -- no y, as a cell a failed draw leaves
+	wait()
+	eq(OW:SetWindowSize('half'), true, 'it changes')
+	eq(frames().window:GetWidth(), 654, 'and the window follows')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('the arrows carry no reason the brief does not give: none for a size that fits; Task 4 owns the bar\'s', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.")
+	set_screen(300, 768) -- not even half fits
+	OW:Render()
+	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.", 'no invented red line')
+	reset_screen()
+	st.config.global.optionsWindow = nil
+	close_all()
+end)

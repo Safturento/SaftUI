@@ -73,9 +73,8 @@ local function Reasons(size)
 	if S.ColorPickerShown() then
 		lines[#lines + 1] = { text = 'Close the color picker first.', red = true }
 	end
-	if size and not OW.Fits(S.layout, size, S.sidebar) then
-		lines[#lines + 1] = { text = size == 'full' and 'The screen is too narrow for the full window.'
-			or 'The screen is too narrow for this size.', red = true }
+	if size == 'full' and not OW.Fits(S.layout, size, S.sidebar) then
+		lines[#lines + 1] = { text = 'The screen is too narrow for the full window.', red = true }
 	end
 	return lines
 end
@@ -94,9 +93,6 @@ local function ShrinkTip()
 end
 
 local function GrowTip()
-	if S.size == 'mini' then
-		return WithReasons('Grow to half', 'The page in one column.', 'half')
-	end
 	return WithReasons('Grow to full', 'The page in two columns.', 'full')
 end
 

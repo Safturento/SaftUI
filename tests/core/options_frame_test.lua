@@ -441,8 +441,8 @@ for _, look in ipairs({ 'thick', 'blizzard' }) do
 		check(label:IsShown(), 'the label comes back when the status clears')
 		eq(from_left(label), centred, 'the control is centred again')
 
-		-- A region narrower than the widgets and the gap (never so in the window as
-		-- it is built): the control hides for the error, the status line takes it all.
+		-- A region narrower than the widgets and the gap (so at half under Thick and
+		-- Thin, where the profile control is hidden for it): the control hides for the error, the status line takes it all.
 		local bare = last:GetRight() - widgets[1].frame:GetLeft()
 		local anchors = anchors_of(region)
 		anchor_to(region, { anchors[1] })

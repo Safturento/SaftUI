@@ -266,9 +266,9 @@ end
 -- lower while the button is pressed (never the size). Set button.onClick for
 -- what a click does. tip, function(button) -> title, lines, is required: an
 -- icon says nothing.
-function W.IconButton(parent, icon, tip, size, iconSize)
+function W.IconButton(parent, icon, tip, size, iconSize, extra)
 	if not tip then error('W.IconButton needs its tooltip') end
-	if type(tip) ~= 'function' or (size ~= nil and type(size) ~= 'number') or (iconSize ~= nil and type(iconSize) ~= 'number') then
+	if extra ~= nil or type(tip) ~= 'function' or (size ~= nil and type(size) ~= 'number') or (iconSize ~= nil and type(iconSize) ~= 'number') then
 		error('W.IconButton(parent, icon, tip, size, iconSize) takes no click: set button.onClick')
 	end
 	size, iconSize = size or BUTTON_HEIGHT, iconSize or ICON

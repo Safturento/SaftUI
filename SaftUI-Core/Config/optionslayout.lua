@@ -153,16 +153,16 @@ end
 ------------------------------------------------------------------ the footer control
 
 -- How far the status line keeps from a page's footer control (optionswindow.lua),
--- and the footer's region from Reload UI and Close: 12.
+-- and the footer's region from Reload UI: 12.
 local FOOTER_GAP = 12
 
 --[[
-	Where a page's footer control sits in the footer's region (between Reload
-	UI and Close), regionWidth wide. labelWidth is its label's, with the gap
+	Where a page's footer control sits in the footer's region (left of Reload
+	UI), regionWidth wide. labelWidth is its label's, with the gap
 	after it; widgetsWidth its widgets', in a line. Returns the control's left
 	edge in the region, and whether its label shows:
 	  - centred, while it fits;
-	  - else at the region's right end, beside Close, without its label: the
+	  - else at the region's right end, beside Reload UI, without its label: the
 	    label goes first, and the widgets stay there, however narrow the
 	    region is.
 	Whole pixels: the centre is rounded down.
@@ -330,7 +330,7 @@ OW.SIZE_GUARD = 0.3
 function OW.FirstInView(cells, offset)
 	for _, cell in ipairs(cells) do
 		local path = cell.row and cell.row.path
-		if path and cell.y + cell.height > offset then return path, offset - cell.y end
+		if path and cell.y and cell.y + cell.height > offset then return path, offset - cell.y end
 	end
 end
 
