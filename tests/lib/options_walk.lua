@@ -4,13 +4,16 @@
 --
 --   each_option(tree, fn)  calls fn(option, path) for every option under tree
 --                          (a group: its args, their args, ...), groups
---                          included, in key order. path is the list of keys
---                          from tree down to the option.
+--                          included, in key order, and an option's menu (an
+--                          item's, a group) after it, with its options: the
+--                          menu's path goes on through the item's key and
+--                          'menu' ({ ..., 'hotkey', 'menu', 'size' }). path is
+--                          the list of keys from tree down to the option.
 --   ace_ready(tree)        a copy of tree that AceConfigRegistry-3.0's
 --                          validator can check: SaftUI's own fields
 --                          (category, size, target, nameKey, pickerLabel,
 --                          align, disabledDesc, justifyH, fill, footer,
---                          share) are left off
+--                          share, menu, menuTitle) are left off
 --                          every option, and the options of SaftUI's own types
 --                          (SAFTUI_TYPES) are left out. AceConfig knows neither, so
 --                          its validator rejects them; everything else in the
@@ -19,15 +22,16 @@
 --                          down; other members (values, handlers, functions)
 --                          are shared, and tree itself is untouched.
 --   SAFTUI_TYPES           SaftUI's own option types, which only its options
---                          window draws: position, and the types the bags
---                          define with W.Define (optionswidgets.lua).
+--                          window draws: position, item (optionsitem.lua), and
+--                          the types the bags define with W.Define
+--                          (optionswidgets.lua).
 
 local SAFTUI_FIELDS = {
 	category = true, size = true, target = true, nameKey = true, pickerLabel = true, align = true,
-	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true,
+	disabledDesc = true, justifyH = true, fill = true, footer = true, share = true, menu = true, menuTitle = true,
 }
 
-SAFTUI_TYPES = { position = true, bagcategories = true, bagrule = true, bagitems = true }
+SAFTUI_TYPES = { position = true, item = true, bagcategories = true, bagrule = true, bagitems = true }
 
 local function SortedKeys(args)
 	local keys = {}
@@ -46,6 +50,14 @@ local function Walk(group, fn, path)
 		fn(option, childPath)
 		if type(option) == 'table' and option.type == 'group' then
 			Walk(option, fn, childPath)
+		end
+		-- An item's menu: a group of its own, under the item's key and 'menu'.
+		if type(option) == 'table' and type(option.menu) == 'table' then
+			local menuPath = {}
+			for i, k in ipairs(childPath) do menuPath[i] = k end
+			menuPath[#menuPath + 1] = 'menu'
+			fn(option.menu, menuPath)
+			Walk(option.menu, fn, menuPath)
 		end
 	end
 end

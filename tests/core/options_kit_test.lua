@@ -434,7 +434,7 @@ test("ace_ready leaves out SaftUI's own types", function()
 	local names = {}
 	for rowType in pairs(SAFTUI_TYPES) do names[#names + 1] = rowType end
 	table.sort(names)
-	eq(table.concat(names, ','), 'bagcategories,bagitems,bagrule,position', 'SAFTUI_TYPES')
+	eq(table.concat(names, ','), 'bagcategories,bagitems,bagrule,item,position', 'SAFTUI_TYPES')
 
 	local function Validate(page)
 		return pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
@@ -477,6 +477,32 @@ test("ace_ready leaves out SaftUI's own types", function()
 		check(not ok and tostring(err):find(rowType, 1, true) ~= nil, rowType .. ' is unknown to it: ' .. tostring(err))
 		check(Validate(ace_ready(one)), rowType .. ': passes once left out')
 	end
+end)
+
+test("ace_ready leaves an item out, menu and all; each_option walks into an item's menu", function()
+	local AceConfigRegistry = LibStub('AceConfigRegistry-3.0')
+	local page = { type = 'group', name = 'Page', args = {
+		on = { type = 'toggle', name = 'On' },
+		hotkey = { type = 'item', name = 'Hotkey', menuTitle = 'Hotkey text', size = 'small',
+			menu = { type = 'group', name = 'Hotkey', args = {
+				size = { type = 'range', name = 'Size', min = 1, max = 2 },
+				inner = { type = 'group', inline = true, name = 'Inner', args = { keep = { type = 'toggle', name = 'Keep' } } },
+			} } },
+	} }
+	local ready = ace_ready(page)
+	eq(ready.args.hotkey, nil, 'the item left out')
+	check(pcall(AceConfigRegistry.ValidateOptionsTable, AceConfigRegistry,
+		{ name = st.name, type = 'group', args = { Page = ready } }, st.name), 'AceConfigRegistry passes the copy')
+	-- menu and menuTitle are SaftUI's fields, left off any option.
+	local plain = { type = 'toggle', name = 'Plain', menu = {}, menuTitle = 'x' }
+	local copy = ace_ready({ type = 'group', name = 'P', args = { plain = plain } }).args.plain
+	eq(copy.menu, nil, 'menu left off any option')
+	eq(copy.menuTitle, nil, 'and menuTitle')
+
+	local paths = {}
+	each_option(page, function(option, path) paths[#paths + 1] = table.concat(path, '.') end)
+	eq(table.concat(paths, ','), 'hotkey,hotkey.menu,hotkey.menu.inner,hotkey.menu.inner.keep,hotkey.menu.size,on',
+		"its menu, through the item's key and 'menu', all the way down")
 end)
 
 test("ace_ready leaves off SaftUI's own fields, disabledDesc, justifyH, fill and share among them", function()

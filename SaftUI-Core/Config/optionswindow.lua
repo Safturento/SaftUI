@@ -30,6 +30,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	                        a small dialog over the window for an option table
 	                        of its own (UF's Copy from and its unit frame
 	                        profiles; optionssmalldialog.lua)
+	  OW:OpenMenu(widget), OW:CloseMenu(body), OW:IsMenuShown(widget)
+	                        an item's menu (optionsmenu.lua)
 
 	The window (drawn as a window in SaftUI's theme with a solid background,
 	FULLSCREEN_DIALOG, so edit mode's outlines draw under it), laid out in one
@@ -71,8 +73,14 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	Search waits for typing to pause (SEARCH_DELAY), then shows OM.Search's
 	results as a page of sections (page > tabs, then the section); clicking one
-	opens its page and brings the row into view. Going to a page, tab or pick
-	clears the search, one still waiting for the typing to pause too.
+	opens its page and brings the row into view. A result in an item's menu
+	(menu) brings the item into view and opens its menu at the end of the
+	draw, once the scroll is set. Going to a page, tab or pick clears the
+	search, one still waiting for the typing to pause too.
+
+	An item's menu (optionsmenu.lua) follows its item through each render
+	(S.FollowMenu, after the dialog's), and closes with the window, on
+	OW:Navigate (a search result's too) and on a tab or pick (Select).
 
 	A page's footer control is its group's footer (SaftUI's field,
 	OM.BuildView's view.footer): a group whose options are drawn in the
@@ -91,8 +99,8 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 
 	Esc closes the window through a SaftUI keyboard catcher that is on only
 	while the window is shown (not Blizzard's UISpecialFrames). It passes every
-	other key on, and Esc too while a box has the keyboard, the dialog is
-	shown or Blizzard's color picker is open. In combat it does
+	other key on, and Esc too while a box has the keyboard, the dialog or an
+	item's menu is shown or Blizzard's color picker is open. In combat it does
 	nothing (SetPropagateKeyboardInput is protected); the window is closed then
 	anyway (st.Config's PLAYER_REGEN_DISABLED), and opening refuses.
 
@@ -103,8 +111,9 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	optionslayout.lua (OW.LAYOUT, the sidebar's width and entries, the
 	window's height; it makes OW and OW.S), this one, then
 	optionsresize.lua (growing taller), optionsnav.lua (the sidebar, the
-	tabs and the picker) and optionssmalldialog.lua (OW:OpenDialog). OW.S
-	holds what they share (optionslayout.lua says how).
+	tabs and the picker), optionssmalldialog.lua (OW:OpenDialog) and
+	optionsmenu.lua (OW:OpenMenu). OW.S holds what they share
+	(optionslayout.lua says how).
 ]]
 
 local OW = st.OptionsWindow
@@ -158,6 +167,8 @@ local rendering, pending, dragging = false, false, false
 S.sizing = nil -- the resize under way (StartResize), or nil
 local searchDue -- seconds until the search runs
 local focusPath -- a search result's path, brought into view by the next render
+local focusMenu -- that result is in the item's menu: open it once drawn
+local menuFor -- the item widget whose menu the render opens at its end (focusMenu)
 local contentHeight = 0
 S.scrollOffset, S.navOffset, S.navHeight = 0, 0, 0
 S.filledTo = nil -- the view height the last page's fill rows were drawn to, or nil
@@ -176,6 +187,11 @@ local Colors, Normal, Grey, Blue = OB.Colors, OB.Normal, OB.Grey, OB.Blue
 
 -- Whether Blizzard's color picker is open (its keys and its changes are its).
 local function ColorPickerShown() return ColorPickerFrame and ColorPickerFrame:IsShown() end
+
+-- An item's menu (optionsmenu.lua, loaded after this file): whether one is
+-- shown, and closing it.
+local function MenuShown() return OW.IsMenuShown ~= nil and OW:IsMenuShown() end
+local function CloseMenu() if OW.CloseMenu then OW:CloseMenu() end end
 
 -- The Esc catcher of the window and of its small dialog: a frame, shown only
 -- with its owner, that closes it on Esc. A box's keys and the owner's own
@@ -396,14 +412,15 @@ end
 -- A search result: its page, picker and tabs, with the row brought into view.
 -- A footer's result opens its page as it is: the footer isn't in the picker or
 -- the tabs, so the page's own pick and tab stay, and its key can't match one.
-local function GoTo(path, footer)
+-- A result in an item's menu (menu) opens the menu too, once drawn.
+local function GoTo(path, footer, menu)
 	if footer then
 		if path[1] then OW:Navigate(path[1]) end
 		return
 	end
 	local pageKey, selection = OM.SelectionForPath(root, path)
 	if not pageKey then return end
-	focusPath = path
+	focusPath, focusMenu = path, menu and true or nil
 	OW:Navigate(pageKey, selection)
 end
 
@@ -414,6 +431,7 @@ local function Select(slot, key)
 	state.selections[state.page] = selection
 	selection[slot] = key
 	if state.search ~= '' or searchDue then ClearSearch() end
+	CloseMenu()
 	S.scrollOffset = 0
 	OW:SetStatus(nil)
 	OW:Render()
@@ -555,14 +573,17 @@ local function SamePath(a, b)
 end
 
 -- A search result's row, once its page is drawn: scrolled to and marked blue.
+-- A result in an item's menu leaves the item's widget in menuFor, for Draw
+-- to open its menu once the scroll is set.
 local function BringIntoView()
-	local path = focusPath
-	focusPath = nil
+	local path, menu = focusPath, focusMenu
+	focusPath, focusMenu = nil, nil
 	if not path then return end
 	for _, cell in ipairs(pageBody.cells) do
 		if cell.row.path and SamePath(cell.row.path, path) then
 			S.scrollOffset = max(0, cell.y - ROW_HEIGHT)
 			cell.label:SetTextColor(Colors().text.blue:GetRGB())
+			if menu then menuFor = cell.widget end
 			return
 		end
 	end
@@ -643,9 +664,12 @@ local function DrawSearch(pages)
 			last = { title = title, note = result.sectionTitle, rows = {} }
 			sections[#sections + 1] = last
 		end
-		last.rows[#last.rows + 1] = { key = result.path[#result.path], name = result.name, size = 'normal', path = result.path, footer = result.footer }
+		last.rows[#last.rows + 1] = {
+			key = result.path[#result.path], name = result.name, size = 'normal', path = result.path,
+			footer = result.footer, menu = result.menu,
+		}
 	end
-	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path, row.footer) end)
+	contentHeight = pageBody:DrawResults(sections, function(row) GoTo(row.path, row.footer, row.menu) end)
 	if count == 0 then Placeholder(format('No settings match "%s".', state.search)) end
 end
 
@@ -783,11 +807,18 @@ local function Draw()
 		end
 	end
 	S.DrawSidebar(entries)
+	menuFor = nil
 	if state.search ~= '' and results then DrawSearch(pages) else DrawPage() end
 	PlaceFooter()
 	F.content:SetHeight(max(1, contentHeight))
 	F.body:UpdateScrollChildRect()
 	SetScroll(S.scrollOffset)
+	-- A search result's item: its menu, now its dots are where they stay.
+	if menuFor then
+		local widget = menuFor
+		menuFor = nil
+		if widget.OpenMenu then widget:OpenMenu() end
+	end
 end
 
 ------------------------------------------------------------------ the frame
@@ -811,6 +842,7 @@ local function OnHide()
 	W.CloseList()
 	W.CancelConfirm()
 	OW:SetStatus(nil)
+	CloseMenu()
 	OW:CloseDialog()
 	if st.EditModeFrames then st.EditModeFrames:UpdateFooter() end
 end
@@ -1041,8 +1073,9 @@ local function Build()
 	S.BuildResize(window)
 
 	-- Esc, only while the window is shown. The dialog's Esc is its own (its
-	-- catcher, in optionssmalldialog.lua, closes it).
-	F.keys = EscapeKeys(window, function() return OW:IsDialogShown() end, function() OW:Close() end)
+	-- catcher, in optionssmalldialog.lua, closes it), and so is an item's
+	-- menu's (optionsmenu.lua).
+	F.keys = EscapeKeys(window, function() return OW:IsDialogShown() or MenuShown() end, function() OW:Close() end)
 
 	-- The frame clock: deferred renders and the search's wait. Shown only
 	-- while one is due.
@@ -1122,6 +1155,7 @@ function OW:Navigate(pageKey, selection)
 	state.page = pageKey
 	if selection then state.selections[pageKey] = Copy(selection) end
 	if state.search ~= '' or searchDue then ClearSearch() end
+	CloseMenu()
 	S.scrollOffset = 0
 	self:SetStatus(nil)
 	self:Render()
@@ -1129,11 +1163,13 @@ end
 
 -- Draws the page (or search results) again from the model, and an open
 -- dialog with it (optionssmalldialog.lua): what changed the tree may be its.
+-- Then an open item's menu follows its item (optionsmenu.lua).
 function OW:Render()
 	if rendering or not self:IsShown() or not root then return end
 	rendering, pending = true, false
 	xpcall(Draw, geterrorhandler())
 	xpcall(S.FollowDialog, geterrorhandler())
+	if S.FollowMenu then xpcall(S.FollowMenu, geterrorhandler()) end
 	rendering = false
 	renders = renders + 1
 end

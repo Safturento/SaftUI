@@ -421,6 +421,7 @@ function options_widget_files()
 		'SaftUI-Core/Config/optionsrange.lua',
 		'SaftUI-Core/Config/optionsselect.lua',
 		'SaftUI-Core/Config/optionskeybinding.lua',
+		'SaftUI-Core/Config/optionsitem.lua',
 		'SaftUI-Core/Config/optionsposition.lua',
 	}
 end
@@ -443,6 +444,7 @@ function options_window_files()
 		'SaftUI-Core/Config/optionsresize.lua',
 		'SaftUI-Core/Config/optionsnav.lua',
 		'SaftUI-Core/Config/optionssmalldialog.lua',
+		'SaftUI-Core/Config/optionsmenu.lua',
 	}
 end
 

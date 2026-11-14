@@ -1,0 +1,303 @@
+local st = SaftUI
+local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
+
+--[[
+	An item's menu (the item: optionsitem.lua; its option's fields:
+	optionsmodel.lua's header): OW:OpenMenu, OW:CloseMenu, OW:IsMenuShown,
+	OW.MenuPlace and OW.GetMenuFrames on SaftUI's options window
+	(st.OptionsWindow, optionswindow.lua). It loads after
+	optionssmalldialog.lua (Config/load.xml), modelled on its small dialog,
+	and takes what it needs from OW.S; the window's render draws it again
+	through S.FollowMenu, after S.FollowDialog.
+
+	  OW:OpenMenu(widget) -> boolean
+	      opens the menu of an item widget (its row's option's menu, a group),
+	      closing any open one first. false in combat, or when the row has no
+	      menu. It remembers the item as { body = widget.rowBody, path =
+	      widget.row.path }, the body that drew it (the window's page or the
+	      small dialog's) and its path there.
+	  OW:CloseMenu(body)   closes it; with body, only when its item is in it
+	  OW:IsMenuShown(widget) -> boolean
+	      whether it's shown; with widget, whether it's that item's
+	  OW.MenuPlace(anchor, width, height, screenWidth, screenHeight)
+	      -> point, relPoint, x, y: where a menu width x height goes by the
+	      dots (anchor = { left, right, top, bottom }, their rect, in the
+	      menu's units): its TOPRIGHT on the dots' BOTTOMRIGHT, 4 below; its
+	      left edge past the screen's, TOPLEFT on BOTTOMLEFT instead (unless
+	      that goes further past its right); its bottom past the screen's,
+	      above (BOTTOM* on TOP*, 4 above) when there's more room there.
+	  OW.GetMenuFrames() -> { frame, catcher, title, content, body, keys,
+	      owner = { body, path } } (owner nil while closed), for tests.
+
+	The menu: a frame over UIParent at FULLSCREEN_DIALOG, level 410 (over the
+	small dialog's 300), 400 wide, drawn as the small dialog is
+	(st:SetTemplate(frame, 'theme', 'solid', 'panel'): under Blizzard the
+	panel art), kept in the screen edge margin. Its title (the item's
+	menuTitle, else its name; the section font, grey) 12 in and 10 down;
+	under it a plain content frame (no scroll frame: it is as tall as what it
+	holds, so nothing opened from it is cut off) holding a body of its own,
+	OB.New(content, OM.MenuRoot(option), MenuChanged, 376, { oneColumn =
+	true }), which draws OM.BuildView(root, OM.MENU_KEY).sections: every row
+	a line of its own, on panels under Thick and Thin (a closing line of
+	buttons floats under its panel), none under Blizzard. The menu is as tall
+	as its title and its body: its last row ends 12 above its edge. Its
+	content's parent is the menu, which the hover lines' watcher takes for
+	the body's view (optionsshare.lua). Its catcher: a frame over UIParent at
+	FULLSCREEN_DIALOG level 400 that takes the mouse and closes the menu on a
+	click (OnMouseDown). Its keys: the window's EscapeKeys on the menu, Esc
+	closing it (the window's and the dialog's own pass Esc on while it
+	shows). A dropdown's list and a confirm draw at TOOLTIP, above it: their
+	catchers close them and leave the menu, and Esc closes the list first.
+
+	A set in it (MenuChanged): a failed validate shows in the window's status
+	line; mid-drag the menu's own rows follow in place (body:Refresh, as the
+	window's do); otherwise the window renders (OW:Render), drawing the page
+	(the item's marks) and the menu again, or with the window closed the
+	small dialog and the menu. While Blizzard's color picker is open it waits,
+	as the window does.
+
+	Following its item (S.FollowMenu, on every render after the dialog's): it
+	finds its item's cell again in owner.body's cells by path, re-anchors to
+	that cell's dots (OW.MenuPlace) and draws its body again (the values,
+	title and menu the new row has); with no cell of that path it closes.
+	While it's busy (a list or a confirm open from it, its slider held, one of
+	its boxes typed in) its rows aren't drawn again, as FollowDialog waits: it
+	only moves onto its item's new dots.
+
+	It closes on Esc, a click outside, OW:Navigate, a tab or pick (Select), a
+	search result's GoTo (through OW:Navigate), the window hiding (combat
+	closes the window), the small dialog hiding when its item is the dialog's,
+	and entering combat. Closing releases its body, and closes a list or
+	confirm still open from it.
+]]
+
+local OW = st.OptionsWindow
+local S = OW.S
+
+local max = math.max
+
+local Text, Grey = OB.Text, OB.Grey
+local Inside, EscapeKeys, ColorPickerShown = S.Inside, S.EscapeKeys, S.ColorPickerShown
+
+local MENU_WIDTH, MENU_PAD = 400, 12
+local BODY_WIDTH = MENU_WIDTH - 2 * MENU_PAD -- 376: the hover line beside a 170 control fits
+local TITLE_TOP, TITLE_GAP = 10, 8 -- the title's top; its bottom to the first row
+-- The content's top: its first rows (OB.TOP down it) TITLE_GAP under the title.
+local CONTENT_TOP = TITLE_TOP + OB.TITLE_HEIGHT + TITLE_GAP - OB.TOP
+local DOTS_GAP = 4 -- between the dots and the menu
+local MENU_LEVEL, CATCHER_LEVEL = 410, 400 -- over the small dialog (300)
+
+local M = {} -- the menu's frames and body, and its owner while it shows
+
+------------------------------------------------------------------ where it goes
+
+function OW.MenuPlace(anchor, width, height, screenWidth, screenHeight)
+	-- Right-aligned, unless that passes the screen's left and left-aligned
+	-- passes its right by less.
+	local side = 'RIGHT'
+	local pastLeft = width - anchor.right
+	if pastLeft > 0 then
+		local pastRight = anchor.left + width - screenWidth
+		if pastRight < pastLeft then side = 'LEFT' end
+	end
+	-- Below, unless its bottom passes the screen's and above has more room.
+	local below = anchor.bottom - DOTS_GAP - height
+	local above = screenHeight - (anchor.top + DOTS_GAP + height)
+	if below < 0 and above > below then
+		return 'BOTTOM' .. side, 'TOP' .. side, 0, DOTS_GAP
+	end
+	return 'TOP' .. side, 'BOTTOM' .. side, 0, -DOTS_GAP
+end
+
+-- The menu on dots (an item's), by OW.MenuPlace, anchored to them so it
+-- moves with them (the page scrolled).
+local function Anchor(dots)
+	local frame = M.frame
+	local left, right, top, bottom = dots:GetLeft(), dots:GetRight(), dots:GetTop(), dots:GetBottom()
+	local point, relPoint, x, y = 'TOPRIGHT', 'BOTTOMRIGHT', 0, -DOTS_GAP
+	if left and right and top and bottom then
+		local scale = dots:GetEffectiveScale() / frame:GetEffectiveScale()
+		local units = UIParent:GetEffectiveScale() / frame:GetEffectiveScale()
+		point, relPoint, x, y = OW.MenuPlace(
+			{ left = left * scale, right = right * scale, top = top * scale, bottom = bottom * scale },
+			frame:GetWidth(), frame:GetHeight(), UIParent:GetWidth() * units, UIParent:GetHeight() * units)
+	end
+	frame:ClearAllPoints()
+	frame:SetPoint(point, dots, relPoint, x, y)
+end
+
+------------------------------------------------------------------ drawing
+
+local function SamePath(a, b)
+	if #a ~= #b then return false end
+	for i = 1, #a do
+		if a[i] ~= b[i] then return false end
+	end
+	return true
+end
+
+-- The drawn item cell of body at path, with its dots, or nil.
+local function ItemCell(body, path)
+	for _, cell in ipairs(body.cells) do
+		if cell.row.path and SamePath(cell.row.path, path) and cell.widget and cell.widget.dots then return cell end
+	end
+end
+
+-- The rows again, and the menu as tall as its title and them.
+local function DrawBody()
+	M.body:Release()
+	local view = OM.BuildView(M.root, OM.MENU_KEY)
+	local height = view and M.body:Draw(view.sections) or 0
+	M.content:SetHeight(max(1, height))
+	-- The body ends OB.BOTTOM under its last row: the menu's own padding instead.
+	M.frame:SetHeight(CONTENT_TOP + (height > 0 and height - OB.BOTTOM or OB.TOP) + MENU_PAD)
+end
+
+-- The menu of an item's row (in body, the body that drew it) drawn, and on
+-- its dots.
+local function Draw(body, row, dots)
+	M.owner = { body = body, path = row.path }
+	M.root = OM.MenuRoot(row.option)
+	M.body:SetRoot(M.root)
+	local title = OM.Member(body.root, row, 'menuTitle')
+	if type(title) == 'number' then title = tostring(title) end
+	M.title:SetText(type(title) == 'string' and title ~= '' and title or row.name)
+	DrawBody()
+	Anchor(dots)
+end
+
+-- The menu's widgets' onChanged (see the top).
+local function MenuChanged(ok, err, isDragging, widget)
+	M.dragging = isDragging and true or nil
+	OW:SetStatus(ok == false and err or nil)
+	if ok == false and err then return end
+	if isDragging then
+		xpcall(function() M.body:Refresh(widget) end, geterrorhandler())
+		return
+	end
+	if ColorPickerShown() then
+		S.Schedule()
+	elseif OW:IsShown() then
+		OW:Render()
+	else
+		xpcall(S.FollowDialog, geterrorhandler())
+		xpcall(S.FollowMenu, geterrorhandler())
+	end
+end
+
+local function Build()
+	local catcher = CreateFrame('Frame', nil, UIParent)
+	catcher:SetAllPoints(UIParent)
+	catcher:SetFrameStrata('FULLSCREEN_DIALOG')
+	catcher:SetFrameLevel(CATCHER_LEVEL)
+	catcher:EnableMouse(true)
+	catcher:Hide()
+	catcher:SetScript('OnMouseDown', function() OW:CloseMenu() end)
+
+	local frame = st:CreateFrame('Frame', nil, UIParent)
+	frame:SetFrameStrata('FULLSCREEN_DIALOG')
+	frame:SetFrameLevel(MENU_LEVEL)
+	frame:SetSize(MENU_WIDTH, CONTENT_TOP + OB.TOP + MENU_PAD)
+	st:KeepInScreenMargin(frame)
+	frame:EnableMouse(true)
+	frame:Hide()
+	st:SetTemplate(frame, 'theme', 'solid', 'panel')
+
+	local title = Text(frame, 'section')
+	title:SetPoint('TOPLEFT', frame, 'TOPLEFT', MENU_PAD, -TITLE_TOP)
+	title:SetWidth(BODY_WIDTH)
+	title:SetTextColor(Grey())
+
+	-- A plain frame: the menu is as tall as its rows, and the hover lines'
+	-- watcher takes the menu (its parent) for the view.
+	local content = CreateFrame('Frame', nil, frame)
+	content:SetPoint('TOPLEFT', frame, 'TOPLEFT', MENU_PAD, -CONTENT_TOP)
+	content:SetSize(BODY_WIDTH, 1)
+
+	M.frame, M.catcher, M.title, M.content = frame, catcher, title, content
+	M.body = OB.New(content, nil, MenuChanged, BODY_WIDTH, { oneColumn = true })
+
+	-- Esc, only while the menu is shown.
+	local keys = EscapeKeys(frame, function() return false end, function() OW:CloseMenu() end)
+	M.keys = keys
+
+	frame:SetScript('OnShow', function()
+		catcher:Show()
+		keys:Show()
+		keys:EnableKeyboard(true)
+		if not InCombatLockdown() then keys:SetPropagateKeyboardInput(true) end
+	end)
+	frame:SetScript('OnHide', function()
+		catcher:Hide()
+		keys:EnableKeyboard(false)
+		keys:Hide()
+		M.body:Release()
+		local owner = W.ListOwner()
+		if owner and Inside(owner, frame) then W.CloseList() end
+		W.CancelConfirm()
+		M.owner, M.root, M.dragging = nil, nil, nil
+	end)
+	-- Its sets can reach protected frames, as the dialog's.
+	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
+	frame:SetScript('OnEvent', function() OW:CloseMenu() end)
+end
+
+------------------------------------------------------------------ following its item
+
+-- Whether the user is busy in the menu: its own list open, a confirm, its
+-- slider held (a lost mouse-up can't hold it off), one of its boxes typed in.
+local function Busy()
+	local owner = W.ListOwner()
+	if owner and Inside(owner, M.frame) then return true end
+	if W.ConfirmText() then return true end
+	if M.dragging and IsMouseButtonDown('LeftButton') then return true end
+	local focus = GetCurrentKeyBoardFocus()
+	return focus ~= nil and Inside(focus, M.frame)
+end
+
+-- The window's render (and a set in the menu with the window closed): see
+-- the top.
+local function FollowMenu()
+	if not (M.frame and M.frame:IsShown() and M.owner) then return end
+	local cell = ItemCell(M.owner.body, M.owner.path)
+	if Busy() then
+		if cell then Anchor(cell.widget.dots) end
+		return
+	end
+	M.dragging = nil
+	if not cell then return OW:CloseMenu() end
+	Draw(cell.body, cell.row, cell.widget.dots)
+end
+
+------------------------------------------------------------------ the API
+
+function OW:OpenMenu(widget)
+	if InCombatLockdown() then return false end
+	local row = widget and widget.row
+	local menu = row and row.option and row.option.menu
+	if type(menu) ~= 'table' or not (widget.rowBody and widget.dots) then return false end
+	if not M.frame then Build() end
+	self:CloseMenu()
+	Draw(widget.rowBody, row, widget.dots)
+	M.frame:Show()
+	return true
+end
+
+function OW:CloseMenu(body)
+	if not self:IsMenuShown() then return end
+	if body ~= nil and M.owner and M.owner.body ~= body then return end
+	M.frame:Hide()
+end
+
+function OW:IsMenuShown(widget)
+	if not (M.frame and M.frame:IsShown()) then return false end
+	if widget == nil then return true end
+	local owner = M.owner
+	return owner ~= nil and widget.rowBody == owner.body and widget.row ~= nil and SamePath(widget.row.path, owner.path)
+end
+
+function OW.GetMenuFrames() return M end
+
+------------------------------------------------------------------ for optionswindow.lua
+
+S.FollowMenu = FollowMenu

@@ -51,7 +51,9 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 	failed validate shows its message at the bottom. Esc (its own keyboard
 	catcher, which the window's passes to) and the close X close it, and so
 	do closing the window and entering combat. It refuses to open in combat
-	(false).
+	(false). Its catcher passes Esc on while an item's menu shows
+	(optionsmenu.lua), and closing it closes a menu whose item is one of
+	its rows.
 ]]
 
 local DIALOG_WIDTH, DIALOG_PAD = 568, 24
@@ -172,8 +174,10 @@ local function BuildDialog()
 	D.status:SetWidth(DIALOG_CONTENT)
 	D.status:SetTextColor(Colors().text.red:GetRGB())
 
-	-- Esc, only while the dialog is shown.
-	local keys = EscapeKeys(frame, function() return false end, function() OW:CloseDialog() end)
+	-- Esc, only while the dialog is shown, and not while an item's menu is
+	-- (its own keys close it).
+	local keys = EscapeKeys(frame, function() return OW.IsMenuShown ~= nil and OW:IsMenuShown() end,
+		function() OW:CloseDialog() end)
 	D.keys = keys
 
 	frame:SetScript('OnShow', function()
@@ -184,6 +188,8 @@ local function BuildDialog()
 	frame:SetScript('OnHide', function()
 		keys:EnableKeyboard(false)
 		keys:Hide()
+		-- A menu of one of its items goes with it.
+		if OW.CloseMenu then OW:CloseMenu(D.body) end
 		D.body:Release()
 		local owner = W.ListOwner()
 		if owner and Inside(owner, frame) then W.CloseList() end

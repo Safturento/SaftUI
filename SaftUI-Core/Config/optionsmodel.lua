@@ -49,8 +49,8 @@ local st = SaftUI
 	A row is { key, type, name, desc, size = 'small' | 'normal' | 'wide',
 	align, disabled, disabledDesc, path, option }: path is the keys from the
 	root, option the option table. size is the option's own size member:
-	'small' (honored only for a toggle, execute or input; a color is a bar as
-	wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
+	'small' (honored only for a toggle, execute, input or item; a color is a
+	bar as wide as a dropdown, which a quarter can't hold, so it is normal) or 'wide';
 	anything else is normal. Every description and every position row is wide.
 	Ace's width is not read. align is an execute's own align member, SaftUI's:
 	'right' or 'center' (a button the body lines up with the buttons beside
@@ -81,6 +81,21 @@ local st = SaftUI
 	is the tree its options' info comes from), OM.ShareCall runs an action,
 	OM.ShareTargets lists Multiple's targets. The window draws them in
 	optionsshare.lua.
+
+	An item (type = 'item', SaftUI's own type, optionsitem.lua) is one row: a
+	Show box, its name and three dots that open a menu of its settings:
+	  { type = 'item', name, desc, order, size = 'small' (or none, or 'wide'),
+	    get, set,      -- its Show box (no get, or get = false to stop an
+	                   -- inherited one: no box)
+	    share,         -- its Show's (above)
+	    menu = { type = 'group', name, args = { ... }, get, set, ... },
+	    menuTitle,     -- the menu's title (a string or a function of info;
+	                   -- the item's name when nil) }
+	Its menu (SaftUI's own field, never in args) is a group drawn in a menu
+	of its own (optionsmenu.lua) from the tree OM.MenuRoot(option) gives:
+	{ menu = option.menu }, so a menu option's path is { 'menu', key } and
+	it inherits get, set and the rest from the menu group only, not from the
+	item's page. Search finds a menu's settings (OM.Search).
 
 	A page's group may carry a footer (SaftUI's own field, never in its args):
 	a group of options the window draws in its footer while the page is open,
@@ -116,6 +131,7 @@ local isInherited = {
 local stringIsLiteral = {
 	name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true,
 	size = true, target = true, nameKey = true, pickerLabel = true, align = true, disabledDesc = true, justifyH = true,
+	menuTitle = true,
 }
 -- Members that are never a function or method.
 local allIsLiteral = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
@@ -399,8 +415,9 @@ end
 ------------------------------------------------------------------ sections and rows
 
 -- The types a setting can be small for. Not a color: its bar is a dropdown's
--- width, and a quarter of a line is too narrow for it and its label.
-local canBeSmall = { toggle = true, execute = true, input = true }
+-- width, and a quarter of a line is too narrow for it and its label. An item
+-- (a Show box, its name and its dots) fits a quarter.
+local canBeSmall = { toggle = true, execute = true, input = true, item = true }
 
 local function SizeOf(option, options, path)
 	if option.type == 'description' or option.type == 'position' then return 'wide' end
@@ -962,7 +979,7 @@ end
 --[[
 	Rows whose name, section title or tab title has text in it, ignoring
 	case, across every page, tab and pick:
-	{ {pageKey, path, name, tabName, sectionTitle, footer} }. tabName is the tab and
+	{ {pageKey, path, name, tabName, sectionTitle, footer, menu} }. tabName is the tab and
 	pick names down to the row (e.g. 'Player > Health'), nil on a page with
 	none. Function names are called with info. Hidden and guiHidden options
 	aren't searched, nor descriptions, nor a tab a selection can't open (a
@@ -971,6 +988,12 @@ end
 	footer's name as their tabName, with footer = true; their path is the
 	page's key and theirs, which opens the page (and nothing more: a footer
 	result's path isn't one a selection can follow).
+	An item's menu settings follow its row (whether or not the item itself
+	matches), found as a page's are: by their name, the item's name (their
+	section title) or a tab name above the item; hidden ones aren't. Each is
+	{ pageKey, path = the item's path, name = the setting's name, tabName,
+	sectionTitle = the item's name, menu = true }, which opens the page with
+	the item in view and its menu open.
 ]]
 function OM.Search(root, text)
 	local results = {}
@@ -980,6 +1003,33 @@ function OM.Search(root, text)
 
 	local function matches(value)
 		return type(value) == 'string' and value:lower():find(needle, 1, true) ~= nil
+	end
+
+	-- Adds the matching settings of an item's menu (row, an item's row): by
+	-- their name, the item's name or a tab's (tabMatch), each a result on the
+	-- item's path; true once there are enough.
+	local function CollectMenu(pageKey, row, tabMatch, tabName)
+		local menu = row.option.menu
+		if type(menu) ~= 'table' or menu.type ~= 'group' then return end
+		local within = Options(OM.MenuRoot(row.option))
+		local itemMatch = matches(row.name)
+		local sections = {}
+		Feed(sections, within, menu, { OM.MENU_KEY }, false)
+		for _, section in ipairs(sections) do
+			for _, inner in ipairs(section.rows) do
+				if inner.type ~= 'description' and (tabMatch or itemMatch or matches(inner.name)) then
+					results[#results + 1] = {
+						pageKey = pageKey,
+						path = row.path,
+						name = inner.name,
+						tabName = tabName,
+						sectionTitle = row.name,
+						menu = true,
+					}
+					if #results >= MAX_RESULTS then return true end
+				end
+			end
+		end
 	end
 
 	-- Adds group's matching rows; true once there are enough. within is the
@@ -1006,6 +1056,7 @@ function OM.Search(root, text)
 					}
 					if #results >= MAX_RESULTS then return true end
 				end
+				if row.type == 'item' and CollectMenu(pageKey, row, tabMatch, tabName) then return true end
 			end
 		end
 	end

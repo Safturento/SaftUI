@@ -6,11 +6,15 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	rows drawn into a content frame. The window (optionswindow.lua) and
 	OW:OpenDialog each make one.
 
-	  local body = OB.New(content, root, onChanged, width)
-	      content     the frame the rows are drawn in (a scroll child)
+	  local body = OB.New(content, root, onChanged, width, opts)
+	      content     the frame the rows are drawn in (a scroll child, or a
+	                  plain frame: an item's menu's)
 	      root        the option tree the rows' widgets read and set
 	      onChanged   the widgets' onChanged(ok, err, isDragging)
 	      width       the content's width (OB.WIDTH, the window's, when nil)
+	      opts        nil, or { oneColumn = true }: every row of the body is
+	                  laid out as wide, one to a line (an item's menu,
+	                  optionsmenu.lua); body.oneColumn
 	  body:SetRoot(root)               a new tree (a profile change rebuilt it)
 	  body:Draw(sections, fillHeight) -> height
 	                                   option rows, each with its widget;
@@ -27,10 +31,19 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	                                   row again in place (a drag, below)
 	  body.cells                       the drawn rows, in order:
 	                                   { row, frame, widget, label, height, y,
-	                                     x, body, labelX }; labelX (nil: 0)
-	                                   is how far in the label starts, for a
-	                                   row type whose label comes after
-	                                   something of its own
+	                                     x, body, labelX, lineEnd }; labelX
+	                                   (nil: 0) is how far in the label
+	                                   starts, for a row type whose label
+	                                   comes after something of its own (the
+	                                   widget's labelX, read once it's bound:
+	                                   an item's), lineEnd (nil: the cell's
+	                                   width) where its hover line must end
+	                                   (optionsshare.lua), from the cell's left
+	  widget.rowBody                   every drawn widget's body, the one its
+	                                   row is drawn in (cleared when it's
+	                                   released; not widget.body, which the
+	                                   bags' Categories tab keeps its editor's
+	                                   own body in)
 	  body.shareTitles                 the section titles drawn with a
 	                                   shareable block's marks (optionsshare.lua)
 
@@ -68,7 +81,13 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
 	A toggle's check box and a color's bar sit at their cell's right edge,
-	the label taking the rest; a small input's box is 60 wide. A position block
+	the label taking the rest; a small input's box is 60 wide. An item
+	(optionsitem.lua) is given its cell's width and spans it, its Show box
+	at the cell's left and its dots at the right; its label starts its
+	labelX in (26 after a box, else 0), centred on the row, and ends 6
+	before the dots, and so does its hover line (lineEnd); its label is grey
+	while its Show is off or it's disabled. Under its own mark the box
+	moves markShift right with the label (under Blizzard 6). A position block
 	has no label (its section is titled Position), is as tall as the widget
 	plus 12, and shows the row's desc when the mouse is anywhere on it. A
 	bare row (a type W.Define marks bare; its option sets size = 'wide') has
@@ -94,7 +113,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	DrawSections calls OB.PlaceShareTitle(body, entry, title) for a section
 	with a shareRow (the model's) once its block is placed. A world that
 	draws no window may load this file without it, so each is called only
-	when it's there. The metrics' markX and markShift place the own mark, and
+	when it's there. An item is 'row' in OB.SHARE_KINDS: its name is its
+	label. The metrics' markX and markShift place the own mark, and
 	OB.OWN_TEXT and OB.DIFF_COLOR are its colors; OB.PlaceLabel puts a label
 	where PlaceRow does, cell.labelX plus x in (PlaceRow's label is labelX
 	narrower too).
@@ -122,6 +142,7 @@ local LABEL_GAP = 10
 local STOP_GAP = 24 -- a wide row ends this far before the buttons at its line's right end
 local BUTTON_GAP = 12 -- between the buttons of a line (W.Confirm's Yes and No are 12 apart)
 local SMALL_INPUT_WIDTH = 60
+local ITEM_GAP = 6 -- an item's label (and its hover line) ends this far before its dots
 local WIDTH = 774 -- the window's body: under Blizzard two columns of 367 with a gap of 40; under Thick and Thin two of 387
 
 -- Sections (OB.LayoutSections).
@@ -642,6 +663,19 @@ local function PlaceRow(cell, x, y, width)
 	elseif IsBare(row.type) then
 		label:Hide()
 		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, -6)
+	elseif row.type == 'item' then
+		-- The widget spans the cell: its box at the left, its dots at the right.
+		widget:SetWidth(width)
+		widget.frame:SetHeight(cell.height)
+		widget:SetPoint('TOPLEFT', frame, 'TOPLEFT', 0, 0)
+		label:SetText(row.name)
+		if row.disabled or widget.value == false then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
+		label:Show()
+		-- After the box (cell.labelX), ending short of the dots; the hover line too.
+		local stop = width - widget.dots:GetWidth() - ITEM_GAP
+		label:SetWidth(max(1, stop - (cell.labelX or 0)))
+		cell.lineEnd = stop
+		OB.PlaceLabel(cell, 0)
 	else
 		label:SetText(row.name)
 		if row.disabled then label:SetTextColor(Grey()) else label:SetTextColor(Normal()) end
@@ -655,6 +689,11 @@ local function PlaceRow(cell, x, y, width)
 		end
 	end
 	if OB.PlaceShare then OB.PlaceShare(cell) end
+	-- An item's box moves under its own mark with the label (markShift).
+	if row.type == 'item' then
+		local state = frame.shareState
+		widget:ShiftBox(state and state.marked and cell.body and cell.body.metrics.markShift or 0)
+	end
 end
 
 local function PlaceResult(cell, x, y, width)
@@ -668,10 +707,11 @@ end
 local Body = {}
 Body.__index = Body
 
-function OB.New(content, root, onChanged, width)
+function OB.New(content, root, onChanged, width, opts)
 	local body = setmetatable({
 		content = content, root = root, onChanged = onChanged,
 		width = width or WIDTH, cells = {},
+		oneColumn = opts and opts.oneColumn and true or nil, -- every row wide (an item's menu)
 		shareTitles = {}, -- the section titles drawn with a shareable block's marks (optionsshare.lua)
 	}, Body)
 	body:UseMetrics()
@@ -784,6 +824,7 @@ function Body:RowCell(row)
 	if frame.titleTip then frame.titleTip:Hide() end -- a titled bare row's (PlaceRow)
 	local widget = W.Create(frame, row.type)
 	widget:Bind(self.root, row, self.onChanged)
+	widget.rowBody = self -- cleared by its Release
 	if row.type == 'input' then -- a reused box is sized again: small or not
 		widget.width = row.size == 'small' and SMALL_INPUT_WIDTH or W.WIDTH.input
 		widget.frame:SetWidth(widget.width)
@@ -792,6 +833,7 @@ function Body:RowCell(row)
 	local cell = {
 		row = row, frame = frame, widget = widget, label = frame.label, height = rowHeight, rowHeight = rowHeight,
 		place = PlaceRow, align = row.align, body = self,
+		labelX = widget.labelX, -- an item's: its label after its box
 	}
 	if row.type == 'description' then
 		-- With fill (SaftUI's), a fill row at its own height at least: what it
@@ -1021,9 +1063,12 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 	return #kept > 0 and height or 0
 end
 
+-- A oneColumn body's rows are all wide.
+local function Wide() return 'wide' end
+
 function Body:Draw(sections, fillHeight)
 	self:UseMetrics()
-	return self:DrawSections(sections, function(row) return self:RowCell(row) end, nil, fillHeight)
+	return self:DrawSections(sections, function(row) return self:RowCell(row) end, self.oneColumn and Wide or nil, fillHeight)
 end
 
 function Body:DrawResults(sections, onPick)

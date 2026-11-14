@@ -13,7 +13,7 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	option's share.
 
 	What each piece draws, from OM.ShareState (rows of a type
-	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color; a
+	OB.SHARE_KINDS marks 'row': toggle, range, select, input, color, item; a
 	position row, 'mark', gets the mark alone, its title carrying the rest):
 	  - the mark (state.marked): a 2px line in Button > Blue, 6 in from the
 	    row's top and bottom, the metrics' markX in from its slot's left
@@ -69,7 +69,11 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 	A row's label sits cell.labelX in from its cell's left (0 when nil; an
 	item's after its Show box): OB.PlaceLabel, the lift, putting it back and
 	the line's left all add it, so a type whose label doesn't start at the
-	cell's left can still be 'row' in OB.SHARE_KINDS.
+	cell's left can still be 'row' in OB.SHARE_KINDS. A row's line is cut at
+	cell.lineEnd (from the cell's left; nil: the cell's right edge): an
+	item's ends where its label does, 6 before its dots, so it never covers
+	them. An item is 'row'; it moves its own Show box under its mark
+	(optionsbody.lua's PlaceRow).
 
 	The pieces live on the row frame as frame.share = { mark, diff, line,
 	ownText, reset, all, multiple, sep, pipe } (made the first time a row
@@ -82,7 +86,10 @@ local OM, W, OB = st.OptionsModel, st.OptionsWidgets, st.OptionsBody
 local floor, ceil, max, min, format = math.floor, math.ceil, math.max, math.min, string.format
 
 -- What a row of each type carries: 'row', every piece; 'mark', the mark alone.
-OB.SHARE_KINDS = { toggle = 'row', range = 'row', select = 'row', input = 'row', color = 'row', position = 'mark' }
+OB.SHARE_KINDS = {
+	toggle = 'row', range = 'row', select = 'row', input = 'row', color = 'row', position = 'mark',
+	item = 'row', -- its name is its label, after its Show box (labelX); its line acts on its Show
+}
 
 local LINE_HEIGHT = 14 -- the hover line: the small font (13)
 local LINE_LEVEL = 4 -- the line over its row frame, above every part of the control
@@ -479,9 +486,10 @@ function OB.PlaceShare(cell)
 	end
 	if offers then
 		frame.shareOffers, frame.shareLifts = true, true
-		-- Under the label, and cut at the cell's right edge: never in the next cell.
+		-- Under the label, and cut at the cell's right edge (or its lineEnd):
+		-- never in the next cell, nor over an item's dots.
 		local left = (cell.labelX or 0) + shift
-		FillLine(parts, state, frame:GetWidth() - left)
+		FillLine(parts, state, (cell.lineEnd or frame:GetWidth()) - left)
 		parts.line:ClearAllPoints()
 		parts.line:SetPoint('TOPLEFT', frame, 'TOPLEFT', left, -(LiftTop(cell) + OB.LABEL_HEIGHT))
 		HookControl(cell.widget.frame)

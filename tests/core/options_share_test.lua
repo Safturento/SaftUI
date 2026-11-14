@@ -699,33 +699,10 @@ local function read_tip(tip, piece)
 	return text
 end
 
--- A stand-in for Task 5's item row, so an item's marks can be drawn here: a
--- custom type (a 24 box at its cell's right), drawn with every piece ('row' in
--- OB.SHARE_KINDS), its cell's labelX set as an item's is, its label sitting
--- after its Show box. Runs fn, then puts the body and the kinds back.
-local function with_items(labelX, fn)
-	if not W.WIDTH.item then
-		W.Define('item', {
-			width = 24,
-			build = function(w)
-				w.frame = CreateFrame('Button', nil, UIParent)
-				w.frame:SetSize(24, 24)
-			end,
-			methods = { Refresh = function() end },
-		})
-	end
-	local Body = getmetatable(OB.New(CreateFrame('Frame', nil, UIParent), nil, nil, 100))
-	local rowCell, kind = Body.RowCell, OB.SHARE_KINDS.item
-	Body.RowCell = function(self, row)
-		local cell = rowCell(self, row)
-		if cell and row.type == 'item' then cell.labelX = labelX end
-		return cell
-	end
-	OB.SHARE_KINDS.item = 'row'
-	local ok, err = pcall(fn)
-	Body.RowCell, OB.SHARE_KINDS.item = rowCell, kind
-	if not ok then error(err, 0) end
-end
+-- An item's row is the real one now (optionsitem.lua, 'row' in
+-- OB.SHARE_KINDS): its label after its Show box (labelX 26, the page's get
+-- giving it one), ending 6 before its 16 wide dots.
+local ITEM_LABEL_X, ITEM_STOP = 26, 16 + 6
 
 test('the Apply list closes when its row is drawn again or released, and its Apply acts on the row it was opened for', function()
 	in_look('thick', function()
@@ -1028,21 +1005,21 @@ end)
 
 test("an item's row: its line's tooltips name its Show, its diff tooltip has no source line, and its label sits labelX in", function()
 	in_look('thick', function(tip)
-		with_items(30, function()
+		do
 			fresh()
 			own.hotkey = true
 			local body, by = draw(Page('member', { hotkey = Item('member') }))
 			local c = by.hotkey
 			local parts = c.frame.share
-			-- labelX: the label 30 in, lifted and put back there, the line under it.
-			eq((select(4, point(c.label))), 30, 'the label 30 in')
-			eq(c.label:GetWidth(), c.frame:GetWidth() - 30 - 24 - 10, 'its width the rest, up to 10 before the control')
+			-- labelX: the label 26 in, lifted and put back there, the line under it.
+			eq((select(4, point(c.label))), ITEM_LABEL_X, 'the label 26 in')
+			eq(c.label:GetWidth(), c.frame:GetWidth() - ITEM_LABEL_X - ITEM_STOP, 'its width the rest, up to 6 before the dots')
 			hover(c.frame, 40)
 			stub.fire_script(c.frame, 'OnEnter', true)
 			check(parts.line:IsShown(), 'its line')
 			local p, _, _, x, y = point(c.label)
-			eq(p .. ' ' .. x .. ',' .. y, 'TOPLEFT 30,-4', 'lifted where it sits')
-			eq(parts.line:GetLeft() - c.frame:GetLeft(), 30, 'the line under it')
+			eq(p .. ' ' .. x .. ',' .. y, 'TOPLEFT 26,-4', 'lifted where it sits')
+			eq(parts.line:GetLeft() - c.frame:GetLeft(), ITEM_LABEL_X, 'the line under it')
 			eq(read_tip(tip, parts.ownText), "Hotkey's Show|All bars: Shown")
 			eq(read_tip(tip, parts.reset), "Reset|Hotkey's Show follows All bars again. Bar 3's own value is dropped.")
 			eq(read_tip(tip, parts.all), "Apply to: All|All bars takes Hotkey's Show from Bar 3, and nothing keeps its own any more.")
@@ -1051,16 +1028,16 @@ test("an item's row: its line's tooltips name its Show, its diff tooltip has no 
 			watch(parts)
 			check(not parts.line:IsShown(), 'gone')
 			local lp, _, _, lx = point(c.label)
-			eq(lp .. ' ' .. lx, 'LEFT 30', 'the label back at 30')
+			eq(lp .. ' ' .. lx, 'LEFT 26', 'the label back at 26')
 			stub.click(parts.reset)
 			eq(calls[1].action .. ' ' .. calls[1].key, 'reset hotkey', "Reset acts on the item's own share, its Show")
 
 			-- Under Blizzard the mark's shift adds to it.
 			in_look('blizzard', function()
 				by = redraw(body, Page('member', { hotkey = Item('member') }))
-				eq((select(4, point(by.hotkey.label))), 36, 'Blizzard: 30 and the shift of 6')
+				eq((select(4, point(by.hotkey.label))), ITEM_LABEL_X + 6, 'Blizzard: 26 and the shift of 6')
 				stub.fire_script(by.hotkey.frame, 'OnEnter', true)
-				eq(by.hotkey.frame.share.line:GetLeft() - by.hotkey.frame:GetLeft(), 36, 'the line under it')
+				eq(by.hotkey.frame.share.line:GetLeft() - by.hotkey.frame:GetLeft(), ITEM_LABEL_X + 6, 'the line under it')
 				stub.cursor_x, stub.cursor_y = 0, 0
 				watch(by.hotkey.frame.share)
 			end)
@@ -1078,7 +1055,7 @@ test("an item's row: its line's tooltips name its Show, its diff tooltip has no 
 			stub.cursor_x, stub.cursor_y = 0, 0
 			watch(c.frame.share)
 			body:Release()
-		end)
+		end
 	end)
 end)
 
