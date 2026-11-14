@@ -456,3 +456,40 @@ RW.both('QUEST_DETAIL and QUEST_DATA_LOAD_RESULT refresh: an offer popup from a 
 	RW.later(0)
 	eq(counted.n, 1, 'QUEST_DATA_LOAD_RESULT: refreshed')
 end)
+
+RW.both('the events are the spec\'s, by name', function(st, TR)
+	local want = {
+		'QUEST_LOG_UPDATE', 'QUEST_WATCH_LIST_CHANGED', 'QUEST_WATCH_UPDATE', 'QUEST_ACCEPTED', 'QUEST_REMOVED',
+		'QUEST_TURNED_IN', 'QUEST_AUTOCOMPLETE', 'QUEST_POI_UPDATE', 'QUEST_LOG_CRITERIA_UPDATE',
+		'UNIT_QUEST_LOG_CHANGED', 'SUPER_TRACKING_CHANGED', 'SUPER_TRACKING_PATH_UPDATED', 'ZONE_CHANGED',
+		'ZONE_CHANGED_INDOORS', 'ZONE_CHANGED_NEW_AREA', 'PLAYER_ENTERING_WORLD', 'PLAYER_LEVEL_UP', 'PLAYER_MONEY',
+		'BAG_UPDATE_DELAYED', 'BAG_UPDATE_COOLDOWN', 'PLAYER_REGEN_ENABLED', 'PLAYER_REGEN_DISABLED',
+		'QUEST_DETAIL', 'QUEST_DATA_LOAD_RESULT',
+	}
+	local have = {}
+	for _, event in ipairs(TR.EVENTS) do have[event] = true end
+	for _, event in ipairs(want) do check(have[event], event .. ' is in TR.EVENTS') end
+	eq(#TR.EVENTS, #want, 'and nothing else')
+	-- Each is heard: a mark (BAG_UPDATE_COOLDOWN only the cooldowns', PLAYER_MONEY while a quest needs money).
+	quiet_log()
+	local counted = count_refreshes(TR)
+	for _, event in ipairs(want) do
+		if event ~= 'BAG_UPDATE_COOLDOWN' and event ~= 'PLAYER_MONEY' then
+			RW.later(1)
+			counted.n = 0
+			stub.fire_event(event, 'player')
+			RW.later(0)
+			eq(counted.n, 1, event .. ' refreshes')
+		end
+	end
+end)
+
+RW.both('the timer ticker is a one second ticker', function(st, TR)
+	local interval
+	local new_ticker = C_Timer.NewTicker
+	C_Timer.NewTicker = function(seconds, ...) interval = seconds; return new_ticker(seconds, ...) end
+	Q.set({ Q.header('A'), Q.quest(1, { time = { total = 300, elapsed = 10 }, timer = 290 }) }, { 1 })
+	TR:Refresh()
+	C_Timer.NewTicker = new_ticker
+	eq(interval, 1, 'every second')
+end)
