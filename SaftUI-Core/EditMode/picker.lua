@@ -98,14 +98,22 @@ local function IsDragging()
 	return false
 end
 
+-- The top mover under the cursor, as the last Refresh told the labels
+-- (EM:UpdateLabels: a mover that overlaps another shows its name only then).
+local labelled
+
 local function Refresh()
 	Undim()
+	local top = Top()
+	if top ~= labelled then
+		labelled = top
+		EM:UpdateLabels(top)
+	end
 	if #stack < 2 then
 		list:Hide()
 		return
 	end
 
-	local top = Top()
 	local colors = st.config.profile.colors
 	local lines = {}
 	for _, mover in ipairs(stack) do
@@ -189,6 +197,12 @@ driver:SetScript('OnEvent', function(_, _, key, down)
 	end
 end)
 
+-- For tests: the outlines under the cursor as Scan last found them, the list
+-- by the cursor, and the frame that runs Scan.
+function EM.GetPickerState()
+	return { stack = stack, list = list, driver = driver }
+end
+
 EM:On('Enabled', function()
 	-- Styled here, not at file load: the theme and fonts come from the profile.
 	st:SetBackdrop(list, 'theme', 'solid', 'tooltip')
@@ -204,4 +218,5 @@ EM:On('Disabled', function()
 	wipe(stack)
 	Undim()
 	list:Hide()
+	labelled = nil
 end)

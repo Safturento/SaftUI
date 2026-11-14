@@ -139,6 +139,32 @@ test('GetSnapLines', function()
 	check(has(xl, cx) and #xl == #EM.GridLinePositions(cx, 0, 1000, settings.grid_size), 'grid lines')
 end)
 
+-- A mover the rule hides (filter.lua: its frame is hidden and Show hidden is
+-- off) has no shown overlay, so it is no snap target; shown, it is.
+test('hidden overlays are no snap target', function()
+	local me = addMover('snap_me', rectFrame(0, 10, 0, 10))
+	local off = rectFrame(800, 900, 100, 140)
+	local gone = st:RegisterMover('snap_gone', {
+		frame = off, getPosition = function() return { point = 'BOTTOMLEFT', x_off = 0, y_off = 0 } end,
+		setPosition = function() end, apply = function() end,
+		isHidden = function() return true end,
+	})
+	settings.snap_grid, settings.snap_frames = false, true
+	settings.show_hidden = false
+	EM:UpdateShown()
+	check(not gone.overlay:IsShown(), 'the rule hides its overlay')
+	local xl = EM:GetSnapLines(me)
+	check(not has(xl, 798) and not has(xl, 850) and not has(xl, 902), 'no line from its outline')
+	settings.show_hidden = true
+	EM:UpdateShown()
+	check(gone.overlay:IsShown(), 'Show hidden shows it')
+	xl = EM:GetSnapLines(me)
+	check(has(xl, 798) and has(xl, 850) and has(xl, 902), 'its outline lines are there')
+	settings.show_hidden = true
+	EM.movers.snap_me, EM.movers.snap_gone = nil, nil
+	settings.snap_frames = false
+end)
+
 -- A secret edge makes GetRectInUI return nil, and the other movers still give
 -- lines. The stubs have no secret values, so these frames report one through
 -- their own GetRight, with issecretvalue told to recognise it, as a Blizzard

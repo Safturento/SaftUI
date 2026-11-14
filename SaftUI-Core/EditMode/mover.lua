@@ -319,7 +319,7 @@ function EM:CreateMover(key, def)
 	SetBorderColor(mover, false)
 	self.movers[key] = mover
 	self:StackMover(mover) -- its own frame levels, on top (picker.lua)
-	if self.active then overlay:Show() end
+	overlay:SetShown(self.active and self:IsMoverShown(mover)) -- filter.lua's rule
 	return mover
 end
 
@@ -339,6 +339,7 @@ end
 -- the keys we use propagates, so other keybinds keep working.
 local keys = CreateFrame('Frame', nil, UIParent)
 keys:Hide()
+EM.keyCatcher = keys -- for tests
 
 keys:SetScript('OnKeyDown', function(self, key)
 	-- A focused edit box (e.g. a settings window field) gets typing, not us.

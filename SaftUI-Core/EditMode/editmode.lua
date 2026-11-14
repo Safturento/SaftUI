@@ -16,11 +16,16 @@ local callbacks = {}
 --   'Selected'         mover, or nil when nothing is selected now
 --   'Enabled', 'Disabled'  edit mode turned on or off
 --   'SettingsChanged'  key, or nil for every setting (a profile change): a
---                      setting of the grid, snapping, Dim world or
---                      Coordinates changed (settings.lua)
+--                      setting of the grid, snapping, Dim world, Coordinates,
+--                      Show disabled, Show hidden or the module choice
+--                      changed (settings.lua)
 --   'Pressed'          mover: the mouse went down on its outline
 --   'DragStarted', 'DragStopped'  mover: a drag began, or ended (by a drop, or
 --                      dropped by a profile change)
+--   'ShownChanged'     no arguments: an overlay was shown or hidden, a selected
+--                      mover that stopped showing was deselected, or a mover's
+--                      overlap state changed (filter.lua's EM:UpdateShown, which
+--                      the ticker runs twice a second: fired only on a change)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group
 function EM:On(event, fn)
 	callbacks[event] = callbacks[event] or {}
@@ -42,9 +47,7 @@ function EM:Activate()
 		return
 	end
 	self.active = true
-	for _, mover in pairs(self.movers) do
-		mover.overlay:Show()
-	end
+	self:UpdateShown() -- filter.lua: the overlays of the movers that show
 	self:UpdateKeyboard()
 	self:Fire('Enabled')
 end
@@ -255,21 +258,39 @@ end
 -- Runs a registration's predicate. Only a plain true is true: no predicate, an
 -- error (reported to the game's handler), a secret value or anything else is
 -- false. A secret is tested before the comparison, which the game refuses.
-local function RunPredicate(fn)
+-- An error is reported once per mover and predicate for a session of edit
+-- mode (the ticker asks twice a second: a module's bug must not be a stream).
+local reported = setmetatable({}, { __mode = 'k' }) -- mover -> { isDisabled = true, ... }
+
+local function RunPredicate(mover, name)
+	local fn = mover.def[name]
 	if not fn then return false end
-	local ok, value = xpcall(fn, geterrorhandler())
+	local ok, value = xpcall(fn, function(err)
+		local seen = reported[mover]
+		if not seen then
+			seen = {}
+			reported[mover] = seen
+		end
+		if not seen[name] then
+			seen[name] = true
+			geterrorhandler()(err)
+		end
+		return err
+	end)
 	if not ok or issecretvalue(value) then return false end
 	return value == true
 end
 
+EM:On('Disabled', function() wipe(reported) end) -- the session is over
+
 -- True when a setting turns the mover's frame off.
 function EM:IsMoverDisabled(mover)
-	return RunPredicate(mover.def.isDisabled)
+	return RunPredicate(mover, 'isDisabled')
 end
 
 -- True when the mover's frame is on but not on screen now.
 function EM:IsMoverHidden(mover)
-	return RunPredicate(mover.def.isHidden)
+	return RunPredicate(mover, 'isHidden')
 end
 
 -- Where Reset puts the mover's frame: a fresh deep copy on every call, so a

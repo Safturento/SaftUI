@@ -153,7 +153,7 @@ function AB:RegisterBarMover(id)
 		configPath = { 'ActionBars', id },
 		module = 'Action bars',
 		-- What the edit mode bar reads: only reads, never a call that writes.
-		isDisabled = function() return not self:GetBarConfig(id).enable end,
+		isDisabled = function() return not self:GetStore(id).enable end, -- the same value as GetBarConfig(id).enable, without building the config
 		isHidden = function() return not self:IsBarAvailable(id) or not bar:IsShown() end,
 		defaults = function() return st.defaults.actionbars[id] end,
 	})
