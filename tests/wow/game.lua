@@ -1128,9 +1128,19 @@ do
 
 	-- The globals only one client has, by name: the interface that has it.
 	local CLIENT_ONLY = { UnitHasEffectivelyTankAura = 16001 }
+	-- The members of a namespace table only one client has: { table, name,
+	-- interface }. C_QuestLog's two are in Forever's QuestLogDocumentation.lua
+	-- and not in retail's (tests/wow/quests.lua adds them).
+	local CLIENT_ONLY_MEMBERS = {
+		{ C_QuestLog, 'IsEliteQuest', 16001 },
+		{ C_QuestLog, 'GetQuestTimers', 16001 },
+	}
 	function stub.apply_client()
 		for name, interface in pairs(CLIENT_ONLY) do
 			if stub.interface ~= interface then _G[name] = nil end
+		end
+		for _, member in ipairs(CLIENT_ONLY_MEMBERS) do
+			if stub.interface ~= member[3] then member[1][member[2]] = nil end
 		end
 	end
 
@@ -1140,3 +1150,7 @@ do
 		return unit == 'player' or OtherUnit(unit) ~= nil
 	end
 end
+
+-- The quest log's API (SaftUI-Tracker's tests): stub.quests, C_QuestLog's
+-- functions and the old quest globals.
+load_test_file('wow/quests.lua')

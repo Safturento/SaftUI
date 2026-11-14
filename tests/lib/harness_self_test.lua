@@ -902,6 +902,29 @@ test("use_client gives a fresh world on each client, without the globals that cl
 	reset_world()
 end)
 
+test("the quest stubs: the two Forever-only C_QuestLog members exist only on Forever, and a questID that isn't a number errors with its Usage", function()
+	use_client('retail')
+	eq(C_QuestLog.IsEliteQuest, nil, 'retail: no IsEliteQuest')
+	eq(C_QuestLog.GetQuestTimers, nil, 'retail: no GetQuestTimers')
+	eq(type(C_QuestLog.GetTimeAllowed), 'function', 'retail: the shared ones stay')
+	use_client('forever')
+	eq(type(C_QuestLog.IsEliteQuest), 'function', 'forever: IsEliteQuest')
+	eq(type(C_QuestLog.GetQuestTimers), 'function', 'forever: GetQuestTimers')
+	stub.quests.log = { { id = 7, title = 'A', elite = true, timer = 90 } }
+	eq(C_QuestLog.IsEliteQuest(7), true, 'an elite quest')
+	eq(C_QuestLog.GetQuestTimers()[1].questTimer, 90, 'its timer')
+	for _, call in ipairs({
+		function() C_QuestLog.GetLogIndexForQuestID('7') end,
+		function() C_QuestLog.IsEliteQuest(nil) end,
+		function() C_QuestLog.GetInfo({}) end,
+	}) do
+		local ok, err = pcall(call)
+		eq(ok, false, 'a questID that is not a number errors')
+		check(tostring(err):find('Usage: ', 1, true), 'with its Usage line: ' .. tostring(err))
+	end
+	reset_world()
+end)
+
 test("load_editmode loads the files Core's EditMode/load.xml lists, in its order; the bar's come last, through Bar/load.xml", function()
 	local function scripts(path, dir)
 		local xml = assert(read_saftui_source(path)):gsub('<!%-%-.-%-%->', '')

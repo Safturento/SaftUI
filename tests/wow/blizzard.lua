@@ -393,8 +393,9 @@ end
 -- name when a test needs it. BagIndex, StatusBarInterpolation,
 -- CustomAuraButtonDispelTypeTextureStyle and UIMapType are complete, and SaftUI's
 -- inventory.lua probes BagIndex past its last tab on purpose, so an absent
--- name there stays nil, as in game.
-Enum = {
+-- name there stays nil, as in game. The enums quests.lua made (the quest
+-- ones) are kept.
+local blizzard_enums = {
 	BagIndex = {
 		Accountbanktab = -3, Characterbanktab = -2, Keyring = -1,
 		Backpack = 0, Bag_1 = 1, Bag_2 = 2, Bag_3 = 3, Bag_4 = 4, ReagentBag = 5,
@@ -413,6 +414,8 @@ Enum = {
 	CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
 	UIMapType = { Cosmic = 0, World = 1, Continent = 2, Zone = 3, Dungeon = 4, Micro = 5, Orphan = 6 },
 }
+Enum = Enum or {}
+for name, enum in pairs(blizzard_enums) do Enum[name] = enum end
 setmetatable(Enum.PowerType, { __index = function(_, name)
 	error(('Enum.PowerType.%s is not stubbed'):format(tostring(name)), 2)
 end })
