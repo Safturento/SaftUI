@@ -47,9 +47,11 @@ local Guard = EM.BarGuard
 
 local statusToken = 0 -- each status has its own clock: only the newest clears
 
--- The tooltip a message that doesn't fit the gap is shown in (see
--- EM:SetBarStatus), and the control it is under.
-local statusTipOwner
+-- Whether the status tooltip (see EM:SetBarStatus) is showing. It is owned by
+-- the bar, not by the control it is under, so no control's OnLeave or Retip
+-- touches it: only its clock, a new status, Disabled and combat end it.
+local statusTipShown = false
+function EM:IsStatusTipShown() return statusTipShown and GameTooltip:IsShown() and GameTooltip:IsOwned(EM.bar) end
 
 local function ClearStatus()
 	local text = EM.statusText
@@ -57,9 +59,9 @@ local function ClearStatus()
 		text:SetText('')
 		text:Hide()
 	end
-	if statusTipOwner then
-		W.HideTip(statusTipOwner)
-		statusTipOwner = nil
+	if statusTipShown then
+		W.HideTip(EM.bar)
+		statusTipShown = false
 	end
 	EM.statusCut = false
 	if EM:IsBarFloating() and EM.barWindow then EM:PlaceWindowStatus(nil) end
@@ -98,25 +100,34 @@ local function StatusText()
 end
 
 -- Says text in the bar's status line; nil or '' clears it. On the docked bar,
--- which has no line, the message is a tooltip under owner, the control that was
--- pressed (under the bar with none), for EM.STATUS_SECONDS (red for a refusal),
--- never in combat; EM.statusCut says the bar has no line for it.
+-- which has no line, the message is the GameTooltip owned by the bar (so no
+-- control's OnLeave takes it), under owner, the control that was pressed (under
+-- the bar with none), for EM.STATUS_SECONDS whatever the mouse does (red for a
+-- refusal), never in combat; EM.statusCut says the bar has no line for it.
 function EM:SetBarStatus(message, owner, refusal)
 	statusToken = statusToken + 1
 	if message == nil or message == '' then
 		ClearStatus()
 		return
 	end
-	if statusTipOwner then
-		W.HideTip(statusTipOwner)
-		statusTipOwner = nil
+	if statusTipShown then
+		W.HideTip(EM.bar)
+		statusTipShown = false
 	end
 	StatusText():SetText(message)
 	PlaceStatus()
-	owner = owner or (EM.statusCut and EM.bar and EM.bar:IsShown()) and EM.bar or nil
-	if EM.statusCut and owner and not InCombatLockdown() then
-		statusTipOwner = owner
-		W.ShowTip(owner, refusal and "It didn't work" or 'Done', { { text = message, red = refusal and true or nil } })
+	local under = owner or (EM.bar and EM.bar:IsShown() and EM.bar) or nil
+	if EM.statusCut and under and not InCombatLockdown() then
+		local colors = st.config.profile.colors.text
+		GameTooltip:SetOwner(EM.bar, 'ANCHOR_NONE')
+		GameTooltip:ClearLines()
+		GameTooltip:AddLine(refusal and "It didn't work" or 'Done', 1, 1, 1)
+		local r, g, b = (refusal and colors.red or colors.normal):GetRGB()
+		GameTooltip:AddLine(message, r, g, b, true)
+		GameTooltip:ClearAllPoints()
+		GameTooltip:SetPoint('TOP', under, 'BOTTOM', 0, -4)
+		GameTooltip:Show()
+		statusTipShown = true
 	end
 	local mine = statusToken
 	C_Timer.After(EM.STATUS_SECONDS, function()

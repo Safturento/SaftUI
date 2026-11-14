@@ -301,7 +301,7 @@ test('the status line clears after STATUS_SECONDS, on a new status and when edit
 	drag(player, 40, 0)
 	stub.click(frame_of('undo'))
 	eq(status(), 'Undid: Moved Player', 'shown')
-	check(EM.statusCut and tip_on(frame_of('undo')), 'as a tooltip under the pressed control: the docked bar has no line')
+	check(EM.statusCut and EM:IsStatusTipShown(), 'as a tooltip, the bar\'s own, under the pressed control: the docked bar has no line')
 	stub.time = stub.time + 5
 	stub.run_timers()
 	eq(status(), 'Undid: Moved Player', 'still there at 5 seconds')
@@ -958,22 +958,26 @@ test('a message is shown in full as a tooltip under the control that was pressed
 		stub.click(undo)
 		eq(status(), message, size[1] .. ': the status has the message')
 		check(EM.statusCut, size[1] .. ': and knows the bar has no line for it')
-		check(tip_on(undo), size[1] .. ': the tooltip is under the pressed control')
+		check(EM:IsStatusTipShown(), size[1] .. ': the tooltip is up')
+		stub.fire_script(undo, 'OnLeave', true)
+		check(EM:IsStatusTipShown(), size[1] .. ': and stays when the mouse leaves the pressed control')
+		local _, anchor = GameTooltip:GetPoint(1)
+		eq(anchor, undo, size[1] .. ': under the pressed control')
 		local text = {}
 		for _, line in ipairs(lines) do text[#text + 1] = line.text end
 		check(table.concat(text, '|'):find(message, 1, true), size[1] .. ': with the whole message')
 		eq(lines[#lines].color, rgb(colors().text.red), size[1] .. ': a refusal in red')
 		stub.time = stub.time + 5
 		stub.run_timers()
-		check(tip_on(undo), 'still there at 5 seconds')
+		check(EM:IsStatusTipShown(), 'still there at 5 seconds')
 		stub.time = stub.time + 2
 		stub.run_timers()
-		check(not tip_on(undo), 'gone at 6')
+		check(not GameTooltip:IsShown(), 'gone at 6')
 		eq(status(), '', 'with the status line')
 		-- In combat it is not shown.
 		stub.in_combat = true
 		EM:SetBarStatus(message, undo, true)
-		check(not tip_on(undo), 'nothing in combat')
+		check(not GameTooltip:IsShown(), 'nothing in combat')
 		stub.in_combat = false
 		EM:SetBarStatus('')
 		eq(#P.off(EM:GetBar()), 0, size[1] .. ': the bar is still on whole pixels')

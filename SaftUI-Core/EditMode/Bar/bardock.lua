@@ -219,7 +219,7 @@ end
 
 -- Whether a list of the bar's is open or one of its boxes has the keyboard.
 local function Held()
-	if EM:IsHistoryListShown() then return true end
+	if EM:IsHistoryListShown() or EM:IsStatusTipShown() then return true end
 	local owner = W.ListOwner()
 	for _, control in ipairs(EM:BarControls()) do
 		local frame = control.frame

@@ -487,3 +487,23 @@ test('the bar and the strip are on whole pixels while down and hidden, under eac
 	end
 	reset()
 end)
+
+test('a status message holds the bar down while it shows, then the grace', function()
+	reset()
+	turn_on()
+	tick(0.5)
+	local bar = EM:GetBar()
+	over_strip()
+	tick(0.016)
+	EM:SetBarStatus('Undid: Player', frame_of('undo'))
+	away()
+	tick(3)
+	check(bar:IsShown(), 'the message shows: the bar stays')
+	stub.time = stub.time + 4
+	stub.run_timers()
+	tick(0.2)
+	check(bar:IsShown(), 'the message is gone: the grace')
+	tick(0.2)
+	check(not bar:IsShown(), 'then up')
+	reset()
+end)
