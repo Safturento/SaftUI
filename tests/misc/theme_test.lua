@@ -663,6 +663,15 @@ test('the totem bar has no default place and says why; it is hidden while Blizza
 	eq(EM:MoverModule(mover), 'Misc', 'module')
 	eq(EM:GetDefaultPosition(mover), nil, 'no default position')
 	eq(mover.def.noDefaultReason, "The totem bar has no default place: SaftUI took its place from Blizzard's Edit Mode.", 'and why')
+	eq(mover.def.getSavedPosition(), nil, 'nothing saved: the history can put "none" back')
+	mover.def.setPosition({ point = 'TOP', x_off = 1, y_off = 2 })
+	eq(mover.def.getSavedPosition().x_off, 1, 'a saved position reads back')
+	mover.def.setPosition(nil)
+	eq(mover.def.getSavedPosition(), nil, 'and nil clears it')
+	local canReset, resetWhy = EM:CanReset(mover)
+	eq(canReset, false, 'so Reset is not offered')
+	eq(resetWhy, mover.def.noDefaultReason, 'and says why')
+	eq(select(2, EM:Reset(mover)), mover.def.noDefaultReason, 'Reset refuses with the same reason')
 	TB.config.hide = false
 	eq(EM:IsMoverDisabled(mover), false, 'not disabled while Hide totem bar is off')
 	TB.config.hide = true

@@ -482,6 +482,8 @@ function editmode_files()
 		'SaftUI-Core/EditMode/settings.lua',
 		'SaftUI-Core/EditMode/coordinates.lua',
 		'SaftUI-Core/EditMode/filter.lua',
+		'SaftUI-Core/EditMode/history.lua',
+		'SaftUI-Core/EditMode/moves.lua',
 	}
 end
 
