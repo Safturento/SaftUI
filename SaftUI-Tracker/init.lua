@@ -190,8 +190,8 @@ TR.EVENTS = {
 TR.UNIT_EVENTS = { UNIT_QUEST_LOG_CHANGED = 'player' }
 TR.CONDITIONAL_EVENTS = { PLAYER_MONEY = true }
 
--- QUEST_LOG_UPDATE can fire many times a second while killing: it refreshes at
--- most this often (seconds).
+-- The events come many times a second while killing: the list refreshes at most
+-- this often (seconds).
 TR.REFRESH_GAP = 0.1
 
 -- The module's one event frame. Only called by TR:Build, so with the switch off
@@ -247,26 +247,23 @@ function TR:UpdateMoneyEvent(model)
 	end
 end
 
--- Something changed: the list is read and drawn again, once, on the next frame
--- (C_Timer.After(0)), however many marks come before it. QUEST_LOG_UPDATE waits
--- out TR.REFRESH_GAP since the last refresh, so a burst of them refreshes at
--- most every 0.1 seconds; any other mark, arriving while that wait is pending,
--- brings the refresh forward to the next frame. Nothing runs before the
--- tracker is built.
+-- Something changed: the list is read and drawn again, once, however many marks
+-- come before it. Every kind of mark goes through one throttle (the
+-- controller's ruling of 2026-11-14): the first one after a quiet gap refreshes
+-- on the next frame (C_Timer.After(0)), so a single change shows at once; one
+-- within TR.REFRESH_GAP of the last refresh waits for the end of that gap, and
+-- every mark that comes while a refresh is pending is folded into it, never
+-- pushing it back. A steady stream refreshes at most ten times a second and is
+-- never starved. Nothing runs before the tracker is built.
 function TR:MarkDirty(event)
-	if not self.built then return end
+	if not self.built or self.pending then return end
 	local delay = 0
-	if event == 'QUEST_LOG_UPDATE' and self.lastRefresh then
+	if self.lastRefresh then
 		delay = math.max(0, TR.REFRESH_GAP - (GetTime() - self.lastRefresh))
 	end
-	if self.pendingDelay and self.pendingDelay <= delay then return end
-	self.pendingDelay = delay
-	self.pendingToken = (self.pendingToken or 0) + 1
-	local token = self.pendingToken
+	self.pending = true
 	C_Timer.After(delay, function()
-		-- A later mark with a shorter wait scheduled its own; this one is stale.
-		if self.pendingToken ~= token then return end
-		self.pendingDelay = nil
+		self.pending = false
 		self:Refresh()
 	end)
 end

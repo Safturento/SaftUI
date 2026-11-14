@@ -121,21 +121,86 @@ RW.both('a burst refreshes at most every 0.1 seconds', function(st, TR)
 	eq(counted.n, 1, 'the gap over: refreshed')
 end)
 
-RW.both('another event while a QUEST_LOG_UPDATE waits brings the refresh to the next frame, once', function(st, TR)
+-- The controller's ruling (2026-11-14): every event goes through one throttle.
+RW.both('a lone event, of any kind, refreshes on the next frame', function(st, TR)
+	quiet_log()
+	RW.later(1)
+	local counted = count_refreshes(TR)
+	for _, event in ipairs({ 'QUEST_LOG_UPDATE', 'UNIT_QUEST_LOG_CHANGED', 'QUEST_WATCH_UPDATE', 'SUPER_TRACKING_CHANGED', 'QUEST_ACCEPTED' }) do
+		counted.n = 0
+		stub.fire_event(event, 'player')
+		eq(counted.n, 0, event .. ': not inside the frame')
+		RW.later(0)
+		eq(counted.n, 1, event .. ': on the next frame')
+		RW.later(1)
+	end
+end)
+
+RW.both('events within the gap of the last refresh are coalesced into one at the end of the gap, whatever their kind', function(st, TR)
 	quiet_log()
 	RW.later(1)
 	local counted = count_refreshes(TR)
 	stub.fire_event('QUEST_LOG_UPDATE')
 	RW.later(0)
 	eq(counted.n, 1, 'the first')
+	RW.later(0.03)
+	for _, event in ipairs({ 'QUEST_LOG_UPDATE', 'UNIT_QUEST_LOG_CHANGED', 'QUEST_WATCH_UPDATE', 'SUPER_TRACKING_CHANGED', 'QUEST_REMOVED' }) do
+		stub.fire_event(event, 'player')
+	end
+	RW.later(0.03)
+	eq(counted.n, 1, 'inside the gap: waiting')
+	RW.later(0.05)
+	eq(counted.n, 2, 'the gap over: one refresh for all of them')
+	RW.later(1)
+	eq(counted.n, 2, 'and no more')
+end)
+
+RW.both('a pending refresh is not pushed back by new events, and the last event of a burst is drawn', function(st, TR)
+	quiet_log()
+	RW.later(1)
+	local counted = count_refreshes(TR)
 	stub.fire_event('QUEST_LOG_UPDATE')
 	RW.later(0)
-	eq(counted.n, 1, 'the second waits')
-	stub.fire_event('SUPER_TRACKING_CHANGED')
-	RW.later(0)
-	eq(counted.n, 2, 'a focus change does not wait for the gap')
+	local started = stub.time
+	local refreshed_at = {}
+	local refresh = TR.Refresh
+	TR.Refresh = function(self, ...)
+		refreshed_at[#refreshed_at + 1] = stub.time - started
+		return refresh(self, ...)
+	end
+	for _ = 1, 40 do
+		RW.later(0.01)
+		stub.fire_event('QUEST_LOG_UPDATE')
+	end
+	-- 0.4 s of events, one every 10 ms: refreshes at every 0.1 s, none starved.
+	check(#refreshed_at >= 3 and #refreshed_at <= 5, 'about every 0.1 s: ' .. #refreshed_at)
+	for i = 2, #refreshed_at do
+		check(refreshed_at[i] - refreshed_at[i - 1] <= 0.1001 + 1e-9, 'refresh ' .. i .. ' came no later than 0.1 s after the one before')
+	end
+	-- The last change of a burst is drawn.
+	Q.set({ Q.header('Elwynn Forest'), Q.quest(1), Q.quest(2), Q.quest(3, { title = 'Last one' }) }, { 1, 2, 3 })
+	stub.fire_event('QUEST_LOG_UPDATE')
+	RW.later(0.2)
+	check(RW.quest(TR, 3) ~= nil and RW.text(RW.quest(TR, 3).title):find('Last one', 1, true), 'the last event of the burst is drawn')
+end)
+
+RW.both('one kill a frame for 2 seconds, with the events a kill brings, refreshes at most 21 times, and makes no timer per event', function(st, TR)
+	quiet_log()
 	RW.later(1)
-	eq(counted.n, 2, 'and the stale wait refreshes nothing more')
+	local counted = count_refreshes(TR)
+	local before = #stub.timers
+	local max_pending = 0
+	for _ = 1, 120 do
+		for _, event in ipairs({ 'UNIT_QUEST_LOG_CHANGED', 'QUEST_WATCH_UPDATE', 'QUEST_LOG_UPDATE', 'QUEST_LOG_UPDATE' }) do
+			stub.fire_event(event, 'player')
+		end
+		max_pending = math.max(max_pending, #stub.timers)
+		RW.later(1 / 60)
+	end
+	RW.later(0.2)
+	check(counted.n <= 21, 'at most 21 refreshes over 2 seconds: ' .. counted.n)
+	check(counted.n >= 15, 'and it did refresh: ' .. counted.n)
+	check(max_pending <= before + 2, 'one pending timer at a time, not one per event: ' .. max_pending)
 end)
 
 RW.both('a second refresh makes no frame; a refresh with nothing changed sets no text', function(st, TR)
