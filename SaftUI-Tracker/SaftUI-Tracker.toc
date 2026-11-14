@@ -1,0 +1,10 @@
+## Interface: 120000, 16001
+## Version: 1.0
+## Title: |cff00adefSaftUI Tracker|r
+## RequiredDeps: SaftUI-Core
+## OptionalDeps: SaftUI-Misc
+## Group: SaftUI-Core
+
+config.lua
+init.lua
+options.lua

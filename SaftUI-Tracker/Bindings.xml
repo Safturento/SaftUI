@@ -1,0 +1,3 @@
+<Bindings>
+	<Binding name="CLICK SaftUITrackerNearestItem:LeftButton" header="SAFTUI" category="BINDING_HEADER_SAFTUI"/>
+</Bindings>
