@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-13 — Design decisions waiting to be built](#2026-11-13--design-decisions-waiting-to-be-built)
   - [2026-11-13 — Objective tracker skin: in-game checks and what was left out](#2026-11-13--objective-tracker-skin-in-game-checks-and-what-was-left-out)
   - [2026-11-13 — Scale SaftUI across resolutions and stay pixel perfect](#2026-11-13--scale-saftui-across-resolutions-and-stay-pixel-perfect)
   - [2026-11-13 — Bags: a general sort order of draggable blocks, with a per-category override](#2026-11-13--bags-a-general-sort-order-of-draggable-blocks-with-a-per-category-override)
@@ -136,6 +137,35 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-13 — Design decisions waiting to be built
+
+**What:** The design system's Decisions page (`docs/design-system/05-decisions.md`) records choices the owner has made that no task has built yet. This entry is the list, so none is lost between sessions. Each line names its decision number there.
+
+**Why noticed:** The design system was written on 2026-11-13 and the owner answered its questions the same day, faster than the work could be queued.
+
+**Anchors:** `docs/design-system/05-decisions.md`, `10-discrepancies.md`, `25-colour-roles.md`, `30-code-changes.md`.
+
+**Not yet built, with no task running:**
+
+- 1, 2: the options window's controls and the close button follow the theme; one theme setting makes panels see-through or solid across the UI, `/sui` included.
+- 3: every colour-plus-opacity pair becomes one colour control (the pairs still need listing).
+- 4, 19: one button component at one size and font; the close button and the window's small buttons the same height as buttons, icons centred.
+- 7: the accent as a theme colour with its own swatch; "on" drawn in the accent everywhere (the edit mode bar's plan covers its own toggles).
+- 8: `/sui` tooltips' descriptions in the normal text colour, not Blizzard's gold.
+- 14: hue-named colours renamed by role (waiting on the owner's answers on the Colour roles page), with a migration.
+- 20: sidebar page names in sentence case.
+- 21: the docs spell "color".
+- 22: SaftUI's font on every line of item and compare tooltips (find why they show Blizzard's).
+- 24: a written spacing scale, and unexplained values moved onto it.
+- 28: Thin's default background matches Thick's.
+- 29, 30: hover and selection tints at two strengths by meaning; the action buttons' hover highlight dimmed.
+- The loot feed's and other hand-drawn glyphs still to become Lucide icons (the audit's list).
+- Remaining section Reset buttons (bags' Categories "Reset ... to default" and "Reset all").
+
+**Being built or planned elsewhere:** 5, 15, 31 to 33 (the edit mode bar: `docs/superpowers/specs/2026-11-13-saftui-edit-mode-bar-design.md`); 6, 16, 18 (the `/sui` window's sizes: `docs/superpowers/specs/2026-11-13-saftui-options-window-sizes-design.md`, waiting on five answers); 9, 13, 17 (the colour control as a field, Copy from beside the Unit dropdown: branch `fb-kit2`); 11, 12 (scaling and the small-text font: their own followup); 25 (overlapping mover labels: in the edit mode bar's plan).
+
+**Shape of work:** Several small tasks (20, 21, 28, 29, 30, 8, 22 are each small) and two projects (the theme-following options window with the accent and one button; the colour roles rename). Group the small ones into one or two passes.
 
 ### 2026-11-13 — Objective tracker skin: in-game checks and what was left out
 
