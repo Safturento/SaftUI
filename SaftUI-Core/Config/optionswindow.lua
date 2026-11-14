@@ -1090,7 +1090,13 @@ local function Relayout()
 	-- With the sidebar collapsed its toggle is at the footer's left (S.PlaceSideToggle),
 	-- the tools (Search, Edit mode, the commands) after it, and the region
 	-- starts FOOTER_GAP after the last.
-	local toolsReach = S.DrawTools()
+	-- The room the tools have: the footer's width less what is right of them
+	-- (Close's pad, Close, Reload UI and the gap before it) and what is left of
+	-- them (the footer's pad and the toggle).
+	local footerWidth = settings and width or mainWidth
+	local rightReserve = (settings and L.footerX or L.rightPad) + floor(F.closeButton:GetWidth() + 0.5) + FOOTER_GAP
+		+ floor(F.reloadButton:GetWidth() + 0.5) + FOOTER_GAP
+	local toolsReach = S.DrawTools(footerWidth - (regionX + S.SIDE_TOGGLE_SIZE) - rightReserve)
 	if not sidebar then regionX = regionX + S.SIDE_TOGGLE_SIZE + toolsReach + FOOTER_GAP end
 	F.footerRegion:SetPoint('LEFT', footer, 'LEFT', regionX, regionY)
 	F.footerRegion:SetPoint('RIGHT', F.reloadButton, 'LEFT', -FOOTER_GAP, 0)
@@ -1578,6 +1584,7 @@ end)
 S.F, S.Colors, S.Schedule, S.SavePosition, S.SaveWindow, S.Inside = F, Colors, Schedule, SavePosition, SaveWindow, Inside
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
+S.FOOTER_MIN_ROOM = FOOTER_MIN_ROOM
 S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, W.Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT = PAD, FIELD_HEIGHT, TAB_HEIGHT
 S.CLOSE_RIGHT, S.CLOSE_TOP = 16, 14 -- the close X's place under Thick and Thin, from the window's top right corner

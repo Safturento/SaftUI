@@ -27,7 +27,7 @@ A choice of three or more (Ace `select`), the page picker, the position block's 
 - Under the mouse: the box's edge turns `accent`.
 - Disabled: the box at `alpha-disabled`, label `text-grey`.
 - Open: a click outside or Esc closes it; a pick sets and closes.
-- Caption entry (`caption = true`, a heading such as the page list's groups): its label in `text-grey`, no row under the mouse, a click does nothing and the list stays open.
+- Caption entry (`caption = true`, a heading such as the page list's groups): its label in `text-grey` in the headings' style (the sidebar's group font), no row under the mouse, a click does nothing and the list stays open.
 - Disabled entry (`disabled = true`): the row at `alpha-disabled`, no row under the mouse, not to be picked; the list stays open.
 
 ## Blizzard theme

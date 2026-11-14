@@ -580,3 +580,22 @@ test('a list with captions and disabled entries: a caption takes no click and no
 	end
 	theme('thick')
 end)
+
+test("a caption is drawn in the group font like the sidebar's headings, and a scroll that puts one under the mouse unlights it", function()
+	theme('thick')
+	local owner = CreateFrame('Button', nil, parent)
+	owner:SetSize(200, 26); owner:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+	local entries = {}
+	for i = 1, 12 do entries[i] = { key = 'k' .. i, label = 'Entry ' .. i } end
+	entries[13] = { caption = true, label = 'Heading' }
+	W.OpenList(owner, entries, nil, function() end)
+	local list = W.GetListFrames()
+	stub.fire_script(list.rows[12], 'OnEnter', true)
+	check(list.rows[12].hover:IsShown(), 'row 12 is lit')
+	stub.fire_script(list.frame, 'OnMouseWheel', -1)
+	eq(list.rows[12].text:GetText(), 'Heading', 'the scroll put the caption in that row')
+	check(not list.rows[12].hover:IsShown(), 'and it is not lit')
+	eq(list.rows[12].text:GetFontObject(), st.OptionsBody.Font('group'), "in the sidebar headings' font")
+	check(list.rows[11].text:GetFontObject() ~= st.OptionsBody.Font('group'), 'a page keeps the field font')
+	W.CloseList()
+end)

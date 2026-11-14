@@ -389,7 +389,7 @@ test('collapsed, the footer holds the toggle, then Search, Edit mode and each co
 	for _, tool in ipairs(F.tools) do check(tool:IsVisible(), 'shown collapsed') end
 	eq(F.tools[1].icon:GetTexture(), st.icons.search); eq(F.tools[2].icon:GetTexture(), st.icons.move)
 	eq(F.tools[3].icon:GetTexture(), st.icons.keyboard, "Keybind mode's icon")
-	eq(F.tools[4].text:GetText(), 'Two', 'a command without an icon: its label')
+	eq(F.tools[4].icon:GetTexture(), st.icons.ellipsis, 'a command without an icon goes under the overflow button')
 	eq(F.tools[1]:GetLeft(), F.sideToggle:GetRight() + 6, '6 after the toggle')
 	for i = 2, 4 do eq(F.tools[i]:GetLeft(), F.tools[i - 1]:GetRight() + 6, '6 apart') end
 	for i = 1, 4 do
@@ -399,7 +399,7 @@ test('collapsed, the footer holds the toggle, then Search, Edit mode and each co
 	eq(F.footerRegion:GetLeft(), F.tools[4]:GetRight() + 12, 'the region after them')
 	eq(F.tools[1]:GetWidth() .. 'x' .. F.tools[1]:GetHeight(), '26x26')
 	for i, want in ipairs({ 'Search settings | Finds a setting by name, on any page.',
-		"Edit mode | Drag and nudge SaftUI's frames. /sui edit does too.", 'Keybind mode' }) do
+		"Edit mode | Drag and nudge SaftUI's frames. /sui edit does too.", 'Keybind mode', 'More' }) do
 		stub.fire_script(F.tools[i], 'OnEnter', true)
 		check(GameTooltip:IsOwned(F.tools[i]), 'its tooltip')
 		eq(tip_text(F.tools[i]), want)
@@ -407,8 +407,25 @@ test('collapsed, the footer holds the toggle, then Search, Edit mode and each co
 		check(not GameTooltip:IsShown(), 'and gone')
 	end
 	check(F.tools[3].onClick ~= nil and F.tools[1].onClick ~= nil, 'clicks through onClick')
-	click(F.tools[3]); click(F.tools[4])
-	eq(table.concat(ran, ','), 'kb,two', 'a command runs its func')
+	click(F.tools[3])
+	eq(table.concat(ran, ','), 'kb', 'a command runs its func')
+	click(F.tools[4])
+	eq(W.ListOwner(), F.tools[4], 'the overflow button opens the list of the rest')
+	eq(listed(), 'Two')
+	click(W.GetListFrames().rows[1])
+	eq(table.concat(ran, ','), 'kb,two', 'a pick runs the command'); eq(W.ListOwner(), nil, 'and closes the list')
+	-- Each tool is lifted 2 levels over the footer, and its icon is accent under the mouse.
+	for i = 1, 4 do eq(F.tools[i]:GetFrameLevel(), F.footer:GetFrameLevel() + 2, 'tool ' .. i .. "'s level") end
+	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
+	local c = st.config.profile.colors.button.blue
+	local blue = string.format('%.2f,%.2f,%.2f', c.r, c.g, c.b)
+	for i = 1, 4 do
+		local grey = vertex(F.tools[i].icon)
+		stub.fire_script(F.tools[i], 'OnEnter', true)
+		eq(vertex(F.tools[i].icon), blue, 'tool ' .. i .. ': accent under the mouse')
+		stub.fire_script(F.tools[i], 'OnLeave', true)
+		eq(vertex(F.tools[i].icon), grey, 'and grey again')
+	end
 	check(OW:SetSidebarShown(true))
 	for _, tool in ipairs(F.tools) do check(not tool:IsVisible(), 'hidden again with the sidebar') end
 	eq(#take_errors(), 0, 'no errors')
@@ -534,6 +551,82 @@ test('the title opens the page list, grouped as the sidebar is, while the sideba
 	eq(W.ListOwner(), nil, 'no list')
 	eq(#take_errors(), 0, 'no errors')
 	reset()
+end)
+
+test('the search panel closes on any mouse down outside it, through a catcher as the kit list has, and in the stub a click on a button does not blur the box', function()
+	reset()
+	st.Config:Open('Unitframes', 'player', 'power'); OW:SetSidebarShown(false)
+	local F = frames()
+	check(F.searchCatcher ~= nil and not F.searchCatcher:IsShown(), 'a catcher, down while the panel is')
+	check(F.searchPop:IsMouseEnabled(), 'the panel takes the mouse')
+	click(F.tools[1])
+	check(F.searchCatcher:IsShown(), 'up with the panel')
+	eq(F.searchCatcher:GetWidth(), UIParent:GetWidth(), 'across the screen'); eq(F.searchCatcher:GetHeight(), UIParent:GetHeight())
+	local level = F.searchCatcher:GetFrameLevel()
+	check(F.tabs[1]:GetFrameLevel() < level and F.body:GetFrameLevel() < level and F.tools[1]:GetFrameLevel() < level
+		and F.main:GetFrameLevel() < level, 'over the page, the tabs and the footer')
+	check(F.searchPop:GetFrameLevel() > level and F.search:GetFrameLevel() > level, 'under the panel and its box')
+	eq(F.searchCatcher:GetFrameStrata(), F.window:GetFrameStrata(), "in the window's strata")
+	-- The game does not take the keyboard from a box for a click on a button.
+	click(F.tabs[1])
+	check(F.searchPop:IsShown() and F.search:HasFocus(), 'a click on a tab alone leaves it open: the catcher is what closes it')
+	F.search:SetText('width'); tick(0.3)
+	eq(OW:GetState().search, 'width')
+	stub.fire_script(F.searchCatcher, 'OnMouseDown', 'LeftButton')
+	check(not F.searchPop:IsShown() and not F.searchCatcher:IsShown(), 'the mouse down closes it')
+	check(not F.search:HasFocus(), 'taking the keyboard'); eq(OW:GetState().search, 'width', 'the search stays')
+	-- Every other way of closing takes the catcher with it.
+	click(F.tools[1]); click(F.tools[1])
+	check(not F.searchCatcher:IsShown(), 'the icon again')
+	click(F.tools[1]); stub.fire_script(F.search, 'OnEnterPressed')
+	check(not F.searchCatcher:IsShown(), 'Enter')
+	click(F.tools[1]); stub.fire_script(F.search, 'OnEscapePressed')
+	check(not F.searchCatcher:IsShown(), 'Esc')
+	click(F.tools[1]); OW:SetSidebarShown(true)
+	check(not F.searchCatcher:IsShown(), 'showing the sidebar')
+	OW:SetSidebarShown(false); click(F.tools[1])
+	st.Config:Close()
+	check(not F.searchCatcher:IsShown() and not F.searchPop:IsShown(), 'closing the window')
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test('collapsed: the title is 24 narrower for its arrow, the arrow centred on the text and accent under the mouse, the title dragging the window, and no page marked during a search', function()
+	reset()
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	local shown = F.title:GetWidth()
+	OW:SetSidebarShown(false)
+	eq(F.title:GetWidth(), shown - 24, "the title's room loses the arrow's 24")
+	eq(F.titleButton:GetTop() - F.titleArrow:GetTop(), math.floor((F.titleButton:GetHeight() - 16) / 2), 'the arrow centred on the title')
+	local function vertex(t) return string.format('%.2f,%.2f,%.2f', t:GetVertexColor()) end
+	local c = st.config.profile.colors.button.blue
+	local blue = string.format('%.2f,%.2f,%.2f', c.r, c.g, c.b)
+	local grey = vertex(F.titleArrow)
+	check(grey ~= blue, 'grey at rest')
+	stub.fire_script(F.titleButton, 'OnEnter', true)
+	eq(vertex(F.titleArrow), blue, 'accent under the mouse')
+	stub.fire_script(F.titleButton, 'OnLeave', true)
+	eq(vertex(F.titleArrow), grey, 'and grey again')
+	check(F.titleButton:GetScript('OnDragStart') ~= nil and F.titleButton:GetScript('OnDragStop') ~= nil, 'a drag on the title moves the window')
+	stub.fire_script(F.titleButton, 'OnDragStart'); stub.fire_script(F.titleButton, 'OnDragStop')
+	-- A search is on: no page is the open one.
+	F.search:SetText('width'); tick(0.3)
+	click(F.titleButton)
+	local list = W.GetListFrames()
+	local blue_text = string.format('%.2f,%.2f,%.2f', st.config.profile.colors.text.blue.r, st.config.profile.colors.text.blue.g, st.config.profile.colors.text.blue.b)
+	for _, row in ipairs(list.rows) do
+		if row:IsShown() then check(string.format('%.2f,%.2f,%.2f', row.text:GetTextColor()) ~= blue_text, 'no page is blue during a search: ' .. row.text:GetText()) end
+	end
+	W.CloseList()
+	eq(#take_errors(), 0, 'no errors')
+	reset()
+end)
+
+test('the footer keeps FOOTER_MIN_ROOM, and with the real command set the status line shows at W4', function()
+	reset()
+	eq(OW.S.FOOTER_MIN_ROOM, 24)
+	eq(#take_errors(), 0)
 end)
 
 test('OW.PageMenuEntries: a page is a key and a label, a group a caption, a disabled page stays disabled', function()

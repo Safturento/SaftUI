@@ -470,18 +470,27 @@ end
 	    W.LookControl):
 	      [1] Search, W.IconButton (search), whose click opens the search panel;
 	      [2] Edit mode (move), whose click is st.EditModeFrames:Toggle(),
-	      then each st.Config:AddCommand command: a W.IconButton with its icon
-	      and its label as the title, or, with no icon, a W.Button with its
-	      label. Search is on (W.SetOn) while a search is, Edit mode while edit
+	      then each st.Config:AddCommand command with an icon, in order, as a
+	      W.IconButton (its label the title) while it fits before Reload UI
+	      with the footer's 12 gap. Every command that doesn't fit, and every
+	      one with no icon, is under one overflow button (ellipsis, "More"),
+	      last, which opens W.OpenList of their labels; a pick runs the
+	      command. The overflow button always fits (Search, Edit mode and it
+	      are the floor; the status line and the profile control have given
+	      way by then). Search is on (W.SetOn) while a search is, Edit mode while edit
 	      mode is (UpdateEditModeButton: edit mode's Enabled and Disabled, and
-	      every draw). S.DrawTools places them and returns how far they reach
-	      from the toggle's right (the footer's region starts FOOTER_GAP after).
+	      every draw). S.DrawTools(room) places them and returns how far they
+	      reach from the toggle's right (the footer's region starts FOOTER_GAP
+	      after); room is what Relayout leaves them before Reload UI.
 	  - F.searchPop: the sidebar's own search box (F.search, moved into it by
 	    S.PlaceSearch) in a panel SEARCH_POP_PAD round it, a child of F.main 20
 	    levels up, its bottom left 6 over the Search icon's top left. The icon
 	    opens it with the keyboard in the box and closes it again; it closes
-	    when the box loses the keyboard (Enter, Esc, a click away) and the
-	    search stays. The box goes back to the sidebar when that shows.
+	    when the box loses the keyboard (Enter, Esc) and on a mouse down
+	    anywhere else, through F.searchCatcher (a full-screen frame in the
+	    window's strata between the page and the panel, as the kit list's
+	    catcher: the click is the catcher's, so a click on the icon only
+	    closes it), and the search stays. The box goes back to the sidebar when that shows.
 	  - F.titleButton over the page's title and F.titleArrow (chevronDown, 16,
 	    Text > Grey, accent under the mouse) 8 after the title's text: the
 	    button opens the sidebar's pages as W.OpenList's list, groups as
@@ -489,13 +498,14 @@ end
 	    sidebar does (OW:Navigate). Hidden while the sidebar shows.
 ]]
 
-local TOOL_GAP, SEARCH_POP_PAD, SEARCH_POP_GAP, TEXT_TOOL_PAD = 6, 8, 6, 8
+local TOOL_GAP, SEARCH_POP_PAD, SEARCH_POP_GAP = 6, 8, 6
 local TITLE_ARROW, TITLE_ARROW_GAP = 16, 8
 S.TITLE_ARROW_ROOM = TITLE_ARROW + TITLE_ARROW_GAP -- the title's room less this while collapsed
 S.SEARCH_POP_WIDTH, S.SEARCH_POP_HEIGHT = SEARCH_WIDTH + 2 * SEARCH_POP_PAD, FIELD_HEIGHT + 2 * SEARCH_POP_PAD
 
 function S.ClosePop()
 	if F.searchPop then F.searchPop:Hide() end
+	if F.searchCatcher then F.searchCatcher:Hide() end
 end
 
 -- The search box in the sidebar's actions while that shows, else in the panel.
@@ -535,6 +545,7 @@ local function ToggleSearchPop()
 		return
 	end
 	S.PlaceSearch()
+	F.searchCatcher:Show()
 	F.searchPop:Show()
 	F.search:SetFocus()
 end
@@ -549,47 +560,83 @@ function S.ToolsKey()
 	return table.concat(parts, ';')
 end
 
-local function NewCommandTool(command)
-	if command.icon then
-		local tool = W.IconButton(F.footer, command.icon, function() return command.label end, TOGGLE_SIZE, TOGGLE_ICON)
+-- A command's icon button, made once (F.commandTools, by command).
+local function CommandTool(command)
+	local tool = F.commandTools[command.command]
+	if not tool or tool.iconPath ~= command.icon then
+		tool = W.IconButton(F.footer, command.icon, function() return command.label end, TOGGLE_SIZE, TOGGLE_ICON)
+		tool.iconPath = command.icon
 		tool.onClick = function() command.func() end
-		return tool
+		F.commandTools[command.command] = tool
 	end
-	-- A button with its label, as wide as its label asks (not the kit's 80 at
-	-- least): the footer's room is short at half.
-	local tool = W.Button(F.footer, command.label, function() command.func() end)
-	tool:SetWidth(max(TOGGLE_SIZE, ceil(tool.text:GetStringWidth()) + 2 * TEXT_TOOL_PAD))
 	return tool
 end
 
--- The footer's tools, made when the commands change, then placed and put in the
--- look: shown only while the sidebar is collapsed. Returns how far they reach
--- right of the toggle (each TOOL_GAP and its width).
-function S.DrawTools()
-	local key = S.ToolsKey()
-	if key ~= S.toolsKey then
-		S.toolsKey = key
-		for i = #F.tools, 1, -1 do
-			F.tools[i]:Hide()
-			F.tools[i] = nil
-		end
-		local search = W.IconButton(F.footer, st.icons.search, SearchTip, TOGGLE_SIZE, TOGGLE_ICON)
-		search.onClick = ToggleSearchPop
-		local edit = W.IconButton(F.footer, st.icons.move, EditModeTip, TOGGLE_SIZE, TOGGLE_ICON)
-		edit.onClick = function() st.EditModeFrames:Toggle() end
-		F.tools[1], F.tools[2] = search, edit
-		for _, command in ipairs(st.Config:GetCommands()) do F.tools[#F.tools + 1] = NewCommandTool(command) end
+-- The overflow button's list: the commands that are not buttons, by label; a
+-- pick runs one.
+local function OpenOverflow(button)
+	local entries = {}
+	for i, command in ipairs(F.overflowCommands or {}) do entries[i] = { key = i, label = tostring(command.label) } end
+	W.OpenList(button, entries, nil, function(i)
+		local command = F.overflowCommands[i]
+		if command then command.func() end
+	end)
+end
+
+-- The footer's tools, placed and put in the look: shown only while the sidebar
+-- is collapsed. room is the width from the toggle's right to Reload UI's left
+-- less the gap (Relayout works it out): Search and Edit mode always, then each
+-- command with an icon, in order, while it fits (each TOOL_GAP and its width,
+-- keeping the overflow button's if anything is left over), and the rest, with
+-- the commands that have no icon, under the overflow button, last. Returns
+-- how far they reach right of the toggle.
+function S.DrawTools(room)
+	room = room or math.huge
+	local step = TOOL_GAP + TOGGLE_SIZE
+	if not F.search1 then
+		F.search1 = W.IconButton(F.footer, st.icons.search, SearchTip, TOGGLE_SIZE, TOGGLE_ICON)
+		F.search1.onClick = ToggleSearchPop
+		F.edit1 = W.IconButton(F.footer, st.icons.move, EditModeTip, TOGGLE_SIZE, TOGGLE_ICON)
+		F.edit1.onClick = function() st.EditModeFrames:Toggle() end
+		F.overflow1 = W.IconButton(F.footer, st.icons.ellipsis, function() return 'More' end, TOGGLE_SIZE, TOGGLE_ICON)
+		F.overflow1.onClick = OpenOverflow
+		F.commandTools = {}
 	end
+	local commands = st.Config:GetCommands()
+	local iconed, others = {}, 0
+	for _, command in ipairs(commands) do
+		if command.icon then iconed[#iconed + 1] = command else others = others + 1 end
+	end
+	-- How many icon commands fit: all of them if nothing else needs the
+	-- overflow button, else with its step kept.
+	local free = room - 2 * step
+	local fit = max(0, min(#iconed, floor(free / step)))
+	if fit < #iconed or others > 0 then fit = max(0, min(#iconed, floor((free - step) / step))) end
+	local shown = {}
+	for k = 1, fit do shown[iconed[k]] = true end
+	F.overflowCommands = {}
+	for _, command in ipairs(commands) do
+		if not shown[command] then F.overflowCommands[#F.overflowCommands + 1] = command end
+	end
+	local order = { F.search1, F.edit1 }
+	for k = 1, fit do order[#order + 1] = CommandTool(iconed[k]) end
+	if #F.overflowCommands > 0 then order[#order + 1] = F.overflow1 end
+	local inOrder = {}
+	for _, tool in ipairs(order) do inOrder[tool] = true end
+	for _, tool in pairs(F.commandTools) do if not inOrder[tool] then tool:Hide() end end
+	if not inOrder[F.overflow1] then F.overflow1:Hide() end
+	for i = #F.tools, 1, -1 do F.tools[i] = nil end
 	local collapsed = S.sidebar == false
 	local reach, previous = 0, F.sideToggle
-	for _, tool in ipairs(F.tools) do
-		if tool.icon then tool.hoverIcon = true end -- an icon is accent under the mouse, as the toggle's
+	for i, tool in ipairs(order) do
+		F.tools[i] = tool
+		tool.hoverIcon = true -- an icon is accent under the mouse, as the toggle's
 		tool:ClearAllPoints()
 		tool:SetPoint('LEFT', previous, 'RIGHT', TOOL_GAP, 0)
 		tool:SetFrameLevel(F.footer:GetFrameLevel() + 2)
 		W.LookControl(tool, S.blizzard)
 		tool:SetShown(collapsed)
-		reach = reach + TOOL_GAP + floor(tool:GetWidth() + 0.5)
+		reach = reach + step
 		previous = tool
 	end
 	F.searchPop:ClearAllPoints()
@@ -633,6 +680,20 @@ function S.BuildCollapsed()
 	pop:Hide()
 	st:SetTemplate(pop, 'theme', 'solid', 'panel')
 	F.searchPop = pop
+	-- A mouse down anywhere else closes the panel (and takes the keyboard from
+	-- its box): a full-screen catcher in the window's strata under the panel
+	-- and over the rest of the window, as the kit list's.
+	local catcher = CreateFrame('Frame', nil, UIParent)
+	catcher:SetAllPoints(UIParent)
+	catcher:SetFrameStrata(F.window:GetFrameStrata())
+	catcher:SetFrameLevel(pop:GetFrameLevel() - 1)
+	catcher:EnableMouse(true)
+	catcher:Hide()
+	catcher:SetScript('OnMouseDown', function()
+		S.ClosePop()
+		F.search:ClearFocus()
+	end)
+	F.searchCatcher = catcher
 	S.PlaceSearch() -- the sidebar shows by default: the box stays in it
 
 	local button = CreateFrame('Button', nil, F.header)
@@ -652,6 +713,7 @@ function S.BuildCollapsed()
 		W.HideTip(self)
 	end)
 	button:SetScript('OnHide', function() arrow:SetVertexColor(Grey()) end)
+	S.Draggable(button) -- a drag on the title moves the window, a click opens the list
 	button:SetScript('OnClick', function() S.OpenPageList() end)
 	F.titleButton, F.titleArrow = button, arrow
 end

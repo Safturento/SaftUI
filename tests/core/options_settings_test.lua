@@ -1329,6 +1329,24 @@ test('collapsed under Blizzard: the footer tools on Blizzard panel buttons, the 
 			eq(#off, 0, client .. ' W4 page list noise ' .. noise .. ': ' .. P.report(off))
 			W.CloseList()
 		end
+		-- More commands, with and without icons: the rest are under the overflow
+		-- button, and nothing overlaps Reload UI or Close, at W4 and at W2.
+		st.Config:AddCommand('c3', 'Third', function() end, st.icons.search)
+		st.Config:AddCommand('c4', 'Fourth', function() end, st.icons.move)
+		st.Config:AddCommand('c5', 'Fifth', function() end)
+		for _, size in ipairs({ 'half', 'full' }) do
+			if size == 'full' then stub.time = stub.time + 1; check(OW:SetWindowSize('full'), client .. ': full') end
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				stub.size_noise = noise
+				OW:Render()
+				clear_of_neighbours(' more commands ' .. size)
+				eq(F.tools[#F.tools].icon:GetTexture(), st.icons.ellipsis, client .. ': the overflow button last')
+				eq(panel_pieces(F.tools[#F.tools]), 3, client .. ": on Blizzard's panel button")
+				local off = P.off(F.window)
+				eq(#off, 0, client .. ' ' .. size .. ' with the overflow button, noise ' .. noise .. ': ' .. P.report(off))
+			end
+			stub.size_noise = 0
+		end
 		stub.size_noise = 0
 		st.Config:Close()
 		eq(#take_errors(), 0, client .. ': no errors')

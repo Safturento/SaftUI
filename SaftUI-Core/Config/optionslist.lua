@@ -64,6 +64,7 @@ local function ListFill()
 			row.text:SetText(entry.label)
 			-- A caption is Text > Grey; the picked entry blue; the rest normal.
 			if entry.caption then
+				row.text:SetFontObject(st.OptionsBody.Font('group')) -- a heading, as the sidebar's groups
 				row.text:SetTextColor(Colors().text.grey:GetRGB())
 			elseif entry.key == list.selected then
 				row.text:SetTextColor(Colors().text.blue:GetRGB())
@@ -280,7 +281,7 @@ local function OpenList(owner, entries, selected, onPick, fontMode, kind, button
 
 	list.offset = 0
 	for i, entry in ipairs(entries) do
-		if entry.key == selected then
+		if entry.key ~= nil and entry.key == selected then -- a caption has no key, and no selection is nil too
 			list.offset = max(0, min(#entries - LIST_MAX_ROWS, i - 1))
 			break
 		end
