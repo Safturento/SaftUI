@@ -73,6 +73,15 @@ test('SnapAxis, SnapDrag and SnappedOffset', function()
 	sx, sy = EM.SnapDrag({ left = 100, right = 200, bottom = 50, top = 80 }, 0, 5, {}, { 68 }, 8)
 	check(sy == -2, 'SnapDrag y center pulls')
 
+	-- A grid line is lined up by the border: the middle skips it, the high edge goes a pixel past.
+	local c, i = EM.SnapAxis({ 100, 104, 108 }, { 104 }, 8, { 'grid' }, 1)
+	check(c == -3 and i == 1, 'grid line: the high edge (108) goes to 105, nearer than the low one')
+	c = EM.SnapAxis({ 0, 100, 200 }, { 104 }, 8, { 'grid' }, 1)
+	check(c == 0, 'grid line: the middle alone does not snap')
+	c = EM.SnapAxis({ 0, 50, 100 }, { 104 }, 8, { 'grid' }, 1)
+	check(c == 5, 'grid line: the high edge lands a pixel past it (105)')
+	c = EM.SnapAxis({ 0, 100, 200 }, { 104 }, 8, { 'center' }, 1)
+	check(c == 4, 'a frames line keeps the middle')
 	check(EM.SnappedOffset(20, 10, 3, 0.5) == 26.5, 'SnappedOffset honours scale')
 end)
 

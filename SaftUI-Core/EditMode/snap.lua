@@ -14,20 +14,32 @@ EM.SNAP_REACH = SNAP_REACH
 -- between its outline and the dragged outline at most this, on each axis (0
 -- when they overlap on it). Far movers' lines made a drag snap to things the
 -- player couldn't relate to, since with dozens of movers some line is always
--- in reach; near ones still line up tops or sides across a gap of a few frames.
-local SNAP_NEAR = 200 -- UIParent units
+-- in reach; near ones still line up tops or sides across a gap of a few frames,
+-- and 400 keeps SaftUI's own default player and target frames (311 apart across
+-- the screen's center, tops level) lining up.
+local SNAP_NEAR = 400 -- UIParent units
 EM.SNAP_NEAR = SNAP_NEAR
 
 -- The correction to add to the drag so the closest edge lands on the closest
 -- line within reach: line - edge for the smallest |line - edge|. A tie goes to
 -- the earlier edge. 0 when no line is in reach. Also returns which line it was
 -- (its index in lines) and the edge's value, nil when none is in reach.
-function EM.SnapAxis(edges, lines, reach)
+-- edges is { low, middle, high }. kinds (by line index, optional) says which
+-- lines are the grid's ('grid'): a grid line is lined up by the frame's visible
+-- border, so only the low and high edges try it (the middle is invisible), and
+-- the high edge's border is the pixel before it, so it lands one pixel past the
+-- line: the border pixel [line, line + pixel) is the grid line's own.
+function EM.SnapAxis(edges, lines, reach, kinds, pixel)
 	local best, bestDist, bestIndex, bestEdge = 0, nil, nil, nil
-	for _, edge in ipairs(edges) do
+	for e, edge in ipairs(edges) do
 		for i, line in ipairs(lines) do
+			local skip = false
+			if kinds and kinds[i] == 'grid' then
+				if e == 2 then skip = true end
+				if e == 3 then line = line + (pixel or 0) end
+			end
 			local dist = math.abs(line - edge)
-			if dist <= reach and (not bestDist or dist < bestDist) then
+			if not skip and dist <= reach and (not bestDist or dist < bestDist) then
 				best, bestDist, bestIndex, bestEdge = line - edge, dist, i, edge
 			end
 		end
@@ -40,12 +52,15 @@ end
 -- everything is in UIParent units. The edges tried are the dragged left,
 -- center and right, and bottom, center and top. Also returns, for each axis,
 -- the line it snapped to as { index = its place in the lines, line = its value }
--- (nil when that axis isn't snapped).
-function EM.SnapDrag(rect0, dx, dy, xLines, yLines, reach)
+-- (nil when that axis isn't snapped). xKinds and yKinds are SnapAxis's kinds
+-- (NearLines' sources do: a source that is 'grid' is a grid line); pixel is a
+-- physical pixel in UIParent units (default SaftUI's).
+function EM.SnapDrag(rect0, dx, dy, xLines, yLines, reach, xKinds, yKinds, pixel)
+	pixel = pixel or st:GetPixelSize(UIParent) or 1
 	local midX = (rect0.left + rect0.right) / 2
 	local midY = (rect0.bottom + rect0.top) / 2
-	local sx, xi = EM.SnapAxis({ rect0.left + dx, midX + dx, rect0.right + dx }, xLines, reach)
-	local sy, yi = EM.SnapAxis({ rect0.bottom + dy, midY + dy, rect0.top + dy }, yLines, reach)
+	local sx, xi = EM.SnapAxis({ rect0.left + dx, midX + dx, rect0.right + dx }, xLines, reach, xKinds, pixel)
+	local sy, yi = EM.SnapAxis({ rect0.bottom + dy, midY + dy, rect0.top + dy }, yLines, reach, yKinds, pixel)
 	return sx, sy, xi and { index = xi, line = xLines[xi] }, yi and { index = yi, line = yLines[yi] }
 end
 
@@ -139,7 +154,9 @@ function EM:GetSnapTargets(mover)
 end
 
 -- Every line a drag could ever snap to: the fixed ones and each target's
--- left/middle/right and bottom/middle/top.
+-- left/middle/right and bottom/middle/top. Nothing in the game calls it (a drag
+-- asks for GetSnapTargets and NearLines); the tests do, to see what could ever
+-- be offered.
 function EM:GetSnapLines(mover)
 	local xLines, yLines, targets = self:GetSnapTargets(mover)
 	for _, t in ipairs(targets) do
@@ -162,6 +179,12 @@ end
 -- yLines (the fixed ones), xKinds, yKinds and targets.
 -- Returns xLines and yLines, and xSources and ySources, each line's origin by
 -- index: 'grid', 'center' or the target's rect.
+local function Push(lines, sources, source, a, b, c)
+	local n = #lines
+	lines[n + 1], lines[n + 2], lines[n + 3] = a, b, c
+	sources[n + 1], sources[n + 2], sources[n + 3] = source, source, source
+end
+
 function EM.NearLines(drag, dx, dy, near)
 	near = near or SNAP_NEAR
 	local rect0 = drag.rect0
@@ -173,14 +196,8 @@ function EM.NearLines(drag, dx, dy, near)
 	for _, o in ipairs(drag.targets) do
 		if o.left - r <= near and l - o.right <= near
 				and o.bottom - t <= near and b - o.top <= near then
-			for _, v in ipairs({ o.left, (o.left + o.right) / 2, o.right }) do
-				xLines[#xLines + 1] = v
-				xSources[#xLines] = o
-			end
-			for _, v in ipairs({ o.bottom, (o.bottom + o.top) / 2, o.top }) do
-				yLines[#yLines + 1] = v
-				ySources[#yLines] = o
-			end
+			Push(xLines, xSources, o, o.left, (o.left + o.right) / 2, o.right)
+			Push(yLines, ySources, o, o.bottom, (o.bottom + o.top) / 2, o.top)
 		end
 	end
 	return xLines, yLines, xSources, ySources
@@ -203,7 +220,7 @@ local function GetGuides()
 		guideFrame = st:CreateFrame('Frame', nil, UIParent)
 		guideFrame:SetAllPoints(UIParent)
 		guideFrame:SetFrameStrata('FULLSCREEN_DIALOG')
-		guideFrame:SetFrameLevel(9000) -- over the movers' overlays, under the bar (EM.BAR.LEVEL, 9500)
+		guideFrame:SetFrameLevel(9100) -- over the movers' overlays (9000 at most, picker.lua), under the bar (EM.BAR.LEVEL, 9500)
 		guideFrame:EnableMouse(false)
 		guideFrame:Hide()
 		guides = { x = guideFrame:CreateTexture(nil, 'OVERLAY'), y = guideFrame:CreateTexture(nil, 'OVERLAY') }
@@ -247,8 +264,14 @@ function EM:UpdateSnapGuides(rect, xHit, yHit, xSources, ySources)
 		return source
 	end
 
-	local function Place(texture, vertical, line, from, to)
-		local at = st:RoundToPixel(line, UIParent)
+	-- A line that is a target's right or top is lined up by the border's pixel
+	-- before it (the grid's convention: a pixel [v, v + pixel) is the line's).
+	local function IsHigh(hit, source, highKey)
+		return source ~= 'center' and hit.line == source[highKey]
+	end
+
+	local function Place(texture, vertical, line, from, to, high)
+		local at = math.max(st:RoundToPixel(line, UIParent) - (high and pixel or 0), 0)
 		texture:ClearAllPoints()
 		texture:SetColorTexture(cr, cg, cb, 1)
 		if vertical then
@@ -270,16 +293,17 @@ function EM:UpdateSnapGuides(rect, xHit, yHit, xSources, ySources)
 	if source == 'center' then
 		Place(g.x, true, xHit.line, 0, height)
 	elseif source then
-		Place(g.x, true, xHit.line, math.min(rect.bottom, source.bottom), math.max(rect.top, source.top))
+		Place(g.x, true, xHit.line, math.min(rect.bottom, source.bottom), math.max(rect.top, source.top),
+			IsHigh(xHit, source, 'right'))
 	end
 	source = On(yHit, ySources, rect.bottom, rect.top)
 	if source == 'center' then
 		Place(g.y, false, yHit.line, 0, width)
 	elseif source then
-		Place(g.y, false, yHit.line, math.min(rect.left, source.left), math.max(rect.right, source.right))
+		Place(g.y, false, yHit.line, math.min(rect.left, source.left), math.max(rect.right, source.right),
+			IsHigh(yHit, source, 'top'))
 	end
 	guideFrame:SetShown(any)
 end
 
 EM:On('DragStopped', function() EM:HideSnapGuides() end)
-EM:On('Disabled', function() EM:HideSnapGuides() end)

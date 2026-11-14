@@ -214,7 +214,8 @@ function EM:UpdateDrag(mover)
 			and (#drag.xLines > 0 or #drag.yLines > 0 or #drag.targets > 0) then
 		local xLines, yLines
 		xLines, yLines, xSources, ySources = EM.NearLines(drag, dUIx, dUIy)
-		sx, sy, xHit, yHit = EM.SnapDrag(drag.rect0, dUIx, dUIy, xLines, yLines, EM.SNAP_REACH)
+		sx, sy, xHit, yHit = EM.SnapDrag(drag.rect0, dUIx, dUIy, xLines, yLines, EM.SNAP_REACH,
+			xSources, ySources)
 	end
 	-- The screen edge margin has the last word: the frame can't be dragged into it.
 	if drag.shown then
@@ -222,15 +223,17 @@ function EM:UpdateDrag(mover)
 			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(mover.def.frame, ratio))
 		sx, sy = sx + mx, sy + my
 	end
-	-- What it snapped to shows as a guide, where the outline ended up.
+	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
+	drag.y = st:RoundToPixel(EM.SnappedOffset(drag.y0, dUIy, sy, ratio), mover.def.frame)
+	ApplyOffsets(mover, drag.x, drag.y)
+
+	-- What it snapped to shows as a guide, where the outline ended up. After the
+	-- frame is placed: a guide that errors must not stop the drag following.
 	local rect0 = drag.rect0
 	self:UpdateSnapGuides(rect0 and {
 		left = rect0.left + dUIx + sx, right = rect0.right + dUIx + sx,
 		bottom = rect0.bottom + dUIy + sy, top = rect0.top + dUIy + sy,
 	}, xHit, yHit, xSources, ySources)
-	drag.x = st:RoundToPixel(EM.SnappedOffset(drag.x0, dUIx, sx, ratio), mover.def.frame)
-	drag.y = st:RoundToPixel(EM.SnappedOffset(drag.y0, dUIy, sy, ratio), mover.def.frame)
-	ApplyOffsets(mover, drag.x, drag.y)
 
 	-- Keep an open /sui showing the live x/y. Throttled: each refresh
 	-- rebuilds its widgets. The drag's end commits as before.
