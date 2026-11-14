@@ -25,7 +25,7 @@ The frame (or holder) with a real size, a `label` (the frame's name as the sideb
 
 ## States
 
-Idle, selected (the last one clicked or nudged), dimmed (another is picked where they overlap), dragging (snaps to grid lines and other movers' edges within 8, Ctrl suspends).
+Idle, selected (the last one clicked or nudged), dimmed (another is picked where they overlap), dragging (snaps to grid lines and other movers' edges within 8, Ctrl suspends). Reset puts the selected mover in its default place (a step that can be undone); it is offered only when the mover has a default and isn't there already, and its tooltip says why not ("Player is already in its default place.", the totem bar's "has no default place").
 
 ## Blizzard theme
 

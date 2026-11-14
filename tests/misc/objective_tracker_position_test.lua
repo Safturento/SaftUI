@@ -526,3 +526,40 @@ for _, client in ipairs({ 'forever', 'retail' }) do
 		clean()
 	end)
 end
+
+-- Reset and Undo (SaftUI-Core/EditMode/moves.lua) on the tracker's mover.
+test("Reset saves a copy of Blizzard's default spot, which KeepPlacement keeps; Undo puts the moved spot back; no position is already default", function()
+	world('forever')
+	local EM = st.EditModeFrames
+	local mover = EM.movers.objectivetracker
+	local ok, why = EM:CanReset(mover)
+	eq(ok, false, 'a profile with no position is in the default place')
+	eq(why, 'Objective Tracker is already in its default place.', 'and says so')
+
+	EM:Nudge(mover, 'LEFT', true)
+	local moved = profile.objectivetracker.position
+	check(moved ~= nil, 'the nudge saved a position')
+	local movedX = moved.x_off
+	check(movedX ~= -st.CLAMP_INSET, 'away from the default')
+	ok = EM:Reset(mover)
+	eq(ok, true, 'Reset works')
+	local saved = profile.objectivetracker.position
+	check(saved ~= nil, 'a position is saved, not nil')
+	eq(('%s %s %s %d,%d'):format(saved.point, saved.frame, saved.rel_point, saved.x_off, saved.y_off),
+		('TOPRIGHT UIParent TOPRIGHT %d,-275'):format(-st.CLAMP_INSET), "Blizzard's default spot")
+	check(saved ~= EM:GetDefaultPosition(mover), 'a copy, not the same table twice')
+	eq(top_right(OTP.holder), top_right(OT.tracker), 'the holder and the tracker are placed')
+
+	-- A profile with no position keeps where the tracker was last placed.
+	profile.objectivetracker.position = nil
+	OTP:KeepPlacement()
+	local kept = profile.objectivetracker.position
+	check(kept ~= nil, 'KeepPlacement keeps the reset spot')
+	eq(kept.y_off, -275, 'the default spot')
+	eq(kept.x_off, -st.CLAMP_INSET, 'and its offset')
+
+	local undone = EM.History:Undo()
+	eq(undone, true, 'Undo')
+	eq(profile.objectivetracker.position.x_off, movedX, 'the moved spot is back')
+	clean()
+end)

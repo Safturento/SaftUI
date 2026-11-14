@@ -174,10 +174,13 @@ function EM.MoverName(mover)
 end
 
 function EM:StartDrag(mover)
+	-- The position before anything moves: the ticks below write into the table
+	-- getPosition returns, so a step's old must be a copy made now.
+	local before = EM.CopyPosition(mover.def.getPosition())
 	local x, y, shown = Where(mover)
 	local cx, cy = GetCursorPosition()
 	local uiScale = UIParent:GetEffectiveScale()
-	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y, shown = shown }
+	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y, shown = shown, before = before }
 	-- For snapping: where the frame is now, and the lines it can snap to. The
 	-- other frames don't move during a drag, so the lines are made once.
 	-- It's measured by its outline, the line its overlay draws (chat's sits on
@@ -242,6 +245,8 @@ function EM:StopDrag(mover)
 	-- The drag ends even when its commit errors (an apply that does): the error
 	-- is reported, and DragStopped still tells the bar to come back.
 	xpcall(self.CommitPosition, geterrorhandler(), self, mover, drag.x, drag.y)
+	-- One step from press to release (nothing when it ended where it began).
+	xpcall(self.RecordMove, geterrorhandler(), self, mover, 'move', drag.before)
 	self:Fire('DragStopped', mover)
 end
 
@@ -254,6 +259,7 @@ function EM:Select(mover)
 	if mover then
 		SetBorderColor(mover, true)
 	end
+	EM.History:CloseRun() -- another selection starts a new run of nudges
 	self:UpdateKeyboard()
 	self:Fire('Selected', mover)
 end
@@ -274,7 +280,9 @@ function EM:Nudge(mover, key, big)
 			UIParent:GetWidth(), UIParent:GetHeight(), MarginInUI(def.frame, ratio))
 		dx, dy = dx + mx * ratio, dy + my * ratio
 	end
+	local before = EM.CopyPosition(def.getPosition())
 	self:CommitPosition(mover, x + dx, y + dy)
+	self:RecordMove(mover, 'nudge', before)
 end
 
 function EM:CreateMover(key, def)

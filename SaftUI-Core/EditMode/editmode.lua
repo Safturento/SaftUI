@@ -27,6 +27,8 @@ local callbacks = {}
 --                      overlap state changed (filter.lua's EM:UpdateShown, which
 --                      the ticker runs twice a second: fired only on a change)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group
+--   'HistoryChanged'   no arguments: a step was pushed, merged, undone, redone,
+--                      reverted, trimmed or the history cleared (history.lua)
 function EM:On(event, fn)
 	callbacks[event] = callbacks[event] or {}
 	table.insert(callbacks[event], fn)
