@@ -59,3 +59,12 @@ Answers the owner has given to the questions and discrepancies. Each stands as a
 38. **SaftUI gets its own colour picker** (the third drawn), and Blizzard's colour picker is skinned as well. ("That third color picker is awesome, I'm okay with the additional work so lets do it. Lets also skin the blizzard color picker anyways just to make it look nice")
 39. **At half size the bags' category list is a menu on a button,** still dragged to reorder there; the rule editor takes the width. ("I really like the 'list in a menu on a button' mockup, lets go with that for the build")
 40. **The size buttons wear `minimize-2` (shrink) and `maximize-2` (grow), shrink at the left of the pair.** This replaces the chevrons and their order (decision 1 of the sizes spec). ("can we switch the grow and shrink icons ... to use minimize-2 and maximize-2? keep the minimize button left of the maximize one")
+
+## 2026-11-14, from the in-game pass
+
+41. **The pixel font stays for now.** The candidates load, but "when playing with the scaling while on 1080p homespun actually looks great at .75 so I think we'll stick with it for now." This sets aside decision 12's direction until the scaling work; the font demo (`/suifonts`) stays until then.
+42. **Edit mode's defaults are confirmed:** Show hidden on, Show disabled off. ("show hidden and disabled defaults are good")
+43. **The bags' category list:** beside the editor at full, a menu on a button at half. ("bags categorie config looks good in both sizes")
+44. **SaftUI's config windows are see-through like the rest of the UI:** the `/sui` window, edit mode's bar and window, the History list. ("can we get transparency on the saftui config windows? (settings, edit mode, history, etc.)")
+45. **The color picker's two blocks have no words:** the opening color, a chevron-right, the chosen color.
+46. **`/sui`'s size buttons wear `minimize-2` and `maximize-2`,** shrink at the left. (decision 40 has the detail)
