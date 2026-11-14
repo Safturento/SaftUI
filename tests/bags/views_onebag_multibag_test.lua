@@ -313,7 +313,7 @@ test('onebag and multibag show items of categories hidden in the profile', funct
 	eq(#take_errors(), 0, 'no errors')
 end)
 
-test('onebag and multibag are as wide as rows', function()
+test('at the cap, onebag, multibag and compact are as wide as rows', function()
 	local c = world('rows')
 	local width, scroll = c:GetWidth(), c.scrollFrame:GetWidth()
 	for _, view in ipairs({ 'onebag', 'multibag', 'compact' }) do

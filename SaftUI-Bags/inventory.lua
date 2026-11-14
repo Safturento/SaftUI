@@ -244,9 +244,14 @@ function INV:StyleContainerContents(container)
 	for _, category in pairs(container.categories) do
 		category.header:SetHeight(self.config.categoryTitleHeight)
 		category.header.text:SetFontObject(titleFont)
+		-- A profile change runs out of combat (UpdateConfig waits for its end):
+		-- the slots are anchored at the window's line now, as ApplyView does, and
+		-- the frame records it.
+		local line = self:SlotLine(container)
 		for _, slot in pairs(category.slots) do
-			self:StyleSlot(slot, category, container)
+			self:StyleSlot(slot, category, container, line)
 		end
+		category.slotLine = line
 	end
 end
 
