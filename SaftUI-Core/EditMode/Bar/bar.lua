@@ -32,6 +32,10 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 	  EM.BarLayout(width, groups) -> xs, dividers, fits      the pure part
 	  EM:GetBar()              the frame, built on first use
 	  EM:LayoutBar() -> stage  lays the controls out for the bar's width
+	  EM:BarGap() -> left, right  the flexible gap in the bar's x: where the left
+	                           groups end, and where the first right group's
+	                           divider is (the bar's right end less PAD with no
+	                           right groups), as the last layout left it
 	  EM:BarWidthAt(stage)     the narrowest width the bar fits at that stage
 	  EM:RefreshBar()          each control's look and state again
 	  EM:BarControl(key)       a control by its key
@@ -81,6 +85,7 @@ local DIVIDER_HEIGHT = 26
 local groups = {} -- registered groups, by order
 local bar         -- the frame, once made
 local stage = 0   -- the stage the controls are laid out for
+local gapLeft, gapRight = BAR.PAD, BAR.PAD -- the flexible gap, from the last layout
 
 ------------------------------------------------------------------ Blizzard's Edit Mode
 
@@ -247,10 +252,20 @@ function EM:LayoutBar()
 		if fits or s == BAR.STAGES - 1 then
 			Place(list, xs, divided)
 			stage = s
+			local leftEnd, block = Measure(list)
+			gapLeft = leftEnd
+			gapRight = width - BAR.PAD - block
+			self:Fire('BarLaid')
 			return s
 		end
 	end
 end
+
+-- The flexible gap between the left groups and the first right group's
+-- divider, in the bar's x, as the last layout left it: the status line
+-- (barchanges.lua) sits in it. 'BarLaid' (no arguments) fires after each
+-- layout, for what is placed by it.
+function EM:BarGap() return gapLeft, gapRight end
 
 -- The narrowest bar the controls fit in at stage: the left groups, FLEX_MIN,
 -- and the right groups' block, with PAD at each end. The controls are laid

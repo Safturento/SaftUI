@@ -565,3 +565,30 @@ test('a write that errors rolls the step back: what was written is put back and 
 	eq(rolled[#rolled], 'c', 'the rolled-back part was placed again')
 	eq(#take_errors(), 1, 'the error reached the handler once')
 end)
+
+test('Revert reports a failed write as a refusal: false and the message, the step stays applied, no step is added', function()
+	fresh()
+	local failing = false
+	History:RegisterKind('fragile2', {
+		read = function(k) return store[k] end,
+		write = function(k, v) if failing then error('write failed') end store[k] = v end,
+		name = function(k) return k end,
+	})
+	store.a = 2
+	History:Push({ kind = 'move', target = 'a', label = 'Moved a', changes = {
+		{ kind = 'fragile2', where = 'a', old = 1, new = 2 } } })
+	failing = true
+	local ok, message = History:Revert(1)
+	eq(ok, false, 'refused')
+	eq(message, "a couldn't be reverted; the step was put back.", 'with the message')
+	eq(#History:Steps(), 1, 'no step was added')
+	eq(History:Position(), 1, 'the step is still applied')
+	eq(store.a, 2, 'the value is as it was')
+	eq(#take_errors(), 1, 'the error was reported once')
+	failing = false
+	local reverted, why = History:Revert(1)
+	eq(reverted, true, 'it works once the write does')
+	eq(why, nil, 'a revertable step gives true and no reason')
+	eq(store.a, 1, 'the old value is back')
+	eq(#History:Steps(), 2, 'as a new step')
+end)

@@ -690,3 +690,34 @@ test('the totem bar has no default place and says why; it is hidden while Blizza
 	TB.bar, TB.holder = nil, nil
 	EM.movers.totembar = nil
 end)
+
+test("the totem bar's setPosition(nil) forgets where the holder was last placed, so KeepPlacement does not save that spot again", function()
+	local TB = st:GetModule('TotemBar')
+	st:BindModuleConfig(TB, 'totembar')
+	local EM = st.EditModeFrames
+	local bar = CreateFrame('Frame', nil, UIParent)
+	bar:SetSize(100, 40)
+	bar:SetPoint('CENTER')
+	local holder = CreateFrame('Frame', nil, UIParent)
+	holder:SetSize(100, 40)
+	holder:SetPoint('CENTER')
+	TB.bar, TB.holder = bar, holder
+	TB:SetupPosition()
+	local mover = EM.movers.totembar
+	-- A saved position places the holder, which remembers where it was placed.
+	mover.def.setPosition({ point = 'TOP', frame = 'UIParent', rel_point = 'TOP', x_off = 1, y_off = 2 })
+	TB:ApplyHolder()
+	-- With nothing remembered a profile with no position takes that spot (a profile change keeps the bar where it is).
+	TB.config.position = nil
+	TB:KeepPlacement()
+	check(TB.config.position ~= nil, 'a profile with no position keeps the last placement')
+	-- The history puts "nothing saved" back with setPosition(nil): that is not a spot to keep.
+	mover.def.setPosition({ point = 'TOP', frame = 'UIParent', rel_point = 'TOP', x_off = 1, y_off = 2 })
+	TB:ApplyHolder()
+	mover.def.setPosition(nil)
+	eq(mover.def.getSavedPosition(), nil, 'nothing saved')
+	TB:KeepPlacement()
+	eq(TB.config.position, nil, 'KeepPlacement saves nothing: the last placement was forgotten')
+	TB.bar, TB.holder = nil, nil
+	EM.movers.totembar = nil
+end)
