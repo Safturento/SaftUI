@@ -19,7 +19,7 @@ Every option of type `position`, always last on its page or in its menu, in a se
 | Captions | `caption` (Colus 11) in `text-grey`, centred | `caption`, `text-grey` |
 | Dot grid | a 48 Box: nine 14 cells inside a margin of 3; dots 4 x 4 in `dot-grey`, the picked one 8 x 8 in `accent`, a dot under the mouse in `text` | `pos-dot-cell`, `pos-dot-margin`, `pos-dot`, `pos-dot-picked`, `dot-grey` |
 | TO | a `Select` 140 wide, or a name box 120 x 24 | `pos-select`, `pos-name` |
-| Offset | X and Y (12 wide, 8 gap) each with a 46 x 22 box and a 14 x 22 nudge pair sharing its right edge; up and down split by a `kit-edge` line, each a three-row arrow 2, 4, 6 wide in `text-grey`, `text` under the mouse | `range-value`, `pos-box`, `pos-nudge`, `pos-axis-gap` |
+| Offset | X and Y (12 wide, 8 gap) each with a 46 x 22 box and a 14 x 22 nudge pair sharing its right edge; up and down split by a `kit-edge` line, each one Lucide chevron (`chevron-up`, `chevron-down`), 12 x 12 in `text-grey`, `text` under the mouse | `range-value`, `pos-box`, `pos-nudge`, `pos-axis-gap` |
 
 ## States
 
@@ -33,10 +33,10 @@ The approved mockup drew 60 x 24 offset boxes, 10px captions, a TO list with an 
 
 ## Blizzard theme
 
-The dots keep a 1px line in the Blizzard theme's Border round its Background (no Blizzard equivalent); the nudges become MinimalScrollBar's steppers; the TO dropdown is the compact Settings dropdown (glow 4 out); the boxes take `InputBoxTemplate`.
+The dots keep a 1px line in the Blizzard theme's Border round its Background (no Blizzard equivalent); the nudges become MinimalScrollBar's steppers, the chevrons hidden; the TO dropdown is the compact Settings dropdown (glow 4 out); the boxes take `InputBoxTemplate`.
 
 ## Do and don't
 
 - Do put Position last, in its own section, every time.
 - Do keep offsets whole numbers.
-- Don't draw the nudge triangles again: Lucide's `chevron-up` (registered, unused) and `chevron-down` should replace them (see Code changes, the icon helper).
+- Don't draw the nudge arrows by hand: they are Lucide's `chevron-up` and `chevron-down` (`Kit.NudgePair`, shared with the number box).

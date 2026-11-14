@@ -84,6 +84,20 @@ st.icons = {
 	settings = st:TexturePath('lucide-settings.tga'),
 	funnel = st:TexturePath('lucide-filter.tga'), -- Lucide 0.460.0 names the funnel `filter` (the bags' own hand-drawn one is st.textures.filter)
 	arrowDownToLine = st:TexturePath('lucide-arrow-down-to-line.tga'),
+	logOut = st:TexturePath('lucide-log-out.tga'),
+	grid3x3 = st:TexturePath('lucide-grid-3x3.tga'),
+	magnet = st:TexturePath('lucide-magnet.tga'),
+	alignStartVertical = st:TexturePath('lucide-align-start-vertical.tga'),
+	layers = st:TexturePath('lucide-layers.tga'),
+	mapPin = st:TexturePath('lucide-map-pin.tga'),
+	eye = st:TexturePath('lucide-eye.tga'),
+	powerOff = st:TexturePath('lucide-power-off.tga'),
+	search = st:TexturePath('lucide-search.tga'),
+	undo2 = st:TexturePath('lucide-undo-2.tga'),
+	redo2 = st:TexturePath('lucide-redo-2.tga'),
+	history = st:TexturePath('lucide-history.tga'),
+	pictureInPicture2 = st:TexturePath('lucide-picture-in-picture-2.tga'),
+	panelTop = st:TexturePath('lucide-panel-top.tga'),
 }
 
 st.FRAME_ANCHORS = {

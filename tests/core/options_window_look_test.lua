@@ -296,6 +296,35 @@ test("the footer's and the sidebar's buttons are panel buttons", function()
 	eq(#take_errors(), 0, 'no errors')
 end)
 
+test("a press leaves the sidebar's and the footer's buttons their size, and a hover their label's colour", function()
+	if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent, 'GameTooltipTemplate') end
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		theme(look)
+		st.Config:Open('Loot')
+		local f = frames()
+		local green = st.config.profile.colors.text.green
+		for name, button in pairs({ reload = f.reloadButton, close = f.closeButton, editmode = f.actions[1] }) do
+			local before = size_of(button)
+			stub.fire_script(button, 'OnMouseDown', 'LeftButton')
+			eq(size_of(button), before, look .. ': ' .. name .. ' keeps its size while pressed')
+			stub.fire_script(button, 'OnMouseUp', 'LeftButton')
+			eq(size_of(button), before, look .. ': ' .. name .. ' keeps its size once let go')
+		end
+		eq(size_of(f.actions[1]), '88x24', look .. ': Edit mode is the sidebar\'s 88 x 24')
+		-- Edit mode's green label (edit mode on) survives the mouse passing over.
+		local edit = f.actions[1]
+		edit.text:SetTextColor(green:GetRGB())
+		stub.fire_script(edit, 'OnEnter', true)
+		stub.fire_script(edit, 'OnLeave', true)
+		local gr, gg, gb = green:GetRGB()
+		eq(rgba(edit.text:GetTextColor()), rgba(gr, gg, gb, 1), look .. ': its green after a hover')
+		close_all()
+	end
+	theme('thick')
+	local errors = take_errors()
+	eq(#errors, 0, 'no errors: ' .. table.concat(errors, ' | '))
+end)
+
 test("the footer control is the options kit's own widgets, so it takes both looks", function()
 	theme('thick')
 	st.Config:Open('Unitframes', 'player', 'general')

@@ -245,23 +245,6 @@ local function EdgeLine(frame, side)
 	return line
 end
 
--- The mockup's button: the window's fill, a 1px border (blue on hover) and
--- the dark line outside it. Under Blizzard it's Blizzard's panel button
--- (W.LookButton, put on as it's drawn).
-local function Button(parent, label, onClick)
-	local button = W.Box(st:CreateFrame('Button', nil, parent), st.BOX_COLORS.bg)
-	button.label = label
-	button.text = Text(button, 'field', 'CENTER')
-	button.text:SetPoint('CENTER', button, 'CENTER', 0, 0)
-	button.text:SetText(label)
-	W.HoverEdge(button, function() return false end)
-	button:SetScript('OnMouseDown', function(self) self.text:SetPoint('CENTER', self, 'CENTER', 0, -1) end)
-	button:SetScript('OnMouseUp', function(self) self.text:SetPoint('CENTER', self, 'CENTER', 0, 0) end)
-	button:SetScript('OnClick', onClick)
-	button:SetSize(max(80, ceil(button.text:GetStringWidth()) + 28), 26)
-	return button
-end
-
 local pools = {}
 
 local function Inside(frame, ancestor)
@@ -1055,8 +1038,8 @@ local function BuildFooter()
 	F.footerLine = EdgeLine(footer, 'TOP')
 	F.footer = footer
 
-	F.reloadButton = Button(footer, 'Reload UI', function() ReloadUI() end)
-	F.closeButton = Button(footer, 'Close', function() OW:Close() end)
+	F.reloadButton = W.Button(footer, 'Reload UI', function() ReloadUI() end)
+	F.closeButton = W.Button(footer, 'Close', function() OW:Close() end)
 
 	-- Edit mode's controls go here (from the left); the status line shows
 	-- validate errors (from the right); a page's footer control sits in it
@@ -1275,6 +1258,6 @@ end)
 S.F, S.Colors, S.Schedule, S.SavePosition, S.Inside = F, Colors, Schedule, SavePosition, Inside
 S.ColorPickerShown, S.EscapeKeys = ColorPickerShown, EscapeKeys
 S.SetScroll, S.SetNavScroll = SetScroll, SetNavScroll
-S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, Button, Select
+S.state, S.pools, S.Normal, S.Grey, S.Blue, S.Button, S.Select = state, pools, Normal, Grey, Blue, W.Button, Select
 S.PAD, S.FIELD_HEIGHT, S.TAB_HEIGHT = PAD, FIELD_HEIGHT, TAB_HEIGHT
 S.ACTION_PAD, S.ACTION_HEIGHT, S.NAV_ITEM = ACTION_PAD, ACTION_HEIGHT, NAV_ITEM

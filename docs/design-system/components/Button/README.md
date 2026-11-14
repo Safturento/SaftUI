@@ -32,6 +32,13 @@ An action (Ace `execute`): Copy from, Place..., New, Delete, Reload UI, Close. S
 
 Blizzard's panel button (`st:ShowPanelButton`), with its own pressed and disabled art; the window's Reload UI and Close sit 16 from the corners.
 
+## Icon button
+
+`W.IconButton`: a 26 x 26 button with only its 16 x 16 icon in the middle (edges at 5 and 21) in `text-grey`, in the same raised fill, edge and `accent` hover as the labelled one. It needs a tooltip, since an icon says nothing alone (the edit mode bar's buttons). `W.IconLink` is the same icon with no box, `text-grey` at rest and `accent` under the mouse. A labelled button given an icon (`W.Button`'s `opts.icon`, `iconWithLabel`) draws it 16 before the label, 6 apart, the pair centred, 80 wide at least (icon + 6 + text + 28); `W.SetCompact` turns it into the icon alone, 26 square, for a narrow bar.
+
+- "On" (the bar's lit buttons): the `accent` edge, kept when the mouse leaves, and the icon in `accent`. Under Blizzard's panel button the icon, or a text button's label, is `accent`, since it has no lit state.
+- Disabled on the bar: the button at `alpha-disabled`, no hover edge, a click that does nothing, and the mouse kept so its tooltip says why.
+
 ## Other buttons in the code (not the standard)
 
 Six kinds and five heights today: Core's `st:CreateButton`/`st:SkinButton` (drawn `control` in the theme, Pixel 10, `button-normal` highlight, `button-pushed` when held, black 40% when disabled) used by the edit mode footer (22 tall, on = `text-green` text, off = `text-grey`), keybind mode's Done (60 x 16), the loot feed's F and V (20 x 20), the bag header's buttons (23). The code changes propose one button component with two or three sizes; until then, build kit buttons with this look.

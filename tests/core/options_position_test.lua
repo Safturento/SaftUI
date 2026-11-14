@@ -94,19 +94,20 @@ test('position: the parts are laid out 12 apart, each caption over its part, on 
 	check(rel == w.x and relPoint == 'TOPRIGHT', 'on the edit box\'s right edge')
 	eq(px, -1, 'overlapping it by 1: one shared seam')
 	eq(py, 0)
-	local function arrows(button)
-		local out = {}
-		for i, t in ipairs(button.arrows) do
-			local _, _, _, ax, ay = t:GetPoint(1)
-			out[i] = ('%d@%d,%d'):format(t:GetWidth(), ax, ay)
-			eq(t:GetHeight(), 1)
-			eq((14 - t:GetWidth()) % 2, 0, 'arrow ' .. i .. ' is centered on whole pixels')
-			eq(ay, math.floor(ay), 'and on a whole row')
-		end
-		return table.concat(out, ' ')
+	-- Each half's arrow is one Lucide chevron, 12 x 12, on whole pixels: the
+	-- both 1 above their half's top, a middle 5 down it.
+	local function arrow(button, texture)
+		eq(button.arrow:GetTexture(), texture, 'the chevron')
+		eq(button.arrow:GetWidth() .. 'x' .. button.arrow:GetHeight(), '12x12', 'drawn 12 by 12')
+		local point, rel, relPoint, ax, ay = button.arrow:GetPoint(1)
+		return ('%s %s %s,%s'):format(point, relPoint, ax, ay), rel == button
 	end
-	eq(arrows(w.xUp), '2@0,-4 4@0,-5 6@0,-6', 'the up arrow: 2/4/6 wide, widest at the base')
-	eq(arrows(w.xDown), '6@0,-3 4@0,-4 2@0,-5', 'the down arrow: 6/4/2 wide, widest at the top')
+	local upAt, upOn = arrow(w.xUp, st.icons.chevronUp)
+	local downAt, downOn = arrow(w.xDown, st.icons.chevronDown)
+	eq(upAt, 'TOP TOP 0,1', 'the up chevron 1 above its half\'s top: a whole offset')
+	eq(downAt, 'TOP TOP 0,1', 'the down chevron the same, as far from the divider')
+	check(upOn and downOn, 'on its own button')
+	check(w.xUp.arrows == nil and w.xDown.arrows == nil, 'the three rows are gone')
 	local divider
 	for _, region in ipairs({ pair:GetRegions() }) do
 		if region:GetObjectType() == 'Texture' then divider = region end
@@ -373,7 +374,7 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	eq(atlases_of(w.xDown), 'minimal-scrollbar-arrow-bottom', 'down the bottom one')
 	for name, nudge in pairs(nudges) do
 		art_inside(nudge, name)
-		for _, row in ipairs(nudge.arrows) do check(not row:IsShown(), name .. ': no flat arrow') end
+		check(not nudge.arrow:IsShown(), name .. ': no chevron')
 		check_no_box(nudge:GetParent(), name .. "'s box")
 	end
 	for _, region in ipairs(shown_textures(w.xUp:GetParent())) do
@@ -407,7 +408,7 @@ test("the position block's boxes, dropdown and nudges take their art, and its do
 	eq(w.select.text:GetJustifyH(), 'LEFT', 'Thick again: the text from the left')
 	for name, nudge in pairs(nudges) do
 		eq(atlases_of(nudge), '', 'Thick again: ' .. name .. ' has no art')
-		for _, row in ipairs(nudge.arrows) do check(row:IsShown(), 'Thick again: ' .. name .. "'s flat arrow") end
+		check(nudge.arrow:IsShown(), 'Thick again: ' .. name .. "'s chevron")
 		check_box(nudge:GetParent(), 'Thick again: ' .. name .. "'s box")
 	end
 	w:Release()

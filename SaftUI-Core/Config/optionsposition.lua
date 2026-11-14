@@ -13,9 +13,8 @@ local floor = math.floor
 local Box, Edge, BlizzardLook, DropdownStates = W.Box, W.Edge, W.BlizzardLook, W.DropdownStates
 local LookDropdown = W.LookDropdown
 local Base, builders, define, BUILT_IN = Kit.Base, Kit.builders, Kit.define, Kit.BUILT_IN
-local EDGE, Colors, SetFieldFont, NewText = Kit.EDGE, Kit.Colors, Kit.SetFieldFont, Kit.NewText
-local arts, Art, Changes, Piece, HidePieces = Kit.arts, Kit.Art, Kit.Changes, Kit.Piece, Kit.HidePieces
-local ShowBox, LookInput, LookLine, PaintFace = Kit.ShowBox, Kit.LookInput, Kit.LookLine, Kit.PaintFace
+local Colors, SetFieldFont, NewText = Kit.Colors, Kit.SetFieldFont, Kit.NewText
+local LookInput, LookLine, PaintFace = Kit.LookInput, Kit.LookLine, Kit.PaintFace
 local Caret, ListEntries = Kit.Caret, Kit.ListEntries
 
 ------------------------------------------------------------------ position
@@ -80,107 +79,6 @@ local function DotSquare(w, parent, onPick)
 		square.dots[i] = button
 	end
 	return square
-end
-
--- A nudge's stepper art under Blizzard, in its state: pressed, under the
--- mouse, else normal.
-local function PaintNudge(button)
-	local art = arts[button]
-	if not (art and art.blizzard) then return end
-	local state = art.down and 'pressed' or art.over and 'hover' or 'normal'
-	art.pieces.Arrow:SetAtlas(art.arrows[state])
-end
-
--- One half of the nudge pair: a 14x11 button (a clickable region of the
--- pair's box) with a three-row arrow, 2/4/6 wide, in whole pixels. Up sits in
--- the box's rows 1-9 (the arrow in rows 4-6, from the button's TOP); down in rows
--- 11-20 (rows 3-5 of its button, from its TOP).
-local function NudgeButton(w, parent, up, onClick)
-	local button = st:CreateFrame('Button', nil, parent)
-	button:SetSize(POS_NUDGE, POS_BOX / 2)
-	button.arrows = {}
-	for i = 1, 3 do
-		local t = button:CreateTexture(nil, 'OVERLAY')
-		t:SetColorTexture(Colors().text.grey:GetRGB())
-		t:SetSize(up and (2 * i) or (8 - 2 * i), 1)
-		t:SetPoint('TOP', button, 'TOP', 0, -((up and 3 or 2) + i))
-		button.arrows[i] = t
-	end
-	button:SetScript('OnClick', function()
-		if w.disabled then return end
-		onClick()
-	end)
-	button:SetScript('OnEnter', function(self)
-		if not w.disabled then
-			for _, t in ipairs(self.arrows) do t:SetColorTexture(Colors().text.normal:GetRGB()) end
-		end
-		w:Tip(true)
-	end)
-	button:SetScript('OnLeave', function(self)
-		for _, t in ipairs(self.arrows) do t:SetColorTexture(Colors().text.grey:GetRGB()) end
-		w:Tip(false)
-	end)
-	-- Under Blizzard its stepper art follows the mouse (PaintNudge).
-	local art = Art(button)
-	local function Hook(script, field, value)
-		button:HookScript(script, function(self)
-			art[field] = value
-			PaintNudge(self)
-		end)
-	end
-	Hook('OnEnter', 'over', true)
-	Hook('OnLeave', 'over', false)
-	Hook('OnMouseDown', 'down', true)
-	Hook('OnMouseUp', 'down', false)
-	button:HookScript('OnHide', function()
-		art.over, art.down = false, false
-	end)
-	return button
-end
-
--- The nudge pair: one 14x22 box with a 1px divider between up and down, and
--- the two buttons over its halves.
-local function NudgePair(w, parent, onUp, onDown)
-	local pair = Box(st:CreateFrame('Frame', nil, parent))
-	pair:SetSize(POS_NUDGE, POS_BOX)
-	local divider = pair:CreateTexture(nil, 'ARTWORK')
-	divider:SetColorTexture(unpack(EDGE))
-	divider:SetSize(POS_NUDGE - 2, 1)
-	divider:SetPoint('TOPLEFT', pair, 'TOPLEFT', 1, -(POS_BOX / 2 - 1))
-	local up = NudgeButton(w, pair, true, onUp)
-	up:SetPoint('TOPLEFT', pair, 'TOPLEFT', 0, 0)
-	local down = NudgeButton(w, pair, false, onDown)
-	down:SetPoint('BOTTOMLEFT', pair, 'BOTTOMLEFT', 0, 0)
-	pair.divider, pair.up, pair.down = divider, up, down
-	return pair, up, down
-end
-
--- The nudge pairs' look, when it changed: their box, divider and arrows, or
--- MinimalScrollBar's steppers (st.ThemeArt.Control('nudge')), each filling
--- its half of the pair.
-local function LookNudges(w, blizzard)
-	local look
-	for _, pair in ipairs(w.nudgePairs) do
-		if Changes(Art(pair), blizzard) then
-			ShowBox(pair, not blizzard)
-			pair.divider:SetShown(not blizzard)
-			look = look or (blizzard and st.ThemeArt.Control('nudge'))
-			for _, button in ipairs({ pair.up, pair.down }) do
-				local art = Art(button)
-				art.blizzard = blizzard
-				for _, row in ipairs(button.arrows) do row:SetShown(not blizzard) end
-				if blizzard then
-					local arrow = Piece(art, button, 'Arrow', 'ARTWORK')
-					arrow:ClearAllPoints()
-					arrow:SetAllPoints(button)
-					art.arrows = button == pair.up and look.up or look.down
-					PaintNudge(button)
-				else
-					HidePieces(art)
-				end
-			end
-		end
-	end
 end
 
 -- An edit box of the block. onEnter(text) runs on Enter, after focus is dropped.
@@ -260,7 +158,7 @@ builders.position = function(w)
 			w:Commit(part, number)
 		end)
 		box:SetSize(46, POS_BOX)
-		local pair, up, down = NudgePair(w, frame, function() w:Nudge(part, 1) end, function() w:Nudge(part, -1) end)
+		local pair, up, down = Kit.NudgePair(w, frame, function() w:Nudge(part, 1) end, function() w:Nudge(part, -1) end)
 		pair:SetPoint('TOPLEFT', box, 'TOPRIGHT', -1, 0)
 		w.nudgePairs[#w.nudgePairs + 1] = pair
 		return axis, box, up, down
@@ -297,7 +195,7 @@ define('position', {
 		LookInput(self.x, blizzard, POS_BOX)
 		LookInput(self.y, blizzard, POS_BOX)
 		LookDropdown(self.select, blizzard, true)
-		LookNudges(self, blizzard)
+		Kit.LookNudges(self.nudgePairs, blizzard)
 		return Base.Bind(self, ...)
 	end,
 
