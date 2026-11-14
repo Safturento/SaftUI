@@ -700,9 +700,11 @@ end
 	  - where: its right edge DEFAULT_GAP left of what the control draws
 	    (DrawnLeft: under Blizzard its art, a dropdown's glow included),
 	    centred on the row (on its first band for a taller row, a
-	    multiselect's); an item's left of its dots (its control's right end;
-	    the cell's right edge without them); a position block, which has no
-	    label, has it after the block on its first line.
+	    multiselect's); an item's right against its dots, with no gap (their
+	    button has room round its glyph, so the label gives up only the
+	    icon and LABEL_ROOM), or DEFAULT_GAP left of the cell's right edge
+	    without them; a position block, which has no label, has it after the
+	    block on its first line.
 	  - the label, and the hover line (cell.lineEnd), end LABEL_ROOM before it.
 	  - a row whose share has own (a member page: its hover line's Reset
 	    acts on it) never shows it: one reset per row, the share's. A
@@ -750,14 +752,17 @@ function OB.PlaceDefault(cell)
 		return
 	end
 	local x0, right = frame:GetLeft(), nil
-	if row.type == 'item' then
-		local dots = widget.hasMenu and widget.dots:GetLeft()
-		right = dots and x0 and floor(dots - x0 + 0.5) or (widget.hasMenu and frame:GetWidth() - widget.dots:GetWidth()) or frame:GetWidth()
+	if row.type == 'item' and widget.hasMenu then
+		-- Right against the dots, whose button has room either side of its
+		-- glyph: the label gives up only the icon and LABEL_ROOM.
+		local dots = widget.dots:GetLeft()
+		right = dots and x0 and floor(dots - x0 + 0.5) or (frame:GetWidth() - widget.dots:GetWidth())
+	elseif row.type == 'item' then
+		right = frame:GetWidth() - DEFAULT_GAP
 	else
 		local drawn = DrawnLeft(widget.frame)
-		right = drawn and x0 and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())
+		right = (drawn and x0 and floor(drawn - x0) or (frame:GetWidth() - widget:GetWidth())) - DEFAULT_GAP
 	end
-	right = right - DEFAULT_GAP
 	if cell.height > cell.rowHeight then
 		icon:SetPoint('RIGHT', frame, 'TOPLEFT', right, -floor(cell.rowHeight / 2))
 	else

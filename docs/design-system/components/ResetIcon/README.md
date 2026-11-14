@@ -15,7 +15,7 @@ What "default" is for the setting (AceDB's default, or the shared value), the re
 | Part | Value | Tokens |
 | --- | --- | --- |
 | Icon | `rotate-ccw` drawn 14, `accent`; `white` under the mouse | `icon-reset`, `accent`, `white` |
-| Beside a control | 6 before the control | `reset-gap` |
+| Beside a control | 6 before the control; on a `MenuItem`, right against its dots (their button has room round the glyph), so the name gives up only the icon and 4 | `reset-gap` |
 | In the hover line | after "Own", 6 either side | `reset-gap` |
 | Tooltip | title "Reset" in `white`, the line under it | `white` |
 
