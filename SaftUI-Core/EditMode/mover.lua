@@ -181,8 +181,9 @@ function EM:StartDrag(mover)
 	local cx, cy = GetCursorPosition()
 	local uiScale = UIParent:GetEffectiveScale()
 	mover.drag = { cx = cx / uiScale, cy = cy / uiScale, x0 = x, y0 = y, x = x, y = y, shown = shown, before = before }
-	-- For snapping: where the frame is now, and the lines it can snap to. The
-	-- other frames don't move during a drag, so the lines are made once.
+	-- For snapping: where the frame is now, and what it can snap to. The other
+	-- frames don't move during a drag, so these are made once (EM.NearLines
+	-- picks the near ones as the drag moves).
 	-- It's measured by its outline, the line its overlay draws (chat's sits on
 	-- its padded border). The overlay is anchored to the frame, so it moves by
 	-- the same delta.
@@ -190,7 +191,7 @@ function EM:StartDrag(mover)
 	if l then
 		mover.drag.rect0 = { left = l, right = r, bottom = b, top = t }
 	end
-	mover.drag.xLines, mover.drag.yLines = self:GetSnapLines(mover)
+	mover.drag.xLines, mover.drag.yLines, mover.drag.targets = self:GetSnapTargets(mover)
 	mover.dragged = true
 	mover.overlay:SetScript('OnUpdate', function() EM:UpdateDrag(mover) end)
 	self:Fire('DragStarted', mover)
@@ -209,8 +210,9 @@ function EM:UpdateDrag(mover)
 	-- center onto a nearby line. Ctrl held suspends it.
 	local sx, sy = 0, 0
 	if drag.rect0 and not IsControlKeyDown()
-			and (#drag.xLines > 0 or #drag.yLines > 0) then
-		sx, sy = EM.SnapDrag(drag.rect0, dUIx, dUIy, drag.xLines, drag.yLines, EM.SNAP_REACH)
+			and (#drag.xLines > 0 or #drag.yLines > 0 or #drag.targets > 0) then
+		local xLines, yLines = EM.NearLines(drag, dUIx, dUIy, EM.SNAP_REACH)
+		sx, sy = EM.SnapDrag(drag.rect0, dUIx, dUIy, xLines, yLines, EM.SNAP_REACH)
 	end
 	-- The screen edge margin has the last word: the frame can't be dragged into it.
 	if drag.shown then

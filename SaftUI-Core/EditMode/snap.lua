@@ -81,17 +81,19 @@ function EM.GetOutlineRect(mover)
 	return l - o, r + o, b - o, t + o
 end
 
--- The vertical lines (xLines) and horizontal lines (yLines) the dragged mover
--- can snap to, in UIParent units. Computed once per drag.
+-- The lines a drag can snap to, in UIParent units, and the shown movers' outlines
+-- they come from. Computed once per drag; EM.NearLines picks from them.
 --   Snap to grid:   the grid's lines across the screen.
---   Snap to frames: the screen's center lines, and the left/middle/right and
---                   bottom/middle/top of every other shown mover's outline
---                   that is on screen. Frames that move with the dragged one (anchored to
---                   it, or its children) are left out: they shift as it
---                   moves, so snapping to them would jitter.
-function EM:GetSnapLines(mover)
+--   Snap to frames: the screen's center lines, and every other shown mover's
+--                   outline that is on screen. Frames that move with the dragged
+--                   one (anchored to it, or its children) are left out: they
+--                   shift as it moves, so snapping to them would jitter.
+-- Returns xLines and yLines (the grid's and the screen's center, which are
+-- offered wherever the drag is) and targets, a list of { left, right, bottom,
+-- top }.
+function EM:GetSnapTargets(mover)
 	local settings = self:GetSettings()
-	local xLines, yLines = {}, {}
+	local xLines, yLines, targets = {}, {}, {}
 	local width, height = UIParent:GetWidth(), UIParent:GetHeight()
 	local cx, cy = self:GetGridCenter()
 
@@ -112,16 +114,53 @@ function EM:GetSnapLines(mover)
 					and not st:MovesWith(other.def.frame, mover.def.frame) then
 				local l, r, b, t = EM.GetOutlineRect(other)
 				if l and r > 0 and l < width and t > 0 and b < height then
-					xLines[#xLines + 1] = l
-					xLines[#xLines + 1] = (l + r) / 2
-					xLines[#xLines + 1] = r
-					yLines[#yLines + 1] = b
-					yLines[#yLines + 1] = (b + t) / 2
-					yLines[#yLines + 1] = t
+					targets[#targets + 1] = { left = l, right = r, bottom = b, top = t }
 				end
 			end
 		end
 	end
 
+	return xLines, yLines, targets
+end
+
+-- Every line a drag could ever snap to: the fixed ones and each target's
+-- left/middle/right and bottom/middle/top.
+function EM:GetSnapLines(mover)
+	local xLines, yLines, targets = self:GetSnapTargets(mover)
+	for _, t in ipairs(targets) do
+		xLines[#xLines + 1] = t.left
+		xLines[#xLines + 1] = (t.left + t.right) / 2
+		xLines[#xLines + 1] = t.right
+		yLines[#yLines + 1] = t.bottom
+		yLines[#yLines + 1] = (t.bottom + t.top) / 2
+		yLines[#yLines + 1] = t.top
+	end
+	return xLines, yLines
+end
+
+-- The lines a drag is offered where it is: the fixed ones, and the edges and
+-- center of each target mover that is near, meaning its outline is within
+-- EM.SNAP_REACH of the dragged outline (rect0 moved by dx, dy) on both axes.
+-- A mover across the screen is no target: its edges line up with the drag's
+-- somewhere, and a drag that snaps to something it can't see is a drag that
+-- snaps to nothing. drag is mover.drag: rect0, xLines and yLines (the fixed
+-- ones) and targets.
+function EM.NearLines(drag, dx, dy, reach)
+	reach = reach or SNAP_REACH
+	local rect0 = drag.rect0
+	local l, r = rect0.left + dx, rect0.right + dx
+	local b, t = rect0.bottom + dy, rect0.top + dy
+	local xLines, yLines = { unpack(drag.xLines) }, { unpack(drag.yLines) }
+	for _, o in ipairs(drag.targets) do
+		if o.left - r <= reach and l - o.right <= reach
+				and o.bottom - t <= reach and b - o.top <= reach then
+			xLines[#xLines + 1] = o.left
+			xLines[#xLines + 1] = (o.left + o.right) / 2
+			xLines[#xLines + 1] = o.right
+			yLines[#yLines + 1] = o.bottom
+			yLines[#yLines + 1] = (o.bottom + o.top) / 2
+			yLines[#yLines + 1] = o.top
+		end
+	end
 	return xLines, yLines
 end
