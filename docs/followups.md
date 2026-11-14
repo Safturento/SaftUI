@@ -7,6 +7,7 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 ## Contents
 
 - [Active](#active)
+  - [2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout](#2026-11-14--a-first-run-setup-dialog-ui-size-theme-unit-frame-layout)
   - [2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer](#2026-11-14--sui-at-half-with-the-sidebar-collapsed-a-validation-error-is-cut-or-hidden-in-the-footer)
   - [2026-11-14 — Categories tab at full size: a long "Reset <name> to default" overlaps Delete](#2026-11-14--categories-tab-at-full-size-a-long-reset-name-to-default-overlaps-delete)
   - [2026-11-14 — Copy from writes default tables into keys the source unit doesn't have](#2026-11-14--copy-from-writes-default-tables-into-keys-the-source-unit-doesnt-have)
@@ -140,6 +141,20 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
   - [2026-11-11 — Nameplates: a plate handed to the other kind scans its auras twice](#2026-11-11--nameplates-a-plate-handed-to-the-other-kind-scans-its-auras-twice)
 
 ## Active
+
+### 2026-11-14 — A first-run setup dialog: UI size, theme, unit frame layout
+
+**What:** A dialog shown the first time SaftUI runs that walks a new player through a few choices and introduces the UI: the UI size (a default worked out from their resolution, which they can override), the theme (Thick, Thin, Blizzard, and any added later), and which unit frame layout to use, from a few the owner will make.
+
+**Why noticed:** The owner, while the UI scaling design was being written (2026-11-14): "I wonder if it would be worth having an initial setup dialog that can work through a few steps and introduce the UI, this scaling could be a good first candidate - set a default based on the user's resolution but allow them to override it. I'm probably going to setup a few different unitframe configurations, so a follow up setup could be choosing which unitframe theme to choose (also picking which theme from thick, thin, blizzard, and any other that gets added)". The friends who play at 1080p and on a Mac at 3456x2234 are the people it is for: they get SaftUI's defaults, tuned on the owner's 1440p screen, with no guided way to fit them.
+
+**Anchors:** `docs/superpowers/specs/2026-11-14-saftui-ui-scaling-design.md` (the scale's interface a setup step calls: computed default, preview, apply, revert); `SaftUI-Core/Media/theme.lua` (the theme setting); `SaftUI-Unitframes/config/profiles.lua` (unit frame profiles, the natural home for shipped layouts); `SaftUI-Core/Config/optionssmalldialog.lua` and `optionsdialog.lua` (the kit's dialogs); `SaftUI-Core/Config/` (AceDB: where "setup done" would be recorded).
+
+**What's been considered:** The scaling design keeps "the default worked out from the resolution" apart from "what the player chose" so this dialog can show one and save the other, and ships usable without the dialog. Nothing else is designed.
+
+**Shape of work:** A design first. Likely pieces: the dialog itself (steps, back and next, skip, a live preview behind it); a way to ship unit frame layouts as data (presets the owner authors in game and exports, loaded as named unit frame profiles); each step's content; when it shows (first login with no SaftUI settings; offered again from `/sui`).
+
+**Open questions:** How unit frame layouts are authored and shipped (exported profiles checked into the addon?). Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
 
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
