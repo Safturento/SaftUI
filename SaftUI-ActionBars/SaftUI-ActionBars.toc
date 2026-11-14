@@ -19,4 +19,5 @@ stancebar.lua
 bindings.lua
 keybindmode.lua
 extras.lua
+textoptions.lua
 options.lua

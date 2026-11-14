@@ -251,7 +251,7 @@ test('Loot: Test mode is small, every option has a desc, Position is last', func
 	eq(got:match('^test_mode:small 1/1'), 'test_mode:small 1/1', 'Test mode takes a quarter')
 end)
 
-test('Action bars: tooltips, Position last, the Theme and Background options, and the Text positions over the stored keys', function()
+test("Action bars: tooltips, Position last on each bar and extra, Theme and Background on All bars, and the texts' Position blocks over the stored keys", function()
 	local AB = st:GetModule('ActionBars')
 	st:BindModuleConfig(AB, 'actionbars')
 	AB.EXTRA_IDS = { 'extra', 'zone', 'vehicleleave' }
@@ -267,8 +267,10 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 	-- The bars are secure and the skin restyles their buttons: counters here.
 	local calls = {}
 	local function count(name) return function(_, id) calls[#calls + 1] = name .. (id and (':' .. id) or '') end end
-	AB.UpdateBar, AB.LayoutBar, AB.LayoutExtra, AB.UpdateConfig = count('UpdateBar'), count('LayoutBar'), count('LayoutExtra'), count('UpdateConfig')
+	AB.UpdateBar, AB.UpdateBars, AB.LayoutBar = count('UpdateBar'), count('UpdateBars'), count('LayoutBar')
+	AB.LayoutExtra, AB.UpdateConfig = count('LayoutExtra'), count('UpdateConfig')
 	load_saftui('SaftUI-ActionBars/shared.lua')
+	load_saftui('SaftUI-ActionBars/textoptions.lua')
 	load_saftui('SaftUI-ActionBars/options.lua')
 	AB:ConvertProfile() -- the world the game reaches: a converted profile
 	-- All bars' places differ from what any bar stores, so a bar that follows
@@ -276,21 +278,24 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 	for _, kind in ipairs(AB.TEXT_KINDS) do AB:SetSetting('all', kind .. '.position', 3, 'x_off') end
 
 	local tree = AB:GetConfigTable()
-	-- A Position in each bar's General, each extra's General and each text of the Text tabs.
-	local texts = 8 * 4 + 2 * 2
+	-- A Position on each bar and each extra button, and in each text's menu:
+	-- All bars' four, each bar's four, the pet and stance bars' two.
+	local texts = 9 * 4 + 2 * 2
 	eq(check_page('ActionBars', tree), 10 + 3 + texts, 'a Position for every bar, extra button and text')
 	eq(tree.pickerLabel, 'Bar', 'the picker is labelled Bar')
 	eq(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.name, 'Bar', 'and the window shows it')
 	local picked = {}
 	for _, entry in ipairs(OM.BuildView({ ActionBars = tree }, 'ActionBars').picker.values) do picked[#picked + 1] = entry.key end
-	eq(table.concat(picked, ','), 'bar1,bar2,bar3,bar4,bar5,bar6,bar7,bar8,pet,stance,extra,zone,vehicleleave',
-		'the picker lists the bars and extras, not the Theme and Background options')
+	eq(table.concat(picked, ','), 'all,bar1,bar2,bar3,bar4,bar5,bar6,bar7,bar8,pet,stance,extra,zone,vehicleleave',
+		'the picker lists All bars, the bars and the extras, and nothing is above it')
+	for key, option in pairs(tree.args) do eq(option.type, 'group', key .. ' is a pick') end
 
-	-- Theme and Background read and write actionbars.theme and .background, and
-	-- restyle every bar at once.
-	eq(tree.args.template, nil, 'no Template')
+	-- Theme and Background, in All bars' Look, read and write actionbars.theme
+	-- and .background, and restyle every bar at once.
+	local look = tree.args.all.args.look.args
+	eq(look.template, nil, 'no Template')
 	for key, name in pairs({ theme = 'Theme', background = 'Background' }) do
-		local option = tree.args[key]
+		local option = look[key]
 		eq(option.type, 'select', name .. ' is a select')
 		eq(option.name, name, name .. ' is named so')
 		eq(option.get(), profile.actionbars[key], name .. ' reads actionbars.' .. key)
@@ -300,48 +305,64 @@ test('Action bars: tooltips, Position last, the Theme and Background options, an
 		eq(table.concat(calls, ','), 'UpdateConfig', 'and re-skins the bars and extras')
 		profile.actionbars[key] = 'theme'
 	end
-	check(tree.args.theme.values.thin ~= nil and tree.args.theme.values.thicktransparent == nil,
+	check(look.theme.values.thin ~= nil and look.theme.values.thicktransparent == nil,
 		'Theme offers the themes, not the old template names')
-	check(tree.args.theme.order < tree.args.background.order, 'Theme, then Background')
+	check(look.theme.order < look.background.order, 'Theme, then Background')
 
-	-- Each bar: Position last in General; the Text tab has the hotkey, count, macro and
-	-- cooldown numbers (the pet and stance bars only the hotkey and the numbers), each a
-	-- Position block with no target over the text's stored keys. The numbers have no Show.
-	for _, id in ipairs(AB.BAR_IDS) do
-		local bar = tree.args[id]
-		eq(bar.childGroups, 'tab', id .. ' declares its own tabs')
+	-- All bars and each bar: one page, no tabs; the Text section has the hotkey,
+	-- count, macro and cooldown numbers (the pet and stance bars only the hotkey
+	-- and the numbers), each a small item whose menu ends with a Position block
+	-- named Position with no target, over the text's stored keys. The numbers
+	-- share no Show.
+	-- All bars last: its sets would move every bar that follows it.
+	local pages = {}
+	for _, id in ipairs(AB.BAR_IDS) do pages[#pages + 1] = id end
+	pages[#pages + 1] = 'all'
+	for _, id in ipairs(pages) do
+		local page = tree.args[id]
+		eq(page.childGroups, nil, id .. ' is one page, no tabs')
 		local want = (id == 'pet' or id == 'stance') and 'countdown,hotkey' or 'count,countdown,hotkey,macro'
 		local kinds = {}
-		for kind in pairs(bar.args.text.args) do kinds[#kinds + 1] = kind end
+		for kind in pairs(page.args.text.args) do kinds[#kinds + 1] = kind end
 		table.sort(kinds)
-		eq(table.concat(kinds, ','), want, id .. ' text tab')
-		for kind, group in pairs(bar.args.text.args) do
-			local option = group.args.position
-			eq(option.type, 'position', id .. ' ' .. kind .. ' is a Position block')
-			eq(option.target, nil, id .. ' ' .. kind .. ' has no TO part')
+		eq(table.concat(kinds, ','), want, id .. ' text section')
+		local store = id == 'all' and profile.actionbars.all or profile.actionbars[id]
+		for kind, item in pairs(page.args.text.args) do
+			local where = id .. ' ' .. kind
+			eq(item.type .. ' ' .. item.size, 'item small', where .. ' is a small item')
+			local option = item.menu.args.position
+			eq(option.type, 'position', where .. ' is a Position block')
+			eq(option.target, nil, where .. ' has no TO part')
+			eq(option.name, 'Position', where .. "'s block is named Position (the menu's title names the text)")
 			if kind == 'countdown' then
-				eq(group.args.show, nil, id .. ' ' .. kind .. ': no Show')
+				eq(item.share, nil, where .. ': no shared Show')
 			else
-				check(group.args.show.size == 'small', id .. ' ' .. kind .. ': Show is small')
+				check(item.share ~= nil, where .. ': its Show is shared')
 			end
+			local at = { 'menu', 'position' }
 			for _, part in ipairs({ 'point', 'rel_point', 'x_off', 'y_off' }) do
 				local shown = AB:GetSetting(id, kind .. '.position', part)
-				eq(option.get(info_for('position'), part), part:find('_off') and (tonumber(shown) or 0) or shown,
-					id .. ' ' .. kind .. ' reads the effective ' .. part)
+				eq(option.get(at, part), part:find('_off') and (tonumber(shown) or 0) or shown,
+					where .. ' reads the effective ' .. part)
 			end
-			if not AB:IsOwn(id, kind .. '.position') then
-				eq(option.get(info_for('position'), 'x_off'), 3, id .. ' ' .. kind .. ' follows All bars')
+			if id ~= 'all' and not AB:IsOwn(id, kind .. '.position') then
+				eq(option.get(at, 'x_off'), 3, where .. ' follows All bars')
 			end
 			-- No 50 limit: the stored offset can be set past it.
 			calls = {}
-			option.set(info_for('position'), 'x_off', 120)
-			option.set(info_for('position'), 'point', 'CENTER')
-			eq(profile.actionbars[id].text[kind].x_off, 120, id .. ' ' .. kind .. ' writes text.' .. kind .. '.x_off')
-			eq(profile.actionbars[id].text[kind].point, 'CENTER', id .. ' ' .. kind .. ' writes text.' .. kind .. '.point')
-			eq(table.concat(calls, ','), 'UpdateBar:' .. id .. ',UpdateBar:' .. id, 'each change applies through UpdateBar')
-			eq(group.args.size.max, 32, 'Size keeps its range')
+			option.set(at, 'x_off', 120)
+			option.set(at, 'point', 'CENTER')
+			eq(store.text[kind].x_off, 120, where .. ' writes text.' .. kind .. '.x_off')
+			eq(store.text[kind].point, 'CENTER', where .. ' writes text.' .. kind .. '.point')
+			local update = id == 'all' and 'UpdateBars' or 'UpdateBar:' .. id
+			eq(table.concat(calls, ','), update .. ',' .. update, 'each change applies through ' .. update)
+			eq(item.menu.args.size.max, 32, 'Size keeps its range')
 		end
 	end
-	local view = OM.BuildView({ ActionBars = tree }, 'ActionBars', { pick = 'bar1', tab = 'general' })
-	eq(view.sections[#view.sections].title, 'Position', "General ends with the Position section")
+
+	-- Position last on each bar and each extra button.
+	for _, id in ipairs({ 'bar1', 'pet', 'extra', 'zone', 'vehicleleave' }) do
+		local view = OM.BuildView({ ActionBars = tree }, 'ActionBars', { pick = id })
+		eq(view.sections[#view.sections].title, 'Position', id .. ' ends with the Position section')
+	end
 end)
