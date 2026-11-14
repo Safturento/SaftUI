@@ -286,15 +286,27 @@ end)
 
 ------------------------------------------------------------------ the footer and profiles
 
-test('the footer region sits between Reload UI and Close', function()
+test('the footer region runs from the footer\'s left to Reload UI, which sits beside Close', function()
 	st.Config:Open()
 	local f = frames()
 	local region = f.footerRegion
-	check(region:GetLeft() >= f.reloadButton:GetRight(), 'right of Reload UI')
-	check(region:GetRight() <= f.closeButton:GetLeft(), 'left of Close')
+	eq(region:GetLeft(), f.footer:GetLeft() + 28, "from the footer's left, PAD in")
+	eq(region:GetRight(), f.reloadButton:GetLeft() - 12, 'to 12 before Reload UI')
+	eq(f.reloadButton:GetRight(), f.closeButton:GetLeft() - 12, 'Reload UI 12 left of Close')
 	check(f.reloadButton:GetLeft() < f.closeButton:GetLeft(), 'Reload UI on the left')
 	close_all()
 end)
+
+-- A region's anchors, to put back after a case narrows it.
+local function anchors_of(region)
+	local out = {}
+	for i = 1, region:GetNumPoints() do out[i] = { region:GetPoint(i) } end
+	return out
+end
+local function anchor_to(region, anchors)
+	region:ClearAllPoints()
+	for _, point in ipairs(anchors) do region:SetPoint(unpack(point)) end
+end
 
 ------------------------------------------------------------------ the page's footer control
 
@@ -432,9 +444,8 @@ for _, look in ipairs({ 'thick', 'blizzard' }) do
 		-- A region narrower than the widgets and the gap (never so in the window as
 		-- it is built): the control hides for the error, the status line takes it all.
 		local bare = last:GetRight() - widgets[1].frame:GetLeft()
-		local left = region:GetLeft() - f.reloadButton:GetRight()
-		region:ClearAllPoints()
-		region:SetPoint('LEFT', f.reloadButton, 'RIGHT', left, 0)
+		local anchors = anchors_of(region)
+		anchor_to(region, { anchors[1] })
 		region:SetWidth(bare + 8)
 		OW:SetStatus(nil)
 		check(frame:IsShown(), 'the control shows at the right end with no error')
@@ -445,9 +456,7 @@ for _, look in ipairs({ 'thick', 'blizzard' }) do
 		eq(f.status:GetRight(), region:GetRight(), 'to the right end')
 		OW:SetStatus(nil)
 		check(frame:IsShown() and widgets[1].frame:IsVisible(), 'the control is back when the status clears')
-		region:ClearAllPoints()
-		region:SetPoint('LEFT', f.reloadButton, 'RIGHT', left, 0)
-		region:SetPoint('RIGHT', f.closeButton, 'LEFT', -left, 0)
+		anchor_to(region, anchors)
 		OW:SetStatus(nil)
 		eq(from_left(label), centred, 'and centred in the region again')
 		H.theme('thick')
@@ -461,9 +470,8 @@ test('leaving a page whose control hid for an error shows the status line again;
 	local f = frames()
 	local region = f.footerRegion
 	local bare = f.footerWidgets[2].frame:GetRight() - f.footerWidgets[1].frame:GetLeft()
-	local left = region:GetLeft() - f.reloadButton:GetRight()
-	region:ClearAllPoints()
-	region:SetPoint('LEFT', f.reloadButton, 'RIGHT', left, 0)
+	local anchors = anchors_of(region)
+	anchor_to(region, { anchors[1] })
 	region:SetWidth(bare + 8)
 	OW:SetStatus(ERROR_TEXT)
 	check(not f.footerControl:IsShown(), 'the control is hidden for the error')
@@ -472,9 +480,7 @@ test('leaving a page whose control hid for an error shows the status line again;
 	OW:SetStatus(ERROR_TEXT)
 	check(f.status:IsShown(), 'and shows an error')
 	eq(f.status:GetRight(), region:GetRight(), 'to the right end')
-	region:ClearAllPoints()
-	region:SetPoint('LEFT', f.reloadButton, 'RIGHT', left, 0)
-	region:SetPoint('RIGHT', f.closeButton, 'LEFT', -left, 0)
+	anchor_to(region, anchors)
 	OW:Navigate('Unitframes')
 	check(f.footerControl:IsShown(), 'the control is back on Unitframes')
 	close_all()

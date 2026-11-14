@@ -6,7 +6,7 @@ local st = SaftUI
 -- call time, so a profile switch reaches the new profile.
 local GN = st:NewModule('General')
 
-local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom left).'
+local ICONS_NOTE = 'The preview changes at once. The icons across SaftUI change when you reload (Reload UI, bottom right).'
 -- Icon zoom's preview: any spell's icon would do.
 local PREVIEW_ICON, PREVIEW_SIZE = 'Interface\\Icons\\Spell_Nature_Lightning', 36
 local WINDOWS_NOTE = "The margin keeps all of SaftUI's frames that far from the screen's edges, not just the bags and bank; the minimap, which is Blizzard's, only when you drag it. Title bars and the margin change at once."

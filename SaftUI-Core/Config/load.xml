@@ -21,6 +21,7 @@
 	<Script file="optionslayout.lua"/>
 	<Script file="optionswindow.lua"/>
 	<Script file="optionsresize.lua"/>
+	<Script file="optionssizes.lua"/>
 	<Script file="optionsnav.lua"/>
 	<Script file="optionssmalldialog.lua"/>
 	<Script file="optionsmenu.lua"/>

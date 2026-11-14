@@ -14,7 +14,7 @@ local st = SaftUI
 load_saftui('SaftUI-Core/Config/optionsmodel.lua')
 local OM = st.OptionsModel
 
-local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom left) to see a change everywhere.'
+local KINDS_NOTE = 'Window titles change at once. The rest is read when SaftUI builds its frames: reload (Reload UI, bottom right) to see a change everywhere.'
 
 local function Tab() return st.Config:GetOptionsTable().Fonts.args.fonts end
 

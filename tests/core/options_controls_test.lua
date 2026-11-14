@@ -112,6 +112,42 @@ test('W.IconButton: a 26 square with its 16 icon in the middle, grey; it needs i
 	eq(clicks, 1, 'a click runs button.onClick')
 end)
 
+test('W.IconButton takes a size and an icon size: the close X\'s 24 with a 20 icon, the icon 1 lower while pressed', function()
+	theme('thick')
+	local b = put(W.IconButton(new_parent(), st.icons.chevronRight, tip, 24, 20))
+	eq(size_of(b), '24x24', 'the size given')
+	eq(size_of(b.icon), '20x20', 'the icon size given')
+	eq(H.insets(b.icon, b), '2,2,2,2', 'centred, an even margin of 2')
+	eq(#P.off(b), 0, 'on whole pixels: ' .. P.report(P.off(b)))
+	local default = put(W.IconButton(new_parent(), st.icons.eye, tip, nil, nil))
+	eq(size_of(default) .. ' ' .. size_of(default.icon), '26x26 16x16', 'nil sizes: the defaults')
+	-- A press moves the icon, never the size.
+	for _, button in ipairs({ b, default }) do
+		local before = H.insets(button.icon, button)
+		local width, height = button:GetWidth(), button:GetHeight()
+		stub.fire_script(button, 'OnMouseDown')
+		local top = button:GetTop() - button.icon:GetTop()
+		local was = tonumber(before:match('^%d+,(%d+)'))
+		eq(top, was + 1, 'the icon 1 lower while pressed')
+		eq(size_of(button), width .. 'x' .. height, 'the size never changes')
+		eq(#P.off(button), 0, 'whole while pressed')
+		stub.fire_script(button, 'OnMouseUp')
+		eq(H.insets(button.icon, button), before, 'back when let go')
+	end
+	-- A disabled button does not move its icon.
+	W.SetEnabled(b, false)
+	stub.fire_script(b, 'OnMouseDown')
+	eq(H.insets(b.icon, b), '2,2,2,2', 'disabled: it does not press')
+	stub.fire_script(b, 'OnMouseUp')
+	-- The margin must be whole.
+	local ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 25, 16)
+	check(not ok and tostring(err):find('whole', 1, true), 'an odd margin is refused: ' .. tostring(err))
+	ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 24, 'big')
+	check(not ok, 'a size that is no number is refused')
+	ok, err = pcall(W.IconButton, new_parent(), st.icons.eye, tip, 24, function() end)
+	check(not ok and tostring(err):find('takes no click', 1, true), 'a function where a click used to go is still refused')
+end)
+
 test('W.IconLink: an icon with no box on a square that takes the mouse, grey and then accent; it needs its tooltip', function()
 	theme('thick')
 	local ok, err = pcall(W.IconLink, new_parent(), st.icons.search, 14)

@@ -136,7 +136,10 @@ return {
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
 		-- Controls: the Settings panel's inner frame
-		['Options_InnerFrame'] = { 886, 618 },
+		-- cut at its divider (OW.InnerCuts): its Camelot member (-c60), in file
+		-- 8086468, 1024 by 1024
+		['Options_InnerFrame'] = { 886, 618,
+			file = 8086468, coords = { 1 / 1024, 887 / 1024, 1 / 1024, 619 / 1024 } },
 		['Options_CategoryHeader_1'] = { 199, 144 },
 		['Options_CategoryHeader_2'] = { 199, 144 },
 		['Options_CategoryHeader_3'] = { 199, 144 },
@@ -324,7 +327,9 @@ return {
 		['Options_List_Active'] = { 187, 21 },
 		['Options_List_Hover'] = { 187, 21 },
 		-- Controls: the Settings panel's inner frame
-		['Options_InnerFrame'] = { 886, 618 },
+		-- cut at its divider (OW.InnerCuts), in file 1318750, 1024 by 1024
+		['Options_InnerFrame'] = { 886, 618,
+			file = 1318750, coords = { 1 / 1024, 887 / 1024, 150 / 1024, 768 / 1024 } },
 		['Options_CategoryHeader_1'] = { 199, 144 },
 		['Options_CategoryHeader_2'] = { 199, 144 },
 		['Options_CategoryHeader_3'] = { 199, 144 },

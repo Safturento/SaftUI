@@ -300,3 +300,436 @@ test('a Blizzard look picked while the window is closed opens centred for that l
 	close_all()
 	theme('thick')
 end)
+
+------------------------------------------------------------------ full and half: the header's arrows
+
+local click = H.click
+local OB, W = st.OptionsBody, st.OptionsWidgets
+if not _G.GameTooltip then CreateFrame('GameTooltip', 'GameTooltip', UIParent) end
+
+local function color_of(c) return string.format('%.2f,%.2f,%.2f', c:GetRGB()) end
+local function vertex(texture) return string.format('%.2f,%.2f,%.2f', texture:GetVertexColor()) end
+
+-- A button's tooltip lines as 'title | line | red:line'.
+local function tip_text(button)
+	local title, lines = button.tip(button)
+	local out = { title }
+	for _, line in ipairs(lines or {}) do
+		out[#out + 1] = type(line) == 'table' and ((line.red and 'red:' or '') .. line.text) or line
+	end
+	return table.concat(out, ' | ')
+end
+
+-- Time passes past the size guard (OW.SIZE_GUARD).
+local function wait() stub.time = stub.time + 0.31 end
+
+-- Modules for the cases below: 'Many' (sixty toggles, a page that scrolls),
+-- 'Wide' (a page named with 20 characters, four tabs and a description) and
+-- 'Items' (one item with a menu).
+local manyValue = {}
+local MANY = st:NewModule('Many')
+function MANY:GetConfigTable()
+	local args = {}
+	for i = 1, 60 do
+		args['t' .. i] = { order = i, type = 'toggle', name = 'Toggle ' .. i, desc = 'Toggle ' .. i,
+			get = function() return manyValue[i] end, set = function(_, v) manyValue[i] = v end }
+	end
+	return { name = 'Many', type = 'group', category = 'Frames', args = args }
+end
+
+local wideDesc = 'A short description.'
+local WIDE = st:NewModule('Wide')
+function WIDE:GetConfigTable()
+	local function tab(name, order)
+		return { order = order, name = name, type = 'group', args = { on = { type = 'toggle', name = name .. ' on',
+			get = function() return true end, set = function() end } } }
+	end
+	return {
+		name = 'ABCDEFGHIJKLMNOPQRST', type = 'group', category = 'Frames', childGroups = 'tab', desc = wideDesc,
+		args = { a = tab('First tab here', 1), b = tab('Second tab here', 2), c = tab('Third tab here', 3), d = tab('Fourth tab here', 4) },
+	}
+end
+
+local itemValue = true
+local ITEMS = st:NewModule('Items')
+function ITEMS:GetConfigTable()
+	return {
+		name = 'Items', type = 'group', category = 'Frames',
+		args = { texts = { order = 1, type = 'group', name = 'Texts', args = {
+			hotkey = { order = 1, type = 'item', name = 'Hotkey', desc = 'The key.', size = 'small', menuTitle = 'Hotkey text',
+				get = function() return itemValue end, set = function(_, v) itemValue = v end,
+				menu = { type = 'group', name = 'Hotkey', args = {
+					size = { order = 1, type = 'range', name = 'Size', desc = 'Its size.', min = 6, max = 20, step = 1,
+						get = function() return 10 end, set = function() end },
+				} } },
+		} } },
+	}
+end
+
+test('Shrink to half: 386 narrower from the left; the corner, the close X and the shrink arrow stay', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames(); local w = F.window
+	check(F.shrink:IsShown() and not F.grow:IsShown(), 'full: shrink shows, grow does not')
+	local right, top, closeLeft, shrinkLeft = w:GetRight(), w:GetTop(), F.close:GetLeft(), F.shrink:GetLeft()
+	click(F.shrink)
+	eq(OW:GetWindowSize(), 'half', 'half')
+	eq(w:GetWidth(), 654, '1040 less 386'); eq(w:GetRight(), right, 'the right edge stays'); eq(w:GetTop(), top, 'and the top')
+	eq(F.close:GetLeft(), closeLeft, 'the close X stays'); eq(F.shrink:GetLeft(), shrinkLeft, 'and the shrink arrow')
+	check(F.grow:IsShown(), 'grow at half'); eq(F.grow:GetRight(), F.shrink:GetLeft() - 6, '6 left of shrink')
+	check(not F.shrink:IsShown(), 'shrink is hidden at half until the bar exists')
+	eq(F.content:GetWidth(), 388, 'the body one column')
+	local state = OW:GetState()
+	eq(state.page .. '/' .. state.pick .. '/' .. state.tab, 'Unitframes/player/general', 'the page, pick and tab kept')
+	eq(st.config.global.optionsWindow.size, 'half', 'remembered')
+	wait()
+	click(F.grow)
+	eq(w:GetWidth(), 1040); eq(w:GetRight(), right); eq(st.config.global.optionsWindow.size, nil, 'full saves nil')
+	eq(OW:GetWindowSize(), 'full')
+	eq(F.content:GetWidth(), 774)
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("the arrows: the close X's size, chevrons at 20, grey at rest and accent under the mouse, each with its tooltip", function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	eq(F.shrink:GetWidth() .. 'x' .. F.shrink:GetHeight(), '24x24', 'the close X\'s size')
+	eq(F.shrink.icon:GetTexture(), st.icons.chevronRight, 'shrink points right')
+	eq(F.shrink.icon:GetWidth() .. 'x' .. F.shrink.icon:GetHeight(), '20x20', 'a chevron at 20')
+	eq(F.grow.icon:GetTexture(), st.icons.chevronLeft, 'grow points left')
+	eq(F.shrink:GetTop(), F.close:GetTop(), 'top-aligned with the close X')
+	eq(F.shrink:GetRight(), F.close:GetLeft() - 6, '6 left of the close X')
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey at rest')
+	stub.fire_script(F.shrink, 'OnEnter', true)
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.button.blue), 'accent under the mouse')
+	check(GameTooltip:IsOwned(F.shrink) and GameTooltip:IsShown(), 'its tooltip, owned by it')
+	eq(stub.state(GameTooltip).texts[1], 'Shrink to half', 'shown with its title')
+	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays.")
+	stub.fire_script(F.shrink, 'OnLeave', true)
+	eq(vertex(F.shrink.icon), color_of(st.config.profile.colors.text.grey), 'grey again')
+	check(not GameTooltip:IsShown(), 'the tooltip is gone')
+	-- At half.
+	click(F.shrink)
+	stub.fire_script(F.grow, 'OnEnter', true)
+	check(GameTooltip:IsOwned(F.grow), "grow's tooltip")
+	stub.fire_script(F.grow, 'OnLeave', true)
+	eq(tip_text(F.grow), 'Grow to full | The page in two columns.')
+	eq(tip_text(F.shrink), 'Shrink to a bar | A small bar, to see the whole UI. It keeps the page.', "shrink at half is the bar's (Task 4)")
+	-- The header stops 18 short of the leftmost arrow, at full and at half.
+	eq(F.header:GetRight(), F.grow:GetLeft() - 18, 'half: 18 short of grow')
+	wait(); click(F.grow)
+	eq(F.header:GetRight(), F.shrink:GetLeft() - 18, 'full: 18 short of shrink')
+	-- The close X's tooltip.
+	stub.fire_script(F.close, 'OnEnter', true)
+	check(GameTooltip:IsOwned(F.close) and GameTooltip:IsShown(), 'the close X has a tooltip')
+	eq(GameTooltip:GetOwner(), F.close)
+	local shown = stub.state(GameTooltip).texts
+	eq(shown[1] .. ' | ' .. shown[2], 'Close | Closes the options window. Esc does too.', "the close X's words")
+	stub.fire_script(F.close, 'OnLeave', true)
+	check(not GameTooltip:IsShown(), 'gone when it leaves')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a size button ignores clicks for a third of a second after a change', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	wait()
+	click(F.shrink)
+	eq(OW:GetWindowSize(), 'half')
+	click(F.grow)
+	eq(OW:GetWindowSize(), 'half', 'a click at the same moment does nothing')
+	eq(OW:Grow(), false, 'nor does Grow')
+	stub.time = stub.time + 0.29
+	click(F.grow)
+	eq(OW:GetWindowSize(), 'half', 'still inside the guard')
+	stub.time = stub.time + 0.02
+	click(F.grow)
+	eq(OW:GetWindowSize(), 'full', 'a third of a second on')
+	eq(OW.SIZE_GUARD, 0.3)
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test('OW:SetWindowSize: false in combat, for no change, for a bar (Task 4), for a size that does not fit', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	wait()
+	eq(OW:SetWindowSize('full'), false, 'no change')
+	eq(OW:SetWindowSize('mini'), false, 'no bar yet')
+	stub.in_combat = true
+	eq(OW:SetWindowSize('half'), false, 'refused in combat')
+	stub.in_combat = false
+	eq(OW:GetWindowSize(), 'full')
+	eq(OW:SetWindowSize('half'), true)
+	eq(OW:Shrink(), false, 'shrink at half: nothing to shrink to until the bar')
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test('between full and half the first row in view stays first in view, in one render', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Many')
+	local F = frames()
+	local t11 = H.cell('t11')
+	OW.S.SetScroll(t11.y)
+	eq(F.body:GetVerticalScroll(), t11.y, 'scrolled to t11')
+	eq(select(1, OW.FirstInView(OW.GetDrawnRows(), F.body:GetVerticalScroll())), H.cell('t11').row.path, 't11 first in view')
+	local renders = OW.GetRenderCount()
+	wait()
+	eq(OW:SetWindowSize('half'), true)
+	eq(OW.GetRenderCount(), renders + 1, 'one render')
+	local path = OW.FirstInView(OW.GetDrawnRows(), F.body:GetVerticalScroll())
+	eq(path[#path], 't11', 'half: t11 is first in view')
+	eq(F.body:GetVerticalScroll(), H.cell('t11').y, 'and at the top')
+	check(F.body:GetVerticalScroll() > 0, 'a scrolled page')
+	renders = OW.GetRenderCount()
+	wait()
+	eq(OW:SetWindowSize('full'), true)
+	eq(OW.GetRenderCount(), renders + 1, 'one render back')
+	path = OW.FirstInView(OW.GetDrawnRows(), F.body:GetVerticalScroll())
+	eq(path[#path], 't11', 'full: t11 first again')
+	eq(OW.S.keepRow, nil, 'the kept row is used up')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('OW.FirstInView and OW.OffsetFor: by the row\'s path, pure', function()
+	local function cell(y, height, key) return { y = y, height = height, row = { path = { 'p', key } } } end
+	local cells = { cell(0, 40, 'a'), cell(0, 40, 'b'), cell(40, 40, 'c'), cell(80, 60, 'd') }
+	local path, delta = OW.FirstInView(cells, 0)
+	eq(path[2] .. ' ' .. delta, 'a 0', 'the first cell at the top')
+	path, delta = OW.FirstInView(cells, 30)
+	eq(path[2] .. ' ' .. delta, 'a 30', 'a cell showing its last 10 pixels is first in view')
+	path, delta = OW.FirstInView(cells, 40)
+	eq(path[2] .. ' ' .. delta, 'c 0', 'a cell above the offset is out')
+	path, delta = OW.FirstInView(cells, 100)
+	eq(path[2] .. ' ' .. delta, 'd 20')
+	eq(OW.FirstInView(cells, 140), nil, 'past the end: nothing')
+	eq(OW.FirstInView({}, 0), nil, 'no cells: nothing')
+	eq(OW.OffsetFor(cells, { 'p', 'd' }, 20), 100, 'back to where it was')
+	eq(OW.OffsetFor(cells, { 'p', 'c' }, -10), 30, 'a delta under the cell')
+	eq(OW.OffsetFor(cells, { 'p', 'a' }, -10), 0, 'never under 0')
+	eq(OW.OffsetFor(cells, { 'p', 'zz' }, 0), nil, 'a row that is gone: nil')
+	eq(OW.OffsetFor(cells, nil, 0), nil, 'no path: nil')
+end)
+
+test('OW.InnerCuts: the inner frame cut at its divider, from the atlas height', function()
+	local look = { divider = 199, width = 886 }
+	local list, settings = OW.InnerCuts(look, 618)
+	eq(table.concat(list, ','), '0,199,0,618', 'the list part')
+	eq(table.concat(settings, ','), '199,886,0,618', 'the settings part')
+end)
+
+test('at half the title, the description and the tabs follow the narrow body', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Wide')
+	local F = frames()
+	local function tabs_end() local out = 0; for _, t in ipairs(F.tabs) do out = math.max(out, t:GetRight() - F.main:GetLeft()) end return out end
+	-- Full: the title in its font, in 724; the tabs on one line.
+	eq(F.title:GetWidth(), 724, 'full: 724 of room')
+	eq(F.title:GetFontObject(), OB.Font('title'), 'full: the title font')
+	eq(F.desc:GetWidth(), 774, 'the description as wide as the body')
+	check(F.desc:CanWordWrap(), 'it wraps')
+	eq(F.main:GetTop() - F.tabs[1]:GetTop(), 87, 'a one-line description: the first tab line at 87')
+	eq(F.tabs[1]:GetTop(), F.tabs[4]:GetTop(), 'four tabs on a line at full')
+	check(tabs_end() <= 28 + 774, 'inside 774')
+	wait(); click(F.shrink)
+	eq(F.title:GetWidth(), 308, 'half: 308 of room')
+	eq(F.title:GetFontObject(), OB.Font('brand'), '20 characters in the title font would not fit: the brand font')
+	eq(F.desc:GetWidth(), 388, 'the description as wide as the narrow body')
+	check(F.tabs[4]:GetTop() < F.tabs[1]:GetTop(), 'the tabs wrap at half')
+	check(tabs_end() <= 28 + 388, 'each line ends inside 388 (' .. tabs_end() .. ')')
+	eq(F.main:GetTop() - F.tabs[1]:GetTop(), 87, 'one line: 87')
+	-- A wrapped description (its height as a wrapped one reads in game): 14 under its bottom.
+	F.desc.GetStringHeight = function() return 45 end
+	OW:Render()
+	eq(F.main:GetTop() - F.tabs[1]:GetTop(), 20 + 26 + 4 + 45 + 14, 'wrapped (the brand title is 26 tall): 14 under its last line')
+	F.desc.GetStringHeight = nil
+	-- A page with a short name keeps the title font at half.
+	st.Config:Open('Items')
+	eq(F.title:GetFontObject(), OB.Font('title'), 'a short title keeps its font at half')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("Reload UI sits beside Close at every size; the region from the footer's left; the status wraps to two lines", function()
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		theme(name)
+		st.config.global.optionsWindow = nil
+		st.Config:Open('Unitframes', 'player', 'general')
+		local F = frames()
+		for _, size in ipairs({ 'full', 'half' }) do
+			if size == 'half' then wait(); click(F.shrink) end
+			local where = name .. ' ' .. size .. ': '
+			eq(F.reloadButton:GetRight(), F.closeButton:GetLeft() - 12, where .. 'Reload UI 12 left of Close')
+			eq(F.footerRegion:GetLeft(), F.footer:GetLeft() + 28, where .. "the region from the footer's left, PAD in")
+			eq(F.footerRegion:GetRight(), F.reloadButton:GetLeft() - 12, where .. 'to 12 before Reload UI')
+			eq(F.closeButton:GetRight(), F.footer:GetRight() - 26, where .. 'Close 26 in')
+			check(F.status:CanWordWrap(), where .. 'the status wraps')
+			eq(F.status:GetMaxLines(), 2, where .. 'to at most two lines')
+		end
+		st.config.global.optionsWindow = nil
+		close_all()
+	end
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('opens at the remembered size; one the screen cannot hold opens at half, and Grow says why', function()
+	theme('thick')
+	st.config.global.optionsWindow = { size = 'half' }
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW:GetWindowSize(), 'half', 'a saved half opens at half')
+	eq(frames().window:GetWidth(), 654)
+	check(frames().grow:IsShown(), 'grow shows')
+	st.Config:Close()
+	st.config.global.optionsWindow = nil
+	set_screen(1024, 768)
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	eq(OW:GetWindowSize(), 'half', 'a full the screen cannot hold opens at half')
+	eq(F.window:GetWidth(), 654)
+	eq(type(st.config.global.optionsWindow) == 'table' and st.config.global.optionsWindow.size or nil, nil, 'the save still has no size')
+	check(F.grow.disabled, 'Grow is disabled')
+	local _, lines = F.grow.tip(F.grow)
+	local last = lines[#lines]
+	check(type(last) == 'table' and last.red and last.text == 'The screen is too narrow for the full window.', 'its last line, red, says why')
+	eq(tip_text(F.grow), 'Grow to full | The page in two columns. | red:The screen is too narrow for the full window.')
+	wait(); click(F.grow)
+	eq(OW:GetWindowSize(), 'half', 'a click does nothing')
+	eq(OW:Grow(), false)
+	st.Config:Close()
+	reset_screen()
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW:GetWindowSize(), 'full', '1920 again: full')
+	check(not frames().grow.disabled or not frames().grow:IsShown(), 'nothing disabled')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test('a saved sidebar and size are kept apart: a saved size does not touch the sidebar state', function()
+	theme('thick')
+	st.config.global.optionsWindow = { size = 'half', sidebar = false }
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW:GetWindowSize(), 'half')
+	eq(OW.S.sidebar, false, 'the sidebar state is read from the save')
+	eq(frames().window:GetWidth(), 446, 'W4')
+	st.Config:Close()
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	eq(OW.S.sidebar, true, 'nothing saved: shown')
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test('a size change never moves the corner, even where the full window passes the margin', function()
+	theme('thick')
+	st.config.global.optionsWindow = { point = 'TOPRIGHT', x = -1300, y = -50, size = 'half' }
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames(); local w = F.window
+	local function corner() local _, _, _, x, y = w:GetPoint(1); return x .. ',' .. y end
+	eq(corner(), '-1300,-50', 'opened at the saved corner')
+	wait(); click(F.grow)
+	eq(OW:GetWindowSize(), 'full')
+	eq(corner(), '-1300,-50', 'Grow: the anchor is where it was')
+	wait(); click(F.shrink)
+	eq(OW:GetWindowSize(), 'half')
+	eq(corner(), '-1300,-50', 'Shrink: and still')
+	local saved = st.config.global.optionsWindow
+	eq(saved.x .. ',' .. saved.y, '-1300,-50', 'the saved corner unchanged')
+	eq(OW.S.corner.x .. ',' .. OW.S.corner.y, '-1300,-50', 'S.corner too')
+	st.config.global.optionsWindow = nil
+	close_all()
+end)
+
+test('while the color picker is open the arrows do nothing and say why', function()
+	theme('thick')
+	st.config.global.optionsWindow = nil
+	st.Config:Open('Unitframes', 'player', 'general')
+	local F = frames()
+	check(not F.shrink.disabled, 'enabled to start')
+	check(W.OpenColorPicker(F.window, { r = 1, g = 0, b = 0, onChange = function() end }), 'the picker opens')
+	check(W.ColorPickerShown(), 'it is shown')
+	check(F.shrink.disabled, 'the arrow is disabled at once')
+	stub.fire_script(F.shrink, 'OnEnter', true)
+	check(GameTooltip:IsOwned(F.shrink), 'it still shows its tooltip')
+	eq(tip_text(F.shrink), "Shrink to half | The page in one column. The window's right edge stays. | red:Close the color picker first.")
+	stub.fire_script(F.shrink, 'OnLeave', true)
+	wait(); click(F.shrink)
+	eq(OW:GetWindowSize(), 'full', 'a click does nothing')
+	check(W.ColorPickerShown(), 'and the picker stays open: the guard wins over the body closing it')
+	eq(OW:SetWindowSize('half'), false)
+	W.CloseColorPicker()
+	check(not F.shrink.disabled, 'enabled again when it closes')
+	wait(); click(F.shrink)
+	eq(OW:GetWindowSize(), 'half', 'and it works')
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)
+
+test("whole pixels at full and at half, and the small dialog and an item's menu over the half window", function()
+	for _, name in ipairs({ 'thick', 'thin' }) do
+		theme(name)
+		for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+			stub.size_noise = noise
+			st.config.global.optionsWindow = nil
+			st.Config:Close(); st.Config:Open('Unitframes', 'player', 'general')
+			local F = frames()
+			local where = name .. ' noise ' .. noise .. ': '
+			local off = P.off(F.window)
+			eq(#off, 0, where .. 'full ' .. P.report(off))
+			wait(); click(F.shrink)
+			eq(OW:GetWindowSize(), 'half')
+			off = P.off(F.window)
+			eq(#off, 0, where .. 'half ' .. P.report(off))
+			-- Long strings on the status line: wrapped, still whole.
+			OW:SetStatus('An error long enough to need a second line in the footer region of the half window, so it wraps')
+			off = P.off(F.window)
+			eq(#off, 0, where .. 'a wrapped status ' .. P.report(off))
+			OW:SetStatus(nil)
+		end
+		stub.size_noise = 0
+	end
+	-- The small dialog and an item's menu at half.
+	theme('thick')
+	stub.size_noise = 2 ^ -14
+	st.config.global.optionsWindow = { size = 'half' }
+	st.Config:Close(); st.Config:Open('Items', 'texts')
+	local F = frames()
+	check(OW:OpenDialog('A dialog', { type = 'group', name = 'A dialog', args = { on = { type = 'toggle', name = 'On',
+		get = function() return true end, set = function() end } } }), 'the dialog opens')
+	local frame = OW.GetDialogFrames and OW.GetDialogFrames().frame
+	check(frame ~= nil, 'its frame')
+	local cx, cy = frame:GetCenter(); local wx, wy = F.window:GetCenter()
+	check(math.abs(cx - wx) <= 1 and math.abs(cy - wy) <= 1, 'centred on the window')
+	local off = P.off(frame)
+	eq(#off, 0, 'the dialog: ' .. P.report(off))
+	OW:CloseDialog()
+	click(H.cell('hotkey').widget.dots)
+	check(OW:IsMenuShown(), "the item's menu opens")
+	local menu = OW.GetMenuFrames().frame
+	off = P.off(menu)
+	eq(#off, 0, 'the menu: ' .. P.report(off))
+	local inset = st.config.profile.misc.clamp_inset
+	check(menu:GetLeft() >= inset and menu:GetRight() <= UIParent:GetWidth() - inset, 'kept in the screen margin')
+	OW:CloseMenu()
+	stub.size_noise = 0
+	st.config.global.optionsWindow = nil
+	close_all()
+	eq(#take_errors(), 0, 'no errors')
+end)

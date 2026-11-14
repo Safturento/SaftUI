@@ -30,11 +30,11 @@ An action (Ace `execute`): Copy from, Place..., New, Delete, Reload UI, Close. S
 
 ## Blizzard theme
 
-Blizzard's panel button (`st:ShowPanelButton`), with its own pressed and disabled art; the window's Reload UI and Close sit 16 from the corners.
+Blizzard's panel button (`st:ShowPanelButton`), with its own pressed and disabled art; the window's Close sits 16 from the bottom right corner and Reload UI 12 left of it.
 
 ## Icon button
 
-`W.IconButton`: a 26 x 26 button with only its 16 x 16 icon in the middle (edges at 5 and 21) in `text-grey`, in the same raised fill, edge and `accent` hover as the labelled one. It needs a tooltip, since an icon says nothing alone (the edit mode bar's buttons). `W.IconLink` is the same icon with no box, `text-grey` at rest and `accent` under the mouse. A labelled button given an icon (`W.Button`'s `opts.icon`, `iconWithLabel`) draws it 16 before the label, 6 apart, the pair centred, 80 wide at least (icon + 6 + text + 28); `W.SetCompact` turns it into the icon alone, 26 square, for a narrow bar.
+`W.IconButton`: a 26 x 26 button with only its 16 x 16 icon in the middle (edges at 5 and 21) in `text-grey`, in the same raised fill, edge and `accent` hover as the labelled one; the icon moves down 1px while pressed. It needs a tooltip, since an icon says nothing alone (the edit mode bar's buttons). `W.IconButton(parent, icon, tip, size, iconSize)` takes optional sizes, `(size - iconSize) / 2` whole: the `/sui` header's arrows are the close X's 24 with a 20 chevron, and the icon turns `accent` under the mouse with the edge. `W.IconLink` is the same icon with no box, `text-grey` at rest and `accent` under the mouse. A labelled button given an icon (`W.Button`'s `opts.icon`, `iconWithLabel`) draws it 16 before the label, 6 apart, the pair centred, 80 wide at least (icon + 6 + text + 28); `W.SetCompact` turns it into the icon alone, 26 square, for a narrow bar.
 
 - "On" (the bar's lit buttons): the `accent` edge, kept when the mouse leaves, and the icon in `accent`. Under Blizzard's panel button the icon, or a text button's label, is `accent`, since it has no lit state.
 - Disabled on the bar: the button at `alpha-disabled`, no hover edge, a click that does nothing, and the mouse kept so its tooltip says why.

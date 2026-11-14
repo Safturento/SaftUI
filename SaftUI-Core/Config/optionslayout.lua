@@ -6,8 +6,9 @@ local OB = st.OptionsBody
 	optionswindow.lua) and the layout math that needs no frame: OW.LAYOUT,
 	the sidebar's width and entries, the body's layout (OB's, here for the
 	window's tests), the window's height and width limits and the sizes' numbers
-	(OW.WindowWidth, OW.CornerOf and the rest), and where a page's footer control
-	sits (OW.FooterPlace). It loads first of the window's files
+	(OW.WindowWidth, OW.CornerOf and the rest), what changing size needs
+	(OW.SIZE_GUARD, OW.FirstInView, OW.OffsetFor, OW.InnerCuts), and where a
+	page's footer control sits (OW.FooterPlace). It loads first of the window's files
 	(Config/load.xml), so it makes OW and OW.S.
 ]]
 
@@ -311,6 +312,54 @@ end
 -- height on a screen screenWidth by screenHeight: whole, rounded down.
 function OW.CentredCorner(screenWidth, screenHeight, width, height)
 	return 0 - floor((screenWidth - width) / 2), 0 - floor((screenHeight - height) / 2)
+end
+
+------------------------------------------------------------------ between sizes
+
+-- How long a size button ignores clicks after the size last changed, in
+-- seconds (OW:Grow, OW:Shrink): the mini bar's grow arrow sits about where
+-- half's shrink arrow appears, so a double click would go straight back.
+OW.SIZE_GUARD = 0.3
+
+-- The first row in view of a drawn page: the first of cells (the body's, each
+-- with its y and height in the content and its row's path) whose bottom is
+-- below offset, the scroll offset. Returns its path and how far offset is
+-- below its top (negative above it), which OW.OffsetFor puts back after the
+-- rows have flowed again. Nothing when no cell reaches offset. A cell with no
+-- path can't be found again, so it is skipped.
+function OW.FirstInView(cells, offset)
+	for _, cell in ipairs(cells) do
+		local path = cell.row and cell.row.path
+		if path and cell.y + cell.height > offset then return path, offset - cell.y end
+	end
+end
+
+local function SamePath(a, b)
+	if #a ~= #b then return false end
+	for i = 1, #a do
+		if a[i] ~= b[i] then return false end
+	end
+	return true
+end
+
+-- The scroll offset that puts the cell at path (a drawn page's) delta below
+-- the top of the view, never under 0; nil when no cell has that path.
+function OW.OffsetFor(cells, path, delta)
+	if not path then return end
+	for _, cell in ipairs(cells) do
+		local cellPath = cell.row and cell.row.path
+		if cellPath and SamePath(cellPath, path) then return max(0, cell.y + delta) end
+	end
+end
+
+-- Under Blizzard the inner frame (Options_InnerFrame, height pixels tall in
+-- its atlas: C_Texture.GetAtlasInfo's, never a frame's) is cut at its divider
+-- into two textures, the list's over the sidebar and the settings' over the
+-- main column, so the main column can be narrower than the art. look is
+-- st.ThemeArt.Control('optionswindow'). Returns each part's rectangle in the
+-- atlas's pixels, { x0, x1, y0, y1 } with exclusive ends (ThemeArt.Cut).
+function OW.InnerCuts(look, height)
+	return { 0, look.divider, 0, height }, { look.divider, look.width, 0, height }
 end
 
 ------------------------------------------------------------------ for the later files
