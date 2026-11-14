@@ -19,7 +19,7 @@ local W = st.OptionsWidgets
 	Guard, which does nothing in combat (the bar is gone then anyway, since
 	edit mode closes on entering combat; this is for the frames' last moment).
 
-	Grid, Grid size and the snaps read and write the profile's settings only
+	Grid, Grid size, the snaps, Dim world and Coordinates read and write the profile's settings only
 	through EM:GetSettings and EM:SetSetting (settings.lua), which tells the
 	grid and the bar ('SettingsChanged').
 ]]

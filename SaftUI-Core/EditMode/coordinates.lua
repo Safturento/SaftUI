@@ -25,6 +25,10 @@ local EM = st.EditModeFrames
 	It hides while Coordinates is off, with nothing selected or dragged, outside
 	edit mode, in combat (as the bar does), and when the outline's rect can't be
 	read (EM.GetOutlineRect gives nil, as for the Minimap's secret edges).
+
+	While shown the label has an OnUpdate that looks again every 0.1 s (every
+	frame in a drag), since /sui's Position block changes a position without any
+	event; hidden, it has none.
 ]]
 
 EM.COORD_GAP = 2
@@ -160,6 +164,23 @@ end
 
 local dragging -- the mover being dragged, if any
 
+-- While the label is shown it looks again every TICK seconds (every frame during
+-- a drag), because a position changed in /sui (the Position block's setters, a
+-- reset), a resize or a new screen size tells edit mode nothing. It fires no
+-- event: PositionChanged is for edit mode's own moves (the config refresh and the
+-- history listen to it). A hidden label has no OnUpdate, so it costs nothing.
+local TICK = 0.1
+local since = 0
+
+local function Tick(_, elapsed)
+	if not dragging then
+		since = since + (elapsed or 0)
+		if since < TICK then return end
+	end
+	since = 0
+	EM:UpdateCoordinates()
+end
+
 -- The position to name: the stored one, with a drag's live offsets.
 local function PositionOf(mover)
 	local pos = mover.def.getPosition()
@@ -176,25 +197,33 @@ function EM:UpdateCoordinates()
 	local mover = dragging or self.selected
 	if not (self.active and self:GetSettings().coordinates and mover) or InCombatLockdown() then
 		f:Hide()
+		f:SetScript('OnUpdate', nil)
 		return
 	end
 	local pos = PositionOf(mover)
 	local l, r, b, t = EM.GetOutlineRect(mover)
 	if not (pos and l) then
 		f:Hide()
+		f:SetScript('OnUpdate', nil)
 		return
 	end
 	local blue = st.config.profile.colors.button.blue
 	f.text:SetTextColor(blue:GetRGB())
 	f.text:SetText(EM.CoordinatesText(pos, EM.MoverNameOf))
-	local width = math.max(1, Round(f.text:GetStringWidth()))
-	local height = math.max(1, Round(f.text:GetStringHeight()))
+	-- Whole pixels up, as the kit sizes a label (optionscontrols.lua's LabelWidth:
+	-- ceil of GetStringWidth), so the text is never cut.
+	local width = math.max(1, math.ceil(f.text:GetStringWidth()))
+	local height = math.max(1, math.ceil(f.text:GetStringHeight()))
 	f:SetSize(width, height)
 	local x, y = EM.CoordinatesSpot(pos.point or 'CENTER', { left = l, right = r, bottom = b, top = t },
 		width, height, UIParent:GetWidth(), self:ScreenTop())
 	f:ClearAllPoints()
 	f:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', x, y)
 	f:Show()
+	if not f:GetScript('OnUpdate') then
+		since = 0
+		f:SetScript('OnUpdate', Tick)
+	end
 end
 
 local function Update() EM:UpdateCoordinates() end
@@ -206,16 +235,14 @@ EM:On('SettingsChanged', Update)
 EM:On('ColorsChanged', Update)
 EM:On('PositionChanged', Update)
 
--- A drag moves the frame every frame, so the label follows on OnUpdate (the
+-- A drag moves the frame every frame: Tick follows it without the throttle (the
 -- drag's own OnUpdate, on the overlay, has run by then or runs next frame).
 EM:On('DragStarted', function(mover)
 	dragging = mover
-	GetFrame():SetScript('OnUpdate', Update)
 	Update()
 end)
 
 EM:On('DragStopped', function(mover)
 	if dragging == mover then dragging = nil end
-	GetFrame():SetScript('OnUpdate', nil)
 	Update()
 end)

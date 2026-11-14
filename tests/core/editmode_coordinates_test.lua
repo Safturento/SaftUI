@@ -169,7 +169,7 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 	check(m2.drag.x ~= 4, 'which moved')
 	EM:StopDrag(m2)
 	eq(EM.coordinates.text:GetText(), 'Top left of the screen: 120, -330', 'back to the selected one')
-	eq(EM.coordinates:GetScript('OnUpdate'), nil, 'no OnUpdate when nothing is dragged')
+	check(EM.coordinates:GetScript('OnUpdate') ~= nil, 'shown: its throttled OnUpdate runs')
 
 	-- A mover whose outline rect can't be read (a secret edge): hidden.
 	local real = EM.GetOutlineRect
@@ -204,6 +204,7 @@ test("Coordinates shows the selected mover's position, follows a drag, and hides
 
 	EM:SetSetting('coordinates', false)
 	check(not EM.coordinates:IsShown(), 'turned off: hidden')
+	eq(EM.coordinates:GetScript('OnUpdate'), nil, 'hidden: no OnUpdate runs')
 	EM:SetSetting('coordinates', true)
 	EM:Deactivate()
 	check(not EM.coordinates:IsShown(), 'edit mode off: hidden')
@@ -218,14 +219,17 @@ test("the label's edges are whole pixels under every look, at any screen, with t
 	EM:Activate()
 	EM:SetSetting('coordinates', true)
 	EM:Select(m)
+	-- The game measures text in fractions: a width 0.37 over what the stub says.
+	local text = EM.coordinates.text
+	local measure = getmetatable(text).__index.GetStringWidth
+	text.GetStringWidth = function(self) return measure(self) + 0.37 end
 	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		look(name)
 		for _, noise in ipairs({ 0, HAIR, -HAIR }) do
 			stub.size_noise = noise
 			for _, screen in ipairs({ { 1920, 1080 }, { 1366, 768 }, { 800, 600 } }) do
 				set_screen(screen[1], screen[2])
-				stub.fire_event('DISPLAY_SIZE_CHANGED')
-				EM:UpdateCoordinates()
+				stub.fire_event('DISPLAY_SIZE_CHANGED') -- the label follows the event itself
 				local where = ('%s noise %s at %dx%d: '):format(name, noise, screen[1], screen[2])
 				check(EM.coordinates:IsShown(), where .. 'shown')
 				local off = P.off(EM.coordinates)
@@ -233,6 +237,77 @@ test("the label's edges are whole pixels under every look, at any screen, with t
 			end
 		end
 	end
+	check(EM.coordinates:GetWidth() >= text:GetStringWidth(), 'the frame is never narrower than its text')
+	text.GetStringWidth = nil
 	EM.movers.coord_pixels = nil
+	reset()
+end)
+
+test('an arrow-key nudge moves the label with the frame', function()
+	local m = add_mover('coord_nudge', { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 120, y_off = -330 })
+	EM:Activate()
+	EM:SetSetting('coordinates', true)
+	EM:Select(m)
+	local left = EM.coordinates:GetLeft()
+	EM:Nudge(m, 'RIGHT', false)
+	eq(m.def.getPosition().x_off, 121, 'the frame moved a pixel')
+	eq(EM.coordinates.text:GetText(), 'Top left of the screen: 121, -330', 'the numbers')
+	eq(EM.coordinates:GetLeft(), left + 1, 'and the place')
+	EM.movers.coord_nudge = nil
+	reset()
+end)
+
+test("a position changed in /sui (a module's setter, a reset) reaches the label after the throttle, without PositionChanged", function()
+	local m, config = add_mover('coord_sui', { point = 'TOPLEFT', frame = 'UIParent', rel_point = 'TOPLEFT', x_off = 120, y_off = -330 })
+	EM:Activate()
+	EM:SetSetting('coordinates', true)
+	EM:Select(m)
+	local changed = 0
+	EM:On('PositionChanged', function() changed = changed + 1 end)
+	local label = EM.coordinates
+	local left = label:GetLeft()
+	check(label:GetScript('OnUpdate') ~= nil, 'shown: it has an OnUpdate')
+
+	config.position.x_off = 400 -- what the Position block's setter does
+	m.def.apply()
+	stub.fire_script(label, 'OnUpdate', 0.04)
+	eq(label.text:GetText(), 'Top left of the screen: 120, -330', 'not yet: under the throttle')
+	stub.fire_script(label, 'OnUpdate', 0.08)
+	eq(label.text:GetText(), 'Top left of the screen: 400, -330', 'then the new numbers')
+	eq(label:GetLeft(), left + 280, 'and the new place')
+	eq(changed, 0, 'PositionChanged never fired')
+
+	config.position.y_off = -100 -- a reset writes the table directly
+	m.def.apply()
+	stub.fire_script(label, 'OnUpdate', 0.11)
+	eq(label.text:GetText(), 'Top left of the screen: 400, -100', 'a second change')
+	eq(changed, 0, 'still no PositionChanged')
+
+	EM:Select(nil)
+	eq(label:GetScript('OnUpdate'), nil, 'hidden: nothing runs')
+	EM:Select(m)
+	check(label:GetScript('OnUpdate') ~= nil, 'shown again: it runs')
+	EM:Deactivate()
+	eq(label:GetScript('OnUpdate'), nil, 'edit mode off: nothing runs')
+	EM.movers.coord_sui = nil
+	reset()
+end)
+
+test('the label follows a new screen size on the screen events alone', function()
+	local m = add_mover('coord_screen', { point = 'CENTER', x_off = 0, y_off = 0 })
+	EM:Activate()
+	EM:SetSetting('coordinates', true)
+	EM:Select(m)
+	for _, event in ipairs({ 'UI_SCALE_CHANGED', 'DISPLAY_SIZE_CHANGED' }) do
+		for _, screen in ipairs({ { 1366, 768 }, { 1920, 1080 } }) do
+			set_screen(screen[1], screen[2])
+			-- The mover's frame is re-placed by the game (anchored to UIParent's middle).
+			stub.fire_event(event)
+			local l, r = EM.GetOutlineRect(m)
+			local mid = (EM.coordinates:GetLeft() + EM.coordinates:GetRight()) / 2
+			check(math.abs(mid - (l + r) / 2) <= 1, ('%s at %dx%d: centred on the outline (%s vs %s)'):format(event, screen[1], screen[2], mid, (l + r) / 2))
+		end
+	end
+	EM.movers.coord_screen = nil
 	reset()
 end)

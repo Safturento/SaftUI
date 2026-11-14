@@ -4,7 +4,7 @@ local W, OB = st.OptionsWidgets, st.OptionsBody
 
 --[[
 	Edit mode's bar: the controls of edit mode (Exit, the grid and its size, the
-	snaps, Options) in one strip across the top of the screen, shown while edit
+	snaps, Dim world, Coordinates, Options) in one strip across the top of the screen, shown while edit
 	mode is on, with /sui open or closed. This file is the bar itself: its
 	frame, the list of groups of controls, the layout (EM.BarLayout, pure) and
 	the events that show it, fade it and keep it current. The groups and their
