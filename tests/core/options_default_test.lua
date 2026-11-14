@@ -356,6 +356,22 @@ test("an item's reset sits against its dots: its label gives up only the icon an
 	end
 end)
 
+test("an item with no menu has no dots: its reset sits 6 in from the cell's edge, and the label gives up its room", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			local differs = { on = true }
+			local page = ItemPage('Hotkey', differs)
+			page.page.args.item.menu = nil
+			local body, by = draw(page)
+			local c = by.item
+			check(shown(c), look .. ': its reset shows')
+			check(not c.widget.hasMenu, look .. ': no menu')
+			eq(c.frame:GetRight() - icon_of(c):GetRight(), 6, look .. ": 6 from the cell's right edge")
+			body:Release()
+		end)
+	end
+end)
+
 test("a color field's reset sits where a select's does, under Thick and Blizzard", function()
 	for _, look in ipairs({ 'thick', 'blizzard' }) do
 		in_look(look, function()

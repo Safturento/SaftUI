@@ -714,7 +714,10 @@ end
 
 test("a pick's pickerControl: its buttons on the picker's line, 12 right of the dropdown and apart; a pick without one has none", function()
 	local P = load_test_file('lib/pixels.lua')
-	for _, look in ipairs({ 'thick', 'blizzard' }) do
+	local HAIR = 2 ^ -14
+	for _, look in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		-- The first look reads sizes back exactly, the others a hair off.
+		stub.size_noise = ({ thick = 0, thin = HAIR, blizzard = -HAIR })[look]
 		H.theme(look)
 		local ran = {}
 		ufPickerControl = picker_control(ran)
@@ -753,6 +756,7 @@ test("a pick's pickerControl: its buttons on the picker's line, 12 right of the 
 		eq(#f.pickerWidgets, 0, look .. ': none on a page with no picker')
 		close_all()
 	end
+	stub.size_noise = 0
 	H.theme('thick')
 	ufPickerControl = nil
 	eq(#take_errors(), 0, 'no errors')

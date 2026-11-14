@@ -336,6 +336,33 @@ test('color: a see-through color shows over a checker of two greys in 4px square
 	opaque:Release()
 end)
 
+test('color: the checker and the code round the opacity alike: 99.6% is solid, 99.4% is not', function()
+	for _, case in ipairs({ { 0.996, false, '#FF0000' }, { 0.995, false, '#FF0000' }, { 0.994, true, '#FF0000 \194\183 99%' } }) do
+		local w = color_widget({ hasAlpha = true, value = { 1, 0, 0, case[1] } })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		eq(#checker_of(w) > 0, case[2], case[1] .. ': the checker')
+		eq(w.text:GetText(), case[3], case[1] .. ': the code')
+		w:Release()
+	end
+end)
+
+test("color: the checker's squares stay inside the swatch's area, under Thick, Thin and Blizzard", function()
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		theme(name)
+		local w = color_widget({ hasAlpha = true, value = { 1, 0, 0, 0.5 } })
+		w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+		local area = w.area
+		local squares = checker_of(w)
+		check(#squares > 0, name .. ': a checker')
+		for _, s in ipairs(squares) do
+			check(s.x >= area.x and s.y >= area.y and s.x + s.w <= area.x + area.width and s.y + s.h <= area.y + area.height,
+				name .. ': ' .. s.x .. ',' .. s.y .. ',' .. s.w .. ',' .. s.h .. ' inside ' .. area.x .. ',' .. area.y .. ',' .. area.width .. ',' .. area.height)
+		end
+		w:Release()
+	end
+	theme('thick')
+end)
+
 test('color: the checker follows the picker, coming and going with the opacity', function()
 	theme('thick')
 	local w = color_widget({ hasAlpha = true, value = { 0, 0, 1, 1 } })
@@ -406,18 +433,23 @@ test("color: under Blizzard the field is the Settings dropdown's face, with Bliz
 	w:Release()
 end)
 
-test('color: every edge on a whole pixel, under Thick and Blizzard, see-through and solid', function()
+test('color: every edge on a whole pixel, under Thick, Thin and Blizzard, see-through and solid, with a size read back a hair off', function()
 	local P = load_test_file('lib/pixels.lua')
-	for _, name in ipairs({ 'thick', 'blizzard' }) do
+	local HAIR = 2 ^ -14
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
 		for _, a in ipairs({ 1, 0.4 }) do
-			theme(name)
-			local w = color_widget({ hasAlpha = true, value = { 0.3, 0.6, 0.9, a } })
-			w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
-			local off = P.off(w.frame)
-			eq(#off, 0, name .. ' at ' .. a .. ': ' .. P.report(off))
-			w:Release()
+			for _, noise in ipairs({ 0, HAIR, -HAIR }) do
+				stub.size_noise = noise
+				theme(name)
+				local w = color_widget({ hasAlpha = true, value = { 0.3, 0.6, 0.9, a } })
+				w:SetPoint('TOPLEFT', parent, 'TOPLEFT', 10, -10)
+				local off = P.off(w.frame)
+				eq(#off, 0, name .. ' at ' .. a .. ', noise ' .. noise .. ': ' .. P.report(off))
+				w:Release()
+			end
 		end
 	end
+	stub.size_noise = 0
 	theme('thick')
 end)
 
