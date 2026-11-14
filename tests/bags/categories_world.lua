@@ -13,7 +13,8 @@
 -- options window's files and SaftUI-Bags' options.lua, dragparts.lua,
 -- ruleeditor.lua and categoriestab.lua. The helpers: open (the tab), cell, tab
 -- (its widget as the window drew it last), tick, click, yes, pick, rgb, row_of,
--- ids, cursor_on, wheel, in_view, drag_frame and the rest the cases share.
+-- ids, cursor_on, wheel, in_view, drag_frame, half (the window at half width) and
+-- the rest the cases share.
 
 local H = load_test_file('bags/container_helpers.lua')
 
@@ -65,6 +66,14 @@ local function cell(key)
 	for _, c in ipairs(OW.GetDrawnRows()) do
 		if c.row.key == key then return c end
 	end
+end
+
+-- The window at half width (388 under Thick and Thin, 368 under Blizzard): the
+-- size changed and the time moved past the size buttons' guard, so a test can
+-- change it again at once.
+local function half()
+	if not OW:SetWindowSize('half') then error('the window did not go to half') end
+	stub.time = stub.time + 1
 end
 
 -- The tab's widget, as the window drew it last.
@@ -157,6 +166,7 @@ end
 return {
 	cell = cell,
 	open = open,
+	half = half,
 	rgb = rgb,
 	SETS = SETS,
 	same_rgb = same_rgb,
