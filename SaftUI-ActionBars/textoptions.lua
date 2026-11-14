@@ -66,21 +66,18 @@ local COUNTDOWN_ALL_DESC = "Show the time left on a button's cooldown, on every 
 local COUNTDOWN_BAR_DESC = "The time left on a button's cooldown. All bars shows or hides the numbers on every bar (Blizzard's own Show Numbers for Cooldowns). The dots hold their font, size, outline and place on this bar."
 
 -- What the cooldown numbers' Font, Size and Outline add: what's drawn until
--- they're set (AB:GetCountdownFont), which is also their default.
-local COUNTDOWN_UNSET = " Until set, Pixel Med's on buttons of 36px and up and Pixel's below (Global Settings > Fonts)."
-local COUNTDOWN_DEFAULT = "Pixel Med's on buttons of 36px and up, Pixel's below (Global Settings > Fonts)"
+-- they're set (AB:GetCountdownFont), which is also their default. field: font,
+-- size or outline.
+local function CountdownDefault(field)
+	return ("Pixel Med's %s on buttons of 36px and up, Pixel's below (Global Settings > Fonts)"):format(field)
+end
+local function CountdownUnset(field)
+	return " Until set, it goes by the button's size: " .. CountdownDefault(field) .. '.'
+end
 
 -- All bars' shipped text settings (config.lua).
 local function Shipped(kind)
 	return st.defaults.actionbars.all.text[kind]
-end
-
--- Applies a change: every bar for All bars, else the bar.
-local function Updater(self, id)
-	if id == 'all' then
-		return function() self:UpdateBars() end
-	end
-	return function() self:UpdateBar(id) end
 end
 
 -- On All bars, a text setting's own reset (Core's default field): it differs
@@ -114,7 +111,7 @@ local function TextDefault(self, kind, field, update)
 			update()
 		end,
 		text = function()
-			if shipped[field] == nil then return COUNTDOWN_DEFAULT end
+			if shipped[field] == nil then return CountdownDefault(field) end
 			return self:ValueText(key, shipped[field])
 		end,
 	}
@@ -146,8 +143,7 @@ local function TextMenu(self, id, kind, update)
 		position = generators.position(4, false,
 			function(part) return self:GetSetting(id, kind .. '.position', part) end,
 			function(part, value)
-				self:SetSetting(id, kind .. '.position', value, part)
-				update()
+				if self:SetFromPage(id, kind .. '.position', value, part) then update() end
 			end,
 			nil,
 			countdown
@@ -159,7 +155,7 @@ local function TextMenu(self, id, kind, update)
 	for field, option in pairs(args) do
 		option.share = self:ShareFor(id, kind .. '.' .. field)
 		if id == 'all' then option.default = TextDefault(self, kind, field, update) end
-		if countdown and field ~= 'position' then option.desc = option.desc .. COUNTDOWN_UNSET end
+		if countdown and field ~= 'position' then option.desc = option.desc .. CountdownUnset(field) end
 	end
 
 	local get = function(info) return self:GetSetting(id, kind .. '.' .. info[#info]) end
@@ -175,8 +171,7 @@ local function TextMenu(self, id, kind, update)
 		name = countdown and COUNTDOWN_TITLE or NAMES[kind],
 		get = get,
 		set = function(info, value)
-			self:SetSetting(id, kind .. '.' .. info[#info], value)
-			update()
+			if self:SetFromPage(id, kind .. '.' .. info[#info], value) then update() end
 		end,
 		args = args,
 	}
@@ -184,7 +179,7 @@ end
 
 -- One text's item on id's page (a bar or 'all'), a quarter of the Text line.
 function AB:GetTextItem(id, kind, order)
-	local update = Updater(self, id)
+	local update = function() self:UpdateFor(id) end
 	local item = {
 		type = 'item',
 		size = 'small',
@@ -210,8 +205,7 @@ function AB:GetTextItem(id, kind, order)
 	item.desc = SHOW_DESCS[kind] .. MENU_NOTE
 	item.get = function() return self:GetSetting(id, key) end
 	item.set = function(_, value)
-		self:SetSetting(id, key, value)
-		update()
+		if self:SetFromPage(id, key, value) then update() end
 	end
 	item.share = self:ShareFor(id, key)
 	if id == 'all' then

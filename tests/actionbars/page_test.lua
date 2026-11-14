@@ -61,7 +61,10 @@ local function fresh()
 	AB:ConvertProfile()
 	AB.bars, AB.extras = {}, {}
 	for _, id in ipairs(AB.BAR_IDS) do
-		AB.bars[id] = { id = id, buttons = {} }
+		-- A named frame, as the game's: st:ValidateAnchor resolves the name a bar
+		-- is anchored to and walks the bars' points.
+		AB.bars[id] = CreateFrame('Frame', AB:GetBarFrameName(id), UIParent)
+		AB.bars[id].id, AB.bars[id].buttons = id, {}
 		for i = 1, (id == 'pet' or id == 'stance') and 10 or 12 do AB.bars[id].buttons[i] = {} end
 	end
 	for _, id in ipairs(AB.EXTRA_IDS) do AB.extras[id] = CreateFrame('Frame', nil, UIParent) end
@@ -303,6 +306,7 @@ test('Reset, All and Multiple on a bar, and on All bars', function()
 	eq(OM.ShareCall(r, row(r, 'bar3', 'size'), 'apply', { 'bar5' }), true, 'apply ran')
 	eq(AB:IsOwn('bar5', 'size') and AB:GetBarConfig('bar5').size, 40, 'Bar 5 owns 40')
 	eq(AB:GetBarConfig('bar6').size, 45, 'Bar 6 still follows')
+	eq(AB:IsOwn('bar6', 'size'), false, 'and owns nothing: an unpicked bar is not written')
 	eq(table.concat(calls, ','), 'UpdateBar:bar3,UpdateBar:bar5', 'the bar and each picked bar are updated')
 
 	-- Multiple from All bars: the picked bars follow again.
@@ -510,9 +514,9 @@ test('SettingText', function()
 	eq(AB:SettingText('all', 'visibility'), 'Always', 'Show by its label')
 	eq(AB:SettingText('pet', 'size'), '30', 'a number as is')
 	eq(AB:SettingText('all', 'hotkey.position'), 'Top Right to Top Right, -3, -3', "a text's place")
-	eq(AB:SettingText('all', 'countdown.size'), 'Default', 'an unset cooldown size')
-	eq(AB:SettingText('all', 'countdown.font'), 'Default', 'font')
-	eq(AB:SettingText('all', 'countdown.outline'), 'Default', 'outline')
+	eq(AB:SettingText('all', 'countdown.size'), 'By button size', 'an unset cooldown size')
+	eq(AB:SettingText('all', 'countdown.font'), 'By button size', 'font')
+	eq(AB:SettingText('all', 'countdown.outline'), 'By button size', 'outline')
 	AB:SetSetting('bar3', 'hotkey.show', false)
 	eq(AB:SettingText('bar3', 'hotkey.show'), 'Hidden', 'a hidden text')
 	eq(AB:SettingText('all', 'hotkey.show'), 'Shown', 'a shown one')
@@ -558,13 +562,34 @@ test("every setting's own reset: on All bars against the shipped default, on a b
 	local hotkey = row(r, 'all', 'hotkey')
 	OM.Set(r, hotkey, false)
 	eq(OM.DefaultState(r, hotkey).differs, true, 'a hidden hotkey differs')
+	calls = {}
 	OM.DefaultReset(r, hotkey)
 	eq(AB:GetSetting('all', 'hotkey.show'), true, 'shown again')
+	eq(#calls, #AB.BAR_IDS, "the Show's reset updates every bar")
 	local posRoot, position = menu_row(hotkey, 'position')
 	OM.Set(posRoot, position, 'y_off', -6)
+	eq(OM.DefaultState(posRoot, position).differs, true, 'a moved text differs, in one offset alone')
 	eq(OM.DefaultState(posRoot, position).text, 'Top Right to Top Right, -3, -3', 'its default, as a place')
+	calls = {}
 	OM.DefaultReset(posRoot, position)
 	eq(AB:GetSetting('all', 'hotkey.position', 'y_off'), -3, 'back in its place')
+	eq(#calls, #AB.BAR_IDS, "the Position's reset updates every bar")
+	eq(OM.DefaultState(posRoot, position).differs, false, 'and it no longer differs')
+
+	-- Every menu setting has its default on All bars, the countdown's too.
+	for _, kind in ipairs({ 'hotkey', 'countdown' }) do
+		for field, value in pairs({ font = 'Friz Quadrata TT', size = 17, outline = 'THICK' }) do
+			local menuRoot, setting = menu_row(row(r, 'all', kind), field)
+			eq(OM.DefaultState(menuRoot, setting).differs, false, kind .. ' ' .. field .. ': at its default')
+			OM.Set(menuRoot, setting, value)
+			eq(OM.DefaultState(menuRoot, setting).differs, true, kind .. ' ' .. field .. ': set, it differs')
+			calls = {}
+			OM.DefaultReset(menuRoot, setting)
+			eq(AB:GetSetting('all', kind .. '.' .. field), st.defaults.actionbars.all.text[kind][field],
+				kind .. ' ' .. field .. ': the shipped value again')
+			eq(#calls, #AB.BAR_IDS, kind .. ' ' .. field .. ': every bar is updated')
+		end
+	end
 
 	-- A bar: a shared setting's reset is the share's (no default drawn: OB.PlaceDefault skips
 	-- a member share); Enable and Position against the bar's shipped values.
@@ -581,7 +606,9 @@ test("every setting's own reset: on All bars against the shipped default, on a b
 	local place = row(r, 'bar3', 'position')
 	OM.Set(r, place, 'x_off', 40)
 	eq(OM.DefaultState(r, place).differs, true, 'a moved bar differs')
-	check(OM.DefaultState(r, place).text:find('SaftUI_ActionBar2', 1, true), 'its default names where it ships')
+	eq(OM.DefaultState(r, place).text, 'Bottom to Top of Bar 2, 0, 3', 'its default names where it ships, in the bar\'s words')
+	eq(OM.DefaultState(r, row(r, 'bar1', 'position')).text, 'Bottom to Bottom of the screen, 0, 20', 'the screen for UIParent')
+	eq(OM.DefaultState(r, row(r, 'pet', 'position')).text:match(' of (.-),'), 'Bar 3', 'a bar of the pet bar')
 	calls = {}
 	OM.DefaultReset(r, place)
 	eq(AB.config.bar3.position.x_off, 0, 'back in its place')
@@ -591,6 +618,141 @@ test("every setting's own reset: on All bars against the shipped default, on a b
 	eq(OM.DefaultState(r, place).differs, true, 'on another frame: it differs')
 	OM.DefaultReset(r, place)
 	eq(AB.config.bar3.position.frame, 'SaftUI_ActionBar2', 'back on Bar 2')
+	no_errors()
+end)
+
+------------------------------------------------------------------ no-op picks
+
+test('picking the value a control already shows changes nothing and makes nothing own', function()
+	fresh()
+	local r = root()
+	calls = {}
+	local function untouched(key, what)
+		eq(AB:IsOwn('bar3', key), false, what .. ': not the bar\'s own')
+		eq(#calls, 0, what .. ': nothing updated')
+	end
+	OM.Set(r, row(r, 'bar3', 'growth'), 'TOPLEFT')
+	untouched('growth', "First button's current entry")
+	OM.Set(r, row(r, 'bar3', 'visibility'), 'always')
+	untouched('visibility', 'Show Always')
+	OM.Set(r, row(r, 'bar3', 'size'), 45)
+	untouched('size', 'the size it shows')
+	local menuRoot, font = menu_row(row(r, 'bar3', 'hotkey'), 'font')
+	OM.Set(menuRoot, font, OM.Get(menuRoot, font))
+	untouched('hotkey.font', 'the current hotkey font')
+	menuRoot, font = menu_row(row(r, 'bar3', 'countdown'), 'font')
+	OM.Set(menuRoot, font, OM.Get(menuRoot, font))
+	untouched('countdown.font', 'the drawn cooldown font')
+	eq(AB:GetSetting('bar3', 'countdown.font'), nil, 'an unset cooldown font stays unset')
+	local size
+	menuRoot, size = menu_row(row(r, 'bar3', 'countdown'), 'size')
+	OM.Set(menuRoot, size, OM.Get(menuRoot, size))
+	untouched('countdown.size', 'the drawn cooldown size')
+	eq(AB:GetSetting('bar3', 'countdown.size'), nil, 'an unset cooldown size stays unset')
+	OM.Set(r, row(r, 'bar3', 'hotkey'), true)
+	untouched('hotkey.show', "a text's Show as it is")
+	local posRoot, position = menu_row(row(r, 'bar3', 'hotkey'), 'position')
+	OM.Set(posRoot, position, 'y_off', AB:GetSetting('bar3', 'hotkey.position', 'y_off'))
+	OM.Set(posRoot, position, 'point', AB:GetSetting('bar3', 'hotkey.position', 'point'))
+	untouched('hotkey.position', 'a Position part set to where it is')
+
+	-- The pet bar's Buttons, typed as the 10 it shows while following All bars' 12.
+	OM.Set(r, row(r, 'pet', 'buttons'), 10)
+	eq(AB:IsOwn('pet', 'buttons'), false, "the pet bar's 10 is not its own")
+	OM.Set(r, row(r, 'pet', 'perrow'), 10)
+	eq(AB:IsOwn('pet', 'perrow'), false, 'nor its Buttons per row')
+	eq(#calls, 0, 'nothing updated')
+	OM.Set(r, row(r, 'pet', 'buttons'), 8)
+	eq(AB:IsOwn('pet', 'buttons') and AB:GetSetting('pet', 'buttons'), 8, 'a real change is its own')
+
+	-- A real change still is, and a bar that owns a setting writes what it is given.
+	OM.Set(r, row(r, 'bar3', 'spacing'), 6)
+	eq(AB:IsOwn('bar3', 'spacing') and AB:GetSetting('bar3', 'spacing'), 6, 'a changed value is the bar\'s own')
+	OM.Set(r, row(r, 'bar3', 'spacing'), 3)
+	eq(AB:IsOwn('bar3', 'spacing') and AB:GetSetting('bar3', 'spacing'), 3, 'and an owner writes All bars\' value as its own')
+	-- All bars writes what it is given.
+	calls = {}
+	OM.Set(r, row(r, 'all', 'spacing'), 3)
+	eq(#calls, #AB.BAR_IDS, 'All bars always updates')
+	no_errors()
+end)
+
+test("Faded opacity is a shared setting: own on a bar, and named on All bars", function()
+	fresh()
+	AB:SetSetting('bar3', 'visibility', 'mouseover')
+	local r = root()
+	local fade = row(r, 'bar3', 'fade_alpha')
+	eq(OM.ShareState(r, fade).own, false, 'it follows All bars to begin with')
+	OM.Set(r, fade, 0.5)
+	r = root()
+	local state = OM.ShareState(r, row(r, 'bar3', 'fade_alpha'))
+	eq(state.own, true, 'a change is the bar\'s own')
+	eq(state.shared, '30%', "naming All bars' value")
+	eq(differs(OM.ShareState(r, row(r, 'all', 'fade_alpha'))), 'Bar 3: 50%', 'and All bars names the bar')
+	no_errors()
+end)
+
+test('diff and Own tooltips show a bar\'s buttons as the bar shows them', function()
+	fresh()
+	AB:SetSetting('bar3', 'buttons', 11)
+	AB:SetSetting('bar3', 'perrow', 11)
+	AB:ApplyTo('bar3', 'buttons', { 'pet', 'bar5' })
+	AB:ApplyTo('bar3', 'perrow', { 'pet' })
+	local r = root()
+	eq(differs(OM.ShareState(r, row(r, 'all', 'buttons'))), 'Bar 3: 11; Bar 5: 11; Pet bar: 10', 'the pet bar shows its 10')
+	eq(differs(OM.ShareState(r, row(r, 'all', 'perrow'))),
+		'Bar 3: 11; Bar 4: 1; Bar 5: 1; Bar 6: 1; Bar 7: 1; Bar 8: 1; Pet bar: 10', 'Buttons per row too')
+	eq(OM.ShareState(r, row(r, 'pet', 'buttons')).shared, '10', "the pet bar's Own tooltip names what following would show")
+	eq(OM.ShareState(r, row(r, 'bar3', 'buttons')).shared, '12', 'Bar 3 follows All bars\' 12')
+	eq(OM.ShareState(r, row(r, 'all', 'buttons')).shared, '12', 'All bars shows its own 12')
+	eq(AB:SettingText('pet', 'buttons'), '10', 'SettingText clamps for a bar')
+	eq(AB:SettingText('all', 'buttons'), '12', 'and not for All bars')
+	no_errors()
+end)
+
+test("a Position's reset is checked as a typed anchor is: a loop moves nothing and says why", function()
+	fresh()
+	local printed = {}
+	st.Print = function(_, ...) printed[#printed + 1] = table.concat({ ... }, ' ') end
+	-- Bar 3 on the screen, Bar 2 on Bar 3; Bar 3 ships on Bar 2.
+	local bar2, bar3 = AB.bars.bar2, AB.bars.bar3
+	AB.config.bar3.position.frame = 'UIParent'
+	AB.config.bar2.position.frame = 'SaftUI_ActionBar3'
+	bar3:SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 0)
+	bar2:SetPoint('BOTTOM', bar3, 'TOP', 0, 0)
+	local r = root()
+	local place = row(r, 'bar3', 'position')
+	eq(OM.DefaultState(r, place).differs, true, 'Bar 3 differs from where it ships')
+	calls = {}
+	OM.DefaultReset(r, place)
+	eq(AB.config.bar3.position.frame, 'UIParent', 'Bar 3 stays where it is')
+	eq(#calls, 0, 'nothing is laid out')
+	eq(#printed, 1, 'the reason is printed')
+	check(printed[1]:find('loop', 1, true), 'and it is the loop')
+	-- Bar 2 off Bar 3: the reset goes through.
+	AB.config.bar2.position.frame = 'UIParent'
+	bar2:ClearAllPoints()
+	bar2:SetPoint('BOTTOM', UIParent, 'BOTTOM', 0, 0)
+	OM.DefaultReset(r, place)
+	eq(AB.config.bar3.position.frame, 'SaftUI_ActionBar2', 'Bar 3 goes back on Bar 2')
+	eq(table.concat(calls, ','), 'LayoutBar:bar3', 'laid out')
+	eq(#printed, 1, 'and nothing more is printed')
+end)
+
+test("the cooldown numbers' unset reads as 'by button size', each with its noun", function()
+	fresh()
+	local r = root()
+	for field, noun in pairs({ font = 'font', size = 'size', outline = 'outline' }) do
+		local menuRoot, setting = menu_row(row(r, 'all', 'countdown'), field)
+		local want = "Pixel Med's " .. noun .. " on buttons of 36px and up, Pixel's below (Global Settings > Fonts)"
+		eq(OM.DefaultState(menuRoot, setting).text, want, field .. ': the reset names what comes back')
+		check(setting.option.desc:find("Until set, it goes by the button's size: " .. want, 1, true), field .. ': the desc says so')
+	end
+	AB:SetSetting('bar3', 'countdown.size', 14)
+	r = root()
+	local menuRoot, setting = menu_row(row(r, 'all', 'countdown'), 'size')
+	eq(differs(OM.ShareState(menuRoot, setting)), 'Bar 3: 14', 'the diff names the bar')
+	eq(OM.ShareState(menuRoot, setting).shared, 'By button size', "and All bars' unset size as by button size")
 	no_errors()
 end)
 

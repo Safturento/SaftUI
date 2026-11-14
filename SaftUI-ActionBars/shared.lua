@@ -270,29 +270,6 @@ function AB:OwnersOf(key)
 	return owners
 end
 
--- The cooldown numbers' Reset. On 'all': the font, size and outline unset and
--- the place the default's. On a bar: the same values, and each owned only where
--- All bars' differs from that default, else followed.
-function AB:ResetCountdown(id)
-	local default = st.defaults.actionbars.all.text.countdown
-	local store = self:GetStore(id)
-	local countdown = store.text.countdown
-	countdown.font, countdown.size, countdown.outline = nil, nil, nil
-	for _, part in ipairs(POSITION_PARTS) do countdown[part] = default[part] end
-	if id == 'all' then return end
-
-	local all = self.config.all.text.countdown
-	local own = OwnTable(store)
-	for _, field in ipairs({ 'font', 'size', 'outline' }) do
-		own['countdown.' .. field] = all[field] ~= nil
-	end
-	local differs = false
-	for _, part in ipairs(POSITION_PARTS) do
-		if all[part] ~= default[part] then differs = true end
-	end
-	own['countdown.position'] = differs
-end
-
 -- What a bar shows for key, for the conversion: Buttons and Buttons per row
 -- clamped to the bar's button count, a position as its parts.
 local function Shown(src, key, numButtons)

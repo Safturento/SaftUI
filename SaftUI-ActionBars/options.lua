@@ -45,14 +45,16 @@ local AB = st:GetModule('ActionBars')
 	      itself, its own buttons, or a bar anchored to it.
 	Layout, Visibility and the texts are shared settings (shared.lua): each
 	reads the effective config (AB:GetSetting), a change on a bar makes the
-	setting the bar's own, and each carries AB:ShareFor's share (Core's share
+	setting the bar's own (unless it is given what the bar already shows:
+	AB:SetFromPage), and each carries AB:ShareFor's share (Core's share
 	field): on a bar its own mark and hover line (Own, Reset, Apply to: All |
 	Multiple); on All bars the diff icon naming the bars that own it, with
 	their values (AB:SettingText), and Apply to. Every reset is per setting:
 	on All bars each setting, Theme and Background carry their own (Core's
 	default field) against the shipped value; on a bar a shared setting's is
 	its share's Reset (follow All bars again), and Enable and Position carry
-	their own against the bar's shipped value. There's no Reset button.
+	their own against the bar's shipped value (a Position's goes through
+	st:ValidateAnchor, and says why when it would make a loop). There's no Reset button.
 
 	Then one section per extra button, with General: Scale for Blizzard's extra
 	action button and zone ability, Size for SaftUI's leave vehicle button, and
@@ -97,6 +99,16 @@ local SCALED_EXTRAS = {
 	extra = true,
 	zone = true,
 }
+
+-- A frame as the page words it: a SaftUI bar by its label, the screen for
+-- UIParent, any other frame by its name.
+local function FrameText(self, name)
+	if name == 'UIParent' then return 'the screen' end
+	for _, id in ipairs(self.BAR_IDS) do
+		if self:GetBarFrameName(id) == name then return self:GetBarLabel(id) end
+	end
+	return tostring(name)
+end
 
 -- A bar's own position, as the profile stores it.
 local PLACE_PARTS = { 'point', 'frame', 'rel_point', 'x_off', 'y_off' }
@@ -178,7 +190,7 @@ end
 	  a number as it is; fade_alpha as a percent ('30%'); visibility and
 	  growth by their labels; '<kind>.show' 'Shown' or 'Hidden'; a font by its
 	  name; an outline by the Fonts module's label; an unset cooldown numbers'
-	  font, size or outline 'Default'; a position '<point> to <rel_point>,
+	  font, size or outline 'By button size'; a position '<point> to <rel_point>,
 	  <x>, <y>' with st.FRAME_ANCHORS' labels ('Top Right to Top Right, -3, -3').
 ]]
 function AB:ValueText(key, value)
@@ -190,7 +202,7 @@ function AB:ValueText(key, value)
 	elseif field == 'show' then
 		return value and 'Shown' or 'Hidden'
 	elseif field then
-		if value == nil then return 'Default' end
+		if value == nil then return 'By button size' end
 		if field == 'outline' then return st:GetModule('Fonts').outlines[value] or tostring(value) end
 		return tostring(value)
 	elseif key == 'fade_alpha' then
@@ -203,14 +215,59 @@ function AB:ValueText(key, value)
 	return tostring(value)
 end
 
--- id's value of the shared key (a bar or 'all'), as ValueText words it.
-function AB:SettingText(id, key)
+-- Buttons and Buttons per row as bar shows them: no more than its buttons.
+-- (nil: the value as it is.)
+local function Clamped(self, bar, key, value)
+	if (key == 'buttons' or key == 'perrow') and bar and self.bars[bar] and tonumber(value) then
+		return math.min(value, #self.bars[bar].buttons)
+	end
+	return value
+end
+
+--[[
+	id's value of the shared key (a bar or 'all'), as ValueText words it.
+	clampFor: the bar whose button count Buttons and Buttons per row are held
+	to, as that bar shows them (by default id's own: All bars' have no count),
+	so a bar's Own tooltip names what following All bars would show there.
+]]
+function AB:SettingText(id, key, clampFor)
 	if key:match('%.position$') then
 		local parts = {}
 		for _, part in ipairs(self.POSITION_PARTS) do parts[part] = self:GetSetting(id, key, part) end
 		return self:ValueText(key, parts)
 	end
-	return self:ValueText(key, self:GetSetting(id, key))
+	return self:ValueText(key, Clamped(self, clampFor or id, key, self:GetSetting(id, key)))
+end
+
+--[[
+	A change a bar's page makes to the shared key (part: a position's part).
+	A bar that follows All bars for the key and is given what it already shows
+	changes nothing: no write, no mark, no update, so choosing the highlighted
+	entry of a list, or typing the number a slider shows, doesn't make the
+	setting the bar's own. What it shows is the clamped Buttons and Buttons per
+	row, and the cooldown numbers' drawn font, size and outline (which stay
+	unset). All bars and a bar that owns the key write what they're given.
+	Returns whether it wrote.
+]]
+function AB:SetFromPage(id, key, value, part)
+	if id ~= 'all' and not self:IsOwn(id, key) then
+		local shown
+		local field = key:match('^countdown%.(%a+)$')
+		if field == 'font' or field == 'size' or field == 'outline' then
+			local font, size, outline = self:GetCountdownFont(self:GetBarConfig(id))
+			shown = ({ font = font, size = size, outline = outline })[field]
+		else
+			shown = Clamped(self, id, key, self:GetSetting(id, key, part))
+		end
+		if value == shown then return false end
+	end
+	self:SetSetting(id, key, value, part)
+	return true
+end
+
+-- Applies a change on id's page: every bar for All bars, else the bar.
+function AB:UpdateFor(id)
+	if id == 'all' then self:UpdateBars() else self:UpdateBar(id) end
 end
 
 ------------------------------------
@@ -241,7 +298,7 @@ end
 	on a bar, the bar itself), AB:UpdateBars for every bar.
 ]]
 function AB:ShareFor(id, key)
-	local function shared() return self:SettingText('all', key) end
+	local function shared() return self:SettingText('all', key, id ~= 'all' and id or nil) end
 	if id == 'all' then
 		return {
 			source = ALL_LABEL,
@@ -321,11 +378,6 @@ local function Shared(self, id, args)
 	return args
 end
 
--- Applies a change on id's page: every bar for All bars, else the bar.
-local function Update(self, id)
-	if id == 'all' then self:UpdateBars() else self:UpdateBar(id) end
-end
-
 -- The Layout section on id's page (a bar or 'all'). numButtons: what
 -- Buttons and Buttons per row go up to, and the most they show.
 local function LayoutGroup(self, id, numButtons)
@@ -368,8 +420,7 @@ local function LayoutGroup(self, id, numButtons)
 			return value
 		end,
 		set = function(info, value)
-			self:SetSetting(id, info[#info], value)
-			Update(self, id)
+			if self:SetFromPage(id, info[#info], value) then self:UpdateFor(id) end
 		end,
 		args = args,
 	}
@@ -404,8 +455,7 @@ local function VisibilityGroup(self, id)
 		order = 3,
 		get = function(info) return self:GetSetting(id, info[#info]) end,
 		set = function(info, value)
-			self:SetSetting(id, info[#info], value)
-			Update(self, id)
+			if self:SetFromPage(id, info[#info], value) then self:UpdateFor(id) end
 		end,
 		args = Shared(self, id, {
 			visibility = {
@@ -532,12 +582,18 @@ function AB:GetBarOptions(id, order)
 			return false
 		end,
 		reset = function()
+			-- As a typed frame is: where it ships may be on a bar that now sits on this one.
+			local ok, err = st:ValidateAnchor(self.bars[id], place.frame)
+			if not ok then
+				st:Print(("%s's position can't go back to its default: %s."):format(self:GetBarLabel(id), err))
+				return
+			end
 			local now = self.config[id].position
 			for _, part in ipairs(PLACE_PARTS) do now[part] = place[part] end
 			self:LayoutBar(id)
 		end,
 		text = ('%s to %s of %s, %s, %s'):format(AnchorLabel(place.point), AnchorLabel(place.rel_point),
-			tostring(place.frame), Offset(place.x_off), Offset(place.y_off)),
+			FrameText(self, place.frame), Offset(place.x_off), Offset(place.y_off)),
 	}
 
 	return {
