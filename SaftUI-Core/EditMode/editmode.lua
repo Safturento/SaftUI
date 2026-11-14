@@ -1,7 +1,7 @@
 local st = SaftUI
 
--- SaftUI's own edit mode, exposed as st.EditModeFrames. Its bar across the top
--- of the screen (Bar/) and the other parts listen to its events (EM:On).
+-- SaftUI's own edit mode, exposed as st.EditModeFrames. Its small bar on the top
+-- edge of the screen (Bar/) and the other parts listen to its events (EM:On).
 local EM = st:NewModule('EditMode')
 st.EditModeFrames = EM
 
@@ -28,10 +28,11 @@ local callbacks = {}
 --                      the ticker runs twice a second: fired only on a change;
 --                      nothing listens to it yet, it is here for part two)
 --   'BarLaid'          no arguments: the bar, or the floating window, laid its
---                      controls out (Bar/bar.lua); docked, EM:BarGap() says where
---                      the gap is now (it is not updated while floating)
---   'BarModeChanged'   no arguments: the bar detached into its floating window or
---                      docked again (Bar/bar.lua's EM:SetBarFloating)
+--                      controls out (Bar/bar.lua)
+--   'BarModeChanged'   no arguments: what the docked bar covers changed: it
+--                      detached into its floating window or docked again
+--                      (Bar/bar.lua's EM:SetBarFloating), slid, changed width or
+--                      turned Hide until hovered on or off (Bar/bardock.lua)
 --   'ColorsChanged'    group: st:ColorsChanged(group), for every group
 --   'HistoryChanged'   no arguments: a step was pushed, merged, undone, redone,
 --                      reverted, trimmed or the history cleared (history.lua)

@@ -375,7 +375,7 @@ function EM:GetBarWindow()
 	end
 
 	local dock = W.IconButton(window, st.icons.panelTop, function()
-		return 'Dock', { 'Puts the controls back in a bar across the top of the screen.' }
+		return 'Dock', { 'Puts the controls back in a bar on the top edge of the screen.' }
 	end)
 	dock.onClick = EM.BarGuard(function() EM:SetBarFloating(false) end)
 	EM.SettleLevel(dock, window:GetFrameLevel() + 2, EM.LevelShape(dock))
