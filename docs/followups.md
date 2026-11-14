@@ -154,7 +154,9 @@ Format: see the user-level `~/.claude/CLAUDE.md` "Followup detection" section.
 
 **Shape of work:** A design first. Likely pieces: the dialog itself (steps, back and next, skip, a live preview behind it); a way to ship unit frame layouts as data (presets the owner authors in game and exports, loaded as named unit frame profiles); each step's content; when it shows (first login with no SaftUI settings; offered again from `/sui`).
 
-**Open questions:** How unit frame layouts are authored and shipped (exported profiles checked into the addon?). Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
+**Settled 2026-11-14:** the owner builds each unit frame layout in game as a unit frame profile, and it is migrated from the game's saved settings (SaftUI's SavedVariables in the WTF folder) into built-in defaults that ship with the addon. "yep I'd build them myself in game and you can just migrate the settings from the wtf folder to actual defaults". When migrating, only the settings go into the repo: no account, realm or character names from the file or its path.
+
+**Open questions:** How a shipped layout is stored and named (data files under `SaftUI-Unitframes/config/`, listed beside the player's own profiles and not editable in place?), and how one is refreshed when the owner changes it. Whether existing players see it after the update or only fresh installs. Whether it is per account or per character. What else belongs in it (action bar layout, bags view, the tracker switch).
 
 ### 2026-11-14 — /sui at half with the sidebar collapsed: a validation error is cut or hidden in the footer
 
