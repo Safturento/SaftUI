@@ -98,8 +98,8 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	are a line of buttons instead, side by side at their own widths, 12
 	apart, with no dividers: centred ones on a line of their own, in its
 	middle, and right ones at the line's right end, on the line of a wide
-	row just before them, one wide of its own (row.size: not one a half
-	body's sizeOf made wide), whose cell then ends 24 before the buttons, so its
+	row just before them, one wide of its own (row.size: not one a sizeOf
+	made wide, a half body's or an item menu's), whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
 	A toggle's check box and a color's field sit at their cell's right edge,
@@ -556,8 +556,10 @@ end
 -- section's lines of rows that float (lines of buttons) sit off its panel,
 -- FLOAT_GAP from it; a continuation after a section that ends with one has
 -- no panel to join, so it starts its own FLOAT_GAP under the line. heightOf,
--- sizeOf and alignOf are OB.LayoutRows'.
-function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
+-- sizeOf and alignOf are OB.LayoutRows'. noteHeightOf(section) (the seventh)
+-- is the height of a section's note, NOTE_HEIGHT without it: a note that
+-- wraps (a narrow body's) is as tall as its lines.
+function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	local laid, y = {}, BODY_TOP
 	for i, section in ipairs(sections) do
 		local entry = { section = section }
@@ -581,7 +583,7 @@ function OB.LayoutSections(sections, heightOf, sizeOf, alignOf, panels, floatOf)
 		end
 		if section.note then
 			entry.noteY = y - 2
-			y = y + NOTE_HEIGHT + NOTE_GAP
+			y = y + (noteHeightOf and noteHeightOf(section) or NOTE_HEIGHT) + NOTE_GAP
 		end
 		entry.rowsY = y
 		local placed, height = OB.LayoutRows(section.rows, heightOf, sizeOf, alignOf)
@@ -915,6 +917,8 @@ function OB.New(content, root, onChanged, width, opts)
 		end),
 		note = Pool(function()
 			local note = Text(content, 'small')
+			note:SetWordWrap(true) -- one that doesn't fit the body wraps (Body:NoteHeight)
+			note:SetJustifyV('TOP')
 			note:SetTextColor(Grey())
 			note:SetWidth(body.width)
 			return note
@@ -996,6 +1000,25 @@ function Body:SetWidth(width, half)
 			for _, fs in ipairs(list) do fs:SetWidth(width) end
 		end
 	end
+end
+
+-- A section's note's height: NOTE_HEIGHT, a line, when it fits the body's
+-- width on one, else the height of its lines wrapped to that width, in whole
+-- units (never less than a line). Measured on a font string of its own, the
+-- notes' font, so what a note drawn later takes is what the layout held for it.
+function Body:NoteHeight(section)
+	local measure = self.measure
+	if not measure then
+		measure = Text(self.content, 'small')
+		measure:SetWordWrap(true)
+		measure:SetJustifyV('TOP')
+		measure:Hide()
+		self.measure = measure
+	end
+	measure:SetWidth(self.width)
+	measure:SetText(section.note)
+	if ceil(measure:GetUnboundedStringWidth()) <= self.width then return NOTE_HEIGHT end
+	return max(NOTE_HEIGHT, WholeHeight(measure:GetStringHeight()))
 end
 
 -- A drawn row of the page: its frame and widget, and its height.
@@ -1111,14 +1134,15 @@ function Body:DrawSections(sections, makeCell, sizeOf, fillHeight)
 		if cell.widget and row.type == 'execute' then return WholeHeight(cell.widget:GetHeight()) end
 	end
 	local panels = self.metrics.panels
-	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)
+	local function noteHeightOf(section) return self:NoteHeight(section) end
+	local laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	local extra = fillHeight and #fills > 0 and floor(fillHeight - height) or 0
 	if extra > 0 then
 		local share = floor(extra / #fills)
 		for i, cell in ipairs(fills) do
 			cell.height = cell.height + share + (i == 1 and extra - share * #fills or 0)
 		end
-		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf)
+		laid, height = OB.LayoutSections(kept, heightOf, sizeOf, alignOf, panels, floatOf, noteHeightOf)
 	end
 	-- A group of buttons' x, by its buttons' widths: { xs, left }, once a draw.
 	-- A floating group lies across the body's whole width, off the panel.

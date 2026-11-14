@@ -960,7 +960,7 @@ test('drawn at half under Thick and Blizzard: one column, the texts two lines of
 				eq(by.hotkey.frame:GetTop(), by.count.frame:GetTop(), where .. 'Hotkey and Stack count on a line')
 				eq(by.macro.frame:GetTop(), by.countdown.frame:GetTop(), where .. 'Macro name and Cooldown on the next')
 				check(by.macro.frame:GetTop() < by.hotkey.frame:GetTop(), where .. 'under it')
-				check(by.spacing.frame:GetWidth() >= width - 28 or look == 'blizzard', where .. 'a setting takes the whole line')
+				eq(math.floor(by.spacing.frame:GetWidth() + 0.5), look == 'blizzard' and width or width - 28, where .. 'a setting takes the whole line')
 				check(by.spacing.frame.defaultReset:IsShown(), where .. "Spacing's reset shows")
 				check(by.perrow.frame.share and by.perrow.frame.share.diff:IsShown(), where .. 'a diff icon')
 			elseif pick == 'bar3' then

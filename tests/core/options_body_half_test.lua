@@ -5,8 +5,8 @@
 --
 -- Real: the body, the model, the widgets and the window's files
 -- (options_window_helpers.lua). The pages are synthetic, one per case, and the
--- real pages that must fit in one column (the unit frames' Copy from, the action
--- bars' shared settings) are in their own files' halves.
+-- action bars page at half is in tests/actionbars/page_test.lua, the unit frames'
+-- notes at half in tests/unitframes/config_test.lua.
 local H = load_test_file('core/options_window_helpers.lua')
 local P = load_test_file('lib/pixels.lua')
 local st = SaftUI
@@ -251,4 +251,125 @@ test("a width change closes a color picker open from the body, before the page i
 	body:Draw(OM.BuildView(body.root, 'page').sections)
 	check(not W.ColorPickerShown(), 'and the draw opens none')
 	body:Release()
+end)
+
+------------------------------------------------------------------ fix round 1
+
+local N = load_test_file('lib/halfnotes.lua')
+
+-- A page of one inline section with a note and two rows, drawn at width.
+local function noted(width, half, note)
+	local root = { page = {
+		type = 'group', name = 'Page', args = {
+			box = { type = 'group', inline = true, name = 'Box', desc = note, order = 1, args = {
+				a = { type = 'toggle', name = 'A', order = 1, get = function() return true end, set = function() end },
+				b = { type = 'toggle', name = 'B', order = 2, get = function() return true end, set = function() end },
+			} },
+		},
+	} }
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+	content:SetSize(width, 900)
+	local body = OB.New(content, root, nil, width)
+	body:SetWidth(width, half)
+	local height = body:Draw(OM.BuildView(root, 'page').sections)
+	local by = {}
+	for _, c in ipairs(body.cells) do by[c.row.key] = c end
+	return body, by, content, height
+end
+
+local LONG = string.rep('word ', 24) .. 'end.' -- 100 characters: wider than 388 at 13 pt, narrower than 774
+
+test("LayoutSections takes the height of each note from noteHeightOf; none given, the one line's 13", function()
+	local sections = { { title = 'T', note = 'N', rows = { { key = 'a' } } } }
+	local one = OB.LayoutSections(sections)
+	local tall = OB.LayoutSections(sections, nil, nil, nil, nil, nil, function() return 39 end)
+	eq(tall[1].rowsY - one[1].rowsY, 39 - 13, 'the rows are as much further down as the note is taller')
+	eq(one[1].noteY, tall[1].noteY, 'the note starts where it did')
+end)
+
+test('a note that fits on one line lays out as it did; one that does not wraps to the body and moves the rows down', function()
+	local _, byFull = noted(774, false, LONG)
+	local _, byHalf, _, hHalf = noted(388, true, LONG)
+	local _, byShort = noted(388, true, 'A short note.')
+	local _, byShortFull = noted(774, false, 'A short note.')
+	eq(byShort.a.y, byShortFull.a.y, 'a short note: the same rows y at half as at full')
+	check(byHalf.a.y > byFull.a.y, 'a long note at half pushes the rows down')
+	eq((byHalf.a.y - byFull.a.y) % 1, 0, 'by whole pixels')
+	local body, _, content = noted(388, true, LONG)
+	check(N.check(body, 'long note at 388') == 1, 'one note checked')
+	body:Release()
+	body, _, content = noted(774, false, LONG)
+	N.check(body, 'long note at 774')
+	body:Release()
+end)
+
+test('the real Colors, Icons and font notes at half: wrapped, clear of the rows, whole pixels under every look', function()
+	local views = { { 'Fonts', { tab = 'colors' } }, { 'Fonts', { tab = 'general' } }, { 'Fonts', { tab = 'fonts' } } }
+	local seen = 0
+	for _, name in ipairs({ 'thick', 'thin', 'blizzard' }) do
+		look(name, function()
+			local width = name == 'blizzard' and 368 or 388
+			for _, noise in ipairs({ 2 ^ -14, -2 ^ -14, 0 }) do
+				stub.size_noise = noise
+				for _, v in ipairs(views) do
+					local root = st.Config:GetOptionsTable()
+					local content = CreateFrame('Frame', nil, UIParent)
+					content:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 100, -100)
+					content:SetSize(width, 4000)
+					local body = OB.New(content, root, nil, 774)
+					body:SetWidth(width, true)
+					body:Draw(OM.BuildView(root, v[1], v[2]).sections)
+					local where = name .. ' ' .. v[2].tab .. ' noise ' .. noise
+					seen = seen + N.check(body, where)
+					local off = P.off(content)
+					eq(#off, 0, where .. ': ' .. P.report(off))
+					body:Release()
+				end
+			end
+		end)
+	end
+	check(seen >= 3 * 3 * 3, 'the pages have notes (' .. seen .. ' checked)')
+end)
+
+test('oneColumn wins over half: every row stays wide, one to a line', function()
+	local store, args = {}, {}
+	for i, key in ipairs({ 'a', 'b', 'c' }) do
+		args[key] = { type = 'toggle', name = key, order = i, size = i == 3 and 'small' or nil, get = function() return true end, set = function() end }
+	end
+	local root = { page = { type = 'group', name = 'Page', args = args } }
+	local content = CreateFrame('Frame', nil, UIParent)
+	content:SetSize(376, 400)
+	local body = OB.New(content, root, nil, 376, { oneColumn = true })
+	body:SetWidth(376, true)
+	body:Draw(OM.BuildView(root, 'page').sections)
+	local ys = {}
+	for _, c in ipairs(body.cells) do
+		ys[#ys + 1] = c.y
+		eq(c.frame:GetWidth(), 376 - 28, c.row.key .. ': the whole line (a half body would give a small row a half)')
+	end
+	eq(ys[1] ~= ys[2] and ys[2] ~= ys[3], true, 'one to a line')
+	body:Release()
+end)
+
+test('a color picker closes when only half changes, the width the same', function()
+	local W = st.OptionsWidgets
+	local body, by = draw_body(388, { { 'c', 'color', 'Color' } }, false)
+	check(W.OpenColorPicker(by.c.widget.frame, { r = 1, g = 0, b = 0, a = 1, onChange = function() end }), 'the picker opens')
+	body:SetWidth(388, false)
+	check(W.ColorPickerShown(), 'nothing changed: it stays')
+	body:SetWidth(388, true)
+	check(not W.ColorPickerShown(), 'half changed at 388: it closes')
+	body:Release()
+end)
+
+test('a description wraps to its 360 cell at half, not to the body', function()
+	local body, by = draw_body(388, { { 'text', 'description', 'Some words.' } }, true)
+	eq(by.text.widget.frame:GetWidth(), 360, 'Thick: the cell, 388 less the padding')
+	body:Release()
+	look('blizzard', function()
+		local blizzard, row = draw_body(368, { { 'text', 'description', 'Some words.' } }, true)
+		eq(row.text.widget.frame:GetWidth(), 368, 'Blizzard: no padding, the body')
+		blizzard:Release()
+	end)
 end)
