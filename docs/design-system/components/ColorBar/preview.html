@@ -1,4 +1,4 @@
-<!-- @dsCard group="Controls" height=150 subtitle="Opaque colours, a colour with opacity, a light colour where the white code is hard to read, under the mouse" -->
+<!-- @dsCard group="Controls" height=150 subtitle="A field: the swatch at its left, the code beside it in the normal text color; opaque colours, see-through ones over a checker, light ones, under the mouse, disabled" -->
 <!doctype html>
 <html>
 <head>
@@ -7,12 +7,14 @@
 </head>
 <body>
 <div class="sui-stage">
-  <div class="sui-stack"><div class="caption sui-state">Opaque</div><div class="sui-colorbar sui-outline field" style="--swatch: var(--accent)">#00ADF0</div></div>
-  <div class="sui-stack"><div class="caption sui-state">Opaque</div><div class="sui-colorbar sui-outline field" style="--swatch: var(--class-shaman)">#325F96</div></div>
-  <div class="sui-stack"><div class="caption sui-state">With opacity</div><div class="sui-colorbar sui-outline field" style="--swatch: var(--button-hover)">#4D80B3 &middot; 80%</div></div>
-  <div class="sui-stack"><div class="caption sui-state">Light (hard to read)</div><div class="sui-colorbar sui-outline field" style="--swatch: var(--text)">#E6E6CC</div></div>
-  <div class="sui-stack"><div class="caption sui-state">Light (hard to read)</div><div class="sui-colorbar sui-outline field" style="--swatch: var(--white)">#FFFFFF</div></div>
-  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="sui-colorbar sui-outline field is-hover" style="--swatch: var(--class-mage)">#83BFC9</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Opaque</div><div class="sui-colorbar field" style="--swatch: var(--accent)">#00ADF0</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Opaque</div><div class="sui-colorbar field" style="--swatch: var(--class-shaman)">#325F96</div></div>
+  <div class="sui-stack"><div class="caption sui-state">With opacity</div><div class="sui-colorbar field is-see" style="--swatch: color-mix(in srgb, var(--button-hover) 80%, transparent)">#4D80B3 &middot; 80%</div></div>
+  <div class="sui-stack"><div class="caption sui-state">With opacity</div><div class="sui-colorbar field is-see" style="--swatch: color-mix(in srgb, var(--threat-bad) 40%, transparent)">#FF1A1A &middot; 40%</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Light</div><div class="sui-colorbar field" style="--swatch: var(--text)">#E6E6CC</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Light</div><div class="sui-colorbar field" style="--swatch: var(--white)">#FFFFFF</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Hover</div><div class="sui-colorbar field is-hover" style="--swatch: var(--class-mage)">#83BFC9</div></div>
+  <div class="sui-stack"><div class="caption sui-state">Disabled</div><div class="sui-colorbar field is-disabled" style="--swatch: var(--class-mage)">#83BFC9</div></div>
 </div>
 </body>
 </html>

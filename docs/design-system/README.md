@@ -103,7 +103,7 @@ Every page whose frames SaftUI draws offers Theme and Background, with "Use Saft
 4. **Shared settings.** An "All" entry first in the picker, which every member follows. A member's own setting is marked with `OwnMark` (`accent` bar, `own` label) and a hover line: Own, the reset icon, Apply to: All | Multiple (`ApplyList`). The All page shows an orange `DiffIcon` whose tooltip lists who differs and with what. State is always visible; hover only offers actions.
 5. **Sections on panels.** Under Thick and Thin a `Section`'s rows sit on `panel-fill` with a `hairline` column divider and hairlines between lines. The Blizzard theme keeps Blizzard's art and flat layout.
 6. **Buttons float.** A line that holds only buttons has no panel behind it. A section's or dialog's closing buttons float under the panel with `float-gap` (24) above and below.
-7. **The colour bar** (`ColorBar`) is as wide as a dropdown (`control-width`), its hex code in `white`, with `· NN%` when its opacity is under 100%.
+7. **The color field** (`ColorBar`) is as wide as a dropdown (`control-width`): a swatch at its left (a see-through color over a checker), its hex code beside it in `text`, with `· NN%` when its opacity is under 100%.
 8. **Carets and close.** The dropdown arrow is `chevron-down`; the close button is `x` (`CloseButton`).
 9. **Position goes last** on a page (`PositionBlock`), in a section of its own.
 10. **Whole pixels** everywhere. **Corners are square** (`radius` 0).

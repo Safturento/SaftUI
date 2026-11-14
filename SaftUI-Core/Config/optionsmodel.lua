@@ -437,7 +437,7 @@ end
 
 ------------------------------------------------------------------ sections and rows
 
--- The types a setting can be small for. Not a color: its bar is a dropdown's
+-- The types a setting can be small for. Not a color: its field is a dropdown's
 -- width, and a quarter of a line is too narrow for it and its label. An item
 -- (a Show box, its name and its dots) fits a quarter.
 local canBeSmall = { toggle = true, execute = true, input = true, item = true }

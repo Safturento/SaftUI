@@ -95,7 +95,7 @@ local OM, W = st.OptionsModel, st.OptionsWidgets
 	row just before them (whose cell then ends 24 before the buttons, so its
 	label and control take the rest), else on a line of their own, all
 	inside the padding.
-	A toggle's check box and a color's bar sit at their cell's right edge,
+	A toggle's check box and a color's field sit at their cell's right edge,
 	the label taking the rest; a small input's box is 60 wide. An item
 	(optionsitem.lua) is given its cell's width and spans it, as tall as the
 	row (its box and dots centred on it), its Show box at the cell's left

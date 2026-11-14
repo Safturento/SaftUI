@@ -311,6 +311,20 @@ test("Blizzard: the same icon, left of the control's art", function()
 	end)
 end)
 
+test("a color field's reset sits where a select's does, under Thick and Blizzard", function()
+	for _, look in ipairs({ 'thick', 'blizzard' }) do
+		in_look(look, function()
+			fresh()
+			differs.select, differs.color = true, true
+			local body, by = draw(Page(Args()))
+			local function from_right(c) return c.frame:GetRight() - icon_of(c):GetRight() end
+			check(shown(by.color) and shown(by.select), look .. ': both show')
+			eq(from_right(by.color), from_right(by.select), look .. ': the same place from the cell\'s right')
+			body:Release()
+		end)
+	end
+end)
+
 test('the icon follows a drag: shown once the dragged value differs, gone back at the default', function()
 	in_look('thick', function()
 		fresh()

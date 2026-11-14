@@ -656,7 +656,7 @@ end
 
 -- The default in words, for the icon's tooltip: the field's text, or its
 -- value named by the row's type (a color's hex, with its opacity when the
--- row hasAlpha, as its swatch writes it; on or off; a select's label; a percent
+-- row hasAlpha, as its field writes it; on or off; a select's label; a percent
 -- range as a percent; a string or a number as it is), or nil.
 local function DefaultText(body, row, state)
 	if state.text then return state.text end

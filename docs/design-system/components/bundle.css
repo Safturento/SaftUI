@@ -63,9 +63,11 @@ svg { display: block; }
 .sui-track.is-hover > b { background: var(--white); }
 .sui-value { width: var(--range-value); height: var(--field-height); display: flex; align-items: center; justify-content: center; }
 
-/* colour bar: as wide as a dropdown, filled with the colour, its hex in white */
-/* inside the edge a 1px black line, then the colour (over black, so opacity darkens it); set --swatch to a colour token */
-.sui-colorbar { width: var(--control-width); height: var(--field-height); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt), inset 0 0 0 var(--line-width) var(--text-outline); background-color: var(--text-outline); background-image: linear-gradient(var(--swatch), var(--swatch)); display: flex; align-items: center; justify-content: center; color: var(--white); }
+/* color field: as wide as a dropdown, drawn as an input (Box): a swatch at its left, then the hex code in text */
+/* the swatch 40 wide and the inner height, a 1px black line round the colour, the edge's line after it; set --swatch to a colour; .is-see draws it over a checker (two greys, 4px squares) */
+.sui-colorbar { width: var(--control-width); height: var(--field-height); background: var(--kit-field); border: var(--line-width) solid var(--kit-edge); box-shadow: 0 0 0 var(--line-width) var(--kit-alt); display: flex; align-items: center; color: var(--text); white-space: nowrap; overflow: hidden; }
+.sui-colorbar::before { content: ''; flex: none; align-self: stretch; width: calc(40px + var(--line-width)); margin-right: var(--list-text); border-right: var(--line-width) solid var(--kit-edge); box-shadow: inset 0 0 0 var(--line-width) var(--text-outline); background: linear-gradient(var(--swatch), var(--swatch)); }
+.sui-colorbar.is-see::before { background: linear-gradient(var(--swatch), var(--swatch)), repeating-conic-gradient(#8a8a8a 0% 25%, #5a5a5a 0% 50%) var(--line-width) var(--line-width) / 8px 8px; }
 .sui-colorbar.is-hover { border-color: var(--accent); }
 
 /* buttons */

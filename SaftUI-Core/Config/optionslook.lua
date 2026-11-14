@@ -108,7 +108,8 @@ W.Box, W.Edge, W.HoverEdge = Box, Edge, HoverEdge
 	    choices fit (optionsselect.lua); the compact ones have none;
 	  - a range: Blizzard's minimal slider. Its value box, an input, the
 	    position block's boxes and W.Prompt's box: InputBoxTemplate's art;
-	  - a color: Blizzard's swatch. A keybinding: Blizzard's binding button,
+	  - a color: the dropdown's face, with Blizzard's swatch inside it
+	    (optionstypes.lua). A keybinding: Blizzard's binding button,
 	    its select piece while it waits for a key;
 	  - the position block's nudges: MinimalScrollBar's steppers;
 	  - the execute button, W.Confirm's buttons and the window's own: Blizzard's
@@ -369,9 +370,11 @@ local function PlaceFace(button, art)
 end
 
 -- The text across the face, textInset in from its sides, pressedOffset
--- further when pressed.
+-- further when pressed. A face with no button.text (the color field's,
+-- whose code its own widget places beside its swatch) has none to place.
 local function PlaceText(button, art, pressed)
 	local look, text = art.look, button.text
+	if not text then return end
 	local x, y = 0, 0
 	if pressed then x, y = look.pressedOffset[1], look.pressedOffset[2] end
 	text:ClearAllPoints()
