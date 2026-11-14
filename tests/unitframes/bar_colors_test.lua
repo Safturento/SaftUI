@@ -268,3 +268,94 @@ test('defaults that block their options are fixed', function()
 		eq(P[unit].health.text.deficit, on, unit .. "'s health text Deficit default")
 	end
 end)
+
+------------------------------------------------------------------ the text colors
+
+-- The health, power and additional power texts' own color (text.colorCustom
+-- and text.customColor, UF:UpdateText in updaters.lua). Off, a text has its
+-- font's color, white, as it always had; nothing in these elements recolors a
+-- text afterwards (their PostUpdates only set its string), so the color
+-- UpdateText gave stays through a unit change, a power type change, Dead and
+-- the rest. The stub's SetFontObject keeps a color set on the font string
+-- itself, which is the stricter reading of the game's.
+local function text_rgb(text) return { text:GetTextColor() } end
+-- A bar whose text UF:UpdateText can place. Stand-in: UF:GetFrame (it finds the
+-- frame a position names; unitframes.lua has it, which needs oUF) gives the unit frame.
+function UF:GetFrame(unitframe) return unitframe end
+local function text_bar(name) return (bar(name)) end
+local function same(rgba, r, g, b) return near(rgba[1], r) and near(rgba[2], g) and near(rgba[3], b) end
+
+for _, name in ipairs({ 'Health', 'Power', 'AdditionalPower' }) do
+	local key = name:lower()
+
+	test(name .. ' text: every unit has the text color off, white, in its defaults', function()
+		for unit, config in pairs(unit_defaults) do
+			if unit ~= '**' and type(config) == 'table' and type(config[key]) == 'table' and type(config[key].text) == 'table' then
+				eq(config[key].text.colorCustom, nil, unit .. ': the unit sets none of its own (the shared default applies)')
+			end
+		end
+		local text = (unit_defaults['**'] or unit_defaults)[key].text
+		eq(text.colorCustom, false, 'off by default')
+		check(type(text.customColor) == 'table' and text.customColor.GetRGB == nil and same(text.customColor, 1, 1, 1),
+			'white as a plain list')
+	end)
+
+	test(name .. ' text: off keeps the font\'s color; on takes the custom color, a list or a color object; off again puts the font\'s back', function()
+		local element = text_bar(name)
+		local text, config = element.text, element.config.text
+		UF:UpdateText(text)
+		local font = { st:GetFont(config.font):GetTextColor() }
+		check(same(text_rgb(text), font[1], font[2], font[3]), 'off: the font\'s color')
+		check(same(text_rgb(text), 1, 1, 1), 'which is white')
+
+		config.colorCustom, config.customColor = true, { 0.2, 0.4, 0.6 }
+		UF:UpdateText(text)
+		check(same(text_rgb(text), 0.2, 0.4, 0.6), 'on: the list\'s color')
+		config.customColor = CreateColor(0.9, 0.8, 0.1)
+		UF:UpdateText(text)
+		check(same(text_rgb(text), 0.9, 0.8, 0.1), 'a color object, as a saved profile can hold one')
+
+		config.colorCustom = false
+		UF:UpdateText(text)
+		check(same(text_rgb(text), font[1], font[2], font[3]), 'off again: the font\'s color is back')
+	end)
+
+	test(name .. ' text: a font change keeps the custom color, and the bar\'s color is not the text\'s', function()
+		local element = text_bar(name)
+		local text, config = element.text, element.config.text
+		config.colorCustom, config.customColor = true, { 0.5, 0.6, 0.7 }
+		element:SetStatusBarColor(0.1, 0.1, 0.1)
+		config.font = 'pixel'
+		UF:UpdateText(text)
+		check(same(text_rgb(text), 0.5, 0.6, 0.7), 'a new font object, the same color')
+		check(same({ element:GetStatusBarColor() }, 0.1, 0.1, 0.1), 'the bar keeps its own')
+	end)
+end
+
+test('health text: the custom color stays through updates, Dead and a unit change', function()
+	local health = text_bar('Health')
+	local text, config = health.text, health.config.text
+	config.colorCustom, config.customColor = true, { 0.3, 0.9, 0.3 }
+	UF:UpdateText(text)
+	stub.units.target = { name = 'Mob', dead = true }
+	health.PostUpdate(health, 'target', 0, 100)
+	eq(text:GetText(), 'Dead', 'the dead text')
+	check(same(text_rgb(text), 0.3, 0.9, 0.3), 'in the custom color: Dead is not recolored by the element')
+	stub.units.target = nil
+	health.PostUpdate(health, 'player', 50, 100)
+	health.PostUpdateColor(health, 'player')
+	check(same(text_rgb(text), 0.3, 0.9, 0.3), 'a health update and a recolor leave it')
+end)
+
+test('power text: the custom color stays through a power type change', function()
+	local power = text_bar('Power')
+	local text, config = power.text, power.config.text
+	config.colorCustom, config.customColor = true, { 0.3, 0.9, 0.3 }
+	power.config.enable = true
+	UF:UpdateText(text)
+	power.PostUpdate(power, 'player', 40, 0, 100)
+	power.PostUpdateColor(power, 'player', CreateColor(1, 0, 0), 1, 0, 0)
+	check(same(text_rgb(text), 0.3, 0.9, 0.3), 'oUF recoloring the bar leaves the text')
+	power.PostUpdate(power, 'player', 90, 0, 100)
+	check(same(text_rgb(text), 0.3, 0.9, 0.3), 'and so does the next update')
+end)

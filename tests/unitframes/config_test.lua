@@ -1013,6 +1013,68 @@ test("Power and Additional power: Short is a small toggle after Percent, as Heal
 	end
 end)
 
+test("Health, Power and Additional power texts: Text color is one color row with its toggle, white when unticked, in the text's own keys", function()
+	local config = UF:GetConfigTable()
+	local P = UF:GetProfileConfig()
+	for _, unit in ipairs(UNITS) do
+		for _, case in ipairs({ { 'Health', 'health' }, { 'Power', 'power' }, { 'AdditionalPower', 'additionalpower' } }) do
+			local tab, key = case[1], case[2]
+			local text = option_at(config, unit, tab, 'text')
+			if text then
+				local where = unit .. '.' .. tab .. ' text'
+				check(text.args.colorCustom == nil, where .. ' has no check box of its own for its color')
+				local option, row, root = row_of(unit, tab, 'text', 'customColor')
+				local store = P[unit][key].text
+				if check(option and option.type == 'color' and option.name == 'Text color' and option.toggle, where .. ' has a Text color row with a toggle') then
+					eq(store.colorCustom, false, where .. ': off by default')
+					local info = plain_info(unit, tab, 'text', 'customColor')
+					eq(option.toggle.offText, 'White', where .. ': unticked it is white, the font\'s color')
+					-- The toggle is the text's own colorCustom, the color its customColor.
+					local n = updates
+					option.toggle.set(info, true)
+					eq(store.colorCustom, true, where .. ': ticked writes colorCustom')
+					eq(updates, n + 1, where .. ': the unit frames follow')
+					eq(option.toggle.get(info), true, where .. ': reads it')
+					local list = store.customColor
+					OM.Set(root, row, 0.1, 0.2, 0.3, 1)
+					check(store.customColor == list and near(list[1], 0.1) and near(list[3], 0.3), where .. ': the color is written in the list the profile holds')
+					local r, g, b = OM.Get(root, row)
+					check(near(r, 0.1) and near(g, 0.2) and near(b, 0.3), where .. ': and read back')
+					local color = CreateColor(0.4, 0.5, 0.6)
+					store.customColor = color
+					OM.Set(root, row, 0.7, 0.8, 0.9, 1)
+					local cr, cg, cb = color:GetRGB()
+					check(store.customColor == color and near(cr, 0.7) and near(cg, 0.8) and near(cb, 0.9), where .. ': in a color object too')
+					store.customColor = list
+					-- Its reset: it differs while on or off white, and puts both back.
+					eq(OM.DefaultState(root, row).differs, true, where .. ': differs')
+					eq(OM.DefaultState(root, row).text, 'White', where .. ': the default named as White')
+					check(OM.DefaultReset(root, row), where .. ': a reset runs')
+					eq(store.colorCustom, false, where .. ': the toggle is back')
+					r, g, b = OM.Get(root, row)
+					check(near(r, 1) and near(g, 1) and near(b, 1), where .. ': and the color, white')
+					eq(OM.DefaultState(root, row).differs, false, where .. ': at its default again')
+				end
+			end
+		end
+	end
+end)
+
+test("Copy from carries a text's color with its element: the whole health or power table is copied", function()
+	local P = UF:GetProfileConfig()
+	for _, key in ipairs({ 'health', 'power', 'additionalpower' }) do
+		P.target[key].text.colorCustom, P.target[key].text.customColor = true, { 0.2, 0.7, 0.4 }
+		P.focus[key].text.colorCustom, P.focus[key].text.customColor = false, { 1, 1, 1 }
+		UF:CopySettings('focus', 'target', { key })
+		eq(P.focus[key].text.colorCustom, true, key .. ': the toggle is copied')
+		local copied = P.focus[key].text.customColor
+		check(near(copied[1], 0.2) and near(copied[2], 0.7) and near(copied[3], 0.4), key .. ': and the color')
+		check(copied ~= P.target[key].text.customColor, key .. ': as a copy')
+		P.target[key].text.colorCustom, P.focus[key].text.colorCustom = false, false
+		P.target[key].text.customColor, P.focus[key].text.customColor = { 1, 1, 1 }, { 1, 1, 1 }
+	end
+end)
+
 test('Name: Classification where rare and elite units can show, Class color where players can', function()
 	local config = UF:GetConfigTable()
 	local P = UF:GetProfileConfig()

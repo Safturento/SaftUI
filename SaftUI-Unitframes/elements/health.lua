@@ -146,6 +146,17 @@ local function GetConfigTable(unit)
 		deficit = G.toggle(3, 'Deficit', 'Shows how much health is missing, as -1234, instead of the health.', 'small'),
 		percent = G.toggle(4, 'Percent', 'Shows the health as a percent instead. Deficit wins when both are on.', 'small'),
 		short = G.toggle(4.5, 'Short', 'Shortens the health, as 12.5K or 1.2M. Not with Deficit or Percent on.', 'small'),
+		-- Without it the text keeps its font's color, white.
+		customColor = UF.CustomColorOption(6, {
+			name = 'Text color',
+			desc = 'Colors the health text with this color.',
+			offDesc = "Unticked, the text keeps its font's color: white.",
+			offText = 'White',
+			unit = unit,
+			path = { 'health', 'text' },
+			config = function() return UnitConfig().health.text end,
+			update = Update,
+		}),
 		-- Last in Text.
 		position = G.uf_element_position(1000,
 			function(index) return UnitConfig().health.text.position[index] end,

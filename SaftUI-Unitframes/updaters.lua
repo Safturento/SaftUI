@@ -373,7 +373,21 @@ function UF:UpdateText(text, configOverride)
     end
 
     UF:UpdateElement(text, configOverride)
-    text:SetFontObject(st:GetFont(config.font))
+    local font = st:GetFont(config.font)
+    text:SetFontObject(font)
+
+    -- The health and power texts' own color (colorCustom and customColor in
+    -- their text config; the other texts have none). Off, a text keeps its
+    -- font's color, as it always had. The game's SetFontObject gives a font
+    -- string its font's color again, but a color set before it is put back
+    -- here too, whatever the game does with it.
+    if config.colorCustom and config.customColor then
+        text:SetTextColor(UF.UnpackColor(config.customColor))
+        text.hasCustomColor = true
+    elseif text.hasCustomColor then
+        text.hasCustomColor = nil
+        if font then text:SetTextColor(font:GetTextColor()) end
+    end
 end
 
 function UF:UpdateIcon(icon)
