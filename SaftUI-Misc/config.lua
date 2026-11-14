@@ -33,11 +33,26 @@ st.defaults.tooltip = {
 
 -- cooldown_manager skins Blizzard's Cooldown Manager as SaftUI's action buttons
 -- (Skinning/blizzard/Blizzard_CooldownViewer.lua); turning it off or on takes a reload.
+-- objective_tracker skins Blizzard's objective tracker
+-- (Skinning/blizzard/Blizzard_ObjectiveTracker.lua), off and on live.
 st.defaults.skinning = {
 	font = 'pixel',
 	theme = 'theme',
 	background = 'theme',
 	cooldown_manager = true,
+	objective_tracker = true,
+}
+
+-- Blizzard's objective tracker (Skinning/blizzard/Blizzard_ObjectiveTrackerPosition.lua
+-- and Blizzard_ObjectiveTracker.lua). font is its quest titles', objectives' and bar
+-- texts' font and header_font its headers', while the skin is on. position is the
+-- holder the tracker's top right corner hangs from. It has no default: AceDB fills in
+-- defaults, so one couldn't be told apart from a position the user set. With none the
+-- holder is at Blizzard's default spot, and a tracker the player moved in Blizzard's
+-- Edit Mode gives the profile its spot on first load, so first load pushes nothing.
+st.defaults.objectivetracker = {
+	font = 'normal',
+	header_font = 'normal',
 }
 
 -- Forever's swing timer bars (SaftUI-Misc/Skinning/blizzard/Blizzard_SwingTimerPosition.lua).

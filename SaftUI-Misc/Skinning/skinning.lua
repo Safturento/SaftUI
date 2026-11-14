@@ -50,7 +50,7 @@ function SK:GetConfigTable()
 				end,
 				args = {
 					theme = generators.theme(1,
-						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, Hekili and WeakAuras."),
+						"The border and background of the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager, the objective tracker's bars and buttons, Hekili and WeakAuras. Under Blizzard the objective tracker keeps Blizzard's own look."),
 					background = generators.background(1.5),
 					font = generators.font(2,
 						"The font of the text on the frames SaftUI skins: the buff icons, the swing timer bars, the Cooldown Manager and the item levels on the character frame."),
@@ -63,6 +63,12 @@ function SK:GetConfigTable()
 							self.config[info[#info]] = value
 							st:Print('Reload your UI to apply.')
 						end,
+					},
+					objective_tracker = {
+						order = 4,
+						name = 'Objective tracker',
+						type = 'toggle',
+						desc = "Draw Blizzard's objective tracker in SaftUI's look: its headers' banners gone, a line under each title, its texts in the fonts of /sui's Objective Tracker page, flat bars and buttons in this page's Theme and Background. Off, or while this page's Theme is Blizzard, it keeps Blizzard's look. Applies at once.",
 					},
 				},
 			},
