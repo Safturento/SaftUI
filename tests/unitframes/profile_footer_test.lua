@@ -182,6 +182,11 @@ test('Manage opens Unit frame profiles: the profile, then New, Copy, Rename, Del
 	eq(dialog_cell('new').y, dialog_cell('delete').y, 'New, Copy, Rename and Delete on one line')
 	eq(dialog_cell('export').y, dialog_cell('import').y, 'Export and Import on the next')
 	check(dialog_cell('close').y > dialog_cell('import').y, 'Close last')
+	-- The lines of buttons under the profile stay on its panel; Close, alone on
+	-- the last line, floats 6 under it, and the dialog ends 24 under Close.
+	eq(dialog_cell('export').y, dialog_cell('new').y + 38, 'Export and Import on the panel, the line under New')
+	eq(dialog_cell('close').y, dialog_cell('import').y + 38 + 6, 'Close 6 under the panel')
+	eq(dialog_cell('close').frame:GetBottom() - d.frame:GetBottom(), 24, 'the dialog ends 24 under Close')
 
 	-- The dialog's dropdown switches too, and the footer follows.
 	click(current.widget.frame)

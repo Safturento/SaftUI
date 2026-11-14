@@ -34,6 +34,13 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 	tabs or picker: of child groups that aren't inline, only the first one's
 	rows show.
 
+	It's as tall as its rows (up to 600, then they scroll) with its head (58)
+	and a foot under them: under Thick and Thin the dialog's side padding
+	(24), the body's own bottom margin (OB.BOTTOM) left off, so a closing
+	line of buttons (floating under the panel) ends 24 above the dialog's
+	edge, or 30 while the status line has text, to fit it; under Blizzard,
+	as before, the margin and a foot of 30 (54 under the last row).
+
 	A set re-renders it, after the drag for a slider's (meanwhile its other
 	rows follow the drag in place, as the window's do), and not while
 	Blizzard's color picker is open (the swatch shows its color itself; the
@@ -49,49 +56,74 @@ local ColorPickerShown, EscapeKeys = S.ColorPickerShown, S.EscapeKeys
 
 local DIALOG_WIDTH, DIALOG_PAD = 568, 24
 local DIALOG_CONTENT = DIALOG_WIDTH - 2 * DIALOG_PAD -- two columns of 240
-local DIALOG_HEAD, DIALOG_FOOT, DIALOG_MAX_BODY = 58, 30, 600
+local DIALOG_HEAD, DIALOG_MAX_BODY = 58, 600
+-- Under the rows (the foot): under Thick and Thin the side padding, the
+-- body's own bottom margin (OB.BOTTOM) left off, or STATUS_FOOT while the
+-- status line has text, to fit it; under Blizzard, as before, the margin
+-- kept and STATUS_FOOT always (54 under the last row).
+local STATUS_FOOT = 30
 local DIALOG_KEY = 'dialog' -- the table's key in the dialog's root
-local D = { offset = 0, height = 0 } -- the dialog's frames, body and what it draws
+local D = { offset = 0, height = 0, statusText = '' } -- the dialog's frames, body and what it draws
 
 local function SetDialogScroll(offset)
 	D.offset = ScrollTo(D.scroll, D.bar, offset, D.height)
 end
 
--- The dialog's scroll frame reaches past its content as the window's body
--- does in the look it's drawn in (OW.LAYOUT's bodyReach: under Blizzard the
--- dropdown's glow, so a select at the content's right edge isn't clipped).
--- Set when the look changed.
-local function PlaceDialogScroll()
+-- The foot under the rows, for the look the dialog is drawn in.
+local function Foot(blizzard)
+	if blizzard or D.statusText ~= '' then return STATUS_FOOT end
+	return DIALOG_PAD
+end
+
+-- Sizes the dialog to its rows (D.height) with its head and foot, its scroll
+-- frame's bottom on the foot. The scroll frame reaches past its content as
+-- the window's body does in the look it's drawn in (OW.LAYOUT's bodyReach:
+-- under Blizzard the dropdown's glow, so a select at the content's right
+-- edge isn't clipped).
+local function SizeDialog()
 	local blizzard = W.BlizzardLook()
-	if blizzard == D.laidOut then return end
 	local reach = (blizzard and OW.LAYOUT.blizzard or OW.LAYOUT.own).bodyReach
-	D.scroll:SetPoint('BOTTOMRIGHT', D.frame, 'BOTTOMRIGHT', -(DIALOG_PAD - reach), DIALOG_FOOT)
-	D.laidOut = blizzard
+	local foot = Foot(blizzard)
+	D.scroll:SetPoint('BOTTOMRIGHT', D.frame, 'BOTTOMRIGHT', -(DIALOG_PAD - reach), foot)
+	D.frame:SetHeight(DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + foot)
+	D.scroll:UpdateScrollChildRect()
+	SetDialogScroll(D.offset)
 end
 
 local function DrawDialog()
-	PlaceDialogScroll()
 	D.body:Release()
 	local title = D.titleSource
 	if type(title) == 'function' then title = title() end
 	D.title:SetText(tostring(title or ''))
 	local view = OM.BuildView(D.root, DIALOG_KEY)
-	D.height = view and D.body:Draw(view.sections) or 0
+	local height = view and D.body:Draw(view.sections) or 0
+	-- Under Thick and Thin the rows end the content: the foot is the dialog's
+	-- own padding, not the body's margin as well.
+	if height > 0 and not W.BlizzardLook() then height = height - OB.BOTTOM end
+	D.height = height
 	D.content:SetHeight(max(1, D.height))
-	D.frame:SetHeight(DIALOG_HEAD + min(max(D.height, ROW_HEIGHT), DIALOG_MAX_BODY) + DIALOG_FOOT)
-	D.scroll:UpdateScrollChildRect()
-	SetDialogScroll(D.offset)
+	SizeDialog()
 end
 
 local function RenderDialog()
 	if D.frame and D.frame:IsShown() then xpcall(DrawDialog, geterrorhandler()) end
 end
 
+-- The status line's text (a validate error; '' clears it). Its coming or
+-- going changes the foot, so a shown dialog is sized again.
+local function SetStatus(text)
+	text = text or ''
+	local changed = (D.statusText == '') ~= (text == '')
+	D.statusText = text
+	D.status:SetText(text)
+	if changed and D.frame:IsShown() then SizeDialog() end
+end
+
 -- The dialog's widgets' onChanged, as the window's Changed: mid-drag its other
 -- rows follow in place, and it's drawn again when the mouse is let go.
 local function DialogChanged(ok, err, isDragging, widget)
 	D.dragging = isDragging and true or nil
-	D.status:SetText(ok == false and err or '')
+	SetStatus(ok == false and err or '')
 	if ok == false and err then return end
 	if isDragging then
 		xpcall(function() D.body:Refresh(widget) end, geterrorhandler())
@@ -125,7 +157,7 @@ local function BuildDialog()
 
 	local scroll = CreateFrame('ScrollFrame', nil, frame)
 	scroll:SetPoint('TOPLEFT', frame, 'TOPLEFT', DIALOG_PAD, -DIALOG_HEAD)
-	scroll:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -DIALOG_PAD, DIALOG_FOOT)
+	scroll:SetPoint('BOTTOMRIGHT', frame, 'BOTTOMRIGHT', -DIALOG_PAD, STATUS_FOOT) -- SizeDialog sets it on each draw
 	local content = CreateFrame('Frame', nil, scroll)
 	content:SetSize(DIALOG_CONTENT, 1)
 	scroll:SetScrollChild(content)
@@ -156,7 +188,7 @@ local function BuildDialog()
 		local owner = W.ListOwner()
 		if owner and Inside(owner, frame) then W.CloseList() end
 		W.CancelConfirm()
-		D.status:SetText('')
+		SetStatus('')
 	end)
 	-- Its sets can reach protected frames (UF's copy updates the unit frames).
 	frame:RegisterEvent('PLAYER_REGEN_DISABLED')
@@ -188,7 +220,7 @@ function OW:OpenDialog(title, options)
 	if not D.frame then BuildDialog() end
 	D.titleSource, D.root, D.offset, D.dragging = title, { [DIALOG_KEY] = options }, 0, nil
 	D.body:SetRoot(D.root)
-	D.status:SetText('')
+	SetStatus('')
 	D.frame:ClearAllPoints()
 	D.frame:SetPoint('CENTER', self:IsShown() and F.window or UIParent, 'CENTER', 0, 0)
 	D.frame:Show()
